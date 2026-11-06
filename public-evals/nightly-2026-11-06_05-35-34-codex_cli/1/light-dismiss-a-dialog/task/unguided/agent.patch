@@ -1,0 +1,97 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,44 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #logout-dialog {
++      margin: auto;
++      padding: 2rem;
++      max-width: calc(100% - 2rem);
++      border: none;
++      border-radius: 8px;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    #logout-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 1rem;
++      margin-top: 1.5rem;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
++    .dialog-actions button {
++      padding: 10px 20px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      color: var(--primary);
++      background: transparent;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +199,20 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger" aria-haspopup="dialog" aria-controls="logout-dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" aria-labelledby="logout-dialog-title">
++    <h2 id="logout-dialog-title">are you sure?</h2>
++    <form method="dialog" class="dialog-actions">
++      <button autofocus>Cancel</button>
++      <a href="/logout" class="btn">Logout</a>
++    </form>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +250,26 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const logoutTrigger = document.querySelector('.test-dialog-trigger');
++    const logoutDialog = document.querySelector('#logout-dialog');
++
++    logoutTrigger.addEventListener('click', (event) => {
++      event.preventDefault();
++      logoutDialog.showModal();
++    });
++
++    logoutDialog.addEventListener('click', (event) => {
++      const bounds = logoutDialog.getBoundingClientRect();
++      if (event.target === logoutDialog && (
++        event.clientX < bounds.left || event.clientX > bounds.right ||
++        event.clientY < bounds.top || event.clientY > bounds.bottom
++      )) {
++        logoutDialog.close();
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

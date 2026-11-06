@@ -1,0 +1,156 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,152 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f6f7f2">
++  <title>Typeform — A little font harmony</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;450;500&display=swap" rel="stylesheet">
++  <style>
++    :root { color-scheme: light; --paper:#f6f7f2; --ink:#202b25; --muted:#737a72; --line:#dfe3d9; --green:#245d3d; --mono:'IBM Plex Mono',monospace; }
++    * { box-sizing:border-box; }
++    body { margin:0; background:var(--paper); color:var(--ink); font-family:'DM Sans',sans-serif; -webkit-font-smoothing:antialiased; }
++    button,input { font:inherit; } button { cursor:pointer; } button:focus-visible,a:focus-visible,input:focus-visible { outline:3px solid #76a978; outline-offset:4px; }
++    .shell { max-width:1240px; padding:0 48px; margin:auto; }
++    header { height:100px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }
++    .brand { display:flex; align-items:center; gap:11px; font-size:23px; font-weight:700; letter-spacing:-1px; }
++    .brand-icon { display:grid; place-items:center; width:32px; height:35px; border-radius:8px; color:#e3f1d9; background:var(--green); font-family:Georgia,serif; font-size:25px; letter-spacing:-3px; padding-right:3px; }
++    .header-right { display:flex; gap:32px; align-items:center; font-size:12px; color:var(--muted); }
++    .edition { font-family:var(--mono); font-size:10px; letter-spacing:1px; text-transform:uppercase; }
++    .lab-label { display:flex; align-items:center; gap:8px; } .dot { width:6px; height:6px; border-radius:50%; background:#618457; display:inline-block; }
++    main { padding-top:54px; }
++    .eyebrow { font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:1.4px; text-transform:uppercase; color:var(--green); display:flex; align-items:center; gap:9px; }
++    .eyebrow::before { content:''; width:18px; height:1px; background:var(--green); }
++    .hero { display:flex; align-items:flex-end; justify-content:space-between; gap:36px; margin:19px 0 37px; }
++    h1 { font-size:clamp(38px,4.5vw,57px); line-height:1.12; letter-spacing:-2.8px; font-weight:500; margin:0 0 17px; }
++    h1 span { font-family:Georgia,serif; font-style:italic; color:var(--green); font-weight:400; }
++    .intro { color:var(--muted); font-size:14px; line-height:1.8; margin:0; max-width:530px; }
++    .hero-note { display:flex; gap:9px; align-items:center; border:1px solid var(--line); padding:9px 12px; border-radius:6px; font-size:10px; color:#65705f; white-space:nowrap; margin-bottom:4px; }
++    .hero-note svg { width:13px; height:13px; }
++    .workspace { display:grid; grid-template-columns:1.35fr 1fr; gap:22px; }
++    .panel { border:1px solid var(--line); border-radius:12px; background:#fffefa; overflow:hidden; display:flex; flex-direction:column; }
++    .panel-head { padding:24px 25px 20px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
++    .panel-heading { display:flex; gap:11px; align-items:center; } .number { font-family:var(--mono); font-size:10px; color:#899081; border:1px solid var(--line); padding:5px 6px; border-radius:5px; }
++    h2 { font-size:14px; font-weight:600; letter-spacing:-.2px; margin:0; }
++    .tag { color:#53724b; background:#edf2e8; font-size:9px; padding:5px 8px; border-radius:4px; font-family:var(--mono); }
++    .controls { display:flex; align-items:center; justify-content:space-between; padding:0 25px 20px; min-height:53px; gap:12px; }
++    .control-label { font-size:11px; color:var(--muted); }
++    .segmented { display:flex; gap:2px; background:#f0f1eb; padding:3px; border:1px solid #e6e8df; border-radius:6px; }
++    .segmented button { border:0; background:none; color:#81877c; font-size:10px; padding:5px 10px; border-radius:3px; }
++    .segmented button.active { background:#fffefa; color:var(--ink); box-shadow:0 1px 3px #263b2314; }
++    .toggle-label { display:flex; align-items:center; gap:8px; font-size:10px; color:#586650; cursor:pointer; }
++    .switch { position:relative; width:27px; height:16px; appearance:none; background:#bdc4b7; border-radius:20px; margin:0; cursor:pointer; transition:background .2s; }
++    .switch:checked { background:var(--green); } .switch::after { content:''; position:absolute; top:3px; left:3px; width:10px; height:10px; background:white; border-radius:50%; transition:transform .2s; } .switch:checked::after { transform:translateX(11px); }
++    .preview { margin:0 18px; min-height:239px; border:1px solid #e0e6d8; border-radius:7px; position:relative; overflow:hidden; background:#f0f4e9; padding:23px; display:flex; flex-direction:column; justify-content:space-between; }
++    .preview-kicker { font-family:var(--mono); font-size:8px; letter-spacing:1.2px; color:#7e8b70; text-transform:uppercase; }
++    .sample { position:relative; margin:22px 0 24px; line-height:1.65; letter-spacing:-.6px; font-size:27px; font-family:Arial,sans-serif; }
++    #mixed-fonts-container { font-size-adjust:from-font; }
++    #mixed-fonts-container code { font-family:var(--mono); background:#dfe9d4; color:#31533a; padding:2px 5px; border-radius:4px; font-size:1em; letter-spacing:-1px; }
++    .preview-bottom { display:flex; align-items:center; justify-content:space-between; gap:10px; }
++    .legend { font-family:var(--mono); font-size:8px; color:#7c886f; display:flex; align-items:center; gap:6px; } .legend i { width:12px; height:1px; background:#839a70; display:inline-block; }
++    .size { font-family:var(--mono); font-size:8px; color:#7c886f; }
++    .dark { background:#253c30; border-color:#253c30; color:#e3edda; }
++    .dark .preview-kicker,.dark .legend,.dark .size { color:#a9bba0; }
++    #independent-theme-container { font-family:Georgia,serif; font-size-adjust:0.5; }
++    .theme-sample { font-size:32px; line-height:1.45; letter-spacing:-.8px; margin:20px 0; }
++    .theme-sample code { font-family:var(--mono); color:#ccdfb9; font-size:1em; letter-spacing:-1.5px; }
++    .theme-sample em { color:#bbd5a5; }
++    .panel-description { font-size:11px; line-height:1.8; color:var(--muted); padding:17px 25px 20px; margin:0; min-height:77px; }
++    .code-box { border-top:1px solid var(--line); background:#fafaf6; margin-top:auto; }
++    .code-header { display:flex; align-items:center; justify-content:space-between; padding:13px 20px 6px; color:#899080; font-family:var(--mono); font-size:9px; }
++    .copy { display:flex; align-items:center; gap:5px; padding:4px; border:0; background:transparent; color:#7c8474; font-family:inherit; font-size:9px; }
++    .copy svg { width:12px; height:12px; }
++    pre { margin:0; padding:6px 21px 20px; font-family:var(--mono); font-size:10px; line-height:1.9; color:#73806a; white-space:pre-wrap; }
++    .selector { color:#3b5d43; } .value { color:#8c7043; }
++    .settings { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:20px 2px; border-bottom:1px solid var(--line); }
++    .size-control { display:flex; align-items:center; gap:16px; font-size:11px; color:var(--muted); }
++    input[type=range] { width:130px; height:3px; accent-color:var(--green); cursor:pointer; } output { color:var(--ink); font-family:var(--mono); font-size:10px; min-width:32px; }
++    .reset { display:flex; align-items:center; gap:6px; background:none; border:0; color:var(--muted); font-size:10px; padding:5px; } .reset svg { width:12px; height:12px; }
++    .explainer { display:grid; grid-template-columns:1fr 1fr 1fr; gap:36px; padding:29px 0 34px; }
++    .fact { display:flex; align-items:flex-start; gap:12px; } .fact-icon { flex-shrink:0; width:28px; height:28px; border:1px solid var(--line); border-radius:7px; display:grid; place-items:center; color:#5c7053; font-family:Georgia,serif; font-size:15px; } .fact-icon svg { width:14px; height:14px; }
++    h3 { font-size:11px; font-weight:600; margin:0 0 6px; } .fact p { font-size:10px; line-height:1.8; color:var(--muted); margin:0; max-width:250px; }
++    footer { border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; padding:22px 0 28px; font-size:9px; color:#92988a; } .footer-mark { display:flex; align-items:center; gap:7px; } .footer-mark span { color:#52694b; font-size:14px; }
++    @media(min-width:1500px) { .shell {max-width:1320px;} main {padding-top:70px;} .preview {min-height:270px;} }
++    @media(max-width:850px) { .shell{padding:0 25px;} .workspace{grid-template-columns:1fr 1fr;gap:14px;} .hero-note{display:none;} .panel-head{padding:20px 16px;} .controls{padding:0 16px 17px;flex-wrap:wrap;} .preview{margin:0 10px;padding:18px;min-height:260px;} .sample{font-size:24px;} .theme-sample{font-size:29px;} .panel-description{padding:17px 18px;} .tag{font-size:8px;} .explainer{gap:18px;} }
++    @media(max-width:600px) { header{height:78px;} .edition{display:none;} .shell{padding:0 20px;} main{padding-top:35px;} h1{letter-spacing:-1.8px;font-size:43px;} .hero{margin-bottom:28px;} .intro{font-size:13px;} .workspace{grid-template-columns:1fr;gap:20px;} .controls{flex-wrap:nowrap;} .preview{min-height:225px;margin:0 14px;} .sample{font-size:27px;} .theme-sample{font-size:32px;} .explainer{grid-template-columns:1fr;gap:20px;padding:26px 0;} .fact p{max-width:none;} .settings{gap:10px;} .size-control{gap:10px;} input[type=range]{width:95px;} footer{font-size:8px;} }
++  </style>
++</head>
++<body>
++<div class="shell">
++  <header>
++    <div class="brand"><span class="brand-icon" aria-hidden="true">t*</span>typeform<span style="color:#829375">.</span></div>
++    <div class="header-right"><span class="edition">Experiments in typography</span><span class="lab-label"><span class="dot"></span> The type lab</span></div>
++  </header>
++  <main>
++    <div class="eyebrow">A small detail. A better reading experience.</div>
++    <div class="hero"><div><h1>Different fonts.<br>Same <span>harmony.</span></h1><p class="intro">Bring your fonts into balance with <span style="font-family:var(--mono);font-size:12px;color:#4d6247">font-size-adjust</span>.<br>Consistent visual height, even when the typefaces change.</p></div><div class="hero-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18"/></svg> Pure CSS. Naturally balanced.</div></div>
++    <div class="workspace">
++      <section class="panel" aria-labelledby="mixed-heading">
++        <div class="panel-head"><div class="panel-heading"><span class="number">01</span><h2 id="mixed-heading">Mixed fonts, one rhythm</h2></div><span class="tag">Automatic</span></div>
++        <div class="controls"><div class="segmented" aria-label="Text font family"><button class="active" data-font="sans" aria-pressed="true">Sans serif</button><button data-font="serif" aria-pressed="false">Serif</button></div><label class="toggle-label"><input id="normalize" class="switch" type="checkbox" checked>Normalize height</label></div>
++        <div class="preview"><span class="preview-kicker">The mixed-font playground</span><p id="mixed-fonts-container" class="sample">Good design is in the details.<br>Even a little <code>inline code</code><br>should feel right at home.</p><div class="preview-bottom"><span class="legend"><i></i><span id="font-legend">Arial + IBM Plex Mono</span></span><span class="size" id="mixed-size">27px / auto</span></div></div>
++        <p class="panel-description">One shared x-height. Your inline code follows the surrounding text,<br class="desktop-break"> keeping every line comfortable and beautifully consistent.</p>
++        <div class="code-box"><div class="code-header"><span>CSS</span><button class="copy" data-copy="mixed" aria-label="Copy mixed fonts CSS"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><rect x="5" y="5" width="8" height="8" rx="1.5"/><path d="M10 5V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg><span>Copy</span></button></div><pre><span class="selector">#mixed-fonts-container</span> {
++  font-size-adjust: <span class="value" id="mixed-code-value">from-font</span>;
++}</pre></div>
++      </section>
++      <section class="panel" aria-labelledby="theme-heading">
++        <div class="panel-head"><div class="panel-heading"><span class="number">02</span><h2 id="theme-heading">A world of its own</h2></div><span class="tag">Independent</span></div>
++        <div class="controls"><span class="control-label">An independent theme</span><span style="font:10px var(--mono);color:#5b7152">Ratio <span style="background:#edf2e8;padding:4px 7px;border-radius:4px;margin-left:5px">0.5</span></span></div>
++        <div id="independent-theme-container" class="preview dark"><span class="preview-kicker">The independent theme</span><p class="theme-sample">Its own style.<br>Its own <em>proportions.</em><br>Always <code>in balance.</code></p><div class="preview-bottom"><span class="legend"><i></i>Georgia + IBM Plex Mono</span><span class="size">x-height / 0.5</span></div></div>
++        <p class="panel-description">A fixed aspect value gives this theme its own visual identity.<br class="desktop-break"> Predictable proportions, independent of the surrounding text.</p>
++        <div class="code-box"><div class="code-header"><span>CSS</span><button class="copy" data-copy="theme" aria-label="Copy independent theme CSS"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><rect x="5" y="5" width="8" height="8" rx="1.5"/><path d="M10 5V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg><span>Copy</span></button></div><pre><span class="selector">#independent-theme-container</span> {
++  font-size-adjust: <span class="value">0.5</span>;
++}</pre></div>
++      </section>
++    </div>
++    <div class="settings"><label class="size-control" for="font-size">Play with the text size <input id="font-size" type="range" min="20" max="34" value="27"><output id="size-output" for="font-size">27px</output></label><button class="reset" id="reset"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 6a5 5 0 1 1 0 4M3 2v4h4"/></svg>Reset playground</button></div>
++    <div class="explainer">
++      <div class="fact"><span class="fact-icon">x</span><div><h3>Height over size</h3><p>Matches the visual height of lowercase letters, so different fonts feel like they belong together.</p></div></div>
++      <div class="fact"><span class="fact-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="m7 5-5 5 5 5m6-10 5 5-5 5m-2-13-2 16"/></svg></span><div><h3>Less tweaking. More creating.</h3><p>Let the browser handle the font metrics. No manual scaling or font-specific workarounds.</p></div></div>
++      <div class="fact"><span class="fact-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M10 3v14M3 10h14"/></svg></span><div><h3>Local control, by design</h3><p>Set a numeric ratio to give a component its own proportions, wherever it lives.</p></div></div>
++    </div>
++  </main>
++  <footer><span class="footer-mark"><span>✳</span> Little experiments. Better interfaces.</span><span>Made for the love of type.</span></footer>
++</div>
++<script>
++  const sample = document.getElementById('mixed-fonts-container');
++  const normalize = document.getElementById('normalize');
++  const slider = document.getElementById('font-size');
++  let selectedFont = 'sans';
++  function update() {
++    sample.style.fontFamily = selectedFont === 'sans' ? 'Arial, sans-serif' : 'Georgia, serif';
++    sample.style.fontSize = slider.value + 'px';
++    sample.style.fontSizeAdjust = normalize.checked ? 'from-font' : 'none';
++    document.getElementById('size-output').value = slider.value + 'px';
++    document.getElementById('mixed-size').textContent = slider.value + 'px / ' + (normalize.checked ? 'auto' : 'unadjusted');
++    document.getElementById('mixed-code-value').textContent = normalize.checked ? 'from-font' : 'none';
++    document.getElementById('font-legend').textContent = (selectedFont === 'sans' ? 'Arial' : 'Georgia') + ' + IBM Plex Mono';
++    document.querySelectorAll('[data-font]').forEach(button => {
++      const active = button.dataset.font === selectedFont;
++      button.classList.toggle('active', active);
++      button.setAttribute('aria-pressed', String(active));
++    });
++  }
++  document.querySelectorAll('[data-font]').forEach(button => button.addEventListener('click', () => { selectedFont = button.dataset.font; update(); }));
++  normalize.addEventListener('change', update);
++  slider.addEventListener('input', update);
++  document.getElementById('reset').addEventListener('click', () => { selectedFont = 'sans'; normalize.checked = true; slider.value = '27'; update(); });
++  document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async () => {
++    const css = button.dataset.copy === 'mixed'
++      ? '#mixed-fonts-container {\n  font-size-adjust: ' + (normalize.checked ? 'from-font' : 'none') + ';\n}'
++      : '#independent-theme-container {\n  font-size-adjust: 0.5;\n}';
++    const label = button.querySelector('span');
++    try { await navigator.clipboard.writeText(css); label.textContent = 'Copied!'; }
++    catch { label.textContent = 'Copy unavailable'; }
++    setTimeout(() => { label.textContent = 'Copy'; }, 2000);
++  }));
++</script>
++</body>
++</html>

@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,87 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Form Section */
++    .shipping-section {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 700px;
++      margin: 40px auto 0;
++    }
++
++    .shipping-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .shipping-section p {
++      text-align: center;
++      margin-bottom: 25px;
++      color: #666;
++    }
++
++    .form-grid {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 15px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-group.full-width {
++      grid-column: span 2;
++    }
++
++    .form-group label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 5px;
++      color: var(--primary);
++    }
++
++    .form-group input,
++    .form-group select {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      transition: border-color 0.3s;
++    }
++
++    .form-group input:focus,
++    .form-group select:focus {
++      outline: none;
++      border-color: var(--accent);
++    }
++
++    .form-submit {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      width: 100%;
++    }
++
++    @media (max-width: 600px) {
++      .form-grid {
++        grid-template-columns: 1fr;
++      }
++
++      .form-group.full-width {
++        grid-column: span 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +273,61 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping-section" id="shipping">
++      <h2>Shipping Address</h2>
++      <p>Enter your delivery details below to get fresh coffee beans shipped straight to your door.</p>
++      <form action="/shipping" method="POST">
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="first-name">First Name</label>
++            <input type="text" id="first-name" name="firstName" autocomplete="given-name" placeholder="Jane" required>
++          </div>
++          <div class="form-group">
++            <label for="last-name">Last Name</label>
++            <input type="text" id="last-name" name="lastName" autocomplete="family-name" placeholder="Doe" required>
++          </div>
++          <div class="form-group full-width">
++            <label for="address-line1">Street Address</label>
++            <input type="text" id="address-line1" name="addressLine1" autocomplete="address-line1" placeholder="123 Roast Lane" required>
++          </div>
++          <div class="form-group full-width">
++            <label for="address-line2">Apartment, suite, etc. (optional)</label>
++            <input type="text" id="address-line2" name="addressLine2" autocomplete="address-line2" placeholder="Apt 4B">
++          </div>
++          <div class="form-group">
++            <label for="city">City</label>
++            <input type="text" id="city" name="city" autocomplete="address-level2" placeholder="Seattle" required>
++          </div>
++          <div class="form-group">
++            <label for="state">State / Province</label>
++            <input type="text" id="state" name="state" autocomplete="address-level1" placeholder="WA" required>
++          </div>
++          <div class="form-group">
++            <label for="postal-code">ZIP / Postal Code</label>
++            <input type="text" id="postal-code" name="postalCode" autocomplete="postal-code" placeholder="98101" required>
++          </div>
++          <div class="form-group">
++            <label for="country">Country</label>
++            <select id="country" name="country" autocomplete="country-name" required>
++              <option value="US">United States</option>
++              <option value="CA">Canada</option>
++              <option value="GB">United Kingdom</option>
++              <option value="AU">Australia</option>
++            </select>
++          </div>
++          <div class="form-group full-width">
++            <label for="phone">Phone Number (for delivery updates)</label>
++            <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="(555) 123-4567" required>
++          </div>
++          <div class="form-group full-width">
++            <button type="submit" class="btn form-submit">Save Shipping Address</button>
++          </div>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

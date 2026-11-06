@@ -1,0 +1,44 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..2973e96 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,17 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
++    html.modal-open,
++    html.modal-open body {
+       overflow: hidden;
+-      position: fixed;
+     }
+ 
+     dialog {
+-      overflow: visible;
++      max-height: 100dvh;
++      overflow: auto;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -231,9 +231,14 @@
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      noticeDialog.addEventListener("close", () => {
++        document.documentElement.classList.remove("modal-open");
++      });
++      document.getElementById("close-notice").addEventListener("click", () => {
++        noticeDialog.close();
++      });
++      document.documentElement.classList.add("modal-open");
++      noticeDialog.showModal();
+     }
+   </script>
+ </body>

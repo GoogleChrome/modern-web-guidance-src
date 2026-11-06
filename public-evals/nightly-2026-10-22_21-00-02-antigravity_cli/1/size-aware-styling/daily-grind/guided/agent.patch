@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+index 66c9173..2ed31c7 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,89 @@
+       margin-top: 20px;
+     }
+ 
++    /* Container for size-aware card components */
++    .card-container {
++      container: card / inline-size;
++      container-name: card;
++      container-type: inline-size;
++    }
++
++    /* Default styles for small containers (stacked layout) */
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: clamp(1rem, 4cqi, 1.75rem);
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      gap: 1rem;
++      height: 100%;
++    }
++
++    .card-image {
++      display: block;
++      inline-size: 100%;
++      block-size: auto;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .card-content {
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++      gap: 0.5rem;
++      align-items: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 4px;
+       color: var(--primary);
++      font-size: clamp(1.1rem, 4.5cqi, 1.5rem);
++    }
++
++    .card-details {
++      display: none;
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .card .btn {
++      margin-top: auto;
++    }
++
++    /* Styles for medium/larger containers (side-by-side layout) */
++    @container (min-width: 380px) {
++      .card {
++        flex-direction: row;
++        align-items: center;
++        text-align: start;
++      }
++
++      .card-image {
++        inline-size: 140px;
++        block-size: 140px;
++        aspect-ratio: 1 / 1;
++        flex-shrink: 0;
++      }
++
++      .card-content {
++        align-items: flex-start;
++      }
++    }
++
++    /* Styles for wide containers (show extra details and expand media) */
++    @container (min-width: 550px) {
++      .card-image {
++        inline-size: 180px;
++        block-size: 150px;
++      }
++
++      .card-details {
++        display: block;
++      }
+     }
+ 
+     .btn {
+@@ -178,20 +250,38 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <img class="card-image" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++            <div class="card-content">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <p class="card-details">Topped with freshly ground cinnamon and house-made maple foam. Available hot or iced.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <img class="card-image" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++            <div class="card-content">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <p class="card-details">Single-origin Colombian beans roasted in small batches with rich dark chocolate undertones.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <img class="card-image" src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++            <div class="card-content">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <p class="card-details">Filtered twice for a clean, low-acidity finish with subtle caramel and toasted nut notes.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>

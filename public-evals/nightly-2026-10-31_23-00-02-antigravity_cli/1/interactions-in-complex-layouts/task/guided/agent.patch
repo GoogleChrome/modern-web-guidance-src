@@ -1,0 +1,342 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,151 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Kanban Board */
++    .board-section {
++      margin-top: 50px;
++    }
++
++    .board-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .board-header h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .board-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .kanban-board {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
++      align-items: start;
++    }
++
++    .board-column {
++      /* Apply containment boundaries to isolate layout, style, and paint work */
++      content-visibility: auto;
++      contain-intrinsic-size: auto 300px auto 800px;
++      background: #f3ece7;
++      border-radius: 10px;
++      padding: 16px;
++      min-height: 360px;
++      border: 2px solid transparent;
++      transition: border-color 0.2s, background-color 0.2s;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    @supports not (content-visibility: auto) {
++      .board-column {
++        /* Manual fallback for containment */
++        contain: layout style paint;
++      }
++    }
++
++    .board-column.drag-over {
++      border-color: var(--accent);
++      background: #efe5dc;
++    }
++
++    .column-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding-bottom: 10px;
++      border-bottom: 2px solid var(--secondary);
++      margin-bottom: 4px;
++    }
++
++    .column-title {
++      font-size: 1.1rem;
++      font-weight: 700;
++      color: var(--primary);
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .column-count {
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      font-weight: bold;
++      padding: 2px 10px;
++      border-radius: 999px;
++    }
++
++    .board-column .card {
++      text-align: left;
++      cursor: grab;
++      -webkit-user-select: none;
++      user-select: none;
++      border-left: 4px solid var(--primary);
++      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
++    }
++
++    .board-column[data-status="brewing"] .card {
++      border-left-color: var(--accent);
++    }
++
++    .board-column[data-status="ready"] .card {
++      border-left-color: #2e7d32;
++    }
++
++    .board-column .card:hover {
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
++    }
++
++    .board-column .card.dragging {
++      cursor: grabbing;
++      opacity: 0.5;
++      transform: scale(0.98);
++    }
++
++    .order-meta {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-bottom: 6px;
++    }
++
++    .order-id {
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .order-actions {
++      display: flex;
++      gap: 6px;
++      margin-top: 12px;
++    }
++
++    .order-actions button {
++      background: var(--secondary);
++      color: var(--text);
++      border: none;
++      padding: 4px 10px;
++      border-radius: 4px;
++      font-size: 0.78rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .order-actions button:hover {
++      background: var(--primary);
++      color: white;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +337,82 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="board-section" aria-labelledby="kanban-heading">
++      <div class="board-header">
++        <h2 id="kanban-heading">Barista Order-Tracking Board</h2>
++        <p>Drag and drop drink orders between columns to update fulfillment status.</p>
++      </div>
++      <div class="kanban-board" id="order-board">
++        <div class="board-column" id="queued" data-status="queued" aria-label="Queued orders">
++          <div class="column-header">
++            <span class="column-title">Queued</span>
++            <span class="column-count" data-count-for="queued">2</span>
++          </div>
++          <div class="card" id="order-101" draggable="true">
++            <div class="order-meta">
++              <span class="order-id">#101</span>
++              <span>Just now</span>
++            </div>
++            <h3>Maple Oat Latte</h3>
++            <p>16oz • Oat Milk • Extra Maple Drizzle</p>
++            <div class="order-actions">
++              <button type="button" data-move-to="brewing">Start Brewing →</button>
++            </div>
++          </div>
++          <div class="card" id="order-102" draggable="true">
++            <div class="order-meta">
++              <span class="order-id">#102</span>
++              <span>2m ago</span>
++            </div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Double Shot • Hot • Ceramic Demitasse</p>
++            <div class="order-actions">
++              <button type="button" data-move-to="brewing">Start Brewing →</button>
++            </div>
++          </div>
++        </div>
++
++        <div class="board-column" id="brewing" data-status="brewing" aria-label="Brewing orders">
++          <div class="column-header">
++            <span class="column-title">Brewing</span>
++            <span class="column-count" data-count-for="brewing">1</span>
++          </div>
++          <div class="card" id="order-103" draggable="true">
++            <div class="order-meta">
++              <span class="order-id">#103</span>
++              <span>4m ago</span>
++            </div>
++            <h3>Cold Brew</h3>
++            <p>20oz • Light Ice • Splash of Sweet Cream</p>
++            <div class="order-actions">
++              <button type="button" data-move-to="queued">← Queue</button>
++              <button type="button" data-move-to="ready">Mark Ready →</button>
++            </div>
++          </div>
++        </div>
++
++        <div class="board-column" id="ready" data-status="ready" aria-label="Ready orders">
++          <div class="column-header">
++            <span class="column-title">Ready</span>
++            <span class="column-count" data-count-for="ready">1</span>
++          </div>
++          <div class="card" id="order-100" draggable="true">
++            <div class="order-meta">
++              <span class="order-id">#100</span>
++              <span>6m ago</span>
++            </div>
++            <h3>Honey Cinnamon Cortado</h3>
++            <p>4oz • Whole Milk • Cinnamon Dust</p>
++            <div class="order-actions">
++              <button type="button" data-move-to="brewing">← Brewing</button>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +423,103 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const columns = document.querySelectorAll('.board-column');
++    let draggedCardId = null;
++
++    function updateColumnCounts() {
++      columns.forEach((column) => {
++        const countBadge = column.querySelector('.column-count');
++        if (countBadge) {
++          countBadge.textContent = column.querySelectorAll('.card').length;
++        }
++      });
++    }
++
++    function updateCardActions(card, status) {
++      const actions = card.querySelector('.order-actions');
++      if (!actions) return;
++      if (status === 'queued') {
++        actions.innerHTML = '<button type="button" data-move-to="brewing">Start Brewing →</button>';
++      } else if (status === 'brewing') {
++        actions.innerHTML = '<button type="button" data-move-to="queued">← Queue</button><button type="button" data-move-to="ready">Mark Ready →</button>';
++      } else if (status === 'ready') {
++        actions.innerHTML = '<button type="button" data-move-to="brewing">← Brewing</button>';
++      }
++    }
++
++    function moveItemToColumn(itemId, columnId) {
++      const item = document.getElementById(itemId);
++      const column = document.getElementById(columnId);
++      if (!item || !column) return;
++
++      // With content-visibility: auto (and contain fallback), the browser
++      // isolates layout recalculation to the affected columns rather than reflowing the page.
++      column.appendChild(item);
++      updateCardActions(item, column.dataset.status || column.id);
++      updateColumnCounts();
++    }
++
++    document.addEventListener('dragstart', (event) => {
++      const card = event.target.closest('.board-column .card');
++      if (!card) return;
++      draggedCardId = card.id;
++      card.classList.add('dragging');
++      if (event.dataTransfer) {
++        event.dataTransfer.effectAllowed = 'move';
++        event.dataTransfer.setData('text/plain', card.id);
++      }
++    });
++
++    document.addEventListener('dragend', (event) => {
++      const card = event.target.closest('.board-column .card');
++      if (card) {
++        card.classList.remove('dragging');
++      }
++      columns.forEach((col) => col.classList.remove('drag-over'));
++      draggedCardId = null;
++    });
++
++    columns.forEach((column) => {
++      column.addEventListener('dragover', (event) => {
++        event.preventDefault();
++        if (event.dataTransfer) {
++          event.dataTransfer.dropEffect = 'move';
++        }
++        if (!column.classList.contains('drag-over')) {
++          column.classList.add('drag-over');
++        }
++      });
++
++      column.addEventListener('dragleave', (event) => {
++        if (!column.contains(event.relatedTarget)) {
++          column.classList.remove('drag-over');
++        }
++      });
++
++      column.addEventListener('drop', (event) => {
++        event.preventDefault();
++        column.classList.remove('drag-over');
++        const id = (event.dataTransfer && event.dataTransfer.getData('text/plain')) || draggedCardId;
++        if (id) {
++          moveItemToColumn(id, column.id);
++        }
++      });
++    });
++
++    document.getElementById('order-board').addEventListener('click', (event) => {
++      const btn = event.target.closest('button[data-move-to]');
++      if (!btn) return;
++      const card = btn.closest('.card');
++      const targetColumnId = btn.dataset.moveTo;
++      if (card && targetColumnId) {
++        moveItemToColumn(card.id, targetColumnId);
++      }
++    });
++
++    window.moveItemToColumn = moveItemToColumn;
++  </script>
+ </body>
+ 
+ </html>

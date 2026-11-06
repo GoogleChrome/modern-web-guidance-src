@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,106 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Visually Stable Mixed Fonts</title>
++  <style>
++    :root {
++      color-scheme: light dark;
++      --page-font: Georgia, "Times New Roman", serif;
++      --code-font: "Courier New", Courier, monospace;
++      --theme-font: Verdana, Geneva, sans-serif;
++    }
++
++    body {
++      margin: 0;
++      padding: 2rem 1.5rem;
++      font-family: var(--page-font);
++      font-size: 1.125rem;
++      line-height: 1.6;
++      max-inline-size: 60ch;
++      margin-inline: auto;
++    }
++
++    /*
++     * Mixed fonts in a single block of text.
++     * `font-size-adjust: from-font` reads the x-height ratio of the
++     * paragraph's primary font and applies it to the monospace <code>
++     * children, so the two families share the same visual height.
++     */
++    #mixed-fonts-container {
++      font-family: var(--page-font);
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: var(--code-font);
++      padding-inline: 0.25em;
++      border-radius: 0.25em;
++      background: color-mix(in oklab, CanvasText 8%, Canvas);
++    }
++
++    /*
++     * Independent theme container.
++     * This block is not a descendant of the paragraph above, so it cannot
++     * inherit the `from-font` ratio. A specific numeric aspect-ratio value
++     * (x-height / font-size) locks its visual proportions directly.
++     */
++    #independent-theme-container {
++      font-family: var(--theme-font);
++      font-size-adjust: 0.5;
++      margin-block-start: 2rem;
++      padding: 1rem 1.25rem;
++      border: 1px solid color-mix(in oklab, CanvasText 20%, Canvas);
++      border-radius: 0.5rem;
++      background: color-mix(in oklab, CanvasText 4%, Canvas);
++    }
++
++    #independent-theme-container code {
++      font-family: var(--code-font);
++    }
++
++    /*
++     * Fallback for browsers without font-size-adjust support:
++     * fonts render at their natural size, so manually tune the
++     * secondary families so their x-heights land closer together.
++     */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code {
++        font-size: 0.92em;
++        line-height: 1.5;
++      }
++
++      #independent-theme-container {
++        font-size: 1.05rem;
++        line-height: 1.55;
++      }
++
++      #independent-theme-container code {
++        font-size: 0.92em;
++      }
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <h1>Visually Stable Mixed Fonts</h1>
++
++    <p id="mixed-fonts-container">
++      Regular prose set in a serif face sits next to inline code such as
++      <code>font-size-adjust</code>, <code>getComputedStyle()</code>, and
++      <code>const ratio = xHeight / fontSize;</code> without the monospace
++      glyphs looking shrunken or oversized. The browser measures the primary
++      font's x-height once and scales every nested family to match it.
++    </p>
++
++    <div id="independent-theme-container">
++      This block is an independent theme rendered in a sans-serif face. It is
++      not nested inside the paragraph above, so instead of inheriting a ratio
++      it pins its own x-height to a fixed value, keeping text like
++      <code>theme.alternate</code> proportioned the same way regardless of
++      which font the system supplies.
++    </div>
++  </main>
++</body>
++</html>

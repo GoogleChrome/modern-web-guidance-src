@@ -1,0 +1,449 @@
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..43b62bc 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,14 +1,109 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useRef, useState } from 'react';
++
++type Step = 'details' | 'verify';
++
++const API = import.meta.env.BASE_URL + 'api/phone/';
++
++async function post(path: string, body: unknown) {
++  const response = await fetch(API + path, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify(body),
++  });
++  const data = await response.json().catch(() => ({}));
++  return { ok: response.ok, data };
++}
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [phone, setPhone] = useState('');
++  const [code, setCode] = useState('');
++  const [step, setStep] = useState<Step>('details');
++  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
++  const codeRef = useRef<HTMLInputElement>(null);
++  const errorRef = useRef<HTMLDivElement>(null);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
++  // Automatically read the code from the incoming SMS (WebOTP API, Chromium on Android).
++  useEffect(() => {
++    if (step !== 'verify' || !('OTPCredential' in window)) return;
++    const abort = new AbortController();
++    navigator.credentials
++      .get({ otp: { transport: ['sms'] }, signal: abort.signal } as CredentialRequestOptions)
++      .then((credential) => {
++        const otp = (credential as { code?: string } | null)?.code;
++        if (otp) {
++          setCode(otp);
++          verifyCode(otp);
++        }
++      })
++      .catch(() => {
++        // Aborted or dismissed: the user can still type the code.
++      });
++    return () => abort.abort();
++  }, [step]);
++
++  useEffect(() => {
++    if (step === 'verify') codeRef.current?.focus();
++  }, [step]);
++
++  useEffect(() => {
++    if (error) errorRef.current?.focus();
++  }, [error]);
++
++  const sendCode = async () => {
++    setError(null);
++    setSuccess(null);
++    setLoading(true);
++    try {
++      const { ok, data } = await post('send-code', { phone });
++      if (!ok) {
++        setError(data.error || 'Could not send a code. Please try again.');
++        return;
++      }
++      setPhone(data.phone);
++      setCode('');
++      setStep('verify');
++      setSuccess(`We sent a 6-digit code to ${data.phone}.`);
++    } catch {
++      setError('An unexpected error occurred. Please try again later.');
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  const verifyCode = async (value: string) => {
++    setError(null);
++    setLoading(true);
++    try {
++      const { ok, data } = await post('verify-code', { phone, code: value });
++      if (!ok) {
++        setError(data.error || 'Verification failed.');
++        return;
++      }
++      setSuccess(null);
++      setVerifiedPhone(phone);
++      setStep('details');
++    } catch {
++      setError('An unexpected error occurred. Please try again later.');
++    } finally {
++      setLoading(false);
++    }
++  };
++
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
++    if (step === 'verify') {
++      verifyCode(code.trim());
++      return;
++    }
++    if (!verifiedPhone) {
++      sendCode();
++      return;
++    }
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -19,7 +114,7 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({ username, password, phone: verifiedPhone }),
+       });
+ 
+       const data = await response.json();
+@@ -32,6 +127,8 @@ export default function SignUpForm() {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+         setPassword('');
++        setPhone('');
++        setVerifiedPhone(null);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -45,50 +142,44 @@ export default function SignUpForm() {
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+       
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div ref={errorRef} tabIndex={-1} className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
++      {step === 'verify' ? (
++        <form onSubmit={handleSubmit} className="space-y-4">
++          <div>
++            <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
++              Verification code
++            </label>
++            <input
++              ref={codeRef}
++              type="text"
++              id="otp"
++              name="otp"
++              value={code}
++              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
++              inputMode="numeric"
++              autoComplete="one-time-code"
++              pattern="[0-9]{6}"
++              maxLength={6}
++              required
++              aria-describedby="otp-hint"
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 tracking-widest text-lg"
++            />
++            <p id="otp-hint" className="text-xs text-gray-500 mt-1">
++              Enter the 6-digit code sent to {phone}. It will be filled in automatically when the text arrives, if your device supports it.
++            </p>
++          </div>
+ 
+-        <button
++          <button
+           type="submit"
+           disabled={loading}
+           data-skip-tracking="true"
+@@ -96,9 +187,102 @@ export default function SignUpForm() {
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+-          {loading ? 'Signing up...' : 'Sign Up'}
++          {loading ? 'Verifying...' : 'Verify code'}
+         </button>
+-      </form>
++
++          <div className="flex justify-between text-sm">
++            <button type="button" onClick={sendCode} disabled={loading} className="underline text-gray-700 hover:text-gray-900">
++              Resend code
++            </button>
++            <button
++              type="button"
++              onClick={() => {
++                setStep('details');
++                setError(null);
++                setSuccess(null);
++              }}
++              className="underline text-gray-700 hover:text-gray-900"
++            >
++              Change phone number
++            </button>
++          </div>
++        </form>
++      ) : (
++        <form onSubmit={handleSubmit} className="space-y-4">
++          <div>
++            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
++              Username
++            </label>
++            <input
++              type="text"
++              id="username"
++              value={username}
++              onChange={(e) => setUsername(e.target.value)}
++              autoComplete="username"
++              required
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++          </div>
++
++          <div>
++            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
++              Password
++            </label>
++            <input
++              type="password"
++              id="password"
++              value={password}
++              onChange={(e) => setPassword(e.target.value)}
++              autoComplete="new-password"
++              aria-describedby="password-hint"
++              required
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++            <p id="password-hint" className="text-xs text-gray-500 mt-1">
++              Must be at least 8 characters and contain a number.
++            </p>
++          </div>
++
++          <div>
++            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
++              Mobile phone number
++            </label>
++            <input
++              type="tel"
++              id="phone"
++              name="phone"
++              value={phone}
++              onChange={(e) => {
++                setPhone(e.target.value);
++                setVerifiedPhone(null);
++              }}
++              autoComplete="tel"
++              inputMode="tel"
++              placeholder="+14155550123"
++              aria-describedby="phone-hint"
++              required
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++            <p id="phone-hint" className="text-xs text-gray-500 mt-1">
++              Include your country code. We'll text you a verification code.
++              {verifiedPhone && ' This number is verified.'}
++            </p>
++          </div>
++
++          <button
++          type="submit"
++          disabled={loading}
++          data-skip-tracking="true"
++          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++            loading ? 'opacity-75 cursor-not-allowed' : ''
++          }`}
++        >
++          {loading
++            ? verifiedPhone ? 'Signing up...' : 'Sending code...'
++            : verifiedPhone ? 'Sign Up' : 'Send verification code'}
++        </button>
++        </form>
++      )}
+     </div>
+   );
+ }
+diff --git a/src/lib/phone-verification.ts b/src/lib/phone-verification.ts
+new file mode 100644
+index 0000000..4c5ee26
+--- /dev/null
++++ b/src/lib/phone-verification.ts
+@@ -0,0 +1,79 @@
++import { randomInt, randomUUID } from 'node:crypto';
++
++const CODE_TTL_MS = 5 * 60 * 1000;
++const RESEND_COOLDOWN_MS = 30 * 1000;
++const MAX_ATTEMPTS = 5;
++const VERIFIED_TTL_MS = 15 * 60 * 1000;
++
++interface Pending {
++  code: string;
++  expiresAt: number;
++  sentAt: number;
++  attempts: number;
++}
++
++// In-memory demo store. Replace with a persistent store in production.
++const pending = new Map<string, Pending>();
++const verifiedTokens = new Map<string, { phone: string; expiresAt: number }>();
++
++/** Normalizes to E.164-ish form. Returns null if the number looks invalid. */
++export function normalizePhone(input: unknown): string | null {
++  if (typeof input !== 'string') return null;
++  const cleaned = input.replace(/[\s().-]/g, '');
++  return /^\+[1-9]\d{7,14}$/.test(cleaned) ? cleaned : null;
++}
++
++/**
++ * Formats an SMS body that supports both the OS autofill (the code is found
++ * via `autocomplete="one-time-code"`) and the WebOTP API (last line is
++ * `@origin #code`).
++ */
++export function formatSms(code: string, origin: string): string {
++  const host = new URL(origin).host;
++  return `${code} is your DevTools Times verification code.\n\n@${host} #${code}`;
++}
++
++export function issueCode(phone: string, origin: string):
++  | { ok: true; message: string }
++  | { ok: false; retryAfter: number } {
++  const now = Date.now();
++  const existing = pending.get(phone);
++  if (existing && now - existing.sentAt < RESEND_COOLDOWN_MS) {
++    return { ok: false, retryAfter: Math.ceil((RESEND_COOLDOWN_MS - (now - existing.sentAt)) / 1000) };
++  }
++  const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
++  pending.set(phone, { code, sentAt: now, expiresAt: now + CODE_TTL_MS, attempts: 0 });
++  const message = formatSms(code, origin);
++  // No SMS provider is wired up: log the message instead of sending it.
++  console.log(`[sms -> ${phone}]\n${message}`);
++  return { ok: true, message };
++}
++
++export function checkCode(phone: string, code: string):
++  | { ok: true; token: string }
++  | { ok: false; error: string } {
++  const entry = pending.get(phone);
++  if (!entry || entry.expiresAt < Date.now()) {
++    pending.delete(phone);
++    return { ok: false, error: 'This code has expired. Request a new one.' };
++  }
++  if (entry.attempts >= MAX_ATTEMPTS) {
++    pending.delete(phone);
++    return { ok: false, error: 'Too many attempts. Request a new code.' };
++  }
++  entry.attempts++;
++  if (entry.code !== code) {
++    return { ok: false, error: 'That code is incorrect.' };
++  }
++  pending.delete(phone);
++  const token = randomUUID();
++  verifiedTokens.set(token, { phone, expiresAt: Date.now() + VERIFIED_TTL_MS });
++  return { ok: true, token };
++}
++
++export function consumeVerifiedToken(token: string, phone: string): boolean {
++  const entry = verifiedTokens.get(token);
++  if (!entry || entry.expiresAt < Date.now() || entry.phone !== phone) return false;
++  verifiedTokens.delete(token);
++  return true;
++}
+diff --git a/src/pages/api/phone/send-code.ts b/src/pages/api/phone/send-code.ts
+new file mode 100644
+index 0000000..818838b
+--- /dev/null
++++ b/src/pages/api/phone/send-code.ts
+@@ -0,0 +1,18 @@
++import type { APIRoute } from 'astro';
++import { issueCode, normalizePhone } from '../../../lib/phone-verification';
++
++const json = (body: unknown, status = 200) =>
++  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
++
++export const POST: APIRoute = async ({ request, url }) => {
++  const body = await request.json().catch(() => null);
++  const phone = normalizePhone(body?.phone);
++  if (!phone) {
++    return json({ error: 'Enter a valid phone number including country code, e.g. +14155550123.' }, 400);
++  }
++  const result = issueCode(phone, url.origin);
++  if (!result.ok) {
++    return json({ error: `Please wait ${result.retryAfter}s before requesting another code.`, retryAfter: result.retryAfter }, 429);
++  }
++  return json({ phone });
++};
+diff --git a/src/pages/api/phone/verify-code.ts b/src/pages/api/phone/verify-code.ts
+new file mode 100644
+index 0000000..bf20d0b
+--- /dev/null
++++ b/src/pages/api/phone/verify-code.ts
+@@ -0,0 +1,17 @@
++import type { APIRoute } from 'astro';
++import { checkCode, normalizePhone } from '../../../lib/phone-verification';
++
++const json = (body: unknown, status = 200) =>
++  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
++
++export const POST: APIRoute = async ({ request }) => {
++  const body = await request.json().catch(() => null);
++  const phone = normalizePhone(body?.phone);
++  const code = typeof body?.code === 'string' ? body.code.trim() : '';
++  if (!phone || !/^\d{6}$/.test(code)) {
++    return json({ error: 'Enter the 6-digit code.' }, 400);
++  }
++  const result = checkCode(phone, code);
++  if (!result.ok) return json({ error: result.error }, 400);
++  return json({ token: result.token });
++};

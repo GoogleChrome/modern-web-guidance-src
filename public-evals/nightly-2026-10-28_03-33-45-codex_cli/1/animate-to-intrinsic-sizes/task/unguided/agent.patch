@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,165 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native disclosure controls work with a keyboard and without JavaScript. */
++    summary {
++      cursor: pointer;
++      list-style: none;
++    }
++
++    summary::-webkit-details-marker { display: none; }
++    summary:focus-visible, a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 5px;
++    }
++
++    #promo-alert {
++      position: relative;
++      background: var(--secondary);
++      color: var(--primary);
++    }
++
++    .promo-message {
++      padding: 13px 64px;
++      text-align: center;
++      font-size: 0.875rem;
++    }
++
++    .promo-message span { margin: 0 10px; opacity: 0.5; }
++    .promo-message a { color: inherit; text-underline-offset: 3px; }
++
++    #alert-dismiss {
++      position: absolute;
++      top: 5px;
++      right: 18px;
++      width: 40px;
++      height: 40px;
++      display: grid;
++      place-items: center;
++      border-radius: 50%;
++    }
++
++    #alert-dismiss:hover { background: rgb(78 52 46 / 8%); }
++    #promo-alert:not([open]) > #alert-dismiss { visibility: hidden; }
++
++    .faq-section {
++      margin-top: 76px;
++      padding-top: 48px;
++      border-top: 1px solid var(--secondary);
++      display: grid;
++      grid-template-columns: 1fr 1.65fr;
++      gap: 60px;
++      padding-bottom: 24px;
++    }
++
++    .eyebrow {
++      color: #80675d;
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 0.15em;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    .faq-intro h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-weight: normal;
++      font-size: 2.5rem;
++      line-height: 1.15;
++      margin-bottom: 18px;
++    }
++
++    .faq-intro p:not(.eyebrow) { color: #796b65; }
++    .faq-intro a {
++      display: inline-block;
++      margin-top: 22px;
++      color: var(--primary);
++      text-underline-offset: 5px;
++      font-size: 0.9rem;
++    }
++
++    .faq-item { border-bottom: 1px solid var(--secondary); }
++    .faq-item:first-child { border-top: 1px solid var(--secondary); }
++    .faq-item > summary {
++      padding: 23px 4px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 24px;
++      font-weight: 600;
++      font-size: 0.95rem;
++    }
++
++    .faq-item > summary:hover { color: #916132; }
++    .faq-item > summary::after {
++      content: '+';
++      flex: 0 0 24px;
++      text-align: center;
++      font-size: 1.5rem;
++      font-weight: 400;
++      transition: transform 350ms ease;
++    }
++
++    .faq-item[open] > summary::after { transform: rotate(45deg); }
++    .faq-answer {
++      padding: 0 40px 24px 4px;
++      color: #796b65;
++      font-size: 0.925rem;
++      line-height: 1.8;
++    }
++
++    /* Intrinsic height avoids arbitrary max-height limits and clipped answers.
++       Older browsers retain the native, immediate disclosure behavior. */
++    @supports (interpolate-size: allow-keywords) and selector(::details-content) {
++      .faq-item, #promo-alert { interpolate-size: allow-keywords; }
++
++      .faq-item::details-content, #promo-alert::details-content {
++        height: 0;
++        overflow: hidden;
++        transition: height 350ms ease, content-visibility 350ms allow-discrete;
++      }
++
++      .faq-item[open]::details-content, #promo-alert[open]::details-content {
++        height: auto;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .faq-item::details-content, #promo-alert::details-content,
++      .faq-item > summary::after { transition: none; }
++    }
++
++    @media (max-width: 680px) {
++      nav { padding: 16px 20px; flex-wrap: wrap; gap: 14px; }
++      nav ul { flex-wrap: wrap; gap: 14px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.4rem; }
++      .promo-message { padding: 14px 58px 14px 20px; text-align: left; }
++      .promo-message span { display: none; }
++      .promo-message a { display: block; }
++      .faq-section { grid-template-columns: 1fr; gap: 28px; margin-top: 48px; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotion">
++      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
++        <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
++      </svg>
++    </summary>
++    <div class="promo-message">
++      <strong>A little perk for your daily ritual.</strong> Join Daily Grind Rewards.
++      <span aria-hidden="true">/</span>
++      <a href="/rewards">Explore the perks &rarr;</a>
++    </div>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +346,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" aria-labelledby="faq-heading">
++      <div class="faq-intro">
++        <p class="eyebrow">Good coffee. Clear answers.</p>
++        <h2 id="faq-heading">A little more<br>about your cup.</h2>
++        <p>From the first bean to your daily ritual, here are a few things you might be wondering.</p>
++        <a href="/contact">Have another question? Get in touch &rarr;</a>
++      </div>
++      <div class="faq-list">
++        <details class="faq-item">
++          <summary id="faq-trigger" aria-controls="faq-content">What makes your coffee different?</summary>
++          <div id="faq-content" class="faq-answer" role="region" aria-labelledby="faq-trigger">
++            <p>Every cup starts with ethically sourced beans and a thoughtful local roast. We focus on bringing out each coffee’s natural character, so you can find something you love, whether you prefer a bold espresso or a smooth cold brew.</p>
++          </div>
++        </details>
++        <details class="faq-item">
++          <summary>Do you have dairy-free options?</summary>
++          <div class="faq-answer">
++            <p>Our Maple Oat Latte is made with creamy oat milk. For other milk alternatives and ingredient questions, ask your barista when you order.</p>
++          </div>
++        </details>
++        <details class="faq-item">
++          <summary>How is your cold brew made?</summary>
++          <div class="faq-answer">
++            <p>We steep our cold brew for 18 hours to create a smooth, mellow cup. Enjoy it as it comes, over ice, or with your favorite milk.</p>
++          </div>
++        </details>
++        <details class="faq-item">
++          <summary>Where can I find my nearest Daily Grind?</summary>
++          <div class="faq-answer">
++            <p>Visit our <a href="/locations">locations page</a> to find your local coffee shop and plan your next coffee stop.</p>
++          </div>
++        </details>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,97 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .info-button {
++      anchor-name: --latte-info;
++      display: inline-grid;
++      place-items: center;
++      width: 30px;
++      height: 30px;
++      border: 1px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: bold 1rem Georgia, serif;
++      cursor: pointer;
++    }
++
++    .info-button:hover {
++      background: var(--secondary);
++    }
++
++    .info-button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .latte-tooltip {
++      position: fixed;
++      position-anchor: --latte-info;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      container-name: latte-tooltip;
++      inset: auto;
++      width: min(260px, calc(100vw - 32px));
++      margin: 0;
++      padding: 0;
++      border: 0;
++      overflow: visible;
++      background: transparent;
++      color: white;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    /* Style a child so it can query the popover's active fallback. */
++    .latte-tooltip-content {
++      position: relative;
++      margin: 0 0 12px;
++      padding: 14px 16px;
++      border-radius: 12px 12px 6px 6px;
++      background: var(--primary);
++      box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
++    }
++
++    .latte-tooltip-content::after {
++      content: "";
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      transform: translateX(-50%);
++      border: 8px solid transparent;
++      border-bottom: 0;
++      border-top-color: var(--primary);
++    }
++
++    @container latte-tooltip anchored(fallback: flip-block) {
++      .latte-tooltip-content {
++        margin: 12px 0 0;
++        border-radius: 6px 6px 12px 12px;
++      }
++
++      .latte-tooltip-content::after {
++        top: auto;
++        bottom: 100%;
++        border-top: 0;
++        border-bottom: 8px solid var(--primary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +269,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" class="info-button"
++              popovertarget="latte-tooltip" aria-label="About the Maple Oat Latte"
++              aria-describedby="latte-tooltip">i</button>
++          </div>
++          <div id="latte-tooltip" class="latte-tooltip" popover role="tooltip">
++            <div class="latte-tooltip-content">
++              A cozy seasonal favorite pairing creamy oat milk with a hint of Vermont maple syrup.
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

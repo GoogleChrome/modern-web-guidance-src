@@ -1,0 +1,150 @@
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,14 +1,15 @@
+ import React, { useState } from 'react';
+ 
+ export default function SignInForm() {
+-  const [username, setUsername] = useState('');
++  const [email, setEmail] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
++  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -18,9 +19,10 @@
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        // The API identifies accounts by `username`; the email address is used as the username.
++        body: JSON.stringify({ username: email.trim(), password }),
+       });
+ 
+       const data = await response.json();
+ 
+@@ -40,60 +42,97 @@
+   };
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
++
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div id="signin-error" className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        method="post"
++        onSubmit={handleSubmit}
++        aria-describedby={error ? 'signin-error' : undefined}
++        className="space-y-4"
++      >
+         <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
++            Email
+           </label>
+           <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
++            type="email"
++            id="email"
++            name="email"
++            autoComplete="username"
++            inputMode="email"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            value={email}
++            onChange={(e) => setEmail(e.target.value)}
+             required
++            aria-invalid={error ? true : undefined}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
++          <div className="flex items-center justify-between mb-1">
++            <label htmlFor="current-password" className="block text-sm font-medium text-gray-700">
++              Password
++            </label>
++            <button
++              type="button"
++              onClick={() => setShowPassword((show) => !show)}
++              aria-controls="current-password"
++              aria-pressed={showPassword}
++              className="text-sm text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
++            >
++              {showPassword ? 'Hide password' : 'Show password'}
++            </button>
++          </div>
+           <input
+-            type="password"
+-            id="password"
++            type={showPassword ? 'text' : 'password'}
++            id="current-password"
++            name="current-password"
++            autoComplete="current-password"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            aria-invalid={error ? true : undefined}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+ 
+         <button
+           type="submit"
+           disabled={loading}
++          aria-busy={loading}
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+-          {loading ? 'Signing in...' : 'Sign In'}
++          {loading ? 'Signing in...' : 'Sign in'}
+         </button>
+       </form>
++
++      <p className="mt-6 text-center text-sm text-gray-600">
++        Don&apos;t have an account?{' '}
++        <a href="/signup" className="text-blue-600 hover:underline">
++          Sign up
++        </a>
++      </p>
+     </div>
+   );
+ }

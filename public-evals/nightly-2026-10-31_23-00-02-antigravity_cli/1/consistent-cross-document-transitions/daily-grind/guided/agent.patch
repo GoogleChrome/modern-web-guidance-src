@@ -1,0 +1,3243 @@
+diff --git a/about.html b/about.html
+new file mode 100644
+index 0000000..a26c037
+--- /dev/null
++++ b/about.html
+@@ -0,0 +1,89 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Our Story | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Our Story</h1>
++    <p>Direct-trade coffee partnerships and small-batch roasting since 2014.</p>
++    <a href="/menu" class="btn">Explore Our Menu</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Craft Behind Our Seasonal Favorites</h2>
++      <p class="section-lead">Every roast is cupped daily by our roasting team to highlight origin character.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethical Sourcing</h3>
++          <p>100% transparent farm-gate pricing with smallholder co-ops.</p>
++          <a href="/menu/seasonal" class="btn">Seasonal Harvest</a>
++        </div>
++        <div class="card">
++          <h3>Precision Roasting</h3>
++          <p>Small-batch drum roasting tailored to espresso and filter profiles.</p>
++          <a href="/menu/espresso" class="btn">Espresso Craft</a>
++        </div>
++        <div class="card">
++          <h3>Slow Extraction</h3>
++          <p>Triple-filtered cold water steeping for silky, low-acid Cold Brew.</p>
++          <a href="/menu/cold-brew" class="btn">Cold Brew Process</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about" aria-current="page">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/about/index.html b/about/index.html
+new file mode 100644
+index 0000000..a26c037
+--- /dev/null
++++ b/about/index.html
+@@ -0,0 +1,89 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Our Story | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Our Story</h1>
++    <p>Direct-trade coffee partnerships and small-batch roasting since 2014.</p>
++    <a href="/menu" class="btn">Explore Our Menu</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Craft Behind Our Seasonal Favorites</h2>
++      <p class="section-lead">Every roast is cupped daily by our roasting team to highlight origin character.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethical Sourcing</h3>
++          <p>100% transparent farm-gate pricing with smallholder co-ops.</p>
++          <a href="/menu/seasonal" class="btn">Seasonal Harvest</a>
++        </div>
++        <div class="card">
++          <h3>Precision Roasting</h3>
++          <p>Small-batch drum roasting tailored to espresso and filter profiles.</p>
++          <a href="/menu/espresso" class="btn">Espresso Craft</a>
++        </div>
++        <div class="card">
++          <h3>Slow Extraction</h3>
++          <p>Triple-filtered cold water steeping for silky, low-acid Cold Brew.</p>
++          <a href="/menu/cold-brew" class="btn">Cold Brew Process</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about" aria-current="page">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/account.html b/account.html
+new file mode 100644
+index 0000000..ac2a778
+--- /dev/null
++++ b/account.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Welcome Back, Coffee Lover</h1>
++    <p>Manage your subscriptions, saved cafes, and Seasonal Favorites quick-orders.</p>
++    <a href="/order-online" class="btn">Reorder Favorite</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Saved Seasonal Favorites</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Usual order: 12oz Hot, Extra Maple Foam &bull; Downtown Roastery.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Usual order: Double Shot in Ceramic &bull; Riverside Espresso Bar.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Usual order: 16oz Light Ice &bull; Market Square.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..ac2a778
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Welcome Back, Coffee Lover</h1>
++    <p>Manage your subscriptions, saved cafes, and Seasonal Favorites quick-orders.</p>
++    <a href="/order-online" class="btn">Reorder Favorite</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Saved Seasonal Favorites</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Usual order: 12oz Hot, Extra Maple Foam &bull; Downtown Roastery.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Usual order: Double Shot in Ceramic &bull; Riverside Espresso Bar.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Usual order: 16oz Light Ice &bull; Market Square.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/careers.html b/careers.html
+new file mode 100644
+index 0000000..65dcff8
+--- /dev/null
++++ b/careers.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Careers | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--locations">
++    <h1>Join the Daily Grind Team</h1>
++    <p>Build your specialty coffee career with SCA-certified training and community perks.</p>
++    <a href="/locations" class="btn">View Cafe Locations</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Open Roles &amp; Seasonal Favorites Training</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Lead Barista</h3>
++          <p>Dial in espresso recipes and lead Seasonal Favorites launches.</p>
++          <a href="/contact" class="btn">Apply Now</a>
++        </div>
++        <div class="card">
++          <h3>Production Roaster</h3>
++          <p>Roast and cup daily lots at our Downtown Roastery facility.</p>
++          <a href="/contact" class="btn">Apply Now</a>
++        </div>
++        <div class="card">
++          <h3>Cafe Manager</h3>
++          <p>Foster warm hospitality and mentor baristas at Market Square.</p>
++          <a href="/contact" class="btn">Apply Now</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers" aria-current="page">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/careers/index.html b/careers/index.html
+new file mode 100644
+index 0000000..65dcff8
+--- /dev/null
++++ b/careers/index.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Careers | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--locations">
++    <h1>Join the Daily Grind Team</h1>
++    <p>Build your specialty coffee career with SCA-certified training and community perks.</p>
++    <a href="/locations" class="btn">View Cafe Locations</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Open Roles &amp; Seasonal Favorites Training</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Lead Barista</h3>
++          <p>Dial in espresso recipes and lead Seasonal Favorites launches.</p>
++          <a href="/contact" class="btn">Apply Now</a>
++        </div>
++        <div class="card">
++          <h3>Production Roaster</h3>
++          <p>Roast and cup daily lots at our Downtown Roastery facility.</p>
++          <a href="/contact" class="btn">Apply Now</a>
++        </div>
++        <div class="card">
++          <h3>Cafe Manager</h3>
++          <p>Foster warm hospitality and mentor baristas at Market Square.</p>
++          <a href="/contact" class="btn">Apply Now</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers" aria-current="page">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/contact.html b/contact.html
+new file mode 100644
+index 0000000..6ce40e7
+--- /dev/null
++++ b/contact.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Contact Us | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Get in Touch</h1>
++    <p>Questions about wholesale beans, catering our Seasonal Favorites, or cafe events? We'd love to hear from you.</p>
++    <a href="/locations" class="btn">Visit a Cafe</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Connect With Us</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Guest Support</h3>
++          <p>hello@dailygrind.coffee &bull; (555) 019-2834</p>
++          <a href="/menu" class="btn">Browse Menu</a>
++        </div>
++        <div class="card">
++          <h3>Seasonal Catering</h3>
++          <p>Bring our Maple Oat Latte and Cold Brew travelers to your next gathering.</p>
++          <a href="/order-online" class="btn">Order Catering</a>
++        </div>
++        <div class="card">
++          <h3>Roastery Tours</h3>
++          <p>Fridays at 10 AM at our Downtown Roastery tasting room.</p>
++          <a href="/locations" class="btn">See Map</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact" aria-current="page">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/contact/index.html b/contact/index.html
+new file mode 100644
+index 0000000..6ce40e7
+--- /dev/null
++++ b/contact/index.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Contact Us | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Get in Touch</h1>
++    <p>Questions about wholesale beans, catering our Seasonal Favorites, or cafe events? We'd love to hear from you.</p>
++    <a href="/locations" class="btn">Visit a Cafe</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Connect With Us</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Guest Support</h3>
++          <p>hello@dailygrind.coffee &bull; (555) 019-2834</p>
++          <a href="/menu" class="btn">Browse Menu</a>
++        </div>
++        <div class="card">
++          <h3>Seasonal Catering</h3>
++          <p>Bring our Maple Oat Latte and Cold Brew travelers to your next gathering.</p>
++          <a href="/order-online" class="btn">Order Catering</a>
++        </div>
++        <div class="card">
++          <h3>Roastery Tours</h3>
++          <p>Fridays at 10 AM at our Downtown Roastery tasting room.</p>
++          <a href="/locations" class="btn">See Map</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact" aria-current="page">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/index.html b/index.html
+index 66c9173..e3d2d74 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,29 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
+   <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -14,151 +36,19 @@
+       --light: #fafafa;
+     }
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="/" class="logo" aria-current="page">THE DAILY GRIND</a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,27 +58,27 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header id="hero" class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="card-seasonal">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" id="card-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" id="card-cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/js/theme-init.js b/js/theme-init.js
+new file mode 100644
+index 0000000..132c413
+--- /dev/null
++++ b/js/theme-init.js
+@@ -0,0 +1,13 @@
++// Apply stored theme and initial layout state before the page renders
++// so cross-document view transition snapshots capture the stable visual state.
++(() => {
++  try {
++    const savedTheme = localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.theme = savedTheme;
++    const savedLayout = localStorage.getItem('layout') || 'standard';
++    document.documentElement.dataset.layout = savedLayout;
++  } catch {
++    document.documentElement.dataset.theme = 'light';
++    document.documentElement.dataset.layout = 'standard';
++  }
++})();
+diff --git a/js/transition-setup.js b/js/transition-setup.js
+new file mode 100644
+index 0000000..bb938ba
+--- /dev/null
++++ b/js/transition-setup.js
+@@ -0,0 +1,95 @@
++// Context-dependent cross-document view transition setup
++if ('onpagereveal' in window) {
++  const ROUTE_DEPTH = {
++    '/': 0,
++    '/index.html': 0,
++    '/menu': 1,
++    '/menu/': 1,
++    '/menu.html': 1,
++    '/locations': 1,
++    '/locations/': 1,
++    '/locations.html': 1,
++    '/rewards': 1,
++    '/rewards/': 1,
++    '/account': 1,
++    '/account/': 1,
++    '/order-online': 1,
++    '/order-online/': 1,
++    '/about': 1,
++    '/about/': 1,
++    '/careers': 1,
++    '/careers/': 1,
++    '/contact': 1,
++    '/contact/': 1,
++    '/privacy-policy': 1,
++    '/privacy-policy/': 1,
++    '/logout': 1,
++    '/logout/': 1,
++    '/menu/seasonal': 2,
++    '/menu/seasonal/': 2,
++    '/menu/espresso': 2,
++    '/menu/espresso/': 2,
++    '/menu/cold-brew': 2,
++    '/menu/cold-brew/': 2,
++  };
++
++  const normalizePath = (pathname) => {
++    if (!pathname || pathname === '/index.html') return '/';
++    return pathname.length > 1 && pathname.endsWith('/')
++      ? pathname.slice(0, -1)
++      : pathname;
++  };
++
++  window.addEventListener('pagereveal', async (event) => {
++    if (!event.viewTransition) return;
++
++    const activation = window.navigation?.activation;
++    if (!activation?.from) return;
++
++    const fromPath = normalizePath(new URL(activation.from.url).pathname);
++    const toPath = normalizePath(
++      activation.entry?.url
++        ? new URL(activation.entry.url).pathname
++        : window.location.pathname
++    );
++
++    const fromDepth = ROUTE_DEPTH[fromPath] ?? 1;
++    const toDepth = ROUTE_DEPTH[toPath] ?? 1;
++
++    if (event.viewTransition.types) {
++      if (toDepth > fromDepth) {
++        event.viewTransition.types.add('forwards');
++      } else if (toDepth < fromDepth) {
++        event.viewTransition.types.add('backwards');
++      }
++    }
++
++    // Dynamically pair product detail card/heading based on navigation context
++    let dynamicTarget = null;
++    const detailSlugMap = {
++      '/menu/seasonal': 'card-seasonal',
++      '/menu/espresso': 'card-espresso',
++      '/menu/cold-brew': 'card-cold-brew',
++    };
++
++    if (detailSlugMap[fromPath] && (toPath === '/' || toPath === '/menu')) {
++      dynamicTarget = document.getElementById(detailSlugMap[fromPath]);
++    } else if (detailSlugMap[toPath]) {
++      dynamicTarget = document.getElementById('detail-highlight');
++    }
++
++    if (dynamicTarget) {
++      dynamicTarget.style.viewTransitionName = 'active-coffee-card';
++      try {
++        await event.viewTransition.ready;
++      } catch (error) {
++        if (error.name !== 'InvalidStateError') {
++          throw error;
++        }
++      } finally {
++        await event.viewTransition.finished;
++        dynamicTarget.style.viewTransitionName = '';
++      }
++    }
++  });
++}
+diff --git a/locations.html b/locations.html
+new file mode 100644
+index 0000000..37d1189
+--- /dev/null
++++ b/locations.html
+@@ -0,0 +1,104 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Locations | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations" aria-current="page">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--locations">
++    <h1>Find a Neighborhood Cafe</h1>
++    <p>Warm spaces, community tables, and seasonal pours brewed fresh all day.</p>
++    <a href="/order-online" class="btn">Order Pickup</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Cafes &amp; Seasonal Favorites</h2>
++      <p class="section-lead">Every location serves our full Seasonal Favorites lineup daily from 6:30 AM to 7:00 PM.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>214 Roast Ave &bull; Flagship cafe &amp; tasting bar featuring Maple Oat Latte on tap.</p>
++          <a href="/menu/seasonal" class="btn">Seasonal Pour</a>
++        </div>
++        <div class="card">
++          <h3>Riverside Espresso Bar</h3>
++          <p>88 Harbor Walk &bull; Express counter specializing in Dark Roast Espresso pulls.</p>
++          <a href="/menu/espresso" class="btn">Espresso Menu</a>
++        </div>
++        <div class="card">
++          <h3>Market Square</h3>
++          <p>510 Artisan Way &bull; Sunny patio pouring 18-hour Cold Brew and pastries.</p>
++          <a href="/menu/cold-brew" class="btn">Cold Brew Tap</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/locations/index.html b/locations/index.html
+new file mode 100644
+index 0000000..37d1189
+--- /dev/null
++++ b/locations/index.html
+@@ -0,0 +1,104 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Locations | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations" aria-current="page">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--locations">
++    <h1>Find a Neighborhood Cafe</h1>
++    <p>Warm spaces, community tables, and seasonal pours brewed fresh all day.</p>
++    <a href="/order-online" class="btn">Order Pickup</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Cafes &amp; Seasonal Favorites</h2>
++      <p class="section-lead">Every location serves our full Seasonal Favorites lineup daily from 6:30 AM to 7:00 PM.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>214 Roast Ave &bull; Flagship cafe &amp; tasting bar featuring Maple Oat Latte on tap.</p>
++          <a href="/menu/seasonal" class="btn">Seasonal Pour</a>
++        </div>
++        <div class="card">
++          <h3>Riverside Espresso Bar</h3>
++          <p>88 Harbor Walk &bull; Express counter specializing in Dark Roast Espresso pulls.</p>
++          <a href="/menu/espresso" class="btn">Espresso Menu</a>
++        </div>
++        <div class="card">
++          <h3>Market Square</h3>
++          <p>510 Artisan Way &bull; Sunny patio pouring 18-hour Cold Brew and pastries.</p>
++          <a href="/menu/cold-brew" class="btn">Cold Brew Tap</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/logout.html b/logout.html
+new file mode 100644
+index 0000000..620f229
+--- /dev/null
++++ b/logout.html
+@@ -0,0 +1,87 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Signed Out | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">Sign In</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>See You Next Cup</h1>
++    <p>You have been safely signed out of your Daily Grind account.</p>
++    <a href="/" class="btn">Return Home</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Seasonal Favorites Still Brewing</h2>
++      <div class="grid">
++        <div class="card" id="card-seasonal">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card" id="card-espresso">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card" id="card-cold-brew">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/logout/index.html b/logout/index.html
+new file mode 100644
+index 0000000..620f229
+--- /dev/null
++++ b/logout/index.html
+@@ -0,0 +1,87 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Signed Out | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">Sign In</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>See You Next Cup</h1>
++    <p>You have been safely signed out of your Daily Grind account.</p>
++    <a href="/" class="btn">Return Home</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Seasonal Favorites Still Brewing</h2>
++      <div class="grid">
++        <div class="card" id="card-seasonal">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card" id="card-espresso">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card" id="card-cold-brew">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu.html b/menu.html
+new file mode 100644
+index 0000000..99719ec
+--- /dev/null
++++ b/menu.html
+@@ -0,0 +1,128 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Menu | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>Our Artisanal Menu</h1>
++    <p>Small-batch roasts, handcrafted espresso drinks, and seasonal creations.</p>
++    <a href="/order-online" class="btn">Order Ahead</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <p class="section-lead">Crafted with locally sourced ingredients and freshly pulled espresso.</p>
++      <div class="grid">
++        <div class="card" id="card-seasonal">
++          <img
++            class="card-media"
++            src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++            width="600"
++            height="375"
++            alt="Maple Oat Latte in a ceramic cup"
++          >
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup and cinnamon dust.</p>
++          <p class="card-price">$5.75</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card" id="card-espresso">
++          <img
++            class="card-media"
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++            width="600"
++            height="375"
++            alt="Freshly pulled Dark Roast Espresso"
++          >
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost with rich crema.</p>
++          <p class="card-price">$3.75</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card" id="card-cold-brew">
++          <img
++            class="card-media"
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++            width="600"
++            height="375"
++            alt="Chilled glass of 18-hour Cold Brew"
++          >
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness and chocolate notes.</p>
++          <p class="card-price">$4.95</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/cold-brew.html b/menu/cold-brew.html
+new file mode 100644
+index 0000000..bdaec81
+--- /dev/null
++++ b/menu/cold-brew.html
+@@ -0,0 +1,86 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Cold Brew | Seasonal Favorites | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>18-Hour Cold Brew</h1>
++    <p>Steeped for 18 hours in filtered cold water for maximum smoothness.</p>
++    <a href="/order-online" class="btn">Order Cold Brew</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <div class="detail-banner" id="card-cold-brew">
++        <img
++          id="detail-highlight"
++          src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++          width="800"
++          height="600"
++          alt="Iced Cold Brew coffee in a tall glass"
++        >
++        <div>
++          <h2 class="section-title">Seasonal Favorites Spotlight</h2>
++          <p>Coarse-ground Ethiopian and Guatemalan beans steeped slowly to unlock naturally sweet caramel and toasted hazelnut notes with low acidity.</p>
++          <p class="card-price">$4.95 &bull; Served Over Crystal Ice</p>
++          <a href="/menu" class="btn btn--secondary">Back to Menu</a>
++          <a href="/" class="btn">Back Home</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/cold-brew/index.html b/menu/cold-brew/index.html
+new file mode 100644
+index 0000000..bdaec81
+--- /dev/null
++++ b/menu/cold-brew/index.html
+@@ -0,0 +1,86 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Cold Brew | Seasonal Favorites | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>18-Hour Cold Brew</h1>
++    <p>Steeped for 18 hours in filtered cold water for maximum smoothness.</p>
++    <a href="/order-online" class="btn">Order Cold Brew</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <div class="detail-banner" id="card-cold-brew">
++        <img
++          id="detail-highlight"
++          src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++          width="800"
++          height="600"
++          alt="Iced Cold Brew coffee in a tall glass"
++        >
++        <div>
++          <h2 class="section-title">Seasonal Favorites Spotlight</h2>
++          <p>Coarse-ground Ethiopian and Guatemalan beans steeped slowly to unlock naturally sweet caramel and toasted hazelnut notes with low acidity.</p>
++          <p class="card-price">$4.95 &bull; Served Over Crystal Ice</p>
++          <a href="/menu" class="btn btn--secondary">Back to Menu</a>
++          <a href="/" class="btn">Back Home</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/espresso.html b/menu/espresso.html
+new file mode 100644
+index 0000000..830cae3
+--- /dev/null
++++ b/menu/espresso.html
+@@ -0,0 +1,86 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Dark Roast Espresso | Seasonal Favorites | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>Dark Roast Espresso</h1>
++    <p>Bold, smokey, and perfect for a morning boost.</p>
++    <a href="/order-online" class="btn">Order Espresso</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <div class="detail-banner" id="card-espresso">
++        <img
++          id="detail-highlight"
++          src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++          width="800"
++          height="600"
++          alt="Dark Roast Espresso shot with thick crema"
++        >
++        <div>
++          <h2 class="section-title">Seasonal Favorites Spotlight</h2>
++          <p>Single-origin Sumatra and Colombian beans roasted to a deep caramelized finish with notes of dark cocoa and cedar.</p>
++          <p class="card-price">$3.75 &bull; Double Ristretto Pull</p>
++          <a href="/menu" class="btn btn--secondary">Back to Menu</a>
++          <a href="/" class="btn">Back Home</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/espresso/index.html b/menu/espresso/index.html
+new file mode 100644
+index 0000000..830cae3
+--- /dev/null
++++ b/menu/espresso/index.html
+@@ -0,0 +1,86 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Dark Roast Espresso | Seasonal Favorites | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>Dark Roast Espresso</h1>
++    <p>Bold, smokey, and perfect for a morning boost.</p>
++    <a href="/order-online" class="btn">Order Espresso</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <div class="detail-banner" id="card-espresso">
++        <img
++          id="detail-highlight"
++          src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++          width="800"
++          height="600"
++          alt="Dark Roast Espresso shot with thick crema"
++        >
++        <div>
++          <h2 class="section-title">Seasonal Favorites Spotlight</h2>
++          <p>Single-origin Sumatra and Colombian beans roasted to a deep caramelized finish with notes of dark cocoa and cedar.</p>
++          <p class="card-price">$3.75 &bull; Double Ristretto Pull</p>
++          <a href="/menu" class="btn btn--secondary">Back to Menu</a>
++          <a href="/" class="btn">Back Home</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/index.html b/menu/index.html
+new file mode 100644
+index 0000000..99719ec
+--- /dev/null
++++ b/menu/index.html
+@@ -0,0 +1,128 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Menu | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>Our Artisanal Menu</h1>
++    <p>Small-batch roasts, handcrafted espresso drinks, and seasonal creations.</p>
++    <a href="/order-online" class="btn">Order Ahead</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <p class="section-lead">Crafted with locally sourced ingredients and freshly pulled espresso.</p>
++      <div class="grid">
++        <div class="card" id="card-seasonal">
++          <img
++            class="card-media"
++            src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++            width="600"
++            height="375"
++            alt="Maple Oat Latte in a ceramic cup"
++          >
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup and cinnamon dust.</p>
++          <p class="card-price">$5.75</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card" id="card-espresso">
++          <img
++            class="card-media"
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++            width="600"
++            height="375"
++            alt="Freshly pulled Dark Roast Espresso"
++          >
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost with rich crema.</p>
++          <p class="card-price">$3.75</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card" id="card-cold-brew">
++          <img
++            class="card-media"
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++            width="600"
++            height="375"
++            alt="Chilled glass of 18-hour Cold Brew"
++          >
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness and chocolate notes.</p>
++          <p class="card-price">$4.95</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/seasonal.html b/menu/seasonal.html
+new file mode 100644
+index 0000000..18ee256
+--- /dev/null
++++ b/menu/seasonal.html
+@@ -0,0 +1,86 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Maple Oat Latte | Seasonal Favorites | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>Maple Oat Latte</h1>
++    <p>Creamy oat milk with a hint of Vermont maple syrup and warm autumn spices.</p>
++    <a href="/order-online" class="btn">Order Maple Oat Latte</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <div class="detail-banner" id="card-seasonal">
++        <img
++          id="detail-highlight"
++          src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80"
++          width="800"
++          height="600"
++          alt="Maple Oat Latte topped with microfoam"
++        >
++        <div>
++          <h2 class="section-title">Seasonal Favorites Spotlight</h2>
++          <p>Our signature double-shot espresso steamed with barista-grade oat milk and grade-A dark amber Vermont maple syrup.</p>
++          <p class="card-price">$5.75 &bull; Available Hot or Iced</p>
++          <a href="/menu" class="btn btn--secondary">Back to Menu</a>
++          <a href="/" class="btn">Back Home</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/seasonal/index.html b/menu/seasonal/index.html
+new file mode 100644
+index 0000000..18ee256
+--- /dev/null
++++ b/menu/seasonal/index.html
+@@ -0,0 +1,86 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Maple Oat Latte | Seasonal Favorites | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>Maple Oat Latte</h1>
++    <p>Creamy oat milk with a hint of Vermont maple syrup and warm autumn spices.</p>
++    <a href="/order-online" class="btn">Order Maple Oat Latte</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <div class="detail-banner" id="card-seasonal">
++        <img
++          id="detail-highlight"
++          src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80"
++          width="800"
++          height="600"
++          alt="Maple Oat Latte topped with microfoam"
++        >
++        <div>
++          <h2 class="section-title">Seasonal Favorites Spotlight</h2>
++          <p>Our signature double-shot espresso steamed with barista-grade oat milk and grade-A dark amber Vermont maple syrup.</p>
++          <p class="card-price">$5.75 &bull; Available Hot or Iced</p>
++          <a href="/menu" class="btn btn--secondary">Back to Menu</a>
++          <a href="/" class="btn">Back Home</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/order-online.html b/order-online.html
+new file mode 100644
+index 0000000..ed484c0
+--- /dev/null
++++ b/order-online.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Order Online | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>Order Online for Express Pickup</h1>
++    <p>Skip the line and pick up freshly crafted Seasonal Favorites at your nearest cafe.</p>
++    <a href="/locations" class="btn">Choose Location</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Quick-Add Seasonal Favorites</h2>
++      <div class="grid">
++        <div class="card" id="card-seasonal">
++          <h3>Maple Oat Latte</h3>
++          <p>Ready in 4 mins &bull; $5.75</p>
++          <a href="/menu/seasonal" class="btn">Customize</a>
++        </div>
++        <div class="card" id="card-espresso">
++          <h3>Dark Roast Espresso</h3>
++          <p>Ready in 2 mins &bull; $3.75</p>
++          <a href="/menu/espresso" class="btn">Customize</a>
++        </div>
++        <div class="card" id="card-cold-brew">
++          <h3>Cold Brew</h3>
++          <p>Ready in 2 mins &bull; $4.95</p>
++          <a href="/menu/cold-brew" class="btn">Customize</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/order-online/index.html b/order-online/index.html
+new file mode 100644
+index 0000000..ed484c0
+--- /dev/null
++++ b/order-online/index.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Order Online | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero hero--menu">
++    <h1>Order Online for Express Pickup</h1>
++    <p>Skip the line and pick up freshly crafted Seasonal Favorites at your nearest cafe.</p>
++    <a href="/locations" class="btn">Choose Location</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Quick-Add Seasonal Favorites</h2>
++      <div class="grid">
++        <div class="card" id="card-seasonal">
++          <h3>Maple Oat Latte</h3>
++          <p>Ready in 4 mins &bull; $5.75</p>
++          <a href="/menu/seasonal" class="btn">Customize</a>
++        </div>
++        <div class="card" id="card-espresso">
++          <h3>Dark Roast Espresso</h3>
++          <p>Ready in 2 mins &bull; $3.75</p>
++          <a href="/menu/espresso" class="btn">Customize</a>
++        </div>
++        <div class="card" id="card-cold-brew">
++          <h3>Cold Brew</h3>
++          <p>Ready in 2 mins &bull; $4.95</p>
++          <a href="/menu/cold-brew" class="btn">Customize</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/privacy-policy.html b/privacy-policy.html
+new file mode 100644
+index 0000000..55a27f1
+--- /dev/null
++++ b/privacy-policy.html
+@@ -0,0 +1,83 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Privacy Policy | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Privacy Policy</h1>
++    <p>How we safeguard your account preferences, order history, and Rewards activity.</p>
++    <a href="/account" class="btn">Account Settings</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Your Data &amp; Preferences</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Order &amp; Rewards Data</h3>
++          <p>Used strictly to fulfill pickup orders and track your Seasonal Favorites rewards.</p>
++          <a href="/rewards" class="btn">Rewards Info</a>
++        </div>
++        <div class="card">
++          <h3>Local Theme Preferences</h3>
++          <p>Stored locally in your browser to maintain a consistent visual experience across transitions.</p>
++          <a href="/" class="btn">Back to Home</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy" aria-current="page">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/privacy-policy/index.html b/privacy-policy/index.html
+new file mode 100644
+index 0000000..55a27f1
+--- /dev/null
++++ b/privacy-policy/index.html
+@@ -0,0 +1,83 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Privacy Policy | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Privacy Policy</h1>
++    <p>How we safeguard your account preferences, order history, and Rewards activity.</p>
++    <a href="/account" class="btn">Account Settings</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Your Data &amp; Preferences</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Order &amp; Rewards Data</h3>
++          <p>Used strictly to fulfill pickup orders and track your Seasonal Favorites rewards.</p>
++          <a href="/rewards" class="btn">Rewards Info</a>
++        </div>
++        <div class="card">
++          <h3>Local Theme Preferences</h3>
++          <p>Stored locally in your browser to maintain a consistent visual experience across transitions.</p>
++          <a href="/" class="btn">Back to Home</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy" aria-current="page">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/rewards.html b/rewards.html
+new file mode 100644
+index 0000000..2ee1d97
+--- /dev/null
++++ b/rewards.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Rewards | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards" aria-current="page">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Daily Grind Rewards</h1>
++    <p>Earn beans on every handcrafted cup and unlock complimentary Seasonal Favorites.</p>
++    <a href="/order-online" class="btn">Redeem Beans</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Seasonal Favorites Perks</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Double Bean Days</h3>
++          <p>Earn 2x points on all Seasonal Favorites including the Maple Oat Latte.</p>
++          <a href="/menu/seasonal" class="btn">Explore Seasonal</a>
++        </div>
++        <div class="card">
++          <h3>Free Espresso Shot</h3>
++          <p>Redeem 50 beans for an extra pull of Dark Roast Espresso in any drink.</p>
++          <a href="/menu/espresso" class="btn">View Espresso</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew Refills</h3>
++          <p>Gold members enjoy complimentary afternoon Cold Brew top-offs in-cafe.</p>
++          <a href="/menu/cold-brew" class="btn">View Cold Brew</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/rewards/index.html b/rewards/index.html
+new file mode 100644
+index 0000000..2ee1d97
+--- /dev/null
++++ b/rewards/index.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Rewards | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++  <script type="module" blocking="render">
++    document.documentElement.dataset.theme =
++      localStorage.getItem('theme') || 'light';
++    document.documentElement.dataset.layout =
++      localStorage.getItem('layout') || 'standard';
++  </script>
++  <script blocking="render" src="/js/theme-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
++  <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards" aria-current="page">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Daily Grind Rewards</h1>
++    <p>Earn beans on every handcrafted cup and unlock complimentary Seasonal Favorites.</p>
++    <a href="/order-online" class="btn">Redeem Beans</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
++      <h2 class="section-title">Seasonal Favorites Perks</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Double Bean Days</h3>
++          <p>Earn 2x points on all Seasonal Favorites including the Maple Oat Latte.</p>
++          <a href="/menu/seasonal" class="btn">Explore Seasonal</a>
++        </div>
++        <div class="card">
++          <h3>Free Espresso Shot</h3>
++          <p>Redeem 50 beans for an extra pull of Dark Roast Espresso in any drink.</p>
++          <a href="/menu/espresso" class="btn">View Espresso</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew Refills</h3>
++          <p>Gold members enjoy complimentary afternoon Cold Brew top-offs in-cafe.</p>
++          <a href="/menu/cold-brew" class="btn">View Cold Brew</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..dd44732
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,361 @@
++/* Cross-Document View Transitions Opt-in */
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
++:root {
++  --primary: #4e342e;
++  --primary-dark: #3e2723;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++  --surface: #ffffff;
++  --muted: #6d4c41;
++  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++}
++
++:root[data-theme="dark"] {
++  --primary: #3e2723;
++  --primary-dark: #271815;
++  --secondary: #4e342e;
++  --accent: #ffab40;
++  --text: #efebe9;
++  --light: #1e1412;
++  --surface: #2d1f1c;
++  --muted: #d7ccc8;
++  --shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
++}
++
++:where(html, body, nav, header, main, section, article, aside, footer, div, h1, h2, h3, p, ul, li, a, img, button) {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Shared View Transition Names for Persistent / Morphing Elements */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++  view-transition-name: site-nav;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++  color: white;
++  text-decoration: none;
++  view-transition-name: site-logo;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++  align-items: center;
++}
++
++nav ul li {
++  margin-inline-start: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s ease;
++}
++
++nav a:hover,
++nav a[aria-current="page"] {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  min-height: 60vh;
++  background-color: var(--primary);
++  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 40px 20px;
++  view-transition-name: hero;
++}
++
++.hero--menu {
++  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++    url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80');
++}
++
++.hero--locations {
++  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++    url('https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1350&q=80');
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-block-end: 1rem;
++  view-transition-name: page-title;
++}
++
++.hero p {
++  font-size: 1.15rem;
++  max-width: 640px;
++  view-transition-name: hero-subtitle;
++}
++
++.hero .btn {
++  view-transition-name: hero-cta;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.section-title {
++  text-align: center;
++  margin-block-end: 10px;
++  color: var(--primary);
++}
++
++.section-lead {
++  text-align: center;
++  color: var(--muted);
++  margin-block-end: 24px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-block-start: 20px;
++}
++
++.card {
++  background: var(--surface);
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: var(--shadow);
++  text-align: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: space-between;
++  align-items: center;
++}
++
++.card-media {
++  width: 100%;
++  height: auto;
++  aspect-ratio: 16 / 10;
++  object-fit: cover;
++  border-radius: 6px;
++  margin-block-end: 14px;
++  background-color: var(--secondary);
++}
++
++.card h3 {
++  margin-block-end: 10px;
++  color: var(--primary);
++}
++
++.card-price {
++  font-weight: bold;
++  color: var(--primary);
++  margin-block-start: 8px;
++}
++
++#card-seasonal {
++  view-transition-name: featured-seasonal;
++}
++
++#card-espresso {
++  view-transition-name: featured-espresso;
++}
++
++#card-cold-brew {
++  view-transition-name: featured-cold-brew;
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-block-start: 15px;
++  transition: background-color 0.3s ease, transform 0.2s ease;
++}
++
++.btn:hover {
++  background: var(--primary-dark);
++}
++
++.btn--secondary {
++  background: transparent;
++  color: var(--primary);
++  border: 1px solid var(--primary);
++}
++
++.btn--secondary:hover {
++  background: var(--secondary);
++  color: var(--primary-dark);
++}
++
++.detail-banner {
++  background: var(--surface);
++  border-radius: 10px;
++  box-shadow: var(--shadow);
++  padding: 32px;
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++  gap: 28px;
++  align-items: center;
++}
++
++.detail-banner img {
++  width: 100%;
++  height: auto;
++  aspect-ratio: 4 / 3;
++  object-fit: cover;
++  border-radius: 8px;
++  background-color: var(--secondary);
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-block-start: 40px;
++}
++
++.footer-links {
++  margin-block-end: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.footer-links a:hover {
++  text-decoration: underline;
++}
++
++/* Custom Cross-Document View Transition Animations */
++@media (prefers-reduced-motion: no-preference) {
++  ::view-transition-old(root) {
++    animation: 0.28s ease-in both vt-fade-out;
++  }
++
++  ::view-transition-new(root) {
++    animation: 0.32s ease-out both vt-fade-in;
++  }
++
++  ::view-transition-group(page-title),
++  ::view-transition-group(hero),
++  ::view-transition-group(featured-seasonal),
++  ::view-transition-group(featured-espresso),
++  ::view-transition-group(featured-cold-brew) {
++    animation-duration: 0.35s;
++    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++  }
++
++  :active-view-transition-type(forwards) {
++    &::view-transition-old(root) {
++      animation-name: vt-slide-out-left;
++    }
++
++    &::view-transition-new(root) {
++      animation-name: vt-slide-in-right;
++    }
++  }
++
++  :active-view-transition-type(backwards) {
++    &::view-transition-old(root) {
++      animation-name: vt-slide-out-right;
++    }
++
++    &::view-transition-new(root) {
++      animation-name: vt-slide-in-left;
++    }
++  }
++}
++
++@keyframes vt-fade-out {
++  to {
++    opacity: 0;
++  }
++}
++
++@keyframes vt-fade-in {
++  from {
++    opacity: 0;
++  }
++}
++
++@keyframes vt-slide-out-left {
++  to {
++    transform: translateX(-6%);
++    opacity: 0;
++  }
++}
++
++@keyframes vt-slide-in-right {
++  from {
++    transform: translateX(6%);
++    opacity: 0;
++  }
++}
++
++@keyframes vt-slide-out-right {
++  to {
++    transform: translateX(6%);
++    opacity: 0;
++  }
++}
++
++@keyframes vt-slide-in-left {
++  from {
++    transform: translateX(-6%);
++    opacity: 0;
++  }
++}

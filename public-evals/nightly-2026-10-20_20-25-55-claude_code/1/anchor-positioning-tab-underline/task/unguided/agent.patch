@@ -1,0 +1,68 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -65,8 +65,53 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    /* Active tab: fallback underline for browsers without anchor positioning */
++    nav ul li.active a {
++      border-bottom: 2px solid var(--accent);
++      padding-bottom: 2px;
++    }
++
++    /* Sliding underline tethered to the active tab */
++    @supports (anchor-name: --active-tab) {
++      nav ul {
++        position: relative;
++      }
++
++      nav ul li.active {
++        anchor-name: --active-tab;
++      }
++
++      nav ul li.active a {
++        border-bottom: 0;
++        padding-bottom: 0;
++      }
++
++      nav ul::before {
++        content: "";
++        position: absolute;
++        position-anchor: --active-tab;
++        left: anchor(left);
++        right: anchor(right);
++        top: calc(anchor(bottom) + 4px);
++        height: 2px;
++        background: var(--accent);
++        transition: left 0.3s ease, right 0.3s ease, top 0.3s ease;
++      }
++
++      /* No active tab, no underline */
++      nav ul:not(:has(li.active))::before {
++        display: none;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        nav ul::before {
++          transition: none;
++        }
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -159,9 +204,9 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>

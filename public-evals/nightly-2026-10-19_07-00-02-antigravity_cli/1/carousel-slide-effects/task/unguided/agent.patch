@@ -1,0 +1,346 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,221 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Sr-only utility for screen readers */
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Carousel Section */
++    .carousel-section {
++      margin: 50px 0;
++    }
++
++    .carousel-section-header {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .carousel-section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .carousel-section-header p {
++      color: #5d4037;
++      font-size: 1rem;
++    }
++
++    /* Horizontal Scroller Carousel Container */
++    .scroller {
++      display: flex;
++      gap: 28px;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      padding-block: 40px;
++      padding-inline: max(24px, calc(50% - 140px));
++      -webkit-overflow-scrolling: touch;
++      overscroll-behavior-x: contain;
++      scrollbar-width: thin;
++      scrollbar-color: var(--accent) #eee;
++    }
++
++    .scroller::-webkit-scrollbar {
++      height: 8px;
++    }
++
++    .scroller::-webkit-scrollbar-track {
++      background: #eee;
++      border-radius: 4px;
++    }
++
++    .scroller::-webkit-scrollbar-thumb {
++      background: var(--accent);
++      border-radius: 4px;
++    }
++
++    .scroller:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
++    /* Product Cards */
++    .product-card {
++      flex: 0 0 280px;
++      width: 280px;
++      display: flex;
++      flex-direction: column;
++      background: white;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
++      scroll-snap-align: center;
++      scroll-snap-stop: always;
++      transform-origin: center center;
++      transition: box-shadow 0.3s ease;
++      text-align: left;
++    }
++
++    .product-card:hover,
++    .product-card:focus-within {
++      box-shadow: 0 8px 24px rgba(62, 39, 35, 0.2);
++    }
++
++    .product-card-img-wrapper {
++      position: relative;
++      width: 100%;
++      height: 190px;
++      overflow: hidden;
++      background-color: var(--secondary);
++    }
++
++    .product-card-img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.5s ease;
++    }
++
++    .product-card:hover .product-card-img {
++      transform: scale(1.05);
++    }
++
++    .product-card-badge {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 4px 10px;
++      border-radius: 20px;
++    }
++
++    .product-card-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++      justify-content: space-between;
++    }
++
++    .product-card h3 {
++      font-size: 1.2rem;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .product-card-desc {
++      font-size: 0.9rem;
++      color: #555;
++      margin-bottom: 15px;
++      line-height: 1.5;
++      flex-grow: 1;
++    }
++
++    .product-card-footer {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      margin-top: auto;
++      padding-top: 10px;
++      border-top: 1px solid #f0e8e6;
++    }
++
++    .product-card-price {
++      font-size: 1.25rem;
++      font-weight: 700;
++      color: var(--text);
++    }
++
++    .product-card .btn {
++      margin-top: 0;
++      padding: 8px 16px;
++      font-size: 0.85rem;
++    }
++
++    /* CSS Scroll-Driven Animation (Zero JavaScript) */
++    @supports (animation-timeline: view(inline)) or (view-timeline-axis: inline) {
++      .product-card {
++        view-timeline-name: --card-scroll;
++        view-timeline-axis: inline;
++        animation: scale-center linear both;
++        animation-timeline: --card-scroll;
++        animation-timeline: view(inline);
++        animation-range: cover 0% cover 100%;
++      }
++
++      @keyframes scale-center {
++        0% {
++          transform: scale(0.85);
++          opacity: 0.75;
++        }
++        50% {
++          transform: scale(1.05);
++          opacity: 1;
++        }
++        100% {
++          transform: scale(0.85);
++          opacity: 0.75;
++        }
++      }
++    }
++
++    /* Accessibility: Reduced Motion */
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++
++      .product-card {
++        animation: none !important;
++        transform: none !important;
++        opacity: 1 !important;
++        transition: none !important;
++      }
++
++      .product-card-img {
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +387,120 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <!-- Horizontal Carousel of Product Cards -->
++    <section class="carousel-section" aria-labelledby="featured-products-heading">
++      <div class="carousel-section-header">
++        <h2 id="featured-products-heading">Featured Artisanal Collection</h2>
++        <p>Explore our freshly roasted beans and barista-grade brewing equipment</p>
++      </div>
++
++      <div class="scroller" role="region" aria-label="Featured Products Carousel" tabindex="0">
++        <article class="product-card" id="product-1" aria-label="Ethiopian Yirgacheffe Single Origin Coffee">
++          <div class="product-card-img-wrapper">
++            <span class="product-card-badge">Single Origin</span>
++            <img class="product-card-img" src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of whole bean Ethiopian Yirgacheffe roasted coffee" loading="lazy">
++          </div>
++          <div class="product-card-body">
++            <div>
++              <h3>Ethiopian Yirgacheffe</h3>
++              <p class="product-card-desc">Delicate floral notes with bright bergamot and honey undertones, light roasted to perfection.</p>
++            </div>
++            <div class="product-card-footer">
++              <span class="product-card-price">$19.50</span>
++              <a href="/order?item=yirgacheffe" class="btn" aria-label="Order Ethiopian Yirgacheffe">Order Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="product-card" id="product-2" aria-label="Artisanal Pour-Over Glass Dripper and Carafe">
++          <div class="product-card-img-wrapper">
++            <span class="product-card-badge">Equipment</span>
++            <img class="product-card-img" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Heat-resistant glass pour-over dripper and carafe set" loading="lazy">
++          </div>
++          <div class="product-card-body">
++            <div>
++              <h3>Glass Pour-Over Set</h3>
++              <p class="product-card-desc">Hand-blown borosilicate glass carafe with a laser-cut stainless steel micro-filter for clean brews.</p>
++            </div>
++            <div class="product-card-footer">
++              <span class="product-card-price">$38.00</span>
++              <a href="/order?item=pour-over" class="btn" aria-label="Order Glass Pour-Over Set">Order Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="product-card" id="product-3" aria-label="Signature Espresso Dark Roast">
++          <div class="product-card-img-wrapper">
++            <span class="product-card-badge">Dark Roast</span>
++            <img class="product-card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Fresh espresso shot with rich golden crema" loading="lazy">
++          </div>
++          <div class="product-card-body">
++            <div>
++              <h3>Signature Espresso</h3>
++              <p class="product-card-desc">Full-bodied blend crafted for espresso machines and moka pots, delivering rich cacao and walnut notes.</p>
++            </div>
++            <div class="product-card-footer">
++              <span class="product-card-price">$18.00</span>
++              <a href="/order?item=signature-espresso" class="btn" aria-label="Order Signature Espresso">Order Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="product-card" id="product-4" aria-label="Handcrafted Stoneware Coffee Mug">
++          <div class="product-card-img-wrapper">
++            <span class="product-card-badge">Merch</span>
++            <img class="product-card-img" src="https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=600&q=80" alt="Handmade rustic ceramic coffee mug on a wooden tabletop" loading="lazy">
++          </div>
++          <div class="product-card-body">
++            <div>
++              <h3>Stoneware Artisan Mug</h3>
++              <p class="product-card-desc">Generous 12oz ceramic mug with tactile speckled glaze, custom-thrown by local ceramicists.</p>
++            </div>
++            <div class="product-card-footer">
++              <span class="product-card-price">$24.00</span>
++              <a href="/order?item=stoneware-mug" class="btn" aria-label="Order Stoneware Artisan Mug">Order Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="product-card" id="product-5" aria-label="Classic Copper French Press">
++          <div class="product-card-img-wrapper">
++            <span class="product-card-badge">Brew Gear</span>
++            <img class="product-card-img" src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="French press coffee maker with copper finish and glass beaker" loading="lazy">
++          </div>
++          <div class="product-card-body">
++            <div>
++              <h3>Copper French Press</h3>
++              <p class="product-card-desc">Double-screen plunger system retains aromatic natural coffee oils for an incomparably rich cup.</p>
++            </div>
++            <div class="product-card-footer">
++              <span class="product-card-price">$42.00</span>
++              <a href="/order?item=french-press" class="btn" aria-label="Order Copper French Press">Order Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="product-card" id="product-6" aria-label="Nitro Cold Brew Bottle Concentrate">
++          <div class="product-card-img-wrapper">
++            <span class="product-card-badge">Cold Brew</span>
++            <img class="product-card-img" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Chilled cold brew coffee served in a glass with ice" loading="lazy">
++          </div>
++          <div class="product-card-body">
++            <div>
++              <h3>Nitro Cold Brew</h3>
++              <p class="product-card-desc">Steeped cold for 20 hours and nitrogen-charged for a velvety, creamy cascade and smooth taste.</p>
++            </div>
++            <div class="product-card-footer">
++              <span class="product-card-price">$16.50</span>
++              <a href="/order?item=cold-brew" class="btn" aria-label="Order Nitro Cold Brew">Order Now</a>
++            </div>
++          </div>
++        </article>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

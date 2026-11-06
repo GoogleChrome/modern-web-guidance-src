@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,57 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    if (typeof PerformanceObserver !== 'undefined') {
++      try {
++        const observer = new PerformanceObserver((list) => {
++          const allScripts = list.getEntries().flatMap((entry) => entry.scripts || []);
++          const scriptSource = [...new Set(allScripts.map((script) => script.sourceURL))];
++          const scriptsBySource = scriptSource.map((sourceURL) => ([
++            sourceURL,
++            allScripts.filter((script) => script.sourceURL === sourceURL)
++          ]));
++          const processedScripts = scriptsBySource.map(([sourceURL, scripts]) => ({
++            sourceURL,
++            count: scripts.length,
++            totalDuration: scripts.reduce((subtotal, script) => subtotal + script.duration, 0)
++          }));
++          processedScripts.sort((a, b) => b.totalDuration - a.totalDuration);
++          console.table(processedScripts);
++
++          for (const entry of list.getEntries()) {
++            for (const script of entry.scripts || []) {
++              console.warn('Slow script detected:', {
++                sourceURL: script.sourceURL,
++                sourceFunctionName: script.sourceFunctionName,
++                sourceCharPosition: script.sourceCharPosition,
++                duration: script.duration,
++                invoker: script.invoker,
++                invokerType: script.invokerType,
++                executionStart: script.executionStart,
++                forcedStyleAndLayoutDuration: script.forcedStyleAndLayoutDuration
++              });
++            }
++          }
++        });
++
++        observer.observe({ type: 'long-animation-frame', buffered: true });
++      } catch (e) {
++        try {
++          const fallbackObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              console.warn('Long task detected:', entry);
++            }
++          });
++          fallbackObserver.observe({ type: 'longtask', buffered: true });
++        } catch (err) {
++          console.error('Performance monitoring not supported', err);
++        }
++      }
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

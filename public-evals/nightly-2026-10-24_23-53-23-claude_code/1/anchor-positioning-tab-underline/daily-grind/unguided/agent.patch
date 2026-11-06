@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+index 66c9173..7a788fb 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,33 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
++    }
++
++    nav a[data-nav] {
++      display: inline-block;
++      padding: 4px 0;
++    }
++
++    nav a[data-nav].active {
++      color: var(--accent);
++    }
++
++    .nav-indicator {
++      position: absolute;
++      bottom: -2px;
++      left: 0;
++      height: 2px;
++      width: 0;
++      background: var(--accent);
++      border-radius: 1px;
++      opacity: 0;
++      pointer-events: none;
++      transition: transform 0.35s ease, width 0.35s ease, opacity 0.2s;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .nav-indicator { transition: none; }
+     }
+ 
+     nav ul li {
+@@ -160,11 +187,12 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-nav>Menu</a></li>
++      <li><a href="/locations" data-nav>Locations</a></li>
++      <li><a href="/rewards" data-nav>Rewards</a></li>
++      <li><a href="/account" data-nav>My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <span class="nav-indicator" aria-hidden="true"></span>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +235,60 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var list = document.querySelector('nav ul');
++      var indicator = list.querySelector('.nav-indicator');
++      var links = Array.prototype.slice.call(list.querySelectorAll('a[data-nav]'));
++      var current = null;
++
++      function moveTo(link) {
++        var l = link.getBoundingClientRect();
++        var u = list.getBoundingClientRect();
++        indicator.style.width = l.width + 'px';
++        indicator.style.transform = 'translateX(' + (l.left - u.left) + 'px)';
++        indicator.style.opacity = '1';
++      }
++
++      function select(link) {
++        links.forEach(function (a) {
++          a.classList.toggle('active', a === link);
++          if (a === link) a.setAttribute('aria-current', 'page');
++          else a.removeAttribute('aria-current');
++        });
++        current = link;
++        moveTo(link);
++      }
++
++      links.forEach(function (a) {
++        a.addEventListener('click', function (e) {
++          e.preventDefault(); // keep the page loaded so the slide is visible
++          select(a);
++        });
++      });
++
++      window.addEventListener('resize', function () {
++        if (current) {
++          indicator.style.transition = 'none';
++          moveTo(current);
++          indicator.offsetWidth; // flush so the next move animates again
++          indicator.style.transition = '';
++        }
++      });
++
++      // Initial selection from the current path, if it matches a nav item.
++      var initial = links.filter(function (a) {
++        return a.getAttribute('href') === location.pathname;
++      })[0];
++      if (initial) {
++        indicator.style.transition = 'none';
++        select(initial);
++        indicator.offsetWidth;
++        indicator.style.transition = '';
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

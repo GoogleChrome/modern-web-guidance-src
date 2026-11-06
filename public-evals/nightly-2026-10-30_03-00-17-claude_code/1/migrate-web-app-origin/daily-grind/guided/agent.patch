@@ -1,0 +1,225 @@
+diff --git a/icon.svg b/icon.svg
+new file mode 100644
+index 0000000..d1df556
+--- /dev/null
++++ b/icon.svg
+@@ -0,0 +1,6 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <path d="M136 200h208v96a104 104 0 0 1-208 0z" fill="#d7ccc8"/>
++  <path d="M344 224h24a40 40 0 0 1 0 80h-28" fill="none" stroke="#d7ccc8" stroke-width="24"/>
++  <path d="M200 112c-16 24 16 40 0 64M256 112c-16 24 16 40 0 64M312 112c-16 24 16 40 0 64" fill="none" stroke="#ffab40" stroke-width="16" stroke-linecap="round"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..6649cba 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,10 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#4e342e">
++  <link rel="manifest" href="/manifest.webmanifest">
++  <link rel="icon" href="/icon.svg" type="image/svg+xml">
++  <script src="/migrate-settings.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..0865c3b
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,16 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
++  ],
++  "migrate_from": [
++    { "id": "https://dailygrind.example.com/" }
++  ]
++}
+diff --git a/migrate-settings.js b/migrate-settings.js
+new file mode 100644
+index 0000000..d62c6a5
+--- /dev/null
++++ b/migrate-settings.js
+@@ -0,0 +1,41 @@
++// One-time import of user settings from the legacy origin. Origin migration
++// only moves the installation (shortcuts, icons); localStorage stays behind,
++// so we read it through a same-site bridge iframe on the old origin.
++(() => {
++  const LEGACY_ORIGIN = 'https://dailygrind.example.com';
++  const DONE_KEY = 'dg:settings-migrated';
++
++  if (localStorage.getItem(DONE_KEY)) return;
++
++  const frame = document.createElement('iframe');
++  frame.src = `${LEGACY_ORIGIN}/migrate-bridge.html`;
++  frame.hidden = true;
++
++  const finish = () => {
++    window.removeEventListener('message', onMessage);
++    frame.remove();
++  };
++
++  const onMessage = (event) => {
++    if (event.origin !== LEGACY_ORIGIN || event.source !== frame.contentWindow) return;
++    const { type, entries } = event.data ?? {};
++    if (type !== 'dg:settings' || typeof entries !== 'object' || entries === null) return;
++
++    for (const [key, value] of Object.entries(entries)) {
++      // Never clobber settings the user already changed on the new origin.
++      if (typeof value === 'string' && localStorage.getItem(key) === null) {
++        localStorage.setItem(key, value);
++      }
++    }
++    localStorage.setItem(DONE_KEY, new Date().toISOString());
++    finish();
++  };
++
++  window.addEventListener('message', onMessage);
++  frame.addEventListener('load', () => {
++    frame.contentWindow.postMessage({ type: 'dg:request-settings' }, LEGACY_ORIGIN);
++  });
++  // Give up quietly if the legacy origin is unreachable; retry on next visit.
++  setTimeout(finish, 10000);
++  document.body.append(frame);
++})();
+diff --git a/old-origin/.well-known/web-app-origin-association b/old-origin/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..8bfa5bd
+--- /dev/null
++++ b/old-origin/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.example.com": {
++    "allow_migration": true
++  }
++}
+diff --git a/old-origin/README.md b/old-origin/README.md
+new file mode 100644
+index 0000000..c9c64da
+--- /dev/null
++++ b/old-origin/README.md
+@@ -0,0 +1,16 @@
++# Legacy origin files
++
++Deploy these to the **old** origin (`https://dailygrind.example.com`) to hand the
++installed app over to `https://app.dailygrind.example.com`.
++
++| File | Purpose |
++| --- | --- |
++| `.well-known/web-app-origin-association` | Authorizes the new origin to take over the installation. Serve as `application/json`. |
++| `manifest.webmanifest` | Old manifest with a `migrate_to` hint so installed users are prompted without visiting the new site. |
++| `migrate-bridge.html` | Lets the new origin read the user's saved settings (localStorage) once. Must be frameable by the new origin (no `X-Frame-Options: DENY`). |
++| `migration-banner.js` | Banner for browsers without origin migration support. Add `<script src="/migration-banner.js" defer></script>` to the old pages. |
++| `icon.svg` | App icon referenced by the manifest. |
++
++Both origins must be same-site (share the registrable domain); migration across
++different domains is rejected. If you change either origin, update every file
++here plus `manifest.webmanifest` and `migrate-settings.js` at the repo root.
+diff --git a/old-origin/icon.svg b/old-origin/icon.svg
+new file mode 100644
+index 0000000..d1df556
+--- /dev/null
++++ b/old-origin/icon.svg
+@@ -0,0 +1,6 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <path d="M136 200h208v96a104 104 0 0 1-208 0z" fill="#d7ccc8"/>
++  <path d="M344 224h24a40 40 0 0 1 0 80h-28" fill="none" stroke="#d7ccc8" stroke-width="24"/>
++  <path d="M200 112c-16 24 16 40 0 64M256 112c-16 24 16 40 0 64M312 112c-16 24 16 40 0 64" fill="none" stroke="#ffab40" stroke-width="16" stroke-linecap="round"/>
++</svg>
+diff --git a/old-origin/manifest.webmanifest b/old-origin/manifest.webmanifest
+new file mode 100644
+index 0000000..ee5ff24
+--- /dev/null
++++ b/old-origin/manifest.webmanifest
+@@ -0,0 +1,19 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
++  ],
++  "migrate_to": [
++    {
++      "id": "https://app.dailygrind.example.com/",
++      "install_url": "https://app.dailygrind.example.com/"
++    }
++  ]
++}
+diff --git a/old-origin/migrate-bridge.html b/old-origin/migrate-bridge.html
+new file mode 100644
+index 0000000..b178243
+--- /dev/null
++++ b/old-origin/migrate-bridge.html
+@@ -0,0 +1,25 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <title>Settings bridge</title>
++</head>
++<body>
++  <script>
++    // Hands this origin's localStorage to the new origin, and only to it.
++    const NEW_ORIGIN = 'https://app.dailygrind.example.com';
++
++    window.addEventListener('message', (event) => {
++      if (event.origin !== NEW_ORIGIN || event.source !== window.parent) return;
++      if (event.data?.type !== 'dg:request-settings') return;
++
++      const entries = {};
++      for (let i = 0; i < localStorage.length; i++) {
++        const key = localStorage.key(i);
++        entries[key] = localStorage.getItem(key);
++      }
++      event.source.postMessage({ type: 'dg:settings', entries }, NEW_ORIGIN);
++    });
++  </script>
++</body>
++</html>
+diff --git a/old-origin/migration-banner.js b/old-origin/migration-banner.js
+new file mode 100644
+index 0000000..2eef4ad
+--- /dev/null
++++ b/old-origin/migration-banner.js
+@@ -0,0 +1,22 @@
++// Fallback for browsers without web app origin migration (Firefox, Safari):
++// point users at the new origin so they can reinstall from there.
++(() => {
++  const NEW_ORIGIN = 'https://app.dailygrind.example.com';
++
++  const banner = document.createElement('div');
++  banner.setAttribute('role', 'status');
++  banner.style.cssText =
++    'position:sticky;top:0;z-index:1001;display:flex;gap:1rem;justify-content:center;' +
++    'align-items:center;flex-wrap:wrap;padding:.75rem 1rem;background:#ffab40;color:#3e2723;' +
++    'font:inherit;text-align:center';
++  banner.innerHTML =
++    '<span>The Daily Grind has moved. If you installed our app, please reinstall it from the new address.</span>';
++
++  const link = document.createElement('a');
++  link.href = NEW_ORIGIN + location.pathname + location.search;
++  link.textContent = 'Go to the new site';
++  link.style.cssText = 'color:inherit;font-weight:bold';
++  banner.append(link);
++
++  document.body.prepend(banner);
++})();

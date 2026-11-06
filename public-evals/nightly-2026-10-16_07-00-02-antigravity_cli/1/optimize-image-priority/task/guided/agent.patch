@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,227 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Product Landing Page</title>
++  <style>
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++    body {
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
++      line-height: 1.5;
++      color: #111;
++      background: #fafafa;
++    }
++    header {
++      padding: 1rem 2rem;
++      background: #fff;
++      border-bottom: 1px solid #eee;
++      position: sticky;
++      top: 0;
++      z-index: 10;
++    }
++    nav {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      max-width: 1000px;
++      margin: 0 auto;
++    }
++    .brand {
++      font-weight: 700;
++      text-decoration: none;
++      color: inherit;
++      font-size: 1.25rem;
++    }
++    .nav-menu {
++      position: relative;
++    }
++    .mega-menu details:not([open]) > :not(summary) {
++      display: none;
++    }
++    .mega-menu summary {
++      cursor: pointer;
++      list-style: none;
++      font-weight: 500;
++      padding: 0.5rem 1rem;
++      border-radius: 4px;
++      background: #f0f0f0;
++    }
++    .mega-menu summary::-webkit-details-marker {
++      display: none;
++    }
++    .mega-menu-content {
++      position: absolute;
++      right: 0;
++      top: 100%;
++      background: #fff;
++      border: 1px solid #ddd;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
++      padding: 1rem;
++      border-radius: 8px;
++      width: 320px;
++      margin-top: 0.5rem;
++    }
++    .mega-menu-content img {
++      width: 100%;
++      height: auto;
++      border-radius: 4px;
++      display: block;
++    }
++    main {
++      max-width: 1000px;
++      margin: 2rem auto;
++      padding: 0 1rem;
++    }
++    .hero, .product-gallery {
++      margin-bottom: 3rem;
++      background: #fff;
++      padding: 2rem;
++      border-radius: 12px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
++    }
++    .hero h1 {
++      font-size: 2rem;
++      margin-bottom: 1.5rem;
++    }
++    .gallery {
++      display: flex;
++      flex-direction: column;
++      gap: 1.5rem;
++      align-items: center;
++    }
++    .gallery-primary img {
++      max-width: 100%;
++      height: auto;
++      display: block;
++      border-radius: 8px;
++    }
++    .gallery-toggle {
++      width: 100%;
++    }
++    .gallery-toggle details:not([open]) > :not(summary) {
++      display: none;
++    }
++    .gallery-toggle summary {
++      cursor: pointer;
++      font-weight: 500;
++      padding: 0.5rem 1rem;
++      background: #f0f0f0;
++      border-radius: 4px;
++      text-align: center;
++      width: fit-content;
++      margin: 0 auto 1rem auto;
++    }
++    .gallery-toggle img {
++      max-width: 100%;
++      height: auto;
++      display: block;
++      border-radius: 8px;
++      margin: 0 auto;
++    }
++    .content-sections {
++      margin: 4rem 0;
++      display: flex;
++      flex-direction: column;
++      gap: 3rem;
++    }
++    .section-card {
++      background: #fff;
++      padding: 2rem;
++      border-radius: 8px;
++      min-height: 250px;
++      border: 1px solid #eee;
++    }
++    footer {
++      background: #111;
++      color: #fff;
++      padding: 4rem 1rem;
++      text-align: center;
++      margin-top: 10rem;
++    }
++    .footer-content {
++      max-width: 1000px;
++      margin: 0 auto;
++    }
++    .footer-content img {
++      margin-bottom: 1rem;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <nav>
++      <a href="#" class="brand">MinimalBrand</a>
++      <div class="nav-menu mega-menu">
++        <details>
++          <summary>Navigation Menu</summary>
++          <div class="mega-menu-content">
++            <h3>Special Promotion</h3>
++            <img src="mega-menu-promo.jpg"
++                 alt="Special Offer"
++                 fetchpriority="low"
++                 width="300"
++                 height="150">
++          </div>
++        </details>
++      </div>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero product-gallery">
++      <h1>Premium Edition</h1>
++      <div class="gallery">
++        <div class="gallery-primary">
++          <img src="hero-lcp.jpg"
++               alt="Hero Product Image"
++               fetchpriority="high"
++               width="800"
++               height="600">
++        </div>
++        <div class="gallery-toggle">
++          <details>
++            <summary>Toggle Alternate Image</summary>
++            <img src="gallery-alt.jpg"
++                 alt="Alternate Product View"
++                 fetchpriority="low"
++                 loading="lazy"
++                 width="800"
++                 height="600">
++          </details>
++        </div>
++      </div>
++    </section>
++
++    <div class="content-sections">
++      <section class="section-card">
++        <h2>Features &amp; Details</h2>
++        <p>Engineered with precision for peak performance and durability.</p>
++      </section>
++      <section class="section-card">
++        <h2>Technical Specifications</h2>
++        <p>Ultra-lightweight design with state of the art materials.</p>
++      </section>
++      <section class="section-card">
++        <h2>Customer Reviews</h2>
++        <p>Rated 5 stars by thousands of satisfied customers worldwide.</p>
++      </section>
++    </div>
++  </main>
++
++  <footer>
++    <div class="footer-content">
++      <img src="footer-logo.png"
++           alt="Footer Logo"
++           loading="lazy"
++           width="120"
++           height="60">
++      <p>&copy; 2026 MinimalBrand Inc. All rights reserved.</p>
++    </div>
++  </footer>
++</body>
++</html>

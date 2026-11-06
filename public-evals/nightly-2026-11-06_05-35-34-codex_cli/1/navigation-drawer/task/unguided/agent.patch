@@ -1,0 +1,297 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,46 +27,143 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-header {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      gap: 16px;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1rem, 4vw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .menu-button,
++    .close-menu {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
++      min-height: 44px;
++      padding: 8px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: transparent;
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .menu-button svg {
++      width: 22px;
++      height: 22px;
++    }
++
++    .menu-button {
++      flex-shrink: 0;
++    }
++
++    .navigation-drawer {
++      position: fixed;
++      inset: 0;
++      width: 100%;
++      max-width: none;
++      height: 100%;
++      max-height: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      color: white;
++      overflow: hidden;
++    }
++
++    .navigation-drawer::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .drawer-panel {
++      position: absolute;
++      inset: 0 0 0 auto;
++      width: min(360px, 88vw);
++      padding: 24px;
++      background: var(--primary);
++      box-shadow: -8px 0 30px rgba(0, 0, 0, 0.2);
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      touch-action: pan-y;
++      transform: translateX(100%);
++      transition: transform 220ms ease;
++    }
++
++    .navigation-drawer.is-open .drawer-panel {
++      transform: translateX(0);
++    }
++
++    .drawer-panel.is-dragging {
++      transition: none;
++      user-select: none;
++    }
++
++    .drawer-heading {
+       display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      margin-bottom: 32px;
++    }
++
++    .drawer-heading h2 {
++      font-size: 1.3rem;
++    }
++
++    .close-menu {
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    .navigation-drawer ul {
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .navigation-drawer li + li {
++      margin-top: 8px;
+     }
+ 
+-    nav a {
++    .navigation-drawer a {
++      display: block;
++      padding: 12px;
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
++      font-size: 1.1rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .navigation-drawer a:hover {
+       color: var(--accent);
+     }
+ 
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .drawer-panel {
++        transition: none;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -156,19 +253,36 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <header class="site-header">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <button class="menu-button" type="button" aria-controls="navigation-drawer" aria-expanded="false" aria-haspopup="dialog">
++      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
++        <path d="M3 6h18M3 12h18M3 18h18" />
++      </svg>
++      Menu
++    </button>
++  </header>
+ 
++  <dialog class="navigation-drawer" id="navigation-drawer" aria-labelledby="drawer-title">
++    <div class="drawer-panel">
++      <div class="drawer-heading">
++        <h2 id="drawer-title">The Daily Grind</h2>
++        <button class="close-menu" type="button" aria-label="Close menu" autofocus>&times;</button>
++      </div>
++      <nav aria-label="Main navigation">
++        <ul>
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </nav>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +320,95 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const menuButton = document.querySelector('.menu-button');
++    const drawer = document.querySelector('.navigation-drawer');
++    const panel = drawer.querySelector('.drawer-panel');
++    const closeButton = drawer.querySelector('.close-menu');
++    let closing = false;
++    let gesture = null;
++    let previousOverflow = '';
++
++    function closeMenu() {
++      if (!drawer.open || closing) return;
++      closing = true;
++      gesture = null;
++      panel.classList.remove('is-dragging');
++      panel.style.removeProperty('transform');
++      drawer.classList.remove('is-open');
++      menuButton.setAttribute('aria-expanded', 'false');
++      const delay = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220;
++      window.setTimeout(() => drawer.close(), delay);
++    }
++
++    menuButton.addEventListener('click', () => {
++      previousOverflow = document.body.style.overflow;
++      document.body.style.overflow = 'hidden';
++      drawer.showModal();
++      menuButton.setAttribute('aria-expanded', 'true');
++      // Commit the off-screen position before starting the slide-in transition.
++      panel.getBoundingClientRect();
++      drawer.classList.add('is-open');
++    });
++
++    closeButton.addEventListener('click', closeMenu);
++    drawer.addEventListener('cancel', (event) => {
++      event.preventDefault();
++      closeMenu();
++    });
++    let outsidePress = false;
++    drawer.addEventListener('pointerdown', (event) => {
++      outsidePress = event.target === drawer;
++    });
++    drawer.addEventListener('click', (event) => {
++      if (outsidePress && event.target === drawer) closeMenu();
++      outsidePress = false;
++    });
++    drawer.addEventListener('close', () => {
++      closing = false;
++      drawer.classList.remove('is-open');
++      menuButton.setAttribute('aria-expanded', 'false');
++      document.body.style.overflow = previousOverflow;
++      menuButton.focus();
++    });
++    panel.querySelectorAll('a').forEach((link) => {
++      link.addEventListener('click', closeMenu);
++    });
++
++    panel.addEventListener('pointerdown', (event) => {
++      if (!event.isPrimary || event.button !== 0 || closing) return;
++      gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, dragging: false };
++    });
++    panel.addEventListener('pointermove', (event) => {
++      if (!gesture || event.pointerId !== gesture.id) return;
++      const dx = event.clientX - gesture.x;
++      const dy = event.clientY - gesture.y;
++      if (!gesture.dragging) {
++        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
++          gesture = null;
++          return;
++        }
++        if (dx <= 10 || dx <= Math.abs(dy)) return;
++        gesture.dragging = true;
++        panel.setPointerCapture(event.pointerId);
++        panel.classList.add('is-dragging');
++      }
++      panel.style.transform = `translateX(${Math.max(0, dx)}px)`;
++    });
++    function endSwipe(event) {
++      if (!gesture || event.pointerId !== gesture.id) return;
++      const shouldClose = event.type === 'pointerup' && gesture.dragging &&
++        event.clientX - gesture.x > Math.min(80, panel.offsetWidth * 0.25);
++      gesture = null;
++      panel.classList.remove('is-dragging');
++      panel.style.removeProperty('transform');
++      if (panel.hasPointerCapture(event.pointerId)) panel.releasePointerCapture(event.pointerId);
++      if (shouldClose) closeMenu();
++    }
++    panel.addEventListener('pointerup', endSwipe);
++    panel.addEventListener('pointercancel', endSwipe);
++  </script>
+ </body>
+ 
+ </html>

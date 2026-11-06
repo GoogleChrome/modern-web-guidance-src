@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,140 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native disclosure state keeps these interactions JavaScript-free. */
++    .animated-disclosure::details-content {
++      display: grid;
++      grid-template-rows: 0fr;
++      transition: grid-template-rows 400ms ease, content-visibility 400ms;
++      transition-behavior: allow-discrete;
++    }
++
++    .animated-disclosure[open]::details-content {
++      grid-template-rows: 1fr;
++    }
++
++    .disclosure-content {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    summary {
++      cursor: pointer;
++      list-style: none;
++    }
++
++    summary::-webkit-details-marker {
++      display: none;
++    }
++
++    summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    #promo-alert {
++      position: relative;
++      background: var(--secondary);
++    }
++
++    .promo-message {
++      padding: 14px 60px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    .promo-message a {
++      color: inherit;
++      font-weight: 600;
++      text-underline-offset: 3px;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      top: 8px;
++      right: 16px;
++      width: 36px;
++      height: 36px;
++      display: grid;
++      place-items: center;
++      border-radius: 50%;
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    #alert-dismiss:hover {
++      background: rgb(78 52 46 / 10%);
++    }
++
++    #promo-alert:not([open]) > summary {
++      visibility: hidden;
++    }
++
++    .faq-section {
++      max-width: 760px;
++      margin: 64px auto 24px;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-bottom: 8px;
++    }
++
++    .faq-intro {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .faq-item {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      padding: 22px 24px;
++      font-weight: 600;
++    }
++
++    .faq-icon {
++      flex: none;
++      font-size: 1.4rem;
++      transition: transform 400ms ease;
++    }
++
++    .faq-item[open] .faq-icon {
++      transform: rotate(45deg);
++    }
++
++    .faq-answer {
++      padding: 0 24px 24px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .animated-disclosure::details-content,
++      .faq-icon {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" class="animated-disclosure" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotional alert"><span aria-hidden="true">&times;</span></summary>
++    <div class="disclosure-content">
++      <p class="promo-message">A little perk for your daily ritual. <strong>Get 15% off your first order</strong> with code <strong>FIRSTSIP</strong>. <a href="/order-online">Order now</a></p>
++    </div>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +321,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <p class="faq-intro">A little more about what goes into your cup.</p>
++      <details class="faq-item animated-disclosure">
++        <summary id="faq-trigger" aria-controls="faq-content">
++          Where do you source your coffee?
++          <span class="faq-icon" aria-hidden="true">+</span>
++        </summary>
++        <div id="faq-content" class="disclosure-content" role="region" aria-labelledby="faq-trigger">
++          <p class="faq-answer">We source our beans from growers who share our commitment to quality and ethical farming. Each batch is roasted locally to bring out its unique character, then brewed fresh for your daily ritual. Ask our baristas about the beans we're pouring today!</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

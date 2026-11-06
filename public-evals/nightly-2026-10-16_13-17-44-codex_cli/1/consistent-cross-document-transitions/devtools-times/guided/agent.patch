@@ -1,0 +1,212 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..ca52355 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,8 +4,6 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
+ }
+@@ -23,18 +21,24 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
++    <!-- Each page marks the end of its initial content, before below-fold sections. -->
++    <link rel="expect" href="#initial-view" blocking="render" />
++
++    <!-- Initial layout is server-rendered; island hydration is not snapshot-critical.
++         Put future layout-critical scripts here with is:inline and blocking="render"
++         so Astro preserves their head placement and browser loading attributes. -->
++    <slot name="head" />
++
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+-
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..b0fefb0 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -10,7 +10,7 @@ const { title } = Astro.props;
+ <Layout title={title}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+-        <div class="prose max-w-none">
++        <div id="initial-view" class="prose max-w-none">
+             <slot />
+         </div>
+     </div>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..1684b00 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+ <Layout title="Page Not Found">
+-    <div class="flex flex-col items-center justify-center text-center py-20">
++    <div id="initial-view" class="flex flex-col items-center justify-center text-center py-20">
+         <h1 class="text-6xl font-bold text-amber-400">404</h1>
+         <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+         <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..40f830e 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -58,7 +58,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Main Article Image -->
+-        <figure class="mb-5">
++        <figure id="initial-view" class="mb-5">
+             {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+             {article.data.prompt_comment ? (
+                 <img 
+@@ -123,4 +123,4 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..3987fc4 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -86,6 +86,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                 </section>
+             )}
+ 
++            <!-- Also wait for the featured content visible below the category banner. -->
++            <span id="initial-view" hidden></span>
++
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..5bd7c0f 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main id="initial-view" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+@@ -81,4 +81,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..77becef 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -5,7 +5,7 @@ import { getCollection } from 'astro:content';
+ const multimedia = await getCollection('multimedia');
+ ---
+ <Layout title="Multimedia">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <div id="initial-view" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+         <div class="prose max-w-none">
+             <p>Watch our latest multimedia content.</p>
+@@ -18,4 +18,4 @@ const multimedia = await getCollection('multimedia');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..f87ee7c 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -5,7 +5,7 @@ import { getCollection } from 'astro:content';
+ const reports = await getCollection('reports');
+ ---
+ <Layout title="Reports">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <div id="initial-view" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+         <div class="prose max-w-none">
+             <p>Read our latest reports.</p>
+@@ -18,4 +18,4 @@ const reports = await getCollection('reports');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..26bc17b 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -4,7 +4,7 @@ import SignInForm from '../components/SignInForm';
+ ---
+ 
+ <Layout title="Sign In | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div id="initial-view" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..590d435 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -4,7 +4,7 @@ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div id="initial-view" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..1f535a3 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,18 @@
+ @import "tailwindcss";
+ 
++/* Native same-origin navigations; unsupported browsers use normal navigation. */
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,31 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promo-timer {
++      margin-top: 12px;
++      padding: 10px 12px;
++      background: #fff8e1;
++      border: 1px solid var(--accent);
++      border-radius: 6px;
++      font-size: 0.85rem;
++      color: var(--text);
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .promo-timer time {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .promo-elapsed {
++      font-size: 0.78rem;
++      opacity: 0.85;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,8 +203,16 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-oat-timer" aria-live="polite">
++            <p class="promo-remaining">
++              Offer ends in: <time id="maple-oat-remaining">Calculating...</time>
++            </p>
++            <p class="promo-elapsed">
++              Active for: <time id="maple-oat-elapsed">Calculating...</time>
++            </p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +237,65 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function initializeApp() {
++      const remainingEl = document.getElementById('maple-oat-remaining');
++      const elapsedEl = document.getElementById('maple-oat-elapsed');
++      if (!remainingEl || !elapsedEl) return;
++
++      // 1. Get the current time in the user's local system IANA time zone
++      const now = Temporal.Now.zonedDateTimeISO();
++      const tz = now.timeZoneId;
++
++      // 2. Combine separate date and time strings via Temporal methods
++      // Promotion start (Feb 1, 2026 at midnight) and end (March 1, 2026 at midnight)
++      const startDateStr = '2026-02-01';
++      const startTimeStr = '00:00:00';
++      const endDateStr = '2026-03-01';
++      const endTimeStr = '00:00:00';
++
++      const start = Temporal.PlainDate.from(startDateStr).toPlainDateTime(startTimeStr).toZonedDateTime(tz);
++      const end = Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(tz);
++
++      // 3. Calculate differentials using .since() and .until() balanced to days and hours
++      const timeActive = now.since(start, { largestUnit: 'day', smallestUnit: 'hour' });
++      const timeRemaining = now.until(end, { largestUnit: 'day', smallestUnit: 'hour' });
++
++      // 4. Check status via .sign and format durations using .toLocaleString() (Intl.DurationFormat)
++      const isExpired = timeRemaining.sign <= 0;
++      const isNotStarted = timeActive.sign < 0;
++
++      if (isExpired) {
++        remainingEl.textContent = `Offer ended (${timeRemaining.abs().toLocaleString(undefined, { style: 'long' })} ago)`;
++        remainingEl.setAttribute('datetime', timeRemaining.toString());
++      } else {
++        remainingEl.textContent = timeRemaining.toLocaleString(undefined, { style: 'long' });
++        remainingEl.setAttribute('datetime', timeRemaining.toString());
++      }
++
++      if (isNotStarted) {
++        elapsedEl.textContent = `Starts in ${timeActive.abs().toLocaleString(undefined, { style: 'long' })}`;
++        elapsedEl.setAttribute('datetime', timeActive.toString());
++      } else {
++        elapsedEl.textContent = timeActive.toLocaleString(undefined, { style: 'long' });
++        elapsedEl.setAttribute('datetime', timeActive.toString());
++      }
++    }
++
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initializeApp);
++      } else {
++        initializeApp();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

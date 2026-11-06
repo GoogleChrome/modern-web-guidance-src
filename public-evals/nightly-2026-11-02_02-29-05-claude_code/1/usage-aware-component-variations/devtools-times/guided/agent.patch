@@ -1,0 +1,300 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..4fbfb07 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -7,77 +7,58 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+-    large?: boolean;
++    /** Load the image eagerly, for teasers above the fold. */
++    priority?: boolean;
+ }
+ 
+-const { article, large = false } = Astro.props;
++const { article, priority = false } = Astro.props;
+ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const articleUrl = `${import.meta.env.BASE_URL}articles/${article.id}`;
+ ---
+-{large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                </div>
+-            </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
+-                </a>
+-            </div>
++<!--
++    Presentation adapts to the surrounding <Surface>:
++    - default:  image card with summary and reading time
++    - featured: lead story, side-by-side on wide screens, "Featured" badge
++    - compact:  headline + date only, for dense lists
++-->
++<article class="group flex flex-col h-full featured:bg-white featured:p-6 featured:md:p-8 featured:shadow-sm featured:lg:grid featured:lg:grid-cols-3 featured:lg:gap-8">
++    <a href={articleUrl} class="compact:hidden featured:lg:col-span-2 featured:lg:order-last" tabindex="-1" aria-hidden="true">
++        <Image
++            src={image}
++            alt=""
++            width={1200}
++            height={675}
++            widths={[400, 800, 1200]}
++            sizes="auto, (min-width: 1024px) 66vw, (min-width: 768px) 33vw, 100vw"
++            loading={priority ? 'eager' : 'lazy'}
++            fetchpriority={priority ? 'high' : 'auto'}
++            format="webp"
++            class="w-full object-cover rounded-md aspect-video featured:rounded-none featured:aspect-[3/2]"
++        />
++    </a>
++    <div class="flex flex-col flex-grow mt-3 compact:mt-0 featured:mt-6 featured:lg:mt-0 featured:lg:row-start-1">
++        <div class="flex items-center gap-2">
++            <span class="hidden featured:inline-block bg-amber-800 text-white text-xs font-semibold uppercase tracking-wider px-2 py-0.5">Featured</span>
++            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest hover:underline compact:text-xs">{capitalizedCategory}</a>
+         </div>
+-    </div>
+-) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
++        <a href={articleUrl} class="flex flex-col flex-grow">
++            <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors featured:mt-2 featured:text-3xl featured:md:text-4xl featured:leading-tight featured:text-gray-900 compact:font-sans compact:font-bold compact:text-base compact:md:text-base compact:text-gray-900">
++                {article.data.title}
++            </h3>
++            <p class="text-gray-600 mt-1 compact:hidden featured:mt-4 featured:text-lg featured:text-gray-700">{article.data.summary}</p>
+         </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
+-            </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-            </div>
++        <time datetime={article.data.date.toISOString()} class="hidden compact:block text-xs text-gray-500">
++            {article.data.date.toLocaleDateString()}
++        </time>
++        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100 compact:hidden featured:mt-6 featured:border-t-0">
++            <span class="text-sm font-medium flex items-center">
++                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                {article.data.readingTime} Min.
++            </span>
++            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+         </div>
+-    </article>
+-)}
+\ No newline at end of file
++    </div>
++</article>
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..43a7615 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -23,8 +23,14 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    // Icon-only by default; on featured surfaces it becomes a labelled pill.
++    <button
++      onClick={handleClick}
++      aria-pressed={isBookmarked}
++      className="p-1 flex items-center gap-1.5 featured:px-3 featured:py-1 featured:rounded-full featured:border featured:border-gray-300 featured:hover:border-amber-400"
++    >
++      <BookmarkIcon aria-hidden="true" className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++      <span className="sr-only featured:not-sr-only text-sm font-medium text-gray-700">Save for later</span>
+     </button>
+   );
+ }
+diff --git a/src/components/Surface.astro b/src/components/Surface.astro
+new file mode 100644
+index 0000000..83c47d0
+--- /dev/null
++++ b/src/components/Surface.astro
+@@ -0,0 +1,16 @@
++---
++import type { HTMLTag, Polymorphic } from 'astro/types';
++
++/**
++ * Marks a region of the page with a semantic context. Components placed
++ * inside react to it on their own via the `featured:` / `compact:` variants
++ * (CSS container style queries on `--surface`), so neither side needs to
++ * know about the other.
++ */
++type Props<Tag extends HTMLTag = 'div'> = Polymorphic<{ as: Tag }> & {
++    kind: 'featured' | 'compact';
++};
++
++const { as: Tag = 'div', kind, ...rest } = Astro.props;
++---
++<Tag data-surface={kind} {...rest}><slot /></Tag>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..996e921 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -2,6 +2,7 @@
+ ---
+ import Layout from '../../layouts/Layout.astro';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import Surface from '../../components/Surface.astro';
+ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+@@ -32,7 +33,6 @@ const randomArticleForHero = allArticlesInCategory.length > 0
+     : null;
+ 
+ const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForHero) : null;
+-const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+ 
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+@@ -65,25 +65,10 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+-            {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
+-                    <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+-                        <Image 
+-                            src={featuredArticleImage} 
+-                            alt={featuredArticle.data.title} 
+-                            width={1200}
+-                            height={675}
+-                            format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+-                        />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+-                            {featuredArticle.data.title}
+-                        </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
+-                            {featuredArticle.data.summary}
+-                        </p>
+-                    </a>
+-                </section>
++            {featuredArticle && (
++                <Surface as="section" kind="featured" class="mb-8 pb-8 border-b border-gray-200">
++                    <ArticleTeaser article={featuredArticle} priority />
++                </Surface>
+             )}
+ 
+             <!-- Other Articles -->
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..3539117 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,6 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
++import Surface from '../components/Surface.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+@@ -40,24 +41,21 @@ politicsArticles[2] = {
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <Surface kind="compact" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        <ArticleTeaser article={article} />
+                     </div>
+                 ))}
+             </div>
+-        </div>
++        </Surface>
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    <Surface as="main" kind="featured" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} priority />
++    </Surface>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..476df0c 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,29 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/*
++ * Semantic surfaces: a layout container declares what kind of context it is,
++ * descendants decide for themselves how to adapt to it.
++ */
++[data-surface="featured"] { --surface: featured; }
++[data-surface="compact"] { --surface: compact; }
++
++/*
++ * Container style queries are Baseline Newly available (May 2026), so the
++ * attribute selector stays as a fallback. `:where()` keeps it at the same
++ * specificity, letting the style query win wherever it is supported.
++ * Avoid nesting different surfaces while the fallback is in place: the
++ * descendant selector can't tell which surface is nearest.
++ * Drop the `:where()` branch once style queries are widely available.
++ */
++@custom-variant featured {
++  :where([data-surface="featured"]) & { @slot; }
++  @container style(--surface: featured) { @slot; }
++}
++
++@custom-variant compact {
++  :where([data-surface="compact"]) & { @slot; }
++  @container style(--surface: compact) { @slot; }
++}

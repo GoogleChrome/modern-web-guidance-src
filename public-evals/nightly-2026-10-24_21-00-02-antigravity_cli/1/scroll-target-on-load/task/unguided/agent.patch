@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,69 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical Scroll Media Container */
++    .media-section {
++      margin-top: 50px;
++    }
++
++    .media-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .scroll-container {
++      position: relative;
++      max-width: 640px;
++      height: 400px;
++      margin: 0 auto;
++      overflow-y: auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
++      padding: 16px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .media-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      overflow: hidden;
++      flex-shrink: 0;
++    }
++
++    .media-card.target {
++      border: 2px solid var(--accent);
++      scroll-start-target: auto;
++    }
++
++    .media-card img {
++      display: block;
++      width: 600px;
++      max-width: 100%;
++      height: 180px;
++      object-fit: cover;
++    }
++
++    .media-card-body {
++      padding: 12px 16px;
++    }
++
++    .media-card-body h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++      font-size: 1.1rem;
++    }
++
++    .media-card-body p {
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +255,87 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <h2>Behind the scenes at our Roastery</h2>
++      <div class="scroll-container" id="media-scroll-container">
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
++            alt="Fresh coffee beans being roasted"
++            width="600"
++            height="180"
++          >
++          <div class="media-card-body">
++            <h3>1. Ethical Bean Selection</h3>
++            <p>Hand-picked Arabica cherries from sustainable high-altitude farms.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++            alt="Small batch drum roaster"
++            width="600"
++            height="180"
++          >
++          <div class="media-card-body">
++            <h3>2. Small-Batch Roasting</h3>
++            <p>Roasted daily in small batches to bring out nuanced flavor profiles.</p>
++          </div>
++        </article>
++
++        <article class="media-card target">
++          <img
++            src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++            alt="Barista pouring latte art"
++            width="600"
++            height="180"
++          >
++          <div class="media-card-body">
++            <h3>3. Precision Brewing</h3>
++            <p>Dialed-in extraction temperatures and pressures for the signature cup.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80"
++            alt="Pour over coffee preparation"
++            width="600"
++            height="180"
++          >
++          <div class="media-card-body">
++            <h3>4. Artisanal Pour-Over</h3>
++            <p>Slow-brewed single-origin coffees highlighting floral and citrus notes.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&q=80"
++            alt="Coffee served with pastries"
++            width="600"
++            height="180"
++          >
++          <div class="media-card-body">
++            <h3>5. Community Table</h3>
++            <p>Served warm alongside freshly baked sourdough pastries in our cafe.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        (function () {
++          var container = document.getElementById('media-scroll-container');
++          var target = container && container.querySelector('.target');
++          if (container && target) {
++            container.scrollTop = target.offsetTop;
++          }
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,63 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Spotlight reveal for product cards */
++    @property --inner-size {
++      syntax: '<length>';
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    @property --outer-size {
++      syntax: '<length>';
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    .product-card {
++      --mouse-x: 50%;
++      --mouse-y: 50%;
++      --inner-size: 0px;
++      --outer-size: 0px;
++      position: relative;
++      overflow: hidden;
++      transition: --inner-size 0.4s ease, --outer-size 0.4s ease;
++    }
++
++    .product-card:hover {
++      --inner-size: 90px;
++      --outer-size: 150px;
++    }
++
++    .spotlight {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      padding: 20px;
++      border-radius: inherit;
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: 600;
++      pointer-events: none;
++      -webkit-mask-image: radial-gradient(circle at var(--mouse-x) var(--mouse-y), #000 var(--inner-size), transparent var(--outer-size));
++      mask-image: radial-gradient(circle at var(--mouse-x) var(--mouse-y), #000 var(--inner-size), transparent var(--outer-size));
++    }
++
++    .spotlight small {
++      font-weight: 400;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .product-card {
++        transition-duration: 0s;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -177,22 +232,34 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="spotlight" aria-hidden="true">
++            <span>Notes: maple, toasted oat, warm spice</span>
++            <small>Available Sep – Dec</small>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="spotlight" aria-hidden="true">
++            <span>Notes: dark chocolate, smoke, caramel</span>
++            <small>Double shot, 18g dose</small>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="spotlight" aria-hidden="true">
++            <span>Notes: cocoa, molasses, citrus</span>
++            <small>Steeped 18 hours</small>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +273,17 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.product-card').forEach((card) => {
++      card.addEventListener('pointermove', (e) => {
++        const rect = card.getBoundingClientRect();
++        card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
++        card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

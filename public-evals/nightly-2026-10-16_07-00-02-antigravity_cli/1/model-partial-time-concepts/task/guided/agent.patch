@@ -1,0 +1,54 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,50 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        try {
++          const module = await import('https://esm.sh/@js-temporal/polyfill');
++          globalThis.Temporal = module.Temporal;
++          Date.prototype.toTemporalInstant = module.toTemporalInstant;
++        } catch {
++          // In environments without network access, proceed to fallback
++        }
++      }
++
++      if (typeof Temporal !== 'undefined') {
++        // Use Temporal.PlainYearMonth to model year and month without day leakage or leap year bugs
++        const expiry = Temporal.PlainYearMonth.from({ year: 2027, month: 12, calendar: 'iso8601' });
++        const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
++        const duration = currentMonth.until(expiry, { largestUnit: 'years' });
++
++        if (duration.sign < 0) {
++          console.log('Expired');
++        } else if (duration.sign === 0) {
++          console.log('Expires this month');
++        } else {
++          console.log(`Expires in ${duration.years} years and ${duration.months} months`);
++        }
++      } else {
++        const now = new Date();
++        const currentYear = now.getFullYear();
++        const currentMonth = now.getMonth() + 1;
++        const totalMonths = (2027 - currentYear) * 12 + (12 - currentMonth);
++        if (totalMonths < 0) {
++          console.log('Expired');
++        } else if (totalMonths === 0) {
++          console.log('Expires this month');
++        } else {
++          const years = Math.floor(totalMonths / 12);
++          const months = totalMonths % 12;
++          console.log(`Expires in ${years} years and ${months} months`);
++        }
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>
++

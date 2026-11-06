@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+index 66c9173..7415800 100644
+--- a/index.html
++++ b/index.html
+@@ -115,6 +115,59 @@
+       text-align: center;
+     }
+ 
++    .card, .skeleton {
++      min-height: 210px;
++    }
++
++    .skeleton {
++      display: grid;
++      align-content: center;
++      gap: 12px;
++    }
++
++    .skeleton span {
++      display: block;
++      height: 16px;
++      border-radius: 4px;
++      background: var(--secondary);
++    }
++
++    .skeleton span:last-child {
++      width: 65%;
++      margin: 0 auto;
++    }
++
++    .section-heading, .menu-status {
++      text-align: center;
++    }
++
++    .menu-status {
++      min-height: 1.6em;
++      margin-top: 12px;
++    }
++
++    [hidden] {
++      display: none !important;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .community {
++      margin-top: 40px;
++    }
++
++    .community > div {
++      min-width: 0;
++    }
++
++    .community h2 {
++      margin-bottom: 12px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -175,9 +228,51 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-heading">Seasonal Favorites</h2>
++      <div id="seasonal-cards" class="grid">
++        <?start name="seasonal-cards">
++        <div class="card skeleton"><p>Loading seasonal favorites…</p><span aria-hidden="true"></span><span aria-hidden="true"></span></div>
++        <div class="card skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
++        <div class="card skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
++        <?end>
++      </div>
++      <p id="menu-status" class="menu-status" role="status"></p>
++      <button id="refresh-menu" class="btn" type="button" hidden>Refresh favorites</button>
++      <noscript><p><a href="/menu/seasonal">Browse the seasonal menu</a></p></noscript>
++    </section>
++
++    <section class="community grid" aria-label="From our coffee community">
++      <div aria-labelledby="reviews-heading">
++        <h2 id="reviews-heading">Customer Reviews</h2>
++        <div id="customer-reviews" aria-live="polite">
++          <p>Customer reviews are currently unavailable. Check back soon.</p>
++        </div>
++      </div>
++      <div aria-labelledby="promo-heading">
++        <h2 id="promo-heading">A Little Extra in Your Cup</h2>
++        <div id="cms-promo">
++          <p>Make your daily coffee even more rewarding.</p>
++          <a href="/rewards" class="btn">Explore Rewards</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <!-- The server can flush the page shell first, then emit this template when
++       the menu is ready. Keep it directly under body so its marker is in scope.
++       This payload is trusted server markup, never customer-submitted HTML. -->
++  <template for="seasonal-cards" id="initial-seasonal-cards">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -193,20 +288,129 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+-      </div>
+-    </section>
+-  </main>
++  </template>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  <script type="module">
++    const cards = document.getElementById('seasonal-cards');
++    const status = document.getElementById('menu-status');
++    const refreshButton = document.getElementById('refresh-menu');
++
++    // On older browsers the processing instructions are comments and the
++    // template stays inert. Only clone this fixed, trusted document payload.
++    const initialCards = document.getElementById('initial-seasonal-cards');
++    if (cards.querySelector('.skeleton') && initialCards?.content.childElementCount) {
++      cards.replaceChildren(initialCards.content.cloneNode(true));
++      initialCards.remove();
++    }
++
++    // Server integration contract (all endpoints return text/html fragments):
++    // GET /api/menu/seasonal: card children only, not a full page or templates.
++    // GET /api/reviews: customer-authored markup; always sanitize on insertion.
++    // GET /api/cms/seasonal-promo: trusted, editorial CMS HTML, including its
++    // widget script. Never include customer submissions in this response.
++    // GET /api/menu/events: text/event-stream; emit `event: menuchange` with a
++    // data line after each published menu change. Payload data is not HTML.
++    async function fetchHTML(url) {
++      const response = await fetch(url, {
++        headers: { Accept: 'text/html' },
++        cache: 'no-store',
++        credentials: 'same-origin'
++      });
++      if (!response.ok || response.redirected ||
++          !response.headers.get('content-type')?.includes('text/html')) {
++        throw new Error('Expected an HTML fragment');
++      }
++      return response;
++    }
++
++    let refreshing = false;
++    let refreshPending = false;
++    async function refreshMenu() {
++      if (refreshing) {
++        refreshPending = true;
++        return;
++      }
++      refreshing = true;
++      refreshButton.disabled = true;
++      try {
++        do {
++          refreshPending = false;
++          status.textContent = 'Updating seasonal favorites…';
++          const response = await fetchHTML('/api/menu/seasonal');
++          // Parse into a detached container so a failed stream preserves the
++          // current menu. Safe methods strip scripts and event handlers.
++          const nextCards = document.createElement('div');
++          if (typeof nextCards.streamHTML === 'function' && response.body &&
++              typeof TextDecoderStream === 'function') {
++            await response.body.pipeThrough(new TextDecoderStream())
++              .pipeTo(nextCards.streamHTML());
++          } else {
++            nextCards.setHTML(await response.text());
++          }
++          if (!nextCards.querySelector('.card')) throw new Error('Empty menu');
++          cards.replaceChildren(...nextCards.childNodes);
++          status.textContent = 'Seasonal favorites are up to date.';
++        } while (refreshPending);
++      } catch {
++        status.textContent = 'We couldn’t refresh the menu. Please try again.';
++      } finally {
++        refreshing = false;
++        refreshButton.disabled = false;
++      }
++    }
++
++    if (typeof cards.setHTML === 'function') {
++      refreshButton.hidden = false;
++      refreshButton.addEventListener('click', refreshMenu);
++      // Also allows the app's menu publisher to trigger a local update.
++      document.addEventListener('menuchange', refreshMenu);
++      if (typeof EventSource === 'function') {
++        let menuEvents;
++        function connectMenuEvents() {
++          menuEvents = new EventSource('/api/menu/events');
++          menuEvents.addEventListener('menuchange', refreshMenu);
++          // Reconnects may follow missed publications; fetch the current menu.
++          menuEvents.addEventListener('open', refreshMenu);
++        }
++        connectMenuEvents();
++        window.addEventListener('pagehide', () => menuEvents.close());
++        window.addEventListener('pageshow', (event) => {
++          if (event.persisted) connectMenuEvents();
++        });
++      }
++    }
++
++    async function loadReviews() {
++      const reviews = document.getElementById('customer-reviews');
++      if (typeof reviews.setHTML !== 'function') return;
++      try {
++        const response = await fetchHTML('/api/reviews');
++        // Customer content NEVER uses an Unsafe API, even if served locally.
++        reviews.setHTML(await response.text());
++      } catch {
++        // Keep the readable fallback when the review service is unavailable.
++      }
++    }
++
++    async function loadPromo() {
++      const promo = document.getElementById('cms-promo');
++      // The streaming API check avoids enabling this path on older engines
++      // whose setHTMLUnsafe exists but cannot opt into script execution.
++      if (typeof promo.streamHTMLUnsafe !== 'function' ||
++          typeof promo.setHTMLUnsafe !== 'function') return;
++      try {
++        const response = await fetchHTML('/api/cms/seasonal-promo');
++        // Trust boundary: only our controlled CMS endpoint may reach this sink.
++        // runScripts is explicit so the CMS's embedded widget can initialize.
++        promo.setHTMLUnsafe(await response.text(), { runScripts: true });
++      } catch {
++        // The rewards link remains usable if the CMS cannot be reached.
++      }
++    }
+ 
++    loadReviews();
++    loadPromo();
++  </script>
+ </body>
+ 
+ </html>

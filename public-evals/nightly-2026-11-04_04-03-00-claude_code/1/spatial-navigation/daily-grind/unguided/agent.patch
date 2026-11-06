@@ -1,0 +1,332 @@
+diff --git a/index.html b/index.html
+index 66c9173..31ac123 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,100 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal grid: toolbar + layout modes */
++    .section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .layout-toggle {
++      display: inline-flex;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      overflow: hidden;
++    }
++
++    .layout-toggle button {
++      font: inherit;
++      font-size: 0.9rem;
++      background: white;
++      color: var(--primary);
++      border: 0;
++      padding: 6px 14px;
++      cursor: pointer;
++    }
++
++    .layout-toggle button + button {
++      border-left: 1px solid var(--primary);
++    }
++
++    .layout-toggle button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .grid {
++      list-style: none;
++    }
++
++    .grid[data-layout="list"] {
++      grid-template-columns: 1fr;
++    }
++
++    .grid[data-layout="list"] .card {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      grid-template-areas: "title action" "desc action";
++      align-items: center;
++      column-gap: 20px;
++      text-align: left;
++    }
++
++    .grid[data-layout="list"] .card h3 { grid-area: title; margin-bottom: 4px; }
++    .grid[data-layout="list"] .card p { grid-area: desc; }
++    .grid[data-layout="list"] .card .btn { grid-area: action; margin-top: 0; }
++
++    @media (max-width: 520px) {
++      .grid[data-layout="list"] .card {
++        grid-template-columns: 1fr;
++        grid-template-areas: "title" "desc" "action";
++      }
++      .grid[data-layout="list"] .card .btn { justify-self: start; margin-top: 12px; }
++    }
++
++    .card {
++      transition: box-shadow 0.2s, transform 0.2s;
++    }
++
++    .card:focus-within {
++      box-shadow: 0 0 0 3px var(--accent), 0 4px 10px rgba(0, 0, 0, 0.15);
++    }
++
++    .btn:focus-visible,
++    .layout-toggle button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .card:focus-within { transform: translateY(-2px); }
++    }
++
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +269,52 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <div class="layout-toggle" role="group" aria-label="Card layout">
++          <button type="button" data-layout-option="grid" aria-pressed="true">Grid</button>
++          <button type="button" data-layout-option="list" aria-pressed="false">List</button>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++      </div>
++      <p id="grid-nav-help" class="visually-hidden">
++        Use the arrow keys to move between drinks. Home and End jump to the start or end of a row;
++        Control plus Home or End jumps to the first or last drink.
++      </p>
++      <ul class="grid" id="seasonal-grid" data-layout="grid" aria-labelledby="seasonal-heading"
++        aria-describedby="grid-nav-help">
++        <li class="card">
++          <h3 id="card-maple-title">Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn" aria-labelledby="card-maple-title card-maple-action"><span id="card-maple-action">View Details</span></a>
++        </li>
++        <li class="card">
++          <h3 id="card-espresso-title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <a href="/menu/espresso" class="btn" aria-labelledby="card-espresso-title card-espresso-action"><span id="card-espresso-action">View Details</span></a>
++        </li>
++        <li class="card">
++          <h3 id="card-coldbrew-title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++          <a href="/menu/cold-brew" class="btn" aria-labelledby="card-coldbrew-title card-coldbrew-action"><span id="card-coldbrew-action">View Details</span></a>
++        </li>
++        <li class="card">
++          <h3 id="card-chai-title">Spiced Chai</h3>
++          <p>Black tea, cardamom, and cinnamon with steamed milk.</p>
++          <a href="/menu/chai" class="btn" aria-labelledby="card-chai-title card-chai-action"><span id="card-chai-action">View Details</span></a>
++        </li>
++        <li class="card">
++          <h3 id="card-mocha-title">Hazelnut Mocha</h3>
++          <p>Rich chocolate and toasted hazelnut over a double shot.</p>
++          <a href="/menu/mocha" class="btn" aria-labelledby="card-mocha-title card-mocha-action"><span id="card-mocha-action">View Details</span></a>
++        </li>
++        <li class="card">
++          <h3 id="card-pourover-title">Single-Origin Pour Over</h3>
++          <p>Hand-brewed Ethiopian beans with bright citrus notes.</p>
++          <a href="/menu/pour-over" class="btn" aria-labelledby="card-pourover-title card-pourover-action"><span id="card-pourover-action">View Details</span></a>
++        </li>
++      </ul>
++      <p class="visually-hidden" aria-live="polite" id="layout-status"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +328,157 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const grid = document.getElementById('seasonal-grid');
++      const status = document.getElementById('layout-status');
++      const toggles = document.querySelectorAll('[data-layout-option]');
++      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++      // Focusable target in each card (the card's primary action).
++      const getItems = () =>
++        Array.from(grid.querySelectorAll('.card .btn')).filter((el) => {
++          const r = el.closest('.card').getBoundingClientRect();
++          return r.width > 0 && r.height > 0; // skip hidden cards
++        });
++
++      // Roving tabindex: only one card action is in the Tab sequence.
++      const setActive = (target, { focus = true } = {}) => {
++        getItems().forEach((el) => { el.tabIndex = el === target ? 0 : -1; });
++        if (focus && target) {
++          target.focus({ preventScroll: true });
++          target.closest('.card').scrollIntoView({
++            block: 'nearest',
++            inline: 'nearest',
++            behavior: reduceMotion.matches ? 'auto' : 'smooth',
++          });
++        }
++      };
++
++      const rectOf = (el) => el.closest('.card').getBoundingClientRect();
++      const center = (r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
++      const overlap = (a1, a2, b1, b2) => Math.max(0, Math.min(a2, b2) - Math.max(a1, b1));
++
++      /*
++       * Geometry-based spatial navigation. Uses each card's rendered box, so it
++       * works for any column count (responsive auto-fit), list mode, uneven row
++       * heights and RTL — no assumptions about DOM order vs. visual order.
++       */
++      const findInDirection = (current, items, dir) => {
++        const from = rectOf(current);
++        const c = center(from);
++        const horizontal = dir === 'left' || dir === 'right';
++        const sign = dir === 'right' || dir === 'down' ? 1 : -1;
++        const EPS = 1;
++
++        let best = null;
++        let bestScore = Infinity;
++        for (const el of items) {
++          if (el === current) continue;
++          const r = rectOf(el);
++          const rc = center(r);
++
++          // Must lie strictly beyond the current card's edge in the chosen direction.
++          const ahead = horizontal
++            ? (sign > 0 ? r.left >= from.right - EPS : r.right <= from.left + EPS)
++            : (sign > 0 ? r.top >= from.bottom - EPS : r.bottom <= from.top + EPS);
++          if (!ahead) continue;
++
++          const primary = horizontal ? Math.abs(rc.x - c.x) : Math.abs(rc.y - c.y);
++          const secondary = horizontal ? Math.abs(rc.y - c.y) : Math.abs(rc.x - c.x);
++          const shared = horizontal
++            ? overlap(from.top, from.bottom, r.top, r.bottom)
++            : overlap(from.left, from.right, r.left, r.right);
++
++          // Strongly prefer cards that share the same row/column band.
++          const score = primary + secondary * (shared > 0 ? 0.5 : 4) - shared * 0.1;
++          if (score < bestScore) { bestScore = score; best = el; }
++        }
++        return best;
++      };
++
++      // Cards sharing a visual row with `current`, sorted by visual x position.
++      const rowOf = (current, items) => {
++        const from = rectOf(current);
++        return items
++          .filter((el) => {
++            const r = rectOf(el);
++            return overlap(from.top, from.bottom, r.top, r.bottom) > Math.min(from.height, r.height) / 2;
++          })
++          .sort((a, b) => rectOf(a).left - rectOf(b).left);
++      };
++
++      // Reading order: top-to-bottom, then inline-start to inline-end.
++      const visualOrder = (items, rtl) =>
++        items.slice().sort((a, b) => {
++          const ra = rectOf(a), rb = rectOf(b);
++          if (Math.abs(ra.top - rb.top) > 1) return ra.top - rb.top;
++          return rtl ? rb.left - ra.left : ra.left - rb.left;
++        });
++
++      grid.addEventListener('keydown', (e) => {
++        const current = e.target.closest('.card .btn');
++        if (!current || e.altKey || e.metaKey || e.shiftKey) return;
++
++        const items = getItems();
++        const rtl = getComputedStyle(grid).direction === 'rtl';
++        let target = null;
++
++        switch (e.key) {
++          case 'ArrowRight': target = findInDirection(current, items, 'right'); break;
++          case 'ArrowLeft': target = findInDirection(current, items, 'left'); break;
++          case 'ArrowDown': target = findInDirection(current, items, 'down'); break;
++          case 'ArrowUp': target = findInDirection(current, items, 'up'); break;
++          case 'Home':
++          case 'End': {
++            // Logical start/end: respects RTL reading direction.
++            const row = rowOf(current, items);
++            const ordered = e.ctrlKey ? visualOrder(items, rtl) : (rtl ? row.reverse() : row);
++            target = e.key === 'Home' ? ordered[0] : ordered[ordered.length - 1];
++            break;
++          }
++          default:
++            return;
++        }
++
++        // Always consume handled keys so the page doesn't scroll at edges.
++        e.preventDefault();
++        if (target && target !== current) setActive(target);
++      });
++
++      // Keep the roving tabindex in sync if focus arrives by click or other means.
++      grid.addEventListener('focusin', (e) => {
++        const el = e.target.closest('.card .btn');
++        if (el && el.tabIndex !== 0) setActive(el, { focus: false });
++      });
++
++      // Layout mode switching.
++      const applyLayout = (mode) => {
++        grid.dataset.layout = mode;
++        toggles.forEach((btn) => {
++          btn.setAttribute('aria-pressed', String(btn.dataset.layoutOption === mode));
++        });
++        status.textContent = `Showing drinks as a ${mode}.`;
++        try { localStorage.setItem('seasonal-layout', mode); } catch (_) { /* ignore */ }
++      };
++
++      toggles.forEach((btn) => {
++        btn.addEventListener('click', () => applyLayout(btn.dataset.layoutOption));
++      });
++
++      let saved = null;
++      try { saved = localStorage.getItem('seasonal-layout'); } catch (_) { /* ignore */ }
++      if (saved === 'grid' || saved === 'list') {
++        grid.dataset.layout = saved;
++        toggles.forEach((btn) => {
++          btn.setAttribute('aria-pressed', String(btn.dataset.layoutOption === saved));
++        });
++      }
++
++      setActive(getItems()[0], { focus: false });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

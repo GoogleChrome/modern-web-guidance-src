@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,175 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Scroll-Driven Parallax Section */
++    @keyframes parallax-shift {
++      from {
++        transform: translate3d(0, calc(var(--parallax-speed, 0) * -120px), 0);
++      }
++      to {
++        transform: translate3d(0, calc(var(--parallax-speed, 0) * 120px), 0);
++      }
++    }
++
++    .parallax-section {
++      position: relative;
++      min-height: 75vh;
++      overflow: hidden;
++      background-color: #2b1b17;
++      color: var(--light);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 80px 20px;
++      view-timeline-name: --craft-parallax;
++      view-timeline-axis: block;
++    }
++
++    .parallax-layer {
++      will-change: transform;
++    }
++
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-layer {
++          animation: parallax-shift linear both;
++          animation-timeline: --craft-parallax;
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
++    .parallax-bg {
++      --parallax-speed: 1.4;
++      position: absolute;
++      inset: -20% 0;
++      background: linear-gradient(rgba(30, 18, 14, 0.72), rgba(30, 18, 14, 0.82)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1400&q=80') center / cover no-repeat;
++      z-index: 1;
++      pointer-events: none;
++    }
++
++    .parallax-scene {
++      position: relative;
++      z-index: 2;
++      max-width: 1100px;
++      width: 100%;
++      display: grid;
++      grid-template-columns: 1fr 1.1fr 1fr;
++      gap: 32px;
++      align-items: center;
++    }
++
++    .parallax-media {
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
++      border: 2px solid rgba(255, 171, 64, 0.25);
++      background: #1e120e;
++    }
++
++    .parallax-media img {
++      display: block;
++      width: 100%;
++      height: 300px;
++      object-fit: cover;
++    }
++
++    .parallax-media-caption {
++      padding: 12px 16px;
++      font-size: 0.85rem;
++      color: var(--secondary);
++      background: rgba(30, 18, 14, 0.9);
++      text-align: center;
++      letter-spacing: 0.5px;
++    }
++
++    .parallax-layer--slow {
++      --parallax-speed: 0.65;
++    }
++
++    .parallax-layer--mid {
++      --parallax-speed: -0.25;
++    }
++
++    .parallax-layer--fast {
++      --parallax-speed: -0.95;
++    }
++
++    .parallax-card {
++      background: rgba(62, 39, 35, 0.92);
++      border: 1px solid rgba(215, 204, 200, 0.2);
++      padding: 36px 28px;
++      border-radius: 12px;
++      text-align: center;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
++    }
++
++    .parallax-eyebrow {
++      display: inline-block;
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      font-size: 0.78rem;
++      color: var(--accent);
++      font-weight: 700;
++      margin-bottom: 10px;
++    }
++
++    .parallax-card h2 {
++      font-size: 2.1rem;
++      margin-bottom: 14px;
++      color: #ffffff;
++      line-height: 1.25;
++    }
++
++    .parallax-card p {
++      color: var(--secondary);
++      margin-bottom: 20px;
++      font-size: 1rem;
++    }
++
++    .parallax-badges {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      flex-wrap: wrap;
++      list-style: none;
++      margin-top: 16px;
++    }
++
++    .parallax-badges li {
++      background: rgba(255, 171, 64, 0.15);
++      border: 1px solid var(--accent);
++      color: #ffe0b2;
++      padding: 4px 12px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    @media (max-width: 850px) {
++      .parallax-scene {
++        grid-template-columns: 1fr;
++        max-width: 540px;
++      }
++
++      .parallax-layer--slow,
++      .parallax-layer--mid,
++      .parallax-layer--fast {
++        --parallax-speed: 0.25;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer {
++        animation: none !important;
++        transform: none !important;
++        will-change: auto;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +340,51 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax-section" aria-labelledby="parallax-heading">
++    <div class="parallax-layer parallax-bg" aria-hidden="true"></div>
++
++    <div class="parallax-scene">
++      <figure class="parallax-layer parallax-layer--slow parallax-media">
++        <img
++          src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80"
++          alt="Warm ceramic cup of freshly brewed coffee on a rustic table"
++          loading="lazy"
++          decoding="async"
++          width="800"
++          height="600"
++        >
++        <figcaption class="parallax-media-caption">Single-Origin Harvests</figcaption>
++      </figure>
++
++      <div class="parallax-layer parallax-layer--mid parallax-card">
++        <span class="parallax-eyebrow">From Seed to Cup</span>
++        <h2 id="parallax-heading">Crafted in Small Batches</h2>
++        <p>
++          Every bean travels through distinct stages of elevation, roasting, and extraction. We partner directly with high-altitude farms to bring layered complexity to your daily ritual.
++        </p>
++        <ul class="parallax-badges" aria-label="Roasting highlights">
++          <li>100% Arabica</li>
++          <li>Direct Trade</li>
++          <li>Slow Roasted</li>
++        </ul>
++      </div>
++
++      <figure class="parallax-layer parallax-layer--fast parallax-media">
++        <img
++          src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80"
++          alt="Barista pouring steamed milk into espresso for latte art"
++          loading="lazy"
++          decoding="async"
++          width="800"
++          height="600"
++        >
++        <figcaption class="parallax-media-caption">Precision Pour &amp; Extraction</figcaption>
++      </figure>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

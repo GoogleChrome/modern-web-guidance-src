@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -170,9 +170,12 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <a href="/order-online" class="btn">Order Now</a>
++      <button id="hero-simulate-btn" class="btn" style="cursor: pointer; border: none; margin-left: 10px; background: var(--accent); color: #3e2723; font-weight: bold;">Simulate Order Sequence</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +197,75 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- High-Frequency Order Sequencing & Telemetry Section -->
++    <section style="margin-top: 50px;">
++      <div class="card" style="text-align: left; padding: 30px;">
++        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
++          <h2 style="color: var(--primary); margin-bottom: 0;">High-Frequency Order Sequencing System</h2>
++          <span style="background: #efebe9; color: var(--primary); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
++            Distributed Microservices Tracing
++          </span>
++        </div>
++        <p style="color: #5d4037; margin-bottom: 20px;">
++          Simulate high-throughput coffee order requests across microservices. Operations are sequenced chronologically with nanosecond-resolution timestamps, tracking latency and time deltas between consecutive clicks.
++        </p>
++
++        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 25px;">
++          <button id="simulate-order-btn" class="btn" style="cursor: pointer; border: none; font-size: 1rem; padding: 12px 24px; font-weight: 600;">
++            Simulate Coffee Order
++          </button>
++          <button id="simulate-burst-btn" class="btn" style="cursor: pointer; border: none; background: #6d4c41; font-size: 1rem; padding: 12px 20px;">
++            Simulate Burst (5 Orders)
++          </button>
++          <button id="clear-telemetry-btn" class="btn" style="cursor: pointer; border: none; background: #8d6e63; font-size: 0.9rem; padding: 10px 16px;">
++            Clear Log
++          </button>
++        </div>
++
++        <!-- Metric Badges -->
++        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
++          <div style="background: #fafafa; border: 1px solid #d7ccc8; padding: 15px; border-radius: 6px;">
++            <div style="font-size: 0.8rem; text-transform: uppercase; color: #8d6e63; font-weight: bold;">Sequenced Orders</div>
++            <div id="telemetry-count" style="font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-top: 5px;">0</div>
++          </div>
++          <div style="background: #fafafa; border: 1px solid #d7ccc8; padding: 15px; border-radius: 6px;">
++            <div style="font-size: 0.8rem; text-transform: uppercase; color: #8d6e63; font-weight: bold;">Latest Consecutive Delta</div>
++            <div id="telemetry-delta-ns" style="font-size: 1.1rem; font-family: monospace; font-weight: bold; color: #2e7d32; margin-top: 8px;">N/A</div>
++          </div>
++          <div style="background: #fafafa; border: 1px solid #d7ccc8; padding: 15px; border-radius: 6px;">
++            <div style="font-size: 0.8rem; text-transform: uppercase; color: #8d6e63; font-weight: bold;">Latest Timestamp (ns)</div>
++            <div id="telemetry-latest-ns" style="font-size: 0.95rem; font-family: monospace; font-weight: bold; color: #3e2723; margin-top: 8px; word-break: break-all;">None</div>
++          </div>
++        </div>
++
++        <!-- Telemetry Feed Table -->
++        <div style="overflow-x: auto; background: white; border: 1px solid #d7ccc8; border-radius: 6px;">
++          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
++            <thead>
++              <tr style="background: #efebe9; border-bottom: 2px solid #d7ccc8;">
++                <th style="padding: 10px; color: var(--primary);">#</th>
++                <th style="padding: 10px; color: var(--primary);">Order ID</th>
++                <th style="padding: 10px; color: var(--primary);">Item</th>
++                <th style="padding: 10px; color: var(--primary);">Microservice</th>
++                <th style="padding: 10px; color: var(--primary);">Trace ID</th>
++                <th style="padding: 10px; color: var(--primary);">Nanosecond Timestamp</th>
++                <th style="padding: 10px; color: var(--primary);">Consecutive Delta</th>
++              </tr>
++            </thead>
++            <tbody id="telemetry-table-body">
++              <tr>
++                <td colspan="7" style="text-align: center; color: #8d6e63; padding: 18px;">
++                  Click "Simulate Coffee Order" to record high-frequency telemetry timestamps.
++                </td>
++              </tr>
++            </tbody>
++          </table>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +276,9 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="vendor/temporal.umd.js"></script>
++  <script src="telemetry.js"></script>
+ </body>
+ 
+ </html>

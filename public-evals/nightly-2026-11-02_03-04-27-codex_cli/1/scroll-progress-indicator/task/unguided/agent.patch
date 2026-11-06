@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,34 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Native scroll animation, with a JavaScript fallback below. */
++    .scroll-progress {
++      display: none;
++      position: fixed;
++      inset: 0 0 auto;
++      height: 4px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: left;
++      pointer-events: none;
++      z-index: 1001;
++    }
++
++    @keyframes scroll-progress {
++      from { transform: scaleX(0); }
++      to { transform: scaleX(1); }
++    }
++
++    @supports (animation-timeline: scroll(root block)) {
++      .scroll-progress {
++        display: block;
++        animation: scroll-progress linear;
++        animation-timeline: scroll(root block);
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -155,8 +181,9 @@
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroll-progress" aria-hidden="true"></div>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -206,7 +233,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      if (window.CSS && CSS.supports('animation-timeline', 'scroll(root block)')) return;
++
++      var indicator = document.querySelector('.scroll-progress');
++      var framePending = false;
++
++      function updateProgress() {
++        var root = document.documentElement;
++        var scrollHeight = Math.max(root.scrollHeight, document.body.scrollHeight);
++        var scrollable = scrollHeight - root.clientHeight;
++        var progress = scrollable > 0 ? window.pageYOffset / scrollable : 0;
++        indicator.style.transform = 'scaleX(' + Math.max(0, Math.min(1, progress)) + ')';
++        framePending = false;
++      }
++
++      function scheduleUpdate() {
++        if (!framePending) {
++          framePending = true;
++          window.requestAnimationFrame(updateProgress);
++        }
++      }
++
++      indicator.style.display = 'block';
++      updateProgress();
++      window.addEventListener('scroll', scheduleUpdate, { passive: true });
++      window.addEventListener('resize', scheduleUpdate);
++      window.addEventListener('load', scheduleUpdate);
++      window.addEventListener('pageshow', scheduleUpdate);
++      if ('ResizeObserver' in window) {
++        var observer = new ResizeObserver(scheduleUpdate);
++        observer.observe(document.body);
++      }
++    }());
++  </script>
+ </body>
+ 
+ </html>

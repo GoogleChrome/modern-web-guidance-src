@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,14 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Hide only the feed while unsupported browsers set its initial position.
++    if (!CSS.supports('scroll-initial-target', 'nearest')) {
++      document.documentElement.classList.add('feed-position-pending');
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -119,8 +125,71 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .media-section {
++      margin-top: 48px;
++    }
++
++    .media-section > h2,
++    .media-section > p {
++      text-align: center;
++    }
++
++    .media-feed {
++      height: 440px;
++      overflow-y: auto;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #efe9e5;
++      padding: 16px;
++      margin-top: 20px;
++    }
++
++    .feed-position-pending .media-feed {
++      visibility: hidden;
++    }
++
++    .media-feed:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .media-card {
++      overflow: hidden;
++      max-width: 640px;
++      margin: 0 auto 16px;
++      border-radius: 8px;
++      background: white;
++    }
++
++    .media-card:last-child {
++      margin-bottom: 0;
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: 240px;
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .media-card-content {
++      padding: 16px 20px;
++    }
++
++    .media-card-content h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .media-card.target {
++      scroll-initial-target: nearest;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -194,8 +263,61 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="media-heading">
++      <h2 id="media-heading">A Little More to Savor</h2>
++      <p>Five moments from our coffee world. Scroll to explore.</p>
++      <div class="media-feed" tabindex="0" role="region" aria-labelledby="media-heading">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1280&amp;h=480&amp;q=80" width="1280" height="480" alt="Roasted coffee beans ready to be ground">
++          <div class="media-card-content">
++            <h3>01 · It Starts with the Bean</h3>
++            <p>Carefully sourced beans, roasted to bring out their character.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=1280&amp;h=480&amp;q=80" width="1280" height="480" alt="Freshly prepared espresso in a small cup">
++          <div class="media-card-content">
++            <h3>02 · The Perfect Shot</h3>
++            <p>A small cup with a bold personality.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=1280&amp;h=480&amp;q=80" width="1280" height="480" alt="Latte with a delicate pattern of steamed milk">
++          <div class="media-card-content">
++            <h3>03 · Your Daily Moment</h3>
++            <p>Slow down, take a sip, and make a little time for yourself.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1280&amp;h=480&amp;q=80" width="1280" height="480" alt="Coffee prepared with care at a café">
++          <div class="media-card-content">
++            <h3>04 · Made with Care</h3>
++            <p>Good coffee is a ritual worth taking your time over.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&amp;fit=crop&amp;w=1280&amp;h=480&amp;q=80" width="1280" height="480" alt="A welcoming café interior with tables and chairs">
++          <div class="media-card-content">
++            <h3>05 · Stay a Little Longer</h3>
++            <p>A welcoming space, a familiar cup, and good company.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        if (!CSS.supports('scroll-initial-target', 'nearest')) {
++          const feed = document.querySelector('.media-feed');
++          const target = feed.querySelector('.target');
++          // Move only this container, keeping the page itself in place.
++          // Fixed image heights make this independent of image loading.
++          feed.scrollTop = target.getBoundingClientRect().top
++            - feed.getBoundingClientRect().top - feed.clientTop - 16;
++          document.documentElement.classList.remove('feed-position-pending');
++        }
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

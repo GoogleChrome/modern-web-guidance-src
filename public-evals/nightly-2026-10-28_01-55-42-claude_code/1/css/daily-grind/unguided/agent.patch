@@ -1,0 +1,457 @@
+diff --git a/index.html b/index.html
+index 66c9173..b04f8b8 100644
+--- a/index.html
++++ b/index.html
+@@ -6,160 +6,312 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    /* ==========================================================================
++       The Daily Grind — homepage stylesheet
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++       Architecture
++       - Cascade layers declare precedence up front (lowest → highest), so
++         source order and specificity never have to be fought.
++       - `tokens` holds primitives (raw values) and semantic aliases that the
++         rest of the sheet consumes; nothing below this layer uses a raw colour
++         or spacing literal.
++       - Shared declarations are grouped with :where()/:is() instead of being
++         repeated per component. :where() keeps grouped rules at zero
++         specificity so components can override them without escalation.
++       - Layout uses logical properties (inline/block) rather than
++         left/right/top/bottom, so the design holds in any writing mode.
++       ========================================================================== */
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++    @layer reset, tokens, base, layout, components, utilities;
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++    /* --------------------------------------------------------------------------
++       1. Reset
++       -------------------------------------------------------------------------- */
++    @layer reset {
++      *,
++      *::before,
++      *::after {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++      :where(ul[class]) {
++        list-style: none;
++      }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
++      :where(a) {
++        color: inherit;
++        text-decoration: none;
++      }
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++    /* --------------------------------------------------------------------------
++       2. Design tokens
++       -------------------------------------------------------------------------- */
++    @layer tokens {
++      :root {
++        /* Colour primitives */
++        --color-brown-900: #3e2723;
++        --color-brown-800: #4e342e;
++        --color-brown-100: #d7ccc8;
++        --color-amber-400: #ffab40;
++        --color-neutral-50: #fafafa;
++        --color-white: #fff;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        /* Semantic colour roles */
++        --color-brand: var(--color-brown-800);
++        --color-brand-strong: var(--color-brown-900);
++        --color-accent: var(--color-amber-400);
++        --color-text: var(--color-brown-900);
++        --color-text-inverse: var(--color-white);
++        --color-surface: var(--color-neutral-50);
++        --color-surface-raised: var(--color-white);
++        --color-surface-muted: var(--color-brown-100);
++        --color-overlay: rgb(0 0 0 / 50%);
++        --color-shadow: rgb(0 0 0 / 10%);
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        /* Typography */
++        --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        --text-sm: 0.85rem;
++        --text-md: 0.9rem;
++        --text-base: 1rem;
++        --text-lg: 1.5rem;
++        --text-3xl: 3rem;
++        --leading-normal: 1.6;
++        --tracking-wide: 0.0625rem;
++        --weight-bold: 700;
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++        /* Spacing scale */
++        --space-3xs: 0.3125rem;  /* 5px  */
++        --space-2xs: 0.625rem;   /* 10px */
++        --space-xs: 0.75rem;     /* 12px */
++        --space-sm: 0.9375rem;   /* 15px */
++        --space-md: 1rem;        /* 16px */
++        --space-lg: 1.25rem;     /* 20px */
++        --space-xl: 2.5rem;      /* 40px */
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++        /* Sizing */
++        --size-content: 68.75rem; /* 1100px */
++        --size-card-min: 15.625rem; /* 250px */
++        --size-hero-block: 60vh;
++        --gutter-page: 5%;
++        --gutter-content: var(--space-lg);
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++        /* Shape */
++        --radius-sm: 0.25rem;
++        --radius-md: 0.3125rem;
++        --radius-lg: 0.5rem;
++        --border-width: 1px;
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++        /* Elevation */
++        --shadow-sm: 0 2px 5px var(--color-shadow);
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++        /* Motion */
++        --duration-base: 0.3s;
++        --ease-base: ease;
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++        /* Stacking */
++        --z-nav: 1000;
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++        /* Imagery */
++        --hero-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      }
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++    /* --------------------------------------------------------------------------
++       3. Base — element defaults
++       -------------------------------------------------------------------------- */
++    @layer base {
++      body {
++        font-family: var(--font-sans);
++        line-height: var(--leading-normal);
++        color: var(--color-text);
++        background-color: var(--color-surface);
++      }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++      :where(h1, h2, h3) {
++        text-wrap: balance;
++      }
++
++      :where(a, button):focus-visible {
++        outline: 2px solid var(--color-accent);
++        outline-offset: 2px;
++      }
+     }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++    /* --------------------------------------------------------------------------
++       4. Layout — page structure and spacing rhythm
++       -------------------------------------------------------------------------- */
++    @layer layout {
++      .container {
++        max-inline-size: var(--size-content);
++        margin-block: var(--space-xl);
++        margin-inline: auto;
++        padding-inline: var(--gutter-content);
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(var(--size-card-min), 100%), 1fr));
++        gap: var(--space-lg);
++        margin-block-start: var(--space-lg);
++      }
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    /* --------------------------------------------------------------------------
++       5. Components
++       -------------------------------------------------------------------------- */
++    @layer components {
++      /* Shared declarations, grouped once ------------------------------------ */
++
++      /* Surfaces rendered on dark backgrounds use inverse text. */
++      :where(.site-nav, .hero, .btn) {
++        color: var(--color-text-inverse);
++      }
++
++      /* Interactive elements share one motion spec. */
++      :where(.site-nav a, .btn) {
++        transition:
++          color var(--duration-base) var(--ease-base),
++          background-color var(--duration-base) var(--ease-base);
++      }
++
++      /* Centred text blocks. */
++      :where(.hero, .card, .section-title, .site-footer) {
++        text-align: center;
++      }
++
++      /* Brand-coloured headings. */
++      :where(.card h3) {
++        color: var(--color-brand);
++      }
++
++      /* Navigation ----------------------------------------------------------- */
++      .site-nav {
++        position: sticky;
++        inset-block-start: 0;
++        z-index: var(--z-nav);
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        padding-block: var(--space-md);
++        padding-inline: var(--gutter-page);
++        background: var(--color-brand);
++      }
++
++      .site-nav .logo {
++        font-size: var(--text-lg);
++        font-weight: var(--weight-bold);
++        letter-spacing: var(--tracking-wide);
++      }
++
++      .site-nav .nav-list {
++        display: flex;
++        gap: var(--space-lg);
++      }
++
++      .site-nav a {
++        font-size: var(--text-md);
++      }
++
++      .site-nav a:hover {
++        color: var(--color-accent);
++      }
++
++      .site-nav .logout-link {
++        padding-block: var(--space-3xs);
++        padding-inline: var(--space-xs);
++        border: var(--border-width) solid var(--color-accent);
++        border-radius: var(--radius-sm);
++      }
++
++      /* Hero ----------------------------------------------------------------- */
++      .hero {
++        display: grid;
++        place-content: center;
++        justify-items: center;
++        block-size: var(--size-hero-block);
++        padding-inline: var(--space-lg);
++        background:
++          linear-gradient(var(--color-overlay), var(--color-overlay)),
++          var(--hero-image) center / cover;
++      }
++
++      .hero h1 {
++        font-size: var(--text-3xl);
++        margin-block-end: var(--space-md);
++      }
++
++      /* Card ----------------------------------------------------------------- */
++      .card {
++        padding: var(--space-lg);
++        border-radius: var(--radius-lg);
++        background: var(--color-surface-raised);
++        box-shadow: var(--shadow-sm);
++      }
++
++      .card h3 {
++        margin-block-end: var(--space-2xs);
++      }
++
++      /* Button --------------------------------------------------------------- */
++      .btn {
++        display: inline-block;
++        margin-block-start: var(--space-sm);
++        padding-block: var(--space-2xs);
++        padding-inline: var(--space-lg);
++        border-radius: var(--radius-md);
++        background-color: var(--color-brand);
++      }
++
++      .btn:hover {
++        background-color: var(--color-brand-strong);
++      }
++
++      /* Footer --------------------------------------------------------------- */
++      .site-footer {
++        margin-block-start: var(--space-xl);
++        padding-block: var(--space-xl);
++        padding-inline: var(--space-lg);
++        background: var(--color-surface-muted);
++      }
++
++      .footer-links {
++        margin-block-end: var(--space-lg);
++      }
++
++      .footer-links a {
++        margin-inline: var(--space-2xs);
++        font-size: var(--text-sm);
++        color: var(--color-text);
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* --------------------------------------------------------------------------
++       6. Utilities — single-purpose overrides; highest layer wins by design
++       -------------------------------------------------------------------------- */
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        *,
++        *::before,
++        *::after {
++          transition-duration: 0.01ms !important;
++        }
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
++    <ul class="nav-list">
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+@@ -176,7 +328,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -197,7 +349,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

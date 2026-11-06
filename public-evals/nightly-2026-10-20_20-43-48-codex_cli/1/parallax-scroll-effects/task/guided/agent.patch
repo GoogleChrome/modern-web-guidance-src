@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,134 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Static by default; scroll motion is an optional enhancement. */
++    .coffee-story {
++      position: relative;
++      isolation: isolate;
++      overflow: clip;
++      min-height: 34rem;
++      min-height: clamp(34rem, 75svh, 46rem);
++      display: grid;
++      place-items: center;
++      padding: 6rem 1.5rem;
++      background: #211914;
++      color: white;
++      text-align: center;
++    }
++
++    .coffee-story__photo {
++      position: absolute;
++      z-index: -3;
++      inset: -80px 0;
++      width: 100%;
++      height: calc(100% + 160px);
++      object-fit: cover;
++      object-position: center;
++    }
++
++    .coffee-story::after {
++      content: '';
++      position: absolute;
++      z-index: -2;
++      inset: 0;
++      background: linear-gradient(110deg, rgb(24 16 12 / 88%), rgb(24 16 12 / 74%));
++      pointer-events: none;
++    }
++
++    .coffee-story__rings {
++      position: absolute;
++      z-index: -1;
++      inset: 0;
++      pointer-events: none;
++    }
++
++    .coffee-story__rings::before,
++    .coffee-story__rings::after {
++      content: '';
++      position: absolute;
++      width: clamp(15rem, 35vw, 30rem);
++      aspect-ratio: 1;
++      border: 1px solid rgb(255 220 170 / 24%);
++      border-radius: 50%;
++    }
++
++    .coffee-story__rings::before {
++      top: -6rem;
++      left: -5rem;
++    }
++
++    .coffee-story__rings::after {
++      right: -7rem;
++      bottom: -8rem;
++      border-width: 2px;
++    }
++
++    .coffee-story__content {
++      max-width: 39rem;
++    }
++
++    .coffee-story__eyebrow {
++      margin-bottom: 1.25rem;
++      color: #ffd49b;
++      font-size: 0.8rem;
++      font-weight: 600;
++      letter-spacing: 0.2em;
++      text-transform: uppercase;
++    }
++
++    .coffee-story h2 {
++      margin-bottom: 1.5rem;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2.5rem, 6vw, 4.5rem);
++      font-weight: normal;
++      line-height: 1.1;
++      text-wrap: balance;
++    }
++
++    .coffee-story__description {
++      max-width: 30rem;
++      margin-inline: auto;
++      color: #f0e7e1;
++      font-size: 1.05rem;
++    }
++
++    /* Keep shorthand first: it resets animation-timeline and animation-range. */
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .coffee-story {
++          view-timeline: --coffee-story block;
++        }
++
++        .coffee-story__layer {
++          animation: coffee-parallax linear both;
++          animation-timeline: --coffee-story;
++          animation-range: entry 0% exit 100%;
++        }
++
++        .coffee-story__photo {
++          --parallax-start: -60px;
++          --parallax-end: 60px;
++        }
++
++        .coffee-story__rings {
++          --parallax-start: -30px;
++          --parallax-end: 30px;
++        }
++
++        .coffee-story__content {
++          --parallax-start: 20px;
++          --parallax-end: -20px;
++        }
++      }
++    }
++
++    @keyframes coffee-parallax {
++      from { transform: translateY(var(--parallax-start)); }
++      to { transform: translateY(var(--parallax-end)); }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +299,32 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="coffee-story" aria-labelledby="coffee-story-title">
++      <img
++        class="coffee-story__photo coffee-story__layer"
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1600&amp;q=80"
++        srcset="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=640&amp;q=80 640w,
++                https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=960&amp;q=80 960w,
++                https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1600&amp;q=80 1600w"
++        sizes="100vw"
++        alt=""
++        width="1600"
++        height="1067"
++        loading="lazy"
++        decoding="async"
++      >
++      <div class="coffee-story__rings coffee-story__layer" aria-hidden="true"></div>
++      <div class="coffee-story__content coffee-story__layer">
++        <p class="coffee-story__eyebrow">From the first bean to the last sip</p>
++        <h2 id="coffee-story-title">Good things take<br>their time.</h2>
++        <p class="coffee-story__description">Thoughtfully sourced. Slowly roasted. Carefully brewed. A little care at every step makes a difference you can taste.</p>
++      </div>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

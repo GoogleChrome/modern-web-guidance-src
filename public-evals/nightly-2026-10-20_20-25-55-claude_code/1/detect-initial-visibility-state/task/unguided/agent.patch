@@ -1,0 +1,49 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,45 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!-- Background-load detection. Inline and synchronous on purpose: it must run as early as possible. -->
++  <script>
++    (function () {
++      var supportsVisibilityEntries =
++        window.PerformanceObserver &&
++        PerformanceObserver.supportedEntryTypes &&
++        PerformanceObserver.supportedEntryTypes.indexOf('visibility-state') !== -1;
++
++      if (supportsVisibilityEntries) {
++        // Accurate path: the browser records visibility changes with real timestamps,
++        // so the first entry reflects the state the page actually started in.
++        // startTime is relative to navigation start (0 = hidden from the very start).
++        var first = performance.getEntriesByType('visibility-state')[0];
++        var loadedInBackground = !!first && first.name === 'hidden';
++        console.log({
++          isBackground: loadedInBackground,
++          backgroundTime: loadedInBackground ? first.startTime : null
++        });
++        return;
++      }
++
++      // FALLBACK (UNRELIABLE): this browser has no 'visibility-state' timing entries.
++      // We can only sample document.visibilityState when this script happens to run, so
++      // the page may have been backgrounded (or foregrounded) earlier or later than we
++      // observe, especially if scripts are deferred/async or the main thread was busy.
++      // backgroundTime is therefore only an upper bound (time elapsed when sampled),
++      // not the true moment of backgrounding.
++      var hiddenAtRun = document.visibilityState === 'hidden';
++      console.warn('[background-detect] Using legacy fallback; results are potentially inaccurate.');
++      console.log({
++        isBackground: hiddenAtRun,
++        backgroundTime: hiddenAtRun ? performance.now() : null,
++        fallback: true // flag: values above came from the unreliable fallback
++      });
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

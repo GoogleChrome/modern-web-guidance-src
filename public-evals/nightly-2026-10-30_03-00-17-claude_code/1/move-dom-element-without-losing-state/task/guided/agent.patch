@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,69 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roasting video / theater mode */
++    .video-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .video-section p {
++      margin-bottom: 20px;
++    }
++
++    .video-slot {
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    .video-slot iframe {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      border: 0;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .video-placeholder {
++      display: none;
++      padding: 40px 20px;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      color: var(--primary);
++    }
++
++    .video-slot:empty+.video-placeholder {
++      display: block;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .hero.theater {
++      height: auto;
++      min-height: 60vh;
++      padding: 40px 20px;
++    }
++
++    .hero .theater-slot {
++      width: min(100%, 1100px);
++      max-width: none;
++    }
++
++    .hero .theater-slot:not(:empty) {
++      margin-bottom: 1.5rem;
++    }
++
++    .hero .theater-slot iframe {
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,9 +228,10 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero">
++    <div class="theater-slot video-slot" id="theater-slot"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -194,8 +256,20 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section" aria-labelledby="roasting-heading">
++      <h2 id="roasting-heading">From Green Bean to Your Cup</h2>
++      <p>Take a look at how coffee gets roasted.</p>
++      <div class="video-slot" id="video-slot"><iframe id="roast-video"
++          src="https://www.youtube-nocookie.com/embed/1nGPBVGVQpM?enablejsapi=1&amp;rel=0"
++          title="Coffee Roasting: From Bean to Brew"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
++      <p class="video-placeholder">The video is playing in theater mode at the top of the page.</p>
++      <button type="button" class="btn" id="theater-toggle" aria-pressed="false">Theater Mode</button>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +280,63 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const video = document.getElementById('roast-video');
++      const hero = document.getElementById('hero');
++      const heroSlot = document.getElementById('theater-slot');
++      const inlineSlot = document.getElementById('video-slot');
++      const toggle = document.getElementById('theater-toggle');
++      const canMoveAtomically = 'moveBefore' in Element.prototype;
++
++      // Fallback only: without moveBefore() the iframe reloads when it moves, so
++      // keep track of playback via the YouTube embed's postMessage API and
++      // resume from the same spot after the move.
++      const player = { time: 0, playing: false };
++
++      if (!canMoveAtomically) {
++        const listen = () => video.contentWindow.postMessage(
++          JSON.stringify({ event: 'listening', id: video.id, channel: 'widget' }), '*');
++        video.addEventListener('load', listen);
++
++        window.addEventListener('message', (event) => {
++          if (event.source !== video.contentWindow) return;
++          let data;
++          try { data = JSON.parse(event.data); } catch { return; }
++          const info = data && data.info;
++          if (!info) return;
++          if (typeof info.currentTime === 'number') player.time = info.currentTime;
++          // playerState: 1 = playing, 3 = buffering
++          if (typeof info.playerState === 'number') player.playing = info.playerState === 1 || info.playerState === 3;
++        });
++      }
++
++      function moveVideo(target) {
++        if (canMoveAtomically) {
++          target.moveBefore(video, null);
++          return;
++        }
++        const url = new URL(video.src);
++        url.searchParams.set('start', Math.floor(player.time));
++        url.searchParams.set('autoplay', player.playing ? '1' : '0');
++        // Detach before swapping src so the iframe only loads once, in its new home.
++        video.remove();
++        video.src = url.href;
++        target.insertBefore(video, null);
++      }
++
++      toggle.addEventListener('click', () => {
++        const entering = toggle.getAttribute('aria-pressed') !== 'true';
++        moveVideo(entering ? heroSlot : inlineSlot);
++        hero.classList.toggle('theater', entering);
++        toggle.setAttribute('aria-pressed', String(entering));
++        toggle.textContent = entering ? 'Exit Theater Mode' : 'Theater Mode';
++        if (entering) hero.scrollIntoView({ behavior: 'smooth' });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

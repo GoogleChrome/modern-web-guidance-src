@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,67 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .mailing-list {
++      max-width: 480px;
++      margin: 0 auto 30px;
++      text-align: left;
++    }
++
++    .mailing-list h2,
++    .mailing-list > p {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .mailing-list label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .mailing-list-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .mailing-list input {
++      flex: 1 1 220px;
++      min-width: 0;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      padding: 10px 12px;
++      font: inherit;
++    }
++
++    .mailing-list .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .mailing-list input:focus-visible,
++    .mailing-list button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .mailing-list input[aria-invalid="true"] {
++      border-color: #9f2424;
++    }
++
++    .mailing-list-error {
++      color: #9f2424;
++      margin-top: 6px;
++    }
++
++    .mailing-list-status {
++      margin-top: 10px;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +256,20 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="mailing-list" id="mailing-list" novalidate>
++      <h2>Join our mailing list</h2>
++      <p>Stay in the loop with fresh coffee news and seasonal favorites.</p>
++      <label for="mailing-list-email">Email address (required)</label>
++      <div class="mailing-list-controls">
++        <input id="mailing-list-email" name="email" type="email" autocomplete="email"
++          required aria-describedby="mailing-list-error">
++        <button class="btn" type="submit">Join mailing list</button>
++      </div>
++      <p class="mailing-list-error" id="mailing-list-error" aria-live="polite"></p>
++      <p class="mailing-list-status" id="mailing-list-status" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +277,53 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const mailingList = document.getElementById('mailing-list');
++    const email = document.getElementById('mailing-list-email');
++    const emailError = document.getElementById('mailing-list-error');
++    const signupStatus = document.getElementById('mailing-list-status');
++    let emailTouched = false;
++
++    function updateEmailError() {
++      let message = '';
++      if (emailTouched) {
++        if (!email.value.trim()) {
++          message = 'Please enter your email address.';
++        } else if (!email.validity.valid) {
++          message = 'Please enter a valid email address.';
++        }
++      }
++      emailError.textContent = message;
++      if (message) {
++        email.setAttribute('aria-invalid', 'true');
++      } else {
++        email.removeAttribute('aria-invalid');
++      }
++    }
++
++    email.addEventListener('blur', () => {
++      emailTouched = true;
++      updateEmailError();
++    });
++
++    email.addEventListener('input', () => {
++      signupStatus.textContent = '';
++      updateEmailError();
++    });
++
++    mailingList.addEventListener('submit', (event) => {
++      event.preventDefault();
++      updateEmailError();
++      if (!email.value.trim() || !email.validity.valid) {
++        email.focus();
++        return;
++      }
++      // Connect a mailing service before accepting subscriptions.
++      signupStatus.textContent = 'Mailing list signup is not available yet. Please check back soon.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

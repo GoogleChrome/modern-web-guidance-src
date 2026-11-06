@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+index 66c9173..7aac7bc 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,46 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback form */
++    .feedback {
++      max-width: 480px;
++      margin: 60px auto 0;
++    }
++
++    .feedback h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback fieldset {
++      display: grid;
++      gap: 8px;
++      border: 0;
++    }
++
++    .feedback input[type="text"] {
++      padding: 8px 10px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .form-actions {
++      display: flex;
++      gap: 12px;
++    }
++
++    .form-actions .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    rating-input:invalid {
++      outline: 2px solid #c62828;
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +235,24 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback">
++      <h2>How Was Your Visit?</h2>
++      <form action="/feedback" method="post">
++        <fieldset>
++          <label for="visitor-name">Name</label>
++          <input id="visitor-name" name="name" type="text" autocomplete="name">
++
++          <span id="rating-label">Your rating</span>
++          <rating-input name="rating" required aria-labelledby="rating-label"></rating-input>
++
++          <div class="form-actions">
++            <button type="submit" class="btn">Send Feedback</button>
++            <button type="reset" class="btn">Reset</button>
++          </div>
++        </fieldset>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +265,141 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class RatingInput extends HTMLElement {
++      // Opt in to form participation; unlocks setFormValue/setValidity and formXxxCallback.
++      static formAssociated = true;
++      static observedAttributes = ['value', 'required'];
++
++      #internals;
++      #value = '';
++      #buttons = [];
++
++      constructor() {
++        super();
++        this.#internals = this.attachInternals();
++        this.#internals.role = 'radiogroup';
++
++        const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++        root.innerHTML = `
++          <style>
++            :host { display: inline-flex; gap: 4px; }
++            :host([hidden]) { display: none; }
++            button {
++              background: none; border: 0; padding: 2px;
++              font-size: 2rem; line-height: 1; cursor: pointer;
++              color: #bdbdbd;
++            }
++            button[data-on] { color: #ffab40; }
++            button:focus-visible { outline: 2px solid #4e342e; border-radius: 4px; }
++            button:disabled { cursor: not-allowed; opacity: 0.5; }
++          </style>
++          ${[1, 2, 3, 4, 5].map(n =>
++            `<button type="button" role="radio" aria-checked="false" aria-label="${n} star${n > 1 ? 's' : ''}" data-value="${n}">★</button>`
++          ).join('')}`;
++        this.#buttons = [...root.querySelectorAll('button')];
++
++        root.addEventListener('click', e => {
++          const btn = e.target.closest('button');
++          if (btn) this.#commit(btn.dataset.value);
++        });
++        root.addEventListener('keydown', e => this.#onKeydown(e));
++      }
++
++      connectedCallback() {
++        // The value attribute is the default value, restored on form reset.
++        if (!this.#value) this.#setValue(this.getAttribute('value') ?? '');
++        this.#validate();
++      }
++
++      attributeChangedCallback(name, _old, next) {
++        if (name === 'required') this.#validate();
++        else if (this.isConnected && !this.#dirty) this.#setValue(next ?? '');
++      }
++
++      #dirty = false;
++
++      get value() { return this.#value; }
++      set value(v) { this.#dirty = true; this.#setValue(String(v ?? '')); }
++
++      get name() { return this.getAttribute('name') ?? ''; }
++      get form() { return this.#internals.form; }
++      get validity() { return this.#internals.validity; }
++      get validationMessage() { return this.#internals.validationMessage; }
++      checkValidity() { return this.#internals.checkValidity(); }
++      reportValidity() { return this.#internals.reportValidity(); }
++
++      get required() { return this.hasAttribute('required'); }
++      set required(on) { this.toggleAttribute('required', on); this.#validate(); }
++
++      #setValue(v) {
++        this.#value = v;
++        this.#internals.setFormValue(v || null);
++        this.#render();
++        this.#validate();
++      }
++
++      #commit(v) {
++        if (v === this.#value) return;
++        this.value = v;
++        // input/change per platform convention: discrete choice, so both fire together.
++        this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++        this.dispatchEvent(new Event('change', { bubbles: true }));
++      }
++
++      #render() {
++        const current = Number(this.#value);
++        // Roving tabindex: the checked star (or the first) is the single tab stop.
++        const stop = current || 1;
++        for (const btn of this.#buttons) {
++          const n = Number(btn.dataset.value);
++          btn.toggleAttribute('data-on', n <= current);
++          btn.setAttribute('aria-checked', String(n === current));
++          btn.tabIndex = n === stop ? 0 : -1;
++        }
++      }
++
++      #validate() {
++        if (this.required && !this.#value) {
++          this.#internals.setValidity(
++            { valueMissing: true },
++            'Please choose a rating.',
++            this.#buttons[0],
++          );
++        } else {
++          this.#internals.setValidity({});
++        }
++      }
++
++      #onKeydown(e) {
++        const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
++        if (!step) return;
++        e.preventDefault();
++        const next = Math.min(5, Math.max(1, (Number(this.#value) || 0) + step));
++        this.#commit(String(next));
++        this.#buttons[next - 1].focus();
++      }
++
++      formResetCallback() {
++        this.#dirty = false;
++        this.#setValue(this.getAttribute('value') ?? '');
++      }
++
++      formDisabledCallback(disabled) {
++        // Disable internals only; the host matches :disabled automatically.
++        for (const btn of this.#buttons) btn.disabled = disabled;
++      }
++
++      formStateRestoreCallback(state) {
++        this.#dirty = true;
++        this.#setValue(state ?? '');
++      }
++    }
++
++    if ('attachInternals' in HTMLElement.prototype && 'setFormValue' in ElementInternals.prototype) {
++      customElements.define('rating-input', RatingInput);
++    }
++  </script>
+ </body>
+ 
+ </html>

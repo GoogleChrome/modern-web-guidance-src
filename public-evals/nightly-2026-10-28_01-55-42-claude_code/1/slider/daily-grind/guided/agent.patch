@@ -1,0 +1,254 @@
+diff --git a/index.html b/index.html
+index 66c9173..76c3131 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,174 @@
+       background: #3e2723;
+     }
+ 
++    /* Brew Strength Slider */
++    .brew-strength {
++      margin-top: 60px;
++    }
++
++    .brew-strength h2 {
++      text-align: center;
++    }
++
++    .brew-strength > p {
++      text-align: center;
++      margin-top: 8px;
++      color: #6d4c41;
++    }
++
++    .brew-panel {
++      background: white;
++      padding: 30px 28px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin: 24px auto 0;
++      max-width: 640px;
++    }
++
++    .brew-panel label {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .brew-panel output {
++      font-weight: 700;
++      color: var(--accent);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .brew-scale {
++      display: flex;
++      justify-content: space-between;
++      list-style: none;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-top: 6px;
++    }
++
++    .brew-slider {
++      --slider-track-size: 0.5rem;
++      --slider-thumb-size: 1.5rem;
++      --slider-track-radius: 999px;
++      --slider-thumb-radius: 50%;
++      --slider-track-color: var(--secondary);
++      --slider-fill-color: var(--primary);
++      --slider-thumb-color: var(--accent);
++      --slider-thumb-ring: var(--primary);
++      --slider-direction: to right;
++
++      /* Read min and max from attributes; --control-value is synced by script. */
++      --attr-min: attr(min type(<number>), 0);
++      --attr-max: attr(max type(<number>), 100);
++      --control-value: attr(value type(<number>), 50);
++      --slider-progress: calc(
++        progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%
++      );
++
++      appearance: none;
++      inline-size: 100%;
++      block-size: 2.5rem;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      border-radius: 0;
++      background: transparent;
++      cursor: pointer;
++      touch-action: pan-y;
++    }
++
++    .brew-slider:dir(rtl) {
++      --slider-direction: to left;
++    }
++
++    @supports not (opacity: progress(1, 0, 100)) {
++      .brew-slider {
++        --slider-progress: calc(
++          (var(--control-value) - var(--attr-min)) /
++          (var(--attr-max) - var(--attr-min)) * 100%
++        );
++      }
++    }
++
++    /* WebKit/Blink */
++    .brew-slider::-webkit-slider-runnable-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: linear-gradient(
++        var(--slider-direction),
++        var(--slider-fill-color) var(--slider-progress),
++        var(--slider-track-color) var(--slider-progress)
++      );
++    }
++
++    .brew-slider::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
++      border: 3px solid var(--slider-thumb-ring);
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
++      transition: transform 0.15s ease, box-shadow 0.15s ease;
++    }
++
++    .brew-slider:hover::-webkit-slider-thumb,
++    .brew-slider:active::-webkit-slider-thumb {
++      transform: scale(1.1);
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
++    }
++
++    /* Firefox */
++    .brew-slider::-moz-range-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-track-color);
++    }
++
++    .brew-slider::-moz-range-progress {
++      block-size: var(--slider-track-size);
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-fill-color);
++    }
++
++    .brew-slider::-moz-range-thumb {
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      border: 3px solid var(--slider-thumb-ring);
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
++      transition: transform 0.15s ease, box-shadow 0.15s ease;
++    }
++
++    .brew-slider:hover::-moz-range-thumb,
++    .brew-slider:active::-moz-range-thumb {
++      transform: scale(1.1);
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
++    }
++
++    /* Visible keyboard focus indicator (not color alone) */
++    .brew-slider:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: var(--slider-track-radius);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .brew-slider::-webkit-slider-thumb,
++      .brew-slider::-moz-range-thumb {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +363,43 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="brew-strength" aria-labelledby="brew-strength-heading">
++      <h2 id="brew-strength-heading">Dial In Your Brew</h2>
++      <p>Tell us how bold you like it and we'll recommend the perfect roast.</p>
++      <div class="brew-panel">
++        <label for="brew-strength">
++          <span>Brew strength</span>
++          <output id="brew-strength-value" for="brew-strength">Medium</output>
++        </label>
++        <input
++          type="range"
++          id="brew-strength"
++          name="brew-strength"
++          class="brew-slider"
++          min="1"
++          max="5"
++          step="1"
++          value="3"
++          list="brew-strength-stops"
++          aria-valuetext="Medium"
++        />
++        <datalist id="brew-strength-stops">
++          <option value="1" label="Light"></option>
++          <option value="2" label="Mild"></option>
++          <option value="3" label="Medium"></option>
++          <option value="4" label="Bold"></option>
++          <option value="5" label="Extra Bold"></option>
++        </datalist>
++        <ul class="brew-scale" aria-hidden="true">
++          <li>Light</li>
++          <li>Mild</li>
++          <li>Medium</li>
++          <li>Bold</li>
++          <li>Extra Bold</li>
++        </ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +412,30 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (function () {
++      var slider = document.getElementById('brew-strength');
++      var valueOut = document.getElementById('brew-strength-value');
++      if (!slider || !valueOut) return;
++
++      var labels = { 1: 'Light', 2: 'Mild', 3: 'Medium', 4: 'Bold', 5: 'Extra Bold' };
++
++      function syncSliderValue() {
++        var text = labels[slider.value] || slider.value;
++        // Keep fill progress in sync for WebKit/Blink and browsers without typed attr().
++        slider.style.setProperty('--attr-min', slider.min || 0);
++        slider.style.setProperty('--attr-max', slider.max || 100);
++        slider.style.setProperty('--control-value', slider.value);
++        slider.setAttribute('aria-valuetext', text);
++        valueOut.textContent = text;
++      }
++
++      syncSliderValue();
++      slider.addEventListener('input', syncSliderValue);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

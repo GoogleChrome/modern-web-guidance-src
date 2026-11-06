@@ -1,0 +1,146 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..8ee10aa
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.example.com/": {
++    "allow_migration": true
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..61d69c5 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#4e342e">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.webmanifest">
++  <link rel="icon" href="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=192&h=192&q=80" type="image/jpeg">
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..caebb0a
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,54 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted artisanal coffee delivered to your cup.",
++  "id": "/",
++  "start_url": "/index.html",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=192&h=192&q=80",
++      "sizes": "192x192",
++      "type": "image/jpeg"
++    },
++    {
++      "src": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=512&h=512&q=80",
++      "sizes": "512x512",
++      "type": "image/jpeg"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Online",
++      "short_name": "Order",
++      "description": "Place a coffee order online",
++      "url": "/order-online"
++    },
++    {
++      "name": "View Menu",
++      "short_name": "Menu",
++      "description": "Browse seasonal favorites and espresso drinks",
++      "url": "/menu"
++    },
++    {
++      "name": "My Rewards",
++      "short_name": "Rewards",
++      "description": "Check your loyalty points and rewards",
++      "url": "/rewards"
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://legacy.dailygrind.example.com/",
++      "install_url": "https://legacy.dailygrind.example.com/index.html?usp=migrate",
++      "behavior": "suggest"
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.example.com/",
++    "install_url": "https://app.dailygrind.example.com/index.html?usp=migrate"
++  }
++}
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..caebb0a
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,54 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted artisanal coffee delivered to your cup.",
++  "id": "/",
++  "start_url": "/index.html",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=192&h=192&q=80",
++      "sizes": "192x192",
++      "type": "image/jpeg"
++    },
++    {
++      "src": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=512&h=512&q=80",
++      "sizes": "512x512",
++      "type": "image/jpeg"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Online",
++      "short_name": "Order",
++      "description": "Place a coffee order online",
++      "url": "/order-online"
++    },
++    {
++      "name": "View Menu",
++      "short_name": "Menu",
++      "description": "Browse seasonal favorites and espresso drinks",
++      "url": "/menu"
++    },
++    {
++      "name": "My Rewards",
++      "short_name": "Rewards",
++      "description": "Check your loyalty points and rewards",
++      "url": "/rewards"
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://legacy.dailygrind.example.com/",
++      "install_url": "https://legacy.dailygrind.example.com/index.html?usp=migrate",
++      "behavior": "suggest"
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.example.com/",
++    "install_url": "https://app.dailygrind.example.com/index.html?usp=migrate"
++  }
++}

@@ -1,0 +1,20 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..0076274 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Permit this site (and the CDN that serves its scripts) to make requests to
++  // the user's local network and loopback interface.
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network-access=(self "https://us-central1-web-devrel-apps.cloudfunctions.net"), ' +
++      'loopback-network=(self "https://us-central1-web-devrel-apps.cloudfunctions.net"), ' +
++      'local-network=(self "https://us-central1-web-devrel-apps.cloudfunctions.net")',
++  );
++  return response;
+ });

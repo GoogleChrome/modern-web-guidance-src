@@ -1,0 +1,171 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,60 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    .journal h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .journal-text p {
++      margin-bottom: 1em;
++      max-width: 70ch;
++      margin-inline: auto;
++    }
++
++    .summarize-btn {
++      display: block;
++      margin: 20px auto 0;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .summarize-btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .summary {
++      max-width: 70ch;
++      margin: 20px auto 0;
++      padding: 15px 20px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .summary ul {
++      padding-left: 1.2em;
++    }
++
++    .summary-status {
++      text-align: center;
++      font-size: 0.9rem;
++      margin-top: 10px;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -194,8 +246,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="journal" aria-labelledby="journal-title">
++      <h2 id="journal-title">Roaster's Journal</h2>
++      <div class="journal-text" id="journal-text">
++        <p>Every bag we roast begins months before it reaches our shop, usually at a long wooden table in a cooperative
++          office a few hours from the nearest paved road. We buy directly from small farms and cooperatives in
++          Ethiopia, Colombia, Guatemala, and Sumatra, and we visit each of them at least once every two years. Walking
++          the rows, tasting cherries off the branch, and sitting down with the families who pick them tells us more
++          than any spec sheet ever could.</p>
++        <p>Back home, nothing gets bought on reputation alone. Producers send us small samples, and we roast each one
++          on a tiny sample roaster and taste it blind, a process called cupping. We score aroma, acidity, body,
++          sweetness, and finish, and only lots that score above 85 are even considered. Most weeks, that means we say
++          no far more often than yes.</p>
++        <p>Price matters just as much as flavor. We pay at least twice the commodity market rate, and we agree on the
++          price before the harvest rather than after, so farmers can plan for fertilizer, labor, and repairs without
++          gambling on the market. Whenever possible we sign multi-year agreements, because a relationship that lasts
++          lets a farm invest in better drying beds and processing equipment, and those investments show up in the cup.
++        </p>
++        <p>Once green coffee arrives at our port, it rests for a few weeks before we roast it in small batches of no
++          more than twenty kilograms. We log every roast curve and cup the result the next morning. If a batch is off,
++          we adjust or we don't sell it. Our goal is simple: to make sure that the person drinking your latte can taste
++          the care of every hand it passed through.</p>
++      </div>
++      <button type="button" class="btn summarize-btn" id="summarize-btn">Summarize</button>
++      <p class="summary-status" id="summary-status" role="status"></p>
++      <div class="summary" id="summary" hidden>
++        <ul id="summary-list"></ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +286,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const btn = document.getElementById('summarize-btn');
++      const status = document.getElementById('summary-status');
++      const box = document.getElementById('summary');
++      const list = document.getElementById('summary-list');
++      const options = { type: 'key-points', format: 'plain-text', length: 'short' };
++
++      const render = (text) => {
++        const items = text.split('\n')
++          .map((line) => line.replace(/^\s*[-*•]\s*/, '').trim())
++          .filter(Boolean);
++        list.replaceChildren(...items.map((item) => {
++          const li = document.createElement('li');
++          li.textContent = item;
++          return li;
++        }));
++      };
++
++      if (!('Summarizer' in self)) {
++        btn.disabled = true;
++        status.textContent = 'Local summarization is currently unsupported in this browser.';
++        return;
++      }
++
++      btn.addEventListener('click', async () => {
++        btn.disabled = true;
++        status.textContent = 'Preparing summarizer…';
++        try {
++          const availability = await Summarizer.availability(options);
++          if (availability === 'unavailable') {
++            status.textContent = 'Local summarization is unavailable on this device.';
++            return;
++          }
++          const summarizer = await Summarizer.create({
++            ...options,
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                status.textContent = `Downloading model… ${Math.round(e.loaded * 100)}%`;
++              });
++            },
++          });
++          status.textContent = 'Summarizing…';
++          box.hidden = false;
++          let text = '';
++          for await (const chunk of summarizer.summarizeStreaming(
++            document.getElementById('journal-text').innerText,
++            { context: 'A coffee roaster describing how it sources green coffee beans.' })) {
++            text += chunk;
++            render(text);
++          }
++          summarizer.destroy();
++          status.textContent = '';
++        } catch (err) {
++          console.error(err);
++          status.textContent = 'Sorry, something went wrong while summarizing.';
++        } finally {
++          btn.disabled = false;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

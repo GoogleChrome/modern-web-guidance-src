@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,73 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .details {
++      position: relative;
++      display: inline-block;
++      margin-top: 15px;
++    }
++
++    .details .btn {
++      margin-top: 0;
++    }
++
++    .details .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .details-tooltip {
++      position: absolute;
++      top: calc(100% + 10px);
++      left: 50%;
++      transform: translateX(-50%);
++      z-index: 10;
++      width: 220px;
++      padding: 12px 14px;
++      border-radius: 6px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
++      font-size: 0.85rem;
++      line-height: 1.5;
++      text-align: left;
++      visibility: hidden;
++      opacity: 0;
++    }
++
++    /* Keep the tooltip open while the pointer crosses the gap. */
++    .details-tooltip::before {
++      content: '';
++      position: absolute;
++      top: -10px;
++      left: 0;
++      width: 100%;
++      height: 10px;
++    }
++
++    .details-tooltip::after {
++      content: '';
++      position: absolute;
++      bottom: 100%;
++      left: calc(50% - 6px);
++      border: 6px solid transparent;
++      border-bottom-color: var(--primary);
++    }
++
++    .details-tooltip strong {
++      display: block;
++      color: var(--accent);
++      margin-bottom: 4px;
++    }
++
++    .details:not([data-dismissed]):hover .details-tooltip,
++    .details:not([data-dismissed]):focus-within .details-tooltip {
++      visibility: visible;
++      opacity: 1;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +245,40 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <span class="details">
++            <a href="/menu/seasonal" class="btn" aria-describedby="maple-details">View Details</a>
++            <span class="details-tooltip" id="maple-details" role="tooltip">
++              <strong>Maple Oat Latte</strong>
++              12 fl oz · Estimated 180 calories.<br>
++              Espresso, oat milk, and maple syrup. Calories vary by customization.
++            </span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <span class="details">
++            <a href="/menu/espresso" class="btn" aria-describedby="espresso-details">View Details</a>
++            <span class="details-tooltip" id="espresso-details" role="tooltip">
++              <strong>Dark Roast Espresso</strong>
++              Double shot · Estimated 5 calories.<br>
++              Served black with no milk or added sugar.
++            </span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="details">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="cold-brew-details">View Details</a>
++            <span class="details-tooltip" id="cold-brew-details" role="tooltip">
++              <strong>Cold Brew</strong>
++              12 fl oz · Estimated 5 calories.<br>
++              Steeped for 18 hours. Calories shown before milk or sweeteners.
++            </span>
++          </span>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +292,16 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.details').forEach((details) => {
++      details.addEventListener('keydown', (event) => {
++        if (event.key === 'Escape') details.setAttribute('data-dismissed', '');
++      });
++      details.addEventListener('mouseleave', () => details.removeAttribute('data-dismissed'));
++      details.addEventListener('focusout', () => details.removeAttribute('data-dismissed'));
++    });
++  </script>
+ </body>
+ 
+ </html>

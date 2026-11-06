@@ -1,0 +1,248 @@
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..f647f1d
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,133 @@
++---
++/**
++ * In-page section navigation that highlights the section currently in view.
++ *
++ * Uses the native CSS `scroll-target-group` / `:target-current` scrollspy where
++ * supported, with an IntersectionObserver fallback elsewhere. The visual state
++ * is mirrored to `aria-current` for assistive technologies in both paths.
++ */
++export interface Props {
++  sections: { id: string; label: string }[];
++}
++
++const { sections } = Astro.props;
++---
++
++<nav
++  aria-label="On this page"
++  data-section-nav
++  class="section-nav sticky top-0 z-5 bg-white/95 backdrop-blur border-b border-gray-200"
++>
++  <ul class="container mx-auto px-4 flex items-center gap-x-6 h-10 text-sm font-semibold overflow-x-auto">
++    {sections.map(({ id, label }) => (
++      <li class="h-full flex items-center">
++        <a
++          href={`#${id}`}
++          class="flex items-center h-full border-b-2 border-transparent text-gray-600 hover:text-gray-900 whitespace-nowrap transition-colors"
++        >
++          {label}
++        </a>
++      </li>
++    ))}
++  </ul>
++</nav>
++
++<style>
++  /* Enables native tracking of the fragment links inside this container. */
++  .section-nav ul {
++    scroll-target-group: auto;
++  }
++
++  /*
++   * `:is()` keeps the rule valid in browsers that don't know `:target-current`;
++   * the escaped `.\:target-current` class is applied by the JS fallback.
++   * Colour is paired with weight and an underline so the state does not rely on colour alone.
++   */
++  .section-nav a:is(:target-current, .\:target-current) {
++    color: var(--color-amber-500);
++    border-bottom-color: var(--color-amber-400);
++    font-weight: 700;
++  }
++</style>
++
++<script>
++  const ACTIVE_CLASS = ':target-current';
++  let observer: IntersectionObserver | null = null;
++
++  function setActive(links: HTMLAnchorElement[], current: HTMLAnchorElement | null) {
++    for (const link of links) {
++      const isActive = link === current;
++      link.classList.toggle(ACTIVE_CLASS, isActive);
++      if (isActive) {
++        link.setAttribute('aria-current', 'true');
++      } else {
++        link.removeAttribute('aria-current');
++      }
++    }
++  }
++
++  function getLinks(nav: Element): HTMLAnchorElement[] {
++    return Array.from(nav.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'));
++  }
++
++  function initNative(nav: Element) {
++    const links = getLinks(nav);
++    const sync = () => {
++      const current = nav.querySelector<HTMLAnchorElement>('a:target-current');
++      for (const link of links) {
++        if (link === current) {
++          link.setAttribute('aria-current', 'true');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      }
++    };
++    sync();
++    document.addEventListener('scrollend', sync);
++    return () => document.removeEventListener('scrollend', sync);
++  }
++
++  function initFallback(nav: Element) {
++    const links = getLinks(nav);
++    const sections = links
++      .map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1))))
++      .filter((el): el is HTMLElement => el !== null);
++
++    observer = new IntersectionObserver(
++      (entries) => {
++        for (const entry of entries) {
++          if (!entry.isIntersecting) continue;
++          const current = links.find((link) => link.hash === `#${entry.target.id}`) ?? null;
++          setActive(links, current);
++        }
++      },
++      // Only the section crossing the vertical centre of the viewport counts as "current".
++      { rootMargin: '-50% 0px -50% 0px', threshold: 0 },
++    );
++    sections.forEach((section) => observer!.observe(section));
++
++    return () => {
++      observer?.disconnect();
++      observer = null;
++    };
++  }
++
++  let cleanup: (() => void) | null = null;
++
++  function init() {
++    cleanup?.();
++    cleanup = null;
++
++    const nav = document.querySelector('[data-section-nav]');
++    if (!nav) return;
++
++    cleanup = CSS.supports('scroll-target-group: auto') ? initNative(nav) : initFallback(nav);
++  }
++
++  // Re-initialise after each client-side navigation (ClientRouter) and tear down before swap.
++  document.addEventListener('astro:page-load', init);
++  document.addEventListener('astro:before-swap', () => {
++    cleanup?.();
++    cleanup = null;
++  });
++</script>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..d2a9254 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,12 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-12">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..d7ac476 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -8,9 +8,10 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-12">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..8199843 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,7 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import SectionNav from '../components/SectionNav.astro';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -35,9 +36,18 @@ politicsArticles[2] = {
+     slug: 'public-transit-overhaul',
+     render: async () => '' as unknown as RenderResult,
+   };
++
++const pageSections = [
++    { id: 'top-story', label: 'Top Story' },
++    { id: 'top-news', label: 'Top News' },
++    { id: 'world', label: 'World' },
++    { id: 'politics', label: 'Politics' },
++];
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav sections={pageSections} />
++
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,7 +65,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main id="top-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6 scroll-mt-12">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+@@ -65,20 +75,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file

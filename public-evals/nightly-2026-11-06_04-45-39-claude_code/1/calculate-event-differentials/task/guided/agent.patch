@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,24 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .promo-timer {
++      margin-top: 15px;
++      padding: 12px;
++      border: 1px dashed var(--primary);
++      border-radius: 6px;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer p {
++      margin: 4px 0;
++    }
++
++    .promo-timer strong {
++      font-variant-numeric: tabular-nums;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,8 +196,13 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-promo-timer"
++               data-promo-start="2025-11-01T00:00" data-promo-end="2026-03-01T00:00">
++            <p data-role="remaining">Limited-time offer — ends <time datetime="2026-03-01">March 1, 2026</time>.</p>
++            <p data-role="elapsed" hidden></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +227,70 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load the Temporal polyfill only when the browser lacks native support.
++    if (typeof Temporal === 'undefined') {
++      const mod = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = mod.Temporal;
++    }
++
++    // Localized duration text: Intl.DurationFormat when available, otherwise
++    // Intl.NumberFormat unit formatting joined with Intl.ListFormat.
++    function formatDuration(duration) {
++      const d = duration.abs();
++      const parts = { days: d.days, hours: d.hours };
++      if ('DurationFormat' in Intl) {
++        return new Intl.DurationFormat(undefined, { style: 'long', daysDisplay: 'always', hoursDisplay: 'always' }).format(parts);
++      }
++      const units = [['days', 'day'], ['hours', 'hour']];
++      const list = units.map(([key, unit]) =>
++        new Intl.NumberFormat(undefined, { style: 'unit', unit, unitDisplay: 'long' }).format(parts[key]));
++      return new Intl.ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(list);
++    }
++
++    function renderPromoTimer(el) {
++      // Interpret the promo boundaries as wall-clock times in the user's own time zone.
++      const timeZone = Temporal.Now.timeZoneId();
++      const now = Temporal.Now.zonedDateTimeISO(timeZone);
++      const start = Temporal.PlainDateTime.from(el.dataset.promoStart).toZonedDateTime(timeZone);
++      const end = Temporal.PlainDateTime.from(el.dataset.promoEnd).toZonedDateTime(timeZone);
++
++      const diffOpts = { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' };
++      const remaining = now.until(end, diffOpts);
++      const elapsed = now.since(start, diffOpts);
++
++      const endLabel = end.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' });
++      const remainingEl = el.querySelector('[data-role="remaining"]');
++      const elapsedEl = el.querySelector('[data-role="elapsed"]');
++
++      const timeEl = (duration) => {
++        const t = document.createElement('time');
++        t.dateTime = duration.abs().toString();
++        t.textContent = formatDuration(duration);
++        const strong = document.createElement('strong');
++        strong.append(t);
++        return strong;
++      };
++
++      if (remaining.sign > 0) {
++        remainingEl.replaceChildren(timeEl(remaining), ` left — offer ends ${endLabel}.`);
++      } else {
++        remainingEl.replaceChildren('This offer ended ', timeEl(remaining), ` ago (${endLabel}).`);
++      }
++
++      if (elapsed.sign >= 0) {
++        elapsedEl.replaceChildren('Promotion started ', timeEl(elapsed), ' ago.');
++      } else {
++        elapsedEl.replaceChildren('Promotion starts in ', timeEl(elapsed), '.');
++      }
++      elapsedEl.hidden = false;
++    }
++
++    const timer = document.getElementById('maple-promo-timer');
++    if (timer) renderPromoTimer(timer);
++  </script>
++
+ </body>
+ 
+ </html>

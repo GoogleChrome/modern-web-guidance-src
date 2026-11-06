@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -86,17 +86,67 @@
+       transition: transform 0.3s ease;
+       /* Stacked expensive drop-shadows */
+       filter:
+         drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1)) drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1)) drop-shadow(0 30px 60px rgba(0, 0, 0, 0.1));
+-      will-change: transform;
+       position: relative;
+       overflow: hidden;
+     }
+ 
+     .card:hover {
++      will-change: transform;
+       transform: translateY(-4px);
+     }
+ 
++    /* DO ONLY apply this class to items OUTSIDE the initial layout viewport */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 22rem;
++    }
++
++    /* Default fallback for browsers without content-visibility support */
++    .debug-panel {
++      max-width: 800px;
++      margin: 2rem auto 4rem;
++      padding: 0 1rem;
++      display: none;
++    }
++
++    @supports (content-visibility: hidden) {
++      .debug-panel {
++        display: block;
++        content-visibility: hidden;
++      }
++    }
++
++    .debug-panel.is-active {
++      display: block;
++      content-visibility: visible;
++    }
++
++    .debug-panel-inner {
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 1rem;
++      padding: 1.5rem;
++      border: 1px solid #334155;
++      font-family: monospace;
++    }
++
++    .debug-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
++      gap: 0.75rem;
++      margin-top: 1rem;
++    }
++
++    .debug-cell {
++      background: #1e293b;
++      border: 1px solid #334155;
++      border-radius: 0.5rem;
++      padding: 0.75rem;
++      font-size: 0.8rem;
++    }
++
+     .nested-layer {
+       position: absolute;
+       inset: 0;
+       pointer-events: none;
+@@ -205,9 +255,9 @@
+     </filter>
+   </svg>
+ 
+   <div class="controls">
+-
++    <button id="toggle-debug" class="toggle-btn off" aria-expanded="false" aria-controls="debug-panel">Toggle Debug Panel</button>
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+@@ -219,20 +269,47 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <section id="debug-panel" class="debug-panel" aria-hidden="true" inert tabindex="-1">
++    <div class="debug-panel-inner">
++      <h2 style="margin-top: 0; font-size: 1.1rem;">Diagnostics &amp; Render Telemetry</h2>
++      <p style="margin: 0.25rem 0 0; color: #94a3b8; font-size: 0.85rem;">
++        Cached with <code>content-visibility: hidden</code> for instant state toggling.
++      </p>
++      <div class="debug-grid" id="debug-grid">
++        <div class="debug-cell">Total Cards: <strong>500</strong></div>
++        <div class="debug-cell">Above Fold: <strong>3</strong></div>
++        <div class="debug-cell">Deferred Cards: <strong>497</strong></div>
++        <div class="debug-cell">Containment: <strong>auto 22rem</strong></div>
++      </div>
++    </div>
++  </section>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
++    const toggleDebugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
++    const debugGrid = document.getElementById('debug-grid');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    const aboveFoldCardCount = 3;
+ 
++    // Populate heavy debug telemetry nodes once so cached state toggles instantly
++    const debugFragment = document.createDocumentFragment();
++    for (let i = 0; i < 48; i++) {
++      const cell = document.createElement('div');
++      cell.className = 'debug-cell';
++      cell.innerHTML = `Node #${i + 1} <div class="expensive-element" style="height: 24px; margin-top: 0.5rem; filter: url(#expensiveFilter) blur(0.5px);"></div>`;
++      debugFragment.appendChild(cell);
++    }
++    debugGrid.appendChild(debugFragment);
+ 
+-
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = index >= aboveFoldCardCount ? 'card off-screen-card' : 'card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -292,15 +369,32 @@
+ 
+       measureRender(startTime);
+     }
+ 
++    function toggleDebugPanel() {
++      const startTime = performance.now();
++      const isActive = debugPanel.classList.toggle('is-active');
++      toggleDebugBtn.classList.toggle('off', !isActive);
++      toggleDebugBtn.setAttribute('aria-expanded', String(isActive));
++
++      if (isActive) {
++        debugPanel.setAttribute('aria-hidden', 'false');
++        debugPanel.removeAttribute('inert');
++        debugPanel.focus();
++      } else {
++        debugPanel.setAttribute('aria-hidden', 'true');
++        debugPanel.setAttribute('inert', 'inert');
++      }
++
++      measureRender(startTime, ' (toggle)');
++    }
++
+     window.addEventListener('load', () => {
+       setTimeout(renderCards, 500);
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+-
+-
++    toggleDebugBtn.addEventListener('click', toggleDebugPanel);
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

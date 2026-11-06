@@ -1,0 +1,2286 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..716fc04 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -1,83 +1,9 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+-import { Image } from 'astro:assets';
+-import { getArticleImage } from '../utils/images';
+-import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
+-
+-export interface Props {
+-    article: CollectionEntry<'articles'>;
+-    large?: boolean;
+-}
+-
++import ContextStory from './ContextStory.astro';
++interface Props { article: CollectionEntry<'articles'>; large?: boolean; }
+ const { article, large = false } = Astro.props;
+-const image = await getArticleImage(article);
+-const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.id);
+-const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+-{large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                </div>
+-            </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
+-                </a>
+-            </div>
+-        </div>
+-    </div>
+-) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
+-            </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-            </div>
+-        </div>
+-    </article>
+-)}
+\ No newline at end of file
++<div class:list={['article-teaser-context', large ? 'lead-context' : 'standard-context']}>
++  <ContextStory article={article} priority={large} />
++</div>
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..c1fe6f4 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,30 +1,40 @@
+-
+-import React, { useState, useEffect } from 'react';
+-import { BookmarkIcon } from '@heroicons/react/24/outline'
+-
+-interface Props {
+-  slug: string;
+-  initialIsBookmarked: boolean;
++import { useEffect, useState } from 'react';
++import { BookmarkIcon } from '@heroicons/react/24/outline';
++interface Props { slug: string; initialIsBookmarked: boolean; }
++const STORAGE_KEY = 'devtools-times-saved';
++function readSaved(): string[] {
++  try {
++    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
++    return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === 'string') : [];
++  } catch { return []; }
+ }
+-
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+-
+-  const handleClick = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    const data = await response.json();
+-    setIsBookmarked(data.readingList.includes(slug));
+-  };
+-
+-  return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++  const [error, setError] = useState('');
++  useEffect(() => {
++    const sync = () => setIsBookmarked(readSaved().includes(slug));
++    sync();
++    window.addEventListener('times:saved', sync);
++    window.addEventListener('storage', sync);
++    return () => {
++      window.removeEventListener('times:saved', sync);
++      window.removeEventListener('storage', sync);
++    };
++  }, [slug]);
++  function toggleSave() {
++    const saved = readSaved();
++    const next = saved.includes(slug) ? saved.filter(id => id !== slug) : [...saved, slug];
++    try {
++      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
++      setIsBookmarked(next.includes(slug));
++      setError('');
++      window.dispatchEvent(new Event('times:saved'));
++    } catch { setError('Your browser could not save this story.'); }
++  }
++  return <>
++    <button onClick={toggleSave} aria-label={isBookmarked ? 'Remove from saved stories' : 'Save story'} aria-pressed={isBookmarked} title={isBookmarked ? 'Remove from saved stories' : 'Save story'} className="p-1">
++      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-orange-700 fill-current' : 'text-gray-500'}`} />
+     </button>
+-  );
++    {error && <span role="status" className="text-xs">{error}</span>}
++  </>;
+ }
+diff --git a/src/components/ContextStory.astro b/src/components/ContextStory.astro
+new file mode 100644
+index 0000000..ce2129e
+--- /dev/null
++++ b/src/components/ContextStory.astro
+@@ -0,0 +1,24 @@
++---
++import type { CollectionEntry } from 'astro:content';
++interface Props { article: CollectionEntry<'articles'>; image?: string; imageAlt?: string; priority?: boolean; }
++const { article, image, imageAlt = '', priority = false } = Astro.props;
++const base = import.meta.env.BASE_URL;
++const source = image || article.data.image;
++const imageSrc = source.startsWith('http') ? source : `${base}${source.replace(/^\//, '')}`;
++const label = article.data.category === 'Urban Development' ? 'Cities & society' : article.data.category;
++---
++<article class="context-story" data-category={article.data.category.toLowerCase()}>
++  <img class="story-image" src={imageSrc} alt={imageAlt} width="960" height="640" loading={priority ? 'eager' : 'lazy'} fetchpriority={priority ? 'high' : 'auto'} />
++  <header class="story-header">
++    <span class="story-category">{label}<span class="story-feature-label"> / THE BIG PICTURE</span></span>
++    <h2><a class="story-link" href={`${base}articles/${article.id}`}>{article.data.title}</a></h2>
++  </header>
++  <p class="story-summary">{article.data.summary}</p>
++  <footer class="story-footer">
++    <span class="story-author">By {article.data.author}<span class="meta-dot">·</span></span>
++    <span>{article.data.readingTime || 5} min read</span>
++    <button class="save-story" data-save-story={article.id} data-title={article.data.title} aria-label={`Save ${article.data.title}`} aria-pressed="false" title="Save story">
++      <svg width="17" height="19" viewBox="0 0 20 22" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 3h12v17l-6-4-6 4V3Z" /></svg>
++    </button>
++  </footer>
++</article>
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..d76a927 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -1,105 +1,7 @@
+ ---
+-const baseUrl = import.meta.env.BASE_URL;
++const base = import.meta.env.BASE_URL;
+ ---
+-<footer class="bg-white text-black p-6 md:p-10 w-full relative z-50">
+-        
+-    <!-- Top section: Logo -->
+-    <div class="border-b border-gray-300 pb-6 mb-6">
+-        <a href={baseUrl}>
+-            <img
+-                src=`${baseUrl}logo.svg`
+-                alt="The DevTools Times"
+-                class="h-10"
+-            />
+-        </a>
+-    </div>
+-
+-    <!-- Middle section: Main navigation links -->
+-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
+-        
+-        <!-- Column 1: NEWS -->
+-        <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
+-            <ul class="space-y-2">
+-                <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
+-                <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
+-                <li><a href="/category/business" class="text-sm hover:underline">Business</a></li>
+-            </ul>
+-        </div>
+-
+-        <!-- Column 2: ARTS -->
+-        <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
+-            <ul class="space-y-2">
+-                <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+-                <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
+-            </ul>
+-        </div>
+-
+-        <!-- Column 3: LIFESTYLE -->
+-        <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
+-            <ul class="space-y-2">
+-                <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
+-                <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
+-                <li><a href="/category/urban%20development" class="text-sm hover:underline">Urban Development</a></li>
+-            </ul>
+-        </div>
+-
+-        <!-- Column 4: SCIENCE & TECH -->
+-        <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
+-            <ul class="space-y-2">
+-                <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
+-            </ul>
+-        </div>
+-
+-        <!-- Empty Spacer Columns -->
+-        <div class="hidden lg:block"></div>
+-        <div class="hidden lg:block"></div>
+-
+-        <!-- Column 7: ACCOUNT -->
+-        <div class="col-span-2 sm:col-span-1">
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
+-            <ul class="space-y-2 mb-4">
+-                <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+-                        Subscribe
+-                    </a>
+-                </li>
+-                <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+-                        Manage My Account
+-                    </a>
+-                </li>
+-            </ul>
+-            
+-            <!-- Secondary Account Links -->
+-            <ul class="space-y-2 text-xs text-gray-600">
+-                <li><a href="#" class="hover:underline">Email Newsletters</a></li>
+-            </ul>
+-        </div>
+-
+-    </div>
+-
+-    <!-- Bottom section: Legal, copyright, and privacy -->
+-    <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
+-        <!-- Copyright and legal links -->
+-        <div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
+-            <span>© 2025 The DevTools Times Company</span>
+-            <a href="#" class="hover:underline">Contact Us</a>
+-            <a href="#" class="hover:underline">Work with us</a>
+-            <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+-            <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+-            <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
+-        </div>
+-        
+-        <!-- Privacy settings link -->
+-        <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
+-        </div>
+-    </div>
+-
++<footer class="site-footer page-width">
++  <div class="footer-top"><a class="footer-wordmark" href={base}>The DevTools Times<span>.</span></a><p>A little context. A lot of clarity.</p><a href="#main-content">Back to top ↑</a></div>
++  <div class="footer-bottom"><span>© {new Date().getFullYear()} The DevTools Times. All perspectives welcome.</span><nav aria-label="Legal"><a href={`${base}legal/privacy`}>Privacy</a><a href={`${base}legal/terms`}>Terms</a><a href={`${base}legal/imprint`}>Imprint</a></nav><span>Made for curious minds <span class="footer-star">✳</span></span></div>
+ </footer>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..a7f89e2 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,69 +1,90 @@
+ ---
+-import ReadingListButton from "./ReadingListButton.tsx";
+-import SearchButton from "./SearchButton.tsx";
+-import { getCollection } from "astro:content";
+-import BottomNav from "./BottomNav.tsx";
+-
+-const articles = await getCollection("articles");
+-const reports = await getCollection("reports");
+-const multimedia = await getCollection("multimedia");
+-const categories = [...new Set(articles.map((article) => article.data.category))];
+-
+-const baseUrl = import.meta.env.BASE_URL;
+-const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
++import { getCollection } from 'astro:content';
++const articles = await getCollection('articles');
++const base = import.meta.env.BASE_URL;
++const categories = ['Top stories', 'Politics', 'Business', 'Science', 'Culture', 'Lifestyle', 'Sports'];
++const current = decodeURIComponent(Astro.url.pathname).toLowerCase();
++const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+ ---
+-
+-<header class="font-inter group relative bg-white">
+-  <!-- Row 1: Search, Subscribe, Log In -->
+-  <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+-    <div class="flex justify-between items-center">
+-      <!-- Left: Search Icon -->
+-      <div class="flex items-center space-x-3">
+-        <SearchButton client:load />
+-        <ReadingListButton client:load />
+-      </div>
+-
+-      <!-- Right: Buttons -->
+-      <div class="flex items-center space-x-3">
+-        <a
+-          href={`${baseUrl}signup`}
+-          data-skip-tracking="true"
+-          class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
+-        >
+-          Sign up
+-        </a>
+-        <a
+-          href={`${baseUrl}signin`}
+-          data-skip-tracking="true"
+-          class="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400"
+-        >
+-          Sign in
+-        </a>
+-      </div>
+-    </div>
++<header class="site-header">
++  <div class="utility-bar page-width">
++    <span class="utility-motto"><span class="little-star">✳</span> INDEPENDENT MINDS. INFORMED PERSPECTIVES.</span>
++    <div class="utility-actions"><span class="edition">The global edition <span aria-hidden="true">⌄</span></span><a href={`${base}signin`}>Sign in <span aria-hidden="true">↗</span></a></div>
+   </div>
+-
+-  <!-- Row 2: Date, Logo, Stock -->
+-  <div class="container mx-auto px-4 py-3">
+-    <div class="grid grid-cols-3 items-center">
+-      <!-- Left Section: Date -->
+-      <div class="text-xs">
+-        <p class="font-semibold">{todaysDate}</p>
+-      </div>
+-
+-      <!-- Center Section: Logo -->
+-      <div class="text-center">
+-        <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
+-        </a>
+-      </div>
+-
+-      <!-- Right Section: Stock -->
+-      <div class="text-xs font-semibold text-right">
+-      </div>
+-    </div>
++  <div class="masthead page-width">
++    <div class="masthead-date"><span>{date}</span><span class="weather"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/></svg> A fresh perspective, every day.</span></div>
++    <a class="wordmark" href={base} aria-label="The DevTools Times home">The DevTools Times<span class="wordmark-period">.</span></a>
++    <div class="masthead-right"><span>Good journalism matters.</span><a href={`${base}signup`} class="subscribe-button">Support the Times <span aria-hidden="true">↗</span></a></div>
+   </div>
+-
+-  <!-- Bottom Navigation Bar -->
+-  <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
++  <div class="nav-border"><div class="nav-row page-width">
++    <nav class="primary-nav" aria-label="Main navigation">{categories.map((category) => {
++      const active = category === 'Top stories' ? current === base || current === base.slice(0, -1) : current.endsWith(`/category/${category.toLowerCase()}`);
++      return <a href={category === 'Top stories' ? base : `${base}category/${category.toLowerCase()}`} class:list={{ active }} aria-current={active ? 'page' : undefined}>{category}</a>;
++    })}<a href={`${base}reports`}>The deep dive <span class="tiny-arrow">↗</span></a></nav>
++    <div class="nav-tools"><button data-open-reader="saved" aria-label="Open saved stories" title="Saved stories"><svg width="17" height="20" viewBox="0 0 20 22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 3h12v17l-6-4-6 4V3Z"/></svg><span class="saved-count" hidden>0</span></button><span class="tool-divider"></span><button data-open-reader="search" aria-label="Search stories" title="Search stories"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button></div>
++  </div></div>
+ </header>
++<dialog id="reader-dialog" class="reader-dialog" aria-labelledby="reader-title">
++  <div class="dialog-top"><div><span class="eyebrow">YOUR DAILY PERSPECTIVE</span><h2 id="reader-title">Find your next read.</h2></div><button data-close-reader aria-label="Close dialog">×</button></div>
++  <label class="search-field"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg><input id="story-search" type="search" placeholder="Search stories, topics, or authors…" autocomplete="off" aria-label="Search stories" /></label>
++  <div id="reader-results">{articles.map(article => <a class="search-result" data-result-id={article.id} data-search-text={`${article.data.title} ${article.data.category} ${article.data.author}`.toLowerCase()} href={`${base}articles/${article.id}`}><span class="story-category">{article.data.category}</span><h3>{article.data.title}</h3><span>{article.data.readingTime || 5} min read <span aria-hidden="true">↗</span></span></a>)}</div>
++  <p id="reader-empty" hidden>No stories found. Try another search.</p>
++</dialog>
++<div id="save-announcement" class="sr-only" aria-live="polite"></div>
++<script>
++  const STORAGE_KEY = 'devtools-times-saved';
++  function getSaved(): string[] { try { const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []; } catch { return []; } }
++  function initReader() {
++    const dialog = document.querySelector<HTMLDialogElement>('#reader-dialog');
++    if (!dialog || dialog.dataset.ready) return;
++    dialog.dataset.ready = 'true';
++    const input = document.querySelector<HTMLInputElement>('#story-search')!;
++    let mode = 'search';
++    function filterResults() {
++      const saved = getSaved();
++      let visible = 0;
++      document.querySelectorAll<HTMLElement>('[data-result-id]').forEach(item => {
++        const match = (mode !== 'saved' || saved.includes(item.dataset.resultId!)) && item.dataset.searchText!.includes(input.value.toLowerCase());
++        item.hidden = !match;
++        if (match) visible++;
++      });
++      const empty = document.querySelector<HTMLElement>('#reader-empty')!;
++      empty.hidden = visible !== 0;
++      empty.textContent = mode === 'saved' && !saved.length ? 'Your reading list is ready. Save a story using its bookmark icon to find it here.' : 'No stories found. Try another search.';
++    }
++    function syncSaved() {
++      const saved = getSaved();
++      document.querySelectorAll<HTMLButtonElement>('[data-save-story]').forEach(button => {
++        const isSaved = saved.includes(button.dataset.saveStory!);
++        button.setAttribute('aria-pressed', String(isSaved));
++        button.setAttribute('aria-label', `${isSaved ? 'Unsave' : 'Save'} ${button.dataset.title}`);
++        button.title = isSaved ? 'Remove from saved stories' : 'Save story';
++      });
++      document.querySelectorAll<HTMLElement>('.saved-count').forEach(counter => { counter.textContent = String(saved.length); counter.hidden = !saved.length; });
++      filterResults();
++    }
++    document.querySelectorAll<HTMLButtonElement>('[data-save-story]').forEach(button => button.addEventListener('click', () => {
++      const id = button.dataset.saveStory!;
++      const saved = getSaved();
++      const next = saved.includes(id) ? saved.filter(item => item !== id) : [...saved, id];
++      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { document.querySelector('#save-announcement')!.textContent = 'Your browser could not save this story. Please enable local storage.'; return; }
++      syncSaved();
++      document.querySelector('#save-announcement')!.textContent = next.includes(id) ? 'Story saved to your reading list.' : 'Story removed from your reading list.';
++    }));
++    document.querySelectorAll<HTMLButtonElement>('[data-open-reader]').forEach(button => button.addEventListener('click', () => {
++      mode = button.dataset.openReader!;
++      document.querySelector('#reader-title')!.textContent = mode === 'saved' ? 'Your reading list.' : 'Find your next read.';
++      input.value = '';
++      input.placeholder = mode === 'saved' ? 'Search your saved stories…' : 'Search stories, topics, or authors…';
++      filterResults(); dialog.showModal(); input.focus();
++    }));
++    document.querySelector('[data-close-reader]')?.addEventListener('click', () => dialog.close());
++    dialog.addEventListener('click', event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } });
++    input.addEventListener('input', filterResults);
++    window.addEventListener('storage', event => { if (event.key === STORAGE_KEY) syncSaved(); });
++    window.addEventListener('times:saved', syncSaved);
++    syncSaved();
++  }
++  initReader();
++  document.addEventListener('astro:page-load', initReader);
++</script>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..2fe097c 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -1,55 +1,28 @@
+ ---
+-import Header from "../components/Header.astro";
+-import Footer from "../components/Footer.astro";
+-import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+-import "../styles/global.css";
+-
+-import { ClientRouter } from "astro:transitions";
+-
+-export interface Props {
+-  title: string;
+-}
+-
++import Header from '../components/Header.astro';
++import Footer from '../components/Footer.astro';
++import '../styles/global.css';
++export interface Props { title: string; }
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+-
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="description" content="Independent minds. Informed perspectives. Discover the stories that matter, from The DevTools Times." />
++    <meta name="theme-color" content="#f8f7f3" />
+     <title>{title}</title>
+-
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+-
+-    <link rel="icon" href=`${baseUrl}/favicon.svg` />
+-
+-    <ClientRouter />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
++    <link rel="icon" href={`${baseUrl}favicon.svg`} />
+   </head>
+-  <body class="bg-gray-100">
+-    <div class="mx-auto">
+-      <AdSlotFireplace client:load />
+-      <div
+-        class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+-      >
+-        <div>
+-          <Header />
+-        </div>
+-        <main class="bg-white relative">
+-          <slot />
+-        </main>
+-      </div>
+-    </div>
++  <body>
++    <a class="skip-link" href="#main-content">Skip to content</a>
++    <Header />
++    <main id="main-content" class="site-main page-width"><slot /></main>
+     <Footer />
+   </body>
+ </html>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..3a8cee7 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -32,7 +32,7 @@ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3)
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.slug);
++const isBookmarked = readingList.includes(article.id);
+ ---
+ 
+ <Layout title={article.data.title}>
+@@ -99,7 +99,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
+         </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..4622c4b 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,71 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
++import ContextStory from '../components/ContextStory.astro';
+ import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++const all = await getCollection('articles');
++const byId = (id: string) => all.find(a => a.id === id)!;
++const lead = byId('housing-crisis');
++const briefs = ['public-transit-overhaul', 'breakthrough-research', 'future-of-journalism'].map(byId);
++const picks = ['modern-swan-lake', 'urban-cycling', 'the-call-of-the-open-water', 'manufacturing-boom', 'tennis-championships', 'youth-activism', 'indie-fest-returns', 'labor-strikes'].map(byId);
++const base = import.meta.env.BASE_URL;
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
++<Layout title="The DevTools Times — A little context. A lot of clarity.">
++  <section class="daily-intro" aria-label="Today's edition"><div><span class="eyebrow"><span class="orange-dot"></span> THE DAILY PERSPECTIVE</span><h1>See the world a little clearer.</h1><p>The stories that matter. The context that makes the difference.</p></div><div class="edition-note"><span class="edition-number">VOL. 026 <span>—</span> THE GLOBAL EDITION</span><span>Thoughtfully curated. Independently told.</span></div></section>
++  <div class="trending-bar"><span class="trending-label"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m2 14 5-5 4 3 6-8M12 4h5v5"/></svg> IN THE CONVERSATION</span><a href={`${base}category/economy`}>The housing equation <span>↗</span></a><a href={`${base}category/science`}>New frontiers in science <span>↗</span></a><a href={`${base}category/culture`}>Culture, reimagined <span>↗</span></a><a href={`${base}category/lifestyle`}>A slower way of living <span>↗</span></a></div>
++  <div class="front-page-grid">
++    <div class="main-column">
++      <section class="lead-context" aria-label="The big picture"><ContextStory article={lead} priority={true} imageAlt="Construction cranes above a growing city in golden evening light" /></section>
++      <section class="picks-section" id="editors-picks" aria-labelledby="picks-title">
++        <div class="section-heading"><h2 id="picks-title">Worth your attention<span>.</span></h2><span class="section-note">GOOD STORIES, HANDPICKED</span></div>
++        <div class="pick-tabs" role="group" aria-label="Filter handpicked stories">{['All stories', 'Culture', 'Lifestyle', 'Sports', 'Business'].map((name, index) => <button data-pick-filter={name === 'All stories' ? 'all' : name.toLowerCase()} class:list={{ selected: index === 0 }} aria-pressed={index === 0 ? 'true' : 'false'}>{name}</button>)}</div>
++        <div class="picks-grid standard-context">{picks.map((article, index) => <div class="pick-item" data-pick-category={article.data.category.toLowerCase()} data-pick-index={index} hidden={index > 2}><ContextStory article={article} /></div>)}</div>
++        <div class="more-stories"><button id="load-more">A few more good reads <span aria-hidden="true">↓</span></button><p id="picks-status" class="sr-only" aria-live="polite"></p></div>
++      </section>
+     </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++    <aside class="sidebar" aria-label="The latest and daily briefing">
++      <section class="latest-section brief-context" aria-labelledby="latest-title"><div class="sidebar-heading"><h2 id="latest-title">The latest</h2><span class="live-label"><span></span> ON OUR RADAR</span></div><p class="sidebar-description">A quick read on a changing world.</p>{briefs.map((article, index) => <div class="brief-item"><span class="brief-number">0{index + 1}</span><ContextStory article={article} /></div>)}<a class="text-arrow" href={`${base}reports`}>Go a little deeper <span aria-hidden="true">↗</span></a></section>
++      <section class="newsletter-card" aria-labelledby="newsletter-title"><div class="newsletter-top"><span class="eyebrow">THE MORNING EDIT</span><svg width="34" height="34" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 11h28v20H4zM4 11l14 11 14-11M4 11l14-9 14 9"/><path d="m5 30 9-10m17 10-9-10"/></svg></div><h2 id="newsletter-title">Less noise.<br />More perspective.</h2><p>A thoughtful start to your day. Our essential stories, in your inbox.</p><form id="newsletter-form"><label class="sr-only" for="newsletter-email">Your email address</label><input id="newsletter-email" name="email" type="email" placeholder="Your email address" required autocomplete="email" /><button type="submit">Count me in <span aria-hidden="true">↗</span></button></form><p class="newsletter-fineprint" id="newsletter-message" role="status">A daily dose of clarity. Always free.</p></section>
++      <section class="editors-note"><span class="eyebrow">A NOTE FROM THE EDITORS</span><span class="quote-mark" aria-hidden="true">“</span><blockquote>Understanding begins where the headline ends.</blockquote><p>We connect the dots, ask better questions, and make space for every angle.</p><a href={`${base}articles/future-of-journalism`}>Why we do what we do <span aria-hidden="true">↗</span></a><div class="editor-signature">The editors <span>↗</span></div></section>
++    </aside>
++  </div>
++  <section class="weekend-banner"><div><span class="eyebrow">TAKE YOUR TIME</span><h2>Some stories deserve a deeper look.</h2><p>Fresh ideas, unexpected connections, and the space to think.</p></div><a href={`${base}reports`}>Explore the deep dive <span aria-hidden="true">↗</span></a><span class="banner-asterisk" aria-hidden="true">✳</span></section>
++</Layout>
++<script>
++  function initHome() {
++    const load = document.querySelector<HTMLButtonElement>('#load-more');
++    if (!load || load.dataset.ready) return;
++    load.dataset.ready = 'true';
++    let filter = 'all';
++    let limit = 3;
++    function updatePicks() {
++      let count = 0;
++      let shown = 0;
++      document.querySelectorAll<HTMLElement>('.pick-item').forEach(item => {
++        const matches = filter === 'all' || item.dataset.pickCategory === filter;
++        if (matches) count++;
++        item.hidden = !matches || count > limit;
++        if (!item.hidden) shown++;
++      });
++      load!.hidden = shown >= count;
++      document.querySelector('#picks-status')!.textContent = `${shown} stories shown.`;
++    }
++    document.querySelectorAll<HTMLButtonElement>('[data-pick-filter]').forEach(button => button.addEventListener('click', () => {
++      filter = button.dataset.pickFilter!; limit = 3;
++      document.querySelectorAll('[data-pick-filter]').forEach(tab => { const active = tab === button; tab.classList.toggle('selected', active); tab.setAttribute('aria-pressed', String(active)); });
++      updatePicks();
++    }));
++    load.addEventListener('click', () => { limit += 3; updatePicks(); });
++    const form = document.querySelector<HTMLFormElement>('#newsletter-form')!;
++    form.addEventListener('submit', event => {
++      event.preventDefault();
++      const email = (document.querySelector('#newsletter-email') as HTMLInputElement).value;
++      const message = document.querySelector('#newsletter-message')!;
++      try { localStorage.setItem('devtools-times-newsletter', email); } catch { message.textContent = 'Your preference could not be saved. Please enable local storage and try again.'; return; }
++      form.hidden = true;
++      message.textContent = 'Your preference is saved on this device. Email delivery is not connected yet.';
++      document.querySelector('#newsletter-title')!.textContent = 'A little more clarity.';
++    });
++  }
++  initHome();
++  document.addEventListener('astro:page-load', initHome);
++</script>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..16eb203 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,1557 @@
+ @import "tailwindcss";
+-
++:root {
++  --paper:#f8f7f3;
++  --ink:#242722;
++  --muted:#77786f;
++  --line:#dddcd5;
++  --orange:#c45130;
++  --serif:'DM Serif Display',Georgia,serif;
++  --sans:'DM Sans',Arial,sans-serif;
++  color-scheme:light;
++  scroll-behavior:smooth
++}
++* {
++  box-sizing:border-box
++}
++body {
++  margin:0;
++  background:var(--paper);
++  color:var(--ink);
++  font-family:var(--sans);
++  font-size:14px;
++  -webkit-font-smoothing:antialiased
++}
++a {
++  color:inherit;
++  text-decoration:none
++}
++button,input {
++  font:inherit
++}
++button,a,input {
++  -webkit-tap-highlight-color:transparent
++}
++button {
++  cursor:pointer
++}
++button:disabled {
++  cursor:default
++}
++button {
++  color:inherit
++}
++button,a {
++  touch-action:manipulation
++}
++button:focus-visible,a:focus-visible,input:focus-visible {
++  outline:2px solid var(--orange);
++  outline-offset:5px
++}
++button {
++  border:0
++}
++button:disabled {
++  opacity:.5
++}
++[hidden] {
++  display:none!important
++}
++::selection {
++  background:#e5c5ad;
++  color:var(--ink)
++}
++.page-width {
++  width:calc(100% - 112px);
++  max-width:1376px;
++  margin-inline:auto
++}
+ .font-brand {
+-  font-family: "Grenze", serif;
+-  font-weight: 500;
+-  font-style: normal;
+-}
+\ No newline at end of file
++  font-family:var(--serif);
++  font-weight:400
++}
++.sr-only {
++  position:absolute;
++  width:1px;
++  height:1px;
++  overflow:hidden;
++  clip-path:inset(50%);
++  white-space:nowrap
++}
++.skip-link {
++  position:fixed;
++  left:16px;
++  top:-80px;
++  padding:12px 18px;
++  background:var(--ink);
++  color:white;
++  z-index:100
++}
++.skip-link:focus {
++  top:12px
++}
++.eyebrow {
++  font-size:10px;
++  font-weight:650;
++  letter-spacing:1.6px;
++  line-height:1.5
++}
++.utility-bar {
++  height:40px;
++  display:flex;
++  justify-content:space-between;
++  align-items:center;
++  border-bottom:1px solid var(--line);
++  font-size:10px
++}
++.utility-motto {
++  letter-spacing:1.1px;
++  display:flex;
++  align-items:center;
++  gap:9px
++}
++.little-star {
++  color:var(--orange);
++  font-size:19px;
++  line-height:1
++}
++.utility-actions {
++  display:flex;
++  align-items:center;
++  gap:28px
++}
++.utility-actions a {
++  font-weight:600
++}
++.utility-actions a span {
++  margin-left:9px
++}
++.edition {
++  color:var(--muted)
++}
++.edition>span {
++  margin-left:8px
++}
++.masthead {
++  height:110px;
++  display:grid;
++  grid-template-columns:1fr auto 1fr;
++  align-items:center;
++  gap:22px
++}
++.masthead-date {
++  font-size:10px;
++  display:grid;
++  gap:9px
++}
++.masthead-date>span:first-child {
++  font-weight:600
++}
++.weather {
++  color:var(--muted);
++  display:flex;
++  align-items:center;
++  gap:6px
++}
++.wordmark {
++  font-family:var(--serif);
++  font-size:clamp(32px,4.1vw,60px);
++  letter-spacing:-2.8px;
++  line-height:1;
++  white-space:nowrap
++}
++.wordmark-period {
++  color:var(--orange)
++}
++.masthead-right {
++  justify-self:end;
++  display:grid;
++  gap:10px;
++  text-align:right
++}
++.masthead-right>span {
++  font-size:10px;
++  color:var(--muted)
++}
++.subscribe-button {
++  background:var(--orange);
++  color:#fffdf7;
++  font-size:11px;
++  letter-spacing:.2px;
++  padding:11px 15px;
++  display:flex;
++  align-items:center;
++  gap:20px;
++  transition:background .2s
++}
++.subscribe-button:hover {
++  background:#a74327
++}
++.nav-border {
++  border-top:1px solid var(--ink);
++  border-bottom:1px solid var(--line)
++}
++.nav-row {
++  display:flex;
++  align-items:center;
++  justify-content:space-between;
++  gap:20px;
++  min-height:51px
++}
++.primary-nav {
++  display:flex;
++  gap:33px;
++  align-items:stretch;
++  align-self:stretch
++}
++.primary-nav>a {
++  display:flex;
++  align-items:center;
++  position:relative;
++  white-space:nowrap;
++  font-weight:500;
++  font-size:11px
++}
++.primary-nav>a.active {
++  color:var(--orange)
++}
++.primary-nav>a.active:after {
++  content:'';
++  position:absolute;
++  bottom:-1px;
++  height:3px;
++  left:0;
++  right:0;
++  background:var(--orange)
++}
++.primary-nav>a:hover {
++  color:var(--orange)
++}
++.tiny-arrow {
++  margin-left:10px;
++  font-size:13px
++}
++.nav-tools {
++  display:flex;
++  align-items:center;
++  gap:20px
++}
++.nav-tools button {
++  background:none;
++  display:flex;
++  align-items:center;
++  position:relative;
++  padding:5px
++}
++.tool-divider {
++  width:1px;
++  height:18px;
++  background:var(--line)
++}
++.saved-count {
++  position:absolute;
++  background:var(--orange);
++  color:white;
++  border-radius:10px;
++  min-width:14px;
++  height:14px;
++  font-size:9px;
++  top:0;
++  right:-5px
++}
++.daily-intro {
++  display:flex;
++  justify-content:space-between;
++  align-items:end;
++  padding:27px 0 25px;
++  gap:20px
++}
++.daily-intro .eyebrow {
++  display:flex;
++  align-items:center;
++  gap:8px;
++  font-size:9px
++}
++.orange-dot {
++  width:6px;
++  height:6px;
++  background:var(--orange);
++  border-radius:50%
++}
++.daily-intro h1 {
++  font-family:var(--serif);
++  font-weight:400;
++  letter-spacing:-1.1px;
++  font-size:39px;
++  line-height:1.2;
++  margin:10px 0 8px
++}
++.daily-intro p {
++  color:var(--muted);
++  font-size:12px;
++  margin:0;
++  line-height:1.7
++}
++.edition-note {
++  font-size:10px;
++  color:var(--muted);
++  display:grid;
++  gap:8px;
++  text-align:right;
++  padding-bottom:3px
++}
++.edition-number {
++  font-size:9px;
++  color:var(--ink);
++  letter-spacing:1px
++}
++.edition-number>span {
++  padding-inline:7px;
++  color:#b5b6ac
++}
++.trending-bar {
++  display:flex;
++  gap:25px;
++  align-items:center;
++  min-height:43px;
++  border-top:1px solid var(--line);
++  border-bottom:1px solid var(--line);
++  margin-bottom:30px;
++  overflow:auto;
++  scrollbar-width:none;
++  white-space:nowrap
++}
++.trending-label {
++  font-size:9px;
++  font-weight:650;
++  letter-spacing:1px;
++  display:flex;
++  align-items:center;
++  gap:8px;
++  flex-shrink:0;
++  color:var(--orange)
++}
++.trending-bar>a {
++  font-size:10px;
++  color:#696c62;
++  padding-block:12px
++}
++.trending-bar>a:hover {
++  color:var(--orange)
++}
++.trending-bar>a>span {
++  margin-left:12px;
++  color:#8b8c80
++}
++.front-page-grid {
++  display:grid;
++  grid-template-columns:minmax(0,1fr) 286px;
++  gap:34px
++}
++.main-column {
++  min-width:0
++}
++.context-story {
++  display:flex;
++  flex-direction:column;
++  position:relative;
++  min-width:0
++}
++.story-image {
++  width:100%;
++  height:auto;
++  aspect-ratio:1.56;
++  object-fit:cover;
++  background:#eeece5
++}
++.story-header {
++  margin-top:17px
++}
++.story-category {
++  font-size:9px;
++  letter-spacing:1.3px;
++  font-weight:650;
++  text-transform:uppercase;
++  color:var(--orange);
++  display:block;
++  line-height:1.4
++}
++.story-feature-label {
++  display:none
++}
++.story-header h2 {
++  font-family:var(--serif);
++  font-weight:400;
++  font-size:23px;
++  line-height:1.2;
++  margin:8px 0 0;
++  letter-spacing:-.35px
++}
++.story-link:after {
++  content:'';
++  position:absolute;
++  inset:0
++}
++.story-link:hover {
++  color:var(--orange)
++}
++.context-story:has(.story-link:focus-visible) {
++  outline:2px solid var(--orange);
++  outline-offset:6px
++}
++.story-link:focus-visible {
++  outline:none
++}
++.story-summary {
++  font-size:11px;
++  line-height:1.85;
++  color:#71736b;
++  margin:10px 0 0
++}
++.story-footer {
++  margin-top:17px;
++  display:flex;
++  align-items:center;
++  gap:7px;
++  font-size:9px;
++  color:var(--muted);
++  min-height:22px
++}
++.story-author {
++  display:none
++}
++.meta-dot {
++  padding-left:9px
++}
++.save-story {
++  background:transparent;
++  padding:3px;
++  margin-left:auto;
++  position:relative;
++  z-index:1;
++  color:#777c6f;
++  display:grid;
++  place-items:center
++}
++.save-story:hover {
++  color:var(--orange)
++}
++.save-story[aria-pressed=true] {
++  color:var(--orange)
++}
++.save-story[aria-pressed=true] svg {
++  fill:var(--orange)
++}
++/* Context producers declare meaning;
++cards decide how to present it. */
++.lead-context {
++  --story-context:lead
++}
++.brief-context {
++  --story-context:brief
++}
++.standard-context {
++  --story-context:standard
++}
++/* Broad-support contextual defaults, enhanced by independent style queries below. */
++:where(.lead-context) .story-image {
++  aspect-ratio:2.02;
++  max-height:340px
++}
++:where(.lead-context) .story-feature-label {
++  display:inline
++}
++:where(.lead-context) .story-header {
++  margin-top:21px
++}
++:where(.lead-context) .story-header h2 {
++  font-size:38px;
++  line-height:1.12;
++  letter-spacing:-.75px;
++  max-width:840px;
++  margin-top:10px
++}
++:where(.lead-context) .story-summary {
++  font-size:12px;
++  line-height:1.8;
++  max-width:94%;
++  margin-top:13px
++}
++:where(.lead-context) .story-author {
++  display:inline
++}
++:where(.lead-context) .story-footer {
++  margin-top:15px;
++  font-size:10px
++}
++:where(.brief-context) .story-image,:where(.brief-context) .story-summary,:where(.brief-context) .story-author {
++  display:none
++}
++:where(.brief-context) .story-header {
++  margin:0
++}
++:where(.brief-context) .story-header h2 {
++  font-size:20px;
++  line-height:1.26;
++  letter-spacing:-.2px;
++  margin-top:8px
++}
++:where(.brief-context) .story-footer {
++  margin-top:10px
++}
++@container style(--story-context:lead) {
++  .story-image {
++    aspect-ratio:2.02;
++    max-height:340px
++  }
++  .story-feature-label {
++    display:inline
++  }
++  .story-header {
++    margin-top:21px
++  }
++  .story-header h2 {
++    font-size:38px;
++    line-height:1.12;
++    letter-spacing:-.75px;
++    max-width:840px;
++    margin-top:10px
++  }
++  .story-summary {
++    font-size:12px;
++    line-height:1.8;
++    max-width:94%;
++    margin-top:13px
++  }
++  .story-author {
++    display:inline
++  }
++  .story-footer {
++    margin-top:15px;
++    font-size:10px
++  }
++}
++@container style(--story-context:brief) {
++  .story-image,.story-summary,.story-author {
++    display:none
++  }
++  .story-header {
++    margin:0
++  }
++  .story-header h2 {
++    font-size:20px;
++    line-height:1.26;
++    letter-spacing:-.2px;
++    margin-top:8px
++  }
++  .story-footer {
++    margin-top:10px
++  }
++}
++.sidebar {
++  border-left:1px solid var(--line);
++  padding-left:27px
++}
++.sidebar-heading {
++  display:flex;
++  align-items:center;
++  justify-content:space-between;
++  gap:5px
++}
++.sidebar-heading h2 {
++  font-family:var(--serif);
++  font-size:25px;
++  font-weight:400;
++  line-height:1.1;
++  margin:0
++}
++.live-label {
++  font-size:7px;
++  font-weight:600;
++  letter-spacing:.8px;
++  display:flex;
++  align-items:center;
++  gap:5px;
++  color:var(--muted)
++}
++.live-label>span {
++  height:5px;
++  width:5px;
++  border-radius:50%;
++  background:var(--orange)
++}
++.sidebar-description {
++  font-size:10px;
++  color:var(--muted);
++  margin:11px 0 21px
++}
++.brief-item {
++  padding:18px 0;
++  border-top:1px solid var(--line);
++  display:grid;
++  grid-template-columns:21px 1fr;
++  gap:8px
++}
++.brief-number {
++  font-family:var(--serif);
++  font-size:14px;
++  line-height:1.2;
++  color:#a7a89e;
++  padding-top:2px
++}
++.text-arrow {
++  display:flex;
++  justify-content:space-between;
++  border-top:1px solid var(--line);
++  padding-top:15px;
++  font-size:10px;
++  font-weight:600
++}
++.text-arrow:hover {
++  color:var(--orange)
++}
++.text-arrow span {
++  font-size:14px
++}
++.newsletter-card {
++  background:#eeece3;
++  margin-top:30px;
++  padding:23px 23px 19px
++}
++.newsletter-top {
++  display:flex;
++  align-items:center;
++  justify-content:space-between;
++  gap:9px;
++  color:#74765e
++}
++.newsletter-top .eyebrow {
++  font-size:8px;
++  letter-spacing:1.3px
++}
++.newsletter-card h2 {
++  font-family:var(--serif);
++  font-size:32px;
++  line-height:1.13;
++  letter-spacing:-.65px;
++  font-weight:400;
++  margin:16px 0 12px
++}
++.newsletter-card>p {
++  font-size:11px;
++  line-height:1.8;
++  color:#77786a;
++  margin:0 0 19px
++}
++.newsletter-card input {
++  width:100%;
++  border:1px solid #d6d5ca;
++  padding:11px 12px;
++  background:#faf9f5;
++  font-size:10px;
++  border-radius:0;
++  color:var(--ink);
++  min-height:38px
++}
++.newsletter-card button {
++  width:100%;
++  background:var(--ink);
++  color:#fffdf5;
++  display:flex;
++  justify-content:space-between;
++  align-items:center;
++  font-size:10px;
++  padding:11px 12px;
++  margin-top:8px;
++  transition:background .2s
++}
++.newsletter-card button:hover {
++  background:var(--orange)
++}
++.newsletter-card .newsletter-fineprint {
++  font-size:8px;
++  line-height:1.6;
++  text-align:center;
++  margin:12px 0 0;
++  color:#858576
++}
++.editors-note {
++  margin-top:28px;
++  border-top:1px solid var(--line);
++  padding-top:24px
++}
++.editors-note>.eyebrow {
++  font-size:8px;
++  color:var(--muted);
++  letter-spacing:1.2px
++}
++.quote-mark {
++  display:block;
++  color:var(--orange);
++  font-family:var(--serif);
++  font-size:55px;
++  line-height:1;
++  height:44px;
++  margin-top:15px
++}
++.editors-note blockquote {
++  font-family:var(--serif);
++  font-size:26px;
++  font-weight:400;
++  line-height:1.25;
++  letter-spacing:-.35px;
++  margin:0
++}
++.editors-note>p {
++  font-size:11px;
++  color:var(--muted);
++  line-height:1.9;
++  margin:14px 0
++}
++.editors-note>a {
++  font-size:10px;
++  font-weight:500;
++  display:flex;
++  justify-content:space-between
++}
++.editor-signature {
++  font-family:var(--serif);
++  font-style:italic;
++  font-size:22px;
++  transform:rotate(-6deg);
++  margin-top:22px;
++  color:#787c68
++}
++.editor-signature>span {
++  color:var(--orange);
++  margin-left:10px
++}
++.picks-section {
++  border-top:1px solid var(--ink);
++  margin-top:33px;
++  padding-top:22px
++}
++.section-heading {
++  display:flex;
++  align-items:center;
++  justify-content:space-between;
++  gap:10px
++}
++.section-heading h2 {
++  font-family:var(--serif);
++  font-size:27px;
++  letter-spacing:-.4px;
++  font-weight:400;
++  margin:0;
++  line-height:1.2
++}
++.section-heading h2>span {
++  color:var(--orange)
++}
++.section-note {
++  font-size:8px;
++  letter-spacing:1px;
++  color:var(--muted)
++}
++.pick-tabs {
++  display:flex;
++  align-items:center;
++  gap:20px;
++  margin:18px 0 21px;
++  border-bottom:1px solid var(--line);
++  overflow:auto;
++  scrollbar-width:none
++}
++.pick-tabs>button {
++  background:none;
++  position:relative;
++  padding:0 0 11px;
++  white-space:nowrap;
++  color:var(--muted);
++  font-size:10px
++}
++.pick-tabs>button.selected {
++  color:var(--orange)
++}
++.pick-tabs>button.selected:after {
++  position:absolute;
++  content:'';
++  bottom:-1px;
++  left:0;
++  right:0;
++  height:2px;
++  background:var(--orange)
++}
++.pick-tabs>button:hover {
++  color:var(--orange)
++}
++.picks-grid {
++  display:grid;
++  grid-template-columns:repeat(3,minmax(0,1fr));
++  gap:25px
++}
++.pick-item {
++  min-width:0
++}
++.picks-grid .story-summary {
++  display:none
++}
++.picks-grid .story-header h2 {
++  font-size:22px
++}
++.picks-grid .story-image {
++  aspect-ratio:1.5
++}
++.more-stories {
++  display:grid;
++  place-items:center;
++  margin:29px 0 4px;
++  border-top:1px solid var(--line);
++  padding-top:22px
++}
++.more-stories>button {
++  font-size:10px;
++  border:1px solid #c9c9bf;
++  background:transparent;
++  padding:11px 18px
++}
++.more-stories>button:hover {
++  border-color:var(--orange);
++  color:var(--orange)
++}
++.more-stories>button>span {
++  margin-left:24px
++}
++.weekend-banner {
++  margin:40px 0 45px;
++  border-top:1px solid var(--line);
++  border-bottom:1px solid var(--line);
++  padding:32px 29px;
++  display:flex;
++  align-items:center;
++  gap:25px;
++  position:relative;
++  overflow:hidden;
++  background:#f0eee7
++}
++.weekend-banner .eyebrow {
++  font-size:9px;
++  color:var(--orange)
++}
++.weekend-banner h2 {
++  font-family:var(--serif);
++  font-size:29px;
++  font-weight:400;
++  letter-spacing:-.5px;
++  line-height:1.2;
++  margin:7px 0 8px
++}
++.weekend-banner p {
++  font-size:11px;
++  color:var(--muted);
++  margin:0
++}
++.weekend-banner>a {
++  position:relative;
++  z-index:1;
++  background:var(--paper);
++  border:1px solid #c9c9bf;
++  padding:12px 17px;
++  font-size:11px;
++  white-space:nowrap;
++  margin-left:auto;
++  margin-right:80px
++}
++.weekend-banner>a:hover {
++  border-color:var(--orange);
++  color:var(--orange)
++}
++.weekend-banner>a>span {
++  margin-left:20px
++}
++.banner-asterisk {
++  font-size:180px;
++  color:#d4d5c3;
++  position:absolute;
++  right:-38px;
++  top:-47px;
++  line-height:1.4;
++  transform:rotate(10deg)
++}
++.site-footer {
++  padding-bottom:24px
++}
++.footer-top {
++  display:flex;
++  align-items:center;
++  gap:25px;
++  border-bottom:1px solid var(--line);
++  padding-bottom:22px
++}
++.footer-wordmark {
++  font-family:var(--serif);
++  font-size:27px;
++  letter-spacing:-1px
++}
++.footer-wordmark>span {
++  color:var(--orange)
++}
++.footer-top>p {
++  font-size:10px;
++  color:var(--muted)
++}
++.footer-top>a:last-child {
++  font-size:10px;
++  margin-left:auto
++}
++.footer-bottom {
++  display:flex;
++  justify-content:space-between;
++  gap:20px;
++  font-size:8px;
++  color:var(--muted);
++  padding-top:20px;
++  align-items:center
++}
++.footer-bottom nav {
++  display:flex;
++  gap:20px
++}
++.footer-bottom a:hover {
++  text-decoration:underline
++}
++.footer-star {
++  color:var(--orange);
++  font-size:15px;
++  margin-left:5px;
++  vertical-align:middle
++}
++.reader-dialog {
++  border:1px solid var(--line);
++  padding:29px;
++  background:var(--paper);
++  color:var(--ink);
++  width:min(650px,calc(100% - 32px));
++  max-height:80dvh;
++  margin:auto;
++  overscroll-behavior:contain
++}
++.reader-dialog::backdrop {
++  background:#22251e80;
++  backdrop-filter:blur(4px)
++}
++.dialog-top {
++  display:flex;
++  align-items:center;
++  justify-content:space-between;
++  gap:20px
++}
++.dialog-top .eyebrow {
++  color:var(--orange)
++}
++.dialog-top h2 {
++  font-family:var(--serif);
++  font-weight:400;
++  font-size:32px;
++  letter-spacing:-.5px;
++  margin:8px 0 20px
++}
++.dialog-top button {
++  align-self:start;
++  background:none;
++  font-size:29px;
++  line-height:1;
++  padding:0 6px
++}
++.search-field {
++  display:flex;
++  align-items:center;
++  gap:13px;
++  padding:12px 15px;
++  border:1px solid var(--line);
++  margin-bottom:12px;
++  background:#fffdf8
++}
++.search-field input {
++  border:0;
++  min-width:0;
++  flex:1;
++  background:none;
++  font-size:13px;
++  padding:4px
++}
++.search-field input:focus {
++  outline:none
++}
++.search-field:focus-within {
++  outline:2px solid var(--orange);
++  outline-offset:2px
++}
++.search-result {
++  display:block;
++  padding:18px 0;
++  border-bottom:1px solid var(--line)
++}
++.search-result:hover h3 {
++  color:var(--orange)
++}
++.search-result h3 {
++  font-family:var(--serif);
++  font-weight:400;
++  font-size:23px;
++  line-height:1.2;
++  margin:6px 0 8px
++}
++.search-result>span:last-child {
++  font-size:10px;
++  color:var(--muted);
++  display:flex;
++  justify-content:space-between
++}
++#reader-empty {
++  font-size:13px;
++  line-height:1.8;
++  color:var(--muted);
++  padding:25px 0
++}
++.site-main>div:not(.front-page-grid) {
++  min-width:0
++}
++@media(min-width:1500px) {
++  .front-page-grid {
++    grid-template-columns:minmax(0,1fr) 320px;
++    gap:40px
++  }
++  .sidebar {
++    padding-left:32px
++  }
++  .daily-intro {
++    padding-top:42px;
++    padding-bottom:35px
++  }
++  .daily-intro h1 {
++    font-size:44px
++  }
++  .story-header h2 {
++    font-size:25px
++  }
++}
++@media(max-width:1150px) {
++  .page-width {
++    width:calc(100% - 64px)
++  }
++  .masthead-date .weather {
++    font-size:9px
++  }
++  .masthead-date {
++    font-size:9px
++  }
++  .wordmark {
++    font-size:44px
++  }
++  .primary-nav {
++    gap:23px
++  }
++  .front-page-grid {
++    grid-template-columns:minmax(0,1fr) 257px;
++    gap:26px
++  }
++  .sidebar {
++    padding-left:23px
++  }
++  .daily-intro h1 {
++    font-size:36px
++  }
++  .trending-bar {
++    gap:22px
++  }
++  .newsletter-card {
++    padding:20px
++  }
++  .section-note {
++    display:none
++  }
++  :where(.lead-context) .story-header h2 {
++    font-size:33px
++  }
++  @container style(--story-context:lead) {
++    .story-header h2 {
++      font-size:33px
++    }
++  }
++  .picks-grid {
++    gap:18px
++  }
++  .picks-grid .story-header h2 {
++    font-size:20px
++  }
++  .weekend-banner>a {
++    margin-right:30px
++  }
++  .masthead-right>span {
++    font-size:9px
++  }
++  .subscribe-button {
++    font-size:10px;
++    padding:10px 11px;
++    gap:10px
++  }
++}
++@media(max-width:900px) {
++  .page-width {
++    width:calc(100% - 48px)
++  }
++  .masthead {
++    grid-template-columns:1fr auto;
++    height:100px
++  }
++  .masthead-date {
++    display:none
++  }
++  .wordmark {
++    font-size:46px
++  }
++  .masthead-right {
++    gap:7px
++  }
++  .primary-nav {
++    gap:24px;
++    overflow:auto;
++    scrollbar-width:none
++  }
++  .primary-nav>a {
++    min-height:47px
++  }
++  .nav-row {
++    gap:25px;
++    min-height:47px
++  }
++  .nav-tools {
++    gap:12px
++  }
++  .nav-tools button {
++    flex-shrink:0
++  }
++  .daily-intro h1 {
++    font-size:33px
++  }
++  .edition-note {
++    display:none
++  }
++  .front-page-grid {
++    grid-template-columns:minmax(0,1fr) 230px;
++    gap:24px
++  }
++  .sidebar {
++    padding-left:20px
++  }
++  .sidebar-heading {
++    display:block
++  }
++  .live-label {
++    margin-top:10px
++  }
++  .sidebar-description {
++    line-height:1.6
++  }
++  .brief-item {
++    grid-template-columns:15px 1fr;
++    gap:6px
++  }
++  :where(.brief-context) .story-header h2 {
++    font-size:18px
++  }
++  @container style(--story-context:brief) {
++    .story-header h2 {
++      font-size:18px
++    }
++  }
++  .newsletter-card {
++    padding:17px
++  }
++  .newsletter-card h2 {
++    font-size:27px
++  }
++  .newsletter-top .eyebrow {
++    font-size:7px
++  }
++  .picks-grid {
++    grid-template-columns:repeat(2,minmax(0,1fr));
++    gap:25px 18px
++  }
++  .picks-grid .pick-item:last-child:nth-child(odd) {
++    grid-column:1/-1
++  }
++  .picks-grid .pick-item:last-child:nth-child(odd) .story-image {
++    aspect-ratio:2.3
++  }
++  .pick-tabs {
++    gap:17px
++  }
++  .weekend-banner h2 {
++    font-size:25px
++  }
++  .weekend-banner>a {
++    margin-right:0;
++    font-size:10px
++  }
++  .weekend-banner {
++    padding:25px;
++    gap:20px
++  }
++  .banner-asterisk {
++    opacity:.5
++  }
++  .footer-top {
++    flex-wrap:wrap;
++    gap:10px 20px
++  }
++  .footer-top>p {
++    margin:0
++  }
++  .footer-bottom {
++    flex-wrap:wrap
++  }
++  .utility-motto {
++    font-size:8px
++  }
++  .utility-actions {
++    gap:16px
++  }
++  .utility-actions .edition {
++    display:none
++  }
++}
++@media(max-width:680px) {
++  .page-width {
++    width:calc(100% - 36px)
++  }
++  .utility-bar {
++    height:33px
++  }
++  .utility-motto {
++    letter-spacing:.8px;
++    font-size:7px;
++    gap:5px
++  }
++  .little-star {
++    font-size:15px
++  }
++  .utility-actions a {
++    font-size:9px
++  }
++  .masthead {
++    height:87px;
++    gap:12px
++  }
++  .wordmark {
++    font-size:36px;
++    letter-spacing:-1.7px
++  }
++  .masthead-right>span {
++    display:none
++  }
++  .subscribe-button {
++    font-size:9px;
++    padding:9px 10px;
++    gap:0
++  }
++  .subscribe-button>span {
++    display:none
++  }
++  .primary-nav {
++    gap:24px
++  }
++  .primary-nav>a {
++    font-size:10px;
++    min-height:43px
++  }
++  .nav-row {
++    min-height:43px;
++    gap:16px
++  }
++  .nav-tools {
++    gap:7px
++  }
++  .tool-divider {
++    display:none
++  }
++  .nav-tools svg {
++    width:17px
++  }
++  .daily-intro {
++    padding:26px 0 22px
++  }
++  .daily-intro h1 {
++    font-size:31px;
++    letter-spacing:-1px;
++    margin-top:11px
++  }
++  .daily-intro p {
++    font-size:10px
++  }
++  .daily-intro .eyebrow {
++    font-size:8px
++  }
++  .trending-bar {
++    margin-bottom:22px;
++    gap:21px
++  }
++  .trending-label {
++    font-size:8px
++  }
++  .trending-bar>a {
++    font-size:9px
++  }
++  .front-page-grid {
++    display:block
++  }
++  .sidebar {
++    border-left:0;
++    padding-left:0;
++    margin-top:35px;
++    display:grid;
++    grid-template-columns:1fr 1fr;
++    gap:25px
++  }
++  .latest-section {
++    grid-column:1/-1
++  }
++  .sidebar-heading {
++    display:flex
++  }
++  .live-label {
++    margin-top:0
++  }
++  .sidebar-description {
++    margin-bottom:20px
++  }
++  .brief-item {
++    grid-template-columns:25px 1fr;
++    padding:17px 0
++  }
++  :where(.brief-context) .story-header h2 {
++    font-size:23px
++  }
++  @container style(--story-context:brief) {
++    .story-header h2 {
++      font-size:23px
++    }
++  }
++  .sidebar .story-footer {
++    max-width:100%;
++    margin-top:7px
++  }
++  .newsletter-card {
++    margin-top:0
++  }
++  .editors-note {
++    margin-top:0;
++    padding-top:15px
++  }
++  .editors-note blockquote {
++    font-size:24px
++  }
++  .editors-note .eyebrow {
++    font-size:7px
++  }
++  .editors-note>p {
++    font-size:10px
++  }
++  .editors-note>a {
++    font-size:9px
++  }
++  .editor-signature {
++    font-size:20px
++  }
++  .newsletter-card h2 {
++    font-size:27px
++  }
++  .newsletter-top svg {
++    width:27px
++  }
++  .newsletter-card>p {
++    font-size:10px
++  }
++  .newsletter-card input {
++    font-size:9px;
++    padding:10px
++  }
++  .newsletter-top {
++    gap:5px
++  }
++  .newsletter-top .eyebrow {
++    letter-spacing:.8px
++  }
++  .newsletter-card .newsletter-fineprint {
++    font-size:7px
++  }
++  :where(.lead-context) .story-image {
++    aspect-ratio:1.5
++  }
++  :where(.lead-context) .story-header h2 {
++    font-size:32px
++  }
++  :where(.lead-context) .story-summary {
++    max-width:100%;
++    font-size:12px
++  }
++  :where(.lead-context) .story-author {
++    font-size:9px
++  }
++  @container style(--story-context:lead) {
++    .story-image {
++      aspect-ratio:1.5
++    }
++    .story-header h2 {
++      font-size:32px
++    }
++    .story-summary {
++      max-width:100%;
++      font-size:12px
++    }
++    .story-author {
++      font-size:9px
++    }
++  }
++  .picks-section {
++    margin-top:27px
++  }
++  .section-heading h2 {
++    font-size:26px
++  }
++  .picks-grid {
++    gap:25px 17px
++  }
++  .picks-grid .story-header h2 {
++    font-size:22px
++  }
++  .pick-tabs {
++    gap:23px
++  }
++  .pick-tabs button {
++    font-size:10px
++  }
++  .picks-grid .pick-item:last-child:nth-child(odd) {
++    grid-column:auto
++  }
++  .picks-grid .pick-item:last-child:nth-child(odd) .story-image {
++    aspect-ratio:1.5
++  }
++  .picks-grid {
++    grid-template-columns:1fr
++  }
++  .picks-grid .context-story {
++    display:grid;
++    grid-template-columns:106px 1fr;
++    column-gap:16px
++  }
++  .picks-grid .story-image {
++    grid-row:1/3;
++    aspect-ratio:1;
++    min-height:106px;
++    height:100%;
++    max-height:150px
++  }
++  .picks-grid .story-header {
++    margin-top:0
++  }
++  .picks-grid .story-header h2 {
++    font-size:22px
++  }
++  .picks-grid .story-footer {
++    grid-column:2;
++    margin-top:8px
++  }
++  .picks-grid .story-category {
++    font-size:8px
++  }
++  .weekend-banner {
++    margin-top:32px;
++    display:block;
++    padding:24px
++  }
++  .weekend-banner h2 {
++    font-size:27px;
++    max-width:290px
++  }
++  .weekend-banner p {
++    max-width:270px;
++    font-size:10px;
++    line-height:1.7
++  }
++  .weekend-banner>a {
++    display:inline-flex;
++    margin-top:20px;
++    font-size:10px
++  }
++  .banner-asterisk {
++    top:25px;
++    right:-50px;
++    font-size:190px
++  }
++  .footer-wordmark {
++    font-size:25px
++  }
++  .footer-top>p {
++    width:100%;
++    order:2
++  }
++  .footer-top>a:last-child {
++    font-size:9px
++  }
++  .footer-bottom {
++    font-size:8px;
++    gap:16px
++  }
++  .footer-bottom>span:first-child {
++    width:100%
++  }
++  .footer-bottom>span:last-child {
++    margin-left:auto
++  }
++  .reader-dialog {
++    padding:21px
++  }
++  .dialog-top h2 {
++    font-size:27px
++  }
++  .search-result h3 {
++    font-size:21px
++  }
++}
++@media(max-width:380px) {
++  .wordmark {
++    font-size:30px
++  }
++  .subscribe-button {
++    font-size:8px;
++    padding:8px
++  }
++  .sidebar {
++    grid-template-columns:1fr
++  }
++  .newsletter-card h2 {
++    font-size:34px
++  }
++  .newsletter-top .eyebrow {
++    font-size:9px
++  }
++  .editors-note {
++    padding-top:20px
++  }
++  .daily-intro h1 {
++    font-size:29px
++  }
++  .footer-bottom>span:last-child {
++    margin-left:0
++  }
++}
++@media(prefers-reduced-motion:reduce) {
++  :root {
++    scroll-behavior:auto
++  }
++  *,*::before,*::after {
++    transition:none!important;
++    animation:none!important
++  }
++}

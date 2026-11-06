@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+index 66c9173..dbc04d2 100644
+--- a/index.html
++++ b/index.html
+@@ -38,6 +38,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      scroll-target-group: auto;
+     }
+ 
+     .logo {
+@@ -59,13 +60,21 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding-bottom: 4px;
++      border-bottom: 2px solid transparent;
++      transition: color 0.3s, border-bottom-color 0.3s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    nav a:is(:target-current, .\:target-current) {
++      color: var(--accent);
++      border-bottom-color: var(--accent);
++      font-weight: bold;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -100,6 +109,28 @@
+       padding: 0 20px;
+     }
+ 
++    main section {
++      padding: 60px 0;
++      min-height: 60vh;
++      scroll-margin-top: 70px;
++    }
++
++    main section + section {
++      border-top: 1px solid var(--secondary);
++    }
++
++    main section h2 {
++      text-align: center;
++      margin-bottom: 10px;
++      font-size: 2rem;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      max-width: 600px;
++      margin: 0 auto 30px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -160,10 +191,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,12 +202,13 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu">
++      <h2>Seasonal Favorites</h2>
++      <p class="section-subtitle">Explore our handcrafted coffee creations brewed fresh daily.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +227,72 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations">
++      <h2>Our Locations</h2>
++      <p class="section-subtitle">Visit one of our neighborhood cafes for a warm cup and a cozy atmosphere.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>124 Main Street &bull; Open Daily 6am &ndash; 8pm</p>
++          <a href="/locations/downtown" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <h3>Riverside Cafe</h3>
++          <p>450 River Road &bull; Open Daily 7am &ndash; 7pm</p>
++          <a href="/locations/riverside" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <h3>Uptown Espresso Bar</h3>
++          <p>88 Oak Avenue &bull; Mon&ndash;Sat 6:30am &ndash; 6pm</p>
++          <a href="/locations/uptown" class="btn">Get Directions</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards">
++      <h2>Daily Grind Rewards</h2>
++      <p class="section-subtitle">Earn beans with every sip and unlock exclusive member perks.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn 2 Beans per $1</h3>
++          <p>Collect points on every order in-store or online toward free handcrafted drinks.</p>
++          <a href="/rewards/join" class="btn">Start Earning</a>
++        </div>
++        <div class="card">
++          <h3>Free Birthday Treat</h3>
++          <p>Celebrate your special day with any complimentary beverage and pastry of your choice.</p>
++          <a href="/rewards/perks" class="btn">View Perks</a>
++        </div>
++        <div class="card">
++          <h3>Early Tasting Access</h3>
++          <p>Be the first to sample our limited-edition single-origin roasts and seasonal blends.</p>
++          <a href="/rewards/tastings" class="btn">Learn More</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="account">
++      <h2>My Account</h2>
++      <p class="section-subtitle">Manage your subscriptions, saved orders, and reward preferences.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Order History &amp; Reorder</h3>
++          <p>Quickly repeat your go-to morning coffee order with a single tap.</p>
++          <a href="/account/orders" class="btn">View Orders</a>
++        </div>
++        <div class="card">
++          <h3>Bean Subscription</h3>
++          <p>Customize your delivery schedule for fresh whole-bean coffee at home.</p>
++          <a href="/account/subscriptions" class="btn">Manage Plan</a>
++        </div>
++        <div class="card">
++          <h3>Payment &amp; Preferences</h3>
++          <p>Update your saved payment methods, default pickup store, and notifications.</p>
++          <a href="/account/settings" class="btn">Account Settings</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +305,39 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const supportsScrollTargetGroup = CSS.supports('scroll-target-group: auto');
++
++    if (supportsScrollTargetGroup) {
++      const syncAriaCurrent = () => {
++        const currentLink = document.querySelector('nav a:target-current');
++        document.querySelectorAll('nav a').forEach(link => {
++          link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++        });
++      };
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      const navLinks = document.querySelectorAll('nav a');
++      const sections = document.querySelectorAll('main section');
++
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach(entry => {
++          if (entry.isIntersecting) {
++            const id = entry.target.getAttribute('id');
++            navLinks.forEach(link => {
++              const isActive = link.getAttribute('href') === `#${id}`;
++              link.classList.toggle(':target-current', isActive);
++              link.setAttribute('aria-current', isActive);
++            });
++          }
++        });
++      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++
++      sections.forEach(section => observer.observe(section));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

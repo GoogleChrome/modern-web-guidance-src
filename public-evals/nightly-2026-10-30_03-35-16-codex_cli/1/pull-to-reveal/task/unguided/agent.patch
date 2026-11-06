@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,17 +19,55 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .search-bar {
++      display: flex;
++      gap: 12px;
++      align-items: center;
++      padding: 20px 5%;
++      background: var(--secondary);
++      scroll-snap-align: start;
++    }
++
++    .search-bar input {
++      flex: 1;
++      min-width: 0;
++      padding: 12px 16px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .search-bar .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .search-bar :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+     nav {
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -156,8 +194,13 @@
+ </head>
+ 
+ <body>
+ 
++  <form class="search-bar" role="search" action="/search" method="get">
++    <input type="search" name="q" aria-label="Search The Daily Grind" placeholder="Search coffee, drinks, and more…" required>
++    <button class="btn" type="submit">Search</button>
++  </form>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +249,14 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep the search initially tucked away in browsers without native support.
++    if (!CSS.supports('scroll-initial-target', 'nearest') && !location.hash && window.scrollY === 0) {
++      document.querySelector('nav').scrollIntoView({ block: 'start', behavior: 'instant' });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

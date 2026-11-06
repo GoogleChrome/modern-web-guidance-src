@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,98 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-up Form */
++    .signup {
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      overflow: hidden;
++    }
++
++    .signup-image {
++      background: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80');
++      background-size: cover;
++      background-position: center;
++      min-height: 250px;
++    }
++
++    .signup-form {
++      padding: 30px;
++    }
++
++    .signup-form h2 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .signup-form > p {
++      margin-bottom: 20px;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
++      gap: 15px;
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 5px;
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++    }
++
++    .form-group input:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.3);
++    }
++
++    .checkbox-group {
++      display: flex;
++      align-items: flex-start;
++      gap: 8px;
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    .checkbox-group input {
++      margin-top: 5px;
++    }
++
++    .signup-form button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
++      width: 100%;
++      margin-top: 5px;
++    }
++
++    .form-error {
++      color: #c62828;
++      font-size: 0.85rem;
++      min-height: 1.2em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +284,73 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="signup" class="signup">
++      <div class="signup-image" role="img" aria-label="Latte art in a ceramic cup"></div>
++      <form class="signup-form" action="/signup" method="post">
++        <h2>Join The Daily Grind</h2>
++        <p>Sign up to earn rewards, get a free drink on your birthday, and hear about new roasts first.</p>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="first-name">First Name</label>
++            <input type="text" id="first-name" name="firstName" autocomplete="given-name" required>
++          </div>
++          <div class="form-group">
++            <label for="last-name">Last Name</label>
++            <input type="text" id="last-name" name="lastName" autocomplete="family-name" required>
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="email">Email</label>
++          <input type="email" id="email" name="email" autocomplete="email" required>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="password">Password</label>
++            <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required>
++          </div>
++          <div class="form-group">
++            <label for="confirm-password">Confirm Password</label>
++            <input type="password" id="confirm-password" name="confirmPassword" autocomplete="new-password" minlength="8" required>
++          </div>
++        </div>
++
++        <div class="checkbox-group">
++          <input type="checkbox" id="newsletter" name="newsletter" checked>
++          <label for="newsletter">Send me offers and news about seasonal drinks.</label>
++        </div>
++
++        <div class="checkbox-group">
++          <input type="checkbox" id="terms" name="terms" required>
++          <label for="terms">I agree to the <a href="/terms">Terms of Service</a> and <a href="/privacy-policy">Privacy Policy</a>.</label>
++        </div>
++
++        <p class="form-error" id="signup-error" aria-live="polite"></p>
++        <button type="submit" class="btn">Create Account</button>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    document.querySelector('.signup-form').addEventListener('submit', function (e) {
++      const password = document.getElementById('password');
++      const confirm = document.getElementById('confirm-password');
++      const error = document.getElementById('signup-error');
++      if (password.value !== confirm.value) {
++        e.preventDefault();
++        error.textContent = 'Passwords do not match.';
++        confirm.focus();
++      } else {
++        error.textContent = '';
++      }
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

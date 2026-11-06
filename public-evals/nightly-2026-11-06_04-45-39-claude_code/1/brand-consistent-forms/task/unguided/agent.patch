@@ -1,0 +1,618 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,446 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Dark mode for the page shell ---------- */
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --secondary: #3b2c27;
++        --text: #f3e5dc;
++        --light: #1b1310;
++      }
++
++      .card {
++        background: #2a1f1b;
++        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
++      }
++
++      .card h3 {
++        color: #ffcc80;
++      }
++
++      .btn {
++        border: 1px solid #ffab40;
++      }
++    }
++
++    /* ---------- Coffee subscription form ---------- */
++    .subscribe {
++      /* Light-mode tokens. Orange is darkened (#b35400, 5:1 on white) so
++         controls and small text meet WCAG contrast; the brand #ffab40 is
++         used only for decorative highlights. */
++      --sub-surface: #ffffff;
++      --sub-surface-alt: #f6efeb;
++      --sub-heading: var(--primary);
++      --sub-text: #3e2723;
++      --sub-muted: #5d4037;
++      --sub-border: #8d6e63;
++      --sub-accent: #b35400;
++      --sub-accent-hover: #8f4300;
++      --sub-on-accent: #ffffff;
++      --sub-track: #d7ccc8;
++      --sub-focus: #4e342e;
++
++      margin-top: 60px;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      .subscribe {
++        /* Dark-mode tokens: full-strength brand orange (#ffab40, ~9:1 on
++           the surface) with dark-brown glyphs on top of it. */
++        --sub-surface: #2a1f1b;
++        --sub-surface-alt: #362824;
++        --sub-heading: #ffcc80;
++        --sub-text: #f3e5dc;
++        --sub-muted: #d7ccc8;
++        --sub-border: #a1887f;
++        --sub-accent: #ffab40;
++        --sub-accent-hover: #ffc070;
++        --sub-on-accent: #2b1a14;
++        --sub-track: #5d4037;
++        --sub-focus: #ffe0b2;
++      }
++    }
++
++    .subscribe-card {
++      background: var(--sub-surface);
++      color: var(--sub-text);
++      border-top: 6px solid var(--primary);
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
++      padding: 32px;
++      max-width: 720px;
++      margin: 0 auto;
++    }
++
++    .subscribe h2 {
++      color: var(--sub-heading);
++      text-align: center;
++      margin-bottom: 4px;
++    }
++
++    .subscribe-intro {
++      text-align: center;
++      color: var(--sub-muted);
++      margin-bottom: 24px;
++    }
++
++    .sub-form {
++      display: grid;
++      gap: 22px;
++    }
++
++    .sub-field {
++      display: grid;
++      gap: 6px;
++    }
++
++    .sub-form label,
++    .sub-form legend {
++      font-weight: 600;
++      color: var(--sub-text);
++    }
++
++    .sub-hint {
++      font-size: 0.85rem;
++      color: var(--sub-muted);
++    }
++
++    .sub-form :focus-visible {
++      outline: 3px solid var(--sub-focus);
++      outline-offset: 2px;
++    }
++
++    /* Text inputs & select */
++    .sub-form input[type="text"],
++    .sub-form input[type="email"],
++    .sub-form select {
++      font: inherit;
++      color: var(--sub-text);
++      background: var(--sub-surface-alt);
++      border: 2px solid var(--sub-border);
++      border-radius: 6px;
++      padding: 10px 12px;
++      width: 100%;
++    }
++
++    .sub-form input[type="text"]:hover,
++    .sub-form input[type="email"]:hover,
++    .sub-form select:hover {
++      border-color: var(--sub-accent);
++    }
++
++    .sub-form input[type="text"]:focus-visible,
++    .sub-form input[type="email"]:focus-visible,
++    .sub-form select:focus-visible {
++      border-color: var(--sub-accent);
++    }
++
++    /* Progress bar */
++    .sub-progress {
++      background: var(--sub-surface-alt);
++      border-radius: 8px;
++      padding: 14px 16px;
++      margin-bottom: 24px;
++    }
++
++    .sub-progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++      margin-bottom: 8px;
++    }
++
++    .sub-progress-header label {
++      font-weight: 600;
++      color: var(--sub-text);
++    }
++
++    .sub-progress-value {
++      font-weight: 700;
++      color: var(--sub-text);
++    }
++
++    .sub-progress progress {
++      -webkit-appearance: none;
++      appearance: none;
++      display: block;
++      width: 100%;
++      height: 14px;
++      border: 1px solid var(--sub-border);
++      border-radius: 999px;
++      background: var(--sub-track);
++      overflow: hidden;
++      color: var(--sub-accent);
++      /* Firefox fallback */
++    }
++
++    .sub-progress progress::-webkit-progress-bar {
++      background: var(--sub-track);
++      border-radius: 999px;
++    }
++
++    .sub-progress progress::-webkit-progress-value {
++      background: var(--sub-accent);
++      border-radius: 999px;
++      transition: width 0.3s ease;
++    }
++
++    .sub-progress progress::-moz-progress-bar {
++      background: var(--sub-accent);
++      border-radius: 999px;
++    }
++
++    /* Fieldset / radio group */
++    .sub-form fieldset {
++      border: 2px solid var(--sub-border);
++      border-radius: 8px;
++      padding: 12px 16px 16px;
++    }
++
++    .sub-form legend {
++      padding: 0 6px;
++    }
++
++    .sub-options {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
++      gap: 10px;
++      margin-top: 6px;
++    }
++
++    .sub-option {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      background: var(--sub-surface-alt);
++      border: 2px solid transparent;
++      border-radius: 6px;
++      padding: 10px 12px;
++    }
++
++    .sub-option:has(input:checked) {
++      border-color: var(--sub-accent);
++    }
++
++    .sub-option label {
++      font-weight: 500;
++      cursor: pointer;
++    }
++
++    /* Custom radio & checkbox */
++    .sub-form input[type="radio"],
++    .sub-form input[type="checkbox"] {
++      -webkit-appearance: none;
++      appearance: none;
++      flex: none;
++      width: 22px;
++      height: 22px;
++      margin: 0;
++      border: 2px solid var(--sub-border);
++      background: var(--sub-surface);
++      display: inline-grid;
++      place-content: center;
++      cursor: pointer;
++      transition: border-color 0.15s, background-color 0.15s;
++    }
++
++    .sub-form input[type="radio"] {
++      border-radius: 50%;
++    }
++
++    .sub-form input[type="checkbox"] {
++      border-radius: 4px;
++    }
++
++    .sub-form input[type="radio"]:hover,
++    .sub-form input[type="checkbox"]:hover {
++      border-color: var(--sub-accent);
++    }
++
++    .sub-form input[type="radio"]::before {
++      content: "";
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: var(--sub-on-accent);
++      transform: scale(0);
++      transition: transform 0.15s;
++    }
++
++    .sub-form input[type="radio"]:checked {
++      border-color: var(--sub-accent);
++      background: var(--sub-accent);
++    }
++
++    .sub-form input[type="radio"]:checked::before {
++      transform: scale(1);
++    }
++
++    .sub-form input[type="checkbox"]::before {
++      content: "";
++      width: 6px;
++      height: 11px;
++      border: solid var(--sub-on-accent);
++      border-width: 0 3px 3px 0;
++      transform: translateY(-1px) rotate(45deg) scale(0);
++      transition: transform 0.15s;
++    }
++
++    .sub-form input[type="checkbox"]:checked {
++      border-color: var(--sub-accent);
++      background: var(--sub-accent);
++    }
++
++    .sub-form input[type="checkbox"]:checked::before {
++      transform: translateY(-1px) rotate(45deg) scale(1);
++    }
++
++    .sub-checkbox {
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++    }
++
++    .sub-checkbox input {
++      margin-top: 2px !important;
++    }
++
++    .sub-checkbox label {
++      font-weight: 500;
++      cursor: pointer;
++    }
++
++    /* Range slider */
++    .sub-range-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++    }
++
++    .sub-range-header output {
++      font-weight: 700;
++      color: var(--sub-on-accent);
++      background: var(--sub-accent);
++      border-radius: 999px;
++      padding: 2px 12px;
++      font-size: 0.9rem;
++    }
++
++    .sub-form input[type="range"] {
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: 28px;
++      background: transparent;
++      cursor: pointer;
++      --fill: 50%;
++    }
++
++    .sub-form input[type="range"]::-webkit-slider-runnable-track {
++      height: 8px;
++      border-radius: 999px;
++      border: 1px solid var(--sub-border);
++      background: linear-gradient(to right, var(--sub-accent) var(--fill), var(--sub-track) var(--fill));
++    }
++
++    .sub-form input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: 24px;
++      height: 24px;
++      margin-top: -9px;
++      border-radius: 50%;
++      background: var(--primary);
++      border: 3px solid var(--sub-accent);
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
++    }
++
++    .sub-form input[type="range"]::-moz-range-track {
++      height: 8px;
++      border-radius: 999px;
++      border: 1px solid var(--sub-border);
++      background: var(--sub-track);
++    }
++
++    .sub-form input[type="range"]::-moz-range-progress {
++      height: 8px;
++      border-radius: 999px;
++      background: var(--sub-accent);
++    }
++
++    .sub-form input[type="range"]::-moz-range-thumb {
++      width: 18px;
++      height: 18px;
++      border-radius: 50%;
++      background: var(--primary);
++      border: 3px solid var(--sub-accent);
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
++    }
++
++    .sub-form input[type="range"]:focus-visible {
++      outline: 3px solid var(--sub-focus);
++      outline-offset: 4px;
++      border-radius: 4px;
++    }
++
++    .sub-range-scale {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.8rem;
++      color: var(--sub-muted);
++    }
++
++    /* Submit */
++    .sub-submit {
++      font: inherit;
++      font-weight: 700;
++      justify-self: start;
++      background: var(--sub-accent);
++      color: var(--sub-on-accent);
++      border: none;
++      border-radius: 6px;
++      padding: 12px 28px;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .sub-submit:hover {
++      background: var(--sub-accent-hover);
++    }
++
++    .sub-status {
++      font-weight: 600;
++      color: var(--sub-text);
++      min-height: 1.6em;
++    }
++
++    /* Windows High Contrast / forced colors: restore system rendering */
++    @media (forced-colors: active) {
++
++      .sub-form input[type="radio"],
++      .sub-form input[type="checkbox"],
++      .sub-form input[type="range"],
++      .sub-progress progress {
++        -webkit-appearance: auto;
++        appearance: auto;
++      }
++
++      .sub-form input[type="radio"]::before,
++      .sub-form input[type="checkbox"]::before {
++        content: none;
++      }
++    }
++
++    @media (max-width: 600px) {
++      .subscribe-card {
++        padding: 20px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -162,8 +600,9 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#subscribe">Subscribe</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,8 +633,87 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="subscribe" class="subscribe" aria-labelledby="subscribe-heading">
++      <div class="subscribe-card">
++        <h2 id="subscribe-heading">Build Your Coffee Subscription</h2>
++        <p class="subscribe-intro">Tell us how you like it and we'll roast and ship fresh beans on your schedule.</p>
++
++        <div class="sub-progress">
++          <div class="sub-progress-header">
++            <label for="sub-progress">Subscription setup progress</label>
++            <span class="sub-progress-value" id="sub-progress-text" aria-hidden="true">0%</span>
++          </div>
++          <progress id="sub-progress" max="100" value="0">0%</progress>
++        </div>
++
++        <form class="sub-form" id="subscription-form" action="/subscribe" method="post" novalidate>
++          <div class="sub-field">
++            <label for="sub-name">Full name</label>
++            <input type="text" id="sub-name" name="name" autocomplete="name" required>
++          </div>
++
++          <div class="sub-field">
++            <label for="sub-email">Email address</label>
++            <input type="email" id="sub-email" name="email" autocomplete="email" required
++              aria-describedby="sub-email-hint">
++            <span class="sub-hint" id="sub-email-hint">We'll send your order confirmations here.</span>
++          </div>
++
++          <fieldset>
++            <legend>Preferred delivery frequency</legend>
++            <div class="sub-options">
++              <div class="sub-option">
++                <input type="radio" id="freq-weekly" name="frequency" value="weekly" required>
++                <label for="freq-weekly">Every week</label>
++              </div>
++              <div class="sub-option">
++                <input type="radio" id="freq-biweekly" name="frequency" value="biweekly">
++                <label for="freq-biweekly">Every 2 weeks</label>
++              </div>
++              <div class="sub-option">
++                <input type="radio" id="freq-monthly" name="frequency" value="monthly">
++                <label for="freq-monthly">Every month</label>
++              </div>
++            </div>
++          </fieldset>
++
++          <div class="sub-field">
++            <div class="sub-range-header">
++              <label for="sub-roast">Roast preference</label>
++              <output id="sub-roast-output" for="sub-roast" aria-hidden="true">Medium</output>
++            </div>
++            <input type="range" id="sub-roast" name="roast" min="1" max="5" step="1" value="3"
++              aria-describedby="sub-roast-scale" aria-valuetext="Medium">
++            <div class="sub-range-scale" id="sub-roast-scale">
++              <span>Light</span>
++              <span>Dark</span>
++            </div>
++          </div>
++
++          <div class="sub-field">
++            <label for="sub-grind">Grind</label>
++            <select id="sub-grind" name="grind" required>
++              <option value="" selected disabled>Choose a grind…</option>
++              <option value="whole">Whole bean</option>
++              <option value="espresso">Espresso (fine)</option>
++              <option value="drip">Drip (medium)</option>
++              <option value="french-press">French press (coarse)</option>
++            </select>
++          </div>
++
++          <div class="sub-checkbox">
++            <input type="checkbox" id="sub-emails" name="marketing_emails" value="yes">
++            <label for="sub-emails">Yes, email me about new roasts, brewing tips, and subscriber-only offers.</label>
++          </div>
++
++          <button type="submit" class="sub-submit">Start My Subscription</button>
++          <p class="sub-status" id="sub-status" role="status" aria-live="polite"></p>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +724,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('subscription-form');
++      const progress = document.getElementById('sub-progress');
++      const progressText = document.getElementById('sub-progress-text');
++      const roast = document.getElementById('sub-roast');
++      const roastOutput = document.getElementById('sub-roast-output');
++      const status = document.getElementById('sub-status');
++      const roastLabels = ['Light', 'Medium-light', 'Medium', 'Medium-dark', 'Dark'];
++      let roastTouched = false;
++
++      const steps = [
++        () => form.elements.name.value.trim() !== '',
++        () => form.elements.email.validity.valid && form.elements.email.value !== '',
++        () => form.elements.frequency.value !== '',
++        () => roastTouched,
++        () => form.elements.grind.value !== '',
++      ];
++
++      function updateRoast() {
++        const label = roastLabels[roast.value - 1];
++        roastOutput.value = label;
++        roast.setAttribute('aria-valuetext', label);
++        const pct = ((roast.value - roast.min) / (roast.max - roast.min)) * 100;
++        roast.style.setProperty('--fill', pct + '%');
++      }
++
++      function updateProgress() {
++        const done = steps.filter((check) => check()).length;
++        const pct = Math.round((done / steps.length) * 100);
++        progress.value = pct;
++        progress.textContent = pct + '%';
++        progress.setAttribute('aria-valuetext', `${pct}% complete, ${done} of ${steps.length} steps`);
++        progressText.textContent = pct + '%';
++      }
++
++      roast.addEventListener('input', () => {
++        roastTouched = true;
++        updateRoast();
++      });
++
++      form.addEventListener('input', updateProgress);
++      form.addEventListener('change', updateProgress);
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        roastTouched = true;
++        updateProgress();
++        if (!form.checkValidity()) {
++          const firstInvalid = form.querySelector(':invalid');
++          status.textContent = 'Please complete all required fields before subscribing.';
++          if (firstInvalid) firstInvalid.focus();
++          return;
++        }
++        status.textContent = `Thanks, ${form.elements.name.value.trim()}! Your ${roastLabels[roast.value - 1].toLowerCase()} roast subscription is set up.`;
++      });
++
++      updateRoast();
++      updateProgress();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

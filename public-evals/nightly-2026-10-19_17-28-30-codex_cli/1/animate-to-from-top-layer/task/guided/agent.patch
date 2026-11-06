@@ -1,0 +1,263 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,8 +128,11 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+@@ -151,8 +154,125 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .overlay {
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: 28px;
++      box-shadow: 0 16px 48px rgb(0 0 0 / 0.22);
++      opacity: 0;
++      transform: translateY(16px) scale(0.97);
++      transition: opacity 240ms ease, transform 240ms ease,
++        display 240ms, overlay 240ms;
++      transition-behavior: allow-discrete;
++    }
++
++    .overlay[data-visible]:not([data-closing]) {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    #logout-dialog {
++      margin: auto;
++      width: min(440px, calc(100% - 32px));
++      max-height: calc(100% - 32px);
++    }
++
++    #logout-dialog::backdrop {
++      background: rgb(20 12 9 / 0);
++      transition: background-color 240ms ease, display 240ms, overlay 240ms;
++      transition-behavior: allow-discrete;
++    }
++
++    #logout-dialog[data-visible]:not([data-closing])::backdrop {
++      background: rgb(20 12 9 / 0.6);
++    }
++
++    .overlay h2 {
++      font-size: 1.4rem;
++      padding-right: 32px;
++      margin-bottom: 12px;
++    }
++
++    .overlay-close {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      width: 36px;
++      height: 36px;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font-size: 1.6rem;
++      cursor: pointer;
++    }
++
++    .overlay-close:hover {
++      background: var(--secondary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    #ordering-notice {
++      position: fixed;
++      inset: auto 20px 20px auto;
++      margin: 0;
++      width: min(380px, calc(100% - 40px));
++      z-index: 1001;
++    }
++
++    #ordering-notice p {
++      padding-right: 28px;
++    }
++
++    @starting-style {
++      .overlay[data-visible]:not([data-closing]) {
++        opacity: 0;
++        transform: translateY(16px) scale(0.97);
++      }
++
++      #logout-dialog[data-visible]:not([data-closing])::backdrop {
++        background: rgb(20 12 9 / 0);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .overlay,
++      .overlay[data-visible]:not([data-closing]) {
++        transform: none;
++        transition-duration: 1ms;
++      }
++
++      #logout-dialog::backdrop {
++        transition-duration: 1ms;
++      }
++
++      @starting-style {
++        .overlay[data-visible]:not([data-closing]) {
++          transform: none;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +283,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" id="open-dialog-btn" class="logout-link" aria-haspopup="dialog" aria-controls="logout-dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" class="btn" aria-controls="ordering-notice" aria-expanded="false">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +326,102 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="logout-dialog" class="overlay" aria-labelledby="logout-title" aria-describedby="logout-description">
++    <button type="button" id="close-dialog-btn" class="overlay-close" aria-label="Close logout confirmation">&times;</button>
++    <h2 id="logout-title">Log out?</h2>
++    <p id="logout-description">Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" id="cancel-logout-btn" class="btn btn-secondary" autofocus>Cancel</button>
++      <button type="button" id="confirm-logout-btn" class="btn">Yes, log out</button>
++    </div>
++  </dialog>
++
++  <aside id="ordering-notice" class="overlay" popover="manual" aria-labelledby="ordering-title">
++    <button type="button" id="close-notice-btn" class="overlay-close" aria-label="Dismiss ordering notice">&times;</button>
++    <h2 id="ordering-title">Ordering update</h2>
++    <p role="status">online ordering is currently offline</p>
++  </aside>
++
++  <script>
++    const logoutLink = document.getElementById('open-dialog-btn');
++    const dialog = document.getElementById('logout-dialog');
++    const orderButton = document.getElementById('foobar');
++    const notice = document.getElementById('ordering-notice');
++    const supportsPopover = 'popover' in HTMLElement.prototype;
++
++    // Keep the notice usable without the Popover API.
++    if (!supportsPopover) notice.hidden = true;
++
++    function reveal(element, show) {
++      if (element.hasAttribute('data-closing')) return;
++      show();
++      // Establish the initial CSS state for browsers without @starting-style.
++      getComputedStyle(element).opacity;
++      element.setAttribute('data-visible', '');
++    }
++
++    async function dismiss(element, hide) {
++      if (!element.hasAttribute('data-visible') || element.hasAttribute('data-closing')) return;
++      element.setAttribute('data-closing', '');
++      // Keep the top layer and backdrop alive until CSS exit transitions finish,
++      // including in browsers without discrete display/overlay transitions.
++      const animations = element.getAnimations({ subtree: true });
++      await Promise.race([
++        Promise.allSettled(animations.map(animation => animation.finished)),
++        new Promise(resolve => setTimeout(resolve, 350))
++      ]);
++      hide();
++      element.removeAttribute('data-visible');
++      element.removeAttribute('data-closing');
++    }
++
++    const closeDialog = () => dismiss(dialog, () => dialog.close());
++    const closeNotice = () => dismiss(notice, () => {
++      const hadFocus = notice.contains(document.activeElement);
++      if (supportsPopover) notice.hidePopover();
++      else notice.hidden = true;
++      orderButton.setAttribute('aria-expanded', 'false');
++      if (hadFocus) orderButton.focus();
++    });
++
++    logoutLink.addEventListener('click', event => {
++      event.preventDefault();
++      closeNotice();
++      if (!dialog.open) reveal(dialog, () => dialog.showModal());
++    });
++    document.getElementById('close-dialog-btn').addEventListener('click', closeDialog);
++    document.getElementById('cancel-logout-btn').addEventListener('click', closeDialog);
++    dialog.addEventListener('cancel', event => {
++      event.preventDefault();
++      closeDialog();
++    });
++    document.getElementById('confirm-logout-btn').addEventListener('click', async () => {
++      if (dialog.hasAttribute('data-closing')) return;
++      await closeDialog();
++      window.location.assign(logoutLink.href);
++    });
++
++    orderButton.addEventListener('click', () => {
++      if (notice.hasAttribute('data-visible')) {
++        closeNotice();
++      } else {
++        reveal(notice, () => {
++          if (supportsPopover) notice.showPopover();
++          else notice.hidden = false;
++        });
++        orderButton.setAttribute('aria-expanded', 'true');
++      }
++    });
++    document.getElementById('close-notice-btn').addEventListener('click', closeNotice);
++    document.addEventListener('keydown', event => {
++      if (event.key === 'Escape' && notice.hasAttribute('data-visible')) closeNotice();
++    });
++    document.addEventListener('click', event => {
++      if (!notice.contains(event.target) && !orderButton.contains(event.target)) closeNotice();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

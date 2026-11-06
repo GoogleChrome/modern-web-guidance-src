@@ -1,0 +1,445 @@
+diff --git a/index.html b/index.html
+index 66c9173..40ade98 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,104 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
++    .card,
++    coffee-card {
++      display: block;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
++      transition: transform 0.2s, opacity 0.2s;
+     }
+ 
+-    .card h3 {
++    coffee-card:not(:defined) {
++      opacity: 0;
++      /* Reveal anyway after 2s, so a failed or slow script never hides content for good. */
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
++    }
++
++    coffee-card[featured] {
++      border: 2px solid var(--accent);
++    }
++
++    coffee-card[sold-out],
++    coffee-card[disabled] {
++      opacity: 0.65;
++    }
++
++    coffee-card:state(favorited) {
++      box-shadow: 0 4px 12px rgba(255, 171, 64, 0.35);
++    }
++
++    .card h3,
++    coffee-card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-bottom: 8px;
++      text-transform: uppercase;
++    }
++
++    .card-price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++      font-size: 1.1rem;
++    }
++
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .card-actions .btn[aria-disabled="true"] {
++      background: var(--secondary);
++      color: var(--text);
++      pointer-events: none;
++      cursor: not-allowed;
++    }
++
++    .fav-btn {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--primary);
++      padding: 8px 12px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-size: 0.9rem;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .fav-btn[aria-pressed="true"] {
++      background: var(--accent);
++      border-color: var(--accent);
++      color: var(--text);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +263,34 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <coffee-card
++          name="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal"
++          price="5.50"
++          featured>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </coffee-card>
++        <coffee-card
++          name="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso"
++          price="3.75">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </coffee-card>
++        <coffee-card
++          name="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew"
++          price="4.50">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +305,292 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    class CoffeeCard extends HTMLElement {
++      static observedAttributes = [
++        'name',
++        'description',
++        'href',
++        'cta',
++        'price',
++        'rating',
++        'count',
++        'featured',
++        'sold-out',
++        'disabled'
++      ];
++
++      #internals;
++      #initialized = false;
++      #favorited = false;
++      #abortController = null;
++
++      constructor() {
++        super();
++        if (typeof this.attachInternals === 'function') {
++          this.#internals = this.attachInternals();
++        }
++      }
++
++      // String attributes reflected via getter/setter
++      get name() {
++        return this.getAttribute('name') ?? '';
++      }
++      set name(v) {
++        v ? this.setAttribute('name', v) : this.removeAttribute('name');
++      }
++
++      get description() {
++        return this.getAttribute('description') ?? '';
++      }
++      set description(v) {
++        v ? this.setAttribute('description', v) : this.removeAttribute('description');
++      }
++
++      get href() {
++        return this.getAttribute('href') ?? '';
++      }
++      set href(v) {
++        v ? this.setAttribute('href', v) : this.removeAttribute('href');
++      }
++
++      get cta() {
++        return this.getAttribute('cta') ?? 'View Details';
++      }
++      set cta(v) {
++        v ? this.setAttribute('cta', v) : this.removeAttribute('cta');
++      }
++
++      // Numeric attributes: coerce from string on read, serialize on write
++      get price() {
++        return Number(this.getAttribute('price')) || 0;
++      }
++      set price(v) {
++        this.setAttribute('price', String(v));
++      }
++
++      get rating() {
++        return Number(this.getAttribute('rating')) || 0;
++      }
++      set rating(v) {
++        this.setAttribute('rating', String(v));
++      }
++
++      get count() {
++        return Number(this.getAttribute('count')) || 0;
++      }
++      set count(v) {
++        this.setAttribute('count', String(v));
++      }
++
++      // Boolean attributes: present = true, absent = false (never set to "false")
++      get featured() {
++        return this.hasAttribute('featured');
++      }
++      set featured(on) {
++        this.toggleAttribute('featured', !!on);
++      }
++
++      get soldOut() {
++        return this.hasAttribute('sold-out');
++      }
++      set soldOut(on) {
++        this.toggleAttribute('sold-out', !!on);
++      }
++
++      get disabled() {
++        return this.hasAttribute('disabled');
++      }
++      set disabled(on) {
++        this.toggleAttribute('disabled', !!on);
++      }
++
++      // Runtime custom state via ElementInternals (:state(favorited))
++      get favorited() {
++        return this.#favorited;
++      }
++      set favorited(on) {
++        const next = !!on;
++        if (this.#favorited === next) return;
++        this.#favorited = next;
++        if (this.#internals?.states) {
++          if (next) {
++            this.#internals.states.add('favorited');
++          } else {
++            this.#internals.states.delete('favorited');
++          }
++        }
++        this.#syncFavoriteButton();
++      }
++
++      connectedCallback() {
++        this.classList.add('card');
++
++        // Sync initial attributes from existing server-rendered children if missing
++        if (!this.hasAttribute('name')) {
++          const heading = this.querySelector('h3');
++          if (heading?.textContent) this.name = heading.textContent.trim();
++        }
++        if (!this.hasAttribute('description')) {
++          const para = this.querySelector('p');
++          if (para?.textContent) this.description = para.textContent.trim();
++        }
++        if (!this.hasAttribute('href')) {
++          const link = this.querySelector('a.btn');
++          if (link) {
++            const hrefAttr = link.getAttribute('href');
++            if (hrefAttr) this.href = hrefAttr;
++          }
++        }
++
++        this.render();
++        this.#setupListeners();
++        this.#initialized = true;
++      }
++
++      disconnectedCallback() {
++        this.#teardownListeners();
++      }
++
++      connectedMoveCallback() {
++        // Preserve component state and listeners across Node.moveBefore() relocations
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (oldVal !== newVal && this.#initialized) {
++          this.render();
++        }
++      }
++
++      #setupListeners() {
++        this.#teardownListeners();
++        this.#abortController = new AbortController();
++        const { signal } = this.#abortController;
++
++        this.addEventListener(
++          'click',
++          (e) => {
++            const favBtn = e.target.closest('.fav-btn');
++            if (favBtn) {
++              if (this.disabled) return;
++              this.favorited = !this.favorited;
++              this.dispatchEvent(
++                new CustomEvent('coffee-favorite-change', {
++                  bubbles: true,
++                  detail: { name: this.name, favorited: this.favorited }
++                })
++              );
++              return;
++            }
++
++            const actionLink = e.target.closest('a.btn');
++            if (actionLink && (this.soldOut || this.disabled)) {
++              e.preventDefault();
++            }
++          },
++          { signal }
++        );
++      }
++
++      #teardownListeners() {
++        if (this.#abortController) {
++          this.#abortController.abort();
++          this.#abortController = null;
++        }
++      }
++
++      #syncFavoriteButton() {
++        const favBtn = this.querySelector('.fav-btn');
++        if (favBtn) {
++          favBtn.setAttribute('aria-pressed', String(this.#favorited));
++          favBtn.textContent = this.#favorited ? '★ Saved' : '☆ Save';
++        }
++      }
++
++      render() {
++        let badgeEl = this.querySelector('.card-badge');
++        if (this.featured || this.soldOut) {
++          if (!badgeEl) {
++            badgeEl = document.createElement('span');
++            badgeEl.className = 'card-badge';
++            this.prepend(badgeEl);
++          }
++          badgeEl.textContent = this.soldOut ? 'Sold Out' : 'Featured';
++        } else if (badgeEl) {
++          badgeEl.remove();
++        }
++
++        let headingEl = this.querySelector('h3');
++        if (!headingEl) {
++          headingEl = document.createElement('h3');
++          this.append(headingEl);
++        }
++        headingEl.textContent = this.name;
++
++        let descEl = this.querySelector('p:not(.card-price)');
++        if (!descEl) {
++          descEl = document.createElement('p');
++          headingEl.after(descEl);
++        }
++        descEl.textContent = this.description;
++
++        let priceEl = this.querySelector('.card-price');
++        if (this.price > 0) {
++          if (!priceEl) {
++            priceEl = document.createElement('p');
++            priceEl.className = 'card-price';
++            descEl.after(priceEl);
++          }
++          priceEl.textContent = `$${this.price.toFixed(2)}`;
++        } else if (priceEl) {
++          priceEl.remove();
++        }
++
++        let actionsEl = this.querySelector('.card-actions');
++        let linkEl = this.querySelector('a.btn');
++        if (!actionsEl) {
++          actionsEl = document.createElement('div');
++          actionsEl.className = 'card-actions';
++          if (linkEl) {
++            linkEl.replaceWith(actionsEl);
++            actionsEl.append(linkEl);
++          } else {
++            this.append(actionsEl);
++          }
++        }
++
++        if (!linkEl) {
++          linkEl = document.createElement('a');
++          linkEl.className = 'btn';
++          actionsEl.prepend(linkEl);
++        }
++        linkEl.setAttribute('href', this.href || '#');
++        linkEl.textContent = this.soldOut ? 'Unavailable' : this.cta;
++        if (this.soldOut || this.disabled) {
++          linkEl.setAttribute('aria-disabled', 'true');
++          linkEl.setAttribute('tabindex', '-1');
++        } else {
++          linkEl.removeAttribute('aria-disabled');
++          linkEl.removeAttribute('tabindex');
++        }
++
++        let favBtn = actionsEl.querySelector('.fav-btn');
++        if (!favBtn) {
++          favBtn = document.createElement('button');
++          favBtn.type = 'button';
++          favBtn.className = 'fav-btn';
++          actionsEl.append(favBtn);
++        }
++        favBtn.disabled = this.disabled;
++        favBtn.setAttribute('aria-label', `Save ${this.name || 'coffee'}`);
++        this.#syncFavoriteButton();
++      }
++    }
++
++    if (!customElements.get('coffee-card')) {
++      customElements.define('coffee-card', CoffeeCard);
++    }
++  </script>
+ </body>
+ 
+ </html>

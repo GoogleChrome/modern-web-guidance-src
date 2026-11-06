@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,10 +85,53 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
+     }
+ 
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative coffee-splash block. Absolutely positioned so it never
++       takes part in the hero's flex layout, even if the mask fails to load. */
++    .shaped-element {
++      position: absolute;
++      z-index: 0;
++      right: -4%;
++      bottom: -12%;
++      width: clamp(180px, 38vw, 460px);
++      aspect-ratio: 1;
++      pointer-events: none;
++      /* Solid colour shows while the photo loads or if it fails */
++      background-color: var(--accent);
++      background-image: url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80');
++      background-size: cover;
++      background-position: center;
++      opacity: 0.85;
++      /* Rounded-blob fallback if the mask can't be applied */
++      border-radius: 58% 42% 55% 45% / 48% 56% 44% 52%;
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M101 14c20-4 30 14 46 20 17 6 40 2 42 24 2 19-18 25-17 42 1 16 22 26 14 44-8 17-30 10-44 16-16 7-22 28-42 26-19-2-18-24-30-36-12-11-36-8-42-26-6-17 12-28 14-44 2-17-14-30-4-46 9-14 28-6 42-12 8-3 12-10 21-8z' fill='black'/%3E%3Ccircle cx='28' cy='34' r='9' fill='black'/%3E%3Ccircle cx='12' cy='62' r='5' fill='black'/%3E%3Ccircle cx='178' cy='168' r='8' fill='black'/%3E%3Ccircle cx='60' cy='186' r='6' fill='black'/%3E%3C/svg%3E");
++      -webkit-mask-size: contain;
++      -webkit-mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M101 14c20-4 30 14 46 20 17 6 40 2 42 24 2 19-18 25-17 42 1 16 22 26 14 44-8 17-30 10-44 16-16 7-22 28-42 26-19-2-18-24-30-36-12-11-36-8-42-26-6-17 12-28 14-44 2-17-14-30-4-46 9-14 28-6 42-12 8-3 12-10 21-8z' fill='black'/%3E%3Ccircle cx='28' cy='34' r='9' fill='black'/%3E%3Ccircle cx='12' cy='62' r='5' fill='black'/%3E%3Ccircle cx='178' cy='168' r='8' fill='black'/%3E%3Ccircle cx='60' cy='186' r='6' fill='black'/%3E%3C/svg%3E");
++      mask-size: contain;
++      mask-repeat: no-repeat;
++      mask-position: center;
++    }
++
++    /* Masked browsers get the free-form splash, not the rounded fallback */
++    @supports (mask-image: url(x)) or (-webkit-mask-image: url(x)) {
++      .shaped-element {
++        border-radius: 0;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +211,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

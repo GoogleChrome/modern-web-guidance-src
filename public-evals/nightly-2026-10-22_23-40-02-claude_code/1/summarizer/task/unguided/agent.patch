@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,49 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 60px;
++    }
++
++    .journal h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .journal-text p {
++      margin-bottom: 1rem;
++    }
++
++    .journal button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .journal button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    .journal-summary {
++      margin-top: 20px;
++      padding: 15px 20px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .journal-summary ul {
++      margin-left: 20px;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -194,8 +235,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="journal" id="journal">
++      <h2>Roaster's Journal</h2>
++      <div class="journal-text" id="journal-text">
++        <p>Every bag we roast begins months before the beans ever reach our shop. In early spring, our head roaster
++          travels, or, when travel isn't possible, spends long evenings on video calls, with the small farms and
++          cooperatives we've worked with for years. We ask the same questions every time: How was the rainfall? When
++          did the cherries start to ripen? What did you change this season? Those conversations matter as much as any
++          cupping score, because they tell us how the coffee was grown and who was paid to grow it.</p>
++        <p>We buy directly from producers wherever we can, and through a small number of trusted importers when we
++          can't. Direct relationships let us pay well above the Fair Trade minimum, usually two to three times the
++          commodity price, and commit to buying the same lots year after year. That stability lets farmers invest in
++          better drying beds, shade trees and processing equipment instead of gambling on a volatile market.</p>
++        <p>When samples arrive, we roast them small and taste them blind. Each coffee is cupped at least three times
++          on different days, by different members of the team, before we place an order. We look for sweetness, clarity
++          and balance first; a coffee that is exciting but fades by the third sip rarely makes the cut. Roughly one in
++          eight samples earns a place on our menu.</p>
++        <p>Once we've committed to a lot, the beans travel by ship and truck to our roastery, where we test moisture and
++          density, then run a series of test roasts to find the right profile. We rest every batch for at least four
++          days before it goes into a bag, and we print the roast date on every one so you always know how fresh your
++          coffee is. Seasonal favorites rotate with the harvest, which is why the single-origin lineup changes through
++          the year.</p>
++        <p>Finally, we publish where each coffee came from: the farm, the altitude, the variety and the price we paid.
++          Transparency keeps us honest, and it lets you taste the story behind every cup.</p>
++      </div>
++      <button type="button" class="btn" id="summarize-btn">Summarize</button>
++      <div class="journal-summary" id="journal-summary" role="status" aria-live="polite" hidden></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +275,71 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Summarize the journal using the browser's built-in Summarizer API.
++    const summarizeBtn = document.getElementById('summarize-btn');
++    const summaryBox = document.getElementById('journal-summary');
++    const journalText = document.getElementById('journal-text');
++
++    function showMessage(message) {
++      summaryBox.textContent = message;
++      summaryBox.hidden = false;
++    }
++
++    function showBullets(markdown) {
++      const items = markdown
++        .split('\n')
++        .map(line => line.replace(/^\s*[-*•]\s+/, '').trim())
++        .filter(Boolean);
++      const list = document.createElement('ul');
++      for (const item of items) {
++        const li = document.createElement('li');
++        li.textContent = item;
++        list.appendChild(li);
++      }
++      summaryBox.replaceChildren(list);
++      summaryBox.hidden = false;
++    }
++
++    if (!('Summarizer' in self)) {
++      summarizeBtn.disabled = true;
++      summarizeBtn.title = 'Your browser does not support built-in AI summarization.';
++      showMessage('Summarizing isn’t available: this browser doesn’t support the built-in Summarizer API.');
++    }
++
++    summarizeBtn.addEventListener('click', async () => {
++      summarizeBtn.disabled = true;
++      showMessage('Summarizing…');
++      try {
++        const availability = await Summarizer.availability();
++        if (availability === 'unavailable') {
++          showMessage('Summarizing isn’t available on this device.');
++          return;
++        }
++        const summarizer = await Summarizer.create({
++          type: 'key-points',
++          format: 'markdown',
++          length: 'short',
++          sharedContext: 'A coffee roaster describing how it sources green coffee beans.',
++          monitor(m) {
++            m.addEventListener('downloadprogress', e => {
++              showMessage(`Downloading AI model… ${Math.round(e.loaded * 100)}%`);
++            });
++          }
++        });
++        const result = await summarizer.summarize(journalText.innerText);
++        summarizer.destroy();
++        showBullets(result);
++      } catch (err) {
++        console.error(err);
++        showMessage('Sorry, we couldn’t summarize the journal right now.');
++      } finally {
++        summarizeBtn.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

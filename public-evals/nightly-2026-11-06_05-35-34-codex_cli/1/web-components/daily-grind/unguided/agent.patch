@@ -1,0 +1,497 @@
+diff --git a/components/README.md b/components/README.md
+new file mode 100644
+index 0000000..503eba9
+--- /dev/null
++++ b/components/README.md
+@@ -0,0 +1,45 @@
++# Daily Grind components
++
++Load `components/daily-grind.js` once with a module script. The components use
++native custom elements and open Shadow DOM; no dependencies or build are needed.
++
++## Coffee cards and hero
++
++`coffee-card` and `coffee-hero` accept three named slots:
++
++- `title`: an `h3` for a homepage card or an `h1` for the hero.
++- `description`: a paragraph.
++- `action`: a native anchor with its destination in `href`.
++
++```html
++<coffee-card>
++  <h3 slot="title">Cold Brew</h3>
++  <p slot="description">Steeped for 18 hours for maximum smoothness.</p>
++  <a slot="action" href="/menu/cold-brew"
++     aria-label="View details for Cold Brew">View Details</a>
++</coffee-card>
++```
++
++Keep heading levels appropriate to the containing page and give repeated action
++labels a descriptive accessible name. Slot content remains in the document, so
++links and text are available before JavaScript loads. Layout and visual styling
++are applied when the components upgrade.
++
++## Navigation
++
++`daily-navigation` takes a brand in the `brand` slot and direct-child anchors in
++the default slot. The optional `logout-link` class gives an anchor an outlined
++appearance. Keep a skip link outside the sticky component.
++
++Below 761px, a native button toggles the links and reports its state through
++`aria-expanded`. Hidden links leave the tab order through `display: none`.
++Escape closes the menu and returns focus to the button. Following a link or
++crossing the breakpoint resets the menu. Listeners are removed when an instance
++disconnects and reattached when it reconnects.
++
++## Theme
++
++Components inherit the page font and the `--primary`, `--accent`, and
++`--focus-color` CSS properties, with defaults. Set `--hero-image` to a CSS
++`url(...)` to replace the hero photograph. Component styles, IDs, and navigation
++state are isolated per instance; the page owns the surrounding grid and spacing.
+diff --git a/components/daily-grind.js b/components/daily-grind.js
+new file mode 100644
+index 0000000..8cb98b2
+--- /dev/null
++++ b/components/daily-grind.js
+@@ -0,0 +1,200 @@
++const focusStyles = `
++  :host { display: block; }
++  *, *::before, *::after { box-sizing: border-box; }
++  ::slotted(a:focus-visible), button:focus-visible {
++    outline: 3px solid var(--focus-color, #986000);
++    outline-offset: 4px;
++  }
++`;
++
++const actionStyles = `
++  ::slotted(a) {
++    display: inline-block;
++    background: var(--primary, #4e342e);
++    color: white;
++    padding: 10px 20px;
++    text-decoration: none;
++    border-radius: 5px;
++    margin-top: 15px;
++    transition: background 0.3s;
++  }
++  ::slotted(a:hover) { background: #3e2723; }
++  @media (prefers-reduced-motion: reduce) {
++    ::slotted(a) { transition: none; }
++  }
++`;
++
++// Each instance owns its markup and styles. Page content stays declarative,
++// with native headings and links available even before the module loads.
++class CoffeeCard extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).innerHTML = `
++      <style>
++        ${focusStyles}
++        ${actionStyles}
++        :host { height: 100%; }
++        article {
++          height: 100%;
++          display: flex;
++          flex-direction: column;
++          align-items: center;
++          background: white;
++          padding: 20px;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgb(0 0 0 / 10%);
++          text-align: center;
++        }
++        ::slotted(h3) { margin: 0 0 10px; color: var(--primary, #4e342e); }
++        ::slotted(p) { margin: 0 0 auto; }
++      </style>
++      <article>
++        <slot name="title"></slot>
++        <slot name="description"></slot>
++        <slot name="action"></slot>
++      </article>
++    `;
++  }
++}
++
++class CoffeeHero extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).innerHTML = `
++      <style>
++        ${focusStyles}
++        ${actionStyles}
++        :host { --focus-color: #ffab40; }
++        header {
++          min-height: 60vh;
++          background: linear-gradient(rgb(0 0 0 / 50%), rgb(0 0 0 / 50%)),
++            var(--hero-image, url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80'));
++          background-size: cover;
++          background-position: center;
++          display: flex;
++          flex-direction: column;
++          justify-content: center;
++          align-items: center;
++          color: white;
++          text-align: center;
++          padding: 40px 20px;
++        }
++        ::slotted(h1) { font-size: clamp(2rem, 6vw, 3rem); margin: 0 0 1rem; }
++        ::slotted(p) { margin: 0; }
++      </style>
++      <header>
++        <slot name="title"></slot>
++        <slot name="description"></slot>
++        <slot name="action"></slot>
++      </header>
++    `;
++  }
++}
++
++class DailyNavigation extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).innerHTML = `
++      <style>
++        ${focusStyles}
++        :host { position: sticky; top: 0; z-index: 1000; --focus-color: #ffab40; }
++        nav {
++          background: var(--primary, #4e342e);
++          color: white;
++          padding: 1rem 5%;
++          display: flex;
++          justify-content: space-between;
++          align-items: center;
++          gap: 20px;
++        }
++        ::slotted([slot="brand"]) {
++          font-size: 1.5rem;
++          font-weight: bold;
++          letter-spacing: 1px;
++        }
++        .links { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; }
++        ::slotted(a) { color: white; text-decoration: none; font-size: 0.9rem; }
++        ::slotted(a:hover) { color: var(--accent, #ffab40); }
++        ::slotted(.logout-link) {
++          border: 1px solid var(--accent, #ffab40);
++          padding: 5px 12px;
++          border-radius: 4px;
++        }
++        button {
++          display: none;
++          font: inherit;
++          color: white;
++          background: transparent;
++          border: 1px solid var(--accent, #ffab40);
++          border-radius: 4px;
++          min-height: 44px;
++          padding: 8px 12px;
++          cursor: pointer;
++        }
++        @media (max-width: 760px) {
++          nav { flex-wrap: wrap; gap: 12px; }
++          ::slotted([slot="brand"]) { font-size: 1.2rem; }
++          button { display: block; }
++          .links { display: none; width: 100%; align-items: stretch; gap: 8px; }
++          .links[data-open] { display: flex; flex-direction: column; }
++          ::slotted(a) { padding: 10px 12px; }
++          ::slotted(.logout-link) { padding: 10px 12px; }
++        }
++      </style>
++      <nav aria-label="Main navigation">
++        <slot name="brand"></slot>
++        <button type="button" aria-expanded="false" aria-controls="links">Menu</button>
++        <div class="links" id="links"><slot></slot></div>
++      </nav>
++    `;
++    this.toggle = this.shadowRoot.querySelector('button');
++    this.links = this.shadowRoot.querySelector('.links');
++    this.onToggle = () => this.setOpen(this.toggle.getAttribute('aria-expanded') !== 'true');
++    this.onKeydown = (event) => {
++      if (event.key === 'Escape' && this.toggle.getAttribute('aria-expanded') === 'true') {
++        this.setOpen(false);
++        this.toggle.focus();
++      }
++    };
++    this.onNavigate = (event) => {
++      if (event.composedPath().some((node) => node instanceof HTMLAnchorElement)) {
++        this.setOpen(false);
++      }
++    };
++    this.onViewportChange = () => {
++      const focusWasOnToggle = this.shadowRoot.activeElement === this.toggle;
++      const focusWasInLinks = this.contains(document.activeElement);
++      this.setOpen(false);
++      if (!this.mobile.matches && focusWasOnToggle) {
++        this.querySelector('a:not([slot])')?.focus();
++      } else if (this.mobile.matches && focusWasInLinks) {
++        this.toggle.focus();
++      }
++    };
++  }
++
++  connectedCallback() {
++    this.mobile = window.matchMedia('(max-width: 760px)');
++    this.toggle.addEventListener('click', this.onToggle);
++    this.shadowRoot.addEventListener('keydown', this.onKeydown);
++    this.links.addEventListener('click', this.onNavigate);
++    this.mobile.addEventListener('change', this.onViewportChange);
++    this.setOpen(false);
++  }
++
++  disconnectedCallback() {
++    this.toggle.removeEventListener('click', this.onToggle);
++    this.shadowRoot.removeEventListener('keydown', this.onKeydown);
++    this.links.removeEventListener('click', this.onNavigate);
++    this.mobile.removeEventListener('change', this.onViewportChange);
++  }
++
++  setOpen(open) {
++    this.toggle.setAttribute('aria-expanded', String(open));
++    this.links.toggleAttribute('data-open', open);
++  }
++}
++
++customElements.define('coffee-card', CoffeeCard);
++customElements.define('coffee-hero', CoffeeHero);
++customElements.define('daily-navigation', DailyNavigation);
+diff --git a/index.html b/index.html
+index 66c9173..e55c02e 100644
+--- a/index.html
++++ b/index.html
+@@ -16,83 +16,16 @@
+ 
+     * {
+       box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+     }
+ 
+     body {
++      margin: 0;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -102,39 +35,35 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++    h2 { margin: 0; text-align: center; }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
++    .skip-link {
++      position: fixed;
++      top: 8px;
++      left: 8px;
++      z-index: 2000;
+       padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      color: white;
++      background: var(--primary);
++      transform: translateY(-200%);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .skip-link:focus { transform: translateY(0); }
++
++    .footer-links a:focus-visible, .skip-link:focus-visible {
++      outline: 3px solid #986000;
++      outline-offset: 4px;
+     }
+ 
++    main { scroll-margin-top: 100px; }
++
++    coffee-card, coffee-hero, daily-navigation { display: block; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -142,6 +71,8 @@
+       margin-top: 40px;
+     }
+ 
++    footer p { margin: 0; }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+@@ -153,46 +84,47 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components/daily-grind.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <a class="skip-link" href="#main-content">Skip to content</a>
++
++  <daily-navigation>
++    <span slot="brand">THE DAILY GRIND</span>
++    <a href="/menu">Menu</a>
++    <a href="/locations">Locations</a>
++    <a href="/rewards">Rewards</a>
++    <a href="/account">My Account</a>
++    <a href="/logout" class="logout-link">Logout</a>
++  </daily-navigation>
++
++  <coffee-hero>
++    <h1 slot="title">Wake Up Your Senses</h1>
++    <p slot="description">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a slot="action" href="/order-online">Order Now</a>
++  </coffee-hero>
++
++  <main class="container" id="main-content" tabindex="-1">
++    <section aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card>
++          <h3 slot="title">Maple Oat Latte</h3>
++          <p slot="description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a slot="action" href="/menu/seasonal" aria-label="View details for Maple Oat Latte">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <h3 slot="title">Dark Roast Espresso</h3>
++          <p slot="description">Bold, smokey, and perfect for a morning boost.</p>
++          <a slot="action" href="/menu/espresso" aria-label="View details for Dark Roast Espresso">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <h3 slot="title">Cold Brew</h3>
++          <p slot="description">Steeped for 18 hours for maximum smoothness.</p>
++          <a slot="action" href="/menu/cold-brew" aria-label="View details for Cold Brew">View Details</a>
++        </coffee-card>
+       </div>
+     </section>
+   </main>

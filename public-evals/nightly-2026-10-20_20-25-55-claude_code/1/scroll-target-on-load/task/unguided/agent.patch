@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,46 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical scroll container */
++    .media-scroll {
++      height: 480px;
++      overflow-y: auto;
++      position: relative; /* makes offsetTop of cards relative to the container */
++      scroll-behavior: auto; /* never animate the initial positioning */
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      margin-top: 20px;
++      padding: 20px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-card {
++      flex: none;
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++    }
++
++    .media-card-body {
++      padding: 16px 20px;
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +232,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">From Our Roastery</h2>
++      <div class="media-scroll" id="media-scroll">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&h=400&q=80"
++            width="800" height="400" alt="Roasted coffee beans in a bag">
++          <div class="media-card-body">
++            <h3>Single Origin Beans</h3>
++            <p>Small-batch lots roasted every Monday.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&h=400&q=80"
++            width="800" height="400" alt="Latte with art in a ceramic cup">
++          <div class="media-card-body">
++            <h3>Latte Art Classes</h3>
++            <p>Learn to pour a rosetta with our head barista.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&h=400&q=80"
++            width="800" height="400" alt="Cup of coffee on a wooden table">
++          <div class="media-card-body">
++            <h3>House Blend</h3>
++            <p>Our signature everyday cup, smooth and balanced.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&h=400&q=80"
++            width="800" height="400" alt="Coffee cup with saucer">
++          <div class="media-card-body">
++            <h3>Brewing Workshops</h3>
++            <p>Pour-over, French press, and AeroPress techniques.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&h=400&q=80"
++            width="800" height="400" alt="Espresso being poured">
++          <div class="media-card-body">
++            <h3>Espresso Bar</h3>
++            <p>Pull up a stool and watch the shots being made.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        // Runs synchronously right after the container is parsed, before first paint,
++        // so the target card is in view from the start with no animation or flash.
++        (function () {
++          var scroller = document.getElementById('media-scroll');
++          var target = scroller.querySelector('.target');
++          scroller.scrollTop = target.offsetTop - scroller.clientHeight / 2 + target.offsetHeight / 2;
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

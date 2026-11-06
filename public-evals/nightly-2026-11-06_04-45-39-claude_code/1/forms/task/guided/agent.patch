@@ -1,0 +1,532 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,8 +3,10 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy"
++    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com; connect-src 'self'; form-action 'self'; base-uri 'self'; object-src 'none'">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -151,8 +153,342 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Rewards registration ---------- */
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    html {
++      /* Keep focused fields clear of the sticky nav */
++      scroll-padding-block-start: 6rem;
++    }
++
++    .rewards {
++      margin-block-start: 4rem;
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 2rem;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: clamp(1.25rem, 4vw, 2.5rem);
++    }
++
++    @media (min-width: 860px) {
++      .rewards {
++        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
++      }
++    }
++
++    .rewards h2 {
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++    }
++
++    .rewards-photo {
++      display: block;
++      inline-size: 100%;
++      block-size: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-block-start: 1.5rem;
++    }
++
++    .steps {
++      display: flex;
++      gap: 0.5rem;
++      list-style: none;
++      margin-block-end: 1.5rem;
++      counter-reset: none;
++    }
++
++    .steps li {
++      flex: 1;
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding-block-end: 0.5rem;
++      border-block-end: 4px solid var(--secondary);
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .step-num {
++      display: inline-grid;
++      place-items: center;
++      inline-size: 1.75rem;
++      block-size: 1.75rem;
++      border-radius: 50%;
++      border: 2px solid currentColor;
++      font-weight: 700;
++      font-size: 0.85rem;
++    }
++
++    .steps li[aria-current="step"] {
++      color: var(--primary);
++      font-weight: 700;
++      border-color: var(--primary);
++    }
++
++    .steps li.is-done {
++      border-color: #8d6e63;
++    }
++
++    .steps li.is-done .step-num {
++      background: #8d6e63;
++      border-color: #8d6e63;
++      color: white;
++    }
++
++    .rewards-form fieldset {
++      border: 0;
++      min-inline-size: 0;
++    }
++
++    .form-step > legend {
++      margin-block-end: 1rem;
++    }
++
++    .step-heading {
++      color: var(--primary);
++      font-size: 1.2rem;
++    }
++
++    /* Without JS every step is shown and stacked */
++    .form-step + .form-step {
++      margin-block-start: 2rem;
++    }
++
++    .js-steps .form-step + .form-step {
++      margin-block-start: 0;
++    }
++
++    .required-note,
++    .optional,
++    .hint {
++      font-size: 0.875rem;
++      color: #5d4037;
++    }
++
++    .required-note {
++      margin-block-end: 1rem;
++    }
++
++    .req {
++      color: #b3261e;
++      font-weight: 700;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      gap: 0.25rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .field > label,
++    .choice-group > legend {
++      font-weight: 600;
++    }
++
++    .rewards-form input:not([type="radio"], [type="checkbox"]),
++    .rewards-form select {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      inline-size: 100%;
++      min-block-size: 48px;
++      padding: 0.6rem 0.75rem;
++      border: 2px solid #8d6e63;
++      border-radius: 6px;
++      background: white;
++    }
++
++    @media (pointer: coarse) {
++      .rewards-form input:not([type="radio"], [type="checkbox"]),
++      .rewards-form select {
++        min-block-size: 52px;
++      }
++    }
++
++    .rewards-form :focus-visible {
++      outline: 3px solid #1a5fb4;
++      outline-offset: 2px;
++    }
++
++    .step-heading:focus,
++    .rewards-success h3:focus {
++      outline: none;
++    }
++
++    .password-wrap {
++      display: flex;
++      gap: 0.5rem;
++    }
++
++    .toggle-password,
++    .btn-primary,
++    .btn-secondary {
++      font: inherit;
++      min-block-size: 48px;
++      padding: 0.6rem 1.25rem;
++      border-radius: 6px;
++      cursor: pointer;
++      border: 2px solid var(--primary);
++    }
++
++    .toggle-password {
++      flex: none;
++      background: var(--light);
++      color: var(--primary);
++      font-size: 0.9rem;
++    }
++
++    .choice-group {
++      gap: 0.25rem;
++    }
++
++    .choice-group > legend {
++      margin-block-end: 0.25rem;
++    }
++
++    .choice {
++      display: flex;
++      align-items: center;
++      gap: 0.6rem;
++    }
++
++    .choice input {
++      flex: none;
++      inline-size: 1.25rem;
++      block-size: 1.25rem;
++      accent-color: var(--primary);
++    }
++
++    .choice label {
++      padding-block: 0.6rem;
++    }
++
++    .choice a {
++      color: var(--primary);
++    }
++
++    /* Validation: only after interaction (:user-invalid) or after a step attempt (aria-invalid) */
++    .error-msg {
++      color: #b3261e;
++      font-size: 0.875rem;
++      font-weight: 600;
++    }
++
++    .error-msg:empty {
++      display: none;
++    }
++
++    .error-msg::before {
++      content: "⚠ ";
++    }
++
++    .rewards-form input:user-invalid,
++    .rewards-form select:user-invalid,
++    .rewards-form [aria-invalid="true"] {
++      border-color: #b3261e;
++      background-color: #fdecea;
++    }
++
++    .rewards-form input:not([type="radio"], [type="checkbox"]):user-valid,
++    .rewards-form select:user-valid {
++      border-color: #2e7d32;
++    }
++
++    .hp-field {
++      position: absolute;
++      inset-inline-start: -10000px;
++      inline-size: 1px;
++      block-size: 1px;
++      overflow: hidden;
++    }
++
++    .review-list {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.4rem 1rem;
++      margin-block: 0.75rem 1.5rem;
++      padding: 1rem;
++      background: #efebe9;
++      border-radius: 6px;
++    }
++
++    .review-list dt {
++      font-weight: 600;
++    }
++
++    .review-list dd {
++      overflow-wrap: anywhere;
++    }
++
++    .form-alert:empty {
++      display: none;
++    }
++
++    .form-alert {
++      color: #b3261e;
++      background: #fdecea;
++      border-inline-start: 4px solid #b3261e;
++      padding: 0.75rem 1rem;
++      margin-block-end: 1rem;
++      font-weight: 600;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem;
++      justify-content: flex-end;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++    }
++
++    .btn-primary:hover {
++      background: #3e2723;
++    }
++
++    .btn-primary:disabled {
++      opacity: 0.7;
++      cursor: progress;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++      margin-inline-end: auto;
++    }
++
++    .rewards-success {
++      padding: 1.5rem;
++      background: #e8f5e9;
++      border-inline-start: 4px solid #2e7d32;
++      border-radius: 6px;
++    }
++
++    .rewards-success h3 {
++      color: #1b5e20;
++      margin-block-end: 0.5rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +530,164 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" aria-labelledby="rewards-title">
++      <div class="rewards-intro">
++        <h2 id="rewards-title">Join Daily Grind Rewards</h2>
++        <p>Earn a star with every purchase, get a free drink on your birthday, and be first to try new seasonal blends. It takes about a minute.</p>
++        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
++          alt="" width="800" height="533" loading="lazy" decoding="async" class="rewards-photo">
++      </div>
++
++      <div class="rewards-panel">
++        <nav aria-label="Registration progress" class="steps-nav" hidden>
++          <ol class="steps">
++            <li data-step-indicator="1" aria-current="step"><span class="step-num" aria-hidden="true">1</span> Account</li>
++            <li data-step-indicator="2"><span class="step-num" aria-hidden="true">2</span> Preferences</li>
++            <li data-step-indicator="3"><span class="step-num" aria-hidden="true">3</span> Review</li>
++          </ol>
++        </nav>
++
++        <p id="step-status" class="visually-hidden" role="status" aria-live="polite"></p>
++
++        <form id="rewards-form" class="rewards-form" action="/rewards/register" method="post" accept-charset="UTF-8">
++          <!-- The server must render a per-session, cryptographically random CSRF token here and verify it on POST. -->
++          <input type="hidden" name="csrf_token" value="">
++
++          <!-- Honeypot for bots. Humans never see or fill this field; the server rejects submissions where it has a value. -->
++          <div class="hp-field" aria-hidden="true">
++            <label for="website">Leave this field empty</label>
++            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
++          </div>
++
++          <p class="required-note"><span aria-hidden="true">*</span> marks a required field.</p>
++
++          <!-- Step 1: Account -->
++          <fieldset class="form-step" data-step="1">
++            <legend><h3 class="step-heading" tabindex="-1">Step 1 of 3: Create your account</h3></legend>
++
++            <div class="field">
++              <label for="full-name">Full name <span class="req" aria-hidden="true">*</span></label>
++              <input type="text" id="full-name" name="full_name" autocomplete="name" required
++                maxlength="100" pattern="[\p{L}\p{M}'\-. ]+" enterkeyhint="next"
++                aria-describedby="full-name-error"
++                data-msg-pattern="Use letters, spaces, apostrophes, hyphens or periods only.">
++              <p class="error-msg" id="full-name-error"></p>
++            </div>
++
++            <div class="field">
++              <label for="email">Email <span class="req" aria-hidden="true">*</span></label>
++              <span class="hint" id="email-hint">We'll send a confirmation link to this address.</span>
++              <input type="email" id="email" name="email" autocomplete="username" required
++                maxlength="254" spellcheck="false" enterkeyhint="next"
++                aria-describedby="email-hint email-error">
++              <p class="error-msg" id="email-error"></p>
++            </div>
++
++            <div class="field">
++              <label for="new-password">Password <span class="req" aria-hidden="true">*</span></label>
++              <span class="hint" id="password-hint">At least 8 characters, including a letter and a number. Your browser's suggested password works well.</span>
++              <div class="password-wrap">
++                <input type="password" id="new-password" name="password" autocomplete="new-password" required
++                  minlength="8" maxlength="128" pattern="(?=.*\p{L})(?=.*\d).{8,}" enterkeyhint="next"
++                  autocapitalize="off" spellcheck="false"
++                  aria-describedby="password-hint new-password-error"
++                  data-msg-pattern="Include at least one letter and one number.">
++                <button type="button" class="toggle-password" aria-controls="new-password" aria-pressed="false" hidden>
++                  Show password
++                </button>
++              </div>
++              <p class="error-msg" id="new-password-error"></p>
++            </div>
++          </fieldset>
++
++          <!-- Step 2: Preferences -->
++          <fieldset class="form-step" data-step="2">
++            <legend><h3 class="step-heading" tabindex="-1">Step 2 of 3: Your preferences</h3></legend>
++
++            <div class="field">
++              <label for="phone">Mobile number <span class="optional">(optional)</span></label>
++              <span class="hint" id="phone-hint">For order-ready texts. Include your country code if you're outside the US.</span>
++              <input type="tel" id="phone" name="phone" autocomplete="tel" maxlength="20"
++                pattern="[+]?[0-9\s\(\).\-]{7,20}" enterkeyhint="next"
++                aria-describedby="phone-hint phone-error"
++                data-msg-pattern="Enter a phone number using digits, spaces, or + ( ) -.">
++              <p class="error-msg" id="phone-error"></p>
++            </div>
++
++            <div class="field">
++              <label for="birthday">Birthday <span class="optional">(optional)</span></label>
++              <span class="hint" id="birthday-hint">We'll treat you to a free drink on your birthday.</span>
++              <input type="date" id="birthday" name="birthday" autocomplete="bday" min="1900-01-01"
++                enterkeyhint="next" aria-describedby="birthday-hint birthday-error">
++              <p class="error-msg" id="birthday-error"></p>
++            </div>
++
++            <div class="field">
++              <label for="home-store">Home store <span class="req" aria-hidden="true">*</span></label>
++              <select id="home-store" name="home_store" autocomplete="off" required aria-describedby="home-store-error">
++                <option value="">Choose a location</option>
++                <option value="downtown">Downtown – 12 Main St</option>
++                <option value="riverside">Riverside – 480 River Rd</option>
++                <option value="university">University District – 77 College Ave</option>
++                <option value="northgate">Northgate – 2150 N Park Blvd</option>
++                <option value="harbor">Harbor Point – 9 Wharf Ln</option>
++                <option value="westfield">Westfield – 315 Elm St</option>
++              </select>
++              <p class="error-msg" id="home-store-error"></p>
++            </div>
++
++            <fieldset class="field choice-group" aria-describedby="favorite-drink-error">
++              <legend>Favorite drink <span class="req" aria-hidden="true">*</span></legend>
++              <div class="choice"><input type="radio" id="drink-latte" name="favorite_drink" value="latte" required><label for="drink-latte">Latte</label></div>
++              <div class="choice"><input type="radio" id="drink-espresso" name="favorite_drink" value="espresso"><label for="drink-espresso">Espresso</label></div>
++              <div class="choice"><input type="radio" id="drink-cold-brew" name="favorite_drink" value="cold_brew"><label for="drink-cold-brew">Cold brew</label></div>
++              <div class="choice"><input type="radio" id="drink-tea" name="favorite_drink" value="tea"><label for="drink-tea">Tea</label></div>
++              <p class="error-msg" id="favorite-drink-error"></p>
++            </fieldset>
++          </fieldset>
++
++          <!-- Step 3: Review & consent -->
++          <fieldset class="form-step" data-step="3">
++            <legend><h3 class="step-heading" tabindex="-1">Step 3 of 3: Review and join</h3></legend>
++
++            <div class="review" hidden>
++              <p>Check your details. Use <strong>Back</strong> to make changes.</p>
++              <dl id="review-list" class="review-list"></dl>
++            </div>
++
++            <div class="field choice">
++              <input type="checkbox" id="marketing" name="marketing_opt_in" value="yes">
++              <label for="marketing">Email me offers and new seasonal drinks <span class="optional">(optional)</span></label>
++            </div>
++
++            <div class="field">
++              <div class="choice">
++                <input type="checkbox" id="terms" name="accept_terms" value="yes" required
++                  aria-describedby="terms-error" data-msg-required="You must accept the program terms to join.">
++                <label for="terms">I agree to the <a href="/rewards/terms" target="_blank" rel="noopener">Rewards terms (opens in new tab)</a> and <a href="/privacy-policy" target="_blank" rel="noopener">Privacy policy (opens in new tab)</a> <span class="req" aria-hidden="true">*</span></label>
++              </div>
++              <p class="error-msg" id="terms-error"></p>
++            </div>
++          </fieldset>
++
++          <p id="form-alert" class="form-alert" role="alert"></p>
++
++          <div class="form-actions">
++            <button type="button" class="btn-secondary" data-action="back" hidden>Back</button>
++            <button type="button" class="btn-primary" data-action="next" hidden>Next: Preferences</button>
++            <button type="submit" class="btn-primary" data-action="submit">Join Rewards</button>
++          </div>
++        </form>
++
++        <div id="rewards-success" class="rewards-success" hidden>
++          <h3 tabindex="-1">Welcome to Daily Grind Rewards!</h3>
++          <p>Check your inbox for a link to confirm your email. Your first star is waiting.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +698,9 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="rewards-form.js" defer></script>
++
+ </body>
+ 
+ </html>

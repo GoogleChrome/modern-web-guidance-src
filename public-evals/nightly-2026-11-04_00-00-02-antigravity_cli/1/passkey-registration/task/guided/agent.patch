@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,8 +194,16 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <div class="card">
++        <h3>Faster, Safer Sign-In</h3>
++        <p>Create a passkey for phishing-resistant, passwordless sign-in to your Daily Grind account.</p>
++        <button type="button" class="btn" data-testid="register-button" id="register-passkey-btn" style="border: none; cursor: pointer;">Create passkey</button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +214,118 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "./node_modules/webauthn-polyfills/esm/json_serialization.js"
++      }
++    }
++  </script>
++  <script type="module">
++    import 'webauthn-polyfills';
++
++    const registerButton = document.querySelector('[data-testid="register-button"]');
++
++    async function checkPasskeyCapabilities() {
++      if (!window.PublicKeyCredential || typeof PublicKeyCredential.getClientCapabilities !== 'function') {
++        if (registerButton) {
++          registerButton.disabled = true;
++        }
++        return false;
++      }
++
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (!capabilities.passkeyPlatformAuthenticator || !capabilities.conditionalGet) {
++          if (registerButton) {
++            registerButton.disabled = true;
++          }
++          return false;
++        }
++        return true;
++      } catch (err) {
++        console.error('Failed to check passkey capabilities:', err);
++        if (registerButton) {
++          registerButton.disabled = true;
++        }
++        return false;
++      }
++    }
++
++    checkPasskeyCapabilities();
++
++    async function registerPasskey() {
++      const isSupported = await checkPasskeyCapabilities();
++      if (!isSupported) {
++        return;
++      }
++
++      const optionsResponse = await fetch('/api/register/options', {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++        },
++        body: JSON.stringify({ promotion: true }),
++      });
++
++      const creationOptionsJSON = await optionsResponse.json();
++      const rpId = creationOptionsJSON.rp?.id || window.location.hostname;
++      const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
++
++      let credential;
++      try {
++        credential = await navigator.credentials.create({ publicKey });
++      } catch (err) {
++        if (err.name === 'InvalidStateError') {
++          console.log('A passkey already exists for this account.');
++          alert('A passkey already exists for this account.');
++        } else if (err.name === 'SecurityError') {
++          console.error('Configuration RP ID or Secure Context error.');
++          alert('Configuration RP ID or Secure Context error.');
++        } else if (err.name === 'NotAllowedError') {
++          console.log('User cancelled the passkey dialog.');
++        } else if (err.name === 'AbortError') {
++          console.log('The creation operation has been aborted.');
++        }
++        return;
++      }
++
++      const encodedResponse = credential.toJSON();
++      try {
++        const response = await fetch('/api/register/verify', {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          body: JSON.stringify(encodedResponse),
++        });
++
++        if (!response.ok) {
++          if (PublicKeyCredential.signalUnknownCredential) {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId,
++              credentialId: encodedResponse.id,
++            });
++          }
++        }
++      } catch (serverErr) {
++        console.error('Server verification network failure:', serverErr);
++        if (PublicKeyCredential.signalUnknownCredential) {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId,
++            credentialId: encodedResponse.id,
++          });
++        }
++      }
++    }
++
++    if (registerButton) {
++      registerButton.addEventListener('click', () => {
++        registerPasskey();
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

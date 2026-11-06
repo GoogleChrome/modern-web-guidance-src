@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical Scroll Container & Media Cards */
++    .media-section {
++      margin-top: 50px;
++    }
++
++    .media-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .scroll-container {
++      position: relative;
++      max-width: 560px;
++      height: 420px;
++      margin: 0 auto;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px;
++      flex-shrink: 0;
++    }
++
++    .media-card img {
++      display: block;
++      width: 500px;
++      max-width: 100%;
++      height: 250px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin: 0 auto 12px;
++      background-color: var(--secondary);
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .target {
++      scroll-initial-target: nearest;
++      scroll-start-target: auto;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +248,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <h2>Roastery Moments</h2>
++      <div class="scroll-container" id="media-scroll-container">
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=500&h=250&q=80" alt="Freshly poured latte art" width="500" height="250">
++          <h3>Morning Pour</h3>
++          <p>Silky microfoam poured over our signature house espresso blend.</p>
++        </div>
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=500&h=250&q=80" alt="Roasted coffee beans in cup" width="500" height="250">
++          <h3>Small-Batch Roasting</h3>
++          <p>Every batch is roasted in-house daily to bring out rich origin notes.</p>
++        </div>
++        <div class="media-card target">
++          <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=500&h=250&q=80" alt="Barista crafting pour-over coffee" width="500" height="250">
++          <h3>Featured: Hand-Crafted Pour Over</h3>
++          <p>Precision brewing highlights the floral and citrus aromas of single-origin beans.</p>
++        </div>
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=500&h=250&q=80" alt="Warm cappuccino on wooden table" width="500" height="250">
++          <h3>Cozy Atmosphere</h3>
++          <p>Settle into your favorite corner with a warm cup and freshly baked pastry.</p>
++        </div>
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=500&h=250&q=80" alt="Iced coffee with milk swirl" width="500" height="250">
++          <h3>Afternoon Refreshment</h3>
++          <p>Our slow-steeped cold brew served over crystal-clear artisan ice.</p>
++        </div>
++      </div>
++      <script>
++        (function () {
++          var container = document.getElementById('media-scroll-container');
++          var target = container && container.querySelector('.target');
++          if (container && target && container.scrollTop === 0) {
++            container.scrollTop = target.offsetTop;
++          }
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

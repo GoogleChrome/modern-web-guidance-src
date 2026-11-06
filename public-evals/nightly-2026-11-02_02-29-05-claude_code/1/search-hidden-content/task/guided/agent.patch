@@ -1,0 +1,291 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,175 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Main + sidebar layout */
++    .page-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 260px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (max-width: 800px) {
++      .page-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .sidebar {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      position: sticky;
++      top: 90px;
++    }
++
++    .sidebar h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .sidebar p {
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    .reveal-coupon-btn {
++      appearance: none;
++      width: 100%;
++      font: inherit;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++      color: var(--primary);
++      background: var(--accent);
++      border: 2px dashed var(--primary);
++      border-radius: 6px;
++      padding: 12px 16px;
++      cursor: pointer;
++      transition: background 0.3s, transform 0.15s;
++    }
++
++    .reveal-coupon-btn:hover:not(:disabled) {
++      background: #ffc174;
++      transform: translateY(-1px);
++    }
++
++    .reveal-coupon-btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .reveal-coupon-btn:disabled {
++      background: var(--secondary);
++      border-style: solid;
++      cursor: default;
++    }
++
++    /* Coupon panel: no box styles on the hidden="until-found" element itself */
++    #coupon-panel {
++      margin-top: 30px;
++    }
++
++    .coupon-card {
++      background: white;
++      border: 2px dashed var(--accent);
++      border-radius: 8px;
++      padding: 20px;
++      text-align: center;
++    }
++
++    .coupon-code {
++      display: inline-block;
++      font-family: ui-monospace, Consolas, monospace;
++      font-size: 1.6rem;
++      font-weight: bold;
++      letter-spacing: 3px;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 6px 18px;
++      border-radius: 4px;
++      margin: 10px 0;
++    }
++
++    /* Wholesale & catering tabs (exclusive <details> group) */
++    .info-tabs {
++      margin-top: 40px;
++    }
++
++    .info-tabs h2 {
++      margin-bottom: 15px;
++    }
++
++    .tab-group {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .wholesale-tab summary {
++      cursor: pointer;
++      font-weight: bold;
++      color: var(--primary);
++      padding: 12px 20px;
++      background: var(--secondary);
++      border-bottom: 3px solid transparent;
++    }
++
++    .wholesale-tab[open] summary {
++      background: white;
++      border-bottom-color: var(--accent);
++    }
++
++    .wholesale-tab summary:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -3px;
++    }
++
++    .tab-content {
++      padding: 20px;
++    }
++
++    .tab-content ul {
++      margin: 10px 0 0 20px;
++    }
++
++    /* Lay the summaries out as a tab row where ::details-content is supported;
++       otherwise the group degrades to a stacked exclusive accordion. */
++    @supports selector(::details-content) {
++      .tab-group {
++        display: grid;
++        grid-template-columns: repeat(2, auto) 1fr;
++      }
++
++      .wholesale-tab {
++        display: contents;
++      }
++
++      .wholesale-tab summary {
++        grid-row: 1;
++        list-style: none;
++      }
++
++      .wholesale-tab summary::-webkit-details-marker {
++        display: none;
++      }
++
++      .wholesale-tab::details-content {
++        grid-row: 2;
++        grid-column: 1 / -1;
++      }
++
++      .tab-group::before {
++        content: "";
++        grid-row: 1;
++        grid-column: 3;
++        background: var(--secondary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,9 +340,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container page-layout">
++  <main>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +362,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <div id="coupon-panel" hidden="until-found">
++      <div class="coupon-card">
++        <h3>Your Discount Code</h3>
++        <p>Enjoy 15% off your next online order.</p>
++        <p class="coupon-code">GRIND15</p>
++        <p>Enter this code at checkout. One use per customer.</p>
++      </div>
++    </div>
++
++    <section class="info-tabs">
++      <h2>Wholesale &amp; Catering</h2>
++      <div class="tab-group">
++        <details class="wholesale-tab" name="wholesale-catering" open>
++          <summary>Wholesale</summary>
++          <div class="tab-content">
++            <p>Serve The Daily Grind at your café, restaurant, or office. We roast to order and deliver fresh beans weekly.</p>
++            <ul>
++              <li>Minimum order: 10 lb per roast</li>
++              <li>Volume pricing and barista training available</li>
++              <li>Espresso equipment leasing for qualifying partners</li>
++            </ul>
++            <a href="/wholesale" class="btn">Become a Wholesale Partner</a>
++          </div>
++        </details>
++        <details class="wholesale-tab" name="wholesale-catering">
++          <summary>Catering</summary>
++          <div class="tab-content">
++            <p>From board meetings to weddings, our mobile espresso bar brings handcrafted drinks to your event.</p>
++            <ul>
++              <li>Coffee service boxes for groups of 10 or more</li>
++              <li>Full-service espresso bar with professional baristas</li>
++              <li>Please book at least 72 hours in advance</li>
++            </ul>
++            <a href="/catering" class="btn">Request a Catering Quote</a>
++          </div>
++        </details>
++      </div>
++    </section>
+   </main>
+ 
++  <aside class="sidebar">
++    <h3>Exclusive Offer</h3>
++    <p>Grab a discount on your next order.</p>
++    <button type="button" class="reveal-coupon-btn" id="reveal-coupon"
++      aria-controls="coupon-panel" aria-expanded="false">Reveal Coupon</button>
++  </aside>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +421,41 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Coupon: reveal once via the sidebar button or find-in-page; never re-hidden.
++    const couponPanel = document.getElementById('coupon-panel');
++    const couponButton = document.getElementById('reveal-coupon');
++
++    function markCouponRevealed() {
++      couponButton.setAttribute('aria-expanded', 'true');
++      couponButton.disabled = true;
++      couponButton.textContent = 'Coupon Revealed';
++    }
++
++    couponButton.addEventListener('click', () => {
++      couponPanel.removeAttribute('hidden');
++      markCouponRevealed();
++      couponPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
++    });
++
++    // Browser removes hidden="until-found" itself on a find-in-page match.
++    couponPanel.addEventListener('beforematch', markCouponRevealed);
++
++    if (!('onbeforematch' in HTMLElement.prototype)) {
++      // No hidden="until-found" support: show the coupon so it stays searchable.
++      couponPanel.removeAttribute('hidden');
++      markCouponRevealed();
++    }
++
++    // Tabs: keep one tab open by ignoring clicks on the already-open tab.
++    document.querySelectorAll('.wholesale-tab summary').forEach((summary) => {
++      summary.addEventListener('click', (e) => {
++        if (summary.parentElement.open) e.preventDefault();
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

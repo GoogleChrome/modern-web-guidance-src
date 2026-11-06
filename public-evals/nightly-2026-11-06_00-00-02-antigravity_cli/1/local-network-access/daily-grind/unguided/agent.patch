@@ -1,0 +1,600 @@
+diff --git a/index.html b/index.html
+index 66c9173..e3ff163 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,204 @@
+       background: #3e2723;
+     }
+ 
++    /* Equipment Connection Panel */
++    .equipment-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 12px;
++      padding: 32px;
++      box-shadow: 0 4px 16px rgba(62, 39, 35, 0.08);
++      border: 1px solid var(--secondary);
++    }
++
++    .equipment-header {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .equipment-header h2 {
++      color: var(--primary);
++      font-size: 1.8rem;
++      margin-bottom: 8px;
++    }
++
++    .equipment-header p {
++      color: #6d4c41;
++      max-width: 720px;
++      margin: 0 auto;
++      font-size: 0.95rem;
++    }
++
++    .equipment-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++    }
++
++    .device-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      padding: 24px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .device-card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++    }
++
++    .device-title h3 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      margin-bottom: 4px;
++    }
++
++    .device-subtitle {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .badge-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-end;
++      gap: 6px;
++    }
++
++    .space-badge {
++      font-family: monospace;
++      font-size: 0.75rem;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 3px 8px;
++      border-radius: 4px;
++      border: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++
++    .status-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.78rem;
++      font-weight: 600;
++      padding: 3px 10px;
++      border-radius: 999px;
++      background: #eceff1;
++      color: #455a64;
++    }
++
++    .status-pill.connected {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .status-pill.connecting {
++      background: #fff8e1;
++      color: #f57f17;
++    }
++
++    .status-pill.error {
++      background: #ffebee;
++      color: #c62828;
++    }
++
++    .field-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .field-group label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .input-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .input-row input {
++      flex: 1;
++      padding: 9px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-family: monospace;
++      font-size: 0.9rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .btn-action {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 9px 16px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-weight: 600;
++      font-size: 0.88rem;
++      transition: background 0.2s;
++    }
++
++    .btn-action:hover {
++      background: #3e2723;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 7px 12px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-size: 0.82rem;
++      font-weight: 600;
++      transition: all 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: #efebe9;
++    }
++
++    .quick-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .permission-bar {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.8rem;
++      background: #efebe9;
++      padding: 8px 12px;
++      border-radius: 6px;
++      color: var(--text);
++    }
++
++    .telemetry-box {
++      background: #261c19;
++      color: #f5f5f5;
++      font-family: monospace;
++      font-size: 0.8rem;
++      padding: 12px;
++      border-radius: 6px;
++      min-height: 92px;
++      max-height: 180px;
++      overflow-y: auto;
++      white-space: pre-wrap;
++      word-break: break-word;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -161,6 +359,7 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
++      <li><a href="#equipment-panel">Brew Equipment</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -195,6 +394,128 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="equipment-panel" class="equipment-section" aria-labelledby="equipment-heading">
++      <div class="equipment-header">
++        <h2 id="equipment-heading">Smart Brewing Equipment Connection Panel</h2>
++        <p>
++          Connect directly from your browser to our shop's Wi-Fi coffee brewers on the private LAN
++          (<code>192.168.1.x</code>) or pair with the Companion Desktop Brewing Helper running locally on
++          your computer (<code>127.0.0.1</code>) using Local Network Access controls.
++        </p>
++      </div>
++
++      <div class="equipment-grid">
++        <!-- Shop Wi-Fi Coffee Brewer (Private LAN) -->
++        <div class="device-card" id="lan-brewer-card" data-address-space="local">
++          <div class="device-card-header">
++            <div class="device-title">
++              <h3>Wi-Fi Coffee Brewer (Shop LAN)</h3>
++              <p class="device-subtitle">Private local network controller (<code>192.168.1.x</code>)</p>
++            </div>
++            <div class="badge-group">
++              <span class="space-badge" title="Fetch targetAddressSpace option">targetAddressSpace: "local"</span>
++              <span id="lan-status-pill" class="status-pill">Disconnected</span>
++            </div>
++          </div>
++
++          <div class="permission-bar">
++            <span>Permission (<code>local-network</code>): <strong id="lan-perm-state">checking...</strong></span>
++            <button type="button" class="btn-secondary" id="lan-check-perm-btn">Refresh Permission</button>
++          </div>
++
++          <div class="field-group">
++            <label for="lan-endpoint-input">Shop LAN Brewer Endpoint (Private IP / .local)</label>
++            <div class="input-row">
++              <input
++                type="url"
++                id="lan-endpoint-input"
++                value="http://192.168.1.100/api/status"
++                placeholder="http://192.168.1.100/api/status"
++                aria-label="Shop LAN Brewer Endpoint URL"
++              />
++              <button type="button" class="btn-action" id="lan-connect-btn">Connect LAN Brewer</button>
++            </div>
++          </div>
++
++          <div class="field-group">
++            <label>Preset Shop Stations &amp; Controls</label>
++            <div class="quick-actions">
++              <button type="button" class="btn-secondary lan-preset-btn" data-url="http://192.168.1.100/api/status">
++                Bar Brewer #1 (192.168.1.100)
++              </button>
++              <button type="button" class="btn-secondary lan-preset-btn" data-url="http://192.168.1.101/api/status">
++                Pour-Over Station #2 (192.168.1.101)
++              </button>
++              <button type="button" class="btn-secondary" id="lan-brew-btn" data-action="start-brew">
++                Start Brew (94&deg;C)
++              </button>
++              <button type="button" class="btn-secondary" id="lan-preheat-btn" data-action="preheat">
++                Pre-heat Boiler
++              </button>
++            </div>
++          </div>
++
++          <div class="field-group">
++            <label for="lan-telemetry">Brewer Telemetry &amp; Connection Log</label>
++            <pre id="lan-telemetry" class="telemetry-box" aria-live="polite">Ready to connect to shop Wi-Fi brewer on private LAN (targetAddressSpace: "local").</pre>
++          </div>
++        </div>
++
++        <!-- Companion Desktop Brewing Helper (Localhost / Loopback) -->
++        <div class="device-card" id="loopback-helper-card" data-address-space="loopback">
++          <div class="device-card-header">
++            <div class="device-title">
++              <h3>Companion Desktop Brewing Helper</h3>
++              <p class="device-subtitle">Local loopback daemon on your computer (<code>127.0.0.1</code>)</p>
++            </div>
++            <div class="badge-group">
++              <span class="space-badge" title="Fetch targetAddressSpace option">targetAddressSpace: "loopback"</span>
++              <span id="loopback-status-pill" class="status-pill">Disconnected</span>
++            </div>
++          </div>
++
++          <div class="permission-bar">
++            <span>Permission (<code>loopback-network</code>): <strong id="loopback-perm-state">checking...</strong></span>
++            <button type="button" class="btn-secondary" id="loopback-check-perm-btn">Refresh Permission</button>
++          </div>
++
++          <div class="field-group">
++            <label for="loopback-endpoint-input">Desktop Helper Loopback Endpoint (127.0.0.1 / localhost)</label>
++            <div class="input-row">
++              <input
++                type="url"
++                id="loopback-endpoint-input"
++                value="http://127.0.0.1:8765/api/status"
++                placeholder="http://127.0.0.1:8765/api/status"
++                aria-label="Desktop Brewing Helper Loopback URL"
++              />
++              <button type="button" class="btn-action" id="loopback-connect-btn">Connect Helper</button>
++            </div>
++          </div>
++
++          <div class="field-group">
++            <label>Desktop Helper Actions</label>
++            <div class="quick-actions">
++              <button type="button" class="btn-secondary" id="loopback-sync-btn" data-action="sync-recipes">
++                Sync Brew Recipes
++              </button>
++              <button type="button" class="btn-secondary" id="loopback-scale-btn" data-action="read-scale">
++                Read USB Scale &amp; Grinder
++              </button>
++              <button type="button" class="btn-secondary" id="loopback-tare-btn" data-action="tare-scale">
++                Tare Scale (127.0.0.1)
++              </button>
++            </div>
++          </div>
++
++          <div class="field-group">
++            <label for="loopback-telemetry">Desktop Helper Telemetry &amp; Connection Log</label>
++            <pre id="loopback-telemetry" class="telemetry-box" aria-live="polite">Ready to connect to Companion Desktop Brewing Helper on 127.0.0.1 (targetAddressSpace: "loopback").</pre>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +528,253 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Determines the appropriate Local Network Access targetAddressSpace
++     * ('loopback', 'local', or 'public') for a given URL or host.
++     */
++    function getTargetAddressSpace(urlString, fallbackSpace) {
++      try {
++        const parsed = new URL(urlString);
++        const host = parsed.hostname.toLowerCase();
++        if (
++          host === '127.0.0.1' ||
++          host === 'localhost' ||
++          host === '::1' ||
++          host === '[::1]' ||
++          host.startsWith('127.')
++        ) {
++          return 'loopback';
++        }
++        if (
++          host.startsWith('192.168.') ||
++          host.startsWith('10.') ||
++          /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
++          host.endsWith('.local')
++        ) {
++          return 'local';
++        }
++      } catch (_) {
++        // Ignore URL parse error and use fallbackSpace
++      }
++      return fallbackSpace || 'local';
++    }
++
++    /**
++     * Queries browser permission state for Local Network Access permissions:
++     * 'local-network' (for private LAN devices like 192.168.1.x) and
++     * 'loopback-network' (for localhost/127.0.0.1 companion apps),
++     * with a fallback to the alias 'local-network-access'.
++     */
++    async function checkNetworkPermission(permissionName, statusElement) {
++      if (!navigator.permissions || typeof navigator.permissions.query !== 'function') {
++        statusElement.textContent = 'unsupported';
++        return 'unsupported';
++      }
++      try {
++        const status = await navigator.permissions.query({ name: permissionName });
++        statusElement.textContent = status.state;
++        status.onchange = () => {
++          statusElement.textContent = status.state;
++        };
++        return status.state;
++      } catch (primaryErr) {
++        try {
++          const fallbackStatus = await navigator.permissions.query({ name: 'local-network-access' });
++          statusElement.textContent = fallbackStatus.state;
++          fallbackStatus.onchange = () => {
++            statusElement.textContent = fallbackStatus.state;
++          };
++          return fallbackStatus.state;
++        } catch (_) {
++          statusElement.textContent = 'prompt (default)';
++          return 'prompt';
++        }
++      }
++    }
++
++    /**
++     * Connects to a local LAN coffee brewer ('local' address space) or
++     * loopback desktop brewing helper ('loopback' address space) via fetch().
++     */
++    async function requestEquipmentEndpoint({
++      url,
++      targetAddressSpace,
++      method = 'GET',
++      payload = null,
++      statusPill,
++      telemetryBox,
++      deviceLabel
++    }) {
++      const resolvedSpace = getTargetAddressSpace(url, targetAddressSpace);
++      statusPill.className = 'status-pill connecting';
++      statusPill.textContent = 'Connecting...';
++
++      const timestamp = new Date().toLocaleTimeString();
++      telemetryBox.textContent =
++        `[${timestamp}] Sending ${method} request to ${url}\n` +
++        `Options: { mode: "cors", targetAddressSpace: "${resolvedSpace}" }...`;
++
++      const fetchOptions = {
++        method,
++        mode: 'cors',
++        targetAddressSpace: resolvedSpace
++      };
++
++      if (payload) {
++        fetchOptions.headers = { 'Content-Type': 'application/json' };
++        fetchOptions.body = JSON.stringify(payload);
++      }
++
++      try {
++        const response = await fetch(url, fetchOptions);
++        const contentType = response.headers.get('content-type') || '';
++        let data;
++        if (contentType.includes('application/json')) {
++          data = await response.json();
++        } else {
++          data = await response.text();
++        }
++
++        statusPill.className = 'status-pill connected';
++        statusPill.textContent = 'Connected';
++        const formatted = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
++        telemetryBox.textContent =
++          `[${timestamp}] Connected to ${deviceLabel} (${url})\n` +
++          `targetAddressSpace: "${resolvedSpace}" | HTTP ${response.status}\n` +
++          `Response:\n${formatted}`;
++        return { ok: response.ok, status: response.status, data };
++      } catch (err) {
++        statusPill.className = 'status-pill error';
++        statusPill.textContent = 'Offline / Blocked';
++        telemetryBox.textContent =
++          `[${timestamp}] Connection attempt to ${deviceLabel} (${url})\n` +
++          `targetAddressSpace: "${resolvedSpace}"\n` +
++          `Status: ${err && err.message ? err.message : String(err)}\n` +
++          `Tip: Ensure the device is online and grant browser permission for ${
++            resolvedSpace === 'loopback' ? 'loopback-network (127.0.0.1)' : 'local-network (private LAN)'
++          }.`;
++        return { ok: false, error: err };
++      }
++    }
++
++    // Wire up Shop LAN Wi-Fi Brewer controls (targetAddressSpace: 'local')
++    const lanInput = document.getElementById('lan-endpoint-input');
++    const lanConnectBtn = document.getElementById('lan-connect-btn');
++    const lanStatusPill = document.getElementById('lan-status-pill');
++    const lanTelemetry = document.getElementById('lan-telemetry');
++    const lanPermState = document.getElementById('lan-perm-state');
++    const lanCheckPermBtn = document.getElementById('lan-check-perm-btn');
++
++    function connectLanBrewer(customPathOrMethod = {}) {
++      const baseUrl = lanInput.value.trim() || 'http://192.168.1.100/api/status';
++      const url = customPathOrMethod.url || baseUrl;
++      return requestEquipmentEndpoint({
++        url,
++        targetAddressSpace: 'local',
++        method: customPathOrMethod.method || 'GET',
++        payload: customPathOrMethod.payload || null,
++        statusPill: lanStatusPill,
++        telemetryBox: lanTelemetry,
++        deviceLabel: 'Shop Wi-Fi Coffee Brewer (LAN)'
++      });
++    }
++
++    lanConnectBtn.addEventListener('click', () => connectLanBrewer());
++    lanCheckPermBtn.addEventListener('click', () => checkNetworkPermission('local-network', lanPermState));
++
++    document.querySelectorAll('.lan-preset-btn').forEach((btn) => {
++      btn.addEventListener('click', () => {
++        lanInput.value = btn.getAttribute('data-url');
++        connectLanBrewer();
++      });
++    });
++
++    document.getElementById('lan-brew-btn').addEventListener('click', () => {
++      const currentOrigin = (() => {
++        try { return new URL(lanInput.value.trim()).origin; } catch (_) { return 'http://192.168.1.100'; }
++      })();
++      connectLanBrewer({
++        url: `${currentOrigin}/api/brew`,
++        method: 'POST',
++        payload: { action: 'start', temperatureCelsius: 94, profile: 'Artisanal Pour-Over' }
++      });
++    });
++
++    document.getElementById('lan-preheat-btn').addEventListener('click', () => {
++      const currentOrigin = (() => {
++        try { return new URL(lanInput.value.trim()).origin; } catch (_) { return 'http://192.168.1.100'; }
++      })();
++      connectLanBrewer({
++        url: `${currentOrigin}/api/preheat`,
++        method: 'POST',
++        payload: { targetCelsius: 96 }
++      });
++    });
++
++    // Wire up Companion Desktop Brewing Helper controls (targetAddressSpace: 'loopback')
++    const loopbackInput = document.getElementById('loopback-endpoint-input');
++    const loopbackConnectBtn = document.getElementById('loopback-connect-btn');
++    const loopbackStatusPill = document.getElementById('loopback-status-pill');
++    const loopbackTelemetry = document.getElementById('loopback-telemetry');
++    const loopbackPermState = document.getElementById('loopback-perm-state');
++    const loopbackCheckPermBtn = document.getElementById('loopback-check-perm-btn');
++
++    function connectLoopbackHelper(customPathOrMethod = {}) {
++      const baseUrl = loopbackInput.value.trim() || 'http://127.0.0.1:8765/api/status';
++      const url = customPathOrMethod.url || baseUrl;
++      return requestEquipmentEndpoint({
++        url,
++        targetAddressSpace: 'loopback',
++        method: customPathOrMethod.method || 'GET',
++        payload: customPathOrMethod.payload || null,
++        statusPill: loopbackStatusPill,
++        telemetryBox: loopbackTelemetry,
++        deviceLabel: 'Companion Desktop Brewing Helper (127.0.0.1)'
++      });
++    }
++
++    loopbackConnectBtn.addEventListener('click', () => connectLoopbackHelper());
++    loopbackCheckPermBtn.addEventListener('click', () =>
++      checkNetworkPermission('loopback-network', loopbackPermState)
++    );
++
++    document.getElementById('loopback-sync-btn').addEventListener('click', () => {
++      const currentOrigin = (() => {
++        try { return new URL(loopbackInput.value.trim()).origin; } catch (_) { return 'http://127.0.0.1:8765'; }
++      })();
++      connectLoopbackHelper({
++        url: `${currentOrigin}/api/recipes/sync`,
++        method: 'POST',
++        payload: { recipes: ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew'] }
++      });
++    });
++
++    document.getElementById('loopback-scale-btn').addEventListener('click', () => {
++      const currentOrigin = (() => {
++        try { return new URL(loopbackInput.value.trim()).origin; } catch (_) { return 'http://127.0.0.1:8765'; }
++      })();
++      connectLoopbackHelper({
++        url: `${currentOrigin}/api/telemetry`,
++        method: 'GET'
++      });
++    });
++
++    document.getElementById('loopback-tare-btn').addEventListener('click', () => {
++      const currentOrigin = (() => {
++        try { return new URL(loopbackInput.value.trim()).origin; } catch (_) { return 'http://127.0.0.1:8765'; }
++      })();
++      connectLoopbackHelper({
++        url: `${currentOrigin}/api/scale/tare`,
++        method: 'POST',
++        payload: { zero: true }
++      });
++    });
++
++    // Check initial Local Network Access permission states on load
++    checkNetworkPermission('local-network', lanPermState);
++    checkNetworkPermission('loopback-network', loopbackPermState);
++  </script>
+ </body>
+ 
+ </html>

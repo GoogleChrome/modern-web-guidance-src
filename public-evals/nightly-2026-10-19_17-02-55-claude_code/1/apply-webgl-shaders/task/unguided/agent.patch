@@ -1,0 +1,317 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,59 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* WebGL ripple layer: the canvas draws the hero (background, text and
++       button visuals) with distortion, while the real DOM stays on top,
++       invisible but selectable and clickable. */
++    .hero {
++      position: relative;
++      overflow: hidden;
++    }
++
++    .hero-gl {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      z-index: 0;
++      pointer-events: none;
++    }
++
++    .hero > *:not(.hero-gl) {
++      position: relative;
++      z-index: 1;
++    }
++
++    .hero .btn {
++      --btn-bg: #4e342e;
++      --btn-bg-hover: #3e2723;
++    }
++
++    .hero.gl-active {
++      background: #000;
++    }
++
++    .hero.gl-active h1,
++    .hero.gl-active p,
++    .hero.gl-active .btn {
++      color: transparent;
++    }
++
++    .hero.gl-active .btn {
++      background: transparent;
++    }
++
++    .hero.gl-active ::selection {
++      color: white;
++      background: rgba(255, 171, 64, 0.55);
++    }
++
++    .hero.gl-active .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,9 +218,9 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -206,7 +257,242 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var IMAGE_URL = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80';
++      var MAX_RIPPLES = 8;
++      var RIPPLE_LIFE = 3.5;
++
++      var hero = document.getElementById('hero');
++      if (!hero || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
++
++      var canvas = document.createElement('canvas');
++      canvas.className = 'hero-gl';
++      canvas.setAttribute('aria-hidden', 'true');
++      var gl = canvas.getContext('webgl', { premultipliedAlpha: false, antialias: false });
++      if (!gl) return;
++
++      var VERT = 'attribute vec2 p; varying vec2 uv; void main(){ uv = p * .5 + .5; gl_Position = vec4(p, 0., 1.); }';
++      var FRAG = [
++        'precision mediump float;',
++        'varying vec2 uv;',
++        'uniform sampler2D uBg, uUi;',
++        'uniform vec4 uRip[' + MAX_RIPPLES + '];', // x, y, start time, strength
++        'uniform float uTime, uAspect, uImgAspect;',
++        'vec2 cover(vec2 c){',
++        '  vec2 s = uAspect > uImgAspect ? vec2(1., uImgAspect / uAspect) : vec2(uAspect / uImgAspect, 1.);',
++        '  return (c - .5) * s + .5;',
++        '}',
++        'void main(){',
++        '  vec2 off = vec2(0.); float shade = 0.;',
++        '  for (int i = 0; i < ' + MAX_RIPPLES + '; i++) {',
++        '    vec4 r = uRip[i];',
++        '    float age = uTime - r.z;',
++        '    if (r.w <= 0. || age < 0. || age > ' + RIPPLE_LIFE.toFixed(1) + ') continue;',
++        '    vec2 d = (uv - r.xy) * vec2(uAspect, 1.);',
++        '    float len = length(d);',
++        '    float band = len - age * .42;',
++        '    float w = sin(band * 46.) * exp(-band * band * 70.) * exp(-age * 1.1) * r.w;',
++        '    off += d / (len + 1e-4) / vec2(uAspect, 1.) * w * .022;',
++        '    shade += w;',
++        '  }',
++        '  vec2 q = clamp(uv + off, 0., 1.);',
++        '  vec3 bg = texture2D(uBg, cover(q)).rgb * .5;',
++        '  vec4 ui = texture2D(uUi, q);',
++        '  vec3 col = bg * (1. - ui.a) + ui.rgb;',
++        '  col += shade * .6;',
++        '  gl_FragColor = vec4(col, 1.);',
++        '}'
++      ].join('\n');
++
++      function compile(type, src) {
++        var sh = gl.createShader(type);
++        gl.shaderSource(sh, src);
++        gl.compileShader(sh);
++        return gl.getShaderParameter(sh, gl.COMPILE_STATUS) ? sh : null;
++      }
++      var vs = compile(gl.VERTEX_SHADER, VERT), fs = compile(gl.FRAGMENT_SHADER, FRAG);
++      if (!vs || !fs) return;
++      var prog = gl.createProgram();
++      gl.attachShader(prog, vs);
++      gl.attachShader(prog, fs);
++      gl.linkProgram(prog);
++      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
++      gl.useProgram(prog);
++
++      var buf = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
++      var loc = gl.getAttribLocation(prog, 'p');
++      gl.enableVertexAttribArray(loc);
++      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
++
++      var U = {};
++      ['uBg', 'uUi', 'uRip', 'uTime', 'uAspect', 'uImgAspect'].forEach(function (n) {
++        U[n] = gl.getUniformLocation(prog, n);
++      });
++
++      function makeTexture(unit) {
++        var t = gl.createTexture();
++        gl.activeTexture(gl.TEXTURE0 + unit);
++        gl.bindTexture(gl.TEXTURE_2D, t);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        return t;
++      }
++      makeTexture(0);
++      makeTexture(1);
++      gl.uniform1i(U.uBg, 0);
++      gl.uniform1i(U.uUi, 1);
++      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
++
++      // Placeholder until the photo loads (and fallback if it fails, e.g. offline)
++      gl.activeTexture(gl.TEXTURE0);
++      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([78, 52, 46, 255]));
++      var imgAspect = 1;
++
++      // 2D canvas mirroring the hero's text and button so the shader can distort them
++      var ui = document.createElement('canvas');
++      var ctx = ui.getContext('2d');
++      var texts = hero.querySelectorAll('h1, p, .btn');
++      var btn = hero.querySelector('.btn');
++      var hovering = false;
++      var dpr = 1;
++
++      function drawWords(el, heroRect) {
++        var cs = getComputedStyle(el);
++        var color = el.classList.contains('btn') ? '#fff' : (el.dataset.color || (el.dataset.color = cs.color));
++        ctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
++        ctx.fillStyle = color;
++        ctx.textBaseline = 'alphabetic';
++        var range = document.createRange();
++        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
++        var re = /\S+/g, node, m;
++        while ((node = walker.nextNode())) {
++          var txt = node.nodeValue;
++          re.lastIndex = 0;
++          while ((m = re.exec(txt))) {
++            range.setStart(node, m.index);
++            range.setEnd(node, m.index + m[0].length);
++            var r = range.getBoundingClientRect();
++            var mt = ctx.measureText(m[0]);
++            var asc = mt.fontBoundingBoxAscent, desc = mt.fontBoundingBoxDescent;
++            var y = r.top - heroRect.top + (r.height - (asc + desc)) / 2 + asc;
++            ctx.fillText(m[0], r.left - heroRect.left, y);
++          }
++        }
++      }
++
++      function roundRect(x, y, w, h, r) {
++        ctx.beginPath();
++        ctx.moveTo(x + r, y);
++        ctx.arcTo(x + w, y, x + w, y + h, r);
++        ctx.arcTo(x + w, y + h, x, y + h, r);
++        ctx.arcTo(x, y + h, x, y, r);
++        ctx.arcTo(x, y, x + w, y, r);
++        ctx.closePath();
++      }
++
++      function redrawUi() {
++        var rect = hero.getBoundingClientRect();
++        var w = Math.max(1, Math.round(rect.width)), h = Math.max(1, Math.round(rect.height));
++        dpr = Math.min(window.devicePixelRatio || 1, 2);
++        canvas.width = ui.width = Math.round(w * dpr);
++        canvas.height = ui.height = Math.round(h * dpr);
++        gl.viewport(0, 0, canvas.width, canvas.height);
++        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
++        ctx.clearRect(0, 0, w, h);
++
++        if (btn) {
++          var br = btn.getBoundingClientRect();
++          var bs = getComputedStyle(btn);
++          ctx.fillStyle = bs.getPropertyValue(hovering ? '--btn-bg-hover' : '--btn-bg').trim();
++          roundRect(br.left - rect.left, br.top - rect.top, br.width, br.height, parseFloat(bs.borderTopLeftRadius) || 0);
++          ctx.fill();
++        }
++        texts.forEach(function (el) { drawWords(el, rect); });
++
++        gl.activeTexture(gl.TEXTURE1);
++        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ui);
++        gl.uniform1f(U.uAspect, w / h);
++        requestRender();
++      }
++
++      // Ripples
++      var ripples = [];
++      for (var i = 0; i < MAX_RIPPLES; i++) ripples.push([0, 0, 0, 0]);
++      var next = 0;
++      var now = function () { return performance.now() / 1000; };
++
++      function addRipple(e, strength) {
++        var r = hero.getBoundingClientRect();
++        ripples[next] = [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height, now(), strength];
++        next = (next + 1) % MAX_RIPPLES;
++        requestRender();
++      }
++
++      var last = null;
++      hero.addEventListener('pointermove', function (e) {
++        if (last && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 40) return;
++        last = { x: e.clientX, y: e.clientY };
++        addRipple(e, 0.6);
++      });
++      hero.addEventListener('pointerleave', function () { last = null; });
++      hero.addEventListener('pointerdown', function (e) { addRipple(e, 1.2); });
++
++      if (btn) {
++        btn.addEventListener('mouseenter', function () { hovering = true; redrawUi(); });
++        btn.addEventListener('mouseleave', function () { hovering = false; redrawUi(); });
++      }
++
++      // Render loop: only runs while a ripple is alive
++      var raf = 0;
++      function requestRender() { if (!raf) raf = requestAnimationFrame(frame); }
++      function frame() {
++        raf = 0;
++        var t = now();
++        var flat = [], alive = false;
++        ripples.forEach(function (r) {
++          if (r[3] > 0 && t - r[2] < RIPPLE_LIFE) alive = true;
++          flat.push(r[0], r[1], r[2], r[3]);
++        });
++        gl.uniform4fv(U.uRip, new Float32Array(flat));
++        gl.uniform1f(U.uTime, t);
++        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
++        if (alive) requestRender();
++      }
++
++      // Ripple times are large floats; keep them small for mediump precision
++      var origNow = now;
++      var t0 = origNow();
++      now = function () { return origNow() - t0; };
++
++      hero.insertBefore(canvas, hero.firstChild);
++      hero.classList.add('gl-active');
++      redrawUi();
++
++      if (window.ResizeObserver) new ResizeObserver(redrawUi).observe(hero);
++      else window.addEventListener('resize', redrawUi);
++      if (document.fonts && document.fonts.ready) document.fonts.ready.then(redrawUi);
++
++      var img = new Image();
++      img.crossOrigin = 'anonymous';
++      img.onload = function () {
++        gl.activeTexture(gl.TEXTURE0);
++        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
++        gl.uniform1f(U.uImgAspect, img.naturalWidth / img.naturalHeight);
++        requestRender();
++      };
++      gl.uniform1f(U.uImgAspect, imgAspect);
++      img.src = IMAGE_URL;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,185 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..dd87754 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,7 +4,7 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
++import pageReadyScript from "../scripts/page-ready.js?url";
+ 
+ export interface Props {
+   title: string;
+@@ -20,6 +20,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <meta charset="UTF8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
++    <!-- The sentinel follows the page content, so streamed HTML is parsed first. -->
++    <link rel="expect" blocking="render" href="#initial-view-ready" />
++    <script is:inline type="module" blocking="render" src={pageReadyScript}></script>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+@@ -27,6 +30,7 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+@@ -34,7 +38,6 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -51,5 +54,6 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <div id="initial-view-ready" hidden></div>
+   </body>
+ </html>
+diff --git a/src/scripts/page-ready.js b/src/scripts/page-ready.js
+new file mode 100644
+index 0000000..f68af6c
+--- /dev/null
++++ b/src/scripts/page-ready.js
+@@ -0,0 +1,32 @@
++// This module runs from a render-blocking script in the shared document head.
++// Async island hydration can outlive script execution, so also guard snapshots.
++let ready = false;
++const guardTransition = (event) => {
++  if (!ready) event.viewTransition?.skipTransition();
++};
++window.addEventListener("pagereveal", guardTransition);
++window.addEventListener("pageswap", guardTransition);
++
++if (document.readyState === "loading") {
++  await new Promise((resolve) => {
++    document.addEventListener("DOMContentLoaded", resolve, { once: true });
++  });
++}
++
++// client:load islands power the initial UI. Lazy islands initialize on visibility
++// and must not hold up rendering (including content below the fold).
++const hydration = Array.from(
++  document.querySelectorAll('astro-island[client="load"][ssr]'),
++  (island) => new Promise((resolve) => {
++    island.addEventListener("astro:hydrate", resolve, { once: true });
++  }),
++);
++
++// Loading the stylesheet alone does not load the headline font. Request it
++// explicitly before checking readiness to prevent a font swap in the snapshot.
++const fonts = document.fonts.load('500 1em "Grenze"');
++Promise.all([...hydration, fonts]).then(() => {
++  ready = true;
++}).catch(() => {
++  // Leave transitions disabled if a critical resource fails; the page still loads.
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ed872a7 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,18 @@
+ @import "tailwindcss";
+ 
++/* Use document navigation rather than a client-side document swap. */
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
+diff --git a/tests/page-ready.test.mjs b/tests/page-ready.test.mjs
+new file mode 100644
+index 0000000..56b2422
+--- /dev/null
++++ b/tests/page-ready.test.mjs
+@@ -0,0 +1,70 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import test from 'node:test';
++
++const source = await readFile(new URL('../src/scripts/page-ready.js', import.meta.url), 'utf8');
++const run = new (Object.getPrototypeOf(async function () {}).constructor)('window', 'document', source);
++const tick = () => new Promise((resolve) => setImmediate(resolve));
++
++function page({ islands = [], fonts = Promise.resolve([]), loading = false } = {}) {
++  const window = new EventTarget();
++  const document = Object.assign(new EventTarget(), {
++    readyState: loading ? 'loading' : 'interactive',
++    querySelectorAll(selector) {
++      assert.equal(selector, 'astro-island[client="load"][ssr]');
++      assert.notEqual(this.readyState, 'loading');
++      return islands;
++    },
++    fonts: { load: () => fonts },
++  });
++  const skipped = (type) => {
++    let count = 0;
++    const event = new Event(type);
++    event.viewTransition = { skipTransition: () => count++ };
++    window.dispatchEvent(event);
++    return count;
++  };
++  return { window, document, skipped };
++}
++
++test('skips both snapshots until critical hydration and fonts finish', async () => {
++  const island = new EventTarget();
++  let loadFont;
++  const context = page({ islands: [island], fonts: new Promise((resolve) => { loadFont = resolve; }) });
++  await run(context.window, context.document);
++  assert.equal(context.skipped('pagereveal'), 1);
++  assert.equal(context.skipped('pageswap'), 1);
++  island.dispatchEvent(new Event('astro:hydrate'));
++  await tick();
++  assert.equal(context.skipped('pagereveal'), 1);
++  loadFont([]);
++  await tick();
++  assert.equal(context.skipped('pagereveal'), 0);
++  assert.equal(context.skipped('pageswap'), 0);
++});
++
++test('waits for parsing before discovering critical islands', async () => {
++  const context = page({ loading: true });
++  const running = run(context.window, context.document);
++  assert.equal(context.skipped('pagereveal'), 1);
++  context.document.readyState = 'interactive';
++  context.document.dispatchEvent(new Event('DOMContentLoaded'));
++  await running;
++  await tick();
++  assert.equal(context.skipped('pagereveal'), 0);
++});
++
++test('failed font loading leaves transitions disabled without throwing', async () => {
++  const context = page({ fonts: Promise.reject(new Error('Font unavailable')) });
++  await run(context.window, context.document);
++  await tick();
++  assert.equal(context.skipped('pagereveal'), 1);
++  context.window.dispatchEvent(new Event('pagereveal'));
++});
++
++test('a critical island that never hydrates keeps transitions disabled', async () => {
++  const context = page({ islands: [new EventTarget()] });
++  await run(context.window, context.document);
++  await tick();
++  assert.equal(context.skipped('pagereveal'), 1);
++});

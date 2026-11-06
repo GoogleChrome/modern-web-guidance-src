@@ -1,0 +1,661 @@
+diff --git a/index.html b/index.html
+index 66c9173..666f453 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,483 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ==========================================================
++       Built-in browser UI theming
++       Styles the browser's own controls, pickers, scrollbars and
++       selection to match the palette — no custom replacements.
++       ========================================================== */
++    :root {
++      --primary-dark: #3e2723;
++      --accent-dark: #e6912a;
++      --cream: #efebe9;
++
++      /* Light scheme so native pickers/dropdowns render light, and
++         accent-color tints checkboxes, radios, range, progress. */
++      color-scheme: light;
++      accent-color: var(--primary);
++      caret-color: var(--primary);
++
++      /* Standard scrollbar styling (Firefox, Chrome 121+) */
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    /* Text selection */
++    ::selection {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    /* WebKit/Blink scrollbar fallback (Safari, older Chromium).
++       Only applied where the standard properties aren't supported,
++       since Chromium ignores ::-webkit-scrollbar once scrollbar-color is set. */
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 12px;
++        height: 12px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--secondary);
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--primary);
++        border-radius: 6px;
++        border: 3px solid var(--secondary);
++      }
++
++      ::-webkit-scrollbar-thumb:hover {
++        background: var(--primary-dark);
++      }
++
++      ::-webkit-scrollbar-corner {
++        background: var(--secondary);
++      }
++    }
++
++    /* Focus ring for all native controls */
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* ---------- Layout: favorites alongside order form ---------- */
++    .layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
++      gap: 32px;
++      align-items: start;
++    }
++
++    .layout h2 {
++      text-align: center;
++    }
++
++    .layout .grid {
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++    }
++
++    @media (max-width: 900px) {
++      .layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* ---------- Order customization form ---------- */
++    .order-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .order-panel h2 {
++      margin-bottom: 4px;
++    }
++
++    .order-panel .subtitle {
++      text-align: center;
++      font-size: 0.9rem;
++      color: var(--primary);
++      margin-bottom: 20px;
++    }
++
++    .field {
++      margin-bottom: 16px;
++    }
++
++    .field-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 12px;
++    }
++
++    .order-panel label,
++    .order-panel legend {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .order-panel fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px 14px 12px;
++      margin-bottom: 16px;
++    }
++
++    .order-panel fieldset legend {
++      padding: 0 6px;
++      margin-bottom: 0;
++    }
++
++    .choice-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px 16px;
++    }
++
++    .order-panel .choice {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-weight: normal;
++      color: var(--text);
++      margin: 0;
++      cursor: pointer;
++    }
++
++    /* Text-like native inputs, selects and textarea */
++    .order-panel input:is([type="text"], [type="number"], [type="date"],
++      [type="time"], [type="email"], [type="search"]),
++    .order-panel select,
++    .order-panel textarea {
++      width: 100%;
++      font: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 8px 10px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .order-panel input:hover,
++    .order-panel select:hover,
++    .order-panel textarea:hover {
++      border-color: var(--primary);
++    }
++
++    .order-panel input:focus-visible,
++    .order-panel select:focus-visible,
++    .order-panel textarea:focus-visible {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.45);
++    }
++
++    .order-panel input:user-invalid,
++    .order-panel select:user-invalid {
++      border-color: #c62828;
++    }
++
++    .order-panel textarea {
++      resize: vertical;
++      min-height: 70px;
++      /* Scrollbar inside the textarea follows the palette too */
++      scrollbar-color: var(--accent) var(--cream);
++      scrollbar-width: thin;
++    }
++
++    ::placeholder {
++      color: #8d6e63;
++      opacity: 1;
++    }
++
++    /* Checkbox & radio: native controls tinted via accent-color */
++    .order-panel input[type="checkbox"],
++    .order-panel input[type="radio"] {
++      width: 1.1em;
++      height: 1.1em;
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    /* Native <select>: opt into the customizable select where supported,
++       which lets us style the browser's own dropdown picker. */
++    .order-panel select {
++      cursor: pointer;
++    }
++
++    @supports (appearance: base-select) {
++
++      .order-panel select,
++      .order-panel select::picker(select) {
++        appearance: base-select;
++      }
++
++      .order-panel select {
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++      }
++
++      .order-panel select::picker-icon {
++        color: var(--primary);
++        transition: rotate 0.2s;
++      }
++
++      .order-panel select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      .order-panel select::picker(select) {
++        background: white;
++        border: 1px solid var(--primary);
++        border-radius: 6px;
++        box-shadow: 0 6px 16px rgba(62, 39, 35, 0.2);
++        padding: 4px;
++        margin-top: 4px;
++        scrollbar-color: var(--primary) var(--cream);
++      }
++
++      .order-panel select option {
++        padding: 6px 10px;
++        border-radius: 4px;
++        color: var(--text);
++        cursor: pointer;
++      }
++
++      .order-panel select option:hover,
++      .order-panel select option:focus-visible {
++        background: var(--secondary);
++        outline: none;
++      }
++
++      .order-panel select option:checked {
++        background: var(--primary);
++        color: white;
++        font-weight: 600;
++      }
++
++      .order-panel select option::checkmark {
++        color: var(--accent);
++      }
++    }
++
++    /* Fallback styling for classic <option> lists (Firefox etc.) */
++    .order-panel option:checked {
++      background-color: var(--primary);
++      color: white;
++    }
++
++    /* Date / time picker indicator icons */
++    .order-panel input::-webkit-calendar-picker-indicator {
++      cursor: pointer;
++      border-radius: 4px;
++      padding: 2px;
++      /* Recolor the built-in dark icon toward espresso brown */
++      filter: invert(20%) sepia(25%) saturate(900%) hue-rotate(335deg) brightness(85%);
++    }
++
++    .order-panel input::-webkit-calendar-picker-indicator:hover {
++      background-color: var(--secondary);
++    }
++
++    .order-panel input::-webkit-datetime-edit-fields-wrapper {
++      color: var(--text);
++    }
++
++    .order-panel input::-webkit-datetime-edit-text {
++      color: #8d6e63;
++    }
++
++    .order-panel input::-webkit-datetime-edit-hour-field:focus,
++    .order-panel input::-webkit-datetime-edit-minute-field:focus,
++    .order-panel input::-webkit-datetime-edit-ampm-field:focus,
++    .order-panel input::-webkit-datetime-edit-month-field:focus,
++    .order-panel input::-webkit-datetime-edit-day-field:focus,
++    .order-panel input::-webkit-datetime-edit-year-field:focus {
++      background-color: var(--accent);
++      color: var(--primary-dark);
++      border-radius: 2px;
++    }
++
++    /* Number spin buttons */
++    .order-panel input[type="number"]::-webkit-inner-spin-button {
++      cursor: pointer;
++      opacity: 1;
++    }
++
++    /* Color picker swatch */
++    .order-panel input[type="color"] {
++      width: 48px;
++      height: 36px;
++      padding: 3px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--light);
++      cursor: pointer;
++      vertical-align: middle;
++    }
++
++    .order-panel input[type="color"]::-webkit-color-swatch-wrapper {
++      padding: 0;
++    }
++
++    .order-panel input[type="color"]::-webkit-color-swatch {
++      border: none;
++      border-radius: 4px;
++    }
++
++    .order-panel input[type="color"]::-moz-color-swatch {
++      border: none;
++      border-radius: 4px;
++    }
++
++    .color-field {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.85rem;
++    }
++
++    /* Range slider (native, themed via accent-color + pseudo-elements) */
++    .range-wrap {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .order-panel input[type="range"] {
++      flex: 1;
++      accent-color: var(--primary);
++      cursor: pointer;
++      height: 22px;
++      background: transparent;
++      -webkit-appearance: none;
++      appearance: none;
++    }
++
++    .order-panel input[type="range"]::-webkit-slider-runnable-track {
++      height: 6px;
++      border-radius: 3px;
++      background: linear-gradient(to right, var(--secondary), var(--primary));
++    }
++
++    .order-panel input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: 18px;
++      height: 18px;
++      margin-top: -6px;
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++    }
++
++    .order-panel input[type="range"]::-moz-range-track {
++      height: 6px;
++      border-radius: 3px;
++      background: var(--secondary);
++    }
++
++    .order-panel input[type="range"]::-moz-range-progress {
++      height: 6px;
++      border-radius: 3px;
++      background: var(--primary);
++    }
++
++    .order-panel input[type="range"]::-moz-range-thumb {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++    }
++
++    .order-panel output {
++      min-width: 5.5em;
++      text-align: center;
++      font-size: 0.85rem;
++      font-weight: 600;
++      background: var(--cream);
++      color: var(--primary);
++      border-radius: 12px;
++      padding: 2px 8px;
++    }
++
++    /* Native meter for strength preview */
++    .order-panel meter {
++      width: 100%;
++      height: 10px;
++    }
++
++    .order-panel meter::-webkit-meter-bar {
++      background: var(--cream);
++      border: none;
++      border-radius: 5px;
++    }
++
++    .order-panel meter::-webkit-meter-optimum-value,
++    .order-panel meter::-webkit-meter-suboptimum-value,
++    .order-panel meter::-webkit-meter-even-less-good-value {
++      background: linear-gradient(to right, var(--accent), var(--primary));
++      border-radius: 5px;
++    }
++
++    .order-panel meter::-moz-meter-bar {
++      background: linear-gradient(to right, var(--accent), var(--primary));
++      border-radius: 5px;
++    }
++
++    /* Native buttons */
++    .order-panel button,
++    .order-panel input[type="reset"] {
++      font: inherit;
++      cursor: pointer;
++      border-radius: 5px;
++      padding: 10px 20px;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .order-panel button[type="submit"] {
++      background: var(--primary);
++      color: white;
++      border: none;
++      flex: 1;
++    }
++
++    .order-panel button[type="submit"]:hover {
++      background: var(--primary-dark);
++    }
++
++    .order-panel input[type="reset"] {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .order-panel input[type="reset"]:hover {
++      background: var(--secondary);
++    }
++
++    .form-actions {
++      display: flex;
++      gap: 10px;
++      margin-top: 8px;
++    }
++
++    .hint {
++      font-size: 0.8rem;
++      color: #8d6e63;
++      margin-top: 4px;
++    }
+   </style>
+ </head>
+ 
+@@ -174,9 +651,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container layout">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,8 +672,159 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="order-panel" aria-labelledby="customize-heading">
++      <h2 id="customize-heading">Customize Your Order</h2>
++      <p class="subtitle">Build your perfect cup, then pick it up when it suits you.</p>
++
++      <form action="/order-online" method="post"
++        oninput="strengthOut.value = strengthLabels[strength.value]; document.getElementById('strengthMeter').value = strength.value; sweetOut.value = sweetness.value + '%';">
++
++        <div class="field">
++          <label for="drink">Drink</label>
++          <select id="drink" name="drink" required>
++            <option value="" disabled selected>Choose a drink…</option>
++            <optgroup label="Seasonal">
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++            </optgroup>
++            <optgroup label="Classics">
++              <option value="cappuccino">Cappuccino</option>
++              <option value="flat-white">Flat White</option>
++              <option value="americano">Americano</option>
++              <option value="mocha">Mocha</option>
++            </optgroup>
++          </select>
++        </div>
++
++        <fieldset>
++          <legend>Size</legend>
++          <div class="choice-group">
++            <label class="choice"><input type="radio" name="size" value="small"> Small</label>
++            <label class="choice"><input type="radio" name="size" value="medium" checked> Medium</label>
++            <label class="choice"><input type="radio" name="size" value="large"> Large</label>
++          </div>
++        </fieldset>
++
++        <div class="field-row">
++          <div class="field">
++            <label for="milk">Milk</label>
++            <select id="milk" name="milk">
++              <option value="whole">Whole</option>
++              <option value="skim">Skim</option>
++              <option value="oat" selected>Oat</option>
++              <option value="almond">Almond</option>
++              <option value="soy">Soy</option>
++              <option value="none">No milk</option>
++            </select>
++          </div>
++          <div class="field">
++            <label for="shots">Espresso shots</label>
++            <input type="number" id="shots" name="shots" min="0" max="6" value="2">
++          </div>
++        </div>
++
++        <div class="field">
++          <label for="strength">Roast strength</label>
++          <div class="range-wrap">
++            <input type="range" id="strength" name="strength" min="1" max="5" step="1" value="3">
++            <output id="strengthOut" for="strength">Balanced</output>
++          </div>
++          <meter id="strengthMeter" min="1" max="5" low="2" high="4" optimum="3" value="3"
++            aria-label="Strength preview"></meter>
++        </div>
++
++        <div class="field">
++          <label for="sweetness">Sweetness</label>
++          <div class="range-wrap">
++            <input type="range" id="sweetness" name="sweetness" min="0" max="100" step="25" value="50">
++            <output id="sweetOut" for="sweetness">50%</output>
++          </div>
++        </div>
++
++        <fieldset>
++          <legend>Extras</legend>
++          <div class="choice-group">
++            <label class="choice"><input type="checkbox" name="extras" value="whipped-cream"> Whipped cream</label>
++            <label class="choice"><input type="checkbox" name="extras" value="cinnamon"> Cinnamon</label>
++            <label class="choice"><input type="checkbox" name="extras" value="extra-hot"> Extra hot</label>
++            <label class="choice"><input type="checkbox" name="extras" value="decaf"> Decaf</label>
++          </div>
++        </fieldset>
++
++        <div class="field">
++          <label for="syrup">Flavor syrup</label>
++          <input type="text" id="syrup" name="syrup" list="syrup-options" placeholder="e.g. Vanilla">
++          <datalist id="syrup-options">
++            <option value="Vanilla"></option>
++            <option value="Caramel"></option>
++            <option value="Hazelnut"></option>
++            <option value="Maple"></option>
++            <option value="Pumpkin Spice"></option>
++          </datalist>
++        </div>
++
++        <div class="field-row">
++          <div class="field">
++            <label for="pickup-date">Pickup date</label>
++            <input type="date" id="pickup-date" name="pickup_date" required>
++          </div>
++          <div class="field">
++            <label for="pickup-time">Pickup time</label>
++            <input type="time" id="pickup-time" name="pickup_time" min="06:00" max="20:00" step="900"
++              value="08:00" required>
++          </div>
++        </div>
++        <p class="hint">We're open 6:00 AM – 8:00 PM.</p>
++
++        <div class="field" style="margin-top: 16px;">
++          <label for="sleeve">Cup sleeve color</label>
++          <div class="color-field">
++            <input type="color" id="sleeve" name="sleeve_color" value="#ffab40" list="sleeve-colors">
++            <span>Pick a color for your cup sleeve</span>
++          </div>
++          <datalist id="sleeve-colors">
++            <option value="#ffab40"></option>
++            <option value="#4e342e"></option>
++            <option value="#d7ccc8"></option>
++            <option value="#3e2723"></option>
++            <option value="#fafafa"></option>
++          </datalist>
++        </div>
++
++        <div class="field">
++          <label for="notes">Special instructions</label>
++          <textarea id="notes" name="notes" rows="3" placeholder="Anything else our baristas should know?"></textarea>
++        </div>
++
++        <div class="form-actions">
++          <input type="reset" value="Reset">
++          <button type="submit">Add to Order</button>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    // Labels for the roast-strength slider's <output>
++    const strengthLabels = { 1: 'Mild', 2: 'Smooth', 3: 'Balanced', 4: 'Bold', 5: 'Intense' };
++
++    // Default the native date picker to today and prevent past dates
++    (function () {
++      const d = new Date();
++      const today = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
++      const pickup = document.getElementById('pickup-date');
++      pickup.min = today;
++      pickup.defaultValue = today; // also restored on form reset
++    })();
++
++    // Keep outputs in sync after a form reset
++    document.querySelector('.order-panel form').addEventListener('reset', function () {
++      setTimeout(() => this.dispatchEvent(new Event('input')), 0);
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

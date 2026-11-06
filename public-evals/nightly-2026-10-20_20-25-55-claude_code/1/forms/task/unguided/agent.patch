@@ -1,0 +1,379 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,169 +3,31 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://images.unsplash.com; style-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; object-src 'none'">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <meta name="description" content="The Daily Grind: ethically sourced, locally roasted artisanal coffee. Join our rewards program.">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="styles.css">
++  <script src="register.js" defer></script>
+ </head>
+ 
+ <body>
++  <a class="skip-link" href="#main">Skip to main content</a>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Main">
++    <a href="/" class="logo">THE DAILY GRIND</a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form class="logout-form" method="post" action="/logout">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -173,38 +35,175 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <a href="/menu/seasonal" class="btn">View details<span class="sr-only"> for Maple Oat Latte</span></a>
++        </article>
++        <article class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <a href="/menu/espresso" class="btn">View details<span class="sr-only"> for Dark Roast Espresso</span></a>
++        </article>
++        <article class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <a href="/menu/cold-brew" class="btn">View details<span class="sr-only"> for Cold Brew</span></a>
++        </article>
+       </div>
+     </section>
++
++    <section class="signup" id="join" aria-labelledby="join-title">
++      <h2 id="join-title" class="section-title">Join Daily Grind Rewards</h2>
++      <p class="section-title">Earn a free drink after every 10 purchases. It takes about two minutes.</p>
++
++      <ol class="steps" id="steps" aria-label="Registration progress">
++        <li>Account</li>
++        <li>About you</li>
++        <li>Preferences</li>
++        <li>Review</li>
++      </ol>
++
++      <form id="reg-form" method="post" action="/api/rewards/register" novalidate autocomplete="on">
++        <div id="error-summary" class="error-summary" role="alert" tabindex="-1" hidden></div>
++
++        <fieldset class="step" data-step="1">
++          <legend class="sr-only">Step 1 of 4: Account</legend>
++          <h3 class="step-title" tabindex="-1">Create your account</h3>
++          <p class="hint">Fields marked * are required.</p>
++
++          <div class="field">
++            <label for="firstName">First name *</label>
++            <input type="text" id="firstName" name="firstName" autocomplete="given-name" maxlength="60" required>
++            <div class="error" id="firstName-error"></div>
++          </div>
++          <div class="field">
++            <label for="lastName">Last name *</label>
++            <input type="text" id="lastName" name="lastName" autocomplete="family-name" maxlength="60" required>
++            <div class="error" id="lastName-error"></div>
++          </div>
++          <div class="field">
++            <label for="email">Email address *</label>
++            <input type="email" id="email" name="email" autocomplete="email" maxlength="254" required spellcheck="false" autocapitalize="none">
++            <div class="error" id="email-error"></div>
++          </div>
++          <div class="field">
++            <label for="password">Password *</label>
++            <span class="hint" id="password-hint">At least 12 characters. A passphrase of several words works well.</span>
++            <div class="pw-row">
++              <input type="password" id="password" name="password" autocomplete="new-password" minlength="12" maxlength="128" required aria-describedby="password-hint password-error">
++              <button type="button" class="btn btn-secondary js-only" id="pw-toggle" aria-controls="password" aria-pressed="false">Show<span class="sr-only"> password</span></button>
++            </div>
++            <div class="error" id="password-error"></div>
++          </div>
++          <div class="field">
++            <label for="password2">Confirm password *</label>
++            <input type="password" id="password2" name="password2" autocomplete="new-password" maxlength="128" required>
++            <div class="error" id="password2-error"></div>
++          </div>
++        </fieldset>
++
++        <fieldset class="step" data-step="2">
++          <legend class="sr-only">Step 2 of 4: About you</legend>
++          <h3 class="step-title" tabindex="-1">About you</h3>
++
++          <div class="field">
++            <label for="dob">Date of birth *</label>
++            <span class="hint" id="dob-hint">You must be 13 or older. We use this for birthday rewards.</span>
++            <input type="date" id="dob" name="dob" autocomplete="bday" required aria-describedby="dob-hint dob-error">
++            <div class="error" id="dob-error"></div>
++          </div>
++          <div class="field">
++            <label for="phone">Mobile phone <span class="optional">(optional)</span></label>
++            <span class="hint" id="phone-hint">Only used for order-ready texts if you opt in later.</span>
++            <input type="tel" id="phone" name="phone" autocomplete="tel" maxlength="20" pattern="[0-9+()\-. ]{7,20}" aria-describedby="phone-hint phone-error">
++            <div class="error" id="phone-error"></div>
++          </div>
++          <div class="field">
++            <label for="postal">ZIP code *</label>
++            <input type="text" id="postal" name="postal" autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{5}(-[0-9]{4})?" maxlength="10" required>
++            <div class="error" id="postal-error"></div>
++          </div>
++          <div class="field">
++            <label for="store">Favorite location *</label>
++            <select id="store" name="store" required>
++              <option value="">Select a location</option>
++              <option value="downtown">Downtown</option>
++              <option value="riverside">Riverside</option>
++              <option value="university">University District</option>
++            </select>
++            <div class="error" id="store-error"></div>
++          </div>
++        </fieldset>
++
++        <fieldset class="step" data-step="3">
++          <legend class="sr-only">Step 3 of 4: Preferences</legend>
++          <h3 class="step-title" tabindex="-1">Your preferences</h3>
++
++          <fieldset class="group" aria-describedby="drink-error">
++            <legend>Usual drink *</legend>
++            <div class="choice"><input type="radio" id="drink-latte" name="drink" value="latte" required><label for="drink-latte">Latte</label></div>
++            <div class="choice"><input type="radio" id="drink-espresso" name="drink" value="espresso"><label for="drink-espresso">Espresso</label></div>
++            <div class="choice"><input type="radio" id="drink-cold" name="drink" value="cold-brew"><label for="drink-cold">Cold brew</label></div>
++            <div class="choice"><input type="radio" id="drink-tea" name="drink" value="tea"><label for="drink-tea">Tea or other</label></div>
++            <div class="error" id="drink-error"></div>
++          </fieldset>
++
++          <fieldset class="group">
++            <legend>Milk preference <span class="optional">(optional)</span></legend>
++            <div class="choice"><input type="checkbox" id="milk-oat" name="milk" value="oat"><label for="milk-oat">Oat</label></div>
++            <div class="choice"><input type="checkbox" id="milk-almond" name="milk" value="almond"><label for="milk-almond">Almond</label></div>
++            <div class="choice"><input type="checkbox" id="milk-dairy" name="milk" value="dairy"><label for="milk-dairy">Dairy</label></div>
++          </fieldset>
++
++          <fieldset class="group">
++            <legend>Email me about <span class="optional">(optional, unchecked by default)</span></legend>
++            <div class="choice"><input type="checkbox" id="mk-offers" name="marketing" value="offers"><label for="mk-offers">Offers and seasonal drinks</label></div>
++            <div class="choice"><input type="checkbox" id="mk-events" name="marketing" value="events"><label for="mk-events">Local events</label></div>
++          </fieldset>
++        </fieldset>
++
++        <fieldset class="step" data-step="4">
++          <legend class="sr-only">Step 4 of 4: Review and submit</legend>
++          <h3 class="step-title" tabindex="-1">Review and join</h3>
++          <dl class="review" id="review"></dl>
++          <p class="no-js-note">Your password will not be displayed.</p>
++
++          <div class="field">
++            <div class="choice">
++              <input type="checkbox" id="terms" name="terms" value="yes" required aria-describedby="terms-error">
++              <label for="terms">I agree to the <a href="/rewards/terms">Rewards Terms</a> and have read the <a href="/privacy-policy">Privacy Policy</a>. *</label>
++            </div>
++            <div class="error" id="terms-error"></div>
++          </div>
++        </fieldset>
++
++        <div class="actions">
++          <button type="button" class="btn btn-secondary js-only" id="back" hidden>Back</button>
++          <button type="button" class="btn js-only" id="next">Next</button>
++          <button type="submit" class="btn" id="submit">Join rewards</button>
++        </div>
++
++        <p class="status" id="status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++    <nav class="footer-links" aria-label="Footer">
++      <ul>
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy</a></li>
++      </ul>
++    </nav>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
+ </body>

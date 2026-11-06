@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,61 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Roaster's Secrets Preview */
++    .paywall-container {
++      position: relative;
++      margin-top: 60px;
++    }
++
++    .paywall-container h2 {
++      text-align: center;
++    }
++
++    .paywall-badge {
++      display: block;
++      width: fit-content;
++      margin: 0 auto 10px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      padding: 3px 10px;
++      border-radius: 4px;
++    }
++
++    /* Fade the teaser itself to transparent so it blends into whatever is behind it */
++    .paywall-teaser {
++      max-height: 420px;
++      overflow: hidden;
++      margin-top: 20px;
++      -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
++    }
++
++    .paywall-teaser img {
++      float: left;
++      width: 280px;
++      max-width: 100%;
++      margin: 0 25px 15px 0;
++      border-radius: 8px;
++    }
++
++    .paywall-teaser h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .paywall-teaser p {
++      margin-bottom: 15px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +247,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <span class="paywall-badge">Members Exclusive</span>
++      <h2>Roaster's Secrets</h2>
++      <div class="paywall-teaser">
++        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++          alt="Freshly roasted coffee beans">
++        <h3>Chasing the Perfect First Crack</h3>
++        <p>Every batch that leaves our roastery starts with a single question: what is this bean trying to say? Our
++          head roaster spends the first few minutes of every roast simply listening &mdash; to the drum, to the hiss of
++          moisture escaping, and finally to the faint popcorn-like snap we call the first crack.</p>
++        <p>That moment is where most of the magic happens. Pull the beans thirty seconds early and you keep the bright,
++          floral notes of a high-altitude Ethiopian. Let them ride a little longer and the sugars caramelize into the
++          deep chocolate tones our Dark Roast Espresso is known for.</p>
++        <p>In this members-only series, we're opening up our roast logs for the first time: the exact charge
++          temperatures, development times, and resting windows behind each of our seasonal blends &mdash; plus the
++          small mistakes that turned into some of our favorite coffees.</p>
++        <p>We'll also share how to dial in your grinder at home to match each roast profile, and why we rest our
++          beans for exactly five days before they ever reach your cup.</p>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Unlock Roaster's Secrets</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

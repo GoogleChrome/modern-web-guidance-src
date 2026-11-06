@@ -1,0 +1,251 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..e4d56d6 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,26 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  // Built-in AI APIs (Chrome 138+ / Edge 148+)
++  interface TranslatorOptions {
++    sourceLanguage: string;
++    targetLanguage: string;
++  }
++  interface TranslatorInstance {
++    translateStreaming(text: string, options?: { signal?: AbortSignal }): AsyncIterable<string>;
++    destroy?(): void;
++  }
++  var Translator: {
++    availability(options: TranslatorOptions): Promise<'available' | 'downloadable' | 'downloading' | 'unavailable'>;
++    create(options: TranslatorOptions & { signal?: AbortSignal; monitor?(m: EventTarget): void }): Promise<TranslatorInstance>;
++  };
++  var LanguageDetector: {
++    create(): Promise<{
++      detect(text: string): Promise<{ detectedLanguage: string; confidence: number }[]>;
++      destroy?(): void;
++    }>;
++  };
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..f6e9fe9 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -33,6 +33,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <ul class="space-y-2">
+                 <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+                 <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
++                <li><a href="/translate" class="text-sm hover:underline">Translate</a></li>
+             </ul>
+         </div>
+ 
+diff --git a/src/components/TranslateForm.tsx b/src/components/TranslateForm.tsx
+new file mode 100644
+index 0000000..96c8cd1
+--- /dev/null
++++ b/src/components/TranslateForm.tsx
+@@ -0,0 +1,180 @@
++import { useEffect, useRef, useState } from 'react';
++
++const LANGUAGES: Record<string, string> = {
++  ar: 'Arabic', bg: 'Bulgarian', bn: 'Bengali', cs: 'Czech', da: 'Danish', de: 'German',
++  el: 'Greek', en: 'English', es: 'Spanish', fi: 'Finnish', fr: 'French', he: 'Hebrew',
++  hi: 'Hindi', hr: 'Croatian', hu: 'Hungarian', id: 'Indonesian', it: 'Italian',
++  ja: 'Japanese', kn: 'Kannada', ko: 'Korean', lt: 'Lithuanian', mr: 'Marathi',
++  nl: 'Dutch', no: 'Norwegian', pl: 'Polish', pt: 'Portuguese', ro: 'Romanian',
++  ru: 'Russian', sk: 'Slovak', sl: 'Slovenian', sv: 'Swedish', ta: 'Tamil',
++  te: 'Telugu', th: 'Thai', tr: 'Turkish', uk: 'Ukrainian', vi: 'Vietnamese',
++  zh: 'Chinese', 'zh-Hant': 'Chinese (Traditional)',
++};
++
++const AUTO = 'auto';
++
++export default function TranslateForm() {
++  const [supported, setSupported] = useState<boolean | null>(null);
++  const [text, setText] = useState('');
++  const [source, setSource] = useState(AUTO);
++  const [target, setTarget] = useState('es');
++  const [result, setResult] = useState('');
++  const [resultLang, setResultLang] = useState('');
++  const [status, setStatus] = useState('');
++  const [error, setError] = useState('');
++  const [busy, setBusy] = useState(false);
++  const abortRef = useRef<AbortController | null>(null);
++
++  useEffect(() => {
++    setSupported('Translator' in self);
++  }, []);
++
++  async function detectLanguage(input: string): Promise<string> {
++    if (!('LanguageDetector' in self)) {
++      throw new Error('Automatic detection is not supported in this browser. Please choose a source language.');
++    }
++    setStatus('Detecting language…');
++    const detector = await LanguageDetector.create();
++    const [best] = await detector.detect(input);
++    detector.destroy?.();
++    if (!best || best.detectedLanguage === 'und' || !(best.detectedLanguage in LANGUAGES)) {
++      throw new Error('Could not detect a supported language. Please choose a source language.');
++    }
++    return best.detectedLanguage;
++  }
++
++  async function handleSubmit(e: React.FormEvent) {
++    e.preventDefault();
++    if (!text.trim()) return;
++    abortRef.current?.abort();
++    const controller = new AbortController();
++    abortRef.current = controller;
++
++    setBusy(true);
++    setError('');
++    setResult('');
++    try {
++      // create() calls below happen inside the submit gesture, which allows model downloads.
++      const sourceLanguage = source === AUTO ? await detectLanguage(text) : source;
++      if (sourceLanguage === target) {
++        setResult(text);
++        setResultLang(target);
++        return;
++      }
++      const options = { sourceLanguage, targetLanguage: target };
++      const availability = await Translator.availability(options);
++      if (availability === 'unavailable') {
++        throw new Error(`Translating ${LANGUAGES[sourceLanguage]} to ${LANGUAGES[target]} is not available on this device.`);
++      }
++      setStatus(availability === 'available' ? 'Translating…' : 'Downloading language pack…');
++      const translator = await Translator.create({
++        ...options,
++        signal: controller.signal,
++        monitor(m: EventTarget) {
++          m.addEventListener('downloadprogress', (ev: any) => {
++            setStatus(`Downloading language pack… ${Math.round(ev.loaded * 100)}%`);
++          });
++        },
++      });
++      setStatus('Translating…');
++      let out = '';
++      for await (const chunk of translator.translateStreaming(text, { signal: controller.signal })) {
++        out += chunk;
++        setResult(out);
++      }
++      setResultLang(target);
++      translator.destroy?.();
++    } catch (err) {
++      if ((err as Error).name !== 'AbortError') {
++        setError((err as Error).message || 'Translation failed.');
++      }
++    } finally {
++      setStatus('');
++      setBusy(false);
++    }
++  }
++
++  function swap() {
++    if (source === AUTO) return;
++    setSource(target);
++    setTarget(source);
++    if (result) {
++      setText(result);
++      setResult('');
++    }
++  }
++
++  const select = 'rounded border border-gray-300 bg-white px-2 py-2 text-sm';
++
++  if (supported === false) {
++    return (
++      <p role="alert" className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-gray-800">
++        Client-side translation is currently unsupported in this browser. Try desktop Chrome 138+ or Edge 148+.
++      </p>
++    );
++  }
++
++  return (
++    <form onSubmit={handleSubmit} className="space-y-4">
++      <div className="flex flex-wrap items-end gap-3">
++        <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wider">
++          From
++          <select className={select} value={source} onChange={(e) => setSource(e.target.value)}>
++            <option value={AUTO}>Detect language</option>
++            {Object.entries(LANGUAGES).map(([code, name]) => (
++              <option key={code} value={code}>{name}</option>
++            ))}
++          </select>
++        </label>
++        <button
++          type="button"
++          onClick={swap}
++          disabled={source === AUTO}
++          aria-label="Swap languages"
++          className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-40"
++        >
++          ⇄
++        </button>
++        <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wider">
++          To
++          <select className={select} value={target} onChange={(e) => setTarget(e.target.value)}>
++            {Object.entries(LANGUAGES).map(([code, name]) => (
++              <option key={code} value={code}>{name}</option>
++            ))}
++          </select>
++        </label>
++      </div>
++
++      <label className="block text-xs font-semibold uppercase tracking-wider">
++        Text
++        <textarea
++          value={text}
++          onChange={(e) => setText(e.target.value)}
++          rows={6}
++          className="mt-1 w-full rounded border border-gray-300 p-3 text-base normal-case tracking-normal font-normal"
++          placeholder="Enter text to translate"
++        />
++      </label>
++
++      <button
++        type="submit"
++        disabled={busy || !text.trim() || supported === null}
++        className="rounded bg-gray-800 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
++      >
++        {busy ? 'Translating…' : 'Translate'}
++      </button>
++
++      <p role="status" aria-live="polite" className="min-h-5 text-sm text-gray-600">{status}</p>
++      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
++
++      {result && (
++        <section aria-label="Translation" className="rounded border border-gray-300 bg-gray-50 p-4">
++          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider">
++            {LANGUAGES[resultLang || target]}
++          </h2>
++          <p lang={resultLang || target} className="whitespace-pre-wrap">{result}</p>
++        </section>
++      )}
++    </form>
++  );
++}
+diff --git a/src/pages/translate.astro b/src/pages/translate.astro
+new file mode 100644
+index 0000000..c86c26b
+--- /dev/null
++++ b/src/pages/translate.astro
+@@ -0,0 +1,14 @@
++---
++import Layout from '../layouts/Layout.astro';
++import TranslateForm from '../components/TranslateForm';
++---
++
++<Layout title="Translate | The DevTools Times">
++  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-10">
++    <h1 class="text-3xl font-bold mb-2">Translate</h1>
++    <p class="text-gray-600 mb-6 text-sm">
++      Translate text between languages. Translation runs on your device, so your text is never sent to a server.
++    </p>
++    <TranslateForm client:load />
++  </main>
++</Layout>

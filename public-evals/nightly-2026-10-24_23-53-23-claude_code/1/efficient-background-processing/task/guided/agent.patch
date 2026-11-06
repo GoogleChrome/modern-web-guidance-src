@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,38 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roasting Simulator */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      max-width: 1100px;
++      min-height: 400px;
++      margin: 40px auto 0;
++      padding: 20px;
++      text-align: center;
++    }
++
++    #roast-canvas {
++      width: 100%;
++      max-width: 600px;
++      height: 260px;
++      background: var(--primary);
++      border-radius: 8px;
++    }
++
++    .roast-reading {
++      margin-top: 15px;
++      font-size: 1.25rem;
++    }
++
++    #roast-temp-value {
++      font-weight: bold;
++      font-variant-numeric: tabular-nums;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +226,14 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-labelledby="roast-heading">
++    <h2 id="roast-heading">Live Roasting Simulator</h2>
++    <canvas id="roast-canvas" width="600" height="260" role="img" aria-label="Coffee beans roasting in a drum"></canvas>
++    <p class="roast-reading">Bean temperature: <span id="roast-temp-value" aria-live="off">180</span>&deg;C</p>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +242,94 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const tempEl = document.getElementById('roast-temp-value');
++      const ctx = canvas.getContext('2d');
++      const W = canvas.width, H = canvas.height;
++
++      const beans = Array.from({ length: 28 }, () => ({
++        x: Math.random() * W,
++        y: Math.random() * H,
++        r: 10 + Math.random() * 6,
++        vx: (Math.random() - 0.5) * 1.6,
++        vy: (Math.random() - 0.5) * 1.6,
++        angle: Math.random() * Math.PI * 2,
++        spin: (Math.random() - 0.5) * 0.08
++      }));
++
++      let temp = 180, heat = 1, roast = 0;
++      let rafId = 0, intervalId = 0;
++
++      function draw() {
++        ctx.clearRect(0, 0, W, H);
++        // Beans darken from green-brown to dark brown as the roast progresses.
++        const light = 45 - roast * 30;
++        for (const b of beans) {
++          b.x += b.vx; b.y += b.vy; b.angle += b.spin;
++          if (b.x < b.r || b.x > W - b.r) b.vx *= -1;
++          if (b.y < b.r || b.y > H - b.r) b.vy *= -1;
++          ctx.save();
++          ctx.translate(b.x, b.y);
++          ctx.rotate(b.angle);
++          ctx.fillStyle = `hsl(25 55% ${light}%)`;
++          ctx.beginPath();
++          ctx.ellipse(0, 0, b.r, b.r * 0.7, 0, 0, Math.PI * 2);
++          ctx.fill();
++          ctx.strokeStyle = `hsl(25 50% ${light - 15}%)`;
++          ctx.lineWidth = 1.5;
++          ctx.beginPath();
++          ctx.moveTo(-b.r * 0.8, 0);
++          ctx.quadraticCurveTo(0, b.r * 0.3, b.r * 0.8, 0);
++          ctx.stroke();
++          ctx.restore();
++        }
++      }
++
++      function loop() {
++        draw();
++        rafId = requestAnimationFrame(loop);
++      }
++
++      function tick() {
++        // Temperature climbs toward ~230°C, then eases back with some jitter.
++        if (temp > 230) heat = -1;
++        else if (temp < 180) heat = 1;
++        temp += heat * (0.5 + Math.random() * 1.5);
++        roast = Math.min(1, Math.max(0, (temp - 180) / 50));
++        tempEl.textContent = temp.toFixed(1);
++      }
++
++      function start() {
++        if (!rafId) rafId = requestAnimationFrame(loop);
++        if (!intervalId) intervalId = setInterval(tick, 1000);
++      }
++
++      function stop() {
++        cancelAnimationFrame(rafId);
++        clearInterval(intervalId);
++        rafId = intervalId = 0;
++      }
++
++      draw();
++
++      if ('contentVisibility' in document.documentElement.style) {
++        // Browser-native rendering state (content-visibility: auto).
++        widget.addEventListener('contentvisibilityautostatechange', (e) => {
++          e.skipped ? stop() : start();
++        });
++      } else {
++        // Fallback for older browsers: approximate with IntersectionObserver.
++        new IntersectionObserver((entries) => {
++          entries.forEach((e) => (e.isIntersecting ? start() : stop()));
++        }, { rootMargin: '200px' }).observe(widget);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

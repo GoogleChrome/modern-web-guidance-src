@@ -1,0 +1,15 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -115,9 +115,11 @@
+       text-align: center;
+     }
+ 
+     .card h3 {
++      margin-top: 0;
+       margin-bottom: 10px;
++      text-box: trim-both cap alphabetic;
+       color: var(--primary);
+     }
+ 
+     .btn {

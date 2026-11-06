@@ -1,0 +1,444 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,196 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .ops-simulator {
++      contain: layout style paint;
++      background: white;
++      margin-top: 40px;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--primary);
++    }
++
++    .ops-simulator-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 20px;
++    }
++
++    .ops-simulator-header h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .ops-status-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      padding: 6px 14px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .ops-pulse {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #2e7d32;
++      animation: opsPulse 1.2s infinite ease-in-out;
++    }
++
++    @keyframes opsPulse {
++      0%, 100% { transform: scale(1); opacity: 1; }
++      50% { transform: scale(1.35); opacity: 0.55; }
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 20px;
++    }
++
++    .ops-btn {
++      cursor: pointer;
++      border: none;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      padding: 10px 16px;
++      border-radius: 6px;
++      color: white;
++      background: var(--primary);
++      transition: background 0.2s, transform 0.1s;
++    }
++
++    .ops-btn:hover {
++      background: #3e2723;
++    }
++
++    .ops-btn:active {
++      transform: translateY(1px);
++    }
++
++    .ops-btn-urgent {
++      background: #c62828;
++    }
++
++    .ops-btn-urgent:hover {
++      background: #8e0000;
++    }
++
++    .ops-btn-standard {
++      background: var(--primary);
++    }
++
++    .ops-btn-background {
++      background: #5d4037;
++    }
++
++    .ops-btn-batch {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .ops-btn-batch:hover {
++      background: #ff9100;
++    }
++
++    .ops-btn-clear {
++      background: transparent;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      margin-left: auto;
++    }
++
++    .ops-btn-clear:hover {
++      background: var(--secondary);
++    }
++
++    .ops-metrics {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
++      gap: 12px;
++      margin-bottom: 20px;
++    }
++
++    .ops-metric-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 12px 16px;
++    }
++
++    .ops-metric-label {
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      opacity: 0.8;
++    }
++
++    .ops-metric-value {
++      font-size: 1.4rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .ops-log-container {
++      background: #261815;
++      color: #f5f5f5;
++      border-radius: 6px;
++      padding: 14px;
++      max-height: 260px;
++      overflow-y: auto;
++      font-family: monospace;
++      font-size: 0.85rem;
++    }
++
++    .ops-log-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .ops-log-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 6px 10px;
++      border-radius: 4px;
++      background: rgba(255, 255, 255, 0.06);
++      border-left: 4px solid var(--secondary);
++    }
++
++    .ops-log-item[data-priority="user-blocking"] {
++      border-left-color: #ff5252;
++    }
++
++    .ops-log-item[data-priority="user-visible"] {
++      border-left-color: #ffab40;
++    }
++
++    .ops-log-item[data-priority="background"] {
++      border-left-color: #90caf9;
++    }
++
++    .ops-badge {
++      font-size: 0.75rem;
++      padding: 2px 6px;
++      border-radius: 3px;
++      background: rgba(255, 255, 255, 0.12);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +382,67 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ops-simulator" id="ops-queue-simulator" aria-labelledby="ops-simulator-title">
++      <div class="ops-simulator-header">
++        <div>
++          <h2 id="ops-simulator-title">Operations Queue Simulator</h2>
++          <p>Prioritized task scheduling keeps the UI responsive during heavy operations.</p>
++        </div>
++        <div class="ops-status-badge" aria-live="polite">
++          <span class="ops-pulse" aria-hidden="true"></span>
++          <span id="ops-status-text">Main Thread Responsive</span>
++        </div>
++      </div>
++
++      <div class="ops-controls">
++        <button type="button" class="ops-btn ops-btn-urgent" id="btn-urgent-checkout">
++          Run Urgent Checkout Task
++        </button>
++        <button type="button" class="ops-btn ops-btn-standard" id="btn-standard-menu">
++          Standard Menu Update
++        </button>
++        <button type="button" class="ops-btn ops-btn-background" id="btn-bg-telemetry">
++          Background Telemetry Logging
++        </button>
++        <button type="button" class="ops-btn ops-btn-batch" id="btn-batch-mixed">
++          Run Mixed Priority Batch
++        </button>
++        <button type="button" class="ops-btn ops-btn-clear" id="btn-clear-queue">
++          Clear Log
++        </button>
++      </div>
++
++      <div class="ops-metrics">
++        <div class="ops-metric-card">
++          <div class="ops-metric-label">Queued Tasks</div>
++          <div class="ops-metric-value" id="metric-queued">0</div>
++        </div>
++        <div class="ops-metric-card">
++          <div class="ops-metric-label">Completed Tasks</div>
++          <div class="ops-metric-value" id="metric-completed">0</div>
++        </div>
++        <div class="ops-metric-card">
++          <div class="ops-metric-label">Thread Yields</div>
++          <div class="ops-metric-value" id="metric-yields">0</div>
++        </div>
++        <div class="ops-metric-card">
++          <div class="ops-metric-label">Scheduler Mode</div>
++          <div class="ops-metric-value" id="metric-scheduler-mode">Detecting...</div>
++        </div>
++      </div>
++
++      <div class="ops-log-container" role="log" aria-live="polite" aria-label="Operations execution log">
++        <ul class="ops-log-list" id="ops-log-list">
++          <li class="ops-log-item">
++            <span>Ready to schedule cafe operations...</span>
++            <span class="ops-badge">IDLE</span>
++          </li>
++        </ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +453,175 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const statusTextEl = document.getElementById('ops-status-text');
++      const queuedEl = document.getElementById('metric-queued');
++      const completedEl = document.getElementById('metric-completed');
++      const yieldsEl = document.getElementById('metric-yields');
++      const schedulerModeEl = document.getElementById('metric-scheduler-mode');
++      const logListEl = document.getElementById('ops-log-list');
++
++      let queuedCount = 0;
++      let completedCount = 0;
++      let yieldCount = 0;
++      let taskCounter = 0;
++
++      // Feature detect the scheduler API and load polyfill if needed
++      function ensureSchedulerReady(callback) {
++        if (!('scheduler' in window && 'postTask' in window.scheduler)) {
++          schedulerModeEl.textContent = 'Loading Polyfill';
++          const script = document.createElement('script');
++          script.src = 'https://unpkg.com/scheduler-polyfill';
++          script.onload = () => {
++            schedulerModeEl.textContent = 'Polyfill Active';
++            callback();
++          };
++          script.onerror = () => {
++            schedulerModeEl.textContent = 'Fallback Queue';
++            callback();
++          };
++          document.head.appendChild(script);
++        } else {
++          schedulerModeEl.textContent = 'Native API';
++          callback();
++        }
++      }
++
++      // Yield to the main thread periodically to keep the UI responsive
++      async function yieldToMain() {
++        yieldCount++;
++        yieldsEl.textContent = String(yieldCount);
++        if ('scheduler' in window && 'yield' in window.scheduler) {
++          return await window.scheduler.yield();
++        } else {
++          return await new Promise(resolve => setTimeout(resolve, 0));
++        }
++      }
++
++      // Break up heavy synchronous work using a 50ms deadline budget
++      async function processHeavyOperation(iterations) {
++        let deadline = performance.now() + 50;
++        let accumulator = 0;
++
++        for (let i = 0; i < iterations; i++) {
++          // Simulate computational work (e.g., inventory pricing, telemetry aggregation)
++          accumulator += Math.sqrt((i * 17) % 97);
++
++          if (performance.now() >= deadline) {
++            await yieldToMain();
++            deadline = performance.now() + 50;
++          }
++        }
++        return accumulator;
++      }
++
++      function updateMetrics() {
++        queuedEl.textContent = String(queuedCount);
++        completedEl.textContent = String(completedCount);
++        statusTextEl.textContent =
++          queuedCount > 0 ? `Processing (${queuedCount} active)` : 'Main Thread Responsive';
++      }
++
++      function appendLog(message, priority, badgeText) {
++        if (
++          logListEl.children.length === 1 &&
++          logListEl.firstElementChild.textContent.includes('Ready to schedule')
++        ) {
++          logListEl.innerHTML = '';
++        }
++
++        const li = document.createElement('li');
++        li.className = 'ops-log-item';
++        if (priority) {
++          li.dataset.priority = priority;
++        }
++
++        const textSpan = document.createElement('span');
++        textSpan.textContent = message;
++
++        const badgeSpan = document.createElement('span');
++        badgeSpan.className = 'ops-badge';
++        badgeSpan.textContent = badgeText;
++
++        li.append(textSpan, badgeSpan);
++        logListEl.prepend(li);
++      }
++
++      function scheduleOperation(label, priority, workIterations) {
++        const taskId = ++taskCounter;
++        queuedCount++;
++        updateMetrics();
++
++        const runTask = async () => {
++          const startTime = performance.now();
++          appendLog(`#${taskId} Starting ${label}...`, priority, priority.toUpperCase());
++
++          await processHeavyOperation(workIterations);
++
++          const duration = Math.round(performance.now() - startTime);
++          queuedCount = Math.max(0, queuedCount - 1);
++          completedCount++;
++          updateMetrics();
++
++          appendLog(
++            `#${taskId} Completed ${label} (${duration}ms)`,
++            priority,
++            `DONE · ${priority}`
++          );
++        };
++
++        if ('scheduler' in window && 'postTask' in window.scheduler) {
++          window.scheduler.postTask(runTask, { priority });
++        } else {
++          // Fallback priority delay if polyfill could not be loaded offline
++          const delay =
++            priority === 'user-blocking' ? 0 : priority === 'user-visible' ? 15 : 40;
++          setTimeout(runTask, delay);
++        }
++      }
++
++      ensureSchedulerReady(() => {
++        document.getElementById('btn-urgent-checkout').addEventListener('click', () => {
++          scheduleOperation('Urgent Checkout Processing', 'user-blocking', 450000);
++        });
++
++        document.getElementById('btn-standard-menu').addEventListener('click', () => {
++          scheduleOperation('Standard Menu Sync & Pricing Update', 'user-visible', 900000);
++        });
++
++        document.getElementById('btn-bg-telemetry').addEventListener('click', () => {
++          scheduleOperation('Background Telemetry & Analytics Flush', 'background', 1800000);
++        });
++
++        document.getElementById('btn-batch-mixed').addEventListener('click', () => {
++          // Queue in mixed order (background -> standard -> urgent) to demonstrate
++          // that scheduler.postTask executes them in priority order!
++          appendLog(
++            'Enqueuing mixed batch (Background → Standard → Urgent)...',
++            null,
++            'BATCH'
++          );
++          scheduleOperation('Batch: Telemetry Log #1', 'background', 1200000);
++          scheduleOperation('Batch: Seasonal Menu Refresh', 'user-visible', 750000);
++          scheduleOperation('Batch: Telemetry Log #2', 'background', 1200000);
++          scheduleOperation('Batch: Express POS Checkout #1', 'user-blocking', 400000);
++          scheduleOperation('Batch: Inventory Availability Update', 'user-visible', 750000);
++          scheduleOperation('Batch: Express POS Checkout #2', 'user-blocking', 400000);
++        });
++
++        document.getElementById('btn-clear-queue').addEventListener('click', () => {
++          logListEl.innerHTML = `
++            <li class="ops-log-item">
++              <span>Ready to schedule cafe operations...</span>
++              <span class="ops-badge">IDLE</span>
++            </li>
++          `;
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,189 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..199f615
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,141 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++
++<top-stories-slider class="block bg-white border-b border-gray-300" role="region" aria-label="Top stories" aria-roledescription="carousel">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <div class="story-viewport overflow-hidden">
++            {articles.map((article, index) => (
++                <div data-story hidden={index !== 0} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${articles.length}`}>
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <h3 class="font-bold text-gray-900 hover:text-amber-400">{article.data.title}</h3>
++                    </a>
++                    <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                </div>
++            ))}
++        </div>
++        <div data-controls hidden class="mt-3 flex flex-wrap items-center gap-3 text-sm">
++            <button type="button" data-previous class="border border-gray-300 rounded px-3 py-1.5 font-semibold hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">Previous</button>
++            <span data-status role="status" aria-atomic="true" class="text-gray-500">Story 1 of {articles.length}</span>
++            <button type="button" data-next class="border border-gray-300 rounded px-3 py-1.5 font-semibold hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">Next</button>
++        </div>
++    </div>
++</top-stories-slider>
++
++<script>
++    class TopStoriesSlider extends HTMLElement {
++        connectedCallback() {
++            const slides = Array.from(this.querySelectorAll<HTMLElement>('[data-story]'));
++            const controls = this.querySelector<HTMLElement>('[data-controls]');
++            const status = this.querySelector<HTMLElement>('[data-status]');
++            const previous = this.querySelector<HTMLButtonElement>('[data-previous]');
++            const next = this.querySelector<HTMLButtonElement>('[data-next]');
++            if (slides.length < 2 || !controls || !status || !previous || !next) return;
++
++            let current = 0;
++            let transitioning = false;
++            const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++            const navigate = async (step: number) => {
++                if (transitioning) return;
++                const target = (current + step + slides.length) % slides.length;
++                const update = () => {
++                    slides[current].hidden = true;
++                    slides[target].hidden = false;
++                    current = target;
++                    status.textContent = `Story ${current + 1} of ${slides.length}`;
++                };
++
++                // Older browsers and reduced-motion users still get working controls.
++                if (reducedMotion.matches || !document.startViewTransition ||
++                    !CSS.supports('selector(:active-view-transition-type(next))')) {
++                    update();
++                    return;
++                }
++
++                transitioning = true;
++                const transition = document.startViewTransition({
++                    update,
++                    types: [step > 0 ? 'top-stories-next' : 'top-stories-previous'],
++                });
++                const stopMotion = () => {
++                    if (reducedMotion.matches) transition.skipTransition();
++                };
++                reducedMotion.addEventListener('change', stopMotion);
++                try {
++                    await transition.finished;
++                } finally {
++                    reducedMotion.removeEventListener('change', stopMotion);
++                    transitioning = false;
++                }
++            };
++
++            previous.onclick = () => { void navigate(-1); };
++            next.onclick = () => { void navigate(1); };
++            controls.hidden = false;
++        }
++    }
++
++    if (!customElements.get('top-stories-slider')) {
++        customElements.define('top-stories-slider', TopStoriesSlider);
++    }
++</script>
++
++<style is:global>
++    /* Name only this carousel's transitions; leave Astro page navigation alone. */
++    html:active-view-transition-type(top-stories-next, top-stories-previous) .story-viewport {
++        view-transition-name: top-story;
++    }
++
++    html:active-view-transition-type(top-stories-next, top-stories-previous)::view-transition-old(root),
++    html:active-view-transition-type(top-stories-next, top-stories-previous)::view-transition-new(root) {
++        animation: none;
++        mix-blend-mode: normal;
++    }
++
++    ::view-transition-group(top-story) {
++        overflow: clip;
++        animation-duration: 250ms;
++    }
++
++    ::view-transition-old(top-story),
++    ::view-transition-new(top-story) {
++        animation: 250ms ease-in-out both;
++        mix-blend-mode: normal;
++    }
++
++    html:active-view-transition-type(top-stories-next)::view-transition-old(top-story) {
++        animation-name: story-to-left;
++    }
++
++    html:active-view-transition-type(top-stories-next)::view-transition-new(top-story) {
++        animation-name: story-from-right;
++    }
++
++    html:active-view-transition-type(top-stories-previous)::view-transition-old(top-story) {
++        animation-name: story-to-right;
++    }
++
++    html:active-view-transition-type(top-stories-previous)::view-transition-new(top-story) {
++        animation-name: story-from-left;
++    }
++
++    @keyframes story-to-left { to { transform: translateX(-100%); } }
++    @keyframes story-from-right { from { transform: translateX(100%); } }
++    @keyframes story-to-right { to { transform: translateX(100%); } }
++    @keyframes story-from-left { from { transform: translateX(-100%); } }
++
++    @media (prefers-reduced-motion: reduce) {
++        ::view-transition-group(top-story),
++        ::view-transition-old(top-story),
++        ::view-transition-new(top-story) {
++            animation: none;
++        }
++    }
++</style>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f4052e2 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -38,21 +39,7 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+@@ -81,4 +68,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

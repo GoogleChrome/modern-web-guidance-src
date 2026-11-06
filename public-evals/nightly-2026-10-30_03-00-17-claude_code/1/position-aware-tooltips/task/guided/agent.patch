@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,104 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Info tooltip */
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .info-btn {
++      inline-size: 2rem;
++      block-size: 2rem;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      font-weight: bold;
++      line-height: 1;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    #tooltip {
++      position: fixed;
++      position-area: block-start;
++      position-try-fallbacks: flip-block;
++      /* Exposes the active fallback to @container anchored() queries */
++      container-type: anchored;
++      border: 0;
++      padding: 0;
++      background: transparent;
++      overflow: visible;
++    }
++
++    @supports (anchor-name: --a) {
++      #tooltip {
++        inset: auto;
++        margin: unset;
++      }
++    }
++
++    .tooltip-content {
++      --arrow-size: 8px;
++      position: relative;
++      max-inline-size: 240px;
++      margin-block-end: calc(var(--arrow-size) + 4px);
++      padding: 10px 14px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      text-align: center;
++      border-radius: 10px 10px 4px 4px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    /* Arrow is a progressive enhancement: only shown where its direction can follow the flip */
++    @supports (container-type: anchored) {
++      .tooltip-content::before {
++        content: "";
++        position: absolute;
++        inset-inline-start: 50%;
++        inset-block-start: 100%;
++        translate: -50% 0;
++        inline-size: calc(var(--arrow-size) * 2);
++        block-size: var(--arrow-size);
++        background: inherit;
++        /* Points down, toward the anchor below */
++        clip-path: polygon(0 0, 100% 0, 50% 100%);
++      }
++
++      @container anchored(fallback: flip-block) {
++        .tooltip-content {
++          margin-block-end: 0;
++          margin-block-start: calc(var(--arrow-size) + 4px);
++          border-radius: 4px 4px 10px 10px;
++        }
++
++        .tooltip-content::before {
++          inset-block-start: auto;
++          inset-block-end: 100%;
++          /* Points up, toward the anchor above */
++          clip-path: polygon(50% 0, 100% 100%, 0 100%);
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,9 +276,16 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" class="info-btn" popovertarget="tooltip" aria-describedby="tooltip"
++              aria-label="More info about the Maple Oat Latte">i</button>
++            <div id="tooltip" popover role="tooltip">
++              <div class="tooltip-content">Seasonal through November. Contains oats; made with real Vermont maple syrup.</div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+@@ -206,7 +309,13 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++  </script>
++
+ </body>
+ 
+ </html>

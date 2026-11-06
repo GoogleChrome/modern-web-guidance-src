@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -5,29 +5,66 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    @function --surface-gradient(--start <color>, --end <color>, --angle <angle>: 135deg) returns <image> {
++      result: linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --responsive-columns(--count <integer>: 2) {
++      result: minmax(0, 1fr);
++
++      @media (min-width: 800px) {
++        result: repeat(var(--count), minmax(0, 1fr));
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --content-columns: minmax(0, 1fr);
+     }
+ 
++    /* Preserve the responsive layout in browsers without CSS functions. */
++    @media (min-width: 800px) {
++      :root {
++        --content-columns: repeat(2, minmax(0, 1fr));
++      }
++    }
++
++    body,
++    h2 {
++      background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
++      background-image: --surface-gradient(var(--gradient-start), var(--gradient-end));
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
+     body {
++      --gradient-start: #e0f2fe;
++      --gradient-end: #ede9fe;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    h2 {
++      --gradient-start: #3730a3;
++      --gradient-end: #0f766e;
++      color: white;
++      text-align: center;
++      padding: 12px 20px;
++      border-radius: 8px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,12 +136,22 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    main.container,
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: var(--content-columns);
++      grid-template-columns: --responsive-columns(2);
+       gap: 20px;
++    }
++
++    main > section {
++      grid-column: 1 / -1;
++      min-inline-size: 0;
++    }
++
++    .grid {
+       margin-top: 20px;
+     }
+ 
+     .card {
+@@ -175,9 +222,9 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

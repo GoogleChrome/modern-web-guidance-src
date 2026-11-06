@@ -1,0 +1,272 @@
+diff --git a/index.html b/index.html
+index 66c9173..95a029e 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,135 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Icon tokens (single-color SVGs, rendered as masks so they follow currentColor) */
++      --icon-coffee: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 2v2'/%3E%3Cpath d='M14 2v2'/%3E%3Cpath d='M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M6 2v2'/%3E%3C/svg%3E");
++      --icon-map-pin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E");
++      --icon-gift: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='8' width='18' height='4' rx='1'/%3E%3Cpath d='M12 8v13'/%3E%3Cpath d='M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7'/%3E%3Cpath d='M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5'/%3E%3C/svg%3E");
++      --icon-user: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
++      --icon-log-out: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpath d='m16 17 5-5-5-5'/%3E%3Cpath d='M21 12H9'/%3E%3C/svg%3E");
++      --icon-shopping-bag: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E");
++      --icon-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='m12 5 7 7-7 7'/%3E%3C/svg%3E");
++      --icon-leaf: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z'/%3E%3Cpath d='M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/%3E%3C/svg%3E");
++      --icon-flame: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z'/%3E%3C/svg%3E");
++      --icon-snowflake: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m10 20-1.25-2.5L6 18'/%3E%3Cpath d='M10 4 8.75 6.5 6 6'/%3E%3Cpath d='m14 20 1.25-2.5L18 18'/%3E%3Cpath d='m14 4 1.25 2.5L18 6'/%3E%3Cpath d='m17 21-3-6h-4'/%3E%3Cpath d='m17 3-3 6 1.5 3'/%3E%3Cpath d='M2 12h6.5L10 9'/%3E%3Cpath d='m20 10-1.5 2 1.5 2'/%3E%3Cpath d='M22 12h-6.5L14 15'/%3E%3Cpath d='m4 10 1.5 2L4 14'/%3E%3Cpath d='m7 21 3-6-1.5-3'/%3E%3Cpath d='m7 3 3 6h4'/%3E%3C/svg%3E");
++    }
++
++    /* Icon system: assign an icon with --icon-start / --icon-end, or --icon on an empty .icon */
++    @property --icon-start {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --icon-end {
++      syntax: "*";
++      inherits: false;
++    }
++
++    .icon:empty {
++      --icon-start: var(--icon);
++    }
++
++    /* Fallback hooks for browsers without container style queries */
++    :where(.icon-start, .icon:empty)::before,
++    :where(.icon-end)::after {
++      display: inline-block;
++      width: var(--icon-style-size, 1em);
++      height: var(--icon-style-size, 1em);
++      background-color: var(--icon-style-color, currentColor);
++      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++      flex: none;
++      pointer-events: none;
++      forced-color-adjust: none;
++    }
++
++    :where(.icon-start, .icon:empty)::before {
++      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
++      mask: var(--icon-start) no-repeat center / contain;
++    }
++
++    :where(.icon-start)::before {
++      --icon-start: inherit;
++    }
++
++    :where(.icon:empty)::before {
++      --icon-start: var(--icon);
++    }
++
++    :where(.icon-start:not(.icon, :empty))::before {
++      margin-inline-end: var(--icon-style-spacing, 0.3em);
++    }
++
++    :where(.icon-end)::after {
++      --icon-end: inherit;
++      content: image-set(linear-gradient(transparent 0 100%), var(--icon-end)) / var(--icon-style-alt, "");
++      mask: var(--icon-end) no-repeat center / contain;
++    }
++
++    :where(.icon-end:not(.icon, :empty))::after {
++      margin-inline-start: var(--icon-style-spacing, 0.3em);
++    }
++
++    @container style(--icon-start) {
++      /* Without @property support, keep the icon from inheriting into children */
++      * {
++        --icon-start: initial;
++      }
++
++      ::before {
++        --icon-start: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-start) no-repeat center / contain;
++        /* Center on the cap height, nudged slightly up for optical balance */
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::before {
++        margin-inline-end: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    @container style(--icon-end) {
++      * {
++        --icon-end: initial;
++      }
++
++      ::after {
++        --icon-end: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-end) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::after {
++        margin-inline-start: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    /* Safari: icons may not render until interaction (WebKit #301609, #320220) */
++    @keyframes webkit-301609 {}
++
++    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
++      @layer webkit-301609-fix {
++        ::before,
++        ::after {
++          animation: webkit-301609 0s;
++        }
++      }
+     }
+ 
+     * {
+@@ -66,6 +195,31 @@
+       color: var(--accent);
+     }
+ 
++    nav ul {
++      --icon-style-size: 1.1em;
++      --icon-style-spacing: 0.4em;
++    }
++
++    nav a[href="/menu"] {
++      --icon-start: var(--icon-coffee);
++    }
++
++    nav a[href="/locations"] {
++      --icon-start: var(--icon-map-pin);
++    }
++
++    nav a[href="/rewards"] {
++      --icon-start: var(--icon-gift);
++    }
++
++    nav a[href="/account"] {
++      --icon-start: var(--icon-user);
++    }
++
++    nav a[href="/logout"] {
++      --icon-start: var(--icon-log-out);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -115,6 +269,30 @@
+       text-align: center;
+     }
+ 
++    .card-icon {
++      display: inline-grid;
++      place-items: center;
++      width: 3.5rem;
++      height: 3.5rem;
++      margin-bottom: 10px;
++      border-radius: 50%;
++      background: var(--secondary);
++      color: var(--primary);
++      --icon-style-size: 1.75rem;
++    }
++
++    .card--maple {
++      --icon: var(--icon-leaf);
++    }
++
++    .card--espresso {
++      --icon: var(--icon-flame);
++    }
++
++    .card--cold-brew {
++      --icon: var(--icon-snowflake);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -135,6 +313,14 @@
+       background: #3e2723;
+     }
+ 
++    .hero .btn {
++      --icon-start: var(--icon-shopping-bag);
++    }
++
++    .card .btn {
++      --icon-end: var(--icon-arrow-right);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,38 +346,41 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="icon-start">Menu</a></li>
++      <li><a href="/locations" class="icon-start">Locations</a></li>
++      <li><a href="/rewards" class="icon-start">Rewards</a></li>
++      <li><a href="/account" class="icon-start">My Account</a></li>
++      <li><a href="/logout" class="logout-link icon-start">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn icon-start">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card card--maple">
++          <span class="icon card-icon"></span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn icon-end">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card card--espresso">
++          <span class="icon card-icon"></span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn icon-end">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card card--cold-brew">
++          <span class="icon card-icon"></span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn icon-end">View Details</a>
+         </div>
+       </div>
+     </section>

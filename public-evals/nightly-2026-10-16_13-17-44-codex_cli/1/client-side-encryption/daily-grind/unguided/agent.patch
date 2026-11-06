@@ -1,0 +1,362 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..3ff38cc
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,3 @@
++node_modules/
++dist/
++.vite/
+diff --git a/crypto.js b/crypto.js
+new file mode 100644
+index 0000000..919121a
+--- /dev/null
++++ b/crypto.js
+@@ -0,0 +1,36 @@
++import { ml_kem768 } from '@noble/post-quantum/ml-kem.js';
++import { ml_kem768_x25519 } from '@noble/post-quantum/hybrid.js';
++import { x25519 } from '@noble/curves/ed25519.js';
++export const encode = bytes => btoa(String.fromCharCode(...bytes));
++export const decode = value => Uint8Array.from(atob(value), c=>c.charCodeAt(0));
++export async function exchange(mode){
++ let publicKey, secretKey, cipherText, alice, bob;
++ if(mode==='classical'){
++  const recipient=x25519.keygen(), sender=x25519.keygen();
++  publicKey=recipient.publicKey;secretKey=recipient.secretKey;cipherText=sender.publicKey;
++  alice=x25519.getSharedSecret(recipient.secretKey,sender.publicKey);
++  bob=x25519.getSharedSecret(sender.secretKey,recipient.publicKey);
++ } else {
++  const kem=mode==='hybrid'?ml_kem768_x25519:ml_kem768;
++  ({publicKey,secretKey}=kem.keygen());
++  const encapsulated=kem.encapsulate(publicKey);cipherText=encapsulated.cipherText;bob=encapsulated.sharedSecret;
++  alice=kem.decapsulate(cipherText,secretKey);
++ }
++ if(!alice.every((b,i)=>b===bob[i]))throw Error('Shared secrets did not match.');
++ const material=await crypto.subtle.importKey('raw',alice,'HKDF',false,['deriveKey']);
++ const salt=crypto.getRandomValues(new Uint8Array(32));
++ const key=await crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt,info:new TextEncoder().encode(`cipher-workspace/v1/${mode}`)},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
++ const fingerprint=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',publicKey))).slice(0,16).map(b=>b.toString(16).padStart(2,'0')).join(':');
++ alice.fill(0);bob.fill(0);secretKey.fill(0);
++ return {key,publicKey,cipherText,fingerprint,salt,mode};
++}
++export async function encrypt(session,text,aad=''){
++ const iv=crypto.getRandomValues(new Uint8Array(12));
++ const data=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(aad),tagLength:128},session.key,new TextEncoder().encode(text));
++ return JSON.stringify({v:1,algorithm:'AES-256-GCM',iv:encode(iv),aad,ciphertext:encode(new Uint8Array(data))},null,2);
++}
++export async function decrypt(session,envelope){
++ const p=JSON.parse(envelope);if(p.v!==1||p.algorithm!=='AES-256-GCM')throw Error('Unsupported encrypted envelope.');
++ const result=await crypto.subtle.decrypt({name:'AES-GCM',iv:decode(p.iv),additionalData:new TextEncoder().encode(p.aad||''),tagLength:128},session.key,decode(p.ciphertext));
++ return new TextDecoder().decode(result);
++}
+diff --git a/crypto.test.js b/crypto.test.js
+new file mode 100644
+index 0000000..9a9bbfb
+--- /dev/null
++++ b/crypto.test.js
+@@ -0,0 +1,21 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { exchange, encrypt, decrypt } from './crypto.js';
++for(const mode of ['classical','hybrid','pq']){
++ test(`${mode}: establish a secret and round-trip authenticated encryption`,async()=>{
++  const session=await exchange(mode);
++  assert.equal(session.key.extractable,false);
++  assert.ok(session.publicKey.length>0);
++  const message='Private message 🔐 — café';
++  const first=await encrypt(session,message,'document:42');
++  const second=await encrypt(session,message,'document:42');
++  assert.notEqual(JSON.parse(first).iv,JSON.parse(second).iv);
++  assert.equal(await decrypt(session,first),message);
++  const changed=JSON.parse(first);changed.aad='document:43';
++  await assert.rejects(()=>decrypt(session,JSON.stringify(changed)));
++  const tampered=JSON.parse(first);const bytes=Uint8Array.from(atob(tampered.ciphertext),c=>c.charCodeAt(0));bytes[0]^=1;tampered.ciphertext=btoa(String.fromCharCode(...bytes));
++  await assert.rejects(()=>decrypt(session,JSON.stringify(tampered)));
++  const different=await exchange(mode);
++  await assert.rejects(()=>decrypt(different,first));
++ });
++}
+diff --git a/index.html b/index.html
+index 66c9173..4714f43 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1 @@
+-<!DOCTYPE html>
+-<html lang="en">
+-
+-<head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
+-</head>
+-
+-<body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="theme-color" content="#17181c"/><title>Cipher — Cryptography workspace</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css"></head><body><div id="app"></div><script type="module" src="/src.js"></script></body></html>
+diff --git a/package.json b/package.json
+index 2bd4d77..c8dea69 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,19 @@
+ {
+-  "name": "daily-grind",
++  "name": "cipher-workspace",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "vite build",
++    "test": "node --test crypto.test.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+-  }
+-}
++  },
++  "dependencies": {
++    "@noble/curves": "^2.4.0",
++    "@noble/post-quantum": "^0.7.1",
++    "lucide": "^1.58.0",
++    "vite": "^8.3.4"
++  },
++  "type": "module"
++}
+\ No newline at end of file
+diff --git a/src.js b/src.js
+new file mode 100644
+index 0000000..dfb8b91
+--- /dev/null
++++ b/src.js
+@@ -0,0 +1,23 @@
++import { createIcons, icons } from 'lucide';
++import { exchange, encrypt, decrypt, encode } from './crypto.js';
++const $=s=>document.querySelector(s);
++const icon=(name,cls='')=>`<i data-lucide="${name}" class="icon ${cls}"></i>`;
++const configs={classical:{title:'Classical',algorithm:'X25519',description:'Fast, proven elliptic-curve key agreement.',tag:'Established',keySize:'32 bytes',security:'128-bit classical'},hybrid:{title:'Hybrid',algorithm:'X25519 + ML-KEM-768',description:'Classical trust meets post-quantum resilience.',tag:'Quantum-ready',keySize:'1,216 bytes',security:'NIST Level 3'},pq:{title:'Post-quantum',algorithm:'ML-KEM-768',description:'Built for a world with quantum computers.',tag:'Quantum-ready',keySize:'1,184 bytes',security:'NIST Level 3'}};
++let mode='hybrid',tab='exchange',view='playground',sessions=[],operations=[],current=null,output='',formMode='encrypt',label='',toastTimer;
++function refreshIcons(){createIcons({icons,attrs:{'stroke-width':1.7}})}
++function toast(message){$('.toast')?.remove();const el=document.createElement('div');el.className='toast';el.setAttribute('role','status');el.textContent=message;document.body.append(el);clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.remove(),4500)}
++function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
++function addOp(type,algorithm){operations.unshift({type,algorithm,time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),id:crypto.randomUUID()});}
++function render(){
++$('#app').innerHTML=`<aside class="sidebar"><a class="brand" href="/">${icon('fingerprint','brand-mark')}<span>cipher<span class="version">v1.0</span></span></a><div class="workspace-switch"><div class="workspace-avatar">${icon('box')}</div><span>Personal workspace</span>${icon('chevrons-up-down')}</div><nav><div class="nav-label">WORKSPACE</div>${[['overview','layout-dashboard','Overview'],['playground','blocks','Playground'],['vault','key-round','Key vault'],['activity','clock-3','Activity log']].map(([v,i,t])=>`<button class="nav-item ${view===v?'active':''}" data-view="${v}">${icon(i)}<span>${t}</span>${v==='vault'?`<span class="badge">${sessions.length}</span>`:''}</button>`).join('')}</nav><div class="side-bottom"><button class="nav-item" data-dialog="guide">${icon('book-open')}<span>Documentation</span>${icon('arrow-up-right')}</button><button class="nav-item" data-dialog="settings">${icon('settings-2')}<span>Settings</span></button><div class="local-note"><strong>${icon('shield-check')} Private by design</strong><p>Everything happens in your browser. Your keys never leave.</p></div><div class="profile"><div class="avatar">JD</div><div><div class="profile-name">Jamie Davis</div><div class="profile-sub">Personal account</div></div>${icon('chevrons-up-down')}</div></div></aside><main class="main"><header class="topbar"><div class="breadcrumbs">Workspace ${icon('chevron-right')} <strong>${view==='playground'?'Playground':view==='vault'?'Key vault':view==='activity'?'Activity log':'Overview'}</strong></div><div class="top-actions"><span class="environment"><span class="dot"></span> Browser environment</span><a href="https://github.com/paulmillr/noble-post-quantum" target="_blank" rel="noopener">${icon('github')} GitHub ${icon('arrow-up-right')}</a><button aria-label="Help" data-dialog="guide">${icon('circle-help')}</button></div></header><div class="main-content"><div class="page-heading"><div><h1>${view==='playground'?'Cryptography playground':view==='vault'?'Your key vault':view==='activity'?'Activity log':'Workspace overview'}</h1><p class="subtitle">${view==='playground'?'Establish trust. Protect your data. All in your browser.':view==='vault'?'Ephemeral sessions, kept safely in this browser tab.':view==='activity'?'A local record of your cryptographic operations.':'Your private space for modern cryptography.'}</p></div><button class="button" data-dialog="guide">${icon('book-open')} Quick guide ${icon('arrow-up-right')}</button></div>${view==='playground'?`<div class="tabs"><button class="tab ${tab==='exchange'?'active':''}" data-tab="exchange">${icon('arrow-left-right')} Key exchange</button><button class="tab ${tab==='encrypt'?'active':''}" data-tab="encrypt">${icon('lock-keyhole')} Encrypt / Decrypt</button><button class="tab ${tab==='sessions'?'active':''}" data-tab="sessions">${icon('layers')} Sessions <span class="small-count">${sessions.length}</span></button></div>${tab==='exchange'?exchangeUI():tab==='encrypt'?encryptionUI():vaultUI()}`:view==='vault'?vaultUI():view==='activity'?activityUI(true):overviewUI()}${view==='playground'&&tab==='exchange'?activityUI():''}<footer class="footer"><span>${icon('shield-check')} Local execution. Zero data transmitted.</span><div class="footer-links"><a href="https://www.w3.org/TR/WebCryptoAPI/" target="_blank" rel="noopener">Web Crypto API ${icon('arrow-up-right')}</a><span>Cipher v1.0.0</span></div></footer></div></main><dialog id="dialog"><button class="dialog-close" aria-label="Close dialog">${icon('x')}</button><div id="dialog-content"></div></dialog>`;
++refreshIcons();bind();
++}
++function exchangeUI(){const c=configs[mode];return `<div class="section-line"><span class="eyebrow">CHOOSE YOUR PROTECTION</span><span class="helper">${icon('circle-info')} A stronger foundation for every connection</span></div><div class="protocols">${Object.entries(configs).map(([m,c])=>`<button class="protocol ${mode===m?'selected':''}" data-mode="${m}">${m==='hybrid'?'<span class="recommend">RECOMMENDED</span>':''}<div class="protocol-top"><div class="protocol-symbol">${icon(m==='classical'?'key-round':m==='hybrid'?'combine':'atom')}</div><span class="protocol-title">${c.title}</span><span class="radio"></span></div><p>${c.description}</p><div class="protocol-bottom"><span class="mono">${c.algorithm}</span><span class="tag ${m!=='classical'?'purple':''}">${c.tag}</span></div></button>`).join('')}</div><div class="work-grid"><section class="panel"><div class="panel-heading"><h2>${icon('sliders-horizontal')} Configure key exchange</h2><span class="step-chip">01 / 02</span></div><div class="panel-body"><label class="field-label" for="session-name">Session name <span class="optional">Optional</span></label><input class="input" id="session-name" placeholder="e.g. Secure channel with Alice" value="${esc(label)}" maxlength="64"><div class="field-hint">Give this exchange a name to find it later.</div><div class="two-fields"><div><label class="field-label">Key derivation function</label><div class="read-field"><span class="mono">HKDF-SHA-256</span>${icon('lock-keyhole')}</div></div><div><label class="field-label">Encryption algorithm</label><div class="read-field"><span class="mono">AES-256-GCM</span>${icon('lock-keyhole')}</div></div></div><div class="notice">${icon('shield-check')}<div><strong>${mode==='hybrid'?'The best of both worlds.':mode==='pq'?'Ready for what comes next.':'A proven foundation.'}</strong> ${mode==='hybrid'?'Combines elliptic-curve key agreement with a post-quantum KEM for defense in depth.':mode==='pq'?'Establishes a shared secret using ML-KEM-768 post-quantum encapsulation.':'Establishes a shared secret using X25519 elliptic-curve key agreement.'}</div></div><button class="button primary generate" id="generate">${icon('key-round')} Generate shared secret ${icon('arrow-right')}</button><div class="panel-foot">${icon('lock-keyhole')} Keys are generated locally and never sent to a server</div>${current?`<div class="result"><div class="result-title">${icon('circle-check')} Shared secret established · ${esc(current.name)}</div><div class="field-hint">Public key fingerprint</div><div class="result-code mono">${current.fingerprint}</div><div class="result-actions"><button class="button" id="copy-key">${icon('copy')} Copy public key</button><button class="button primary" data-tab="encrypt">Encrypt data ${icon('arrow-right')}</button></div></div>`:''}</div></section><aside class="flow"><div class="flow-heading"><span>How the exchange works</span><span class="live-chip"><span class="dot"></span> ${current?'ESTABLISHED':'LOCAL PREVIEW'}</span></div><div class="diagram"><div><div class="party-box">${icon('monitor')}<strong>Alice</strong><span>Recipient</span></div><div class="flow-line"></div><div class="flow-small">Public + private key</div></div><div class="exchange-arrows">${icon('arrow-left-right')}</div><div><div class="party-box">${icon('monitor')}<strong>Bob</strong><span>Sender</span></div><div class="flow-line"></div><div class="flow-small">${mode==='classical'?'Ephemeral key pair':'Encapsulated key'}</div></div><div class="joint"></div><div class="secret-box">${icon('key-round')} Shared secret</div></div><div class="flow-caption">Two parties. One secret. Never transmitted.</div><div class="flow-footer"><span>${icon('shield-check')} ${mode==='classical'?'Classical protection':'Post-quantum protected'}</span><span>${mode==='classical'?'X25519': 'NIST FIPS 203'}</span></div></aside></div>`}
++function activityUI(full=false){return `<section class="activity"><div class="activity-top"><h2>${full?'All operations':'Recent activity'}</h2><button class="text-button" ${full?'id="clear-log"':'data-view="activity"'}>${full?'Clear log':'View all activity'} ${icon(full?'trash-2':'arrow-right')}</button></div><div class="panel"><table><thead><tr><th>OPERATION</th><th>ALGORITHM</th><th>STATUS</th><th>TIME</th><th></th></tr></thead><tbody>${operations.length?operations.slice(0,full?100:3).map(o=>`<tr><td><span class="op-name">${icon(o.type==='Key exchange'?'arrow-left-right':o.type==='Encryption'?'lock-keyhole':'lock-keyhole-open')}${esc(o.type)}</span></td><td class="mono">${o.algorithm}</td><td><span class="success">${icon('check')} Completed</span></td><td>${o.time}</td><td><button class="text-button" data-operation="${o.id}" aria-label="View operation">${icon('arrow-up-right')}</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Your activity starts here. Generate a shared secret to begin.</td></tr>'}</tbody></table></div></section>`}
++function vaultUI(){return sessions.length?`<div class="status-row"><span class="dot"></span> ${sessions.length} session${sessions.length>1?'s':''} in memory · Cleared when you close this tab</div><div class="vault-grid">${sessions.map(s=>`<div class="panel vault-card">${icon('key-round')}<h3>${esc(s.name)}</h3><p class="mono">${configs[s.mode].algorithm}</p><p>Public key fingerprint<br>${s.fingerprint.slice(0,23)}…</p><button class="button ${current===s?'primary':''}" data-session="${s.id}">${current===s?'Use session':'Select session'} ${icon('arrow-right')}</button></div>`).join('')}</div>`:`<div class="panel panel-body"><h3 class="detail-heading">A fresh start for your secrets</h3><p class="subtitle">Create a key exchange to add an ephemeral session to your vault.</p><button class="button primary" data-start style="margin-top:20px">${icon('plus')} Create a session</button></div>`}
++function overviewUI(){return `<div class="protocols">${[['Active sessions',sessions.length,'key-round'],['Completed operations',operations.length,'activity'],['Execution','100% local','shield-check']].map(([t,v,i])=>`<div class="panel panel-body"><div class="helper">${icon(i)} ${t}</div><h1 style="margin-top:18px">${v}</h1></div>`).join('')}</div><div class="panel panel-body"><h3 class="detail-heading">Start with a shared secret.</h3><p class="subtitle">Explore hybrid and post-quantum key exchange, then encrypt your data with AES-256-GCM.</p><button class="button primary" data-start style="margin-top:18px">Open playground ${icon('arrow-right')}</button></div>${activityUI()}`}
++function encryptionUI(){return `<div class="encrypt-grid"><section class="panel"><div class="panel-heading"><h2>${icon('lock-keyhole')} ${formMode==='encrypt'?'Encrypt sensitive data':'Decrypt an envelope'}</h2><button class="text-button" id="switch-crypto">Switch to ${formMode==='encrypt'?'decrypt':'encrypt'} ${icon('arrow-left-right')}</button></div><div class="panel-body"><label class="field-label" for="session-select">Active session</label><select id="session-select"><option value="">Select a session</option>${sessions.map(s=>`<option value="${s.id}" ${s===current?'selected':''}>${esc(s.name)} · ${configs[s.mode].title}</option>`).join('')}</select>${!sessions.length?'<p class="field-hint">Create a key exchange first to encrypt your data.</p>':''}<label class="field-label" for="plaintext" style="margin-top:20px">${formMode==='encrypt'?'Plaintext':'Encrypted envelope'}</label><textarea class="input mono" id="plaintext" placeholder="${formMode==='encrypt'?'Your sensitive data goes here…':'Paste your encrypted JSON envelope…'}"></textarea>${formMode==='encrypt'?'<label class="field-label" for="aad" style="margin-top:17px">Associated data <span class="optional">Optional · Authenticated, not encrypted</span></label><input id="aad" class="input" placeholder="e.g. document-id:123">':''}<button class="button primary generate" id="run-crypto" style="margin-top:20px" ${!current?'disabled':''}>${icon(formMode==='encrypt'?'lock-keyhole':'lock-keyhole-open')} ${formMode==='encrypt'?'Encrypt data':'Decrypt and verify'} ${icon('arrow-right')}</button>${output?`<div class="result"><div class="result-title">${icon('circle-check')} ${formMode==='encrypt'?'Encrypted envelope':'Verified plaintext'}</div><pre class="result-code mono">${esc(output)}</pre><div class="result-actions"><button class="button" id="copy-result">${icon('copy')} Copy</button><button class="button" id="download-result">${icon('download')} Download</button>${formMode==='encrypt'?'<button class="button" id="try-decrypt">Decrypt this</button>':''}</div></div>`:''}</div></section><aside class="panel panel-body"><h3 class="detail-heading">Confidential. Authenticated. Yours.</h3><p class="encrypt-help">AES-256-GCM protects your data and detects changes to the ciphertext.</p><ul class="info-list encrypt-help"><li>${icon('shuffle')} A fresh 96-bit nonce for every encryption.</li><li>${icon('shield-check')} A 128-bit authentication tag verifies integrity.</li><li>${icon('key-round')} Your encryption key stays in browser memory.</li></ul><div class="notice">${icon('circle-info')} Keep this tab open to decrypt your envelope. Sessions are ephemeral and are not recoverable after a reload.</div></aside></div>`}
++function showDialog(kind){const c=$('#dialog-content');c.innerHTML=kind==='settings'?'<h2>Workspace settings</h2><p>Your workspace runs locally. Sessions and activity are kept in memory for this tab only.</p><p>Key derivation: HKDF-SHA-256<br>Encryption: AES-256-GCM<br>Private key persistence: Disabled</p><button class="button" id="reset">Clear all sessions and activity</button>':`<h2>${kind==='operation'?'Operation details':'A little trust goes a long way.'}</h2><p>1. Choose Classical, Hybrid, or Post-quantum protection.<br>2. Generate a shared secret. This local playground simulates both Alice and Bob, verifies their secrets match, and derives an encryption key.<br>3. Open Encrypt / Decrypt to protect data with AES-256-GCM.</p><p>Public keys can be copied. Private keys and shared secrets are never displayed. Sessions live only in this tab and are lost on reload.</p><p>This playground demonstrates key agreement; it does not authenticate a remote party or establish a network connection.</p><a class="button" href="https://github.com/paulmillr/noble-post-quantum" target="_blank" rel="noopener">Explore the cryptography library ↗</a>`;$('#dialog').showModal();$('#reset')?.addEventListener('click',()=>{sessions=[];operations=[];current=null;output='';render();toast('Workspace cleared')})}
++function bind(){document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;render()});document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;view='playground';output='';render()});document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;current=null;render()});document.querySelectorAll('[data-dialog]').forEach(b=>b.onclick=()=>showDialog(b.dataset.dialog));document.querySelectorAll('[data-start]').forEach(b=>b.onclick=()=>{view='playground';tab='exchange';render()});document.querySelectorAll('[data-session]').forEach(b=>b.onclick=()=>{current=sessions.find(s=>s.id===b.dataset.session);tab='encrypt';view='playground';output='';render()});document.querySelectorAll('[data-operation]').forEach(b=>b.onclick=()=>{const op=operations.find(o=>o.id===b.dataset.operation);$('#dialog-content').innerHTML=`<h2>${esc(op.type)}</h2><p>Algorithm: ${esc(op.algorithm)}<br>Status: Completed locally<br>Time: ${op.time}</p><p class="mono">Operation ID: ${op.id}</p>`;$('#dialog').showModal()});$('.dialog-close').onclick=()=>$('#dialog').close();$('#dialog').onclick=e=>{if(e.target===$('#dialog'))$('#dialog').close()};$('#session-name')?.addEventListener('input',e=>label=e.target.value);$('#generate')?.addEventListener('click',async()=>{const b=$('#generate');b.disabled=true;b.textContent='Establishing shared secret…';try{const started=performance.now();const s=await exchange(mode);s.name=label.trim()||`Session ${String(sessions.length+1).padStart(2,'0')}`;s.id=crypto.randomUUID();s.elapsed=Math.round(performance.now()-started);sessions.unshift(s);current=s;addOp('Key exchange',configs[mode].algorithm);render();toast(`Shared secret established in ${s.elapsed} ms`)}catch(e){toast(`Key exchange failed: ${e.message}`);b.disabled=false;b.textContent='Generate shared secret'}});$('#copy-key')?.addEventListener('click',()=>copy(encode(current.publicKey),'Public key copied'));$('#session-select')?.addEventListener('change',e=>{current=sessions.find(s=>s.id===e.target.value)||null;$('#run-crypto').disabled=!current});$('#switch-crypto')?.addEventListener('click',()=>{formMode=formMode==='encrypt'?'decrypt':'encrypt';output='';render()});$('#run-crypto')?.addEventListener('click',async()=>{const text=$('#plaintext').value;if(!text)return toast('Enter data to continue.');if(!current)return toast('Select an active session.');try{output=formMode==='encrypt'?await encrypt(current,text,$('#aad').value):await decrypt(current,text);addOp(formMode==='encrypt'?'Encryption':'Decryption','AES-256-GCM');render();toast(formMode==='encrypt'?'Data encrypted successfully':'Authentication verified. Data decrypted.')}catch(e){toast(formMode==='decrypt'?'Unable to decrypt. Check the envelope and selected session.':e.message)}});$('#copy-result')?.addEventListener('click',()=>copy(output,'Result copied'));$('#download-result')?.addEventListener('click',()=>{const u=URL.createObjectURL(new Blob([output],{type:formMode==='encrypt'?'application/json':'text/plain'}));const a=document.createElement('a');a.href=u;a.download=formMode==='encrypt'?'cipher-envelope.json':'cipher-plaintext.txt';a.click();URL.revokeObjectURL(u)});$('#try-decrypt')?.addEventListener('click',()=>{const envelope=output;formMode='decrypt';output='';render();$('#plaintext').value=envelope});$('#clear-log')?.addEventListener('click',()=>{operations=[];render();toast('Activity log cleared')});}
++async function copy(value,message){try{await navigator.clipboard.writeText(value);toast(message)}catch{toast('Clipboard unavailable. Allow clipboard access and try again.')}}
++render();
+diff --git a/style.css b/style.css
+new file mode 100644
+index 0000000..233eb14
+--- /dev/null
++++ b/style.css
+@@ -0,0 +1,2 @@
++:root{font-family:'DM Sans',sans-serif;color:#24252b;background:#f7f8fa;font-synthesis:none;font-size:14px}*{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button,a,select{ -webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}button:focus-visible,a:focus-visible{outline:3px solid #b3a3f6;outline-offset:3px}button{transition:background .18s,border-color .18s,transform .18s}button:hover{filter:brightness(.97)}a{color:inherit;text-decoration:none}.icon{width:18px;height:18px;stroke-width:1.7;flex-shrink:0}.sidebar{position:fixed;inset:0 auto 0 0;width:226px;background:#191a1f;color:#96979f;display:flex;flex-direction:column;padding:34px 18px 19px;z-index:20}.brand{display:flex;gap:11px;align-items:center;color:#f9f9fb;padding:0 13px;font-size:28px;font-weight:650;letter-spacing:-1.1px}.brand-mark{width:31px;height:33px;color:#b7a0ff}.brand .version{font-size:10px;letter-spacing:0;color:#a4a4ad;border:1px solid #44444e;border-radius:4px;padding:2px 5px;margin-left:3px}.workspace-switch{margin:35px 0 30px;padding:11px 10px;border:1px solid #38393f;border-radius:7px;display:flex;align-items:center;gap:10px;color:#dfdfe4;font-size:12px}.workspace-avatar{display:grid;place-items:center;width:29px;height:29px;background:#34333f;color:#d8cafa;border-radius:5px}.workspace-switch .icon:last-child{margin-left:auto;width:13px}.nav-label{font-size:10px;font-weight:600;letter-spacing:1.5px;color:#70717c;margin:0 13px 12px}.nav-item{border:0;width:100%;background:none;color:#a4a4ae;display:flex;align-items:center;gap:12px;padding:12px 13px;border-radius:6px;text-align:left;margin:3px 0;font-size:13px}.nav-item.active{background:#303038;color:#e4d9ff}.nav-item.active .icon{color:#b79af5}.nav-item .badge{margin-left:auto;background:#41414c;color:#c9c5d6;padding:2px 6px;border-radius:4px;font-size:10px}.side-bottom{margin-top:auto}.local-note{border:1px solid #36373d;background:#202126;border-radius:7px;margin:22px 0 20px;padding:13px 12px;font-size:11px;line-height:1.65}.local-note strong{display:flex;gap:8px;color:#c6c7cc;font-weight:500;margin-bottom:5px}.local-note strong .icon{color:#8cba9e;width:14px;height:14px}.local-note p{margin:0;color:#7e808c}.profile{border-top:1px solid #323339;padding:18px 6px 0;display:flex;align-items:center;gap:10px}.avatar{background:#d7c9ef;border:3px solid #4b435a;color:#514365;width:33px;height:33px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:600}.profile-name{font-size:12px;color:#e6e6e9}.profile-sub{font-size:10px;margin-top:3px}.profile>.icon{margin-left:auto;width:15px}.main{margin-left:226px}.topbar{height:77px;background:#fff;border-bottom:1px solid #e7e8ec;display:flex;align-items:center;justify-content:space-between;padding:0 39px;font-size:12px}.breadcrumbs{display:flex;gap:13px;align-items:center;color:#90919b}.breadcrumbs .icon{width:13px;height:13px}.breadcrumbs strong{color:#494a52;font-weight:500}.top-actions{display:flex;align-items:center;gap:22px}.environment{display:flex;align-items:center;gap:7px;color:#666872;font-size:11px}.dot{width:6px;height:6px;border-radius:50%;background:#51a880;display:inline-block}.top-actions a{display:flex;align-items:center;gap:7px;color:#666872}.top-actions a .icon{width:14px}.top-actions button{background:none;border:0;color:#777986;display:flex}.main-content{max-width:1450px;margin:auto;padding:34px 39px 20px}.page-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:27px}h1{font-size:28px;font-weight:600;letter-spacing:-.9px;margin:0 0 8px}.subtitle{font-size:13px;color:#82838d;margin:0;line-height:1.6}.button{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1px solid #dddfe5;color:#50515c;border-radius:6px;font-size:12px;font-weight:500;padding:10px 14px;white-space:nowrap}.button .icon{width:15px;height:15px}.button.primary{background:#8061ca;border-color:#8061ca;color:#fff}.button.dark{background:#292a32;color:white;border-color:#292a32}.tabs{border-bottom:1px solid #e2e3e9;display:flex;gap:30px;margin-bottom:26px}.tab{display:flex;align-items:center;gap:8px;border:0;background:none;color:#7d7f8a;padding:0 1px 15px;font-size:12px;position:relative}.tab .icon{width:16px;height:16px}.tab.active{color:#7958bc;font-weight:600}.tab.active:after{position:absolute;content:'';height:2px;background:#8a68ce;bottom:-1px;left:0;right:0}.tab .small-count{font-size:9px;background:#eeeaf5;padding:2px 5px;border-radius:4px;color:#8a72b3}.section-line{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.eyebrow{font-size:10px;font-weight:600;letter-spacing:1.3px;color:#7f818c}.helper{color:#90919a;font-size:11px;display:flex;align-items:center;gap:5px}.helper .icon{width:13px;height:13px}.protocols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:23px}.protocol{position:relative;display:flex;flex-direction:column;text-align:left;border:1px solid #e1e2e8;border-radius:9px;background:#fff;padding:19px 18px 17px;min-height:153px;color:inherit}.protocol.selected{border:1.5px solid #9574d1;background:#f6f3fc;padding:18.5px 17.5px 16.5px}.protocol-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}.protocol-symbol{width:32px;height:32px;border-radius:7px;background:#f2f3f6;color:#7c7e89;display:grid;place-items:center}.selected .protocol-symbol{background:#eae1fa;color:#8863c5}.protocol-title{font-size:13px;font-weight:600}.radio{margin-left:auto;width:15px;height:15px;border:1px solid #d5d7df;border-radius:50%;background:#fff}.selected .radio{border:4px solid #8968c7}.protocol p{font-size:11px;line-height:1.7;color:#878792;margin:0 0 12px}.protocol-bottom{display:flex;align-items:center;gap:8px;margin-top:auto}.mono{font-family:'IBM Plex Mono',monospace}.protocol-bottom .mono{font-size:10px;color:#666975}.tag{font-size:9px;line-height:1.5;border-radius:4px;padding:2px 6px;background:#f0f1f4;color:#777a86}.tag.purple{background:#ebe3f6;color:#8460b9}.recommend{position:absolute;top:-9px;left:16px;background:#8864c4;color:#fff;padding:2px 7px;border-radius:3px;font-size:8px;letter-spacing:.5px}.work-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px}.panel{border:1px solid #e1e3e9;background:#fff;border-radius:9px;overflow:hidden}.panel-heading{display:flex;align-items:center;justify-content:space-between;padding:19px 21px;border-bottom:1px solid #eeeff2}.panel-heading h2{font-size:13px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px}.panel-heading h2 .icon{color:#92949e;width:16px}.step-chip{color:#999ba4;font-size:10px}.panel-body{padding:21px}.field-label{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:500;margin:0 0 8px}.optional{font-size:10px;color:#a1a2aa;font-weight:400}.input,select{width:100%;border:1px solid #dfe1e7;background:#fff;border-radius:5px;padding:11px 12px;font-size:11px;color:#555763;outline:none}.input:focus,select:focus,textarea:focus{border-color:#9b7bd1;box-shadow:0 0 0 3px #9574d112}.input::placeholder{color:#9d9fa8}.field-hint{font-size:10px;color:#9a9ba4;margin-top:7px}.two-fields{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:20px}.read-field{border:1px solid #e6e7ed;background:#f9fafb;padding:10px 11px;border-radius:5px;display:flex;justify-content:space-between;font-size:10px;color:#656874}.read-field .icon{width:13px;height:13px;color:#8e919b}.notice{background:#f7f5fb;border:1px solid #ece7f5;border-radius:6px;padding:12px;display:flex;gap:9px;margin:20px 0;color:#898291;font-size:10px;line-height:1.7}.notice>.icon{width:15px;height:15px;color:#9577bd;margin-top:1px}.notice strong{font-weight:500;color:#736385}.generate{width:100%;padding:12px;gap:9px}.panel-foot{margin-top:12px;text-align:center;font-size:9px;color:#a0a2ab;display:flex;align-items:center;justify-content:center;gap:5px}.panel-foot .icon{width:11px;height:11px}.flow{background:#202127;border:1px solid #30313a;border-radius:9px;color:#c3c3cc;display:flex;flex-direction:column;overflow:hidden}.flow-heading{display:flex;justify-content:space-between;align-items:center;padding:20px 21px;font-size:12px;color:#e0e0e6}.flow-heading .icon{width:14px;height:14px;color:#8e8f9b}.live-chip{font-size:8px;letter-spacing:.8px;display:flex;align-items:center;gap:6px;border:1px solid #44434d;padding:3px 6px;border-radius:4px;color:#9998a5}.live-chip .dot{width:4px;height:4px;background:#b6a0e4}.diagram{margin:6px 28px 0;display:grid;grid-template-columns:1fr 65px 1fr;align-items:start;text-align:center;position:relative}.party-box{border:1px solid #48424f;background:#2b2832;border-radius:7px;padding:15px 5px 11px}.party-box>.icon{width:24px;height:24px;color:#b59acd;margin-bottom:7px}.party-box strong{display:block;color:#e3dce9;font-size:11px;font-weight:500}.party-box span{display:block;font-size:9px;color:#8e849c;margin-top:4px}.exchange-arrows{padding-top:38px;color:#a38dbe}.exchange-arrows .icon{width:50px;height:20px;stroke-width:1}.flow-line{height:33px;border-left:1px dashed #675772;width:1px;margin:auto}.flow-small{border:1px solid #424149;background:#292930;border-radius:4px;font-size:8px;padding:6px;color:#aaa3b7;font-family:'IBM Plex Mono',monospace;white-space:nowrap}.joint{grid-column:1/4;border-left:1px dashed #675772;border-right:1px dashed #675772;border-bottom:1px dashed #675772;margin:0 48px;height:19px;position:relative}.joint:after{content:'';position:absolute;left:50%;top:18px;height:20px;border-left:1px dashed #675772}.secret-box{grid-column:1/4;margin:19px auto 0;border:1px solid #635375;background:#312b3d;border-radius:6px;width:158px;padding:11px 8px;color:#ceb6e9;font-size:10px;display:flex;align-items:center;justify-content:center;gap:7px}.secret-box .icon{width:13px;height:13px}.flow-caption{text-align:center;font-size:9px;color:#8a8596;margin:12px 0 22px}.flow-footer{margin-top:auto;padding:14px 20px;border-top:1px solid #35343e;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#93909e}.flow-footer span:first-child{display:flex;align-items:center;gap:6px;color:#b8a6d3}.flow-footer .icon{width:12px;height:12px}.activity{margin-top:25px}.activity-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.activity-top h2{font-size:13px;margin:0;font-weight:600}.text-button{border:0;background:transparent;color:#898393;font-size:10px;display:flex;align-items:center;gap:5px}.text-button .icon{width:12px;height:12px}table{width:100%;border-collapse:collapse;text-align:left;font-size:10px}th{background:#fafafb;color:#9799a2;font-size:9px;font-weight:500;padding:11px 18px;border-bottom:1px solid #e9eaf0}td{padding:14px 18px;border-bottom:1px solid #eeeff3;color:#82848f}tr:last-child td{border-bottom:0}.op-name{color:#4e505b;display:flex;align-items:center;gap:8px}.op-name .icon{width:14px;height:14px;color:#9b89b9}.success{display:inline-flex;align-items:center;gap:5px;color:#6c9c84;background:#f0f7f3;border:1px solid #e1ede6;padding:2px 6px;border-radius:4px;font-size:9px}.empty{text-align:center;padding:24px;color:#999ba6;font-size:11px}.footer{display:flex;justify-content:space-between;padding-top:24px;color:#aaacb4;font-size:9px}.footer span{display:flex;align-items:center;gap:5px}.footer .icon{width:11px;height:11px}.footer-links{display:flex;gap:17px}.footer a:hover{color:#8061ca}.toast{position:fixed;bottom:25px;left:calc(50% + 113px);transform:translateX(-50%);background:#292630;color:#fff;font-size:12px;padding:13px 22px;border-radius:7px;box-shadow:0 5px 25px #0002;z-index:100;max-width:80vw}.result{margin-top:18px;border:1px solid #e8e2f0;background:#faf8ff;border-radius:6px;padding:14px}.result-title{display:flex;align-items:center;gap:6px;font-size:11px;color:#796397;margin-bottom:9px}.result-title .icon{width:14px}.result-code{font-size:10px;word-break:break-all;line-height:1.8;color:#86808e;max-height:125px;overflow:auto}.result-actions{display:flex;gap:7px;margin-top:10px}textarea{resize:vertical;min-height:130px;line-height:1.7}.encrypt-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.encrypt-grid .panel{min-height:420px}.encrypt-help{font-size:12px;line-height:1.9;color:#8a8795}.info-list{padding:0;list-style:none}.info-list li{display:flex;gap:10px;margin:20px 0}.info-list .icon{color:#987bc2}.vault-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.vault-card{padding:22px}.vault-card h3{font-size:13px}.vault-card p{font-size:11px;color:#8d8d99;line-height:1.8}.mobile-brand{display:none}.status-row{font-size:10px;display:flex;gap:6px;align-items:center;color:#7c9c8b;margin-bottom:18px}.detail-heading{margin:0 0 12px;font-size:13px}dialog{border:1px solid #e0dbe7;border-radius:12px;padding:28px;max-width:540px;color:#55515f;box-shadow:0 20px 90px #0003}dialog::backdrop{background:#15111d66}dialog h2{font-size:19px;margin-top:0}dialog p{font-size:12px;line-height:1.9}.dialog-close{float:right;border:0;background:#f4f1f8;border-radius:5px;padding:6px;display:flex}.dialog-close .icon{width:15px;height:15px}@media(min-width:1500px){.main-content{padding-top:44px}.protocol{min-height:165px}.panel-body{padding:25px}.flow-heading{padding:23px}.diagram{margin-top:20px}.activity{margin-top:30px}}@media(max-width:1100px){.sidebar{width:195px}.main{margin-left:195px}.main-content{padding:28px 25px 20px}.topbar{padding:0 25px}.protocol{padding:15px 12px}.protocol.selected{padding:14.5px 11.5px}.protocol-title{font-size:12px}.protocol-symbol{width:27px;height:27px}.protocol-bottom{gap:5px;flex-wrap:wrap}.diagram{margin:6px 17px 0}.toast{left:calc(50% + 97px)}}@media(max-width:800px){.sidebar{width:65px;padding:25px 9px}.brand{padding:0 7px}.brand>span,.workspace-switch,.nav-label,.nav-item>span,.side-bottom .local-note,.profile,.brand .version{display:none}.brand-mark{width:29px}.nav-item{justify-content:center;padding:13px 0}.sidebar nav{margin-top:37px}.sidebar .side-bottom{margin-top:auto}.main{margin-left:65px}.main-content{padding:25px 20px}.topbar{padding:0 20px;height:65px}.top-actions{gap:13px}.environment{display:none}.work-grid{grid-template-columns:1fr 1fr}.two-fields{grid-template-columns:1fr}.protocols{gap:9px}.protocol p{font-size:10px}.protocol-top{gap:5px}.protocol-symbol{display:none}.protocol-title{font-size:11px}.tag{font-size:8px}.page-heading h1{font-size:25px}.diagram{grid-template-columns:1fr 36px 1fr;margin:10px 13px}.exchange-arrows .icon{width:32px}.flow-small{font-size:7px}.flow-footer{padding:13px;font-size:8px}.toast{left:calc(50% + 32px)}th,td{padding:12px 11px}}@media(max-width:580px){.main-content{padding:23px 15px}.topbar{padding:0 15px}.top-actions a{font-size:0}.page-heading{align-items:flex-start;gap:10px}.page-heading>.button{padding:8px;font-size:0}.page-heading>.button .icon{width:15px}.subtitle{font-size:11px}.protocols{grid-template-columns:1fr}.protocol{min-height:0;padding:14px 15px}.protocol.selected{padding:13.5px 14.5px}.protocol-top{margin-bottom:5px}.protocol-title{font-size:12px}.protocol p{margin-bottom:8px}.protocol-symbol{display:grid}.recommend{left:auto;right:30px;top:-7px}.work-grid,.encrypt-grid,.vault-grid{grid-template-columns:1fr}.flow{min-height:380px}.tabs{gap:21px}.tab{font-size:11px}.section-line .helper{display:none}.activity{overflow:auto}table{min-width:490px}.footer{gap:15px;line-height:1.8}.footer-links{display:none}.two-fields{grid-template-columns:1fr 1fr}.top-actions{gap:10px}}
++.success .icon{width:10px;height:10px}.footer-links>a{display:flex;align-items:center;gap:4px}.brand-mark.icon{width:31px;height:33px;stroke-width:1.8}.nav-item:hover{background:#27282e}.nav-item.active:hover{background:#34323e}.protocol:hover{border-color:#ab92ce}.button.primary:hover{background:#7354bb;border-color:#7354bb}.input:disabled{background:#f7f8fa}.flow-heading{gap:8px}.live-chip{white-space:nowrap}.op-name{white-space:nowrap}

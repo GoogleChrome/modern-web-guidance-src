@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,68 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <!-- Core Web Vitals monitoring -->
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5?module';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    // Metrics are queued and sent in a single batch when the page is hidden
++    // (tab closed, navigated away, app switched, etc.), by which point
++    // web-vitals has finalized the values it reports.
++    const queue = new Set();
++
++    function addToQueue(metric) {
++      queue.add(metric);
++    }
++
++    function flushQueue() {
++      if (queue.size === 0) return;
++
++      const body = JSON.stringify({
++        page: location.href,
++        metrics: [...queue].map(({ name, value, delta, rating, id, navigationType }) => ({
++          name, value, delta, rating, id, navigationType,
++        })),
++      });
++      queue.clear();
++
++      // sendBeacon is designed to survive page teardown; fall back to a
++      // keepalive fetch if it is unavailable or the beacon is rejected.
++      const blob = new Blob([body], { type: 'application/json' });
++      const queued = navigator.sendBeacon && navigator.sendBeacon(ANALYTICS_ENDPOINT, blob);
++      if (!queued) {
++        fetch(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          body,
++          headers: { 'Content-Type': 'application/json' },
++          keepalive: true,
++        }).catch(() => {});
++      }
++    }
++
++    // Register metric observers first so the library's own "hidden" handlers
++    // (attached on document) finalize and queue metrics before our flush runs.
++    onCLS(addToQueue);
++    onINP(addToQueue);
++    onLCP(addToQueue);
++
++    // Flush on visibilitychange -> hidden: this is the last event reliably
++    // fired on all platforms (incl. mobile) and, unlike `unload`/`beforeunload`,
++    // doesn't prevent the page from entering the back/forward cache. The
++    // listener is on window, so it runs after the bubbling document listeners.
++    // If the page is restored from bfcache, web-vitals re-reports metrics for
++    // the new visit and they will be flushed the next time the page is hidden.
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flushQueue();
++    });
++
++    // Fallback for older Safari, which doesn't fire visibilitychange when
++    // navigating away. pagehide is bfcache-safe.
++    addEventListener('pagehide', flushQueue);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

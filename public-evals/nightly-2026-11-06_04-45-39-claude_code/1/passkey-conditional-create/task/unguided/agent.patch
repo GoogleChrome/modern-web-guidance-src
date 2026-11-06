@@ -1,0 +1,247 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,57 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Sign-in */
++    .signin {
++      max-width: 400px;
++      margin: -60px auto 0;
++      position: relative;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++    }
++
++    .signin h2 {
++      color: var(--primary);
++      margin-bottom: 15px;
++      text-align: center;
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.9rem;
++      margin-top: 12px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      margin-top: 4px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++    }
++
++    .signin button {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    .signin-status {
++      margin-top: 12px;
++      min-height: 1.2em;
++      font-size: 0.9rem;
++      text-align: center;
++    }
++
++    .signin-status.error {
++      color: #c62828;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +222,20 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="signin" aria-labelledby="signin-heading">
++    <h2 id="signin-heading">Sign In</h2>
++    <form id="signin-form" novalidate>
++      <label for="username">Email or username</label>
++      <input id="username" name="username" type="text" autocomplete="username webauthn" required>
++      <label for="password">Password</label>
++      <input id="password" name="password" type="password" autocomplete="current-password" required>
++      <button type="submit" class="btn" data-testid="signin-button">Sign In</button>
++      <p id="signin-status" class="signin-status" role="status" aria-live="polite"></p>
++    </form>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +267,164 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // ---- base64url helpers (fallback when JSON (de)serialization helpers are unavailable) ----
++      function b64urlToBuffer(value) {
++        const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
++        const binary = atob(padded);
++        const bytes = new Uint8Array(binary.length);
++        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
++        return bytes.buffer;
++      }
++
++      function bufferToB64url(buffer) {
++        const bytes = new Uint8Array(buffer);
++        let binary = '';
++        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      function parseCreationOptions(json) {
++        if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++          return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++        }
++        const options = Object.assign({}, json);
++        options.challenge = b64urlToBuffer(json.challenge);
++        options.user = Object.assign({}, json.user, { id: b64urlToBuffer(json.user.id) });
++        if (Array.isArray(json.excludeCredentials)) {
++          options.excludeCredentials = json.excludeCredentials.map(function (c) {
++            return Object.assign({}, c, { id: b64urlToBuffer(c.id) });
++          });
++        }
++        return options;
++      }
++
++      function credentialToJSON(credential) {
++        if (typeof credential.toJSON === 'function') {
++          try { return credential.toJSON(); } catch (_) { /* fall through */ }
++        }
++        const response = credential.response;
++        const json = {
++          id: credential.id,
++          rawId: bufferToB64url(credential.rawId),
++          type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment || undefined,
++          clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
++          response: {
++            clientDataJSON: bufferToB64url(response.clientDataJSON),
++            attestationObject: bufferToB64url(response.attestationObject)
++          }
++        };
++        if (typeof response.getTransports === 'function') json.response.transports = response.getTransports();
++        if (typeof response.getAuthenticatorData === 'function') {
++          json.response.authenticatorData = bufferToB64url(response.getAuthenticatorData());
++        }
++        if (typeof response.getPublicKey === 'function') {
++          const pk = response.getPublicKey();
++          if (pk) json.response.publicKey = bufferToB64url(pk);
++        }
++        if (typeof response.getPublicKeyAlgorithm === 'function') {
++          json.response.publicKeyAlgorithm = response.getPublicKeyAlgorithm();
++        }
++        return json;
++      }
++
++      // ---- Feature detection for conditional (automatic) passkey creation ----
++      async function supportsConditionalCreate() {
++        if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.create) return false;
++        if (typeof PublicKeyCredential.getClientCapabilities !== 'function') return false;
++        try {
++          const caps = await PublicKeyCredential.getClientCapabilities();
++          return !!(caps && caps.conditionalCreate);
++        } catch (_) {
++          return false;
++        }
++      }
++
++      // ---- Silent post-login passkey promotion: never surfaces any UI ----
++      async function promotePasskeySilently() {
++        try {
++          if (!(await supportsConditionalCreate())) return;
++
++          const optionsRes = await fetch('/api/register/options', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++            body: JSON.stringify({})
++          });
++          if (!optionsRes.ok) return;
++          const optionsJSON = await optionsRes.json();
++          const publicKeyJSON = optionsJSON.publicKey || optionsJSON;
++
++          const credential = await navigator.credentials.create({
++            mediation: 'conditional',
++            publicKey: parseCreationOptions(publicKeyJSON)
++          });
++          if (!credential) return;
++
++          await fetch('/api/register/verify', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++            body: JSON.stringify(credentialToJSON(credential))
++          });
++        } catch (err) {
++          // Intentionally silent: e.g. InvalidStateError (passkey already exists),
++          // NotAllowedError (browser declined conditional creation), network errors.
++          if (window.console && console.debug) console.debug('Passkey promotion skipped:', err && err.name);
++        }
++      }
++
++      // ---- Password sign-in ----
++      const form = document.getElementById('signin-form');
++      const status = document.getElementById('signin-status');
++      const button = form.querySelector('[data-testid="signin-button"]');
++
++      function setStatus(message, isError) {
++        status.textContent = message;
++        status.classList.toggle('error', !!isError);
++      }
++
++      form.addEventListener('submit', async function (event) {
++        event.preventDefault();
++        const username = form.username.value.trim();
++        const password = form.password.value;
++        if (!username || !password) {
++          setStatus('Please enter your username and password.', true);
++          return;
++        }
++
++        button.disabled = true;
++        setStatus('Signing in…', false);
++        try {
++          const res = await fetch('/api/login', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++            body: JSON.stringify({ username: username, password: password })
++          });
++          if (!res.ok) {
++            setStatus('Sign-in failed. Please check your credentials.', true);
++            return;
++          }
++          form.password.value = '';
++          setStatus('Welcome back, ' + username + '!', false);
++
++          // Fire-and-forget: automatic passkey creation runs in the background.
++          promotePasskeySilently();
++        } catch (_) {
++          setStatus('Unable to reach the server. Please try again.', true);
++        } finally {
++          button.disabled = false;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

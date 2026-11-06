@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,90 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      margin-bottom: 50px;
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 32px;
++      margin-top: 24px;
++      align-items: start;
++    }
++
++    .nested-curve-parent {
++      background: white;
++      padding: 24px;
++      border-radius: 32px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
++      overflow: clip;
++      overflow-clip-margin: content-box;
++    }
++
++    .nested-curve-banner {
++      height: 180px;
++      background: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80') center/cover no-repeat;
++      margin: -8px -8px 16px -8px;
++    }
++
++    .nested-curve-body {
++      padding: 4px 0 16px;
++    }
++
++    .nested-curve-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .nested-curve-footer {
++      background: var(--primary);
++      color: white;
++      padding: 16px 20px;
++      margin: 0 -12px -12px -12px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-weight: 600;
++    }
++
++    .safety-zone-parent {
++      background: #fff8e1;
++      border: 2px solid var(--accent);
++      border-radius: 16px;
++      padding: 24px 24px 8px 24px;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++      position: relative;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .promo-overflow-text {
++      white-space: nowrap;
++      font-size: 0.9rem;
++      color: var(--text);
++      margin-bottom: 18px;
++    }
++
++    .glow-btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 12px 24px;
++      font-size: 1rem;
++      font-weight: bold;
++      border-radius: 8px;
++      cursor: pointer;
++      box-shadow: 0 0 15px 6px rgba(255, 171, 64, 0.85);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +256,33 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase">
++      <h2 style="text-align: center;">Featured Showcase &amp; Promos</h2>
++      <div class="showcase-grid">
++        <div class="nested-curve-parent">
++          <div class="nested-curve-banner"></div>
++          <div class="nested-curve-body">
++            <h3>Single-Origin Pour Over</h3>
++            <p>Hand-brewed Ethiopian Yirgacheffe with bright floral and citrus notes.</p>
++          </div>
++          <footer class="nested-curve-footer">
++            <span>Limited Reserve</span>
++            <span>$6.50</span>
++          </footer>
++        </div>
++
++        <div class="safety-zone-parent">
++          <h3>Golden Hour Espresso Promo</h3>
++          <p class="promo-overflow-text">
++            Enjoy 50% off all signature espresso drinks every weekday from 2 PM to 4 PM — fresh roasted beans, artisanal crema, and double shots all afternoon!
++          </p>
++          <button type="button" class="glow-btn">Claim Golden Hour Pass</button>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

@@ -1,0 +1,760 @@
+diff --git a/index.html b/index.html
+index 66c9173..6ad8d3b 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,85 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      cursor: pointer;
++      border: none;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .metrics-panel {
++      background: white;
++      border-left: 4px solid var(--accent);
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++    }
++
++    .metrics-panel h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .metrics-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 15px;
++      margin-bottom: 15px;
++    }
++
++    .metric-box {
++      background: var(--light);
++      padding: 12px 15px;
++      border-radius: 6px;
++      border: 1px solid var(--secondary);
++    }
++
++    .metric-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #6d4c41;
++    }
++
++    .metric-value {
++      font-size: 1.4rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 4px;
++    }
++
++    .metric-sub {
++      font-size: 0.8rem;
++      color: #5d4037;
++      margin-top: 2px;
++      word-break: break-all;
++    }
++
++    .metrics-log {
++      max-height: 220px;
++      overflow-y: auto;
++      font-family: monospace;
++      font-size: 0.82rem;
++      background: #2b1d1a;
++      color: #f5f5f5;
++      padding: 12px;
++      border-radius: 6px;
++      list-style: none;
++    }
++
++    .metrics-log li {
++      padding: 4px 0;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
++    }
++
++    .metrics-log li:last-child {
++      border-bottom: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -158,55 +231,651 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><a href="/" data-route="/" style="color: white; font-size: 1.5rem; font-weight: bold;">THE DAILY GRIND</a></div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-route="/menu">Menu</a></li>
++      <li><a href="/locations" data-route="/locations">Locations</a></li>
++      <li><a href="/rewards" data-route="/rewards">Rewards</a></li>
++      <li><a href="/account" data-route="/account">My Account</a></li>
++      <li><a href="/logout" data-route="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="hero" id="hero-section">
++    <h1 id="hero-title">Wake Up Your Senses</h1>
++    <p id="hero-subtitle">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
++      <a href="/order-online" data-route="/order-online" class="btn" id="hero-cta">Order Now</a>
++      <button type="button" class="btn" data-interaction="tasting-notes" style="background:#ffab40; color:#3e2723; font-weight:bold;">Show Roaster Tasting Notes</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="view-content">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
++            <a href="/menu/seasonal" data-route="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" class="btn" data-quick-add="Maple Oat Latte" style="background:#6d4c41;">Quick Add</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
++            <a href="/menu/espresso" data-route="/menu/espresso" class="btn">View Details</a>
++            <button type="button" class="btn" data-quick-add="Dark Roast Espresso" style="background:#6d4c41;">Quick Add</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
++            <a href="/menu/cold-brew" data-route="/menu/cold-brew" class="btn">View Details</a>
++            <button type="button" class="btn" data-quick-add="Cold Brew" style="background:#6d4c41;">Quick Add</button>
++          </div>
+         </div>
+       </div>
++      <div id="interaction-banner"></div>
+     </section>
++
++    <aside class="metrics-panel" aria-label="Performance Telemetry">
++      <h3>Soft Navigations &amp; Interaction Contentful Paint Telemetry</h3>
++      <div class="metrics-grid">
++        <div class="metric-box">
++          <div class="metric-label">Latest Soft Navigation (FCP)</div>
++          <div class="metric-value" id="metric-soft-nav-duration">-- ms</div>
++          <div class="metric-sub" id="metric-soft-nav-url">Waiting for navigation...</div>
++        </div>
++        <div class="metric-box">
++          <div class="metric-label">Interaction Contentful Paint</div>
++          <div class="metric-value" id="metric-icp-duration">-- ms</div>
++          <div class="metric-sub" id="metric-icp-element">Waiting for interaction paint...</div>
++        </div>
++        <div class="metric-box">
++          <div class="metric-label">Soft Nav Largest Contentful Paint</div>
++          <div class="metric-value" id="metric-soft-lcp-duration">-- ms</div>
++          <div class="metric-sub" id="metric-soft-lcp-detail">Navigation ID: --</div>
++        </div>
++      </div>
++      <ul class="metrics-log" id="metrics-log">
++        <li>Observing <code>soft-navigation</code> and <code>interaction-contentful-paint</code> entries...</li>
++      </ul>
++    </aside>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-route="/about">Our Story</a> |
++      <a href="/careers" data-route="/careers">Join the Team</a> |
++      <a href="/contact" data-route="/contact">Contact Us</a> |
++      <a href="/privacy-policy" data-route="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Store recorded performance entries for programmatic inspection
++      window.__performanceMetrics = {
++        softNavigations: [],
++        interactionContentfulPaints: [],
++        latestSoftNav: null,
++        latestICP: null
++      };
++
++      const logList = document.getElementById('metrics-log');
++      const softNavDurationEl = document.getElementById('metric-soft-nav-duration');
++      const softNavUrlEl = document.getElementById('metric-soft-nav-url');
++      const icpDurationEl = document.getElementById('metric-icp-duration');
++      const icpElementEl = document.getElementById('metric-icp-element');
++      const softLcpDurationEl = document.getElementById('metric-soft-lcp-duration');
++      const softLcpDetailEl = document.getElementById('metric-soft-lcp-detail');
++
++      function appendLog(message) {
++        if (!logList) return;
++        const li = document.createElement('li');
++        li.textContent = message;
++        logList.prepend(li);
++      }
++
++      function formatElementDesc(el) {
++        if (!el) return 'unknown element';
++        const tag = el.tagName ? el.tagName.toLowerCase() : 'node';
++        const id = el.id ? '#' + el.id : '';
++        const cls = el.className && typeof el.className === 'string'
++          ? '.' + el.className.trim().split(/\s+/).join('.')
++          : '';
++        return tag + id + cls;
++      }
++
++      function computeRenderDuration(entry) {
++        if (typeof entry.duration === 'number' && entry.duration > 0) {
++          return entry.duration;
++        }
++        const paintTimestamp = entry.presentationTime || entry.paintTime || entry.renderTime || entry.loadTime || 0;
++        if (paintTimestamp && typeof entry.startTime === 'number') {
++          return Math.max(0, paintTimestamp - entry.startTime);
++        }
++        return entry.duration || 0;
++      }
++
++      function recordICPEntry(entry, sourceLabel) {
++        const renderDuration = computeRenderDuration(entry);
++        const lcpCandidate = entry.largestContentfulPaint || entry;
++        const element = lcpCandidate.element || entry.element || null;
++        const size = lcpCandidate.size ?? entry.size ?? 0;
++        const paintTime = entry.presentationTime ?? entry.paintTime ?? lcpCandidate.renderTime ?? entry.startTime;
++
++        const record = {
++          entryType: entry.entryType || 'interaction-contentful-paint',
++          startTime: entry.startTime,
++          duration: renderDuration,
++          paintTime: paintTime,
++          presentationTime: entry.presentationTime,
++          interactionId: entry.interactionId,
++          navigationId: entry.navigationId,
++          size: size,
++          element: element,
++          largestContentfulPaint: entry.largestContentfulPaint || null,
++          rawEntry: entry
++        };
++
++        window.__performanceMetrics.interactionContentfulPaints.push(record);
++        window.__performanceMetrics.latestICP = record;
++
++        if (icpDurationEl) {
++          icpDurationEl.textContent = renderDuration.toFixed(1) + ' ms';
++        }
++        if (icpElementEl) {
++          icpElementEl.textContent =
++            'Element: ' + formatElementDesc(element) +
++            (size ? ' (' + size + ' px²)' : '') +
++            (entry.interactionId ? ' | Interaction #' + entry.interactionId : '');
++        }
++
++        // If this ICP matches the active soft navigation, update Soft Nav LCP display
++        const latestSoftNav = window.__performanceMetrics.latestSoftNav;
++        if (
++          latestSoftNav &&
++          ((entry.navigationId && entry.navigationId === latestSoftNav.navigationId) ||
++            (entry.interactionId && entry.interactionId === latestSoftNav.interactionId))
++        ) {
++          const softLcpTime = entry.presentationTime
++            ? entry.presentationTime - latestSoftNav.startTime
++            : renderDuration;
++          if (softLcpDurationEl) {
++            softLcpDurationEl.textContent = Math.max(0, softLcpTime).toFixed(1) + ' ms';
++          }
++          if (softLcpDetailEl) {
++            softLcpDetailEl.textContent =
++              'LCP: ' + formatElementDesc(element) + ' | Nav ID: ' + (entry.navigationId ?? latestSoftNav.navigationId ?? '--');
++          }
++        }
++
++        const logMsg =
++          '[' + (sourceLabel || 'interaction-contentful-paint') + '] ' +
++          'render duration=' + renderDuration.toFixed(1) + 'ms, ' +
++          'startTime=' + (entry.startTime ? entry.startTime.toFixed(1) : 0) + 'ms, ' +
++          'interactionId=' + (entry.interactionId ?? 'n/a') + ', ' +
++          'element=' + formatElementDesc(element);
++        console.log(logMsg, entry);
++        appendLog(logMsg);
++      }
++
++      function recordSoftNavEntry(entry) {
++        const navDuration = computeRenderDuration(entry);
++        const paintTime = entry.presentationTime ?? entry.paintTime ?? (entry.startTime + navDuration);
++
++        // Retrieve initial Largest Interaction Contentful Paint associated with this soft navigation if supported
++        const largestICP =
++          typeof entry.getLargestInteractionContentfulPaint === 'function'
++            ? entry.getLargestInteractionContentfulPaint()
++            : null;
++
++        const record = {
++          entryType: entry.entryType || 'soft-navigation',
++          name: entry.name,
++          startTime: entry.startTime,
++          duration: navDuration,
++          paintTime: paintTime,
++          presentationTime: entry.presentationTime,
++          interactionId: entry.interactionId,
++          navigationId: entry.navigationId,
++          navigationType: entry.navigationType,
++          largestInteractionContentfulPaint: largestICP,
++          rawEntry: entry
++        };
++
++        window.__performanceMetrics.softNavigations.push(record);
++        window.__performanceMetrics.latestSoftNav = record;
++
++        if (softNavDurationEl) {
++          softNavDurationEl.textContent = navDuration.toFixed(1) + ' ms';
++        }
++        if (softNavUrlEl) {
++          softNavUrlEl.textContent = 'Route: ' + entry.name;
++        }
++
++        if (largestICP) {
++          const softLcpDuration = computeRenderDuration(largestICP);
++          const lcpElem = largestICP.largestContentfulPaint?.element || largestICP.element || null;
++          if (softLcpDurationEl) {
++            softLcpDurationEl.textContent = softLcpDuration.toFixed(1) + ' ms';
++          }
++          if (softLcpDetailEl) {
++            softLcpDetailEl.textContent =
++              'LCP: ' + formatElementDesc(lcpElem) + ' | Nav ID: ' + (entry.navigationId ?? '--');
++          }
++          recordICPEntry(largestICP, 'soft-nav-largest-icp');
++        } else if (softLcpDetailEl) {
++          softLcpDetailEl.textContent = 'Navigation ID: ' + (entry.navigationId ?? '--');
++        }
++
++        const logMsg =
++          '[soft-navigation] url=' + entry.name + ', ' +
++          'duration=' + navDuration.toFixed(1) + 'ms, ' +
++          'startTime=' + (entry.startTime ? entry.startTime.toFixed(1) : 0) + 'ms, ' +
++          'interactionId=' + (entry.interactionId ?? 'n/a') + ', ' +
++          'navigationId=' + (entry.navigationId ?? 'n/a');
++        console.log(logMsg, entry);
++        appendLog(logMsg);
++      }
++
++      // 1. Observe 'soft-navigation' entries for client-side navigations
++      if (typeof PerformanceObserver !== 'undefined') {
++        try {
++          const softNavObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              recordSoftNavEntry(entry);
++            }
++          });
++          softNavObserver.observe({ type: 'soft-navigation', buffered: true });
++        } catch (err) {
++          console.warn('soft-navigation observer not supported in this browser:', err);
++        }
++
++        // 2. Observe 'interaction-contentful-paint' entries for user interactions & soft nav LCP
++        try {
++          const icpObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              recordICPEntry(entry, 'interaction-contentful-paint');
++            }
++          });
++          icpObserver.observe({ type: 'interaction-contentful-paint', buffered: true });
++        } catch (err) {
++          console.warn('interaction-contentful-paint observer not supported in this browser:', err);
++        }
++      }
++
++      // Client-side SPA Router & Interactive View Updates for The Daily Grind
++      const routes = {
++        '/': {
++          title: 'Wake Up Your Senses',
++          subtitle: 'Ethically sourced, locally roasted, delivered to your cup.',
++          heading: 'Seasonal Favorites',
++          cards: [
++            {
++              title: 'Maple Oat Latte',
++              description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++              actionLabel: 'View Details',
++              route: '/menu/seasonal',
++              price: '$5.75'
++            },
++            {
++              title: 'Dark Roast Espresso',
++              description: 'Bold, smokey, and perfect for a morning boost.',
++              actionLabel: 'View Details',
++              route: '/menu/espresso',
++              price: '$3.50'
++            },
++            {
++              title: 'Cold Brew',
++              description: 'Steeped for 18 hours for maximum smoothness.',
++              actionLabel: 'View Details',
++              route: '/menu/cold-brew',
++              price: '$4.75'
++            }
++          ]
++        },
++        '/menu': {
++          title: 'Handcrafted Coffee & Pastries',
++          subtitle: 'Roasted fresh every morning in small artisanal batches.',
++          heading: 'Full Coffee Bar Menu',
++          cards: [
++            {
++              title: 'Signature Pour Over',
++              description: 'Single-origin Ethiopian Yirgacheffe with floral & citrus notes.',
++              actionLabel: 'Customize Drink',
++              route: '/menu/seasonal',
++              price: '$5.25'
++            },
++            {
++              title: 'Velvet Cortado',
++              description: 'Equal parts double-shot espresso and silky steamed milk.',
++              actionLabel: 'Customize Drink',
++              route: '/menu/espresso',
++              price: '$4.50'
++            },
++            {
++              title: 'Nitro Cold Brew',
++              description: 'Infused with nitrogen for a cascading, velvety finish.',
++              actionLabel: 'Customize Drink',
++              route: '/menu/cold-brew',
++              price: '$5.50'
++            }
++          ]
++        },
++        '/menu/seasonal': {
++          title: 'Maple Oat Latte',
++          subtitle: 'Limited-time autumn harvest roast paired with organic oat milk.',
++          heading: 'Seasonal Drink Spotlight',
++          cards: [
++            {
++              title: 'Hot Maple Oat Latte (12oz)',
++              description: 'Double ristretto shot, steamed oat milk, pure Grade-A Vermont maple.',
++              actionLabel: 'Order Now',
++              route: '/order-online',
++              price: '$5.75'
++            },
++            {
++              title: 'Iced Maple Cold Foam Latte',
++              description: 'Chilled espresso over ice topped with maple-infused sweet cream foam.',
++              actionLabel: 'Order Now',
++              route: '/order-online',
++              price: '$6.25'
++            },
++            {
++              title: 'Spiced Cardamom Bun',
++              description: 'Freshly baked Swedish knot pastry—the ideal pairing.',
++              actionLabel: 'Order Now',
++              route: '/order-online',
++              price: '$4.25'
++            }
++          ]
++        },
++        '/menu/espresso': {
++          title: 'Dark Roast Espresso',
++          subtitle: 'Rich crema, dark chocolate undertones, zero bitterness.',
++          heading: 'Espresso Classics',
++          cards: [
++            {
++              title: 'Double Espresso Shot',
++              description: 'Pulled at 9 bars for 28 seconds from our signature blend.',
++              actionLabel: 'Order Now',
++              route: '/order-online',
++              price: '$3.50'
++            },
++            {
++              title: 'Traditional Cappuccino',
++              description: 'Rich espresso topped with airy, micro-foamed whole milk.',
++              actionLabel: 'Order Now',
++              route: '/order-online',
++              price: '$4.75'
++            },
++            {
++              title: 'House Americano',
++              description: 'Double espresso poured over filtered hot spring water.',
++              actionLabel: 'Order Now',
++              route: '/order-online',
++              price: '$3.75'
++            }
++          ]
++        },
++        '/menu/cold-brew': {
++          title: '18-Hour Artisanal Cold Brew',
++          subtitle: 'Coarse-ground Colombian beans steeped cold for ultra-low acidity.',
++          heading: 'Cold Brew Collection',
++          cards: [
++            {
++              title: 'Classic Black Cold Brew',
++              description: 'Crisp, chocolatey, and naturally sweet over artisan ice.',
++              actionLabel: 'Order Now',
++              route: '/order-online',
++              price: '$4.75'
++            },
++            {
++              title: 'Vanilla Sweet Cream Cold Brew',
++              description: 'Swirled with house-made Madagascar vanilla bean cream.',
++              actionLabel: 'Order Now',
++              route: '/order-online',
++              price: '$5.50'
++            },
++            {
++              title: 'Cold Brew Growler (64oz)',
++              description: 'Take home 8 servings of our fresh tap cold brew.',
++              actionLabel: 'Order Now',
++              route: '/order-online',
++              price: '$24.00'
++            }
++          ]
++        },
++        '/locations': {
++          title: 'Visit Our Neighborhood Cafes',
++          subtitle: 'Cozy seating, fast Wi-Fi, and the aroma of freshly ground beans.',
++          heading: 'Our Roasteries & Cafes',
++          cards: [
++            {
++              title: 'Downtown Roastery',
++              description: '412 Roaster Lane — Open Daily 6:00 AM to 8:00 PM.',
++              actionLabel: 'Order Pickup Here',
++              route: '/order-online',
++              price: 'Flagship'
++            },
++            {
++              title: 'Riverside Espresso Bar',
++              description: '88 Harbor Walk — Open Daily 6:30 AM to 6:00 PM.',
++              actionLabel: 'Order Pickup Here',
++              route: '/order-online',
++              price: 'Patio Seating'
++            },
++            {
++              title: 'University Commons',
++              description: '205 College Ave — Open Daily 7:00 AM to 10:00 PM.',
++              actionLabel: 'Order Pickup Here',
++              route: '/order-online',
++              price: 'Late Night'
++            }
++          ]
++        },
++        '/rewards': {
++          title: 'Daily Grind Rewards Club',
++          subtitle: 'Earn 10 Beans for every dollar spent toward free handcrafted drinks.',
++          heading: 'Member Perks & Tiers',
++          cards: [
++            {
++              title: 'Free Birthday Drink',
++              description: 'Celebrate your day with any size specialty beverage on the house.',
++              actionLabel: 'Check Balance',
++              route: '/account',
++              price: '100 Beans'
++            },
++            {
++              title: 'Roaster Reserve Access',
++              description: 'Early access to micro-lot single-origin bean releases.',
++              actionLabel: 'Check Balance',
++              route: '/account',
++              price: '250 Beans'
++            },
++            {
++              title: 'Free Oat or Almond Milk',
++              description: 'Complimentary plant-based milk upgrades for Gold members.',
++              actionLabel: 'Check Balance',
++              route: '/account',
++              price: 'Gold Tier'
++            }
++          ]
++        },
++        '/account': {
++          title: 'Welcome Back, Coffee Lover',
++          subtitle: 'Manage your subscriptions, saved orders, and reward beans.',
++          heading: 'Your Account Overview',
++          cards: [
++            {
++              title: 'Usual Morning Order',
++              description: '1x Maple Oat Latte (Oat Milk, Extra Shot) — Downtown Roastery.',
++              actionLabel: 'Reorder in 1-Click',
++              route: '/order-online',
++              price: '$6.50'
++            },
++            {
++              title: 'Bean Subscription',
++              description: '2 Bags / Month — House Espresso Whole Bean (Active).',
++              actionLabel: 'Browse Menu',
++              route: '/menu',
++              price: '$32.00/mo'
++            },
++            {
++              title: 'Rewards Balance: 340 Beans',
++              description: 'You have enough beans for 3 free handcrafted beverages!',
++              actionLabel: 'Redeem Rewards',
++              route: '/rewards',
++              price: 'Gold Status'
++            }
++          ]
++        },
++        '/order-online': {
++          title: 'Express Mobile Ordering',
++          subtitle: 'Skip the line—your drink will be waiting on the pickup bar.',
++          heading: 'Build Your Order',
++          cards: [
++            {
++              title: 'Maple Oat Latte',
++              description: 'Ready in ~4 mins at Downtown Roastery.',
++              actionLabel: 'Back to Menu',
++              route: '/menu',
++              price: '$5.75'
++            },
++            {
++              title: 'Dark Roast Espresso',
++              description: 'Ready in ~2 mins at Downtown Roastery.',
++              actionLabel: 'Back to Menu',
++              route: '/menu',
++              price: '$3.50'
++            },
++            {
++              title: '18-Hour Cold Brew',
++              description: 'Ready in ~2 mins at Downtown Roastery.',
++              actionLabel: 'Back to Menu',
++              route: '/menu',
++              price: '$4.75'
++            }
++          ]
++        }
++      };
++
++      function renderRoute(path, pushHistory) {
++        const routeData = routes[path] || {
++          title: 'The Daily Grind — ' + path.replace(/^\//, '').replace(/-/g, ' ').toUpperCase(),
++          subtitle: 'Artisanal small-batch coffee crafted with care.',
++          heading: 'Explore ' + path.replace(/^\//, ''),
++          cards: routes['/'].cards
++        };
++
++        if (pushHistory && window.location.pathname !== path) {
++          history.pushState({ route: path }, routeData.title, path);
++        }
++
++        document.title = routeData.title + ' | The Daily Grind';
++
++        // Replace hero and main view content with new DOM elements so the browser
++        // registers a contentful paint for both Soft Navigations and ICP
++        const heroSection = document.getElementById('hero-section');
++        if (heroSection) {
++          heroSection.innerHTML =
++            '<h1>' + routeData.title + '</h1>' +
++            '<p>' + routeData.subtitle + '</p>' +
++            '<div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">' +
++              '<a href="/order-online" data-route="/order-online" class="btn">Order Now</a>' +
++              '<button type="button" class="btn" data-interaction=" tasting-notes" style="background:#ffab40; color:#3e2723; font-weight:bold;">Show Roaster Tasting Notes</button>' +
++            '</div>';
++        }
++
++        const viewContent = document.getElementById('view-content');
++        if (viewContent) {
++          const cardsHtml = routeData.cards
++            .map(function (c) {
++              return (
++                '<div class="card">' +
++                  '<h3>' + c.title + '</h3>' +
++                  '<p>' + c.description + '</p>' +
++                  '<p style="font-weight:bold; margin-top:8px; color:var(--primary);">' + (c.price || '') + '</p>' +
++                  '<div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">' +
++                    '<a href="' + c.route + '" data-route="' + c.route + '" class="btn">' + c.actionLabel + '</a>' +
++                    '<button type="button" class="btn" data-quick-add="' + c.title + '" style="background:#6d4c41;">Quick Add</button>' +
++                  '</div>' +
++                '</div>'
++              );
++            })
++            .join('');
++
++          viewContent.innerHTML =
++            '<h2 style="text-align: center;">' + routeData.heading + '</h2>' +
++            '<div class="grid">' + cardsHtml + '</div>' +
++            '<div id="interaction-banner"></div>';
++        }
++      }
++
++      // Render contentful update for in-page user interactions (without URL change)
++      function renderInteractionUpdate(title, detail) {
++        const viewContent = document.getElementById('view-content');
++        if (!viewContent) return;
++        let banner = document.getElementById('interaction-banner');
++        if (!banner) {
++          banner = document.createElement('div');
++          banner.id = 'interaction-banner';
++          viewContent.appendChild(banner);
++        }
++        const card = document.createElement('div');
++        card.className = 'card';
++        card.style.marginTop = '20px';
++        card.style.border = '2px solid var(--accent)';
++        card.innerHTML =
++          '<h3>' + title + '</h3>' +
++          '<p>' + detail + '</p>';
++        banner.replaceChildren(card);
++      }
++
++      // Intercept clicks for client-side navigation and interactive content updates
++      document.addEventListener('click', function (event) {
++        const quickAddBtn = event.target.closest('[data-quick-add]');
++        if (quickAddBtn) {
++          event.preventDefault();
++          const item = quickAddBtn.getAttribute('data-quick-add');
++          renderInteractionUpdate(
++            'Added ' + item + ' to Your Cup',
++            'Freshly ground to order! This in-page update triggers an Interaction Contentful Paint entry without changing the URL.'
++          );
++          return;
++        }
++
++        const tastingBtn = event.target.closest('[data-interaction]');
++        if (tastingBtn) {
++          event.preventDefault();
++          renderInteractionUpdate(
++            'Today\'s Roaster Tasting Notes: Ethiopian & Colombian Blend',
++            'Aroma of toasted hazelnut, bright Meyer lemon acidity, and a lingering velvety dark cocoa finish.'
++          );
++          return;
++        }
++
++        const link = event.target.closest('a[href]');
++        if (!link) return;
++        const href = link.getAttribute('href');
++        if (!href || !href.startsWith('/')) return;
++
++        event.preventDefault();
++        renderRoute(href, true);
++      });
++
++      window.addEventListener('popstate', function () {
++        renderRoute(window.location.pathname || '/', false);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

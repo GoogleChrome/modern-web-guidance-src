@@ -1,0 +1,384 @@
+diff --git a/index.html b/index.html
+index 66c9173..8c9d667 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,61 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .translator {
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: clamp(20px, 4vw, 36px);
++      margin-bottom: 40px;
++      scroll-margin-top: 100px;
++    }
++
++    .translator h2 { color: var(--primary); }
++    .translator-intro { margin: 6px 0 24px; }
++    .translation-languages {
++      display: grid;
++      grid-template-columns: 1fr auto 1fr;
++      gap: 16px;
++      align-items: end;
++      margin-bottom: 20px;
++    }
++    .translator label { display: block; font-weight: 600; margin-bottom: 6px; }
++    .translator select, .translator textarea {
++      width: 100%;
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++      border: 1px solid #a18a82;
++      border-radius: 5px;
++      padding: 10px 12px;
++    }
++    .translation-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
++    .translator textarea { min-height: 160px; resize: vertical; }
++    .translator button { font: inherit; cursor: pointer; border: 0; }
++    .translator .btn { margin-top: 0; }
++    .translator .secondary-btn {
++      background: transparent;
++      border: 1px solid #a18a82;
++      border-radius: 5px;
++      padding: 9px 14px;
++      color: var(--primary);
++    }
++    .translator button:disabled { opacity: .55; cursor: default; }
++    .translator :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .translation-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0 12px; }
++    .translation-note, .translation-count { font-size: .85rem; color: #67544e; }
++    .translation-count { display: block; margin-top: 4px; }
++    .translation-status { min-height: 1.6em; margin: 8px 0; }
++    .translation-status[data-error="true"] { color: #a12616; }
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .translation-panels { grid-template-columns: 1fr; }
++      .translation-languages { gap: 8px; }
++      .translator .secondary-btn { padding: 9px 10px; }
++    }
+   </style>
+ </head>
+ 
+@@ -163,6 +218,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#translate">Translate</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,6 +231,42 @@
+   </header>
+ 
+   <main class="container">
++    <section class="translator" id="translate" aria-labelledby="translation-heading">
++      <h2 id="translation-heading">A little coffee. A little conversation.</h2>
++      <p class="translator-intro">Translate a message, a menu item, or your next coffee order.</p>
++      <form id="translation-form">
++        <div class="translation-languages">
++          <div>
++            <label for="source-language">From</label>
++            <select id="source-language" name="source-language"></select>
++          </div>
++          <button type="button" class="secondary-btn" id="swap-languages" aria-label="Swap source and target languages">⇄ Swap</button>
++          <div>
++            <label for="target-language">To</label>
++            <select id="target-language" name="target-language"></select>
++          </div>
++        </div>
++        <div class="translation-panels">
++          <div>
++            <label for="source-text">Your text</label>
++            <textarea id="source-text" name="text" placeholder="What would you like to say?" maxlength="500" required dir="auto" aria-describedby="text-count translation-note"></textarea>
++            <span id="text-count" class="translation-count">0 / 500 bytes</span>
++          </div>
++          <div>
++            <label for="translated-text">Translation</label>
++            <textarea id="translated-text" placeholder="Your translation will appear here" readonly dir="auto"></textarea>
++          </div>
++        </div>
++        <div class="translation-actions">
++          <button type="submit" class="btn" id="translate-button">Translate text</button>
++          <button type="button" class="secondary-btn" id="copy-translation" disabled>Copy translation</button>
++          <button type="button" class="secondary-btn" id="clear-translation">Clear</button>
++        </div>
++        <p id="translation-status" class="translation-status" role="status" aria-live="polite" aria-atomic="true"></p>
++        <p id="translation-note" class="translation-note">Up to 500 UTF-8 bytes per message (some characters use multiple bytes). Uses on-device translation when ready; otherwise your text is sent to <a href="https://mymemory.translated.net/" target="_blank" rel="noopener noreferrer">MyMemory</a>. Online translation is subject to service availability and daily limits.</p>
++      </form>
++      <noscript><p>Please enable JavaScript to use text translation.</p></noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +299,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./translation.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..7839ada 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test translation-service.test.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/translation-service.mjs b/translation-service.mjs
+new file mode 100644
+index 0000000..327d654
+--- /dev/null
++++ b/translation-service.mjs
+@@ -0,0 +1,64 @@
++export const languages = [
++  ['en', 'English'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'],
++  ['it', 'Italian'], ['pt', 'Portuguese'], ['nl', 'Dutch'], ['pl', 'Polish'],
++  ['ar', 'Arabic'], ['hi', 'Hindi'], ['ja', 'Japanese'], ['ko', 'Korean'],
++  ['zh', 'Chinese'], ['uk', 'Ukrainian'], ['vi', 'Vietnamese'],
++];
++
++export const byteLength = (text) => new TextEncoder().encode(text).length;
++
++export async function translateText(text, sourceLanguage, targetLanguage, {
++  fetchImpl = globalThis.fetch,
++  translatorAPI = globalThis.Translator,
++} = {}) {
++  const input = text.trim();
++  if (!input) throw new Error('Enter some text to translate.');
++  if (byteLength(input) > 500) throw new Error('Your message is too long. Please keep it within 500 bytes.');
++  if (![sourceLanguage, targetLanguage].every(code => languages.some(([language]) => language === code))) {
++    throw new Error('Choose a supported source and target language.');
++  }
++  if (sourceLanguage === targetLanguage) return { text: input, provider: 'same-language' };
++
++  // Only use downloaded models; online translation avoids requiring a model download.
++  if (translatorAPI) {
++    let translator;
++    try {
++      const options = { sourceLanguage, targetLanguage };
++      if (await translatorAPI.availability(options) === 'available') {
++        translator = await translatorAPI.create({ ...options, monitor() {} });
++        const translated = await translator.translate(input);
++        if (typeof translated === 'string' && translated.trim()) {
++          return { text: translated, provider: 'on-device' };
++        }
++      }
++    } catch {
++      // Unsupported pairs or browser permissions can still use the online service.
++    } finally {
++      translator?.destroy();
++    }
++  }
++
++  const url = new URL('https://api.mymemory.translated.net/get');
++  url.searchParams.set('q', input);
++  url.searchParams.set('langpair', `${sourceLanguage}|${targetLanguage}`);
++  const controller = new AbortController();
++  const timeout = setTimeout(() => controller.abort(), 20000);
++  try {
++    const response = await fetchImpl(url, { signal: controller.signal });
++    if (!response.ok) throw new Error('The translation service is unavailable. Please try again later.');
++    const data = await response.json();
++    if (data.quotaFinished || Number(data.responseStatus) === 429) {
++      throw new Error('The online translation daily limit has been reached. Please try again later.');
++    }
++    if (Number(data.responseStatus) !== 200 || typeof data.responseData?.translatedText !== 'string' || !data.responseData.translatedText.trim()) {
++      throw new Error('The service could not translate this message. Please try another language or try again later.');
++    }
++    return { text: data.responseData.translatedText, provider: 'MyMemory' };
++  } catch (error) {
++    if (controller.signal.aborted) throw new Error('Translation timed out. Please try again.');
++    if (error instanceof TypeError) throw new Error('Could not connect to the translation service. Check your connection and try again.');
++    throw error;
++  } finally {
++    clearTimeout(timeout);
++  }
++}
+diff --git a/translation-service.test.mjs b/translation-service.test.mjs
+new file mode 100644
+index 0000000..a77c637
+--- /dev/null
++++ b/translation-service.test.mjs
+@@ -0,0 +1,62 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { byteLength, translateText } from './translation-service.mjs';
++
++const remote = (data) => ({ translatorAPI: null, fetchImpl: async () => ({ ok: true, json: async () => data }) });
++
++test('rejects empty input and multibyte text over the service limit before sending', async () => {
++  const options = { translatorAPI: null, fetchImpl: () => assert.fail('must not send invalid text') };
++  await assert.rejects(translateText('  ', 'en', 'es', options), /Enter some text/);
++  assert.equal(byteLength('☕'), 3);
++  await assert.rejects(translateText('☕'.repeat(167), 'en', 'es', options), /too long/);
++});
++
++test('same-language translation returns input without a network request', async () => {
++  const result = await translateText('Hello', 'en', 'en', { fetchImpl: () => assert.fail('must not fetch') });
++  assert.deepEqual(result, { text: 'Hello', provider: 'same-language' });
++});
++
++test('online request safely encodes text and languages', async () => {
++  const result = await translateText('Coffee & tea?', 'en', 'es', {
++    translatorAPI: null,
++    fetchImpl: async (url, options) => {
++      assert.equal(url.searchParams.get('q'), 'Coffee & tea?');
++      assert.equal(url.searchParams.get('langpair'), 'en|es');
++      assert.ok(options.signal instanceof AbortSignal);
++      return { ok: true, json: async () => ({ responseStatus: 200, responseData: { translatedText: '¿Café y té?' } }) };
++    },
++  });
++  assert.deepEqual(result, { text: '¿Café y té?', provider: 'MyMemory' });
++});
++
++test('uses a ready on-device model and releases it', async () => {
++  let destroyed = false;
++  const result = await translateText('Hello', 'en', 'es', {
++    fetchImpl: () => assert.fail('must not fetch'),
++    translatorAPI: {
++      availability: async options => { assert.deepEqual(options, { sourceLanguage: 'en', targetLanguage: 'es' }); return 'available'; },
++      create: async options => {
++        assert.equal(options.sourceLanguage, 'en');
++        assert.equal(options.targetLanguage, 'es');
++        return { translate: async () => 'Hola', destroy: () => { destroyed = true; } };
++      },
++    },
++  });
++  assert.equal(result.provider, 'on-device');
++  assert.equal(destroyed, true);
++});
++
++test('falls back when the model is missing or the native API fails', async () => {
++  for (const availability of [async () => 'downloadable', async () => { throw new Error('unsupported'); }]) {
++    const options = remote({ responseStatus: 200, responseData: { translatedText: 'Hola' } });
++    options.translatorAPI = { availability, create: () => assert.fail('must not download') };
++    assert.equal((await translateText('Hello', 'en', 'es', options)).text, 'Hola');
++  }
++});
++
++test('handles quota limits, invalid results, and network failures', async () => {
++  await assert.rejects(translateText('Hello', 'en', 'es', remote({ responseStatus: 429, quotaFinished: true })), /daily limit/);
++  await assert.rejects(translateText('Hello', 'en', 'es', remote({ responseStatus: 403 })), /could not translate/);
++  await assert.rejects(translateText('Hello', 'en', 'es', remote({ responseStatus: 200, responseData: {} })), /could not translate/);
++  await assert.rejects(translateText('Hello', 'en', 'es', { translatorAPI: null, fetchImpl: async () => { throw new TypeError('Failed to fetch'); } }), /Check your connection/);
++});
+diff --git a/translation.js b/translation.js
+new file mode 100644
+index 0000000..8ed97c6
+--- /dev/null
++++ b/translation.js
+@@ -0,0 +1,103 @@
++import { languages, byteLength, translateText } from './translation-service.mjs';
++
++const form = document.querySelector('#translation-form');
++const source = document.querySelector('#source-language');
++const target = document.querySelector('#target-language');
++const input = document.querySelector('#source-text');
++const output = document.querySelector('#translated-text');
++const status = document.querySelector('#translation-status');
++const count = document.querySelector('#text-count');
++const translateButton = document.querySelector('#translate-button');
++const copyButton = document.querySelector('#copy-translation');
++const swapButton = document.querySelector('#swap-languages');
++const clearButton = document.querySelector('#clear-translation');
++
++for (const [code, name] of languages) {
++  source.add(new Option(name, code));
++  target.add(new Option(name, code));
++}
++source.value = 'en';
++target.value = 'es';
++
++function announce(message = '', error = false) {
++  status.textContent = message;
++  status.dataset.error = String(error);
++}
++
++function updateInput() {
++  const bytes = byteLength(input.value.trim());
++  count.textContent = `${bytes} / 500 bytes`;
++  input.setCustomValidity(bytes > 500 ? 'Please shorten your message to 500 UTF-8 bytes or fewer.' : '');
++  input.lang = source.value;
++  output.lang = target.value;
++}
++
++function invalidate() {
++  output.value = '';
++  copyButton.disabled = true;
++  announce();
++  updateInput();
++}
++
++input.addEventListener('input', invalidate);
++source.addEventListener('change', invalidate);
++target.addEventListener('change', invalidate);
++
++swapButton.addEventListener('click', () => {
++  const previousSource = source.value;
++  source.value = target.value;
++  target.value = previousSource;
++  if (output.value) input.value = output.value;
++  invalidate();
++});
++
++clearButton.addEventListener('click', () => {
++  input.value = '';
++  invalidate();
++  input.focus();
++});
++
++copyButton.addEventListener('click', async () => {
++  try {
++    await navigator.clipboard.writeText(output.value);
++    announce('Translation copied.');
++  } catch {
++    output.focus();
++    output.select();
++    announce('Copy is unavailable. The translation is selected so you can copy it manually.');
++  }
++});
++
++form.addEventListener('submit', async (event) => {
++  event.preventDefault();
++  const controls = [source, target, input, translateButton, swapButton, clearButton];
++  controls.forEach(control => { control.disabled = true; });
++  output.value = '';
++  copyButton.disabled = true;
++  form.setAttribute('aria-busy', 'true');
++  translateButton.textContent = 'Translating…';
++  announce('Translating your text…');
++  try {
++    const result = await translateText(input.value, source.value, target.value);
++    // Decode service entities as text in an inert textarea, never as page HTML.
++    if (result.provider === 'MyMemory') {
++      const decoder = document.createElement('textarea');
++      decoder.innerHTML = result.text.replaceAll('<', '&lt;');
++      output.value = decoder.value;
++    } else {
++      output.value = result.text;
++    }
++    copyButton.disabled = false;
++    announce(result.provider === 'same-language'
++      ? 'Both languages are the same, so your text is unchanged.'
++      : `Translation ready${result.provider === 'on-device' ? ' · translated on your device' : ' · powered by MyMemory'}.`);
++  } catch (error) {
++    announce(error.message || 'Translation failed. Please try again.', true);
++  } finally {
++    controls.forEach(control => { control.disabled = false; });
++    form.setAttribute('aria-busy', 'false');
++    translateButton.textContent = 'Translate text';
++  }
++});
++
++updateInput();

@@ -1,0 +1,32 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,28 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Dashboard</title>
++  <!-- Critical interactivity: async, boosted priority -->
++  <script src="/js/app.js" async fetchpriority="high"></script>
++  <!-- Analytics: non-essential, async, low priority -->
++  <script src="/js/tracker.js" async fetchpriority="low"></script>
++  <style>
++    body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; }
++    main { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
++    section { border: 1px solid #ccc; border-radius: 0.5rem; padding: 1rem; }
++  </style>
++</head>
++<body>
++  <h1>Dashboard</h1>
++  <main>
++    <section><h2>Users</h2><p>—</p></section>
++    <section><h2>Revenue</h2><p>—</p></section>
++    <section><h2>Widgets</h2><div id="legacy-widgets"></div></section>
++  </main>
++  <!-- Legacy script: kept parser-blocking (may rely on document.write/sync order),
++       placed at end of body and deprioritized so it doesn't compete with critical resources -->
++  <script src="/js/legacy-widgets.js" fetchpriority="low"></script>
++</body>
++</html>

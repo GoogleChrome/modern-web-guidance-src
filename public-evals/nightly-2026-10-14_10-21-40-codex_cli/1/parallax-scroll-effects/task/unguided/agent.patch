@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,156 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Static first; scroll motion is a progressive enhancement. */
++    .coffee-story {
++      position: relative;
++      isolation: isolate;
++      overflow: clip;
++      display: grid;
++      align-items: center;
++      min-height: 520px;
++      padding: 100px max(6%, calc((100vw - 1100px) / 2));
++      background: #241a15;
++      color: #fff7ee;
++      view-timeline: --coffee-story block;
++    }
++
++    .story-layer {
++      position: absolute;
++      pointer-events: none;
++    }
++
++    .story-photo {
++      inset: -80px 0;
++      width: 100%;
++      height: calc(100% + 160px);
++      object-fit: cover;
++      object-position: center;
++      opacity: 0.65;
++      z-index: -3;
++      --travel: 65px;
++    }
++
++    .coffee-story::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(90deg, rgba(28, 19, 14, 0.97), rgba(28, 19, 14, 0.85) 45%, rgba(28, 19, 14, 0.2));
++      pointer-events: none;
++      z-index: -2;
++    }
++
++    .story-lettering {
++      right: -0.02em;
++      top: 12%;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(110px, 19vw, 270px);
++      font-weight: bold;
++      line-height: 0.9;
++      letter-spacing: -0.06em;
++      color: rgba(255, 247, 238, 0.09);
++      z-index: -1;
++      --travel: 105px;
++    }
++
++    .story-foreground {
++      right: 7%;
++      bottom: -130px;
++      width: clamp(220px, 28vw, 400px);
++      aspect-ratio: 1;
++      border: 1px solid rgba(255, 213, 158, 0.4);
++      border-radius: 50%;
++      z-index: -1;
++      --travel: 150px;
++    }
++
++    .story-foreground::before,
++    .story-foreground::after {
++      content: '';
++      position: absolute;
++      inset: 24px;
++      border: 1px solid rgba(255, 213, 158, 0.25);
++      border-radius: inherit;
++    }
++
++    .story-foreground::after {
++      inset: 48px;
++    }
++
++    .story-copy {
++      max-width: 500px;
++    }
++
++    .story-eyebrow {
++      margin-bottom: 20px;
++      color: #ffd59e;
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 0.2em;
++      text-transform: uppercase;
++    }
++
++    .story-copy h2 {
++      margin-bottom: 22px;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2.5rem, 5vw, 4rem);
++      font-weight: normal;
++      line-height: 1.12;
++    }
++
++    .story-copy > p:not(.story-eyebrow) {
++      max-width: 390px;
++      color: #eaded2;
++    }
++
++    .story-link {
++      display: inline-block;
++      margin-top: 28px;
++      padding: 8px 0;
++      color: #ffd59e;
++      text-decoration-thickness: 1px;
++      text-underline-offset: 7px;
++    }
++
++    .story-link:focus-visible {
++      outline: 2px solid #ffd59e;
++      outline-offset: 6px;
++    }
++
++    @keyframes coffee-parallax {
++      from { transform: translateY(calc(-1 * var(--travel))); }
++      to { transform: translateY(var(--travel)); }
++    }
++
++    /* Animate only transforms, on the section's shared view timeline.
++       No scroll listeners, fixed backgrounds, or persistent will-change. */
++    @supports (animation-timeline: --coffee-story) and (animation-range: entry 0% exit 100%) {
++      @media (prefers-reduced-motion: no-preference) {
++        .story-layer {
++          animation: coffee-parallax linear both;
++          animation-duration: auto;
++          animation-timeline: --coffee-story;
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
++    @media (max-width: 600px) {
++      .coffee-story {
++        min-height: 480px;
++        padding: 72px 24px;
++      }
++
++      .coffee-story::after {
++        background: rgba(28, 19, 14, 0.88);
++      }
++
++      .story-lettering { top: 18%; }
++      .story-foreground { right: -70px; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +321,22 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="coffee-story" aria-labelledby="coffee-story-title">
++      <img class="story-layer story-photo" src="assets/coffee-beans.jpg" alt="" aria-hidden="true" width="1600" height="1220" loading="lazy" decoding="async">
++      <span class="story-layer story-lettering" aria-hidden="true">Roasted.</span>
++      <span class="story-layer story-foreground" aria-hidden="true"></span>
++      <div class="story-copy">
++        <p class="story-eyebrow">Good coffee. From the ground up.</p>
++        <h2 id="coffee-story-title">A little care.<br>A deeper connection.</h2>
++        <p>From the hands that harvest each bean to the first sip of your morning, every step matters. Ethically sourced. Locally roasted. Always worth slowing down for.</p>
++        <a class="story-link" href="/about">Discover our story <span aria-hidden="true">&rarr;</span></a>
++      </div>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

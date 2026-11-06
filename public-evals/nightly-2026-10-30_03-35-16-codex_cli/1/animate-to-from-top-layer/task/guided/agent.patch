@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,145 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button {
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn {
++      border: 0;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .overlay {
++      color: var(--text);
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: 28px;
++      box-shadow: 0 16px 60px rgb(0 0 0 / 0.25);
++      opacity: 0;
++      transform: translateY(16px) scale(0.97);
++      transition: opacity 240ms ease, transform 240ms ease,
++        display 240ms, overlay 240ms;
++      transition-behavior: allow-discrete;
++    }
++
++    #logout-dialog {
++      margin: auto;
++      width: min(440px, calc(100% - 32px));
++      max-height: calc(100dvh - 32px);
++    }
++
++    #logout-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    #logout-dialog::backdrop {
++      background: rgb(0 0 0 / 0);
++      overflow: hidden;
++      overscroll-behavior: contain;
++      transition: background-color 240ms ease, display 240ms, overlay 240ms;
++      transition-behavior: allow-discrete;
++    }
++
++    #logout-dialog[open]:not([data-closing])::backdrop {
++      background: rgb(0 0 0 / 0.5);
++    }
++
++    .overlay:is([open], :popover-open, [data-visible]):not([data-closing]) {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    @starting-style {
++      .overlay:is([open], :popover-open, [data-visible]):not([data-closing]) {
++        opacity: 0;
++        transform: translateY(16px) scale(0.97);
++      }
++
++      #logout-dialog[open]:not([data-closing])::backdrop {
++        background: rgb(0 0 0 / 0);
++      }
++    }
++
++    .overlay h2 {
++      padding-right: 28px;
++      margin-bottom: 12px;
++    }
++
++    .overlay-close {
++      position: absolute;
++      top: 8px;
++      right: 8px;
++      width: 36px;
++      height: 36px;
++      border: 0;
++      border-radius: 50%;
++      color: var(--primary);
++      background: transparent;
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    .overlay-close:hover {
++      background: var(--secondary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-top: 24px;
++    }
++
++    .dialog-actions .btn {
++      margin: 0;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    #ordering-notice {
++      position: fixed;
++      inset: auto 20px 20px auto;
++      margin: 0;
++      width: min(380px, calc(100% - 40px));
++      padding-right: 48px;
++      z-index: 1001;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .overlay,
++      .overlay:is([open], :popover-open, [data-visible]):not([data-closing]) {
++        transform: none;
++        transition-duration: 0.01ms;
++      }
++
++      #logout-dialog::backdrop {
++        transition-duration: 0.01ms;
++      }
++
++      @starting-style {
++        .overlay:is([open], :popover-open, [data-visible]):not([data-closing]) {
++          transform: none;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,16 +300,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn" aria-haspopup="dialog" aria-controls="logout-dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" class="btn" aria-controls="ordering-notice" aria-expanded="false">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +343,92 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="logout-dialog" class="overlay" aria-labelledby="logout-title" aria-describedby="logout-description">
++    <button type="button" id="close-dialog-btn" class="overlay-close" aria-label="Close logout confirmation">&times;</button>
++    <h2 id="logout-title">Log out?</h2>
++    <p id="logout-description">Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" id="cancel-logout-btn" class="btn btn-secondary" autofocus>Cancel</button>
++      <a href="/logout" class="btn">Log out</a>
++    </div>
++  </dialog>
++
++  <aside id="ordering-notice" class="overlay" popover="manual" aria-label="Online ordering status" hidden>
++    <button type="button" id="dismiss-notice-btn" class="overlay-close" aria-label="Dismiss ordering notice">&times;</button>
++    <p role="status">online ordering is currently offline</p>
++  </aside>
++
++  <script>
++    const logoutLink = document.getElementById('open-dialog-btn');
++    const dialog = document.getElementById('logout-dialog');
++    const orderButton = document.getElementById('foobar');
++    const notice = document.getElementById('ordering-notice');
++    const hasPopover = 'popover' in HTMLElement.prototype;
++
++    // Keep overlays in the top layer until their CSS exit animations finish.
++    // This also handles browsers without discrete display/overlay transitions.
++    async function dismiss(element, finish) {
++      if (element.hasAttribute('data-closing')) return;
++      element.setAttribute('data-closing', '');
++      const animations = element.getAnimations({ subtree: true });
++      await Promise.race([
++        Promise.allSettled(animations.map(animation => animation.finished)),
++        new Promise(resolve => setTimeout(resolve, 500))
++      ]);
++      finish();
++      element.removeAttribute('data-closing');
++    }
++
++    function closeDialog() {
++      return dismiss(dialog, () => dialog.close());
++    }
++
++    function closeNotice() {
++      return dismiss(notice, () => {
++        if (hasPopover) notice.hidePopover();
++        notice.removeAttribute('data-visible');
++        notice.hidden = true;
++        orderButton.setAttribute('aria-expanded', 'false');
++        if (notice.contains(document.activeElement)) orderButton.focus();
++      });
++    }
++
++    logoutLink.addEventListener('click', event => {
++      event.preventDefault();
++      if (orderButton.getAttribute('aria-expanded') === 'true') closeNotice();
++      dialog.showModal();
++    });
++    document.getElementById('close-dialog-btn').addEventListener('click', closeDialog);
++    document.getElementById('cancel-logout-btn').addEventListener('click', closeDialog);
++    dialog.addEventListener('cancel', event => {
++      event.preventDefault();
++      closeDialog();
++    });
++
++    orderButton.addEventListener('click', () => {
++      if (orderButton.getAttribute('aria-expanded') === 'true') {
++        closeNotice();
++        return;
++      }
++      notice.hidden = false;
++      if (hasPopover) notice.showPopover();
++      else notice.setAttribute('data-visible', '');
++      orderButton.setAttribute('aria-expanded', 'true');
++    });
++    document.getElementById('dismiss-notice-btn').addEventListener('click', closeNotice);
++    document.addEventListener('keydown', event => {
++      if (event.key === 'Escape' && orderButton.getAttribute('aria-expanded') === 'true') {
++        closeNotice();
++      }
++    });
++    document.addEventListener('pointerdown', event => {
++      if (orderButton.getAttribute('aria-expanded') === 'true' &&
++          !notice.contains(event.target) && !orderButton.contains(event.target)) {
++        closeNotice();
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

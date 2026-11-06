@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,49 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .coffee-preferences {
++      margin-top: 40px;
++      text-align: left;
++    }
++
++    .coffee-preferences .grid {
++      margin-bottom: 20px;
++    }
++
++    .coffee-preferences label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .coffee-preferences input {
++      width: 100%;
++      min-width: 0;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .coffee-preferences .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .coffee-preferences :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #preferences-status {
++      margin-top: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +235,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card coffee-preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Your Coffee Ritual</h2>
++      <p id="preferences-help">Choose your daily pickup reminder time and coffee anniversary. Your selections stay the same wherever you travel.</p>
++      <form id="coffee-preferences-form" aria-describedby="preferences-help storage-help">
++        <div class="grid">
++          <div>
++            <label for="pickup-reminder-time">Daily pickup reminder time</label>
++            <input type="time" id="pickup-reminder-time" name="pickupReminderTime" step="60">
++          </div>
++          <div>
++            <label for="coffee-anniversary-date">Coffee anniversary date</label>
++            <input type="date" id="coffee-anniversary-date" name="coffeeAnniversaryDate">
++          </div>
++        </div>
++        <p id="storage-help">Preferences are saved in this browser. Setting a reminder time does not enable notifications.</p>
++        <button type="submit" class="btn">Save preferences</button>
++        <p id="preferences-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +267,90 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const preferencesForm = document.getElementById('coffee-preferences-form');
++    const pickupTimeInput = document.getElementById('pickup-reminder-time');
++    const anniversaryInput = document.getElementById('coffee-anniversary-date');
++    const preferencesStatus = document.getElementById('preferences-status');
++    const preferencesKey = 'daily-grind-coffee-preferences';
++    let temporalPromise;
++
++    function getTemporal() {
++      if (globalThis.Temporal?.PlainTime && globalThis.Temporal?.PlainDate) {
++        return Promise.resolve(globalThis.Temporal);
++      }
++      // Load only where native Temporal is unavailable; never fall back to Date.
++      if (!temporalPromise) {
++        temporalPromise = import('https://esm.sh/@js-temporal/polyfill@0.5.1')
++          .then(module => module.Temporal)
++          .catch(error => {
++            temporalPromise = undefined;
++            throw error;
++          });
++      }
++      return temporalPromise;
++    }
++
++    function showSavedPreferences(preferences) {
++      preferencesStatus.textContent = `Saved in this browser. Daily pickup reminder: ${preferences.pickupReminderTime || 'Not set'}. Coffee anniversary: ${preferences.coffeeAnniversaryDate || 'Not set'}.`;
++    }
++
++    try {
++      const saved = localStorage.getItem(preferencesKey);
++      if (saved) {
++        const preferences = JSON.parse(saved);
++        if (typeof preferences?.pickupReminderTime !== 'string' ||
++            typeof preferences?.coffeeAnniversaryDate !== 'string') {
++          throw new Error('Invalid saved preferences');
++        }
++        // Native input values are plain strings: HH:mm and YYYY-MM-DD.
++        pickupTimeInput.value = preferences.pickupReminderTime;
++        anniversaryInput.value = preferences.coffeeAnniversaryDate;
++        if (pickupTimeInput.value !== preferences.pickupReminderTime ||
++            anniversaryInput.value !== preferences.coffeeAnniversaryDate ||
++            !preferencesForm.checkValidity()) {
++          throw new Error('Invalid saved preferences');
++        }
++        showSavedPreferences(preferences);
++      }
++    } catch {
++      preferencesStatus.textContent = 'Saved preferences could not be loaded. Choose your preferences and try saving again.';
++    }
++
++    preferencesForm.addEventListener('submit', async event => {
++      event.preventDefault();
++      if (!preferencesForm.reportValidity()) return;
++
++      // Capture the selections before waiting for a possible polyfill download.
++      const pickupReminderTime = pickupTimeInput.value;
++      const coffeeAnniversaryDate = anniversaryInput.value;
++      const saveButton = preferencesForm.querySelector('button');
++      saveButton.disabled = true;
++      preferencesStatus.textContent = 'Saving preferences…';
++
++      try {
++        const temporal = await getTemporal();
++        // Plain types have no offset or time zone. Persist only their plain values,
++        // never timestamps, UTC strings, or valueAsDate/valueAsNumber conversions.
++        const preferences = {
++          pickupReminderTime: pickupReminderTime
++            ? temporal.PlainTime.from(pickupReminderTime).toString({ smallestUnit: 'minute' })
++            : '',
++          coffeeAnniversaryDate: coffeeAnniversaryDate
++            ? temporal.PlainDate.from(coffeeAnniversaryDate).toString()
++            : ''
++        };
++        localStorage.setItem(preferencesKey, JSON.stringify(preferences));
++        showSavedPreferences(preferences);
++      } catch {
++        preferencesStatus.textContent = 'Preferences could not be saved. Check your connection and browser storage settings, then try again.';
++      } finally {
++        saveButton.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

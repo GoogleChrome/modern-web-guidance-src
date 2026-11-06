@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,58 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      max-width: 720px;
++      margin: 60px auto 0;
++    }
++
++    .journal h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 20px;
++    }
++
++    .journal-text p {
++      margin-bottom: 1rem;
++    }
++
++    .journal-actions {
++      margin-top: 10px;
++    }
++
++    .journal-actions .btn {
++      margin-top: 0;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .journal-actions .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .journal-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .journal-summary {
++      margin-top: 15px;
++      padding: 15px 20px;
++      background: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .journal-summary ul {
++      padding-left: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +246,37 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="journal container" aria-labelledby="journal-heading">
++    <h2 id="journal-heading">Roaster's Journal</h2>
++    <div class="journal-text" id="journal-text">
++      <p>Every bag we roast begins months before it reaches our shop, usually at a long wooden table in a small
++        cooperative's cupping room. Our head roaster travels to our partner regions each harvest, tasting dozens of
++        lots side by side and talking with the farmers who grew them. We look for sweetness, clarity, and balance, but
++        we also look for people we want to work with for years rather than a single season.</p>
++      <p>We buy directly from cooperatives and family farms in Ethiopia, Colombia, and Guatemala whenever we can, and
++        we pay well above the Fairtrade minimum. Those premiums are agreed on before the harvest, so farmers can plan
++        their year, invest in drying beds and washing stations, and pay pickers fairly. Many of our relationships are
++        now longer than a decade, and a few of the farms have become friends.</p>
++      <p>Once green coffee lands at our warehouse, we roast small test batches and cup them again to confirm that the
++        flavors we loved at origin survived the journey. Lots that fall short are declined, and we tell the producer
++        why. Lots that pass are roasted in small batches here in town, rested for a few days, and bagged with the
++        roast date on the label so you always know how fresh your coffee is.</p>
++      <p>Sourcing this way is slower and costs more, and some seasons we simply run out of a favorite. We think that's
++        a fair trade for coffee that tastes like somewhere, and for a supply chain where everyone, from the hillside to
++        the counter, gets a fair share.</p>
++    </div>
++    <div class="journal-actions">
++      <button type="button" class="btn" id="summarize-btn" hidden>Summarize</button>
++    </div>
++    <p class="journal-status" id="summarize-status" role="status"></p>
++    <div class="journal-summary" id="summary" hidden>
++      <h3>In short</h3>
++      <ul id="summary-list"></ul>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +285,79 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const summarizeBtn = document.getElementById('summarize-btn');
++    const statusEl = document.getElementById('summarize-status');
++    const summaryBox = document.getElementById('summary');
++    const summaryList = document.getElementById('summary-list');
++    const summarizerOptions = {
++      sharedContext: 'A coffee roaster describing how it sources its beans.',
++      type: 'key-points',
++      format: 'plain-text',
++      length: 'medium',
++      expectedInputLanguages: ['en'],
++      expectedContextLanguages: ['en'],
++      outputLanguage: 'en',
++    };
++
++    function renderBullets(text) {
++      const items = text.split('\n')
++        .map((line) => line.replace(/^\s*[-*\u2022]\s*/, '').trim())
++        .filter(Boolean);
++      summaryList.replaceChildren(...items.map((item) => {
++        const li = document.createElement('li');
++        li.textContent = item;
++        return li;
++      }));
++    }
++
++    async function summarize() {
++      summarizeBtn.disabled = true;
++      statusEl.textContent = '';
++      try {
++        const summarizer = await Summarizer.create({
++          ...summarizerOptions,
++          monitor(m) {
++            m.addEventListener('downloadprogress', (e) => {
++              statusEl.textContent = `Downloading on-device model: ${Math.round(e.loaded * 100)}%`;
++            });
++          },
++        });
++        statusEl.textContent = 'Summarizing…';
++        summaryBox.hidden = false;
++        let text = '';
++        for await (const chunk of summarizer.summarizeStreaming(
++          document.getElementById('journal-text').innerText)) {
++          text += chunk;
++          renderBullets(text);
++        }
++        statusEl.textContent = '';
++        summarizer.destroy();
++      } catch (err) {
++        console.error(err);
++        summaryBox.hidden = true;
++        statusEl.textContent = 'Sorry, the summary could not be generated.';
++      } finally {
++        summarizeBtn.disabled = false;
++      }
++    }
++
++    (async () => {
++      if (!('Summarizer' in self)) {
++        statusEl.textContent = 'Summaries need on-device AI, which this browser does not support.';
++        return;
++      }
++      const availability = await Summarizer.availability(summarizerOptions);
++      if (availability === 'unavailable') {
++        statusEl.textContent = 'Summaries are not available on this device.';
++        return;
++      }
++      summarizeBtn.hidden = false;
++      summarizeBtn.addEventListener('click', summarize);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

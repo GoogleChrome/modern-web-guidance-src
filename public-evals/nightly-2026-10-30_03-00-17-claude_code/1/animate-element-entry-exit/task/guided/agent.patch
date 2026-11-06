@@ -1,0 +1,236 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,98 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Promo Area */
++    .promo {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .promo-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 10px;
++    }
++
++    .promo-controls button {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++    }
++
++    .promo-controls .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      box-shadow: inset 0 0 0 2px var(--primary);
++    }
++
++    .promo-controls .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    #domContainer .card {
++      display: block;
++      opacity: 1;
++      scale: 1;
++      border-top: 4px solid var(--accent);
++      transition:
++        display 0.35s,
++        opacity 0.35s ease-out,
++        scale 0.35s ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    .promo-tag {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      padding: 2px 10px;
++      border-radius: 999px;
++      margin-bottom: 10px;
++    }
++
++    /* Entry: fade and scale in when inserted or un-hidden */
++    @starting-style {
++      #domContainer .card {
++        opacity: 0;
++        scale: 0.8;
++      }
++    }
++
++    /* Exit: fade and scale out before hiding/removal */
++    #domContainer .card:where([hidden], [data-closing]) {
++      opacity: 0;
++      scale: 0.8;
++    }
++
++    #domContainer .card[hidden] {
++      display: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #domContainer .card {
++        scale: none;
++        transition-duration: 0.1s;
++      }
++
++      @starting-style {
++        #domContainer .card {
++          scale: none;
++        }
++      }
++
++      #domContainer .card:where([hidden], [data-closing]) {
++        scale: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +284,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="promo" aria-labelledby="promoHeading">
++      <h2 id="promoHeading">Special Promotions</h2>
++      <div class="promo-controls">
++        <button type="button" id="addBtn" class="btn">Add Promo</button>
++        <button type="button" id="removeBtn" class="btn btn-outline">Remove Last Promo</button>
++        <button type="button" id="toggleBtn" class="btn btn-outline" aria-controls="toggleCard" aria-expanded="true">Toggle Featured Promo</button>
++      </div>
++      <div id="domContainer" class="grid">
++        <div id="toggleCard" class="card">
++          <span class="promo-tag">Featured</span>
++          <h3>Happy Hour Pastries</h3>
++          <p>Half off all croissants and scones, weekdays 2&ndash;4pm.</p>
++          <a href="/menu/pastries" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +313,107 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const domContainer = document.getElementById('domContainer');
++    const toggleBtn = document.getElementById('toggleBtn');
++
++    const promos = [
++      { tag: 'Limited Time', title: 'Buy One, Get One Cold Brew', text: 'Bring a friend &mdash; the second cold brew is on us.' },
++      { tag: 'Rewards', title: 'Double Stars Weekend', text: 'Earn 2x rewards stars on every order, Saturday and Sunday.' },
++      { tag: 'New', title: 'Pumpkin Spice Is Back', text: 'Our house-made pumpkin syrup returns for the season.' },
++      { tag: 'Bundle', title: 'Beans &amp; Mug Combo', text: 'Take home a bag of our house roast plus a ceramic mug for $25.' },
++    ];
++    let promoIndex = 0;
++
++    // Firefox parses allow-discrete but doesn't transition `display` yet,
++    // so probe for real support before relying on it for exit animations.
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    async function hideElement(el) {
++      if (canTransitionDisplay()) {
++        el.hidden = true;
++      } else {
++        el.setAttribute('data-closing', '');
++      }
++
++      const animations = el.getAnimations();
++      if (animations.length > 0) {
++        await Promise.race([
++          Promise.allSettled(animations.map((a) => a.finished)),
++          new Promise((r) => setTimeout(r, 2000)),
++        ]);
++      }
++
++      // Skipped if showElement() cancelled the close mid-animation.
++      if (el.hasAttribute('data-closing')) {
++        el.removeAttribute('data-closing');
++        el.hidden = true;
++      }
++    }
++
++    function showElement(el) {
++      el.removeAttribute('data-closing');
++      el.hidden = false;
++    }
++
++    async function removeElement(el) {
++      el.setAttribute('data-removing', '');
++      await hideElement(el);
++      el.remove();
++    }
++
++    function createPromoCard({ tag, title, text }) {
++      const card = document.createElement('div');
++      card.className = 'card';
++      card.innerHTML = `
++        <span class="promo-tag">${tag}</span>
++        <h3>${title}</h3>
++        <p>${text}</p>
++        <a href="/promotions" class="btn">View Details</a>
++      `;
++      return card;
++    }
++
++    document.getElementById('addBtn').addEventListener('click', () => {
++      domContainer.appendChild(createPromoCard(promos[promoIndex % promos.length]));
++      promoIndex++;
++    });
++
++    document.getElementById('removeBtn').addEventListener('click', () => {
++      // Skip cards that are already animating out
++      const cards = domContainer.querySelectorAll(':scope > .card:not([data-removing])');
++      const last = cards[cards.length - 1];
++      if (last) removeElement(last);
++    });
++
++    toggleBtn.addEventListener('click', () => {
++      const card = document.getElementById('toggleCard');
++      if (!card || card.hasAttribute('data-removing')) return;
++      const isHidden = card.hidden || card.hasAttribute('data-closing');
++      if (isHidden) {
++        showElement(card);
++      } else {
++        hideElement(card);
++      }
++      toggleBtn.setAttribute('aria-expanded', String(isHidden));
++    });
++  </script>
++
+ </body>
+ 
+ </html>

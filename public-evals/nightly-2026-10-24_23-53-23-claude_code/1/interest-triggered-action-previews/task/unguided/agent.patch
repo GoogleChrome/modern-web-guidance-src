@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,60 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Seasonal preview (driven by interestfor / :interest-source, no JS) */
++    #seasonal-preview {
++      margin-top: 20px;
++      padding: 20px;
++      text-align: center;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      transition: background 0.2s, color 0.2s, border-color 0.2s;
++    }
++
++    #seasonal-preview .preview-drink {
++      display: none;
++      font-weight: bold;
++    }
++
++    .seasonal:has(.card:nth-child(1) [interestfor]:interest-source) #seasonal-preview,
++    .seasonal:has(.card:nth-child(2) [interestfor]:interest-source) #seasonal-preview,
++    .seasonal:has(.card:nth-child(3) [interestfor]:interest-source) #seasonal-preview {
++      border-style: solid;
++      color: white;
++    }
++
++    .seasonal:has(.card:nth-child(1) [interestfor]:interest-source) #seasonal-preview {
++      background: #8d6e63;
++      border-color: #8d6e63;
++    }
++
++    .seasonal:has(.card:nth-child(2) [interestfor]:interest-source) #seasonal-preview {
++      background: #3e2723;
++      border-color: #3e2723;
++    }
++
++    .seasonal:has(.card:nth-child(3) [interestfor]:interest-source) #seasonal-preview {
++      background: #1565c0;
++      border-color: #1565c0;
++    }
++
++    .seasonal:has(.card:nth-child(1) [interestfor]:interest-source) .preview-default,
++    .seasonal:has(.card:nth-child(2) [interestfor]:interest-source) .preview-default,
++    .seasonal:has(.card:nth-child(3) [interestfor]:interest-source) .preview-default {
++      display: none;
++    }
++
++    .seasonal:has(.card:nth-child(1) [interestfor]:interest-source) .preview-maple,
++    .seasonal:has(.card:nth-child(2) [interestfor]:interest-source) .preview-espresso,
++    .seasonal:has(.card:nth-child(3) [interestfor]:interest-source) .preview-cold-brew {
++      display: inline;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,27 +226,34 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="seasonal-preview">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="seasonal-preview">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="seasonal-preview">View Details</a>
+         </div>
+       </div>
++      <!-- Passive preview: intentionally not a live region, so screen readers don't announce it -->
++      <div id="seasonal-preview">
++        <span class="preview-default">Select a drink to preview</span>
++        <span class="preview-drink preview-maple">Maple Oat Latte</span>
++        <span class="preview-drink preview-espresso">Dark Roast Espresso</span>
++        <span class="preview-drink preview-cold-brew">Cold Brew</span>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>

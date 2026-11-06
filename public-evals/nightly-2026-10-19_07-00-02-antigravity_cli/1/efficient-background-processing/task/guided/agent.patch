@@ -1,0 +1,425 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,104 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roasting Simulator Widget */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      min-height: 400px;
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .roast-card {
++      background: #241610;
++      color: #ede0d4;
++      border-radius: 12px;
++      padding: 24px;
++      box-shadow: 0 10px 30px rgba(46, 26, 17, 0.25);
++      border: 1px solid #4a2f20;
++    }
++
++    .roast-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-bottom: 20px;
++    }
++
++    .roast-title-group h2 {
++      font-size: 1.5rem;
++      color: var(--accent);
++      margin: 4px 0;
++    }
++
++    .roast-title-group p {
++      color: #bcaaa4;
++      font-size: 0.9rem;
++    }
++
++    .roast-tag {
++      display: inline-block;
++      background: rgba(255, 171, 64, 0.15);
++      color: var(--accent);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 3px 10px;
++      border-radius: 20px;
++      border: 1px solid rgba(255, 171, 64, 0.3);
++    }
++
++    .roast-stats {
++      display: flex;
++      gap: 14px;
++      flex-wrap: wrap;
++    }
++
++    .stat-box {
++      background: rgba(0, 0, 0, 0.4);
++      padding: 10px 16px;
++      border-radius: 8px;
++      border: 1px solid rgba(255, 171, 64, 0.2);
++      min-width: 130px;
++    }
++
++    .stat-label {
++      display: block;
++      font-size: 0.7rem;
++      text-transform: uppercase;
++      letter-spacing: 0.6px;
++      color: #a1887f;
++      margin-bottom: 2px;
++    }
++
++    .stat-value {
++      font-size: 1.35rem;
++      font-weight: 700;
++      color: #ffe0b2;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .roast-canvas-wrap {
++      position: relative;
++      background: #140c08;
++      border-radius: 8px;
++      overflow: hidden;
++      border: 1px solid #3d2214;
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      height: 240px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +292,316 @@
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Real-Time Roasting Simulator Widget -->
++  <section id="roasting-widget" aria-label="Real-Time Roasting Simulator">
++    <div class="roast-card">
++      <div class="roast-header">
++        <div class="roast-title-group">
++          <span class="roast-tag">Real-Time Simulation</span>
++          <h2>Artisanal Roasting Chamber</h2>
++          <p>Watch our master roast profile unfold in real-time inside the drum.</p>
++        </div>
++        <div class="roast-stats">
++          <div class="stat-box">
++            <span class="stat-label">Chamber Temp</span>
++            <div class="stat-value"><span id="roast-temp-value">415.0°F</span></div>
++          </div>
++          <div class="stat-box">
++            <span class="stat-label">Roast Phase</span>
++            <div class="stat-value" id="roast-phase-value">First Crack</div>
++          </div>
++        </div>
++      </div>
++      <div class="roast-canvas-wrap">
++        <canvas id="roast-canvas" width="800" height="240"></canvas>
++      </div>
++    </div>
++  </section>
++
++  <script>
++    (function () {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      if (!widget || !canvas) return;
++
++      const ctx = canvas.getContext('2d');
++      const tempValueEl = document.getElementById('roast-temp-value');
++      const phaseValueEl = document.getElementById('roast-phase-value');
++
++      // State tracking
++      let isRunning = false;
++      let animationFrameId = null;
++      let tempIntervalId = null;
++
++      // Simulated temperature reading
++      let currentTemp = 415.0;
++      let tempDirection = 1;
++
++      function updateTemperature() {
++        const delta = (Math.random() * 1.2 - 0.5) * tempDirection;
++        currentTemp = Math.round((currentTemp + delta) * 10) / 10;
++        if (currentTemp >= 435.0) {
++          tempDirection = -1;
++        } else if (currentTemp <= 398.0) {
++          tempDirection = 1;
++        }
++
++        if (tempValueEl) {
++          tempValueEl.textContent = currentTemp.toFixed(1) + '°F';
++        }
++        if (phaseValueEl) {
++          if (currentTemp < 405) {
++            phaseValueEl.textContent = 'Yellowing';
++          } else if (currentTemp < 425) {
++            phaseValueEl.textContent = 'First Crack';
++          } else {
++            phaseValueEl.textContent = 'Second Crack';
++          }
++        }
++      }
++
++      // Coffee beans physics & visual parameters
++      const BEAN_COUNT = 38;
++      const beans = [];
++
++      function initBeans() {
++        const w = canvas.width;
++        const h = canvas.height;
++        for (let i = 0; i < BEAN_COUNT; i++) {
++          beans.push({
++            x: 60 + Math.random() * (w - 120),
++            y: 40 + Math.random() * (h - 80),
++            vx: (Math.random() - 0.5) * 3,
++            vy: (Math.random() - 0.5) * 2,
++            radiusX: 11 + Math.random() * 4,
++            radiusY: 7 + Math.random() * 3,
++            angle: Math.random() * Math.PI * 2,
++            angularVelocity: (Math.random() - 0.5) * 0.08,
++            creaseOffset: (Math.random() - 0.5) * 3,
++            roastLevel: Math.random() * 0.4 + 0.3
++          });
++        }
++      }
++      initBeans();
++
++      // Roaster heat / chaff particles
++      const PARTICLE_COUNT = 18;
++      const particles = [];
++      for (let i = 0; i < PARTICLE_COUNT; i++) {
++        particles.push({
++          x: Math.random() * canvas.width,
++          y: canvas.height - Math.random() * 50,
++          vy: 0.6 + Math.random() * 1.2,
++          vx: (Math.random() - 0.5) * 0.8,
++          radius: 1.5 + Math.random() * 2,
++          alpha: Math.random() * 0.7 + 0.2
++        });
++      }
++
++      function drawBean(b) {
++        ctx.save();
++        ctx.translate(b.x, b.y);
++        ctx.rotate(b.angle);
++
++        const r = Math.round(110 - b.roastLevel * 60);
++        const g = Math.round(65 - b.roastLevel * 40);
++        const blue = Math.round(35 - b.roastLevel * 25);
++
++        // Outer bean ellipse
++        ctx.beginPath();
++        ctx.ellipse(0, 0, b.radiusX, b.radiusY, 0, 0, Math.PI * 2);
++        const grad = ctx.createRadialGradient(-2, -2, 1, 0, 0, b.radiusX);
++        grad.addColorStop(0, `rgb(${r + 35}, ${g + 25}, ${blue + 15})`);
++        grad.addColorStop(0.7, `rgb(${r}, ${g}, ${blue})`);
++        grad.addColorStop(1, `rgb(${Math.max(0, r - 25)}, ${Math.max(0, g - 20)}, ${Math.max(0, blue - 15)})`);
++        ctx.fillStyle = grad;
++        ctx.fill();
++
++        // Bean center crease
++        ctx.beginPath();
++        ctx.moveTo(-b.radiusX * 0.72, 0);
++        ctx.quadraticCurveTo(0, b.creaseOffset, b.radiusX * 0.72, 0);
++        ctx.strokeStyle = 'rgba(20, 10, 5, 0.85)';
++        ctx.lineWidth = 1.8;
++        ctx.stroke();
++
++        // Subtle crease highlight
++        ctx.beginPath();
++        ctx.moveTo(-b.radiusX * 0.65, -1);
++        ctx.quadraticCurveTo(0, b.creaseOffset - 1, b.radiusX * 0.65, -1);
++        ctx.strokeStyle = 'rgba(255, 220, 180, 0.18)';
++        ctx.lineWidth = 0.8;
++        ctx.stroke();
++
++        ctx.restore();
++      }
++
++      function animateBeans() {
++        const w = canvas.width;
++        const h = canvas.height;
++
++        ctx.fillStyle = '#160e0a';
++        ctx.fillRect(0, 0, w, h);
++
++        // Bottom flame glow
++        const heatGrad = ctx.createLinearGradient(0, h, 0, h - 90);
++        heatGrad.addColorStop(0, 'rgba(255, 110, 20, 0.35)');
++        heatGrad.addColorStop(0.5, 'rgba(255, 90, 0, 0.12)');
++        heatGrad.addColorStop(1, 'rgba(255, 70, 0, 0)');
++        ctx.fillStyle = heatGrad;
++        ctx.fillRect(0, h - 90, w, 90);
++
++        // Agitating drum rim lines
++        ctx.strokeStyle = 'rgba(255, 171, 64, 0.08)';
++        ctx.lineWidth = 1;
++        for (let y = 30; y < h; y += 40) {
++          ctx.beginPath();
++          ctx.moveTo(0, y);
++          ctx.lineTo(w, y);
++          ctx.stroke();
++        }
++
++        // Chaff / heat particles
++        for (let i = 0; i < particles.length; i++) {
++          const p = particles[i];
++          p.y -= p.vy;
++          p.x += p.vx;
++          p.alpha -= 0.006;
++          if (p.alpha <= 0 || p.y < 20) {
++            p.y = h - Math.random() * 20;
++            p.x = Math.random() * w;
++            p.alpha = Math.random() * 0.6 + 0.3;
++          }
++          ctx.beginPath();
++          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
++          ctx.fillStyle = `rgba(255, 170, 80, ${p.alpha})`;
++          ctx.fill();
++        }
++
++        // Beans physics
++        for (let i = 0; i < beans.length; i++) {
++          const b = beans[i];
++
++          b.vy += 0.22; // gravity
++
++          // Drum lift at bottom
++          if (b.y > h - 45) {
++            b.vx += 0.35;
++            b.vy -= 0.6 + Math.random() * 0.4;
++          }
++
++          b.vx *= 0.985;
++          b.vy *= 0.985;
++
++          b.x += b.vx;
++          b.y += b.vy;
++          b.angle += b.angularVelocity;
++
++          const padX = b.radiusX;
++          const padY = b.radiusY;
++          if (b.x < padX) {
++            b.x = padX;
++            b.vx = Math.abs(b.vx) * 0.7;
++            b.angularVelocity = (Math.random() - 0.5) * 0.1;
++          } else if (b.x > w - padX) {
++            b.x = w - padX;
++            b.vx = -Math.abs(b.vx) * 0.75;
++            b.angularVelocity = (Math.random() - 0.5) * 0.1;
++          }
++
++          if (b.y < padY) {
++            b.y = padY;
++            b.vy = Math.abs(b.vy) * 0.6;
++          } else if (b.y > h - padY) {
++            b.y = h - padY;
++            b.vy = -Math.abs(b.vy) * 0.45;
++          }
++
++          b.roastLevel = Math.min(1.0, b.roastLevel + 0.0001);
++          drawBean(b);
++        }
++      }
++
++      function animateLoop() {
++        animateBeans();
++        animationFrameId = requestAnimationFrame(animateLoop);
++      }
++
++      function startSimulation() {
++        if (isRunning) return;
++        isRunning = true;
++        animationFrameId = requestAnimationFrame(animateLoop);
++        if (!tempIntervalId) {
++          tempIntervalId = setInterval(updateTemperature, 1000);
++        }
++      }
++
++      function stopSimulation() {
++        if (!isRunning) return;
++        isRunning = false;
++        if (animationFrameId !== null) {
++          cancelAnimationFrame(animationFrameId);
++          animationFrameId = null;
++        }
++        if (tempIntervalId !== null) {
++          clearInterval(tempIntervalId);
++          tempIntervalId = null;
++        }
++      }
++
++      // Start initially
++      startSimulation();
++
++      // 1. Direct listener for native rendering state changes (content-visibility: auto)
++      widget.addEventListener('contentvisibilityautostatechange', (event) => {
++        if (event.skipped) {
++          stopSimulation();
++        } else {
++          startSimulation();
++        }
++      });
++
++      // 2. Robust fallback for older browsers lacking native rendering state change support
++      const isSupported = 'contentVisibility' in document.documentElement.style &&
++        ('oncontentvisibilityautostatechange' in window || typeof ContentVisibilityAutoStateChangeEvent !== 'undefined');
++
++      if (!isSupported) {
++        if (typeof IntersectionObserver !== 'undefined') {
++          const observer = new IntersectionObserver((entries) => {
++            entries.forEach((entry) => {
++              if (entry.isIntersecting) {
++                startSimulation();
++              } else {
++                stopSimulation();
++              }
++            });
++          }, {
++            rootMargin: '200px'
++          });
++          observer.observe(widget);
++        } else {
++          // Fallback for browsers lacking IntersectionObserver
++          const checkScrollFallback = () => {
++            const rect = widget.getBoundingClientRect();
++            const inView =
++              rect.top < (window.innerHeight || document.documentElement.clientHeight) &&
++              rect.bottom > 0;
++            if (inView) {
++              startSimulation();
++            } else {
++              stopSimulation();
++            }
++          };
++          window.addEventListener('scroll', checkScrollFallback, { passive: true });
++          window.addEventListener('resize', checkScrollFallback, { passive: true });
++          checkScrollFallback();
++        }
++      }
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

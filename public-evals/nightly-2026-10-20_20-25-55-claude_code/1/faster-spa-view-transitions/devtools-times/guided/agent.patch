@@ -1,0 +1,128 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..8dfb629 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -51,5 +51,8 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </body>
+ </html>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..98f9a73
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,81 @@
++// Keeps the <main> of recently visited pages alive (hidden) so going back to
++// them doesn't rebuild the DOM or re-hydrate their islands.
++const MAX_CACHED_VIEWS = 5;
++const MAX_AGE_MS = 5 * 60 * 1000;
++const UNCACHEABLE = /\/(signin|signup)\/?$/;
++
++type CachedView = { main: HTMLElement; storedAt: number };
++
++// Map preserves insertion order, which doubles as LRU order.
++const views = new Map<string, CachedView>();
++const holder = document.createElement("div");
++holder.id = "view-cache";
++holder.hidden = false;
++
++const keyOf = (url: URL) => url.pathname + url.search;
++
++function evict(key: string) {
++  views.get(key)?.main.remove();
++  views.delete(key);
++}
++
++function store(url: URL, main: HTMLElement) {
++  const key = keyOf(url);
++  if (UNCACHEABLE.test(url.pathname)) return;
++  evict(key);
++  main.classList.add("spa-view", "inactive");
++  main.setAttribute("aria-hidden", "true");
++  main.inert = true;
++  views.set(key, { main, storedAt: Date.now() });
++  while (views.size > MAX_CACHED_VIEWS) {
++    evict(views.keys().next().value as string);
++  }
++}
++
++function take(url: URL): HTMLElement | undefined {
++  const key = keyOf(url);
++  const view = views.get(key);
++  if (!view) return;
++  views.delete(key);
++  if (Date.now() - view.storedAt > MAX_AGE_MS) {
++    view.main.remove();
++    return;
++  }
++  const { main } = view;
++  main.classList.remove("spa-view", "inactive");
++  main.removeAttribute("aria-hidden");
++  main.inert = false;
++  return main;
++}
++
++document.addEventListener("astro:before-swap", (event) => {
++  const swapEvent = event as Event & {
++    from: URL;
++    to: URL;
++    newDocument: Document;
++    swap: () => void;
++  };
++  const defaultSwap = swapEvent.swap;
++
++  swapEvent.swap = () => {
++    const oldMain = document.querySelector<HTMLElement>("body main");
++    const newMain = swapEvent.newDocument.querySelector("main");
++    const restored = newMain ? take(swapEvent.to) : undefined;
++
++    // Don't hydrate a page we're about to replace with its cached copy.
++    if (restored && newMain) newMain.replaceChildren();
++
++    // Detach so the default body swap doesn't discard them.
++    holder.remove();
++    if (oldMain) {
++      oldMain.remove();
++      store(swapEvent.from, oldMain);
++    }
++
++    defaultSwap();
++
++    if (restored) document.querySelector("body main")?.replaceWith(restored);
++    for (const { main } of views.values()) holder.append(main);
++    document.body.append(holder);
++  };
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..273d967 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,21 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Cached views from src/scripts/view-cache.ts: keep rendering state, skip layout/paint. */
++#view-cache {
++  position: absolute;
++  inset: 0 auto auto 0;
++  width: 0;
++  height: 0;
++  overflow: hidden;
++}
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++}
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

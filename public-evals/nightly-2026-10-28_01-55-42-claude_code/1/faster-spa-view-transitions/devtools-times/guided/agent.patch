@@ -1,0 +1,291 @@
+diff --git a/README.md b/README.md
+index 4479b53..45c257a 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,7 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Client-side navigation
++
++Pages use Astro's `ClientRouter`. On top of it, `src/scripts/view-cache.ts` keeps previously visited page views alive inside `main[data-view-host]` (hidden with `content-visibility: hidden` and `inert`) instead of rebuilding them, so navigating back to a recent page is near-instant. The header, footer and ad slots persist across navigations. At most six inactive views are kept (least recently used are evicted); reloading the current URL and form submissions always render fresh content.
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..6072708 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -7,9 +7,26 @@ interface Props {
+   initialIsBookmarked: boolean;
+ }
+ 
++/** Fired on `window` whenever the reading list changes; detail is the new list of slugs. */
++export const READING_LIST_CHANGE_EVENT = 'readinglist:change';
++
++export function announceReadingListChange(readingList: string[]) {
++  window.dispatchEvent(new CustomEvent(READING_LIST_CHANGE_EVENT, { detail: readingList }));
++}
++
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  // Views are kept alive across navigations, so this button may be in a cached
++  // view while another instance toggles the same article. Stay in sync.
++  useEffect(() => {
++    const handleChange = (event: Event) => {
++      setIsBookmarked((event as CustomEvent<string[]>).detail.includes(slug));
++    };
++    window.addEventListener(READING_LIST_CHANGE_EVENT, handleChange);
++    return () => window.removeEventListener(READING_LIST_CHANGE_EVENT, handleChange);
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+@@ -20,6 +37,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+     });
+     const data = await response.json();
+     setIsBookmarked(data.readingList.includes(slug));
++    announceReadingListChange(data.readingList);
+   };
+ 
+   return (
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..a36f84f 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,6 @@
+ 
+ import React, { useState, useEffect } from 'react';
++import { announceReadingListChange } from './BookmarkButton';
+ 
+ interface Article {
+   slug: string;
+@@ -20,6 +21,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+     const data = await response.json();
+     setReadingList(data.readingList);
++    announceReadingListChange(data.readingList);
+   };
+ 
+   useEffect(() => {
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..27ddc06 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,8 +48,14 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <!--
++          View host: the client router swaps only the view inside this element
++          and keeps previously visited views alive (see src/scripts/view-cache.ts).
++        -->
++        <main class="bg-white relative" data-view-host>
++          <div data-view tabindex="-1">
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..b9871fc
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,151 @@
++/**
++ * View cache for the Astro ClientRouter.
++ *
++ * By default the ClientRouter replaces the whole <body> on every navigation, so
++ * going back to a page you just left means re-parsing its HTML, re-hydrating
++ * every island, and running layout, image decode and paint from scratch.
++ *
++ * This module replaces that swap: the persistent shell (header, footer, ads)
++ * stays in place and only the page view inside `main[data-view-host]` changes.
++ * Views that the user navigates away from are kept in the DOM as inactive
++ * views (`inert` + `content-visibility: hidden`, see global.css) so their DOM,
++ * island state and cached rendering survive. Returning to one of them is a
++ * near-instant attribute flip instead of a rebuild.
++ *
++ * Trade-off: cached views cost memory. Article pages are a dynamic route, so an
++ * LRU cap bounds how many inactive views are kept alive at once.
++ */
++import { swapFunctions, type TransitionBeforeSwapEvent } from 'astro:transitions/client';
++
++/** Maximum number of inactive views kept alive in addition to the active one. */
++const MAX_INACTIVE_VIEWS = 6;
++
++const HOST_SELECTOR = 'main[data-view-host]';
++const VIEW_SELECTOR = ':scope > [data-view]';
++
++/** Monotonic clock for least-recently-used ordering. */
++let tick = 0;
++const lastUsed = new WeakMap<Element, number>();
++
++/** Set while a form submission navigation is in flight; those must never be served from cache. */
++let pendingFormSubmission = false;
++
++const viewKey = (url: URL | Location) => url.pathname + url.search;
++
++function getHost(root: Document | ParentNode = document) {
++  return root.querySelector<HTMLElement>(HOST_SELECTOR);
++}
++
++function getViews(host: HTMLElement) {
++  return Array.from(host.querySelectorAll<HTMLElement>(VIEW_SELECTOR));
++}
++
++function findView(host: HTMLElement, key: string) {
++  return getViews(host).find((view) => view.dataset.view === key);
++}
++
++function getActiveView(host: HTMLElement) {
++  return getViews(host).find((view) => !view.hasAttribute('inert'));
++}
++
++function deactivate(view: HTMLElement) {
++  // `inert` removes the view from the tab order and the accessibility tree;
++  // the stylesheet keys off the same attribute to apply content-visibility.
++  view.setAttribute('inert', '');
++  view.setAttribute('aria-hidden', 'true');
++}
++
++function activate(view: HTMLElement) {
++  view.removeAttribute('inert');
++  view.removeAttribute('aria-hidden');
++  lastUsed.set(view, ++tick);
++}
++
++/** Drop the least recently used inactive views beyond the cap. */
++function evict(host: HTMLElement, active: HTMLElement) {
++  const inactive = getViews(host)
++    .filter((view) => view !== active)
++    .sort((a, b) => (lastUsed.get(a) ?? 0) - (lastUsed.get(b) ?? 0));
++  while (inactive.length > MAX_INACTIVE_VIEWS) {
++    inactive.shift()!.remove();
++  }
++}
++
++/**
++ * Media elements parsed by DOMParser live in an inert document and never get a
++ * media controller, so their controls stay disabled after being adopted. Astro's
++ * default body swap re-creates them for that reason; do the same for views we
++ * adopt ourselves.
++ */
++function reifyMediaElements(root: ParentNode) {
++  for (const media of root.querySelectorAll<HTMLMediaElement>('video, audio')) {
++    const fresh = document.createElement(media.localName) as HTMLMediaElement;
++    for (const attr of media.attributes) fresh.setAttribute(attr.name, attr.value);
++    fresh.innerHTML = media.innerHTML;
++    if (fresh.hasAttribute('muted')) fresh.muted = true;
++    media.replaceWith(fresh);
++  }
++}
++
++/** Make sure the view that is currently shown is keyed and tracked (initial load and fallback swaps). */
++function syncActiveView() {
++  const host = getHost();
++  if (!host) return;
++  const key = viewKey(location);
++  for (const view of getViews(host)) {
++    if (view.hasAttribute('inert')) continue;
++    if (!view.dataset.view) view.dataset.view = key;
++    if (!lastUsed.has(view)) lastUsed.set(view, ++tick);
++  }
++}
++
++function swapViews(event: TransitionBeforeSwapEvent, host: HTMLElement, incoming: HTMLElement) {
++  const { newDocument } = event;
++
++  // Same as Astro's default swap, minus the body replacement.
++  swapFunctions.deselectScripts(newDocument);
++  swapFunctions.swapRootAttributes(newDocument);
++  swapFunctions.swapHeadElements(newDocument);
++
++  const key = viewKey(event.to);
++  const current = getActiveView(host);
++  const cached = findView(host, key);
++
++  let next: HTMLElement;
++  if (cached && cached !== current && !pendingFormSubmission) {
++    // Fast path: the view is still alive, restore it as-is.
++    next = cached;
++  } else {
++    // Slow path: adopt the freshly rendered view. This also covers reloading
++    // the current URL and form submissions, which must show fresh content.
++    cached?.remove();
++    incoming.dataset.view = key;
++    reifyMediaElements(incoming);
++    host.append(incoming);
++    next = incoming;
++  }
++
++  if (current && current !== next) deactivate(current);
++  activate(next);
++  evict(host, next);
++
++  // Move focus to the new view so the tab order continues from the content,
++  // not from wherever it was in the persistent shell or the hidden old view.
++  next.focus({ preventScroll: true });
++}
++
++document.addEventListener('astro:before-preparation', (event) => {
++  pendingFormSubmission = Boolean((event as { formData?: FormData }).formData);
++});
++
++document.addEventListener('astro:before-swap', (event) => {
++  const swapEvent = event as TransitionBeforeSwapEvent;
++  const host = getHost();
++  const incoming = getHost(swapEvent.newDocument)?.querySelector<HTMLElement>(VIEW_SELECTOR);
++  // Pages outside the shared layout fall back to Astro's default full swap.
++  if (!host || !incoming) return;
++  swapEvent.swap = () => swapViews(swapEvent, host, incoming);
++});
++
++document.addEventListener('astro:page-load', syncActiveView);
++syncActiveView();
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..b9747de 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,26 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/*
++ * Cached SPA views (see src/scripts/view-cache.ts).
++ * Inactive views stay in the DOM but are made `inert`; content-visibility: hidden
++ * skips their layout and paint while keeping the cached rendering state, so
++ * switching back is near-instant. position: absolute keeps the empty box out of flow.
++ */
++[data-view][inert] {
++  content-visibility: hidden;
++  position: absolute;
++}
++
++@supports not (content-visibility: hidden) {
++  [data-view][inert] {
++    display: none;
++  }
++}
++
++/* The view container only receives programmatic focus after navigation. */
++[data-view]:focus {
++  outline: none;
++}

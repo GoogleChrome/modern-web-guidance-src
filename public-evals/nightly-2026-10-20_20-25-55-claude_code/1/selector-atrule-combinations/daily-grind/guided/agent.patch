@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+index 66c9173..5cb7831 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,34 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: white;
++      --heading: var(--primary);
++
++      /* One combined "is it dark?" flag: OS preference, overridable with .light/.dark on <html> */
++      --color-scheme: light;
++
++      @media (prefers-color-scheme: dark) {
++        --color-scheme: dark;
++      }
++
++      &.light {
++        --color-scheme: light;
++      }
++
++      &.dark {
++        --color-scheme: dark;
++      }
++    }
++
++    /* Dark palette, written once. Light is the default, so browsers without style queries stay light. */
++    @container style(--color-scheme: dark) {
++      body {
++        --secondary: #3e2b27;
++        --text: #efebe9;
++        --light: #1b1210;
++        --surface: #2b1f1c;
++        --heading: var(--accent);
++      }
+     }
+ 
+     * {
+@@ -62,7 +90,7 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
+@@ -108,7 +136,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +145,7 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+@@ -131,7 +159,7 @@
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:is(:hover, :focus-visible) {
+       background: #3e2723;
+     }
+ 

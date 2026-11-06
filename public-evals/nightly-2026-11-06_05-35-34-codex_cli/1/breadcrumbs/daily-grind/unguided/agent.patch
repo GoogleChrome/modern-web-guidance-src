@@ -1,0 +1,172 @@
+diff --git a/index.html b/index.html
+index 66c9173..efdc1eb 100644
+--- a/index.html
++++ b/index.html
+@@ -28,7 +28,7 @@
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -46,23 +46,23 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .site-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+@@ -93,6 +93,51 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Breadcrumbs */
++    .breadcrumbs {
++      max-width: 1100px;
++      margin: 24px auto 0;
++      padding: 0 20px;
++      font-size: 0.9rem;
++    }
++
++    .breadcrumbs ol {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px 12px;
++      align-items: center;
++      list-style: none;
++    }
++
++    .breadcrumbs li {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .breadcrumbs .separator {
++      color: var(--primary);
++      opacity: 0.6;
++    }
++
++    .breadcrumbs a {
++      color: var(--primary);
++      text-underline-offset: 3px;
++    }
++
++    .breadcrumbs a:hover {
++      text-decoration-thickness: 2px;
++    }
++
++    .breadcrumbs a:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .breadcrumbs [aria-current="page"] {
++      font-weight: 600;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -157,7 +202,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -174,6 +219,12 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <nav class="breadcrumbs" aria-label="Breadcrumb">
++    <ol id="breadcrumb-list">
++      <li><span aria-current="page">Home</span></li>
++    </ol>
++  </nav>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +258,56 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const labels = {
++        menu: 'Menu',
++        seasonal: 'Maple Oat Latte',
++        espresso: 'Dark Roast Espresso',
++        'cold-brew': 'Cold Brew',
++        locations: 'Locations',
++        rewards: 'Rewards',
++        account: 'My Account',
++        logout: 'Logout',
++        'order-online': 'Order Online',
++        about: 'Our Story',
++        careers: 'Join the Team',
++        contact: 'Contact Us',
++        'privacy-policy': 'Privacy'
++      };
++      const segments = window.location.pathname.split('/').filter(Boolean);
++      if (segments[segments.length - 1] === 'index.html') segments.pop();
++
++      const crumbs = [{ label: 'Home', href: '/' }];
++      segments.forEach((segment, index) => {
++        let decoded = segment;
++        try { decoded = decodeURIComponent(segment); } catch {}
++        const label = labels[decoded] || decoded.replace(/[-_]/g, ' ')
++          .replace(/\b\w/g, character => character.toUpperCase());
++        crumbs.push({ label, href: '/' + segments.slice(0, index + 1).join('/') });
++      });
++
++      const list = document.getElementById('breadcrumb-list');
++      list.replaceChildren();
++      crumbs.forEach((crumb, index) => {
++        const item = document.createElement('li');
++        if (index > 0) {
++          const separator = document.createElement('span');
++          separator.className = 'separator';
++          separator.setAttribute('aria-hidden', 'true');
++          separator.textContent = '/';
++          item.append(separator);
++        }
++        const isCurrent = index === crumbs.length - 1;
++        const element = document.createElement(isCurrent ? 'span' : 'a');
++        element.textContent = crumb.label;
++        if (isCurrent) element.setAttribute('aria-current', 'page');
++        else element.setAttribute('href', crumb.href);
++        item.append(element);
++        list.append(item);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

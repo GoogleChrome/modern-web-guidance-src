@@ -1,0 +1,217 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,122 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .roast-selector {
++      position: relative;
++      width: min(280px, 100%);
++      margin-top: 20px;
++      text-align: left;
++      color: var(--accent);
++    }
++
++    .roast-selector summary {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      padding: 10px 16px;
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      background: var(--primary);
++      cursor: pointer;
++      list-style: none;
++    }
++
++    .roast-selector summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .roast-label {
++      display: block;
++      font-size: 0.75rem;
++      letter-spacing: 0.05em;
++      text-transform: uppercase;
++    }
++
++    .roast-arrow, .roast-check {
++      width: 20px;
++      height: 20px;
++      flex-shrink: 0;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 2;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    .roast-selector[open] .roast-arrow {
++      transform: rotate(180deg);
++    }
++
++    .roast-options {
++      position: absolute;
++      top: calc(100% + 6px);
++      left: 0;
++      width: 100%;
++      z-index: 10;
++      padding: 6px;
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      background: var(--primary);
++      color: var(--accent);
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++    }
++
++    .roast-option {
++      position: relative;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding: 10px;
++      border-radius: 3px;
++      cursor: pointer;
++    }
++
++    .roast-option input {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      opacity: 0;
++    }
++
++    .roast-check {
++      visibility: hidden;
++    }
++
++    .roast-option input:checked ~ .roast-check {
++      visibility: visible;
++    }
++
++    .roast-option:hover, .roast-option:focus-within {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    .roast-selector summary:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +276,32 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <details class="roast-selector">
++      <summary>
++        <span><span class="roast-label">Coffee roast</span><span id="selected-roast">Medium</span></span>
++        <svg class="roast-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
++      </summary>
++      <fieldset class="roast-options">
++        <legend class="visually-hidden">Choose your coffee roast</legend>
++        <label class="roast-option">
++          <input type="radio" name="roast" value="light">
++          <span>Light</span>
++          <svg class="roast-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
++        </label>
++        <label class="roast-option">
++          <input type="radio" name="roast" value="medium" checked>
++          <span>Medium</span>
++          <svg class="roast-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
++        </label>
++        <label class="roast-option">
++          <input type="radio" name="roast" value="dark">
++          <span>Dark</span>
++          <svg class="roast-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
++        </label>
++      </fieldset>
++    </details>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -206,7 +336,45 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const roastSelector = document.querySelector('.roast-selector');
++    const roastSummary = roastSelector.querySelector('summary');
++
++    roastSelector.addEventListener('change', (event) => {
++      if (event.target.name !== 'roast') return;
++      document.getElementById('selected-roast').textContent =
++        event.target.nextElementSibling.textContent;
++    });
++
++    // Keep arrow-key navigation within the radio group; close on activation.
++    roastSelector.querySelectorAll('input').forEach((input) => {
++      input.addEventListener('click', (event) => {
++        if (event.detail === 0) return;
++        roastSelector.open = false;
++        roastSummary.focus();
++      });
++      input.addEventListener('keydown', (event) => {
++        if (event.key === 'Enter' || event.key === ' ') {
++          event.preventDefault();
++          input.click();
++          roastSelector.open = false;
++          roastSummary.focus();
++        }
++      });
++    });
++
++    roastSelector.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape') {
++        roastSelector.open = false;
++        roastSummary.focus();
++      }
++    });
++
++    document.addEventListener('click', (event) => {
++      if (!roastSelector.contains(event.target)) roastSelector.open = false;
++    });
++  </script>
+ </body>
+ 
+ </html>

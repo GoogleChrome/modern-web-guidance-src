@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,109 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Video Landing Page</title>
++
++  <!-- Elevate priority for the video poster image that acts as the LCP candidate -->
++  <link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++
++  <!-- Preload critical header font (fonts are already high priority by default; always include crossorigin) -->
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++
++  <!-- Deprioritize the secondary font to avoid network contention with critical LCP and header assets -->
++  <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++  <!-- Inline critical CSS directly in head -->
++  <style>
++    @font-face {
++      font-family: 'Brand Font';
++      src: url('brand-font.woff2') format('woff2');
++      font-display: swap;
++    }
++
++    @font-face {
++      font-family: 'Secondary Font';
++      src: url('secondary-font.woff2') format('woff2');
++      font-display: swap;
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    body {
++      margin: 0;
++      padding: 1.5rem;
++      font-family: system-ui, -apple-system, sans-serif;
++      background-color: #0f172a;
++      color: #f8fafc;
++      display: grid;
++      place-items: center;
++      min-height: 100dvh;
++    }
++
++    main {
++      width: min(100%, 75rem);
++    }
++
++    header {
++      margin-bottom: 1.5rem;
++    }
++
++    h1 {
++      margin: 0;
++      font-family: 'Brand Font', system-ui, sans-serif;
++      font-size: clamp(2rem, 4vw, 3.25rem);
++      font-size-adjust: from-font;
++      line-height: 1.15;
++    }
++
++    .video-player {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background-color: #1e293b;
++      border-radius: 0.5rem;
++    }
++
++    .secondary-ui {
++      margin-top: 1rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      font-family: 'Secondary Font', system-ui, sans-serif;
++      font-size-adjust: from-font;
++      color: #94a3b8;
++      font-size: 0.9375rem;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <header>
++      <h1>Next-Generation Video Streaming</h1>
++    </header>
++
++    <video
++      class="video-player"
++      controls
++      width="1200"
++      height="675"
++      poster="poster.jpg"
++      preload="none"
++    >
++      <source src="intro.webm" type="video/webm">
++      <source src="intro.mp4" type="video/mp4">
++      <track src="captions.vtt" kind="captions" srclang="en" label="English">
++    </video>
++
++    <footer class="secondary-ui">
++      <span>1080p HD &bull; 02:45</span>
++      <span>Published in Product Demos</span>
++    </footer>
++  </main>
++</body>
++</html>

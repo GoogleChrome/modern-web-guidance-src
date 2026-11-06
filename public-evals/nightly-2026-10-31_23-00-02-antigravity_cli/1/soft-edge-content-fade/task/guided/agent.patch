@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,51 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Exclusive Preview / Paywall Section */
++    .paywall-container {
++      margin-block-start: 50px;
++      padding: 32px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
++      /* Standard property for modern browsers */
++      mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
++    }
++
++    .secrets-header {
++      text-align: center;
++      margin-block-end: 24px;
++    }
++
++    .exclusive-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-block-end: 8px;
++    }
++
++    .secrets-content {
++      display: grid;
++      gap: 20px;
++      max-inline-size: 800px;
++      margin-inline: auto;
++    }
++
++    .secret-item h3 {
++      color: var(--primary);
++      margin-block-end: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +237,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <div class="secrets-header">
++        <span class="exclusive-badge">Exclusive Preview</span>
++        <h2>Roaster's Secrets</h2>
++        <p>An insider look at the craft behind every small-batch roast.</p>
++      </div>
++      <div class="secrets-content">
++        <article class="secret-item">
++          <h3>Mastering the First Crack Thermal Drop</h3>
++          <p>To preserve the delicate jasmine and bergamot aromatics in our washed high-altitude beans, we taper drum heat by 15% just thirty seconds before first crack. This controlled deceleration caramelizes natural sugars without scorching the outer chaff.</p>
++        </article>
++        <article class="secret-item">
++          <h3>The Golden Degassing Window</h3>
++          <p>Freshly roasted coffee traps carbon dioxide that can disrupt even extraction. We rest our espresso blends in one-way valve bags for ten days, while single-origin filter roasts hit peak clarity and stone-fruit sweetness right at day five.</p>
++        </article>
++        <article class="secret-item">
++          <h3>Precision Mineral Water Chemistry</h3>
++          <p>Great beans demand balanced water. In our tasting room, we remineralize filtered water to 65 ppm total hardness with a 40 ppm bicarbonate buffer, unlocking vibrant malic acidity alongside a lingering dark-chocolate finish...</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

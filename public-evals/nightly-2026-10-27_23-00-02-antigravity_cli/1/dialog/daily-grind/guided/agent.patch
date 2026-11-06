@@ -1,0 +1,431 @@
+diff --git a/index.html b/index.html
+index 66c9173..74a3469 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,185 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    :where(a:any-link, button, select, input):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    /* Modal Dialog */
++    dialog {
++      margin: auto;
++      width: min(92vw, 520px);
++      border: none;
++      border-radius: 12px;
++      padding: 24px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++    }
++
++    dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0.55);
++      backdrop-filter: blur(2px);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .modal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++      margin-bottom: 12px;
++    }
++
++    .modal-header h2 {
++      color: var(--primary);
++      font-size: 1.5rem;
++      line-height: 1.3;
++    }
++
++    .modal-close-icon {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      border-radius: 6px;
++      min-inline-size: 36px;
++      min-block-size: 36px;
++      padding: 4px 10px;
++      font-size: 1.25rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .modal-close-icon:hover {
++      background: var(--secondary);
++    }
++
++    .modal-meta {
++      display: flex;
++      gap: 12px;
++      align-items: center;
++      margin: 8px 0 16px;
++      font-size: 0.95rem;
++    }
++
++    .modal-price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.15rem;
++    }
++
++    .modal-notes {
++      background: var(--light);
++      border-left: 3px solid var(--accent);
++      padding: 8px 12px;
++      margin-bottom: 16px;
++      font-size: 0.9rem;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label,
++    .form-group legend {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .form-group select,
++    .form-group input[type="number"] {
++      width: 100%;
++      padding: 8px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    fieldset.form-group {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px 12px;
++    }
++
++    .radio-options {
++      display: flex;
++      gap: 16px;
++      flex-wrap: wrap;
++    }
++
++    .radio-option {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .radio-option label {
++      margin-bottom: 0;
++      font-weight: normal;
++      cursor: pointer;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++    }
++
++    .order-status {
++      max-width: 1100px;
++      margin: 16px auto 0;
++      padding: 0 20px;
++      text-align: center;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,7 +330,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,9 +344,13 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" command="show-modal" commandfor="drink-order-dialog" data-drink="maple-oat-latte">
++      Order Now
++    </button>
+   </header>
+ 
++  <div id="order-status" class="order-status" aria-live="polite"></div>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -181,22 +358,98 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="drink-order-dialog" data-drink="maple-oat-latte">
++            View Details <span class="visually-hidden">for Maple Oat Latte</span>
++          </button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="drink-order-dialog" data-drink="dark-roast-espresso">
++            View Details <span class="visually-hidden">for Dark Roast Espresso</span>
++          </button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="drink-order-dialog" data-drink="cold-brew">
++            View Details <span class="visually-hidden">for Cold Brew</span>
++          </button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="drink-order-dialog" closedby="any" aria-labelledby="drink-dialog-title" aria-describedby="drink-dialog-desc">
++    <div class="modal-header">
++      <h2 id="drink-dialog-title">Maple Oat Latte</h2>
++      <button type="button" class="modal-close-icon" command="close" commandfor="drink-order-dialog" aria-label="Close">
++        &times;
++      </button>
++    </div>
++
++    <p id="drink-dialog-desc">Velvety steamed oat milk paired with our signature double-shot espresso and pure grade-A Vermont maple syrup, finished with a dash of cinnamon.</p>
++
++    <div class="modal-meta">
++      <span id="drink-dialog-price" class="modal-price">$5.75</span>
++      <span aria-hidden="true">&bull;</span>
++      <span id="drink-dialog-calories">210 kcal</span>
++    </div>
++
++    <p id="drink-dialog-notes" class="modal-notes">
++      <strong>Tasting Notes:</strong> Toasted oats, caramelized maple, warm spice.
++    </p>
++
++    <form method="dialog" id="drink-order-form">
++      <div class="form-group">
++        <label for="drink-select">Drink</label>
++        <select id="drink-select" name="drink" autofocus>
++          <option value="maple-oat-latte">Maple Oat Latte ($5.75)</option>
++          <option value="dark-roast-espresso">Dark Roast Espresso ($3.75)</option>
++          <option value="cold-brew">Cold Brew ($4.75)</option>
++        </select>
++      </div>
++
++      <fieldset class="form-group">
++        <legend>Size</legend>
++        <div class="radio-options">
++          <div class="radio-option">
++            <input type="radio" id="size-small" name="size" value="Small (12 oz)">
++            <label for="size-small">Small (12 oz)</label>
++          </div>
++          <div class="radio-option">
++            <input type="radio" id="size-medium" name="size" value="Medium (16 oz)" checked>
++            <label for="size-medium">Medium (16 oz)</label>
++          </div>
++          <div class="radio-option">
++            <input type="radio" id="size-large" name="size" value="Large (20 oz)">
++            <label for="size-large">Large (20 oz)</label>
++          </div>
++        </div>
++      </fieldset>
++
++      <div class="form-group">
++        <label for="milk-select">Milk Option</label>
++        <select id="milk-select" name="milk">
++          <option value="Oat Milk">Oat Milk</option>
++          <option value="Whole Milk">Whole Milk</option>
++          <option value="Almond Milk">Almond Milk</option>
++          <option value="None (Black)">None (Black)</option>
++        </select>
++      </div>
++
++      <div class="form-group">
++        <label for="drink-qty">Quantity</label>
++        <input type="number" id="drink-qty" name="quantity" min="1" max="10" value="1" required>
++      </div>
++
++      <div class="modal-actions">
++        <button type="submit" value="cancel" formnovalidate class="btn btn-secondary">Cancel</button>
++        <button type="submit" value="order" class="btn">Add to Order</button>
++      </div>
++    </form>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +460,114 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill').catch(() => {});
++    }
++
++    const DRINKS = {
++      'maple-oat-latte': {
++        name: 'Maple Oat Latte',
++        description: 'Velvety steamed oat milk paired with our signature double-shot espresso and pure grade-A Vermont maple syrup, finished with a dash of cinnamon.',
++        price: '$5.75',
++        calories: '210 kcal',
++        notes: 'Toasted oats, caramelized maple, warm spice.',
++        defaultMilk: 'Oat Milk'
++      },
++      'dark-roast-espresso': {
++        name: 'Dark Roast Espresso',
++        description: 'A rich, full-bodied double shot pulled from slow-roasted Sumatra and Colombian beans for a bold, smokey crema and lingering dark-chocolate finish.',
++        price: '$3.75',
++        calories: '15 kcal',
++        notes: 'Dark cacao, roasted walnut, smokey cedar.',
++        defaultMilk: 'None (Black)'
++      },
++      'cold-brew': {
++        name: 'Cold Brew',
++        description: 'Coarse-ground single-origin Ethiopian beans steeped in filtered cold water for 18 hours, yielding an ultra-smooth, low-acidity brew served over ice.',
++        price: '$4.75',
++        calories: '10 kcal',
++        notes: 'Sweet molasses, cocoa nibs, crisp finish.',
++        defaultMilk: 'None (Black)'
++      }
++    };
++
++    const dialog = document.getElementById('drink-order-dialog');
++    const titleEl = document.getElementById('drink-dialog-title');
++    const descEl = document.getElementById('drink-dialog-desc');
++    const priceEl = document.getElementById('drink-dialog-price');
++    const caloriesEl = document.getElementById('drink-dialog-calories');
++    const notesEl = document.getElementById('drink-dialog-notes');
++    const drinkSelect = document.getElementById('drink-select');
++    const milkSelect = document.getElementById('milk-select');
++    const qtyInput = document.getElementById('drink-qty');
++    const statusEl = document.getElementById('order-status');
++
++    function populateDrinkDetails(drinkKey) {
++      const drink = DRINKS[drinkKey] || DRINKS['maple-oat-latte'];
++      titleEl.textContent = drink.name;
++      descEl.textContent = drink.description;
++      priceEl.textContent = drink.price;
++      caloriesEl.textContent = drink.calories;
++      notesEl.innerHTML = `<strong>Tasting Notes:</strong> ${drink.notes}`;
++      drinkSelect.value = drinkKey in DRINKS ? drinkKey : 'maple-oat-latte';
++      milkSelect.value = drink.defaultMilk;
++    }
++
++    drinkSelect.addEventListener('change', (e) => {
++      populateDrinkDetails(e.target.value);
++    });
++
++    document.querySelectorAll('button[commandfor="drink-order-dialog"]').forEach((btn) => {
++      btn.addEventListener('click', () => {
++        const action = btn.getAttribute('command');
++        if (action === 'show-modal') {
++          const drinkKey = btn.dataset.drink || 'maple-oat-latte';
++          populateDrinkDetails(drinkKey);
++          qtyInput.value = '1';
++          if (!('commandForElement' in HTMLButtonElement.prototype) && !dialog.open) {
++            dialog.showModal();
++          }
++        } else if (action === 'close' && !('commandForElement' in HTMLButtonElement.prototype) && dialog.open) {
++          dialog.close();
++        }
++      });
++    });
++
++    dialog.addEventListener('close', () => {
++      const choice = dialog.returnValue;
++      dialog.returnValue = '';
++      if (choice === 'order') {
++        const drink = DRINKS[drinkSelect.value] || DRINKS['maple-oat-latte'];
++        const sizeEl = dialog.querySelector('input[name="size"]:checked');
++        const size = sizeEl ? sizeEl.value : 'Medium (16 oz)';
++        const qty = qtyInput.value || '1';
++        statusEl.textContent = `Added ${qty} × ${size} ${drink.name} (${milkSelect.value}) to your order.`;
++      }
++    });
++
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      const outside = (e, dlg) => {
++        const r = dlg.getBoundingClientRect();
++        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++      };
++      let pressedOutside = false;
++      dialog.addEventListener('pointerdown', (e) => {
++        if (e.target === dialog) {
++          pressedOutside = outside(e, dialog);
++        } else {
++          pressedOutside = false;
++        }
++      });
++      dialog.addEventListener('pointerup', (e) => {
++        if (pressedOutside && e.target === dialog && outside(e, dialog)) {
++          dialog.close();
++        }
++        pressedOutside = false;
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

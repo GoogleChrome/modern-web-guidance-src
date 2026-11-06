@@ -1,0 +1,355 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,116 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      max-width: 800px;
++      margin: 60px auto 0;
++      padding: 0 20px;
++    }
++
++    .journal-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 10px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 10px;
++      margin-bottom: 20px;
++    }
++
++    .journal-header h2 {
++      color: var(--primary);
++    }
++
++    .journal-meta {
++      font-size: 0.85rem;
++      color: #795548;
++      font-style: italic;
++    }
++
++    .journal-figure {
++      margin: 0 0 24px;
++    }
++
++    .journal-figure img {
++      width: 100%;
++      height: 320px;
++      object-fit: cover;
++      border-radius: 8px;
++      display: block;
++    }
++
++    .journal-figure figcaption {
++      font-size: 0.8rem;
++      color: #795548;
++      margin-top: 6px;
++      text-align: center;
++    }
++
++    .journal-body h3 {
++      color: var(--primary);
++      margin: 28px 0 8px;
++    }
++
++    .journal-body p {
++      margin-bottom: 16px;
++    }
++
++    .summary-controls {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      flex-wrap: wrap;
++      margin-bottom: 20px;
++    }
++
++    .summary-controls .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .summary-controls .btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .summary-status {
++      font-size: 0.85rem;
++      color: #795548;
++    }
++
++    .summary-box {
++      background: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 16px 20px;
++      margin-bottom: 24px;
++    }
++
++    .summary-box h3 {
++      color: var(--primary);
++      font-size: 1rem;
++      margin-bottom: 8px;
++    }
++
++    .summary-box ul {
++      padding-left: 20px;
++    }
++
++    .summary-box li {
++      margin-bottom: 6px;
++    }
++
++    .summary-box[hidden] {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +304,106 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="journal" id="roasters-journal" aria-labelledby="journal-title">
++    <div class="journal-header">
++      <h2 id="journal-title">Roaster's Journal</h2>
++      <span class="journal-meta">From the roastery floor &middot; How our beans find their way to you</span>
++    </div>
++
++    <figure class="journal-figure">
++      <img
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1200&q=80"
++        alt="Freshly roasted coffee beans" loading="lazy">
++      <figcaption>Every lot is cupped, logged, and roasted in small batches.</figcaption>
++    </figure>
++
++    <div class="summary-controls">
++      <button type="button" class="btn" id="summarize-btn" aria-controls="journal-summary">Summarize</button>
++      <span class="summary-status" id="summary-status" role="status" aria-live="polite"></span>
++    </div>
++
++    <div class="summary-box" id="journal-summary" hidden>
++      <h3>Key Points</h3>
++      <ul id="summary-list"></ul>
++    </div>
++
++    <article class="journal-body" id="journal-text">
++      <p>
++        People sometimes ask us why a cup of coffee from The Daily Grind tastes the way it does. The honest answer
++        is that the flavor is decided long before the beans ever reach our roaster. It starts on hillsides in
++        Colombia, Ethiopia, Guatemala, and Sumatra, with farmers who have spent generations learning how altitude,
++        rainfall, and soil shape the character of a coffee cherry. Our job is mostly to find those people, earn
++        their trust, and then try not to get in the way of what they've already grown.
++      </p>
++
++      <h3>Finding the Right Partners</h3>
++      <p>
++        We buy the majority of our green coffee through direct relationships rather than on the commodity market.
++        Each year our head roaster travels to at least two origin countries during harvest season, walking the
++        farms, visiting the wet mills, and sitting down with producers to talk about what went well and what
++        didn't. Some of the cooperatives we work with today, like a small women-led group in the Huila region of
++        Colombia, have been selling to us for more than eight years. Those long relationships let farmers plan
++        ahead, invest in better processing equipment, and experiment with new varietals knowing they have a buyer
++        who will take the risk alongside them.
++      </p>
++      <p>
++        When we can't buy directly, we work with a handful of importers who share our standards for transparency.
++        We ask for the farm or washing station name, the elevation, the processing method, and, most importantly,
++        what the producer was actually paid. If an importer can't tell us that, we don't buy from them.
++      </p>
++
++      <h3>Paying Fairly</h3>
++      <p>
++        Coffee prices on the global market swing wildly, and in lean years the commodity price can fall below what
++        it costs a farmer to grow the crop. We think that's unacceptable. Our policy is to pay a floor price that
++        sits well above Fairtrade minimums regardless of where the market is, plus quality premiums for lots that
++        score above 86 points on the Specialty Coffee Association scale. Last year, our average price paid at the
++        farm gate was roughly two and a half times the commodity rate. It makes our coffee a bit more expensive,
++        and we're comfortable explaining why.
++      </p>
++
++      <h3>Cupping and Selection</h3>
++      <p>
++        Before we commit to a lot, we cup it, often several times. Samples arrive at the roastery in small vacuum
++        bags, and we roast them lightly so that nothing masks their natural flavors. Our team tastes each one
++        blind, scoring sweetness, acidity, body, balance, and aftertaste. We're looking for coffees that are clean
++        and expressive: a washed Ethiopian with bright notes of bergamot and jasmine, or a natural-process
++        Guatemalan that tastes like ripe cherries and dark chocolate. Fewer than one in five samples we taste
++        makes the cut.
++      </p>
++
++      <h3>Protecting Freshness in Transit</h3>
++      <p>
++        Green coffee is surprisingly fragile. Heat and humidity during a long sea voyage can flatten its flavor
++        before it ever reaches us. That's why all of our coffee ships in hermetically sealed GrainPro liners
++        inside traditional jute bags, and we time our purchases so beans arrive within a few months of harvest.
++        Once they land, they're stored in a climate-controlled warehouse just a few miles from our roastery and
++        are typically roasted within the year.
++      </p>
++
++      <h3>Sustainability Beyond the Bean</h3>
++      <p>
++        Sourcing responsibly isn't only about price. We prioritize farms that use shade-grown methods, which
++        protect bird habitats and reduce the need for chemical fertilizers. We contribute a portion of every bag
++        sold to a community fund that our partner cooperatives direct themselves; in recent years it has paid for
++        a new water filtration system for a school in Sidama and for drying beds that help farmers in Huehuetenango
++        get a better price for their crop. At home, our spent chaff and burlap sacks go to local gardeners and
++        urban farms instead of the landfill.
++      </p>
++
++      <h3>From Their Hands to Your Cup</h3>
++      <p>
++        By the time a bag of beans reaches our roaster, it has passed through dozens of hands and traveled
++        thousands of miles. We roast in small batches, usually no more than thirty pounds at a time, so we can
++        adjust each profile to bring out the best in that particular lot. Then we get it to our cafés and your
++        door as quickly as possible, because we believe the people who grew this coffee deserve to have it
++        tasted at its peak. The next time you take a sip, we hope you'll taste a little bit of that journey.
++      </p>
++    </article>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +412,127 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const btn = document.getElementById('summarize-btn');
++      const statusEl = document.getElementById('summary-status');
++      const box = document.getElementById('journal-summary');
++      const list = document.getElementById('summary-list');
++      const source = document.getElementById('journal-text');
++
++      // Chrome's built-in Summarizer API (global `Summarizer`), with fallback to the older `self.ai.summarizer` shape.
++      const api = ('Summarizer' in self) ? self.Summarizer : self.ai?.summarizer;
++
++      if (!api) {
++        btn.disabled = true;
++        btn.style.cursor = 'not-allowed';
++        statusEl.textContent = "Your browser doesn't support built-in AI summaries yet (try a recent version of Chrome).";
++        return;
++      }
++
++      const options = {
++        type: 'key-points',
++        format: 'markdown',
++        length: 'short',
++        sharedContext: "A coffee roaster's blog post about how they source their green coffee beans.",
++      };
++
++      let summarizerPromise = null;
++      let cachedSummary = null;
++
++      async function getAvailability() {
++        if (typeof api.availability === 'function') return api.availability(options);
++        // Legacy API
++        const caps = await api.capabilities();
++        return { readily: 'available', after_download: 'downloadable', no: 'unavailable' }[caps.available] || 'unavailable';
++      }
++
++      function getSummarizer() {
++        if (!summarizerPromise) {
++          summarizerPromise = api.create({
++            ...options,
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                const pct = Math.round((e.total ? e.loaded / e.total : e.loaded) * 100);
++                statusEl.textContent = `Downloading on-device AI model… ${pct}%`;
++              });
++            },
++          }).catch((err) => {
++            summarizerPromise = null;
++            throw err;
++          });
++        }
++        return summarizerPromise;
++      }
++
++      function renderBullets(markdown) {
++        list.replaceChildren();
++        const lines = markdown
++          .split('\n')
++          .map((l) => l.trim())
++          .filter(Boolean)
++          .map((l) => l.replace(/^([-*•]|\d+[.)])\s+/, '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1'));
++        for (const line of lines) {
++          const li = document.createElement('li');
++          li.textContent = line;
++          list.appendChild(li);
++        }
++        box.hidden = false;
++      }
++
++      btn.addEventListener('click', async () => {
++        if (cachedSummary) {
++          box.hidden = !box.hidden;
++          btn.textContent = box.hidden ? 'Show Summary' : 'Hide Summary';
++          return;
++        }
++
++        btn.disabled = true;
++        btn.textContent = 'Summarizing…';
++        statusEl.textContent = '';
++
++        try {
++          const availability = await getAvailability();
++          if (availability === 'unavailable') {
++            throw new Error("Built-in AI summaries aren't available on this device.");
++          }
++          if (availability !== 'available') {
++            statusEl.textContent = 'Preparing on-device AI model…';
++          }
++
++          const summarizer = await getSummarizer();
++          statusEl.textContent = 'Reading the journal…';
++
++          const text = source.innerText.replace(/\s+\n/g, '\n').trim();
++          let result = '';
++
++          if (typeof summarizer.summarizeStreaming === 'function') {
++            const stream = summarizer.summarizeStreaming(text);
++            for await (const chunk of stream) {
++              // Newer Chrome streams deltas; some older builds streamed the cumulative text.
++              result = chunk.startsWith(result) ? chunk : result + chunk;
++              renderBullets(result);
++            }
++          } else {
++            result = await summarizer.summarize(text);
++            renderBullets(result);
++          }
++
++          cachedSummary = result;
++          statusEl.textContent = 'Summary generated on your device.';
++          btn.textContent = 'Hide Summary';
++        } catch (err) {
++          console.error(err);
++          statusEl.textContent = err?.message || 'Sorry, something went wrong while summarizing.';
++          btn.textContent = 'Summarize';
++        } finally {
++          btn.disabled = false;
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,248 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,100 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Global Tasting Coordinator */
++    .tasting {
++      margin-top: 60px;
++      background: var(--primary);
++      color: var(--secondary);
++      border-radius: 8px;
++      padding: 40px 30px;
++    }
++
++    .tasting h2 {
++      text-align: center;
++      color: white;
++      margin-bottom: 10px;
++    }
++
++    .tasting-intro {
++      max-width: 650px;
++      margin: 0 auto 25px;
++      text-align: center;
++    }
++
++    .tasting-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 20px;
++      justify-content: center;
++    }
++
++    .tasting-controls label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++      gap: 5px;
++    }
++
++    .tasting-controls input,
++    .tasting-controls select {
++      font: inherit;
++      padding: 8px 12px;
++      border-radius: 5px;
++      border: 1px solid #6d4c41;
++      background: #3e2723;
++      color: white;
++      color-scheme: dark;
++    }
++
++    .tasting-controls input:focus,
++    .tasting-controls select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .tasting-warning {
++      margin: 25px auto 0;
++      max-width: 700px;
++      padding: 12px 16px;
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      background: rgba(255, 171, 64, 0.15);
++      color: #ffe0b2;
++      font-size: 0.9rem;
++    }
++
++    .tasting-warning[hidden] {
++      display: none;
++    }
++
++    .tasting .card {
++      background: #3e2723;
++      border: 1px solid #6d4c41;
++      box-shadow: none;
++    }
++
++    .tasting .card h3 {
++      color: var(--secondary);
++    }
++
++    .tasting .card.is-host {
++      border-color: var(--accent);
++    }
++
++    .tz-time {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--accent);
++    }
++
++    .tz-meta {
++      font-size: 0.8rem;
++      color: var(--secondary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +286,143 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="tasting" id="tasting">
++      <h2>Global Tasting Coordinator</h2>
++      <p class="tasting-intro">
++        Hosting a virtual coffee tasting with friends around the world? Pick a date, a time and your own
++        timezone, and we'll show what the clock says in New York, London, Tokyo and UTC.
++      </p>
++
++      <div class="tasting-controls">
++        <label>
++          Date
++          <input type="date" id="dateInput">
++        </label>
++        <label>
++          Time
++          <input type="time" id="timeInput" value="09:00">
++        </label>
++        <label>
++          Host timezone
++          <select id="hostTzSelect">
++            <option value="America/New_York">America/New_York</option>
++            <option value="Europe/London">Europe/London</option>
++            <option value="Asia/Tokyo">Asia/Tokyo</option>
++            <option value="UTC">UTC</option>
++          </select>
++        </label>
++      </div>
++
++      <div id="hostWarning" class="tasting-warning" role="status" aria-live="polite" hidden></div>
++
++      <div class="grid" id="grid"></div>
++    </section>
+   </main>
+ 
++  <script type="module">
++    // Native Temporal where available; otherwise load the official polyfill.
++    if (!globalThis.Temporal) {
++      ({ Temporal: globalThis.Temporal } = await import('https://esm.sh/@js-temporal/polyfill'));
++    }
++
++    const TARGETS = [
++      { label: 'New York', tz: 'America/New_York' },
++      { label: 'London', tz: 'Europe/London' },
++      { label: 'Tokyo', tz: 'Asia/Tokyo' },
++      { label: 'UTC', tz: 'UTC' },
++    ];
++
++    const dateInput = document.getElementById('dateInput');
++    const timeInput = document.getElementById('timeInput');
++    const hostTzSelect = document.getElementById('hostTzSelect');
++    const grid = document.getElementById('grid');
++    const hostWarning = document.getElementById('hostWarning');
++
++    const fmtOffset = (zdt) => zdt.offset; // e.g. "-04:00"
++    const fmtWall = (zdt) => zdt.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
++    const fmtDay = (zdt) =>
++      zdt.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
++    const fmtZone = (zdt) => zdt.toLocaleString('en-US', { timeZoneName: 'short' }).split(' ').pop();
++
++    /**
++     * Resolve a wall-clock time in a zone and report DST conflicts.
++     * Temporal objects are immutable; every step below produces a new value.
++     */
++    function resolveHost(plain, tz) {
++      const resolved = plain.toZonedDateTime(tz, { disambiguation: 'compatible' });
++      const earlier = plain.toZonedDateTime(tz, { disambiguation: 'earlier' });
++      const later = plain.toZonedDateTime(tz, { disambiguation: 'later' });
++
++      if (!resolved.toPlainDateTime().equals(plain)) {
++        // The wall-clock time was skipped: the resolved value landed on a different local time.
++        return {
++          zdt: resolved,
++          warning:
++            `${plain.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })} on ${plain.toLocaleString('en-US', { dateStyle: 'medium' })} ` +
++            `does not exist in ${tz}: clocks jump forward at this moment (a daylight saving gap). ` +
++            `We used the time immediately after the gap, ${fmtWall(resolved)} ${fmtZone(resolved)} ` +
++            `(UTC${fmtOffset(resolved)}).`,
++        };
++      }
++      if (!earlier.equals(later)) {
++        // The wall-clock time occurs twice: clocks fall back (a daylight saving overlap).
++        return {
++          zdt: resolved,
++          warning:
++            `${fmtWall(resolved)} happens twice in ${tz} on this date because clocks fall back (a daylight saving overlap). ` +
++            `We used the first occurrence (UTC${fmtOffset(earlier)}); the second would be at UTC${fmtOffset(later)}, ` +
++            `${later.since(earlier, { largestUnit: 'hours' }).hours} hour(s) later.`,
++        };
++      }
++      return { zdt: resolved, warning: null };
++    }
++
++    function render() {
++      if (!dateInput.value || !timeInput.value) {
++        grid.replaceChildren();
++        hostWarning.hidden = true;
++        return;
++      }
++      const tz = hostTzSelect.value;
++      const plain = Temporal.PlainDateTime.from(`${dateInput.value}T${timeInput.value}`);
++      const { zdt, warning } = resolveHost(plain, tz);
++
++      hostWarning.hidden = !warning;
++      hostWarning.textContent = warning ?? '';
++
++      grid.replaceChildren(
++        ...TARGETS.map(({ label, tz: target }) => {
++          const local = zdt.withTimeZone(target); // new object; zdt is untouched
++          const card = document.createElement('div');
++          card.className = 'card tz-card' + (target === tz ? ' is-host' : '');
++          card.dataset.tz = target;
++
++          const h = document.createElement('h3');
++          h.textContent = label;
++          const time = document.createElement('p');
++          time.className = 'tz-time';
++          time.textContent = fmtWall(local);
++          const meta = document.createElement('p');
++          meta.className = 'tz-meta';
++          meta.textContent = `${fmtDay(local)} · ${fmtZone(local)}`;
++
++          card.append(h, time, meta);
++          return card;
++        })
++      );
++    }
++
++    dateInput.value = Temporal.Now.plainDateISO().toString();
++    for (const el of [dateInput, timeInput, hostTzSelect]) {
++      el.addEventListener('input', render);
++      el.addEventListener('change', render);
++    }
++    render();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

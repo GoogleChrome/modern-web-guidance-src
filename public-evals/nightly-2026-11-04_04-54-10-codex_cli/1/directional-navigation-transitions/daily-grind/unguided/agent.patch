@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+index 66c9173..91c3927 100644
+--- a/index.html
++++ b/index.html
+@@ -100,11 +100,55 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .seasonal-slides {
+       margin-top: 20px;
++      overflow: hidden;
++    }
++
++    .slide-next {
++      animation: slide-in-next 300ms ease-out;
++    }
++
++    .slide-previous {
++      animation: slide-in-previous 300ms ease-out;
++    }
++
++    @keyframes slide-in-next {
++      from { transform: translateX(100%); }
++      to { transform: translateX(0); }
++    }
++
++    @keyframes slide-in-previous {
++      from { transform: translateX(-100%); }
++      to { transform: translateX(0); }
++    }
++
++    .seasonal-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-top: 20px;
++    }
++
++    .seasonal-controls .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .seasonal-controls .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .slide-next,
++      .slide-previous {
++        animation: none;
++      }
+     }
+ 
+     .card {
+@@ -175,25 +219,30 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section aria-labelledby="seasonal-heading" aria-roledescription="carousel">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="seasonal-slides" id="seasonal-slides" aria-live="polite" aria-atomic="true">
++        <div class="card" role="group" aria-roledescription="slide" aria-label="1 of 3">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" role="group" aria-roledescription="slide" aria-label="2 of 3" hidden>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" role="group" aria-roledescription="slide" aria-label="3 of 3" hidden>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="seasonal-controls">
++        <button type="button" class="btn" id="seasonal-previous" aria-controls="seasonal-slides">Previous</button>
++        <span id="seasonal-position">1 of 3</span>
++        <button type="button" class="btn" id="seasonal-next" aria-controls="seasonal-slides">Next</button>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +256,26 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const seasonalSlides = Array.from(document.querySelectorAll('#seasonal-slides .card'));
++    const seasonalPosition = document.getElementById('seasonal-position');
++    let seasonalIndex = 0;
++
++    function showSeasonalSlide(direction) {
++      const outgoing = seasonalSlides[seasonalIndex];
++      outgoing.hidden = true;
++      outgoing.classList.remove('slide-next', 'slide-previous');
++
++      seasonalIndex = (seasonalIndex + direction + seasonalSlides.length) % seasonalSlides.length;
++      const incoming = seasonalSlides[seasonalIndex];
++      incoming.hidden = false;
++      incoming.classList.add(direction > 0 ? 'slide-next' : 'slide-previous');
++      seasonalPosition.textContent = `${seasonalIndex + 1} of ${seasonalSlides.length}`;
++    }
++
++    document.getElementById('seasonal-previous').addEventListener('click', () => showSeasonalSlide(-1));
++    document.getElementById('seasonal-next').addEventListener('click', () => showSeasonalSlide(1));
++  </script>
+ </body>
+ 
+ </html>

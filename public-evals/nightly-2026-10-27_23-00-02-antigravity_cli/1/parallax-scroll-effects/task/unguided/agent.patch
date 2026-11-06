@@ -1,0 +1,328 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,260 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Scroll-Driven Parallax Section */
++    .parallax-showcase {
++      position: relative;
++      min-height: 85vh;
++      overflow: hidden;
++      background-color: #2b1b17;
++      color: var(--light);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 80px 20px;
++      view-timeline-name: --parallax-section;
++      view-timeline-axis: block;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++      will-change: transform;
++    }
++
++    /* Deep background layer - moves slowest */
++    .parallax-layer--back {
++      inset: -20% 0;
++      background: linear-gradient(rgba(43, 27, 23, 0.78), rgba(43, 27, 23, 0.85)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80') center / cover no-repeat;
++      z-index: 1;
++    }
++
++    /* Midground floating imagery layer - moves at medium speed */
++    .parallax-layer--mid {
++      z-index: 2;
++      max-width: 1200px;
++      margin: 0 auto;
++    }
++
++    .parallax-card-img {
++      position: absolute;
++      border-radius: 12px;
++      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
++      object-fit: cover;
++      border: 2px solid rgba(255, 171, 64, 0.3);
++      will-change: transform;
++    }
++
++    .parallax-card-img--left {
++      width: 260px;
++      height: 340px;
++      left: 5%;
++      top: 12%;
++    }
++
++    .parallax-card-img--right {
++      width: 240px;
++      height: 300px;
++      right: 5%;
++      bottom: 10%;
++    }
++
++    /* Foreground decorative accents - moves fastest */
++    .parallax-layer--front {
++      z-index: 4;
++      max-width: 1200px;
++      margin: 0 auto;
++    }
++
++    .parallax-badge {
++      position: absolute;
++      background: rgba(78, 52, 46, 0.9);
++      border: 1px solid var(--accent);
++      color: var(--accent);
++      padding: 10px 18px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
++      will-change: transform;
++    }
++
++    .parallax-badge--top {
++      right: 14%;
++      top: 16%;
++    }
++
++    .parallax-badge--bottom {
++      left: 12%;
++      bottom: 14%;
++    }
++
++    /* Foreground content card */
++    .parallax-content {
++      position: relative;
++      z-index: 3;
++      max-width: 640px;
++      text-align: center;
++      background: rgba(38, 22, 18, 0.82);
++      border: 1px solid rgba(215, 204, 200, 0.2);
++      padding: 48px 40px;
++      border-radius: 12px;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
++      will-change: transform;
++    }
++
++    .parallax-eyebrow {
++      display: inline-block;
++      color: var(--accent);
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      font-size: 0.85rem;
++      font-weight: 700;
++      margin-bottom: 12px;
++    }
++
++    .parallax-content h2 {
++      font-size: 2.4rem;
++      margin-bottom: 16px;
++      color: #fff;
++      line-height: 1.2;
++    }
++
++    .parallax-content p {
++      font-size: 1.05rem;
++      color: var(--secondary);
++      margin-bottom: 24px;
++    }
++
++    .parallax-stats {
++      display: flex;
++      justify-content: center;
++      gap: 32px;
++      margin-top: 24px;
++      padding-top: 24px;
++      border-top: 1px solid rgba(215, 204, 200, 0.2);
++    }
++
++    .parallax-stat strong {
++      display: block;
++      font-size: 1.5rem;
++      color: var(--accent);
++    }
++
++    .parallax-stat span {
++      font-size: 0.85rem;
++      color: var(--secondary);
++    }
++
++    @keyframes parallax-shift-slow {
++      from {
++        transform: translate3d(0, -12%, 0) scale(1.08);
++      }
++      to {
++        transform: translate3d(0, 12%, 0) scale(1.08);
++      }
++    }
++
++    @keyframes parallax-shift-mid {
++      from {
++        transform: translate3d(0, 90px, 0);
++      }
++      to {
++        transform: translate3d(0, -90px, 0);
++      }
++    }
++
++    @keyframes parallax-shift-content {
++      from {
++        transform: translate3d(0, 35px, 0);
++      }
++      to {
++        transform: translate3d(0, -35px, 0);
++      }
++    }
++
++    @keyframes parallax-shift-fast {
++      from {
++        transform: translate3d(0, 160px, 0);
++      }
++      to {
++        transform: translate3d(0, -160px, 0);
++      }
++    }
++
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-layer--back {
++          animation: parallax-shift-slow linear both;
++          animation-timeline: --parallax-section;
++          animation-range: entry 0% exit 100%;
++        }
++
++        .parallax-layer--mid {
++          animation: parallax-shift-mid linear both;
++          animation-timeline: --parallax-section;
++          animation-range: entry 0% exit 100%;
++        }
++
++        .parallax-content {
++          animation: parallax-shift-content linear both;
++          animation-timeline: --parallax-section;
++          animation-range: entry 0% exit 100%;
++        }
++
++        .parallax-layer--front {
++          animation: parallax-shift-fast linear both;
++          animation-timeline: --parallax-section;
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer,
++      .parallax-content,
++      .parallax-card-img,
++      .parallax-badge {
++        animation: none !important;
++        transform: none !important;
++        will-change: auto;
++      }
++    }
++
++    @media (max-width: 900px) {
++      .parallax-card-img--left {
++        width: 180px;
++        height: 230px;
++        left: 2%;
++        opacity: 0.45;
++      }
++
++      .parallax-card-img--right {
++        width: 170px;
++        height: 210px;
++        right: 2%;
++        opacity: 0.45;
++      }
++
++      .parallax-badge {
++        display: none;
++      }
++
++      .parallax-content {
++        padding: 32px 24px;
++      }
++
++      .parallax-content h2 {
++        font-size: 1.9rem;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +425,63 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax-showcase" aria-labelledby="roasting-craft-heading">
++    <!-- Deep Background Layer (Slowest) -->
++    <div class="parallax-layer parallax-layer--back" aria-hidden="true"></div>
++
++    <!-- Midground Layer (Medium Speed) -->
++    <div class="parallax-layer parallax-layer--mid" aria-hidden="true">
++      <img
++        class="parallax-card-img parallax-card-img--left"
++        src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++        alt=""
++        loading="lazy"
++        decoding="async"
++      >
++      <img
++        class="parallax-card-img parallax-card-img--right"
++        src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++        alt=""
++        loading="lazy"
++        decoding="async"
++      >
++    </div>
++
++    <!-- Center Content Layer (Subtle Depth Motion) -->
++    <div class="parallax-content">
++      <span class="parallax-eyebrow">From Bean to Cup</span>
++      <h2 id="roasting-craft-heading">Crafted in Small Batches</h2>
++      <p>
++        Every harvest is roasted to order in our vintage cast-iron drum roasters.
++        By unlocking layered notes of toasted hazelnut, dark cocoa, and bright citrus,
++        we bring depth and warmth to every morning ritual.
++      </p>
++      <a href="/about" class="btn">Explore Our Roasting Process</a>
++      <div class="parallax-stats">
++        <div class="parallax-stat">
++          <strong>100%</strong>
++          <span>Single-Origin Arabica</span>
++        </div>
++        <div class="parallax-stat">
++          <strong>48 hrs</strong>
++          <span>Roast-to-Ship Freshness</span>
++        </div>
++        <div class="parallax-stat">
++          <strong>1,800m</strong>
++          <span>High-Altitude Farms</span>
++        </div>
++      </div>
++    </div>
++
++    <!-- Foreground Accent Layer (Fastest) -->
++    <div class="parallax-layer parallax-layer--front" aria-hidden="true">
++      <span class="parallax-badge parallax-badge--top">Small Batch #042</span>
++      <span class="parallax-badge parallax-badge--bottom">Direct Trade Certified</span>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

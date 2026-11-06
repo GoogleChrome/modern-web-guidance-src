@@ -1,0 +1,257 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,8 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -87,8 +88,25 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero-canvas {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++    }
++
++    .hero-content {
++      width: 100%;
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      padding: 0 20px;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,11 +186,15 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <canvas id="hero-canvas" class="hero-canvas" content="drawable">
++      <div id="hero-content" class="hero-content" drawable>
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" class="btn">Order Now</a>
++      </div>
++    </canvas>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +228,198 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // GPU ripple distortion over the hero text and button via HTML-in-Canvas.
++    // The elements stay real DOM (selectable, clickable); the canvas only draws them.
++    (() => {
++      const canvas = document.getElementById('hero-canvas');
++      const content = document.getElementById('hero-content');
++      const hero = canvas.parentElement;
++
++      const gl = 'content' in HTMLCanvasElement.prototype
++        ? canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true })
++        : null;
++
++      // Fallback: unsupported browsers render the content directly in the hero.
++      if (!gl) {
++        canvas.replaceWith(content);
++        return;
++      }
++
++      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
++      const MAX_RIPPLES = 8;
++      const LIFETIME = 2.2; // seconds
++
++      const vs = `#version 300 es
++        in vec2 pos;
++        out vec2 uv;
++        void main() {
++          uv = vec2(pos.x, -pos.y) * 0.5 + 0.5; // element texture rows start at the top
++          gl_Position = vec4(pos, 0.0, 1.0);
++        }`;
++
++      const fs = `#version 300 es
++        precision highp float;
++        const int N = ${MAX_RIPPLES};
++        uniform sampler2D tex;
++        uniform vec4 ripples[N]; // x, y (uv), age (s), strength
++        uniform float aspect;
++        in vec2 uv;
++        out vec4 color;
++        void main() {
++          vec2 offset = vec2(0.0);
++          for (int i = 0; i < N; i++) {
++            vec4 r = ripples[i];
++            if (r.w <= 0.0) continue;
++            vec2 d = (uv - r.xy) * vec2(aspect, 1.0);
++            float dist = length(d);
++            float front = r.z * 0.35;               // wavefront radius
++            float env = exp(-pow((dist - front) * 7.0, 2.0)) * (1.0 - r.z / ${LIFETIME.toFixed(1)});
++            float wave = sin((dist - front) * 60.0) * env * r.w * 0.012;
++            offset += normalize(d + 1e-5) * wave * vec2(1.0 / aspect, 1.0);
++          }
++          color = texture(tex, uv - offset);
++        }`;
++
++      function compile(type, src) {
++        const sh = gl.createShader(type);
++        gl.shaderSource(sh, src);
++        gl.compileShader(sh);
++        if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
++        return sh;
++      }
++
++      const program = gl.createProgram();
++      gl.attachShader(program, compile(gl.VERTEX_SHADER, vs));
++      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fs));
++      gl.linkProgram(program);
++      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
++      gl.useProgram(program);
++
++      const buf = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
++      const loc = gl.getAttribLocation(program, 'pos');
++      gl.enableVertexAttribArray(loc);
++      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
++
++      const uRipples = gl.getUniformLocation(program, 'ripples');
++      const uAspect = gl.getUniformLocation(program, 'aspect');
++      gl.uniform1i(gl.getUniformLocation(program, 'tex'), 0);
++
++      const texture = gl.createTexture();
++      const textureState = { width: 0, height: 0 };
++      gl.bindTexture(gl.TEXTURE_2D, texture);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++
++      // Match the canvas grid to device pixels.
++      new ResizeObserver(([entry]) => {
++        const dpc = entry.devicePixelContentBoxSize;
++        canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * devicePixelRatio);
++        canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * devicePixelRatio);
++        canvas.requestPaint();
++      }).observe(canvas, 'devicePixelContentBoxSize' in ResizeObserverEntry.prototype
++        ? { box: 'device-pixel-content-box' } : {});
++
++      function getElementImageSize() {
++        let image;
++        try {
++          image = canvas.captureElementImage(content);
++        } catch {
++          canvas.requestPaint(); // no paint record yet; retry on next paint
++          return null;
++        }
++        const width = Math.ceil(image.width);
++        const height = Math.ceil(image.height);
++        image.close();
++        return width > 0 && height > 0 ? { width, height } : null;
++      }
++
++      function uploadContent() {
++        const size = getElementImageSize();
++        if (!size) return;
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        if (textureState.width !== size.width || textureState.height !== size.height) {
++          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, size.width, size.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
++          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++          textureState.width = size.width;
++          textureState.height = size.height;
++        }
++        gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, content, size);
++      }
++
++      // Quad fills the canvas (clip -1..1 from a -0.5..0.5 unit square => scale 2).
++      const MVP = new DOMMatrix().scale(2, 2, 1);
++      function syncGeometry() {
++        const w = content.offsetWidth, h = content.offsetHeight;
++        if (!w || !h) return;
++        const toGLModel = new DOMMatrix().scale(1 / w, -1 / h, 1 / h).translate(-w / 2, -h / 2);
++        const toViewport = new DOMMatrix()
++          .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
++          .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
++        canvas.updateElementGeometry(content, {
++          canvasTransform: toViewport.multiply(MVP).multiply(toGLModel),
++        });
++      }
++
++      // Ripple state
++      const ripples = []; // { x, y, start, strength }
++      let looping = false;
++      let lastSpawn = 0;
++      let lastX = 0, lastY = 0;
++
++      function spawn(e, strength) {
++        if (reduceMotion.matches) return;
++        const rect = canvas.getBoundingClientRect();
++        ripples.push({
++          x: (e.clientX - rect.left) / rect.width,
++          y: (e.clientY - rect.top) / rect.height,
++          start: performance.now(),
++          strength,
++        });
++        if (ripples.length > MAX_RIPPLES) ripples.shift();
++        if (!looping) { looping = true; requestAnimationFrame(tick); }
++      }
++
++      hero.addEventListener('pointermove', (e) => {
++        const now = performance.now();
++        if (now - lastSpawn < 90 || Math.hypot(e.clientX - lastX, e.clientY - lastY) < 24) return;
++        lastSpawn = now; lastX = e.clientX; lastY = e.clientY;
++        spawn(e, 0.5);
++      });
++      hero.addEventListener('pointerdown', (e) => spawn(e, 1.2));
++
++      function tick(now) {
++        while (ripples.length && (now - ripples[0].start) / 1000 > LIFETIME) ripples.shift();
++        canvas.requestPaint();
++        if (ripples.length) requestAnimationFrame(tick); else looping = false;
++      }
++
++      const data = new Float32Array(MAX_RIPPLES * 4);
++      canvas.onpaint = (event) => {
++        if (!textureState.width || (event.changedElements && event.changedElements.length)) {
++          try { uploadContent(); } catch (err) { console.error('texElementSubImage2D failed:', err); }
++        }
++        const now = performance.now();
++        data.fill(0);
++        ripples.forEach((r, i) => {
++          data.set([r.x, r.y, (now - r.start) / 1000, r.strength], i * 4);
++        });
++        gl.viewport(0, 0, canvas.width, canvas.height);
++        gl.clearColor(0, 0, 0, 0);
++        gl.clear(gl.COLOR_BUFFER_BIT);
++        gl.uniform4fv(uRipples, data);
++        gl.uniform1f(uAspect, canvas.width / canvas.height || 1);
++        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
++        syncGeometry();
++      };
++      canvas.requestPaint();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

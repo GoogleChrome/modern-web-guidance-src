@@ -1,0 +1,26 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,22 @@
++<!doctype html>
++<meta charset="utf-8">
++<title>Button</title>
++<button id="b">Load</button>
++<script>
++  b.onclick = () => {
++    // Critical data: highest fetch priority.
++    fetch('/api/data', { priority: 'high' })
++      .then(r => r.json())
++      .then(console.log);
++
++    // Analytics: low priority so it never competes with the critical request;
++    // keepalive lets it survive page unload.
++    fetch('/api/analytics', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ click: 1 }),
++      priority: 'low',
++      keepalive: true
++    });
++  };
++</script>

@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+index 66c9173..de20f85 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,8 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Let supporting browsers apply the user's OS text scale to rem units. -->
++  <meta name="text-scale" content="scale">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -23,6 +25,7 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
++      overflow-wrap: anywhere;
+       color: var(--text);
+       background-color: var(--light);
+     }
+@@ -33,29 +36,36 @@
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 1rem 2rem;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      /* Stay in document flow so a wrapped menu cannot cover the content. */
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+-      letter-spacing: 1px;
++      letter-spacing: 0.0625em;
++      min-width: 0;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.625rem 1.25rem;
++      min-width: 0;
+       list-style: none;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      min-width: 0;
+     }
+ 
+     nav a {
++      display: inline-block;
++      max-width: 100%;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -68,13 +78,13 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      padding: 0.3125rem 0.75rem;
++      border-radius: 0.25rem;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,49 +95,66 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem min(1.25rem, 5%);
++    }
++
++    .hero > * {
++      max-width: 100%;
++      min-width: 0;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
++      line-height: 1.2;
+       margin-bottom: 1rem;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-width: 68.75rem;
++      margin: 2.5rem auto;
++      padding: 0 min(1.25rem, 5%);
++    }
++
++    h2 {
++      font-size: 1.5rem;
++      line-height: 1.3;
++      text-align: center;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      /* Columns scale with text and can always shrink to the container. */
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.625rem), 1fr));
++      gap: 1.25rem;
++      margin-top: 1.25rem;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
++      min-width: 0;
++      padding: 1.25rem;
++      border-radius: 0.5rem;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: 1.17rem;
++      line-height: 1.4;
++      margin-bottom: 0.625rem;
+       color: var(--primary);
+     }
+ 
+     .btn {
+       display: inline-block;
++      max-width: 100%;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 0.625rem 1.25rem;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
++      border-radius: 0.3125rem;
++      margin-top: 0.9375rem;
+       transition: background 0.3s;
+     }
+ 
+@@ -138,16 +165,16 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 2.5rem min(1.25rem, 5%);
++      margin-top: 2.5rem;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 1.25rem;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin: 0 0.625rem;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+@@ -176,7 +203,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,10 @@
+       font-weight: bold;
+     }
+ 
+     .feed {
++      /* keep feed layout isolated so toggling things outside it is cheap */
++      contain: layout style;
+       max-width: 800px;
+       margin: 6rem auto 2rem;
+       padding: 0 1rem;
+     }
+@@ -95,8 +97,16 @@
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
++    /* Placeholder for cards that haven't been scrolled near yet: no children, no filters */
++    .card.off-screen-card {
++      min-height: var(--card-height, 380px);
++      box-sizing: border-box;
++      filter: none;
++      will-change: auto;
++    }
++
+     .nested-layer {
+       position: absolute;
+       inset: 0;
+       pointer-events: none;
+@@ -180,8 +190,24 @@
+       font-weight: bold;
+       margin-top: 1rem;
+     }
+ 
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 1rem;
++      box-sizing: border-box;
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 0.5rem;
++      font-family: monospace;
++      font-size: 0.85rem;
++    }
++
++    .debug-panel[hidden] {
++      display: none;
++    }
++
+     .info-text {
+       max-width: 600px;
+       margin: 2rem auto;
+       text-align: center;
+@@ -207,8 +233,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="debug-toggle" class="toggle-btn secondary" aria-controls="debug-panel" aria-expanded="false">Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,8 +246,14 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel" hidden>
++    <div>Cards: <span id="debug-total">0</span></div>
++    <div>Rendered: <span id="debug-rendered">0</span></div>
++    <div>Off-screen: <span id="debug-offscreen">0</span></div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+@@ -228,12 +261,23 @@
+     const cardCount = 500;
+ 
+ 
+ 
++    let observer = null;
++    let renderedCount = 0;
++
++    // Cheap empty shell; real content is built by hydrateCard when scrolled near.
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
++      card.dataset.index = index;
++      observer.observe(card);
++      return card;
++    }
+ 
++    function hydrateCard(card) {
++      const index = Number(card.dataset.index);
++
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+ 
+@@ -257,11 +301,31 @@
+                     </div>
+                 </div>
+             `;
+       card.appendChild(inner);
+-      return card;
++      card.classList.remove('off-screen-card');
+     }
+ 
++    function updateDebug() {
++      document.getElementById('debug-total').textContent = cardCount;
++      document.getElementById('debug-rendered').textContent = renderedCount;
++      document.getElementById('debug-offscreen').textContent = cardCount - renderedCount;
++    }
++
++    function onIntersect(entries) {
++      for (const entry of entries) {
++        if (!entry.isIntersecting) continue;
++        observer.unobserve(entry.target);
++        hydrateCard(entry.target);
++        renderedCount++;
++        if (renderedCount === 1) {
++          // size remaining placeholders like a real card to avoid scroll jumps
++          feed.style.setProperty('--card-height', entry.target.offsetHeight + 'px');
++        }
++      }
++      updateDebug();
++    }
++
+     function measureRender(startTime, suffix = '') {
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+@@ -279,8 +343,11 @@
+     }
+ 
+     function renderCards() {
+       const info = feed.querySelector('.info-text');
++      if (observer) observer.disconnect();
++      observer = new IntersectionObserver(onIntersect, { rootMargin: '600px 0px' });
++      renderedCount = 0;
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
+@@ -298,9 +365,16 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    const debugBtn = document.getElementById('debug-toggle');
++    const debugPanel = document.getElementById('debug-panel');
++    debugBtn.addEventListener('click', () => {
++      debugPanel.hidden = !debugPanel.hidden;
++      debugBtn.setAttribute('aria-expanded', String(!debugPanel.hidden));
++    });
+ 
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

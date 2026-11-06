@@ -1,0 +1,535 @@
+diff --git a/index.html b/index.html
+index 66c9173..209b263 100644
+--- a/index.html
++++ b/index.html
+@@ -4,153 +4,361 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer reset, base, theme, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
++    @layer reset {
++      body,
++      nav,
++      ul,
++      li,
++      header,
++      main,
++      section,
++      div,
++      h1,
++      h2,
++      h3,
++      p,
++      a,
++      footer,
++      fieldset,
++      legend,
++      label,
++      input,
++      span {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+     }
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++    @layer theme {
++      /* 1. Decouple selection logic (union & intersection of selectors and @-rules) from applied rules */
++      :root {
++        /* Design tokens */
++        --color-espresso-900: #261613;
++        --color-espresso-800: #3e2723;
++        --color-espresso-700: #4e342e;
++        --color-latte-200: #d7ccc8;
++        --color-latte-100: #f5f0ee;
++        --color-cream-50: #fafafa;
++        --color-amber-400: #ffab40;
++        --color-amber-300: #ffd180;
++        --color-surface-light: #ffffff;
++        --color-surface-dark: #33201c;
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        --space-xs: 0.35rem;
++        --space-sm: 0.65rem;
++        --space-md: 1rem;
++        --space-lg: 1.25rem;
++        --space-xl: 2.5rem;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        --radius-sm: 4px;
++        --radius-md: 8px;
++        --shadow-card: 0 2px 5px rgb(0 0 0 / 0.1);
++        --shadow-card-dark: 0 4px 12px rgb(0 0 0 / 0.45);
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        /* Semantic theme tokens (default light state for non-critical fallback) */
++        --primary: var(--color-espresso-700);
++        --primary-hover: var(--color-espresso-800);
++        --secondary: var(--color-latte-200);
++        --accent: var(--color-amber-400);
++        --text: var(--color-espresso-800);
++        --light: var(--color-cream-50);
++        --surface: var(--color-surface-light);
++        --card-shadow: var(--shadow-card);
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        /* Combined filter state: Union of @media and selector overrides for color scheme */
++        --color-scheme: light;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        @media (prefers-color-scheme: dark) {
++          --color-scheme: dark;
++        }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        &:has(> head > meta[name="color-scheme"][content="dark"]),
++        &.dark,
++        &:has(#scheme-dark:checked) {
++          --color-scheme: dark;
++        }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++        &:has(> head > meta[name="color-scheme"][content="light"]),
++        &.light,
++        &:has(#scheme-light:checked) {
++          --color-scheme: light;
++        }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++        /* Combined filter state: Intersection of selector AND @media rule for compact menu layout */
++        --compact-grid: false;
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++        &:where(.compact, :has(#density-compact:checked)) {
++          @media (width >= 40rem) {
++            --compact-grid: true;
++          }
++        }
++      }
+     }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++    @layer base {
++      body {
++        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        line-height: 1.6;
++        color: var(--text);
++        background-color: var(--light);
++        transition: background-color 0.25s, color 0.25s;
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++        @container style(--color-scheme: dark) {
++          --primary: var(--color-espresso-800);
++          --primary-hover: var(--color-espresso-700);
++          --secondary: var(--color-espresso-800);
++          --accent: var(--color-amber-300);
++          --text: var(--color-latte-100);
++          --light: var(--color-espresso-900);
++          --surface: var(--color-surface-dark);
++          --card-shadow: var(--shadow-card-dark);
++        }
++      }
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++    @layer components {
++      /* Navigation */
++      nav {
++        background: var(--primary);
++        color: var(--color-cream-50);
++        padding-block: var(--space-md);
++        padding-inline: 5%;
++        display: flex;
++        flex-wrap: wrap;
++        gap: var(--space-md);
++        justify-content: space-between;
++        align-items: center;
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 1000;
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++        ul {
++          display: flex;
++          flex-wrap: wrap;
++          align-items: center;
++          list-style: none;
++        }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++        ul li {
++          margin-inline-start: var(--space-lg);
++        }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++        a {
++          color: inherit;
++          text-decoration: none;
++          font-size: 0.9rem;
++          transition: color 0.3s;
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++          &:hover {
++            color: var(--accent);
++          }
++        }
++      }
++
++      .logo {
++        font-size: 1.5rem;
++        font-weight: 700;
++        letter-spacing: 1px;
++      }
++
++      /* Base fallback outside @container + style query override */
++      #logo-dark {
++        display: none;
++      }
++
++      .logout-link {
++        border: 1px solid var(--accent);
++        padding-block: var(--space-xs);
++        padding-inline: var(--space-sm);
++        border-radius: var(--radius-sm);
++      }
++
++      /* Preference bar for testing selector + @-rule combinations */
++      .preference-bar {
++        background: var(--secondary);
++        color: var(--text);
++        padding-block: var(--space-sm);
++        padding-inline: 5%;
++        display: flex;
++        flex-wrap: wrap;
++        gap: var(--space-lg);
++        align-items: center;
++        justify-content: space-between;
++        font-size: 0.85rem;
++
++        fieldset {
++          border: 0;
++          display: inline-flex;
++          flex-wrap: wrap;
++          gap: var(--space-sm);
++          align-items: center;
++        }
++
++        legend {
++          font-weight: 600;
++          float: inline-start;
++          margin-inline-end: var(--space-xs);
++        }
++
++        label {
++          display: inline-flex;
++          align-items: center;
++          gap: var(--space-xs);
++          cursor: pointer;
++        }
++      }
++
++      /* Hero Section */
++      .hero {
++        min-block-size: 60vh;
++        background: linear-gradient(rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.5)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: center;
++        color: var(--color-cream-50);
++        text-align: center;
++        padding-inline: var(--space-lg);
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++        h1 {
++          font-size: 3rem;
++          margin-block-end: var(--space-md);
++        }
++      }
++
++      /* Content Sections */
++      .container {
++        max-inline-size: 1100px;
++        margin-block: var(--space-xl);
++        margin-inline: auto;
++        padding-inline: var(--space-lg);
++      }
++
++      .section-title {
++        text-align: center;
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++        gap: var(--space-lg);
++        margin-block-start: var(--space-lg);
++
++        @container style(--compact-grid: true) {
++          grid-template-columns: repeat(3, minmax(180px, 1fr));
++          gap: var(--space-md);
++        }
++      }
++
++      .card {
++        background: var(--surface);
++        padding: var(--space-lg);
++        border-radius: var(--radius-md);
++        box-shadow: var(--card-shadow);
++        text-align: center;
++
++        &.featured {
++          font-weight: 400;
++          border: 1px solid var(--accent);
++        }
++
++        h3 {
++          margin-block-end: var(--space-sm);
++          color: var(--primary);
++
++          @container style(--color-scheme: dark) {
++            color: var(--accent);
++          }
++        }
++
++        @container style(--compact-grid: true) {
++          padding: var(--space-md);
++        }
++      }
++
++      /* 2. Key on the custom property for applied rules */
++      @container not style(--color-scheme: dark) {
++        .card.featured {
++          font-weight: 400;
++        }
++
++        #logo-dark {
++          display: none;
++        }
++      }
++
++      @container style(--color-scheme: dark) {
++        .card.featured {
++          font-weight: 300;
++        }
++
++        #logo-dark {
++          display: inline;
++        }
++
++        #logo {
++          display: none;
++        }
++      }
++
++      .btn {
++        display: inline-block;
++        background: var(--primary);
++        color: var(--color-cream-50);
++        padding-block: var(--space-sm);
++        padding-inline: var(--space-lg);
++        text-decoration: none;
++        border-radius: var(--radius-sm);
++        margin-block-start: var(--space-md);
++        transition: background-color 0.3s;
++
++        &:hover {
++          background: var(--primary-hover);
++        }
++      }
++
++      footer {
++        background: var(--secondary);
++        text-align: center;
++        padding-block: var(--space-xl);
++        padding-inline: var(--space-lg);
++        margin-block-start: var(--space-xl);
++      }
++
++      .footer-links {
++        margin-block-end: var(--space-lg);
++
++        a {
++          margin-inline: var(--space-sm);
++          color: var(--text);
++          text-decoration: none;
++          font-size: 0.85rem;
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer utilities {
++      /* 3. Utility classes for toggling visibility based on combined criteria */
++      @container not style(--color-scheme: dark) {
++        .if-dark {
++          display: none !important;
++        }
++      }
++
++      @container not style(--color-scheme: light) {
++        .if-light {
++          display: none !important;
++        }
++      }
+     }
+   </style>
+ </head>
+@@ -158,7 +366,10 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo">
++      <span id="logo">☀️ THE DAILY GRIND</span>
++      <span id="logo-dark">🌙 THE DAILY GRIND</span>
++    </div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,6 +379,23 @@
+     </ul>
+   </nav>
+ 
++  <div class="preference-bar" role="region" aria-label="Display preferences">
++    <fieldset>
++      <legend>Theme:</legend>
++      <label><input type="radio" name="scheme" id="scheme-auto" checked> Auto (System)</label>
++      <label><input type="radio" name="scheme" id="scheme-light"> Light</label>
++      <label><input type="radio" name="scheme" id="scheme-dark"> Dark</label>
++    </fieldset>
++    <fieldset>
++      <legend>Layout:</legend>
++      <label><input type="checkbox" id="density-compact"> Compact desktop cards</label>
++    </fieldset>
++    <div class="theme-status">
++      <span class="if-light">Roasting Mode: Morning Light</span>
++      <span class="if-dark">Roasting Mode: Evening Dark</span>
++    </div>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -176,9 +404,9 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card featured">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>

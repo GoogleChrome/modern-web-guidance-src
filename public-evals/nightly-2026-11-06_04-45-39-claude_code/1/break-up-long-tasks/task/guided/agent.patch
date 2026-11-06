@@ -1,0 +1,454 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,146 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Flavor Profile Simulator */
++    .simulator {
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .simulator-banner {
++      height: 180px;
++      background: linear-gradient(rgba(62, 39, 35, 0.55), rgba(62, 39, 35, 0.55)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      color: white;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      padding: 0 30px;
++    }
++
++    .simulator-body {
++      padding: 25px 30px 30px;
++    }
++
++    .sim-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 15px;
++      align-items: end;
++    }
++
++    .sim-controls label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++      font-weight: 600;
++      gap: 4px;
++    }
++
++    .sim-controls select,
++    .sim-controls input {
++      font: inherit;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      min-width: 160px;
++    }
++
++    .sim-controls button {
++      font: inherit;
++      border: 0;
++      border-radius: 5px;
++      padding: 10px 20px;
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++    }
++
++    .sim-controls button[data-variant="secondary"] {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .sim-controls button:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .sim-progress {
++      margin-top: 20px;
++    }
++
++    .sim-progress progress {
++      width: 100%;
++      height: 14px;
++      accent-color: var(--accent);
++    }
++
++    .sim-status {
++      font-size: 0.9rem;
++      margin-top: 6px;
++    }
++
++    .sim-results {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 30px;
++      margin-top: 25px;
++    }
++
++    .sim-results h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .flavor-bars {
++      list-style: none;
++      display: grid;
++      gap: 8px;
++    }
++
++    .flavor-bars li {
++      display: grid;
++      grid-template-columns: 90px 1fr 40px;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.85rem;
++    }
++
++    .flavor-bar {
++      height: 10px;
++      background: var(--secondary);
++      border-radius: 5px;
++      overflow: hidden;
++    }
++
++    .flavor-bar span {
++      display: block;
++      height: 100%;
++      background: var(--primary);
++      inline-size: calc(var(--value, 0) * 10%);
++      transition: inline-size 0.3s;
++    }
++
++    .top-blends {
++      padding-left: 1.2rem;
++      display: grid;
++      gap: 8px;
++      font-size: 0.9rem;
++    }
++
++    .top-blends small {
++      display: block;
++      color: #6d4c41;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +332,59 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="simulator" aria-labelledby="sim-title">
++      <div class="simulator-banner">
++        <h2 id="sim-title">Flavor Profile Lab</h2>
++        <p>Simulate thousands of roaster blends and discover the most balanced cup.</p>
++      </div>
++      <div class="simulator-body">
++        <form class="sim-controls" id="sim-form">
++          <label>
++            Batch size
++            <select name="count">
++              <option value="5000">5,000 blends</option>
++              <option value="25000" selected>25,000 blends</option>
++              <option value="100000">100,000 blends</option>
++              <option value="250000">250,000 blends</option>
++            </select>
++          </label>
++          <label>
++            Target profile
++            <select name="target">
++              <option value="balanced">Balanced</option>
++              <option value="bright">Bright &amp; Fruity</option>
++              <option value="chocolatey">Rich &amp; Chocolatey</option>
++              <option value="bold">Bold &amp; Smoky</option>
++            </select>
++          </label>
++          <label>
++            Seed
++            <input type="number" name="seed" value="42" min="1" step="1">
++          </label>
++          <button type="submit" id="sim-run">Run Simulation</button>
++          <button type="button" id="sim-cancel" data-variant="secondary" disabled>Cancel</button>
++        </form>
++
++        <div class="sim-progress">
++          <progress id="sim-progress" max="1" value="0" aria-label="Simulation progress"></progress>
++          <p class="sim-status" id="sim-status" role="status">Ready to brew.</p>
++        </div>
++
++        <div class="sim-results" id="sim-results" hidden>
++          <div>
++            <h3>Average Batch Profile</h3>
++            <ul class="flavor-bars" id="sim-average"></ul>
++          </div>
++          <div>
++            <h3>Top Matching Blends</h3>
++            <ol class="top-blends" id="sim-top"></ol>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +395,243 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const FLAVORS = ['Acidity', 'Sweetness', 'Body', 'Bitterness', 'Fruitiness', 'Chocolate'];
++
++      // Base flavor vectors (0–10) per origin, in FLAVORS order.
++      const ORIGINS = {
++        Ethiopia: [8.5, 6.5, 4, 3, 9, 3],
++        Kenya: [9, 6, 5, 3.5, 8, 2.5],
++        Colombia: [6.5, 7, 6, 4, 6, 6],
++        Guatemala: [6, 6.5, 6.5, 4.5, 5, 7],
++        Brazil: [4, 7.5, 7, 4.5, 3.5, 8.5],
++        Sumatra: [3, 5, 9, 6.5, 2.5, 6.5],
++      };
++      const ORIGIN_NAMES = Object.keys(ORIGINS);
++
++      const ROASTS = [
++        { name: 'Light', mod: [1.3, 0.9, 0.8, 0.7, 1.25, 0.8] },
++        { name: 'Medium', mod: [1, 1.1, 1, 1, 1, 1.1] },
++        { name: 'Dark', mod: [0.6, 0.9, 1.25, 1.5, 0.6, 1.2] },
++      ];
++
++      const METHODS = [
++        { name: 'Pour Over', mod: [1.15, 1, 0.85, 0.9, 1.15, 0.95], steps: 40 },
++        { name: 'Espresso', mod: [1, 1.05, 1.3, 1.2, 0.95, 1.1], steps: 60 },
++        { name: 'French Press', mod: [0.85, 1, 1.25, 1.05, 0.9, 1.1], steps: 50 },
++        { name: 'Cold Brew', mod: [0.6, 1.2, 1.05, 0.7, 0.9, 1.15], steps: 80 },
++      ];
++
++      const TARGETS = {
++        balanced: [6, 6.5, 6, 4, 5.5, 6],
++        bright: [8.5, 6.5, 4.5, 3, 8.5, 3],
++        chocolatey: [4, 7.5, 7.5, 4.5, 3.5, 8.5],
++        bold: [3, 5, 9, 7, 2.5, 6.5],
++      };
++
++      // Small deterministic PRNG so the same seed reproduces the same batch.
++      function mulberry32(seed) {
++        return () => {
++          seed |= 0;
++          seed = (seed + 0x6d2b79f5) | 0;
++          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
++          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
++          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++        };
++      }
++
++      function createBlend(rand, id) {
++        const componentCount = 2 + Math.floor(rand() * 3);
++        const components = [];
++        let total = 0;
++        for (let i = 0; i < componentCount; i++) {
++          const weight = 0.1 + rand();
++          total += weight;
++          components.push({ origin: ORIGIN_NAMES[Math.floor(rand() * ORIGIN_NAMES.length)], weight });
++        }
++        components.forEach((c) => (c.weight /= total));
++        return {
++          id,
++          components,
++          roast: ROASTS[Math.floor(rand() * ROASTS.length)],
++          method: METHODS[Math.floor(rand() * METHODS.length)],
++        };
++      }
++
++      // Simulates extraction over time: each step pulls a fraction of the remaining
++      // soluble flavor, with bitterness extracting later than acidity.
++      function simulateProfile(blend) {
++        const base = new Array(FLAVORS.length).fill(0);
++        for (const { origin, weight } of blend.components) {
++          const vec = ORIGINS[origin];
++          for (let f = 0; f < FLAVORS.length; f++) base[f] += vec[f] * weight;
++        }
++
++        const extracted = new Array(FLAVORS.length).fill(0);
++        const { steps } = blend.method;
++        for (let s = 1; s <= steps; s++) {
++          const t = s / steps;
++          for (let f = 0; f < FLAVORS.length; f++) {
++            const rate = 0.08 * (1 + Math.sin(t * Math.PI * (0.5 + f * 0.15)));
++            extracted[f] += (base[f] - extracted[f]) * rate;
++          }
++        }
++
++        return extracted.map((v, f) =>
++          Math.min(10, Math.max(0, v * blend.roast.mod[f] * blend.method.mod[f]))
++        );
++      }
++
++      function scoreProfile(profile, target) {
++        let dist = 0;
++        for (let f = 0; f < profile.length; f++) dist += (profile[f] - target[f]) ** 2;
++        return Math.max(0, 100 - Math.sqrt(dist) * 8);
++      }
++
++      // Yield to the main thread so input and rendering can happen between chunks.
++      function yieldToMain() {
++        if ('scheduler' in window && 'yield' in window.scheduler) {
++          return window.scheduler.yield();
++        }
++        return new Promise((resolve) => setTimeout(resolve, 0));
++      }
++
++      async function runSimulation({ count, target, seed, signal, onProgress }) {
++        const rand = mulberry32(seed);
++        const totals = new Array(FLAVORS.length).fill(0);
++        const top = [];
++        const TOP_N = 5;
++        const BUDGET_MS = 50;
++        let deadline = performance.now() + BUDGET_MS;
++
++        for (let i = 0; i < count; i++) {
++          const blend = createBlend(rand, i + 1);
++          const profile = simulateProfile(blend);
++          const score = scoreProfile(profile, target);
++
++          for (let f = 0; f < FLAVORS.length; f++) totals[f] += profile[f];
++
++          if (top.length < TOP_N || score > top[top.length - 1].score) {
++            top.push({ blend, profile, score });
++            top.sort((a, b) => b.score - a.score);
++            if (top.length > TOP_N) top.pop();
++          }
++
++          if (performance.now() >= deadline) {
++            onProgress(i + 1);
++            await yieldToMain();
++            if (signal.aborted) throw signal.reason;
++            deadline = performance.now() + BUDGET_MS;
++          }
++        }
++
++        onProgress(count);
++        return { average: totals.map((t) => t / count), top };
++      }
++
++      // ---- UI wiring ----
++      const form = document.getElementById('sim-form');
++      const runBtn = document.getElementById('sim-run');
++      const cancelBtn = document.getElementById('sim-cancel');
++      const progressEl = document.getElementById('sim-progress');
++      const statusEl = document.getElementById('sim-status');
++      const resultsEl = document.getElementById('sim-results');
++      const averageEl = document.getElementById('sim-average');
++      const topEl = document.getElementById('sim-top');
++      const fmt = new Intl.NumberFormat();
++      let controller = null;
++
++      function renderResults({ average, top }) {
++        averageEl.replaceChildren(
++          ...FLAVORS.map((name, f) => {
++            const li = document.createElement('li');
++            const label = document.createElement('span');
++            label.textContent = name;
++            const bar = document.createElement('div');
++            bar.className = 'flavor-bar';
++            const fill = document.createElement('span');
++            fill.style.setProperty('--value', average[f].toFixed(2));
++            bar.append(fill);
++            const value = document.createElement('span');
++            value.textContent = average[f].toFixed(1);
++            li.append(label, bar, value);
++            return li;
++          })
++        );
++
++        topEl.replaceChildren(
++          ...top.map(({ blend, profile, score }) => {
++            const li = document.createElement('li');
++            const title = document.createElement('strong');
++            title.textContent = `Blend #${blend.id} — ${score.toFixed(1)} match`;
++            const mix = document.createElement('small');
++            mix.textContent =
++              blend.components.map((c) => `${Math.round(c.weight * 100)}% ${c.origin}`).join(', ') +
++              ` · ${blend.roast.name} roast · ${blend.method.name}`;
++            const notes = document.createElement('small');
++            const leading = profile
++              .map((v, f) => [FLAVORS[f], v])
++              .sort((a, b) => b[1] - a[1])
++              .slice(0, 2)
++              .map(([n]) => n.toLowerCase());
++            notes.textContent = `Leading notes: ${leading.join(' & ')}`;
++            li.append(title, mix, notes);
++            return li;
++          })
++        );
++
++        resultsEl.hidden = false;
++      }
++
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        if (controller) return;
++
++        const data = new FormData(form);
++        const count = Number(data.get('count'));
++        const target = TARGETS[data.get('target')] ?? TARGETS.balanced;
++        const seed = Math.max(1, Math.floor(Number(data.get('seed')) || 1));
++
++        controller = new AbortController();
++        runBtn.disabled = true;
++        cancelBtn.disabled = false;
++        progressEl.max = count;
++        progressEl.value = 0;
++        statusEl.textContent = `Simulating ${fmt.format(count)} blends…`;
++        const started = performance.now();
++
++        try {
++          const result = await runSimulation({
++            count,
++            target,
++            seed,
++            signal: controller.signal,
++            onProgress: (done) => {
++              progressEl.value = done;
++            },
++          });
++          renderResults(result);
++          const secs = ((performance.now() - started) / 1000).toFixed(2);
++          statusEl.textContent = `Simulated ${fmt.format(count)} blends in ${secs}s.`;
++        } catch (err) {
++          if (err?.name === 'AbortError') {
++            statusEl.textContent = `Simulation cancelled at ${fmt.format(progressEl.value)} of ${fmt.format(count)} blends.`;
++          } else {
++            statusEl.textContent = 'Something went wrong while simulating.';
++            console.error(err);
++          }
++        } finally {
++          controller = null;
++          runBtn.disabled = false;
++          cancelBtn.disabled = true;
++        }
++      });
++
++      cancelBtn.addEventListener('click', () => controller?.abort());
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,194 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..4205d93 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -11,6 +11,12 @@ interface BottomNavProps {
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
+ 
++    useEffect(() => {
++        const handleSwap = () => setActiveCategory(null);
++        document.addEventListener('astro:after-swap', handleSwap);
++        return () => document.removeEventListener('astro:after-swap', handleSwap);
++    }, []);
++
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+         'Arts & Culture': ['Culture', 'Media'],
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..c266729 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -20,6 +20,10 @@ export default function ReadingListButton() {
+       setArticles(data);
+     };
+     fetchArticles();
++
++    const handleSwap = () => setIsOpen(false);
++    document.addEventListener('astro:after-swap', handleSwap);
++    return () => document.removeEventListener('astro:after-swap', handleSwap);
+   }, []);
+ 
+   return (
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..3c30413 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import SearchFlyout from './SearchFlyout';
+ 
+ interface Article {
+@@ -13,6 +13,12 @@ export default function SearchButton() {
+     const [articles, setArticles] = useState<Article[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
+ 
++    useEffect(() => {
++        const handleSwap = () => setIsFlyoutOpen(false);
++        document.addEventListener('astro:after-swap', handleSwap);
++        return () => document.removeEventListener('astro:after-swap', handleSwap);
++    }, []);
++
+     const openSearch = async () => {
+         try {
+             setArticles([]);
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..ecd51bd 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -45,11 +45,126 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main class="bg-white relative" data-view-container>
+           <slot />
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import { swapFunctions } from "astro:transitions/client";
++
++      interface CachedView {
++        main: HTMLElement;
++        title: string;
++      }
++
++      const viewCache = new Map<string, CachedView>();
++      (window as any).__viewCache = viewCache;
++
++      function getCacheKey(url: URL | Location): string {
++        const pathname = url.pathname.replace(/\/+$/, "") || "/";
++        return pathname + url.search;
++      }
++
++      function getMainContainer(
++        root: Document | Element = document
++      ): HTMLElement | null {
++        return (
++          root.querySelector<HTMLElement>("main[data-view-container]") ||
++          root.querySelector<HTMLElement>("main")
++        );
++      }
++
++      function preserveIslands(container: HTMLElement) {
++        container.querySelectorAll("astro-island").forEach((island: any) => {
++          if (island.unmount) {
++            document.removeEventListener("astro:after-swap", island.unmount);
++          }
++          island.unmount = () => {};
++        });
++      }
++
++      function cacheCurrentView(url: URL | Location = window.location) {
++        const currentMain = getMainContainer(document);
++        if (currentMain) {
++          preserveIslands(currentMain);
++          viewCache.set(getCacheKey(url), {
++            main: currentMain,
++            title: document.title,
++          });
++        }
++      }
++
++      cacheCurrentView(window.location);
++
++      document.addEventListener("astro:before-preparation", (event: any) => {
++        cacheCurrentView(event.from || window.location);
++
++        const toKey = getCacheKey(event.to);
++        if (!event.formData && viewCache.has(toKey)) {
++          event.loader = async () => {};
++        }
++      });
++
++      document.addEventListener("astro:before-swap", (event: any) => {
++        const fromKey = getCacheKey(event.from || window.location);
++        const toKey = getCacheKey(event.to);
++
++        event.swap = () => {
++          const currentMain = getMainContainer(document);
++          if (currentMain) {
++            preserveIslands(currentMain);
++            viewCache.set(fromKey, {
++              main: currentMain,
++              title: document.title,
++            });
++          }
++
++          const cached = viewCache.get(toKey);
++          if (cached) {
++            document.title = cached.title;
++            if (currentMain && currentMain !== cached.main) {
++              const restoreFocus = swapFunctions.saveFocus();
++              currentMain.replaceWith(cached.main);
++              preserveIslands(cached.main);
++              restoreFocus();
++            }
++            return;
++          }
++
++          const newDoc: Document = event.newDocument;
++          swapFunctions.deselectScripts(newDoc);
++          swapFunctions.swapRootAttributes(newDoc);
++
++          const existingStyles = Array.from(
++            document.head.querySelectorAll("style, link[rel='stylesheet']")
++          );
++          swapFunctions.swapHeadElements(newDoc);
++          for (const styleEl of existingStyles) {
++            if (!styleEl.isConnected) {
++              document.head.appendChild(styleEl);
++            }
++          }
++
++          const newMain = getMainContainer(newDoc);
++          if (currentMain && newMain) {
++            const restoreFocus = swapFunctions.saveFocus();
++            currentMain.replaceWith(newMain);
++            preserveIslands(newMain);
++            restoreFocus();
++
++            viewCache.set(toKey, {
++              main: newMain,
++              title: document.title,
++            });
++          } else {
++            const restoreFocus = swapFunctions.saveFocus();
++            swapFunctions.swapBodyElement(newDoc.body, document.body);
++            restoreFocus();
++          }
++        };
++      });
++    </script>
+   </body>
+ </html>

@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,115 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Accurately determines visibility state history using the Performance API.
++     * Uses VisibilityStateEntry to identify if the page was initially loaded
++     * in the background, even when scripts execute asynchronously.
++     */
++    function getVisibilityInfo() {
++      if ('VisibilityStateEntry' in window) {
++        // Retrieve VisibilityStateEntry members from the performance timeline
++        const entries = performance.getEntriesByType('visibility-state');
++
++        if (entries && entries.length > 0) {
++          const firstEntry = entries[0];
++
++          // If the first performance entry for visibility is 'hidden',
++          // the page was loaded in the background.
++          const initiallyBackgrounded = firstEntry.name === 'hidden';
++
++          // Find the precise, high-resolution timestamp of when the page
++          // was first backgrounded.
++          let timeBackgrounded = null;
++          for (const entry of entries) {
++            if (entry.name === 'hidden') {
++              // entry.startTime provides the exact browser timestamp
++              // of the visibility change (in milliseconds)
++              timeBackgrounded = entry.startTime;
++              break;
++            }
++          }
++
++          return {
++            backgroundStatus: initiallyBackgrounded,
++            backgroundTime: timeBackgrounded,
++            initiallyBackgrounded: initiallyBackgrounded,
++            timeBackgrounded: timeBackgrounded,
++            fallbackActive: false,
++            isFallback: false,
++            potentiallyUnreliable: false
++          };
++        }
++      }
++      return null;
++    }
++
++    /**
++     * Fallback implementation using document.visibilityState.
++     *
++     * WARNING: Legacy fallback detection is active and potentially unreliable!
++     * Because scripts can load and execute asynchronously, a page could be opened
++     * in a background tab and then foregrounded by the user before this script runs.
++     * In that scenario, document.visibilityState will synchronously report 'visible',
++     * causing the initial background state to be missed. Furthermore, fallback timestamps
++     * lack the internal precision of the Performance API.
++     */
++    function getFallbackVisibilityInfo() {
++      // Check the state exactly when this script executes.
++      // Prone to race conditions if the script executes after the user switches tabs.
++      const initiallyBackgrounded = document.visibilityState === 'hidden';
++
++      // If hidden now, approximate backgrounded from load (time 0 ms).
++      let timeBackgrounded = initiallyBackgrounded ? 0 : null;
++
++      const fallbackInfo = {
++        backgroundStatus: initiallyBackgrounded,
++        backgroundTime: timeBackgrounded,
++        initiallyBackgrounded: initiallyBackgrounded,
++        timeBackgrounded: timeBackgrounded,
++        fallbackActive: true,
++        isFallback: true,
++        potentiallyUnreliable: true,
++        warning: 'Legacy fallback detection is active and potentially unreliable for async scripts.'
++      };
++
++      // Listen for future visibility changes to capture when it is backgrounded later.
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden' && timeBackgrounded === null) {
++          // performance.now() provides time event fired, though less precise
++          // than the Performance Timeline internal visibility entry.
++          timeBackgrounded = performance.now();
++          fallbackInfo.backgroundTime = timeBackgrounded;
++          fallbackInfo.timeBackgrounded = timeBackgrounded;
++        }
++      });
++
++      return fallbackInfo;
++    }
++
++    // Detect if the modern VisibilityStateEntry API is available and has entries;
++    // otherwise fall back to document.visibilityState.
++    let detectionInfo = getVisibilityInfo();
++
++    if (!detectionInfo) {
++      // Clearly warn and flag that legacy fallback detection is active and potentially unreliable
++      console.warn(
++        'Fallback detection is active and potentially unreliable: document.visibilityState is prone to race conditions if scripts execute asynchronously.'
++      );
++      detectionInfo = getFallbackVisibilityInfo();
++    }
++
++    // Log the detection info object to the console
++    console.log(detectionInfo);
++
++    // Expose on window for easy access / testing
++    window.visibilityDetection = detectionInfo;
++    window.getVisibilityInfo = getVisibilityInfo;
++    window.getFallbackVisibilityInfo = getFallbackVisibilityInfo;
++  </script>
++
+ </body>
+ 
+ </html>

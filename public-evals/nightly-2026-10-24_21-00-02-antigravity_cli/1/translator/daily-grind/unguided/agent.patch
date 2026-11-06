@@ -1,0 +1,351 @@
+diff --git a/index.html b/index.html
+index 66c9173..16e8320 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,104 @@
+       border-radius: 4px;
+     }
+ 
++    /* Language Selector & Status Banner */
++    .lang-controls {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .lang-label {
++      font-size: 0.85rem;
++      color: var(--secondary);
++      display: flex;
++      align-items: center;
++      gap: 5px;
++    }
++
++    .lang-select {
++      background: #3e2723;
++      color: white;
++      border: 1px solid var(--accent);
++      padding: 5px 10px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      outline: none;
++    }
++
++    .lang-select:focus {
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.4);
++    }
++
++    .translation-banner {
++      background: #fff8e1;
++      border-bottom: 1px solid #ffe082;
++      color: var(--text);
++      padding: 8px 5%;
++      font-size: 0.85rem;
++      display: none;
++      align-items: center;
++      justify-content: center;
++      gap: 12px;
++      text-align: center;
++    }
++
++    .translation-banner.visible {
++      display: flex;
++    }
++
++    .translation-banner.error {
++      background: #ffebee;
++      border-bottom-color: #ef9a9a;
++      color: #b71c1c;
++    }
++
++    .progress-bar-wrap {
++      width: 120px;
++      height: 8px;
++      background: #e0e0e0;
++      border-radius: 4px;
++      overflow: hidden;
++      display: none;
++    }
++
++    .progress-bar-wrap.visible {
++      display: inline-block;
++    }
++
++    .progress-bar-fill {
++      height: 100%;
++      background: var(--primary);
++      width: 0%;
++      transition: width 0.2s ease;
++    }
++
++    .story-section {
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .story-section h2 {
++      color: var(--primary);
++      margin-bottom: 15px;
++    }
++
++    .story-section p {
++      max-width: 780px;
++      margin: 0 auto 12px;
++      color: var(--text);
++    }
++
++    .translating {
++      opacity: 0.6;
++      transition: opacity 0.2s ease;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -160,53 +258,217 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-translatable>Menu</a></li>
++      <li><a href="/locations" data-translatable>Locations</a></li>
++      <li><a href="/rewards" data-translatable>Rewards</a></li>
++      <li><a href="/account" data-translatable>My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-translatable>Logout</a></li>
++      <li class="lang-controls">
++        <label for="language-select" class="lang-label">Language:</label>
++        <select id="language-select" name="language" class="lang-select" aria-label="Select Language">
++          <option value="en">English (EN)</option>
++          <option value="es">Español (ES)</option>
++          <option value="fr">Français (FR)</option>
++          <option value="de">Deutsch (DE)</option>
++          <option value="ja">日本語 (JA)</option>
++          <option value="pt">Português (PT)</option>
++          <option value="it">Italiano (IT)</option>
++          <option value="zh">中文 (ZH)</option>
++        </select>
++      </li>
+     </ul>
+   </nav>
+ 
++  <div id="translation-status" class="translation-banner" role="status" aria-live="polite">
++    <span id="translation-message"></span>
++    <div id="translation-progress-wrap" class="progress-bar-wrap">
++      <div id="translation-progress-bar" class="progress-bar-fill"></div>
++    </div>
++  </div>
++
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1 data-translatable>Wake Up Your Senses</h1>
++    <p data-translatable>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn" data-translatable>Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu-section">
++      <h2 style="text-align: center;" data-translatable>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <h3 data-translatable>Maple Oat Latte</h3>
++          <p class="menu-description" data-translatable>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn" data-translatable>View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <h3 data-translatable>Dark Roast Espresso</h3>
++          <p class="menu-description" data-translatable>Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn" data-translatable>View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <h3 data-translatable>Cold Brew</h3>
++          <p class="menu-description" data-translatable>Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn" data-translatable>View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="our-story" class="story-section">
++      <h2 data-translatable>Our Story</h2>
++      <p class="story-text" data-translatable>Founded in 2015, The Daily Grind began with a small batch roaster and a passion for connecting coffee lovers with sustainable farms around the world.</p>
++      <p class="story-text" data-translatable>Every bean is hand-selected and roasted locally in small batches to bring out rich, nuanced flavors in every cup we serve.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-translatable>Our Story</a> |
++      <a href="/careers" data-translatable>Join the Team</a> |
++      <a href="/contact" data-translatable>Contact Us</a> |
++      <a href="/privacy-policy" data-translatable>Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p data-translatable>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const langSelect = document.getElementById('language-select');
++      const statusBanner = document.getElementById('translation-status');
++      const statusMessage = document.getElementById('translation-message');
++      const progressWrap = document.getElementById('translation-progress-wrap');
++      const progressBar = document.getElementById('translation-progress-bar');
++      const translatableElements = Array.from(document.querySelectorAll('[data-translatable]'));
++
++      // Store original English text and track current page language
++      let currentLanguage = 'en';
++      const originalTexts = new Map();
++      translatableElements.forEach((el) => {
++        originalTexts.set(el, el.textContent.trim());
++      });
++
++      function setStatus(message, { isError = false, progress = null } = {}) {
++        if (!message) {
++          statusBanner.classList.remove('visible', 'error');
++          progressWrap.classList.remove('visible');
++          statusMessage.textContent = '';
++          return;
++        }
++        statusMessage.textContent = message;
++        statusBanner.classList.add('visible');
++        statusBanner.classList.toggle('error', isError);
++
++        if (typeof progress === 'number') {
++          progressWrap.classList.add('visible');
++          progressBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
++        } else {
++          progressWrap.classList.remove('visible');
++        }
++      }
++
++      async function createOnDeviceTranslator(sourceLanguage, targetLanguage) {
++        if (!('Translator' in self)) {
++          throw new Error('The On-Device Translator API (window.Translator) is not supported in this browser.');
++        }
++
++        // 1. Check availability of the language pair
++        if (typeof self.Translator.availability === 'function') {
++          const availability = await self.Translator.availability({
++            sourceLanguage,
++            targetLanguage
++          });
++
++          if (availability === 'unavailable') {
++            throw new Error(`On-device translation from "${sourceLanguage}" to "${targetLanguage}" is unavailable.`);
++          }
++
++          if (availability === 'downloadable' || availability === 'downloading') {
++            setStatus(`Downloading on-device language model (${sourceLanguage} → ${targetLanguage})...`, { progress: 0 });
++          }
++        }
++
++        // 2. Create the translator instance and monitor download progress
++        const translator = await self.Translator.create({
++          sourceLanguage,
++          targetLanguage,
++          monitor(m) {
++            m.addEventListener('downloadprogress', (e) => {
++              const total = e.total || 1;
++              const loaded = e.loaded || 0;
++              const percent = Math.round((loaded / total) * 100);
++              setStatus(`Downloading language pack (${targetLanguage.toUpperCase()}): ${percent}%`, { progress: percent });
++            });
++          }
++        });
++
++        return translator;
++      }
++
++      async function translatePage(targetLanguage) {
++        if (targetLanguage === currentLanguage) {
++          return;
++        }
++
++        // Fast restore if switching back to original English
++        if (targetLanguage === 'en') {
++          translatableElements.forEach((el) => {
++            el.textContent = originalTexts.get(el);
++            el.removeAttribute('lang');
++          });
++          document.documentElement.lang = 'en';
++          currentLanguage = 'en';
++          setStatus('');
++          return;
++        }
++
++        langSelect.disabled = true;
++        translatableElements.forEach((el) => el.classList.add('translating'));
++        setStatus(`Preparing on-device translation to ${targetLanguage.toUpperCase()}...`);
++
++        let translator = null;
++        try {
++          // Translate from English source text to target language using built-in Translator API
++          const sourceLanguage = 'en';
++          translator = await createOnDeviceTranslator(sourceLanguage, targetLanguage);
++
++          setStatus(`Translating coffee menu and story to ${targetLanguage.toUpperCase()} on-device...`);
++
++          for (const el of translatableElements) {
++            const sourceText = originalTexts.get(el);
++            if (sourceText) {
++              const translated = await translator.translate(sourceText);
++              if (translated) {
++                el.textContent = translated;
++                el.setAttribute('lang', targetLanguage);
++              }
++            }
++          }
++
++          document.documentElement.lang = targetLanguage;
++          currentLanguage = targetLanguage;
++          setStatus(`Translated to ${targetLanguage.toUpperCase()} using browser on-device AI.`);
++          setTimeout(() => {
++            if (currentLanguage === targetLanguage && !statusBanner.classList.contains('error')) {
++              setStatus('');
++            }
++          }, 3000);
++        } catch (err) {
++          console.error('On-device translation error:', err);
++          setStatus(err.message || 'Unable to translate page on-device.', { isError: true });
++        } finally {
++          if (translator && typeof translator.destroy === 'function') {
++            translator.destroy();
++          }
++          translatableElements.forEach((el) => el.classList.remove('translating'));
++          langSelect.disabled = false;
++        }
++      }
++
++      langSelect.addEventListener('change', (event) => {
++        translatePage(event.target.value);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

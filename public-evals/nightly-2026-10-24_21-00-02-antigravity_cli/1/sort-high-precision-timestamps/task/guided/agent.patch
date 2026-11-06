@@ -1,0 +1,366 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,135 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 0.95rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Events Telemetry Section */
++    .telemetry-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .telemetry-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++      margin-bottom: 20px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 15px;
++    }
++
++    .telemetry-header h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .telemetry-header p {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .telemetry-header .btn {
++      margin-top: 0;
++    }
++
++    .events-status {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-bottom: 15px;
++    }
++
++    .events-table-wrapper {
++      overflow-x: auto;
++    }
++
++    .events-table {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .events-table th,
++    .events-table td {
++      padding: 12px 14px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .events-table th {
++      background-color: var(--light);
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .events-table code {
++      font-family: 'Courier New', Courier, monospace;
++      background: #f5f0ee;
++      padding: 2px 6px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++    }
++
++    .badge-service {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--text);
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    .interval-pill {
++      display: inline-block;
++      background: #fff3e0;
++      color: #e65100;
++      border: 1px solid var(--accent);
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .interval-summary {
++      margin-top: 20px;
++      padding: 15px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .interval-summary h3 {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .interval-summary ul {
++      list-style: none;
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.85rem;
++    }
++
++    .interval-summary li {
++      padding: 4px 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +315,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="telemetry-section" aria-labelledby="telemetry-heading">
++      <div class="telemetry-header">
++        <div>
++          <h2 id="telemetry-heading">Distributed Coffee Order Events</h2>
++          <p>Inspect high-precision nanosecond UTC order logs from backend microservices in chronological order.</p>
++        </div>
++        <button type="button" id="load-order-events-btn" class="btn">Load Order Events</button>
++      </div>
++
++      <p id="events-status" class="events-status" aria-live="polite">
++        Click "Load Order Events" to ingest out-of-order nanosecond telemetry from distributed services.
++      </p>
++
++      <div id="events-results" hidden>
++        <div class="events-table-wrapper">
++          <table class="events-table">
++            <thead>
++              <tr>
++                <th scope="col">#</th>
++                <th scope="col">Order ID</th>
++                <th scope="col">Service Node</th>
++                <th scope="col">Event Type</th>
++                <th scope="col">Item / Details</th>
++                <th scope="col">UTC Timestamp (Nanosecond)</th>
++                <th scope="col">Interval Since Previous</th>
++              </tr>
++            </thead>
++            <tbody id="events-table-body"></tbody>
++          </table>
++        </div>
++
++        <div class="interval-summary">
++          <h3>Consecutive Event Intervals</h3>
++          <ul id="interval-summary-list"></ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +365,179 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Out-of-order batch of coffee order events collected from distributed backend services
++    // with nanosecond-precision ISO 8601 UTC timestamps (including sub-millisecond events).
++    const rawOrderEvents = [
++      {
++        orderId: 'ORD-8842',
++        nodeId: 'barista-dispatch-2',
++        eventType: 'order.barista.queued',
++        details: 'Maple Oat Latte routed to Espresso Bar #2',
++        ts: '2026-10-24T08:15:30.004987654Z'
++      },
++      {
++        orderId: 'ORD-8842',
++        nodeId: 'payment-svc-3',
++        eventType: 'payment.authorized',
++        details: 'Contactless tap authorized ($6.25)',
++        ts: '2026-10-24T08:15:30.004123456Z'
++      },
++      {
++        orderId: 'ORD-8842',
++        nodeId: 'api-gateway-1',
++        eventType: 'order.received',
++        details: 'Mobile order payload validated',
++        ts: '2026-10-24T08:15:30.004120000Z'
++      },
++      {
++        orderId: 'ORD-8842',
++        nodeId: 'notification-svc-1',
++        eventType: 'customer.notified',
++        details: 'Push alert dispatched: Order in progress',
++        ts: '2026-10-24T08:15:30.012450890Z'
++      },
++      {
++        orderId: 'ORD-8842',
++        nodeId: 'inventory-svc-2',
++        eventType: 'inventory.beans.reserved',
++        details: '18g Dark Roast + 240ml Oat Milk allocated',
++        ts: '2026-10-24T08:15:30.004123890Z'
++      },
++      {
++        orderId: 'ORD-8842',
++        nodeId: 'rewards-ledger-1',
++        eventType: 'loyalty.points.accrued',
++        details: '+62 Daily Grind points credited',
++        ts: '2026-10-24T08:15:30.004550120Z'
++      }
++    ];
++
++    async function ensureTemporalSupport() {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++    }
++
++    // 1. Parse recorded timestamps as Temporal.Instant to preserve full nanosecond precision
++    function parseOrderEvents(rawEvents) {
++      return rawEvents.map(evt => ({
++        ...evt,
++        timestamp: Temporal.Instant.from(evt.ts)
++      }));
++    }
++
++    // 2. Sort chronologically using Temporal.Instant.compare()
++    function sequenceEvents(items) {
++      return [...items].sort((a, b) => Temporal.Instant.compare(a.timestamp, b.timestamp));
++    }
++
++    // 3. Calculate intervals between consecutive events with Instant.prototype.since()
++    function analyzeOrderTrace(sortedEvents) {
++      return sortedEvents.map((curr, index) => {
++        if (index === 0) {
++          return {
++            ...curr,
++            isoTimestamp: curr.timestamp.toString(),
++            duration: null,
++            formattedInterval: '— (Initial event)'
++          };
++        }
++
++        const prev = sortedEvents[index - 1];
++        const isSimultaneous = curr.timestamp.equals(prev.timestamp);
++        const gap = curr.timestamp.since(prev.timestamp);
++        const formattedInterval = isSimultaneous
++          ? '0ns'
++          : `+${gap.toLocaleString('en-US', { style: 'narrow' })}`;
++
++        return {
++          ...curr,
++          isoTimestamp: curr.timestamp.toString(),
++          prevEventType: prev.eventType,
++          duration: gap,
++          formattedInterval
++        };
++      });
++    }
++
++    function renderOrderEvents(analyzedEvents) {
++      const tbody = document.getElementById('events-table-body');
++      const summaryList = document.getElementById('interval-summary-list');
++      const resultsContainer = document.getElementById('events-results');
++      const statusEl = document.getElementById('events-status');
++
++      tbody.replaceChildren();
++      summaryList.replaceChildren();
++
++      analyzedEvents.forEach((evt, idx) => {
++        const tr = document.createElement('tr');
++
++        const seqTd = document.createElement('td');
++        seqTd.textContent = String(idx + 1);
++
++        const orderTd = document.createElement('td');
++        const orderCode = document.createElement('code');
++        orderCode.textContent = evt.orderId;
++        orderTd.appendChild(orderCode);
++
++        const nodeTd = document.createElement('td');
++        const nodeBadge = document.createElement('span');
++        nodeBadge.className = 'badge-service';
++        nodeBadge.textContent = evt.nodeId;
++        nodeTd.appendChild(nodeBadge);
++
++        const typeTd = document.createElement('td');
++        const typeCode = document.createElement('code');
++        typeCode.textContent = evt.eventType;
++        typeTd.appendChild(typeCode);
++
++        const detailsTd = document.createElement('td');
++        detailsTd.textContent = evt.details;
++
++        const tsTd = document.createElement('td');
++        const tsCode = document.createElement('code');
++        tsCode.textContent = evt.isoTimestamp;
++        tsTd.appendChild(tsCode);
++
++        const intervalTd = document.createElement('td');
++        const intervalSpan = document.createElement('span');
++        intervalSpan.className = 'interval-pill';
++        intervalSpan.textContent = evt.formattedInterval;
++        intervalTd.appendChild(intervalSpan);
++
++        tr.append(seqTd, orderTd, nodeTd, typeTd, detailsTd, tsTd, intervalTd);
++        tbody.appendChild(tr);
++
++        if (idx > 0) {
++          const li = document.createElement('li');
++          li.textContent = `${evt.prevEventType} → ${evt.eventType}: ${evt.duration.toLocaleString('en-US', { style: 'narrow' })}`;
++          summaryList.appendChild(li);
++        }
++      });
++
++      statusEl.textContent = `Loaded and sorted ${analyzedEvents.length} distributed events with full nanosecond precision.`;
++      resultsContainer.hidden = false;
++    }
++
++    function initializeApp() {
++      const loadBtn = document.getElementById('load-order-events-btn');
++      loadBtn.addEventListener('click', () => {
++        const parsed = parseOrderEvents(rawOrderEvents);
++        const sorted = sequenceEvents(parsed);
++        const analyzed = analyzeOrderTrace(sorted);
++        renderOrderEvents(analyzed);
++      });
++    }
++
++    (async () => {
++      await ensureTemporalSupport();
++      initializeApp();
++    })();
++  </script>
+ </body>
+ 
+ </html>

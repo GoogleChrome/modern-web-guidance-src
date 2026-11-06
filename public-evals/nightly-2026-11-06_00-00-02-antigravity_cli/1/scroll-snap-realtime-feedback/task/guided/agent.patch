@@ -1,0 +1,355 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,124 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Cafe Vibe Gallery Carousel */
++    .vibe-section {
++      margin-block-end: 48px;
++    }
++
++    .section-heading {
++      text-align: center;
++      margin-block-end: 20px;
++    }
++
++    #gallery {
++      position: relative;
++      display: flex;
++      gap: 20px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      touch-action: pan-y pinch-zoom;
++      padding-block: 10px 16px;
++      padding-inline: 10%;
++      border-radius: 12px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    #gallery:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .gallery-item {
++      flex: 0 0 80%;
++      max-inline-size: 720px;
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
++    }
++
++    .gallery-item figure {
++      margin: 0;
++    }
++
++    .gallery-item img {
++      display: block;
++      inline-size: 100%;
++      block-size: auto;
++      aspect-ratio: 16 / 10;
++      object-fit: cover;
++    }
++
++    .gallery-item figcaption {
++      padding: 14px 20px;
++      text-align: center;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .thumbnail-bar {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 12px;
++      margin-block-start: 16px;
++    }
++
++    .thumbnail {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      min-block-size: 44px;
++      min-inline-size: 44px;
++      padding: 6px 14px 6px 6px;
++      background: white;
++      color: var(--text);
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      font: inherit;
++      font-size: 0.9rem;
++      font-weight: 500;
++      cursor: pointer;
++      transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .thumbnail img {
++      inline-size: 48px;
++      block-size: 32px;
++      object-fit: cover;
++      border-radius: 4px;
++    }
++
++    .thumbnail:hover:not(:disabled) {
++      border-color: var(--primary);
++    }
++
++    .thumbnail:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .thumbnail.pending {
++      border-color: var(--accent);
++      border-style: dashed;
++      background-color: #fff8e1;
++      transform: translateY(-2px);
++    }
++
++    .thumbnail.active {
++      border-color: var(--primary);
++      border-style: solid;
++      background-color: var(--primary);
++      color: white;
++      box-shadow: 0 2px 8px rgba(78, 52, 46, 0.3);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +290,57 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="vibe-section" aria-labelledby="vibe-heading" focusgroup="toolbar wrap">
++      <h2 id="vibe-heading" class="section-heading">Our Cafe Vibe</h2>
++      <div id="gallery" role="region" aria-label="Cafe vibe photo gallery" tabindex="0">
++        <div class="gallery-item">
++          <figure>
++            <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1000&q=80" alt="Warm sunlit cafe interior with wooden tables and pendant lighting" width="1000" height="625">
++            <figcaption>Sunlit Lounge</figcaption>
++          </figure>
++        </div>
++        <div class="gallery-item">
++          <figure>
++            <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=1000&q=80" alt="Barista pouring steamed milk into a rich espresso latte" width="1000" height="625" loading="lazy">
++            <figcaption>Craft Espresso Bar</figcaption>
++          </figure>
++        </div>
++        <div class="gallery-item">
++          <figure>
++            <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1000&q=80" alt="Cozy corner seating surrounded by lush indoor plants and books" width="1000" height="625" loading="lazy">
++            <figcaption>Cozy Reading Nook</figcaption>
++          </figure>
++        </div>
++        <div class="gallery-item">
++          <figure>
++            <img src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=1000&q=80" alt="Artisanal pastries and freshly brewed pour-over coffee on a rustic counter" width="1000" height="625" loading="lazy">
++            <figcaption>Fresh Roasts &amp; Pastries</figcaption>
++          </figure>
++        </div>
++      </div>
++
++      <div class="thumbnail-bar">
++        <button type="button" class="thumbnail active" aria-current="true">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=200&q=80" alt="" width="48" height="32" loading="lazy">
++          <span>Sunlit Lounge</span>
++        </button>
++        <button type="button" class="thumbnail">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=200&q=80" alt="" width="48" height="32" loading="lazy">
++          <span>Craft Espresso Bar</span>
++        </button>
++        <button type="button" class="thumbnail">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=200&q=80" alt="" width="48" height="32" loading="lazy">
++          <span>Cozy Reading Nook</span>
++        </button>
++        <button type="button" class="thumbnail">
++          <img src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=200&q=80" alt="" width="48" height="32" loading="lazy">
++          <span>Fresh Roasts &amp; Pastries</span>
++        </button>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +371,168 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const container = document.querySelector('#gallery');
++    const thumbnails = document.querySelectorAll('.thumbnail');
++    const items = document.querySelectorAll('.gallery-item');
++
++    thumbnails.forEach((thumb, index) => {
++      thumb.addEventListener('click', () => {
++        if (items[index]) {
++          items[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
++        }
++      });
++    });
++
++    // Note: For item.offsetLeft to be relative to the container,
++    // the container MUST be the offsetParent (e.g., `position: relative`).
++    const findClosestItemIndex = () => {
++      // Center-distance assumes scroll-snap-align: center on items.
++      const containerCenter = container.scrollLeft + container.clientWidth / 2;
++      let closestIndex = 0;
++      let minDistance = Infinity;
++
++      items.forEach((item, index) => {
++        const itemCenter = item.offsetLeft + item.offsetWidth / 2;
++        const distance = Math.abs(containerCenter - itemCenter);
++        if (distance < minDistance) {
++          minDistance = distance;
++          closestIndex = index;
++        }
++      });
++      return closestIndex;
++    };
++
++    const initActiveItem = () => {
++      const closestIndex = findClosestItemIndex();
++      if (!thumbnails[closestIndex]) return;
++
++      thumbnails.forEach((thumb) => {
++        thumb.classList.remove('pending', 'active');
++        thumb.removeAttribute('aria-current');
++      });
++      thumbnails[closestIndex].classList.add('active');
++      thumbnails[closestIndex].setAttribute('aria-current', 'true');
++    };
++
++    if (document.readyState === 'complete') {
++      initActiveItem();
++    } else {
++      window.addEventListener('load', initActiveItem, { once: true });
++    }
++
++    if ('onscrollsnapchanging' in Element.prototype) {
++      container.addEventListener('scrollsnapchanging', (event) => {
++        // Highlight pending snap target during scroll for real-time feedback.
++        const pendingTarget = event.snapTargetInline;
++        const index = [...items].indexOf(pendingTarget);
++
++        if (index === -1 || !thumbnails[index]) return;
++
++        // Use lightweight class toggle to avoid layout thrashing during rapid events.
++        // Note: aria-current is NOT toggled here. It tracks the settled "current"
++        // item, which is updated in the scrollsnapchange handler below.
++        thumbnails.forEach((thumb) => thumb.classList.remove('pending'));
++        thumbnails[index].classList.add('pending');
++      });
++
++      container.addEventListener('scrollsnapchange', (event) => {
++        // Promote pending state to active on scroll completion.
++        const snappedTarget = event.snapTargetInline;
++        const index = [...items].indexOf(snappedTarget);
++
++        if (index === -1 || !thumbnails[index]) return;
++
++        // Establish final active state and clean up pending.
++        thumbnails.forEach((thumb) => {
++          thumb.classList.remove('pending', 'active');
++          thumb.removeAttribute('aria-current');
++        });
++        thumbnails[index].classList.add('active');
++        thumbnails[index].setAttribute('aria-current', 'true');
++      });
++    } else {
++      // Fallback: use scroll + requestAnimationFrame for eager feedback
++      let scrollTimeout;
++      let rafId = null;
++
++      const promotePendingToActive = () => {
++        const closestIndex = findClosestItemIndex();
++        if (!thumbnails[closestIndex]) return;
++        thumbnails.forEach((thumb) => {
++          thumb.classList.remove('pending', 'active');
++          thumb.removeAttribute('aria-current');
++        });
++        thumbnails[closestIndex].classList.add('active');
++        thumbnails[closestIndex].setAttribute('aria-current', 'true');
++      };
++
++      container.addEventListener('scroll', () => {
++        if (rafId) return;
++        rafId = requestAnimationFrame(() => {
++          rafId = null;
++          const closestIndex = findClosestItemIndex();
++          if (!thumbnails[closestIndex]) return;
++
++          // Clean up stale pending classes
++          thumbnails.forEach((thumb) => thumb.classList.remove('pending'));
++          thumbnails[closestIndex].classList.add('pending');
++        });
++
++        // Debounce fallback for browsers that don't support scrollend
++        clearTimeout(scrollTimeout);
++        scrollTimeout = setTimeout(promotePendingToActive, 100);
++      }, { passive: true });
++
++      // Fallback: use Baseline `scrollend` event to promote pending to active cleanly where supported
++      container.addEventListener('scrollend', () => {
++        clearTimeout(scrollTimeout);
++        promotePendingToActive();
++      });
++    }
++
++    if (!('focusGroup' in HTMLElement.prototype)) {
++      document.querySelectorAll('[focusgroup~="toolbar"]').forEach(group => {
++        group.setAttribute('role', 'toolbar');
++
++        const groupItems = () => [...group.querySelectorAll('button')]
++          .filter(item => item.closest('[focusgroup]') === group)
++          .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
++
++        const syncTabIndex = () => {
++          const list = groupItems();
++          let current = list.indexOf(document.activeElement);
++
++          if (current < 0) {
++            current = list.indexOf(list.find(item => item.getAttribute('aria-current') === 'true'));
++          }
++
++          list.forEach((item, index) => {
++            item.tabIndex = current === index ? 0 : -1;
++          });
++        };
++
++        group.addEventListener('focusin', syncTabIndex);
++        group.addEventListener('keydown', event => {
++          if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
++          const list = groupItems();
++          const current = list.indexOf(document.activeElement);
++          if (current < 0) return;
++          const next = (current + (event.key === 'ArrowLeft' ? -1 : 1) + list.length) % list.length;
++          event.preventDefault();
++          event.stopImmediatePropagation();
++          list.forEach((item, index) => {
++            item.tabIndex = index === next ? 0 : -1;
++          });
++          list[next].focus({ preventScroll: true });
++        }, true);
++
++        syncTabIndex();
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

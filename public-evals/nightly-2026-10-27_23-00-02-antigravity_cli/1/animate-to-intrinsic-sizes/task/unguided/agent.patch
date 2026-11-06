@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,16 +11,88 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    /* Promo Alert */
++    #promo-alert {
++      interpolate-size: allow-keywords;
++      position: relative;
++      background-color: var(--accent);
++      color: var(--text);
++      height: auto;
++      overflow: hidden;
++      transition:
++        height 0.35s ease,
++        padding 0.35s ease,
++        margin 0.35s ease,
++        border-width 0.35s ease,
++        opacity 0.35s ease;
++    }
++
++    #promo-alert:has(#alert-dismiss-toggle:checked) {
++      height: 0;
++      padding-top: 0;
++      padding-bottom: 0;
++      margin-top: 0;
++      margin-bottom: 0;
++      border-width: 0;
++      opacity: 0;
++    }
++
++    .promo-alert-inner {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      padding: 12px 5%;
++      font-size: 0.95rem;
++    }
++
++    #alert-dismiss {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 28px;
++      height: 28px;
++      border-radius: 4px;
++      font-size: 1.25rem;
++      font-weight: bold;
++      line-height: 1;
++      color: var(--text);
++      cursor: pointer;
++      user-select: none;
++      flex-shrink: 0;
++      transition: background-color 0.2s ease;
++    }
++
++    #alert-dismiss:hover {
++      background-color: rgba(62, 39, 35, 0.12);
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+@@ -151,13 +223,99 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* FAQ Accordion */
++    .faq-section {
++      margin-top: 50px;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .accordion {
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    .accordion-item {
++      position: relative;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      width: 100%;
++      padding: 18px 24px;
++      background: white;
++      color: var(--primary);
++      font-size: 1.05rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      transition: background-color 0.2s ease;
++    }
++
++    #faq-trigger:hover {
++      background-color: #f5f0ee;
++    }
++
++    .faq-icon {
++      display: inline-block;
++      font-size: 1.25rem;
++      line-height: 1;
++      transition: transform 0.35s ease;
++    }
++
++    .accordion-item:has(#faq-toggle:checked) .faq-icon,
++    #faq-toggle:checked ~ #faq-trigger .faq-icon {
++      transform: rotate(45deg);
++    }
++
++    #faq-content {
++      interpolate-size: allow-keywords;
++      height: 0;
++      overflow: hidden;
++      opacity: 0;
++      transition:
++        height 0.35s ease,
++        padding 0.35s ease,
++        opacity 0.35s ease;
++    }
++
++    .accordion-item:has(#faq-toggle:checked) #faq-content,
++    #faq-toggle:checked ~ #faq-content {
++      height: auto;
++      opacity: 1;
++    }
++
++    .faq-content-inner {
++      padding: 0 24px 20px;
++      color: var(--text);
++      border-top: 1px solid var(--secondary);
++      padding-top: 16px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotional Alert">
++    <input type="checkbox" id="alert-dismiss-toggle" class="visually-hidden">
++    <div class="promo-alert-inner">
++      <span><strong>Limited-Time Offer:</strong> Enjoy 20% off your first bag of single-origin coffee with code <strong>FRESHROAST</strong> at checkout!</span>
++      <label for="alert-dismiss-toggle" id="alert-dismiss" role="button" tabindex="0" aria-label="Dismiss promotional alert">&times;</label>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +352,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" id="faq">
++      <h2>Frequently Asked Questions</h2>
++      <div class="accordion">
++        <div class="accordion-item">
++          <input type="checkbox" id="faq-toggle" class="visually-hidden">
++          <label for="faq-toggle" id="faq-trigger" role="button" tabindex="0">
++            <span>Where do you source your coffee beans, and how fresh is each roast?</span>
++            <span class="faq-icon" aria-hidden="true">+</span>
++          </label>
++          <div id="faq-content" role="region" aria-labelledby="faq-trigger">
++            <div class="faq-content-inner">
++              <p>All of our beans are ethically sourced through direct-trade partnerships with small-scale farms across Colombia, Ethiopia, and Sumatra. We roast in small batches daily at our local roastery and ship within 24 hours so every cup arrives at peak flavor and freshness.</p>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,104 @@
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..2520e53 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -6,12 +6,95 @@ export interface Props {
+ }
+ 
+ const { title } = Astro.props;
++
++const slugify = (text: string) =>
++	text.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
++
++// Split the content at each <h2> and wrap every chunk in a <section id="…"> so the
++// "On this page" navigation can link to (and track) each section.
++const html = await Astro.slots.render('default');
++const [intro, ...chunks] = html.split(/(?=<h2[\s>])/);
++const sections = chunks.map((chunk) => {
++	const heading = chunk.match(/<h2[^>]*>([\s\S]*?)<\/h2>/)?.[1] ?? '';
++	const label = heading.replace(/<[^>]+>/g, '').trim();
++	return { id: slugify(label), label, html: chunk };
++});
+ ---
+ <Layout title={title}>
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+-        <div class="prose max-w-none">
+-            <slot />
++    <div class="max-w-5xl mx-auto px-4 py-8 md:py-12 md:grid md:grid-cols-[1fr_14rem] md:gap-10">
++        <div class="min-w-0">
++            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++            <div class="prose max-w-none">
++                <Fragment set:html={intro} />
++                {sections.map((section) => (
++                    <section id={section.id} class="scroll-mt-4">
++                        <Fragment set:html={section.html} />
++                    </section>
++                ))}
++            </div>
+         </div>
++
++        {sections.length > 1 && (
++            <aside class="hidden md:block">
++                <nav class="toc sticky top-4" aria-labelledby="toc-heading">
++                    <h2 id="toc-heading" class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">On this page</h2>
++                    <ul class="space-y-1 border-l border-gray-200 text-sm">
++                        {sections.map((section) => (
++                            <li>
++                                <a href={`#${section.id}`} class="block -ml-px border-l-2 border-transparent pl-3 py-1 text-gray-600 hover:text-gray-900">
++                                    {section.label}
++                                </a>
++                            </li>
++                        ))}
++                    </ul>
++                </nav>
++            </aside>
++        )}
+     </div>
+ </Layout>
++
++<style>
++    .toc {
++        /* Lets the browser track which linked section is currently in view (:target-current). */
++        scroll-target-group: auto;
++    }
++    /* :is() keeps the rule valid in browsers that don't know :target-current; .target-current is the JS fallback. */
++    .toc a:is(:target-current, .target-current) {
++        color: var(--color-gray-900);
++        font-weight: 600;
++        border-left-color: var(--color-amber-400);
++    }
++</style>
++
++<script>
++    const links = [...document.querySelectorAll<HTMLAnchorElement>('.toc a')];
++
++    if (links.length) {
++        if (CSS.supports('scroll-target-group: auto')) {
++            // :target-current handles the visuals; mirror it to aria-current for assistive tech.
++            const syncAriaCurrent = () => {
++                const current = document.querySelector('.toc a:target-current');
++                links.forEach((link) => link.setAttribute('aria-current', String(link === current)));
++            };
++            syncAriaCurrent();
++            document.addEventListener('scrollend', syncAriaCurrent);
++        } else {
++            const setCurrent = (id: string) => {
++                links.forEach((link) => {
++                    const isCurrent = link.hash === `#${id}`;
++                    link.classList.toggle('target-current', isCurrent);
++                    link.setAttribute('aria-current', String(isCurrent));
++                });
++            };
++            const observer = new IntersectionObserver((entries) => {
++                entries.forEach((entry) => {
++                    if (entry.isIntersecting) setCurrent(entry.target.id);
++                });
++            }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++            links.forEach((link) => {
++                const section = document.getElementById(decodeURIComponent(link.hash.slice(1)));
++                if (section) observer.observe(section);
++            });
++        }
++    }
++</script>

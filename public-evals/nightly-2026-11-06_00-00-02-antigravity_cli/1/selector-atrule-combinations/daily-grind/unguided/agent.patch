@@ -1,0 +1,252 @@
+diff --git a/index.html b/index.html
+index 66c9173..799f24a 100644
+--- a/index.html
++++ b/index.html
+@@ -6,12 +6,84 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    :root,
++    :root[data-theme="light"],
++    :root[theme="light"],
++    :root[data-color-scheme="light"],
++    :root[data-mode="light"],
++    :root.light,
++    :root.theme-light,
++    :root.light-theme,
++    :root.light-mode {
++      color-scheme: light;
++      --theme-light: initial;
++      --theme-dark: ;
++    }
++
++    @media (prefers-color-scheme: light) {
++      :root:not([data-theme="dark"]):not([theme="dark"]):not([data-color-scheme="dark"]):not([data-mode="dark"]):not(.dark):not(.theme-dark):not(.dark-theme):not(.dark-mode) {
++        color-scheme: light;
++        --theme-light: initial;
++        --theme-dark: ;
++      }
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root:not([data-theme="light"]):not([theme="light"]):not([data-color-scheme="light"]):not([data-mode="light"]):not(.light):not(.theme-light):not(.light-theme):not(.light-mode) {
++        color-scheme: dark;
++        --theme-light: ;
++        --theme-dark: initial;
++      }
++    }
++
++    :root[data-theme="dark"],
++    :root[theme="dark"],
++    :root[data-color-scheme="dark"],
++    :root[data-mode="dark"],
++    :root.dark,
++    :root.theme-dark,
++    :root.dark-theme,
++    :root.dark-mode {
++      color-scheme: dark;
++      --theme-light: ;
++      --theme-dark: initial;
++    }
++
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --primary: var(--theme-light, #4e342e) var(--theme-dark, #d7ccc8);
++      --secondary: var(--theme-light, #d7ccc8) var(--theme-dark, #221714);
++      --accent: var(--theme-light, #c87d20) var(--theme-dark, #ffab40);
++      --text: var(--theme-light, #3e2723) var(--theme-dark, #f5ebe6);
++      --light: var(--theme-light, #fafafa) var(--theme-dark, #16100e);
++
++      --nav-bg: var(--theme-light, #f5ebe6) var(--theme-dark, #1f1411);
++      --nav-text: var(--theme-light, #3e2723) var(--theme-dark, #f5ebe6);
++      --nav-logo: var(--theme-light, #3e2723) var(--theme-dark, #ffecc7);
++      --nav-link: var(--theme-light, #4e342e) var(--theme-dark, #ede0d4);
++      --nav-border: var(--theme-light, #d7ccc8) var(--theme-dark, #3d2923);
++      --nav-shadow: var(--theme-light, 0 2px 8px rgba(62, 39, 35, 0.08)) var(--theme-dark, 0 2px 10px rgba(0, 0, 0, 0.45));
++      --logout-text: var(--theme-light, #4e342e) var(--theme-dark, #ffab40);
++      --logout-bg: var(--theme-light, rgba(78, 52, 46, 0.08)) var(--theme-dark, rgba(255, 171, 64, 0.14));
++      --logout-border: var(--theme-light, #c87d20) var(--theme-dark, #ffab40);
++
++      --hero-bg: var(--theme-light, #efe5dc) var(--theme-dark, #18100d);
++      --hero-overlay-start: var(--theme-light, rgba(250, 244, 238, 0.78)) var(--theme-dark, rgba(20, 13, 10, 0.72));
++      --hero-overlay-end: var(--theme-light, rgba(239, 229, 220, 0.86)) var(--theme-dark, rgba(15, 10, 8, 0.84));
++      --hero-text: var(--theme-light, #2d1b15) var(--theme-dark, #f5ebe6);
++      --hero-heading: var(--theme-light, #23140f) var(--theme-dark, #ffffff);
++      --hero-subtext: var(--theme-light, #4e342e) var(--theme-dark, #e6d5cc);
++      --hero-border: var(--theme-light, #d7ccc8) var(--theme-dark, #3d2923);
++
++      --card-bg: var(--theme-light, #ffffff) var(--theme-dark, #261a16);
++      --card-text: var(--theme-light, #4e342e) var(--theme-dark, #d7ccc8);
++      --card-heading: var(--theme-light, #3e2723) var(--theme-dark, #ffab40);
++      --card-border: var(--theme-light, #e6dcd7) var(--theme-dark, #3d2b24);
++      --card-shadow: var(--theme-light, 0 2px 8px rgba(62, 39, 35, 0.1)) var(--theme-dark, 0 4px 14px rgba(0, 0, 0, 0.5));
++
++      --btn-bg: var(--theme-light, #4e342e) var(--theme-dark, #ffab40);
++      --btn-text: var(--theme-light, #ffffff) var(--theme-dark, #1f1411);
++      --btn-border: var(--theme-light, #4e342e) var(--theme-dark, #ffab40);
++      --btn-hover-bg: var(--theme-light, #3e2723) var(--theme-dark, #ffc168);
+     }
+ 
+     * {
+@@ -25,12 +97,15 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
++      box-shadow: var(--nav-shadow);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,9 +113,11 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s;
+     }
+ 
+     .logo {
++      color: var(--nav-logo);
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+@@ -56,10 +133,10 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-link);
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, background-color 0.3s, border-color 0.3s;
+     }
+ 
+     nav a:hover {
+@@ -67,7 +144,9 @@
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      color: var(--logout-text);
++      background-color: var(--logout-bg);
++      border: 1px solid var(--logout-border);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -75,24 +154,32 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background-color: var(--hero-bg);
++      background-image: linear-gradient(var(--hero-overlay-start), var(--hero-overlay-end)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
++      border-bottom: 1px solid var(--hero-border);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+     }
+ 
+     .hero h1 {
++      color: var(--hero-heading);
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero p {
++      color: var(--hero-subtext);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -100,6 +187,10 @@
+       padding: 0 20px;
+     }
+ 
++    section h2 {
++      color: var(--text);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,38 +199,49 @@
+     }
+ 
+     .card {
+-      background: white;
++      background-color: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++    }
++
++    .card p {
++      color: var(--card-text);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--btn-bg);
++      color: var(--btn-text);
++      border: 1px solid var(--btn-border);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background-color: var(--btn-hover-bg);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background-color: var(--secondary);
++      color: var(--text);
++      border-top: 1px solid var(--card-border);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+     }
+ 
+     .footer-links {

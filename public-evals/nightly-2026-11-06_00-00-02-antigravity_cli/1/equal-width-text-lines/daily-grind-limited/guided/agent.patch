@@ -1,0 +1,40 @@
+diff --git a/index.html b/index.html
+index 66c9173..c1c944b 100644
+--- a/index.html
++++ b/index.html
+@@ -89,10 +89,22 @@
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      display: grid;
++      gap: 0.5rem;
++      width: min(100%, 24rem);
++      font-size: 1.5rem;
++      line-height: 1;
++      text-transform: uppercase;
++      text-fit: grow per-line-all 300%;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero h1 > span {
++      display: block;
++      white-space: nowrap;
++      text-box: trim-both cap alphabetic;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,7 +181,10 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1>
++      <span>Wake Up</span>
++      <span>Your Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

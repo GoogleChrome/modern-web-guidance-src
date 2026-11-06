@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,57 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Customer Feedback Log */
++    .feedback-log {
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 10px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    .feedback-log::-webkit-scrollbar {
++      width: 6px;
++    }
++
++    .feedback-log::-webkit-scrollbar-track {
++      background: #4e342e;
++      border-radius: 3px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      border-radius: 3px;
++    }
++
++    .testimonial {
++      padding: 12px 15px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .testimonial:last-child {
++      border-bottom: none;
++    }
++
++    .testimonial p {
++      font-style: italic;
++    }
++
++    .testimonial cite {
++      display: block;
++      margin-top: 4px;
++      font-size: 0.85rem;
++      font-style: normal;
++      font-weight: bold;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +243,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Customer Feedback</h2>
++      <div class="feedback-log" role="region" aria-label="Customer feedback log" tabindex="0">
++        <div class="testimonial">
++          <p>"The Maple Oat Latte is the best thing to happen to my mornings. Cozy and not too sweet."</p>
++          <cite>— Maya R.</cite>
++        </div>
++        <div class="testimonial">
++          <p>"Cold brew is incredibly smooth. I stop in every day before work."</p>
++          <cite>— Jordan T.</cite>
++        </div>
++        <div class="testimonial">
++          <p>"Friendly baristas and a warm atmosphere. My favorite place to get work done."</p>
++          <cite>— Priya S.</cite>
++        </div>
++        <div class="testimonial">
++          <p>"The dark roast espresso has real depth. Bold without being bitter."</p>
++          <cite>— Carlos M.</cite>
++        </div>
++        <div class="testimonial">
++          <p>"Love that the beans are ethically sourced. You can taste the difference."</p>
++          <cite>— Elena W.</cite>
++        </div>
++        <div class="testimonial">
++          <p>"Online ordering was quick and my drink was ready right when I arrived."</p>
++          <cite>— Sam P.</cite>
++        </div>
++        <div class="testimonial">
++          <p>"The rewards program is generous, and the seasonal menu keeps things fresh."</p>
++          <cite>— Aisha K.</cite>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,252 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,8 +99,96 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 25px;
++    }
++
++    /* Product Carousel */
++    @keyframes scale-card {
++      0% {
++        scale: 0.75;
++      }
++      50% {
++        scale: 1;
++      }
++      100% {
++        scale: 0.75;
++      }
++    }
++
++    .scroller {
++      display: flex;
++      gap: 24px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      padding: 30px max(20px, calc(50% - 140px));
++      list-style: none;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller > li {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      display: flex;
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .scroller > li {
++          animation: scale-card auto linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
++    .product-card {
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      width: 100%;
++      text-align: center;
++    }
++
++    .product-card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .product-card-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++      justify-content: space-between;
++    }
++
++    .product-card h3 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .product-price {
++      font-weight: bold;
++      color: var(--text);
++      font-size: 1.1rem;
++      margin: 8px 0;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -124,18 +212,25 @@
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
++      min-block-size: 24px;
++      min-inline-size: 24px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    :where(a:any-link, button, .scroller):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -175,24 +270,121 @@
+   </header>
+ 
+   <main class="container">
+     <section>
++      <h2 class="section-title">Featured Roasts &amp; Gear</h2>
++      <p class="section-subtitle">Scroll horizontally to explore our freshly roasted beans and brewing essentials.</p>
++      <ul class="scroller" role="list">
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of Ethiopian Yirgacheffe whole bean coffee">
++            <div class="product-card-body">
++              <div>
++                <h3>Ethiopian Yirgacheffe</h3>
++                <p>Bright floral aroma with notes of bergamot and Meyer lemon.</p>
++              </div>
++              <div>
++                <p class="product-price">$19.50</p>
++                <a href="/products/ethiopian-yirgacheffe" class="btn">Shop Ethiopian Yirgacheffe</a>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Freshly brewed Colombian Supremo coffee in a ceramic mug">
++            <div class="product-card-body">
++              <div>
++                <h3>Colombian Supremo</h3>
++                <p>Rich caramel sweetness balanced with a smooth, nutty finish.</p>
++              </div>
++              <div>
++                <p class="product-price">$17.00</p>
++                <a href="/products/colombian-supremo" class="btn">Shop Colombian Supremo</a>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Glass pour-over coffee carafe with wooden collar">
++            <div class="product-card-body">
++              <div>
++                <h3>Artisan Pour-Over Carafe</h3>
++                <p>Borosilicate glass dripper for a clean, flavorful extraction.</p>
++              </div>
++              <div>
++                <p class="product-price">$34.00</p>
++                <a href="/products/pour-over-carafe" class="btn">Shop Artisan Pour-Over Carafe</a>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80" alt="Dark roasted Sumatra Mandheling coffee beans">
++            <div class="product-card-body">
++              <div>
++                <h3>Sumatra Mandheling</h3>
++                <p>Full-bodied earthy roast with hints of dark chocolate and spice.</p>
++              </div>
++              <div>
++                <p class="product-price">$18.50</p>
++                <a href="/products/sumatra-mandheling" class="btn">Shop Sumatra Mandheling</a>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?auto=format&fit=crop&w=600&q=80" alt="Matte black gooseneck kettle for pour-over coffee">
++            <div class="product-card-body">
++              <div>
++                <h3>Precision Gooseneck Kettle</h3>
++                <p>Steady pour control with built-in temperature gauge.</p>
++              </div>
++              <div>
++                <p class="product-price">$58.00</p>
++                <a href="/products/gooseneck-kettle" class="btn">Shop Precision Gooseneck Kettle</a>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1611854779393-1b2da9d400fe?auto=format&fit=crop&w=600&q=80" alt="Bag of Guatemala Antigua coffee beans">
++            <div class="product-card-body">
++              <div>
++                <h3>Guatemala Antigua</h3>
++                <p>Velvety cocoa notes with a crisp apple acidity and warm spice.</p>
++              </div>
++              <div>
++                <p class="product-price">$19.00</p>
++                <a href="/products/guatemala-antigua" class="btn">Shop Guatemala Antigua</a>
++              </div>
++            </div>
++          </article>
++        </li>
++      </ul>
++    </section>
++
++    <section style="margin-top: 50px;">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Maple Oat Latte</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Dark Roast Espresso</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Cold Brew</a>
+         </div>
+       </div>
+     </section>
+   </main>

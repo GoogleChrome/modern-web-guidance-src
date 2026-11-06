@@ -1,0 +1,25 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,21 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Dashboard</title>
++
++  <!-- Critical interactivity: fetched in parallel, runs as soon as it arrives -->
++  <script src="/js/app.js" async fetchpriority="high"></script>
++
++  <!-- Legacy widgets: deferred so they don't block parsing; still run in order after the DOM is parsed -->
++  <script src="/js/legacy-widgets.js" defer></script>
++
++  <!-- Analytics: non-essential, independent, never blocks rendering -->
++  <script src="/js/tracker.js" async fetchpriority="low"></script>
++</head>
++<body>
++  <header><h1>Dashboard</h1></header>
++  <main id="dashboard"></main>
++</body>
++</html>

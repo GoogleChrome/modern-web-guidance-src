@@ -1,0 +1,610 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..e4e3464
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,21 @@
++# The Daily Grind
++
++The homepage is a static site. Its Receipts & Gifts section uses native Web Crypto to create and verify signed JSON documents without sending document details to a server. Use HTTPS (or a browser-recognized secure local origin) with JavaScript and IndexedDB enabled.
++
++## Signing and verification
++
++- Choose a coffee receipt or gift voucher, enter details and a USD amount, and create a signed document. Download its JSON or send it to the verifier.
++- A non-exportable private key is generated once and saved in IndexedDB for this origin/browser profile. Clearing site data loses the signing key. The exported public key can still verify previously signed documents.
++- Native ML-DSA-65 is selected when the browser reports signing and verification support. Otherwise, signing falls back to Ed25519, then ECDSA P-256 with SHA-256. Verification uses the document's declared suite, never a downgraded algorithm.
++- The verifier trusts this browser's key by default. To verify another browser's documents, load the issuer's exported public key, compare its complete SHA-256 fingerprint through a trusted separate channel, and explicitly confirm trust. Imported trust lasts for the current page session. Embedded public keys are not accepted as proof of trust.
++- Version, suite, fingerprint, document type, issuer, ID, timestamp, description, amount, and currency are bound into a fixed, domain-separated signature input. JSON field order and formatting do not affect verification. Unknown fields and unsupported suites are rejected.
++
++## Trust boundary
++
++This repository has no merchant backend, authenticated merchant signer, checkout confirmation, or redemption ledger. Anyone opening the homepage can issue local documents. Signatures prove that signed content is unchanged and was signed by the corresponding trusted key; they do not prove a Daily Grind purchase, payment, merchant identity, or available voucher balance. The interface labels this explicitly.
++
++Production merchant issuance requires a protected merchant signing identity, public-key distribution through an authenticated channel, and an authoritative order/payment source. Redeemable vouchers also require expiry and redemption enforcement backed by a ledger. A merchant private key must never be bundled into this public site.
++
++## Checks
++
++`npm test` runs cryptographic tests using Node's Web Crypto implementation, without a browser or server. These cover round trips, tampering, signer substitution, key imports, malformed documents, and both classical fallback suites. Newer algorithms may produce Node experimental API warnings.
+diff --git a/index.html b/index.html
+index 66c9173..bf72409 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,48 @@
+       background: #3e2723;
+     }
+ 
++    button, input, select, textarea { font: inherit; }
++    button.btn { border: 0; cursor: pointer; }
++    button:disabled { opacity: 0.55; cursor: not-allowed; }
++    :focus-visible { outline: 3px solid #c66a00; outline-offset: 4px; }
++    [hidden] { display: none !important; }
++    .documents { margin-top: 64px; scroll-margin-top: 90px; }
++    .eyebrow { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
++    .documents h2 { font-size: 2rem; margin: 4px 0 10px; }
++    .section-intro { max-width: 720px; }
++    .document-card { text-align: left; padding: 28px; border: 1px solid var(--secondary); box-shadow: none; }
++    .document-card h3 { font-size: 1.3rem; }
++    .document-card p { margin-bottom: 16px; }
++    .document-card label { display: block; font-weight: 600; margin: 16px 0 6px; }
++    .document-card :is(input:not([type=file]), select, textarea) {
++      width: 100%; border: 1px solid #a89892; border-radius: 5px;
++      background: #fff; color: var(--text); padding: 10px 12px;
++    }
++    textarea { resize: vertical; min-height: 100px; }
++    #verification-document { font-family: monospace; font-size: 0.85rem; min-height: 190px; }
++    .document-card .btn { margin: 16px 8px 0 0; }
++    .secondary-btn { background: #eee8e5; color: var(--primary); }
++    .secondary-btn:hover { background: var(--secondary); }
++    .status { padding: 12px; background: #f5f1ee; border-left: 3px solid #a89892; font-size: 0.9rem; margin-top: 18px; }
++    .status[data-state=success] { background: #eef5ed; border-color: #397243; color: #235331; }
++    .status[data-state=error] { background: #fff0ec; border-color: #b13f2b; color: #8a2a1c; }
++    .key-details { margin-top: 24px; padding: 20px; border-radius: 8px; background: #eee8e5; }
++    .key-details p { margin: 6px 0; }
++    .fingerprint { display: block; overflow-wrap: anywhere; font-size: 0.8rem; margin: 6px 0; }
++    .small { font-size: 0.85rem; }
++    details { margin-top: 20px; }
++    summary { cursor: pointer; font-weight: 600; }
++    input[type=file] { max-width: 100%; font-size: 0.85rem; }
++    .trust-warning { background: #fff8e6; padding: 12px; margin-top: 12px; }
++    @media (max-width: 600px) {
++      nav { flex-direction: column; gap: 8px; position: static; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 8px 14px; }
++      nav ul li { margin: 0; }
++      .hero h1 { font-size: 2.2rem; }
++      .document-card { padding: 20px; }
++      .documents .grid { grid-template-columns: minmax(0, 1fr); }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -163,6 +205,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#signed-documents">Receipts & Gifts</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +238,71 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="documents" id="signed-documents" aria-labelledby="documents-heading">
++      <p class="eyebrow">A little extra peace of mind</p>
++      <h2 id="documents-heading">Your coffee. Signed & sealed.</h2>
++      <p class="section-intro">Create a digitally signed coffee receipt or gift voucher, then check that its details haven’t changed. Your private signing key stays in this browser.</p>
++      <p class="status small">Local signing tool: these documents are issued by your browser. They are not proof of a paid Daily Grind order or redeemable store credit. A valid signature confirms integrity and the selected key’s authorship.</p>
++
++      <div class="grid">
++        <div class="card document-card">
++          <h3>Create a signed document</h3>
++          <p class="small">Add the details, seal them with your private key, and save a signed JSON file.</p>
++          <form id="document-form">
++            <label for="document-type">Document type</label>
++            <select id="document-type" name="type">
++              <option value="receipt">Coffee order receipt</option>
++              <option value="voucher">Gift voucher</option>
++            </select>
++            <label for="description" id="description-label">Order details</label>
++            <textarea id="description" name="description" required maxlength="240" rows="3">2 × Maple Oat Latte</textarea>
++            <label for="amount">Amount (USD)</label>
++            <input id="amount" name="amount" type="number" inputmode="decimal" min="0.01" max="10000" step="0.01" value="11.00" required>
++            <button type="submit" class="btn" id="sign-document">Create signed document</button>
++          </form>
++          <p id="sign-status" class="status" role="status">Your document is signed only when you choose Create signed document.</p>
++          <div id="signed-actions" hidden>
++            <button type="button" class="btn" id="download-document">Download signed JSON</button>
++            <button type="button" class="btn secondary-btn" id="use-document">Use in verifier</button>
++          </div>
++        </div>
++
++        <div class="card document-card">
++          <h3>Check a receipt or gift</h3>
++          <p class="small">Upload a signed JSON file or paste its contents. We check the signature against your selected trusted key.</p>
++          <label for="document-file">Upload signed document</label>
++          <input id="document-file" type="file" accept=".json,application/json">
++          <form id="verify-form">
++            <label for="verification-document">Signed document JSON</label>
++            <textarea id="verification-document" required spellcheck="false" maxlength="64000" placeholder='Paste your signed receipt or gift voucher here…'></textarea>
++            <button type="submit" class="btn" id="verify-document">Verify signature</button>
++          </form>
++          <p id="verify-status" class="status" role="status">No document checked yet.</p>
++          <details>
++            <summary>Verification key</summary>
++            <p class="small">By default, we trust this browser’s signing key. To check documents from another device, obtain its public key through a trusted channel and compare the full fingerprint with the issuer.</p>
++            <p class="small">Selected trusted key (SHA-256): <code class="fingerprint" id="trusted-fingerprint">Loading…</code></p>
++            <label for="public-key-file">Load another public key</label>
++            <input id="public-key-file" type="file" accept=".json,application/json">
++            <div id="pending-key" class="trust-warning" hidden>
++              <p class="small">Compare this fingerprint with the issuer through a separate, trusted channel before confirming. A key supplied alongside a document does not prove who issued it.</p>
++              <code class="fingerprint" id="pending-fingerprint"></code>
++              <button type="button" class="btn" id="trust-key" disabled>I trust this public key</button>
++            </div>
++            <button type="button" class="btn secondary-btn" id="own-key">Use this browser’s key</button>
++          </details>
++        </div>
++      </div>
++
++      <div class="key-details">
++        <p><strong>Your browser’s signing key</strong> · <span id="algorithm">Checking browser support…</span></p>
++        <p class="small">Public key fingerprint (SHA-256): <code class="fingerprint" id="key-fingerprint">Loading…</code></p>
++        <p class="small" id="key-status" role="status">Your non-exportable private key is saved in this browser’s storage. Clearing site data removes it. Export the public key so others can verify your documents; keep a copy to verify older documents if storage is cleared.</p>
++        <button type="button" class="btn secondary-btn" id="export-key" disabled>Export public key</button>
++      </div>
++      <noscript><p class="status">Enable JavaScript to sign and verify documents in your browser.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +315,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./receipts.mjs"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..b1c23fc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/receipts.mjs b/receipts.mjs
+new file mode 100644
+index 0000000..85f2890
+--- /dev/null
++++ b/receipts.mjs
+@@ -0,0 +1,218 @@
++import { generateSigner, publicIdentity, importIdentity, signDocument, verifyDocument } from './signing.mjs';
++
++const $ = id => document.getElementById(id);
++let signer;
++let trustedIdentity;
++let signedDocument;
++let initialization;
++
++function status(id, message, state = '') {
++  $(id).textContent = message;
++  $(id).dataset.state = state;
++}
++
++function requestResult(request) {
++  return new Promise((resolve, reject) => {
++    request.onsuccess = () => resolve(request.result);
++    request.onerror = () => reject(request.error);
++  });
++}
++
++async function loadSigner() {
++  if (!globalThis.isSecureContext || !globalThis.crypto?.subtle) {
++    throw new Error('Digital signing requires HTTPS and a browser with Web Crypto support.');
++  }
++  const request = indexedDB.open('daily-grind-signing', 1);
++  request.onupgradeneeded = () => request.result.createObjectStore('keys');
++  const database = await requestResult(request);
++  try {
++    const existing = await requestResult(database.transaction('keys').objectStore('keys').get('issuer'));
++    if (existing) return existing;
++    const generated = await generateSigner();
++    // add() preserves the first key if another tab initialized at the same time.
++    try {
++      await new Promise((resolve, reject) => {
++        const transaction = database.transaction('keys', 'readwrite');
++        transaction.objectStore('keys').add(generated, 'issuer');
++        transaction.oncomplete = resolve;
++        transaction.onabort = () => reject(transaction.error);
++        transaction.onerror = () => {};
++      });
++      return generated;
++    } catch (error) {
++      if (error.name !== 'ConstraintError') throw error;
++      return await requestResult(database.transaction('keys').objectStore('keys').get('issuer'));
++    }
++  } finally {
++    database.close();
++  }
++}
++
++function ready() {
++  if (!initialization) initialization = loadSigner().then(value => {
++    signer = value;
++    trustedIdentity = publicIdentity(signer);
++    $('algorithm').textContent = signer.suite === 'ML-DSA-65' ? 'ML-DSA-65 · Quantum-resistant' : `${signer.suite} · Classical`;
++    $('key-fingerprint').textContent = signer.keyId;
++    $('trusted-fingerprint').textContent = signer.keyId;
++    $('export-key').disabled = false;
++    return signer;
++  }).catch(error => {
++    $('algorithm').textContent = 'Unavailable';
++    $('key-fingerprint').textContent = 'Unavailable';
++    if (!trustedIdentity) $('trusted-fingerprint').textContent = 'No trusted key selected';
++    status('key-status', `Signing unavailable: ${error.message} Allow browser storage and reload to try again.`, 'error');
++    throw error;
++  });
++  return initialization;
++}
++
++function download(value, filename) {
++  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
++  const anchor = document.createElement('a');
++  anchor.href = url;
++  anchor.download = filename;
++  anchor.click();
++  setTimeout(() => URL.revokeObjectURL(url), 1000);
++}
++
++function clearSigned() {
++  signedDocument = undefined;
++  $('signed-actions').hidden = true;
++  status('sign-status', 'Your document is signed only when you choose Create signed document.');
++}
++
++$('document-form').addEventListener('input', clearSigned);
++$('document-type').addEventListener('change', () => {
++  const voucher = $('document-type').value === 'voucher';
++  $('description').value = voucher ? 'A little coffee, on me. Enjoy your next Daily Grind visit!' : '2 × Maple Oat Latte';
++  $('amount').value = voucher ? '25.00' : '11.00';
++  $('description-label').textContent = voucher ? 'Gift message' : 'Order details';
++  clearSigned();
++});
++
++$('document-form').addEventListener('submit', async event => {
++  event.preventDefault();
++  const button = $('sign-document');
++  button.disabled = true;
++  $('signed-actions').hidden = true;
++  signedDocument = undefined;
++  status('sign-status', 'Creating your digital signature…');
++  try {
++    const type = $('document-type').value;
++    const description = $('description').value.trim();
++    const amountCents = Math.round(Number($('amount').value) * 100);
++    const key = await ready();
++    const result = await signDocument(key, { type, description, amountCents });
++    // Do not expose a signature for form values changed during the async operation.
++    if (type !== $('document-type').value || description !== $('description').value.trim()
++        || amountCents !== Math.round(Number($('amount').value) * 100)) {
++      status('sign-status', 'Details changed. Create a new signature for the updated document.');
++      return;
++    }
++    signedDocument = result;
++    $('signed-actions').hidden = false;
++    status('sign-status', `Signed ${type === 'receipt' ? 'receipt' : 'gift voucher'} · $${(amountCents / 100).toFixed(2)} USD. Ready to download or verify.`, 'success');
++  } catch (error) {
++    status('sign-status', error.message, 'error');
++  } finally {
++    button.disabled = false;
++  }
++});
++
++$('download-document').addEventListener('click', () => {
++  if (signedDocument) download(signedDocument, `daily-grind-${signedDocument.payload.type}-${signedDocument.payload.id}.json`);
++});
++$('use-document').addEventListener('click', () => {
++  if (!signedDocument) return;
++  $('verification-document').value = JSON.stringify(signedDocument, null, 2);
++  $('verification-document').dispatchEvent(new Event('input'));
++  $('verification-document').focus();
++});
++$('export-key').addEventListener('click', () => {
++  if (signer) download(publicIdentity(signer), 'daily-grind-public-key.json');
++});
++
++$('verification-document').addEventListener('input', () => {
++  status('verify-status', 'Ready to check. Verification will use the trusted key shown below.');
++});
++
++async function readFile(input) {
++  const file = input.files[0];
++  if (!file) return null;
++  if (file.size > 64000) throw new Error('Choose a JSON file smaller than 64 KB.');
++  return await file.text();
++}
++
++$('document-file').addEventListener('change', async event => {
++  try {
++    const text = await readFile(event.target);
++    if (text !== null) {
++      $('verification-document').value = text;
++      $('verification-document').dispatchEvent(new Event('input'));
++    }
++  } catch (error) { status('verify-status', error.message, 'error'); }
++  event.target.value = '';
++});
++
++let pendingIdentity;
++$('public-key-file').addEventListener('change', async event => {
++  pendingIdentity = undefined;
++  $('trust-key').disabled = true;
++  status('verify-status', 'Public key selection changed. Verify the document again after confirming a key.');
++  try {
++    const text = await readFile(event.target);
++    if (text === null) return;
++    const imported = await importIdentity(JSON.parse(text));
++    pendingIdentity = publicIdentity(imported);
++    $('pending-fingerprint').textContent = pendingIdentity.keyId;
++    $('pending-key').hidden = false;
++    $('trust-key').disabled = false;
++  } catch (error) {
++    $('pending-key').hidden = true;
++    status('verify-status', `Cannot load public key: ${error.message}`, 'error');
++  }
++  event.target.value = '';
++});
++$('trust-key').addEventListener('click', () => {
++  if (!pendingIdentity) return;
++  trustedIdentity = pendingIdentity;
++  $('trusted-fingerprint').textContent = trustedIdentity.keyId;
++  $('pending-key').hidden = true;
++  pendingIdentity = undefined;
++  status('verify-status', 'Public key selected for this session. Verify the document to check its signature.');
++});
++$('own-key').addEventListener('click', async () => {
++  try {
++    await ready();
++    trustedIdentity = publicIdentity(signer);
++    $('trusted-fingerprint').textContent = signer.keyId;
++    $('pending-key').hidden = true;
++    pendingIdentity = undefined;
++    status('verify-status', 'Using this browser’s public key. Verify the document to check its signature.');
++  } catch (error) { status('verify-status', error.message, 'error'); }
++});
++
++$('verify-form').addEventListener('submit', async event => {
++  event.preventDefault();
++  const text = $('verification-document').value;
++  const button = $('verify-document');
++  button.disabled = true;
++  status('verify-status', 'Checking the signature…');
++  try {
++    if (text.length > 64000) throw new Error('The document must be smaller than 64 KB.');
++    const document = JSON.parse(text);
++    if (!trustedIdentity) await ready();
++    const identity = trustedIdentity;
++    const payload = await verifyDocument(document, identity);
++    if (text !== $('verification-document').value || identity !== trustedIdentity) {
++      status('verify-status', 'Document or key changed. Verify again to check the current selection.');
++      return;
++    }
++    status('verify-status', `Valid signature · ${payload.type === 'receipt' ? 'Receipt' : 'Gift voucher'} · $${(payload.amountCents / 100).toFixed(2)} USD. The signed details are unchanged and match the selected trusted key. This does not confirm payment or voucher redemption.`, 'success');
++  } catch (error) {
++    status('verify-status', error instanceof SyntaxError ? 'Invalid JSON. Paste or upload a complete signed document.' : error.message, 'error');
++  } finally { button.disabled = false; }
++});
++
++ready().catch(() => {});
+diff --git a/signing.mjs b/signing.mjs
+new file mode 100644
+index 0000000..3b128de
+--- /dev/null
++++ b/signing.mjs
+@@ -0,0 +1,113 @@
++const encoder = new TextEncoder();
++const suites = {
++  'ML-DSA-65': { generation: 'ML-DSA-65', operation: 'ML-DSA-65', format: 'raw-public' },
++  Ed25519: { generation: 'Ed25519', operation: 'Ed25519', format: 'raw' },
++  'ECDSA-P256-SHA256': {
++    generation: { name: 'ECDSA', namedCurve: 'P-256' },
++    operation: { name: 'ECDSA', hash: 'SHA-256' }, format: 'raw',
++  },
++};
++
++export function toBase64(bytes) {
++  return btoa(String.fromCharCode(...new Uint8Array(bytes)));
++}
++
++function fromBase64(value) {
++  if (typeof value !== 'string' || value.length > 16000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
++    throw new Error('Invalid signature or public key encoding.');
++  }
++  return Uint8Array.from(atob(value), char => char.charCodeAt(0));
++}
++
++function suiteFor(name) {
++  if (!Object.hasOwn(suites, name)) throw new Error('This signing algorithm is not supported.');
++  return suites[name];
++}
++
++// Sign a fixed, domain-separated representation; JSON whitespace and key order do not matter.
++function signedBytes(document) {
++  if (!document || typeof document !== 'object' || Array.isArray(document)) {
++    throw new Error('Invalid receipt or voucher. Expected a signed JSON document.');
++  }
++  const { payload } = document;
++  if (document.version !== 1 || !payload || !['receipt', 'voucher'].includes(payload.type)
++      || payload.issuer !== 'The Daily Grind — local issuer'
++      || typeof payload.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(payload.id)
++      || typeof payload.issuedAt !== 'string' || !Number.isFinite(Date.parse(payload.issuedAt))
++      || typeof payload.description !== 'string' || !payload.description.trim() || payload.description.length > 240
++      || !Number.isSafeInteger(payload.amountCents) || payload.amountCents < 1 || payload.amountCents > 1000000
++      || payload.currency !== 'USD') {
++    throw new Error('Invalid receipt or voucher. Check the document fields.');
++  }
++  const expected = ['amountCents', 'currency', 'description', 'id', 'issuedAt', 'issuer', 'type'];
++  if (JSON.stringify(Object.keys(payload).sort()) !== JSON.stringify(expected)
++      || JSON.stringify(Object.keys(document).sort()) !== JSON.stringify(['keyId', 'payload', 'signature', 'suite', 'version'])) {
++    throw new Error('The document contains unexpected or missing fields.');
++  }
++  suiteFor(document.suite);
++  return encoder.encode(JSON.stringify([
++    'daily-grind-signed-document-v1', document.version, document.suite, document.keyId,
++    payload.type, payload.issuer, payload.id, payload.issuedAt, payload.description,
++    payload.amountCents, payload.currency,
++  ]));
++}
++
++export async function fingerprint(publicKey) {
++  const hash = await crypto.subtle.digest('SHA-256', fromBase64(publicKey));
++  return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
++}
++
++export async function generateSigner() {
++  const candidates = [];
++  if (globalThis.SubtleCrypto?.supports?.('sign', 'ML-DSA-65')
++      && globalThis.SubtleCrypto.supports('verify', 'ML-DSA-65')) candidates.push('ML-DSA-65');
++  candidates.push('Ed25519', 'ECDSA-P256-SHA256');
++  for (const suite of candidates) {
++    try {
++      const options = suiteFor(suite);
++      const keys = await crypto.subtle.generateKey(options.generation, false, ['sign', 'verify']);
++      const publicKey = toBase64(await crypto.subtle.exportKey(options.format, keys.publicKey));
++      return { suite, keys, publicKey, keyId: await fingerprint(publicKey) };
++    } catch (error) {
++      if (error.name !== 'NotSupportedError') throw error;
++    }
++  }
++  throw new Error('No supported digital signature algorithm is available in this browser.');
++}
++
++export function publicIdentity(signer) {
++  return { version: 1, suite: signer.suite, publicKey: signer.publicKey, keyId: signer.keyId };
++}
++
++export async function importIdentity(identity) {
++  if (!identity || identity.version !== 1) throw new Error('Invalid public key file.');
++  const options = suiteFor(identity.suite);
++  if (await fingerprint(identity.publicKey) !== identity.keyId) throw new Error('Public key fingerprint does not match.');
++  const key = await crypto.subtle.importKey(options.format, fromBase64(identity.publicKey), options.generation, true, ['verify']);
++  return { ...identity, key };
++}
++
++export async function signDocument(signer, { type, description, amountCents }) {
++  const document = {
++    version: 1, suite: signer.suite, keyId: signer.keyId,
++    payload: {
++      type, issuer: 'The Daily Grind — local issuer', id: crypto.randomUUID(),
++      issuedAt: new Date().toISOString(), description, amountCents, currency: 'USD',
++    },
++    signature: '',
++  };
++  const bytes = signedBytes(document);
++  document.signature = toBase64(await crypto.subtle.sign(suiteFor(signer.suite).operation, signer.keys.privateKey, bytes));
++  return document;
++}
++
++export async function verifyDocument(document, identity) {
++  const bytes = signedBytes(document);
++  if (document.keyId !== identity.keyId || document.suite !== identity.suite) {
++    throw new Error('Unknown signer. Select a trusted public key matching this document’s fingerprint.');
++  }
++  const imported = await importIdentity(identity);
++  const valid = await crypto.subtle.verify(suiteFor(document.suite).operation, imported.key, fromBase64(document.signature), bytes);
++  if (!valid) throw new Error('Signature verification failed. This document has been changed or its signature is invalid.');
++  return document.payload;
++}
+diff --git a/tests/signing.test.mjs b/tests/signing.test.mjs
+new file mode 100644
+index 0000000..f1cac61
+--- /dev/null
++++ b/tests/signing.test.mjs
+@@ -0,0 +1,79 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { generateSigner, signDocument, verifyDocument, publicIdentity, importIdentity, toBase64, fingerprint } from '../signing.mjs';
++
++const signer = await generateSigner();
++const identity = publicIdentity(signer);
++const input = { type: 'receipt', description: '2 × Maple Oat Latte', amountCents: 1100 };
++
++test('receipts and vouchers verify after a JSON round-trip', async () => {
++  for (const type of ['receipt', 'voucher']) {
++    const document = await signDocument(signer, { ...input, type });
++    const payload = await verifyDocument(JSON.parse(JSON.stringify(document)), identity);
++    assert.equal(payload.type, type);
++    assert.equal(payload.amountCents, 1100);
++  }
++  assert.equal(signer.keys.privateKey.extractable, false);
++  await assert.rejects(crypto.subtle.exportKey('pkcs8', signer.keys.privateKey));
++});
++
++test('modified content, purpose, metadata, signature, and unknown fields fail', async () => {
++  const document = await signDocument(signer, input);
++  const mutations = [
++    d => { d.payload.amountCents = 1; },
++    d => { d.payload.type = 'voucher'; },
++    d => { d.payload.description = 'Forged order'; },
++    d => { d.payload.issuedAt = new Date(0).toISOString(); },
++    d => { d.payload.id = crypto.randomUUID(); },
++    d => { d.signature = toBase64(new Uint8Array(64)); },
++    d => { d.payload.paid = true; },
++    d => { d.publicKey = identity.publicKey; },
++    d => { d.version = 2; },
++    d => { d.suite = 'HMAC'; },
++    d => { d.suite = 'toString'; },
++  ];
++  for (const mutate of mutations) {
++    const modified = structuredClone(document);
++    mutate(modified);
++    await assert.rejects(verifyDocument(modified, identity));
++  }
++});
++
++test('a different signing key is never trusted implicitly', async () => {
++  const attacker = await generateSigner();
++  const document = await signDocument(attacker, input);
++  await assert.rejects(verifyDocument(document, identity), /Unknown signer/);
++  document.keyId = identity.keyId;
++  await assert.rejects(verifyDocument(document, identity), /verification failed/);
++});
++
++test('key exports can be imported and fingerprints must match', async () => {
++  const imported = await importIdentity(JSON.parse(JSON.stringify(identity)));
++  assert.equal(imported.key.usages.join(), 'verify');
++  await assert.rejects(importIdentity({ ...identity, keyId: 'forged' }), /fingerprint/);
++  await assert.rejects(importIdentity({ ...identity, publicKey: 'invalid!' }));
++});
++
++test('both classical fallbacks sign, verify, and bind the document purpose', async () => {
++  for (const suite of ['Ed25519', 'ECDSA-P256-SHA256']) {
++    const generation = suite === 'Ed25519' ? suite : { name: 'ECDSA', namedCurve: 'P-256' };
++    const keys = await crypto.subtle.generateKey(generation, false, ['sign', 'verify']);
++    const publicKey = toBase64(await crypto.subtle.exportKey('raw', keys.publicKey));
++    const fallback = { suite, keys, publicKey, keyId: await fingerprint(publicKey) };
++    const document = await signDocument(fallback, input);
++    await verifyDocument(document, publicIdentity(fallback));
++    document.payload.type = 'voucher';
++    await assert.rejects(verifyDocument(document, publicIdentity(fallback)));
++  }
++});
++
++test('reordering JSON fields is safe; malformed documents are rejected', async () => {
++  const document = await signDocument(signer, input);
++  document.payload = Object.fromEntries(Object.entries(document.payload).reverse());
++  await verifyDocument(document, identity);
++  for (const invalid of [null, {}, { ...document, payload: null }]) {
++    await assert.rejects(verifyDocument(invalid, identity));
++  }
++  await assert.rejects(signDocument(signer, { ...input, amountCents: -100 }));
++  await assert.rejects(signDocument(signer, { ...input, description: ' ' }));
++});

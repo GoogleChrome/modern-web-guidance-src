@@ -1,0 +1,588 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,223 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ===== Barista Order Board ===== */
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    .board-section {
++      margin-top: 60px;
++    }
++
++    .board-header {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .new-order {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .new-order input {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      min-width: 220px;
++    }
++
++    .new-order button {
++      font: inherit;
++      cursor: pointer;
++      border: 0;
++      border-radius: 5px;
++      padding: 8px 14px;
++      background: var(--primary);
++      color: white;
++    }
++
++    .new-order button.secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .board-hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin: 8px 0 16px;
++    }
++
++    .board {
++      display: grid;
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++      gap: 16px;
++    }
++
++    @media (max-width: 720px) {
++      .board {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Each column is an isolated layout/style/paint island: moving a card
++       inside one only reflows that column, never the whole page. The fixed
++       block-size means card count can never change the column's outer size. */
++    .board-column {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 340px auto 560px;
++      block-size: 560px;
++      display: flex;
++      flex-direction: column;
++      background: #efebe9;
++      border-radius: 10px;
++      border: 2px solid transparent;
++      transition: border-color 0.15s;
++    }
++
++    @supports not (content-visibility: auto) {
++      .board-column {
++        contain: layout style paint;
++      }
++    }
++
++    .board-column.is-over {
++      border-color: var(--accent);
++    }
++
++    .column-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding: 12px 14px 8px;
++    }
++
++    .column-header h3 {
++      font-size: 1rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--primary);
++    }
++
++    .column-header .count {
++      min-width: 2.5em;
++      text-align: center;
++      font-size: 0.8rem;
++      font-variant-numeric: tabular-nums;
++      background: var(--primary);
++      color: white;
++      border-radius: 999px;
++      padding: 1px 8px;
++    }
++
++    .board-column[data-status="brewing"] .count { background: #e65100; }
++    .board-column[data-status="ready"] .count { background: #2e7d32; }
++
++    /* The scroller is strictly contained: its size comes from the flex
++       parent, so thousands of cards never affect anything outside it. */
++    .card-list {
++      flex: 1;
++      min-block-size: 0;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      contain: strict;
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      padding: 4px 10px 12px;
++    }
++
++    .order-card {
++      /* Off-screen cards in long columns skip rendering entirely. */
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 64px;
++      flex: none;
++      display: flex;
++      align-items: flex-start;
++      gap: 8px;
++      text-align: start;
++      padding: 10px 12px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
++      cursor: grab;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .order-card:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .order-card .grip {
++      flex: none;
++      color: #a1887f;
++      font-size: 1.1rem;
++      line-height: 1.4;
++      touch-action: none;
++      padding-inline: 2px;
++    }
++
++    .order-card .card-body {
++      display: flex;
++      flex-direction: column;
++      min-width: 0;
++    }
++
++    .order-card .card-title {
++      font-weight: 600;
++      color: var(--primary);
++      overflow: hidden;
++      text-overflow: ellipsis;
++      white-space: nowrap;
++    }
++
++    .order-card .card-meta {
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
++    /* The real card stays in the list as the drop placeholder (opacity is
++       compositor-only), while a detached ghost follows the pointer. */
++    .order-card.is-placeholder {
++      opacity: 0.35;
++      outline: 2px dashed var(--primary);
++      outline-offset: -2px;
++    }
++
++    .drag-ghost {
++      position: fixed;
++      top: 0;
++      left: 0;
++      z-index: 2000;
++      margin: 0;
++      pointer-events: none;
++      content-visibility: visible;
++      contain: layout style paint;
++      will-change: transform;
++      cursor: grabbing;
++      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
++    }
++
++    html.is-dragging,
++    html.is-dragging * {
++      cursor: grabbing !important;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +409,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="board-section" aria-labelledby="board-title">
++      <div class="board-header">
++        <h2 id="board-title">Barista Order Board</h2>
++        <form class="new-order" id="new-order">
++          <label for="order-name" class="visually-hidden">New drink order</label>
++          <input id="order-name" name="name" placeholder="e.g. Vanilla Cortado" autocomplete="off" required>
++          <button type="submit">Add to queue</button>
++          <button type="button" class="secondary" id="rush">Simulate rush (+250)</button>
++        </form>
++      </div>
++      <p class="board-hint" id="board-hint">Drag cards between columns (on touch, drag by the ⠿ grip). Keyboard: focus a card, then ←/→ to change stage and ↑/↓ to reorder. Esc cancels a drag.</p>
++      <div class="board" id="board">
++        <section class="board-column" data-status="queued" aria-labelledby="col-queued">
++          <header class="column-header">
++            <h3 id="col-queued">Queued</h3>
++            <span class="count" aria-label="1 orders">1</span>
++          </header>
++          <ol class="card-list">
++            <li class="card order-card" tabindex="0" data-id="1001">
++              <span class="grip" aria-hidden="true">⠿</span>
++              <span class="card-body"><span class="card-title">Maple Oat Latte</span><span class="card-meta">#1001 · Oat milk, maple</span></span>
++            </li>
++          </ol>
++        </section>
++        <section class="board-column" data-status="brewing" aria-labelledby="col-brewing">
++          <header class="column-header">
++            <h3 id="col-brewing">Brewing</h3>
++            <span class="count" aria-label="1 orders">1</span>
++          </header>
++          <ol class="card-list">
++            <li class="card order-card" tabindex="0" data-id="1002">
++              <span class="grip" aria-hidden="true">⠿</span>
++              <span class="card-body"><span class="card-title">Dark Roast Espresso</span><span class="card-meta">#1002 · Double shot</span></span>
++            </li>
++          </ol>
++        </section>
++        <section class="board-column" data-status="ready" aria-labelledby="col-ready">
++          <header class="column-header">
++            <h3 id="col-ready">Ready</h3>
++            <span class="count" aria-label="1 orders">1</span>
++          </header>
++          <ol class="card-list">
++            <li class="card order-card" tabindex="0" data-id="1003">
++              <span class="grip" aria-hidden="true">⠿</span>
++              <span class="card-body"><span class="card-title">Cold Brew</span><span class="card-meta">#1003 · Large, no ice</span></span>
++            </li>
++          </ol>
++        </section>
++      </div>
++      <div class="visually-hidden" aria-live="polite" id="board-status"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +473,299 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script type="module">
++    const board = document.getElementById('board');
++    const statusEl = document.getElementById('board-status');
++    const columns = [...board.querySelectorAll('.board-column')];
++    const hasMoveBefore = 'moveBefore' in Element.prototype;
++    let nextId = 1004;
++
++    const listOf = (column) => column.querySelector('.card-list');
++    const labelOf = (column) => column.querySelector('h3').textContent;
++    const titleOf = (card) => card.querySelector('.card-title').textContent;
++
++    // Atomic move that preserves focus/state where supported; skips no-op moves
++    // so we never dirty layout without a reason.
++    function place(parent, node, ref = null) {
++      if (ref === node) return false;
++      if (node.parentNode === parent && node.nextElementSibling === ref) return false;
++      if (hasMoveBefore && node.isConnected) {
++        try { parent.moveBefore(node, ref); return true; } catch { /* fall through */ }
++      }
++      parent.insertBefore(node, ref);
++      return true;
++    }
++
++    function updateCount(column) {
++      const n = listOf(column).childElementCount;
++      const badge = column.querySelector('.count');
++      badge.textContent = n;
++      badge.setAttribute('aria-label', `${n} orders`);
++    }
++
++    function announce(msg) {
++      statusEl.textContent = msg;
++    }
++
++    function createCard(title, meta) {
++      const id = nextId++;
++      const li = document.createElement('li');
++      li.className = 'card order-card';
++      li.tabIndex = 0;
++      li.dataset.id = id;
++      li.innerHTML = '<span class="grip" aria-hidden="true">⠿</span><span class="card-body"><span class="card-title"></span><span class="card-meta"></span></span>';
++      li.querySelector('.card-title').textContent = title;
++      li.querySelector('.card-meta').textContent = `#${id} · ${meta}`;
++      return li;
++    }
++
++    /* ---------- Adding orders ---------- */
++    const form = document.getElementById('new-order');
++    form.addEventListener('submit', (e) => {
++      e.preventDefault();
++      const name = form.elements.name.value.trim();
++      if (!name) return;
++      listOf(columns[0]).append(createCard(name, 'Just ordered'));
++      updateCount(columns[0]);
++      announce(`${name} added to Queued`);
++      form.reset();
++    });
++
++    const MENU = ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew', 'Vanilla Cortado', 'Flat White',
++      'Caramel Macchiato', 'Chai Latte', 'Matcha Latte', 'Mocha', 'Americano', 'Cappuccino', 'Nitro Cold Brew'];
++    const NOTES = ['Small', 'Medium', 'Large', 'Extra shot', 'Oat milk', 'Almond milk', 'Decaf', 'To go'];
++
++    document.getElementById('rush').addEventListener('click', () => {
++      // Build off-DOM, insert once: a single contained reflow for 250 cards.
++      const frag = document.createDocumentFragment();
++      for (let i = 0; i < 250; i++) {
++        frag.append(createCard(MENU[(Math.random() * MENU.length) | 0], NOTES[(Math.random() * NOTES.length) | 0]));
++      }
++      listOf(columns[0]).append(frag);
++      updateCount(columns[0]);
++      announce('250 orders added to Queued');
++    });
++
++    /* ---------- Pointer drag & drop ---------- */
++    const DRAG_THRESHOLD = 4;
++    const SCROLL_EDGE = 48;
++    const SCROLL_SPEED = 14;
++    let drag = null;
++
++    board.addEventListener('dragstart', (e) => e.preventDefault());
++
++    board.addEventListener('pointerdown', (e) => {
++      const card = e.target.closest('.order-card');
++      if (!card || drag || e.button !== 0 || !e.isPrimary) return;
++      // Touch drags only start from the grip so columns stay scrollable by finger.
++      if (e.pointerType === 'touch' && !e.target.closest('.grip')) return;
++
++      drag = {
++        card,
++        pointerId: e.pointerId,
++        startX: e.clientX,
++        startY: e.clientY,
++        x: e.clientX,
++        y: e.clientY,
++        active: false,
++        dirty: true,
++        ghost: null,
++        offsetX: 0,
++        offsetY: 0,
++        raf: 0,
++        fromColumn: card.closest('.board-column'),
++        originList: card.parentNode,
++        originNext: card.nextElementSibling,
++        overColumn: null,
++      };
++      // Document-level listeners: the card gets reparented mid-drag, which
++      // would drop pointer capture.
++      document.addEventListener('pointermove', onPointerMove);
++      document.addEventListener('pointerup', onPointerUp);
++      document.addEventListener('pointercancel', onPointerCancel);
++      document.addEventListener('keydown', onDragKey);
++    });
++
++    function onPointerMove(e) {
++      if (e.pointerId !== drag.pointerId) return;
++      drag.x = e.clientX;
++      drag.y = e.clientY;
++      drag.dirty = true;
++      if (!drag.active) {
++        if (Math.hypot(drag.x - drag.startX, drag.y - drag.startY) < DRAG_THRESHOLD) return;
++        beginDrag();
++      }
++      e.preventDefault();
++    }
++
++    function beginDrag() {
++      const { card } = drag;
++      // One measurement at drag start; everything after is transform-only.
++      const rect = card.getBoundingClientRect();
++      drag.offsetX = drag.startX - rect.left;
++      drag.offsetY = drag.startY - rect.top;
++
++      // Columns use paint/layout containment (which traps position:fixed), so
++      // the ghost lives on <body>, outside every contained subtree.
++      const ghost = card.cloneNode(true);
++      ghost.className = 'order-card drag-ghost';
++      ghost.removeAttribute('tabindex');
++      ghost.setAttribute('aria-hidden', 'true');
++      ghost.style.width = `${rect.width}px`;
++      ghost.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`;
++      document.body.append(ghost);
++
++      drag.ghost = ghost;
++      drag.active = true;
++      card.classList.add('is-placeholder');
++      document.documentElement.classList.add('is-dragging');
++      window.getSelection()?.removeAllRanges();
++      drag.raf = requestAnimationFrame(tick);
++    }
++
++    // All visual work is batched into one rAF per frame.
++    function tick() {
++      if (!drag) return;
++      const { x, y, ghost } = drag;
++      if (drag.dirty) {
++        drag.dirty = false;
++        ghost.style.transform = `translate3d(${x - drag.offsetX}px, ${y - drag.offsetY}px, 0) rotate(2deg)`;
++        hitTest(x, y);
++      }
++      autoScroll(y);
++      drag.raf = requestAnimationFrame(tick);
++    }
++
++    function setOverColumn(column) {
++      if (drag.overColumn === column) return;
++      drag.overColumn?.classList.remove('is-over');
++      column?.classList.add('is-over');
++      drag.overColumn = column;
++    }
++
++    function hitTest(x, y) {
++      // The ghost has pointer-events:none, so this sees what's underneath.
++      // Only transforms changed since last frame, so layout is clean and cheap.
++      const el = document.elementFromPoint(x, y);
++      const list = el?.closest('#board .card-list');
++      setOverColumn(list ? list.closest('.board-column') : null);
++      if (!list) return;
++
++      const { card } = drag;
++      const over = el.closest('.order-card');
++      if (over && over !== card) {
++        const r = over.getBoundingClientRect();
++        place(list, card, y < r.top + r.height / 2 ? over : over.nextElementSibling);
++      } else if (!over) {
++        const last = list.lastElementChild;
++        if (!last || (last !== card && y > last.getBoundingClientRect().bottom)) {
++          place(list, card, null);
++        }
++      }
++    }
++
++    function autoScroll(y) {
++      const list = drag.overColumn && listOf(drag.overColumn);
++      if (!list) return;
++      const r = list.getBoundingClientRect();
++      let delta = 0;
++      if (y < r.top + SCROLL_EDGE) delta = -SCROLL_SPEED;
++      else if (y > r.bottom - SCROLL_EDGE) delta = SCROLL_SPEED;
++      if (!delta) return;
++      const before = list.scrollTop;
++      list.scrollTop = before + delta;
++      if (list.scrollTop !== before) drag.dirty = true; // content moved under pointer
++    }
++
++    function endDrag(commit) {
++      const d = drag;
++      drag = null;
++      document.removeEventListener('pointermove', onPointerMove);
++      document.removeEventListener('pointerup', onPointerUp);
++      document.removeEventListener('pointercancel', onPointerCancel);
++      document.removeEventListener('keydown', onDragKey);
++      if (!d.active) return;
++
++      cancelAnimationFrame(d.raf);
++      d.ghost.remove();
++      d.overColumn?.classList.remove('is-over');
++      d.card.classList.remove('is-placeholder');
++      document.documentElement.classList.remove('is-dragging');
++
++      if (!commit) {
++        place(d.originList, d.card, d.originNext);
++        announce(`Move of ${titleOf(d.card)} cancelled`);
++      } else {
++        const toColumn = d.card.closest('.board-column');
++        if (toColumn !== d.fromColumn) {
++          updateCount(d.fromColumn);
++          updateCount(toColumn);
++          announce(`${titleOf(d.card)} moved to ${labelOf(toColumn)}`);
++        }
++      }
++      d.card.focus({ preventScroll: true });
++    }
++
++    function onPointerUp(e) {
++      if (e.pointerId === drag.pointerId) endDrag(true);
++    }
++
++    function onPointerCancel(e) {
++      if (e.pointerId === drag.pointerId) endDrag(false);
++    }
++
++    function onDragKey(e) {
++      if (e.key === 'Escape' && drag?.active) {
++        e.preventDefault();
++        endDrag(false);
++      }
++    }
++
++    /* ---------- Keyboard moves ---------- */
++    board.addEventListener('keydown', (e) => {
++      const card = e.target;
++      if (drag || !card.classList?.contains('order-card')) return;
++      const column = card.closest('.board-column');
++      const list = card.parentNode;
++      let msg;
++
++      switch (e.key) {
++        case 'ArrowLeft':
++        case 'ArrowRight': {
++          const target = columns[columns.indexOf(column) + (e.key === 'ArrowLeft' ? -1 : 1)];
++          if (!target) return;
++          place(listOf(target), card, null);
++          updateCount(column);
++          updateCount(target);
++          msg = `${titleOf(card)} moved to ${labelOf(target)}`;
++          break;
++        }
++        case 'ArrowUp': {
++          const prev = card.previousElementSibling;
++          if (!prev) return;
++          place(list, card, prev);
++          msg = `${titleOf(card)} moved up`;
++          break;
++        }
++        case 'ArrowDown': {
++          const next = card.nextElementSibling;
++          if (!next) return;
++          place(list, card, next.nextElementSibling);
++          msg = `${titleOf(card)} moved down`;
++          break;
++        }
++        default:
++          return;
++      }
++      e.preventDefault();
++      // insertBefore() fallback drops focus; moveBefore() keeps it.
++      if (document.activeElement !== card) card.focus({ preventScroll: true });
++      card.scrollIntoView({ block: 'nearest' });
++      announce(msg);
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,346 @@
+diff --git a/index.html b/index.html
+index 66c9173..ad2cacb 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,152 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* SMS Verification */
++    .verify {
++      max-width: 480px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .verify h2 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .verify-intro {
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++    }
++
++    .verify fieldset {
++      border: none;
++      margin-bottom: 20px;
++    }
++
++    .verify legend,
++    .verify label[for="otp-code"] {
++      display: block;
++      font-weight: bold;
++      margin-bottom: 8px;
++    }
++
++    .purpose-options {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .purpose-options label {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex: 1 1 180px;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .purpose-options label:has(input:checked) {
++      border-color: var(--primary);
++      background: #efebe9;
++    }
++
++    .purpose-options input {
++      accent-color: var(--primary);
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-bottom: 8px;
++    }
++
++    #otp-code {
++      width: 100%;
++      font-size: 1.75rem;
++      font-family: 'Courier New', monospace;
++      letter-spacing: 0.5em;
++      text-align: center;
++      padding: 10px;
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++      color: var(--text);
++    }
++
++    #otp-code:focus,
++    .verify button:focus-visible,
++    .purpose-options input:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #otp-code[aria-invalid="true"] {
++      border-color: #b71c1c;
++    }
++
++    .error {
++      color: #b71c1c;
++      font-size: 0.9rem;
++      margin-top: 6px;
++    }
++
++    .error:empty,
++    .status:empty {
++      display: none;
++    }
++
++    .status {
++      font-size: 0.9rem;
++      margin-top: 10px;
++      padding: 8px 12px;
++      background: #efebe9;
++      border-radius: 5px;
++    }
++
++    .verify-actions {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 15px;
++      margin-top: 20px;
++    }
++
++    .verify button {
++      font: inherit;
++      cursor: pointer;
++      border: none;
++    }
++
++    .verify .btn {
++      margin-top: 0;
++    }
++
++    .link-btn {
++      background: none;
++      color: var(--primary);
++      text-decoration: underline;
++      padding: 4px;
++    }
++
++    .link-btn:disabled {
++      color: #8d6e63;
++      text-decoration: none;
++      cursor: not-allowed;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +341,52 @@
+         </div>
+       </div>
+     </section>
++    <section class="verify" aria-labelledby="verify-heading">
++      <h2 id="verify-heading">Verify Your Phone</h2>
++      <p class="verify-intro">
++        Signing into Rewards or placing an online order? We texted a 6-digit code to your
++        phone number ending in <span id="phone-last4">&bull;&bull;&bull;&bull;</span>.
++      </p>
++
++      <form id="otp-form" action="/verify-otp" method="post" novalidate>
++        <fieldset>
++          <legend>I&rsquo;m verifying to</legend>
++          <div class="purpose-options">
++            <label>
++              <input type="radio" name="purpose" value="rewards" checked>
++              Sign into Rewards
++            </label>
++            <label>
++              <input type="radio" name="purpose" value="order">
++              Place an online order
++            </label>
++          </div>
++        </fieldset>
++
++        <label for="otp-code">Verification code</label>
++        <p id="otp-hint" class="hint">Enter the 6 digits from the text message. Supported phones can fill this in automatically.</p>
++        <input
++          id="otp-code"
++          name="code"
++          type="text"
++          inputmode="numeric"
++          autocomplete="one-time-code"
++          pattern="[0-9]{6}"
++          maxlength="6"
++          required
++          spellcheck="false"
++          aria-describedby="otp-hint otp-error"
++          aria-invalid="false">
++        <p id="otp-error" class="error"></p>
++
++        <div class="verify-actions">
++          <button type="submit" class="btn">Verify &amp; Continue</button>
++          <button type="button" id="otp-resend" class="link-btn">Resend code</button>
++        </div>
++
++        <p id="otp-status" class="status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +399,135 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var CODE_LENGTH = 6;
++      var RESEND_COOLDOWN = 30;
++
++      var form = document.getElementById('otp-form');
++      var input = document.getElementById('otp-code');
++      var error = document.getElementById('otp-error');
++      var status = document.getElementById('otp-status');
++      var resend = document.getElementById('otp-resend');
++      var submit = form.querySelector('button[type="submit"]');
++      var otpAbort = null;
++
++      // Optional: show the masked phone if the page was given one, e.g. ?phone=5551234
++      var phone = new URLSearchParams(location.search).get('phone');
++      if (phone && /\d{4}$/.test(phone)) {
++        document.getElementById('phone-last4').textContent = phone.slice(-4);
++      }
++
++      function setError(message) {
++        error.textContent = message;
++        input.setAttribute('aria-invalid', message ? 'true' : 'false');
++      }
++
++      function announce(message) {
++        // Clear first so repeated identical messages are still announced
++        status.textContent = '';
++        setTimeout(function () { status.textContent = message; }, 50);
++      }
++
++      function fillCode(code) {
++        input.value = code.replace(/\D/g, '').slice(0, CODE_LENGTH);
++        setError('');
++      }
++
++      // Keep only digits so pasted values like "123 456" or "Code: 123456" work
++      input.addEventListener('input', function () {
++        var digits = input.value.replace(/\D/g, '').slice(0, CODE_LENGTH);
++        if (digits !== input.value) input.value = digits;
++        if (input.getAttribute('aria-invalid') === 'true' && digits.length === CODE_LENGTH) {
++          setError('');
++        }
++      });
++
++      input.addEventListener('paste', function (event) {
++        var text = (event.clipboardData || window.clipboardData).getData('text');
++        var match = text && text.match(/\d{6}/);
++        if (match) {
++          event.preventDefault();
++          fillCode(match[0]);
++        }
++      });
++
++      // WebOTP API: read the code from an incoming SMS on supported browsers.
++      // The SMS must end with a line like: @dailygrind.com #123456
++      function listenForSms() {
++        if (!('OTPCredential' in window) || !navigator.credentials) return;
++        if (otpAbort) otpAbort.abort();
++        otpAbort = new AbortController();
++
++        navigator.credentials.get({
++          otp: { transport: ['sms'] },
++          signal: otpAbort.signal
++        }).then(function (otp) {
++          if (!otp || !otp.code) return;
++          fillCode(otp.code);
++          announce('Code filled in from your text message. Review it, then select Verify & Continue.');
++          submit.focus();
++        }).catch(function () {
++          // Aborted, timed out, or denied: manual entry still works
++        });
++      }
++
++      function startCooldown() {
++        var remaining = RESEND_COOLDOWN;
++        resend.disabled = true;
++        resend.textContent = 'Resend code (' + remaining + 's)';
++        var timer = setInterval(function () {
++          remaining -= 1;
++          if (remaining <= 0) {
++            clearInterval(timer);
++            resend.disabled = false;
++            resend.textContent = 'Resend code';
++          } else {
++            resend.textContent = 'Resend code (' + remaining + 's)';
++          }
++        }, 1000);
++      }
++
++      resend.addEventListener('click', function () {
++        var purpose = form.querySelector('input[name="purpose"]:checked').value;
++        fetch('/resend-otp', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ purpose: purpose })
++        }).catch(function () {});
++        input.value = '';
++        setError('');
++        announce('A new code is on its way. It may take up to a minute to arrive.');
++        startCooldown();
++        listenForSms();
++        input.focus();
++      });
++
++      form.addEventListener('submit', function (event) {
++        var code = input.value.trim();
++        if (!code) {
++          setError('Please enter the 6-digit code from your text message.');
++        } else if (!new RegExp('^\\d{' + CODE_LENGTH + '}$').test(code)) {
++          setError('The code must be exactly 6 digits. You entered ' + code.length + '.');
++        } else {
++          setError('');
++          if (otpAbort) otpAbort.abort();
++          submit.disabled = true;
++          announce('Verifying your code…');
++          return;
++        }
++        event.preventDefault();
++        input.focus();
++      });
++
++      // Re-enable the button if the user comes back via the back/forward cache
++      window.addEventListener('pageshow', function () { submit.disabled = false; });
++
++      startCooldown();
++      listenForSms();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

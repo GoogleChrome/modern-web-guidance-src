@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,85 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Mailing list form */
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .newsletter p {
++      font-size: 0.9rem;
++      margin-bottom: 14px;
++    }
++
++    .newsletter-fields {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      font: inherit;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .newsletter input[type="email"]:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .newsletter .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    /* Error styling is driven by the .show-error class, which the script only
++       adds after the user has interacted with the field (blur or submit). */
++    .newsletter-error {
++      display: none;
++      margin-top: 8px;
++      font-size: 0.85rem;
++      color: #b71c1c;
++      text-align: left;
++    }
++
++    .newsletter.show-error .newsletter-error {
++      display: block;
++    }
++
++    .newsletter.show-error input[type="email"] {
++      border-color: #b71c1c;
++    }
++
++    .newsletter-success {
++      display: none;
++      margin-top: 8px;
++      font-size: 0.9rem;
++      color: #2e7d32;
++    }
++
++    .newsletter.is-subscribed .newsletter-success {
++      display: block;
++    }
++
++    .newsletter.is-subscribed .newsletter-fields {
++      display: none;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +274,20 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" action="/subscribe" method="post" novalidate>
++      <h3>Join our mailing list</h3>
++      <p>Seasonal drinks, new roasts, and the occasional free-coffee day.</p>
++      <div class="newsletter-fields">
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com" required
++          autocomplete="email" aria-label="Email address" aria-describedby="newsletter-error">
++        <button type="submit" class="btn">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-error" role="alert"></p>
++      <p class="newsletter-success">Thanks! You're on the list.</p>
++    </form>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +295,55 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('newsletter-form');
++      var input = document.getElementById('newsletter-email');
++      var errorEl = document.getElementById('newsletter-error');
++      // The field is "touched" once the user has focused it and left, or has
++      // tried to submit. No error is shown before that.
++      var touched = false;
++
++      function validate() {
++        if (!touched) return true;
++        var value = input.value.trim();
++        var message = '';
++        if (value === '') {
++          message = 'Please enter your email address.';
++        } else if (!input.checkValidity()) {
++          message = 'Please enter a valid email address.';
++        }
++        errorEl.textContent = message;
++        form.classList.toggle('show-error', message !== '');
++        input.setAttribute('aria-invalid', message ? 'true' : 'false');
++        return message === '';
++      }
++
++      input.addEventListener('blur', function () {
++        touched = true;
++        validate();
++      });
++
++      // Once an error is visible, clear it as soon as they fix it.
++      input.addEventListener('input', function () {
++        if (touched) validate();
++      });
++
++      form.addEventListener('submit', function (event) {
++        touched = true;
++        if (!validate()) {
++          event.preventDefault();
++          input.focus();
++          return;
++        }
++        // No backend exists yet for /subscribe, so show confirmation in place.
++        event.preventDefault();
++        form.classList.add('is-subscribed');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

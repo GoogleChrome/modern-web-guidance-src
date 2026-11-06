@@ -1,0 +1,282 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,125 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* 3D Coffee Box Scene */
++    .scene-section {
++      background: radial-gradient(circle at center, #6d4c41 0%, var(--primary) 70%);
++      color: white;
++      text-align: center;
++      padding: 50px 20px 20px;
++      overflow: hidden;
++    }
++
++    .scene {
++      position: relative;
++      max-width: 900px;
++      height: 620px;
++      margin: 0 auto;
++      /* perspective is set from JS to match the WebGL camera */
++      perspective-origin: 50% 50%;
++    }
++
++    .scene canvas {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      display: block;
++    }
++
++    /* Zero-size anchor at the scene center; the form is transformed from here */
++    .scene-anchor {
++      position: absolute;
++      left: 50%;
++      top: 50%;
++      width: 0;
++      height: 0;
++    }
++
++    .box-form {
++      position: absolute;
++      left: 0;
++      top: 0;
++      width: 260px;
++      height: 320px;
++      transform-origin: 0 0;
++      backface-visibility: hidden;
++      background: #fff8ee;
++      color: var(--text);
++      border: 2px dashed var(--primary);
++      border-radius: 8px;
++      padding: 18px 20px;
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      visibility: hidden; /* shown once WebGL is running */
++    }
++
++    .scene.ready .box-form {
++      visibility: visible;
++    }
++
++    .box-form h3 {
++      color: var(--primary);
++      text-align: center;
++      font-size: 1.15rem;
++    }
++
++    .box-form label {
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    .box-form input,
++    .box-form select {
++      width: 100%;
++      padding: 7px 8px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++      font-size: 0.9rem;
++      background: white;
++    }
++
++    .box-form .actions {
++      display: flex;
++      gap: 8px;
++      margin-top: auto;
++    }
++
++    .box-form button {
++      flex: 1;
++      padding: 9px 0;
++      border: 0;
++      border-radius: 5px;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++    }
++
++    .box-form button[type="reset"] {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .box-form button:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .box-form .status {
++      min-height: 1.2em;
++      font-size: 0.8rem;
++      text-align: center;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +290,36 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="scene-section">
++    <h2>Build Your Box</h2>
++    <p>Fill in the form on the box &mdash; it keeps working while it spins.</p>
++    <div class="scene" id="scene">
++      <canvas id="scene-canvas"></canvas>
++      <div class="scene-anchor">
++        <form class="box-form" id="box-form">
++          <h3>Custom Coffee Box</h3>
++          <label for="box-name">Name</label>
++          <input id="box-name" name="name" type="text" placeholder="Your name" required>
++          <label for="box-roast">Roast</label>
++          <select id="box-roast" name="roast">
++            <option>Light</option>
++            <option selected>Medium</option>
++            <option>Dark</option>
++          </select>
++          <label for="box-qty">Bags</label>
++          <input id="box-qty" name="qty" type="number" min="1" max="12" value="1">
++          <div class="status" id="box-status" role="status"></div>
++          <div class="actions">
++            <button type="submit">Add to order</button>
++            <button type="reset">Reset</button>
++          </div>
++        </form>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +351,115 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="importmap">
++    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
++  </script>
++  <script type="module">
++    import * as THREE from 'three';
++
++    const scene3d = document.getElementById('scene');
++    const canvas = document.getElementById('scene-canvas');
++    const form = document.getElementById('box-form');
++    const status = document.getElementById('box-status');
++
++    // Form behaviour (plain DOM, so it stays interactive)
++    form.addEventListener('submit', (e) => {
++      e.preventDefault();
++      const d = new FormData(form);
++      status.textContent = `Added ${d.get('qty')} x ${d.get('roast')} roast for ${d.get('name')}!`;
++    });
++    form.addEventListener('reset', () => { status.textContent = ''; });
++
++    // Box dimensions in CSS px (world units == px at z = 0)
++    const FORM_W = 260, FORM_H = 320;
++    const BOX_W = 320, BOX_H = 400, BOX_D = 240;
++    const CAM_DIST = 1100;
++
++    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
++    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
++    const scene = new THREE.Scene();
++    const camera = new THREE.PerspectiveCamera(30, 1, 10, 5000);
++    camera.position.set(0, 0, CAM_DIST);
++
++    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
++    const key = new THREE.DirectionalLight(0xffffff, 2);
++    key.position.set(300, 500, 800);
++    scene.add(key);
++
++    function faceTexture(draw) {
++      const c = document.createElement('canvas');
++      c.width = c.height = 512;
++      const g = c.getContext('2d');
++      g.fillStyle = '#c8a47a';
++      g.fillRect(0, 0, 512, 512);
++      draw(g);
++      const t = new THREE.CanvasTexture(c);
++      t.colorSpace = THREE.SRGBColorSpace;
++      return t;
++    }
++    const label = (text, size) => (g) => {
++      g.fillStyle = '#4e342e';
++      g.font = `bold ${size}px sans-serif`;
++      g.textAlign = 'center';
++      g.textBaseline = 'middle';
++      g.fillText(text, 256, 256);
++    };
++    const mat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.9 });
++    const plain = mat(faceTexture(() => {}));
++    const materials = [
++      mat(faceTexture(label('DAILY GRIND', 64))), // +x
++      mat(faceTexture(label('FRESH ROAST', 64))), // -x
++      plain,                                       // +y
++      plain,                                       // -y
++      plain,                                       // +z (front: carries the HTML form)
++      mat(faceTexture((g) => {                     // -z
++        label('THE DAILY', 70)(g);
++        g.fillText('GRIND', 256, 340);
++      })),
++    ];
++    const box = new THREE.Mesh(new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D), materials);
++    scene.add(box);
++
++    // Matrix helpers for mapping the DOM form onto the box's front face
++    const flipY = new THREE.Matrix4().makeScale(1, -1, 1);
++    const toCenter = new THREE.Matrix4().makeTranslation(-FORM_W / 2, -FORM_H / 2, 0);
++    // +0.5px so the form sits just in front of the face
++    const toFace = new THREE.Matrix4().makeTranslation(0, 0, BOX_D / 2 + 0.5);
++    const m = new THREE.Matrix4();
++
++    function resize() {
++      const w = scene3d.clientWidth, h = scene3d.clientHeight;
++      renderer.setSize(w, h, false);
++      camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(h / 2 / CAM_DIST));
++      camera.aspect = w / h;
++      camera.updateProjectionMatrix();
++      box.scale.setScalar(Math.min(1, w / 520));
++      scene3d.style.perspective = CAM_DIST + 'px';
++    }
++    new ResizeObserver(resize).observe(scene3d);
++    resize();
++
++    let last = performance.now();
++    function frame(now) {
++      const dt = (now - last) / 1000;
++      last = now;
++      // Pause the spin while the user is typing so the form is easy to use
++      if (!form.matches(':focus-within')) box.rotation.y += dt * 0.5;
++      box.updateMatrixWorld();
++
++      // CSS matrix: css-flip * world * face offset * css->world flip * center form
++      m.copy(flipY).multiply(box.matrixWorld).multiply(toFace)
++        .multiply(flipY).multiply(toCenter);
++      form.style.transform = `matrix3d(${m.elements.join(',')})`;
++
++      renderer.render(scene, camera);
++      scene3d.classList.add('ready');
++      requestAnimationFrame(frame);
++    }
++    requestAnimationFrame(frame);
++  </script>
++
+ </body>
+ 
+ </html>

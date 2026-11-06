@@ -1,0 +1,255 @@
+diff --git a/index.html b/index.html
+index 66c9173..af9b7ee 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,80 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating quick-order cart */
++    .coffee-cart {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      width: min(360px, calc(100vw - 24px));
++      max-height: calc(100dvh - 24px);
++      display: flex;
++      flex-direction: column;
++      background: #fffdf9;
++      border: 1px solid #e4d9ce;
++      border-radius: 18px;
++      box-shadow: 0 18px 60px #2b180e33, 0 3px 12px #2b180e14;
++      overflow: hidden;
++      font-size: 14px;
++    }
++
++    .coffee-cart button, .coffee-cart select { font: inherit; }
++    .coffee-cart [hidden] { display: none !important; }
++    .coffee-cart button, .coffee-cart a { -webkit-tap-highlight-color: transparent; }
++    .coffee-cart button { cursor: pointer; }
++    .coffee-cart :focus-visible { outline: 3px solid #c67b30; outline-offset: 3px; }
++    .cart-header { display: flex; align-items: center; background: var(--primary); color: white; padding: 14px 16px; gap: 12px; }
++    .cart-drag {
++      display: flex; align-items: center; gap: 12px; flex: 1;
++      border: 0; background: transparent; color: inherit; text-align: left;
++      cursor: grab !important; touch-action: none; min-width: 0;
++    }
++    .cart-drag:active { cursor: grabbing !important; }
++    .grip { font-size: 24px; color: #ccb6a8; letter-spacing: -3px; line-height: 1; }
++    .cart-title { display: block; font-size: 16px; font-weight: 650; letter-spacing: .2px; }
++    .cart-hint { display: block; font-size: 11px; color: #ddcfc4; margin-top: 1px; }
++    .cart-toggle { width: 30px; height: 30px; border: 1px solid #ffffff40; border-radius: 50%; background: transparent; color: white; font-size: 20px !important; line-height: 1; }
++    .cart-body { overflow-y: auto; padding: 20px; overscroll-behavior: contain; }
++    .cart-body[hidden] { display: none; }
++    .cart-eyebrow { color: #8e6b48; text-transform: uppercase; letter-spacing: 1.8px; font-size: 10px; font-weight: 700; }
++    .cart-body h2 { font-size: 23px; line-height: 1.25; margin: 5px 0 6px; letter-spacing: -.6px; }
++    .cart-intro { color: #8a7970; font-size: 12px; margin-bottom: 19px; }
++    .cart-add { display: flex; gap: 8px; margin: 7px 0 18px; }
++    .cart-label { font-size: 12px; font-weight: 600; }
++    .cart-add select { width: 100%; min-width: 0; border: 1px solid #dfd4c9; background: white; color: var(--text); border-radius: 8px; padding: 10px 8px; font-size: 12px; }
++    .cart-add button { border: 0; border-radius: 8px; background: #efe6db; padding: 0 14px; color: var(--primary); font-weight: 700; }
++    .cart-items { list-style: none; }
++    .cart-item { display: flex; gap: 12px; padding: 16px 0; border-top: 1px solid #eee6de; align-items: center; }
++    .cup-icon { width: 42px; height: 48px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: #f0e7dc; color: #8e6441; }
++    .cup-icon svg { width: 28px; height: 28px; }
++    .cart-item-info { flex: 1; min-width: 0; }
++    .cart-item-name { font-size: 13px; font-weight: 650; }
++    .cart-item-meta { font-size: 11px; color: #907d6f; margin-top: 2px; }
++    .cart-item-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 9px; }
++    .quantity { display: flex; align-items: center; border: 1px solid #dfd4c9; border-radius: 6px; overflow: hidden; }
++    .quantity button { border: 0; background: transparent; width: 28px; height: 28px; color: var(--primary); font-size: 17px; }
++    .quantity button:hover, .cart-add button:hover { background: #e5d8c9; }
++    .quantity output { min-width: 24px; text-align: center; font-size: 12px; }
++    .item-price { font-size: 13px; font-weight: 650; }
++    .cart-total { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #dfd4c9; padding-top: 16px; margin-top: 3px; font-weight: 600; }
++    .cart-total output { font-size: 22px; letter-spacing: -.5px; }
++    .cart-note { color: #968277; font-size: 11px; margin: 3px 0 15px; }
++    .cart-checkout { display: flex; justify-content: space-between; align-items: center; width: 100%; border: 0; border-radius: 8px; background: var(--primary); color: white; padding: 12px 16px; font-weight: 600 !important; text-decoration: none; }
++    .cart-checkout:hover { background: #6b493b; }
++    .cart-checkout:disabled { opacity: .45; cursor: default; }
++    .cart-footnote { text-align: center; color: #968277; font-size: 10px; margin-top: 12px; }
++    .cart-empty { padding: 22px 0; color: #8a7970; font-size: 13px; }
++    .cart-back { border: 0; background: transparent; color: var(--primary); text-decoration: underline; margin-top: 14px; }
++    .cart-review p { margin: 14px 0; color: #8a7970; font-size: 13px; }
++    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
++    @media (max-width: 600px) {
++      .coffee-cart { right: 12px; bottom: 12px; }
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +281,169 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="coffee-cart" aria-label="Quick coffee order">
++    <div class="cart-header">
++      <button class="cart-drag" type="button" aria-label="Move coffee cart. Drag or use arrow keys.">
++        <span class="grip" aria-hidden="true">⠿</span>
++        <span><span class="cart-title">Your coffee break</span><span class="cart-hint">A little pick-me-up · Drag to move</span></span>
++      </button>
++      <button class="cart-toggle" type="button" aria-label="Collapse coffee cart" aria-expanded="true" aria-controls="cart-body">−</button>
++    </div>
++    <div class="cart-body" id="cart-body">
++      <div id="cart-shop">
++        <div class="cart-eyebrow">The Daily Grind / Quick order</div>
++        <h2>Good coffee. On your terms.</h2>
++        <p class="cart-intro">Make a little room for your daily ritual.</p>
++        <label class="cart-label" for="coffee-choice">Find your favorite</label>
++        <div class="cart-add">
++          <select id="coffee-choice">
++            <option value="latte">Maple Oat Latte · $5.50</option>
++            <option value="espresso">Dark Roast Espresso · $3.50</option>
++            <option value="coldbrew">Cold Brew · $4.50</option>
++          </select>
++          <button type="button" id="cart-add" aria-label="Add selected coffee">Add +</button>
++        </div>
++        <ul class="cart-items" id="cart-items" aria-label="Coffee cart items"></ul>
++      </div>
++      <div class="cart-review" id="cart-review" hidden>
++        <div class="cart-eyebrow">Your coffee lineup</div>
++        <h2>Looking good.</h2>
++        <p id="review-summary"></p>
++        <p>Continue to online ordering to confirm availability and complete your purchase.</p>
++      </div>
++      <div class="cart-total"><span>Subtotal <span id="cart-count">(1 item)</span></span><output id="cart-total">$5.50</output></div>
++      <p class="cart-note">Final pricing and taxes confirmed at checkout.</p>
++      <button type="button" class="cart-checkout" id="cart-review-button"><span>Review order</span><span aria-hidden="true">↗</span></button>
++      <a class="cart-checkout" href="/order-online" id="cart-continue" hidden>Continue to online ordering <span aria-hidden="true">↗</span></a>
++      <button type="button" class="cart-back" id="cart-back" hidden>Back to your cart</button>
++      <p class="cart-footnote">Locally roasted. Made with care.</p>
++    </div>
++    <p class="sr-only" id="cart-status" role="status" aria-live="polite"></p>
++  </aside>
++  <script>
++    (() => {
++      const cart = document.querySelector('.coffee-cart');
++      const handle = document.querySelector('.cart-drag');
++      const body = document.querySelector('#cart-body');
++      const toggle = document.querySelector('.cart-toggle');
++      const items = document.querySelector('#cart-items');
++      const reviewButton = document.querySelector('#cart-review-button');
++      const continueLink = document.querySelector('#cart-continue');
++      const backButton = document.querySelector('#cart-back');
++      const products = {
++        latte: { name: 'Maple Oat Latte', detail: 'Oat milk · Maple sweetness', price: 550 },
++        espresso: { name: 'Dark Roast Espresso', detail: 'Rich · Bold · Smooth', price: 350 },
++        coldbrew: { name: 'Cold Brew', detail: 'Slow steeped · Served cold', price: 450 }
++      };
++      const quantities = { latte: 1, espresso: 0, coldbrew: 0 };
++      const money = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
++      const announce = message => { document.querySelector('#cart-status').textContent = message; };
++
++      function render() {
++        let total = 0;
++        let count = 0;
++        items.replaceChildren();
++        Object.entries(products).forEach(([id, product]) => {
++          const quantity = quantities[id];
++          if (!quantity) return;
++          total += product.price * quantity;
++          count += quantity;
++          const row = document.createElement('li');
++          row.className = 'cart-item';
++          row.innerHTML = `<div class="cup-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 12h16v9a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6zM23 14h2a4 4 0 0 1 0 8h-2M11 8V4m5 4V3m5 5V4M5 29h21" stroke-linecap="round"/></svg></div><div class="cart-item-info"><div class="cart-item-name">${product.name}</div><div class="cart-item-meta">${product.detail}</div><div class="cart-item-bottom"><div class="quantity"><button type="button" data-id="${id}" data-change="-1" aria-label="Decrease ${product.name} quantity">−</button><output aria-label="${product.name} quantity">${quantity}</output><button type="button" data-id="${id}" data-change="1" aria-label="Increase ${product.name} quantity" ${quantity >= 99 ? 'disabled' : ''}>+</button></div><span class="item-price">${money(product.price * quantity)}</span></div></div>`;
++          items.append(row);
++        });
++        if (!count) items.innerHTML = '<li class="cart-empty">Your next coffee is waiting. Add a favorite above.</li>';
++        document.querySelector('#cart-total').textContent = money(total);
++        document.querySelector('#cart-count').textContent = `(${count} ${count === 1 ? 'item' : 'items'})`;
++        reviewButton.disabled = count === 0;
++      }
++
++      document.querySelector('#cart-add').addEventListener('click', () => {
++        const id = document.querySelector('#coffee-choice').value;
++        if (quantities[id] >= 99) { announce('Maximum of 99 per coffee.'); return; }
++        quantities[id]++;
++        render();
++        announce(`${products[id].name} added. Quantity ${quantities[id]}.`);
++      });
++      items.addEventListener('click', event => {
++        const button = event.target.closest('button[data-id]');
++        if (!button) return;
++        const { id, change } = button.dataset;
++        quantities[id] = Math.max(0, Math.min(99, quantities[id] + Number(change)));
++        render();
++        const replacement = items.querySelector(`button[data-id="${id}"][data-change="${change}"]:not(:disabled)`)
++          || items.querySelector(`button[data-id="${id}"]:not(:disabled)`)
++          || document.querySelector('#cart-add');
++        replacement.focus({ preventScroll: true });
++        announce(`${products[id].name}: ${quantities[id] ? quantities[id] : 'removed'}.`);
++      });
++
++      function setReview(reviewing) {
++        document.querySelector('#cart-shop').hidden = reviewing;
++        document.querySelector('#cart-review').hidden = !reviewing;
++        reviewButton.hidden = reviewing;
++        continueLink.hidden = !reviewing;
++        backButton.hidden = !reviewing;
++        if (reviewing) {
++          document.querySelector('#review-summary').textContent = Object.entries(products)
++            .filter(([id]) => quantities[id]).map(([id, product]) => `${quantities[id]} × ${product.name}`).join(' · ');
++        }
++        (reviewing ? continueLink : reviewButton).focus({ preventScroll: true });
++        constrain();
++      }
++      reviewButton.addEventListener('click', () => setReview(true));
++      backButton.addEventListener('click', () => setReview(false));
++      toggle.addEventListener('click', () => {
++        body.hidden = !body.hidden;
++        toggle.textContent = body.hidden ? '+' : '−';
++        toggle.setAttribute('aria-expanded', String(!body.hidden));
++        toggle.setAttribute('aria-label', `${body.hidden ? 'Expand' : 'Collapse'} coffee cart`);
++        constrain();
++      });
++
++      function moveTo(x, y) {
++        const margin = 12;
++        cart.style.left = `${Math.max(margin, Math.min(x, window.innerWidth - cart.offsetWidth - margin))}px`;
++        cart.style.top = `${Math.max(margin, Math.min(y, window.innerHeight - cart.offsetHeight - margin))}px`;
++        cart.style.right = 'auto';
++        cart.style.bottom = 'auto';
++      }
++      function constrain() {
++        if (!cart.style.left) return;
++        const bounds = cart.getBoundingClientRect();
++        moveTo(bounds.left, bounds.top);
++      }
++      let drag = null;
++      handle.addEventListener('pointerdown', event => {
++        if (!event.isPrimary || event.button !== 0) return;
++        const bounds = cart.getBoundingClientRect();
++        drag = { id: event.pointerId, x: event.clientX - bounds.left, y: event.clientY - bounds.top };
++        handle.setPointerCapture(event.pointerId);
++        event.preventDefault();
++      });
++      handle.addEventListener('pointermove', event => {
++        if (!drag || drag.id !== event.pointerId) return;
++        moveTo(event.clientX - drag.x, event.clientY - drag.y);
++      });
++      const endDrag = () => { drag = null; };
++      handle.addEventListener('pointerup', endDrag);
++      handle.addEventListener('pointercancel', endDrag);
++      handle.addEventListener('lostpointercapture', endDrag);
++      handle.addEventListener('keydown', event => {
++        const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
++        if (!directions[event.key]) return;
++        event.preventDefault();
++        const bounds = cart.getBoundingClientRect();
++        const [x, y] = directions[event.key];
++        const step = event.shiftKey ? 40 : 10;
++        moveTo(bounds.left + x * step, bounds.top + y * step);
++      });
++      window.addEventListener('resize', constrain);
++      new ResizeObserver(constrain).observe(cart);
++      render();
++    })();
++  </script>
+ </body>
+ 
+ </html>

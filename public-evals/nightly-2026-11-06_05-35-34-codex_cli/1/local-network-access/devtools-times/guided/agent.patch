@@ -1,0 +1,247 @@
+diff --git a/README.md b/README.md
+index 4479b53..ac077d2 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,31 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++
++## Developer diagnostics
++
++The homepage includes independent browser-side checks for a hardware device on
++private Wi-Fi and a companion CLI on the reader's own machine. The example
++endpoints are `http://192.168.1.100:8080/health` and
++`http://127.0.0.1:45678/health`; readers can replace the URL, port, and path.
++No device discovery or requests run on page load. Connect performs a read-only
++GET, with a 15-second timeout; successful 2xx responses report HTTP status,
++latency, and the time checked. This is a reachability check, not a persistent
++connection or an implementation of a device/CLI protocol.
++
++Serve the site over HTTPS. Each endpoint must implement a read-only status route
++and return standard CORS headers, such as
++`Access-Control-Allow-Origin: https://your-site.example` (the actual site origin,
++without a path). Requests omit credentials and reject redirects. There is no
++backend relay, so addresses always refer to the reader's network or machine.
++
++The widget queries `local-network` and `loopback-network` permissions separately,
++observes permission changes, and uses `targetAddressSpace: 'local'` or
++`'loopback'` in fetch options. Unrecognized permission queries gracefully fall
++back to an explicit click. Browser support varies; browsers without the needed
++local HTTP exemptions may require HTTPS endpoints with trusted certificates or
++a current browser with Local Network Access support. Permission denial, CORS,
++firewalls, and network errors can look alike to JavaScript; the widget provides
++troubleshooting without claiming to distinguish them. No deprecated Private
++Network Access preflight headers are required.
+diff --git a/src/components/DiagnosticsConnections.tsx b/src/components/DiagnosticsConnections.tsx
+new file mode 100644
+index 0000000..033145d
+--- /dev/null
++++ b/src/components/DiagnosticsConnections.tsx
+@@ -0,0 +1,186 @@
++import { useEffect, useRef, useState, type SubmitEvent } from 'react';
++
++type Space = 'local' | 'loopback';
++type Permission = PermissionState | 'unknown';
++type Result = { kind: 'idle' | 'checking' | 'success' | 'error'; message: string };
++
++function validateEndpoint(value: string, space: Space): URL {
++  let url: URL;
++  try { url = new URL(value); }
++  catch { throw new Error('Enter a complete HTTP or HTTPS status URL.'); }
++  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) {
++    throw new Error('Use an HTTP or HTTPS URL without credentials or a fragment.');
++  }
++  const host = url.hostname.toLowerCase();
++  const ip = /^\d+\.\d+\.\d+\.\d+$/.test(host) ? host.split('.').map(Number) : [];
++  const loopback = ip[0] === 127 || host === '[::1]' || host === 'localhost' || host.endsWith('.localhost');
++  const local = ip[0] === 10 || (ip[0] === 172 && ip[1] >= 16 && ip[1] <= 31)
++    || (ip[0] === 192 && ip[1] === 168) || (ip[0] === 169 && ip[1] === 254)
++    || host.endsWith('.local') || /^\[f[cd][\da-f]{2}:/.test(host) || /^\[fe[89ab][\da-f]:/.test(host);
++  if (space === 'loopback' ? !loopback : !local) {
++    throw new Error(space === 'loopback'
++      ? 'Use a loopback address such as 127.0.0.1, localhost, or [::1].'
++      : 'Use a private LAN address such as 192.168.1.100 or device.local.');
++  }
++  return url;
++}
++
++function ConnectionCard({ space, title, description, initialUrl }: {
++  space: Space; title: string; description: string; initialUrl: string;
++}) {
++  const permissionName = space === 'local' ? 'local-network' : 'loopback-network';
++  const [endpoint, setEndpoint] = useState(initialUrl);
++  const [permission, setPermission] = useState<Permission>('unknown');
++  const [secure, setSecure] = useState(true);
++  const [result, setResult] = useState<Result>({ kind: 'idle', message: 'Ready when you are. No connection attempted.' });
++  const active = useRef<AbortController | null>(null);
++  const permissionStatus = useRef<PermissionStatus | null>(null);
++
++  useEffect(() => {
++    let disposed = false;
++    let status: PermissionStatus | undefined;
++    setSecure(window.isSecureContext);
++    const update = () => {
++      if (!status || disposed) return;
++      setPermission(status.state);
++      if (status.state === 'denied') {
++        active.current?.abort();
++        active.current = null;
++        setResult({ kind: 'error', message: 'Access blocked. Allow this connection in browser site settings, then try again.' });
++      }
++    };
++    // Unknown permission names reject in browsers without granular LNA support.
++    // Never query the legacy combined permission name.
++    navigator.permissions?.query({ name: permissionName as PermissionName }).then(value => {
++      if (disposed) return;
++      status = value;
++      permissionStatus.current = value;
++      status.addEventListener('change', update);
++      update();
++    }).catch(() => { /* Keep click-to-connect available when permission queries are unsupported. */ });
++    return () => {
++      disposed = true;
++      status?.removeEventListener('change', update);
++      permissionStatus.current = null;
++      active.current?.abort();
++      active.current = null;
++    };
++  }, [permissionName]);
++
++  async function connect(event: SubmitEvent<HTMLFormElement>) {
++    event.preventDefault();
++    if (active.current) return;
++    if (!window.isSecureContext) {
++      setResult({ kind: 'error', message: 'Open The DevTools Times over HTTPS to connect to local endpoints.' });
++      return;
++    }
++    if (permissionStatus.current?.state === 'denied') {
++      setResult({ kind: 'error', message: 'Allow access in browser site settings, then try again.' });
++      return;
++    }
++    let url: URL;
++    try { url = validateEndpoint(endpoint.trim(), space); }
++    catch (error) {
++      setResult({ kind: 'error', message: (error as Error).message });
++      return;
++    }
++    const controller = new AbortController();
++    active.current = controller;
++    let timedOut = false;
++    const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 15000);
++    setResult({ kind: 'checking', message: 'Connecting… Allow access if your browser asks.' });
++    const start = performance.now();
++    try {
++      const options: RequestInit & { targetAddressSpace: Space } = {
++        method: 'GET', mode: 'cors', credentials: 'omit', cache: 'no-store', redirect: 'error',
++        targetAddressSpace: space, signal: controller.signal,
++      };
++      const response = await fetch(url.href, options);
++      if (!response.ok) throw new Error(`Endpoint returned HTTP ${response.status}. Check the status URL and service logs.`);
++      if (active.current !== controller) return;
++      const elapsed = Math.round(performance.now() - start);
++      setResult({ kind: 'success', message: `Reachable · HTTP ${response.status} · ${elapsed} ms · checked at ${new Date().toLocaleTimeString()}` });
++      // This is a reachability check; do not retain or display device data.
++      void response.body?.cancel().catch(() => {});
++    } catch (error) {
++      if (active.current !== controller) return;
++      const message = timedOut ? 'Connection timed out after 15 seconds. Check the address and that the service is running.'
++        : error instanceof TypeError
++          ? 'Could not reach the endpoint. Check browser access, the address, CORS, and that the service is running. Older browsers may block HTTP local connections.'
++          : error instanceof Error ? error.message : 'Connection failed. Check the endpoint and try again.';
++      setResult({ kind: 'error', message });
++    } finally {
++      window.clearTimeout(timeout);
++      if (active.current === controller) active.current = null;
++    }
++  }
++
++  const busy = result.kind === 'checking';
++  const id = `diagnostics-${space}`;
++  return (
++    <section className="rounded-lg border border-gray-300 bg-white p-5" aria-labelledby={`${id}-title`}>
++      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
++        <h3 id={`${id}-title`} className="font-bold text-gray-900">{title}</h3>
++        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
++          {permission === 'unknown' ? 'Permission checked on connect' : `Access: ${permission === 'prompt' ? 'ask on connect' : permission}`}
++        </span>
++      </div>
++      <p className="mb-4 text-sm text-gray-600">{description}</p>
++      <form onSubmit={connect}>
++        <label htmlFor={`${id}-url`} className="mb-1 block text-sm font-semibold">Status endpoint URL</label>
++        <input id={`${id}-url`} type="url" required value={endpoint} disabled={busy}
++          onChange={event => {
++            setEndpoint(event.target.value);
++            setResult({ kind: 'idle', message: 'Address changed. Connect to check this endpoint.' });
++          }}
++          autoComplete="off" spellCheck={false} aria-describedby={`${id}-help`}
++          className="w-full rounded border border-gray-400 px-3 py-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:bg-gray-100" />
++        <p id={`${id}-help`} className="mt-2 text-xs text-gray-600">{space === 'local'
++          ? 'Use the device’s status URL while connected to the same Wi-Fi LAN.'
++          : 'Use the CLI’s status URL. The CLI must run on the machine hosting this browser.'}</p>
++        <div className="mt-4 flex gap-2">
++          <button type="submit" disabled={busy || !secure || permission === 'denied'}
++            className="rounded bg-gray-800 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:cursor-not-allowed disabled:opacity-50">
++            {busy ? 'Connecting…' : result.kind === 'success' ? 'Check again' : 'Connect'}
++          </button>
++          {busy && <button type="button" onClick={() => {
++            active.current?.abort();
++            active.current = null;
++            setResult({ kind: 'idle', message: 'Connection attempt cancelled.' });
++          }} className="rounded border border-gray-400 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-amber-600">Cancel</button>}
++        </div>
++      </form>
++      <p role="status" aria-live="polite" aria-atomic="true" className={`mt-4 text-sm ${result.kind === 'error' ? 'text-red-800' : result.kind === 'success' ? 'text-green-800' : 'text-gray-600'}`}>
++        {result.message}
++      </p>
++      {!secure && <p className="mt-2 text-sm text-red-800">HTTPS is required. Reopen this site using HTTPS.</p>}
++      {permission === 'denied' && <p className="mt-2 text-sm text-red-800">In browser site settings, allow {space === 'local' ? 'Local network' : 'Loopback network'} access, then retry. Reload if the permission does not update.</p>}
++    </section>
++  );
++}
++
++export default function DiagnosticsConnections() {
++  return (
++    <section aria-labelledby="diagnostics-title" className="my-6 rounded-lg border border-gray-300 bg-gray-50 p-4 sm:p-6">
++      <div className="mb-5 border-b border-gray-300 pb-4">
++        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-gray-500">Developer tools</p>
++        <h2 id="diagnostics-title" className="font-brand text-3xl text-gray-900">Diagnostics connections</h2>
++        <p className="mt-2 max-w-3xl text-sm text-gray-600">Connect your test hardware and companion CLI directly from this browser. Each connection has its own access permission. Nothing is contacted until you choose Connect.</p>
++      </div>
++      <div className="grid gap-4 md:grid-cols-2">
++        <ConnectionCard space="local" title="Hardware test device" description="Check a device on your private Wi-Fi network." initialUrl="http://192.168.1.100:8080/health" />
++        <ConnectionCard space="loopback" title="Local companion CLI" description="Check the companion service running on this machine." initialUrl="http://127.0.0.1:45678/health" />
++      </div>
++      <details className="mt-4 text-sm text-gray-700">
++        <summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-amber-600">Endpoint setup & troubleshooting</summary>
++        <div className="mt-3 space-y-2">
++          <p>Use a read-only HTTP or HTTPS endpoint that returns a successful 2xx status. Replace the example address, port, and path with those of your device or CLI. These checks report reachability; they do not open a persistent session.</p>
++          <p>The endpoint must allow this website’s origin with the standard <code>Access-Control-Allow-Origin</code> response header. Requests omit cookies and credentials. No server proxy is used.</p>
++          <p>Use this website over HTTPS and allow Local network or Loopback network access when prompted. If blocked, update the browser’s site settings. Support varies by browser; try a current Chrome or Edge if HTTP connections are blocked.</p>
++          <p>For hardware, check power and the Wi-Fi connection. For the CLI, start its HTTP status service on this computer. Check firewall rules and HTTPS certificate trust if applicable.</p>
++        </div>
++      </details>
++      <noscript><p className="mt-4 text-sm">Enable JavaScript to use diagnostics connections.</p></noscript>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..2fafd90 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import DiagnosticsConnections from '../components/DiagnosticsConnections';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -56,6 +57,7 @@ politicsArticles[2] = {
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <DiagnosticsConnections client:load />
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 

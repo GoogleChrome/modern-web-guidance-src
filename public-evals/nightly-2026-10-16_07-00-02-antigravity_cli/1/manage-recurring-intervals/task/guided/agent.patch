@@ -1,0 +1,331 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,111 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee Subscription Delivery Planner Styles */
++    .planner-card {
++      max-width: 600px;
++      margin: 0 auto;
++      text-align: left;
++      padding: 30px;
++      border-radius: 12px;
++      border: 1px solid #e0d7d3;
++    }
++
++    .planner-card h2 {
++      color: var(--primary);
++      text-align: center;
++      margin-bottom: 6px;
++    }
++
++    .planner-card .subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
++    .planner-form {
++      margin-bottom: 20px;
++    }
++
++    .form-grid {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 16px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-group.full-width {
++      grid-column: span 2;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      font-size: 0.88rem;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .form-group input,
++    .form-group select {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 1rem;
++      background: #ffffff;
++      color: var(--text);
++      font-family: inherit;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-group input:focus,
++    .form-group select:focus {
++      border-color: var(--accent);
++      outline: none;
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .result-container {
++      background: #fbf9f8;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      padding: 18px 20px;
++      text-align: center;
++      margin-top: 10px;
++    }
++
++    .result-label {
++      font-size: 0.85rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      font-weight: 600;
++      color: #795548;
++      margin-bottom: 6px;
++    }
++
++    #resultDate {
++      font-size: 1.4rem;
++      font-weight: bold;
++      color: var(--primary);
++      word-break: break-word;
++      min-height: 1.8rem;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    #resultDate.error {
++      color: #c62828;
++      font-size: 1rem;
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +277,48 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <!-- Coffee Subscription Delivery Planner Section -->
++    <section class="planner-section" id="subscription-planner" style="margin-bottom: 50px;">
++      <div class="card planner-card">
++        <h2>Coffee Subscription Delivery Planner</h2>
++        <p class="subtitle">Calculate when your next recurring artisanal delivery will arrive.</p>
++
++        <form class="planner-form" onsubmit="event.preventDefault();">
++          <div class="form-grid">
++            <div class="form-group full-width">
++              <label for="startDateInput">Start Date</label>
++              <input type="date" id="startDateInput" value="2026-10-16">
++            </div>
++
++            <div class="form-group">
++              <label for="yearsInput">Years to Add</label>
++              <input type="number" id="yearsInput" value="0" min="0" step="1">
++            </div>
++
++            <div class="form-group">
++              <label for="monthsInput">Months to Add</label>
++              <input type="number" id="monthsInput" value="1" min="0" step="1">
++            </div>
++
++            <div class="form-group full-width">
++              <label for="overflowSelect">Month-End Strategy</label>
++              <select id="overflowSelect">
++                <option value="constrain">constrain</option>
++                <option value="reject">reject</option>
++              </select>
++            </div>
++          </div>
++        </form>
++
++        <div class="result-container">
++          <div class="result-label">Next Delivery Date</div>
++          <div id="resultDate"></div>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +349,166 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Lightweight Temporal fallback implementation for zero-latency DOM availability
++    function createTemporalFallback() {
++      function daysInMonth(year, month) {
++        return new Date(Date.UTC(year, month, 0)).getUTCDate();
++      }
++      return {
++        __isFallback: true,
++        PlainDate: {
++          from(item) {
++            let year, month, day;
++            if (typeof item === 'string') {
++              const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(item.trim());
++              if (!match) throw new RangeError('Invalid ISO date string: ' + item);
++              year = parseInt(match[1], 10);
++              month = parseInt(match[2], 10);
++              day = parseInt(match[3], 10);
++            } else if (typeof item === 'object' && item !== null) {
++              year = Number(item.year);
++              month = Number(item.month);
++              day = Number(item.day);
++            } else {
++              throw new TypeError('Invalid PlainDate source');
++            }
++            const maxDays = daysInMonth(year, month);
++            if (month < 1 || month > 12 || day < 1 || day > maxDays) {
++              throw new RangeError(`value out of range: 1 <= ${day} <= ${maxDays}`);
++            }
++            return {
++              year, month, day,
++              add(duration, options = { overflow: 'constrain' }) {
++                const overflow = (options && options.overflow) || 'constrain';
++                const addYears = Number((duration && duration.years) || 0);
++                const addMonths = Number((duration && duration.months) || 0);
++
++                let targetYear = year + addYears;
++                let totalMonths = (month - 1) + addMonths;
++                targetYear += Math.floor(totalMonths / 12);
++                let targetMonth = (totalMonths % 12);
++                if (targetMonth < 0) targetMonth += 12;
++                targetMonth += 1;
++
++                const maxDaysInTarget = daysInMonth(targetYear, targetMonth);
++                let targetDay = day;
++                if (targetDay > maxDaysInTarget) {
++                  if (overflow === 'reject') {
++                    throw new RangeError(`value out of range: 1 <= ${targetDay} <= ${maxDaysInTarget}`);
++                  } else {
++                    targetDay = maxDaysInTarget;
++                  }
++                }
++                const pad = (n, l = 2) => String(n).padStart(l, '0');
++                const iso = `${pad(targetYear, 4)}-${pad(targetMonth)}-${pad(targetDay)}`;
++                return {
++                  year: targetYear, month: targetMonth, day: targetDay,
++                  toString: () => iso
++                };
++              },
++              toString: () => {
++                const pad = (n, l = 2) => String(n).padStart(l, '0');
++                return `${pad(year, 4)}-${pad(month)}-${pad(day)}`;
++              }
++            };
++          }
++        }
++      };
++    }
++
++    // Ensure immediate availability
++    if (typeof globalThis.Temporal === 'undefined') {
++      globalThis.Temporal = createTemporalFallback();
++    }
++
++    // Progressive polyfill enhancement using @js-temporal/polyfill
++    (async () => {
++      if (typeof globalThis.Temporal === 'undefined' || globalThis.Temporal.__isFallback) {
++        try {
++          const module = await import("https://esm.sh/@js-temporal/polyfill");
++          globalThis.Temporal = module.Temporal;
++          if (module.toTemporalInstant) {
++            Date.prototype.toTemporalInstant = module.toTemporalInstant;
++          }
++          calculateNextDelivery();
++        } catch (e1) {
++          try {
++            const localModule = await import("/node_modules/@js-temporal/polyfill/dist/index.esm.js");
++            globalThis.Temporal = localModule.Temporal;
++            if (localModule.toTemporalInstant) {
++              Date.prototype.toTemporalInstant = localModule.toTemporalInstant;
++            }
++            calculateNextDelivery();
++          } catch (e2) {
++            // Keep fallback
++          }
++        }
++      }
++    })();
++
++    function calculateNextDelivery() {
++      const resultEl = document.getElementById('resultDate');
++      const startDateInput = document.getElementById('startDateInput');
++      const yearsInput = document.getElementById('yearsInput');
++      const monthsInput = document.getElementById('monthsInput');
++      const overflowSelect = document.getElementById('overflowSelect');
++
++      if (!resultEl || !startDateInput || !yearsInput || !monthsInput || !overflowSelect) return;
++
++      const startDateVal = startDateInput.value;
++      const yearsVal = yearsInput.value;
++      const monthsVal = monthsInput.value;
++      const overflowVal = overflowSelect.value;
++
++      if (!startDateVal) {
++        resultEl.textContent = 'Please select a start date.';
++        resultEl.classList.remove('error');
++        return;
++      }
++
++      const years = parseInt(yearsVal, 10);
++      const months = parseInt(monthsVal, 10);
++
++      if (isNaN(years) || isNaN(months)) {
++        resultEl.textContent = 'Error: Please enter valid numbers for years and months.';
++        resultEl.classList.add('error');
++        return;
++      }
++
++      try {
++        const startDate = Temporal.PlainDate.from(startDateVal);
++        const nextDate = startDate.add(
++          { years, months },
++          { overflow: overflowVal }
++        );
++        resultEl.textContent = nextDate.toString();
++        resultEl.classList.remove('error');
++      } catch (err) {
++        resultEl.textContent = `Error: ${err.message || err.toString()}`;
++        resultEl.classList.add('error');
++      }
++    }
++
++    function initializePlanner() {
++      const controlIds = ['startDateInput', 'yearsInput', 'monthsInput', 'overflowSelect'];
++      controlIds.forEach(id => {
++        const el = document.getElementById(id);
++        if (el) {
++          el.addEventListener('input', calculateNextDelivery);
++          el.addEventListener('change', calculateNextDelivery);
++        }
++      });
++      calculateNextDelivery();
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initializePlanner);
++    } else {
++      initializePlanner();
++    }
++  </script>
+ </body>
+ 
+ </html>

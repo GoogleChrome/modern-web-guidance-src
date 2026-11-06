@@ -1,0 +1,2660 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..9934840 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,5 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++.data/
+diff --git a/README.md b/README.md
+index 4479b53..eb97b13 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,30 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Account security and passkeys
++
++Open `/devtools-times/account/security`, or choose **My account** in the header.
++Sign in with an existing Times username and password to create, view, rename, or
++remove your passkeys. The password is verified by the existing login service;
++this app stores only the local account session, profile, and public credentials.
++Registered passkeys can also be used on the sign-in page.
++
++Passkeys require HTTPS in production (localhost works for development). RP IDs
++are bound to the request hostname, so keep a consistent public hostname. Device
++support is detected before offering registration; existing credentials remain
++manageable on browsers that do not support creating passkeys. Password manager
++synchronization uses feature-detected WebAuthn Signal methods.
++
++Credentials are persisted in `.data/passkeys.json`, separately from sessions.
++Set `PASSKEY_STORE_PATH` to a persistent volume location when deploying. The
++file store supports a single Node process; replace it with a transactional shared
++database before running multiple replicas. Provider metadata is a small local
++subset of the [passkey-authenticator-aaguids registry](https://github.com/passkeydeveloper/passkey-authenticator-aaguids);
++unrecognized or zero AAGUIDs receive a generic provider label.
++
++Run `pnpm test:passkeys` to build and test registration, authentication, profile
++updates, credential management, replay rejection, and cross-account isolation.
++The HTTP integration test uses synthetic signed WebAuthn responses and mocks
++only the external password login service; it does not require a browser or make
++changes to real accounts.
+diff --git a/package.json b/package.json
+index 2e1f2e8..99d411b 100644
+--- a/package.json
++++ b/package.json
+@@ -7,12 +7,14 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "test:passkeys": "pnpm build && node --test tests/passkeys.integration.mjs"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.7",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -20,10 +22,13 @@
+     "react": "^19.3.0",
+     "react-dom": "^19.3.0",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "webauthn-polyfills": "^0.1.7"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "@types/node": "^26.6.5",
++    "typescript": "^7.0.2"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..a632638 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -69,7 +69,7 @@ const baseUrl = import.meta.env.BASE_URL;
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href={`${baseUrl}account/security`} class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..c4d3176 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a href={`${baseUrl}account/security`} class="text-xs font-semibold text-gray-700 hover:underline">My account</a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/PasskeySettings.tsx b/src/components/PasskeySettings.tsx
+new file mode 100644
+index 0000000..7395339
+--- /dev/null
++++ b/src/components/PasskeySettings.tsx
+@@ -0,0 +1,701 @@
++import { useEffect, useRef, useState } from "react";
++import {
++  ArrowLeftIcon,
++  ArrowRightIcon,
++  CheckIcon,
++  ChevronRightIcon,
++  ComputerDesktopIcon,
++  DevicePhoneMobileIcon,
++  FingerPrintIcon,
++  KeyIcon,
++  LockClosedIcon,
++  PencilSquareIcon,
++  PlusIcon,
++  ShieldCheckIcon,
++  TrashIcon,
++  UserCircleIcon,
++  XMarkIcon,
++} from "@heroicons/react/24/outline";
++
++type Credential = {
++  provider?: string;
++  providerIcon?: string;
++  id: string;
++  name: string;
++  aaguid: string;
++  backedUp: boolean;
++  registeredAt: number;
++  lastUsedAt?: number;
++  transports?: string[];
++};
++type Account = {
++  id: string;
++  name: string;
++  displayName: string;
++  rpId: string;
++  credentials: Credential[];
++};
++type DialogAction = { type: "rename" | "delete"; credential: Credential };
++const base = import.meta.env.BASE_URL;
++class ApiError extends Error {
++  constructor(
++    message: string,
++    public status: number,
++  ) {
++    super(message);
++  }
++}
++async function api(action: string, method = "GET", body?: unknown) {
++  const response = await fetch(`${base}api/account/${action}`, {
++    method,
++    headers: { "Content-Type": "application/json" },
++    ...(body ? { body: JSON.stringify(body) } : {}),
++  });
++  const data = await response.json();
++  if (!response.ok)
++    throw new ApiError(
++      data.error || "Something went wrong. Please try again.",
++      response.status,
++    );
++  return data;
++}
++async function sync(account: Account) {
++  if (!window.PublicKeyCredential?.signalAllAcceptedCredentials) return;
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({
++      rpId: account.rpId,
++      userId: account.id,
++      allAcceptedCredentialIds: account.credentials.map((c) => c.id),
++    });
++  } catch {
++    /* Provider synchronization is best effort. */
++  }
++}
++const date = (timestamp: number) =>
++  new Date(timestamp).toLocaleDateString("en-US", {
++    month: "short",
++    day: "numeric",
++    year: "numeric",
++  });
++
++export default function PasskeySettings() {
++  const [account, setAccount] = useState<Account | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [supported, setSupported] = useState(false);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState("");
++  const [notice, setNotice] = useState("");
++  const [tab, setTab] = useState("security");
++  const [action, setAction] = useState<DialogAction | null>(null);
++  const [name, setName] = useState("");
++  const [displayName, setDisplayName] = useState("");
++  const dialog = useRef<HTMLDialogElement>(null);
++
++  useEffect(() => {
++    let active = true;
++    api("credentials")
++      .then((data) => {
++        if (active) {
++          setAccount(data);
++          setDisplayName(data.displayName);
++          void sync(data);
++        }
++      })
++      .catch((e) => {
++        if (active && e.message !== "Sign in to manage your passkeys.")
++          setError(e.message);
++      })
++      .finally(() => {
++        if (active) setLoading(false);
++      });
++    (async () => {
++      if (!window.PublicKeyCredential || !window.isSecureContext) return;
++      await import("webauthn-polyfills");
++      const capabilities = await PublicKeyCredential.getClientCapabilities();
++      if (active) setSupported(!!capabilities.passkeyPlatformAuthenticator);
++    })().catch(() => {});
++    return () => {
++      active = false;
++    };
++  }, []);
++
++  async function refresh() {
++    const data = await api("credentials");
++    setAccount(data);
++    return data as Account;
++  }
++  function openDialog(type: DialogAction["type"], credential: Credential) {
++    setError("");
++    setNotice("");
++    setName(credential.name);
++    setAction({ type, credential });
++    dialog.current?.showModal();
++  }
++  async function changeCredential(event: React.FormEvent) {
++    event.preventDefault();
++    if (!action) return;
++    setBusy(true);
++    setError("");
++    try {
++      await api("credential", action.type === "delete" ? "DELETE" : "PUT", {
++        id: action.credential.id,
++        name,
++      });
++      const next = await refresh();
++      if (action.type === "delete") await sync(next);
++      setNotice(
++        action.type === "delete"
++          ? "Passkey removed from your account."
++          : "Passkey name updated.",
++      );
++      dialog.current?.close();
++      setAction(null);
++    } catch (e) {
++      setError((e as Error).message);
++    } finally {
++      setBusy(false);
++    }
++  }
++  async function createPasskey() {
++    setBusy(true);
++    setError("");
++    setNotice("");
++    try {
++      const options = await api("options", "POST");
++      const credential = (await navigator.credentials.create({
++        publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options),
++      })) as PublicKeyCredential | null;
++      if (!credential) throw new Error("Passkey creation was cancelled.");
++      try {
++        await api("verify", "POST", credential.toJSON());
++      } catch (error) {
++        // An explicit rejection leaves an orphan in the provider. A lost network
++        // response is ambiguous: avoid removing a potentially saved credential.
++        if (
++          error instanceof ApiError &&
++          error.status === 400 &&
++          typeof PublicKeyCredential.signalUnknownCredential === "function"
++        ) {
++          try {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: options.rp.id,
++              credentialId: credential.id,
++            });
++          } catch {
++            /* Optional provider synchronization. */
++          }
++        }
++        throw error;
++      }
++      await sync(await refresh());
++      setNotice("Your new passkey is ready.");
++    } catch (e) {
++      const err = e as Error;
++      setError(
++        err.name === "NotAllowedError" || err.name === "AbortError"
++          ? "Passkey creation was cancelled. You can try again whenever you’re ready."
++          : err.name === "InvalidStateError"
++            ? "A passkey already exists in this password manager."
++            : err.name === "SecurityError"
++              ? "Passkeys require a secure connection to this website."
++              : err.message,
++      );
++    } finally {
++      setBusy(false);
++    }
++  }
++  async function saveProfile(e: React.FormEvent) {
++    e.preventDefault();
++    setBusy(true);
++    setError("");
++    setNotice("");
++    try {
++      await api("profile", "PUT", { displayName });
++      const next = await refresh();
++      if (
++        typeof window.PublicKeyCredential?.signalCurrentUserDetails ===
++        "function"
++      ) {
++        try {
++          await PublicKeyCredential.signalCurrentUserDetails({
++            rpId: next.rpId,
++            userId: next.id,
++            name: next.name,
++            displayName: next.displayName,
++          });
++        } catch {
++          /* Optional provider synchronization. */
++        }
++      }
++      setNotice("Your profile has been updated.");
++    } catch (e) {
++      setError((e as Error).message);
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  return (
++    <div className="account-shell">
++      <div className="account-breadcrumb">
++        <a href={base}>Home</a>
++        <ChevronRightIcon />
++        <span>My account</span>
++        <ChevronRightIcon />
++        <span>
++          {tab === "security" ? "Sign-in & security" : "Personal information"}
++        </span>
++      </div>
++      <div className="account-title-row">
++        <div>
++          <p className="account-eyebrow">YOUR TIMES, YOUR WAY</p>
++          <h1>My account</h1>
++        </div>
++        <a className="back-news" href={base}>
++          <ArrowLeftIcon /> Back to the news
++        </a>
++      </div>
++      <div className="account-layout">
++        <aside className="account-sidebar">
++          <div className="account-identity">
++            <div className="account-avatar">
++              <UserCircleIcon />
++            </div>
++            <div>
++              <strong>{account?.displayName || "Your account"}</strong>
++              <span>Times reader</span>
++            </div>
++          </div>
++          <p className="sidebar-label">ACCOUNT SETTINGS</p>
++          <nav aria-label="Account settings">
++            <button
++              className={tab === "profile" ? "selected" : ""}
++              onClick={() => {
++                setTab("profile");
++                setError("");
++                setNotice("");
++              }}
++            >
++              <UserCircleIcon />
++              Personal information
++              <ChevronRightIcon />
++            </button>
++            <button
++              className={tab === "security" ? "selected" : ""}
++              onClick={() => {
++                setTab("security");
++                setError("");
++                setNotice("");
++              }}
++            >
++              <ShieldCheckIcon />
++              Sign-in & security
++              <ChevronRightIcon />
++            </button>
++          </nav>
++          <div className="sidebar-note">
++            <LockClosedIcon />
++            <p>
++              A little peace of mind.
++              <br />
++              <span>
++                Keep your account secure so you can focus on the stories that
++                matter.
++              </span>
++            </p>
++          </div>
++        </aside>
++        <section
++          className="settings-content"
++          aria-labelledby="settings-heading"
++        >
++          <div className="settings-heading">
++            <div className="section-symbol">
++              <ShieldCheckIcon />
++            </div>
++            <div>
++              <h2 id="settings-heading">
++                {tab === "security"
++                  ? "Sign-in & security"
++                  : "Personal information"}
++              </h2>
++              <p>
++                {tab === "security"
++                  ? "A safer, simpler way to access your account."
++                  : "Make yourself at home. Keep your details up to date."}
++              </p>
++            </div>
++          </div>
++          {error && !dialog.current?.open && (
++            <div className="settings-alert error" role="alert">
++              {error}
++            </div>
++          )}
++          {notice && (
++            <div className="settings-alert success" role="status">
++              <CheckIcon />
++              {notice}
++            </div>
++          )}
++          {tab === "security" ? (
++            <>
++              <div className="passkey-intro">
++                <div className="passkey-copy">
++                  <span className="small-label">
++                    LESS FRICTION. MORE PROTECTION.
++                  </span>
++                  <h3>Your key to a safer account.</h3>
++                  <p>
++                    Skip the password. With a passkey, sign in using your
++                    fingerprint, face, or device screen lock.
++                  </p>
++                  <div className="intro-badges">
++                    <span>
++                      <CheckIcon /> Phishing resistant
++                    </span>
++                    <span>
++                      <CheckIcon /> Uniquely yours
++                    </span>
++                  </div>
++                </div>
++                <div className="passkey-art" aria-hidden="true">
++                  <div className="art-orbit orbit-one" />
++                  <div className="art-orbit orbit-two" />
++                  <div className="art-card">
++                    <FingerPrintIcon />
++                    <span>
++                      <LockClosedIcon /> SECURE BY DESIGN
++                    </span>
++                  </div>
++                  <div className="art-check">
++                    <CheckIcon />
++                  </div>
++                  <div className="art-spark spark-one">+</div>
++                  <div className="art-spark spark-two">+</div>
++                </div>
++              </div>
++              <div className="passkeys-panel">
++                <div className="panel-heading">
++                  <div>
++                    <h3>
++                      Passkeys{" "}
++                      <span className="count">
++                        {account?.credentials.length ?? 0}
++                      </span>
++                    </h3>
++                    <p>Manage the passkeys connected to your account.</p>
++                  </div>
++                  {account && supported && (
++                    <button
++                      className="primary-button"
++                      onClick={createPasskey}
++                      disabled={busy}
++                    >
++                      <PlusIcon />
++                      {busy ? "Please wait…" : "Create a passkey"}
++                    </button>
++                  )}
++                </div>
++                {loading ? (
++                  <div className="passkey-empty" role="status">
++                    <KeyIcon />
++                    <h4>Loading your passkeys…</h4>
++                  </div>
++                ) : !account ? (
++                  <div className="passkey-empty">
++                    <div className="empty-symbol">
++                      <KeyIcon />
++                    </div>
++                    <h4>A more personal, more secure Times.</h4>
++                    <p>
++                      Sign in to view your passkeys and manage your account
++                      security.
++                    </p>
++                    <a
++                      className="primary-button"
++                      href={`${base}signin?redirect=account/security`}
++                    >
++                      Sign in to your account <ArrowRightIcon />
++                    </a>
++                    <span className="empty-footnote">
++                      New to The Times?{" "}
++                      <a href={`${base}signup`}>Create an account</a>
++                    </span>
++                  </div>
++                ) : account.credentials.length === 0 ? (
++                  <div className="passkey-empty">
++                    <div className="empty-symbol">
++                      <KeyIcon />
++                    </div>
++                    <h4>Your next sign-in could be simpler.</h4>
++                    <p>
++                      You haven’t added any passkeys yet. Create your first one
++                      <br className="desktop-break" /> for a secure sign-in
++                      without a password.
++                    </p>
++                    {supported && (
++                      <button
++                        className="text-button"
++                        disabled={busy}
++                        onClick={createPasskey}
++                      >
++                        Create your first passkey <ArrowRightIcon />
++                      </button>
++                    )}
++                  </div>
++                ) : (
++                  <ul className="credential-list">
++                    {account.credentials.map((c) => (
++                      <li key={c.id}>
++                        <div className="credential-symbol">
++                          {c.providerIcon ? (
++                            <img
++                              src={c.providerIcon}
++                              alt={c.provider || "Passkey provider"}
++                              width={24}
++                              height={24}
++                            />
++                          ) : c.transports?.includes("internal") ? (
++                            <DevicePhoneMobileIcon />
++                          ) : (
++                            <KeyIcon />
++                          )}
++                        </div>
++                        <div className="credential-details">
++                          <h4>
++                            {c.name}{" "}
++                            <span>
++                              {c.backedUp ? "Synced passkey" : "Device passkey"}
++                            </span>
++                          </h4>
++                          <p>
++                            {c.provider}
++                            <span className="date-divider">·</span>Added{" "}
++                            {date(c.registeredAt)}
++                            <span className="date-divider">·</span>
++                            {c.lastUsedAt
++                              ? `Last used ${date(c.lastUsedAt)}`
++                              : "Not used yet"}
++                          </p>
++                        </div>
++                        <div className="credential-actions">
++                          <button
++                            onClick={() => openDialog("rename", c)}
++                            aria-label={`Rename ${c.name}`}
++                            title="Rename passkey"
++                          >
++                            <PencilSquareIcon />
++                          </button>
++                          <button
++                            onClick={() => openDialog("delete", c)}
++                            aria-label={`Remove ${c.name}`}
++                            title="Remove passkey"
++                          >
++                            <TrashIcon />
++                          </button>
++                        </div>
++                      </li>
++                    ))}
++                  </ul>
++                )}
++                <div className="panel-footnote">
++                  <LockClosedIcon />
++                  <p>
++                    Your biometric data stays on your device. It’s never shared
++                    with The Times.
++                  </p>
++                </div>
++              </div>
++              {account && !supported && !loading && (
++                <p className="unsupported-note">
++                  Passkey creation isn’t available on this device or browser.
++                  You can still manage existing passkeys and sign in with your
++                  password.
++                </p>
++              )}
++              <div className="good-to-know">
++                <div>
++                  <span className="small-label">GOOD TO KNOW</span>
++                  <h3>A small change. A stronger sign-in.</h3>
++                </div>
++                <div className="knowledge-grid">
++                  <article>
++                    <div className="knowledge-icon">
++                      <FingerPrintIcon />
++                    </div>
++                    <h4>Just be yourself</h4>
++                    <p>
++                      Use the same fingerprint, face, or PIN you use to unlock
++                      your device.
++                    </p>
++                  </article>
++                  <article>
++                    <div className="knowledge-icon">
++                      <ShieldCheckIcon />
++                    </div>
++                    <h4>Built to keep you safe</h4>
++                    <p>
++                      Passkeys only work on the real website, helping protect
++                      you from phishing.
++                    </p>
++                  </article>
++                  <article>
++                    <div className="knowledge-icon">
++                      <ComputerDesktopIcon />
++                    </div>
++                    <h4>Go where you go</h4>
++                    <p>
++                      Save a passkey in your password manager to use it across
++                      your devices.
++                    </p>
++                  </article>
++                </div>
++              </div>
++              <div className="faq">
++                <h3>A few things you might be wondering</h3>
++                <details>
++                  <summary>Can I still sign in with my password?</summary>
++                  <p>
++                    Yes. Adding or removing a passkey doesn’t change your
++                    password. You can continue to sign in with your username and
++                    password.
++                  </p>
++                </details>
++                <details>
++                  <summary>What happens when I remove a passkey?</summary>
++                  <p>
++                    That passkey will no longer be connected to your Times
++                    account. Your password manager may also need you to remove
++                    its saved copy. Other passkeys and your password will
++                    continue to work.
++                  </p>
++                </details>
++                <details>
++                  <summary>What if I lose my device?</summary>
++                  <p>
++                    If your passkey is synced, it may be available on another
++                    device through your password manager. You can also use your
++                    password to sign in and remove a lost device’s passkey.
++                  </p>
++                </details>
++              </div>
++            </>
++          ) : (
++            <div className="passkeys-panel profile-panel">
++              <h3>Your details</h3>
++              {account ? (
++                <form onSubmit={saveProfile}>
++                  <label>
++                    Username
++                    <input value={account.name} readOnly />
++                  </label>
++                  <p className="field-help">
++                    Your username is used to sign in.
++                  </p>
++                  <label htmlFor="display-name">
++                    Display name
++                    <input
++                      id="display-name"
++                      value={displayName}
++                      onChange={(e) => setDisplayName(e.target.value)}
++                      maxLength={80}
++                      required
++                    />
++                  </label>
++                  <button className="primary-button" disabled={busy}>
++                    Save changes
++                  </button>
++                </form>
++              ) : (
++                <p>
++                  <a
++                    className="text-button"
++                    href={`${base}signin?redirect=account/security`}
++                  >
++                    Sign in to manage your profile <ArrowRightIcon />
++                  </a>
++                </p>
++              )}
++            </div>
++          )}
++          <p className="account-help">
++            Your trust matters. Read our{" "}
++            <a href={`${base}legal/privacy`}>
++              Privacy Policy <ArrowRightIcon />
++            </a>
++          </p>
++        </section>
++      </div>
++      <dialog
++        ref={dialog}
++        className="passkey-dialog"
++        aria-labelledby="passkey-dialog-title"
++        onClose={() => setAction(null)}
++      >
++        <form onSubmit={changeCredential}>
++          <button
++            type="button"
++            className="dialog-close"
++            aria-label="Close dialog"
++            onClick={() => dialog.current?.close()}
++          >
++            <XMarkIcon />
++          </button>
++          <div className="dialog-symbol">
++            <KeyIcon />
++          </div>
++          <h2 id="passkey-dialog-title">
++            {action?.type === "rename"
++              ? "Rename passkey"
++              : "Remove this passkey?"}
++          </h2>
++          {action?.type === "rename" ? (
++            <>
++              <p>Choose a name that helps you recognize this passkey.</p>
++              <label htmlFor="passkey-name">Passkey name</label>
++              <input
++                id="passkey-name"
++                autoFocus
++                required
++                maxLength={60}
++                value={name}
++                onChange={(e) => setName(e.target.value)}
++              />
++            </>
++          ) : (
++            <p>
++              “{action?.credential.name}” will no longer work with your account.
++              You can still sign in with your password or another passkey.
++            </p>
++          )}
++          {error && (
++            <div className="settings-alert error" role="alert">
++              {error}
++            </div>
++          )}
++          <div className="dialog-buttons">
++            <button
++              className="secondary-button"
++              type="button"
++              onClick={() => dialog.current?.close()}
++            >
++              Cancel
++            </button>
++            <button
++              className={
++                action?.type === "delete" ? "danger-button" : "primary-button"
++              }
++              disabled={busy || (action?.type === "rename" && !name.trim())}
++            >
++              {busy
++                ? "Saving…"
++                : action?.type === "rename"
++                  ? "Save name"
++                  : "Remove passkey"}
++            </button>
++          </div>
++        </form>
++      </dialog>
++    </div>
++  );
++}
+diff --git a/src/components/PasskeySignIn.tsx b/src/components/PasskeySignIn.tsx
+new file mode 100644
+index 0000000..56bc18c
+--- /dev/null
++++ b/src/components/PasskeySignIn.tsx
+@@ -0,0 +1,79 @@
++import { useEffect, useState } from "react";
++import { FingerPrintIcon } from "@heroicons/react/24/outline";
++export default function PasskeySignIn() {
++  const [available, setAvailable] = useState(false);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState("");
++  useEffect(() => {
++    if (window.PublicKeyCredential && window.isSecureContext)
++      import("webauthn-polyfills")
++        .then(() => setAvailable(true))
++        .catch(() => {});
++  }, []);
++  if (!available) return null;
++  async function signIn() {
++    setBusy(true);
++    setError("");
++    const url = `${import.meta.env.BASE_URL}api/account/authenticate`;
++    const post = (body: unknown) =>
++      fetch(url, {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify(body),
++      });
++    try {
++      const response = await post({ options: true });
++      const options = await response.json();
++      if (!response.ok) throw new Error(options.error);
++      const credential = (await navigator.credentials.get({
++        publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options),
++      })) as PublicKeyCredential | null;
++      if (!credential) return;
++      const result = await post(credential.toJSON());
++      if (!result.ok) {
++        if (
++          result.status === 404 &&
++          PublicKeyCredential.signalUnknownCredential
++        ) {
++          try {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: options.rpId,
++              credentialId: credential.id,
++            });
++          } catch {
++            /* Optional manager synchronization. */
++          }
++        }
++        throw new Error((await result.json()).error);
++      }
++      window.location.assign(`${import.meta.env.BASE_URL}account/security`);
++    } catch (e) {
++      const err = e as Error;
++      setError(
++        ["NotAllowedError", "AbortError"].includes(err.name)
++          ? "Passkey sign-in was cancelled. You can try again or use your password."
++          : err.message,
++      );
++    } finally {
++      setBusy(false);
++    }
++  }
++  return (
++    <div className="mt-6 border-t border-gray-200 pt-5">
++      <button
++        type="button"
++        disabled={busy}
++        onClick={signIn}
++        className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
++      >
++        <FingerPrintIcon className="h-5 w-5" />
++        {busy ? "Waiting for your passkey…" : "Sign in with a passkey"}
++      </button>
++      {error && (
++        <p className="mt-3 text-sm text-red-700" role="alert">
++          {error}
++        </p>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..bf80af7 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,5 @@
+ import React, { useState } from 'react';
++import PasskeySignIn from './PasskeySignIn';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -14,7 +15,7 @@ export default function SignInForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/account/login`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+@@ -30,6 +31,7 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
++        window.location.assign(`${import.meta.env.BASE_URL}account/security`);
+         // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+     } catch (err) {
+@@ -63,6 +65,7 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username webauthn"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +80,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -94,6 +98,7 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++      <PasskeySignIn />
+     </div>
+   );
+ }
+diff --git a/src/lib/passkey-providers.json b/src/lib/passkey-providers.json
+new file mode 100644
+index 0000000..5540444
+--- /dev/null
++++ b/src/lib/passkey-providers.json
+@@ -0,0 +1,32 @@
++{
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Windows Hello",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg==",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": {
++    "name": "Windows Hello",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg==",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": {
++    "name": "Windows Hello",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg==",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4=",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4="
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    "name": "iCloud Keychain (Managed)",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIj48cGF0aCBkPSJtMjE3LjM2LDkwLjY5Yy0xNS41OCw5LjU0LTI1LjE3LDI2LjQxLTI1LjM4LDQ0LjY4LjA2LDIwLjY3LDEyLjQzLDM5LjMyLDMxLjQ2LDQ3LjQxLTMuNjcsMTEuODQtOS4xLDIzLjA2LTE2LjExLDMzLjI4LTEwLjAzLDE0LjQ0LTIwLjUyLDI4Ljg3LTM2LjQ3LDI4Ljg3cy0yMC4wNi05LjI3LTM4LjQ1LTkuMjctMjQuMzIsOS41Ny0zOC45LDkuNTctMjQuNzctMTMuMzctMzYuNDctMjkuNzljLTE1LjQ2LTIyLjk5LTIzLjk1LTQ5Ljk2LTI0LjQ3LTc3LjY2LDAtNDUuNTksMjkuNjMtNjkuNzUsNTguODEtNjkuNzUsMTUuNSwwLDI4LjQyLDEwLjE4LDM4LjE1LDEwLjE4czIzLjcxLTEwLjc5LDQxLjM0LTEwLjc5YzE4LjQxLS40NywzNS44NCw4LjI0LDQ2LjUsMjMuMjVabS01NC44Ni00Mi41NWM3Ljc3LTkuMTQsMTIuMTctMjAuNjcsMTIuNDYtMzIuNjcuMDEtMS41OC0uMTQtMy4xNi0uNDYtNC43MS0xMy4zNSwxLjMtMjUuNjksNy42Ny0zNC41LDE3Ljc4LTcuODUsOC43OC0xMi40MSwyMC0xMi45MiwzMS43NiwwLDEuNDMuMTYsMi44Ni40Niw0LjI2LDEuMDUuMiwyLjEyLjMsMy4xOS4zLDEyLjQzLS45OSwyMy45MS03LjA0LDMxLjc2LTE2LjczWiIgZmlsbD0iI0ZGRiIvPjwvc3ZnPg==",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIj48cGF0aCBkPSJtMjE3LjM2LDkwLjY5Yy0xNS41OCw5LjU0LTI1LjE3LDI2LjQxLTI1LjM4LDQ0LjY4LjA2LDIwLjY3LDEyLjQzLDM5LjMyLDMxLjQ2LDQ3LjQxLTMuNjcsMTEuODQtOS4xLDIzLjA2LTE2LjExLDMzLjI4LTEwLjAzLDE0LjQ0LTIwLjUyLDI4Ljg3LTM2LjQ3LDI4Ljg3cy0yMC4wNi05LjI3LTM4LjQ1LTkuMjctMjQuMzIsOS41Ny0zOC45LDkuNTctMjQuNzctMTMuMzctMzYuNDctMjkuNzljLTE1LjQ2LTIyLjk5LTIzLjk1LTQ5Ljk2LTI0LjQ3LTc3LjY2LDAtNDUuNTksMjkuNjMtNjkuNzUsNTguODEtNjkuNzUsMTUuNSwwLDI4LjQyLDEwLjE4LDM4LjE1LDEwLjE4czIzLjcxLTEwLjc5LDQxLjM0LTEwLjc5YzE4LjQxLS40NywzNS44NCw4LjI0LDQ2LjUsMjMuMjVabS01NC44Ni00Mi41NWM3Ljc3LTkuMTQsMTIuMTctMjAuNjcsMTIuNDYtMzIuNjcuMDEtMS41OC0uMTQtMy4xNi0uNDYtNC43MS0xMy4zNSwxLjMtMjUuNjksNy42Ny0zNC41LDE3Ljc4LTcuODUsOC43OC0xMi40MSwyMC0xMi45MiwzMS43NiwwLDEuNDMuMTYsMi44Ni40Niw0LjI2LDEuMDUuMiwyLjEyLjMsMy4xOS4zLDEyLjQzLS45OSwyMy45MS03LjA0LDMxLjc2LTE2LjczWiIgZmlsbD0iIzAwMCIvPjwvc3ZnPg=="
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    "name": "1Password",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjI1NyAxMjAuNDE3QzIzOS4yNTcgNTQuNDE5MyAxODUuNzU1IDAuOTE2NTA0IDExOS43NTcgMC45MTY1MDRDNTMuNzYwMSAwLjkxNjUwNCAwLjI1NzMyNCA1NC40MTkzIDAuMjU3MzI0IDEyMC40MTdDMC4yNTczMjQgMTg2LjQxNyA1My43NjAxIDIzOS45MTcgMTE5Ljc1NyAyMzkuOTE3QzE4NS43NTUgMjM5LjkxNyAyMzkuMjU3IDE4Ni40MTcgMjM5LjI1NyAxMjAuNDE3Wk05OC4wMDY5IDU0LjAyNzZDOTcuMDY3NCA1NS44NzE0IDk3LjA2NzQgNTguMjg1MSA5Ny4wNjc0IDYzLjExMjZWOTAuNDcyOUM5Ny4wNjc0IDkxLjY3ODggOTcuMDY3NCA5Mi4yODE3IDk3LjIxOTYgOTIuODM5MkM5Ny4zNTQ1IDkzLjMzMzEgOTcuNTc2MyA5My43OTkgOTcuODc0NiA5NC4yMTVDOTguMjExMyA5NC42ODQ3IDk4LjY3OTIgOTUuMDY0OCA5OS42MTUyIDk1LjgyNTFMMTA2LjUzNiAxMDEuNDQ3QzEwNy42NjQgMTAyLjM2NCAxMDguMjI4IDEwMi44MjIgMTA4LjQzMyAxMDMuMzc0QzEwOC42MTMgMTAzLjg1NyAxMDguNjEzIDEwNC4zOSAxMDguNDMzIDEwNC44NzNDMTA4LjIyOCAxMDUuNDI1IDEwNy42NjQgMTA1Ljg4MyAxMDYuNTM2IDEwNi44TDk5LjYxNTIgMTEyLjQyMkM5OC42NzkzIDExMy4xODIgOTguMjExMyAxMTMuNTYyIDk3Ljg3NDYgMTE0LjAzMkM5Ny41NzYzIDExNC40NDggOTcuMzU0NSAxMTQuOTE0IDk3LjIxOTYgMTE1LjQwOEM5Ny4wNjc0IDExNS45NjUgOTcuMDY3NCAxMTYuNTY4IDk3LjA2NzQgMTE3Ljc3NFYxNzcuNzE5Qzk3LjA2NzQgMTgyLjU0NyA5Ny4wNjc0IDE4NC45NjEgOTguMDA2OSAxODYuODA1Qzk4LjgzMzMgMTg4LjQyNiAxMDAuMTUyIDE4OS43NDUgMTAxLjc3NCAxOTAuNTcxQzEwMy42MTggMTkxLjUxMSAxMDYuMDMxIDE5MS41MTEgMTEwLjg1OSAxOTEuNTExSDEyOC42NTZDMTMzLjQ4MyAxOTEuNTExIDEzNS44OTcgMTkxLjUxMSAxMzcuNzQxIDE5MC41NzFDMTM5LjM2MyAxODkuNzQ1IDE0MC42ODEgMTg4LjQyNiAxNDEuNTA4IDE4Ni44MDVDMTQyLjQ0NyAxODQuOTYxIDE0Mi40NDcgMTgyLjU0NyAxNDIuNDQ3IDE3Ny43MTlWMTUwLjM1OUMxNDIuNDQ3IDE0OS4xNTMgMTQyLjQ0NyAxNDguNTUgMTQyLjI5NSAxNDcuOTkzQzE0Mi4xNiAxNDcuNDk5IDE0MS45MzggMTQ3LjAzMyAxNDEuNjQgMTQ2LjYxN0MxNDEuMzAzIDE0Ni4xNDcgMTQwLjgzNSAxNDUuNzY3IDEzOS44OTkgMTQ1LjAwN0wxMzIuOTc4IDEzOS4zODVDMTMxLjg1IDEzOC40NjggMTMxLjI4NiAxMzguMDEgMTMxLjA4MiAxMzcuNDU5QzEzMC45MDIgMTM2Ljk3NSAxMzAuOTAyIDEzNi40NDMgMTMxLjA4MiAxMzUuOTU5QzEzMS4yODYgMTM1LjQwNyAxMzEuODUgMTM0Ljk0OSAxMzIuOTc4IDEzNC4wMzNMMTM5Ljg5OSAxMjguNDFDMTQwLjgzNSAxMjcuNjUgMTQxLjMwMyAxMjcuMjcgMTQxLjY0IDEyNi44QzE0MS45MzggMTI2LjM4NCAxNDIuMTYgMTI1LjkxOCAxNDIuMjk1IDEyNS40MjRDMTQyLjQ0NyAxMjQuODY3IDE0Mi40NDcgMTI0LjI2NCAxNDIuNDQ3IDEyMy4wNThWNjMuMTEyNkMxNDIuNDQ3IDU4LjI4NTEgMTQyLjQ0NyA1NS44NzE0IDE0MS41MDggNTQuMDI3NkMxNDAuNjgxIDUyLjQwNTcgMTM5LjM2MyA1MS4wODcgMTM3Ljc0MSA1MC4yNjA2QzEzNS44OTcgNDkuMzIxMSAxMzMuNDgzIDQ5LjMyMTEgMTI4LjY1NiA0OS4zMjExSDExMC44NTlDMTA2LjAzMSA0OS4zMjExIDEwMy42MTggNDkuMzIxMSAxMDEuNzc0IDUwLjI2MDZDMTAwLjE1MiA1MS4wODcgOTguODMzMyA1Mi40MDU3IDk4LjAwNjkgNTQuMDI3NloiIGZpbGw9IiNGRkZFRkIiLz4KPC9zdmc+Cg==",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjExNiAxMjAuNDE3QzIzOS4xMTYgNTQuNDE5MyAxODUuNjEzIDAuOTE2NTA0IDExOS42MTYgMC45MTY1MDRDNTMuNjE5IDAuOTE2NTA0IDAuMTE2MjExIDU0LjQxOTMgMC4xMTYyMTEgMTIwLjQxN0MwLjExNjIxMSAxODYuNDE3IDUzLjYxOSAyMzkuOTE3IDExOS42MTYgMjM5LjkxN0MxODUuNjEzIDIzOS45MTcgMjM5LjExNiAxODYuNDE3IDIzOS4xMTYgMTIwLjQxN1pNOTcuODY1OCA1NC4wMjc2Qzk2LjkyNjMgNTUuODcxNCA5Ni45MjYzIDU4LjI4NTEgOTYuOTI2MyA2My4xMTI2VjkwLjQ3MjlDOTYuOTI2MyA5MS42Nzg4IDk2LjkyNjMgOTIuMjgxNyA5Ny4wNzg1IDkyLjgzOTJDOTcuMjEzNCA5My4zMzMxIDk3LjQzNTIgOTMuNzk5IDk3LjczMzUgOTQuMjE1Qzk4LjA3MDIgOTQuNjg0NyA5OC41MzgxIDk1LjA2NDggOTkuNDc0MSA5NS44MjUxTDEwNi4zOTUgMTAxLjQ0N0MxMDcuNTIzIDEwMi4zNjQgMTA4LjA4NyAxMDIuODIyIDEwOC4yOTIgMTAzLjM3NEMxMDguNDcxIDEwMy44NTcgMTA4LjQ3MSAxMDQuMzkgMTA4LjI5MiAxMDQuODczQzEwOC4wODcgMTA1LjQyNSAxMDcuNTIzIDEwNS44ODMgMTA2LjM5NSAxMDYuOEw5OS40NzQxIDExMi40MjJDOTguNTM4MiAxMTMuMTgyIDk4LjA3MDIgMTEzLjU2MiA5Ny43MzM1IDExNC4wMzJDOTcuNDM1MiAxMTQuNDQ4IDk3LjIxMzQgMTE0LjkxNCA5Ny4wNzg1IDExNS40MDhDOTYuOTI2MyAxMTUuOTY1IDk2LjkyNjMgMTE2LjU2OCA5Ni45MjYzIDExNy43NzRWMTc3LjcxOUM5Ni45MjYzIDE4Mi41NDcgOTYuOTI2MyAxODQuOTYxIDk3Ljg2NTggMTg2LjgwNUM5OC42OTIyIDE4OC40MjYgMTAwLjAxMSAxODkuNzQ1IDEwMS42MzMgMTkwLjU3MUMxMDMuNDc3IDE5MS41MTEgMTA1Ljg5IDE5MS41MTEgMTEwLjcxOCAxOTEuNTExSDEyOC41MTVDMTMzLjM0MiAxOTEuNTExIDEzNS43NTYgMTkxLjUxMSAxMzcuNiAxOTAuNTcxQzEzOS4yMjEgMTg5Ljc0NSAxNDAuNTQgMTg4LjQyNiAxNDEuMzY3IDE4Ni44MDVDMTQyLjMwNiAxODQuOTYxIDE0Mi4zMDYgMTgyLjU0NyAxNDIuMzA2IDE3Ny43MTlWMTUwLjM1OUMxNDIuMzA2IDE0OS4xNTMgMTQyLjMwNiAxNDguNTUgMTQyLjE1NCAxNDcuOTkzQzE0Mi4wMTkgMTQ3LjQ5OSAxNDEuNzk3IDE0Ny4wMzMgMTQxLjQ5OSAxNDYuNjE3QzE0MS4xNjIgMTQ2LjE0NyAxNDAuNjk0IDE0NS43NjcgMTM5Ljc1OCAxNDUuMDA3TDEzMi44MzcgMTM5LjM4NUMxMzEuNzA5IDEzOC40NjggMTMxLjE0NSAxMzguMDEgMTMwLjk0IDEzNy40NTlDMTMwLjc2MSAxMzYuOTc1IDEzMC43NjEgMTM2LjQ0MyAxMzAuOTQgMTM1Ljk1OUMxMzEuMTQ1IDEzNS40MDcgMTMxLjcwOSAxMzQuOTQ5IDEzMi44MzcgMTM0LjAzM0wxMzkuNzU4IDEyOC40MUMxNDAuNjk0IDEyNy42NSAxNDEuMTYyIDEyNy4yNyAxNDEuNDk5IDEyNi44QzE0MS43OTcgMTI2LjM4NCAxNDIuMDE5IDEyNS45MTggMTQyLjE1NCAxMjUuNDI0QzE0Mi4zMDYgMTI0Ljg2NyAxNDIuMzA2IDEyNC4yNjQgMTQyLjMwNiAxMjMuMDU4VjYzLjExMjZDMTQyLjMwNiA1OC4yODUxIDE0Mi4zMDYgNTUuODcxNCAxNDEuMzY3IDU0LjAyNzZDMTQwLjU0IDUyLjQwNTcgMTM5LjIyMSA1MS4wODcgMTM3LjYgNTAuMjYwNkMxMzUuNzU2IDQ5LjMyMTEgMTMzLjM0MiA0OS4zMjExIDEyOC41MTUgNDkuMzIxMUgxMTAuNzE4QzEwNS44OSA0OS4zMjExIDEwMy40NzcgNDkuMzIxMSAxMDEuNjMzIDUwLjI2MDZDMTAwLjAxMSA1MS4wODcgOTguNjkyMiA1Mi40MDU3IDk3Ljg2NTggNTQuMDI3NloiIGZpbGw9IiMxQTI4NUYiLz4KPC9zdmc+Cg=="
++  }
++}
+diff --git a/src/lib/passkeys.ts b/src/lib/passkeys.ts
+new file mode 100644
+index 0000000..27387c4
+--- /dev/null
++++ b/src/lib/passkeys.ts
+@@ -0,0 +1,84 @@
++import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
++import { dirname, resolve } from "node:path";
++import providers from "./passkey-providers.json";
++import type { VerifiedRegistrationResponse } from "@simplewebauthn/server";
++
++export type Passkey = {
++  id: string;
++  name: string;
++  aaguid: string;
++  publicKey: string;
++  counter: number;
++  transports?: string[];
++  backedUp: boolean;
++  registeredAt: number;
++  lastUsedAt?: number;
++};
++export type Account = {
++  id: string;
++  name: string;
++  displayName: string;
++  credentials: Passkey[];
++};
++const path = resolve(process.env.PASSKEY_STORE_PATH || ".data/passkeys.json");
++let queue = Promise.resolve();
++export async function accounts<T>(
++  operation: (records: Record<string, Account>) => T | Promise<T>,
++): Promise<T> {
++  const pending = queue.then(async () => {
++    let records: Record<string, Account>;
++    try {
++      records = JSON.parse(await readFile(path, "utf8"));
++    } catch (error) {
++      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
++      records = {};
++    }
++    const result = await operation(records);
++    await mkdir(dirname(path), { recursive: true });
++    await writeFile(`${path}.tmp`, JSON.stringify(records), { mode: 0o600 });
++    await rename(`${path}.tmp`, path);
++    return result;
++  });
++  queue = pending.then(
++    () => {},
++    () => {},
++  );
++  return pending;
++}
++export function publicAccount(account: Account) {
++  return {
++    ...account,
++    credentials: account.credentials.map(
++      ({ publicKey, counter, ...credential }) => {
++        const provider =
++          credential.aaguid === "00000000-0000-0000-0000-000000000000"
++            ? undefined
++            : (
++                providers as Record<
++                  string,
++                  { name: string; icon_light?: string }
++                >
++              )[credential.aaguid];
++        return {
++          ...credential,
++          provider: provider?.name || "Unknown passkey provider",
++          providerIcon: provider?.icon_light,
++        };
++      },
++    ),
++  };
++}
++export function registeredCredential(
++  info: NonNullable<VerifiedRegistrationResponse["registrationInfo"]>,
++): Passkey {
++  return {
++    id: info.credential.id,
++    name: "My passkey",
++    aaguid: info.aaguid,
++    publicKey: Buffer.from(info.credential.publicKey).toString("base64url"),
++    counter: info.credential.counter,
++    transports: info.credential.transports,
++    backedUp: info.credentialBackedUp,
++    registeredAt: Date.now(),
++  };
++}
+diff --git a/src/pages/account/security.astro b/src/pages/account/security.astro
+new file mode 100644
+index 0000000..c210b05
+--- /dev/null
++++ b/src/pages/account/security.astro
+@@ -0,0 +1,8 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import PasskeySettings from '../../components/PasskeySettings';
++import '../../styles/account.css';
++---
++<Layout title="Sign-in & security | The DevTools Times">
++  <PasskeySettings client:load />
++</Layout>
+diff --git a/src/pages/api/account/[action].ts b/src/pages/api/account/[action].ts
+new file mode 100644
+index 0000000..db0219a
+--- /dev/null
++++ b/src/pages/api/account/[action].ts
+@@ -0,0 +1,130 @@
++import type { APIRoute } from "astro";
++import {
++  generateRegistrationOptions,
++  verifyRegistrationResponse,
++} from "@simplewebauthn/server";
++import {
++  accounts,
++  publicAccount,
++  registeredCredential,
++} from "../../../lib/passkeys";
++
++const handler: APIRoute = async ({ request, session, url, params }) => {
++  const reply = (data: unknown, status = 200) =>
++    Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
++  const userId = (await session?.get("accountId")) as string | undefined;
++  if (!userId) return reply({ error: "Sign in to manage your passkeys." }, 401);
++  if (request.method !== "GET" && request.headers.get("origin") !== url.origin)
++    return reply({ error: "Invalid origin." }, 403);
++  const account = await accounts((records) => records[userId]);
++  if (!account) return reply({ error: "Account not found." }, 401);
++  const rpId = url.hostname;
++  try {
++    if (params.action === "credentials" && request.method === "GET")
++      return reply({ ...publicAccount(account), rpId });
++    if (params.action === "options" && request.method === "POST") {
++      const options = await generateRegistrationOptions({
++        rpName: "The DevTools Times",
++        rpID: rpId,
++        userID: Buffer.from(userId, "base64url"),
++        userName: account.name,
++        userDisplayName: account.displayName,
++        excludeCredentials: account.credentials.map((c) => ({
++          id: c.id,
++          transports: c.transports,
++        })),
++        authenticatorSelection: {
++          residentKey: "required",
++          requireResidentKey: true,
++          userVerification: "required",
++        },
++      });
++      await session!.set("passkeyChallenge", {
++        value: options.challenge,
++        expires: Date.now() + 300000,
++      });
++      return reply(options);
++    }
++    if (params.action === "verify" && request.method === "POST") {
++      const challenge = (await session!.get("passkeyChallenge")) as
++        { value: string; expires: number } | undefined;
++      await session!.delete("passkeyChallenge");
++      if (!challenge || challenge.expires < Date.now())
++        return reply({ error: "Registration expired. Please try again." }, 400);
++      const result = await verifyRegistrationResponse({
++        response: await request.json(),
++        expectedChallenge: challenge.value,
++        expectedOrigin: url.origin,
++        expectedRPID: rpId,
++        requireUserVerification: true,
++      });
++      if (!result.verified || !result.registrationInfo)
++        return reply({ error: "Could not verify this passkey." }, 400);
++      const credential = registeredCredential(result.registrationInfo);
++      await accounts((records) => {
++        if (
++          Object.values(records).some((a) =>
++            a.credentials.some((c) => c.id === credential.id),
++          )
++        )
++          throw new Error("This passkey is already registered.");
++        records[userId].credentials.push(credential);
++      });
++      return reply({ success: true });
++    }
++    const body = await request.json();
++    if (
++      params.action === "credential" &&
++      ["PUT", "DELETE"].includes(request.method)
++    ) {
++      await accounts((records) => {
++        const credential = records[userId].credentials.find(
++          (c) => c.id === body.id,
++        );
++        if (!credential) throw new Error("Passkey not found.");
++        if (request.method === "DELETE")
++          records[userId].credentials = records[userId].credentials.filter(
++            (c) => c.id !== body.id,
++          );
++        else {
++          if (
++            typeof body.name !== "string" ||
++            !body.name.trim() ||
++            body.name.trim().length > 60
++          )
++            throw new Error("Enter a name between 1 and 60 characters.");
++          credential.name = body.name.trim();
++        }
++      });
++      return reply({ success: true });
++    }
++    if (params.action === "profile" && request.method === "PUT") {
++      if (
++        typeof body.displayName !== "string" ||
++        !body.displayName.trim() ||
++        body.displayName.trim().length > 80
++      )
++        return reply(
++          { error: "Enter a display name between 1 and 80 characters." },
++          400,
++        );
++      await accounts((records) => {
++        records[userId].displayName = body.displayName.trim();
++      });
++      return reply({ success: true });
++    }
++    return reply({ error: "Not found." }, 404);
++  } catch (error) {
++    return reply(
++      {
++        error:
++          error instanceof Error ? error.message : "Unable to update passkeys.",
++      },
++      400,
++    );
++  }
++};
++export const GET = handler;
++export const POST = handler;
++export const PUT = handler;
++export const DELETE = handler;
+diff --git a/src/pages/api/account/authenticate.ts b/src/pages/api/account/authenticate.ts
+new file mode 100644
+index 0000000..7e8aca6
+--- /dev/null
++++ b/src/pages/api/account/authenticate.ts
+@@ -0,0 +1,74 @@
++import type { APIRoute } from "astro";
++import {
++  generateAuthenticationOptions,
++  verifyAuthenticationResponse,
++} from "@simplewebauthn/server";
++import { accounts } from "../../../lib/passkeys";
++export const POST: APIRoute = async ({ request, session, url }) => {
++  const reply = (data: unknown, status = 200) =>
++    Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
++  if (request.headers.get("origin") !== url.origin)
++    return reply({ error: "Invalid origin." }, 403);
++  if (!session) return reply({ error: "Session unavailable." }, 503);
++  try {
++    const body = await request.json();
++    if (body.options === true) {
++      const options = await generateAuthenticationOptions({
++        rpID: url.hostname,
++        allowCredentials: [],
++        userVerification: "required",
++      });
++      await session.set("authenticationChallenge", {
++        value: options.challenge,
++        expires: Date.now() + 300000,
++        userVerification: "required",
++      });
++      return reply(options);
++    }
++    const challenge = (await session.get("authenticationChallenge")) as
++      { value: string; expires: number; userVerification: string } | undefined;
++    await session.delete("authenticationChallenge");
++    if (!challenge || challenge.expires < Date.now())
++      return reply({ error: "Sign-in expired. Please try again." }, 400);
++    const userId = await accounts(async (records) => {
++      const account = Object.values(records).find((a) =>
++        a.credentials.some((c) => c.id === body.id),
++      );
++      if (!account) return null;
++      const credential = account.credentials.find((c) => c.id === body.id)!;
++      if (body.response?.userHandle && body.response.userHandle !== account.id)
++        throw new Error("Unable to verify this passkey.");
++      const result = await verifyAuthenticationResponse({
++        response: body,
++        expectedChallenge: challenge.value,
++        expectedOrigin: url.origin,
++        expectedRPID: url.hostname,
++        requireUserVerification: challenge.userVerification === "required",
++        credential: {
++          id: credential.id,
++          publicKey: Buffer.from(credential.publicKey, "base64url"),
++          counter: credential.counter,
++          transports: credential.transports,
++        },
++      });
++      if (!result.verified) throw new Error("Unable to verify this passkey.");
++      credential.counter = result.authenticationInfo.newCounter;
++      credential.lastUsedAt = Date.now();
++      credential.backedUp = result.authenticationInfo.credentialBackedUp;
++      return account.id;
++    });
++    if (!userId)
++      return reply(
++        { error: "This passkey is no longer connected to an account." },
++        404,
++      );
++    await session.regenerate();
++    await session.set("accountId", userId);
++    return reply({ success: true });
++  } catch {
++    return reply(
++      { error: "Unable to sign in with this passkey. Please try again." },
++      400,
++    );
++  }
++};
+diff --git a/src/pages/api/account/login.ts b/src/pages/api/account/login.ts
+new file mode 100644
+index 0000000..6c5b09e
+--- /dev/null
++++ b/src/pages/api/account/login.ts
+@@ -0,0 +1,53 @@
++import type { APIRoute } from "astro";
++import { createHash } from "node:crypto";
++import { accounts } from "../../../lib/passkeys";
++export const POST: APIRoute = async ({ request, session, url }) => {
++  if (request.headers.get("origin") !== url.origin)
++    return Response.json({ error: "Invalid origin." }, { status: 403 });
++  if (!session)
++    return Response.json({ error: "Session unavailable." }, { status: 503 });
++  try {
++    const { username, password } = await request.json();
++    if (
++      typeof username !== "string" ||
++      typeof password !== "string" ||
++      !username.trim() ||
++      !password
++    )
++      return Response.json(
++        { error: "Enter your username and password." },
++        { status: 400 },
++      );
++    const response = await fetch(
++      "https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login",
++      {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ username, password }),
++        signal: AbortSignal.timeout(15000),
++      },
++    );
++    if (!response.ok)
++      return Response.json(
++        { error: "Incorrect username or password." },
++        { status: 401 },
++      );
++    const id = createHash("sha256").update(username).digest("base64url");
++    await accounts((records) => {
++      records[id] ??= {
++        id,
++        name: username,
++        displayName: username,
++        credentials: [],
++      };
++    });
++    await session.regenerate();
++    await session.set("accountId", id);
++    return Response.json({ success: true });
++  } catch {
++    return Response.json(
++      { error: "Unable to sign in. Please try again." },
++      { status: 503 },
++    );
++  }
++};
+diff --git a/src/styles/account.css b/src/styles/account.css
+new file mode 100644
+index 0000000..2b19f82
+--- /dev/null
++++ b/src/styles/account.css
+@@ -0,0 +1,1008 @@
++.account-shell {
++  --ink: #202820;
++  --muted: #70746d;
++  --green: #315b43;
++  --line: #e5e7e1;
++  color: var(--ink);
++  padding: 27px 36px 55px;
++  font-family: Arial, Helvetica, sans-serif;
++}
++.account-shell * {
++  box-sizing: border-box;
++}
++.account-shell svg {
++  width: 20px;
++  height: 20px;
++  flex-shrink: 0;
++}
++.account-shell button,
++.account-shell summary {
++  cursor: pointer;
++}
++.account-shell button:disabled {
++  opacity: 0.55;
++  cursor: wait;
++}
++.account-shell a,
++.account-shell button {
++  transition:
++    background 0.15s,
++    color 0.15s;
++}
++.account-shell :focus-visible {
++  outline: 3px solid #619574;
++  outline-offset: 4px;
++}
++.account-breadcrumb {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++  font-size: 11px;
++  color: #7d817b;
++}
++.account-breadcrumb svg {
++  width: 11px;
++  height: 11px;
++}
++.account-breadcrumb span:last-child {
++  color: #363f35;
++}
++.account-breadcrumb a:hover {
++  text-decoration: underline;
++}
++.account-title-row {
++  display: flex;
++  align-items: flex-end;
++  justify-content: space-between;
++  padding: 29px 0 25px;
++  border-bottom: 1px solid var(--line);
++}
++.account-eyebrow {
++  font-size: 9px;
++  letter-spacing: 1.65px;
++  font-weight: 700;
++  color: var(--muted);
++  margin-bottom: 7px;
++}
++.account-title-row h1 {
++  font-family: Georgia, "Times New Roman", serif;
++  font-size: 38px;
++  line-height: 1.15;
++  letter-spacing: -1.3px;
++}
++.back-news {
++  display: flex;
++  gap: 8px;
++  align-items: center;
++  font-size: 11px;
++  padding-bottom: 4px;
++}
++.back-news svg {
++  width: 14px;
++  height: 14px;
++}
++.back-news:hover {
++  color: var(--green);
++}
++.account-layout {
++  display: grid;
++  grid-template-columns: 216px minmax(0, 1fr);
++  gap: 36px;
++  margin-top: 30px;
++}
++.account-sidebar {
++  border-right: 1px solid var(--line);
++  padding-right: 23px;
++}
++.account-identity {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding: 3px 0 26px;
++}
++.account-avatar {
++  width: 37px;
++  height: 37px;
++  border-radius: 50%;
++  display: grid;
++  place-items: center;
++  background: #f2f3ef;
++  color: #53604f;
++}
++.account-avatar svg {
++  width: 25px;
++  height: 25px;
++}
++.account-identity strong {
++  display: block;
++  font-size: 12px;
++  overflow-wrap: anywhere;
++}
++.account-identity span {
++  display: block;
++  font-size: 10px;
++  color: var(--muted);
++  margin-top: 4px;
++}
++.sidebar-label {
++  font-size: 9px;
++  font-weight: bold;
++  letter-spacing: 1.15px;
++  color: #83877e;
++  margin: 0 0 12px 10px;
++}
++.account-sidebar nav {
++  display: grid;
++  gap: 5px;
++}
++.account-sidebar nav button {
++  display: flex;
++  align-items: center;
++  text-align: left;
++  gap: 9px;
++  padding: 12px 10px;
++  border-radius: 4px;
++  font-size: 11px;
++  color: #656b60;
++  white-space: nowrap;
++}
++.account-sidebar nav button > svg:first-child {
++  width: 17px;
++  height: 17px;
++}
++.account-sidebar nav button > svg:last-child {
++  width: 11px;
++  height: 11px;
++  margin-left: auto;
++}
++.account-sidebar nav button.selected {
++  background: #edf2eb;
++  color: #345440;
++  font-weight: 600;
++}
++.account-sidebar nav button:hover {
++  background: #f2f4ef;
++}
++.sidebar-note {
++  display: flex;
++  align-items: flex-start;
++  gap: 9px;
++  padding: 24px 10px 0;
++  margin-top: 23px;
++  border-top: 1px solid var(--line);
++}
++.sidebar-note > svg {
++  width: 15px;
++  height: 15px;
++  color: #81897c;
++  margin-top: 1px;
++}
++.sidebar-note p {
++  font-size: 10px;
++  line-height: 1.6;
++  font-weight: 600;
++}
++.sidebar-note span {
++  font-size: 10px;
++  font-weight: 400;
++  color: #85897e;
++  display: inline-block;
++  margin-top: 5px;
++}
++.settings-heading {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  margin: 0 0 24px;
++}
++.section-symbol {
++  width: 38px;
++  height: 38px;
++  border: 1px solid #dfe6db;
++  border-radius: 9px;
++  display: grid;
++  place-items: center;
++  color: #49654a;
++  background: #f7f9f4;
++}
++.section-symbol svg {
++  width: 21px;
++  height: 21px;
++}
++.settings-heading h2 {
++  font-family: Georgia, "Times New Roman", serif;
++  font-size: 25px;
++  line-height: 1.25;
++  letter-spacing: -0.6px;
++}
++.settings-heading p {
++  font-size: 11px;
++  color: var(--muted);
++  margin-top: 5px;
++}
++.passkey-intro {
++  display: flex;
++  position: relative;
++  overflow: hidden;
++  min-height: 207px;
++  background: #f2f5ed;
++  border: 1px solid #e5e9dd;
++  border-radius: 7px;
++  padding: 26px 26px;
++  margin-bottom: 25px;
++  align-items: center;
++}
++.passkey-copy {
++  max-width: 350px;
++  z-index: 1;
++  flex: 1;
++}
++.small-label {
++  font-size: 8px;
++  letter-spacing: 1.4px;
++  font-weight: 700;
++  color: #627658;
++}
++.passkey-copy h3 {
++  font-family: Georgia, "Times New Roman", serif;
++  font-size: 27px;
++  letter-spacing: -0.7px;
++  line-height: 1.18;
++  margin: 10px 0;
++}
++.passkey-copy p {
++  font-size: 11px;
++  line-height: 1.8;
++  max-width: 290px;
++  color: #64705c;
++}
++.intro-badges {
++  display: flex;
++  gap: 16px;
++  margin-top: 18px;
++}
++.intro-badges span {
++  display: flex;
++  align-items: center;
++  gap: 5px;
++  font-size: 9px;
++  color: #425b3b;
++}
++.intro-badges svg {
++  width: 12px;
++  height: 12px;
++  stroke-width: 2;
++}
++.passkey-art {
++  position: relative;
++  width: 190px;
++  height: 153px;
++  flex-shrink: 0;
++  display: grid;
++  place-items: center;
++  margin-left: 5px;
++}
++.art-orbit {
++  position: absolute;
++  border: 1px solid #dce4d4;
++  border-radius: 50%;
++  width: 170px;
++  height: 170px;
++  transform: rotate(-25deg);
++}
++.orbit-two {
++  width: 205px;
++  height: 205px;
++  border-style: dashed;
++}
++.art-card {
++  width: 99px;
++  height: 123px;
++  background: linear-gradient(135deg, #fff, #f8faf3);
++  border: 1px solid #d6dfcc;
++  border-radius: 13px;
++  box-shadow: 5px 10px 18px #69855518;
++  transform: rotate(8deg);
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  flex-direction: column;
++  gap: 13px;
++}
++.art-card > svg {
++  width: 58px;
++  height: 58px;
++  color: #63815a;
++  stroke-width: 1.2;
++}
++.art-card span {
++  font-size: 5px;
++  font-weight: bold;
++  letter-spacing: 0.7px;
++  display: flex;
++  align-items: center;
++  gap: 3px;
++  color: #79866d;
++}
++.art-card span svg {
++  width: 7px;
++  height: 7px;
++}
++.art-check {
++  position: absolute;
++  right: 23px;
++  bottom: 16px;
++  width: 32px;
++  height: 32px;
++  background: #3e6245;
++  border: 4px solid #f2f5ed;
++  border-radius: 50%;
++  display: grid;
++  place-items: center;
++  transform: rotate(-5deg);
++  color: white;
++}
++.art-check svg {
++  width: 17px;
++  height: 17px;
++}
++.art-spark {
++  position: absolute;
++  color: #8b9f78;
++  font-size: 19px;
++  font-weight: 300;
++}
++.spark-one {
++  top: 11px;
++  right: 22px;
++}
++.spark-two {
++  bottom: 15px;
++  left: 17px;
++  font-size: 13px;
++}
++.passkeys-panel {
++  border: 1px solid var(--line);
++  border-radius: 7px;
++  overflow: hidden;
++}
++.panel-heading {
++  padding: 21px 22px;
++  display: flex;
++  justify-content: space-between;
++  gap: 15px;
++  align-items: center;
++  border-bottom: 1px solid #eceee8;
++}
++.panel-heading h3 {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  font-size: 15px;
++  font-weight: 600;
++}
++.count {
++  font-size: 9px;
++  padding: 1px 6px;
++  background: #f0f2ed;
++  color: #777f70;
++  border: 1px solid #e2e6dc;
++  border-radius: 4px;
++}
++.panel-heading p {
++  font-size: 10px;
++  color: var(--muted);
++  margin-top: 5px;
++}
++.primary-button,
++.secondary-button,
++.danger-button {
++  display: inline-flex;
++  justify-content: center;
++  align-items: center;
++  gap: 7px;
++  border-radius: 4px;
++  font-size: 10px;
++  font-weight: 600;
++  padding: 11px 14px;
++  line-height: 1.3;
++  white-space: nowrap;
++}
++.primary-button {
++  background: var(--green);
++  color: white;
++  border: 1px solid var(--green);
++}
++.primary-button:hover {
++  background: #244a35;
++}
++.primary-button svg {
++  width: 14px;
++  height: 14px;
++}
++.secondary-button {
++  border: 1px solid #d6dcd0;
++  background: white;
++}
++.secondary-button:hover {
++  background: #f1f4ed;
++}
++.danger-button {
++  background: #a73434;
++  color: white;
++}
++.danger-button:hover {
++  background: #8b2727;
++}
++.passkey-empty {
++  padding: 33px 20px 30px;
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  text-align: center;
++  min-height: 224px;
++  justify-content: center;
++}
++.empty-symbol {
++  position: relative;
++  background: #f7f8f4;
++  border: 1px solid #e9ece3;
++  width: 49px;
++  height: 49px;
++  border-radius: 12px;
++  display: grid;
++  place-items: center;
++  color: #6c7f5e;
++  margin-bottom: 15px;
++  transform: rotate(-4deg);
++}
++.empty-symbol svg {
++  width: 25px;
++  height: 25px;
++}
++.passkey-empty h4 {
++  font-family: Georgia, "Times New Roman", serif;
++  font-size: 19px;
++  letter-spacing: -0.3px;
++}
++.passkey-empty p {
++  font-size: 11px;
++  color: var(--muted);
++  line-height: 1.8;
++  margin: 9px 0 16px;
++}
++.empty-footnote {
++  font-size: 10px;
++  color: #7b8075;
++  display: block;
++  margin-top: 15px;
++}
++.empty-footnote a {
++  color: var(--green);
++  text-decoration: underline;
++  text-underline-offset: 3px;
++}
++.text-button {
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  color: var(--green);
++  font-size: 11px;
++  font-weight: 600;
++}
++.text-button svg {
++  width: 14px;
++  height: 14px;
++}
++.text-button:hover {
++  text-decoration: underline;
++}
++.panel-footnote {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  gap: 7px;
++  background: #fafbf8;
++  border-top: 1px solid #eceee7;
++  padding: 12px 17px;
++  color: #83887b;
++  font-size: 9px;
++}
++.panel-footnote svg {
++  width: 12px;
++  height: 12px;
++}
++.good-to-know {
++  margin-top: 34px;
++}
++.good-to-know h3 {
++  font-family: Georgia, "Times New Roman", serif;
++  font-size: 21px;
++  letter-spacing: -0.4px;
++  margin-top: 6px;
++}
++.knowledge-grid {
++  display: grid;
++  grid-template-columns: repeat(3, 1fr);
++  gap: 24px;
++  margin-top: 21px;
++}
++.knowledge-icon {
++  display: grid;
++  place-items: center;
++  width: 31px;
++  height: 31px;
++  background: #f4f6f0;
++  border-radius: 6px;
++  color: #6d7e60;
++  margin-bottom: 12px;
++}
++.knowledge-icon svg {
++  width: 18px;
++  height: 18px;
++}
++.knowledge-grid h4 {
++  font-size: 11px;
++  font-weight: 600;
++  margin-bottom: 7px;
++}
++.knowledge-grid p {
++  font-size: 10px;
++  line-height: 1.9;
++  color: #777e70;
++}
++.faq {
++  border-top: 1px solid var(--line);
++  margin-top: 28px;
++  padding-top: 25px;
++}
++.faq > h3 {
++  font-family: Georgia, "Times New Roman", serif;
++  font-size: 18px;
++  margin-bottom: 15px;
++  letter-spacing: -0.2px;
++}
++.faq details {
++  border-bottom: 1px solid #ebede7;
++}
++.faq summary {
++  padding: 14px 20px 14px 0;
++  font-size: 11px;
++  list-style: none;
++  position: relative;
++}
++.faq summary::-webkit-details-marker {
++  display: none;
++}
++.faq summary:after {
++  content: "+";
++  position: absolute;
++  right: 2px;
++  top: 10px;
++  font-size: 19px;
++  font-weight: 300;
++  color: #758369;
++}
++.faq details[open] summary:after {
++  content: "−";
++}
++.faq details p {
++  font-size: 11px;
++  line-height: 1.8;
++  color: var(--muted);
++  padding: 0 20px 15px 0;
++}
++.account-help {
++  display: flex;
++  align-items: center;
++  gap: 5px;
++  color: #8a8f81;
++  font-size: 9px;
++  margin-top: 26px;
++}
++.account-help a {
++  display: inline-flex;
++  align-items: center;
++  gap: 3px;
++  color: #52664a;
++  text-decoration: underline;
++  text-underline-offset: 2px;
++}
++.account-help svg {
++  width: 10px;
++  height: 10px;
++}
++.credential-list {
++  list-style: none;
++}
++.credential-list li {
++  padding: 22px;
++  display: flex;
++  align-items: center;
++  gap: 13px;
++  border-bottom: 1px solid var(--line);
++}
++.credential-list li:last-child {
++  border-bottom: 0;
++}
++.credential-symbol {
++  width: 40px;
++  height: 43px;
++  display: grid;
++  place-items: center;
++  border-radius: 8px;
++  background: #f3f5ef;
++  color: #5a7350;
++}
++.credential-details {
++  flex: 1;
++  min-width: 0;
++}
++.credential-details h4 {
++  font-size: 12px;
++  font-weight: 600;
++  overflow-wrap: anywhere;
++}
++.credential-details h4 span {
++  font-weight: 400;
++  font-size: 8px;
++  background: #f0f4eb;
++  border-radius: 3px;
++  color: #6e7e61;
++  padding: 3px 5px;
++  margin-left: 5px;
++  white-space: nowrap;
++}
++.credential-details p {
++  font-size: 9px;
++  color: #808577;
++  margin-top: 7px;
++}
++.date-divider {
++  padding: 0 6px;
++}
++.credential-actions {
++  display: flex;
++  gap: 6px;
++}
++.credential-actions button {
++  padding: 7px;
++  color: #818978;
++  border-radius: 4px;
++}
++.credential-actions button:hover {
++  background: #f2f4ed;
++  color: #34573c;
++}
++.credential-actions button:last-child:hover {
++  background: #fff1f0;
++  color: #a33434;
++}
++.credential-actions svg {
++  width: 16px;
++  height: 16px;
++}
++.unsupported-note {
++  font-size: 10px;
++  color: #7a8071;
++  line-height: 1.7;
++  padding: 12px 0 0;
++}
++.settings-alert {
++  padding: 12px 15px;
++  font-size: 11px;
++  border-radius: 4px;
++  margin-bottom: 18px;
++  line-height: 1.7;
++  display: flex;
++  gap: 7px;
++  align-items: center;
++}
++.settings-alert.error {
++  background: #fff1ef;
++  color: #9f3330;
++}
++.settings-alert.success {
++  background: #edf5eb;
++  color: #3a6338;
++}
++.settings-alert svg {
++  width: 14px;
++  height: 14px;
++}
++.passkey-dialog {
++  margin: auto;
++  max-width: 440px;
++  width: calc(100% - 32px);
++  padding: 30px;
++  border: 1px solid #dce3d4;
++  border-radius: 10px;
++  box-shadow: 0 24px 80px #1c301c30;
++  color: var(--ink);
++}
++.passkey-dialog::backdrop {
++  background: #16221670;
++  backdrop-filter: blur(3px);
++}
++.dialog-close {
++  position: absolute;
++  top: 15px;
++  right: 15px;
++  color: #70786a;
++}
++.dialog-close svg {
++  width: 18px;
++  height: 18px;
++}
++.dialog-symbol {
++  width: 42px;
++  height: 42px;
++  background: #f0f4eb;
++  border-radius: 9px;
++  display: grid;
++  place-items: center;
++  color: #5f7952;
++  margin-bottom: 18px;
++}
++.passkey-dialog h2 {
++  font:
++    25px Georgia,
++    serif;
++  margin-bottom: 12px;
++}
++.passkey-dialog p {
++  font-size: 12px;
++  line-height: 1.8;
++  color: #707866;
++  margin-bottom: 18px;
++}
++.passkey-dialog label,
++.profile-panel label {
++  display: block;
++  font-size: 11px;
++  font-weight: 600;
++  margin: 17px 0 7px;
++}
++.passkey-dialog input,
++.profile-panel input {
++  display: block;
++  border: 1px solid #ced7c7;
++  border-radius: 4px;
++  padding: 11px;
++  width: 100%;
++  font-size: 13px;
++  margin-top: 8px;
++}
++.dialog-buttons {
++  display: flex;
++  justify-content: flex-end;
++  gap: 8px;
++  margin-top: 25px;
++}
++.profile-panel {
++  padding: 25px;
++}
++.profile-panel h3 {
++  font-family: Georgia, serif;
++  font-size: 22px;
++}
++.profile-panel form {
++  max-width: 380px;
++}
++.profile-panel .primary-button {
++  margin-top: 23px;
++}
++.field-help {
++  font-size: 10px;
++  color: #7a826e;
++  margin-top: 8px;
++}
++.profile-panel input[readonly] {
++  background: #f4f6ef;
++  color: #78816e;
++}
++@media (min-width: 1100px) {
++  .account-shell {
++    padding-left: 48px;
++    padding-right: 48px;
++  }
++  .account-layout {
++    gap: 42px;
++  }
++}
++@media (max-width: 850px) {
++  .account-layout {
++    grid-template-columns: 185px minmax(0, 1fr);
++    gap: 24px;
++  }
++  .account-sidebar {
++    padding-right: 16px;
++  }
++  .account-shell {
++    padding: 24px;
++  }
++  .passkey-intro {
++    padding: 23px 20px;
++  }
++  .passkey-art {
++    width: 120px;
++    transform: scale(0.85);
++    margin-left: -5px;
++  }
++  .passkey-copy h3 {
++    font-size: 24px;
++  }
++  .intro-badges {
++    gap: 8px;
++  }
++  .intro-badges span {
++    font-size: 8px;
++  }
++  .panel-heading {
++    padding: 19px 16px;
++    flex-wrap: wrap;
++  }
++  .knowledge-grid {
++    gap: 15px;
++  }
++  .credential-list li {
++    padding: 17px 14px;
++    gap: 8px;
++  }
++  .credential-details h4 span {
++    display: table;
++    margin: 6px 0 0;
++  }
++  .credential-details p {
++    line-height: 1.7;
++  }
++  .credential-actions {
++    gap: 0;
++  }
++}
++@media (max-width: 640px) {
++  .account-shell {
++    padding: 19px 20px 35px;
++  }
++  .account-breadcrumb {
++    font-size: 10px;
++    gap: 5px;
++  }
++  .account-title-row {
++    padding: 24px 0 20px;
++  }
++  .account-title-row h1 {
++    font-size: 32px;
++  }
++  .back-news {
++    font-size: 10px;
++  }
++  .account-eyebrow {
++    font-size: 8px;
++  }
++  .account-layout {
++    grid-template-columns: 1fr;
++    gap: 25px;
++    margin-top: 18px;
++  }
++  .account-sidebar {
++    border-right: 0;
++    border-bottom: 1px solid var(--line);
++    padding: 0 0 12px;
++  }
++  .account-identity,
++  .sidebar-label,
++  .sidebar-note {
++    display: none;
++  }
++  .account-sidebar nav {
++    grid-template-columns: 1fr 1fr;
++    gap: 9px;
++  }
++  .account-sidebar nav button {
++    font-size: 10px;
++    justify-content: center;
++    padding: 11px 7px;
++  }
++  .account-sidebar nav button > svg:last-child {
++    display: none;
++  }
++  .settings-heading h2 {
++    font-size: 24px;
++  }
++  .settings-heading p {
++    font-size: 10px;
++  }
++  .passkey-intro {
++    padding: 24px 20px;
++    min-height: 201px;
++  }
++  .passkey-copy h3 {
++    max-width: 205px;
++  }
++  .passkey-copy p {
++    max-width: 235px;
++  }
++  .passkey-art {
++    width: 95px;
++    transform: scale(0.78);
++    margin-right: -15px;
++    margin-left: 0;
++  }
++  .small-label {
++    font-size: 7px;
++  }
++  .intro-badges {
++    gap: 10px;
++    flex-wrap: wrap;
++  }
++  .intro-badges span {
++    font-size: 8px;
++  }
++  .panel-heading {
++    gap: 14px;
++    padding: 18px;
++  }
++  .panel-heading h3 {
++    font-size: 14px;
++  }
++  .passkey-empty {
++    padding: 27px 16px;
++  }
++  .passkey-empty h4 {
++    font-size: 18px;
++  }
++  .passkey-empty p {
++    font-size: 10px;
++  }
++  .knowledge-grid {
++    gap: 18px;
++    grid-template-columns: 1fr;
++  }
++  .knowledge-grid article {
++    position: relative;
++    padding-left: 44px;
++  }
++  .knowledge-icon {
++    position: absolute;
++    top: 0;
++    left: 0;
++  }
++  .knowledge-grid p {
++    max-width: 320px;
++  }
++  .good-to-know {
++    margin-top: 28px;
++  }
++  .good-to-know h3 {
++    font-size: 20px;
++  }
++  .knowledge-grid h4 {
++    margin-bottom: 4px;
++  }
++  .panel-footnote {
++    font-size: 8px;
++    align-items: flex-start;
++    line-height: 1.6;
++  }
++  .credential-details h4 {
++    font-size: 11px;
++  }
++  .credential-details p {
++    font-size: 8px;
++  }
++  .date-divider {
++    padding: 0 4px;
++  }
++  .credential-actions button {
++    padding: 6px;
++  }
++  .account-help {
++    flex-wrap: wrap;
++  }
++}
++@media (prefers-reduced-motion: reduce) {
++  .account-shell * {
++    transition: none !important;
++  }
++}
+diff --git a/tests/passkeys.integration.mjs b/tests/passkeys.integration.mjs
+new file mode 100644
+index 0000000..37b7d1b
+--- /dev/null
++++ b/tests/passkeys.integration.mjs
+@@ -0,0 +1,272 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { spawn } from "node:child_process";
++import { mkdtemp, rm } from "node:fs/promises";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import {
++  createHash,
++  generateKeyPairSync,
++  randomBytes,
++  sign,
++} from "node:crypto";
++import { setTimeout as delay } from "node:timers/promises";
++
++// A small CBOR encoder for the synthetic authenticator's test fixtures.
++function cbor(value) {
++  const head = (major, n) =>
++    n < 24
++      ? Buffer.from([major * 32 + n])
++      : n < 256
++        ? Buffer.from([major * 32 + 24, n])
++        : Buffer.from([major * 32 + 25, n >> 8, n & 255]);
++  if (Buffer.isBuffer(value))
++    return Buffer.concat([head(2, value.length), value]);
++  if (typeof value === "string") {
++    const bytes = Buffer.from(value);
++    return Buffer.concat([head(3, bytes.length), bytes]);
++  }
++  if (typeof value === "number")
++    return head(value < 0 ? 1 : 0, value < 0 ? -1 - value : value);
++  if (value instanceof Map)
++    return Buffer.concat([
++      head(5, value.size),
++      ...[...value].flatMap(([k, v]) => [cbor(k), cbor(v)]),
++    ]);
++  throw new Error("Unsupported test fixture");
++}
++
++test("passkey registration, account isolation, management, and authentication over HTTP", async () => {
++  const directory = await mkdtemp(join(tmpdir(), "times-passkeys-"));
++  const port = 14000 + Math.floor(Math.random() * 10000);
++  const origin = `http://localhost:${port}`;
++  const base = `${origin}/devtools-times/`;
++  const mock = `const original = globalThis.fetch; globalThis.fetch = (url, options) => String(url) === 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login' ? Promise.resolve(Response.json({success: JSON.parse(options.body).password === 'test-password'}, {status: JSON.parse(options.body).password === 'test-password' ? 200 : 401})) : original(url, options);`;
++  const server = spawn(
++    process.execPath,
++    [
++      "--import",
++      `data:text/javascript,${encodeURIComponent(mock)}`,
++      "dist/server/entry.mjs",
++    ],
++    {
++      env: {
++        ...process.env,
++        HOST: "localhost",
++        PORT: String(port),
++        PASSKEY_STORE_PATH: join(directory, "passkeys.json"),
++      },
++      stdio: "pipe",
++    },
++  );
++  let output = "";
++  server.stderr.on("data", (chunk) => (output += chunk));
++  server.stdout.on("data", (chunk) => (output += chunk));
++  function client() {
++    let cookie = "";
++    return async (action, method = "GET", body, requestOrigin = origin) => {
++      const response = await fetch(`${base}api/account/${action}`, {
++        method,
++        headers: {
++          Origin: requestOrigin,
++          Cookie: cookie,
++          "Content-Type": "application/json",
++        },
++        ...(body ? { body: JSON.stringify(body) } : {}),
++      });
++      for (const value of response.headers.getSetCookie())
++        cookie = value.split(";")[0];
++      return { status: response.status, data: await response.json() };
++    };
++  }
++  try {
++    let ready = false;
++    for (let i = 0; i < 100; i++) {
++      try {
++        await fetch(`${base}api/account/credentials`);
++        ready = true;
++        break;
++      } catch {
++        await delay(50);
++      }
++    }
++    assert.ok(ready, output);
++    const page = await fetch(`${base}account/security`);
++    assert.equal(page.status, 200);
++    assert.match(await page.text(), /Sign-in &amp; security/);
++    const alice = client();
++    assert.equal((await alice("credentials")).status, 401);
++    assert.equal(
++      (await alice("login", "POST", { username: "alice", password: "wrong" }))
++        .status,
++      401,
++    );
++    assert.equal(
++      (
++        await alice(
++          "login",
++          "POST",
++          { username: "alice", password: "test-password" },
++          "https://other.example",
++        )
++      ).status,
++      403,
++    );
++    assert.equal(
++      (
++        await alice("login", "POST", {
++          username: "alice",
++          password: "test-password",
++        })
++      ).status,
++      200,
++    );
++    const account = (await alice("credentials")).data;
++    assert.deepEqual(account.credentials, []);
++    const options = (await alice("options", "POST")).data;
++    assert.equal(options.authenticatorSelection.residentKey, "required");
++    assert.equal(
++      options.authenticatorSelection.authenticatorAttachment,
++      undefined,
++    );
++    assert.equal(options.rp.id, "localhost");
++    const { publicKey, privateKey } = generateKeyPairSync("ec", {
++      namedCurve: "prime256v1",
++    });
++    const jwk = publicKey.export({ format: "jwk" });
++    const cose = cbor(
++      new Map([
++        [1, 2],
++        [3, -7],
++        [-1, 1],
++        [-2, Buffer.from(jwk.x, "base64url")],
++        [-3, Buffer.from(jwk.y, "base64url")],
++      ]),
++    );
++    const credentialId = randomBytes(32);
++    const id = credentialId.toString("base64url");
++    const rpHash = createHash("sha256").update("localhost").digest();
++    const authData = Buffer.concat([
++      rpHash,
++      Buffer.from([0x45]),
++      Buffer.alloc(4),
++      Buffer.alloc(16),
++      Buffer.from([0, 32]),
++      credentialId,
++      cose,
++    ]);
++    const clientData = Buffer.from(
++      JSON.stringify({
++        type: "webauthn.create",
++        challenge: options.challenge,
++        origin,
++      }),
++    );
++    const registration = {
++      id,
++      rawId: id,
++      type: "public-key",
++      response: {
++        clientDataJSON: clientData.toString("base64url"),
++        attestationObject: cbor(
++          new Map([
++            ["fmt", "none"],
++            ["attStmt", new Map()],
++            ["authData", authData],
++          ]),
++        ).toString("base64url"),
++        transports: ["internal"],
++      },
++      clientExtensionResults: {},
++    };
++    const registered = await alice("verify", "POST", registration);
++    assert.equal(registered.status, 200, JSON.stringify(registered.data));
++    assert.equal(
++      (await alice("verify", "POST", registration)).status,
++      400,
++      "Challenge must be single-use",
++    );
++    let credentials = (await alice("credentials")).data.credentials;
++    assert.equal(credentials.length, 1);
++    assert.equal(
++      credentials[0].publicKey,
++      undefined,
++      "Public keys are not exposed in the management API",
++    );
++    assert.equal(credentials[0].provider, "Unknown passkey provider");
++    assert.equal(
++      (await alice("credential", "PUT", { id, name: "   " })).status,
++      400,
++    );
++    assert.equal(
++      (await alice("credential", "PUT", { id, name: "My laptop" })).status,
++      200,
++    );
++    assert.equal(
++      (await alice("credentials")).data.credentials[0].name,
++      "My laptop",
++    );
++    assert.equal(
++      (await alice("profile", "PUT", { displayName: "Alice Reader" })).status,
++      200,
++    );
++    assert.equal((await alice("credentials")).data.displayName, "Alice Reader");
++    const bob = client();
++    await bob("login", "POST", { username: "bob", password: "test-password" });
++    assert.equal((await bob("credential", "DELETE", { id })).status, 400);
++    assert.deepEqual((await bob("credentials")).data.credentials, []);
++    const passkeyLogin = client();
++    const authOptions = (
++      await passkeyLogin("authenticate", "POST", { options: true })
++    ).data;
++    const assertionData = Buffer.from(
++      JSON.stringify({
++        type: "webauthn.get",
++        challenge: authOptions.challenge,
++        origin,
++      }),
++    );
++    const assertionAuthData = Buffer.concat([
++      rpHash,
++      Buffer.from([0x05]),
++      Buffer.from([0, 0, 0, 1]),
++    ]);
++    const signature = sign(
++      "sha256",
++      Buffer.concat([
++        assertionAuthData,
++        createHash("sha256").update(assertionData).digest(),
++      ]),
++      privateKey,
++    );
++    const assertion = {
++      id,
++      rawId: id,
++      type: "public-key",
++      clientExtensionResults: {},
++      response: {
++        clientDataJSON: assertionData.toString("base64url"),
++        authenticatorData: assertionAuthData.toString("base64url"),
++        signature: signature.toString("base64url"),
++        userHandle: account.id,
++      },
++    };
++    const authenticated = await passkeyLogin("authenticate", "POST", assertion);
++    assert.equal(authenticated.status, 200, JSON.stringify(authenticated.data));
++    credentials = (await passkeyLogin("credentials")).data.credentials;
++    assert.ok(credentials[0].lastUsedAt > 0);
++    assert.equal((await passkeyLogin("credentials")).data.id, account.id);
++    assert.equal((await alice("credential", "DELETE", { id })).status, 200);
++    assert.deepEqual((await alice("credentials")).data.credentials, []);
++    const relogin = client();
++    await relogin("authenticate", "POST", { options: true });
++    assert.equal(
++      (await relogin("authenticate", "POST", assertion)).status,
++      404,
++    );
++  } finally {
++    server.kill();
++    await new Promise((resolve) => server.once("exit", resolve));
++    await rm(directory, { recursive: true, force: true });
++  }
++});

@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,17 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -151,8 +160,91 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Product carousel */
++    .carousel-section {
++      margin-top: 60px;
++    }
++
++    .carousel-section h2 {
++      text-align: center;
++    }
++
++    .scroller {
++      --card-width: 260px;
++      display: flex;
++      gap: 24px;
++      list-style: none;
++      overflow-x: auto;
++      overscroll-behavior-x: contain;
++      scroll-snap-type: x mandatory;
++      /* Lets the first and last card reach the center */
++      padding: 40px calc(50% - var(--card-width) / 2);
++      scroll-padding-inline: calc(50% - var(--card-width) / 2);
++    }
++
++    .scroller:focus-visible,
++    .product-card a:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .product-card {
++      flex: 0 0 var(--card-width);
++      scroll-snap-align: center;
++      scroll-snap-stop: always;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++      overflow: hidden;
++      text-align: center;
++    }
++
++    .product-card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .product-card .body {
++      padding: 16px 20px 20px;
++    }
++
++    .product-card h3 {
++      color: var(--primary);
++    }
++
++    .product-card .price {
++      font-weight: bold;
++      margin-top: 4px;
++    }
++
++    /* Decorative enhancement: scale cards up toward the center of the scroller */
++    @keyframes scale-to-center {
++      0% {
++        scale: 0.75;
++      }
++
++      50% {
++        scale: 1;
++      }
++
++      100% {
++        scale: 0.75;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        .product-card {
++          animation: scale-to-center auto linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +286,62 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section" aria-labelledby="carousel-heading">
++      <h2 id="carousel-heading">Shop Our Products</h2>
++      <ul class="scroller" role="list" tabindex="0" aria-labelledby="carousel-heading">
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="A latte in a ceramic cup with latte art" width="600" height="450" loading="lazy">
++          <div class="body">
++            <h3>Maple Oat Latte</h3>
++            <p class="price">$5.25</p>
++            <a href="/menu/maple-oat-latte" class="btn">View<span class="visually-hidden"> Maple Oat Latte</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80" alt="A shot of espresso in a small cup" width="600" height="450" loading="lazy">
++          <div class="body">
++            <h3>Dark Roast Espresso</h3>
++            <p class="price">$3.50</p>
++            <a href="/menu/dark-roast-espresso" class="btn">View<span class="visually-hidden"> Dark Roast Espresso</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Iced cold brew coffee in a glass" width="600" height="450" loading="lazy">
++          <div class="body">
++            <h3>Cold Brew</h3>
++            <p class="price">$4.75</p>
++            <a href="/menu/cold-brew" class="btn">View<span class="visually-hidden"> Cold Brew</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Roasted coffee beans in a scoop" width="600" height="450" loading="lazy">
++          <div class="body">
++            <h3>House Blend Beans</h3>
++            <p class="price">$14.00</p>
++            <a href="/menu/house-blend-beans" class="btn">View<span class="visually-hidden"> House Blend Beans</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1459755486867-b55449bb39ff?auto=format&fit=crop&w=600&q=80" alt="A flat white with creamy foam" width="600" height="450" loading="lazy">
++          <div class="body">
++            <h3>Flat White</h3>
++            <p class="price">$4.50</p>
++            <a href="/menu/flat-white" class="btn">View<span class="visually-hidden"> Flat White</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80" alt="A cappuccino on a wooden table" width="600" height="450" loading="lazy">
++          <div class="body">
++            <h3>Classic Cappuccino</h3>
++            <p class="price">$4.25</p>
++            <a href="/menu/classic-cappuccino" class="btn">View<span class="visually-hidden"> Classic Cappuccino</span></a>
++          </div>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

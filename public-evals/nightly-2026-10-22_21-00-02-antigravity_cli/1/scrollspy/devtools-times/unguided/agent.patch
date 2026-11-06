@@ -1,0 +1,711 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..ce30201 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -6,10 +6,18 @@ interface BottomNavProps {
+     articles: any[];
+     reports: any[];
+     multimedia: any[];
++    currentPath?: string;
+ }
+ 
+-const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
++const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia, currentPath = '' }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const [pathname, setPathname] = useState<string>(currentPath);
++
++    useEffect(() => {
++        if (typeof window !== 'undefined') {
++            setPathname(window.location.pathname);
++        }
++    }, [currentPath]);
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+@@ -18,6 +26,22 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+     };
+ 
++    const isGroupActive = (subCategories: string[]) => {
++        const decodedPath = decodeURIComponent(pathname).toLowerCase();
++        // Check if on a category page belonging to this group
++        if (subCategories.some(cat => decodedPath.includes(`/category/${cat.toLowerCase()}`))) {
++            return true;
++        }
++        // Check if on an article page whose category belongs to this group
++        if (decodedPath.includes('/articles/')) {
++            const currentArticle = articles.find(a => decodedPath.endsWith(`/articles/${a.id.toLowerCase()}`));
++            if (currentArticle && subCategories.some(cat => cat.toLowerCase() === currentArticle.data.category.toLowerCase())) {
++                return true;
++            }
++        }
++        return false;
++    };
++
+     const handleMouseLeave = () => {
+         setActiveCategory(null);
+     };
+@@ -31,6 +55,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+             <div className="border-t border-b border-gray-900">
+                 <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                        const isActive = isGroupActive(subCategories);
+                         return (
+                             <div 
+                                 key={groupName}
+@@ -39,10 +64,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                             >
+                                 <a 
+                                     href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                    aria-current={isActive ? 'page' : undefined}
++                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap h-full border-b-2 transition-colors ${
++                                        isActive ? 'text-amber-600 border-amber-500' : 'border-transparent'
++                                    }`}
+                                 >
+                                     <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className={`w-3 h-3 ${isActive ? 'text-amber-600' : 'text-gray-500'}`}>
+                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                     </svg>
+                                 </a>
+@@ -57,6 +85,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                 articles={articles}
+                 reports={filteredReports}
+                 multimedia={filteredMultimedia}
++                currentPath={pathname}
+             />
+         </div>
+     );
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..7df7c7d 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -6,9 +6,10 @@ interface FlyoutMenuProps {
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
++  currentPath?: string;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia, currentPath = '' }) => {
+   if (!isOpen) {
+     return null;
+   }
+@@ -34,13 +35,21 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+           <div>
+             <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
+             <ul className="space-y-2 text-sm">
+-              {categories.map(category => (
+-                <li key={category}>
+-                  <a href={`${import.meta.env.BASE_URL}category/${category.toLowerCase().replace(' ', '%20')}`} className="hover:underline capitalize">
+-                    {category.charAt(0).toUpperCase() + category.slice(1)}
+-                  </a>
+-                </li>
+-              ))}
++              {categories.map(category => {
++                const categoryUrl = `${import.meta.env.BASE_URL}category/${category.toLowerCase().replace(' ', '%20')}`;
++                const isActive = decodeURIComponent(currentPath).toLowerCase().includes(`/category/${category.toLowerCase()}`);
++                return (
++                  <li key={category}>
++                    <a
++                      href={categoryUrl}
++                      aria-current={isActive ? 'page' : undefined}
++                      className={`hover:underline capitalize ${isActive ? 'text-amber-600 font-semibold' : ''}`}
++                    >
++                      {category.charAt(0).toUpperCase() + category.slice(1)}
++                    </a>
++                  </li>
++                );
++              })}
+             </ul>
+           </div>
+ 
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..2d792da 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -10,6 +10,7 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
++const currentPath = Astro.url.pathname;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+@@ -65,5 +66,5 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+   </div>
+ 
+   <!-- Bottom Navigation Bar -->
+-  <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
++  <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} currentPath={currentPath} />
+ </header>
+diff --git a/src/components/SectionNav.tsx b/src/components/SectionNav.tsx
+new file mode 100644
+index 0000000..4cf886e
+--- /dev/null
++++ b/src/components/SectionNav.tsx
+@@ -0,0 +1,290 @@
++import React, { useEffect, useState, useCallback } from 'react';
++
++export interface SectionNavItem {
++  id: string;
++  label: string;
++  level?: number;
++}
++
++interface SectionNavProps {
++  sections?: SectionNavItem[];
++  autoDetectSelector?: string;
++  variant?: 'bar' | 'sidebar' | 'auto';
++  title?: string;
++}
++
++function slugify(text: string): string {
++  return text
++    .toLowerCase()
++    .trim()
++    .replace(/[^\w\s-]/g, '')
++    .replace(/[\s_-]+/g, '-')
++    .replace(/^-+|-+$/g, '');
++}
++
++const SectionNav: React.FC<SectionNavProps> = ({
++  sections: initialSections,
++  autoDetectSelector,
++  variant = 'bar',
++  title = 'On this page',
++}) => {
++  const [sections, setSections] = useState<SectionNavItem[]>(initialSections || []);
++  const [activeId, setActiveId] = useState<string>('');
++
++  // Discover sections if autoDetectSelector is provided or update when DOM changes
++  useEffect(() => {
++    if (initialSections && initialSections.length > 0) {
++      setSections(initialSections);
++      return;
++    }
++
++    const selector =
++      autoDetectSelector ||
++      'main section[id], main [data-section-nav], article h2, article h3, .prose h2, .prose h3';
++
++    const elements = Array.from(document.querySelectorAll<HTMLElement>(selector));
++    const detected: SectionNavItem[] = [];
++    const usedIds = new Set<string>();
++
++    elements.forEach((el, index) => {
++      const label =
++        el.getAttribute('data-section-title') ||
++        el.getAttribute('aria-label') ||
++        (el.tagName.match(/^H[1-6]$/)
++          ? el.textContent?.trim()
++          : el.querySelector('h1, h2, h3')?.textContent?.trim()) ||
++        '';
++
++      if (!label) return;
++
++      let id = el.id;
++      if (!id) {
++        const baseId = slugify(label) || `section-${index + 1}`;
++        id = baseId;
++        let counter = 2;
++        while (usedIds.has(id) || document.getElementById(id)) {
++          id = `${baseId}-${counter}`;
++          counter++;
++        }
++        el.id = id;
++      }
++
++      if (!usedIds.has(id)) {
++        usedIds.add(id);
++        const level = el.tagName === 'H3' ? 3 : 2;
++        detected.push({ id, label, level });
++      }
++    });
++
++    setSections(detected);
++  }, [initialSections, autoDetectSelector]);
++
++  // Compute currently visible section based on scroll and IntersectionObserver
++  const updateActiveSection = useCallback(() => {
++    if (sections.length === 0) return;
++
++    const elements = sections
++      .map((s) => document.getElementById(s.id))
++      .filter((el): el is HTMLElement => el !== null);
++
++    if (elements.length === 0) return;
++
++    // Check if scrolled to the very bottom of the page
++    const scrollBottom = window.innerHeight + window.scrollY;
++    const docHeight = document.documentElement.scrollHeight;
++    if (docHeight - scrollBottom <= 20) {
++      setActiveId(elements[elements.length - 1].id);
++      return;
++    }
++
++    const viewportHeight = window.innerHeight;
++    // Reference line around 25% from the top of the viewport (accounting for sticky header)
++    const triggerLine = Math.min(180, viewportHeight * 0.3);
++
++    // Find the section that spans across the trigger line or has most recently passed it
++    let candidateId = elements[0].id;
++    let bestVisibleOverlap = -1;
++    let bestOverlapId = '';
++
++    for (const el of elements) {
++      const rect = el.getBoundingClientRect();
++
++      // Calculate visible overlap in the upper-middle viewport zone (from 60px to 65% of viewport)
++      const zoneTop = 56;
++      const zoneBottom = viewportHeight * 0.65;
++      const overlapTop = Math.max(rect.top, zoneTop);
++      const overlapBottom = Math.min(rect.bottom, zoneBottom);
++      const overlap = Math.max(0, overlapBottom - overlapTop);
++
++      if (overlap > bestVisibleOverlap && overlap > 0) {
++        bestVisibleOverlap = overlap;
++        bestOverlapId = el.id;
++      }
++
++      if (rect.top <= triggerLine) {
++        candidateId = el.id;
++      }
++    }
++
++    // If a section is prominently occupying the active viewport zone and its top has entered the zone,
++    // or if it's a short heading/section that passed the trigger line:
++    const candidateEl = document.getElementById(candidateId);
++    if (candidateEl) {
++      const candidateRect = candidateEl.getBoundingClientRect();
++      // If candidate is still visible on screen (bottom > 80px), prefer candidateId if it's a heading or active container
++      if (candidateRect.bottom > 80) {
++        setActiveId(candidateId);
++        return;
++      }
++    }
++
++    if (bestOverlapId) {
++      setActiveId(bestOverlapId);
++    } else {
++      setActiveId(candidateId);
++    }
++  }, [sections]);
++
++  useEffect(() => {
++    if (sections.length === 0) return;
++
++    updateActiveSection();
++
++    const observer = new IntersectionObserver(
++      () => {
++        updateActiveSection();
++      },
++      {
++        root: null,
++        rootMargin: '-10% 0px -25% 0px',
++        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
++      }
++    );
++
++    sections.forEach((section) => {
++      const el = document.getElementById(section.id);
++      if (el) observer.observe(el);
++    });
++
++    let ticking = false;
++    const handleScroll = () => {
++      if (!ticking) {
++        window.requestAnimationFrame(() => {
++          updateActiveSection();
++          ticking = false;
++        });
++        ticking = true;
++      }
++    };
++
++    window.addEventListener('scroll', handleScroll, { passive: true });
++    window.addEventListener('resize', handleScroll, { passive: true });
++
++    return () => {
++      observer.disconnect();
++      window.removeEventListener('scroll', handleScroll);
++      window.removeEventListener('resize', handleScroll);
++    };
++  }, [sections, updateActiveSection]);
++
++  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
++    e.preventDefault();
++    const target = document.getElementById(id);
++    if (target) {
++      setActiveId(id);
++      const headerOffset = 72;
++      const elementPosition = target.getBoundingClientRect().top;
++      const offsetPosition = elementPosition + window.scrollY - headerOffset;
++
++      window.scrollTo({
++        top: offsetPosition,
++        behavior: 'smooth',
++      });
++      window.history.replaceState(null, '', `#${id}`);
++    }
++  };
++
++  if (sections.length === 0) {
++    return null;
++  }
++
++  if (variant === 'sidebar') {
++    return (
++      <nav
++        aria-label={title}
++        data-section-nav-menu="sidebar"
++        className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6"
++      >
++        <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
++          {title}
++        </p>
++        <ul className="space-y-1.5 text-sm border-l-2 border-gray-200">
++          {sections.map((section) => {
++            const isActive = activeId === section.id;
++            return (
++              <li key={section.id} className={section.level === 3 ? 'pl-3' : ''}>
++                <a
++                  href={`#${section.id}`}
++                  onClick={(e) => handleNavClick(e, section.id)}
++                  aria-current={isActive ? 'location' : undefined}
++                  data-active={isActive ? 'true' : 'false'}
++                  className={`block pl-3 py-1 -ml-[2px] border-l-2 transition-all duration-200 ${
++                    isActive
++                      ? 'border-amber-500 text-amber-700 font-semibold bg-amber-50/60 rounded-r'
++                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-400'
++                  }`}
++                >
++                  {section.label}
++                </a>
++              </li>
++            );
++          })}
++        </ul>
++      </nav>
++    );
++  }
++
++  return (
++    <div
++      data-section-nav-menu="bar"
++      className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-xs transition-all"
++    >
++      <nav
++        aria-label={title}
++        className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-11 overflow-x-auto no-scrollbar"
++      >
++        <div className="flex items-center space-x-1 sm:space-x-2 mx-auto">
++          <span className="hidden md:inline-block text-[11px] font-bold uppercase tracking-wider text-gray-400 mr-2 select-none">
++            {title}:
++          </span>
++          {sections.map((section) => {
++            const isActive = activeId === section.id;
++            return (
++              <a
++                key={section.id}
++                href={`#${section.id}`}
++                onClick={(e) => handleNavClick(e, section.id)}
++                aria-current={isActive ? 'location' : undefined}
++                data-active={isActive ? 'true' : 'false'}
++                className={`relative px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center space-x-1.5 ${
++                  isActive
++                    ? 'bg-amber-400/15 text-amber-900 font-semibold ring-1 ring-amber-400/50 shadow-2xs'
++                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
++                }`}
++              >
++                <span
++                  className={`w-1.5 h-1.5 rounded-full transition-transform duration-200 ${
++                    isActive ? 'bg-amber-500 scale-100' : 'bg-transparent scale-0 w-0'
++                  }`}
++                />
++                <span>{section.label}</span>
++              </a>
++            );
++          })}
++        </div>
++      </nav>
++    </div>
++  );
++};
++
++export default SectionNav;
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..757c779 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -3,13 +3,15 @@ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} data-section-nav data-section-title={title} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..7e57228 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -6,11 +6,13 @@ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +28,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} data-section-nav data-section-title={title} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..968573f 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from './Layout.astro';
++import SectionNav from '../components/SectionNav';
+ 
+ export interface Props {
+ 	title: string;
+@@ -8,6 +9,11 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
++    <SectionNav
++        client:load
++        title="Sections"
++        autoDetectSelector=".prose h2, .prose h3"
++    />
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..0c62094 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import SectionNav from '../../components/SectionNav.tsx';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -36,7 +37,13 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
++    <SectionNav
++        client:load
++        title="Article"
++        autoDetectSelector="[data-section-nav], article .prose h2, article .prose h3"
++    />
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++        <div id="article-overview" data-section-nav data-section-title="Overview" class="scroll-mt-14">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+@@ -103,9 +110,10 @@ const isBookmarked = readingList.includes(article.slug);
+             </div>
+ 
+         </div>
++        </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div id="article-content" data-section-nav data-section-title="Story" class="prose max-w-none scroll-mt-14">
+             <Content />
+         </div>
+ 
+@@ -116,7 +124,8 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section id="related-articles" data-section-nav data-section-title="Related Articles" class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8 scroll-mt-14">
++        <h2 class="text-2xl font-bold text-gray-900 mb-6">Related Articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..15978fd 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -2,6 +2,7 @@
+ ---
+ import Layout from '../../layouts/Layout.astro';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import SectionNav from '../../components/SectionNav';
+ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+@@ -38,9 +39,14 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ ---
+ 
+ <Layout title={`Category: ${capitalizedCategory}`}>
++    <SectionNav
++        client:load
++        title={capitalizedCategory}
++        autoDetectSelector="[data-section-nav]"
++    />
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header id="overview" data-section-nav data-section-title="Overview" class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800 scroll-mt-14">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -66,7 +72,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section id="featured-story" data-section-nav data-section-title="Featured Story" class="mb-8 pb-8 border-b border-gray-200 scroll-mt-14">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -88,9 +94,11 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+-                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
+-                </div>
++                <section id="more-stories" data-section-nav data-section-title="More Stories" class="scroll-mt-14">
++                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
++                        {otherArticles.map(article => <ArticleTeaser article={article} />)}
++                    </div>
++                </section>
+             ) : (
+                 <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+             )}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..ac47efe 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SectionNav from '../components/SectionNav';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -38,26 +39,39 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav
++        client:load
++        title="Sections"
++        sections={[
++            { id: 'top-stories', label: 'Top Stories' },
++            { id: 'top-news', label: 'Top News' },
++            { id: 'world', label: 'World' },
++            { id: 'politics', label: 'Politics' },
++        ]}
++    />
++
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++    <section id="top-stories" data-section-nav data-section-title="Top Stories" class="scroll-mt-14">
++        <div class="bg-white border-b border-gray-300">
++            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                    {topStories.map(article => (
++                        <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
+             </div>
+         </div>
+-    </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++        <!-- Main Content Area -->
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++            <ArticleTeaser article={topArticle} large={true} />
++        </div>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +79,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file

@@ -1,0 +1,211 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,59 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Gift card studio */
++    .gift-studio { margin-top: 64px; }
++    .studio-heading { text-align: center; margin-bottom: 28px; }
++    .eyebrow { font-size: 0.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
++    .studio-heading .eyebrow { color: #947357; }
++    .studio-heading h2 { font-size: 2rem; margin: 6px 0; }
++    .studio-heading p { color: #7b6c65; }
++    .studio-layout { display: grid; grid-template-columns: 0.85fr 1.15fr; border: 1px solid #e7dfd8; border-radius: 14px; overflow: hidden; background: white; }
++    .studio-controls { padding: 32px; }
++    .studio-controls h3 { font-size: 1.15rem; margin-bottom: 22px; }
++    .field-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; }
++    .studio-controls input[type="text"], .studio-controls textarea { width: 100%; padding: 11px 12px; border: 1px solid #ded5ce; border-radius: 6px; font: inherit; font-size: 0.9rem; color: var(--text); background: #fff; }
++    .studio-controls textarea { resize: vertical; min-height: 96px; }
++    .studio-field { margin-bottom: 20px; }
++    .field-hint { color: #8a7b73; font-size: 0.73rem; margin-top: 5px; }
++    .color-choices { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
++    .color-swatch { width: 30px; height: 30px; background: var(--swatch); border: 3px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #e2d9d1; cursor: pointer; }
++    .color-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #795b43; }
++    .custom-color { display: flex; align-items: center; gap: 7px; color: #78675d; font-size: 0.75rem; cursor: pointer; }
++    #gift-color { width: 30px; height: 30px; border: 1px solid #ded5ce; border-radius: 5px; padding: 2px; background: white; cursor: pointer; }
++    .export-button { width: 100%; border: none; font: inherit; font-size: 0.9rem; cursor: pointer; margin-top: 4px; padding: 12px; }
++    .export-button:disabled { opacity: 0.6; cursor: wait; }
++    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #c58a4e; outline-offset: 4px; }
++    .export-note { text-align: center; color: #8a7b73; font-size: 0.72rem; margin-top: 10px; min-height: 1.6em; }
++    .studio-preview { background: #f1ece5; padding: 32px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; border-left: 1px solid #e7dfd8; overflow: hidden; }
++    .preview-label { color: #8b7a6b; font-size: 0.68rem; letter-spacing: 1.8px; text-transform: uppercase; }
++    .gift-frame { width: 100%; max-width: 470px; position: relative; filter: drop-shadow(0 14px 14px #3e27231a); }
++    #export_element { background: #4e342e; color: #fff7ec; aspect-ratio: 1.6; padding: 26px; border-radius: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
++    .gift-brand { font-size: 0.65rem; letter-spacing: 2px; font-weight: 700; position: relative; z-index: 1; }
++    .gift-copy { position: relative; z-index: 1; width: 76%; }
++    .gift-title { font-family: Georgia, 'Times New Roman', serif; font-weight: normal; font-size: clamp(24px, 3vw, 36px); line-height: 1.12; margin-bottom: 12px; }
++    .gift-message { font-size: 0.82rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
++    .gift-bottom { display: flex; justify-content: space-between; align-items: end; position: relative; z-index: 1; margin-top: 14px; }
++    .gift-recipient { font-size: 0.73rem; max-width: 70%; overflow-wrap: anywhere; }
++    .gift-tag { font-size: 0.53rem; letter-spacing: 1.6px; border: 1px solid currentColor; padding: 4px 7px; border-radius: 3px; white-space: nowrap; }
++    .gift-art { position: absolute; right: -24px; top: 40px; width: 175px; height: 175px; opacity: 0.15; }
++    #gift-canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 12px; pointer-events: none; }
++    .preview-caption { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 0.9rem; color: #8b7a6b; }
++    @media (max-width: 760px) {
++      .studio-layout { grid-template-columns: 1fr; }
++      .studio-preview { border-left: 0; border-top: 1px solid #e7dfd8; padding: 30px 20px; }
++      .studio-controls { padding: 24px; }
++      .gift-title { font-size: 30px; }
++    }
++    @media (max-width: 400px) {
++      #export_element { padding: 20px; aspect-ratio: 1.35; }
++      .gift-title { font-size: 26px; }
++      .gift-message { font-size: 0.75rem; }
++      .gift-tag { font-size: 0.45rem; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +245,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="gift-studio" aria-labelledby="gift-heading">
++      <div class="studio-heading">
++        <span class="eyebrow">A little coffee. A lot of love.</span>
++        <h2 id="gift-heading">Make someone's daily grind.</h2>
++        <p>A personal touch for their next coffee break. Design a card that's all yours.</p>
++      </div>
++      <div class="studio-layout">
++        <div class="studio-controls">
++          <h3>Create your coffee card</h3>
++          <div class="studio-field">
++            <label class="field-label" for="gift-name">Who is it for?</label>
++            <input id="gift-name" type="text" maxlength="32" placeholder="e.g. Alex" value="Alex">
++          </div>
++          <div class="studio-field">
++            <label class="field-label" for="gift-message">Your message</label>
++            <textarea id="gift-message" maxlength="100" rows="3" placeholder="Write a little something…">You deserve a little pick-me-up. This one's for you!</textarea>
++            <p class="field-hint"><span id="message-count">58</span>/100 characters · Make it personal.</p>
++          </div>
++          <div class="studio-field">
++            <span class="field-label" id="color-label">Pick a background</span>
++            <div class="color-choices" role="group" aria-labelledby="color-label">
++              <button class="color-swatch" type="button" style="--swatch: #4e342e" data-color="#4e342e" aria-label="Espresso brown" aria-pressed="true"></button>
++              <button class="color-swatch" type="button" style="--swatch: #64735b" data-color="#64735b" aria-label="Sage green" aria-pressed="false"></button>
++              <button class="color-swatch" type="button" style="--swatch: #b96e4f" data-color="#b96e4f" aria-label="Terracotta" aria-pressed="false"></button>
++              <button class="color-swatch" type="button" style="--swatch: #e8d7bf" data-color="#e8d7bf" aria-label="Oat cream" aria-pressed="false"></button>
++              <label class="custom-color" for="gift-color"><input id="gift-color" type="color" value="#4e342e"> Custom</label>
++            </div>
++          </div>
++          <button id="export-button" class="btn export-button" type="button">↓ &nbsp; Download gift card</button>
++          <p id="export-status" class="export-note" role="status">PNG image · Made by you, with love.</p>
++        </div>
++        <div class="studio-preview">
++          <span class="preview-label">Your card · Live preview</span>
++          <div class="gift-frame">
++            <div id="export_element">
++              <div class="gift-brand">THE DAILY GRIND <span aria-hidden="true">✦</span></div>
++              <svg class="gift-art" viewBox="0 0 180 180" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><circle cx="90" cy="90" r="85" stroke="currentColor" stroke-width="1"/><path d="M46 75h80v37a33 33 0 0 1-33 33H79a33 33 0 0 1-33-33V75Zm80 7h8a20 20 0 0 1 0 40h-10M37 151h101M68 58c-14-16 13-18 0-35m23 35c-14-16 13-18 0-35m23 35c-14-16 13-18 0-35" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg>
++              <div class="gift-copy">
++                <h3 class="gift-title">Good coffee.<br>Better company.</h3>
++                <p id="card-message" class="gift-message">You deserve a little pick-me-up. This one's for you!</p>
++              </div>
++              <div class="gift-bottom"><span id="card-recipient" class="gift-recipient">Especially for Alex</span><span class="gift-tag">A CUP OF KINDNESS</span></div>
++            </div>
++            <canvas id="gift-canvas" role="img" aria-label="Your personalized coffee card" hidden></canvas>
++          </div>
++          <p class="preview-caption">Small gesture. Warm feelings.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +306,89 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="vendor/html2canvas.min.js"></script>
++  <script>
++    const card = document.getElementById('export_element');
++    const canvas = document.getElementById('gift-canvas');
++    const nameInput = document.getElementById('gift-name');
++    const messageInput = document.getElementById('gift-message');
++    const colorInput = document.getElementById('gift-color');
++    const exportButton = document.getElementById('export-button');
++    const status = document.getElementById('export-status');
++    let renderVersion = 0;
++    let renderTimer;
++
++    async function renderCard() {
++      const version = ++renderVersion;
++      if (typeof html2canvas !== 'function') throw new Error('Renderer unavailable');
++      const rendered = await html2canvas(card, { scale: 3, backgroundColor: null, logging: false });
++      if (version !== renderVersion) return false;
++      canvas.width = rendered.width;
++      canvas.height = rendered.height;
++      canvas.getContext('2d').drawImage(rendered, 0, 0);
++      canvas.hidden = false;
++      return true;
++    }
++
++    function updateCard() {
++      ++renderVersion;
++      canvas.hidden = true;
++      document.getElementById('card-recipient').textContent = nameInput.value.trim() ? 'Especially for ' + nameInput.value.trim() : 'Especially for you';
++      document.getElementById('card-message').textContent = messageInput.value;
++      document.getElementById('message-count').textContent = messageInput.value.length;
++      card.style.backgroundColor = colorInput.value;
++      const rgb = colorInput.value.match(/\w\w/g).map(value => parseInt(value, 16) / 255);
++      const linear = rgb.map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
++      const luminance = linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
++      card.style.color = luminance > 0.3 ? '#3e2723' : '#fff7ec';
++      document.querySelectorAll('.color-swatch').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.color === colorInput.value)));
++      clearTimeout(renderTimer);
++      renderTimer = setTimeout(() => renderCard().catch(() => {
++        status.textContent = 'Preview available. Reload the page if image export is unavailable.';
++      }), 180);
++    }
++
++    [nameInput, messageInput, colorInput].forEach(input => input.addEventListener('input', updateCard));
++    document.querySelectorAll('.color-swatch').forEach(button => button.addEventListener('click', () => {
++      colorInput.value = button.dataset.color;
++      updateCard();
++    }));
++    exportButton.addEventListener('click', async () => {
++      exportButton.disabled = true;
++      status.textContent = 'Preparing your card…';
++      clearTimeout(renderTimer);
++      try {
++        // Disable editing briefly so the exported canvas always matches the current card.
++        const controls = [...document.querySelectorAll('.studio-controls input, .studio-controls textarea, .color-swatch')];
++        controls.forEach(control => control.disabled = true);
++        try {
++          await renderCard();
++          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
++          if (!blob) throw new Error('Image export failed');
++          const url = URL.createObjectURL(blob);
++          const link = document.createElement('a');
++          link.download = 'daily-grind-gift-card.png';
++          link.href = url;
++          document.body.appendChild(link);
++          link.click();
++          link.remove();
++          setTimeout(() => URL.revokeObjectURL(url), 30000);
++          status.textContent = 'Your card is ready. Enjoy sharing a little kindness!';
++        } finally {
++          controls.forEach(control => control.disabled = false);
++        }
++      } catch (error) {
++        status.textContent = 'Could not export your card. Please try again or reload the page.';
++      } finally {
++        exportButton.disabled = false;
++      }
++    });
++    new ResizeObserver(() => {
++      if (!exportButton.disabled) updateCard();
++    }).observe(card);
++    updateCard();
++  </script>
+ </body>
+ 
+ </html>

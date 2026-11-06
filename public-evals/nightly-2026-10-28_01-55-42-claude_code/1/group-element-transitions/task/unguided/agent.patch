@@ -1,0 +1,449 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,222 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Bean Box Builder */
++    .bean-builder {
++      margin-top: 60px;
++    }
++
++    .bean-builder > h2 {
++      text-align: center;
++    }
++
++    .bean-builder .intro {
++      text-align: center;
++      max-width: 560px;
++      margin: 8px auto 0;
++      color: #6d4c41;
++    }
++
++    .bean-zone {
++      margin-top: 30px;
++    }
++
++    .bean-zone-header {
++      display: flex;
++      align-items: baseline;
++      justify-content: space-between;
++      gap: 12px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 6px;
++    }
++
++    .bean-zone-header h3 {
++      color: var(--primary);
++      font-size: 1.1rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++    }
++
++    .bean-count {
++      display: inline-block;
++      min-width: 1.6em;
++      padding: 2px 8px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.8rem;
++      font-weight: bold;
++      text-align: center;
++    }
++
++    .bean-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++      min-height: 80px;
++    }
++
++    .bean-card {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++      /* Every bean card shares one transition class, so a single set of
++         ::view-transition-*(.bean) rules animates them all together. */
++      view-transition-class: bean;
++    }
++
++    .bean-card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .bean-card-body {
++      padding: 14px 16px 16px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .bean-card h4 {
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .bean-origin {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #8d6e63;
++      margin-bottom: 6px;
++    }
++
++    .bean-notes {
++      font-size: 0.9rem;
++      flex: 1;
++    }
++
++    .bean-card-footer {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      margin-top: 12px;
++    }
++
++    .bean-price {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .bean-toggle {
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++      border: 1px solid var(--primary);
++      background: var(--primary);
++      color: white;
++      padding: 6px 14px;
++      border-radius: 5px;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .bean-toggle:hover {
++      background: #3e2723;
++    }
++
++    #bean-box .bean-toggle {
++      background: transparent;
++      color: var(--primary);
++    }
++
++    #bean-box .bean-toggle:hover {
++      background: var(--secondary);
++    }
++
++    .bean-empty {
++      grid-column: 1 / -1;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      padding: 28px 20px;
++      text-align: center;
++      color: #8d6e63;
++      view-transition-name: bean-box-empty;
++    }
++
++    .bean-empty[hidden] {
++      display: none;
++    }
++
++    .bean-summary {
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 16px;
++      margin-top: 20px;
++      font-size: 0.95rem;
++    }
++
++    .bean-summary .btn {
++      margin-top: 0;
++    }
++
++    .bean-summary .btn[aria-disabled="true"] {
++      opacity: 0.5;
++      pointer-events: none;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    /* View transition choreography.
++       Rules keyed on the shared `.bean` class apply to every bean card at
++       once, so adding or removing one item slides the whole group into
++       its new positions in a single, consistent animation. */
++    ::view-transition-group(.bean) {
++      animation-duration: 450ms;
++      animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
++    }
++
++    ::view-transition-old(.bean),
++    ::view-transition-new(.bean) {
++      height: 100%;
++      object-fit: cover;
++      overflow: clip;
++      animation-duration: 450ms;
++    }
++
++    ::view-transition-group(bean-box-empty) {
++      animation-duration: 300ms;
++    }
++
++    /* Keep the rest of the page still while the cards move. */
++    ::view-transition-old(root),
++    ::view-transition-new(root) {
++      animation: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +408,128 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="bean-builder" id="bean-builder" aria-labelledby="bean-builder-title">
++      <h2 id="bean-builder-title">Build Your Bean Box</h2>
++      <p class="intro">Pick the roasts you want shipped to your door. Add beans to your box, change your mind,
++        and watch the shelf rearrange itself.</p>
++
++      <div class="bean-zone">
++        <div class="bean-zone-header">
++          <h3 id="bean-shelf-title">Available Beans</h3>
++        </div>
++        <div class="bean-grid" id="bean-shelf" role="list" aria-labelledby="bean-shelf-title">
++
++          <article class="bean-card" role="listitem" data-bean="ethiopia-yirgacheffe" data-price="18" data-order="0"
++            style="view-transition-name: bean-ethiopia-yirgacheffe">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80"
++              alt="Freshly roasted coffee beans" loading="lazy">
++            <div class="bean-card-body">
++              <h4>Ethiopia Yirgacheffe</h4>
++              <p class="bean-origin">Light roast · Washed</p>
++              <p class="bean-notes">Bright bergamot, jasmine, and a honeyed finish.</p>
++              <div class="bean-card-footer">
++                <span class="bean-price">$18</span>
++                <button type="button" class="bean-toggle" aria-label="Add Ethiopia Yirgacheffe to your box">Add</button>
++              </div>
++            </div>
++          </article>
++
++          <article class="bean-card" role="listitem" data-bean="colombia-huila" data-price="16" data-order="1"
++            style="view-transition-name: bean-colombia-huila">
++            <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=600&q=80"
++              alt="Burlap sack filled with coffee beans" loading="lazy">
++            <div class="bean-card-body">
++              <h4>Colombia Huila</h4>
++              <p class="bean-origin">Medium roast · Washed</p>
++              <p class="bean-notes">Caramel sweetness with red apple and a clean cocoa finish.</p>
++              <div class="bean-card-footer">
++                <span class="bean-price">$16</span>
++                <button type="button" class="bean-toggle" aria-label="Add Colombia Huila to your box">Add</button>
++              </div>
++            </div>
++          </article>
++
++          <article class="bean-card" role="listitem" data-bean="sumatra-mandheling" data-price="17" data-order="2"
++            style="view-transition-name: bean-sumatra-mandheling">
++            <img src="https://images.unsplash.com/photo-1559525839-b184a4d698c7?auto=format&fit=crop&w=600&q=80"
++              alt="Ground coffee in a moka pot basket surrounded by beans" loading="lazy">
++            <div class="bean-card-body">
++              <h4>Sumatra Mandheling</h4>
++              <p class="bean-origin">Dark roast · Wet-hulled</p>
++              <p class="bean-notes">Earthy, full-bodied, with dark chocolate and cedar.</p>
++              <div class="bean-card-footer">
++                <span class="bean-price">$17</span>
++                <button type="button" class="bean-toggle" aria-label="Add Sumatra Mandheling to your box">Add</button>
++              </div>
++            </div>
++          </article>
++
++          <article class="bean-card" role="listitem" data-bean="guatemala-antigua" data-price="17" data-order="3"
++            style="view-transition-name: bean-guatemala-antigua">
++            <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80"
++              alt="Roasted coffee beans in a white ceramic cup" loading="lazy">
++            <div class="bean-card-body">
++              <h4>Guatemala Antigua</h4>
++              <p class="bean-origin">Medium roast · Washed</p>
++              <p class="bean-notes">Smoky spice, brown sugar, and a velvety body.</p>
++              <div class="bean-card-footer">
++                <span class="bean-price">$17</span>
++                <button type="button" class="bean-toggle" aria-label="Add Guatemala Antigua to your box">Add</button>
++              </div>
++            </div>
++          </article>
++
++          <article class="bean-card" role="listitem" data-bean="brazil-cerrado" data-price="15" data-order="4"
++            style="view-transition-name: bean-brazil-cerrado">
++            <img src="https://images.unsplash.com/photo-1610632380989-680fe40816c6?auto=format&fit=crop&w=600&q=80"
++              alt="Coffee cup splashing with beans falling around it" loading="lazy">
++            <div class="bean-card-body">
++              <h4>Brazil Cerrado</h4>
++              <p class="bean-origin">Medium-dark roast · Natural</p>
++              <p class="bean-notes">Nutty and low-acid with milk chocolate and toasted hazelnut.</p>
++              <div class="bean-card-footer">
++                <span class="bean-price">$15</span>
++                <button type="button" class="bean-toggle" aria-label="Add Brazil Cerrado to your box">Add</button>
++              </div>
++            </div>
++          </article>
++
++          <article class="bean-card" role="listitem" data-bean="house-espresso" data-price="16" data-order="5"
++            style="view-transition-name: bean-house-espresso">
++            <img src="https://images.unsplash.com/photo-1611854779393-1b2da9d400fe?auto=format&fit=crop&w=600&q=80"
++              alt="Bag of coffee beside a grinder and mug on a wooden counter" loading="lazy">
++            <div class="bean-card-body">
++              <h4>House Espresso Blend</h4>
++              <p class="bean-origin">Dark roast · Blend</p>
++              <p class="bean-notes">Our signature blend: molasses, toffee, and a lingering crema.</p>
++              <div class="bean-card-footer">
++                <span class="bean-price">$16</span>
++                <button type="button" class="bean-toggle" aria-label="Add House Espresso Blend to your box">Add</button>
++              </div>
++            </div>
++          </article>
++
++        </div>
++      </div>
++
++      <div class="bean-zone">
++        <div class="bean-zone-header">
++          <h3 id="bean-box-title">Your Box <span class="bean-count" id="bean-box-count" aria-label="0 items">0</span></h3>
++          <span class="bean-summary-total">Total: <strong id="bean-box-total">$0</strong></span>
++        </div>
++        <div class="bean-grid" id="bean-box" role="list" aria-labelledby="bean-box-title">
++          <p class="bean-empty" id="bean-box-empty">Your box is empty. Add a few beans from the shelf above.</p>
++        </div>
++        <div class="bean-summary">
++          <a href="/order-online" class="btn" id="bean-checkout" aria-disabled="true">Checkout Box</a>
++        </div>
++      </div>
++
++      <p class="visually-hidden" id="bean-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +540,93 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (function () {
++      var shelf = document.getElementById('bean-shelf');
++      var box = document.getElementById('bean-box');
++      var empty = document.getElementById('bean-box-empty');
++      var count = document.getElementById('bean-box-count');
++      var total = document.getElementById('bean-box-total');
++      var checkout = document.getElementById('bean-checkout');
++      var status = document.getElementById('bean-status');
++      var builder = document.getElementById('bean-builder');
++      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++      function beanName(card) {
++        return card.querySelector('h4').textContent;
++      }
++
++      // Returning a bean to the shelf puts it back in its original slot.
++      function insertByOrder(card) {
++        var order = Number(card.dataset.order);
++        var siblings = shelf.querySelectorAll('.bean-card');
++        for (var i = 0; i < siblings.length; i++) {
++          if (Number(siblings[i].dataset.order) > order) {
++            shelf.insertBefore(card, siblings[i]);
++            return;
++          }
++        }
++        shelf.appendChild(card);
++      }
++
++      function syncState() {
++        var selected = box.querySelectorAll('.bean-card');
++        var sum = 0;
++        selected.forEach(function (card) { sum += Number(card.dataset.price); });
++
++        count.textContent = selected.length;
++        count.setAttribute('aria-label', selected.length + (selected.length === 1 ? ' item' : ' items'));
++        total.textContent = '$' + sum;
++        empty.hidden = selected.length > 0;
++        checkout.setAttribute('aria-disabled', selected.length ? 'false' : 'true');
++
++        builder.querySelectorAll('.bean-card').forEach(function (card) {
++          var inBox = card.parentElement === box;
++          var btn = card.querySelector('.bean-toggle');
++          btn.textContent = inBox ? 'Remove' : 'Add';
++          btn.setAttribute('aria-label', (inBox ? 'Remove ' : 'Add ') + beanName(card) + (inBox ? ' from your box' : ' to your box'));
++        });
++      }
++
++      function moveBean(card) {
++        var toBox = card.parentElement !== box;
++        var update = function () {
++          if (toBox) {
++            box.appendChild(card);
++          } else {
++            insertByOrder(card);
++          }
++          syncState();
++          status.textContent = beanName(card) + (toBox ? ' added to your box.' : ' removed from your box.');
++        };
++
++        // One shared transition: every .bean-card captured before and after the
++        // DOM change is animated to its new position by the same CSS rules.
++        if (!document.startViewTransition || reduceMotion.matches) {
++          update();
++          return;
++        }
++        var transition = document.startViewTransition(update);
++        transition.finished.then(function () {
++          // Keep keyboard focus on the button the user activated.
++          var btn = card.querySelector('.bean-toggle');
++          if (btn && document.activeElement === document.body) btn.focus();
++        });
++      }
++
++      builder.addEventListener('click', function (event) {
++        var btn = event.target.closest('.bean-toggle');
++        if (!btn) return;
++        var card = btn.closest('.bean-card');
++        if (card) moveBean(card);
++      });
++
++      syncState();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

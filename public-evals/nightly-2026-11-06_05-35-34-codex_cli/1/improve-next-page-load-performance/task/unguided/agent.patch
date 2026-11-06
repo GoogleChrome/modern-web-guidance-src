@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -163,9 +163,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prefetch>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -206,7 +206,48 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const prefetched = new Set();
++
++      function prefetchLink(event) {
++        if (navigator.connection?.saveData) return;
++
++        const anchor = event.target.closest('a[href]');
++        if (!anchor || anchor.hasAttribute('data-no-prefetch') ||
++            anchor.hasAttribute('download') ||
++            (anchor.target && anchor.target !== '_self')) return;
++
++        let url;
++        try {
++          url = new URL(anchor.href, location.href);
++        } catch {
++          return;
++        }
++
++        // Never speculatively request logout, even if its opt-out is removed.
++        if (!['http:', 'https:'].includes(url.protocol) ||
++            url.origin !== location.origin || url.username || url.password ||
++            /\/logout\/*$/i.test(url.pathname) ||
++            (url.pathname === location.pathname && url.search === location.search)) return;
++
++        url.hash = '';
++        if (prefetched.has(url.href)) return;
++        prefetched.add(url.href);
++
++        const link = document.createElement('link');
++        link.rel = 'prefetch';
++        link.as = 'document';
++        link.href = url.href;
++        document.head.appendChild(link);
++      }
++
++      document.addEventListener('pointerover', prefetchLink, { passive: true });
++      document.addEventListener('focusin', prefetchLink);
++      document.addEventListener('touchstart', prefetchLink, { passive: true });
++    })();
++  </script>
+ </body>
+ 
+ </html>

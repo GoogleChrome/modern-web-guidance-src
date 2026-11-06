@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,77 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shaped Elements */
++    .shaped-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .shaped-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 40px;
++      align-items: center;
++      margin-top: 20px;
++    }
++
++    .barista-feature h3 {
++      margin-top: 10px;
++      color: var(--primary);
++    }
++
++    .shaped-avatar {
++      width: 240px;
++      aspect-ratio: 1;
++      object-fit: cover;
++      -webkit-mask-image: url(#splat-mask);
++      mask-image: url(#splat-mask);
++    }
++
++    .unified-card {
++      display: flex;
++      text-align: left;
++      /* drop-shadow follows the masked outline, unlike box-shadow */
++      filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.25));
++    }
++
++    .card-body {
++      flex: 1;
++      background: var(--primary);
++      color: white;
++      padding: 24px;
++      border-radius: 16px 0 0 16px;
++    }
++
++    .card-body h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .card-accent {
++      width: 60px;
++      background: var(--primary);
++      border-radius: 0 16px 16px 0;
++      -webkit-mask-image: url(#accent-mask);
++      mask-image: url(#accent-mask);
++    }
++
++    .gradient-masked-card {
++      background: linear-gradient(135deg, var(--accent), #e65100);
++      color: white;
++      padding: 48px 24px 24px;
++      border-radius: 16px;
++      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent 24px, black 25px);
++      mask-image: radial-gradient(circle at 50% 0%, transparent 24px, black 25px);
++    }
++
++    .gradient-masked-card .btn {
++      background: white;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +263,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shaped-section">
++      <h2>From the Counter</h2>
++      <div class="shaped-grid">
++        <div class="barista-feature">
++          <img class="shaped-avatar"
++            src="https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=480&h=480&q=80"
++            alt="Portrait of our featured barista, Maya" width="240" height="240" loading="lazy">
++          <h3>Featured Barista: Maya</h3>
++          <p>Latte art champion and pour-over perfectionist.</p>
++        </div>
++
++        <div class="unified-card">
++          <div class="card-body">
++            <h3>Grind Rewards</h3>
++            <p>Earn a star with every cup. Collect 10 stars and your next drink is on us.</p>
++            <a href="/rewards" class="btn">Join Now</a>
++          </div>
++          <div class="card-accent"></div>
++        </div>
++
++        <div class="gradient-masked-card">
++          <h3>Happy Hour</h3>
++          <p>Half-price cold brew every weekday from 2&ndash;4pm.</p>
++          <a href="/menu/cold-brew" class="btn">See the Menu</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
++    <defs>
++      <!-- objectBoundingBox scales mask coordinates (0 to 1) with the element's size -->
++      <mask id="splat-mask" maskContentUnits="objectBoundingBox">
++        <path d="M 0.5 0.05 C 0.58 0.05, 0.58 0.21, 0.67 0.18 C 0.76 0.15, 0.79 0.08, 0.85 0.15 C 0.91 0.22, 0.83 0.32, 0.89 0.38 C 0.95 0.44, 1.03 0.45, 0.99 0.55 C 0.95 0.65, 0.82 0.62, 0.8 0.72 C 0.78 0.82, 0.89 0.92, 0.8 0.97 C 0.71 1.02, 0.64 0.88, 0.55 0.93 C 0.46 0.98, 0.44 1.06, 0.35 1.01 C 0.26 0.96, 0.31 0.81, 0.22 0.79 C 0.13 0.77, 0.01 0.88, 0.01 0.77 C 0.01 0.66, 0.16 0.62, 0.14 0.52 C 0.12 0.42, -0.02 0.39, 0.03 0.29 C 0.08 0.19, 0.23 0.27, 0.29 0.19 C 0.35 0.11, 0.3 0.01, 0.4 0.01 C 0.5 0.01, 0.42 0.05, 0.5 0.05 Z" fill="white" />
++      </mask>
++      <mask id="accent-mask" maskContentUnits="objectBoundingBox">
++        <rect width="1" height="1" fill="white" />
++        <!-- Concave curve cut from the right side; x=1.1 clears the edge to avoid subpixel seams -->
++        <path d="M 1.1,0 C 0.4,0.1 0.4,0.9 1.1,1 L 1.1,0 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

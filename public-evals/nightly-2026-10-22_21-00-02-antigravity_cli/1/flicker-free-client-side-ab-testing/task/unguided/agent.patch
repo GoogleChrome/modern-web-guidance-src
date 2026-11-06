@@ -1,0 +1,453 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,449 @@
++<!DOCTYPE html>
++<html lang="en" class="ab-loading">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="description" content="Ship faster with automated workflows, real-time analytics, and instant global deployments.">
++  <title>Veloce Cloud — Ship Faster with Intelligent Workflows</title>
++
++  <!-- Early connection hints for the A/B testing SDK origin -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin>
++  <link rel="dns-prefetch" href="https://cdn.example.com">
++
++  <!-- Anti-flicker controller: keeps experiment target hidden until variant is applied, fails, or times out -->
++  <script>
++    (function () {
++      var root = document.documentElement;
++      root.classList.add('ab-loading');
++      var settled = false;
++
++      function revealVariant() {
++        if (settled) return;
++        settled = true;
++        clearTimeout(fallbackTimer);
++        root.classList.remove('ab-loading');
++        root.classList.add('ab-ready');
++      }
++
++      function onSdkLoaded() {
++        if (document.readyState === 'loading') {
++          document.addEventListener('DOMContentLoaded', function () {
++            queueMicrotask(revealVariant);
++          }, { once: true });
++        } else {
++          queueMicrotask(revealVariant);
++        }
++      }
++
++      // Bounded timeout prevents prolonged blank content on slow/unreachable networks
++      var fallbackTimer = setTimeout(revealVariant, 800);
++
++      window.revealExperiment = revealVariant;
++      window.onExperimentReady = revealVariant;
++      window.__abSdkLoaded = onSdkLoaded;
++      window.__abSdkError = revealVariant;
++    })();
++  </script>
++
++  <!-- Load A/B testing SDK without blocking HTML parsing; reveal immediately after execution or error -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    defer
++    onload="window.__abSdkLoaded && window.__abSdkLoaded()"
++    onerror="window.__abSdkError && window.__abSdkError()"
++  ></script>
++
++  <style>
++    *, *::before, *::after {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    :root {
++      --bg-primary: #0b0f19;
++      --bg-surface: #131b2e;
++      --bg-card: #19233c;
++      --text-primary: #f8fafc;
++      --text-secondary: #94a3b8;
++      --accent-primary: #6366f1;
++      --accent-hover: #4f46e5;
++      --accent-glow: rgba(99, 102, 241, 0.35);
++      --border-subtle: rgba(148, 163, 184, 0.16);
++    }
++
++    html {
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
++      background-color: var(--bg-primary);
++      color: var(--text-primary);
++      line-height: 1.5;
++      -webkit-font-smoothing: antialiased;
++    }
++
++    body {
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++      background:
++        radial-gradient(circle at 20% 15%, rgba(99, 102, 241, 0.15) 0%, transparent 45%),
++        radial-gradient(circle at 80% 25%, rgba(14, 165, 233, 0.12) 0%, transparent 45%),
++        var(--bg-primary);
++    }
++
++    /* Scoped anti-flicker rule: hides modifiable experiment content until variant is applied */
++    html.ab-loading [data-experiment],
++    html.ab-loading .hero,
++    html.ab-loading .hero * {
++      opacity: 0 !important;
++      visibility: hidden !important;
++      pointer-events: none !important;
++    }
++
++    /* Header / Navigation */
++    .site-header {
++      width: 100%;
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 1.25rem 1.5rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      border-bottom: 1px solid var(--border-subtle);
++    }
++
++    .brand {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.625rem;
++      font-weight: 700;
++      font-size: 1.125rem;
++      color: var(--text-primary);
++      text-decoration: none;
++      letter-spacing: -0.02em;
++    }
++
++    .brand-icon {
++      width: 28px;
++      height: 28px;
++      border-radius: 7px;
++      background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .nav-links {
++      display: flex;
++      align-items: center;
++      gap: 1.75rem;
++      list-style: none;
++    }
++
++    .nav-links a {
++      color: var(--text-secondary);
++      text-decoration: none;
++      font-size: 0.9375rem;
++      font-weight: 500;
++    }
++
++    .nav-links a:hover {
++      color: var(--text-primary);
++    }
++
++    /* Hero Section with reserved dimensions to prevent layout shifts across variants */
++    main {
++      flex: 1;
++      display: flex;
++       flex-direction: column;
++      justify-content: center;
++    }
++
++    .hero {
++      width: 100%;
++      max-width: 1200px;
++      min-height: 540px;
++      margin: 0 auto;
++      padding: 4.5rem 1.5rem;
++      display: grid;
++      grid-template-columns: 1.1fr 0.9fr;
++      align-items: center;
++      gap: 3.5rem;
++    }
++
++    .hero-content {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 1.5rem;
++    }
++
++    .hero-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.375rem 0.875rem;
++      border-radius: 9999px;
++      background: rgba(99, 102, 241, 0.14);
++      border: 1px solid rgba(99, 102, 241, 0.35);
++      color: #c7d2fe;
++      font-size: 0.8125rem;
++      font-weight: 600;
++      letter-spacing: 0.02em;
++    }
++
++    .hero-title {
++      font-size: clamp(2.25rem, 4.5vw, 3.5rem);
++      font-weight: 800;
++      line-height: 1.12;
++      letter-spacing: -0.03em;
++      color: var(--text-primary);
++      min-height: 2.24em;
++    }
++
++    .hero-subtitle {
++      font-size: 1.125rem;
++      line-height: 1.65;
++      color: var(--text-secondary);
++      max-width: 56ch;
++      min-height: 3.3em;
++    }
++
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 1rem;
++      margin-top: 0.25rem;
++    }
++
++    .cta-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.625rem;
++      min-width: 190px;
++      min-height: 52px;
++      padding: 0.875rem 1.75rem;
++      border: none;
++      border-radius: 0.625rem;
++      background: var(--accent-primary);
++      color: #ffffff;
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 8px 24px -4px var(--accent-glow);
++      text-decoration: none;
++    }
++
++    .cta-button:hover {
++      background: var(--accent-hover);
++    }
++
++    .cta-button:focus-visible {
++      outline: 2px solid #818cf8;
++      outline-offset: 3px;
++    }
++
++    .hero-meta {
++      font-size: 0.875rem;
++      color: var(--text-secondary);
++    }
++
++    /* Right-hand Hero Visual Card */
++    .hero-visual {
++      background: var(--bg-surface);
++      border: 1px solid var(--border-subtle);
++      border-radius: 1rem;
++      padding: 1.5rem;
++      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
++    }
++
++    .visual-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding-bottom: 1rem;
++      margin-bottom: 1.25rem;
++      border-bottom: 1px solid var(--border-subtle);
++    }
++
++    .window-dots {
++      display: flex;
++      gap: 0.5rem;
++    }
++
++    .dot {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #334155;
++    }
++
++    .metrics-grid {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 1rem;
++    }
++
++    .metric-card {
++      background: var(--bg-card);
++      border: 1px solid var(--border-subtle);
++      border-radius: 0.75rem;
++      padding: 1.125rem;
++    }
++
++    .metric-label {
++      font-size: 0.8125rem;
++      color: var(--text-secondary);
++      margin-bottom: 0.375rem;
++    }
++
++    .metric-value {
++      font-size: 1.5rem;
++      font-weight: 700;
++      color: var(--text-primary);
++    }
++
++    .metric-trend {
++      font-size: 0.75rem;
++      color: #34d399;
++      margin-top: 0.25rem;
++      font-weight: 600;
++    }
++
++    /* Footer */
++    .site-footer {
++      width: 100%;
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 1.5rem;
++      border-top: 1px solid var(--border-subtle);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.875rem;
++      color: var(--text-secondary);
++    }
++
++    @media (max-width: 860px) {
++      .hero {
++        grid-template-columns: 1fr;
++        padding: 3rem 1.5rem;
++        min-height: 640px;
++      }
++    }
++  </style>
++
++  <noscript>
++    <style>
++      html.ab-loading [data-experiment],
++      html.ab-loading .hero,
++      html.ab-loading .hero * {
++        opacity: 1 !important;
++        visibility: visible !important;
++        pointer-events: auto !important;
++      }
++    </style>
++  </noscript>
++</head>
++<body>
++  <header class="site-header">
++    <a href="/" class="brand">
++      <span class="brand-icon" aria-hidden="true">
++        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
++          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
++        </svg>
++      </span>
++      <span>Veloce Cloud</span>
++    </a>
++    <nav aria-label="Primary Navigation">
++      <ul class="nav-links">
++        <li><a href="#features">Features</a></li>
++        <li><a href="#pricing">Pricing</a></li>
++        <li><a href="#docs">Documentation</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section
++      id="hero"
++      class="hero"
++      data-experiment="hero-variant"
++      data-ab-test="hero"
++      aria-labelledby="hero-title"
++    >
++      <div class="hero-content" data-experiment-container="hero-copy">
++        <span class="hero-badge" data-experiment-target="badge">New: Instant Edge Rollouts 2.0</span>
++        <h1
++          id="hero-title"
++          class="hero-title"
++          data-experiment-target="headline"
++          data-ab="headline"
++        >
++          Deploy production workflows in seconds, not sprints.
++        </h1>
++        <p
++          id="hero-subtitle"
++          class="hero-subtitle"
++          data-experiment-target="subheadline"
++          data-ab="subheadline"
++        >
++          Automate build pipelines, preview every branch at the edge, and monitor real-time performance telemetry from a unified control plane.
++        </p>
++        <div class="hero-actions">
++          <button
++            id="cta-button"
++            class="cta-button btn-primary"
++            type="button"
++            data-experiment-target="cta"
++            data-ab="cta"
++          >
++            Start Free Trial
++          </button>
++          <span class="hero-meta">No credit card required · 14-day pro access</span>
++        </div>
++      </div>
++
++      <div class="hero-visual" aria-label="Platform telemetry preview">
++        <div class="visual-header">
++          <div class="window-dots" aria-hidden="true">
++            <span class="dot"></span>
++            <span class="dot"></span>
++            <span class="dot"></span>
++          </div>
++          <span style="font-size: 0.75rem; color: var(--text-secondary);">edge-cluster-us-east</span>
++        </div>
++        <div class="metrics-grid">
++          <div class="metric-card">
++            <div class="metric-label">Global P99 Latency</div>
++            <div class="metric-value">18.4 ms</div>
++            <div class="metric-trend">↓ 42% vs last week</div>
++          </div>
++          <div class="metric-card">
++            <div class="metric-label">Build Cache Hit Rate</div>
++            <div class="metric-value">99.2%</div>
++            <div class="metric-trend">↑ 12.8% saved compute</div>
++          </div>
++          <div class="metric-card">
++            <div class="metric-label">Active Edge Regions</div>
++            <div class="metric-value">38 / 38</div>
++            <div class="metric-trend">100% healthy</div>
++          </div>
++          <div class="metric-card">
++            <div class="metric-label">Release Frequency</div>
++            <div class="metric-value">140 / day</div>
++            <div class="metric-trend">Zero-downtime deploys</div>
++          </div>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer class="site-footer">
++    <span>&copy; 2026 Veloce Cloud Inc. All rights reserved.</span>
++    <span>Status: All Systems Operational</span>
++  </footer>
++</body>
++</html>

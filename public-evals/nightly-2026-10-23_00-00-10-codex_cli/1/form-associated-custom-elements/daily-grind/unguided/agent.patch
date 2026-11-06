@@ -1,0 +1,369 @@
+diff --git a/index.html b/index.html
+index 66c9173..4bc946a 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,157 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
++<title>Forma — Native by nature</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++<style>
++:root{font-family:'DM Sans',sans-serif;color:#252738;background:#f8f9fc;font-synthesis:none;--purple:#7056d9;--muted:#8a8c9c;--line:#e9eaf1}*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #c5b7ff;outline-offset:3px}button{transition:background .18s,transform .18s}button:active{transform:translateY(1px)}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}a{color:inherit;text-decoration:none}.sidebar{position:fixed;width:230px;inset:0 auto 0 0;background:#fff;border-right:1px solid var(--line);padding:33px 22px;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:10px;font-family:Manrope,sans-serif;font-size:28px;font-weight:800;letter-spacing:-1.2px;padding:0 12px}.brand-mark{width:31px;height:32px;background:var(--purple);border-radius:9px;color:white;display:grid;place-items:center;transform:rotate(-7deg)}.brand-mark svg{transform:rotate(7deg);width:23px;height:23px}.workspace{margin:41px 8px 18px;font-size:10px;letter-spacing:1.7px;font-weight:700;color:#a0a1b0}.nav-item{border:0;background:none;width:100%;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;margin:3px 0;color:#77798d;font-size:13px;border-radius:7px}.nav-item.active{background:#f0ecfc;color:var(--purple);font-weight:600}.nav-item span.count{margin-left:auto;font-size:10px;background:#e5ddfa;border-radius:4px;padding:2px 5px}.nav-item svg{width:18px;height:18px}.sidebar-bottom{margin-top:auto}.tip{background:#f8f7fc;border:1px solid #eeebf6;padding:16px;border-radius:9px;margin-bottom:22px;font-size:11px;color:#8c899e;line-height:1.7}.tip strong{display:block;color:#59536e;font-size:12px;margin-bottom:5px}.tip svg{color:var(--purple);width:16px;vertical-align:middle;margin-right:5px}.profile{border-top:1px solid var(--line);padding:21px 5px 0;display:flex;gap:10px;align-items:center}.avatar{background:#eee7db;color:#8e7963;border-radius:50%;width:32px;height:32px;display:grid;place-items:center;font-size:11px;font-weight:700}.profile strong{font-size:11px;display:block}.profile small{font-size:10px;color:#a0a0ae}.profile>span:last-child{margin-left:auto;color:#999}main{margin-left:230px}.topbar{height:81px;border-bottom:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 46px;font-size:12px;color:#9596a5}.breadcrumbs{display:flex;gap:15px;align-items:center}.breadcrumbs svg{width:15px}.breadcrumbs b{font-weight:500;color:#55586d}.top-actions{display:flex;align-items:center;gap:24px}.github{display:flex;gap:7px;align-items:center;color:#686a7d}.version{border:1px solid var(--line);border-radius:5px;padding:4px 8px;font:10px monospace}.content{max-width:1320px;padding:43px 46px 25px;margin:auto}.eyebrow{color:var(--purple);font-size:10px;font-weight:700;letter-spacing:1.6px;display:flex;align-items:center;gap:7px}.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--purple)}h1{font-family:Manrope,sans-serif;font-size:35px;letter-spacing:-1.4px;line-height:1.3;margin:13px 0 10px;font-weight:800}.intro{color:#8a8b9d;font-size:13px;line-height:1.7;margin:0}.heading{display:flex;justify-content:space-between;align-items:center}.native-badge{font-size:10px;border:1px solid #e4e9e8;background:#fff;border-radius:20px;color:#71867d;display:flex;align-items:center;gap:6px;padding:7px 11px}.native-badge svg{width:13px;height:13px;color:#55a18a}.tabs{display:flex;gap:28px;border-bottom:1px solid #e4e5ed;margin-top:32px;margin-bottom:25px}.tab{border:0;background:none;padding:0 1px 13px;color:#999aaa;font-size:12px;display:flex;align-items:center;gap:7px;border-bottom:2px solid transparent}.tab svg{width:15px;height:15px}.tab.active{color:var(--purple);border-color:var(--purple);font-weight:600}.tab small{background:#eeebf8;border-radius:4px;padding:2px 5px;font-size:9px}.playground{display:grid;grid-template-columns:minmax(0,1.52fr) minmax(280px,1fr);gap:23px;align-items:start}.panel{background:white;border:1px solid #e4e6ef;border-radius:11px;overflow:hidden;box-shadow:0 3px 5px #28244802}.panel-head{height:60px;padding:0 23px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.panel-title{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:600}.panel-title svg{width:16px;height:16px;color:#9292a7}.code-tag{font:9px monospace;color:#a2a0b1;background:#f6f6fa;border:1px solid #ededf3;border-radius:4px;padding:4px 6px}.form-body{padding:25px 25px 21px}.section-label{font-size:9px;letter-spacing:1.4px;color:#a0a0b1;font-weight:600;margin-bottom:20px}.field-label{display:block;font-size:11px;font-weight:600;margin-bottom:8px}.field-label em{font-style:normal;color:var(--purple)}.text-input{width:100%;border:1px solid #e1e2eb;border-radius:6px;height:40px;padding:0 12px;color:#626478;background:#fff;font-size:12px}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:22px}.control-heading{display:flex;justify-content:space-between;align-items:center;margin-top:3px}.mini-tag{font:9px monospace;color:var(--purple);background:#f3efff;border-radius:4px;padding:3px 5px}.hint{font-size:10px;color:#999aab;margin:1px 0 15px;line-height:1.7}.control-meta{display:flex;justify-content:space-between;align-items:center;margin:12px 0 23px;font-size:9px;color:#9697a8}.control-meta code{font-size:9px;color:#77738b}.clear{border:0;background:none;color:#9692a8;font-size:10px;padding:0}.clear:hover{color:var(--purple)}.separator{border-top:1px dashed #e9e8ef;margin-bottom:19px}.options-label{font-size:10px;font-weight:600;margin-bottom:13px;display:flex;align-items:center;gap:6px}.options-label svg{width:13px;height:13px;color:#9794a8}.settings{display:flex;gap:24px;align-items:center}.switch-label{display:flex;align-items:center;gap:8px;font-size:10px;color:#77798d;cursor:pointer}.switch-label input{appearance:none;width:26px;height:15px;border-radius:20px;background:#dfe0e9;position:relative;margin:0;cursor:pointer}.switch-label input:checked{background:var(--purple)}.switch-label input:before{content:'';position:absolute;left:3px;top:3px;width:9px;height:9px;border-radius:50%;background:white;transition:left .2s}.switch-label input:checked:before{left:14px}.form-footer{border-top:1px solid var(--line);padding:17px 24px;display:flex;justify-content:space-between;align-items:center;background:#fdfdff}.button{border:1px solid #e3e3ed;border-radius:6px;background:#fff;color:#747387;padding:9px 13px;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:7px}.button svg{width:13px;height:13px}.primary{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:0 3px 5px #7056d920}.primary:hover{background:#6046c5}.button-group{display:flex;gap:8px}.restore{font-size:10px;color:#8e899e;border:0;background:transparent;display:flex;align-items:center;gap:5px}.restore svg{width:13px;height:13px}.under-note{display:flex;align-items:center;justify-content:center;gap:6px;font-size:10px;color:#a1a1b0;margin-top:14px}.under-note svg{width:12px;height:12px}.inspector .panel-head{height:53px;padding:0 20px}.live{display:flex;align-items:center;gap:5px;color:#9298a1;font-size:9px}.live i{width:5px;height:5px;background:#6db89a;border-radius:50%}.inspector-body{padding:19px 20px}.inspector-label{font-size:9px;letter-spacing:1.1px;color:#9b9bab;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between}.method{font:9px monospace;text-transform:none;letter-spacing:0;color:#9e9bab}.payload{background:#f8f8fc;border:1px solid #ededf5;border-radius:6px;padding:14px;font:10px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;color:#a2a1b1;margin:0 0 21px;min-height:105px}.payload .key{color:#777b99}.payload .val{color:#8c69b8}.status-line{display:flex;justify-content:space-between;font-size:10px;color:#9494a5;margin:12px 0}.status-line code{font-size:10px;color:#696b82}.status-pill{font-size:9px;background:#edf7f1;color:#5b9d7a;border-radius:4px;padding:3px 7px}.status-pill.invalid{background:#fff0ec;color:#ce7c65}.divider{border-top:1px solid var(--line);margin:19px 0}.valid-note{display:flex;align-items:center;gap:6px;color:#8e93a3;font-size:10px;margin:13px 0 0}.valid-note svg{width:13px;height:13px;color:#64a285}.events{margin-top:18px}.events .panel-head{height:49px}.text-action{border:0;background:none;color:#a09aaf;font-size:10px}.event-log{padding:10px 19px 15px;min-height:119px;max-height:166px;overflow:auto}.event{display:flex;gap:8px;font:9px/2.6 ui-monospace,monospace;white-space:nowrap}.event time{color:#b0afbf}.event .event-dot{color:#b4a2e2}.event-name{color:#878398}.event:first-child .event-name{color:#7965b2}.how-it-works{margin-top:29px;border:1px solid #e5e5f0;background:#f4f3fa;border-radius:9px;padding:19px 22px;display:flex;gap:15px;align-items:flex-start}.how-icon{width:30px;height:30px;display:grid;place-items:center;background:#eae5fa;color:var(--purple);border-radius:7px;flex-shrink:0}.how-icon svg{width:16px;height:16px}.how-it-works strong{font-size:11px;font-weight:600}.how-it-works p{font-size:11px;line-height:1.8;color:#9290a4;margin:5px 0 0}.how-it-works code{font-size:10px;background:#eae7f4;color:#807497;padding:2px 4px;border-radius:3px}.bottom-bar{margin-top:28px;display:flex;justify-content:space-between;font-size:9px;color:#adaeba}.bottom-bar span{display:flex;align-items:center;gap:5px}.bottom-bar svg{width:12px;height:12px}.implementation{display:none}.implementation.visible{display:block}.source{font:12px/1.9 ui-monospace,monospace;white-space:pre-wrap;padding:24px;margin:0;color:#77718b;background:#fdfcff}.toast{position:fixed;bottom:24px;left:calc(50% + 115px);transform:translateX(-50%);background:#302941;color:white;padding:12px 20px;border-radius:8px;font-size:12px;box-shadow:0 5px 24px #30294125;display:none;z-index:10}.toast.show{display:block}@media(min-width:1450px){.content{padding-top:57px}.playground{gap:28px}.form-body{padding:30px}.form-footer{padding:20px 30px}.form-row{margin-bottom:28px}.hint{margin-bottom:20px}.control-meta{margin-bottom:28px}.how-it-works{margin-top:33px}}@media(max-width:1100px){.sidebar{width:190px;padding:30px 14px}main{margin-left:190px}.content{padding:32px 26px}.topbar{padding:0 26px}.playground{grid-template-columns:1.3fr 1fr;gap:17px}.form-body{padding:20px}.form-footer{padding:15px}.restore{font-size:0}.restore svg{width:15px}.native-badge{display:none}.settings{gap:16px}.toast{left:calc(50% + 95px)}}@media(max-width:800px){.sidebar{width:70px;padding:27px 10px}.brand{padding:0 9px}.brand-word,.workspace,.nav-item span,.tip,.profile,.nav-item .count{display:none!important}.nav-item{justify-content:center;padding:13px;margin-top:10px}.sidebar nav{margin-top:34px}.sidebar-bottom .nav-item{display:flex}main{margin-left:70px}.playground{grid-template-columns:1fr}.content{padding:27px 22px}.topbar{height:65px;padding:0 22px}.top-actions{gap:12px}.github{font-size:0}.top-actions .version{display:none}h1{font-size:29px}.heading{display:block}.inspector{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}.events{margin:0}.toast{left:calc(50% + 35px)}.restore{font-size:10px}.bottom-bar{gap:20px;line-height:1.5}}@media(max-width:540px){.content{padding:25px 16px}.inspector{display:block}.events{margin-top:16px}.form-row{grid-template-columns:1fr;gap:15px}.form-footer{flex-wrap:wrap;gap:15px}.intro{font-size:12px}.how-it-works{padding:15px}.bottom-bar span:last-child{display:none}.topbar{padding:0 16px}.breadcrumbs{gap:10px}.tabs{margin-top:26px}}
++</style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<svg style="display:none" xmlns="http://www.w3.org/2000/svg"><defs>
++<symbol id="logo" viewBox="0 0 24 24"><path d="M6 18V6h12M6 12h9" stroke-width="3"/></symbol><symbol id="grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol><symbol id="layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5"/></symbol><symbol id="code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18"/></symbol><symbol id="book" viewBox="0 0 24 24"><path d="M12 5v15M3 4c3-1 6 0 9 2 3-2 6-3 9-2v14c-3-1-6 0-9 2-3-2-6-3-9-2Z"/></symbol><symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol><symbol id="check" viewBox="0 0 24 24"><path d="m6 12 4 4 8-8"/></symbol><symbol id="shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol><symbol id="terminal" viewBox="0 0 24 24"><path d="m5 6 6 6-6 6m8 0h6"/></symbol><symbol id="sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><rect x="7" y="4" width="4" height="6" rx="1" fill="white"/><rect x="14" y="14" width="4" height="6" rx="1" fill="white"/></symbol><symbol id="circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></symbol><symbol id="bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-13h-8l1-7Z"/></symbol><symbol id="github" viewBox="0 0 24 24"><path d="M9 19c-5 1-5-3-7-3m14 5v-4c0-1-.3-2-1-2 4-.5 6-2 6-6 0-2-.5-3-2-4 0-1 0-2-.5-3-2 0-3 1-4 1a15 15 0 0 0-6 0C7 2 6 2 4.5 2 4 3 4 4 4 5 2.5 6 2 7 2 9c0 4 2 5.5 6 6-.7.5-1 1-1 2v4"/></symbol><symbol id="external" viewBox="0 0 24 24"><path d="M14 3h7v7M21 3 10 14M10 4H4v16h16v-6"/></symbol><symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 0-1 1-1 2m0 3h.01"/></symbol>
++</defs></svg>
++<aside class="sidebar"><a href="./" class="brand" aria-label="Forma home"><span class="brand-mark"><svg><use href="#logo"/></svg></span><span class="brand-word">forma<span style="color:#7056d9">.</span></span></a><div class="workspace">WORKSPACE</div><nav aria-label="Workspace"><button class="nav-item" data-view="overview"><svg><use href="#grid"/></svg><span>Overview</span></button><button class="nav-item active" data-view="playground"><svg><use href="#layers"/></svg><span>Components</span><span class="count">01</span></button><button class="nav-item" data-view="implementation"><svg><use href="#code"/></svg><span>Implementation</span></button><button class="nav-item" data-view="docs"><svg><use href="#book"/></svg><span>Documentation</span><svg style="width:12px;margin-left:auto"><use href="#external"/></svg></button></nav><div class="sidebar-bottom"><div class="tip"><strong><svg><use href="#bolt"/></svg>Custom. Without compromise.</strong>Your components, with all the power of native HTML forms.</div><button class="nav-item" data-view="docs"><svg><use href="#help"/></svg><span>Help & resources</span></button><div class="profile"><span class="avatar">JD</span><div><strong>Jamie Davis</strong><small>Personal workspace</small></div><span>⌄</span></div></div></aside>
++<main><header class="topbar"><div class="breadcrumbs"><svg><use href="#layers"/></svg><span>Components</span><span style="color:#c8c7d3">/</span><b>Form-associated control</b></div><div class="top-actions"><a class="github" href="https://github.com/whatwg/html" target="_blank" rel="noreferrer"><svg style="width:16px;height:16px"><use href="#github"/></svg>View on GitHub <svg style="width:11px"><use href="#external"/></svg></a><span class="version">v1.0.0</span></div></header>
++<div class="content"><div class="heading"><div><div class="eyebrow"><i></i> THE COMPONENT LAB</div><h1>Custom control. Native behavior.</h1><p class="intro">A little personality. All the form fundamentals.<br>Explore a custom element that feels right at home in your form.</p></div><span class="native-badge"><svg><use href="#shield"/></svg>Powered by ElementInternals</span></div>
++<div class="tabs" role="tablist" aria-label="Component view"><button id="playground-tab" class="tab active" role="tab" aria-selected="true" aria-controls="playground-view" data-tab="playground"><svg><use href="#grid"/></svg>Playground</button><button id="implementation-tab" class="tab" role="tab" aria-selected="false" aria-controls="implementation-view" data-tab="implementation"><svg><use href="#code"/></svg>Implementation <small>JS</small></button></div>
++<div id="playground-view" role="tabpanel" aria-labelledby="playground-tab"><div class="playground"><div><section class="panel"><div class="panel-head"><div class="panel-title"><svg><use href="#layers"/></svg>Try it out</div><span class="code-tag">&lt;delivery-picker&gt;</span></div><form id="demo-form"><div class="form-body"><div class="section-label">YOUR NEXT DELIVERY</div><div class="form-row"><label><span class="field-label">Full name</span><input class="text-input" name="fullName" value="Jamie Davis" autocomplete="name" placeholder="Your name"></label><label><span class="field-label">Email address</span><input class="text-input" name="email" type="email" value="jamie@example.com" autocomplete="email" placeholder="you@example.com"></label></div><div class="control-heading"><label class="field-label" id="delivery-label" for="delivery">Delivery preference <em id="required-mark">*</em></label><span class="mini-tag">CUSTOM ELEMENT</span></div><p class="hint" id="delivery-hint">Good things are on the way. How soon would you like them?</p><delivery-picker id="delivery" name="delivery" value="standard" required aria-labelledby="delivery-label" aria-describedby="delivery-hint"></delivery-picker><div class="control-meta"><span>One selection · Submitted as <code>delivery</code></span><button type="button" class="clear" id="clear-selection">Clear selection</button></div><div class="separator"></div><div class="options-label"><svg><use href="#sliders"/></svg>Control settings</div><div class="settings"><label class="switch-label"><input type="checkbox" id="required-toggle" checked>Required</label><label class="switch-label"><input type="checkbox" id="disabled-toggle">Disabled</label></div></div><div class="form-footer"><div class="button-group"><button class="button primary" type="submit">Submit form <svg><use href="#arrow"/></svg></button><button class="button" type="reset"><svg><use href="#reset"/></svg>Reset</button></div><button class="restore" type="button" id="restore"><svg><use href="#circle"/></svg>Restore state</button></div></form></section><div class="under-note"><svg><use href="#shield"/></svg>A real form. A real custom element. No hidden inputs.</div></div>
++<div class="inspector"><section class="panel"><div class="panel-head"><div class="panel-title"><svg><use href="#terminal"/></svg>Live inspector</div><span class="live"><i></i>Live</span></div><div class="inspector-body"><div class="inspector-label">FORM DATA <span class="method">FormData(form)</span></div><pre id="payload" class="payload" aria-live="polite"></pre><div class="inspector-label">CONSTRAINT VALIDATION <span id="validity-badge" class="status-pill">Valid</span></div><div class="status-line"><code>value</code><code id="value-output">"standard"</code></div><div class="status-line"><code>willValidate</code><code id="will-output">true</code></div><div class="status-line"><code>valueMissing</code><code id="missing-output">false</code></div><p class="valid-note" id="validation-note"><svg><use href="#check"/></svg><span>All constraints satisfied.</span></p><div class="divider"></div><div class="inspector-label" style="margin:0">FORM ASSOCIATION</div><div class="status-line"><span>Associated form</span><code>#demo-form</code></div><div class="status-line" style="margin-bottom:0"><span>Element name</span><code>delivery</code></div></div></section><section class="panel events"><div class="panel-head"><div class="panel-title"><svg><use href="#circle"/></svg>Event log</div><button type="button" class="text-action" id="clear-log">Clear</button></div><div class="event-log" id="event-log" aria-live="polite"></div></section></div></div>
++<div class="how-it-works"><span class="how-icon"><svg><use href="#bolt"/></svg></span><div><strong>Custom on the outside. Native on the inside.</strong><p>With <code>ElementInternals</code>, this control submits its own value, participates in constraint validation, and responds to form resets, disabled states, and state restoration. Just like a built-in input.</p></div></div></div>
++<section class="implementation panel" id="implementation-view" role="tabpanel" aria-labelledby="implementation-tab"><div class="panel-head"><div class="panel-title"><svg><use href="#code"/></svg>Under the hood</div><span class="code-tag">delivery-picker.js</span></div><pre class="source" id="source-preview"></pre></section>
++<footer class="bottom-bar"><span>Built for the web. With the web.</span><span><svg><use href="#check"/></svg>Form-associated custom elements · Web standards, first.</span></footer></div></main><div class="toast" role="status" id="toast"></div>
++<script>
++const pickerTemplate = document.createElement('template');
++pickerTemplate.innerHTML = `<style>
++:host{display:block;outline:none}:host([disabled]){opacity:.48}.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}button{position:relative;background:white;border:1px solid #e4e3ed;border-radius:7px;padding:19px 8px 15px;color:#8d8c9e;font-family:'DM Sans',sans-serif;cursor:pointer;transition:border-color .15s,background .15s;min-width:0}button:hover:not(:disabled){border-color:#b7a6eb;background:#fcfaff}button[aria-checked="true"]{background:#f5f1ff;border-color:#9377e1;box-shadow:0 0 0 1px #9377e10a;color:#795bc4}button:focus-visible{outline:3px solid #c5b7ff;outline-offset:3px}button:disabled{cursor:not-allowed}svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:block;margin:0 auto 12px}.title{display:block;font-size:11px;font-weight:600;color:#5d5c72}.detail{display:block;font-size:9px;color:#a6a0b4;margin-top:5px}.radio{position:absolute;top:9px;right:9px;width:11px;height:11px;border:1px solid #dddae8;border-radius:50%}[aria-checked="true"] .radio{background:#8363d5;border-color:#8363d5}[aria-checked="true"] .radio:after{content:'';position:absolute;width:3px;height:3px;background:white;left:3px;top:3px;border-radius:50%}.error{font:10px 'DM Sans',sans-serif;color:#c67569;margin:9px 0 0}.error:empty{display:none}:host([data-invalid]) button{border-color:#d49286}@media(max-width:400px){.choices{gap:6px}button{padding:20px 4px 14px}.title{font-size:10px}.detail{font-size:8px}}
++</style><div class="choices" role="radiogroup" aria-label="Delivery preference"><button type="button" role="radio" data-value="standard"><span class="radio"></span><svg viewBox="0 0 24 24"><path d="m3 7 9-4 9 4-9 5-9-5Zm0 0v10l9 5 9-5V7M12 12v10M7 5l10 5"/></svg><span class="title">Standard</span><span class="detail">5–7 business days</span></button><button type="button" role="radio" data-value="express"><span class="radio"></span><svg viewBox="0 0 24 24"><path d="M3 6h12v12H3m12-9h4l3 4v5h-7M1 10h6M1 14h4"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="title">Express</span><span class="detail">2–3 business days</span></button><button type="button" role="radio" data-value="priority"><span class="radio"></span><svg viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8L20 9h-8l1-7Z"/></svg><span class="title">Priority</span><span class="detail">Next business day</span></button></div><p class="error" aria-live="polite"></p>`;
++class DeliveryPicker extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['required', 'disabled', 'value'];
++  #internals; #value = ''; #disabled = false; #showError = false;
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    this.attachShadow({mode:'open', delegatesFocus:true}).append(pickerTemplate.content.cloneNode(true));
++    this.shadowRoot.addEventListener('click', event => {
++      const button = event.target.closest('button');
++      if (!button || this.#disabled) return;
++      this.value = button.dataset.value;
++      this.dispatchEvent(new Event('input', {bubbles:true, composed:true}));
++      this.dispatchEvent(new Event('change', {bubbles:true}));
++    });
++    this.shadowRoot.addEventListener('keydown', event => {
++      if (!['ArrowRight','ArrowLeft','ArrowDown','ArrowUp','Home','End'].includes(event.key) || this.#disabled) return;
++      event.preventDefault();
++      const buttons = [...this.shadowRoot.querySelectorAll('button')];
++      const current = buttons.indexOf(this.shadowRoot.activeElement);
++      const index = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (current + (['ArrowRight','ArrowDown'].includes(event.key) ? 1 : -1) + 3) % 3;
++      buttons[index].click(); buttons[index].focus();
++    });
++    this.addEventListener('invalid', () => { this.#showError = true; this.#sync(); this.#log('invalid · valueMissing'); });
++  }
++  connectedCallback() { this.#sync(); }
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (name === 'value') this.#value = this.#normalize(newValue);
++    this.#sync();
++  }
++  #normalize(value) { return ['standard','express','priority'].includes(value) ? value : ''; }
++  get value() { return this.#value; }
++  set value(value) { this.#value = this.#normalize(value); this.#showError = false; this.#sync(); }
++  get form() { return this.#internals.form; }
++  get name() { return this.getAttribute('name') || ''; }
++  get type() { return this.localName; }
++  get validity() { return this.#internals.validity; }
++  get validationMessage() { return this.#internals.validationMessage; }
++  get willValidate() { return this.#internals.willValidate; }
++  get required() { return this.hasAttribute('required'); }
++  set required(value) { this.toggleAttribute('required', Boolean(value)); }
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(value) { this.toggleAttribute('disabled', Boolean(value)); }
++  checkValidity() { return this.#internals.checkValidity(); }
++  reportValidity() { return this.#internals.reportValidity(); }
++  formAssociatedCallback(form) { this.#log(form ? 'formAssociatedCallback' : 'form detached'); }
++  formDisabledCallback(disabled) { this.#disabled = disabled; this.#sync(); this.#log('formDisabledCallback · ' + disabled); }
++  formResetCallback() { this.value = this.getAttribute('value') || ''; this.#log('formResetCallback'); }
++  formStateRestoreCallback(state, mode) { this.value = typeof state === 'string' ? state : ''; this.#log('formStateRestoreCallback · ' + mode); }
++  #sync() {
++    const buttons = [...this.shadowRoot.querySelectorAll('button')];
++    buttons.forEach((button, i) => {
++      const selected = button.dataset.value === this.#value;
++      button.setAttribute('aria-checked', String(selected));
++      button.disabled = this.#disabled;
++      button.tabIndex = selected || (!this.#value && i === 0) ? 0 : -1;
++    });
++    this.shadowRoot.querySelector('.choices').setAttribute('aria-required', String(this.required));
++    this.#internals.setFormValue(this.#value, this.#value);
++    const missing = this.required && !this.#value;
++    this.#internals.setValidity(missing ? {valueMissing:true} : {}, missing ? 'Please choose a delivery preference.' : '', buttons[0]);
++    const show = this.#showError && missing && !this.#disabled;
++    this.toggleAttribute('data-invalid', show);
++    this.shadowRoot.querySelector('.error').textContent = show ? 'Please choose a delivery preference.' : '';
++    this.dispatchEvent(new Event('control-state', {bubbles:true}));
++  }
++  #log(message) { this.dispatchEvent(new CustomEvent('control-log', {bubbles:true, detail:message})); }
++}
++const form = document.querySelector('#demo-form');
++const picker = document.querySelector('#delivery');
++const log = document.querySelector('#event-log');
++let savedState = 'standard';
++function addLog(message) {
++  const row = document.createElement('div'); row.className = 'event';
++  const time = document.createElement('time'); time.textContent = new Date().toLocaleTimeString('en-GB', {hour12:false});
++  const dot = document.createElement('span'); dot.className='event-dot'; dot.textContent='↳';
++  const text = document.createElement('span'); text.className='event-name'; text.textContent=message;
++  row.append(time, dot, text); log.prepend(row);
++  while(log.children.length > 30) log.lastChild.remove();
++}
++function updateInspector() {
++  if (!customElements.get('delivery-picker')) return;
++  const payload = document.querySelector('#payload');
++  payload.replaceChildren(document.createTextNode('{\n'));
++  const entries = [...new FormData(form).entries()];
++  entries.forEach(([key,value], index) => {
++    const k = document.createElement('span'); k.className='key'; k.textContent='  '+JSON.stringify(key);
++    const v = document.createElement('span'); v.className='val'; v.textContent=JSON.stringify(value);
++    payload.append(k,document.createTextNode(': '),v,document.createTextNode(index < entries.length-1 ? ',\n' : '\n'));
++  }); payload.append(document.createTextNode('}'));
++  document.querySelector('#value-output').textContent=JSON.stringify(picker.value);
++  document.querySelector('#will-output').textContent=String(picker.willValidate);
++  document.querySelector('#missing-output').textContent=String(picker.validity.valueMissing);
++  const valid = !picker.willValidate || picker.validity.valid;
++  const badge = document.querySelector('#validity-badge'); badge.textContent=picker.disabled?'Disabled':valid?'Valid':'Invalid'; badge.classList.toggle('invalid', !valid);
++  document.querySelector('#validation-note span').textContent=picker.disabled?'Excluded from validation and submission.':valid?'All constraints satisfied.':'A delivery preference is required.';
++  document.querySelector('#validation-note use').setAttribute('href',valid?'#check':'#help');
++}
++document.addEventListener('control-log', event => addLog(event.detail));
++document.addEventListener('control-state', updateInspector);
++customElements.define('delivery-picker', DeliveryPicker);
++form.addEventListener('input', updateInspector);
++picker.addEventListener('change', () => addLog('change · '+(picker.value || 'empty')));
++let toastTimer;
++function toast(message) { const el=document.querySelector('#toast'); el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
++form.addEventListener('submit', event => { event.preventDefault(); savedState=picker.value; addLog('submit · FormData captured'); toast('Form submitted. Delivery state saved for restoration.'); updateInspector(); });
++form.addEventListener('reset', () => { document.querySelector('#required-toggle').checked=true; document.querySelector('#disabled-toggle').checked=false;picker.required=true;picker.disabled=false;queueMicrotask(updateInspector); });
++document.querySelector('#required-toggle').addEventListener('change', event => { picker.required=event.target.checked; document.querySelector('#required-mark').hidden=!picker.required;addLog('required · '+picker.required);updateInspector(); });
++document.querySelector('#disabled-toggle').addEventListener('change', event => { picker.disabled=event.target.checked;updateInspector(); });
++form.addEventListener('reset',()=>document.querySelector('#required-mark').hidden=false);
++document.querySelector('#clear-selection').addEventListener('click', () => { if(picker.disabled){toast('Enable the control to change its selection.');return;}picker.value='';addLog('value cleared');updateInspector(); });
++document.querySelector('#restore').addEventListener('click', () => { picker.formStateRestoreCallback(savedState,'restore');updateInspector();toast('Restored delivery: '+savedState+'. Submit to save a new state.'); });
++document.querySelector('#clear-log').addEventListener('click', () => log.replaceChildren());
++function setView(view) {
++  const implementation = view === 'implementation';
++  document.querySelector('#playground-view').hidden=implementation;
++  document.querySelector('#implementation-view').classList.toggle('visible',implementation);
++  document.querySelectorAll('[data-tab]').forEach(button => {const active=button.dataset.tab===(implementation?'implementation':'playground');button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active));});
++  document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.view===(implementation?'implementation':'playground')));
++}
++document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>setView(button.dataset.tab)));
++document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>{
++  if(button.dataset.view==='docs'){window.open('https://html.spec.whatwg.org/multipage/custom-elements.html#custom-elements-face-example','_blank','noopener,noreferrer');return;}
++  setView(button.dataset.view);if(button.dataset.view==='overview')toast('Your workspace has 1 component: Delivery picker.');
++}));
++document.querySelector('#source-preview').textContent=DeliveryPicker.toString()+'\n\ncustomElements.define("delivery-picker", DeliveryPicker);';
++updateInspector();
++</script>
++</body></html>

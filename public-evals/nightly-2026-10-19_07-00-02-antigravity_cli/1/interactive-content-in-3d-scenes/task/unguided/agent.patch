@@ -1,0 +1,818 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,10 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --gold: #d4af37;
++      --dark-roast: #1e110e;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -48,8 +50,9 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -65,18 +68,43 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    .cart-link {
++      background: rgba(255, 171, 64, 0.2);
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-weight: 600;
++      color: var(--accent);
++    }
++
++    .cart-link:hover {
++      background: var(--accent);
++      color: var(--dark-roast);
++    }
++
++    .cart-badge {
++      display: inline-block;
++      transition: transform 0.2s ease;
++    }
++
++    .cart-badge.bump {
++      transform: scale(1.35);
++      color: #fff;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 52vh;
++      min-height: 380px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -89,11 +117,537 @@
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.8rem;
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+     }
+ 
++    .hero p {
++      font-size: 1.2rem;
++      max-width: 600px;
++      margin-bottom: 1.5rem;
++    }
++
++    .hero-buttons {
++      display: flex;
++      gap: 15px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 12px 24px;
++      text-decoration: none;
++      border-radius: 5px;
++      font-weight: 600;
++      transition: background 0.3s, transform 0.2s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++      transform: translateY(-2px);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--dark-roast);
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    /* 3D Showcase Section */
++    .coffee-3d-section {
++      padding: 50px 20px;
++      background: linear-gradient(180deg, #fafafa 0%, #f0ece9 50%, #fafafa 100%);
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .coffee-3d-header {
++      text-align: center;
++      max-width: 760px;
++      margin: 0 auto 25px;
++    }
++
++    .coffee-3d-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--dark-roast);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 1.5px;
++      text-transform: uppercase;
++      padding: 4px 14px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++      box-shadow: 0 2px 6px rgba(255, 171, 64, 0.35);
++    }
++
++    .coffee-3d-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .coffee-3d-header p {
++      color: #5d4037;
++      font-size: 1.05rem;
++    }
++
++    /* 3D Toolbar */
++    .coffee-3d-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      max-width: 900px;
++      margin: 0 auto 15px;
++      padding: 10px 18px;
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
++      gap: 12px;
++    }
++
++    .toolbar-group {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .status-badge {
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 4px 10px;
++      border-radius: 12px;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .status-badge.spinning {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .status-badge.spinning::before {
++      content: '';
++      display: inline-block;
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: #4caf50;
++      animation: pulse 1.5s infinite;
++    }
++
++    .status-badge.paused {
++      background: #fff3e0;
++      color: #e65100;
++    }
++
++    .status-badge.paused::before {
++      content: '';
++      display: inline-block;
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: #ff9800;
++    }
++
++    @keyframes pulse {
++      0%, 100% { opacity: 1; transform: scale(1); }
++      50% { opacity: 0.4; transform: scale(0.85); }
++    }
++
++    .tool-btn {
++      background: #efebe9;
++      border: 1px solid #d7ccc8;
++      color: var(--text);
++      padding: 6px 12px;
++      border-radius: 6px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 5px;
++      transition: all 0.2s ease;
++    }
++
++    .tool-btn:hover {
++      background: #d7ccc8;
++      color: var(--dark-roast);
++    }
++
++    .tool-select {
++      background: #efebe9;
++      border: 1px solid #d7ccc8;
++      color: var(--text);
++      padding: 6px 10px;
++      border-radius: 6px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    /* 3D Box Viewport Container */
++    .coffee-box-container {
++      position: relative;
++      width: 100%;
++      max-width: 900px;
++      height: 560px;
++      margin: 0 auto;
++      border-radius: 16px;
++      overflow: hidden;
++      background: radial-gradient(circle at 50% 45%, #3e2723 0%, #1e110e 75%, #100806 100%);
++      box-shadow: 0 16px 45px rgba(30, 17, 14, 0.35);
++      user-select: none;
++    }
++
++    /* Interactive HTML Form inside 3D Scene */
++    .coffee-box-form {
++      width: 248px;
++      height: 388px;
++      padding: 10px 12px;
++      box-sizing: border-box;
++      background: linear-gradient(175deg, rgba(38, 22, 18, 0.98) 0%, rgba(18, 9, 7, 0.99) 100%);
++      border: 2px solid var(--gold);
++      border-radius: 6px;
++      box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.7), 0 8px 25px rgba(0, 0, 0, 0.5);
++      color: #f5ebe6;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      backface-visibility: hidden;
++      -webkit-backface-visibility: hidden;
++      pointer-events: auto !important;
++      text-align: left;
++    }
++
++    .form-header-badge {
++      font-size: 0.65rem;
++      font-weight: 700;
++      letter-spacing: 1.2px;
++      color: var(--gold);
++      text-align: center;
++      text-transform: uppercase;
++      margin-bottom: 1px;
++    }
++
++    .form-title {
++      font-size: 0.95rem;
++      font-weight: 800;
++      letter-spacing: 0.5px;
++      color: var(--accent);
++      text-align: center;
++      margin-bottom: 4px;
++      border-bottom: 1px solid rgba(212, 175, 55, 0.35);
++      padding-bottom: 3px;
++    }
++
++    .form-field {
++      margin-bottom: 5px;
++    }
++
++    .form-field label {
++      display: block;
++      font-size: 0.68rem;
++      text-transform: uppercase;
++      letter-spacing: 0.8px;
++      color: var(--accent);
++      font-weight: 700;
++      margin-bottom: 2px;
++    }
++
++    .form-field input[type="text"],
++    .form-field select {
++      width: 100%;
++      padding: 4px 7px;
++      font-size: 0.75rem;
++      background: rgba(0, 0, 0, 0.55);
++      border: 1px solid rgba(212, 175, 55, 0.6);
++      border-radius: 4px;
++      color: #fff;
++      outline: none;
++      font-family: inherit;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-field input[type="text"]:focus,
++    .form-field select:focus {
++      border-color: var(--accent);
++      box-shadow: 0 0 6px rgba(255, 171, 64, 0.4);
++    }
++
++    .form-field select option {
++      background: #2b1a17;
++      color: #fff;
++    }
++
++    /* Roast Pills */
++    .roast-pill-group {
++      display: flex;
++      gap: 4px;
++    }
++
++    .roast-pill {
++      flex: 1;
++      cursor: pointer;
++    }
++
++    .roast-pill input[type="radio"] {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .roast-pill span {
++      display: block;
++      text-align: center;
++      padding: 3px 2px;
++      font-size: 0.68rem;
++      font-weight: 600;
++      border-radius: 3px;
++      background: rgba(255, 255, 255, 0.08);
++      border: 1px solid rgba(212, 175, 55, 0.4);
++      color: #d7ccc8;
++      transition: all 0.2s ease;
++    }
++
++    .roast-pill input[type="radio"]:checked + span {
++      background: var(--accent);
++      color: var(--dark-roast);
++      border-color: var(--accent);
++      font-weight: 700;
++    }
++
++    /* Quantity and Price Row */
++    .form-row-compact {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      margin-bottom: 4px;
++    }
++
++    .qty-control {
++      flex: 1;
++    }
++
++    .qty-control label {
++      display: block;
++      font-size: 0.68rem;
++      text-transform: uppercase;
++      letter-spacing: 0.8px;
++      color: var(--accent);
++      font-weight: 700;
++      margin-bottom: 2px;
++    }
++
++    .stepper-box {
++      display: flex;
++      align-items: center;
++      background: rgba(0, 0, 0, 0.55);
++      border: 1px solid rgba(212, 175, 55, 0.6);
++      border-radius: 4px;
++      overflow: hidden;
++      width: 90px;
++    }
++
++    .stepper-btn {
++      background: transparent;
++      border: none;
++      color: var(--accent);
++      font-size: 0.9rem;
++      font-weight: bold;
++      width: 26px;
++      height: 24px;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      transition: background 0.2s;
++    }
++
++    .stepper-btn:hover {
++      background: rgba(255, 171, 64, 0.2);
++    }
++
++    .stepper-box input[type="number"] {
++      width: 38px;
++      height: 24px;
++      text-align: center;
++      background: transparent;
++      border: none;
++      color: #fff;
++      font-size: 0.78rem;
++      font-weight: bold;
++      outline: none;
++      -moz-appearance: textfield;
++    }
++
++    .stepper-box input[type="number"]::-webkit-outer-spin-button,
++    .stepper-box input[type="number"]::-webkit-inner-spin-button {
++      -webkit-appearance: none;
++      margin: 0;
++    }
++
++    .price-box {
++      text-align: right;
++    }
++
++    .price-title {
++      display: block;
++      font-size: 0.65rem;
++      text-transform: uppercase;
++      letter-spacing: 0.8px;
++      color: #d7ccc8;
++    }
++
++    .price-tag {
++      font-size: 1.05rem;
++      font-weight: 800;
++      color: var(--gold);
++    }
++
++    /* Subscription Checkbox */
++    .subscribe-check-label {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.7rem;
++      color: #d7ccc8;
++      cursor: pointer;
++      margin-bottom: 4px;
++      user-select: none;
++    }
++
++    .subscribe-check-label input[type="checkbox"] {
++      accent-color: var(--accent);
++      cursor: pointer;
++    }
++
++    /* Form Action Buttons */
++    .form-actions-row {
++      display: flex;
++      gap: 6px;
++      margin-bottom: 4px;
++    }
++
++    .btn-form-action {
++      border: none;
++      border-radius: 4px;
++      font-family: inherit;
++      font-weight: 700;
++      cursor: pointer;
++      transition: transform 0.15s, filter 0.2s, background 0.2s;
++      outline: none;
++      text-align: center;
++    }
++
++    .btn-form-action:active {
++      transform: scale(0.97);
++    }
++
++    .btn-add-cart {
++      flex: 1.3;
++      padding: 6px 8px;
++      font-size: 0.78rem;
++      background: linear-gradient(135deg, #ffab40 0%, #ff8f00 100%);
++      color: var(--dark-roast);
++      box-shadow: 0 2px 6px rgba(255, 143, 0, 0.35);
++    }
++
++    .btn-add-cart:hover {
++      filter: brightness(1.1);
++    }
++
++    .btn-surprise {
++      flex: 1;
++      padding: 6px 6px;
++      font-size: 0.72rem;
++      background: rgba(212, 175, 55, 0.15);
++      border: 1px solid var(--gold);
++      color: var(--gold);
++    }
++
++    .btn-surprise:hover {
++      background: rgba(212, 175, 55, 0.3);
++      color: #fff;
++    }
++
++    .btn-pause-spin {
++      width: 100%;
++      padding: 4px;
++      font-size: 0.68rem;
++      font-weight: 600;
++      background: rgba(255, 255, 255, 0.08);
++      border: 1px solid rgba(255, 255, 255, 0.2);
++      color: #d7ccc8;
++      border-radius: 4px;
++    }
++
++    .btn-pause-spin:hover {
++      background: rgba(255, 255, 255, 0.16);
++      color: #fff;
++    }
++
++    /* Live Feedback Message inside form */
++    .form-feedback-msg {
++      font-size: 0.68rem;
++      text-align: center;
++      padding: 3px 6px;
++      border-radius: 3px;
++      min-height: 18px;
++      opacity: 0;
++      transition: opacity 0.3s ease;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++    }
++
++    .form-feedback-msg.show {
++      opacity: 1;
++    }
++
++    .form-feedback-msg.success {
++      background: rgba(46, 125, 50, 0.4);
++      border: 1px solid #66bb6a;
++      color: #c8e6c9;
++    }
++
++    .form-feedback-msg.info {
++      background: rgba(255, 171, 64, 0.25);
++      border: 1px solid var(--accent);
++      color: #ffe0b2;
++    }
++
++    /* Instructions callout under canvas */
++    .scene-instructions {
++      text-align: center;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 12px;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 15px;
++      flex-wrap: wrap;
++    }
++
++    .scene-instructions span {
++      display: inline-flex;
++      align-items: center;
++      gap: 5px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -119,23 +673,8 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -151,8 +690,24 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (max-width: 768px) {
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++      .coffee-box-container {
++        height: 520px;
++      }
++      .coffee-3d-toolbar {
++        flex-direction: column;
++        align-items: stretch;
++      }
++      .toolbar-group {
++        justify-content: center;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -162,19 +717,146 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#custom-roast-3d" class="cart-link">Cart (<span id="cart-count" class="cart-badge">0</span>)</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-buttons">
++      <a href="/order-online" class="btn">Order Now</a>
++      <a href="#custom-roast-3d" class="btn btn-accent">Interactive 3D Box</a>
++    </div>
+   </header>
+ 
++  <!-- Interactive 3D Coffee Box Experience Section -->
++  <section id="custom-roast-3d" class="coffee-3d-section">
++    <div class="coffee-3d-header">
++      <span class="coffee-3d-badge">Interactive 3D WebGL Feature</span>
++      <h2>Artisanal 3D Coffee Box</h2>
++      <p>Configure your roast directly in 3D. The interactive form with live inputs and buttons is projected into the WebGL scene and remains fully clickable and interactive as the box rotates.</p>
++    </div>
++
++    <!-- 3D Toolbar Controls -->
++    <div class="coffee-3d-toolbar">
++      <div class="toolbar-group">
++        <span id="scene-status-badge" class="status-badge spinning">Status: 3D Box Spinning</span>
++        <button type="button" id="scene-spin-toggle" class="tool-btn" aria-label="Toggle box rotation">
++          ⏸ <span>Pause Rotation</span>
++        </button>
++        <label for="speed-select" style="font-size: 0.82rem; font-weight: 600; color: var(--text);">Speed:</label>
++        <select id="speed-select" class="tool-select">
++          <option value="0.003">Slow</option>
++          <option value="0.006" selected>Normal</option>
++          <option value="0.012">Fast</option>
++        </select>
++      </div>
++
++      <div class="toolbar-group">
++        <button type="button" id="preset-front" class="tool-btn" title="View front face">Front Face</button>
++        <button type="button" id="preset-back" class="tool-btn" title="View back face">Back Face</button>
++        <button type="button" id="preset-reset" class="tool-btn" title="Reset angle and spin">Reset View</button>
++      </div>
++    </div>
++
++    <!-- 3D WebGL Canvas & CSS3D Projection Container -->
++    <div id="coffee-box-container" class="coffee-box-container">
++      <!-- Interactive HTML Form Projected in 3D -->
++      <form id="coffee-box-form" class="coffee-box-form" onsubmit="return false;" aria-label="3D Coffee Roast Form">
++        <div>
++          <div class="form-header-badge">★ ARTISANAL RESERVE ★</div>
++          <h3 class="form-title">CUSTOM BLEND</h3>
++        </div>
++
++        <div class="form-field">
++          <label for="blend-name-input">Blend Label</label>
++          <input type="text" id="blend-name-input" name="blend-name" value="Morning Elevation" placeholder="Your blend name" required>
++        </div>
++
++        <div class="form-field">
++          <label for="bean-select">Origin Bean</label>
++          <select id="bean-select" name="bean-origin">
++            <option value="ethiopian" selected>Ethiopian Yirgacheffe (Floral & Citrus)</option>
++            <option value="colombian">Colombian Supremo (Hazelnut & Cocoa)</option>
++            <option value="sumatra">Sumatra Mandheling (Earthy & Dark)</option>
++            <option value="guatemalan">Guatemalan Antigua (Spice & Chocolate)</option>
++          </select>
++        </div>
++
++        <div class="form-field">
++          <label>Roast Level</label>
++          <div class="roast-pill-group">
++            <label class="roast-pill">
++              <input type="radio" name="roast-level" value="light">
++              <span>Light</span>
++            </label>
++            <label class="roast-pill">
++              <input type="radio" name="roast-level" value="medium" checked>
++              <span>Medium</span>
++            </label>
++            <label class="roast-pill">
++              <input type="radio" name="roast-level" value="dark">
++              <span>Dark</span>
++            </label>
++          </div>
++        </div>
++
++        <div class="form-field">
++          <label for="grind-select">Grind Profile</label>
++          <select id="grind-select" name="grind-type">
++            <option value="whole-bean">Whole Bean (Maximum Freshness)</option>
++            <option value="drip" selected>Medium / Drip & Pour Over</option>
++            <option value="french-press">Coarse / French Press</option>
++            <option value="espresso">Fine / Espresso</option>
++          </select>
++        </div>
++
++        <div class="form-row-compact">
++          <div class="qty-control">
++            <label for="box-quantity-input">Bags</label>
++            <div class="stepper-box">
++              <button type="button" id="qty-minus-btn" class="stepper-btn" aria-label="Decrease quantity">−</button>
++              <input type="number" id="box-quantity-input" min="1" max="10" value="1">
++              <button type="button" id="qty-plus-btn" class="stepper-btn" aria-label="Increase quantity">+</button>
++            </div>
++          </div>
++          <div class="price-box">
++            <span class="price-title">Price</span>
++            <span id="box-price-display" class="price-tag">$16.58</span>
++          </div>
++        </div>
++
++        <label class="subscribe-check-label">
++          <input type="checkbox" id="subscribe-checkbox" name="subscription" checked>
++          <span>Subscribe & Save 15%</span>
++        </label>
++
++        <div>
++          <div class="form-actions-row">
++            <button type="submit" id="add-to-cart-btn" class="btn-form-action btn-add-cart">Add to Cart</button>
++            <button type="button" id="surprise-blend-btn" class="btn-form-action btn-surprise">Surprise Me</button>
++          </div>
++          <button type="button" id="form-spin-toggle-btn" class="btn-form-action btn-pause-spin">⏸ Pause Spin</button>
++        </div>
++
++        <div id="form-feedback-msg" class="form-feedback-msg" role="status" aria-live="polite"></div>
++      </form>
++    </div>
++
++    <div class="scene-instructions">
++      <span>🖱 Drag canvas to inspect 360°</span>
++      <span>•</span>
++      <span>✍ Type and click buttons while box rotates</span>
++      <span>•</span>
++      <span>☕ Back face shows roast profile & origin story</span>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +888,11 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- 3D Scripts: Three.js core, CSS3D renderer, and Coffee 3D Experience -->
++  <script src="js/three.min.js"></script>
++  <script src="js/CSS3DRenderer.js"></script>
++  <script src="js/coffee-3d.js"></script>
+ </body>
+ 
+ </html>

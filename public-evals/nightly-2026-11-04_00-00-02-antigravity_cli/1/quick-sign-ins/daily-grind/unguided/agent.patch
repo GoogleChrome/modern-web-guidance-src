@@ -1,0 +1,661 @@
+diff --git a/index.html b/index.html
+index 66c9173..955e7f1 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,226 @@
+       border-radius: 4px;
+     }
+ 
++    .hidden {
++      display: none !important;
++    }
++
++    .user-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      color: var(--accent);
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    /* Quick Sign-In Bar & Modal */
++    .auth-banner {
++      background: #3e2723;
++      color: var(--secondary);
++      padding: 0.6rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.9rem;
++      border-bottom: 1px solid rgba(255, 171, 64, 0.25);
++    }
++
++    .auth-banner-actions {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .btn-sm {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 6px 14px;
++      border-radius: 4px;
++      font-weight: 600;
++      font-size: 0.85rem;
++      cursor: pointer;
++      transition: opacity 0.2s;
++    }
++
++    .btn-sm:hover {
++      opacity: 0.9;
++    }
++
++    .btn-outline-sm {
++      background: transparent;
++      color: white;
++      border: 1px solid var(--secondary);
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    /* In-Page Sign-In Modal */
++    .modal-overlay {
++      position: fixed;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.6);
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      z-index: 2000;
++      padding: 20px;
++    }
++
++    .auth-modal {
++      background: white;
++      color: var(--text);
++      width: 100%;
++      max-width: 420px;
++      border-radius: 10px;
++      padding: 28px;
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++      position: relative;
++    }
++
++    .modal-close {
++      position: absolute;
++      top: 14px;
++      right: 16px;
++      background: none;
++      border: none;
++      font-size: 1.5rem;
++      color: var(--text);
++      cursor: pointer;
++      line-height: 1;
++    }
++
++    .auth-modal h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .auth-modal p.subtitle {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 18px;
++    }
++
++    .passkey-btn {
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 12px;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      margin-bottom: 16px;
++      transition: background 0.2s;
++    }
++
++    .passkey-btn:hover {
++      background: #3e2723;
++    }
++
++    .divider {
++      display: flex;
++      align-items: center;
++      text-align: center;
++      color: #8d6e63;
++      font-size: 0.8rem;
++      margin: 14px 0;
++    }
++
++    .divider::before,
++    .divider::after {
++      content: '';
++      flex: 1;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .divider:not(:empty)::before {
++      margin-right: 10px;
++    }
++
++    .divider:not(:empty)::after {
++      margin-left: 10px;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 5px;
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 0.95rem;
++    }
++
++    .form-submit {
++      width: 100%;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 11px;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-weight: bold;
++      cursor: pointer;
++      margin-top: 6px;
++    }
++
++    .auth-status {
++      margin-top: 12px;
++      font-size: 0.85rem;
++      padding: 8px 10px;
++      border-radius: 5px;
++      text-align: center;
++    }
++
++    .auth-status.info {
++      background: #fff8e1;
++      color: #5d4037;
++    }
++
++    .auth-status.success {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .auth-status.error {
++      background: #ffebee;
++      color: #c62828;
++    }
++
++    /* Toast notification */
++    .toast {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      border-radius: 8px;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
++      z-index: 2500;
++      font-size: 0.9rem;
++      border-left: 4px solid var(--accent);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -162,16 +382,26 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-requires-auth="Rewards">Rewards</a></li>
++      <li><a href="/account" data-requires-auth="My Account">My Account</a></li>
++      <li id="nav-signin-item"><a href="#signin" id="nav-signin-link" class="logout-link">Sign In</a></li>
++      <li id="nav-user-item" class="hidden"><span id="nav-user-badge" class="user-badge"></span></li>
++      <li id="nav-logout-item" class="hidden"><a href="/logout" id="logout-link" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="auth-banner" class="auth-banner">
++    <span id="auth-banner-text">Welcome back! Sign in instantly with your saved passkey or password without leaving this page.</span>
++    <div class="auth-banner-actions">
++      <button type="button" id="banner-passkey-btn" class="btn-sm">Sign in with Passkey / Saved Login</button>
++      <button type="button" id="banner-modal-btn" class="btn-outline-sm">Use Password</button>
++    </div>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-requires-auth="Order Now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -207,6 +437,398 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- In-page Sign-In Modal -->
++  <div id="auth-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
++    <div class="auth-modal">
++      <button type="button" id="auth-modal-close" class="modal-close" aria-label="Close sign in dialog">&times;</button>
++      <h2 id="auth-modal-title">Sign In to The Daily Grind</h2>
++      <p id="auth-modal-subtitle" class="subtitle">Use a saved passkey or password to continue without leaving this page.</p>
++
++      <button type="button" id="modal-webauthn-btn" class="passkey-btn">
++        <span>🔑 Sign in with Saved Passkey or Browser Login</span>
++      </button>
++
++      <div class="divider">or autofill saved credentials</div>
++
++      <form id="inline-signin-form" action="#signin" method="post">
++        <div class="form-group">
++          <label for="signin-username">Email or Username</label>
++          <input
++            type="text"
++            id="signin-username"
++            name="username"
++            autocomplete="username webauthn"
++            placeholder="you@example.com"
++            required
++          />
++        </div>
++        <div class="form-group">
++          <label for="signin-password">Password</label>
++          <input
++            type="password"
++            id="signin-password"
++            name="password"
++            autocomplete="current-password webauthn"
++            placeholder="••••••••"
++          />
++        </div>
++        <button type="submit" class="form-submit">Continue</button>
++      </form>
++
++      <div id="auth-status" class="auth-status hidden" role="status" aria-live="polite"></div>
++    </div>
++  </div>
++
++  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
++
++  <script>
++    (function () {
++      const STORAGE_KEY = 'daily_grind_user';
++      let currentUser = null;
++      let pendingAction = null;
++      let conditionalAbortController = null;
++
++      const navSigninItem = document.getElementById('nav-signin-item');
++      const navSigninLink = document.getElementById('nav-signin-link');
++      const navUserItem = document.getElementById('nav-user-item');
++      const navUserBadge = document.getElementById('nav-user-badge');
++      const navLogoutItem = document.getElementById('nav-logout-item');
++      const logoutLink = document.getElementById('logout-link');
++
++      const authBanner = document.getElementById('auth-banner');
++      const bannerPasskeyBtn = document.getElementById('banner-passkey-btn');
++      const bannerModalBtn = document.getElementById('banner-modal-btn');
++
++      const modalOverlay = document.getElementById('auth-modal-overlay');
++      const modalClose = document.getElementById('auth-modal-close');
++      const modalSubtitle = document.getElementById('auth-modal-subtitle');
++      const modalWebauthnBtn = document.getElementById('modal-webauthn-btn');
++      const signinForm = document.getElementById('inline-signin-form');
++      const usernameInput = document.getElementById('signin-username');
++      const passwordInput = document.getElementById('signin-password');
++      const authStatus = document.getElementById('auth-status');
++      const toastEl = document.getElementById('toast');
++
++      function showToast(message) {
++        toastEl.textContent = message;
++        toastEl.classList.remove('hidden');
++        clearTimeout(showToast._timer);
++        showToast._timer = setTimeout(() => {
++          toastEl.classList.add('hidden');
++        }, 4000);
++      }
++
++      function setStatus(message, type) {
++        if (!message) {
++          authStatus.classList.add('hidden');
++          authStatus.textContent = '';
++          return;
++        }
++        authStatus.textContent = message;
++        authStatus.className = 'auth-status ' + (type || 'info');
++      }
++
++      function createChallenge() {
++        const buffer = new Uint8Array(32);
++        if (window.crypto && window.crypto.getRandomValues) {
++          window.crypto.getRandomValues(buffer);
++        }
++        return buffer;
++      }
++
++      function buildCredentialRequestOptions(mediation) {
++        const options = {
++          password: true,
++          publicKey: {
++            challenge: createChallenge(),
++            timeout: 60000,
++            userVerification: 'preferred',
++            allowCredentials: []
++          }
++        };
++        if (mediation) {
++          options.mediation = mediation;
++        }
++        return options;
++      }
++
++      function updateUIForAuthState() {
++        if (currentUser) {
++          navSigninItem.classList.add('hidden');
++          navUserItem.classList.remove('hidden');
++          navLogoutItem.classList.remove('hidden');
++          navUserBadge.textContent = '☕ ' + currentUser.name;
++          authBanner.classList.add('hidden');
++          modalOverlay.classList.add('hidden');
++        } else {
++          navSigninItem.classList.remove('hidden');
++          navUserItem.classList.add('hidden');
++          navLogoutItem.classList.add('hidden');
++          navUserBadge.textContent = '';
++          authBanner.classList.remove('hidden');
++        }
++      }
++
++      function completeSignIn(userInfo, methodLabel) {
++        currentUser = {
++          id: userInfo.id || 'returning-customer',
++          name: userInfo.name || userInfo.id || 'Returning Customer',
++          method: methodLabel || 'Saved Credential'
++        };
++        try {
++          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(currentUser));
++        } catch (e) {
++          // Ignore storage errors
++        }
++
++        if (conditionalAbortController) {
++          conditionalAbortController.abort();
++          conditionalAbortController = null;
++        }
++
++        setStatus('Signed in as ' + currentUser.name + '!', 'success');
++        updateUIForAuthState();
++
++        const destination = pendingAction;
++        pendingAction = null;
++
++        if (destination) {
++          showToast('Signed in as ' + currentUser.name + '! Opening ' + destination.label + '...');
++        } else {
++          showToast('Welcome back, ' + currentUser.name + '! Signed in via ' + currentUser.method + '.');
++        }
++      }
++
++      async function requestBrowserCredentials(mediationMode, triggerModalOnFallback) {
++        if (!navigator.credentials || typeof navigator.credentials.get !== 'function') {
++          if (triggerModalOnFallback) {
++            openSignInModal();
++            setStatus('Enter or autofill your saved credentials below.', 'info');
++          }
++          return null;
++        }
++
++        try {
++          if (conditionalAbortController) {
++            conditionalAbortController.abort();
++            conditionalAbortController = null;
++          }
++
++          const options = buildCredentialRequestOptions(mediationMode);
++          if (mediationMode === 'conditional') {
++            conditionalAbortController = new AbortController();
++            options.signal = conditionalAbortController.signal;
++          }
++
++          const credential = await navigator.credentials.get(options);
++          if (credential) {
++            if (mediationMode === 'conditional') {
++              conditionalAbortController = null;
++            }
++            const displayName = credential.name || credential.id || 'Returning Member';
++            const method = credential.type === 'public-key' ? 'Passkey' : 'Saved Password';
++            completeSignIn({ id: credential.id, name: displayName }, method);
++            return credential;
++          }
++        } catch (err) {
++          if (err && err.name === 'AbortError') {
++            return null;
++          }
++          // If publicKey + password combined isn't supported in a single call by the browser,
++          // fall back to publicKey-only credential request.
++          if (mediationMode !== 'conditional') {
++            try {
++              const fallbackCred = await navigator.credentials.get({
++                publicKey: {
++                  challenge: createChallenge(),
++                  timeout: 60000,
++                  userVerification: 'preferred'
++                },
++                mediation: mediationMode || 'optional'
++              });
++              if (fallbackCred) {
++                completeSignIn({ id: fallbackCred.id, name: 'Passkey Member' }, 'Passkey');
++                return fallbackCred;
++              }
++            } catch (_) {
++              // Ignore fallback error and allow inline modal form fallback
++            }
++          }
++
++          if (triggerModalOnFallback) {
++            openSignInModal(pendingAction);
++            setStatus('Select a saved passkey/password from autofill or sign in below.', 'info');
++          }
++        }
++        return null;
++      }
++
++      function startConditionalMediation() {
++        if (
++          !currentUser &&
++          window.PublicKeyCredential &&
++          typeof PublicKeyCredential.isConditionalMediationAvailable === 'function'
++        ) {
++          PublicKeyCredential.isConditionalMediationAvailable()
++            .then((available) => {
++              if (available && !currentUser) {
++                requestBrowserCredentials('conditional', false);
++              }
++            })
++            .catch(() => {});
++        }
++      }
++
++      function openSignInModal(actionContext, skipConditional) {
++        if (actionContext) {
++          pendingAction = actionContext;
++          modalSubtitle.textContent =
++            'Sign in right here to access ' + actionContext.label + ' without leaving your browsing flow.';
++        } else {
++          modalSubtitle.textContent =
++            'Use a saved passkey or password to continue without leaving this page.';
++        }
++        setStatus('', 'info');
++        modalOverlay.classList.remove('hidden');
++        usernameInput.focus();
++
++        if (!skipConditional) {
++          startConditionalMediation();
++        }
++      }
++
++      function closeSignInModal() {
++        modalOverlay.classList.add('hidden');
++        pendingAction = null;
++      }
++
++      // Intercept auth-protected links ("Rewards", "My Account", "Order Now") so users stay on the page
++      document.querySelectorAll('[data-requires-auth]').forEach((link) => {
++        link.addEventListener('click', async (event) => {
++          event.preventDefault();
++          const label = link.getAttribute('data-requires-auth') || link.textContent.trim();
++          const href = link.getAttribute('href');
++
++          if (currentUser) {
++            showToast('Accessing ' + label + ' as ' + currentUser.name + '.');
++            return;
++          }
++
++          pendingAction = { label, href };
++          openSignInModal(pendingAction, true);
++          const cred = await requestBrowserCredentials('optional', false);
++          if (!cred && !currentUser) {
++            startConditionalMediation();
++          }
++        });
++      });
++
++      navSigninLink.addEventListener('click', async (event) => {
++        event.preventDefault();
++        openSignInModal(null, true);
++        const cred = await requestBrowserCredentials('optional', false);
++        if (!cred && !currentUser) {
++          startConditionalMediation();
++        }
++      });
++
++      bannerPasskeyBtn.addEventListener('click', async () => {
++        const cred = await requestBrowserCredentials('optional', true);
++        if (!cred && !currentUser) {
++          startConditionalMediation();
++        }
++      });
++
++      bannerModalBtn.addEventListener('click', () => {
++        openSignInModal();
++      });
++
++      modalWebauthnBtn.addEventListener('click', async () => {
++        setStatus('Requesting saved passkey or password from your browser...', 'info');
++        const cred = await requestBrowserCredentials('optional', false);
++        if (!cred && !currentUser) {
++          setStatus('No browser passkey selected. You can also use autofill in the fields below.', 'info');
++        }
++      });
++
++      modalClose.addEventListener('click', closeSignInModal);
++      modalOverlay.addEventListener('click', (event) => {
++        if (event.target === modalOverlay) {
++          closeSignInModal();
++        }
++      });
++
++      signinForm.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        const username = usernameInput.value.trim();
++        const password = passwordInput.value;
++        if (!username) {
++          setStatus('Please enter or autofill your username or email.', 'error');
++          return;
++        }
++
++        // Store in browser Credential Management API if PasswordCredential is supported
++        if (window.PasswordCredential && password && navigator.credentials && navigator.credentials.store) {
++          try {
++            const pwCred = new PasswordCredential({
++              id: username,
++              password: password,
++              name: username
++            });
++            await navigator.credentials.store(pwCred);
++          } catch (_) {
++            // Ignore credential storage errors
++          }
++        }
++
++        completeSignIn({ id: username, name: username }, 'Saved Password');
++        signinForm.reset();
++      });
++
++      logoutLink.addEventListener('click', async (event) => {
++        event.preventDefault();
++        currentUser = null;
++        try {
++          sessionStorage.removeItem(STORAGE_KEY);
++        } catch (e) {}
++
++        if (navigator.credentials && typeof navigator.credentials.preventSilentAccess === 'function') {
++          try {
++            await navigator.credentials.preventSilentAccess();
++          } catch (_) {}
++        }
++
++        updateUIForAuthState();
++        showToast('You have been signed out.');
++      });
++
++      // On initial page load: restore session or attempt non-intrusive silent/ambient credential check
++      function initAuthOnBrowse() {
++        try {
++          const saved = sessionStorage.getItem(STORAGE_KEY);
++          if (saved) {
++            currentUser = JSON.parse(saved);
++            updateUIForAuthState();
++            return;
++          }
++        } catch (e) {}
++
++        updateUIForAuthState();
++
++        // Check for silent / ambient credentials for returning customers browsing the site
++        if (navigator.credentials && typeof navigator.credentials.get === 'function') {
++          requestBrowserCredentials('silent', false);
++        }
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initAuthOnBrowse);
++      } else {
++        initAuthOnBrowse();
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

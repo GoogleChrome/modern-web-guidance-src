@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,28 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    #seasonal-favorites .card:has(img) {
++      display: flex;
++      align-items: center;
++      gap: 16px;
++      text-align: left;
++    }
++
++    #seasonal-favorites .card img {
++      flex: 0 0 30%;
++      width: 30%;
++      aspect-ratio: 3 / 4;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    #seasonal-favorites .card-content {
++      flex: 1;
++      min-width: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -174,15 +194,24 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <img
++            src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
++            alt="Coffee served in a cup"
++            width="300"
++            height="400"
++            loading="lazy"
++          >
++          <div class="card-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,60 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical media scroller */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-scroller {
++      position: relative; /* makes the scroller the offsetParent of its cards */
++      max-width: 640px;
++      height: 520px;
++      margin: 20px auto 0;
++      padding: 16px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      scroll-behavior: auto; /* never animate the initial positioning */
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-card {
++      flex: 0 0 auto;
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 600 / 400;
++      object-fit: cover;
++      background: #bcaaa4; /* placeholder tone while the image loads */
++    }
++
++    .media-card .media-body {
++      padding: 14px 18px;
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .media-card.target {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +246,67 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <h2 style="text-align: center;">From the Roastery</h2>
++      <div class="media-scroller" id="media-scroller" tabindex="0" aria-label="Roastery photo gallery">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="Freshly roasted coffee beans">
++          <div class="media-body">
++            <h3>Small-Batch Roasting</h3>
++            <p>Every bean roasted in our shop, a few kilos at a time.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="Espresso being poured into a cup">
++          <div class="media-body">
++            <h3>Pulled to Order</h3>
++            <p>Espresso dialed in fresh every morning.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="Latte with latte art" fetchpriority="high">
++          <div class="media-body">
++            <h3>Latte Art Fridays</h3>
++            <p>Our baristas show off their best pours every Friday.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="Coffee cup on a wooden table">
++          <div class="media-body">
++            <h3>Slow Mornings</h3>
++            <p>Grab a seat, stay a while.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="Black coffee in a white mug">
++          <div class="media-body">
++            <h3>Single Origin</h3>
++            <p>Rotating beans from farms we know by name.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        // Runs synchronously while the parser is still building the page, i.e. before
++        // the first paint. Card heights are known already (images have explicit
++        // width/height + aspect-ratio), so the offset is final and the scroller is
++        // painted already positioned on the target — no animation, no jump.
++        // scrollTop is used instead of scrollIntoView() so the window itself never scrolls.
++        (function () {
++          var scroller = document.getElementById('media-scroller');
++          var target = scroller.querySelector('.target');
++          var padTop = parseFloat(getComputedStyle(scroller).paddingTop) || 0;
++          scroller.scrollTop = target.offsetTop - padTop;
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

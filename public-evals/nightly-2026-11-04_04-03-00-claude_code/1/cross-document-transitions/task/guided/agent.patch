@@ -1,0 +1,228 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,144 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      margin-top: 30px;
++    }
++
++    .pagination .btn {
++      margin-top: 0;
++    }
++
++    .pagination .btn[aria-disabled="true"] {
++      opacity: 0.4;
++      pointer-events: none;
++    }
++
++    .page-status {
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    /* Cross-document page transitions (only when motion is OK) */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-group(root) {
++        animation-duration: 0.4s;
++        animation-timing-function: ease-in-out;
++      }
++
++      /* Default (e.g. nav links): a soft cross-fade */
++      ::view-transition-old(root) {
++        animation: 0.25s ease-in both fade-out;
++      }
++
++      ::view-transition-new(root) {
++        animation: 0.35s ease-out both fade-in;
++      }
++
++      /* "next": old page slides out left, new page slides in from right */
++      html:active-view-transition-type(next) {
++        &::view-transition-old(root) {
++          animation: 0.4s ease-in both slide-out-to-left;
++        }
++
++        &::view-transition-new(root) {
++          animation: 0.4s ease-out both slide-in-from-right;
++        }
++      }
++
++      /* "previous": old page slides out right, new page slides in from left */
++      html:active-view-transition-type(previous) {
++        &::view-transition-old(root) {
++          animation: 0.4s ease-in both slide-out-to-right;
++        }
++
++        &::view-transition-new(root) {
++          animation: 0.4s ease-out both slide-in-from-left;
++        }
++      }
++    }
++
++    @keyframes fade-out {
++      to { opacity: 0; }
++    }
++
++    @keyframes fade-in {
++      from { opacity: 0; }
++    }
++
++    @keyframes slide-out-to-left {
++      to { transform: translateX(-30%); opacity: 0; }
++    }
++
++    @keyframes slide-in-from-right {
++      from { transform: translateX(30%); opacity: 0; }
++    }
++
++    @keyframes slide-out-to-right {
++      to { transform: translateX(30%); opacity: 0; }
++    }
++
++    @keyframes slide-in-from-left {
++      from { transform: translateX(-30%); opacity: 0; }
++    }
+   </style>
++
++  <script>
++    // Directional cross-document view transitions. Must be a classic,
++    // render-blocking script in <head> so the pagereveal listener is
++    // registered before the new page's first render.
++    if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
++      const DIRECTION_KEY = 'vt-direction';
++      const pageOf = (url) => {
++        try {
++          const n = parseInt(new URL(url).searchParams.get('page'), 10);
++          return Number.isFinite(n) && n > 0 ? n : 1;
++        } catch {
++          return null;
++        }
++      };
++
++      // Remember which pagination link was clicked, as a fallback for
++      // browsers without the Navigation API.
++      document.addEventListener('click', (e) => {
++        const link = e.target.closest?.('a#next, a#previous');
++        if (link) sessionStorage.setItem(DIRECTION_KEY, link.id);
++      });
++
++      window.addEventListener('pagereveal', (e) => {
++        const stored = sessionStorage.getItem(DIRECTION_KEY);
++        sessionStorage.removeItem(DIRECTION_KEY);
++        if (!e.viewTransition) return;
++
++        let type = null;
++        const activation = window.navigation?.activation;
++        if (activation?.from?.url && activation.entry?.url) {
++          // Works for link clicks and browser back/forward alike.
++          const from = pageOf(activation.from.url);
++          const to = pageOf(activation.entry.url);
++          if (from !== null && to !== null && from !== to) {
++            type = to > from ? 'next' : 'previous';
++          }
++        } else if (stored === 'next' || stored === 'previous') {
++          type = stored;
++        }
++
++        if (type) e.viewTransition.types.add(type);
++      });
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -176,9 +311,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid seasonal-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -193,8 +328,68 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pages">
++        <a id="previous" class="btn" rel="prev" aria-disabled="true">&larr; Previous</a>
++        <span class="page-status">Page 1 of 3</span>
++        <a href="?page=2" id="next" class="btn" rel="next">Next &rarr;</a>
++      </div>
++      <script>
++        // Render the requested page of seasonal favorites synchronously,
++        // before first paint, so the view transition captures final content.
++        (() => {
++          const pages = [
++            [
++              ['Maple Oat Latte', 'Creamy oat milk with a hint of Vermont maple syrup.', '/menu/seasonal'],
++              ['Dark Roast Espresso', 'Bold, smokey, and perfect for a morning boost.', '/menu/espresso'],
++              ['Cold Brew', 'Steeped for 18 hours for maximum smoothness.', '/menu/cold-brew'],
++            ],
++            [
++              ['Pumpkin Spice Cortado', 'Velvety espresso with roasted pumpkin and warm spices.', '/menu/pumpkin-cortado'],
++              ['Cinnamon Honey Flat White', 'Wildflower honey and Ceylon cinnamon over silky microfoam.', '/menu/honey-flat-white'],
++              ['Spiced Chai Latte', 'Black tea simmered with cardamom, ginger, and clove.', '/menu/chai-latte'],
++            ],
++            [
++              ['Peppermint Mocha', 'Dark chocolate and cool peppermint with a double shot.', '/menu/peppermint-mocha'],
++              ['Gingerbread Cappuccino', 'Molasses and ginger under a cloud of dry foam.', '/menu/gingerbread-cappuccino'],
++              ['Nitro Vanilla Cold Brew', 'Nitrogen-infused cold brew with Madagascar vanilla.', '/menu/nitro-vanilla'],
++            ],
++          ];
++          const total = pages.length;
++          const requested = parseInt(new URLSearchParams(location.search).get('page'), 10);
++          const page = Math.min(Math.max(Number.isFinite(requested) ? requested : 1, 1), total);
++
++          const grid = document.querySelector('.seasonal-grid');
++          grid.replaceChildren(...pages[page - 1].map(([title, desc, href]) => {
++            const card = document.createElement('div');
++            card.className = 'card';
++            const h3 = document.createElement('h3');
++            h3.textContent = title;
++            const p = document.createElement('p');
++            p.textContent = desc;
++            const a = document.createElement('a');
++            a.className = 'btn';
++            a.href = href;
++            a.textContent = 'View Details';
++            card.append(h3, p, a);
++            return card;
++          }));
++
++          const setLink = (el, target) => {
++            if (target < 1 || target > total) {
++              el.removeAttribute('href');
++              el.setAttribute('aria-disabled', 'true');
++            } else {
++              el.href = `?page=${target}`;
++              el.removeAttribute('aria-disabled');
++            }
++          };
++          setLink(document.getElementById('previous'), page - 1);
++          setLink(document.getElementById('next'), page + 1);
++          document.querySelector('.page-status').textContent = `Page ${page} of ${total}`;
++        })();
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

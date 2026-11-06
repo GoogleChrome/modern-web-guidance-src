@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+index 66c9173..10fb8b6 100644
+--- a/index.html
++++ b/index.html
+@@ -27,17 +27,52 @@
+       background-color: var(--light);
+     }
+ 
++    /*
++     * Feature detection for at-rules.
++     * `@supports at-rule(@name)` isn't in Safari yet, so it's only worth using
++     * for at-rules that ship *after* it. For the at-rules used below, support
++     * is detected via a property, a value, or a registered custom property.
++     */
++
++    /* Resolves to a space only where @property is supported; see .hero::before */
++    @property --supports-atproperty {
++      syntax: "*";
++      inherits: false;
++    }
++
++    :root {
++      --supports-atproperty: ;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .nav-inner {
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      transition: padding 0.3s, box-shadow 0.3s;
++    }
++
++    /* Compact, shadowed bar once stuck: needs @container scroll-state() */
++    @supports (container-type: scroll-state) {
++      nav {
++        container-type: scroll-state;
++      }
++
++      @container scroll-state(stuck: top) {
++        .nav-inner {
++          padding-block: 0.5rem;
++          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++        }
++      }
+     }
+ 
+     .logo {
+@@ -86,6 +121,36 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++    }
++
++    /* Rotating warm glow: needs @property to animate the gradient angle */
++    @property --hero-glow-angle {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 0deg;
++    }
++
++    @keyframes hero-glow {
++      to {
++        --hero-glow-angle: 360deg;
++      }
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: var(--supports-atproperty,
++          conic-gradient(from var(--hero-glow-angle) at 50% 130%,
++            transparent, rgba(255, 171, 64, 0.3), transparent 35%));
++
++      @media (prefers-reduced-motion: no-preference) {
++        animation: var(--supports-atproperty, hero-glow 16s linear infinite);
++      }
+     }
+ 
+     .hero h1 {
+@@ -113,6 +178,22 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++
++      /* Roast-tinted accents: needs @function custom functions */
++      @supports (color: --roast()) {
++        border-top: 4px solid --roast(85%);
++        background: linear-gradient(--roast(8%), white 45%);
++        transition: transform 0.3s, box-shadow 0.3s;
++
++        &:hover {
++          transform: translateY(-4px);
++          box-shadow: 0 8px 16px --roast(30%);
++        }
++      }
++    }
++
++    @function --roast(--shade <percentage>: 50%) returns <color> {
++      result: color-mix(in oklch, var(--primary) var(--shade), white);
+     }
+ 
+     .card h3 {
+@@ -158,14 +239,16 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-inner">
++      <div class="logo">THE DAILY GRIND</div>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </div>
+   </nav>
+ 
+   <header class="hero">

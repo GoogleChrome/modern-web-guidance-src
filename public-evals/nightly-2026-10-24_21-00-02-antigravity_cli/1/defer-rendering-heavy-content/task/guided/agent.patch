@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -95,8 +95,70 @@
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
++    /* DO ONLY apply this class to items OUTSIDE the initial layout viewport */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 310px;
++    }
++
++    .debug-panel {
++      max-width: 800px;
++      margin: 2rem auto 4rem;
++      padding: 1.5rem;
++      background: #0f172a;
++      color: #f8fafc;
++      border-radius: 1rem;
++      border: 1px solid #334155;
++      font-family: monospace;
++      display: none;
++    }
++
++    @supports (content-visibility: hidden) {
++      .debug-panel {
++        display: block;
++        content-visibility: hidden;
++      }
++    }
++
++    .debug-panel.is-active {
++      display: block;
++      content-visibility: visible;
++    }
++
++    .debug-panel h2 {
++      margin-top: 0;
++      color: #38bdf8;
++      font-size: 1.25rem;
++    }
++
++    .debug-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
++      gap: 0.75rem;
++      margin-top: 1rem;
++    }
++
++    .debug-metric-box {
++      background: #1e293b;
++      padding: 0.75rem;
++      border-radius: 0.5rem;
++      border: 1px solid #334155;
++    }
++
++    .debug-metric-label {
++      font-size: 0.75rem;
++      color: #94a3b8;
++    }
++
++    .debug-metric-value {
++      font-size: 1rem;
++      font-weight: bold;
++      color: #e2e8f0;
++      margin-top: 0.25rem;
++    }
++
+     .nested-layer {
+       position: absolute;
+       inset: 0;
+       pointer-events: none;
+@@ -207,8 +269,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn off" aria-expanded="false" aria-controls="debug-panel">Toggle Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +282,47 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel">
++    <h2>Debug Diagnostics Panel</h2>
++    <p>Rendering state is cached via <code>content-visibility: hidden</code> for instant toggling without layout recalculation lag.</p>
++    <div class="debug-grid" id="debug-grid">
++      <div class="debug-metric-box">
++        <div class="debug-metric-label">Total Cards</div>
++        <div class="debug-metric-value" id="debug-total-cards">500</div>
++      </div>
++      <div class="debug-metric-box">
++        <div class="debug-metric-label">Above-the-Fold Cards</div>
++        <div class="debug-metric-value" id="debug-visible-cards">4</div>
++      </div>
++      <div class="debug-metric-box">
++        <div class="debug-metric-label">Deferred Offscreen Cards</div>
++        <div class="debug-metric-value" id="debug-deferred-cards">496</div>
++      </div>
++      <div class="debug-metric-box">
++        <div class="debug-metric-label">Last Render Duration</div>
++        <div class="debug-metric-value" id="debug-render-time">0ms</div>
++      </div>
++    </div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
++    const toggleDebugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
++    const debugRenderTime = document.getElementById('debug-render-time');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    const aboveTheFoldCount = 4;
+ 
+ 
+ 
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = index >= aboveTheFoldCount ? 'card off-screen-card' : 'card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +355,11 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          if (debugRenderTime) {
++            debugRenderTime.textContent = `${duration}ms`;
++          }
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -298,9 +391,15 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    toggleDebugBtn.addEventListener('click', () => {
++      const isActive = debugPanel.classList.toggle('is-active');
++      toggleDebugBtn.classList.toggle('off', !isActive);
++      toggleDebugBtn.setAttribute('aria-expanded', String(isActive));
++    });
+ 
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

@@ -1,0 +1,338 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..0fe0775
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,35 @@
++# The Daily Grind
++
++Run `pnpm start` to serve the site and `npm test` to run the automated timing tests.
++
++## Contentful update timing
++
++`performance.js` automatically observes browser-attributed interaction contentful
++paints and client-side soft navigations. All durations are in milliseconds:
++
++- Interaction records report `duration` from the initiating input to presentation
++  of the new content. Successively larger paints produce additional records.
++- Soft navigation records report `fcpDuration` and `lcpDuration` from the
++  initiating input. LCP is finalized on the next soft navigation, when the page
++  is hidden, on `pagehide`, or when explicitly flushed. A missing candidate is
++  reported as `null`.
++
++Inspect `window.dailyGrindPerformance.supported` for browser capabilities and
++`window.dailyGrindPerformance.getMeasurements()` for the latest 200 records.
++Consume records as they arrive with:
++
++```js
++window.addEventListener('daily-grind:performance', ({ detail }) => {
++  console.log(detail);
++});
++```
++
++`window.dailyGrindPerformance.flush()` drains pending observer entries and
++finalizes the active route. `stop()` also disconnects observers and removes
++lifecycle listeners. Measurements stay in memory; no analytics endpoint is
++configured and no network requests are made by the instrumentation.
++
++These APIs are progressive enhancements: unsupported entry types are skipped.
++INP, initial-load LCP, and frame callbacks are not substituted for contentful
++update timing. The current site's links perform document navigations; soft
++navigation records apply if browser-detected client-side routing is introduced.
+diff --git a/index.html b/index.html
+index 66c9173..1f7357a 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/performance.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/package.json b/package.json
+index 2bd4d77..b1c23fc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/performance.js b/performance.js
+new file mode 100644
+index 0000000..60df02c
+--- /dev/null
++++ b/performance.js
+@@ -0,0 +1,114 @@
++(() => {
++  'use strict';
++
++  const entryTypes = globalThis.PerformanceObserver?.supportedEntryTypes ?? [];
++  const supported = Object.freeze({
++    interactionPaint: entryTypes.includes('interaction-contentful-paint'),
++    softNavigation: entryTypes.includes('soft-navigation') &&
++      entryTypes.includes('interaction-contentful-paint'),
++  });
++  const measurements = [];
++  const candidates = new Map();
++  let activeNavigation = null;
++  let activePaint = null;
++  let observer = null;
++
++  function report(measurement) {
++    const record = Object.freeze(measurement);
++    measurements.push(record);
++    if (measurements.length > 200) measurements.shift();
++    window.dispatchEvent(new CustomEvent('daily-grind:performance', { detail: record }));
++  }
++
++  function largerPaint(previous, next) {
++    if (!next) return previous;
++    if (!previous) return next;
++    const previousSize = previous.largestContentfulPaint?.size ?? 0;
++    const nextSize = next.largestContentfulPaint?.size ?? 0;
++    return nextSize > previousSize ||
++      (nextSize === previousSize && next.presentationTime >= previous.presentationTime)
++      ? next : previous;
++  }
++
++  function finalizeNavigation() {
++    if (!activeNavigation) return;
++    const navigation = activeNavigation;
++    const paint = activePaint;
++    activeNavigation = null;
++    activePaint = null;
++    report({
++      type: 'soft-navigation',
++      url: navigation.name,
++      navigationId: navigation.navigationId,
++      interactionId: navigation.interactionId,
++      startTime: navigation.startTime,
++      fcpDuration: navigation.duration,
++      lcpDuration: paint?.duration ?? null,
++      lcpSize: paint?.largestContentfulPaint?.size ?? null,
++      lcpElementId: paint?.largestContentfulPaint?.element?.id ?? null,
++    });
++  }
++
++  function processEntries(entries) {
++    // Cache paints first: delivery order must not lose content painted before a URL change.
++    for (const entry of entries) {
++      if (entry.entryType !== 'interaction-contentful-paint') continue;
++      candidates.set(entry.interactionId, largerPaint(candidates.get(entry.interactionId), entry));
++      if (candidates.size > 100) candidates.delete(candidates.keys().next().value);
++      if (activeNavigation?.interactionId === entry.interactionId) {
++        activePaint = largerPaint(activePaint, entry);
++      }
++      report({
++        type: 'interaction-contentful-paint',
++        interactionId: entry.interactionId,
++        startTime: entry.startTime,
++        duration: entry.duration,
++        presentationTime: entry.presentationTime,
++        size: entry.largestContentfulPaint?.size ?? null,
++        elementId: entry.largestContentfulPaint?.element?.id ?? null,
++      });
++    }
++    for (const entry of entries) {
++      if (entry.entryType !== 'soft-navigation') continue;
++      finalizeNavigation();
++      activeNavigation = entry;
++      // The seed includes paints emitted before the URL update, under the old navigationId.
++      activePaint = largerPaint(
++        entry.getLargestInteractionContentfulPaint(),
++        candidates.get(entry.interactionId),
++      );
++    }
++  }
++
++  function flush() {
++    if (observer) processEntries(observer.takeRecords());
++    finalizeNavigation();
++  }
++
++  function onVisibilityChange() {
++    if (document.visibilityState === 'hidden') flush();
++  }
++
++  if (supported.interactionPaint) {
++    observer = new PerformanceObserver((list) => processEntries(list.getEntries()));
++    observer.observe({ type: 'interaction-contentful-paint', buffered: true });
++    if (supported.softNavigation) {
++      observer.observe({ type: 'soft-navigation', buffered: true });
++      document.addEventListener('visibilitychange', onVisibilityChange);
++      window.addEventListener('pagehide', flush);
++    }
++  }
++
++  window.dailyGrindPerformance = Object.freeze({
++    supported,
++    getMeasurements: () => measurements.slice(),
++    flush,
++    stop() {
++      flush();
++      observer?.disconnect();
++      candidates.clear();
++      document.removeEventListener('visibilitychange', onVisibilityChange);
++      window.removeEventListener('pagehide', flush);
++    },
++  });
++})();
+diff --git a/tests/performance.test.cjs b/tests/performance.test.cjs
+new file mode 100644
+index 0000000..2cdc108
+--- /dev/null
++++ b/tests/performance.test.cjs
+@@ -0,0 +1,145 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const source = readFileSync(require.resolve('../performance.js'), 'utf8');
++
++function setup(types = ['interaction-contentful-paint', 'soft-navigation']) {
++  const window = new EventTarget();
++  const document = new EventTarget();
++  document.visibilityState = 'visible';
++  const observers = [];
++  const events = [];
++  window.addEventListener('daily-grind:performance', (event) => events.push(event.detail));
++  class Observer {
++    static supportedEntryTypes = types;
++    pending = [];
++    registrations = [];
++    disconnected = false;
++    constructor(callback) { this.callback = callback; observers.push(this); }
++    observe(options) { this.registrations.push(options); }
++    takeRecords() { const entries = this.pending; this.pending = []; return entries; }
++    disconnect() { this.disconnected = true; }
++    deliver(entries) { this.callback({ getEntries: () => entries }); }
++  }
++  class MeasurementEvent extends Event {
++    constructor(name, options) { super(name); this.detail = options.detail; }
++  }
++  vm.runInNewContext(source, {
++    window, document, CustomEvent: MeasurementEvent,
++    ...(types === null ? {} : { PerformanceObserver: Observer }),
++  });
++  return { window, document, observers, events, api: window.dailyGrindPerformance };
++}
++
++function paint(interactionId, duration, size = 100, navigationId = 'old') {
++  return {
++    entryType: 'interaction-contentful-paint', interactionId, navigationId,
++    startTime: 1000, duration, presentationTime: 1000 + duration,
++    largestContentfulPaint: { size, element: { id: 'content' } },
++  };
++}
++
++function navigation(interactionId, seed = null) {
++  return {
++    entryType: 'soft-navigation', interactionId, navigationId: `nav-${interactionId}`,
++    name: `https://example.com/route-${interactionId}`, startTime: 1000, duration: 80,
++    getLargestInteractionContentfulPaint: () => seed,
++  };
++}
++
++test('unsupported browsers skip observation, including when PerformanceObserver is absent', () => {
++  for (const types of [[], null]) {
++    const { api, observers } = setup(types);
++    assert.equal(api.supported.interactionPaint, false);
++    assert.equal(api.supported.softNavigation, false);
++    assert.equal(observers.length, 0);
++    api.flush();
++    api.stop();
++    assert.equal(api.getMeasurements().length, 0);
++  }
++});
++
++test('observation is buffered and reports interaction latency rather than page-relative timestamps', () => {
++  const { api, observers, events } = setup();
++  const registrations = observers[0].registrations;
++  assert.equal(registrations.length, 2);
++  assert.equal(registrations[0].type, 'interaction-contentful-paint');
++  assert.equal(registrations[1].type, 'soft-navigation');
++  assert.ok(registrations.every((registration) => registration.buffered));
++  observers[0].deliver([paint(1, 140)]);
++  assert.equal(events[0].duration, 140);
++  assert.equal(events[0].presentationTime, 1140);
++  assert.equal(events[0].elementId, 'content');
++  assert.ok(Object.isFrozen(events[0]));
++  const copy = api.getMeasurements();
++  copy.length = 0;
++  assert.equal(api.getMeasurements().length, 1);
++});
++
++test('interaction-only support does not register soft navigation observers', () => {
++  const { api, observers } = setup(['interaction-contentful-paint']);
++  assert.equal(api.supported.softNavigation, false);
++  assert.equal(observers[0].registrations.length, 1);
++  observers[0].deliver([paint(1, 60)]);
++  assert.equal(api.getMeasurements()[0].duration, 60);
++});
++
++test('navigation LCP seeds pre-URL paints and correlates by interaction, not navigation ID', () => {
++  const { api, observers, document, events } = setup();
++  let seeded = false;
++  const nav = navigation(1);
++  nav.getLargestInteractionContentfulPaint = () => { seeded = true; return paint(1, 120); };
++  observers[0].deliver([nav]);
++  assert.ok(seeded);
++  observers[0].deliver([paint(1, 250, 300, 'old'), paint(2, 900, 1000, 'nav-1')]);
++  document.visibilityState = 'hidden';
++  document.dispatchEvent(new Event('visibilitychange'));
++  const result = events.find((event) => event.type === 'soft-navigation');
++  assert.equal(result.fcpDuration, 80);
++  assert.equal(result.lcpDuration, 250);
++  assert.equal(result.lcpSize, 300);
++  assert.equal(result.url, 'https://example.com/route-1');
++  api.flush();
++  assert.equal(events.filter((event) => event.type === 'soft-navigation').length, 1);
++});
++
++test('batched and earlier paints are retained and a smaller late candidate cannot replace LCP', () => {
++  const { api, observers } = setup();
++  observers[0].deliver([paint(1, 200, 400)]);
++  observers[0].deliver([navigation(1), paint(1, 300, 500), paint(1, 400, 200)]);
++  api.flush();
++  const result = api.getMeasurements().find((event) => event.type === 'soft-navigation');
++  assert.equal(result.lcpDuration, 300);
++  assert.equal(result.lcpSize, 500);
++});
++
++test('successive routes finalize independently and pending paints drain on pagehide', () => {
++  const { window, observers, events } = setup();
++  observers[0].deliver([navigation(1, paint(1, 100))]);
++  observers[0].deliver([navigation(2)]);
++  assert.equal(events[0].interactionId, 1);
++  observers[0].pending = [paint(2, 240)];
++  window.dispatchEvent(new Event('pagehide'));
++  const routes = events.filter((event) => event.type === 'soft-navigation');
++  assert.equal(routes.length, 2);
++  assert.equal(routes[1].interactionId, 2);
++  assert.equal(routes[1].lcpDuration, 240);
++});
++
++test('empty LCP is explicit, the buffer is bounded, and stop disconnects', () => {
++  const { api, observers, document } = setup();
++  observers[0].deliver([navigation(1)]);
++  api.flush();
++  assert.equal(api.getMeasurements()[0].lcpDuration, null);
++  observers[0].deliver(Array.from({ length: 250 }, (_, index) => paint(index + 2, 50)));
++  assert.equal(api.getMeasurements().length, 200);
++  observers[0].deliver([navigation(300)]);
++  api.stop();
++  assert.equal(observers[0].disconnected, true);
++  const count = api.getMeasurements().length;
++  document.visibilityState = 'hidden';
++  document.dispatchEvent(new Event('visibilitychange'));
++  assert.equal(api.getMeasurements().length, count);
++});

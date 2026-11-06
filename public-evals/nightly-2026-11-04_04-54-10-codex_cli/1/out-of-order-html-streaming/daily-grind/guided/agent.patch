@@ -1,0 +1,289 @@
+diff --git a/index.html b/index.html
+index 66c9173..c16b907 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,53 @@
+       color: var(--primary);
+     }
+ 
++    #seasonal-favorites > h2,
++    .menu-controls {
++      text-align: center;
++    }
++
++    #seasonal-cards .card {
++      min-height: 210px;
++    }
++
++    .skeleton {
++      background: linear-gradient(110deg, white, var(--secondary));
++      display: grid;
++      place-content: center;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn[hidden] {
++      display: none;
++    }
++
++    .seasonal-extras {
++      margin-top: 40px;
++      align-items: start;
++    }
++
++    .seasonal-extras > section,
++    .seasonal-extras > aside {
++      padding: 20px;
++      background: white;
++      border-radius: 8px;
++    }
++
++    #customer-reviews article {
++      margin-top: 16px;
++      padding-top: 16px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    #cms-promo {
++      min-height: 160px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,25 +222,36 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" tabindex="-1">Seasonal Favorites</h2>
++      <div id="seasonal-cards" class="grid">
++        <?start name="seasonal-cards">
++          <div class="card skeleton"><p>Brewing your seasonal favorites…</p></div>
++          <div class="card skeleton" aria-hidden="true"></div>
++          <div class="card skeleton" aria-hidden="true"></div>
++        <?end>
+       </div>
++      <div class="menu-controls">
++        <p id="menu-status" role="status"></p>
++        <button id="refresh-menu" type="button" class="btn" hidden>Refresh favorites</button>
++        <a href="/menu/seasonal" class="btn">Browse the seasonal menu</a>
++      </div>
++      <div class="grid seasonal-extras">
++        <section aria-labelledby="reviews-heading">
++          <h3 id="reviews-heading">Customer Reviews</h3>
++          <p id="reviews-status" role="status">Loading customer reviews…</p>
++          <div id="customer-reviews"></div>
++        </section>
++        <aside aria-labelledby="promo-heading">
++          <h3 id="promo-heading">This Season at The Daily Grind</h3>
++          <div id="cms-promo">
++            <p>Explore what's brewing this season.</p>
++            <a href="/menu/seasonal" class="btn">Explore the menu</a>
++          </div>
++          <p id="promo-status" role="status"></p>
++        </aside>
++      </div>
++      <noscript><p>Live menu updates and customer reviews need JavaScript in this browser. You can always browse the seasonal menu above.</p></noscript>
+     </section>
+   </main>
+ 
+@@ -207,6 +265,175 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!--
++    The server may flush the page shell above before these cards are ready, then
++    send this template in the SAME document response. No timeout or second fetch
++    is needed for the initial cards. Never interpolate raw reviews into a template.
++  -->
++  <template for="seasonal-cards">
++    <article class="card">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </article>
++    <article class="card">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </article>
++    <article class="card">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </article>
++  </template>
++
++  <script type="module">
++    const cards = document.getElementById('seasonal-cards');
++    const heading = document.getElementById('seasonal-heading');
++    const menuStatus = document.getElementById('menu-status');
++    const refreshButton = document.getElementById('refresh-menu');
++
++    // Progressive fallback for this single, server-authored deferred template.
++    // Modules run after parsing; native patching has already consumed the template
++    // when supported. Keep the processing instructions unchanged for native parsing.
++    const deferredCards = document.querySelector('template[for="seasonal-cards"]');
++    if (deferredCards) {
++      cards.replaceChildren(deferredCards.content.cloneNode(true));
++      deferredCards.remove();
++    }
++
++    /* Server integration contract (these endpoints are not part of this static app):
++       GET /api/menu/seasonal: text/html, card fragments only (no page wrapper).
++       GET /api/menu/events: text/event-stream; emit `event: menu-changed` with
++         a data line and blank line after every published menu change.
++       GET /api/reviews/seasonal: text/html, customer review fragments.
++       GET /api/cms/seasonal-promo: text/html, approved first-party CMS markup,
++         including its self-contained widget script. Never mix customer input
++         into this trusted response. Scripts must tolerate reinsertion.
++       Sanitize reviews on the server too if rendered by other clients.
++    */
++    async function fetchHTML(path, signal) {
++      const response = await fetch(path, {
++        headers: { Accept: 'text/html' },
++        credentials: 'same-origin',
++        redirect: 'error',
++        cache: 'no-store',
++        signal
++      });
++      if (!response.ok || !/^text\/html\b/i.test(response.headers.get('Content-Type') || '')) {
++        throw new Error(`HTML unavailable: ${path}`);
++      }
++      return response.text();
++    }
++
++    const reviewElements = ['article', 'h4', 'p', 'blockquote', 'strong', 'em', 'b', 'i', 'br'];
++    let purifierPromise;
++    async function setSafeHTML(target, html, reviews = false) {
++      if ('setHTML' in Element.prototype) {
++        const options = reviews ? { sanitizer: { elements: reviewElements, attributes: [] } } : {};
++        target.setHTML(html, options);
++        return;
++      }
++      // Only browsers missing native sanitization download the fallback.
++      purifierPromise ??= import('https://cdn.jsdelivr.net/npm/dompurify@3.4.17/+esm')
++        .then(module => module.default);
++      const purifier = await purifierPromise;
++      const options = reviews ? {
++        ALLOWED_TAGS: [...reviewElements, '#text'],
++        ALLOWED_ATTR: [],
++        ALLOW_ARIA_ATTR: false,
++        ALLOW_DATA_ATTR: false,
++        KEEP_CONTENT: false
++      } : {};
++      target.replaceChildren(purifier.sanitize(html, { ...options, RETURN_DOM_FRAGMENT: true }));
++    }
++
++    let menuRequest;
++    async function refreshMenu() {
++      menuRequest?.abort();
++      const request = new AbortController();
++      menuRequest = request;
++      menuStatus.textContent = 'Refreshing seasonal favorites…';
++      cards.setAttribute('aria-busy', 'true');
++      try {
++        const html = await fetchHTML('/api/menu/seasonal', request.signal);
++        // Prepare off-DOM to preserve the current cards if loading or sanitizing fails.
++        const replacement = document.createElement('div');
++        await setSafeHTML(replacement, html);
++        if (request.signal.aborted) return;
++        const activeLink = cards.contains(document.activeElement) ? document.activeElement : null;
++        const href = activeLink?.getAttribute('href');
++        cards.replaceChildren(...replacement.childNodes);
++        if (activeLink) {
++          const nextLink = [...cards.querySelectorAll('a[href]')]
++            .find(link => link.getAttribute('href') === href);
++          (nextLink || heading).focus();
++        }
++        menuStatus.textContent = 'Seasonal favorites are up to date.';
++      } catch (error) {
++        if (request.signal.aborted) return;
++        menuStatus.textContent = 'Unable to refresh. Your current favorites are still shown. Please try again.';
++      } finally {
++        if (menuRequest === request) cards.removeAttribute('aria-busy');
++      }
++    }
++
++    async function loadReviews() {
++      const status = document.getElementById('reviews-status');
++      const target = document.getElementById('customer-reviews');
++      try {
++        await setSafeHTML(target, await fetchHTML('/api/reviews/seasonal'), true);
++        status.textContent = target.textContent.trim() ? '' : 'No reviews yet. Check back soon.';
++      } catch {
++        status.textContent = 'Customer reviews are unavailable right now. Please check back later.';
++      }
++    }
++
++    async function loadPromo() {
++      try {
++        const html = await fetchHTML('/api/cms/seasonal-promo');
++        // Older setHTMLUnsafe implementations don't support runScripts. The new
++        // streaming API signals support for the newer HTML setter family.
++        if (!('streamHTMLUnsafe' in Element.prototype)) {
++          await import('https://cdn.jsdelivr.net/npm/html-setters-polyfill@0.1.1/index.js');
++        }
++        // This is the ONLY script-enabled sink: fixed, first-party CMS endpoint.
++        // Reviews and menu fragments must always use the safe helper above.
++        document.getElementById('cms-promo').setHTMLUnsafe(html, { runScripts: true });
++      } catch {
++        document.getElementById('promo-status').textContent = 'The latest promotion is unavailable right now.';
++      }
++    }
++
++    refreshButton.hidden = false;
++    refreshButton.addEventListener('click', refreshMenu);
++    window.addEventListener('menu-changed', refreshMenu);
++    // EventSource reconnects automatically. Refresh on open to catch changes
++    // published before this connection or while the connection was interrupted.
++    let menuEvents;
++    function connectMenuEvents() {
++      if (!('EventSource' in window) || menuEvents) return;
++      menuEvents = new EventSource('/api/menu/events');
++      menuEvents.addEventListener('menu-changed', refreshMenu);
++      menuEvents.addEventListener('open', refreshMenu);
++      menuEvents.addEventListener('error', () => {
++        if (!cards.hasAttribute('aria-busy')) {
++          menuStatus.textContent = 'Live updates are disconnected. Use Refresh favorites to check the menu.';
++        }
++      });
++    }
++    window.addEventListener('pagehide', () => {
++      menuEvents?.close();
++      menuEvents = undefined;
++      menuRequest?.abort();
++    });
++    window.addEventListener('pageshow', connectMenuEvents);
++    connectMenuEvents();
++    loadReviews();
++    loadPromo();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+index 66c9173..078f8a1 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,20 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <!-- Wait for the hero and all Seasonal Favorites markup, but not the footer. -->
++  <link rel="expect" href="#main-content" blocking="render">
++  <!-- Keep initial theme/layout scripts in this head with blocking="render". -->
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -174,7 +187,7 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

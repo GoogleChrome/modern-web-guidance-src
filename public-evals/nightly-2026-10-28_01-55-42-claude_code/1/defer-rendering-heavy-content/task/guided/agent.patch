@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -186,8 +186,82 @@
+       margin: 2rem auto;
+       text-align: center;
+       color: #64748b;
+     }
++
++    /*
++     * Cards below the initial fold: the browser skips layout + paint for them
++     * until they scroll near the viewport. contain-intrinsic-size keeps a
++     * placeholder box so the scrollbar/page height don't jump. 'auto' lets the
++     * browser remember the real size once the card has rendered.
++     */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 380px;
++    }
++
++    @supports not (content-visibility: auto) {
++      .off-screen-card {
++        contain: layout style paint;
++      }
++    }
++
++    /*
++     * Debug panel: hidden with content-visibility: hidden rather than
++     * display: none. The box stays in the layout (placeholder height) and
++     * the rendering state is cached, so toggling is a single class flip
++     * with no re-layout of the 500 cards above it.
++     */
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 0 1rem;
++      display: none;
++    }
++
++    @supports (content-visibility: hidden) {
++      .debug-panel {
++        display: block;
++        content-visibility: hidden;
++        contain-intrinsic-size: auto none auto 220px;
++      }
++    }
++
++    .debug-panel.is-open {
++      display: block;
++      content-visibility: visible;
++    }
++
++    .debug-panel-inner {
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 1rem;
++      padding: 1.25rem 1.5rem;
++      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
++      font-size: 0.85rem;
++    }
++
++    .debug-panel-inner h2 {
++      margin: 0 0 0.75rem;
++      font-size: 0.95rem;
++      color: #93c5fd;
++    }
++
++    .debug-panel-inner dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.35rem 1.25rem;
++      margin: 0;
++    }
++
++    .debug-panel-inner dt {
++      color: #94a3b8;
++    }
++
++    .debug-panel-inner dd {
++      margin: 0;
++      font-weight: bold;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -207,8 +281,10 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="debug-toggle" class="toggle-btn off" aria-expanded="false" aria-controls="debug-panel">Show
++      Debug</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +295,63 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <aside class="debug-panel" id="debug-panel" aria-labelledby="debug-panel-title">
++    <div class="debug-panel-inner">
++      <h2 id="debug-panel-title">Debug</h2>
++      <dl>
++        <dt>Total cards</dt>
++        <dd id="dbg-total">0</dd>
++        <dt>Eagerly rendered cards</dt>
++        <dd id="dbg-eager">0</dd>
++        <dt>Deferred (.off-screen-card)</dt>
++        <dd id="dbg-deferred">0</dd>
++        <dt>Last render</dt>
++        <dd id="dbg-render">–</dd>
++        <dt>Viewport</dt>
++        <dd id="dbg-viewport">–</dd>
++        <dt>content-visibility support</dt>
++        <dd id="dbg-support">–</dd>
++      </dl>
++    </div>
++  </aside>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
++    const debugToggle = document.getElementById('debug-toggle');
++    const debugPanel = document.getElementById('debug-panel');
++    const dbg = {
++      total: document.getElementById('dbg-total'),
++      eager: document.getElementById('dbg-eager'),
++      deferred: document.getElementById('dbg-deferred'),
++      render: document.getElementById('dbg-render'),
++      viewport: document.getElementById('dbg-viewport'),
++      support: document.getElementById('dbg-support'),
++    };
+     const cardCount = 500;
++    // Must match contain-intrinsic-size on .off-screen-card.
++    const ESTIMATED_CARD_HEIGHT = 380;
++    const CARD_GAP = 32; // .card margin-bottom (2rem)
++    let eagerCount = 0;
+ 
++    // Cards that start inside the initial viewport render eagerly; everything
++    // below the fold gets .off-screen-card so layout/paint is deferred until
++    // the user scrolls near it. (+1 is a safety margin for partial cards.)
++    function computeEagerCount() {
++      const feedTop = feed.getBoundingClientRect().top + window.scrollY;
++      const visibleHeight = Math.max(0, window.innerHeight - feedTop);
++      return Math.min(cardCount, Math.ceil(visibleHeight / (ESTIMATED_CARD_HEIGHT + CARD_GAP)) + 1);
++    }
+ 
+ 
++
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = index < eagerCount ? 'card' : 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +384,9 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          dbg.render.textContent = `${duration}ms`;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -283,17 +403,34 @@
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
++      eagerCount = computeEagerCount();
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+         fragment.appendChild(createCard(i));
+       }
+       feed.appendChild(fragment);
+ 
++      dbg.total.textContent = cardCount;
++      dbg.eager.textContent = eagerCount;
++      dbg.deferred.textContent = cardCount - eagerCount;
++      dbg.viewport.textContent = `${window.innerWidth}×${window.innerHeight}`;
++
+       measureRender(startTime);
+     }
+ 
++    dbg.support.textContent = CSS.supports('content-visibility', 'hidden') ? 'yes' : 'no (display:none fallback)';
++
++    // Toggling is just a class flip: the panel keeps its layout box and cached
++    // rendering state while hidden, so no reflow of the feed happens here.
++    debugToggle.addEventListener('click', () => {
++      const open = debugPanel.classList.toggle('is-open');
++      debugToggle.setAttribute('aria-expanded', String(open));
++      debugToggle.textContent = open ? 'Hide Debug' : 'Show Debug';
++      debugToggle.classList.toggle('off', !open);
++    });
++
+     window.addEventListener('load', () => {
+       setTimeout(renderCards, 500);
+     });
+ 

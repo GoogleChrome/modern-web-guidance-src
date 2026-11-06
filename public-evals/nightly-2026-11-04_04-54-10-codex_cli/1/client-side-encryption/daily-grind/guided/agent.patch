@@ -1,0 +1,533 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..f1780cb
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,15 @@
++# The Daily Grind
++
++Static homepage with a browser-only encrypted delivery note preview.
++
++Run `pnpm install`, `pnpm build`, and `pnpm test`. Deploy the `dist/` directory over HTTPS. The `start` script is configured for Vite so browser dependencies are resolved; bundled production assets are in `dist`.
++
++## Encryption and integration boundary
++
++The default suite uses Noble's X-Wing hybrid KEM (ML-KEM-768 + X25519). Standalone ML-KEM-768 and classical ephemeral-static X25519 are also selectable; classical mode is explicitly not post-quantum protected. Bundled Noble implementations provide compatibility without relying on emerging native browser KEM APIs. AES-256-GCM and HKDF-SHA-256 use native Web Crypto; encryption is disabled when unavailable.
++
++Each encryption uses a fresh encapsulation or ephemeral key, HKDF salt, and 96-bit GCM IV. A versioned, fixed-order header (including recipient fingerprint, suite, record ID, capsule, salt, and IV) is authenticated as additional data. All note content and delivery preferences are encrypted. There is no network submission or browser storage. The generated local recipient private key stays in memory for preview decryption and is discarded on delete, replacement, or navigation. Byte arrays are zeroed where practical; JavaScript cannot guarantee memory erasure.
++
++This is a local working preview, not a connected delivery system. To integrate a real service, provision the recipient keys outside the customer browser, authenticate and pin/version the recipient public key delivered over HTTPS, call `encryptNote` with that public key, and send only the resulting envelope to an authorized backend. Only the authorized delivery recipient should hold the private key and perform decapsulation/decryption. Define order authorization, key rotation/revocation, retention, and deletion before accepting real notes. A KEM alone does not authenticate the identity of a recipient. Do not use locally generated preview recipient keys for real deliveries.
++
++Copied envelopes cannot be decrypted after the preview tab's recipient key is discarded. The UI explains this session-only lifetime. Notes are rendered using `textContent`; no plaintext is logged, persisted, or placed in a URL. Client encryption does not protect against compromised page scripts or a compromised recipient device. External Google Fonts and Unsplash images are visual assets only and receive no note content; the page sets a no-referrer policy.
+diff --git a/index.html b/index.html
+index 66c9173..969f45f 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,62 @@
+-<!DOCTYPE html>
++<!doctype html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <meta name="theme-color" content="#faf7f2" />
++  <meta name="referrer" content="no-referrer" />
++  <title>The Daily Grind — Good coffee. Thoughtfully delivered.</title>
++  <link rel="stylesheet" href="/src/style.css" />
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
++    <symbol id="cup" viewBox="0 0 24 24"><path d="M4 8h13v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8Zm13 1h2a3 3 0 1 1 0 6h-2M7 2v3m4-3v3m4-3v3M2 22h18"/></symbol>
++    <symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol>
++    <symbol id="shield" viewBox="0 0 24 24"><path d="m12 2 8 4v6c0 5-8 10-8 10S4 17 4 12V6l8-4Z"/><path d="m8 12 3 3 5-6"/></symbol>
++    <symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
++    <symbol id="pin" viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 14 0Z"/><circle cx="12" cy="10" r="2"/></symbol>
++    <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
++    <symbol id="leaf" viewBox="0 0 24 24"><path d="M20 3C5 1 1 12 7 17S22 13 20 3ZM5 21 16 9"/></symbol>
++    <symbol id="bag" viewBox="0 0 24 24"><path d="M5 7h14l2 14H3L5 7Zm3 0V6a4 4 0 0 1 8 0v1"/></symbol>
++  </defs></svg>
++  <div class="announcement">A little care in every cup. <span>Freshly roasted. Thoughtfully delivered.</span><svg class="icon"><use href="#leaf"/></svg></div>
++  <header class="site-header">
++    <a class="brand" href="/" aria-label="The Daily Grind home"><span class="brand-mark"><svg class="icon"><use href="#cup"/></svg></span><span>the daily grind<span class="brand-sub">COFFEE & A LITTLE KINDNESS</span></span></a>
++    <nav aria-label="Main navigation"><a href="/menu">Our menu</a><a href="/locations">Locations</a><a href="/rewards">Grind rewards</a></nav>
++    <div class="account-links"><a href="/account">My account</a><a class="bag-link" href="/order-online" aria-label="Your order"><svg class="icon"><use href="#bag"/></svg><span>0</span></a></div>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++  <main>
++    <section class="hero">
++      <div class="hero-copy"><p class="eyebrow"><span></span> YOUR DAILY DOSE OF GOOD</p><h1>Good coffee.<br>A better kind of day.</h1><p>Ethically sourced, locally roasted, and made for your everyday.<br class="desktop-break"> Let us bring a little good to your doorstep.</p><a class="button dark" href="/order-online">Find your next cup <svg class="icon"><use href="#arrow"/></svg></a><div class="hero-foot"><svg class="icon"><use href="#leaf"/></svg> Thoughtful beans. Smaller footprint. Better mornings.</div></div>
++      <div class="hero-photo"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=85" alt="A warm cup of coffee on a sunlit café table" fetchpriority="high"/><div class="photo-note"><span>BREWED WITH PURPOSE</span>Always a good idea.</div><span class="photo-stamp">ROASTED<br><b>with care</b><br>EVERY DAY</span></div>
++    </section>
++    <section class="delivery-section" id="delivery-notes" aria-labelledby="delivery-title">
++      <div class="section-heading"><div><p class="eyebrow">A LITTLE EXTRA CARE</p><h2 id="delivery-title">Your delivery. Your details.</h2><p>Where to leave your coffee is your business. Let’s keep it that way.</p></div><span class="privacy-pill"><svg class="icon"><use href="#shield"/></svg> Privacy, built in</span></div>
++      <div class="delivery-grid">
++        <div class="note-card">
++          <div class="card-heading"><span class="soft-icon"><svg class="icon"><use href="#lock"/></svg></span><div><h3>Private delivery notes</h3><p>A smooth drop-off starts with a little note.</p></div><span class="session-label"><i></i> LOCAL PREVIEW</span></div>
++          <form id="notes-form" method="post" action="#delivery-notes" autocomplete="off">
++            <fieldset id="note-fields" disabled>
++              <div class="field-top"><label for="note">What should your delivery partner know? <span>(required)</span></label><span class="mini-lock"><svg class="icon"><use href="#lock"/></svg> Encrypted</span></div>
++              <textarea id="note" name="note" rows="4" maxlength="1000" required placeholder="e.g. Please leave at the side door. The gate code is…" aria-describedby="note-help note-count" spellcheck="false"></textarea>
++              <div class="field-bottom"><span id="note-help">Door codes, drop-off spots, and other just-for-you details.</span><span id="note-count">0 / 1,000</span></div>
++              <fieldset class="methods"><legend>How would you like your delivery?</legend><div class="method-options"><label><input type="radio" name="delivery" value="Leave at the door" checked/><svg class="icon"><use href="#pin"/></svg> Leave at the door</label><label><input type="radio" name="delivery" value="Hand it to me"/><svg class="icon"><use href="#bag"/></svg> Hand it to me</label></div></fieldset>
++              <details class="encryption-options"><summary>Encryption settings <span id="suite-summary">Hybrid protection</span><span class="chevron">⌄</span></summary><fieldset><legend>Key establishment</legend><label><input type="radio" name="suite" value="hybrid" checked/> Hybrid <small>ML-KEM-768 + X25519 · recommended</small></label><label><input type="radio" name="suite" value="pq"/> Post-quantum <small>ML-KEM-768</small></label><label><input type="radio" name="suite" value="classical"/> Classical <small>X25519 · no post-quantum protection</small></label></fieldset><p>All modes use HKDF-SHA-256 and authenticated AES-256-GCM encryption.</p></details>
++              <div class="form-action"><p><svg class="icon"><use href="#lock"/></svg> Encrypted on your device.<br><span>Nothing is sent in this local preview.</span></p><button class="button orange" type="submit" id="encrypt-button"><svg class="icon"><use href="#lock"/></svg> Encrypt my note <svg class="icon arrow-small"><use href="#arrow"/></svg></button></div>
++            </fieldset>
++          </form>
++          <p id="status" role="status" aria-live="polite">Preparing browser encryption…</p>
++          <noscript><p class="error">JavaScript is required to encrypt notes. This form cannot send your notes.</p></noscript>
++          <section id="encrypted-result" class="result" hidden aria-label="Encrypted note"><div class="result-title"><svg class="icon"><use href="#shield"/></svg><h4>Your note is encrypted</h4><button type="button" id="clear-note" class="text-button">Delete draft</button></div><p>Kept in this tab only. Refreshing deletes the draft and its recipient key.</p><details><summary>View encrypted envelope</summary><pre id="envelope"></pre></details><div class="result-actions"><button type="button" class="text-button" id="reveal-note">Decrypt & preview</button><button type="button" class="text-button" id="copy-envelope">Copy encrypted envelope</button></div><p id="decrypted-note" class="decrypted" hidden></p></section>
+         </div>
++        <aside class="privacy-card" aria-labelledby="privacy-title"><div class="privacy-top"><span class="shield-illustration"><svg class="icon"><use href="#shield"/></svg><span><svg class="icon"><use href="#lock"/></svg></span></span><p class="eyebrow">PERSONAL STAYS PERSONAL</p><h3 id="privacy-title">For their eyes.<br>And yours.</h3><p>Your instructions deserve the same<br class="desktop-break"> care as your coffee.</p></div><div class="privacy-points"><div><span class="point-icon"><svg class="icon"><use href="#lock"/></svg></span><p><strong>Locked before it leaves</strong><span>Your browser encrypts every note.</span></p></div><div><span class="point-icon"><svg class="icon"><use href="#shield"/></svg></span><p><strong>Ready for what’s next</strong><span>Hybrid post-quantum protection by default.</span></p></div><div><span class="point-icon"><svg class="icon"><use href="#check"/></svg></span><p><strong>Every detail stays intact</strong><span>Authentication detects changes to your note.</span></p></div></div><a href="#how-it-works" class="privacy-link">A closer look at your privacy <svg class="icon"><use href="#arrow"/></svg></a></aside>
+       </div>
++      <div class="care-strip"><svg class="icon"><use href="#cup"/></svg><p>A good delivery is in the details. <span>We take care of the coffee. You tell us the rest.</span></p><span class="small-star">✳</span></div>
+     </section>
++    <section class="favorites" aria-labelledby="favorites-title"><div class="section-heading"><div><p class="eyebrow">FIND YOUR EVERYDAY FAVORITE</p><h2 id="favorites-title">Good things are brewing.</h2></div><a href="/menu">Explore the menu <svg class="icon"><use href="#arrow"/></svg></a></div><div class="favorites-grid"><a class="coffee-card" href="/menu/seasonal"><img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Iced maple oat latte" loading="lazy"/><div><span>THE SEASONAL SIP</span><h3>Maple Oat Latte <svg class="icon"><use href="#arrow"/></svg></h3><p>A little maple. A lot to love.</p></div></a><a class="coffee-card" href="/menu/espresso"><img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80" alt="Fresh espresso in a ceramic cup" loading="lazy"/><div><span>YOUR MORNING RITUAL</span><h3>Dark Roast Espresso <svg class="icon"><use href="#arrow"/></svg></h3><p>Big, bold, and beautifully balanced.</p></div></a><a class="coffee-card" href="/menu/cold-brew"><img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="A glass of smooth cold brew coffee" loading="lazy"/><div><span>SLOW BREWED. EASY GOING.</span><h3>Signature Cold Brew <svg class="icon"><use href="#arrow"/></svg></h3><p>18 hours of patience in every pour.</p></div></a></div></section>
++    <section id="how-it-works" class="how-it-works"><svg class="icon"><use href="#shield"/></svg><div><h3>A little transparency, too.</h3><p>This preview generates a recipient key in your browser, establishes a fresh shared secret for each note, and encrypts it with AES-256-GCM. Only this tab can decrypt the draft. No notes or keys are uploaded or saved to browser storage. A live delivery service needs a verified delivery recipient’s public key and a secure delivery backend.</p></div></section>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <footer><a class="brand" href="/">the daily grind<span class="footer-dot">.</span></a><span>Good coffee. Good company. Every day.</span><div><a href="/about">Our story</a><a href="/contact">Say hello</a><a href="/privacy-policy">Privacy</a></div><small>© 2026 The Daily Grind Coffee Co.</small></footer>
++  <script type="module" src="/src/main.js"></script>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..e354d68 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,19 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "vite build",
++    "test": "node --test src/crypto.test.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+-  }
++  },
++  "dependencies": {
++    "@noble/curves": "^2.4.0",
++    "@noble/post-quantum": "^0.7.1"
++  },
++  "devDependencies": {
++    "vite": "^8.3.5"
++  },
++  "type": "module"
+ }
+diff --git a/src/crypto.js b/src/crypto.js
+new file mode 100644
+index 0000000..afe9411
+--- /dev/null
++++ b/src/crypto.js
+@@ -0,0 +1,75 @@
++import { ml_kem768_x25519 } from '@noble/post-quantum/hybrid.js';
++import { ml_kem768 } from '@noble/post-quantum/ml-kem.js';
++import { x25519 } from '@noble/curves/ed25519.js';
++
++export const SUITES = Object.freeze({
++  hybrid: { name: 'ML-KEM-768 + X25519', kem: ml_kem768_x25519 },
++  pq: { name: 'ML-KEM-768', kem: ml_kem768 },
++  classical: { name: 'X25519', kem: null },
++});
++const utf8 = new TextEncoder();
++export const toBase64 = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)));
++const fromBase64 = (value) => Uint8Array.from(atob(value), c => c.charCodeAt(0));
++const random = (length) => crypto.getRandomValues(new Uint8Array(length));
++
++export function createRecipient(suite) {
++  if (!Object.hasOwn(SUITES, suite)) throw new Error('Unsupported encryption suite');
++  return { suite, ...(SUITES[suite].kem ?? x25519).keygen() };
++}
++async function fingerprint(publicKey) {
++  return toBase64(await crypto.subtle.digest('SHA-256', publicKey));
++}
++async function deriveKey(secret, salt, context) {
++  try {
++    const base = await crypto.subtle.importKey('raw', secret, 'HKDF', false, ['deriveKey']);
++    return await crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt,
++      info: utf8.encode(`daily-grind/delivery-notes/v1/${context}`) }, base,
++      { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
++  } finally { secret.fill(0); }
++}
++function headerBytes(envelope) {
++  // Fixed field order binds all routing and protocol metadata to the GCM tag.
++  return utf8.encode(JSON.stringify({ version: envelope.version, suite: envelope.suite,
++    cipher: envelope.cipher, id: envelope.id, recipient: envelope.recipient,
++    capsule: envelope.capsule, salt: envelope.salt, iv: envelope.iv }));
++}
++export async function encryptNote(publicKey, suite, note) {
++  if (!Object.hasOwn(SUITES, suite)) throw new Error('Unsupported encryption suite');
++  let capsule, sharedSecret;
++  if (suite === 'classical') {
++    const ephemeral = x25519.keygen();
++    try { sharedSecret = x25519.getSharedSecret(ephemeral.secretKey, publicKey); capsule = ephemeral.publicKey; }
++    finally { ephemeral.secretKey.fill(0); }
++  } else {
++    const result = SUITES[suite].kem.encapsulate(publicKey);
++    capsule = result.cipherText;
++    sharedSecret = result.sharedSecret;
++  }
++  const salt = random(32), iv = random(12);
++  const key = await deriveKey(sharedSecret, salt, suite);
++  const envelope = { version: 1, suite, cipher: 'AES-256-GCM', id: crypto.randomUUID(),
++    recipient: await fingerprint(publicKey), capsule: toBase64(capsule),
++    salt: toBase64(salt), iv: toBase64(iv) };
++  const plaintext = utf8.encode(JSON.stringify(note));
++  try {
++    envelope.ciphertext = toBase64(await crypto.subtle.encrypt({ name: 'AES-GCM', iv,
++      tagLength: 128, additionalData: headerBytes(envelope) }, key, plaintext));
++    return envelope;
++  } finally { plaintext.fill(0); }
++}
++export async function decryptNote(recipient, envelope) {
++  if (envelope.version !== 1 || envelope.cipher !== 'AES-256-GCM' ||
++      recipient.suite !== envelope.suite || envelope.recipient !== await fingerprint(recipient.publicKey)) {
++    throw new Error('Envelope does not match this recipient or protocol');
++  }
++  const capsule = fromBase64(envelope.capsule);
++  const secret = recipient.suite === 'classical'
++    ? x25519.getSharedSecret(recipient.secretKey, capsule)
++    : SUITES[recipient.suite].kem.decapsulate(capsule, recipient.secretKey);
++  const key = await deriveKey(secret, fromBase64(envelope.salt), envelope.suite);
++  const plaintext = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM',
++    iv: fromBase64(envelope.iv), tagLength: 128, additionalData: headerBytes(envelope) },
++    key, fromBase64(envelope.ciphertext)));
++  try { return JSON.parse(new TextDecoder().decode(plaintext)); }
++  finally { plaintext.fill(0); }
++}
+diff --git a/src/crypto.test.js b/src/crypto.test.js
+new file mode 100644
+index 0000000..c0fd02b
+--- /dev/null
++++ b/src/crypto.test.js
+@@ -0,0 +1,28 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createRecipient, encryptNote, decryptNote } from './crypto.js';
++
++for (const suite of ['hybrid', 'pq', 'classical']) {
++  test(`${suite}: round trip, fresh randomness, and tampering rejection`, async () => {
++    const recipient = createRecipient(suite);
++    const payload = { note: 'Gate code 1234. Café door ☕', delivery: 'Leave at the door' };
++    const envelope = await encryptNote(recipient.publicKey, suite, payload);
++    assert.deepEqual(await decryptNote(recipient, envelope), payload);
++    assert.ok(!JSON.stringify(envelope).includes('1234'));
++    const second = await encryptNote(recipient.publicKey, suite, payload);
++    assert.notEqual(second.iv, envelope.iv);
++    assert.notEqual(second.capsule, envelope.capsule);
++    for (const field of ['ciphertext', 'capsule', 'salt', 'iv']) {
++      const bytes = Uint8Array.from(atob(envelope[field]), c => c.charCodeAt(0));
++      bytes[0] ^= 1;
++      const changed = { ...envelope, [field]: btoa(String.fromCharCode(...bytes)) };
++      await assert.rejects(() => decryptNote(recipient, changed));
++    }
++    for (const changed of [{ id: 'another-order' }, { version: 2 }, { suite: 'unknown' }, { recipient: 'another-recipient' }]) {
++      await assert.rejects(() => decryptNote(recipient, { ...envelope, ...changed }));
++    }
++    const wrongRecipient = createRecipient(suite);
++    await assert.rejects(() => decryptNote(wrongRecipient, envelope));
++    wrongRecipient.secretKey.fill(0); recipient.secretKey.fill(0);
++  });
++}
+diff --git a/src/main.js b/src/main.js
+new file mode 100644
+index 0000000..05830ae
+--- /dev/null
++++ b/src/main.js
+@@ -0,0 +1,81 @@
++import { createRecipient, encryptNote, decryptNote } from './crypto.js';
++
++const $ = (id) => document.getElementById(id);
++const form = $('notes-form'), fields = $('note-fields'), note = $('note');
++const result = $('encrypted-result'), preview = $('decrypted-note');
++let recipient = null, envelope = null;
++function status(message, error = false) {
++  $('status').textContent = message;
++  $('status').classList.toggle('error', error);
++}
++function destroyDraft() {
++  recipient?.secretKey.fill(0);
++  recipient = null; envelope = null;
++  $('envelope').textContent = '';
++  preview.textContent = ''; preview.hidden = true;
++  $('reveal-note').textContent = 'Decrypt & preview';
++  result.hidden = true;
++}
++note.addEventListener('input', () => {
++  $('note-count').textContent = `${note.value.length.toLocaleString()} / 1,000`;
++  note.setCustomValidity('');
++});
++form.addEventListener('change', () => {
++  const suite = new FormData(form).get('suite');
++  $('suite-summary').textContent = { hybrid: 'Hybrid protection', pq: 'Post-quantum protection', classical: 'Classical protection' }[suite];
++});
++form.addEventListener('submit', async (event) => {
++  event.preventDefault();
++  if (!note.value.trim()) { note.setCustomValidity('Please add a delivery note.'); note.reportValidity(); return; }
++  const data = new FormData(form);
++  fields.disabled = true;
++  status('Establishing a shared secret and encrypting your note…');
++  let nextRecipient;
++  try {
++    // Each draft gets an independent local recipient; the sender uses only its public key.
++    nextRecipient = createRecipient(data.get('suite'));
++    const nextEnvelope = await encryptNote(nextRecipient.publicKey, nextRecipient.suite,
++      { note: data.get('note').trim(), delivery: data.get('delivery') });
++    destroyDraft();
++    recipient = nextRecipient; envelope = nextEnvelope;
++    $('envelope').textContent = JSON.stringify(envelope, null, 2);
++    result.hidden = false;
++    note.value = ''; $('note-count').textContent = '0 / 1,000';
++    status('Encrypted draft ready. Nothing was sent. This draft lasts only until you leave or refresh this tab.');
++  } catch {
++    nextRecipient?.secretKey.fill(0);
++    status('We couldn’t encrypt this note. Your text has not been sent. Please try again.', true);
++  } finally { fields.disabled = false; }
++});
++$('reveal-note').addEventListener('click', async () => {
++  if (!preview.hidden) {
++    preview.textContent = ''; preview.hidden = true;
++    $('reveal-note').textContent = 'Decrypt & preview'; return;
++  }
++  const currentEnvelope = envelope, currentRecipient = recipient;
++  try {
++    const decoded = await decryptNote(currentRecipient, currentEnvelope);
++    if (envelope !== currentEnvelope) return;
++    preview.textContent = `${decoded.delivery}\n\n${decoded.note}`;
++    preview.hidden = false; $('reveal-note').textContent = 'Hide decrypted note';
++    status('Decrypted and authenticated successfully in this tab.');
++  } catch { status('Unable to authenticate this draft. Its contents or key may have changed.', true); }
++});
++$('copy-envelope').addEventListener('click', async () => {
++  try {
++    if (!envelope) return;
++    await navigator.clipboard.writeText(JSON.stringify(envelope, null, 2));
++    status('Encrypted envelope copied. The private recipient key remains in this tab.');
++  } catch { status('Clipboard access is unavailable. You can select and copy the encrypted envelope above.', true); }
++});
++$('clear-note').addEventListener('click', () => {
++  destroyDraft(); status('Encrypted draft and recipient key deleted.'); note.focus();
++});
++window.addEventListener('pagehide', () => {
++  destroyDraft(); note.value = ''; $('note-count').textContent = '0 / 1,000'; status('');
++});
++if (globalThis.isSecureContext && globalThis.crypto?.subtle) {
++  fields.disabled = false; status('');
++} else {
++  status('Encryption requires a secure HTTPS connection and Web Crypto support. No note can be submitted here.', true);
++}
+diff --git a/src/style.css b/src/style.css
+new file mode 100644
+index 0000000..83c5619
+--- /dev/null
++++ b/src/style.css
+@@ -0,0 +1,2 @@
++@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap');
++:root{font-family:'DM Sans',sans-serif;color:#302a25;background:#faf8f4;font-synthesis:none;font-size:14px;--orange:#bf542e;--muted:#80786e;--line:#e7e1d8;--green:#4d6954}*{box-sizing:border-box}body{margin:0}a{color:inherit;text-decoration:none}button,input,textarea{font:inherit}button,a,input,textarea,summary{ -webkit-tap-highlight-color:transparent}button,a,summary{touch-action:manipulation}button{cursor:pointer}button:disabled{cursor:wait;opacity:.6}:focus-visible{outline:3px solid #a34d25;outline-offset:4px}svg.icon{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.svg-library{position:absolute;width:0;height:0;overflow:hidden}.announcement{height:35px;background:#ecefe7;display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;letter-spacing:.2px;color:#485341}.announcement .icon{width:13px;height:13px;margin-left:8px}.site-header{height:98px;max-width:1320px;padding:0 64px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:35px}.brand{display:flex;align-items:center;gap:12px;font-family:'Manrope',sans-serif;font-size:25px;font-weight:800;letter-spacing:-1.2px;line-height:1.3}.brand-mark{display:grid;place-items:center;border:1.5px solid #47372b;border-radius:50%;width:42px;height:42px}.brand-mark .icon{width:25px;height:25px}.brand-sub{display:block;font-family:'DM Sans',sans-serif;font-size:8px;font-weight:600;letter-spacing:2.1px;margin-top:4px}.site-header nav{display:flex;gap:33px;font-size:12px;font-weight:550}.account-links{display:flex;align-items:center;gap:25px;font-size:12px}.bag-link{display:flex;align-items:center;gap:9px;border-left:1px solid var(--line);padding-left:24px}.bag-link span{font-size:10px;border-radius:50%;background:#eae4da;padding:2px 5px}.hero{max-width:1320px;margin:auto;display:grid;grid-template-columns:1fr 1fr;min-height:370px;background:#f0ebe3}.hero-copy{padding:45px 25px 30px 64px}.eyebrow{font-size:9px;font-weight:700;letter-spacing:1.9px;color:#9b633e;margin:0 0 13px;display:flex;align-items:center;gap:8px}.eyebrow>span{height:5px;width:5px;border-radius:50%;background:var(--orange)}h1,h2,h3,h4,p{margin-top:0}h1{font-family:'Manrope',sans-serif;font-size:43px;letter-spacing:-1.8px;line-height:1.2;font-weight:650;margin-bottom:17px}.hero-copy>p:not(.eyebrow){font-size:12px;line-height:1.85;color:#776d63;margin-bottom:22px}.button{display:inline-flex;align-items:center;justify-content:center;gap:14px;border:0;border-radius:5px;min-height:44px;padding:12px 20px;font-size:11px;font-weight:600}.button .icon{width:16px;height:16px}.dark{background:#342b23;color:white}.hero-foot{display:flex;align-items:center;gap:7px;font-size:9px;color:#80776c;margin-top:23px}.hero-foot .icon{width:14px;height:14px;color:#6e795e}.hero-photo{position:relative;overflow:hidden;min-height:370px}.hero-photo>img{width:100%;height:100%;object-fit:cover;position:absolute;object-position:center 55%}.hero-photo:after{content:'';position:absolute;inset:50% 0 0;background:linear-gradient(transparent,#24160c80)}.photo-note{position:absolute;z-index:1;bottom:32px;left:30px;font-family:Georgia,serif;font-size:27px;color:#fffaf1;font-style:italic}.photo-note span{display:block;font-family:'DM Sans',sans-serif;font-style:normal;font-size:8px;letter-spacing:2px;margin-bottom:9px}.photo-stamp{position:absolute;right:26px;top:24px;width:80px;height:80px;display:flex;flex-direction:column;justify-content:center;text-align:center;border:1px solid #f3ebd2;border-radius:50%;color:#fff5dd;font-size:7px;letter-spacing:1px;line-height:1.4;transform:rotate(12deg);background:#61503933}.photo-stamp b{font-size:14px;font-style:italic;font-family:Georgia,serif;font-weight:400;letter-spacing:0}.delivery-section,.favorites,.how-it-works{max-width:1192px;margin:0 auto}.delivery-section{padding-top:44px}.section-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}.section-heading .eyebrow{font-size:8px;margin-bottom:9px}h2{font-family:'Manrope',sans-serif;font-size:27px;letter-spacing:-.9px;font-weight:650;margin-bottom:9px}.section-heading p:not(.eyebrow){font-size:11px;color:var(--muted);margin-bottom:0}.privacy-pill{display:flex;align-items:center;gap:7px;font-size:10px;color:#556b52;background:#eaf0e5;padding:8px 12px;border-radius:20px}.privacy-pill .icon{width:14px;height:14px}.delivery-grid{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:24px}.note-card{padding:25px 28px 16px;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 4px 16px #35281903}.card-heading{display:flex;align-items:center;gap:12px;padding-bottom:22px;border-bottom:1px solid #eee9e2;margin-bottom:24px}.soft-icon{width:39px;height:39px;display:grid;place-items:center;border-radius:9px;background:#f6eee5;color:#a27b55}.soft-icon .icon{width:19px;height:19px}.card-heading h3{font-size:15px;letter-spacing:-.3px;font-weight:600;margin-bottom:3px}.card-heading p{font-size:10px;color:var(--muted);margin-bottom:0}.session-label{margin-left:auto;font-size:7px;letter-spacing:1px;display:flex;align-items:center;gap:5px;color:#6e7967}.session-label i{height:5px;width:5px;background:#6e8b61;border-radius:50%}fieldset{border:0;padding:0;margin:0;min-width:0}.field-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.field-top label{font-size:11px;font-weight:600}.field-top label>span{font-weight:400;color:var(--muted);font-size:9px}.mini-lock{display:flex;align-items:center;gap:4px;font-size:8px;color:#78816e}.mini-lock .icon{width:11px;height:11px}textarea{width:100%;resize:vertical;min-height:114px;border:1px solid #cec6bb;border-radius:5px;padding:14px 15px;font-size:16px;line-height:1.6;background:#fdfcfa;color:#433c33}textarea::placeholder{color:#a49d93;font-size:11px}.field-bottom{display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:#91877c;font-size:9px}.field-bottom span:last-child{white-space:nowrap}.methods{margin-top:23px}.methods legend{font-size:10px;font-weight:600;margin-bottom:10px}.method-options{display:flex;gap:11px}.method-options label{display:flex;align-items:center;gap:8px;border:1px solid #e4ddd3;border-radius:5px;padding:10px 13px;font-size:10px;cursor:pointer;min-height:45px;flex:1}.method-options label:has(input:checked){background:#fbf5ed;border-color:#bca285}.method-options .icon{width:14px;height:14px;color:#91816c}input[type=radio]{accent-color:#996c45;margin:0;width:13px;height:13px}.encryption-options{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:23px}.encryption-options>summary{min-height:48px;display:flex;align-items:center;cursor:pointer;font-size:10px;font-weight:500;list-style:none}.encryption-options summary::-webkit-details-marker{display:none}.encryption-options summary span:first-child{margin-left:auto;font-size:9px;font-weight:400;color:#7b786c}.chevron{margin-left:11px;font-size:16px;color:#928677}.encryption-options[open] .chevron{transform:rotate(180deg)}.encryption-options fieldset{display:grid;gap:8px;padding-bottom:10px}.encryption-options legend{font-size:11px;padding-bottom:10px}.encryption-options label{font-size:12px;display:flex;gap:8px;align-items:center;min-height:30px}.encryption-options small{font-size:10px;color:#84796c}.encryption-options>p{font-size:10px;color:#81796d;line-height:1.6}.form-action{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:23px}.form-action p{font-size:9px;color:#7e796f;line-height:1.7;margin:0;position:relative;padding-left:19px}.form-action p>.icon{width:11px;height:11px;position:absolute;left:0;top:2px}.form-action p span{font-size:8px;color:#9b9185}.orange{background:var(--orange);color:#fff;min-height:46px;gap:8px;padding-inline:16px}.orange:hover{background:#a94523}.orange .arrow-small{margin-left:6px}#status{font-size:10px;color:#687a5f;margin:13px 0 0;line-height:1.5}#status:empty{display:none}#status.error,.error{color:#b13523}.privacy-card{background:#f0f0e7;border:1px solid #e2e4d7;border-radius:9px;overflow:hidden;display:flex;flex-direction:column}.privacy-top{text-align:center;padding:23px 15px 0}.shield-illustration{display:block;width:63px;height:64px;margin:0 auto 15px;position:relative;color:#75876a}.shield-illustration>.icon{width:60px;height:64px;stroke-width:.9;fill:#e0e7d7}.shield-illustration>span{position:absolute;bottom:2px;right:-2px;background:#f8faf3;border:1px solid #cdd5c1;width:27px;height:27px;border-radius:50%;display:grid;place-items:center}.shield-illustration>span>.icon{width:13px;height:13px;stroke-width:1.5}.privacy-top .eyebrow{justify-content:center;color:#798066;font-size:7px;letter-spacing:1.5px;margin-bottom:11px}.privacy-top h3{font-family:'Manrope',sans-serif;font-size:26px;line-height:1.25;font-weight:600;letter-spacing:-.7px;margin-bottom:10px}.privacy-top>p:last-child{font-size:10px;line-height:1.8;color:#858674}.privacy-points{padding:12px 26px 15px;display:grid;gap:18px}.privacy-points>div{display:flex;align-items:center;gap:11px}.point-icon{width:29px;height:29px;border:1px solid #d8ddcb;border-radius:50%;display:grid;place-items:center;color:#7e8d6d;flex-shrink:0}.point-icon .icon{width:13px;height:13px}.privacy-points p{margin:0}.privacy-points strong{display:block;font-size:10px;font-weight:550;margin-bottom:4px;color:#4d5345}.privacy-points p>span{display:block;font-size:8px;color:#818773}.privacy-link{display:flex;justify-content:center;gap:12px;align-items:center;border-top:1px solid #dedfce;margin-top:auto;min-height:46px;color:#69735c;font-size:9px}.privacy-link .icon{width:13px;height:13px}.care-strip{display:flex;gap:12px;align-items:center;padding:20px 22px;margin-top:17px;border:1px solid #e9e1d5;border-radius:6px;background:#f4f0e9;color:#8d765c}.care-strip>.icon{width:20px;height:20px}.care-strip p{margin:0;font-size:10px;color:#6c5c4c}.care-strip p>span{color:#998a79;font-size:9px;margin-left:5px}.small-star{margin-left:auto;font-size:23px;color:#bca181}.favorites{margin-top:47px}.favorites .section-heading{margin-bottom:21px}.favorites .section-heading>a{font-size:10px;display:flex;gap:9px;align-items:center;color:#7d5c42}.favorites .section-heading>a .icon{width:15px;height:15px}.favorites h2{font-size:25px}.favorites-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.coffee-card{display:block;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}.coffee-card img{width:100%;height:180px;object-fit:cover;display:block;filter:saturate(.75)}.coffee-card>div{padding:19px 20px}.coffee-card span{font-size:7px;letter-spacing:1.5px;color:#a27c55}.coffee-card h3{display:flex;align-items:center;justify-content:space-between;font-family:'Manrope',sans-serif;font-size:15px;font-weight:650;letter-spacing:-.3px;margin:9px 0 7px}.coffee-card h3 .icon{width:16px;height:16px;color:#bfa991}.coffee-card p{font-size:10px;color:#938778;margin:0}.how-it-works{display:flex;gap:20px;padding:28px;margin-top:35px;border-top:1px solid var(--line);color:#8a8175}.how-it-works>.icon{color:#79866c}.how-it-works h3{font-size:12px;color:#5f594f;margin-bottom:7px}.how-it-works p{font-size:10px;line-height:1.8;margin:0;max-width:950px}footer{border-top:1px solid var(--line);padding:29px max(32px,calc((100% - 1192px)/2));display:flex;align-items:center;gap:27px;flex-wrap:wrap;background:#f1ede5}footer .brand{font-size:20px}.footer-dot{color:var(--orange)}footer>span{font-size:9px;color:#8e8171}footer>div{margin-left:auto;display:flex;gap:22px;font-size:10px;color:#83735f}footer>small{width:100%;font-size:8px;color:#a19482}.result{border-top:1px solid var(--line);margin-top:17px;padding-top:15px}.result-title{display:flex;align-items:center;gap:8px;color:#516c4c}.result-title h4{font-size:13px;margin:0}.result-title>.icon{width:17px;height:17px}.result p{font-size:10px;line-height:1.7;color:#7a756a;margin:9px 0}.result-title button{margin-left:auto}.text-button{background:none;border:0;color:#98613b;font-size:10px;text-decoration:underline;text-underline-offset:3px;min-height:36px;padding:5px}.result details summary{font-size:10px;cursor:pointer;padding:10px 0}pre{font-size:10px;max-height:140px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f3ed;padding:12px;border-radius:5px}.result-actions{display:flex;justify-content:space-between;gap:15px}.decrypted{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);padding:12px;border-radius:5px}[hidden]{display:none!important}a:hover{color:#ac5734}.button:hover{color:#fff}.dark:hover{background:#514034}@media(min-width:1450px){.site-header{max-width:1440px}.hero{max-width:1440px;min-height:400px}.hero-copy{padding-top:56px}.hero-photo{min-height:400px}.delivery-section,.favorites,.how-it-works{max-width:1192px}}@media(max-width:1250px){.delivery-section,.favorites,.how-it-works{margin-inline:44px}.site-header{padding-inline:44px}.hero-copy{padding-left:44px}.delivery-grid{grid-template-columns:minmax(0,1.8fr) minmax(0,1fr)}.note-card{padding-inline:23px}.privacy-points{padding-inline:20px}.care-strip p>span{display:block;margin:3px 0 0}}@media(max-width:900px){.site-header{padding-inline:24px;gap:20px;height:88px}.brand{font-size:21px}.brand-sub{font-size:6px}.site-header nav{gap:20px;font-size:11px}.account-links{gap:12px}.bag-link{padding-left:12px}.hero-copy{padding:32px 25px}.hero-photo{min-height:350px}h1{font-size:35px}.hero-copy>p:not(.eyebrow){font-size:11px}.desktop-break{display:none}.hero-foot{font-size:8px}.delivery-section,.favorites,.how-it-works{margin-inline:25px}.delivery-grid{gap:18px;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}.note-card{padding:20px}.session-label{font-size:6px;letter-spacing:.3px}.field-top{align-items:start}.field-top label{max-width:220px;line-height:1.6}.field-top label>span{display:block}.method-options{gap:7px}.method-options label{padding:9px;font-size:9px;gap:5px}.method-options .icon{display:none}.form-action{flex-wrap:wrap}.form-action .button{margin-left:auto}.privacy-points{padding-inline:15px}.privacy-points p>span{line-height:1.7}.privacy-top h3{font-size:24px}.coffee-card img{height:150px}.coffee-card>div{padding:15px}.coffee-card h3{font-size:13px}.hero-foot{line-height:1.6}.brand-mark{width:34px;height:34px}.brand-mark .icon{width:21px;height:21px}}@media(max-width:650px){.announcement{font-size:9px;height:31px}.announcement>span{display:none}.site-header{height:78px;padding-inline:20px}.site-header nav{display:none}.account-links>a:first-child{font-size:10px}.brand{font-size:20px;gap:8px}.brand-sub{font-size:5.7px;letter-spacing:1.4px}.hero{grid-template-columns:1fr}.hero-copy{padding:32px 24px}.hero-photo{min-height:230px;max-height:230px}.hero-photo>img{object-position:50% 55%}.hero h1{font-size:36px}.hero-copy>p:not(.eyebrow){max-width:310px}.hero-foot{margin-top:18px}.photo-note{font-size:23px;bottom:24px;left:24px}.photo-stamp{width:64px;height:64px;font-size:6px;right:20px;top:17px}.photo-stamp b{font-size:12px}.delivery-section{padding-top:30px}.delivery-section,.favorites,.how-it-works{margin-inline:18px}.section-heading{gap:12px}.section-heading h2{font-size:24px}.section-heading p:not(.eyebrow){font-size:10px;line-height:1.7;max-width:250px}.privacy-pill{font-size:0;padding:10px;flex-shrink:0}.privacy-pill .icon{width:18px;height:18px}.delivery-grid{grid-template-columns:1fr}.note-card{padding:20px 17px}.session-label{font-size:6px;letter-spacing:.5px}.card-heading{gap:9px}.card-heading h3{font-size:14px}.card-heading p{font-size:9px}.soft-icon{width:34px;height:34px}.field-top label{font-size:10px;max-width:240px}.field-top label>span{display:inline;font-size:8px}.field-bottom{font-size:8px;line-height:1.5}.method-options label{font-size:10px;padding:10px}.method-options .icon{display:block}.form-action{gap:15px}.form-action p{font-size:8px}.form-action .button{font-size:10px;padding-inline:12px}.form-action .arrow-small{display:none}.privacy-card{padding-top:4px}.privacy-top h3 br{display:none}.privacy-top h3{font-size:25px}.privacy-top .shield-illustration{margin-bottom:13px}.privacy-top>p:last-child{font-size:11px}.privacy-points{padding:10px 24px 24px;gap:18px}.privacy-points strong{font-size:11px}.privacy-points p>span{font-size:10px}.privacy-link{min-height:48px;font-size:10px}.privacy-top{padding-top:20px}.care-strip{padding:15px}.care-strip p{font-size:9px;line-height:1.6}.care-strip p>span{font-size:8px}.small-star{display:none}.favorites{margin-top:34px}.favorites .section-heading{align-items:end}.favorites h2{font-size:22px}.favorites .section-heading>a{max-width:105px;font-size:9px;gap:4px}.favorites .eyebrow{font-size:7px;letter-spacing:1.2px}.favorites-grid{grid-template-columns:1fr;gap:16px}.coffee-card{display:grid;grid-template-columns:125px 1fr}.coffee-card img{height:135px}.coffee-card>div{align-self:center;padding:15px}.coffee-card h3{font-size:14px}.coffee-card p{font-size:9px}.how-it-works{padding:23px 3px;gap:12px;margin-top:25px}.how-it-works p{font-size:10px}footer{padding:25px 22px;gap:17px}footer>span{font-size:8px}footer>div{margin-left:0;width:100%;gap:25px}.encryption-options small{font-size:8px}.result-actions{gap:5px}}

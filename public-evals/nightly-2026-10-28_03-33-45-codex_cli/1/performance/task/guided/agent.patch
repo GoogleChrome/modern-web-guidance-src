@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -32,8 +32,10 @@
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem 1.5rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+@@ -47,13 +49,16 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem 1.25rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    nav li {
++      display: flex;
++      align-items: center;
+     }
+ 
+     nav a {
+       color: white;
+@@ -73,13 +78,14 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      height: 60svh;
++      min-height: 22rem;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+@@ -87,10 +93,34 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero picture,
++    .hero::before {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++    }
++
++    .hero picture {
++      z-index: -2;
++    }
++
++    .hero img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .hero::before {
++      content: "";
++      background: rgba(0, 0, 0, 0.5);
++      z-index: -1;
++    }
++
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 6vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
+     /* Content Sections */
+@@ -101,9 +131,9 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+@@ -151,8 +181,15 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (prefers-reduced-motion: reduce) {
++      nav a,
++      .btn {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -168,8 +205,27 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <!-- Keep the hero discoverable in HTML; do not lazy-load the LCP candidate.
++         The slot accounts for object-fit: cover on tall viewports (60vh × 3/2)
++         and the 22rem minimum hero height. vh conservatively covers svh. -->
++    <picture>
++      <source type="image/avif"
++        srcset="/assets/images/coffee-hero-640.a8dc38412fcd.avif 640w,
++                /assets/images/coffee-hero-960.df570d928d89.avif 960w,
++                /assets/images/coffee-hero-1350.4e5515d5737c.avif 1350w,
++                /assets/images/coffee-hero-1920.10e9533a52c7.avif 1920w"
++        sizes="max(100vw, 90vh, 33rem)">
++      <source type="image/webp"
++        srcset="/assets/images/coffee-hero-640.c3017d578e14.webp 640w,
++                /assets/images/coffee-hero-960.225ec5b512bf.webp 960w,
++                /assets/images/coffee-hero-1350.4c68425839cd.webp 1350w,
++                /assets/images/coffee-hero-1920.65542829703e.webp 1920w"
++        sizes="max(100vw, 90vh, 33rem)">
++      <img src="/assets/images/coffee-hero-1350.e009baa9e7c6.jpg"
++        width="1350" height="900" alt="" fetchpriority="high" loading="eager">
++    </picture>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

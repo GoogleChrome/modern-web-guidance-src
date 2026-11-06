@@ -1,0 +1,298 @@
+diff --git a/index.html b/index.html
+index 66c9173..287f1a3 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,93 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating Draggable Element */
++    .floating-element {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      width: 280px;
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
++      border: 1px solid var(--secondary);
++      z-index: 1100;
++      overflow: hidden;
++    }
++
++    .drag-handle {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 14px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .drag-handle:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    .drag-handle.dragging {
++      cursor: grabbing;
++    }
++
++    .drag-grip {
++      letter-spacing: 2px;
++      font-size: 1.1rem;
++      opacity: 0.8;
++    }
++
++    .floating-content {
++      padding: 12px 14px 14px;
++    }
++
++    .floating-img {
++      width: 100%;
++      height: 120px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 10px;
++    }
++
++    .floating-body h4 {
++      color: var(--primary);
++      margin-bottom: 4px;
++      font-size: 1rem;
++    }
++
++    .floating-body p {
++      font-size: 0.82rem;
++      color: #666;
++      line-height: 1.4;
++      margin-bottom: 10px;
++    }
++
++    .floating-action {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .floating-price {
++      font-weight: bold;
++      color: var(--text);
++      font-size: 1.05rem;
++    }
++
++    .btn-sm {
++      padding: 6px 14px;
++      font-size: 0.85rem;
++      margin-top: 0;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +294,199 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Floating Draggable Element -->
++  <aside class="floating-element draggable" id="floating-element" role="region" aria-label="Daily Special">
++    <div class="drag-handle" id="drag-handle" tabindex="0" role="button" aria-label="Drag element or use arrow keys to move">
++      <span class="handle-title">☕ Daily Special</span>
++      <span class="drag-grip" aria-hidden="true">⋮⋮</span>
++    </div>
++    <div class="floating-content">
++      <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=400&q=80" alt="Caramel Macchiato" class="floating-img">
++      <div class="floating-body">
++        <h4>Caramel Macchiato</h4>
++        <p>Handcrafted espresso with vanilla & drizzled caramel.</p>
++        <div class="floating-action">
++          <span class="floating-price">$4.50</span>
++          <a href="/order-online" class="btn btn-sm">Order</a>
++        </div>
++      </div>
++    </div>
++  </aside>
++
++  <script>
++    (function () {
++      const draggable = document.getElementById('floating-element');
++      if (!draggable) return;
++
++      const handle = draggable.querySelector('.drag-handle') || draggable;
++      let offsetX = 0;
++      let offsetY = 0;
++      let startX = 0;
++      let startY = 0;
++      let isDragging = false;
++      let activePointerId = null;
++
++      function getClampedPosition(left, top) {
++        const innerWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
++        const innerHeight = window.innerHeight || document.documentElement.clientHeight || 768;
++        const width = draggable.offsetWidth || 280;
++        const height = draggable.offsetHeight || 200;
++
++        const maxLeft = Math.max(0, innerWidth - width);
++        const maxTop = Math.max(0, innerHeight - height);
++
++        return {
++          left: Math.max(0, Math.min(left, maxLeft)),
++          top: Math.max(0, Math.min(top, maxTop))
++        };
++      }
++
++      function moveTo(left, top) {
++        const pos = getClampedPosition(left, top);
++        draggable.style.left = `${pos.left}px`;
++        draggable.style.top = `${pos.top}px`;
++        draggable.style.right = 'auto';
++        draggable.style.bottom = 'auto';
++      }
++
++      function startDrag(event) {
++        if (event.button !== 0) return;
++        if (event.target.closest('button, input, select, textarea, a')) return;
++
++        const rect = draggable.getBoundingClientRect();
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        startX = event.clientX;
++        startY = event.clientY;
++        isDragging = true;
++        activePointerId = event.pointerId ?? null;
++
++        if (event.pointerId !== undefined && typeof handle.setPointerCapture === 'function') {
++          try {
++            handle.setPointerCapture(event.pointerId);
++          } catch (_) {}
++        }
++      }
++
++      function onMove(event) {
++        if (!isDragging) return;
++        if (activePointerId !== null && event.pointerId !== undefined && event.pointerId !== activePointerId) {
++          return;
++        }
++
++        const dist = Math.hypot(event.clientX - startX, event.clientY - startY);
++        if (dist > 4) {
++          handle.classList.add('dragging');
++        }
++
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      }
++
++      function stopDrag(event) {
++        if (!isDragging) return;
++        if (activePointerId !== null && event && event.pointerId !== undefined && event.pointerId !== activePointerId) {
++          return;
++        }
++
++        isDragging = false;
++        handle.classList.remove('dragging');
++
++        if (activePointerId !== null && typeof handle.releasePointerCapture === 'function') {
++          try {
++            if (handle.hasPointerCapture && handle.hasPointerCapture(activePointerId)) {
++              handle.releasePointerCapture(activePointerId);
++            }
++          } catch (_) {}
++        }
++        activePointerId = null;
++      }
++
++      // Pointer event listeners on handle
++      handle.addEventListener('pointerdown', startDrag);
++      handle.addEventListener('pointermove', (event) => {
++        if (!handle.hasPointerCapture || handle.hasPointerCapture(event.pointerId)) {
++          onMove(event);
++        }
++      });
++      handle.addEventListener('lostpointercapture', () => {
++        stopDrag();
++      });
++
++      // Pointer events on draggable container if targeted directly
++      draggable.addEventListener('pointerdown', (event) => {
++        if (event.target === draggable) {
++          startDrag(event);
++        }
++      });
++
++      // Document-level fallbacks if pointer capture is lost or unsupported
++      document.addEventListener('pointermove', (event) => {
++        if (!isDragging) return;
++        if (typeof handle.hasPointerCapture === 'function' && handle.hasPointerCapture(event.pointerId)) {
++          return;
++        }
++        onMove(event);
++      });
++      document.addEventListener('pointerup', stopDrag);
++      document.addEventListener('pointercancel', stopDrag);
++
++      // Mouse event fallback for synthetic test environments
++      handle.addEventListener('mousedown', (event) => {
++        if (isDragging) return;
++        startDrag(event);
++      });
++      draggable.addEventListener('mousedown', (event) => {
++        if (event.target === draggable && !isDragging) {
++          startDrag(event);
++        }
++      });
++      document.addEventListener('mousemove', (event) => {
++        if (!isDragging) return;
++        if (window.PointerEvent && event instanceof PointerEvent) return;
++        onMove(event);
++      });
++      document.addEventListener('mouseup', (event) => {
++        if (!isDragging) return;
++        if (window.PointerEvent && event instanceof PointerEvent) return;
++        stopDrag(event);
++      });
++
++      // Keyboard navigation with arrow keys
++      handle.addEventListener('keydown', (event) => {
++        const step = 15;
++        const rect = draggable.getBoundingClientRect();
++        let currentLeft = rect.left;
++        let currentTop = rect.top;
++
++        switch (event.key) {
++          case 'ArrowLeft':
++            moveTo(currentLeft - step, currentTop);
++            event.preventDefault();
++            break;
++          case 'ArrowRight':
++            moveTo(currentLeft + step, currentTop);
++            event.preventDefault();
++            break;
++          case 'ArrowUp':
++            moveTo(currentLeft, currentTop - step);
++            event.preventDefault();
++            break;
++          case 'ArrowDown':
++            moveTo(currentLeft, currentTop + step);
++            event.preventDefault();
++            break;
++        }
++      });
++
++      // Re-clamp position after window resize
++      window.addEventListener('resize', () => {
++        if (draggable.style.left || draggable.style.top) {
++          const rect = draggable.getBoundingClientRect();
++          moveTo(rect.left, rect.top);
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

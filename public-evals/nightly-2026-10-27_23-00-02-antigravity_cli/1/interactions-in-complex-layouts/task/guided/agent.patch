@@ -1,0 +1,488 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,162 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Kanban Board */
++    .kanban-section {
++      margin-top: 50px;
++    }
++
++    .kanban-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 24px;
++    }
++
++    .kanban-controls {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .kanban-board {
++      display: grid;
++      grid-template-columns: repeat(3, minmax(280px, 1fr));
++      gap: 20px;
++      align-items: start;
++    }
++
++    @media (max-width: 900px) {
++      .kanban-board {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .board-column {
++      /* Apply containment boundaries to isolate column layout/style/paint work */
++      content-visibility: auto;
++      contain-intrinsic-size: auto 300px auto 800px;
++      background: #efebe9;
++      border-radius: 10px;
++      padding: 16px;
++      min-height: 480px;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      border: 2px solid transparent;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    @supports not (content-visibility: auto) {
++      .board-column {
++        /* Manual fallback for containment */
++        contain: layout style paint;
++      }
++    }
++
++    .board-column.drag-over {
++      border-color: var(--accent);
++      background: #e4dedb;
++    }
++
++    .column-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding-bottom: 10px;
++      border-bottom: 2px solid var(--secondary);
++      margin-bottom: 4px;
++    }
++
++    .column-header h3 {
++      font-size: 1.15rem;
++      color: var(--primary);
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .column-count {
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      font-weight: bold;
++      padding: 2px 10px;
++      border-radius: 999px;
++    }
++
++    .board-column .card {
++      text-align: left;
++      cursor: grab;
++      -webkit-user-select: none;
++      user-select: none;
++      border-left: 5px solid var(--primary);
++      transition: transform 0.15s ease, box-shadow 0.15s ease;
++      position: relative;
++    }
++
++    .board-column[data-status="brewing"] .card {
++      border-left-color: var(--accent);
++    }
++
++    .board-column[data-status="ready"] .card {
++      border-left-color: #2e7d32;
++    }
++
++    .board-column .card:hover {
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
++    }
++
++    .board-column .card.dragging {
++      cursor: grabbing;
++      opacity: 0.55;
++      transform: scale(0.98);
++    }
++
++    .card-meta {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-bottom: 6px;
++    }
++
++    .order-id {
++      font-weight: 700;
++      font-family: monospace;
++      background: var(--light);
++      padding: 2px 6px;
++      border-radius: 4px;
++    }
++
++    .card-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: 12px;
++      padding-top: 8px;
++      border-top: 1px solid #eee;
++      gap: 6px;
++    }
++
++    .move-btn {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      padding: 4px 8px;
++      border-radius: 4px;
++      font-size: 0.75rem;
++      cursor: pointer;
++    }
++
++    .move-btn:hover {
++      background: var(--secondary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,9 +328,120 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="kanban-section" aria-labelledby="kanban-heading">
++      <div class="kanban-header">
++        <div>
++          <h2 id="kanban-heading">Barista Order-Tracking Board</h2>
++          <p>Drag and drop drink orders between columns to update their preparation status.</p>
++        </div>
++        <div class="kanban-controls">
++          <button type="button" id="add-order-btn" class="btn" style="margin-top: 0; border: none; cursor: pointer;">+ New Order</button>
++          <button type="button" id="rush-hour-btn" class="btn" style="margin-top: 0; background: #6d4c41; border: none; cursor: pointer;">+50 Rush Orders</button>
++        </div>
++      </div>
++
++      <div class="kanban-board" id="order-board">
++        <!-- Queued Column -->
++        <div class="board-column" id="queued" data-status="queued" aria-label="Queued orders">
++          <div class="column-header">
++            <h3>Queued</h3>
++            <span class="column-count" id="count-queued">2</span>
++          </div>
++          <div class="card" id="order-101" draggable="true" data-order-id="101">
++            <div class="card-meta">
++              <span class="order-id">#101</span>
++              <span>For: Maya &bull; 12oz Hot</span>
++            </div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <div class="card-actions">
++              <span>Extra cinnamon</span>
++              <div>
++                <button type="button" class="move-btn" data-move-to="brewing">Brew &rarr;</button>
++              </div>
++            </div>
++          </div>
++          <div class="card" id="order-104" draggable="true" data-order-id="104">
++            <div class="card-meta">
++              <span class="order-id">#104</span>
++              <span>For: Liam &bull; 16oz Iced</span>
++            </div>
++            <h3>Honey Almond Flat White</h3>
++            <p>Ristretto shots with lightly steamed almond milk and wildflower honey.</p>
++            <div class="card-actions">
++              <span>Light ice</span>
++              <div>
++                <button type="button" class="move-btn" data-move-to="brewing">Brew &rarr;</button>
++              </div>
++            </div>
++          </div>
++        </div>
++
++        <!-- Brewing Column -->
++        <div class="board-column" id="brewing" data-status="brewing" aria-label="Brewing orders">
++          <div class="column-header">
++            <h3>Brewing</h3>
++            <span class="column-count" id="count-brewing">2</span>
++          </div>
++          <div class="card" id="order-102" draggable="true" data-order-id="102">
++            <div class="card-meta">
++              <span class="order-id">#102</span>
++              <span>For: Jordan &bull; Double Shot</span>
++            </div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <div class="card-actions">
++              <span>Pre-warmed demitasse</span>
++              <div>
++                <button type="button" class="move-btn" data-move-to="queued">&larr; Queue</button>
++                <button type="button" class="move-btn" data-move-to="ready">Ready &rarr;</button>
++              </div>
++            </div>
++          </div>
++          <div class="card" id="order-105" draggable="true" data-order-id="105">
++            <div class="card-meta">
++              <span class="order-id">#105</span>
++              <span>For: Elena &bull; 12oz Hot</span>
++            </div>
++            <h3>Cardamom Cortado</h3>
++            <p>Equal parts rich espresso and silky textured milk infused with cardamom.</p>
++            <div class="card-actions">
++              <span>Oat milk sub</span>
++              <div>
++                <button type="button" class="move-btn" data-move-to="queued">&larr; Queue</button>
++                <button type="button" class="move-btn" data-move-to="ready">Ready &rarr;</button>
++              </div>
++            </div>
++          </div>
++        </div>
++
++        <!-- Ready Column -->
++        <div class="board-column" id="ready" data-status="ready" aria-label="Ready orders">
++          <div class="column-header">
++            <h3>Ready</h3>
++            <span class="column-count" id="count-ready">1</span>
++          </div>
++          <div class="card" id="order-103" draggable="true" data-order-id="103">
++            <div class="card-meta">
++              <span class="order-id">#103</span>
++              <span>For: Sam &bull; 16oz Iced</span>
++            </div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <div class="card-actions">
++              <span>Splash of sweet cream</span>
++              <div>
++                <button type="button" class="move-btn" data-move-to="brewing">&larr; Brew</button>
++              </div>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section style="margin-top: 50px;">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -206,7 +471,199 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const board = document.getElementById('order-board');
++      const columns = Array.from(board.querySelectorAll('.board-column'));
++      let draggedCard = null;
++      let nextOrderNumber = 106;
++
++      const sampleDrinks = [
++        { name: 'Maple Oat Latte', desc: 'Creamy oat milk with a hint of Vermont maple syrup.', note: 'Extra cinnamon' },
++        { name: 'Dark Roast Espresso', desc: 'Bold, smokey, and perfect for a morning boost.', note: 'Double shot' },
++        { name: 'Cold Brew', desc: 'Steeped for 18 hours for maximum smoothness.', note: 'Light ice' },
++        { name: 'Matcha Oat Latte', desc: 'Ceremonial grade matcha whisked with steamed oat milk.', note: 'Unsweetened' },
++        { name: 'Caramel Macchiato', desc: 'Vanilla-flavored milk marked with espresso and caramel drizzle.', note: 'Extra drizzle' }
++      ];
++      const sampleNames = ['Alex', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Jamie', 'Avery', 'Quinn'];
++
++      function updateColumnCounts() {
++        for (const col of columns) {
++          const status = col.dataset.status || col.id;
++          const badge = document.getElementById(`count-${status}`);
++          if (badge) {
++            badge.textContent = String(col.querySelectorAll('.card').length);
++          }
++        }
++      }
++
++      function renderActionButtons(status) {
++        if (status === 'queued') {
++          return '<button type="button" class="move-btn" data-move-to="brewing">Brew &rarr;</button>';
++        }
++        if (status === 'brewing') {
++          return '<button type="button" class="move-btn" data-move-to="queued">&larr; Queue</button> ' +
++                 '<button type="button" class="move-btn" data-move-to="ready">Ready &rarr;</button>';
++        }
++        return '<button type="button" class="move-btn" data-move-to="brewing">&larr; Brew</button>';
++      }
++
++      function moveItemToColumn(cardEl, targetColumn, referenceCard = null) {
++        if (!cardEl || !targetColumn) return;
++
++        // Atomic move via moveBefore when supported to preserve element state,
++        // falling back to insertBefore/appendChild.
++        if ('moveBefore' in Element.prototype) {
++          targetColumn.moveBefore(cardEl, referenceCard);
++        } else if (referenceCard) {
++          targetColumn.insertBefore(cardEl, referenceCard);
++        } else {
++          targetColumn.appendChild(cardEl);
++        }
++
++        const newStatus = targetColumn.dataset.status || targetColumn.id;
++        const actionsContainer = cardEl.querySelector('.card-actions div');
++        if (actionsContainer) {
++          actionsContainer.innerHTML = renderActionButtons(newStatus);
++        }
++
++        updateColumnCounts();
++      }
++
++      function getDragAfterElement(column, y) {
++        const cards = column.querySelectorAll('.card:not(.dragging)');
++        let closest = null;
++        let closestOffset = Number.NEGATIVE_INFINITY;
++
++        for (const child of cards) {
++          const box = child.getBoundingClientRect();
++          const offset = y - box.top - box.height / 2;
++          if (offset < 0 && offset > closestOffset) {
++            closestOffset = offset;
++            closest = child;
++          }
++        }
++        return closest;
++      }
++
++      board.addEventListener('dragstart', (event) => {
++        const card = event.target.closest('.card');
++        if (!card) return;
++        draggedCard = card;
++        card.classList.add('dragging');
++        if (event.dataTransfer) {
++          event.dataTransfer.effectAllowed = 'move';
++          event.dataTransfer.setData('text/plain', card.id);
++        }
++      });
++
++      board.addEventListener('dragend', () => {
++        if (draggedCard) {
++          draggedCard.classList.remove('dragging');
++          draggedCard = null;
++        }
++        for (const col of columns) {
++          col.classList.remove('drag-over');
++        }
++      });
++
++      for (const column of columns) {
++        column.addEventListener('dragover', (event) => {
++          event.preventDefault();
++          if (event.dataTransfer) {
++            event.dataTransfer.dropEffect = 'move';
++          }
++          column.classList.add('drag-over');
++        });
++
++        column.addEventListener('dragleave', (event) => {
++          if (!column.contains(event.relatedTarget)) {
++            column.classList.remove('drag-over');
++          }
++        });
++
++        column.addEventListener('drop', (event) => {
++          event.preventDefault();
++          column.classList.remove('drag-over');
++
++          const cardId = event.dataTransfer ? event.dataTransfer.getData('text/plain') : '';
++          const card = draggedCard || (cardId ? document.getElementById(cardId) : null);
++          if (!card) return;
++
++          const afterElement = getDragAfterElement(column, event.clientY);
++          moveItemToColumn(card, column, afterElement);
++        });
++      }
++
++      board.addEventListener('click', (event) => {
++        const moveBtn = event.target.closest('.move-btn');
++        if (!moveBtn) return;
++
++        const targetStatus = moveBtn.dataset.moveTo;
++        const card = moveBtn.closest('.card');
++        const targetColumn = document.getElementById(targetStatus);
++        if (card && targetColumn) {
++          moveItemToColumn(card, targetColumn, null);
++        }
++      });
++
++      function createOrderCard(orderNum, status = 'queued') {
++        const drink = sampleDrinks[orderNum % sampleDrinks.length];
++        const customer = sampleNames[orderNum % sampleNames.length];
++        const card = document.createElement('div');
++        card.className = 'card';
++        card.id = `order-${orderNum}`;
++        card.draggable = true;
++        card.dataset.orderId = String(orderNum);
++        card.innerHTML = `
++          <div class="card-meta">
++            <span class="order-id">#${orderNum}</span>
++            <span>For: ${customer} &bull; 12oz</span>
++          </div>
++          <h3>${drink.name}</h3>
++          <p>${drink.desc}</p>
++          <div class="card-actions">
++            <span>${drink.note}</span>
++            <div>${renderActionButtons(status)}</div>
++          </div>
++        `;
++        return card;
++      }
++
++      async function yieldToMain() {
++        if ('scheduler' in window && 'yield' in scheduler) {
++          return await scheduler.yield();
++        }
++        return new Promise((resolve) => setTimeout(resolve, 0));
++      }
++
++      document.getElementById('add-order-btn').addEventListener('click', () => {
++        const queuedCol = document.getElementById('queued');
++        const card = createOrderCard(nextOrderNumber++, 'queued');
++        queuedCol.appendChild(card);
++        updateColumnCounts();
++      });
++
++      document.getElementById('rush-hour-btn').addEventListener('click', async () => {
++        const queuedCol = document.getElementById('queued');
++        const total = 50;
++        const batchSize = 25;
++        for (let i = 0; i < total; i += batchSize) {
++          const fragment = document.createDocumentFragment();
++          const end = Math.min(i + batchSize, total);
++          for (let j = i; j < end; j++) {
++            fragment.appendChild(createOrderCard(nextOrderNumber++, 'queued'));
++          }
++          queuedCol.appendChild(fragment);
++          updateColumnCounts();
++          if (end < total) {
++            await yieldToMain();
++          }
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

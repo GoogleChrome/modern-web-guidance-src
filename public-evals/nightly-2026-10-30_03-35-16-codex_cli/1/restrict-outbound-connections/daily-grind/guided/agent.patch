@@ -1,0 +1,621 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..902b281
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++data/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..3a0a6ef
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,28 @@
++# Daily Grind
++
++Requires Node.js 22 or later. `npm start` serves the homepage and newsletter API
++on `PORT` (default 11222), using only Node built-ins. No build is needed.
++
++`POST /api/newsletter` accepts JSON or a standard URL-encoded form containing
++`email`. Valid signups are appended to `data/newsletter.ndjson` before success is
++returned. Set `NEWSLETTER_DATA_DIR` to a private, persistent writable directory in
++production. The server exposes only the homepage, stylesheet, and newsletter
++script; subscriber files are never served. This collects subscriptions; sending
++newsletter campaigns is a separate process.
++
++Deploy behind HTTPS and preserve the Node server's response headers.
++`Connection-Allowlist` permits only the response origin and
++`https://images.unsplash.com`, with redirects and WebRTC blocked by default.
++It is enforced on all responses, including script/worker responses. A restrictive
++CSP limits requests to this server and Unsplash images, blocks workers, and
++authorizes only the newsletter script with a fresh per-response nonce. Browsers
++without Connection-Allowlist support receive CSP protection, but CSP cannot
++cover all network channels such as WebRTC and top-level navigations.
++
++Policy reports go to the same-origin `/api/security-reports` endpoint, which
++consumes and discards bounded reports to avoid storing sensitive URLs. The form
++announces success and request failures, preserves the email for retry, and has a
++server-rendered response when JavaScript is unavailable.
++
++Verification for this change is limited to static checks. No browser checks,
++server startup, or imports of the server entrypoint were performed.
+diff --git a/index.html b/index.html
+index 66c9173..6847a2e 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/styles.css">
++  <script src="/newsletter.js" nonce="__CSP_NONCE__" defer></script>
+ </head>
+ 
+ <body>
+@@ -176,7 +30,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +49,23 @@
+         </div>
+       </div>
+     </section>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">A little coffee in your inbox</h2>
++      <p>Sign up for Daily Grind news, seasonal favorites, and fresh arrivals.</p>
++      <form id="newsletter-form" action="/api/newsletter" method="post">
++        <label for="newsletter-email">Email address (required)</label>
++        <input id="newsletter-email" name="email" type="email" autocomplete="email"
++          autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="254"
++          aria-describedby="newsletter-help" required>
++        <div class="honeypot" aria-hidden="true">
++          <label for="newsletter-website">Leave this field empty</label>
++          <input id="newsletter-website" name="website" type="text" tabindex="-1" autocomplete="off">
++        </div>
++        <small id="newsletter-help">By signing up, you agree to receive Daily Grind newsletter emails.</small>
++        <button class="btn" type="submit">Sign me up</button>
++        <p id="newsletter-status" role="status" aria-live="polite" aria-atomic="true"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/newsletter.js b/newsletter.js
+new file mode 100644
+index 0000000..a529a9e
+--- /dev/null
++++ b/newsletter.js
+@@ -0,0 +1,39 @@
++const form = document.getElementById('newsletter-form');
++const status = document.getElementById('newsletter-status');
++const button = form.querySelector('button');
++
++form.addEventListener('submit', async (event) => {
++  event.preventDefault();
++  if (button.disabled) return;
++
++  button.disabled = true;
++  form.setAttribute('aria-busy', 'true');
++  status.textContent = 'Signing you up…';
++  const controller = new AbortController();
++  const timeout = setTimeout(() => controller.abort(), 10000);
++
++  try {
++    const response = await fetch('/api/newsletter', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++      credentials: 'same-origin',
++      redirect: 'error',
++      signal: controller.signal,
++      body: JSON.stringify({
++        email: form.elements.email.value,
++        website: form.elements.website.value,
++      }),
++    });
++    if (!response.ok) throw new Error('Signup failed');
++    const result = await response.json();
++    if (result.ok !== true) throw new Error('Signup failed');
++    status.textContent = 'You’re on the list! Thanks for signing up for Daily Grind news.';
++    form.reset();
++  } catch {
++    status.textContent = 'We couldn’t send your signup. Please check your connection and try again. Your email is still here.';
++  } finally {
++    clearTimeout(timeout);
++    button.disabled = false;
++    form.removeAttribute('aria-busy');
++  }
++});
+diff --git a/package.json b/package.json
+index 2bd4d77..8510f98 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,10 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs"
++  },
++  "engines": {
++    "node": ">=22"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..633abad
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,147 @@
++import { createServer } from 'node:http';
++import { randomBytes } from 'node:crypto';
++import { appendFile, mkdir, readFile } from 'node:fs/promises';
++import { resolve } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const homepage = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++// Explicit routes keep source files and customer data out of the static server.
++const assets = new Map([
++  ['/styles.css', ['text/css; charset=utf-8', await readFile(new URL('./styles.css', import.meta.url))]],
++  ['/newsletter.js', ['text/javascript; charset=utf-8', await readFile(new URL('./newsletter.js', import.meta.url))]],
++]);
++const dataDirectory = resolve(process.env.NEWSLETTER_DATA_DIR || fileURLToPath(new URL('./data', import.meta.url)));
++const successMessage = 'You’re on the list! Thanks for signing up for Daily Grind news.';
++
++function securityHeaders(res, nonce) {
++  // Applied to every response, including any script requested as a worker.
++  // Redirects and WebRTC remain blocked by the allowlist defaults.
++  res.setHeader('Connection-Allowlist', '(response-origin "https://images.unsplash.com"); report-to=connections');
++  res.setHeader('Reporting-Endpoints', 'connections="/api/security-reports"');
++  res.setHeader('Content-Security-Policy', [
++    "default-src 'none'",
++    `script-src 'nonce-${nonce}' 'report-sample'`,
++    "script-src-attr 'none'",
++    "style-src 'self'",
++    "img-src 'self' https://images.unsplash.com",
++    "connect-src 'self'",
++    "form-action 'self'",
++    "worker-src 'none'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "require-trusted-types-for 'script'",
++    "trusted-types 'none'",
++    'report-to connections',
++  ].join('; '));
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.setHeader('Referrer-Policy', 'no-referrer');
++  res.setHeader('X-DNS-Prefetch-Control', 'off');
++  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
++  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
++  res.setHeader('Cache-Control', 'no-store');
++}
++
++async function readBody(req, limit = 4096) {
++  const chunks = [];
++  let size = 0;
++  for await (const chunk of req) {
++    size += chunk.length;
++    if (size > limit) throw Object.assign(new Error('Body too large'), { status: 413 });
++    chunks.push(chunk);
++  }
++  return Buffer.concat(chunks).toString('utf8');
++}
++
++function signupResponse(req, res, status, message) {
++  res.statusCode = status;
++  if (req.headers.accept?.includes('application/json')) {
++    res.setHeader('Content-Type', 'application/json; charset=utf-8');
++    res.end(JSON.stringify({ ok: status === 200, message }));
++  } else {
++    res.setHeader('Content-Type', 'text/html; charset=utf-8');
++    // Messages are fixed server strings; submitted values are never reflected.
++    res.end(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Daily Grind newsletter</title><link rel="stylesheet" href="/styles.css"><main class="container"><h1>Daily Grind newsletter</h1><p>${message}</p><a href="/#newsletter-heading">Back to Daily Grind</a></main></html>`);
++  }
++}
++
++const server = createServer(async (req, res) => {
++  const nonce = randomBytes(18).toString('base64');
++  securityHeaders(res, nonce);
++  try {
++    // A fixed parsing origin avoids trusting Host for routing or security headers.
++    const { pathname } = new URL(req.url, 'http://localhost');
++
++    if (pathname === '/api/newsletter' || pathname === '/api/security-reports') {
++      if (req.method !== 'POST') {
++        res.setHeader('Allow', 'POST');
++        return signupResponse(req, res, 405, 'Please submit the newsletter form to sign up.');
++      }
++      const site = req.headers['sec-fetch-site'];
++      if (site && site !== 'same-origin' && site !== 'none') {
++        return signupResponse(req, res, 403, 'Please sign up from the Daily Grind homepage.');
++      }
++      if (req.headers.origin) {
++        let origin;
++        try { origin = new URL(req.headers.origin); } catch { /* Reject below. */ }
++        if (!origin || !['http:', 'https:'].includes(origin.protocol) || origin.host !== req.headers.host) {
++          return signupResponse(req, res, 403, 'Please sign up from the Daily Grind homepage.');
++        }
++      }
++      if (pathname === '/api/security-reports') {
++        // Consume bounded reports without storing URLs, query strings, or PII.
++        await readBody(req, 65536);
++        res.writeHead(204).end();
++        return;
++      }
++      const type = req.headers['content-type']?.split(';')[0].trim();
++      if (!['application/json', 'application/x-www-form-urlencoded'].includes(type)) {
++        return signupResponse(req, res, 415, 'Please use the newsletter form to sign up.');
++      }
++      const raw = await readBody(req);
++      let data;
++      try {
++        data = type === 'application/json' ? JSON.parse(raw) : Object.fromEntries(new URLSearchParams(raw));
++      } catch {
++        return signupResponse(req, res, 400, 'We couldn’t read your signup. Please try again.');
++      }
++      const email = typeof data?.email === 'string' ? data.email.trim() : '';
++      if (!email || email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) {
++        return signupResponse(req, res, 400, 'Please enter a valid email address and try again.');
++      }
++      if (!data.website) {
++        await mkdir(dataDirectory, { recursive: true, mode: 0o700 });
++        await appendFile(resolve(dataDirectory, 'newsletter.ndjson'), JSON.stringify({ email, subscribedAt: new Date().toISOString() }) + '\n', { mode: 0o600 });
++      }
++      return signupResponse(req, res, 200, successMessage);
++    }
++
++    if (!['GET', 'HEAD'].includes(req.method)) {
++      res.setHeader('Allow', 'GET, HEAD');
++      res.writeHead(405, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Method not allowed');
++      return;
++    }
++    let body;
++    let type;
++    if (pathname === '/' || pathname === '/index.html') {
++      body = homepage.replace('__CSP_NONCE__', nonce);
++      type = 'text/html; charset=utf-8';
++    } else if (assets.has(pathname)) {
++      [type, body] = assets.get(pathname);
++    } else {
++      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Page not found');
++      return;
++    }
++    res.writeHead(200, { 'Content-Type': type });
++    res.end(req.method === 'HEAD' ? undefined : body);
++  } catch (error) {
++    signupResponse(req, res, error.status === 413 ? 413 : 503,
++      'We couldn’t save your signup right now. Please try again later.');
++  }
++});
++
++server.requestTimeout = 15000;
++server.headersTimeout = 10000;
++server.listen(Number(process.env.PORT || 11222), '0.0.0.0');
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..1909c2e
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,165 @@
++:root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++h2 { text-align: center; }
++.newsletter { margin-top: 48px; padding: 32px; background: var(--secondary); border-radius: 8px; }
++.newsletter > p { text-align: center; }
++.newsletter form { max-width: 520px; margin: 20px auto 0; }
++.newsletter label { display: block; font-weight: 600; margin-bottom: 6px; }
++.newsletter input { width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--primary); border-radius: 5px; font: inherit; background: white; }
++.newsletter button { border: 0; min-height: 48px; font: inherit; cursor: pointer; }
++.newsletter button:disabled { opacity: 0.7; cursor: wait; }
++.newsletter :focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
++.newsletter small { display: block; margin-top: 8px; }
++#newsletter-status { min-height: 1.6em; margin-top: 12px; }
++.newsletter .honeypot { display: none; }
++@media (max-width: 600px) {
++  nav { flex-wrap: wrap; gap: 12px; }
++  nav ul { flex-wrap: wrap; gap: 12px; }
++  nav ul li { margin-left: 0; }
++  .newsletter { padding: 24px 20px; }
++}

@@ -1,0 +1,265 @@
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..20930dc 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -10,6 +10,15 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  useEffect(() => {
++    const onChange = (e: Event) => {
++      const list: string[] = (e as CustomEvent).detail.readingList;
++      setIsBookmarked(list.includes(slug));
++    };
++    window.addEventListener('reading-list-changed', onChange);
++    return () => window.removeEventListener('reading-list-changed', onChange);
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..2554726 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -51,5 +51,8 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import "../scripts/webmcp";
++    </script>
+   </body>
+ </html>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..ef33c2e 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -36,7 +36,14 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <article
++        class="max-w-3xl mx-auto px-4 py-8 md:py-12"
++        data-article-slug={article.id}
++        data-article-category={article.data.category}
++        data-article-author={article.data.author}
++        data-article-date={article.data.date.toISOString()}
++        data-article-summary={article.data.summary}
++    >
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+diff --git a/src/scripts/webmcp.ts b/src/scripts/webmcp.ts
+new file mode 100644
+index 0000000..9d72da7
+--- /dev/null
++++ b/src/scripts/webmcp.ts
+@@ -0,0 +1,206 @@
++// WebMCP: exposes search, reading-list and article utilities as browser tools for AI agents.
++
++interface ToolResult {
++  content: { type: 'text'; text: string }[];
++  isError?: boolean;
++}
++
++interface ModelContextTool {
++  name: string;
++  description: string;
++  inputSchema: Record<string, unknown>;
++  annotations?: { readOnlyHint?: boolean };
++  execute: (args: any) => Promise<ToolResult> | ToolResult;
++}
++
++interface ArticleSummary {
++  slug: string;
++  title: string;
++  summary: string;
++  image?: string;
++}
++
++const baseUrl = import.meta.env.BASE_URL;
++const api = (path: string) => `${baseUrl.replace(/\/?$/, '/')}${path}`;
++
++const ok = (data: unknown): ToolResult => ({
++  content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }],
++});
++const fail = (message: string): ToolResult => ({
++  content: [{ type: 'text', text: message }],
++  isError: true,
++});
++
++const fetchArticles = async (): Promise<ArticleSummary[]> => {
++  const response = await fetch(api('api/articles.json'));
++  if (!response.ok) throw new Error(`Failed to load articles (${response.status})`);
++  return response.json();
++};
++
++const withUrl = (a: ArticleSummary) => ({
++  slug: a.slug,
++  title: a.title,
++  summary: a.summary,
++  url: new URL(api(`articles/${a.slug}`), location.origin).href,
++});
++
++const fetchReadingList = async (): Promise<string[]> => {
++  const response = await fetch(api('api/reading-list.json'));
++  if (!response.ok) throw new Error(`Failed to load reading list (${response.status})`);
++  return (await response.json()).readingList;
++};
++
++// The API toggles membership, so only POST when the state needs to change.
++const setInReadingList = async (slug: string, shouldContain: boolean): Promise<string[]> => {
++  const articles = await fetchArticles();
++  if (!articles.some(a => a.slug === slug)) throw new Error(`Unknown article slug: ${slug}`);
++  let list = await fetchReadingList();
++  if (list.includes(slug) !== shouldContain) {
++    const response = await fetch(api('api/reading-list.json'), {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ slug }),
++    });
++    if (!response.ok) throw new Error(`Failed to update reading list (${response.status})`);
++    list = (await response.json()).readingList;
++    window.dispatchEvent(new CustomEvent('reading-list-changed', { detail: { readingList: list } }));
++  }
++  return list;
++};
++
++const currentArticle = () => document.querySelector<HTMLElement>('article[data-article-slug]');
++
++const slugSchema = {
++  type: 'object',
++  properties: { slug: { type: 'string', description: 'Article slug, as returned by search_articles' } },
++  required: ['slug'],
++};
++
++const guard = (fn: (args: any) => Promise<ToolResult> | ToolResult) => async (args: any) => {
++  try {
++    return await fn(args);
++  } catch (e) {
++    return fail(e instanceof Error ? e.message : String(e));
++  }
++};
++
++const tools: ModelContextTool[] = [
++  {
++    name: 'search_articles',
++    description:
++      'Search The DevTools Times articles by keyword (matches title and summary, case-insensitive). Omit the query to list all articles.',
++    inputSchema: {
++      type: 'object',
++      properties: { query: { type: 'string', description: 'Search text' } },
++    },
++    annotations: { readOnlyHint: true },
++    execute: guard(async ({ query }) => {
++      const q = String(query ?? '').trim().toLowerCase();
++      const articles = await fetchArticles();
++      const results = articles.filter(
++        a => !q || a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q),
++      );
++      return ok({ count: results.length, results: results.map(withUrl) });
++    }),
++  },
++  {
++    name: 'get_reading_list',
++    description: "Get the articles currently in the user's reading list.",
++    inputSchema: { type: 'object', properties: {} },
++    annotations: { readOnlyHint: true },
++    execute: guard(async () => {
++      const [list, articles] = await Promise.all([fetchReadingList(), fetchArticles()]);
++      return ok(articles.filter(a => list.includes(a.slug)).map(withUrl));
++    }),
++  },
++  {
++    name: 'add_to_reading_list',
++    description: "Add an article to the user's reading list (no-op if already present).",
++    inputSchema: slugSchema,
++    execute: guard(async ({ slug }) => ok({ readingList: await setInReadingList(String(slug), true) })),
++  },
++  {
++    name: 'remove_from_reading_list',
++    description: "Remove an article from the user's reading list (no-op if absent).",
++    inputSchema: slugSchema,
++    execute: guard(async ({ slug }) => ok({ readingList: await setInReadingList(String(slug), false) })),
++  },
++  {
++    name: 'get_current_article',
++    description:
++      'Read the article open on the current page: title, category, author, date, summary, full text, headings and word count. Fails if the current page is not an article.',
++    inputSchema: { type: 'object', properties: {} },
++    annotations: { readOnlyHint: true },
++    execute: guard(() => {
++      const el = currentArticle();
++      if (!el) return fail('The current page is not an article. Use open_article first.');
++      const body = el.querySelector<HTMLElement>('.prose');
++      const text = body?.innerText.trim() ?? '';
++      return ok({
++        slug: el.dataset.articleSlug,
++        title: el.querySelector('h1')?.textContent?.trim(),
++        category: el.dataset.articleCategory,
++        author: el.dataset.articleAuthor,
++        date: el.dataset.articleDate,
++        summary: el.dataset.articleSummary,
++        headings: [...(body?.querySelectorAll('h2, h3') ?? [])].map(h => h.textContent?.trim()),
++        wordCount: text ? text.split(/\s+/).length : 0,
++        text,
++      });
++    }),
++  },
++  {
++    name: 'find_in_current_article',
++    description:
++      'Find a phrase in the current article and return each match with surrounding context.',
++    inputSchema: {
++      type: 'object',
++      properties: { phrase: { type: 'string', description: 'Text to look for (case-insensitive)' } },
++      required: ['phrase'],
++    },
++    annotations: { readOnlyHint: true },
++    execute: guard(({ phrase }) => {
++      const body = currentArticle()?.querySelector<HTMLElement>('.prose');
++      if (!body) return fail('The current page is not an article.');
++      const needle = String(phrase ?? '').trim().toLowerCase();
++      if (!needle) return fail('phrase is required');
++      const text = body.innerText;
++      const lower = text.toLowerCase();
++      const matches: string[] = [];
++      for (let i = lower.indexOf(needle); i !== -1 && matches.length < 20; i = lower.indexOf(needle, i + needle.length)) {
++        matches.push(text.slice(Math.max(0, i - 80), i + needle.length + 80).replace(/\s+/g, ' '));
++      }
++      return ok({ count: matches.length, matches });
++    }),
++  },
++  {
++    name: 'open_article',
++    description: 'Navigate the browser to an article by slug.',
++    inputSchema: slugSchema,
++    execute: guard(async ({ slug }) => {
++      const articles = await fetchArticles();
++      const article = articles.find(a => a.slug === slug);
++      if (!article) return fail(`Unknown article slug: ${slug}`);
++      const url = api(`articles/${article.slug}`);
++      const { navigate } = await import('astro:transitions/client');
++      await navigate(url);
++      return ok(`Opened "${article.title}" at ${url}`);
++    }),
++  },
++];
++
++const modelContext = (navigator as any).modelContext as
++  | { registerTool: (tool: ModelContextTool) => void }
++  | undefined;
++
++const w = window as any;
++if (modelContext?.registerTool && !w.__webmcpRegistered) {
++  w.__webmcpRegistered = true;
++  for (const tool of tools) {
++    try {
++      modelContext.registerTool(tool);
++    } catch (e) {
++      console.warn(`WebMCP: failed to register ${tool.name}`, e);
++    }
++  }
++}

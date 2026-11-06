@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,76 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Secrets paywall teaser */
++    .paywall-container {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .paywall-container .eyebrow {
++      display: inline-block;
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: var(--primary);
++      background: var(--accent);
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 10px;
++    }
++
++    .paywall-content {
++      position: relative;
++      max-height: 420px;
++      overflow: hidden;
++      margin-top: 20px;
++      text-align: left;
++      /* Fade the content itself to full transparency (no solid overlay),
++         so whatever is behind it - the page background - shows through. */
++      -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
++    }
++
++    .paywall-content article {
++      display: grid;
++      grid-template-columns: minmax(200px, 1fr) 2fr;
++      gap: 24px;
++      align-items: start;
++    }
++
++    .paywall-content img {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 8px;
++    }
++
++    .paywall-content h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .paywall-content p {
++      margin-bottom: 12px;
++    }
++
++    .paywall-cta {
++      margin-top: -10px;
++    }
++
++    .paywall-cta p {
++      font-size: 0.95rem;
++    }
++
++    @media (max-width: 640px) {
++      .paywall-content article {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +262,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <span class="eyebrow">Members Exclusive</span>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <p>A behind-the-scenes look at how our head roaster coaxes out every note.</p>
++
++      <div class="paywall-content">
++        <article>
++          <img
++            src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++            alt="Freshly roasted coffee beans" loading="lazy">
++          <div>
++            <h3>The 12-Minute Rule: Finding the Sweet Spot</h3>
++            <p>Every batch we roast begins with a charge temperature tuned to the bean's density. For our
++              high-altitude Ethiopian lots, we drop at a cooler 195&deg;C and let the drum do the gentle work,
++              stretching the drying phase to coax out those jasmine and bergamot notes.</p>
++            <p>The real magic happens right after first crack. Most roasters rush this window &mdash; we slow it
++              down, lowering the gas by a third and extending development time to roughly 20% of the total roast.
++              The result is a cup that's sweet without losing its bright, tea-like acidity.</p>
++            <p>But the step almost nobody talks about is the rest. Freshly roasted beans need time to degas, and
++              the ideal window varies wildly by roast level. Here's the exact resting schedule we use for each of
++              our signature blends, plus the brew ratios we dial in at the shop every morning&hellip;</p>
++            <p>Next, we break down how we profile a brand-new green coffee in just three test roasts, including
++              the cupping sheet our team uses to score sweetness, body, and finish.</p>
++          </div>
++        </article>
++      </div>
++
++      <div class="paywall-cta">
++        <p>Unlock the full guide, monthly roast notes, and members-only blends.</p>
++        <a href="/rewards" class="btn">Join Grind Rewards to Keep Reading</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

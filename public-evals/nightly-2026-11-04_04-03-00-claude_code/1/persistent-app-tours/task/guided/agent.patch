@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,60 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Onboarding tour */
++    #feature {
++      anchor-name: --rewards-link;
++    }
++
++    #tour-step {
++      position: fixed;
++      position-anchor: --rewards-link;
++      inset: auto;
++      top: anchor(bottom);
++      right: anchor(right);
++      position-try-fallbacks: flip-inline;
++      margin: 12px 0 0;
++      width: min(280px, calc(100vw - 2rem));
++      padding: 1rem 1.25rem;
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
++      overflow: visible;
++    }
++
++    #tour-step h2 {
++      font-size: 1.05rem;
++      color: var(--primary);
++      margin-bottom: 0.35rem;
++    }
++
++    #tour-step p {
++      font-size: 0.9rem;
++      margin-bottom: 0.75rem;
++    }
++
++    #tour-step button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 6px 14px;
++      border-radius: 5px;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    #tour-step button:hover,
++    #tour-step button:focus-visible {
++      background: var(--text);
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,9 +213,9 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -206,7 +258,39 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-step-title">
++    <h2 id="tour-step-title">Earn points with Rewards</h2>
++    <p>Earn points on every order and redeem them for free drinks and treats. Check your balance here anytime.</p>
++    <button type="button" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
++  <script type="module">
++    // Load polyfills only when native support is missing.
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!CSS.supports("anchor-name: --a")) {
++      import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++
++    const tourStep = document.getElementById("tour-step");
++    const rewardsLink = document.getElementById("feature");
++    const isOpen = () => {
++      try { return tourStep.matches(":popover-open"); }
++      catch { return tourStep.classList.contains(":popover-open"); }
++    };
++
++    // Keep the rewards link from navigating away while the tour is open.
++    rewardsLink.addEventListener("click", (event) => {
++      if (isOpen()) event.preventDefault();
++    });
++
++    // Open by default (manual popover: stays open until explicitly closed).
++    tourStep.showPopover();
++    tourStep.querySelector("button").focus();
++  </script>
++
+ </body>
+ 
+ </html>

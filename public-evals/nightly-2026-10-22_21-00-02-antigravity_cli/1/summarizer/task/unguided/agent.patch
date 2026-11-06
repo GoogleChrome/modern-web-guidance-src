@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,101 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 0.95rem;
++      cursor: pointer;
+     }
+ 
+-    .btn:hover {
++    .btn:hover:not(:disabled) {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    /* Roaster's Journal Section */
++    .journal-section {
++      margin-top: 50px;
++      background: white;
++      padding: 35px 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--primary);
++    }
++
++    .journal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++      padding-bottom: 15px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .journal-header h2 {
++      color: var(--primary);
++      font-size: 1.8rem;
++    }
++
++    .journal-subtitle {
++      color: #6d4c41;
++      font-size: 0.95rem;
++      font-style: italic;
++    }
++
++    .journal-header .btn {
++      margin-top: 0;
++    }
++
++    .journal-article p {
++      margin-bottom: 16px;
++      text-align: left;
++      color: var(--text);
++    }
++
++    .journal-article p:last-child {
++      margin-bottom: 0;
++    }
++
++    .journal-summary {
++      margin-top: 25px;
++      padding: 20px 25px;
++      background: #f5ebe6;
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++    }
++
++    .journal-summary h3 {
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin-bottom: 10px;
++    }
++
++    .journal-summary ul {
++      padding-left: 20px;
++      margin: 0;
++    }
++
++    .journal-summary li {
++      margin-bottom: 8px;
++    }
++
++    .journal-summary li:last-child {
++      margin-bottom: 0;
++    }
++
++    .summary-status {
++      font-style: italic;
++      color: #5d4037;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +281,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="roasters-journal" class="journal-section">
++      <div class="journal-header">
++        <div>
++          <h2>Roaster's Journal</h2>
++          <p class="journal-subtitle">From High-Altitude Harvests to Your Morning Cup: How We Source Our Beans</p>
++        </div>
++        <button id="summarize-btn" class="btn" type="button">Summarize</button>
++      </div>
++
++      <article id="journal-content" class="journal-article">
++        <p>
++          Every memorable cup of coffee begins long before the first crack in our roastery—it starts on the mist-covered slopes of the world's premier coffee-growing regions. At The Daily Grind, our sourcing philosophy is built on direct-trade relationships with smallholder farmers and family-run estates across Ethiopia's Yirgacheffe highlands, Colombia's Huila valleys, and the volcanic soils of Antigua, Guatemala. By bypassing traditional commodity middlemen, we ensure our partner growers receive fair compensation well above Fair Trade minimums, empowering them to reinvest in regenerative agriculture, shade-grown forest canopies, and community infrastructure.
++        </p>
++        <p>
++          We select only 100% specialty-grade Arabica cherries harvested by hand at peak ripeness. Depending on the regional microclimate and desired flavor profile, our producers use either washed processing—employing pure mountain spring water to highlight crisp citrus and floral notes—or natural sun-dried methods on raised African beds that infuse the beans with rich berry sweetness and a velvety body. Before any lot is approved for export, the parchment coffee rests in climate-controlled repositories until moisture levels stabilize at an optimal 10.5% to 11.5%.
++        </p>
++        <p>
++          Once the harvest arrives at our cupping lab, our Q-graders conduct blind sensory evaluations and physical defect screenings on every single burlap sack. Only micro-lots scoring 86 points or higher on the Specialty Coffee Association scale make the cut. From there, we craft custom small-batch roast curves tailored to each bean's density and origin terroir, preserving the delicate aromatics and origin character that make every sip distinctly vibrant.
++        </p>
++      </article>
++
++      <div id="journal-summary" class="journal-summary" aria-live="polite" hidden>
++        <h3>Key Takeaways</h3>
++        <div id="summary-output"></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +320,76 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const summarizeBtn = document.getElementById('summarize-btn');
++    const journalContent = document.getElementById('journal-content');
++    const summaryContainer = document.getElementById('journal-summary');
++    const summaryOutput = document.getElementById('summary-output');
++
++    function renderBulletPoints(summaryText) {
++      const lines = summaryText
++        .split(/\r?\n/)
++        .map((line) => line.replace(/^[\s*\-•–—\d.)]+/, '').trim())
++        .filter((line) => line.length > 0);
++
++      const ul = document.createElement('ul');
++      for (const line of lines) {
++        const li = document.createElement('li');
++        li.textContent = line.replace(/\*\*(.*?)\*\*/g, '$1');
++        ul.appendChild(li);
++      }
++
++      summaryOutput.innerHTML = '';
++      summaryOutput.appendChild(ul);
++    }
++
++    summarizeBtn.addEventListener('click', async () => {
++      summaryContainer.hidden = false;
++      summarizeBtn.disabled = true;
++      summarizeBtn.textContent = 'Summarizing...';
++      summaryOutput.innerHTML = '<p class="summary-status">Generating summary with built-in AI...</p>';
++
++      try {
++        if (!('Summarizer' in self)) {
++          throw new Error('The built-in Summarizer API is not supported in this browser.');
++        }
++
++        const availability = await Summarizer.availability();
++        if (availability === 'unavailable') {
++          throw new Error('The browser Summarizer AI model is unavailable on this device.');
++        }
++
++        const summarizer = await Summarizer.create({
++          type: 'key-points',
++          format: 'markdown',
++          length: 'short',
++          sharedContext: 'An article from a coffee roaster journal explaining their ethical bean sourcing and roasting process.',
++          monitor(m) {
++            m.addEventListener('downloadprogress', (e) => {
++              const percent = Math.round((e.loaded || 0) * 100);
++              summaryOutput.innerHTML = `<p class="summary-status">Downloading on-device AI model (${percent}%)...</p>`;
++            });
++          }
++        });
++
++        const textToSummarize = journalContent.innerText.trim();
++        const summary = await summarizer.summarize(textToSummarize);
++
++        renderBulletPoints(summary);
++
++        if (typeof summarizer.destroy === 'function') {
++          summarizer.destroy();
++        }
++        summarizeBtn.textContent = 'Summarize';
++      } catch (error) {
++        summaryOutput.innerHTML = `<p class="summary-status">${error.message || 'Unable to generate summary using browser AI.'}</p>`;
++        summarizeBtn.textContent = 'Summarize';
++      } finally {
++        summarizeBtn.disabled = false;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

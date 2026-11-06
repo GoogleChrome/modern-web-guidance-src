@@ -1,0 +1,361 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..bd3d6b6
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++users.json
++node_modules
+diff --git a/index.html b/index.html
+index 66c9173..c40fcd1 100644
+--- a/index.html
++++ b/index.html
+@@ -164,7 +164,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/login" class="logout-link" id="auth-link">Sign in</a></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +207,15 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    fetch('/api/me').then((r) => r.json()).then((me) => {
++      if (!me.email) return;
++      const a = document.getElementById('auth-link');
++      a.href = '/logout';
++      a.textContent = 'Logout';
++      a.title = me.email;
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/login.html b/login.html
+new file mode 100644
+index 0000000..1b803b2
+--- /dev/null
++++ b/login.html
+@@ -0,0 +1,92 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Sign in | The Daily Grind</title>
++  <style>
++    :root { --primary: #4e342e; --secondary: #d7ccc8; --accent: #ffab40; --text: #3e2723; --light: #fafafa; }
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: var(--text); background: var(--light); }
++    nav { background: var(--primary); color: white; padding: 1rem 5%; }
++    nav a { color: white; text-decoration: none; font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
++    main { max-width: 420px; margin: 60px auto; padding: 0 20px; }
++    .card { background: white; padding: 28px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, .1); }
++    h1 { color: var(--primary); margin-bottom: 6px; }
++    .tabs { display: flex; gap: 8px; margin: 16px 0; }
++    .tabs button { flex: 1; padding: 8px; border: 1px solid var(--secondary); background: white; border-radius: 5px; cursor: pointer; color: var(--text); }
++    .tabs button[aria-pressed="true"] { background: var(--primary); color: white; border-color: var(--primary); }
++    label { display: block; font-size: .9rem; margin-bottom: 4px; }
++    input { width: 100%; padding: 10px; border: 1px solid var(--secondary); border-radius: 5px; font-size: 1rem; }
++    .btn { width: 100%; margin-top: 16px; background: var(--primary); color: white; padding: 10px; border: 0; border-radius: 5px; font-size: 1rem; cursor: pointer; }
++    .btn:disabled { opacity: .6; cursor: wait; }
++    .hint { font-size: .85rem; margin-top: 12px; color: #6d4c41; }
++    .error { color: #b71c1c; margin-top: 12px; font-size: .9rem; }
++  </style>
++</head>
++
++<body>
++  <nav><a href="/">THE DAILY GRIND</a></nav>
++  <main>
++    <form class="card" id="form">
++      <h1 id="title">Sign in</h1>
++      <p class="hint" id="blurb"></p>
++      <div class="tabs" role="group" aria-label="Mode">
++        <button type="button" data-mode="signin">Sign in</button>
++        <button type="button" data-mode="signup">Create account</button>
++        <button type="button" data-mode="recover">Recover</button>
++      </div>
++      <label for="email">Email address</label>
++      <input id="email" name="email" type="email" autocomplete="email" required autofocus>
++      <button class="btn" id="go" type="submit">Verify with Google</button>
++      <p class="hint">We confirm you own this address by having you sign in to the Google account that holds it.
++        No code or link is emailed.</p>
++      <p class="error" id="error" role="alert"></p>
++    </form>
++  </main>
++
++  <script>
++    const blurbs = {
++      signin: 'Welcome back.',
++      signup: 'Create your account by verifying your email.',
++      recover: 'No password to reset. Verify your email to get back in.',
++    };
++    const titles = { signin: 'Sign in', signup: 'Create account', recover: 'Recover account' };
++    const $ = (id) => document.getElementById(id);
++    let mode = new URLSearchParams(location.search).get('mode');
++    if (!blurbs[mode]) mode = 'signin';
++
++    function render() {
++      $('title').textContent = titles[mode];
++      $('blurb').textContent = blurbs[mode];
++      document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === mode));
++    }
++    document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode; render(); }));
++    render();
++
++    const err = new URLSearchParams(location.search).get('error');
++    if (err) $('error').textContent = err;
++
++    $('form').addEventListener('submit', async (e) => {
++      e.preventDefault();
++      $('error').textContent = '';
++      $('go').disabled = true;
++      try {
++        const res = await fetch('/auth/start', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ email: $('email').value, mode }),
++        });
++        const data = await res.json();
++        if (!res.ok) throw new Error(data.error || 'Something went wrong.');
++        location.href = data.url;
++      } catch (ex) {
++        $('error').textContent = ex.message;
++        $('go').disabled = false;
++      }
++    });
++  </script>
++</body>
++
++</html>
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..f54d815
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,207 @@
++// Static site + email-ownership verification via Google OpenID Connect.
++// No OTP or magic-link emails: the user proves they control the address by
++// signing in to the account that owns it, and we check the signed ID token.
++//
++// Env: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, BASE_URL (default http://localhost:PORT)
++const http = require('http');
++const fs = require('fs');
++const path = require('path');
++const crypto = require('crypto');
++
++const PORT = process.env.PORT || 11222;
++const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
++const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
++const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
++const ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
++const REDIRECT_URI = `${BASE_URL}/auth/callback`;
++const SECURE = BASE_URL.startsWith('https://');
++const DB_FILE = path.join(__dirname, 'users.json');
++
++const b64u = (buf) => Buffer.from(buf).toString('base64url');
++const normalize = (e) => String(e || '').trim().toLowerCase();
++const validEmail = (e) => e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
++
++// ---- storage (users on disk, short-lived state/sessions in memory) ----
++const users = fs.existsSync(DB_FILE) ? JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) : {};
++const saveUsers = () => fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
++const pending = new Map(); // state -> {email, mode, verifier, nonce, exp}
++const sessions = new Map(); // sid -> {email, exp}
++
++setInterval(() => {
++  const now = Date.now();
++  for (const m of [pending, sessions]) for (const [k, v] of m) if (v.exp < now) m.delete(k);
++}, 60_000).unref();
++
++// ---- Google discovery + JWT verification ----
++let jwksCache = { keys: [], at: 0 };
++async function googleKey(kid) {
++  if (!jwksCache.keys.some((k) => k.kid === kid) || Date.now() - jwksCache.at > 3600_000) {
++    const res = await fetch('https://www.googleapis.com/oauth2/v3/certs');
++    jwksCache = { keys: (await res.json()).keys, at: Date.now() };
++  }
++  const jwk = jwksCache.keys.find((k) => k.kid === kid);
++  if (!jwk) throw new Error('unknown signing key');
++  return crypto.createPublicKey({ key: jwk, format: 'jwk' });
++}
++
++async function verifyIdToken(token, nonce) {
++  const [h, p, s] = String(token).split('.');
++  if (!s) throw new Error('malformed token');
++  const header = JSON.parse(Buffer.from(h, 'base64url'));
++  if (header.alg !== 'RS256') throw new Error('bad alg');
++  const ok = crypto.verify('RSA-SHA256', Buffer.from(`${h}.${p}`), await googleKey(header.kid), Buffer.from(s, 'base64url'));
++  if (!ok) throw new Error('bad signature');
++  const c = JSON.parse(Buffer.from(p, 'base64url'));
++  if (!ISSUERS.includes(c.iss)) throw new Error('bad issuer');
++  if (c.aud !== CLIENT_ID) throw new Error('bad audience');
++  if (!(c.exp * 1000 > Date.now())) throw new Error('expired');
++  if (c.nonce !== nonce) throw new Error('bad nonce');
++  return c;
++}
++
++// ---- helpers ----
++function cookies(req) {
++  const out = {};
++  for (const part of (req.headers.cookie || '').split(';')) {
++    const i = part.indexOf('=');
++    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
++  }
++  return out;
++}
++const sessionOf = (req) => {
++  const s = sessions.get(cookies(req).sid);
++  return s && s.exp > Date.now() ? s : null;
++};
++const setSid = (res, sid, maxAge) =>
++  res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${SECURE ? '; Secure' : ''}`);
++const json = (res, code, body) => {
++  res.writeHead(code, { 'Content-Type': 'application/json' });
++  res.end(JSON.stringify(body));
++};
++const redirect = (res, to) => {
++  res.writeHead(302, { Location: to });
++  res.end();
++};
++const readBody = (req) =>
++  new Promise((resolve, reject) => {
++    let data = '';
++    req.on('data', (d) => {
++      data += d;
++      if (data.length > 10_000) req.destroy();
++    });
++    req.on('end', () => {
++      try { resolve(JSON.parse(data || '{}')); } catch (e) { reject(e); }
++    });
++  });
++const sendFile = (res, file) =>
++  fs.readFile(path.join(__dirname, file), (err, buf) => {
++    if (err) { res.writeHead(404); return res.end('Not found'); }
++    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.end(buf);
++  });
++
++// ---- routes ----
++async function handle(req, res) {
++  const url = new URL(req.url, BASE_URL);
++
++  if (req.method === 'GET' && url.pathname === '/') return sendFile(res, 'index.html');
++  if (req.method === 'GET' && url.pathname === '/login') return sendFile(res, 'login.html');
++
++  if (req.method === 'GET' && url.pathname === '/api/me') {
++    const s = sessionOf(req);
++    return json(res, 200, { email: s ? s.email : null, configured: Boolean(CLIENT_ID && CLIENT_SECRET) });
++  }
++
++  if (req.method === 'GET' && url.pathname === '/logout') {
++    sessions.delete(cookies(req).sid);
++    setSid(res, '', 0);
++    return redirect(res, '/');
++  }
++
++  // Begin: the user tells us which address they claim; we send them to Google to prove it.
++  if (req.method === 'POST' && url.pathname === '/auth/start') {
++    if (!CLIENT_ID || !CLIENT_SECRET) return json(res, 503, { error: 'Email verification is not configured on this server.' });
++    const body = await readBody(req).catch(() => null);
++    const email = normalize(body && body.email);
++    const mode = ['signup', 'signin', 'recover'].includes(body && body.mode) ? body.mode : 'signin';
++    if (!validEmail(email)) return json(res, 400, { error: 'Enter a valid email address.' });
++
++    const state = b64u(crypto.randomBytes(24));
++    const nonce = b64u(crypto.randomBytes(24));
++    const verifier = b64u(crypto.randomBytes(32));
++    pending.set(state, { email, mode, verifier, nonce, exp: Date.now() + 10 * 60_000 });
++
++    const q = new URLSearchParams({
++      client_id: CLIENT_ID,
++      redirect_uri: REDIRECT_URI,
++      response_type: 'code',
++      scope: 'openid email',
++      state,
++      nonce,
++      login_hint: email,
++      prompt: 'select_account',
++      code_challenge: b64u(crypto.createHash('sha256').update(verifier).digest()),
++      code_challenge_method: 'S256',
++    });
++    return json(res, 200, { url: `https://accounts.google.com/o/oauth2/v2/auth?${q}` });
++  }
++
++  // Return from Google: exchange the code, verify the signed token, compare the email.
++  if (req.method === 'GET' && url.pathname === '/auth/callback') {
++    const fail = (msg) => redirect(res, `/login?error=${encodeURIComponent(msg)}`);
++    const p = pending.get(url.searchParams.get('state'));
++    pending.delete(url.searchParams.get('state'));
++    if (!p || p.exp < Date.now()) return fail('Verification expired. Please try again.');
++    if (url.searchParams.get('error') || !url.searchParams.get('code')) return fail('Verification was cancelled.');
++
++    try {
++      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
++        body: new URLSearchParams({
++          code: url.searchParams.get('code'),
++          client_id: CLIENT_ID,
++          client_secret: CLIENT_SECRET,
++          redirect_uri: REDIRECT_URI,
++          grant_type: 'authorization_code',
++          code_verifier: p.verifier,
++        }),
++      });
++      const tokens = await tokenRes.json();
++      if (!tokens.id_token) return fail('Could not verify your email.');
++      const claims = await verifyIdToken(tokens.id_token, p.nonce);
++
++      if (claims.email_verified !== true || normalize(claims.email) !== p.email) {
++        return fail(`That account does not own ${p.email}.`);
++      }
++
++      const exists = Boolean(users[p.email]);
++      if (p.mode === 'signup' && !exists) {
++        users[p.email] = { createdAt: new Date().toISOString() };
++        saveUsers();
++      } else if (!exists) {
++        return fail('No account found for that email. Create one first.');
++      }
++
++      // Accounts have no password, so "recover" is simply proving ownership again.
++      const sid = b64u(crypto.randomBytes(32));
++      sessions.set(sid, { email: p.email, exp: Date.now() + 7 * 24 * 3600_000 });
++      setSid(res, sid, 7 * 24 * 3600);
++      return redirect(res, '/');
++    } catch (e) {
++      console.error('verification failed:', e.message);
++      return fail('Could not verify your email.');
++    }
++  }
++
++  res.writeHead(404);
++  res.end('Not found');
++}
++
++http
++  .createServer((req, res) => handle(req, res).catch((e) => {
++    console.error(e);
++    if (!res.headersSent) res.writeHead(500);
++    res.end('Server error');
++  }))
++  .listen(PORT, () => console.log(`http://localhost:${PORT}`));

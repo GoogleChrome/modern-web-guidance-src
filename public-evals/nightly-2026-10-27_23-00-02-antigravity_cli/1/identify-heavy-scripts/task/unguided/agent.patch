@@ -1,0 +1,46 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if ('PerformanceObserver' in window && PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) {
++      const loafObserver = new PerformanceObserver((list) => {
++        for (const entry of list.getEntries()) {
++          if (!entry.scripts || entry.scripts.length === 0) {
++            continue;
++          }
++
++          for (const script of entry.scripts) {
++            const reportData = {
++              frameDuration: entry.duration,
++              blockingDuration: entry.blockingDuration,
++              renderStart: entry.renderStart,
++              styleAndLayoutStart: entry.styleAndLayoutStart,
++              scriptDuration: script.duration,
++              executionStart: script.executionStart,
++              forcedStyleAndLayoutDuration: script.forcedStyleAndLayoutDuration,
++              pauseDuration: script.pauseDuration,
++              invoker: script.invoker,
++              invokerType: script.invokerType,
++              sourceURL: script.sourceURL,
++              sourceFunctionName: script.sourceFunctionName,
++              sourceCharPosition: script.sourceCharPosition,
++              windowAttribution: script.windowAttribution,
++            };
++
++            console.log('Slow script detected in Long Animation Frame:', reportData);
++          }
++        }
++      });
++
++      loafObserver.observe({ type: 'long-animation-frame', buffered: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

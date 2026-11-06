@@ -1,0 +1,164 @@
+diff --git a/index.html b/index.html
+index 66c9173..11421b8 100644
+--- a/index.html
++++ b/index.html
+@@ -195,6 +195,25 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="local-network-section" style="margin-top: 40px;">
++      <h2 style="text-align: center;">Local Espresso Machine &amp; Receipt Printer</h2>
++      <div class="card" style="max-width: 600px; margin: 20px auto; text-align: left;">
++        <p style="margin-bottom: 15px;">Connect to your local smart brewer or loopback receipt agent to sync your preferences and order status.</p>
++        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
++          <input type="text" id="local-endpoint-input" value="http://127.0.0.1:8080/status" placeholder="http://127.0.0.1:8080/status or http://192.168.1.50/api" style="flex: 1; padding: 10px; border: 1px solid var(--secondary); border-radius: 5px; min-width: 240px;">
++          <select id="address-space-select" style="padding: 10px; border: 1px solid var(--secondary); border-radius: 5px; background: white;">
++            <option value="loopback">Loopback (127.0.0.1 / localhost)</option>
++            <option value="local">Local Network (LAN)</option>
++          </select>
++        </div>
++        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
++          <button type="button" id="connect-local-btn" class="btn" style="margin-top: 0; border: none; cursor: pointer;">Connect to Local Resource</button>
++          <button type="button" id="check-permission-btn" class="btn" style="margin-top: 0; border: none; cursor: pointer; background: #6d4c41;">Check Permission</button>
++          <span id="local-status" style="font-size: 0.9rem; color: var(--primary);"></span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +226,65 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    async function checkLocalNetworkPermission() {
++      const statusEl = document.getElementById('local-status');
++      if (!navigator.permissions || !navigator.permissions.query) {
++        if (statusEl) statusEl.textContent = 'Permissions API not supported.';
++        return null;
++      }
++
++      const permissionNames = ['local-network-access', 'local-network', 'loopback-network'];
++      const results = {};
++
++      for (const name of permissionNames) {
++        try {
++          const status = await navigator.permissions.query({ name });
++          results[name] = status.state;
++        } catch (err) {
++          // Permission name might not be supported in all browsers
++        }
++      }
++
++      if (statusEl) {
++        const entries = Object.entries(results);
++        statusEl.textContent = entries.length
++          ? entries.map(([k, v]) => `${k}: ${v}`).join(', ')
++          : 'Permission status ready.';
++      }
++      return results;
++    }
++
++    async function fetchLocalResource(url, addressSpace = 'loopback') {
++      const statusEl = document.getElementById('local-status');
++      if (statusEl) statusEl.textContent = `Connecting (${addressSpace})...`;
++
++      try {
++        const response = await fetch(url, {
++          targetAddressSpace: addressSpace,
++        });
++        const data = await response.text();
++        if (statusEl) statusEl.textContent = `Connected (${response.status})`;
++        return data;
++      } catch (error) {
++        if (statusEl) statusEl.textContent = `Connection failed: ${error.message}`;
++        throw error;
++      }
++    }
++
++    window.checkLocalNetworkPermission = checkLocalNetworkPermission;
++    window.fetchLocalResource = fetchLocalResource;
++
++    document.getElementById('connect-local-btn')?.addEventListener('click', () => {
++      const url = document.getElementById('local-endpoint-input').value;
++      const addressSpace = document.getElementById('address-space-select').value;
++      fetchLocalResource(url, addressSpace).catch(() => {});
++    });
++
++    document.getElementById('check-permission-btn')?.addEventListener('click', () => {
++      checkLocalNetworkPermission();
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..28d9b59 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "statikk": "^3.1.0"
+   }
+ }
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..535c470
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,44 @@
++import { parseArgs } from 'node:util';
++import statikk from 'statikk';
++
++const { values } = parseArgs({
++  options: {
++    port: { type: 'string' },
++    expose: { type: 'boolean' },
++    cors: { type: 'boolean' },
++    coi: { type: 'boolean' },
++    csp: { type: 'string' },
++  },
++  strict: false,
++});
++
++const port = Number(values.port || process.env.PORT || 11222);
++
++const { app, url } = await statikk({
++  ...values,
++  port,
++  cors: true,
++});
++
++// Prepend middleware to set Local Network Access Permissions-Policy and PNA headers
++app.stack.unshift({
++  route: '',
++  handle: (req, res, next) => {
++    res.setHeader(
++      'Permissions-Policy',
++      'local-network-access=*, local-network=*, loopback-network=*'
++    );
++    res.setHeader('Access-Control-Allow-Private-Network', 'true');
++    if (req.method === 'OPTIONS') {
++      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
++      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
++      res.setHeader('Access-Control-Allow-Headers', req.headers['access-control-request-headers'] || '*');
++      res.statusCode = 204;
++      res.end();
++      return;
++    }
++    next();
++  },
++});
++
++console.log(`Server listening on ${url}`);

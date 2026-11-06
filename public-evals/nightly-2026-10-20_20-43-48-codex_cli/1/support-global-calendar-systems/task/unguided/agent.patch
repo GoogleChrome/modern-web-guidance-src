@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="/calendar.css">
++  <script type="module" src="/calendar-ui.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +196,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="calendar-section" aria-labelledby="calendar-heading">
++      <div class="calendar-heading">
++        <p class="eyebrow">ONE DAY, MANY PERSPECTIVES</p>
++        <h2 id="calendar-heading">A date around the world</h2>
++        <p>Take a moment to explore how the world marks the same day.</p>
++      </div>
++      <div class="calendar-controls">
++        <div class="calendar-field">
++          <label for="calendar-input">Choose a date</label>
++          <input type="date" id="calendar-input" aria-describedby="calendar-help" disabled>
++        </div>
++        <button type="button" class="today-button" id="calendar-today" disabled>Back to today</button>
++        <div class="calendar-field language-field">
++          <label for="calendar-locale">Date display language</label>
++          <select id="calendar-locale" disabled>
++            <option value="auto">Browser language</option>
++            <option value="en">English</option>
++            <option value="ar">العربية</option>
++            <option value="he">עברית</option>
++            <option value="ja">日本語</option>
++          </select>
++        </div>
++      </div>
++      <p id="calendar-help" class="calendar-note">Choose a Gregorian date to see it in three calendars. Today follows your local time zone.</p>
++      <p id="calendar-status" role="status" aria-live="polite">Loading calendars…</p>
++      <div id="calendar-cards" class="grid calendar-grid" aria-busy="true"></div>
++      <p class="calendar-note calendar-footnote">Month numbers follow the order in that year; month codes identify the same month across years, including leap months. Islamic dates use the Umm al-Qura calendar; local observances may differ.</p>
++      <noscript><p>Enable JavaScript to use the interactive calendar converter.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

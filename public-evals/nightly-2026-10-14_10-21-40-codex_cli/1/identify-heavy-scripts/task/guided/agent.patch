@@ -1,0 +1,44 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,39 @@
++# Script performance diagnostics
++
++The page loads `script-performance.js`, which uses the Long Animation Frames API
++to identify scripts contributing to frames longer than 50 ms. It aggregates
++script execution across the page lifecycle, including available buffered entries
++from before the monitor started. No performance data is sent to a server.
++
++Use the website normally, then run this in the developer console:
++
++```js
++scriptPerformance.report();
++// Focus on scripts with at least 100 ms accumulated execution in long frames:
++scriptPerformance.report({ minDuration: 100 });
++// Get unrounded data for your own analysis:
++scriptPerformance.snapshot();
++// Stop collecting and retrieve the final results:
++scriptPerformance.disconnect();
++```
++
++Reports also appear when the page becomes hidden after new long frames are
++observed. Rows are ranked by accumulated script execution time, with invocation
++counts, longest execution, forced style/layout time, and the function name and
++character offset of the longest execution when available. All durations are in
++milliseconds. Start with the highest totals and inspect the named source in
++DevTools to investigate the function.
++
++This measures execution within long frames, not download time or every script
++invocation. Frame blocking time is reported separately and cannot be assigned
++entirely to one script. Rendering or several scripts may contribute to a frame.
++Browser attribution is incomplete (for example, cross-origin frames, extensions,
++and short script executions may not be attributed), so an empty report does not
++prove the page is fast. The current static page has no other scripts to measure.
++
++The API has limited browser support. Check `scriptPerformance.supported`; browsers
++without it skip observation and report that attribution is unavailable. Use a
++supporting Chrome or Edge release to collect data. Reports are local to the
++current page load and reset on navigation.
++
++Run the automated diagnostics checks with `npm test`.

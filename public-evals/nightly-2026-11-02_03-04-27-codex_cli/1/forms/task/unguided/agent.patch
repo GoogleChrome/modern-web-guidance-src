@@ -1,0 +1,333 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,74 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Rewards registration */
++    [hidden] { display: none !important; }
++    :focus-visible { outline: 3px solid #a95716; outline-offset: 4px; }
++    #rewards { scroll-margin-top: 100px; }
++    .rewards-shell { display: grid; grid-template-columns: .8fr 1.2fr; margin-top: 64px; border: 1px solid #ded4ce; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 12px 36px #4e342e0a; }
++    .rewards-intro { background: #f1ebe5; padding: 40px 32px; }
++    .eyebrow { font-size: .72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #715446; }
++    .rewards-intro h2 { font-family: Georgia, serif; font-size: 2.65rem; line-height: 1.12; font-weight: 400; margin: 18px 0; }
++    .rewards-intro p { color: #6b554a; }
++    .rewards-benefits { list-style: none; margin: 30px 0; }
++    .rewards-benefits li { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #ded4ce; font-size: .92rem; }
++    .benefit-icon { font-size: 1.1rem; color: #835328; }
++    .rewards-note { font-size: .8rem; padding-top: 22px; }
++    .registration { padding: 32px; min-width: 0; }
++    .steps { display: flex; list-style: none; gap: 12px; padding-bottom: 26px; margin-bottom: 26px; border-bottom: 1px solid #e9e2dc; }
++    .steps li { flex: 1; display: flex; align-items: center; gap: 8px; font-size: .8rem; color: #75645b; }
++    .step-number { display: grid; place-items: center; border: 1px solid #c6b9af; border-radius: 50%; width: 27px; height: 27px; flex-shrink: 0; font-size: .75rem; }
++    .steps [aria-current="step"] { color: var(--primary); font-weight: 700; }
++    .steps [aria-current="step"] .step-number, .steps .complete .step-number { background: var(--primary); border-color: var(--primary); color: white; }
++    .registration fieldset { border: 0; min-width: 0; }
++    .registration legend { font-size: 1.4rem; font-weight: 650; margin-bottom: 6px; }
++    .form-description, .field-hint { color: #715f55; font-size: .82rem; }
++    .form-description { margin-bottom: 24px; }
++    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
++    .field { margin-bottom: 20px; }
++    .field label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 7px; }
++    .registration input:not([type="checkbox"]) { width: 100%; min-height: 46px; border: 1px solid #a99a8f; border-radius: 6px; padding: 10px 12px; color: var(--text); background: #fff; font: inherit; font-size: 1rem; }
++    .registration input[aria-invalid="true"] { border: 2px solid #a12b20; }
++    .field-hint { margin-top: 6px; }
++    .field-error { color: #a12b20; font-size: .82rem; margin-top: 6px; }
++    .form-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; }
++    .form-actions button, .password-toggle, .review-edit { font: inherit; cursor: pointer; }
++    .form-actions button { min-height: 46px; padding: 10px 20px; border-radius: 6px; font-size: .87rem; font-weight: 600; }
++    .button-primary { color: #fff; background: var(--primary); border: 1px solid var(--primary); margin-left: auto; }
++    .button-primary:hover { background: #34221d; }
++    .button-secondary { background: white; border: 1px solid #baaaa0; color: var(--primary); }
++    .password-toggle, .review-edit { border: 0; background: transparent; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; padding: 8px 0; font-size: .82rem; }
++    .password-label { display: flex; justify-content: space-between; align-items: center; }
++    .password-label label { margin: 0; }
++    .check-label { display: flex; align-items: flex-start; gap: 10px; font-size: .85rem; margin-top: 20px; cursor: pointer; }
++    .check-label input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 4px; accent-color: var(--primary); }
++    .registration a { color: var(--primary); text-underline-offset: 3px; }
++    .form-footnote { font-size: .74rem; color: #715f55; margin-top: 20px; }
++    .error-summary { border-left: 3px solid #a12b20; padding: 12px 16px; background: #fff2ef; margin-bottom: 20px; font-size: .85rem; }
++    .error-summary ul { padding-left: 20px; }
++    .review-list { background: #f8f5f2; padding: 18px; border-radius: 6px; }
++    .review-list div { padding: 8px 0; }
++    .review-list dt { font-size: .75rem; color: #715f55; }
++    .review-list dd { font-size: .92rem; overflow-wrap: anywhere; }
++    .preview-notice { font-size: .78rem; background: #f8f5f2; padding: 12px; border-radius: 6px; margin-top: 20px; color: #715f55; }
++    .success-mark { font-size: 2rem; margin-bottom: 12px; }
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .rewards-shell { grid-template-columns: 1fr; margin-top: 40px; }
++      .rewards-intro, .registration { padding: 28px 22px; }
++      .rewards-intro h2 { font-size: 2.2rem; }
++      .rewards-benefits { margin: 20px 0 0; }
++      .rewards-note { padding-top: 16px; }
++      .field-row { grid-template-columns: 1fr; gap: 0; }
++      .steps { gap: 8px; }
++      .steps li { gap: 5px; font-size: .73rem; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,9 +227,9 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,8 +260,94 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="rewards" class="rewards-shell" aria-labelledby="rewards-title">
++      <div class="rewards-intro">
++        <span class="eyebrow">Daily Grind Rewards</span>
++        <h2 id="rewards-title">Your daily ritual.<br>A little more rewarding.</h2>
++        <p>Make every coffee run something to look forward to. Join our community of coffee lovers.</p>
++        <ul class="rewards-benefits">
++          <li><span class="benefit-icon" aria-hidden="true">✧</span> A little extra with your everyday cup</li>
++          <li><span class="benefit-icon" aria-hidden="true">♡</span> Offers picked for coffee lovers</li>
++          <li><span class="benefit-icon" aria-hidden="true">☕</span> Your next favorite, waiting to be discovered</li>
++        </ul>
++        <p class="rewards-note">Good coffee. Good company. One happy routine.</p>
++      </div>
++      <div class="registration">
++        <ol class="steps" aria-label="Registration progress">
++          <li aria-current="step"><span class="step-number">1</span> Your details</li>
++          <li><span class="step-number">2</span> Security</li>
++          <li><span class="step-number">3</span> Review</li>
++        </ol>
++        <div id="error-summary" class="error-summary" tabindex="-1" hidden></div>
++        <form id="rewards-form" method="post" action="/api/rewards/register" aria-label="Join Daily Grind Rewards">
++          <fieldset data-step="0">
++            <legend tabindex="-1">Let’s get acquainted</legend>
++            <p class="form-description">Step 1 of 3 · All fields are required unless marked optional.</p>
++            <div class="field-row">
++              <div class="field">
++                <label for="given-name">First name</label>
++                <input id="given-name" name="givenName" type="text" autocomplete="given-name" required maxlength="100" aria-describedby="given-name-error">
++                <p id="given-name-error" class="field-error" hidden></p>
++              </div>
++              <div class="field">
++                <label for="family-name">Last name</label>
++                <input id="family-name" name="familyName" type="text" autocomplete="family-name" required maxlength="100" aria-describedby="family-name-error">
++                <p id="family-name-error" class="field-error" hidden></p>
++              </div>
++            </div>
++            <div class="field">
++              <label for="email">Email address</label>
++              <input id="email" name="email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" required maxlength="254" aria-describedby="email-hint email-error">
++              <p id="email-hint" class="field-hint">Use the email you’d like associated with your rewards.</p>
++              <p id="email-error" class="field-error" hidden></p>
++            </div>
++          </fieldset>
++          <fieldset data-step="1" hidden disabled>
++            <legend tabindex="-1">Keep your account yours</legend>
++            <p class="form-description">Step 2 of 3 · Choose a unique password.</p>
++            <div class="field">
++              <div class="password-label">
++                <label for="password">Password</label>
++                <button class="password-toggle" id="toggle-password" type="button" aria-controls="password" aria-pressed="false">Show password</button>
++              </div>
++              <input id="password" name="password" type="password" autocomplete="new-password" required minlength="15" maxlength="128" aria-describedby="password-hint password-error">
++              <p id="password-hint" class="field-hint">Use 15–128 characters. A memorable phrase works well. Spaces and all character types are welcome.</p>
++              <p id="password-error" class="field-error" hidden></p>
++            </div>
++            <p class="form-footnote">You can paste a password or use your password manager.</p>
++          </fieldset>
++          <fieldset data-step="2" hidden disabled>
++            <legend tabindex="-1">One last look</legend>
++            <p class="form-description">Step 3 of 3 · Check your details and choose how we keep in touch.</p>
++            <dl class="review-list">
++              <div><dt>Name</dt><dd id="review-name"></dd></div>
++              <div><dt>Email address</dt><dd id="review-email"></dd></div>
++              <div><dt>Password</dt><dd>Provided · hidden for your privacy</dd></div>
++            </dl>
++            <button type="button" class="review-edit" id="edit-details">Edit your details</button>
++            <label class="check-label" for="marketing"><input id="marketing" name="marketing" type="checkbox" value="yes"><span>Email me coffee news and special offers <span class="field-hint">(optional)</span>. You can unsubscribe at any time.</span></label>
++            <p class="form-footnote">Learn how we handle your information in our <a href="/privacy-policy">Privacy Policy</a>.</p>
++          </fieldset>
++          <p class="preview-notice">Registration preview: this form isn’t connected yet. Your details won’t be sent or saved, and no account will be created. Use a sample password.</p>
++          <div class="form-actions">
++            <button type="button" class="button-secondary" id="previous-step" hidden>Back</button>
++            <button type="submit" class="button-primary" id="next-step" disabled>Continue <span aria-hidden="true">→</span></button>
++          </div>
++          <noscript><p>JavaScript is needed for this registration preview. Enable it to explore the steps.</p></noscript>
++        </form>
++        <div id="registration-result" tabindex="-1" hidden>
++          <div class="success-mark" aria-hidden="true">✓</div>
++          <h3>That’s the preview!</h3>
++          <p>Your details passed the form checks. No account was created, and nothing was sent or saved.</p>
++          <p class="field-hint">The information you entered has been cleared.</p>
++          <button type="button" class="review-edit" id="restart-registration">Start again</button>
++        </div>
++        <p id="step-announcement" class="field-hint" role="status" aria-live="polite"></p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +358,148 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      'use strict';
++      const form = document.getElementById('rewards-form');
++      const panels = [...form.querySelectorAll('[data-step]')];
++      const indicators = [...document.querySelectorAll('.steps li')];
++      const next = document.getElementById('next-step');
++      const back = document.getElementById('previous-step');
++      const summary = document.getElementById('error-summary');
++      const result = document.getElementById('registration-result');
++      const password = document.getElementById('password');
++      const toggle = document.getElementById('toggle-password');
++      const announcement = document.getElementById('step-announcement');
++      let step = 0;
++      let completed = false;
++      form.noValidate = true;
++      next.disabled = false;
++
++      function errorFor(input) {
++        if (input.required && !input.value.trim()) return input.type === 'password' ? 'Enter a password.' : `Enter your ${input.id === 'email' ? 'email address' : input.id === 'given-name' ? 'first name' : 'last name'}.`;
++        if (input.type === 'email' && input.validity.typeMismatch) return 'Enter a valid email address, such as you@example.com.';
++        if (input.type === 'password' && (input.value.length < 15 || input.value.length > 128)) return 'Use between 15 and 128 characters for your password.';
++        if (input.maxLength > 0 && input.value.length > input.maxLength) return `Use no more than ${input.maxLength} characters.`;
++        return '';
++      }
++
++      function updateError(input, message) {
++        const error = document.getElementById(`${input.id}-error`);
++        if (!error) return;
++        error.textContent = message;
++        error.hidden = !message;
++        if (message) input.setAttribute('aria-invalid', 'true');
++        else input.removeAttribute('aria-invalid');
++      }
++
++      function showStep(index, focus = true) {
++        step = index;
++        summary.hidden = true;
++        summary.replaceChildren();
++        panels.forEach((panel, i) => {
++          panel.hidden = i !== step;
++          panel.disabled = i !== step;
++        });
++        indicators.forEach((item, i) => {
++          item.classList.toggle('complete', i < step);
++          if (i === step) item.setAttribute('aria-current', 'step');
++          else item.removeAttribute('aria-current');
++        });
++        back.hidden = step === 0;
++        next.textContent = step === 2 ? 'Finish preview' : 'Continue →';
++        // Never reflect user input as HTML, and never display the password.
++        if (step === 2) {
++          document.getElementById('review-name').textContent = `${form.elements.givenName.value.trim()} ${form.elements.familyName.value.trim()}`;
++          document.getElementById('review-email').textContent = form.elements.email.value.trim();
++        }
++        password.type = 'password';
++        toggle.textContent = 'Show password';
++        toggle.setAttribute('aria-pressed', 'false');
++        announcement.textContent = `Step ${step + 1} of 3`;
++        if (focus) panels[step].querySelector('legend').focus();
++      }
++
++      function validatePanel(index) {
++        const errors = [];
++        panels[index].querySelectorAll('input[required]').forEach(input => {
++          const message = errorFor(input);
++          updateError(input, message);
++          if (message) errors.push({ input, message });
++        });
++        if (!errors.length) return true;
++        showStep(index, false);
++        const heading = document.createElement('p');
++        heading.textContent = 'Please check the following:';
++        const list = document.createElement('ul');
++        errors.forEach(({ input, message }) => {
++          const item = document.createElement('li');
++          const link = document.createElement('a');
++          link.href = `#${input.id}`;
++          link.textContent = message;
++          link.addEventListener('click', event => { event.preventDefault(); input.focus(); });
++          item.append(link);
++          list.append(item);
++        });
++        summary.replaceChildren(heading, list);
++        summary.hidden = false;
++        summary.focus();
++        return false;
++      }
++
++      form.addEventListener('submit', event => {
++        // Static preview only: no network request, URL parameters, or persistence.
++        // A production endpoint must enforce server-side validation, CSRF protection,
++        // rate limits, email verification, and secure password hashing over HTTPS.
++        event.preventDefault();
++        if (completed || !validatePanel(step)) return;
++        if (step < 2) { showStep(step + 1); return; }
++        // Recheck every step, including values changed by autofill.
++        for (let i = 0; i < panels.length; i++) {
++          if (!validatePanel(i)) return;
++        }
++        completed = true;
++        form.reset();
++        password.type = 'password';
++        document.getElementById('review-name').textContent = '';
++        document.getElementById('review-email').textContent = '';
++        form.hidden = true;
++        document.querySelector('.steps').hidden = true;
++        announcement.textContent = '';
++        result.hidden = false;
++        result.focus();
++      });
++      back.addEventListener('click', () => showStep(Math.max(0, step - 1)));
++      document.getElementById('edit-details').addEventListener('click', () => showStep(0));
++      toggle.addEventListener('click', () => {
++        const show = password.type === 'password';
++        password.type = show ? 'text' : 'password';
++        toggle.textContent = show ? 'Hide password' : 'Show password';
++        toggle.setAttribute('aria-pressed', String(show));
++      });
++      form.addEventListener('input', event => {
++        if (event.target.matches('input[aria-invalid="true"]')) {
++          updateError(event.target, errorFor(event.target));
++          // Remove outdated summary links as a field is corrected.
++          summary.hidden = true;
++        }
++      });
++      document.getElementById('restart-registration').addEventListener('click', () => {
++        completed = false;
++        result.hidden = true;
++        form.hidden = false;
++        document.querySelector('.steps').hidden = false;
++        showStep(0);
++      });
++      window.addEventListener('pagehide', () => form.reset());
++      window.addEventListener('pageshow', event => {
++        if (event.persisted && !completed) showStep(0, false);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

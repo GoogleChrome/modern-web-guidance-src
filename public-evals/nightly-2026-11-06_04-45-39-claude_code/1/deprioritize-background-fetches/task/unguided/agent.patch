@@ -1,0 +1,36 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,32 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Load</title>
++</head>
++<body>
++<button id="go">Load</button>
++<pre id="out"></pre>
++<script>
++document.getElementById('go').addEventListener('click', () => {
++  const out = document.getElementById('out');
++
++  // Mission-critical: high network priority.
++  fetch('/api/data', { priority: 'high' })
++    .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
++    .then(t => { out.textContent = t; })
++    .catch(e => { out.textContent = 'Error: ' + e.message; });
++
++  // Analytics: low priority, survives page unload, never blocks the UI.
++  fetch('/api/analytics', {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ click: 1 }),
++    priority: 'low',
++    keepalive: true
++  }).catch(() => {});
++});
++</script>
++</body>
++</html>

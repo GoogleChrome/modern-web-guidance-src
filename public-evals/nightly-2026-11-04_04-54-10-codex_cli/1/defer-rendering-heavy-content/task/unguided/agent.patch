@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -86,13 +86,35 @@
+       transition: transform 0.3s ease;
+       /* Stacked expensive drop-shadows */
+       filter:
+         drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1)) drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1)) drop-shadow(0 30px 60px rgba(0, 0, 0, 0.1));
+-      will-change: transform;
+       position: relative;
+       overflow: hidden;
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 320px;
++    }
++
++    .debug-panel {
++      content-visibility: hidden;
++      visibility: hidden;
++      box-sizing: border-box;
++      height: 160px;
++      overflow: auto;
++      padding: 1rem;
++      border: 1px solid #e2e8f0;
++      border-radius: 0.5rem;
++      background: var(--card-bg);
++      font-family: monospace;
++    }
++
++    .debug-panel.is-open {
++      content-visibility: visible;
++      visibility: visible;
++    }
++
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
+@@ -207,8 +229,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn secondary" aria-controls="debug-panel" aria-expanded="false">Show Debug</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -217,22 +240,29 @@
+   <div class="feed" id="feed">
+     <div class="info-text">
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
++    <div id="cards"></div>
++    <section id="debug-panel" class="debug-panel" aria-label="Rendering debug information" aria-hidden="true" inert>
++      <strong>Rendering debug information</strong>
++      <p>Cards: 500. Offscreen card rendering is deferred with content-visibility: auto.</p>
++    </section>
+   </div>
+ 
+   <script>
+-    const feed = document.getElementById('feed');
++    const cards = document.getElementById('cards');
+     const regenBtn = document.getElementById('regenerate');
++    const debugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
+ 
+ 
+ 
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -278,18 +308,16 @@
+       });
+     }
+ 
+     function renderCards() {
+-      const info = feed.querySelector('.info-text');
+-      feed.innerHTML = '';
+-      feed.appendChild(info);
++      cards.replaceChildren();
+ 
+       const startTime = performance.now();
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+         fragment.appendChild(createCard(i));
+       }
+-      feed.appendChild(fragment);
++      cards.appendChild(fragment);
+ 
+       measureRender(startTime);
+     }
+ 
+@@ -297,10 +325,16 @@
+       setTimeout(renderCards, 500);
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
++    debugBtn.addEventListener('click', () => {
++      const isOpen = debugPanel.classList.toggle('is-open');
++      debugPanel.inert = !isOpen;
++      debugPanel.setAttribute('aria-hidden', String(!isOpen));
++      debugBtn.setAttribute('aria-expanded', String(isOpen));
++      debugBtn.textContent = isOpen ? 'Hide Debug' : 'Show Debug';
++    });
+ 
+-
+   </script>
+ </body>
+ 
+-</html>
+\ No newline at end of file
++</html>

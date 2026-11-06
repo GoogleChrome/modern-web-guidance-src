@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -174,9 +174,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="seasonal-menu">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -206,7 +206,77 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      // Browsers without WebMCP can continue using the menu normally.
++      if (typeof document.modelContext?.registerTool !== 'function') return;
++
++      const menuItemTool = {
++        name: 'get_menu_item',
++        description: 'Looks up a menu item and returns its name, description, and details URL. Use when a customer asks about a drink on the menu.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            itemName: {
++              type: 'string',
++              minLength: 1,
++              description: 'The menu item to look up, such as Maple Oat Latte, Dark Roast Espresso, or Cold Brew. Matching ignores capitalization and surrounding whitespace.'
++            }
++          },
++          required: ['itemName'],
++          additionalProperties: false
++        },
++        execute(input) {
++          if (!input || typeof input.itemName !== 'string' || !input.itemName.trim()) {
++            return { error: 'Provide a non-empty itemName to look up a menu item.' };
++          }
++          if (Object.keys(input).some(key => key !== 'itemName')) {
++            return { error: 'Only itemName is accepted.' };
++          }
++
++          // Read the displayed menu so assistant responses stay in sync with it.
++          const items = Array.from(document.querySelectorAll('#seasonal-menu .card'), card => ({
++            name: card.querySelector('h3').textContent.trim(),
++            description: card.querySelector('p').textContent.trim(),
++            detailsUrl: card.querySelector('a').href
++          }));
++          const item = items.find(entry => entry.name.toLowerCase() === input.itemName.trim().toLowerCase());
++          return item || {
++            error: `Menu item "${input.itemName.trim()}" not found.`,
++            availableItems: items.map(entry => entry.name)
++          };
++        },
++        annotations: { readOnlyHint: true }
++      };
++
++      let registrationController;
++
++      async function registerMenuTool() {
++        if (registrationController) return;
++        const controller = new AbortController();
++        registrationController = controller;
++        try {
++          await document.modelContext.registerTool(menuItemTool, { signal: controller.signal });
++        } catch (error) {
++          const cancelled = controller.signal.aborted;
++          controller.abort();
++          if (registrationController === controller) registrationController = undefined;
++          if (!cancelled) console.warn('Unable to register the menu lookup tool.', error);
++        }
++      }
++
++      window.addEventListener('pagehide', () => {
++        registrationController?.abort();
++        registrationController = undefined;
++      });
++      window.addEventListener('pageshow', event => {
++        if (event.persisted) registerMenuTool();
++      });
++      registerMenuTool();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

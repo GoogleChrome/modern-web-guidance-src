@@ -1,0 +1,51 @@
+diff --git a/diagnostics.html b/diagnostics.html
+new file mode 100644
+--- a/diagnostics.html
++++ b/diagnostics.html
+@@ -0,0 +1,46 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Script performance · The Daily Grind</title>
++  <link rel="stylesheet" href="diagnostics.css">
++  <script src="diagnostics-ui.js" defer></script>
++</head>
++<body>
++  <aside class="sidebar">
++    <a class="brand" href="/diagnostics.html"><span class="brand-icon">ϟ</span> Sitepulse<span class="brand-dot">.</span></a>
++    <div class="workspace"><span class="workspace-icon">DG</span><div>The Daily Grind<small>Website workspace</small></div></div>
++    <div class="nav-label">MONITORING</div>
++    <a class="nav-item active" href="/diagnostics.html"><span>◴</span> Script performance <span class="nav-dot"></span></a>
++    <a class="nav-item" href="/" target="_blank" rel="noopener"><span>↗</span> Open website</a>
++    <div class="sidebar-bottom"><span class="privacy-icon">◇</span><strong>Your data stays here</strong><p>Diagnostics run locally in your browser. No tracking. No uploads.</p><div class="profile"><span class="avatar">DG</span><div>The Daily Grind<small>Local workspace</small></div><span>⌄</span></div></div>
++  </aside>
++  <div class="app">
++    <header class="topbar"><div>Workspace <span>/</span> <strong>Script performance</strong></div><a href="/">Back to website ↗</a></header>
++    <main>
++      <div class="heading"><div><div class="eyebrow">WEBSITE DIAGNOSTICS</div><h1>Script performance</h1><p>Find the scripts standing between your site and a faster experience.</p></div><button id="export" class="button secondary">↓ &nbsp; Export report</button></div>
++      <div class="site-bar"><div><span class="site-icon">◎</span><strong id="site-host">The Daily Grind</strong><span class="tag">Current session</span></div><div><span id="live" class="live"><i></i> Live monitoring</span><button id="reload" class="button small">↻ &nbsp; New session</button></div></div>
++      <div class="metrics">
++        <article class="metric"><div>Scripts loaded <span>⌘</span></div><strong id="script-count">—</strong><p>Unique script resources</p></article>
++        <article class="metric"><div>Script download time <span>↓</span></div><strong id="download">—</strong><p>Combined request durations</p></article>
++        <article class="metric"><div>Slow-frame execution <span>◷</span></div><strong id="execution">—</strong><p>Attributed script execution</p></article>
++        <article class="metric"><div>Main-thread blocking <span>ϟ</span></div><strong id="blocking">—</strong><p>Blocking in long animation frames</p></article>
++      </div>
++      <div class="insight"><span class="insight-icon">✧</span><div><strong id="insight-title">Listening to your website</strong><p id="insight-text">Interact with the preview below to capture script activity.</p></div><span class="local-badge">LOCAL ANALYSIS</span></div>
++      <section class="panel">
++        <div class="panel-heading"><div><h2>Script breakdown <span id="row-count" class="count">0</span></h2><p>A closer look at what your scripts are costing.</p></div><div class="table-tools"><label class="search"><span>⌕</span><input id="search" placeholder="Search scripts…" aria-label="Search scripts"></label><select id="filter" aria-label="Filter scripts"><option value="all">All scripts</option><option value="slow">Slow scripts</option><option value="third">Third-party</option></select></div></div>
++        <div class="table-scroll"><table><thead><tr><th>Script / source</th><th><button id="sort-download">Download ↕</button></th><th><button id="sort-execution">Execution ↓</button></th><th>Transfer</th><th>Impact</th></tr></thead><tbody id="scripts"></tbody></table></div>
++        <div class="table-footer"><span id="table-summary">Waiting for script data…</span><span>Execution includes slow frames only <span title="Only script execution attributed by the Long Animation Frames API is included.">ⓘ</span></span></div>
++      </section>
++      <div class="lower-grid">
++        <section class="panel preview-panel"><div class="panel-heading"><div><h2>Live website preview <span class="preview-dot"></span></h2><p>Browse your site to capture real interactions.</p></div><button id="pause" class="button small">Ⅱ &nbsp; Pause</button></div><iframe id="preview" src="/" title="The Daily Grind website being monitored"></iframe></section>
++        <section class="panel guide"><div class="eyebrow">UNDERSTAND YOUR RESULTS</div><h2>Small scripts. Big impact.</h2><p>A quick guide to reading your report.</p><div class="guide-item"><span class="guide-number">01</span><div><h3>Start with execution</h3><p>Scripts taking over 50 ms in a slow frame can delay interactions.</p></div></div><div class="guide-item"><span class="guide-number">02</span><div><h3>Check third-party scripts</h3><p>Review analytics, widgets, and embeds. Load optional code when it’s needed.</p></div></div><div class="guide-item"><span class="guide-number">03</span><div><h3>Keep timing in context</h3><p>Downloads can overlap. A long download doesn’t prove a script blocks rendering.</p></div></div><a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing" target="_blank" rel="noopener">Learn about script timing ↗</a></section>
++      </div>
++      <p class="footnote" id="support">Checking browser capabilities…</p>
++    </main>
++    <footer><span><span class="footer-mark">ϟ</span> A little insight. A faster website.</span><span>Sitepulse · Local diagnostics</span></footer>
++  </div>
++  <dialog id="detail"><button id="close-detail" class="button small">Close ×</button><h2>Script details</h2><pre id="detail-content"></pre></dialog>
++</body>
++</html>

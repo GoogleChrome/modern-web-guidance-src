@@ -1,0 +1,41 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,37 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Keep cards full size unless scroll animation is supported and wanted. */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        @keyframes card-grow {
++          from { scale: 0.5; }
++          to { scale: 1; }
++        }
++
++        @keyframes card-shrink {
++          from { scale: 1; }
++          to { scale: 0.5; }
++        }
++
++        .grid > .card {
++          animation:
++            card-grow auto linear backwards,
++            card-shrink auto linear forwards;
++          animation-timeline: view(block);
++          animation-range: entry, exit;
++        }
++
++        /* Keep links at full size while navigating a card with the keyboard. */
++        .grid > .card:focus-within {
++          animation: none;
++          scale: 1;
++        }
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

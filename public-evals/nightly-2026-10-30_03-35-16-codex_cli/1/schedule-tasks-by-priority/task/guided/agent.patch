@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,95 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations simulator */
++    .operations {
++      margin-top: 48px;
++      padding: clamp(20px, 4vw, 36px);
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f6f2ef;
++    }
++
++    .operations-header, .queue-heading, .task-topline {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .eyebrow {
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++      color: #765d51;
++    }
++
++    .operations h2 { font-size: 1.65rem; margin: 4px 0; }
++    .operations-description { margin-top: 12px; max-width: 65ch; color: #705c52; }
++    .queue-indicator { border-radius: 20px; padding: 5px 12px; background: #e5ecdf; color: #36532b; font-size: 0.8rem; }
++    .queue-indicator::before { content: '●'; margin-right: 7px; font-size: 0.65rem; }
++
++    .operation-actions {
++      display: grid;
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++      gap: 12px;
++      margin: 24px 0 16px;
++    }
++
++    .operation-button {
++      font: inherit;
++      text-align: left;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      padding: 16px;
++      cursor: pointer;
++    }
++
++    .operation-button:hover { border-color: var(--primary); background: #fffaf5; }
++    .operations button:focus-visible { outline: 3px solid #a55a14; outline-offset: 4px; }
++    .operation-button strong, .operation-button small { display: block; }
++    .operation-button strong { margin: 8px 0 3px; font-size: 0.95rem; }
++    .operation-button small { color: #705c52; font-size: 0.78rem; }
++    .priority { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
++    .priority-urgent { color: #a23823; }
++    .priority-standard { color: #845507; }
++    .priority-background { color: #4e6768; }
++
++    .batch-button {
++      width: 100%;
++      margin: 0;
++      border: 0;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .queue-stats { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 0.8rem; color: #705c52; margin: 22px 0; }
++    .queue-stats strong { color: var(--primary); font-variant-numeric: tabular-nums; }
++    .queue-panel { padding: 20px; border-radius: 8px; background: white; border: 1px solid #e7dfda; }
++    .queue-heading h3 { font-size: 0.9rem; }
++    .queue-heading span { font-size: 0.72rem; color: #705c52; }
++    .queue-empty { padding: 28px 12px; text-align: center; color: #705c52; font-size: 0.9rem; }
++    .task-list { list-style: none; max-height: 310px; overflow-y: auto; }
++    .task-row { border-top: 1px solid #eee7e2; padding: 12px 0; font-size: 0.8rem; }
++    .task-row:first-child { margin-top: 14px; }
++    .task-topline strong { font-weight: 600; }
++    .task-state { color: #705c52; font-size: 0.75rem; }
++    .task-row progress { display: block; width: 100%; height: 5px; margin-top: 8px; accent-color: var(--primary); }
++    .queue-note { font-size: 0.75rem; margin-top: 14px; color: #705c52; }
++    .queue-message { margin-top: 8px; font-size: 0.8rem; color: #36532b; min-height: 1.6em; }
++
++    @media (max-width: 640px) {
++      .operation-actions { grid-template-columns: 1fr; }
++      .operations h2 { font-size: 1.4rem; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +281,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="operations" aria-labelledby="operations-title">
++      <div class="operations-header">
++        <div>
++          <p class="eyebrow">Behind the counter</p>
++          <h2 id="operations-title">Operations queue simulator</h2>
++        </div>
++        <span class="queue-indicator" id="queue-indicator">Ready to brew</span>
++      </div>
++      <p class="operations-description">A busy coffee shop runs on good timing. Queue up a few tasks and watch urgent orders move to the front while the page stays responsive.</p>
++
++      <div class="operation-actions">
++        <button type="button" class="operation-button" data-task="checkout">
++          <span class="priority priority-urgent">01 / Urgent</span>
++          <strong>Run checkout</strong>
++          <small>Process a customer's order first.</small>
++        </button>
++        <button type="button" class="operation-button" data-task="menu">
++          <span class="priority priority-standard">02 / Standard</span>
++          <strong>Update menu</strong>
++          <small>Refresh the seasonal offerings.</small>
++        </button>
++        <button type="button" class="operation-button" data-task="telemetry">
++          <span class="priority priority-background">03 / Background</span>
++          <strong>Log telemetry</strong>
++          <small>Record simulated shop activity.</small>
++        </button>
++      </div>
++      <button type="button" class="btn batch-button" id="run-batch">Run mixed batch <span aria-hidden="true">→</span></button>
++      <div class="queue-stats">
++        <span><strong id="queued-count">0</strong> queued</span>
++        <span><strong id="active-count">0</strong> running</span>
++        <span><strong id="completed-count">0</strong> completed</span>
++      </div>
++      <div class="queue-panel">
++        <div class="queue-heading">
++          <h3>Execution log</h3>
++          <span>Urgent → Standard → Background</span>
++        </div>
++        <p class="queue-empty" id="queue-empty">All quiet at the counter. Run a task to get started.</p>
++        <ol class="task-list" id="task-list" aria-label="Task execution log" tabindex="0"></ol>
++      </div>
++      <p class="queue-note">Mixed batch: 2 checkouts, 2 menu updates, 2 telemetry logs. Higher priorities run first; equal priorities keep their arrival order. All operations are simulated.</p>
++      <p class="queue-message" id="queue-message" role="status" aria-live="polite" aria-atomic="true">Ready when you are.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +337,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./operations.js"></script>
+ </body>
+ 
+ </html>

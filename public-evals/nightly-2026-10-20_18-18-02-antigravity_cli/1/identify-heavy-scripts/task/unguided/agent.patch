@@ -1,0 +1,298 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,294 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Script Performance Panel */
++    #perf-monitor {
++      position: fixed;
++      bottom: 16px;
++      right: 16px;
++      width: 420px;
++      max-height: 50vh;
++      background: #1e1e1e;
++      color: #f5f5f5;
++      border-radius: 8px;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 12px;
++      z-index: 9999;
++      display: flex;
++      flex-direction: column;
++      overflow: hidden;
++      border: 1px solid #333;
++    }
++
++    #perf-monitor-header {
++      background: #2d2d2d;
++      padding: 8px 12px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-weight: bold;
++      border-bottom: 1px solid #3d3d3d;
++      cursor: pointer;
++    }
++
++    #perf-monitor-body {
++      padding: 10px 12px;
++      overflow-y: auto;
++    }
++
++    .perf-section-title {
++      color: var(--accent);
++      font-weight: bold;
++      margin: 8px 0 4px;
++      text-transform: uppercase;
++      font-size: 10px;
++      letter-spacing: 0.5px;
++    }
++
++    .perf-item {
++      padding: 4px 0;
++      border-bottom: 1px solid #2c2c2c;
++      display: flex;
++      justify-content: space-between;
++      gap: 8px;
++      word-break: break-all;
++    }
++
++    .perf-badge-slow {
++      color: #ff5252;
++      font-weight: bold;
++      white-space: nowrap;
++    }
++
++    .perf-badge-warn {
++      color: #ffab40;
++      font-weight: bold;
++      white-space: nowrap;
++    }
++
++    .perf-badge-ok {
++      color: #69f0ae;
++      white-space: nowrap;
++    }
+   </style>
++  <script>
++    (function initScriptProfiler() {
++      const SLOW_RESOURCE_MS = 100;
++      const LONG_TASK_MS = 50;
++
++      const state = {
++        resources: [],
++        longTasks: [],
++        longFrames: [],
++        renderBlocking: []
++      };
++
++      function formatScriptName(url) {
++        if (!url) return '(inline / internal script)';
++        try {
++          const parsed = new URL(url, window.location.origin);
++          return parsed.pathname === '/' ? parsed.href : parsed.pathname + parsed.search;
++        } catch {
++          return url;
++        }
++      }
++
++      // 1. Detect render-blocking <script> tags in DOM
++      function checkRenderBlockingScripts() {
++        const headScripts = document.querySelectorAll('head script[src]:not([async]):not([defer]):not([type="module"])');
++        state.renderBlocking = Array.from(headScripts).map(s => s.src);
++      }
++
++      // 2. Observe Script Resource Timing (Network load & parse)
++      if ('PerformanceObserver' in window) {
++        try {
++          const resourceObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              if (entry.initiatorType === 'script' || entry.name.endsWith('.js')) {
++                const record = {
++                  name: entry.name,
++                  duration: Math.round(entry.duration),
++                  dns: Math.round(entry.domainLookupEnd - entry.domainLookupStart),
++                  tcp: Math.round(entry.connectEnd - entry.connectStart),
++                  ttfb: Math.round(entry.responseStart - entry.requestStart),
++                  download: Math.round(entry.responseEnd - entry.responseStart),
++                  transferSize: entry.transferSize || 0,
++                  renderBlockingStatus: entry.renderBlockingStatus || 'unknown'
++                };
++                state.resources.push(record);
++                if (record.duration >= SLOW_RESOURCE_MS || record.renderBlockingStatus === 'blocking') {
++                  console.warn('[ScriptProfiler] Slow or blocking script resource:', record);
++                }
++                renderPanel();
++              }
++            }
++          });
++          resourceObserver.observe({ type: 'resource', buffered: true });
++        } catch (e) {
++          console.debug('[ScriptProfiler] Resource observer not supported:', e);
++        }
++
++        // 3. Observe Long Tasks (>50ms main-thread blocking)
++        try {
++          const longTaskObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              const attribution = (entry.attribution || []).map(a => ({
++                name: a.name,
++                containerType: a.containerType,
++                containerSrc: a.containerSrc,
++                containerId: a.containerId,
++                containerName: a.containerName
++              }));
++              const record = {
++                startTime: Math.round(entry.startTime),
++                duration: Math.round(entry.duration),
++                attribution
++              };
++              state.longTasks.push(record);
++              console.warn('[ScriptProfiler] Main-thread Long Task detected:', record);
++              renderPanel();
++            }
++          });
++          longTaskObserver.observe({ type: 'longtask', buffered: true });
++        } catch (e) {
++          console.debug('[ScriptProfiler] LongTask observer not supported:', e);
++        }
++
++        // 4. Observe Long Animation Frames (LoAF) for exact script attribution
++        if (PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('long-animation-frame')) {
++          try {
++            const loafObserver = new PerformanceObserver((list) => {
++              for (const entry of list.getEntries()) {
++                for (const script of entry.scripts || []) {
++                  const record = {
++                    sourceURL: script.sourceURL || '(inline)',
++                    sourceFunctionName: script.sourceFunctionName || '(anonymous)',
++                    invoker: script.invoker || 'unknown',
++                    invokerType: script.invokerType || 'unknown',
++                    duration: Math.round(script.duration),
++                    executionStart: Math.round(script.executionStart),
++                    forcedStyleAndLayoutDuration: Math.round(script.forcedStyleAndLayoutDuration || 0)
++                  };
++                  state.longFrames.push(record);
++                  console.warn('[ScriptProfiler] Slow script execution (LoAF):', record);
++                }
++                renderPanel();
++              }
++            });
++            loafObserver.observe({ type: 'long-animation-frame', buffered: true });
++          } catch (e) {
++            console.debug('[ScriptProfiler] LoAF observer error:', e);
++          }
++        }
++      }
++
++      // UI Panel rendering
++      function renderPanel() {
++        const body = document.getElementById('perf-monitor-body');
++        if (!body) return;
++
++        checkRenderBlockingScripts();
++
++        const sortedResources = [...state.resources].sort((a, b) => b.duration - a.duration);
++        const sortedLoaf = [...state.longFrames].sort((a, b) => b.duration - a.duration);
++        const sortedLongTasks = [...state.longTasks].sort((a, b) => b.duration - a.duration);
++
++        let html = '';
++
++        // Render-blocking section
++        html += `<div class="perf-section-title">Render-Blocking Scripts (${state.renderBlocking.length})</div>`;
++        if (state.renderBlocking.length === 0) {
++          html += `<div class="perf-item"><span>None detected in &lt;head&gt;</span><span class="perf-badge-ok">OK</span></div>`;
++        } else {
++          for (const src of state.renderBlocking) {
++            html += `<div class="perf-item"><span>${formatScriptName(src)}</span><span class="perf-badge-slow">BLOCKING</span></div>`;
++          }
++        }
++
++        // Script execution bottlenecks (LoAF & Long Tasks)
++        html += `<div class="perf-section-title">Slow Script Execution / Long Tasks (${sortedLoaf.length + sortedLongTasks.length})</div>`;
++        if (sortedLoaf.length === 0 && sortedLongTasks.length === 0) {
++          html += `<div class="perf-item"><span>No main-thread blocking &gt;${LONG_TASK_MS}ms</span><span class="perf-badge-ok">0ms</span></div>`;
++        } else {
++          for (const item of sortedLoaf) {
++            const label = `${formatScriptName(item.sourceURL)} [${item.sourceFunctionName}]`;
++            html += `<div class="perf-item"><span>${label}</span><span class="perf-badge-slow">${item.duration}ms</span></div>`;
++          }
++          for (const task of sortedLongTasks) {
++            const attr = task.attribution[0];
++            const src = attr && (attr.containerSrc || attr.containerName || attr.name) ? (attr.containerSrc || attr.containerName || attr.name) : 'Main thread task';
++            html += `<div class="perf-item"><span>${formatScriptName(src)} (@${task.startTime}ms)</span><span class="perf-badge-slow">${task.duration}ms</span></div>`;
++          }
++        }
++
++        // Network timing for scripts
++        html += `<div class="perf-section-title">Script Network Load (${sortedResources.length})</div>`;
++        if (sortedResources.length === 0) {
++          html += `<div class="perf-item"><span>No external scripts loaded</span><span class="perf-badge-ok">0ms</span></div>`;
++        } else {
++          for (const res of sortedResources) {
++            const badgeClass = res.duration >= SLOW_RESOURCE_MS ? 'perf-badge-slow' : (res.duration >= 50 ? 'perf-badge-warn' : 'perf-badge-ok');
++            const sizeKb = res.transferSize ? ` (${(res.transferSize / 1024).toFixed(1)}KB)` : '';
++            html += `<div class="perf-item"><span>${formatScriptName(res.name)}${sizeKb}</span><span class="${badgeClass}">${res.duration}ms</span></div>`;
++          }
++        }
++
++        body.innerHTML = html;
++      }
++
++      // Expose global helper for console inspection
++      window.getSlowScriptsReport = function () {
++        checkRenderBlockingScripts();
++        const report = {
++          renderBlockingScripts: state.renderBlocking,
++          slowNetworkScripts: [...state.resources].sort((a, b) => b.duration - a.duration),
++          slowExecutionFrames: [...state.longFrames].sort((a, b) => b.duration - a.duration),
++          longTasks: [...state.longTasks].sort((a, b) => b.duration - a.duration)
++        };
++        console.group('=== Slow Scripts Diagnostic Report ===');
++        console.log('Render-Blocking Scripts:', report.renderBlockingScripts);
++        console.table(report.slowNetworkScripts);
++        console.table(report.slowExecutionFrames);
++        console.table(report.longTasks);
++        console.groupEnd();
++        return report;
++      };
++
++      window.addEventListener('DOMContentLoaded', () => {
++        const panel = document.createElement('aside');
++        panel.id = 'perf-monitor';
++        panel.innerHTML = `
++          <div id="perf-monitor-header" title="Click to toggle details">
++            <span>Script Performance Diagnostics</span>
++            <span id="perf-monitor-toggle">−</span>
++          </div>
++          <div id="perf-monitor-body">Analyzing scripts...</div>
++        `;
++        document.body.appendChild(panel);
++
++        document.getElementById('perf-monitor-header').addEventListener('click', () => {
++          const body = document.getElementById('perf-monitor-body');
++          const toggle = document.getElementById('perf-monitor-toggle');
++          const isHidden = body.style.display === 'none';
++          body.style.display = isHidden ? 'block' : 'none';
++          toggle.textContent = isHidden ? '−' : '+';
++        });
++
++        renderPanel();
++      });
++
++      window.addEventListener('load', () => {
++        setTimeout(() => {
++          renderPanel();
++          window.getSlowScriptsReport();
++        }, 100);
++      });
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

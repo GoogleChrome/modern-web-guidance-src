@@ -1,0 +1,226 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,12 +151,179 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Hidden SVG Definitions */
++    .svg-defs {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    /* 1. Featured Barista Section & Shaped Avatar */
++    .barista-spotlight {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      margin-top: 60px;
++      background: white;
++      padding: 40px;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
++    }
++
++    .avatar-wrapper {
++      filter: drop-shadow(0 8px 18px rgba(78, 52, 46, 0.25));
++      flex-shrink: 0;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: 240px;
++      height: 240px;
++      object-fit: cover;
++      clip-path: url(#splat-clip);
++      -webkit-clip-path: url(#splat-clip);
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M50,6 C63,4 74,14 82,22 C91,31 97,42 94,55 C91,68 79,76 69,84 C58,92 46,97 33,93 C20,89 12,77 7,64 C2,51 5,36 14,25 C23,14 37,8 50,6 Z'/%3E%3C/svg%3E");
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M50,6 C63,4 74,14 82,22 C91,31 97,42 94,55 C91,68 79,76 69,84 C58,92 46,97 33,93 C20,89 12,77 7,64 C2,51 5,36 14,25 C23,14 37,8 50,6 Z'/%3E%3C/svg%3E");
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++    }
++
++    .barista-info {
++      flex: 1;
++      min-width: 260px;
++    }
++
++    .barista-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 20px;
++      margin-bottom: 10px;
++    }
++
++    .barista-info h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      font-size: 1.8rem;
++    }
++
++    /* 2. Unified Loyalty Banner Card */
++    .loyalty-section {
++      margin-top: 60px;
++    }
++
++    .unified-card {
++      display: flex;
++      align-items: stretch;
++      filter: drop-shadow(0 10px 24px rgba(62, 39, 35, 0.18));
++      max-width: 850px;
++      margin: 0 auto;
++    }
++
++    .card-body {
++      flex: 1;
++      background: white;
++      padding: 36px 40px;
++      border-radius: 16px 0 0 16px;
++    }
++
++    .card-body h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      font-size: 1.75rem;
++    }
++
++    .card-body p {
++      margin-bottom: 15px;
++      color: var(--text);
++    }
++
++    .card-accent {
++      width: 140px;
++      flex-shrink: 0;
++      background: linear-gradient(135deg, var(--accent), #e65100);
++      border-radius: 0 16px 16px 0;
++      margin-left: -1px;
++      clip-path: url(#accent-cutout-clip);
++      -webkit-clip-path: url(#accent-cutout-clip);
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M0,0 L100,0 C60,25 60,75 100,100 L0,100 Z'/%3E%3C/svg%3E");
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M0,0 L100,0 C60,25 60,75 100,100 L0,100 Z'/%3E%3C/svg%3E");
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++    }
++
++    /* 3. Promo Card with Top Circular Notch Cutout via Gradient */
++    .promo-section {
++      margin-top: 60px;
++      display: flex;
++      justify-content: center;
++    }
++
++    .gradient-masked-card {
++      background: linear-gradient(135deg, var(--primary), #3e2723);
++      color: white;
++      padding: 52px 36px 36px;
++      border-radius: 16px;
++      max-width: 520px;
++      width: 100%;
++      text-align: center;
++      mask-image: radial-gradient(circle 28px at 50% 0, transparent 28px, #000 29px);
++      -webkit-mask-image: radial-gradient(circle 28px at 50% 0, transparent 28px, #000 29px);
++    }
++
++    .gradient-masked-card h3 {
++      font-size: 1.6rem;
++      margin-bottom: 10px;
++      color: var(--accent);
++    }
++
++    .gradient-masked-card p {
++      margin-bottom: 10px;
++      opacity: 0.92;
++    }
++
++    .promo-code {
++      display: inline-block;
++      margin-top: 10px;
++      padding: 8px 18px;
++      background: rgba(255, 171, 64, 0.15);
++      border: 1px dashed var(--accent);
++      border-radius: 6px;
++      font-weight: bold;
++      letter-spacing: 2px;
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <!-- Scalable SVG Clip Paths for Shaped Elements -->
++  <svg class="svg-defs" aria-hidden="true" width="0" height="0">
++    <defs>
++      <clipPath id="splat-clip" clipPathUnits="objectBoundingBox">
++        <path d="M0.5,0.06 C0.63,0.04 0.74,0.14 0.82,0.22 C0.91,0.31 0.97,0.42 0.94,0.55 C0.91,0.68 0.79,0.76 0.69,0.84 C0.58,0.92 0.46,0.97 0.33,0.93 C0.20,0.89 0.12,0.77 0.07,0.64 C0.02,0.51 0.05,0.36 0.14,0.25 C0.23,0.14 0.37,0.08 0.5,0.06 Z" />
++      </clipPath>
++      <clipPath id="accent-cutout-clip" clipPathUnits="objectBoundingBox">
++        <path d="M0,0 L1,0 C0.6,0.25 0.6,0.75 1,1 L0,1 Z" />
++      </clipPath>
++    </defs>
++  </svg>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -194,8 +361,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-spotlight">
++      <div class="avatar-wrapper">
++        <img
++          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80"
++          alt="Featured Barista Elena Vance"
++          class="shaped-avatar"
++        />
++      </div>
++      <div class="barista-info">
++        <span class="barista-badge">Featured Barista</span>
++        <h2>Meet Elena Vance</h2>
++        <p>With over eight years crafting specialty pour-overs and signature espresso blends, Elena brings passion and precision to every cup. Ask her about this month's single-origin Ethiopian roast!</p>
++      </div>
++    </section>
++
++    <section class="loyalty-section">
++      <div class="unified-card">
++        <div class="card-body">
++          <h2>Daily Grind Rewards</h2>
++          <p>Earn beans with every sip! Join our loyalty club today to unlock free handcrafted drinks, birthday treats, and exclusive early access to seasonal micro-lots.</p>
++          <a href="/rewards" class="btn">Join the Club</a>
++        </div>
++        <div class="card-accent"></div>
++      </div>
++    </section>
++
++    <section class="promo-section">
++      <div class="gradient-masked-card">
++        <h3>Morning Rush Special</h3>
++        <p>Get 20% off any handcrafted espresso beverage and fresh pastry before 9 AM all week long.</p>
++        <div class="promo-code">EARLYBIRD20</div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

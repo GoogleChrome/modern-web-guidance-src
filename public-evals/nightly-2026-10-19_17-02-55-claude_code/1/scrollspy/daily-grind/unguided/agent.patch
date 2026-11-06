@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+index 66c9173..f912bb4 100644
+--- a/index.html
++++ b/index.html
+@@ -62,10 +62,24 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    nav a.active:not(.logout-link) {
++      border-bottom: 2px solid var(--accent);
++      padding-bottom: 2px;
++    }
++
++    html {
++      scroll-behavior: smooth;
++    }
++
++    [id] {
++      scroll-margin-top: 4rem;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,6 +174,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
++      <li><a href="#home">Home</a></li>
++      <li><a href="#seasonal">Seasonal</a></li>
++      <li><a href="#footer">About</a></li>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+@@ -168,14 +185,14 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="home">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -197,7 +214,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +224,27 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Highlight the nav link for the section currently in view.
++    const navLinks = [...document.querySelectorAll('nav a[href^="#"]')];
++    const sections = navLinks.map(a => document.querySelector(a.getAttribute('href')));
++
++    function updateActiveLink() {
++      const offset = document.querySelector('nav').offsetHeight + 40;
++      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
++      let current = 0;
++      sections.forEach((section, i) => {
++        if (section.getBoundingClientRect().top <= offset) current = i;
++      });
++      if (atBottom) current = sections.length - 1;
++      navLinks.forEach((a, i) => a.classList.toggle('active', i === current));
++    }
++
++    window.addEventListener('scroll', updateActiveLink, { passive: true });
++    window.addEventListener('resize', updateActiveLink);
++    updateActiveLink();
++  </script>
++
+ </body>
+ 
+ </html>

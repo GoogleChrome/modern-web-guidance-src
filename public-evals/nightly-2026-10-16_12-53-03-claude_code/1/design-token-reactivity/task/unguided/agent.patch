@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,47 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Layout density toggle: hidden unless the browser supports style queries */
++    :root {
++      --style-queries-supported: yes;
++    }
++
++    #toggle-spacious {
++      display: none;
++      margin: 10px auto 0;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 5px;
++      padding: 8px 16px;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    @container style(--style-queries-supported: yes) {
++      #toggle-spacious {
++        display: block;
++      }
++    }
++
++    /* The container holds the density; JS only sets --density on it */
++    #target-container {
++      --density: compact;
++    }
++
++    #target-item {
++      transition: padding 0.3s;
++    }
++
++    @container style(--density: spacious) {
++      #target-item {
++        padding: 48px 36px;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -176,10 +215,12 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <button type="button" id="toggle-spacious" aria-pressed="false">Toggle spacious layout</button>
++      <div id="target-container">
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="target-item">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -193,8 +234,9 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +248,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const toggleSpacious = document.getElementById('toggle-spacious');
++    const targetContainer = document.getElementById('target-container');
++
++    toggleSpacious.addEventListener('click', () => {
++      const spacious = targetContainer.style.getPropertyValue('--density') !== 'spacious';
++      targetContainer.style.setProperty('--density', spacious ? 'spacious' : 'compact');
++      toggleSpacious.setAttribute('aria-pressed', String(spacious));
++    });
++  </script>
++
+ </body>
+ 
+ </html>

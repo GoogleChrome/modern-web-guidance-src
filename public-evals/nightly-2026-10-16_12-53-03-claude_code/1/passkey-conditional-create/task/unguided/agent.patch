@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,46 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-in */
++    .signin {
++      max-width: 380px;
++      margin: 0 auto;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      text-align: center;
++      margin-bottom: 16px;
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.9rem;
++      margin-bottom: 12px;
++    }
++
++    .signin input {
++      display: block;
++      width: 100%;
++      padding: 8px 10px;
++      margin-top: 4px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .signin button {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -175,8 +213,23 @@
+   </header>
+ 
+   <main class="container">
+     <section>
++      <form id="signin-form" class="signin">
++        <h2>Sign In</h2>
++        <label>Username
++          <input type="text" name="username" autocomplete="username webauthn" required>
++        </label>
++        <label>Password
++          <input type="password" name="password" autocomplete="current-password" required>
++        </label>
++        <button type="submit" class="btn" data-testid="signin-button">Sign In</button>
++      </form>
++    </section>
++  </main>
++
++  <main class="container">
++    <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -206,7 +259,68 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const b64urlToBuffer = (value) => {
++      const b64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
++      return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer;
++    };
++
++    const postJSON = (url, body) => fetch(url, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      credentials: 'same-origin',
++      body: JSON.stringify(body || {})
++    });
++
++    const toCreationOptions = (json) => {
++      if (window.PublicKeyCredential && PublicKeyCredential.parseCreationOptionsFromJSON) {
++        return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++      }
++      return {
++        ...json,
++        challenge: b64urlToBuffer(json.challenge),
++        user: { ...json.user, id: b64urlToBuffer(json.user.id) },
++        excludeCredentials: (json.excludeCredentials || []).map((c) => ({ ...c, id: b64urlToBuffer(c.id) }))
++      };
++    };
++
++    // Silently promote a password sign-in to a passkey. Never surfaces UI or errors.
++    async function promotePasskey() {
++      try {
++        if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) return;
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (!capabilities || !capabilities.conditionalCreate) return;
++
++        const optionsRes = await postJSON('/api/register/options');
++        if (!optionsRes.ok) return;
++        const publicKey = toCreationOptions(await optionsRes.json());
++
++        const credential = await navigator.credentials.create({ publicKey, mediation: 'conditional' });
++        if (!credential) return;
++
++        await postJSON('/api/register/verify', credential.toJSON());
++      } catch (e) {
++        // Intentionally silent: background registration must never disturb the user.
++      }
++    }
++
++    document.getElementById('signin-form').addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const form = event.currentTarget;
++      try {
++        const res = await postJSON('/api/signin', {
++          username: form.elements.username.value,
++          password: form.elements.password.value
++        });
++        if (!res.ok) return;
++      } catch (e) {
++        return;
++      }
++      promotePasskey();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

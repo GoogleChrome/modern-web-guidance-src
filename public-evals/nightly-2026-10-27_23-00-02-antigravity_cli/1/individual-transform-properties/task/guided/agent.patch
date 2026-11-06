@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured Promo Badge */
++    .promo-wrapper {
++      display: flex;
++      justify-content: center;
++      margin: 15px 0 25px;
++    }
++
++    .target {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      font-size: 0.85rem;
++      padding: 12px 18px;
++      border-radius: 999px;
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
++      cursor: pointer;
++      user-select: none;
++      translate: 0px;
++      rotate: 0deg;
++      scale: 1;
++      transition: scale 0.3s ease;
++      animation:
++        spin 6s linear infinite,
++        slide 3s ease-in-out infinite alternate;
++      @media (prefers-reduced-motion: reduce) {
++        animation-duration: 20s;
++      }
++    }
++
++    .target:hover {
++      scale: 1.2;
++    }
++
++    @keyframes spin {
++      from {
++        rotate: 0deg;
++      }
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes slide {
++      from {
++        translate: -30px 0;
++      }
++      to {
++        translate: 30px 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,8 +230,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-wrapper">
++        <span class="target">★ Featured Promo ★</span>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

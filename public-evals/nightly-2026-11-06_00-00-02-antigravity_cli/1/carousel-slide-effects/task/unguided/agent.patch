@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,119 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Horizontal Product Carousel */
++    .carousel-section {
++      margin-top: 50px;
++    }
++
++    .carousel-header {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .carousel-subtitle {
++      text-align: center;
++      color: #5d4037;
++      font-size: 0.95rem;
++      margin-bottom: 10px;
++    }
++
++    @keyframes scale-on-scroll {
++      0% {
++        transform: scale(0.75);
++        opacity: 0.65;
++      }
++      50% {
++        transform: scale(1.1);
++        opacity: 1;
++      }
++      100% {
++        transform: scale(0.75);
++        opacity: 0.65;
++      }
++    }
++
++    .scroller {
++      display: flex;
++      gap: 2rem;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      padding: 3rem calc(50% - 140px);
++      margin: 0 auto;
++      align-items: stretch;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++      -webkit-overflow-scrolling: touch;
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
++    .scroller .card {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      overflow: hidden;
++      padding: 0;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
++      transform-origin: center center;
++      view-timeline-name: --card-timeline;
++      view-timeline-axis: inline;
++      animation: scale-on-scroll linear both;
++      animation-timeline: view(inline);
++      animation-range: cover 0% cover 100%;
++      will-change: transform, opacity;
++    }
++
++    .scroller .card:focus-within {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .product-image {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .product-content {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++      justify-content: space-between;
++    }
++
++    .product-price {
++      font-weight: bold;
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin-top: 10px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller .card {
++        animation: none;
++        transform: none;
++        opacity: 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +305,98 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section" aria-labelledby="featured-products-heading">
++      <h2 id="featured-products-heading" class="carousel-header">Artisanal Roasts &amp; Blends</h2>
++      <p id="carousel-instructions" class="carousel-subtitle">Scroll horizontally or use left and right arrow keys to explore our signature coffee collection.</p>
++      <div class="scroller" role="region" aria-labelledby="featured-products-heading" aria-describedby="carousel-instructions" tabindex="0">
++        <article class="card product-card">
++          <img class="product-image" src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of Ethiopian Yirgacheffe whole bean coffee next to roasted coffee beans">
++          <div class="product-content">
++            <div>
++              <h3>Ethiopian Yirgacheffe</h3>
++              <p>Bright floral aroma with crisp notes of bergamot, jasmine, and sweet Meyer lemon.</p>
++            </div>
++            <div>
++              <p class="product-price">$18.50</p>
++              <a href="/products/ethiopian-yirgacheffe" class="btn" aria-label="Buy Ethiopian Yirgacheffe for $18.50">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img class="product-image" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Freshly brewed cup of Colombian Supremo coffee on a wooden table">
++          <div class="product-content">
++            <div>
++              <h3>Colombian Supremo</h3>
++              <p>Medium-bodied roast featuring rich caramel sweetness and a roasted hazelnut finish.</p>
++            </div>
++            <div>
++              <p class="product-price">$16.00</p>
++              <a href="/products/colombian-supremo" class="btn" aria-label="Buy Colombian Supremo for $16.00">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img class="product-image" src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Latte art in a ceramic cup made with Sumatra Mandheling dark roast">
++          <div class="product-content">
++            <div>
++              <h3>Sumatra Mandheling</h3>
++              <p>Full-bodied dark roast with earthy cedar undertones and velvety dark chocolate depth.</p>
++            </div>
++            <div>
++              <p class="product-price">$19.00</p>
++              <a href="/products/sumatra-mandheling" class="btn" aria-label="Buy Sumatra Mandheling for $19.00">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img class="product-image" src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&q=80" alt="Pour-over coffee brewing into a glass carafe with Guatemala Antigua roast">
++          <div class="product-content">
++            <div>
++              <h3>Guatemala Antigua</h3>
++              <p>Velvety body balanced by warm cocoa spice, brown sugar, and crisp green apple acidity.</p>
++            </div>
++            <div>
++              <p class="product-price">$17.50</p>
++              <a href="/products/guatemala-antigua" class="btn" aria-label="Buy Guatemala Antigua for $17.50">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img class="product-image" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Espresso shot being pulled with rich crema from House Espresso Blend">
++          <div class="product-content">
++            <div>
++              <h3>House Espresso Blend</h3>
++              <p>Crafted for thick golden crema with notes of toasted almond, molasses, and dried cherry.</p>
++            </div>
++            <div>
++              <p class="product-price">$17.00</p>
++              <a href="/products/house-espresso-blend" class="btn" aria-label="Buy House Espresso Blend for $17.00">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img class="product-image" src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Close-up of roasted Costa Rican Tarrazu coffee beans">
++          <div class="product-content">
++            <div>
++              <h3>Costa Rican Tarrazú</h3>
++              <p>Clean, vibrant honey-processed beans bursting with apricot, vanilla, and milk chocolate.</p>
++            </div>
++            <div>
++              <p class="product-price">$20.00</p>
++              <a href="/products/costa-rican-tarrazu" class="btn" aria-label="Buy Costa Rican Tarrazú for $20.00">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

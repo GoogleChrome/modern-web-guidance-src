@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,75 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: 30px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      @keyframes fade-out {
++        from { opacity: 1; }
++        to { opacity: 0; }
++      }
++
++      @keyframes fade-in {
++        from { opacity: 0; }
++        to { opacity: 1; }
++      }
++
++      @keyframes slide-to-left {
++        from { transform: translateX(0); opacity: 1; }
++        to { transform: translateX(-30px); opacity: 0; }
++      }
++
++      @keyframes slide-from-right {
++        from { transform: translateX(30px); opacity: 0; }
++        to { transform: translateX(0); opacity: 1; }
++      }
++
++      @keyframes slide-to-right {
++        from { transform: translateX(0); opacity: 1; }
++        to { transform: translateX(30px); opacity: 0; }
++      }
++
++      @keyframes slide-from-left {
++        from { transform: translateX(-30px); opacity: 0; }
++        to { transform: translateX(0); opacity: 1; }
++      }
++
++      ::view-transition-old(root) {
++        animation: 0.3s ease-in-out both fade-out;
++      }
++
++      ::view-transition-new(root) {
++        animation: 0.3s ease-in-out both fade-in;
++      }
++
++      html:active-view-transition-type(next)::view-transition-old(root) {
++        animation: 0.35s ease-in-out both slide-to-left;
++      }
++
++      html:active-view-transition-type(next)::view-transition-new(root) {
++        animation: 0.35s ease-in-out both slide-from-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-old(root) {
++        animation: 0.35s ease-in-out both slide-to-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-new(root) {
++        animation: 0.35s ease-in-out both slide-from-left;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -193,8 +260,12 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination">
++        <a id="previous" href="?page=1" class="btn">&larr; Previous</a>
++        <a id="next" href="?page=2" class="btn">Next &rarr;</a>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +277,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      let pendingTransitionType = sessionStorage.getItem('transitionType');
++      sessionStorage.removeItem('transitionType');
++
++      const nextLink = document.getElementById('next');
++      const prevLink = document.getElementById('previous');
++
++      if (nextLink) {
++        nextLink.addEventListener('click', () => {
++          sessionStorage.setItem('transitionType', 'next');
++        });
++      }
++
++      if (prevLink) {
++        prevLink.addEventListener('click', () => {
++          sessionStorage.setItem('transitionType', 'previous');
++        });
++      }
++
++      window.addEventListener('pageswap', (event) => {
++        if (!event.viewTransition) return;
++        const activeEl = document.activeElement;
++        const type =
++          activeEl?.id === 'next'
++            ? 'next'
++            : activeEl?.id === 'previous'
++              ? 'previous'
++              : sessionStorage.getItem('transitionType');
++        if (type === 'next' || type === 'previous') {
++          event.viewTransition.types.add(type);
++        }
++      });
++
++      window.addEventListener('pagereveal', (event) => {
++        if (!event.viewTransition) return;
++        let type = pendingTransitionType;
++        if (!type && window.navigation?.activation) {
++          const fromUrl = new URL(window.navigation.activation.from.url);
++          const toUrl = new URL(window.navigation.activation.entry.url);
++          const fromPage = parseInt(fromUrl.searchParams.get('page') || '1', 10);
++          const toPage = parseInt(toUrl.searchParams.get('page') || '1', 10);
++          if (toPage > fromPage) {
++            type = 'next';
++          } else if (toPage < fromPage) {
++            type = 'previous';
++          }
++        }
++        if (type === 'next' || type === 'previous') {
++          event.viewTransition.types.add(type);
++        }
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

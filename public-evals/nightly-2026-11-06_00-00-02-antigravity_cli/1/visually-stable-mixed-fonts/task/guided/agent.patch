@@ -1,0 +1,38 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Visually Stable Mixed Fonts &amp; Independent Theme Proportions</title>
++  <link rel="stylesheet" href="styles.css">
++</head>
++<body>
++  <main class="page-wrapper">
++    <header class="page-header">
++      <h1>Visually Stable Typography</h1>
++      <p class="subtitle">Normalizing font proportions across mixed font families and independent themes using <code>font-size-adjust</code>.</p>
++    </header>
++
++    <section class="demo-section">
++      <h2>Mixed Fonts with Automatic Normalization</h2>
++      <p id="mixed-fonts-container">
++        When rendering body copy in a primary sans-serif typeface alongside inline code snippets such as <code>font-size-adjust: from-font</code> or <code>const scale = window.devicePixelRatio</code>, differences in x-height between the prose font and the monospace font can make inline code appear disproportionately large or small. Applying <code>from-font</code> automatically extracts the primary font's x-height aspect ratio and normalizes nested inline elements like <code>&lt;code&gt;</code> and <code>&lt;kbd&gt;</code> to match.
++      </p>
++    </section>
++
++    <section class="demo-section">
++      <h2>Independent Theme with Numeric Aspect-Ratio Override</h2>
++      <div id="independent-theme-container">
++        <h3>Editorial Serif Theme</h3>
++        <p>
++          This container uses an independent serif theme typeface whose natural x-height differs from the primary sans-serif theme. By applying a specific numeric aspect-ratio override (<code>font-size-adjust: 0.52</code>), its visual lowercase height is locked down independently to maintain consistent visual proportions and legibility alongside the rest of the interface.
++        </p>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

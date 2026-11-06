@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,97 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .info-button {
++      anchor-name: --maple-latte-info;
++      display: inline-grid;
++      place-items: center;
++      width: 36px;
++      height: 36px;
++      border: 1px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: bold 1rem Georgia, serif;
++      cursor: pointer;
++    }
++
++    .info-button:hover {
++      background: var(--secondary);
++    }
++
++    .info-button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .latte-tooltip {
++      position: fixed;
++      position-anchor: --maple-latte-info;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      inset: auto;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      width: min(260px, calc(100vw - 32px));
++      overflow: visible;
++      background: transparent;
++      color: white;
++      text-align: left;
++    }
++
++    /* Keep the query container unpainted so its descendants can change shape. */
++    .tooltip-content {
++      position: relative;
++      margin: 0 0 12px;
++      padding: 14px 16px;
++      border-radius: 12px 12px 4px 4px;
++      background: var(--primary);
++      box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
++      font-size: 0.875rem;
++    }
++
++    .tooltip-content::after {
++      content: "";
++      position: absolute;
++      left: 50%;
++      bottom: -8px;
++      transform: translateX(-50%);
++      border: 8px solid transparent;
++      border-top-color: var(--primary);
++      border-bottom-width: 0;
++    }
++
++    @container anchored(fallback: flip-block) {
++      .tooltip-content {
++        margin: 12px 0 0;
++        border-radius: 4px 4px 12px 12px;
++      }
++
++      .tooltip-content::after {
++        top: -8px;
++        bottom: auto;
++        border-top-width: 0;
++        border-bottom-width: 8px;
++        border-bottom-color: var(--primary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +269,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" class="info-button"
++              aria-label="About the Maple Oat Latte" aria-describedby="maple-latte-tooltip"
++              popovertarget="maple-latte-tooltip">i</button>
++          </div>
++          <div id="maple-latte-tooltip" class="latte-tooltip" role="tooltip" popover>
++            <div class="tooltip-content">
++              Espresso, creamy oat milk, and Vermont maple syrup. A cozy seasonal favorite.
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

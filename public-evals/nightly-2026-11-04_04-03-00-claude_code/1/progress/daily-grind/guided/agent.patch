@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+index 66c9173..71982b2 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,110 @@
+       background: #3e2723;
+     }
+ 
++    /* Progress */
++    .progress-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-bottom: 40px;
++    }
++
++    .progress-panel h2 {
++      margin-bottom: 16px;
++    }
++
++    .progress-list {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
++    }
++
++    .progress-item label {
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .progress-item .progress-value {
++      font-weight: normal;
++      color: var(--text);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .progress-item p {
++      font-size: 0.85rem;
++      margin-top: 8px;
++    }
++
++    progress {
++      --progress-bar-radius: 1e5px;
++      --progress-bar-track: var(--secondary);
++      --progress-bar-fill: var(--primary);
++      --progress-bar-indeterminate-size: 30%;
++      --progress-bar-indeterminate-animation-duration: 1.5s;
++
++      /* Reset UA styles to allow full customization */
++      appearance: none;
++      border: 0 solid;
++      overflow: clip;
++      /* Lets the indeterminate fill position itself in track units (cqi) */
++      container-type: inline-size;
++
++      display: block;
++      inline-size: 100%;
++      block-size: 12px;
++      border-radius: var(--progress-bar-radius);
++      background: var(--progress-bar-track);
++      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
++
++      @media (prefers-reduced-motion: reduce) {
++        --progress-bar-indeterminate-animation-duration: 10s;
++      }
++    }
++
++    progress:indeterminate {
++      --progress-bar-animation: var(--progress-bar-indeterminate-animation,
++          progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear);
++    }
++
++    progress:dir(rtl) {
++      --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
++    }
++
++    /* Let <progress> styling show through */
++    progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    /* WebKit / Blink (kept separate from -moz-: grouping invalidates the rule) */
++    progress::-webkit-progress-value {
++      background: var(--progress-bar-fill);
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    /* Firefox */
++    progress::-moz-progress-bar {
++      background: var(--progress-bar-fill);
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    @keyframes progress-bar-indeterminate {
++      from, to {
++        inline-size: var(--progress-bar-indeterminate-size);
++        margin-right: auto;
++      }
++      from { translate: -100%; }
++      to { translate: 100cqi; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +279,28 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel" aria-labelledby="progress-heading">
++      <h2 id="progress-heading">Your Progress</h2>
++      <div class="progress-list">
++        <div class="progress-item">
++          <label for="rewards-progress">
++            Rewards: free drink
++            <span class="progress-value">7 of 10 stamps</span>
++          </label>
++          <progress id="rewards-progress" max="10" value="7"></progress>
++          <p>Just 3 more visits until your next drink is on us.</p>
++        </div>
++        <div class="progress-item">
++          <label for="order-progress">
++            Current order
++            <span class="progress-value">Confirming&hellip;</span>
++          </label>
++          <progress id="order-progress"></progress>
++          <p>We&rsquo;re sending your order to the barista. Progress will appear once it&rsquo;s confirmed.</p>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

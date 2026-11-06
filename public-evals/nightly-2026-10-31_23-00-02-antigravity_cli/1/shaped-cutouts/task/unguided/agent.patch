@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,128 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured Barista Section & Shaped Avatar */
++    .barista-section {
++      margin-top: 60px;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      background: #fff;
++      padding: 40px;
++      border-radius: 12px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
++    }
++
++    .shaped-avatar {
++      width: 260px;
++      height: 260px;
++      object-fit: cover;
++      display: block;
++      flex-shrink: 0;
++      clip-path: url(#paint-splat-clip);
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M 0.50,0.04 C 0.62,0.02 0.68,0.12 0.77,0.10 C 0.88,0.08 0.94,0.18 0.90,0.29 C 0.86,0.38 0.98,0.45 0.96,0.56 C 0.94,0.67 0.84,0.70 0.86,0.81 C 0.88,0.91 0.76,0.96 0.66,0.90 C 0.57,0.85 0.51,0.97 0.40,0.95 C 0.29,0.93 0.27,0.82 0.17,0.84 C 0.07,0.86 0.02,0.75 0.09,0.65 C 0.15,0.56 0.03,0.48 0.05,0.37 C 0.07,0.26 0.18,0.24 0.16,0.14 C 0.14,0.05 0.26,0.02 0.35,0.08 C 0.42,0.13 0.43,0.05 0.50,0.04 Z'/%3E%3C/svg%3E");
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M 0.50,0.04 C 0.62,0.02 0.68,0.12 0.77,0.10 C 0.88,0.08 0.94,0.18 0.90,0.29 C 0.86,0.38 0.98,0.45 0.96,0.56 C 0.94,0.67 0.84,0.70 0.86,0.81 C 0.88,0.91 0.76,0.96 0.66,0.90 C 0.57,0.85 0.51,0.97 0.40,0.95 C 0.29,0.93 0.27,0.82 0.17,0.84 C 0.07,0.86 0.02,0.75 0.09,0.65 C 0.15,0.56 0.03,0.48 0.05,0.37 C 0.07,0.26 0.18,0.24 0.16,0.14 C 0.14,0.05 0.26,0.02 0.35,0.08 C 0.42,0.13 0.43,0.05 0.50,0.04 Z'/%3E%3C/svg%3E");
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-position: center;
++    }
++
++    .barista-info {
++      flex: 1;
++      min-width: 260px;
++    }
++
++    .barista-info h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .barista-role {
++      color: var(--accent);
++      font-weight: bold;
++      text-transform: uppercase;
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      margin-bottom: 12px;
++    }
++
++    /* Loyalty Banner (.unified-card) */
++    .loyalty-section {
++      margin-top: 60px;
++    }
++
++    .unified-card {
++      display: flex;
++      align-items: stretch;
++      filter: drop-shadow(0 10px 24px rgba(62, 39, 35, 0.18));
++      margin-top: 20px;
++    }
++
++    .unified-card .card-body {
++      background: #ffffff;
++      padding: 32px 36px;
++      border-radius: 12px 0 0 12px;
++      flex: 1;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--primary);
++      font-size: 1.5rem;
++      margin-bottom: 10px;
++    }
++
++    .unified-card .card-accent {
++      width: 96px;
++      flex-shrink: 0;
++      background: #ffffff;
++      clip-path: url(#card-accent-curve);
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M 0,0 L 1,0 C 1,0.22 0.35,0.32 0.35,0.50 C 0.35,0.68 1,0.78 1,1 L 0,1 Z'/%3E%3C/svg%3E");
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M 0,0 L 1,0 C 1,0.22 0.35,0.32 0.35,0.50 C 0.35,0.68 1,0.78 1,1 L 0,1 Z'/%3E%3C/svg%3E");
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    /* Promo Card (.gradient-masked-card) */
++    .promo-section {
++      margin-top: 60px;
++    }
++
++    .gradient-masked-card {
++      background: linear-gradient(135deg, var(--primary), #3e2723);
++      color: #ffffff;
++      padding: 48px 32px 36px;
++      border-radius: 12px;
++      text-align: center;
++      margin-top: 20px;
++      -webkit-mask-image: radial-gradient(circle at 50% 0, transparent 28px, black 29px);
++      mask-image: radial-gradient(circle at 50% 0, transparent 28px, black 29px);
++    }
++
++    .gradient-masked-card h3 {
++      font-size: 1.6rem;
++      margin-bottom: 10px;
++      color: var(--accent);
++    }
++
++    .gradient-masked-card .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++    }
++
++    .gradient-masked-card .btn:hover {
++      background: #ffd180;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +314,53 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-section">
++      <img
++        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80"
++        alt="Featured Barista Mateo Rivera"
++        class="shaped-avatar"
++      >
++      <div class="barista-info">
++        <div class="barista-role">Featured Barista</div>
++        <h2>Meet Mateo Rivera</h2>
++        <p>With over eight years of specialty roasting and latte art experience, Mateo leads our morning espresso bar and crafts our signature seasonal single-origin pour-overs.</p>
++      </div>
++    </section>
++
++    <section class="loyalty-section">
++      <div class="unified-card">
++        <div class="card-body">
++          <h3>The Daily Grind Loyalty Rewards</h3>
++          <p>Earn golden beans with every order! Collect 10 stamps on your member pass to unlock complimentary handcrafted drinks, birthday treats, and early access to single-origin reserve roasts.</p>
++          <a href="/rewards" class="btn">Join the Club</a>
++        </div>
++        <div class="card-accent"></div>
++      </div>
++    </section>
++
++    <section class="promo-section">
++      <div class="gradient-masked-card">
++        <h3>Morning Roaster's Promo</h3>
++        <p>Use code <strong>FRESHGRIND25</strong> at checkout for 25% off your first bag of whole-bean artisanal coffee when you order online this week.</p>
++        <a href="/order-online" class="btn">Claim Offer</a>
++      </div>
++    </section>
+   </main>
+ 
++  <svg width="0" height="0" style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
++    <defs>
++      <clipPath id="paint-splat-clip" clipPathUnits="objectBoundingBox">
++        <path d="M 0.50,0.04 C 0.62,0.02 0.68,0.12 0.77,0.10 C 0.88,0.08 0.94,0.18 0.90,0.29 C 0.86,0.38 0.98,0.45 0.96,0.56 C 0.94,0.67 0.84,0.70 0.86,0.81 C 0.88,0.91 0.76,0.96 0.66,0.90 C 0.57,0.85 0.51,0.97 0.40,0.95 C 0.29,0.93 0.27,0.82 0.17,0.84 C 0.07,0.86 0.02,0.75 0.09,0.65 C 0.15,0.56 0.03,0.48 0.05,0.37 C 0.07,0.26 0.18,0.24 0.16,0.14 C 0.14,0.05 0.26,0.02 0.35,0.08 C 0.42,0.13 0.43,0.05 0.50,0.04 Z" />
++      </clipPath>
++      <clipPath id="card-accent-curve" clipPathUnits="objectBoundingBox">
++        <path d="M 0,0 L 1,0 C 1,0.22 0.35,0.32 0.35,0.50 C 0.35,0.68 1,0.78 1,1 L 0,1 Z" />
++      </clipPath>
++    </defs>
++  </svg>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

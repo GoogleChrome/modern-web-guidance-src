@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,124 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .latte-actions {
++      display: flex;
++      justify-content: center;
++      align-items: baseline;
++      gap: 10px;
++    }
++
++    .latte-info {
++      position: relative;
++      display: inline-flex;
++    }
++
++    .info-button {
++      display: inline-grid;
++      place-items: center;
++      width: 30px;
++      height: 30px;
++      border: 1px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: bold 1rem Georgia, serif;
++      cursor: pointer;
++    }
++
++    .info-button:hover {
++      background: var(--secondary);
++    }
++
++    .info-button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .latte-tooltip {
++      position: fixed;
++      width: min(18rem, calc(100vw - 2rem));
++      padding: 0;
++      border: 0;
++      overflow: visible;
++      background: transparent;
++      color: white;
++      font-size: 0.875rem;
++      text-align: start;
++    }
++
++    .tooltip-content {
++      display: block;
++      position: relative;
++      padding: 12px 16px;
++      border-radius: 12px 12px 4px 4px;
++      background: var(--primary);
++      box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
++    }
++
++    @supports (position-area: block-start) {
++      .latte-tooltip {
++        /* popovertarget supplies the implicit anchor. Reset UA centering. */
++        inset: auto;
++        margin: 0;
++        position-area: block-start;
++        position-try-fallbacks: flip-block;
++      }
++
++      .tooltip-content {
++        margin-block: 0 12px;
++      }
++
++      @supports (container-type: anchored) {
++        .latte-tooltip {
++          container-type: anchored;
++          container-name: latte-tooltip;
++        }
++
++        .tooltip-content::after {
++          content: "";
++          position: absolute;
++          inset-block-start: 100%;
++          inset-inline-start: calc(50% - 7px);
++          border-inline: 7px solid transparent;
++          border-block-start: 7px solid var(--primary);
++          border-block-end: 0;
++        }
++
++        /* Query the outer container; style its child and decorative arrow. */
++        @container latte-tooltip anchored(fallback: flip-block) {
++          .tooltip-content {
++            margin-block: 12px 0;
++            border-radius: 4px 4px 12px 12px;
++          }
++
++          .tooltip-content::after {
++            inset-block-start: auto;
++            inset-block-end: 100%;
++            border-block-start: 0;
++            border-block-end: 7px solid var(--primary);
++          }
++        }
++      }
++    }
++
++    /* Older browsers can still reveal the information on focus or hover. */
++    @supports not selector(:popover-open) {
++      .latte-tooltip {
++        display: none;
++        position: absolute;
++        inset: auto 0 calc(100% + 12px) auto;
++        margin: 0;
++        z-index: 1;
++      }
++
++      .latte-info:is(:hover, :focus-within) .latte-tooltip {
++        display: block;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +296,22 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="latte-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <span class="latte-info">
++              <button type="button" id="anchor" class="info-button"
++                popovertarget="maple-oat-tooltip" aria-describedby="maple-oat-tooltip"
++                aria-label="About the Maple Oat Latte">i</button>
++              <span id="maple-oat-tooltip" class="latte-tooltip" popover role="tooltip">
++                <span class="tooltip-content">
++                  A seasonal latte made with creamy oat milk and Vermont maple syrup.
++                  View details to learn more.
++                </span>
++              </span>
++            </span>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

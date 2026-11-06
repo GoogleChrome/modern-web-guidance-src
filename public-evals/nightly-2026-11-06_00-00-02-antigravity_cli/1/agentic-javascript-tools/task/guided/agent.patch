@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,90 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const menuItems = [
++      {
++        name: "Maple Oat Latte",
++        category: "Seasonal",
++        price: 5.75,
++        description: "Creamy oat milk with a hint of Vermont maple syrup.",
++        ingredients: ["Espresso", "Oat milk", "Pure Vermont maple syrup", "Cinnamon"],
++        calories: 210,
++        url: "/menu/seasonal"
++      },
++      {
++        name: "Dark Roast Espresso",
++        category: "Espresso",
++        price: 3.50,
++        description: "Bold, smokey, and perfect for a morning boost.",
++        ingredients: ["100% Arabica dark-roasted coffee beans", "Filtered water"],
++        calories: 10,
++        url: "/menu/espresso"
++      },
++      {
++        name: "Cold Brew",
++        category: "Cold Coffee",
++        price: 4.50,
++        description: "Steeped for 18 hours for maximum smoothness.",
++        ingredients: ["Coarse-ground signature blend coffee", "Cold filtered water"],
++        calories: 5,
++        url: "/menu/cold-brew"
++      }
++    ];
++
++    if ("modelContext" in document) {
++      const controller = new AbortController();
++      const cleanupTool = () => controller.abort();
++
++      window.addEventListener("pagehide", cleanupTool);
++      window.addEventListener("unload", cleanupTool);
++
++      document.modelContext.registerTool(
++        {
++          name: "get_menu_item_details",
++          description: "Looks up details for a coffee shop menu item, such as description, price, ingredients, and nutrition information. Use when the user asks about a specific drink or item on the menu.",
++          inputSchema: {
++            type: "object",
++            properties: {
++              itemName: {
++                type: "string",
++                description: "The name of the menu item to look up."
++              }
++            },
++            required: ["itemName"]
++          },
++          execute({ itemName }) {
++            if (typeof itemName !== "string" || !itemName.trim()) {
++              return {
++                error: "Please provide the name of a menu item to look up.",
++                availableItems: menuItems.map((entry) => entry.name)
++              };
++            }
++
++            const normalizedQuery = itemName.trim().toLowerCase();
++            const item = menuItems.find(
++              (entry) => entry.name.toLowerCase() === normalizedQuery
++            );
++
++            if (!item) {
++              return {
++                error: `Menu item "${itemName}" not found.`,
++                availableItems: menuItems.map((entry) => entry.name)
++              };
++            }
++
++            return item;
++          },
++          annotations: {
++            readOnlyHint: true
++          }
++        },
++        { signal: controller.signal }
++      );
++    }
++  </script>
++
+ </body>
+ 
+ </html>

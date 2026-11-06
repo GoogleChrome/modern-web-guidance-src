@@ -1,0 +1,347 @@
+diff --git a/index.html b/index.html
+index 66c9173..4fe165e 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,165 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal Favorites toolbar */
++    .favorites-header {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .toolbar {
++      display: inline-flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 4px;
++      padding: 4px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
++    }
++
++    .toolbar [role="group"] {
++      display: flex;
++      gap: 2px;
++    }
++
++    .toolbar [role="separator"] {
++      align-self: stretch;
++      margin: 4px 2px;
++      border-inline-start: 1px solid var(--secondary);
++    }
++
++    .toolbar button {
++      display: inline-grid;
++      place-items: center;
++      min-inline-size: 2.5rem;
++      min-block-size: 2.5rem;
++      padding: 0;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      background: transparent;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .toolbar button svg {
++      inline-size: 1.25rem;
++      block-size: 1.25rem;
++      pointer-events: none;
++    }
++
++    .toolbar button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .toolbar button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .toolbar button[data-copied] { color: #2e7d32; }
++    .toolbar button[data-failed] { color: #c62828; }
++    .toolbar button .icon-check { display: none; }
++    .toolbar button[data-copied] .icon-copy { display: none; }
++    .toolbar button[data-copied] .icon-check { display: block; }
++
++    @media (hover: hover) {
++      .toolbar button:hover:not([aria-pressed="true"]) {
++        background: var(--secondary);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .toolbar button {
++        transition: background-color 0.2s, color 0.2s;
++      }
++    }
++
++    @media (pointer: coarse) {
++      .toolbar button {
++        min-inline-size: 3rem;
++        min-block-size: 3rem;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .toolbar button[aria-pressed="true"] {
++        background: Highlight;
++        color: HighlightText;
++      }
++    }
++
++    .favorites-status {
++      font-size: 0.85rem;
++      color: var(--primary);
++      min-block-size: 1.6em;
++    }
++
++    .favorites-filters {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-top: 12px;
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .favorites-filters legend {
++      padding: 0 4px;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .favorites-filters label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      cursor: pointer;
++    }
++
++    #favorites-grid .card[hidden] {
++      display: none;
++    }
++
++    #favorites-grid.list-view {
++      grid-template-columns: 1fr;
++    }
++
++    #favorites-grid.list-view .card {
++      display: grid;
++      grid-template-columns: minmax(10rem, 14rem) 1fr auto;
++      align-items: center;
++      gap: 16px;
++      text-align: start;
++    }
++
++    #favorites-grid.list-view .card h3,
++    #favorites-grid.list-view .card .btn {
++      margin: 0;
++    }
++
++    #favorites-grid.hide-details .card p {
++      display: none;
++    }
++
++    #favorites-grid.list-view.hide-details .card {
++      grid-template-columns: 1fr auto;
++    }
++
++    @media (max-width: 600px) {
++      #favorites-grid.list-view .card {
++        grid-template-columns: 1fr;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -177,18 +336,54 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="favorites-header">
++        <div id="favorites-actions" class="toolbar" role="toolbar" focusgroup="toolbar wrap"
++          aria-label="Seasonal favorites options" aria-controls="favorites-grid">
++          <div role="group" aria-label="Layout">
++            <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid view" title="Grid view">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
++            </button>
++            <button type="button" data-view="list" aria-pressed="false" aria-label="List view" title="List view">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
++            </button>
++          </div>
++          <span role="separator" aria-orientation="vertical"></span>
++          <div role="group" aria-label="Display">
++            <button type="button" id="toggle-details" aria-pressed="true" aria-label="Drink details" title="Show drink details">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>
++            </button>
++            <button type="button" id="toggle-filters" aria-pressed="false" aria-label="Filters" title="Show filters" aria-controls="favorites-filters">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5z"/></svg>
++            </button>
++          </div>
++          <span role="separator" aria-orientation="vertical"></span>
++          <div role="group" aria-label="Share">
++            <button type="button" id="copy-favorites" aria-label="Copy featured drinks list" title="Copy featured drinks list">
++              <svg class="icon-copy" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>
++              <svg class="icon-check" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
++            </button>
++          </div>
++        </div>
++        <!-- Live region kept outside the toolbar so action results are announced -->
++        <p class="favorites-status" id="favorites-status" role="status"></p>
++      </div>
++      <fieldset class="favorites-filters" id="favorites-filters" hidden>
++        <legend>Filter drinks</legend>
++        <label><input type="checkbox" name="temp" value="hot" checked> Hot</label>
++        <label><input type="checkbox" name="temp" value="iced" checked> Iced</label>
++      </fieldset>
++      <div class="grid" id="favorites-grid">
++        <div class="card" data-temp="hot">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-temp="hot">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-temp="iced">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +402,117 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const bar = document.getElementById('favorites-actions');
++      const grid = document.getElementById('favorites-grid');
++      const status = document.getElementById('favorites-status');
++      const filters = document.getElementById('favorites-filters');
++      const cards = [...grid.querySelectorAll('.card')];
++      const viewButtons = [...bar.querySelectorAll('[data-view]')];
++      const detailsBtn = document.getElementById('toggle-details');
++      const filtersBtn = document.getElementById('toggle-filters');
++      const copyBtn = document.getElementById('copy-favorites');
++
++      let lastMessage = '';
++      let statusTimer;
++      const announce = (text) => {
++        // VoiceOver skips repeated identical messages; a no-break space makes it differ
++        let message = text === lastMessage ? text + '\u00A0' : text;
++        lastMessage = message;
++        clearTimeout(statusTimer);
++        status.textContent = '';
++        requestAnimationFrame(() => (status.textContent = message));
++        statusTimer = setTimeout(() => (status.textContent = ''), 3000);
++      };
++
++      // Layout: mutually exclusive grid / list
++      viewButtons.forEach((btn) => btn.addEventListener('click', () => {
++        viewButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
++        grid.classList.toggle('list-view', btn.dataset.view === 'list');
++      }));
++
++      // Toggle helpers: label stays the same; state lives in aria-pressed
++      const toggle = (btn) => {
++        const on = btn.getAttribute('aria-pressed') !== 'true';
++        btn.setAttribute('aria-pressed', String(on));
++        return on;
++      };
++
++      detailsBtn.addEventListener('click', () => {
++        grid.classList.toggle('hide-details', !toggle(detailsBtn));
++      });
++
++      filtersBtn.addEventListener('click', () => {
++        filters.hidden = !toggle(filtersBtn);
++      });
++
++      const applyFilters = () => {
++        const allowed = new Set(
++          [...filters.querySelectorAll('input:checked')].map((i) => i.value)
++        );
++        cards.forEach((card) => (card.hidden = !allowed.has(card.dataset.temp)));
++        const shown = cards.filter((c) => !c.hidden).length;
++        announce(`Showing ${shown} of ${cards.length} drinks`);
++      };
++      filters.addEventListener('change', applyFilters);
++
++      // Copy: an action, so no aria-pressed; report outcome via the live region
++      let copyTimer;
++      copyBtn.addEventListener('click', async () => {
++        const text = cards
++          .filter((c) => !c.hidden)
++          .map((c) => {
++            const name = c.querySelector('h3').textContent.trim();
++            const desc = c.querySelector('p')?.textContent.trim();
++            return `• ${name}${desc ? ` — ${desc}` : ''}`;
++          })
++          .join('\n');
++        if (!text) {
++          announce('No drinks to copy');
++          return;
++        }
++        clearTimeout(copyTimer);
++        copyBtn.removeAttribute('data-copied');
++        copyBtn.removeAttribute('data-failed');
++        let ok = true;
++        try {
++          await navigator.clipboard.writeText(`The Daily Grind — Seasonal Favorites\n${text}`);
++        } catch {
++          ok = false;
++        }
++        copyBtn.setAttribute(ok ? 'data-copied' : 'data-failed', '');
++        announce(ok ? 'Featured drinks list copied' : 'Copy failed');
++        copyTimer = setTimeout(() => {
++          copyBtn.removeAttribute('data-copied');
++          copyBtn.removeAttribute('data-failed');
++        }, 2000);
++      });
++
++      // Roving tabindex fallback, only where native focusgroup is unavailable
++      if (!('focusGroup' in HTMLElement.prototype)) {
++        const items = [...bar.querySelectorAll('button')];
++        items.forEach((b, i) => (b.tabIndex = i ? -1 : 0));
++        bar.addEventListener('focusin', ({ target }) => {
++          if (items.includes(target)) items.forEach((b) => (b.tabIndex = b === target ? 0 : -1));
++        });
++        bar.addEventListener('keydown', (event) => {
++          const rtl = getComputedStyle(bar).direction === 'rtl';
++          const steps = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 };
++          const current = items.indexOf(document.activeElement);
++          if (current === -1) return;
++          let next;
++          if (event.key in steps) next = (current + steps[event.key] + items.length) % items.length;
++          else if (event.key === 'Home') next = 0;
++          else if (event.key === 'End') next = items.length - 1;
++          else return;
++          event.preventDefault();
++          items[next].focus();
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,17 +19,50 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      /* proximity so snapping only kicks in near the search bar, not the whole page */
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Search bar (hidden above the nav on load; pull down to reveal) */
++    .search-bar {
++      background: var(--secondary);
++      padding: 0 5%;
++      height: 64px;
++      display: flex;
++      align-items: center;
++      scroll-snap-align: start;
++    }
++
++    .search-bar form {
++      width: 100%;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .search-bar input {
++      width: 100%;
++      padding: 10px 16px;
++      font: inherit;
++      color: var(--text);
++      border: 1px solid var(--primary);
++      border-radius: 999px;
++      background: white;
++    }
++
+     /* Navigation */
+     nav {
++      scroll-snap-align: start;
++      scroll-initial-target: nearest;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -156,8 +189,14 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar" role="search">
++    <form action="/search">
++      <input type="search" name="q" placeholder="Search the menu..." aria-label="Search">
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +245,16 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-initial-target support
++    if (!CSS.supports("scroll-initial-target", "nearest")) {
++      document.addEventListener("DOMContentLoaded", () => {
++        document.querySelector("nav").scrollIntoView({ behavior: "instant", block: "start" });
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

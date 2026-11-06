@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,57 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Product</title>
++<style>
++  body { margin: 0; font-family: system-ui, sans-serif; }
++  img { display: block; max-width: 100%; height: auto; }
++  header, section, footer { padding: 1rem; }
++  [hidden] { display: none; }
++  .spacer { height: 150vh; }
++</style>
++</head>
++<body>
++<header>
++  <nav>
++    <button type="button" id="menu-toggle" aria-expanded="false" aria-controls="mega-menu">Menu</button>
++    <div id="mega-menu" hidden>
++      <img src="mega-menu-promo.jpg" alt="Special offer" width="300" height="150" fetchpriority="low">
++    </div>
++  </nav>
++</header>
++
++<main>
++  <img src="hero-lcp.jpg" alt="Product hero" width="1200" height="600" fetchpriority="high">
++  <h1>Product</h1>
++
++  <section>
++    <div id="gallery">
++      <img src="hero-lcp.jpg" alt="Product view 1" width="400" height="300">
++      <img id="gallery-alt" src="gallery-alt.jpg" alt="Product view 2" width="400" height="300" fetchpriority="low" loading="lazy" hidden>
++    </div>
++    <button type="button" id="gallery-toggle" aria-controls="gallery-alt" aria-expanded="false">Show next image</button>
++  </section>
++</main>
++
++<div class="spacer"></div>
++
++<footer>
++  <img src="footer-logo.png" alt="Footer logo" width="120" height="60" loading="lazy">
++</footer>
++
++<script>
++  function bindToggle(buttonId, targetId) {
++    const button = document.getElementById(buttonId);
++    const target = document.getElementById(targetId);
++    button.addEventListener('click', () => {
++      target.hidden = !target.hidden;
++      button.setAttribute('aria-expanded', String(!target.hidden));
++    });
++  }
++  bindToggle('menu-toggle', 'mega-menu');
++  bindToggle('gallery-toggle', 'gallery-alt');
++</script>
++</body>
++</html>

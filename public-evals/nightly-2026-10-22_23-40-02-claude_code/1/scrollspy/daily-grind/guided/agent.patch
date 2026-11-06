@@ -1,0 +1,82 @@
+diff --git a/index.html b/index.html
+index 66c9173..ca8deeb 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,17 @@
+       color: var(--accent);
+     }
+ 
++    nav ul {
++      scroll-target-group: auto;
++    }
++
++    nav a:is(:target-current, .\:target-current) {
++      color: var(--accent);
++      font-weight: bold;
++      text-decoration: underline;
++      text-underline-offset: 6px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,6 +171,8 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
++      <li><a href="#home">Home</a></li>
++      <li><a href="#seasonal">Seasonal</a></li>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+@@ -168,14 +181,14 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="home">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -207,6 +220,33 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script type="module">
++    const links = document.querySelectorAll('nav a[href^="#"]');
++    if (CSS.supports('scroll-target-group: auto')) {
++      const syncAriaCurrent = () => {
++        const current = document.querySelector('nav a:target-current');
++        links.forEach(link => {
++          link.setAttribute('aria-current', link === current ? 'true' : 'false');
++        });
++      };
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      const sections = [...links].map(l => document.querySelector(l.getAttribute('href')));
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach(entry => {
++          if (!entry.isIntersecting) return;
++          links.forEach(link => {
++            const active = link.getAttribute('href') === `#${entry.target.id}`;
++            link.classList.toggle(':target-current', active);
++            link.setAttribute('aria-current', active);
++          });
++        });
++      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++      sections.forEach(section => section && observer.observe(section));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

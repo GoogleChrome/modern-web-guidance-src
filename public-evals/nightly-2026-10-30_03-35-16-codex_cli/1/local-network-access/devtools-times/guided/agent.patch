@@ -1,0 +1,170 @@
+diff --git a/README.md b/README.md
+index 4479b53..25a93b2 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,23 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Local network access
++
++Open **Local network** in the footer to fetch an HTTP(S) resource from a LAN
++device or a loopback service (`localhost`, `127.0.0.1`, or `[::1]`). Select the
++resource location, enter its URL, and select **Connect**. Requests run in the
++user's browser, never through the application server, and only after submitting
++the form. Responses are displayed as plain text.
++
++Deploy the application over HTTPS. The browser may ask for Local network or
++Loopback network permission; blocked permissions must be changed in site
++settings. Unsupported Permissions API queries fall back to a user-initiated
++request under the browser's normal networking rules; browser support for HTTP
++local resources varies. The target service must allow the application's origin
++with standard CORS headers. The middleware explicitly permits `local-network`
++and `loopback-network` for this origin only. Requests declare `targetAddressSpace`
++so supporting browsers can handle HTTP local resources from HTTPS pages.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..05f2e85 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -94,6 +94,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+             <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+             <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
++            <a href=`${baseUrl}local-network` class="hover:underline">Local network</a>
+         </div>
+         
+         <!-- Privacy settings link -->
+diff --git a/src/components/LocalNetworkForm.tsx b/src/components/LocalNetworkForm.tsx
+new file mode 100644
+index 0000000..62601a3
+--- /dev/null
++++ b/src/components/LocalNetworkForm.tsx
+@@ -0,0 +1,92 @@
++import { useState, type FormEvent } from 'react';
++
++type AddressSpace = 'local' | 'loopback';
++type LocalRequestInit = RequestInit & { targetAddressSpace: AddressSpace };
++
++async function queryPermission(space: AddressSpace): Promise<PermissionState> {
++  try {
++    // Some browsers do not recognize these permission names yet. Let the
++    // user-initiated request proceed under their normal networking rules.
++    const status = await navigator.permissions.query({
++      name: `${space}-network` as PermissionName,
++    });
++    return status.state;
++  } catch {
++    return 'prompt';
++  }
++}
++
++export default function LocalNetworkForm() {
++  const [url, setUrl] = useState('');
++  const [space, setSpace] = useState<AddressSpace>('local');
++  const [loading, setLoading] = useState(false);
++  const [message, setMessage] = useState('');
++  const [body, setBody] = useState('');
++
++  async function connect(event: FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    if (loading) return;
++    setMessage('');
++    setBody('');
++    setLoading(true);
++
++    try {
++      if (!window.isSecureContext) {
++        throw new Error('Open this application over HTTPS to connect to local resources.');
++      }
++      const endpoint = new URL(url);
++      if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) {
++        throw new Error('Enter an HTTP or HTTPS URL without embedded credentials.');
++      }
++      if (await queryPermission(space) === 'denied') {
++        throw new Error('Access is blocked. Allow Local network or Loopback network in your browser’s site settings, then select Connect again.');
++      }
++
++      setMessage('Connecting… Allow access if your browser asks.');
++      const options: LocalRequestInit = {
++        method: 'GET',
++        mode: 'cors',
++        credentials: 'omit',
++        targetAddressSpace: space,
++        signal: AbortSignal.timeout(15000),
++      };
++      const response = await fetch(endpoint, options);
++      if (!response.ok) {
++        throw new Error(`The resource returned HTTP ${response.status} ${response.statusText}.`);
++      }
++      const text = await response.text();
++      setBody(text || '(Empty response)');
++      setMessage(`Connected — HTTP ${response.status}.`);
++    } catch (error) {
++      setMessage(error instanceof TypeError || (error instanceof DOMException && error.name === 'TimeoutError')
++        ? 'Could not connect. Check the URL and address type, make sure the service is running on this computer or network, and allow access in your browser’s site settings. The service must also allow this website through CORS.'
++        : error instanceof Error ? error.message : 'Could not connect. Please try again.');
++    } finally {
++      setLoading(false);
++    }
++  }
++
++  return (
++    <section className="max-w-2xl mx-auto space-y-6">
++      <h1 className="text-3xl font-bold">Local network</h1>
++      <p>Connect to a device on your network or a service on this computer. Your browser may ask for permission when you select Connect.</p>
++      <form onSubmit={connect} className="space-y-4">
++        <div>
++          <label htmlFor="network-space" className="block font-medium mb-1">Resource location</label>
++          <select id="network-space" value={space} onChange={event => setSpace(event.target.value as AddressSpace)} disabled={loading} className="w-full border border-gray-300 rounded-md p-3">
++            <option value="local">Local network — another device</option>
++            <option value="loopback">This computer — localhost / loopback</option>
++          </select>
++        </div>
++        <div>
++          <label htmlFor="network-url" className="block font-medium mb-1">Resource URL</label>
++          <input id="network-url" type="url" required value={url} onChange={event => setUrl(event.target.value)} disabled={loading} placeholder={space === 'local' ? 'http://192.168.1.100:8080/status' : 'http://localhost:8080/health'} aria-describedby="network-help" className="w-full border border-gray-300 rounded-md p-3" />
++          <p id="network-help" className="text-sm text-gray-600 mt-2">Use an HTTP or HTTPS endpoint that allows requests from this website.</p>
++        </div>
++        <button type="submit" disabled={loading} className="bg-gray-900 text-white px-6 py-3 rounded-md disabled:opacity-50">{loading ? 'Connecting…' : 'Connect'}</button>
++      </form>
++      <p role="status" aria-live="polite">{message}</p>
++      {body && <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words border border-gray-200 rounded-md p-4 text-sm">{body}</pre>}
++    </section>
++  );
++}
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..50c16d2 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network=(self), loopback-network=(self)',
++  );
++  return response;
+ });
+diff --git a/src/pages/local-network.astro b/src/pages/local-network.astro
+new file mode 100644
+index 0000000..d26ac01
+--- /dev/null
++++ b/src/pages/local-network.astro
+@@ -0,0 +1,10 @@
++---
++import Layout from '../layouts/Layout.astro';
++import LocalNetworkForm from '../components/LocalNetworkForm';
++---
++
++<Layout title="Local Network | The DevTools Times">
++  <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <LocalNetworkForm client:load />
++  </div>
++</Layout>

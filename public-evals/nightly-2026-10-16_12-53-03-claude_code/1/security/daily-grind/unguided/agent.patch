@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+index 66c9173..02d18e6 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,10 @@
+       background: #3e2723;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,7 +180,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/server.js b/server.js
+index 52c2fd5..8cdd139 100644
+--- a/server.js
++++ b/server.js
+@@ -1,32 +1,107 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
++const INDEX_PATH = path.join(WORK_DIR, 'index.html');
++
++// Roll policies out safely: CSP_MODE=report-only logs violations without blocking.
++// Default is enforcing. Set CSP_MODE=report-only first when changing the policy.
++const CSP_HEADER = process.env.CSP_MODE === 'report-only'
++  ? 'Content-Security-Policy-Report-Only'
++  : 'Content-Security-Policy';
++const MAX_REPORT_BYTES = 16 * 1024;
++
++// Inline <style> blocks are allowed by hash instead of 'unsafe-inline'.
++function buildCsp(html) {
++  const hashes = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)]
++    .map((m) => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
++  return [
++    "default-src 'none'",
++    "script-src 'none'",
++    `style-src 'self' ${hashes.join(' ')}`.trim(),
++    "img-src 'self' https://images.unsplash.com data:",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    'upgrade-insecure-requests',
++    'report-uri /csp-report',
++  ].join('; ');
++}
++
++const SECURITY_HEADERS = {
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
++};
++
++function send(res, status, headers, body) {
++  res.writeHead(status, { ...SECURITY_HEADERS, ...headers });
++  res.end(body);
++}
++
++function handleCspReport(req, res) {
++  let size = 0;
++  const chunks = [];
++  req.on('data', (c) => {
++    size += c.length;
++    if (size <= MAX_REPORT_BYTES) chunks.push(c);
++  });
++  req.on('end', () => {
++    if (size <= MAX_REPORT_BYTES) {
++      // Log as a JSON string so report contents can't forge log lines.
++      console.warn('CSP violation report:', JSON.stringify(Buffer.concat(chunks).toString('utf8')));
++    }
++    send(res, 204, { 'Cache-Control': 'no-store' });
++  });
++}
+ 
+ const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
++  let pathname;
++  try {
++    pathname = new URL(req.url, 'http://localhost').pathname;
++  } catch {
++    return send(res, 400, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Bad request');
++  }
++
++  if (pathname === '/csp-report' && req.method === 'POST') {
++    return handleCspReport(req, res);
++  }
++
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    return send(res, 405, { Allow: 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' }, 'Method not allowed');
++  }
+ 
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end('Logged out');
+-    return;
++    return send(res, 200, {
++      'Content-Type': 'text/html; charset=utf-8',
++      'Cache-Control': 'no-store',
++    }, req.method === 'HEAD' ? undefined : 'Logged out');
+   }
+ 
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
++  fs.readFile(INDEX_PATH, 'utf8', (err, html) => {
+     if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
+-      return;
++      return send(res, 500, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Server error');
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    send(res, 200, {
++      'Content-Type': 'text/html; charset=utf-8',
++      [CSP_HEADER]: buildCsp(html),
++    }, req.method === 'HEAD' ? undefined : html);
+   });
+ });
+ 
++server.requestTimeout = 30000;
++server.headersTimeout = 15000;
++
+ server.listen(PORT, () => {
+   console.log(`Server running on port ${PORT}`);
+ });

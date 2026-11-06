@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,50 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero.theater-mode {
++      height: auto;
++      min-height: 75vh;
++      padding: 40px 20px;
++    }
++
++    /* Video & Theater Mode */
++    .video-controls {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .video-controls .btn {
++      margin-top: 0;
++      cursor: pointer;
++      border: none;
++      font-size: 0.95rem;
++      font-family: inherit;
++    }
++
++    .roasting-iframe {
++      display: block;
++      width: 100%;
++      max-width: 720px;
++      height: 405px;
++      margin: 0 auto 40px;
++      border: 0;
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++    }
++
++    .hero .roasting-iframe {
++      max-width: 900px;
++      height: 500px;
++      margin: 25px auto 0;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -174,9 +216,25 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <div class="video-controls">
++      <h2>The Art of Coffee Roasting</h2>
++      <button id="theater-mode-btn" class="btn" type="button" aria-pressed="false">Theater Mode</button>
++    </div>
++    <iframe
++      id="roasting-video"
++      class="roasting-iframe"
++      width="560"
++      height="315"
++      src="https://www.youtube.com/embed/dk9Jzt8pk7M"
++      title="Coffee Roasting Process"
++      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++      referrerpolicy="strict-origin-when-cross-origin"
++      allowfullscreen>
++    </iframe>
++
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -206,7 +264,41 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const theaterBtn = document.getElementById('theater-mode-btn');
++    const iframe = document.getElementById('roasting-video');
++    const heroSection = document.querySelector('.hero');
++    const mainContainer = document.querySelector('main.container');
++    const seasonalSection = document.getElementById('seasonal-favorites');
++
++    function reparentWithoutReload(targetParent, node, referenceNode = null) {
++      if ('moveBefore' in targetParent && typeof targetParent.moveBefore === 'function') {
++        targetParent.moveBefore(node, referenceNode);
++      } else if (referenceNode) {
++        targetParent.insertBefore(node, referenceNode);
++      } else {
++        targetParent.appendChild(node);
++      }
++    }
++
++    theaterBtn.addEventListener('click', () => {
++      const isTheaterMode = heroSection.contains(iframe);
++
++      if (!isTheaterMode) {
++        reparentWithoutReload(heroSection, iframe, null);
++        heroSection.classList.add('theater-mode');
++        theaterBtn.setAttribute('aria-pressed', 'true');
++        theaterBtn.textContent = 'Exit Theater Mode';
++      } else {
++        reparentWithoutReload(mainContainer, iframe, seasonalSection);
++        heroSection.classList.remove('theater-mode');
++        theaterBtn.setAttribute('aria-pressed', 'false');
++        theaterBtn.textContent = 'Theater Mode';
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

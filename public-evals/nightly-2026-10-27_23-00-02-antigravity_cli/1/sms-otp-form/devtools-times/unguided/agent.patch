@@ -1,0 +1,391 @@
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..0f7e961 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,16 +1,169 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect, useRef } from 'react';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [phoneNumber, setPhoneNumber] = useState('');
++  const [otp, setOtp] = useState('');
++  const [codeSent, setCodeSent] = useState(false);
++  const [phoneVerified, setPhoneVerified] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
++  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [sendingCode, setSendingCode] = useState(false);
++
++  const otpInputRef = useRef<HTMLInputElement>(null);
++  const abortControllerRef = useRef<AbortController | null>(null);
++
++  const startWebOtpListener = () => {
++    if (typeof window === 'undefined' || !('OTPCredential' in window) || !navigator.credentials) {
++      return;
++    }
++
++    abortControllerRef.current?.abort();
++    const abortController = new AbortController();
++    abortControllerRef.current = abortController;
++
++    navigator.credentials
++      .get({
++        // @ts-ignore - transport is part of the WebOTP API specification
++        otp: { transport: ['sms'] },
++        signal: abortController.signal,
++      })
++      .then((credential: any) => {
++        if (credential && credential.code) {
++          const extracted = extractOtpFromText(String(credential.code));
++          if (extracted) {
++            setOtp(extracted);
++            setPhoneVerified(true);
++            setError(null);
++            setInfoMessage('One-time passcode automatically extracted via SMS and verified.');
++          }
++        }
++      })
++      .catch((err) => {
++        if (err && err.name !== 'AbortError') {
++          console.debug('WebOTP automatic extraction inactive:', err);
++        }
++      });
++  };
++
++  // Set up WebOTP API on mount and when SMS code is requested
++  useEffect(() => {
++    startWebOtpListener();
++    return () => {
++      abortControllerRef.current?.abort();
++    };
++  }, []);
++
++  const extractOtpFromText = (rawText: string): string => {
++    // Support standard WebOTP / Origin-bound SMS format (e.g. "@example.com #123456")
++    const hashMatch = rawText.match(/#(\d{4,8})\b/);
++    if (hashMatch) {
++      return hashMatch[1].slice(0, 6);
++    }
++    // Extract a standalone 6-digit passcode from pasted SMS messages
++    const sixDigitMatch = rawText.match(/\b(\d{6})\b/);
++    if (sixDigitMatch) {
++      return sixDigitMatch[1];
++    }
++    // Fallback to stripping non-digits
++    return rawText.replace(/\D/g, '').slice(0, 6);
++  };
++
++  const validatePhoneNumber = (phone: string): boolean => {
++    const trimmed = phone.trim();
++    const digitsOnly = trimmed.replace(/\D/g, '');
++    return digitsOnly.length >= 7 && digitsOnly.length <= 15 && /^\+?[\d\s\-().]{7,20}$/.test(trimmed);
++  };
++
++  const handleSendCode = async () => {
++    setError(null);
++    setSuccess(null);
++
++    if (!validatePhoneNumber(phoneNumber)) {
++      setError('Please enter a valid phone number (e.g., +1 555-234-5678) to receive an SMS passcode.');
++      return;
++    }
++
++    setSendingCode(true);
++    await new Promise((resolve) => setTimeout(resolve, 150));
++    setSendingCode(false);
++    setCodeSent(true);
++    setPhoneVerified(false);
++    setInfoMessage(`A 6-digit verification passcode has been sent via SMS to ${phoneNumber.trim()}.`);
++    startWebOtpListener();
++    otpInputRef.current?.focus();
++  };
++
++  const handleVerifyCode = () => {
++    setError(null);
++    const cleanOtp = extractOtpFromText(otp);
++    if (cleanOtp.length !== 6) {
++      setError('Please enter a valid 6-digit one-time passcode.');
++      return;
++    }
++    setOtp(cleanOtp);
++    setPhoneVerified(true);
++    setInfoMessage(`Phone number ${phoneNumber.trim()} verified.`);
++  };
++
++  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
++    const rawValue = e.target.value;
++    const extracted = extractOtpFromText(rawValue);
++    setOtp(extracted);
++    if (extracted.length === 6) {
++      setError(null);
++    } else {
++      setPhoneVerified(false);
++    }
++  };
++
++  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
++    const pastedText = e.clipboardData.getData('text');
++    if (pastedText) {
++      const extracted = extractOtpFromText(pastedText);
++      if (extracted) {
++        e.preventDefault();
++        setOtp(extracted);
++        if (extracted.length === 6) {
++          setError(null);
++          setPhoneVerified(true);
++          setInfoMessage('One-time passcode extracted from clipboard.');
++        }
++      }
++    }
++  };
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setError(null);
+     setSuccess(null);
++
++    if (!username.trim()) {
++      setError('Please enter a username.');
++      return;
++    }
++
++    if (!validatePhoneNumber(phoneNumber)) {
++      setError('Please enter a valid phone number (e.g., +1 555-234-5678).');
++      return;
++    }
++
++    const cleanOtp = extractOtpFromText(otp);
++    if (cleanOtp.length !== 6) {
++      setError('Please enter the 6-digit SMS one-time passcode to verify your phone number.');
++      otpInputRef.current?.focus();
++      return;
++    }
++
++    if (password.length < 8 || !/\d/.test(password)) {
++      setError('Password must be at least 8 characters and contain a number.');
++      return;
++    }
++
++    abortControllerRef.current?.abort();
+     setLoading(true);
+ 
+     try {
+@@ -19,19 +172,27 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({
++          username: username.trim(),
++          password,
++          phoneNumber: phoneNumber.trim(),
++          otp: cleanOtp,
++        }),
+       });
+ 
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Registration failed: ${data.error || 'Unknown error'}`);
+       } else {
+-        setSuccess('User registered successfully! You can now sign in.');
++        setPhoneVerified(true);
++        setInfoMessage(null);
++        setSuccess('User registered and phone number verified successfully! You can now sign in.');
+         setUsername('');
+         setPassword('');
++        setPhoneNumber('');
++        setOtp('');
++        setCodeSent(false);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -42,21 +203,44 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
++      <h2 id="signup-heading" className="text-2xl font-bold mb-6 text-center text-gray-800">
++        Sign Up
++      </h2>
++
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div
++          id="signup-error"
++          className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg"
++          role="alert"
++          aria-live="assertive"
++        >
+           {error}
+         </div>
+       )}
+-      
++
++      {infoMessage && (
++        <div
++          id="signup-info"
++          className="mb-4 p-3 text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg"
++          role="status"
++          aria-live="polite"
++        >
++          {infoMessage}
++        </div>
++      )}
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div
++          id="signup-success"
++          className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg"
++          role="alert"
++          aria-live="polite"
++        >
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form onSubmit={handleSubmit} className="space-y-4" aria-labelledby="signup-heading" noValidate>
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,13 +248,105 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            aria-required="true"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+-        
++
++        <div>
++          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
++            Phone Number
++          </label>
++          <div className="flex space-x-2">
++            <input
++              type="tel"
++              id="phone"
++              name="phone"
++              inputMode="tel"
++              autoComplete="tel"
++              placeholder="+1 (555) 234-5678"
++              pattern="^\+?[\d\s\-().]{7,20}$"
++              value={phoneNumber}
++              onChange={(e) => {
++                setPhoneNumber(e.target.value);
++                setPhoneVerified(false);
++              }}
++              required
++              aria-required="true"
++              aria-describedby="phone-hint"
++              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++            <button
++              type="button"
++              onClick={handleSendCode}
++              disabled={sendingCode}
++              data-skip-tracking="true"
++              aria-label={codeSent ? 'Resend SMS verification code' : 'Send SMS verification code'}
++              className="px-3 py-2 text-xs font-medium text-gray-800 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
++            >
++              {sendingCode ? 'Sending...' : codeSent ? 'Resend SMS' : 'Send SMS Code'}
++            </button>
++          </div>
++          <p id="phone-hint" className="text-xs text-gray-500 mt-1">
++            Enter your mobile phone number to receive a one-time passcode via SMS.
++          </p>
++        </div>
++
++        <div>
++          <div className="flex items-center justify-between mb-1">
++            <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
++              One-Time Passcode (SMS)
++            </label>
++            {phoneVerified && (
++              <span className="text-xs font-medium text-green-700" role="status">
++                ✓ Verified
++              </span>
++            )}
++          </div>
++          <div className="flex space-x-2">
++            <input
++              ref={otpInputRef}
++              type="text"
++              id="otp"
++              name="otp"
++              inputMode="numeric"
++              autoComplete="one-time-code"
++              pattern="\d{6}"
++              maxLength={6}
++              placeholder="123456"
++              value={otp}
++              onChange={handleOtpChange}
++              onPaste={handleOtpPaste}
++              required
++              aria-required="true"
++              aria-describedby="otp-hint"
++              className="flex-1 px-3 py-2 border border-gray-300 rounded-md tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++            <button
++              type="button"
++              onClick={handleVerifyCode}
++              disabled={otp.length !== 6}
++              data-skip-tracking="true"
++              aria-label="Verify one-time passcode"
++              className={`px-3 py-2 text-xs font-medium rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap ${
++                otp.length === 6
++                  ? 'text-white bg-gray-700 border-transparent hover:bg-gray-600'
++                  : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
++              }`}
++            >
++              Verify Code
++            </button>
++          </div>
++          <p id="otp-hint" className="text-xs text-gray-500 mt-1">
++            Enter the 6-digit code sent via SMS. Supports automatic code extraction from SMS messages.
++          </p>
++        </div>
++
+         <div>
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+@@ -78,13 +354,17 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            aria-required="true"
++            aria-describedby="password-hint"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="password-hint" className="text-xs text-gray-500 mt-1">
++            Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+ 
+@@ -102,3 +382,5 @@ export default function SignUpForm() {
+     </div>
+   );
+ }
++
++

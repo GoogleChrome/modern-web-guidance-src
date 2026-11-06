@@ -1,0 +1,16 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -117,8 +117,12 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      /* Trim the font's built-in leading so the visible caps sit exactly
++         20px from the card edge and 10px from the paragraph below.
++         text-box doesn't inherit, so it has to be set on the h3 itself. */
++      text-box: trim-both cap alphabetic;
+     }
+ 
+     .btn {
+       display: inline-block;

@@ -1,0 +1,198 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -65,14 +65,113 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .logout-btn {
++      background: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition: color 0.3s, background 0.3s;
+     }
+ 
++    .logout-btn:hover,
++    .logout-btn:focus-visible {
++      color: var(--accent);
++    }
++
++    /* Logout confirmation dialog */
++    .confirm-dialog {
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      max-width: 360px;
++      width: 90%;
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      text-align: center;
++    }
++
++    .confirm-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .confirm-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    /* Popovers */
++    .info-popover {
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 20px 24px;
++      max-width: 320px;
++      width: 90%;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      text-align: left;
++    }
++
++    .info-popover::backdrop {
++      background: rgba(0, 0, 0, 0.3);
++    }
++
++    .info-popover h4 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .info-popover dl {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      gap: 4px 16px;
++      font-size: 0.9rem;
++    }
++
++    .info-popover dd {
++      font-weight: bold;
++      text-align: right;
++    }
++
++    .info-popover .btn {
++      margin-top: 16px;
++    }
++
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -121,8 +220,11 @@
+     }
+ 
+     .btn {
+       display: inline-block;
++      border: none;
++      font: inherit;
++      cursor: pointer;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -163,12 +265,23 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" class="logout-btn" commandfor="logout-dialog" command="show-modal">Logout</button>
++      </li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" class="confirm-dialog" aria-labelledby="logout-dialog-title" closedby="any">
++    <h2 id="logout-dialog-title">Log out?</h2>
++    <p>Are you sure you want to log out of your Daily Grind account?</p>
++    <form class="dialog-actions" action="/logout" method="get">
++      <button type="button" class="btn btn-secondary" commandfor="logout-dialog" command="close" autofocus>Cancel</button>
++      <button type="submit" class="btn">Log Out</button>
++    </form>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -180,14 +293,40 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="maple-nutrition">View Details</button>
++          <div id="maple-nutrition" class="info-popover" popover>
++            <h4>Maple Oat Latte &mdash; Nutrition (12 oz)</h4>
++            <dl>
++              <dt>Calories</dt><dd>190</dd>
++              <dt>Total Fat</dt><dd>7 g</dd>
++              <dt>Carbohydrates</dt><dd>29 g</dd>
++              <dt>Sugars</dt><dd>18 g</dd>
++              <dt>Protein</dt><dd>3 g</dd>
++              <dt>Caffeine</dt><dd>130 mg</dd>
++            </dl>
++            <button type="button" class="btn btn-secondary" popovertarget="maple-nutrition">Close</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <button type="button" class="btn" popovertarget="espresso-info" popovertargetaction="show">Tasting Notes</button>
++          </div>
++          <div id="espresso-info" class="info-popover" popover>
++            <h4>Dark Roast Espresso</h4>
++            <dl>
++              <dt>Origin</dt><dd>Sumatra &amp; Brazil</dd>
++              <dt>Roast</dt><dd>Dark</dd>
++              <dt>Notes</dt><dd>Cocoa, smoke, molasses</dd>
++              <dt>Calories (double shot)</dt><dd>5</dd>
++              <dt>Caffeine</dt><dd>150 mg</dd>
++            </dl>
++            <button type="button" class="btn btn-secondary" popovertarget="espresso-info" popovertargetaction="hide">Hide</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>

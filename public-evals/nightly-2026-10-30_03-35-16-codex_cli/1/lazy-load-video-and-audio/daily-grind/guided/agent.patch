@@ -1,0 +1,195 @@
+diff --git a/index.html b/index.html
+index 66c9173..804b26d 100644
+--- a/index.html
++++ b/index.html
+@@ -74,25 +74,48 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 60vh;
++      background: var(--primary);
+       display: flex;
+-      flex-direction: column;
+       justify-content: center;
+       align-items: center;
++      gap: clamp(24px, 6vw, 90px);
+       color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      padding: 40px 5%;
+     }
+ 
++    .hero-copy { max-width: 540px; }
++
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 5vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
++    .hero .btn { background: var(--accent); color: var(--text); }
++    .hero-player { width: 220px; max-width: 100%; flex-shrink: 0; }
++    video { display: block; width: 100%; height: auto; background: #211714; border-radius: 8px; }
++    .hero-player video { aspect-ratio: 720 / 1366; }
++    .media-section { margin-top: 80px; }
++    .eyebrow { text-transform: uppercase; letter-spacing: 2px; font-size: .8rem; font-weight: 700; }
++    .media-section h2 { font-size: 2rem; margin: 8px 0; }
++    .media-section > p { max-width: 650px; margin-bottom: 24px; }
++    .roasting-player { max-width: 850px; }
++    .roasting-player video { aspect-ratio: 16 / 9; }
++    figcaption { margin-top: 12px; font-size: .85rem; }
++    figcaption a, .podcast a, .media-section a { color: inherit; }
++    .podcast { background: var(--secondary); padding: clamp(20px, 4vw, 40px); border-radius: 8px; }
++    .podcast h3 { margin: 12px 0; font-size: 1.3rem; }
++    audio { display: block; width: 100%; max-width: 650px; margin: 24px 0 12px; }
++    .load-player { margin: 12px 0; padding: 8px 16px; cursor: pointer; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
++    @media (max-width: 650px) {
++      nav { flex-direction: column; gap: 12px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero { flex-direction: column; text-align: center; }
++      .media-section { margin-top: 56px; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,9 +192,22 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-copy">
++      <p class="eyebrow">Good coffee. A better morning.</p>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <figure class="hero-player">
++      <!-- The visible hero stays eager; playback starts only on user request. -->
++      <video controls playsinline width="720" height="1366" preload="metadata"
++        poster="https://images.pexels.com/videos/5694287/pexels-photo-5694287.jpeg?auto=compress&amp;w=440"
++        aria-label="A morning coffee being poured into a glass">
++        <source src="https://videos.pexels.com/video-files/5694287/5694287-hd_720_1366_30fps.mp4" type="video/mp4">
++        Your browser does not support video playback.
++      </video>
++      <figcaption>A moment to savor. Footage by <a href="https://www.pexels.com/video/person-pouring-hot-coffee-in-a-glass-5694287/">Katrin Bolovtsova / Pexels</a>.</figcaption>
++    </figure>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +231,39 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="roasting-title">
++      <p class="eyebrow">From bean to brew</p>
++      <h2 id="roasting-title">Inside the roast</h2>
++      <p>Take a closer look at coffee beans tumbling through the roaster, where heat and time bring out their character.</p>
++      <figure class="roasting-player">
++        <!-- Keep URLs inert in HTML: even preload="none" would fetch a regular poster. -->
++        <video controls playsinline loading="lazy" width="1920" height="1080" preload="none"
++          data-deferred-media data-preload="metadata"
++          data-poster="https://images.pexels.com/videos/7990940/pexels-photo-7990940.jpeg?auto=compress&amp;w=1000"
++          aria-labelledby="roasting-title" aria-describedby="roasting-caption">
++          <source data-src="https://videos.pexels.com/video-files/7990940/7990940-hd_1920_1080_24fps.mp4" type="video/mp4">
++          Your browser does not support video playback.
++        </video>
++        <figcaption id="roasting-caption">Coffee beans turn in a roasting machine. Stock footage by <a href="https://www.pexels.com/video/coffee-beans-in-a-roasting-machine-7990940/">Pew Nguyen / Pexels</a>.</figcaption>
++      </figure>
++      <noscript><p><a href="https://videos.pexels.com/video-files/7990940/7990940-hd_1920_1080_24fps.mp4">Watch the roasting video</a>.</p></noscript>
++    </section>
++
++    <section class="media-section podcast" aria-labelledby="podcast-title">
++      <p class="eyebrow">Something to sip on</p>
++      <h2 id="podcast-title">Coffee &amp; conversation</h2>
++      <p>Pull up a chair and explore the people and everyday work behind a great café.</p>
++      <h3 id="episode-title">Help! My Baristas Ask Me the Same Questions!</h3>
++      <p>A featured episode of <cite>Keys to the Shop</cite>, hosted by Chris Deferio.</p>
++      <audio controls loading="lazy" preload="none" data-deferred-media data-preload="metadata"
++        aria-labelledby="episode-title">
++        <source data-src="https://traffic.libsyn.com/secure/keystotheshop/SB_Help_my_barista_are_constantly_asking_the_same_questions.mp3?dest-id=412105" type="audio/mpeg">
++        Your browser does not support audio playback.
++      </audio>
++      <p><a href="https://keystotheshop.libsyn.com/shift-break-help-my-baristas-ask-me-the-same-questions">Episode notes &amp; more from Keys to the Shop</a></p>
++      <noscript><p><a href="https://traffic.libsyn.com/secure/keystotheshop/SB_Help_my_barista_are_constantly_asking_the_same_questions.mp3?dest-id=412105">Listen to the episode</a>.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +276,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="media-loading.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/media-loading.js b/media-loading.js
+new file mode 100644
+index 0000000..92903b7
+--- /dev/null
++++ b/media-loading.js
+@@ -0,0 +1,53 @@
++// URLs start in data attributes so the HTML preload scanner cannot fetch them.
++// This also protects poster images in browsers without native lazy media support.
++const deferredMedia = document.querySelectorAll('[data-deferred-media]');
++
++function activateMedia(media) {
++  if (!media.hasAttribute('data-deferred-media')) return;
++  media.removeAttribute('data-deferred-media');
++
++  if (media.dataset.poster) {
++    media.setAttribute('poster', media.dataset.poster);
++    delete media.dataset.poster;
++  }
++  media.preload = media.dataset.preload || 'none';
++  delete media.dataset.preload;
++
++  for (const source of media.querySelectorAll('source[data-src]')) {
++    source.setAttribute('src', source.dataset.src);
++    delete source.dataset.src;
++  }
++
++  // Changing an existing <source> requires load() to restart source selection.
++  // We only do this near the viewport (or after explicit user activation).
++  media.load();
++}
++
++const observer = 'IntersectionObserver' in window
++  ? new IntersectionObserver((entries) => {
++      for (const entry of entries) {
++        if (!entry.isIntersecting) continue;
++        activateMedia(entry.target);
++        observer.unobserve(entry.target);
++      }
++    }, { rootMargin: '200px 0px', threshold: 0 })
++  : null;
++
++for (const media of deferredMedia) {
++  // Use the same threshold in every browser, including native lazy loaders.
++  if (observer) {
++    observer.observe(media);
++  } else {
++    // Very old browsers retain strict deferral and offer explicit activation.
++    const button = document.createElement('button');
++    button.type = 'button';
++    button.className = 'load-player';
++    button.textContent = media.tagName === 'VIDEO' ? 'Load video player' : 'Load podcast player';
++    button.addEventListener('click', () => {
++      activateMedia(media);
++      media.focus();
++      button.remove();
++    }, { once: true });
++    media.after(button);
++  }
++}

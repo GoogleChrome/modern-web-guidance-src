@@ -1,0 +1,159 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,134 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .latte-info {
++      position: relative;
++      display: inline-flex;
++    }
++
++    .info-button {
++      inline-size: 44px;
++      block-size: 44px;
++      border: 1px solid var(--secondary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: bold 1.1rem Georgia, serif;
++      cursor: pointer;
++    }
++
++    .info-button:hover {
++      background: var(--secondary);
++    }
++
++    .info-button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .latte-tooltip {
++      position: fixed;
++      inline-size: min(18rem, calc(100vw - 2rem));
++      margin: auto;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      color: white;
++      overflow: visible;
++      text-align: start;
++    }
++
++    .tooltip-content {
++      position: relative;
++      padding: 1rem;
++      border-radius: .75rem;
++      background: var(--primary);
++      box-shadow: 0 4px 14px rgb(0 0 0 / 20%);
++      font-size: .9rem;
++      overflow-wrap: anywhere;
++    }
++
++    @supports (position-area: block-start) {
++      .latte-tooltip {
++        /* popovertarget supplies the implicit anchor connection. */
++        inset: auto;
++        margin: 0;
++        position-area: block-start;
++        position-try-fallbacks: flip-block;
++      }
++
++      .tooltip-content {
++        margin-block: .75rem;
++      }
++
++      @supports (container-type: anchored) {
++        .latte-tooltip {
++          container-type: anchored;
++        }
++
++        /* Style descendants: a container cannot query itself. */
++        .tooltip-content {
++          margin-block: 0 .75rem;
++          border-radius: .75rem .75rem .25rem .25rem;
++        }
++
++        .tooltip-content::before {
++          content: "";
++          position: absolute;
++          inset-inline-start: calc(50% - .5rem);
++          inset-block-start: 100%;
++          border-inline: .5rem solid transparent;
++          border-block-start: .5rem solid var(--primary);
++        }
++
++        @container anchored(fallback: flip-block) {
++          .tooltip-content {
++            margin-block: .75rem 0;
++            border-radius: .25rem .25rem .75rem .75rem;
++          }
++
++          .tooltip-content::before {
++            inset-block-start: auto;
++            inset-block-end: 100%;
++            border-block-start: 0;
++            border-block-end: .5rem solid var(--primary);
++          }
++        }
++      }
++    }
++
++    /* Keep the description reachable without native Popover support. */
++    @supports not selector(:popover-open) {
++      .latte-tooltip {
++        display: none;
++        position: absolute;
++        inset: auto;
++        inset-block-end: calc(100% + .75rem);
++        inset-inline-start: 50%;
++        transform: translateX(-50%);
++        z-index: 1;
++      }
++
++      .latte-info:hover .latte-tooltip,
++      .latte-info:focus-within .latte-tooltip {
++        display: block;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +306,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <div class="latte-info">
++              <button type="button" id="anchor" class="info-button"
++                popovertarget="maple-oat-tooltip" aria-describedby="maple-oat-tooltip"
++                aria-label="About the Maple Oat Latte"><span aria-hidden="true">i</span></button>
++              <div id="maple-oat-tooltip" class="latte-tooltip" popover role="tooltip">
++                <div class="tooltip-content">A creamy latte with oat milk and a hint of Vermont maple syrup.</div>
++              </div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

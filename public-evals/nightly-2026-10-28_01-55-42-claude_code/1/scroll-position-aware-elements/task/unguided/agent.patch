@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,113 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scroll container */
++    html,
++    body {
++      height: 100%;
++    }
++
++    body {
++      overflow: hidden;
++    }
++
++    .scroller {
++      position: relative;
++      height: 100%;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      -webkit-overflow-scrolling: touch;
++    }
++
++    /* Zero-size marker at the very top of the scroller. The IntersectionObserver
++       watches this instead of listening to scroll events. */
++    .scroller__top-sentinel {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 1px;
++      height: 1px;
++      pointer-events: none;
++      visibility: hidden;
++    }
++
++    /* Back to top button */
++    .back-to-top {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 900;
++      width: 48px;
++      height: 48px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      border: none;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      /* Hidden state: invisible, not clickable, and out of the tab order. */
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transform: translateY(16px) scale(0.9);
++      /* Delay the visibility flip on hide so the fade-out can play first. */
++      transition:
++        opacity 0.3s ease,
++        transform 0.3s ease,
++        visibility 0s linear 0.3s;
++    }
++
++    .back-to-top.is-visible {
++      opacity: 1;
++      visibility: visible;
++      pointer-events: auto;
++      transform: translateY(0) scale(1);
++      transition:
++        opacity 0.3s ease,
++        transform 0.3s ease,
++        visibility 0s linear 0s;
++    }
++
++    .back-to-top:hover {
++      background: #ffbb5c;
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .back-to-top svg {
++      width: 22px;
++      height: 22px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 2.5;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .back-to-top,
++      .back-to-top.is-visible {
++        transition: none;
++        transform: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="scroller" id="scroller">
++  <div class="scroller__top-sentinel" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +306,72 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="back-to-top" aria-label="Back to top" tabindex="-1" aria-hidden="true">
++    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
++      <path d="M12 19V5M5 12l7-7 7 7" />
++    </svg>
++  </button>
++  </div>
++
++  <script>
++    (function () {
++      var scroller = document.getElementById('scroller');
++      var button = scroller.querySelector('.back-to-top');
++      var sentinel = scroller.querySelector('.scroller__top-sentinel');
++      var SHOW_AFTER_PX = 300;
++
++      function setVisible(visible) {
++        button.classList.toggle('is-visible', visible);
++        // Keep the hidden button out of the tab order and accessibility tree.
++        if (visible) {
++          button.removeAttribute('tabindex');
++          button.removeAttribute('aria-hidden');
++        } else {
++          button.setAttribute('tabindex', '-1');
++          button.setAttribute('aria-hidden', 'true');
++          if (document.activeElement === button) {
++            button.blur();
++          }
++        }
++      }
++
++      if ('IntersectionObserver' in window) {
++        // The sentinel sits at the top of the scroller. Extending the root's top
++        // edge by SHOW_AFTER_PX means it stops "intersecting" once the user has
++        // scrolled more than that distance. The browser only calls back on
++        // state changes, so there is no per-frame scroll handler.
++        var observer = new IntersectionObserver(function (entries) {
++          setVisible(!entries[0].isIntersecting);
++        }, {
++          root: scroller,
++          rootMargin: SHOW_AFTER_PX + 'px 0px 0px 0px',
++          threshold: 0
++        });
++        observer.observe(sentinel);
++      } else {
++        // Very old browsers: always show the button rather than never.
++        setVisible(true);
++      }
++
++      button.addEventListener('click', function () {
++        var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++        scroller.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
++        // Move keyboard focus to the top of the page so it does not stay on the
++        // button, which hides itself once the top is reached.
++        var nav = scroller.querySelector('nav');
++        if (nav) {
++          nav.setAttribute('tabindex', '-1');
++          nav.focus({ preventScroll: true });
++          nav.addEventListener('blur', function onBlur() {
++            nav.removeAttribute('tabindex');
++            nav.removeEventListener('blur', onBlur);
++          });
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

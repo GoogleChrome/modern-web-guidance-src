@@ -1,0 +1,267 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,17 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 4.5rem;
++      --sticky-blue: #1565c0;
+     }
+ 
++    html {
++      /* Keep focused/anchored content clear of the site nav + a stuck section header */
++      scroll-padding-top: calc(var(--nav-height) + 4rem);
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -30,9 +37,10 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      height: var(--nav-height);
++      padding: 0 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -134,8 +142,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky section headers */
++    .content-section {
++      margin-top: 40px;
++      /* Prevent scroll-anchoring flicker when the stuck header changes padding */
++      overflow-anchor: none;
++    }
++
++    .intro {
++      max-width: 750px;
++      margin: 0 auto;
++      text-align: center;
++    }
++
++    .intro p + p {
++      margin-top: 1rem;
++    }
++
++    .sticky-container {
++      position: sticky;
++      /* Stick just below the existing sticky site nav */
++      top: var(--nav-height);
++      z-index: 10;
++      /* Named container so it never collides with other (nested) containers */
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 1.25rem 1.5rem;
++      border-radius: 8px;
++      text-align: center;
++      font-size: 1.6rem;
++      transition: background-color 0.3s, color 0.3s, box-shadow 0.3s, padding 0.3s, font-size 0.3s;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: var(--sticky-blue);
++        color: white;
++        padding: 0.4rem 1.5rem;
++        font-size: 1.2rem;
++        border-radius: 0 0 8px 8px;
++        box-shadow: 0 4px 10px rgb(0 0 0 / 0.25);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .sticky-header {
++        transition: none;
++      }
++    }
++
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
++    .list {
++      list-style: none;
++      margin-top: 20px;
++      display: grid;
++      gap: 15px;
++    }
++
++    .list li {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .list h3 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,28 +263,141 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="intro">
++      <h2>Coffee, Done Slowly</h2>
++      <p>Since 2009, The Daily Grind has roasted small batches of single-origin beans in our neighborhood roastery.
++        We work directly with growers, pay well above fair-trade prices, and roast every bag to order so it arrives
++        at its peak.</p>
++      <p>Whether you're a pour-over purist or just need something warm before your commute, we've got a cup for you.
++        Scroll on to explore this season's menu, our roasts, brewing tips, and where to find us.</p>
++    </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Latte with foam art" loading="lazy" width="600" height="400">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Espresso shot in a small cup" loading="lazy" width="600" height="400">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Iced cold brew in a glass" loading="lazy" width="600" height="400">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Cappuccino from above" loading="lazy" width="600" height="400">
++          <h3>Cinnamon Cappuccino</h3>
++          <p>Velvety microfoam dusted with Ceylon cinnamon.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=600&q=80" alt="Matcha latte" loading="lazy" width="600" height="400">
++          <h3>Honey Matcha Latte</h3>
++          <p>Ceremonial-grade matcha sweetened with local wildflower honey.</p>
++          <a href="/menu/matcha" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Iced coffee with milk" loading="lazy" width="600" height="400">
++          <h3>Vanilla Iced Coffee</h3>
++          <p>Our house blend over ice with Madagascar vanilla bean.</p>
++          <a href="/menu/iced" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Our Roasts</h2>
++      </div>
++      <ul class="list">
++        <li>
++          <h3>Sunrise Blend &mdash; Light</h3>
++          <p>Bright and floral with notes of citrus, jasmine, and honey. Sourced from Yirgacheffe, Ethiopia.</p>
++        </li>
++        <li>
++          <h3>Neighborhood House &mdash; Medium</h3>
++          <p>Our everyday favorite: milk chocolate, toasted almond, and a clean caramel finish. Colombia &amp; Brazil.</p>
++        </li>
++        <li>
++          <h3>Highland Single Origin &mdash; Medium</h3>
++          <p>Juicy red fruit and brown sugar sweetness from a family farm in Huehuetenango, Guatemala.</p>
++        </li>
++        <li>
++          <h3>Midnight Oil &mdash; Dark</h3>
++          <p>Deep and syrupy with dark cocoa, molasses, and a whisper of smoke. Sumatra &amp; Papua New Guinea.</p>
++        </li>
++        <li>
++          <h3>Swiss Water Decaf &mdash; Medium</h3>
++          <p>All the flavor, none of the jitters. Chemical-free decaffeination with notes of cocoa and dried cherry.</p>
++        </li>
++      </ul>
++    </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Brewing Guides</h2>
++      </div>
++      <ul class="list">
++        <li>
++          <h3>Pour-Over</h3>
++          <p>Use 22g of medium-fine coffee to 350g of water at 94&deg;C. Bloom for 45 seconds, then pour in slow
++            spirals. Aim for a total brew time of about 3 minutes.</p>
++        </li>
++        <li>
++          <h3>French Press</h3>
++          <p>Coarse grind, 30g coffee to 500g water. Steep 4 minutes, break the crust, skim, and press gently.</p>
++        </li>
++        <li>
++          <h3>AeroPress</h3>
++          <p>15g fine-medium coffee, 230g water at 85&deg;C. Stir, steep 90 seconds, then press for 30 seconds.</p>
++        </li>
++        <li>
++          <h3>Cold Brew at Home</h3>
++          <p>Combine 100g coarse coffee with 1L cold water. Steep 16&ndash;18 hours in the fridge, strain, and dilute
++            1:1 with water or milk.</p>
++        </li>
++        <li>
++          <h3>Espresso</h3>
++          <p>18g in, 36g out, in 25&ndash;30 seconds. Adjust your grind finer if it runs fast, coarser if it chokes.</p>
++        </li>
++      </ul>
++    </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Visit Us</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>412 Market Street<br>Mon&ndash;Fri 6am&ndash;7pm<br>Sat&ndash;Sun 7am&ndash;6pm</p>
++          <a href="/locations/downtown" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <h3>Riverside Caf&eacute;</h3>
++          <p>88 Waterfront Avenue<br>Daily 7am&ndash;8pm</p>
++          <a href="/locations/riverside" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <h3>University Kiosk</h3>
++          <p>Student Union, Level 1<br>Mon&ndash;Fri 7am&ndash;4pm</p>
++          <a href="/locations/university" class="btn">Get Directions</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

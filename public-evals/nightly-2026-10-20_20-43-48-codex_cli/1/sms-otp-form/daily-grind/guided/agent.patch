@@ -1,0 +1,541 @@
+diff --git a/SMS-INTEGRATION.md b/SMS-INTEGRATION.md
+new file mode 100644
+index 0000000..fc8342a
+--- /dev/null
++++ b/SMS-INTEGRATION.md
+@@ -0,0 +1,10 @@
++The page runs in an explicitly labeled local demo by default. No SMS is sent; the demo code is 123456 and expires after five minutes.
++
++To connect real SMS delivery, define `window.DAILY_GRIND_VERIFICATION_API = '/api/phone-verification'` in a script before `verification.js` loads. Implement these same-origin JSON endpoints:
++
++- `POST /api/phone-verification/send` receives `{ phone }` in international format and returns `{ challengeId }`. Calling it again requests a replacement code.
++- `POST /api/phone-verification/verify` receives `{ challengeId, code }` and returns `{ verified: true }` only after server verification. Errors should use an appropriate non-2xx status and `{ message }`.
++
++The backend must bind challenges to the current session and phone, securely generate and store short-lived codes, invalidate used and replaced codes, enforce resend and attempt limits, and protect requests against CSRF. Never accept the demo code in production. The server is the authority on expiry and verification; client controls provide feedback only.
++
++Send human-readable SMS text followed by a final line formatted exactly as `@your-domain.example #123456`, substituting the deployed hostname (without scheme, port, or path) and generated code. Serve over HTTPS. WebOTP starts before dispatch and aborts on manual submission, resend, editing the phone, or page exit. Unsupported browsers retain system one-time-code autofill and manual entry.
+diff --git a/index.html b/index.html
+index 66c9173..408151c 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,61 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#f6f5ef">
++  <title>Verify your phone | The Daily Grind</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    :root{--ink:#253c32;--green:#2c4c3b;--muted:#747970;--cream:#f6f5ef;--line:#e5e7df;--lime:#dce8b5}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}button,input,select{font:inherit}a{color:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:default}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9dad6b;outline-offset:4px}svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.site-header{height:100px;max-width:1320px;margin:auto;padding:0 58px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #dedfd6}.brand{display:flex;align-items:center;gap:11px;text-decoration:none}.brand-icon{width:43px;height:43px;border:1.5px solid var(--ink);border-radius:50%;display:grid;place-items:center}.brand-icon svg{width:27px;height:27px}.brand-name{font-family:'Manrope',sans-serif;font-weight:800;font-size:18px;line-height:1.08;letter-spacing:-.7px}.brand-name span{display:block;font-size:10px;letter-spacing:2.9px;font-weight:600;margin-top:6px}.nav-links{display:flex;align-items:center;gap:33px}.nav-links a{text-decoration:none;font-size:13px;color:#62685f}.nav-links a:hover{color:var(--green)}.nav-links .account-link{color:var(--ink);display:flex;align-items:center;gap:9px}.account-link svg{width:17px;height:17px}.nav-divider{height:21px;width:1px;background:#d9ddd3}.nav-links .logout{font-size:12px;border:1px solid #cdd3c6;padding:9px 17px;border-radius:6px}main{max-width:1100px;padding:35px 28px 0;margin:auto}.breadcrumb{display:flex;align-items:center;gap:10px;color:#8b8f85;font-size:11px;margin-bottom:29px}.breadcrumb a{text-decoration:none}.breadcrumb svg{width:12px;height:12px}.breadcrumb span{color:#465345}.page-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.eyebrow{font-size:10px;letter-spacing:2px;font-weight:700}.secure-label{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:1px;color:#6c7768}.secure-label svg{width:13px;height:13px}.verification-layout{display:grid;grid-template-columns:46% 54%;min-height:566px;background:#fff;border:1px solid #e2e4db;border-radius:14px;overflow:hidden;box-shadow:0 10px 32px #2d3b2110}.story-panel{position:relative;isolation:isolate;background:#32372c;display:flex;flex-direction:column;justify-content:space-between;padding:34px;color:white;overflow:hidden}.story-panel::after{content:'';position:absolute;z-index:-1;inset:0;background:linear-gradient(180deg,#15251b22 5%,#14271910 35%,#172b20e8 100%)}.story-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:48% 50%;z-index:-2}.member-tag{display:inline-flex;align-items:center;gap:7px;align-self:flex-start;border:1px solid #ffffff66;background:#1e322829;border-radius:30px;padding:8px 12px;font-size:9px;letter-spacing:1.7px;font-weight:500;backdrop-filter:blur(8px)}.member-tag svg{width:13px;height:13px}.story-copy{padding-top:190px}.story-copy .little-label{color:#dce7c9;font-size:10px;letter-spacing:2px;margin-bottom:16px}.story-copy h1{font-family:'Manrope',sans-serif;font-size:37px;letter-spacing:-1.6px;line-height:1.25;margin:0 0 16px;font-weight:500}.story-copy p{max-width:290px;color:#e1e5db;font-size:12px;line-height:1.85;margin:0}.story-bottom{display:flex;align-items:center;gap:8px;border-top:1px solid #ffffff30;padding-top:19px;margin-top:28px;font-size:10px;color:#e2e7dc}.story-bottom svg{width:15px;height:15px}.form-panel{padding:37px 46px 28px}.steps{display:flex;align-items:center;gap:10px;margin-bottom:35px}.step{display:flex;align-items:center;gap:7px;font-size:10px;color:#989d93;white-space:nowrap}.step-number{border:1px solid #dce0d7;border-radius:50%;height:22px;width:22px;display:grid;place-items:center;font-size:10px}.step.active{color:var(--ink);font-weight:600}.step.active .step-number{background:var(--green);border-color:var(--green);color:#fff}.step.complete .step-number{background:#e9efdd;border-color:#e9efdd;color:var(--green)}.step-line{height:1px;background:#e2e6dc;flex:1;max-width:55px}.phone-icon{height:46px;width:46px;border-radius:12px;background:#f0f3e9;display:grid;place-items:center;margin-bottom:19px}.phone-icon svg{height:24px;width:24px}.form-panel h2{font-family:'Manrope',sans-serif;font-size:27px;font-weight:650;letter-spacing:-1px;margin:0 0 11px}.intro{color:var(--muted);font-size:12px;line-height:1.85;margin:0 0 25px;max-width:350px}label{display:block;font-size:11px;font-weight:600;margin-bottom:9px}.phone-field{display:flex;height:49px;border:1px solid #cdd3c6;border-radius:6px;background:#fff;overflow:hidden}.phone-field:focus-within{outline:2px solid #8d9f78;outline-offset:2px}.country-wrap{display:flex;align-items:center;position:relative;padding-left:12px}.flag{font-size:17px;line-height:1}.country-wrap select{padding:0 19px 0 7px;border:0;background:none;height:100%;color:#40513d;font-size:12px;max-width:78px;cursor:pointer}.phone-field input{width:100%;min-width:0;margin:10px 0;padding:0 13px;border:0;border-left:1px solid var(--line);border-radius:0;outline:none;font-size:14px;letter-spacing:.5px;color:var(--ink)}input::placeholder{color:#a3a79d}.hint{font-size:10px;color:#858b7f;line-height:1.6;margin:9px 0 23px}.primary-button{display:flex;align-items:center;justify-content:center;gap:15px;width:100%;height:47px;border:0;border-radius:6px;background:var(--green);color:white;font-size:12px;font-weight:500;transition:background .2s}.primary-button:hover{background:#1d3929}.primary-button svg{width:17px;height:17px}.primary-button:disabled{opacity:.6}.consent{font-size:9px;line-height:1.8;color:#8a8f84;text-align:center;margin:13px 8px 0}.privacy-note{display:flex;gap:9px;align-items:flex-start;border-top:1px solid var(--line);padding-top:20px;margin-top:26px;color:#77816e}.privacy-note svg{width:16px;height:16px;margin-top:1px}.privacy-note strong{font-size:10px;font-weight:500;color:#52614b;display:block;margin-bottom:4px}.privacy-note p{font-size:10px;line-height:1.6;margin:0}.demo-note{font-size:9px;color:#818875;margin:16px 0 0;text-align:center}.demo-note code{font-family:inherit;color:#4b6141;font-weight:600}.error{color:#a33c2e;font-size:11px;margin:9px 0;line-height:1.6}.error:empty{display:none}.otp-input{height:56px;width:100%;border:1px solid #cdd3c6;border-radius:6px;padding:0 18px;letter-spacing:15px;font-size:24px;font-family:ui-monospace,monospace;color:var(--ink)}.otp-input::placeholder{letter-spacing:15px;color:#c1c7ba}.code-hint{margin:0 0 12px}.text-button{background:none;border:0;padding:0;color:var(--green);font-size:11px;text-decoration:underline;text-underline-offset:3px}.edit-phone{display:block;margin:-12px 0 22px}.resend-row{text-align:center;font-size:11px;color:var(--muted);margin-top:17px}.text-button:disabled{color:#92988a;text-decoration:none}.benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:25px;padding:30px 17px 32px}.benefit{display:flex;gap:12px;align-items:center;justify-content:center}.benefit svg{width:22px;height:22px;color:#69775c}.benefit strong{display:block;font-size:11px;font-weight:500;margin-bottom:4px}.benefit p{margin:0;color:#8a8e82;font-size:10px}.site-footer{max-width:1204px;margin:0 auto;padding:24px 0;border-top:1px solid #dedfd6;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#858b7e}.footer-links{display:flex;gap:22px}.footer-links a{text-decoration:none}.footer-end{display:flex;gap:6px;align-items:center}.footer-end svg{width:13px;height:13px}.success-icon{width:60px;height:60px;background:#edf3e3;border-radius:50%;display:grid;place-items:center;margin:40px 0 22px}.success-icon svg{width:30px;height:30px}.verified-number{padding:15px;border:1px solid var(--line);border-radius:6px;margin:24px 0;font-size:14px;text-align:center}.status{font-size:11px;color:#5a6c4c;line-height:1.6;margin:10px 0}.status:empty{display:none}[hidden]{display:none!important}@media(min-width:1450px){main{padding-top:48px}.verification-layout{min-height:610px}.form-panel{padding-top:44px}.steps{margin-bottom:42px}.story-copy h1{font-size:41px}.benefits{padding-top:36px;padding-bottom:40px}}@media(max-width:900px){.site-header{padding:0 28px}.nav-links{gap:19px}.form-panel{padding:30px}.story-panel{padding:28px}.story-copy h1{font-size:31px}.site-footer{margin:0 28px}}@media(max-width:650px){.site-header{height:80px;padding:0 21px}.brand-name{font-size:15px}.brand-name span{font-size:8px}.brand-icon{width:36px;height:36px}.nav-links{gap:0}.nav-links>a:not(.account-link),.nav-divider{display:none}.nav-links .account-link{font-size:11px}.verification-layout{grid-template-columns:1fr}.story-panel{min-height:270px;padding:25px}.story-copy{padding-top:36px}.story-copy h1{font-size:29px;margin-bottom:10px}.story-copy h1 br{display:none}.story-copy p{font-size:11px;max-width:290px}.story-bottom{display:none}.story-photo{object-position:50% 42%}.form-panel{padding:29px 25px}.steps{margin-bottom:27px}main{padding:24px 18px 0}.breadcrumb{margin-bottom:24px}.page-heading{margin-bottom:16px}.eyebrow{font-size:9px;letter-spacing:1.3px}.secure-label{font-size:8px;letter-spacing:.5px}.benefits{gap:15px;padding:25px 3px;grid-template-columns:1fr}.benefit{justify-content:flex-start;margin:auto;width:230px}.site-footer{margin:0 21px;padding:22px 0;gap:17px;flex-wrap:wrap}.footer-end{display:none}.form-panel h2{font-size:26px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <svg style="display:none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><symbol id="coffee" viewBox="0 0 24 24"><path d="M5 9h12v7a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V9Z"/><path d="M17 10h2a3 3 0 0 1 0 6h-2M4 22h15M8 3v3m4-4v4m4-3v3"/></symbol><symbol id="shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol><symbol id="phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4m-3 14h2"/></symbol><symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol><symbol id="leaf" viewBox="0 0 24 24"><path d="M20 3c0 12-2 17-9 17a7 7 0 0 1 0-14c3 0 6-1 9-3Z"/><path d="M4 22 15 11"/></symbol><symbol id="heart" viewBox="0 0 24 24"><path d="M20 5a5 5 0 0 0-8 1 5 5 0 0 0-8-1c-5 5 3 11 8 15 5-4 13-10 8-15Z"/></symbol><symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol></svg>
++  <header class="site-header">
++    <a class="brand" href="/" aria-label="The Daily Grind home"><span class="brand-icon"><svg aria-hidden="true"><use href="#coffee"/></svg></span><span class="brand-name">THE DAILY GRIND<span>GOOD COFFEE. EVERY DAY.</span></span></a>
++    <nav class="nav-links" aria-label="Main navigation"><a href="/menu">Menu</a><a href="/locations">Locations</a><a href="/rewards">Rewards</a><span class="nav-divider"></span><a href="/account" class="account-link" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M5 21v-3a7 7 0 0 1 14 0v3"/></svg>My Account</a><a class="logout" href="/logout">Log out</a></nav>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <main>
++    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg><a href="/account">My account</a><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg><span>Phone verification</span></nav>
++    <div class="page-heading"><span class="eyebrow">YOUR DAILY GRIND ACCOUNT</span><span class="secure-label"><svg aria-hidden="true"><use href="#lock"/></svg>SAFE & SECURE</span></div>
++    <div class="verification-layout">
++      <aside class="story-panel" aria-label="The Daily Grind community">
++        <img class="story-photo" src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1100&q=85" alt="Freshly brewed coffee and a pour-over on a sunlit café table" fetchpriority="high">
++        <span class="member-tag"><svg aria-hidden="true"><use href="#coffee"/></svg>MORE THAN A COFFEE BREAK</span>
++        <div class="story-copy"><div class="little-label">A LITTLE CHECK. A WARM WELCOME.</div><h1>Good coffee.<br>Great things ahead.</h1><p>Your daily ritual, made a little more rewarding.<br>Let’s keep your account as safe as your<br>favorite seat in the café.</p><div class="story-bottom"><svg aria-hidden="true"><use href="#heart"/></svg>Crafted with care. Connected by coffee.</div></div>
++      </aside>
++      <section class="form-panel" aria-labelledby="form-title">
++        <div class="steps" aria-label="Verification progress"><div id="phone-step" class="step active" aria-current="step"><span class="step-number">1</span>Phone number</div><span class="step-line"></span><div id="code-step" class="step"><span class="step-number">2</span>Verify code</div></div>
++        <div id="entry-view">
++          <div class="phone-icon"><svg aria-hidden="true"><use href="#phone"/></svg></div>
++          <h2 id="form-title" tabindex="-1">Let’s make it you.</h2>
++          <p class="intro">A quick verification keeps your account secure and<br class="desktop-break"> your coffee rewards all yours.</p>
++          <form id="phone-form" method="post" novalidate>
++            <label for="phone">Mobile number</label>
++            <div class="phone-field"><div class="country-wrap"><span class="flag" id="country-flag" aria-hidden="true">🇺🇸</span><select id="country" name="country" aria-label="Country calling code"><option value="+1" data-flag="🇺🇸">+1 US</option><option value="+44" data-flag="🇬🇧">+44 UK</option><option value="+61" data-flag="🇦🇺">+61 AU</option><option value="+91" data-flag="🇮🇳">+91 IN</option><option value="+49" data-flag="🇩🇪">+49 DE</option><option value="+33" data-flag="🇫🇷">+33 FR</option></select></div><input id="phone" name="phone" type="tel" autocomplete="tel-national" inputmode="tel" placeholder="(555) 123-4567" aria-describedby="phone-hint phone-error" required maxlength="22"></div>
++            <p class="hint" id="phone-hint">We’ll text you a 6-digit verification code.</p><p class="error" id="phone-error" role="alert"></p>
++            <button class="primary-button" id="send-button" type="submit">Send verification code<svg aria-hidden="true"><use href="#arrow"/></svg></button>
++            <p class="consent">By continuing, you agree to receive a verification text.<br>Standard message and data rates may apply.</p>
++          </form>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div id="code-view" hidden>
++          <div class="phone-icon"><svg aria-hidden="true"><use href="#phone"/></svg></div>
++          <h2 id="code-title" tabindex="-1">Check your phone.</h2><p class="intro" id="sent-description"></p><button class="text-button edit-phone" id="edit-phone" type="button">Change phone number</button>
++          <form id="otp-form" method="post" novalidate><label for="otp">Verification code</label><p class="hint code-hint" id="otp-hint">Enter the 6-digit code, or use your phone’s SMS autofill.</p><input class="otp-input" id="otp" name="otp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" aria-describedby="otp-hint otp-error" required><p class="error" id="otp-error" role="alert"></p><button class="primary-button" id="verify-button" type="submit" style="margin-top:20px">Verify phone number<svg aria-hidden="true"><use href="#arrow"/></svg></button></form>
++          <div class="resend-row">Didn’t receive a code? <button id="resend-button" class="text-button" type="button">Resend code</button></div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++        <div id="success-view" hidden><div class="success-icon"><svg aria-hidden="true"><use href="#check"/></svg></div><h2 id="success-title" tabindex="-1">You’re all set.</h2><p class="intro" id="success-copy">Your phone number is verified. A more rewarding coffee ritual is just around the corner.</p><div class="verified-number" id="verified-number"></div><a href="/account" class="primary-button" style="text-decoration:none">Back to my account<svg aria-hidden="true"><use href="#arrow"/></svg></a></div>
++        <p class="status" id="status" role="status" aria-live="polite"></p>
++        <div class="privacy-note"><svg aria-hidden="true"><use href="#shield"/></svg><div><strong>Your number stays yours.</strong><p>We only use it to keep your account secure.<br>No spam. No unexpected coffee calls.</p></div></div>
++        <p class="demo-note" id="demo-note">Demo experience · No SMS is sent. Use code <code>123456</code>.</p>
++      </section>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++    <div class="benefits"><div class="benefit"><svg aria-hidden="true"><use href="#leaf"/></svg><div><strong>Thoughtfully sourced</strong><p>Good for your cup. Better for the planet.</p></div></div><div class="benefit"><svg aria-hidden="true"><use href="#coffee"/></svg><div><strong>A little more rewarding</strong><p>Every sip brings you something good.</p></div></div><div class="benefit"><svg aria-hidden="true"><use href="#heart"/></svg><div><strong>Always your neighborhood café</strong><p>A familiar face. Your favorite place.</p></div></div></div>
++  </main>
++  <footer class="site-footer"><span>© 2026 The Daily Grind Coffee Co.</span><div class="footer-links"><a href="/privacy-policy">Privacy policy</a><a href="/terms">Terms of service</a><a href="/contact">Need a hand?</a></div><span class="footer-end">Made with a little extra care<svg aria-hidden="true"><use href="#coffee"/></svg></span></footer>
++  <script src="verification.js"></script>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..3721549 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test tests/*.test.cjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/tests/verification.test.cjs b/tests/verification.test.cjs
+new file mode 100644
+index 0000000..d7e40e7
+--- /dev/null
++++ b/tests/verification.test.cjs
+@@ -0,0 +1,35 @@
++const {test} = require('node:test');
++const assert = require('node:assert/strict');
++const vm = require('node:vm');
++const fs = require('node:fs');
++const source = fs.readFileSync(require('node:path').join(__dirname, '../verification.js'), 'utf8');
++function setup(real = false, response = {}) {
++  const elements = new Map();
++  const get = id => {
++    if (!elements.has(id)) elements.set(id, {value:'',hidden:false,textContent:'',disabled:false,attrs:{},events:{},
++      setAttribute(k,v){this.attrs[k]=v},removeAttribute(k){delete this.attrs[k]},focus(){this.focused=true},
++      addEventListener(k,fn){this.events[k]=fn},requestSubmit(){return this.events.submit({preventDefault(){}})}
++    });
++    return elements.get(id);
++  };
++  get('country').value = '+1';
++  let now = 1000, credentialsOptions, resolveOtp;
++  const calls = [];
++  const window = {isSecureContext:true,addEventListener(k,fn){this[k]=fn}};
++  if(real){ window.DAILY_GRIND_VERIFICATION_API='/api/phone'; window.OTPCredential=function(){}; }
++  const navigator = {credentials:{get(options){credentialsOptions=options;return new Promise(resolve=>{resolveOtp=resolve})}}};
++  vm.runInNewContext(source,{document:{getElementById:get},window,navigator,AbortController,
++    Date:{now:()=>now},setTimeout:()=>1,clearTimeout(){},setInterval:()=>2,clearInterval(){},
++    fetch:async(url,options)=>{calls.push({url,body:JSON.parse(options.body)});return {ok:response.ok??true,json:async()=>response.data??(url.endsWith('/send')?{challengeId:'server-id'}:{verified:true})}}});
++  const event = async(id,type='submit')=>{await get(id).events[type]({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve))};
++  return {get,event,window,calls,advance(ms){now+=ms},receiveOtp(code){resolveOtp({code})},get otpSignal(){return credentialsOptions?.signal}};
++}
++test('rejects invalid numbers accessibly',async()=>{const s=setup();s.get('phone').value='123';await s.event('phone-form');assert.equal(s.get('phone').attrs['aria-invalid'],'true');assert.ok(s.get('phone-error').textContent);});
++test('demo completes without network and preserves international phone',async()=>{const s=setup();s.get('phone').value='(555) 123-4567';await s.event('phone-form');assert.equal(s.get('code-view').hidden,false);assert.equal(s.get('resend-button').disabled,true);s.get('otp').value='123456';await s.event('otp-form');assert.equal(s.get('success-view').hidden,false);assert.equal(s.get('verified-number').textContent,'+15551234567');assert.match(s.get('success-copy').textContent,/has not been verified/);assert.equal(s.calls.length,0);});
++test('wrong and incomplete codes stay on code step',async()=>{const s=setup();s.get('phone').value='5551234567';await s.event('phone-form');s.get('otp').value='012345';await s.event('otp-form');assert.match(s.get('otp-error').textContent,/doesn’t match/);s.get('otp').value='123';await s.event('otp-form');assert.match(s.get('otp-error').textContent,/complete/);});
++test('expired demo code can be resent',async()=>{const s=setup();s.get('phone').value='5551234567';await s.event('phone-form');s.advance(300001);s.get('otp').value='123456';await s.event('otp-form');assert.match(s.get('otp-error').textContent,/expired/);await s.event('resend-button','click');assert.equal(s.get('otp').value,'');s.get('otp').value='123456';await s.event('otp-form');assert.equal(s.get('success-view').hidden,false);});
++test('real flow uses server challenge and aborts WebOTP on manual submission',async()=>{const s=setup(true);s.get('phone').value='5551234567';await s.event('phone-form');assert.equal(s.get('demo-note').hidden,true);assert.equal(s.otpSignal.aborted,false);s.get('otp').value='012345';await s.event('otp-form');assert.equal(s.otpSignal.aborted,true);assert.equal(s.calls[1].body.challengeId,'server-id');assert.equal(s.calls[1].body.code,'012345');assert.equal(s.get('success-view').hidden,false);});
++test('send errors restore phone step and stop WebOTP',async()=>{const s=setup(true,{ok:false,data:{message:'Please wait before trying again.'}});s.get('phone').value='5551234567';await s.event('phone-form');assert.equal(s.get('entry-view').hidden,false);assert.equal(s.otpSignal.aborted,true);assert.match(s.get('phone-error').textContent,/Please wait/);assert.equal(s.get('send-button').disabled,false);});
++test('changing phone aborts WebOTP and returns to first step',async()=>{const s=setup(true);s.get('phone').value='5551234567';await s.event('phone-form');await s.event('edit-phone','click');assert.equal(s.otpSignal.aborted,true);assert.equal(s.get('entry-view').hidden,false);assert.equal(s.get('phone').focused,true);});
++
++test('automatically extracted SMS code runs normal server verification',async()=>{const s=setup(true);s.get('phone').value='5551234567';await s.event('phone-form');s.receiveOtp('012345');await new Promise(resolve=>setImmediate(resolve));assert.equal(s.get('otp').value,'012345');assert.equal(s.calls[1].body.code,'012345');assert.equal(s.get('success-view').hidden,false);});
+diff --git a/verification.js b/verification.js
+new file mode 100644
+index 0000000..e464a0f
+--- /dev/null
++++ b/verification.js
+@@ -0,0 +1,201 @@
++(() => {
++  'use strict';
++  const $ = (id) => document.getElementById(id);
++  // Set this to a same-origin API prefix before loading this script to enable real SMS.
++  const api = window.DAILY_GRIND_VERIFICATION_API;
++  const demo = !api;
++  let phone = '';
++  let challengeId = '';
++  let expiresAt = 0;
++  let otpController;
++  let cooldownTimer;
++  let cooldownUntil = 0;
++  let busy = false;
++  let view = 'entry';
++  $('demo-note').hidden = !demo;
++
++  function stopListening() {
++    otpController?.abort();
++    otpController = undefined;
++  }
++
++  function setError(field, message) {
++    $(field + '-error').textContent = message;
++    $(field).setAttribute('aria-invalid', String(Boolean(message)));
++  }
++
++  function show(next) {
++    view = next;
++    for (const name of ['entry', 'code', 'success']) $(name + '-view').hidden = next !== name;
++    $('phone-step').className = 'step ' + (next === 'entry' ? 'active' : 'complete');
++    $('code-step').className = 'step ' + (next === 'code' ? 'active' : next === 'success' ? 'complete' : '');
++    $('phone-step').removeAttribute('aria-current');
++    $('code-step').removeAttribute('aria-current');
++    if (next !== 'success') $(next === 'entry' ? 'phone-step' : 'code-step').setAttribute('aria-current', 'step');
++    $('status').textContent = '';
++    $(next === 'entry' ? 'form-title' : next + '-title').focus();
++  }
++
++  function updateCooldown() {
++    const remaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
++    $('resend-button').disabled = busy || remaining > 0;
++    $('resend-button').textContent = remaining ? `Resend in ${remaining}s` : 'Resend code';
++    if (!remaining) clearInterval(cooldownTimer);
++  }
++
++  function setBusy(value) {
++    busy = value;
++    $('send-button').disabled = value;
++    $('verify-button').disabled = value;
++    $('edit-phone').disabled = value;
++    updateCooldown();
++  }
++
++  async function post(path, body) {
++    const controller = new AbortController();
++    const timeout = setTimeout(() => controller.abort(), 15000);
++    try {
++      const response = await fetch(api.replace(/\/$/, '') + path, {
++        method: 'POST', credentials: 'same-origin', signal: controller.signal,
++        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
++      });
++      const data = await response.json();
++      if (!response.ok) throw new Error(data.message || 'Something went wrong. Please try again.');
++      return data;
++    } catch (error) {
++      if (error.name === 'AbortError') throw new Error('The request timed out. Please try again.');
++      throw error;
++    } finally { clearTimeout(timeout); }
++  }
++
++  async function listenForSms() {
++    stopListening();
++    if (demo || !window.isSecureContext || !('OTPCredential' in window) || !navigator.credentials) return;
++    const controller = new AbortController();
++    otpController = controller;
++    const timeout = setTimeout(() => controller.abort(), 120000);
++    try {
++      const credential = await navigator.credentials.get({ otp: { transport: ['sms'] }, signal: controller.signal });
++      if (!controller.signal.aborted && view === 'code' && credential?.code) {
++        $('otp').value = credential.code;
++        // Wait for the send response, which supplies the challenge ID.
++        if (!busy) $('otp-form').requestSubmit();
++      }
++    } catch {
++      // Dismissal, denied permission, or no API support leaves manual entry available.
++    } finally {
++      clearTimeout(timeout);
++      if (otpController === controller) otpController = undefined;
++    }
++  }
++
++  async function sendCode(resend = false) {
++    if (busy) return;
++    setBusy(true);
++    stopListening();
++    setError('otp', '');
++    $('otp').value = '';
++    if (!resend) {
++      $('sent-description').textContent = `We’ll send a verification code to ${phone}.`;
++      show('code');
++    }
++    // Listen before dispatching SMS to avoid missing a fast delivery.
++    listenForSms();
++    try {
++      const data = demo ? { challengeId: 'demo' } : await post('/send', { phone });
++      if (typeof data.challengeId !== 'string' || !data.challengeId) throw new Error('Unable to start verification. Please try again.');
++      challengeId = data.challengeId;
++      expiresAt = Date.now() + 5 * 60 * 1000;
++      $('sent-description').textContent = demo ? `Try the verification flow for ${phone}. No text message will be sent.` : `We sent a verification code to ${phone}.`;
++      cooldownUntil = Date.now() + 30000;
++      clearInterval(cooldownTimer);
++      cooldownTimer = setInterval(updateCooldown, 1000);
++      $('status').textContent = resend ? (demo ? 'New demo code ready. Enter 123456.' : 'A new code is on its way.') : '';
++      $('otp').focus();
++    } catch (error) {
++      stopListening();
++      if (!resend) show('entry');
++      setError(resend ? 'otp' : 'phone', error.message || 'Unable to send a code. Please try again.');
++    } finally {
++      setBusy(false);
++    }
++    if (/^[0-9]{6}$/.test($('otp').value)) $('otp-form').requestSubmit();
++  }
++
++  $('country').addEventListener('change', () => {
++    $('country-flag').textContent = $('country').selectedOptions[0].dataset.flag;
++    setError('phone', '');
++  });
++  $('phone').addEventListener('input', () => setError('phone', ''));
++  $('phone-form').addEventListener('submit', (event) => {
++    event.preventDefault();
++    if (busy) return;
++    const raw = $('phone').value.trim();
++    const digits = raw.replace(/\D/g, '');
++    const country = $('country').value;
++    const lengths = { '+1': [10, 10], '+44': [10, 10], '+61': [9, 9], '+91': [10, 10], '+49': [7, 12], '+33': [9, 9] };
++    const national = country !== '+1' ? digits.replace(/^0/, '') : digits;
++    const [min, max] = lengths[country];
++    if (!/^[\d\s().-]+$/.test(raw) || national.length < min || national.length > max) {
++      setError('phone', 'Enter a valid mobile number without the country calling code.');
++      $('phone').focus();
++      return;
++    }
++    phone = country + national;
++    setError('phone', '');
++    sendCode();
++  });
++  $('otp').addEventListener('input', () => {
++    $('otp').value = $('otp').value.replace(/\D/g, '').slice(0, 6);
++    setError('otp', '');
++  });
++  $('otp').addEventListener('paste', (event) => {
++    const text = event.clipboardData?.getData('text');
++    if (text && /^[\d\s-]+$/.test(text)) {
++      event.preventDefault();
++      $('otp').value = text.replace(/\D/g, '').slice(0, 6);
++      setError('otp', '');
++    }
++  });
++  $('otp-form').addEventListener('submit', async (event) => {
++    event.preventDefault();
++    stopListening();
++    if (busy) return;
++    const code = $('otp').value;
++    if (!/^[0-9]{6}$/.test(code)) {
++      setError('otp', 'Enter the complete 6-digit code.');
++      $('otp').focus();
++      return;
++    }
++    if (demo && Date.now() > expiresAt) {
++      setError('otp', 'This code has expired. Request a new code below.');
++      return;
++    }
++    setBusy(true);
++    try {
++      const data = demo ? { verified: code === '123456' } : await post('/verify', { challengeId, code });
++      if (data.verified !== true) throw new Error('That code doesn’t match. Check your code and try again.');
++      clearInterval(cooldownTimer);
++      $('verified-number').textContent = phone;
++      if (demo) $('success-copy').textContent = 'Demo verification complete. Your number has not been verified by an SMS service.';
++      show('success');
++    } catch (error) {
++      setError('otp', error.message || 'Unable to verify your code. Please try again.');
++      $('otp').focus();
++    } finally { setBusy(false); }
++  });
++  $('resend-button').addEventListener('click', () => {
++    if (Date.now() >= cooldownUntil) sendCode(true);
++  });
++  $('edit-phone').addEventListener('click', () => {
++    stopListening();
++    clearInterval(cooldownTimer);
++    challengeId = '';
++    show('entry');
++    $('phone').focus();
++  });
++  window.addEventListener('pagehide', () => {
++    stopListening();
++    clearInterval(cooldownTimer);
++  });
++})();

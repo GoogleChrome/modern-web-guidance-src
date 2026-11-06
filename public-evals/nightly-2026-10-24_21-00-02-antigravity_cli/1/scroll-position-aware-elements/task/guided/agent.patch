@@ -1,0 +1,293 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -137,9 +137,9 @@
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      padding: 40px 20px 80px;
+       margin-top: 40px;
+     }
+ 
+     .footer-links {
+@@ -151,62 +151,236 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scroll Container & Scroll-Position-Aware Back to Top Button */
++    .scroller {
++      height: 100dvh;
++      overflow-y: auto;
++      scroll-behavior: smooth;
++      /* Establish this element as a scroll-state query container */
++      container-type: scroll-state;
++      position: relative;
++      @media (prefers-reduced-motion: reduce) {
++        scroll-behavior: auto;
++      }
++    }
++
++    /* Marker styling to ensure it does not affect layout */
++    .scroll-sentinel {
++      height: 0;
++      width: 0;
++      visibility: hidden;
++    }
++
++    .back-to-top {
++      position: sticky;
++      bottom: 20px;
++      float: right;
++      margin-inline-end: 20px;
++      margin-block-end: 20px;
++      z-index: 1000;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      min-block-size: 44px;
++      min-inline-size: 44px;
++      padding: 10px 18px;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      border-radius: 999px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      text-decoration: none;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      visibility: hidden;
++      opacity: 0;
++      translate: 0 20px;
++      transition:
++        visibility 0.3s,
++        opacity 0.3s ease,
++        translate 0.3s ease,
++        background-color 0.3s ease;
++      @media (prefers-reduced-motion: reduce) {
++        translate: 0 0;
++        transition:
++          visibility 0.01s,
++          opacity 0.15s ease;
++      }
++    }
++
++    .back-to-top:hover {
++      background: var(--text);
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Fallback when scrolled class is toggled via IntersectionObserver */
++    .scrolled .back-to-top {
++      visibility: visible;
++      opacity: 1;
++      translate: 0 0;
++    }
++
++    /* Native Container Scroll-State Query */
++    @supports (container-type: scroll-state) {
++      @container scroll-state(scrollable: top) {
++        .back-to-top {
++          visibility: visible;
++          opacity: 1;
++          translate: 0 0;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <div class="scroller" id="scroller">
++    <!-- Sentinel element placed at the top of the scroller -->
++    <div class="scroll-sentinel" id="top" tabindex="-1"></div>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++    <nav aria-label="Primary">
++      <div class="logo">THE DAILY GRIND</div>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </nav>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </header>
++
++    <main class="container">
++      <section>
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </section>
++
++      <section style="margin-top: 60px;">
++        <h2 style="text-align: center;">Our Craft &amp; Roastery</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Single Origin Beans</h3>
++            <p>Hand-picked from high-altitude farms in Ethiopia, Colombia, and Guatemala for distinct flavor profiles.</p>
++            <a href="/menu/single-origin" class="btn">Explore Origins</a>
++          </div>
++          <div class="card">
++            <h3>Small-Batch Roasting</h3>
++            <p>Roasted daily in our local micro-roastery to bring out peak aroma, sweetness, and body in every batch.</p>
++            <a href="/about/roastery" class="btn">Our Process</a>
++          </div>
++          <div class="card">
++            <h3>Fresh Pastries</h3>
++            <p>Artisanal croissants, sourdough scones, and seasonal tarts baked fresh every morning to pair with your brew.</p>
++            <a href="/menu/bakery" class="btn">View Bakery</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </section>
++
++      <section style="margin-top: 60px;">
++        <h2 style="text-align: center;">Brewing Guides &amp; Subscriptions</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Pour-Over Mastery</h3>
++            <p>Learn the water-to-coffee ratios, grind sizes, and pour techniques for a clean, vibrant cup at home.</p>
++            <a href="/guides/pour-over" class="btn">Read Guide</a>
++          </div>
++          <div class="card">
++            <h3>Roaster's Choice Box</h3>
++            <p>Get freshly roasted bags delivered to your door every two weeks, curated by our head roaster.</p>
++            <a href="/subscriptions" class="btn">Subscribe</a>
++          </div>
++          <div class="card">
++            <h3>Community Workshops</h3>
++            <p>Join our weekend latte art throwdowns and cupping sessions at our flagship downtown cafe.</p>
++            <a href="/events" class="btn">See Events</a>
++          </div>
+         </div>
++      </section>
++    </main>
++
++    <footer>
++      <div class="footer-links">
++        <a href="/about">Our Story</a> |
++        <a href="/careers">Join the Team</a> |
++        <a href="/contact">Contact Us</a> |
++        <a href="/privacy-policy">Privacy</a>
+       </div>
+-    </section>
+-  </main>
++      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    </footer>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++    <button type="button" class="back-to-top" aria-label="Back to top">
++      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
++        <path d="M18 15l-6-6-6 6"/>
++      </svg>
++      <span>Back to top</span>
++    </button>
++  </div>
+ 
++  <script>
++    const scroller = document.querySelector('.scroller');
++    const backToTopButton = document.querySelector('.back-to-top');
++
++    if (backToTopButton && scroller) {
++      backToTopButton.addEventListener('click', () => {
++        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++        scroller.scrollTo({
++          top: 0,
++          behavior: prefersReducedMotion ? 'auto' : 'smooth'
++        });
++      });
++    }
++
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const sentinel = document.querySelector('.scroll-sentinel');
++
++      if (sentinel && scroller) {
++        const observer = new IntersectionObserver((entries) => {
++          entries.forEach((entry) => {
++            // If the sentinel is NOT intersecting, it means the user has scrolled down
++            if (!entry.isIntersecting) {
++              scroller.classList.add('scrolled');
++            } else {
++              scroller.classList.remove('scrolled');
++            }
++          });
++        }, { root: scroller });
++
++        observer.observe(sentinel);
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

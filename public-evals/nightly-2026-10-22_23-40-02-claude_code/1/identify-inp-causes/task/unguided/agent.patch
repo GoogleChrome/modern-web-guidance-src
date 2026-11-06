@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,101 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // INP diagnostics: logs each slow interaction with its phase breakdown
++    // (input delay / processing / presentation delay), the target element,
++    // and the long animation frame (LoAF) scripts that overlapped it.
++    // Read results in the console, or via window.__inp.
++    (function () {
++      if (!('PerformanceObserver' in window)) return;
++
++      var SLOW_MS = 200;       // "needs improvement" INP threshold
++      var interactions = {};   // interactionId -> worst entry summary
++      var frames = [];         // recent long animation frames
++      var inp = window.__inp = { worst: null, interactions: interactions };
++
++      function selector(node) {
++        if (!node || !node.nodeType) return '(unknown)';
++        var s = node.nodeName.toLowerCase();
++        if (node.id) s += '#' + node.id;
++        if (node.classList && node.classList.length) s += '.' + Array.prototype.join.call(node.classList, '.');
++        return s;
++      }
++
++      function overlappingFrame(entry) {
++        var start = entry.startTime, end = entry.startTime + entry.duration;
++        for (var i = frames.length - 1; i >= 0; i--) {
++          var f = frames[i];
++          if (f.startTime < end && f.startTime + f.duration > start) return f;
++        }
++        return null;
++      }
++
++      function summarize(entry) {
++        var processing = entry.processingEnd - entry.processingStart;
++        var frame = overlappingFrame(entry);
++        return {
++          type: entry.name,
++          target: selector(entry.target),
++          duration: entry.duration,
++          inputDelay: Math.round(entry.processingStart - entry.startTime),
++          processing: Math.round(processing),
++          presentationDelay: Math.round(entry.startTime + entry.duration - entry.processingEnd),
++          // Long frame details (Chromium only)
++          frameBlocking: frame ? Math.round(frame.blockingDuration) : undefined,
++          scripts: frame ? frame.scripts.map(function (s) {
++            return {
++              source: s.sourceURL || '(inline)',
++              invoker: s.invoker,
++              fn: s.sourceFunctionName,
++              duration: Math.round(s.duration),
++              forcedStyleAndLayout: Math.round(s.forcedStyleAndLayoutDuration)
++            };
++          }) : []
++        };
++      }
++
++      function diagnose(s) {
++        if (s.inputDelay > s.processing && s.inputDelay > s.presentationDelay) {
++          return 'Input delay: main thread was busy (long task / timers / startup work) when the input arrived.';
++        }
++        if (s.processing >= s.presentationDelay) {
++          return 'Processing time: event handlers are too slow. Break up work, defer non-essential logic, yield with setTimeout/scheduler.yield.';
++        }
++        return 'Presentation delay: rendering after the handler is slow (large DOM, expensive style/layout, forced reflow).';
++      }
++
++      try {
++        new PerformanceObserver(function (list) {
++          frames = frames.concat(list.getEntries()).slice(-50);
++        }).observe({ type: 'long-animation-frame', buffered: true });
++      } catch (e) { /* LoAF unsupported: script attribution unavailable */ }
++
++      try {
++        new PerformanceObserver(function (list) {
++          list.getEntries().forEach(function (entry) {
++            if (!entry.interactionId) return; // not a discrete interaction
++            var prev = interactions[entry.interactionId];
++            if (prev && prev.duration >= entry.duration) return;
++            var s = interactions[entry.interactionId] = summarize(entry);
++            if (!inp.worst || s.duration > inp.worst.duration) inp.worst = s;
++            if (s.duration >= SLOW_MS) {
++              console.warn('[INP] Slow interaction (' + s.duration + 'ms) on ' + s.target +
++                '\n' + diagnose(s), s);
++            }
++          });
++        }).observe({ type: 'event', durationThreshold: 16, buffered: true });
++      } catch (e) { /* Event Timing unsupported */ }
++
++      // Summary of the worst interaction when the user leaves the page.
++      document.addEventListener('visibilitychange', function () {
++        if (document.visibilityState === 'hidden' && inp.worst) {
++          console.info('[INP] Worst interaction: ' + inp.worst.duration + 'ms\n' + diagnose(inp.worst), inp.worst);
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

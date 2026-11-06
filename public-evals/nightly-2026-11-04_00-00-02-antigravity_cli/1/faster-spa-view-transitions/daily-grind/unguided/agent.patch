@@ -1,0 +1,1005 @@
+diff --git a/index.html b/index.html
+index 66c9173..10aa581 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --success: #2e7d32;
+     }
+ 
+     * {
+@@ -25,6 +27,9 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     /* Navigation */
+@@ -38,17 +43,26 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      cursor: pointer;
++      color: white;
++      text-decoration: none;
++    }
++
++    .logo:hover {
++      color: var(--accent);
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,19 +73,41 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, border-bottom 0.2s;
++      padding-bottom: 4px;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    nav a.active {
++      border-bottom: 2px solid var(--accent);
++      font-weight: 600;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .logout-link.active {
++      border-bottom: 1px solid var(--accent);
++    }
++
++    /* SPA View Offscreen Preservation & Caching */
++    .spa-view {
++      flex: 1;
++      contain: layout style;
++    }
++
++    .spa-view[hidden] {
++      display: none !important;
++      content-visibility: hidden;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -93,6 +129,25 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* View Header Banner */
++    .view-banner {
++      background: linear-gradient(135deg, #4e342e 0%, #3e2723 100%);
++      color: white;
++      padding: 40px 20px;
++      text-align: center;
++    }
++
++    .view-banner h1 {
++      font-size: 2.4rem;
++      margin-bottom: 8px;
++    }
++
++    .view-banner p {
++      color: var(--secondary);
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -108,16 +163,40 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .card:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++    }
++
++    .card img {
++      width: 100%;
++      height: 170px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 14px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .price-tag {
++      font-weight: bold;
+       color: var(--primary);
++      font-size: 1.1rem;
++      margin: 8px 0;
+     }
+ 
+     .btn {
+@@ -129,12 +208,162 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-outline:hover,
++    .btn-outline.active {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Filter & Search Controls */
++    .controls-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 24px;
++      background: white;
++      padding: 16px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
++    }
++
++    .filter-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .filter-btn {
++      padding: 8px 16px;
++      border-radius: 20px;
++      border: 1px solid var(--secondary);
++      background: var(--light);
++      color: var(--text);
++      cursor: pointer;
++      font-size: 0.9rem;
++      transition: all 0.2s;
++    }
++
++    .filter-btn.active,
++    .filter-btn:hover {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .search-input,
++    .form-input {
++      padding: 9px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 0.95rem;
++      color: var(--text);
++      outline: none;
++    }
++
++    .search-input:focus,
++    .form-input:focus {
++      border-color: var(--primary);
++    }
++
++    /* Rewards Progress & Tier Styles */
++    .rewards-summary {
++      background: white;
++      border-radius: 10px;
++      padding: 28px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      margin-bottom: 30px;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 24px;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .points-badge {
++      font-size: 2.5rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .progress-bar-bg {
++      width: 100%;
++      height: 12px;
++      background: var(--secondary);
++      border-radius: 6px;
++      overflow: hidden;
++      margin: 12px 0;
++    }
++
++    .progress-bar-fill {
++      height: 100%;
++      background: var(--accent);
++      transition: width 0.3s ease;
++    }
++
++    /* Account Form Layout */
++    .account-layout {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
++    }
++
++    .panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++    }
++
++    .panel h2 {
++      margin-bottom: 16px;
++      color: var(--primary);
++      font-size: 1.35rem;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 8px;
++    }
++
++    .form-group {
++      margin-bottom: 16px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++    }
++
++    .form-group .form-input {
++      width: 100%;
++    }
++
++    .status-toast {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      color: var(--success);
++      font-weight: 600;
++      min-height: 1.4em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -158,44 +387,49 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="/" class="logo" data-spa-link="home">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-spa-link="menu">Menu</a></li>
++      <li><a href="/locations" data-spa-link="locations">Locations</a></li>
++      <li><a href="/rewards" data-spa-link="rewards">Rewards</a></li>
++      <li><a href="/account" data-spa-link="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
++  <div id="spa-views-root">
++    <!-- Home View (Initially rendered) -->
++    <div id="view-home" class="spa-view" data-view="home">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/menu" data-spa-link="menu" class="btn">Order Now</a>
++      </header>
++
++      <main class="container">
++        <section>
++          <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <div class="card">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu" data-spa-link="menu" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu" data-spa-link="menu" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu" data-spa-link="menu" class="btn">View Details</a>
++            </div>
++          </div>
++        </section>
++      </main>
++    </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +441,594 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const viewsRoot = document.getElementById('spa-views-root');
++
++      // Cache of mounted view DOM nodes so returning to any visited view
++      // reuses the exact DOM instance and preserves all interactive state.
++      const viewCache = new Map();
++      const homeViewEl = document.getElementById('view-home');
++      if (homeViewEl) {
++        viewCache.set('home', homeViewEl);
++      }
++
++      const routeToView = {
++        '/': 'home',
++        '/index.html': 'home',
++        '/menu': 'menu',
++        '/locations': 'locations',
++        '/rewards': 'rewards',
++        '/account': 'account'
++      };
++
++      const viewToPath = {
++        home: '/',
++        menu: '/menu',
++        locations: '/locations',
++        rewards: '/rewards',
++        account: '/account'
++      };
++
++      const viewTitles = {
++        home: 'The Daily Grind | Artisanal Coffee',
++        menu: 'Menu | The Daily Grind',
++        locations: 'Locations | The Daily Grind',
++        rewards: 'Rewards | The Daily Grind',
++        account: 'My Account | The Daily Grind'
++      };
++
++      function createMenuView() {
++        const wrapper = document.createElement('div');
++        wrapper.id = 'view-menu';
++        wrapper.className = 'spa-view';
++        wrapper.dataset.view = 'menu';
++
++        const items = [
++          {
++            id: 'maple-oat-latte',
++            name: 'Maple Oat Latte',
++            category: 'espresso',
++            price: '$5.75',
++            desc: 'Creamy oat milk steamed with rich espresso and real Vermont maple syrup.',
++            img: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80'
++          },
++          {
++            id: 'dark-roast-espresso',
++            name: 'Dark Roast Espresso',
++            category: 'espresso',
++            price: '$3.50',
++            desc: 'Bold, smokey double shot pulled from freshly ground single-origin beans.',
++            img: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'
++          },
++          {
++            id: 'velvet-cold-brew',
++            name: '18-Hour Cold Brew',
++            category: 'cold',
++            price: '$4.75',
++            desc: 'Slow-steeped for 18 hours for silky chocolate notes and zero bitterness.',
++            img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80'
++          },
++          {
++            id: 'honey-lavender-iced',
++            name: 'Honey Lavender Iced Latte',
++            category: 'cold',
++            price: '$5.95',
++            desc: 'Botanical culinary lavender and wildflower honey over espresso and milk.',
++            img: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80'
++          },
++          {
++            id: 'ethiopian-pour-over',
++            name: 'Ethiopian Yirgacheffe Pour-Over',
++            category: 'brewed',
++            price: '$4.50',
++            desc: 'Hand-poured to highlight vibrant bergamot, jasmine, and stone fruit notes.',
++            img: 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80'
++          },
++          {
++            id: 'almond-croissant',
++            name: 'Toasted Almond Croissant',
++            category: 'bakery',
++            price: '$4.25',
++            desc: 'Flaky butter pastry filled with sweet frangipane and topped with sliced almonds.',
++            img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80'
++          }
++        ];
++
++        wrapper.innerHTML = `
++          <section class="view-banner">
++            <h1>Crafted Menu</h1>
++            <p>Small-batch roasted beans, house-made syrups, and fresh local pastries.</p>
++          </section>
++          <main class="container">
++            <div class="controls-bar">
++              <div class="filter-group" role="group" aria-label="Menu Category Filter">
++                <button type="button" class="filter-btn active" data-category="all">All Items</button>
++                <button type="button" class="filter-btn" data-category="espresso">Espresso</button>
++                <button type="button" class="filter-btn" data-category="cold">Cold Coffees</button>
++                <button type="button" class="filter-btn" data-category="brewed">Pour-Over</button>
++                <button type="button" class="filter-btn" data-category="bakery">Bakery</button>
++              </div>
++              <div style="display: flex; gap: 12px; align-items: center;">
++                <input type="search" class="search-input" placeholder="Search drinks or pastries..." aria-label="Search menu">
++                <span class="cart-summary" style="font-weight: 600; color: var(--primary);">Bag (0)</span>
++              </div>
++            </div>
++            <div class="grid menu-grid">
++              ${items.map(item => `
++                <article class="card menu-card" data-category="${item.category}" data-name="${item.name.toLowerCase()}">
++                  <div>
++                    <img src="${item.img}" alt="${item.name}" loading="lazy">
++                    <h3>${item.name}</h3>
++                    <p>${item.desc}</p>
++                  </div>
++                  <div>
++                    <div class="price-tag">${item.price}</div>
++                    <button type="button" class="btn add-item-btn" data-id="${item.id}">Add to Order</button>
++                  </div>
++                </article>
++              `).join('')}
++            </div>
++          </main>
++        `;
++
++        let bagCount = 0;
++        let activeCategory = 'all';
++        const searchInput = wrapper.querySelector('.search-input');
++        const filterBtns = wrapper.querySelectorAll('.filter-btn');
++        const cards = wrapper.querySelectorAll('.menu-card');
++        const cartSummary = wrapper.querySelector('.cart-summary');
++
++        function filterMenu() {
++          const query = searchInput.value.trim().toLowerCase();
++          cards.forEach(card => {
++            const matchesCat = activeCategory === 'all' || card.dataset.category === activeCategory;
++            const matchesSearch = !query || card.dataset.name.includes(query);
++            card.hidden = !(matchesCat && matchesSearch);
++          });
++        }
++
++        filterBtns.forEach(btn => {
++          btn.addEventListener('click', () => {
++            filterBtns.forEach(b => b.classList.remove('active'));
++            btn.classList.add('active');
++            activeCategory = btn.dataset.category;
++            filterMenu();
++          });
++        });
++
++        searchInput.addEventListener('input', filterMenu);
++
++        wrapper.querySelectorAll('.add-item-btn').forEach(btn => {
++          let itemCount = 0;
++          btn.addEventListener('click', () => {
++            bagCount += 1;
++            itemCount += 1;
++            cartSummary.textContent = `Bag (${bagCount})`;
++            btn.textContent = `Added (${itemCount})`;
++          });
++        });
++
++        return wrapper;
++      }
++
++      function createLocationsView() {
++        const wrapper = document.createElement('div');
++        wrapper.id = 'view-locations';
++        wrapper.className = 'spa-view';
++        wrapper.dataset.view = 'locations';
++
++        const stores = [
++          {
++            id: 'downtown-roastery',
++            name: 'Downtown Flagship & Roastery',
++            neighborhood: 'downtown',
++            address: '412 Roaster Way, Suite 100',
++            hours: 'Mon–Sun: 6:00 AM – 8:00 PM',
++            features: 'Pour-Over Bar • Roastery Tours • Patio',
++            img: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80'
++          },
++          {
++            id: 'riverside-cafe',
++            name: 'Riverside Commons',
++            neighborhood: 'riverside',
++            address: '88 Harborfront Walk',
++            hours: 'Mon–Fri: 6:30 AM – 7:00 PM | Sat–Sun: 7:00 AM – 7:00 PM',
++            features: 'Waterfront Seating • Nitro Tap • Fast Wi-Fi',
++            img: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80'
++          },
++          {
++            id: 'arts-district',
++            name: 'Arts District Espresso Bar',
++            neighborhood: 'uptown',
++            address: '1920 Gallery Row',
++            hours: 'Daily: 7:00 AM – 9:00 PM',
++            features: 'Late Hours • Local Bakery Pop-up • Vinyl Lounge',
++            img: 'https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=600&q=80'
++          }
++        ];
++
++        wrapper.innerHTML = `
++          <section class="view-banner">
++            <h1>Our Cafés & Roasteries</h1>
++            <p>Find your neighborhood Daily Grind spot and set your preferred pickup location.</p>
++          </section>
++          <main class="container">
++            <div class="controls-bar">
++              <div class="filter-group" role="group" aria-label="Neighborhood Filter">
++                <button type="button" class="filter-btn active" data-area="all">All Areas</button>
++                <button type="button" class="filter-btn" data-area="downtown">Downtown</button>
++                <button type="button" class="filter-btn" data-area="riverside">Riverside</button>
++                <button type="button" class="filter-btn" data-area="uptown">Arts District</button>
++              </div>
++              <input type="search" class="search-input location-search" placeholder="Filter by street or name..." aria-label="Search locations">
++            </div>
++            <div class="grid locations-grid">
++              ${stores.map((s, idx) => `
++                <article class="card location-card" data-area="${s.neighborhood}" data-search="${(s.name + ' ' + s.address).toLowerCase()}">
++                  <div>
++                    <img src="${s.img}" alt="${s.name}" loading="lazy">
++                    <h3>${s.name}</h3>
++                    <p><strong>${s.address}</strong></p>
++                    <p style="font-size: 0.9rem; margin-top: 6px;">${s.hours}</p>
++                    <p style="font-size: 0.85rem; color: #6d4c41; margin-top: 8px;">${s.features}</p>
++                  </div>
++                  <div>
++                    <button type="button" class="btn btn-outline select-store-btn ${idx === 0 ? 'active' : ''}" data-store="${s.id}">
++                      ${idx === 0 ? 'Preferred Store ✓' : 'Set as Preferred'}
++                    </button>
++                  </div>
++                </article>
++              `).join('')}
++            </div>
++          </main>
++        `;
++
++        let activeArea = 'all';
++        const searchInput = wrapper.querySelector('.location-search');
++        const areaBtns = wrapper.querySelectorAll('.filter-btn');
++        const locationCards = wrapper.querySelectorAll('.location-card');
++        const storeBtns = wrapper.querySelectorAll('.select-store-btn');
++
++        function filterLocations() {
++          const q = searchInput.value.trim().toLowerCase();
++          locationCards.forEach(card => {
++            const matchArea = activeArea === 'all' || card.dataset.area === activeArea;
++            const matchText = !q || card.dataset.search.includes(q);
++            card.hidden = !(matchArea && matchText);
++          });
++        }
++
++        areaBtns.forEach(btn => {
++          btn.addEventListener('click', () => {
++            areaBtns.forEach(b => b.classList.remove('active'));
++            btn.classList.add('active');
++            activeArea = btn.dataset.area;
++            filterLocations();
++          });
++        });
++
++        searchInput.addEventListener('input', filterLocations);
++
++        storeBtns.forEach(btn => {
++          btn.addEventListener('click', () => {
++            storeBtns.forEach(b => {
++              b.classList.remove('active');
++              b.textContent = 'Set as Preferred';
++            });
++            btn.classList.add('active');
++            btn.textContent = 'Preferred Store ✓';
++          });
++        });
++
++        return wrapper;
++      }
++
++      function createRewardsView() {
++        const wrapper = document.createElement('div');
++        wrapper.id = 'view-rewards';
++        wrapper.className = 'spa-view';
++        wrapper.dataset.view = 'rewards';
++
++        const perks = [
++          { cost: 50, title: 'Free Espresso Shot or Syrup', desc: 'Add an extra shot or house-made syrup to any drink.' },
++          { cost: 100, title: 'Fresh Bakery Item', desc: 'Redeem for any croissant, muffin, or scone from the case.' },
++          { cost: 150, title: 'Handcrafted Drink', desc: 'Any standard or seasonal beverage, hot or iced, on us.' },
++          { cost: 300, title: 'Whole Bean Coffee Bag (12oz)', desc: 'Take home a freshly roasted bag of our signature blend.' }
++        ];
++
++        wrapper.innerHTML = `
++          <section class="view-banner">
++            <h1>Daily Grind Rewards</h1>
++            <p>Earn 10 Beans for every $1 spent and unlock complimentary coffee & roastery perks.</p>
++          </section>
++          <main class="container">
++            <div class="rewards-summary">
++              <div style="flex: 1; min-width: 240px;">
++                <span style="text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; font-weight: 600;">Gold Roaster Status</span>
++                <div class="points-badge"><span class="points-value">240</span> Beans</div>
++                <div class="progress-bar-bg">
++                  <div class="progress-bar-fill" style="width: 80%;"></div>
++                </div>
++                <p class="points-status-text">60 Beans away from your next Whole Bean Coffee Bag (300 Beans)</p>
++              </div>
++              <div>
++                <button type="button" class="btn checkin-btn">Claim Daily Visit (+25 Beans)</button>
++              </div>
++            </div>
++
++            <h2 style="text-align: center; margin-bottom: 10px;">Redeem Your Beans</h2>
++            <div class="grid">
++              ${perks.map(perk => `
++                <article class="card perk-card" data-cost="${perk.cost}">
++                  <div>
++                    <div class="price-tag">${perk.cost} Beans</div>
++                    <h3>${perk.title}</h3>
++                    <p>${perk.desc}</p>
++                  </div>
++                  <button type="button" class="btn redeem-btn" data-cost="${perk.cost}" data-title="${perk.title}">Redeem Reward</button>
++                </article>
++              `).join('')}
++            </div>
++          </main>
++        `;
++
++        let points = 240;
++        const pointsValueEl = wrapper.querySelector('.points-value');
++        const progressFillEl = wrapper.querySelector('.progress-bar-fill');
++        const statusTextEl = wrapper.querySelector('.points-status-text');
++        const checkinBtn = wrapper.querySelector('.checkin-btn');
++
++        function updatePointsUI() {
++          pointsValueEl.textContent = String(points);
++          const pct = Math.min(100, Math.round((points / 300) * 100));
++          progressFillEl.style.width = `${pct}%`;
++          const remaining = Math.max(0, 300 - points);
++          statusTextEl.textContent = remaining > 0
++            ? `${remaining} Beans away from a Whole Bean Coffee Bag (300 Beans)`
++            : 'You have enough Beans for any reward tier!';
++        }
++
++        checkinBtn.addEventListener('click', () => {
++          if (checkinBtn.disabled) return;
++          points += 25;
++          checkinBtn.disabled = true;
++          checkinBtn.textContent = 'Daily Visit Claimed ✓';
++          updatePointsUI();
++        });
++
++        wrapper.querySelectorAll('.redeem-btn').forEach(btn => {
++          btn.addEventListener('click', () => {
++            const cost = Number(btn.dataset.cost);
++            if (points >= cost) {
++              points -= cost;
++              btn.textContent = 'Redeemed ✓';
++              updatePointsUI();
++            } else {
++              btn.textContent = 'Need More Beans';
++            }
++          });
++        });
++
++        return wrapper;
++      }
++
++      function createAccountView() {
++        const wrapper = document.createElement('div');
++        wrapper.id = 'view-account';
++        wrapper.className = 'spa-view';
++        wrapper.dataset.view = 'account';
++
++        wrapper.innerHTML = `
++          <section class="view-banner">
++            <h1>My Account</h1>
++            <p>Manage your coffee profile, brew preferences, and saved pickup settings.</p>
++          </section>
++          <main class="container">
++            <div class="account-layout">
++              <section class="panel">
++                <h2>Profile & Contact</h2>
++                <form class="account-form">
++                  <div class="form-group">
++                    <label for="acc-name">Full Name</label>
++                    <input id="acc-name" name="fullName" type="text" class="form-input" value="Alex Morgan">
++                  </div>
++                  <div class="form-group">
++                    <label for="acc-email">Email Address</label>
++                    <input id="acc-email" name="email" type="email" class="form-input" value="alex.morgan@example.com">
++                  </div>
++                  <div class="form-group">
++                    <label for="acc-milk">Default Milk Preference</label>
++                    <select id="acc-milk" name="milkPreference" class="form-input">
++                      <option value="oat" selected>Barista Oat Milk</option>
++                      <option value="whole">Organic Whole Milk</option>
++                      <option value="almond">Unsweetened Almond</option>
++                      <option value="none">Black / No Milk</option>
++                    </select>
++                  </div>
++                  <div class="form-group">
++                    <label for="acc-notes">Barista Order Note</label>
++                    <input id="acc-notes" name="orderNote" type="text" class="form-input" placeholder="e.g., Extra hot, light foam">
++                  </div>
++                  <button type="submit" class="btn">Save Preferences</button>
++                  <div class="status-toast" aria-live="polite"></div>
++                </form>
++              </section>
++
++              <section class="panel">
++                <h2>Recent Orders & Subscriptions</h2>
++                <div style="margin-bottom: 20px;">
++                  <h3 style="font-size: 1.05rem; color: var(--primary);">Roaster's Choice Bean Subscription</h3>
++                  <p style="font-size: 0.9rem; margin: 6px 0;">12oz Whole Bean • Delivered every 2 weeks</p>
++                  <button type="button" class="btn btn-outline toggle-sub-btn">Status: Active (Click to Pause)</button>
++                </div>
++                <hr style="border: none; border-top: 1px solid var(--secondary); margin: 16px 0;">
++                <div>
++                  <h3 style="font-size: 1.05rem; color: var(--primary); margin-bottom: 10px;">Recent Café Visits</h3>
++                  <ul style="list-style: none; font-size: 0.92rem;">
++                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
++                      <strong>Maple Oat Latte & Almond Croissant</strong><br>
++                      <span>Downtown Flagship • $10.00</span>
++                    </li>
++                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
++                      <strong>18-Hour Cold Brew</strong><br>
++                      <span>Riverside Commons • $4.75</span>
++                    </li>
++                    <li style="padding: 8px 0;">
++                      <strong>Ethiopian Yirgacheffe Pour-Over</strong><br>
++                      <span>Arts District • $4.50</span>
++                    </li>
++                  </ul>
++                </div>
++              </section>
++            </div>
++          </main>
++        `;
++
++        const form = wrapper.querySelector('.account-form');
++        const toast = wrapper.querySelector('.status-toast');
++        const subBtn = wrapper.querySelector('.toggle-sub-btn');
++        let subActive = true;
++
++        form.addEventListener('submit', (e) => {
++          e.preventDefault();
++          toast.textContent = 'Preferences saved to your profile ✓';
++        });
++
++        subBtn.addEventListener('click', () => {
++          subActive = !subActive;
++          subBtn.textContent = subActive
++            ? 'Status: Active (Click to Pause)'
++            : 'Status: Paused (Click to Resume)';
++        });
++
++        return wrapper;
++      }
++
++      const viewFactories = {
++        menu: createMenuView,
++        locations: createLocationsView,
++        rewards: createRewardsView,
++        account: createAccountView
++      };
++
++      // Obtain or lazily instantiate the view DOM element once, preserving it in the DOM
++      function getOrCreateView(viewKey) {
++        if (viewCache.has(viewKey)) {
++          return viewCache.get(viewKey);
++        }
++        const factory = viewFactories[viewKey];
++        if (!factory) {
++          return viewCache.get('home');
++        }
++        const viewEl = factory();
++        viewEl.hidden = true;
++        viewsRoot.appendChild(viewEl);
++        viewCache.set(viewKey, viewEl);
++        return viewEl;
++      }
++
++      let currentViewKey = 'home';
++
++      function activateView(viewKey, options = { pushState: true }) {
++        const targetKey = viewFactories[viewKey] || viewKey === 'home' ? viewKey : 'home';
++        const targetEl = getOrCreateView(targetKey);
++
++        // Hide all other cached views offscreen without removing them from the DOM
++        viewCache.forEach((el, key) => {
++          if (key === targetKey) {
++            el.hidden = false;
++            el.setAttribute('aria-hidden', 'false');
++          } else {
++            el.hidden = true;
++            el.setAttribute('aria-hidden', 'true');
++          }
++        });
++
++        currentViewKey = targetKey;
++
++        // Update active state on navigation links
++        document.querySelectorAll('nav a[data-spa-link]').forEach(link => {
++          const linkView = link.getAttribute('data-spa-link');
++          if (linkView === targetKey) {
++            link.classList.add('active');
++            link.setAttribute('aria-current', 'page');
++          } else {
++            link.classList.remove('active');
++            link.removeAttribute('aria-current');
++          }
++        });
++
++        // Update document title and browser history
++        document.title = viewTitles[targetKey] || viewTitles.home;
++
++        if (options.pushState) {
++          const targetPath = viewToPath[targetKey] || '/';
++          if (window.location.pathname !== targetPath) {
++            try {
++              window.history.pushState({ view: targetKey }, '', targetPath);
++            } catch (_) {
++              // Fallback for environments restricting pushState paths
++              window.location.hash = targetKey === 'home' ? '' : `#${targetKey}`;
++            }
++          }
++        }
++      }
++
++      function resolveViewFromLocation() {
++        const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
++        if (hash && (viewFactories[hash] || hash === 'home')) {
++          return hash;
++        }
++        const path = window.location.pathname.replace(/\/+$/, '') || '/';
++        if (routeToView[path]) {
++          return routeToView[path];
++        }
++        return 'home';
++      }
++
++      // Intercept clicks on SPA navigation links
++      document.addEventListener('click', (event) => {
++        const link = event.target.closest('a');
++        if (!link) return;
++
++        // Respect modified clicks (new tab, middle click, etc.)
++        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
++          return;
++        }
++
++        const explicitView = link.getAttribute('data-spa-link');
++        if (explicitView) {
++          event.preventDefault();
++          activateView(explicitView, { pushState: true });
++          return;
++        }
++
++        const href = link.getAttribute('href');
++        if (href && routeToView[href]) {
++          event.preventDefault();
++          activateView(routeToView[href], { pushState: true });
++        }
++      });
++
++      // Handle browser back/forward navigation
++      window.addEventListener('popstate', (event) => {
++        const stateView = event.state && event.state.view;
++        const targetView = stateView || resolveViewFromLocation();
++        activateView(targetView, { pushState: false });
++      });
++
++      window.addEventListener('hashchange', () => {
++        const targetView = resolveViewFromLocation();
++        activateView(targetView, { pushState: false });
++      });
++
++      // Initialize view based on initial URL
++      const initialView = resolveViewFromLocation();
++      activateView(initialView, { pushState: false });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

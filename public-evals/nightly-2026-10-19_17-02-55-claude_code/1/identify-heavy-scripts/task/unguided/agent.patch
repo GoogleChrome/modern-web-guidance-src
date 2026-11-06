@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,70 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Script performance profiler. Must run first so it sees every later script.
++    // Open the console after load and look at "[script-profiler]" (or call
++    // window.scriptReport()) to see which scripts are slowest.
++    (function () {
++      var SLOW_MS = 50; // flag scripts that block the main thread longer than this
++      var stats = {};   // url -> { download, blocking, size, longTasks, type }
++
++      function entry(url) {
++        return stats[url] || (stats[url] = { download: 0, blocking: 0, size: 0, longTasks: 0, type: '' });
++      }
++      function short(url) {
++        try { var u = new URL(url, location.href); return u.origin === location.origin ? u.pathname : u.href; }
++        catch (e) { return url; }
++      }
++      function observe(type, cb) {
++        try { new PerformanceObserver(function (l) { l.getEntries().forEach(cb); }).observe({ type: type, buffered: true }); }
++        catch (e) { /* entry type unsupported in this browser */ }
++      }
++
++      // Network cost: download time and transfer size of every script resource.
++      observe('resource', function (e) {
++        if (e.initiatorType !== 'script') return;
++        var s = entry(short(e.name));
++        s.download = Math.round(e.duration);
++        s.size = e.transferSize || e.encodedBodySize || 0;
++        s.type = new URL(e.name, location.href).origin === location.origin ? 'first-party' : 'third-party';
++      });
++
++      // CPU cost: Long Animation Frames attribute main-thread time to specific scripts (Chromium).
++      observe('long-animation-frame', function (frame) {
++        (frame.scripts || []).forEach(function (sc) {
++          var s = entry(short(sc.sourceURL || (location.pathname + ' (inline)')));
++          s.blocking += Math.round(sc.duration);
++          s.longTasks++;
++        });
++      });
++
++      // Fallback signal for browsers without LoAF: long tasks have no script attribution.
++      var anonymousLongTasks = 0;
++      observe('longtask', function () { anonymousLongTasks++; });
++
++      window.scriptReport = function () {
++        var rows = Object.keys(stats).map(function (url) {
++          var s = stats[url];
++          return { script: url, type: s.type || 'inline/unknown', 'download ms': s.download,
++                   'blocking ms': s.blocking, 'long frames': s.longTasks, 'size KB': +(s.size / 1024).toFixed(1) };
++        }).sort(function (a, b) { return (b['blocking ms'] + b['download ms']) - (a['blocking ms'] + a['download ms']); });
++
++        console.group('[script-profiler] slowest scripts first');
++        if (rows.length) console.table(rows); else console.log('No scripts recorded.');
++        rows.filter(function (r) { return r['blocking ms'] > SLOW_MS; }).forEach(function (r) {
++          console.warn('[script-profiler] SLOW: ' + r.script + ' blocked the main thread for ' + r['blocking ms'] + 'ms');
++        });
++        if (anonymousLongTasks) console.log('Long tasks (>50ms, unattributed): ' + anonymousLongTasks);
++        console.groupEnd();
++        return rows;
++      };
++
++      window.addEventListener('load', function () { setTimeout(window.scriptReport, 3000); });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

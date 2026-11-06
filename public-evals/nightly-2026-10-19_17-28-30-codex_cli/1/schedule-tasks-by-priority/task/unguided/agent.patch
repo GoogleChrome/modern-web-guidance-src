@@ -1,0 +1,150 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,80 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
++
++    /* Operations queue */
++    .operations { margin-top: 56px; border: 1px solid #e3dcd4; border-radius: 16px; background: #fff; overflow: hidden; }
++    .ops-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 26px 30px; border-bottom: 1px solid #eee8e1; }
++    .eyebrow { color: #94745d; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
++    .ops-header h2 { font-size: 24px; letter-spacing: -.6px; }
++    .ops-header p { color: #8a7d74; font-size: 13px; margin-top: 3px; }
++    .live-status { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; color: #4f7259; background: #f0f5ef; border: 1px solid #dfe9dc; padding: 6px 10px; border-radius: 20px; font-size: 11px; }
++    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #6b966b; animation: heartbeat 1.8s ease-in-out infinite; }
++    @keyframes heartbeat { 50% { opacity: .35; } }
++    .ops-body { display: grid; grid-template-columns: 1fr 1.15fr; }
++    .task-controls { padding: 26px 30px; border-right: 1px solid #eee8e1; }
++    .panel-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #93867b; }
++    .task-button { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px; margin-top: 12px; border: 1px solid #e8e1d9; border-radius: 9px; background: #fff; color: var(--text); text-align: left; font: inherit; cursor: pointer; transition: background .2s, border-color .2s, transform .2s; }
++    .task-button:hover { background: #faf7f2; border-color: #b7a18c; transform: translateY(-1px); }
++    .task-button:active { transform: translateY(0); }
++    button:focus-visible { outline: 3px solid #cd9b61; outline-offset: 3px; }
++    .task-icon { display: grid; place-items: center; width: 35px; height: 35px; flex-shrink: 0; border-radius: 8px; background: #f8eee7; color: #a66a43; }
++    .task-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
++    .task-copy { flex: 1; }
++    .task-copy strong { display: block; font-size: 13px; font-weight: 600; }
++    .task-copy small { display: block; font-size: 11px; color: #978a80; margin-top: 1px; }
++    .priority-tag { border-radius: 4px; padding: 3px 7px; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
++    .urgent { background: #f9e9df; color: #b36b3e; }
++    .standard { background: #eeecdf; color: #87804f; }
++    .background { background: #edf0f2; color: #7b8791; }
++    .task-button.batch { background: #4e342e; color: #fff; justify-content: center; padding: 12px; margin-top: 20px; font-size: 12px; font-weight: 600; }
++    .task-button.batch:hover { background: #64483d; }
++    .batch span { font-size: 16px; margin-right: 4px; }
++    .task-hint { font-size: 10px; color: #a09387; text-align: center; margin-top: 9px; }
++    .queue-panel { padding: 26px 28px; background: #fdfcf9; min-width: 0; }
++    .queue-metrics { display: flex; gap: 30px; margin: 17px 0 20px; }
++    .metric strong { font-size: 23px; line-height: 1.3; display: block; font-weight: 600; }
++    .metric span { font-size: 10px; color: #9a8d82; }
++    .metric + .metric { border-left: 1px solid #e9e2d9; padding-left: 30px; }
++    .current-task { border: 1px solid #e7e0d6; padding: 14px; border-radius: 8px; background: #fff; }
++    .current-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; }
++    #current-label { font-weight: 600; }
++    #current-progress { color: #9c8b7a; font-size: 10px; }
++    .progress-track { height: 4px; margin-top: 12px; background: #f0ebe4; border-radius: 3px; overflow: hidden; }
++    #progress-bar { width: 0; height: 100%; background: #b78a5b; transition: width .12s; }
++    .activity-heading { display: flex; justify-content: space-between; margin: 22px 0 12px; }
++    .activity-heading span:last-child { font-size: 9px; color: #ab9c8d; }
++    .activity-list { height: 137px; overflow-y: auto; list-style: none; padding-right: 4px; }
++    .empty-state { text-align: center; padding: 28px 8px; color: #9e9186; font-size: 12px; }
++    .empty-state small { display: block; color: #b3a79c; font-size: 10px; margin-top: 3px; }
++    .activity-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eee8e1; font-size: 11px; }
++    .activity-dot { height: 5px; width: 5px; flex-shrink: 0; border-radius: 50%; background: #b9aa98; }
++    .activity-row[data-state="completed"] .activity-dot { background: #7d9a72; }
++    .activity-row[data-state="running"] .activity-dot { background: #c58e54; }
++    .activity-name { flex: 1; }
++    .activity-state { font-size: 9px; color: #9b8c7e; text-transform: capitalize; }
++    .ops-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #f7f4ee; border-top: 1px solid #eae4db; padding: 12px 30px; font-size: 10px; color: #9b8b7b; }
++    .priority-order { display: flex; align-items: center; gap: 7px; font-size: 9px; }
++    .priority-order b { font-weight: 500; color: #7e6b58; }
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .ops-header { align-items: flex-start; padding: 22px 20px; }
++      .ops-header h2 { font-size: 21px; }
++      .ops-body { grid-template-columns: 1fr; }
++      .task-controls { border-right: 0; border-bottom: 1px solid #eee8e1; padding: 22px 20px; }
++      .queue-panel { padding: 22px 20px; }
++      .ops-footer { align-items: flex-start; flex-direction: column; padding: 12px 20px; }
++    }
++    @media (prefers-reduced-motion: reduce) {
++      *, *::before, *::after { animation: none !important; transition: none !important; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +266,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="operations" aria-labelledby="operations-title">
++      <div class="ops-header">
++        <div>
++          <div class="eyebrow">Behind the counter</div>
++          <h2 id="operations-title">Operations queue</h2>
++          <p>A little order for the daily rush. Give our task queue a spin.</p>
++        </div>
++        <span class="live-status"><span class="live-dot" aria-hidden="true"></span> UI responsive</span>
++      </div>
++      <div class="ops-body">
++        <div class="task-controls">
++          <div class="panel-label">Send a task</div>
++          <button class="task-button" data-task="urgent" type="button">
++            <span class="task-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 2-8 12h6l-1 8 9-12h-7z"/></svg></span>
++            <span class="task-copy"><strong>Run checkout</strong><small>Get that next cup on its way</small></span>
++            <span class="priority-tag urgent">Urgent</span>
++          </button>
++          <button class="task-button" data-task="standard" type="button">
++            <span class="task-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>
++            <span class="task-copy"><strong>Update menu</strong><small>Keep the seasonal favorites fresh</small></span>
++            <span class="priority-tag standard">Standard</span>
++          </button>
++          <button class="task-button" data-task="background" type="button">
++            <span class="task-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 15V9m6 6V5m6 10v-4"/></svg></span>
++            <span class="task-copy"><strong>Log telemetry</strong><small>A quiet check on how things are brewing</small></span>
++            <span class="priority-tag background">Background</span>
++          </button>
++          <button class="task-button batch" id="run-batch" type="button"><span aria-hidden="true">▹</span> Run mixed batch</button>
++          <p class="task-hint">Adds one of each task. Highest priority goes first.</p>
++        </div>
++        <div class="queue-panel">
++          <div class="panel-label">Live queue</div>
++          <div class="queue-metrics">
++            <div class="metric"><strong id="waiting-count">0</strong><span>Waiting</span></div>
++            <div class="metric"><strong id="completed-count">0</strong><span>Completed</span></div>
++            <div class="metric"><strong id="active-count">0</strong><span>Running</span></div>
++          </div>
++          <div class="current-task">
++            <div class="current-heading"><span id="current-label">Ready when you are</span><span id="current-progress">Idle</span></div>
++            <div class="progress-track" role="progressbar" aria-label="Current task progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="task-progress"><div id="progress-bar"></div></div>
++          </div>
++          <div class="activity-heading"><span class="panel-label">Activity</span><span>Latest first</span></div>
++          <ul class="activity-list" id="activity-list" aria-label="Task activity"><li class="empty-state">All quiet behind the counter.<small>Run a task to see the queue in action.</small></li></ul>
++          <p id="queue-announcement" role="status" class="sr-only"></p>
++        </div>
++      </div>
++      <div class="ops-footer"><span>Small work chunks. Smooth service.</span><span class="priority-order"><b>Urgent</b><span>→</span><b>Standard</b><span>→</span><b>Background</b></span></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +326,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./operations.mjs"></script>
+ </body>
+ 
+ </html>

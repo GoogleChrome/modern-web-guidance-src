@@ -1,0 +1,237 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..425ea6b
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.com/": {
++    "allow_migration": true
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..69295e5 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#4e342e">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.json">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -207,6 +209,14 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if ('serviceWorker' in navigator) {
++      window.addEventListener('load', () => {
++        navigator.serviceWorker.register('/sw.js').catch(() => {});
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..a767545
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,78 @@
++{
++  "name": "The Daily Grind | Artisanal Coffee",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "id": "https://app.dailygrind.com/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=192&h=192&q=80",
++      "sizes": "192x192",
++      "type": "image/jpeg",
++      "purpose": "any"
++    },
++    {
++      "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=512&h=512&q=80",
++      "sizes": "512x512",
++      "type": "image/jpeg",
++      "purpose": "any"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Online",
++      "short_name": "Order",
++      "description": "Order your favorite artisanal coffee online",
++      "url": "/order-online",
++      "icons": [
++        {
++          "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=192&h=192&q=80",
++          "sizes": "192x192",
++          "type": "image/jpeg"
++        }
++      ]
++    },
++    {
++      "name": "View Menu",
++      "short_name": "Menu",
++      "description": "Browse seasonal favorites and espresso drinks",
++      "url": "/menu",
++      "icons": [
++        {
++          "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=192&h=192&q=80",
++          "sizes": "192x192",
++          "type": "image/jpeg"
++        }
++      ]
++    },
++    {
++      "name": "My Rewards",
++      "short_name": "Rewards",
++      "description": "Check your loyalty points and rewards",
++      "url": "/rewards",
++      "icons": [
++        {
++          "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=192&h=192&q=80",
++          "sizes": "192x192",
++          "type": "image/jpeg"
++        }
++      ]
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://www.dailygrind.com/",
++      "install_url": "https://www.dailygrind.com/manifest.json",
++      "behavior": "force"
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.com/",
++    "install_url": "https://app.dailygrind.com/manifest.json",
++    "behavior": "force"
++  }
++}
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..a767545
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,78 @@
++{
++  "name": "The Daily Grind | Artisanal Coffee",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "id": "https://app.dailygrind.com/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=192&h=192&q=80",
++      "sizes": "192x192",
++      "type": "image/jpeg",
++      "purpose": "any"
++    },
++    {
++      "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=512&h=512&q=80",
++      "sizes": "512x512",
++      "type": "image/jpeg",
++      "purpose": "any"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Online",
++      "short_name": "Order",
++      "description": "Order your favorite artisanal coffee online",
++      "url": "/order-online",
++      "icons": [
++        {
++          "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=192&h=192&q=80",
++          "sizes": "192x192",
++          "type": "image/jpeg"
++        }
++      ]
++    },
++    {
++      "name": "View Menu",
++      "short_name": "Menu",
++      "description": "Browse seasonal favorites and espresso drinks",
++      "url": "/menu",
++      "icons": [
++        {
++          "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=192&h=192&q=80",
++          "sizes": "192x192",
++          "type": "image/jpeg"
++        }
++      ]
++    },
++    {
++      "name": "My Rewards",
++      "short_name": "Rewards",
++      "description": "Check your loyalty points and rewards",
++      "url": "/rewards",
++      "icons": [
++        {
++          "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=192&h=192&q=80",
++          "sizes": "192x192",
++          "type": "image/jpeg"
++        }
++      ]
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://www.dailygrind.com/",
++      "install_url": "https://www.dailygrind.com/manifest.json",
++      "behavior": "force"
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.com/",
++    "install_url": "https://app.dailygrind.com/manifest.json",
++    "behavior": "force"
++  }
++}
+diff --git a/sw.js b/sw.js
+new file mode 100644
+index 0000000..098c4ea
+--- /dev/null
++++ b/sw.js
+@@ -0,0 +1,23 @@
++const CACHE_NAME = 'daily-grind-v1';
++const ASSETS = [
++  '/',
++  '/index.html',
++  '/manifest.json'
++];
++
++self.addEventListener('install', (event) => {
++  event.waitUntil(
++    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
++  );
++  self.skipWaiting();
++});
++
++self.addEventListener('activate', (event) => {
++  event.waitUntil(self.clients.claim());
++});
++
++self.addEventListener('fetch', (event) => {
++  event.respondWith(
++    caches.match(event.request).then((cached) => cached || fetch(event.request))
++  );
++});

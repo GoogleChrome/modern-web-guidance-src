@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>document.documentElement.classList.add('js');</script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -99,28 +100,88 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    .section-intro {
++      text-align: center;
++      margin: 8px 0 24px;
+     }
+ 
+-    .card {
++    .media-scroll {
++      position: relative;
++      height: 430px;
++      overflow-y: auto;
++      scroll-behavior: auto;
++      overflow-anchor: none;
++      scrollbar-gutter: stable;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f0ebe8;
++    }
++
++    .js .media-scroll:not([data-ready]) {
++      visibility: hidden;
++    }
++
++    .media-scroll:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .media-card {
++      display: flex;
++      align-items: center;
++      gap: 28px;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .media-card + .media-card {
++      margin-top: 16px;
++    }
++
++    .media-card img {
++      display: block;
++      width: 240px;
++      height: 160px;
++      flex: 0 0 240px;
++      object-fit: cover;
++      border-radius: 6px;
++      background: var(--secondary);
++    }
++
++    .media-card h3 {
++      margin-bottom: 6px;
+       color: var(--primary);
+     }
+ 
++    .media-card .eyebrow {
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      color: #7c6257;
++      margin-bottom: 4px;
++    }
++
++    .media-card.target {
++      box-shadow: inset 3px 0 var(--primary), 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    @media (max-width: 600px) {
++      nav { gap: 16px; flex-wrap: wrap; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .media-card { gap: 16px; padding: 16px; align-items: flex-start; }
++      .media-card img { width: 100px; height: 140px; flex-basis: 100px; }
++      .media-card h3 { font-size: 1rem; }
++      .media-card p { font-size: 0.85rem; }
++      .media-card .btn { padding: 8px 12px; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -175,26 +236,65 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <h2 id="favorites-title" style="text-align: center;">Seasonal Favorites</h2>
++      <p class="section-intro">Five reasons to take a coffee break. Scroll to find your favorite.</p>
++      <div class="media-scroll" role="region" aria-labelledby="favorites-title" tabindex="0">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=480&amp;h=320&amp;q=80" width="240" height="160" alt="Creamy iced latte served in a tall glass">
++          <div>
++          <p class="eyebrow">01 / A little sweetness</p>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=480&amp;h=320&amp;q=80" width="240" height="160" alt="Fresh espresso in a small ceramic cup">
++          <div>
++          <p class="eyebrow">02 / Bold beginnings</p>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=480&amp;h=320&amp;q=80" width="240" height="160" alt="Chilled coffee served over ice in a glass">
++          <div>
++          <p class="eyebrow">03 / Your daily pause</p>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&amp;fit=crop&amp;w=480&amp;h=320&amp;q=80" width="240" height="160" alt="Cappuccino topped with delicate latte art">
++          <div>
++          <p class="eyebrow">04 / Comfort in a cup</p>
++          <h3>Classic Cappuccino</h3>
++          <p>Rich espresso meets steamed milk and a cloud of foam.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=480&amp;h=320&amp;q=80" width="240" height="160" alt="Freshly prepared coffee alongside roasted coffee beans">
++          <div>
++          <p class="eyebrow">05 / Back to the craft</p>
++          <h3>Single Origin Pour Over</h3>
++          <p>Slowly brewed to bring out every bright, delicate note.</p>
++          <a href="/menu/pour-over" class="btn">View Details</a>
++          </div>
++        </article>
+       </div>
++      <script>
++        // Fixed image dimensions make this layout final before images load.
++        // Run during parsing, and reveal only after the initial position is set.
++        const mediaScroll = document.querySelector('.media-scroll');
++        const targetCard = mediaScroll.querySelector('.target');
++        mediaScroll.scrollTop = targetCard.offsetTop - 12;
++        mediaScroll.setAttribute('data-ready', '');
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

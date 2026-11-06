@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,35 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall teaser */
++    .paywall-container {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .paywall-teaser {
++      max-width: 700px;
++      margin: 20px auto 0;
++      padding: 20px;
++      background: white;
++      border-radius: 8px;
++      text-align: left;
++      /* Fade the content itself to fully transparent so the page background shows through */
++      -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
++    }
++
++    .paywall-teaser h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .paywall-teaser p+h3 {
++      margin-top: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +221,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <h2>Roaster's Secrets</h2>
++      <p>Exclusive for members: go behind the scenes with our head roaster.</p>
++      <div class="paywall-teaser">
++        <h3>The 12-Minute Roast Curve</h3>
++        <p>Our Dark Roast Espresso starts low and slow, hitting first crack at exactly 9 minutes before we
++          drop the temperature to protect the sweetness locked inside the bean. The final ninety seconds are
++          where the smoky character is born.</p>
++        <h3>Why We Rest Our Beans</h3>
++        <p>Freshly roasted coffee is bursting with carbon dioxide, which gets in the way of a clean extraction.
++          We rest every batch for a precise number of days depending on origin, and the difference in the cup
++          is remarkable.</p>
++        <h3>The Cold Brew Ratio</h3>
++        <p>The secret to our 18-hour cold brew is a coarse grind, a carefully filtered water profile, and a
++          ratio we have never shared outside the roastery until now.</p>
++      </div>
++      <a href="/rewards" class="btn">Unlock with Membership</a>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

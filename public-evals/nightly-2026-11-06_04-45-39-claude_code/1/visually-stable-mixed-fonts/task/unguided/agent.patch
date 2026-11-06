@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,81 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Mixed Fonts &amp; font-size-adjust</title>
++  <style>
++    :root {
++      color-scheme: light dark;
++    }
++
++    body {
++      margin: 0;
++      padding: 2rem;
++      font-family: Georgia, "Times New Roman", serif;
++      font-size: 1.125rem;
++      line-height: 1.6;
++      max-width: 48rem;
++      margin-inline: auto;
++    }
++
++    /* Mixed font families: serif body text + monospace inline code.
++       `from-font` reads each font's own x-height metric and scales every
++       fallback/inline font so their lowercase letters render at the same
++       visual height — no hand-tuned numbers required. */
++    #mixed-fonts-container {
++      font-size-adjust: ex-height from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: "Courier New", Courier, monospace;
++      font-size: 1em; /* let font-size-adjust do the normalizing */
++      padding: 0.1em 0.3em;
++      border-radius: 0.25em;
++      background: color-mix(in srgb, currentColor 10%, transparent);
++    }
++
++    /* Independent theme: a self-contained component with its own fonts.
++       A specific numeric aspect value (x-height ÷ font-size) locks the
++       visual proportions of all text inside, whatever font actually loads. */
++    #independent-theme-container {
++      font-family: Verdana, "Trebuchet MS", sans-serif;
++      font-size-adjust: ex-height 0.5;
++      margin-top: 2rem;
++      padding: 1.5rem;
++      border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
++      border-radius: 0.75rem;
++      background: color-mix(in srgb, Canvas 92%, rebeccapurple);
++    }
++
++    #independent-theme-container h2 {
++      margin-top: 0;
++    }
++
++    #independent-theme-container code {
++      font-family: Consolas, "Courier New", monospace;
++    }
++  </style>
++</head>
++<body>
++  <h1>Normalizing Mixed Fonts</h1>
++
++  <p id="mixed-fonts-container">
++    This paragraph mixes a serif body font with inline code such as
++    <code>const total = items.reduce(sum, 0);</code> and
++    <code>font-size-adjust</code>. Using <code>ex-height from-font</code>,
++    the browser matches the x-height of each font automatically, so the
++    monospace snippets no longer look smaller or larger than the surrounding text.
++  </p>
++
++  <div id="independent-theme-container">
++    <h2>Independent Theme</h2>
++    <p>
++      This container defines its own typography. Its
++      <code>font-size-adjust: ex-height 0.5</code> rule pins the x-height to
++      exactly half the font size, keeping proportions consistent even if the
++      preferred font is unavailable and a fallback is used.
++    </p>
++  </div>
++</body>
++</html>

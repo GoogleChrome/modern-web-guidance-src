@@ -1,0 +1,325 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,99 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* 3D coffee box (HTML-in-Canvas) */
++    .box-section {
++      text-align: center;
++      margin-bottom: 50px;
++    }
++
++    .box-stage {
++      position: relative;
++      width: 100%;
++      max-width: 640px;
++      height: 480px;
++      margin: 20px auto 0;
++    }
++
++    #box-canvas {
++      width: 100%;
++      height: 100%;
++      display: block;
++    }
++
++    .box-form {
++      position: absolute;
++      left: 0;
++      top: 0;
++      width: 300px;
++      height: 340px;
++      padding: 20px;
++      background: #fffaf3;
++      border: 3px solid var(--accent);
++      border-radius: 10px;
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .box-form h3 {
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .box-form label {
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    .box-form input {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .box-form .actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .box-form button {
++      flex: 1;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      background: var(--primary);
++      color: white;
++      padding: 9px;
++      border-radius: 5px;
++    }
++
++    .box-form button[type="reset"] {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .box-form button:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .box-status {
++      font-size: 0.8rem;
++      min-height: 1.2em;
++      color: var(--primary);
++    }
++
++    .box-note {
++      font-size: 0.85rem;
++      opacity: 0.7;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +265,30 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="box-section">
++      <h2>Our Signature Box</h2>
++      <p>Spin it, then order. The form lives on the box and stays clickable.</p>
++      <div class="box-stage" id="box-stage">
++        <canvas id="box-canvas" layoutsubtree>
++          <form class="box-form" id="box-form">
++            <h3>Quick Order</h3>
++            <label for="box-name">Name</label>
++            <input id="box-name" name="name" type="text" placeholder="Your name" autocomplete="off">
++            <label for="box-qty">Bags of beans</label>
++            <input id="box-qty" name="qty" type="number" min="1" max="12" value="1">
++            <div class="actions">
++              <button type="submit">Add to Order</button>
++              <button type="reset">Clear</button>
++            </div>
++            <div class="box-status" id="box-status" role="status"></div>
++          </form>
++        </canvas>
++      </div>
++      <p class="box-note" id="box-note"></p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +319,190 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var canvas = document.getElementById('box-canvas');
++      var stage = document.getElementById('box-stage');
++      var form = document.getElementById('box-form');
++      var status = document.getElementById('box-status');
++      var note = document.getElementById('box-note');
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        var name = form.name.value.trim() || 'friend';
++        status.textContent = 'Thanks ' + name + '! ' + form.qty.value + ' bag(s) added.';
++      });
++      form.addEventListener('reset', function () { status.textContent = ''; });
++
++      var gl = canvas.getContext('webgl', { alpha: true, antialias: true });
++      var supported = gl && 'layoutsubtree' in canvas && typeof gl.texElementImage2D === 'function' &&
++        typeof canvas.getElementTransform === 'function';
++
++      if (!supported) {
++        // Fallback: render the form as plain HTML next to the stage.
++        stage.parentNode.insertBefore(form, note);
++        form.style.position = 'relative';
++        form.style.margin = '20px auto';
++        stage.style.display = 'none';
++        note.textContent = 'Enable HTML-in-Canvas (chrome://flags/#canvas-draw-element) to see the form on a spinning 3D box.';
++        return;
++      }
++
++      // ---- mat4 helpers (column-major, like CSS matrix3d) ----
++      function mul(a, b) {
++        var o = new Array(16);
++        for (var c = 0; c < 4; c++) for (var r = 0; r < 4; r++) {
++          var v = 0;
++          for (var k = 0; k < 4; k++) v += a[k * 4 + r] * b[c * 4 + k];
++          o[c * 4 + r] = v;
++        }
++        return o;
++      }
++      function translate(x, y, z) { return [1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1]; }
++      function scale(x, y, z) { return [x,0,0,0, 0,y,0,0, 0,0,z,0, 0,0,0,1]; }
++      function rotY(a) { var c = Math.cos(a), s = Math.sin(a); return [c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]; }
++      function rotX(a) { var c = Math.cos(a), s = Math.sin(a); return [1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]; }
++      function perspective(fov, aspect, n, f) {
++        var t = 1 / Math.tan(fov / 2);
++        return [t / aspect,0,0,0, 0,t,0,0, 0,0,(f + n) / (n - f),-1, 0,0,2 * f * n / (n - f),0];
++      }
++
++      // ---- geometry: box (W x H x D units) with per-face normals ----
++      var PX = 150;                       // CSS px per world unit
++      var FW = 300, FH = 340;             // form size in CSS px
++      var BW = FW / PX, BH = FH / PX, BD = 1.2;
++      var hw = BW / 2, hh = BH / 2, hd = BD / 2;
++      var faces = [
++        { n: [0,0,1],  v: [[-hw,-hh,hd],[hw,-hh,hd],[hw,hh,hd],[-hw,hh,hd]] },
++        { n: [0,0,-1], v: [[hw,-hh,-hd],[-hw,-hh,-hd],[-hw,hh,-hd],[hw,hh,-hd]] },
++        { n: [1,0,0],  v: [[hw,-hh,hd],[hw,-hh,-hd],[hw,hh,-hd],[hw,hh,hd]] },
++        { n: [-1,0,0], v: [[-hw,-hh,-hd],[-hw,-hh,hd],[-hw,hh,hd],[-hw,hh,-hd]] },
++        { n: [0,1,0],  v: [[-hw,hh,hd],[hw,hh,hd],[hw,hh,-hd],[-hw,hh,-hd]] },
++        { n: [0,-1,0], v: [[-hw,-hh,-hd],[hw,-hh,-hd],[hw,-hh,hd],[-hw,-hh,hd]] }
++      ];
++      var pos = [], nor = [], idx = [];
++      faces.forEach(function (f, i) {
++        f.v.forEach(function (p) { pos.push.apply(pos, p); nor.push.apply(nor, f.n); });
++        idx.push(i*4, i*4+1, i*4+2, i*4, i*4+2, i*4+3);
++      });
++
++      // Form quad, slightly in front of the box's front face.
++      var Z = hd + 0.01;
++      var quadPos = [-hw,-hh,Z, hw,-hh,Z, hw,hh,Z, -hw,hh,Z];
++      var quadUV = [0,1, 1,1, 1,0, 0,0];   // v=0 is the top row of the element
++
++      function shader(type, src) {
++        var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s;
++      }
++      function program(vs, fs) {
++        var p = gl.createProgram();
++        gl.attachShader(p, shader(gl.VERTEX_SHADER, vs));
++        gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
++        gl.linkProgram(p); return p;
++      }
++      function buffer(data, isIndex) {
++        var b = gl.createBuffer(), t = isIndex ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
++        gl.bindBuffer(t, b);
++        gl.bufferData(t, isIndex ? new Uint16Array(data) : new Float32Array(data), gl.STATIC_DRAW);
++        return b;
++      }
++
++      var boxProg = program(
++        'attribute vec3 p;attribute vec3 n;uniform mat4 mvp;uniform mat4 model;varying float l;' +
++        'void main(){vec3 w=normalize(mat3(model)*n);l=0.45+0.55*max(dot(w,normalize(vec3(0.4,0.7,0.8))),0.0);gl_Position=mvp*vec4(p,1.0);}',
++        'precision mediump float;varying float l;void main(){gl_FragColor=vec4(vec3(0.55,0.36,0.25)*l,1.0);}'
++      );
++      var quadProg = program(
++        'attribute vec3 p;attribute vec2 uv;uniform mat4 mvp;varying vec2 t;' +
++        'void main(){t=uv;gl_Position=mvp*vec4(p,1.0);}',
++        'precision mediump float;uniform sampler2D tex;varying vec2 t;void main(){gl_FragColor=texture2D(tex,t);}'
++      );
++
++      var boxPosBuf = buffer(pos), boxNorBuf = buffer(nor), boxIdxBuf = buffer(idx, true);
++      var quadPosBuf = buffer(quadPos), quadUVBuf = buffer(quadUV);
++
++      var tex = gl.createTexture();
++      gl.bindTexture(gl.TEXTURE_2D, tex);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255,250,243,255]));
++
++      // Re-upload the form whenever its rendering changes (typing, focus, hover...).
++      function uploadForm() {
++        gl.bindTexture(gl.TEXTURE_2D, tex);
++        gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, form);
++      }
++      canvas.onpaint = uploadForm;
++      if (canvas.requestPaint) canvas.requestPaint();
++
++      function resize() {
++        var dpr = window.devicePixelRatio || 1;
++        var w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
++        if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
++      }
++
++      var start = performance.now();
++      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++      function frame(now) {
++        resize();
++        var cw = canvas.clientWidth, ch = canvas.clientHeight;
++        gl.viewport(0, 0, canvas.width, canvas.height);
++        gl.clearColor(0, 0, 0, 0);
++        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++        gl.enable(gl.DEPTH_TEST);
++        gl.enable(gl.CULL_FACE);
++
++        var t = reduceMotion ? 0.4 : (now - start) / 1000;
++        var angle = reduceMotion ? 0.4 : t * 0.6;
++        var model = mul(rotX(0.18 * Math.sin(t * 0.5)), rotY(angle));
++        var view = translate(0, 0, -6.2);
++        var proj = perspective(Math.PI / 4, cw / ch, 0.1, 50);
++        var vp = mul(proj, view);
++        var mvp = mul(vp, model);
++
++        // Box
++        gl.useProgram(boxProg);
++        gl.bindBuffer(gl.ARRAY_BUFFER, boxPosBuf);
++        var a = gl.getAttribLocation(boxProg, 'p'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 3, gl.FLOAT, false, 0, 0);
++        gl.bindBuffer(gl.ARRAY_BUFFER, boxNorBuf);
++        a = gl.getAttribLocation(boxProg, 'n'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 3, gl.FLOAT, false, 0, 0);
++        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, boxIdxBuf);
++        gl.uniformMatrix4fv(gl.getUniformLocation(boxProg, 'mvp'), false, mvp);
++        gl.uniformMatrix4fv(gl.getUniformLocation(boxProg, 'model'), false, model);
++        gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
++
++        // Form quad
++        gl.useProgram(quadProg);
++        gl.bindBuffer(gl.ARRAY_BUFFER, quadPosBuf);
++        a = gl.getAttribLocation(quadProg, 'p'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 3, gl.FLOAT, false, 0, 0);
++        gl.bindBuffer(gl.ARRAY_BUFFER, quadUVBuf);
++        a = gl.getAttribLocation(quadProg, 'uv'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
++        gl.bindTexture(gl.TEXTURE_2D, tex);
++        gl.uniformMatrix4fv(gl.getUniformLocation(quadProg, 'mvp'), false, mvp);
++        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
++
++        // Sync the real DOM element's hit-testing with where it is drawn:
++        // element px -> world units -> clip space -> canvas CSS px.
++        var elemToWorld = mul(translate(0, 0, Z),
++          mul(scale(1 / PX, -1 / PX, 1), translate(-FW / 2, -FH / 2, 0)));
++        var toScreen = mul(translate(cw / 2, ch / 2, 0), scale(cw / 2, -ch / 2, 1));
++        var drawMatrix = mul(toScreen, mul(mvp, elemToWorld));
++        form.style.transform = canvas.getElementTransform(form, new DOMMatrix(drawMatrix));
++
++        // Only let the form receive pointer events while its face points at the camera.
++        var nx = model[8], ny = model[9], nz = model[10];
++        var facing = nx * (0 - nx * Z) + ny * (0 - ny * Z) + nz * (6.2 - nz * Z);
++        form.style.pointerEvents = facing > 0.05 ? 'auto' : 'none';
++
++        requestAnimationFrame(frame);
++      }
++      requestAnimationFrame(frame);
++    })();
++  </script>
+ </body>
+ 
+ </html>

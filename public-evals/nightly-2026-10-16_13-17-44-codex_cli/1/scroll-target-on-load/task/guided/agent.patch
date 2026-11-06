@@ -1,0 +1,183 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,13 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    if (!CSS.supports('scroll-initial-target', 'nearest')) {
++      document.documentElement.classList.add('needs-feed-position');
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -134,8 +139,94 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .coffee-journal {
++      margin-top: 48px;
++    }
++
++    .journal-heading {
++      margin-bottom: 20px;
++      text-align: center;
++    }
++
++    .journal-heading p {
++      color: #75635d;
++      margin-top: 4px;
++    }
++
++    .media-feed {
++      height: 420px;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f0ebe8;
++      padding: 16px;
++    }
++
++    .needs-feed-position .media-feed {
++      visibility: hidden;
++    }
++
++    .media-feed:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .media-card {
++      display: grid;
++      grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
++      min-height: 200px;
++      overflow: hidden;
++      border-radius: 8px;
++      background: white;
++    }
++
++    .media-card + .media-card {
++      margin-top: 16px;
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++    }
++
++    .media-card-copy {
++      align-self: center;
++      padding: 24px;
++    }
++
++    .media-card-copy span {
++      color: #75635d;
++      font-size: 0.75rem;
++      letter-spacing: 0.1em;
++      text-transform: uppercase;
++    }
++
++    .media-card-copy h3 {
++      margin: 6px 0;
++    }
++
++    .media-card.target {
++      scroll-initial-target: nearest;
++      border: 2px solid var(--primary);
++    }
++
++    @media (max-width: 600px) {
++      .media-card {
++        grid-template-columns: 110px minmax(0, 1fr);
++      }
++
++      .media-card-copy {
++        padding: 16px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +285,70 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="coffee-journal" aria-labelledby="journal-title">
++      <div class="journal-heading">
++        <h2 id="journal-title">From Bean to Cup</h2>
++        <p>Five little moments from our coffee world. Scroll to explore.</p>
++      </div>
++      <div class="media-feed" role="region" aria-labelledby="journal-title" tabindex="0">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=560&amp;h=400&amp;q=80" width="560" height="400" alt="Freshly roasted coffee beans">
++          <div class="media-card-copy">
++            <span>01 / The beginning</span>
++            <h3>Good Days Start with Good Beans</h3>
++            <p>Thoughtfully sourced, carefully roasted, and full of possibility.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=560&amp;h=400&amp;q=80" width="560" height="400" alt="Coffee being prepared with a pour-over brewer">
++          <div class="media-card-copy">
++            <span>02 / The ritual</span>
++            <h3>Take Your Time</h3>
++            <p>A slow pour. A deep breath. A small ritual worth making room for.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1511081692775-05d0f180a065?auto=format&amp;fit=crop&amp;w=560&amp;h=400&amp;q=80" width="560" height="400" alt="A freshly made latte with delicate milk foam art">
++          <div class="media-card-copy">
++            <span>03 / In the spotlight</span>
++            <h3>A Little Art in Every Cup</h3>
++            <p>Rich espresso meets silky milk. Your everyday favorite, made with care.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=560&amp;h=400&amp;q=80" width="560" height="400" alt="A warm cup of coffee ready to enjoy">
++          <div class="media-card-copy">
++            <span>04 / The pause</span>
++            <h3>Your Moment to Unwind</h3>
++            <p>Step away from the rush and settle in with something warm.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&amp;fit=crop&amp;w=560&amp;h=400&amp;q=80" width="560" height="400" alt="A welcoming neighborhood coffee shop">
++          <div class="media-card-copy">
++            <span>05 / The gathering place</span>
++            <h3>There's a Place for You Here</h3>
++            <p>Catch up with a friend, find a quiet corner, and make yourself at home.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        // Run synchronously while the fallback feed is hidden, before it can paint.
++        if (document.documentElement.classList.contains('needs-feed-position')) {
++          const feed = document.querySelector('.media-feed');
++          const target = feed.querySelector('.target');
++          const offset = target.getBoundingClientRect().top - feed.getBoundingClientRect().top;
++          feed.scrollTo({
++            top: feed.scrollTop + offset - feed.clientTop - (feed.clientHeight - target.offsetHeight) / 2,
++            behavior: 'instant'
++          });
++          document.documentElement.classList.remove('needs-feed-position');
++        }
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

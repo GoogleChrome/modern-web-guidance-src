@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -95,8 +95,38 @@
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto var(--card-content-height, 310px);
++    }
++
++    .debug-panel {
++      max-width: 750px;
++      margin: 0 auto;
++      height: 0;
++      overflow: hidden;
++      visibility: hidden;
++      content-visibility: hidden;
++    }
++
++    .debug-panel.is-open {
++      height: auto;
++      margin: 2rem auto;
++      padding: 1.5rem;
++      border: 1px solid #e2e8f0;
++      border-radius: 1rem;
++      background: var(--card-bg);
++      visibility: visible;
++      content-visibility: visible;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .debug-panel { display: none; }
++      .debug-panel.is-open { display: block; }
++    }
++
+     .nested-layer {
+       position: absolute;
+       inset: 0;
+       pointer-events: none;
+@@ -207,8 +237,10 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn secondary" type="button"
++      aria-controls="debug-panel" aria-expanded="false">Show Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,13 +251,29 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <section id="debug-panel" class="debug-panel" aria-labelledby="debug-title" aria-hidden="true" inert>
++    <h2 id="debug-title">Rendering Debug</h2>
++    <dl>
++      <dt>Total cards</dt>
++      <dd id="debug-total">500</dd>
++      <dt>Cards deferred at generation</dt>
++      <dd id="debug-deferred">0</dd>
++      <dt>Last render time</dt>
++      <dd id="debug-time">Pending</dd>
++    </dl>
++  </section>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
++    const debugPanel = document.getElementById('debug-panel');
++    const debugBtn = document.getElementById('toggle-debug');
++    const debugDeferred = document.getElementById('debug-deferred');
++    const debugTime = document.getElementById('debug-time');
+     const cardCount = 500;
+ 
+ 
+ 
+@@ -265,8 +313,9 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          debugTime.textContent = timerSpan.textContent;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -283,24 +332,54 @@
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
++      // Measure one representative card, never the deferred cards' descendants.
++      const firstCard = createCard(0);
++      feed.appendChild(firstCard);
++      const bounds = firstCard.getBoundingClientRect();
++      const style = getComputedStyle(firstCard);
++      const contentHeight = bounds.height - parseFloat(style.paddingTop) -
++        parseFloat(style.paddingBottom) - parseFloat(style.borderTopWidth) -
++        parseFloat(style.borderBottomWidth);
++      const stride = bounds.height + parseFloat(style.marginBottom);
++      feed.style.setProperty('--card-content-height', `${contentHeight}px`);
++      const viewportHeight = window.innerHeight;
++      let deferredCount = 0;
++      function deferIfOffscreen(card, index) {
++        const top = bounds.top + index * stride;
++        if (top >= viewportHeight || top + bounds.height <= 0) {
++          card.classList.add('off-screen-card');
++          deferredCount++;
++        }
++      }
++      deferIfOffscreen(firstCard, 0);
+       const fragment = document.createDocumentFragment();
+-      for (let i = 0; i < cardCount; i++) {
+-        fragment.appendChild(createCard(i));
++      for (let i = 1; i < cardCount; i++) {
++        const card = createCard(i);
++        deferIfOffscreen(card, i);
++        fragment.appendChild(card);
+       }
+       feed.appendChild(fragment);
++      debugDeferred.textContent = deferredCount;
+ 
+       measureRender(startTime);
+     }
+ 
+-    window.addEventListener('load', () => {
+-      setTimeout(renderCards, 500);
+-    });
++    renderCards();
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    debugBtn.addEventListener('click', () => {
++      const isOpen = debugPanel.classList.toggle('is-open');
++      if (!isOpen && debugPanel.contains(document.activeElement)) debugBtn.focus();
++      debugPanel.inert = !isOpen;
++      debugPanel.setAttribute('aria-hidden', String(!isOpen));
++      debugBtn.setAttribute('aria-expanded', String(isOpen));
++      debugBtn.textContent = isOpen ? 'Hide Debug Panel' : 'Show Debug Panel';
++    });
+ 
++
+   </script>
+ </body>
+ 
+-</html>
+\ No newline at end of file
++</html>

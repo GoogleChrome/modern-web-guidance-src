@@ -1,0 +1,312 @@
+diff --git a/hero-ripple.js b/hero-ripple.js
+new file mode 100644
+--- a/hero-ripple.js
++++ b/hero-ripple.js
+@@ -0,0 +1,307 @@
++// GPU ripple distortion for the hero copy, using the HTML-in-Canvas API.
++// The hero content is rendered into a WebGL texture and distorted by a fragment
++// shader, while the real DOM elements stay in place for text selection, clicks,
++// keyboard focus and assistive technologies.
++//
++// Progressive enhancement: the content ships as plain HTML. It is only moved
++// into a canvas when the API is supported and the user hasn't asked for
++// reduced motion, so every other browser keeps the regular hero.
++
++const MAX_RIPPLES = 8;
++
++const hero = document.querySelector(".hero");
++const content = hero?.querySelector(".hero-content");
++const supported = "content" in HTMLCanvasElement.prototype;
++const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
++
++if (hero && content && supported && !reducedMotion) {
++  try {
++    initRipple(hero, content);
++  } catch (err) {
++    console.error("Hero ripple effect disabled:", err);
++  }
++}
++
++function initRipple(hero, content) {
++  const canvas = document.createElement("canvas");
++  canvas.className = "hero-canvas";
++  canvas.setAttribute("content", "drawable");
++  const gl = canvas.getContext("webgl2", { premultipliedAlpha: true });
++  if (!gl) return;
++
++  const program = createProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
++  if (!program) return;
++
++  // Move the content into the canvas only once WebGL is known to work.
++  content.setAttribute("drawable", "");
++  hero.append(canvas);
++  canvas.append(content);
++
++  const uniforms = {
++    texture: gl.getUniformLocation(program, "u_texture"),
++    resolution: gl.getUniformLocation(program, "u_resolution"),
++    time: gl.getUniformLocation(program, "u_time"),
++    ripples: gl.getUniformLocation(program, "u_ripples"),
++  };
++
++  // Full-canvas quad (two triangles) in clip space.
++  const vao = gl.createVertexArray();
++  gl.bindVertexArray(vao);
++  const buffer = gl.createBuffer();
++  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
++  gl.bufferData(
++    gl.ARRAY_BUFFER,
++    new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
++    gl.STATIC_DRAW
++  );
++  const positionLoc = gl.getAttribLocation(program, "a_position");
++  gl.enableVertexAttribArray(positionLoc);
++  gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
++
++  const texture = gl.createTexture();
++  const textureState = { width: 0, height: 0 };
++  gl.bindTexture(gl.TEXTURE_2D, texture);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
++  let hasTexture = false;
++
++  // Keep the canvas grid in device pixels so the text stays crisp.
++  const resizeObserver = new ResizeObserver(([entry]) => {
++    const dpc = entry.devicePixelContentBoxSize;
++    canvas.width = dpc
++      ? dpc[0].inlineSize
++      : Math.round(entry.contentRect.width * devicePixelRatio);
++    canvas.height = dpc
++      ? dpc[0].blockSize
++      : Math.round(entry.contentRect.height * devicePixelRatio);
++    canvas.requestPaint();
++  });
++  const supportsDevicePixelContentBox =
++    typeof ResizeObserverEntry !== "undefined" &&
++    "devicePixelContentBoxSize" in ResizeObserverEntry.prototype;
++  resizeObserver.observe(
++    canvas,
++    supportsDevicePixelContentBox ? { box: "device-pixel-content-box" } : {}
++  );
++
++  // Ripples: [x, y, startTime, strength] in UV space (0..1, y down).
++  const ripples = new Float32Array(MAX_RIPPLES * 4).fill(-1000);
++  let nextRipple = 0;
++  let lastMoveRipple = 0;
++  const startTime = performance.now();
++  const now = () => (performance.now() - startTime) / 1000;
++
++  function addRipple(event, strength) {
++    const rect = canvas.getBoundingClientRect();
++    const i = nextRipple * 4;
++    ripples[i] = (event.clientX - rect.left) / rect.width;
++    ripples[i + 1] = (event.clientY - rect.top) / rect.height;
++    ripples[i + 2] = now();
++    ripples[i + 3] = strength;
++    nextRipple = (nextRipple + 1) % MAX_RIPPLES;
++  }
++
++  // Listen on the hero so events retargeted to the content still count.
++  hero.addEventListener("pointermove", (event) => {
++    const t = now();
++    if (t - lastMoveRipple < 0.12) return;
++    lastMoveRipple = t;
++    addRipple(event, 0.35);
++  });
++  hero.addEventListener("pointerdown", (event) => addRipple(event, 1));
++
++  canvas.onpaint = (event) => {
++    const changed = !event.changedElements || event.changedElements.length > 0;
++    if (changed || !hasTexture) {
++      try {
++        hasTexture =
++          uploadElementWebGL(gl, canvas, texture, content, textureState) ||
++          hasTexture;
++      } catch (err) {
++        console.error("texElementSubImage2D copy failed:", err);
++      }
++    }
++
++    draw();
++
++    // The quad fills the canvas, so the content's unit square (-0.5..0.5)
++    // maps to clip space (-1..1) with a plain 2x scale. The ripple is a small
++    // UV offset, so hit testing against the undistorted box stays accurate.
++    canvas.updateElementGeometry(content, {
++      canvasTransform: computeCanvasTransform(canvas, content, FULL_QUAD_MVP),
++    });
++  };
++
++  function draw() {
++    gl.viewport(0, 0, canvas.width, canvas.height);
++    gl.clearColor(0, 0, 0, 0);
++    gl.clear(gl.COLOR_BUFFER_BIT);
++    if (!hasTexture) return;
++
++    gl.useProgram(program);
++    gl.bindVertexArray(vao);
++    gl.activeTexture(gl.TEXTURE0);
++    gl.bindTexture(gl.TEXTURE_2D, texture);
++    gl.uniform1i(uniforms.texture, 0);
++    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
++    gl.uniform1f(uniforms.time, now());
++    gl.uniform4fv(uniforms.ripples, ripples);
++    gl.drawArrays(gl.TRIANGLES, 0, 6);
++  }
++
++  // Animate only while the hero is on screen.
++  let frame = 0;
++  function tick() {
++    canvas.requestPaint();
++    frame = requestAnimationFrame(tick);
++  }
++  new IntersectionObserver(([entry]) => {
++    cancelAnimationFrame(frame);
++    if (entry.isIntersecting) frame = requestAnimationFrame(tick);
++  }).observe(hero);
++}
++
++// Maps -0.5..0.5 model space to -1..1 clip space (column-major).
++const FULL_QUAD_MVP = new Float32Array([
++  2, 0, 0, 0,
++  0, 2, 0, 0,
++  0, 0, 1, 0,
++  0, 0, 0, 1,
++]);
++
++// Returns the element's size in canvas grid pixels, or null if the element
++// has no paint record yet.
++function getElementImageSize(canvas, element) {
++  let elementImage;
++  try {
++    elementImage = canvas.captureElementImage(element);
++  } catch (err) {
++    canvas.requestPaint(); // No paint record yet: retry on the next paint event.
++    return null;
++  }
++  const width = Math.ceil(elementImage.width);
++  const height = Math.ceil(elementImage.height);
++  elementImage.close();
++  return width > 0 && height > 0 ? { width, height } : null;
++}
++
++// Binds the texture, and allocates its storage on the first upload, and when
++// the element size changes.
++function allocateElementTexture(gl, texture, state, width, height) {
++  gl.bindTexture(gl.TEXTURE_2D, texture);
++  if (state.width === width && state.height === height) return;
++
++  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++  state.width = width;
++  state.height = height;
++}
++
++// Uploads the element into the texture. Returns false if the element has no
++// paint record yet.
++function uploadElementWebGL(gl, canvas, texture, element, state) {
++  const size = getElementImageSize(canvas, element);
++  if (!size) return false;
++  const { width, height } = size;
++  allocateElementTexture(gl, texture, state, width, height);
++  gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, element, { width, height });
++  return true;
++}
++
++// Maps the element's border box (CSS pixels) to the canvas (CSS pixels).
++function computeCanvasTransform(canvas, element, mvp) {
++  const width = element.offsetWidth;
++  const height = element.offsetHeight;
++
++  const toGLModel = new DOMMatrix()
++    .scale(1 / width, -1 / height, 1 / height)
++    .translate(-width / 2, -height / 2);
++
++  const mvpDOM = new DOMMatrix(Array.from(mvp));
++
++  const clipToCanvasViewport = new DOMMatrix()
++    .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
++    .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
++
++  return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
++}
++
++function createProgram(gl, vertexSource, fragmentSource) {
++  const compile = (type, source) => {
++    const shader = gl.createShader(type);
++    gl.shaderSource(shader, source);
++    gl.compileShader(shader);
++    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++      console.error(gl.getShaderInfoLog(shader));
++      return null;
++    }
++    return shader;
++  };
++  const vs = compile(gl.VERTEX_SHADER, vertexSource);
++  const fs = compile(gl.FRAGMENT_SHADER, fragmentSource);
++  if (!vs || !fs) return null;
++
++  const program = gl.createProgram();
++  gl.attachShader(program, vs);
++  gl.attachShader(program, fs);
++  gl.linkProgram(program);
++  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++    console.error(gl.getProgramInfoLog(program));
++    return null;
++  }
++  return program;
++}
++
++const VERTEX_SHADER = `#version 300 es
++in vec2 a_position;
++out vec2 v_uv;
++void main() {
++  // UV origin at the top-left, matching the element texture's row order.
++  v_uv = vec2(a_position.x * 0.5 + 0.5, 0.5 - a_position.y * 0.5);
++  gl_Position = vec4(a_position, 0.0, 1.0);
++}`;
++
++const FRAGMENT_SHADER = `#version 300 es
++precision highp float;
++
++#define MAX_RIPPLES ${MAX_RIPPLES}
++
++uniform sampler2D u_texture;
++uniform vec2 u_resolution;
++uniform float u_time;
++uniform vec4 u_ripples[MAX_RIPPLES]; // xy = center (uv), z = start time, w = strength
++
++in vec2 v_uv;
++out vec4 outColor;
++
++void main() {
++  vec2 aspect = vec2(u_resolution.x / u_resolution.y, 1.0);
++  vec2 offset = vec2(0.0);
++
++  // Gentle ambient shimmer, like the surface of a fresh cup.
++  offset += 0.0015 * vec2(
++    sin(v_uv.y * 18.0 + u_time * 1.6),
++    cos(v_uv.x * 14.0 + u_time * 1.3)
++  );
++
++  // Expanding rings from pointer interactions.
++  for (int i = 0; i < MAX_RIPPLES; i++) {
++    vec4 r = u_ripples[i];
++    float age = u_time - r.z;
++    if (age < 0.0 || age > 3.0) continue;
++
++    vec2 delta = (v_uv - r.xy) * aspect;
++    float dist = length(delta);
++    float front = age * 0.45;                       // ring radius
++    float band = exp(-pow((dist - front) * 9.0, 2.0)); // thin travelling band
++    float wave = sin((dist - front) * 60.0);
++    float fade = (1.0 - age / 3.0) * r.w;
++
++    vec2 dir = dist > 0.0001 ? delta / dist : vec2(0.0);
++    offset += dir / aspect * wave * band * fade * 0.012;
++  }
++
++  outColor = texture(u_texture, v_uv + offset);
++}`;

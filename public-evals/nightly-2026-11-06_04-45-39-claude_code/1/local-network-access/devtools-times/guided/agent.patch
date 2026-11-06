@@ -1,0 +1,662 @@
+diff --git a/src/components/DiagnosticsConnect.tsx b/src/components/DiagnosticsConnect.tsx
+new file mode 100644
+index 0000000..53ef636
+--- /dev/null
++++ b/src/components/DiagnosticsConnect.tsx
+@@ -0,0 +1,599 @@
++import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
++
++/**
++ * Developer diagnostics connection widget.
++ *
++ * Connects from a public (https://) page to:
++ *  - a hardware test device on the reader's private LAN (address space "local")
++ *  - a companion CLI running on the reader's own machine (address space "loopback")
++ *
++ * Uses the Local Network Access (LNA) model: granular `local-network` /
++ * `loopback-network` permissions, `targetAddressSpace` on fetch() so http://
++ * endpoints are exempted from Mixed Content, and standard CORS on the target.
++ */
++
++type AddressSpace = 'local' | 'loopback';
++type PermissionName = 'local-network' | 'loopback-network';
++type PermState = PermissionState | 'unsupported';
++type ConnStatus = 'idle' | 'connecting' | 'connected' | 'error';
++
++interface TargetConfig {
++  key: string;
++  title: string;
++  subtitle: string;
++  space: AddressSpace;
++  permission: PermissionName;
++  defaultHttpUrl: string;
++  defaultWsUrl: string;
++  why: string;
++  troubleshooting: string[];
++}
++
++const TARGETS: TargetConfig[] = [
++  {
++    key: 'lan-device',
++    title: 'Hardware test device',
++    subtitle: 'On your private Wi-Fi / LAN (e.g. 192.168.1.x)',
++    space: 'local',
++    permission: 'local-network',
++    defaultHttpUrl: 'http://192.168.1.100:8080/api/status',
++    defaultWsUrl: 'ws://192.168.1.100:8080/stream',
++    why: 'Your browser will ask for permission to access devices on your local network. We only contact the address you enter below; nothing is scanned.',
++    troubleshooting: [
++      'Make sure the device is powered on and joined to the same Wi-Fi network as this computer.',
++      'Check the device IP address in your router or on the device display.',
++      'The device firmware must send an Access-Control-Allow-Origin header that allows this site.',
++    ],
++  },
++  {
++    key: 'companion-cli',
++    title: 'Companion CLI',
++    subtitle: 'Running on this machine (127.0.0.1)',
++    space: 'loopback',
++    permission: 'loopback-network',
++    defaultHttpUrl: 'http://127.0.0.1:45678/health',
++    defaultWsUrl: 'ws://127.0.0.1:45678/events',
++    why: 'Your browser will ask for permission to reach apps running on this device. The connection never leaves your computer.',
++    troubleshooting: [
++      'Start the companion with `devtools-times-cli serve` and confirm the port matches.',
++      'The CLI must send an Access-Control-Allow-Origin header that allows this site.',
++      'Firewall or VPN software can block loopback connections on some systems.',
++    ],
++  },
++];
++
++/* ------------------------------------------------------------------------- */
++/* Address-space helpers                                                     */
++/* ------------------------------------------------------------------------- */
++
++function parseIPv4(host: string): number[] | null {
++  const parts = host.split('.');
++  if (parts.length !== 4) return null;
++  const nums = parts.map((p) => (/^\d{1,3}$/.test(p) ? Number(p) : NaN));
++  return nums.every((n) => n >= 0 && n <= 255) ? nums : null;
++}
++
++/** Classify a URL hostname into an LNA address space (best effort, pre-DNS). */
++function classifyHost(hostname: string): AddressSpace | 'public' | 'unknown' {
++  const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
++
++  if (host === 'localhost' || host.endsWith('.localhost') || host === '::1') return 'loopback';
++  if (host.endsWith('.local')) return 'local';
++
++  const v4 = parseIPv4(host);
++  if (v4) {
++    const [a, b] = v4;
++    if (a === 127) return 'loopback';
++    if (a === 10) return 'local';
++    if (a === 172 && b >= 16 && b <= 31) return 'local';
++    if (a === 192 && b === 168) return 'local';
++    if (a === 169 && b === 254) return 'local';
++    return 'public';
++  }
++
++  if (host.includes(':')) {
++    if (/^f[cd][0-9a-f]{0,2}:/.test(host)) return 'local'; // fc00::/7 ULA
++    if (/^fe[89ab][0-9a-f]?:/.test(host)) return 'local'; // fe80::/10 link-local
++    return 'public';
++  }
++
++  // Custom DNS name: can't know until resolution. The browser enforces the
++  // declared targetAddressSpace after DNS and aborts on mismatch.
++  return 'unknown';
++}
++
++function validateUrl(
++  raw: string,
++  space: AddressSpace,
++  protocols: string[],
++): { url: URL; warning?: string } | { error: string } {
++  let url: URL;
++  try {
++    url = new URL(raw);
++  } catch {
++    return { error: 'Enter a full URL, including the scheme (for example http://…).' };
++  }
++  if (!protocols.includes(url.protocol)) {
++    return { error: `Use one of: ${protocols.map((p) => p.replace(':', '://')).join(', ')}` };
++  }
++  const cls = classifyHost(url.hostname);
++  if (cls === 'public') {
++    return { error: 'That address is on the public internet, not your local network or machine.' };
++  }
++  if (cls !== 'unknown' && cls !== space) {
++    return {
++      error:
++        space === 'local'
++          ? 'That is a loopback address. Use the Companion CLI panel for 127.0.0.1 / localhost.'
++          : 'That is a LAN address. Use the Hardware test device panel for 192.168.x.x / .local.',
++    };
++  }
++  if (cls === 'unknown' && url.protocol === 'ws:') {
++    return {
++      error:
++        'Plain ws:// only works with an IP address, localhost or a .local name. Use wss:// for custom hostnames.',
++    };
++  }
++  return {
++    url,
++    warning:
++      cls === 'unknown'
++        ? 'Custom hostname: the browser will block the request if it does not resolve to the expected network.'
++        : undefined,
++  };
++}
++
++/* ------------------------------------------------------------------------- */
++/* Permission helpers                                                        */
++/* ------------------------------------------------------------------------- */
++
++/**
++ * Query a granular LNA permission. Never queries the legacy combined
++ * 'local-network-access' name (crashes the renderer in older Chrome).
++ */
++async function queryPermission(
++  name: PermissionName,
++): Promise<{ state: PermState; status?: PermissionStatus }> {
++  if (!navigator.permissions?.query) return { state: 'unsupported' };
++  try {
++    const status = await navigator.permissions.query({ name } as unknown as PermissionDescriptor);
++    return { state: status.state, status };
++  } catch {
++    // Unrecognized permission name in this browser: proceed on user gesture.
++    return { state: 'unsupported' };
++  }
++}
++
++/* ------------------------------------------------------------------------- */
++/* UI                                                                        */
++/* ------------------------------------------------------------------------- */
++
++interface LogEntry {
++  id: number;
++  time: string;
++  kind: 'info' | 'ok' | 'error' | 'data';
++  text: string;
++}
++
++const MAX_LOG = 100;
++const FETCH_TIMEOUT_MS = 8000;
++
++function storageKey(target: string, field: string) {
++  return `dtt:diagnostics:${target}:${field}`;
++}
++
++function PermissionBadge({ state }: { state: PermState | 'checking' }) {
++  const styles: Record<string, string> = {
++    granted: 'bg-green-100 text-green-800',
++    prompt: 'bg-amber-100 text-amber-800',
++    denied: 'bg-red-100 text-red-800',
++    unsupported: 'bg-gray-100 text-gray-700',
++    checking: 'bg-gray-100 text-gray-500',
++  };
++  const labels: Record<string, string> = {
++    granted: 'Permission granted',
++    prompt: 'Will ask permission',
++    denied: 'Permission blocked',
++    unsupported: 'Permission not reported',
++    checking: 'Checking…',
++  };
++  return (
++    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[state]}`}>
++      {labels[state]}
++    </span>
++  );
++}
++
++function StatusDot({ status }: { status: ConnStatus }) {
++  const color: Record<ConnStatus, string> = {
++    idle: 'bg-gray-300',
++    connecting: 'bg-amber-400 animate-pulse',
++    connected: 'bg-green-500',
++    error: 'bg-red-500',
++  };
++  const label: Record<ConnStatus, string> = {
++    idle: 'Not connected',
++    connecting: 'Connecting',
++    connected: 'Connected',
++    error: 'Connection failed',
++  };
++  return (
++    <span className="inline-flex items-center gap-2 text-sm text-gray-700">
++      <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${color[status]}`} />
++      {label[status]}
++    </span>
++  );
++}
++
++function TargetPanel({ target, secure }: { target: TargetConfig; secure: boolean }) {
++  const id = useId();
++  const [httpUrl, setHttpUrl] = useState(target.defaultHttpUrl);
++  const [wsUrl, setWsUrl] = useState(target.defaultWsUrl);
++  const [perm, setPerm] = useState<PermState | 'checking'>('checking');
++  const [status, setStatus] = useState<ConnStatus>('idle');
++  const [streamOpen, setStreamOpen] = useState(false);
++  const [lastPayload, setLastPayload] = useState<string | null>(null);
++  const [fieldError, setFieldError] = useState<{ http?: string; ws?: string }>({});
++  const [log, setLog] = useState<LogEntry[]>([]);
++
++  const logId = useRef(0);
++  const socketRef = useRef<WebSocket | null>(null);
++  const abortRef = useRef<AbortController | null>(null);
++  const autoTried = useRef(false);
++
++  const addLog = useCallback((kind: LogEntry['kind'], text: string) => {
++    const entry: LogEntry = {
++      id: ++logId.current,
++      time: new Date().toLocaleTimeString(undefined, { hour12: false }),
++      kind,
++      text,
++    };
++    setLog((prev) => [entry, ...prev].slice(0, MAX_LOG));
++  }, []);
++
++  // Restore saved endpoints.
++  useEffect(() => {
++    try {
++      const h = localStorage.getItem(storageKey(target.key, 'http'));
++      const w = localStorage.getItem(storageKey(target.key, 'ws'));
++      if (h) setHttpUrl(h);
++      if (w) setWsUrl(w);
++    } catch {
++      /* storage unavailable */
++    }
++  }, [target.key]);
++
++  const persist = (field: 'http' | 'ws', value: string) => {
++    try {
++      localStorage.setItem(storageKey(target.key, field), value);
++    } catch {
++      /* storage unavailable */
++    }
++  };
++
++  const connect = useCallback(
++    async (urlString: string, trigger: 'user' | 'auto') => {
++      const v = validateUrl(urlString, target.space, ['http:', 'https:']);
++      if ('error' in v) {
++        setFieldError((e) => ({ ...e, http: v.error }));
++        return;
++      }
++      setFieldError((e) => ({ ...e, http: undefined }));
++      if (v.warning) addLog('info', v.warning);
++
++      abortRef.current?.abort();
++      const controller = new AbortController();
++      abortRef.current = controller;
++      const timeout = setTimeout(() => controller.abort(new DOMException('Timed out', 'TimeoutError')), FETCH_TIMEOUT_MS);
++
++      setStatus('connecting');
++      addLog('info', `${trigger === 'auto' ? 'Auto-connecting' : 'Connecting'} to ${v.url.href}`);
++      const started = performance.now();
++
++      try {
++        // targetAddressSpace exempts http:// local/loopback URLs from Mixed
++        // Content and makes the browser verify the resolved IP's address space.
++        const init = {
++          method: 'GET',
++          mode: 'cors',
++          credentials: 'omit',
++          cache: 'no-store',
++          signal: controller.signal,
++          targetAddressSpace: target.space,
++        } as RequestInit;
++        const res = await fetch(v.url.href, init);
++        const ms = Math.round(performance.now() - started);
++        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
++
++        const type = res.headers.get('content-type') ?? '';
++        const body = type.includes('json')
++          ? JSON.stringify(await res.json(), null, 2)
++          : (await res.text()).slice(0, 4000);
++        setLastPayload(body);
++        setStatus('connected');
++        addLog('ok', `Connected in ${ms} ms (HTTP ${res.status})`);
++      } catch (err) {
++        if (controller.signal.aborted && controller.signal.reason?.name !== 'TimeoutError') {
++          return; // superseded by a newer attempt
++        }
++        setStatus('error');
++        const timedOut = controller.signal.reason?.name === 'TimeoutError';
++        addLog(
++          'error',
++          timedOut
++            ? `No response after ${FETCH_TIMEOUT_MS / 1000} s.`
++            : `${err instanceof Error ? err.message : String(err)} — the target may be offline, blocking CORS, or permission was declined.`,
++        );
++      } finally {
++        clearTimeout(timeout);
++        // Permission state may have changed as a result of the prompt.
++        queryPermission(target.permission).then(({ state }) => setPerm(state));
++      }
++    },
++    [addLog, target.permission, target.space],
++  );
++
++  // Check permission; auto-connect only when already granted (never prompt on load).
++  useEffect(() => {
++    let status: PermissionStatus | undefined;
++    const onChange = () => status && setPerm(status.state);
++    queryPermission(target.permission).then((r) => {
++      setPerm(r.state);
++      status = r.status;
++      status?.addEventListener('change', onChange);
++      if (r.state === 'granted' && secure && !autoTried.current) {
++        autoTried.current = true;
++        const saved = (() => {
++          try {
++            return localStorage.getItem(storageKey(target.key, 'http'));
++          } catch {
++            return null;
++          }
++        })();
++        connect(saved || target.defaultHttpUrl, 'auto');
++      }
++    });
++    return () => status?.removeEventListener('change', onChange);
++  }, [connect, secure, target.defaultHttpUrl, target.key, target.permission]);
++
++  // Clean up on unmount (including Astro view transitions).
++  useEffect(
++    () => () => {
++      abortRef.current?.abort();
++      socketRef.current?.close();
++    },
++    [],
++  );
++
++  const toggleStream = () => {
++    if (socketRef.current) {
++      socketRef.current.close(1000, 'Closed by user');
++      return;
++    }
++    const v = validateUrl(wsUrl, target.space, ['ws:', 'wss:']);
++    if ('error' in v) {
++      setFieldError((e) => ({ ...e, ws: v.error }));
++      return;
++    }
++    setFieldError((e) => ({ ...e, ws: undefined }));
++    addLog('info', `Opening live stream ${v.url.href}`);
++
++    let socket: WebSocket;
++    try {
++      // Second argument is subprotocols only; the browser infers the address
++      // space from the URL host and gates it behind the LNA permission.
++      socket = new WebSocket(v.url.href, ['dtt.diagnostics.v1']);
++    } catch (err) {
++      addLog('error', err instanceof Error ? err.message : String(err));
++      return;
++    }
++    socketRef.current = socket;
++    setStreamOpen(true);
++
++    socket.addEventListener('open', () => addLog('ok', 'Live stream open'));
++    socket.addEventListener('message', (e) => {
++      const text = typeof e.data === 'string' ? e.data : `[binary ${e.data.size ?? e.data.byteLength ?? '?'} bytes]`;
++      addLog('data', text.length > 500 ? `${text.slice(0, 500)}…` : text);
++    });
++    socket.addEventListener('error', () =>
++      addLog('error', 'Stream error — check the address, that the target is running, and that permission was allowed.'),
++    );
++    socket.addEventListener('close', (e) => {
++      addLog('info', `Live stream closed${e.code ? ` (code ${e.code})` : ''}`);
++      if (socketRef.current === socket) socketRef.current = null;
++      setStreamOpen(false);
++      queryPermission(target.permission).then(({ state }) => setPerm(state));
++    });
++  };
++
++  const disabled = !secure || perm === 'denied';
++  const httpId = `${id}-http`;
++  const wsId = `${id}-ws`;
++  const permLabel = target.space === 'local' ? 'Local network' : 'Loopback network';
++
++  return (
++    <section
++      aria-labelledby={`${id}-title`}
++      className="flex flex-col rounded-lg border border-gray-200 bg-white p-5 shadow-sm"
++    >
++      <header className="mb-4 flex flex-wrap items-start justify-between gap-2">
++        <div>
++          <h2 id={`${id}-title`} className="text-lg font-bold text-gray-900">
++            {target.title}
++          </h2>
++          <p className="text-sm text-gray-600">{target.subtitle}</p>
++        </div>
++        <PermissionBadge state={perm} />
++      </header>
++
++      {perm === 'prompt' && <p className="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-900">{target.why}</p>}
++
++      {perm === 'denied' && (
++        <div role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
++          <p className="font-semibold">{permLabel} access is blocked for this site.</p>
++          <p className="mt-1">
++            Click the site settings icon next to the address bar, set <strong>{permLabel}</strong> to{' '}
++            <strong>Allow</strong>, then reload this page.
++          </p>
++        </div>
++      )}
++
++      <form
++        className="space-y-3"
++        onSubmit={(e) => {
++          e.preventDefault();
++          persist('http', httpUrl);
++          connect(httpUrl, 'user');
++        }}
++      >
++        <div>
++          <label htmlFor={httpId} className="mb-1 block text-sm font-medium text-gray-700">
++            Status endpoint (HTTP)
++          </label>
++          <input
++            id={httpId}
++            type="url"
++            inputMode="url"
++            autoComplete="off"
++            spellCheck={false}
++            required
++            value={httpUrl}
++            onChange={(e) => setHttpUrl(e.target.value)}
++            aria-invalid={fieldError.http ? true : undefined}
++            aria-describedby={fieldError.http ? `${httpId}-err` : undefined}
++            className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 aria-[invalid=true]:border-red-500"
++          />
++          {fieldError.http && (
++            <p id={`${httpId}-err`} className="mt-1 text-sm text-red-700">
++              {fieldError.http}
++            </p>
++          )}
++        </div>
++
++        <div className="flex flex-wrap items-center justify-between gap-3">
++          <StatusDot status={status} />
++          <button
++            type="submit"
++            disabled={disabled || status === 'connecting'}
++            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
++          >
++            {status === 'connecting' ? 'Connecting…' : status === 'connected' ? 'Reconnect' : 'Connect'}
++          </button>
++        </div>
++      </form>
++
++      <div className="mt-5 space-y-3 border-t border-gray-200 pt-4">
++        <div>
++          <label htmlFor={wsId} className="mb-1 block text-sm font-medium text-gray-700">
++            Live stream (WebSocket, optional)
++          </label>
++          <input
++            id={wsId}
++            type="url"
++            inputMode="url"
++            autoComplete="off"
++            spellCheck={false}
++            value={wsUrl}
++            disabled={streamOpen}
++            onChange={(e) => {
++              setWsUrl(e.target.value);
++              persist('ws', e.target.value);
++            }}
++            aria-invalid={fieldError.ws ? true : undefined}
++            aria-describedby={fieldError.ws ? `${wsId}-err` : undefined}
++            className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:bg-gray-50 aria-[invalid=true]:border-red-500"
++          />
++          {fieldError.ws && (
++            <p id={`${wsId}-err`} className="mt-1 text-sm text-red-700">
++              {fieldError.ws}
++            </p>
++          )}
++        </div>
++        <button
++          type="button"
++          onClick={toggleStream}
++          disabled={disabled && !streamOpen}
++          className="rounded-md border border-gray-900 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
++        >
++          {streamOpen ? 'Close stream' : 'Open stream'}
++        </button>
++      </div>
++
++      {lastPayload && (
++        <details className="mt-5" open>
++          <summary className="cursor-pointer text-sm font-semibold text-gray-800">Last response</summary>
++          <pre className="mt-2 max-h-56 overflow-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100">
++            {lastPayload}
++          </pre>
++        </details>
++      )}
++
++      <div className="mt-5">
++        <div className="mb-1 flex items-center justify-between">
++          <h3 className="text-sm font-semibold text-gray-800">Activity</h3>
++          {log.length > 0 && (
++            <button type="button" onClick={() => setLog([])} className="text-xs text-gray-600 hover:underline">
++              Clear
++            </button>
++          )}
++        </div>
++        <ol
++          role="log"
++          aria-live="polite"
++          aria-label={`${target.title} activity`}
++          className="h-40 overflow-auto rounded-md border border-gray-200 bg-gray-50 p-2 font-mono text-xs"
++        >
++          {log.length === 0 && <li className="text-gray-500">No activity yet.</li>}
++          {log.map((entry) => (
++            <li
++              key={entry.id}
++              className={
++                {
++                  info: 'text-gray-700',
++                  ok: 'text-green-700',
++                  error: 'text-red-700',
++                  data: 'text-blue-800',
++                }[entry.kind]
++              }
++            >
++              <span className="text-gray-400">{entry.time}</span> {entry.text}
++            </li>
++          ))}
++        </ol>
++      </div>
++
++      {status === 'error' && (
++        <details className="mt-4 text-sm text-gray-700">
++          <summary className="cursor-pointer font-semibold">Troubleshooting</summary>
++          <ul className="mt-2 list-disc space-y-1 pl-5">
++            {target.troubleshooting.map((t) => (
++              <li key={t}>{t}</li>
++            ))}
++          </ul>
++        </details>
++      )}
++    </section>
++  );
++}
++
++export default function DiagnosticsConnect() {
++  // Assume secure during SSR; correct on hydration.
++  const [secure, setSecure] = useState(true);
++  useEffect(() => setSecure(window.isSecureContext), []);
++
++  return (
++    <div className="space-y-6">
++      {!secure && (
++        <div role="alert" className="rounded-md bg-red-50 p-4 text-sm text-red-800">
++          This page must be loaded over <strong>https://</strong> to connect to local devices. Browsers automatically
++          deny local and loopback network access from insecure pages.
++        </div>
++      )}
++      <div className="grid gap-6 md:grid-cols-2">
++        {TARGETS.map((t) => (
++          <TargetPanel key={t.key} target={t} secure={secure} />
++        ))}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..d742b89 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -51,6 +51,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
+             <ul class="space-y-2">
+                 <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
++                <li><a href={`${baseUrl}diagnostics`} class="text-sm hover:underline">Developer Diagnostics</a></li>
+             </ul>
+         </div>
+ 
+diff --git a/src/pages/diagnostics.astro b/src/pages/diagnostics.astro
+new file mode 100644
+index 0000000..a42c6e4
+--- /dev/null
++++ b/src/pages/diagnostics.astro
+@@ -0,0 +1,39 @@
++---
++import Layout from '../layouts/Layout.astro';
++import DiagnosticsConnect from '../components/DiagnosticsConnect';
++---
++
++<Layout title="Developer Diagnostics | The DevTools Times">
++  <div class="max-w-5xl mx-auto px-4 py-8 md:py-12">
++    <header class="mb-8 border-b-2 pb-4">
++      <p class="text-xs font-bold uppercase tracking-wider text-gray-500">For developers</p>
++      <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Diagnostics connection</h1>
++      <p class="mt-3 max-w-3xl text-gray-700">
++        Connect this page directly to a hardware test device on your home or office Wi-Fi and to the
++        companion CLI running on your computer. Traffic goes straight from your browser to your own
++        network; nothing is relayed through our servers, and your browser asks for your permission first.
++      </p>
++    </header>
++
++    <DiagnosticsConnect client:load />
++
++    <section class="prose mt-12 max-w-none" aria-labelledby="integrators">
++      <h2 id="integrators">Requirements for device and CLI developers</h2>
++      <ul>
++        <li>
++          Respond to cross-origin requests with
++          <code>Access-Control-Allow-Origin: {Astro.url.origin}</code> (and allow the
++          <code>dtt.diagnostics.v1</code> WebSocket subprotocol if you offer a live stream).
++        </li>
++        <li>
++          Plain <code>http://</code> / <code>ws://</code> works when addressed by a private IP, <code>localhost</code>,
++          or a <code>.local</code> name. Custom hostnames need <code>https://</code> / <code>wss://</code>.
++        </li>
++        <li>
++          Supported in browsers that implement Local Network Access (Chrome and Edge 145+). Other browsers may
++          block http:// requests from this https:// page as mixed content.
++        </li>
++      </ul>
++    </section>
++  </div>
++</Layout>

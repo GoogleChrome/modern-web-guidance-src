@@ -1,0 +1,285 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,141 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .shopping-cart {
++      margin-top: 48px;
++    }
++
++    .shopping-cart h2,
++    .cart-help {
++      text-align: center;
++    }
++
++    .cart-help {
++      margin: 6px 0 20px;
++      color: #705b54;
++      font-size: 0.9rem;
++    }
++
++    .SwipeableList {
++      list-style: none;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .SwipeableList-item {
++      contain: content;
++      background: #ab332c;
++    }
++
++    .SwipeableList-item.is-initialized .SwipeableList-track {
++      display: grid;
++      grid-template-columns: 100% 100% 100%;
++      overflow: scroll clip;
++      overscroll-behavior-x: none;
++      scrollbar-width: none;
++      scroll-snap-type: x mandatory;
++    }
++
++    .SwipeableList-track::-webkit-scrollbar {
++      display: none;
++    }
++
++    .SwipeableList-item.is-initialized .SwipeableList-track::before,
++    .SwipeableList-item.is-initialized .SwipeableList-track::after {
++      content: '';
++      scroll-snap-align: start;
++      background: #ab332c;
++    }
++
++    .SwipeableList-content {
++      position: relative;
++      z-index: 2;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      min-width: 0;
++      padding: 20px;
++      background: white;
++      border-bottom: 1px solid #eee7e4;
++      scroll-snap-align: start;
++    }
++
++    .SwipeableList-item.is-initialized .SwipeableList-content {
++      scroll-initial-target: nearest;
++    }
++
++    .SwipeableList-content h3 {
++      color: var(--primary);
++      font-size: 1rem;
++    }
++
++    .cart-item-detail {
++      color: #705b54;
++      font-size: 0.85rem;
++    }
++
++    .cart-remove {
++      flex-shrink: 0;
++      border: 1px solid #d7ccc8;
++      border-radius: 5px;
++      padding: 8px 12px;
++      background: white;
++      color: #923029;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    .cart-remove:hover {
++      background: #fff1ed;
++      border-color: #ab332c;
++    }
++
++    .cart-remove:focus-visible,
++    .SwipeableList-track:focus-visible .SwipeableList-content {
++      outline: 2px solid var(--primary);
++      outline-offset: -3px;
++    }
++
++    .SwipeableList-item.is-initialized::before,
++    .SwipeableList-item.is-initialized::after {
++      content: 'Remove';
++      position: absolute;
++      z-index: 1;
++      top: 50%;
++      transform: translateY(-50%);
++      color: white;
++      font-size: 0.85rem;
++      font-weight: 600;
++      transition: scale 160ms ease, opacity 160ms ease;
++    }
++
++    .SwipeableList-item::before { left: 24px; }
++    .SwipeableList-item::after { right: 24px; }
++    .SwipeableList-item.is-activating::before,
++    .SwipeableList-item.is-activating::after { scale: 1.1; }
++    .SwipeableList-item[data-swipe-direction="left"]::after,
++    .SwipeableList-item[data-swipe-direction="right"]::before { visibility: hidden; }
++    .SwipeableList-item.is-removing::before,
++    .SwipeableList-item.is-removing::after { opacity: 0; }
++
++    .cart-status {
++      margin-top: 12px;
++      min-height: 1.6em;
++      text-align: center;
++      color: #705b54;
++      font-size: 0.9rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .SwipeableList-item::before,
++      .SwipeableList-item::after { transition: none; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +327,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shopping-cart" aria-labelledby="cart-heading">
++      <h2 id="cart-heading" tabindex="-1">Your Shopping Cart</h2>
++      <p class="cart-help" id="cart-help">Swipe an item left or right to remove it, or use its Remove button.</p>
++      <ul class="SwipeableList" aria-label="Shopping cart" aria-describedby="cart-help">
++        <li class="SwipeableList-item" data-name="Maple Oat Latte">
++          <div class="SwipeableList-track" tabindex="0" role="group" aria-label="Maple Oat Latte, swipe or use Remove">
++            <div class="SwipeableList-content">
++              <div><h3>Maple Oat Latte</h3><p class="cart-item-detail">Oat milk &amp; Vermont maple · Quantity: 1</p></div>
++              <button type="button" class="cart-remove" aria-label="Remove Maple Oat Latte">Remove</button>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item" data-name="Dark Roast Espresso">
++          <div class="SwipeableList-track" tabindex="0" role="group" aria-label="Dark Roast Espresso, swipe or use Remove">
++            <div class="SwipeableList-content">
++              <div><h3>Dark Roast Espresso</h3><p class="cart-item-detail">Bold &amp; freshly pulled · Quantity: 1</p></div>
++              <button type="button" class="cart-remove" aria-label="Remove Dark Roast Espresso">Remove</button>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item" data-name="Cold Brew">
++          <div class="SwipeableList-track" tabindex="0" role="group" aria-label="Cold Brew, swipe or use Remove">
++            <div class="SwipeableList-content">
++              <div><h3>Cold Brew</h3><p class="cart-item-detail">Slow-steeped for 18 hours · Quantity: 1</p></div>
++              <button type="button" class="cart-remove" aria-label="Remove Cold Brew">Remove</button>
++            </div>
++          </div>
++        </li>
++      </ul>
++      <p class="cart-status" role="status" aria-live="polite" aria-atomic="true">3 items in your cart.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +371,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const list = document.querySelector('.SwipeableList');
++    const status = document.querySelector('.cart-status');
++    const handles = new WeakMap();
++    const needsScrollWorkaround = !CSS.supports('scroll-initial-target', 'nearest');
++    const resizeObserver = needsScrollWorkaround ? new ResizeObserver((entries) => {
++      for (const entry of entries) {
++        entry.target.scrollLeft = entry.target.clientWidth;
++      }
++    }) : null;
++
++    const viewportObserver = new IntersectionObserver((entries) => {
++      for (const entry of entries) {
++        const item = entry.target;
++        if (item.classList.contains('is-removing')) continue;
++        if (entry.isIntersecting) {
++          const handle = handles.get(item) || setupItem(item);
++          handle.observer.observe(handle.content);
++        } else {
++          const handle = handles.get(item);
++          if (handle) handle.observer.unobserve(handle.content);
++        }
++      }
++    });
++
++    function setupItem(item) {
++      const track = item.querySelector('.SwipeableList-track');
++      const content = item.querySelector('.SwipeableList-content');
++      item.classList.add('is-initialized');
++      // Center before observing, so initial positioning cannot trigger removal.
++      if (needsScrollWorkaround) {
++        track.scrollLeft = track.clientWidth;
++        resizeObserver.observe(track);
++      }
++      const observer = new IntersectionObserver((entries) => {
++        const entry = entries[entries.length - 1];
++        if (item.classList.contains('is-removing') || !entry.rootBounds) return;
++        const offset = entry.boundingClientRect.x - entry.rootBounds.x;
++        if (offset !== 0) item.dataset.swipeDirection = offset > 0 ? 'left' : 'right';
++        item.classList.toggle('is-activating', entry.intersectionRatio < 0.8);
++        // Commit once at least 80% of the content has left the track.
++        if (entry.intersectionRatio < 0.2) removeItem(item, offset);
++      }, { root: track, threshold: [0.2, 0.8] });
++      const handle = { observer, content };
++      handles.set(item, handle);
++      return handle;
++    }
++
++    async function removeItem(item, swipeOffset = 0) {
++      if (item.classList.contains('is-removing')) return;
++      const track = item.querySelector('.SwipeableList-track');
++      const content = item.querySelector('.SwipeableList-content');
++      const height = item.getBoundingClientRect().height;
++      const width = track.clientWidth;
++      const hadFocus = item.contains(document.activeElement);
++      item.classList.add('is-removing');
++      viewportObserver.unobserve(item);
++      handles.get(item)?.observer.disconnect();
++      resizeObserver?.unobserve(track);
++
++      if (hadFocus) {
++        const remaining = [...list.children].filter((row) => !row.classList.contains('is-removing'));
++        const next = remaining.find((row) => item.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING)
++          || remaining[remaining.length - 1];
++        (next?.querySelector('.cart-remove') || document.querySelector('#cart-heading')).focus({ preventScroll: true });
++      }
++      item.inert = true;
++      const count = list.querySelectorAll('.SwipeableList-item:not(.is-removing)').length;
++      status.textContent = `${item.dataset.name} removed. ${count ? `${count} item${count === 1 ? '' : 's'} in your cart.` : 'Your cart is empty.'}`;
++
++      const duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300;
++      const options = { duration, easing: 'ease', fill: 'forwards' };
++      const distance = swipeOffset > 0 ? width - swipeOffset : -(width + swipeOffset);
++      const slide = content.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${distance}px)` }], options);
++      const collapse = item.animate([{ height: `${height}px` }, { height: '0px' }], options);
++      await Promise.allSettled([slide.finished, collapse.finished]);
++      // Safari can transfer a continuing swipe to the next row if removed immediately.
++      if ('GestureEvent' in window && swipeOffset !== 0) {
++        setTimeout(() => item.remove(), 5000);
++      } else {
++        item.remove();
++      }
++    }
++
++    list.addEventListener('click', (event) => {
++      const button = event.target.closest('.cart-remove');
++      if (button) removeItem(button.closest('.SwipeableList-item'));
++    });
++    for (const item of list.children) viewportObserver.observe(item);
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,8 +19,12 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    [hidden] {
++      display: none !important;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+@@ -92,8 +96,76 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero.is-theater {
++      height: auto;
++      min-height: 60vh;
++      padding-block: 40px;
++    }
++
++    .hero-video-slot {
++      width: min(100%, 960px);
++      margin-top: 24px;
++      text-align: left;
++    }
++
++    .video-home {
++      margin-bottom: 40px;
++    }
++
++    .video-home.is-theater {
++      margin-bottom: 0;
++    }
++
++    .roasting-video {
++      padding: 20px;
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .video-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      margin-bottom: 16px;
++    }
++
++    .video-toolbar .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .video-toolbar .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .roasting-video iframe {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      border: 0;
++      border-radius: 4px;
++      background: #000;
++    }
++
++    /* Older browsers: keep the player connected and position it over its hero slot. */
++    .roasting-video.is-positioned {
++      position: absolute;
++      top: var(--video-top);
++      left: var(--video-left);
++      width: var(--video-width);
++      z-index: 1;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -171,11 +243,28 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div id="hero-video-slot" class="hero-video-slot" hidden></div>
+   </header>
+ 
+   <main class="container">
++    <div id="video-home" class="video-home">
++      <section id="roasting-video" class="roasting-video" aria-labelledby="video-heading">
++        <div class="video-toolbar">
++          <div>
++            <h2 id="video-heading">The Art of Roasting</h2>
++            <p>From green beans to your morning cup.</p>
++          </div>
++          <button id="theater-toggle" class="btn" type="button" aria-pressed="false"
++            aria-controls="roasting-video" hidden>Theater mode</button>
++        </div>
++        <iframe src="https://www.youtube.com/embed/N6BJVM5tvnw"
++          title="Coffee Roasting Explained by James Hoffmann" width="960" height="540"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++      </section>
++    </div>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +295,57 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hero = document.querySelector('.hero');
++    const heroSlot = document.getElementById('hero-video-slot');
++    const videoHome = document.getElementById('video-home');
++    const player = document.getElementById('roasting-video');
++    const toggle = document.getElementById('theater-toggle');
++    const supportsStatefulMove = typeof heroSlot.moveBefore === 'function';
++    let theaterMode = false;
++
++    function positionFallback() {
++      if (supportsStatefulMove || !theaterMode) return;
++      const bounds = heroSlot.getBoundingClientRect();
++      player.style.setProperty('--video-top', `${bounds.top + window.scrollY}px`);
++      player.style.setProperty('--video-left', `${bounds.left + window.scrollX}px`);
++      player.style.setProperty('--video-width', `${bounds.width}px`);
++      heroSlot.style.height = `${player.offsetHeight}px`;
++    }
++
++    toggle.hidden = false;
++    toggle.addEventListener('click', () => {
++      theaterMode = !theaterMode;
++      hero.classList.toggle('is-theater', theaterMode);
++      videoHome.classList.toggle('is-theater', theaterMode);
++      heroSlot.hidden = !theaterMode;
++
++      if (supportsStatefulMove) {
++        // Move the existing subtree atomically; never detach or recreate the iframe.
++        const destination = theaterMode ? heroSlot : videoHome;
++        destination.moveBefore(player, null);
++      } else {
++        // appendChild/insertBefore would reload an iframe, even when reusing its node.
++        // Keep it in its original parent and visually place it in the hero instead.
++        player.classList.toggle('is-positioned', theaterMode);
++      }
++
++      toggle.setAttribute('aria-pressed', String(theaterMode));
++      toggle.textContent = theaterMode ? 'Exit theater mode' : 'Theater mode';
++      positionFallback();
++    });
++
++    if (!supportsStatefulMove) {
++      window.addEventListener('resize', positionFallback);
++      if (typeof ResizeObserver === 'function') {
++        const layoutObserver = new ResizeObserver(positionFallback);
++        layoutObserver.observe(hero);
++        layoutObserver.observe(player);
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

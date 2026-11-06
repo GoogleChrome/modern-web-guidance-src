@@ -1,0 +1,267 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -28,28 +28,35 @@
+     }
+ 
+     /* Navigation */
+     nav {
++      --scroll-progress: 0;
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 1.25rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 0px rgba(0, 0, 0, 0);
++      transition: padding 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
++      will-change: padding, box-shadow;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      transition: font-size 0.25s ease, transform 0.25s ease;
++      transform-origin: left center;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -57,22 +64,143 @@
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.95rem;
++      transition: color 0.3s, font-size 0.25s ease, padding 0.25s ease;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 6px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Fallback 1: Class-based transition for legacy browsers */
++    nav.scrolled {
++      padding-top: 0.4rem;
++      padding-bottom: 0.4rem;
++      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    nav.scrolled .logo {
++      font-size: 1.1rem;
++    }
++
++    nav.scrolled a {
++      font-size: 0.83rem;
++    }
++
++    nav.scrolled .logout-link {
++      padding: 3px 10px;
++    }
++
++    /* Fallback 2: Continuous scroll-linked interpolation via CSS custom properties */
++    @supports (--css: variables) {
++      nav,
++      nav.scrolled {
++        padding-top: calc(1.25rem - (0.85rem * var(--scroll-progress, 0)));
++        padding-bottom: calc(1.25rem - (0.85rem * var(--scroll-progress, 0)));
++        box-shadow: 0 2px calc(12px * var(--scroll-progress, 0)) rgba(0, 0, 0, calc(0.25 * var(--scroll-progress, 0)));
++        transition: padding 0.1s ease-out, box-shadow 0.1s ease-out;
++      }
++
++      .logo,
++      nav.scrolled .logo {
++        font-size: calc(1.5rem - (0.4rem * var(--scroll-progress, 0)));
++        transition: font-size 0.1s ease-out;
++      }
++
++      nav a,
++      nav.scrolled a {
++        font-size: calc(0.95rem - (0.12rem * var(--scroll-progress, 0)));
++        transition: color 0.3s, font-size 0.1s ease-out, padding 0.1s ease-out;
++      }
++
++      .logout-link,
++      nav.scrolled .logout-link {
++        padding: calc(6px - (3px * var(--scroll-progress, 0))) calc(12px - (2px * var(--scroll-progress, 0)));
++      }
++    }
++
++    /* Modern CSS Scroll-Driven Animations */
++    @supports (animation-timeline: scroll()) {
++      nav,
++      nav.scrolled {
++        transition: none;
++        animation: shrink-nav linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 150px;
++      }
++
++      .logo,
++      nav.scrolled .logo {
++        transition: none;
++        animation: shrink-logo linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 150px;
++      }
++
++      nav a,
++      nav.scrolled a {
++        transition: color 0.3s;
++        animation: shrink-nav-links linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 150px;
++      }
++
++      .logout-link,
++      nav.scrolled .logout-link {
++        animation: shrink-logout-btn linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 150px;
++      }
++
++      @keyframes shrink-nav {
++        from {
++          padding-top: 1.25rem;
++          padding-bottom: 1.25rem;
++          box-shadow: 0 2px 0px rgba(0, 0, 0, 0);
++        }
++        to {
++          padding-top: 0.4rem;
++          padding-bottom: 0.4rem;
++          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
++        }
++      }
++
++      @keyframes shrink-logo {
++        from {
++          font-size: 1.5rem;
++        }
++        to {
++          font-size: 1.1rem;
++        }
++      }
++
++      @keyframes shrink-nav-links {
++        from {
++          font-size: 0.95rem;
++        }
++        to {
++          font-size: 0.83rem;
++        }
++      }
++
++      @keyframes shrink-logout-btn {
++        from {
++          padding: 6px 12px;
++        }
++        to {
++          padding: 3px 10px;
++        }
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -194,8 +322,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center; margin-bottom: 20px;">Our Roasting Philosophy</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Direct Trade</h3>
++          <p>We partner directly with sustainable small-lot farms across Latin America and East Africa to ensure fair wages and exceptional bean quality.</p>
++        </div>
++        <div class="card">
++          <h3>Small-Batch Precision</h3>
++          <p>Every batch is roasted in-house daily to bring out the unique floral, fruity, and chocolatey notes of each origin.</p>
++        </div>
++        <div class="card">
++          <h3>Freshness Guaranteed</h3>
++          <p>From roaster to cup within days—never weeks—so you experience peak aroma and flavor in every sip.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +352,52 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var nav = document.querySelector('nav');
++      if (!nav) return;
++
++      var supportsScrollTimeline =
++        typeof CSS !== 'undefined' &&
++        typeof CSS.supports === 'function' &&
++        CSS.supports('animation-timeline: scroll()');
++
++      var scrollRange = 150;
++      var ticking = false;
++
++      function updateNavOnScroll() {
++        var scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
++        var progress = Math.min(Math.max(scrollTop / scrollRange, 0), 1);
++
++        if (!supportsScrollTimeline) {
++          nav.style.setProperty('--scroll-progress', progress.toFixed(4));
++        }
++
++        if (scrollTop > 50) {
++          nav.classList.add('scrolled');
++        } else {
++          nav.classList.remove('scrolled');
++        }
++
++        ticking = false;
++      }
++
++      function onScroll() {
++        if (!ticking) {
++          if (window.requestAnimationFrame) {
++            window.requestAnimationFrame(updateNavOnScroll);
++          } else {
++            updateNavOnScroll();
++          }
++          ticking = true;
++        }
++      }
++
++      window.addEventListener('scroll', onScroll, { passive: true });
++      updateNavOnScroll();
++    })();
++  </script>
+ </body>
+ 
+ </html>

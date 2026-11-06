@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,87 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Visually Stable Mixed Fonts</title>
++  <style>
++    :root {
++      color-scheme: light dark;
++    }
++
++    body {
++      margin: 0;
++      padding: 2rem;
++      font-family: Georgia, "Times New Roman", serif;
++      font-size: 1.125rem;
++      line-height: 1.6;
++      max-inline-size: 70ch;
++      margin-inline: auto;
++    }
++
++    /* Mixed fonts: nested code inherits the x-height ratio of the primary font */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", serif;
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
++      /* Reset the UA's shrunken monospace size so font-size-adjust does the normalizing */
++      font-size: 1em;
++      padding: 0.1em 0.3em;
++      border-radius: 0.25em;
++      background: color-mix(in srgb, currentColor 10%, transparent);
++    }
++
++    /* Independent theme: not nested inside the primary font, so lock the ratio numerically */
++    #independent-theme-container {
++      font-family: Verdana, Geneva, sans-serif;
++      font-size-adjust: 0.5;
++      margin-block-start: 2rem;
++      padding: 1rem 1.25rem;
++      border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
++      border-radius: 0.5rem;
++    }
++
++    #independent-theme-container code {
++      font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
++      font-size: 1em;
++    }
++
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code,
++      #independent-theme-container code {
++        /* Approximate x-height match for monospace without font-size-adjust */
++        font-size: 0.9em;
++      }
++
++      #independent-theme-container {
++        /* Verdana has a large x-height; scale it down to roughly match the body text */
++        font-size: 0.9em;
++      }
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <h1>Visually Stable Mixed Fonts</h1>
++
++    <p id="mixed-fonts-container">
++      This paragraph mixes a serif body font with inline code such as
++      <code>font-size-adjust: from-font</code> and <code>const x = 42;</code>.
++      The monospace text is scaled so its lowercase letters match the
++      x-height of the surrounding serif text.
++    </p>
++
++    <div id="independent-theme-container">
++      <p>
++        This container represents an independent theme using a different
++        font family. Its proportions are locked with a numeric
++        <code>font-size-adjust: 0.5</code> override, so it stays visually
++        consistent regardless of which font ends up rendering.
++      </p>
++    </div>
++  </main>
++</body>
++</html>

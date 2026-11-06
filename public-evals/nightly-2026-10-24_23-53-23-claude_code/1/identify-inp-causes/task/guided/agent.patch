@@ -1,0 +1,42 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,38 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Field INP diagnosis: web-vitals' attribution build reports INP subparts
++    // and, where supported, Long Animation Frame script details.
++    import { onINP } from 'https://unpkg.com/web-vitals@5/dist/web-vitals.attribution.js?module';
++
++    onINP((metric) => {
++      const a = metric.attribution;
++      const script = a.longestScript?.entry;
++      const body = JSON.stringify({
++        name: 'INP',
++        value: metric.value,
++        rating: metric.rating,
++        // Subparts show whether the delay is before, during or after handlers.
++        inputDelay: a.inputDelay,
++        processingDuration: a.processingDuration,
++        presentationDelay: a.presentationDelay,
++        interactionType: a.interactionType,
++        interactionTarget: a.interactionTarget,
++        // Longest script overlapping the interaction (Chromium only).
++        invokerType: script?.invokerType,
++        sourceURL: script?.sourceURL,
++        sourceFunctionName: script?.sourceFunctionName,
++        sourceCharPosition: script?.sourceCharPosition,
++        subpart: a.longestScript?.subpart,
++        intersectingDuration: a.longestScript?.intersectingDuration,
++      });
++      // Replace '/analytics' with your real collection endpoint.
++      navigator.sendBeacon('/analytics', body);
++    }, { reportAllChanges: false });
++  </script>
++
+ </body>
+ 
+ </html>

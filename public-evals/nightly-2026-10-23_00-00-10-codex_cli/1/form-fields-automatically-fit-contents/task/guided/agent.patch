@@ -1,0 +1,163 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,81 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      margin-block-start: 40px;
++      padding: clamp(20px, 4vw, 32px);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .preferences > p {
++      margin-block: 8px 24px;
++    }
++
++    .preference-field {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 6px;
++      margin-block-end: 20px;
++      min-inline-size: 0;
++    }
++
++    .preference-field label {
++      font-weight: 600;
++    }
++
++    .preference-field :is(input, textarea, select) {
++      field-sizing: content;
++      inline-size: auto;
++      min-inline-size: min(15ch, 100%);
++      max-inline-size: 100%;
++      min-block-size: 48px;
++      padding: 10px 12px;
++      border: 1px solid #9b8983;
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++      font: inherit;
++    }
++
++    .preference-field input {
++      max-inline-size: min(50ch, 100%);
++    }
++
++    .preference-field textarea {
++      inline-size: min(50ch, 100%);
++      block-size: auto;
++      min-block-size: 3lh;
++      max-block-size: 12lh;
++      resize: vertical;
++      overflow-y: auto;
++    }
++
++    .preference-field select {
++      min-inline-size: 0;
++    }
++
++    .preferences :is(input, textarea, select, button):focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .preferences button {
++      margin-top: 0;
++      min-block-size: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #preference-status:not(:empty) {
++      margin-block-start: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +267,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences" aria-labelledby="preferences-title">
++      <h2 id="preferences-title">Your Coffee, Your Way</h2>
++      <p>A little about you and your perfect cup. These fields make room as you type.</p>
++      <form id="coffee-preferences" aria-labelledby="preferences-title">
++        <div class="preference-field">
++          <label for="coffee-name">Your name</label>
++          <input id="coffee-name" name="name" type="text" autocomplete="name" placeholder="Your name" maxlength="100">
++        </div>
++        <div class="preference-field">
++          <label for="coffee-brew">Favorite brew</label>
++          <select id="coffee-brew" name="brew">
++            <option value="espresso">Espresso</option>
++            <option value="latte">Latte</option>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="pour-over">Pour Over</option>
++          </select>
++        </div>
++        <div class="preference-field">
++          <label for="coffee-notes">How do you like your coffee?</label>
++          <textarea id="coffee-notes" name="notes" rows="2" placeholder="Milk, sweetness, extra shots…" maxlength="2000"></textarea>
++        </div>
++        <button class="btn" type="submit">Save preferences</button>
++        <p id="preference-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +307,40 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const preferencesForm = document.getElementById('coffee-preferences');
++    const preferenceStatus = document.getElementById('preference-status');
++    const preferenceStorageKey = 'daily-grind-coffee-preferences';
++
++    try {
++      const saved = JSON.parse(localStorage.getItem(preferenceStorageKey));
++      if (saved && typeof saved === 'object') {
++        for (const name of ['name', 'brew', 'notes']) {
++          if (typeof saved[name] === 'string') {
++            preferencesForm.elements.namedItem(name).value = saved[name];
++          }
++        }
++      }
++    } catch {
++      // The form remains usable when browser storage is unavailable.
++    }
++
++    preferencesForm.addEventListener('input', () => {
++      preferenceStatus.textContent = '';
++    });
++
++    preferencesForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      try {
++        localStorage.setItem(preferenceStorageKey, JSON.stringify(Object.fromEntries(new FormData(preferencesForm))));
++        preferenceStatus.textContent = 'Preferences saved on this device.';
++      } catch {
++        preferenceStatus.textContent = 'Your browser could not save these preferences. Please try again with browser storage enabled.';
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

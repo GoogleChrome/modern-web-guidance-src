@@ -1,0 +1,505 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+--- a/app.js
++++ b/app.js
+@@ -0,0 +1,500 @@
++// Hierarchical drill-down navigation stack for The Daily Grind.
++//
++// Every screen is a full-viewport `.view` layered inside `#stack`. Routes live
++// in the URL hash (`#/menu/<slug>`) so deep links work on any static host, and
++// each history entry carries `{ stackIdx }` so back/forward can be told apart
++// and animated in the right direction.
++(function () {
++  'use strict';
++
++  var MENU = {
++    'maple-oat-latte': {
++      name: 'Maple Oat Latte',
++      tagline: 'Creamy oat milk with a hint of Vermont maple syrup.',
++      price: '$5.75',
++      image: 'https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=1600&q=80',
++      thumb: 'https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=200&q=60',
++      description: 'Our autumn signature. A double shot of house espresso pulled over steamed oat milk and ' +
++        'sweetened with grade-A dark maple syrup from a family sugarhouse in Vermont. Finished with a ' +
++        'dusting of cinnamon for a cozy, nutty sip that tastes like the first cold morning of the season.',
++      notes: ['Maple', 'Toasted oat', 'Cinnamon', 'Brown sugar'],
++      ingredients: ['Espresso', 'Oat milk', 'Vermont maple syrup', 'Cinnamon'],
++      facts: { Caffeine: '150 mg', Calories: '210', Served: 'Hot or iced', Size: '12 oz' }
++    },
++    'dark-roast-espresso': {
++      name: 'Dark Roast Espresso',
++      tagline: 'Bold, smokey, and perfect for a morning boost.',
++      price: '$3.25',
++      image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1600&q=80',
++      thumb: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=200&q=60',
++      description: 'A blend of Sumatran and Guatemalan beans roasted just past second crack. Pulled as a ' +
++        'syrupy double ristretto with a thick hazelnut crema, it delivers deep cocoa and a lingering ' +
++        'smoky finish. Enjoy it straight, or ask your barista to cut it with a splash of steamed milk.',
++      notes: ['Dark chocolate', 'Smoke', 'Molasses', 'Toasted walnut'],
++      ingredients: ['Sumatra Mandheling', 'Guatemala Huehuetenango'],
++      facts: { Caffeine: '130 mg', Calories: '5', Served: 'Hot', Size: '2 oz' }
++    },
++    'cold-brew': {
++      name: 'Cold Brew',
++      tagline: 'Steeped for 18 hours for maximum smoothness.',
++      price: '$4.50',
++      image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1600&q=80',
++      thumb: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=200&q=60',
++      description: 'Coarse-ground Colombian beans are steeped in filtered cold water for a full 18 hours, ' +
++        'then slowly filtered for a naturally sweet, low-acid concentrate. Served over ice, black or with ' +
++        'your choice of milk, it is smooth enough to drink all afternoon.',
++      notes: ['Milk chocolate', 'Caramel', 'Stone fruit'],
++      ingredients: ['Colombia Huila', 'Filtered water', 'Ice'],
++      facts: { Caffeine: '200 mg', Calories: '5', Served: 'Iced', Size: '16 oz' }
++    }
++  };
++
++  var COVERED_OFFSET = -30; // percent the view underneath shifts left
++  var COVERED_SCRIM = 0.35;
++  var EDGE = 24; // px from the left edge where a mouse drag may start a swipe
++  var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++  var stackEl = document.getElementById('stack');
++  var homeEl = stackEl.querySelector('.view');
++  var stack = [{
++    el: homeEl,
++    scrim: homeEl.querySelector('.view-scrim'),
++    route: { name: 'home', path: '/' },
++    title: homeEl.dataset.title || document.title,
++    idx: 0
++  }];
++
++  // ---------------------------------------------------------------- routing
++
++  function parseHash(hash) {
++    var path = (hash || '').replace(/^#/, '');
++    if (!path || path === '/') return { name: 'home', path: '/' };
++    var m = path.match(/^\/menu\/([\w-]+)\/?$/);
++    if (m && MENU[m[1]]) return { name: 'item', slug: m[1], path: '/menu/' + m[1] };
++    return { name: 'not-found', path: path };
++  }
++
++  function homeUrl() {
++    return location.pathname + location.search;
++  }
++
++  function stateIdx() {
++    return history.state && typeof history.state.stackIdx === 'number' ? history.state.stackIdx : null;
++  }
++
++  function top() {
++    return stack[stack.length - 1];
++  }
++
++  // ------------------------------------------------------------- view DOM
++
++  function el(tag, attrs, children) {
++    var node = document.createElement(tag);
++    Object.keys(attrs || {}).forEach(function (k) {
++      if (k === 'text') node.textContent = attrs[k];
++      else node.setAttribute(k, attrs[k]);
++    });
++    (children || []).forEach(function (c) { if (c) node.appendChild(c); });
++    return node;
++  }
++
++  var BACK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" ' +
++    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
++
++  function buildShell(barTitle) {
++    var view = el('div', { class: 'view' });
++    var scrim = el('div', { class: 'view-scrim', 'aria-hidden': 'true' });
++    var back = el('button', { type: 'button', class: 'back-btn', 'data-back': '' });
++    back.innerHTML = BACK_ICON + '<span>Back</span>';
++    var bar = el('header', { class: 'detail-bar' }, [
++      back,
++      el('div', { class: 'detail-bar-title', 'aria-hidden': 'true', text: barTitle }),
++      el('div', { class: 'detail-bar-spacer' })
++    ]);
++    view.appendChild(scrim);
++    view.appendChild(bar);
++    return { view: view, scrim: scrim };
++  }
++
++  function buildItemView(slug) {
++    var item = MENU[slug];
++    var shell = buildShell('THE DAILY GRIND');
++
++    var hero = el('div', { class: 'detail-hero', role: 'img', 'aria-label': item.name });
++    hero.style.backgroundImage = 'url("' + item.image + '")';
++    hero.appendChild(el('div', { class: 'detail-hero-inner' }, [
++      el('h1', { tabindex: '-1', 'data-focus': '', text: item.name }),
++      el('p', { class: 'detail-tagline', text: item.tagline })
++    ]));
++
++    var facts = el('dl', { class: 'facts' }, Object.keys(item.facts).map(function (k) {
++      return el('div', {}, [el('dt', { text: k }), el('dd', { text: item.facts[k] })]);
++    }));
++
++    var related = Object.keys(MENU).filter(function (s) { return s !== slug; }).map(function (s) {
++      return el('a', { href: '#/menu/' + s, 'data-nav': '' }, [
++        el('img', { src: MENU[s].thumb, alt: '', loading: 'lazy' }),
++        el('span', {}, [el('strong', { text: MENU[s].name }), el('br'), el('small', { text: MENU[s].price })])
++      ]);
++    });
++
++    var body = el('main', { class: 'detail-body' }, [
++      el('section', {}, [el('div', { class: 'detail-price' }, [
++        el('strong', { text: item.price }),
++        el('a', { class: 'btn', href: '/order-online?item=' + encodeURIComponent(slug), text: 'Order Now' })
++      ])]),
++      el('section', {}, [el('h2', { text: 'About this drink' }), el('p', { text: item.description })]),
++      el('section', {}, [el('h2', { text: 'Tasting notes' }), el('ul', { class: 'chips' },
++        item.notes.map(function (n) { return el('li', { text: n }); }))]),
++      el('section', {}, [el('h2', { text: 'Ingredients' }), el('ul', { class: 'chips' },
++        item.ingredients.map(function (n) { return el('li', { text: n }); }))]),
++      el('section', {}, [el('h2', { text: 'At a glance' }), facts]),
++      el('section', {}, [el('h2', { text: 'You might also like' }), el('div', { class: 'related' }, related)])
++    ]);
++
++    shell.view.appendChild(hero);
++    shell.view.appendChild(body);
++    return { el: shell.view, scrim: shell.scrim, title: item.name + ' | The Daily Grind' };
++  }
++
++  function buildNotFoundView() {
++    var shell = buildShell('THE DAILY GRIND');
++    shell.view.appendChild(el('main', { class: 'detail-body' }, [
++      el('h1', { tabindex: '-1', 'data-focus': '', text: 'We couldn’t find that drink' }),
++      el('p', { text: 'It may have been a limited-time offering. Check out our seasonal favorites instead.' }),
++      el('a', { class: 'btn', href: '#/', 'data-nav': '', text: 'Back to home' })
++    ]));
++    return { el: shell.view, scrim: shell.scrim, title: 'Not found | The Daily Grind' };
++  }
++
++  function createEntry(route, idx) {
++    var built = route.name === 'item' ? buildItemView(route.slug) : buildNotFoundView();
++    built.route = route;
++    built.idx = idx;
++    return built;
++  }
++
++  // ------------------------------------------------------------ animation
++
++  function duration() {
++    return reducedMotion.matches ? 0 : 350;
++  }
++
++  function setPos(entry, x, scrim) {
++    entry.el.style.transform = x ? 'translate3d(' + x + ',0,0)' : '';
++    entry.scrim.style.opacity = scrim ? String(scrim) : '';
++  }
++
++  // Applies `from` immediately, then transitions to `to`.
++  function animate(entries, from, to, instant) {
++    from();
++    if (instant || duration() === 0) {
++      to();
++      return Promise.resolve();
++    }
++    entries.forEach(function (e) { void e.el.offsetWidth; });
++    entries.forEach(function (e) { e.el.classList.add('is-animating'); });
++    to();
++    return new Promise(function (resolve) {
++      setTimeout(function () {
++        entries.forEach(function (e) { e.el.classList.remove('is-animating'); });
++        resolve();
++      }, duration() + 40);
++    });
++  }
++
++  function syncAccessibility() {
++    stack.forEach(function (entry, i) {
++      var isTop = i === stack.length - 1;
++      entry.el.dataset.depth = String(i);
++      entry.el.inert = !isTop;
++      if (isTop) entry.el.removeAttribute('aria-hidden');
++      else entry.el.setAttribute('aria-hidden', 'true');
++    });
++    document.title = top().title;
++  }
++
++  function focusTop(restoring) {
++    var entry = top();
++    var target = restoring && entry.lastFocus && entry.el.contains(entry.lastFocus)
++      ? entry.lastFocus
++      : entry.el.querySelector('[data-focus]');
++    if (target) target.focus({ preventScroll: true });
++  }
++
++  function push(entry, instant) {
++    var under = top();
++    under.lastFocus = document.activeElement;
++    stackEl.appendChild(entry.el);
++    stack.push(entry);
++    entry.el.scrollTop = 0;
++    return animate([entry, under], function () {
++      setPos(entry, '100%');
++      setPos(under, '0');
++    }, function () {
++      setPos(entry, '0');
++      setPos(under, COVERED_OFFSET + '%', COVERED_SCRIM);
++    }, instant).then(function () {
++      syncAccessibility();
++      if (!instant) focusTop(false);
++    });
++  }
++
++  function popTo(target) {
++    var i = stack.indexOf(target);
++    if (i === stack.length - 1) return Promise.resolve();
++    var leaving = top();
++    stack.slice(i + 1, -1).forEach(function (e) { e.el.remove(); });
++    stack.length = i + 1;
++    // A committed swipe has already moved the view off-screen.
++    var instant = !!leaving.dismissed;
++    target.el.inert = false;
++    return animate([leaving, target], function () {
++      if (!instant) setPos(target, COVERED_OFFSET + '%', COVERED_SCRIM);
++    }, function () {
++      setPos(leaving, '100%');
++      setPos(target, '0');
++    }, instant).then(function () {
++      leaving.el.remove();
++      syncAccessibility();
++      focusTop(true);
++    });
++  }
++
++  // Inserts a freshly built view directly above `below` (used when history
++  // jumps to an entry that is no longer in the in-memory stack, e.g. after a
++  // reload in the middle of a drill-down).
++  function insertAbove(below, entry) {
++    below.el.after(entry.el);
++    stack.splice(stack.indexOf(below) + 1, 0, entry);
++    setPos(entry, COVERED_OFFSET + '%', COVERED_SCRIM);
++    return entry;
++  }
++
++  // ------------------------------------------------------------ reconcile
++
++  // Brings the visible stack in line with the current history entry. All
++  // navigation (clicks, back/forward, typed hashes) funnels through here.
++  function reconcile() {
++    var route = parseHash(location.hash);
++    var current = top();
++    var idx = stateIdx();
++
++    if (idx === null) {
++      // Plain fragment navigation (typed URL, unintercepted link).
++      if (route.path === current.route.path) {
++        history.replaceState({ stackIdx: current.idx }, '', location.href);
++        return Promise.resolve();
++      }
++      idx = current.idx + 1;
++      history.replaceState({ stackIdx: idx }, '', location.href);
++    }
++
++    if (route.path === current.route.path && idx === current.idx) return Promise.resolve();
++
++    if (route.name === 'home') {
++      return popTo(stack[0]).then(function () { stack[0].idx = idx; });
++    }
++
++    if (idx > current.idx) return push(createEntry(route, idx));
++
++    if (idx === current.idx) {
++      // Same depth, different route: swap in place.
++      var replacement = createEntry(route, idx);
++      current.el.replaceWith(replacement.el);
++      stack[stack.length - 1] = replacement;
++      syncAccessibility();
++      focusTop(false);
++      return Promise.resolve();
++    }
++
++    var target = stack[0];
++    for (var i = stack.length - 2; i >= 1; i--) {
++      if (stack[i].idx <= idx) { target = stack[i]; break; }
++    }
++    if (target.idx !== idx || target.route.path !== route.path) {
++      target = insertAbove(target, createEntry(route, idx));
++    }
++    return popTo(target);
++  }
++
++  var queue = Promise.resolve();
++  var busy = false;
++
++  function schedule() {
++    queue = queue.then(function () {
++      busy = true;
++      return reconcile();
++    }).catch(function (err) {
++      console.error(err);
++    }).then(function () {
++      busy = false;
++    });
++  }
++
++  function navigate(hash) {
++    var route = parseHash(hash);
++    var current = top();
++    if (route.path === current.route.path) return;
++    if (route.name === 'home' && stack[0].idx < current.idx) {
++      // Home is already underneath us: unwind instead of growing history.
++      history.go(stack[0].idx - current.idx);
++      return;
++    }
++    history.pushState({ stackIdx: current.idx + 1 }, '', hash === '#/' ? homeUrl() : hash);
++    schedule();
++  }
++
++  function back() {
++    if (stack.length > 1) history.back();
++  }
++
++  // --------------------------------------------------------- swipe back
++
++  var drag = null;
++  var suppressClick = false;
++
++  function onPointerDown(e) {
++    if (busy || stack.length < 2 || drag || e.button !== 0) return;
++    if (e.pointerType === 'mouse' && e.clientX > EDGE) return;
++    drag = {
++      id: e.pointerId,
++      type: e.pointerType,
++      startX: e.clientX,
++      startY: e.clientY,
++      active: false,
++      dx: 0,
++      lastX: e.clientX,
++      lastT: e.timeStamp,
++      velocity: 0,
++      topEntry: top(),
++      under: stack[stack.length - 2]
++    };
++  }
++
++  function onPointerMove(e) {
++    if (!drag || e.pointerId !== drag.id) return;
++    var dx = e.clientX - drag.startX;
++    var dy = e.clientY - drag.startY;
++
++    if (!drag.active) {
++      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
++      if (dx > 0 && Math.abs(dx) > Math.abs(dy) * 1.2) {
++        drag.active = true;
++        stackEl.setPointerCapture(e.pointerId);
++        document.body.style.userSelect = 'none';
++      } else {
++        drag = null;
++        return;
++      }
++    }
++
++    e.preventDefault();
++    var width = stackEl.clientWidth;
++    drag.dx = Math.max(0, Math.min(dx, width));
++    var dt = e.timeStamp - drag.lastT;
++    if (dt > 0) drag.velocity = (e.clientX - drag.lastX) / dt;
++    drag.lastX = e.clientX;
++    drag.lastT = e.timeStamp;
++
++    var p = drag.dx / width;
++    setPos(drag.topEntry, drag.dx + 'px');
++    setPos(drag.under, (COVERED_OFFSET * (1 - p)) + '%', COVERED_SCRIM * (1 - p));
++  }
++
++  function onPointerEnd(e) {
++    if (!drag || e.pointerId !== drag.id) return;
++    var d = drag;
++    drag = null;
++    if (!d.active) return;
++
++    document.body.style.userSelect = '';
++    suppressClick = true;
++    setTimeout(function () { suppressClick = false; }, 0);
++
++    var width = stackEl.clientWidth;
++    var commit = e.type !== 'pointercancel' && (d.dx > width * 0.35 || d.velocity > 0.5);
++    var noop = function () {};
++
++    if (commit) {
++      busy = true;
++      animate([d.topEntry, d.under], noop, function () {
++        setPos(d.topEntry, '100%');
++        setPos(d.under, '0');
++      }).then(function () {
++        d.topEntry.dismissed = true;
++        busy = false;
++        history.back();
++      });
++    } else {
++      animate([d.topEntry, d.under], noop, function () {
++        setPos(d.topEntry, '0');
++        setPos(d.under, COVERED_OFFSET + '%', COVERED_SCRIM);
++      });
++    }
++  }
++
++  // ------------------------------------------------------------- wiring
++
++  document.addEventListener('click', function (e) {
++    if (suppressClick) {
++      e.preventDefault();
++      e.stopPropagation();
++      return;
++    }
++    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++
++    if (e.target.closest('[data-back]')) {
++      e.preventDefault();
++      back();
++      return;
++    }
++
++    var link = e.target.closest('a[data-nav]');
++    if (!link) return;
++    var href = link.getAttribute('href');
++    if (!href || href.charAt(0) !== '#') return;
++    e.preventDefault();
++    navigate(href);
++  }, true);
++
++  document.addEventListener('keydown', function (e) {
++    if (e.key === 'Escape' && stack.length > 1 && !busy) back();
++  });
++
++  stackEl.addEventListener('pointerdown', onPointerDown);
++  stackEl.addEventListener('pointermove', onPointerMove);
++  stackEl.addEventListener('pointerup', onPointerEnd);
++  stackEl.addEventListener('pointercancel', onPointerEnd);
++
++  window.addEventListener('popstate', schedule);
++  // Some browsers only fire hashchange for fragment navigation; reconcile is
++  // idempotent so handling both is safe.
++  window.addEventListener('hashchange', schedule);
++
++  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++
++  // ------------------------------------------------------------ boot
++
++  (function init() {
++    var route = parseHash(location.hash);
++    var idx = stateIdx();
++
++    if (route.name === 'home') {
++      stack[0].idx = idx === null ? 0 : idx;
++      history.replaceState({ stackIdx: stack[0].idx }, '', location.href);
++    } else if (idx === null || idx < 1) {
++      // Fresh deep link: seed a home entry underneath so "back" stays in-app.
++      var hash = location.hash;
++      history.replaceState({ stackIdx: 0 }, '', homeUrl());
++      history.pushState({ stackIdx: 1 }, '', hash);
++      push(createEntry(route, 1), true);
++    } else {
++      // Reload mid-stack: rebuild the current screen on top of home.
++      push(createEntry(route, idx), true);
++    }
++
++    syncAccessibility();
++    if (stack.length > 1) focusTop(false);
++  })();
++})();

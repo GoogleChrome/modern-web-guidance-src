@@ -1,0 +1,79 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..79176a3 100644
+--- a/index.html
++++ b/index.html
+@@ -153,18 +153,32 @@
+       font-size: 0.85rem;
+     }
+ 
++    html:has(dialog[open]),
++    body:has(dialog[open]),
++    html:has(dialog:modal),
++    body:has(dialog:modal),
++    html.modal-open,
+     body.modal-open {
+       overflow: hidden;
+-      position: fixed;
++      overscroll-behavior: none;
+     }
+ 
+     dialog {
+-      overflow: visible;
++      margin: auto;
++      padding: 24px;
++      border: none;
++      border-radius: 8px;
++      max-width: 400px;
++      width: 90%;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
++      text-align: center;
++      overflow: auto;
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
+       background: rgba(0, 0, 0, 0.5);
++      overscroll-behavior: contain;
+     }
+   </style>
+ </head>
+@@ -230,10 +244,35 @@
+ 
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
++    const closeNoticeBtn = document.getElementById("close-notice");
++
++    function syncScrollLock() {
++      const isOpen = Boolean(document.querySelector("dialog[open], dialog:modal"));
++      document.documentElement.classList.toggle("modal-open", isOpen);
++      document.body.classList.toggle("modal-open", isOpen);
++      document.documentElement.style.overflow = isOpen ? "hidden" : "";
++      document.body.style.overflow = isOpen ? "hidden" : "";
++    }
++
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      noticeDialog.showModal();
++      syncScrollLock();
++
++      noticeDialog.addEventListener("close", syncScrollLock);
++      noticeDialog.addEventListener("cancel", syncScrollLock);
++
++      const observer = new MutationObserver(syncScrollLock);
++      observer.observe(noticeDialog, {
++        attributes: true,
++        attributeFilter: ["open"],
++      });
++    }
++
++    if (closeNoticeBtn && noticeDialog) {
++      closeNoticeBtn.addEventListener("click", () => {
++        noticeDialog.close();
++        syncScrollLock();
++      });
+     }
+   </script>
+ </body>

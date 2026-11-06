@@ -1,0 +1,323 @@
+diff --git a/index.html b/index.html
+index 66c9173..92adc6c 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,159 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee Shop Locations 2D Map Section */
++    .locations-section {
++      margin-top: 60px;
++    }
++
++    .locations-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .locations-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .locations-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .pan-viewport {
++      inline-size: 100%;
++      block-size: 520px;
++      overflow: auto;
++      scroll-axis-lock: none;
++      overscroll-behavior: none;
++      border-radius: 12px;
++      border: 2px solid var(--secondary);
++      box-shadow: 0 4px 16px rgba(62, 39, 35, 0.12);
++      background-color: #f4eee6;
++      position: relative;
++      cursor: grab;
++    }
++
++    .pan-viewport:active {
++      cursor: grabbing;
++    }
++
++    .pan-viewport:focus-visible {
++      outline: 3px solid #005fcc;
++      outline-offset: 2px;
++    }
++
++    @supports not (scroll-axis-lock: none) {
++      .pan-viewport {
++        touch-action: none;
++      }
++    }
++
++    .pan-surface {
++      inline-size: 2400px;
++      block-size: 1800px;
++      position: relative;
++      background-color: #f3ede2;
++      background-image:
++        linear-gradient(rgba(78, 52, 46, 0.08) 2px, transparent 2px),
++        linear-gradient(90deg, rgba(78, 52, 46, 0.08) 2px, transparent 2px),
++        linear-gradient(rgba(78, 52, 46, 0.04) 1px, transparent 1px),
++        linear-gradient(90deg, rgba(78, 52, 46, 0.04) 1px, transparent 1px);
++      background-size: 300px 300px, 300px 300px, 60px 60px, 60px 60px;
++      user-select: none;
++    }
++
++    .map-water {
++      position: absolute;
++      background: #cfe6ed;
++      border: 3px solid #b3d4df;
++      border-radius: 120px;
++      pointer-events: none;
++    }
++
++    .map-park {
++      position: absolute;
++      background: #dce8d0;
++      border: 2px dashed #b5cca0;
++      border-radius: 28px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      color: #4b6cb7;
++      font-weight: 600;
++      color: #4a6b3b;
++      font-size: 0.9rem;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++      pointer-events: none;
++    }
++
++    .map-avenue {
++      position: absolute;
++      background: #ffffff;
++      box-shadow: 0 0 0 2px #dfd5c8;
++      pointer-events: none;
++    }
++
++    .map-district-label {
++      position: absolute;
++      font-size: 1.5rem;
++      font-weight: 700;
++      letter-spacing: 0.2em;
++      text-transform: uppercase;
++      color: rgba(78, 52, 46, 0.22);
++      pointer-events: none;
++    }
++
++    .cafe-pin {
++      position: absolute;
++      width: 260px;
++      background: white;
++      border-radius: 10px;
++      padding: 14px;
++      box-shadow: 0 6px 18px rgba(62, 39, 35, 0.16);
++      border-left: 5px solid var(--accent);
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .cafe-pin:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 10px 24px rgba(62, 39, 35, 0.24);
++      z-index: 2;
++    }
++
++    .cafe-pin-badge {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      font-size: 0.72rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      padding: 2px 8px;
++      border-radius: 999px;
++      margin-bottom: 6px;
++    }
++
++    .cafe-pin h3 {
++      font-size: 1.05rem;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .cafe-pin p {
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-bottom: 6px;
++    }
++
++    .cafe-pin .cafe-hours {
++      font-size: 0.78rem;
++      color: #795548;
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +348,96 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="locations-section" id="locations">
++      <div class="locations-header">
++        <h2>Explore Our Coffee Shop Locations</h2>
++        <p>Pan, drag, or scroll freely in any direction across our city-wide cafe map (Arrow keys also supported when focused).</p>
++      </div>
++      <div class="pan-viewport" tabindex="0" role="region" aria-label="Interactive coffee shop locations map">
++        <div class="pan-surface">
++          <!-- Decorative Map Features -->
++          <div class="map-water" style="top: 180px; left: 900px; width: 650px; height: 220px; transform: rotate(-12deg);"></div>
++          <div class="map-park" style="top: 520px; left: 420px; width: 420px; height: 280px;">Roasters Botanical Park</div>
++          <div class="map-park" style="top: 1120px; left: 1380px; width: 480px; height: 320px;">Cedar Grove Commons</div>
++
++          <div class="map-avenue" style="top: 0; left: 760px; width: 22px; height: 1800px;"></div>
++          <div class="map-avenue" style="top: 0; left: 1620px; width: 22px; height: 1800px;"></div>
++          <div class="map-avenue" style="top: 640px; left: 0; width: 2400px; height: 22px;"></div>
++          <div class="map-avenue" style="top: 1260px; left: 0; width: 2400px; height: 22px;"></div>
++
++          <div class="map-district-label" style="top: 120px; left: 160px;">Northwest Roastery District</div>
++          <div class="map-district-label" style="top: 140px; left: 1740px;">Harborfront Quarter</div>
++          <div class="map-district-label" style="top: 860px; left: 920px;">Downtown Core</div>
++          <div class="map-district-label" style="top: 1520px; left: 260px;">Arts &amp; Warehouse District</div>
++          <div class="map-district-label" style="top: 1540px; left: 1760px;">University Heights</div>
++
++          <!-- Cafe Pins -->
++          <article class="cafe-pin" style="top: 220px; left: 240px;">
++            <span class="cafe-pin-badge">Flagship &amp; Roastery</span>
++            <h3>The Reserve Roastery</h3>
++            <p>142 NW Industrial Way &bull; Pour-over bar &amp; tasting room</p>
++            <div class="cafe-hours">Open Daily: 6:00 AM – 8:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 340px; left: 1120px;">
++            <span class="cafe-pin-badge">Waterfront</span>
++            <h3>Riverwalk Espresso Bar</h3>
++            <p>88 Quay Street &bull; Outdoor riverside patio seating</p>
++            <div class="cafe-hours">Open Daily: 6:30 AM – 7:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 280px; left: 1820px;">
++            <span class="cafe-pin-badge">Harbor</span>
++            <h3>Pier 9 Coffee House</h3>
++            <p>904 Maritime Blvd &bull; Fresh pastries &amp; nitro taps</p>
++            <div class="cafe-hours">Mon–Sun: 6:00 AM – 6:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 720px; left: 320px;">
++            <span class="cafe-pin-badge">Parkside</span>
++            <h3>Botanical Conservatory Cafe</h3>
++            <p>510 Greenway Ave &bull; Seasonal maple &amp; herbal infusions</p>
++            <div class="cafe-hours">Open Daily: 7:00 AM – 6:30 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 740px; left: 960px;">
++            <span class="cafe-pin-badge">Downtown Hub</span>
++            <h3>Union Square Grind</h3>
++            <p>12 Main Street &bull; Express mobile pickup &amp; lounge</p>
++            <div class="cafe-hours">Open Daily: 5:30 AM – 9:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 840px; left: 1720px;">
++            <span class="cafe-pin-badge">Eastside</span>
++            <h3>Midtown Artisanal Loft</h3>
++            <p>1440 E Commerce St &bull; Quiet coworking &amp; siphon bar</p>
++            <div class="cafe-hours">Mon–Sat: 6:30 AM – 8:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 1340px; left: 440px;">
++            <span class="cafe-pin-badge">Bakery &amp; Cafe</span>
++            <h3>Foundry Alley Hearth</h3>
++            <p>309 S Artisan Lane &bull; Wood-fired bagels &amp; dark roast</p>
++            <div class="cafe-hours">Open Daily: 6:30 AM – 5:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 1380px; left: 1080px;">
++            <span class="cafe-pin-badge">South Market</span>
++            <h3>Cedar Commons Kiosk</h3>
++            <p>725 Park South &bull; Walk-up window &amp; dog-friendly patio</p>
++            <div class="cafe-hours">Open Daily: 7:00 AM – 7:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 1320px; left: 1880px;">
++            <span class="cafe-pin-badge">Late Night</span>
++            <h3>Campus Corner Study Hall</h3>
++            <p>2110 College Way &bull; 18-hour cold brew on draft</p>
++            <div class="cafe-hours">Open Daily: 6:00 AM – 11:00 PM</div>
++          </article>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +450,61 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Center the map initially on the Downtown Core area
++    const mapViewport = document.querySelector('.pan-viewport');
++    if (mapViewport) {
++      mapViewport.scrollLeft = 620;
++      mapViewport.scrollTop = 480;
++    }
++
++    // Only attach the main-thread gesture fallback when native scroll-axis-lock support is missing
++    if (!CSS.supports('scroll-axis-lock', 'none')) {
++      const viewport = document.querySelector('.pan-viewport');
++      let lastPointer = null;
++
++      // 1. Trackpad and mouse wheel fallback
++      viewport.addEventListener(
++        'wheel',
++        (e) => {
++          e.preventDefault();
++          viewport.scrollLeft += e.deltaX;
++          viewport.scrollTop += e.deltaY;
++        },
++        { passive: false },
++      );
++
++      // 2. Touch and pointer drag fallback
++      viewport.addEventListener('pointerdown', (e) => {
++        // Ignore non-primary buttons and clicks on native scrollbars
++        const rect = viewport.getBoundingClientRect();
++        if (
++          !e.isPrimary ||
++          e.button !== 0 ||
++          e.clientX - rect.left - viewport.clientLeft >= viewport.clientWidth ||
++          e.clientY - rect.top - viewport.clientTop >= viewport.clientHeight
++        ) {
++          return;
++        }
++        lastPointer = { x: e.clientX, y: e.clientY };
++        viewport.setPointerCapture(e.pointerId);
++      });
++
++      viewport.addEventListener('pointermove', (e) => {
++        if (!lastPointer) return;
++        viewport.scrollLeft -= e.clientX - lastPointer.x;
++        viewport.scrollTop -= e.clientY - lastPointer.y;
++        lastPointer = { x: e.clientX, y: e.clientY };
++      });
++
++      const endPointerPan = () => {
++        lastPointer = null;
++      };
++      viewport.addEventListener('pointerup', endPointerPan);
++      viewport.addEventListener('pointercancel', endPointerPan);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,62 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .newsletter {
++      max-width: 440px;
++      margin: 0 auto 28px;
++    }
++
++    .newsletter label {
++      display: block;
++      margin: 12px 0 6px;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .newsletter-fields {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      padding: 10px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter input:focus-visible,
++    .newsletter button:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .newsletter input[aria-invalid="true"] {
++      border-color: #a12622;
++    }
++
++    .newsletter button {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter-error {
++      color: #a12622;
++      text-align: left;
++      font-size: 0.85rem;
++    }
++
++    .newsletter-status {
++      font-size: 0.85rem;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +251,20 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" novalidate>
++      <h2>Fresh from the roastery</h2>
++      <p>Sign up for coffee news and seasonal favorites.</p>
++      <label for="newsletter-email">Email address</label>
++      <div class="newsletter-fields">
++        <input id="newsletter-email" name="email" type="email" autocomplete="email"
++          placeholder="you@example.com" required aria-describedby="newsletter-error">
++        <button class="btn" type="submit">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-error" aria-live="polite"></p>
++      <p class="newsletter-status" id="newsletter-status" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +272,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletterForm = document.getElementById('newsletter-form');
++    const newsletterEmail = document.getElementById('newsletter-email');
++    const newsletterError = document.getElementById('newsletter-error');
++    const newsletterStatus = document.getElementById('newsletter-status');
++
++    function clearEmailError() {
++      newsletterEmail.removeAttribute('aria-invalid');
++      newsletterError.textContent = '';
++    }
++
++    function validateEmail() {
++      newsletterEmail.value = newsletterEmail.value.trim();
++      const valid = newsletterEmail.validity.valid;
++      if (valid) {
++        clearEmailError();
++      } else {
++        newsletterEmail.setAttribute('aria-invalid', 'true');
++        newsletterError.textContent = newsletterEmail.validity.valueMissing
++          ? 'Please enter your email address.'
++          : 'Please enter a valid email address, like you@example.com.';
++      }
++      return valid;
++    }
++
++    newsletterEmail.addEventListener('blur', validateEmail);
++    newsletterEmail.addEventListener('focus', clearEmailError);
++    newsletterEmail.addEventListener('input', () => {
++      clearEmailError();
++      newsletterStatus.textContent = '';
++    });
++
++    newsletterForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      newsletterEmail.blur();
++      if (!validateEmail()) return;
++
++      // Replace this message with a request to the newsletter service when configured.
++      newsletterStatus.textContent = 'Newsletter signup is currently unavailable. Please try again later.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

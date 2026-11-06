@@ -1,0 +1,43 @@
+diff --git a/index.html b/index.html
+index 66c9173..48d4836 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,29 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Wait for the initial content before capturing the incoming page. -->
++  <link rel="expect" href="#main-content" blocking="render">
++  <link rel="preload" as="image" fetchpriority="high"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80">
++  <!-- Keep critical CSS in the head. Any future layout-critical async/module
++       scripts must also be in the head with blocking="render". -->
+   <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    ::view-transition-old(root),
++    ::view-transition-new(root) {
++      animation-duration: 240ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -174,7 +196,7 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main id="main-content" class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

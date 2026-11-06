@@ -1,0 +1,273 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,69 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Flavor Profile Lab */
++    .sim-card {
++      text-align: left;
++      margin-top: 20px;
++    }
++
++    .sim-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 15px;
++      align-items: flex-end;
++    }
++
++    .sim-controls label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++    }
++
++    .sim-controls select {
++      padding: 8px;
++      margin-top: 4px;
++    }
++
++    .sim-controls .btn {
++      margin-top: 0;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .sim-controls .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    #sim-progress {
++      width: 100%;
++      margin-top: 15px;
++      accent-color: var(--accent);
++    }
++
++    #sim-results {
++      width: 100%;
++      margin-top: 10px;
++      border-collapse: collapse;
++      font-size: 0.9rem;
++    }
++
++    #sim-results th,
++    #sim-results td {
++      padding: 6px 8px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: left;
++    }
++
++    #sim-results {
++      display: block;
++      overflow-x: auto;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +255,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="simulator" style="margin-top: 60px;">
++      <h2 style="text-align: center;">Flavor Profile Lab</h2>
++      <p style="text-align: center;">Simulate thousands of recipe blends and find the closest match to your ideal cup.</p>
++      <div class="card sim-card">
++        <div class="sim-controls">
++          <label>Blends
++            <select id="sim-count">
++              <option value="5000">5,000</option>
++              <option value="20000" selected>20,000</option>
++              <option value="100000">100,000</option>
++            </select>
++          </label>
++          <label>Target
++            <select id="sim-target">
++              <option value="bright">Bright &amp; fruity</option>
++              <option value="balanced" selected>Balanced &amp; sweet</option>
++              <option value="bold">Bold &amp; smoky</option>
++            </select>
++          </label>
++          <button type="button" class="btn" id="sim-run">Run Simulation</button>
++          <button type="button" class="btn" id="sim-cancel" disabled>Cancel</button>
++        </div>
++        <progress id="sim-progress" value="0" max="100"></progress>
++        <p id="sim-status" aria-live="polite">Idle.</p>
++        <table id="sim-results" hidden>
++          <thead>
++            <tr><th>#</th><th>Blend</th><th>Roast</th><th>Acidity</th><th>Body</th><th>Sweet</th><th>Bitter</th><th>Fruit</th><th>Match</th></tr>
++          </thead>
++          <tbody></tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +300,157 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var ORIGINS = [
++        { name: 'Ethiopia', acidity: 0.9, body: 0.3, sweet: 0.5, bitter: 0.2, fruit: 0.95 },
++        { name: 'Colombia', acidity: 0.6, body: 0.55, sweet: 0.75, bitter: 0.3, fruit: 0.5 },
++        { name: 'Brazil', acidity: 0.3, body: 0.7, sweet: 0.65, bitter: 0.45, fruit: 0.25 },
++        { name: 'Sumatra', acidity: 0.2, body: 0.95, sweet: 0.3, bitter: 0.7, fruit: 0.15 }
++      ];
++      var TRAITS = ['acidity', 'body', 'sweet', 'bitter', 'fruit'];
++      var TARGETS = {
++        bright: { acidity: 0.85, body: 0.35, sweet: 0.55, bitter: 0.2, fruit: 0.8 },
++        balanced: { acidity: 0.5, body: 0.55, sweet: 0.75, bitter: 0.3, fruit: 0.45 },
++        bold: { acidity: 0.2, body: 0.9, sweet: 0.35, bitter: 0.7, fruit: 0.15 }
++      };
++      var TOP_N = 10;
++      var SLICE_MS = 8; // keep each synchronous slice well under a frame
++
++      var els = {
++        count: document.getElementById('sim-count'),
++        target: document.getElementById('sim-target'),
++        run: document.getElementById('sim-run'),
++        cancel: document.getElementById('sim-cancel'),
++        progress: document.getElementById('sim-progress'),
++        status: document.getElementById('sim-status'),
++        table: document.getElementById('sim-results'),
++        body: document.querySelector('#sim-results tbody')
++      };
++      var currentRun = null;
++
++      // Yield to the main thread so input and rendering can proceed.
++      function yieldToMain() {
++        if (window.scheduler && typeof scheduler.yield === 'function') {
++          return scheduler.yield();
++        }
++        return new Promise(function (resolve) { setTimeout(resolve, 0); });
++      }
++
++      // Small seeded PRNG so results are reproducible.
++      function mulberry32(seed) {
++        return function () {
++          seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
++          var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
++          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
++          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++        };
++      }
++
++      function simulateBlend(rand, target) {
++        var w = [rand(), rand(), rand(), rand()];
++        var sum = w[0] + w[1] + w[2] + w[3] || 1;
++        var roast = rand(); // 0 light .. 1 dark
++        var profile = {};
++        var dist = 0;
++        for (var t = 0; t < TRAITS.length; t++) {
++          var k = TRAITS[t];
++          var v = 0;
++          for (var o = 0; o < ORIGINS.length; o++) v += (w[o] / sum) * ORIGINS[o][k];
++          // Roast shifts the profile: darker lowers acidity/fruit, raises bitterness/body.
++          if (k === 'acidity' || k === 'fruit') v *= 1 - 0.6 * roast;
++          else if (k === 'bitter') v += 0.4 * roast;
++          else if (k === 'body') v += 0.15 * roast;
++          // Average several simulated extractions with brew variance.
++          var acc = 0;
++          for (var s = 0; s < 20; s++) acc += v * (1 + (rand() - 0.5) * 0.1);
++          v = Math.min(1, Math.max(0, acc / 20));
++          profile[k] = v;
++          dist += (v - target[k]) * (v - target[k]);
++        }
++        return {
++          blend: ORIGINS.map(function (og, i) { return Math.round((w[i] / sum) * 100) + '% ' + og.name; })
++            .filter(function (s) { return parseInt(s, 10) > 0; }).join(', '),
++          roast: roast,
++          profile: profile,
++          score: Math.max(0, 100 * (1 - Math.sqrt(dist / TRAITS.length) * 2))
++        };
++      }
++
++      function insertTop(top, item) {
++        if (top.length === TOP_N && item.score <= top[top.length - 1].score) return;
++        top.push(item);
++        top.sort(function (a, b) { return b.score - a.score; });
++        if (top.length > TOP_N) top.pop();
++      }
++
++      function renderResults(top) {
++        els.body.textContent = '';
++        top.forEach(function (r, i) {
++          var tr = document.createElement('tr');
++          var cells = [i + 1, r.blend, r.roast < 0.33 ? 'Light' : r.roast < 0.66 ? 'Medium' : 'Dark']
++            .concat(TRAITS.map(function (k) { return r.profile[k].toFixed(2); }))
++            .concat([r.score.toFixed(1) + '%']);
++          cells.forEach(function (c) {
++            var td = document.createElement('td');
++            td.textContent = c;
++            tr.appendChild(td);
++          });
++          els.body.appendChild(tr);
++        });
++        els.table.hidden = false;
++      }
++
++      function setRunning(running) {
++        els.run.disabled = running;
++        els.cancel.disabled = !running;
++        els.count.disabled = running;
++        els.target.disabled = running;
++      }
++
++      async function run() {
++        var total = parseInt(els.count.value, 10);
++        var target = TARGETS[els.target.value];
++        var rand = mulberry32(42);
++        var top = [];
++        var run = currentRun = { cancelled: false };
++        var done = 0;
++
++        setRunning(true);
++        els.table.hidden = true;
++        els.progress.value = 0;
++
++        while (done < total) {
++          // Process blends until the time slice is used up, then yield.
++          var sliceEnd = performance.now() + SLICE_MS;
++          do {
++            insertTop(top, simulateBlend(rand, target));
++            done++;
++          } while (done < total && performance.now() < sliceEnd);
++
++          els.progress.value = (done / total) * 100;
++          els.status.textContent = 'Simulated ' + done.toLocaleString() + ' of ' + total.toLocaleString() + ' blends…';
++          await yieldToMain();
++          if (run.cancelled) {
++            els.status.textContent = 'Cancelled after ' + done.toLocaleString() + ' blends.';
++            setRunning(false);
++            return;
++          }
++        }
++
++        els.status.textContent = 'Done. Simulated ' + total.toLocaleString() + ' blends; top ' + top.length + ' shown.';
++        renderResults(top);
++        setRunning(false);
++        currentRun = null;
++      }
++
++      els.run.addEventListener('click', run);
++      els.cancel.addEventListener('click', function () {
++        if (currentRun) currentRun.cancelled = true;
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

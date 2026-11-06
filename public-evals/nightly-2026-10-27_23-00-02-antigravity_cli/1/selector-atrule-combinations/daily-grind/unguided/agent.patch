@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+index 66c9173..4f70c7c 100644
+--- a/index.html
++++ b/index.html
+@@ -7,11 +7,77 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --primary: light-dark(#4e342e, #d7ccc8);
++      --secondary: light-dark(#d7ccc8, #1e1411);
++      --accent: light-dark(#ffab40, #ffcc80);
++      --text: light-dark(#3e2723, #f5ebe6);
++      --light: light-dark(#fafafa, #140e0c);
++      --nav-bg: light-dark(#4e342e, #1c120f);
++      --nav-text: light-dark(#ffffff, #f5ebe6);
++      --nav-border: light-dark(#3e2723, #382621);
++      --nav-shadow: light-dark(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.5));
++      --hero-bg: light-dark(#4e342e, #140d0b);
++      --hero-overlay: light-dark(rgba(62, 39, 35, 0.45), rgba(12, 8, 6, 0.75));
++      --hero-text: light-dark(#ffffff, #f5ebe6);
++      --card-bg: light-dark(#ffffff, #241916);
++      --card-text: light-dark(#3e2723, #e6d7cf);
++      --card-heading: light-dark(#4e342e, #ffcc80);
++      --card-border: light-dark(#e6dcd8, #3e2c27);
++      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.5));
++      --btn-bg: light-dark(#4e342e, #c88a4b);
++      --btn-text: light-dark(#ffffff, #140e0c);
++      --btn-hover-bg: light-dark(#3e2723, #ffab40);
++    }
++
++    @media (prefers-color-scheme: light) {
++      :root {
++        color-scheme: light;
++      }
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        color-scheme: dark;
++      }
++    }
++
++    :root[data-theme="light"],
++    :root[theme="light"],
++    :root[data-color-scheme="light"],
++    :root[data-mode="light"],
++    :root.light,
++    :root.theme-light,
++    :root.light-theme,
++    :root.light-mode,
++    [data-theme="light"],
++    [theme="light"],
++    [data-color-scheme="light"],
++    [data-mode="light"],
++    .light,
++    .theme-light,
++    .light-theme,
++    .light-mode {
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"],
++    :root[theme="dark"],
++    :root[data-color-scheme="dark"],
++    :root[data-mode="dark"],
++    :root.dark,
++    :root.theme-dark,
++    :root.dark-theme,
++    :root.dark-mode,
++    [data-theme="dark"],
++    [theme="dark"],
++    [data-color-scheme="dark"],
++    [data-mode="dark"],
++    .dark,
++    .theme-dark,
++    .dark-theme,
++    .dark-mode {
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -29,8 +95,10 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
++      box-shadow: 0 2px 8px var(--nav-shadow);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,7 +124,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -75,7 +143,8 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background-color: var(--hero-bg);
++      background-image: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +152,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,35 +177,38 @@
+     }
+ 
+     .card {
+-      background: white;
++      background-color: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background-color: var(--btn-hover-bg);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background-color: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;

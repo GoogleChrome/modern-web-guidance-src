@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,139 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Launchpad – Ship faster</title>
++
++  <!--
++    A/B testing SDK. `async` keeps HTML parsing going; `blocking="render"` holds
++    first paint until the script has run, so the original content never flashes.
++    onload/onerror reveal the page in the fallback path below.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++    onload="document.documentElement.classList.remove('ab-loading')"
++    onerror="document.documentElement.classList.remove('ab-loading')"
++  ></script>
++
++  <script>
++    // Fallback for browsers without blocking="render" (e.g. Firefox):
++    // hide the page until the SDK finishes, with a timeout so it can't stay blank.
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      document.documentElement.classList.add('ab-loading');
++      setTimeout(() => {
++        document.documentElement.classList.remove('ab-loading');
++      }, 4000);
++    }
++  </script>
++
++  <style>
++    .ab-loading { opacity: 0 !important; }
++
++    :root {
++      color-scheme: light dark;
++      --bg: light-dark(#f7f8fc, #0d1020);
++      --fg: light-dark(#14172b, #eef0ff);
++      --muted: light-dark(#52577a, #a4a9d0);
++      --accent: #5b5bf0;
++      --accent-fg: #fff;
++    }
++
++    * { box-sizing: border-box; }
++
++    body {
++      margin: 0;
++      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
++      background: var(--bg);
++      color: var(--fg);
++      line-height: 1.5;
++    }
++
++    header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1.25rem clamp(1rem, 5vw, 4rem);
++    }
++
++    .logo { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; }
++
++    .hero {
++      display: grid;
++      place-items: center;
++      text-align: center;
++      min-height: 80dvh;
++      padding: 4rem clamp(1rem, 5vw, 4rem);
++      background:
++        radial-gradient(60rem 30rem at 50% 0%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 70%);
++    }
++
++    .hero-inner { max-width: 48rem; }
++
++    .eyebrow {
++      display: inline-block;
++      padding: 0.25rem 0.75rem;
++      border-radius: 999px;
++      font-size: 0.875rem;
++      font-weight: 600;
++      color: var(--accent);
++      background: color-mix(in srgb, var(--accent) 14%, transparent);
++    }
++
++    h1 {
++      margin: 1.25rem 0 1rem;
++      font-size: clamp(2.25rem, 6vw, 4.25rem);
++      line-height: 1.05;
++      letter-spacing: -0.03em;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      margin: 0 auto 2rem;
++      max-width: 36rem;
++      font-size: 1.25rem;
++      color: var(--muted);
++      text-wrap: pretty;
++    }
++
++    .cta-button {
++      display: inline-block;
++      padding: 0.9rem 2rem;
++      border-radius: 0.75rem;
++      font-size: 1.125rem;
++      font-weight: 700;
++      text-decoration: none;
++      color: var(--accent-fg);
++      background: var(--accent);
++      box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 40%, transparent);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    .cta-button:hover { transform: translateY(-2px); }
++    .cta-button:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
++
++    @media (prefers-reduced-motion: reduce) {
++      .cta-button { transition: none; }
++      .cta-button:hover { transform: none; }
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <span class="logo">Launchpad</span>
++  </header>
++
++  <main>
++    <section class="hero" aria-labelledby="hero-title">
++      <div class="hero-inner">
++        <span class="eyebrow" data-experiment="eyebrow">New · Version 2.0</span>
++        <h1 id="hero-title" data-experiment="headline">Ship your product faster than ever</h1>
++        <p data-experiment="subhead">Launchpad takes you from idea to production with tools your whole team will love.</p>
++        <a class="cta-button" id="cta" href="#signup" data-experiment="cta">Get started free</a>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

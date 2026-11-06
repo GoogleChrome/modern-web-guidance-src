@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,36 +26,111 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Navigation
++       The bar is fixed and shrinks from --nav-h-max to --nav-h-min over the
++       first (max - min) px of scrolling, so content scrolls in sync with it. */
++    :root {
++      --nav-h-max: 88px;
++      --nav-h-min: 56px;
++      --nav-shrink-distance: 32px; /* = max - min */
++    }
++
++    html {
++      scroll-padding-top: var(--nav-h-max);
++    }
++
++    body {
++      padding-top: 88px;
++      padding-top: var(--nav-h-max);
++    }
++
+     nav {
++      /* --shrink (0 → 1) drives the JS fallback; native browsers use keyframes */
++      --shrink: 0;
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: 88px; /* for browsers without custom properties */
++      height: calc(var(--nav-h-max) - (var(--nav-h-max) - var(--nav-h-min)) * var(--shrink));
++      box-shadow: 0 2px 12px rgba(0, 0, 0, calc(0.35 * var(--shrink)));
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      gap: 20px;
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: 1.75rem;
++      font-size: calc(1.75rem - 0.5rem * var(--shrink));
+       font-weight: bold;
+       letter-spacing: 1px;
++      white-space: nowrap;
+     }
+ 
++    /* Native scroll-driven animation (compositor-friendly, no JS) */
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      @keyframes nav-shrink {
++        to {
++          height: var(--nav-h-min);
++          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
++        }
++      }
++
++      @keyframes logo-shrink {
++        to {
++          font-size: 1.25rem;
++        }
++      }
++
++      nav {
++        animation: nav-shrink auto linear both;
++        animation-timeline: scroll(block root);
++        animation-range: 0px var(--nav-shrink-distance);
++      }
++
++      nav .logo {
++        animation: logo-shrink auto linear both;
++        animation-timeline: scroll(block root);
++        animation-range: 0px var(--nav-shrink-distance);
++      }
++    }
++
++    /* Reduced motion: no scroll-linked resizing, just keep the compact bar */
++    @media (prefers-reduced-motion: reduce) {
++      :root {
++        --nav-h-max: 56px;
++      }
++
++      nav,
++      nav .logo {
++        --shrink: 1 !important;
++        animation: none !important;
++      }
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
++      overflow-x: auto;
++      scrollbar-width: none;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
++      white-space: nowrap;
+     }
+ 
++    nav ul li:first-child {
++      margin-left: 0;
++    }
++
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -206,7 +281,40 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-driven animations (e.g. older
++    // Chrome/Safari, Firefox): map scroll position to --shrink (0 → 1).
++    if (!(window.CSS && CSS.supports &&
++          CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)'))) {
++      var nav = document.querySelector('nav');
++      var reduceMotion = window.matchMedia &&
++        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++      if (nav && !reduceMotion) {
++        var distance = parseFloat(getComputedStyle(document.documentElement)
++          .getPropertyValue('--nav-shrink-distance')) || 32;
++        var ticking = false;
++
++        var update = function () {
++          var y = window.pageYOffset || document.documentElement.scrollTop;
++          var progress = Math.min(1, Math.max(0, y / distance));
++          nav.style.setProperty('--shrink', progress.toFixed(3));
++          ticking = false;
++        };
++
++        window.addEventListener('scroll', function () {
++          if (!ticking) {
++            ticking = true;
++            window.requestAnimationFrame(update);
++          }
++        }, { passive: true });
++
++        update(); // handle restored scroll position on reload
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

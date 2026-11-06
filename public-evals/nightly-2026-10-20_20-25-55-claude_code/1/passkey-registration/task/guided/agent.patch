@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,24 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .passkey {
++      text-align: center;
++      margin-top: 40px;
++    }
++
++    .passkey button {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .passkey button:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +210,125 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="passkey">
++      <h2>Sign in faster with a passkey</h2>
++      <p>Skip the password next time. Use your fingerprint, face, or screen lock instead.</p>
++      <button type="button" class="btn" data-testid="register-button" id="register-button">Create passkey</button>
++      <p id="passkey-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
++  <script>
++    const registerButton = document.querySelector('[data-testid="register-button"]');
++    const statusEl = document.getElementById('passkey-status');
++    const jsonHeaders = { 'Content-Type': 'application/json' };
++    // Falls back to the page's hostname if the server omits rp.id
++    let rpId = location.hostname;
++
++    function setStatus(message) {
++      statusEl.textContent = message;
++    }
++
++    // Tell the passkey provider to drop a credential the server did not accept
++    async function signalOrphanedCredential(credentialId) {
++      if (!window.PublicKeyCredential?.signalUnknownCredential) return;
++      try {
++        await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId });
++      } catch (err) {
++        console.warn('Could not signal unknown credential:', err);
++      }
++    }
++
++    async function registerPasskey() {
++      registerButton.disabled = true;
++      setStatus('');
++      try {
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          headers: jsonHeaders,
++          credentials: 'same-origin',
++          body: JSON.stringify({ promotion: true }),
++        });
++        if (!optionsResponse.ok) throw new Error(`Options request failed (${optionsResponse.status})`);
++        const creationOptionsJSON = await optionsResponse.json();
++        rpId = creationOptionsJSON.rp?.id || rpId;
++        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
++
++        let credential;
++        try {
++          credential = await navigator.credentials.create({ publicKey });
++        } catch (err) {
++          switch (err.name) {
++            case 'InvalidStateError':
++              setStatus('A passkey already exists for this account.');
++              break;
++            case 'NotAllowedError':
++              setStatus('Passkey creation was cancelled or timed out.');
++              break;
++            case 'AbortError':
++              setStatus('Passkey creation was aborted.');
++              break;
++            case 'SecurityError':
++              console.error('Passkey configuration error (insecure context or RP ID mismatch):', err);
++              setStatus('Passkeys are not available on this site right now.');
++              break;
++            default:
++              console.error(err);
++              setStatus('Could not create a passkey.');
++          }
++          return;
++        }
++
++        const encodedResponse = credential.toJSON();
++        try {
++          const verifyResponse = await fetch('/api/register/verify', {
++            method: 'POST',
++            headers: jsonHeaders,
++            credentials: 'same-origin',
++            body: JSON.stringify(encodedResponse),
++          });
++          if (!verifyResponse.ok) {
++            await signalOrphanedCredential(encodedResponse.id);
++            setStatus('We could not verify your passkey. Please try again.');
++            return;
++          }
++        } catch (err) {
++          console.error('Passkey verification request failed:', err);
++          await signalOrphanedCredential(encodedResponse.id);
++          setStatus('We could not verify your passkey. Please try again.');
++          return;
++        }
++        setStatus('Passkey created. You can use it to sign in next time.');
++      } catch (err) {
++        console.error(err);
++        setStatus('Could not create a passkey. Please try again.');
++      } finally {
++        registerButton.disabled = false;
++      }
++    }
++
++    async function init() {
++      if (!window.isSecureContext || !window.PublicKeyCredential?.parseCreationOptionsFromJSON) {
++        registerButton.disabled = true;
++        setStatus('Passkeys are not supported in this browser.');
++        return;
++      }
++      if (PublicKeyCredential.getClientCapabilities) {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (!capabilities.passkeyPlatformAuthenticator || !capabilities.conditionalGet) {
++          registerButton.disabled = true;
++          setStatus('Passkeys are not available on this device.');
++          return;
++        }
++      }
++      registerButton.addEventListener('click', registerPasskey);
++    }
++
++    init();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

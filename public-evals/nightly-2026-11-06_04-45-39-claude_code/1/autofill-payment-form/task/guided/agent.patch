@@ -1,0 +1,258 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,109 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Payment Form */
++    .payment {
++      max-width: 480px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .payment h2 {
++      text-align: center;
++      margin-bottom: 0.25rem;
++    }
++
++    .payment .intro {
++      text-align: center;
++      font-size: 0.9rem;
++      margin-bottom: 1.5rem;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      margin-bottom: 1.1rem;
++    }
++
++    .field-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 16px;
++    }
++
++    .field label {
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 0.2rem;
++    }
++
++    .hint {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-bottom: 0.3rem;
++    }
++
++    .field input {
++      font: inherit;
++      padding: 10px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .field input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++      border-color: var(--primary);
++    }
++
++    .field input:user-invalid {
++      border-color: #c62828;
++      background-color: #fdecea;
++    }
++
++    .field input:user-valid {
++      border-color: #2e7d32;
++    }
++
++    .error-msg {
++      display: none;
++      color: #c62828;
++      font-size: 0.85rem;
++      margin-top: 0.25rem;
++    }
++
++    .field input:user-invalid ~ .error-msg {
++      display: block;
++    }
++
++    .payment button {
++      width: 100%;
++      font: inherit;
++      font-weight: 600;
++      border: none;
++      cursor: pointer;
++    }
++
++    .form-status {
++      margin-top: 1rem;
++      text-align: center;
++      font-weight: 600;
++      color: #2e7d32;
++    }
++
++    @media (max-width: 420px) {
++      .field-row {
++        grid-template-columns: 1fr;
++        gap: 0;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +295,51 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="payment" id="payment" aria-labelledby="payment-heading">
++      <h2 id="payment-heading">Payment Details</h2>
++      <p class="intro">Enter your card details to complete your order.</p>
++      <form id="payment-form" method="post">
++        <div class="field">
++          <label for="cc-name">Name on card</label>
++          <input id="cc-name" name="cc-name" type="text" autocomplete="cc-name" maxlength="50"
++            pattern="[\p{L} '\-\.]+" enterkeyhint="next" required aria-errormessage="cc-name-error">
++          <span id="cc-name-error" class="error-msg" aria-live="polite">Enter the name exactly as it appears on your card.</span>
++        </div>
++
++        <div class="field">
++          <label for="cc-number">Card number</label>
++          <input id="cc-number" name="cc-number" type="text" autocomplete="cc-number" inputmode="numeric"
++            maxlength="23" pattern="[\d ]{12,23}" enterkeyhint="next" required aria-errormessage="cc-number-error">
++          <span id="cc-number-error" class="error-msg" aria-live="polite">Enter a valid card number.</span>
++        </div>
++
++        <div class="field-row">
++          <div class="field">
++            <label for="cc-exp">Expiry date</label>
++            <span id="cc-exp-hint" class="hint">Format: MM/YY</span>
++            <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp" inputmode="numeric"
++              maxlength="5" pattern="(0[1-9]|1[0-2])/\d{2}" placeholder="MM/YY" enterkeyhint="next" required
++              aria-describedby="cc-exp-hint" aria-errormessage="cc-exp-error">
++            <span id="cc-exp-error" class="error-msg" aria-live="polite">Enter a valid, unexpired date as MM/YY.</span>
++          </div>
++
++          <div class="field">
++            <label for="cc-csc">Security code</label>
++            <span id="cc-csc-hint" class="hint">3 or 4 digits</span>
++            <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc" inputmode="numeric"
++              maxlength="4" pattern="[0-9]{3,4}" enterkeyhint="done" required
++              aria-describedby="cc-csc-hint" aria-errormessage="cc-csc-error">
++            <span id="cc-csc-error" class="error-msg" aria-live="polite">Enter the 3 or 4 digit code on your card.</span>
++          </div>
++        </div>
++
++        <button type="submit" class="btn">Pay Now</button>
++        <p class="form-status" id="form-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +350,92 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('payment-form');
++      const number = document.getElementById('cc-number');
++      const exp = document.getElementById('cc-exp');
++      const status = document.getElementById('form-status');
++
++      // Luhn checksum for card numbers (spaces allowed)
++      const passesLuhn = (value) => {
++        const digits = value.replace(/\s/g, '');
++        if (!/^\d{12,19}$/.test(digits)) return false;
++        let sum = 0;
++        for (let i = 0; i < digits.length; i++) {
++          let d = Number(digits[digits.length - 1 - i]);
++          if (i % 2 === 1) {
++            d *= 2;
++            if (d > 9) d -= 9;
++          }
++          sum += d;
++        }
++        return sum % 10 === 0;
++      };
++
++      const isNotExpired = (value) => {
++        const match = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec(value);
++        if (!match) return false;
++        const month = Number(match[1]);
++        const year = 2000 + Number(match[2]);
++        const now = new Date();
++        return year > now.getFullYear() ||
++          (year === now.getFullYear() && month >= now.getMonth() + 1);
++      };
++
++      const validateNumber = () => {
++        number.setCustomValidity(
++          number.value && !passesLuhn(number.value) ? 'Enter a valid card number.' : ''
++        );
++      };
++
++      const validateExp = () => {
++        exp.setCustomValidity(
++          exp.value && !isNotExpired(exp.value) ? 'Enter a valid, unexpired date as MM/YY.' : ''
++        );
++      };
++
++      number.addEventListener('input', validateNumber);
++      exp.addEventListener('input', (event) => {
++        // Insert the slash automatically when typing "MMYY" by hand
++        if (event.inputType === 'insertText' && /^\d{2}$/.test(exp.value)) {
++          exp.value += '/';
++        }
++        validateExp();
++      });
++
++      // Keep aria-invalid in sync with the visual :user-invalid state
++      const syncAria = (event) => {
++        const input = event.target;
++        if (!input.matches?.('#payment-form input')) return;
++        if (input.matches(':user-invalid')) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++      };
++      form.addEventListener('blur', syncAria, true);
++      form.addEventListener('invalid', syncAria, true);
++      form.addEventListener('input', (event) => {
++        if (event.target.getAttribute('aria-invalid') === 'true') syncAria(event);
++      });
++
++      form.addEventListener('submit', (event) => {
++        validateNumber();
++        validateExp();
++        event.preventDefault();
++        if (!form.checkValidity()) {
++          form.reportValidity();
++          return;
++        }
++        // TODO: hand card data to a PCI-compliant payment processor here.
++        status.textContent = 'Thank you! Your payment details have been received.';
++        form.reset();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

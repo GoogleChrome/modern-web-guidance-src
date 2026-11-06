@@ -1,0 +1,194 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,82 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Gallery */
++    .gallery-section {
++      margin-bottom: 60px;
++    }
++
++    #gallery {
++      position: relative;
++      display: flex;
++      gap: 16px;
++      margin-top: 20px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++    }
++
++    #gallery::-webkit-scrollbar {
++      display: none;
++    }
++
++    .gallery-item {
++      flex: 0 0 100%;
++      aspect-ratio: 16 / 9;
++      scroll-snap-align: center;
++      scroll-snap-stop: always;
++      border-radius: 8px;
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      align-items: flex-end;
++    }
++
++    .gallery-item span {
++      width: 100%;
++      padding: 40px 20px 16px;
++      color: white;
++      border-radius: 0 0 8px 8px;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
++    }
++
++    .gallery-thumbnails {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 16px;
++    }
++
++    .thumbnail {
++      font: inherit;
++      font-size: 0.85rem;
++      color: var(--primary);
++      background: white;
++      border: 2px solid var(--secondary);
++      border-radius: 20px;
++      padding: 6px 16px;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .thumbnail.pending {
++      border-color: var(--accent);
++      border-style: dashed;
++    }
++
++    .thumbnail.active {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++    }
++
++    .thumbnail.active.pending {
++      border-color: var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +248,32 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="gallery-section">
++      <h2 style="text-align: center;">The Cafe Vibe</h2>
++      <div id="gallery" tabindex="0" aria-label="Cafe photo gallery">
++        <div class="gallery-item" style="background-image: url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1100&q=80')">
++          <span>Sunlit corners</span>
++        </div>
++        <div class="gallery-item" style="background-image: url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1100&q=80')">
++          <span>Cozy seats</span>
++        </div>
++        <div class="gallery-item" style="background-image: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1100&q=80')">
++          <span>Fresh pours</span>
++        </div>
++        <div class="gallery-item" style="background-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1100&q=80')">
++          <span>Morning ritual</span>
++        </div>
++      </div>
++      <div class="gallery-thumbnails">
++        <button type="button" class="thumbnail active" aria-current="true">Sunlit corners</button>
++        <button type="button" class="thumbnail">Cozy seats</button>
++        <button type="button" class="thumbnail">Fresh pours</button>
++        <button type="button" class="thumbnail">Morning ritual</button>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +304,74 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const gallery = document.getElementById('gallery');
++      const items = Array.from(gallery.querySelectorAll('.gallery-item'));
++      const thumbs = Array.from(document.querySelectorAll('.thumbnail'));
++      let lastLeft = gallery.scrollLeft;
++      let settleTimer = null;
++
++      // scrollLeft at which an item is centered (matches scroll-snap-align: center)
++      const centerOf = (item) => item.offsetLeft + item.offsetWidth / 2 - gallery.clientWidth / 2;
++
++      // Item the scroll is heading towards, based on current position and direction
++      function targetIndex(dir) {
++        const pos = gallery.scrollLeft;
++        const eps = 2;
++        let idx = 0;
++        if (dir >= 0) {
++          idx = items.findIndex((item) => centerOf(item) >= pos - eps);
++          if (idx === -1) idx = items.length - 1;
++        } else {
++          items.forEach((item, i) => { if (centerOf(item) <= pos + eps) idx = i; });
++        }
++        return idx;
++      }
++
++      function setPending(index) {
++        thumbs.forEach((t, i) => t.classList.toggle('pending', i === index));
++      }
++
++      function settle() {
++        clearTimeout(settleTimer);
++        const pos = gallery.scrollLeft;
++        let idx = 0;
++        items.forEach((item, i) => {
++          if (Math.abs(centerOf(item) - pos) < Math.abs(centerOf(items[idx]) - pos)) idx = i;
++        });
++        thumbs.forEach((t, i) => {
++          t.classList.remove('pending');
++          t.classList.toggle('active', i === idx);
++          if (i === idx) t.setAttribute('aria-current', 'true');
++          else t.removeAttribute('aria-current');
++        });
++        lastLeft = pos;
++      }
++
++      gallery.addEventListener('scroll', () => {
++        const pos = gallery.scrollLeft;
++        if (pos !== lastLeft) {
++          setPending(targetIndex(pos - lastLeft));
++          lastLeft = pos;
++        }
++        // Fallback for browsers without scrollend
++        clearTimeout(settleTimer);
++        settleTimer = setTimeout(settle, 150);
++      }, { passive: true });
++
++      if ('onscrollend' in window) {
++        gallery.addEventListener('scrollend', settle);
++      }
++
++      thumbs.forEach((thumb, i) => {
++        thumb.addEventListener('click', () => {
++          items[i].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

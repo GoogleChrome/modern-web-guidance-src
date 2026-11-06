@@ -1,0 +1,228 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,96 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter Signup */
++    .newsletter {
++      max-width: 480px;
++      margin: 0 auto 30px;
++      padding-bottom: 25px;
++      border-bottom: 1px solid rgba(62, 39, 35, 0.2);
++    }
++
++    .newsletter h2 {
++      font-size: 1.35rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .newsletter-description {
++      font-size: 0.9rem;
++      margin-bottom: 16px;
++      color: var(--text);
++    }
++
++    .newsletter-field {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      gap: 6px 10px;
++      align-items: start;
++      text-align: left;
++    }
++
++    .newsletter-label {
++      grid-column: 1 / -1;
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .newsletter-input {
++      width: 100%;
++      padding: 10px 14px;
++      font-size: 0.95rem;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      background-color: #ffffff;
++      color: var(--text);
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .newsletter-input:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .newsletter-input[aria-invalid="true"],
++    .newsletter-input.is-invalid,
++    .newsletter-input:user-invalid {
++      border-color: #7f0000;
++      background-color: #fff8f8;
++    }
++
++    .newsletter-input[aria-invalid="true"]:focus,
++    .newsletter-input.is-invalid:focus,
++    .newsletter-input:user-invalid:focus {
++      outline-color: #7f0000;
++    }
++
++    .newsletter-btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
++      font-weight: 600;
++      padding: 10px 20px;
++    }
++
++    .error-message {
++      grid-column: 1 / -1;
++      color: #7f0000;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 2px;
++      display: none;
++    }
++
++    .error-message.visible,
++    .newsletter-input[aria-invalid="true"] ~ .error-message {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +285,39 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Subscribe to Our Newsletter</h2>
++      <p class="newsletter-description">Get seasonal roast drops, brewing tips, and exclusive offers straight to your inbox.</p>
++      <form id="newsletter-form" class="newsletter-form">
++        <div class="newsletter-field">
++          <label for="newsletter-email" class="newsletter-label">Email Address</label>
++          <input
++            type="email"
++            id="newsletter-email"
++            name="email"
++            class="newsletter-input"
++            placeholder="you@example.com"
++            autocomplete="email"
++            required
++            aria-invalid="false"
++            aria-describedby="newsletter-error"
++            aria-errormessage="newsletter-error"
++          >
++          <button type="submit" class="btn newsletter-btn">Subscribe</button>
++          <p
++            id="newsletter-error"
++            class="error-message"
++            role="alert"
++            aria-live="polite"
++            aria-atomic="true"
++            aria-hidden="true"
++            hidden
++          ></p>
++        </div>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +325,87 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('newsletter-form');
++      const emailInput = document.getElementById('newsletter-email');
++      const errorEl = document.getElementById('newsletter-error');
++      const ERROR_MESSAGE = 'Please enter a valid email address.';
++
++      if (!form || !emailInput || !errorEl) return;
++
++      let hasInteracted = false;
++
++      function isUserInvalid() {
++        try {
++          return emailInput.matches(':user-invalid');
++        } catch (e) {
++          return false;
++        }
++      }
++
++      function setErrorState(showError) {
++        if (showError) {
++          emailInput.setAttribute('aria-invalid', 'true');
++          emailInput.classList.add('is-invalid');
++          errorEl.hidden = false;
++          errorEl.removeAttribute('aria-hidden');
++          errorEl.classList.add('visible');
++          if (errorEl.textContent !== ERROR_MESSAGE) {
++            errorEl.textContent = ERROR_MESSAGE;
++          }
++        } else {
++          emailInput.setAttribute('aria-invalid', 'false');
++          emailInput.classList.remove('is-invalid');
++          errorEl.textContent = '';
++          errorEl.hidden = true;
++          errorEl.setAttribute('aria-hidden', 'true');
++          errorEl.classList.remove('visible');
++        }
++      }
++
++      function syncValidationState() {
++        const isValid = emailInput.checkValidity();
++        if (isValid) {
++          setErrorState(false);
++        } else if (hasInteracted || isUserInvalid()) {
++          setErrorState(true);
++        } else {
++          setErrorState(false);
++        }
++      }
++
++      emailInput.addEventListener('blur', function () {
++        hasInteracted = true;
++        syncValidationState();
++      });
++
++      emailInput.addEventListener('change', function () {
++        hasInteracted = true;
++        syncValidationState();
++      });
++
++      emailInput.addEventListener('invalid', function (event) {
++        event.preventDefault();
++        hasInteracted = true;
++        syncValidationState();
++      });
++
++      emailInput.addEventListener('input', function () {
++        syncValidationState();
++      });
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        hasInteracted = true;
++        syncValidationState();
++      });
++
++      setErrorState(false);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

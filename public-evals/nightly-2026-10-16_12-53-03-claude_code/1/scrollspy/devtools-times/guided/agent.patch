@@ -1,0 +1,102 @@
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..eabbd4a 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -8,10 +8,94 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+-        <div class="prose max-w-none">
++    <div class="max-w-5xl mx-auto px-4 py-8 md:py-12 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
++        <nav id="legal-toc" aria-label="On this page" hidden class="legal-toc hidden lg:block lg:order-first lg:row-span-2">
++            <p class="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">On this page</p>
++            <ul class="legal-toc-list"></ul>
++        </nav>
++        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2 lg:col-start-2">{title}</h1>
++        <div id="legal-content" class="prose max-w-none lg:col-start-2">
+             <slot />
+         </div>
+     </div>
+ </Layout>
++
++<style is:global>
++    .legal-toc {
++        position: sticky;
++        top: 6rem;
++        align-self: start;
++        scroll-target-group: auto;
++    }
++    .legal-toc-list {
++        list-style: none;
++        margin: 0;
++        padding: 0;
++        border-left: 2px solid #e5e7eb;
++    }
++    .legal-toc a {
++        display: block;
++        padding: 0.375rem 0 0.375rem 0.75rem;
++        margin-left: -2px;
++        border-left: 2px solid transparent;
++        font-size: 0.875rem;
++        color: #4b5563;
++        text-decoration: none;
++    }
++    .legal-toc a:hover {
++        color: #111827;
++    }
++    /* Native :target-current where supported; the class is set by the IntersectionObserver fallback. */
++    .legal-toc a:is(:target-current, .\:target-current) {
++        color: #1d4ed8;
++        border-left-color: #1d4ed8;
++        font-weight: 600;
++    }
++    #legal-content h2 {
++        scroll-margin-top: 6rem;
++    }
++</style>
++
++<script>
++    const toc = document.getElementById('legal-toc');
++    const list = toc?.querySelector('ul');
++    const headings = document.querySelectorAll<HTMLHeadingElement>('#legal-content h2');
++
++    if (toc && list && headings.length > 1) {
++        headings.forEach((heading, i) => {
++            heading.id ||= `section-${i + 1}`;
++            const item = document.createElement('li');
++            const link = document.createElement('a');
++            link.href = `#${heading.id}`;
++            link.textContent = heading.textContent;
++            item.append(link);
++            list.append(item);
++        });
++        toc.hidden = false;
++
++        const links = toc.querySelectorAll<HTMLAnchorElement>('a');
++        const setCurrent = (current: Element | null) => {
++            links.forEach((link) => link.setAttribute('aria-current', String(link === current)));
++        };
++
++        if (CSS.supports('scroll-target-group: auto')) {
++            const sync = () => setCurrent(toc.querySelector('a:target-current'));
++            sync();
++            document.addEventListener('scrollend', sync);
++        } else {
++            // Track the last heading that has scrolled past the upper part of the viewport.
++            const observer = new IntersectionObserver(
++                (entries) => {
++                    entries.forEach((entry) => {
++                        if (!entry.isIntersecting) return;
++                        const current = toc.querySelector(`a[href="#${entry.target.id}"]`);
++                        links.forEach((link) => link.classList.toggle(':target-current', link === current));
++                        setCurrent(current);
++                    });
++                },
++                { rootMargin: '0px 0px -70% 0px', threshold: 0 },
++            );
++            headings.forEach((heading) => observer.observe(heading));
++        }
++    }
++</script>

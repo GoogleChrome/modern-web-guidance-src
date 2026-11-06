@@ -1,0 +1,265 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,91 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Flavor Simulator */
++    .sim {
++      margin-top: 60px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .sim-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: end;
++      margin: 16px 0;
++    }
++
++    .sim-controls label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++    }
++
++    .sim-controls input {
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      width: 10rem;
++    }
++
++    .sim-controls button {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    .sim-controls button[disabled] {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .sim progress {
++      width: 100%;
++      accent-color: var(--primary);
++    }
++
++    .sim-status {
++      font-size: 0.9rem;
++      margin: 8px 0;
++    }
++
++    .sim-results {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
++      gap: 12px;
++      margin-top: 12px;
++    }
++
++    .sim-results div {
++      background: var(--light);
++      border-radius: 6px;
++      padding: 10px;
++      text-align: center;
++    }
++
++    .sim-results dt {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .sim-results dd {
++      font-size: 1.3rem;
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .sim-best {
++      margin-top: 16px;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +277,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="sim" aria-labelledby="sim-title">
++      <h2 id="sim-title">Flavor Profile Simulator</h2>
++      <p>Blend four single origins in thousands of random ratios and roast levels, then see which recipe lands closest to your target cup.</p>
++      <form class="sim-controls" id="sim-form">
++        <label>Recipe blends
++          <input type="number" name="count" value="50000" min="1000" max="500000" step="1000">
++        </label>
++        <label>Target sweetness (0–10)
++          <input type="number" name="target" value="7" min="0" max="10" step="0.1">
++        </label>
++        <button type="submit" class="btn" id="sim-run">Run Simulation</button>
++        <button type="button" class="btn" id="sim-cancel" disabled>Cancel</button>
++      </form>
++      <progress id="sim-progress" value="0" max="100" aria-label="Simulation progress"></progress>
++      <p class="sim-status" id="sim-status" role="status" aria-live="polite">Ready.</p>
++      <dl class="sim-results" id="sim-results" hidden>
++        <div><dt>Acidity</dt><dd data-key="acidity"></dd></div>
++        <div><dt>Body</dt><dd data-key="body"></dd></div>
++        <div><dt>Sweetness</dt><dd data-key="sweetness"></dd></div>
++        <div><dt>Bitterness</dt><dd data-key="bitterness"></dd></div>
++        <div><dt>Aroma</dt><dd data-key="aroma"></dd></div>
++      </dl>
++      <p class="sim-best" id="sim-best"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +314,135 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const ORIGINS = [
++        { name: 'Ethiopia', acidity: 8.5, body: 4, sweetness: 6.5, bitterness: 2.5, aroma: 9 },
++        { name: 'Colombia', acidity: 6, body: 6, sweetness: 7.5, bitterness: 3.5, aroma: 7 },
++        { name: 'Sumatra', acidity: 3, body: 9, sweetness: 5, bitterness: 6, aroma: 6.5 },
++        { name: 'Brazil', acidity: 4, body: 7, sweetness: 8, bitterness: 4.5, aroma: 6 },
++      ];
++      const KEYS = ['acidity', 'body', 'sweetness', 'bitterness', 'aroma'];
++      const BUDGET_MS = 50; // a task longer than this counts as a "long task"
++
++      const form = document.getElementById('sim-form');
++      const runBtn = document.getElementById('sim-run');
++      const cancelBtn = document.getElementById('sim-cancel');
++      const progress = document.getElementById('sim-progress');
++      const status = document.getElementById('sim-status');
++      const results = document.getElementById('sim-results');
++      const best = document.getElementById('sim-best');
++      let controller = null;
++
++      // Small seeded PRNG so runs are reproducible
++      function mulberry32(seed) {
++        return () => {
++          seed = (seed + 0x6D2B79F5) | 0;
++          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
++          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
++          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++        };
++      }
++
++      function yieldToMain() {
++        if ('scheduler' in window && 'yield' in window.scheduler) {
++          return scheduler.yield();
++        }
++        return new Promise(resolve => setTimeout(resolve, 0));
++      }
++
++      // Simulate one blend: random origin ratios + roast, with an extraction model
++      function simulateBlend(rand) {
++        const weights = ORIGINS.map(() => rand() + 0.05);
++        const total = weights.reduce((a, b) => a + b, 0);
++        const roast = rand(); // 0 light .. 1 dark
++        const profile = { acidity: 0, body: 0, sweetness: 0, bitterness: 0, aroma: 0 };
++        ORIGINS.forEach((origin, i) => {
++          const share = weights[i] / total;
++          for (const key of KEYS) profile[key] += origin[key] * share;
++        });
++        // Roast shifts the profile; relax over several extraction steps
++        for (let step = 0; step < 40; step++) {
++          const extraction = (step + 1) / 40;
++          profile.acidity += (-0.02 * roast + 0.01 * (1 - roast)) * Math.exp(-extraction);
++          profile.body += 0.015 * roast * Math.sin(extraction * Math.PI);
++          profile.bitterness += 0.02 * roast * extraction * extraction;
++          profile.sweetness += 0.01 * Math.sin(roast * Math.PI) * (1 - extraction);
++          profile.aroma += 0.012 * Math.cos(roast * Math.PI * 0.5) * (1 - extraction);
++        }
++        for (const key of KEYS) profile[key] = Math.min(10, Math.max(0, profile[key]));
++        return { weights: weights.map(w => w / total), roast, profile };
++      }
++
++      async function runSimulation(count, targetSweetness, signal) {
++        const rand = mulberry32(2026);
++        const sums = { acidity: 0, body: 0, sweetness: 0, bitterness: 0, aroma: 0 };
++        let bestBlend = null;
++        let bestScore = Infinity;
++        let deadline = performance.now() + BUDGET_MS;
++
++        for (let i = 0; i < count; i++) {
++          const blend = simulateBlend(rand);
++          for (const key of KEYS) sums[key] += blend.profile[key];
++          // Score: sweetness near target, penalising bitterness
++          const score = Math.abs(blend.profile.sweetness - targetSweetness) + 0.25 * blend.profile.bitterness;
++          if (score < bestScore) { bestScore = score; bestBlend = blend; }
++
++          if (performance.now() >= deadline) {
++            if (signal.aborted) return null;
++            progress.value = (i / count) * 100;
++            status.textContent = `Simulated ${i.toLocaleString()} of ${count.toLocaleString()} blends…`;
++            await yieldToMain();
++            deadline = performance.now() + BUDGET_MS;
++          }
++        }
++        if (signal.aborted) return null;
++        const averages = {};
++        for (const key of KEYS) averages[key] = sums[key] / count;
++        return { averages, bestBlend };
++      }
++
++      form.addEventListener('submit', async event => {
++        event.preventDefault();
++        const data = new FormData(form);
++        const count = Math.min(500000, Math.max(1000, Number(data.get('count')) || 50000));
++        const target = Math.min(10, Math.max(0, Number(data.get('target')) || 0));
++
++        controller = new AbortController();
++        const { signal } = controller;
++        runBtn.disabled = true;
++        cancelBtn.disabled = false;
++        results.hidden = true;
++        best.textContent = '';
++        progress.value = 0;
++        status.textContent = 'Starting simulation…';
++        const started = performance.now();
++
++        const outcome = await runSimulation(count, target, signal);
++
++        runBtn.disabled = false;
++        cancelBtn.disabled = true;
++        if (!outcome) {
++          status.textContent = 'Simulation cancelled.';
++          return;
++        }
++        progress.value = 100;
++        const seconds = ((performance.now() - started) / 1000).toFixed(1);
++        status.textContent = `Finished ${count.toLocaleString()} blends in ${seconds}s.`;
++        for (const key of KEYS) {
++          results.querySelector(`[data-key="${key}"]`).textContent = outcome.averages[key].toFixed(2);
++        }
++        results.hidden = false;
++        const { weights, roast } = outcome.bestBlend;
++        const mix = ORIGINS.map((o, i) => `${Math.round(weights[i] * 100)}% ${o.name}`).join(', ');
++        best.textContent = `Best match: ${mix}, roast level ${Math.round(roast * 100)}/100.`;
++      });
++
++      cancelBtn.addEventListener('click', () => controller?.abort());
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

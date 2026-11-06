@@ -1,0 +1,418 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -101,10 +101,10 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+@@ -112,13 +112,35 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      cursor: pointer;
++      transition: transform 0.2s, box-shadow 0.2s;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+-    .card h3 {
++    .card:hover {
++      transform: translateY(-4px);
++      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
++    }
++
++    .thumbnail-img {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++      display: block;
++    }
++
++    .card .title {
++      font-size: 1.35rem;
+       margin-bottom: 10px;
+       color: var(--primary);
++      width: fit-content;
++      margin-left: auto;
++      margin-right: auto;
+     }
+ 
+     .btn {
+       display: inline-block;
+@@ -127,15 +149,122 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      border: none;
++      font-size: 1rem;
++      font-family: inherit;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Detail View */
++    #detail-page[hidden],
++    #list-page[hidden] {
++      display: none !important;
++    }
++
++    .detail-container {
++      background: white;
++      padding: 30px;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++    }
++
++    .back-btn {
++      margin-top: 0;
++      margin-bottom: 24px;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    #hero {
++      width: 100%;
++      max-height: 450px;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 24px;
++      display: block;
++    }
++
++    #title {
++      font-size: 2.25rem;
++      color: var(--primary);
++      margin-bottom: 16px;
++      width: fit-content;
++    }
++
++    #list-heading:focus,
++    #title:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 4px;
++    }
++
++    .detail-meta {
++      display: flex;
++      gap: 16px;
++      margin-bottom: 16px;
++      font-weight: 600;
++      color: #6d4c41;
++    }
++
++    .detail-description {
++      font-size: 1.1rem;
++      line-height: 1.8;
++      margin-bottom: 20px;
++    }
++
++    /* View Transitions */
++    .transitioning-hero {
++      view-transition-name: hero;
++    }
++
++    .transitioning-title {
++      view-transition-name: title;
++    }
++
++    /* Prevent image stretching across different aspect ratios during morph */
++    ::view-transition-old(hero),
++    ::view-transition-new(hero) {
++      animation: none;
++      mix-blend-mode: normal;
++      height: 100%;
++      overflow: clip;
++      object-fit: cover;
++    }
++
++    /* Prevent title text from weirdly stretching by preserving natural aspect ratio */
++    ::view-transition-old(title),
++    ::view-transition-new(title) {
++      width: auto;
++      height: 100%;
++      object-fit: contain;
++      transform-origin: left center;
++    }
++
++    /* Disable all transition animations when reduced motion is preferred */
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after,
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation-duration: 0.001ms !important;
++        animation-delay: 0s !important;
++        transition-duration: 0.001ms !important;
++        transition-delay: 0s !important;
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,26 +303,49 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- List View -->
++    <section id="list-page">
++      <h2 id="list-heading" tabindex="-1" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <article class="card thumbnail" data-id="maple-oat-latte" tabindex="0" role="button" aria-label="View details for Maple Oat Latte">
++          <img class="thumbnail-img" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80" alt="Maple Oat Latte">
++          <h2 class="title">Maple Oat Latte</h2>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <span class="btn">View Details</span>
++        </article>
++
++        <article class="card thumbnail" data-id="dark-roast-espresso" tabindex="0" role="button" aria-label="View details for Dark Roast Espresso">
++          <img class="thumbnail-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80" alt="Dark Roast Espresso">
++          <h2 class="title">Dark Roast Espresso</h2>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <span class="btn">View Details</span>
++        </article>
++
++        <article class="card thumbnail" data-id="cold-brew" tabindex="0" role="button" aria-label="View details for Cold Brew">
++          <img class="thumbnail-img" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80" alt="Cold Brew">
++          <h2 class="title">Cold Brew</h2>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="btn">View Details</span>
++        </article>
++      </div>
++    </section>
++
++    <!-- Detail View -->
++    <section id="detail-page" hidden>
++      <div class="detail-container">
++        <button type="button" id="back-button" class="btn back-btn">&larr; Back to Seasonal Favorites</button>
++        <img id="hero" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1200&q=80" alt="Maple Oat Latte">
++        <h2 id="title" tabindex="-1">Maple Oat Latte</h2>
++        <div class="detail-meta">
++          <span id="detail-price">$5.50</span>
++          <span>&bull;</span>
++          <span id="detail-calories">180 kcal</span>
+         </div>
++        <p id="detail-description" class="detail-description">
++          Creamy oat milk with a hint of Vermont maple syrup. Crafted with our signature double-shot espresso and topped with a delicate dusting of cinnamon.
++        </p>
+       </div>
+     </section>
+   </main>
+ 
+@@ -206,7 +358,178 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const favoritesData = {
++      'maple-oat-latte': {
++        title: 'Maple Oat Latte',
++        image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1200&q=80',
++        price: '$5.50',
++        calories: '180 kcal',
++        description: 'Creamy oat milk with a hint of pure Vermont maple syrup. Crafted with our signature double-shot espresso and topped with a delicate dusting of organic cinnamon.'
++      },
++      'dark-roast-espresso': {
++        title: 'Dark Roast Espresso',
++        image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1200&q=80',
++        price: '$3.75',
++        calories: '15 kcal',
++        description: 'Bold, smokey, and perfect for a morning boost. Roasted in small batches to bring out deep dark chocolate notes and a rich, velvety crema.'
++      },
++      'cold-brew': {
++        title: 'Cold Brew',
++        image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1200&q=80',
++        price: '$4.75',
++        calories: '10 kcal',
++        description: 'Steeped in cool filtered water for 18 hours for maximum smoothness and naturally sweet flavor with zero bitterness. Served over artisan ice.'
++      }
++    };
++
++    const listPage = document.getElementById('list-page');
++    const detailPage = document.getElementById('detail-page');
++    const listHeading = document.getElementById('list-heading');
++    const heroEl = document.getElementById('hero');
++    const titleEl = document.getElementById('title');
++    const priceEl = document.getElementById('detail-price');
++    const caloriesEl = document.getElementById('detail-calories');
++    const descriptionEl = document.getElementById('detail-description');
++    const backButton = document.getElementById('back-button');
++    const thumbnails = document.querySelectorAll('.thumbnail');
++
++    let activeThumbnail = null;
++
++    function prefersReducedMotion() {
++      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++    }
++
++    function cleanupTransitionProperties(elements) {
++      elements.forEach((el) => {
++        if (!el) return;
++        el.style.viewTransitionName = '';
++        el.classList.remove('transitioning-hero', 'transitioning-title');
++        if (el.getAttribute('style') === '') {
++          el.removeAttribute('style');
++        }
++      });
++    }
++
++    function populateDetail(itemId) {
++      const data = favoritesData[itemId];
++      if (!data) return;
++      heroEl.src = data.image;
++      heroEl.alt = data.title;
++      titleEl.textContent = data.title;
++      priceEl.textContent = data.price;
++      caloriesEl.textContent = data.calories;
++      descriptionEl.textContent = data.description;
++    }
++
++    async function showDetailView(thumbnail) {
++      const itemId = thumbnail.dataset.id;
++      activeThumbnail = thumbnail;
++
++      const thumbTitle = thumbnail.querySelector('.title');
++
++      const updateDOM = () => {
++        populateDetail(itemId);
++        listPage.hidden = true;
++        detailPage.hidden = false;
++      };
++
++      if (!document.startViewTransition || prefersReducedMotion()) {
++        updateDOM();
++        titleEl.focus();
++        return;
++      }
++
++      // Set temporary transition names/classes on clicked thumbnail elements
++      thumbnail.style.viewTransitionName = 'hero';
++      thumbnail.classList.add('transitioning-hero');
++      thumbTitle.style.viewTransitionName = 'title';
++      thumbTitle.classList.add('transitioning-title');
++
++      const transition = document.startViewTransition(() => {
++        // Move transition names/classes from thumbnail to detail view elements
++        cleanupTransitionProperties([thumbnail, thumbTitle]);
++
++        heroEl.style.viewTransitionName = 'hero';
++        heroEl.classList.add('transitioning-hero');
++        titleEl.style.viewTransitionName = 'title';
++        titleEl.classList.add('transitioning-title');
++
++        updateDOM();
++      });
++
++      try {
++        await transition.finished;
++      } finally {
++        cleanupTransitionProperties([thumbnail, thumbTitle, heroEl, titleEl]);
++        titleEl.focus();
++      }
++    }
++
++    async function showListView() {
++      const targetThumbnail = activeThumbnail || document.querySelector('.thumbnail');
++      const thumbTitle = targetThumbnail ? targetThumbnail.querySelector('.title') : null;
++
++      const updateDOM = () => {
++        detailPage.hidden = true;
++        listPage.hidden = false;
++      };
++
++      if (!document.startViewTransition || prefersReducedMotion() || !targetThumbnail) {
++        updateDOM();
++        listHeading.focus();
++        return;
++      }
++
++      // Set temporary transition names/classes on detail elements before morphing back
++      heroEl.style.viewTransitionName = 'hero';
++      heroEl.classList.add('transitioning-hero');
++      titleEl.style.viewTransitionName = 'title';
++      titleEl.classList.add('transitioning-title');
++
++      const transition = document.startViewTransition(() => {
++        // Move transition names/classes from detail elements back to the active thumbnail
++        cleanupTransitionProperties([heroEl, titleEl]);
++
++        targetThumbnail.style.viewTransitionName = 'hero';
++        targetThumbnail.classList.add('transitioning-hero');
++        if (thumbTitle) {
++          thumbTitle.style.viewTransitionName = 'title';
++          thumbTitle.classList.add('transitioning-title');
++        }
++
++        updateDOM();
++      });
++
++      try {
++        await transition.finished;
++      } finally {
++        cleanupTransitionProperties([heroEl, titleEl, targetThumbnail, thumbTitle]);
++        listHeading.focus();
++      }
++    }
++
++    thumbnails.forEach((thumbnail) => {
++      thumbnail.addEventListener('click', (e) => {
++        e.preventDefault();
++        showDetailView(thumbnail);
++      });
++
++      thumbnail.addEventListener('keydown', (e) => {
++        if (e.key === 'Enter' || e.key === ' ') {
++          e.preventDefault();
++          showDetailView(thumbnail);
++        }
++      });
++    });
++
++    backButton.addEventListener('click', (e) => {
++      e.preventDefault();
++      showListView();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

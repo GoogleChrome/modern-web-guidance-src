@@ -1,0 +1,88 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..fb72a6f 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -41,15 +41,23 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++            <div class="flex items-center gap-4" data-top-stories role="group" aria-roledescription="carousel" aria-label="Top stories">
++                <button type="button" data-prev aria-label="Previous story" class="shrink-0 rounded border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-900 hover:text-amber-400 cursor-pointer">
++                    Previous
++                </button>
++                <div class="relative flex-1 overflow-hidden" aria-live="polite">
++                    {topStories.map((article, index) => (
++                        <div class="top-story" data-slide role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${topStories.length}`} hidden={index !== 0}>
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
++                <button type="button" data-next aria-label="Next story" class="shrink-0 rounded border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-900 hover:text-amber-400 cursor-pointer">
++                    Next
++                </button>
+             </div>
+         </div>
+     </div>
+@@ -81,4 +89,48 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
++
++<style is:global>
++    .top-story.slide-from-right { animation: top-story-from-right 300ms ease-out; }
++    .top-story.slide-from-left { animation: top-story-from-left 300ms ease-out; }
++
++    @keyframes top-story-from-right {
++        from { transform: translateX(100%); opacity: 0; }
++        to { transform: translateX(0); opacity: 1; }
++    }
++    @keyframes top-story-from-left {
++        from { transform: translateX(-100%); opacity: 0; }
++        to { transform: translateX(0); opacity: 1; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++        .top-story.slide-from-right,
++        .top-story.slide-from-left { animation: none; }
++    }
++</style>
++
++<script>
++    const slider = document.querySelector<HTMLElement>('[data-top-stories]');
++    if (slider) {
++        const slides = Array.from(slider.querySelectorAll<HTMLElement>('[data-slide]'));
++        let current = 0;
++
++        const show = (direction: 1 | -1) => {
++            const next = (current + direction + slides.length) % slides.length;
++            if (next === current) return;
++            slides[current].hidden = true;
++            slides[current].classList.remove('slide-from-left', 'slide-from-right');
++            const incoming = slides[next];
++            incoming.classList.remove('slide-from-left', 'slide-from-right');
++            incoming.hidden = false;
++            // Force reflow so the animation restarts when revisiting a slide.
++            void incoming.offsetWidth;
++            incoming.classList.add(direction === 1 ? 'slide-from-right' : 'slide-from-left');
++            current = next;
++        };
++
++        slider.querySelector('[data-next]')?.addEventListener('click', () => show(1));
++        slider.querySelector('[data-prev]')?.addEventListener('click', () => show(-1));
++    }
++</script>

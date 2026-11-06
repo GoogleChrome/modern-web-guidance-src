@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+index 66c9173..7d83be0 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,143 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ------------------------------------------------------------------
++       Progressive enhancements
++       Each block below only takes effect when the browser supports the
++       newer at-rule it relies on. Older browsers keep the base styles above.
++       ------------------------------------------------------------------ */
++
++    /* Navigation: condense the sticky bar once it is stuck to the top.
++       Gated on scroll-state container queries (@container scroll-state()).
++       at-rule() can't detect query types, so detect via container-type. */
++    @supports (container-type: scroll-state) {
++      nav {
++        container: site-nav / scroll-state;
++      }
++
++      .logo,
++      nav ul {
++        transition: font-size 0.3s, letter-spacing 0.3s, color 0.3s, margin 0.3s;
++      }
++
++      @container site-nav scroll-state(stuck: top) {
++        .logo {
++          font-size: 1.2rem;
++          letter-spacing: 2px;
++          color: var(--accent);
++          margin-block: -0.25rem;
++        }
++
++        nav ul {
++          margin-block: -0.25rem;
++        }
++      }
++    }
++
++    /* Hero: slowly drifting warm glow over the photo.
++       Gated on @property — the glow position must be a registered custom
++       property to animate smoothly. --supports-atproperty is registered as
++       non-inheriting, so the `:root` value only reaches .hero::before when
++       @property is unsupported, which blanks out the declarations. */
++    @property --supports-atproperty {
++      syntax: "*";
++      inherits: false;
++    }
++
++    :root {
++      --supports-atproperty: ;
++    }
++
++    @property --hero-glow-x {
++      syntax: "<percentage>";
++      inherits: false;
++      initial-value: 30%;
++    }
++
++    @keyframes hero-glow-drift {
++      to {
++        --hero-glow-x: 70%;
++      }
++    }
++
++    .hero {
++      position: relative;
++      isolation: isolate;
++    }
++
++    .hero::before {
++      /* Unsupported: content resolves to `normal` → no pseudo-element box. */
++      content: var(--supports-atproperty, "");
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      pointer-events: none;
++      background: radial-gradient(circle at var(--hero-glow-x) 40%,
++          rgb(255 171 64 / 0.35), transparent 55%);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .hero::before {
++        animation: var(--supports-atproperty, hero-glow-drift 10s ease-in-out infinite alternate);
++      }
++    }
++
++    /* Seasonal favorite cards: adapt the cards to the space the grid has
++       and fade them in on load. Gated on size container queries (@container).
++       The grid is the container (a container query can't style the container
++       element itself, only its descendants). */
++    @supports (container-type: inline-size) {
++      .grid {
++        container: favorites / inline-size;
++      }
++
++      .grid > .card {
++        transition: transform 0.3s, box-shadow 0.3s, opacity 0.6s, translate 0.6s;
++      }
++
++      .grid > .card:hover,
++      .grid > .card:focus-within {
++        transform: translateY(-4px);
++        box-shadow: 0 8px 20px rgb(0 0 0 / 0.15);
++      }
++
++      @starting-style {
++        .grid > .card {
++          opacity: 0;
++          translate: 0 12px;
++        }
++      }
++
++      .card h3 {
++        font-size: clamp(1.1rem, 3cqi, 1.5rem);
++      }
++
++      /* Single-column but roomy (cards are 420–539px wide): place the
++         button beside the text instead of below it. */
++      @container favorites (420px <= width < 540px) {
++        .card {
++          display: grid;
++          grid-template-columns: 1fr auto;
++          grid-template-areas:
++            "title action"
++            "desc  action";
++          align-items: center;
++          column-gap: 20px;
++          text-align: start;
++        }
++
++        .card h3 { grid-area: title; }
++        .card p { grid-area: desc; }
++        .card .btn { grid-area: action; margin-top: 0; }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .grid > .card {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 

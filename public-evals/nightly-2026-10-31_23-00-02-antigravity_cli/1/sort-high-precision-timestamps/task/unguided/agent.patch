@@ -1,0 +1,578 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,176 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    /* Distributed Order Events Telemetry Section */
++    .telemetry-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .telemetry-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 20px;
++      margin-bottom: 20px;
++    }
++
++    .telemetry-header h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .telemetry-subtitle {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .telemetry-controls {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .telemetry-controls .btn {
++      margin-top: 0;
++    }
++
++    .stats-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 15px;
++      margin-bottom: 25px;
++    }
++
++    .stat-card {
++      background: var(--light);
++      border-left: 4px solid var(--primary);
++      padding: 12px 16px;
++      border-radius: 4px;
++    }
++
++    .stat-label {
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #6d4c41;
++      font-weight: 600;
++    }
++
++    .stat-value {
++      font-size: 1.15rem;
++      font-weight: bold;
++      color: var(--text);
++      font-family: 'Courier New', Courier, monospace;
++      margin-top: 4px;
++    }
++
++    .events-table-wrapper {
++      overflow-x: auto;
++    }
++
++    .events-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.88rem;
++    }
++
++    .events-table th,
++    .events-table td {
++      padding: 12px 10px;
++      text-align: left;
++      border-bottom: 1px solid #efebe9;
++    }
++
++    .events-table th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .events-table tr:hover {
++      background-color: #fbf9f8;
++    }
++
++    .mono {
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.84rem;
++    }
++
++    .sub-ms {
++      color: #bf360c;
++      font-weight: bold;
++      background: #fbe9e7;
++      padding: 1px 4px;
++      border-radius: 3px;
++    }
++
++    .service-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--text);
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.78rem;
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .interval-badge {
++      display: inline-block;
++      background: #fff3e0;
++      color: #e65100;
++      border: 1px solid #ffe0b2;
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-family: 'Courier New', Courier, monospace;
++      font-weight: 600;
++    }
++
++    .interval-subms {
++      background: #e8f5e9;
++      color: #1b5e20;
++      border-color: #c8e6c9;
++    }
++
++    .empty-state {
++      text-align: center;
++      padding: 30px;
++      color: #795548;
++      background: var(--light);
++      border-radius: 6px;
++      border: 1px dashed var(--secondary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +356,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="telemetry-section" id="distributed-order-events" aria-labelledby="telemetry-heading">
++      <div class="telemetry-header">
++        <div>
++          <h2 id="telemetry-heading">Distributed Order Event Telemetry</h2>
++          <p class="telemetry-subtitle">
++            Reconstruct chronological coffee order timelines across backend microservices with nanosecond UTC precision.
++          </p>
++        </div>
++        <div class="telemetry-controls">
++          <button type="button" id="load-events-btn" class="btn btn-accent">
++            Load Distributed Order Events
++          </button>
++        </div>
++      </div>
++
++      <div id="events-summary" class="stats-grid" hidden>
++        <div class="stat-card">
++          <div class="stat-label">Events Processed</div>
++          <div class="stat-value" id="stat-total-events">0</div>
++        </div>
++        <div class="stat-card">
++          <div class="stat-label">Total Batch Span</div>
++          <div class="stat-value" id="stat-total-span">0 ns</div>
++        </div>
++        <div class="stat-card">
++          <div class="stat-label">Shortest Interval (Sub-ms)</div>
++          <div class="stat-value" id="stat-min-interval">0 ns</div>
++        </div>
++        <div class="stat-card">
++          <div class="stat-label">Longest Interval</div>
++          <div class="stat-value" id="stat-max-interval">0 ns</div>
++        </div>
++      </div>
++
++      <div id="events-container">
++        <div class="empty-state" id="events-empty-state">
++          Click <strong>Load Distributed Order Events</strong> to ingest out-of-order backend order events, sort by nanosecond UTC timestamp, and measure inter-event intervals.
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +409,347 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Ensure Temporal.Instant is available with full BigInt nanosecond precision
++    // in environments where the native Temporal API is not yet enabled by default.
++    if (typeof globalThis.Temporal === 'undefined') {
++      class PolyfillDuration {
++        constructor(totalNanoseconds) {
++          const ns = BigInt(totalNanoseconds);
++          this.sign = ns < 0n ? -1 : ns > 0n ? 1 : 0;
++          const absNs = ns < 0n ? -ns : ns;
++          this._totalNanoseconds = ns;
++          this.seconds = Number(absNs / 1000000000n) * (this.sign < 0 ? -1 : 1);
++          const remAfterSec = absNs % 1000000000n;
++          this.milliseconds = Number(remAfterSec / 1000000n) * (this.sign < 0 ? -1 : 1);
++          const remAfterMs = remAfterSec % 1000000n;
++          this.microseconds = Number(remAfterMs / 1000n) * (this.sign < 0 ? -1 : 1);
++          this.nanoseconds = Number(remAfterMs % 1000n) * (this.sign < 0 ? -1 : 1);
++        }
++
++        total(unit) {
++          const unitStr = typeof unit === 'object' && unit !== null ? unit.unit : unit;
++          if (unitStr === 'nanosecond' || unitStr === 'nanoseconds') {
++            return Number(this._totalNanoseconds);
++          }
++          if (unitStr === 'microsecond' || unitStr === 'microseconds') {
++            return Number(this._totalNanoseconds) / 1e3;
++          }
++          if (unitStr === 'millisecond' || unitStr === 'milliseconds') {
++            return Number(this._totalNanoseconds) / 1e6;
++          }
++          if (unitStr === 'second' || unitStr === 'seconds') {
++            return Number(this._totalNanoseconds) / 1e9;
++          }
++          return Number(this._totalNanoseconds);
++        }
++
++        toString() {
++          const absNs = this._totalNanoseconds < 0n ? -this._totalNanoseconds : this._totalNanoseconds;
++          const sec = absNs / 1000000000n;
++          const subSec = (absNs % 1000000000n).toString().padStart(9, '0').replace(/0+$/, '');
++          const signPrefix = this.sign < 0 ? '-' : '';
++          return subSec ? `${signPrefix}PT${sec}.${subSec}S` : `${signPrefix}PT${sec}S`;
++        }
++      }
++
++      class PolyfillInstant {
++        constructor(epochNanoseconds) {
++          this.epochNanoseconds = BigInt(epochNanoseconds);
++          this.epochMilliseconds = Number(this.epochNanoseconds / 1000000n);
++        }
++
++        static from(item) {
++          if (item instanceof PolyfillInstant) {
++            return new PolyfillInstant(item.epochNanoseconds);
++          }
++          const str = String(item).trim();
++          const match = str.match(
++            /^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:?\d{2})$/i
++          );
++          if (!match) {
++            throw new RangeError(`Invalid ISO 8601 UTC timestamp: ${str}`);
++          }
++          const [, dateTimePart, fracPart = '', offsetPart] = match;
++          const normalizedOffset = offsetPart.toUpperCase() === 'Z' ? 'Z' : offsetPart;
++          const msEpoch = Date.parse(`${dateTimePart.replace(' ', 'T')}.000${normalizedOffset}`);
++          if (Number.isNaN(msEpoch)) {
++            throw new RangeError(`Invalid timestamp date value: ${str}`);
++          }
++          const paddedNanos = fracPart.padEnd(9, '0');
++          const subSecondNanos = BigInt(paddedNanos);
++          const totalNanos = BigInt(msEpoch) * 1000000n + subSecondNanos;
++          return new PolyfillInstant(totalNanos);
++        }
++
++        static fromEpochNanoseconds(epochNanoseconds) {
++          return new PolyfillInstant(BigInt(epochNanoseconds));
++        }
++
++        static compare(one, two) {
++          const a = one instanceof PolyfillInstant ? one : PolyfillInstant.from(one);
++          const b = two instanceof PolyfillInstant ? two : PolyfillInstant.from(two);
++          if (a.epochNanoseconds < b.epochNanoseconds) return -1;
++          if (a.epochNanoseconds > b.epochNanoseconds) return 1;
++          return 0;
++        }
++
++        since(other) {
++          const otherInstant = other instanceof PolyfillInstant ? other : PolyfillInstant.from(other);
++          return new PolyfillDuration(this.epochNanoseconds - otherInstant.epochNanoseconds);
++        }
++
++        until(other) {
++          const otherInstant = other instanceof PolyfillInstant ? other : PolyfillInstant.from(other);
++          return new PolyfillDuration(otherInstant.epochNanoseconds - this.epochNanoseconds);
++        }
++
++        toString() {
++          const ms = Number(this.epochNanoseconds / 1000000n);
++          const remNanos = this.epochNanoseconds % 1000000000n;
++          const normalizedNanos = remNanos < 0n ? remNanos + 1000000000n : remNanos;
++          const baseIso = new Date(ms).toISOString(); // YYYY-MM-DDTHH:mm:ss.sssZ
++          const prefix = baseIso.slice(0, 19);
++          const nanoStr = normalizedNanos.toString().padStart(9, '0');
++          return `${prefix}.${nanoStr}Z`;
++        }
++      }
++
++      globalThis.Temporal = {
++        Instant: PolyfillInstant,
++        Duration: PolyfillDuration
++      };
++    }
++
++    // Out-of-order batch of coffee order events collected from distributed backend services
++    // with nanosecond UTC timestamps (including multiple events occurring within the same millisecond).
++    const DISTRIBUTED_COFFEE_ORDER_EVENTS = [
++      {
++        eventId: 'evt-904',
++        orderId: 'ORD-2026-8841',
++        service: 'payment-service',
++        eventType: 'PAYMENT_CAPTURED',
++        item: 'Maple Oat Latte (Large)',
++        timestamp: '2026-11-01T08:14:22.482910350Z'
++      },
++      {
++        eventId: 'evt-901',
++        orderId: 'ORD-2026-8841',
++        service: 'api-gateway',
++        eventType: 'ORDER_REQUEST_RECEIVED',
++        item: 'Maple Oat Latte (Large)',
++        timestamp: '2026-11-01T08:14:22.481052100Z'
++      },
++      {
++        eventId: 'evt-907',
++        orderId: 'ORD-2026-8841',
++        service: 'notification-service',
++        eventType: 'RECEIPT_DISPATCHED',
++        item: 'Maple Oat Latte (Large)',
++        timestamp: '2026-11-01T08:14:22.512004890Z'
++      },
++      {
++        eventId: 'evt-903',
++        orderId: 'ORD-2026-8841',
++        service: 'inventory-service',
++        eventType: 'BEANS_AND_OATMILK_RESERVED',
++        item: 'Maple Oat Latte (Large)',
++        timestamp: '2026-11-01T08:14:22.482105125Z'
++      },
++      {
++        eventId: 'evt-902',
++        orderId: 'ORD-2026-8841',
++        service: 'auth-service',
++        eventType: 'TOKEN_VERIFIED',
++        item: 'Maple Oat Latte (Large)',
++        timestamp: '2026-11-01T08:14:22.481052840Z'
++      },
++      {
++        eventId: 'evt-906',
++        orderId: 'ORD-2026-8841',
++        service: 'barista-queue',
++        eventType: 'ESPRESSO_SHOT_QUEUED',
++        item: 'Maple Oat Latte (Large)',
++        timestamp: '2026-11-01T08:14:22.496310440Z'
++      },
++      {
++        eventId: 'evt-905',
++        orderId: 'ORD-2026-8841',
++        service: 'loyalty-service',
++        eventType: 'REWARD_POINTS_CREDITED',
++        item: 'Maple Oat Latte (Large)',
++        timestamp: '2026-11-01T08:14:22.482910985Z'
++      },
++      {
++        eventId: 'evt-908',
++        orderId: 'ORD-2026-8842',
++        service: 'api-gateway',
++        eventType: 'ORDER_REQUEST_RECEIVED',
++        item: 'Dark Roast Espresso (Double)',
++        timestamp: '2026-11-01T08:14:22.512005310Z'
++      }
++    ];
++
++    /**
++     * Format a BigInt nanosecond interval into a clear human-readable string
++     * that preserves full sub-millisecond (microsecond & nanosecond) fidelity.
++     */
++    function formatNanosecondInterval(deltaNs) {
++      const ns = BigInt(deltaNs);
++      if (ns === 0n) {
++        return '0 ns (Initial Event)';
++      }
++
++      const wholeSeconds = ns / 1000000000n;
++      const remAfterSec = ns % 1000000000n;
++      const wholeMs = remAfterSec / 1000000n;
++      const remAfterMs = remAfterSec % 1000000n;
++      const wholeUs = remAfterMs / 1000n;
++      const remNs = remAfterMs % 1000n;
++
++      const parts = [];
++      if (wholeSeconds > 0n) parts.push(`${wholeSeconds} s`);
++      if (wholeMs > 0n) parts.push(`${wholeMs} ms`);
++      if (wholeUs > 0n) parts.push(`${wholeUs} µs`);
++      if (remNs > 0n) parts.push(`${remNs} ns`);
++
++      return `+${parts.join(' ')} (${ns.toLocaleString('en-US')} ns)`;
++    }
++
++    /**
++     * Highlight the sub-millisecond (microsecond + nanosecond) digits of an ISO timestamp.
++     */
++    function formatTimestampWithSubMsHighlight(timestampStr) {
++      const match = timestampStr.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3})(\d{6})(Z)$/);
++      if (!match) {
++        return `<span class="mono">${timestampStr}</span>`;
++      }
++      const [, msPart, subMsPart, zonePart] = match;
++      return `<span class="mono">${msPart}<span class="sub-ms" title="Sub-millisecond precision (µs + ns)">${subMsPart}</span>${zonePart}</span>`;
++    }
++
++    /**
++     * Parse nanosecond UTC timestamps using Temporal.Instant, sort chronologically
++     * without losing sub-millisecond precision, and compute consecutive intervals.
++     */
++    function processCoffeeOrderEvents(rawEvents) {
++      // 1. Parse each nanosecond UTC timestamp into a Temporal.Instant
++      const parsedEvents = rawEvents.map((event, index) => {
++        const instant = Temporal.Instant.from(event.timestamp);
++        return {
++          ...event,
++          originalBatchIndex: index + 1,
++          instant,
++          epochNanoseconds: instant.epochNanoseconds
++        };
++      });
++
++      // 2. Sort chronologically using Temporal.Instant.compare (preserving full nanosecond precision)
++      const sortedEvents = [...parsedEvents].sort((a, b) =>
++        Temporal.Instant.compare(a.instant, b.instant)
++      );
++
++      // 3. Measure intervals between consecutive events
++      return sortedEvents.map((event, sortedIndex) => {
++        if (sortedIndex === 0) {
++          return {
++            ...event,
++            sequenceNumber: 1,
++            intervalNanoseconds: 0n,
++            intervalDuration: null,
++            intervalFormatted: '0 ns (Initial Event)',
++            intervalIso: 'PT0S',
++            isSubMillisecondInterval: false
++          };
++        }
++
++        const prevEvent = sortedEvents[sortedIndex - 1];
++        const duration = event.instant.since(prevEvent.instant);
++        const deltaNanoseconds = event.epochNanoseconds - prevEvent.epochNanoseconds;
++
++        return {
++          ...event,
++          sequenceNumber: sortedIndex + 1,
++          intervalNanoseconds: deltaNanoseconds,
++          intervalDuration: duration,
++          intervalFormatted: formatNanosecondInterval(deltaNanoseconds),
++          intervalIso: duration.toString(),
++          isSubMillisecondInterval: deltaNanoseconds > 0n && deltaNanoseconds < 1000000n
++        };
++      });
++    }
++
++    function renderProcessedEvents() {
++      const processed = processCoffeeOrderEvents(DISTRIBUTED_COFFEE_ORDER_EVENTS);
++      const summaryEl = document.getElementById('events-summary');
++      const containerEl = document.getElementById('events-container');
++
++      const intervals = processed.slice(1).map((e) => e.intervalNanoseconds);
++      const minIntervalNs = intervals.reduce((min, val) => (val < min ? val : min), intervals[0] || 0n);
++      const maxIntervalNs = intervals.reduce((max, val) => (val > max ? val : max), intervals[0] || 0n);
++      const firstInstant = processed[0].instant;
++      const lastInstant = processed[processed.length - 1].instant;
++      const totalSpanNs = lastInstant.epochNanoseconds - firstInstant.epochNanoseconds;
++
++      document.getElementById('stat-total-events').textContent = `${processed.length} events`;
++      document.getElementById('stat-total-span').textContent = formatNanosecondInterval(totalSpanNs).replace(/^\+/, '');
++      document.getElementById('stat-min-interval').textContent = formatNanosecondInterval(minIntervalNs);
++      document.getElementById('stat-max-interval').textContent = formatNanosecondInterval(maxIntervalNs);
++      summaryEl.hidden = false;
++
++      const rowsHtml = processed
++        .map((evt) => {
++          const intervalBadgeClass = evt.isSubMillisecondInterval
++            ? 'interval-badge interval-subms'
++            : 'interval-badge';
++          return `
++            <tr data-event-id="${evt.eventId}" data-epoch-ns="${evt.epochNanoseconds.toString()}" data-interval-ns="${evt.intervalNanoseconds.toString()}">
++              <td class="mono"><strong>#${evt.sequenceNumber}</strong> <span style="color:#8d6e63;font-size:0.78rem;">(raw #${evt.originalBatchIndex})</span></td>
++              <td><span class="service-badge">${evt.service}</span></td>
++              <td>
++                <strong>${evt.eventType}</strong>
++                <div style="font-size:0.8rem;color:#5d4037;">${evt.orderId} &bull; ${evt.item}</div>
++              </td>
++              <td>
++                ${formatTimestampWithSubMsHighlight(evt.timestamp)}
++                <div class="mono" style="font-size:0.75rem;color:#795548;">${evt.epochNanoseconds.toString()} ns</div>
++              </td>
++              <td>
++                <span class="${intervalBadgeClass}">${evt.intervalFormatted}</span>
++                <div class="mono" style="font-size:0.75rem;color:#795548;">ISO: ${evt.intervalIso}</div>
++              </td>
++            </tr>
++          `;
++        })
++        .join('');
++
++      containerEl.innerHTML = `
++        <div class="events-table-wrapper">
++          <table class="events-table" id="sorted-events-table">
++            <thead>
++              <tr>
++                <th>Order</th>
++                <th>Backend Service</th>
++                <th>Order Event</th>
++                <th>UTC Timestamp (Nanosecond Precision)</th>
++                <th>Interval Since Previous Event</th>
++              </tr>
++            </thead>
++            <tbody>
++              ${rowsHtml}
++            </tbody>
++          </table>
++        </div>
++      `;
++
++      return processed;
++    }
++
++    document.getElementById('load-events-btn').addEventListener('click', () => {
++      renderProcessedEvents();
++    });
++  </script>
+ </body>
+ 
+ </html>

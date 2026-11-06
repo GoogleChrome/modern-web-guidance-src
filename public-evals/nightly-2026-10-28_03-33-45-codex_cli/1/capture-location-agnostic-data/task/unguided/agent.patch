@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,50 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      margin-top: 40px;
++      text-align: left;
++    }
++
++    .preferences h2 {
++      color: var(--primary);
++    }
++
++    .preferences label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .preferences input {
++      width: 100%;
++      min-width: 0;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .preferences .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .preferences input:focus-visible,
++    .preferences .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .preferences-status {
++      margin-top: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +236,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Your Coffee Ritual</h2>
++      <p id="preferences-help">Choose your daily pickup reminder time and coffee anniversary date. Both stay exactly as selected, wherever you travel.</p>
++      <form id="coffee-preferences" aria-describedby="preferences-help preferences-note">
++        <div class="grid">
++          <div>
++            <label for="pickup-time">Daily pickup reminder time</label>
++            <input type="time" id="pickup-time" name="pickupTime" step="60">
++          </div>
++          <div>
++            <label for="coffee-anniversary">Coffee anniversary date</label>
++            <input type="date" id="coffee-anniversary" name="coffeeAnniversary">
++          </div>
++        </div>
++        <p id="preferences-note">Saved in this browser on this device. You can leave either field blank to clear it. This saves your preferences; it does not send notifications.</p>
++        <button type="submit" class="btn">Save preferences</button>
++        <p id="preferences-status" class="preferences-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +268,48 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const storageKey = 'daily-grind-coffee-preferences';
++      const form = document.getElementById('coffee-preferences');
++      const pickupTime = document.getElementById('pickup-time');
++      const coffeeAnniversary = document.getElementById('coffee-anniversary');
++      const status = document.getElementById('preferences-status');
++
++      try {
++        const saved = JSON.parse(localStorage.getItem(storageKey));
++        if (saved && typeof saved === 'object') {
++          // Native inputs restore plain calendar/time strings without timezone conversion.
++          if (typeof saved.pickupTime === 'string') pickupTime.value = saved.pickupTime;
++          if (typeof saved.coffeeAnniversary === 'string') coffeeAnniversary.value = saved.coffeeAnniversary;
++        }
++      } catch {
++        status.textContent = 'Saved preferences could not be loaded. You can choose them again below.';
++      }
++
++      form.addEventListener('input', () => {
++        status.textContent = 'Unsaved changes. Select Save preferences to keep them.';
++      });
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        // These are floating wall-clock/calendar values, never instants. Keep the
++        // input strings verbatim: Date, UTC, and timezone conversions would shift them.
++        const preferences = {
++          pickupTime: pickupTime.value,
++          coffeeAnniversary: coffeeAnniversary.value
++        };
++        try {
++          localStorage.setItem(storageKey, JSON.stringify(preferences));
++          status.textContent = 'Preferences saved. Your selected time and date stay the same when you travel.';
++        } catch {
++          status.textContent = 'Preferences could not be saved in this browser. Please enable browser storage and try again.';
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

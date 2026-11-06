@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+index 66c9173..8e15e77 100644
+--- a/index.html
++++ b/index.html
+@@ -62,10 +62,27 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
++    /* Nav links: underline that wipes in from the left on hover/focus */
++    nav ul a {
++      text-decoration: underline solid currentColor max(1px, 0.1em);
++      text-underline-offset: 0.3em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul a {
++        text-decoration-inset: 0 100%;
++        transition: color 0.3s, text-decoration-inset 0.25s ease-out;
++      }
++
++      nav ul a:is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -118,6 +135,63 @@
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      /* Accent-colored (not currentColor) so the title doesn't read as a link */
++      text-decoration: underline solid var(--accent) max(2px, 0.12em);
++      text-underline-offset: 0.22em;
++      /* Short, trimmed line at rest; extends past the text when the card is hovered */
++      text-decoration-inset: 0.6em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .card h3 {
++        transition: text-decoration-inset 0.3s ease-out;
++      }
++
++      .card:is(:hover, :focus-within) h3 {
++        text-decoration-inset: -0.2em;
++      }
++    }
++
++    /* Section heading: hand-drawn squiggle that draws itself on load */
++    .section-title {
++      position: relative;
++      width: fit-content;
++      margin-inline: auto;
++      padding-block-end: 0.4em;
++      text-align: center;
++    }
++
++    .section-title::after {
++      content: "";
++      position: absolute;
++      inset: auto 0 0 0;
++      pointer-events: none;
++      /* Fallback: a straight line */
++      border-block-end: max(2px, 0.08em) solid var(--accent);
++    }
++
++    @supports (border-shape: circle(50%)) {
++      .section-title::after {
++        block-size: 0.4em;
++        border: max(2px, 0.08em) solid var(--accent);
++        border-shape: shape(from 0% 50%,
++          curve to 20% 50% with 5% 0% / 15% 100%,
++          smooth to 40% 50% with 35% 100%,
++          smooth to 60% 50% with 55% 100%,
++          smooth to 80% 50% with 75% 100%,
++          smooth to 100% 50% with 95% 100%);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .section-title::after {
++        animation: draw-line 0.8s 0.2s ease-out both;
++      }
++
++      @keyframes draw-line {
++        from { clip-path: inset(-1em 100% -1em 0); }
++        to { clip-path: inset(-1em 0 -1em 0); }
++      }
+     }
+ 
+     .btn {
+@@ -149,8 +223,24 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
++      /* Soft dotted underline that firms up and grows outward on hover/focus */
++      text-decoration: underline dotted color-mix(in srgb, currentColor, transparent) max(1px, 0.08em);
++      text-underline-offset: 0.25em;
++      text-decoration-inset: 0.25em;
++    }
++
++    .footer-links a:is(:hover, :focus-visible) {
++      text-decoration-style: solid;
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.12em);
++      text-decoration-inset: -0.15em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .footer-links a {
++        transition: text-decoration-inset 0.25s ease-out, text-decoration-color 0.25s;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +266,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

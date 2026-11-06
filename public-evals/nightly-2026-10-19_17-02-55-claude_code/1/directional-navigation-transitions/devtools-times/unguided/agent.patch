@@ -1,0 +1,118 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..be67975
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,76 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++export interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++<div class="bg-white border-b border-gray-300">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <div class="top-stories-slider flex items-center gap-4" role="region" aria-roledescription="carousel" aria-label="Top stories">
++            <button type="button" data-prev aria-label="Previous story" class="shrink-0 px-3 py-1 text-sm font-semibold border border-gray-300 rounded hover:text-amber-400 hover:border-amber-400 cursor-pointer">
++                Previous
++            </button>
++            <div class="slider-viewport relative flex-1 overflow-hidden" aria-live="polite">
++                {articles.map((article, index) => (
++                    <div class="slide" role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${articles.length}`} hidden={index !== 0}>
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                        </a>
++                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    </div>
++                ))}
++            </div>
++            <button type="button" data-next aria-label="Next story" class="shrink-0 px-3 py-1 text-sm font-semibold border border-gray-300 rounded hover:text-amber-400 hover:border-amber-400 cursor-pointer">
++                Next
++            </button>
++        </div>
++    </div>
++</div>
++
++<style>
++    @keyframes slide-in-from-right {
++        from { transform: translateX(100%); }
++        to { transform: translateX(0); }
++    }
++    @keyframes slide-in-from-left {
++        from { transform: translateX(-100%); }
++        to { transform: translateX(0); }
++    }
++    .slide.from-right { animation: slide-in-from-right 300ms ease-out; }
++    .slide.from-left { animation: slide-in-from-left 300ms ease-out; }
++
++    @media (prefers-reduced-motion: reduce) {
++        .slide.from-right,
++        .slide.from-left {
++            animation: none;
++        }
++    }
++</style>
++
++<script>
++    document.querySelectorAll<HTMLElement>('.top-stories-slider').forEach((slider) => {
++        const slides = Array.from(slider.querySelectorAll<HTMLElement>('.slide'));
++        let current = 0;
++
++        const show = (direction: 'next' | 'prev') => {
++            const target = (current + (direction === 'next' ? 1 : -1) + slides.length) % slides.length;
++            if (target === current) return;
++            slides[current].hidden = true;
++            slides[current].classList.remove('from-left', 'from-right');
++
++            const incoming = slides[target];
++            incoming.classList.remove('from-left', 'from-right');
++            incoming.hidden = false;
++            // Force reflow so the animation restarts when revisiting a slide.
++            void incoming.offsetWidth;
++            incoming.classList.add(direction === 'next' ? 'from-right' : 'from-left');
++            current = target;
++        };
++
++        slider.querySelector('[data-next]')?.addEventListener('click', () => show('next'));
++        slider.querySelector('[data-prev]')?.addEventListener('click', () => show('prev'));
++    });
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..4d88d53 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,6 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+@@ -38,21 +39,8 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <!-- Top Stories Slider -->
++    <TopStoriesSlider articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">

@@ -1,0 +1,172 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,155 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Info Button / Anchor */
++    #anchor {
++      anchor-name: --anchor;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      border: 1.5px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font-size: 0.95rem;
++      font-weight: bold;
++      cursor: pointer;
++      margin-left: 8px;
++      margin-top: 15px;
++      vertical-align: middle;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    #anchor:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Fallback position definitions */
++    @position-try --bottom {
++      position-area: bottom;
++      margin-top: 8px;
++      margin-bottom: 0;
++    }
++
++    /* Popover Tooltip with CSS Anchor Positioning */
++    #tooltip,
++    .tooltip {
++      position: fixed;
++      position-anchor: --anchor;
++      position-area: top;
++      position-try-fallbacks: flip-block, --bottom;
++      container-type: anchored;
++
++      /* Reset default popover styling */
++      inset: auto;
++      margin: 0;
++      margin-bottom: 8px;
++      border: none;
++      padding: 8px 14px;
++
++      /* Visual presentation */
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      max-width: 220px;
++      text-align: center;
++      overflow: visible;
++    }
++
++    /* Pseudo-element arrow pointing down by default (when tooltip is above the anchor) */
++    #tooltip::before,
++    .tooltip::before {
++      content: "";
++      position: absolute;
++      top: 100%;
++      bottom: auto;
++      left: 50%;
++      transform: translateX(-50%);
++      width: 0;
++      height: 0;
++      border-left: 6px solid transparent;
++      border-right: 6px solid transparent;
++      border-top: 6px solid var(--primary);
++      border-bottom: none;
++    }
++
++    /* CSS State Querying: active anchored position fallbacks */
++    @container anchored(fallback: flip-block) {
++      #tooltip,
++      .tooltip {
++        border-radius: 4px;
++        margin-top: 8px;
++        margin-bottom: 0;
++      }
++
++      #tooltip::before,
++      .tooltip::before {
++        top: auto;
++        bottom: 100%;
++        border-top: none;
++        border-bottom: 6px solid var(--primary);
++      }
++    }
++
++    @container anchored(fallback: --bottom) {
++      #tooltip,
++      .tooltip {
++        border-radius: 4px;
++        margin-top: 8px;
++        margin-bottom: 0;
++      }
++
++      #tooltip::before,
++      .tooltip::before {
++        top: auto;
++        bottom: 100%;
++        border-top: none;
++        border-bottom: 6px solid var(--primary);
++      }
++    }
++
++    @container anchored(fallback: bottom) {
++      #tooltip,
++      .tooltip {
++        border-radius: 4px;
++        margin-top: 8px;
++        margin-bottom: 0;
++      }
++
++      #tooltip::before,
++      .tooltip::before {
++        top: auto;
++        bottom: 100%;
++        border-top: none;
++        border-bottom: 6px solid var(--primary);
++      }
++    }
++
++    @container anchored(position-area: bottom) {
++      #tooltip,
++      .tooltip {
++        border-radius: 4px;
++        margin-top: 8px;
++        margin-bottom: 0;
++      }
++
++      #tooltip::before,
++      .tooltip::before {
++        top: auto;
++        bottom: 100%;
++        border-top: none;
++        border-bottom: 6px solid var(--primary);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -181,8 +328,12 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" id="anchor" class="info-btn" popovertarget="tooltip" aria-describedby="tooltip" aria-label="More information">ℹ</button>
++          <div id="tooltip" class="tooltip" popover anchor="anchor" role="tooltip">
++            Handcrafted with organic oat milk and pure Vermont maple syrup.
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

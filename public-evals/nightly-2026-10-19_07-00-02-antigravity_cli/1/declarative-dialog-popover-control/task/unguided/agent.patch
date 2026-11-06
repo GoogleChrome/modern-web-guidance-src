@@ -1,0 +1,212 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -54,17 +54,23 @@
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    .logout-link {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, border-color 0.3s;
++      background: transparent;
++      font-family: inherit;
++      cursor: pointer;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    .logout-link:hover {
+       color: var(--accent);
++      border-color: var(--accent);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+@@ -128,14 +134,109 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    /* Native Dialog Styling */
++    dialog {
++      margin: auto;
++      padding: 24px;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      max-width: 420px;
++      width: 90%;
++      background: white;
++      color: var(--text);
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++      backdrop-filter: blur(2px);
++    }
++
++    dialog h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    dialog p {
++      margin-bottom: 16px;
++      color: var(--text);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
++    .dialog-actions form {
++      display: inline;
++      margin: 0;
++    }
++
++    /* Native Popover Styling */
++    [popover] {
++      margin: auto;
++      padding: 24px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++      max-width: 420px;
++      width: 90%;
++      background: white;
++      color: var(--text);
++    }
++
++    [popover]::backdrop {
++      background: rgba(0, 0, 0, 0.4);
++    }
++
++    [popover] h4 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.2rem;
++    }
++
++    .popover-list {
++      list-style: none;
++      margin: 12px 0 16px 0;
++      text-align: left;
++    }
++
++    .popover-list li {
++      padding: 6px 0;
++      border-bottom: 1px solid #f0f0f0;
++      font-size: 0.9rem;
++      display: flex;
++      justify-content: space-between;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,9 +264,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="logout-link" commandfor="logout-dialog" command="show-modal">Logout</button></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -180,14 +281,38 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="maple-oat-latte-popover" popovertargetaction="toggle">View Details</button>
++          <div id="maple-oat-latte-popover" popover>
++            <h4>Maple Oat Latte Nutritional Info</h4>
++            <p>Serving Size: 16 fl oz</p>
++            <ul class="popover-list">
++              <li><span>Calories</span> <strong>210</strong></li>
++              <li><span>Total Fat</span> <strong>5g</strong></li>
++              <li><span>Sodium</span> <strong>115mg</strong></li>
++              <li><span>Total Carbohydrates</span> <strong>38g</strong></li>
++              <li><span>Sugars</span> <strong>24g</strong></li>
++              <li><span>Protein</span> <strong>3g</strong></li>
++              <li><span>Caffeine</span> <strong>150mg</strong></li>
++            </ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="espresso-popover" popovertargetaction="show">View Details</button>
++          <div id="espresso-popover" popover>
++            <h4>Dark Roast Espresso</h4>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <ul class="popover-list">
++              <li><span>Roast Level</span> <strong>Dark Roast</strong></li>
++              <li><span>Origin</span> <strong>Sumatra & Colombia</strong></li>
++              <li><span>Intensity</span> <strong>9 / 10</strong></li>
++              <li><span>Caffeine</span> <strong>130mg</strong></li>
++            </ul>
++            <button type="button" class="btn btn-secondary" popovertarget="espresso-popover" popovertargetaction="hide">Close</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+@@ -196,8 +321,19 @@
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="logout-dialog">
++    <h3>Confirm Logout</h3>
++    <p>Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <form method="dialog">
++        <button type="submit" commandfor="logout-dialog" command="close" class="btn btn-secondary">Cancel</button>
++      </form>
++      <a href="/logout" class="btn">Logout</a>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

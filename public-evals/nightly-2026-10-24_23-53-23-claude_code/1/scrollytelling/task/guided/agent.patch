@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,105 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling */
++    .story {
++      margin-top: 80px;
++      timeline-scope: --tl-1, --tl-2, --tl-3;
++    }
++
++    .story > h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .story-layout {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 40px;
++    }
++
++    #tracked section {
++      min-height: 70vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 10px;
++    }
++
++    #animated section {
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++      padding: 40px 30px;
++      margin-bottom: 20px;
++      text-align: center;
++    }
++
++    #animated .step {
++      display: block;
++      font-size: 4rem;
++      font-weight: bold;
++      color: var(--accent);
++    }
++
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      #tracked section:nth-child(1) { view-timeline: --tl-1 block; }
++      #tracked section:nth-child(2) { view-timeline: --tl-2 block; }
++      #tracked section:nth-child(3) { view-timeline: --tl-3 block; }
++
++      #animated {
++        position: sticky;
++        top: 90px;
++        align-self: start;
++        display: grid;
++        height: 50vh;
++      }
++
++      #animated section {
++        grid-area: 1 / 1;
++        margin: 0;
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        will-change: transform, opacity;
++        animation: story-in auto linear both, story-out auto linear forwards;
++        animation-range: entry 25% cover 50%, exit 50% exit 75%;
++      }
++
++      #animated section:nth-child(1) { animation-timeline: --tl-1; }
++      #animated section:nth-child(2) { animation-timeline: --tl-2; }
++      #animated section:nth-child(3) { animation-timeline: --tl-3; }
++
++      @keyframes story-in {
++        from { opacity: 0; transform: scale(0.85) translateY(40px); }
++        to { opacity: 1; transform: none; }
++      }
++
++      @keyframes story-out {
++        to { opacity: 0; transform: translateY(-40px); }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        #animated {
++          position: static;
++          height: auto;
++          display: block;
++        }
++
++        #animated section {
++          animation: none;
++          margin-bottom: 20px;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +291,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story">
++      <h2>From Bean to Cup</h2>
++      <div class="story-layout">
++        <div id="tracked">
++          <section>
++            <h3>Sourced with care</h3>
++            <p>We buy directly from small farms, paying fair prices for beans picked at peak ripeness.</p>
++          </section>
++          <section>
++            <h3>Roasted locally</h3>
++            <p>Small batches are roasted every morning, so your coffee never sits on a shelf.</p>
++          </section>
++          <section>
++            <h3>Brewed to order</h3>
++            <p>Every cup is made by a barista who knows exactly how you like it.</p>
++          </section>
++        </div>
++        <div id="animated" aria-hidden="true">
++          <section>
++            <span class="step">01</span>
++            <p>Farm</p>
++          </section>
++          <section>
++            <span class="step">02</span>
++            <p>Roast</p>
++          </section>
++          <section>
++            <span class="step">03</span>
++            <p>Brew</p>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

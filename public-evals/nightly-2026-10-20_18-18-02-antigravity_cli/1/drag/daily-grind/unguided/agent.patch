@@ -1,0 +1,283 @@
+diff --git a/index.html b/index.html
+index 66c9173..97666db 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,114 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating Draggable Widget */
++    .floating-widget {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      width: 280px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 8px 24px rgba(62, 39, 35, 0.22);
++      border: 1px solid var(--secondary);
++      z-index: 2000;
++      cursor: grab;
++      user-select: none;
++      -webkit-user-select: none;
++      touch-action: none;
++      overflow: hidden;
++      transition: box-shadow 0.2s ease;
++    }
++
++    .floating-widget.dragging {
++      cursor: grabbing;
++      box-shadow: 0 14px 32px rgba(62, 39, 35, 0.35);
++      transition: none;
++    }
++
++    .floating-widget-header {
++      background: var(--primary);
++      color: white;
++      padding: 10px 14px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .drag-handle-icon {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .drag-dots {
++      opacity: 0.7;
++      font-size: 1rem;
++      letter-spacing: -1px;
++    }
++
++    .floating-widget-close {
++      background: transparent;
++      border: none;
++      color: var(--secondary);
++      font-size: 1.2rem;
++      line-height: 1;
++      cursor: pointer;
++      padding: 2px 6px;
++      border-radius: 4px;
++      transition: color 0.2s, background 0.2s;
++    }
++
++    .floating-widget-close:hover {
++      color: white;
++      background: rgba(255, 255, 255, 0.15);
++    }
++
++    .floating-widget-body {
++      padding: 14px;
++      font-size: 0.88rem;
++      color: var(--text);
++    }
++
++    .floating-widget-body p {
++      margin-bottom: 10px;
++    }
++
++    .floating-widget-actions {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 8px;
++    }
++
++    .floating-widget .btn-sm {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++      padding: 6px 12px;
++      text-decoration: none;
++      border-radius: 6px;
++      font-size: 0.82rem;
++      cursor: pointer;
++      border: none;
++      transition: filter 0.2s;
++    }
++
++    .floating-widget .btn-sm:hover {
++      filter: brightness(0.95);
++    }
++
++    .floating-widget.minimized {
++      width: auto;
++    }
++
++    .floating-widget.minimized .floating-widget-body {
++      display: none;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +315,163 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside id="floating-widget" class="floating-widget" aria-label="Quick Order &amp; Rewards">
++    <div class="floating-widget-header">
++      <span class="drag-handle-icon">
++        <span class="drag-dots" aria-hidden="true">⋮⋮</span>
++        <span>☕ Daily Grind Perks</span>
++      </span>
++      <button type="button" class="floating-widget-close" id="toggle-widget" title="Minimize / Expand" aria-label="Minimize or Expand">−</button>
++    </div>
++    <div class="floating-widget-body">
++      <p>Get <strong>20% off</strong> your next Maple Oat Latte when you order ahead!</p>
++      <div class="floating-widget-actions">
++        <a href="/order-online" class="btn-sm" draggable="false">Claim Offer</a>
++        <span style="font-size: 0.75rem; opacity: 0.75;">Drag to move</span>
++      </div>
++    </div>
++  </aside>
++
++  <script>
++    (function () {
++      const widget = document.getElementById('floating-widget');
++      const toggleBtn = document.getElementById('toggle-widget');
++
++      let isDragging = false;
++      let startX = 0;
++      let startY = 0;
++      let initialLeft = 0;
++      let initialTop = 0;
++
++      function clampToViewport(left, top) {
++        const rect = widget.getBoundingClientRect();
++        const maxLeft = Math.max(0, window.innerWidth - rect.width);
++        const maxTop = Math.max(0, window.innerHeight - rect.height);
++        return {
++          left: Math.min(Math.max(0, left), maxLeft),
++          top: Math.min(Math.max(0, top), maxTop)
++        };
++      }
++
++      function setPosition(left, top) {
++        const clamped = clampToViewport(left, top);
++        widget.style.left = clamped.left + 'px';
++        widget.style.top = clamped.top + 'px';
++        widget.style.right = 'auto';
++        widget.style.bottom = 'auto';
++      }
++
++      function isInteractiveTarget(target) {
++        return Boolean(target.closest('a, button, input, textarea, select'));
++      }
++
++      function onDragStart(clientX, clientY, target) {
++        if (isInteractiveTarget(target)) return false;
++
++        const rect = widget.getBoundingClientRect();
++        isDragging = true;
++        startX = clientX;
++        startY = clientY;
++        initialLeft = rect.left;
++        initialTop = rect.top;
++
++        setPosition(initialLeft, initialTop);
++        widget.classList.add('dragging');
++        return true;
++      }
++
++      function onDragMove(clientX, clientY) {
++        if (!isDragging) return;
++        const dx = clientX - startX;
++        const dy = clientY - startY;
++        setPosition(initialLeft + dx, initialTop + dy);
++      }
++
++      function onDragEnd() {
++        if (!isDragging) return;
++        isDragging = false;
++        widget.classList.remove('dragging');
++      }
++
++      // Pointer Events
++      widget.addEventListener('pointerdown', function (e) {
++        if (e.button !== undefined && e.button !== 0) return;
++        if (onDragStart(e.clientX, e.clientY, e.target)) {
++          if (widget.setPointerCapture && e.pointerId !== undefined) {
++            try {
++              widget.setPointerCapture(e.pointerId);
++            } catch (_) {}
++          }
++          e.preventDefault();
++        }
++      });
++
++      window.addEventListener('pointermove', function (e) {
++        if (!isDragging) return;
++        onDragMove(e.clientX, e.clientY);
++      });
++
++      window.addEventListener('pointerup', onDragEnd);
++      window.addEventListener('pointercancel', onDragEnd);
++
++      // Mouse Events fallback
++      widget.addEventListener('mousedown', function (e) {
++        if (e.button !== 0 || isDragging) return;
++        if (onDragStart(e.clientX, e.clientY, e.target)) {
++          e.preventDefault();
++        }
++      });
++
++      window.addEventListener('mousemove', function (e) {
++        if (!isDragging) return;
++        onDragMove(e.clientX, e.clientY);
++      });
++
++      window.addEventListener('mouseup', onDragEnd);
++
++      // Touch Events fallback
++      widget.addEventListener('touchstart', function (e) {
++        if (isDragging || e.touches.length !== 1) return;
++        const touch = e.touches[0];
++        if (onDragStart(touch.clientX, touch.clientY, e.target)) {
++          e.preventDefault();
++        }
++      }, { passive: false });
++
++      window.addEventListener('touchmove', function (e) {
++        if (!isDragging || e.touches.length !== 1) return;
++        const touch = e.touches[0];
++        onDragMove(touch.clientX, touch.clientY);
++        e.preventDefault();
++      }, { passive: false });
++
++      window.addEventListener('touchend', onDragEnd);
++      window.addEventListener('touchcancel', onDragEnd);
++
++      // Keep within viewport on window resize if already positioned via left/top
++      window.addEventListener('resize', function () {
++        if (widget.style.left && widget.style.top) {
++          const currentLeft = parseFloat(widget.style.left);
++          const currentTop = parseFloat(widget.style.top);
++          if (!Number.isNaN(currentLeft) && !Number.isNaN(currentTop)) {
++            setPosition(currentLeft, currentTop);
++          }
++        }
++      });
++
++      // Minimize / Expand toggle
++      if (toggleBtn) {
++        toggleBtn.addEventListener('click', function () {
++          const minimized = widget.classList.toggle('minimized');
++          toggleBtn.textContent = minimized ? '+' : '−';
++          if (widget.style.left && widget.style.top) {
++            setPosition(parseFloat(widget.style.left), parseFloat(widget.style.top));
++          }
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

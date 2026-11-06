@@ -1,0 +1,184 @@
+diff --git a/index.html b/index.html
+index 66c9173..f1d8fd8 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --motion-fast: 180ms;
++      --motion-normal: 240ms;
++      --motion-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+     }
+ 
+     * {
+@@ -56,16 +59,44 @@
+     }
+ 
+     nav a {
++      position: relative;
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
++    /* Reveal a painted underline with transforms instead of animating its width. */
++    nav a::after,
++    .footer-links a::after {
++      content: "";
++      position: absolute;
++      inset: auto 0 -4px;
++      height: 2px;
++      background: currentColor;
++      transform: scaleX(0);
++      transform-origin: left;
++      pointer-events: none;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: transform var(--motion-fast) var(--motion-ease);
++      }
++    }
++
++    nav a:is(:hover, :focus-visible)::after,
++    .footer-links a:is(:hover, :focus-visible)::after {
++      transform: scaleX(1);
++    }
++
++    a:focus-visible {
++      outline: 2px solid currentColor;
++      outline-offset: 5px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -108,11 +139,38 @@
+     }
+ 
+     .card {
++      position: relative;
++      isolation: isolate;
++      translate: 0 0;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: translate var(--motion-normal) var(--motion-ease);
++      }
++    }
++
++    /* Fade a fixed shadow layer; never interpolate box-shadow on each frame. */
++    .card::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      border-radius: inherit;
++      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
++      opacity: 0;
++      pointer-events: none;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: opacity var(--motion-normal) var(--motion-ease);
++      }
++    }
++
++    .card:focus-within::before {
++      opacity: 1;
+     }
+ 
+     .card h3 {
+@@ -121,6 +179,9 @@
+     }
+ 
+     .btn {
++      position: relative;
++      isolation: isolate;
++      translate: 0 0;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -128,11 +189,62 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: translate var(--motion-fast) var(--motion-ease);
++      }
+     }
+ 
+-    .btn:hover {
++    .btn::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      border-radius: inherit;
+       background: #3e2723;
++      opacity: 0;
++      pointer-events: none;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: opacity var(--motion-fast) var(--motion-ease);
++      }
++    }
++
++    .btn:focus-visible::before {
++      opacity: 1;
++    }
++
++    /* Avoid sticky hover effects on touch screens. */
++    @media (hover: hover) and (pointer: fine) {
++      .card:hover::before,
++      .btn:hover::before {
++        opacity: 1;
++      }
++    }
++
++    /* Static interaction feedback remains available when motion is reduced. */
++    @media (prefers-reduced-motion: no-preference) {
++      .card:focus-within {
++        translate: 0 -4px;
++      }
++
++      .btn:focus-visible {
++        translate: 0 -2px;
++      }
++
++      @media (hover: hover) and (pointer: fine) {
++        .card:hover {
++          translate: 0 -4px;
++        }
++
++        .btn:hover {
++          translate: 0 -2px;
++        }
++      }
++
++      .btn:active {
++        translate: 0 0;
++      }
+     }
+ 
+     footer {
+@@ -147,6 +259,8 @@
+     }
+ 
+     .footer-links a {
++      position: relative;
++      display: inline-block;
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;

@@ -1,0 +1,300 @@
+diff --git a/index.html b/index.html
+index 66c9173..1894595 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,88 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
++<meta name="theme-color" content="#f7f8f5"><title>Selector — CSS logic, simplified</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;450;500&display=swap" rel="stylesheet">
++<style>
++:root{--bg:#f7f8f5;--surface:#fff;--text:#25352d;--muted:#869087;--line:#e5e9e2;--green:#2e6548;--pale:#eaf1e7;--mono:'IBM Plex Mono',monospace;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--bg);font-synthesis:none}body{margin:0;font-size:14px}button,input,select,textarea{font:inherit}button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button{color:inherit}button:disabled{cursor:default}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #8dbb90;outline-offset:3px}button, input, select, textarea{box-sizing:border-box}a{color:inherit;text-decoration:none}svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}.sidebar{width:222px;position:fixed;inset:0 auto 0 0;background:#f0f3ed;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:34px 22px 21px;box-sizing:border-box}.brand{display:flex;gap:10px;align-items:center;font-size:26px;font-weight:700;letter-spacing:-1.2px;padding:0 9px}.brand-mark{position:relative;width:29px;height:29px;display:flex;align-items:center}.brand-mark i{width:17px;height:23px;border:2px solid var(--green);border-radius:10px;position:absolute;transform:rotate(32deg)}.brand-mark i:last-child{left:9px;background:#f0f3ed99}.brand-sub{font-size:10px;color:#8a948a;letter-spacing:1.5px;margin:13px 9px 42px}.nav-label{font-size:10px;font-weight:600;letter-spacing:1.7px;color:#98a093;margin:0 12px 12px}.nav-list{display:grid;gap:6px}.nav-btn{display:flex;align-items:center;gap:12px;border:0;background:transparent;padding:12px;border-radius:7px;text-align:left;color:#758071;font-size:13px}.nav-btn.active{background:#e0e9da;color:#345539;font-weight:600}.nav-btn svg{width:17px;height:17px}.badge{margin-left:auto;font-size:10px;border:1px solid #d8dfd2;padding:1px 6px;border-radius:4px;color:#7e8c76}.resource-nav{margin-top:38px}.sidebar-bottom{margin-top:auto}.little-card{background:#e6eddf;border:1px solid #dce5d4;border-radius:8px;padding:15px 13px;margin-bottom:21px}.little-card svg{color:#7c9568;margin-bottom:8px}.little-card strong{display:block;font-size:12px;margin-bottom:7px}.little-card p{color:#85917a;font-size:11px;line-height:1.7;margin:0}.sidebar-foot{font-size:10px;display:flex;justify-content:space-between;color:#9aa392;padding:0 6px}.online{display:flex;align-items:center;gap:5px}.dot{display:inline-block;width:5px;height:5px;background:#6c9463;border-radius:50%}.app{margin-left:222px}.topbar{height:75px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid var(--line);background:#fafbf8}.breadcrumbs{display:flex;align-items:center;gap:13px;font-size:11px;color:#8a9287}.breadcrumbs svg{width:15px;height:15px}.breadcrumbs .current{color:#495343}.top-actions{display:flex;gap:19px;align-items:center}.top-actions a{font-size:11px;color:#737d6c;display:flex;gap:7px;align-items:center}.top-actions .divider{width:1px;height:19px;background:var(--line)}.avatar{background:#e6e9dc;width:29px;height:29px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:600;color:#69715c}.page{max-width:1320px;margin:auto;padding:37px 40px 25px}.page-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}.eyebrow{font-size:9px;letter-spacing:1.8px;color:#8d9a81;font-weight:600;display:flex;align-items:center;gap:7px;margin-bottom:10px}h1{font-size:30px;letter-spacing:-1.15px;line-height:1.2;margin:0 0 10px;font-weight:550}.subtitle{font-size:12px;color:#8b9287;margin:0}.btn{display:inline-flex;justify-content:center;align-items:center;gap:7px;background:#fff;border:1px solid #dce2d7;padding:9px 13px;border-radius:6px;font-size:11px;white-space:nowrap;transition:background .15s}.btn:hover{background:#edf1e9}.btn svg{width:14px;height:14px}.btn-primary{background:var(--green);color:#fff;border-color:var(--green)}.btn-primary:hover{background:#244f38}.heading-actions{display:flex;gap:8px;padding-top:16px}.workspace{display:grid;grid-template-columns:minmax(310px, .87fr) minmax(400px,1.13fr);gap:22px;align-items:start}.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}.panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 21px;border-bottom:1px solid #edf0e9;height:21px}.panel-title{display:flex;gap:9px;align-items:center;font-size:12px;font-weight:600}.panel-title svg{width:16px;height:16px;color:#8c9785}.tiny-label{font-size:9px;color:#99a18f;letter-spacing:.3px}.builder-body{padding:23px 21px 20px}.field-caption{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:550;margin-bottom:11px}.info{color:#a7ae9d;border:1px solid #b4bba9;width:11px;height:11px;font-size:8px;border-radius:50%;display:inline-grid;place-items:center;margin-left:5px}.segmented{display:flex;padding:4px;background:#f4f5f0;border:1px solid #e9ece3;border-radius:7px;gap:4px}.segment{border:0;padding:10px 5px;border-radius:5px;background:transparent;color:#8b9481;font-size:11px;flex:1;display:flex;justify-content:center;align-items:center;gap:8px}.segment svg{width:22px;height:15px}.segment.active{background:white;box-shadow:0 1px 4px #293a2312;color:#46663b;font-weight:600}.helper{font-size:10px;color:#9aa18f;line-height:1.6;margin:10px 0 23px}.condition{padding:15px;border:1px solid #e5e9df;border-radius:7px;background:#fff}.condition-top{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:550;margin-bottom:12px}.condition-letter{display:grid;place-items:center;width:19px;height:19px;border-radius:4px;background:#eef1e8;color:#7b8c6b;font-size:10px;font-family:var(--mono)}.condition-type{margin-left:auto;color:#9aa28e;letter-spacing:.5px;font-size:8px}.remove{padding:0;border:0;background:transparent;color:#a7ad9d;margin-left:5px;display:flex}.remove svg{width:12px;height:12px}.input-wrap{position:relative}.input-prefix{position:absolute;left:11px;top:11px;font-family:var(--mono);font-size:11px;color:#9da88e}.condition input,.condition select,.property-input{width:100%;border:1px solid #e4e8de;border-radius:5px;background:#fafbf8;padding:10px 11px;font-size:11px;color:#5c6e4d;font-family:var(--mono)}.condition select{padding-left:33px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2399a18f'%3E%3Cpath d='m3 5 3 3 3-3'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}.condition small{display:block;font-size:9px;color:#a1a894;margin-top:9px}.logic-connector{height:30px;display:flex;justify-content:center;align-items:center;position:relative}.logic-connector:before{content:'';position:absolute;top:0;bottom:0;width:1px;background:var(--line)}.logic-connector span{z-index:1;color:#7a8b69;background:#f0f4e9;border:1px solid #e2e9d8;border-radius:4px;font:8px var(--mono);padding:3px 8px}.add-condition{width:100%;border:1px dashed #dce3d3;background:#fff;border-radius:5px;padding:10px;margin:13px 0 22px;color:#8a977c;font-size:10px}.add-condition:hover{background:#f5f8ef}.add-condition svg{height:12px;width:12px;margin-right:5px}.declarations{border-top:1px solid #edf0e8;padding-top:20px}.declarations .field-caption{margin-bottom:14px}.style-rows{display:grid;gap:8px}.style-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.property-input{font-size:10px;padding:9px 10px}.color-input{display:flex;align-items:center;border:1px solid #e4e8de;border-radius:5px;padding:0 9px;background:#fafbf8;gap:8px}.color-input input[type=color]{width:17px;height:18px;border:0;padding:0;background:transparent;cursor:pointer}.color-input span{font:10px var(--mono);color:#6f7a60}.builder-foot{padding:14px 21px;background:#fafbf8;border-top:1px solid #edf0e8;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#8f9b82}.builder-foot .reset{border:0;background:none;font-size:10px;color:#8d9981;display:flex;gap:5px;align-items:center;padding:0}.reset svg{width:12px;height:12px}.right-column{display:grid;gap:20px}.preview-tools{display:flex;align-items:center;gap:9px}.icon-btn{border:0;background:transparent;color:#a6ae9c;display:grid;place-items:center;padding:4px;border-radius:4px}.icon-btn.active{background:#edf2e7;color:#668150}.icon-btn svg{width:13px;height:13px}.tool-separator{height:15px;width:1px;background:#e4e9dc}.width-select{border:0;background:transparent;color:#8c9780;font-size:9px;outline-offset:0;max-width:80px}.preview-stage{padding:22px 23px 18px;background-color:#fcfdf9;background-image:radial-gradient(#dfe6d7 .65px,transparent .65px);background-size:12px 12px}.preview-caption{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#98a08d;margin-bottom:19px}.live-pill{display:flex;align-items:center;gap:5px;background:#eef4e7;border:1px solid #e2ebd8;border-radius:4px;padding:3px 6px;font-size:8px;color:#7b9266}.preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}.sample{min-width:0;--selector:false;--condition:false;--extra:false}.sample-card{padding:15px 12px 12px;background:#fff;border:1px solid #dfe5d6;border-radius:7px;min-height:76px;position:relative;transition:background .2s,border-color .2s,box-shadow .2s}.card-symbol{width:26px;height:26px;display:grid;place-items:center;background:#f3f5ed;border-radius:6px;color:#a6b397;margin-bottom:12px}.card-symbol svg{width:14px;height:14px}.sample-card strong{display:block;font-size:10px;font-weight:500;color:#657456}.sample-card code{font:8px var(--mono);color:#a4ad98;display:block;margin-top:5px}.match-check{display:none;position:absolute;right:9px;top:9px;color:#6c8e50}.match-check svg{width:12px;height:12px}.sample-card.matched{border-color:#a7bc8c;box-shadow:0 0 0 2px #abc49019;background:#edf3e5}.sample-card.matched .card-symbol{color:#71924e;background:#dfeacc}.sample-card.matched strong{color:#567339}.sample-card.matched .match-check{display:block}.preview-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:18px;color:#94a084;font-size:9px}.legend{display:flex;gap:13px}.legend span{display:flex;align-items:center;gap:4px}.legend i{width:6px;height:6px;background:#e1ebd3;border:1px solid #acc28e;border-radius:2px}.legend span:last-child i{background:#fff;border-color:#d4dcc9}.preview-note{background:#fff;border-top:1px solid #e9ede2;padding:12px 21px;display:flex;align-items:center;gap:7px;font-size:9px;color:#97a08a}.preview-note svg{width:12px;height:12px;color:#8d9b7e}.code-panel{background:#222d27;border-color:#222d27;color:#cfdbc8}.code-panel .panel-head{border-color:#364039}.code-panel .panel-title{color:#e0e7db;font-size:11px}.code-panel .panel-title svg{color:#8d9b89}.code-actions{display:flex;gap:9px;align-items:center}.code-tag{font:8px var(--mono);color:#8e9c87;padding:3px 6px;background:#2e3a31;border:1px solid #3e493c;border-radius:4px}.copy-btn{border:0;background:transparent;font-size:9px;color:#bdcbb4;display:flex;align-items:center;gap:5px;padding:0}.copy-btn svg{width:12px;height:12px}.code-body{padding:17px 19px 17px;font:10px/1.95 var(--mono);overflow-x:auto;min-height:202px;max-height:240px;overflow-y:auto}.code-line{display:flex;white-space:pre}.line-number{color:#586657;width:27px;flex-shrink:0;user-select:none}.code-comment{color:#788774}.code-selector{color:#c3d69a}.code-rule{color:#c2a9cf}.code-value{color:#dfc59b}.code-foot{display:flex;justify-content:space-between;padding:11px 19px;border-top:1px solid #364039;font:8px var(--mono);color:#899b7e}.code-foot span{display:flex;gap:6px;align-items:center}.code-foot svg{width:11px;height:11px}.bottom-note{display:flex;align-items:center;justify-content:space-between;margin-top:23px;font-size:9px;color:#a0a792}.bottom-note span{display:flex;gap:6px;align-items:center}.bottom-note svg{width:12px;height:12px}.bottom-note a{text-decoration:underline;text-underline-offset:3px}.toast{position:fixed;bottom:27px;left:calc(50% + 111px);transform:translateX(-50%);background:#2e4934;color:#fff;border-radius:8px;padding:12px 22px;box-shadow:0 5px 25px #0002;font-size:12px;z-index:4}.toast[hidden]{display:none}dialog{border:1px solid var(--line);border-radius:12px;padding:27px;max-width:500px;width:calc(100% - 70px);color:var(--text);box-shadow:0 15px 70px #17281a22}dialog::backdrop{background:#17281a55;backdrop-filter:blur(3px)}dialog h2{font-size:22px;letter-spacing:-.5px;margin:0 0 9px}dialog p{font-size:12px;line-height:1.8;color:#85907c}.dialog-head{display:flex;align-items:start;justify-content:space-between}.example-option{display:block;width:100%;text-align:left;padding:15px;background:#f7f9f3;border:1px solid #e1e8d8;border-radius:7px;margin-top:10px}.example-option strong{font-size:12px;display:block;margin-bottom:4px}.example-option span{font-size:11px;color:#8b987e}.empty-saves{padding:15px;background:#f5f7ef;border-radius:7px}.error{color:#b46e55!important}.theme-dark .preview-stage{background-color:#29332a;background-image:radial-gradient(#465440 .65px,transparent .65px)}.theme-dark .sample-card:not(.matched){background:#354033;border-color:#4a5641}.theme-dark .sample-card:not(.matched) strong{color:#c3cdb6}.extra-condition{margin-top:0}.mode-description code{font-family:var(--mono)}
++@media(min-width:1500px){.page{padding-top:45px}.preview-stage{padding-block:28px}.sample-card{min-height:93px}.builder-body{padding-block:25px}.code-body{min-height:228px}}
++@media(max-width:1100px){.sidebar{width:190px;padding-inline:16px}.app{margin-left:190px}.page{padding:30px 25px}.topbar{padding-inline:25px}.workspace{gap:16px;grid-template-columns:minmax(280px,.9fr) minmax(325px,1.1fr)}.panel-head{padding-inline:16px}.builder-body{padding-inline:16px}.preview-stage{padding-inline:15px}.sample-card{padding-inline:9px}.toast{left:calc(50% + 95px)}.subtitle{max-width:360px;line-height:1.7}.page-heading{gap:12px}h1{font-size:28px}}
++@media(max-width:850px){.sidebar{width:72px;padding-inline:12px}.brand{padding:0 6px}.brand-name,.brand-sub,.nav-label,.nav-btn span,.sidebar-bottom,.resource-nav{display:none}.nav-list{margin-top:36px}.nav-btn{justify-content:center;padding:13px 8px}.nav-btn svg{width:20px;height:20px}.app{margin-left:72px}.workspace{grid-template-columns:1fr 1.15fr}.heading-actions .btn:first-child{display:none}.page{padding-inline:20px}.topbar{padding-inline:20px}.toast{left:calc(50% + 36px)}}
++@media(max-width:700px){.workspace{grid-template-columns:1fr}.page-heading{align-items:start}.heading-actions{padding-top:20px}h1{font-size:25px}.subtitle{font-size:11px;max-width:260px}.top-actions a{display:none}.page{padding:25px 17px}.topbar{height:62px;padding-inline:17px}.panel-head{padding-inline:20px}.builder-body{padding-inline:20px}.preview-stage{padding:24px}.sample-card{min-height:90px}.bottom-note{align-items:start;gap:20px;line-height:1.7}.bottom-note>span:first-child{max-width:200px}.breadcrumbs{font-size:10px;gap:8px}.tiny-label{font-size:8px}}
++@media(prefers-reduced-motion:reduce){.sample-card,.btn{transition:none}}
++</style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<svg aria-hidden="true" style="display:none"><defs>
++<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
++<symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6m-5 0v7L4.5 19a1.3 1.3 0 0 0 1.2 2h12.6a1.3 1.3 0 0 0 1.2-2L14 10V3M8 14h8"/></symbol>
++<symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5v16M3 4c4-1 6-1 9 1 3-2 5-2 9-1v15c-4-1-6-1-9 1-3-2-5-2-9-1z"/></symbol>
++<symbol id="i-save" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></symbol>
++<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></symbol>
++<symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16"/></symbol>
++<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
++<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
++<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></symbol>
++<symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol>
++<symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol>
++<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
++<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15A9 9 0 0 1 9 4a9 9 0 1 0 11 11Z"/></symbol>
++<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6m-6 3h6M8 14a7 7 0 1 1 8 0l-1 3H9z"/></symbol>
++<symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8 12l3 3 5-6"/></symbol>
++<symbol id="i-github" viewBox="0 0 24 24"><path d="M9 21v-4c-4 1-4-2-6-2m12 6v-4c0-1-.4-1.5-1-2 4 0 6-2 6-5a5 5 0 0 0-1-3c0-1 0-3-1-4-2 0-3 1-3 1a12 12 0 0 0-6 0S8 3 6 3c-1 1-1 3-1 4a5 5 0 0 0-1 3c0 3 2 5 6 5-.6.5-1 1-1 2"/></symbol>
++<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></symbol>
++<symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></symbol>
++<symbol id="i-diamond" viewBox="0 0 24 24"><path d="m12 3 9 9-9 9-9-9z"/></symbol>
++<symbol id="i-triangle" viewBox="0 0 24 24"><path d="m12 4 9 16H3z"/></symbol>
++<symbol id="i-intersect" viewBox="0 0 30 20"><circle cx="11" cy="10" r="7"/><circle cx="19" cy="10" r="7"/><path d="M15 4.3a7 7 0 0 1 0 11.4 7 7 0 0 1 0-11.4" fill="currentColor" stroke="none" opacity=".25"/></symbol>
++<symbol id="i-union" viewBox="0 0 30 20"><circle cx="11" cy="10" r="7" fill="currentColor" fill-opacity=".13"/><circle cx="19" cy="10" r="7" fill="currentColor" fill-opacity=".13"/></symbol>
++</defs></svg>
++<aside class="sidebar"><a class="brand" href="./" aria-label="Selector home"><span class="brand-mark"><i></i><i></i></span><span class="brand-name">selector<span style="color:#7b9764">.</span></span></a><div class="brand-sub">CSS LOGIC, SIMPLIFIED</div>
++<div class="nav-label">WORKSPACE</div><nav class="nav-list" aria-label="Workspace"><button class="nav-btn active" id="playground-nav"><svg><use href="#i-flask"/></svg><span>Playground</span></button><button class="nav-btn" data-dialog="examples"><svg><use href="#i-grid"/></svg><span>Examples</span><span class="badge">6</span></button><button class="nav-btn" data-dialog="saved"><svg><use href="#i-save"/></svg><span>Saved snippets</span></button></nav>
++<div class="resource-nav"><div class="nav-label">RESOURCES</div><nav class="nav-list" aria-label="Resources"><button class="nav-btn" data-dialog="guide"><svg><use href="#i-book"/></svg><span>The little guide</span><svg style="width:12px;margin-left:auto"><use href="#i-arrow"/></svg></button><a class="nav-btn" href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_size_and_style_queries" target="_blank" rel="noreferrer"><svg><use href="#i-code"/></svg><span>CSS reference</span><svg style="width:12px;margin-left:auto"><use href="#i-arrow"/></svg></a></nav></div>
++<div class="sidebar-bottom"><div class="little-card"><svg><use href="#i-bulb"/></svg><strong>One rule. Many possibilities.</strong><p>Combine your conditions.<br>Let CSS do the heavy lifting.</p></div><div class="sidebar-foot"><span>v1.0.0</span><span class="online"><i class="dot"></i> All systems green</span></div></div></aside>
++<div class="app"><header class="topbar"><div class="breadcrumbs"><svg><use href="#i-layers"/></svg><span>Workspace</span><span>/</span><span class="current">Playground</span></div><div class="top-actions"><button class="copy-btn" data-dialog="guide" style="color:#737d6c">What's this? <svg><use href="#i-arrow"/></svg></button><span class="divider"></span><a href="https://github.com/topics/css" target="_blank" rel="noreferrer"><svg><use href="#i-github"/></svg> GitHub</a><span class="avatar" aria-label="Local workspace">S</span></div></header>
++<main class="page"><div class="page-heading"><div><div class="eyebrow"><span class="dot"></span> A LITTLE LESS CSS. A LOT MORE CLARITY.</div><h1>Good logic. Clean CSS.</h1><p class="subtitle">Combine selectors and conditional rules. Write your styles just once.</p></div><div class="heading-actions"><button class="btn" data-dialog="examples"><svg><use href="#i-grid"/></svg> Load example</button><button class="btn btn-primary" id="save"><svg><use href="#i-save"/></svg> Save snippet</button></div></div>
++<div class="workspace"><section class="panel"><div class="panel-head"><div class="panel-title"><svg><use href="#i-layers"/></svg> Rule builder</div><span class="tiny-label">Start with your conditions</span></div><div class="builder-body"><div class="field-caption">Combine with <span class="info" title="Intersection requires every condition. Union requires any condition.">i</span></div><div class="segmented" aria-label="Combination operator"><button class="segment active" data-mode="and" aria-pressed="true"><svg><use href="#i-intersect"/></svg> Intersection <span class="tiny-label">AND</span></button><button class="segment" data-mode="or" aria-pressed="false"><svg><use href="#i-union"/></svg> Union <span class="tiny-label">OR</span></button></div><p class="helper" id="mode-help">Apply styles when <strong>all</strong> conditions are met.</p>
++<div class="condition"><div class="condition-top"><span class="condition-letter">A</span> Selector <span class="condition-type">SELECTOR</span></div><input id="selector" aria-label="CSS selector" value=".card.featured" spellcheck="false"><small id="selector-help">Elements that match this CSS selector</small></div>
++<div class="logic-connector"><span class="operator-label">AND</span></div><div class="condition"><div class="condition-top"><span class="condition-letter">B</span> Media query <span class="condition-type">@MEDIA</span></div><div class="input-wrap"><span class="input-prefix">@</span><select id="media" aria-label="Media query"><option value="(min-width: 768px)">(min-width: 768px)</option><option value="(max-width: 767px)">(max-width: 767px)</option><option value="(prefers-color-scheme: dark)">(prefers-color-scheme: dark)</option><option value="(prefers-reduced-motion: reduce)">(prefers-reduced-motion: reduce)</option></select></div><small>When the viewport meets this condition</small></div>
++<div id="extra-container" hidden><div class="logic-connector"><span class="operator-label">AND</span></div><div class="condition extra-condition"><div class="condition-top"><span class="condition-letter">C</span> Feature support <span class="condition-type">@SUPPORTS</span><button class="remove" id="remove-condition" aria-label="Remove feature support condition"><svg><use href="#i-close"/></svg></button></div><select id="supports" aria-label="Feature support condition"><option value="(display: grid)">(display: grid)</option><option value="(display: subgrid)">(display: subgrid)</option><option value="(backdrop-filter: blur(4px))">(backdrop-filter: blur(4px))</option></select><small>When the browser supports this feature</small></div></div>
++<button class="add-condition" id="add-condition"><svg><use href="#i-plus"/></svg> Add condition</button><div class="declarations"><div class="field-caption">Then apply these styles <svg style="width:14px;height:14px;color:#a0aa94"><use href="#i-code"/></svg></div><div class="style-rows"><div class="style-row"><input class="property-input" aria-label="First CSS property" value="background" id="property-one"><label class="color-input"><input type="color" id="color" value="#edf3e5" aria-label="Background color"><span id="color-label">#edf3e5</span></label></div><div class="style-row"><input class="property-input" aria-label="Second CSS property" value="border-color" id="property-two"><input class="property-input" aria-label="Second CSS value" id="value-two" value="#a7bc8c" spellcheck="false"></div></div></div></div><div class="builder-foot"><span><i class="dot"></i> <span id="condition-count">2 conditions</span> · 1 declaration block</span><button class="reset" id="reset"><svg><use href="#i-reset"/></svg> Reset</button></div></section>
++<div class="right-column"><section class="panel" id="preview-panel"><div class="panel-head"><div class="panel-title"><svg><use href="#i-grid"/></svg> Live preview</div><div class="preview-tools"><button class="icon-btn active" id="light" aria-label="Light preview" aria-pressed="true"><svg><use href="#i-sun"/></svg></button><button class="icon-btn" id="dark" aria-label="Dark preview" aria-pressed="false"><svg><use href="#i-moon"/></svg></button><span class="tool-separator"></span><select class="width-select" id="width" aria-label="Preview viewport width"><option value="1024">1024px</option><option value="768">768px</option><option value="375">375px</option><option value="1440">1440px</option></select></div></div><div class="preview-stage"><div class="preview-caption"><span>Your elements, with a little logic.</span><span class="live-pill"><i class="dot"></i> Live</span></div><div class="preview-grid" id="preview-grid"></div><div class="preview-bottom"><div class="legend"><span><i></i> Matched</span><span><i></i> Not matched</span></div><span id="match-count" aria-live="polite">2 of 6 elements matched</span></div></div><div class="preview-note"><svg><use href="#i-bulb"/></svg><span>Try switching to <strong>Union</strong> and see what changes.</span></div></section>
++<section class="panel code-panel"><div class="panel-head"><div class="panel-title"><svg><use href="#i-code"/></svg> Generated CSS</div><div class="code-actions"><span class="code-tag">CSS</span><button class="copy-btn" id="copy"><svg><use href="#i-copy"/></svg><span>Copy code</span></button></div></div><div class="code-body" id="code-output" aria-label="Generated CSS"></div><div class="code-foot"><span><svg><use href="#i-check"/></svg> Styles defined once. Zero repetition.</span><span id="code-lines">24 lines</span></div></section></div></div>
++<div class="bottom-note"><span><svg><use href="#i-shield"/></svg> Built on native CSS. No libraries. No magic.</span><span>Curious how it works? <a href="#guide" data-dialog="guide">Read the little guide <svg><use href="#i-arrow"/></svg></a></span></div></main></div>
++<div class="toast" id="toast" role="status" hidden></div><dialog id="dialog"><div class="dialog-head"><h2 id="dialog-title"></h2><button class="icon-btn" id="close-dialog" aria-label="Close dialog"><svg><use href="#i-close"/></svg></button></div><div id="dialog-content"></div></dialog>
++<script>
++const $ = id => document.getElementById(id);
++const state = {mode:'and',extra:false,dark:false};
++const icons=['i-layers','i-diamond','i-circle','i-grid','i-triangle','i-layers'];
++const classes=['card','card featured','card','card featured','card','card compact'];
++classes.forEach((cls,i)=>{const wrapper=document.createElement('div');wrapper.className='sample';const card=document.createElement('div');card.className='sample-card '+cls;card.innerHTML=`<span class="match-check"><svg><use href="#i-check"/></svg></span><span class="card-symbol"><svg><use href="#${icons[i]}"/></svg></span><strong>Card ${String(i+1).padStart(2,'0')}</strong><code>.${cls.split(' ').join('.')}</code>`;wrapper.append(card);$('preview-grid').append(wrapper)});
++let generated='';
++function render(){
++const selector=$('selector').value.trim();let valid=true;try{document.createElement('div').matches(selector)}catch{valid=false}
++$('selector-help').textContent=valid?'Elements that match this CSS selector':'Enter a valid CSS selector to see matches';$('selector-help').classList.toggle('error',!valid);$('selector').setAttribute('aria-invalid',!valid);
++const media=$('media').value,width=Number($('width').value);const mediaMatch=media.includes('min-width')?width>=768:media.includes('max-width')?width<=767:media.includes('color-scheme')?state.dark:matchMedia('(prefers-reduced-motion: reduce)').matches;
++let count=0;
++document.querySelectorAll('.sample-card').forEach(card=>{const a=valid&&card.matches(selector),b=mediaMatch,c=CSS.supports($('supports').value);const match=valid&&(state.mode==='and'?(a&&b&&(!state.extra||c)):(a||b||(state.extra&&c)));card.classList.toggle('matched',match);card.style.removeProperty('background');card.style.removeProperty('border-color');if(match){count++;const p1=$('property-one').value.trim(),p2=$('property-two').value.trim();if(CSS.supports(p1,$('color').value))card.style.setProperty(p1,$('color').value);if(CSS.supports(p2,$('value-two').value))card.style.setProperty(p2,$('value-two').value)} });
++$('match-count').textContent=`${count} of 6 elements matched`;$('condition-count').textContent=`${state.extra?3:2} conditions`;$('extra-container').hidden=!state.extra;$('add-condition').hidden=state.extra;$('color-label').textContent=$('color').value;
++const styleQuery=['style(--selector: true)','style(--media: true)',...(state.extra?['style(--supports: true)']:[])].join(` ${state.mode} `);
++generated=`/* Separate the logic from your styles. */\n.element {\n  --selector: false;\n  --media: false;${state.extra?'\n  --supports: false;':''}\n}\n\n.element:has(> ${valid?selector:'.card'}) {\n  --selector: true;\n}\n\n@media ${media} {\n  .element { --media: true; }\n}\n${state.extra?'\n@supports '+$('supports').value+' {\n  .element { --supports: true; }\n}\n':''}\n/* One declaration block. Every matching element. */\n@container ${styleQuery} {\n  .card {\n    ${$('property-one').value.trim()}: ${$('color').value};\n    ${$('property-two').value.trim()}: ${$('value-two').value.trim()};\n  }\n}`;
++$('code-output').replaceChildren();generated.split('\n').forEach((line,i)=>{const row=document.createElement('div');row.className='code-line';const number=document.createElement('span');number.className='line-number';number.textContent=i+1;const code=document.createElement('span');code.textContent=line;code.className=line.includes('/*')?'code-comment':line.trim().startsWith('@')?'code-rule':line.includes('--')||line.includes('background:')||line.includes('border-color:')?'code-value':'code-selector';row.append(number,code);$('code-output').append(row)});$('code-lines').textContent=generated.split('\n').length+' lines';
++}
++function setMode(mode){state.mode=mode;document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',b.dataset.mode===mode)});document.querySelectorAll('.operator-label').forEach(e=>e.textContent=mode.toUpperCase());$('mode-help').innerHTML=`Apply styles when <strong>${mode==='and'?'all':'any'}</strong> conditions are met.`;render()}
++function theme(dark){state.dark=dark;$('preview-panel').classList.toggle('theme-dark',dark);$('light').classList.toggle('active',!dark);$('dark').classList.toggle('active',dark);$('light').setAttribute('aria-pressed',!dark);$('dark').setAttribute('aria-pressed',dark);render()}
++function reset(){state.extra=false;$('selector').value='.card.featured';$('media').value='(min-width: 768px)';$('supports').value='(display: grid)';$('width').value='1024';$('color').value='#edf3e5';$('property-one').value='background';$('property-two').value='border-color';$('value-two').value='#a7bc8c';document.querySelectorAll('.sample-card').forEach(c=>c.removeAttribute('style'));theme(false);setMode('and')}
++let toastTimer;function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3000)}
++let saved=[];try{saved=JSON.parse(localStorage.getItem('selector-snippets')||'[]')}catch{}
++function snapshot(){return{mode:state.mode,extra:state.extra,dark:state.dark,selector:$('selector').value,media:$('media').value,supports:$('supports').value,color:$('color').value,p1:$('property-one').value,p2:$('property-two').value,v2:$('value-two').value,width:$('width').value}}
++function restore(s){state.extra=s.extra;$('selector').value=s.selector;$('media').value=s.media;$('supports').value=s.supports||'(display: grid)';$('color').value=s.color;$('property-one').value=s.p1;$('property-two').value=s.p2;$('value-two').value=s.v2;$('width').value=s.width;document.querySelectorAll('.sample-card').forEach(c=>c.removeAttribute('style'));theme(s.dark);setMode(s.mode)}
++$('save').onclick=()=>{saved.unshift({...snapshot(),date:Date.now()});try{localStorage.setItem('selector-snippets',JSON.stringify(saved));toast('Snippet saved to your workspace')}catch{toast('Snippet saved for this session')}};
++$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(generated);toast('CSS copied to clipboard')}catch{const area=document.createElement('textarea');area.value=generated;document.body.append(area);area.select();const ok=document.execCommand('copy');area.remove();toast(ok?'CSS copied to clipboard':'Clipboard unavailable. Select the generated CSS to copy.')}};
++document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));['selector','media','supports','width','color','property-one','property-two','value-two'].forEach(id=>$(id).addEventListener('input',()=>{document.querySelectorAll('.sample-card').forEach(c=>c.removeAttribute('style'));render()}));$('add-condition').onclick=()=>{state.extra=true;render()};$('remove-condition').onclick=()=>{state.extra=false;render()};$('reset').onclick=()=>{reset();toast('Back to a fresh start')};$('light').onclick=()=>theme(false);$('dark').onclick=()=>theme(true);
++const examples=[['The featured collection','Featured cards on larger screens.','and','.card.featured','(min-width: 768px)',false],['A wider welcome','Featured cards or any card on larger screens.','or','.card.featured','(min-width: 768px)',false],['Small screen, big focus','Featured cards in a mobile viewport.','and','.featured','(max-width: 767px)',false],['After hours','Featured cards when dark mode is on.','and','.featured','(prefers-color-scheme: dark)',false],['Progressive by nature','Combine a selector, media query and feature support.','and','.card','(min-width: 768px)',true],['Room for everyone','Target compact or featured cards.','and',':is(.compact, .featured)','(min-width: 768px)',false]];
++function openDialog(type){const content=$('dialog-content');content.replaceChildren();if(type==='examples'){$('dialog-title').textContent='A little inspiration.';const p=document.createElement('p');p.textContent='Start with a pattern, then make it your own.';content.append(p);examples.forEach(ex=>{const btn=document.createElement('button');btn.className='example-option';const strong=document.createElement('strong');strong.textContent=ex[0];const span=document.createElement('span');span.textContent=ex[1];btn.append(strong,span);btn.onclick=()=>{reset();state.extra=ex[5];$('selector').value=ex[3];$('media').value=ex[4];if(ex[4].includes('max-width'))$('width').value='375';if(ex[4].includes('dark'))theme(true);setMode(ex[2]);$('dialog').close();toast('Example loaded')};content.append(btn)})}else if(type==='saved'){$('dialog-title').textContent='Your saved snippets';if(!saved.length){content.innerHTML='<p class="empty-saves">Your next good idea belongs here. Use “Save snippet” to keep a combination in this browser.</p>'}saved.forEach((s,i)=>{const btn=document.createElement('button');btn.className='example-option';const title=document.createElement('strong');title.textContent=s.selector+' · '+s.mode.toUpperCase();const detail=document.createElement('span');detail.textContent=s.media+' · '+new Date(s.date).toLocaleDateString();btn.append(title,detail);btn.onclick=()=>{restore(s);$('dialog').close();toast('Saved snippet loaded')};content.append(btn)})}else{$('dialog-title').textContent='Small rules. Powerful combinations.';content.innerHTML='<p><strong>Intersection (AND)</strong> applies your styles only when every condition matches. <strong>Union (OR)</strong> applies them when at least one matches.</p><p>Each card is wrapped in an <code>.element</code> container. A selector sets one custom property on that wrapper, and a media query sets another. A container style query reads those properties and applies a single declaration block to the card inside.</p><p>Change the simulated viewport width or toggle the preview theme to try different conditions. These controls affect the preview; the exported CSS uses the actual browser environment.</p><p>Container style queries work in modern browsers. For older browsers, keep your base card styles outside the query so content remains usable.</p><a class="btn" href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_size_and_style_queries" target="_blank" rel="noreferrer">Explore the CSS reference ↗</a>'}if(!$('dialog').open)$('dialog').showModal()}
++document.querySelectorAll('[data-dialog]').forEach(b=>b.onclick=e=>{e.preventDefault();openDialog(b.dataset.dialog)});$('close-dialog').onclick=()=>$('dialog').close();$('dialog').addEventListener('click',e=>{if(e.target===$('dialog')){const r=$('dialog').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('dialog').close()}});$('playground-nav').onclick=()=>{window.scrollTo({top:0,behavior:'smooth'});$('selector').focus()};render();
++</script>
++</body></html>

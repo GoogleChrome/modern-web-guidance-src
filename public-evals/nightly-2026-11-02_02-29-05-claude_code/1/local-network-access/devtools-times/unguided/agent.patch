@@ -1,0 +1,35 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..867b9e7 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,6 +1,12 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++// Allow this origin to make requests to the user's local network and loopback
++// interface (Chrome Local Network Access). `local-network-access` is the
++// original policy name; newer Chrome versions split it into `local-network`
++// and `loopback-network`.
++const LOCAL_NETWORK_POLICY =
++  'local-network-access=(self), local-network=(self), loopback-network=(self)';
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+@@ -9,5 +15,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  const existing = response.headers.get('Permissions-Policy');
++  try {
++    response.headers.set(
++      'Permissions-Policy',
++      existing ? `${existing}, ${LOCAL_NETWORK_POLICY}` : LOCAL_NETWORK_POLICY,
++    );
++  } catch {
++    // Some responses (e.g. redirects) have immutable headers.
++  }
++  return response;
+ });

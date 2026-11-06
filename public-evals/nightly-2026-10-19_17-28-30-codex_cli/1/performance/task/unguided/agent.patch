@@ -1,0 +1,46 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,41 @@
++# Site audit and optimization
++
++Completed October 19, 2026. Scope: the supplied single-page static website, its interactions, assets, and local server.
++
++## Findings and changes
++
++| Area                   | Finding                                                                                                   | Implemented improvement                                                                                                                                                                                        |
++| ---------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
++| Navigation             | Menu, locations, rewards, account, logout, order, and footer URLs had no corresponding pages or services. | Replaced unsupported destinations with real page sections, drink details, a favorites collection, and a privacy dialog.                                                                                        |
++| Mobile layout          | The original single-row navigation had no small-screen behavior.                                          | Added a collapsible navigation and responsive layouts; automated overflow checks cover 320, 390, 768, 1024, and 1440 px widths.                                                                                |
++| Visual hierarchy       | Text-only cards and a generic full-width background provided little product context.                      | Added a split hero, stock drink photography, clearer typography, menu filters, and a brand story section.                                                                                                      |
++| Accessibility          | Missing navigation labels, skip link, explicit keyboard focus treatment, and reduced-motion behavior.     | Added semantic landmarks, accessible control labels, focus outlines, a skip link, pressed/expanded states, live announcements, and reduced-motion styles.                                                      |
++| Dialog access          | No drink details or favorites interactions existed.                                                       | Native modal dialogs support keyboard focus containment, Escape dismissal, and focus return.                                                                                                                   |
++| Contrast               | Automated scans identified insufficient contrast for the new small orange text.                           | Darkened the accent color; page and tested dialogs now pass the automated WCAG A/AA scans.                                                                                                                     |
++| Images                 | Hero loaded from a third-party host as a CSS background.                                                  | Serve local WebP images with dimensions, responsive hero sources, high hero fetch priority, and lazy loading for menu photos. Hero variants are approximately 47 KB and 114 KB.                                |
++| Dependencies           | Starting the site downloaded an unpinned static-server dependency.                                        | Added a Node server with zero runtime dependencies; development dependencies have a committed lockfile.                                                                                                        |
++| Caching                | No application-level cache configuration.                                                                 | Added content-based ETags, conditional 304 responses, daily image caching, and document/script/style revalidation.                                                                                             |
++| Security               | No application-level response headers or explicit public-file boundary.                                   | Added a same-origin Content Security Policy, MIME sniffing prevention, referrer policy, public-file restrictions, and GET/HEAD method restrictions.                                                            |
++| Search metadata        | No page description or favicon.                                                                           | Added a descriptive title, meta description, theme color, and local SVG favicon.                                                                                                                               |
++| Privacy and resilience | No persistence behavior or disclosure.                                                                    | Favorites stay in local storage, support removal/clearing, tolerate malformed data and blocked storage, and have an accurate privacy explanation. No analytics, remote fonts, or third-party runtime requests. |
++| Maintainability        | All styles were inline and there was no verification tooling.                                             | Separated HTML, CSS, and JavaScript; added formatted source, HTML validation, and repeatable integration tests.                                                                                                |
++
++## Verification
++
++- `pnpm check`: JavaScript syntax and HTML validation pass.
++- `pnpm test`: all 20 automated desktop/mobile checks pass in headless Chromium.
++- Coverage includes asset loading, runtime errors, anchor destinations, narrow layouts, menu filters, favorites persistence/removal, blocked storage, privacy controls, modal keyboard dismissal/focus restoration, reduced motion, caching, response headers, and private-file/method restrictions.
++- Axe scans cover the page, drink dialog, and favorites dialog using WCAG 2 A/AA and WCAG 2.1 AA rules, with zero detected violations.
++- No manual browser verification was performed.
++
++## Scope and remaining integration points
++
++This is a static menu and discovery site. Ordering, authentication, store locations, reward accounts, and careers are not backed by services in the supplied repository. The site does not pretend to complete those operations. Favorites are specific to the current browser.
++
++Canonical URLs, social-sharing image URLs, and business/location structured data need a real production domain and verified business information. Stock imagery illustrates drinks; source URLs are in `assets/README.md`.
++
++The checks establish the automated results above. Production Core Web Vitals, search rankings, full accessibility conformance, and real backend behavior were not measured. Hosting on another server requires configuring the equivalent cache and security headers there.
++
++## Run locally
++
++Use Node 20 or newer. `pnpm start` starts the dependency-free server on port 11222 (or `PORT`). For development verification, run `pnpm install --frozen-lockfile`, `pnpm exec playwright install chromium`, `pnpm check`, and `pnpm test`.

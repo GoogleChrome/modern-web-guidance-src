@@ -1,0 +1,179 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -151,13 +152,146 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Keep padding inside the animated wrappers so they collapse fully. */
++    #promo-alert {
++      position: static;
++      width: 100%;
++      max-width: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: var(--accent);
++      color: var(--text);
++      block-size: 0;
++      overflow: clip;
++      opacity: 0;
++      transition: block-size 400ms ease, opacity 300ms ease,
++        display 400ms allow-discrete;
++    }
++
++    #promo-alert[open] {
++      block-size: auto;
++      opacity: 1;
++    }
++
++    .promo-inner {
++      position: relative;
++      padding: 14px 64px;
++      text-align: center;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      inset-block-start: 50%;
++      inset-inline-end: 12px;
++      transform: translateY(-50%);
++      width: 44px;
++      height: 44px;
++      border: 0;
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      font-size: 1.5rem;
++      cursor: pointer;
++    }
++
++    #alert-dismiss:hover {
++      background: rgb(78 52 46 / 10%);
++    }
++
++    .faq {
++      margin-top: 48px;
++    }
++
++    .faq h2 {
++      margin-bottom: 20px;
++      text-align: center;
++    }
++
++    .faq details {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      padding: 20px;
++      font-weight: 600;
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: "";
++      width: 9px;
++      height: 9px;
++      flex-shrink: 0;
++      border-right: 2px solid currentColor;
++      border-bottom: 2px solid currentColor;
++      transform: rotate(45deg);
++      transition: transform 400ms ease;
++    }
++
++    details[open] > #faq-trigger::after {
++      transform: rotate(225deg);
++    }
++
++    #faq-content {
++      padding: 0 20px 20px;
++    }
++
++    /* Native details handles keyboard access and expanded/hidden semantics. */
++    .faq details::details-content {
++      block-size: 0;
++      overflow: clip;
++      transition: block-size 400ms ease,
++        content-visibility 400ms allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-trigger:focus-visible,
++    #alert-dismiss:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -4px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      .faq details::details-content,
++      #faq-trigger::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <dialog id="promo-alert" open aria-label="Seasonal promotion">
++    <div class="promo-inner">
++      <p><strong>A little something seasonal.</strong> Discover your next favorite cup on our seasonal menu.</p>
++      <form method="dialog">
++        <button id="alert-dismiss" type="submit" aria-label="Dismiss promotion">
++          <span aria-hidden="true">&times;</span>
++        </button>
++      </form>
++    </div>
++  </dialog>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +328,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details>
++        <summary id="faq-trigger" aria-controls="faq-content">What makes your coffee special?</summary>
++        <section id="faq-content" aria-labelledby="faq-trigger">
++          <p>Our coffee is ethically sourced and locally roasted, bringing out the character of every bean.
++            From a bold espresso to a smooth cold brew, there's a cup for every kind of morning.</p>
++        </section>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,305 @@
+diff --git a/package.json b/package.json
+index 2e1f2e8..8fe75a8 100644
+--- a/package.json
++++ b/package.json
+@@ -23,7 +23,8 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "webmcp-types": "^0.1.10"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..3857d7f 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -55,7 +55,14 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        onSubmit={handleSubmit}
++        className="space-y-4"
++        {...({
++          toolname: 'sign-in',
++          tooldescription: 'Signs the user in to their DevTools Times account.',
++        } as any)}
++      >
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..495d50a 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -51,5 +51,8 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import "../utils/webmcp";
++    </script>
+   </body>
+ </html>
+diff --git a/src/utils/webmcp.ts b/src/utils/webmcp.ts
+new file mode 100644
+index 0000000..e17add3
+--- /dev/null
++++ b/src/utils/webmcp.ts
+@@ -0,0 +1,238 @@
++import { navigate } from 'astro:transitions/client';
++
++interface Article {
++  slug: string;
++  title: string;
++  summary: string;
++  image?: string;
++}
++
++const base = import.meta.env.BASE_URL;
++const controller = new AbortController();
++
++let articlesPromise: Promise<Article[]> | undefined;
++const loadArticles = (signal?: AbortSignal) => {
++  articlesPromise ??= fetch(`${base}api/articles.json`, { signal })
++    .then((r) => r.json() as Promise<Article[]>)
++    .catch((err) => {
++      articlesPromise = undefined;
++      throw err;
++    });
++  return articlesPromise;
++};
++
++const toListing = ({ slug, title, summary }: Article) => ({
++  slug,
++  title,
++  summary,
++  url: `${base}articles/${slug}`,
++});
++
++const readingListUrl = `${base}api/reading-list.json`;
++const fetchReadingList = async (signal: AbortSignal): Promise<string[]> => {
++  const response = await fetch(readingListUrl, { signal });
++  return (await response.json()).readingList;
++};
++
++function register() {
++  const modelContext = document.modelContext;
++  if (!modelContext) return;
++  const options = { signal: controller.signal };
++
++  modelContext.registerTool(
++    {
++      name: 'search-articles',
++      description:
++        'Searches DevTools Times articles by keyword. Use when the user wants to find articles on a topic.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          query: { type: 'string', description: 'Words to look for in article titles and summaries.' },
++        },
++        required: ['query'],
++      },
++      async execute({ query }, { signal }) {
++        if (typeof query !== 'string' || !query.trim()) {
++          return { error: 'Pass a non-empty search query.' };
++        }
++        try {
++          const needle = query.trim().toLowerCase();
++          const articles = await loadArticles(signal);
++          return articles
++            .filter((a) => a.title.toLowerCase().includes(needle) || a.summary.toLowerCase().includes(needle))
++            .map(toListing);
++        } catch (err) {
++          if (signal.aborted) throw err;
++          return { error: err instanceof Error ? err.message : String(err) };
++        }
++      },
++      annotations: { readOnlyHint: true },
++    },
++    options,
++  );
++
++  modelContext.registerTool(
++    {
++      name: 'list-articles',
++      description: 'Lists every published article with its slug, title and summary.',
++      inputSchema: { type: 'object', properties: {} },
++      async execute(_input, { signal }) {
++        try {
++          return (await loadArticles(signal)).map(toListing);
++        } catch (err) {
++          if (signal.aborted) throw err;
++          return { error: err instanceof Error ? err.message : String(err) };
++        }
++      },
++      annotations: { readOnlyHint: true },
++    },
++    options,
++  );
++
++  modelContext.registerTool(
++    {
++      name: 'open-article',
++      description: 'Navigates the browser to an article page so the user can read it.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          slug: { type: 'string', description: 'Article slug as returned by the search and list tools.' },
++        },
++        required: ['slug'],
++      },
++      async execute({ slug }, { signal }) {
++        try {
++          const articles = await loadArticles(signal);
++          if (typeof slug !== 'string' || !articles.some((a) => a.slug === slug)) {
++            return { error: `Article "${slug}" not found.`, availableSlugs: articles.map((a) => a.slug) };
++          }
++          await navigate(`${base}articles/${slug}`);
++          return { opened: `${base}articles/${slug}` };
++        } catch (err) {
++          if (signal.aborted) throw err;
++          return { error: err instanceof Error ? err.message : String(err) };
++        }
++      },
++    },
++    options,
++  );
++
++  modelContext.registerTool(
++    {
++      name: 'open-page',
++      description: 'Navigates to a top-level section of the site.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          page: {
++            type: 'string',
++            enum: ['home', 'reports', 'multimedia', 'signin', 'signup'],
++            description: 'Section to open.',
++          },
++        },
++        required: ['page'],
++      },
++      async execute({ page }) {
++        const paths: Record<string, string> = {
++          home: '',
++          reports: 'reports',
++          multimedia: 'multimedia',
++          signin: 'signin',
++          signup: 'signup',
++        };
++        if (typeof page !== 'string' || !(page in paths)) {
++          return { error: 'Unknown page.', pages: Object.keys(paths) };
++        }
++        await navigate(`${base}${paths[page]}`);
++        return { opened: `${base}${paths[page]}` };
++      },
++    },
++    options,
++  );
++
++  modelContext.registerTool(
++    {
++      name: 'open-category',
++      description: 'Navigates to the article listing for a news category.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          category: { type: 'string', description: 'Category name, such as sports or culture.' },
++        },
++        required: ['category'],
++      },
++      async execute({ category }) {
++        if (typeof category !== 'string' || !category.trim()) {
++          return { error: 'Pass a category name.' };
++        }
++        const slug = category.trim().toLowerCase();
++        await navigate(`${base}category/${encodeURIComponent(slug)}`);
++        return { opened: `${base}category/${slug}` };
++      },
++    },
++    options,
++  );
++
++  modelContext.registerTool(
++    {
++      name: 'get-reading-list',
++      description: "Returns the articles in the user's reading list.",
++      inputSchema: { type: 'object', properties: {} },
++      async execute(_input, { signal }) {
++        try {
++          const [slugs, articles] = await Promise.all([fetchReadingList(signal), loadArticles(signal)]);
++          return articles.filter((a) => slugs.includes(a.slug)).map(toListing);
++        } catch (err) {
++          if (signal.aborted) throw err;
++          return { error: err instanceof Error ? err.message : String(err) };
++        }
++      },
++      annotations: { readOnlyHint: true },
++    },
++    options,
++  );
++
++  modelContext.registerTool(
++    {
++      name: 'set-article-bookmarked',
++      description: "Adds an article to or removes it from the user's reading list.",
++      inputSchema: {
++        type: 'object',
++        properties: {
++          slug: { type: 'string', description: 'Article slug as returned by the search and list tools.' },
++          bookmarked: { type: 'boolean', description: 'True to add the article, false to remove it.' },
++        },
++        required: ['slug', 'bookmarked'],
++      },
++      async execute({ slug, bookmarked }, { signal }) {
++        if (typeof slug !== 'string' || typeof bookmarked !== 'boolean') {
++          return { error: 'Pass an article slug and a boolean bookmarked value.' };
++        }
++        try {
++          const articles = await loadArticles(signal);
++          if (!articles.some((a) => a.slug === slug)) {
++            return { error: `Article "${slug}" not found.`, availableSlugs: articles.map((a) => a.slug) };
++          }
++          // The API only toggles, so read the current state first.
++          let list = await fetchReadingList(signal);
++          if (list.includes(slug) !== bookmarked) {
++            const response = await fetch(readingListUrl, {
++              method: 'POST',
++              headers: { 'Content-Type': 'application/json' },
++              body: JSON.stringify({ slug }),
++              signal,
++            });
++            list = (await response.json()).readingList;
++          }
++          return { slug, bookmarked: list.includes(slug), readingList: list };
++        } catch (err) {
++          if (signal.aborted) throw err;
++          return { error: err instanceof Error ? err.message : String(err) };
++        }
++      },
++    },
++    options,
++  );
++}
++
++register();
+diff --git a/tsconfig.json b/tsconfig.json
+index 69c1600..f74c219 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -9,6 +9,7 @@
+   ],
+   "compilerOptions": {
+     "jsx": "react-jsx",
+-    "jsxImportSource": "react"
++    "jsxImportSource": "react",
++    "types": ["webmcp-types"]
+   }
+ }
+\ No newline at end of file

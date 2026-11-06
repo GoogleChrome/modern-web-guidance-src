@@ -1,0 +1,189 @@
+diff --git a/index.html b/index.html
+index 66c9173..79d3b4c 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,74 @@
+       background: #3e2723;
+     }
+ 
++    /* Swipe-to-reveal drink cards */
++    .SwipeReveal {
++      display: grid;
++      grid-template-columns: 100% max-content;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++      overscroll-behavior: chain;
++      padding: 0;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .SwipeReveal {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .SwipeReveal-content {
++      scroll-snap-align: start;
++      scroll-initial-target: nearest;
++      background: white;
++      padding: 20px;
++    }
++
++    .SwipeReveal-panel {
++      scroll-snap-align: end;
++      display: flex;
++    }
++
++    .SwipeReveal-panel > * {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      gap: 4px;
++      min-width: 84px;
++      padding: 0 12px;
++      border: 0;
++      font: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: white;
++      text-decoration: none;
++      cursor: pointer;
++    }
++
++    .SwipeReveal-panel > :focus-visible {
++      outline: 3px solid var(--text);
++      outline-offset: -3px;
++    }
++
++    .action-icon {
++      font-size: 1.4rem;
++      line-height: 1;
++    }
++
++    .action-order { background: var(--primary); }
++    .action-favorite { background: var(--accent); color: var(--text); }
++    .action-favorite[aria-pressed="true"] { background: #e65100; color: white; }
++    .action-share { background: #6d4c41; }
++
++    .swipe-hint {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.75rem;
++      color: #8d6e63;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -178,20 +246,44 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <span class="swipe-hint" aria-hidden="true">&larr; Swipe for options</span>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Maple Oat Latte actions">
++            <a href="/order-online?item=maple-oat-latte" class="action-order"><span class="action-icon" aria-hidden="true">&#9749;</span>Order</a>
++            <button type="button" class="action-favorite" aria-pressed="false" data-drink="maple-oat-latte"><span class="action-icon" aria-hidden="true">&#9734;</span>Favorite</button>
++            <button type="button" class="action-share" data-name="Maple Oat Latte" data-href="/menu/seasonal"><span class="action-icon" aria-hidden="true">&#8599;</span>Share</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <span class="swipe-hint" aria-hidden="true">&larr; Swipe for options</span>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Dark Roast Espresso actions">
++            <a href="/order-online?item=dark-roast-espresso" class="action-order"><span class="action-icon" aria-hidden="true">&#9749;</span>Order</a>
++            <button type="button" class="action-favorite" aria-pressed="false" data-drink="dark-roast-espresso"><span class="action-icon" aria-hidden="true">&#9734;</span>Favorite</button>
++            <button type="button" class="action-share" data-name="Dark Roast Espresso" data-href="/menu/espresso"><span class="action-icon" aria-hidden="true">&#8599;</span>Share</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <span class="swipe-hint" aria-hidden="true">&larr; Swipe for options</span>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Cold Brew actions">
++            <a href="/order-online?item=cold-brew" class="action-order"><span class="action-icon" aria-hidden="true">&#9749;</span>Order</a>
++            <button type="button" class="action-favorite" aria-pressed="false" data-drink="cold-brew"><span class="action-icon" aria-hidden="true">&#9734;</span>Favorite</button>
++            <button type="button" class="action-share" data-name="Cold Brew" data-href="/menu/cold-brew"><span class="action-icon" aria-hidden="true">&#8599;</span>Share</button>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +299,52 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Snap the card back to its content when keyboard focus returns to it.
++    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
++      content.addEventListener('focusin', (event) => {
++        if (event.target.matches(':focus-visible')) {
++          content.scrollIntoView({ block: 'nearest', inline: 'start' });
++        }
++      });
++    }
++
++    // Favorite toggle (persisted locally).
++    const favKey = 'dailyGrindFavorites';
++    const favorites = new Set(JSON.parse(localStorage.getItem(favKey) || '[]'));
++    for (const btn of document.querySelectorAll('.action-favorite')) {
++      const render = () => {
++        const on = favorites.has(btn.dataset.drink);
++        btn.setAttribute('aria-pressed', String(on));
++        btn.querySelector('.action-icon').textContent = on ? '\u2605' : '\u2606';
++      };
++      render();
++      btn.addEventListener('click', () => {
++        const id = btn.dataset.drink;
++        favorites.has(id) ? favorites.delete(id) : favorites.add(id);
++        localStorage.setItem(favKey, JSON.stringify([...favorites]));
++        render();
++      });
++    }
++
++    // Share via Web Share API, falling back to copying the link.
++    for (const btn of document.querySelectorAll('.action-share')) {
++      btn.addEventListener('click', async () => {
++        const url = new URL(btn.dataset.href, location.href).href;
++        const label = btn.lastChild;
++        try {
++          if (navigator.share) {
++            await navigator.share({ title: btn.dataset.name, url });
++          } else {
++            await navigator.clipboard.writeText(url);
++            label.textContent = 'Copied!';
++            setTimeout(() => { label.textContent = 'Share'; }, 1500);
++          }
++        } catch { /* user cancelled */ }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

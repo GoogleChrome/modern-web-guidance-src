@@ -1,0 +1,489 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..ed2d2dc
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,99 @@
++import { createTimingMonitor } from './timing.js';
++
++const monitor = createTimingMonitor();
++const content = document.querySelector('#coffee-content');
++const original = content.innerHTML;
++const products = {
++  seasonal: ['Maple Oat Latte', 'Creamy oat milk with a hint of Vermont maple syrup.', 'Seasonal'],
++  espresso: ['Dark Roast Espresso', 'Bold, smokey, and perfect for a morning boost.', 'Hot'],
++  'cold-brew': ['Cold Brew', 'Steeped for 18 hours for maximum smoothness.', 'Cold'],
++};
++const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
++const card = ([name, description, category], slug) => `<div class="card" data-category="${category}"><span class="category">${category}</span><h3>${name}</h3><p>${description}</p><a href="/menu/${slug}" class="btn">View Details</a></div>`;
++
++function renderRoute(path) {
++  if (path === '/') content.innerHTML = original;
++  else if (path === '/menu' || path === '/order-online') {
++    content.innerHTML = `<div class="section-heading"><div><span class="eyebrow">Find your daily favorite</span><h2>Our coffee menu</h2></div><a href="/">Back to home &rarr;</a></div><div class="filters" role="group" aria-label="Filter drinks">${['All', 'Seasonal', 'Hot', 'Cold'].map(category => `<button data-filter="${category}" aria-pressed="${category === 'All'}">${category}</button>`).join('')}</div><p id="filter-summary" aria-live="polite">Showing all 3 drinks</p><div class="grid">${Object.entries(products).map(([slug, product]) => card(product, slug)).join('')}</div>`;
++  } else {
++    const product = products[path.split('/')[2]];
++    if (!product || !path.startsWith('/menu/')) return false;
++    content.innerHTML = `<a href="/menu" class="back-link">&larr; All drinks</a><article class="product-detail"><span class="eyebrow">${product[2]} favorite</span><h2>${product[0]}</h2><p>${product[1]}</p><p>Ethically sourced coffee, locally roasted and made fresh for your cup.</p><a href="/menu" class="btn">Explore the menu</a></article>`;
++  }
++  document.title = `${path === '/' ? 'The Daily Grind' : path === '/menu' || path === '/order-online' ? 'Our Coffee Menu' : products[path.split('/')[2]][0]} | Artisanal Coffee`;
++  document.querySelectorAll('nav a').forEach(link => {
++    if (link.pathname === path) link.setAttribute('aria-current', 'page');
++    else link.removeAttribute('aria-current');
++  });
++  return true;
++}
++
++// Capture the initiating event before handlers, including keyboard activation.
++for (const type of ['pointerdown', 'keydown', 'click']) {
++  document.addEventListener(type, event => {
++    const target = event.target.closest('a, button, input, select');
++    if (!target || target.closest('#timing-panel')) return;
++    monitor.hint(event, target.textContent.trim() || target.getAttribute('aria-label') || type);
++  }, true);
++}
++
++document.addEventListener('click', event => {
++  const filter = event.target.closest('[data-filter]');
++  if (filter) {
++    if (filter.getAttribute('aria-pressed') === 'true') return;
++    const token = monitor.begin(`Filter: ${filter.dataset.filter}`, 'Interaction', event);
++    document.querySelectorAll('[data-filter]').forEach(button => button.setAttribute('aria-pressed', String(button === filter)));
++    let count = 0;
++    content.querySelectorAll('[data-category]').forEach(card => {
++      card.hidden = filter.dataset.filter !== 'All' && card.dataset.category !== filter.dataset.filter;
++      if (!card.hidden) count++;
++    });
++    document.querySelector('#filter-summary').textContent = `Showing ${count} ${count === 1 ? 'drink' : 'drinks'}${filter.dataset.filter === 'All' ? '' : ` · ${filter.dataset.filter}`}`;
++    monitor.contentUpdated(token);
++    return;
++  }
++  const link = event.target.closest('a');
++  if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.target || link.hasAttribute('download')) return;
++  const url = new URL(link.href);
++  if (url.origin !== location.origin || url.search || url.hash) return;
++  const known = ['/', '/menu', '/order-online', ...Object.keys(products).map(slug => `/menu/${slug}`)];
++  if (!known.includes(url.pathname)) return;
++  event.preventDefault();
++  if (url.pathname === location.pathname) return;
++  const token = monitor.begin(link.textContent.trim(), 'Navigation', event);
++  history.pushState(null, '', url.pathname);
++  renderRoute(url.pathname);
++  content.scrollIntoView({ block: 'start' });
++  content.focus({ preventScroll: true });
++  monitor.contentUpdated(token);
++});
++window.addEventListener('popstate', () => {
++  const token = monitor.begin('Back / forward', 'Navigation');
++  // History traversal may have no observable initiating DOM interaction.
++  if (renderRoute(location.pathname)) monitor.contentUpdated(token, { estimate: true });
++});
++if (location.pathname !== '/') renderRoute(location.pathname);
++
++const ms = value => Number.isFinite(value) ? `${value.toFixed(1)} ms` : '—';
++document.querySelector('#measurement-mode').textContent = monitor.nativePaint ? 'Browser measured' : 'Frame estimates';
++document.querySelector('#measurement-note').textContent = monitor.nativePaint
++  ? 'Real presentation timings from the browser. First update and latest contentful update are grouped by interaction. Up to 100 interactions are kept in this tab.'
++  : 'This browser does not expose contentful interaction paints. Timings estimate the next frame after a content update; they do not confirm pixels reached the screen. Up to 100 interactions are kept in this tab.';
++monitor.subscribe(records => {
++  const valid = records.filter(record => Number.isFinite(record.first));
++  document.querySelector('#interaction-count').textContent = valid.filter(record => record.kind === 'Interaction').length;
++  document.querySelector('#navigation-count').textContent = valid.filter(record => record.kind === 'Navigation').length;
++  document.querySelector('#latest-timing').textContent = valid.length ? ms(valid.at(-1).first) : '—';
++  document.querySelector('#timing-rows').innerHTML = valid.length ? valid.slice(-8).reverse().map(record => `<tr><td><strong>${escape(record.label)}</strong><small>${escape(record.path)}</small></td><td><span class="type-pill">${record.kind}</span></td><td>${ms(record.first)}</td><td>${ms(record.latest)}</td><td>${record.source}</td></tr>`).join('') : '<tr><td colspan="5" class="empty-state">Your next interaction starts the story.<br><small>Open the menu, view a drink, or filter the selection to see live timings.</small></td></tr>';
++  document.querySelector('#export-timings').disabled = !valid.length;
++});
++document.querySelector('#clear-timings').addEventListener('click', () => monitor.clear());
++document.querySelector('#export-timings').addEventListener('click', () => {
++  const blob = new Blob([JSON.stringify({ mode: monitor.nativePaint ? 'native' : 'estimate', records: monitor.snapshot() }, null, 2)], { type: 'application/json' });
++  const url = URL.createObjectURL(blob);
++  const link = document.createElement('a');
++  link.href = url;
++  link.download = 'daily-grind-timings.json';
++  link.click();
++  setTimeout(() => URL.revokeObjectURL(url), 1000);
++});
+diff --git a/index.html b/index.html
+index 66c9173..deb571f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,61 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .timing-panel { max-width: 1060px; margin: 40px auto; padding: 30px; background: #fff; border: 1px solid #e8ded8; border-radius: 12px; box-shadow: 0 6px 24px #4e342e08; }
++    .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
++    .eyebrow { display: block; color: #88695b; font-size: 0.7rem; letter-spacing: 1.8px; text-transform: uppercase; font-weight: 700; margin-bottom: 5px; }
++    .section-heading h2 { font-size: 1.65rem; letter-spacing: -0.5px; }
++    .live-status { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #476647; }
++    .live-status::before { content: ''; width: 7px; height: 7px; background: #60865a; border-radius: 50%; }
++    .timing-intro { color: #846f66; margin: 12px 0 22px; font-size: 0.9rem; max-width: 680px; }
++    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #e8ded8; border-radius: 8px; background: #fcfaf8; }
++    .metric { padding: 18px 22px; }
++    .metric + .metric { border-left: 1px solid #e8ded8; }
++    .metric span { display: block; color: #846f66; font-size: 0.8rem; }
++    .metric strong { font-size: 1.8rem; font-weight: 600; font-variant-numeric: tabular-nums; }
++    .table-heading { margin: 26px 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
++    .table-heading h3 { font-size: 0.95rem; }
++    button { font: inherit; cursor: pointer; }
++    .panel-actions { display: flex; gap: 8px; }
++    .panel-actions button { background: white; color: var(--primary); border: 1px solid #ded2c9; border-radius: 5px; font-size: 0.75rem; padding: 6px 12px; }
++    button:disabled { opacity: 0.45; cursor: default; }
++    .table-scroll { overflow-x: auto; }
++    table { border-collapse: collapse; width: 100%; text-align: left; font-size: 0.8rem; }
++    th { color: #846f66; font-weight: 500; font-size: 0.7rem; padding: 10px 8px; background: #fcfaf8; white-space: nowrap; }
++    td { padding: 12px 8px; border-bottom: 1px solid #f0e8e2; font-variant-numeric: tabular-nums; }
++    td small { display: block; color: #967d70; font-weight: 400; }
++    .type-pill { display: inline-block; border: 1px solid #e6dbd2; border-radius: 4px; padding: 2px 7px; font-size: 0.7rem; }
++    .empty-state { text-align: center; padding: 32px 8px; color: #6c5144; }
++    .empty-state small { margin-top: 5px; }
++    .measurement-note { margin-top: 16px; font-size: 0.75rem; color: #846f66; }
++    .filters { display: flex; gap: 8px; margin: 20px 0 12px; }
++    .filters button { border: 1px solid #d7ccc8; padding: 6px 18px; border-radius: 30px; color: var(--primary); background: white; }
++    .filters button[aria-pressed="true"] { color: white; background: var(--primary); border-color: var(--primary); }
++    [hidden] { display: none !important; }
++    #coffee-content { scroll-margin-top: 100px; }
++    #coffee-content:focus { outline: none; }
++    a { color: var(--primary); }
++    a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
++    nav a[aria-current="page"] { color: var(--accent); }
++    .category { display: block; font-size: 0.7rem; color: #88695b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
++    .product-detail { padding: 30px 0; max-width: 600px; }
++    .product-detail h2 { font-size: 2rem; margin-bottom: 12px; }
++    .product-detail p + p { margin-top: 14px; }
++    .back-link { font-size: 0.85rem; }
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 10px; padding: 15px 5%; }
++      nav ul { flex-wrap: wrap; gap: 8px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .timing-panel { margin: 25px 20px; padding: 20px; }
++      .metric { padding: 12px; }
++      .metric strong { font-size: 1.35rem; }
++      .metric span { font-size: 0.7rem; }
++      .section-heading { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
++      .live-status { font-size: 0.7rem; }
++      .filters { flex-wrap: wrap; }
++    }
+   </style>
+ </head>
+ 
+@@ -174,8 +229,24 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="timing-panel" id="timing-panel" aria-labelledby="timing-title">
++      <div class="section-heading">
++        <div><span class="eyebrow">A little insight with your coffee</span><h2 id="timing-title">Every interaction, measured.</h2></div>
++        <span class="live-status" id="measurement-mode">Starting monitor</span>
++      </div>
++      <p class="timing-intro">How long until something new appears? Explore the menu and see the time from your action to a content update, right here.</p>
++      <div class="metrics">
++        <div class="metric"><span>Latest first update</span><strong id="latest-timing">—</strong></div>
++        <div class="metric"><span>Interactions</span><strong id="interaction-count">0</strong></div>
++        <div class="metric"><span>Client navigations</span><strong id="navigation-count">0</strong></div>
++      </div>
++      <div class="table-heading"><h3>Recent activity</h3><div class="panel-actions"><button id="clear-timings" type="button">Clear</button><button id="export-timings" type="button" disabled>Export JSON</button></div></div>
++      <div class="table-scroll"><table aria-label="Interaction and navigation timings"><thead><tr><th>Action / destination</th><th>Type</th><th>First update</th><th>Latest update</th><th>Measurement</th></tr></thead><tbody id="timing-rows"><tr><td colspan="5" class="empty-state">Open the menu to start measuring.</td></tr></tbody></table></div>
++      <p class="measurement-note" id="measurement-note">Timings are kept in this tab only.</p>
++      <noscript><p>Enable JavaScript to measure interactions and use the live menu.</p></noscript>
++    </section>
++    <section class="container" id="coffee-content" tabindex="-1" aria-label="Coffee selection">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -207,6 +278,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..bfcbf10 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,10 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..4669158
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,34 @@
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++
++const routes = new Set(['/', '/menu', '/order-online', '/menu/seasonal', '/menu/espresso', '/menu/cold-brew']);
++const assets = new Map([
++  ['/app.js', ['app.js', 'text/javascript']],
++  ['/timing.js', ['timing.js', 'text/javascript']],
++  ['/index.html', ['index.html', 'text/html']],
++]);
++
++createServer(async (request, response) => {
++  if (!['GET', 'HEAD'].includes(request.method)) {
++    response.writeHead(405, { Allow: 'GET, HEAD' });
++    response.end();
++    return;
++  }
++  const path = new URL(request.url, 'http://localhost').pathname;
++  const asset = routes.has(path) ? ['index.html', 'text/html'] : assets.get(path);
++  if (!asset) {
++    response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++    response.end('Page not found');
++    return;
++  }
++  try {
++    const data = await readFile(new URL(asset[0], import.meta.url));
++    response.writeHead(200, { 'Content-Type': `${asset[1]}; charset=utf-8`, 'Cache-Control': 'no-cache' });
++    response.end(request.method === 'HEAD' ? undefined : data);
++  } catch {
++    response.writeHead(500);
++    response.end('Unable to load page');
++  }
++}).listen(Number(process.env.PORT || 11222), '0.0.0.0', () => {
++  console.log(`The Daily Grind is running on port ${process.env.PORT || 11222}`);
++});
+diff --git a/timing.js b/timing.js
+new file mode 100644
+index 0000000..a49a935
+--- /dev/null
++++ b/timing.js
+@@ -0,0 +1,99 @@
++// Native contentful paint timings are presentation timestamps, not handler timings.
++// The fallback is deliberately labelled an estimate: rAF cannot prove presentation.
++export function createTimingMonitor(env = window) {
++  const records = new Map();
++  const hints = [];
++  const listeners = new Set();
++  const observers = [];
++  let sequence = 0;
++  let generation = 0;
++  let latestUpdate = 0;
++  let cutoff = 0;
++  const supported = env.PerformanceObserver?.supportedEntryTypes || [];
++  let nativePaint = false;
++  const notify = () => listeners.forEach(listener => listener(snapshot()));
++  const snapshot = () => [...records.values()].map(record => ({ ...record }));
++  const save = (key, data) => {
++    records.set(key, { ...records.get(key), ...data });
++    if (records.size > 100) records.delete(records.keys().next().value);
++    notify();
++  };
++  const observe = (type, callback) => {
++    if (!supported.includes(type)) return false;
++    try {
++      const observer = new env.PerformanceObserver(list => {
++        for (const entry of list.getEntries()) {
++          if (entry.startTime >= cutoff) callback(entry);
++        }
++      });
++      observer.observe({ type, buffered: true });
++      observers.push(observer);
++      return true;
++    } catch { return false; }
++  };
++  const hintFor = start => hints.findLast(hint => Math.abs(hint.start - start) < 8);
++  const nativeRecord = entry => {
++    if (entry.largestContentfulPaint?.element?.closest?.('#timing-panel')) return;
++    const hint = hintFor(entry.startTime);
++    const key = `native-${entry.interactionId}`;
++    if (!hint && !records.has(key)) return;
++    const shown = entry.presentationTime;
++    if (!Number.isFinite(shown) || shown <= 0) return;
++    const existing = records.get(key);
++    // Keep both the first observed update and subsequent contentful updates.
++    save(key, {
++      id: key,
++      label: existing?.label || hint.label,
++      kind: existing?.kind || 'Interaction',
++      path: existing?.path || hint.path,
++      start: entry.startTime,
++      first: Math.min(existing?.first ?? Infinity, shown - entry.startTime),
++      latest: Math.max(existing?.latest ?? 0, shown - entry.startTime),
++      source: 'Browser measured',
++    });
++  };
++  nativePaint = observe('interaction-contentful-paint', nativeRecord);
++  if (nativePaint) observe('soft-navigation', entry => {
++    const hint = hintFor(entry.startTime);
++    const key = `native-${entry.interactionId}`;
++    if (!hint && !records.has(key)) return;
++    const shown = entry.presentationTime;
++    const existing = records.get(key);
++    save(key, {
++      id: key, label: existing?.label || hint.label,
++      kind: 'Navigation', path: new URL(entry.name, env.location.href).pathname,
++      start: entry.startTime,
++      first: Math.min(existing?.first ?? Infinity, shown > 0 ? shown - entry.startTime : Infinity),
++      latest: Math.max(existing?.latest ?? 0, shown > 0 ? shown - entry.startTime : 0),
++      source: 'Browser measured',
++    });
++    const paint = entry.getLargestInteractionContentfulPaint?.();
++    if (paint) nativeRecord(paint);
++  });
++  return {
++    nativePaint,
++    snapshot,
++    subscribe(listener) { listeners.add(listener); listener(snapshot()); return () => listeners.delete(listener); },
++    hint(event, label) {
++      hints.push({ start: event.timeStamp, label, path: env.location.pathname });
++      if (hints.length > 100) hints.shift();
++    },
++    begin(label, kind, event) {
++      return { id: `estimate-${++sequence}`, label, kind, start: event?.timeStamp ?? env.performance.now(), generation };
++    },
++    contentUpdated(token, { estimate = false } = {}) {
++      if ((nativePaint && !estimate) || env.document.visibilityState !== 'visible') return;
++      const update = ++latestUpdate;
++      const path = env.location.pathname;
++      // One frame allows the new DOM to render; the second is an estimate of
++      // the first opportunity to present it. Never call this a native paint.
++      env.requestAnimationFrame(() => env.requestAnimationFrame(() => {
++        if (update !== latestUpdate || token.generation !== generation || env.document.visibilityState !== 'visible') return;
++        const duration = env.performance.now() - token.start;
++        save(token.id, { ...token, path, first: duration, latest: duration, source: 'Frame estimate' });
++      }));
++    },
++    clear() { generation++; cutoff = env.performance.now(); records.clear(); hints.length = 0; notify(); },
++    disconnect() { observers.forEach(observer => observer.disconnect()); listeners.clear(); generation++; },
++  };
++}
+diff --git a/timing.test.js b/timing.test.js
+new file mode 100644
+index 0000000..1641ae1
+--- /dev/null
++++ b/timing.test.js
+@@ -0,0 +1,116 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createTimingMonitor } from './timing.js';
++
++function setup(types = []) {
++  let time = 100;
++  const callbacks = new Map();
++  const frames = [];
++  const env = {
++    location: { pathname: '/menu', href: 'https://coffee.example/menu' },
++    document: { visibilityState: 'visible' },
++    performance: { now: () => time },
++    requestAnimationFrame: callback => frames.push(callback),
++    PerformanceObserver: class {
++      static supportedEntryTypes = types;
++      constructor(callback) { this.callback = callback; }
++      observe({ type }) { callbacks.set(type, this.callback); }
++      disconnect() {}
++    },
++  };
++  return {
++    env, monitor: createTimingMonitor(env),
++    setTime: value => { time = value; },
++    flush: () => { while (frames.length) frames.shift()(); },
++    emit: (type, entry) => callbacks.get(type)({ getEntries: () => [entry] }),
++  };
++}
++
++test('fallback includes event queueing and rendering, with the destination URL', () => {
++  const { env, monitor, setTime, flush } = setup();
++  const token = monitor.begin('View Details', 'Navigation', { timeStamp: 80 });
++  env.location.pathname = '/menu/espresso';
++  monitor.contentUpdated(token);
++  assert.equal(monitor.snapshot().length, 0);
++  setTime(130);
++  flush();
++  assert.deepEqual(monitor.snapshot().map(({ first, path, source }) => ({ first, path, source })), [
++    { first: 50, path: '/menu/espresso', source: 'Frame estimate' },
++  ]);
++});
++
++test('background rendering and cleared in-flight work do not produce samples', () => {
++  const { env, monitor, flush } = setup();
++  monitor.contentUpdated(monitor.begin('Filter', 'Interaction'));
++  env.document.visibilityState = 'hidden';
++  flush();
++  assert.equal(monitor.snapshot().length, 0);
++  env.document.visibilityState = 'visible';
++  monitor.contentUpdated(monitor.begin('Filter', 'Interaction'));
++  monitor.clear();
++  flush();
++  assert.equal(monitor.snapshot().length, 0);
++});
++
++test('native paint before navigation is reclassified using interactionId', () => {
++  const { monitor, emit } = setup(['interaction-contentful-paint', 'soft-navigation']);
++  monitor.hint({ timeStamp: 100 }, 'Menu');
++  const paint = { interactionId: 7, startTime: 100, presentationTime: 150 };
++  emit('interaction-contentful-paint', paint);
++  emit('soft-navigation', {
++    interactionId: 7, startTime: 100, presentationTime: 140,
++    name: 'https://coffee.example/menu/espresso',
++    getLargestInteractionContentfulPaint: () => paint,
++  });
++  emit('interaction-contentful-paint', { ...paint, presentationTime: 210 });
++  assert.equal(monitor.snapshot().length, 1);
++  assert.deepEqual(monitor.snapshot()[0], {
++    id: 'native-7', label: 'Menu', kind: 'Navigation', path: '/menu/espresso',
++    start: 100, first: 40, latest: 110, source: 'Browser measured',
++  });
++});
++
++test('native mode excludes untracked panel updates and avoids fallback duplicates', () => {
++  const { monitor, emit, flush } = setup(['interaction-contentful-paint']);
++  emit('interaction-contentful-paint', { interactionId: 1, startTime: 100, presentationTime: 120 });
++  monitor.contentUpdated(monitor.begin('Menu', 'Navigation'));
++  flush();
++  assert.equal(monitor.snapshot().length, 0);
++});
++
++test('record storage is bounded and exported snapshots are independent', () => {
++  const { monitor, flush } = setup();
++  for (let i = 0; i < 110; i++) {
++    monitor.contentUpdated(monitor.begin(`Filter ${i}`, 'Interaction'));
++    flush();
++  }
++  assert.equal(monitor.snapshot().length, 100);
++  const records = monitor.snapshot();
++  records[0].label = 'Changed';
++  assert.equal(monitor.snapshot()[0].label, 'Filter 10');
++});
++
++test('clearing ignores delayed buffered native entries', () => {
++  const { monitor, emit, setTime } = setup(['interaction-contentful-paint']);
++  monitor.hint({ timeStamp: 80 }, 'Menu');
++  setTime(200);
++  monitor.clear();
++  emit('interaction-contentful-paint', { interactionId: 2, startTime: 80, presentationTime: 250 });
++  assert.equal(monitor.snapshot().length, 0);
++});
++
++test('rapid updates discard an earlier render opportunity that was superseded', () => {
++  const { monitor, flush } = setup();
++  monitor.contentUpdated(monitor.begin('First filter', 'Interaction'));
++  monitor.contentUpdated(monitor.begin('Second filter', 'Interaction'));
++  flush();
++  assert.equal(monitor.snapshot().length, 1);
++  assert.equal(monitor.snapshot()[0].label, 'Second filter');
++});
++
++test('history traversal can explicitly estimate when no native initiating event exists', () => {
++  const { monitor, flush } = setup(['interaction-contentful-paint']);
++  monitor.contentUpdated(monitor.begin('Back / forward', 'Navigation'), { estimate: true });
++  flush();
++  assert.equal(monitor.snapshot()[0].source, 'Frame estimate');
++});

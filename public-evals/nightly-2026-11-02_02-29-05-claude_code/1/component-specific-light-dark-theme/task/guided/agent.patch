@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,18 +3,102 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      /* Brand constants (same in both themes) */
+       --primary: #4e342e;
+-      --secondary: #d7ccc8;
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++
++      /* Raw light/dark values */
++      --surface-light: #fafafa;
++      --surface-dark: #1b1411;
++      --surface-raised-light: #ffffff;
++      --surface-raised-dark: #2b211d;
++      --border-light: transparent;
++      --border-dark: #43342e;
++      --text-light: #3e2723;
++      --text-dark: #efe6e2;
++      --heading-light: #4e342e;
++      --heading-dark: #ffcc80;
++      --btn-bg-light: #4e342e;
++      --btn-bg-dark: #ffab40;
++      --btn-bg-hover-light: #3e2723;
++      --btn-bg-hover-dark: #ffc370;
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #2b1a12;
++      --footer-bg-light: #d7ccc8;
++      --footer-bg-dark: #2b211d;
++      --shadow-light: rgba(0, 0, 0, 0.1);
++      --shadow-dark: rgba(0, 0, 0, 0.5);
++
++      color-scheme: light dark;
+     }
+ 
++    /* Theme tokens: light-dark() resolves against the color-scheme of the element using it */
++    @supports (color: light-dark(white, black)) {
++      :root {
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --surface-raised: light-dark(var(--surface-raised-light), var(--surface-raised-dark));
++        --border: light-dark(var(--border-light), var(--border-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --heading: light-dark(var(--heading-light), var(--heading-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-bg-hover: light-dark(var(--btn-bg-hover-light), var(--btn-bg-hover-dark));
++        --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++        --footer-bg: light-dark(var(--footer-bg-light), var(--footer-bg-dark));
++        --shadow: light-dark(var(--shadow-light), var(--shadow-dark));
++      }
++    }
++
++    /* Fallback for browsers without light-dark(): assign tokens per theme explicitly */
++    @supports not (color: light-dark(white, black)) {
++      :root,
++      .themed-card.force-light {
++        --surface: var(--surface-light);
++        --surface-raised: var(--surface-raised-light);
++        --border: var(--border-light);
++        --text: var(--text-light);
++        --heading: var(--heading-light);
++        --btn-bg: var(--btn-bg-light);
++        --btn-bg-hover: var(--btn-bg-hover-light);
++        --btn-text: var(--btn-text-light);
++        --footer-bg: var(--footer-bg-light);
++        --shadow: var(--shadow-light);
++      }
++
++      @media (prefers-color-scheme: dark) {
++        :root {
++          --surface: var(--surface-dark);
++          --surface-raised: var(--surface-raised-dark);
++          --border: var(--border-dark);
++          --text: var(--text-dark);
++          --heading: var(--heading-dark);
++          --btn-bg: var(--btn-bg-dark);
++          --btn-bg-hover: var(--btn-bg-hover-dark);
++          --btn-text: var(--btn-text-dark);
++          --footer-bg: var(--footer-bg-dark);
++          --shadow: var(--shadow-dark);
++        }
++      }
++
++      .themed-card.theme-dark:not(.force-light) {
++        --surface: var(--surface-dark);
++        --surface-raised: var(--surface-raised-dark);
++        --border: var(--border-dark);
++        --text: var(--text-dark);
++        --heading: var(--heading-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-bg-hover: var(--btn-bg-hover-dark);
++        --btn-text: var(--btn-text-dark);
++        --footer-bg: var(--footer-bg-dark);
++        --shadow: var(--shadow-dark);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,9 +107,10 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--surface);
++      accent-color: var(--btn-bg);
+     }
+ 
+     /* Navigation */
+     nav {
+@@ -106,38 +191,52 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    .themed-card {
++      /* Re-specify inherited colors so they resolve against this card's color-scheme,
++         not the already-resolved value inherited from the page */
++      color: var(--text);
++      accent-color: var(--btn-bg);
++      background: var(--surface-raised);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--shadow);
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .themed-card.theme-dark {
++      color-scheme: only dark;
++    }
++
++    /* Must come after .theme-dark so it wins when both are present */
++    .themed-card.force-light {
++      color-scheme: only light;
++    }
++
++    .themed-card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+@@ -177,19 +276,19 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card theme-dark">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

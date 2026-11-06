@@ -1,0 +1,89 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,47 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Layout density toggle: only shown where container style queries work */
++    :root {
++      --style-queries-supported: check;
++    }
++
++    .density-toggle {
++      display: none;
++    }
++
++    @container style(--style-queries-supported) {
++      .density-toggle {
++        display: block;
++        margin: 15px auto 0;
++        padding: 8px 16px;
++        border: 1px solid var(--primary);
++        border-radius: 5px;
++        background: white;
++        color: var(--primary);
++        font: inherit;
++        cursor: pointer;
++      }
++
++      .density-toggle[aria-pressed="true"] {
++        background: var(--primary);
++        color: white;
++      }
++    }
++
++    #target-container {
++      --density: comfortable;
++    }
++
++    /* The card reacts to its ancestor's custom property; no JS styles it directly */
++    @container style(--density: spacious) {
++      #target-item {
++        padding: 40px;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -176,10 +215,12 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <button type="button" id="toggle-spacious" class="density-toggle" aria-pressed="false">Spacious layout</button>
++      <div id="target-container">
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="target-item">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -193,11 +234,23 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      </div>
+     </section>
+   </main>
+ 
++  <script>
++    const toggle = document.getElementById('toggle-spacious');
++    const container = document.getElementById('target-container');
++
++    toggle.addEventListener('click', () => {
++      const spacious = container.style.getPropertyValue('--density') !== 'spacious';
++      container.style.setProperty('--density', spacious ? 'spacious' : 'comfortable');
++      toggle.setAttribute('aria-pressed', spacious);
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

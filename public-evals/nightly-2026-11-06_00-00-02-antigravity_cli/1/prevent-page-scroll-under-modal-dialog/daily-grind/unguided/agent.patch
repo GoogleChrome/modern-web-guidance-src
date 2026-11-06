@@ -1,0 +1,54 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..ae63507 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,20 @@
+       font-size: 0.85rem;
+     }
+ 
++    html:has(dialog[open]),
++    body:has(dialog[open]),
+     body.modal-open {
+       overflow: hidden;
+-      position: fixed;
+     }
+ 
+     dialog {
+-      overflow: visible;
++      overflow: auto;
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
++      overflow: hidden;
++      overscroll-behavior: contain;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -230,10 +233,24 @@
+ 
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
++    const closeNotice = document.getElementById("close-notice");
+     if (noticeDialog) {
+-      noticeDialog.show();
++      noticeDialog.showModal();
++      document.documentElement.style.overflow = "hidden";
+       document.body.classList.add("modal-open");
+       document.body.style.overflow = "hidden";
++
++      noticeDialog.addEventListener("close", () => {
++        document.documentElement.style.overflow = "";
++        document.body.classList.remove("modal-open");
++        document.body.style.overflow = "";
++      });
++
++      if (closeNotice) {
++        closeNotice.addEventListener("click", () => {
++          noticeDialog.close();
++        });
++      }
+     }
+   </script>
+ </body>

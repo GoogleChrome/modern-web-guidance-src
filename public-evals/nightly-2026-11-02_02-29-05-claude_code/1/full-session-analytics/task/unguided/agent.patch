@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,93 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script type="module">
++    // Core Web Vitals reporting. Metrics are held until the page is unloaded so
++    // the values sent are final for the whole session.
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5?module';
++
++    const ENDPOINT = '/path/to/analytics/endpoint';
++
++    // Latest value of each metric not yet delivered, keyed by metric id.
++    const pending = new Map();
++
++    function buildBody(metrics) {
++      return JSON.stringify(metrics.map(({ name, value, rating, delta, id, navigationType }) => ({
++        name, value, rating, delta, id, navigationType,
++      })));
++    }
++
++    if ('fetchLater' in window) {
++      // fetchLater() hands the request to the browser, which sends it when the
++      // document is destroyed (tab close, navigation, crash, bfcache eviction).
++      // Each metric update replaces the deferred request with the latest values.
++      let controller = null;
++      let result = null;
++      let inFlight = [];
++
++      const schedule = () => {
++        // The previous request was already sent (e.g. page went into bfcache
++        // and was restored), so those metric values have been delivered.
++        if (result?.activated) {
++          for (const metric of inFlight) {
++            if (pending.get(metric.id) === metric) pending.delete(metric.id);
++          }
++        }
++        controller?.abort();
++        controller = result = null;
++        inFlight = [...pending.values()];
++        if (!inFlight.length) return;
++
++        controller = new AbortController();
++        try {
++          result = fetchLater(ENDPOINT, {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: buildBody(inFlight),
++            signal: controller.signal,
++          });
++        } catch (err) {
++          // e.g. QuotaExceededError; nothing more can be deferred.
++          console.warn('Unable to queue Web Vitals beacon:', err);
++          controller = null;
++        }
++      };
++
++      const handle = (metric) => {
++        pending.set(metric.id, metric);
++        schedule();
++      };
++
++      onCLS(handle, { reportAllChanges: true });
++      onINP(handle, { reportAllChanges: true });
++      onLCP(handle, { reportAllChanges: true });
++    } else {
++      // Fallback: queue metrics and flush with sendBeacon when the page is
++      // hidden, the last event reliably fired before unload (pagehide and
++      // unload are not dispatched on many mobile tab closes).
++      const flush = () => {
++        if (!pending.size) return;
++        const blob = new Blob([buildBody([...pending.values()])], { type: 'application/json' });
++        if (!navigator.sendBeacon(ENDPOINT, blob)) {
++          fetch(ENDPOINT, { method: 'POST', body: blob, keepalive: true }).catch(() => {});
++        }
++        pending.clear();
++      };
++
++      const handle = (metric) => pending.set(metric.id, metric);
++
++      onCLS(handle);
++      onINP(handle);
++      onLCP(handle);
++
++      addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden') flush();
++      });
++      addEventListener('pagehide', flush);
++    }
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

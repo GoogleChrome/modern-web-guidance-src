@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,116 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Page layout with sidebar */
++    .layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 240px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (max-width: 800px) {
++      .layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .sidebar {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .sidebar h2 {
++      font-size: 1.1rem;
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .reveal-btn {
++      font: inherit;
++      cursor: pointer;
++      border: 2px solid var(--accent);
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      border-radius: 5px;
++      transition: background 0.3s;
++    }
++
++    .reveal-btn:hover {
++      background: #3e2723;
++    }
++
++    .reveal-btn:disabled {
++      cursor: default;
++      opacity: 0.6;
++    }
++
++    /* Padding/border live on the inner wrapper, not the hidden="until-found" element */
++    .coupon-box {
++      margin-top: 30px;
++      padding: 20px;
++      text-align: center;
++      background: white;
++      border: 2px dashed var(--accent);
++      border-radius: 8px;
++    }
++
++    .coupon-code {
++      display: block;
++      font-size: 1.8rem;
++      font-weight: bold;
++      letter-spacing: 3px;
++      color: var(--primary);
++    }
++
++    /* Wholesale & catering tabs */
++    .tabs {
++      margin-top: 40px;
++    }
++
++    .tabs h2 {
++      text-align: center;
++      margin-bottom: 15px;
++    }
++
++    .tab-group {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .wholesale-tab > summary {
++      cursor: pointer;
++      list-style: none;
++      padding: 10px 20px;
++      background: var(--secondary);
++      border-radius: 5px;
++      font-weight: 600;
++    }
++
++    .wholesale-tab > summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .wholesale-tab[open] > summary {
++      background: var(--primary);
++      color: white;
++      border-radius: 5px 5px 0 0;
++    }
++
++    .wholesale-tab > .tab-panel {
++      background: white;
++      padding: 20px;
++      border-radius: 0 0 8px 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,9 +281,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container layout">
++    <main>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +303,67 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
+-  </main>
+ 
++      <div id="coupon-panel" hidden="until-found">
++        <div class="coupon-box">
++          <p>Your discount code:</p>
++          <code class="coupon-code">GRIND10</code>
++          <p>Take 10% off your next order.</p>
++        </div>
++      </div>
++
++      <section class="tabs">
++        <h2>Wholesale &amp; Catering</h2>
++        <div class="tab-group">
++          <details class="wholesale-tab" name="wholesale-tabs" open>
++            <summary>Wholesale</summary>
++            <div class="tab-panel">
++              <p>Stock your cafe or shop with our small-batch roasts. Wholesale accounts get volume pricing, free weekly delivery within 30 miles, and a dedicated roasting consultant. Minimum order: 10 lbs.</p>
++            </div>
++          </details>
++          <details class="wholesale-tab" name="wholesale-tabs">
++            <summary>Catering</summary>
++            <div class="tab-panel">
++              <p>Bring The Daily Grind to your next event. Our mobile espresso bar serves weddings, offices, and festivals, with packages for 25 to 500 guests. Book at least two weeks in advance.</p>
++            </div>
++          </details>
++        </div>
++      </section>
++    </main>
++
++    <aside class="sidebar">
++      <h2>Special Offer</h2>
++      <button type="button" id="reveal-coupon" class="reveal-btn" aria-controls="coupon-panel">Reveal Coupon</button>
++    </aside>
++  </div>
++
++  <script>
++    const panel = document.getElementById('coupon-panel');
++    const revealBtn = document.getElementById('reveal-coupon');
++
++    function markRevealed() {
++      revealBtn.disabled = true;
++      revealBtn.textContent = 'Coupon Revealed';
++    }
++
++    revealBtn.addEventListener('click', () => {
++      panel.hidden = false;
++      markRevealed();
++    });
++
++    // Find-in-page revealed the panel: keep the button in sync
++    panel.addEventListener('beforematch', markRevealed);
++
++    // Browsers without hidden="until-found" (e.g. Safari): show the panel directly
++    if (!('onbeforematch' in HTMLElement.prototype)) {
++      panel.hidden = false;
++      revealBtn.setAttribute('aria-expanded', 'true');
++      markRevealed();
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

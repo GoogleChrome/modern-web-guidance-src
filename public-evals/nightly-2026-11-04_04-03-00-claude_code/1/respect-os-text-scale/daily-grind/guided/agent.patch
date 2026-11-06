@@ -1,0 +1,227 @@
+diff --git a/index.html b/index.html
+index 66c9173..595c628 100644
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,13 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Opt into OS-level text scaling (Dynamic Type / Android font size). -->
++  <meta name="text-scale" content="scale">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /* NOTE: Do not set font-size on :root/html — the browser applies the
++       OS text scale to the root font size, and everything below is sized
++       in rem/em so it follows automatically. */
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -25,6 +30,7 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-wrap: break-word;
+     }
+ 
+     /* Navigation */
+@@ -33,8 +39,10 @@
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: 0.75rem 1.5rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -43,38 +51,42 @@
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+-      letter-spacing: 1px;
++      letter-spacing: 0.05em;
++      line-height: 1.2;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem 1.25rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      padding-block: 0.25em;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      padding: 0.3em 0.85em;
++      border-radius: 0.25em;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      /* min-height (not height) so the banner grows with scaled text */
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -83,71 +95,108 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
++      gap: 1rem;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 1.25rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 1.25rem + 3vw, 3.5rem);
++      line-height: 1.15;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
++      max-width: 40em;
++      text-wrap: pretty;
++    }
++
++    .hero .btn {
++      margin-top: 0.5rem;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-width: 70rem;
++      margin: 2.5rem auto;
++      padding: 0 1.25rem;
++    }
++
++    .section-title {
++      text-align: center;
++      font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
++      line-height: 1.25;
++      text-wrap: balance;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      /* rem-based threshold: columns reflow to fewer/stacked as text scales up */
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
++      gap: 1.25rem;
++      margin-top: 1.25rem;
+     }
+ 
+     .card {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
++      padding: 1.25rem;
++      border-radius: 0.5rem;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: 1.25rem;
++      line-height: 1.3;
++      margin-bottom: 0.625rem;
+       color: var(--primary);
++      text-wrap: balance;
++    }
++
++    .card p {
++      margin-bottom: 1rem;
++      text-wrap: pretty;
++    }
++
++    .card .btn {
++      /* Keep buttons aligned at the bottom when cards have uneven text */
++      margin-top: auto;
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 0.625em 1.25em;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
++      border-radius: 0.3em;
++      margin-top: 1rem;
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 2.5rem 1.25rem;
++      margin-top: 2.5rem;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 1.25rem;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin: 0 0.6rem;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+@@ -176,7 +225,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

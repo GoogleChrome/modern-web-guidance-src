@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,90 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Background tab detection.
++    // Determines whether the page was initially loaded in a background tab and
++    // records when (ms since navigation start) it was first backgrounded.
++    (function () {
++      var detection = {
++        loadedInBackground: false,
++        backgroundTime: null, // ms relative to navigation start (performance.timeOrigin)
++        method: null,
++        reliable: true
++      };
++      var hiddenRecorded = false;
++
++      function log() {
++        console.log('[Background Detection]', Object.assign({}, detection));
++      }
++
++      // Called once with the first time the page became hidden.
++      function recordHidden(firstHiddenTime) {
++        if (hiddenRecorded) return;
++        hiddenRecorded = true;
++        detection.loadedInBackground = firstHiddenTime === 0;
++        detection.backgroundTime = firstHiddenTime;
++        log();
++      }
++
++      var supportsVisibilityEntries =
++        'PerformanceObserver' in window &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.indexOf('visibility-state') !== -1;
++
++      if (supportsVisibilityEntries) {
++        // Preferred: the browser buffers every visibility-state change from the
++        // start of navigation, so this is accurate no matter when (or how
++        // late/async) this script executes. The first entry always reflects the
++        // initial state at startTime 0.
++        detection.method = 'performance-observer';
++        var observer = new PerformanceObserver(function (list) {
++          var entries = list.getEntries();
++          for (var i = 0; i < entries.length; i++) {
++            // Initial state was visible: log foreground load now, and log again
++            // with backgroundTime if/when the tab is later hidden.
++            if (entries[i].startTime === 0 && entries[i].name === 'visible') {
++              log();
++            }
++            if (entries[i].name === 'hidden') {
++              recordHidden(entries[i].startTime);
++              observer.disconnect();
++              return;
++            }
++          }
++        });
++        observer.observe({ type: 'visibility-state', buffered: true });
++      } else {
++        // ⚠️ LEGACY FALLBACK — POTENTIALLY UNRELIABLE.
++        // Without buffered visibility entries we can only query the current
++        // document.visibilityState when this script runs. If the script is
++        // loaded async/deferred (or runs late for any reason), the tab may
++        // already have been hidden and shown again, so a background load can be
++        // missed and the recorded backgroundTime may be later than reality.
++        detection.method = 'legacy-visibilityState-fallback';
++        detection.reliable = false;
++        console.warn(
++          '[Background Detection] Using legacy fallback (document.visibilityState). ' +
++          'Results may be inaccurate, especially for async scripts.'
++        );
++
++        // Prerendered pages are hidden but not "backgrounded" by the user.
++        if (document.visibilityState === 'hidden' && !document.prerendering) {
++          recordHidden(0);
++        } else {
++          log();
++          document.addEventListener('visibilitychange', function onChange(event) {
++            if (document.visibilityState === 'hidden') {
++              recordHidden(event.timeStamp);
++              document.removeEventListener('visibilitychange', onChange, true);
++            }
++          }, true);
++        }
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

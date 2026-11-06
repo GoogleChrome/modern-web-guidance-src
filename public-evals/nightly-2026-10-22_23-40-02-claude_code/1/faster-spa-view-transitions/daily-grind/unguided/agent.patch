@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+index 66c9173..b208e32 100644
+--- a/index.html
++++ b/index.html
+@@ -142,6 +142,19 @@
+       margin-top: 40px;
+     }
+ 
++    .page-view h1 {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .page-view .note {
++      width: 100%;
++      margin-top: 20px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+@@ -168,6 +181,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="app">
++  <section class="view" data-route="/">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -196,6 +211,8 @@
+       </div>
+     </section>
+   </main>
++  </section>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +224,81 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Minimal SPA router. Visited views keep their DOM (detached, not destroyed),
++    // so going back restores them instantly with scroll position and input state intact.
++    (function () {
++      const app = document.getElementById('app');
++      const cache = new Map();   // path -> { el, scroll }
++      let current = null;        // path of the mounted view
++
++      const home = app.querySelector('.view');
++      cache.set('/', { el: home, scroll: 0 });
++      current = '/';
++
++      function normalize(path) {
++        return path.length > 1 ? path.replace(/\/+$/, '') : path;
++      }
++
++      function titleFor(path) {
++        return path.split('/').filter(Boolean).pop().replace(/-/g, ' ')
++          .replace(/\b\w/g, c => c.toUpperCase());
++      }
++
++      // Builds a view's DOM once; later visits reuse the cached element.
++      function createView(path) {
++        const el = document.createElement('section');
++        el.className = 'view page-view container';
++        el.dataset.route = path;
++        const h1 = document.createElement('h1');
++        h1.textContent = titleFor(path);
++        const p = document.createElement('p');
++        p.style.textAlign = 'center';
++        p.textContent = 'Content for ' + path + ' is coming soon.';
++        const note = document.createElement('input');
++        note.className = 'note';
++        note.placeholder = 'Leave a note (preserved when you come back)';
++        el.append(h1, p, note);
++        return el;
++      }
++
++      function show(path) {
++        path = normalize(path);
++        if (path === current) return;
++        const prev = cache.get(current);
++        prev.scroll = window.scrollY;
++        prev.el.remove();                       // detach, keep in cache
++
++        let entry = cache.get(path);
++        if (!entry) {
++          entry = { el: createView(path), scroll: 0 };
++          cache.set(path, entry);
++        }
++        app.appendChild(entry.el);
++        current = path;
++        document.title = (path === '/' ? '' : titleFor(path) + ' | ') + 'The Daily Grind | Artisanal Coffee';
++        window.scrollTo(0, entry.scroll);
++      }
++
++      document.addEventListener('click', function (e) {
++        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++        const a = e.target.closest('a[href]');
++        if (!a || a.target || a.origin !== location.origin) return;
++        if (a.pathname === '/logout') return;   // let the server handle it
++        e.preventDefault();
++        if (normalize(a.pathname) !== current) {
++          history.pushState(null, '', a.pathname);
++          show(a.pathname);
++        }
++      });
++
++      window.addEventListener('popstate', function () { show(location.pathname); });
++
++      history.scrollRestoration = 'manual';
++      show(location.pathname);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

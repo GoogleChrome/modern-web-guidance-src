@@ -1,0 +1,373 @@
+diff --git a/index.html b/index.html
+index 66c9173..3780c9e 100644
+--- a/index.html
++++ b/index.html
+@@ -6,151 +6,238 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer reset, base, theme, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    @layer theme {
++      :root {
++        /* Tier 1: Literal design tokens */
++        --color-brown-900: #3e2723;
++        --color-brown-800: #4e342e;
++        --color-brown-100: #d7ccc8;
++        --color-amber-400: #ffab40;
++        --color-neutral-100: #fafafa;
++        --color-white: #ffffff;
++        --color-overlay-dark: rgba(0, 0, 0, 0.5);
++        --color-shadow-subtle: rgba(0, 0, 0, 0.1);
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++        --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        --leading-normal: 1.6;
++        --tracking-wide: 1px;
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        --text-xs: 0.85rem;
++        --text-sm: 0.9rem;
++        --text-lg: 1.5rem;
++        --text-3xl: 3rem;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        --space-xs: 5px;
++        --space-sm: 10px;
++        --space-md: 12px;
++        --space-lg: 15px;
++        --space-xl: 20px;
++        --space-2xl: 40px;
++        --space-fluid-inline: 5%;
++        --space-base: 1rem;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        --size-container-max: 1100px;
++        --size-card-min: 250px;
++        --size-hero-block: 60dvb;
++        --size-hero-block-fallback: 60vh;
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        --radius-sm: 4px;
++        --radius-md: 5px;
++        --radius-lg: 8px;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        --border-thin: 1px;
++        --shadow-card: 0 2px 5px var(--color-shadow-subtle);
++        --transition-base: 0.3s;
++        --z-sticky: 1000;
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        --hero-bg-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++        /* Tier 2: Semantic design tokens */
++        --primary: var(--color-brown-800);
++        --primary-hover: var(--color-brown-900);
++        --secondary: var(--color-brown-100);
++        --accent: var(--color-amber-400);
++        --text: var(--color-brown-900);
++        --text-inverse: var(--color-white);
++        --light: var(--color-neutral-100);
++        --surface-card: var(--color-white);
++      }
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
++    @layer reset {
++      :where(html, body, nav, header, main, section, footer, div, h1, h2, h3, p, ul, li, a) {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++    @layer base {
++      body {
++        font-family: var(--font-sans);
++        line-height: var(--leading-normal);
++        color: var(--text);
++        background-color: var(--light);
++      }
+     }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++    @layer components {
++      /* Navigation */
++      nav {
++        background: var(--primary);
++        color: var(--text-inverse);
++        padding-block: var(--space-base);
++        padding-inline: var(--space-fluid-inline);
++        display: flex;
++        flex-wrap: wrap;
++        justify-content: space-between;
++        align-items: safe center;
++        gap: var(--space-base);
++        position: sticky;
++        inset-block-start: 0;
++        z-index: var(--z-sticky);
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++        .logo {
++          font-size: var(--text-lg);
++          font-weight: bold;
++          letter-spacing: var(--tracking-wide);
++        }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++        ul {
++          display: flex;
++          flex-wrap: wrap;
++          flex-wrap: balance;
++          align-items: safe center;
++          gap: var(--space-xl);
++          list-style: none;
++        }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++        a {
++          color: currentColor;
++          text-decoration: none;
++          font-size: var(--text-sm);
++          transition: color var(--transition-base);
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++          &:hover {
++            color: var(--accent);
++          }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++          &.logout-link {
++            border: var(--border-thin) solid var(--accent);
++            padding-block: var(--space-xs);
++            padding-inline: var(--space-md);
++            border-radius: var(--radius-sm);
++          }
++        }
++      }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++      /* Hero Section */
++      .hero {
++        min-block-size: var(--size-hero-block-fallback);
++        min-block-size: var(--size-hero-block);
++        background: linear-gradient(var(--color-overlay-dark), var(--color-overlay-dark)),
++          var(--hero-bg-image);
++        background-size: cover;
++        background-position: center;
++        display: flex;
++        flex-direction: column;
++        place-content: center;
++        place-items: safe center;
++        color: var(--text-inverse);
++        text-align: center;
++        padding-block: 0;
++        padding-inline: var(--space-xl);
++
++        h1 {
++          font-size: var(--text-3xl);
++          margin-block-end: var(--space-base);
++        }
++      }
++
++      /* Content Sections */
++      .container {
++        max-inline-size: var(--size-container-max);
++        margin-block: var(--space-2xl);
++        margin-inline: auto;
++        padding-block: 0;
++        padding-inline: var(--space-xl);
++
++        h2 {
++          text-align: center;
++        }
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(var(--size-card-min), 1fr));
++        gap: var(--space-xl);
++        margin-block-start: var(--space-xl);
++      }
++
++      .card {
++        grid-row: span 3;
++        display: grid;
++        grid-template-rows: auto 1fr auto;
++        grid-template-rows: subgrid;
++        justify-items: center;
++        align-items: start;
++        gap: 0;
++        background: var(--surface-card);
++        padding: var(--space-xl);
++        border-radius: var(--radius-lg);
++        box-shadow: var(--shadow-card);
++        text-align: center;
++
++        h3 {
++          margin-block-end: var(--space-sm);
++          color: var(--primary);
++        }
++      }
++
++      .btn {
++        display: inline-block;
++        background: var(--primary);
++        color: var(--text-inverse);
++        padding-block: var(--space-sm);
++        padding-inline: var(--space-xl);
++        text-decoration: none;
++        border-radius: var(--radius-md);
++        margin-block-start: var(--space-lg);
++        transition: background var(--transition-base);
++
++        &:hover {
++          background: var(--primary-hover);
++        }
++      }
++
++      /* Footer */
++      footer {
++        background: var(--secondary);
++        text-align: center;
++        padding-block: var(--space-2xl);
++        padding-inline: var(--space-xl);
++        margin-block-start: var(--space-2xl);
++
++        .footer-links {
++          margin-block-end: var(--space-xl);
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++          a {
++            margin-block: 0;
++            margin-inline: var(--space-sm);
++            color: currentColor;
++            text-decoration: none;
++            font-size: var(--text-xs);
++          }
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +263,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

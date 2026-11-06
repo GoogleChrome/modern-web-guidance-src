@@ -1,0 +1,334 @@
+diff --git a/index.html b/index.html
+index 66c9173..90d8e7f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,95 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Order form */
++    .order-form {
++      max-width: 480px;
++      margin: 20px auto 0;
++      text-align: left;
++    }
++
++    .order-form fieldset {
++      border: 0;
++      display: grid;
++      gap: 8px;
++    }
++
++    .order-form input[type="text"] {
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .order-form .actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .order-form .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .btn-secondary {
++      background: #8d6e63;
++    }
++
++    .order-form .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .order-form .error {
++      color: #b71c1c;
++    }
++
++    .order-form #order-result {
++      display: block;
++      margin-top: 12px;
++      font-family: monospace;
++      white-space: pre-wrap;
++    }
++
++    grind-strength {
++      display: inline-flex;
++      gap: 6px;
++      padding: 4px 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      width: fit-content;
++      background: white;
++    }
++
++    grind-strength span {
++      font-size: 1.6rem;
++      line-height: 1;
++      cursor: pointer;
++      filter: grayscale(1) opacity(0.35);
++    }
++
++    grind-strength span[data-on] {
++      filter: none;
++    }
++
++    grind-strength:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    grind-strength:state(invalid),
++    grind-strength.invalid {
++      border-color: #b71c1c;
++    }
++
++    grind-strength:state(disabled) span,
++    grind-strength.disabled span {
++      cursor: not-allowed;
++      filter: grayscale(1) opacity(0.2);
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +284,27 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="custom-order">
++      <h2 style="text-align: center;">Build Your Cup</h2>
++      <form id="order-form" class="card order-form" novalidate>
++        <fieldset id="order-fields">
++          <label for="drink-name">Name for the order</label>
++          <input id="drink-name" name="name" type="text" required autocomplete="given-name">
++
++          <label id="strength-label">Strength</label>
++          <grind-strength id="strength" name="strength" required aria-labelledby="strength-label"></grind-strength>
++          <small class="error" id="strength-error" hidden></small>
++
++          <div class="actions">
++            <button type="submit" class="btn">Place Order</button>
++            <button type="reset" class="btn btn-secondary">Reset</button>
++          </div>
++        </fieldset>
++        <button type="button" class="btn btn-secondary" id="toggle-disabled">Disable form fields</button>
++        <output id="order-result" aria-live="polite"></output>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +317,205 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * <grind-strength name="strength" required value="3">
++     * A 1-5 bean rating that is a real form control: it submits its value,
++     * reports validity, and handles reset, disabled and state restore.
++     */
++    class GrindStrength extends HTMLElement {
++      static formAssociated = true;
++      static observedAttributes = ['value', 'required', 'disabled'];
++      static MAX = 5;
++
++      #internals = this.attachInternals();
++      #value = '';
++      #dirty = false; // true once set via property or user, so the attribute no longer drives value
++      #formDisabled = false;
++      #beans = [];
++
++      constructor() {
++        super();
++        const root = this.attachShadow({ mode: 'open', delegatesFocus: false });
++        root.innerHTML = '<style>:host{display:inline-flex;gap:6px}</style><slot></slot>';
++      }
++
++      connectedCallback() {
++        if (!this.#beans.length) {
++          for (let i = 1; i <= GrindStrength.MAX; i++) {
++            const bean = document.createElement('span');
++            bean.textContent = '☕';
++            bean.dataset.n = i;
++            bean.setAttribute('aria-hidden', 'true');
++            this.#beans.push(bean);
++            this.append(bean);
++          }
++          this.addEventListener('click', this.#onClick);
++          this.addEventListener('keydown', this.#onKeydown);
++          this.addEventListener('blur', () => this.#showError());
++        }
++        this.#internals.role = 'slider';
++        this.#internals.ariaValueMin = '1';
++        this.#internals.ariaValueMax = String(GrindStrength.MAX);
++        this.#sync();
++      }
++
++      attributeChangedCallback(name, _old, val) {
++        if (name === 'value' && !this.#dirty) this.#value = this.#normalize(val);
++        this.#sync();
++      }
++
++      // --- Public form-control API ---
++      get name() { return this.getAttribute('name') ?? ''; }
++      set name(v) { this.setAttribute('name', v); }
++      get type() { return 'grind-strength'; }
++      get form() { return this.#internals.form; }
++      get labels() { return this.#internals.labels; }
++      get validity() { return this.#internals.validity; }
++      get validationMessage() { return this.#internals.validationMessage; }
++      get willValidate() { return this.#internals.willValidate; }
++      checkValidity() { return this.#internals.checkValidity(); }
++      reportValidity() { return this.#internals.reportValidity(); }
++
++      get value() { return this.#value; }
++      set value(v) {
++        this.#dirty = true;
++        this.#value = this.#normalize(v);
++        this.#sync();
++      }
++
++      get required() { return this.hasAttribute('required'); }
++      set required(v) { this.toggleAttribute('required', Boolean(v)); }
++
++      get disabled() { return this.hasAttribute('disabled') || this.#formDisabled; }
++      set disabled(v) { this.toggleAttribute('disabled', Boolean(v)); }
++
++      // --- Form lifecycle callbacks ---
++      formAssociatedCallback() { this.#sync(); }
++
++      formDisabledCallback(disabled) {
++        this.#formDisabled = disabled;
++        this.#sync();
++      }
++
++      formResetCallback() {
++        this.#dirty = false;
++        this.#value = this.#normalize(this.getAttribute('value'));
++        this.#showError(false);
++        this.#sync();
++      }
++
++      formStateRestoreCallback(state) {
++        this.#dirty = true;
++        this.#value = this.#normalize(state);
++        this.#sync();
++      }
++
++      // --- Internals ---
++      #normalize(v) {
++        const n = Math.round(Number(v));
++        return v !== null && v !== '' && n >= 1 && n <= GrindStrength.MAX ? String(n) : '';
++      }
++
++      #sync() {
++        const i = this.#internals;
++        const value = this.#value;
++        // Second argument is the restorable state (autofill/back-forward navigation).
++        i.setFormValue(value || null, value);
++
++        if (this.required && !value) {
++          i.setValidity({ valueMissing: true }, 'Please choose a strength.', this.#beans[0]);
++        } else {
++          i.setValidity({});
++        }
++
++        const disabled = this.disabled;
++        this.tabIndex = disabled ? -1 : 0;
++        i.ariaDisabled = String(disabled);
++        i.ariaRequired = String(this.required);
++        i.ariaValueNow = value || null;
++        i.ariaValueText = value ? `${value} of ${GrindStrength.MAX}` : 'Not set';
++        this.#toggleState('disabled', disabled);
++        this.#toggleState('invalid', !i.validity.valid && this.classList.contains('touched'));
++        this.#beans.forEach((b, idx) => b.toggleAttribute('data-on', idx < Number(value || 0)));
++      }
++
++      #toggleState(name, on) {
++        try {
++          on ? this.#internals.states.add(name) : this.#internals.states.delete(name);
++        } catch { /* :state() unsupported: fall back to classes below */ }
++        this.classList.toggle(name, on);
++      }
++
++      #showError(touch = true) {
++        this.classList.toggle('touched', touch);
++        this.#toggleState('invalid', touch && !this.#internals.validity.valid);
++      }
++
++      #set(v) {
++        if (this.disabled) return;
++        const before = this.#value;
++        this.value = v;
++        this.#showError();
++        if (this.#value !== before) {
++          this.dispatchEvent(new Event('input', { bubbles: true }));
++          this.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++      }
++
++      #onClick = (e) => {
++        const bean = e.target.closest?.('span[data-n]');
++        if (bean) this.#set(bean.dataset.n);
++      };
++
++      #onKeydown = (e) => {
++        const cur = Number(this.#value || 0);
++        const keys = {
++          ArrowRight: cur + 1, ArrowUp: cur + 1,
++          ArrowLeft: cur - 1, ArrowDown: cur - 1,
++          Home: 1, End: GrindStrength.MAX,
++        };
++        if (!(e.key in keys)) return;
++        e.preventDefault();
++        this.#set(Math.min(GrindStrength.MAX, Math.max(1, keys[e.key])));
++      };
++    }
++    customElements.define('grind-strength', GrindStrength);
++
++    // --- Demo wiring ---
++    const form = document.getElementById('order-form');
++    const strength = document.getElementById('strength');
++    const strengthError = document.getElementById('strength-error');
++    const result = document.getElementById('order-result');
++    const fields = document.getElementById('order-fields');
++    const toggle = document.getElementById('toggle-disabled');
++
++    form.addEventListener('submit', (e) => {
++      e.preventDefault();
++      // novalidate on the form, so validate explicitly (covers custom control too).
++      if (!form.reportValidity()) return;
++      result.textContent = JSON.stringify(Object.fromEntries(new FormData(form)), null, 2);
++    });
++
++    // Show the custom control's validation message inline.
++    form.addEventListener('invalid', (e) => {
++      if (e.target === strength) {
++        strengthError.textContent = strength.validationMessage;
++        strengthError.hidden = false;
++      }
++    }, true);
++    strength.addEventListener('change', () => { strengthError.hidden = strength.checkValidity(); });
++    form.addEventListener('reset', () => {
++      strengthError.hidden = true;
++      result.textContent = '';
++    });
++
++    // Toggling the fieldset fires formDisabledCallback on the custom control.
++    toggle.addEventListener('click', () => {
++      fields.disabled = !fields.disabled;
++      toggle.textContent = fields.disabled ? 'Enable form fields' : 'Disable form fields';
++    });
++  </script>
+ </body>
+ 
+ </html>

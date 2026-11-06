@@ -1,0 +1,217 @@
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..ce3aaf8 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -19,6 +19,8 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -63,6 +65,11 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
++            maxLength={64}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +84,9 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
++            maxLength={128}
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -84,8 +94,16 @@ export default function SignInForm() {
+           />
+         </div>
+ 
++
++        <p className="text-xs text-gray-500 text-center">
++          Your credentials are used only to sign you in. We only collect your username and password, and
++          never share them with advertisers. See our{' '}
++          <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Privacy Policy</a>.
++        </p>
++
+         <button
+           type="submit"
++          data-skip-tracking="true"
+           disabled={loading}
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..6b21ebe 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -19,6 +19,8 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -64,6 +66,11 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
++            maxLength={64}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,6 +85,10 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            minLength={8}
++            name="password"
++            autoComplete="new-password"
++            maxLength={128}
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -88,6 +99,13 @@ export default function SignUpForm() {
+           </p>
+         </div>
+ 
++
++        <p className="text-xs text-gray-500 text-center">
++          Your username and password are used only to create and secure your account. No email or other personal details are required. We only collect your username and password, and
++          never share them with advertisers. See our{' '}
++          <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Privacy Policy</a>.
++        </p>
++
+         <button
+           type="submit"
+           disabled={loading}
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..9cc2651 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,29 +8,41 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  /** Third-party analytics are off on pages that handle credentials. */
++  analytics?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, analytics = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    {
++      analytics && (
++        <script
++          is:inline
++          defer
++          crossorigin="anonymous"
++          referrerpolicy="no-referrer"
++          src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"
++        />
++      )
++    }
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..b74bc0d 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++
++  // Restrictive defaults: no referrer leakage, no unused browser features, no embedding.
++  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=(), browsing-topics=()');
++  response.headers.set('X-Content-Type-Options', 'nosniff');
++  response.headers.set('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
++
++  // Never cache or leak credential pages.
++  if (/\/sign(in|up)\/?$/.test(context.url.pathname)) {
++    response.headers.set('Cache-Control', 'no-store');
++    response.headers.set('Referrer-Policy', 'no-referrer');
++  }
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..7caeca8 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -14,4 +14,10 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     <h2>3. Recording of data on our website</h2>
+     <p><strong>Cookies</strong></p>
+     <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++
++    <p><strong>Third-party services</strong></p>
++    <p>Pages load a web font from Google Fonts and an analytics script from our infrastructure provider. The sign-in and sign-up pages load no analytics script and send no referrer information.</p>
++
++    <h2>4. Accounts</h2>
++    <p>To create an account we collect only a username and a password. We do not require your name, email address or any other personal details. Your credentials are used solely to create and secure your account and to sign you in, and are not shared with advertisers.</p>
+ </LegalLayout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..073cf27 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" analytics={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..f78e98c 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" analytics={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>

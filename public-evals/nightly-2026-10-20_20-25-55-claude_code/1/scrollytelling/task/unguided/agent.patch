@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,154 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling: CSS-only, scroll-driven animations.
++       Each text section in #tracked defines a named view timeline; the
++       shared .story ancestor hoists them (timeline-scope) so the matching
++       sections in #animated, a different DOM branch, can consume them. */
++    .story {
++      margin-top: 60px;
++    }
++
++    .story > h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .story-body {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      timeline-scope: --step-1, --step-2, --step-3;
++    }
++
++    #tracked {
++      grid-column: 1;
++      grid-row: 1;
++    }
++
++    #tracked section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 10px;
++    }
++
++    #animated {
++      grid-column: 2;
++      grid-row: 1;
++      position: sticky;
++      top: 90px;
++      height: min(70vh, 520px);
++      align-self: start;
++      display: grid;
++    }
++
++    #animated section {
++      grid-area: 1 / 1;
++      position: relative;
++      overflow: hidden;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--primary);
++    }
++
++    #animated img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    #animated figcaption {
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      padding: 40px 20px 16px;
++      color: white;
++      font-weight: bold;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
++    }
++
++    @media (max-width: 700px) {
++      .story-body {
++        grid-template-columns: 1fr;
++        gap: 0;
++      }
++
++      #tracked,
++      #animated {
++        grid-column: 1;
++      }
++
++      #animated {
++        grid-row: 1;
++        height: 35vh;
++        top: 70px;
++        z-index: 1;
++      }
++
++      #tracked {
++        grid-row: 2;
++      }
++
++      #tracked section {
++        min-height: 60vh;
++      }
++    }
++
++    /* Only hide/animate where scroll-driven animations exist and motion is
++       welcome; elsewhere all panels simply show (stacked in the flow). */
++    @media not all and (prefers-reduced-motion: reduce) {
++      @supports (animation-timeline: view()) {
++        @keyframes reveal {
++          from {
++            opacity: 0;
++            transform: translateY(40px) scale(0.96);
++          }
++
++          to {
++            opacity: 1;
++            transform: none;
++          }
++        }
++
++        #tracked section:nth-child(1) { view-timeline: --step-1 block; }
++        #tracked section:nth-child(2) { view-timeline: --step-2 block; }
++        #tracked section:nth-child(3) { view-timeline: --step-3 block; }
++
++        #animated section {
++          opacity: 0;
++          will-change: opacity, transform;
++          animation: reveal linear both;
++          animation-range: entry 30% entry 100%;
++        }
++
++        #animated section:nth-child(1) { animation-timeline: --step-1; }
++        #animated section:nth-child(2) { animation-timeline: --step-2; }
++        #animated section:nth-child(3) { animation-timeline: --step-3; }
++      }
++    }
++
++    /* No scroll-driven animation support or reduced motion: plain stacked layout */
++    @media (prefers-reduced-motion: reduce) {
++      #animated { position: static; height: auto; gap: 20px; }
++      #animated section { grid-area: auto; height: 260px; }
++    }
++
++    @supports not (animation-timeline: view()) {
++      #animated { position: static; height: auto; gap: 20px; }
++      #animated section { grid-area: auto; height: 260px; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +340,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story">
++      <h2>From Bean to Cup</h2>
++      <div class="story-body">
++        <div id="tracked">
++          <section>
++            <h3>1. Ethically Sourced</h3>
++            <p>We buy directly from small farms, paying fair prices for beans grown with care at altitude.</p>
++          </section>
++          <section>
++            <h3>2. Locally Roasted</h3>
++            <p>Small batches are roasted every morning in our shop, so every bag is at peak freshness.</p>
++          </section>
++          <section>
++            <h3>3. Crafted for You</h3>
++            <p>Our baristas pull, pour, and finish each drink by hand, then serve it to you warm.</p>
++          </section>
++        </div>
++        <div id="animated" aria-hidden="true">
++          <section>
++            <figure>
++              <img loading="lazy" src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80" alt="">
++              <figcaption>Fair-trade beans</figcaption>
++            </figure>
++          </section>
++          <section>
++            <figure>
++              <img loading="lazy" src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=80" alt="">
++              <figcaption>Roasted in small batches</figcaption>
++            </figure>
++          </section>
++          <section>
++            <figure>
++              <img loading="lazy" src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80" alt="">
++              <figcaption>Poured by hand</figcaption>
++            </figure>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

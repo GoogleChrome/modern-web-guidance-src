@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -87,9 +87,9 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
+-    .hero h1 {
++    .hero h2 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
+@@ -152,8 +152,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <link rel="stylesheet" href="app.css">
++  <script src="app.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+@@ -167,35 +169,56 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <main>
++  <div id="list-page">
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h2>Wake Up Your Senses</h2>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++  <section class="container" aria-labelledby="list-heading">
++    <h1 id="list-heading" tabindex="-1">Seasonal Favorites</h1>
++    <p class="section-intro">A little something for every kind of morning.</p>
++    <div class="grid">
++      <a class="thumbnail" href="#favorite/maple-oat-latte" data-favorite="maple-oat-latte">
++        <div class="thumbnail-content">
++          <h2 class="title">Maple Oat Latte</h2>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <span class="details-link">View Details <span aria-hidden="true">↗</span></span>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++      </a>
++      <a class="thumbnail" href="#favorite/dark-roast-espresso" data-favorite="dark-roast-espresso">
++        <div class="thumbnail-content">
++          <h2 class="title">Dark Roast Espresso</h2>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <span class="details-link">View Details <span aria-hidden="true">↗</span></span>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++      </a>
++      <a class="thumbnail" href="#favorite/cold-brew" data-favorite="cold-brew">
++        <div class="thumbnail-content">
++          <h2 class="title">Cold Brew</h2>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="details-link">View Details <span aria-hidden="true">↗</span></span>
+         </div>
+-      </div>
+-    </section>
++      </a>
++    </div>
++  </section>
++  </div>
++
++  <section id="detail-page" class="container" aria-labelledby="title" hidden>
++    <a id="back-link" href="#list">← Back to seasonal favorites</a>
++    <div id="hero" role="img"></div>
++    <div class="detail-copy">
++      <p class="eyebrow">THE DAILY GRIND · SEASONAL FAVORITES</p>
++      <h1 id="title" tabindex="-1"></h1>
++      <p id="description"></p>
++      <p id="tasting-notes"></p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++  </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

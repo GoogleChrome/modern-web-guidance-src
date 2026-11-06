@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+index 66c9173..95d09e6 100644
+--- a/index.html
++++ b/index.html
+@@ -55,14 +55,18 @@
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav button {
++      background: none;
++      border: 0;
++      font-family: inherit;
++      cursor: pointer;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav button:hover {
+       color: var(--accent);
+     }
+ 
+@@ -121,6 +125,9 @@
+     }
+ 
+     .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -146,12 +153,39 @@
+       margin-bottom: 20px;
+     }
+ 
+-    .footer-links a {
++    .footer-links form {
++      display: inline-block;
++    }
++
++    .footer-links button {
++      background: none;
++      border: 0;
++      font-family: inherit;
++      cursor: pointer;
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @supports selector(form:tool-form-active) {
++      form:tool-form-active {
++        outline: 2px dashed var(--accent);
++        outline-offset: 4px;
++      }
++    }
++
++    @supports selector(button:tool-submit-active) {
++      button:tool-submit-active {
++        outline: 2px solid var(--accent);
++        outline-offset: 4px;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -160,18 +194,40 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form action="/menu" method="get" toolname="view-menu" tooldescription="Open The Daily Grind coffee menu." toolautosubmit>
++          <button type="submit">Menu</button>
++        </form>
++      </li>
++      <li>
++        <form action="/locations" method="get" toolname="view-locations" tooldescription="Open The Daily Grind café locations page." toolautosubmit>
++          <button type="submit">Locations</button>
++        </form>
++      </li>
++      <li>
++        <form action="/rewards" method="get" toolname="view-rewards" tooldescription="Open The Daily Grind rewards page." toolautosubmit>
++          <button type="submit">Rewards</button>
++        </form>
++      </li>
++      <li>
++        <form action="/account" method="get" toolname="view-account" tooldescription="Open the current user's Daily Grind account page." toolautosubmit>
++          <button type="submit">My Account</button>
++        </form>
++      </li>
++      <li>
++        <form action="/logout" method="get" toolname="log-out" tooldescription="Log out of the current Daily Grind account. Requires the user to submit the form.">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form action="/order-online" method="get" toolname="open-online-ordering" tooldescription="Open The Daily Grind online ordering page to begin choosing items." toolautosubmit>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
+@@ -181,17 +237,23 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <form action="/menu/seasonal" method="get" toolname="view-seasonal-coffee" tooldescription="Open seasonal coffee details, including the Maple Oat Latte." toolautosubmit>
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <form action="/menu/espresso" method="get" toolname="view-espresso" tooldescription="Open details about the Dark Roast Espresso." toolautosubmit>
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <form action="/menu/cold-brew" method="get" toolname="view-cold-brew" tooldescription="Open details about the Cold Brew coffee." toolautosubmit>
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+       </div>
+     </section>
+@@ -199,10 +261,18 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <form action="/about" method="get" toolname="view-our-story" tooldescription="Open The Daily Grind company story." toolautosubmit>
++        <button type="submit">Our Story</button>
++      </form> |
++      <form action="/careers" method="get" toolname="view-careers" tooldescription="Open The Daily Grind careers page." toolautosubmit>
++        <button type="submit">Join the Team</button>
++      </form> |
++      <form action="/contact" method="get" toolname="view-contact" tooldescription="Open contact information for The Daily Grind." toolautosubmit>
++        <button type="submit">Contact Us</button>
++      </form> |
++      <form action="/privacy-policy" method="get" toolname="view-privacy-policy" tooldescription="Open The Daily Grind privacy policy." toolautosubmit>
++        <button type="submit">Privacy</button>
++      </form>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>

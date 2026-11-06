@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -69,10 +69,62 @@
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      cursor: pointer;
+     }
+ 
++    /* Modal Dialog */
++    dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
++      margin: auto;
++      max-width: 400px;
++      width: 90%;
++      color: var(--text);
++      background-color: white;
++    }
++
++    dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0.5);
++      backdrop-filter: blur(2px);
++    }
++
++    dialog h2 {
++      margin-bottom: 12px;
++      color: var(--primary);
++      font-size: 1.5rem;
++    }
++
++    dialog p {
++      margin-bottom: 20px;
++      color: #666;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-cancel {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-cancel:hover {
++      background: #bcaaa4;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,9 +215,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -205,8 +257,57 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  <dialog id="logoutDialog" closedby="any" aria-labelledby="dialogTitle">
++    <form method="dialog" class="dialog-content">
++      <h2 id="dialogTitle">Are you sure?</h2>
++      <p>Are you sure you want to log out?</p>
++      <div class="dialog-actions">
++        <button type="submit" value="cancel" class="btn btn-cancel" id="cancelLogout">Cancel</button>
++        <a href="/logout" class="btn btn-logout" id="confirmLogout">Logout</a>
++      </div>
++    </form>
++  </dialog>
+ 
++  <script>
++    const logoutTrigger = document.querySelector('.test-dialog-trigger');
++    const logoutDialog = document.getElementById('logoutDialog');
++
++    if (logoutTrigger && logoutDialog) {
++      logoutTrigger.addEventListener('click', (event) => {
++        event.preventDefault();
++        logoutDialog.showModal();
++      });
++
++      const handleBackdropClick = (event) => {
++        // 1. When clicking the backdrop, the event target is the dialog element itself.
++        // Ignore clicks where the target is a child element inside the dialog.
++        if (event.target !== logoutDialog) return;
++
++        // 2. Check if the click coordinates fall within the dialog's content box.
++        // This distinguishes between a click on the backdrop vs a click on the dialog's background/padding.
++        const rect = logoutDialog.getBoundingClientRect();
++        const isDialogContent = (
++          rect.top <= event.clientY &&
++          event.clientY <= rect.top + rect.height &&
++          rect.left <= event.clientX &&
++          event.clientX <= rect.left + rect.width
++        );
++
++        if (isDialogContent) return;
++
++        // 3. Since the click was outside the content area (on the backdrop), manually close the dialog.
++        logoutDialog.close();
++      };
++
++      // Fallback for browsers without closedby support
++      if (!('closedBy' in HTMLDialogElement.prototype)) {
++        logoutDialog.addEventListener('click', handleBackdropClick);
++      } else {
++        logoutDialog.addEventListener('click', handleBackdropClick);
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

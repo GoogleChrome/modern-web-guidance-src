@@ -1,0 +1,262 @@
+diff --git a/drink-card.js b/drink-card.js
+new file mode 100644
+index 0000000..123a4a4
+--- /dev/null
++++ b/drink-card.js
+@@ -0,0 +1,27 @@
++// Content and styles arrive in the HTML. Upgrading only attaches behavior to
++// existing light-DOM nodes, preserving their identity and initial appearance.
++class DrinkCard extends HTMLElement {
++  #button;
++
++  #toggleFavorite = () => {
++    const pressed = this.#button.getAttribute('aria-pressed') === 'true';
++    this.#button.setAttribute('aria-pressed', String(!pressed));
++  };
++
++  connectedCallback() {
++    this.#button = this.querySelector('[data-favorite]');
++    if (!this.#button) return;
++
++    this.#button.addEventListener('click', this.#toggleFavorite);
++    this.#button.disabled = false;
++  }
++
++  disconnectedCallback() {
++    if (!this.#button) return;
++
++    this.#button.removeEventListener('click', this.#toggleFavorite);
++    this.#button.disabled = true;
++  }
++}
++
++customElements.define('drink-card', DrinkCard);
+diff --git a/index.html b/index.html
+index 66c9173..67550a0 100644
+--- a/index.html
++++ b/index.html
+@@ -108,6 +108,7 @@
+     }
+ 
+     .card {
++      display: block;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -135,6 +136,41 @@
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .favorite-toggle {
++      border: 1px solid var(--primary);
++      font: inherit;
++      cursor: pointer;
++      background: white;
++      color: var(--primary);
++    }
++
++    .favorite-toggle:hover,
++    .favorite-toggle[aria-pressed="true"] {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .favorite-toggle[aria-pressed="true"] .favorite-icon {
++      color: #a12b26;
++    }
++
++    .favorite-toggle:disabled {
++      cursor: default;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +189,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +215,30 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <drink-card class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" class="btn favorite-toggle" data-favorite aria-label="Favorite Maple Oat Latte" aria-pressed="false" disabled><span class="favorite-icon" aria-hidden="true">♥</span> Favorite</button>
++          </div>
++        </drink-card>
++        <drink-card class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <div class="card-actions">
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <button type="button" class="btn favorite-toggle" data-favorite aria-label="Favorite Dark Roast Espresso" aria-pressed="false" disabled><span class="favorite-icon" aria-hidden="true">♥</span> Favorite</button>
++          </div>
++        </drink-card>
++        <drink-card class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <div class="card-actions">
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <button type="button" class="btn favorite-toggle" data-favorite aria-label="Favorite Cold Brew" aria-pressed="false" disabled><span class="favorite-icon" aria-hidden="true">♥</span> Favorite</button>
++          </div>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/test/drink-card.test.cjs b/test/drink-card.test.cjs
+new file mode 100644
+index 0000000..19093b1
+--- /dev/null
++++ b/test/drink-card.test.cjs
+@@ -0,0 +1,109 @@
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { test } = require('node:test');
++const { runInNewContext } = require('node:vm');
++
++const source = readFileSync(new URL('../drink-card.js', `file://${__filename}`), 'utf8');
++const html = readFileSync(new URL('../index.html', `file://${__filename}`), 'utf8');
++
++// A small DOM stand-in checks lifecycle behavior without a browser or server.
++function createCardClass() {
++  let Card;
++  class HTMLElement {
++    button = Object.assign(new EventTarget(), {
++      disabled: true,
++      pressed: 'false',
++      getAttribute(name) {
++        assert.equal(name, 'aria-pressed');
++        return this.pressed;
++      },
++      setAttribute(name, value) {
++        assert.equal(name, 'aria-pressed');
++        this.pressed = value;
++      },
++    });
++
++    querySelector(selector) {
++      assert.equal(selector, '[data-favorite]');
++      return this.button;
++    }
++
++    set innerHTML(value) {
++      assert.fail('Hydration must preserve the server-rendered DOM');
++    }
++
++    attachShadow() {
++      assert.fail('Hydration must preserve the styled light DOM');
++    }
++
++    replaceChildren() {
++      assert.fail('Hydration must preserve the server-rendered children');
++    }
++  }
++
++  runInNewContext(source, {
++    HTMLElement,
++    customElements: {
++      define(name, value) {
++        assert.equal(name, 'drink-card');
++        Card = value;
++      },
++    },
++  });
++  return Card;
++}
++
++test('HTML delivers all three cards, styles, links, and toggle states before JavaScript', () => {
++  const cards = [...html.matchAll(/<drink-card class="card">([\s\S]*?)<\/drink-card>/g)];
++  assert.equal(cards.length, 3);
++  for (const [, content] of cards) {
++    assert.match(content, /<h3>.+<\/h3>/);
++    assert.match(content, /<p>.+<\/p>/);
++    assert.match(content, /<a href="\/menu\/.+?" class="btn">View Details<\/a>/);
++    assert.match(content, /<button type="button"[^>]*aria-pressed="false" disabled>/);
++  }
++  assert.match(html, /\.card\s*\{\s*display: block;/);
++  assert.match(html, /<script type="module" src="\/drink-card.js"><\/script>/);
++  assert.ok(html.indexOf('</style>') < html.indexOf('<drink-card'));
++});
++
++test('upgrade preserves the existing button and toggles its pressed state', () => {
++  const Card = createCardClass();
++  const card = new Card();
++  const button = card.button;
++  card.connectedCallback();
++  assert.equal(card.button, button);
++  assert.equal(button.disabled, false);
++  assert.equal(button.pressed, 'false');
++  button.dispatchEvent(new Event('click'));
++  assert.equal(button.pressed, 'true');
++  button.dispatchEvent(new Event('click'));
++  assert.equal(button.pressed, 'false');
++});
++
++test('favorite state is independent for each card', () => {
++  const Card = createCardClass();
++  const first = new Card();
++  const second = new Card();
++  first.connectedCallback();
++  second.connectedCallback();
++  first.button.dispatchEvent(new Event('click'));
++  assert.equal(first.button.pressed, 'true');
++  assert.equal(second.button.pressed, 'false');
++});
++
++test('disconnect removes the listener and reconnect preserves state without duplicate toggles', () => {
++  const Card = createCardClass();
++  const card = new Card();
++  card.connectedCallback();
++  card.button.dispatchEvent(new Event('click'));
++  card.disconnectedCallback();
++  assert.equal(card.button.disabled, true);
++  card.button.dispatchEvent(new Event('click'));
++  assert.equal(card.button.pressed, 'true');
++  card.connectedCallback();
++  assert.equal(card.button.disabled, false);
++  assert.equal(card.button.pressed, 'true');
++  card.button.dispatchEvent(new Event('click'));
++  assert.equal(card.button.pressed, 'false');
++});

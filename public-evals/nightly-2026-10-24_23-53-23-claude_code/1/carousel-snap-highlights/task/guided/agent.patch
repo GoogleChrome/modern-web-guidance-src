@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,68 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Seasonal carousel */
++    .carousel {
++      --item-width: min(80%, 300px);
++      display: flex;
++      gap: 20px;
++      margin-top: 20px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      /* Room for the scaled card and its shadow, which overflow-x would otherwise clip */
++      padding-block: 40px;
++      /* Let the first and last items reach the center */
++      padding-inline: calc((100% - var(--item-width)) / 2);
++    }
++
++    .carousel-item {
++      flex: 0 0 var(--item-width);
++      scroll-snap-align: center;
++      container-type: scroll-state;
++    }
++
++    .carousel .card {
++      height: 100%;
++      background: #e0e0e0;
++      transition:
++        scale 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
++        background-color 0.4s,
++        color 0.4s,
++        box-shadow 0.4s;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @container scroll-state(snapped: x) {
++        .carousel .card {
++          background: #007bff;
++          color: white;
++          scale: 1.15;
++          box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
++        }
++      }
++
++      /* Fallback for browsers without scroll-state queries (set by script) */
++      .carousel-item.is-snapped .card {
++        background: #007bff;
++        color: white;
++        scale: 1.15;
++        box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .carousel .card {
++        transition: none !important;
++        scale: 1 !important;
++      }
++    }
++
++    .carousel .card h3 {
++      color: inherit;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,23 +236,29 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="carousel">
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +272,22 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-state container queries
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach((entry) => {
++          entry.target.classList.toggle('is-snapped', entry.isIntersecting);
++        });
++      }, {
++        root: document.querySelector('.carousel'),
++        rootMargin: '0px -49%'
++      });
++      document.querySelectorAll('.carousel-item').forEach((item) => observer.observe(item));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

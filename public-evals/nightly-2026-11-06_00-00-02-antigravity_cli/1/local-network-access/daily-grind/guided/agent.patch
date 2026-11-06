@@ -1,0 +1,607 @@
+diff --git a/index.html b/index.html
+index 66c9173..7794c5c 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,218 @@
+       background: #3e2723;
+     }
+ 
++    /* Equipment Connection Panel */
++    .equipment-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 12px;
++      padding: 32px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--secondary);
++    }
++
++    .equipment-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .equipment-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .equipment-header p {
++      color: #5d4037;
++      max-width: 720px;
++      margin: 0 auto;
++      font-size: 0.95rem;
++    }
++
++    .context-warning {
++      background: #fff3e0;
++      border-left: 4px solid #ef6c00;
++      color: #e65100;
++      padding: 12px 16px;
++      border-radius: 6px;
++      margin-bottom: 20px;
++      font-size: 0.9rem;
++    }
++
++    .equipment-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++    }
++
++    .device-panel {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      padding: 24px;
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++    }
++
++    .device-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++    }
++
++    .device-top h3 {
++      color: var(--primary);
++      font-size: 1.2rem;
++    }
++
++    .badge-group {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      align-items: center;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 3px 10px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .badge[data-state="granted"],
++    .badge[data-conn="connected"] {
++      background: #c8e6c9;
++      color: #1b5e20;
++    }
++
++    .badge[data-state="prompt"],
++    .badge[data-conn="connecting"] {
++      background: #ffe0b2;
++      color: #e65100;
++    }
++
++    .badge[data-state="denied"],
++    .badge[data-conn="error"] {
++      background: #ffcdd2;
++      color: #b71c1c;
++    }
++
++    .device-desc {
++      font-size: 0.9rem;
++      color: #5d4037;
++    }
++
++    .field-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .field-group label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .field-group input {
++      padding: 9px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-family: monospace;
++      color: var(--text);
++      background: white;
++    }
++
++    .action-row {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .btn-action {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 16px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-action:hover {
++      background: #3e2723;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .remediation-box {
++      background: #ffebee;
++      border-left: 4px solid #c62828;
++      color: #b71c1c;
++      padding: 12px 14px;
++      border-radius: 6px;
++      font-size: 0.85rem;
++    }
++
++    .remediation-box strong {
++      display: block;
++      margin-bottom: 4px;
++    }
++
++    .telemetry-output {
++      background: #271c19;
++      color: #efebe9;
++      padding: 12px 14px;
++      border-radius: 6px;
++      font-family: monospace;
++      font-size: 0.82rem;
++      min-height: 76px;
++      white-space: pre-wrap;
++      word-break: break-word;
++    }
++
++    .embed-details {
++      margin-top: 24px;
++      padding-top: 16px;
++      border-top: 1px solid var(--secondary);
++      font-size: 0.88rem;
++    }
++
++    .embed-details summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .embed-frame-wrapper {
++      margin-top: 12px;
++    }
++
++    .embed-frame-wrapper iframe {
++      width: 100%;
++      height: 90px;
++      border: 1px dashed #bcaaa4;
++      border-radius: 6px;
++      background: var(--light);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +407,123 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="equipment-section" id="equipment-panel" aria-labelledby="equipment-heading">
++      <div class="equipment-header">
++        <h2 id="equipment-heading">Smart Brewing Equipment Connection</h2>
++        <p>Connect directly from your browser to the shop's Wi-Fi Coffee Brewer on the private LAN or to the Companion Desktop Brewing Helper on your computer using granular Local Network Access permissions.</p>
++      </div>
++
++      <div id="insecure-context-warning" class="context-warning" hidden role="alert">
++        <strong>HTTPS Required for Local Network Access:</strong> Local Network Access permissions (<code>local-network</code> and <code>loopback-network</code>) require a Secure Context (<code>https://</code>) and are automatically denied on insecure <code>http://</code> origins.
++      </div>
++
++      <div class="equipment-grid">
++        <!-- Wi-Fi Coffee Brewer (Private LAN: local-network) -->
++        <article class="device-panel" aria-labelledby="lan-brewer-title">
++          <div class="device-top">
++            <div>
++              <h3 id="lan-brewer-title">Wi-Fi Coffee Brewer (Shop LAN)</h3>
++              <span style="font-size: 0.8rem; color: #6d4c41;">Address Space: <code>local</code> &bull; Permission: <code>local-network</code></span>
++            </div>
++            <div class="badge-group">
++              <span class="badge" data-permission-status="local-network" data-state="prompt" title="Local Network Permission State">prompt</span>
++              <span class="badge" id="lan-conn-badge" data-conn="idle">Disconnected</span>
++            </div>
++          </div>
++
++          <p class="device-desc" id="lan-prompt-note">
++            Requires access to your private local network (<code>192.168.1.x</code> / <code>.local</code>) to read boiler temperature, pressure, and trigger brew profiles on the shop Wi-Fi brewer.
++          </p>
++
++          <div class="field-group">
++            <label for="lan-endpoint-input">Brewer HTTP Endpoint (LAN)</label>
++            <input
++              type="url"
++              id="lan-endpoint-input"
++              value="http://192.168.1.100:8080/api/status"
++              placeholder="http://192.168.1.100:8080/api/status"
++              autocomplete="off"
++            />
++          </div>
++
++          <div class="field-group">
++            <label for="lan-ws-input">Brewer Telemetry Stream (WebSocket)</label>
++            <input
++              type="url"
++              id="lan-ws-input"
++              value="ws://192.168.1.100:8080/stream"
++              placeholder="ws://192.168.1.100:8080/stream"
++              autocomplete="off"
++            />
++          </div>
++
++          <div class="action-row">
++            <button type="button" class="btn-action" id="btn-connect-lan">Connect to LAN Brewer</button>
++            <button type="button" class="btn-action btn-secondary" id="btn-stream-lan">Stream Live Telemetry</button>
++          </div>
++
++          <div class="remediation-box" data-remediation="local-network" hidden role="alert">
++            <strong>Local Network Access Blocked or Unreachable</strong>
++            To connect to the Wi-Fi brewer on <code>192.168.1.x</code>, open your browser's <strong>Site Settings</strong> (click the tune/lock icon in the address bar), set <strong>Local network</strong> to <strong>Allow</strong>, and verify the brewer is powered on and connected to the shop Wi-Fi.
++          </div>
++
++          <pre class="telemetry-output" id="lan-telemetry-log" aria-live="polite">Ready. Click "Connect to LAN Brewer" to query status with targetAddressSpace: 'local'.</pre>
++        </article>
++
++        <!-- Companion Desktop Brewing Helper (Loopback: loopback-network) -->
++        <article class="device-panel" aria-labelledby="loopback-helper-title">
++          <div class="device-top">
++            <div>
++              <h3 id="loopback-helper-title">Desktop Brewing Helper (127.0.0.1)</h3>
++              <span style="font-size: 0.8rem; color: #6d4c41;">Address Space: <code>loopback</code> &bull; Permission: <code>loopback-network</code></span>
++            </div>
++            <div class="badge-group">
++              <span class="badge" data-permission-status="loopback-network" data-state="prompt" title="Loopback Network Permission State">prompt</span>
++              <span class="badge" id="loopback-conn-badge" data-conn="idle">Disconnected</span>
++            </div>
++          </div>
++
++          <p class="device-desc" id="loopback-prompt-note">
++            Requires access to your computer's loopback interface (<code>127.0.0.1</code> / <code>localhost</code>) to sync grind scale measurements and roast curves from the companion desktop daemon.
++          </p>
++
++          <div class="field-group">
++            <label for="loopback-endpoint-input">Desktop Helper HTTP Endpoint (Loopback)</label>
++            <input
++              type="url"
++              id="loopback-endpoint-input"
++              value="http://127.0.0.1:45678/health"
++              placeholder="http://127.0.0.1:45678/health"
++              autocomplete="off"
++            />
++          </div>
++
++          <div class="field-group">
++            <label for="loopback-ws-input">Scale Stream Endpoint (WebSocket)</label>
++            <input
++              type="url"
++              id="loopback-ws-input"
++              value="ws://127.0.0.1:45678/scale-stream"
++              placeholder="ws://127.0.0.1:45678/scale-stream"
++              autocomplete="off"
++            />
++          </div>
++
++          <div class="action-row">
++            <button type="button" class="btn-action" id="btn-connect-loopback">Connect to Desktop Helper</button>
++            <button type="button" class="btn-action btn-secondary" id="btn-stream-loopback">Connect Scale Stream</button>
++          </div>
++
++          <div class="remediation-box" data-remediation="loopback-network" hidden role="alert">
++            <strong>Loopback Network Access Blocked or Companion Offline</strong>
++            To connect to the companion helper on <code>127.0.0.1</code>, open your browser's <strong>Site Settings</strong>, set <strong>Loopback network</strong> to <strong>Allow</strong>, and confirm the Daily Grind Desktop Helper app is running on your computer.
++          </div>
++
++          <pre class="telemetry-output" id="loopback-telemetry-log" aria-live="polite">Ready. Click "Connect to Desktop Helper" to query loopback with targetAddressSpace: 'loopback'.</pre>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +536,259 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    /**
++     * Updates the permission badge and remediation UI for a granular LNA permission.
++     * @param {'local-network' | 'loopback-network'} permissionName
++     * @param {PermissionState} state
++     */
++    function updatePermissionUI(permissionName, state) {
++      const statusBadge = document.querySelector(`[data-permission-status="${permissionName}"]`);
++      const remediationBox = document.querySelector(`[data-remediation="${permissionName}"]`);
++      if (statusBadge) {
++        statusBadge.textContent = state;
++        statusBadge.dataset.state = state;
++      }
++      if (remediationBox) {
++        // Show remediation instructions whenever permission is explicitly denied
++        remediationBox.hidden = state !== 'denied';
++      }
++    }
++
++    /**
++     * Cross-browser permission check for the granular LNA permissions.
++     * Never falls back to querying 'local-network-access', which crashes older Chrome versions.
++     * @param {'local-network' | 'loopback-network'} permissionName
++     * @returns {Promise<PermissionState>}
++     */
++    export async function queryLnaPermissionSafe(permissionName) {
++      if (!navigator.permissions?.query) {
++        updatePermissionUI(permissionName, 'prompt');
++        return 'prompt';
++      }
++      try {
++        const status = await navigator.permissions.query({ name: permissionName });
++        status.addEventListener('change', () => {
++          updatePermissionUI(permissionName, status.state);
++        });
++        updatePermissionUI(permissionName, status.state);
++        return status.state;
++      } catch {
++        // Unrecognized permission name; proceed on user gesture
++        updatePermissionUI(permissionName, 'prompt');
++        return 'prompt';
++      }
++    }
++
++    /**
++     * Connects to the shop's Wi-Fi coffee brewer on the private LAN over HTTP.
++     * Declares targetAddressSpace: 'local' to exempt local HTTP from Mixed Content
++     * blocking and verify the resolved IP belongs to the private local range.
++     * @param {string} deviceUrl
++     */
++    export async function fetchLocalDeviceStatus(deviceUrl = 'http://192.168.1.100:8080/api/status') {
++      const request = new Request(deviceUrl, {
++        method: 'GET',
++        mode: 'cors',
++        targetAddressSpace: 'local',
++      });
++
++      const response = await fetch(request);
++      if (!response.ok) {
++        throw new Error(`Brewer responded with HTTP ${response.status}`);
++      }
++      return response.json();
++    }
++
++    /**
++     * Connects to the companion desktop brewing helper on the loopback interface.
++     * Declares targetAddressSpace: 'loopback' when targeting 127.0.0.1, [::1], or localhost.
++     * @param {string} daemonUrl
++     */
++    export async function fetchLoopbackDaemon(daemonUrl = 'http://127.0.0.1:45678/health') {
++      const request = new Request(daemonUrl, {
++        method: 'GET',
++        mode: 'cors',
++        targetAddressSpace: 'loopback',
++      });
++
++      const response = await fetch(request);
++      if (!response.ok) {
++        throw new Error(`Desktop helper responded with HTTP ${response.status}`);
++      }
++      return response.json();
++    }
++
++    /**
++     * Opens a WebSocket connection to a local network or loopback device.
++     * Passes only subprotocol string(s) as the second argument (never an options object).
++     * @param {string} wsUrl
++     */
++    export function openLocalWebSocket(wsUrl) {
++      return new WebSocket(wsUrl, ['v1.telemetry']);
++    }
++
++    // UI Elements
++    const insecureWarning = document.getElementById('insecure-context-warning');
++    if (window.isSecureContext === false) {
++      insecureWarning.hidden = false;
++    }
++
++    const lanInput = document.getElementById('lan-endpoint-input');
++    const lanWsInput = document.getElementById('lan-ws-input');
++    const lanConnectBtn = document.getElementById('btn-connect-lan');
++    const lanStreamBtn = document.getElementById('btn-stream-lan');
++    const lanConnBadge = document.getElementById('lan-conn-badge');
++    const lanLog = document.getElementById('lan-telemetry-log');
++    const lanRemediation = document.querySelector('[data-remediation="local-network"]');
++
++    const loopbackInput = document.getElementById('loopback-endpoint-input');
++    const loopbackWsInput = document.getElementById('loopback-ws-input');
++    const loopbackConnectBtn = document.getElementById('btn-connect-loopback');
++    const loopbackStreamBtn = document.getElementById('btn-stream-loopback');
++    const loopbackConnBadge = document.getElementById('loopback-conn-badge');
++    const loopbackLog = document.getElementById('loopback-telemetry-log');
++    const loopbackRemediation = document.querySelector('[data-remediation="loopback-network"]');
++
++    async function connectLanBrewer() {
++      const url = lanInput.value.trim();
++      lanConnBadge.textContent = 'Connecting...';
++      lanConnBadge.dataset.conn = 'connecting';
++      lanLog.textContent = `Requesting ${url} (targetAddressSpace: 'local')...`;
++
++      try {
++        const data = await fetchLocalDeviceStatus(url);
++        lanConnBadge.textContent = 'Connected';
++        lanConnBadge.dataset.conn = 'connected';
++        lanRemediation.hidden = true;
++        lanLog.textContent = `Connected to LAN Brewer:\n${JSON.stringify(data, null, 2)}`;
++      } catch (err) {
++        lanConnBadge.textContent = 'Connection Failed';
++        lanConnBadge.dataset.conn = 'error';
++        lanRemediation.hidden = false;
++        lanLog.textContent = `Could not reach brewer at ${url} (${err.message}).\nVerify the brewer is powered on, on the same Wi-Fi LAN, and allowed under "Local network" in browser Site Settings.`;
++      } finally {
++        await queryLnaPermissionSafe('local-network');
++      }
++    }
++
++    async function connectLoopbackHelper() {
++      const url = loopbackInput.value.trim();
++      loopbackConnBadge.textContent = 'Connecting...';
++      loopbackConnBadge.dataset.conn = 'connecting';
++      loopbackLog.textContent = `Requesting ${url} (targetAddressSpace: 'loopback')...`;
++
++      try {
++        const data = await fetchLoopbackDaemon(url);
++        loopbackConnBadge.textContent = 'Connected';
++        loopbackConnBadge.dataset.conn = 'connected';
++        loopbackRemediation.hidden = true;
++        loopbackLog.textContent = `Connected to Desktop Helper:\n${JSON.stringify(data, null, 2)}`;
++      } catch (err) {
++        loopbackConnBadge.textContent = 'Connection Failed';
++        loopbackConnBadge.dataset.conn = 'error';
++        loopbackRemediation.hidden = false;
++        loopbackLog.textContent = `Could not reach desktop helper at ${url} (${err.message}).\nVerify the companion app is running on 127.0.0.1 and allowed under "Loopback network" in browser Site Settings.`;
++      } finally {
++        await queryLnaPermissionSafe('loopback-network');
++      }
++    }
++
++    let activeLanSocket = null;
++    function streamLanTelemetry() {
++      const wsUrl = lanWsInput.value.trim();
++      if (activeLanSocket) {
++        activeLanSocket.close();
++      }
++      lanConnBadge.textContent = 'Streaming...';
++      lanConnBadge.dataset.conn = 'connecting';
++      lanLog.textContent = `Opening WebSocket ${wsUrl} (subprotocol: v1.telemetry)...`;
++
++      try {
++        const socket = openLocalWebSocket(wsUrl);
++        activeLanSocket = socket;
++        socket.addEventListener('open', () => {
++          lanConnBadge.textContent = 'Live Stream';
++          lanConnBadge.dataset.conn = 'connected';
++          lanRemediation.hidden = true;
++          lanLog.textContent = `WebSocket connected to ${wsUrl}. Listening for boiler telemetry...`;
++        });
++        socket.addEventListener('message', (event) => {
++          lanLog.textContent = `Telemetry update:\n${String(event.data)}`;
++        });
++        socket.addEventListener('error', () => {
++          lanConnBadge.textContent = 'Stream Error';
++          lanConnBadge.dataset.conn = 'error';
++          lanRemediation.hidden = false;
++          lanLog.textContent = `WebSocket stream failed for ${wsUrl}. Check that the LAN brewer is online and "Local network" permission is granted.`;
++        });
++      } catch (err) {
++        lanConnBadge.textContent = 'Stream Error';
++        lanConnBadge.dataset.conn = 'error';
++        lanRemediation.hidden = false;
++        lanLog.textContent = `Invalid WebSocket URL or connection blocked: ${err.message}`;
++      }
++    }
++
++    let activeLoopbackSocket = null;
++    function streamLoopbackScale() {
++      const wsUrl = loopbackWsInput.value.trim();
++      if (activeLoopbackSocket) {
++        activeLoopbackSocket.close();
++      }
++      loopbackConnBadge.textContent = 'Streaming...';
++      loopbackConnBadge.dataset.conn = 'connecting';
++      loopbackLog.textContent = `Opening WebSocket ${wsUrl} (subprotocol: v1.telemetry)...`;
++
++      try {
++        const socket = openLocalWebSocket(wsUrl);
++        activeLoopbackSocket = socket;
++        socket.addEventListener('open', () => {
++          loopbackConnBadge.textContent = 'Live Stream';
++          loopbackConnBadge.dataset.conn = 'connected';
++          loopbackRemediation.hidden = true;
++          loopbackLog.textContent = `WebSocket connected to ${wsUrl}. Listening for scale weight events...`;
++        });
++        socket.addEventListener('message', (event) => {
++          loopbackLog.textContent = `Scale reading:\n${String(event.data)}`;
++        });
++        socket.addEventListener('error', () => {
++          loopbackConnBadge.textContent = 'Stream Error';
++          loopbackConnBadge.dataset.conn = 'error';
++          loopbackRemediation.hidden = false;
++          loopbackLog.textContent = `WebSocket stream failed for ${wsUrl}. Ensure the Desktop Helper daemon is running on 127.0.0.1 and "Loopback network" permission is granted.`;
++        });
++      } catch (err) {
++        loopbackConnBadge.textContent = 'Stream Error';
++        loopbackConnBadge.dataset.conn = 'error';
++        loopbackRemediation.hidden = false;
++        loopbackLog.textContent = `Invalid WebSocket URL or connection blocked: ${err.message}`;
++      }
++    }
++
++    // Explicit user gesture bindings
++    lanConnectBtn.addEventListener('click', connectLanBrewer);
++    lanStreamBtn.addEventListener('click', streamLanTelemetry);
++    loopbackConnectBtn.addEventListener('click', connectLoopbackHelper);
++    loopbackStreamBtn.addEventListener('click', streamLoopbackScale);
++
++    // Pre-check granular permissions on load: only auto-connect when state === 'granted'
++    async function initEquipmentConnections() {
++      const [localState, loopbackState] = await Promise.all([
++        queryLnaPermissionSafe('local-network'),
++        queryLnaPermissionSafe('loopback-network'),
++      ]);
++
++      if (localState === 'granted') {
++        connectLanBrewer();
++      }
++      if (loopbackState === 'granted') {
++        connectLoopbackHelper();
++      }
++    }
++
++    initEquipmentConnections();
++  </script>
+ </body>
+ 
+ </html>

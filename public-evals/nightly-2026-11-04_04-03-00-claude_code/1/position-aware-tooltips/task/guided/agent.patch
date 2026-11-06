@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,104 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Info tooltip (CSS anchor positioning + anchored container queries) */
++    .info-btn {
++      display: inline-grid;
++      place-items: center;
++      inline-size: 2rem;
++      block-size: 2rem;
++      margin-inline-start: 8px;
++      vertical-align: bottom;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: italic bold 1rem/1 Georgia, serif;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .info-btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #tooltip {
++      /* The outer popover is only a transparent positioning shell */
++      border: 0;
++      padding: 0;
++      background: transparent;
++      overflow: visible;
++      max-inline-size: min(260px, calc(100vw - 16px));
++    }
++
++    @supports (anchor-name: --a) {
++      #tooltip {
++        inset: auto;
++        margin: unset;
++        position: fixed;
++        /* Implicit anchor from popovertarget; sit above the trigger by default */
++        position-area: block-start;
++        position-try-fallbacks: flip-block;
++        /* Expose the active fallback to @container anchored() queries */
++        container-type: anchored;
++      }
++    }
++
++    .tooltip-content {
++      position: relative;
++      padding: 10px 14px;
++      margin-block: 0 12px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: center;
++      border-radius: 10px 10px 4px 4px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    /* Arrow only where we can react to the active fallback */
++    @supports (container-type: anchored) {
++      .tooltip-content::before {
++        content: "";
++        position: absolute;
++        inset-inline-start: 50%;
++        inset-block-end: -6px;
++        inline-size: 12px;
++        block-size: 12px;
++        background: inherit;
++        translate: -50% 0;
++        rotate: 45deg;
++      }
++    }
++
++    /* Flipped below the trigger: arrow points up, radius and gap swap sides */
++    @container anchored(fallback: flip-block) {
++      .tooltip-content {
++        margin-block: 12px 0;
++        border-radius: 4px 4px 10px 10px;
++      }
++
++      .tooltip-content::before {
++        inset-block-start: -6px;
++        inset-block-end: auto;
++      }
++    }
+   </style>
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -181,8 +276,13 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" id="anchor" class="info-btn" popovertarget="tooltip" aria-describedby="tooltip"
++            aria-label="Maple Oat Latte info">i</button>
++          <div id="tooltip" popover role="tooltip">
++            <div class="tooltip-content">Seasonal through December &middot; 190 cal &middot; Vegan &amp; dairy-free</div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

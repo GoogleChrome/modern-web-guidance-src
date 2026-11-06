@@ -1,0 +1,305 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,202 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .btn:focus-visible,
++    nav a:focus-visible,
++    .footer-links a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Carousel Section */
++    .carousel-section {
++      margin-bottom: 60px;
++    }
++
++    .carousel-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .carousel-header h2 {
++      color: var(--primary);
++      font-size: 2rem;
++      margin-bottom: 6px;
++    }
++
++    .carousel-subtitle {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    /* Scroller Container */
++    .scroller {
++      --carousel-card-width: 280px;
++      display: flex;
++      gap: 28px;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      padding-block: 40px;
++      padding-inline: max(20px, calc(50% - (var(--carousel-card-width) / 2)));
++      list-style: none;
++      scroll-behavior: smooth;
++      -webkit-overflow-scrolling: touch;
++      overscroll-behavior-x: contain;
++      scrollbar-width: thin;
++      scrollbar-color: var(--secondary) transparent;
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
++    .scroller::-webkit-scrollbar {
++      height: 8px;
++    }
++
++    .scroller::-webkit-scrollbar-track {
++      background: transparent;
++    }
++
++    .scroller::-webkit-scrollbar-thumb {
++      background: var(--secondary);
++      border-radius: 4px;
++    }
++
++    .scroller::-webkit-scrollbar-thumb:hover {
++      background: var(--primary);
++    }
++
++    /* Product Cards */
++    .product-card {
++      flex: 0 0 var(--carousel-card-width);
++      width: var(--carousel-card-width);
++      scroll-snap-align: center;
++      scroll-snap-stop: normal;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 18px rgba(62, 39, 35, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transform-origin: center center;
++      will-change: transform;
++    }
++
++    .product-card-content {
++      display: flex;
++      flex-direction: column;
++      height: 100%;
++    }
++
++    .product-card-media {
++      position: relative;
++      width: 100%;
++      height: 180px;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .product-card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .product-card-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++      text-align: left;
++    }
++
++    .product-badge {
++      align-self: flex-start;
++      background: #efebe9;
++      color: var(--primary);
++      font-size: 0.72rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 3px 10px;
++      border-radius: 12px;
++      margin-bottom: 10px;
++    }
++
++    .product-card-body h3 {
++      font-size: 1.2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .product-card-desc {
++      font-size: 0.88rem;
++      color: #5d4037;
++      line-height: 1.5;
++      margin-bottom: 16px;
++      flex-grow: 1;
++    }
++
++    .product-card-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: auto;
++      padding-top: 14px;
++      border-top: 1px solid #f0e9e6;
++    }
++
++    .product-price {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .product-card-footer .btn {
++      margin-top: 0;
++      padding: 8px 16px;
++      font-size: 0.88rem;
++    }
++
++    /* Scroll-Driven Scale Animation */
++    @keyframes scale-card {
++      0% {
++        scale: 0.75;
++      }
++      50% {
++        scale: 1;
++      }
++      100% {
++        scale: 0.75;
++      }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .scroller > * {
++          animation: scale-card auto linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++      .scroller > * {
++        animation: none !important;
++        scale: 1 !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +368,98 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="carousel-section" aria-labelledby="carousel-title">
++      <div class="carousel-header">
++        <h2 id="carousel-title">Featured Artisan Roasts</h2>
++        <p class="carousel-subtitle">Swipe or scroll horizontally to explore our signature roasts</p>
++      </div>
++
++      <ul class="scroller" tabindex="0" aria-label="Featured coffees list">
++        <li class="product-card" role="group" aria-roledescription="slide" aria-label="1 of 5">
++          <article class="product-card-content">
++            <div class="product-card-media">
++              <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80" alt="Whole roasted coffee beans filling a rustic bowl" width="280" height="180" loading="lazy" decoding="async">
++            </div>
++            <div class="product-card-body">
++              <span class="product-badge">Single Origin</span>
++              <h3>Ethiopian Yirgacheffe</h3>
++              <p class="product-card-desc">Floral jasmine aroma with bright citrus notes, sweet bergamot, and a delicate tea-like body.</p>
++              <div class="product-card-footer">
++                <span class="product-price">$19.50</span>
++                <a href="/menu/ethiopian" class="btn" aria-label="Order Ethiopian Yirgacheffe for $19.50">Order Now</a>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li class="product-card" role="group" aria-roledescription="slide" aria-label="2 of 5">
++          <article class="product-card-content">
++            <div class="product-card-media">
++              <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Fresh artisan pour-over coffee dripping into a server" width="280" height="180" loading="lazy" decoding="async">
++            </div>
++            <div class="product-card-body">
++              <span class="product-badge">Medium Roast</span>
++              <h3>Colombian Supremo</h3>
++              <p class="product-card-desc">Rich milk chocolate undertones balanced with toasted hazelnuts, caramel, and smooth finish.</p>
++              <div class="product-card-footer">
++                <span class="product-price">$18.00</span>
++                <a href="/menu/colombian" class="btn" aria-label="Order Colombian Supremo for $18.00">Order Now</a>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li class="product-card" role="group" aria-roledescription="slide" aria-label="3 of 5">
++          <article class="product-card-content">
++            <div class="product-card-media">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Ceramic cup of espresso with velvety crema and latte art" width="280" height="180" loading="lazy" decoding="async">
++            </div>
++            <div class="product-card-body">
++              <span class="product-badge">Dark Roast</span>
++              <h3>Velvet Night Espresso</h3>
++              <p class="product-card-desc">Heavy body with notes of bittersweet baker's cocoa, toasted almond, and a lingering smoky crema.</p>
++              <div class="product-card-footer">
++                <span class="product-price">$17.50</span>
++                <a href="/menu/espresso-blend" class="btn" aria-label="Order Velvet Night Espresso for $17.50">Order Now</a>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li class="product-card" role="group" aria-roledescription="slide" aria-label="4 of 5">
++          <article class="product-card-content">
++            <div class="product-card-media">
++              <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Tall glass of iced cold brew coffee with frosty condensation" width="280" height="180" loading="lazy" decoding="async">
++            </div>
++            <div class="product-card-body">
++              <span class="product-badge">Cold Brew</span>
++              <h3>Cascara Nitro Reserve</h3>
++              <p class="product-card-desc">Steeped for 20 hours with organic coffee cherry cascara for natural sweetness and crisp stone fruit.</p>
++              <div class="product-card-footer">
++                <span class="product-price">$16.50</span>
++                <a href="/menu/cascara-nitro" class="btn" aria-label="Order Cascara Nitro Reserve for $16.50">Order Now</a>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li class="product-card" role="group" aria-roledescription="slide" aria-label="5 of 5">
++          <article class="product-card-content">
++            <div class="product-card-media">
++              <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80" alt="Roasted coffee beans arranged beside a freshly brewed warm mug" width="280" height="180" loading="lazy" decoding="async">
++            </div>
++            <div class="product-card-body">
++              <span class="product-badge">Organic Dark</span>
++              <h3>Sumatra Mandheling</h3>
++              <p class="product-card-desc">Low acidity, syrupy and earthy complexity featuring deep notes of cedar wood, clove, and dark fudge.</p>
++              <div class="product-card-footer">
++                <span class="product-price">$20.00</span>
++                <a href="/menu/sumatra" class="btn" aria-label="Order Sumatra Mandheling for $20.00">Order Now</a>
++              </div>
++            </div>
++          </article>
++        </li>
++      </ul>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

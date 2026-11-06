@@ -1,0 +1,198 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,114 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews */
++    .reviews-scroller {
++      height: 360px;
++      overflow-y: auto;
++      position: relative;
++      margin-top: 20px;
++      border-radius: 8px;
++      /* Establish as a scroll-state query container */
++      container-type: scroll-state;
++    }
++
++    .reviews-list {
++      list-style: none;
++      display: grid;
++      gap: 16px;
++      padding: 4px;
++    }
++
++    .review {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .review-stars {
++      color: var(--accent);
++      letter-spacing: 2px;
++    }
++
++    .review blockquote {
++      margin: 6px 0;
++    }
++
++    .review cite {
++      font-size: 0.85rem;
++      font-style: normal;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    /* Overlays take no layout space and never intercept clicks */
++    .indicator-top,
++    .indicator-bottom {
++      position: sticky;
++      left: 0;
++      right: 0;
++      height: 40px;
++      opacity: 0;
++      transition: opacity 0.2s;
++      pointer-events: none;
++    }
++
++    .indicator-top {
++      top: 0;
++      margin-bottom: -40px;
++      background: linear-gradient(to bottom, var(--light), transparent);
++    }
++
++    .indicator-bottom {
++      bottom: 0;
++      margin-top: -40px;
++      background: linear-gradient(to top, var(--light), transparent);
++    }
++
++    .sentinel-top,
++    .sentinel-bottom {
++      height: 1px;
++      visibility: hidden;
++    }
++
++    .sentinel-top {
++      margin-bottom: -1px;
++    }
++
++    .sentinel-bottom {
++      margin-top: -1px;
++    }
++
++    /* Top: only once scrolled down. Bottom: only while more content below */
++    @container scroll-state(scrollable: top) {
++      .indicator-top {
++        opacity: 1;
++      }
++    }
++
++    @container scroll-state(scrollable: bottom) {
++      .indicator-bottom {
++        opacity: 1;
++      }
++    }
++
++    /* Fallback classes (set by IntersectionObserver where scroll-state is unsupported) */
++    .reviews-scroller.scrolled-down .indicator-top,
++    .reviews-scroller.can-scroll-down .indicator-bottom {
++      opacity: 1;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .indicator-top,
++      .indicator-bottom {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +300,79 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Customer Reviews</h2>
++      <div class="reviews-scroller" tabindex="0" role="region" aria-label="Customer reviews">
++        <div class="indicator-top" aria-hidden="true"></div>
++        <div class="sentinel-top" aria-hidden="true"></div>
++        <ul class="reviews-list">
++          <li class="review">
++            <div class="review-stars" aria-label="5 out of 5 stars">★★★★★</div>
++            <blockquote>The Maple Oat Latte is the reason I get out of bed in October. Perfectly sweet, never cloying.</blockquote>
++            <cite>Priya S.</cite>
++          </li>
++          <li class="review">
++            <div class="review-stars" aria-label="5 out of 5 stars">★★★★★</div>
++            <blockquote>Best cold brew in town. Smooth, strong, and the baristas remember my name.</blockquote>
++            <cite>Marcus T.</cite>
++          </li>
++          <li class="review">
++            <div class="review-stars" aria-label="4 out of 5 stars">★★★★☆</div>
++            <blockquote>Cozy shop with great espresso. Gets busy on weekends, but the line moves fast.</blockquote>
++            <cite>Elena R.</cite>
++          </li>
++          <li class="review">
++            <div class="review-stars" aria-label="5 out of 5 stars">★★★★★</div>
++            <blockquote>Love that the beans are ethically sourced and roasted locally. You can taste the difference.</blockquote>
++            <cite>Jordan K.</cite>
++          </li>
++          <li class="review">
++            <div class="review-stars" aria-label="5 out of 5 stars">★★★★★</div>
++            <blockquote>The rewards program actually pays off. Free drink every few visits, no gimmicks.</blockquote>
++            <cite>Aisha M.</cite>
++          </li>
++          <li class="review">
++            <div class="review-stars" aria-label="4 out of 5 stars">★★★★☆</div>
++            <blockquote>Dark roast espresso is bold and smoky, exactly how I like it. Would love more pastry options.</blockquote>
++            <cite>Tom W.</cite>
++          </li>
++          <li class="review">
++            <div class="review-stars" aria-label="5 out of 5 stars">★★★★★</div>
++            <blockquote>Ordering online was a breeze and my drink was ready the moment I walked in.</blockquote>
++            <cite>Sofia L.</cite>
++          </li>
++        </ul>
++        <div class="sentinel-bottom" aria-hidden="true"></div>
++        <div class="indicator-bottom" aria-hidden="true"></div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    // Fallback for browsers without container scroll-state queries
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const scroller = document.querySelector('.reviews-scroller');
++      const topSentinel = scroller.querySelector('.sentinel-top');
++      const bottomSentinel = scroller.querySelector('.sentinel-bottom');
++
++      const observer = new IntersectionObserver((entries) => {
++        for (const entry of entries) {
++          if (entry.target === topSentinel) {
++            scroller.classList.toggle('scrolled-down', !entry.isIntersecting);
++          } else {
++            scroller.classList.toggle('can-scroll-down', !entry.isIntersecting);
++          }
++        }
++      }, { root: scroller });
++
++      observer.observe(topSentinel);
++      observer.observe(bottomSentinel);
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

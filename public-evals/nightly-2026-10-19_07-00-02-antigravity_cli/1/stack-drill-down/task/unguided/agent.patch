@@ -1,0 +1,1143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -2,81 +2,175 @@
+ <html lang="en">
+ 
+ <head>
+   <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #6d4c41;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-hover: #ff9100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border-color: #e0d7d4;
++      --safe-top: env(safe-area-inset-top, 0px);
++      --safe-bottom: env(safe-area-inset-bottom, 0px);
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Full-screen app container handling mobile address bar perfectly */
++    html,
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
++      width: 100%;
++      height: 100%;
++      height: 100vh;
++      height: 100dvh;
++      margin: 0;
++      padding: 0;
++      overflow: hidden;
++      position: fixed;
++      inset: 0;
++      background-color: #2b1b17;
+       color: var(--text);
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
++      line-height: 1.6;
++      overscroll-behavior: none;
++      touch-action: pan-x pan-y;
++      -webkit-font-smoothing: antialiased;
++      -moz-osx-font-smoothing: grayscale;
++      scrollbar-width: none;
++      -ms-overflow-style: none;
++    }
++
++    html::-webkit-scrollbar,
++    body::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Main scrollable container with horizontal card stack */
++    .Stack {
++      width: 100vw;
++      height: 100%;
++      height: 100dvh;
++      display: flex;
++      flex-direction: row;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      -webkit-overflow-scrolling: touch;
++      overscroll-behavior-x: contain;
++      scrollbar-width: none;
++      -ms-overflow-style: none;
++    }
++
++    .Stack::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Each view in the stack */
++    .Stack-view {
++      flex: 0 0 100vw;
++      width: 100vw;
++      height: 100%;
++      height: 100dvh;
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++      overflow-y: auto;
++      overflow-x: hidden;
++      -webkit-overflow-scrolling: touch;
++      scrollbar-width: none;
++      -ms-overflow-style: none;
++      position: relative;
++      background: transparent;
++      /* Do NOT apply transforms or box-shadow here to avoid breaking CSS scroll snap */
++    }
++
++    .Stack-view::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Nested inner content element where visual transforms (parallax, dimming, shadow) are applied */
++    .Stack-viewContent {
++      width: 100%;
++      min-height: 100%;
++      min-height: 100dvh;
+       background-color: var(--light);
++      display: flex;
++      flex-direction: column;
++      position: relative;
++      will-change: transform, filter, box-shadow;
++      transform-origin: center center;
++      backface-visibility: hidden;
++      -webkit-backface-visibility: hidden;
++      scrollbar-width: none;
++      -ms-overflow-style: none;
+     }
+ 
+-    /* Navigation */
++    .Stack-viewContent::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Root view styling */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: calc(0.85rem + var(--safe-top)) 5% 0.85rem;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+-      z-index: 1000;
++      z-index: 100;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
++      font-size: 1.35rem;
++      font-weight: 700;
+       letter-spacing: 1px;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-left: 18px;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.2s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 4px 10px;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 55vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -84,63 +178,340 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.75rem;
++      margin-bottom: 0.8rem;
++      font-weight: 800;
++      line-height: 1.2;
+     }
+ 
++    .hero p {
++      font-size: 1.15rem;
++      max-width: 600px;
++      margin-bottom: 1.5rem;
++      opacity: 0.95;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
++      width: 100%;
+       margin: 40px auto;
+       padding: 0 20px;
++      flex: 1;
+     }
+ 
++    .section-title {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 25px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 25px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--surface);
++      padding: 24px;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      border: 1px solid var(--border-color);
++      transition: transform 0.2s, box-shadow 0.2s;
+     }
+ 
++    .card:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
++    }
++
+     .card h3 {
++      font-size: 1.35rem;
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card p {
++      color: var(--text-muted);
++      margin-bottom: 15px;
++      flex: 1;
++    }
++
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 10px 22px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      font-weight: 600;
++      font-size: 0.95rem;
++      border: none;
++      cursor: pointer;
++      transition: background 0.2s, transform 0.1s;
++      align-self: center;
++      touch-action: manipulation;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
+     }
+ 
++    .btn:active {
++      transform: scale(0.98);
++    }
++
++    /* Drill-down View Specific Header & Elements */
++    .drill-header {
++      background: var(--primary);
++      color: white;
++      padding: calc(0.85rem + var(--safe-top)) 1.25rem 0.85rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      position: sticky;
++      top: 0;
++      z-index: 100;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++    }
++
++    .drill-header h2 {
++      font-size: 1.25rem;
++      font-weight: 700;
++      margin: 0;
++      text-align: center;
++      flex: 1;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++      padding: 0 12px;
++      letter-spacing: 0.5px;
++    }
++
++    /* Explicit back button with class back */
++    .back {
++      background: rgba(255, 255, 255, 0.15);
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      color: white;
++      font-size: 0.95rem;
++      font-weight: 600;
++      padding: 7px 15px 7px 11px;
++      border-radius: 20px;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      transition: background 0.2s, transform 0.1s;
++      flex-shrink: 0;
++      touch-action: manipulation;
++      text-decoration: none;
++    }
++
++    .back:hover {
++      background: rgba(255, 255, 255, 0.28);
++    }
++
++    .back:active {
++      transform: scale(0.96);
++    }
++
++    .back:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .drill-header-spacer {
++      width: 76px;
++      flex-shrink: 0;
++    }
++
++    /* Drill-down View Body */
++    .drill-body {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      max-width: 860px;
++      width: 100%;
++      margin: 0 auto;
++      padding-bottom: calc(40px + var(--safe-bottom));
++    }
++
++    .drill-hero-container {
++      position: relative;
++      width: 100%;
++      height: 380px;
++      overflow: hidden;
++      background-color: #1e120e;
++    }
++
++    .drill-img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .drill-price-badge {
++      position: absolute;
++      bottom: 20px;
++      right: 20px;
++      background: rgba(62, 39, 35, 0.92);
++      backdrop-filter: blur(8px);
++      -webkit-backdrop-filter: blur(8px);
++      color: var(--accent);
++      padding: 8px 18px;
++      border-radius: 25px;
++      font-size: 1.3rem;
++      font-weight: 800;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++    }
++
++    .drill-content-inner {
++      padding: 28px 24px;
++      background: var(--light);
++    }
++
++    .drill-tagline {
++      font-size: 1.25rem;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .drill-description {
++      font-size: 1.05rem;
++      color: var(--text);
++      line-height: 1.7;
++      margin-bottom: 28px;
++    }
++
++    .drill-meta-pills {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-bottom: 25px;
++    }
++
++    .drill-pill {
++      background: var(--secondary);
++      color: var(--primary-dark);
++      padding: 5px 12px;
++      border-radius: 16px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .drill-section {
++      background: var(--surface);
++      border-radius: 10px;
++      padding: 20px;
++      margin-bottom: 20px;
++      border: 1px solid var(--border-color);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
++    }
++
++    .drill-section h3 {
++      font-size: 1.1rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .tasting-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .tasting-tag {
++      background: #efebe9;
++      color: var(--text);
++      padding: 6px 14px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-weight: 500;
++      border: 1px solid #d7ccc8;
++    }
++
++    .specs-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 12px;
++    }
++
++    .spec-item {
++      background: #faf8f7;
++      padding: 12px;
++      border-radius: 8px;
++      border: 1px solid #eee;
++    }
++
++    .spec-label {
++      font-size: 0.75rem;
++      color: var(--text-muted);
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      display: block;
++      margin-bottom: 4px;
++    }
++
++    .spec-val {
++      font-size: 0.95rem;
++      font-weight: 600;
++      color: var(--primary-dark);
++    }
++
++    .drill-cta-wrap {
++      margin-top: 30px;
++      text-align: center;
++    }
++
++    .order-action-btn {
++      width: 100%;
++      max-width: 400px;
++      padding: 14px 28px;
++      font-size: 1.1rem;
++      border-radius: 30px;
++      background: var(--primary);
++      color: white;
++      font-weight: 700;
++      border: none;
++      box-shadow: 0 4px 15px rgba(78, 52, 46, 0.35);
++      cursor: pointer;
++      transition: background 0.2s, transform 0.1s;
++    }
++
++    .order-action-btn:hover {
++      background: var(--primary-dark);
++    }
++
++    .order-action-btn:active {
++      transform: scale(0.98);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 40px 20px calc(40px + var(--safe-bottom));
++      margin-top: auto;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -151,62 +522,547 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Accessibility focus styling */
++    a:focus-visible,
++    button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    @media (max-width: 600px) {
++      nav ul {
++        display: none;
++      }
++
++      .hero h1 {
++        font-size: 2.1rem;
++      }
++
++      .drill-hero-container {
++        height: 270px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <div class="Stack" id="app-stack">
++    <!-- Root View (Homepage) -->
++    <div class="Stack-view" data-view-id="root" id="view-root">
++      <div class="Stack-viewContent">
++        <nav>
++          <div class="logo">THE DAILY GRIND</div>
++          <ul>
++            <li><a href="/menu">Menu</a></li>
++            <li><a href="/locations">Locations</a></li>
++            <li><a href="/rewards">Rewards</a></li>
++            <li><a href="/account">My Account</a></li>
++            <li><a href="/logout" class="logout-link">Logout</a></li>
++          </ul>
++        </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++        <header class="hero">
++          <h1>Wake Up Your Senses</h1>
++          <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++          <a href="/order-online" class="btn">Order Now</a>
++        </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
++        <main class="container">
++          <section>
++            <h2 class="section-title">Seasonal Favorites</h2>
++            <div class="grid">
++              <div class="card">
++                <h3>Maple Oat Latte</h3>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                <a href="#/view/1" class="btn item" data-item-id="1">View Details</a>
++              </div>
++              <div class="card">
++                <h3>Dark Roast Espresso</h3>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++                <a href="#/view/2" class="btn item" data-item-id="2">View Details</a>
++              </div>
++              <div class="card">
++                <h3>Cold Brew</h3>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++                <a href="#/view/3" class="btn item" data-item-id="3">View Details</a>
++              </div>
++            </div>
++          </section>
++        </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++        <footer>
++          <div class="footer-links">
++            <a href="/about">Our Story</a> |
++            <a href="/careers">Join the Team</a> |
++            <a href="/contact">Contact Us</a> |
++            <a href="/privacy-policy">Privacy</a>
++          </div>
++          <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++        </footer>
++      </div>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  </div>
+ 
++  <script>
++    // Coffee Catalog Data for Seasonal Items & Deep Linking
++    const ITEMS_DATA = {
++      '1': {
++        id: '1',
++        alias: 'seasonal',
++        title: 'Maple Oat Latte',
++        tagline: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        price: '$5.75',
++        calories: '210 kcal',
++        image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1200&q=80',
++        description: 'Our signature seasonal special pairs velvety steamed oat milk with a rich double shot of artisanal espresso and authentic Grade-A Vermont maple syrup. Lightly dusted with fresh cinnamon and ground nutmeg for a warm, comforting aroma.',
++        roast: 'Medium Roast Blend',
++        caffeine: '150 mg',
++        temp: 'Hot / Iced',
++        origin: 'Colombia Huila & Ethiopia',
++        notes: ['Vermont Maple', 'Toasted Pecan', 'Velvety Oat', 'Warm Cinnamon'],
++        ingredients: 'Organic espresso, barista oat milk, 100% pure Vermont maple syrup, ground cinnamon, nutmeg.'
++      },
++      '2': {
++        id: '2',
++        alias: 'espresso',
++        title: 'Dark Roast Espresso',
++        tagline: 'Bold, smokey, and perfect for a morning boost.',
++        price: '$4.25',
++        calories: '5 kcal',
++        image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1200&q=80',
++        description: 'Handcrafted with precision, our Dark Roast Espresso delivers an intense, full-bodied cup crowned with a dense, hazelnut-colored crema. Roasted slowly in small batches to coax out deep baker’s cocoa and caramelized sugar without astringency.',
++        roast: 'Dark French Roast',
++        caffeine: '130 mg (Double)',
++        temp: 'Hot',
++        origin: 'Sumatra Mandheling & Brazil',
++        notes: ['Dark Cocoa', 'Smoky Molasses', 'Roasted Walnut', 'Caramelized Sugar'],
++        ingredients: 'Slow-roasted Arabica and Robusta specialty espresso beans, triple-filtered mineral water.'
++      },
++      '3': {
++        id: '3',
++        alias: 'cold-brew',
++        title: 'Cold Brew',
++        tagline: 'Steeped for 18 hours for maximum smoothness.',
++        price: '$4.95',
++        calories: '10 kcal',
++        image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1200&q=80',
++        description: 'Slow-steeped in cold filtered water for 18 hours, this concentrate is ultra-smooth, remarkably low in acidity, and naturally sweet. Poured over crystal-clear artisan ice for a crisp, refreshing caffeine experience.',
++        roast: 'Medium-Dark Single Origin',
++        caffeine: '200 mg (16 oz)',
++        temp: 'Iced',
++        origin: 'Guatemala Antigua',
++        notes: ['Dark Chocolate', 'Black Cherry', 'Sweet Almond', 'Crisp Finish'],
++        ingredients: 'Coarse-ground specialty coffee beans, cold triple-filtered water, slow-crafted ice.'
++      }
++    };
++
++    function findItem(identifier) {
++      if (!identifier) return null;
++      if (ITEMS_DATA[identifier]) return ITEMS_DATA[identifier];
++      for (const key of Object.keys(ITEMS_DATA)) {
++        if (ITEMS_DATA[key].alias === identifier) return ITEMS_DATA[key];
++      }
++      return null;
++    }
++
++    const stack = document.getElementById('app-stack');
++    const rootItemLinks = document.querySelectorAll('a.item');
++    const viewTriggerMap = new Map(); // viewElement -> triggerElement
++
++    function getPrefersReducedMotion() {
++      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++    }
++
++    // Template for creating drill-down views
++    function createViewElement(item) {
++      const view = document.createElement('div');
++      view.className = 'Stack-view';
++      view.dataset.viewId = item.id;
++      view.id = `view-${item.id}`;
++
++      view.innerHTML = `
++        <div class="Stack-viewContent">
++          <header class="drill-header">
++            <button type="button" class="back" aria-label="Back to seasonal menu">
++              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++                <polyline points="15 18 9 12 15 6"></polyline>
++              </svg>
++              <span>Back</span>
++            </button>
++            <h2>${item.title}</h2>
++            <div class="drill-header-spacer" aria-hidden="true"></div>
++          </header>
++
++          <div class="drill-body">
++            <div class="drill-hero-container">
++              <img src="${item.image}" alt="${item.title}" class="drill-img" loading="eager" />
++              <div class="drill-price-badge">${item.price}</div>
++            </div>
++
++            <div class="drill-content-inner">
++              <div class="drill-meta-pills">
++                <span class="drill-pill">${item.roast}</span>
++                <span class="drill-pill">${item.temp}</span>
++                <span class="drill-pill">${item.calories}</span>
++              </div>
++
++              <p class="drill-tagline">${item.tagline}</p>
++              <p class="drill-description">${item.description}</p>
++
++              <div class="drill-section">
++                <h3>Tasting Notes</h3>
++                <div class="tasting-tags">
++                  ${item.notes.map(note => `<span class="tasting-tag">${note}</span>`).join('')}
++                </div>
++              </div>
++
++              <div class="drill-section">
++                <h3>Coffee Profile</h3>
++                <div class="specs-grid">
++                  <div class="spec-item">
++                    <span class="spec-label">Origin</span>
++                    <span class="spec-val">${item.origin}</span>
++                  </div>
++                  <div class="spec-item">
++                    <span class="spec-label">Caffeine</span>
++                    <span class="spec-val">${item.caffeine}</span>
++                  </div>
++                  <div class="spec-item">
++                    <span class="spec-label">Serving Style</span>
++                    <span class="spec-val">${item.temp}</span>
++                  </div>
++                </div>
++              </div>
++
++              <div class="drill-section">
++                <h3>Ingredients & Sourcing</h3>
++                <p style="color: var(--text-muted); font-size: 0.95rem;">${item.ingredients}</p>
++              </div>
++
++              <div class="drill-cta-wrap">
++                <button type="button" class="order-action-btn" onclick="alert('Added ${item.title} to order!')">Order Now • ${item.price}</button>
++              </div>
++            </div>
++          </div>
++        </div>
++      `;
++
++      return view;
++    }
++
++    // Scroll-linked visual transforms: parallax, dimming, and edge shadow.
++    // NOTE: Transforms are strictly applied to .Stack-viewContent only, preserving .Stack-view snap layout!
++    let isTicking = false;
++    function renderVisualTransforms() {
++      const stackWidth = stack.clientWidth;
++      if (!stackWidth) return;
++      const scrollLeft = stack.scrollLeft;
++      const views = stack.children;
++      const count = views.length;
++      const prefersReduced = getPrefersReducedMotion();
++
++      for (let i = 0; i < count; i++) {
++        const view = views[i];
++        const content = view.querySelector('.Stack-viewContent');
++        if (!content) continue;
++
++        if (prefersReduced) {
++          content.style.transform = 'none';
++          content.style.filter = 'none';
++          content.style.boxShadow = i > 0 ? '-14px 0 28px rgba(0, 0, 0, 0.25)' : 'none';
++          continue;
++        }
++
++        // Relative progress:
++        // progress === 0 -> view i is currently active/centered
++        // progress > 0   -> view i is to the left (being covered by the view to its right)
++        // progress < 0   -> view i is incoming from the right over previous card
++        const progress = (scrollLeft - (i * stackWidth)) / stackWidth;
++
++        if (progress >= 0 && progress <= 1) {
++          // Bottom card being covered: parallax offset shifts rightwards
++          const parallaxX = progress * (stackWidth * 0.28);
++          content.style.transform = `translate3d(${parallaxX}px, 0, 0)`;
++
++          // Dimming effect as card is covered
++          const dim = progress * 0.45;
++          content.style.filter = dim > 0.005 ? `brightness(${(1 - dim).toFixed(3)})` : 'none';
++
++          // Edge shadow is only on top card
++          content.style.boxShadow = i > 0 ? '-14px 0 28px rgba(0, 0, 0, 0.25)' : 'none';
++        } else if (progress < 0 && progress >= -1) {
++          // Top card sliding over card beneath it
++          content.style.transform = 'translate3d(0, 0, 0)';
++          content.style.filter = 'none';
++
++          // Premium left-edge shadow
++          const shadowAlpha = 0.18 + (1 + progress) * 0.16;
++          content.style.boxShadow = `-16px 0 32px rgba(0, 0, 0, ${shadowAlpha.toFixed(2)})`;
++        } else if (progress > 1) {
++          // Completely off-screen to the left
++          content.style.transform = `translate3d(${stackWidth * 0.28}px, 0, 0)`;
++          content.style.filter = 'brightness(0.55)';
++          content.style.boxShadow = i > 0 ? '-14px 0 28px rgba(0, 0, 0, 0.25)' : 'none';
++        } else {
++          // Completely off-screen to the right
++          content.style.transform = 'translate3d(0, 0, 0)';
++          content.style.filter = 'none';
++          content.style.boxShadow = i > 0 ? '-14px 0 28px rgba(0, 0, 0, 0.25)' : 'none';
++        }
++      }
++    }
++
++    function onStackScroll() {
++      if (!isTicking) {
++        window.requestAnimationFrame(() => {
++          renderVisualTransforms();
++          isTicking = false;
++        });
++        isTicking = true;
++      }
++    }
++
++    // DOM cleanup when user swipes past views
++    function handleScrollSettled() {
++      const stackWidth = stack.clientWidth;
++      if (!stackWidth) return;
++      const currentIndex = Math.round(stack.scrollLeft / stackWidth);
++      const totalViews = stack.children.length;
++
++      // If user swiped back to an earlier index, remove views past currentIndex to save memory
++      if (currentIndex < totalViews - 1) {
++        const viewsToRemove = [];
++        for (let i = totalViews - 1; i > currentIndex; i--) {
++          viewsToRemove.push(stack.children[i]);
++        }
++
++        viewsToRemove.forEach(view => {
++          const triggerEl = viewTriggerMap.get(view);
++          viewTriggerMap.delete(view);
++          view.remove();
++
++          // Focus management: focus the original link when swiping back, without triggering weird scrolls!
++          if (triggerEl && typeof triggerEl.focus === 'function') {
++            triggerEl.focus({ preventScroll: true });
++          }
++        });
++
++        // Sync browser history if URL hash points to a removed view
++        const currentHash = window.location.hash;
++        if (currentIndex === 0 && currentHash && currentHash !== '#' && currentHash !== '#/') {
++          if (window.history.replaceState) {
++            window.history.replaceState(null, '', window.location.pathname + window.location.search);
++          } else {
++            window.location.hash = '';
++          }
++        }
++      } else if (currentIndex === totalViews - 1) {
++        // Settled on current top view: ensure back button has focus if not inside
++        const currentView = stack.children[currentIndex];
++        if (currentView && currentView.dataset.viewId !== 'root') {
++          if (!currentView.contains(document.activeElement)) {
++            const backBtn = currentView.querySelector('.back');
++            backBtn?.focus({ preventScroll: true });
++          }
++        }
++      }
++
++      // Re-render visual state clean
++      renderVisualTransforms();
++    }
++
++    // Scroll listeners: scroll for continuous transform updates + debounce and scrollend for settle
++    let scrollSettleTimer = null;
++    stack.addEventListener('scroll', () => {
++      onStackScroll();
++      clearTimeout(scrollSettleTimer);
++      scrollSettleTimer = setTimeout(handleScrollSettled, 120);
++    }, { passive: true });
++
++    if ('onscrollend' in window) {
++      stack.addEventListener('scrollend', () => {
++        clearTimeout(scrollSettleTimer);
++        handleScrollSettled();
++      });
++    }
++
++    // Navigation: Push a new drill-down view onto the stack
++    function pushView(identifier, triggerEl = null, updateHistory = true, isInstant = false) {
++      const item = findItem(identifier);
++      if (!item) return;
++
++      // Check if view already exists as current top view
++      const lastView = stack.lastElementChild;
++      if (lastView && lastView.dataset.viewId === item.id) {
++        return;
++      }
++
++      // Find or assign trigger element for focus management
++      let sourceTrigger = triggerEl;
++      if (!sourceTrigger) {
++        sourceTrigger = document.querySelector(`a.item[data-item-id="${item.id}"]`) ||
++                        document.querySelector(`a.item[href*="${item.id}"]`);
++      }
++
++      const view = createViewElement(item);
++      if (sourceTrigger) {
++        viewTriggerMap.set(view, sourceTrigger);
++      }
++
++      stack.appendChild(view);
++
++      if (updateHistory) {
++        history.pushState({ viewId: item.id, inStack: true }, '', `#/view/${item.id}`);
++      }
++
++      const targetIndex = stack.children.length - 1;
++      const targetLeft = targetIndex * stack.clientWidth;
++      const backBtn = view.querySelector('.back');
++      const prefersReduced = getPrefersReducedMotion();
++
++      if (isInstant || prefersReduced) {
++        stack.scrollTo({ left: targetLeft, behavior: 'instant' });
++        renderVisualTransforms();
++        backBtn?.focus({ preventScroll: true });
++      } else {
++        stack.scrollTo({ left: targetLeft, behavior: 'smooth' });
++        setTimeout(() => {
++          backBtn?.focus({ preventScroll: true });
++        }, 320);
++      }
++    }
++
++    // Explicit Back Button Handler
++    function handleBackAction() {
++      const currentIndex = Math.round(stack.scrollLeft / stack.clientWidth);
++      if (currentIndex > 0) {
++        const prefersReduced = getPrefersReducedMotion();
++
++        // If history was pushed in this session, use history.back() to keep history stack clean
++        if (window.history.state && window.history.state.inStack) {
++          window.history.back();
++        } else {
++          // If direct deep link or no history state, scroll back to root
++          const targetLeft = (currentIndex - 1) * stack.clientWidth;
++          if (prefersReduced) {
++            stack.scrollTo({ left: targetLeft, behavior: 'instant' });
++            handleScrollSettled();
++          } else {
++            stack.scrollTo({ left: targetLeft, behavior: 'smooth' });
++          }
++
++          if (window.history.replaceState) {
++            window.history.replaceState(null, '', window.location.pathname + window.location.search);
++          } else {
++            window.location.hash = '';
++          }
++        }
++      }
++    }
++
++    // Intercept clicks on links
++    document.addEventListener('click', (e) => {
++      // 1. Back button click
++      const backBtn = e.target.closest('.back');
++      if (backBtn) {
++        e.preventDefault();
++        handleBackAction();
++        return;
++      }
++
++      // 2. Seasonal details links click
++      const itemLink = e.target.closest('a.item');
++      if (!itemLink) return;
++
++      // Preserve modifier clicks (Cmd, Ctrl, Shift, Alt) so users can open in new tabs/windows
++      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
++        return;
++      }
++
++      // Preserve non-primary mouse clicks (e.g. right click)
++      if (e.button !== 0) {
++        return;
++      }
++
++      // Primary click without modifiers: handle via smooth card navigation
++      e.preventDefault();
++      const href = itemLink.getAttribute('href') || '';
++      const match = href.match(/^#\/view\/([^\/?#]+)/);
++      const viewId = match ? match[1] : (itemLink.dataset.itemId || '1');
++
++      pushView(viewId, itemLink, true);
++    });
++
++    // Middle-click (auxclick with button 1) should natively open in new tab
++    document.addEventListener('auxclick', (e) => {
++      const itemLink = e.target.closest('a.item');
++      if (itemLink && e.button === 1) {
++        // Allow native browser middle-click to proceed without calling preventDefault
++      }
++    });
++
++    // Keyboard accessibility: Escape key to go back
++    window.addEventListener('keydown', (e) => {
++      if (e.key === 'Escape' && stack.children.length > 1) {
++        handleBackAction();
++      }
++    });
++
++    // History popstate listener for back/forward buttons & deep linking transitions
++    window.addEventListener('popstate', (e) => {
++      const hash = window.location.hash;
++      const match = hash.match(/^#\/view\/([^\/?#]+)/);
++      const targetViewId = match ? match[1] : null;
++
++      const currentView = stack.children[stack.children.length - 1];
++      const currentViewId = currentView ? currentView.dataset.viewId : 'root';
++
++      if (targetViewId) {
++        const item = findItem(targetViewId);
++        if (item && currentViewId !== item.id) {
++          pushView(item.id, null, false);
++        }
++      } else {
++        // Going back to root view
++        if (stack.children.length > 1) {
++          const prefersReduced = getPrefersReducedMotion();
++          stack.scrollTo({ left: 0, behavior: prefersReduced ? 'instant' : 'smooth' });
++          if (prefersReduced) {
++            handleScrollSettled();
++          }
++        }
++      }
++    });
++
++    // Deep linking on initial load:
++    // If opening e.g. #/view/1 directly, root view is at index 0 and view 1 is synthesized at index 1!
++    function handleInitialRoute() {
++      const hash = window.location.hash;
++      const match = hash.match(/^#\/view\/([^\/?#]+)/);
++      if (match) {
++        const item = findItem(match[1]);
++        if (item) {
++          pushView(item.id, null, false, true);
++        }
++      }
++    }
++
++    // Window resize / orientation change handling
++    let lastWidth = window.innerWidth;
++    window.addEventListener('resize', () => {
++      const currentIdx = Math.round(stack.scrollLeft / lastWidth);
++      lastWidth = stack.clientWidth;
++      stack.scrollTo({ left: currentIdx * stack.clientWidth, behavior: 'instant' });
++      renderVisualTransforms();
++    });
++
++    // Initialize
++    handleInitialRoute();
++    renderVisualTransforms();
++  </script>
+ </body>
+ 
+ </html>

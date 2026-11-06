@@ -1,0 +1,377 @@
+diff --git a/index.html b/index.html
+index 66c9173..bb3f235 100644
+--- a/index.html
++++ b/index.html
+@@ -6,151 +6,242 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer reset, base, theme, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    @layer theme {
++      :root {
++        /* Tier 1: Literal design tokens */
++        --color-brown-900: #3e2723;
++        --color-brown-800: #4e342e;
++        --color-brown-100: #d7ccc8;
++        --color-amber-400: #ffab40;
++        --color-neutral-50: #fafafa;
++        --color-white: #ffffff;
++        --color-black: #000000;
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++        --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        --text-xs: 0.85em;
++        --text-sm: 0.9em;
++        --text-lg: 1.5em;
++        --text-3xl: 3em;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        --space-1: 5px;
++        --space-2: 10px;
++        --space-3: 12px;
++        --space-4: 15px;
++        --space-5: 20px;
++        --space-6: 40px;
++        --space-fluid-inline: 5%;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        --radius-sm: 4px;
++        --radius-md: 5px;
++        --radius-lg: 8px;
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        --shadow-sm: 0 2px 5px rgb(0 0 0 / 0.1);
++        --transition-fast: 0.3s;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        /* Tier 2: Semantic design tokens */
++        --color-primary: var(--color-brown-800);
++        --color-primary-hover: var(--color-brown-900);
++        --color-secondary: var(--color-brown-100);
++        --color-accent: var(--color-amber-400);
++        --color-text: var(--color-brown-900);
++        --color-text-inverse: var(--color-white);
++        --color-bg: var(--color-neutral-50);
++        --color-surface: var(--color-white);
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        --font-body: var(--font-sans);
++        --line-height-base: 1.6;
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++        /* Tier 3: UI & Layout tokens */
++        --container-max-inline: 1100px;
++        --grid-min-col: 250px;
++        --hero-min-block: 60vh;
++        --z-sticky: 1000;
++      }
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++    @layer reset {
++      :where(html, body, nav, header, main, section, footer, div, h1, h2, h3, p, ul, li, a) {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++      :where(ul) {
++        list-style: none;
++      }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      :where(a) {
++        color: inherit;
++        text-decoration: none;
++      }
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++    @layer base {
++      body {
++        font-family: var(--font-body);
++        line-height: var(--line-height-base);
++        color: var(--color-text);
++        background-color: var(--color-bg);
++      }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      section > h2 {
++        text-align: center;
++      }
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++    @layer components {
++      /* Navigation */
++      @scope (nav) {
++        :scope {
++          background: var(--color-primary);
++          color: var(--color-text-inverse);
++          padding-block: 1rem;
++          padding-inline: var(--space-fluid-inline);
++          display: flex;
++          justify-content: space-between;
++          align-items: center;
++          position: sticky;
++          inset-block-start: 0;
++          z-index: var(--z-sticky);
++        }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++        .logo {
++          font-size: var(--text-lg);
++          font-weight: bold;
++          letter-spacing: 1px;
++        }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++        ul {
++          display: flex;
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++          & li:not(:first-child) {
++            margin-inline-start: var(--space-5);
++          }
++        }
++
++        a {
++          font-size: var(--text-sm);
++          transition: color var(--transition-fast);
++
++          &:hover:not(:disabled) {
++            color: var(--color-accent);
++          }
++
++          &.logout-link {
++            border: 1px solid var(--color-accent);
++            padding-block: var(--space-1);
++            padding-inline: var(--space-3);
++            border-radius: var(--radius-sm);
++            corner-shape: squircle;
++          }
++        }
++      }
++
++      /* Hero Section */
++      @scope (.hero) {
++        :scope {
++          min-block-size: var(--hero-min-block);
++          background: linear-gradient(rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.5)),
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++          background-size: cover;
++          background-position: center;
++          display: flex;
++          flex-direction: column;
++          justify-content: center;
++          align-items: center;
++          color: var(--color-text-inverse);
++          text-align: center;
++          padding-inline: var(--space-5);
++        }
++
++        h1 {
++          font-size: var(--text-3xl);
++          margin-block-end: 1rem;
++        }
++      }
++
++      /* Content Sections & Layout */
++      .container {
++        max-inline-size: var(--container-max-inline);
++        margin-block: var(--space-6);
++        margin-inline: auto;
++        padding-inline: var(--space-5);
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(var(--grid-min-col), 1fr));
++        gap: var(--space-5);
++        margin-block-start: var(--space-5);
++      }
++
++      /* Card */
++      @scope (.card) {
++        :scope {
++          container-type: inline-size;
++          background: var(--color-surface);
++          padding: var(--space-5);
++          border-radius: var(--radius-lg);
++          corner-shape: squircle;
++          box-shadow: var(--shadow-sm);
++          text-align: center;
++        }
++
++        h3 {
++          margin-block-end: var(--space-2);
++          color: var(--color-primary);
++        }
++      }
++
++      /* Button */
++      .btn {
++        display: inline-block;
++        background: var(--color-primary);
++        color: var(--color-text-inverse);
++        padding-block: var(--space-2);
++        padding-inline: var(--space-5);
++        border-radius: var(--radius-md);
++        corner-shape: squircle;
++        margin-block-start: var(--space-4);
++        transition: background var(--transition-fast);
++
++        &:hover:not(:disabled) {
++          background: var(--color-primary-hover);
++        }
++      }
++
++      /* Footer */
++      @scope (footer) {
++        :scope {
++          background: var(--color-secondary);
++          text-align: center;
++          padding-block: var(--space-6);
++          padding-inline: var(--space-5);
++          margin-block-start: var(--space-6);
++        }
++
++        .footer-links {
++          margin-block-end: var(--space-5);
++
++          & a {
++            margin-inline: var(--space-2);
++            font-size: var(--text-xs);
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++            &:hover {
++              text-decoration: underline;
++            }
++          }
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +267,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

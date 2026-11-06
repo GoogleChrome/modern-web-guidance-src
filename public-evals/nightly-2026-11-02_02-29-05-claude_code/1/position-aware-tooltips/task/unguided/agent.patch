@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,99 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Info tooltip (CSS anchor positioning, no JS) */
++    .info-btn {
++      anchor-name: --maple-info;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 2rem;
++      height: 2rem;
++      margin: 15px 0 0 8px;
++      vertical-align: middle;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: italic bold 1rem Georgia, serif;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .info-btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .tooltip {
++      /* Reset UA popover styles; the inner bubble is what's visible */
++      margin: 0;
++      inset: auto;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      overflow: visible;
++
++      position-anchor: --maple-info;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      /* Exposes the active fallback to @container anchored() queries */
++      container-type: anchored;
++    }
++
++    .tooltip-bubble {
++      --arrow-size: 8px;
++      position: relative;
++      max-width: 240px;
++      margin-bottom: 12px;
++      padding: 10px 14px;
++      border-radius: 12px 12px 12px 4px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: left;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    /* Arrow: default points down toward the trigger below */
++    .tooltip-bubble::before {
++      content: "";
++      position: absolute;
++      left: 50%;
++      top: 100%;
++      translate: -50% 0;
++      border: var(--arrow-size) solid transparent;
++      border-top-color: var(--primary);
++      border-bottom-width: 0;
++    }
++
++    /* Flipped below the trigger: arrow points up, spacing and corners swap */
++    @container anchored(fallback: flip-block) {
++      .tooltip-bubble {
++        margin-bottom: 0;
++        margin-top: 12px;
++        border-radius: 4px 12px 12px 12px;
++      }
++
++      .tooltip-bubble::before {
++        top: auto;
++        bottom: 100%;
++        border-top-width: 0;
++        border-top-color: transparent;
++        border-bottom-width: var(--arrow-size);
++        border-bottom-color: var(--primary);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -181,8 +272,15 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" id="anchor" class="info-btn" popovertarget="maple-tooltip"
++            aria-describedby="maple-tooltip" aria-label="Maple Oat Latte info">i</button>
++          <div id="maple-tooltip" class="tooltip" role="tooltip" popover>
++            <div class="tooltip-bubble">
++              Available through November. 180 kcal (12 oz). Contains oats; dairy-free.
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

@@ -1,0 +1,194 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,17 +27,26 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
++    .nav-space {
++      --nav-expanded-height: 80px;
++      --nav-compact-height: 56px;
++      height: var(--nav-expanded-height);
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: var(--nav-expanded-height);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      position: fixed;
+       top: 0;
++      left: 0;
++      width: 100%;
+       z-index: 1000;
+     }
+ 
+     .logo {
+@@ -55,8 +64,11 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
++      display: inline-flex;
++      align-items: center;
++      min-height: 44px;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -71,8 +83,71 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    @keyframes compact-nav {
++      from { height: var(--nav-expanded-height); }
++      to { height: var(--nav-compact-height); }
++    }
++
++    @keyframes compact-logo {
++      from { font-size: 1.5rem; }
++      to { font-size: 1.25rem; }
++    }
++
++    @supports (animation-timeline: scroll(root block)) and (animation-range: 0px 160px) {
++      @media (prefers-reduced-motion: no-preference) {
++        nav, .logo {
++          animation: compact-nav linear both;
++          animation-timeline: scroll(root block);
++          animation-range: 0px 160px;
++        }
++
++        .logo {
++          animation-name: compact-logo;
++        }
++      }
++    }
++
++    @media (max-width: 640px) {
++      .nav-space {
++        --nav-expanded-height: 120px;
++        --nav-compact-height: 96px;
++      }
++
++      nav {
++        flex-direction: column;
++        justify-content: center;
++      }
++
++      nav ul {
++        width: 100%;
++        justify-content: space-between;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      nav a {
++        font-size: 0.8rem;
++      }
++
++      .logout-link {
++        padding: 5px 8px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      nav {
++        height: var(--nav-compact-height) !important;
++      }
++
++      .logo {
++        font-size: 1.25rem !important;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -156,9 +231,10 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <div class="nav-space">
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -166,8 +242,9 @@
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
++  </div>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -206,7 +283,55 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Native scroll timelines handle supported browsers without scroll listeners.
++      if (window.CSS && CSS.supports &&
++          CSS.supports('animation-timeline', 'scroll(root block)') &&
++          CSS.supports('animation-range', '0px 160px')) {
++        return;
++      }
++
++      var nav = document.querySelector('nav');
++      var logo = document.querySelector('.logo');
++      var narrow = window.matchMedia('(max-width: 640px)');
++      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      var pending = false;
++      var requestFrame = window.requestAnimationFrame || function (callback) {
++        return window.setTimeout(callback, 16);
++      };
++
++      function updateNav() {
++        pending = false;
++        if (reducedMotion.matches) {
++          nav.style.height = '';
++          logo.style.fontSize = '';
++          return;
++        }
++        var scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
++        var progress = Math.max(0, Math.min(scrollTop / 160, 1));
++        nav.style.height = ((narrow.matches ? 120 : 80) - 24 * progress) + 'px';
++        logo.style.fontSize = (1.5 - 0.25 * progress) + 'rem';
++      }
++
++      function scheduleUpdate() {
++        if (!pending) {
++          pending = true;
++          requestFrame(updateNav);
++        }
++      }
++
++      window.addEventListener('scroll', scheduleUpdate, false);
++      window.addEventListener('resize', scheduleUpdate, false);
++      window.addEventListener('pageshow', scheduleUpdate, false);
++      // addListener also works in browsers predating MediaQueryList.addEventListener.
++      if (reducedMotion.addListener) {
++        reducedMotion.addListener(scheduleUpdate);
++      }
++      updateNav();
++    }());
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+index 66c9173..985c145 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,87 @@
+       background: #3e2723;
+     }
+ 
++    .btn[data-loading-link] {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++    }
++
++    .btn[aria-disabled="true"] {
++      cursor: wait;
++    }
++
++    progress.loading-spinner {
++      --spinner-duration: 1s;
++      --_used-spinner-duration: var(--spinner-duration);
++      appearance: none;
++      display: inline-block;
++      flex: none;
++      width: 1em;
++      height: 1em;
++      border: 0;
++      border-radius: 50%;
++      background: conic-gradient(transparent, currentColor);
++      mask-image: radial-gradient(farthest-side, transparent calc(100% - 2px), black 0);
++      animation: spinner-rotate var(--_used-spinner-duration) linear infinite;
++    }
++
++    progress.loading-spinner[hidden] {
++      display: none;
++      animation: none;
++    }
++
++    progress.loading-spinner::-webkit-progress-bar {
++      display: none;
++    }
++
++    progress.loading-spinner::-webkit-progress-value {
++      display: none;
++    }
++
++    progress.loading-spinner::-moz-progress-bar {
++      display: none;
++    }
++
++    @supports (background-clip: border-area) {
++      progress.loading-spinner {
++        border: 2px solid transparent;
++        background-clip: border-area;
++        background-origin: border-box;
++        mask-image: none;
++      }
++    }
++
++    @keyframes spinner-rotate {
++      to { transform: rotate(1turn); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      progress.loading-spinner {
++        --_used-spinner-duration: 6s;
++      }
++    }
++
++    @media (forced-colors: active) {
++      progress.loading-spinner {
++        background: none;
++        mask-image: none;
++        border: 2px solid ButtonText;
++        border-top-color: transparent;
++      }
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,27 +252,41 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-loading-link data-loading-text="Starting order…">
++      <span data-link-label>Order Now</span>
++      <progress class="loading-spinner" aria-label="Starting your order" hidden></progress>
++    </a>
+   </header>
+ 
++  <p id="loading-status" class="visually-hidden" role="status" aria-atomic="true"></p>
++
+   <main class="container">
+-    <section>
++    <section id="seasonal-favorites" aria-busy="false">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-loading-link data-loading-text="Loading details…" data-drink="Maple Oat Latte">
++            <span data-link-label>View Details</span><span class="visually-hidden"> for Maple Oat Latte</span>
++            <progress class="loading-spinner" aria-label="Loading Maple Oat Latte details" hidden></progress>
++          </a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-loading-link data-loading-text="Loading details…" data-drink="Dark Roast Espresso">
++            <span data-link-label>View Details</span><span class="visually-hidden"> for Dark Roast Espresso</span>
++            <progress class="loading-spinner" aria-label="Loading Dark Roast Espresso details" hidden></progress>
++          </a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-loading-link data-loading-text="Loading details…" data-drink="Cold Brew">
++            <span data-link-label>View Details</span><span class="visually-hidden"> for Cold Brew</span>
++            <progress class="loading-spinner" aria-label="Loading Cold Brew details" hidden></progress>
++          </a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +302,53 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const loadingLinks = document.querySelectorAll('[data-loading-link]');
++    const loadingStatus = document.getElementById('loading-status');
++    const seasonalFavorites = document.getElementById('seasonal-favorites');
++
++    function resetLoading() {
++      loadingLinks.forEach((link) => {
++        link.removeAttribute('aria-busy');
++        link.removeAttribute('aria-disabled');
++        link.querySelector('[data-link-label]').textContent = link.dataset.idleText;
++        link.querySelector('progress').hidden = true;
++      });
++      seasonalFavorites.setAttribute('aria-busy', 'false');
++      loadingStatus.textContent = '';
++    }
++
++    loadingLinks.forEach((link) => {
++      link.dataset.idleText = link.querySelector('[data-link-label]').textContent;
++      link.addEventListener('click', (event) => {
++        // Leave new-tab, download, and already-cancelled navigation untouched.
++        if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
++            event.ctrlKey || event.shiftKey || event.altKey || link.hasAttribute('download') ||
++            (link.target && link.target !== '_self')) return;
++
++        if (link.getAttribute('aria-disabled') === 'true') {
++          event.preventDefault();
++          return;
++        }
++
++        resetLoading();
++        link.setAttribute('aria-busy', 'true');
++        link.setAttribute('aria-disabled', 'true');
++        link.querySelector('[data-link-label]').textContent = link.dataset.loadingText;
++        link.querySelector('progress').hidden = false;
++        if (link.dataset.drink) seasonalFavorites.setAttribute('aria-busy', 'true');
++        // Keep this announcement outside the busy region so it is not deferred.
++        loadingStatus.textContent = link.dataset.drink
++          ? `Loading details for ${link.dataset.drink}…`
++          : 'Starting your order…';
++        // The native link navigation continues without an artificial delay.
++      });
++    });
++
++    // History restoration can preserve DOM state from before navigation.
++    window.addEventListener('pageshow', resetLoading);
++  </script>
++
+ </body>
+ 
+ </html>

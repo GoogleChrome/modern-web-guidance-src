@@ -1,0 +1,171 @@
+diff --git a/index.html b/index.html
+index 66c9173..8498b2b 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./seasonal-card.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -107,19 +108,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +166,23 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <!-- Add or remove a slot="badge" element to toggle a card's badge. -->
++        <seasonal-card>
++          <span slot="title">Maple Oat Latte</span>
++          <span slot="description">Creamy oat milk with a hint of Vermont maple syrup.</span>
++          <a slot="action" href="/menu/seasonal">View Details</a>
++          <span slot="badge">Limited</span>
++        </seasonal-card>
++        <seasonal-card>
++          <span slot="title">Dark Roast Espresso</span>
++          <span slot="description">Bold, smokey, and perfect for a morning boost.</span>
++          <a slot="action" href="/menu/espresso">View Details</a>
++        </seasonal-card>
++        <seasonal-card>
++          <span slot="title">Cold Brew</span>
++          <span slot="description">Steeped for 18 hours for maximum smoothness.</span>
++          <a slot="action" href="/menu/cold-brew">View Details</a>
++        </seasonal-card>
+       </div>
+     </section>
+   </main>
+diff --git a/seasonal-card.js b/seasonal-card.js
+new file mode 100644
+index 0000000..ee1a760
+--- /dev/null
++++ b/seasonal-card.js
+@@ -0,0 +1,94 @@
++// Content belongs to the page; layout and presentation belong to this template.
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      min-width: 0;
++    }
++
++    *, ::slotted(*) {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    article {
++      height: 100%;
++      padding: 20px;
++      border-radius: 8px;
++      background: white;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      color: #3e2723;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size: 1rem;
++      line-height: 1.6;
++      text-align: center;
++    }
++
++    h3 {
++      margin-bottom: 10px;
++      color: #4e342e;
++      font-size: 1.17em;
++    }
++
++    .badge {
++      display: inline-block;
++      margin-bottom: 10px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: #ffab40;
++      color: #3e2723;
++      font-size: 0.75rem;
++      font-weight: bold;
++    }
++
++    .badge[hidden] {
++      display: none;
++    }
++
++    ::slotted(a[slot="action"]) {
++      display: inline-block;
++      margin-top: 15px;
++      padding: 10px 20px;
++      border-radius: 5px;
++      background: #4e342e;
++      color: white;
++      font: inherit;
++      text-decoration: none;
++      transition: background 0.3s;
++    }
++
++    ::slotted(a[slot="action"]:hover) {
++      background: #3e2723;
++    }
++
++    ::slotted(a[slot="action"]:focus-visible) {
++      outline: 2px solid #4e342e;
++      outline-offset: 3px;
++    }
++  </style>
++  <article>
++    <div class="badge" hidden><slot name="badge"></slot></div>
++    <h3><slot name="title"></slot></h3>
++    <p><slot name="description"></slot></p>
++    <slot name="action"></slot>
++  </article>
++`;
++
++class SeasonalCard extends HTMLElement {
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.append(template.content.cloneNode(true));
++
++    const badge = root.querySelector('.badge');
++    const badgeSlot = root.querySelector('slot[name="badge"]');
++    // Initial assignment and later page edits both trigger slotchange.
++    badgeSlot.addEventListener('slotchange', () => {
++      badge.hidden = badgeSlot.assignedElements().length === 0;
++    });
++  }
++}
++
++customElements.define('seasonal-card', SeasonalCard);

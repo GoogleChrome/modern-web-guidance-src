@@ -1,0 +1,1429 @@
+diff --git a/index.html b/index.html
+index 66c9173..d82005b 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,15 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --success-bg: #e8f5e9;
++      --success-text: #1b5e20;
++      --success-border: #a5d6a7;
++      --error-bg: #ffebee;
++      --error-text: #b71c1c;
++      --error-border: #ef9a9a;
++      --warn-bg: #fff8e1;
++      --warn-text: #e65100;
++      --warn-border: #ffe082;
+     }
+ 
+     * {
+@@ -49,6 +58,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -72,6 +82,35 @@
+       border-radius: 4px;
+     }
+ 
++    /* Redirect Banner */
++    .redirect-banner {
++      background: var(--warn-bg);
++      color: var(--warn-text);
++      border-bottom: 1px solid var(--warn-border);
++      padding: 10px 5%;
++      font-size: 0.9rem;
++      display: none;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .redirect-banner.visible {
++      display: flex;
++    }
++
++    .redirect-banner.valid {
++      background: var(--success-bg);
++      color: var(--success-text);
++      border-bottom-color: var(--success-border);
++    }
++
++    .redirect-banner.invalid {
++      background: var(--error-bg);
++      color: var(--error-text);
++      border-bottom-color: var(--error-border);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -100,6 +139,23 @@
+       padding: 0 20px;
+     }
+ 
++    .section-block {
++      margin-bottom: 48px;
++    }
++
++    .section-title {
++      text-align: center;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -115,6 +171,10 @@
+       text-align: center;
+     }
+ 
++    .card-left {
++      text-align: left;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -129,12 +189,142 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.9rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: #6d4c41;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.82rem;
++      margin-top: 8px;
++    }
++
++    .status-badge {
++      display: inline-block;
++      padding: 3px 10px;
++      border-radius: 999px;
++      font-size: 0.78rem;
++      font-weight: 600;
++    }
++
++    .badge-trusted {
++      background: var(--success-bg);
++      color: var(--success-text);
++      border: 1px solid var(--success-border);
++    }
++
++    .badge-rejected {
++      background: var(--error-bg);
++      color: var(--error-text);
++      border: 1px solid var(--error-border);
++    }
++
++    .badge-pending {
++      background: var(--warn-bg);
++      color: var(--warn-text);
++      border: 1px solid var(--warn-border);
++    }
++
++    .status-box {
++      margin-top: 12px;
++      padding: 12px;
++      border-radius: 6px;
++      background: #f5f5f5;
++      border: 1px solid #e0e0e0;
++      font-size: 0.9rem;
++    }
++
++    .iframe-wrapper {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      overflow: hidden;
++      margin-top: 12px;
++      background: #fff;
++    }
++
++    .iframe-wrapper iframe {
++      width: 100%;
++      height: 175px;
++      border: none;
++      display: block;
++    }
++
++    .redirect-form {
++      display: flex;
++      gap: 10px;
++      margin-top: 12px;
++      flex-wrap: wrap;
++    }
++
++    .redirect-form input {
++      flex: 1;
++      min-width: 220px;
++      padding: 9px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 0.9rem;
++    }
++
++    .redirect-form .btn {
++      margin-top: 0;
++    }
++
++    .security-log {
++      list-style: none;
++      max-height: 220px;
++      overflow-y: auto;
++      margin-top: 12px;
++      border: 1px solid #e0e0e0;
++      border-radius: 6px;
++      background: #fff;
++      padding: 8px;
++      font-family: monospace;
++      font-size: 0.82rem;
++    }
++
++    .security-log li {
++      padding: 5px 8px;
++      border-bottom: 1px solid #f0f0f0;
++    }
++
++    .security-log li:last-child {
++      border-bottom: none;
++    }
++
++    .security-log li.log-accept {
++      color: var(--success-text);
++    }
++
++    .security-log li.log-reject {
++      color: var(--error-text);
++    }
++
++    .external-link-indicator {
++      font-size: 0.75em;
++      margin-left: 3px;
++      opacity: 0.85;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -152,11 +342,19 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="redirect-notification" class="redirect-banner" role="status" aria-live="polite">
++    <span id="redirect-notification-text"></span>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -164,19 +362,19 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout?redirect=/menu" id="logout-link" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="https://orders.dailygrind.com/order-online" id="order-now-btn" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="section-block">
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +393,216 @@
+         </div>
+       </div>
+     </section>
++
++    <!-- Cross-Window Ordering & Sandboxed Widget Section -->
++    <section class="section-block" id="interactive-services">
++      <h2 class="section-title">Live Ordering &amp; Brew Customizer</h2>
++      <p class="section-subtitle">
++        Verified cross-window updates from our ordering portal and pinned sandboxed widget customization.
++      </p>
++
++      <div class="grid">
++        <!-- Cross-Window Ordering Origin Verification Card -->
++        <div class="card card-left" id="ordering-card">
++          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
++            <h3>Live Order Status</h3>
++            <span id="order-origin-badge" class="status-badge badge-trusted">Origin: https://orders.dailygrind.com</span>
++          </div>
++          <p style="font-size: 0.9rem; margin-top: 6px;">
++            Accepts cross-window <code>postMessage</code> events exclusively from the trusted ordering origin.
++          </p>
++          <div class="status-box" id="order-status-display">
++            <div><strong>Status:</strong> <span id="order-status-text">Waiting for order updates...</span></div>
++            <div><strong>Order ID:</strong> <span id="order-id-text">None</span></div>
++            <div><strong>Item:</strong> <span id="order-item-text">None</span></div>
++            <div><strong>Last Verified Origin:</strong> <span id="order-verified-origin">N/A</span></div>
++          </div>
++          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
++            <button type="button" class="btn btn-sm" id="simulate-trusted-order-btn">
++              Simulate Trusted Order Update
++            </button>
++            <button type="button" class="btn btn-sm btn-secondary" id="simulate-untrusted-order-btn">
++              Simulate Untrusted Origin Attack
++            </button>
++          </div>
++        </div>
++
++        <!-- Sandboxed Iframe Widget with Sender Identity Pinning -->
++        <div class="card card-left" id="sandbox-widget-card">
++          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
++            <h3>Brew Customizer Widget</h3>
++            <span id="widget-pin-badge" class="status-badge badge-pending">Pin Status: Waiting for Init</span>
++          </div>
++          <p style="font-size: 0.9rem; margin-top: 6px;">
++            Runs inside a sandboxed iframe (<code>origin: "null"</code>). Sender identity (<code>event.source</code>) is pinned on initialization.
++          </p>
++
++          <div class="iframe-wrapper">
++            <iframe
++              id="brew-widget-iframe"
++              name="brew-widget"
++              sandbox="allow-scripts"
++              title="Sandboxed Brew Customizer Widget"
++              srcdoc="<!DOCTYPE html>
++<html>
++<head>
++<style>
++  body { font-family: sans-serif; margin: 0; padding: 12px; background: #fffaf5; color: #3e2723; font-size: 13px; }
++  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
++  select, button { padding: 5px 8px; border-radius: 4px; border: 1px solid #bcaaa4; font-size: 12px; }
++  button { background: #4e342e; color: #fff; border: none; cursor: pointer; }
++  button:hover { background: #3e2723; }
++  .meta { font-size: 11px; color: #6d4c41; margin-top: 6px; }
++</style>
++</head>
++<body>
++  <div><strong>Sandboxed Brew Customizer</strong> (<code>sandbox=&quot;allow-scripts&quot;</code>)</div>
++  <div class='row' style='margin-top:8px;'>
++    <label>Drink:
++      <select id='drink'>
++        <option value='Maple Oat Latte'>Maple Oat Latte</option>
++        <option value='Dark Roast Espresso'>Dark Roast Espresso</option>
++        <option value='Cold Brew'>Cold Brew</option>
++      </select>
++    </label>
++    <label>Shots:
++      <select id='shots'>
++        <option value='1'>1 Shot</option>
++        <option value='2' selected>2 Shots</option>
++        <option value='3'>3 Shots</option>
++      </select>
++    </label>
++    <button id='send-custom'>Apply Customization</button>
++  </div>
++  <div class='meta' id='widget-meta'>Initializing widget identity with host page...</div>
++  <script>
++    (function() {
++      function sendInit() {
++        window.parent.postMessage({
++          type: 'WIDGET_INIT',
++          widgetId: 'brew-customizer',
++          version: '1.0'
++        }, '*');
++        document.getElementById('widget-meta').textContent = 'Initialized & sent WIDGET_INIT to parent.';
++      }
++      document.getElementById('send-custom').addEventListener('click', function() {
++        var drink = document.getElementById('drink').value;
++        var shots = Number(document.getElementById('shots').value);
++        window.parent.postMessage({
++          type: 'WIDGET_CUSTOMIZE',
++          drink: drink,
++          shots: shots,
++          pointsEstimate: shots * 25
++        }, '*');
++      });
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', sendInit);
++      } else {
++        sendInit();
++      }
++    })();
++  </script>
++</body>
++</html>"></iframe>
++          </div>
++
++          <div class="status-box" id="widget-status-display">
++            <div><strong>Pinned Widget ID:</strong> <span id="widget-pinned-id">None</span></div>
++            <div><strong>Custom Selection:</strong> <span id="widget-custom-text">No customization applied yet</span></div>
++            <div><strong>Accepted Messages:</strong> <span id="widget-accepted-count">0</span> | <strong>Rejected:</strong> <span id="widget-rejected-count">0</span></div>
++          </div>
++
++          <!-- Second untrusted sandboxed iframe to verify other sandboxed iframes are rejected -->
++          <div class="iframe-wrapper" style="margin-top: 10px;">
++            <iframe
++              id="untrusted-sandbox-iframe"
++              name="untrusted-sandbox"
++              sandbox="allow-scripts"
++              title="Untrusted Third-Party Sandboxed Frame"
++              style="height: 85px;"
++              srcdoc="<!DOCTYPE html>
++<html>
++<head>
++<style>
++  body { font-family: sans-serif; margin: 0; padding: 10px; background: #fff3e0; color: #4e342e; font-size: 12px; }
++  button { padding: 4px 8px; background: #b71c1c; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 6px; }
++</style>
++</head>
++<body>
++  <div><strong>Other Sandboxed Iframe</strong> (Untrusted Promo Widget, also <code>origin: &quot;null&quot;</code>)</div>
++  <div style='margin-top: 6px;'>
++    <button id='spoof-update'>Send Spoofed Widget Update</button>
++    <button id='spoof-init'>Attempt Re-Pin (WIDGET_INIT)</button>
++  </div>
++  <script>
++    document.getElementById('spoof-update').addEventListener('click', function() {
++      window.parent.postMessage({
++        type: 'WIDGET_CUSTOMIZE',
++        drink: 'Spoofed Free Drink',
++        shots: 99,
++        pointsEstimate: 99999
++      }, '*');
++    });
++    document.getElementById('spoof-init').addEventListener('click', function() {
++      window.parent.postMessage({
++        type: 'WIDGET_INIT',
++        widgetId: 'rogue-widget'
++      }, '*');
++    });
++  </script>
++</body>
++</html>"></iframe>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Same-Site Redirect Validation & Security Log Section -->
++    <section class="section-block" id="security-validation-section">
++      <h2 class="section-title">Same-Site Redirect &amp; Link Validation</h2>
++      <p class="section-subtitle">
++        URL-parsed same-site validation protecting redirects and external links against domain-splitting and public-suffix bypasses.
++      </p>
++
++      <div class="grid">
++        <div class="card card-left">
++          <h3>Store &amp; Account Redirect Validator</h3>
++          <p style="font-size: 0.9rem;">
++            Validates return and redirect URLs using the <code>URL</code> parser and registrable domain boundary checks.
++          </p>
++          <form id="redirect-validator-form" class="redirect-form" novalidate>
++            <input
++              type="text"
++              id="redirect-url-input"
++              placeholder="e.g. /rewards or https://orders.dailygrind.com/checkout"
++              value="/rewards"
++              aria-label="Redirect URL to validate"
++            />
++            <button type="submit" class="btn btn-accent">Validate Redirect</button>
++          </form>
++          <div class="status-box" id="redirect-validation-result">
++            <div><strong>Result:</strong> <span id="redirect-result-status">Ready</span></div>
++            <div><strong>Normalized URL:</strong> <span id="redirect-result-url">N/A</span></div>
++            <div><strong>Reason:</strong> <span id="redirect-result-reason">Enter a URL or test a preset below.</span></div>
++          </div>
++          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
++            <button type="button" class="btn btn-sm" data-test-redirect="/account/orders">Valid Relative</button>
++            <button type="button" class="btn btn-sm" data-test-redirect="https://orders.dailygrind.com/receipt">Valid Subdomain</button>
++            <button type="button" class="btn btn-sm btn-secondary" data-test-redirect="https://evildailygrind.com/login">Reject Prefix Spoof</button>
++            <button type="button" class="btn btn-sm btn-secondary" data-test-redirect="https://dailygrind.com@evil.com">Reject Userinfo</button>
++            <button type="button" class="btn btn-sm btn-secondary" data-test-redirect="https://attacker.co.uk" data-test-base="https://shop.dailygrind.co.uk">Reject .co.uk Split Bug</button>
++          </div>
++        </div>
++
++        <div class="card card-left">
++          <h3>Security Telemetry Log</h3>
++          <p style="font-size: 0.9rem;">
++            Real-time audit log of cross-window origin checks, sandboxed widget pinning, and URL validations.
++          </p>
++          <ul id="security-audit-log" class="security-log" aria-live="polite"></ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,11 +610,924 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="https://orders.dailygrind.com">Online Ordering Portal</a> |
++      <a href="https://rewards.dailygrind.com/terms">Rewards Terms</a> |
++      <a href="https://www.fairtrade.net" class="external-partner-link">Fairtrade Certified</a> |
++      <a href="https://sca.coffee" class="external-partner-link">Specialty Coffee Assoc.</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      /**
++       * Canonical trusted origins and site domains for The Daily Grind.
++       */
++      const TRUSTED_ORDER_ORIGIN = 'https://orders.dailygrind.com';
++      const TRUSTED_ORDER_ORIGINS = new Set([
++        'https://orders.dailygrind.com',
++        'https://order.dailygrind.com',
++        'https://orders.dailygrind.coffee',
++        'https://order.dailygrind.coffee'
++      ]);
++
++      const CANONICAL_SITE_DOMAINS = [
++        'dailygrind.com',
++        'dailygrind.coffee',
++        'dailygrind.co.uk'
++      ];
++
++      /**
++       * Known multi-label public suffixes (eTLDs) so registrable domain (eTLD+1)
++       * calculation never falls victim to naive `hostname.split('.').slice(-2).join('.')`
++       * string-splitting bugs (e.g. treating `attacker.co.uk` and `shop.dailygrind.co.uk`
++       * as sharing the site `co.uk`).
++       */
++      const MULTI_LABEL_PUBLIC_SUFFIXES = new Set([
++        'co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'me.uk', 'net.uk', 'plc.uk', 'ltd.uk',
++        'com.au', 'net.au', 'org.au', 'edu.au', 'gov.au', 'asn.au', 'id.au',
++        'co.nz', 'org.nz', 'net.nz', 'govt.nz', 'ac.nz', 'school.nz',
++        'co.jp', 'ne.jp', 'or.jp', 'ac.jp', 'go.jp', 'ed.jp', 'gr.jp',
++        'com.br', 'net.br', 'org.br', 'gov.br', 'edu.br',
++        'co.za', 'org.za', 'gov.za', 'ac.za', 'net.za',
++        'co.in', 'net.in', 'org.in', 'gov.in', 'ac.in', 'res.in',
++        'com.sg', 'edu.sg', 'gov.sg', 'org.sg', 'net.sg',
++        'com.mx', 'org.mx', 'gob.mx', 'edu.mx', 'net.mx',
++        'com.cn', 'net.cn', 'org.cn', 'gov.cn', 'edu.cn',
++        'com.tw', 'org.tw', 'gov.tw', 'edu.tw',
++        'com.hk', 'org.hk', 'gov.hk', 'edu.hk', 'net.hk',
++        'co.kr', 'or.kr', 'go.kr', 'ac.kr', 'ne.kr',
++        'co.il', 'org.il', 'gov.il', 'ac.il', 'net.il',
++        'com.ar', 'org.ar', 'gov.ar', 'gob.ar',
++        'com.tr', 'org.tr', 'gov.tr', 'edu.tr',
++        'github.io', 'pages.dev', 'vercel.app', 'netlify.app', 'herokuapp.com', 'appspot.com'
++      ]);
++
++      /**
++       * Sandboxed widget pinning state.
++       * Pinned on the first valid initialization message from the sandboxed widget.
++       */
++      let pinnedWidgetSource = null;
++      let pinnedWidgetId = null;
++      let widgetAcceptedCount = 0;
++      let widgetRejectedCount = 0;
++
++      /**
++       * Audit log helper using safe textContent rendering.
++       */
++      function appendAuditLog(status, category, detail) {
++        const logList = document.getElementById('security-audit-log');
++        if (!logList) return;
++        const item = document.createElement('li');
++        item.className = status === 'ACCEPT' ? 'log-accept' : 'log-reject';
++        item.textContent = '[' + status + '] [' + category + '] ' + detail;
++        logList.prepend(item);
++      }
++
++      /**
++       * Checks whether a hostname is an IPv4 literal, IPv6 literal, or single-label host (e.g. localhost).
++       */
++      function isIpOrSingleLabelHost(hostname) {
++        if (!hostname || typeof hostname !== 'string') return false;
++        const lower = hostname.toLowerCase();
++        // IPv6 literal in URL.hostname is enclosed in brackets: [::1]
++        if (lower.startsWith('[') && lower.endsWith(']')) {
++          return true;
++        }
++        // Single-label host (e.g. localhost)
++        if (!lower.includes('.')) {
++          return true;
++        }
++        // Check if every dot-separated label is purely numeric (IPv4 literal like 127.0.0.1)
++        const parts = lower.split('.');
++        if (parts.length === 4 && parts.every(function (p) { return /^\d{1,3}$/.test(p) && Number(p) <= 255; })) {
++          return true;
++        }
++        return false;
++      }
++
++      /**
++       * Checks whether `hostname` is equal to `domain` or is a proper subdomain of `domain`
++       * with an explicit dot boundary (preventing `evildailygrind.com` from matching `dailygrind.com`).
++       */
++      function isExactOrSubdomain(hostname, domain) {
++        if (typeof hostname !== 'string' || typeof domain !== 'string') {
++          return false;
++        }
++        const cleanHost = hostname.toLowerCase().replace(/\.$/, '');
++        const cleanDomain = domain.toLowerCase().replace(/\.$/, '');
++        if (!cleanHost || !cleanDomain) {
++          return false;
++        }
++        if (cleanHost === cleanDomain) {
++          return true;
++        }
++        if (isIpOrSingleLabelHost(cleanDomain) || isIpOrSingleLabelHost(cleanHost)) {
++          return false;
++        }
++        return cleanHost.endsWith('.' + cleanDomain);
++      }
++
++      /**
++       * Computes the registrable domain (eTLD+1) of a hostname safely without naive
++       * `split('.').slice(-2).join('.')` bugs.
++       * - Returns exact hostname for `localhost` or IP literals.
++       * - Respects multi-label public suffixes like `co.uk`, `com.au`, etc.
++       * - Returns `null` if the hostname is itself a bare TLD or public suffix.
++       */
++      function getRegistrableDomain(hostname) {
++        if (!hostname || typeof hostname !== 'string') {
++          return null;
++        }
++        const normalized = hostname.toLowerCase().replace(/\.$/, '');
++        if (!normalized) {
++          return null;
++        }
++
++        if (isIpOrSingleLabelHost(normalized)) {
++          return normalized;
++        }
++
++        const labels = normalized.split('.');
++        if (labels.some(function (label) { return label.length === 0; })) {
++          return null;
++        }
++
++        if (labels.length < 2) {
++          return null;
++        }
++
++        const lastTwo = labels.slice(-2).join('.');
++        if (MULTI_LABEL_PUBLIC_SUFFIXES.has(lastTwo)) {
++          // Bare public suffix (e.g., "co.uk") is not a registrable domain
++          if (labels.length < 3) {
++            return null;
++          }
++          return labels.slice(-3).join('.');
++        }
++
++        if (labels.length >= 3) {
++          const lastThree = labels.slice(-3).join('.');
++          if (MULTI_LABEL_PUBLIC_SUFFIXES.has(lastThree)) {
++            if (labels.length < 4) {
++              return null;
++            }
++            return labels.slice(-4).join('.');
++          }
++        }
++
++        return lastTwo;
++      }
++
++      /**
++       * Safely parses a URL string using the standard `URL` constructor without string-splitting bugs.
++       * Rejects unsafe protocols (`javascript:`, `data:`, `vbscript:`, `file:`), embedded credentials
++       * (`user:pass@host`), and ambiguous protocol-relative or backslash-prefixed inputs when required.
++       */
++      function parseSafeHttpUrl(rawInput, baseOrigin, options) {
++        const opts = options || {};
++        if (typeof rawInput !== 'string') {
++          return { valid: false, url: null, reason: 'URL must be a string' };
++        }
++
++        const trimmed = rawInput.trim();
++        if (!trimmed) {
++          return { valid: false, url: null, reason: 'URL cannot be empty' };
++        }
++
++        // Reject control characters
++        if (/[\u0000-\u001F\u007F]/.test(trimmed)) {
++          return { valid: false, url: null, reason: 'URL contains control characters' };
++        }
++
++        // Reject protocol-relative (`//evil.com`) or backslash-spoofed (`/\evil.com`, `\\evil.com`) inputs
++        if (opts.rejectProtocolRelative !== false) {
++          if (trimmed.startsWith('//') || trimmed.startsWith('/\\') || trimmed.startsWith('\\')) {
++            return {
++              valid: false,
++              url: null,
++              reason: 'Ambiguous protocol-relative or backslash-prefixed URL is not allowed'
++            };
++          }
++        }
++
++        // Reject backslashes in authority/path prefix before query or hash
++        const preQuery = trimmed.split(/[?#]/)[0];
++        if (preQuery.includes('\\')) {
++          return {
++            valid: false,
++            url: null,
++            reason: 'Backslashes in URL path or authority are not allowed'
++          };
++        }
++
++        let resolvedBase = baseOrigin || window.location.origin;
++        if (!resolvedBase || resolvedBase === 'null') {
++          resolvedBase = 'https://dailygrind.com';
++        }
++
++        let parsed;
++        try {
++          parsed = new URL(trimmed, resolvedBase);
++        } catch (err) {
++          return { valid: false, url: null, reason: 'Malformed URL syntax' };
++        }
++
++        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
++          return {
++            valid: false,
++            url: null,
++            reason: 'Disallowed URL protocol: ' + parsed.protocol
++          };
++        }
++
++        if (parsed.username !== '' || parsed.password !== '') {
++          return {
++            valid: false,
++            url: null,
++            reason: 'Embedded credentials (userinfo) are not permitted in URLs'
++          };
++        }
++
++        return { valid: true, url: parsed, reason: 'Valid HTTP(S) URL' };
++      }
++
++      /**
++       * Determines if `targetUrl` is same-site with `referenceOrigin` (and/or The Daily Grind's
++       * canonical site domains when using default page origin).
++       */
++      function isSameSiteUrl(targetUrl, referenceOrigin) {
++        const explicitRef = typeof referenceOrigin === 'string' && referenceOrigin.trim() !== '';
++        const baseToUse = explicitRef ? referenceOrigin : window.location.origin;
++
++        const baseParsedResult = parseSafeHttpUrl(baseToUse, 'https://dailygrind.com', {
++          rejectProtocolRelative: true
++        });
++        if (!baseParsedResult.valid || !baseParsedResult.url) {
++          return false;
++        }
++        const baseUrl = baseParsedResult.url;
++
++        const targetParsedResult = parseSafeHttpUrl(targetUrl, baseUrl.origin, {
++          rejectProtocolRelative: true
++        });
++        if (!targetParsedResult.valid || !targetParsedResult.url) {
++          return false;
++        }
++        const parsedTarget = targetParsedResult.url;
++
++        // Prevent HTTPS -> HTTP downgrade in schemeful same-site check
++        if (baseUrl.protocol === 'https:' && parsedTarget.protocol !== 'https:') {
++          return false;
++        }
++
++        // Exact same-origin is always same-site
++        if (parsedTarget.origin === baseUrl.origin) {
++          return true;
++        }
++
++        const baseRegistrable = getRegistrableDomain(baseUrl.hostname);
++        const targetRegistrable = getRegistrableDomain(parsedTarget.hostname);
++
++        if (
++          baseRegistrable &&
++          targetRegistrable &&
++          baseRegistrable === targetRegistrable &&
++          isExactOrSubdomain(parsedTarget.hostname, baseRegistrable)
++        ) {
++          return true;
++        }
++
++        // When validating against the page's default origin (e.g. when served on localhost),
++        // also accept HTTPS URLs belonging to The Daily Grind's canonical site domains.
++        if (!explicitRef && parsedTarget.protocol === 'https:') {
++          for (let i = 0; i < CANONICAL_SITE_DOMAINS.length; i++) {
++            const siteDomain = CANONICAL_SITE_DOMAINS[i];
++            if (
++              targetRegistrable === siteDomain &&
++              isExactOrSubdomain(parsedTarget.hostname, siteDomain)
++            ) {
++              return true;
++            }
++          }
++        }
++
++        return false;
++      }
++
++      /**
++       * Validates a redirect URL to ensure it is a safe, same-site destination.
++       * Returns `{ valid: boolean, url: string | null, reason: string }`.
++       */
++      function validateRedirectUrl(rawUrl, referenceOrigin) {
++        const explicitRef = typeof referenceOrigin === 'string' && referenceOrigin.trim() !== '';
++        const baseToUse = explicitRef ? referenceOrigin : window.location.origin;
++
++        const parsedResult = parseSafeHttpUrl(rawUrl, baseToUse, {
++          rejectProtocolRelative: true
++        });
++        if (!parsedResult.valid || !parsedResult.url) {
++          return {
++            valid: false,
++            url: null,
++            reason: parsedResult.reason
++          };
++        }
++
++        if (!isSameSiteUrl(rawUrl, referenceOrigin)) {
++          return {
++            valid: false,
++            url: null,
++            reason: 'Cross-site redirect rejected for host: ' + parsedResult.url.hostname
++          };
++        }
++
++        return {
++          valid: true,
++          url: parsedResult.url.href,
++          reason: 'Verified same-site redirect destination (' + parsedResult.url.hostname + ')'
++        };
++      }
++
++      /**
++       * Classifies and validates a link URL (`same-origin`, `same-site`, `external`, or `invalid`)
++       * without string-splitting bugs.
++       */
++      function validateExternalLink(rawHref, referenceOrigin) {
++        const baseToUse = referenceOrigin || window.location.origin;
++        const parsedResult = parseSafeHttpUrl(rawHref, baseToUse, {
++          rejectProtocolRelative: true
++        });
++
++        if (!parsedResult.valid || !parsedResult.url) {
++          return {
++            valid: false,
++            isExternal: false,
++            classification: 'invalid',
++            url: null,
++            reason: parsedResult.reason
++          };
++        }
++
++        const parsed = parsedResult.url;
++        let baseUrl;
++        try {
++          baseUrl = new URL(baseToUse);
++        } catch (err) {
++          baseUrl = new URL('https://dailygrind.com');
++        }
++
++        if (parsed.origin === baseUrl.origin) {
++          return {
++            valid: true,
++            isExternal: false,
++            classification: 'same-origin',
++            url: parsed.href,
++            hostname: parsed.hostname,
++            reason: 'Same-origin link'
++          };
++        }
++
++        if (isSameSiteUrl(parsed.href, referenceOrigin)) {
++          return {
++            valid: true,
++            isExternal: false,
++            classification: 'same-site',
++            url: parsed.href,
++            hostname: parsed.hostname,
++            reason: 'Same-site subdomain link'
++          };
++        }
++
++        return {
++          valid: true,
++          isExternal: true,
++          classification: 'external',
++          url: parsed.href,
++          hostname: parsed.hostname,
++          reason: 'Verified external cross-site link (' + parsed.hostname + ')'
++        };
++      }
++
++      /**
++       * Inspects and hardens all `<a>` elements within `root` (defaults to `document`).
++       * - Neutralizes unsafe schemes or malformed/userinfo-spoofed URLs.
++       * - Adds `rel="noopener noreferrer"`, `target="_blank"`, and `referrerpolicy="no-referrer"`
++       *   to external cross-site links.
++       */
++      function hardenPageLinks(root) {
++        const scope = root || document;
++        const anchors = scope.querySelectorAll('a[href]');
++        anchors.forEach(function (anchor) {
++          const rawHref = anchor.getAttribute('href');
++          const result = validateExternalLink(rawHref);
++
++          if (!result.valid) {
++            anchor.dataset.linkType = 'invalid';
++            anchor.dataset.external = 'blocked';
++            anchor.removeAttribute('target');
++            anchor.setAttribute('href', '#blocked-unsafe-link');
++            return;
++          }
++
++          anchor.dataset.linkType = result.classification;
++          anchor.dataset.external = result.isExternal ? 'true' : 'false';
++
++          if (result.isExternal) {
++            const existingRel = (anchor.getAttribute('rel') || '')
++              .split(/\s+/)
++              .filter(Boolean);
++            if (!existingRel.includes('noopener')) existingRel.push('noopener');
++            if (!existingRel.includes('noreferrer')) existingRel.push('noreferrer');
++            anchor.setAttribute('rel', existingRel.join(' '));
++            anchor.setAttribute('target', '_blank');
++            anchor.setAttribute('referrerpolicy', 'no-referrer');
++          }
++        });
++      }
++
++      /**
++       * Verifies whether a message origin matches the trusted ordering origin.
++       * Uses exact URL origin parsing and allowlist matching (no substring/splitting bugs).
++       */
++      function isTrustedOrderOrigin(origin, customTrustedOrigin) {
++        if (typeof origin !== 'string' || !origin || origin === 'null') {
++          return false;
++        }
++
++        let parsed;
++        try {
++          parsed = new URL(origin);
++        } catch (err) {
++          return false;
++        }
++
++        // Ensure `origin` has no path, query, credentials, or trailing slash discrepancies
++        if (parsed.origin !== origin) {
++          return false;
++        }
++
++        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
++          return false;
++        }
++
++        if (typeof customTrustedOrigin === 'string' && customTrustedOrigin) {
++          return origin === customTrustedOrigin;
++        }
++
++        return origin === TRUSTED_ORDER_ORIGIN || TRUSTED_ORDER_ORIGINS.has(origin);
++      }
++
++      /**
++       * Checks if a message payload represents a sandboxed widget initialization handshake.
++       */
++      function isWidgetInitPayload(data) {
++        if (!data || typeof data !== 'object') {
++          return false;
++        }
++        const type = typeof data.type === 'string' ? data.type : '';
++        const action = typeof data.action === 'string' ? data.action : '';
++        return (
++          type === 'WIDGET_INIT' ||
++          type === 'init' ||
++          type === 'INIT' ||
++          type === 'HANDSHAKE' ||
++          action === 'init'
++        );
++      }
++
++      /**
++       * Handles messages from sandboxed iframes (`event.origin === "null"`).
++       * Pins `pinnedWidgetSource = event.source` on initialization and only accepts
++       * subsequent messages from that exact pinned `event.source`, rejecting all other
++       * sandboxed iframes.
++       */
++      function handleSandboxedWidgetMessage(event) {
++        if (!event || event.origin !== 'null') {
++          return { accepted: false, reason: 'Not a sandboxed opaque-origin message' };
++        }
++
++        if (!event.source || event.source === window) {
++          widgetRejectedCount += 1;
++          updateWidgetStatusDom();
++          appendAuditLog('REJECT', 'SANDBOX-WIDGET', 'Missing or invalid event.source on null-origin message');
++          return { accepted: false, reason: 'Missing or invalid event.source' };
++        }
++
++        const payload = event.data;
++        if (!payload || typeof payload !== 'object') {
++          widgetRejectedCount += 1;
++          updateWidgetStatusDom();
++          appendAuditLog('REJECT', 'SANDBOX-WIDGET', 'Malformed widget message payload');
++          return { accepted: false, reason: 'Malformed widget payload' };
++        }
++
++        if (isWidgetInitPayload(payload)) {
++          if (pinnedWidgetSource === null) {
++            pinnedWidgetSource = event.source;
++            pinnedWidgetId = typeof payload.widgetId === 'string' ? payload.widgetId : 'sandboxed-widget';
++            widgetAcceptedCount += 1;
++            updateWidgetStatusDom();
++            appendAuditLog(
++              'ACCEPT',
++              'SANDBOX-PIN',
++              'Pinned sandboxed widget sender identity on initialization (' + pinnedWidgetId + ')'
++            );
++            return { accepted: true, pinned: true, widgetId: pinnedWidgetId, reason: 'Pinned sender on init' };
++          }
++
++          if (event.source !== pinnedWidgetSource) {
++            widgetRejectedCount += 1;
++            updateWidgetStatusDom();
++            appendAuditLog(
++              'REJECT',
++              'SANDBOX-PIN',
++              'Rejected initialization attempt from unpinned sandboxed iframe'
++            );
++            return { accepted: false, reason: 'Widget sender identity is already pinned to another source' };
++          }
++
++          widgetAcceptedCount += 1;
++          updateWidgetStatusDom();
++          return { accepted: true, pinned: true, widgetId: pinnedWidgetId, reason: 'Already pinned to this source' };
++        }
++
++        // Subsequent (non-initialization) messages require a pinned source and exact identity match
++        if (pinnedWidgetSource === null) {
++          widgetRejectedCount += 1;
++          updateWidgetStatusDom();
++          appendAuditLog(
++            'REJECT',
++            'SANDBOX-WIDGET',
++            'Rejected message before widget initialization pinning'
++          );
++          return { accepted: false, reason: 'Sandboxed widget has not been initialized yet' };
++        }
++
++        if (event.source !== pinnedWidgetSource) {
++          widgetRejectedCount += 1;
++          updateWidgetStatusDom();
++          appendAuditLog(
++            'REJECT',
++            'SANDBOX-WIDGET',
++            'Rejected message from unpinned sandboxed iframe source'
++          );
++          return { accepted: false, reason: 'Sender identity does not match pinned widget source' };
++        }
++
++        // Sender identity matches `pinnedWidgetSource`
++        widgetAcceptedCount += 1;
++        const customTextEl = document.getElementById('widget-custom-text');
++        if (customTextEl) {
++          if (payload.drink) {
++            const shots = Number(payload.shots) || 1;
++            const points = Number(payload.pointsEstimate) || shots * 25;
++            customTextEl.textContent =
++              String(payload.drink) + ' (' + shots + ' shot' + (shots === 1 ? '' : 's') + ', +' + points + ' pts)';
++          } else if (payload.message || payload.status || payload.value) {
++            customTextEl.textContent = String(payload.message || payload.status || payload.value);
++          } else {
++            customTextEl.textContent = 'Received verified widget update (' + String(payload.type || 'message') + ')';
++          }
++        }
++        updateWidgetStatusDom();
++        appendAuditLog(
++          'ACCEPT',
++          'SANDBOX-WIDGET',
++          'Accepted message from pinned widget source (' + String(payload.type || 'update') + ')'
++        );
++        return { accepted: true, reason: 'Verified pinned widget source' };
++      }
++
++      function updateWidgetStatusDom() {
++        const badgeEl = document.getElementById('widget-pin-badge');
++        const pinnedIdEl = document.getElementById('widget-pinned-id');
++        const acceptedEl = document.getElementById('widget-accepted-count');
++        const rejectedEl = document.getElementById('widget-rejected-count');
++
++        if (badgeEl) {
++          if (pinnedWidgetSource !== null) {
++            badgeEl.textContent = 'Pin Status: Pinned (' + (pinnedWidgetId || 'active') + ')';
++            badgeEl.className = 'status-badge badge-trusted';
++          } else {
++            badgeEl.textContent = 'Pin Status: Waiting for Init';
++            badgeEl.className = 'status-badge badge-pending';
++          }
++        }
++        if (pinnedIdEl) {
++          pinnedIdEl.textContent = pinnedWidgetId || 'None';
++        }
++        if (acceptedEl) {
++          acceptedEl.textContent = String(widgetAcceptedCount);
++        }
++        if (rejectedEl) {
++          rejectedEl.textContent = String(widgetRejectedCount);
++        }
++      }
++
++      /**
++       * Handles cross-window ordering messages, verifying `event.origin` against `TRUSTED_ORDER_ORIGIN`.
++       */
++      function handleOrderingMessage(event) {
++        if (!event || !isTrustedOrderOrigin(event.origin)) {
++          const untrustedOrigin = event && typeof event.origin === 'string' ? event.origin : 'unknown';
++          appendAuditLog(
++            'REJECT',
++            'ORDER-ORIGIN',
++            'Rejected cross-window message from untrusted origin: ' + untrustedOrigin
++          );
++          return { accepted: false, reason: 'Untrusted ordering origin: ' + untrustedOrigin };
++        }
++
++        const data = event.data;
++        if (!data || typeof data !== 'object') {
++          appendAuditLog('REJECT', 'ORDER-DATA', 'Ignored non-object payload from ordering origin');
++          return { accepted: false, reason: 'Invalid order message payload' };
++        }
++
++        const statusText = document.getElementById('order-status-text');
++        const orderIdText = document.getElementById('order-id-text');
++        const itemText = document.getElementById('order-item-text');
++        const verifiedOriginText = document.getElementById('order-verified-origin');
++
++        if (statusText) {
++          statusText.textContent = String(data.status || data.message || data.type || 'Order Updated');
++        }
++        if (orderIdText && data.orderId) {
++          orderIdText.textContent = String(data.orderId);
++        }
++        if (itemText && data.item) {
++          itemText.textContent = String(data.item);
++        }
++        if (verifiedOriginText) {
++          verifiedOriginText.textContent = event.origin;
++        }
++
++        appendAuditLog(
++          'ACCEPT',
++          'ORDER-ORIGIN',
++          'Verified order message from ' + event.origin + ' (' + String(data.type || 'ORDER_UPDATE') + ')'
++        );
++        return { accepted: true, origin: event.origin, data: data };
++      }
++
++      /**
++       * Unified cross-window `message` event router.
++       * - Routes `"null"` origin messages to the pinned sandboxed iframe handler.
++       * - Routes standard origin messages to the trusted ordering origin verifier.
++       */
++      function handleCrossWindowMessage(event) {
++        if (!event) {
++          return { accepted: false, reason: 'Missing event' };
++        }
++        if (event.origin === 'null') {
++          return handleSandboxedWidgetMessage(event);
++        }
++        return handleOrderingMessage(event);
++      }
++
++      /**
++       * Resets the pinned sandboxed widget source (useful for testing re-initialization).
++       */
++      function resetPinnedWidget() {
++        pinnedWidgetSource = null;
++        pinnedWidgetId = null;
++        updateWidgetStatusDom();
++      }
++
++      /**
++       * Evaluates query string redirect parameters (`?redirect=`, `?returnTo=`, `?next=`) on load.
++       */
++      function checkUrlRedirectParameters() {
++        let searchParams;
++        try {
++          searchParams = new URLSearchParams(window.location.search);
++        } catch (err) {
++          return null;
++        }
++
++        const rawParam =
++          searchParams.get('redirect') ||
++          searchParams.get('returnTo') ||
++          searchParams.get('next');
++
++        if (!rawParam) {
++          return null;
++        }
++
++        const banner = document.getElementById('redirect-notification');
++        const bannerText = document.getElementById('redirect-notification-text');
++        const result = validateRedirectUrl(rawParam);
++
++        if (banner && bannerText) {
++          banner.classList.add('visible');
++          if (result.valid) {
++            banner.classList.remove('invalid');
++            banner.classList.add('valid');
++            bannerText.textContent = 'Verified same-site redirect target: ' + result.url;
++          } else {
++            banner.classList.remove('valid');
++            banner.classList.add('invalid');
++            bannerText.textContent = 'Blocked unsafe redirect parameter (' + result.reason + ')';
++          }
++        }
++
++        appendAuditLog(
++          result.valid ? 'ACCEPT' : 'REJECT',
++          'REDIRECT-PARAM',
++          (result.valid ? 'Allowed: ' + result.url : 'Blocked "' + rawParam + '": ' + result.reason)
++        );
++        return result;
++      }
++
++      /**
++       * Updates the Redirect Validator UI card.
++       */
++      function updateRedirectValidatorUI(rawInput, baseOrigin) {
++        const result = validateRedirectUrl(rawInput, baseOrigin);
++        const statusEl = document.getElementById('redirect-result-status');
++        const urlEl = document.getElementById('redirect-result-url');
++        const reasonEl = document.getElementById('redirect-result-reason');
++
++        if (statusEl) {
++          statusEl.textContent = result.valid ? 'ALLOWED (Same-Site)' : 'BLOCKED (Unsafe / Cross-Site)';
++          statusEl.className = result.valid ? 'status-badge badge-trusted' : 'status-badge badge-rejected';
++        }
++        if (urlEl) {
++          urlEl.textContent = result.url || 'Blocked';
++        }
++        if (reasonEl) {
++          reasonEl.textContent = result.reason;
++        }
++
++        appendAuditLog(
++          result.valid ? 'ACCEPT' : 'REJECT',
++          'REDIRECT-CHECK',
++          'Input "' + rawInput + '" -> ' + result.reason
++        );
++        return result;
++      }
++
++      // Register global message listener
++      window.addEventListener('message', handleCrossWindowMessage);
++
++      // Expose security validation API for programmatic inspection and testing
++      window.DailyGrindSecurity = {
++        TRUSTED_ORDER_ORIGIN: TRUSTED_ORDER_ORIGIN,
++        TRUSTED_ORDER_ORIGINS: TRUSTED_ORDER_ORIGINS,
++        CANONICAL_SITE_DOMAINS: CANONICAL_SITE_DOMAINS,
++        getRegistrableDomain: getRegistrableDomain,
++        isExactOrSubdomain: isExactOrSubdomain,
++        parseSafeHttpUrl: parseSafeHttpUrl,
++        isSameSiteUrl: isSameSiteUrl,
++        validateRedirectUrl: validateRedirectUrl,
++        validateExternalLink: validateExternalLink,
++        hardenPageLinks: hardenPageLinks,
++        isTrustedOrderOrigin: isTrustedOrderOrigin,
++        handleCrossWindowMessage: handleCrossWindowMessage,
++        handleOrderingMessage: handleOrderingMessage,
++        handleSandboxedWidgetMessage: handleSandboxedWidgetMessage,
++        getPinnedWidgetSource: function () {
++          return pinnedWidgetSource;
++        },
++        resetPinnedWidget: resetPinnedWidget
++      };
++
++      // Also expose top-level helper functions on `window`
++      window.validateRedirectUrl = validateRedirectUrl;
++      window.isSameSiteUrl = isSameSiteUrl;
++      window.validateExternalLink = validateExternalLink;
++      window.isTrustedOrderOrigin = isTrustedOrderOrigin;
++      window.getRegistrableDomain = getRegistrableDomain;
++
++      // Initialize DOM behaviors
++      function initPageSecurity() {
++        hardenPageLinks(document);
++        checkUrlRedirectParameters();
++
++        // Automatically harden any dynamically added or modified links
++        if (typeof MutationObserver === 'function' && document.body) {
++          const linkObserver = new MutationObserver(function (mutations) {
++            for (let i = 0; i < mutations.length; i++) {
++              const m = mutations[i];
++              if (m.type === 'childList' && m.addedNodes.length > 0) {
++                hardenPageLinks(document);
++                break;
++              }
++              if (m.type === 'attributes' && m.attributeName === 'href' && m.target) {
++                hardenPageLinks(m.target.parentElement || document);
++                break;
++              }
++            }
++          });
++          linkObserver.observe(document.body, {
++            childList: true,
++            subtree: true,
++            attributes: true,
++            attributeFilter: ['href']
++          });
++        }
++
++        // Intercept clicks on links to enforce redirect and external link validation
++        document.addEventListener('click', function (event) {
++          const anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
++          if (!anchor) return;
++
++          const rawHref = anchor.getAttribute('href') || '';
++          if (rawHref === '#blocked-unsafe-link') {
++            event.preventDefault();
++            appendAuditLog('REJECT', 'LINK-CLICK', 'Blocked navigation to unsafe link');
++            return;
++          }
++
++          // Validate redirect query param on logout/account links if present
++          try {
++            const parsed = new URL(rawHref, window.location.origin);
++            const redirectTarget =
++              parsed.searchParams.get('redirect') ||
++              parsed.searchParams.get('returnTo') ||
++              parsed.searchParams.get('next');
++            if (redirectTarget) {
++              const check = validateRedirectUrl(redirectTarget);
++              if (!check.valid) {
++                event.preventDefault();
++                appendAuditLog('REJECT', 'LOGOUT-REDIRECT', 'Blocked unsafe redirect on link click: ' + check.reason);
++                return;
++              }
++            }
++          } catch (err) {
++            event.preventDefault();
++            return;
++          }
++        });
++
++        // Wire up Redirect Validator form
++        const redirectForm = document.getElementById('redirect-validator-form');
++        const redirectInput = document.getElementById('redirect-url-input');
++        if (redirectForm && redirectInput) {
++          redirectForm.addEventListener('submit', function (event) {
++            event.preventDefault();
++            updateRedirectValidatorUI(redirectInput.value);
++          });
++        }
++
++        // Wire up Redirect preset buttons
++        const presetButtons = document.querySelectorAll('[data-test-redirect]');
++        presetButtons.forEach(function (btn) {
++          btn.addEventListener('click', function () {
++            const testUrl = btn.getAttribute('data-test-redirect') || '';
++            const testBase = btn.getAttribute('data-test-base') || undefined;
++            if (redirectInput) {
++              redirectInput.value = testUrl;
++            }
++            updateRedirectValidatorUI(testUrl, testBase);
++          });
++        });
++
++        // Wire up Order simulation buttons
++        const trustedOrderBtn = document.getElementById('simulate-trusted-order-btn');
++        if (trustedOrderBtn) {
++          trustedOrderBtn.addEventListener('click', function () {
++            const syntheticTrustedEvent = new MessageEvent('message', {
++              origin: TRUSTED_ORDER_ORIGIN,
++              data: {
++                type: 'ORDER_STATUS',
++                orderId: 'DG-2026-841',
++                item: 'Maple Oat Latte (Large)',
++                status: 'In Preparation - Ready in 4 mins'
++              }
++            });
++            window.dispatchEvent(syntheticTrustedEvent);
++          });
++        }
++
++        const untrustedOrderBtn = document.getElementById('simulate-untrusted-order-btn');
++        if (untrustedOrderBtn) {
++          untrustedOrderBtn.addEventListener('click', function () {
++            const syntheticUntrustedEvent = new MessageEvent('message', {
++              origin: 'https://orders.dailygrind.com.evil.example',
++              data: {
++                type: 'ORDER_STATUS',
++                orderId: 'SPOOF-999',
++                item: 'Phishing Redirect Payload',
++                status: 'Click here to claim prize'
++              }
++            });
++            window.dispatchEvent(syntheticUntrustedEvent);
++          });
++        }
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initPageSecurity);
++      } else {
++        initPageSecurity();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

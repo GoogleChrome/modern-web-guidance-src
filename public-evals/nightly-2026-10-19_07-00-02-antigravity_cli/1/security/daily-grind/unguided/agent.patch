@@ -1,0 +1,444 @@
+diff --git a/SECURITY_AUDIT.md b/SECURITY_AUDIT.md
+new file mode 100644
+index 0000000..0b8e668
+--- /dev/null
++++ b/SECURITY_AUDIT.md
+@@ -0,0 +1,71 @@
++# Daily Grind Web App - Security Audit & Policy Deployment Report
++
++## 1. Executive Summary
++
++An audit of the Daily Grind web application was performed to identify security risks and implement preventative measures for safely deploying Content Security Policy (CSP) and HTTP security policies. Prior to this intervention, the server emitted zero security headers, lacked CSP violation telemetry, left client-side storage unpurged upon logout, and allowed arbitrary HTTP methods.
++
++Defensive controls have been implemented to safely deploy security policies using dual-mode CSP (Enforced + Report-Only telemetry), modern Reporting API endpoints, post-logout storage sanitization via `Clear-Site-Data`, and HTTP verb restrictions.
++
++---
++
++## 2. Identified Vulnerabilities & Security Gaps
++
++| ID | Category | Description | Severity | Remediated |
++|---|---|---|:---:|:---:|
++| **SEC-01** | Content Security Policy | No CSP was defined. Vulnerable to Cross-Site Scripting (XSS), malicious script injection, and unsafe frame embeddings. | High | Yes |
++| **SEC-02** | CSP Safe Deployment Telemetry | No mechanism existed to monitor policy violations or assess rule regressions without risking site breakage. | High | Yes |
++| **SEC-03** | Session & Cache Residue | `/logout` did not purge client-side cached data, local storage, or session identifiers. | Medium | Yes |
++| **SEC-04** | Clickjacking / UI Redressing | Absence of `X-Frame-Options` and `frame-ancestors` allowed arbitrary third-party framing. | Medium | Yes |
++| **SEC-05** | MIME-Sniffing | Missing `X-Content-Type-Options: nosniff` allowed user-agent MIME-type sniffing vulnerabilities. | Low | Yes |
++| **SEC-06** | Referrer Leakage | Absence of explicit `Referrer-Policy` could expose full URLs containing paths to cross-origin targets. | Low | Yes |
++| **SEC-07** | Browser Feature Exposure | Powerful device APIs (camera, microphone, geolocation, usb) were not restricted via `Permissions-Policy`. | Low | Yes |
++| **SEC-08** | HTTP Verb Tampering | Server accepted arbitrary HTTP methods without restriction. | Low | Yes |
++
++---
++
++## 3. Preventative Measures Implemented
++
++### 3.1 Content Security Policy & Safe Deployment Mode
++- **Dual Policy Deployment:**
++  - Implemented `Content-Security-Policy-Report-Only` alongside `Content-Security-Policy` to monitor policy impacts and safely stage future restrictions.
++  - Configured directive allowances:
++    - `default-src 'self'`: Restricts fallback resource loads to same-origin.
++    - `script-src 'self'`: Disallows inline scripts and untrusted external scripts.
++    - `style-src 'self' 'unsafe-inline'`: Safely permits the application's internal CSS.
++    - `img-src 'self' https://images.unsplash.com https: data:`: Accommodates Unsplash hero photography and web stock photos while barring unauthorized origins.
++    - `frame-ancestors 'self'`: Prevents cross-origin framing/clickjacking.
++    - `base-uri 'self'` and `form-action 'self'`: Prevents base URI hijacking and form action redirection.
++    - `report-uri /csp-report` and `report-to csp-endpoint`: Ingests violation reports for active auditing.
++
++### 3.2 Violation Reporting Endpoints
++- Deployed `/csp-report` (along with `/reports` and `/api/csp-report`) in `server.js` accepting `application/csp-report`, `application/reports+json`, and `application/json` payloads.
++- Added payload size limiting (64 KB ceiling) and stream destruction to protect against denial-of-service (DoS) memory exhaustion.
++- Supports preflight `OPTIONS` with appropriate `Allow: POST, OPTIONS` headers.
++
++### 3.3 Post-Logout Sanitization
++- Configured `Clear-Site-Data: "cache", "cookies", "storage"` on `/logout` to reliably clear client state and prevent session residue upon user logout.
++
++### 3.4 HTTP Security Headers
++- `X-Content-Type-Options: nosniff`: Prevents MIME confusion attacks.
++- `X-Frame-Options: SAMEORIGIN`: Backwards-compatible clickjacking defense.
++- `Strict-Transport-Security: max-age=31536000; includeSubDomains`: Enforces HTTPS transport.
++- `Referrer-Policy: strict-origin-when-cross-origin`: Minimizes referrer leakage across origins.
++- `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()`: Blocks unused browser hardware APIs.
++- `Cross-Origin-Opener-Policy: same-origin` & `Cross-Origin-Resource-Policy: same-origin`: Browser context isolation.
++- `X-XSS-Protection: 0`: Disables legacy flawed browser XSS filters in favor of CSP.
++
++### 3.5 Method Handling & Markup Hardening
++- Method enforcement: Enforces `GET` and `HEAD` for static content, returning `405 Method Not Allowed` for unsupported HTTP verbs.
++- Replaced inline style attribute in `index.html` (`style="text-align: center;"`) with a structured CSS class `.text-center`.
++- Added `<meta name="referrer" content="strict-origin-when-cross-origin">` to `index.html`.
++
++---
++
++## 4. Verification
++
++A suite of automated integration tests (`test/security.test.js`) verifies:
++- Response headers on static pages (`/`)
++- CSP directives and reporting endpoints
++- Logout cleanup (`Clear-Site-Data`)
++- Violation report ingestion (`POST /csp-report`)
++- Method restrictions (`TRACE -> 405`, `HEAD -> 200`)
+diff --git a/index.html b/index.html
+index 66c9173..ddf179e 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -27,6 +28,10 @@
+       background-color: var(--light);
+     }
+ 
++    .text-center {
++      text-align: center;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -176,7 +181,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/package.json b/package.json
+index cffdc93..fa2bfe8 100644
+--- a/package.json
++++ b/package.json
+@@ -3,7 +3,8 @@
+   "version": "1.0.0",
+   "scripts": {
+     "start": "node server.js",
+-    "build": "node --check server.js"
++    "build": "node --check server.js",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+index 52c2fd5..170f135 100644
+--- a/server.js
++++ b/server.js
+@@ -4,29 +4,167 @@ const path = require('node:path');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
++const MAX_REPORT_BODY_SIZE = 64 * 1024; // 64 KB
++
++// Content Security Policy directives
++const CSP_DIRECTIVES = [
++  "default-src 'self'",
++  "script-src 'self'",
++  "style-src 'self' 'unsafe-inline'",
++  "img-src 'self' https://images.unsplash.com https: data:",
++  "font-src 'self'",
++  "connect-src 'self'",
++  "frame-ancestors 'self'",
++  "base-uri 'self'",
++  "form-action 'self'",
++  "report-uri /csp-report",
++  "report-to csp-endpoint"
++].join('; ');
++
++// Standard security headers
++const BASE_SECURITY_HEADERS = {
++  'Content-Security-Policy': CSP_DIRECTIVES,
++  'Content-Security-Policy-Report-Only': CSP_DIRECTIVES,
++  'Reporting-Endpoints': 'csp-endpoint="/csp-report"',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'SAMEORIGIN',
++  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'X-XSS-Protection': '0'
++};
++
++/**
++ * Handle CSP violation reporting endpoints
++ */
++function handleCspReport(req, res) {
++  if (req.method === 'OPTIONS') {
++    res.writeHead(204, {
++      ...BASE_SECURITY_HEADERS,
++      'Allow': 'POST, OPTIONS'
++    });
++    res.end();
++    return;
++  }
++
++  if (req.method !== 'POST') {
++    res.writeHead(405, {
++      ...BASE_SECURITY_HEADERS,
++      'Allow': 'POST, OPTIONS',
++      'Content-Type': 'text/plain; charset=utf-8'
++    });
++    res.end('Method Not Allowed');
++    return;
++  }
++
++  let body = '';
++  let bodySize = 0;
++
++  req.on('data', (chunk) => {
++    bodySize += chunk.length;
++    if (bodySize > MAX_REPORT_BODY_SIZE) {
++      res.writeHead(413, {
++        ...BASE_SECURITY_HEADERS,
++        'Content-Type': 'text/plain; charset=utf-8'
++      });
++      res.end('Payload Too Large');
++      req.destroy();
++      return;
++    }
++    body += chunk;
++  });
++
++  req.on('end', () => {
++    if (res.writableEnded) return;
++
++    try {
++      if (body) {
++        const report = JSON.parse(body);
++        console.log('[CSP-REPORT]', JSON.stringify(report));
++      }
++    } catch {
++      // Accept report even if payload format varies
++      console.log('[CSP-REPORT-RAW]', body);
++    }
++
++    res.writeHead(204, BASE_SECURITY_HEADERS);
++    res.end();
++  });
++}
+ 
+ const server = http.createServer((req, res) => {
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
+ 
++  // Handle CSP report endpoints
++  if (
++    pathname === '/csp-report' ||
++    pathname === '/csp-report/' ||
++    pathname === '/api/csp-report' ||
++    pathname === '/report' ||
++    pathname === '/reports'
++  ) {
++    handleCspReport(req, res);
++    return;
++  }
++
++  // Handle logout
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, {
++      ...BASE_SECURITY_HEADERS,
++      'Content-Type': 'text/html; charset=utf-8',
++      'Clear-Site-Data': '"cache", "cookies", "storage"'
++    });
+     res.end('Logged out');
+     return;
+   }
+ 
++  // Restrict methods for static views
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    res.writeHead(405, {
++      ...BASE_SECURITY_HEADERS,
++      'Allow': 'GET, HEAD',
++      'Content-Type': 'text/plain; charset=utf-8'
++    });
++    res.end('Method Not Allowed');
++    return;
++  }
++
++  // Handle HEAD requests
++  if (req.method === 'HEAD') {
++    res.writeHead(200, {
++      ...BASE_SECURITY_HEADERS,
++      'Content-Type': 'text/html; charset=utf-8'
++    });
++    res.end();
++    return;
++  }
++
++  // Serve index.html
+   const filePath = path.join(WORK_DIR, 'index.html');
+   fs.readFile(filePath, (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, {
++        ...BASE_SECURITY_HEADERS,
++        'Content-Type': 'text/plain; charset=utf-8'
++      });
+       res.end('Server error');
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, {
++      ...BASE_SECURITY_HEADERS,
++      'Content-Type': 'text/html; charset=utf-8'
++    });
+     res.end(data);
+   });
+ });
+ 
+-server.listen(PORT, () => {
+-  console.log(`Server running on port ${PORT}`);
+-});
++if (require.main === module) {
++  server.listen(PORT, () => {
++    console.log(`Server running on port ${PORT}`);
++  });
++}
++
++module.exports = { server, BASE_SECURITY_HEADERS, CSP_DIRECTIVES };
+diff --git a/test/security.test.js b/test/security.test.js
+new file mode 100644
+index 0000000..5261c5f
+--- /dev/null
++++ b/test/security.test.js
+@@ -0,0 +1,137 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const http = require('node:http');
++const { server } = require('../server.js');
++
++let port;
++let baseUrl;
++
++test.before((t, done) => {
++  server.listen(0, () => {
++    port = server.address().port;
++    baseUrl = `http://127.0.0.1:${port}`;
++    done();
++  });
++});
++
++test.after((t, done) => {
++  server.close(done);
++});
++
++function request(options, body) {
++  return new Promise((resolve, reject) => {
++    const req = http.request(options, (res) => {
++      let data = '';
++      res.on('data', (chunk) => { data += chunk; });
++      res.on('end', () => {
++        resolve({
++          statusCode: res.statusCode,
++          headers: res.headers,
++          body: data
++        });
++      });
++    });
++    req.on('error', reject);
++    if (body) req.write(body);
++    req.end();
++  });
++}
++
++test('GET / responds with 200 and all required security headers', async () => {
++  const res = await request(`${baseUrl}/`);
++  assert.equal(res.statusCode, 200);
++  assert.match(res.headers['content-type'], /^text\/html/);
++
++  // Content Security Policy & Report-Only
++  assert.ok(res.headers['content-security-policy'], 'Missing Content-Security-Policy header');
++  assert.ok(res.headers['content-security-policy-report-only'], 'Missing Content-Security-Policy-Report-Only header');
++  assert.equal(res.headers['reporting-endpoints'], 'csp-endpoint="/csp-report"');
++
++  // Verify CSP Directives
++  const csp = res.headers['content-security-policy'];
++  assert.match(csp, /default-src 'self'/);
++  assert.match(csp, /script-src 'self'/);
++  assert.match(csp, /style-src 'self'/);
++  assert.match(csp, /img-src 'self' https:\/\/images\.unsplash\.com/);
++  assert.match(csp, /frame-ancestors 'self'/);
++  assert.match(csp, /report-uri \/csp-report/);
++  assert.match(csp, /report-to csp-endpoint/);
++
++  // Preventative security headers
++  assert.equal(res.headers['x-content-type-options'], 'nosniff');
++  assert.equal(res.headers['x-frame-options'], 'SAMEORIGIN');
++  assert.match(res.headers['strict-transport-security'], /max-age=31536000/);
++  assert.equal(res.headers['referrer-policy'], 'strict-origin-when-cross-origin');
++  assert.ok(res.headers['permissions-policy'], 'Missing Permissions-Policy');
++  assert.equal(res.headers['cross-origin-opener-policy'], 'same-origin');
++  assert.equal(res.headers['cross-origin-resource-policy'], 'same-origin');
++});
++
++test('GET /logout sets Clear-Site-Data header to purge sensitive client state', async () => {
++  const res = await request(`${baseUrl}/logout`);
++  assert.equal(res.statusCode, 200);
++  assert.equal(res.headers['clear-site-data'], '"cache", "cookies", "storage"');
++  assert.equal(res.body, 'Logged out');
++  assert.ok(res.headers['content-security-policy']);
++});
++
++test('POST /csp-report accepts CSP violation reports and returns 204', async () => {
++  const payload = JSON.stringify({
++    'csp-report': {
++      'document-uri': 'http://127.0.0.1/index.html',
++      'violated-directive': 'style-src',
++      'blocked-uri': 'inline'
++    }
++  });
++
++  const res = await request({
++    hostname: '127.0.0.1',
++    port,
++    path: '/csp-report',
++    method: 'POST',
++    headers: {
++      'Content-Type': 'application/csp-report',
++      'Content-Length': Buffer.byteLength(payload)
++    }
++  }, payload);
++
++  assert.equal(res.statusCode, 204);
++});
++
++test('OPTIONS /csp-report responds with 204 and Allow header', async () => {
++  const res = await request({
++    hostname: '127.0.0.1',
++    port,
++    path: '/csp-report',
++    method: 'OPTIONS'
++  });
++
++  assert.equal(res.statusCode, 204);
++  assert.equal(res.headers['allow'], 'POST, OPTIONS');
++});
++
++test('HEAD / responds with 200 and security headers without body', async () => {
++  const res = await request({
++    hostname: '127.0.0.1',
++    port,
++    path: '/',
++    method: 'HEAD'
++  });
++
++  assert.equal(res.statusCode, 200);
++  assert.equal(res.body, '');
++  assert.ok(res.headers['content-security-policy']);
++  assert.equal(res.headers['x-content-type-options'], 'nosniff');
++});
++
++test('Disallowed HTTP methods return 405 Method Not Allowed', async () => {
++  const res = await request({
++    hostname: '127.0.0.1',
++    port,
++    path: '/',
++    method: 'TRACE'
++  });
++
++  assert.equal(res.statusCode, 405);
++  assert.ok(res.headers['content-security-policy']);
++});

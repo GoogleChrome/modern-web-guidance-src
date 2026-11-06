@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,70 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Payment Form */
++    .payment {
++      margin-top: 60px;
++    }
++
++    .payment-form {
++      max-width: 480px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 16px;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      grid-column: 1 / -1;
++    }
++
++    .field.half {
++      grid-column: auto;
++    }
++
++    .field label {
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .field .hint {
++      font-size: 0.8rem;
++      opacity: 0.75;
++      margin-bottom: 4px;
++    }
++
++    .field input {
++      font: inherit;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .field input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .field input:user-invalid {
++      border-color: #c62828;
++    }
++
++    .payment-form button.btn {
++      grid-column: 1 / -1;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +256,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="payment" aria-labelledby="payment-heading">
++      <h2 id="payment-heading" style="text-align: center;">Payment Details</h2>
++      <form class="payment-form" action="/checkout" method="post">
++        <div class="field">
++          <label for="cc-number">Card number</label>
++          <input id="cc-number" name="cc-number" type="text" autocomplete="cc-number" inputmode="numeric"
++            maxlength="23" pattern="[\d ]{13,23}" required>
++        </div>
++        <div class="field">
++          <label for="cc-name">Name on card</label>
++          <input id="cc-name" name="cc-name" type="text" autocomplete="cc-name" maxlength="50"
++            pattern="[\p{L} \-\.]+" required>
++        </div>
++        <div class="field half">
++          <label for="cc-exp">Expiry date</label>
++          <span id="exp-hint" class="hint">Format: MM/YY</span>
++          <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp" inputmode="numeric"
++            aria-describedby="exp-hint" maxlength="5" pattern="(0[1-9]|1[0-2])\/\d{2}" placeholder="MM/YY"
++            required>
++        </div>
++        <div class="field half">
++          <label for="cc-csc">Security code</label>
++          <span id="csc-hint" class="hint">3 or 4 digits</span>
++          <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc" inputmode="numeric"
++            aria-describedby="csc-hint" maxlength="4" pattern="[0-9]{3,4}" enterkeyhint="done" required>
++        </div>
++        <button type="submit" class="btn">Pay Now</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

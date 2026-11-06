@@ -1,0 +1,538 @@
+diff --git a/index.html b/index.html
+index 66c9173..ff89838 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,92 @@
+       border-radius: 4px;
+     }
+ 
++    /* Language Selector & Translation UI */
++    .lang-controls {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-left: 20px;
++    }
++
++    .lang-select {
++      background: rgba(255, 255, 255, 0.12);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      padding: 6px 10px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      outline: none;
++      transition: border-color 0.2s, background 0.2s;
++    }
++
++    .lang-select:hover,
++    .lang-select:focus {
++      border-color: var(--accent);
++      background: rgba(255, 255, 255, 0.2);
++    }
++
++    .lang-select option {
++      background: var(--primary);
++      color: white;
++    }
++
++    .lang-badge {
++      font-size: 0.75rem;
++      padding: 3px 8px;
++      border-radius: 12px;
++      background: rgba(255, 171, 64, 0.2);
++      color: var(--accent);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++      white-space: nowrap;
++    }
++
++    .translation-banner {
++      background: #fff8e1;
++      color: var(--text);
++      border-bottom: 1px solid #ffe082;
++      padding: 8px 5%;
++      font-size: 0.85rem;
++      display: none;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .translation-banner.active {
++      display: flex;
++    }
++
++    /* Story Section */
++    .story-section {
++      margin-top: 50px;
++      background: white;
++      padding: 35px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .story-section h2 {
++      color: var(--primary);
++      margin-bottom: 15px;
++      text-align: center;
++    }
++
++    .story-section p {
++      max-width: 800px;
++      margin: 0 auto 15px auto;
++      text-align: center;
++      color: var(--text);
++    }
++
++    .translatable {
++      transition: opacity 0.2s ease;
++    }
++
++    .translating {
++      opacity: 0.55;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -158,55 +244,413 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="logo" data-i18n="brand.title">THE DAILY GRIND</div>
++    <div style="display: flex; align-items: center;">
++      <ul>
++        <li><a href="/menu" data-i18n="nav.menu">Menu</a></li>
++        <li><a href="/locations" data-i18n="nav.locations">Locations</a></li>
++        <li><a href="/rewards" data-i18n="nav.rewards">Rewards</a></li>
++        <li><a href="/account" data-i18n="nav.account">My Account</a></li>
++        <li><a href="/logout" class="logout-link" data-i18n="nav.logout">Logout</a></li>
++      </ul>
++      <div class="lang-controls">
++        <label for="language-selector" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">Language</label>
++        <select id="language-selector" class="lang-select" aria-label="Select Language">
++          <option value="en">English (EN)</option>
++          <option value="es">Español (ES)</option>
++          <option value="fr">Français (FR)</option>
++          <option value="de">Deutsch (DE)</option>
++          <option value="ja">日本語 (JA)</option>
++          <option value="it">Italiano (IT)</option>
++          <option value="pt">Português (PT)</option>
++        </select>
++        <span id="translation-engine-badge" class="lang-badge" title="Translation runs 100% locally in your browser">On-Device</span>
++      </div>
++    </div>
+   </nav>
+ 
++  <div id="translation-status-banner" class="translation-banner" role="status" aria-live="polite">
++    <span id="translation-status-text">Translating on-device...</span>
++  </div>
++
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1 class="translatable" data-i18n="hero.title">Wake Up Your Senses</h1>
++    <p class="translatable" data-i18n="hero.subtitle">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn translatable" data-i18n="hero.cta">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu-section">
++      <h2 style="text-align: center;" class="translatable" data-i18n="menu.heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <h3 class="translatable" data-i18n="menu.maple.title">Maple Oat Latte</h3>
++          <p class="translatable" data-i18n="menu.maple.desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn translatable" data-i18n="menu.viewDetails">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <h3 class="translatable" data-i18n="menu.espresso.title">Dark Roast Espresso</h3>
++          <p class="translatable" data-i18n="menu.espresso.desc">Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn translatable" data-i18n="menu.viewDetails">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <h3 class="translatable" data-i18n="menu.coldbrew.title">Cold Brew</h3>
++          <p class="translatable" data-i18n="menu.coldbrew.desc">Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn translatable" data-i18n="menu.viewDetails">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="our-story" class="story-section">
++      <h2 class="translatable" data-i18n="story.heading">Our Story</h2>
++      <p class="translatable" data-i18n="story.p1">Founded in a small neighborhood roastery, The Daily Grind began with a simple mission: to honor every coffee bean from farm to cup. We partner directly with independent growers across high-altitude regions to bring you sustainably harvested, single-origin and artisanally blended coffees.</p>
++      <p class="translatable" data-i18n="story.p2">Every batch is roasted in-house in small quantities to unlock deep caramel sweetness, bright fruit notes, and a velvety finish that turns your daily coffee ritual into an unforgettable craft experience.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" class="translatable" data-i18n="footer.story">Our Story</a> |
++      <a href="/careers" class="translatable" data-i18n="footer.careers">Join the Team</a> |
++      <a href="/contact" class="translatable" data-i18n="footer.contact">Contact Us</a> |
++      <a href="/privacy-policy" class="translatable" data-i18n="footer.privacy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p class="translatable" data-i18n="footer.copyright">&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const DICTIONARY = {
++        en: {
++          "brand.title": "THE DAILY GRIND",
++          "nav.menu": "Menu",
++          "nav.locations": "Locations",
++          "nav.rewards": "Rewards",
++          "nav.account": "My Account",
++          "nav.logout": "Logout",
++          "hero.title": "Wake Up Your Senses",
++          "hero.subtitle": "Ethically sourced, locally roasted, delivered to your cup.",
++          "hero.cta": "Order Now",
++          "menu.heading": "Seasonal Favorites",
++          "menu.maple.title": "Maple Oat Latte",
++          "menu.maple.desc": "Creamy oat milk with a hint of Vermont maple syrup.",
++          "menu.espresso.title": "Dark Roast Espresso",
++          "menu.espresso.desc": "Bold, smokey, and perfect for a morning boost.",
++          "menu.coldbrew.title": "Cold Brew",
++          "menu.coldbrew.desc": "Steeped for 18 hours for maximum smoothness.",
++          "menu.viewDetails": "View Details",
++          "story.heading": "Our Story",
++          "story.p1": "Founded in a small neighborhood roastery, The Daily Grind began with a simple mission: to honor every coffee bean from farm to cup. We partner directly with independent growers across high-altitude regions to bring you sustainably harvested, single-origin and artisanally blended coffees.",
++          "story.p2": "Every batch is roasted in-house in small quantities to unlock deep caramel sweetness, bright fruit notes, and a velvety finish that turns your daily coffee ritual into an unforgettable craft experience.",
++          "footer.story": "Our Story",
++          "footer.careers": "Join the Team",
++          "footer.contact": "Contact Us",
++          "footer.privacy": "Privacy",
++          "footer.copyright": "© 2026 The Daily Grind Coffee Co. All rights reserved."
++        },
++        es: {
++          "brand.title": "THE DAILY GRIND",
++          "nav.menu": "Menú",
++          "nav.locations": "Ubicaciones",
++          "nav.rewards": "Recompensas",
++          "nav.account": "Mi Cuenta",
++          "nav.logout": "Cerrar sesión",
++          "hero.title": "Despierta Tus Sentidos",
++          "hero.subtitle": "De origen ético, tostado localmente, directo a tu taza.",
++          "hero.cta": "Ordenar Ahora",
++          "menu.heading": "Favoritos de Temporada",
++          "menu.maple.title": "Latte de Avena y Arce",
++          "menu.maple.desc": "Leche de avena cremosa con un toque de jarabe de arce de Vermont.",
++          "menu.espresso.title": "Espresso Tostado Oscuro",
++          "menu.espresso.desc": "Intenso, ahumado y perfecto para un impulso matutino.",
++          "menu.coldbrew.title": "Cold Brew",
++          "menu.coldbrew.desc": "Infusionado en frío durante 18 horas para máxima suavidad.",
++          "menu.viewDetails": "Ver Detalles",
++          "story.heading": "Nuestra Historia",
++          "story.p1": "Fundada en una pequeña tostadora de barrio, The Daily Grind comenzó con una misión sencilla: honrar cada grano de café desde la finca hasta la taza. Nos asociamos directamente con caficultores independientes en regiones de gran altitud para ofrecerte cafés de origen único y mezclas artesanales cosechadas de forma sostenible.",
++          "story.p2": "Cada lote se tuesta en casa en pequeñas cantidades para liberar una profunda dulzura de caramelo, notas brillantes de frutas y un acabado aterciopelado que convierte tu ritual diario de café en una experiencia artesanal inolvidable.",
++          "footer.story": "Nuestra Historia",
++          "footer.careers": "Únete al Equipo",
++          "footer.contact": "Contáctanos",
++          "footer.privacy": "Privacidad",
++          "footer.copyright": "© 2026 The Daily Grind Coffee Co. Todos los derechos reservados."
++        },
++        fr: {
++          "brand.title": "THE DAILY GRIND",
++          "nav.menu": "Menu",
++          "nav.locations": "Nos Cafés",
++          "nav.rewards": "Fidélité",
++          "nav.account": "Mon Compte",
++          "nav.logout": "Déconnexion",
++          "hero.title": "Éveillez Vos Sens",
++          "hero.subtitle": "Issu du commerce éthique, torréfié localement, servi dans votre tasse.",
++          "hero.cta": "Commander",
++          "menu.heading": "Favoris de Saison",
++          "menu.maple.title": "Latte Avoine et Érable",
++          "menu.maple.desc": "Lait d'avoine onctueux avec une touche de sirop d'érable du Vermont.",
++          "menu.espresso.title": "Espresso Torréfaction Brune",
++          "menu.espresso.desc": "Corsé, fumé et parfait pour un coup de fouet matinal.",
++          "menu.coldbrew.title": "Café Infusé à Froid",
++          "menu.coldbrew.desc": "Infusé pendant 18 heures pour une douceur maximale.",
++          "menu.viewDetails": "Voir les Détails",
++          "story.heading": "Notre Histoire",
++          "story.p1": "Fondé dans une petite brûlerie de quartier, The Daily Grind est né d'une mission simple : honorer chaque grain de café de la plantation à la tasse. Nous travaillons en partenariat direct avec des producteurs indépendants de régions de haute altitude pour vous offrir des cafés d'origine unique et des assemblages artisanaux récoltés durablement.",
++          "story.p2": "Chaque lot est torréfié sur place en petites quantités afin de révéler une douceur caramélisée profonde, des notes fruitées éclatantes et une finale veloutée qui transforme votre rituel café quotidien en une expérience artisanale inoubliable.",
++          "footer.story": "Notre Histoire",
++          "footer.careers": "Rejoindre l'Équipe",
++          "footer.contact": "Nous Contacter",
++          "footer.privacy": "Confidentialité",
++          "footer.copyright": "© 2026 The Daily Grind Coffee Co. Tous droits réservés."
++        },
++        de: {
++          "brand.title": "THE DAILY GRIND",
++          "nav.menu": "Menü",
++          "nav.locations": "Standorte",
++          "nav.rewards": "Prämien",
++          "nav.account": "Mein Konto",
++          "nav.logout": "Abmelden",
++          "hero.title": "Wecken Sie Ihre Sinne",
++          "hero.subtitle": "Ethisch bezogen, lokal geröstet, direkt in Ihre Tasse geliefert.",
++          "hero.cta": "Jetzt Bestellen",
++          "menu.heading": "Saisonale Favoriten",
++          "menu.maple.title": "Ahorn-Hafer-Latte",
++          "menu.maple.desc": "Cremige Hafermilch mit einem Hauch von Ahornsirup aus Vermont.",
++          "menu.espresso.title": "Dunkel Gerösteter Espresso",
++          "menu.espresso.desc": "Kräftig, rauchig und perfekt für den morgendlichen Energieschub.",
++          "menu.coldbrew.title": "Cold Brew",
++          "menu.coldbrew.desc": "18 Stunden lang kalt gezogen für maximale Milde.",
++          "menu.viewDetails": "Details Anzeigen",
++          "story.heading": "Unsere Geschichte",
++          "story.p1": "Gegründet in einer kleinen Nachbarschaftsrösterei, begann The Daily Grind mit einer einfachen Mission: jede Kaffeebohne von der Farm bis in die Tasse zu würdigen. Wir arbeiten direkt mit unabhängigen Kaffeebauern in Hochlandregionen zusammen, um Ihnen nachhaltig geerntete Single-Origin-Kaffees und handwerkliche Mischungen anzubieten.",
++          "story.p2": "Jede Charge wird vor Ort in kleinen Mengen geröstet, um eine tiefe Karamellsüße, lebendige Fruchtnoten und einen samtigen Abgang zu entfalten, der Ihr tägliches Kaffeeritual in ein unvergessliches Genusserlebnis verwandelt.",
++          "footer.story": "Unsere Geschichte",
++          "footer.careers": "Karriere",
++          "footer.contact": "Kontakt",
++          "footer.privacy": "Datenschutz",
++          "footer.copyright": "© 2026 The Daily Grind Coffee Co. Alle Rechte vorbehalten."
++        },
++        ja: {
++          "brand.title": "THE DAILY GRIND",
++          "nav.menu": "メニュー",
++          "nav.locations": "店舗一覧",
++          "nav.rewards": "リワード",
++          "nav.account": "マイアカウント",
++          "nav.logout": "ログアウト",
++          "hero.title": "五感を目覚めさせる一杯",
++          "hero.subtitle": "エシカルに調達し、地元で焙煎したての香りをあなたのカップへ。",
++          "hero.cta": "今すぐ注文",
++          "menu.heading": "季節のおすすめ",
++          "menu.maple.title": "メープルオーツラテ",
++          "menu.maple.desc": "クリーミーなオーツミルクにバーモント産メープルシロップをほんのりプラス。",
++          "menu.espresso.title": "ダークロースト・エスプレッソ",
++          "menu.espresso.desc": "力強くスモーキーな味わいで、朝の目覚めにぴったりの一杯。",
++          "menu.coldbrew.title": "コールドブリュー",
++          "menu.coldbrew.desc": "18時間じっくり水出しし、極上のなめらかさを実現しました。",
++          "menu.viewDetails": "詳細を見る",
++          "story.heading": "私たちのストーリー",
++          "story.p1": "小さな街の焙煎所から始まったThe Daily Grindは、「農園からカップまで、すべてのコーヒー豆に敬意を払う」というシンプルな使命から生まれました。高地地域の独立系生産者と直接提携し、サステナブルに収穫されたシングルオリジンや職人技のブレンドコーヒーをお届けしています。",
++          "story.p2": "すべてのバッチを店内で少量ずつ丁寧に焙煎することで、深いキャラメルのような甘み、鮮やかなフルーティーさ、そしてベルベットのように滑らかな後味を引き出し、毎日のコーヒータイムを忘れられないクラフト体験へと変えていきます。",
++          "footer.story": "私たちのストーリー",
++          "footer.careers": "採用情報",
++          "footer.contact": "お問い合わせ",
++          "footer.privacy": "プライバシー",
++          "footer.copyright": "© 2026 The Daily Grind Coffee Co. 無断複写・転載を禁じます。"
++        },
++        it: {
++          "brand.title": "THE DAILY GRIND",
++          "nav.menu": "Menu",
++          "nav.locations": "Caffetterie",
++          "nav.rewards": "Premi",
++          "nav.account": "Il Mio Account",
++          "nav.logout": "Esci",
++          "hero.title": "Risveglia i Tuoi Sensi",
++          "hero.subtitle": "Di provenienza etica, tostato localmente, servito nella tua tazza.",
++          "hero.cta": "Ordina Ora",
++          "menu.heading": "I Preferiti di Stagione",
++          "menu.maple.title": "Latte d'Avena e Acero",
++          "menu.maple.desc": "Cremoso latte d'avena con una nota di sciroppo d'acero del Vermont.",
++          "menu.espresso.title": "Espresso Tostatura Scura",
++          "menu.espresso.desc": "Deciso, affumicato e perfetto per la carica del mattino.",
++          "menu.coldbrew.title": "Cold Brew",
++          "menu.coldbrew.desc": "Infuso a freddo per 18 ore per la massima morbidezza.",
++          "menu.viewDetails": "Vedi Dettagli",
++          "story.heading": "La Nostra Storia",
++          "story.p1": "Fondata in una piccola torrefazione di quartiere, The Daily Grind è nata con una missione semplice: onorare ogni chicco di caffè dalla piantagione alla tazza. Collaboriamo direttamente con coltivatori indipendenti in regioni d'alta quota per offrirti caffè monorigine e miscele artigianali raccolte in modo sostenibile.",
++          "story.p2": "Ogni lotto viene tostato internamente in piccole quantità per sprigionare una profonda dolcezza di caramello, vivaci note fruttate e un finale vellutato che trasforma il tuo rituale quotidiano del caffè in un'esperienza artigianale indimenticabile.",
++          "footer.story": "La Nostra Storia",
++          "footer.careers": "Lavora con Noi",
++          "footer.contact": "Contattaci",
++          "footer.privacy": "Privacy",
++          "footer.copyright": "© 2026 The Daily Grind Coffee Co. Tutti i diritti riservati."
++        },
++        pt: {
++          "brand.title": "THE DAILY GRIND",
++          "nav.menu": "Menu",
++          "nav.locations": "Lojas",
++          "nav.rewards": "Recompensas",
++          "nav.account": "Minha Conta",
++          "nav.logout": "Sair",
++          "hero.title": "Desperte os Seus Sentidos",
++          "hero.subtitle": "De origem ética, torrado localmente, entregue na sua xícara.",
++          "hero.cta": "Peça Agora",
++          "menu.heading": "Favoritos da Estação",
++          "menu.maple.title": "Latte de Aveia e Maple",
++          "menu.maple.desc": "Leite de aveia cremoso com um toque de xarope de bordo de Vermont.",
++          "menu.espresso.title": "Espresso Torra Escura",
++          "menu.espresso.desc": "Encorpado, defumado e perfeito para dar energia pela manhã.",
++          "menu.coldbrew.title": "Cold Brew",
++          "menu.coldbrew.desc": "Infusionado por 18 horas para máxima suavidade.",
++          "menu.viewDetails": "Ver Detalhes",
++          "story.heading": "Nossa História",
++          "story.p1": "Fundada em uma pequena torrefação de bairro, a The Daily Grind começou com uma missão simples: honrar cada grão de café da fazenda à xícara. Fazemos parceria direta com produtores independentes em regiões de alta altitude para trazer cafés de origem única e blends artesanais colhidos de forma sustentável.",
++          "story.p2": "Cada lote é torrado internamente em pequenas quantidades para revelar uma doçura profunda de caramelo, notas frutadas vibrantes e um final aveludado que transforma seu ritual diário de café em uma experiência artesanal inesquecível.",
++          "footer.story": "Nossa História",
++          "footer.careers": "Junte-se à Equipe",
++          "footer.contact": "Fale Conosco",
++          "footer.privacy": "Privacidade",
++          "footer.copyright": "© 2026 The Daily Grind Coffee Co. Todos os direitos reservados."
++        }
++      };
++
++      const selector = document.getElementById('language-selector');
++      const badge = document.getElementById('translation-engine-badge');
++      const banner = document.getElementById('translation-status-banner');
++      const bannerText = document.getElementById('translation-status-text');
++      const translatableElements = document.querySelectorAll('[data-i18n]');
++
++      // Store original English source strings from DOM as canonical baseline
++      const sourceTextMap = new Map();
++      translatableElements.forEach((el) => {
++        const key = el.getAttribute('data-i18n');
++        sourceTextMap.set(el, DICTIONARY.en[key] || el.textContent.trim());
++      });
++
++      // Cache for browser Translator API instances per language pair
++      const translatorCache = new Map();
++
++      function getTranslatorFactory() {
++        if (typeof window.Translator !== 'undefined' && typeof window.Translator.create === 'function') {
++          return window.Translator;
++        }
++        if (window.ai && window.ai.translator && typeof window.ai.translator.create === 'function') {
++          return window.ai.translator;
++        }
++        if (window.translation && typeof window.translation.createTranslator === 'function') {
++          return {
++            availability: (opts) => window.translation.canTranslate ? window.translation.canTranslate(opts) : Promise.resolve('readily'),
++            create: (opts) => window.translation.createTranslator(opts)
++          };
++        }
++        return null;
++      }
++
++      async function getBrowserTranslator(targetLang) {
++        if (targetLang === 'en') return null;
++        if (translatorCache.has(targetLang)) {
++          return translatorCache.get(targetLang);
++        }
++
++        const factory = getTranslatorFactory();
++        if (!factory) return null;
++
++        try {
++          if (typeof factory.availability === 'function') {
++            const status = await factory.availability({
++              sourceLanguage: 'en',
++              targetLanguage: targetLang
++            });
++            if (status === 'unavailable' || status === 'no') {
++              return null;
++            }
++          }
++
++          const translator = await factory.create({
++            sourceLanguage: 'en',
++            targetLanguage: targetLang
++          });
++          translatorCache.set(targetLang, translator);
++          return translator;
++        } catch (err) {
++          return null;
++        }
++      }
++
++      let activeTranslationRequest = 0;
++
++      async function translatePage(targetLang) {
++        const requestId = ++activeTranslationRequest;
++        document.documentElement.lang = targetLang;
++
++        try {
++          localStorage.setItem('daily_grind_lang', targetLang);
++        } catch (_) {}
++
++        if (targetLang === 'en') {
++          banner.classList.remove('active');
++          badge.textContent = 'On-Device';
++          translatableElements.forEach((el) => {
++            el.textContent = sourceTextMap.get(el);
++            el.classList.remove('translating');
++          });
++          return;
++        }
++
++        translatableElements.forEach((el) => el.classList.add('translating'));
++        bannerText.textContent = `Translating coffee menu & story to ${targetLang.toUpperCase()} on-device...`;
++        banner.classList.add('active');
++
++        const browserTranslator = await getBrowserTranslator(targetLang);
++        if (requestId !== activeTranslationRequest) return;
++
++        if (browserTranslator && typeof browserTranslator.translate === 'function') {
++          badge.textContent = 'On-Device AI';
++          for (const el of translatableElements) {
++            const key = el.getAttribute('data-i18n');
++            const sourceText = sourceTextMap.get(el);
++            try {
++              const translated = await browserTranslator.translate(sourceText);
++              if (requestId !== activeTranslationRequest) return;
++              el.textContent = translated || (DICTIONARY[targetLang] && DICTIONARY[targetLang][key]) || sourceText;
++            } catch (_) {
++              if (DICTIONARY[targetLang] && DICTIONARY[targetLang][key]) {
++                el.textContent = DICTIONARY[targetLang][key];
++              }
++            }
++            el.classList.remove('translating');
++          }
++        } else {
++          badge.textContent = 'On-Device';
++          const dict = DICTIONARY[targetLang] || DICTIONARY.en;
++          translatableElements.forEach((el) => {
++            const key = el.getAttribute('data-i18n');
++            if (dict[key]) {
++              el.textContent = dict[key];
++            }
++            el.classList.remove('translating');
++          });
++        }
++
++        if (requestId === activeTranslationRequest) {
++          banner.classList.remove('active');
++        }
++      }
++
++      selector.addEventListener('change', (e) => {
++        translatePage(e.target.value);
++      });
++
++      // Initialize from saved language preference if available
++      try {
++        const savedLang = localStorage.getItem('daily_grind_lang');
++        if (savedLang && DICTIONARY[savedLang]) {
++          selector.value = savedLang;
++          if (savedLang !== 'en') {
++            translatePage(savedLang);
++          }
++        }
++      } catch (_) {}
++    })();
++  </script>
+ </body>
+ 
+ </html>

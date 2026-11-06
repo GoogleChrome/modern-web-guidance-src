@@ -1,0 +1,593 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,589 @@
++<!DOCTYPE html>
++<html lang="en" class="ab-pending">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="description" content="PulseFlow — Real-time product analytics and automated growth experiments for modern engineering teams.">
++  <title>PulseFlow — Ship Faster with Real-Time Product Intelligence</title>
++
++  <!-- Preconnect to the A/B testing CDN to minimize connection latency -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin>
++  <link rel="dns-prefetch" href="https://cdn.example.com">
++
++  <!-- Anti-flicker & Critical Styles -->
++  <style>
++    :root {
++      --bg-primary: #0b0f19;
++      --bg-secondary: #111827;
++      --bg-card: #161f33;
++      --text-primary: #f9fafb;
++      --text-secondary: #cbd5e1;
++      --text-muted: #94a3b8;
++      --accent-primary: #6366f1;
++      --accent-hover: #4f46e5;
++      --accent-glow: rgba(99, 102, 241, 0.28);
++      --accent-secondary: #10b981;
++      --border-subtle: rgba(255, 255, 255, 0.09);
++      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    html {
++      font-family: var(--font-sans);
++      background-color: var(--bg-primary);
++      color: var(--text-primary);
++      line-height: 1.5;
++      -webkit-font-smoothing: antialiased;
++    }
++
++    body {
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++      background:
++        radial-gradient(circle at 20% 15%, rgba(99, 102, 241, 0.14), transparent 40%),
++        radial-gradient(circle at 80% 25%, rgba(16, 185, 129, 0.1), transparent 35%),
++        var(--bg-primary);
++      overflow-x: hidden;
++    }
++
++    /*
++     * Anti-flicker rule:
++     * Preserves layout geometry (opacity: 0; visibility: hidden instead of display: none)
++     * so the user never sees original experiment content flash before the variant is applied,
++     * while preventing any Cumulative Layout Shift (CLS = 0).
++     */
++    html.ab-pending [data-experiment-cloak] {
++      opacity: 0 !important;
++      visibility: hidden !important;
++      pointer-events: none !important;
++    }
++
++    [data-experiment-cloak] {
++      opacity: 1;
++      visibility: visible;
++      transition: opacity 0.12s ease-out;
++    }
++
++    /* Header / Navigation */
++    .site-header {
++      width: 100%;
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 1.25rem 1.5rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      border-bottom: 1px solid var(--border-subtle);
++    }
++
++    .brand {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.625rem;
++      font-weight: 700;
++      font-size: 1.25rem;
++      color: var(--text-primary);
++      text-decoration: none;
++      letter-spacing: -0.02em;
++    }
++
++    .brand-icon {
++      width: 32px;
++      height: 32px;
++      border-radius: 8px;
++      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++    }
++
++    .nav-links {
++      display: flex;
++      align-items: center;
++      gap: 2rem;
++      list-style: none;
++    }
++
++    .nav-links a {
++      color: var(--text-secondary);
++      text-decoration: none;
++      font-size: 0.9375rem;
++      font-weight: 500;
++      transition: color 0.15s ease;
++    }
++
++    .nav-links a:hover,
++    .nav-links a:focus-visible {
++      color: var(--text-primary);
++    }
++
++    /* Hero Section with layout containment to prevent CLS when variants swap */
++    .hero {
++      width: 100%;
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 4.5rem 1.5rem 4rem;
++      display: grid;
++      grid-template-columns: 1.1fr 0.9fr;
++      gap: 3.5rem;
++      align-items: center;
++      min-height: 540px;
++      contain: layout style;
++    }
++
++    .hero-content {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 1.5rem;
++      min-height: 360px;
++    }
++
++    .hero-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.375rem 0.875rem;
++      border-radius: 9999px;
++      background: rgba(99, 102, 241, 0.12);
++      border: 1px solid rgba(99, 102, 241, 0.35);
++      color: #c7d2fe;
++      font-size: 0.8125rem;
++      font-weight: 600;
++      letter-spacing: 0.02em;
++    }
++
++    .hero-badge-dot {
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background-color: var(--accent-secondary);
++    }
++
++    .hero-title {
++      font-size: clamp(2.25rem, 4.2vw, 3.5rem);
++      font-weight: 800;
++      line-height: 1.12;
++      letter-spacing: -0.03em;
++      color: var(--text-primary);
++      min-height: 2.25em;
++    }
++
++    .hero-subtitle {
++      font-size: 1.125rem;
++      line-height: 1.65;
++      color: var(--text-secondary);
++      max-width: 56ch;
++      min-height: 3.3em;
++    }
++
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 1rem;
++      margin-top: 0.25rem;
++      min-height: 56px;
++    }
++
++    .cta-button {
++      appearance: none;
++      border: none;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.625rem;
++      min-width: 210px;
++      min-height: 52px;
++      padding: 0.875rem 1.75rem;
++      border-radius: 10px;
++      background: linear-gradient(135deg, var(--accent-primary) 0%, #4f46e5 100%);
++      color: #ffffff;
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      text-decoration: none;
++      box-shadow: 0 8px 24px var(--accent-glow);
++      transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
++    }
++
++    .cta-button:hover {
++      background: linear-gradient(135deg, var(--accent-hover) 0%, #4338ca 100%);
++      transform: translateY(-1px);
++    }
++
++    .cta-button:focus-visible {
++      outline: 3px solid #818cf8;
++      outline-offset: 3px;
++    }
++
++    .secondary-link {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-height: 52px;
++      padding: 0.875rem 1.375rem;
++      border-radius: 10px;
++      border: 1px solid var(--border-subtle);
++      background: rgba(255, 255, 255, 0.03);
++      color: var(--text-primary);
++      font-size: 0.9375rem;
++      font-weight: 600;
++      text-decoration: none;
++      transition: background-color 0.15s ease, border-color 0.15s ease;
++    }
++
++    .secondary-link:hover {
++      background: rgba(255, 255, 255, 0.07);
++      border-color: rgba(255, 255, 255, 0.2);
++    }
++
++    .hero-meta {
++      display: flex;
++      align-items: center;
++      gap: 1.5rem;
++      font-size: 0.875rem;
++      color: var(--text-muted);
++      margin-top: 0.25rem;
++    }
++
++    .hero-meta span {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.375rem;
++    }
++
++    /* Hero Visual Card */
++    .hero-visual {
++      background: var(--bg-card);
++      border: 1px solid var(--border-subtle);
++      border-radius: 16px;
++      padding: 1.5rem;
++      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
++      min-height: 360px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .visual-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding-bottom: 1rem;
++      border-bottom: 1px solid var(--border-subtle);
++    }
++
++    .window-dots {
++      display: flex;
++      gap: 0.375rem;
++    }
++
++    .window-dot {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: rgba(255, 255, 255, 0.2);
++    }
++
++    .visual-status {
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: #34d399;
++      background: rgba(16, 185, 129, 0.12);
++      padding: 0.25rem 0.625rem;
++      border-radius: 999px;
++    }
++
++    .metrics-grid {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 1rem;
++      margin: 1.25rem 0;
++    }
++
++    .metric-card {
++      background: rgba(15, 23, 42, 0.65);
++      border: 1px solid var(--border-subtle);
++      border-radius: 10px;
++      padding: 1rem;
++    }
++
++    .metric-label {
++      font-size: 0.75rem;
++      color: var(--text-muted);
++      text-transform: uppercase;
++      letter-spacing: 0.04em;
++    }
++
++    .metric-value {
++      font-size: 1.5rem;
++      font-weight: 700;
++      color: var(--text-primary);
++      margin-top: 0.25rem;
++    }
++
++    .metric-delta {
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: #34d399;
++      margin-top: 0.25rem;
++    }
++
++    /* Features strip */
++    .features-section {
++      width: 100%;
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 2.5rem 1.5rem 4rem;
++      border-top: 1px solid var(--border-subtle);
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 2rem;
++    }
++
++    .feature-card {
++      background: rgba(22, 31, 51, 0.55);
++      border: 1px solid var(--border-subtle);
++      border-radius: 12px;
++      padding: 1.5rem;
++    }
++
++    .feature-card h2 {
++      font-size: 1.0625rem;
++      font-weight: 700;
++      margin-bottom: 0.5rem;
++      color: var(--text-primary);
++    }
++
++    .feature-card p {
++      font-size: 0.9375rem;
++      color: var(--text-secondary);
++    }
++
++    .cta-feedback {
++      font-size: 0.875rem;
++      color: #34d399;
++      min-height: 1.25rem;
++      font-weight: 500;
++    }
++
++    .site-footer {
++      margin-top: auto;
++      border-top: 1px solid var(--border-subtle);
++      padding: 1.5rem;
++      text-align: center;
++      font-size: 0.875rem;
++      color: var(--text-muted);
++    }
++
++    @media (max-width: 900px) {
++      .hero {
++        grid-template-columns: 1fr;
++        padding: 3rem 1.5rem;
++      }
++      .features-section {
++        grid-template-columns: 1fr;
++      }
++      .nav-links {
++        display: none;
++      }
++    }
++  </style>
++
++  <!--
++    Anti-flicker controller & non-blocking A/B experiment loader:
++    1. Keeps [data-experiment-cloak] hidden (with layout space reserved) until the SDK
++       applies its variant or finishes loading.
++    2. Reveals immediately on SDK load, error, DOM mutation, or a tight 250ms fail-safe
++       timeout so unreachable/slow CDNs never degrade FCP or LCP.
++  -->
++  <script>
++    (function () {
++      var revealed = false;
++      function revealExperiment() {
++        if (revealed) return;
++        revealed = true;
++        document.documentElement.classList.remove('ab-pending');
++        document.documentElement.classList.add('ab-ready');
++        document.documentElement.setAttribute('data-experiment-state', 'ready');
++      }
++
++      window.__revealExperiment = revealExperiment;
++      window.onExperimentApplied = revealExperiment;
++
++      // Bounded fail-safe timeout so a slow or offline CDN never blocks visibility
++      var failSafeTimer = setTimeout(revealExperiment, 250);
++
++      window.addEventListener('experiment:ready', function () {
++        clearTimeout(failSafeTimer);
++        revealExperiment();
++      }, { once: true });
++    })();
++  </script>
++
++  <!-- Load A/B testing SDK with defer so it fetches in parallel and runs after DOM parsing before reveal -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    defer
++    onload="window.__revealExperiment && window.__revealExperiment()"
++    onerror="window.__revealExperiment && window.__revealExperiment()"
++  ></script>
++</head>
++<body>
++  <header class="site-header">
++    <a href="#hero" class="brand">
++      <span class="brand-icon" aria-hidden="true">
++        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
++          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
++        </svg>
++      </span>
++      <span>PulseFlow</span>
++    </a>
++    <nav aria-label="Primary Navigation">
++      <ul class="nav-links">
++        <li><a href="#features">Features</a></li>
++        <li><a href="#metrics">Benchmarks</a></li>
++        <li><a href="#cta-button">Get Started</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section
++      id="hero"
++      class="hero"
++      data-experiment="hero-section"
++      aria-labelledby="hero-title"
++    >
++      <div class="hero-content" id="hero-variant-container" data-experiment-cloak>
++        <div class="hero-badge" data-experiment-target="badge">
++          <span class="hero-badge-dot" aria-hidden="true"></span>
++          <span>PulseFlow 3.0 Release</span>
++        </div>
++
++        <h1 id="hero-title" class="hero-title" data-experiment-target="headline">
++          Turn Product Telemetry into Instant Revenue Growth
++        </h1>
++
++        <p id="hero-subtitle" class="hero-subtitle" data-experiment-target="subheadline">
++          Deploy zero-latency feature experiments, monitor conversion funnels in real time, and ship confident product decisions across your entire stack.
++        </p>
++
++        <div class="hero-actions">
++          <button
++            id="cta-button"
++            class="cta-button"
++            type="button"
++            data-experiment-target="cta"
++          >
++            <span>Start Free 14-Day Trial</span>
++            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++              <line x1="5" y1="12" x2="19" y2="12"></line>
++              <polyline points="12 5 19 12 12 19"></polyline>
++            </svg>
++          </button>
++          <a href="#features" class="secondary-link">Explore Architecture</a>
++        </div>
++
++        <p id="cta-feedback" class="cta-feedback" role="status" aria-live="polite"></p>
++
++        <div class="hero-meta">
++          <span>&#10003; No credit card required</span>
++          <span>&#10003; Sub-millisecond edge evaluation</span>
++        </div>
++      </div>
++
++      <div class="hero-visual" id="metrics" aria-label="Live Experiment Telemetry Preview">
++        <div class="visual-header">
++          <div class="window-dots" aria-hidden="true">
++            <span class="window-dot"></span>
++            <span class="window-dot"></span>
++            <span class="window-dot"></span>
++          </div>
++          <span class="visual-status">Edge SDK Active</span>
++        </div>
++
++        <div class="metrics-grid">
++          <div class="metric-card">
++            <div class="metric-label">Conversion Lift</div>
++            <div class="metric-value">+28.4%</div>
++            <div class="metric-delta">99.2% statistical confidence</div>
++          </div>
++          <div class="metric-card">
++            <div class="metric-label">P99 Evaluation</div>
++            <div class="metric-value">0.4 ms</div>
++            <div class="metric-delta">Zero layout shift</div>
++          </div>
++        </div>
++
++        <svg width="100%" height="130" viewBox="0 0 420 130" fill="none" role="img" aria-label="Conversion rate comparison chart">
++          <defs>
++            <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
++              <stop offset="0%" stop-color="#6366f1" stop-opacity="0.45" />
++              <stop offset="100%" stop-color="#6366f1" stop-opacity="0.0" />
++            </linearGradient>
++          </defs>
++          <path d="M10 105 C70 95, 110 80, 160 68 C210 56, 260 52, 310 30 C350 15, 385 12, 410 8 L410 120 L10 120 Z" fill="url(#chartGrad)" />
++          <path d="M10 105 C70 95, 110 80, 160 68 C210 56, 260 52, 310 30 C350 15, 385 12, 410 8" stroke="#818cf8" stroke-width="3" stroke-linecap="round" />
++          <path d="M10 112 C75 108, 130 102, 190 96 C250 90, 320 86, 410 78" stroke="#64748b" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round" />
++        </svg>
++      </div>
++    </section>
++
++    <section id="features" class="features-section" aria-label="Platform Capabilities">
++      <article class="feature-card">
++        <h2>Flicker-Free Experimentation</h2>
++        <p>Scoped opacity cloaking and layout containment ensure users never experience a flash of unstyled or original variant content.</p>
++      </article>
++      <article class="feature-card">
++        <h2>Resilient Fail-Safe Delivery</h2>
++        <p>Non-blocking script execution paired with strict timeout guards keeps First Contentful Paint and Largest Contentful Paint fast.</p>
++      </article>
++      <article class="feature-card">
++        <h2>Instant Funnel Attribution</h2>
++        <p>Correlate every CTA interaction with downstream retention and revenue metrics in real time without third-party bloat.</p>
++      </article>
++    </section>
++  </main>
++
++  <footer class="site-footer">
++    <p>&copy; 2026 PulseFlow Inc. Built for high-velocity product teams.</p>
++  </footer>
++
++  <script>
++    (function () {
++      var heroContainer = document.getElementById('hero-variant-container');
++      if (heroContainer && typeof MutationObserver !== 'undefined') {
++        var observer = new MutationObserver(function () {
++          if (window.__revealExperiment) {
++            window.__revealExperiment();
++          }
++          observer.disconnect();
++        });
++        observer.observe(heroContainer, {
++          childList: true,
++          subtree: true,
++          characterData: true
++        });
++      }
++
++      var ctaButton = document.getElementById('cta-button');
++      var ctaFeedback = document.getElementById('cta-feedback');
++      if (ctaButton && ctaFeedback) {
++        ctaButton.addEventListener('click', function () {
++          ctaFeedback.textContent = 'Your 14-day trial workspace is ready — check your invite link.';
++        });
++      }
++    })();
++  </script>
++</body>
++</html>

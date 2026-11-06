@@ -1,0 +1,523 @@
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..08b2bfb
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,517 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --danger: #b3261e;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    .container {
++      max-width: 800px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    .panel h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .hint {
++      font-size: 0.9rem;
++      opacity: 0.8;
++    }
++
++    .passkey-list {
++      list-style: none;
++      margin-top: 16px;
++    }
++
++    .passkey {
++      display: flex;
++      align-items: center;
++      gap: 16px;
++      padding: 14px 0;
++      border-top: 1px solid var(--secondary);
++      flex-wrap: wrap;
++    }
++
++    .passkey img,
++    .passkey .icon-fallback {
++      width: 32px;
++      height: 32px;
++      flex: none;
++    }
++
++    .icon-fallback {
++      display: grid;
++      place-items: center;
++      background: var(--secondary);
++      border-radius: 6px;
++    }
++
++    .passkey-info {
++      flex: 1;
++      min-width: 180px;
++    }
++
++    .passkey-name {
++      font-weight: 600;
++    }
++
++    .passkey-meta {
++      font-size: 0.85rem;
++      opacity: 0.8;
++    }
++
++    .actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    button {
++      font: inherit;
++      cursor: pointer;
++      border-radius: 5px;
++      padding: 8px 16px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++    }
++
++    button:hover {
++      background: var(--secondary);
++    }
++
++    button.primary {
++      background: var(--primary);
++      color: white;
++    }
++
++    button.primary:hover {
++      background: #3e2723;
++    }
++
++    button.danger {
++      border-color: var(--danger);
++      color: var(--danger);
++    }
++
++    button.danger.primary {
++      background: var(--danger);
++      color: white;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    dialog {
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      width: min(420px, calc(100% - 40px));
++      color: var(--text);
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    label {
++      display: block;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 12px;
++    }
++
++    input[type="text"] {
++      display: block;
++      width: 100%;
++      font: inherit;
++      padding: 8px 10px;
++      margin-top: 4px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 8px;
++      margin-top: 16px;
++    }
++
++    .status {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .status.error {
++      color: var(--danger);
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <main class="container">
++    <h1>My Account</h1>
++
++    <section class="panel" aria-labelledby="profile-heading">
++      <h2 id="profile-heading">Profile</h2>
++      <p class="hint">Your name is also shared with your password manager so it labels your passkeys correctly.</p>
++      <form id="profile-form" style="margin-top: 16px;">
++        <label>Username
++          <input type="text" id="profile-name" name="name" autocomplete="username" required>
++        </label>
++        <label>Display name
++          <input type="text" id="profile-display-name" name="displayName" autocomplete="name" required>
++        </label>
++        <button type="submit" class="primary">Save profile</button>
++      </form>
++      <p id="profile-status" class="status" role="status"></p>
++    </section>
++
++    <section class="panel" aria-labelledby="passkeys-heading">
++      <h2 id="passkeys-heading">Passkeys</h2>
++      <p class="hint">Passkeys let you sign in with your fingerprint, face, or device lock instead of a password.</p>
++      <ul id="passkey-list" class="passkey-list" aria-busy="true"></ul>
++      <p id="passkey-status" class="status" role="status"></p>
++    </section>
++  </main>
++
++  <dialog id="rename-dialog" aria-labelledby="rename-title">
++    <form method="dialog" id="rename-form">
++      <h3 id="rename-title">Rename passkey</h3>
++      <label>Passkey name
++        <input type="text" id="rename-input" maxlength="64" required>
++      </label>
++      <div class="dialog-actions">
++        <button type="button" value="cancel" id="rename-cancel">Cancel</button>
++        <button type="submit" class="primary">Save</button>
++      </div>
++    </form>
++  </dialog>
++
++  <dialog id="delete-dialog" aria-labelledby="delete-title">
++    <form method="dialog" id="delete-form">
++      <h3 id="delete-title">Delete passkey?</h3>
++      <p id="delete-message"></p>
++      <p class="hint" style="margin-top: 8px;">You won't be able to sign in with it anymore. Your password manager will be told to stop offering it.</p>
++      <div class="dialog-actions">
++        <button type="button" id="delete-cancel">Cancel</button>
++        <button type="submit" class="danger primary">Delete</button>
++      </div>
++    </form>
++  </dialog>
++
++  <footer>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script type="module">
++    // Signal API methods are not available everywhere; the polyfill covers the JSON helpers.
++    if (window.PublicKeyCredential && !PublicKeyCredential.parseRequestOptionsFromJSON) {
++      await import('https://unpkg.com/webauthn-polyfills');
++    }
++
++    const rpId = location.hostname;
++    const $ = (id) => document.getElementById(id);
++    const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
++
++    let user = null; // { id (Base64URL), name, displayName }
++
++    async function api(path, options) {
++      const response = await fetch(path, {
++        credentials: 'same-origin',
++        headers: { 'Content-Type': 'application/json' },
++        ...options,
++        body: options?.body && JSON.stringify(options.body),
++      });
++      if (!response.ok) throw new Error(`Request failed (${response.status})`);
++      return response.json();
++    }
++
++    function setStatus(el, message, isError = false) {
++      el.textContent = message;
++      el.classList.toggle('error', isError);
++    }
++
++    // --- Authenticator sync (Signal API) ---
++
++    async function syncAcceptedCredentials(credentials) {
++      if (!window.PublicKeyCredential?.signalAllAcceptedCredentials || !user) return;
++      try {
++        await PublicKeyCredential.signalAllAcceptedCredentials({
++          rpId,
++          userId: user.id,
++          allAcceptedCredentialIds: credentials.map((c) => c.id),
++        });
++      } catch (e) {
++        console.error('signalAllAcceptedCredentials failed:', e);
++      }
++    }
++
++    async function syncUserDetails({ name, displayName }) {
++      if (!window.PublicKeyCredential?.signalCurrentUserDetails) return;
++      try {
++        await PublicKeyCredential.signalCurrentUserDetails({ rpId, userId: user.id, name, displayName });
++      } catch (e) {
++        console.error('signalCurrentUserDetails failed:', e);
++      }
++    }
++
++    // --- Rendering ---
++
++    function renderPasskey(credential) {
++      const li = document.createElement('li');
++      li.className = 'passkey';
++
++      let icon;
++      if (credential.providerIcon) {
++        icon = document.createElement('img');
++        icon.src = credential.providerIcon;
++        icon.alt = '';
++      } else {
++        icon = document.createElement('span');
++        icon.className = 'icon-fallback';
++        icon.setAttribute('aria-hidden', 'true');
++        icon.textContent = '🔑';
++      }
++
++      const info = document.createElement('div');
++      info.className = 'passkey-info';
++      const name = document.createElement('div');
++      name.className = 'passkey-name';
++      name.textContent = credential.name || 'Unknown passkey provider';
++      const meta = document.createElement('div');
++      meta.className = 'passkey-meta';
++      const created = `Created ${dateFormat.format(credential.registeredAt)}`;
++      meta.textContent = credential.lastUsedAt
++        ? `${created} · Last used ${dateFormat.format(credential.lastUsedAt)}`
++        : `${created} · Never used`;
++      info.append(name, meta);
++
++      const actions = document.createElement('div');
++      actions.className = 'actions';
++      const rename = document.createElement('button');
++      rename.type = 'button';
++      rename.textContent = 'Rename';
++      rename.setAttribute('aria-label', `Rename ${name.textContent}`);
++      rename.addEventListener('click', () => promptRename(credential));
++      const remove = document.createElement('button');
++      remove.type = 'button';
++      remove.className = 'danger';
++      remove.textContent = 'Delete';
++      remove.setAttribute('aria-label', `Delete ${name.textContent}`);
++      remove.addEventListener('click', () => promptDelete(credential));
++      actions.append(rename, remove);
++
++      li.append(icon, info, actions);
++      return li;
++    }
++
++    function renderList(credentials) {
++      const list = $('passkey-list');
++      list.setAttribute('aria-busy', 'false');
++      if (!credentials.length) {
++        const empty = document.createElement('li');
++        empty.className = 'passkey hint';
++        empty.textContent = 'No passkeys found.';
++        list.replaceChildren(empty);
++        return;
++      }
++      list.replaceChildren(...credentials.map(renderPasskey));
++    }
++
++    async function refreshList() {
++      const credentials = await api('/api/credentials');
++      renderList(credentials);
++      return credentials;
++    }
++
++    // --- Rename / delete ---
++
++    function promptRename(credential) {
++      const dialog = $('rename-dialog');
++      const input = $('rename-input');
++      input.value = credential.name || '';
++      dialog.returnValue = '';
++      dialog.dataset.id = credential.id;
++      dialog.showModal();
++      input.select();
++    }
++
++    $('rename-cancel').addEventListener('click', () => $('rename-dialog').close());
++    $('rename-dialog').addEventListener('click', (e) => {
++      if (e.target === e.currentTarget) e.currentTarget.close(); // light dismiss
++    });
++    $('rename-form').addEventListener('submit', async () => {
++      const name = $('rename-input').value.trim();
++      const id = $('rename-dialog').dataset.id;
++      if (!name) return;
++      try {
++        // A passkey nickname only lives on our server; there is nothing to signal.
++        await api(`/api/credential/${encodeURIComponent(id)}`, { method: 'PUT', body: { name } });
++        await refreshList();
++        setStatus($('passkey-status'), 'Passkey renamed.');
++      } catch (e) {
++        setStatus($('passkey-status'), 'Could not rename the passkey. Please try again.', true);
++      }
++    });
++
++    function promptDelete(credential) {
++      const dialog = $('delete-dialog');
++      $('delete-message').textContent = `Delete "${credential.name || 'Unknown passkey provider'}"?`;
++      dialog.dataset.id = credential.id;
++      dialog.showModal();
++    }
++
++    $('delete-cancel').addEventListener('click', () => $('delete-dialog').close());
++    $('delete-dialog').addEventListener('click', (e) => {
++      if (e.target === e.currentTarget) e.currentTarget.close();
++    });
++    $('delete-form').addEventListener('submit', async () => {
++      const id = $('delete-dialog').dataset.id;
++      try {
++        await api(`/api/credential/${encodeURIComponent(id)}`, { method: 'DELETE' });
++        const remaining = await refreshList();
++        await syncAcceptedCredentials(remaining);
++        setStatus($('passkey-status'), 'Passkey deleted.');
++      } catch (e) {
++        setStatus($('passkey-status'), 'Could not delete the passkey. Please try again.', true);
++      }
++    });
++
++    // --- Profile ---
++
++    $('profile-form').addEventListener('submit', async (e) => {
++      e.preventDefault();
++      const name = $('profile-name').value.trim();
++      const displayName = $('profile-display-name').value.trim();
++      try {
++        const updated = await api('/api/user', { method: 'PUT', body: { name, displayName } });
++        user = { ...user, ...updated };
++        await syncUserDetails({ name: user.name, displayName: user.displayName });
++        setStatus($('profile-status'), 'Profile saved.');
++      } catch (e) {
++        setStatus($('profile-status'), 'Could not save your profile. Please try again.', true);
++      }
++    });
++
++    // --- Init ---
++
++    try {
++      user = await api('/api/user');
++      $('profile-name').value = user.name;
++      $('profile-display-name').value = user.displayName;
++      const credentials = await refreshList();
++      await syncAcceptedCredentials(credentials);
++    } catch (e) {
++      $('passkey-list').setAttribute('aria-busy', 'false');
++      setStatus($('passkey-status'), 'Could not load your account. Please sign in and try again.', true);
++    }
++  </script>
++</body>
++
++</html>

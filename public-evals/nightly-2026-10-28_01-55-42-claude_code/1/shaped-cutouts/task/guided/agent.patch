@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,163 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Shaped elements (CSS masking) ---------- */
++
++    /* 1) Featured barista: image masked to an organic paint-splat SVG shape.
++       The mask uses maskContentUnits="objectBoundingBox", so it scales with
++       whatever width/height the image is rendered at. */
++    .featured-barista {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 32px;
++      align-items: center;
++      margin-top: 60px;
++    }
++
++    .shaped-avatar {
++      width: 240px;
++      height: 240px;
++      object-fit: cover;
++      display: block;
++
++      -webkit-mask-image: url(#splat-mask);
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-image: url(#splat-mask);
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++    }
++
++    .featured-barista h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .featured-barista .role {
++      color: var(--accent);
++      font-weight: 600;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      font-size: 0.8rem;
++      margin-bottom: 12px;
++    }
++
++    /* 2) Loyalty banner: unmasked text block + adjacent masked accent.
++       Both share a background so they read as one card. The shadow is a
++       filter on the parent so it follows the masked curve instead of a
++       rectangular box. */
++    .unified-card {
++      display: flex;
++      max-width: 520px;
++      margin: 60px auto 0;
++      filter: drop-shadow(0 10px 18px rgba(62, 39, 35, 0.3));
++    }
++
++    .card-body {
++      flex: 1;
++      background-color: var(--primary);
++      color: var(--light);
++      padding: 28px 8px 28px 28px;
++      border-top-left-radius: 16px;
++      border-bottom-left-radius: 16px;
++    }
++
++    .card-body h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .card-body .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .card-body .btn:hover {
++      background: #ffc46b;
++    }
++
++    .card-accent {
++      width: 72px;
++      background-color: var(--primary);
++      border-top-right-radius: 16px;
++      border-bottom-right-radius: 16px;
++
++      -webkit-mask-image: url(#accent-stencil);
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-image: url(#accent-stencil);
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++    }
++
++    /* 3) Promo card: circular notch cut from the top edge with a radial
++       gradient mask (no SVG needed for a simple geometric cutout). */
++    .gradient-masked-card {
++      max-width: 420px;
++      margin: 60px auto 0;
++      background: linear-gradient(135deg, var(--accent), #ff7a00);
++      color: var(--text);
++      padding: 48px 24px 24px; /* extra top padding clears the notch */
++      border-radius: 16px;
++      text-align: center;
++
++      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent 22px, black 23px);
++      mask-image: radial-gradient(circle at 50% 0%, transparent 22px, black 23px);
++    }
++
++    .gradient-masked-card h3 {
++      margin-bottom: 8px;
++    }
++
++    .gradient-masked-card .code {
++      display: inline-block;
++      margin-top: 14px;
++      padding: 6px 14px;
++      border: 2px dashed var(--text);
++      border-radius: 6px;
++      font-weight: bold;
++      letter-spacing: 2px;
++    }
++
++    /* Fallback: no mask support -> give the avatar a soft rounded crop.
++       The card pieces already degrade to a plain rectangle on their own. */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-avatar {
++        clip-path: inset(0 round 24px);
++      }
++    }
++
++    @media (max-width: 640px) {
++      .featured-barista {
++        grid-template-columns: 1fr;
++        justify-items: center;
++        text-align: center;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Reusable SVG masks (not rendered). objectBoundingBox units scale 0-1 with the masked element. -->
++  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
++    <defs>
++      <!-- Organic paint-splat shape for the featured barista avatar -->
++      <mask id="splat-mask" maskContentUnits="objectBoundingBox">
++        <path d="M 0.5 0.05 C 0.58 0.05, 0.58 0.21, 0.67 0.18 C 0.76 0.15, 0.79 0.08, 0.85 0.15 C 0.91 0.22, 0.83 0.32, 0.89 0.38 C 0.95 0.44, 1.03 0.45, 0.99 0.55 C 0.95 0.65, 0.82 0.62, 0.8 0.72 C 0.78 0.82, 0.89 0.92, 0.8 0.97 C 0.71 1.02, 0.64 0.88, 0.55 0.93 C 0.46 0.98, 0.44 1.06, 0.35 1.01 C 0.26 0.96, 0.31 0.81, 0.22 0.79 C 0.13 0.77, 0.01 0.88, 0.01 0.77 C 0.01 0.66, 0.16 0.62, 0.14 0.52 C 0.12 0.42, -0.02 0.39, 0.03 0.29 C 0.08 0.19, 0.23 0.27, 0.29 0.19 C 0.35 0.11, 0.3 0.01, 0.4 0.01 C 0.5 0.01, 0.42 0.05, 0.5 0.05 Z" fill="white" />
++      </mask>
++      <!-- Concave cutout curve for the loyalty card accent. White = visible, black = cut out.
++           The black path extends past x=1 so it fully clears the right edge. -->
++      <mask id="accent-stencil" maskContentUnits="objectBoundingBox">
++        <rect width="1" height="1" fill="white" />
++        <path d="M 1.1,0 C 0.4,0.1 0.4,0.9 1.1,1 L 1.1,0 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +344,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="featured-barista" aria-labelledby="barista-heading">
++      <img class="shaped-avatar"
++        src="https://images.unsplash.com/photo-1507914372368-b2b085b925a1?auto=format&fit=crop&w=600&h=600&q=80"
++        alt="Smiling barista in a yellow beanie working behind the espresso counter" width="240" height="240"
++        loading="lazy">
++      <div>
++        <p class="role">Barista of the Month</p>
++        <h2 id="barista-heading">Meet Jordan</h2>
++        <p>Jordan has pulled more than 40,000 shots since joining us in 2022 and runs our Saturday latte-art
++          workshops. Ask for the honey-cardamom cortado, their off-menu favorite.</p>
++      </div>
++    </section>
++
++    <section aria-labelledby="loyalty-heading">
++      <div class="unified-card">
++        <div class="card-body">
++          <h3 id="loyalty-heading">Grind Rewards</h3>
++          <p>Earn a bean for every dollar. Ten beans gets you any drink on the house, plus early access to seasonal
++            drops.</p>
++          <a href="/rewards" class="btn">Join for Free</a>
++        </div>
++        <div class="card-accent"></div>
++      </div>
++    </section>
++
++    <section aria-labelledby="promo-heading">
++      <div class="gradient-masked-card">
++        <h3 id="promo-heading">Happy Hour Promo</h3>
++        <p>Show this card between 2 and 4 pm on weekdays for 20% off any cold brew.</p>
++        <span class="code">AFTERNOON20</span>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

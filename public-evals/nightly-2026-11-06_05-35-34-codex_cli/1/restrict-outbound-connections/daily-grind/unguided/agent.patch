@@ -1,0 +1,642 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..dd950c9
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++data/
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..32c08e7
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,18 @@
++# Daily Grind
++
++Run `npm start` to serve the homepage and newsletter endpoint with Node.js 22 or newer.
++The port defaults to `11222`; set `PORT` to override it. No dependencies or build step are required.
++
++Newsletter submissions are appended to `data/newsletter.jsonl` on this server.
++Set `NEWSLETTER_FILE` to choose another location, and use a persistent volume when deploying.
++This stores the signup list; it does not send newsletter campaigns.
++Only the homepage, stylesheet, and client script are publicly served.
++
++The Node server applies Content Security Policy headers to every response. Scripts,
++styles, requests, and form submissions are restricted to this origin; images may
++also load from `https://images.unsplash.com`. Inline scripts, inline styles,
++embedded objects, framing, and changes to the document base URL are blocked.
++The form reports network/HTTP failures and enforced policy violations to customers.
++
++Run `npm test` for automated handler and client checks. These use mocked requests
++and DOM elements and do not listen on a port or launch a browser.
+diff --git a/index.html b/index.html
+index 66c9173..fb61fc6 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/styles.css">
++  <script src="/newsletter.js" defer></script>
+ </head>
+ 
+ <body>
+@@ -176,7 +30,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +49,18 @@
+         </div>
+       </div>
+     </section>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading" class="section-title">Fresh from the Grind</h2>
++      <p class="section-title">Sign up for coffee news, seasonal favorites, and updates from our roastery.</p>
++      <form action="/api/newsletter" method="post">
++        <label for="newsletter-email">Email address</label>
++        <div class="newsletter-controls">
++          <input id="newsletter-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
++          <button class="btn" type="submit">Sign me up</button>
++        </div>
++        <p id="request-status" class="request-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/newsletter.js b/newsletter.js
+new file mode 100644
+index 0000000..c72ae57
+--- /dev/null
++++ b/newsletter.js
+@@ -0,0 +1,31 @@
++const form = document.querySelector('.newsletter form');
++const status = document.querySelector('#request-status');
++const button = form.querySelector('button');
++
++document.addEventListener('securitypolicyviolation', (event) => {
++  if (event.disposition === 'enforce') {
++    status.textContent = 'A request was blocked for your privacy. Please try again or contact us if this continues.';
++  }
++});
++
++form.addEventListener('submit', async (event) => {
++  event.preventDefault();
++  button.disabled = true;
++  status.textContent = 'Signing you up…';
++  try {
++    const response = await fetch('/api/newsletter', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++      body: JSON.stringify({ email: form.elements.email.value.trim() }),
++      signal: AbortSignal.timeout(10000),
++      redirect: 'error',
++    });
++    if (!response.ok) throw new Error('Signup failed');
++    status.textContent = 'Thanks! You’re on the list for news from the Daily Grind.';
++    form.reset();
++  } catch {
++    status.textContent = 'We couldn’t complete your signup. Please check your connection and try again.';
++  } finally {
++    button.disabled = false;
++  }
++});
+diff --git a/package.json b/package.json
+index 2bd4d77..bac18cc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..6bec6f0
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,7 @@
++import { createServer } from 'node:http';
++import { createHandler } from './server/app.mjs';
++
++const server = createServer(createHandler());
++server.requestTimeout = 15000;
++server.headersTimeout = 10000;
++server.listen(Number(process.env.PORT || 11222), '0.0.0.0');
+diff --git a/server/app.mjs b/server/app.mjs
+new file mode 100644
+index 0000000..838e9ef
+--- /dev/null
++++ b/server/app.mjs
+@@ -0,0 +1,88 @@
++import { readFile, mkdir, appendFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import { dirname, join } from 'node:path';
++
++const root = fileURLToPath(new URL('../', import.meta.url));
++export const contentSecurityPolicy = [
++  "default-src 'none'",
++  "script-src 'self'",
++  "script-src-attr 'none'",
++  "style-src 'self'",
++  "img-src 'self' https://images.unsplash.com",
++  "connect-src 'self'",
++  "form-action 'self'",
++  "base-uri 'none'",
++  "object-src 'none'",
++  "frame-ancestors 'none'",
++].join('; ');
++
++const assets = new Map([
++  ['/', ['index.html', 'text/html; charset=utf-8']],
++  ['/index.html', ['index.html', 'text/html; charset=utf-8']],
++  ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
++  ['/newsletter.js', ['newsletter.js', 'text/javascript; charset=utf-8']],
++]);
++
++export function createHandler({
++  signupFile = process.env.NEWSLETTER_FILE || join(root, 'data', 'newsletter.jsonl'),
++} = {}) {
++  return async (req, res) => {
++    res.setHeader('Content-Security-Policy', contentSecurityPolicy);
++    res.setHeader('X-Content-Type-Options', 'nosniff');
++    res.setHeader('Referrer-Policy', 'no-referrer');
++    res.setHeader('Cache-Control', 'no-store');
++    const send = (code, message, type = 'application/json; charset=utf-8') => {
++      res.writeHead(code, { 'Content-Type': type });
++      res.end(type.startsWith('application/json') ? JSON.stringify({ message }) : message);
++    };
++    try {
++      const path = new URL(req.url, 'http://localhost').pathname;
++      if (path === '/api/newsletter') {
++        if (req.method !== 'POST') {
++          res.setHeader('Allow', 'POST');
++          return send(405, 'Please submit the signup form.');
++        }
++        // Browsers must submit this form from this site's own origin.
++        if (req.headers['sec-fetch-site'] === 'cross-site') return send(403, 'Request blocked.');
++        const type = (req.headers['content-type'] || '').split(';')[0].trim();
++        if (!['application/json', 'application/x-www-form-urlencoded'].includes(type)) {
++          return send(415, 'Unsupported request format.');
++        }
++        let body = '';
++        let size = 0;
++        for await (const chunk of req) {
++          size += Buffer.byteLength(chunk);
++          if (size > 2048) return send(413, 'Signup request is too large.');
++          body += chunk;
++        }
++        let data;
++        try {
++          data = type === 'application/json' ? JSON.parse(body) : Object.fromEntries(new URLSearchParams(body));
++        } catch {
++          return send(400, 'Please provide a valid email address.');
++        }
++        const email = typeof data?.email === 'string' ? data.email.trim() : '';
++        if (email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) {
++          return send(400, 'Please provide a valid email address.');
++        }
++        await mkdir(dirname(signupFile), { recursive: true, mode: 0o700 });
++        await appendFile(signupFile, JSON.stringify({ email, subscribedAt: new Date().toISOString() }) + '\n', { mode: 0o600 });
++        if (type === 'application/x-www-form-urlencoded') {
++          return send(201, '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Thanks for signing up</title><p>Thanks! You’re on the Daily Grind newsletter list.</p><a href="/">Back to the homepage</a></html>', 'text/html; charset=utf-8');
++        }
++        return send(201, 'Thanks for signing up!');
++      }
++      const asset = assets.get(path);
++      if (!asset) return send(404, 'Page not found.');
++      if (!['GET', 'HEAD'].includes(req.method)) {
++        res.setHeader('Allow', 'GET, HEAD');
++        return send(405, 'Method not allowed.');
++      }
++      const body = await readFile(join(root, asset[0]));
++      res.writeHead(200, { 'Content-Type': asset[1] });
++      res.end(req.method === 'HEAD' ? undefined : body);
++    } catch {
++      send(500, 'We couldn’t complete your request. Please try again.');
++    }
++  };
++}
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..9523265
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,159 @@
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++
++.section-title { text-align: center; }
++.newsletter { margin-top: 40px; padding: 30px; background: var(--secondary); border-radius: 8px; }
++.newsletter form { max-width: 520px; margin: 16px auto 0; }
++.newsletter label { display: block; font-weight: bold; }
++.newsletter-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
++.newsletter input { flex: 1; min-width: 180px; padding: 12px; border: 1px solid var(--primary); border-radius: 5px; font: inherit; }
++.newsletter button { margin: 0; border: 0; font: inherit; cursor: pointer; }
++.newsletter button:disabled { opacity: 0.65; cursor: wait; }
++.request-status { margin-top: 12px; min-height: 1.6em; }
++:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+diff --git a/test/newsletter.test.mjs b/test/newsletter.test.mjs
+new file mode 100644
+index 0000000..89e60d3
+--- /dev/null
++++ b/test/newsletter.test.mjs
+@@ -0,0 +1,92 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { Readable } from 'node:stream';
++import { mkdtemp, readFile, rm } from 'node:fs/promises';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import vm from 'node:vm';
++import { createHandler } from '../server/app.mjs';
++
++async function request(handler, url, { method = 'GET', body = '', headers = {} } = {}) {
++  const req = Readable.from([Buffer.from(body)]);
++  Object.assign(req, { url, method, headers });
++  const response = { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; },
++    writeHead(code, headers) { this.status = code; for (const [k, v] of Object.entries(headers)) this.setHeader(k, v); },
++    end(body) { this.body = body?.toString() || ''; } };
++  await handler(req, response);
++  return response;
++}
++
++test('homepage and errors carry restrictive response headers; private files are not served', async () => {
++  const handler = createHandler();
++  for (const path of ['/', '/missing', '/data/newsletter.jsonl', '/server.mjs']) {
++    const res = await request(handler, path);
++    const csp = res.headers['content-security-policy'];
++    assert.match(csp, /default-src 'none'/);
++    assert.match(csp, /connect-src 'self'/);
++    assert.match(csp, /img-src 'self' https:\/\/images\.unsplash\.com/);
++    assert.match(csp, /form-action 'self'/);
++    assert.match(csp, /base-uri 'none'/);
++    assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval|\*/);
++    assert.equal(res.status, path === '/' ? 200 : 404);
++  }
++  const home = await request(handler, '/');
++  assert.doesNotMatch(home.body, /<style|style=|<script(?! src=)/);
++});
++
++test('newsletter persists validated emails and rejects malformed, large and cross-site submissions', async () => {
++  const dir = await mkdtemp(join(tmpdir(), 'daily-grind-'));
++  try {
++    const signupFile = join(dir, 'signups.jsonl');
++    const handler = createHandler({ signupFile });
++    const post = (body, headers = {}) => request(handler, '/api/newsletter', {
++      method: 'POST', body, headers: { 'content-type': 'application/json', ...headers },
++    });
++    assert.equal((await post('{')).status, 400);
++    assert.equal((await post('{"email":"invalid"}')).status, 400);
++    assert.equal((await post('x'.repeat(2049))).status, 413);
++    assert.equal((await post('{}', { 'sec-fetch-site': 'cross-site' })).status, 403);
++    assert.equal((await post('{}', { 'content-type': 'text/plain' })).status, 415);
++    assert.equal((await request(handler, '/api/newsletter')).status, 405);
++    assert.equal((await post('{"email":" coffee@example.com "}')).status, 201);
++    const stored = JSON.parse((await readFile(signupFile, 'utf8')).trim());
++    assert.equal(stored.email, 'coffee@example.com');
++    const fallback = await post('email=reader%40example.com', { 'content-type': 'application/x-www-form-urlencoded' });
++    assert.equal(fallback.status, 201);
++    assert.match(fallback.body, /Thanks!/);
++    const failing = createHandler({ signupFile: dir });
++    assert.equal((await request(failing, '/api/newsletter', { method: 'POST', body: '{"email":"a@example.com"}', headers: { 'content-type': 'application/json' } })).status, 500);
++  } finally {
++    await rm(dir, { recursive: true, force: true });
++  }
++});
++
++test('signup UI handles success, HTTP failures, network failures and CSP blocks', async () => {
++  const source = await readFile(new URL('../newsletter.js', import.meta.url), 'utf8');
++  for (const outcome of ['success', 'http-error', 'network-error']) {
++    const listeners = {};
++    const status = { textContent: '' };
++    const button = { disabled: false };
++    let reset = false;
++    const form = { elements: { email: { value: 'reader@example.com' } }, querySelector: () => button,
++      addEventListener: (name, callback) => { listeners[name] = callback; }, reset: () => { reset = true; } };
++    vm.runInNewContext(source, {
++      document: { querySelector: (selector) => selector === '#request-status' ? status : form,
++        addEventListener: (name, callback) => { listeners[name] = callback; } },
++      AbortSignal,
++      fetch: async (url, options) => {
++        assert.equal(url, '/api/newsletter');
++        assert.equal(options.method, 'POST');
++        assert.equal(options.redirect, 'error');
++        if (outcome === 'network-error') throw new Error('blocked');
++        return { ok: outcome === 'success' };
++      },
++    });
++    await listeners.submit({ preventDefault() {} });
++    assert.equal(button.disabled, false);
++    assert.equal(reset, outcome === 'success');
++    assert.match(status.textContent, outcome === 'success' ? /Thanks!/ : /couldn’t complete/);
++    listeners.securitypolicyviolation({ disposition: 'enforce' });
++    assert.match(status.textContent, /blocked for your privacy/);
++  }
++});

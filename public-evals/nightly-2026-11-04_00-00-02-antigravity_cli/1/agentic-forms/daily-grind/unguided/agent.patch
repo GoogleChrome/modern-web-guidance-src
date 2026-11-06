@@ -1,0 +1,302 @@
+diff --git a/index.html b/index.html
+index 66c9173..1ad203a 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,110 @@
+       background: #3e2723;
+     }
+ 
++    /* Interactive Form Section */
++    .order-section {
++      background: white;
++      padding: 35px;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
++      margin-top: 50px;
++    }
++
++    .order-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .order-section > p {
++      text-align: center;
++      margin-bottom: 25px;
++      color: #6d4c41;
++    }
++
++    .coffee-form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 20px;
++      max-width: 900px;
++      margin: 0 auto;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .form-group.full-width {
++      grid-column: 1 / -1;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    .form-group input:focus,
++    .form-group select:focus,
++    .form-group textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .submit-btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 12px 24px;
++      font-size: 1rem;
++      font-weight: bold;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++      justify-self: center;
++      min-width: 200px;
++    }
++
++    .submit-btn:hover {
++      background: #3e2723;
++    }
++
++    .order-result {
++      margin-top: 25px;
++      padding: 20px;
++      border-radius: 6px;
++      background-color: #efebe9;
++      border-left: 5px solid var(--accent);
++      display: none;
++      max-width: 900px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .order-result.visible {
++      display: block;
++    }
++
++    .order-result h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +275,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#quick-order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +299,117 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="quick-order" class="order-section">
++      <h2>Quick Order &amp; Coffee Finder</h2>
++      <p>Customize your perfect cup for express pickup or let our coffee finder match your taste.</p>
++
++      <form id="coffee-order-form"
++            class="coffee-form"
++            toolname="quick_order_coffee"
++            tooldescription="Find and place a quick coffee order at The Daily Grind by specifying drink type, roast level, size, milk option, temperature, customer name, and special instructions."
++            toolautosubmit="true"
++            action="/order-online"
++            method="GET">
++
++        <div class="form-group">
++          <label for="drink">Coffee Drink</label>
++          <select id="drink"
++                  name="drink"
++                  required
++                  toolparamtitle="Coffee Drink"
++                  toolparamdescription="The type of coffee beverage to order (e.g., Maple Oat Latte, Dark Roast Espresso, Cold Brew, Cappuccino, Pour Over, Matcha Latte).">
++            <option value="Maple Oat Latte">Maple Oat Latte ($5.50)</option>
++            <option value="Dark Roast Espresso">Dark Roast Espresso ($3.50)</option>
++            <option value="Cold Brew">Cold Brew ($4.75)</option>
++            <option value="Cappuccino">Cappuccino ($4.50)</option>
++            <option value="Artisanal Pour Over">Artisanal Pour Over ($5.00)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="size">Size</label>
++          <select id="size"
++                  name="size"
++                  required
++                  toolparamtitle="Cup Size"
++                  toolparamdescription="Size of the drink: Small (8oz), Medium (12oz), or Large (16oz).">
++            <option value="Small">Small (8oz)</option>
++            <option value="Medium" selected>Medium (12oz)</option>
++            <option value="Large">Large (16oz)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="temperature">Temperature</label>
++          <select id="temperature"
++                  name="temperature"
++                  required
++                  toolparamtitle="Temperature"
++                  toolparamdescription="Whether the beverage should be served Hot or Iced.">
++            <option value="Hot">Hot</option>
++            <option value="Iced">Iced</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="milk">Milk Choice</label>
++          <select id="milk"
++                  name="milk"
++                  toolparamtitle="Milk Preference"
++                  toolparamdescription="Milk or dairy-free alternative to include (Oat Milk, Whole Milk, Almond Milk, Skim Milk, or None / Black).">
++            <option value="Oat Milk">Oat Milk</option>
++            <option value="Whole Milk">Whole Milk</option>
++            <option value="Almond Milk">Almond Milk</option>
++            <option value="Skim Milk">Skim Milk</option>
++            <option value="None">None (Black)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="roast">Roast Profile</label>
++          <select id="roast"
++                  name="roast"
++                  toolparamtitle="Roast Profile"
++                  toolparamdescription="Preferred coffee bean roast level: Light, Medium, Dark, or Decaf.">
++            <option value="Medium">Medium Roast (Balanced)</option>
++            <option value="Light">Light Roast (Bright &amp; Fruity)</option>
++            <option value="Dark">Dark Roast (Bold &amp; Smokey)</option>
++            <option value="Decaf">Swiss Water Decaf</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="customerName">Name for Pickup</label>
++          <input type="text"
++                 id="customerName"
++                 name="customerName"
++                 placeholder="e.g., Alex"
++                 required
++                 toolparamtitle="Customer Name"
++                 toolparamdescription="The name of the customer for the pickup order." />
++        </div>
++
++        <div class="form-group full-width">
++          <label for="notes">Special Instructions / Flavor Notes</label>
++          <input type="text"
++                 id="notes"
++                 name="notes"
++                 placeholder="e.g., Extra shot, light ice, hint of cinnamon..."
++                 toolparamtitle="Special Instructions"
++                 toolparamdescription="Optional customizations, sweetener requests, or dietary notes." />
++        </div>
++
++        <div class="form-group full-width">
++          <button type="submit" class="submit-btn">Place Quick Order</button>
++        </div>
++      </form>
++
++      <div id="order-result" class="order-result" role="status" aria-live="polite">
++        <h3>Order Confirmed!</h3>
++        <p id="order-summary-text"></p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +422,59 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('coffee-order-form');
++      const resultBox = document.getElementById('order-result');
++      const summaryText = document.getElementById('order-summary-text');
++
++      if (!form) return;
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++
++        const formData = new FormData(form);
++        const orderDetails = {
++          orderId: 'DG-' + Math.floor(1000 + Math.random() * 9000),
++          drink: formData.get('drink') || 'Maple Oat Latte',
++          size: formData.get('size') || 'Medium',
++          temperature: formData.get('temperature') || 'Hot',
++          milk: formData.get('milk') || 'Oat Milk',
++          roast: formData.get('roast') || 'Medium',
++          customerName: formData.get('customerName') || 'Guest',
++          notes: formData.get('notes') || 'None',
++          estimatedReadyMinutes: 5,
++          status: 'confirmed'
++        };
++
++        const milkNote = orderDetails.milk === 'None' ? 'black (no milk)' : 'with ' + orderDetails.milk;
++        const instructionsNote = orderDetails.notes && orderDetails.notes !== 'None'
++          ? ' (' + orderDetails.notes + ')'
++          : '';
++        const message = 'Thanks, ' + orderDetails.customerName + '! Your ' +
++          orderDetails.size + ' ' + orderDetails.temperature + ' ' +
++          orderDetails.drink + ' (' + orderDetails.roast + ' roast, ' + milkNote + ')' +
++          instructionsNote + ' is being prepared. Order #' + orderDetails.orderId +
++          ' will be ready in ~' + orderDetails.estimatedReadyMinutes + ' mins.';
++
++        if (summaryText && resultBox) {
++          summaryText.textContent = message;
++          resultBox.classList.add('visible');
++        }
++
++        if (typeof event.respondWith === 'function') {
++          event.respondWith(
++            Promise.resolve({
++              status: 'success',
++              message: message,
++              order: orderDetails
++            })
++          );
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,98 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      margin-bottom: 50px;
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++      margin-top: 24px;
++      align-items: start;
++    }
++
++    .nested-curve-parent {
++      background: white;
++      padding: 20px;
++      border-radius: 32px;
++      overflow: clip;
++      overflow-clip-margin: content-box;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--secondary);
++    }
++
++    .nested-curve-parent .showcase-media {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .nested-curve-parent .showcase-body {
++      padding: 20px 16px;
++      background: #fffdf9;
++    }
++
++    .nested-curve-parent .showcase-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .nested-curve-parent footer,
++    .nested-curve-parent .card-footer {
++      background: var(--primary);
++      color: white;
++      padding: 16px;
++      margin-top: 0;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-weight: 600;
++    }
++
++    .safety-zone-parent {
++      background: var(--primary);
++      color: white;
++      padding: 24px;
++      border-radius: 16px;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      gap: 16px;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--accent);
++      font-size: 1.4rem;
++    }
++
++    .safety-zone-parent .overflow-promo-text {
++      white-space: nowrap;
++      font-size: 0.95rem;
++      opacity: 0.9;
++    }
++
++    .safety-zone-parent .glow-btn {
++      align-self: flex-start;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      border: none;
++      padding: 12px 24px;
++      border-radius: 8px;
++      cursor: pointer;
++      box-shadow: 0 0 24px 10px rgba(255, 171, 64, 0.75);
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +264,40 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase">
++      <h2 style="text-align: center;">Roastery Showcase &amp; Promos</h2>
++      <div class="showcase-grid">
++        <div class="nested-curve-parent">
++          <img
++            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++            alt="Single Origin Pour Over"
++            class="showcase-media"
++          >
++          <div class="showcase-body">
++            <h3>Ethiopian Yirgacheffe Reserve</h3>
++            <p>Delicate floral notes with bright bergamot and jasmine finishes, roasted in small batches.</p>
++          </div>
++          <footer class="card-footer">
++            <span>Limited Batch #42</span>
++            <span>$18.50 / 12oz</span>
++          </footer>
++        </div>
++
++        <div class="safety-zone-parent">
++          <div>
++            <h3>Golden Hour Espresso Club</h3>
++            <p>Join our morning tasting pass and unlock priority access to micro-lot single-origin releases.</p>
++            <p class="overflow-promo-text">
++              LIMITED TIME ROASTERY DROP • FREE UPGRADE ON ALL ARTISANAL POUR OVERS &amp; ESPRESSO FLIGHTS •
++            </p>
++          </div>
++          <button type="button" class="btn glow-btn">Claim Glowing Pass</button>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

@@ -1,0 +1,217 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,101 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      display: grid;
++      grid-template-columns: 1fr 1.2fr;
++      gap: 40px;
++      margin-top: 48px;
++      padding: 32px;
++      background: #f1eae5;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .preferences h2 {
++      margin-bottom: 8px;
++    }
++
++    .preferences-intro p {
++      max-width: 32ch;
++    }
++
++    .preferences-form {
++      min-width: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 18px;
++    }
++
++    .form-field {
++      width: 100%;
++      min-width: 0;
++    }
++
++    .form-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .form-field input,
++    .form-field textarea,
++    .form-field select {
++      field-sizing: content;
++      max-width: 100%;
++      min-width: 10ch;
++      padding: 10px 12px;
++      border: 1px solid #b9a69b;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++      line-height: 1.5;
++    }
++
++    .form-field textarea {
++      display: block;
++      min-width: min(22ch, 100%);
++      resize: none;
++      overflow: hidden;
++    }
++
++    .form-field select {
++      cursor: pointer;
++    }
++
++    .form-field :is(input, textarea, select):focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .preferences-form .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .form-status {
++      font-size: 0.85rem;
++    }
++
++    .form-status:empty {
++      display: none;
++    }
++
++    @media (max-width: 650px) {
++      .preferences {
++        grid-template-columns: 1fr;
++        gap: 24px;
++        padding: 24px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +287,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences" aria-labelledby="preferences-heading">
++      <div class="preferences-intro">
++        <h2 id="preferences-heading">Your cup, your way.</h2>
++        <p>Keep your favorite coffee and those little details that make it yours.</p>
++      </div>
++      <form class="preferences-form" id="preferences-form">
++        <div class="form-field">
++          <label for="coffee-name">Your name</label>
++          <input id="coffee-name" name="name" type="text" placeholder="Your name" autocomplete="given-name" required>
++        </div>
++        <div class="form-field">
++          <label for="favorite-coffee">Favorite coffee</label>
++          <select id="favorite-coffee" name="coffee">
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="cappuccino">Cappuccino</option>
++            <option value="americano">Americano</option>
++          </select>
++        </div>
++        <div class="form-field">
++          <label for="coffee-notes">How do you like it?</label>
++          <textarea id="coffee-notes" name="notes" rows="1" placeholder="A little extra oat milk, please."></textarea>
++        </div>
++        <button class="btn" type="submit">Save my preferences</button>
++        <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +328,73 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.getElementById('preferences-form');
++    const status = document.getElementById('form-status');
++    const fields = [...form.querySelectorAll('input, textarea, select')];
++    const storageKey = 'daily-grind-preferences';
++
++    try {
++      const saved = JSON.parse(localStorage.getItem(storageKey));
++      if (saved) {
++        fields.forEach(field => {
++          if (typeof saved[field.name] === 'string') field.value = saved[field.name];
++        });
++      }
++    } catch {
++      // The form remains usable when browser storage is unavailable.
++    }
++
++    if (!CSS.supports('field-sizing', 'content')) {
++      const measure = document.createElement('span');
++      measure.style.cssText = 'position:fixed;visibility:hidden;white-space:pre;pointer-events:none;';
++      measure.setAttribute('aria-hidden', 'true');
++      document.body.appendChild(measure);
++
++      function sizeField(field) {
++        const style = getComputedStyle(field);
++        measure.style.font = style.font;
++        measure.style.letterSpacing = style.letterSpacing;
++        const content = field.tagName === 'SELECT'
++          ? field.selectedOptions[0]?.textContent || ''
++          : field.value || field.placeholder || '';
++        const width = Math.max(...content.split('\n').map(line => {
++          measure.textContent = line || ' ';
++          return measure.getBoundingClientRect().width;
++        }));
++        const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
++        const borders = parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
++        // Leave room for the native dropdown arrow and text caret.
++        field.style.width = `${Math.ceil(width + padding + borders + (field.tagName === 'SELECT' ? 24 : 3))}px`;
++        if (field.tagName === 'TEXTAREA') {
++          field.style.height = 'auto';
++          field.style.height = `${field.scrollHeight + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`;
++        }
++      }
++
++      const sizeFields = () => fields.forEach(sizeField);
++      fields.forEach(field => {
++        field.addEventListener('input', () => sizeField(field));
++        field.addEventListener('change', () => sizeField(field));
++      });
++      window.addEventListener('resize', sizeFields);
++      document.fonts.ready.then(sizeFields);
++      sizeFields();
++    }
++
++    form.addEventListener('input', () => { status.textContent = ''; });
++    form.addEventListener('submit', event => {
++      event.preventDefault();
++      try {
++        localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(new FormData(form))));
++        status.textContent = 'Preferences saved on this device. See you for your next cup!';
++      } catch {
++        status.textContent = 'Your browser could not save these preferences. Please try again with browser storage enabled.';
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

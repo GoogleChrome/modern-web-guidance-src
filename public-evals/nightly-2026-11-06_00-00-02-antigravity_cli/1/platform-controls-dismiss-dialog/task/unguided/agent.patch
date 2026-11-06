@@ -1,0 +1,205 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,93 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 0.95rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Modal Dialog */
++    dialog.coffee-modal {
++      margin: auto;
++      padding: 0;
++      border: none;
++      border-radius: 12px;
++      max-width: 500px;
++      width: calc(100% - 40px);
++      background: white;
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog.coffee-modal::backdrop {
++      background: rgba(0, 0, 0, 0.6);
++      backdrop-filter: blur(2px);
++    }
++
++    .modal-content {
++      padding: 28px;
++      text-align: left;
++    }
++
++    .modal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 12px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 12px;
++    }
++
++    .modal-header h3 {
++      color: var(--primary);
++      font-size: 1.5rem;
++    }
++
++    .modal-price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.2rem;
++    }
++
++    .modal-description {
++      margin-bottom: 16px;
++    }
++
++    .modal-meta {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      border-radius: 4px;
++      margin-bottom: 20px;
++      font-size: 0.92rem;
++    }
++
++    .modal-meta p + p {
++      margin-top: 6px;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +259,41 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-coffee="maple-oat-latte" aria-haspopup="dialog">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-coffee="dark-roast-espresso" aria-haspopup="dialog">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-coffee="cold-brew" aria-haspopup="dialog">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="coffee-details-modal" class="coffee-modal" closedby="any" aria-labelledby="modal-title" aria-describedby="modal-description">
++    <div class="modal-content">
++      <div class="modal-header">
++        <h3 id="modal-title">Coffee Details</h3>
++        <span id="modal-price" class="modal-price"></span>
++      </div>
++      <p id="modal-description" class="modal-description"></p>
++      <div class="modal-meta">
++        <p><strong>Tasting Notes:</strong> <span id="modal-notes"></span></p>
++        <p><strong>Ingredients &amp; Prep:</strong> <span id="modal-ingredients"></span></p>
++      </div>
++      <form method="dialog" class="modal-actions">
++        <button type="submit" class="btn" id="modal-close-btn">Close</button>
++      </form>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +302,62 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const COFFEE_DETAILS = {
++      'maple-oat-latte': {
++        title: 'Maple Oat Latte',
++        price: '$5.50',
++        description: 'Creamy oat milk with a hint of Vermont maple syrup, paired with our signature double-shot espresso and finished with a light dusting of warm cinnamon.',
++        notes: 'Toasted oats, rich maple, warm spice',
++        ingredients: 'Double-shot espresso, steamed barista oat milk, pure Grade-A Vermont maple syrup, ground cinnamon (16 oz)'
++      },
++      'dark-roast-espresso': {
++        title: 'Dark Roast Espresso',
++        price: '$3.75',
++        description: 'Bold, smokey, and perfect for a morning boost. Roasted in small batches to bring out deep caramelized sugars and a velvety crema.',
++        notes: 'Dark chocolate, roasted walnut, smoky cedar',
++        ingredients: '100% single-origin Sumatra & Colombia dark-roasted Arabica beans, freshly pulled double shot (2 oz)'
++      },
++      'cold-brew': {
++        title: 'Cold Brew',
++        price: '$4.75',
++        description: 'Steeped for 18 hours in cold filtered water for maximum smoothness and naturally sweet, low-acid flavor served over artisanal ice.',
++        notes: 'Sweet cocoa, molasses, smooth clean finish',
++        ingredients: 'Coarse-ground Ethiopian & Guatemalan blend, cold-steeped 18 hours, triple-filtered water (16 oz)'
++      }
++    };
++
++    const modal = document.getElementById('coffee-details-modal');
++    const modalTitle = document.getElementById('modal-title');
++    const modalPrice = document.getElementById('modal-price');
++    const modalDescription = document.getElementById('modal-description');
++    const modalNotes = document.getElementById('modal-notes');
++    const modalIngredients = document.getElementById('modal-ingredients');
++
++    document.querySelectorAll('[data-coffee]').forEach((button) => {
++      button.addEventListener('click', () => {
++        const coffeeKey = button.getAttribute('data-coffee');
++        const details = COFFEE_DETAILS[coffeeKey];
++        if (!details) return;
++
++        modalTitle.textContent = details.title;
++        modalPrice.textContent = details.price;
++        modalDescription.textContent = details.description;
++        modalNotes.textContent = details.notes;
++        modalIngredients.textContent = details.ingredients;
++
++        modal.showModal();
++      });
++    });
++
++    modal.addEventListener('click', (event) => {
++      if (event.target === modal) {
++        modal.close();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

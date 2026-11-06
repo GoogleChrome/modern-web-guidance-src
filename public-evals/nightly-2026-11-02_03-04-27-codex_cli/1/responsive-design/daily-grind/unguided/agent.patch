@@ -1,0 +1,300 @@
+diff --git a/index.html b/index.html
+index 66c9173..8cc2eed 100644
+--- a/index.html
++++ b/index.html
+@@ -35,13 +35,15 @@
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: wrap;
++      gap: 1rem 2rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1.1rem, 1rem + 0.7vw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+@@ -49,10 +51,9 @@
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.75rem 1.25rem;
+     }
+ 
+     nav a {
+@@ -72,52 +73,159 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    /* Each component responds to its available inline space. */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      container: hero / inline-size;
++      position: relative;
++      isolation: isolate;
++      color: white;
++      text-align: center;
++      background: var(--primary);
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: rgba(0, 0, 0, 0.55);
++    }
++
++    .hero-image {
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    .hero-content {
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      min-block-size: clamp(22rem, 55svh, 40rem);
++      padding: clamp(2rem, 7cqi, 6rem) clamp(1rem, 5cqi, 5rem);
++      gap: 1rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      max-inline-size: 18ch;
++      font-size: clamp(2rem, 6cqi, 4.5rem);
++      line-height: 1.1;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      max-inline-size: 48ch;
++      font-size: clamp(1rem, 2cqi, 1.25rem);
++      text-wrap: pretty;
++    }
++
++    @container hero (min-width: 48rem) {
++      .hero-content {
++        min-block-size: clamp(26rem, 55svh, 40rem);
++      }
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      margin: clamp(2rem, 5vw, 4rem) auto;
++      padding-inline: clamp(1rem, 4vw, 2rem);
++    }
++
++    .favorites {
++      container: favorites / inline-size;
++    }
++
++    .favorites h2 {
++      text-align: center;
++      font-size: clamp(1.5rem, 4cqi, 2.25rem);
++      line-height: 1.2;
++      text-wrap: balance;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: minmax(0, 1fr);
++      gap: clamp(1rem, 3cqi, 1.5rem);
++      margin-top: clamp(1.25rem, 3cqi, 2rem);
++    }
++
++    @container favorites (min-width: 36rem) {
++      .grid {
++        grid-template-columns: repeat(2, minmax(0, 1fr));
++      }
++    }
++
++    @container favorites (min-width: 56rem) {
++      .grid {
++        grid-template-columns: repeat(3, minmax(0, 1fr));
++      }
+     }
+ 
+     .card {
++      container: drink / inline-size;
++      min-inline-size: 0;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
+       text-align: center;
+     }
+ 
++    .card-layout {
++      display: flex;
++      flex-direction: column;
++      height: 100%;
++    }
++
++    .card-image {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .card-body {
++      display: flex;
++      flex: 1;
++      flex-direction: column;
++      align-items: center;
++      padding: clamp(1rem, 6cqi, 1.75rem);
++      gap: 0.75rem;
++      font-size: clamp(1rem, 4cqi, 1.125rem);
++    }
++
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
++      font-size: clamp(1.25rem, 6cqi, 1.625rem);
++      line-height: 1.25;
++      text-wrap: balance;
++    }
++
++    .card p {
++      flex: 1;
++    }
++
++    @container drink (min-width: 28rem) {
++      .card-layout {
++        display: grid;
++        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
++      }
++
++      .card-image {
++        height: 100%;
++        aspect-ratio: 1;
++      }
++    }
++
++    h1, h2, h3, p, a {
++      overflow-wrap: anywhere;
+     }
+ 
+     .btn {
+@@ -127,7 +235,8 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      margin-top: 0.25rem;
++      max-inline-size: 100%;
+       transition: background 0.3s;
+     }
+ 
+@@ -169,30 +278,56 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <img class="hero-image"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1920&amp;q=80"
++      alt="" width="1920" height="1080" fetchpriority="high">
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="favorites" aria-labelledby="favorites-title">
++      <h2 id="favorites-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <article class="card">
++          <div class="card-layout">
++            <img class="card-image"
++              src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
++              alt="A creamy latte served in a glass" width="800" height="600" loading="lazy" decoding="async">
++            <div class="card-body">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
++        <article class="card">
++          <div class="card-layout">
++            <img class="card-image"
++              src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
++              alt="Espresso topped with golden crema" width="800" height="600" loading="lazy" decoding="async">
++            <div class="card-body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
++        <article class="card">
++          <div class="card-layout">
++            <img class="card-image"
++              src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
++              alt="Cold coffee served over ice" width="800" height="600" loading="lazy" decoding="async">
++            <div class="card-body">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
+       </div>
+     </section>
+   </main>

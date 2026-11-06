@@ -1,0 +1,101 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..1044bd2 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -46,10 +46,67 @@ const baseUrl = import.meta.env.BASE_URL;
+           <Header />
+         </div>
+         <main class="bg-white relative">
+-          <slot />
++          <div class="spa-view" data-view-url={Astro.url.href}>
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      // Keep recently visited views in the DOM (content-visibility: hidden) so
++      // returning to them reuses the existing DOM and hydrated islands.
++      const MAX_CACHED_VIEWS = 5;
++      const cache = new Map<string, HTMLElement>(); // insertion order = LRU order
++
++      const activate = (view: HTMLElement) => {
++        view.classList.remove("inactive");
++        view.removeAttribute("inert");
++        view.removeAttribute("aria-hidden");
++      };
++
++      document.addEventListener("astro:before-swap", (event) => {
++        const { from, to, newDocument } = event;
++        const oldView = document.querySelector<HTMLElement>(
++          "main > .spa-view:not(.inactive)",
++        );
++        const newMain = newDocument.querySelector("main");
++        const newView = newMain?.querySelector<HTMLElement>(":scope > .spa-view");
++        // Only pages using this layout have views to cache.
++        if (!newMain || !newView) return;
++
++        if (oldView) {
++          oldView.classList.add("inactive");
++          oldView.setAttribute("inert", "");
++          oldView.setAttribute("aria-hidden", "true");
++          cache.delete(from.href);
++          cache.set(from.href, oldView);
++        }
++
++        // Reuse the cached view for the destination instead of the fresh one.
++        const cached = cache.get(to.href);
++        if (cached) {
++          cache.delete(to.href);
++          newView.replaceWith(cached);
++          activate(cached);
++        }
++
++        // Evict least recently used views.
++        while (cache.size > MAX_CACHED_VIEWS) {
++          const [oldest] = cache.keys();
++          cache.delete(oldest);
++        }
++        for (const view of cache.values()) newMain.append(view);
++      });
++
++      document.addEventListener("astro:after-swap", () => {
++        const view = document.querySelector<HTMLElement>(
++          "main > .spa-view:not(.inactive)",
++        );
++        if (!view) return;
++        view.tabIndex = -1;
++        view.focus({ preventScroll: true });
++      });
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..4cd60c4 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,21 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Cached SPA views: skip layout/paint but keep their rendering state. */
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++  inset-inline: 0;
++  top: 0;
++}
++
++.spa-view:focus {
++  outline: none;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

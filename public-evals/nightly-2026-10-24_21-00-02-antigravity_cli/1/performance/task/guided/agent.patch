@@ -1,0 +1,220 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,42 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
++  <link rel="dns-prefetch" href="https://images.unsplash.com">
++  <script type="speculationrules">
++    {
++      "prefetch": [
++        {
++          "tag": "daily-grind-prefetch",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "href_matches": "/account*" } },
++              { "not": { "selector_matches": ".logout-link" } }
++            ]
++          },
++          "eagerness": "eager"
++        }
++      ],
++      "prerender": [
++        {
++          "tag": "daily-grind-prerender",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "href_matches": "/account*" } },
++              { "not": { "selector_matches": ".logout-link" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -73,13 +107,12 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      overflow: hidden;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background-color: #2b1d1a;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+@@ -87,8 +120,33 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero picture,
++    .hero-img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      z-index: 0;
++    }
++
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: 1;
++      pointer-events: none;
++    }
++
++    .hero > *:not(picture):not(.hero-img) {
++      position: relative;
++      z-index: 2;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -112,10 +170,25 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      contain: layout style paint;
+     }
+ 
++    .card-img {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++      background-color: var(--secondary);
++    }
++
++    .section-title {
++      text-align: center;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -139,8 +212,10 @@
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      content-visibility: auto;
++      contain-intrinsic-size: auto 150px;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -168,28 +243,84 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <picture>
++      <source
++        type="image/avif"
++        srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=640&q=80 640w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=1024&q=80 1024w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=1350&q=80 1350w"
++        sizes="100vw"
++      >
++      <source
++        type="image/webp"
++        srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=webp&fit=crop&w=640&q=80 640w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=webp&fit=crop&w=1024&q=80 1024w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=webp&fit=crop&w=1350&q=80 1350w"
++        sizes="100vw"
++      >
++      <img
++        class="hero-img"
++        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++        srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=80 640w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1024&q=80 1024w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w"
++        sizes="100vw"
++        alt="Artisanal coffee being poured at The Daily Grind"
++        width="1350"
++        height="900"
++        fetchpriority="high"
++        decoding="async"
++      >
++    </picture>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++            srcset="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80 800w"
++            sizes="(max-width: 600px) 100vw, 350px"
++            alt="Maple Oat Latte with latte art"
++            width="600"
++            height="450"
++            loading="lazy"
++            decoding="async"
++          >
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++            srcset="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80 800w"
++            sizes="(max-width: 600px) 100vw, 350px"
++            alt="Rich shot of Dark Roast Espresso"
++            width="600"
++            height="450"
++            loading="lazy"
++            decoding="async"
++          >
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++            srcset="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80 800w"
++            sizes="(max-width: 600px) 100vw, 350px"
++            alt="Iced Cold Brew coffee in a glass"
++            width="600"
++            height="450"
++            loading="lazy"
++            decoding="async"
++          >
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

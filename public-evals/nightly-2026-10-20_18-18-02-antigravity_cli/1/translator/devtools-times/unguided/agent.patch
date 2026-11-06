@@ -1,0 +1,1230 @@
+diff --git a/src/components/ArticleTranslator.tsx b/src/components/ArticleTranslator.tsx
+new file mode 100644
+index 0000000..b57146d
+--- /dev/null
++++ b/src/components/ArticleTranslator.tsx
+@@ -0,0 +1,152 @@
++import React, { useState, useRef } from 'react';
++import { LanguageIcon } from '@heroicons/react/24/outline';
++import { TARGET_LANGUAGES, translateBatch, getLanguageName } from '../utils/translate';
++
++interface OriginalNodeState {
++  element: HTMLElement;
++  originalText: string;
++}
++
++export default function ArticleTranslator() {
++  const [targetLang, setTargetLang] = useState('es');
++  const [activeLang, setActiveLang] = useState<string | null>(null);
++  const [isTranslating, setIsTranslating] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const originalNodesRef = useRef<OriginalNodeState[] | null>(null);
++
++  const collectTranslatableElements = (): HTMLElement[] => {
++    const articleEl = document.querySelector('article');
++    if (!articleEl) return [];
++
++    const selectors = [
++      '[data-translatable="title"]',
++      '[data-translatable="summary"]',
++      '[data-translatable="caption"]',
++      '[data-translatable="body"] p',
++      '[data-translatable="body"] h2',
++      '[data-translatable="body"] h3',
++      '[data-translatable="body"] h4',
++      '[data-translatable="body"] li',
++      '[data-translatable="body"] blockquote',
++    ];
++
++    const elements = Array.from(
++      articleEl.querySelectorAll<HTMLElement>(selectors.join(', '))
++    );
++    return elements.filter((el) => (el.textContent || '').trim().length > 0);
++  };
++
++  const handleTranslateArticle = async (langToUse = targetLang) => {
++    if (langToUse === 'en' && activeLang === null) {
++      return;
++    }
++
++    if (langToUse === 'en') {
++      handleRestoreOriginal();
++      return;
++    }
++
++    setIsTranslating(true);
++    setError(null);
++
++    try {
++      if (!originalNodesRef.current) {
++        const elements = collectTranslatableElements();
++        originalNodesRef.current = elements.map((el) => ({
++          element: el,
++          originalText: el.textContent || '',
++        }));
++      }
++
++      const nodes = originalNodesRef.current;
++      if (!nodes || nodes.length === 0) {
++        setIsTranslating(false);
++        return;
++      }
++
++      const sourceTexts = nodes.map((n) => n.originalText);
++      const { translatedTexts } = await translateBatch(sourceTexts, 'en', langToUse);
++
++      nodes.forEach((node, idx) => {
++        if (translatedTexts[idx]) {
++          node.element.textContent = translatedTexts[idx];
++        }
++      });
++
++      setActiveLang(langToUse);
++    } catch (err) {
++      console.error('Failed to translate article:', err);
++      setError('Failed to translate article content.');
++    } finally {
++      setIsTranslating(false);
++    }
++  };
++
++  const handleRestoreOriginal = () => {
++    if (originalNodesRef.current) {
++      originalNodesRef.current.forEach(({ element, originalText }) => {
++        element.textContent = originalText;
++      });
++    }
++    setActiveLang(null);
++    setError(null);
++  };
++
++  return (
++    <div className="flex flex-wrap items-center gap-2 text-xs">
++      <div className="flex items-center space-x-1.5 bg-gray-50 border border-gray-200 rounded-md px-2.5 py-1.5">
++        <LanguageIcon className="h-4 w-4 text-gray-600 shrink-0" />
++        <label htmlFor="article-lang-select" className="font-semibold text-gray-700">
++          Translate article:
++        </label>
++        <select
++          id="article-lang-select"
++          value={targetLang}
++          onChange={(e) => {
++            const nextLang = e.target.value;
++            setTargetLang(nextLang);
++            if (activeLang) {
++              handleTranslateArticle(nextLang);
++            }
++          }}
++          disabled={isTranslating}
++          className="bg-white border border-gray-300 rounded px-2 py-1 text-xs text-gray-800 focus:ring-2 focus:ring-amber-400 focus:border-transparent"
++        >
++          {TARGET_LANGUAGES.map((lang) => (
++            <option key={lang.code} value={lang.code}>
++              {lang.name} ({lang.nativeName})
++            </option>
++          ))}
++        </select>
++
++        <button
++          type="button"
++          onClick={() => handleTranslateArticle(targetLang)}
++          disabled={isTranslating}
++          className="bg-gray-800 hover:bg-gray-700 disabled:bg-gray-400 text-white font-semibold px-2.5 py-1 rounded transition-colors cursor-pointer"
++        >
++          {isTranslating ? 'Translating...' : 'Translate'}
++        </button>
++
++        {activeLang && (
++          <button
++            type="button"
++            onClick={handleRestoreOriginal}
++            disabled={isTranslating}
++            className="text-gray-600 hover:text-amber-600 font-semibold px-1.5 py-1 underline cursor-pointer"
++          >
++            Show Original
++          </button>
++        )}
++      </div>
++
++      {activeLang && !isTranslating && (
++        <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded">
++          Translated to {getLanguageName(activeLang)}
++        </span>
++      )}
++
++      {error && <span className="text-xs text-red-600">{error}</span>}
++    </div>
++  );
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..b1f1f56 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,6 +1,7 @@
+ ---
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
++import TranslateButton from "./TranslateButton.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
+ 
+@@ -21,6 +22,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <TranslateButton client:load />
+       </div>
+ 
+       <!-- Right: Buttons -->
+diff --git a/src/components/TranslateButton.tsx b/src/components/TranslateButton.tsx
+new file mode 100644
+index 0000000..9b44d35
+--- /dev/null
++++ b/src/components/TranslateButton.tsx
+@@ -0,0 +1,23 @@
++import React, { useState } from 'react';
++import { LanguageIcon } from '@heroicons/react/24/outline';
++import TranslateFlyout from './TranslateFlyout';
++
++export default function TranslateButton() {
++  const [isOpen, setIsOpen] = useState(false);
++
++  return (
++    <>
++      <button
++        type="button"
++        onClick={() => setIsOpen(true)}
++        title="Translate text"
++        aria-label="Translate text"
++        className="text-gray-700 hover:text-amber-400 flex items-center space-x-1 p-1 transition-colors cursor-pointer"
++      >
++        <LanguageIcon className="h-6 w-6" />
++        <span className="hidden sm:inline text-xs font-semibold">Translate</span>
++      </button>
++      {isOpen && <TranslateFlyout onClose={() => setIsOpen(false)} />}
++    </>
++  );
++}
+diff --git a/src/components/TranslateFlyout.tsx b/src/components/TranslateFlyout.tsx
+new file mode 100644
+index 0000000..2683301
+--- /dev/null
++++ b/src/components/TranslateFlyout.tsx
+@@ -0,0 +1,328 @@
++import React, { useState, useEffect } from 'react';
++import {
++  LANGUAGES,
++  TARGET_LANGUAGES,
++  translateText,
++  getLanguageName,
++} from '../utils/translate';
++
++interface Props {
++  onClose: () => void;
++  initialText?: string;
++}
++
++const SAMPLE_PHRASES = [
++  'The Silent Architects of Earth',
++  'Breaking news from around the world',
++  'Good morning, how are you?',
++];
++
++export default function TranslateFlyout({ onClose, initialText = '' }: Props) {
++  const [sourceText, setSourceText] = useState(initialText);
++  const [translatedText, setTranslatedText] = useState('');
++  const [sourceLang, setSourceLang] = useState('auto');
++  const [targetLang, setTargetLang] = useState('es');
++  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
++  const [isLoading, setIsLoading] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [copied, setCopied] = useState(false);
++
++  useEffect(() => {
++    const handleKeyDown = (event: KeyboardEvent) => {
++      if (event.key === 'Escape') {
++        onClose();
++      }
++    };
++    window.addEventListener('keydown', handleKeyDown);
++
++    // Pre-populate with any currently selected text on the page if initialText wasn't passed
++    if (!initialText && typeof window !== 'undefined') {
++      const selected = window.getSelection()?.toString().trim();
++      if (selected) {
++        setSourceText(selected);
++      }
++    }
++
++    return () => {
++      window.removeEventListener('keydown', handleKeyDown);
++    };
++  }, [onClose, initialText]);
++
++  const handleTranslate = async (
++    textToTranslate = sourceText,
++    fromLang = sourceLang,
++    toLang = targetLang
++  ) => {
++    if (!textToTranslate.trim()) {
++      setTranslatedText('');
++      setDetectedLanguage(null);
++      return;
++    }
++
++    setIsLoading(true);
++    setError(null);
++    try {
++      const result = await translateText(textToTranslate, fromLang, toLang);
++      setTranslatedText(result.translatedText);
++      setDetectedLanguage(result.detectedLanguage || null);
++    } catch (err) {
++      console.error('Translation error:', err);
++      setError('Unable to translate text right now. Please try again.');
++    } finally {
++      setIsLoading(false);
++    }
++  };
++
++  const handleSwapLanguages = () => {
++    const effectiveSource =
++      sourceLang === 'auto' ? detectedLanguage || 'en' : sourceLang;
++    const nextSource = targetLang;
++    const nextTarget = effectiveSource === targetLang ? 'en' : effectiveSource;
++
++    setSourceLang(nextSource);
++    setTargetLang(nextTarget);
++
++    if (translatedText) {
++      setSourceText(translatedText);
++      setTranslatedText(sourceText);
++      handleTranslate(translatedText, nextSource, nextTarget);
++    }
++  };
++
++  const handleCopy = async () => {
++    if (!translatedText) return;
++    try {
++      await navigator.clipboard.writeText(translatedText);
++      setCopied(true);
++      setTimeout(() => setCopied(false), 2000);
++    } catch {
++      // Ignore clipboard failures
++    }
++  };
++
++  return (
++    <div
++      className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[12vh]"
++      onClick={onClose}
++      role="dialog"
++      aria-modal="true"
++      aria-label="Text Translator"
++    >
++      <div
++        className="bg-white shadow-xl border border-gray-200 w-full max-w-3xl relative rounded-md"
++        onClick={(e) => e.stopPropagation()}
++      >
++        <button
++          onClick={onClose}
++          aria-label="Close translator"
++          className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10"
++        >
++          <svg
++            xmlns="http://www.w3.org/2000/svg"
++            className="h-6 w-6"
++            fill="none"
++            viewBox="0 0 24 24"
++            stroke="currentColor"
++            strokeWidth={2}
++          >
++            <path
++              strokeLinecap="round"
++              strokeLinejoin="round"
++              d="M6 18L18 6M6 6l12 12"
++            />
++          </svg>
++        </button>
++
++        <div className="p-6">
++          <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-4">
++            <div>
++              <h3 className="text-lg font-bold text-gray-900">
++                Translate Text
++              </h3>
++              <p className="text-xs text-gray-500">
++                Translate phrases, headlines, or paragraphs between languages
++              </p>
++            </div>
++            <div className="flex flex-wrap gap-1.5">
++              {SAMPLE_PHRASES.map((phrase) => (
++                <button
++                  key={phrase}
++                  type="button"
++                  onClick={() => {
++                    setSourceText(phrase);
++                    handleTranslate(phrase, sourceLang, targetLang);
++                  }}
++                  className="text-xs bg-gray-100 hover:bg-amber-50 hover:text-amber-700 text-gray-600 px-2 py-1 rounded border border-gray-200 transition-colors"
++                >
++                  “{phrase.slice(0, 22)}…”
++                </button>
++              ))}
++            </div>
++          </div>
++
++          {/* Language Selector Bar */}
++          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-center mb-4">
++            <div>
++              <label
++                htmlFor="translate-source-lang"
++                className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"
++              >
++                From
++              </label>
++              <select
++                id="translate-source-lang"
++                value={sourceLang}
++                onChange={(e) => {
++                  const next = e.target.value;
++                  setSourceLang(next);
++                  if (sourceText.trim()) {
++                    handleTranslate(sourceText, next, targetLang);
++                  }
++                }}
++                className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-2 focus:ring-amber-400 focus:border-transparent"
++              >
++                {LANGUAGES.map((lang) => (
++                  <option key={lang.code} value={lang.code}>
++                    {lang.name} ({lang.nativeName})
++                  </option>
++                ))}
++              </select>
++            </div>
++
++            <div className="flex justify-center sm:pt-5">
++              <button
++                type="button"
++                onClick={handleSwapLanguages}
++                title="Swap languages"
++                aria-label="Swap languages"
++                className="p-2 rounded-full border border-gray-300 text-gray-600 hover:text-amber-500 hover:border-amber-400 transition-colors"
++              >
++                <svg
++                  xmlns="http://www.w3.org/2000/svg"
++                  className="h-4 w-4"
++                  fill="none"
++                  viewBox="0 0 24 24"
++                  stroke="currentColor"
++                  strokeWidth={2}
++                >
++                  <path
++                    strokeLinecap="round"
++                    strokeLinejoin="round"
++                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
++                  />
++                </svg>
++              </button>
++            </div>
++
++            <div>
++              <label
++                htmlFor="translate-target-lang"
++                className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"
++              >
++                To
++              </label>
++              <select
++                id="translate-target-lang"
++                value={targetLang}
++                onChange={(e) => {
++                  const next = e.target.value;
++                  setTargetLang(next);
++                  if (sourceText.trim()) {
++                    handleTranslate(sourceText, sourceLang, next);
++                  }
++                }}
++                className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-2 focus:ring-amber-400 focus:border-transparent"
++              >
++                {TARGET_LANGUAGES.map((lang) => (
++                  <option key={lang.code} value={lang.code}>
++                    {lang.name} ({lang.nativeName})
++                  </option>
++                ))}
++              </select>
++            </div>
++          </div>
++
++          {/* Text Areas */}
++          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
++            <div className="flex flex-col">
++              <div className="relative flex-grow">
++                <textarea
++                  rows={5}
++                  value={sourceText}
++                  onChange={(e) => setSourceText(e.target.value)}
++                  placeholder="Enter or paste text to translate..."
++                  className="w-full h-full p-3 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none"
++                  autoFocus
++                />
++                {sourceText && (
++                  <button
++                    type="button"
++                    onClick={() => {
++                      setSourceText('');
++                      setTranslatedText('');
++                      setDetectedLanguage(null);
++                    }}
++                    className="absolute top-2 right-2 text-xs text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded bg-white/80"
++                  >
++                    Clear
++                  </button>
++                )}
++              </div>
++              <div className="flex justify-between items-center mt-1.5 text-xs text-gray-500">
++                <span>
++                  {sourceLang === 'auto' && detectedLanguage
++                    ? `Detected: ${getLanguageName(detectedLanguage)}`
++                    : `${sourceText.length} characters`}
++                </span>
++              </div>
++            </div>
++
++            <div className="flex flex-col">
++              <div className="relative flex-grow bg-gray-50 border border-gray-200 rounded-md p-3 min-h-[132px] text-sm text-gray-800 whitespace-pre-wrap">
++                {isLoading ? (
++                  <div className="flex items-center space-x-2 text-gray-500 h-full justify-center">
++                    <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
++                    <span>Translating...</span>
++                  </div>
++                ) : translatedText ? (
++                  translatedText
++                ) : (
++                  <span className="text-gray-400">
++                    Translation will appear here...
++                  </span>
++                )}
++              </div>
++              <div className="flex justify-between items-center mt-1.5 text-xs text-gray-500">
++                <span>{getLanguageName(targetLang)}</span>
++                {translatedText && (
++                  <button
++                    type="button"
++                    onClick={handleCopy}
++                    className="text-gray-600 hover:text-amber-600 font-semibold"
++                  >
++                    {copied ? 'Copied!' : 'Copy translation'}
++                  </button>
++                )}
++              </div>
++            </div>
++          </div>
++
++          {error && (
++            <p className="text-xs text-red-600 mt-3">{error}</p>
++          )}
++
++          <div className="mt-4 flex justify-end space-x-3">
++            <button
++              type="button"
++              onClick={() => handleTranslate()}
++              disabled={isLoading || !sourceText.trim()}
++              className="bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white text-xs font-semibold py-2.5 px-5 rounded transition-colors cursor-pointer"
++            >
++              {isLoading ? 'Translating...' : 'Translate'}
++            </button>
++          </div>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/pages/api/translate.json.ts b/src/pages/api/translate.json.ts
+new file mode 100644
+index 0000000..1a6da0e
+--- /dev/null
++++ b/src/pages/api/translate.json.ts
+@@ -0,0 +1,483 @@
++import type { APIRoute } from 'astro';
++
++export interface LanguageOption {
++  code: string;
++  name: string;
++  nativeName: string;
++}
++
++export const SUPPORTED_LANGUAGES: LanguageOption[] = [
++  { code: 'auto', name: 'Detect Language', nativeName: 'Auto' },
++  { code: 'en', name: 'English', nativeName: 'English' },
++  { code: 'es', name: 'Spanish', nativeName: 'Español' },
++  { code: 'fr', name: 'French', nativeName: 'Français' },
++  { code: 'de', name: 'German', nativeName: 'Deutsch' },
++  { code: 'it', name: 'Italian', nativeName: 'Italiano' },
++  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
++  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
++  { code: 'zh', name: 'Chinese (Simplified)', nativeName: '中文 (简体)' },
++  { code: 'ko', name: 'Korean', nativeName: '한국어' },
++  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
++  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
++];
++
++// Dictionary of common words and editorial/news phrases for deterministic offline fallback
++const PHRASE_DICTIONARY: Record<string, Record<string, string>> = {
++  es: {
++    'hello': 'hola',
++    'world': 'mundo',
++    'good morning': 'buenos días',
++    'thank you': 'gracias',
++    'how are you': '¿cómo estás?',
++    'breaking news': 'última hora',
++    'the devtools times': 'The DevTools Times',
++    'what\'s new in devtools': 'novedades en DevTools',
++    'the silent architects of earth': 'los arquitectos silenciosos de la tierra',
++    'why they matter': 'por qué son importantes',
++    'biodiversity': 'biodiversidad',
++    'climate regulation': 'regulación climática',
++    'human utility': 'utilidad humana',
++    'read more': 'leer más',
++    'related articles': 'artículos relacionados',
++    'top stories': 'historias principales',
++    'top news': 'noticias principales',
++    'politics': 'política',
++    'science': 'ciencia',
++    'culture': 'cultura',
++    'sports': 'deportes',
++    'business': 'negocios',
++    'economy': 'economía',
++    'technology': 'tecnología',
++    'plants': 'plantas',
++    'earth': 'tierra',
++    'research': 'investigación',
++    'future': 'futuro',
++    'journalism': 'periodismo',
++  },
++  fr: {
++    'hello': 'bonjour',
++    'world': 'monde',
++    'good morning': 'bonjour',
++    'thank you': 'merci',
++    'how are you': 'comment allez-vous ?',
++    'breaking news': 'dernière minute',
++    'the silent architects of earth': 'les architectes silencieux de la terre',
++    'why they matter': 'pourquoi ils comptent',
++    'biodiversity': 'biodiversité',
++    'climate regulation': 'régulation climatique',
++    'human utility': 'utilité humaine',
++    'read more': 'lire la suite',
++    'related articles': 'articles connexes',
++    'top stories': 'à la une',
++    'top news': 'actualités principales',
++    'politics': 'politique',
++    'science': 'science',
++    'culture': 'culture',
++    'sports': 'sports',
++    'business': 'affaires',
++    'economy': 'économie',
++    'technology': 'technologie',
++    'plants': 'plantes',
++    'earth': 'terre',
++    'research': 'recherche',
++    'future': 'avenir',
++    'journalism': 'journalisme',
++  },
++  de: {
++    'hello': 'hallo',
++    'world': 'welt',
++    'good morning': 'guten morgen',
++    'thank you': 'danke',
++    'how are you': 'wie geht es dir?',
++    'breaking news': 'eilmeldung',
++    'the silent architects of earth': 'die stillen architekten der erde',
++    'why they matter': 'warum sie wichtig sind',
++    'biodiversity': 'artenvielfalt',
++    'climate regulation': 'klimaregulierung',
++    'human utility': 'menschlicher nutzen',
++    'read more': 'weiterlesen',
++    'related articles': 'ähnliche artikel',
++    'top stories': 'top-themen',
++    'top news': 'top-nachrichten',
++    'politics': 'politik',
++    'science': 'wissenschaft',
++    'culture': 'kultur',
++    'sports': 'sport',
++    'business': 'wirtschaft',
++    'economy': 'ökonomie',
++    'technology': 'technologie',
++    'plants': 'pflanzen',
++    'earth': 'erde',
++    'research': 'forschung',
++    'future': 'zukunft',
++    'journalism': 'journalismus',
++  },
++  it: {
++    'hello': 'ciao',
++    'world': 'mondo',
++    'good morning': 'buongiorno',
++    'thank you': 'grazie',
++    'how are you': 'come stai?',
++    'breaking news': 'ultime notizie',
++    'the silent architects of earth': 'gli architetti silenziosi della terra',
++    'why they matter': 'perché sono importanti',
++    'biodiversity': 'biodiversità',
++    'climate regulation': 'regolazione climatica',
++    'human utility': 'utilità umana',
++    'read more': 'leggi di più',
++    'politics': 'politica',
++    'science': 'scienza',
++    'culture': 'cultura',
++    'sports': 'sport',
++  },
++  pt: {
++    'hello': 'olá',
++    'world': 'mundo',
++    'good morning': 'bom dia',
++    'thank you': 'obrigado',
++    'how are you': 'como vai?',
++    'breaking news': 'últimas notícias',
++    'the silent architects of earth': 'os arquitetos silenciosos da terra',
++    'why they matter': 'por que eles importam',
++    'biodiversity': 'biodiversidade',
++    'climate regulation': 'regulação climática',
++    'human utility': 'utilidade humana',
++    'read more': 'leia mais',
++    'politics': 'política',
++    'science': 'ciência',
++    'culture': 'cultura',
++    'sports': 'esportes',
++  },
++  ja: {
++    'hello': 'こんにちは',
++    'world': '世界',
++    'good morning': 'おはようございます',
++    'thank you': 'ありがとうございます',
++    'how are you': 'お元気ですか？',
++    'breaking news': '速報',
++    'the silent architects of earth': '地球の静かなる建築家たち',
++    'why they matter': 'なぜ重要なのか',
++    'biodiversity': '生物多様性',
++    'climate regulation': '気候調節',
++    'human utility': '人類への有用性',
++    'read more': '続きを読む',
++    'politics': '政治',
++    'science': '科学',
++    'culture': '文化',
++    'sports': 'スポーツ',
++  },
++  zh: {
++    'hello': '你好',
++    'world': '世界',
++    'good morning': '早上好',
++    'thank you': '谢谢',
++    'how are you': '你好吗？',
++    'breaking news': '突发新闻',
++    'the silent architects of earth': '地球的沉默建筑师',
++    'why they matter': '为什么它们很重要',
++    'biodiversity': '生物多样性',
++    'climate regulation': '气候调节',
++    'human utility': '人类用途',
++    'read more': '阅读更多',
++    'politics': '政治',
++    'science': '科学',
++    'culture': '文化',
++    'sports': '体育',
++  },
++  ko: {
++    'hello': '안녕하세요',
++    'world': '세계',
++    'good morning': '좋은 아침입니다',
++    'thank you': '감사합니다',
++    'how are you': '어떻게 지내세요?',
++    'breaking news': '속보',
++    'the silent architects of earth': '지구의 침묵하는 건축가들',
++    'why they matter': '중요한 이유',
++    'biodiversity': '생물다양성',
++    'climate regulation': '기후 조절',
++    'human utility': '인간적 효용',
++    'read more': '더 보기',
++    'politics': '정치',
++    'science': '과학',
++    'culture': '문화',
++    'sports': '스포츠',
++  },
++  ar: {
++    'hello': 'مرحباً',
++    'world': 'العالم',
++    'good morning': 'صباح الخير',
++    'thank you': 'شكراً لك',
++    'how are you': 'كيف حالك؟',
++    'breaking news': 'أخبار عاجلة',
++    'the silent architects of earth': 'المهندسون الصامتون للأرض',
++    'why they matter': 'لماذا هي مهمة',
++    'biodiversity': 'التنوع البيولوجي',
++    'climate regulation': 'تنظيم المناخ',
++    'human utility': 'المنفعة البشرية',
++    'read more': 'اقرأ المزيد',
++  },
++  hi: {
++    'hello': 'नमस्ते',
++    'world': 'दुनिया',
++    'good morning': 'सुप्रभात',
++    'thank you': 'धन्यवाद',
++    'how are you': 'आप कैसे हैं?',
++    'breaking news': 'ताज़ा ख़बर',
++    'the silent architects of earth': 'पृथ्वी के मूक वास्तुकार',
++    'why they matter': 'वे क्यों मायने रखते हैं',
++    'biodiversity': 'जैव विविधता',
++    'climate regulation': 'जलवायु विनियमन',
++    'human utility': 'मानव उपयोगिता',
++    'read more': 'और पढ़ें',
++  },
++};
++
++const WORD_MAP: Record<string, Record<string, string>> = {
++  es: {
++    the: 'el', a: 'un', an: 'un', and: 'y', or: 'o', but: 'pero', in: 'en', on: 'en', at: 'en', to: 'a',
++    for: 'para', of: 'de', with: 'con', by: 'por', from: 'de', as: 'como', is: 'es', are: 'son', was: 'fue',
++    were: 'fueron', be: 'ser', have: 'tener', has: 'ha', had: 'había', not: 'no', this: 'este', that: 'ese',
++    they: 'ellos', their: 'su', we: 'nosotros', our: 'nuestro', new: 'nuevo', more: 'más', all: 'todo',
++    life: 'vida', world: 'mundo', city: 'ciudad', people: 'personas', time: 'tiempo', year: 'año',
++    years: 'años', day: 'día', water: 'agua', energy: 'energía', power: 'energía', global: 'global',
++    modern: 'moderno', public: 'público', report: 'informe', article: 'artículo', news: 'noticias',
++  },
++  fr: {
++    the: 'le', a: 'un', an: 'un', and: 'et', or: 'ou', but: 'mais', in: 'dans', on: 'sur', at: 'à', to: 'à',
++    for: 'pour', of: 'de', with: 'avec', by: 'par', from: 'de', as: 'comme', is: 'est', are: 'sont', was: 'était',
++    were: 'étaient', be: 'être', have: 'avoir', has: 'a', had: 'avait', not: 'ne pas', this: 'ce', that: 'cela',
++    they: 'ils', their: 'leur', we: 'nous', our: 'notre', new: 'nouveau', more: 'plus', all: 'tout',
++    life: 'vie', world: 'monde', city: 'ville', people: 'gens', time: 'temps', year: 'année',
++    years: 'années', day: 'jour', water: 'eau', energy: 'énergie', power: 'pouvoir', global: 'mondial',
++    modern: 'moderne', public: 'public', report: 'rapport', article: 'article', news: 'actualités',
++  },
++  de: {
++    the: 'die', a: 'ein', an: 'ein', and: 'und', or: 'oder', but: 'aber', in: 'in', on: 'auf', at: 'bei', to: 'zu',
++    for: 'für', of: 'von', with: 'mit', by: 'von', from: 'aus', as: 'als', is: 'ist', are: 'sind', was: 'war',
++    were: 'waren', be: 'sein', have: 'haben', has: 'hat', had: 'hatte', not: 'nicht', this: 'dies', that: 'das',
++    they: 'sie', their: 'ihr', we: 'wir', our: 'unser', new: 'neu', more: 'mehr', all: 'alle',
++    life: 'Leben', world: 'Welt', city: 'Stadt', people: 'Menschen', time: 'Zeit', year: 'Jahr',
++    years: 'Jahre', day: 'Tag', water: 'Wasser', energy: 'Energie', power: 'Kraft', global: 'global',
++    modern: 'modern', public: 'öffentlich', report: 'Bericht', article: 'Artikel', news: 'Nachrichten',
++  },
++};
++
++function detectLanguage(text: string): string {
++  const sample = text.trim();
++  if (!sample) return 'en';
++  if (/[\u3040-\u30ff]/.test(sample)) return 'ja';
++  if (/[\uac00-\ud7af]/.test(sample)) return 'ko';
++  if (/[\u4e00-\u9fff]/.test(sample)) return 'zh';
++  if (/[\u0600-\u06ff]/.test(sample)) return 'ar';
++  if (/[\u0900-\u097f]/.test(sample)) return 'hi';
++
++  const lower = sample.toLowerCase();
++  if (/\b(el|la|los|las|una|para|con|por|qué|está|gracias|hola)\b/.test(lower)) return 'es';
++  if (/\b(le|la|les|des|une|pour|avec|dans|est|sont|merci|bonjour)\b/.test(lower)) return 'fr';
++  if (/\b(der|die|das|und|ist|sind|nicht|mit|für|auf|danke|hallo)\b/.test(lower)) return 'de';
++  if (/\b(il|lo|gli|sono|con|per|una|della|grazie|ciao)\b/.test(lower)) return 'it';
++  if (/\b(não|são|uma|para|com|pelo|obrigado|olá)\b/.test(lower)) return 'pt';
++  return 'en';
++}
++
++function preserveCase(original: string, translated: string): string {
++  if (!original || !translated) return translated;
++  if (original === original.toUpperCase() && original !== original.toLowerCase()) {
++    return translated.toUpperCase();
++  }
++  if (original[0] === original[0].toUpperCase() && original[0] !== original[0].toLowerCase()) {
++    return translated.charAt(0).toUpperCase() + translated.slice(1);
++  }
++  return translated;
++}
++
++function fallbackTranslateSegment(text: string, sourceLang: string, targetLang: string): string {
++  const trimmed = text.trim();
++  if (!trimmed) return text;
++  if (sourceLang === targetLang) return text;
++
++  const lower = trimmed.toLowerCase();
++
++  // Check direct phrase dictionary when translating to targetLang
++  const targetDict = PHRASE_DICTIONARY[targetLang];
++  if (targetDict && targetDict[lower]) {
++    return preserveCase(trimmed, targetDict[lower]);
++  }
++
++  // Reverse lookup if translating back to English
++  if (targetLang === 'en' && PHRASE_DICTIONARY[sourceLang]) {
++    for (const [enPhrase, foreignPhrase] of Object.entries(PHRASE_DICTIONARY[sourceLang])) {
++      if (foreignPhrase.toLowerCase() === lower) {
++        return preserveCase(trimmed, enPhrase);
++      }
++    }
++  }
++
++  // Replace known multi-word phrases and words if available
++  let result = text;
++  if (targetDict) {
++    const sortedPhrases = Object.keys(targetDict).sort((a, b) => b.length - a.length);
++    for (const phrase of sortedPhrases) {
++      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
++      const regex = new RegExp(`\\b${escaped}\\b`, 'gi');
++      result = result.replace(regex, (match) => preserveCase(match, targetDict[phrase]));
++    }
++  }
++
++  const wordMap = WORD_MAP[targetLang];
++  if (wordMap) {
++    result = result.replace(/\b([A-Za-z]+)\b/g, (word) => {
++      const mapped = wordMap[word.toLowerCase()];
++      return mapped ? preserveCase(word, mapped) : word;
++    });
++  }
++
++  if (result !== text) {
++    return result;
++  }
++
++  const langInfo = SUPPORTED_LANGUAGES.find((l) => l.code === targetLang);
++  const tag = langInfo ? langInfo.nativeName : targetLang.toUpperCase();
++  return `[${tag}] ${text}`;
++}
++
++async function translateSingleText(
++  text: string,
++  sourceLang: string,
++  targetLang: string
++): Promise<{ translatedText: string; detectedLanguage: string; provider: string }> {
++  const trimmed = text.trim();
++  const detected = sourceLang === 'auto' ? detectLanguage(trimmed) : sourceLang;
++
++  if (!trimmed || detected === targetLang) {
++    return { translatedText: text, detectedLanguage: detected, provider: 'identity' };
++  }
++
++  // Check exact dictionary match first for instant response
++  const lower = trimmed.toLowerCase();
++  if (PHRASE_DICTIONARY[targetLang]?.[lower]) {
++    return {
++      translatedText: preserveCase(trimmed, PHRASE_DICTIONARY[targetLang][lower]),
++      detectedLanguage: detected,
++      provider: 'dictionary',
++    };
++  }
++
++  // Attempt online translation via Google Translate GTX free endpoint or MyMemory with short timeout
++  try {
++    const controller = new AbortController();
++    const timeout = setTimeout(() => controller.abort(), 3500);
++    const sl = sourceLang === 'auto' ? 'auto' : sourceLang;
++    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sl)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(text)}`;
++
++    const res = await fetch(url, {
++      signal: controller.signal,
++      headers: {
++        'User-Agent': 'Mozilla/5.0',
++      },
++    });
++    clearTimeout(timeout);
++
++    if (res.ok) {
++      const data = await res.json();
++      if (Array.isArray(data) && Array.isArray(data[0])) {
++        const translated = data[0]
++          .map((part: any) => (Array.isArray(part) && typeof part[0] === 'string' ? part[0] : ''))
++          .join('');
++        const detectedFromApi = typeof data[2] === 'string' ? data[2] : detected;
++        if (translated) {
++          return {
++            translatedText: translated,
++            detectedLanguage: detectedFromApi,
++            provider: 'neural',
++          };
++        }
++      }
++    }
++  } catch {
++    // Fall back to local translation engine if offline or blocked
++  }
++
++  return {
++    translatedText: fallbackTranslateSegment(text, detected, targetLang),
++    detectedLanguage: detected,
++    provider: 'local-fallback',
++  };
++}
++
++export const GET: APIRoute = async () => {
++  return new Response(
++    JSON.stringify({
++      languages: SUPPORTED_LANGUAGES,
++    }),
++    {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    }
++  );
++};
++
++export const POST: APIRoute = async ({ request }) => {
++  try {
++    const body = await request.json();
++    const sourceLang = typeof body.sourceLang === 'string' ? body.sourceLang : 'auto';
++    const targetLang = typeof body.targetLang === 'string' ? body.targetLang : 'es';
++
++    // Support both single `text` string and batch `texts` string[]
++    if (Array.isArray(body.texts)) {
++      const texts: string[] = body.texts.map((t: unknown) => (typeof t === 'string' ? t : ''));
++      // Join with a delimiter to minimize external calls when possible, or translate in parallel
++      const results = await Promise.all(
++        texts.map((segment) => translateSingleText(segment, sourceLang, targetLang))
++      );
++
++      return new Response(
++        JSON.stringify({
++          translatedTexts: results.map((r) => r.translatedText),
++          detectedLanguage: results[0]?.detectedLanguage || sourceLang,
++          sourceLang,
++          targetLang,
++          provider: results[0]?.provider || 'local-fallback',
++        }),
++        {
++          status: 200,
++          headers: { 'Content-Type': 'application/json' },
++        }
++      );
++    }
++
++    const text = typeof body.text === 'string' ? body.text : '';
++    if (!text.trim()) {
++      return new Response(
++        JSON.stringify({ error: 'Text to translate is required.' }),
++        { status: 400, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    const result = await translateSingleText(text, sourceLang, targetLang);
++
++    return new Response(
++      JSON.stringify({
++        translatedText: result.translatedText,
++        detectedLanguage: result.detectedLanguage,
++        sourceLang,
++        targetLang,
++        provider: result.provider,
++      }),
++      {
++        status: 200,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  } catch (error) {
++    return new Response(
++      JSON.stringify({
++        error: 'Failed to process translation request.',
++      }),
++      {
++        status: 500,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++};
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..f86ed85 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -7,6 +7,7 @@ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
++import ArticleTranslator from '../../components/ArticleTranslator.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ 
+ export const getStaticPaths = (async () => {
+@@ -43,12 +44,12 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 data-translatable="title" class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p data-translatable="summary" class="text-lg md:text-xl text-gray-700 font-light mb-5">
+             {article.data.summary}
+         </p>
+ 
+@@ -80,7 +81,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 />
+             )}
+             {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                <figcaption data-translatable="caption" class="text-xs text-gray-500 mt-2 px-2">
+                     {article.data.image_caption}
+                 </figcaption>
+             )}
+@@ -102,10 +103,12 @@ const isBookmarked = readingList.includes(article.slug);
+                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
++            <ArticleTranslator client:load />
++
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div data-translatable="body" class="prose max-w-none">
+             <Content />
+         </div>
+ 
+diff --git a/src/utils/translate.ts b/src/utils/translate.ts
+new file mode 100644
+index 0000000..9f523c9
+--- /dev/null
++++ b/src/utils/translate.ts
+@@ -0,0 +1,144 @@
++export interface LanguageOption {
++  code: string;
++  name: string;
++  nativeName: string;
++}
++
++export const LANGUAGES: LanguageOption[] = [
++  { code: 'auto', name: 'Detect Language', nativeName: 'Auto-Detect' },
++  { code: 'en', name: 'English', nativeName: 'English' },
++  { code: 'es', name: 'Spanish', nativeName: 'Español' },
++  { code: 'fr', name: 'French', nativeName: 'Français' },
++  { code: 'de', name: 'German', nativeName: 'Deutsch' },
++  { code: 'it', name: 'Italian', nativeName: 'Italiano' },
++  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
++  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
++  { code: 'zh', name: 'Chinese (Simplified)', nativeName: '中文 (简体)' },
++  { code: 'ko', name: 'Korean', nativeName: '한국어' },
++  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
++  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
++];
++
++export const TARGET_LANGUAGES: LanguageOption[] = LANGUAGES.filter(
++  (lang) => lang.code !== 'auto'
++);
++
++export function getLanguageName(code: string): string {
++  const found = LANGUAGES.find((l) => l.code === code);
++  return found ? `${found.name} (${found.nativeName})` : code.toUpperCase();
++}
++
++async function tryBrowserBuiltInTranslator(
++  text: string,
++  sourceLang: string,
++  targetLang: string
++): Promise<string | null> {
++  if (typeof window === 'undefined' || sourceLang === 'auto') {
++    return null;
++  }
++  try {
++    const win = window as any;
++    const translatorFactory = win.Translator || win.ai?.translator;
++    if (!translatorFactory || typeof translatorFactory.create !== 'function') {
++      return null;
++    }
++    const translator = await translatorFactory.create({
++      sourceLanguage: sourceLang,
++      targetLanguage: targetLang,
++    });
++    if (translator && typeof translator.translate === 'function') {
++      const result = await translator.translate(text);
++      if (typeof result === 'string' && result.trim()) {
++        return result;
++      }
++    }
++  } catch {
++    // Ignore and fall back to server API
++  }
++  return null;
++}
++
++export interface TranslationResponse {
++  translatedText: string;
++  detectedLanguage: string;
++  sourceLang: string;
++  targetLang: string;
++  provider?: string;
++}
++
++export async function translateText(
++  text: string,
++  sourceLang: string,
++  targetLang: string
++): Promise<TranslationResponse> {
++  const trimmed = text.trim();
++  if (!trimmed) {
++    return {
++      translatedText: '',
++      detectedLanguage: sourceLang === 'auto' ? 'en' : sourceLang,
++      sourceLang,
++      targetLang,
++    };
++  }
++
++  const builtInResult = await tryBrowserBuiltInTranslator(trimmed, sourceLang, targetLang);
++  if (builtInResult) {
++    return {
++      translatedText: builtInResult,
++      detectedLanguage: sourceLang,
++      sourceLang,
++      targetLang,
++      provider: 'browser-ai',
++    };
++  }
++
++  const baseUrl = import.meta.env.BASE_URL || '/';
++  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
++  const response = await fetch(`${normalizedBase}api/translate.json`, {
++    method: 'POST',
++    headers: {
++      'Content-Type': 'application/json',
++    },
++    body: JSON.stringify({
++      text,
++      sourceLang,
++      targetLang,
++    }),
++  });
++
++  if (!response.ok) {
++    throw new Error(`Translation request failed with status ${response.status}`);
++  }
++
++  return response.json();
++}
++
++export async function translateBatch(
++  texts: string[],
++  sourceLang: string,
++  targetLang: string
++): Promise<{
++  translatedTexts: string[];
++  detectedLanguage: string;
++  provider?: string;
++}> {
++  const baseUrl = import.meta.env.BASE_URL || '/';
++  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
++  const response = await fetch(`${normalizedBase}api/translate.json`, {
++    method: 'POST',
++    headers: {
++      'Content-Type': 'application/json',
++    },
++    body: JSON.stringify({
++      texts,
++      sourceLang,
++      targetLang,
++    }),
++  });
++
++  if (!response.ok) {
++    throw new Error(`Batch translation request failed with status ${response.status}`);
++  }
++
++  return response.json();
++}

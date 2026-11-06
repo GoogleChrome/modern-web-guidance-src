@@ -1,0 +1,446 @@
+diff --git a/index.html b/index.html
+index 66c9173..6da4478 100644
+--- a/index.html
++++ b/index.html
+@@ -109,10 +109,13 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+@@ -120,6 +123,212 @@
+       color: var(--primary);
+     }
+ 
++    /* Customization Checkboxes */
++    .customizations {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 12px 14px 10px;
++      margin: 16px 0 4px;
++      text-align: left;
++      background-color: var(--light);
++    }
++
++    .customizations legend {
++      font-size: 0.78rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.8px;
++      color: var(--primary);
++      padding: 0 6px;
++    }
++
++    .checkbox-list {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      margin-top: 4px;
++    }
++
++    .custom-checkbox {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      position: relative;
++      padding: 8px 10px;
++      border-radius: 6px;
++      border: 1px solid transparent;
++      background-color: white;
++      cursor: pointer;
++      user-select: none;
++      transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease;
++    }
++
++    .custom-checkbox:hover {
++      border-color: var(--secondary);
++      background-color: #fffbf5;
++    }
++
++    .custom-checkbox:active {
++      transform: scale(0.985);
++    }
++
++    /* Native checkbox kept accessible and functional */
++    .custom-checkbox input[type="checkbox"] {
++      position: absolute;
++      opacity: 0;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .checkbox-left {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .checkbox-box {
++      width: 22px;
++      height: 22px;
++      border: 2px solid var(--secondary);
++      border-radius: 5px;
++      background-color: var(--light);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++      position: relative;
++      transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
++                  border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
++                  transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
++                  box-shadow 0.2s ease;
++    }
++
++    /* Unchecked coffee bean motif inside checkbox */
++    .checkbox-box .bean-icon {
++      width: 12px;
++      height: 12px;
++      fill: var(--secondary);
++      opacity: 0.7;
++      transform: scale(1) rotate(0deg);
++      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
++                  opacity 0.2s ease;
++    }
++
++    /* Checkmark icon inside checkbox */
++    .checkbox-box .check-icon {
++      position: absolute;
++      width: 14px;
++      height: 14px;
++      fill: none;
++      stroke: var(--accent);
++      stroke-width: 2.5;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++      stroke-dasharray: 22;
++      stroke-dashoffset: 22;
++      opacity: 0;
++      transform: scale(0.6);
++      transition: stroke-dashoffset 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
++                  opacity 0.2s ease,
++                  transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
++    }
++
++    .option-icon {
++      width: 16px;
++      height: 16px;
++      color: var(--primary);
++      opacity: 0.75;
++      flex-shrink: 0;
++      transition: color 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
++    }
++
++    .checkbox-label-text {
++      font-size: 0.9rem;
++      color: var(--text);
++      font-weight: 500;
++      transition: color 0.2s ease, font-weight 0.2s ease;
++    }
++
++    .checkbox-badge {
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: var(--primary);
++      background-color: var(--secondary);
++      padding: 2px 7px;
++      border-radius: 12px;
++      transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
++    }
++
++    /* Checked states & animations */
++    .custom-checkbox input[type="checkbox"]:checked ~ .checkbox-left .checkbox-box {
++      background-color: var(--primary);
++      border-color: var(--primary);
++      transform: scale(1.08);
++    }
++
++    .custom-checkbox input[type="checkbox"]:checked ~ .checkbox-left .checkbox-box .bean-icon {
++      opacity: 0;
++      transform: scale(0.3) rotate(-45deg);
++    }
++
++    .custom-checkbox input[type="checkbox"]:checked ~ .checkbox-left .checkbox-box .check-icon {
++      stroke-dashoffset: 0;
++      opacity: 1;
++      transform: scale(1);
++    }
++
++    .custom-checkbox input[type="checkbox"]:checked ~ .checkbox-left .option-icon {
++      color: var(--accent);
++      opacity: 1;
++      transform: scale(1.15) rotate(-6deg);
++    }
++
++    .custom-checkbox input[type="checkbox"]:checked ~ .checkbox-left .checkbox-label-text {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .custom-checkbox input[type="checkbox"]:checked ~ .checkbox-badge {
++      background-color: var(--accent);
++      color: var(--text);
++      transform: scale(1.05);
++    }
++
++    .custom-checkbox:has(input[type="checkbox"]:checked) {
++      border-color: var(--accent);
++      background-color: #fff8ee;
++      box-shadow: 0 2px 6px rgba(78, 52, 46, 0.08);
++    }
++
++    /* Keyboard focus accessibility styles */
++    .custom-checkbox input[type="checkbox"]:focus-visible ~ .checkbox-left .checkbox-box {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.25);
++    }
++
++    .custom-checkbox:has(input[type="checkbox"]:focus-visible) {
++      border-color: var(--primary);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .custom-checkbox,
++      .checkbox-box,
++      .checkbox-box .bean-icon,
++      .checkbox-box .check-icon,
++      .option-icon,
++      .checkbox-label-text,
++      .checkbox-badge {
++        transition: none !important;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -179,18 +388,207 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <fieldset class="customizations">
++              <legend>Customize Your Cup</legend>
++              <div class="checkbox-list">
++                <label class="custom-checkbox">
++                  <input type="checkbox" name="maple-oat-latte-options" value="extra-shot">
++                  <span class="checkbox-left">
++                    <span class="checkbox-box" aria-hidden="true">
++                      <svg class="bean-icon" viewBox="0 0 24 24">
++                        <path d="M12 2C7.5 2 4 6.5 4 12s3.5 10 8 10 8-4.5 8-10S16.5 2 12 2zm0 2c1.8 2.2 2.2 5.2 0 8-2.2 2.8-1.8 5.8 0 8-3.3-.4-6-4-6-8s2.7-7.6 6-8z"/>
++                      </svg>
++                      <svg class="check-icon" viewBox="0 0 24 24">
++                        <polyline points="20 6 9 17 4 12"></polyline>
++                      </svg>
++                    </span>
++                    <svg class="option-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
++                    </svg>
++                    <span class="checkbox-label-text">Extra Espresso Shot</span>
++                  </span>
++                  <span class="checkbox-badge">+$1.25</span>
++                </label>
++
++                <label class="custom-checkbox">
++                  <input type="checkbox" name="maple-oat-latte-options" value="maple-cold-foam" checked>
++                  <span class="checkbox-left">
++                    <span class="checkbox-box" aria-hidden="true">
++                      <svg class="bean-icon" viewBox="0 0 24 24">
++                        <path d="M12 2C7.5 2 4 6.5 4 12s3.5 10 8 10 8-4.5 8-10S16.5 2 12 2zm0 2c1.8 2.2 2.2 5.2 0 8-2.2 2.8-1.8 5.8 0 8-3.3-.4-6-4-6-8s2.7-7.6 6-8z"/>
++                      </svg>
++                      <svg class="check-icon" viewBox="0 0 24 24">
++                        <polyline points="20 6 9 17 4 12"></polyline>
++                      </svg>
++                    </span>
++                    <svg class="option-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
++                    </svg>
++                    <span class="checkbox-label-text">Maple Cold Foam</span>
++                  </span>
++                  <span class="checkbox-badge">+$1.00</span>
++                </label>
++
++                <label class="custom-checkbox">
++                  <input type="checkbox" name="maple-oat-latte-options" value="cinnamon-dusting">
++                  <span class="checkbox-left">
++                    <span class="checkbox-box" aria-hidden="true">
++                      <svg class="bean-icon" viewBox="0 0 24 24">
++                        <path d="M12 2C7.5 2 4 6.5 4 12s3.5 10 8 10 8-4.5 8-10S16.5 2 12 2zm0 2c1.8 2.2 2.2 5.2 0 8-2.2 2.8-1.8 5.8 0 8-3.3-.4-6-4-6-8s2.7-7.6 6-8z"/>
++                      </svg>
++                      <svg class="check-icon" viewBox="0 0 24 24">
++                        <polyline points="20 6 9 17 4 12"></polyline>
++                      </svg>
++                    </span>
++                    <svg class="option-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                      <path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6l2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6l2.1-2.1"/>
++                    </svg>
++                    <span class="checkbox-label-text">Cinnamon Dusting</span>
++                  </span>
++                  <span class="checkbox-badge">Free</span>
++                </label>
++              </div>
++            </fieldset>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <fieldset class="customizations">
++              <legend>Customize Your Cup</legend>
++              <div class="checkbox-list">
++                <label class="custom-checkbox">
++                  <input type="checkbox" name="dark-roast-espresso-options" value="double-ristretto" checked>
++                  <span class="checkbox-left">
++                    <span class="checkbox-box" aria-hidden="true">
++                      <svg class="bean-icon" viewBox="0 0 24 24">
++                        <path d="M12 2C7.5 2 4 6.5 4 12s3.5 10 8 10 8-4.5 8-10S16.5 2 12 2zm0 2c1.8 2.2 2.2 5.2 0 8-2.2 2.8-1.8 5.8 0 8-3.3-.4-6-4-6-8s2.7-7.6 6-8z"/>
++                      </svg>
++                      <svg class="check-icon" viewBox="0 0 24 24">
++                        <polyline points="20 6 9 17 4 12"></polyline>
++                      </svg>
++                    </span>
++                    <svg class="option-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                      <path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/>
++                    </svg>
++                    <span class="checkbox-label-text">Double Ristretto Pull</span>
++                  </span>
++                  <span class="checkbox-badge">+$1.00</span>
++                </label>
++
++                <label class="custom-checkbox">
++                  <input type="checkbox" name="dark-roast-espresso-options" value="steamed-half-and-half">
++                  <span class="checkbox-left">
++                    <span class="checkbox-box" aria-hidden="true">
++                      <svg class="bean-icon" viewBox="0 0 24 24">
++                        <path d="M12 2C7.5 2 4 6.5 4 12s3.5 10 8 10 8-4.5 8-10S16.5 2 12 2zm0 2c1.8 2.2 2.2 5.2 0 8-2.2 2.8-1.8 5.8 0 8-3.3-.4-6-4-6-8s2.7-7.6 6-8z"/>
++                      </svg>
++                      <svg class="check-icon" viewBox="0 0 24 24">
++                        <polyline points="20 6 9 17 4 12"></polyline>
++                      </svg>
++                    </span>
++                    <svg class="option-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
++                    </svg>
++                    <span class="checkbox-label-text">Splash of Breve Cream</span>
++                  </span>
++                  <span class="checkbox-badge">+$0.75</span>
++                </label>
++
++                <label class="custom-checkbox">
++                  <input type="checkbox" name="dark-roast-espresso-options" value="raw-turbinado-sugar">
++                  <span class="checkbox-left">
++                    <span class="checkbox-box" aria-hidden="true">
++                      <svg class="bean-icon" viewBox="0 0 24 24">
++                        <path d="M12 2C7.5 2 4 6.5 4 12s3.5 10 8 10 8-4.5 8-10S16.5 2 12 2zm0 2c1.8 2.2 2.2 5.2 0 8-2.2 2.8-1.8 5.8 0 8-3.3-.4-6-4-6-8s2.7-7.6 6-8z"/>
++                      </svg>
++                      <svg class="check-icon" viewBox="0 0 24 24">
++                        <polyline points="20 6 9 17 4 12"></polyline>
++                      </svg>
++                    </span>
++                    <svg class="option-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
++                    </svg>
++                    <span class="checkbox-label-text">Raw Turbinado Sugar</span>
++                  </span>
++                  <span class="checkbox-badge">Free</span>
++                </label>
++              </div>
++            </fieldset>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <fieldset class="customizations">
++              <legend>Customize Your Cup</legend>
++              <div class="checkbox-list">
++                <label class="custom-checkbox">
++                  <input type="checkbox" name="cold-brew-options" value="vanilla-sweet-cream" checked>
++                  <span class="checkbox-left">
++                    <span class="checkbox-box" aria-hidden="true">
++                      <svg class="bean-icon" viewBox="0 0 24 24">
++                        <path d="M12 2C7.5 2 4 6.5 4 12s3.5 10 8 10 8-4.5 8-10S16.5 2 12 2zm0 2c1.8 2.2 2.2 5.2 0 8-2.2 2.8-1.8 5.8 0 8-3.3-.4-6-4-6-8s2.7-7.6 6-8z"/>
++                      </svg>
++                      <svg class="check-icon" viewBox="0 0 24 24">
++                        <polyline points="20 6 9 17 4 12"></polyline>
++                      </svg>
++                    </span>
++                    <svg class="option-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
++                    </svg>
++                    <span class="checkbox-label-text">Vanilla Sweet Cream</span>
++                  </span>
++                  <span class="checkbox-badge">+$1.00</span>
++                </label>
++
++                <label class="custom-checkbox">
++                  <input type="checkbox" name="cold-brew-options" value="caramel-drizzle">
++                  <span class="checkbox-left">
++                    <span class="checkbox-box" aria-hidden="true">
++                      <svg class="bean-icon" viewBox="0 0 24 24">
++                        <path d="M12 2C7.5 2 4 6.5 4 12s3.5 10 8 10 8-4.5 8-10S16.5 2 12 2zm0 2c1.8 2.2 2.2 5.2 0 8-2.2 2.8-1.8 5.8 0 8-3.3-.4-6-4-6-8s2.7-7.6 6-8z"/>
++                      </svg>
++                      <svg class="check-icon" viewBox="0 0 24 24">
++                        <polyline points="20 6 9 17 4 12"></polyline>
++                      </svg>
++                    </span>
++                    <svg class="option-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
++                    </svg>
++                    <span class="checkbox-label-text">Caramel Drizzle</span>
++                  </span>
++                  <span class="checkbox-badge">+$0.75</span>
++                </label>
++
++                <label class="custom-checkbox">
++                  <input type="checkbox" name="cold-brew-options" value="light-ice">
++                  <span class="checkbox-left">
++                    <span class="checkbox-box" aria-hidden="true">
++                      <svg class="bean-icon" viewBox="0 0 24 24">
++                        <path d="M12 2C7.5 2 4 6.5 4 12s3.5 10 8 10 8-4.5 8-10S16.5 2 12 2zm0 2c1.8 2.2 2.2 5.2 0 8-2.2 2.8-1.8 5.8 0 8-3.3-.4-6-4-6-8s2.7-7.6 6-8z"/>
++                      </svg>
++                      <svg class="check-icon" viewBox="0 0 24 24">
++                        <polyline points="20 6 9 17 4 12"></polyline>
++                      </svg>
++                    </span>
++                    <svg class="option-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                      <rect x="3" y="3" width="18" height="18" rx="3" ry="3"/>
++                    </svg>
++                    <span class="checkbox-label-text">Light Ice</span>
++                  </span>
++                  <span class="checkbox-badge">Free</span>
++                </label>
++              </div>
++            </fieldset>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

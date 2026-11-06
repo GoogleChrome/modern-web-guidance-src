@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,79 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    [interestfor] {
++      --interest-delay-start: 0.2s;
++      --interest-delay-end: 0.15s;
++      interest-delay-start: var(--interest-delay-start);
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    [interestfor="maple-details"] { anchor-name: --maple-details; }
++    [interestfor="espresso-details"] { anchor-name: --espresso-details; }
++    [interestfor="cold-brew-details"] { anchor-name: --cold-brew-details; }
++    #maple-details { position-anchor: --maple-details; }
++    #espresso-details { position-anchor: --espresso-details; }
++    #cold-brew-details { position-anchor: --cold-brew-details; }
++
++    .nutrition-tooltip {
++      display: none;
++      position: fixed;
++      inset: auto;
++      top: anchor(top);
++      left: anchor(right);
++      position-try-fallbacks: flip-inline, --tooltip-below;
++      margin: 0 8px;
++      width: 230px;
++      max-width: calc(100vw - 24px);
++      padding: 14px 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
++      font-size: 0.875rem;
++      text-align: left;
++    }
++
++    .nutrition-tooltip:is(:popover-open, .\:popover-open) {
++      display: block;
++    }
++
++    .nutrition-tooltip strong,
++    .nutrition-tooltip small {
++      display: block;
++    }
++
++    .nutrition-tooltip strong {
++      color: var(--accent);
++    }
++
++    .nutrition-tooltip small {
++      margin-top: 6px;
++    }
++
++    @position-try --tooltip-below {
++      top: anchor(bottom);
++      left: anchor(center);
++      margin: 8px 0 0 -115px;
++    }
++
++    @media (max-width: 600px) {
++      .nutrition-tooltip {
++        top: anchor(bottom);
++        left: anchor(center);
++        margin: 8px 0 0 -115px;
++        position-try-fallbacks: flip-block;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +251,37 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="maple-details">View Details <span aria-hidden="true">ⓘ</span></a>
++          <div id="maple-details" class="nutrition-tooltip" popover="hint">
++            <strong>Maple Oat Latte</strong>
++            <p>Approx. 220 calories · 12 fl oz</p>
++            <p>Espresso, oat milk &amp; maple syrup.</p>
++            <small>Estimated for the standard recipe; customizations may vary.</small>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="espresso-details">View Details <span aria-hidden="true">ⓘ</span></a>
++          <div id="espresso-details" class="nutrition-tooltip" popover="hint">
++            <strong>Dark Roast Espresso</strong>
++            <p>Approx. 5 calories · 2 fl oz</p>
++            <p>A double shot, served without milk or sugar.</p>
++            <small>Estimated for the standard recipe; customizations may vary.</small>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-details">View Details <span aria-hidden="true">ⓘ</span></a>
++          <div id="cold-brew-details" class="nutrition-tooltip" popover="hint">
++            <strong>Cold Brew</strong>
++            <p>Approx. 5 calories · 12 fl oz</p>
++            <p>Steeped for 18 hours; served black over ice.</p>
++            <small>Estimated for the standard recipe; customizations may vary.</small>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +295,19 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load compatibility support only where the native features are missing.
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@0.7.3/dist/popover.js");
++    }
++    if (!("anchorName" in document.documentElement.style)) {
++      await import("https://unpkg.com/@oddbird/css-anchor-positioning@0.10.2/dist/css-anchor-positioning.js");
++    }
++    if (!("interestForElement" in HTMLButtonElement.prototype)) {
++      await import("https://unpkg.com/interestfor@1.0.10");
++    }
++  </script>
+ </body>
+ 
+ </html>

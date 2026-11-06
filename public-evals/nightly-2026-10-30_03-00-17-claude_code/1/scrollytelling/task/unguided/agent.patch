@@ -1,0 +1,242 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,175 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollytelling
++       #tracked sections publish named view timelines; .scrolly hoists those names
++       with timeline-scope so the panels in #animated (a sibling branch) can bind
++       to them. Pure CSS, and only opacity/transform are animated so the work stays
++       on the compositor. */
++    .scrolly {
++      margin-top: 80px;
++    }
++
++    .scrolly > h2 {
++      text-align: center;
++    }
++
++    .scrolly-body {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++    }
++
++    #tracked > section {
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    #tracked .step {
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: var(--accent);
++    }
++
++    #tracked h3 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    #animated {
++      display: grid;
++      gap: 20px;
++    }
++
++    #animated > section {
++      position: relative;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++      aspect-ratio: 4 / 5;
++    }
++
++    #animated img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    #animated p {
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      padding: 40px 20px 20px;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
++      color: white;
++      font-weight: bold;
++    }
++
++    @supports (animation-timeline: view()) and (timeline-scope: --a) {
++      .scrolly-body {
++        timeline-scope: --scrolly-1, --scrolly-2, --scrolly-3, --scrolly-4;
++      }
++
++      #tracked > section:nth-child(1) { view-timeline-name: --scrolly-1; }
++      #tracked > section:nth-child(2) { view-timeline-name: --scrolly-2; }
++      #tracked > section:nth-child(3) { view-timeline-name: --scrolly-3; }
++      #tracked > section:nth-child(4) { view-timeline-name: --scrolly-4; }
++
++      #animated {
++        position: sticky;
++        top: calc(50vh - min(35vh, 275px) + 30px);
++        gap: 0;
++      }
++
++      /* Stack the panels in one cell; each one is shown only while its step is active */
++      #animated > section {
++        grid-area: 1 / 1;
++        max-height: min(70vh, 550px);
++        width: 100%;
++        opacity: 0;
++        animation: scrolly-reveal linear both;
++        animation-range: cover;
++      }
++
++      #animated > section:nth-child(1) { animation-timeline: --scrolly-1; animation-name: scrolly-reveal-first; }
++      #animated > section:nth-child(2) { animation-timeline: --scrolly-2; }
++      #animated > section:nth-child(3) { animation-timeline: --scrolly-3; }
++      #animated > section:nth-child(4) { animation-timeline: --scrolly-4; animation-name: scrolly-reveal-last; }
++    }
++
++    /* With 100vh steps, 30%–70% of a step's cover range is while it spans the
++       viewport's center line, so neighbouring panels cross-fade exactly there. */
++    @keyframes scrolly-reveal {
++      0%, 20% { opacity: 0; transform: translateY(40px) scale(0.95); }
++      30%, 70% { opacity: 1; transform: none; }
++      80%, 100% { opacity: 0; transform: translateY(-40px) scale(0.95); }
++    }
++
++    @keyframes scrolly-reveal-first {
++      0%, 70% { opacity: 1; transform: none; }
++      80%, 100% { opacity: 0; transform: translateY(-40px) scale(0.95); }
++    }
++
++    @keyframes scrolly-reveal-last {
++      0%, 20% { opacity: 0; transform: translateY(40px) scale(0.95); }
++      30%, 100% { opacity: 1; transform: none; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @keyframes scrolly-reveal {
++        0%, 20% { opacity: 0; }
++        30%, 70% { opacity: 1; }
++        80%, 100% { opacity: 0; }
++      }
++
++      @keyframes scrolly-reveal-first {
++        0%, 70% { opacity: 1; }
++        80%, 100% { opacity: 0; }
++      }
++
++      @keyframes scrolly-reveal-last {
++        0%, 20% { opacity: 0; }
++        30%, 100% { opacity: 1; }
++      }
++    }
++
++    @media (max-width: 768px) {
++      .scrolly-body {
++        grid-template-columns: 1fr;
++        gap: 0;
++      }
++
++      /* Panel pinned under the nav, text scrolls beneath it */
++      #animated {
++        order: -1;
++        z-index: 1;
++      }
++
++      #animated > section {
++        aspect-ratio: 16 / 9;
++      }
++
++      @supports (animation-timeline: view()) and (timeline-scope: --a) {
++        #animated {
++          top: 70px;
++        }
++
++        #animated > section {
++          max-height: 35vh;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +361,62 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrolly">
++      <h2>From Bean to Cup</h2>
++      <div class="scrolly-body">
++        <div id="tracked">
++          <section>
++            <span class="step">Step 1</span>
++            <h3>Sourced with Care</h3>
++            <p>We partner directly with small farms in Ethiopia, Colombia, and Guatemala, paying above fair-trade
++              prices so growers can invest in their land and communities.</p>
++          </section>
++          <section>
++            <span class="step">Step 2</span>
++            <h3>Roasted in Small Batches</h3>
++            <p>Every lot is roasted by hand just down the street, dialed in to bring out its natural sweetness and
++              origin character. Nothing sits on a shelf for long.</p>
++          </section>
++          <section>
++            <span class="step">Step 3</span>
++            <h3>Brewed with Precision</h3>
++            <p>Our baristas weigh, time, and taste every recipe, from 18-hour cold brew to pour-overs, so each cup is
++              as good as the first.</p>
++          </section>
++          <section>
++            <span class="step">Step 4</span>
++            <h3>Served with a Smile</h3>
++            <p>Finished with silky microfoam and a little latte art, your drink is handed over by people who
++              genuinely love coffee.</p>
++          </section>
++        </div>
++        <div id="animated" aria-hidden="true">
++          <section>
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++              alt="" loading="lazy">
++            <p>Single-origin beans</p>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80"
++              alt="" loading="lazy">
++            <p>Fresh from the roaster</p>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80"
++              alt="" loading="lazy">
++            <p>Brewed to order</p>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&q=80"
++              alt="" loading="lazy">
++            <p>Ready to enjoy</p>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

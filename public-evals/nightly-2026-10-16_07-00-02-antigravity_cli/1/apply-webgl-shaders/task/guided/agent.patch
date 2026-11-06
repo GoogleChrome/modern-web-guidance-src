@@ -1,0 +1,680 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="https://cdn.jsdelivr.net/npm/three-html-render/dist/polyfill.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -73,8 +74,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,15 +87,98 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
+     }
+ 
+-    .hero h1 {
++    .hero-canvas {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      display: block;
++      z-index: 1;
++      pointer-events: none;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 2;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      pointer-events: auto;
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    .hero h1, .hero-title {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      user-select: text;
++      -webkit-user-select: text;
+     }
+ 
++    .hero-desc {
++      font-size: 1.15rem;
++      margin-bottom: 0.5rem;
++      user-select: text;
++      -webkit-user-select: text;
++    }
++
++    .hero-btn {
++      position: relative;
++      z-index: 3;
++      pointer-events: auto;
++      cursor: pointer;
++      user-select: none;
++      -webkit-user-select: none;
++    }
++
++    /* Fallback overlay when HTML-in-Canvas is not natively supported */
++    .hero-fallback-active {
++      pointer-events: auto;
++    }
++
++    .hero-fallback-active .hero-title,
++    .hero-fallback-active .hero-desc,
++    .hero-fallback-active .hero-btn {
++      position: relative;
++    }
++
++    .hero-fallback-active.shader-active .hero-title {
++      color: transparent;
++      text-shadow: none;
++    }
++
++    .hero-fallback-active.shader-active .hero-title::selection {
++      color: #ffffff;
++      background: var(--accent);
++    }
++
++    .hero-fallback-active.shader-active .hero-desc {
++      color: transparent;
++    }
++
++    .hero-fallback-active.shader-active .hero-desc::selection {
++      color: #ffffff;
++      background: var(--accent);
++    }
++
++    .hero-fallback-active.shader-active .hero-btn {
++      color: transparent;
++      background: transparent;
++      border: 1px solid rgba(255, 171, 64, 0.25);
++    }
++
++    .hero-fallback-active.shader-active .hero-btn::selection {
++      color: #ffffff;
++      background: var(--accent);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,11 +253,15 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <canvas id="hero-canvas" content="drawable" layoutsubtree class="hero-canvas">
++      <div id="hero-content" class="hero-content" drawable>
++        <h1 id="hero-title" class="hero-title" drawable>Wake Up Your Senses</h1>
++        <p id="hero-desc" class="hero-desc" drawable>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" class="btn hero-btn" id="hero-btn" drawable>Order Now</a>
++      </div>
++    </canvas>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +295,537 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const supportsHtmlInCanvas = ('content' in HTMLCanvasElement.prototype);
++      const heroCanvas = document.getElementById('hero-canvas');
++      const heroContent = document.getElementById('hero-content');
++      const heroTitle = document.getElementById('hero-title');
++      const heroDesc = document.getElementById('hero-desc');
++      const heroBtn = document.getElementById('hero-btn');
++      const heroHeader = document.querySelector('.hero');
++
++      if (!heroCanvas) return;
++
++      // Fallback strategy: place HTML content on top of canvas using CSS if HTML-in-Canvas is not natively supported
++      if (!supportsHtmlInCanvas) {
++        if (heroContent && heroHeader && heroContent.parentElement === heroCanvas) {
++          heroHeader.appendChild(heroContent);
++          heroContent.classList.add('hero-fallback-active');
++        }
++      }
++
++      // Initialize WebGL 2
++      const gl = heroCanvas.getContext('webgl2', {
++        alpha: true,
++        antialias: true,
++        premultipliedAlpha: true
++      });
++
++      if (!gl) {
++        console.warn('WebGL 2 not supported, falling back to standard HTML content.');
++        return;
++      }
++
++      gl.enable(gl.BLEND);
++      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
++
++      // Shaders
++      const vsSource = `#version 300 es
++      layout(location = 0) in vec2 aPosition;
++      layout(location = 1) in vec2 aUv;
++
++      uniform mat4 uMVP;
++      out vec2 vUv;
++
++      void main() {
++        vUv = aUv;
++        gl_Position = uMVP * vec4(aPosition, 0.0, 1.0);
++      }`;
++
++      const fsSource = `#version 300 es
++      precision highp float;
++
++      in vec2 vUv;
++      out vec4 fragColor;
++
++      uniform sampler2D uTexture;
++      uniform float uTime;
++      uniform vec2 uResolution;
++      uniform vec2 uMouse;
++      uniform float uRippleIntensity;
++      uniform float uRippleFrequency;
++      uniform float uRippleSpeed;
++      uniform vec4 uClickRipple; // x, y, startTime, strength
++
++      void main() {
++        vec2 uv = vUv;
++
++        // Ambient radial ripple waves
++        vec2 p = uv - vec2(0.5, 0.5);
++        float dist = length(p);
++        float wave1 = sin(dist * uRippleFrequency - uTime * uRippleSpeed) * 0.012;
++        float wave2 = cos((p.x * 1.5 + p.y) * 20.0 - uTime * (uRippleSpeed * 0.7)) * 0.006;
++
++        // Interactive mouse ripples
++        vec2 mouseDiff = uv - uMouse;
++        float mouseDist = length(mouseDiff);
++        float mouseWave = sin(mouseDist * 32.0 - uTime * 6.0) * exp(-mouseDist * 4.0) * 0.022;
++
++        // Dynamic click ripple shockwave
++        float clickAge = max(0.0, uTime - uClickRipple.z);
++        vec2 clickDiff = uv - uClickRipple.xy;
++        float clickDist = length(clickDiff);
++        float clickWaveDist = abs(clickDist - clickAge * 0.85);
++        float clickWave = sin(clickWaveDist * 38.0) * exp(-clickWaveDist * 12.0) * exp(-clickAge * 2.8) * uClickRipple.w * 0.055;
++
++        vec2 normalDisplace = normalize(p + vec2(0.0001)) * (wave1 + wave2);
++        vec2 mouseDisplace = normalize(mouseDiff + vec2(0.0001)) * mouseWave;
++        vec2 clickDisplace = normalize(clickDiff + vec2(0.0001)) * clickWave;
++
++        vec2 totalDisplacement = (normalDisplace + mouseDisplace + clickDisplace) * uRippleIntensity;
++        vec2 distortedUv = clamp(uv + totalDisplacement, 0.0, 1.0);
++
++        // Chromatic dispersion for realistic fluid refraction
++        float r = texture(uTexture, clamp(distortedUv + totalDisplacement * 0.25, 0.0, 1.0)).r;
++        vec4 baseCol = texture(uTexture, distortedUv);
++        float b = texture(uTexture, clamp(distortedUv - totalDisplacement * 0.25, 0.0, 1.0)).b;
++
++        vec4 col = vec4(r, baseCol.g, b, baseCol.a);
++
++        // Specular sheen on liquid wave crests
++        float sheen = clamp((totalDisplacement.x + totalDisplacement.y) * 10.0, -0.2, 0.35);
++        col.rgb += sheen * col.a * 0.45;
++
++        fragColor = col;
++      }`;
++
++      function compileShader(gl, source, type) {
++        const shader = gl.createShader(type);
++        gl.shaderSource(shader, source);
++        gl.compileShader(shader);
++        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++          console.error('Shader compile error:', gl.getShaderInfoLog(shader));
++          gl.deleteShader(shader);
++          return null;
++        }
++        return shader;
++      }
++
++      const vs = compileShader(gl, vsSource, gl.VERTEX_SHADER);
++      const fs = compileShader(gl, fsSource, gl.FRAGMENT_SHADER);
++      if (!vs || !fs) return;
++
++      const program = gl.createProgram();
++      gl.attachShader(program, vs);
++      gl.attachShader(program, fs);
++      gl.linkProgram(program);
++      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++        console.error('Program link error:', gl.getProgramInfoLog(program));
++        return;
++      }
++
++      // Geometry: unit quad centered at origin [-0.5, 0.5] with UV [0, 1]
++      const quadVertices = new Float32Array([
++        -0.5,  0.5,  0.0, 0.0,
++        -0.5, -0.5,  0.0, 1.0,
++         0.5,  0.5,  1.0, 0.0,
++
++         0.5,  0.5,  1.0, 0.0,
++        -0.5, -0.5,  0.0, 1.0,
++         0.5, -0.5,  1.0, 1.0
++      ]);
++
++      const vao = gl.createVertexArray();
++      gl.bindVertexArray(vao);
++
++      const vbo = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
++      gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
++
++      gl.enableVertexAttribArray(0);
++      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 4 * 4, 0);
++
++      gl.enableVertexAttribArray(1);
++      gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 4 * 4, 2 * 4);
++
++      // Uniform Locations
++      const uMVPLoc = gl.getUniformLocation(program, 'uMVP');
++      const uTextureLoc = gl.getUniformLocation(program, 'uTexture');
++      const uTimeLoc = gl.getUniformLocation(program, 'uTime');
++      const uResLoc = gl.getUniformLocation(program, 'uResolution');
++      const uMouseLoc = gl.getUniformLocation(program, 'uMouse');
++      const uRippleIntensityLoc = gl.getUniformLocation(program, 'uRippleIntensity');
++      const uRippleFreqLoc = gl.getUniformLocation(program, 'uRippleFrequency');
++      const uRippleSpeedLoc = gl.getUniformLocation(program, 'uRippleSpeed');
++      const uClickRippleLoc = gl.getUniformLocation(program, 'uClickRipple');
++
++      // Elements configuration
++      const elements = [
++        {
++          element: heroTitle,
++          texture: gl.createTexture(),
++          textureState: { width: 0, height: 0 },
++          rippleIntensity: 1.0,
++          rippleFrequency: 22.0,
++          rippleSpeed: 3.2,
++          dirty: true
++        },
++        {
++          element: heroDesc,
++          texture: gl.createTexture(),
++          textureState: { width: 0, height: 0 },
++          rippleIntensity: 0.6,
++          rippleFrequency: 26.0,
++          rippleSpeed: 2.2,
++          dirty: true
++        },
++        {
++          element: heroBtn,
++          texture: gl.createTexture(),
++          textureState: { width: 0, height: 0 },
++          rippleIntensity: 1.3,
++          rippleFrequency: 18.0,
++          rippleSpeed: 4.0,
++          dirty: true
++        }
++      ];
++
++      // Step 5: Pre-allocate texture buffer
++      function allocateElementTexture(gl, texture, state, width, height) {
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        if (state.width === width && state.height === height) return;
++
++        gl.texImage2D(
++          gl.TEXTURE_2D,
++          0,
++          gl.RGBA8,
++          width,
++          height,
++          0,
++          gl.RGBA,
++          gl.UNSIGNED_BYTE,
++          null
++        );
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        state.width = width;
++        state.height = height;
++      }
++
++      function getElementImageSize(canvas, element) {
++        let elementImage;
++        try {
++          elementImage = canvas.captureElementImage(element);
++        } catch (err) {
++          if (typeof canvas.requestPaint === 'function') {
++            canvas.requestPaint();
++          }
++          return null;
++        }
++        const width = Math.ceil(elementImage.width);
++        const height = Math.ceil(elementImage.height);
++        if (typeof elementImage.close === 'function') {
++          elementImage.close();
++        }
++        return width > 0 && height > 0 ? { width, height } : null;
++      }
++
++      // High-DPI fallback rasterizer for browsers without native HTML-in-Canvas
++      function rasterizeElementFallback(element) {
++        const dpr = window.devicePixelRatio || 1;
++        const elemW = Math.max(1, element.offsetWidth);
++        const elemH = Math.max(1, element.offsetHeight);
++        const c = document.createElement('canvas');
++        c.width = Math.ceil(elemW * dpr);
++        c.height = Math.ceil(elemH * dpr);
++        const ctx = c.getContext('2d');
++        ctx.scale(dpr, dpr);
++
++        const style = window.getComputedStyle(element);
++
++        if (element.id === 'hero-btn') {
++          const r = 5;
++          ctx.fillStyle = '#4e342e';
++          ctx.beginPath();
++          ctx.moveTo(r, 0);
++          ctx.lineTo(elemW - r, 0);
++          ctx.quadraticCurveTo(elemW, 0, elemW, r);
++          ctx.lineTo(elemW, elemH - r);
++          ctx.quadraticCurveTo(elemW, elemH, elemW - r, elemH);
++          ctx.lineTo(r, elemH);
++          ctx.quadraticCurveTo(0, elemH, 0, elemH - r);
++          ctx.lineTo(0, r);
++          ctx.quadraticCurveTo(0, 0, r, 0);
++          ctx.closePath();
++          ctx.fill();
++
++          ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
++          ctx.fillStyle = '#ffffff';
++          ctx.textAlign = 'center';
++          ctx.textBaseline = 'middle';
++          ctx.fillText(element.textContent.trim(), elemW / 2, elemH / 2);
++        } else if (element.id === 'hero-title') {
++          ctx.font = `bold ${style.fontSize} ${style.fontFamily}`;
++          ctx.fillStyle = '#ffffff';
++          ctx.textAlign = 'center';
++          ctx.textBaseline = 'middle';
++          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
++          ctx.shadowBlur = 6;
++          ctx.shadowOffsetY = 2;
++          ctx.fillText(element.textContent.trim(), elemW / 2, elemH / 2);
++        } else {
++          ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
++          ctx.fillStyle = '#ffffff';
++          ctx.textAlign = 'center';
++          ctx.textBaseline = 'middle';
++          ctx.fillText(element.textContent.trim(), elemW / 2, elemH / 2);
++        }
++        return c;
++      }
++
++      // Step 6: Upload element into WebGL texture
++      function uploadElementWebGL(gl, canvas, texture, element, state) {
++        if (!element) return false;
++
++        if (supportsHtmlInCanvas) {
++          const size = getElementImageSize(canvas, element);
++          if (!size) return false;
++          const { width, height } = size;
++
++          allocateElementTexture(gl, texture, state, width, height);
++          if (typeof gl.texElementSubImage2D === 'function') {
++            try {
++              gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, element, { width, height });
++              return true;
++            } catch (err) {
++              console.error('texElementSubImage2D copy failed:', err);
++            }
++          } else if (typeof gl.texElementImage2D === 'function') {
++            try {
++              gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, element);
++              return true;
++            } catch (err) {
++              console.error('texElementImage2D copy failed:', err);
++            }
++          }
++        }
++
++        // Fallback rasterization
++        let source = null;
++        if (typeof canvas.captureElementImage === 'function') {
++          try {
++            source = canvas.captureElementImage(element);
++          } catch (_) {}
++        }
++        if (!source) {
++          source = rasterizeElementFallback(element);
++        }
++        if (source) {
++          const width = Math.max(1, source.width);
++          const height = Math.max(1, source.height);
++          allocateElementTexture(gl, texture, state, width, height);
++          gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, source);
++          return true;
++        }
++        return false;
++      }
++
++      // Step 7: Sync element geometry using MVP and DOMMatrix
++      function computeElementMVP(canvas, element) {
++        const canvasRect = canvas.getBoundingClientRect();
++        const elemRect = element.getBoundingClientRect();
++
++        const elemLeft = elemRect.left - canvasRect.left;
++        const elemTop = elemRect.top - canvasRect.top;
++        const elemWidth = elemRect.width;
++        const elemHeight = elemRect.height;
++
++        const canvasW = canvas.clientWidth || canvasRect.width || 1;
++        const canvasH = canvas.clientHeight || canvasRect.height || 1;
++
++        const cx = elemLeft + elemWidth / 2;
++        const cy = elemTop + elemHeight / 2;
++
++        const clipCenterX = (cx / canvasW) * 2.0 - 1.0;
++        const clipCenterY = 1.0 - (cy / canvasH) * 2.0;
++
++        const clipScaleX = (elemWidth / canvasW) * 2.0;
++        const clipScaleY = (elemHeight / canvasH) * 2.0;
++
++        return new Float32Array([
++          clipScaleX, 0, 0, 0,
++          0, clipScaleY, 0, 0,
++          0, 0, 1, 0,
++          clipCenterX, clipCenterY, 0, 1
++        ]);
++      }
++
++      function computeCanvasTransform(canvas, element, mvp) {
++        const width = element.offsetWidth || element.clientWidth || 1;
++        const height = element.offsetHeight || element.clientHeight || 1;
++
++        // 1. Normalize the HTML element (CSS pixels -> WebGL Model Space)
++        const toGLModel = new DOMMatrix()
++          .scale(1 / width, -1 / height, 1 / height)
++          .translate(-width / 2, -height / 2);
++
++        // 2. Convert WebGL MVP Matrix to DOM Matrix
++        const mvpDOM = new DOMMatrix(Array.from(mvp));
++
++        // 3. Map to the canvas viewport, in CSS pixels
++        const clipToCanvasViewport = new DOMMatrix()
++          .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
++          .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
++
++        // 4. Multiply: (Clip -> Pixels) * (MVP) * (pixels -> unit square)
++        return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
++      }
++
++      // Step 4: Scale canvas grid to match device scale factor using ResizeObserver
++      const observer = new ResizeObserver(([entry]) => {
++        const dpc = entry.devicePixelContentBoxSize;
++        const width = dpc
++          ? dpc[0].inlineSize
++          : Math.round(entry.contentRect.width * (window.devicePixelRatio || 1));
++        const height = dpc
++          ? dpc[0].blockSize
++          : Math.round(entry.contentRect.height * (window.devicePixelRatio || 1));
++        if (heroCanvas.width !== width || heroCanvas.height !== height) {
++          heroCanvas.width = width;
++          heroCanvas.height = height;
++          gl.viewport(0, 0, width, height);
++          elements.forEach(item => item.dirty = true);
++        }
++      });
++
++      const supportsDevicePixelContentBox =
++        typeof ResizeObserverEntry !== 'undefined' &&
++        'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++      const resizeOptions = supportsDevicePixelContentBox
++        ? { box: 'device-pixel-content-box' }
++        : {};
++      observer.observe(heroCanvas, resizeOptions);
++
++      // Interactive mouse and click ripples
++      let mouseNormX = 0.5, mouseNormY = 0.5;
++      let clickRipple = [0.5, 0.5, -999.0, 0.0];
++
++      if (heroHeader) {
++        heroHeader.addEventListener('pointermove', (e) => {
++          const rect = heroCanvas.getBoundingClientRect();
++          mouseNormX = (e.clientX - rect.left) / rect.width;
++          mouseNormY = 1.0 - (e.clientY - rect.top) / rect.height;
++        });
++
++        heroHeader.addEventListener('pointerdown', (e) => {
++          const rect = heroCanvas.getBoundingClientRect();
++          const x = (e.clientX - rect.left) / rect.width;
++          const y = 1.0 - (e.clientY - rect.top) / rect.height;
++          clickRipple = [x, y, performance.now() * 0.001, 1.0];
++        });
++      }
++
++      if (heroBtn) {
++        heroBtn.addEventListener('mouseenter', () => {
++          const btnItem = elements.find(item => item.element === heroBtn);
++          if (btnItem) {
++            btnItem.rippleIntensity = 2.0;
++            btnItem.dirty = true;
++          }
++        });
++        heroBtn.addEventListener('mouseleave', () => {
++          const btnItem = elements.find(item => item.element === heroBtn);
++          if (btnItem) {
++            btnItem.rippleIntensity = 1.3;
++            btnItem.dirty = true;
++          }
++        });
++      }
++
++      let initialUploadDone = false;
++
++      function drawScene(time) {
++        gl.viewport(0, 0, heroCanvas.width, heroCanvas.height);
++        gl.clearColor(0, 0, 0, 0);
++        gl.clear(gl.COLOR_BUFFER_BIT);
++
++        gl.useProgram(program);
++        gl.bindVertexArray(vao);
++
++        gl.uniform1f(uTimeLoc, time);
++        gl.uniform2f(uResLoc, heroCanvas.width, heroCanvas.height);
++        gl.uniform2f(uMouseLoc, mouseNormX, mouseNormY);
++        gl.uniform4f(uClickRippleLoc, clickRipple[0], clickRipple[1], clickRipple[2], clickRipple[3]);
++
++        for (const item of elements) {
++          if (!item.element) continue;
++
++          if (!initialUploadDone || item.dirty) {
++            uploadElementWebGL(gl, heroCanvas, item.texture, item.element, item.textureState);
++            item.dirty = false;
++          }
++
++          if (item.textureState.width === 0) continue;
++
++          gl.activeTexture(gl.TEXTURE0);
++          gl.bindTexture(gl.TEXTURE_2D, item.texture);
++          gl.uniform1i(uTextureLoc, 0);
++
++          gl.uniform1f(uRippleIntensityLoc, item.rippleIntensity);
++          gl.uniform1f(uRippleFreqLoc, item.rippleFrequency);
++          gl.uniform1f(uRippleSpeedLoc, item.rippleSpeed);
++
++          const mvp = computeElementMVP(heroCanvas, item.element);
++          gl.uniformMatrix4fv(uMVPLoc, false, mvp);
++
++          gl.drawArrays(gl.TRIANGLES, 0, 6);
++
++          // Step 7: updateElementGeometry to ensure text selection and clicks hit the DOM element
++          if (typeof heroCanvas.updateElementGeometry === 'function') {
++            try {
++              heroCanvas.updateElementGeometry(item.element, {
++                canvasTransform: computeCanvasTransform(heroCanvas, item.element, mvp),
++                preserveHitTestOrder: true
++              });
++            } catch (_) {}
++          }
++        }
++
++        initialUploadDone = true;
++
++        if (!supportsHtmlInCanvas && heroContent) {
++          heroContent.classList.add('shader-active');
++        }
++      }
++
++      // Step 6: canvas.onpaint handler
++      heroCanvas.onpaint = (event) => {
++        if (event && event.changedElements && event.changedElements.length > 0) {
++          for (const item of elements) {
++            if (event.changedElements.includes(item.element)) {
++              item.dirty = true;
++            }
++          }
++        }
++        drawScene(performance.now() * 0.001);
++      };
++
++      // Continuous GPU animation loop
++      function render(timestamp) {
++        const time = timestamp * 0.001;
++        if (typeof heroCanvas.requestPaint === 'function') {
++          heroCanvas.requestPaint();
++        }
++        drawScene(time);
++        requestAnimationFrame(render);
++      }
++      requestAnimationFrame(render);
++    })();
++  </script>
+ </body>
+ 
+ </html>

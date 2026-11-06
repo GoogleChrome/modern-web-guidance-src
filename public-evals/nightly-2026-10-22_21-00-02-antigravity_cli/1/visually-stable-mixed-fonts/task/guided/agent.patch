@@ -1,0 +1,171 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,167 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Visually Stable Mixed Fonts &amp; Independent Theme Proportions</title>
++  <style>
++    @layer base, components, fallbacks;
++
++    @layer base {
++      :root {
++        --font-primary: Verdana, system-ui, -apple-system, sans-serif;
++        --font-code: "Courier New", Courier, monospace;
++        --font-alternate: "Times New Roman", Times, Georgia, serif;
++        --font-aspect-override: 0.545;
++
++        --color-bg: #f8fafc;
++        --color-surface: #ffffff;
++        --color-surface-alt: #f1f5f9;
++        --color-text: #0f172a;
++        --color-text-muted: #475569;
++        --color-border: #cbd5e1;
++        --color-code-bg: #e2e8f0;
++        --color-accent: #2563eb;
++
++        --space-xs: 0.25rem;
++        --space-sm: 0.5rem;
++        --space-md: 1rem;
++        --space-lg: 1.5rem;
++        --space-xl: 2rem;
++
++        --radius-sm: 0.25rem;
++        --radius-md: 0.5rem;
++      }
++
++      body {
++        margin: 0;
++        padding: var(--space-xl);
++        font-family: var(--font-primary);
++        font-size: 1rem;
++        line-height: 1.5;
++        color: var(--color-text);
++        background-color: var(--color-bg);
++        text-align: start;
++      }
++
++      main {
++        max-inline-size: 80ch;
++        margin-inline: auto;
++        display: grid;
++        gap: var(--space-lg);
++      }
++
++      h1, h2 {
++        margin-block: 0 var(--space-sm);
++        text-wrap: balance;
++        line-height: 1.25;
++      }
++
++      section {
++        background-color: var(--color-surface);
++        border: 1px solid var(--color-border);
++        border-radius: var(--radius-md);
++        padding: var(--space-lg);
++      }
++    }
++
++    @layer components {
++      /*
++       * Automatic visual height normalization for mixed fonts:
++       * Extracts the x-height aspect ratio from the primary font via `from-font`
++       * and scales nested inline code elements automatically to match.
++       */
++      #mixed-fonts-container {
++        font-family: var(--font-primary);
++        font-size: 1.125rem;
++        line-height: 1.6;
++        font-size-adjust: from-font;
++        text-wrap: pretty;
++        overflow-wrap: break-word;
++        margin-block: 0;
++      }
++
++      #mixed-fonts-container code {
++        font-family: var(--font-code);
++        font-size-adjust: inherit;
++        background-color: var(--color-code-bg);
++        padding-block: 0.125em;
++        padding-inline: 0.375em;
++        border-radius: var(--radius-sm);
++      }
++
++      /*
++       * Independent theme container:
++       * Applies a specific numeric aspect-ratio override (0.545) to `font-size-adjust`
++       * to lock down the x-height visual proportions independently of ancestor fonts.
++       */
++      #independent-theme-container {
++        font-family: var(--font-alternate);
++        font-size: 1.125rem;
++        line-height: 1.6;
++        font-size-adjust: 0.545;
++        background-color: var(--color-surface-alt);
++        border-inline-start: 4px solid var(--color-accent);
++        padding: var(--space-md);
++        border-radius: var(--radius-sm);
++        text-wrap: pretty;
++        overflow-wrap: break-word;
++      }
++
++      #independent-theme-container p {
++        margin-block: 0;
++      }
++    }
++
++    @layer fallbacks {
++      /* Fallback strategy for browsers without `font-size-adjust` support */
++      @supports not (font-size-adjust: from-font) {
++        #mixed-fonts-container {
++          font-size: 1.125rem;
++          line-height: 1.65;
++        }
++
++        #mixed-fonts-container code {
++          font-size: 0.95em;
++          line-height: 1.5;
++        }
++
++        #independent-theme-container {
++          font-size: 1.25rem;
++          line-height: 1.65;
++        }
++      }
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <header>
++      <h1>Typography &amp; Mixed Font Normalization</h1>
++    </header>
++
++    <section aria-labelledby="mixed-fonts-heading">
++      <h2 id="mixed-fonts-heading">Automatic Mixed-Font Normalization</h2>
++      <p id="mixed-fonts-container">
++        When combining prose in a geometric sans-serif typeface with inline code tokens like
++        <code>font-size-adjust: from-font</code>, <code>const aspectRatio = 0.545;</code>, or
++        <code>document.getElementById("mixed-fonts-container")</code>, the browser automatically extracts
++        the x-height aspect ratio of the primary font and scales the nested <code>&lt;code&gt;</code>
++        glyphs so their lowercase letter height remains visually uniform.
++      </p>
++    </section>
++
++    <section aria-labelledby="independent-theme-heading">
++      <h2 id="independent-theme-heading">Independent Theme Proportions</h2>
++      <div id="independent-theme-container">
++        <p>
++          This independent theme container uses a classic serif font stack (Times New Roman / Georgia)
++          paired with an explicit numeric aspect-ratio override (<code>font-size-adjust: 0.545</code>)
++          to lock down its lowercase x-height proportions to match the primary UI typography without
++          relying on parent font inheritance.
++        </p>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

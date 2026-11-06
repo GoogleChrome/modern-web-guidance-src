@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,69 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured Promo Badge */
++    .seasonal-header {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 12px;
++      margin-bottom: 10px;
++    }
++
++    .target {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 68px;
++      height: 68px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.72rem;
++      font-weight: 800;
++      text-transform: uppercase;
++      text-align: center;
++      line-height: 1.15;
++      border-radius: 50%;
++      border: 2px solid var(--primary);
++      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
++      cursor: pointer;
++      user-select: none;
++      translate: 0px;
++      rotate: 0deg;
++      scale: 1;
++      transition: scale 0.3s ease;
++      animation:
++        badge-spin 6s linear infinite,
++        badge-slide 2.5s ease-in-out infinite alternate;
++      @media (prefers-reduced-motion: reduce) {
++        animation-duration: 24s, 10s;
++      }
++    }
++
++    .target:hover {
++      scale: 1.2;
++    }
++
++    @keyframes badge-spin {
++      from {
++        rotate: 0deg;
++      }
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes badge-slide {
++      from {
++        translate: -24px 0;
++      }
++      to {
++        translate: 24px 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -175,9 +236,12 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="seasonal-header">
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <span class="target">20% Off<br>Promo</span>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

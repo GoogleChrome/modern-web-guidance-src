@@ -1,0 +1,34 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,29 @@
++# Daily Grind
++
++The homepage loads `analytics.js` with `defer`. It queues a `page_view` on load
++(and when restored from the back/forward cache) and records clicks through one
++delegated listener without delaying navigation.
++
++Events are sent together after 500 ms without another event, after at most five
++seconds of continuous activity, or when the batch reaches 50 events. Hiding or
++leaving the page flushes any pending batch immediately. Delivery uses
++`navigator.sendBeacon`, falling back to a background `fetch` with `keepalive`.
++Failed delivery is dropped without retries to avoid extra traffic.
++
++Configure the destination using `data-endpoint` on the script in `index.html`.
++The default is `POST /api/analytics`; the hosting service must provide that
++endpoint (this repository only contains static files). It should accept JSON
++with this shape and return a successful response such as `204`:
++
++```json
++{
++  "events": [
++    { "type": "page_view", "timestamp": "2026-10-23T12:00:00.000Z", "path": "/" },
++    { "type": "click", "timestamp": "2026-10-23T12:00:00.100Z", "path": "/", "tag": "a", "destination": "/menu" }
++  ]
++}
++```
++
++Click events include the nearest control's tag and, for HTTP(S) links, the
++destination pathname. No form values, page text, query strings, or fragments are
++collected. No cookies or persistent identifiers are created by the script.

@@ -1,0 +1,1122 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..902b281
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++data/
+diff --git a/index.html b/index.html
+index 66c9173..04f48a6 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,153 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Rewards sign-up */
++    .rewards {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      background: white;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
++      margin-top: 60px;
++      scroll-margin-top: 80px;
++    }
++
++    .rewards-art {
++      background: linear-gradient(rgba(62, 39, 35, 0.55), rgba(62, 39, 35, 0.75)),
++        url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=80');
++      background-size: cover;
++      background-position: center;
++      color: white;
++      padding: 40px;
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-end;
++    }
++
++    .rewards-art h2 {
++      font-size: 2rem;
++      margin-bottom: 10px;
++    }
++
++    .rewards-art ul {
++      list-style: none;
++      margin-top: 15px;
++    }
++
++    .rewards-art li::before {
++      content: "☕ ";
++    }
++
++    .rewards-body {
++      padding: 40px;
++    }
++
++    .rewards-body h3 {
++      color: var(--primary);
++      margin-bottom: 20px;
++    }
++
++    .field {
++      margin-bottom: 16px;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
++    .field input[type="text"],
++    .field input[type="email"],
++    .field input[type="password"] {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 1rem;
++    }
++
++    .field input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    .field input[aria-invalid="true"] {
++      border-color: #c62828;
++    }
++
++    .check {
++      display: flex;
++      gap: 8px;
++      align-items: flex-start;
++      font-size: 0.9rem;
++      margin-bottom: 10px;
++    }
++
++    .check input {
++      margin-top: 5px;
++    }
++
++    .hint,
++    .error {
++      font-size: 0.8rem;
++      margin-top: 4px;
++    }
++
++    .error {
++      color: #c62828;
++    }
++
++    .hint[data-state="pending"] {
++      color: #6d4c41;
++    }
++
++    .hint[data-state="verified"] {
++      color: #2e7d32;
++      font-weight: 600;
++    }
++
++    .hint[data-state="error"] {
++      color: #c62828;
++    }
++
++    .rewards-body button {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      width: 100%;
++    }
++
++    .rewards-body button:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    #form-status[data-state="error"] {
++      color: #c62828;
++      margin-top: 10px;
++    }
++
++    #rewards-success {
++      text-align: center;
++      padding: 40px 0;
++    }
++
++    #rewards-success h3 {
++      font-size: 1.6rem;
++    }
++
++    @media (max-width: 760px) {
++      .rewards {
++        grid-template-columns: 1fr;
++      }
++
++      .rewards-art {
++        min-height: 220px;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -162,7 +309,7 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +342,66 @@
+         </div>
+       </div>
+     </section>
++    <section class="rewards" id="rewards" aria-labelledby="rewards-title">
++      <div class="rewards-art">
++        <h2 id="rewards-title">Daily Grind Rewards</h2>
++        <p>Every sip gets you closer to your next free drink.</p>
++        <ul>
++          <li>50 bonus stars when you join</li>
++          <li>A free drink on your birthday</li>
++          <li>Early access to seasonal blends</li>
++        </ul>
++      </div>
++      <div class="rewards-body">
++        <form id="rewards-form" novalidate>
++          <h3>Create your Rewards account</h3>
++
++          <div class="field">
++            <label for="rw-first-name">First name</label>
++            <input id="rw-first-name" name="firstName" type="text" autocomplete="given-name" maxlength="50" required
++              aria-describedby="firstName-error">
++            <p class="error" id="firstName-error" role="alert"></p>
++          </div>
++
++          <div class="field">
++            <label for="rw-email">Email</label>
++            <input id="rw-email" name="email" type="email" autocomplete="email" maxlength="254" required
++              aria-describedby="email-status email-error">
++            <p class="hint" id="email-status" data-state="idle" aria-live="polite"></p>
++            <p class="error" id="email-error" role="alert"></p>
++          </div>
++
++          <div class="field">
++            <label for="rw-password">Password</label>
++            <input id="rw-password" name="password" type="password" autocomplete="new-password" minlength="10"
++              maxlength="200" required aria-describedby="password-hint password-error">
++            <p class="hint" id="password-hint">At least 10 characters.</p>
++            <p class="error" id="password-error" role="alert"></p>
++          </div>
++
++          <label class="check">
++            <input type="checkbox" name="acceptTerms" required aria-describedby="acceptTerms-error">
++            <span>I agree to the <a href="/rewards/terms">Rewards Terms</a> and <a href="/privacy-policy">Privacy
++                Policy</a>.</span>
++          </label>
++          <p class="error" id="acceptTerms-error" role="alert"></p>
++
++          <label class="check">
++            <input type="checkbox" name="marketingOptIn">
++            <span>Send me offers and seasonal menu news.</span>
++          </label>
++
++          <button type="submit" class="btn" disabled>Join Rewards</button>
++          <p id="form-status" aria-live="polite"></p>
++        </form>
++
++        <div id="rewards-success" hidden tabindex="-1">
++          <h3>Welcome, <span data-name></span>! 🎉</h3>
++          <p>Your account is ready and <strong><span data-points></span> bonus stars</strong> are waiting for you.</p>
++          <a href="/order-online" class="btn">Order your first drink</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +414,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/js/rewards-signup.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/js/rewards-signup.js b/js/rewards-signup.js
+new file mode 100644
+index 0000000..9ab781a
+--- /dev/null
++++ b/js/rewards-signup.js
+@@ -0,0 +1,152 @@
++// Daily Grind Rewards sign-up: browser-native email verification.
++//
++// We put a server nonce on the email <input>. In browsers that implement the
++// Email Verification Protocol, choosing an address from autofill makes the
++// browser obtain a signed attestation from the email provider and fire an
++// `emailverified` event carrying an SD-JWT+KB presentation token. We send that
++// to the server for verification — no passcode or magic-link email involved.
++(() => {
++  const form = document.getElementById('rewards-form');
++  if (!form) return;
++  const emailInput = form.elements.email;
++  const submitBtn = form.querySelector('button[type="submit"]');
++  const emailStatus = document.getElementById('email-status');
++  const formStatus = document.getElementById('form-status');
++
++  let verifiedEmail = null;
++  let nonceTimer = null;
++  let verifying = false;
++
++  const normalize = (v) => v.trim().toLowerCase();
++
++  function setEmailStatus(state, text) {
++    emailStatus.dataset.state = state;
++    emailStatus.textContent = text;
++  }
++
++  function setFieldError(name, msg) {
++    const el = document.getElementById(`${name}-error`);
++    const input = form.elements[name];
++    if (el) el.textContent = msg || '';
++    if (input) input.setAttribute('aria-invalid', msg ? 'true' : 'false');
++  }
++
++  function updateSubmit() {
++    submitBtn.disabled = verifying || !verifiedEmail || normalize(emailInput.value) !== verifiedEmail;
++  }
++
++  async function refreshNonce() {
++    clearTimeout(nonceTimer);
++    try {
++      const res = await fetch('/api/rewards/nonce', { credentials: 'same-origin', cache: 'no-store' });
++      if (!res.ok) throw new Error(String(res.status));
++      const { nonce, expiresIn } = await res.json();
++      emailInput.setAttribute('nonce', nonce);
++      emailInput.nonce = nonce;
++      // Renew shortly before expiry so a slow customer still gets a valid one.
++      nonceTimer = setTimeout(refreshNonce, Math.max(30, expiresIn - 30) * 1000);
++    } catch {
++      setEmailStatus('error', 'Email verification is temporarily unavailable. Please refresh the page.');
++    }
++  }
++
++  emailInput.addEventListener('emailverified', async (event) => {
++    const token = event.presentationToken ?? event.token;
++    if (typeof token !== 'string' || !token) return;
++    verifying = true;
++    updateSubmit();
++    setFieldError('email', '');
++    setEmailStatus('pending', 'Confirming your email with your provider…');
++    try {
++      const res = await fetch('/api/rewards/verify-email', {
++        method: 'POST',
++        credentials: 'same-origin',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ email: emailInput.value, presentationToken: token }),
++      });
++      const data = await res.json().catch(() => ({}));
++      if (res.ok && data.verified) {
++        verifiedEmail = normalize(data.email);
++        setEmailStatus('verified', `✓ ${data.email} is verified`);
++      } else {
++        verifiedEmail = null;
++        setEmailStatus('error', data.message || "We couldn't verify that email address.");
++        refreshNonce(); // nonces are single-use
++      }
++    } catch {
++      verifiedEmail = null;
++      setEmailStatus('error', 'Network error while verifying. Please pick your email again.');
++      refreshNonce();
++    } finally {
++      verifying = false;
++      updateSubmit();
++    }
++  });
++
++  emailInput.addEventListener('input', () => {
++    if (verifiedEmail && normalize(emailInput.value) !== verifiedEmail) {
++      verifiedEmail = null;
++      setEmailStatus('idle', 'Email changed — pick an address from your browser’s autofill to verify it.');
++      refreshNonce();
++    }
++    updateSubmit();
++  });
++
++  form.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    ['firstName', 'email', 'password', 'acceptTerms'].forEach((n) => setFieldError(n, ''));
++    formStatus.textContent = '';
++    formStatus.dataset.state = '';
++    if (!verifiedEmail) {
++      setFieldError('email', 'Please verify your email address first.');
++      return;
++    }
++    submitBtn.disabled = true;
++    submitBtn.textContent = 'Creating account…';
++    try {
++      const res = await fetch('/api/rewards/signup', {
++        method: 'POST',
++        credentials: 'same-origin',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({
++          firstName: form.elements.firstName.value,
++          email: emailInput.value,
++          password: form.elements.password.value,
++          acceptTerms: form.elements.acceptTerms.checked,
++          marketingOptIn: form.elements.marketingOptIn.checked,
++        }),
++      });
++      const data = await res.json().catch(() => ({}));
++      if (res.ok) {
++        form.reset();
++        form.hidden = true;
++        const done = document.getElementById('rewards-success');
++        done.querySelector('[data-name]').textContent = data.firstName;
++        done.querySelector('[data-points]').textContent = data.points;
++        done.hidden = false;
++        done.focus();
++        return;
++      }
++      for (const [field, msg] of Object.entries(data.errors || {})) setFieldError(field, msg);
++      if (data.error === 'email_unverified') {
++        verifiedEmail = null;
++        setEmailStatus('idle', 'Your verification expired — pick your email from autofill again.');
++        refreshNonce();
++      }
++      if (!data.errors) {
++        formStatus.dataset.state = 'error';
++        formStatus.textContent = data.message || 'Something went wrong. Please try again.';
++      }
++    } catch {
++      formStatus.dataset.state = 'error';
++      formStatus.textContent = 'Network error. Please try again.';
++    } finally {
++      submitBtn.textContent = 'Join Rewards';
++      updateSubmit();
++    }
++  });
++
++  setEmailStatus('idle', 'Choose your email from your browser’s autofill suggestions and we’ll verify it instantly — no code or link needed.');
++  updateSubmit();
++  refreshNonce();
++})();
+diff --git a/lib/email-verification.js b/lib/email-verification.js
+new file mode 100644
+index 0000000..60e5412
+--- /dev/null
++++ b/lib/email-verification.js
+@@ -0,0 +1,307 @@
++// Server-side verifier for the browser Email Verification Protocol (EVP).
++//
++// Flow: the page puts a server-issued nonce on an <input autocomplete="email">.
++// When the customer picks an address from autofill, a supporting browser asks
++// the email domain's issuer for an SD-JWT that attests to the address, binds it
++// to our origin + nonce with a Key Binding JWT (SD-JWT+KB), and hands it to the
++// page via an `emailverified` event. Nothing is emailed to the customer.
++//
++// This module verifies that token:
++//   1. The issuer is authoritative for the email's domain
++//      (DNS TXT `_email-verification.<domain>` => `iss=<issuer host>`).
++//   2. The SD-JWT is signed by a key from the issuer's published JWKS
++//      (https://<issuer>/.well-known/email-verification -> jwks_uri).
++//   3. The claims say email_verified=true for exactly the submitted email.
++//   4. The KB-JWT is signed by the key in `cnf.jwk`, targets our origin (aud),
++//      carries our single-use nonce, is fresh, and its sd_hash covers the SD-JWT.
++
++import { createHash, createPublicKey, verify as cryptoVerify } from 'node:crypto';
++import { resolveTxt, lookup } from 'node:dns/promises';
++import { BlockList, isIP } from 'node:net';
++
++export class EmailVerificationError extends Error {
++  constructor(message, code = 'invalid_token') {
++    super(message);
++    this.code = code;
++  }
++}
++
++const fail = (msg, code) => { throw new EmailVerificationError(msg, code); };
++
++const ISSUER_TYPS = new Set(['evp+sd-jwt', 'web-identity+sd-jwt']);
++const KB_TYP = 'kb+jwt';
++const ALGS = {
++  ES256: { hash: 'sha256', dsaEncoding: 'ieee-p1363', kty: 'EC', crv: 'P-256' },
++  ES384: { hash: 'sha384', dsaEncoding: 'ieee-p1363', kty: 'EC', crv: 'P-384' },
++  RS256: { hash: 'sha256', kty: 'RSA' },
++  EdDSA: { hash: null, kty: 'OKP', crv: 'Ed25519' },
++};
++
++const MAX_TOKEN_LENGTH = 16 * 1024;
++const CLOCK_SKEW_S = 60;
++const ISSUANCE_MAX_AGE_S = 10 * 60;
++const KB_MAX_AGE_S = 5 * 60;
++const HOSTNAME_RE = /^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/;
++
++const b64urlDecode = (s) => {
++  if (typeof s !== 'string' || !/^[A-Za-z0-9_-]*$/.test(s)) fail('Malformed base64url segment');
++  return Buffer.from(s, 'base64url');
++};
++const b64urlSha256 = (s) => createHash('sha256').update(s, 'ascii').digest('base64url');
++
++function parseJson(buf, what) {
++  try {
++    const v = JSON.parse(buf.toString('utf8'));
++    if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error();
++    return v;
++  } catch {
++    return fail(`Malformed ${what}`);
++  }
++}
++
++function decodeJwt(jwt, what) {
++  const parts = jwt.split('.');
++  if (parts.length !== 3) fail(`Malformed ${what}`);
++  const [h, p, s] = parts;
++  return {
++    header: parseJson(b64urlDecode(h), `${what} header`),
++    payload: parseJson(b64urlDecode(p), `${what} payload`),
++    signingInput: `${h}.${p}`,
++    signature: b64urlDecode(s),
++  };
++}
++
++function verifyJwtSignature({ header, signingInput, signature }, jwk, what) {
++  const spec = ALGS[header.alg];
++  if (!spec) fail(`${what} uses unsupported alg`);
++  if (!jwk || typeof jwk !== 'object' || jwk.d !== undefined) fail(`${what} key is not a public JWK`);
++  if (jwk.kty !== spec.kty || (spec.crv && jwk.crv !== spec.crv)) fail(`${what} key does not match alg`);
++  if (jwk.alg && jwk.alg !== header.alg) fail(`${what} key alg mismatch`);
++  let key;
++  try {
++    const { kty, crv, x, y, n, e } = jwk;
++    key = createPublicKey({ key: { kty, crv, x, y, n, e }, format: 'jwk' });
++  } catch {
++    fail(`${what} key is invalid`);
++  }
++  const opts = { key };
++  if (spec.dsaEncoding) opts.dsaEncoding = spec.dsaEncoding;
++  let ok = false;
++  try {
++    ok = cryptoVerify(spec.hash, Buffer.from(signingInput, 'ascii'), opts, signature);
++  } catch {
++    ok = false;
++  }
++  if (!ok) fail(`${what} signature is invalid`);
++}
++
++export function normalizeEmail(email) {
++  if (typeof email !== 'string') return null;
++  const e = email.trim().toLowerCase();
++  if (e.length > 254) return null;
++  const at = e.lastIndexOf('@');
++  if (at < 1 || at !== e.indexOf('@')) return null;
++  const domain = e.slice(at + 1);
++  if (!HOSTNAME_RE.test(domain)) return null;
++  if (!/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}$/.test(e.slice(0, at))) return null;
++  return e;
++}
++
++function normalizeIssuer(iss) {
++  if (typeof iss !== 'string') return null;
++  let host = iss.trim().toLowerCase();
++  if (host.startsWith('https://')) {
++    try {
++      const u = new URL(host);
++      if (u.pathname !== '/' || u.search || u.hash || u.port || u.username) return null;
++      host = u.hostname;
++    } catch {
++      return null;
++    }
++  }
++  return HOSTNAME_RE.test(host) ? host : null;
++}
++
++// ---------------------------------------------------------------------------
++// Network helpers (DNS + HTTPS) with SSRF guards and caching.
++
++const privateRanges = new BlockList();
++for (const [net, prefix] of [
++  ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16],
++  ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.168.0.0', 16], ['198.18.0.0', 15], ['224.0.0.0', 3],
++]) privateRanges.addSubnet(net, prefix, 'ipv4');
++for (const [net, prefix] of [['::', 127], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8], ['::ffff:0:0', 96]]) {
++  privateRanges.addSubnet(net, prefix, 'ipv6');
++}
++
++async function assertPublicHost(hostname) {
++  if (isIP(hostname)) fail('Issuer host must be a DNS name', 'issuer_error');
++  const addrs = await lookup(hostname, { all: true }).catch(() => fail('Issuer host does not resolve', 'issuer_error'));
++  for (const { address, family } of addrs) {
++    if (privateRanges.check(address, family === 6 ? 'ipv6' : 'ipv4')) {
++      fail('Issuer host resolves to a non-public address', 'issuer_error');
++    }
++  }
++}
++
++export async function defaultFetchJson(url) {
++  const u = new URL(url);
++  if (u.protocol !== 'https:') fail('Issuer URLs must use https', 'issuer_error');
++  await assertPublicHost(u.hostname);
++  let res;
++  try {
++    res = await fetch(u, {
++      redirect: 'error',
++      headers: { accept: 'application/json' },
++      signal: AbortSignal.timeout(5000),
++    });
++  } catch {
++    fail('Could not reach issuer', 'issuer_error');
++  }
++  if (!res.ok) fail(`Issuer responded ${res.status}`, 'issuer_error');
++  const text = await res.text();
++  if (text.length > 64 * 1024) fail('Issuer response too large', 'issuer_error');
++  try {
++    return JSON.parse(text);
++  } catch {
++    return fail('Issuer returned invalid JSON', 'issuer_error');
++  }
++}
++
++export async function defaultResolveTxt(name) {
++  try {
++    return await resolveTxt(name);
++  } catch {
++    return [];
++  }
++}
++
++function makeCache(ttlMs) {
++  const m = new Map();
++  return async (key, load) => {
++    const hit = m.get(key);
++    if (hit && hit.exp > Date.now()) return hit.value;
++    const value = await load();
++    m.set(key, { value, exp: Date.now() + ttlMs });
++    if (m.size > 1000) m.delete(m.keys().next().value);
++    return value;
++  };
++}
++
++// ---------------------------------------------------------------------------
++
++export function createEmailVerifier({
++  expectedOrigin,
++  resolveTxt: txt = defaultResolveTxt,
++  fetchJson = defaultFetchJson,
++  now = () => Math.floor(Date.now() / 1000),
++  cacheTtlMs = 10 * 60 * 1000,
++} = {}) {
++  if (!expectedOrigin) throw new Error('expectedOrigin is required');
++  const issuerCache = makeCache(cacheTtlMs);
++  const jwksCache = makeCache(cacheTtlMs);
++
++  async function issuerForDomain(domain) {
++    const records = await txt(`_email-verification.${domain}`);
++    const issuers = records
++      .map((chunks) => (Array.isArray(chunks) ? chunks.join('') : String(chunks)).trim())
++      .filter((r) => r.startsWith('iss='))
++      .map((r) => normalizeIssuer(r.slice(4)))
++      .filter(Boolean);
++    if (issuers.length !== 1) fail('Email domain has no unique email-verification issuer', 'no_issuer');
++    return issuers[0];
++  }
++
++  async function issuerKeys(issuerHost) {
++    return jwksCache(issuerHost, async () => {
++      const meta = await fetchJson(`https://${issuerHost}/.well-known/email-verification`);
++      if (!meta || typeof meta.jwks_uri !== 'string') fail('Issuer metadata lacks jwks_uri', 'issuer_error');
++      let jwksUrl;
++      try {
++        jwksUrl = new URL(meta.jwks_uri);
++      } catch {
++        fail('Issuer jwks_uri is invalid', 'issuer_error');
++      }
++      const h = jwksUrl.hostname.toLowerCase();
++      if (jwksUrl.protocol !== 'https:' || (h !== issuerHost && !h.endsWith(`.${issuerHost}`))) {
++        fail('Issuer jwks_uri must be https on the issuer domain', 'issuer_error');
++      }
++      const jwks = await fetchJson(jwksUrl.href);
++      if (!jwks || !Array.isArray(jwks.keys)) fail('Issuer JWKS is invalid', 'issuer_error');
++      return jwks.keys.filter((k) => k && typeof k === 'object' && !k.d && (!k.use || k.use === 'sig'));
++    });
++  }
++
++  /**
++   * @param {object} p
++   * @param {string} p.token       SD-JWT+KB presentation from the `emailverified` event
++   * @param {string} p.email       email the customer typed/selected
++   * @param {string} p.nonce       nonce the server issued for this session (single-use)
++   * @returns {Promise<{email:string, issuer:string}>}
++   */
++  async function verify({ token, email, nonce }) {
++    if (typeof token !== 'string' || !token || token.length > MAX_TOKEN_LENGTH) fail('Missing or oversized token');
++    if (typeof nonce !== 'string' || nonce.length < 16) fail('No active nonce for this session', 'bad_nonce');
++    const submitted = normalizeEmail(email);
++    if (!submitted) fail('Invalid email address', 'bad_email');
++
++    // --- Split SD-JWT+KB: <issuer-jwt>~[<disclosure>~]*<kb-jwt>
++    const lastTilde = token.lastIndexOf('~');
++    if (lastTilde < 1) fail('Token is not an SD-JWT+KB presentation');
++    const sdJwt = token.slice(0, lastTilde + 1);
++    const kbJwtRaw = token.slice(lastTilde + 1);
++    const issuerJwtRaw = sdJwt.slice(0, sdJwt.indexOf('~'));
++    if (!kbJwtRaw) fail('Token is missing its key-binding JWT');
++
++    const issuerJwt = decodeJwt(issuerJwtRaw, 'issuer JWT');
++    const kbJwt = decodeJwt(kbJwtRaw, 'key-binding JWT');
++    const t = now();
++
++    // --- Issuer JWT header + claims (cheap checks before any network I/O)
++    if (!ISSUER_TYPS.has(issuerJwt.header.typ)) fail('Issuer JWT has unexpected typ');
++    if (!ALGS[issuerJwt.header.alg]) fail('Issuer JWT uses unsupported alg');
++    const c = issuerJwt.payload;
++    const tokenEmail = normalizeEmail(c.email);
++    if (!tokenEmail || tokenEmail !== submitted) fail('Token email does not match the submitted email', 'email_mismatch');
++    if (c.email_verified !== true) fail('Issuer did not assert email_verified');
++    if (typeof c.iat !== 'number' || c.iat > t + CLOCK_SKEW_S || c.iat < t - ISSUANCE_MAX_AGE_S) fail('Issuer JWT is stale or from the future', 'expired');
++    if (c.exp !== undefined && (typeof c.exp !== 'number' || c.exp < t - CLOCK_SKEW_S)) fail('Issuer JWT has expired', 'expired');
++    if (c.nbf !== undefined && (typeof c.nbf !== 'number' || c.nbf > t + CLOCK_SKEW_S)) fail('Issuer JWT not yet valid', 'expired');
++    const holderJwk = c.cnf && c.cnf.jwk;
++    if (!holderJwk || typeof holderJwk !== 'object') fail('Issuer JWT lacks cnf.jwk');
++    const claimedIssuer = normalizeIssuer(c.iss);
++    if (!claimedIssuer) fail('Issuer JWT has invalid iss');
++
++    // --- Key-binding JWT: proves the presenting browser holds cnf key, for us, now.
++    if (kbJwt.header.typ !== KB_TYP) fail('Key-binding JWT has unexpected typ');
++    verifyJwtSignature(kbJwt, holderJwk, 'Key-binding JWT');
++    const kb = kbJwt.payload;
++    const aud = Array.isArray(kb.aud) ? kb.aud : [kb.aud];
++    if (aud.length !== 1 || aud[0] !== expectedOrigin) fail('Token was not issued for this site', 'wrong_audience');
++    if (typeof kb.nonce !== 'string' || kb.nonce !== nonce) fail('Token nonce does not match', 'bad_nonce');
++    if (typeof kb.iat !== 'number' || kb.iat > t + CLOCK_SKEW_S || kb.iat < t - KB_MAX_AGE_S) fail('Key-binding JWT is stale', 'expired');
++    if (kb.sd_hash !== b64urlSha256(sdJwt)) fail('Key-binding JWT sd_hash mismatch');
++
++    // --- Issuer authority + signature (network)
++    const domain = tokenEmail.slice(tokenEmail.indexOf('@') + 1);
++    const authoritative = await issuerCache(domain, () => issuerForDomain(domain));
++    if (claimedIssuer !== authoritative) fail('Token issuer is not authoritative for this email domain', 'wrong_issuer');
++    const keys = await issuerKeys(authoritative);
++    const kid = issuerJwt.header.kid;
++    const candidates = keys.filter((k) => (kid === undefined ? true : k.kid === kid));
++    if (candidates.length === 0) fail('No matching issuer signing key', 'issuer_error');
++    let verified = false;
++    for (const k of candidates) {
++      try {
++        verifyJwtSignature(issuerJwt, k, 'Issuer JWT');
++        verified = true;
++        break;
++      } catch { /* try next */ }
++    }
++    if (!verified) fail('Issuer JWT signature is invalid');
++
++    return { email: tokenEmail, issuer: authoritative };
++  }
++
++  return { verify };
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..3e28ab2 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,13 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "test": "node --test test/*.test.js"
++  },
++  "engines": {
++    "node": ">=20"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..e3f4a08
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,269 @@
++// The Daily Grind web server: serves the homepage and the rewards sign-up API.
++// Zero dependencies — run with `node server.js`.
++//
++// Env:
++//   PORT        (default 11222)
++//   APP_ORIGIN  public origin of the site, e.g. https://dailygrind.coffee.
++//               Used as the required `aud` of email-verification tokens and for
++//               CSRF Origin checks. Defaults to http://localhost:$PORT.
++//   DATA_DIR    where accounts.json is stored (default ./data)
++
++import { createServer } from 'node:http';
++import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
++import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
++import { promisify } from 'node:util';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { createEmailVerifier, normalizeEmail, EmailVerificationError } from './lib/email-verification.js';
++
++const scrypt = promisify(scryptCb);
++const ROOT = path.dirname(fileURLToPath(import.meta.url));
++const PORT = Number(process.env.PORT) || 11222;
++const APP_ORIGIN = (process.env.APP_ORIGIN || `http://localhost:${PORT}`).replace(/\/+$/, '');
++const SECURE_COOKIES = APP_ORIGIN.startsWith('https://');
++const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
++const ACCOUNTS_FILE = path.join(DATA_DIR, 'accounts.json');
++
++const NONCE_TTL_MS = 5 * 60 * 1000;
++const VERIFIED_TTL_MS = 30 * 60 * 1000;
++const SESSION_TTL_MS = 60 * 60 * 1000;
++
++const verifier = createEmailVerifier({ expectedOrigin: APP_ORIGIN });
++
++// ---------------------------------------------------------------- sessions
++const sessions = new Map(); // sid -> { nonce, nonceExp, verifiedEmail, verifiedExp, exp }
++
++function getSession(req, res, create = false) {
++  const sid = /(?:^|;\s*)dg_sid=([A-Za-z0-9_-]{43})(?:;|$)/.exec(req.headers.cookie || '')?.[1];
++  let s = sid && sessions.get(sid);
++  if (s && s.exp < Date.now()) { sessions.delete(sid); s = null; }
++  if (!s && create) {
++    const id = randomBytes(32).toString('base64url');
++    s = { id, exp: 0 };
++    sessions.set(id, s);
++    res.setHeader('Set-Cookie',
++      `dg_sid=${id}; Path=/api/rewards; HttpOnly; SameSite=Strict; Max-Age=${SESSION_TTL_MS / 1000}${SECURE_COOKIES ? '; Secure' : ''}`);
++  }
++  if (s) s.exp = Date.now() + SESSION_TTL_MS;
++  return s || null;
++}
++
++setInterval(() => {
++  const t = Date.now();
++  for (const [k, s] of sessions) if (s.exp < t) sessions.delete(k);
++  for (const [k, r] of rateBuckets) if (r.reset < t) rateBuckets.delete(k);
++}, 60_000).unref();
++
++// ---------------------------------------------------------------- rate limit
++const rateBuckets = new Map();
++function rateLimited(req, key, limit, windowMs) {
++  const id = `${key}:${req.socket.remoteAddress}`;
++  const t = Date.now();
++  let b = rateBuckets.get(id);
++  if (!b || b.reset < t) { b = { n: 0, reset: t + windowMs }; rateBuckets.set(id, b); }
++  return ++b.n > limit;
++}
++
++// ---------------------------------------------------------------- accounts
++let accountsCache = null;
++let writeChain = Promise.resolve();
++
++async function loadAccounts() {
++  if (accountsCache) return accountsCache;
++  try {
++    accountsCache = JSON.parse(await readFile(ACCOUNTS_FILE, 'utf8'));
++  } catch (e) {
++    if (e.code !== 'ENOENT') throw e;
++    accountsCache = {};
++  }
++  return accountsCache;
++}
++
++function saveAccounts() {
++  writeChain = writeChain.then(async () => {
++    await mkdir(DATA_DIR, { recursive: true });
++    const tmp = `${ACCOUNTS_FILE}.${process.pid}.tmp`;
++    await writeFile(tmp, JSON.stringify(accountsCache, null, 2), { mode: 0o600 });
++    await rename(tmp, ACCOUNTS_FILE);
++  });
++  return writeChain;
++}
++
++async function hashPassword(pw) {
++  const salt = randomBytes(16);
++  const key = await scrypt(pw, salt, 64, { N: 16384, r: 8, p: 1 });
++  return `scrypt$16384$8$1$${salt.toString('base64')}$${key.toString('base64')}`;
++}
++
++// ---------------------------------------------------------------- http utils
++const SECURITY_HEADERS = {
++  'X-Content-Type-Options': 'nosniff',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'X-Frame-Options': 'DENY',
++};
++const HTML_CSP = [
++  "default-src 'self'",
++  "script-src 'self'",
++  "style-src 'self' 'unsafe-inline'",
++  "img-src 'self' https://images.unsplash.com data:",
++  "connect-src 'self'",
++  "form-action 'self'",
++  "frame-ancestors 'none'",
++  "base-uri 'none'",
++  "object-src 'none'",
++].join('; ');
++
++function send(res, status, body, headers = {}) {
++  res.writeHead(status, { ...SECURITY_HEADERS, ...headers });
++  res.end(body);
++}
++function json(res, status, obj) {
++  send(res, status, JSON.stringify(obj), { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
++}
++
++async function readJsonBody(req, limit = 32 * 1024) {
++  if (!/^application\/json\b/i.test(req.headers['content-type'] || '')) {
++    throw Object.assign(new Error('Expected application/json'), { status: 415 });
++  }
++  let size = 0;
++  const chunks = [];
++  for await (const chunk of req) {
++    size += chunk.length;
++    if (size > limit) throw Object.assign(new Error('Request body too large'), { status: 413 });
++    chunks.push(chunk);
++  }
++  try {
++    const v = JSON.parse(Buffer.concat(chunks).toString('utf8'));
++    if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error();
++    return v;
++  } catch {
++    throw Object.assign(new Error('Invalid JSON body'), { status: 400 });
++  }
++}
++
++function sameOrigin(req) {
++  return req.headers.origin === APP_ORIGIN && req.headers['sec-fetch-site'] !== 'cross-site';
++}
++
++const STATIC = {
++  '/': ['index.html', 'text/html; charset=utf-8'],
++  '/index.html': ['index.html', 'text/html; charset=utf-8'],
++  '/js/rewards-signup.js': ['js/rewards-signup.js', 'text/javascript; charset=utf-8'],
++};
++
++// ---------------------------------------------------------------- handlers
++
++// Issue a fresh single-use nonce for the email input. The browser embeds it in
++// the key-binding JWT, so a token can only be redeemed by this session.
++function handleNonce(req, res) {
++  const s = getSession(req, res, true);
++  s.nonce = randomBytes(24).toString('base64url');
++  s.nonceExp = Date.now() + NONCE_TTL_MS;
++  json(res, 200, { nonce: s.nonce, expiresIn: NONCE_TTL_MS / 1000 });
++}
++
++// Verify the SD-JWT+KB from the browser's `emailverified` event.
++async function handleVerifyEmail(req, res) {
++  if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
++  if (rateLimited(req, 'verify', 20, 10 * 60 * 1000)) return json(res, 429, { error: 'rate_limited', message: 'Too many attempts. Try again in a few minutes.' });
++  const body = await readJsonBody(req);
++  const s = getSession(req, res, false);
++  if (!s || !s.nonce || s.nonceExp < Date.now()) {
++    return json(res, 400, { error: 'bad_nonce', message: 'Your verification session expired. Please pick your email again.' });
++  }
++  const nonce = s.nonce;
++  s.nonce = null; // single use, whether or not verification succeeds
++  try {
++    const { email, issuer } = await verifier.verify({ token: body.presentationToken, email: body.email, nonce });
++    s.verifiedEmail = email;
++    s.verifiedExp = Date.now() + VERIFIED_TTL_MS;
++    json(res, 200, { verified: true, email, issuer });
++  } catch (e) {
++    if (!(e instanceof EmailVerificationError)) throw e;
++    console.warn(`[verify-email] rejected: ${e.code}: ${e.message}`);
++    s.verifiedEmail = null;
++    const status = e.code === 'issuer_error' ? 502 : 400;
++    json(res, status, { verified: false, error: e.code, message: publicMessage(e.code) });
++  }
++}
++
++function publicMessage(code) {
++  switch (code) {
++    case 'no_issuer': return "Your email provider doesn't support instant verification yet.";
++    case 'issuer_error': return "We couldn't reach your email provider to confirm the address. Please try again.";
++    case 'email_mismatch': return 'The verified address does not match the email in the form.';
++    case 'expired': case 'bad_nonce': return 'Verification timed out. Please pick your email again.';
++    default: return "We couldn't verify that email address.";
++  }
++}
++
++async function handleSignup(req, res) {
++  if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
++  if (rateLimited(req, 'signup', 10, 10 * 60 * 1000)) return json(res, 429, { error: 'rate_limited', message: 'Too many attempts. Try again later.' });
++  const body = await readJsonBody(req);
++  const s = getSession(req, res, false);
++
++  const firstName = typeof body.firstName === 'string' ? body.firstName.trim() : '';
++  const email = normalizeEmail(body.email);
++  const password = typeof body.password === 'string' ? body.password : '';
++  const errors = {};
++  if (!firstName || firstName.length > 50) errors.firstName = 'Please enter your first name (up to 50 characters).';
++  if (!email) errors.email = 'Please enter a valid email address.';
++  if (password.length < 10 || password.length > 200) errors.password = 'Password must be 10–200 characters.';
++  if (body.acceptTerms !== true) errors.acceptTerms = 'Please accept the Rewards terms.';
++  if (Object.keys(errors).length) return json(res, 400, { error: 'validation', errors });
++
++  const verified = s && s.verifiedEmail && s.verifiedExp > Date.now() &&
++    s.verifiedEmail.length === email.length &&
++    timingSafeEqual(Buffer.from(s.verifiedEmail), Buffer.from(email));
++  if (!verified) {
++    return json(res, 403, { error: 'email_unverified', errors: { email: 'Please verify your email address first.' } });
++  }
++
++  const accounts = await loadAccounts();
++  if (accounts[email]) {
++    return json(res, 409, { error: 'exists', errors: { email: 'A Rewards account already exists for this email. Try signing in.' } });
++  }
++  accounts[email] = {
++    id: randomBytes(12).toString('hex'),
++    firstName,
++    email,
++    emailVerified: true,
++    emailVerifiedVia: 'email-verification-protocol',
++    passwordHash: await hashPassword(password),
++    marketingOptIn: body.marketingOptIn === true,
++    points: 50, // welcome bonus
++    createdAt: new Date().toISOString(),
++  };
++  await saveAccounts();
++  s.verifiedEmail = null;
++  s.verifiedExp = 0;
++  json(res, 201, { ok: true, firstName, points: 50 });
++}
++
++// ---------------------------------------------------------------- router
++const server = createServer(async (req, res) => {
++  try {
++    const url = new URL(req.url, 'http://x');
++    const route = `${req.method} ${url.pathname}`;
++    if (route === 'GET /api/rewards/nonce') return handleNonce(req, res);
++    if (route === 'POST /api/rewards/verify-email') return await handleVerifyEmail(req, res);
++    if (route === 'POST /api/rewards/signup') return await handleSignup(req, res);
++    if (url.pathname.startsWith('/api/')) return json(res, 404, { error: 'not_found' });
++
++    const entry = (req.method === 'GET' || req.method === 'HEAD') && STATIC[url.pathname];
++    if (!entry) return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
++    const [file, type] = entry;
++    const headers = { 'Content-Type': type, 'Cache-Control': 'no-cache' };
++    if (type.startsWith('text/html')) headers['Content-Security-Policy'] = HTML_CSP;
++    const body = await readFile(path.join(ROOT, file));
++    send(res, 200, req.method === 'HEAD' ? undefined : body, headers);
++  } catch (e) {
++    if (e.status) return json(res, e.status, { error: 'bad_request', message: e.message });
++    console.error(e);
++    if (!res.headersSent) json(res, 500, { error: 'server_error' });
++    else res.destroy();
++  }
++});
++
++server.listen(PORT, () => console.log(`The Daily Grind listening on :${PORT} (origin ${APP_ORIGIN})`));
+diff --git a/test/email-verification.test.js b/test/email-verification.test.js
+new file mode 100644
+index 0000000..650669f
+--- /dev/null
++++ b/test/email-verification.test.js
+@@ -0,0 +1,101 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { generateKeyPairSync, sign, createHash } from 'node:crypto';
++import { createEmailVerifier } from '../lib/email-verification.js';
++
++const ORIGIN = 'https://dailygrind.example';
++const NONCE = 'n0nce-abcdefghijklmnopqrstuv';
++const now = () => Math.floor(Date.now() / 1000);
++const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
++
++const issuerKey = generateKeyPairSync('ec', { namedCurve: 'P-256' });
++const holderKey = generateKeyPairSync('ec', { namedCurve: 'P-256' });
++const issuerJwk = { ...issuerKey.publicKey.export({ format: 'jwk' }), kid: 'k1', alg: 'ES256', use: 'sig' };
++const holderJwk = holderKey.publicKey.export({ format: 'jwk' });
++
++function jwt(header, payload, key) {
++  const input = `${b64(header)}.${b64(payload)}`;
++  const sig = sign('sha256', Buffer.from(input), { key, dsaEncoding: 'ieee-p1363' }).toString('base64url');
++  return `${input}.${sig}`;
++}
++
++function makeToken({ claims = {}, kb = {}, issuerHeader = {}, kbKey = holderKey.privateKey, isKey = issuerKey.privateKey } = {}) {
++  const sd = jwt({ alg: 'ES256', typ: 'evp+sd-jwt', kid: 'k1', ...issuerHeader },
++    { iss: 'issuer.mail.example', iat: now(), cnf: { jwk: holderJwk }, email: 'Jo@Mail.example', email_verified: true, ...claims },
++    isKey) + '~';
++  const sdHash = createHash('sha256').update(sd).digest('base64url');
++  return sd + jwt({ alg: 'ES256', typ: 'kb+jwt' }, { aud: ORIGIN, nonce: NONCE, iat: now(), sd_hash: sdHash, ...kb }, kbKey);
++}
++
++function verifier(overrides = {}) {
++  return createEmailVerifier({
++    expectedOrigin: ORIGIN,
++    resolveTxt: async (name) => (name === '_email-verification.mail.example' ? [['iss=issuer.mail.example']] : []),
++    fetchJson: async (url) => {
++      if (url === 'https://issuer.mail.example/.well-known/email-verification') {
++        return { issuance_endpoint: 'https://issuer.mail.example/issue', jwks_uri: 'https://issuer.mail.example/jwks' };
++      }
++      if (url === 'https://issuer.mail.example/jwks') return { keys: [issuerJwk] };
++      throw new Error(`unexpected fetch ${url}`);
++    },
++    ...overrides,
++  });
++}
++
++const run = (token, extra = {}) => verifier(extra.v).verify({ token, email: 'jo@mail.example', nonce: NONCE, ...extra.args });
++const rejects = (p, code) => assert.rejects(p, (e) => e.code === code || assert.fail(`expected ${code}, got ${e.code}: ${e.message}`));
++
++test('accepts a valid SD-JWT+KB presentation', async () => {
++  assert.deepEqual(await run(makeToken()), { email: 'jo@mail.example', issuer: 'issuer.mail.example' });
++});
++
++test('accepts legacy web-identity+sd-jwt typ', async () => {
++  await run(makeToken({ issuerHeader: { typ: 'web-identity+sd-jwt' } }));
++});
++
++test('rejects wrong audience (token minted for another site)', () =>
++  rejects(run(makeToken({ kb: { aud: 'https://evil.example' } })), 'wrong_audience'));
++
++test('rejects wrong nonce', () => rejects(run(makeToken({ kb: { nonce: 'other-nonce-xxxxxxxxxxxx' } })), 'bad_nonce'));
++
++test('rejects email mismatch', () =>
++  rejects(run(makeToken(), { args: { email: 'someone@mail.example' } }), 'email_mismatch'));
++
++test('rejects email_verified != true', () => rejects(run(makeToken({ claims: { email_verified: 'true' } })), 'invalid_token'));
++
++test('rejects issuer not authoritative for domain', () =>
++  rejects(run(makeToken({ claims: { iss: 'evil-issuer.example' } })), 'wrong_issuer'));
++
++test('rejects domain with no DNS record', () =>
++  rejects(run(makeToken({ claims: { email: 'jo@other.example' } }), { args: { email: 'jo@other.example' } }), 'no_issuer'));
++
++test('rejects issuer signature from an unknown key', () => {
++  const rogue = generateKeyPairSync('ec', { namedCurve: 'P-256' });
++  return rejects(run(makeToken({ isKey: rogue.privateKey })), 'invalid_token');
++});
++
++test('rejects KB-JWT not signed by cnf key', () => {
++  const rogue = generateKeyPairSync('ec', { namedCurve: 'P-256' });
++  return rejects(run(makeToken({ kbKey: rogue.privateKey })), 'invalid_token');
++});
++
++test('rejects tampered sd_hash', () => rejects(run(makeToken({ kb: { sd_hash: 'AAAA' } })), 'invalid_token'));
++
++test('rejects stale key-binding JWT', () => rejects(run(makeToken({ kb: { iat: now() - 3600 } })), 'expired'));
++
++test('rejects stale issuance', () => rejects(run(makeToken({ claims: { iat: now() - 3600 } })), 'expired'));
++
++test('rejects alg none', async () => {
++  const t = makeToken();
++  const [sd, kb] = [t.slice(0, t.lastIndexOf('~')), t.slice(t.lastIndexOf('~') + 1)];
++  const parts = sd.split('.');
++  const forged = `${b64({ alg: 'none', typ: 'evp+sd-jwt' })}.${parts[1]}.~${kb}`;
++  await rejects(run(forged), 'invalid_token');
++});
++
++test('rejects jwks_uri on a different host', () =>
++  rejects(run(makeToken(), {
++    v: { fetchJson: async () => ({ jwks_uri: 'https://169.254.169.254/latest' }) },
++  }), 'issuer_error'));
++
++test('rejects garbage', () => rejects(run('not-a-token'), 'invalid_token'));

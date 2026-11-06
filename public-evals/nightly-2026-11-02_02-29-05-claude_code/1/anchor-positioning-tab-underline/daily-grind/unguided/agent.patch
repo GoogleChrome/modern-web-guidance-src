@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+index 66c9173..6242e7c 100644
+--- a/index.html
++++ b/index.html
+@@ -48,7 +48,9 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+@@ -62,10 +64,38 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    /* Sliding active indicator */
++    .nav-indicator {
++      position: absolute;
++      left: 0;
++      bottom: -6px;
++      width: 0;
++      height: 2px;
++      margin: 0;
++      background: var(--accent);
++      border-radius: 2px;
++      opacity: 0;
++      pointer-events: none;
++      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        opacity 0.2s;
++    }
++
++    .nav-indicator.no-transition {
++      transition: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .nav-indicator {
++        transition: none;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,14 +190,81 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" class="nav-item">Menu</a></li>
++      <li><a href="/locations" class="nav-item">Locations</a></li>
++      <li><a href="/rewards" class="nav-item">Rewards</a></li>
++      <li><a href="/account" class="nav-item">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="nav-indicator" aria-hidden="true"></li>
+     </ul>
+   </nav>
+ 
++  <script>
++    (function () {
++      var list = document.querySelector('nav ul');
++      var indicator = list.querySelector('.nav-indicator');
++      var items = Array.prototype.slice.call(list.querySelectorAll('.nav-item'));
++      var STORAGE_KEY = 'nav-active';
++      var NAV_DELAY = 350; // matches the indicator transition duration
++      var active = null;
++
++      function moveTo(link, animate) {
++        if (!animate) indicator.classList.add('no-transition');
++        indicator.style.width = link.offsetWidth + 'px';
++        indicator.style.transform = 'translateX(' + link.offsetLeft + 'px)';
++        indicator.style.opacity = '1';
++        if (!animate) {
++          indicator.offsetWidth; // flush styles before re-enabling transitions
++          indicator.classList.remove('no-transition');
++        }
++      }
++
++      function setActive(link, animate) {
++        if (active) {
++          active.classList.remove('active');
++          active.removeAttribute('aria-current');
++        }
++        active = link;
++        link.classList.add('active');
++        link.setAttribute('aria-current', 'page');
++        moveTo(link, animate);
++      }
++
++      function initialItem() {
++        var path = window.location.pathname;
++        var match = items.filter(function (a) {
++          var href = a.getAttribute('href');
++          return path === href || path.indexOf(href + '/') === 0;
++        })[0];
++        if (match) return match;
++        var stored = sessionStorage.getItem(STORAGE_KEY);
++        return items.filter(function (a) { return a.getAttribute('href') === stored; })[0] || null;
++      }
++
++      var start = initialItem();
++      if (start) setActive(start, false);
++
++      items.forEach(function (link) {
++        link.addEventListener('click', function (e) {
++          sessionStorage.setItem(STORAGE_KEY, link.getAttribute('href'));
++          if (link === active) return;
++          setActive(link, true);
++
++          // Let a plain click finish the slide before navigating; leave
++          // modified clicks (new tab/window) to the browser.
++          if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
++          e.preventDefault();
++          setTimeout(function () { window.location.href = link.href; }, NAV_DELAY);
++        });
++      });
++
++      window.addEventListener('resize', function () {
++        if (active) moveTo(active, false);
++      });
++    })();
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>

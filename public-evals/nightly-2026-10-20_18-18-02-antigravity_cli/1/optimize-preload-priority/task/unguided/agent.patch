@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,109 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Video Landing Page</title>
++
++  <!-- Prioritize the LCP video poster image -->
++  <link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++
++  <!-- Preload critical header web font -->
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++
++  <!-- Preload secondary font with lower priority so it does not compete with LCP or brand font -->
++  <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++  <style>
++    /* Critical header font */
++    @font-face {
++      font-family: 'BrandFont';
++      src: url('brand-font.woff2') format('woff2');
++      font-weight: 700;
++      font-style: normal;
++      font-display: swap;
++    }
++
++    /* Secondary UI font */
++    @font-face {
++      font-family: 'SecondaryFont';
++      src: url('secondary-font.woff2') format('woff2');
++      font-weight: 400;
++      font-style: normal;
++      font-display: optional;
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      background-color: #0a0a0a;
++      color: #ffffff;
++      font-family: 'SecondaryFont', system-ui, -apple-system, sans-serif;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      min-height: 100vh;
++      padding: 2rem;
++      text-align: center;
++    }
++
++    header {
++      margin-bottom: 1.5rem;
++    }
++
++    h1 {
++      font-family: 'BrandFont', system-ui, -apple-system, sans-serif;
++      font-size: clamp(2rem, 5vw, 3.5rem);
++      line-height: 1.1;
++      letter-spacing: -0.02em;
++    }
++
++    .subtitle {
++      margin-top: 0.5rem;
++      color: #a1a1aa;
++      font-size: 1rem;
++    }
++
++    .video-wrapper {
++      width: 100%;
++      max-width: 960px;
++      aspect-ratio: 16 / 9;
++      background-color: #18181b;
++      border-radius: 8px;
++      overflow: hidden;
++    }
++
++    video {
++      width: 100%;
++      height: 100%;
++      display: block;
++      object-fit: cover;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1>Next-Gen Experience</h1>
++    <p class="subtitle">Minimal, ultra-fast streaming</p>
++  </header>
++
++  <main class="video-wrapper">
++    <video
++      poster="poster.jpg"
++      preload="none"
++      controls
++      playsinline
++      width="960"
++      height="540"
++    >
++      <source src="video.mp4" type="video/mp4">
++      Your browser does not support the video tag.
++    </video>
++  </main>
++</body>
++</html>

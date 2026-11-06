@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+index 66c9173..c0ecf90 100644
+--- a/index.html
++++ b/index.html
+@@ -107,23 +107,118 @@
+       margin-top: 20px;
+     }
+ 
++    /* Theme-aware cards
++       Cards never hard-code colours. They read a small set of custom
++       properties that are defined by the semantic context of their parent
++       section (section[data-theme="..."]). Change the theme on the section
++       and every card inside restyles itself; sections with no theme fall
++       back to the neutral defaults below. */
++    section {
++      --card-bg: white;
++      --card-border: transparent;
++      --card-heading: var(--primary);
++      --card-text: var(--text);
++      --card-btn-bg: var(--primary);
++      --card-btn-bg-hover: #3e2723;
++      --card-btn-text: white;
++      --card-badge: none;
++      --card-badge-bg: var(--accent);
++      --card-badge-text: var(--text);
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --section-heading: var(--text);
++    }
++
++    /* Seasonal: warm maple / autumn palette */
++    section[data-theme="seasonal"] {
++      --card-bg: linear-gradient(160deg, #fff8f0 0%, #ffe9d2 100%);
++      --card-border: #e0a458;
++      --card-heading: #8a4b08;
++      --card-text: #5a3a1a;
++      --card-btn-bg: #c0612b;
++      --card-btn-bg-hover: #96471b;
++      --card-badge: "Seasonal";
++      --card-badge-bg: #e0a458;
++      --card-badge-text: #3e2723;
++      --card-shadow: 0 6px 16px rgba(192, 97, 43, 0.18);
++      --section-heading: #8a4b08;
++    }
++
++    /* Espresso: dark roast palette */
++    section[data-theme="espresso"] {
++      --card-bg: linear-gradient(160deg, #3b2520 0%, #241512 100%);
++      --card-border: #6d4c41;
++      --card-heading: #ffcc80;
++      --card-text: #efe6e1;
++      --card-btn-bg: var(--accent);
++      --card-btn-bg-hover: #ff9100;
++      --card-btn-text: #3e2723;
++      --card-badge: "Bold";
++      --card-badge-bg: var(--accent);
++      --card-badge-text: #3e2723;
++      --card-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
++      --section-heading: #4e342e;
++    }
++
++    /* Cold brew: cool, icy palette */
++    section[data-theme="cold-brew"] {
++      --card-bg: linear-gradient(160deg, #f1f8fb 0%, #dcebf3 100%);
++      --card-border: #7fb2c9;
++      --card-heading: #1f5a73;
++      --card-text: #2f4a57;
++      --card-btn-bg: #2a7a9c;
++      --card-btn-bg-hover: #1f5a73;
++      --card-badge: "Chilled";
++      --card-badge-bg: #7fb2c9;
++      --card-badge-text: #0f2c3a;
++      --card-shadow: 0 6px 16px rgba(42, 122, 156, 0.18);
++      --section-heading: #1f5a73;
++    }
++
++    section > h2 {
++      color: var(--section-heading);
++    }
++
+     .card {
+-      background: white;
++      position: relative;
++      background: var(--card-bg);
++      color: var(--card-text);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--card-border);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      transition: transform 0.3s, box-shadow 0.3s;
++    }
++
++    .card:hover {
++      transform: translateY(-4px);
++    }
++
++    /* Context badge: only rendered when the theme supplies a label */
++    .card::before {
++      content: var(--card-badge);
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      background: var(--card-badge-bg);
++      color: var(--card-badge-text);
++      font-size: 0.7rem;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      padding: 3px 8px;
++      border-radius: 999px;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--card-btn-bg, var(--primary));
++      color: var(--card-btn-text, white);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,7 +227,7 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--card-btn-bg-hover, #3e2723);
+     }
+ 
+     footer {
+@@ -175,8 +270,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section data-theme="seasonal" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

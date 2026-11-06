@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,129 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native disclosure controls work with a keyboard and require no JavaScript. */
++    #promo-alert,
++    .faq-item {
++      interpolate-size: allow-keywords;
++    }
++
++    #promo-alert::details-content,
++    .faq-item::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 400ms ease, content-visibility 400ms allow-discrete;
++    }
++
++    #promo-alert[open]::details-content,
++    .faq-item[open]::details-content {
++      block-size: auto;
++    }
++
++    #promo-alert {
++      position: relative;
++      background: var(--secondary);
++    }
++
++    .promo-message {
++      padding: 14px 64px 14px 20px;
++      text-align: center;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      inset-block-start: 8px;
++      inset-inline-end: 16px;
++      display: grid;
++      place-items: center;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #promo-alert:not([open]) > #alert-dismiss {
++      visibility: hidden;
++      pointer-events: none;
++    }
++
++    #alert-dismiss:hover {
++      background: rgb(78 52 46 / 10%);
++    }
++
++    .faq-section {
++      margin-top: 48px;
++    }
++
++    .faq-section h2 {
++      margin-bottom: 20px;
++      text-align: center;
++    }
++
++    .faq-item {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    #faq-trigger {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 20px;
++      padding: 20px;
++      cursor: pointer;
++      list-style: none;
++      font-weight: 600;
++    }
++
++    #faq-trigger::-webkit-details-marker,
++    #alert-dismiss::-webkit-details-marker {
++      display: none;
++    }
++
++    .faq-icon {
++      transition: transform 400ms ease;
++    }
++
++    .faq-item[open] .faq-icon {
++      transform: rotate(45deg);
++    }
++
++    #faq-content {
++      padding: 0 20px 20px;
++    }
++
++    #faq-trigger:focus-visible,
++    #alert-dismiss:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert::details-content,
++      .faq-item::details-content,
++      .faq-icon {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotion"><span aria-hidden="true">&times;</span></summary>
++    <div class="promo-message">
++      <p><strong>A little something on us.</strong> Join Daily Grind Rewards and enjoy a free coffee on your birthday.</p>
++    </div>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +310,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details class="faq-item">
++        <summary id="faq-trigger" aria-controls="faq-content">
++          Where does your coffee come from?
++          <span class="faq-icon" aria-hidden="true">+</span>
++        </summary>
++        <div id="faq-content">
++          <p>Our coffee is ethically sourced and roasted locally. Ask our baristas about the origins and tasting notes of the beans we’re brewing today.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

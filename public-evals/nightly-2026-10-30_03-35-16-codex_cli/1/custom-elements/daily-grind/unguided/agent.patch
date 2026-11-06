@@ -1,0 +1,413 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..375d191
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,34 @@
++# The Daily Grind
++
++The static page loads the autonomous `<coffee-card>` custom element from
++`components/coffee-card.js`. Each card owns its shadow DOM and styles, inherits the
++page's font and theme variables, and updates in place when attributes change.
++
++```html
++<coffee-card name="Maple Oat Latte" description="Oat milk and maple syrup."
++  href="/menu/seasonal" price="4.50" featured></coffee-card>
++```
++
++All supported attributes have matching JavaScript properties:
++
++| Attribute / property | Type | Default |
++| --- | --- | --- |
++| `name`, `description`, `href` | String | `''` |
++| `price` | Non-negative finite number (USD) | `null` (hidden) |
++| `featured`, `disabled` | Boolean | `false` |
++
++Setting properties reflects back to attributes; changing or removing attributes
++updates properties and rendering. Set strings or price to `null`/`undefined` to
++remove them. Invalid price attributes hide the price; invalid price property
++assignments throw `RangeError`. Zero is a valid price.
++
++Boolean attributes follow HTML presence semantics: `disabled="false"` still
++disables the card. Use `card.disabled = false` or remove the attribute to enable
++it. Disabled cards (or cards without a destination) expose a disabled link and
++prevent navigation. `featured` adds an accent outline.
++
++Connection upgrades properties assigned before registration and attaches the
++click listener. Disconnection removes it; reconnection restores it. Attribute
++updates preserve the internal nodes and keyboard focus.
++
++Run the automated DOM tests with `pnpm test`. No server is required.
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..25b9e42
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,136 @@
++class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'description', 'href', 'price', 'featured', 'disabled'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).innerHTML = `
++      <style>
++        :host {
++          display: block;
++          background: white;
++          padding: 20px;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++          text-align: center;
++        }
++        :host([featured]) {
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1), inset 0 0 0 2px var(--accent, #ffab40);
++        }
++        * { box-sizing: border-box; margin: 0; padding: 0; }
++        h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
++        .price { margin-top: 10px; font-weight: bold; }
++        a {
++          display: inline-block;
++          background: var(--primary, #4e342e);
++          color: white;
++          padding: 10px 20px;
++          text-decoration: none;
++          border-radius: 5px;
++          margin-top: 15px;
++          transition: background 0.3s;
++        }
++        a:hover { background: #3e2723; }
++        a:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 3px; }
++        a[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
++      </style>
++      <article>
++        <h3></h3>
++        <p class="description"></p>
++        <p class="price" hidden></p>
++        <a>View Details</a>
++      </article>
++    `;
++    this._link = this.shadowRoot.querySelector('a');
++    this._onClick = (event) => {
++      if (this.disabled || !this.href) event.preventDefault();
++    };
++  }
++
++  connectedCallback() {
++    // Honor properties assigned before customElements.define() upgraded this node.
++    for (const property of CoffeeCard.observedAttributes) {
++      if (Object.prototype.hasOwnProperty.call(this, property)) {
++        const value = this[property];
++        delete this[property];
++        this[property] = value;
++      }
++    }
++    this._link.addEventListener('click', this._onClick);
++    this._render();
++  }
++
++  disconnectedCallback() {
++    this._link.removeEventListener('click', this._onClick);
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue !== newValue) this._render();
++  }
++
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(value) { this._reflectString('name', value); }
++
++  get description() { return this.getAttribute('description') ?? ''; }
++  set description(value) { this._reflectString('description', value); }
++
++  get href() { return this.getAttribute('href') ?? ''; }
++  set href(value) { this._reflectString('href', value); }
++
++  get price() {
++    const raw = this.getAttribute('price');
++    if (raw === null || raw.trim() === '') return null;
++    const value = Number(raw);
++    return Number.isFinite(value) && value >= 0 ? value : null;
++  }
++
++  set price(value) {
++    if (value === null || value === undefined) {
++      this.removeAttribute('price');
++      return;
++    }
++    const number = Number(value);
++    if (String(value).trim() === '' || !Number.isFinite(number) || number < 0) {
++      throw new RangeError('price must be a finite, non-negative number or null');
++    }
++    this.setAttribute('price', String(number));
++  }
++
++  get featured() { return this.hasAttribute('featured'); }
++  set featured(value) { this.toggleAttribute('featured', Boolean(value)); }
++
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(value) { this.toggleAttribute('disabled', Boolean(value)); }
++
++  _reflectString(attribute, value) {
++    if (value === null || value === undefined) this.removeAttribute(attribute);
++    else this.setAttribute(attribute, String(value));
++  }
++
++  _render() {
++    // Keep the DOM (and focus) stable and treat attribute content as plain text.
++    this.shadowRoot.querySelector('h3').textContent = this.name;
++    this.shadowRoot.querySelector('.description').textContent = this.description;
++    const price = this.shadowRoot.querySelector('.price');
++    price.hidden = this.price === null;
++    price.textContent = this.price === null ? '' : new Intl.NumberFormat('en-US', {
++      style: 'currency', currency: 'USD',
++    }).format(this.price);
++
++    const inactive = this.disabled || !this.href;
++    if (inactive) {
++      this._link.removeAttribute('href');
++      this._link.setAttribute('role', 'link');
++      this._link.setAttribute('aria-disabled', 'true');
++      this._link.setAttribute('tabindex', '-1');
++    } else {
++      this._link.setAttribute('href', this.href);
++      this._link.removeAttribute('role');
++      this._link.removeAttribute('aria-disabled');
++      this._link.removeAttribute('tabindex');
++    }
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..586e0d2 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -153,6 +140,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components/coffee-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +166,15 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card name="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal"></coffee-card>
++        <coffee-card name="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso"></coffee-card>
++        <coffee-card name="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew"></coffee-card>
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..d92669a 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "linkedom": "^0.18.14"
+   }
+ }
+diff --git a/tests/coffee-card.test.cjs b/tests/coffee-card.test.cjs
+new file mode 100644
+index 0000000..a7d5e06
+--- /dev/null
++++ b/tests/coffee-card.test.cjs
+@@ -0,0 +1,137 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { runInNewContext } = require('node:vm');
++const { parseHTML } = require('linkedom');
++
++const source = readFileSync(new URL('../components/coffee-card.js', `file://${__filename}`), 'utf8');
++
++function setup(markup = '') {
++  const { window } = parseHTML(`<html><body>${markup}</body></html>`);
++  const register = () => runInNewContext(source, {
++    HTMLElement: window.HTMLElement,
++    customElements: window.customElements,
++    Intl,
++  });
++  return { window, document: window.document, register };
++}
++
++test('existing markup upgrades and preserves each coffee and destination', () => {
++  const html = readFileSync(new URL('../index.html', `file://${__filename}`), 'utf8');
++  const { document, register } = setup(html);
++  register();
++  const cards = [...document.querySelectorAll('coffee-card')];
++  assert.equal(cards.length, 3);
++  assert.deepEqual(cards.map(card => card.shadowRoot.querySelector('h3').textContent), [
++    'Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew',
++  ]);
++  assert.deepEqual(cards.map(card => card.shadowRoot.querySelector('a').getAttribute('href')), [
++    '/menu/seasonal', '/menu/espresso', '/menu/cold-brew',
++  ]);
++});
++
++test('string attributes and properties reflect both ways without interpreting HTML', () => {
++  const { document, register } = setup();
++  register();
++  const card = document.createElement('coffee-card');
++  for (const property of ['name', 'description', 'href']) {
++    card[property] = 'first';
++    assert.equal(card.getAttribute(property), 'first');
++    card.setAttribute(property, 'second');
++    assert.equal(card[property], 'second');
++    card[property] = null;
++    assert.equal(card.hasAttribute(property), false);
++    assert.equal(card[property], '');
++  }
++  card.name = '<img src=x onerror=alert(1)>';
++  assert.equal(card.shadowRoot.querySelector('h3').textContent, card.name);
++  assert.equal(card.shadowRoot.querySelector('img'), null);
++});
++
++test('numeric reflection handles zero, removal and invalid values', () => {
++  const { document, register } = setup();
++  register();
++  const card = document.createElement('coffee-card');
++  const price = card.shadowRoot.querySelector('.price');
++  card.price = 4.5;
++  assert.equal(card.getAttribute('price'), '4.5');
++  assert.equal(price.textContent, '$4.50');
++  card.setAttribute('price', '0');
++  assert.equal(card.price, 0);
++  assert.equal(price.hidden, false);
++  assert.equal(price.textContent, '$0.00');
++  for (const value of ['', 'invalid', '-1', 'Infinity']) {
++    card.setAttribute('price', value);
++    assert.equal(card.price, null);
++    assert.equal(price.hidden, true);
++  }
++  for (const value of [-1, NaN, Infinity, '']) {
++    assert.throws(() => { card.price = value; }, /finite, non-negative/);
++  }
++  card.price = null;
++  assert.equal(card.hasAttribute('price'), false);
++});
++
++test('boolean attributes use presence and disabled cards cannot navigate', () => {
++  const { document, window, register } = setup();
++  register();
++  const card = document.createElement('coffee-card');
++  card.href = '/menu/espresso';
++  document.body.append(card);
++  for (const property of ['featured', 'disabled']) {
++    card[property] = true;
++    assert.equal(card.getAttribute(property), '');
++    card[property] = false;
++    assert.equal(card.hasAttribute(property), false);
++    card.setAttribute(property, 'false');
++    assert.equal(card[property], true);
++    card.removeAttribute(property);
++    assert.equal(card[property], false);
++  }
++  const link = card.shadowRoot.querySelector('a');
++  card.disabled = true;
++  assert.equal(link.hasAttribute('href'), false);
++  assert.equal(link.getAttribute('aria-disabled'), 'true');
++  assert.equal(link.dispatchEvent(new window.Event('click', { cancelable: true })), false);
++  card.disabled = false;
++  assert.equal(link.getAttribute('href'), '/menu/espresso');
++  assert.equal(link.hasAttribute('aria-disabled'), false);
++  assert.equal(link.dispatchEvent(new window.Event('click', { cancelable: true })), true);
++});
++
++test('disconnect removes listeners and reconnect restores them without replacing DOM', () => {
++  const { document, window, register } = setup();
++  register();
++  const card = document.createElement('coffee-card');
++  card.disabled = true;
++  const link = card.shadowRoot.querySelector('a');
++  const click = () => link.dispatchEvent(new window.Event('click', { cancelable: true }));
++  for (let i = 0; i < 3; i++) {
++    document.body.append(card);
++    assert.equal(click(), false);
++    card.remove();
++    assert.equal(click(), true);
++    card.name = `Updated ${i}`;
++    assert.equal(card.shadowRoot.querySelector('a'), link);
++    assert.equal(card.shadowRoot.querySelector('h3').textContent, `Updated ${i}`);
++  }
++});
++
++test('first connection reflects own properties left by pre-registration assignments', () => {
++  const { document, register } = setup();
++  register();
++  const card = document.createElement('coffee-card');
++  card.setAttribute('name', 'Old');
++  // Linkedom invokes setters during upgrade, unlike browsers. Reproduce the
++  // browser's own-property state explicitly before the first connection.
++  Object.defineProperties(card, {
++    name: { value: 'New', writable: true, configurable: true },
++    price: { value: 3.25, writable: true, configurable: true },
++    featured: { value: true, writable: true, configurable: true },
++  });
++  document.body.append(card);
++  assert.equal(card.getAttribute('name'), 'New');
++  assert.equal(card.getAttribute('price'), '3.25');
++  assert.equal(card.hasAttribute('featured'), true);
++  assert.equal(card.shadowRoot.querySelector('h3').textContent, 'New');
++});

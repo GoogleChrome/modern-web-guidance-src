@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,60 +152,137 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <link rel="stylesheet" href="/assets/rewards.css">
++  <script src="/assets/rewards.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Main navigation">
++    <a class="logo" href="/" aria-label="The Daily Grind home"><span class="logo-mark" aria-hidden="true">☕</span> THE DAILY GRIND<span class="logo-sub">GOOD COFFEE. EVERY DAY.</span></a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <p class="eyebrow hero-eyebrow">YOUR DAILY MOMENT OF GOOD</p><h1>Wake Up Your Senses<span>.</span></h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn">Order Now <span aria-hidden="true">↗</span></a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-heading"><div><p class="eyebrow">FRESH FROM OUR COFFEE BAR</p><h2>Seasonal Favorites</h2></div><a href="/menu">Explore the menu <span aria-hidden="true">↗</span></a></div>
+       <div class="grid">
+-        <div class="card">
++        <div class="card"><span class="coffee-number" aria-hidden="true">01 / SOMETHING COZY</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card"><span class="coffee-number" aria-hidden="true">02 / THE CLASSIC</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card"><span class="coffee-number" aria-hidden="true">03 / KEEP IT COOL</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="rewards" class="rewards" aria-labelledby="rewards-title">
++      <div class="rewards-intro">
++        <p class="eyebrow"><span aria-hidden="true">✦</span> THE DAILY GRIND REWARDS</p>
++        <h2 id="rewards-title">Your daily ritual.<br>A little more<br><em>rewarding.</em></h2>
++        <p class="intro-copy">Good coffee deserves good company. Join our rewards community and make every sip count.</p>
++        <ul class="perks">
++          <li><span class="perk-icon" aria-hidden="true">♧</span><div><h3>Sip, earn, repeat</h3><p>Collect points with every purchase.</p></div></li>
++          <li><span class="perk-icon" aria-hidden="true">✧</span><div><h3>A little birthday love</h3><p>A special treat on your special day.</p></div></li>
++          <li><span class="perk-icon" aria-hidden="true">♡</span><div><h3>You're on the inside</h3><p>Member perks and first sips of new favorites.</p></div></li>
++        </ul>
++        <div class="member-card" aria-label="Daily Grind rewards member card">
++          <div class="member-top"><span>THE DAILY GRIND</span><span aria-hidden="true">✦</span></div>
++          <p>A good day starts here.</p>
++          <div class="member-bottom"><span>REWARDS MEMBER</span><span aria-hidden="true">◌ ◌ ◌ ◌ ◌</span></div>
++        </div>
++        <p class="free-note"><span aria-hidden="true">✓</span> Free to join. Full of good things.</p>
++      </div>
++      <div class="signup-panel">
++        <ol class="steps" aria-label="Registration progress">
++          <li aria-current="step"><span class="step-number">1</span><span>About you</span></li>
++          <li><span class="step-number">2</span><span>Your account</span></li>
++          <li><span class="step-number">3</span><span>Review & join</span></li>
++        </ol>
++        <form id="rewards-form" action="/api/rewards/register" method="post" autocomplete="on">
++          <p class="step-caption" id="step-caption">STEP 1 OF 3</p>
++          <h3 id="step-title" tabindex="-1">Let's get to know you.</h3>
++          <p class="form-intro" id="step-description">Your next great coffee moment starts here.</p>
++          <p class="required-note">Fields marked <span aria-hidden="true">*</span><span class="sr-only">with an asterisk</span> are required.</p>
++          <div id="form-errors" class="error-summary" role="alert" tabindex="-1" hidden></div>
++          <fieldset data-step="0" disabled>
++            <legend class="sr-only">About you</legend>
++            <div class="field">
++              <label for="full-name">Full name <span aria-hidden="true">*</span></label>
++              <input id="full-name" name="full_name" type="text" autocomplete="name" maxlength="100" required enterkeyhint="next" aria-describedby="full-name-error" placeholder="e.g. Alex Morgan">
++              <p class="field-error" id="full-name-error" hidden></p>
++            </div>
++            <div class="field">
++              <label for="email">Email address <span aria-hidden="true">*</span></label>
++              <p class="field-hint" id="email-hint">Your sign-in email, and where your rewards will find you.</p>
++              <input id="email" name="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="254" required enterkeyhint="next" aria-describedby="email-hint email-error" placeholder="you@example.com">
++              <p class="field-error" id="email-error" hidden></p>
++            </div>
++            <div class="field">
++              <label for="birthday">Birthday <span class="optional">(optional)</span></label>
++              <p class="field-hint" id="birthday-hint">So we can celebrate you with a birthday treat.</p>
++              <input id="birthday" name="birthday" type="date" autocomplete="bday" aria-describedby="birthday-hint birthday-error">
++              <p class="field-error" id="birthday-error" hidden></p>
++            </div>
++          </fieldset>
++          <fieldset data-step="1" hidden disabled>
++            <legend class="sr-only">Your account</legend>
++            <div class="field">
++              <label for="password">Create a password <span aria-hidden="true">*</span></label>
++              <p class="field-hint" id="password-hint">Use at least 15 characters. Spaces and password managers welcome.</p>
++              <div class="password-wrap"><input id="password" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="128" required aria-describedby="password-hint password-error"><button type="button" id="toggle-password" aria-controls="password" aria-pressed="false">Show</button></div>
++              <p class="field-error" id="password-error" hidden></p>
++            </div>
++            <div class="account-note"><span aria-hidden="true">↳</span> Your email address is your username. One less thing to remember.</div>
++            <label class="checkbox-label" for="marketing"><input id="marketing" name="marketing" type="checkbox" value="yes"><span>Send me coffee news, new favorites, and member offers.<small>Optional. You can unsubscribe at any time.</small></span></label>
++          </fieldset>
++          <fieldset data-step="2" hidden disabled>
++            <legend class="sr-only">Review and join</legend>
++            <dl class="review-details"><div><dt>Full name</dt><dd id="review-name"></dd></div><div><dt>Email address</dt><dd id="review-email"></dd></div><div><dt>Birthday</dt><dd id="review-birthday"></dd></div><div><dt>Coffee news & offers</dt><dd id="review-marketing"></dd></div></dl>
++            <button type="button" class="edit-details" id="edit-details">Edit your details <span aria-hidden="true">↗</span></button>
++            <label class="checkbox-label" for="terms"><input id="terms" name="terms" type="checkbox" value="accepted" required aria-describedby="terms-error"><span>I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Rewards Terms<span class="sr-only"> (opens in a new tab)</span></a> and have read the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy<span class="sr-only"> (opens in a new tab)</span></a>. <span aria-hidden="true">*</span></span></label>
++            <p class="field-error" id="terms-error" hidden></p>
++          </fieldset>
++          <div class="form-actions"><button type="button" id="back-step" hidden>← Back</button><button type="submit" id="next-step" disabled>Continue <span aria-hidden="true">→</span></button></div>
++          <p class="privacy-note"><svg width="13" height="15" viewBox="0 0 16 18" fill="none" aria-hidden="true"><rect x="2" y="8" width="12" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 8V5a3 3 0 016 0v3" stroke="currentColor" stroke-width="1.5"/></svg> Your details stay private. Your coffee stays personal.</p>
++          <noscript><p class="error-summary">Please enable JavaScript to use registration. No information will be submitted without it.</p></noscript>
++        </form>
++        <div class="signin-note">Already part of the grind? <a href="/account">Sign in <span aria-hidden="true">↗</span></a></div>
++      </div>
++    </section>
+   </main>
+ 
+-  <footer>
++  <footer><a class="footer-brand" href="/">THE DAILY GRIND<span>GOOD COFFEE. GOOD COMPANY.</span></a><div class="footer-content">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p></div>
+   </footer>
+ 
+ </body>
+ 

@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,109 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roast picker */
++    .roast-field {
++      margin-top: 1.5rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.4rem;
++    }
++
++    .roast-field label {
++      font-size: 0.9rem;
++    }
++
++    .roast-picker,
++    .roast-picker::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-picker {
++      width: 14rem;
++      padding: 0.6rem 1rem;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .roast-picker::picker(select) {
++      width: max-content;
++      max-width: 90vw;
++      padding: 0.75rem;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
++    }
++
++    /* :open is required, otherwise the picker is visible while closed */
++    .roast-picker:open::picker(select) {
++      display: grid;
++      grid-template-columns: repeat(3, 8rem);
++      gap: 0.75rem;
++    }
++
++    .roast-picker option {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.35rem;
++      padding: 0.75rem 0.5rem;
++      border: 2px solid transparent;
++      border-radius: 8px;
++      text-align: center;
++      cursor: pointer;
++    }
++
++    .roast-picker option:hover,
++    .roast-picker option:focus-visible {
++      background: var(--secondary);
++    }
++
++    .roast-picker option::checkmark {
++      display: none;
++    }
++
++    .roast-picker option:checked {
++      border-color: var(--primary);
++      background: oklab(from var(--accent) l a b / 25%);
++    }
++
++    .roast-picker option:checked .roast-name {
++      font-weight: 700;
++    }
++
++    .roast-picker svg {
++      width: 2.5rem;
++      height: 2.5rem;
++    }
++
++    .roast-name {
++      font-weight: 600;
++    }
++
++    .roast-desc {
++      font-size: 0.75rem;
++      opacity: 0.75;
++    }
++
++    .roast-picker selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .roast-picker selectedcontent svg,
++    .roast-picker selectedcontent .roast-desc {
++      display: none;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,10 +271,55 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-field">
++      <label for="roast">Choose your roast</label>
++      <select class="roast-picker" id="roast" name="roast">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light" aria-label="Light roast">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="#c8a27a" stroke="#4e342e" stroke-width="1.5">
++            <ellipse cx="12" cy="12" rx="7" ry="10" />
++            <path d="M12 2c-3 6 3 14 0 20" fill="none" />
++          </svg>
++          <span class="roast-name">Light</span>
++          <span class="roast-desc">Bright &amp; fruity</span>
++        </option>
++        <option value="medium" aria-label="Medium roast" selected>
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="#8d5a3b" stroke="#3e2723" stroke-width="1.5">
++            <ellipse cx="12" cy="12" rx="7" ry="10" />
++            <path d="M12 2c-3 6 3 14 0 20" fill="none" />
++          </svg>
++          <span class="roast-name">Medium</span>
++          <span class="roast-desc">Smooth &amp; balanced</span>
++        </option>
++        <option value="dark" aria-label="Dark roast">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="#3e2723" stroke="#1b0f0c" stroke-width="1.5">
++            <ellipse cx="12" cy="12" rx="7" ry="10" />
++            <path d="M12 2c-3 6 3 14 0 20" fill="none" />
++          </svg>
++          <span class="roast-name">Dark</span>
++          <span class="roast-desc">Bold &amp; smoky</span>
++        </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
++  <script>
++    // The picker is a single 3-column row, so Left/Right move focus between neighbouring options.
++    document.getElementById('roast').addEventListener('keydown', (e) => {
++      if (!e.target.matches('option') || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
++      const rtl = getComputedStyle(e.target).direction === 'rtl';
++      const forward = (e.key === 'ArrowRight') !== rtl;
++      const next = forward ? e.target.nextElementSibling : e.target.previousElementSibling;
++      if (next?.matches('option')) {
++        e.preventDefault();
++        next.focus();
++      }
++    });
++  </script>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>

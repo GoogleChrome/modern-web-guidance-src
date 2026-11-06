@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,23 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer strong {
++      color: var(--primary);
++    }
++
++    .promo-timer .promo-elapsed {
++      display: block;
++      font-size: 0.8rem;
++      opacity: 0.75;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +195,14 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Times have no zone suffix, so they are parsed in the visitor's local time zone -->
++          <p class="promo-timer" id="maple-timer" data-start="2025-12-01T00:00:00" data-end="2026-03-01T00:00:00"
++            aria-live="off">
++            <strong class="promo-remaining"></strong>
++            <span class="promo-elapsed"></span>
++          </p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +227,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    (function () {
++      var HOUR = 36e5, DAY = 24 * HOUR;
++      var el = document.getElementById('maple-timer');
++      var start = new Date(el.dataset.start);
++      var end = new Date(el.dataset.end);
++      var now = new Date();
++
++      function plural(n, word) {
++        return n + ' ' + word + (n === 1 ? '' : 's');
++      }
++
++      function span(ms) {
++        var days = Math.floor(ms / DAY);
++        var hours = Math.floor((ms % DAY) / HOUR);
++        return plural(days, 'day') + ', ' + plural(hours, 'hour');
++      }
++
++      var remaining = el.querySelector('.promo-remaining');
++      var elapsed = el.querySelector('.promo-elapsed');
++
++      if (now >= end) {
++        remaining.textContent = 'This offer has ended.';
++      } else {
++        remaining.textContent = span(end - now) + ' left';
++      }
++      if (now >= start) {
++        elapsed.textContent = 'Started ' + span(Math.min(now, end) - start) + ' ago'
++          + (now >= end ? ' (ran ' + span(end - start) + ' total)' : '');
++      } else {
++        elapsed.textContent = 'Starts in ' + span(start - now);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

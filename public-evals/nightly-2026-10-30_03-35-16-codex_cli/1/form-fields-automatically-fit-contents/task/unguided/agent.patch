@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,70 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      margin-top: 40px;
++      padding: 28px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .preferences > p {
++      margin: 4px 0 24px;
++    }
++
++    .preferences form {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 20px;
++      min-width: 0;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 6px;
++      width: 100%;
++      min-width: 0;
++    }
++
++    .form-field label {
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .content-sized {
++      field-sizing: content;
++      min-width: 8ch;
++      max-width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #b9a9a3;
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++      font: inherit;
++      line-height: 1.5;
++    }
++
++    .content-sized:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    textarea.content-sized {
++      min-height: 46px;
++      resize: none;
++      overflow: hidden;
++    }
++
++    select.content-sized {
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +256,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences" aria-labelledby="preferences-title">
++      <h2 id="preferences-title">Make it your cup</h2>
++      <p>A few little details for your perfect coffee. Fields fit your words as you type.</p>
++      <form>
++        <div class="form-field">
++          <label for="coffee-name">Your name</label>
++          <input class="content-sized" id="coffee-name" name="name" type="text" autocomplete="given-name" placeholder="Your name">
++        </div>
++        <div class="form-field">
++          <label for="coffee-milk">Milk preference</label>
++          <select class="content-sized" id="coffee-milk" name="milk">
++            <option value="whole">Whole milk</option>
++            <option value="oat">Oat milk</option>
++            <option value="almond">Almond milk</option>
++            <option value="skim">Skim milk</option>
++            <option value="none">No milk, please</option>
++          </select>
++        </div>
++        <div class="form-field">
++          <label for="coffee-notes">Special requests</label>
++          <textarea class="content-sized" id="coffee-notes" name="notes" rows="1" placeholder="Anything we should know?"></textarea>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +293,51 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Supply content sizing for browsers that do not support field-sizing yet.
++    if (!CSS.supports('field-sizing', 'content')) {
++      const controls = document.querySelectorAll('.content-sized');
++      const measure = document.createElement('span');
++      measure.setAttribute('aria-hidden', 'true');
++      Object.assign(measure.style, {
++        position: 'absolute', visibility: 'hidden', whiteSpace: 'pre',
++        pointerEvents: 'none', top: '0', left: '0'
++      });
++      document.body.append(measure);
++
++      function sizeControl(control) {
++        const style = getComputedStyle(control);
++        measure.style.font = style.font;
++        measure.style.letterSpacing = style.letterSpacing;
++        const content = control.tagName === 'SELECT'
++          ? control.selectedOptions[0].text
++          : control.value || control.placeholder || ' ';
++        let textWidth = 0;
++        for (const line of content.split('\n')) {
++          measure.textContent = line || ' ';
++          textWidth = Math.max(textWidth, measure.getBoundingClientRect().width);
++        }
++        const edges = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
++          + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
++        const extra = control.tagName === 'SELECT' ? 28 : 2;
++        control.style.width = `${Math.ceil(textWidth + edges + extra)}px`;
++        if (control.tagName === 'TEXTAREA') {
++          control.style.height = 'auto';
++          control.style.height = `${control.scrollHeight
++            + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`;
++        }
++      }
++
++      controls.forEach(control => {
++        sizeControl(control);
++        control.addEventListener('input', () => sizeControl(control));
++        control.addEventListener('change', () => sizeControl(control));
++      });
++      window.addEventListener('resize', () => controls.forEach(sizeControl));
++      document.fonts.ready.then(() => controls.forEach(sizeControl));
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,796 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,363 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .operations-simulator {
++      margin-top: 50px;
++      background: white;
++      border-radius: 10px;
++      padding: 30px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      border-top: 4px solid var(--primary);
++    }
++
++    .simulator-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++      padding-bottom: 15px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .simulator-header h2 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .simulator-subtitle {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .responsiveness-status {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      background: #f5f0ee;
++      padding: 8px 14px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .pulse-dot {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #2e7d32;
++      animation: pulse-anim 1.2s infinite ease-in-out;
++    }
++
++    @keyframes pulse-anim {
++      0%, 100% {
++        transform: scale(1);
++        opacity: 1;
++      }
++      50% {
++        transform: scale(1.35);
++        opacity: 0.65;
++      }
++    }
++
++    .simulator-controls {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
++      gap: 12px;
++      margin-bottom: 24px;
++    }
++
++    .sim-btn {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      justify-content: center;
++      padding: 12px 16px;
++      border: none;
++      border-radius: 8px;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      text-align: left;
++      transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
++      color: white;
++      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
++    }
++
++    .sim-btn:hover {
++      filter: brightness(1.08);
++      transform: translateY(-1px);
++      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.16);
++    }
++
++    .sim-btn:active {
++      transform: translateY(0);
++    }
++
++    .sim-btn .btn-meta {
++      font-size: 0.75rem;
++      font-weight: 400;
++      opacity: 0.9;
++      margin-top: 3px;
++    }
++
++    .sim-btn-urgent {
++      background: #c62828;
++    }
++
++    .sim-btn-standard {
++      background: var(--primary);
++    }
++
++    .sim-btn-background {
++      background: #546e7a;
++    }
++
++    .sim-btn-batch {
++      background: #ef6c00;
++    }
++
++    .simulator-stats {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 15px;
++      align-items: center;
++      justify-content: space-between;
++      background: #fafafa;
++      border: 1px solid #e0e0e0;
++      border-radius: 8px;
++      padding: 12px 16px;
++      margin-bottom: 20px;
++      font-size: 0.88rem;
++    }
++
++    .stat-group {
++      display: flex;
++      gap: 18px;
++      flex-wrap: wrap;
++    }
++
++    .stat-item strong {
++      color: var(--primary);
++    }
++
++    .btn-clear {
++      background: transparent;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      padding: 5px 12px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-size: 0.82rem;
++      font-weight: 600;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .btn-clear:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    .simulator-panels {
++      display: grid;
++      grid-template-columns: 1.2fr 1fr;
++      gap: 20px;
++    }
++
++    @media (max-width: 768px) {
++      .simulator-panels {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .panel-box {
++      border: 1px solid #e0e0e0;
++      border-radius: 8px;
++      background: #fcfcfc;
++      display: flex;
++      flex-direction: column;
++      overflow: hidden;
++    }
++
++    .panel-header {
++      background: #f5f0ee;
++      padding: 10px 15px;
++      font-weight: 600;
++      font-size: 0.92rem;
++      color: var(--primary);
++      border-bottom: 1px solid #e0e0e0;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .task-queue-list {
++      padding: 12px;
++      min-height: 220px;
++      max-height: 320px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .empty-state {
++      color: #8d6e63;
++      font-size: 0.88rem;
++      text-align: center;
++      margin: auto;
++      padding: 30px 10px;
++    }
++
++    .task-item {
++      background: white;
++      border: 1px solid #e0e0e0;
++      border-left: 4px solid var(--primary);
++      border-radius: 6px;
++      padding: 10px 12px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
++    }
++
++    .task-item[data-priority="user-blocking"] {
++      border-left-color: #c62828;
++    }
++
++    .task-item[data-priority="user-visible"] {
++      border-left-color: #4e342e;
++    }
++
++    .task-item[data-priority="background"] {
++      border-left-color: #546e7a;
++    }
++
++    .task-item-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      margin-bottom: 6px;
++    }
++
++    .task-title {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .badges {
++      display: flex;
++      gap: 6px;
++      align-items: center;
++    }
++
++    .priority-badge,
++    .status-badge,
++    .order-badge {
++      font-size: 0.72rem;
++      padding: 2px 7px;
++      border-radius: 12px;
++      font-weight: 600;
++      text-transform: uppercase;
++    }
++
++    .priority-badge.priority-user-blocking {
++      background: #ffebee;
++      color: #c62828;
++    }
++
++    .priority-badge.priority-user-visible {
++      background: #efebe9;
++      color: #4e342e;
++    }
++
++    .priority-badge.priority-background {
++      background: #eceff1;
++      color: #455a64;
++    }
++
++    .status-badge.status-queued {
++      background: #fff8e1;
++      color: #f57f17;
++    }
++
++    .status-badge.status-running,
++    .status-badge.status-yielding {
++      background: #e3f2fd;
++      color: #1565c0;
++    }
++
++    .status-badge.status-completed {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .order-badge {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .progress-track {
++      width: 100%;
++      height: 6px;
++      background: #eeeeee;
++      border-radius: 3px;
++      overflow: hidden;
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: 0%;
++      background: var(--primary);
++      transition: width 0.1s linear;
++    }
++
++    .task-item[data-priority="user-blocking"] .progress-fill {
++      background: #c62828;
++    }
++
++    .task-item[data-priority="background"] .progress-fill {
++      background: #546e7a;
++    }
++
++    .execution-log {
++      padding: 12px;
++      min-height: 220px;
++      max-height: 320px;
++      overflow-y: auto;
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.8rem;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      background: #261c19;
++      color: #f5f0ee;
++    }
++
++    .log-entry {
++      padding: 4px 6px;
++      border-radius: 4px;
++      background: rgba(255, 255, 255, 0.05);
++      line-height: 1.4;
++    }
++
++    .log-entry.log-user-blocking {
++      border-left: 3px solid #ef5350;
++    }
++
++    .log-entry.log-user-visible {
++      border-left: 3px solid #ffab40;
++    }
++
++    .log-entry.log-background {
++      border-left: 3px solid #90a4ae;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +549,76 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="operations-simulator" id="operations-queue-simulator" aria-labelledby="simulator-heading">
++      <div class="simulator-header">
++        <div>
++          <h2 id="simulator-heading">Operations Queue Simulator</h2>
++          <p class="simulator-subtitle">
++            Prioritized task scheduling (<code>scheduler.postTask</code> &amp; <code>scheduler.yield</code>) keeps POS &amp; storefront interactions responsive during heavy workloads.
++          </p>
++        </div>
++        <div class="responsiveness-status" id="ui-responsiveness-indicator" aria-live="polite">
++          <span class="pulse-dot" aria-hidden="true"></span>
++          <span id="ui-status-text">UI Responsive (Main Thread Yielding Active)</span>
++        </div>
++      </div>
++
++      <div class="simulator-controls" role="group" aria-label="Task Scheduling Controls">
++        <button type="button" class="sim-btn sim-btn-urgent" id="btn-urgent-checkout" data-priority="user-blocking" data-task-type="urgent-checkout">
++          <span>Urgent Checkout Task</span>
++          <span class="btn-meta">Priority: user-blocking (High)</span>
++        </button>
++
++        <button type="button" class="sim-btn sim-btn-standard" id="btn-menu-update" data-priority="user-visible" data-task-type="menu-update">
++          <span>Standard Menu Update</span>
++          <span class="btn-meta">Priority: user-visible (Standard)</span>
++        </button>
++
++        <button type="button" class="sim-btn sim-btn-background" id="btn-telemetry-logging" data-priority="background" data-task-type="telemetry-logging">
++          <span>Background Telemetry Logging</span>
++          <span class="btn-meta">Priority: background (Low)</span>
++        </button>
++
++        <button type="button" class="sim-btn sim-btn-batch" id="btn-batch-tasks" data-action="batch">
++          <span>Run Batch (Mixed Tasks)</span>
++          <span class="btn-meta">Executes mixed queue in priority order</span>
++        </button>
++      </div>
++
++      <div class="simulator-stats">
++        <div class="stat-group">
++          <span class="stat-item">Queued / Active: <strong id="stat-queued-count">0</strong></span>
++          <span class="stat-item">Completed: <strong id="stat-completed-count">0</strong></span>
++          <span class="stat-item">Execution Order: <strong id="execution-order-display">None yet</strong></span>
++        </div>
++        <button type="button" class="btn-clear" id="btn-clear-queue">Clear Queue &amp; Log</button>
++      </div>
++
++      <div class="simulator-panels">
++        <div class="panel-box">
++          <div class="panel-header">
++            <span>Operations Task Queue</span>
++            <span id="queue-status-label">Idle</span>
++          </div>
++          <div class="task-queue-list" id="task-queue-list" role="region" aria-label="Operations Task Queue">
++            <div class="empty-state" id="queue-empty-state">No operations queued. Use the buttons above to schedule tasks.</div>
++          </div>
++        </div>
++
++        <div class="panel-box">
++          <div class="panel-header">
++            <span>Priority Execution Log</span>
++            <span>Real-time Scheduler Output</span>
++          </div>
++          <div class="execution-log" id="execution-log" role="log" aria-live="polite" aria-label="Priority Execution Log">
++            <div class="log-entry">[System] Prioritized Task Scheduler ready.</div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +629,351 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Polyfill scheduler.postTask and scheduler.yield if not natively available
++      if (typeof window.scheduler === 'undefined') {
++        window.scheduler = {};
++      }
++
++      const PRIORITY_WEIGHTS = {
++        'user-blocking': 0,
++        'user-visible': 1,
++        'background': 2
++      };
++
++      if (typeof window.scheduler.postTask !== 'function') {
++        const fallbackQueues = {
++          'user-blocking': [],
++          'user-visible': [],
++          'background': []
++        };
++        let isFlushScheduled = false;
++
++        function scheduleFlush() {
++          if (isFlushScheduled) return;
++          isFlushScheduled = true;
++          const channel = new MessageChannel();
++          channel.port1.onmessage = flushNextTask;
++          channel.port2.postMessage(null);
++        }
++
++        function flushNextTask() {
++          isFlushScheduled = false;
++          const priorities = ['user-blocking', 'user-visible', 'background'];
++          for (const p of priorities) {
++            if (fallbackQueues[p].length > 0) {
++              const next = fallbackQueues[p].shift();
++              if (next.signal && next.signal.aborted) {
++                next.reject(new DOMException('Task aborted', 'AbortError'));
++                if (fallbackQueues['user-blocking'].length || fallbackQueues['user-visible'].length || fallbackQueues['background'].length) {
++                  scheduleFlush();
++                }
++                return;
++              }
++              Promise.resolve()
++                .then(() => next.callback())
++                .then(next.resolve, next.reject)
++                .finally(() => {
++                  if (fallbackQueues['user-blocking'].length || fallbackQueues['user-visible'].length || fallbackQueues['background'].length) {
++                    scheduleFlush();
++                  }
++                });
++              return;
++            }
++          }
++        }
++
++        window.scheduler.postTask = function (callback, options = {}) {
++          const priority = options.priority || (options.signal && options.signal.priority) || 'user-visible';
++          const normalizedPriority = PRIORITY_WEIGHTS[priority] !== undefined ? priority : 'user-visible';
++          const delay = options.delay || 0;
++
++          return new Promise((resolve, reject) => {
++            if (options.signal && options.signal.aborted) {
++              reject(new DOMException('Task aborted', 'AbortError'));
++              return;
++            }
++            const enqueue = () => {
++              fallbackQueues[normalizedPriority].push({
++                callback,
++                resolve,
++                reject,
++                signal: options.signal
++              });
++              scheduleFlush();
++            };
++            if (delay > 0) {
++              setTimeout(enqueue, delay);
++            } else {
++              enqueue();
++            }
++          });
++        };
++      }
++
++      if (typeof window.scheduler.yield !== 'function') {
++        window.scheduler.yield = function () {
++          return new Promise((resolve) => {
++            const channel = new MessageChannel();
++            channel.port1.onmessage = () => resolve();
++            channel.port2.postMessage(null);
++          });
++        };
++      }
++
++      const TASK_CONFIGS = {
++        'urgent-checkout': {
++          title: 'Urgent Checkout Task',
++          priority: 'user-blocking',
++          chunks: 4,
++          chunkDurationMs: 10,
++          steps: [
++            'Validating customer payment token',
++            'Locking espresso bar inventory',
++            'Confirming POS receipt & barista ticket',
++            'Finalizing checkout confirmation'
++          ]
++        },
++        'menu-update': {
++          title: 'Standard Menu Update',
++          priority: 'user-visible',
++          chunks: 4,
++          chunkDurationMs: 12,
++          steps: [
++            'Fetching seasonal roast availability',
++            'Recalculating modifier pricing',
++            'Updating storefront menu cards',
++            'Refreshing nutritional badges'
++          ]
++        },
++        'telemetry-logging': {
++          title: 'Background Telemetry Logging',
++          priority: 'background',
++          chunks: 4,
++          chunkDurationMs: 12,
++          steps: [
++            'Collecting anonymized POS latency metrics',
++            'Compressing grinder calibration logs',
++            'Batching telemetry payload',
++            'Archiving background diagnostics'
++          ]
++        }
++      };
++
++      let nextTaskId = 1;
++      let activeTaskCount = 0;
++      let completedTaskCount = 0;
++      const executionOrder = [];
++
++      const queueListEl = document.getElementById('task-queue-list');
++      const emptyStateEl = document.getElementById('queue-empty-state');
++      const logEl = document.getElementById('execution-log');
++      const statQueuedEl = document.getElementById('stat-queued-count');
++      const statCompletedEl = document.getElementById('stat-completed-count');
++      const executionOrderEl = document.getElementById('execution-order-display');
++      const queueStatusLabelEl = document.getElementById('queue-status-label');
++      const uiStatusTextEl = document.getElementById('ui-status-text');
++
++      function updateStats() {
++        statQueuedEl.textContent = String(activeTaskCount);
++        statCompletedEl.textContent = String(completedTaskCount);
++        executionOrderEl.textContent = executionOrder.length > 0
++          ? executionOrder.join(' → ')
++          : 'None yet';
++        queueStatusLabelEl.textContent = activeTaskCount > 0
++          ? `${activeTaskCount} Running / Queued`
++          : 'Idle';
++        uiStatusTextEl.textContent = activeTaskCount > 0
++          ? 'UI Responsive (Yielding Between Task Chunks)'
++          : 'UI Responsive (Main Thread Yielding Active)';
++      }
++
++      function appendLog(message, priority) {
++        const entry = document.createElement('div');
++        entry.className = 'log-entry' + (priority ? ` log-${priority}` : '');
++        const timestamp = new Date().toLocaleTimeString('en-US', {
++          hour12: false,
++          hour: '2-digit',
++          minute: '2-digit',
++          second: '2-digit'
++        });
++        entry.textContent = `[${timestamp}] ${message}`;
++        logEl.appendChild(entry);
++        logEl.scrollTop = logEl.scrollHeight;
++      }
++
++      function performWorkChunk(durationMs) {
++        const start = performance.now();
++        while (performance.now() - start < durationMs) {
++          // Simulated bounded CPU work chunk (< 16ms frame budget)
++          Math.sqrt(start + 1);
++        }
++      }
++
++      function createTaskElement(task) {
++        if (emptyStateEl && emptyStateEl.parentNode === queueListEl) {
++          emptyStateEl.remove();
++        }
++
++        const item = document.createElement('div');
++        item.className = 'task-item';
++        item.id = `task-item-${task.id}`;
++        item.setAttribute('data-task-id', String(task.id));
++        item.setAttribute('data-priority', task.priority);
++        item.setAttribute('data-status', 'queued');
++
++        item.innerHTML = `
++          <div class="task-item-top">
++            <span class="task-title">#${task.id} ${task.title}</span>
++            <div class="badges">
++              <span class="order-badge" id="task-order-${task.id}" style="display: none;"></span>
++              <span class="priority-badge priority-${task.priority}">${task.priority}</span>
++              <span class="status-badge status-queued" id="task-status-${task.id}">Queued</span>
++            </div>
++          </div>
++          <div style="font-size: 0.78rem; color: #6d4c41; margin-bottom: 6px;" id="task-step-${task.id}">
++            Waiting in ${task.priority} queue...
++          </div>
++          <div class="progress-track">
++            <div class="progress-fill" id="task-progress-${task.id}" style="width: 0%;"></div>
++          </div>
++        `;
++
++        queueListEl.appendChild(item);
++        queueListEl.scrollTop = queueListEl.scrollHeight;
++        return item;
++      }
++
++      function scheduleOperationTask(taskType) {
++        const config = TASK_CONFIGS[taskType];
++        if (!config) return null;
++
++        const task = {
++          id: nextTaskId++,
++          type: taskType,
++          title: config.title,
++          priority: config.priority,
++          chunks: config.chunks,
++          chunkDurationMs: config.chunkDurationMs,
++          steps: config.steps
++        };
++
++        activeTaskCount++;
++        const taskEl = createTaskElement(task);
++        updateStats();
++        appendLog(`Queued #${task.id}: ${task.title} [${task.priority}]`, task.priority);
++
++        let postTaskOptions = { priority: task.priority };
++        if (typeof window.TaskController === 'function') {
++          const controller = new TaskController({ priority: task.priority });
++          postTaskOptions = { signal: controller.signal, priority: task.priority };
++        }
++
++        return window.scheduler.postTask(async () => {
++          const statusEl = document.getElementById(`task-status-${task.id}`);
++          const stepEl = document.getElementById(`task-step-${task.id}`);
++          const progressEl = document.getElementById(`task-progress-${task.id}`);
++          const orderEl = document.getElementById(`task-order-${task.id}`);
++
++          executionOrder.push(`${task.title} (${task.priority})`);
++          const execIndex = executionOrder.length;
++
++          if (taskEl) taskEl.setAttribute('data-status', 'running');
++          if (orderEl) {
++            orderEl.textContent = `Exec #${execIndex}`;
++            orderEl.style.display = 'inline-block';
++          }
++          if (statusEl) {
++            statusEl.className = 'status-badge status-running';
++            statusEl.textContent = 'Running';
++          }
++          updateStats();
++          appendLog(`Started #${task.id} (Exec #${execIndex}): ${task.title} [${task.priority}]`, task.priority);
++
++          for (let i = 0; i < task.chunks; i++) {
++            if (stepEl) {
++              stepEl.textContent = `${task.steps[i] || 'Processing chunk'} (${i + 1}/${task.chunks})`;
++            }
++            if (statusEl) {
++              statusEl.className = 'status-badge status-running';
++              statusEl.textContent = 'Running';
++            }
++
++            performWorkChunk(task.chunkDurationMs);
++
++            const percent = Math.round(((i + 1) / task.chunks) * 100);
++            if (progressEl) {
++              progressEl.style.width = `${percent}%`;
++            }
++
++            if (i < task.chunks - 1) {
++              if (statusEl) {
++                statusEl.className = 'status-badge status-yielding';
++                statusEl.textContent = 'Yielding';
++              }
++              await window.scheduler.yield();
++            }
++          }
++
++          activeTaskCount = Math.max(0, activeTaskCount - 1);
++          completedTaskCount++;
++
++          if (taskEl) taskEl.setAttribute('data-status', 'completed');
++          if (statusEl) {
++            statusEl.className = 'status-badge status-completed';
++            statusEl.textContent = 'Completed';
++          }
++          if (stepEl) {
++            stepEl.textContent = `Completed all ${task.chunks} chunks without blocking UI.`;
++          }
++
++          updateStats();
++          appendLog(`Completed #${task.id}: ${task.title} [${task.priority}]`, task.priority);
++          return task;
++        }, postTaskOptions);
++      }
++
++      function runBatchMixedTasks() {
++        appendLog('--- Batch Triggered: Scheduling mixed tasks (queued: background, user-visible, user-blocking) ---');
++        // Enqueue in reverse priority order to clearly demonstrate scheduler prioritization:
++        // 1. Background telemetry (low), 2. Standard menu update (medium), 3. Urgent checkout (high)
++        scheduleOperationTask('telemetry-logging');
++        scheduleOperationTask('menu-update');
++        scheduleOperationTask('urgent-checkout');
++      }
++
++      function clearQueueAndLog() {
++        executionOrder.length = 0;
++        completedTaskCount = 0;
++        queueListEl.innerHTML = '';
++        queueListEl.appendChild(emptyStateEl);
++        logEl.innerHTML = '<div class="log-entry">[System] Queue and execution log cleared.</div>';
++        updateStats();
++      }
++
++      document.getElementById('btn-urgent-checkout').addEventListener('click', () => {
++        scheduleOperationTask('urgent-checkout');
++      });
++
++      document.getElementById('btn-menu-update').addEventListener('click', () => {
++        scheduleOperationTask('menu-update');
++      });
++
++      document.getElementById('btn-telemetry-logging').addEventListener('click', () => {
++        scheduleOperationTask('telemetry-logging');
++      });
++
++      document.getElementById('btn-batch-tasks').addEventListener('click', () => {
++        runBatchMixedTasks();
++      });
++
++      document.getElementById('btn-clear-queue').addEventListener('click', () => {
++        clearQueueAndLog();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

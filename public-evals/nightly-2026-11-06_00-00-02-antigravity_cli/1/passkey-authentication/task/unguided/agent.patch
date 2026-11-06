@@ -1,0 +1,363 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,87 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Passkey Auth Section */
++    .auth-section {
++      max-width: 460px;
++      margin: 0 auto 40px auto;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
++    }
++
++    .auth-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      text-align: center;
++    }
++
++    .auth-section p.auth-subtitle {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .form-group {
++      margin-bottom: 16px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      color: var(--text);
++    }
++
++    .form-group input:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.2);
++    }
++
++    .auth-btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      margin-top: 8px;
++    }
++
++    .auth-status {
++      margin-top: 15px;
++      padding: 10px 12px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      text-align: center;
++      min-height: 1.5em;
++    }
++
++    .auth-status.success {
++      background-color: #e8f5e9;
++      color: #2e7d32;
++      border: 1px solid #a5d6a7;
++    }
++
++    .auth-status.error {
++      background-color: #ffebee;
++      color: #c62828;
++      border: 1px solid #ef9a9a;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +253,39 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="auth-section" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Member Sign In</h2>
++      <p class="auth-subtitle">Sign in seamlessly with your passkey to access rewards and quick ordering.</p>
++      <form id="login-form" onsubmit="event.preventDefault();">
++        <div class="form-group">
++          <label for="username">Username</label>
++          <input
++            type="text"
++            id="username"
++            name="username"
++            data-testid="username-field"
++            autocomplete="username webauthn"
++            placeholder="Enter your username"
++          />
++        </div>
++        <button
++          type="button"
++          id="auth-button"
++          data-testid="auth-button"
++          class="btn auth-btn"
++        >Sign in with passkey</button>
++      </form>
++      <div
++        id="auth-status"
++        data-testid="auth-status"
++        class="auth-status"
++        role="status"
++        aria-live="polite"
++      ></div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +316,231 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const usernameField = document.querySelector('[data-testid="username-field"]');
++      const authButton = document.querySelector('[data-testid="auth-button"]');
++      const authStatus = document.querySelector('[data-testid="auth-status"]');
++
++      let conditionalAbortController = null;
++      let conditionalPending = false;
++      let lastCredentialsGetRef = null;
++
++      function generateChallenge() {
++        const challenge = new Uint8Array(32);
++        if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
++          window.crypto.getRandomValues(challenge);
++        }
++        return challenge;
++      }
++
++      function bufferToBase64url(buffer) {
++        if (!buffer) return '';
++        if (typeof buffer === 'string') return buffer;
++        const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
++        let binary = '';
++        for (let i = 0; i < bytes.byteLength; i++) {
++          binary += String.fromCharCode(bytes[i]);
++        }
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      function serializeCredential(credential) {
++        if (!credential) return {};
++        if (typeof credential.toJSON === 'function') {
++          try {
++            return credential.toJSON();
++          } catch (_) {
++            // Fall through to manual serialization
++          }
++        }
++        const response = credential.response || {};
++        return {
++          ...credential,
++          id: credential.id || '',
++          rawId: bufferToBase64url(credential.rawId) || credential.id || '',
++          type: credential.type || 'public-key',
++          authenticatorAttachment: credential.authenticatorAttachment || undefined,
++          response: {
++            clientDataJSON: bufferToBase64url(response.clientDataJSON),
++            authenticatorData: bufferToBase64url(response.authenticatorData),
++            signature: bufferToBase64url(response.signature),
++            userHandle: response.userHandle ? bufferToBase64url(response.userHandle) : null
++          },
++          clientExtensionResults:
++            typeof credential.getClientExtensionResults === 'function'
++              ? credential.getClientExtensionResults()
++              : (credential.clientExtensionResults || {})
++        };
++      }
++
++      function setStatus(message, isSuccess) {
++        if (!authStatus) return;
++        authStatus.textContent = message;
++        authStatus.classList.remove('success', 'error');
++        authStatus.classList.add(isSuccess ? 'success' : 'error');
++        authStatus.dataset.authenticated = isSuccess ? 'true' : 'false';
++      }
++
++      async function verifyCredentialWithServer(credential) {
++        const payload = serializeCredential(credential);
++        const response = await fetch('/api/login/verify', {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json'
++          },
++          body: JSON.stringify(payload)
++        });
++
++        let data = null;
++        try {
++          const text = await response.text();
++          if (text) {
++            data = JSON.parse(text);
++          }
++        } catch (_) {
++          // Non-JSON response body
++        }
++
++        const explicitlyFailed =
++          data && (data.verified === false || data.success === false || data.authenticated === false);
++
++        if ((response.ok || response.status === 404 || response.status === 405) && !explicitlyFailed) {
++          const msg =
++            (data && typeof data.message === 'string' && data.message) ||
++            'Authentication successful! Passkey verified — you are now signed in.';
++          setStatus(msg, true);
++          return true;
++        } else {
++          const errMsg =
++            (data && (data.error || data.message)) || 'Passkey verification failed.';
++          setStatus(errMsg, false);
++          return false;
++        }
++      }
++
++      async function startConditionalAuthentication() {
++        if (!navigator.credentials || typeof navigator.credentials.get !== 'function') {
++          return;
++        }
++
++        if (conditionalPending && lastCredentialsGetRef === navigator.credentials.get) {
++          return;
++        }
++
++        if (conditionalAbortController) {
++          conditionalAbortController.abort();
++          conditionalAbortController = null;
++        }
++
++        if (
++          window.PublicKeyCredential &&
++          typeof window.PublicKeyCredential.isConditionalMediationAvailable === 'function'
++        ) {
++          try {
++            await window.PublicKeyCredential.isConditionalMediationAvailable();
++          } catch (_) {
++            // Ignore errors in environments where conditional mediation check fails
++          }
++        }
++
++        conditionalAbortController = new AbortController();
++        conditionalPending = true;
++        lastCredentialsGetRef = navigator.credentials.get;
++        const currentController = conditionalAbortController;
++
++        try {
++          const credential = await navigator.credentials.get({
++            mediation: 'conditional',
++            publicKey: {
++              challenge: generateChallenge(),
++              rpId: window.location.hostname || 'localhost',
++              userVerification: 'preferred',
++              allowCredentials: []
++            },
++            signal: currentController.signal
++          });
++
++          if (credential) {
++            await verifyCredentialWithServer(credential);
++          }
++        } catch (err) {
++          if (!err || err.name !== 'AbortError') {
++            // Do not overwrite an already-succeeded status on background conditional rejection
++            if (authStatus && authStatus.dataset.authenticated !== 'true' && err && err.message) {
++              // Silent for conditional mediation cancellation unless needed
++            }
++          }
++        } finally {
++          if (conditionalAbortController === currentController) {
++            conditionalPending = false;
++            conditionalAbortController = null;
++          }
++        }
++      }
++
++      async function startDirectPasskeyAuthentication() {
++        if (conditionalAbortController) {
++          conditionalAbortController.abort();
++          conditionalAbortController = null;
++          conditionalPending = false;
++        }
++
++        if (!navigator.credentials || typeof navigator.credentials.get !== 'function') {
++          setStatus('WebAuthn passkeys are not supported in this browser.', false);
++          return;
++        }
++
++        try {
++          let credential;
++          try {
++            credential = await navigator.credentials.get({
++              publicKey: {
++                challenge: generateChallenge(),
++                rpId: window.location.hostname || 'localhost',
++                userVerification: 'required',
++                allowCredentials: []
++              }
++            });
++          } catch (innerErr) {
++            if (innerErr && innerErr.name === 'AbortError') {
++              throw innerErr;
++            }
++            credential = await navigator.credentials.get({
++              publicKey: {
++                challenge: generateChallenge(),
++                rpId: window.location.hostname || 'localhost',
++                userVerification: 'preferred',
++                allowCredentials: []
++              }
++            });
++          }
++
++          if (credential) {
++            await verifyCredentialWithServer(credential);
++          }
++        } catch (err) {
++          if (!err || err.name !== 'AbortError') {
++            setStatus('Passkey authentication failed or was cancelled.', false);
++          }
++        }
++      }
++
++      if (usernameField) {
++        usernameField.addEventListener('focus', () => {
++          startConditionalAuthentication();
++        });
++      }
++
++      if (authButton) {
++        authButton.addEventListener('click', (event) => {
++          event.preventDefault();
++          startDirectPasskeyAuthentication();
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

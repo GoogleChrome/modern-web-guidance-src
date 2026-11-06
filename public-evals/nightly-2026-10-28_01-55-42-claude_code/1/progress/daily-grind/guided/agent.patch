@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+index 66c9173..791e0a0 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,123 @@
+       background: #3e2723;
+     }
+ 
++
++    /* Progress (order & rewards status) */
++    .status-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-bottom: 40px;
++    }
++
++    .status-panel h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .status-list {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
++    }
++
++    .status-item {
++      display: grid;
++      gap: 8px;
++    }
++
++    .status-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++    }
++
++    .status-header label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .status-value {
++      font-size: 0.85rem;
++      font-variant-numeric: tabular-nums;
++      color: var(--text);
++    }
++
++    .status-note {
++      font-size: 0.85rem;
++      opacity: 0.8;
++    }
++
++    progress.status-bar {
++      /* Reset default browser styles */
++      appearance: none;
++      border: 0 solid;
++      /* Clip the fill to the rounded track */
++      overflow: clip;
++      --progress-bar-radius: 1e5px;
++      border-radius: var(--progress-bar-radius);
++      inline-size: 100%;
++      block-size: 14px;
++      /* Track */
++      background: var(--progress-bar-track, var(--secondary));
++      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.15);
++      /* Lets the indeterminate fill position itself in track units (cqi) */
++      container-type: inline-size;
++      --progress-bar-indeterminate-size: 30%;
++      --progress-bar-indeterminate-animation-duration: 1.5s;
++
++      /* Respect prefers-reduced-motion: slow down rather than disable */
++      @media (prefers-reduced-motion: reduce) {
++        --progress-bar-indeterminate-animation-duration: 10s;
++      }
++    }
++
++    progress.status-bar:indeterminate {
++      --progress-bar-animation: var(
++          --progress-bar-indeterminate-animation,
++          progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear
++        );
++    }
++
++    /* Mirror the indeterminate motion for right-to-left layouts */
++    progress.status-bar:dir(rtl) {
++      --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
++    }
++
++    /* Let the <progress> track styling show through (WebKit/Blink) */
++    progress.status-bar::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    /* Fill: WebKit/Blink */
++    progress.status-bar::-webkit-progress-value {
++      background: var(--progress-bar-fill, linear-gradient(90deg, var(--primary), var(--accent)));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    /* Fill: Firefox */
++    progress.status-bar::-moz-progress-bar {
++      background: var(--progress-bar-fill, linear-gradient(90deg, var(--primary), var(--accent)));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    /* Indeterminate: a short segment sliding left to right along the track */
++    @keyframes progress-bar-indeterminate {
++      from, to {
++        inline-size: var(--progress-bar-indeterminate-size);
++        /* Pin to the physical left; Chromium would otherwise lay the fill out at the inline start */
++        margin-right: auto;
++      }
++      from { translate: -100%; }
++      to { translate: 100cqi; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +292,31 @@
+   </header>
+ 
+   <main class="container">
++    <section class="status-panel" aria-labelledby="status-heading">
++      <h2 id="status-heading">Your Progress</h2>
++      <div class="status-list">
++        <div class="status-item">
++          <div class="status-header">
++            <label for="order-progress">Order #4821: Maple Oat Latte</label>
++            <span class="status-value" id="order-progress-status" role="status">Confirming with the barista&hellip;</span>
++          </div>
++          <!-- Indeterminate: no value until the shop confirms the order -->
++          <progress class="status-bar" id="order-progress" max="100"></progress>
++          <p class="status-note">We'll show step-by-step progress once your order is accepted.</p>
++        </div>
++
++        <div class="status-item">
++          <div class="status-header">
++            <label for="rewards-progress">Rewards: next free drink</label>
++            <span class="status-value">7 of 10 stamps</span>
++          </div>
++          <!-- Determinate: 7 of 10 stamps earned -->
++          <progress class="status-bar" id="rewards-progress" max="10" value="7"></progress>
++          <p class="status-note">3 more purchases unlock a free drink of your choice.</p>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

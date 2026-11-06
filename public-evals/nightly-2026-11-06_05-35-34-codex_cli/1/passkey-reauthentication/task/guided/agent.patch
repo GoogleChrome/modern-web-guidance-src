@@ -1,0 +1,48 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,19 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -152,8 +163,9 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script src="/assets/reauth.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+@@ -174,8 +186,14 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section aria-labelledby="reauth-heading">
++      <h2 id="reauth-heading">Confirm your identity</h2>
++      <p>Use a registered passkey or security key before making a sensitive account change.</p>
++      <button type="button" class="btn" data-testid="reauth-button" aria-describedby="reauth-status">Verify identity</button>
++      <p id="reauth-status" role="status" aria-live="polite" aria-atomic="true"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

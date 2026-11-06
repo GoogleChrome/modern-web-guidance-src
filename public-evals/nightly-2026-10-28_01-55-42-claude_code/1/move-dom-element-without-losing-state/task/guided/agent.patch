@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,94 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Hero grows to fit the video while theater mode is on */
++    .hero--theater {
++      height: auto;
++      min-height: 60vh;
++      padding: 40px 20px;
++    }
++
++    .hero-stage {
++      width: min(100%, 960px);
++      margin-top: 24px;
++    }
++
++    .hero-stage[hidden] {
++      display: none;
++    }
++
++    /* Video player (lives in the main container by default) */
++    .video-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .video-section p {
++      margin: 10px 0 20px;
++    }
++
++    .video-player {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .video-player iframe {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      height: auto;
++      border: 0;
++      border-radius: 8px;
++      background: #000;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    .video-home {
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    /* Placeholder keeps the page from jumping while the player is up in the hero */
++    .video-home--empty {
++      aspect-ratio: 16 / 9;
++      display: grid;
++      place-items: center;
++      background: var(--secondary);
++      border-radius: 8px;
++      color: var(--primary);
++      font-style: italic;
++    }
++
++    .video-home--empty::after {
++      content: 'Now playing in theater mode above';
++    }
++
++    .theater-toggle {
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      border: 1px solid var(--accent);
++      background: var(--primary);
++      color: white;
++      padding: 8px 16px;
++      border-radius: 5px;
++      transition: background 0.3s;
++    }
++
++    .theater-toggle:hover,
++    .theater-toggle:focus-visible {
++      background: #3e2723;
++    }
++
++    .theater-toggle[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -171,8 +257,9 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-stage" id="hero-stage" hidden></div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +281,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section" aria-labelledby="roast-heading">
++      <h2 id="roast-heading">From Green Bean to Cup</h2>
++      <p>See how roasting transforms the beans we source into the coffee you love.</p>
++      <div class="video-home" id="video-home">
++        <div class="video-player" id="video-player">
++          <iframe id="roast-video" src="https://www.youtube-nocookie.com/embed/N6BJVM5tvnw"
++            title="Coffee Roasting Explained" width="800" height="450" loading="lazy"
++            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++          <button type="button" class="theater-toggle" id="theater-toggle" aria-pressed="false"
++            aria-controls="roast-video">Theater mode</button>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +308,59 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const player = document.getElementById('video-player');
++      const homeSlot = document.getElementById('video-home');
++      const theaterSlot = document.getElementById('hero-stage');
++      const hero = document.querySelector('.hero');
++      const toggle = document.getElementById('theater-toggle');
++      if (!player || !homeSlot || !theaterSlot || !hero || !toggle) return;
++
++      // moveBefore() performs an atomic move, so the <iframe> inside the player
++      // keeps its document (and playback position) instead of reloading.
++      const supportsMoveBefore = typeof Element.prototype.moveBefore === 'function';
++
++      function moveInto(parent, node) {
++        if (supportsMoveBefore) {
++          parent.moveBefore(node, null);
++          return;
++        }
++        // Fallback for browsers without moveBefore(): a classic remove + insert.
++        // The iframe will reload here, and focus is lost, so restore it manually.
++        const hadFocus = node.contains(document.activeElement);
++        parent.appendChild(node);
++        if (hadFocus) toggle.focus();
++      }
++
++      function setTheaterMode(on) {
++        if (on) {
++          // Reveal the hero stage before moving so the player never lands in a hidden parent.
++          theaterSlot.hidden = false;
++          hero.classList.add('hero--theater');
++          moveInto(theaterSlot, player);
++          homeSlot.classList.add('video-home--empty');
++        } else {
++          moveInto(homeSlot, player);
++          homeSlot.classList.remove('video-home--empty');
++          hero.classList.remove('hero--theater');
++          theaterSlot.hidden = true;
++        }
++
++        toggle.setAttribute('aria-pressed', String(on));
++        toggle.textContent = on ? 'Exit theater mode' : 'Theater mode';
++
++        const target = on ? hero : homeSlot;
++        target.scrollIntoView({ behavior: 'smooth', block: on ? 'start' : 'center' });
++      }
++
++      toggle.addEventListener('click', () => {
++        setTheaterMode(toggle.getAttribute('aria-pressed') !== 'true');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

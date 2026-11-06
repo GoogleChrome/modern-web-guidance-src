@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,67 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Report INP with attribution (subparts, Long Animation Frame scripts,
++    // and style/layout timings) so slow interactions can be diagnosed in the field.
++    import { onINP } from 'https://unpkg.com/web-vitals@5/dist/web-vitals.attribution.js?module';
++
++    onINP((metric) => {
++      const { attribution } = metric;
++      const longestScript = attribution.longestScript;
++
++      // Sum rendering-phase style and layout durations across all LoAF entries
++      // intersecting the INP interaction (primarily explains presentationDelay).
++      let renderStyleDuration = 0;
++      let renderLayoutDuration = 0;
++      for (const entry of attribution.longAnimationFrameEntries) {
++        renderStyleDuration += entry.styleDuration ?? 0;
++        renderLayoutDuration += entry.layoutDuration ?? 0;
++      }
++
++      const body = JSON.stringify({
++        name: metric.name,
++        id: metric.id,
++        value: metric.value,
++        rating: metric.rating,
++        navigationType: metric.navigationType,
++        // INP subparts
++        interactionTarget: attribution.interactionTarget,
++        interactionType: attribution.interactionType,
++        inputDelay: attribution.inputDelay,
++        processingDuration: attribution.processingDuration,
++        presentationDelay: attribution.presentationDelay,
++        loadState: attribution.loadState,
++        // Script responsible for the most blocking time during the interaction
++        invokerType: longestScript?.entry?.invokerType,
++        invoker: longestScript?.entry?.invoker,
++        sourceURL: longestScript?.entry?.sourceURL,
++        sourceFunctionName: longestScript?.entry?.sourceFunctionName,
++        sourceCharPosition: longestScript?.entry?.sourceCharPosition,
++        subpart: longestScript?.subpart,
++        intersectingDuration: longestScript?.intersectingDuration,
++        // Synchronous style/layout forced inside that script
++        // (forcedStyleAndLayoutDuration is the combined fallback)
++        forcedStyleDuration: longestScript?.entry?.forcedStyleDuration,
++        forcedLayoutDuration: longestScript?.entry?.forcedLayoutDuration,
++        forcedStyleAndLayoutDuration: longestScript?.entry?.forcedStyleAndLayoutDuration,
++        // Rendering-phase style/layout across the interaction's frames
++        // (totalStyleAndLayoutDuration is the combined fallback)
++        renderStyleDuration,
++        renderLayoutDuration,
++        totalStyleAndLayoutDuration: attribution.totalStyleAndLayoutDuration,
++        totalScriptDuration: attribution.totalScriptDuration,
++        totalPaintDuration: attribution.totalPaintDuration,
++        totalUnattributedDuration: attribution.totalUnattributedDuration,
++      });
++
++      if (!navigator.sendBeacon?.('/analytics', body)) {
++        fetch('/analytics', { body, method: 'POST', keepalive: true });
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

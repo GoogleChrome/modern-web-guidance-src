@@ -1,0 +1,170 @@
+diff --git a/package.json b/package.json
+index 2e1f2e8..fcea70f 100644
+--- a/package.json
++++ b/package.json
+@@ -20,10 +20,12 @@
+     "react": "^19.3.0",
+     "react-dom": "^19.3.0",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "use-webmcp-tool": "^0.3.0"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "webmcp-types": "^0.1.10"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..451a03d 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -10,6 +10,15 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  // Stay in sync when an agent changes the reading list.
++  useEffect(() => {
++    const onChange = (e: Event) => {
++      setIsBookmarked((e as CustomEvent<{ readingList: string[] }>).detail.readingList.includes(slug));
++    };
++    window.addEventListener('reading-list-changed', onChange);
++    return () => window.removeEventListener('reading-list-changed', onChange);
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..b585deb 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -3,6 +3,7 @@ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
++import WebMCPTools from "./WebMCPTools.tsx";
+ 
+ const articles = await getCollection("articles");
+ const reports = await getCollection("reports");
+@@ -14,6 +15,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ ---
+ 
+ <header class="font-inter group relative bg-white">
++  <WebMCPTools client:load />
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+diff --git a/src/components/WebMCPTools.tsx b/src/components/WebMCPTools.tsx
+new file mode 100644
+index 0000000..7cf083a
+--- /dev/null
++++ b/src/components/WebMCPTools.tsx
+@@ -0,0 +1,91 @@
++import { useWebMCP } from 'use-webmcp-tool';
++
++interface Article {
++  slug: string;
++  title: string;
++  summary: string;
++}
++
++const api = (path: string) => `${import.meta.env.BASE_URL}api/${path}`;
++
++async function getArticles(signal: AbortSignal): Promise<Article[]> {
++  const response = await fetch(api('articles.json'), { signal });
++  return response.json();
++}
++
++async function getReadingList(signal: AbortSignal): Promise<string[]> {
++  const response = await fetch(api('reading-list.json'), { signal });
++  return (await response.json()).readingList;
++}
++
++// The reading list endpoint toggles, so check current state first to keep add/remove idempotent.
++async function setInReadingList(slug: string, wanted: boolean, signal: AbortSignal) {
++  const articles = await getArticles(signal);
++  if (!articles.some((a) => a.slug === slug)) {
++    return { error: `No article with slug "${slug}".`, availableSlugs: articles.map((a) => a.slug) };
++  }
++  let readingList = await getReadingList(signal);
++  if (readingList.includes(slug) !== wanted) {
++    const response = await fetch(api('reading-list.json'), {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ slug }),
++      signal,
++    });
++    readingList = (await response.json()).readingList;
++    // Let mounted bookmark UI refresh itself.
++    window.dispatchEvent(new CustomEvent('reading-list-changed', { detail: { readingList } }));
++  }
++  return { readingList };
++}
++
++const slugSchema = {
++  type: 'object',
++  properties: { slug: { type: 'string', description: 'Slug of the article, as returned by search_articles.' } },
++  required: ['slug'],
++};
++
++export default function WebMCPTools() {
++  useWebMCP({
++    name: 'search_articles',
++    description: 'Searches The DevTools Times articles by keyword in the title or summary. Use when the user wants to find or browse articles.',
++    inputSchema: {
++      type: 'object',
++      properties: { query: { type: 'string', description: 'Words to look for. Leave empty to list all articles.' } },
++    },
++    async execute({ query = '' }: { query?: string }, { signal }) {
++      const term = String(query).toLowerCase();
++      const articles = await getArticles(signal);
++      return articles
++        .filter((a) => a.title.toLowerCase().includes(term) || a.summary.toLowerCase().includes(term))
++        .map((a) => ({ ...a, url: `${import.meta.env.BASE_URL}articles/${a.slug}` }));
++    },
++    annotations: { readOnlyHint: true },
++  });
++
++  useWebMCP({
++    name: 'get_reading_list',
++    description: "Returns the articles saved in the user's reading list.",
++    async execute(_args: unknown, { signal }) {
++      const [articles, readingList] = await Promise.all([getArticles(signal), getReadingList(signal)]);
++      return articles.filter((a) => readingList.includes(a.slug));
++    },
++    annotations: { readOnlyHint: true },
++  });
++
++  useWebMCP({
++    name: 'add_to_reading_list',
++    description: "Saves an article to the user's reading list. Does nothing if it is already saved.",
++    inputSchema: slugSchema,
++    execute: ({ slug }: { slug: string }, { signal }) => setInReadingList(slug, true, signal),
++  });
++
++  useWebMCP({
++    name: 'remove_from_reading_list',
++    description: "Removes an article from the user's reading list. Does nothing if it is not saved.",
++    inputSchema: slugSchema,
++    execute: ({ slug }: { slug: string }, { signal }) => setInReadingList(slug, false, signal),
++  });
++
++  return null;
++}
+diff --git a/tsconfig.json b/tsconfig.json
+index 69c1600..f74c219 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -9,6 +9,7 @@
+   ],
+   "compilerOptions": {
+     "jsx": "react-jsx",
+-    "jsxImportSource": "react"
++    "jsxImportSource": "react",
++    "types": ["webmcp-types"]
+   }
+ }
+\ No newline at end of file

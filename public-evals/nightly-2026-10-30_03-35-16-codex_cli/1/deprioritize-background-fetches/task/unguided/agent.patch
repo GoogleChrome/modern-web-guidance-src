@@ -1,0 +1,49 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,45 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Load data</title>
++    <style>
++      body { margin: 0; padding: 24px; font: 16px system-ui, sans-serif; }
++      button { padding: 8px 16px; font: inherit; cursor: pointer; }
++      pre { white-space: pre-wrap; overflow-wrap: anywhere; }
++    </style>
++  </head>
++  <body>
++    <button type="button" id="load">Load data</button>
++    <pre id="result" role="status" aria-live="polite"></pre>
++    <script>
++      const button = document.getElementById('load');
++      const result = document.getElementById('result');
++
++      button.addEventListener('click', () => {
++        result.textContent = 'Loading…';
++        button.disabled = true;
++
++        // Start critical data first, without waiting for analytics.
++        const dataRequest = fetch('/api/data', { priority: 'high' });
++        fetch('/api/analytics', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ click: 1 }),
++          priority: 'low',
++          keepalive: true,
++        }).catch(() => {});
++
++        dataRequest
++          .then(response => {
++            if (!response.ok) throw new Error(`Request failed (${response.status})`);
++            return response.json();
++          })
++          .then(data => { result.textContent = JSON.stringify(data, null, 2); })
++          .catch(error => { result.textContent = `Unable to load data: ${error.message}`; })
++          .finally(() => { button.disabled = false; });
++      });
++    </script>
++  </body>
++</html>

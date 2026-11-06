@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -151,13 +152,141 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native disclosures keep keyboard behavior and expanded state in sync. */
++    #faq-trigger,
++    #alert-dismiss {
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #faq-trigger::-webkit-details-marker,
++    #alert-dismiss::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger:focus-visible,
++    #alert-dismiss:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -4px;
++    }
++
++    #promo-alert {
++      position: relative;
++      background: var(--accent);
++      block-size: auto;
++      overflow: hidden;
++    }
++
++    #promo-alert:not([open]) {
++      block-size: 0;
++    }
++
++    .promo-message {
++      padding: 14px 64px 14px 5%;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      inset-block-start: 4px;
++      inset-inline-end: 12px;
++      display: grid;
++      place-items: center;
++      inline-size: 44px;
++      block-size: 44px;
++      font-size: 1.5rem;
++      border-radius: 4px;
++    }
++
++    #alert-dismiss:hover {
++      background: rgb(78 52 46 / 10%);
++    }
++
++    /* Remove the dismissed control from keyboard and assistive navigation. */
++    #promo-alert:not([open]) > summary {
++      visibility: hidden;
++    }
++
++    .faq {
++      margin-top: 40px;
++    }
++
++    .faq details {
++      margin-top: 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    #faq-trigger {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      padding: 20px;
++      font-weight: 600;
++    }
++
++    #faq-trigger::after {
++      content: '+';
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    details[open] > #faq-trigger::after {
++      content: '\2212';
++    }
++
++    #faq-content {
++      overflow: hidden;
++    }
++
++    .faq-answer {
++      padding: 0 20px 20px;
++    }
++
++    /* Unsupported browsers retain the instant, fully functional disclosures. */
++    @supports (interpolate-size: allow-keywords) and selector(details::details-content) {
++      #promo-alert,
++      #faq-content {
++        transition: block-size 400ms ease;
++      }
++
++      .faq details #faq-content {
++        block-size: 0;
++      }
++
++      .faq details[open] #faq-content {
++        block-size: auto;
++      }
++
++      /* Keep content rendered until its closing height transition finishes. */
++      #promo-alert::details-content,
++      .faq details::details-content {
++        transition: content-visibility 400ms allow-discrete;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #faq-content,
++      #promo-alert::details-content,
++      .faq details::details-content {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotion"><span aria-hidden="true">&times;</span></summary>
++    <p class="promo-message"><strong>Discover your next favorite.</strong> Explore our seasonal coffee menu.</p>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +323,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details>
++        <summary id="faq-trigger" aria-controls="faq-content">What makes your cold brew so smooth?</summary>
++        <section id="faq-content" aria-labelledby="faq-trigger">
++          <div class="faq-answer">
++            <p>We steep our cold brew for 18 hours to bring out a rich, smooth flavor. Explore our cold brew menu to find your next favorite.</p>
++          </div>
++        </section>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

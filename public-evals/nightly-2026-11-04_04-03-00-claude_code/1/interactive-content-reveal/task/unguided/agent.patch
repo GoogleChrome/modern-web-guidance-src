@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,77 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal product cards: pointer-following spotlight reveal */
++    @property --mouse-x {
++      syntax: '<length-percentage>';
++      inherits: true;
++      initial-value: 50%;
++    }
++
++    @property --mouse-y {
++      syntax: '<length-percentage>';
++      inherits: true;
++      initial-value: 50%;
++    }
++
++    @property --inner-size {
++      syntax: '<length>';
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    @property --outer-size {
++      syntax: '<length>';
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    .product-card {
++      --mouse-x: 50%;
++      --mouse-y: 50%;
++      --inner-size: 0px;
++      --outer-size: 0px;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
++      /* Only the size variables animate; position updates instantly. */
++      transition: --inner-size 0.4s ease, --outer-size 0.4s ease;
++    }
++
++    .product-card:hover,
++    .product-card:focus-within {
++      --inner-size: 70px;
++      --outer-size: 130px;
++    }
++
++    .product-card > :not(.spotlight-overlay) {
++      position: relative;
++      z-index: 1;
++    }
++
++    .spotlight-overlay {
++      position: absolute;
++      inset: 0;
++      z-index: 0;
++      pointer-events: none;
++      border-radius: inherit;
++      background:
++        linear-gradient(rgba(255, 248, 240, 0.72), rgba(255, 248, 240, 0.72)),
++        var(--spotlight-image) center / cover no-repeat;
++      -webkit-mask-image: radial-gradient(circle at var(--mouse-x) var(--mouse-y),
++          #000 var(--inner-size), transparent var(--outer-size));
++      mask-image: radial-gradient(circle at var(--mouse-x) var(--mouse-y),
++          #000 var(--inner-size), transparent var(--outer-size));
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .product-card {
++        transition-duration: 0s;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -177,19 +246,25 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card product-card">
++          <div class="spotlight-overlay" aria-hidden="true"
++            style="--spotlight-image: url('https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=70');"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
++          <div class="spotlight-overlay" aria-hidden="true"
++            style="--spotlight-image: url('https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=70');"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
++          <div class="spotlight-overlay" aria-hidden="true"
++            style="--spotlight-image: url('https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=70');"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -206,7 +281,17 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.product-card').forEach((card) => {
++      card.addEventListener('pointermove', (event) => {
++        const rect = card.getBoundingClientRect();
++        card.style.setProperty('--mouse-x', `${event.clientX - rect.left}px`);
++        card.style.setProperty('--mouse-y', `${event.clientY - rect.top}px`);
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

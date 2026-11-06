@@ -1,0 +1,1512 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,486 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Event Deadline Tracker Styles */
++    .tracker-section {
++      margin-top: 60px;
++      background: #fff;
++      border-radius: 12px;
++      box-shadow: 0 4px 18px rgba(62, 39, 35, 0.08);
++      padding: 32px;
++      border: 1px solid #efebe9;
++    }
++
++    .tracker-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 20px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 20px;
++      margin-bottom: 24px;
++    }
++
++    .tracker-title-group h2 {
++      color: var(--primary);
++      font-size: 1.85rem;
++      margin-bottom: 6px;
++    }
++
++    .tracker-subtitle {
++      color: #5d4037;
++      font-size: 0.95rem;
++      max-width: 680px;
++    }
++
++    .immutability-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 8px 14px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      border: 1px solid var(--secondary);
++    }
++
++    .immutability-dot {
++      width: 9px;
++      height: 9px;
++      border-radius: 50%;
++      background: #2e7d32;
++      display: inline-block;
++    }
++
++    /* Stats Summary Bar */
++    .tracker-stats {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 16px;
++      margin-bottom: 24px;
++    }
++
++    .stat-box {
++      background: var(--light);
++      border: 1px solid #e0d7d3;
++      border-radius: 8px;
++      padding: 14px 18px;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .stat-label {
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.6px;
++      color: #6d4c41;
++      font-weight: 600;
++    }
++
++    .stat-value {
++      font-size: 1.55rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-top: 4px;
++    }
++
++    .stat-meta {
++      font-size: 0.78rem;
++      color: #5d4037;
++      margin-top: 2px;
++    }
++
++    /* Toolbar: Filters & Controls */
++    .tracker-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: space-between;
++      align-items: center;
++      background: #f8f5f4;
++      padding: 14px 18px;
++      border-radius: 8px;
++      margin-bottom: 24px;
++    }
++
++    .filter-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .filter-group label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .tracker-input,
++    .tracker-select {
++      padding: 8px 12px;
++      border: 1px solid #cbbab2;
++      border-radius: 6px;
++      font-size: 0.88rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--primary);
++      border: 1px solid #cbbab2;
++      padding: 8px 14px;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    /* Event Cards Grid (Reactive View 1) */
++    .deadline-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
++      gap: 20px;
++      margin-bottom: 32px;
++    }
++
++    .deadline-card {
++      background: #fff;
++      border: 1px solid #e0d7d3;
++      border-radius: 10px;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.2s, box-shadow 0.2s;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
++    }
++
++    .deadline-card:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 6px 14px rgba(62, 39, 35, 0.12);
++    }
++
++    .deadline-card.is-extended {
++      border-color: var(--accent);
++      box-shadow: 0 3px 12px rgba(255, 171, 64, 0.2);
++    }
++
++    .deadline-card-media {
++      height: 140px;
++      background-size: cover;
++      background-position: center;
++      position: relative;
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      padding: 12px;
++    }
++
++    .category-badge {
++      background: rgba(62, 39, 35, 0.88);
++      color: #fff;
++      font-size: 0.74rem;
++      font-weight: 600;
++      padding: 4px 10px;
++      border-radius: 999px;
++      backdrop-filter: blur(4px);
++    }
++
++    .countdown-badge {
++      font-size: 0.76rem;
++      font-weight: 700;
++      padding: 4px 10px;
++      border-radius: 999px;
++      background: rgba(255, 255, 255, 0.94);
++      color: var(--primary);
++    }
++
++    .countdown-badge.urgent {
++      background: #fff3e0;
++      color: #e65100;
++      border: 1px solid #ffb74d;
++    }
++
++    .countdown-badge.safe {
++      background: #e8f5e9;
++      color: #1b5e20;
++    }
++
++    .deadline-card-body {
++      padding: 18px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .deadline-card-body h3 {
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .deadline-card-desc {
++      font-size: 0.88rem;
++      color: #5d4037;
++      margin-bottom: 14px;
++    }
++
++    .date-comparison-box {
++      background: #faf7f5;
++      border: 1px solid #ede6e3;
++      border-radius: 8px;
++      padding: 10px 12px;
++      margin-bottom: 14px;
++      font-size: 0.83rem;
++    }
++
++    .date-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 4px;
++    }
++
++    .date-row:last-child {
++      margin-bottom: 0;
++    }
++
++    .date-label {
++      color: #6d4c41;
++      font-weight: 500;
++    }
++
++    .date-val {
++      font-family: 'Courier New', Courier, monospace;
++      font-weight: 700;
++      color: var(--text);
++    }
++
++    .date-val.extended-val {
++      color: #d84315;
++      background: #fbe9e7;
++      padding: 1px 6px;
++      border-radius: 4px;
++    }
++
++    .shared-series-tag {
++      display: inline-block;
++      font-size: 0.75rem;
++      color: #4e342e;
++      background: #efebe9;
++      padding: 3px 8px;
++      border-radius: 4px;
++      margin-bottom: 12px;
++      align-self: flex-start;
++    }
++
++    .extension-actions {
++      margin-top: auto;
++      padding-top: 12px;
++      border-top: 1px dashed #e0d7d3;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      align-items: center;
++    }
++
++    .btn-extend {
++      background: var(--primary);
++      color: #fff;
++      border: none;
++      padding: 6px 10px;
++      border-radius: 5px;
++      font-size: 0.78rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, transform 0.1s;
++    }
++
++    .btn-extend:hover {
++      background: #3e2723;
++    }
++
++    .btn-extend:active {
++      transform: scale(0.97);
++    }
++
++    .btn-extend-accent {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn-extend-accent:hover {
++      background: #ffa000;
++    }
++
++    .btn-reset-card {
++      background: transparent;
++      color: #6d4c41;
++      border: 1px solid #cbbab2;
++      padding: 5px 9px;
++      border-radius: 5px;
++      font-size: 0.76rem;
++      cursor: pointer;
++      margin-left: auto;
++    }
++
++    .btn-reset-card:hover:not(:disabled) {
++      background: #efebe9;
++      color: var(--text);
++    }
++
++    .btn-reset-card:disabled {
++      opacity: 0.45;
++      cursor: default;
++    }
++
++    /* Reactive View 2 & View 3: Split Lower Dashboard */
++    .reactive-views-panel {
++      display: grid;
++      grid-template-columns: 1.35fr 1fr;
++      gap: 24px;
++      margin-top: 16px;
++    }
++
++    @media (max-width: 860px) {
++      .reactive-views-panel {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .subview-card {
++      background: #faf7f5;
++      border: 1px solid #e0d7d3;
++      border-radius: 10px;
++      padding: 20px;
++    }
++
++    .subview-card h3 {
++      color: var(--primary);
++      font-size: 1.15rem;
++      margin-bottom: 6px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .subview-desc {
++      font-size: 0.83rem;
++      color: #5d4037;
++      margin-bottom: 14px;
++    }
++
++    .comparison-table-wrap {
++      overflow-x: auto;
++    }
++
++    .comparison-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.82rem;
++      background: #fff;
++      border-radius: 6px;
++      overflow: hidden;
++    }
++
++    .comparison-table th,
++    .comparison-table td {
++      padding: 9px 10px;
++      text-align: left;
++      border-bottom: 1px solid #eee;
++    }
++
++    .comparison-table th {
++      background: var(--primary);
++      color: #fff;
++      font-weight: 600;
++      font-size: 0.78rem;
++    }
++
++    .delta-pill {
++      display: inline-block;
++      padding: 2px 7px;
++      border-radius: 999px;
++      font-size: 0.74rem;
++      font-weight: 700;
++    }
++
++    .delta-pill.unchanged {
++      background: #efebe9;
++      color: #5d4037;
++    }
++
++    .delta-pill.extended {
++      background: #fff3e0;
++      color: #e65100;
++      border: 1px solid #ffcc80;
++    }
++
++    /* Add Event Form & Immutability Log */
++    .add-event-form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
++      gap: 10px;
++      background: #fff;
++      padding: 16px;
++      border-radius: 8px;
++      border: 1px solid #e0d7d3;
++      margin-bottom: 24px;
++      align-items: end;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .form-field label {
++      font-size: 0.78rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .audit-log-list {
++      list-style: none;
++      max-height: 250px;
++      overflow-y: auto;
++      background: #fff;
++      border: 1px solid #e0d7d3;
++      border-radius: 6px;
++      padding: 10px;
++      font-size: 0.8rem;
++    }
++
++    .audit-log-item {
++      padding: 7px 8px;
++      border-bottom: 1px solid #f0ebe8;
++      line-height: 1.4;
++    }
++
++    .audit-log-item:last-child {
++      border-bottom: none;
++    }
++
++    .audit-code {
++      font-family: 'Courier New', Courier, monospace;
++      background: #efebe9;
++      padding: 1px 5px;
++      border-radius: 3px;
++      font-size: 0.76rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -160,8 +638,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
++      <li><a href="#deadline-tracker">Events &amp; Deadlines</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+@@ -194,8 +673,155 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Event Deadline Tracker Section -->
++    <section id="deadline-tracker" class="tracker-section" aria-labelledby="tracker-heading">
++      <div class="tracker-header">
++        <div class="tracker-title-group">
++          <h2 id="tracker-heading">Roastery &amp; Community Event Deadline Tracker</h2>
++          <p class="tracker-subtitle">
++            Track upcoming coffee tastings, bean sourcing cutoffs, and seasonal launches. All deadlines are powered by
++            immutable <code>Temporal.PlainDate</code> instances—extending any event deadline creates a new
++            <code>Temporal</code> value via <code>.add()</code> without mutating shared milestone state or sibling views.
++          </p>
++        </div>
++        <div class="immutability-pill" id="immutability-status-pill" title="Shared baseline dates are never mutated in place">
++          <span class="immutability-dot"></span>
++          <span>Temporal Immutability Guard: Active</span>
++        </div>
++      </div>
++
++      <!-- Reactive KPI Summary View -->
++      <div class="tracker-stats" id="tracker-stats-view" aria-live="polite">
++        <div class="stat-box">
++          <span class="stat-label">Tracked Events</span>
++          <span class="stat-value" id="stat-total-events">0</span>
++          <span class="stat-meta" id="stat-reference-date">Reference: 2026-10-22</span>
++        </div>
++        <div class="stat-box">
++          <span class="stat-label">Extended Deadlines</span>
++          <span class="stat-value" id="stat-extended-count">0</span>
++          <span class="stat-meta" id="stat-total-days-added">+0 days total shift</span>
++        </div>
++        <div class="stat-box">
++          <span class="stat-label">Urgent (&le; 5 Days)</span>
++          <span class="stat-value" id="stat-urgent-count">0</span>
++          <span class="stat-meta">Computed via Temporal.PlainDate.until()</span>
++        </div>
++        <div class="stat-box">
++          <span class="stat-label">Shared Baseline Integrity</span>
++          <span class="stat-value" id="stat-baseline-integrity">100%</span>
++          <span class="stat-meta">0 in-place date mutations</span>
++        </div>
++      </div>
++
++      <!-- Add New Event Deadline Form -->
++      <form id="add-deadline-form" class="add-event-form" aria-label="Add new event deadline">
++        <div class="form-field">
++          <label for="new-event-title">Event Name</label>
++          <input type="text" id="new-event-title" class="tracker-input" placeholder="e.g., Espresso Calibration Workshop" required>
++        </div>
++        <div class="form-field">
++          <label for="new-event-category">Category</label>
++          <select id="new-event-category" class="tracker-select">
++            <option value="Tasting & Cupping">Tasting &amp; Cupping</option>
++            <option value="Sourcing & Roastery">Sourcing &amp; Roastery</option>
++            <option value="Community Event">Community Event</option>
++            <option value="Seasonal Launch">Seasonal Launch</option>
++          </select>
++        </div>
++        <div class="form-field">
++          <label for="new-event-baseline">Shared Milestone / Baseline</label>
++          <select id="new-event-baseline" class="tracker-select">
++            <option value="autumn-roast">Autumn Roast Batch (2026-10-25)</option>
++            <option value="community-cupping">Community Showcase (2026-10-29)</option>
++            <option value="holiday-blend">Holiday Blend Launch (2026-11-05)</option>
++            <option value="custom">Custom Deadline Date</option>
++          </select>
++        </div>
++        <div class="form-field">
++          <label for="new-event-date">Custom Date (ISO)</label>
++          <input type="date" id="new-event-date" class="tracker-input" value="2026-11-10">
++        </div>
++        <div class="form-field">
++          <button type="submit" class="btn-extend" style="padding: 9px 16px; font-size: 0.86rem;">+ Add Event</button>
++        </div>
++      </form>
++
++      <!-- Filter & Batch Action Toolbar -->
++      <div class="tracker-toolbar">
++        <div class="filter-group">
++          <label for="filter-category">Category:</label>
++          <select id="filter-category" class="tracker-select">
++            <option value="all">All Categories</option>
++            <option value="Tasting & Cupping">Tasting &amp; Cupping</option>
++            <option value="Sourcing & Roastery">Sourcing &amp; Roastery</option>
++            <option value="Community Event">Community Event</option>
++            <option value="Seasonal Launch">Seasonal Launch</option>
++          </select>
++
++          <label for="filter-status">Status:</label>
++          <select id="filter-status" class="tracker-select">
++            <option value="all">All Deadlines</option>
++            <option value="extended">Extended Only</option>
++            <option value="unmodified">Original Baseline Only</option>
++            <option value="urgent">Urgent (&le; 5 Days)</option>
++          </select>
++
++          <input type="search" id="filter-search" class="tracker-input" placeholder="Search events..." aria-label="Search events">
++        </div>
++
++        <div class="filter-group">
++          <button type="button" id="btn-reset-all" class="btn-secondary">Reset All to Original Baselines</button>
++        </div>
++      </div>
++
++      <!-- Reactive View 1: Interactive Event Cards Grid -->
++      <div id="deadline-cards-grid" class="deadline-grid" role="region" aria-label="Active Event Deadlines"></div>
++
++      <!-- Reactive View 2 & View 3: Shared Baseline Comparison Table & Immutability Audit Log -->
++      <div class="reactive-views-panel">
++        <div class="subview-card" role="region" aria-labelledby="baseline-view-heading">
++          <h3 id="baseline-view-heading">
++            <span>Shared Baseline vs. Active Deadline View</span>
++            <span class="delta-pill unchanged">Reactive Sync</span>
++          </h3>
++          <p class="subview-desc">
++            Multiple events share the same underlying baseline <code>Temporal.PlainDate</code> reference. Extending one
++            event replaces only its <code>currentDeadline</code> with <code>deadline.add({ days })</code>, leaving the
++            shared baseline and sibling events untouched.
++          </p>
++          <div class="comparison-table-wrap">
++            <table class="comparison-table" id="baseline-comparison-table">
++              <thead>
++                <tr>
++                  <th>Event</th>
++                  <th>Shared Milestone</th>
++                  <th>Original Baseline</th>
++                  <th>Active Deadline</th>
++                  <th>Temporal Shift</th>
++                </tr>
++              </thead>
++              <tbody id="baseline-comparison-tbody"></tbody>
++            </table>
++          </div>
++        </div>
++
++        <div class="subview-card" role="region" aria-labelledby="audit-view-heading">
++          <h3 id="audit-view-heading">
++            <span>Immutable Temporal Update Log</span>
++            <span class="delta-pill extended" id="audit-count-badge">0 Updates</span>
++          </h3>
++          <p class="subview-desc">
++            Real-time log verifying every extension creates a distinct <code>Temporal.PlainDate</code> instance without
++            mutating shared date references in place.
++          </p>
++          <ul class="audit-log-list" id="temporal-audit-log" aria-live="polite"></ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +832,855 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Ensure globalThis.Temporal is available across all browser environments.
++     * Uses native ECMAScript Temporal when available, or a spec-compliant immutable
++     * Temporal implementation if the host browser does not expose globalThis.Temporal.
++     */
++    (function ensureTemporalAPI() {
++      if (typeof globalThis.Temporal !== 'undefined' && typeof globalThis.Temporal.PlainDate === 'function') {
++        return;
++      }
++
++      function pad(n, len = 2) {
++        return String(Math.trunc(Math.abs(n))).padStart(len, '0');
++      }
++
++      function ymdToEpochDays(year, month, day) {
++        return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
++      }
++
++      function epochDaysToYMD(epochDays) {
++        const d = new Date(epochDays * 86400000);
++        return {
++          year: d.getUTCFullYear(),
++          month: d.getUTCMonth() + 1,
++          day: d.getUTCDate(),
++          dayOfWeek: d.getUTCDay() === 0 ? 7 : d.getUTCDay()
++        };
++      }
++
++      class Duration {
++        constructor(years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0) {
++          this.years = Number(years) || 0;
++          this.months = Number(months) || 0;
++          this.weeks = Number(weeks) || 0;
++          this.days = Number(days) || 0;
++          this.hours = Number(hours) || 0;
++          this.minutes = Number(minutes) || 0;
++          this.seconds = Number(seconds) || 0;
++          this.blank =
++            this.years === 0 &&
++            this.months === 0 &&
++            this.weeks === 0 &&
++            this.days === 0 &&
++            this.hours === 0 &&
++            this.minutes === 0 &&
++            this.seconds === 0;
++          this.sign = this.blank ? 0 : (this.totalDaysApprox() >= 0 ? 1 : -1);
++          Object.freeze(this);
++        }
++
++        totalDaysApprox() {
++          return (
++            this.years * 365 +
++            this.months * 30 +
++            this.weeks * 7 +
++            this.days +
++            Math.trunc(this.hours / 24)
++          );
++        }
++
++        negated() {
++          return new Duration(
++            -this.years,
++            -this.months,
++            -this.weeks,
++            -this.days,
++            -this.hours,
++            -this.minutes,
++            -this.seconds
++          );
++        }
++
++        toString() {
++          if (this.blank) return 'PT0S';
++          const neg = this.sign < 0;
++          let out = neg ? '-P' : 'P';
++          if (this.years) out += `${Math.abs(this.years)}Y`;
++          if (this.months) out += `${Math.abs(this.months)}M`;
++          if (this.weeks) out += `${Math.abs(this.weeks)}W`;
++          if (this.days) out += `${Math.abs(this.days)}D`;
++          if (this.hours || this.minutes || this.seconds) {
++            out += 'T';
++            if (this.hours) out += `${Math.abs(this.hours)}H`;
++            if (this.minutes) out += `${Math.abs(this.minutes)}M`;
++            if (this.seconds) out += `${Math.abs(this.seconds)}S`;
++          }
++          return out;
++        }
++
++        static from(item) {
++          if (item instanceof Duration) return item;
++          if (typeof item === 'string') {
++            const m = item.match(/^(-)?P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i);
++            if (!m) throw new RangeError(`Invalid Temporal.Duration string: ${item}`);
++            const sign = m[1] ? -1 : 1;
++            return new Duration(
++              sign * (Number(m[2]) || 0),
++              sign * (Number(m[3]) || 0),
++              sign * (Number(m[4]) || 0),
++              sign * (Number(m[5]) || 0),
++              sign * (Number(m[6]) || 0),
++              sign * (Number(m[7]) || 0),
++              sign * (Number(m[8]) || 0)
++            );
++          }
++          if (item && typeof item === 'object') {
++            return new Duration(
++              item.years || 0,
++              item.months || 0,
++              item.weeks || 0,
++              item.days || 0,
++              item.hours || 0,
++              item.minutes || 0,
++              item.seconds || 0
++            );
++          }
++          throw new TypeError('Invalid Temporal.Duration input');
++        }
++      }
++
++      class PlainDate {
++        constructor(isoYear, isoMonth, isoDay) {
++          const y = Number(isoYear);
++          const m = Number(isoMonth);
++          const d = Number(isoDay);
++          const epochDays = ymdToEpochDays(y, m, d);
++          const normalized = epochDaysToYMD(epochDays);
++          this.year = normalized.year;
++          this.month = normalized.month;
++          this.day = normalized.day;
++          this.dayOfWeek = normalized.dayOfWeek;
++          this.calendarId = 'iso8601';
++          Object.freeze(this);
++        }
++
++        add(durationLike) {
++          const dur = Duration.from(durationLike);
++          const baseDate = new Date(Date.UTC(this.year, this.month - 1, this.day));
++          if (dur.years) baseDate.setUTCFullYear(baseDate.getUTCFullYear() + dur.years);
++          if (dur.months) baseDate.setUTCMonth(baseDate.getUTCMonth() + dur.months);
++          const totalExtraDays = dur.weeks * 7 + dur.days + Math.trunc(dur.hours / 24);
++          if (totalExtraDays) baseDate.setUTCDate(baseDate.getUTCDate() + totalExtraDays);
++          return new PlainDate(
++            baseDate.getUTCFullYear(),
++            baseDate.getUTCMonth() + 1,
++            baseDate.getUTCDate()
++          );
++        }
++
++        subtract(durationLike) {
++          const dur = Duration.from(durationLike);
++          return this.add(dur.negated());
++        }
++
++        with(fields) {
++          if (!fields || typeof fields !== 'object') {
++            throw new TypeError('Temporal.PlainDate.prototype.with requires an object');
++          }
++          return new PlainDate(
++            fields.year !== undefined ? fields.year : this.year,
++            fields.month !== undefined ? fields.month : this.month,
++            fields.day !== undefined ? fields.day : this.day
++          );
++        }
++
++        until(otherLike) {
++          const other = PlainDate.from(otherLike);
++          const diffDays =
++            ymdToEpochDays(other.year, other.month, other.day) -
++            ymdToEpochDays(this.year, this.month, this.day);
++          return new Duration(0, 0, 0, diffDays);
++        }
++
++        since(otherLike) {
++          const other = PlainDate.from(otherLike);
++          const diffDays =
++            ymdToEpochDays(this.year, this.month, this.day) -
++            ymdToEpochDays(other.year, other.month, other.day);
++          return new Duration(0, 0, 0, diffDays);
++        }
++
++        equals(otherLike) {
++          const other = PlainDate.from(otherLike);
++          return this.year === other.year && this.month === other.month && this.day === other.day;
++        }
++
++        toString() {
++          return `${pad(this.year, 4)}-${pad(this.month, 2)}-${pad(this.day, 2)}`;
++        }
++
++        toJSON() {
++          return this.toString();
++        }
++
++        toLocaleString(locales = 'en-US', options = { month: 'short', day: 'numeric', year: 'numeric' }) {
++          const utcDate = new Date(Date.UTC(this.year, this.month - 1, this.day));
++          return utcDate.toLocaleDateString(locales, { ...options, timeZone: 'UTC' });
++        }
++
++        static from(item) {
++          if (item instanceof PlainDate) return item;
++          if (typeof item === 'string') {
++            const match = item.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
++            if (!match) throw new RangeError(`Invalid ISO date string: ${item}`);
++            return new PlainDate(Number(match[1]), Number(match[2]), Number(match[3]));
++          }
++          if (item && typeof item === 'object') {
++            return new PlainDate(item.year, item.month, item.day);
++          }
++          throw new TypeError('Invalid Temporal.PlainDate input');
++        }
++
++        static compare(oneLike, twoLike) {
++          const a = PlainDate.from(oneLike);
++          const b = PlainDate.from(twoLike);
++          const dA = ymdToEpochDays(a.year, a.month, a.day);
++          const dB = ymdToEpochDays(b.year, b.month, b.day);
++          return dA < dB ? -1 : dA > dB ? 1 : 0;
++        }
++      }
++
++      const Now = Object.freeze({
++        plainDateISO() {
++          const now = new Date();
++          return new PlainDate(now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate());
++        }
++      });
++
++      globalThis.Temporal = Object.freeze({
++        PlainDate,
++        Duration,
++        Now
++      });
++    })();
++
++    /**
++     * Daily Grind Immutable Event Deadline Tracker
++     * Demonstrates reactive multi-view state updates using immutable Temporal.PlainDate values.
++     */
++    (function initDailyGrindDeadlineTracker() {
++      const { PlainDate, Duration } = globalThis.Temporal;
++
++      // Reference date for countdown calculations (matches Daily Grind current date)
++      const REFERENCE_TODAY = PlainDate.from('2026-10-22');
++
++      // Shared Milestone Baseline Temporal.PlainDate instances.
++      // Multiple events intentionally reference the EXACT SAME Temporal.PlainDate object
++      // to guarantee and verify that extending one event's deadline never mutates shared state in place.
++      const SHARED_BASELINES = Object.freeze({
++        'autumn-roast': Object.freeze({
++          key: 'autumn-roast',
++          label: 'Autumn Roast Batch #42',
++          date: PlainDate.from('2026-10-25')
++        }),
++        'community-cupping': Object.freeze({
++          key: 'community-cupping',
++          label: 'October Community Showcase',
++          date: PlainDate.from('2026-10-29')
++        }),
++        'holiday-blend': Object.freeze({
++          key: 'holiday-blend',
++          label: 'Winter Holiday Blend Launch',
++          date: PlainDate.from('2026-11-05')
++        })
++      });
++
++      const INITIAL_EVENTS = [
++        {
++          id: 'evt-harvest-cupping',
++          title: 'Autumn Harvest Public Cupping RSVP',
++          category: 'Tasting & Cupping',
++          description: 'Guided tasting of honey-processed Costa Rican and washed Ethiopian lots at our flagship roastery.',
++          image: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80',
++          sharedSeriesKey: 'autumn-roast',
++          sharedSeriesLabel: SHARED_BASELINES['autumn-roast'].label,
++          originalDeadline: SHARED_BASELINES['autumn-roast'].date,
++          currentDeadline: SHARED_BASELINES['autumn-roast'].date,
++          extensionsCount: 0
++        },
++        {
++          id: 'evt-ethiopian-cutoff',
++          title: 'Single-Origin Green Bean Order Cutoff',
++          category: 'Sourcing & Roastery',
++          description: 'Final wholesale & subscription reserve lock-in for the Autumn Roast Batch #42 micro-lot.',
++          image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80',
++          sharedSeriesKey: 'autumn-roast',
++          sharedSeriesLabel: SHARED_BASELINES['autumn-roast'].label,
++          originalDeadline: SHARED_BASELINES['autumn-roast'].date,
++          currentDeadline: SHARED_BASELINES['autumn-roast'].date,
++          extensionsCount: 0
++        },
++        {
++          id: 'evt-latte-art-throwdown',
++          title: 'Thursday Night Latte Art Throwdown Sign-Up',
++          category: 'Community Event',
++          description: 'Barista bracket registration deadline. Free entry with prizes from local ceramic artists.',
++          image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80',
++          sharedSeriesKey: 'community-cupping',
++          sharedSeriesLabel: SHARED_BASELINES['community-cupping'].label,
++          originalDeadline: SHARED_BASELINES['community-cupping'].date,
++          currentDeadline: SHARED_BASELINES['community-cupping'].date,
++          extensionsCount: 0
++        },
++        {
++          id: 'evt-home-brewing-workshop',
++          title: 'Pour-Over & V60 Extraction Masterclass',
++          category: 'Tasting & Cupping',
++          description: 'Hands-on water chemistry and grind dial-in session led by our head roaster.',
++          image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80',
++          sharedSeriesKey: 'community-cupping',
++          sharedSeriesLabel: SHARED_BASELINES['community-cupping'].label,
++          originalDeadline: SHARED_BASELINES['community-cupping'].date,
++          currentDeadline: SHARED_BASELINES['community-cupping'].date,
++          extensionsCount: 0
++        },
++        {
++          id: 'evt-holiday-packaging',
++          title: 'Holiday Blend Foil Bag Artwork Lock',
++          category: 'Seasonal Launch',
++          description: 'Final print proof approval for the Spiced Cardamom & Dark Cocoa Holiday Blend bags.',
++          image: 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&q=80',
++          sharedSeriesKey: 'holiday-blend',
++          sharedSeriesLabel: SHARED_BASELINES['holiday-blend'].label,
++          originalDeadline: SHARED_BASELINES['holiday-blend'].date,
++          currentDeadline: SHARED_BASELINES['holiday-blend'].date,
++          extensionsCount: 0
++        },
++        {
++          id: 'evt-holiday-preorder',
++          title: 'Early-Bird Holiday Gift Box Pre-Order',
++          category: 'Seasonal Launch',
++          description: 'Reserve curated trio boxes before roasting begins for the winter release schedule.',
++          image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80',
++          sharedSeriesKey: 'holiday-blend',
++          sharedSeriesLabel: SHARED_BASELINES['holiday-blend'].label,
++          originalDeadline: SHARED_BASELINES['holiday-blend'].date,
++          currentDeadline: SHARED_BASELINES['holiday-blend'].date,
++          extensionsCount: 0
++        }
++      ];
++
++      // Immutable state store with reactive view subscribers
++      let state = Object.freeze({
++        referenceToday: REFERENCE_TODAY,
++        events: Object.freeze(INITIAL_EVENTS.map(e => Object.freeze({ ...e }))),
++        filters: Object.freeze({
++          category: 'all',
++          status: 'all',
++          search: ''
++        }),
++        auditLog: Object.freeze([
++          Object.freeze({
++            id: 'init-log',
++            message: 'Initialized 6 events across 3 shared Temporal.PlainDate milestone baselines without mutable Date references.',
++            code: 'Temporal.PlainDate.from("2026-10-25")'
++          })
++        ])
++      });
++
++      const subscribers = new Set();
++
++      function subscribe(listener) {
++        subscribers.add(listener);
++        listener(state);
++        return () => subscribers.delete(listener);
++      }
++
++      function setState(updater) {
++        const nextState = typeof updater === 'function' ? updater(state) : updater;
++        state = Object.freeze(nextState);
++        subscribers.forEach(listener => listener(state));
++      }
++
++      function formatReadableDate(plainDate) {
++        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
++        return `${months[plainDate.month - 1]} ${plainDate.day}, ${plainDate.year}`;
++      }
++
++      function getDaysBetween(startPlainDate, endPlainDate) {
++        return startPlainDate.until(endPlainDate, { largestUnit: 'day' }).days;
++      }
++
++      /**
++       * Extend an event's deadline immutably using Temporal.PlainDate.prototype.add().
++       * Never mutates the existing Temporal.PlainDate or shared baseline reference.
++       */
++      function extendDeadline(eventId, durationInput) {
++        const duration = Duration.from(durationInput);
++        setState(prev => {
++          let logEntry = null;
++          const nextEvents = prev.events.map(evt => {
++            if (evt.id !== eventId) return evt;
++
++            const previousDeadline = evt.currentDeadline;
++            const updatedDeadline = previousDeadline.add(duration);
++            const baselineSnapshot = evt.originalDeadline.toString();
++
++            logEntry = Object.freeze({
++              id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
++              message: `Extended "${evt.title}" from ${previousDeadline.toString()} to ${updatedDeadline.toString()} (Shared baseline ${baselineSnapshot} untouched).`,
++              code: `deadline.add(${JSON.stringify(durationInput)}) -> ${updatedDeadline.toString()}`
++            });
++
++            return Object.freeze({
++              ...evt,
++              currentDeadline: updatedDeadline,
++              extensionsCount: evt.extensionsCount + 1
++            });
++          });
++
++          return {
++            ...prev,
++            events: Object.freeze(nextEvents),
++            auditLog: logEntry
++              ? Object.freeze([logEntry, ...prev.auditLog])
++              : prev.auditLog
++          };
++        });
++      }
++
++      /**
++       * Reset a single event back to its shared original Temporal.PlainDate baseline.
++       */
++      function resetDeadline(eventId) {
++        setState(prev => {
++          let logEntry = null;
++          const nextEvents = prev.events.map(evt => {
++            if (evt.id !== eventId) return evt;
++            if (evt.currentDeadline.equals(evt.originalDeadline)) return evt;
++
++            logEntry = Object.freeze({
++              id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
++              message: `Reset "${evt.title}" back to shared baseline ${evt.originalDeadline.toString()}.`,
++              code: `currentDeadline = originalDeadline (${evt.originalDeadline.toString()})`
++            });
++
++            return Object.freeze({
++              ...evt,
++              currentDeadline: evt.originalDeadline,
++              extensionsCount: 0
++            });
++          });
++
++          return {
++            ...prev,
++            events: Object.freeze(nextEvents),
++            auditLog: logEntry
++              ? Object.freeze([logEntry, ...prev.auditLog])
++              : prev.auditLog
++          };
++        });
++      }
++
++      /**
++       * Reset all events to their original shared Temporal.PlainDate baselines.
++       */
++      function resetAllDeadlines() {
++        setState(prev => {
++          const nextEvents = prev.events.map(evt =>
++            Object.freeze({
++              ...evt,
++              currentDeadline: evt.originalDeadline,
++              extensionsCount: 0
++            })
++          );
++
++          const logEntry = Object.freeze({
++            id: `log-${Date.now()}`,
++            message: 'Restored all events to their unmodified shared Temporal.PlainDate baselines.',
++            code: 'evt.currentDeadline = evt.originalDeadline'
++          });
++
++          return {
++            ...prev,
++            events: Object.freeze(nextEvents),
++            auditLog: Object.freeze([logEntry, ...prev.auditLog])
++          };
++        });
++      }
++
++      /**
++       * Add a new tracked event using either a shared milestone baseline or a custom Temporal.PlainDate.
++       */
++      function addEvent({ title, category, baselineKey, customDateISO, description }) {
++        const cleanTitle = String(title || '').trim();
++        if (!cleanTitle) return;
++
++        let baselineDate;
++        let seriesLabel;
++        let seriesKey = baselineKey || 'custom';
++
++        if (SHARED_BASELINES[seriesKey]) {
++          baselineDate = SHARED_BASELINES[seriesKey].date;
++          seriesLabel = SHARED_BASELINES[seriesKey].label;
++        } else {
++          baselineDate = PlainDate.from(customDateISO || '2026-11-10');
++          seriesLabel = `Custom Baseline (${baselineDate.toString()})`;
++        }
++
++        const newEvent = Object.freeze({
++          id: `evt-${Date.now()}`,
++          title: cleanTitle,
++          category: category || 'Community Event',
++          description:
++            description ||
++            'Scheduled Daily Grind roastery & cafe milestone tracked with immutable Temporal.PlainDate state.',
++          image: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=800&q=80',
++          sharedSeriesKey: seriesKey,
++          sharedSeriesLabel: seriesLabel,
++          originalDeadline: baselineDate,
++          currentDeadline: baselineDate,
++          extensionsCount: 0
++        });
++
++        setState(prev => {
++          const logEntry = Object.freeze({
++            id: `log-${Date.now()}`,
++            message: `Added "${cleanTitle}" linked to baseline ${baselineDate.toString()}.`,
++            code: `Temporal.PlainDate.from("${baselineDate.toString()}")`
++          });
++
++          return {
++            ...prev,
++            events: Object.freeze([...prev.events, newEvent]),
++            auditLog: Object.freeze([logEntry, ...prev.auditLog])
++          };
++        });
++      }
++
++      function updateFilters(partialFilters) {
++        setState(prev => ({
++          ...prev,
++          filters: Object.freeze({
++            ...prev.filters,
++            ...partialFilters
++          })
++        }));
++      }
++
++      function getFilteredEvents(currentState) {
++        const { events, filters, referenceToday } = currentState;
++        return events
++          .filter(evt => {
++            if (filters.category !== 'all' && evt.category !== filters.category) {
++              return false;
++            }
++            const addedDays = getDaysBetween(evt.originalDeadline, evt.currentDeadline);
++            const daysRemaining = getDaysBetween(referenceToday, evt.currentDeadline);
++
++            if (filters.status === 'extended' && addedDays === 0) return false;
++            if (filters.status === 'unmodified' && addedDays !== 0) return false;
++            if (filters.status === 'urgent' && daysRemaining > 5) return false;
++
++            if (filters.search) {
++              const q = filters.search.toLowerCase();
++              const matchTitle = evt.title.toLowerCase().includes(q);
++              const matchDesc = evt.description.toLowerCase().includes(q);
++              const matchSeries = evt.sharedSeriesLabel.toLowerCase().includes(q);
++              if (!matchTitle && !matchDesc && !matchSeries) return false;
++            }
++            return true;
++          })
++          .slice()
++          .sort((a, b) => PlainDate.compare(a.currentDeadline, b.currentDeadline));
++      }
++
++      function escapeHtml(str) {
++        return String(str)
++          .replace(/&/g, '&amp;')
++          .replace(/</g, '&lt;')
++          .replace(/>/g, '&gt;')
++          .replace(/"/g, '&quot;')
++          .replace(/'/g, '&#39;');
++      }
++
++      // Reactive View 1: Summary KPI Bar
++      function renderStatsView(currentState) {
++        const totalEl = document.getElementById('stat-total-events');
++        const extendedCountEl = document.getElementById('stat-extended-count');
++        const totalDaysAddedEl = document.getElementById('stat-total-days-added');
++        const urgentCountEl = document.getElementById('stat-urgent-count');
++        const refDateEl = document.getElementById('stat-reference-date');
++        const integrityEl = document.getElementById('stat-baseline-integrity');
++
++        let extendedCount = 0;
++        let totalShiftDays = 0;
++        let urgentCount = 0;
++
++        currentState.events.forEach(evt => {
++          const shift = getDaysBetween(evt.originalDeadline, evt.currentDeadline);
++          if (shift !== 0) {
++            extendedCount += 1;
++            totalShiftDays += shift;
++          }
++          const remaining = getDaysBetween(currentState.referenceToday, evt.currentDeadline);
++          if (remaining >= 0 && remaining <= 5) {
++            urgentCount += 1;
++          }
++        });
++
++        // Verify shared baselines never mutated
++        const baselinesIntact =
++          SHARED_BASELINES['autumn-roast'].date.toString() === '2026-10-25' &&
++          SHARED_BASELINES['community-cupping'].date.toString() === '2026-10-29' &&
++          SHARED_BASELINES['holiday-blend'].date.toString() === '2026-11-05';
++
++        if (totalEl) totalEl.textContent = String(currentState.events.length);
++        if (extendedCountEl) extendedCountEl.textContent = String(extendedCount);
++        if (totalDaysAddedEl) {
++          totalDaysAddedEl.textContent = `${totalShiftDays >= 0 ? '+' : ''}${totalShiftDays} days total shift`;
++        }
++        if (urgentCountEl) urgentCountEl.textContent = String(urgentCount);
++        if (refDateEl) refDateEl.textContent = `Reference: ${currentState.referenceToday.toString()}`;
++        if (integrityEl) integrityEl.textContent = baselinesIntact ? '100%' : 'Compromised';
++      }
++
++      // Reactive View 2: Interactive Event Deadline Cards
++      function renderCardsGridView(currentState) {
++        const gridEl = document.getElementById('deadline-cards-grid');
++        if (!gridEl) return;
++
++        const visibleEvents = getFilteredEvents(currentState);
++        if (visibleEvents.length === 0) {
++          gridEl.innerHTML = `
++            <div class="card" style="grid-column: 1 / -1; padding: 32px;">
++              <h3>No Matching Event Deadlines</h3>
++              <p>Try clearing your search or switching the category/status filter.</p>
++            </div>
++          `;
++          return;
++        }
++
++        gridEl.innerHTML = visibleEvents
++          .map(evt => {
++            const daysRemaining = getDaysBetween(currentState.referenceToday, evt.currentDeadline);
++            const daysExtended = getDaysBetween(evt.originalDeadline, evt.currentDeadline);
++            const isExtended = daysExtended !== 0;
++            const isUrgent = daysRemaining <= 5;
++
++            const countdownText =
++              daysRemaining === 0
++                ? 'Due Today'
++                : daysRemaining > 0
++                ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} left`
++                : `${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) === 1 ? '' : 's'} ago`;
++
++            return `
++              <article class="deadline-card ${isExtended ? 'is-extended' : ''}" data-event-id="${escapeHtml(evt.id)}">
++                <div class="deadline-card-media" style="background-image: linear-gradient(rgba(0,0,0,0.28), rgba(0,0,0,0.45)), url('${escapeHtml(evt.image)}');">
++                  <span class="category-badge">${escapeHtml(evt.category)}</span>
++                  <span class="countdown-badge ${isUrgent ? 'urgent' : 'safe'}" data-testid="countdown-${escapeHtml(evt.id)}">
++                    ${escapeHtml(countdownText)}
++                  </span>
++                </div>
++                <div class="deadline-card-body">
++                  <span class="shared-series-tag" title="Shared baseline Temporal.PlainDate group">
++                    Milestone: ${escapeHtml(evt.sharedSeriesLabel)}
++                  </span>
++                  <h3>${escapeHtml(evt.title)}</h3>
++                  <p class="deadline-card-desc">${escapeHtml(evt.description)}</p>
++
++                  <div class="date-comparison-box">
++                    <div class="date-row">
++                      <span class="date-label">Shared Baseline:</span>
++                      <span class="date-val" data-baseline-date="${escapeHtml(evt.id)}">
++                        ${escapeHtml(evt.originalDeadline.toString())} (${escapeHtml(formatReadableDate(evt.originalDeadline))})
++                      </span>
++                    </div>
++                    <div class="date-row">
++                      <span class="date-label">Active Deadline:</span>
++                      <span class="date-val ${isExtended ? 'extended-val' : ''}" data-current-date="${escapeHtml(evt.id)}">
++                        ${escapeHtml(evt.currentDeadline.toString())} (${escapeHtml(formatReadableDate(evt.currentDeadline))})
++                      </span>
++                    </div>
++                    <div class="date-row">
++                      <span class="date-label">Temporal Shift:</span>
++                      <span class="delta-pill ${isExtended ? 'extended' : 'unchanged'}" data-shift-days="${escapeHtml(evt.id)}">
++                        ${isExtended ? `+${daysExtended} day${daysExtended === 1 ? '' : 's'} (${evt.extensionsCount}x)` : 'Unmodified (+0d)'}
++                      </span>
++                    </div>
++                  </div>
++
++                  <div class="extension-actions">
++                    <button type="button" class="btn-extend" data-action="extend" data-event-id="${escapeHtml(evt.id)}" data-days="1" title="Create new Temporal.PlainDate via .add({ days: 1 })">
++                      +1 Day
++                    </button>
++                    <button type="button" class="btn-extend" data-action="extend" data-event-id="${escapeHtml(evt.id)}" data-days="3" title="Create new Temporal.PlainDate via .add({ days: 3 })">
++                      +3 Days
++                    </button>
++                    <button type="button" class="btn-extend btn-extend-accent" data-action="extend" data-event-id="${escapeHtml(evt.id)}" data-days="7" title="Create new Temporal.PlainDate via .add({ days: 7 })">
++                      +1 Week
++                    </button>
++                    <button type="button" class="btn-reset-card" data-action="reset" data-event-id="${escapeHtml(evt.id)}" ${!isExtended ? 'disabled' : ''}>
++                      Reset
++                    </button>
++                  </div>
++                </div>
++              </article>
++            `;
++          })
++          .join('');
++      }
++
++      // Reactive View 3: Shared Baseline vs Active Deadline Comparison Table
++      function renderComparisonTableView(currentState) {
++        const tbodyEl = document.getElementById('baseline-comparison-tbody');
++        if (!tbodyEl) return;
++
++        tbodyEl.innerHTML = currentState.events
++          .map(evt => {
++            const shiftDays = getDaysBetween(evt.originalDeadline, evt.currentDeadline);
++            const isExtended = shiftDays !== 0;
++            return `
++              <tr data-row-event-id="${escapeHtml(evt.id)}">
++                <td><strong>${escapeHtml(evt.title)}</strong></td>
++                <td>${escapeHtml(evt.sharedSeriesLabel)}</td>
++                <td><code>${escapeHtml(evt.originalDeadline.toString())}</code></td>
++                <td><code>${escapeHtml(evt.currentDeadline.toString())}</code></td>
++                <td>
++                  <span class="delta-pill ${isExtended ? 'extended' : 'unchanged'}">
++                    ${isExtended ? `+${shiftDays}d (New Instance)` : 'Same Baseline'}
++                  </span>
++                </td>
++              </tr>
++            `;
++          })
++          .join('');
++      }
++
++      // Reactive View 4: Immutable Temporal Audit Log View
++      function renderAuditLogView(currentState) {
++        const logListEl = document.getElementById('temporal-audit-log');
++        const badgeEl = document.getElementById('audit-count-badge');
++        if (!logListEl) return;
++
++        const updateCount = Math.max(0, currentState.auditLog.length - 1);
++        if (badgeEl) {
++          badgeEl.textContent = `${updateCount} Update${updateCount === 1 ? '' : 's'}`;
++        }
++
++        logListEl.innerHTML = currentState.auditLog
++          .map(
++            entry => `
++              <li class="audit-log-item">
++                <div>${escapeHtml(entry.message)}</div>
++                <div style="margin-top: 3px;"><span class="audit-code">${escapeHtml(entry.code)}</span></div>
++              </li>
++            `
++          )
++          .join('');
++      }
++
++      // Subscribe all reactive views to the immutable state store
++      subscribe(renderStatsView);
++      subscribe(renderCardsGridView);
++      subscribe(renderComparisonTableView);
++      subscribe(renderAuditLogView);
++
++      // Delegate click events for extending and resetting deadlines
++      const cardsGridEl = document.getElementById('deadline-cards-grid');
++      if (cardsGridEl) {
++        cardsGridEl.addEventListener('click', event => {
++          const btn = event.target.closest('button[data-action]');
++          if (!btn) return;
++          const action = btn.getAttribute('data-action');
++          const eventId = btn.getAttribute('data-event-id');
++
++          if (action === 'extend') {
++            const days = Number(btn.getAttribute('data-days')) || 1;
++            extendDeadline(eventId, { days });
++          } else if (action === 'reset') {
++            resetDeadline(eventId);
++          }
++        });
++      }
++
++      // Filter and Reset-All Controls
++      const categorySelect = document.getElementById('filter-category');
++      const statusSelect = document.getElementById('filter-status');
++      const searchInput = document.getElementById('filter-search');
++      const resetAllBtn = document.getElementById('btn-reset-all');
++
++      if (categorySelect) {
++        categorySelect.addEventListener('change', e => updateFilters({ category: e.target.value }));
++      }
++      if (statusSelect) {
++        statusSelect.addEventListener('change', e => updateFilters({ status: e.target.value }));
++      }
++      if (searchInput) {
++        searchInput.addEventListener('input', e => updateFilters({ search: e.target.value }));
++      }
++      if (resetAllBtn) {
++        resetAllBtn.addEventListener('click', () => resetAllDeadlines());
++      }
++
++      // Add New Event Form Handling
++      const addForm = document.getElementById('add-deadline-form');
++      const baselineSelect = document.getElementById('new-event-baseline');
++      const customDateInput = document.getElementById('new-event-date');
++
++      if (baselineSelect && customDateInput) {
++        const syncCustomDateField = () => {
++          const val = baselineSelect.value;
++          if (SHARED_BASELINES[val]) {
++            customDateInput.value = SHARED_BASELINES[val].date.toString();
++          }
++        };
++        baselineSelect.addEventListener('change', syncCustomDateField);
++        syncCustomDateField();
++      }
++
++      if (addForm) {
++        addForm.addEventListener('submit', e => {
++          e.preventDefault();
++          const titleInput = document.getElementById('new-event-title');
++          const catInput = document.getElementById('new-event-category');
++          const baseInput = document.getElementById('new-event-baseline');
++          const dateInput = document.getElementById('new-event-date');
++
++          const chosenBase = baseInput ? baseInput.value : 'custom';
++          const customISO = dateInput ? dateInput.value : '2026-11-10';
++          const matchesShared =
++            SHARED_BASELINES[chosenBase] &&
++            SHARED_BASELINES[chosenBase].date.toString() === customISO;
++
++          addEvent({
++            title: titleInput ? titleInput.value : '',
++            category: catInput ? catInput.value : 'Community Event',
++            baselineKey: matchesShared ? chosenBase : 'custom',
++            customDateISO: customISO
++          });
++
++          if (titleInput) titleInput.value = '';
++        });
++      }
++
++      // Expose programmatic API on window for external inspection or testing
++      window.DailyGrindDeadlineTracker = Object.freeze({
++        getState: () => state,
++        getSharedBaselines: () => SHARED_BASELINES,
++        extendDeadline,
++        resetDeadline,
++        resetAllDeadlines,
++        addEvent,
++        subscribe
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

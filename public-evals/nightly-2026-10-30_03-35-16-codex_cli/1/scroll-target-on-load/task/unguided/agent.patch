@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>document.documentElement.classList.add('js');</script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -99,15 +100,37 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .media-scroll {
++      height: 440px;
++      overflow-y: auto;
++      scroll-behavior: auto;
++      overflow-anchor: none;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
+       margin-top: 20px;
++      padding: 16px;
+     }
+ 
++    .js .media-scroll:not([data-ready]) {
++      visibility: hidden;
++    }
++
++    .media-scroll .card + .card {
++      margin-top: 20px;
++    }
++
++    .card img {
++      display: block;
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 5px;
++      margin-bottom: 16px;
++      background: var(--secondary);
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -176,25 +199,48 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="media-scroll" tabindex="0" role="region" aria-label="Seasonal favorites">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=1000&amp;h=360&amp;q=80" width="1000" height="360" alt="Latte with foam art in a ceramic cup">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=1000&amp;h=360&amp;q=80" width="1000" height="360" alt="Freshly brewed espresso in a small cup">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card target">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=1000&amp;h=360&amp;q=80" width="1000" height="360" alt="Chilled coffee served in a glass">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=1000&amp;h=360&amp;q=80" width="1000" height="360" alt="Warm coffee topped with milk foam">
++          <h3>Vanilla Cappuccino</h3>
++          <p>Velvety foam and espresso with a touch of vanilla.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1000&amp;h=360&amp;q=80" width="1000" height="360" alt="Roasted coffee beans ready to brew">
++          <h3>House Blend</h3>
++          <p>A balanced daily favorite with rich chocolate notes.</p>
++          <a href="/menu/house-blend" class="btn">View Details</a>
++        </div>
+       </div>
++      <script>
++        // Run before paint; fixed image dimensions keep this position stable as photos load.
++        const mediaScroll = document.querySelector('.media-scroll');
++        const target = mediaScroll.querySelector('.target');
++        mediaScroll.scrollTop = target.getBoundingClientRect().top
++          - mediaScroll.getBoundingClientRect().top - mediaScroll.clientTop;
++        mediaScroll.dataset.ready = '';
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

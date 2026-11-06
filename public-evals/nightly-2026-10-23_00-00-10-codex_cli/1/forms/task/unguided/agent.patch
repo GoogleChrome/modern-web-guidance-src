@@ -1,0 +1,14 @@
+diff --git a/REGISTRATION.md b/REGISTRATION.md
+new file mode 100644
+--- a/REGISTRATION.md
++++ b/REGISTRATION.md
+@@ -0,0 +1,9 @@
++# Registration integration
++
++This static page includes a three-step registration interface. It does not create accounts until a registration service is connected. With the endpoint unset, submitting the review step clearly explains that no information was sent. Personal details and passwords stay in page memory; they are never stored in local/session storage, included in URLs, or logged.
++
++To enable registration, set `registrationEndpoint` in `index.html` to a same-origin HTTPS route and render a session-bound CSRF token in a `meta[name="csrf-token"]` tag from the backend. Do not hardcode a token in the static page. The frontend sends JSON via POST and expects HTTP 201 only after the backend has accepted registration and queued verification email. Redirects are rejected. All other responses show a generic recoverable error.
++
++The backend must independently validate field lengths, email, password (15–128 characters), explicit terms acceptance, and optional marketing consent; reject unknown fields and excessive request sizes; enforce allowed origin and session-bound CSRF checks; rate-limit registrations; check passwords against compromised-password lists; hash passwords using an appropriate password hashing algorithm; and avoid recording credentials in logs. Require email verification before activating an account. Store consent records and the accepted terms version server-side. Use secure, HttpOnly, SameSite session cookies and no-store responses. Handle duplicate addresses without leaking account existence. Provide the actual linked terms/privacy pages before launch.
++
++Serve production over HTTPS and set appropriate security headers (including HSTS, frame-ancestors, and a Content Security Policy). The current design uses Google Fonts and Unsplash; host assets locally or explicitly permit these asset origins in the site's policy. Extract inline CSS/JS or generate CSP nonces/hashes rather than allowing unrestricted inline scripts.

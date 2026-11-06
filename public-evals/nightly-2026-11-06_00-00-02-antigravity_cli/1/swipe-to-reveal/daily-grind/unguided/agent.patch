@@ -1,0 +1,410 @@
+diff --git a/index.html b/index.html
+index 66c9173..b4b0c99 100644
+--- a/index.html
++++ b/index.html
+@@ -109,10 +109,28 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
++      overflow: hidden;
++      user-select: none;
++      -webkit-user-select: none;
++      touch-action: pan-y;
++    }
++
++    .card-content {
++      background: white;
++      padding: 20px;
++      position: relative;
++      z-index: 2;
++      width: 100%;
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      transform: translateX(0px);
+     }
+ 
+     .card h3 {
+@@ -120,6 +138,88 @@
+       color: var(--primary);
+     }
+ 
++    .swipe-hint {
++      font-size: 0.75rem;
++      color: #795548;
++      margin-top: 10px;
++      opacity: 0.8;
++    }
++
++    .card-actions {
++      position: absolute;
++      top: 0;
++      bottom: 0;
++      right: 0;
++      width: 168px;
++      display: flex;
++      align-items: stretch;
++      justify-content: stretch;
++      z-index: 1;
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      background: var(--primary);
++    }
++
++    .card.actions-left .card-actions {
++      right: auto;
++      left: 0;
++    }
++
++    .card.swiping .card-actions,
++    .card.swiped .card-actions,
++    .card.revealed .card-actions,
++    .card[data-revealed="true"] .card-actions {
++      opacity: 1;
++      visibility: visible;
++      pointer-events: auto;
++    }
++
++    .action-btn {
++      flex: 1;
++      border: none;
++      color: white;
++      font-family: inherit;
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 8px 4px;
++      cursor: pointer;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      gap: 4px;
++      transition: filter 0.2s;
++    }
++
++    .action-btn:hover,
++    .action-btn:focus-visible {
++      filter: brightness(1.1);
++      outline: 2px solid white;
++      outline-offset: -2px;
++    }
++
++    .action-btn.action-order {
++      background: #2e7d32;
++    }
++
++    .action-btn.action-favorite {
++      background: #c62828;
++    }
++
++    .action-btn.action-customize {
++      background: #ef6c00;
++    }
++
++    .action-status {
++      text-align: center;
++      margin-top: 16px;
++      min-height: 24px;
++      font-size: 0.95rem;
++      font-weight: 500;
++      color: var(--primary);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,22 +278,47 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card" data-drink="Maple Oat Latte" data-revealed="false" data-action-executed="false">
++          <div class="card-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <span class="swipe-hint" aria-hidden="true">Swipe for actions</span>
++          </div>
++          <div class="card-actions" role="group" aria-label="Maple Oat Latte actions" aria-hidden="true">
++            <button type="button" class="action-btn action-order" data-action="order" data-drink="Maple Oat Latte" tabindex="-1">Add to Order</button>
++            <button type="button" class="action-btn action-favorite" data-action="favorite" data-drink="Maple Oat Latte" tabindex="-1">Favorite</button>
++            <button type="button" class="action-btn action-customize" data-action="customize" data-drink="Maple Oat Latte" tabindex="-1">Customize</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card" data-drink="Dark Roast Espresso" data-revealed="false" data-action-executed="false">
++          <div class="card-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <span class="swipe-hint" aria-hidden="true">Swipe for actions</span>
++          </div>
++          <div class="card-actions" role="group" aria-label="Dark Roast Espresso actions" aria-hidden="true">
++            <button type="button" class="action-btn action-order" data-action="order" data-drink="Dark Roast Espresso" tabindex="-1">Add to Order</button>
++            <button type="button" class="action-btn action-favorite" data-action="favorite" data-drink="Dark Roast Espresso" tabindex="-1">Favorite</button>
++            <button type="button" class="action-btn action-customize" data-action="customize" data-drink="Dark Roast Espresso" tabindex="-1">Customize</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card" data-drink="Cold Brew" data-revealed="false" data-action-executed="false">
++          <div class="card-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <span class="swipe-hint" aria-hidden="true">Swipe for actions</span>
++          </div>
++          <div class="card-actions" role="group" aria-label="Cold Brew actions" aria-hidden="true">
++            <button type="button" class="action-btn action-order" data-action="order" data-drink="Cold Brew" tabindex="-1">Add to Order</button>
++            <button type="button" class="action-btn action-favorite" data-action="favorite" data-drink="Cold Brew" tabindex="-1">Favorite</button>
++            <button type="button" class="action-btn action-customize" data-action="customize" data-drink="Cold Brew" tabindex="-1">Customize</button>
++          </div>
+         </div>
+       </div>
++      <div id="action-status" class="action-status" role="status" aria-live="polite"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +332,226 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const ACTIONS_WIDTH = 168;
++      const SWIPE_THRESHOLD = 30;
++      const cards = Array.from(document.querySelectorAll('.grid .card'));
++      const statusEl = document.getElementById('action-status');
++
++      function getStartPoint(e) {
++        const pt = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
++        const x = pt.clientX !== undefined ? pt.clientX : (pt.pageX !== undefined ? pt.pageX : pt.screenX || 0);
++        const y = pt.clientY !== undefined ? pt.clientY : (pt.pageY !== undefined ? pt.pageY : pt.screenY || 0);
++        return { x, y };
++      }
++
++      function getEndPoint(e, fallbackX, fallbackY) {
++        if (e.changedTouches && e.changedTouches.length > 0) {
++          const t = e.changedTouches[0];
++          return {
++            x: t.clientX !== undefined ? t.clientX : (t.pageX !== undefined ? t.pageX : (t.screenX !== undefined ? t.screenX : fallbackX)),
++            y: t.clientY !== undefined ? t.clientY : (t.pageY !== undefined ? t.pageY : (t.screenY !== undefined ? t.screenY : fallbackY))
++          };
++        }
++        if (e.touches && e.touches.length > 0) {
++          const t = e.touches[0];
++          return {
++            x: t.clientX !== undefined ? t.clientX : (t.pageX !== undefined ? t.pageX : (t.screenX !== undefined ? t.screenX : fallbackX)),
++            y: t.clientY !== undefined ? t.clientY : (t.pageY !== undefined ? t.pageY : (t.screenY !== undefined ? t.screenY : fallbackY))
++          };
++        }
++        if (typeof e.clientX === 'number') {
++          return { x: e.clientX, y: typeof e.clientY === 'number' ? e.clientY : fallbackY };
++        }
++        if (typeof e.pageX === 'number') {
++          return { x: e.pageX, y: typeof e.pageY === 'number' ? e.pageY : fallbackY };
++        }
++        return { x: fallbackX, y: fallbackY };
++      }
++
++      cards.forEach((card) => {
++        const content = card.querySelector('.card-content');
++        const actions = card.querySelector('.card-actions');
++        const actionButtons = Array.from(card.querySelectorAll('.action-btn'));
++
++        const state = {
++          isDragging: false,
++          startX: 0,
++          startY: 0,
++          currentX: 0,
++          currentY: 0,
++          startOffset: 0,
++          currentOffset: 0,
++          suppressClick: false
++        };
++
++        function setCardOffset(offset) {
++          state.currentOffset = offset;
++          card.classList.remove('swiping');
++          content.style.transform = `translateX(${offset}px)`;
++
++          if (offset !== 0) {
++            if (offset > 0) {
++              card.classList.add('actions-left');
++            } else {
++              card.classList.remove('actions-left');
++            }
++            card.classList.add('swiped', 'revealed');
++            card.setAttribute('data-revealed', 'true');
++            actions.setAttribute('aria-hidden', 'false');
++            actionButtons.forEach((btn) => btn.setAttribute('tabindex', '0'));
++          } else {
++            card.classList.remove('swiped', 'revealed', 'actions-left');
++            card.setAttribute('data-revealed', 'false');
++            actions.setAttribute('aria-hidden', 'true');
++            actionButtons.forEach((btn) => btn.setAttribute('tabindex', '-1'));
++          }
++        }
++
++        function onStart(e) {
++          if (e.target && e.target.closest && e.target.closest('.action-btn')) {
++            return;
++          }
++          if (e.type === 'mousedown' && e.button !== undefined && e.button !== 0) {
++            return;
++          }
++          if (state.isDragging) {
++            return;
++          }
++          const pt = getStartPoint(e);
++          state.isDragging = true;
++          state.startX = pt.x;
++          state.startY = pt.y;
++          state.currentX = pt.x;
++          state.currentY = pt.y;
++          state.startOffset = state.currentOffset;
++          state.suppressClick = false;
++        }
++
++        function onMove(e) {
++          if (!state.isDragging) {
++            return;
++          }
++          const pt = getEndPoint(e, state.currentX, state.currentY);
++          state.currentX = pt.x;
++          state.currentY = pt.y;
++          const dx = state.currentX - state.startX;
++          const dy = state.currentY - state.startY;
++
++          if (Math.abs(dx) < 5 && Math.abs(dy) > Math.abs(dx)) {
++            return;
++          }
++
++          card.classList.add('swiping');
++          let nextOffset = state.startOffset + dx;
++
++          if (state.startOffset === 0) {
++            if (dx < 0) {
++              card.classList.remove('actions-left');
++              nextOffset = Math.max(-ACTIONS_WIDTH, dx);
++            } else if (dx > 0) {
++              card.classList.add('actions-left');
++              nextOffset = Math.min(ACTIONS_WIDTH, dx);
++            } else {
++              nextOffset = 0;
++            }
++          } else if (state.startOffset < 0) {
++            nextOffset = Math.min(0, Math.max(-ACTIONS_WIDTH, state.startOffset + dx));
++          } else {
++            nextOffset = Math.max(0, Math.min(ACTIONS_WIDTH, state.startOffset + dx));
++          }
++
++          content.style.transform = `translateX(${nextOffset}px)`;
++        }
++
++        function onEnd(e) {
++          if (!state.isDragging) {
++            return;
++          }
++          state.isDragging = false;
++          const pt = getEndPoint(e, state.currentX, state.currentY);
++          const dx = pt.x - state.startX;
++
++          if (Math.abs(dx) >= SWIPE_THRESHOLD) {
++            state.suppressClick = true;
++          }
++
++          // Swiping horizontally only reveals or hides contextual action buttons;
++          // it never automatically executes an action.
++          if (state.startOffset === 0) {
++            if (dx <= -SWIPE_THRESHOLD) {
++              setCardOffset(-ACTIONS_WIDTH);
++            } else if (dx >= SWIPE_THRESHOLD) {
++              setCardOffset(ACTIONS_WIDTH);
++            } else {
++              setCardOffset(0);
++            }
++          } else if (state.startOffset < 0) {
++            if (dx >= SWIPE_THRESHOLD) {
++              setCardOffset(0);
++            } else {
++              setCardOffset(-ACTIONS_WIDTH);
++            }
++          } else {
++            if (dx <= -SWIPE_THRESHOLD) {
++              setCardOffset(0);
++            } else {
++              setCardOffset(ACTIONS_WIDTH);
++            }
++          }
++        }
++
++        card.addEventListener('touchstart', onStart, { passive: true });
++        card.addEventListener('touchmove', onMove, { passive: true });
++        card.addEventListener('touchend', onEnd);
++        card.addEventListener('touchcancel', onEnd);
++
++        card.addEventListener('pointerdown', onStart);
++        card.addEventListener('pointermove', onMove);
++        card.addEventListener('pointerup', onEnd);
++        card.addEventListener('pointercancel', onEnd);
++
++        card.addEventListener('mousedown', onStart);
++        window.addEventListener('mousemove', onMove);
++        window.addEventListener('pointermove', onMove);
++        window.addEventListener('touchmove', onMove, { passive: true });
++        window.addEventListener('mouseup', onEnd);
++        window.addEventListener('pointerup', onEnd);
++        window.addEventListener('touchend', onEnd);
++
++        content.addEventListener('click', (e) => {
++          if (state.suppressClick) {
++            e.preventDefault();
++            e.stopPropagation();
++            state.suppressClick = false;
++          }
++        }, true);
++
++        actionButtons.forEach((btn) => {
++          btn.addEventListener('click', (e) => {
++            e.stopPropagation();
++            const drink = btn.getAttribute('data-drink');
++            const action = btn.getAttribute('data-action');
++            card.setAttribute('data-action-executed', action);
++
++            let message = '';
++            if (action === 'order') {
++              message = `Added ${drink} to your order.`;
++            } else if (action === 'favorite') {
++              message = `Saved ${drink} to your favorites.`;
++            } else if (action === 'customize') {
++              message = `Customizing ${drink}.`;
++            }
++
++            if (statusEl && message) {
++              statusEl.textContent = message;
++            }
++          });
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

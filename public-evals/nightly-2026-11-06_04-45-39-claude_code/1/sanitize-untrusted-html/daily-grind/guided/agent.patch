@@ -1,0 +1,363 @@
+diff --git a/index.html b/index.html
+index 66c9173..5d308bf 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,160 @@
+       background: #3e2723;
+     }
+ 
++
++    /* Customer Reviews */
++    .reviews {
++      margin-top: 15px;
++      text-align: start;
++      border-top: 1px solid var(--secondary);
++      padding-top: 10px;
++    }
++
++    .reviews h4 {
++      font-size: 0.95rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .review-list {
++      list-style: none;
++      display: grid;
++      gap: 10px;
++      max-height: 260px;
++      overflow-y: auto;
++    }
++
++    .review {
++      background: var(--light);
++      border-radius: 6px;
++      padding: 10px;
++      font-size: 0.9rem;
++    }
++
++    .review-meta {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-bottom: 4px;
++    }
++
++    .review-body :is(ul, ol) {
++      padding-inline-start: 1.25rem;
++    }
++
++    .review-body blockquote {
++      border-inline-start: 3px solid var(--accent);
++      padding-inline-start: 8px;
++      font-style: italic;
++    }
++
++    .review-body a {
++      color: var(--primary);
++    }
++
++    .review-empty {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      font-style: italic;
++    }
++
++    .review-form {
++      max-width: 640px;
++      margin: 40px auto 0;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .review-form h3 {
++      color: var(--primary);
++      margin-bottom: 1rem;
++    }
++
++    .review-form fieldset {
++      border: none;
++      margin-block-end: 1.25rem;
++    }
++
++    .review-form legend,
++    .review-form .field > label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++    }
++
++    .drink-options {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px 20px;
++    }
++
++    .drink-options label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      min-height: 48px;
++      cursor: pointer;
++    }
++
++    .review-form input[type="radio"] {
++      accent-color: var(--primary);
++      width: 1.1rem;
++      height: 1.1rem;
++    }
++
++    .review-form .field {
++      margin-block-end: 1.25rem;
++    }
++
++    .review-form input[type="text"],
++    .review-form textarea {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .review-form textarea {
++      min-height: 8rem;
++      resize: vertical;
++      font-family: ui-monospace, Consolas, monospace;
++      font-size: 0.95rem;
++    }
++
++    .review-form :is(input, textarea, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .review-form :is(input, textarea):user-invalid {
++      border-color: #b71c1c;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-block-start: 0.35rem;
++    }
++
++    .review-form button {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      min-height: 48px;
++    }
++
++    .form-status {
++      margin-block-start: 0.75rem;
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -182,18 +336,62 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="reviews" aria-labelledby="reviews-maple-oat-latte-title">
++            <h4 id="reviews-maple-oat-latte-title">Customer Reviews</h4>
++            <ul class="review-list" data-reviews-for="maple-oat-latte"></ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="reviews" aria-labelledby="reviews-dark-roast-espresso-title">
++            <h4 id="reviews-dark-roast-espresso-title">Customer Reviews</h4>
++            <ul class="review-list" data-reviews-for="dark-roast-espresso"></ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="reviews" aria-labelledby="reviews-cold-brew-title">
++            <h4 id="reviews-cold-brew-title">Customer Reviews</h4>
++            <ul class="review-list" data-reviews-for="cold-brew"></ul>
++          </div>
+         </div>
+       </div>
++
++      <form class="review-form" id="review-form" action="/reviews" method="POST">
++        <h3>Share Your Review</h3>
++
++        <fieldset>
++          <legend>Which drink are you reviewing?</legend>
++          <div class="drink-options">
++            <label><input type="radio" name="drink" value="maple-oat-latte" required checked> Maple Oat Latte</label>
++            <label><input type="radio" name="drink" value="dark-roast-espresso"> Dark Roast Espresso</label>
++            <label><input type="radio" name="drink" value="cold-brew"> Cold Brew</label>
++          </div>
++        </fieldset>
++
++        <div class="field">
++          <label for="review-name">Your name</label>
++          <input type="text" id="review-name" name="name" autocomplete="name" maxlength="60" required>
++        </div>
++
++        <div class="field">
++          <label for="review-body">Your review</label>
++          <textarea id="review-body" name="body" required minlength="3" maxlength="2000"
++            aria-describedby="review-body-hint"></textarea>
++          <span id="review-body-hint" class="hint">
++            Basic HTML is allowed: &lt;p&gt;, &lt;b&gt;, &lt;strong&gt;, &lt;i&gt;, &lt;em&gt;, &lt;u&gt;, &lt;s&gt;,
++            &lt;br&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, &lt;blockquote&gt; and &lt;a href&gt;.
++            Anything else is removed.
++          </span>
++        </div>
++
++        <button type="submit" class="btn">Post review</button>
++        <p class="form-status" id="review-status" role="status" aria-live="polite"></p>
++      </form>
+     </section>
+   </main>
+ 
+@@ -207,6 +405,134 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Allowlist for customer review markup. Elements not listed are removed
++    // together with their content; the browser's safe defaults additionally
++    // strip scripts, event handlers and javascript: URLs regardless of config.
++    const REVIEW_ELEMENTS = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'ul', 'ol', 'li', 'blockquote', 'a'];
++    const REVIEW_ATTRIBUTES = ['href'];
++
++    let domPurifyPromise;
++    function loadDOMPurify() {
++      // Only downloaded in browsers without the native Sanitizer API.
++      domPurifyPromise ??= import('https://cdn.jsdelivr.net/npm/dompurify@3.2.7/dist/purify.es.mjs')
++        .then((mod) => mod.default ?? mod);
++      return domPurifyPromise;
++    }
++
++    async function safeSetHTML(el, html) {
++      if ('setHTML' in Element.prototype) {
++        el.setHTML(html, { sanitizer: { elements: REVIEW_ELEMENTS, attributes: REVIEW_ATTRIBUTES } });
++        return;
++      }
++      try {
++        const DOMPurify = await loadDOMPurify();
++        el.innerHTML = DOMPurify.sanitize(html, {
++          ALLOWED_TAGS: [...REVIEW_ELEMENTS, '#text'],
++          ALLOWED_ATTR: REVIEW_ATTRIBUTES,
++          // Match native Sanitizer behaviour.
++          ALLOW_ARIA_ATTR: false,
++          ALLOW_DATA_ATTR: false,
++          KEEP_CONTENT: false
++        });
++      } catch {
++        // Sanitizer unavailable: never fall back to raw HTML, show plain text.
++        el.textContent = html;
++      }
++    }
++
++    const STORAGE_KEY = 'daily-grind-reviews';
++    const DRINKS = {
++      'maple-oat-latte': 'Maple Oat Latte',
++      'dark-roast-espresso': 'Dark Roast Espresso',
++      'cold-brew': 'Cold Brew'
++    };
++    const SEED_REVIEWS = [
++      { drink: 'maple-oat-latte', name: 'Priya', date: '2026-10-28', body: '<p>Tastes like <strong>autumn in a cup</strong>. The maple is subtle, not syrupy.</p>' },
++      { drink: 'dark-roast-espresso', name: 'Marcus', date: '2026-10-30', body: '<p>Rich and smokey.</p><ul><li>Great crema</li><li><em>Zero</em> bitterness</li></ul>' },
++      { drink: 'cold-brew', name: 'Jo', date: '2026-11-02', body: '<blockquote>Smoothest cold brew in town.</blockquote><p>Worth the 18 hours!</p>' }
++    ];
++
++    function loadReviews() {
++      try {
++        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
++        return Array.isArray(stored) ? stored : SEED_REVIEWS;
++      } catch {
++        return SEED_REVIEWS;
++      }
++    }
++
++    function saveReviews(reviews) {
++      try {
++        localStorage.setItem(STORAGE_KEY, JSON.stringify(reviews));
++      } catch {
++        // Storage may be unavailable (private mode); reviews remain in memory.
++      }
++    }
++
++    let reviews = loadReviews();
++    const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
++
++    async function renderReviewItem(review) {
++      const li = document.createElement('li');
++      li.className = 'review';
++
++      // User-supplied plain-text fields go through textContent, never HTML.
++      const meta = document.createElement('div');
++      meta.className = 'review-meta';
++      const time = document.createElement('time');
++      time.dateTime = review.date;
++      time.textContent = dateFormat.format(new Date(`${review.date}T00:00:00`));
++      meta.append(String(review.name), ' · ', time);
++
++      const body = document.createElement('div');
++      body.className = 'review-body';
++      await safeSetHTML(body, String(review.body));
++
++      li.append(meta, body);
++      return li;
++    }
++
++    async function renderReviews() {
++      for (const list of document.querySelectorAll('[data-reviews-for]')) {
++        const drinkReviews = reviews.filter((r) => r.drink === list.dataset.reviewsFor);
++        if (drinkReviews.length === 0) {
++          const empty = document.createElement('li');
++          empty.className = 'review-empty';
++          empty.textContent = 'No reviews yet. Be the first!';
++          list.replaceChildren(empty);
++          continue;
++        }
++        const items = await Promise.all(drinkReviews.slice().reverse().map(renderReviewItem));
++        list.replaceChildren(...items);
++      }
++    }
++
++    const form = document.getElementById('review-form');
++    const status = document.getElementById('review-status');
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const data = new FormData(form);
++      const drink = data.get('drink');
++      if (!Object.hasOwn(DRINKS, drink)) return;
++
++      reviews.push({
++        drink,
++        name: data.get('name').trim(),
++        body: data.get('body'),
++        date: new Date().toISOString().slice(0, 10)
++      });
++      saveReviews(reviews);
++      await renderReviews();
++
++      form.reset();
++      status.textContent = `Thanks! Your review of ${DRINKS[drink]} has been posted.`;
++    });
++
++    renderReviews();
++  </script>
++
+ </body>
+ 
+ </html>

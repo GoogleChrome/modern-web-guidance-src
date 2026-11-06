@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+index 66c9173..91270dd 100644
+--- a/index.html
++++ b/index.html
+@@ -74,11 +74,10 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      overflow: hidden;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background: #2b1b17;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +87,50 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 0;
++    }
++
++    .hero::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: 1;
++    }
++
++    .hero > :not(video) {
++      position: relative;
++      z-index: 2;
++    }
++
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-section h2,
++    .media-section > p {
++      text-align: center;
++    }
++
++    .media-card video,
++    .media-card audio {
++      width: 100%;
++      margin-top: 12px;
++      border-radius: 8px;
++      background: #2b1b17;
++    }
++
++    .media-card video {
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -169,6 +212,13 @@
+   </nav>
+ 
+   <header class="hero">
++    <!-- Above the fold: poster and video load right away -->
++    <video class="hero-video" autoplay muted loop playsinline preload="metadata"
++      poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      aria-hidden="true">
++      <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" type="video/webm">
++      <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
++    </video>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -195,6 +245,30 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <h2>From the Roastery</h2>
++      <div class="grid">
++        <div class="card media-card">
++          <h3>Watch Us Roast</h3>
++          <p>From green bean to first crack, small batch by small batch.</p>
++          <!-- Below the fold: no poster, source, or media data until near the viewport -->
++          <video controls playsinline preload="none" class="lazy-media"
++            data-poster="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=70"
++            aria-label="Roasting process video">
++            <source data-src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" type="video/webm">
++            <source data-src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
++          </video>
++        </div>
++        <div class="card media-card">
++          <h3>The Daily Grind Podcast</h3>
++          <p>Farmers, roasters, and baristas share their stories.</p>
++          <audio controls preload="none" class="lazy-media" aria-label="Podcast episode">
++            <source data-src="https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3" type="audio/mpeg">
++          </audio>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +281,37 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Defer poster, source, and media data downloads until the player nears the viewport.
++    (function () {
++      var items = document.querySelectorAll('.lazy-media');
++
++      function load(el) {
++        if (el.dataset.poster) el.poster = el.dataset.poster;
++        el.querySelectorAll('source[data-src]').forEach(function (src) {
++          src.src = src.dataset.src;
++          src.removeAttribute('data-src');
++        });
++        el.preload = 'metadata';
++        el.load();
++      }
++
++      if (!('IntersectionObserver' in window)) {
++        items.forEach(load);
++        return;
++      }
++
++      var observer = new IntersectionObserver(function (entries) {
++        entries.forEach(function (entry) {
++          if (!entry.isIntersecting) return;
++          observer.unobserve(entry.target);
++          load(entry.target);
++        });
++      }, { rootMargin: '300px 0px' });
++
++      items.forEach(function (el) { observer.observe(el); });
++    })();
++  </script>
+ </body>
+ 
+ </html>

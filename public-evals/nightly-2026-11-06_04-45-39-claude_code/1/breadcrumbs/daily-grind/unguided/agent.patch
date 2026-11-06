@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+index 66c9173..e0178dc 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,63 @@
+       background: #3e2723;
+     }
+ 
++    /* Breadcrumbs */
++    .breadcrumb {
++      /* reset the global site-header `nav` styles */
++      display: block;
++      position: static;
++      background: none;
++      color: var(--text);
++      z-index: auto;
++
++      max-width: 1100px;
++      margin: 20px auto 0;
++      padding: 0 20px;
++      font-size: 0.9rem;
++    }
++
++    .breadcrumb ol {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      list-style: none;
++    }
++
++    .breadcrumb li {
++      display: flex;
++      align-items: center;
++    }
++
++    .breadcrumb li + li::before {
++      content: "\203A";
++      margin: 0 8px;
++      color: #8d6e63;
++      font-size: 1.1rem;
++      line-height: 1;
++    }
++
++    .breadcrumb a {
++      color: var(--primary);
++      text-decoration: none;
++      border-bottom: 1px solid transparent;
++      transition: border-color 0.3s, color 0.3s;
++    }
++
++    .breadcrumb a:hover,
++    .breadcrumb a:focus-visible {
++      color: #3e2723;
++      border-bottom-color: var(--accent);
++    }
++
++    .breadcrumb [aria-current="page"] {
++      color: #6d4c41;
++      font-weight: 600;
++    }
++
++    .breadcrumb + .container {
++      margin-top: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -174,6 +231,12 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <nav class="breadcrumb" aria-label="Breadcrumb">
++    <ol id="breadcrumb-list">
++      <li><span aria-current="page">Home</span></li>
++    </ol>
++  </nav>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +270,66 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Builds the breadcrumb trail from the current URL path, e.g.
++    // /menu/seasonal -> Home › Menu › Maple Oat Latte
++    (function () {
++      var LABELS = {
++        '/menu': 'Menu',
++        '/menu/seasonal': 'Maple Oat Latte',
++        '/menu/espresso': 'Dark Roast Espresso',
++        '/menu/cold-brew': 'Cold Brew',
++        '/locations': 'Locations',
++        '/rewards': 'Rewards',
++        '/account': 'My Account',
++        '/order-online': 'Order Online',
++        '/about': 'Our Story',
++        '/careers': 'Join the Team',
++        '/contact': 'Contact Us',
++        '/privacy-policy': 'Privacy'
++      };
++
++      function prettify(slug) {
++        return decodeURIComponent(slug)
++          .replace(/[-_]+/g, ' ')
++          .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
++      }
++
++      var list = document.getElementById('breadcrumb-list');
++      if (!list) return;
++
++      var path = window.location.pathname;
++      // Treat direct file / index.html access as the home page.
++      if (window.location.protocol === 'file:' || /\/index\.html?$/i.test(path)) {
++        path = '/';
++      }
++
++      var segments = path.split('/').filter(Boolean);
++      var crumbs = [{ href: '/', label: 'Home' }];
++      var href = '';
++      segments.forEach(function (seg) {
++        href += '/' + seg;
++        crumbs.push({ href: href, label: LABELS[href] || prettify(seg) });
++      });
++
++      list.innerHTML = '';
++      crumbs.forEach(function (crumb, i) {
++        var li = document.createElement('li');
++        var el;
++        if (i === crumbs.length - 1) {
++          el = document.createElement('span');
++          el.setAttribute('aria-current', 'page');
++        } else {
++          el = document.createElement('a');
++          el.href = crumb.href;
++        }
++        el.textContent = crumb.label;
++        li.appendChild(el);
++        list.appendChild(li);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,16 +11,75 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++      pointer-events: none;
++    }
++
++    /* Promo Alert */
++    #promo-alert {
++      position: relative;
++      background-color: var(--accent);
++      color: var(--text);
++      interpolate-size: allow-keywords;
++      height: auto;
++      overflow: hidden;
++      transition: height 0.35s ease;
++    }
++
++    #promo-alert:has(:checked) {
++      height: 0;
++    }
++
++    .promo-alert-inner {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      padding: 12px 5%;
++      font-size: 0.95rem;
++    }
++
++    #alert-dismiss {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: rgba(62, 39, 35, 0.12);
++      color: var(--text);
++      border: none;
++      border-radius: 4px;
++      padding: 4px 10px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      transition: background 0.2s ease;
++      flex-shrink: 0;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(62, 39, 35, 0.22);
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+@@ -151,19 +210,96 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* FAQ Accordion */
++    .faq-section {
++      margin-top: 50px;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-accordion {
++      position: relative;
++      max-width: 750px;
++      margin: 0 auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      width: 100%;
++      padding: 18px 24px;
++      background: white;
++      color: var(--primary);
++      font-size: 1.05rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      transition: background 0.2s ease;
++    }
++
++    #faq-trigger:hover {
++      background: #f5f0ee;
++    }
++
++    .faq-icon {
++      font-size: 1.25rem;
++      line-height: 1;
++      transition: transform 0.35s ease;
++    }
++
++    .faq-accordion:has(#faq-toggle:checked) .faq-icon {
++      transform: rotate(45deg);
++    }
++
++    #faq-content {
++      interpolate-size: allow-keywords;
++      height: 0;
++      overflow: hidden;
++      transition: height 0.35s ease;
++    }
++
++    #faq-toggle:checked ~ #faq-content,
++    .faq-accordion:has(:checked) #faq-content {
++      height: auto;
++    }
++
++    .faq-content-inner {
++      padding: 0 24px 20px;
++      color: var(--text);
++      border-top: 1px solid var(--secondary);
++      padding-top: 16px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotional Offer">
++    <input type="checkbox" id="alert-toggle" class="sr-only" aria-hidden="true">
++    <div class="promo-alert-inner">
++      <span><strong>Limited-Time Offer:</strong> Get 20% off your first bag of single-origin beans with code <strong>FRESH20</strong>!</span>
++      <label for="alert-toggle" id="alert-dismiss" role="button" tabindex="0" aria-label="Dismiss promo alert">&times;</label>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#faq">FAQ</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,8 +330,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="faq" class="faq-section">
++      <h2>Frequently Asked Questions</h2>
++      <div class="faq-accordion">
++        <input type="checkbox" id="faq-toggle" class="sr-only" aria-hidden="true">
++        <label for="faq-toggle" id="faq-trigger" role="button" tabindex="0" aria-controls="faq-content">
++          <span>How are your coffee beans ethically sourced and roasted?</span>
++          <span class="faq-icon" aria-hidden="true">+</span>
++        </label>
++        <div id="faq-content" role="region" aria-labelledby="faq-trigger">
++          <div class="faq-content-inner">
++            <p>We partner directly with sustainable small-lot farms across Latin America, East Africa, and Indonesia. Every batch is roasted in-house daily in small quantities to highlight each origin's natural flavor profile and ensure peak freshness in every cup.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

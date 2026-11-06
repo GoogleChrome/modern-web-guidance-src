@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,111 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    #anchor {
++      anchor-name: --anchor;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      border: 2px solid var(--primary);
++      background: var(--secondary);
++      color: var(--primary);
++      font-family: Georgia, serif;
++      font-weight: bold;
++      font-style: italic;
++      font-size: 1rem;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s, transform 0.2s;
++    }
++
++    #anchor:hover,
++    #anchor:focus-visible {
++      background: var(--primary);
++      color: var(--light);
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #tooltip {
++      position: fixed;
++      inset: auto;
++      position-anchor: --anchor;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      overflow: visible;
++      margin: 0 0 10px 0;
++      margin-top: 0;
++      margin-bottom: 10px;
++      padding: 10px 14px;
++      max-width: 240px;
++      background: var(--primary);
++      color: var(--light);
++      border: none;
++      border-radius: 10px 10px 0 10px;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: left;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    #tooltip::before,
++    #tooltip::after {
++      content: "▼";
++      position: absolute;
++      top: 100%;
++      bottom: auto;
++      left: 50%;
++      transform: translateX(-50%);
++      width: 0;
++      height: 0;
++      font-size: 0;
++      line-height: 0;
++      margin-top: 0;
++      margin-bottom: -6px;
++      border-radius: 0 0 2px 2px;
++      border: 6px solid transparent;
++      border-top-color: var(--primary);
++      border-bottom-color: transparent;
++    }
++
++    @container anchored(fallback: flip-block) {
++      #tooltip {
++        margin: 10px 0 0 0;
++        margin-top: 10px;
++        margin-bottom: 0;
++        border-radius: 0 10px 10px 10px;
++      }
++
++      #tooltip::before,
++      #tooltip::after {
++        content: "▲";
++        top: auto;
++        bottom: 100%;
++        margin-top: -6px;
++        margin-bottom: 0;
++        border-radius: 2px 2px 0 0;
++        border-top-color: transparent;
++        border-bottom-color: var(--primary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +283,15 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button id="anchor" type="button" popovertarget="tooltip" aria-describedby="tooltip" aria-label="More info about Maple Oat Latte">i</button>
++            <div id="tooltip" popover role="tooltip">
++              Crafted with organic Vermont Grade A maple syrup, steamed barista oat milk, and two shots of signature espresso. (180 cal, 100% Vegan)
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

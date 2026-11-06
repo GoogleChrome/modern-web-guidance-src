@@ -1,0 +1,635 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,192 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Flavor Profile Lab */
++    .lab {
++      margin-top: 60px;
++    }
++
++    .lab h2 {
++      text-align: center;
++    }
++
++    .lab .intro {
++      text-align: center;
++      max-width: 700px;
++      margin: 10px auto 20px;
++      color: #5d4037;
++    }
++
++    .lab-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++    }
++
++    .lab-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      justify-content: center;
++      margin-bottom: 20px;
++    }
++
++    .lab-controls label {
++      font-size: 0.9rem;
++    }
++
++    .lab-controls select {
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .lab-controls .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .lab-controls .btn[disabled] {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary) !important;
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .progress {
++      height: 14px;
++      background: var(--secondary);
++      border-radius: 7px;
++      overflow: hidden;
++      margin-bottom: 8px;
++    }
++
++    .progress-bar {
++      height: 100%;
++      width: 0%;
++      background: var(--accent);
++      transition: width 0.1s linear;
++    }
++
++    .lab-status {
++      font-size: 0.9rem;
++      text-align: center;
++      min-height: 1.4em;
++      color: #5d4037;
++    }
++
++    .lab-stats {
++      list-style: none;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 8px 24px;
++      margin: 14px 0 20px;
++      font-size: 0.85rem;
++    }
++
++    .lab-stats li span {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .responsiveness {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      align-items: center;
++      justify-content: center;
++      padding: 14px;
++      border: 1px dashed var(--secondary);
++      border-radius: 8px;
++      margin-bottom: 20px;
++      font-size: 0.9rem;
++    }
++
++    .bean {
++      width: 22px;
++      height: 30px;
++      background: var(--primary);
++      border-radius: 50%;
++      position: relative;
++      animation: bean-spin 1.2s linear infinite;
++    }
++
++    .bean::after {
++      content: "";
++      position: absolute;
++      left: 50%;
++      top: 3px;
++      bottom: 3px;
++      width: 2px;
++      margin-left: -1px;
++      background: var(--accent);
++      border-radius: 1px;
++    }
++
++    @keyframes bean-spin {
++      from { transform: rotate(0deg); }
++      to { transform: rotate(360deg); }
++    }
++
++    .lab-results {
++      overflow-x: auto;
++    }
++
++    .lab-results table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.9rem;
++    }
++
++    .lab-results th,
++    .lab-results td {
++      padding: 8px 10px;
++      text-align: left;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .lab-results th {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .lab-results td.num,
++    .lab-results th.num {
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .lab-results caption {
++      text-align: left;
++      font-weight: bold;
++      color: var(--primary);
++      padding-bottom: 8px;
++    }
++
++    .lab-note {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-top: 14px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +378,80 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="lab" id="flavor-lab" aria-labelledby="lab-heading">
++      <h2 id="lab-heading">Flavor Profile Lab</h2>
++      <p class="intro">
++        Our roasters model thousands of candidate blends before a single bean hits the drum.
++        Run the simulator below to score a large batch of recipe blends. The work is chopped into
++        small time slices that yield back to the browser, so you can keep scrolling and clicking
++        while it runs.
++      </p>
++
++      <div class="lab-panel">
++        <div class="lab-controls">
++          <label for="lab-batch-size">Batch size
++            <select id="lab-batch-size">
++              <option value="2000">2,000 blends</option>
++              <option value="10000" selected>10,000 blends</option>
++              <option value="40000">40,000 blends</option>
++            </select>
++          </label>
++          <label for="lab-budget">Slice budget
++            <select id="lab-budget">
++              <option value="4">4 ms</option>
++              <option value="8" selected>8 ms</option>
++              <option value="16">16 ms</option>
++            </select>
++          </label>
++          <button type="button" class="btn" id="lab-run">Run Simulation</button>
++          <button type="button" class="btn btn-outline" id="lab-cancel" disabled>Cancel</button>
++        </div>
++
++        <div class="progress" role="progressbar" aria-labelledby="lab-status" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="lab-progress">
++          <div class="progress-bar" id="lab-progress-bar"></div>
++        </div>
++        <p class="lab-status" id="lab-status" aria-live="polite">Idle. Pick a batch size and press Run.</p>
++
++        <ul class="lab-stats">
++          <li>Processed: <span id="stat-processed">0</span></li>
++          <li>Elapsed: <span id="stat-elapsed">0 ms</span></li>
++          <li>Slices: <span id="stat-slices">0</span></li>
++          <li>Longest slice: <span id="stat-longest">0 ms</span></li>
++          <li>Yield strategy: <span id="stat-strategy">–</span></li>
++        </ul>
++
++        <div class="responsiveness">
++          <div class="bean" aria-hidden="true"></div>
++          <span>Responsiveness check: the bean keeps spinning and this button keeps counting while the batch runs.</span>
++          <button type="button" class="btn btn-outline" id="lab-tap">Tap me (<span id="lab-tap-count">0</span>)</button>
++          <span>Frame gap: <strong id="stat-frame-gap">0 ms</strong></span>
++        </div>
++
++        <div class="lab-results" id="lab-results" hidden>
++          <table>
++            <caption>Top scoring blends</caption>
++            <thead>
++              <tr>
++                <th>#</th>
++                <th>Blend</th>
++                <th>Roast</th>
++                <th>Brew</th>
++                <th class="num">Acidity</th>
++                <th class="num">Body</th>
++                <th class="num">Sweetness</th>
++                <th class="num">Bitterness</th>
++                <th class="num">Score</th>
++              </tr>
++            </thead>
++            <tbody id="lab-results-body"></tbody>
++          </table>
++          <p class="lab-note" id="lab-summary"></p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +462,357 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (function () {
++      'use strict';
++
++      // ---------- Yielding helpers ----------
++      // Returns a promise that resolves once the browser has had a chance to
++      // handle input, paint, and run other queued tasks.
++      var strategyName;
++      var yieldToMain = (function () {
++        if (typeof scheduler !== 'undefined' && typeof scheduler.yield === 'function') {
++          strategyName = 'scheduler.yield()';
++          return function () { return scheduler.yield(); };
++        }
++        var viaTimeout = function () {
++          return new Promise(function (resolve) { setTimeout(resolve, 0); });
++        };
++        if (typeof MessageChannel !== 'undefined') {
++          // A MessageChannel macrotask resumes sooner than setTimeout(0), which
++          // browsers clamp to >= 4ms once nested, while still giving the browser
++          // a chance to handle input and paint in between.
++          strategyName = 'MessageChannel + setTimeout';
++          var channel = new MessageChannel();
++          var pending = [];
++          channel.port1.onmessage = function () {
++            var resolve = pending.shift();
++            if (resolve) resolve();
++          };
++          var viaChannel = function () {
++            return new Promise(function (resolve) {
++              pending.push(resolve);
++              channel.port2.postMessage(null);
++            });
++          };
++          var count = 0;
++          return function () {
++            // A steady stream of message tasks can crowd out timers, so every
++            // fourth yield goes through setTimeout to let timer callbacks run.
++            return (++count % 4 === 0) ? viaTimeout() : viaChannel();
++          };
++        }
++        strategyName = 'setTimeout(0)';
++        return viaTimeout;
++      })();
++
++      function inputIsPending() {
++        return !!(navigator.scheduling &&
++          typeof navigator.scheduling.isInputPending === 'function' &&
++          navigator.scheduling.isInputPending());
++      }
++
++      // ---------- Deterministic recipe generation ----------
++      function mulberry32(seed) {
++        return function () {
++          seed |= 0; seed = seed + 0x6D2B79F5 | 0;
++          var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
++          t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
++          return ((t ^ t >>> 14) >>> 0) / 4294967296;
++        };
++      }
++
++      var ORIGINS = [
++        { name: 'Ethiopia Yirgacheffe', acidity: 0.9, body: 0.4, sweetness: 0.7, floral: 0.9 },
++        { name: 'Colombia Huila', acidity: 0.6, body: 0.6, sweetness: 0.8, floral: 0.4 },
++        { name: 'Brazil Cerrado', acidity: 0.3, body: 0.8, sweetness: 0.7, floral: 0.2 },
++        { name: 'Sumatra Mandheling', acidity: 0.2, body: 0.95, sweetness: 0.4, floral: 0.1 },
++        { name: 'Guatemala Antigua', acidity: 0.6, body: 0.7, sweetness: 0.6, floral: 0.4 },
++        { name: 'Kenya AA', acidity: 0.95, body: 0.5, sweetness: 0.6, floral: 0.6 },
++        { name: 'Costa Rica Tarrazu', acidity: 0.7, body: 0.6, sweetness: 0.7, floral: 0.5 },
++        { name: 'Honduras Marcala', acidity: 0.5, body: 0.6, sweetness: 0.8, floral: 0.3 }
++      ];
++      var ROASTS = ['Light', 'Medium-Light', 'Medium', 'Medium-Dark', 'Dark'];
++      var BREWS = [
++        { name: 'Pour Over', extraction: 0.20, agitation: 0.3 },
++        { name: 'Espresso', extraction: 0.22, agitation: 0.9 },
++        { name: 'French Press', extraction: 0.18, agitation: 0.4 },
++        { name: 'Cold Brew', extraction: 0.15, agitation: 0.1 },
++        { name: 'AeroPress', extraction: 0.21, agitation: 0.7 }
++      ];
++
++      function makeBlend(index, rand) {
++        var a = ORIGINS[Math.floor(rand() * ORIGINS.length)];
++        var b = ORIGINS[Math.floor(rand() * ORIGINS.length)];
++        var split = 0.5 + rand() * 0.4; // 50-90% of origin A
++        return {
++          id: index + 1,
++          originA: a,
++          originB: b,
++          split: split,
++          roast: Math.floor(rand() * ROASTS.length),
++          brew: BREWS[Math.floor(rand() * BREWS.length)],
++          ratio: 14 + rand() * 4,        // grams water per gram coffee
++          tempC: 85 + rand() * 11,
++          seconds: 30 + rand() * 300
++        };
++      }
++
++      // Deliberately CPU-heavy: integrates a simple extraction curve over
++      // many small time steps for each blend.
++      function simulateBlend(blend) {
++        var mix = function (key) {
++          return blend.originA[key] * blend.split + blend.originB[key] * (1 - blend.split);
++        };
++        var roastFactor = blend.roast / (ROASTS.length - 1); // 0 light .. 1 dark
++        var steps = 3000;
++        var dt = blend.seconds / steps;
++        var maxSolubles = 0.30; // fraction of the dose that can ever dissolve
++        var solubles = 0, acids = 0, sugars = 0, bitters = 0;
++        // Arrhenius-style temperature factor (~0.8 at 85C, ~1.2 at 96C) scaled so
++        // a typical brew lands near 20% extraction by the end of its contact time.
++        var tempFactor = Math.exp(4200 * (1 / 362 - 1 / (blend.tempC + 273.15)));
++        var k = (1.2 / blend.seconds) * tempFactor * (blend.brew.extraction / 0.2)
++          * (1 + blend.brew.agitation * 0.5) * (0.85 + roastFactor * 0.3);
++
++        for (var i = 0; i < steps; i++) {
++          var t = i * dt;
++          var progress = t / blend.seconds;
++          var remaining = maxSolubles - solubles;
++          var rate = k * remaining / (1 + progress * 0.5);
++          var dissolved = rate * dt;
++          solubles += dissolved;
++          // Acids come out first, sugars mid-brew, bitter compounds last.
++          acids += dissolved * (1 - roastFactor * 0.7) * mix('acidity') * Math.exp(-progress * 2);
++          sugars += dissolved * mix('sweetness') * Math.sin(progress * Math.PI);
++          bitters += dissolved * (0.3 + roastFactor * 0.9) * Math.pow(progress, 1.5);
++        }
++
++        var norm = function (v, max) { return Math.max(0, Math.min(10, (v / max) * 10)); };
++        var acidity = norm(acids, 0.08);
++        var sweetness = norm(sugars, 0.11);
++        var bitterness = norm(bitters, 0.11);
++        var body = norm(mix('body') * (0.6 + roastFactor * 0.6) * (18 / blend.ratio), 1.2);
++        var aroma = norm(mix('floral') * (1 - roastFactor * 0.5) + sweetness / 20, 1.1);
++
++        // Balance rewards a mid-range extraction and penalises any attribute
++        // dominating the cup.
++        var extractionPenalty = Math.abs(solubles - 0.2) * 40;
++        var spread = Math.max(acidity, sweetness, bitterness, body) - Math.min(acidity, sweetness, bitterness, body);
++        var score = (acidity * 0.9 + sweetness * 1.4 + body * 1.0 + aroma * 1.1 - bitterness * 0.8)
++          - extractionPenalty - spread * 0.4 + 5;
++
++        return {
++          id: blend.id,
++          name: blend.originA.name === blend.originB.name
++            ? blend.originA.name
++            : blend.originA.name.split(' ')[0] + ' / ' + blend.originB.name.split(' ')[0]
++              + ' (' + Math.round(blend.split * 100) + '/' + Math.round((1 - blend.split) * 100) + ')',
++          roast: ROASTS[blend.roast],
++          brew: blend.brew.name,
++          acidity: acidity, body: body, sweetness: sweetness, bitterness: bitterness,
++          score: Math.max(0, score)
++        };
++      }
++
++      // ---------- Batch runner with time slicing ----------
++      function runBatch(options) {
++        var total = options.total;
++        var budgetMs = options.budgetMs;
++        var signal = options.signal;
++        var onProgress = options.onProgress;
++        var rand = mulberry32(options.seed || 20261028);
++        var TOP_N = 5;
++        var top = [];
++        var processed = 0;
++        var slices = 0;
++        var longestSlice = 0;
++        var started = performance.now();
++
++        function recordTop(result) {
++          if (top.length < TOP_N || result.score > top[top.length - 1].score) {
++            top.push(result);
++            top.sort(function (a, b) { return b.score - a.score; });
++            if (top.length > TOP_N) top.pop();
++          }
++        }
++
++        return new Promise(function (resolve, reject) {
++          function processSlice() {
++            if (signal.aborted) {
++              reject(new DOMException('Simulation cancelled', 'AbortError'));
++              return;
++            }
++            var sliceStart = performance.now();
++            var deadline = sliceStart + budgetMs;
++            slices++;
++
++            // Work until the time budget is spent, input is waiting, or we
++            // run out of blends. Each iteration is short so overshoot is small.
++            do {
++              recordTop(simulateBlend(makeBlend(processed, rand)));
++              processed++;
++            } while (processed < total && performance.now() < deadline && !inputIsPending());
++
++            var sliceMs = performance.now() - sliceStart;
++            if (sliceMs > longestSlice) longestSlice = sliceMs;
++
++            onProgress({
++              processed: processed,
++              total: total,
++              slices: slices,
++              longestSlice: longestSlice,
++              elapsed: performance.now() - started
++            });
++
++            if (processed >= total) {
++              resolve({
++                top: top,
++                processed: processed,
++                slices: slices,
++                longestSlice: longestSlice,
++                elapsed: performance.now() - started
++              });
++              return;
++            }
++
++            // Hand control back to the browser before the next slice.
++            yieldToMain().then(processSlice, reject);
++          }
++          processSlice();
++        });
++      }
++
++      // ---------- UI wiring ----------
++      var $ = function (id) { return document.getElementById(id); };
++      var runBtn = $('lab-run');
++      var cancelBtn = $('lab-cancel');
++      var batchSelect = $('lab-batch-size');
++      var budgetSelect = $('lab-budget');
++      var progressEl = $('lab-progress');
++      var progressBar = $('lab-progress-bar');
++      var statusEl = $('lab-status');
++      var resultsEl = $('lab-results');
++      var resultsBody = $('lab-results-body');
++      var summaryEl = $('lab-summary');
++      var tapBtn = $('lab-tap');
++      var tapCount = $('lab-tap-count');
++      var frameGapEl = $('stat-frame-gap');
++      var stats = {
++        processed: $('stat-processed'),
++        elapsed: $('stat-elapsed'),
++        slices: $('stat-slices'),
++        longest: $('stat-longest'),
++        strategy: $('stat-strategy')
++      };
++      stats.strategy.textContent = strategyName;
++
++      var fmtInt = function (n) { return n.toLocaleString(); };
++      var fmtMs = function (n) { return (n < 10 ? n.toFixed(1) : Math.round(n).toLocaleString()) + ' ms'; };
++
++      var taps = 0;
++      tapBtn.addEventListener('click', function () {
++        taps++;
++        tapCount.textContent = fmtInt(taps);
++      });
++
++      // Measure how long the main thread goes without a frame. If the batch
++      // blocked the thread, this number would climb into the hundreds or
++      // thousands of ms; with slicing it stays close to a frame interval.
++      var lastFrame = performance.now();
++      var worstGap = 0;
++      var monitoring = false;
++      function frameMonitor(now) {
++        var gap = now - lastFrame;
++        lastFrame = now;
++        if (gap > worstGap) worstGap = gap;
++        frameGapEl.textContent = fmtMs(gap) + ' (worst ' + fmtMs(worstGap) + ')';
++        if (monitoring) requestAnimationFrame(frameMonitor);
++      }
++
++      var controller = null;
++
++      function setRunning(running) {
++        runBtn.disabled = running;
++        cancelBtn.disabled = !running;
++        batchSelect.disabled = running;
++        budgetSelect.disabled = running;
++      }
++
++      function updateProgress(p) {
++        var pct = Math.round((p.processed / p.total) * 100);
++        progressBar.style.width = pct + '%';
++        progressEl.setAttribute('aria-valuenow', String(pct));
++        statusEl.textContent = 'Simulating… ' + fmtInt(p.processed) + ' of ' + fmtInt(p.total) + ' blends (' + pct + '%)';
++        stats.processed.textContent = fmtInt(p.processed);
++        stats.elapsed.textContent = fmtMs(p.elapsed);
++        stats.slices.textContent = fmtInt(p.slices);
++        stats.longest.textContent = fmtMs(p.longestSlice);
++      }
++
++      function renderResults(result) {
++        resultsBody.textContent = '';
++        result.top.forEach(function (r, i) {
++          var tr = document.createElement('tr');
++          var cells = [
++            [String(i + 1)], [r.name], [r.roast], [r.brew],
++            [r.acidity.toFixed(1), 'num'], [r.body.toFixed(1), 'num'],
++            [r.sweetness.toFixed(1), 'num'], [r.bitterness.toFixed(1), 'num'],
++            [r.score.toFixed(2), 'num']
++          ];
++          cells.forEach(function (c) {
++            var td = document.createElement('td');
++            td.textContent = c[0];
++            if (c[1]) td.className = c[1];
++            tr.appendChild(td);
++          });
++          resultsBody.appendChild(tr);
++        });
++        summaryEl.textContent = 'Scored ' + fmtInt(result.processed) + ' blends in ' + fmtMs(result.elapsed)
++          + ' across ' + fmtInt(result.slices) + ' time slices. The longest slice held the main thread for '
++          + fmtMs(result.longestSlice) + ', so input and animation stayed responsive throughout.';
++        resultsEl.hidden = false;
++      }
++
++      runBtn.addEventListener('click', function () {
++        if (controller) return;
++        controller = new AbortController();
++        setRunning(true);
++        resultsEl.hidden = true;
++        worstGap = 0;
++        lastFrame = performance.now();
++        monitoring = true;
++        requestAnimationFrame(frameMonitor);
++        updateProgress({ processed: 0, total: 1, slices: 0, longestSlice: 0, elapsed: 0 });
++
++        runBatch({
++          total: parseInt(batchSelect.value, 10),
++          budgetMs: parseInt(budgetSelect.value, 10),
++          signal: controller.signal,
++          onProgress: updateProgress
++        }).then(function (result) {
++          statusEl.textContent = 'Done. ' + fmtInt(result.processed) + ' blends scored.';
++          renderResults(result);
++        }, function (err) {
++          if (err && err.name === 'AbortError') {
++            statusEl.textContent = 'Cancelled after ' + stats.processed.textContent + ' blends.';
++          } else {
++            statusEl.textContent = 'Simulation failed: ' + (err && err.message ? err.message : err);
++          }
++        }).then(function () {
++          controller = null;
++          monitoring = false;
++          setRunning(false);
++        });
++      });
++
++      cancelBtn.addEventListener('click', function () {
++        if (controller) controller.abort();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

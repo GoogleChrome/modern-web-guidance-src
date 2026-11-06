@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,103 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Minimal fetchLater() polyfill for browsers without native support.
++    // Sends when the page is hidden instead of on unload.
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if ('keepalive' in Request.prototype || init.method !== 'POST' || init.headers) {
++            fetch(url, Object.assign({}, init, {keepalive: true}));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    // Analytics: events within BATCH_WINDOW coalesce into one deferred request.
++    const ANALYTICS_ENDPOINT = '/analytics';
++    const BATCH_WINDOW = 10 * 1000;
++    const MAX_QUEUE_SIZE = 100;
++
++    const eventQueue = [];
++    let fetchLaterResult;
++    let fetchLaterController;
++
++    function describeElement(el) {
++      if (!(el instanceof Element)) return '';
++      const target = el.closest('a, button') || el;
++      let desc = target.localName;
++      if (target.id) desc += '#' + target.id;
++      if (target.classList.length) desc += '.' + [...target.classList].join('.');
++      const href = target.getAttribute('href');
++      if (href) desc += `[href="${href}"]`;
++      return desc;
++    }
++
++    function trackEvent(eventData) {
++      if (fetchLaterResult?.activated || eventQueue.length >= MAX_QUEUE_SIZE) {
++        fetchLaterController = null;
++        fetchLaterResult = null;
++        eventQueue.length = 0;
++      }
++
++      eventQueue.push({...eventData, page: location.pathname, time: Date.now()});
++
++      fetchLaterController?.abort();
++      fetchLaterController = new AbortController();
++
++      try {
++        fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: {'content-type': 'application/json'},
++          body: JSON.stringify(eventQueue),
++          signal: fetchLaterController.signal,
++          activateAfter: BATCH_WINDOW,
++        });
++      } catch (error) {
++        // Quota exceeded or unsupported; drop the event.
++      }
++    }
++
++    window.addEventListener('load', () => trackEvent({type: 'page_view'}));
++
++    window.addEventListener('click', (event) => {
++      trackEvent({type: 'click', target: describeElement(event.target)});
++    });
++  </script>
++
+ </body>
+ 
+ </html>

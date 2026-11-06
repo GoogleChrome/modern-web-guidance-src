@@ -1,0 +1,526 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,8 +73,10 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      overflow: hidden;
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -92,8 +94,69 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /*
++     * WebGL ripple layer.
++     * The canvas sits underneath the real DOM content and draws a GPU-distorted
++     * copy of it. The real elements stay in the document (accessible, selectable,
++     * clickable) but their glyph fill / button background are made transparent
++     * once the shader is confirmed to be running (.gl-on). Without WebGL, or with
++     * prefers-reduced-motion, the hero renders exactly as before.
++     */
++    .hero-gl {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      display: block;
++      pointer-events: none;
++      z-index: 0;
++    }
++
++    .hero > :not(.hero-gl) {
++      position: relative;
++      z-index: 1;
++    }
++
++    .hero.gl-on .gl-text {
++      /* Hides the glyphs but leaves `color` readable for the texture painter. */
++      -webkit-text-fill-color: transparent;
++    }
++
++    .hero.gl-on .btn {
++      background-color: transparent;
++    }
++
++    .hero.gl-on ::selection {
++      color: #fff;
++      -webkit-text-fill-color: #fff;
++      background: rgba(255, 171, 64, 0.55);
++    }
++
++    /* Registered custom property so the button's hover colour still animates
++       and can be read back by the texture painter while the real background
++       is transparent. */
++    @property --gl-bg {
++      syntax: '<color>';
++      inherits: false;
++      initial-value: transparent;
++    }
++
++    .hero .btn {
++      --gl-bg: var(--primary);
++      transition: background 0.3s, --gl-bg 0.3s;
++    }
++
++    .hero .btn:hover {
++      --gl-bg: #3e2723;
++    }
++
++    .hero .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,11 +231,12 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <canvas class="hero-gl" aria-hidden="true"></canvas>
++    <h1 class="gl-text">Wake Up Your Senses</h1>
++    <p class="gl-text">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn gl-text">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +270,425 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /*
++     * Hero ripple shader.
++     *
++     * How it works:
++     *  1. The hero's text and button are painted into an offscreen 2D canvas at
++     *     their exact on-screen positions (measured with Range rects so line
++     *     breaks, fonts and the button box match the real layout).
++     *  2. That canvas is uploaded as a WebGL texture, together with the hero's
++     *     background photo (CORS-loaded) so the whole surface ripples as one.
++     *  3. A fragment shader displaces the sample coordinates with expanding
++     *     ripple rings spawned by pointer movement/clicks, plus an idle shimmer.
++     *  4. The real DOM stays on top with transparent fill, so text selection,
++     *     keyboard focus and clicks work on the actual elements.
++     */
++    (function () {
++      'use strict';
++
++      var hero = document.querySelector('.hero');
++      var canvas = hero && hero.querySelector('.hero-gl');
++      if (!hero || !canvas) return;
++      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
++
++      var gl = canvas.getContext('webgl', {
++        alpha: true,
++        antialias: false,
++        premultipliedAlpha: true,
++        powerPreference: 'high-performance'
++      }) || canvas.getContext('experimental-webgl');
++      if (!gl) return;
++
++      var MAX_RIPPLES = 12;
++
++      var VERT = [
++        'attribute vec2 aPos;',
++        'varying vec2 vUv;',
++        'void main() {',
++        '  vUv = aPos * 0.5 + 0.5;',
++        '  gl_Position = vec4(aPos, 0.0, 1.0);',
++        '}'
++      ].join('\n');
++
++      var FRAG = [
++        '#ifdef GL_FRAGMENT_PRECISION_HIGH',
++        'precision highp float;',
++        '#else',
++        'precision mediump float;',
++        '#endif',
++        '#define MAX_RIPPLES ' + MAX_RIPPLES,
++        'uniform sampler2D uDom;',
++        'uniform sampler2D uBg;',
++        'uniform float uHasBg;',
++        'uniform vec2 uRes;',
++        'uniform vec2 uBgScale;',
++        'uniform float uTime;',
++        'uniform vec4 uRipples[MAX_RIPPLES];', // xy = centre (uv), z = start time, w = strength
++        'uniform int uCount;',
++        'varying vec2 vUv;',
++        '',
++        'void main() {',
++        '  float aspect = uRes.x / uRes.y;',
++        '  vec2 p = vec2(vUv.x * aspect, vUv.y);',
++        '  vec2 disp = vec2(0.0);',
++        '  float energy = 0.0;',
++        '',
++        '  // Idle shimmer so the surface never looks frozen.',
++        '  disp += 0.0012 * vec2(sin(p.y * 9.0 + uTime * 1.3), cos(p.x * 7.0 + uTime * 1.1));',
++        '',
++        '  for (int i = 0; i < MAX_RIPPLES; i++) {',
++        '    if (i >= uCount) break;',
++        '    vec4 r = uRipples[i];',
++        '    float age = uTime - r.z;',
++        '    if (age < 0.0) continue;',
++        '    vec2 c = vec2(r.x * aspect, r.y);',
++        '    vec2 d = p - c;',
++        '    float dist = length(d);',
++        '    float front = age * 0.55;',                                   // ring expansion speed
++        '    float q = (dist - front) / 0.10;',
++        '    float band = exp(-q * q);',                                      // gaussian ring envelope
++        '    float wave = sin((dist - front) * 48.0 - age * 6.0);',
++        '    float amp = r.w * exp(-age * 1.4) * 0.028;',
++        '    float e = band * amp;',
++        '    disp += (d / max(dist, 1e-4)) * wave * e;',
++        '    energy += e;',
++        '  }',
++        '',
++        '  vec2 suv = vUv + disp / vec2(aspect, 1.0);',
++        '',
++        '  vec4 col = vec4(0.0);',
++        '  if (uHasBg > 0.5) {',
++        '    vec2 buv = (suv - 0.5) * uBgScale + 0.5;',
++        '    vec3 bg = texture2D(uBg, buv).rgb * 0.5;',                    // same 50% darkening as the CSS overlay
++        '    bg += energy * 5.0;',                                        // soft glint on wave crests
++        '    col = vec4(bg, 1.0);',
++        '  }',
++        '',
++        '  vec4 dom = texture2D(uDom, suv);',                              // premultiplied
++        '  gl_FragColor = dom + col * (1.0 - dom.a);',
++        '}'
++      ].join('\n');
++
++      function compile(type, src) {
++        var s = gl.createShader(type);
++        gl.shaderSource(s, src);
++        gl.compileShader(s);
++        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
++          console.warn('[hero-gl] shader error:', gl.getShaderInfoLog(s));
++          gl.deleteShader(s);
++          return null;
++        }
++        return s;
++      }
++
++      var vs = compile(gl.VERTEX_SHADER, VERT);
++      var fs = compile(gl.FRAGMENT_SHADER, FRAG);
++      if (!vs || !fs) return;
++      var prog = gl.createProgram();
++      gl.attachShader(prog, vs);
++      gl.attachShader(prog, fs);
++      gl.linkProgram(prog);
++      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
++        console.warn('[hero-gl] link error:', gl.getProgramInfoLog(prog));
++        return;
++      }
++      gl.useProgram(prog);
++
++      // Full-screen quad
++      var buf = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
++      var aPos = gl.getAttribLocation(prog, 'aPos');
++      gl.enableVertexAttribArray(aPos);
++      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
++
++      var U = {};
++      ['uDom', 'uBg', 'uHasBg', 'uRes', 'uBgScale', 'uTime', 'uRipples', 'uCount'].forEach(function (n) {
++        U[n] = gl.getUniformLocation(prog, n);
++      });
++
++      function makeTexture(unit) {
++        var t = gl.createTexture();
++        gl.activeTexture(gl.TEXTURE0 + unit);
++        gl.bindTexture(gl.TEXTURE_2D, t);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++        return t;
++      }
++
++      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
++      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
++      var domTex = makeTexture(0);
++      var bgTex = makeTexture(1);
++      gl.uniform1i(U.uDom, 0);
++      gl.uniform1i(U.uBg, 1);
++      gl.uniform1f(U.uHasBg, 0);
++      gl.uniform2f(U.uBgScale, 1, 1);
++      gl.clearColor(0, 0, 0, 0);
++
++      /* ---------- DOM -> texture painter ---------- */
++
++      var dpr = Math.min(window.devicePixelRatio || 1, 2);
++      var off = document.createElement('canvas');
++      var octx = off.getContext('2d');
++      var nodes = Array.prototype.slice.call(hero.querySelectorAll('.gl-text'));
++      var heroRect = hero.getBoundingClientRect();
++      var bgAspect = 0;
++      var curW = 0, curH = 0;
++
++      function px(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
++
++      function roundRect(ctx, x, y, w, h, r) {
++        r = Math.min(r, w / 2, h / 2);
++        ctx.beginPath();
++        ctx.moveTo(x + r, y);
++        ctx.arcTo(x + w, y, x + w, y + h, r);
++        ctx.arcTo(x + w, y + h, x, y + h, r);
++        ctx.arcTo(x, y + h, x, y, r);
++        ctx.arcTo(x, y, x + w, y, r);
++        ctx.closePath();
++      }
++
++      // Paint one text node line-by-line using the browser's own line boxes,
++      // so wrapping and positioning match the real DOM exactly.
++      function paintTextNode(ctx, node, cs) {
++        var text = node.textContent;
++        if (!text.trim()) return;
++        ctx.font = [cs.fontStyle, cs.fontWeight, cs.fontSize, cs.fontFamily].join(' ');
++        if ('letterSpacing' in ctx) ctx.letterSpacing = cs.letterSpacing === 'normal' ? '0px' : cs.letterSpacing;
++        ctx.fillStyle = cs.color;
++        ctx.textBaseline = 'alphabetic';
++        ctx.textAlign = 'left';
++
++        var range = document.createRange();
++        var lineStart = -1, lineTop = 0, lineLeft = 0, lineHeight = 0;
++
++        function flush(end) {
++          if (lineStart < 0 || end <= lineStart) return;
++          var s = text.slice(lineStart, end).replace(/\s+$/, '');
++          if (!s) return;
++          var m = ctx.measureText(s);
++          var ascent = m.fontBoundingBoxAscent != null ? m.fontBoundingBoxAscent : lineHeight * 0.8;
++          ctx.fillText(s, lineLeft - heroRect.left, lineTop - heroRect.top + ascent);
++        }
++
++        for (var i = 0; i < text.length; i++) {
++          range.setStart(node, i);
++          range.setEnd(node, i + 1);
++          var r = range.getBoundingClientRect();
++          if (r.width === 0 && r.height === 0) continue;          // collapsed whitespace
++          var newLine = lineStart < 0 || Math.abs(r.top - lineTop) > 1;
++          if (newLine && /\s/.test(text[i])) continue;            // don't start a line on a space
++          if (newLine) {
++            flush(i);
++            lineStart = i;
++            lineTop = r.top;
++            lineLeft = r.left;
++            lineHeight = r.height;
++          }
++        }
++        flush(text.length);
++      }
++
++      function paintElement(ctx, el) {
++        var cs = getComputedStyle(el);
++        var r = el.getBoundingClientRect();
++
++        // Box background (the button) comes from the registered --gl-bg property.
++        var bg = cs.getPropertyValue('--gl-bg').trim();
++        if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') {
++          ctx.fillStyle = bg;
++          roundRect(ctx, r.left - heroRect.left, r.top - heroRect.top, r.width, r.height, px(cs.borderTopLeftRadius));
++          ctx.fill();
++        }
++
++        for (var n = el.firstChild; n; n = n.nextSibling) {
++          if (n.nodeType === 3) paintTextNode(ctx, n, cs);
++          else if (n.nodeType === 1) paintElement(ctx, n);
++        }
++      }
++
++      function paintDom() {
++        heroRect = hero.getBoundingClientRect();
++        var w = Math.max(1, Math.round(heroRect.width * dpr));
++        var h = Math.max(1, Math.round(heroRect.height * dpr));
++        if (curW !== w || curH !== h) {
++          curW = w; curH = h;
++          off.width = w; off.height = h;
++          canvas.width = w; canvas.height = h;
++          gl.viewport(0, 0, w, h);
++          gl.uniform2f(U.uRes, w, h);
++          updateBgScale();
++        }
++        octx.setTransform(dpr, 0, 0, dpr, 0, 0);
++        octx.clearRect(0, 0, heroRect.width, heroRect.height);
++        nodes.forEach(function (el) { paintElement(octx, el); });
++
++        gl.activeTexture(gl.TEXTURE0);
++        gl.bindTexture(gl.TEXTURE_2D, domTex);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, off);
++      }
++
++      function updateBgScale() {
++        if (!bgAspect) return;
++        var a = canvas.width / canvas.height;              // cover-fit, like background-size: cover
++        if (a > bgAspect) gl.uniform2f(U.uBgScale, 1, bgAspect / a);
++        else gl.uniform2f(U.uBgScale, a / bgAspect, 1);
++      }
++
++      // Background photo (same asset as the CSS). If CORS fails we just leave the
++      // CSS background visible underneath the transparent canvas.
++      (function loadBg() {
++        var m = /url\(['"]?([^'")]+)['"]?\)/.exec(getComputedStyle(hero).backgroundImage);
++        if (!m) return;
++        var img = new Image();
++        img.crossOrigin = 'anonymous';
++        img.onload = function () {
++          try {
++            gl.activeTexture(gl.TEXTURE1);
++            gl.bindTexture(gl.TEXTURE_2D, bgTex);
++            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
++            bgAspect = img.naturalWidth / img.naturalHeight;
++            updateBgScale();
++            gl.uniform1f(U.uHasBg, 1);
++          } catch (e) { /* tainted or unsupported: keep CSS background */ }
++        };
++        img.src = m[1];
++      })();
++
++      /* ---------- Ripple state ---------- */
++
++      var ripples = [];
++      var rippleData = new Float32Array(MAX_RIPPLES * 4);
++      var t0 = performance.now();
++      var lastPointer = 0, lastSpawnX = -1, lastSpawnY = -1, lastSpawnT = 0;
++
++      function now() { return (performance.now() - t0) / 1000; }
++
++      function spawn(x, y, strength) {
++        if (ripples.length >= MAX_RIPPLES) ripples.shift();
++        ripples.push({ x: x, y: y, t: now(), s: strength });
++      }
++
++      function toUv(e) {
++        var r = hero.getBoundingClientRect();
++        return { x: (e.clientX - r.left) / r.width, y: 1 - (e.clientY - r.top) / r.height };
++      }
++
++      hero.addEventListener('pointermove', function (e) {
++        var uv = toUv(e), t = now();
++        lastPointer = t;
++        var dx = (uv.x - lastSpawnX) * heroRect.width, dy = (uv.y - lastSpawnY) * heroRect.height;
++        if (Math.sqrt(dx * dx + dy * dy) > 28 || t - lastSpawnT > 0.12) {
++          spawn(uv.x, uv.y, 0.35);
++          lastSpawnX = uv.x; lastSpawnY = uv.y; lastSpawnT = t;
++        }
++      }, { passive: true });
++
++      hero.addEventListener('pointerenter', function (e) {
++        var uv = toUv(e); spawn(uv.x, uv.y, 0.7); lastPointer = now();
++      });
++
++      // Clicks still reach the real button because the canvas is pointer-events: none.
++      hero.addEventListener('pointerdown', function (e) {
++        var uv = toUv(e); spawn(uv.x, uv.y, 1.0); lastPointer = now();
++      }, { passive: true });
++
++      /* ---------- Texture invalidation ---------- */
++
++      var needsPaint = true, dirtyUntil = 0;
++      function invalidate(ms) {
++        needsPaint = true;
++        if (ms) dirtyUntil = Math.max(dirtyUntil, performance.now() + ms);
++      }
++
++      nodes.forEach(function (el) {
++        if (!el.matches('a, button')) return;
++        ['pointerenter', 'pointerleave', 'focus', 'blur'].forEach(function (ev) {
++          el.addEventListener(ev, function () { invalidate(400); });  // follow the 0.3s colour transition
++        });
++      });
++
++      if (window.ResizeObserver) {
++        new ResizeObserver(function () { invalidate(0); }).observe(hero);
++      } else {
++        window.addEventListener('resize', function () { invalidate(0); });
++      }
++      if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { invalidate(0); });
++      window.addEventListener('load', function () { invalidate(0); });
++
++      /* ---------- Render loop ---------- */
++
++      var visible = true, raf = 0;
++      if (window.IntersectionObserver) {
++        new IntersectionObserver(function (entries) {
++          visible = entries[0].isIntersecting;
++          if (visible) schedule();
++        }).observe(hero);
++      }
++      document.addEventListener('visibilitychange', function () { if (!document.hidden) schedule(); });
++
++      function schedule() {
++        if (!raf) raf = requestAnimationFrame(frame);
++      }
++
++      var nextAmbient = 0.6;
++      function frame() {
++        raf = 0;
++        if (!visible || document.hidden) return;
++        var t = now();
++
++        if (needsPaint || performance.now() < dirtyUntil) {
++          paintDom();
++          needsPaint = false;
++        }
++
++        // Ambient drops when the pointer is idle.
++        if (t > nextAmbient) {
++          if (t - lastPointer > 1.5) spawn(0.15 + Math.random() * 0.7, 0.2 + Math.random() * 0.6, 0.55);
++          nextAmbient = t + 2.2 + Math.random() * 1.6;
++        }
++
++        // Drop finished ripples, upload the rest.
++        var live = [];
++        for (var i = 0; i < ripples.length; i++) if (t - ripples[i].t < 3.5) live.push(ripples[i]);
++        ripples = live;
++        for (var j = 0; j < MAX_RIPPLES; j++) {
++          var r = ripples[j];
++          rippleData[j * 4] = r ? r.x : 0;
++          rippleData[j * 4 + 1] = r ? r.y : 0;
++          rippleData[j * 4 + 2] = r ? r.t : 0;
++          rippleData[j * 4 + 3] = r ? r.s : 0;
++        }
++        gl.uniform4fv(U.uRipples, rippleData);
++        gl.uniform1i(U.uCount, ripples.length);
++        gl.uniform1f(U.uTime, t);
++
++        gl.clear(gl.COLOR_BUFFER_BIT);
++        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
++        schedule();
++      }
++
++      canvas.addEventListener('webglcontextlost', function (e) {
++        e.preventDefault();
++        hero.classList.remove('gl-on');       // fall back to plain DOM rendering
++        if (raf) cancelAnimationFrame(raf);
++        raf = 0;
++      });
++
++      // Everything compiled: hand rendering over to the shader.
++      hero.classList.add('gl-on');
++      paintDom();
++      spawn(0.5, 0.5, 1.0);
++      schedule();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

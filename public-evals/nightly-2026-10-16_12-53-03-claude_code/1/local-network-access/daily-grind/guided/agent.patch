@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+index 66c9173..7c7267c 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,22 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .local-access {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .local-access button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .local-access [data-remediation] {
++      margin-top: 10px;
++      color: #b71c1c;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +211,17 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="local-access">
++      <h2>Order Pickup Kiosk</h2>
++      <p>Connect to a Daily Grind pickup kiosk on your local network or the companion app on this device.</p>
++      <p>Local network access: <strong data-permission-status="local-network">unknown</strong>
++        &middot; Loopback access: <strong data-permission-status="loopback-network">unknown</strong></p>
++      <button type="button" class="btn" id="connect-local">Connect to Local Devices</button>
++      <p id="local-result" role="status"></p>
++      <p data-remediation="local-network" hidden>Local network access is blocked. Re-enable "Local network" in your browser's site settings.</p>
++      <p data-remediation="loopback-network" hidden>Loopback access is blocked. Re-enable "Loopback network" in your browser's site settings.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +234,57 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    async function checkNetworkPermission(name) {
++      if (!navigator.permissions?.query) return 'prompt';
++      try {
++        const status = await navigator.permissions.query({ name });
++        status.addEventListener('change', () => updatePermissionUI(name, status.state));
++        updatePermissionUI(name, status.state);
++        return status.state;
++      } catch {
++        // Unrecognized permission name: proceed on user gesture
++        updatePermissionUI(name, 'prompt');
++        return 'prompt';
++      }
++    }
++
++    function updatePermissionUI(name, state) {
++      const badge = document.querySelector(`[data-permission-status="${name}"]`);
++      const remediation = document.querySelector(`[data-remediation="${name}"]`);
++      if (badge) badge.textContent = state;
++      if (remediation) remediation.hidden = state !== 'denied';
++    }
++
++    // Placeholder endpoints; replace with real kiosk / companion app addresses.
++    const LOCAL_URL = 'http://192.168.1.100:8080/api/status';
++    const LOOPBACK_URL = 'http://127.0.0.1:45678/health';
++
++    async function fetchJson(url, targetAddressSpace) {
++      const response = await fetch(new Request(url, { mode: 'cors', targetAddressSpace }));
++      if (!response.ok) throw new Error(`HTTP ${response.status}`);
++      return response.json();
++    }
++
++    checkNetworkPermission('local-network');
++    checkNetworkPermission('loopback-network');
++
++    // Requests are only made from a user gesture so the browser can show its prompt.
++    document.getElementById('connect-local').addEventListener('click', async () => {
++      const result = document.getElementById('local-result');
++      result.textContent = 'Connecting…';
++      const [kiosk, companion] = await Promise.allSettled([
++        fetchJson(LOCAL_URL, 'local'),
++        fetchJson(LOOPBACK_URL, 'loopback'),
++      ]);
++      result.textContent =
++        `Kiosk: ${kiosk.status === 'fulfilled' ? 'connected' : 'unavailable'}. ` +
++        `Companion app: ${companion.status === 'fulfilled' ? 'connected' : 'unavailable'}.` +
++        (kiosk.status === 'rejected' || companion.status === 'rejected'
++          ? ' Check that the device is on, on the same network, and allowed in browser permissions.'
++          : '');
++    });
++  </script>
+ </body>
+ 
+ </html>

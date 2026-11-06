@@ -1,0 +1,259 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -6,8 +6,9 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      view-transition-name: none;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+@@ -134,8 +135,142 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .bean-selection {
++      margin-top: 40px;
++    }
++
++    .bean-selection h2,
++    .bean-selection > p {
++      text-align: center;
++    }
++
++    .bean-form {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: end;
++      gap: 12px;
++      margin: 24px 0 20px;
++    }
++
++    .bean-field {
++      flex: 1 1 220px;
++    }
++
++    .bean-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .bean-field input {
++      width: 100%;
++      padding: 11px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    button {
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .bean-form .btn {
++      border: 0;
++      margin: 0;
++    }
++
++    .bean-list {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      list-style: none;
++    }
++
++    .item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      padding: 18px 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      view-transition-class: bean-item;
++    }
++
++    .remove-bean {
++      flex-shrink: 0;
++      padding: 6px 12px;
++      color: var(--primary);
++      background: transparent;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .remove-bean:hover {
++      background: var(--secondary);
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Snapshots must not intercept clicks on the live controls. */
++    ::view-transition,
++    ::view-transition-group(*),
++    ::view-transition-image-pair(*),
++    ::view-transition-old(*),
++    ::view-transition-new(*) {
++      pointer-events: none;
++    }
++
++    ::view-transition-group(root),
++    ::view-transition-old(root),
++    ::view-transition-new(root) {
++      animation: none;
++    }
++
++    ::view-transition-group(.bean-item) {
++      animation-duration: 0.5s;
++      animation-timing-function: ease-in-out;
++    }
++
++    ::view-transition-new(.bean-item):only-child {
++      animation: bean-enter 1s ease-in-out both;
++    }
++
++    ::view-transition-old(.bean-item):only-child {
++      animation: bean-exit 1s ease-in-out both;
++    }
++
++    @keyframes bean-enter {
++      from { transform: translateX(-100%); opacity: 0; }
++      to { transform: translateX(0); opacity: 1; }
++    }
++
++    @keyframes bean-exit {
++      from { transform: translateX(0); opacity: 1; }
++      to { transform: translateX(-100%); opacity: 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after,
++      ::view-transition-group(*),
++      ::view-transition-image-pair(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++        transition: none !important;
++        scroll-behavior: auto !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +329,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="bean-selection" aria-labelledby="beans-heading">
++      <h2 id="beans-heading">Your Coffee Bean Selections</h2>
++      <p>Find your daily favorite, or add a blend of your own.</p>
++      <form class="bean-form" id="bean-form">
++        <div class="bean-field">
++          <label for="bean-name">Custom bean name</label>
++          <input id="bean-name" name="bean-name" type="text" maxlength="100" placeholder="e.g. Sunday Morning Blend">
++        </div>
++        <button class="btn" type="submit">Add Item</button>
++      </form>
++      <ul class="bean-list" id="bean-list" aria-label="Coffee bean selections">
++        <li class="item" style="view-transition-name: bean-1;">
++          <span>Ethiopian Yirgacheffe</span>
++          <button class="remove-bean" type="button" aria-label="Remove Ethiopian Yirgacheffe">Remove</button>
++        </li>
++        <li class="item" style="view-transition-name: bean-2;">
++          <span>Colombian Supremo</span>
++          <button class="remove-bean" type="button" aria-label="Remove Colombian Supremo">Remove</button>
++        </li>
++        <li class="item" style="view-transition-name: bean-3;">
++          <span>Sumatra Mandheling</span>
++          <button class="remove-bean" type="button" aria-label="Remove Sumatra Mandheling">Remove</button>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +366,68 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const beanList = document.querySelector('#bean-list');
++    const beanForm = document.querySelector('#bean-form');
++    const beanName = document.querySelector('#bean-name');
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    let nextBeanId = 4;
++    let activeTransition;
++
++    function updateBeans(update) {
++      // Interrupt an older animation so repeated clicks are handled immediately.
++      activeTransition?.skipTransition();
++      if (reducedMotion.matches || !document.startViewTransition ||
++          !CSS.supports('view-transition-class', 'bean-item')) {
++        update();
++        return;
++      }
++      const transition = document.startViewTransition(update);
++      activeTransition = transition;
++      // Skipping a transition rejects ready, but still performs its DOM update.
++      transition.ready.catch(() => {});
++      transition.finished.finally(() => {
++        if (activeTransition === transition) activeTransition = undefined;
++      }).catch(() => {});
++    }
++
++    reducedMotion.addEventListener('change', () => {
++      if (reducedMotion.matches) activeTransition?.skipTransition();
++    });
++
++    beanForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const id = nextBeanId++;
++      const name = beanName.value.trim() || `Custom Blend ${id - 3}`;
++      const item = document.createElement('li');
++      item.className = 'item';
++      item.style.viewTransitionName = `bean-${id}`;
++      const label = document.createElement('span');
++      label.textContent = name;
++      const remove = document.createElement('button');
++      remove.type = 'button';
++      remove.className = 'remove-bean';
++      remove.textContent = 'Remove';
++      remove.setAttribute('aria-label', `Remove ${name}`);
++      item.append(label, remove);
++      beanName.value = '';
++      updateBeans(() => beanList.append(item));
++    });
++
++    beanList.addEventListener('click', (event) => {
++      const remove = event.target.closest('.remove-bean');
++      if (!remove) return;
++      const item = remove.closest('.item');
++      updateBeans(() => {
++        if (item.contains(document.activeElement)) {
++          const neighbor = item.nextElementSibling || item.previousElementSibling;
++          (neighbor?.querySelector('button') || beanForm.querySelector('button')).focus();
++        }
++        item.remove();
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

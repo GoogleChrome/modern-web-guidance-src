@@ -1,0 +1,117 @@
+diff --git a/index.html b/index.html
+index 66c9173..bc6103d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,112 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ==========================================================
++       Progressive enhancements
++       Each block below is gated with @supports at-rule(...) so it
++       only applies in browsers that understand the newer @-rule it
++       relies on. Browsers without support keep the baseline styles
++       above, which are fully functional on their own.
++       ========================================================== */
++
++    /* Navigation: fade/slide in on first render via @starting-style */
++    @supports at-rule(@starting-style) {
++      nav {
++        background: rgba(78, 52, 46, 0.92);
++        backdrop-filter: blur(8px);
++        opacity: 1;
++        translate: 0 0;
++        transition: opacity 0.5s ease, translate 0.5s ease;
++      }
++
++      @starting-style {
++        nav {
++          opacity: 0;
++          translate: 0 -100%;
++        }
++      }
++
++      nav a {
++        transition: color 0.3s, background-color 0.3s;
++      }
++
++      .logout-link:hover {
++        background-color: var(--accent);
++        color: var(--primary);
++      }
++    }
++
++    /* Hero: animatable typed custom property via @property */
++    @supports at-rule(@property) {
++      @property --hero-shade {
++        syntax: '<number>';
++        inherits: false;
++        initial-value: 0.5;
++      }
++
++      .hero {
++        background: linear-gradient(rgba(0, 0, 0, var(--hero-shade)), rgba(0, 0, 0, calc(var(--hero-shade) + 0.15))),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        animation: hero-reveal 2.5s ease-out both;
++      }
++
++      @keyframes hero-reveal {
++        from {
++          --hero-shade: 0.85;
++        }
++
++        to {
++          --hero-shade: 0.45;
++        }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        .hero {
++          animation: none;
++        }
++      }
++    }
++
++    /* Seasonal favorite cards: layout adapts to card width via @container */
++    @supports at-rule(@container) {
++      .grid {
++        grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++      }
++
++      .card {
++        container: card / inline-size;
++        display: flex;
++        flex-direction: column;
++        transition: transform 0.25s ease, box-shadow 0.25s ease;
++      }
++
++      .card:hover {
++        transform: translateY(-4px);
++        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
++      }
++
++      .card .btn {
++        margin-top: auto;
++        align-self: center;
++      }
++
++      .card p {
++        margin-bottom: 15px;
++      }
++
++      @container card (min-width: 340px) {
++        .card h3 {
++          font-size: 1.4rem;
++        }
++
++        .card p {
++          font-size: 1.05rem;
++        }
++      }
++    }
+   </style>
+ </head>
+ 

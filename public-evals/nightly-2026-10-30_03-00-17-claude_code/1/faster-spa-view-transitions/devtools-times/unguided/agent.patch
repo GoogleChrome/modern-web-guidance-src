@@ -1,0 +1,247 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..aee7d6c 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,5 +1,6 @@
+ import React, { useState } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
++import { useResetOnNavigation } from '../hooks/useResetOnNavigation';
+ 
+ interface BottomNavProps {
+     categories: string[];
+@@ -10,6 +11,7 @@ interface BottomNavProps {
+ 
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    useResetOnNavigation(() => setActiveCategory(null));
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..16b6aab 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -1,6 +1,7 @@
+ 
+ import React, { useState, useEffect } from 'react';
+ import ReadingListFlyout from './ReadingListFlyout';
++import { useResetOnNavigation } from '../hooks/useResetOnNavigation';
+ 
+ interface Article {
+   slug: string;
+@@ -12,6 +13,7 @@ interface Article {
+ export default function ReadingListButton() {
+   const [isOpen, setIsOpen] = useState(false);
+   const [articles, setArticles] = useState<Article[]>([]);
++  useResetOnNavigation(() => setIsOpen(false));
+ 
+   useEffect(() => {
+     const fetchArticles = async () => {
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..28c8b09 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,6 +1,7 @@
+ 
+ import React, { useState } from 'react';
+ import SearchFlyout from './SearchFlyout';
++import { useResetOnNavigation } from '../hooks/useResetOnNavigation';
+ 
+ interface Article {
+     slug: string;
+@@ -12,6 +13,7 @@ export default function SearchButton() {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+     const [articles, setArticles] = useState<Article[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
++    useResetOnNavigation(() => setIsFlyoutOpen(false));
+ 
+     const openSearch = async () => {
+         try {
+diff --git a/src/hooks/useResetOnNavigation.ts b/src/hooks/useResetOnNavigation.ts
+new file mode 100644
+index 0000000..5c608ab
+--- /dev/null
++++ b/src/hooks/useResetOnNavigation.ts
+@@ -0,0 +1,17 @@
++import { useEffect, useRef } from 'react';
++
++/**
++ * Runs `reset` whenever the ClientRouter swaps the page. Views can be kept
++ * alive in the view cache and restored later, so transient UI such as open
++ * flyouts must be closed when the user navigates away.
++ */
++export function useResetOnNavigation(reset: () => void) {
++  const resetRef = useRef(reset);
++  resetRef.current = reset;
++
++  useEffect(() => {
++    const onSwap = () => resetRef.current();
++    document.addEventListener('astro:after-swap', onSwap);
++    return () => document.removeEventListener('astro:after-swap', onSwap);
++  }, []);
++}
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..dffd5dd 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..164ced1
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,145 @@
++/**
++ * View cache for the ClientRouter.
++ *
++ * By default every ClientRouter navigation fetches and parses the target page,
++ * replaces <body> and unmounts all islands of the previous page. This module
++ * keeps the live <body> of recently left pages around instead. When the user
++ * navigates back (or forward) to one of them, the preserved DOM tree — with its
++ * still-mounted framework islands — is swapped back in without any network
++ * request, HTML parsing or re-hydration.
++ */
++import {
++  swapFunctions,
++  type TransitionBeforePreparationEvent,
++  type TransitionBeforeSwapEvent,
++} from "astro:transitions/client";
++
++/** Maximum number of views kept in memory. */
++const MAX_ENTRIES = 8;
++/**
++ * Navigation types that may be served from the cache. Only history traversals
++ * (back/forward) are restored, so following a link always shows fresh content.
++ */
++const CACHEABLE_NAVIGATION_TYPES = new Set(["traverse"]);
++/** Attributes the router manages on <html> itself; never restore them. */
++const ROUTER_ROOT_ATTRS = new Set([
++  "data-astro-transition",
++  "data-astro-transition-fallback",
++]);
++
++interface CachedView {
++  body: HTMLElement;
++  head: Element[];
++  rootAttributes: [string, string][];
++}
++
++const cache = new Map<string, CachedView>();
++// Documents handed to the router by our loader, mapped to the view they restore.
++const restoreDocuments = new WeakMap<Document, CachedView>();
++
++const keyFor = (url: URL) => url.pathname + url.search;
++
++// Islands dispatch `astro:unmount` on themselves once they have been removed
++// from the document. Stopping it on the cached body keeps their framework roots
++// (and component state) alive while the view is detached.
++const keepIslandsMounted = (event: Event) => event.stopImmediatePropagation();
++
++function snapshot(): CachedView {
++  const body = document.body;
++  body.querySelectorAll(".astro-route-announcer").forEach((el) => el.remove());
++  body.addEventListener("astro:unmount", keepIslandsMounted, { capture: true });
++
++  const head = Array.from(document.head.children, (el) => {
++    const clone = el.cloneNode(true) as Element;
++    // Everything in the current head has already run on this view.
++    if (clone instanceof HTMLScriptElement) clone.dataset.astroExec = "";
++    return clone;
++  });
++  const rootAttributes = Array.from(
++    document.documentElement.attributes,
++    ({ name, value }): [string, string] => [name, value],
++  ).filter(([name]) => !ROUTER_ROOT_ATTRS.has(name));
++
++  return { body, head, rootAttributes };
++}
++
++function store(key: string, view: CachedView) {
++  cache.delete(key);
++  cache.set(key, view);
++  while (cache.size > MAX_ENTRIES) {
++    const [oldestKey, oldest] = cache.entries().next().value!;
++    cache.delete(oldestKey);
++    evict(oldest);
++  }
++}
++
++function evict(view: CachedView) {
++  view.body.removeEventListener("astro:unmount", keepIslandsMounted, {
++    capture: true,
++  });
++  view.body
++    .querySelectorAll("astro-island")
++    .forEach((island) => island.dispatchEvent(new CustomEvent("astro:unmount")));
++}
++
++// Build a lightweight document carrying the cached head and <html> attributes.
++// The body is swapped in separately so the live nodes are never adopted into
++// another document.
++function toDocument(view: CachedView): Document {
++  const doc = document.implementation.createHTMLDocument();
++  for (const [name, value] of view.rootAttributes) {
++    doc.documentElement.setAttribute(name, value);
++  }
++  doc.head.replaceChildren(...view.head.map((el) => el.cloneNode(true)));
++  return doc;
++}
++
++function isCacheable(body: HTMLElement) {
++  // Persisted elements move to the next page; the view would be incomplete.
++  return !body.querySelector("[data-astro-transition-persist]");
++}
++
++document.addEventListener("astro:before-preparation", (event) => {
++  const prep = event as TransitionBeforePreparationEvent;
++  if (prep.formData || !CACHEABLE_NAVIGATION_TYPES.has(prep.navigationType)) {
++    return;
++  }
++  const view = cache.get(keyFor(prep.to));
++  if (!view) return;
++
++  prep.loader = async () => {
++    const doc = toDocument(view);
++    restoreDocuments.set(doc, view);
++    prep.newDocument = doc;
++  };
++});
++
++document.addEventListener("astro:before-swap", (event) => {
++  const swap = event as TransitionBeforeSwapEvent;
++  const fromKey = keyFor(swap.from);
++  const view = restoreDocuments.get(swap.newDocument);
++
++  if (view) {
++    cache.delete(keyFor(swap.to));
++    view.body.removeEventListener("astro:unmount", keepIslandsMounted, {
++      capture: true,
++    });
++    swap.swap = () => {
++      const doc = swap.newDocument;
++      swapFunctions.deselectScripts(doc);
++      swapFunctions.swapRootAttributes(doc);
++      swapFunctions.swapHeadElements(doc);
++      // The cached body holds no persisted elements and its media elements are
++      // already live, so a plain replacement is all the body swap needs.
++      document.body.replaceWith(view.body);
++    };
++  }
++
++  if (isCacheable(document.body)) {
++    store(fromKey, snapshot());
++  } else {
++    const stale = cache.get(fromKey);
++    cache.delete(fromKey);
++    if (stale) evict(stale);
++  }
++});

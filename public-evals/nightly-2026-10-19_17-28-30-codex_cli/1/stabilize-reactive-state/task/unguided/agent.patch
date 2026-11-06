@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,41 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .deadline-tracker {
++      margin-top: 40px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .deadline-tracker h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .deadline-value {
++      display: block;
++      font-size: 1.8rem;
++      font-weight: bold;
++      margin: 12px 0;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    .deadline-stats {
++      margin-top: 16px;
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +227,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="card deadline-tracker" aria-labelledby="deadline-heading">
++      <h2 id="deadline-heading">Event Deadline Tracker</h2>
++      <p>Keep your coffee tasting plans on track. Extend the deadline by one day when you need more time.</p>
++      <div aria-live="polite" aria-atomic="true">
++        <p>Registration deadline</p>
++        <time id="temporal-value" class="deadline-value">Loading…</time>
++        <div class="deadline-stats">
++          <p>Date reference changed: <output id="temporal-ref-changed">No</output></p>
++          <p>Re-render count: <output id="temporal-render-count">0</output></p>
++        </div>
++      </div>
++      <button id="extend-temporal-btn" class="btn" type="button" disabled>Extend deadline by 1 day</button>
++      <p id="temporal-status" role="status"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +253,50 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const dateValue = document.getElementById('temporal-value');
++    const referenceChanged = document.getElementById('temporal-ref-changed');
++    const renderCountValue = document.getElementById('temporal-render-count');
++    const extendButton = document.getElementById('extend-temporal-btn');
++
++    try {
++      const Temporal = globalThis.Temporal ??
++        (await import('https://esm.sh/@js-temporal/polyfill@0.5.1?bundle')).Temporal;
++
++      let deadline = Temporal.Now.plainDateISO().add({ days: 7 });
++      let renderCount = 0;
++
++      function render(changed) {
++        renderCount += 1;
++        dateValue.textContent = deadline.toString();
++        dateValue.dateTime = deadline.toString();
++        referenceChanged.textContent = changed ? 'Yes' : 'No';
++        renderCountValue.textContent = String(renderCount);
++      }
++
++      function setDeadline(nextDeadline) {
++        if (Object.is(deadline, nextDeadline)) return;
++        const previousDeadline = deadline;
++        deadline = nextDeadline;
++        render(!Object.is(previousDeadline, deadline));
++      }
++
++      extendButton.addEventListener('click', () => {
++        // Temporal.add returns a new date, allowing the state update to trigger a render.
++        setDeadline(deadline.add({ days: 1 }));
++      });
++
++      render(false);
++      extendButton.disabled = false;
++    } catch (error) {
++      dateValue.textContent = 'Unavailable';
++      document.getElementById('temporal-status').textContent =
++        'The deadline tracker could not load. Please reload the page to try again.';
++      console.error('Unable to initialize the deadline tracker:', error);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

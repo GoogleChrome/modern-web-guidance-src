@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+index 1bacf96..e4f7fa3 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,35 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Derived colors. Fallbacks for browsers without relative color support. */
++      --primary-hover: #3e2723;
++      --on-primary: #ffffff;
++      --on-primary-hover: #ffffff;
++      --on-secondary: #000000;
++    }
++
++    /*
++     * Auto-contrast text: pick black or white based on the background's
++     * perceptual lightness (OKLCH L), so text stays readable whenever
++     * --primary or --secondary is changed.
++     */
++    @supports (color: oklch(from red l c h)) {
++      :root {
++        --primary-hover: oklch(from var(--primary) calc(l * 0.8) c h);
++        --on-primary: oklch(from var(--primary) clamp(0, (0.62 - l) * infinity, 1) 0 0);
++        --on-primary-hover: oklch(from var(--primary-hover) clamp(0, (0.62 - l) * infinity, 1) 0 0);
++        --on-secondary: oklch(from var(--secondary) clamp(0, (0.62 - l) * infinity, 1) 0 0);
++      }
++    }
++
++    /* Prefer the native WCAG-based function where available. */
++    @supports (color: contrast-color(red)) {
++      :root {
++        --on-primary: contrast-color(var(--primary));
++        --on-primary-hover: contrast-color(var(--primary-hover));
++        --on-secondary: contrast-color(var(--secondary));
++      }
+     }
+ 
+     * {
+@@ -30,7 +59,7 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: var(--on-primary);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +85,18 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--on-primary);
+       text-decoration: none;
++      text-decoration-color: var(--accent);
++      text-decoration-thickness: 2px;
++      text-underline-offset: 4px;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
++    /* Underline in the accent color instead of recoloring the text, which
++       could lose contrast against an arbitrary --primary. */
+     nav a:hover {
+-      color: var(--accent);
++      text-decoration-line: underline;
+     }
+ 
+     .logout-link {
+@@ -123,19 +156,22 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
++      color: var(--on-primary);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-hover);
++      color: var(--on-primary-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--on-secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,7 +183,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--on-secondary);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }

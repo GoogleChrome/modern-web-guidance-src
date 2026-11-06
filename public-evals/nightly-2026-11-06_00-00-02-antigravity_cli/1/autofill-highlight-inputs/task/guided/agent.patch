@@ -1,0 +1,27 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --autofill-ring-color: #2e7d32;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -151,8 +152,13 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    input:is(:autofill, :-webkit-autofill) {
++      box-shadow: inset 0 0 0 2px var(--autofill-ring-color);
++      border-color: var(--autofill-ring-color);
++    }
+   </style>
+ </head>
+ 
+ <body>

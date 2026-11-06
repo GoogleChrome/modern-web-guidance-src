@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import {onCLS, onINP, onLCP, onFCP, onTTFB} from 'https://unpkg.com/web-vitals@5?module';
++
++    const ANALYTICS_ENDPOINT = '/collect';
++    // All metrics reported within this window are batched into one request.
++    const BATCH_WINDOW = 10 * 1000;
++    // Keeps the payload well under the fetchLater() quota (~64KB).
++    const MAX_QUEUE_SIZE = 100;
++
++    // Minimal fetchLater() polyfill: sends when the page is hidden (or the
++    // timeout fires) in browsers that lack the native API.
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if ('keepalive' in Request.prototype || init.method !== 'POST' || init.headers) {
++            fetch(url, Object.assign({}, init, {keepalive: true}));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    const eventQueue = [];
++    let fetchLaterResult;
++    let fetchLaterController;
++
++    function queueMetric(metric) {
++      // Start a new batch if the previous one was sent or the queue is full.
++      if (fetchLaterResult?.activated || eventQueue.length >= MAX_QUEUE_SIZE) {
++        fetchLaterController = null;
++        fetchLaterResult = null;
++        eventQueue.length = 0;
++      }
++
++      const {name, value, rating, delta, id, navigationType} = metric;
++      eventQueue.push({name, value, rating, delta, id, navigationType, page: location.pathname});
++
++      // Replace the pending beacon with one carrying the full queue.
++      fetchLaterController?.abort();
++      fetchLaterController = new AbortController();
++
++      try {
++        fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: {'content-type': 'application/json'},
++          body: JSON.stringify(eventQueue),
++          signal: fetchLaterController.signal,
++          activateAfter: BATCH_WINDOW,
++        });
++      } catch (error) {
++        // Quota exceeded or similar; drop the metric rather than break the page.
++      }
++    }
++
++    onCLS(queueMetric);
++    onINP(queueMetric);
++    onLCP(queueMetric);
++    onFCP(queueMetric);
++    onTTFB(queueMetric);
++  </script>
++
+ </body>
+ 
+ </html>

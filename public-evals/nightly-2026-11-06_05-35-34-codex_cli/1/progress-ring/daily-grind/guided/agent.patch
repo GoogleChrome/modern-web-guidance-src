@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+index 66c9173..7524bbf 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,111 @@
+       background: #3e2723;
+     }
+ 
++    /* Loyalty Rewards */
++    .rewards {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      margin-top: 40px;
++      padding: 32px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .rewards-ring {
++      position: relative;
++      display: grid;
++      place-items: center;
++      flex: 0 0 200px;
++      width: 200px;
++      height: 200px;
++    }
++
++    .rewards-progress {
++      --thickness: 14px;
++      appearance: none;
++      width: 100%;
++      height: 100%;
++      border: var(--thickness) solid transparent;
++      border-radius: 50%;
++      background: conic-gradient(var(--accent) var(--earned), var(--secondary) 0);
++      background-origin: border-box;
++      background-clip: border-area;
++    }
++
++    .rewards-progress::-webkit-progress-bar,
++    .rewards-progress::-webkit-progress-value {
++      display: none;
++    }
++
++    .rewards-progress::-moz-progress-bar {
++      background: transparent;
++    }
++
++    @supports not (background-clip: border-area) {
++      .rewards-progress {
++        border: 0;
++        mask-image: radial-gradient(circle closest-side,
++          transparent calc(100% - var(--thickness) - 0.5px),
++          black calc(100% - var(--thickness)));
++      }
++    }
++
++    .rewards-ring-details {
++      position: absolute;
++      max-width: 150px;
++      text-align: center;
++      pointer-events: none;
++    }
++
++    .rewards-ring-details strong {
++      display: block;
++      color: var(--primary);
++      font-size: 2.5rem;
++      line-height: 1.2;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .rewards-ring-details span {
++      display: block;
++      font-size: 0.85rem;
++    }
++
++    .rewards-copy {
++      max-width: 420px;
++    }
++
++    .rewards-eyebrow {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-bottom: 4px;
++    }
++
++    .rewards-copy h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .rewards-remaining {
++      margin-top: 10px;
++      font-weight: bold;
++    }
++
++    @media (max-width: 600px) {
++      .rewards {
++        flex-direction: column;
++        gap: 24px;
++        padding: 24px 20px;
++        text-align: center;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +300,26 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" aria-labelledby="rewards-heading">
++      <div class="rewards-ring">
++        <progress class="rewards-progress" value="7" max="10" style="--earned: 70%;"
++          aria-label="Drinks earned toward your next free drink"
++          aria-describedby="rewards-remaining"></progress>
++        <div class="rewards-ring-details" aria-hidden="true">
++          <strong>7 / 10</strong>
++          <span>drinks earned</span>
++          <span>toward a free drink</span>
++        </div>
++      </div>
++      <div class="rewards-copy">
++        <p class="rewards-eyebrow">A little thanks, on us</p>
++        <h2 id="rewards-heading">Loyalty Rewards</h2>
++        <p>Your daily ritual comes with a little extra. Earn a free drink for every 10 drinks you purchase.</p>
++        <p class="rewards-remaining" id="rewards-remaining">Just 3 more drinks until your next free cup.</p>
++        <a href="/rewards" class="btn">View My Rewards</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

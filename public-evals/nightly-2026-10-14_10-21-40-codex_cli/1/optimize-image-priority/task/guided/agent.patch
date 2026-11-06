@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,112 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="description" content="Everyday essentials, thoughtfully made. Discover the Everyday Chair from Form.">
++  <title>Form — The Everyday Chair</title>
++  <style>
++    :root { color-scheme: light; font-family: Arial, sans-serif; color: #292b26; background: #f6f5f0; }
++    * { box-sizing: border-box; }
++    body { margin: 0; }
++    a { color: inherit; text-decoration: none; }
++    button { font: inherit; color: inherit; cursor: pointer; }
++    button, .button { border: 1px solid #292b26; background: transparent; padding: 12px 20px; }
++    button:hover, .button:hover { background: #e7e6df; }
++    :focus-visible { outline: 2px solid #61734d; outline-offset: 5px; }
++    [hidden] { display: none !important; }
++    header, main, footer { max-width: 1440px; margin: auto; padding-inline: clamp(20px, 5vw, 80px); }
++    header { height: 88px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9dad1; }
++    .brand { font-size: 26px; font-weight: 700; letter-spacing: -1px; }
++    nav { display: flex; gap: 28px; align-items: center; font-size: 13px; }
++    .menu-button { border: 0; padding: 8px 0; }
++    .menu { position: absolute; right: 5vw; top: 76px; z-index: 1; padding: 20px; background: #f6f5f0; border: 1px solid #d9dad1; width: min(340px, 90vw); }
++    .menu img { display: block; width: 100%; height: auto; background: #e8e7df; margin-bottom: 16px; }
++    .intro { padding: 42px 0 30px; display: flex; justify-content: space-between; align-items: end; gap: 24px; }
++    .eyebrow { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin: 0 0 14px; }
++    h1 { font-size: clamp(32px, 4.5vw, 60px); font-weight: 400; letter-spacing: -2px; margin: 0; }
++    .intro p:last-child { font-size: 14px; line-height: 1.6; max-width: 260px; margin: 0; }
++    .hero { display: block; width: 100%; height: clamp(360px, 57vw, 650px); object-fit: cover; background: #e4e5dc; }
++    .caption { display: flex; justify-content: space-between; gap: 20px; padding: 18px 0; font-size: 11px; }
++    .product { padding-block: 100px; display: grid; grid-template-columns: 1fr 1fr; gap: 10%; align-items: center; }
++    .gallery img { width: 100%; height: auto; display: block; background: #e8e7df; aspect-ratio: 4 / 3; object-fit: cover; }
++    .gallery button { margin-top: 16px; padding: 8px 12px; font-size: 12px; }
++    h2 { font-size: 32px; font-weight: 400; letter-spacing: -1px; margin: 0 0 18px; }
++    .details p { max-width: 340px; font-size: 14px; line-height: 1.8; color: #63655c; }
++    .details .price { color: #292b26; margin-block: 24px; }
++    .button { display: inline-block; font-size: 13px; }
++    .note { min-height: 420px; display: flex; align-items: center; justify-content: center; border-top: 1px solid #d9dad1; text-align: center; }
++    .note p { font-size: clamp(24px, 3vw, 40px); letter-spacing: -1px; line-height: 1.4; }
++    footer { padding-block: 40px; border-top: 1px solid #d9dad1; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 11px; color: #63655c; }
++    footer img { object-fit: contain; }
++    @media (max-width: 600px) { header { height: 72px; } .intro { align-items: start; flex-direction: column; } .product { grid-template-columns: 1fr; gap: 40px; padding-block: 64px; } nav { gap: 18px; } .caption { font-size: 10px; } }
++  </style>
++</head>
++<body>
++  <header>
++    <a class="brand" href="#" aria-label="Form home">form.</a>
++    <nav aria-label="Main navigation">
++      <a href="#product">The chair</a>
++      <button class="menu-button" id="menu-toggle" type="button" aria-expanded="false" aria-controls="promo-menu">Explore +</button>
++      <div class="menu" id="promo-menu" hidden>
++        <img src="mega-menu-promo.jpg" alt="Discover the Form collection" width="600" height="400" fetchpriority="low" loading="lazy">
++        <a href="#product">Discover the everyday collection →</a>
++      </div>
++    </nav>
++  </header>
++  <main>
++    <section aria-labelledby="hero-title">
++      <div class="intro">
++        <div><p class="eyebrow">Considered design. Everyday living.</p><h1 id="hero-title">A place to slow down.</h1></div>
++        <p>Simple lines. Lasting comfort.<br>The Everyday Chair, by Form.</p>
++      </div>
++      <img class="hero" src="hero-lcp.jpg" alt="The Everyday Chair in a quiet, sunlit interior" width="1440" height="900" fetchpriority="high" loading="eager">
++      <div class="caption"><span>01 / THE EVERYDAY CHAIR</span><a href="#product">Explore the details ↓</a></div>
++    </section>
++    <section class="product" id="product" aria-labelledby="product-title">
++      <div class="gallery">
++        <img id="gallery-first" src="hero-lcp.jpg" alt="Everyday Chair, main view" width="800" height="600">
++        <img id="gallery-alt" src="gallery-alt.jpg" alt="Everyday Chair, alternate view showing its construction" width="800" height="600" fetchpriority="low" loading="lazy" hidden>
++        <button id="gallery-toggle" type="button" aria-controls="gallery-alt" aria-expanded="false">Show alternate view ↗</button>
++      </div>
++      <div class="details">
++        <p class="eyebrow">Made for your everyday</p>
++        <h2 id="product-title">Less, but considered.</h2>
++        <p>A warm oak frame. A comfortable seat. A timeless silhouette that feels at home, wherever you place it.</p>
++        <p class="price">The Everyday Chair · $240</p>
++        <a class="button" href="mailto:hello@example.com?subject=Everyday%20Chair%20enquiry">Enquire about the chair →</a>
++      </div>
++    </section>
++    <section class="note" aria-label="Our philosophy"><p>Good design makes room<br>for everyday life.</p></section>
++  </main>
++  <footer>
++    <img src="footer-logo.png" alt="Form" width="100" height="40" loading="lazy">
++    <span>Thoughtfully made. Simply lived.</span>
++    <span>© 2026 Form</span>
++  </footer>
++  <script>
++    const menuToggle = document.getElementById('menu-toggle');
++    const menu = document.getElementById('promo-menu');
++    function closeMenu() { menu.hidden = true; menuToggle.setAttribute('aria-expanded', 'false'); }
++    menuToggle.addEventListener('click', () => {
++      menu.hidden = !menu.hidden;
++      menuToggle.setAttribute('aria-expanded', String(!menu.hidden));
++    });
++    document.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape' && !menu.hidden) { closeMenu(); menuToggle.focus(); }
++    });
++    document.addEventListener('click', (event) => {
++      if (!menu.hidden && !event.target.closest('nav')) closeMenu();
++    });
++    menu.querySelector('a').addEventListener('click', closeMenu);
++    const galleryToggle = document.getElementById('gallery-toggle');
++    galleryToggle.addEventListener('click', () => {
++      const alternate = document.getElementById('gallery-alt');
++      alternate.hidden = !alternate.hidden;
++      document.getElementById('gallery-first').hidden = !alternate.hidden;
++      galleryToggle.setAttribute('aria-expanded', String(!alternate.hidden));
++      galleryToggle.textContent = alternate.hidden ? 'Show alternate view ↗' : 'Show main view ↗';
++    });
++  </script>
++</body>
++</html>

@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .brew-section {
++      display: grid;
++      grid-template-columns: 1fr 1.3fr;
++      gap: 48px;
++      margin-top: 56px;
++      padding: 40px;
++      background: #f1ebe5;
++      border: 1px solid #e4d9d0;
++      border-radius: 12px;
++    }
++
++    .eyebrow {
++      color: #80634f;
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++      margin-bottom: 10px;
++    }
++
++    .brew-section h2 { font-size: 1.9rem; line-height: 1.2; margin-bottom: 14px; }
++    .brew-intro > p:last-child { color: #79665c; max-width: 30ch; }
++    .brew-form { min-width: 0; }
++    .field { margin-bottom: 22px; min-width: 0; }
++    .field label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 7px; }
++    .content-sized {
++      display: block;
++      max-width: 100%;
++      min-width: 64px;
++      padding: 10px 13px;
++      border: 1px solid #d5c7bc;
++      border-radius: 6px;
++      background: #fffdf9;
++      color: var(--text);
++      font: inherit;
++      line-height: 1.5;
++      transition: border-color 0.2s;
++    }
++    .content-sized:focus-visible { outline: 3px solid #ffab4066; outline-offset: 2px; border-color: #80634f; }
++    .content-sized::placeholder { color: #95857b; opacity: 1; }
++    textarea.content-sized { resize: none; overflow: hidden; }
++    select.content-sized { cursor: pointer; padding-right: 32px; }
++    .brew-form .btn { border: 0; font: inherit; cursor: pointer; margin-top: 0; }
++    .form-footnote { color: #79665c; font-size: 0.75rem; margin-top: 10px; }
++    .form-status { font-size: 0.85rem; color: #4e6340; margin-top: 10px; }
++    .form-status:empty { display: none; }
++
++    @media (max-width: 650px) {
++      .brew-section { grid-template-columns: 1fr; gap: 28px; padding: 26px 22px; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +248,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="brew-section" aria-labelledby="brew-title">
++      <div class="brew-intro">
++        <p class="eyebrow">A little more you</p>
++        <h2 id="brew-title">Your perfect cup.</h2>
++        <p>A favorite roast. A splash of oat milk. Tell us what makes your daily ritual yours.</p>
++      </div>
++      <form class="brew-form" id="brew-form">
++        <div class="field">
++          <label for="coffee-name">What should we call you?</label>
++          <input class="content-sized" id="coffee-name" name="name" type="text" placeholder="Your first name" autocomplete="given-name" required>
++        </div>
++        <div class="field">
++          <label for="coffee-choice">Your go-to coffee</label>
++          <select class="content-sized" id="coffee-choice" name="coffee">
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++            <option>Classic Cappuccino</option>
++            <option>Something new, please</option>
++          </select>
++        </div>
++        <div class="field">
++          <label for="coffee-note">Make it yours <span style="font-weight: 400; color: #79665c;">(optional)</span></label>
++          <textarea class="content-sized" id="coffee-note" name="note" rows="1" placeholder="A little oat milk, extra hot…"></textarea>
++        </div>
++        <button class="btn" type="submit">Save my preferences <span aria-hidden="true">&rarr;</span></button>
++        <p class="form-footnote">Saved on this device for your next coffee day.</p>
++        <p class="form-status" id="brew-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +291,70 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.getElementById('brew-form');
++    const fields = [...form.querySelectorAll('.content-sized')];
++    const status = document.getElementById('brew-status');
++    const measure = document.createElement('span');
++    measure.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;pointer-events:none;top:0;left:0;';
++    measure.setAttribute('aria-hidden', 'true');
++    document.body.append(measure);
++
++    function fitField(field) {
++      const style = getComputedStyle(field);
++      measure.style.font = style.font;
++      measure.style.letterSpacing = style.letterSpacing;
++      const text = field.tagName === 'SELECT'
++        ? field.selectedOptions[0].textContent
++        : field.value || field.placeholder || ' ';
++      let width = 0;
++      for (const line of text.split('\n')) {
++        measure.textContent = line || ' ';
++        width = Math.max(width, measure.getBoundingClientRect().width);
++      }
++      const extra = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
++        + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
++      field.style.width = Math.ceil(width + extra + 3) + 'px';
++      if (field.tagName === 'TEXTAREA') {
++        field.style.height = 'auto';
++        field.style.height = (field.scrollHeight + parseFloat(style.borderTopWidth)
++          + parseFloat(style.borderBottomWidth)) + 'px';
++      }
++    }
++
++    function fitAll() { fields.forEach(fitField); }
++    try {
++      const saved = JSON.parse(localStorage.getItem('daily-grind-preferences'));
++      if (saved && typeof saved === 'object') {
++        for (const field of fields) {
++          if (typeof saved[field.name] === 'string'
++            && (field.tagName !== 'SELECT' || [...field.options].some(option => option.value === saved[field.name]))) {
++            field.value = saved[field.name];
++          }
++        }
++      }
++    } catch { /* The form remains usable when storage is unavailable. */ }
++
++    for (const field of fields) {
++      field.addEventListener('input', () => { fitField(field); status.textContent = ''; });
++      field.addEventListener('change', () => fitField(field));
++    }
++    window.addEventListener('resize', fitAll);
++    if (document.fonts) document.fonts.ready.then(fitAll);
++    fitAll();
++
++    form.addEventListener('submit', event => {
++      event.preventDefault();
++      try {
++        localStorage.setItem('daily-grind-preferences', JSON.stringify(Object.fromEntries(new FormData(form))));
++        status.textContent = 'Your preferences are saved. Here’s to your next perfect cup!';
++      } catch {
++        status.textContent = 'Your browser couldn’t save these preferences. Please allow local storage and try again.';
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

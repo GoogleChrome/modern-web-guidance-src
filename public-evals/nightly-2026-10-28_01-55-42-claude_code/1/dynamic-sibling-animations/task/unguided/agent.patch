@@ -1,0 +1,47 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,43 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Staggered card entrance: each card starts 100ms after the previous one */
++    @keyframes card-in {
++      from {
++        opacity: 0;
++        transform: translateY(20px);
++      }
++
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    .grid .card {
++      opacity: 0;
++      animation: card-in 0.5s ease-out forwards;
++      animation-delay: calc((var(--i, 1) - 1) * 100ms);
++    }
++
++    .grid .card:nth-child(1) { --i: 1; }
++    .grid .card:nth-child(2) { --i: 2; }
++    .grid .card:nth-child(3) { --i: 3; }
++    .grid .card:nth-child(4) { --i: 4; }
++    .grid .card:nth-child(5) { --i: 5; }
++    .grid .card:nth-child(6) { --i: 6; }
++    .grid .card:nth-child(7) { --i: 7; }
++    .grid .card:nth-child(8) { --i: 8; }
++
++    @media (prefers-reduced-motion: reduce) {
++      .grid .card {
++        opacity: 1;
++        animation: none;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

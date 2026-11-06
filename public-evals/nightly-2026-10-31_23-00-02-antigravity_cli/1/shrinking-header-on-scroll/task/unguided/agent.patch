@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -24,32 +24,36 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 160vh;
+     }
+ 
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: calc(1.25rem - (0.85rem * var(--scroll-progress, 0))) 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, calc(0.25 * var(--scroll-progress, 0)));
++      transition: background-color 0.3s ease, box-shadow 0.15s ease-out;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: calc(1.5rem - (0.35rem * var(--scroll-progress, 0)));
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -57,9 +61,9 @@
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
++      font-size: calc(0.9rem - (0.05rem * var(--scroll-progress, 0)));
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+@@ -67,12 +71,121 @@
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: calc(5px - (3px * var(--scroll-progress, 0))) calc(12px - (2px * var(--scroll-progress, 0)));
+       border-radius: 4px;
++      transition: color 0.3s, border-color 0.3s;
+     }
+ 
++    /* Fallback state class for older browsers */
++    nav.scrolled {
++      padding-top: calc(1.25rem - (0.85rem * var(--scroll-progress, 1)));
++      padding-bottom: calc(1.25rem - (0.85rem * var(--scroll-progress, 1)));
++      box-shadow: 0 4px 12px rgba(0, 0, 0, calc(0.25 * var(--scroll-progress, 1)));
++    }
++
++    nav.scrolled .logo {
++      font-size: calc(1.5rem - (0.35rem * var(--scroll-progress, 1)));
++    }
++
++    nav.scrolled a {
++      font-size: calc(0.9rem - (0.05rem * var(--scroll-progress, 1)));
++    }
++
++    nav.scrolled .logout-link {
++      padding: calc(5px - (3px * var(--scroll-progress, 1))) calc(12px - (2px * var(--scroll-progress, 1)));
++    }
++
++    /* Modern CSS Scroll-Driven Animations */
++    @keyframes nav-shrink {
++      from {
++        padding-top: 1.25rem;
++        padding-bottom: 1.25rem;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0);
++      }
++      to {
++        padding-top: 0.4rem;
++        padding-bottom: 0.4rem;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      }
++    }
++
++    @keyframes logo-shrink {
++      from {
++        font-size: 1.5rem;
++      }
++      to {
++        font-size: 1.15rem;
++      }
++    }
++
++    @keyframes nav-link-shrink {
++      from {
++        font-size: 0.9rem;
++      }
++      to {
++        font-size: 0.85rem;
++      }
++    }
++
++    @keyframes logout-link-shrink {
++      from {
++        padding: 5px 12px;
++      }
++      to {
++        padding: 2px 10px;
++      }
++    }
++
++    @supports (animation-timeline: scroll()) {
++      nav {
++        animation: nav-shrink linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 150px;
++        transition: none;
++      }
++
++      .logo {
++        animation: logo-shrink linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 150px;
++        transition: none;
++      }
++
++      nav a {
++        animation: nav-link-shrink linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 150px;
++        transition: color 0.3s;
++      }
++
++      .logout-link {
++        animation: logout-link-shrink linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 150px;
++      }
++    }
++
++    @supports not (animation-timeline: scroll()) {
++      nav {
++        padding-top: calc(1.25rem - (0.85rem * var(--scroll-progress, 0)));
++        padding-bottom: calc(1.25rem - (0.85rem * var(--scroll-progress, 0)));
++      }
++
++      .logo {
++        font-size: calc(1.5rem - (0.35rem * var(--scroll-progress, 0)));
++      }
++
++      nav a {
++        font-size: calc(0.9rem - (0.05rem * var(--scroll-progress, 0)));
++      }
++
++      .logout-link {
++        padding: calc(5px - (3px * var(--scroll-progress, 0))) calc(12px - (2px * var(--scroll-progress, 0)));
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -206,7 +319,41 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const nav = document.querySelector('nav');
++      if (!nav) return;
++
++      const SCROLL_RANGE = 150;
++      const supportsScrollTimeline =
++        typeof CSS !== 'undefined' &&
++        typeof CSS.supports === 'function' &&
++        CSS.supports('animation-timeline', 'scroll()');
++
++      function updateNavOnScroll() {
++        const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
++        const progress = Math.min(Math.max(scrollY / SCROLL_RANGE, 0), 1);
++
++        if (scrollY > 0) {
++          nav.style.setProperty('--scroll-progress', progress.toFixed(4));
++        } else {
++          nav.style.removeProperty('--scroll-progress');
++        }
++        nav.classList.toggle('scrolled', scrollY > 10);
++
++        if (!supportsScrollTimeline) {
++          nav.dataset.scrollFallback = 'true';
++        }
++      }
++
++      window.addEventListener('scroll', updateNavOnScroll, { passive: true });
++      window.addEventListener('resize', updateNavOnScroll, { passive: true });
++
++      updateNavOnScroll();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

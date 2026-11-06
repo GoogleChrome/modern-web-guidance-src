@@ -1,0 +1,367 @@
+diff --git a/index.html b/index.html
+index 66c9173..d5e9dc9 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,16 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -62,10 +72,37 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
++    nav ul a:not(.logout-link) {
++      position: relative;
++      padding-bottom: 4px;
++    }
++
++    nav ul a:not(.logout-link)::after {
++      content: "";
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      height: 2px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transition: transform 0.3s;
++    }
++
++    nav ul a.active {
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    nav ul a.active::after {
++      transform: scaleX(1);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -100,6 +137,110 @@
+       padding: 0 20px;
+     }
+ 
++    .page-section {
++      padding: 60px 0;
++      border-bottom: 1px solid var(--secondary);
++      /* Keep headings clear of the sticky nav when jumping to an anchor */
++      scroll-margin-top: var(--nav-height, 70px);
++    }
++
++    .page-section:last-child {
++      border-bottom: none;
++    }
++
++    .page-section > h2 {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--primary);
++    }
++
++    .section-intro {
++      text-align: center;
++      max-width: 640px;
++      margin: 10px auto 0;
++    }
++
++    .section-subheading {
++      text-align: center;
++      margin-top: 40px;
++      color: var(--primary);
++    }
++
++    .menu-list {
++      list-style: none;
++      max-width: 640px;
++      margin: 20px auto 0;
++    }
++
++    .menu-list li {
++      display: flex;
++      justify-content: space-between;
++      gap: 20px;
++      padding: 10px 0;
++      border-bottom: 1px dashed var(--secondary);
++    }
++
++    .menu-list .price {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .card-meta {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-top: 8px;
++    }
++
++    .tiers .card {
++      border-top: 4px solid var(--accent);
++    }
++
++    .tier-points {
++      font-size: 0.85rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #8d6e63;
++      margin-bottom: 8px;
++    }
++
++    .account-panel {
++      text-align: left;
++    }
++
++    .account-panel ul {
++      list-style: none;
++      margin-top: 10px;
++    }
++
++    .account-panel li {
++      padding: 6px 0;
++      border-bottom: 1px solid #efebe9;
++    }
++
++    .account-panel li:last-child {
++      border-bottom: none;
++    }
++
++    .account-panel .btn {
++      margin-top: 15px;
++    }
++
++    @media (max-width: 640px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 10px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++      }
++
++      nav ul li {
++        margin-left: 0;
++        margin-right: 16px;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -160,10 +301,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,8 +316,11 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="page-section" aria-labelledby="menu-heading">
++      <h2 id="menu-heading">Menu</h2>
++      <p class="section-intro">Small-batch roasts and house-made syrups, crafted to order every day.</p>
++
++      <h3 class="section-subheading">Seasonal Favorites</h3>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -194,6 +338,94 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <h3 class="section-subheading">Everyday Classics</h3>
++      <ul class="menu-list">
++        <li><span>Drip Coffee</span><span class="price">$2.75</span></li>
++        <li><span>Americano</span><span class="price">$3.25</span></li>
++        <li><span>Cappuccino</span><span class="price">$4.25</span></li>
++        <li><span>Caffè Latte</span><span class="price">$4.50</span></li>
++        <li><span>Chai Latte</span><span class="price">$4.50</span></li>
++        <li><span>Butter Croissant</span><span class="price">$3.50</span></li>
++      </ul>
++    </section>
++
++    <section id="locations" class="page-section" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Locations</h2>
++      <p class="section-intro">Find your nearest Daily Grind café. Every shop roasts fresh beans weekly.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown</h3>
++          <p>124 Main Street</p>
++          <p class="card-meta">Mon–Fri 6am–7pm · Sat–Sun 7am–6pm</p>
++        </div>
++        <div class="card">
++          <h3>Riverside</h3>
++          <p>58 Harbor Way</p>
++          <p class="card-meta">Daily 6:30am–8pm</p>
++        </div>
++        <div class="card">
++          <h3>University District</h3>
++          <p>901 College Avenue</p>
++          <p class="card-meta">Daily 7am–10pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="page-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Rewards</h2>
++      <p class="section-intro">Earn 10 beans for every dollar you spend and redeem them for free drinks, treats, and more.</p>
++      <div class="grid tiers">
++        <div class="card">
++          <p class="tier-points">0–499 beans</p>
++          <h3>Bronze</h3>
++          <p>Free birthday drink and member-only offers.</p>
++        </div>
++        <div class="card">
++          <p class="tier-points">500–1,499 beans</p>
++          <h3>Silver</h3>
++          <p>Free drink customizations and a bonus drink every 10 visits.</p>
++        </div>
++        <div class="card">
++          <p class="tier-points">1,500+ beans</p>
++          <h3>Gold</h3>
++          <p>Early access to seasonal roasts and double beans on weekends.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="page-section" aria-labelledby="account-heading">
++      <h2 id="account-heading">My Account</h2>
++      <p class="section-intro">Manage your profile, orders, and rewards in one place.</p>
++      <div class="grid">
++        <div class="card account-panel">
++          <h3>Rewards Balance</h3>
++          <ul>
++            <li>Current tier: Silver</li>
++            <li>Beans available: 820</li>
++            <li>680 beans to Gold</li>
++          </ul>
++          <a href="/account/rewards" class="btn">Redeem Beans</a>
++        </div>
++        <div class="card account-panel">
++          <h3>Recent Orders</h3>
++          <ul>
++            <li>Maple Oat Latte · Oct 31</li>
++            <li>Cold Brew · Oct 28</li>
++            <li>Cappuccino · Oct 25</li>
++          </ul>
++          <a href="/account/orders" class="btn">Order History</a>
++        </div>
++        <div class="card account-panel">
++          <h3>Profile</h3>
++          <ul>
++            <li>Preferred store: Downtown</li>
++            <li>Payment: Visa ending 4242</li>
++            <li>Notifications: On</li>
++          </ul>
++          <a href="/account/settings" class="btn">Edit Profile</a>
++        </div>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +439,71 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var nav = document.querySelector('nav');
++      var links = Array.prototype.slice.call(nav.querySelectorAll('ul a[href^="#"]'));
++      var sections = links
++        .map(function (link) { return document.getElementById(link.getAttribute('href').slice(1)); })
++        .filter(Boolean);
++      var ticking = false;
++
++      function setNavHeight() {
++        document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
++      }
++
++      function setActive(id) {
++        links.forEach(function (link) {
++          var isActive = link.getAttribute('href') === '#' + id;
++          link.classList.toggle('active', isActive);
++          if (isActive) {
++            link.setAttribute('aria-current', 'location');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      function update() {
++        ticking = false;
++        // A section is "current" once its top passes a line just below the sticky nav.
++        var line = nav.offsetHeight + window.innerHeight * 0.25;
++        var current = null;
++
++        sections.forEach(function (section) {
++          if (section.getBoundingClientRect().top <= line) {
++            current = section.id;
++          }
++        });
++
++        // At the very bottom of the page, the last section may be too short to reach the line.
++        var atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
++        if (atBottom && sections.length) {
++          current = sections[sections.length - 1].id;
++        }
++
++        setActive(current);
++      }
++
++      function onScroll() {
++        if (!ticking) {
++          ticking = true;
++          window.requestAnimationFrame(update);
++        }
++      }
++
++      window.addEventListener('scroll', onScroll, { passive: true });
++      window.addEventListener('resize', function () {
++        setNavHeight();
++        onScroll();
++      });
++      window.addEventListener('load', update);
++
++      setNavHeight();
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,359 @@
+diff --git a/index.html b/index.html
+index 66c9173..e5b7991 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,130 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Phone verification */
++    .verify {
++      max-width: 460px;
++      margin: 0 auto;
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .verify h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .verify .hint {
++      font-size: 0.9rem;
++      color: #5d4037;
++    }
++
++    .field {
++      margin-top: 18px;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .field input {
++      width: 100%;
++      font: inherit;
++      font-size: 1.1rem;
++      padding: 10px 12px;
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .field input[inputmode="numeric"] {
++      letter-spacing: 0.5em;
++      text-align: center;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .field input[aria-invalid="true"] {
++      border-color: #b71c1c;
++    }
++
++    .field-error {
++      color: #b71c1c;
++      font-size: 0.9rem;
++      min-height: 1.4em;
++      margin-top: 4px;
++    }
++
++    .verify button {
++      font: inherit;
++      cursor: pointer;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      padding: 10px 20px;
++    }
++
++    .verify button[type="submit"] {
++      background: var(--primary);
++      color: white;
++      width: 100%;
++      margin-top: 8px;
++    }
++
++    .verify button.link {
++      background: none;
++      border: none;
++      padding: 4px 0;
++      margin-top: 10px;
++      color: var(--primary);
++      text-decoration: underline;
++    }
++
++    .verify button:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .verify :focus-visible {
++      outline: 3px solid #1a73e8;
++      outline-offset: 2px;
++    }
++
++    .status {
++      margin-top: 14px;
++      padding: 10px 12px;
++      border-radius: 5px;
++      background: #efebe9;
++      min-height: 1em;
++    }
++
++    .status:empty {
++      display: none;
++    }
++
++    .status.success {
++      background: #e8f5e9;
++      color: #1b5e20;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .field input {
++        transition: border-color 0.2s;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -175,6 +299,38 @@
+   </header>
+ 
+   <main class="container">
++    <section class="verify" aria-labelledby="verify-title">
++      <h2 id="verify-title">Verify your phone</h2>
++      <p class="hint">Confirm your number to earn and redeem Daily Grind Rewards.</p>
++
++      <form id="phone-form" novalidate>
++        <div class="field">
++          <label for="phone">Mobile phone number</label>
++          <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel"
++            placeholder="+1 555 123 4567" aria-describedby="phone-hint phone-error" required>
++          <p id="phone-hint" class="hint">Include your country code. Message and data rates may apply.</p>
++          <p id="phone-error" class="field-error"></p>
++        </div>
++        <button type="submit" id="send-btn">Text me a code</button>
++      </form>
++
++      <form id="code-form" novalidate hidden>
++        <div class="field">
++          <label for="code">6-digit verification code</label>
++          <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code"
++            maxlength="6" pattern="[0-9]{6}" placeholder="••••••" aria-describedby="code-hint code-error" required>
++          <p id="code-hint" class="hint">Sent to <span id="sent-to"></span>. It will fill in automatically when your device supports it.</p>
++          <p id="code-error" class="field-error"></p>
++        </div>
++        <button type="submit" id="verify-btn">Verify</button>
++        <button type="button" class="link" id="resend-btn" disabled>Resend code</button>
++        <button type="button" class="link" id="change-btn">Use a different number</button>
++      </form>
++
++      <div id="verify-status" class="status" role="status" aria-live="polite"></div>
++    </section>
++
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +363,184 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      // Endpoints are expected to be provided by the backend.
++      // POST SEND_URL  {phone}        -> 2xx on success
++      // POST CHECK_URL {phone, code}  -> {verified: boolean}
++      const SEND_URL = '/api/phone/send-code';
++      const CHECK_URL = '/api/phone/verify-code';
++      const RESEND_SECONDS = 30;
++      const CODE_LENGTH = 6;
++      // When the endpoints don't exist (static hosting), simulate them so the UI can be exercised.
++      // Demo code is 123456. Set to false in production.
++      const DEMO_FALLBACK = true;
++
++      const $ = (id) => document.getElementById(id);
++      const phoneForm = $('phone-form'), codeForm = $('code-form');
++      const phone = $('phone'), code = $('code');
++      const status = $('verify-status');
++      const sendBtn = $('send-btn'), verifyBtn = $('verify-btn'), resendBtn = $('resend-btn');
++
++      let e164 = '';
++      let otpAbort = null;
++      let timer = null;
++
++      const setStatus = (msg, ok = false) => {
++        status.textContent = msg;
++        status.classList.toggle('success', ok);
++      };
++      const setError = (input, el, msg) => {
++        el.textContent = msg;
++        input.setAttribute('aria-invalid', msg ? 'true' : 'false');
++        if (msg) input.focus();
++      };
++
++      function normalizePhone(raw) {
++        const trimmed = raw.trim();
++        let digits = trimmed.replace(/\D/g, '');
++        if (!trimmed.startsWith('+')) {
++          if (digits.length === 10) digits = '1' + digits; // assume US/CA
++        }
++        return digits.length >= 8 && digits.length <= 15 ? '+' + digits : null;
++      }
++
++      async function post(url, body) {
++        try {
++          const res = await fetch(url, {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify(body)
++          });
++          if (res.status === 404 && DEMO_FALLBACK) return demo(url, body);
++          if (!res.ok) throw new Error(res.status === 429 ? 'Too many attempts. Please wait and try again.' : 'Something went wrong. Please try again.');
++          return res.status === 204 ? {} : await res.json().catch(() => ({}));
++        } catch (err) {
++          if (err instanceof TypeError && DEMO_FALLBACK) return demo(url, body);
++          if (err instanceof TypeError) throw new Error('Network error. Check your connection and try again.');
++          throw err;
++        }
++      }
++      function demo(url, body) {
++        console.info('[verify] demo mode: no backend found. Use code 123456.');
++        return url === CHECK_URL ? { verified: body.code === '123456' } : {};
++      }
++
++      function startCooldown() {
++        let left = RESEND_SECONDS;
++        clearInterval(timer);
++        const tick = () => {
++          resendBtn.disabled = left > 0;
++          resendBtn.textContent = left > 0 ? `Resend code in ${left}s` : 'Resend code';
++          if (left-- <= 0) clearInterval(timer);
++        };
++        tick();
++        timer = setInterval(tick, 1000);
++      }
++
++      // Auto-extract the code from the incoming SMS (WebOTP). The SMS must end with:
++      //   "@<your-domain> #<code>"
++      async function listenForSms() {
++        if (!('OTPCredential' in window)) return;
++        otpAbort?.abort();
++        otpAbort = new AbortController();
++        try {
++          const otp = await navigator.credentials.get({ otp: { transport: ['sms'] }, signal: otpAbort.signal });
++          if (otp && otp.code) {
++            code.value = extractCode(otp.code);
++            setStatus('Code received automatically.');
++            if (code.value.length === CODE_LENGTH) codeForm.requestSubmit();
++          }
++        } catch (_) { /* aborted or dismissed: manual entry still works */ }
++      }
++
++      // Pulls the first run of digits of the right length out of any pasted/received text.
++      function extractCode(text) {
++        const exact = String(text).match(new RegExp('(?<!\\d)\\d{' + CODE_LENGTH + '}(?!\\d)'));
++        return exact ? exact[0] : String(text).replace(/\D/g, '').slice(0, CODE_LENGTH);
++      }
++
++      async function sendCode() {
++        sendBtn.disabled = true;
++        resendBtn.disabled = true;
++        setStatus('Sending code…');
++        try {
++          await post(SEND_URL, { phone: e164 });
++          phoneForm.hidden = true;
++          codeForm.hidden = false;
++          $('sent-to').textContent = e164;
++          code.value = '';
++          setStatus('Code sent. Check your text messages.');
++          code.focus();
++          startCooldown();
++          listenForSms();
++        } catch (err) {
++          setStatus('');
++          setError(phone, $('phone-error'), err.message);
++          if (!codeForm.hidden) resendBtn.disabled = false;
++        } finally {
++          sendBtn.disabled = false;
++        }
++      }
++
++      phoneForm.addEventListener('submit', (e) => {
++        e.preventDefault();
++        setError(phone, $('phone-error'), '');
++        e164 = normalizePhone(phone.value);
++        if (!e164) return setError(phone, $('phone-error'), 'Enter a valid phone number including country code, e.g. +1 555 123 4567.');
++        sendCode();
++      });
++
++      code.addEventListener('input', () => {
++        if (code.value.replace(/\D/g, '').length > CODE_LENGTH || /\D/.test(code.value)) code.value = extractCode(code.value);
++        if (code.value) setError(code, $('code-error'), '');
++      });
++      code.addEventListener('paste', (e) => {
++        const text = (e.clipboardData || window.clipboardData).getData('text');
++        e.preventDefault();
++        code.value = extractCode(text);
++      });
++
++      codeForm.addEventListener('submit', async (e) => {
++        e.preventDefault();
++        if (!new RegExp('^\\d{' + CODE_LENGTH + '}$').test(code.value)) {
++          return setError(code, $('code-error'), `Enter the ${CODE_LENGTH}-digit code from your text message.`);
++        }
++        setError(code, $('code-error'), '');
++        verifyBtn.disabled = true;
++        setStatus('Verifying…');
++        try {
++          const res = await post(CHECK_URL, { phone: e164, code: code.value });
++          if (res.verified) {
++            otpAbort?.abort();
++            clearInterval(timer);
++            codeForm.hidden = true;
++            setStatus(`Thanks! ${e164} is verified.`, true);
++          } else {
++            setStatus('');
++            setError(code, $('code-error'), 'That code is incorrect or expired. Try again or request a new one.');
++          }
++        } catch (err) {
++          setStatus('');
++          setError(code, $('code-error'), err.message);
++        } finally {
++          verifyBtn.disabled = false;
++        }
++      });
++
++      resendBtn.addEventListener('click', sendCode);
++      $('change-btn').addEventListener('click', () => {
++        otpAbort?.abort();
++        clearInterval(timer);
++        codeForm.hidden = true;
++        phoneForm.hidden = false;
++        setStatus('');
++        setError(code, $('code-error'), '');
++        phone.focus();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+index 66c9173..7e9f13a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,58 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .floating-card {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      width: min(290px, calc(100vw - 24px));
++      z-index: 1100;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 8px 32px rgba(62, 39, 35, 0.22);
++      overflow: hidden;
++    }
++
++    .drag-handle {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      padding: 12px 18px;
++      border: 0;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: grab;
++      touch-action: none;
++      user-select: none;
++    }
++
++    .drag-handle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -4px;
++    }
++
++    .floating-card.is-dragging .drag-handle {
++      cursor: grabbing;
++    }
++
++    .floating-card-content {
++      padding: 18px;
++    }
++
++    .floating-card-content p {
++      margin-top: 4px;
++      font-size: 0.9rem;
++    }
++
++    .floating-card-content .btn {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +259,74 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating-card" aria-label="Coffee break">
++    <button class="drag-handle" type="button" aria-label="Move coffee break card. Drag or use arrow keys.">
++      <span>Drag to move</span>
++      <span aria-hidden="true">⠿</span>
++    </button>
++    <div class="floating-card-content">
++      <h3>Time for a coffee?</h3>
++      <p>Your next favorite cup is just a sip away.</p>
++      <a href="/order-online" class="btn">Order a coffee</a>
++    </div>
++  </aside>
++
++  <script>
++    const floatingCard = document.querySelector('.floating-card');
++    const dragHandle = floatingCard.querySelector('.drag-handle');
++    let drag = null;
++
++    function moveCard(left, top) {
++      const maxLeft = Math.max(0, document.documentElement.clientWidth - floatingCard.offsetWidth);
++      const maxTop = Math.max(0, window.innerHeight - floatingCard.offsetHeight);
++      floatingCard.style.left = `${Math.min(Math.max(0, left), maxLeft)}px`;
++      floatingCard.style.top = `${Math.min(Math.max(0, top), maxTop)}px`;
++      floatingCard.style.right = 'auto';
++      floatingCard.style.bottom = 'auto';
++    }
++
++    dragHandle.addEventListener('pointerdown', (event) => {
++      if (!event.isPrimary || event.button !== 0 || drag) return;
++      const rect = floatingCard.getBoundingClientRect();
++      drag = { pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
++      dragHandle.setPointerCapture(event.pointerId);
++      floatingCard.classList.add('is-dragging');
++    });
++
++    dragHandle.addEventListener('pointermove', (event) => {
++      if (!drag || drag.pointerId !== event.pointerId) return;
++      moveCard(event.clientX - drag.offsetX, event.clientY - drag.offsetY);
++    });
++
++    function finishDrag(event) {
++      if (!drag || drag.pointerId !== event.pointerId) return;
++      drag = null;
++      floatingCard.classList.remove('is-dragging');
++      if (dragHandle.hasPointerCapture(event.pointerId)) {
++        dragHandle.releasePointerCapture(event.pointerId);
++      }
++    }
++
++    dragHandle.addEventListener('pointerup', finishDrag);
++    dragHandle.addEventListener('pointercancel', finishDrag);
++    dragHandle.addEventListener('lostpointercapture', finishDrag);
++
++    dragHandle.addEventListener('keydown', (event) => {
++      const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
++      const direction = directions[event.key];
++      if (!direction) return;
++      event.preventDefault();
++      const rect = floatingCard.getBoundingClientRect();
++      const step = event.shiftKey ? 40 : 10;
++      moveCard(rect.left + direction[0] * step, rect.top + direction[1] * step);
++    });
++
++    window.addEventListener('resize', () => {
++      const rect = floatingCard.getBoundingClientRect();
++      moveCard(rect.left, rect.top);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

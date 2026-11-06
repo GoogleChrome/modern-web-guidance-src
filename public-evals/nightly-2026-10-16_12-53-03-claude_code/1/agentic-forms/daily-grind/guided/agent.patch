@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+index 66c9173..ed8f82f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,53 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Agent-accessible forms */
++    .tool-form {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: end;
++      gap: 12px;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 20px;
++    }
++
++    .tool-form label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.9rem;
++      gap: 4px;
++    }
++
++    .tool-form select {
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .tool-form button {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      background-color: rgba(255, 171, 64, 0.08);
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed var(--accent);
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+@@ -175,6 +222,43 @@
+   </header>
+ 
+   <main class="container">
++    <section aria-label="Quick actions">
++      <form class="tool-form" id="navigate-form" toolname="navigate-site" toolautosubmit
++        tooldescription="Navigate to a page of The Daily Grind website, such as the menu, store locations, rewards, account, or online ordering.">
++        <label for="page">Go to
++          <select id="page" name="page" required toolparamdescription="The page of the site to open">
++            <option value="/menu">Menu</option>
++            <option value="/locations">Locations</option>
++            <option value="/rewards">Rewards</option>
++            <option value="/account">My Account</option>
++            <option value="/order-online">Order Online</option>
++            <option value="/about">Our Story</option>
++            <option value="/careers">Join the Team</option>
++            <option value="/contact">Contact Us</option>
++            <option value="/privacy-policy">Privacy Policy</option>
++          </select>
++        </label>
++        <button type="submit">Go</button>
++      </form>
++
++      <form class="tool-form" id="drink-form" toolname="view-drink-details" toolautosubmit
++        tooldescription="Open the details page for one of the seasonal favorite coffee drinks.">
++        <label for="drink">Seasonal favorite
++          <select id="drink" name="drink" required toolparamdescription="The seasonal drink to view">
++            <option value="/menu/seasonal">Maple Oat Latte</option>
++            <option value="/menu/espresso">Dark Roast Espresso</option>
++            <option value="/menu/cold-brew">Cold Brew</option>
++          </select>
++        </label>
++        <button type="submit">View Details</button>
++      </form>
++
++      <form class="tool-form" id="logout-form" toolname="log-out"
++        tooldescription="Log the current user out of their Daily Grind account.">
++        <button type="submit">Logout</button>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +291,21 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Each form navigates client-side and reports the outcome to an invoking agent.
++    const destinations = { 'navigate-form': 'page', 'drink-form': 'drink', 'logout-form': null };
++
++    for (const [id, field] of Object.entries(destinations)) {
++      document.getElementById(id).addEventListener('submit', (event) => {
++        event.preventDefault();
++        const path = field ? new FormData(event.target).get(field) : '/logout';
++        if (event.agentInvoked) {
++          event.respondWith(Promise.resolve(`Navigating to ${path}`));
++        }
++        location.assign(path);
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

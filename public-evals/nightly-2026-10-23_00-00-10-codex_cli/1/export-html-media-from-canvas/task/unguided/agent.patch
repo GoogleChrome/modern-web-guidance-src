@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,68 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    /* Gift card studio */
++    .gift-designer { margin-top: 64px; padding-top: 44px; border-top: 1px solid #e5ddd6; }
++    .gift-heading { text-align: center; margin-bottom: 30px; }
++    .gift-eyebrow { color: #8d6651; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
++    .gift-heading h2 { font: 36px/1.2 Georgia, serif; margin: 9px 0 12px; }
++    .gift-heading > p:last-child { color: #806e64; font-size: 14px; }
++    .gift-studio { display: grid; grid-template-columns: 1.25fr 1fr; border: 1px solid #e6ded6; border-radius: 14px; overflow: hidden; background: white; }
++    .gift-preview { min-width: 0; background: #efeae3; padding: 36px 30px 24px; display: flex; flex-direction: column; justify-content: center; }
++    .preview-label { display: flex; justify-content: space-between; margin-bottom: 18px; font-size: 10px; letter-spacing: 1.7px; font-weight: 600; color: #786c61; text-transform: uppercase; }
++    .preview-label span:last-child { letter-spacing: 0; font-weight: 400; text-transform: none; }
++    .gift-card { --card-bg: #4e342e; --card-ink: #fff4df; position: relative; isolation: isolate; width: 100%; aspect-ratio: 1.6; overflow: hidden; border-radius: 12px; background: var(--card-bg); color: var(--card-ink); padding: 25px; text-align: left; }
++    .gift-card::before, .gift-card::after { content: ''; position: absolute; width: 240px; height: 240px; border: 1px solid currentColor; border-radius: 50%; opacity: .12; right: -115px; bottom: -130px; z-index: -1; }
++    .gift-card::after { width: 290px; height: 290px; right: -140px; bottom: -155px; }
++    .gift-card-brand { font-size: 10px; letter-spacing: 2px; font-weight: 700; }
++    .gift-card-tag { font-size: 8px; letter-spacing: 2.5px; margin-top: 3px; opacity: .7; }
++    .gift-card-copy { position: absolute; left: 25px; top: 32%; right: 105px; bottom: 56px; }
++    .gift-recipient { font-size: 10px; margin-bottom: 7px; overflow-wrap: anywhere; }
++    .gift-message { font: 27px/1.18 Georgia, serif; white-space: pre-wrap; overflow-wrap: anywhere; }
++    .gift-card-footer { position: absolute; left: 25px; right: 25px; bottom: 20px; border-top: 1px solid; border-color: currentColor; padding-top: 10px; display: flex; justify-content: space-between; font-size: 8px; letter-spacing: 1px; }
++    .coffee-art { position: absolute; right: 31px; top: 43%; width: 54px; height: 43px; border: 2px solid currentColor; border-radius: 3px 3px 23px 23px; }
++    .coffee-art::before { content: ''; position: absolute; right: -16px; top: 4px; width: 15px; height: 22px; border: 2px solid currentColor; border-left: 0; border-radius: 0 14px 14px 0; }
++    .coffee-art::after { content: ''; position: absolute; left: -6px; bottom: -9px; width: 65px; border-bottom: 2px solid currentColor; border-radius: 50%; }
++    .coffee-steam { position: absolute; left: 13px; top: -30px; font: italic 27px Georgia, serif; letter-spacing: 5px; transform: rotate(-10deg); }
++    .preview-note { text-align: center; margin-top: 19px; color: #8a7c70; font-size: 11px; }
++    .gift-controls { padding: 30px; min-width: 0; }
++    .gift-controls h3 { font: 22px Georgia, serif; margin-bottom: 22px; }
++    .gift-field { margin-bottom: 19px; }
++    .gift-field label, .gift-colors legend { display: block; font-size: 12px; font-weight: 600; margin-bottom: 7px; }
++    .gift-field label span { color: #9a8c80; font-weight: 400; }
++    .gift-field input, .gift-field textarea { width: 100%; border: 1px solid #ded7d0; background: #fffefc; border-radius: 6px; padding: 10px 12px; font: 13px/1.5 'Segoe UI', sans-serif; color: var(--text); }
++    .gift-field textarea { resize: vertical; min-height: 84px; }
++    .gift-count { text-align: right; color: #8a7c70; font-size: 10px; margin-top: 3px; }
++    .gift-colors { border: 0; margin-bottom: 22px; }
++    .gift-swatches { display: flex; align-items: center; flex-wrap: wrap; gap: 11px; }
++    .gift-swatch { appearance: none; width: 28px; height: 28px; border: 3px solid white; outline: 1px solid #ded7d0; border-radius: 50%; cursor: pointer; background: var(--swatch); }
++    .gift-swatch[aria-pressed="true"] { outline: 2px solid #4e342e; }
++    .custom-color { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #806e64; cursor: pointer; }
++    .custom-color input { width: 27px; height: 28px; border: 0; padding: 0; background: transparent; cursor: pointer; }
++    .gift-download { width: 100%; border: 0; margin: 0; padding: 12px; font: 600 13px 'Segoe UI', sans-serif; cursor: pointer; }
++    .gift-download svg { width: 16px; height: 16px; vertical-align: -3px; margin-right: 7px; }
++    .gift-download:disabled { opacity: .65; cursor: wait; }
++    .gift-export-note { color: #8a7c70; font-size: 10px; text-align: center; margin-top: 9px; }
++    .gift-status { color: #705747; font-size: 12px; margin-top: 8px; }
++    .gift-status:empty { display: none; }
++    .gift-designer :focus-visible { outline: 3px solid #a76a2d; outline-offset: 4px; }
++    .gift-export-canvas { display: block; width: 100%; border-radius: 12px; }
++    @media (max-width: 760px) {
++      .gift-studio { grid-template-columns: 1fr; }
++      .gift-preview, .gift-controls { padding: 24px; }
++      .gift-heading h2 { font-size: 30px; }
++    }
++    @media (max-width: 400px) {
++      .gift-preview { padding: 20px 14px; }
++      .gift-card { padding: 18px; }
++      .gift-card-copy { left: 18px; right: 80px; }
++      .gift-message { font-size: 21px; }
++      .gift-card-footer { left: 18px; right: 18px; bottom: 14px; font-size: 6px; }
++      .coffee-art { right: 24px; transform: scale(.75); }
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -194,8 +254,64 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="gift-designer" aria-labelledby="gift-title">
++      <div class="gift-heading">
++        <p class="gift-eyebrow">A small gesture. A warm feeling.</p>
++        <h2 id="gift-title">Make their day, your way.</h2>
++        <p>A coffee card with a little more you. Personalize it, save it, share a smile.</p>
++      </div>
++      <div class="gift-studio">
++        <div class="gift-preview">
++          <div class="preview-label">Your coffee card <span>Live preview</span></div>
++          <div id="gift-preview-mount">
++            <div id="export_element" class="gift-card" drawable>
++              <div class="gift-card-brand">THE DAILY GRIND</div>
++              <div class="gift-card-tag">A LITTLE PICK-ME-UP</div>
++              <div class="gift-card-copy">
++                <p id="gift-recipient" class="gift-recipient">For someone special</p>
++                <p id="gift-message" class="gift-message">A little coffee,
++a lot of love.</p>
++              </div>
++              <div class="coffee-art" aria-hidden="true"><span class="coffee-steam">∿∿</span></div>
++              <div class="gift-card-footer"><span>GOOD COFFEE. GREAT COMPANY.</span><span>MADE JUST FOR YOU</span></div>
++            </div>
++          </div>
++          <p class="preview-note">A personal design, made by you.</p>
++        </div>
++        <form class="gift-controls" id="gift-form">
++          <h3>Add your personal touch</h3>
++          <div class="gift-field">
++            <label for="gift-name">Their name <span>(optional)</span></label>
++            <input id="gift-name" type="text" maxlength="30" placeholder="e.g. Alex" autocomplete="off">
++          </div>
++          <div class="gift-field">
++            <label for="gift-text">Your message</label>
++            <textarea id="gift-text" maxlength="90" rows="3" aria-describedby="gift-count">A little coffee,
++a lot of love.</textarea>
++            <p class="gift-count" id="gift-count">30 / 90</p>
++          </div>
++          <fieldset class="gift-colors">
++            <legend>Choose a background</legend>
++            <div class="gift-swatches">
++              <button class="gift-swatch" type="button" style="--swatch: #4e342e" data-color="#4e342e" aria-label="Espresso brown" aria-pressed="true"></button>
++              <button class="gift-swatch" type="button" style="--swatch: #e9d6b8" data-color="#e9d6b8" aria-label="Oat cream" aria-pressed="false"></button>
++              <button class="gift-swatch" type="button" style="--swatch: #a9b59a" data-color="#a9b59a" aria-label="Sage green" aria-pressed="false"></button>
++              <button class="gift-swatch" type="button" style="--swatch: #be7054" data-color="#be7054" aria-label="Terracotta" aria-pressed="false"></button>
++              <button class="gift-swatch" type="button" style="--swatch: #d9b5b0" data-color="#d9b5b0" aria-label="Rose pink" aria-pressed="false"></button>
++              <label class="custom-color"><input id="gift-color" type="color" value="#4e342e" aria-label="Custom background color">Custom</label>
++            </div>
++          </fieldset>
++          <button type="submit" id="gift-download" class="btn gift-download">
++            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg>
++            <span>Download your card</span>
++          </button>
++          <p class="gift-export-note">PNG image · High resolution · Ready to share</p>
++          <p id="gift-status" class="gift-status" role="status" aria-live="polite"></p>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +322,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="gift-designer.js" defer></script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,896 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,364 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ------------------------------------------------------------------
++       Rewards registration form
++       ------------------------------------------------------------------ */
++    [hidden] {
++      display: none !important;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .signup {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 32px 24px;
++      margin: 56px auto 0;
++      max-width: 720px;
++      scroll-margin-top: 90px;
++    }
++
++    @media (min-width: 560px) {
++      .signup {
++        padding: 40px;
++      }
++    }
++
++    .signup h2 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .signup-intro {
++      margin-bottom: 1rem;
++    }
++
++    .required-note {
++      margin-bottom: 1.5rem;
++    }
++
++    /* Step indicator (only shown when JS splits the form into steps) */
++    .progress {
++      list-style: none;
++      display: flex;
++      gap: 8px;
++      counter-reset: step;
++      margin: 0 0 1.75rem;
++      padding: 0;
++    }
++
++    .progress li {
++      flex: 1;
++      counter-increment: step;
++      font-size: 0.85rem;
++      padding-top: 8px;
++      border-top: 4px solid var(--secondary);
++      color: #5d4037;
++    }
++
++    .progress li::before {
++      content: counter(step) ". ";
++    }
++
++    .progress li[aria-current="step"] {
++      border-top-color: var(--primary);
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .progress li.is-complete {
++      border-top-color: var(--accent);
++    }
++
++    .signup fieldset {
++      border: 0;
++      padding: 0;
++      margin: 0;
++      min-width: 0;
++    }
++
++    .step + .step {
++      margin-top: 2.5rem;
++    }
++
++    .step > legend {
++      font-size: 1.35rem;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 1.25rem;
++      padding: 0;
++      scroll-margin-top: 90px;
++    }
++
++    .field {
++      margin-bottom: 1.4rem;
++    }
++
++    .field-row {
++      display: grid;
++      gap: 1rem;
++      grid-template-columns: 1fr;
++    }
++
++    @media (min-width: 560px) {
++      .field-row {
++        grid-template-columns: 1fr 1fr;
++      }
++    }
++
++    .signup label,
++    .signup .group > legend {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.35rem;
++      padding: 0;
++    }
++
++    .optional {
++      font-weight: normal;
++      color: #5d4037;
++    }
++
++    .hint {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-bottom: 0.45rem;
++    }
++
++    .signup input[type="text"],
++    .signup input[type="email"],
++    .signup input[type="tel"],
++    .signup input[type="password"],
++    .signup select {
++      display: block;
++      width: 100%;
++      font: inherit;
++      font-size: 1rem; /* 16px+ prevents iOS zoom-on-focus */
++      padding: 0.65rem 0.8rem;
++      min-height: 44px;
++      border: 2px solid #8d6e63;
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++    }
++
++    .signup :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .signup [aria-invalid="true"] {
++      border-color: #b00020;
++      box-shadow: inset 4px 0 0 #b00020;
++    }
++
++    .field-error {
++      color: #b00020;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-top: 0.4rem;
++    }
++
++    .field-error:empty {
++      display: none;
++    }
++
++    .field-error::before {
++      content: "\26A0\FE0E  "; /* warning sign, so errors aren't conveyed by color alone */
++    }
++
++    .error-summary {
++      border: 3px solid #b00020;
++      background: #fff5f5;
++      border-radius: 6px;
++      padding: 1rem 1.25rem;
++      margin-bottom: 1.5rem;
++      scroll-margin-top: 90px;
++    }
++
++    .error-summary h3 {
++      color: #b00020;
++      font-size: 1.1rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .error-summary ul {
++      padding-left: 1.25rem;
++    }
++
++    .error-summary a {
++      color: #b00020;
++      font-weight: 600;
++    }
++
++    .password-wrap {
++      display: flex;
++      gap: 0.5rem;
++    }
++
++    .password-wrap input {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .toggle-password {
++      font: inherit;
++      background: white;
++      border: 2px solid var(--primary);
++      color: var(--primary);
++      border-radius: 6px;
++      padding: 0 1rem;
++      min-height: 44px;
++      min-width: 72px;
++      cursor: pointer;
++    }
++
++    .choice-group {
++      margin-bottom: 1.4rem;
++    }
++
++    .signup .choice {
++      display: flex;
++      align-items: flex-start;
++      gap: 0.65rem;
++      margin: 0.5rem 0;
++      font-weight: normal;
++      cursor: pointer;
++    }
++
++    .choice input {
++      width: 1.5rem;
++      height: 1.5rem;
++      flex: none;
++      margin-top: 0.1rem;
++      accent-color: var(--primary);
++    }
++
++    .review {
++      background: var(--light);
++      border-radius: 6px;
++      padding: 1rem 1.25rem;
++      margin-bottom: 1.4rem;
++    }
++
++    .review h3 {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .review dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 0.25rem 1rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .review dt {
++      font-weight: 600;
++    }
++
++    .review dd {
++      overflow-wrap: anywhere;
++    }
++
++    .link-button {
++      background: none;
++      border: 0;
++      padding: 0;
++      font: inherit;
++      color: var(--primary);
++      text-decoration: underline;
++      cursor: pointer;
++      min-height: 44px;
++    }
++
++    .form-actions {
++      display: flex;
++      justify-content: space-between;
++      gap: 1rem;
++      flex-wrap: wrap;
++      margin-top: 2rem;
++    }
++
++    .form-actions .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      min-height: 44px;
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++      box-shadow: inset 0 0 0 2px var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--light);
++    }
++
++    .form-actions .btn[disabled] {
++      opacity: 0.65;
++      cursor: progress;
++    }
++
++    .privacy-note {
++      margin-top: 1.25rem;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    .privacy-note a,
++    .consent-hint a {
++      color: var(--primary);
++    }
++
++    /* Honeypot: off-screen for sighted users, hidden from assistive tech via aria-hidden */
++    .hp {
++      position: absolute;
++      left: -9999px;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++    }
++
++    .status-panel {
++      padding: 1.5rem;
++      border-radius: 8px;
++      border: 3px solid var(--primary);
++      background: var(--light);
++    }
++
++    .status-panel h3 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .status-panel.is-error {
++      border-color: #b00020;
++      background: #fff5f5;
++    }
++
++    .status-panel.is-error h3 {
++      color: #b00020;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +550,222 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- ================================================================
++         Daily Grind Rewards registration
++         - Works without JavaScript: all steps render, native constraint
++           validation runs, and the form POSTs to the action URL.
++         - With JavaScript: one step at a time, inline validation with an
++           error summary, focus management, and fetch-based submission.
++         ================================================================ -->
++    <section class="signup" id="rewards-signup" aria-labelledby="signup-heading">
++      <h2 id="signup-heading">Join Daily Grind Rewards</h2>
++      <p class="signup-intro">Earn a star for every dollar, get a free drink on your birthday, and skip the line with
++        mobile ordering. Signing up takes about two minutes.</p>
++      <p class="hint required-note">All fields are required unless marked optional.</p>
++
++      <ol class="progress" aria-label="Registration progress" hidden>
++        <li aria-current="step">Your details</li>
++        <li>Create a password</li>
++        <li>Preferences</li>
++      </ol>
++
++      <form id="rewards-form" method="post" action="/api/rewards/register" accept-charset="UTF-8" autocomplete="on">
++
++        <!-- Anti-CSRF token. The script fills this with a random value that is also stored in a
++             SameSite=Strict cookie (double-submit pattern). The server MUST reject requests where
++             the cookie and this field do not match, or render its own synchronizer token here. -->
++        <input type="hidden" name="csrf_token" id="csrf-token" value="">
++
++        <!-- Honeypot: humans never see or reach this field; bots that fill it should be rejected server-side. -->
++        <div class="hp" aria-hidden="true">
++          <label for="hp-website">Leave this field empty</label>
++          <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off">
++        </div>
++
++        <div class="error-summary" id="error-summary" role="alert" tabindex="-1" hidden>
++          <h3 id="error-summary-heading">Please fix the following before continuing</h3>
++          <ul id="error-summary-list"></ul>
++        </div>
++
++        <!-- Step 1 -->
++        <fieldset class="step" data-step="1">
++          <legend tabindex="-1"><span class="visually-hidden">Step 1 of 3: </span>Your details</legend>
++
++          <div class="field-row">
++            <div class="field">
++              <label for="first-name">First name</label>
++              <input type="text" id="first-name" name="firstName" autocomplete="given-name" autocapitalize="words"
++                required maxlength="100" enterkeyhint="next" aria-describedby="first-name-error">
++              <p class="field-error" id="first-name-error"></p>
++            </div>
++            <div class="field">
++              <label for="last-name">Last name</label>
++              <input type="text" id="last-name" name="lastName" autocomplete="family-name" autocapitalize="words"
++                required maxlength="100" enterkeyhint="next" aria-describedby="last-name-error">
++              <p class="field-error" id="last-name-error"></p>
++            </div>
++          </div>
++
++          <div class="field">
++            <label for="email">Email address</label>
++            <p class="hint" id="email-hint">We'll send your digital rewards card and receipts here.</p>
++            <input type="email" id="email" name="email" autocomplete="email" inputmode="email" required
++              maxlength="254" spellcheck="false" autocapitalize="off" enterkeyhint="next"
++              aria-describedby="email-hint email-error">
++            <p class="field-error" id="email-error"></p>
++          </div>
++
++          <div class="field">
++            <label for="phone">Mobile number <span class="optional">(optional)</span></label>
++            <p class="hint" id="phone-hint">For "order ready" texts. Include your country code if you're outside the
++              US.</p>
++            <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="30"
++              pattern="\+?[0-9\s\(\)\.\-]{7,}" enterkeyhint="next" aria-describedby="phone-hint phone-error">
++            <p class="field-error" id="phone-error"></p>
++          </div>
++
++          <fieldset class="group field">
++            <legend>Birthday <span class="optional">(optional)</span></legend>
++            <p class="hint" id="bday-hint">Tell us when to send your free birthday drink. We never ask for the year.</p>
++            <div class="field-row">
++              <div>
++                <label for="bday-month">Month</label>
++                <select id="bday-month" name="birthMonth" autocomplete="bday-month"
++                  aria-describedby="bday-hint bday-error">
++                  <option value="">Select a month</option>
++                  <option value="1">January</option>
++                  <option value="2">February</option>
++                  <option value="3">March</option>
++                  <option value="4">April</option>
++                  <option value="5">May</option>
++                  <option value="6">June</option>
++                  <option value="7">July</option>
++                  <option value="8">August</option>
++                  <option value="9">September</option>
++                  <option value="10">October</option>
++                  <option value="11">November</option>
++                  <option value="12">December</option>
++                </select>
++              </div>
++              <div>
++                <label for="bday-day">Day</label>
++                <input type="text" id="bday-day" name="birthDay" autocomplete="bday-day" inputmode="numeric"
++                  pattern="0?[1-9]|[12][0-9]|3[01]" maxlength="2" enterkeyhint="next"
++                  aria-describedby="bday-hint bday-error">
++              </div>
++            </div>
++            <p class="field-error" id="bday-error"></p>
++          </fieldset>
++        </fieldset>
++
++        <!-- Step 2 -->
++        <fieldset class="step" data-step="2">
++          <legend tabindex="-1"><span class="visually-hidden">Step 2 of 3: </span>Create a password</legend>
++
++          <div class="field">
++            <label for="password">Password</label>
++            <p class="hint" id="password-hint">Use at least 8 characters. A phrase of several words is easy to remember
++              and hard to guess. Pasting from a password manager is welcome.</p>
++            <div class="password-wrap">
++              <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8"
++                maxlength="128" spellcheck="false" autocapitalize="off" enterkeyhint="next"
++                aria-describedby="password-hint password-error">
++              <button type="button" class="toggle-password" id="toggle-password" aria-controls="password"
++                aria-label="Show password" hidden>Show</button>
++            </div>
++            <p class="field-error" id="password-error"></p>
++          </div>
++        </fieldset>
++
++        <!-- Step 3 -->
++        <fieldset class="step" data-step="3">
++          <legend tabindex="-1"><span class="visually-hidden">Step 3 of 3: </span>Preferences and consent</legend>
++
++          <div class="review" id="review" hidden>
++            <h3>Signing up as</h3>
++            <dl>
++              <dt>Name</dt>
++              <dd id="review-name"></dd>
++              <dt>Email</dt>
++              <dd id="review-email"></dd>
++            </dl>
++            <button type="button" class="link-button" data-goto="0">Edit your details</button>
++          </div>
++
++          <div class="field">
++            <label for="home-cafe">Home café</label>
++            <p class="hint" id="home-cafe-hint">We'll tailor offers to the shop you visit most.</p>
++            <select id="home-cafe" name="homeCafe" required aria-describedby="home-cafe-hint home-cafe-error">
++              <option value="">Choose a location</option>
++              <option value="downtown">Downtown – 12 Main Street</option>
++              <option value="riverside">Riverside – 480 Harbor Road</option>
++              <option value="university">University District – 9 College Avenue</option>
++              <option value="westgate">Westgate Mall – Food Court</option>
++            </select>
++            <p class="field-error" id="home-cafe-error"></p>
++          </div>
++
++          <div class="field">
++            <label for="favorite-drink">Favorite drink <span class="optional">(optional)</span></label>
++            <select id="favorite-drink" name="favoriteDrink">
++              <option value="">Choose a drink</option>
++              <option value="drip">Drip coffee</option>
++              <option value="espresso">Espresso</option>
++              <option value="latte">Latte</option>
++              <option value="cold-brew">Cold brew</option>
++              <option value="tea">Tea</option>
++              <option value="other">Something else</option>
++            </select>
++          </div>
++
++          <fieldset class="group choice-group">
++            <legend>How can we reach you? <span class="optional">(optional)</span></legend>
++            <label class="choice">
++              <input type="checkbox" name="contact" value="email">
++              <span>Email me offers and new menu items</span>
++            </label>
++            <label class="choice">
++              <input type="checkbox" name="contact" value="sms">
++              <span>Text me when my mobile order is ready</span>
++            </label>
++          </fieldset>
++
++          <div class="field">
++            <p class="hint consent-hint" id="terms-hint">Read the <a href="/terms">Rewards Terms</a> and our
++              <a href="/privacy-policy">Privacy Policy</a> before you agree.</p>
++            <label class="choice">
++              <input type="checkbox" id="terms" name="acceptTerms" value="yes" required
++                aria-describedby="terms-hint terms-error">
++              <span>I agree to the Rewards Terms and Privacy Policy</span>
++            </label>
++            <p class="field-error" id="terms-error"></p>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <button type="button" class="btn btn-secondary" id="back-btn" hidden>Back</button>
++          <button type="button" class="btn" id="next-btn" hidden>Continue</button>
++          <button type="submit" class="btn" id="submit-btn">Create my account</button>
++        </div>
++
++        <p class="privacy-note">Your details are sent over an encrypted connection and used only to run your rewards
++          account. <a href="/privacy-policy">How we use your data</a></p>
++      </form>
++
++      <div class="status-panel" id="form-success" role="status" tabindex="-1" hidden>
++        <h3>Welcome to Daily Grind Rewards!</h3>
++        <p id="form-success-text"></p>
++      </div>
++
++      <div class="status-panel is-error" id="form-failure" role="alert" tabindex="-1" hidden>
++        <h3>We couldn't create your account</h3>
++        <p>Something went wrong on our end. Your details are still filled in below, so please try again in a moment.
++          If it keeps happening, <a href="/contact">contact us</a>.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +776,304 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (function () {
++      'use strict';
++
++      var form = document.getElementById('rewards-form');
++      if (!form || !form.querySelectorAll) { return; }
++
++      var $ = function (id) { return document.getElementById(id); };
++      var steps = Array.prototype.slice.call(form.querySelectorAll('.step'));
++      var progress = document.querySelector('.progress');
++      var progressItems = Array.prototype.slice.call(progress.querySelectorAll('li'));
++      var backBtn = $('back-btn');
++      var nextBtn = $('next-btn');
++      var submitBtn = $('submit-btn');
++      var summary = $('error-summary');
++      var summaryList = $('error-summary-list');
++      var successPanel = $('form-success');
++      var failurePanel = $('form-failure');
++      var current = 0;
++      var submitting = false;
++
++      /* ---------- CSRF token (double-submit cookie) ---------- */
++      (function setCsrfToken() {
++        var field = $('csrf-token');
++        var match = document.cookie.match(/(?:^|;\s*)dg_csrf=([a-f0-9]{64})/);
++        var token = match ? match[1] : '';
++        if (!token && window.crypto && window.crypto.getRandomValues) {
++          var bytes = new Uint8Array(32);
++          window.crypto.getRandomValues(bytes);
++          token = Array.prototype.map.call(bytes, function (b) {
++            return ('0' + b.toString(16)).slice(-2);
++          }).join('');
++          document.cookie = 'dg_csrf=' + token + '; Path=/; SameSite=Strict' +
++            (location.protocol === 'https:' ? '; Secure' : '');
++        }
++        field.value = token;
++      })();
++
++      /* ---------- Progressive enhancement switches ---------- */
++      document.documentElement.classList.add('js');
++      form.setAttribute('novalidate', '');   // JS owns validation messaging from here on
++      progress.hidden = false;
++      backBtn.hidden = false;
++      nextBtn.hidden = false;
++      $('toggle-password').hidden = false;
++
++      /* ---------- Validation messages ---------- */
++      var messages = {
++        firstName: { valueMissing: 'Enter your first name.' },
++        lastName: { valueMissing: 'Enter your last name.' },
++        email: {
++          valueMissing: 'Enter your email address.',
++          typeMismatch: 'Enter an email address in the format name@example.com.'
++        },
++        phone: { patternMismatch: 'Enter a phone number using only digits, spaces, and the characters + ( ) . -' },
++        birthDay: { patternMismatch: 'Enter a day between 1 and 31.' },
++        password: {
++          valueMissing: 'Create a password.',
++          tooShort: 'Your password must be at least {min} characters. You entered {n}.'
++        },
++        homeCafe: { valueMissing: 'Choose your home café.' },
++        acceptTerms: { valueMissing: 'You need to agree to the Rewards Terms to join.' }
++      };
++
++      function messageFor(field) {
++        var v = field.validity;
++        var m = messages[field.name] || {};
++        if (v.customError) { return field.validationMessage; }
++        if (v.valueMissing) { return m.valueMissing || 'This field is required.'; }
++        if (v.typeMismatch) { return m.typeMismatch || 'Enter a valid value.'; }
++        if (v.tooShort) {
++          return (m.tooShort || 'Enter at least {min} characters.')
++            .replace('{min}', field.minLength).replace('{n}', field.value.length);
++        }
++        if (v.tooLong) { return 'Enter no more than ' + field.maxLength + ' characters.'; }
++        if (v.patternMismatch) { return m.patternMismatch || 'Enter a valid value.'; }
++        return field.validationMessage || 'Enter a valid value.';
++      }
++
++      /* ---------- Cross-field rules (set as custom validity so native checks stay in sync) ---------- */
++      var daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
++
++      function applyCustomRules(field) {
++        var month = $('bday-month');
++        var day = $('bday-day');
++        if (field === month || field === day) {
++          month.setCustomValidity('');
++          day.setCustomValidity('');
++          var m = parseInt(month.value, 10);
++          var d = parseInt(day.value, 10);
++          if (month.value && !day.value) {
++            day.setCustomValidity('Enter the day of your birthday, or clear the month.');
++          } else if (day.value && !month.value) {
++            month.setCustomValidity('Select the month of your birthday, or clear the day.');
++          } else if (m && d && !day.validity.patternMismatch && d > daysInMonth[m - 1]) {
++            day.setCustomValidity(month.options[month.selectedIndex].text + ' has only ' + daysInMonth[m - 1] + ' days.');
++          }
++        }
++        if (field.name === 'password') {
++          var email = $('email').value.trim().toLowerCase();
++          var pw = field.value.toLowerCase();
++          field.setCustomValidity(pw && email && pw === email ? 'Your password can\'t be the same as your email address.' : '');
++        }
++      }
++
++      /* ---------- Per-field error display ---------- */
++      function errorElementFor(field) {
++        var ids = (field.getAttribute('aria-describedby') || '').split(/\s+/);
++        for (var i = 0; i < ids.length; i++) {
++          if (/-error$/.test(ids[i])) { return $(ids[i]); }
++        }
++        return null;
++      }
++
++      function setFieldError(field, message) {
++        var el = errorElementFor(field);
++        if (message) {
++          field.setAttribute('aria-invalid', 'true');
++          if (el) { el.textContent = message; }
++        } else {
++          field.removeAttribute('aria-invalid');
++          // Shared error elements (birthday) are only cleared when every field using them is valid.
++          if (el && !form.querySelector('[aria-invalid="true"][aria-describedby~="' + el.id + '"]')) {
++            el.textContent = '';
++          }
++        }
++      }
++
++      function validateField(field) {
++        applyCustomRules(field);
++        var valid = field.checkValidity();
++        setFieldError(field, valid ? '' : messageFor(field));
++        return valid;
++      }
++
++      function fieldsIn(step) {
++        return Array.prototype.slice.call(step.querySelectorAll('input, select, textarea'));
++      }
++
++      function validateStep(index, options) {
++        options = options || {};
++        var invalid = [];
++        fieldsIn(steps[index]).forEach(function (field) {
++          if (!validateField(field)) { invalid.push(field); }
++        });
++        if (invalid.length && !options.silent) { showSummary(invalid); }
++        return invalid.length === 0;
++      }
++
++      /* ---------- Error summary ---------- */
++      function showSummary(fields) {
++        summaryList.textContent = '';
++        fields.forEach(function (field) {
++          var li = document.createElement('li');
++          var a = document.createElement('a');
++          a.href = '#' + field.id;
++          a.textContent = errorElementFor(field) ? errorElementFor(field).textContent : messageFor(field);
++          a.addEventListener('click', function (e) {
++            e.preventDefault();
++            field.focus();
++            if (field.scrollIntoView) { field.scrollIntoView({ block: 'center' }); }
++          });
++          li.appendChild(a);
++          summaryList.appendChild(li);
++        });
++        summary.hidden = false;
++        summary.focus();
++      }
++
++      function hideSummary() {
++        summary.hidden = true;
++        summaryList.textContent = '';
++      }
++
++      /* ---------- Step navigation ---------- */
++      function showStep(index, moveFocus) {
++        current = index;
++        steps.forEach(function (step, i) { step.hidden = i !== index; });
++        progressItems.forEach(function (li, i) {
++          if (i === index) { li.setAttribute('aria-current', 'step'); } else { li.removeAttribute('aria-current'); }
++          li.classList.toggle('is-complete', i < index);
++        });
++        var last = index === steps.length - 1;
++        backBtn.hidden = index === 0;
++        nextBtn.hidden = last;
++        submitBtn.hidden = !last;
++        hideSummary();
++        if (last) { fillReview(); }
++        if (moveFocus) { steps[index].querySelector('legend').focus(); }
++      }
++
++      function fillReview() {
++        $('review-name').textContent = ($('first-name').value + ' ' + $('last-name').value).trim();
++        $('review-email').textContent = $('email').value.trim();
++        $('review').hidden = false;
++      }
++
++      nextBtn.addEventListener('click', function () {
++        if (validateStep(current)) { showStep(current + 1, true); }
++      });
++
++      backBtn.addEventListener('click', function () {
++        showStep(current - 1, true);
++      });
++
++      form.addEventListener('click', function (e) {
++        var target = e.target.closest ? e.target.closest('[data-goto]') : null;
++        if (target) { showStep(parseInt(target.getAttribute('data-goto'), 10), true); }
++      });
++
++      /* ---------- Inline validation timing: check on blur, re-check live once a field is flagged ---------- */
++      form.addEventListener('focusout', function (e) {
++        var field = e.target;
++        if (!field.name || field.type === 'hidden' || field.closest('.hp')) { return; }
++        var hasValue = field.type === 'checkbox' ? field.checked : field.value;
++        if (hasValue || field.getAttribute('aria-invalid') === 'true') { validateField(field); }
++      });
++
++      form.addEventListener('input', function (e) {
++        var field = e.target;
++        if (field.getAttribute('aria-invalid') === 'true') { validateField(field); }
++      });
++
++      form.addEventListener('change', function (e) {
++        var field = e.target;
++        if (field.type === 'checkbox' || field.tagName === 'SELECT') { validateField(field); }
++      });
++
++      /* ---------- Show / hide password ---------- */
++      $('toggle-password').addEventListener('click', function () {
++        var pw = $('password');
++        var show = pw.type === 'password';
++        pw.type = show ? 'text' : 'password';
++        this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
++        this.textContent = show ? 'Hide' : 'Show';
++      });
++
++      /* ---------- Submission ---------- */
++      form.addEventListener('submit', function (e) {
++        // Pressing Enter on an earlier step advances instead of submitting.
++        if (current < steps.length - 1) {
++          e.preventDefault();
++          if (validateStep(current)) { showStep(current + 1, true); }
++          return;
++        }
++
++        // Final guard: every step must be valid, including ones that are hidden right now.
++        for (var i = 0; i < steps.length; i++) {
++          if (!validateStep(i, { silent: true })) {
++            e.preventDefault();
++            if (i !== current) { showStep(i, false); }
++            validateStep(i);
++            return;
++          }
++        }
++
++        if (!window.fetch || !window.URLSearchParams) { return; } // fall back to a normal POST
++        e.preventDefault();
++        if (submitting) { return; }                                // block double submission
++        submitting = true;
++        submitBtn.disabled = true;
++        submitBtn.textContent = 'Creating your account…';
++        form.setAttribute('aria-busy', 'true');
++        failurePanel.hidden = true;
++
++        fetch(form.action, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: {
++            'Accept': 'application/json',
++            'X-CSRF-Token': $('csrf-token').value,
++            'X-Requested-With': 'XMLHttpRequest'
++          },
++          body: new URLSearchParams(new FormData(form))
++        }).then(function (response) {
++          if (!response.ok) { throw new Error('Request failed with status ' + response.status); }
++          $('form-success-text').textContent = 'We sent a confirmation link to ' + $('email').value.trim() +
++            '. Open it to activate your card and claim your welcome drink.';
++          form.hidden = true;
++          progress.hidden = true;
++          successPanel.hidden = false;
++          successPanel.focus();
++        }).catch(function () {
++          failurePanel.hidden = false;
++          failurePanel.focus();
++        }).then(function () {
++          submitting = false;
++          submitBtn.disabled = false;
++          submitBtn.textContent = 'Create my account';
++          form.removeAttribute('aria-busy');
++        });
++      });
++
++      showStep(0, false);
++    })();
++  </script>
+ </body>
+ 
+ </html>

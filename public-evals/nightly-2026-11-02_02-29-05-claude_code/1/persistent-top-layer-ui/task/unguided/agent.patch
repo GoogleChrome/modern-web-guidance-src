@@ -1,0 +1,397 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,151 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Feedback dialog */
++    .feedback-trigger {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 900;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 999px;
++      padding: 12px 20px;
++      font: inherit;
++      font-weight: bold;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    .feedback-here {
++      background: transparent;
++      border: 1px dashed currentColor;
++      color: inherit;
++      border-radius: 4px;
++      padding: 4px 10px;
++      margin-top: 12px;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++    }
++
++    /* Each dock region tints the dialog; custom properties inherit through the
++       DOM tree, so the top-layer dialog picks up its current parent's theme. */
++    [data-dock="hero"] { --fb-accent: #ffab40; --fb-bg: #fff8ee; }
++    [data-dock="seasonal"] { --fb-accent: #8d6e63; --fb-bg: #f7f1ef; }
++    [data-dock="footer"] { --fb-accent: #5d4037; --fb-bg: #efebe9; }
++
++    .feedback-dialog {
++      width: min(440px, calc(100% - 32px));
++      margin: auto;
++      border: none;
++      border-top: 6px solid var(--fb-accent, var(--accent));
++      border-radius: 10px;
++      padding: 24px;
++      background: var(--fb-bg, white);
++      color: var(--text);
++      text-align: left;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      transition: border-color 0.3s, background-color 0.3s;
++    }
++
++    .feedback-dialog::backdrop {
++      background: rgba(30, 20, 15, 0.55);
++    }
++
++    .feedback-dialog h2 {
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .feedback-dialog .fb-context {
++      font-size: 0.85rem;
++      margin-bottom: 16px;
++    }
++
++    .feedback-dialog fieldset {
++      border: none;
++      margin-bottom: 14px;
++    }
++
++    .feedback-dialog legend,
++    .feedback-dialog label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: bold;
++      margin-bottom: 6px;
++    }
++
++    .fb-moves,
++    .fb-ratings {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .fb-moves button,
++    .fb-actions button {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 6px 12px;
++      border-radius: 4px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .fb-moves button[aria-pressed="true"] {
++      background: var(--fb-accent, var(--primary));
++      border-color: var(--fb-accent, var(--primary));
++      color: white;
++    }
++
++    .fb-ratings label {
++      font-weight: normal;
++      margin: 0;
++      display: flex;
++      align-items: center;
++      gap: 4px;
++    }
++
++    .feedback-dialog textarea {
++      width: 100%;
++      min-height: 100px;
++      padding: 8px;
++      font: inherit;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      resize: vertical;
++    }
++
++    .fb-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 8px;
++      margin-top: 16px;
++    }
++
++    .fb-actions button[type="submit"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .fb-status {
++      font-size: 0.8rem;
++      min-height: 1.3em;
++      margin-top: 10px;
++      color: #6d4c41;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,16 +310,17 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" data-dock="hero" data-dock-label="Hero banner">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="feedback-here" data-dock-target="hero">Feedback on this banner</button>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section data-dock="seasonal" data-dock-label="Seasonal Favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -193,20 +337,220 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <p style="text-align: center;">
++        <button type="button" class="feedback-here" data-dock-target="seasonal">Feedback on seasonal drinks</button>
++      </p>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer data-dock="footer" data-dock-label="Footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <button type="button" class="feedback-here" data-dock-target="footer">General site feedback</button>
+   </footer>
+ 
++  <button type="button" class="feedback-trigger" data-dock-target="">Feedback</button>
++
++  <!-- Appended into a [data-dock] region on load (footer by default) and relocated from there. -->
++  <dialog class="feedback-dialog" id="feedback-dialog" aria-labelledby="fb-title">
++    <form id="feedback-form">
++      <h2 id="fb-title">Share your feedback</h2>
++      <p class="fb-context">About: <strong id="fb-context-label">Footer</strong></p>
++
++      <fieldset>
++        <legend>Move feedback to section</legend>
++        <div class="fb-moves">
++          <button type="button" data-move="hero" aria-pressed="false">Hero</button>
++          <button type="button" data-move="seasonal" aria-pressed="false">Seasonal</button>
++          <button type="button" data-move="footer" aria-pressed="false">Footer</button>
++        </div>
++      </fieldset>
++
++      <fieldset>
++        <legend>How was it?</legend>
++        <div class="fb-ratings">
++          <label><input type="radio" name="rating" value="1"> 1</label>
++          <label><input type="radio" name="rating" value="2"> 2</label>
++          <label><input type="radio" name="rating" value="3"> 3</label>
++          <label><input type="radio" name="rating" value="4"> 4</label>
++          <label><input type="radio" name="rating" value="5"> 5</label>
++        </div>
++      </fieldset>
++
++      <label for="fb-message">Comments</label>
++      <textarea id="fb-message" name="message" placeholder="Tell us what you think..."></textarea>
++
++      <p class="fb-status" id="fb-status" role="status" aria-live="polite"></p>
++
++      <div class="fb-actions">
++        <button type="button" id="fb-close">Close</button>
++        <button type="submit">Send feedback</button>
++      </div>
++    </form>
++  </dialog>
++
++  <script>
++    (() => {
++      const STORAGE_KEY = 'daily-grind-feedback';
++      const dialog = document.getElementById('feedback-dialog');
++      const form = document.getElementById('feedback-form');
++      const message = document.getElementById('fb-message');
++      const status = document.getElementById('fb-status');
++      const contextLabel = document.getElementById('fb-context-label');
++      const moveButtons = dialog.querySelectorAll('[data-move]');
++
++      // ?nomovebefore forces the fallback path for testing.
++      const supportsMoveBefore = 'moveBefore' in Element.prototype &&
++        !new URLSearchParams(location.search).has('nomovebefore');
++
++      const docks = Object.fromEntries(
++        [...document.querySelectorAll('[data-dock]')].map((el) => [el.dataset.dock, el])
++      );
++
++      const currentDock = () => dialog.parentElement.closest('[data-dock]')?.dataset.dock;
++
++      // --- Draft persistence ---------------------------------------------------
++      const saveDraft = () => {
++        const rating = form.elements.rating.value;
++        localStorage.setItem(STORAGE_KEY, JSON.stringify({
++          dock: currentDock(),
++          rating,
++          message: message.value,
++          open: dialog.open,
++        }));
++      };
++
++      const loadDraft = () => {
++        try {
++          return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
++        } catch {
++          return {};
++        }
++      };
++
++      // --- Relocation ------------------------------------------------------------
++      const updateDockUi = () => {
++        const dock = currentDock();
++        contextLabel.textContent = docks[dock]?.dataset.dockLabel ?? '';
++        moveButtons.forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.move === dock)));
++      };
++
++      // Snapshot everything that a remove/insert would reset.
++      const captureState = () => {
++        const active = document.activeElement;
++        const focused = dialog.contains(active) ? active : null;
++        return {
++          open: dialog.open,
++          modal: dialog.matches(':modal'),
++          focused,
++          selection: focused && typeof focused.selectionStart === 'number'
++            ? [focused.selectionStart, focused.selectionEnd, focused.selectionDirection]
++            : null,
++          scrollTop: dialog.scrollTop,
++          textScrollTop: message.scrollTop,
++        };
++      };
++
++      const restoreState = (state) => {
++        if (state.open) {
++          if (state.modal) dialog.showModal();
++          else dialog.show();
++        }
++        dialog.scrollTop = state.scrollTop;
++        message.scrollTop = state.textScrollTop;
++        if (state.focused?.isConnected) {
++          state.focused.focus({ preventScroll: true });
++          if (state.selection) state.focused.setSelectionRange(...state.selection);
++        }
++      };
++
++      const relocate = (dockName) => {
++        const target = docks[dockName];
++        if (!target || target === dialog.parentElement) return;
++
++        let preserved = false;
++        if (supportsMoveBefore) {
++          try {
++            // Atomic move: keeps open/modal/top-layer state, focus and selection.
++            target.moveBefore(dialog, null);
++            preserved = true;
++          } catch {
++            // e.g. HierarchyRequestError in edge cases; fall through.
++          }
++        }
++
++        if (!preserved) {
++          // Removing a modal dialog drops it from the top layer and leaves it in a
++          // non-modal "open" state, so close it first and re-open after insertion.
++          const state = captureState();
++          if (state.open) dialog.close();
++          target.insertBefore(dialog, null);
++          restoreState(state);
++        }
++
++        updateDockUi();
++        saveDraft();
++        status.textContent = `Moved to ${target.dataset.dockLabel}` +
++          (preserved ? '.' : ' (state restored).');
++      };
++
++      const open = (dockName) => {
++        if (dockName) relocate(dockName);
++        if (!dialog.open) dialog.showModal();
++        status.textContent = '';
++        saveDraft();
++      };
++
++      // --- Events ----------------------------------------------------------------
++      document.querySelectorAll('[data-dock-target]').forEach((btn) => {
++        btn.addEventListener('click', () => open(btn.dataset.dockTarget));
++      });
++
++      moveButtons.forEach((btn) => {
++        btn.addEventListener('click', () => relocate(btn.dataset.move));
++      });
++
++      document.getElementById('fb-close').addEventListener('click', () => dialog.close());
++
++      // `close` is dispatched asynchronously, so a fallback close/re-open cycle
++      // arrives here with the dialog already open again; ignore those.
++      dialog.addEventListener('close', () => {
++        if (!dialog.open) saveDraft();
++      });
++
++      form.addEventListener('input', saveDraft);
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        if (!form.elements.rating.value && !message.value.trim()) {
++          status.textContent = 'Add a rating or a comment before sending.';
++          message.focus();
++          return;
++        }
++        form.reset();
++        status.textContent = `Thanks! Your feedback on the ${contextLabel.textContent} was sent.`;
++        saveDraft();
++      });
++
++      // --- Restore persisted draft ----------------------------------------------
++      const draft = loadDraft();
++      (docks[draft.dock] ?? docks.footer).append(dialog);
++      if (draft.message) message.value = draft.message;
++      if (draft.rating) {
++        const radio = form.querySelector(`input[name="rating"][value="${draft.rating}"]`);
++        if (radio) radio.checked = true;
++      }
++      updateDockUi();
++      if (draft.open) dialog.showModal();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -106,16 +106,91 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    @property --inner-size {
++      syntax: '<length>';
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    @property --outer-size {
++      syntax: '<length>';
++      inherits: true;
++      initial-value: 0px;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .product-card {
++      --mouse-x: 50%;
++      --mouse-y: 50%;
++      --inner-size: 0px;
++      --outer-size: 0px;
++      position: relative;
++      overflow: hidden;
++      transition: --inner-size 0.35s ease, --outer-size 0.35s ease;
++    }
++
++    .product-card:hover {
++      --inner-size: 70px;
++      --outer-size: 160px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .product-card {
++        transition-duration: 0s !important;
++      }
++    }
++
++    .spotlight-overlay {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++      border-radius: inherit;
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-start;
++      align-items: center;
++      padding: 14px 20px;
++      color: var(--primary);
++      font-size: 0.85rem;
++      font-weight: 600;
++      -webkit-mask-image: radial-gradient(
++        circle at var(--mouse-x) var(--mouse-y),
++        rgba(0, 0, 0, 1) var(--inner-size),
++        rgba(0, 0, 0, 0) var(--outer-size)
++      );
++      mask-image: radial-gradient(
++        circle at var(--mouse-x) var(--mouse-y),
++        rgba(0, 0, 0, 1) var(--inner-size),
++        rgba(0, 0, 0, 0) var(--outer-size)
++      );
++      z-index: 1;
++    }
++
++    .spotlight-badge {
++      background: rgba(255, 255, 255, 0.9);
++      color: var(--primary);
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
++    }
++
++    .product-card > :not(.spotlight-overlay) {
++      position: relative;
++      z-index: 2;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -177,19 +252,28 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card product-card">
++          <div class="spotlight-overlay" style="background-image: linear-gradient(rgba(255, 248, 240, 0.85), rgba(255, 235, 214, 0.9)), url('https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80');">
++            <span class="spotlight-badge">16oz • 210 kcal • Organic Oat &amp; Pure Maple</span>
++          </div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
++          <div class="spotlight-overlay" style="background-image: linear-gradient(rgba(255, 248, 240, 0.85), rgba(239, 224, 212, 0.9)), url('https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80');">
++            <span class="spotlight-badge">Double Shot • Single Origin • Dark Chocolate Notes</span>
++          </div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
++          <div class="spotlight-overlay" style="background-image: linear-gradient(rgba(255, 248, 240, 0.85), rgba(235, 225, 218, 0.9)), url('https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80');">
++            <span class="spotlight-badge">18-Hr Steep • Low Acidity • Velvety Finish</span>
++          </div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -206,7 +290,24 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.product-card').forEach((card) => {
++      const updatePointerPosition = (event) => {
++        const rect = card.getBoundingClientRect();
++        const x = event.clientX - rect.left;
++        const y = event.clientY - rect.top;
++        card.style.setProperty('--mouse-x', `${x}px`);
++        card.style.setProperty('--mouse-y', `${y}px`);
++      };
++
++      card.addEventListener('pointermove', updatePointerPosition);
++      card.addEventListener('mousemove', updatePointerPosition);
++      card.addEventListener('pointerenter', updatePointerPosition);
++      card.addEventListener('mouseenter', updatePointerPosition);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

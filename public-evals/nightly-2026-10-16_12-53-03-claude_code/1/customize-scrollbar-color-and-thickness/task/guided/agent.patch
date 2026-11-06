@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,65 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 40px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: #ffab40;
++      --scrollbar-track: #4e342e;
++
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 10px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .testimonial {
++      padding: 15px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .testimonial:last-child {
++      border-bottom: none;
++    }
++
++    .testimonial blockquote {
++      font-style: italic;
++    }
++
++    .testimonial cite {
++      display: block;
++      margin-top: 5px;
++      font-size: 0.85rem;
++      font-style: normal;
++      color: var(--primary);
++      font-weight: bold;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +251,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2 style="text-align: center;">Customer Feedback</h2>
++      <div class="feedback-log" tabindex="0" role="region" aria-label="Customer feedback log">
++        <article class="testimonial">
++          <blockquote>"The Maple Oat Latte is the best thing I've had all fall. Cozy in a cup!"</blockquote>
++          <cite>&mdash; Jamie R.</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Cold brew is silky smooth and never bitter. My daily ritual."</blockquote>
++          <cite>&mdash; Priya S.</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Friendly baristas and the dark roast espresso is unbeatable."</blockquote>
++          <cite>&mdash; Marcus T.</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Love that the beans are ethically sourced. Tastes better knowing that."</blockquote>
++          <cite>&mdash; Elena V.</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Order Now was quick and my coffee was still hot on pickup."</blockquote>
++          <cite>&mdash; Dan K.</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"The rewards program pays off fast. Free drink within a month!"</blockquote>
++          <cite>&mdash; Aisha M.</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Cozy atmosphere, great for working on my laptop all morning."</blockquote>
++          <cite>&mdash; Tom H.</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Their seasonal menu always surprises me in the best way."</blockquote>
++          <cite>&mdash; Sofia L.</cite>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

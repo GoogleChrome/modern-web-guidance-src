@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+index 66c9173..1efd663 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,83 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Switch */
++    .switch-row {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 14px;
++      margin-top: 30px;
++    }
++
++    .switch {
++      position: relative;
++      flex: none;
++      width: 52px;
++      height: 30px;
++      border: 2px solid var(--primary);
++      border-radius: 15px;
++      background: white;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .switch::after {
++      content: "";
++      position: absolute;
++      top: 3px;
++      left: 3px;
++      width: 20px;
++      height: 20px;
++      border-radius: 50%;
++      background: var(--primary);
++      transition: transform 0.2s, background 0.2s;
++    }
++
++    .switch[aria-checked="true"] {
++      background: var(--primary);
++    }
++
++    .switch[aria-checked="true"]::after {
++      background: white;
++      transform: translateX(22px);
++    }
++
++    .switch:focus-visible {
++      outline: 3px solid var(--text);
++      outline-offset: 3px;
++    }
++
++    .switch-state {
++      min-width: 2.5em;
++      font-weight: bold;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .switch,
++      .switch::after {
++        transition: none;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .switch {
++        border-color: ButtonText;
++      }
++
++      .switch::after {
++        background: ButtonText;
++      }
++
++      .switch[aria-checked="true"] {
++        background: Highlight;
++      }
++
++      .switch[aria-checked="true"]::after {
++        background: HighlightText;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -194,9 +271,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="switch-row">
++        <span id="alerts-label">Seasonal drink alerts</span>
++        <button type="button" role="switch" class="switch" id="alerts-switch" aria-checked="false"
++          aria-labelledby="alerts-label"></button>
++        <span class="switch-state" id="alerts-state" aria-hidden="true">Off</span>
++      </div>
+     </section>
+   </main>
+ 
++  <script>
++    document.querySelectorAll('[role="switch"]').forEach(function (sw) {
++      var state = document.getElementById(sw.id.replace('-switch', '-state'));
++      sw.addEventListener('click', function () {
++        var on = sw.getAttribute('aria-checked') !== 'true';
++        sw.setAttribute('aria-checked', String(on));
++        if (state) state.textContent = on ? 'On' : 'Off';
++      });
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

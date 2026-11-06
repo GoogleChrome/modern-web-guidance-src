@@ -1,0 +1,300 @@
+diff --git a/index.html b/index.html
+index 66c9173..6004b84 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,160 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --color-scheme: light;
++
++      /* Raw light and dark color tokens */
++      --primary-light: #4e342e;
++      --primary-dark: #2c1d18;
++      --primary-hover-light: #3e2723;
++      --primary-hover-dark: #3e2723;
++
++      --secondary-light: #d7ccc8;
++      --secondary-dark: #241915;
++
++      --accent-light: #ffab40;
++      --accent-dark: #ffbc66;
++
++      --text-light: #3e2723;
++      --text-dark: #f5ebe6;
++
++      --text-muted-light: #5d4037;
++      --text-muted-dark: #d7ccc8;
++
++      --light-bg: #fafafa;
++      --dark-bg: #16100e;
++
++      --nav-bg-light: #4e342e;
++      --nav-bg-dark: #1f1411;
++      --nav-text-light: #ffffff;
++      --nav-text-dark: #f5ebe6;
++
++      --hero-overlay-light: rgba(0, 0, 0, 0.5);
++      --hero-overlay-dark: rgba(15, 10, 8, 0.72);
++      --hero-text-light: #ffffff;
++      --hero-text-dark: #f5ebe6;
++
++      --card-bg-light: #ffffff;
++      --card-bg-dark: #241915;
++      --card-heading-light: #4e342e;
++      --card-heading-dark: #ffbc66;
++      --card-border-light: rgba(78, 52, 46, 0.12);
++      --card-border-dark: rgba(255, 188, 102, 0.18);
++      --card-shadow-light: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --card-shadow-dark: 0 4px 12px rgba(0, 0, 0, 0.45);
++
++      --btn-bg-light: #4e342e;
++      --btn-bg-dark: #d4882a;
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #16100e;
++      --btn-hover-bg-light: #3e2723;
++      --btn-hover-bg-dark: #ffab40;
++
++      /* Default fallback tokens (light) */
++      --primary: var(--primary-light);
++      --primary-hover: var(--primary-hover-light);
++      --secondary: var(--secondary-light);
++      --accent: var(--accent-light);
++      --text: var(--text-light);
++      --text-muted: var(--text-muted-light);
++      --light: var(--light-bg);
++      --surface-page: var(--light-bg);
++      --nav-bg: var(--nav-bg-light);
++      --nav-text: var(--nav-text-light);
++      --hero-overlay: var(--hero-overlay-light);
++      --hero-text: var(--hero-text-light);
++      --card-bg: var(--card-bg-light);
++      --card-heading: var(--card-heading-light);
++      --card-border: var(--card-border-light);
++      --card-shadow: var(--card-shadow-light);
++      --btn-bg: var(--btn-bg-light);
++      --btn-text: var(--btn-text-light);
++      --btn-hover-bg: var(--btn-hover-bg-light);
++
++      /* Track active scheme from OS preference or root theme attributes/classes/meta */
++      @media (prefers-color-scheme: dark) {
++        --color-scheme: dark;
++      }
++
++      &:where(
++        .dark,
++        .theme-dark,
++        [data-theme="dark"],
++        [data-color-scheme="dark"],
++        [theme="dark"],
++        :has(> head > meta[name="color-scheme"][content="dark"])
++      ) {
++        color-scheme: dark;
++        --color-scheme: dark;
++      }
++
++      &:where(
++        .light,
++        .theme-light,
++        [data-theme="light"],
++        [data-color-scheme="light"],
++        [theme="light"],
++        :has(> head > meta[name="color-scheme"][content="light"])
++      ) {
++        color-scheme: light;
++        --color-scheme: light;
++      }
++
++      /* Fallback for browsers without light-dark() support */
++      @supports not (color: light-dark(white, black)) {
++        @media (prefers-color-scheme: dark) {
++          &:not(:where(.light, .theme-light, [data-theme="light"], [data-color-scheme="light"], [theme="light"], :has(> head > meta[name="color-scheme"][content="light"]))) {
++            --primary: var(--primary-dark);
++            --primary-hover: var(--primary-hover-dark);
++            --secondary: var(--secondary-dark);
++            --accent: var(--accent-dark);
++            --text: var(--text-dark);
++            --text-muted: var(--text-muted-dark);
++            --light: var(--dark-bg);
++            --surface-page: var(--dark-bg);
++            --nav-bg: var(--nav-bg-dark);
++            --nav-text: var(--nav-text-dark);
++            --hero-overlay: var(--hero-overlay-dark);
++            --hero-text: var(--hero-text-dark);
++            --card-bg: var(--card-bg-dark);
++            --card-heading: var(--card-heading-dark);
++            --card-border: var(--card-border-dark);
++            --card-shadow: var(--card-shadow-dark);
++            --btn-bg: var(--btn-bg-dark);
++            --btn-text: var(--btn-text-dark);
++            --btn-hover-bg: var(--btn-hover-bg-dark);
++          }
++        }
++      }
++
++      /* Single-definition adaptive color tokens via light-dark() */
++      @supports (color: light-dark(white, black)) {
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --primary-hover: light-dark(var(--primary-hover-light), var(--primary-hover-dark));
++        --secondary: light-dark(var(--secondary-light), var(--secondary-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --text-muted: light-dark(var(--text-muted-light), var(--text-muted-dark));
++        --light: light-dark(var(--light-bg), var(--dark-bg));
++        --surface-page: light-dark(var(--light-bg), var(--dark-bg));
++        --nav-bg: light-dark(var(--nav-bg-light), var(--nav-bg-dark));
++        --nav-text: light-dark(var(--nav-text-light), var(--nav-text-dark));
++        --hero-overlay: light-dark(var(--hero-overlay-light), var(--hero-overlay-dark));
++        --hero-text: light-dark(var(--hero-text-light), var(--hero-text-dark));
++        --card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark));
++        --card-heading: light-dark(var(--card-heading-light), var(--card-heading-dark));
++        --card-border: light-dark(var(--card-border-light), var(--card-border-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++        --btn-hover-bg: light-dark(var(--btn-hover-bg-light), var(--btn-hover-bg-dark));
++      }
++
++      accent-color: var(--accent);
+     }
+ 
+     * {
+@@ -24,13 +170,14 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--surface-page);
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,6 +185,8 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      border-bottom: 1px solid var(--card-border);
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+     }
+ 
+     .logo {
+@@ -56,7 +205,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -75,7 +224,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +232,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,31 +257,60 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--text);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--card-border);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++    }
++
++    .card p {
++      color: var(--text-muted);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
++      font-weight: 600;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
++    }
++
++    /* Non-color style adaptations using container style queries without duplicating selectors */
++    @container style(--color-scheme: dark) {
++      nav {
++        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
++      }
++
++      .hero {
++        border-bottom: 1px solid var(--card-border);
++      }
++
++      .card {
++        box-shadow: var(--card-shadow-dark);
++      }
++    }
++
++    @container not style(--color-scheme: dark) {
++      .card {
++        box-shadow: var(--card-shadow-light);
++      }
+     }
+ 
+     footer {
+@@ -140,6 +318,7 @@
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     .footer-links {

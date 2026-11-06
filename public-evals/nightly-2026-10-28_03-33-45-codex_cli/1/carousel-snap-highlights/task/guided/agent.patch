@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,28 +99,74 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .carousel {
++      --card-width: min(70vw, 20rem);
++      display: flex;
++      gap: 3.5rem;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      padding: 3rem max(2rem, calc((100% - var(--card-width)) / 2));
+       margin-top: 20px;
+     }
+ 
++    .carousel-item {
++      flex: 0 0 var(--card-width);
++      scroll-snap-align: center;
++      container-type: scroll-state;
++      container-name: coffee-card;
++    }
++
+     .card {
+-      background: white;
++      height: 100%;
++      background: #e0e0e0;
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: inherit;
+     }
+ 
++    .carousel:focus-visible,
++    .card a:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 5px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .card {
++        transition: scale 0.3s, background-color 0.3s, color 0.3s, box-shadow 0.3s;
++      }
++
++      @container coffee-card scroll-state(snapped: x) {
++        .card {
++          scale: 1.15;
++          background-color: #007bff;
++          color: #fff;
++          box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
++        }
++      }
++
++      .carousel-item.is-snapped .card {
++        scale: 1.15;
++        background-color: #007bff;
++        color: #fff;
++        box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .carousel .card,
++      .carousel .card a {
++        transition: none !important;
++        scale: 1 !important;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -175,24 +221,30 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <h2 id="seasonal-favorites" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="carousel" tabindex="0" role="region" aria-labelledby="seasonal-favorites">
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +258,31 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep the centered highlight available without scroll-state query support.
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const carousel = document.querySelector('.carousel');
++      const items = carousel.querySelectorAll('.carousel-item');
++      let observer;
++
++      const observeCenter = () => {
++        observer?.disconnect();
++        observer = new IntersectionObserver(entries => {
++          entries.forEach(entry => {
++            entry.target.classList.toggle('is-snapped', entry.isIntersecting);
++          });
++        }, {
++          root: carousel,
++          rootMargin: `0px -${carousel.clientWidth * 0.49}px`,
++          threshold: 0
++        });
++        items.forEach(item => observer.observe(item));
++      };
++
++      new ResizeObserver(observeCenter).observe(carousel);
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,495 @@
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..ef571cd
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,75 @@
++import './grind-button.js';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: block; }
++    :host([hidden]) { display: none; }
++    article {
++      height: 100%;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      transition: box-shadow 0.3s, transform 0.3s;
++    }
++    article:hover, article:focus-within {
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
++      transform: translateY(-2px);
++    }
++    @media (prefers-reduced-motion: reduce) {
++      article { transition: none; }
++      article:hover, article:focus-within { transform: none; }
++    }
++    ::slotted([slot="title"]), .title {
++      margin: 0 0 10px;
++      font-size: 1.17rem;
++      color: var(--primary, #4e342e);
++    }
++  </style>
++  <article part="card">
++    <div role="heading" class="title"></div>
++    <p><slot></slot></p>
++    <grind-button></grind-button>
++  </article>
++`;
++
++/**
++ * <coffee-card name="Cold Brew" href="/menu/cold-brew" [heading-level="3"] [cta="View Details"]>
++ *   Steeped for 18 hours for maximum smoothness.
++ * </coffee-card>
++ */
++class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'href', 'cta', 'heading-level'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
++    this._title = this.shadowRoot.querySelector('.title');
++    this._button = this.shadowRoot.querySelector('grind-button');
++  }
++
++  connectedCallback() {
++    this._render();
++  }
++
++  attributeChangedCallback() {
++    this._render();
++  }
++
++  _render() {
++    const name = this.getAttribute('name') ?? '';
++    const cta = this.getAttribute('cta') || 'View Details';
++    const level = Number(this.getAttribute('heading-level'));
++    this._title.textContent = name;
++    this._title.setAttribute('aria-level', level >= 1 && level <= 6 ? level : 3);
++    this._button.textContent = cta;
++    this._button.setAttribute('label', name ? `${cta}: ${name}` : cta);
++    const href = this.getAttribute('href');
++    if (href === null) this._button.removeAttribute('href');
++    else this._button.setAttribute('href', href);
++  }
++}
++
++customElements.define('coffee-card', CoffeeCard);
+diff --git a/components/grind-button.js b/components/grind-button.js
+new file mode 100644
+index 0000000..e5c1851
+--- /dev/null
++++ b/components/grind-button.js
+@@ -0,0 +1,51 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: inline-block; margin-top: 15px; }
++    :host([hidden]) { display: none; }
++    a {
++      display: inline-block;
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      transition: background 0.3s;
++    }
++    a:hover { background: var(--primary-dark, #3e2723); }
++    a:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 2px; }
++  </style>
++  <a part="link"><slot></slot></a>
++`;
++
++/**
++ * <grind-button href="/path" label="Optional accessible name">Text</grind-button>
++ */
++class GrindButton extends HTMLElement {
++  static observedAttributes = ['href', 'label'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
++    this._link = this.shadowRoot.querySelector('a');
++  }
++
++  connectedCallback() {
++    this._sync();
++  }
++
++  attributeChangedCallback() {
++    this._sync();
++  }
++
++  _sync() {
++    const href = this.getAttribute('href');
++    if (href === null) this._link.removeAttribute('href');
++    else this._link.setAttribute('href', href);
++    const label = this.getAttribute('label');
++    if (label) this._link.setAttribute('aria-label', label);
++    else this._link.removeAttribute('aria-label');
++  }
++}
++
++customElements.define('grind-button', GrindButton);
+diff --git a/components/grind-hero.js b/components/grind-hero.js
+new file mode 100644
+index 0000000..cfd61b4
+--- /dev/null
++++ b/components/grind-hero.js
+@@ -0,0 +1,62 @@
++import './grind-button.js';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: block; }
++    header {
++      height: 60vh;
++      min-height: 320px;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)) , var(--hero-image, none);
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++    }
++    ::slotted(h1) { font-size: 3rem; margin: 0 0 1rem; }
++    ::slotted(p) { margin: 0; }
++  </style>
++  <header><slot></slot><grind-button></grind-button></header>
++`;
++
++/**
++ * <grind-hero image="url" cta-href="/order-online" cta="Order Now">
++ *   <h1>Title</h1><p>Tagline</p>
++ * </grind-hero>
++ */
++class GrindHero extends HTMLElement {
++  static observedAttributes = ['image', 'cta', 'cta-href'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
++    this._button = this.shadowRoot.querySelector('grind-button');
++  }
++
++  connectedCallback() {
++    this._render();
++  }
++
++  attributeChangedCallback() {
++    this._render();
++  }
++
++  _render() {
++    const image = this.getAttribute('image');
++    this.shadowRoot.querySelector('header').style.setProperty(
++      '--hero-image', image ? `url("${image.replace(/"/g, '%22')}")` : 'none');
++    const cta = this.getAttribute('cta');
++    this._button.hidden = !cta;
++    this._button.textContent = cta ?? '';
++    const href = this.getAttribute('cta-href');
++    if (href === null) this._button.removeAttribute('href');
++    else this._button.setAttribute('href', href);
++  }
++}
++
++customElements.define('grind-hero', GrindHero);
+diff --git a/components/grind-nav.js b/components/grind-nav.js
+new file mode 100644
+index 0000000..c3bf80a
+--- /dev/null
++++ b/components/grind-nav.js
+@@ -0,0 +1,81 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: block; position: sticky; top: 0; z-index: 1000; }
++    nav {
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++    }
++    .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
++    .links { display: flex; align-items: center; gap: 20px; }
++    ::slotted(a) {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++    ::slotted(a:hover) { color: var(--accent, #ffab40); }
++    ::slotted(a:focus-visible) { outline: 2px solid var(--accent, #ffab40); outline-offset: 3px; }
++    ::slotted(a[data-outlined]) {
++      border: 1px solid var(--accent, #ffab40);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++    button {
++      display: none;
++      background: none;
++      border: 1px solid var(--accent, #ffab40);
++      color: white;
++      border-radius: 4px;
++      padding: 6px 12px;
++      font: inherit;
++      cursor: pointer;
++    }
++    button:focus-visible { outline: 2px solid var(--accent, #ffab40); outline-offset: 2px; }
++    @media (max-width: 700px) {
++      button { display: block; }
++      .links { display: none; flex-direction: column; align-items: flex-start; width: 100%; padding-top: 1rem; gap: 12px; }
++      :host([open]) .links { display: flex; }
++    }
++  </style>
++  <nav aria-label="Main">
++    <div class="logo"><slot name="logo"></slot></div>
++    <button type="button" aria-expanded="false" aria-controls="links">Menu</button>
++    <div class="links" id="links"><slot></slot></div>
++  </nav>
++`;
++
++/**
++ * <grind-nav>
++ *   <span slot="logo">THE DAILY GRIND</span>
++ *   <a href="/menu">Menu</a> ... <a href="/logout" data-outlined>Logout</a>
++ * </grind-nav>
++ * Collapses behind a toggle button on narrow screens; Escape closes it.
++ */
++class GrindNav extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
++    this._button = this.shadowRoot.querySelector('button');
++    this._button.addEventListener('click', () => this.toggleAttribute('open'));
++    this.addEventListener('keydown', (e) => {
++      if (e.key === 'Escape' && this.hasAttribute('open')) {
++        this.removeAttribute('open');
++        this._button.focus();
++      }
++    });
++  }
++
++  static observedAttributes = ['open'];
++
++  attributeChangedCallback() {
++    this._button.setAttribute('aria-expanded', String(this.hasAttribute('open')));
++  }
++}
++
++customElements.define('grind-nav', GrindNav);
+diff --git a/components/index.js b/components/index.js
+new file mode 100644
+index 0000000..03886ae
+--- /dev/null
++++ b/components/index.js
+@@ -0,0 +1,4 @@
++import './grind-button.js';
++import './coffee-card.js';
++import './grind-hero.js';
++import './grind-nav.js';
+diff --git a/index.html b/index.html
+index 66c9173..32f0e0b 100644
+--- a/index.html
++++ b/index.html
+@@ -11,6 +11,7 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
++      --primary-dark: #3e2723;
+       --light: #fafafa;
+     }
+ 
+@@ -27,72 +28,6 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -107,34 +42,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,46 +60,40 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/components/index.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
++  <grind-nav>
++    <span slot="logo">THE DAILY GRIND</span>
++    <a href="/menu">Menu</a>
++    <a href="/locations">Locations</a>
++    <a href="/rewards">Rewards</a>
++    <a href="/account">My Account</a>
++    <a href="/logout" data-outlined>Logout</a>
++  </grind-nav>
++
++  <grind-hero
++    image="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++    cta="Order Now" cta-href="/order-online">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  </grind-hero>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card name="Maple Oat Latte" href="/menu/seasonal">
++          Creamy oat milk with a hint of Vermont maple syrup.
++        </coffee-card>
++        <coffee-card name="Dark Roast Espresso" href="/menu/espresso">
++          Bold, smokey, and perfect for a morning boost.
++        </coffee-card>
++        <coffee-card name="Cold Brew" href="/menu/cold-brew">
++          Steeped for 18 hours for maximum smoothness.
++        </coffee-card>
+       </div>
+     </section>
+   </main>

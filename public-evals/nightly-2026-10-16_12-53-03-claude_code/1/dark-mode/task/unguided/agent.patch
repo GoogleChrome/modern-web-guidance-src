@@ -1,0 +1,417 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,18 +3,93 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Apply the saved theme before first paint to avoid a flash of the wrong theme.
++    (function () {
++      try {
++        var t = localStorage.getItem('theme');
++        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
++      } catch (e) {}
++    })();
++  </script>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++
++      /* Palette: coffee & cream (light) / dark roast (dark) */
++      --cream-bg: #fbf4e9;
++      --cream-surface: #fffaf2;
++      --cream-text: #3e2723;
++      --cream-primary: #6f4e37;
++      --cream-secondary: #e8d9c3;
++      --cream-accent: #b85c1e;
++      --cream-border: #d9c5a8;
++
++      --roast-bg: #1b1310;
++      --roast-surface: #2a1d18;
++      --roast-text: #efe1d0;
++      --roast-primary: #120c0a;
++      --roast-secondary: #241914;
++      --roast-accent: #ffab40;
++      --roast-border: #4a362c;
++
++      /* Semantic theme variables (light by default, swapped for dark below) */
++      --bg: var(--cream-bg);
++      --surface: var(--cream-surface);
++      --text: var(--cream-text);
++      --primary: var(--cream-primary);
++      --secondary: var(--cream-secondary);
++      --accent: var(--cream-accent);
++      --border: var(--cream-border);
++      --on-primary: #fffaf2;
++      --btn-hover: #4e342e;
++      --shadow: rgba(62, 39, 35, 0.15);
++      --scroll-thumb: #b08f6d;
++      --scroll-track: #efe2cf;
+     }
+ 
++    /* Dark values, shared by system preference and forced dark */
++    @media (prefers-color-scheme: dark) {
++      :root:not([data-theme="light"]) {
++        --bg: var(--roast-bg);
++        --surface: var(--roast-surface);
++        --text: var(--roast-text);
++        --primary: var(--roast-primary);
++        --secondary: var(--roast-secondary);
++        --accent: var(--roast-accent);
++        --border: var(--roast-border);
++        --on-primary: #efe1d0;
++        --btn-hover: #6f4e37;
++        --shadow: rgba(0, 0, 0, 0.5);
++        --scroll-thumb: #8a6a52;
++        --scroll-track: #2a1d18;
++      }
++    }
++
++    :root[data-theme="light"] {
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      color-scheme: dark;
++      --bg: var(--roast-bg);
++      --surface: var(--roast-surface);
++      --text: var(--roast-text);
++      --primary: var(--roast-primary);
++      --secondary: var(--roast-secondary);
++      --accent: var(--roast-accent);
++      --border: var(--roast-border);
++      --on-primary: #efe1d0;
++      --btn-hover: #6f4e37;
++      --shadow: rgba(0, 0, 0, 0.5);
++      --scroll-thumb: #8a6a52;
++      --scroll-track: #2a1d18;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,15 +98,44 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
++      accent-color: var(--accent);
+     }
+ 
++    /* Theme switcher bar */
++    .theme-bar {
++      background: var(--secondary);
++      color: var(--text);
++      border-bottom: 1px solid var(--border);
++      padding: 6px 5%;
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++    }
++
++    select {
++      font: inherit;
++      color: var(--text);
++      background-color: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 4px;
++      padding: 4px 8px;
++    }
++
++    select:focus-visible,
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: var(--on-primary);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+@@ -55,9 +159,9 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--on-primary);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -107,12 +211,13 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+@@ -122,25 +227,26 @@
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
++      color: var(--on-primary);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      color: var(--text);
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -151,13 +257,123 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollbars, themed via variables */
++    .scroll-container {
++      max-height: 320px;
++      overflow-y: auto;
++      padding: 16px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      scrollbar-color: var(--scroll-thumb) var(--scroll-track);
++      scrollbar-width: thin;
++    }
++
++    .scroll-container::-webkit-scrollbar {
++      width: 10px;
++    }
++
++    .scroll-container::-webkit-scrollbar-track {
++      background: var(--scroll-track);
++    }
++
++    .scroll-container::-webkit-scrollbar-thumb {
++      background: var(--scroll-thumb);
++      border-radius: 5px;
++    }
++
++    .review {
++      padding: 12px 0;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .review:last-child {
++      border-bottom: 0;
++    }
++
++    .review .stars {
++      color: var(--accent);
++      letter-spacing: 2px;
++    }
++
++    .review cite {
++      display: block;
++      font-size: 0.85rem;
++      opacity: 0.75;
++    }
++
++    /* Late night specials: always dark, regardless of the page theme */
++    .late-night {
++      color-scheme: dark;
++      --bg: var(--roast-bg);
++      --surface: var(--roast-surface);
++      --text: var(--roast-text);
++      --primary: var(--roast-primary);
++      --secondary: var(--roast-secondary);
++      --accent: var(--roast-accent);
++      --border: var(--roast-border);
++      --on-primary: #efe1d0;
++      --btn-hover: #6f4e37;
++      --shadow: rgba(0, 0, 0, 0.5);
++      --scroll-thumb: #8a6a52;
++      --scroll-track: #2a1d18;
++
++      background: var(--bg);
++      color: var(--text);
++      accent-color: var(--accent);
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 24px;
++      margin-top: 40px;
++    }
++
++    .late-night h2 {
++      color: var(--accent);
++      text-align: center;
++    }
++
++    .late-night .controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      margin: 16px 0;
++    }
++
++    .late-night .scroll-container {
++      background: var(--secondary);
++    }
++
++    .special {
++      padding: 10px 0;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .special:last-child {
++      border-bottom: 0;
++    }
++
++    .special h3 {
++      color: var(--accent);
++      font-size: 1.05rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="theme-bar">
++    <label for="theme-select">Theme</label>
++    <select id="theme-select">
++      <option value="system">System default</option>
++      <option value="light">Light</option>
++      <option value="dark">Dark</option>
++    </select>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +410,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center;">What Our Regulars Say</h2>
++      <div class="scroll-container" tabindex="0" role="region" aria-label="Customer reviews" style="margin-top: 20px;">
++        <div class="review"><span class="stars">★★★★★</span><p>The maple oat latte is the best thing I've had all autumn. Cozy and not too sweet.</p><cite>— Priya S.</cite></div>
++        <div class="review"><span class="stars">★★★★★</span><p>Cold brew is incredibly smooth. I come in every morning before work.</p><cite>— Marcus T.</cite></div>
++        <div class="review"><span class="stars">★★★★☆</span><p>Great espresso and friendly baristas. Gets busy on weekends, but worth the wait.</p><cite>— Elena R.</cite></div>
++        <div class="review"><span class="stars">★★★★★</span><p>Lovely place to get work done. Plenty of outlets and the pastries are fresh.</p><cite>— Jordan K.</cite></div>
++        <div class="review"><span class="stars">★★★★★</span><p>The rewards program actually pays off. Free drink every few visits!</p><cite>— Aisha M.</cite></div>
++        <div class="review"><span class="stars">★★★★☆</span><p>Beans are roasted locally and you can taste the difference.</p><cite>— Tom W.</cite></div>
++      </div>
++    </section>
++
++    <section class="late-night" aria-labelledby="late-night-title">
++      <h2 id="late-night-title">Late Night Specials</h2>
++      <p style="text-align: center;">Served after 9 PM, when the roast runs deep.</p>
++      <div class="controls">
++        <label for="special-filter">Show</label>
++        <select id="special-filter">
++          <option value="all">Everything</option>
++          <option value="coffee">Coffee</option>
++          <option value="treat">Treats</option>
++          <option value="decaf">Decaf</option>
++        </select>
++      </div>
++      <div class="scroll-container" tabindex="0" role="region" aria-label="Late night specials">
++        <div class="special" data-type="coffee"><h3>Midnight Espresso Martini (no alcohol)</h3><p>Double espresso shaken with vanilla and cacao syrup.</p></div>
++        <div class="special" data-type="coffee"><h3>Owl's Cold Brew</h3><p>Nitro cold brew with a salted caramel float.</p></div>
++        <div class="special" data-type="decaf"><h3>Decaf Mocha Nightcap</h3><p>Swiss-water decaf with dark chocolate and steamed milk.</p></div>
++        <div class="special" data-type="treat"><h3>Warm Brownie Sundae</h3><p>Fudgy brownie, vanilla bean ice cream, espresso drizzle.</p></div>
++        <div class="special" data-type="decaf"><h3>Honey Lavender Steamer</h3><p>Caffeine-free steamed milk with local honey and lavender.</p></div>
++        <div class="special" data-type="treat"><h3>Affogato</h3><p>Vanilla gelato drowned in a fresh espresso shot.</p></div>
++        <div class="special" data-type="coffee"><h3>Dark Roast Red Eye</h3><p>Drip coffee with a shot of espresso, for the real night owls.</p></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +457,43 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Theme selector: "system" removes the override so the browser follows OS preference.
++    (function () {
++      var root = document.documentElement;
++      var select = document.getElementById('theme-select');
++      var saved = 'system';
++      try { saved = localStorage.getItem('theme') || 'system'; } catch (e) {}
++      if (saved !== 'light' && saved !== 'dark') saved = 'system';
++      select.value = saved;
++
++      select.addEventListener('change', function () {
++        var value = select.value;
++        if (value === 'light' || value === 'dark') {
++          root.dataset.theme = value;
++        } else {
++          delete root.dataset.theme;
++        }
++        try {
++          if (value === 'system') localStorage.removeItem('theme');
++          else localStorage.setItem('theme', value);
++        } catch (e) {}
++      });
++    })();
++
++    // Late night specials filter
++    (function () {
++      var filter = document.getElementById('special-filter');
++      var items = document.querySelectorAll('.special');
++      filter.addEventListener('change', function () {
++        items.forEach(function (el) {
++          el.hidden = filter.value !== 'all' && el.dataset.type !== filter.value;
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

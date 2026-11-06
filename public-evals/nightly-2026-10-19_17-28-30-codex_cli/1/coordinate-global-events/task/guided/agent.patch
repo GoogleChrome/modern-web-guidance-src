@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,93 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .tasting-coordinator {
++      margin-top: 48px;
++      padding: clamp(20px, 4vw, 36px);
++      background: #f2ece8;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++    }
++
++    .tasting-coordinator h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .planner-fields {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
++      gap: 16px;
++      margin-top: 24px;
++    }
++
++    .planner-fields label {
++      display: grid;
++      gap: 6px;
++      font-weight: 600;
++      min-width: 0;
++    }
++
++    .planner-fields input,
++    .planner-fields select {
++      width: 100%;
++      min-width: 0;
++      padding: 11px 12px;
++      border: 1px solid #9b8278;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .planner-fields :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .planner-note {
++      margin-top: 16px;
++      font-size: 0.9rem;
++    }
++
++    #hostWarning:not(:empty) {
++      padding: 12px 16px;
++      border-left: 4px solid #9b5900;
++      background: #fff1db;
++      border-radius: 4px;
++    }
++
++    .tasting-times {
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
++    }
++
++    .timezone-card {
++      background: var(--primary);
++      color: white;
++      text-align: left;
++    }
++
++    .timezone-card h3 {
++      color: var(--secondary);
++      margin-bottom: 4px;
++    }
++
++    .timezone-time {
++      display: block;
++      font-size: 1.9rem;
++      font-weight: 700;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .timezone-detail {
++      display: block;
++      font-size: 0.8rem;
++      color: #e5d7d1;
++      overflow-wrap: anywhere;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +279,34 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="tasting-coordinator" aria-labelledby="tastingHeading">
++      <h2 id="tastingHeading">Global Tasting Coordinator</h2>
++      <p>Good coffee brings us together, wherever we brew. Plan a virtual coffee tasting in your host’s time zone and find the local time for every cup around the world.</p>
++      <fieldset class="planner-fields" id="plannerFields" disabled style="border: 0; padding: 0;">
++        <legend class="planner-note">Choose your tasting date, time, and host time zone.</legend>
++        <label for="dateInput">Tasting date
++          <input type="date" id="dateInput" required>
++        </label>
++        <label for="timeInput">Host’s local time
++          <input type="time" id="timeInput" value="15:00" required>
++        </label>
++        <label for="hostTzSelect">Host time zone
++          <select id="hostTzSelect">
++            <option value="America/New_York">New York · America/New_York</option>
++            <option value="Europe/London">London · Europe/London</option>
++            <option value="Asia/Tokyo">Tokyo · Asia/Tokyo</option>
++            <option value="UTC">UTC · Coordinated Universal Time</option>
++          </select>
++        </label>
++      </fieldset>
++      <p id="hostWarning" class="planner-note" role="status" aria-live="polite" aria-atomic="true"></p>
++      <div id="grid" class="grid tasting-times" aria-live="polite" aria-atomic="true" aria-label="Local tasting times"></div>
++      <p id="plannerStatus" class="planner-note" role="status">Preparing your tasting planner…</p>
++      <noscript><p>Enable JavaScript to calculate local tasting times.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +317,9 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/tasting-planner.js"></script>
++
+ </body>
+ 
+ </html>

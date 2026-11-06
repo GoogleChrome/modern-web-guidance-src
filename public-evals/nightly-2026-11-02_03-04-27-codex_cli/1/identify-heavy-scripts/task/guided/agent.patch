@@ -1,0 +1,46 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,41 @@
++# Script performance diagnostics
++
++Open the website with `?scriptDiagnostics=1` appended to its URL (or
++`&scriptDiagnostics=1` if it already has query parameters). Open the developer
++console and use the page normally to capture load and interaction work.
++
++In supported browsers, a console table automatically shows scripts accumulating
++more than 100 ms of execution inside slow animation frames. Results accumulate
++throughout the visit and are sorted by total execution time, so repeated small
++invocations can identify a heavy contributor too.
++
++- `scriptDiagnostics.report()` prints the top 20 sources, including those below
++  the automatic threshold, and returns the complete retained report.
++- `scriptDiagnostics.stop()` stops monitoring and returns a final report.
++- Reload without the query parameter to disable diagnostics. Reload with it to
++  begin a fresh measurement.
++
++The table includes total duration, invocation count, longest invocation duration,
++forced style/layout time, and the source location and invoker of the longest
++invocation. Source positions are character offsets, not line numbers. Start with
++the highest cumulative times and inspect those locations in developer tools.
++Forced style/layout time is part of script work; do not add it to total duration.
++
++This uses the Long Animation Frames API (frames exceeding 50 ms) with buffered
++observation to include earlier frames. It measures attributed script work within
++slow frames, **not** network loading, all JavaScript execution, or the exact
++blocking time attributable to a script. Browser attribution can omit short
++invocations, cross-origin frames, workers, or unavailable sources. Frames without
++script attribution are counted separately; an empty table does not prove the
++page is fast. Use current Chrome or Edge; unsupported browsers receive an
++informational console message and no observer is installed.
++
++Aggregates are capped at 200 source URLs, with omitted invocations counted in
++the report. No raw frame history is retained and no data is sent or saved.
++Source URLs can contain private query parameters: review reports before sharing.
++The current static page has no application or third-party scripts; the observer
++will help identify slow scripts when they are added or injected at runtime.
++
++The diagnostics script is deferred and exits immediately unless enabled. It adds
++one small same-origin request during normal visits. No dependencies or build
++step are required.

@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,9 +4,76 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
++      const motionPreference = window.matchMedia('(prefers-reduced-motion: no-preference)');
++
++      function applyNavigationType(transition, from, to) {
++        if (!motionPreference.matches || !transition?.types || !from || !to) return;
++
++        const source = new URL(from);
++        const destination = new URL(to);
++        if (source.origin !== destination.origin || source.pathname !== destination.pathname) return;
++
++        const pageNumber = (url) => Math.max(1, Number.parseInt(url.searchParams.get('page'), 10) || 1);
++        const difference = pageNumber(destination) - pageNumber(source);
++        if (difference !== 0) transition.types.add(difference > 0 ? 'next' : 'previous');
++      }
++
++      // Register early so incoming snapshots receive their type before animation starts.
++      window.addEventListener('pagereveal', (event) => {
++        const activation = window.navigation?.activation;
++        applyNavigationType(event.viewTransition, activation?.from?.url, activation?.entry?.url);
++      });
++
++      window.addEventListener('pageswap', (event) => {
++        applyNavigationType(event.viewTransition, window.location.href, event.activation?.entry?.url);
++      });
++    }
++  </script>
+   <style>
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation-duration: 320ms;
++        animation-timing-function: ease-in-out;
++        animation-fill-mode: both;
++        mix-blend-mode: normal;
++      }
++
++      ::view-transition-old(root) { animation-name: page-fade-out; }
++      ::view-transition-new(root) { animation-name: page-fade-in; }
++
++      html:active-view-transition-type(next)::view-transition-old(root) {
++        animation-name: page-out-left;
++      }
++
++      html:active-view-transition-type(next)::view-transition-new(root) {
++        animation-name: page-in-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-old(root) {
++        animation-name: page-out-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-new(root) {
++        animation-name: page-in-left;
++      }
++    }
++
++    @keyframes page-fade-out { to { opacity: 0; } }
++    @keyframes page-fade-in { from { opacity: 0; } }
++    @keyframes page-out-left { to { transform: translateX(-15%); opacity: 0; } }
++    @keyframes page-in-right { from { transform: translateX(15%); opacity: 0; } }
++    @keyframes page-out-right { to { transform: translateX(15%); opacity: 0; } }
++    @keyframes page-in-left { from { transform: translateX(-15%); opacity: 0; } }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+@@ -134,8 +201,21 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .pagination {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 20px;
++      margin-top: 24px;
++    }
++
++    .pagination .btn { margin-top: 0; }
++    .pagination [aria-disabled="true"] { opacity: 0.5; cursor: default; }
++    .pagination a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,9 +256,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid" id="seasonal-favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -193,11 +273,66 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pagination">
++        <a id="previous" class="btn" rel="prev" aria-disabled="true">&larr; Previous</a>
++        <span id="page-number">Page 1 of 3</span>
++        <a id="next" class="btn" rel="next" href="?page=2">Next &rarr;</a>
++      </div>
+     </section>
+   </main>
+ 
++  <script>
++    const seasonalPages = [
++      null, // The first page is rendered in HTML.
++      [
++        ['Pumpkin Spice Latte', 'Espresso with warming pumpkin spice and silky steamed milk.', '/menu/pumpkin-spice'],
++        ['Honey Cinnamon Cappuccino', 'A cozy cappuccino finished with honey and cinnamon.', '/menu/honey-cinnamon'],
++        ['Salted Caramel Mocha', 'Rich chocolate and caramel with a touch of sea salt.', '/menu/salted-caramel']
++      ],
++      [
++        ['Gingerbread Latte', 'Spiced gingerbread and espresso topped with velvety foam.', '/menu/gingerbread'],
++        ['Peppermint Mocha', 'Dark chocolate meets bright peppermint and fresh espresso.', '/menu/peppermint'],
++        ['Toasted Hazelnut Cold Brew', 'Slow-steeped coffee with a mellow toasted hazelnut finish.', '/menu/hazelnut']
++      ]
++    ];
++    const currentPage = Math.min(seasonalPages.length, Math.max(1,
++      Number.parseInt(new URL(window.location.href).searchParams.get('page'), 10) || 1));
++
++    if (currentPage > 1) {
++      const cards = seasonalPages[currentPage - 1].map(([name, description, href]) => {
++        const card = document.createElement('div');
++        card.className = 'card';
++        const heading = document.createElement('h3');
++        heading.textContent = name;
++        const text = document.createElement('p');
++        text.textContent = description;
++        const link = document.createElement('a');
++        link.className = 'btn';
++        link.href = href;
++        link.textContent = 'View Details';
++        card.append(heading, text, link);
++        return card;
++      });
++      document.getElementById('seasonal-favorites').replaceChildren(...cards);
++    }
++
++    document.getElementById('page-number').textContent = `Page ${currentPage} of ${seasonalPages.length}`;
++    for (const [id, destination] of [['previous', currentPage - 1], ['next', currentPage + 1]]) {
++      const link = document.getElementById(id);
++      if (destination < 1 || destination > seasonalPages.length) {
++        link.removeAttribute('href');
++        link.setAttribute('aria-disabled', 'true');
++      } else {
++        const url = new URL(window.location.href);
++        url.searchParams.set('page', destination);
++        link.href = url.pathname + url.search + url.hash;
++        link.removeAttribute('aria-disabled');
++      }
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

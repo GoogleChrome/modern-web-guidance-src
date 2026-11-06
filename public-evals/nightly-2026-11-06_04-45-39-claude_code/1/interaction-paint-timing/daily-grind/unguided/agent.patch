@@ -1,0 +1,448 @@
+diff --git a/index.html b/index.html
+index 66c9173..2707ed5 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Interaction / view-switch paint timing. Loaded early so clicks are captured from first paint. -->
++  <script src="/perf-monitor.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -157,38 +159,38 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-perf-group="navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-perf-id="nav:menu">Menu</a></li>
++      <li><a href="/locations" data-perf-id="nav:locations">Locations</a></li>
++      <li><a href="/rewards" data-perf-id="nav:rewards">Rewards</a></li>
++      <li><a href="/account" data-perf-id="nav:account">My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-perf-id="nav:logout">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-perf-group="hero" data-perf-id="hero:order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section data-perf-group="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-perf-id="seasonal:maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf-id="seasonal:dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf-id="seasonal:cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/perf-monitor.js b/perf-monitor.js
+new file mode 100644
+index 0000000..25ed12a
+--- /dev/null
++++ b/perf-monitor.js
+@@ -0,0 +1,379 @@
++/*
++ * The Daily Grind — client-side interaction performance monitor.
++ *
++ * Measures how long it takes, after a user interaction or a client-side view
++ * switch, for the page to finish painting the resulting visual updates.
++ *
++ * What is tracked
++ *   - Clicks on any element with a `data-perf-id` attribute (the nav bar links,
++ *     the "Order Now" button and the "Seasonal Favorites" cards/buttons).
++ *   - Client-side view switches: history.pushState / history.replaceState calls
++ *     that change the URL, `popstate` (back/forward) and `hashchange`.
++ *
++ * Metrics per record (all milliseconds, relative to the start of the event)
++ *   - nextPaint:       time until the first frame painted after the event
++ *                      (the browser's Event Timing value when available, which
++ *                      covers input delay + handlers + presentation; otherwise a
++ *                      requestAnimationFrame + MessageChannel approximation).
++ *   - visuallyComplete: time until the frame painted after the *last* DOM
++ *                      mutation caused by the event. DOM is considered settled
++ *                      once no mutation occurs for `settleMs` after a paint, so
++ *                      async renders (e.g. fetch-then-render views) are covered.
++ *   - eventTiming:     raw breakdown (inputDelay / processing / presentationDelay)
++ *                      when the Event Timing API reports the click.
++ *
++ * Output
++ *   - window.__dailyGrindPerf.records (in-memory array)
++ *   - `dailygrind:perf` CustomEvent on window (detail = record)
++ *   - performance.measure() entries named `dg:<type>:<id>` (visible in DevTools)
++ *   - console.debug when `log` is true
++ *   - Batched navigator.sendBeacon to `endpoint` (if configured) when the page is
++ *     hidden or unloaded.
++ *
++ * Configure before this script loads, e.g.:
++ *   <script>window.DAILY_GRIND_PERF_CONFIG = { endpoint: '/api/rum', log: false };</script>
++ */
++(function () {
++  'use strict';
++
++  var perf = window.performance;
++  if (!perf || typeof perf.now !== 'function' || !window.requestAnimationFrame) return;
++
++  var CONFIG = {
++    endpoint: null,     // URL for sendBeacon; null disables network reporting
++    sampleRate: 1,      // 0..1 fraction of page views that are monitored
++    settleMs: 300,      // quiet period (no DOM mutations) that ends a measurement
++    maxWaitMs: 10000,   // hard cap for a single measurement
++    inputWindowMs: 1000, // attribute a view switch to an input this recent
++    log: true
++  };
++  var userConfig = window.DAILY_GRIND_PERF_CONFIG || {};
++  for (var k in userConfig) {
++    if (Object.prototype.hasOwnProperty.call(userConfig, k)) CONFIG[k] = userConfig[k];
++  }
++  if (Math.random() >= CONFIG.sampleRate) return;
++
++  var records = [];
++  var outbox = [];
++  var active = [];
++
++  function round(n) {
++    return typeof n === 'number' && isFinite(n) ? Math.round(n * 10) / 10 : null;
++  }
++
++  // Runs `cb(timestamp)` right after the next frame has been painted.
++  // rAF callbacks run just before paint; a message posted from there is
++  // delivered in a new task, i.e. after that frame has been presented.
++  function afterNextPaint(cb) {
++    requestAnimationFrame(function () {
++      var ch = new MessageChannel();
++      ch.port1.onmessage = function () {
++        ch.port1.onmessage = null;
++        cb(perf.now());
++      };
++      ch.port2.postMessage(null);
++    });
++  }
++
++  // ---------------------------------------------------------------------------
++  // DOM mutation tracking (shared observer, only connected while measuring)
++  // ---------------------------------------------------------------------------
++  var mutationObserver = typeof MutationObserver === 'function'
++    ? new MutationObserver(function () {
++        for (var i = 0; i < active.length; i++) active[i].onMutation();
++      })
++    : null;
++
++  function setObserving(on) {
++    if (!mutationObserver) return;
++    if (on) {
++      mutationObserver.observe(document.documentElement, {
++        childList: true, subtree: true, attributes: true, characterData: true
++      });
++    } else {
++      mutationObserver.disconnect();
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // Event Timing API (precise click → next-paint latency)
++  // ---------------------------------------------------------------------------
++  var eventTimingSupported = false;
++  var awaitingEventTiming = []; // measurements waiting for an Event Timing entry
++
++  try {
++    if (typeof PerformanceObserver === 'function' &&
++        (PerformanceObserver.supportedEntryTypes || []).indexOf('event') !== -1) {
++      new PerformanceObserver(function (list) {
++        list.getEntries().forEach(function (entry) {
++          if (entry.name !== 'click') return;
++          for (var i = 0; i < awaitingEventTiming.length; i++) {
++            var m = awaitingEventTiming[i];
++            if (Math.abs(m.startTime - entry.startTime) < 1) {
++              awaitingEventTiming.splice(i, 1);
++              m.setEventTiming(entry);
++              return;
++            }
++          }
++        });
++      }).observe({ type: 'event', durationThreshold: 16, buffered: true });
++      eventTimingSupported = true;
++    }
++  } catch (e) { /* unsupported options; fall back to rAF measurement */ }
++
++  // ---------------------------------------------------------------------------
++  // Measurement lifecycle
++  // ---------------------------------------------------------------------------
++  function startMeasurement(type, id, startTime, meta) {
++    var m = {
++      startTime: startTime,
++      nextPaintAt: null,
++      lastPaintAt: null,
++      mutations: 0,
++      eventTiming: null,
++      finished: false,
++      emitted: false
++    };
++    var paintPending = false;
++    var settleTimer = null;
++    var etWaitTimer = null;
++    var maxTimer = setTimeout(function () { finish(true); }, CONFIG.maxWaitMs);
++
++    function armSettle() {
++      clearTimeout(settleTimer);
++      settleTimer = setTimeout(function () { finish(false); }, CONFIG.settleMs);
++    }
++
++    function schedulePaint() {
++      if (paintPending) return;
++      paintPending = true;
++      afterNextPaint(function (t) {
++        paintPending = false;
++        if (m.finished) return;
++        if (m.nextPaintAt === null) m.nextPaintAt = t;
++        m.lastPaintAt = t;
++        armSettle();
++      });
++    }
++
++    m.onMutation = function () {
++      if (m.finished) return;
++      m.mutations++;
++      clearTimeout(settleTimer); // wait for the paint that shows this mutation
++      schedulePaint();
++    };
++
++    m.setEventTiming = function (entry) {
++      m.eventTiming = {
++        duration: entry.duration,
++        inputDelay: entry.processingStart - entry.startTime,
++        processing: entry.processingEnd - entry.processingStart,
++        presentationDelay: entry.startTime + entry.duration - entry.processingEnd,
++        interactionId: entry.interactionId || null
++      };
++      if (m.finished) emit();
++    };
++
++    function finish(timedOut) {
++      if (m.finished) return;
++      m.finished = true;
++      m.timedOut = !!timedOut;
++      clearTimeout(settleTimer);
++      clearTimeout(maxTimer);
++      var idx = active.indexOf(m);
++      if (idx !== -1) active.splice(idx, 1);
++      if (!active.length) setObserving(false);
++
++      // Event Timing entries are delivered shortly after the paint; give it a
++      // moment (entries < durationThreshold are never reported).
++      if (m.waitForEventTiming && !m.eventTiming && !m.forceEmit) {
++        etWaitTimer = setTimeout(emit, 500);
++      } else {
++        emit();
++      }
++    }
++    m.finish = finish;
++
++    function emit() {
++      if (m.emitted) return;
++      m.emitted = true;
++      clearTimeout(etWaitTimer);
++      var waitIdx = awaitingEventTiming.indexOf(m);
++      if (waitIdx !== -1) awaitingEventTiming.splice(waitIdx, 1);
++
++      var fallbackNextPaint = m.nextPaintAt !== null ? m.nextPaintAt - m.startTime : null;
++      var nextPaint = m.eventTiming ? m.eventTiming.duration : fallbackNextPaint;
++      var visuallyComplete = m.lastPaintAt !== null ? m.lastPaintAt - m.startTime : null;
++      if (nextPaint !== null && (visuallyComplete === null || visuallyComplete < nextPaint)) {
++        visuallyComplete = nextPaint;
++      }
++
++      var record = {
++        type: type,                       // 'interaction' | 'view-switch'
++        id: id,
++        nextPaint: round(nextPaint),
++        visuallyComplete: round(visuallyComplete),
++        nextPaintSource: m.eventTiming ? 'event-timing' : (fallbackNextPaint !== null ? 'raf' : 'none'),
++        domMutations: m.mutations,
++        timedOut: m.timedOut,
++        incomplete: !!m.forceEmit && m.lastPaintAt === null, // page left before a paint was observed
++        page: location.pathname,
++        timestamp: Date.now()
++      };
++      if (m.eventTiming) {
++        record.eventTiming = {
++          inputDelay: round(m.eventTiming.inputDelay),
++          processing: round(m.eventTiming.processing),
++          presentationDelay: round(m.eventTiming.presentationDelay),
++          interactionId: m.eventTiming.interactionId
++        };
++      }
++      for (var key in meta) {
++        if (Object.prototype.hasOwnProperty.call(meta, key)) record[key] = meta[key];
++      }
++      report(record, m.startTime);
++    }
++
++    m.waitForEventTiming = type === 'interaction' && eventTimingSupported;
++    if (m.waitForEventTiming) awaitingEventTiming.push(m);
++
++    if (!active.length) setObserving(true);
++    active.push(m);
++    schedulePaint(); // always capture the first paint after the event
++    return m;
++  }
++
++  // ---------------------------------------------------------------------------
++  // Reporting
++  // ---------------------------------------------------------------------------
++  function report(record, startTime) {
++    records.push(record);
++    if (records.length > 200) records.shift();
++    outbox.push(record);
++
++    try {
++      if (record.visuallyComplete !== null) {
++        perf.measure('dg:' + record.type + ':' + record.id, {
++          start: startTime,
++          duration: record.visuallyComplete,
++          detail: record
++        });
++      }
++    } catch (e) { /* older browsers: measure() without options object */ }
++
++    try {
++      window.dispatchEvent(new CustomEvent('dailygrind:perf', { detail: record }));
++    } catch (e) { /* ignore */ }
++
++    if (CONFIG.log && window.console && console.debug) {
++      console.debug('[perf] ' + record.type + ' "' + record.id + '": next paint ' +
++        record.nextPaint + 'ms, visually complete ' + record.visuallyComplete + 'ms', record);
++    }
++  }
++
++  function flush() {
++    if (!outbox.length || !CONFIG.endpoint || !navigator.sendBeacon) {
++      outbox.length = 0;
++      return;
++    }
++    var batch = outbox.splice(0, outbox.length);
++    try {
++      navigator.sendBeacon(CONFIG.endpoint, new Blob(
++        [JSON.stringify({ metrics: batch })],
++        { type: 'application/json' }
++      ));
++    } catch (e) { /* ignore */ }
++  }
++
++  // When the page is going away (e.g. a nav link does a full page load),
++  // finalize in-flight measurements with whatever has been observed so far.
++  function finalizeAll() {
++    active.slice().forEach(function (m) {
++      m.forceEmit = true;
++      m.finish(false);
++    });
++    flush();
++  }
++
++  document.addEventListener('visibilitychange', function () {
++    if (document.visibilityState === 'hidden') flush();
++  });
++  window.addEventListener('pagehide', finalizeAll);
++
++  // ---------------------------------------------------------------------------
++  // Interaction tracking: clicks on [data-perf-id] elements
++  // ---------------------------------------------------------------------------
++  var lastInput = null; // most recent user input, used to attribute view switches
++
++  document.addEventListener('click', function (ev) {
++    var el = ev.target && ev.target.closest ? ev.target.closest('[data-perf-id]') : null;
++    lastInput = { time: ev.timeStamp, id: el ? el.getAttribute('data-perf-id') : null };
++    if (!el) return;
++    var group = el.closest('[data-perf-group]');
++    startMeasurement('interaction', el.getAttribute('data-perf-id'), ev.timeStamp, {
++      group: group ? group.getAttribute('data-perf-group') : null
++    });
++  }, true);
++
++  document.addEventListener('keydown', function (ev) {
++    lastInput = { time: ev.timeStamp, id: null };
++  }, true);
++
++  // ---------------------------------------------------------------------------
++  // Client-side view switch tracking
++  // ---------------------------------------------------------------------------
++  function viewKey(loc) {
++    return loc.pathname + loc.search + loc.hash;
++  }
++
++  var currentView = viewKey(location);
++  var lastViewSwitch = { key: null, time: -Infinity };
++
++  function onViewSwitch(trigger, eventTime) {
++    var next = viewKey(location);
++    var now = perf.now();
++    if (next === currentView) return;
++    // popstate + hashchange both fire for hash-only back/forward; count once.
++    if (next === lastViewSwitch.key && now - lastViewSwitch.time < 100) return;
++
++    var from = currentView;
++    currentView = next;
++    lastViewSwitch = { key: next, time: now };
++
++    var routeChangeAt = typeof eventTime === 'number' ? eventTime : now;
++    var startTime = routeChangeAt;
++    var input = null;
++    if (trigger !== 'popstate' && trigger !== 'hashchange' && lastInput &&
++        routeChangeAt - lastInput.time >= 0 && routeChangeAt - lastInput.time <= CONFIG.inputWindowMs) {
++      input = lastInput;
++      startTime = input.time; // measure from the user's input, not the router call
++    }
++
++    startMeasurement('view-switch', location.pathname + location.hash, startTime, {
++      trigger: trigger,
++      from: from.split('?')[0],
++      to: (location.pathname + location.hash),
++      triggeredBy: input ? input.id : null,
++      routeChangeDelay: round(routeChangeAt - startTime)
++    });
++  }
++
++  ['pushState', 'replaceState'].forEach(function (method) {
++    var original = history[method];
++    if (typeof original !== 'function') return;
++    history[method] = function () {
++      var result = original.apply(this, arguments);
++      onViewSwitch(method);
++      return result;
++    };
++  });
++
++  window.addEventListener('popstate', function (ev) { onViewSwitch('popstate', ev.timeStamp); });
++  window.addEventListener('hashchange', function (ev) { onViewSwitch('hashchange', ev.timeStamp); });
++
++  window.__dailyGrindPerf = {
++    records: records,
++    config: CONFIG,
++    flush: flush
++  };
++})();

@@ -1,0 +1,240 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,153 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 16px;
++      margin-top: 30px;
++    }
++
++    .pagination a {
++      display: inline-block;
++      min-width: 120px;
++      text-align: center;
++      padding: 10px 20px;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      color: var(--primary);
++      text-decoration: none;
++      font-weight: 600;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .pagination a:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    .pagination a[aria-disabled="true"] {
++      opacity: 0.4;
++      pointer-events: none;
++    }
++
++    .page-indicator {
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    /* ---------- Page transitions (cross-document View Transitions) ---------- */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      /* Keep the sticky nav steady while the page content changes */
++      nav {
++        view-transition-name: site-nav;
++      }
++
++      /* Default: gentle cross-fade for any same-origin navigation */
++      ::view-transition-old(root) {
++        animation: 250ms ease-in both vt-fade-out;
++      }
++
++      ::view-transition-new(root) {
++        animation: 350ms ease-out both vt-fade-in;
++      }
++
++      /* "next": old page slides out to the left, new page slides in from the right */
++      html:active-view-transition-type(next)::view-transition-old(root) {
++        animation: 400ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out-to-left;
++      }
++
++      html:active-view-transition-type(next)::view-transition-new(root) {
++        animation: 400ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-in-from-right;
++      }
++
++      /* "previous": old page slides out to the right, new page slides in from the left */
++      html:active-view-transition-type(previous)::view-transition-old(root) {
++        animation: 400ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out-to-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-new(root) {
++        animation: 400ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-in-from-left;
++      }
++    }
++
++    @keyframes vt-fade-out {
++      to { opacity: 0; }
++    }
++
++    @keyframes vt-fade-in {
++      from { opacity: 0; }
++    }
++
++    @keyframes vt-slide-out-to-left {
++      to { opacity: 0; transform: translateX(-30%); }
++    }
++
++    @keyframes vt-slide-in-from-right {
++      from { opacity: 0; transform: translateX(30%); }
++    }
++
++    @keyframes vt-slide-out-to-right {
++      to { opacity: 0; transform: translateX(30%); }
++    }
++
++    @keyframes vt-slide-in-from-left {
++      from { opacity: 0; transform: translateX(-30%); }
++    }
+   </style>
++  <script>
++    // Apply "next" / "previous" view transition types based on the direction
++    // of travel between seasonal-favorites pages (?page=N). Only set up when
++    // the user hasn't asked for reduced motion.
++    (function () {
++      if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
++
++      function pageOf(url) {
++        if (!url) return null;
++        try {
++          var u = new URL(url, location.href);
++          if (u.origin !== location.origin) return null;
++          var path = u.pathname.replace(/\/index\.html$/, '/');
++          if (path !== '/') return null;
++          var n = parseInt(u.searchParams.get('page'), 10);
++          return n > 0 ? n : 1;
++        } catch (e) {
++          return null;
++        }
++      }
++
++      function directionFor(activation) {
++        if (!activation || !activation.from || !activation.entry) return null;
++        var from = pageOf(activation.from.url);
++        var to = pageOf(activation.entry.url);
++        if (from == null || to == null || from === to) return null;
++        return to > from ? 'next' : 'previous';
++      }
++
++      // New page: runs just before the first render of the incoming document.
++      window.addEventListener('pagereveal', function (e) {
++        if (!e.viewTransition || !window.navigation) return;
++        var type = directionFor(navigation.activation);
++        if (type) e.viewTransition.types.add(type);
++      });
++
++      // Old page: tag the outgoing snapshot with the same type.
++      window.addEventListener('pageswap', function (e) {
++        if (!e.viewTransition) return;
++        var type = directionFor(e.activation);
++        if (type) e.viewTransition.types.add(type);
++      });
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -176,9 +320,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid" id="seasonal-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -193,11 +337,71 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pages">
++        <a id="previous" href="/?page=1" rel="prev" aria-disabled="true">&larr; Previous</a>
++        <span class="page-indicator" id="page-indicator">Page 1 of 3</span>
++        <a id="next" href="/?page=2" rel="next">Next &rarr;</a>
++      </div>
+     </section>
+   </main>
+ 
++  <script>
++    // Render the requested page of seasonal favorites synchronously (before
++    // first paint) so the view transition snapshot shows the right content.
++    (function () {
++      var pages = [
++        [
++          { name: 'Maple Oat Latte', desc: 'Creamy oat milk with a hint of Vermont maple syrup.', href: '/menu/seasonal' },
++          { name: 'Dark Roast Espresso', desc: 'Bold, smokey, and perfect for a morning boost.', href: '/menu/espresso' },
++          { name: 'Cold Brew', desc: 'Steeped for 18 hours for maximum smoothness.', href: '/menu/cold-brew' }
++        ],
++        [
++          { name: 'Pumpkin Spice Cortado', desc: 'Velvety espresso balanced with house-made pumpkin spice.', href: '/menu/pumpkin-cortado' },
++          { name: 'Cinnamon Honey Flat White', desc: 'Local wildflower honey and a dusting of Ceylon cinnamon.', href: '/menu/honey-flat-white' },
++          { name: 'Chai Dirty Latte', desc: 'Spiced black tea chai with a shot of our signature espresso.', href: '/menu/dirty-chai' }
++        ],
++        [
++          { name: 'Gingerbread Mocha', desc: 'Dark chocolate, molasses, and warming ginger in every sip.', href: '/menu/gingerbread-mocha' },
++          { name: 'Toasted Hazelnut Americano', desc: 'Roasted hazelnut notes over a smooth, long-pulled espresso.', href: '/menu/hazelnut-americano' },
++          { name: 'Nitro Vanilla Cold Brew', desc: 'Nitrogen-infused cold brew with a Madagascar vanilla finish.', href: '/menu/nitro-vanilla' }
++        ]
++      ];
++      var total = pages.length;
++      var n = parseInt(new URLSearchParams(location.search).get('page'), 10);
++      if (!(n >= 1)) n = 1;
++      if (n > total) n = total;
++
++      var grid = document.getElementById('seasonal-grid');
++      if (n !== 1) {
++        grid.innerHTML = '';
++        pages[n - 1].forEach(function (item) {
++          var card = document.createElement('div');
++          card.className = 'card';
++          var h3 = document.createElement('h3');
++          h3.textContent = item.name;
++          var p = document.createElement('p');
++          p.textContent = item.desc;
++          var a = document.createElement('a');
++          a.className = 'btn';
++          a.href = item.href;
++          a.textContent = 'View Details';
++          card.append(h3, p, a);
++          grid.appendChild(card);
++        });
++      }
++
++      var prev = document.getElementById('previous');
++      var next = document.getElementById('next');
++      prev.href = '/?page=' + Math.max(1, n - 1);
++      next.href = '/?page=' + Math.min(total, n + 1);
++      if (n > 1) prev.removeAttribute('aria-disabled'); else prev.setAttribute('aria-disabled', 'true');
++      if (n < total) next.removeAttribute('aria-disabled'); else next.setAttribute('aria-disabled', 'true');
++      document.getElementById('page-indicator').textContent = 'Page ' + n + ' of ' + total;
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,273 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,155 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .roast-order {
++      width: min(420px, 100%);
++      margin-top: 24px;
++    }
++
++    .roast-label {
++      display: block;
++      margin-bottom: 8px;
++      font-weight: 600;
++      text-align: left;
++    }
++
++    .roast-select,
++    .roast-fallback summary {
++      width: 100%;
++      padding: 12px 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: #fffaf5;
++      color: var(--text);
++      font: inherit;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    .roast-select,
++    .roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-select::picker(select) {
++      width: anchor-size(width);
++      max-width: calc(100vw - 32px);
++      margin-top: 8px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #fffaf5;
++      color: var(--text);
++      box-shadow: 0 12px 30px #0003;
++    }
++
++    /* Only lay out the picker while open, keeping the closed menu hidden. */
++    .roast-select:open::picker(select),
++    .roast-fallback[open] .roast-options {
++      display: grid;
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++      gap: 8px;
++    }
++
++    .roast-select option,
++    .roast-card {
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      align-items: stretch;
++      gap: 6px;
++      min-width: 0;
++      padding: 7px;
++      border: 2px solid transparent;
++      border-radius: 8px;
++      text-align: center;
++      white-space: normal;
++      cursor: pointer;
++    }
++
++    .roast-photo {
++      display: block;
++      width: 100%;
++      height: 76px;
++      border-radius: 5px;
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .roast-title { font-weight: 700; }
++    .roast-notes { font-size: 0.75rem; line-height: 1.4; }
++
++    .roast-select option:hover,
++    .roast-card:hover { background: #efe5de; }
++
++    .roast-select option:checked,
++    .roast-card:has(input:checked) {
++      border-color: var(--primary);
++      background: #e8d9cc;
++    }
++
++    .roast-select option::checkmark {
++      position: absolute;
++      top: 9px;
++      right: 9px;
++      border-radius: 50%;
++      width: 22px;
++      background: var(--primary);
++      color: white;
++    }
++
++    .roast-select selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .roast-select selectedcontent .roast-photo {
++      width: 32px;
++      height: 32px;
++    }
++
++    .roast-select selectedcontent .roast-notes { display: none; }
++
++    .roast-select:focus-visible,
++    .roast-fallback summary:focus-visible,
++    .roast-card:has(input:focus-visible) {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .roast-order .btn { border: 0; font: inherit; cursor: pointer; }
++
++    .roast-fallback { position: relative; }
++    .roast-fallback summary { list-style: none; }
++    .roast-fallback summary::-webkit-details-marker { display: none; }
++    .roast-fallback summary::after { content: '⌄'; float: right; }
++    .roast-options {
++      position: absolute;
++      top: calc(100% + 8px);
++      left: 0;
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #fffaf5;
++      color: var(--text);
++      box-shadow: 0 12px 30px #0003;
++      z-index: 1;
++    }
++
++    .roast-card input { align-self: center; accent-color: var(--primary); }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +309,30 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form class="roast-order" action="/order-online" method="get">
++      <label class="roast-label" id="roast-label" for="roast">Choose your roast</label>
++      <select class="roast-select" id="roast" name="roast">
++        <button type="button"><selectedcontent></selectedcontent></button>
++        <option value="light" data-title="Light" data-notes="Bright &amp; citrusy" data-image="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=240&amp;q=80">
++          <img class="roast-photo" src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=240&amp;q=80" alt="" width="120" height="76">
++          <span class="roast-title">Light</span>
++          <span class="roast-notes">Bright &amp; citrusy</span>
++        </option>
++        <option value="medium" selected data-title="Medium" data-notes="Smooth &amp; balanced" data-image="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=240&amp;q=80">
++          <img class="roast-photo" src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=240&amp;q=80" alt="" width="120" height="76">
++          <span class="roast-title">Medium</span>
++          <span class="roast-notes">Smooth &amp; balanced</span>
++        </option>
++        <option value="dark" data-title="Dark" data-notes="Bold &amp; chocolatey" data-image="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&amp;fit=crop&amp;w=240&amp;q=80">
++          <img class="roast-photo" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&amp;fit=crop&amp;w=240&amp;q=80" alt="" width="120" height="76">
++          <span class="roast-title">Dark</span>
++          <span class="roast-notes">Bold &amp; chocolatey</span>
++        </option>
++      </select>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +366,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Preserve the rich three-column menu where customizable selects are unavailable.
++    if (!CSS.supports('appearance', 'base-select')) {
++      const select = document.getElementById('roast');
++      const picker = document.createElement('details');
++      picker.className = 'roast-fallback';
++      const trigger = document.createElement('summary');
++      trigger.id = 'roast-trigger';
++      trigger.setAttribute('aria-labelledby', 'roast-label roast-trigger');
++      const options = document.createElement('div');
++      options.className = 'roast-options';
++      options.setAttribute('role', 'radiogroup');
++      options.setAttribute('aria-labelledby', 'roast-label');
++
++      for (const option of select.options) {
++        const card = document.createElement('label');
++        card.className = 'roast-card';
++        const radio = document.createElement('input');
++        radio.type = 'radio';
++        radio.name = 'roast';
++        radio.value = option.value;
++        radio.checked = option.selected;
++        const photo = document.createElement('img');
++        photo.className = 'roast-photo';
++        photo.src = option.dataset.image;
++        photo.alt = '';
++        photo.width = 120;
++        photo.height = 76;
++        const title = document.createElement('span');
++        title.className = 'roast-title';
++        title.textContent = option.dataset.title;
++        const notes = document.createElement('span');
++        notes.className = 'roast-notes';
++        notes.textContent = option.dataset.notes;
++        card.append(photo, title, notes, radio);
++        options.append(card);
++        if (radio.checked) trigger.textContent = title.textContent;
++        radio.addEventListener('change', () => {
++          trigger.textContent = title.textContent;
++          // Keep arrow-key radio navigation open; pointer selection closes below.
++        });
++        radio.addEventListener('click', () => {
++          picker.open = false;
++          trigger.focus();
++        });
++      }
++
++      picker.append(trigger, options);
++      select.replaceWith(picker);
++      document.getElementById('roast-label').removeAttribute('for');
++      picker.addEventListener('keydown', (event) => {
++        if (event.key === 'Escape') {
++          event.preventDefault();
++          picker.open = false;
++          trigger.focus();
++        }
++      });
++      document.addEventListener('click', (event) => {
++        if (!picker.contains(event.target)) picker.open = false;
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

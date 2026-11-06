@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,98 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Address Form */
++    .shipping {
++      margin-top: 60px;
++    }
++
++    .shipping h2 {
++      text-align: center;
++    }
++
++    .shipping .intro {
++      text-align: center;
++      max-width: 600px;
++      margin: 10px auto 25px;
++    }
++
++    .shipping-form {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 720px;
++      margin: 0 auto;
++    }
++
++    .shipping-form fieldset {
++      border: 0;
++      padding: 0;
++      margin: 0 0 20px;
++      min-width: 0;
++    }
++
++    .shipping-form legend {
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.05rem;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 15px;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      margin-bottom: 15px;
++    }
++
++    .form-field.full {
++      grid-column: 1 / -1;
++    }
++
++    .form-field label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 5px;
++    }
++
++    .form-field input,
++    .form-field select {
++      font: inherit;
++      padding: 10px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .form-field input:focus,
++    .form-field select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++      border-color: var(--primary);
++    }
++
++    .form-field .hint {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .shipping-form .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +284,83 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping" id="shipping" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Beans to Your Door</h2>
++      <p class="intro">Tell us where to send your freshly roasted coffee. Your browser can fill this in for you from a saved address.</p>
++
++      <form class="shipping-form" action="/shipping-address" method="post" autocomplete="on">
++
++        <fieldset>
++          <legend>Recipient</legend>
++          <div class="form-row">
++            <div class="form-field full">
++              <label for="ship-name">Full name</label>
++              <input type="text" id="ship-name" name="shipping_name" autocomplete="shipping name" required>
++            </div>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Delivery address</legend>
++          <div class="form-row">
++            <div class="form-field full">
++              <label for="ship-address1">Street address</label>
++              <input type="text" id="ship-address1" name="shipping_address_line1" autocomplete="shipping address-line1" required>
++            </div>
++            <div class="form-field full">
++              <label for="ship-address2">Apartment, suite, etc. <span class="hint">(optional)</span></label>
++              <input type="text" id="ship-address2" name="shipping_address_line2" autocomplete="shipping address-line2">
++            </div>
++            <div class="form-field">
++              <label for="ship-city">City</label>
++              <input type="text" id="ship-city" name="shipping_city" autocomplete="shipping address-level2" required>
++            </div>
++            <div class="form-field">
++              <label for="ship-state">State / Province</label>
++              <input type="text" id="ship-state" name="shipping_state" autocomplete="shipping address-level1" required>
++            </div>
++            <div class="form-field">
++              <label for="ship-postal">Postal code</label>
++              <input type="text" id="ship-postal" name="shipping_postal_code" autocomplete="shipping postal-code" inputmode="text" required>
++            </div>
++            <div class="form-field">
++              <label for="ship-country">Country</label>
++              <select id="ship-country" name="shipping_country" autocomplete="shipping country" required>
++                <option value="US" selected>United States</option>
++                <option value="CA">Canada</option>
++                <option value="GB">United Kingdom</option>
++                <option value="AU">Australia</option>
++                <option value="DE">Germany</option>
++                <option value="FR">France</option>
++                <option value="JP">Japan</option>
++                <option value="MX">Mexico</option>
++              </select>
++            </div>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Contact details</legend>
++          <div class="form-row">
++            <div class="form-field">
++              <label for="ship-email">Email</label>
++              <input type="email" id="ship-email" name="shipping_email" autocomplete="shipping email" inputmode="email" required>
++              <span class="hint">For order confirmation and tracking updates.</span>
++            </div>
++            <div class="form-field">
++              <label for="ship-phone">Phone</label>
++              <input type="tel" id="ship-phone" name="shipping_phone" autocomplete="shipping tel" inputmode="tel">
++              <span class="hint">Only used if the courier needs to reach you.</span>
++            </div>
++          </div>
++        </fieldset>
++
++        <button type="submit" class="btn">Save Shipping Address</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

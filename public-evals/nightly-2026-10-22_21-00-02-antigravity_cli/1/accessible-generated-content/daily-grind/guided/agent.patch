@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+index 66c9173..9997579 100644
+--- a/index.html
++++ b/index.html
+@@ -14,8 +14,13 @@
+       --light: #fafafa;
+     }
+ 
+-    * {
+-      box-sizing: border-box;
++    body,
++    h1,
++    h2,
++    h3,
++    p,
++    ul,
++    li {
+       margin: 0;
+       padding: 0;
+     }
+@@ -27,6 +32,11 @@
+       background-color: var(--light);
+     }
+ 
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -46,13 +56,18 @@
+       letter-spacing: 1px;
+     }
+ 
++    .logo::before {
++      content: "☕" / "";
++      margin-inline-end: 0.5rem;
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-inline-start: 20px;
+     }
+ 
+     nav a {
+@@ -72,6 +87,10 @@
+       border-radius: 4px;
+     }
+ 
++    .logout-link::after {
++      content: " ↗" / "";
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -100,6 +119,17 @@
+       padding: 0 20px;
+     }
+ 
++    .section-heading {
++      text-align: center;
++    }
++
++    .section-heading::before,
++    .section-heading::after {
++      content: "✦" / "";
++      color: var(--accent);
++      margin-inline: 0.5rem;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -120,6 +150,18 @@
+       color: var(--primary);
+     }
+ 
++    .card-featured h3::before {
++      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%23ffab40'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E") / "Chef's recommendation: ";
++      margin-inline-end: 0.35rem;
++      vertical-align: -2px;
++    }
++
++    .card-image::before {
++      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%234e342e' stroke-width='2'%3E%3Cpath d='M18 8h1a4 4 0 0 1 0 8h-1'/%3E%3Cpath d='M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z'/%3E%3Cline x1='6' y1='1' x2='6' y2='4'/%3E%3Cline x1='10' y1='1' x2='10' y2='4'/%3E%3Cline x1='14' y1='1' x2='14' y2='4'/%3E%3C/svg%3E");
++      display: block;
++      margin-block-end: 0.5rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -131,6 +173,10 @@
+       transition: background 0.3s;
+     }
+ 
++    .btn::after {
++      content: " →" / "";
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+@@ -143,11 +189,20 @@
+     }
+ 
+     .footer-links {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      list-style: none;
+       margin-bottom: 20px;
+     }
+ 
++    .footer-links li:not(:last-child)::after {
++      content: "|" / "";
++      margin-inline: 10px;
++      color: var(--text);
++    }
++
+     .footer-links a {
+-      margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+@@ -157,7 +212,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,34 +231,39 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card card-featured">
++          <div class="card-image"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Maple Oat Latte</a>
+         </div>
+         <div class="card">
++          <div class="card-image"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Dark Roast Espresso</a>
+         </div>
+         <div class="card">
++          <div class="card-image"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Cold Brew</a>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++    <nav aria-label="Footer">
++      <ul class="footer-links">
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy</a></li>
++      </ul>
++    </nav>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 

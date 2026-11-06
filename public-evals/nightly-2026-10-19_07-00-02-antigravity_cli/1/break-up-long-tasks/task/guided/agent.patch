@@ -1,0 +1,79 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,14 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,10 +200,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Flavor Profile Simulator</h2>
++      <div class="card" style="max-width: 600px; margin: 20px auto; text-align: center;">
++        <h3>Blend Simulation Tool</h3>
++        <p>Simulate flavor profiles across 1,000 recipe blends to optimize sweetness, acidity, and body.</p>
++        <button id="start-btn" class="btn">Start Simulation</button>
++        <div id="output" style="margin-top: 15px; font-weight: bold; min-height: 24px;"></div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    const startBtn = document.getElementById('start-btn');
++    const output = document.getElementById('output');
++    let isRunning = false;
++
++    startBtn.addEventListener('click', async () => {
++      if (isRunning) return;
++      isRunning = true;
++
++      output.textContent = 'Processing...';
++
++      const TOTAL_ITEMS = 1000;
++      let deadline = performance.now() + 50;
++
++      try {
++        for (let i = 1; i <= TOTAL_ITEMS; i++) {
++          // Simulate ~2ms of processing per blend
++          const start = performance.now();
++          while (performance.now() - start < 2) {
++            // Busy wait simulating blend computation
++          }
++
++          if (performance.now() >= deadline) {
++            output.textContent = `Processed ${i} of ${TOTAL_ITEMS}...`;
++            if ('scheduler' in window && 'yield' in window.scheduler) {
++              await scheduler.yield();
++            } else {
++              await new Promise((resolve) => setTimeout(resolve, 0));
++            }
++            deadline = performance.now() + 50;
++          }
++        }
++
++        output.textContent = 'Done! All items processed.';
++      } finally {
++        isRunning = false;
++      }
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

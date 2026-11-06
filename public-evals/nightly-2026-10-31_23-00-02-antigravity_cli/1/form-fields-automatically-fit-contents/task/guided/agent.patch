@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,120 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Custom Order / Inquiry Form */
++    .order-section {
++      margin-block-start: 3rem;
++      background: white;
++      padding: 2rem;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-section h2 {
++      color: var(--primary);
++      margin-block-end: 1rem;
++      text-align: center;
++    }
++
++    .order-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 1.5rem;
++    }
++
++    .order-form legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding-inline: 0.5rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      padding: 10px 0;
++      margin-block-start: -10px;
++    }
++
++    .order-form input,
++    .order-form select,
++    .order-form textarea {
++      font-family: inherit;
++      font-size: 1rem;
++      line-height: 1.5;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1px solid #999;
++      border-radius: 4px;
++      padding: 0.75rem;
++      min-height: 48px;
++      box-sizing: border-box;
++      align-self: start;
++    }
++
++    @media (pointer: coarse) {
++      .order-form input,
++      .order-form select,
++      .order-form textarea {
++        min-height: 52px;
++      }
++    }
++
++    .order-form input:focus-visible,
++    .order-form select:focus-visible,
++    .order-form textarea:focus-visible,
++    .order-form button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .order-form input:invalid:user-invalid,
++    .order-form select:invalid:user-invalid,
++    .order-form textarea:invalid:user-invalid {
++      border-color: #c62828;
++    }
++
++    /* Applies horizontal auto-sizing to inputs */
++    .order-form input {
++      field-sizing: content;
++      width: auto;
++      min-inline-size: 15ch;
++      max-inline-size: min(50ch, 100%);
++    }
++
++    /* Sizes the select element to fit the active option only */
++    .order-form select {
++      field-sizing: content;
++      width: auto;
++      max-inline-size: min(50ch, 100%);
++    }
++
++    /* Applies vertical auto-sizing to textareas while maintaining stable horizontal width */
++    .order-form textarea {
++      field-sizing: content;
++      height: auto;
++      width: min(50ch, 100%);
++      min-block-size: 3lh;
++      max-block-size: 10lh;
++    }
++
++    button.btn {
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      min-height: 48px;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +306,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-section" aria-labelledby="custom-order-heading">
++      <h2 id="custom-order-heading">Custom Roast &amp; Order Inquiry</h2>
++      <form class="order-form" action="/order-inquiry" method="POST">
++        <fieldset>
++          <legend>Order Details</legend>
++
++          <div class="form-group">
++            <label for="customer-name">Full name (required)</label>
++            <input type="text" id="customer-name" name="customer_name" autocomplete="name" enterkeyhint="next" required placeholder="Alex Morgan">
++          </div>
++
++          <div class="form-group">
++            <label for="roast-blend">Coffee blend (required)</label>
++            <select id="roast-blend" name="roast_blend" required>
++              <option value="house-espresso">Espresso Blend</option>
++              <option value="cold-brew">18-Hour Cold Brew</option>
++              <option value="maple-oat">Seasonal Maple Oat Roast</option>
++              <option value="ethiopian-yirgacheffe">Single-Origin Ethiopian Yirgacheffe Light Roast</option>
++              <option value="colombian-supremo">Organic Fair-Trade Colombian Supremo Medium Roast</option>
++              <option value="decaf-swiss-water">Swiss Water Process Decaf Dark Roast</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="tasting-notes">Brewing notes &amp; special instructions</label>
++            <textarea id="tasting-notes" name="tasting_notes" enterkeyhint="done" placeholder="Let us know your preferred grind size, brewing method, or delivery instructions..."></textarea>
++          </div>
++
++          <button type="submit" class="btn">Submit Order Inquiry</button>
++        </fieldset>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

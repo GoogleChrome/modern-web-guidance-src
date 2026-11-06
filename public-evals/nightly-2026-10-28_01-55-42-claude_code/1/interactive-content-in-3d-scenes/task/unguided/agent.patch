@@ -1,0 +1,649 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,223 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* 3D Reserve-a-Box section */
++    .box-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .box-section > p {
++      max-width: 560px;
++      margin: 8px auto 0;
++      color: #6d4c41;
++    }
++
++    .box-scene {
++      position: relative;
++      isolation: isolate;
++      height: 480px;
++      margin-top: 24px;
++      border-radius: 12px;
++      overflow: hidden;
++      background:
++        radial-gradient(ellipse at 50% 85%, rgba(78, 52, 46, 0.35), transparent 60%),
++        linear-gradient(180deg, #efebe9 0%, #d7ccc8 100%);
++      box-shadow: inset 0 0 0 1px rgba(62, 39, 35, 0.08);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      touch-action: pan-y;
++      user-select: none;
++      -webkit-user-select: none;
++    }
++
++    /* .is-3d is added by the script once the WebGL scene is running. Without it (no WebGL,
++       CDN unavailable, JS disabled) the form simply renders centered as a normal form. */
++    .box-scene.is-3d {
++      cursor: grab;
++    }
++
++    .box-scene.is-3d.is-dragging {
++      cursor: grabbing;
++    }
++
++    /* CSS3D layer sits underneath; the WebGL canvas on top punches a hole where the form is. */
++    .box-scene__css {
++      position: absolute;
++      inset: 0;
++      z-index: 1;
++      pointer-events: none;
++    }
++
++    .box-scene__gl {
++      position: absolute;
++      inset: 0;
++      z-index: 2;
++      pointer-events: none;
++    }
++
++    .box-scene__hint {
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: 12px;
++      z-index: 3;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      pointer-events: none;
++    }
++
++    .box-scene:not(.is-3d) .box-scene__hint {
++      display: none;
++    }
++
++    /* The form: a real DOM element projected onto the front face of the box. */
++    .reserve-form {
++      width: 260px;
++      height: 340px;
++      padding: 18px 18px 16px;
++      display: flex;
++      flex-direction: column;
++      gap: 9px;
++      background: linear-gradient(160deg, #fff8f1 0%, #f3e5dc 100%);
++      color: var(--text);
++      text-align: left;
++      border: 2px solid #4e342e;
++      box-shadow: inset 0 0 0 4px #fff8f1, inset 0 0 0 5px #ffab40;
++      pointer-events: auto;
++      user-select: auto;
++      -webkit-user-select: auto;
++      backface-visibility: hidden;
++      -webkit-backface-visibility: hidden;
++      font-size: 13px;
++      line-height: 1.3;
++    }
++
++    .reserve-form__brand {
++      font-size: 11px;
++      letter-spacing: 3px;
++      text-transform: uppercase;
++      color: #8d6e63;
++      text-align: center;
++    }
++
++    .reserve-form__title {
++      font-size: 18px;
++      font-weight: 700;
++      color: var(--primary);
++      text-align: center;
++      margin-top: -4px;
++    }
++
++    .reserve-form label {
++      display: flex;
++      flex-direction: column;
++      gap: 3px;
++      font-size: 11px;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #6d4c41;
++    }
++
++    .reserve-form input,
++    .reserve-form select,
++    .reserve-form button {
++      font: inherit;
++      font-size: 13px;
++    }
++
++    .reserve-form input,
++    .reserve-form select {
++      width: 100%;
++      padding: 6px 8px;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      background: #fff;
++      color: var(--text);
++      user-select: text;
++      -webkit-user-select: text;
++    }
++
++    .reserve-form input:focus,
++    .reserve-form select:focus,
++    .reserve-form button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .reserve-form__qty {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .reserve-form__qty input {
++      text-align: center;
++      width: 52px;
++      -moz-appearance: textfield;
++    }
++
++    .reserve-form__qty input::-webkit-inner-spin-button,
++    .reserve-form__qty input::-webkit-outer-spin-button {
++      -webkit-appearance: none;
++    }
++
++    .reserve-form__step {
++      width: 30px;
++      height: 30px;
++      border: 1px solid #8d6e63;
++      border-radius: 50%;
++      background: #fff;
++      color: var(--primary);
++      cursor: pointer;
++      line-height: 1;
++    }
++
++    .reserve-form__step:hover {
++      background: var(--secondary);
++    }
++
++    .reserve-form__row {
++      display: flex;
++      gap: 8px;
++      margin-top: auto;
++    }
++
++    .reserve-form__row .btn {
++      margin-top: 0;
++      padding: 8px 12px;
++      flex: 1;
++      border: none;
++      cursor: pointer;
++      font-size: 13px;
++    }
++
++    .reserve-form__row .btn--ghost {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .reserve-form__row .btn--ghost:hover {
++      background: var(--secondary);
++    }
++
++    .reserve-form__status {
++      min-height: 1.3em;
++      font-size: 12px;
++      color: #2e7d32;
++      text-align: center;
++    }
++
++    @media (max-width: 600px) {
++      .box-scene {
++        height: 420px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +409,50 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="box-section" aria-labelledby="reserve-heading">
++      <h2 id="reserve-heading">Reserve a Box</h2>
++      <p>Our signature whole-bean box, rendered live. Drag to spin it, then fill in the form printed right on the front.</p>
++
++      <div id="box-scene" class="box-scene">
++        <form id="reserve-form" class="reserve-form" novalidate>
++          <div class="reserve-form__brand">The Daily Grind</div>
++          <div class="reserve-form__title">Whole Bean Box</div>
++
++          <label>
++            Roast
++            <select name="roast" id="reserve-roast">
++              <option value="Light Roast">Light Roast</option>
++              <option value="Medium Roast">Medium Roast</option>
++              <option value="Dark Roast" selected>Dark Roast</option>
++              <option value="Decaf">Decaf</option>
++            </select>
++          </label>
++
++          <label>
++            Email
++            <input type="email" name="email" id="reserve-email" placeholder="you@example.com" autocomplete="email" required>
++          </label>
++
++          <label for="reserve-qty">Quantity</label>
++          <div class="reserve-form__qty">
++            <button type="button" class="reserve-form__step" data-step="-1" aria-label="Decrease quantity">&minus;</button>
++            <input type="number" name="qty" id="reserve-qty" value="1" min="1" max="12" inputmode="numeric">
++            <button type="button" class="reserve-form__step" data-step="1" aria-label="Increase quantity">+</button>
++          </div>
++
++          <div class="reserve-form__status" id="reserve-status" role="status" aria-live="polite"></div>
++
++          <div class="reserve-form__row">
++            <button type="button" class="btn btn--ghost" id="reserve-spin">Spin it</button>
++            <button type="submit" class="btn">Reserve</button>
++          </div>
++        </form>
++        <div class="box-scene__hint">Drag anywhere to rotate &middot; the form pauses the spin while you type</div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +463,370 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script type="importmap">
++    {
++      "imports": {
++        "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
++        "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
++      }
++    }
++  </script>
++  <script type="module">
++    import * as THREE from 'three';
++    import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
++
++    const container = document.getElementById('box-scene');
++    const form = document.getElementById('reserve-form');
++    const statusEl = document.getElementById('reserve-status');
++    const qtyInput = document.getElementById('reserve-qty');
++
++    // Box dimensions in world units. The form is 260x340 CSS px, scaled by 1/100 so it
++    // covers the front face exactly.
++    const BOX_W = 2.6, BOX_H = 3.4, BOX_D = 1.2;
++    const PX_PER_UNIT = 100;
++    const TWO_PI = Math.PI * 2;
++    const BEANS_URL = 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=75';
++
++    // ---------- Form behaviour (works in both the 3D and the static fallback layout) ----------
++    form.querySelectorAll('.reserve-form__step').forEach((btn) => {
++      btn.addEventListener('click', () => {
++        const next = (parseInt(qtyInput.value, 10) || 1) + Number(btn.dataset.step);
++        qtyInput.value = Math.min(12, Math.max(1, next));
++        statusEl.textContent = '';
++      });
++    });
++
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const email = form.elements.email.value.trim();
++      if (!form.elements.email.checkValidity() || !email) {
++        statusEl.style.color = '#c62828';
++        statusEl.textContent = 'Please enter a valid email.';
++        form.elements.email.focus();
++        return;
++      }
++      const qty = Math.min(12, Math.max(1, parseInt(qtyInput.value, 10) || 1));
++      const roast = form.elements.roast.value;
++      statusEl.style.color = '#2e7d32';
++      statusEl.textContent = `Reserved ${qty} × ${roast} for ${email}.`;
++    });
++
++    // ---------- 3D scene ----------
++    let glRenderer;
++    try {
++      glRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
++    } catch (err) {
++      // No WebGL: leave the form in the static, centered layout.
++      throw err;
++    }
++
++    const scene = new THREE.Scene();
++    const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
++    camera.position.set(0, 0.9, 7.5);
++    camera.lookAt(0, 0.1, 0);
++
++    glRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
++    glRenderer.setClearColor(0x000000, 0);
++    glRenderer.domElement.className = 'box-scene__gl';
++
++    const cssRenderer = new CSS3DRenderer();
++    cssRenderer.domElement.className = 'box-scene__css';
++
++    // CSS3D layer underneath, WebGL canvas on top. Both ignore the pointer so clicks land on
++    // the form (pointer-events: auto) or on the container (drag to rotate).
++    container.prepend(cssRenderer.domElement, glRenderer.domElement);
++    container.classList.add('is-3d');
++
++    scene.add(new THREE.HemisphereLight(0xfff4e6, 0x5d4037, 1.1));
++    const key = new THREE.DirectionalLight(0xffffff, 2.2);
++    key.position.set(4, 6, 5);
++    scene.add(key);
++    const rim = new THREE.DirectionalLight(0xffab40, 0.8);
++    rim.position.set(-5, 2, -4);
++    scene.add(rim);
++
++    // --- Textures: canvas-drawn packaging, with the stock beans photo composited in when it loads.
++    function makeCanvas(w, h) {
++      const c = document.createElement('canvas');
++      c.width = w;
++      c.height = h;
++      return [c, c.getContext('2d')];
++    }
++
++    function roundRect(ctx, x, y, w, h, r) {
++      ctx.beginPath();
++      ctx.moveTo(x + r, y);
++      ctx.arcTo(x + w, y, x + w, y + h, r);
++      ctx.arcTo(x + w, y + h, x, y + h, r);
++      ctx.arcTo(x, y + h, x, y, r);
++      ctx.arcTo(x, y, x + w, y, r);
++      ctx.closePath();
++    }
++
++    function paintPanel(ctx, w, h, beans, { title, subtitle }) {
++      ctx.fillStyle = '#3e2723';
++      ctx.fillRect(0, 0, w, h);
++
++      // subtle kraft-paper grain
++      ctx.fillStyle = 'rgba(255,255,255,0.03)';
++      for (let i = 0; i < 400; i++) {
++        ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
++      }
++
++      const pad = Math.round(w * 0.08);
++      const bandTop = Math.round(h * 0.22);
++      const bandH = Math.round(h * 0.5);
++
++      ctx.save();
++      roundRect(ctx, pad, bandTop, w - pad * 2, bandH, Math.round(w * 0.04));
++      ctx.clip();
++      if (beans) {
++        const scale = Math.max((w - pad * 2) / beans.width, bandH / beans.height);
++        const dw = beans.width * scale, dh = beans.height * scale;
++        ctx.drawImage(beans, pad + (w - pad * 2 - dw) / 2, bandTop + (bandH - dh) / 2, dw, dh);
++      } else {
++        ctx.fillStyle = '#5d4037';
++        ctx.fillRect(pad, bandTop, w - pad * 2, bandH);
++      }
++      ctx.restore();
++
++      ctx.strokeStyle = '#ffab40';
++      ctx.lineWidth = Math.max(2, w * 0.006);
++      roundRect(ctx, pad, bandTop, w - pad * 2, bandH, Math.round(w * 0.04));
++      ctx.stroke();
++
++      ctx.fillStyle = '#ffab40';
++      ctx.fillRect(pad, Math.round(h * 0.15), w - pad * 2, Math.max(2, h * 0.004));
++
++      ctx.textAlign = 'center';
++      ctx.textBaseline = 'middle';
++      ctx.fillStyle = '#fff8f1';
++      ctx.font = `700 ${Math.round(w * 0.09)}px "Segoe UI", Tahoma, sans-serif`;
++      ctx.fillText(title, w / 2, h * 0.09, w - pad * 2);
++      ctx.fillStyle = '#d7ccc8';
++      ctx.font = `${Math.round(w * 0.055)}px "Segoe UI", Tahoma, sans-serif`;
++      ctx.fillText(subtitle, w / 2, h * 0.82, w - pad * 2);
++      ctx.fillStyle = '#ffab40';
++      ctx.font = `600 ${Math.round(w * 0.05)}px "Segoe UI", Tahoma, sans-serif`;
++      ctx.fillText('WHOLE BEAN · 12 OZ', w / 2, h * 0.9, w - pad * 2);
++    }
++
++    function paintTop(ctx, w, h, label) {
++      ctx.fillStyle = '#4e342e';
++      ctx.fillRect(0, 0, w, h);
++      ctx.strokeStyle = '#ffab40';
++      ctx.lineWidth = 4;
++      ctx.setLineDash([14, 10]);
++      ctx.strokeRect(w * 0.06, h * 0.12, w * 0.88, h * 0.76);
++      ctx.setLineDash([]);
++      ctx.textAlign = 'center';
++      ctx.textBaseline = 'middle';
++      ctx.fillStyle = '#fff8f1';
++      ctx.font = `700 ${Math.round(h * 0.22)}px "Segoe UI", Tahoma, sans-serif`;
++      ctx.fillText(label, w / 2, h / 2, w * 0.8);
++    }
++
++    function canvasTexture(canvas) {
++      const tex = new THREE.CanvasTexture(canvas);
++      tex.colorSpace = THREE.SRGBColorSpace;
++      tex.anisotropy = Math.min(8, glRenderer.capabilities.getMaxAnisotropy());
++      return tex;
++    }
++
++    const faces = {
++      side: makeCanvas(256, 704),
++      back: makeCanvas(512, 672),
++      top: makeCanvas(512, 240),
++      bottom: makeCanvas(512, 240),
++    };
++
++    function paintAll(beans) {
++      paintPanel(faces.side[1], 256, 704, beans, { title: 'DAILY GRIND', subtitle: 'Small-batch roasted' });
++      paintPanel(faces.back[1], 512, 672, beans, { title: 'THE DAILY GRIND', subtitle: 'Ethically sourced · Locally roasted' });
++      paintTop(faces.top[1], 512, 240, 'OPEN HERE ▲');
++      paintTop(faces.bottom[1], 512, 240, 'THE DAILY GRIND');
++    }
++    paintAll(null);
++
++    const sideTex = canvasTexture(faces.side[0]);
++    const backTex = canvasTexture(faces.back[0]);
++    const topTex = canvasTexture(faces.top[0]);
++    const bottomTex = canvasTexture(faces.bottom[0]);
++
++    const cardboard = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0 });
++
++    // The front face is a "hole punch": it writes fully transparent pixels with NoBlending and
++    // still participates in the depth test, so the HTML form underneath shows through only where
++    // the front face is actually visible and is occluded by the other faces as the box turns.
++    const holePunch = new THREE.MeshBasicMaterial({
++      color: 0x000000,
++      opacity: 0,
++      blending: THREE.NoBlending,
++      side: THREE.FrontSide,
++    });
++
++    const materials = [
++      cardboard(sideTex),    // +x
++      cardboard(sideTex),    // -x
++      cardboard(topTex),     // +y
++      cardboard(bottomTex),  // -y
++      holePunch,             // +z (front, carries the form)
++      cardboard(backTex),    // -z
++    ];
++
++    const box = new THREE.Mesh(new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D), materials);
++    scene.add(box);
++
++    // Soft contact shadow under the box.
++    const [shadowCanvas, shadowCtx] = makeCanvas(256, 256);
++    const grad = shadowCtx.createRadialGradient(128, 128, 10, 128, 128, 128);
++    grad.addColorStop(0, 'rgba(62,39,35,0.55)');
++    grad.addColorStop(1, 'rgba(62,39,35,0)');
++    shadowCtx.fillStyle = grad;
++    shadowCtx.fillRect(0, 0, 256, 256);
++    const shadow = new THREE.Mesh(
++      new THREE.PlaneGeometry(4.2, 4.2),
++      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shadowCanvas), transparent: true, depthWrite: false })
++    );
++    shadow.rotation.x = -Math.PI / 2;
++    shadow.position.y = -BOX_H / 2 - 0.02;
++    scene.add(shadow);
++
++    // Load the stock beans photo and repaint the panels with it.
++    const beansImg = new Image();
++    beansImg.crossOrigin = 'anonymous';
++    beansImg.onload = () => {
++      paintAll(beansImg);
++      sideTex.needsUpdate = backTex.needsUpdate = topTex.needsUpdate = bottomTex.needsUpdate = true;
++    };
++    beansImg.src = BEANS_URL;
++
++    // --- The HTML form, projected onto the front face.
++    const formObject = new CSS3DObject(form);
++    form.style.userSelect = '';           // CSS3DObject sets user-select:none; the stylesheet restores it
++    form.style.webkitUserSelect = '';
++    formObject.scale.setScalar(1 / PX_PER_UNIT);
++    formObject.position.set(0, 0, BOX_D / 2 + 0.002);
++    box.add(formObject);
++
++    // ---------- Interaction: auto-spin, pause on hover/focus, drag to rotate, button-driven spin ----------
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++    let angle = 0;
++    let velocity = 0;
++    let targetAngle = null;
++    let hovering = false;
++    let focused = false;
++    let dragging = false;
++    let dragLastX = 0;
++    let dragMoved = 0;
++
++    const nearestFront = (a) => Math.round(a / TWO_PI) * TWO_PI;
++
++    form.addEventListener('pointerenter', () => { hovering = true; });
++    form.addEventListener('pointerleave', () => { hovering = false; });
++    form.addEventListener('focusin', () => {
++      focused = true;
++      if (!dragging) targetAngle = nearestFront(angle);
++    });
++    form.addEventListener('focusout', (event) => {
++      if (!form.contains(event.relatedTarget)) focused = false;
++    });
++
++    // Pointer events that start on the form belong to the form (text selection, buttons, etc.).
++    form.addEventListener('pointerdown', (event) => event.stopPropagation());
++
++    container.addEventListener('pointerdown', (event) => {
++      if (event.button !== 0 && event.pointerType === 'mouse') return;
++      dragging = true;
++      dragMoved = 0;
++      dragLastX = event.clientX;
++      targetAngle = null;
++      container.classList.add('is-dragging');
++      container.setPointerCapture(event.pointerId);
++    });
++    container.addEventListener('pointermove', (event) => {
++      if (!dragging) return;
++      const dx = event.clientX - dragLastX;
++      dragLastX = event.clientX;
++      dragMoved += Math.abs(dx);
++      angle += dx * 0.012;
++      velocity = dx * 0.25; // flick momentum, eased back to the idle spin speed
++    });
++    const endDrag = (event) => {
++      if (!dragging) return;
++      dragging = false;
++      container.classList.remove('is-dragging');
++      if (container.hasPointerCapture?.(event.pointerId)) container.releasePointerCapture(event.pointerId);
++    };
++    container.addEventListener('pointerup', endDrag);
++    container.addEventListener('pointercancel', endDrag);
++
++    document.getElementById('reserve-spin').addEventListener('click', () => {
++      const base = targetAngle ?? nearestFront(angle);
++      targetAngle = base + TWO_PI;
++    });
++
++    // ---------- Sizing & render loop ----------
++    function resize() {
++      const w = container.clientWidth;
++      const h = container.clientHeight;
++      if (!w || !h) return;
++      camera.aspect = w / h;
++      camera.updateProjectionMatrix();
++      glRenderer.setSize(w, h);
++      cssRenderer.setSize(w, h);
++    }
++    resize();
++    new ResizeObserver(resize).observe(container);
++
++    // Only render while the section is near the viewport; a single rAF id guards against
++    // starting a second loop.
++    let visible = true;
++    let last = performance.now();
++    let rafId = 0;
++
++    function start() {
++      if (rafId) return;
++      last = performance.now();
++      rafId = requestAnimationFrame(tick);
++    }
++
++    new IntersectionObserver(([entry]) => {
++      visible = entry.isIntersecting;
++      if (visible) start();
++    }, { rootMargin: '100px' }).observe(container);
++
++    function tick(now) {
++      rafId = 0;
++      if (!visible) return;
++      const dt = Math.min(0.05, (now - last) / 1000);
++      last = now;
++
++      if (!dragging) {
++        if (targetAngle !== null) {
++          const diff = targetAngle - angle;
++          angle += diff * Math.min(1, dt * 4.5);
++          if (Math.abs(diff) < 0.002) { angle = targetAngle; targetAngle = null; }
++          velocity = 0;
++        } else {
++          const want = (hovering || focused || reducedMotion) ? 0 : 0.55;
++          velocity += (want - velocity) * Math.min(1, dt * 3);
++          angle += velocity * dt;
++        }
++      }
++
++      box.rotation.y = angle;
++      box.position.y = reducedMotion ? 0 : Math.sin(now / 1400) * 0.05;
++
++      glRenderer.render(scene, camera);
++      cssRenderer.render(scene, camera);
++      rafId = requestAnimationFrame(tick);
++    }
++    start();
++  </script>
++
+ </body>
+ 
+ </html>

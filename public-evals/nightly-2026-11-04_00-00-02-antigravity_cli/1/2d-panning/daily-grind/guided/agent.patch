@@ -1,0 +1,317 @@
+diff --git a/index.html b/index.html
+index 66c9173..300bfeb 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,160 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee Shop Locations 2D Map Section */
++    .locations-section {
++      margin-top: 60px;
++    }
++
++    .locations-header {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .locations-header p {
++      color: #5d4037;
++      margin-top: 6px;
++      font-size: 0.95rem;
++    }
++
++    .pan-viewport {
++      inline-size: 100%;
++      block-size: 500px;
++      overflow: auto;
++      scroll-axis-lock: none;
++      overscroll-behavior: none;
++      border-radius: 12px;
++      border: 2px solid var(--secondary);
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
++      background: #efe6dd;
++      position: relative;
++      cursor: grab;
++    }
++
++    .pan-viewport:active {
++      cursor: grabbing;
++    }
++
++    .pan-viewport:focus-visible {
++      outline: 3px solid #005fcc;
++      outline-offset: 2px;
++    }
++
++    @supports not (scroll-axis-lock: none) {
++      .pan-viewport {
++        touch-action: none;
++      }
++    }
++
++    .pan-surface {
++      inline-size: 2200px;
++      block-size: 1500px;
++      position: relative;
++      background-color: #f4ece1;
++      background-image:
++        linear-gradient(rgba(78, 52, 46, 0.08) 1px, transparent 1px),
++        linear-gradient(90deg, rgba(78, 52, 46, 0.08) 1px, transparent 1px),
++        linear-gradient(rgba(78, 52, 46, 0.16) 2px, transparent 2px),
++        linear-gradient(90deg, rgba(78, 52, 46, 0.16) 2px, transparent 2px);
++      background-size: 50px 50px, 50px 50px, 250px 250px, 250px 250px;
++      user-select: none;
++    }
++
++    .map-road-h,
++    .map-road-v {
++      position: absolute;
++      background: #e0d4c3;
++      border-color: #cbbba6;
++      border-style: solid;
++    }
++
++    .map-road-h {
++      inline-size: 100%;
++      block-size: 36px;
++      border-width: 2px 0;
++    }
++
++    .map-road-v {
++      block-size: 100%;
++      inline-size: 36px;
++      border-width: 0 2px;
++    }
++
++    .map-river {
++      position: absolute;
++      top: 0;
++      left: 980px;
++      inline-size: 110px;
++      block-size: 100%;
++      background: linear-gradient(90deg, #b3d4e0, #cce4ed, #b3d4e0);
++      transform: skewX(-12deg);
++      opacity: 0.8;
++    }
++
++    .map-park {
++      position: absolute;
++      background: #d5e5c5;
++      border: 2px dashed #9bb882;
++      border-radius: 18px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      color: #4a6b32;
++      font-weight: 600;
++      font-size: 0.95rem;
++      letter-spacing: 0.5px;
++    }
++
++    .map-district-label {
++      position: absolute;
++      font-size: 1.1rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 3px;
++      color: rgba(62, 39, 35, 0.35);
++      pointer-events: none;
++    }
++
++    .cafe-pin {
++      position: absolute;
++      inline-size: 240px;
++      background: white;
++      border-radius: 10px;
++      padding: 14px;
++      box-shadow: 0 6px 16px rgba(62, 39, 35, 0.18);
++      border-left: 5px solid var(--primary);
++    }
++
++    .cafe-pin-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.72rem;
++      font-weight: 700;
++      padding: 2px 8px;
++      border-radius: 999px;
++      text-transform: uppercase;
++      margin-bottom: 6px;
++    }
++
++    .cafe-pin h3 {
++      font-size: 1.05rem;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .cafe-pin p {
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-bottom: 6px;
++    }
++
++    .cafe-pin .hours {
++      font-size: 0.78rem;
++      color: #795548;
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +349,97 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="locations-section">
++      <div class="locations-header">
++        <h2>Explore Our Cafe Locations</h2>
++        <p>Pan freely in any direction—horizontally, vertically, or diagonally—or use your Arrow keys to explore cafés across the city.</p>
++      </div>
++
++      <div class="pan-viewport" tabindex="0" role="region" aria-label="Interactive coffee shop locations map">
++        <div class="pan-surface">
++          <!-- Map Roads, River & Parks -->
++          <div class="map-river"></div>
++          <div class="map-road-h" style="top: 320px;"></div>
++          <div class="map-road-h" style="top: 760px;"></div>
++          <div class="map-road-h" style="top: 1180px;"></div>
++          <div class="map-road-v" style="left: 420px;"></div>
++          <div class="map-road-v" style="left: 1360px;"></div>
++          <div class="map-road-v" style="left: 1840px;"></div>
++
++          <div class="map-park" style="top: 120px; left: 540px; inline-size: 320px; block-size: 160px;">
++            Cedar Grove Botanical Park
++          </div>
++          <div class="map-park" style="top: 840px; left: 1460px; inline-size: 320px; block-size: 260px;">
++            Roasters Commons &amp; Gardens
++          </div>
++
++          <!-- District Labels -->
++          <span class="map-district-label" style="top: 80px; left: 100px;">Northwest Arts District</span>
++          <span class="map-district-label" style="top: 80px; left: 1460px;">Harborfront Quarter</span>
++          <span class="map-district-label" style="top: 560px; left: 520px;">Downtown Core</span>
++          <span class="map-district-label" style="top: 1280px; left: 140px;">Southside Roastery Row</span>
++          <span class="map-district-label" style="top: 1280px; left: 1480px;">University Heights</span>
++
++          <!-- Cafe Pins -->
++          <article class="cafe-pin" style="top: 140px; left: 140px;">
++            <span class="cafe-pin-badge">Flagship Roastery</span>
++            <h3>Gallery Row Cafe</h3>
++            <p>412 NW Flanders St</p>
++            <div class="hours">Open daily: 6:00 AM – 7:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 420px; left: 540px;">
++            <span class="cafe-pin-badge">Express Bar</span>
++            <h3>Midtown Exchange</h3>
++            <p>88 SW Morrison Ave</p>
++            <div class="hours">Mon–Fri: 6:30 AM – 5:30 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 210px; left: 1460px;">
++            <span class="cafe-pin-badge">Waterfront Patio</span>
++            <h3>Pier 9 Espresso Lab</h3>
++            <p>1205 Harbor Way</p>
++            <div class="hours">Open daily: 7:00 AM – 8:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 620px; left: 1120px;">
++            <span class="cafe-pin-badge">Reserve Tasting</span>
++            <h3>Eastbank Bridgehouse</h3>
++            <p>302 SE Water Ave</p>
++            <div class="hours">Open daily: 6:30 AM – 6:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 940px; left: 220px;">
++            <span class="cafe-pin-badge">Bakery &amp; Hearth</span>
++            <h3>Old Mill Corner</h3>
++            <p>740 S Macadam Blvd</p>
++            <div class="hours">Open daily: 6:00 AM – 4:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 520px; left: 1680px;">
++            <span class="cafe-pin-badge">Late Night Study</span>
++            <h3>Observatory Hill</h3>
++            <p>1920 NE Highland Pkwy</p>
++            <div class="hours">Open daily: 6:30 AM – 10:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 1160px; left: 1120px;">
++            <span class="cafe-pin-badge">Drive-Thru + Walk-Up</span>
++            <h3>Southgate Roastery</h3>
++            <p>1510 SE Powell Blvd</p>
++            <div class="hours">Open daily: 5:30 AM – 6:00 PM</div>
++          </article>
++
++          <article class="cafe-pin" style="top: 1220px; left: 1620px;">
++            <span class="cafe-pin-badge">Campus Lounge</span>
++            <h3>Founders Hall Study Bar</h3>
++            <p>2150 University Cir</p>
++            <div class="hours">Open daily: 7:00 AM – 11:00 PM</div>
++          </article>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +452,53 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Only attach the main-thread gesture fallback when native scroll-axis-lock support is missing
++    if (!CSS.supports('scroll-axis-lock', 'none')) {
++      const viewport = document.querySelector('.pan-viewport');
++      let lastPointer = null;
++
++      // 1. Trackpad and mouse wheel fallback
++      viewport.addEventListener(
++        'wheel',
++        (e) => {
++          e.preventDefault();
++          viewport.scrollLeft += e.deltaX;
++          viewport.scrollTop += e.deltaY;
++        },
++        { passive: false },
++      );
++
++      // 2. Touch and pointer drag fallback
++      viewport.addEventListener('pointerdown', (e) => {
++        // Ignore non-primary buttons and clicks on native scrollbars
++        const rect = viewport.getBoundingClientRect();
++        if (
++          !e.isPrimary ||
++          e.button !== 0 ||
++          e.clientX - rect.left - viewport.clientLeft >= viewport.clientWidth ||
++          e.clientY - rect.top - viewport.clientTop >= viewport.clientHeight
++        ) {
++          return;
++        }
++        lastPointer = { x: e.clientX, y: e.clientY };
++        viewport.setPointerCapture(e.pointerId);
++      });
++
++      viewport.addEventListener('pointermove', (e) => {
++        if (!lastPointer) return;
++        viewport.scrollLeft -= e.clientX - lastPointer.x;
++        viewport.scrollTop -= e.clientY - lastPointer.y;
++        lastPointer = { x: e.clientX, y: e.clientY };
++      });
++
++      const endPointerPan = () => {
++        lastPointer = null;
++      };
++      viewport.addEventListener('pointerup', endPointerPan);
++      viewport.addEventListener('pointercancel', endPointerPan);
++    }
++  </script>
+ </body>
+ 
+ </html>

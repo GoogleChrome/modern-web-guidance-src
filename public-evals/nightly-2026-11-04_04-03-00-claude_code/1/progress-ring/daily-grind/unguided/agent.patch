@@ -1,0 +1,227 @@
+diff --git a/index.html b/index.html
+index 66c9173..981e194 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,142 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Loyalty Rewards */
++    .rewards {
++      margin-top: 60px;
++    }
++
++    .rewards h2 {
++      text-align: center;
++    }
++
++    .rewards-subtitle {
++      text-align: center;
++      color: var(--primary);
++      opacity: 0.8;
++    }
++
++    .rewards-card {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    .progress-ring {
++      position: relative;
++      width: 220px;
++      height: 220px;
++      flex-shrink: 0;
++    }
++
++    .progress-ring svg {
++      width: 100%;
++      height: 100%;
++      transform: rotate(-90deg);
++    }
++
++    .progress-ring circle {
++      fill: none;
++      stroke-width: 12;
++    }
++
++    .progress-ring .ring-track {
++      stroke: var(--secondary);
++    }
++
++    .progress-ring .ring-fill {
++      stroke: var(--accent);
++      stroke-linecap: round;
++      transition: stroke-dashoffset 1.2s ease-out;
++    }
++
++    .ring-center {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++    }
++
++    .ring-count {
++      font-size: 2.6rem;
++      font-weight: bold;
++      color: var(--primary);
++      line-height: 1;
++    }
++
++    .ring-count span {
++      font-size: 1.2rem;
++      font-weight: normal;
++      opacity: 0.7;
++    }
++
++    .ring-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      margin-top: 6px;
++    }
++
++    .ring-percent {
++      font-size: 0.85rem;
++      color: var(--primary);
++      background: var(--secondary);
++      border-radius: 12px;
++      padding: 2px 10px;
++      margin-top: 8px;
++    }
++
++    .rewards-details {
++      max-width: 400px;
++    }
++
++    .rewards-details h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .stamp-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin: 15px 0;
++      list-style: none;
++    }
++
++    .stamp {
++      width: 28px;
++      height: 28px;
++      border-radius: 50%;
++      border: 2px solid var(--secondary);
++      background: var(--light);
++    }
++
++    .stamp.earned {
++      background: var(--accent);
++      border-color: var(--accent);
++    }
++
++    .stamp.reward {
++      border-style: dashed;
++      border-color: var(--primary);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-ring .ring-fill {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +331,31 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Grind Rewards</h2>
++      <p class="rewards-subtitle">Every drink earns a bean. Collect enough and your next one is on us.</p>
++      <div class="rewards-card" id="loyalty" data-stamps="7" data-goal="10">
++        <div class="progress-ring" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="7"
++          aria-label="Progress toward your next free drink">
++          <svg viewBox="0 0 120 120" aria-hidden="true">
++            <circle class="ring-track" cx="60" cy="60" r="52"></circle>
++            <circle class="ring-fill" cx="60" cy="60" r="52"></circle>
++          </svg>
++          <div class="ring-center">
++            <div class="ring-count"><strong class="js-stamps">7</strong><span>/<span class="js-goal">10</span></span></div>
++            <div class="ring-label">Beans earned</div>
++            <div class="ring-percent"><span class="js-percent">70</span>% there</div>
++          </div>
++        </div>
++        <div class="rewards-details">
++          <h3 class="js-headline">Only 3 more drinks to go!</h3>
++          <p>Your next handcrafted drink of any size is free once you fill your card.</p>
++          <ul class="stamp-row js-stamp-row" aria-hidden="true"></ul>
++          <a href="/rewards" class="btn">View My Rewards</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +368,47 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var card = document.getElementById('loyalty');
++      if (!card) return;
++      var goal = Math.max(1, parseInt(card.dataset.goal, 10) || 10);
++      var stamps = Math.min(goal, Math.max(0, parseInt(card.dataset.stamps, 10) || 0));
++      var remaining = goal - stamps;
++      var percent = Math.round((stamps / goal) * 100);
++
++      var fill = card.querySelector('.ring-fill');
++      var circumference = 2 * Math.PI * fill.r.baseVal.value;
++      fill.style.strokeDasharray = circumference;
++      fill.style.strokeDashoffset = circumference;
++      // Trigger on next frame so the fill animates in
++      requestAnimationFrame(function () {
++        requestAnimationFrame(function () {
++          fill.style.strokeDashoffset = circumference * (1 - stamps / goal);
++        });
++      });
++
++      var ring = card.querySelector('.progress-ring');
++      ring.setAttribute('aria-valuemax', goal);
++      ring.setAttribute('aria-valuenow', stamps);
++      ring.setAttribute('aria-valuetext', stamps + ' of ' + goal + ' beans earned');
++
++      card.querySelector('.js-stamps').textContent = stamps;
++      card.querySelector('.js-goal').textContent = goal;
++      card.querySelector('.js-percent').textContent = percent;
++      card.querySelector('.js-headline').textContent = remaining === 0
++        ? 'Your free drink is ready!'
++        : 'Only ' + remaining + ' more drink' + (remaining === 1 ? '' : 's') + ' to go!';
++
++      var row = card.querySelector('.js-stamp-row');
++      for (var i = 0; i < goal; i++) {
++        var li = document.createElement('li');
++        li.className = 'stamp' + (i < stamps ? ' earned' : '') + (i === goal - 1 ? ' reward' : '');
++        row.appendChild(li);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

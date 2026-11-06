@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,56 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
++      position: relative;
++      overflow: hidden;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative Organic Shaped Element */
++    .shaped-element {
++      width: clamp(160px, 24vw, 240px);
++      height: clamp(120px, 18vw, 180px);
++      aspect-ratio: 4 / 3;
++      margin-bottom: 1.25rem;
++      flex-shrink: 0;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      overflow: hidden;
++      /* Fallback styling if shape or image fails to load */
++      background-color: var(--accent);
++      background-image: linear-gradient(135deg, rgba(255, 171, 64, 0.85), rgba(78, 52, 46, 0.9)),
++        url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80');
++      background-size: cover;
++      background-position: center;
++      border-radius: 64% 36% 42% 58% / 55% 48% 52% 45%;
++      /* Free-form organic vector clip & mask */
++      clip-path: polygon(14% 26%, 32% 8%, 62% 5%, 86% 16%, 97% 42%, 92% 72%, 70% 92%, 38% 96%, 12% 82%, 4% 54%);
++      clip-path: url(#coffee-splash-clip);
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 150'%3E%3Cpath fill='%23000000' d='M24,42 C42,12 88,4 132,12 C172,20 196,48 190,84 C184,120 144,144 96,146 C48,148 12,126 6,90 C0,54 12,62 24,42 Z'/%3E%3C/svg%3E");
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 150'%3E%3Cpath fill='%23000000' d='M24,42 C42,12 88,4 132,12 C172,20 196,48 190,84 C184,120 144,144 96,146 C48,148 12,126 6,90 C0,54 12,62 24,42 Z'/%3E%3C/svg%3E");
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-position: center;
++    }
++
++    .shaped-element img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,8 +208,18 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <svg width="0" height="0" aria-hidden="true" focusable="false" style="position: absolute; width: 0; height: 0; overflow: hidden;">
++      <defs>
++        <clipPath id="coffee-splash-clip" clipPathUnits="objectBoundingBox">
++          <path d="M0.12,0.28 C0.21,0.08 0.44,0.03 0.66,0.08 C0.86,0.13 0.98,0.32 0.95,0.56 C0.92,0.80 0.72,0.96 0.48,0.97 C0.24,0.98 0.06,0.84 0.03,0.60 C0.00,0.36 0.06,0.41 0.12,0.28 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++    <div class="shaped-element" role="img" aria-label="Artisanal coffee splash visual">
++      <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80" alt="Artisanal espresso pour" />
++    </div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

@@ -1,0 +1,159 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,77 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Order Section */
++    .order-section {
++      margin-top: 60px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-section h2 {
++      text-align: center;
++      margin-bottom: 8px;
++    }
++
++    .order-section .intro {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .order-form {
++      max-width: 480px;
++      margin: 0 auto;
++    }
++
++    .field {
++      margin-bottom: 20px;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .field select {
++      width: 100%;
++      padding: 10px 12px;
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++      border: 2px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .field select:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.35);
++    }
++
++    .field .error-message {
++      margin-top: 6px;
++      color: #c62828;
++      font-size: 0.9rem;
++    }
++
++    /* Only flag invalid fields once the user has touched them or tried to submit */
++    .field.touched select:invalid,
++    .order-form.submitted select:invalid {
++      border-color: #c62828;
++    }
++
++    .order-form .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +263,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-section" aria-labelledby="order-heading">
++      <h2 id="order-heading">Order for Pickup</h2>
++      <p class="intro">Choose your local shop and we'll have your order ready when you arrive.</p>
++      <form class="order-form" id="order-form" action="/order-online" method="get" novalidate>
++        <div class="field" id="shop-field">
++          <label for="shop">Local Shop <span aria-hidden="true">*</span></label>
++          <select id="shop" name="shop" required aria-required="true" aria-invalid="false" aria-describedby="shop-error">
++            <option value="">Select a shop…</option>
++            <option value="downtown">Downtown – 112 Main St</option>
++            <option value="riverside">Riverside – 48 Harbor Ave</option>
++            <option value="university">University District – 905 College Rd</option>
++            <option value="eastside">Eastside Market – 3310 Elm St</option>
++          </select>
++          <p class="error-message" id="shop-error" role="alert" hidden>Please select a local shop to continue.</p>
++        </div>
++        <div class="field">
++          <label for="drink">Drink</label>
++          <select id="drink" name="drink">
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </div>
++        <button type="submit" class="btn">Continue to Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +302,41 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('order-form');
++      var shopField = document.getElementById('shop-field');
++      var shop = document.getElementById('shop');
++      var shopError = document.getElementById('shop-error');
++
++      // Show or hide the shop error. Only called after the user has interacted
++      // with the select or attempted to submit, so nothing appears on page load.
++      function validateShop() {
++        var valid = shop.value !== '';
++        shop.setAttribute('aria-invalid', valid ? 'false' : 'true');
++        shopError.hidden = valid;
++        return valid;
++      }
++
++      function markTouched() {
++        shopField.classList.add('touched');
++        validateShop();
++      }
++
++      shop.addEventListener('change', markTouched);
++      shop.addEventListener('blur', markTouched);
++
++      form.addEventListener('submit', function (event) {
++        form.classList.add('submitted');
++        if (!validateShop()) {
++          event.preventDefault();
++          shop.focus();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

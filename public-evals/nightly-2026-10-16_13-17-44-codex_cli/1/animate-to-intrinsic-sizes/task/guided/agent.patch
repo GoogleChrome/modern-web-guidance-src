@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,136 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native disclosures keep keyboard controls and expanded state in sync. */
++    .disclosure summary {
++      cursor: pointer;
++      list-style: none;
++    }
++
++    .disclosure summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .disclosure summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    #promo-alert {
++      position: relative;
++      background: var(--secondary);
++    }
++
++    .promo-message {
++      padding: 14px 64px;
++      text-align: center;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      top: 8px;
++      right: 16px;
++      width: 36px;
++      height: 36px;
++      display: grid;
++      place-items: center;
++      border-radius: 50%;
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    #alert-dismiss:hover {
++      background: rgb(78 52 46 / 10%);
++    }
++
++    /* The summary is out of flow, so the dismissed alert occupies zero height. */
++    #promo-alert:not([open]) > summary {
++      visibility: hidden;
++      pointer-events: none;
++    }
++
++    .faq {
++      margin-top: 48px;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-item {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      padding: 20px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    #faq-trigger::after {
++      content: '+';
++      font-size: 1.5rem;
++      font-weight: 400;
++      line-height: 1;
++      transition: rotate 0.35s ease;
++    }
++
++    .faq-item[open] > #faq-trigger::after {
++      rotate: 45deg;
++    }
++
++    #faq-content {
++      padding: 0 20px 20px;
++    }
++
++    /* Unsupported browsers retain the native, instant open/close behavior. */
++    @supports (interpolate-size: allow-keywords) and selector(::details-content) {
++      .disclosure {
++        interpolate-size: allow-keywords;
++      }
++
++      .disclosure::details-content {
++        block-size: 0;
++        overflow: hidden;
++        transition: block-size 0.35s ease, content-visibility 0.35s;
++        transition-behavior: allow-discrete;
++      }
++
++      .disclosure[open]::details-content {
++        block-size: auto;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .disclosure::details-content,
++      #faq-trigger::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" class="disclosure" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotion" aria-controls="promo-message">
++      <span aria-hidden="true">&times;</span>
++    </summary>
++    <div id="promo-message" class="promo-message">
++      <p><strong>A little something for your next coffee.</strong> Join Rewards and enjoy a free drink on your birthday.</p>
++    </div>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +317,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details class="disclosure faq-item">
++        <summary id="faq-trigger" aria-controls="faq-content">What makes your coffee special?</summary>
++        <div id="faq-content">
++          <p>Our coffee is ethically sourced and locally roasted. From a bold espresso to our slow-steeped cold brew, every cup is made with care. Explore our seasonal favorites to find your next go-to order.</p>
++          <a href="/menu" class="btn">Explore the Menu</a>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

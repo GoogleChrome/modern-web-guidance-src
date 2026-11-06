@@ -1,0 +1,223 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -48,8 +48,9 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -66,13 +67,23 @@
+       color: var(--accent);
+     }
+ 
+     .logout-link {
++      font: inherit;
++      font-size: 0.9rem;
++      color: white;
++      background: none;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      cursor: pointer;
++      transition: color 0.3s;
+     }
+ 
++    .logout-link:hover {
++      color: var(--accent);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -121,21 +132,112 @@
+     }
+ 
+     .btn {
+       display: inline-block;
++      font: inherit;
+       background: var(--primary);
+       color: white;
++      border: none;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    /* Logout confirmation dialog */
++    .confirm-dialog {
++      max-width: 26rem;
++      padding: 28px;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      color: var(--text);
++      text-align: center;
++    }
++
++    .confirm-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .confirm-dialog .dialog-actions {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++    }
++
++    .confirm-dialog .dialog-actions form {
++      display: contents;
++    }
++
++    /* Keep scroll gestures from chaining to the page behind the modal */
++    dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.55);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    /* Nutrition popovers */
++    .nutrition-popover {
++      width: min(22rem, 90vw);
++      padding: 20px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++      color: var(--text);
++      text-align: left;
++    }
++
++    .nutrition-popover h4 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      text-align: center;
++    }
++
++    .nutrition-popover table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.9rem;
++    }
++
++    .nutrition-popover th,
++    .nutrition-popover td {
++      padding: 6px 4px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .nutrition-popover th {
++      text-align: left;
++      font-weight: 600;
++    }
++
++    .nutrition-popover td {
++      text-align: right;
++    }
++
++    .nutrition-popover .popover-actions {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,12 +265,25 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" class="logout-link" command="show-modal" commandfor="logout-dialog">Logout</button>
++      </li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" class="confirm-dialog" aria-labelledby="logout-dialog-title">
++    <h2 id="logout-dialog-title">Log out?</h2>
++    <p>You'll need to sign in again to view your rewards and order history.</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" command="close" commandfor="logout-dialog" autofocus>Cancel</button>
++      <form action="/logout" method="get">
++        <button type="submit" class="btn">Log out</button>
++      </form>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -180,14 +295,43 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" command="toggle-popover" commandfor="maple-nutrition">View Details</button>
++          <div id="maple-nutrition" class="nutrition-popover" popover aria-labelledby="maple-nutrition-title">
++            <h4 id="maple-nutrition-title">Maple Oat Latte &middot; Nutrition (16 oz)</h4>
++            <table>
++              <tbody>
++                <tr><th scope="row">Calories</th><td>280</td></tr>
++                <tr><th scope="row">Total Fat</th><td>7 g</td></tr>
++                <tr><th scope="row">Carbohydrates</th><td>46 g</td></tr>
++                <tr><th scope="row">Sugars</th><td>32 g</td></tr>
++                <tr><th scope="row">Protein</th><td>4 g</td></tr>
++                <tr><th scope="row">Caffeine</th><td>150 mg</td></tr>
++              </tbody>
++            </table>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-popover" commandfor="espresso-nutrition">View Details</button>
++          <div id="espresso-nutrition" class="nutrition-popover" popover="manual" aria-labelledby="espresso-nutrition-title">
++            <h4 id="espresso-nutrition-title">Dark Roast Espresso &middot; Nutrition (2 oz)</h4>
++            <table>
++              <tbody>
++                <tr><th scope="row">Calories</th><td>5</td></tr>
++                <tr><th scope="row">Total Fat</th><td>0 g</td></tr>
++                <tr><th scope="row">Carbohydrates</th><td>1 g</td></tr>
++                <tr><th scope="row">Sugars</th><td>0 g</td></tr>
++                <tr><th scope="row">Protein</th><td>0 g</td></tr>
++                <tr><th scope="row">Caffeine</th><td>130 mg</td></tr>
++              </tbody>
++            </table>
++            <p class="popover-actions">
++              <button type="button" class="btn btn-secondary" command="hide-popover" commandfor="espresso-nutrition">Close</button>
++            </p>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>

@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -65,8 +65,48 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    .rewards-btn {
++      anchor-name: --rewards-anchor;
++      background: none;
++      border: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .rewards-btn:hover {
++      color: var(--accent);
++    }
++
++    .rewards-card {
++      position-anchor: --rewards-anchor;
++      inset: auto;
++      margin: 0;
++      top: anchor(bottom);
++      right: anchor(right);
++      margin-top: 8px;
++      width: min(300px, 90vw);
++      padding: 20px;
++      border: none;
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
++    }
++
++    .rewards-card:not(:is(:popover-open, .\:popover-open)) {
++      display: none;
++    }
++
++    .rewards-card h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -161,14 +201,23 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <button type="button" class="rewards-btn" commandfor="rewards-popover" command="toggle-popover"
++          aria-expanded="false">Rewards</button>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="rewards-popover" class="rewards-card" popover>
++    <h3>Daily Grind Rewards</h3>
++    <p>Earn a star with every purchase. Collect 10 stars for a free handcrafted drink.</p>
++    <a href="/rewards" class="btn">View My Rewards</a>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +255,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="main.js"></script>
+ </body>
+ 
+ </html>

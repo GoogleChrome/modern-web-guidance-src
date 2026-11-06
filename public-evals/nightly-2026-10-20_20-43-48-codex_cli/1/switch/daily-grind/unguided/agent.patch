@@ -1,0 +1,303 @@
+diff --git a/index.html b/index.html
+index 66c9173..e6d53e4 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,97 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#f8f7f3">
++  <title>Preferences · The Daily Grind</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap');
++    :root{--paper:#f8f7f3;--white:#fff;--ink:#263a31;--muted:#737973;--green:#285c44;--line:#e6e7df;--soft:#eef2e9}
++    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}button,a{-webkit-tap-highlight-color:transparent}button{font:inherit}a{color:inherit;text-decoration:none}button,a,input{outline-offset:5px}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #a26a28}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.topbar{height:94px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 5.2%;background:#fcfbf8}.brand{display:flex;align-items:center;gap:12px}.brand-icon{width:39px;height:43px;stroke-width:1.3}.brand-name{font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;letter-spacing:-.6px;line-height:1.15}.brand-name span{display:block;font-family:'DM Sans',sans-serif;font-size:9px;letter-spacing:2.6px;font-weight:500;margin-top:5px}.topnav{display:flex;align-items:center;gap:36px;color:#687168;font-size:13px}.topnav a:hover{color:var(--green)}.topnav .active{color:var(--green);font-weight:650}.nav-rule{height:24px;width:1px;background:var(--line);margin-left:1px}.avatar{width:35px;height:35px;border-radius:50%;background:#e8ebdf;display:grid;place-items:center;color:#4b6049;font-size:11px;font-weight:600}.account-button{display:flex;gap:10px;align-items:center}.account-button svg{width:13px}.layout{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:231px 1fr;gap:54px;padding:51px 50px 0}.sidebar-heading{font-size:10px;letter-spacing:1.8px;font-weight:600;color:#8b8d80;margin:6px 0 21px 14px}.side-nav{display:flex;flex-direction:column;gap:7px}.side-link{display:flex;align-items:center;gap:13px;padding:13px 15px;color:#757c73;border-radius:7px;font-size:13px}.side-link svg{width:18px;height:18px}.side-link:hover{background:#f0f0e8}.side-link.selected{background:#e9eee3;color:#32583e;font-weight:600}.side-link.selected:after{content:'';width:5px;height:5px;background:#446a43;border-radius:50%;margin-left:auto}.side-bottom{margin-top:35px;border-top:1px solid var(--line);padding-top:19px}.sidebar-note{margin:113px 5px 0;background:#eeeee4;border:1px solid #e5e6da;border-radius:9px;padding:22px 18px}.sidebar-note svg{color:#728164;width:24px;height:24px;margin-bottom:8px}.sidebar-note h3{font-family:'Manrope',sans-serif;font-size:13px;margin:0 0 8px;font-weight:750}.sidebar-note p{font-size:11px;line-height:1.8;color:#7b8072;margin:0}.sidebar-note a{display:inline-flex;gap:10px;align-items:center;font-size:11px;font-weight:600;margin-top:16px}.sidebar-note a svg{width:13px;height:13px;margin:0}main{max-width:806px;min-width:0}.breadcrumb{font-size:11px;color:#8a8e83;display:flex;align-items:center;gap:9px;margin:4px 0 21px}.breadcrumb svg{width:11px;height:11px}.breadcrumb span:last-child{color:#53614f}h1{font-family:'Manrope',sans-serif;font-size:33px;letter-spacing:-1.3px;line-height:1.3;font-weight:750;margin:0 0 10px}.intro{margin:0;color:var(--muted);font-size:13px;line-height:1.7}.page-title{margin-bottom:29px}.settings-card{background:var(--white);border:1px solid var(--line);border-radius:11px;margin-bottom:19px;overflow:hidden}.card-heading{padding:23px 27px 19px;display:flex;align-items:center;gap:13px;border-bottom:1px solid #eeeee8}.icon-box{width:34px;height:34px;display:grid;place-items:center;border:1px solid #e9ece4;background:#f7f8f3;border-radius:8px;color:#617656}.icon-box svg{width:18px;height:18px}h2{font-family:'Manrope',sans-serif;font-size:14px;font-weight:750;margin:0 0 4px;letter-spacing:-.2px}.card-heading p{font-size:11px;color:#868b80;margin:0}.setting{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 27px;padding:21px 0;border-bottom:1px solid #eeeee8}.setting:last-child{border-bottom:0}.setting-title{display:flex;gap:9px;align-items:center;margin-bottom:6px}.setting label{font-weight:550;font-size:13px;cursor:pointer}.setting p{margin:0;color:#84897f;font-size:11px;line-height:1.6}.tag{font-size:8px;letter-spacing:.2px;background:#eff3e7;color:#65794d;padding:3px 6px;border-radius:4px;font-weight:600}.toggle-wrap{display:flex;align-items:center;gap:12px;flex-shrink:0}.state{font-size:10px;color:#8a8e85;min-width:16px}.switch{appearance:none;-webkit-appearance:none;position:relative;display:block;margin:0;width:39px;height:23px;border:1px solid #dadfd6;border-radius:20px;background:#e5e8e1;cursor:pointer;transition:background .18s,border-color .18s;flex-shrink:0}.switch:before{content:'';position:absolute;top:3px;left:3px;width:15px;height:15px;background:white;border-radius:50%;box-shadow:0 1px 3px #25382825;transition:transform .18s}.switch:checked{background:#315e43;border-color:#315e43}.switch:checked:before{transform:translateX(15px)}.switch:hover{box-shadow:0 0 0 4px #edf1e9}.hint{display:flex;gap:10px;align-items:center;padding:13px 16px;background:#eef1e9;border-radius:7px;color:#73806a;font-size:10px;margin-top:21px;line-height:1.6}.hint svg{width:14px;height:14px}.actions{display:flex;align-items:center;justify-content:space-between;margin:27px 0 42px}.save-note{display:flex;align-items:center;gap:7px;font-size:10px;color:#898d82}.save-note svg{width:13px;height:13px}.buttons{display:flex;gap:11px}.button{border:1px solid #dcded4;border-radius:6px;background:transparent;color:#606b5d;padding:11px 17px;font-size:11px;font-weight:550;cursor:pointer}.button:hover{background:#eeefe8}.button.primary{background:var(--green);color:white;border-color:var(--green);display:flex;align-items:center;gap:11px;padding:11px 19px}.button.primary:hover{background:#1b4732}.button svg{width:13px;height:13px}.footer{max-width:1180px;margin:0 auto;border-top:1px solid var(--line);padding:23px 0 26px;display:flex;justify-content:space-between;color:#8c9085;font-size:10px}.footer-links{display:flex;gap:24px}.footer a:hover{text-decoration:underline}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#28533d;color:#fff;padding:13px 22px;border-radius:8px;box-shadow:0 4px 24px #18372225;font-size:13px;z-index:10}.toast:empty{display:none}.mobile-label{display:none}@media(min-width:1450px){.layout{padding-top:65px;gap:65px;max-width:1370px;grid-template-columns:240px 1fr}main{max-width:850px}.setting{padding:25px 0}.footer{max-width:1270px}}@media(max-width:1000px){.layout{padding:35px 30px 0;grid-template-columns:180px 1fr;gap:28px}.topbar{padding:0 30px}.topnav{gap:22px}.footer{margin:0 30px}.sidebar-note{padding:17px 13px}.setting{margin:0 20px}.card-heading{padding-left:20px;padding-right:20px}}@media(max-width:700px){.topbar{height:77px;padding:0 21px}.topnav>a,.nav-rule{display:none}.topnav{gap:0}.brand-name{font-size:15px}.brand-icon{width:31px}.layout{display:block;padding:25px 20px 0}.sidebar{margin-bottom:25px}.sidebar-heading,.side-bottom,.sidebar-note{display:none}.side-nav{flex-direction:row;gap:5px;overflow:auto;padding:3px 2px 8px}.side-link{padding:10px 12px;white-space:nowrap;font-size:11px}.side-link svg{width:15px}.side-link.selected:after{display:none}.breadcrumb{margin-bottom:15px}h1{font-size:29px}.page-title{margin-bottom:23px}.card-heading{padding:20px 18px}.setting{margin:0 18px;padding:20px 0;gap:16px}.setting-title{flex-wrap:wrap;gap:5px}.setting label{font-size:12px}.setting p{font-size:11px}.state{display:none}.actions{flex-direction:column-reverse;gap:19px;margin-bottom:30px}.buttons{width:100%;justify-content:flex-end}.save-note{align-self:flex-end}.footer{margin:0 20px;gap:20px;font-size:9px;flex-wrap:wrap}.footer-links{gap:15px}.hint{align-items:flex-start}.hint svg{margin-top:1px}}@media(prefers-reduced-motion:reduce){*,*:before{transition:none!important}}
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs>
++<symbol id="cup" viewBox="0 0 24 24"><path d="M4 9h13v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9Zm13 1h2a3 3 0 1 1 0 6h-2M8 5V2m4 3V1m4 4V3M2 23h18"/></symbol>
++<symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-3a7 7 0 0 1 14 0v3"/></symbol>
++<symbol id="bag" viewBox="0 0 24 24"><path d="M5 7h14l1 14H4L5 7Zm3 0V5a4 4 0 0 1 8 0v2"/></symbol>
++<symbol id="gift" viewBox="0 0 24 24"><path d="M3 8h18v5H3zm2 5v8h14v-8M12 8v13"/><path d="M12 8C5 8 5 2 8 2c3 0 4 6 4 6Zm0 0c7 0 7-6 4-6-3 0-4 6-4 6Z"/></symbol>
++<symbol id="sliders" viewBox="0 0 24 24"><path d="M3 6h5m4 0h9M3 18h10m4 0h4"/><circle cx="10" cy="6" r="2"/><circle cx="15" cy="18" r="2"/></symbol>
++<symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
++<symbol id="chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
++<symbol id="leaf" viewBox="0 0 24 24"><path d="M20 3C8 1 2 8 5 15s16 6 15-12ZM4 22 16 8M8 18v-6m0 4h6"/></symbol>
++<symbol id="bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10 21h4"/></symbol>
++<symbol id="spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/></symbol>
++<symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></symbol>
++<symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4m-4 5v2"/></symbol>
++<symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
++</defs></svg>
++<header class="topbar">
++<a class="brand" href="/" aria-label="The Daily Grind home"><svg class="brand-icon" aria-hidden="true"><use href="#cup"/></svg><div class="brand-name">THE DAILY GRIND<span>GOOD COFFEE. GOOD DAYS.</span></div></a>
++<nav class="topnav" aria-label="Main navigation"><a href="/menu">Our menu</a><a href="/locations">Find a café</a><a href="/rewards">Grind rewards</a><span class="nav-rule"></span><a href="/account" class="active">My account</a><a class="account-button" href="/account" aria-label="Alex Morgan’s account"><span class="avatar">AM</span><svg aria-hidden="true" style="transform:rotate(90deg)"><use href="#chevron"/></svg></a></nav>
++</header>
++<div class="layout">
++<aside class="sidebar"><p class="sidebar-heading">YOUR DAILY GRIND</p><nav class="side-nav" aria-label="Account navigation">
++<a class="side-link" href="/account"><svg aria-hidden="true"><use href="#user"/></svg>Account overview</a>
++<a class="side-link" href="/orders"><svg aria-hidden="true"><use href="#bag"/></svg>My orders</a>
++<a class="side-link" href="/rewards"><svg aria-hidden="true"><use href="#gift"/></svg>My rewards</a>
++<a class="side-link selected" href="#preferences" aria-current="page"><svg aria-hidden="true"><use href="#sliders"/></svg>Preferences</a>
++</nav><div class="side-bottom"><a class="side-link" href="/help"><svg aria-hidden="true"><use href="#info"/></svg>A little help?</a></div>
++<div class="sidebar-note"><svg aria-hidden="true"><use href="#leaf"/></svg><h3>A little better, every day.</h3><p>Thoughtfully sourced coffee.<br>A lighter footprint.<br>It’s all part of our daily grind.</p><a href="/about">Our story <svg aria-hidden="true"><use href="#arrow"/></svg></a></div></aside>
++<main id="preferences"><div class="breadcrumb"><span>My account</span><svg aria-hidden="true"><use href="#chevron"/></svg><span>Preferences</span></div><div class="page-title"><h1>Make yourself at home.</h1><p class="intro">A few little preferences. A daily grind that feels more like you.</p></div>
++<form id="preferences-form">
++<section class="settings-card" aria-labelledby="notifications-title"><div class="card-heading"><div class="icon-box"><svg aria-hidden="true"><use href="#bell"/></svg></div><div><h2 id="notifications-title">Keep me in the loop</h2><p>The good stuff, delivered your way.</p></div></div>
++<div class="setting"><div><div class="setting-title"><label for="order-updates">Order updates</label><span class="tag">RECOMMENDED</span></div><p id="order-help">Know when your order is confirmed, brewing, or ready to collect.</p></div><div class="toggle-wrap"><span class="state" aria-hidden="true">On</span><input class="switch" type="checkbox" role="switch" id="order-updates" name="orderUpdates" aria-describedby="order-help" checked></div></div>
++<div class="setting"><div><div class="setting-title"><label for="rewards">Rewards & little perks</label></div><p id="rewards-help">A heads-up on points, birthday treats, and rewards waiting for you.</p></div><div class="toggle-wrap"><span class="state" aria-hidden="true">On</span><input class="switch" type="checkbox" role="switch" id="rewards" name="rewards" aria-describedby="rewards-help" checked></div></div>
++<div class="setting"><div><div class="setting-title"><label for="coffee-news">Coffee news & offers</label></div><p id="news-help">Fresh roasts, seasonal favorites, and the occasional sweet deal.</p></div><div class="toggle-wrap"><span class="state" aria-hidden="true">Off</span><input class="switch" type="checkbox" role="switch" id="coffee-news" name="coffeeNews" aria-describedby="news-help"></div></div>
++</section>
++<section class="settings-card" aria-labelledby="experience-title"><div class="card-heading"><div class="icon-box"><svg aria-hidden="true"><use href="#spark"/></svg></div><div><h2 id="experience-title">Your kind of coffee break</h2><p>Small touches that make all the difference.</p></div></div>
++<div class="setting"><div><div class="setting-title"><label for="personalized">Personalized recommendations</label></div><p id="personal-help">Discover your next favorite, inspired by what you already love.</p></div><div class="toggle-wrap"><span class="state" aria-hidden="true">On</span><input class="switch" type="checkbox" role="switch" id="personalized" name="personalized" aria-describedby="personal-help" checked></div></div>
++<div class="setting"><div><div class="setting-title"><label for="reduce-motion">Reduce motion</label></div><p id="motion-help">Keep things calm with fewer animations and moving elements.</p></div><div class="toggle-wrap"><span class="state" aria-hidden="true">Off</span><input class="switch" type="checkbox" role="switch" id="reduce-motion" name="reduceMotion" aria-describedby="motion-help"></div></div>
++</section>
++<div class="hint"><svg aria-hidden="true"><use href="#info"/></svg><span>You're in control. Change your preferences anytime. We’ll always send essential account and security updates.</span></div>
++<div class="actions"><span class="save-note"><svg aria-hidden="true"><use href="#lock"/></svg>Your preferences stay yours.</span><div class="buttons"><button type="button" class="button" id="reset">Reset to default</button><button type="submit" class="button primary">Save preferences <svg aria-hidden="true"><use href="#check"/></svg></button></div></div>
++</form></main></div>
++<footer class="footer"><span>© 2026 The Daily Grind. Brewed with care.</span><div class="footer-links"><a href="/privacy-policy">Privacy policy</a><a href="/terms">Terms of use</a><a href="/contact">Get in touch</a></div></footer>
++<div class="toast" role="status" aria-live="polite" id="status"></div>
++<script>
++  const form = document.getElementById('preferences-form');
++  const switches = [...form.querySelectorAll('[role="switch"]')];
++  const defaults = Object.fromEntries(switches.map(input => [input.name, input.defaultChecked]));
++  const status = document.getElementById('status');
++  let toastTimer;
++  const motionStyle = document.createElement('style');
++  document.head.append(motionStyle);
++  function sync() {
++    switches.forEach(input => { input.previousElementSibling.textContent = input.checked ? 'On' : 'Off'; });
++    motionStyle.textContent = form.elements.reduceMotion.checked ? '*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}' : '';
++  }
++  function announce(message) {
++    clearTimeout(toastTimer);
++    status.textContent = message;
++    toastTimer = setTimeout(() => { status.textContent = ''; }, 4500);
++  }
++  try {
++    const saved = JSON.parse(localStorage.getItem('daily-grind-preferences'));
++    if (saved && typeof saved === 'object') switches.forEach(input => {
++      if (typeof saved[input.name] === 'boolean') input.checked = saved[input.name];
++    });
++  } catch { /* Defaults remain available if browser storage is unavailable. */ }
++  sync();
++  form.addEventListener('change', sync);
++  document.getElementById('reset').addEventListener('click', () => {
++    switches.forEach(input => { input.checked = defaults[input.name]; });
++    sync();
++    announce('Defaults restored. Save preferences to keep these changes.');
++  });
++  form.addEventListener('submit', event => {
++    event.preventDefault();
++    try {
++      localStorage.setItem('daily-grind-preferences', JSON.stringify(Object.fromEntries(switches.map(input => [input.name, input.checked]))));
++      announce('Your preferences have been saved. Make yourself at home.');
++    } catch { announce('Your preferences are applied for this visit. Your browser could not save them.'); }
++  });
++</script>
+ </body>
+-
+ </html>

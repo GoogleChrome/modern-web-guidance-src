@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -66,13 +66,76 @@
+       color: var(--accent);
+     }
+ 
+     .logout-link {
++      background: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition: color 0.3s;
+     }
+ 
++    .logout-link:hover {
++      color: var(--accent);
++    }
++
++    .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    dialog,
++    [popover] {
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog h2 {
++      margin-bottom: 8px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 15px;
++    }
++
++    [popover] {
++      margin: auto;
++      max-width: 300px;
++      text-align: left;
++    }
++
++    [popover] ul {
++      margin: 8px 0 0 20px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +226,21 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="logout-link" commandfor="logout-dialog" command="show-modal">Logout</button></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" aria-labelledby="logout-title">
++    <h2 id="logout-title">Log out?</h2>
++    <p>Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" commandfor="logout-dialog" command="close">Cancel</button>
++      <a href="/logout" class="btn">Log Out</a>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -180,14 +252,29 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="maple-nutrition">View Details</button>
++          <div id="maple-nutrition" popover>
++            <h4>Nutrition (12 oz)</h4>
++            <ul>
++              <li>Calories: 190</li>
++              <li>Fat: 5 g</li>
++              <li>Carbs: 31 g</li>
++              <li>Sugar: 17 g</li>
++              <li>Protein: 3 g</li>
++            </ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="espresso-info" popovertargetaction="show">Show Details</button>
++          <div id="espresso-info" popover="manual">
++            <h4>Dark Roast Espresso</h4>
++            <p>Double shot, 2 calories, 150 mg caffeine. Notes of cocoa and toasted oak.</p>
++            <button type="button" class="btn btn-secondary" popovertarget="espresso-info" popovertargetaction="hide">Hide Details</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>

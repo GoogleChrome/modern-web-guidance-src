@@ -1,0 +1,129 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -5,8 +5,20 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    @function --surface-gradient(--start <color>, --end <color>, --angle <angle>: 135deg) returns <image> {
++      result: linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --responsive-columns(--count <integer>: 2) {
++      result: minmax(0, 1fr);
++
++      @media (min-width: 800px) {
++        result: repeat(var(--count), minmax(0, 1fr));
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+@@ -20,20 +32,46 @@
+       padding: 0;
+     }
+ 
+     body {
++      --gradient-start: #fafafa;
++      --gradient-end: #d7ccc8;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    h2 {
++      --gradient-start: #4e342e;
++      --gradient-end: #795548;
++      color: var(--light);
++      padding: 0.75rem 1rem;
++      border-radius: 8px;
++      text-align: center;
++    }
++
++    /* Share gradient logic; retain the same appearance without CSS functions. */
++    body,
++    h2 {
++      background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
++    }
++
++    @supports (background-image: --surface-gradient(red, blue)) {
++      body,
++      h2 {
++        background-image: --surface-gradient(var(--gradient-start), var(--gradient-end));
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+@@ -47,15 +85,13 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -100,14 +136,27 @@
+       padding: 0 20px;
+     }
+ 
+     .grid {
++      --column-count: 1;
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(var(--column-count), minmax(0, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    @media (min-width: 800px) {
++      .grid {
++        --column-count: 2;
++      }
++    }
++
++    @supports (grid-template-columns: --responsive-columns(2)) {
++      .grid {
++        grid-template-columns: --responsive-columns(2);
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -175,9 +224,9 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

@@ -1,0 +1,265 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,71 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Passkey sign-in */
++    .signin {
++      max-width: 420px;
++      margin: -60px auto 0;
++      position: relative;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++    }
++
++    .signin h2 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.3rem;
++    }
++
++    .signin label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .signin input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .signin button {
++      width: 100%;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signin button:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .auth-status {
++      margin-top: 12px;
++      min-height: 1.6em;
++      font-size: 0.9rem;
++    }
++
++    .auth-status[data-state="success"] {
++      color: #2e7d32;
++      font-weight: 600;
++    }
++
++    .auth-status[data-state="error"] {
++      color: #c62828;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +236,19 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="signin" aria-labelledby="signin-heading">
++    <h2 id="signin-heading">Sign in</h2>
++    <form id="signin-form" action="/api/login/verify" method="post">
++      <label for="username">Username</label>
++      <input type="text" id="username" name="username" autocomplete="username webauthn" autocapitalize="none"
++        autocorrect="off" spellcheck="false" autofocus enterkeyhint="go" data-testid="username-field">
++      <button type="submit" class="btn" id="passkey-button" data-testid="auth-button">Sign in with passkey</button>
++    </form>
++    <p class="auth-status" id="auth-status" role="status" aria-live="polite" data-testid="auth-status"></p>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +280,169 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Ensures getClientCapabilities / parseRequestOptionsFromJSON / toJSON exist
++    // in every browser that supports PublicKeyCredential.
++    import 'https://esm.sh/webauthn-polyfills';
++
++    const OPTIONS_ENDPOINT = '/api/login/options';
++    const VERIFY_ENDPOINT = '/api/login/verify';
++
++    const form = document.getElementById('signin-form');
++    const button = document.getElementById('passkey-button');
++    const statusEl = document.getElementById('auth-status');
++
++    let autofillAbortController = new AbortController();
++    let signedIn = false;
++
++    function setStatus(message, state = '') {
++      statusEl.textContent = message;
++      statusEl.dataset.state = state;
++    }
++
++    async function fetchRequestOptions() {
++      const res = await fetch(OPTIONS_ENDPOINT, {
++        method: 'POST',
++        credentials: 'same-origin',
++        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++      });
++      if (!res.ok) throw new Error(`Could not load sign-in options (${res.status})`);
++      const json = await res.json();
++      // Accept either the bare options object or { publicKey: {...} }.
++      return PublicKeyCredential.parseRequestOptionsFromJSON(json.publicKey ?? json);
++    }
++
++    // Sends the assertion to the server and updates the UI. Returns true on success.
++    async function verifyCredential(credential, publicKey) {
++      const encoded = credential.toJSON();
++      let res;
++      try {
++        res = await fetch(VERIFY_ENDPOINT, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++          body: JSON.stringify(encoded),
++        });
++      } catch (err) {
++        console.error('Verification request error:', err);
++        setStatus('Network error. Please try again.', 'error');
++        return false;
++      }
++
++      if (!res.ok) {
++        if (res.status === 404) {
++          // Credential no longer exists on the server: tell the passkey provider
++          // so it stops offering it. Runs pre-authentication.
++          if (PublicKeyCredential.signalUnknownCredential) {
++            try {
++              await PublicKeyCredential.signalUnknownCredential({
++                rpId: publicKey.rpId, // Server-provided RP ID, never location.hostname
++                credentialId: encoded.id, // Base64URL string
++              });
++            } catch (err) {
++              console.warn('signalUnknownCredential failed:', err);
++            }
++          }
++          setStatus('This passkey is no longer registered. Please use another sign-in method.', 'error');
++        } else {
++          setStatus('Sign-in failed. Please try again.', 'error');
++        }
++        return false;
++      }
++
++      let data = {};
++      try { data = await res.json(); } catch { /* empty body is fine */ }
++      const name = data.username ?? data.user?.username ?? data.displayName ?? data.user?.displayName;
++      signedIn = true;
++      setStatus(name ? `Signed in as ${name}` : 'Signed in successfully', 'success');
++      button.disabled = true;
++      return true;
++    }
++
++    // Conditional UI: offer passkeys in the username field's autofill dropdown.
++    async function initializeConditionalAutofill() {
++      if (signedIn || !window.PublicKeyCredential) return;
++
++      let capabilities;
++      try {
++        capabilities = await PublicKeyCredential.getClientCapabilities();
++      } catch {
++        return;
++      }
++      if (capabilities.conditionalGet !== true) return;
++
++      const { signal } = autofillAbortController;
++      let publicKey;
++      let credential;
++      try {
++        publicKey = await fetchRequestOptions();
++        credential = await navigator.credentials.get({
++          publicKey,
++          signal,
++          mediation: 'conditional',
++        });
++      } catch (err) {
++        if (['NotAllowedError', 'AbortError'].includes(err.name)) return;
++        console.error('Unexpected conditional get error:', err);
++        return;
++      }
++
++      setStatus('Verifying…');
++      const ok = await verifyCredential(credential, publicKey);
++      if (!ok) initializeConditionalAutofill();
++    }
++
++    // Explicit button: show the passkey / biometric prompt immediately.
++    async function triggerButtonAuthentication() {
++      if (!window.PublicKeyCredential) {
++        setStatus('Passkeys are not supported in this browser.', 'error');
++        return;
++      }
++
++      // Cancel the pending conditional request so the two don't collide.
++      autofillAbortController.abort();
++      autofillAbortController = new AbortController();
++
++      button.disabled = true;
++      setStatus('');
++      let publicKey;
++      let credential;
++      try {
++        publicKey = await fetchRequestOptions();
++        credential = await navigator.credentials.get({
++          publicKey,
++          signal: autofillAbortController.signal,
++        });
++      } catch (err) {
++        button.disabled = false;
++        if (err.name === 'NotAllowedError') {
++          setStatus('Passkey sign-in was cancelled.');
++        } else if (err.name !== 'AbortError') {
++          console.error(err);
++          setStatus('Could not sign in with a passkey. Please try again.', 'error');
++        }
++        // Re-arm autofill suggestions after a cancelled/failed prompt.
++        initializeConditionalAutofill();
++        return;
++      }
++
++      setStatus('Verifying…');
++      const ok = await verifyCredential(credential, publicKey);
++      if (!ok) {
++        button.disabled = false;
++        initializeConditionalAutofill();
++      }
++    }
++
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      triggerButtonAuthentication();
++    });
++
++    initializeConditionalAutofill();
++  </script>
++
+ </body>
+ 
+ </html>

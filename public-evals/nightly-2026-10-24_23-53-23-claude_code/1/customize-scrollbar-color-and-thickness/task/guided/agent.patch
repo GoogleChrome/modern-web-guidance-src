@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,61 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 10px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .testimonial {
++      padding: 15px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .testimonial:last-child {
++      border-bottom: none;
++    }
++
++    .testimonial p {
++      font-style: italic;
++    }
++
++    .testimonial cite {
++      display: block;
++      margin-top: 5px;
++      font-size: 0.85rem;
++      font-style: normal;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +247,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Customer Feedback</h2>
++      <div class="feedback-log" tabindex="0" role="region" aria-label="Customer feedback log">
++        <blockquote class="testimonial">
++          <p>"The Maple Oat Latte is the best thing I've had all fall. Cozy in a cup!"</p>
++          <cite>Priya S.</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"Their dark roast espresso gets me through every Monday. Never disappoints."</p>
++          <cite>Marcus T.</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"I'm obsessed with the cold brew. So smooth, no bitterness at all."</p>
++          <cite>Elena R.</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"Friendly baristas and a lovely atmosphere. My go-to spot for working remotely."</p>
++          <cite>Jordan K.</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"Love that the beans are ethically sourced and locally roasted. Tastes even better knowing that."</p>
++          <cite>Sam W.</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"The rewards program is generous, and my order was ready in minutes."</p>
++          <cite>Aisha M.</cite>
++        </blockquote>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

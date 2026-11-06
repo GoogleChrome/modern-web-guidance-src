@@ -1,0 +1,722 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,13 +19,20 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    [hidden] {
++      display: none !important;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     /* Navigation */
+     nav {
+@@ -43,8 +50,11 @@
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      cursor: pointer;
+     }
+ 
+     nav ul {
+       display: flex;
+@@ -71,12 +81,13 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    /* Site Hero Section (List View) */
++    .site-hero {
++      height: 45vh;
++      min-height: 280px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -87,55 +98,309 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++    .site-hero h1 {
++      font-size: 2.8rem;
++      margin-bottom: 0.75rem;
+     }
+ 
+-    /* Content Sections */
++    .site-hero p {
++      font-size: 1.15rem;
++    }
++
++    /* Content Layout */
++    main {
++      flex: 1 0 auto;
++    }
++
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    #list-heading {
++      text-align: center;
++      font-size: 2rem;
++      margin-bottom: 1.5rem;
++      color: var(--primary);
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
++    /* Thumbnail Cards */
++    .card.thumbnail {
+       background: white;
++      border-radius: 10px;
++      overflow: hidden;
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
++      display: flex;
++      flex-direction: column;
++      cursor: pointer;
++      border: 1px solid rgba(78, 52, 46, 0.08);
++      transition: transform 0.2s ease, box-shadow 0.2s ease;
++      text-decoration: none;
++      color: inherit;
++      user-select: none;
++    }
++
++    .card.thumbnail:hover,
++    .card.thumbnail:focus-visible {
++      transform: translateY(-4px);
++      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.15);
++      outline: none;
++    }
++
++    .thumbnail-img-wrap {
++      width: 100%;
++      height: 220px;
++      overflow: hidden;
++      background-color: var(--secondary);
++    }
++
++    .thumbnail-img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.3s ease;
++    }
++
++    .card.thumbnail:hover .thumbnail-img {
++      transform: scale(1.03);
++    }
++
++    .thumbnail-body {
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++      justify-content: space-between;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .thumbnail .title {
+       color: var(--primary);
++      font-size: 1.35rem;
++      margin-bottom: 8px;
+     }
+ 
++    .thumbnail-desc {
++      font-size: 0.95rem;
++      color: #5d4037;
++      margin-bottom: 16px;
++      flex-grow: 1;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      font-size: 0.95rem;
++      cursor: pointer;
++      text-align: center;
+       transition: background 0.3s;
++      width: fit-content;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
++    /* Detail View */
++    #detail-page {
++      max-width: 900px;
++      margin: 30px auto;
++      padding: 0 20px;
++    }
++
++    .back-btn {
++      background: transparent;
++      color: var(--primary);
++      border: 1.5px solid var(--primary);
++      padding: 8px 18px;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      margin-bottom: 24px;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .back-btn:hover,
++    .back-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    #hero {
++      width: 100%;
++      height: 380px;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
++      background-color: var(--secondary);
++      margin-bottom: 24px;
++    }
++
++    #hero .hero-img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    #detail-page #title {
++      font-size: 2.4rem;
++      color: var(--primary);
++      margin-bottom: 16px;
++      line-height: 1.25;
++    }
++
++    .detail-body {
++      background: white;
++      padding: 28px;
++      border-radius: 10px;
++      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
++      border: 1px solid rgba(78, 52, 46, 0.08);
++    }
++
++    .detail-desc {
++      font-size: 1.15rem;
++      color: var(--text);
++      line-height: 1.8;
++      margin-bottom: 24px;
++    }
++
++    .detail-meta {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 24px;
++      padding-top: 20px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .meta-item {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .meta-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #795548;
++      font-weight: 600;
++    }
++
++    .meta-val {
++      font-size: 1.35rem;
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .order-btn {
++      margin-left: auto;
++      background: var(--accent);
++      color: #3e2723;
++      font-weight: bold;
++      padding: 12px 28px;
++      font-size: 1rem;
++    }
++
++    .order-btn:hover,
++    .order-btn:focus-visible {
++      background: #ff9100;
++    }
++
++    /* Programmatic Focus Styles for Active Headings */
++    #list-heading:focus,
++    #title:focus {
++      outline: 3px solid var(--accent);
++      outline-offset: 6px;
++      border-radius: 4px;
++    }
++
++    /* =========================================================
++       View Transitions Styling
++       ========================================================= */
++
++    /* Shared element transition names */
++    .thumbnail.selected {
++      view-transition-name: hero;
++    }
++
++    .thumbnail.selected .title {
++      view-transition-name: title;
++    }
++
++    #hero {
++      view-transition-name: hero;
++    }
++
++    #detail-page #title {
++      view-transition-name: title;
++    }
++
++    /* Stabilize text element width to prevent weird stretching during cross-fade */
++    #list-page .title,
++    #detail-page #title {
++      width: fit-content;
++    }
++
++    ::view-transition-old(title),
++    ::view-transition-new(title) {
++      height: 100%;
++      width: auto;
++    }
++
++    ::view-transition-group(title) {
++      overflow: clip;
++    }
++
++    /* Support different aspect ratios without stretching the image */
++    ::view-transition-old(hero),
++    ::view-transition-new(hero) {
++      height: 100%;
++      width: 100%;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    ::view-transition-group(hero) {
++      overflow: clip;
++    }
++
++    /* Disable all transition animations when reduced motion is preferred */
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++
++      *,
++      *::before,
++      *::after {
++        transition: none !important;
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -157,56 +422,311 @@
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a class="logo" id="nav-logo" href="#">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#" id="nav-menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
++      <li><a href="#logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <main>
++    <!-- List View -->
++    <div id="list-page">
++      <header class="site-hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="#list-heading" class="btn" style="margin-top: 15px;">Order Now</a>
++      </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <section class="container">
++        <h2 id="list-heading" tabindex="-1">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card thumbnail" data-id="maple-oat-latte" tabindex="0" role="button" aria-label="View Maple Oat Latte details">
++            <div class="thumbnail-img-wrap">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80" alt="Maple Oat Latte" class="thumbnail-img">
++            </div>
++            <div class="thumbnail-body">
++              <h2 class="title">Maple Oat Latte</h2>
++              <p class="thumbnail-desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <span class="btn">View Details</span>
++            </div>
++          </div>
++
++          <div class="card thumbnail" data-id="dark-roast-espresso" tabindex="0" role="button" aria-label="View Dark Roast Espresso details">
++            <div class="thumbnail-img-wrap">
++              <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80" alt="Dark Roast Espresso" class="thumbnail-img">
++            </div>
++            <div class="thumbnail-body">
++              <h2 class="title">Dark Roast Espresso</h2>
++              <p class="thumbnail-desc">Bold, smokey, and perfect for a morning boost.</p>
++              <span class="btn">View Details</span>
++            </div>
++          </div>
++
++          <div class="card thumbnail" data-id="cold-brew" tabindex="0" role="button" aria-label="View Cold Brew details">
++            <div class="thumbnail-img-wrap">
++              <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80" alt="Cold Brew" class="thumbnail-img">
++            </div>
++            <div class="thumbnail-body">
++              <h2 class="title">Cold Brew</h2>
++              <p class="thumbnail-desc">Steeped for 18 hours for maximum smoothness.</p>
++              <span class="btn">View Details</span>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </section>
++    </div>
++
++    <!-- Detail View -->
++    <section id="detail-page" hidden>
++      <button id="back-button" class="btn back-btn" type="button" aria-label="Back to seasonal favorites">
++        &larr; Back to Seasonal Favorites
++      </button>
++
++      <div id="hero">
++        <img id="detail-hero-img" class="hero-img" src="" alt="">
++      </div>
++
++      <h2 id="title" tabindex="-1"></h2>
++
++      <div class="detail-body">
++        <p id="detail-desc" class="detail-desc"></p>
++        <div class="detail-meta">
++          <div class="meta-item">
++            <span class="meta-label">Price</span>
++            <span id="detail-price" class="meta-val"></span>
++          </div>
++          <div class="meta-item">
++            <span class="meta-label">Calories</span>
++            <span id="detail-calories" class="meta-val"></span>
++          </div>
++          <div class="meta-item">
++            <span class="meta-label">Roast Profile</span>
++            <span id="detail-roast" class="meta-val"></span>
++          </div>
++          <button type="button" class="btn order-btn">Add to Order</button>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#about">Our Story</a> |
++      <a href="#careers">Join the Team</a> |
++      <a href="#contact">Contact Us</a> |
++      <a href="#privacy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const itemsData = {
++        'maple-oat-latte': {
++          id: 'maple-oat-latte',
++          title: 'Maple Oat Latte',
++          shortDesc: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          description: 'A comforting blend of freshly pulled espresso, steamed creamy oat milk, and pure Grade A Vermont maple syrup, finished with a subtle dust of organic cinnamon. Sweet, smooth, and naturally dairy-free.',
++          price: '$5.75',
++          calories: '210 cal',
++          roast: 'Medium Roast',
++          image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1200&q=80'
++        },
++        'dark-roast-espresso': {
++          id: 'dark-roast-espresso',
++          title: 'Dark Roast Espresso',
++          shortDesc: 'Bold, smokey, and perfect for a morning boost.',
++          description: 'Handcrafted double shot of our signature Italian roast blend. Delivers a thick golden crema layered over deep tasting notes of roasted walnut, dark cocoa, and caramelized molasses.',
++          price: '$4.25',
++          calories: '10 cal',
++          roast: 'Dark Roast',
++          image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1200&q=80'
++        },
++        'cold-brew': {
++          id: 'cold-brew',
++          title: 'Cold Brew',
++          shortDesc: 'Steeped for 18 hours for maximum smoothness.',
++          description: 'Coarse-ground single-origin beans steeped in triple-filtered cold water for 18 hours. This low-and-slow extraction reveals natural chocolate and stone fruit sweetness with ultra-low acidity.',
++          price: '$4.95',
++          calories: '5 cal',
++          roast: 'Medium-Dark',
++          image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1200&q=80'
++        }
++      };
++
++      const listPage = document.getElementById('list-page');
++      const detailPage = document.getElementById('detail-page');
++      const listHeading = document.getElementById('list-heading');
++      const detailTitle = document.getElementById('title');
++      const detailHeroImg = document.getElementById('detail-hero-img');
++      const detailDesc = document.getElementById('detail-desc');
++      const detailPrice = document.getElementById('detail-price');
++      const detailCalories = document.getElementById('detail-calories');
++      const detailRoast = document.getElementById('detail-roast');
++      const backButton = document.getElementById('back-button');
++      const thumbnails = document.querySelectorAll('.thumbnail');
++
++      function updateDetailContent(item) {
++        detailTitle.textContent = item.title;
++        detailHeroImg.src = item.image;
++        detailHeroImg.alt = item.title;
++        detailDesc.textContent = item.description;
++        detailPrice.textContent = item.price;
++        detailCalories.textContent = item.calories;
++        detailRoast.textContent = item.roast;
++      }
++
++      function cleanUpTransitions() {
++        document.querySelectorAll('.thumbnail').forEach((el) => {
++          el.classList.remove('selected');
++          el.style.removeProperty('view-transition-name');
++          const title = el.querySelector('.title');
++          if (title) title.style.removeProperty('view-transition-name');
++        });
++      }
++
++      function navigateToDetail(itemId, updateHistory = true) {
++        const item = itemsData[itemId];
++        if (!item) return;
++
++        const thumbnail = document.querySelector(`.thumbnail[data-id="${itemId}"]`);
++        if (thumbnail) {
++          thumbnail.classList.add('selected');
++        }
++
++        updateDetailContent(item);
++
++        if (updateHistory) {
++          history.pushState({ view: 'detail', id: itemId }, '', '#' + itemId);
++        }
++
++        const showDetailDOM = () => {
++          listPage.hidden = true;
++          detailPage.hidden = false;
++        };
++
++        // Fallback if View Transitions API is not supported
++        if (!document.startViewTransition) {
++          showDetailDOM();
++          detailTitle.focus();
++          return;
++        }
++
++        const transition = document.startViewTransition(() => {
++          showDetailDOM();
++        });
++
++        // Programmatically shift keyboard focus once transition resolves
++        transition.finished.finally(() => {
++          detailTitle.focus();
++        });
++      }
++
++      function navigateToList(updateHistory = true) {
++        if (updateHistory && location.hash) {
++          history.pushState({ view: 'list' }, '', window.location.pathname);
++        }
++
++        const showListDOM = () => {
++          detailPage.hidden = true;
++          listPage.hidden = false;
++        };
++
++        // Fallback if View Transitions API is not supported
++        if (!document.startViewTransition) {
++          showListDOM();
++          cleanUpTransitions();
++          listHeading.focus();
++          return;
++        }
++
++        const transition = document.startViewTransition(() => {
++          showListDOM();
++        });
++
++        transition.finished.finally(() => {
++          cleanUpTransitions();
++          listHeading.focus();
++        });
++      }
++
++      // Thumbnail click & keyboard events
++      thumbnails.forEach((thumb) => {
++        const itemId = thumb.getAttribute('data-id');
++
++        thumb.addEventListener('click', (e) => {
++          e.preventDefault();
++          navigateToDetail(itemId);
++        });
++
++        thumb.addEventListener('keydown', (e) => {
++          if (e.key === 'Enter' || e.key === ' ') {
++            e.preventDefault();
++            navigateToDetail(itemId);
++          }
++        });
++      });
++
++      // Back button click
++      backButton.addEventListener('click', (e) => {
++        e.preventDefault();
++        navigateToList();
++      });
++
++      // Logo and Menu links return to list view
++      document.getElementById('nav-logo').addEventListener('click', (e) => {
++        e.preventDefault();
++        if (!detailPage.hidden) {
++          navigateToList();
++        } else {
++          window.scrollTo({ top: 0, behavior: 'smooth' });
++        }
++      });
++
++      document.getElementById('nav-menu').addEventListener('click', (e) => {
++        e.preventDefault();
++        if (!detailPage.hidden) {
++          navigateToList();
++        } else {
++          listHeading.scrollIntoView({ behavior: 'smooth' });
++          listHeading.focus();
++        }
++      });
++
++      // Handle Escape key to return to list view
++      document.addEventListener('keydown', (e) => {
++        if (e.key === 'Escape' && !detailPage.hidden) {
++          navigateToList();
++        }
++      });
++
++      // Browser forward/backward navigation
++      window.addEventListener('popstate', (e) => {
++        const hash = window.location.hash.slice(1);
++        if (hash && itemsData[hash]) {
++          navigateToDetail(hash, false);
++        } else {
++          navigateToList(false);
++        }
++      });
++
++      // Initial route check on page load
++      const initialHash = window.location.hash.slice(1);
++      if (initialHash && itemsData[initialHash]) {
++        const thumb = document.querySelector(`.thumbnail[data-id="${initialHash}"]`);
++        if (thumb) thumb.classList.add('selected');
++        updateDetailContent(itemsData[initialHash]);
++        listPage.hidden = true;
++        detailPage.hidden = false;
++        detailTitle.focus();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

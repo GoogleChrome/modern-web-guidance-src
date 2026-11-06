@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,27 +26,100 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Navigation
++       The bar shrinks from --nav-h-max to --nav-h-min over the first
++       --nav-shrink-distance pixels of scroll. It is fixed (not sticky) so
++       resizing it never shifts the page content or changes scroll height. */
++    :root {
++      --nav-h-max: 80px;
++      --nav-h-min: 52px;
++      --nav-shrink-distance: 160px;
++      --logo-size-max: 1.5rem;
++      --logo-size-min: 1.15rem;
++    }
++
++    body {
++      padding-top: 80px;
++      padding-top: var(--nav-h-max);
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
++      /* Fallback: --nav-progress (0 → 1) is driven by the script at the
++         bottom of the page. Plain values first for browsers without calc/var. */
++      min-height: 80px;
++      min-height: calc(var(--nav-h-max) - (var(--nav-h-max) - var(--nav-h-min)) * var(--nav-progress, 0));
+     }
+ 
++    /* Drop shadow fades in as the bar compacts */
++    nav::after {
++      content: "";
++      position: absolute;
++      left: 0;
++      right: 0;
++      top: 100%;
++      height: 8px;
++      background: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0));
++      pointer-events: none;
++      opacity: 0;
++      opacity: var(--nav-progress, 0);
++    }
++
+     .logo {
+       font-size: 1.5rem;
++      font-size: calc(var(--logo-size-max) - (var(--logo-size-max) - var(--logo-size-min)) * var(--nav-progress, 0));
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
++    /* Modern browsers: native scroll-driven animations, no JS involved */
++    @supports (animation-timeline: scroll()) {
++      nav {
++        animation: nav-shrink linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0 var(--nav-shrink-distance);
++      }
++
++      nav::after {
++        animation: nav-shadow linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0 var(--nav-shrink-distance);
++      }
++
++      .logo {
++        animation: logo-shrink linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0 var(--nav-shrink-distance);
++      }
++    }
++
++    @keyframes nav-shrink {
++      from { min-height: var(--nav-h-max); }
++      to { min-height: var(--nav-h-min); }
++    }
++
++    @keyframes nav-shadow {
++      from { opacity: 0; }
++      to { opacity: 1; }
++    }
++
++    @keyframes logo-shrink {
++      from { font-size: var(--logo-size-max); }
++      to { font-size: var(--logo-size-min); }
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+@@ -71,8 +144,18 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    @media (max-width: 640px) {
++      nav ul li {
++        margin-left: 12px;
++      }
++
++      nav a {
++        font-size: 0.8rem;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -206,7 +289,63 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without CSS scroll-driven animations: map the
++    // scroll position to --nav-progress (0 → 1), which the nav styles read.
++    (function () {
++      if (window.CSS && CSS.supports && CSS.supports('animation-timeline', 'scroll()')) return;
++
++      var nav = document.querySelector('nav');
++      var logo = nav.querySelector('.logo');
++      var shadow = null;
++      var hasVars = !!(window.CSS && CSS.supports && CSS.supports('--a', '0'));
++      var distance = hasVars && parseFloat(getComputedStyle(document.documentElement)
++        .getPropertyValue('--nav-shrink-distance')) || 160;
++
++      // Browsers without custom properties ignore the calc() rules, so set the
++      // interpolated values directly (mirrors the defaults in :root).
++      if (!hasVars) {
++        shadow = document.createElement('div');
++        shadow.style.cssText = 'position:absolute;left:0;right:0;top:100%;height:8px;' +
++          'pointer-events:none;opacity:0;filter:alpha(opacity=0);' +
++          'background:linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,0));';
++        nav.appendChild(shadow);
++      }
++
++      var ticking = false;
++
++      function update() {
++        ticking = false;
++        var y = window.pageYOffset || document.documentElement.scrollTop || 0;
++        var progress = Math.min(Math.max(y / distance, 0), 1);
++        if (hasVars) {
++          nav.style.setProperty('--nav-progress', progress.toFixed(3));
++        } else {
++          nav.style.minHeight = (80 - 28 * progress) + 'px';
++          logo.style.fontSize = (1.5 - 0.35 * progress) + 'em';
++          shadow.style.opacity = progress;
++          shadow.style.filter = 'alpha(opacity=' + Math.round(progress * 100) + ')';
++        }
++      }
++
++      function onScroll() {
++        if (!ticking) {
++          ticking = true;
++          if (window.requestAnimationFrame) {
++            window.requestAnimationFrame(update);
++          } else {
++            setTimeout(update, 16);
++          }
++        }
++      }
++
++      window.addEventListener('scroll', onScroll, { passive: true });
++      window.addEventListener('resize', onScroll);
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

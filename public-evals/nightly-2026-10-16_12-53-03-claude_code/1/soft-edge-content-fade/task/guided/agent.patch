@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,33 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Secrets preview */
++    .paywall-container {
++      max-width: 700px;
++      margin: 20px auto 0;
++      padding: 20px 24px 80px;
++      background: white;
++      border-radius: 8px;
++      /* Mask fades the content itself to transparent, so the page background shows through */
++      -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .paywall-container p + p {
++      margin-top: 12px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +219,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Roaster's Secrets</h2>
++      <div class="paywall-container">
++        <h3>Why We Pull Our Espresso at 93&deg;C</h3>
++        <p>Every batch begins before sunrise, when our head roaster samples yesterday's beans and adjusts the drum
++          temperature by a single degree. That tiny change is the difference between caramel sweetness and a bitter
++          finish.</p>
++        <p>Our house blend rests for exactly seven days after roasting, letting trapped gases escape so the crema
++          settles into a velvety, hazelnut-toned crown. Here is the ratio, grind setting, and timing we use at the
++          bar every single morning&hellip;</p>
++        <p>Beyond that, the secret to our Maple Oat Latte lies in how the syrup is warmed before it ever meets the
++          milk, which keeps the sweetness rounded instead of cloying&hellip;</p>
++      </div>
++      <p class="paywall-cta"><a href="/rewards" class="btn">Unlock Roaster's Secrets</a></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

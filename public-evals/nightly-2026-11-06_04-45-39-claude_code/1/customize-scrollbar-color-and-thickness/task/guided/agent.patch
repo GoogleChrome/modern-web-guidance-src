@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,79 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 15px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      list-style: none;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    .feedback-log:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers without scrollbar-color */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++        border-radius: 4px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 4px;
++      }
++    }
++
++    .feedback-entry {
++      padding: 15px;
++      border-left: 4px solid var(--accent);
++      background: var(--light);
++      border-radius: 4px;
++    }
++
++    .feedback-entry + .feedback-entry {
++      margin-top: 12px;
++    }
++
++    .feedback-entry blockquote {
++      font-style: italic;
++      margin-bottom: 8px;
++    }
++
++    .feedback-meta {
++      font-size: 0.85rem;
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .feedback-meta time {
++      font-weight: normal;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +265,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading" style="text-align: center;">Customer Feedback</h2>
++      <ul class="feedback-log" tabindex="0" aria-labelledby="feedback-heading">
++        <li class="feedback-entry">
++          <blockquote>"The Maple Oat Latte is the best thing to happen to my mornings. Perfectly balanced, not too sweet."</blockquote>
++          <p class="feedback-meta">— Jenna R., <time datetime="2026-10-28">Oct 28, 2026</time></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>"Cold brew is incredibly smooth. I've stopped making my own at home."</blockquote>
++          <p class="feedback-meta">— Marcus T., <time datetime="2026-10-25">Oct 25, 2026</time></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>"Friendly baristas and a cozy atmosphere. My go-to spot for remote work."</blockquote>
++          <p class="feedback-meta">— Priya S., <time datetime="2026-10-21">Oct 21, 2026</time></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>"The Dark Roast Espresso has real depth — smoky with a chocolatey finish. Love it."</blockquote>
++          <p class="feedback-meta">— Daniel K., <time datetime="2026-10-18">Oct 18, 2026</time></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>"Online ordering was quick and my drink was ready the moment I walked in."</blockquote>
++          <p class="feedback-meta">— Olivia M., <time datetime="2026-10-14">Oct 14, 2026</time></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>"Rewards program is generous. Got a free pastry on my birthday!"</blockquote>
++          <p class="feedback-meta">— Sam L., <time datetime="2026-10-09">Oct 9, 2026</time></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>"You can taste the care that goes into the roasting. Fresh beans every time."</blockquote>
++          <p class="feedback-meta">— Hector V., <time datetime="2026-10-03">Oct 3, 2026</time></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>"Great oat milk options for those of us who are dairy-free. Thank you!"</blockquote>
++          <p class="feedback-meta">— Aisha B., <time datetime="2026-09-29">Sep 29, 2026</time></p>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

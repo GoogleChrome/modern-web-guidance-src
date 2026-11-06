@@ -1,0 +1,20 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,16 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    input:-webkit-autofill,
++    input:-webkit-autofill:hover,
++    input:-webkit-autofill:focus,
++    input:-webkit-autofill:active,
++    input:autofill {
++      border: 2px solid green;
++    }
+   </style>
+ </head>
+ 
+ <body>

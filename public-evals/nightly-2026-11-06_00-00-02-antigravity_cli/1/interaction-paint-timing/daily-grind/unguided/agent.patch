@@ -1,0 +1,779 @@
+diff --git a/index.html b/index.html
+index 66c9173..d637279 100644
+--- a/index.html
++++ b/index.html
+@@ -152,61 +152,754 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Interactive & View Switch Styles */
++    .logo {
++      cursor: pointer;
++    }
++
++    nav a.active {
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    .card {
++      cursor: pointer;
++      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
++      border: 2px solid transparent;
++    }
++
++    .card:hover,
++    .card.selected {
++      transform: translateY(-3px);
++      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
++      border-color: var(--accent);
++    }
++
++    .card-details {
++      display: none;
++      margin-top: 14px;
++      padding-top: 12px;
++      border-top: 1px dashed var(--secondary);
++      font-size: 0.9rem;
++      text-align: left;
++    }
++
++    .card.selected .card-details {
++      display: block;
++    }
++
++    .view-panel {
++      display: none;
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      margin-bottom: 30px;
++    }
++
++    .view-panel.active {
++      display: block;
++    }
++
++    .view-panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 16px;
++      padding-bottom: 10px;
++      border-bottom: 2px solid var(--secondary);
++    }
++
++    /* Performance Monitor Panel */
++    .perf-monitor {
++      background: #261815;
++      color: #f5ebe6;
++      border-radius: 8px;
++      padding: 20px;
++      margin-top: 36px;
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
++    }
++
++    .perf-monitor-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 16px;
++      border-bottom: 1px solid #4e342e;
++      padding-bottom: 10px;
++    }
++
++    .perf-monitor-header h2 {
++      font-size: 1.05rem;
++      color: var(--accent);
++      margin: 0;
++    }
++
++    .perf-stats-summary {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
++      gap: 12px;
++      margin-bottom: 16px;
++    }
++
++    .perf-stat-box {
++      background: #36221e;
++      padding: 10px 14px;
++      border-radius: 6px;
++      border-left: 3px solid var(--accent);
++    }
++
++    .perf-stat-label {
++      font-size: 0.75rem;
++      color: #d7ccc8;
++      text-transform: uppercase;
++    }
++
++    .perf-stat-value {
++      font-size: 1.2rem;
++      font-weight: bold;
++      color: #fff;
++      margin-top: 2px;
++    }
++
++    .perf-log-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.82rem;
++    }
++
++    .perf-log-table th,
++    .perf-log-table td {
++      text-align: left;
++      padding: 8px 10px;
++      border-bottom: 1px solid #3e2723;
++    }
++
++    .perf-log-table th {
++      color: #d7ccc8;
++      font-weight: 600;
++    }
++
++    .perf-badge {
++      display: inline-block;
++      padding: 2px 6px;
++      border-radius: 4px;
++      font-size: 0.72rem;
++      background: #4e342e;
++      color: var(--accent);
++    }
++
++    .perf-clear-btn {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--secondary);
++      padding: 4px 10px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.78rem;
++    }
++
++    .perf-clear-btn:hover {
++      border-color: var(--accent);
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav id="main-nav" data-perf-region="navigation-bar">
++    <div class="logo" data-view-target="home">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-view-target="menu">Menu</a></li>
++      <li><a href="/locations" data-view-target="locations">Locations</a></li>
++      <li><a href="/rewards" data-view-target="rewards">Rewards</a></li>
++      <li><a href="/account" data-view-target="account">My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-view-target="logout">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" id="order-now-btn" class="btn" data-view-target="order-online">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="client-view-container" class="view-panel" aria-live="polite">
++      <div class="view-panel-header">
++        <h2 id="client-view-title">Menu</h2>
++        <button type="button" id="back-to-home-btn" class="btn" style="margin-top: 0; border: none; cursor: pointer;" data-view-target="home">Back to Home</button>
++      </div>
++      <div id="client-view-body"></div>
++    </section>
++
++    <section id="seasonal-favorites-section">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="grid" id="seasonal-favorites-grid">
++        <div class="card" data-favorite-card="maple-oat-latte" data-item-name="Maple Oat Latte" data-price="$5.75" data-calories="210 cal" data-notes="Steamed organic oat milk, double-shot espresso, pure Vermont Grade A amber maple, and a light dusting of cinnamon.">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-details">
++            <p><strong>Price:</strong> $5.75 &bull; <strong>210 cal</strong></p>
++            <p>Steamed organic oat milk, double-shot espresso, pure Vermont Grade A amber maple, and a light dusting of cinnamon.</p>
++          </div>
++          <a href="/menu/seasonal" class="btn" data-view-target="menu-seasonal">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-favorite-card="dark-roast-espresso" data-item-name="Dark Roast Espresso" data-price="$3.50" data-calories="15 cal" data-notes="Single-origin Sumatra and Colombian blend roasted to a rich dark profile with dark cocoa and toasted walnut undertones.">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-details">
++            <p><strong>Price:</strong> $3.50 &bull; <strong>15 cal</strong></p>
++            <p>Single-origin Sumatra and Colombian blend roasted to a rich dark profile with dark cocoa and toasted walnut undertones.</p>
++          </div>
++          <a href="/menu/espresso" class="btn" data-view-target="menu-espresso">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-favorite-card="cold-brew" data-item-name="Cold Brew" data-price="$4.75" data-calories="10 cal" data-notes="Coarse-ground Ethiopian beans steeped in filtered cold water for 18 hours for velvety chocolate smoothness and low acidity.">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-details">
++            <p><strong>Price:</strong> $4.75 &bull; <strong>10 cal</strong></p>
++            <p>Coarse-ground Ethiopian beans steeped in filtered cold water for 18 hours for velvety chocolate smoothness and low acidity.</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn" data-view-target="menu-cold-brew">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="perf-monitor-panel" class="perf-monitor" aria-label="Client-Side Performance Monitor">
++      <div class="perf-monitor-header">
++        <h2>Client-Side Paint &amp; Interaction Performance Monitor</h2>
++        <button type="button" id="perf-clear-btn" class="perf-clear-btn">Clear Metrics</button>
++      </div>
++      <div class="perf-stats-summary">
++        <div class="perf-stat-box">
++          <div class="perf-stat-label">Last Interaction Paint</div>
++          <div class="perf-stat-value" id="perf-last-duration">&mdash;</div>
++        </div>
++        <div class="perf-stat-box">
++          <div class="perf-stat-label">Last View Switch Paint</div>
++          <div class="perf-stat-value" id="perf-last-view-switch">&mdash;</div>
++        </div>
++        <div class="perf-stat-box">
++          <div class="perf-stat-label">Average Paint Time</div>
++          <div class="perf-stat-value" id="perf-avg-duration">&mdash;</div>
++        </div>
++        <div class="perf-stat-box">
++          <div class="perf-stat-label">Recorded Events</div>
++          <div class="perf-stat-value" id="perf-total-count">0</div>
++        </div>
++      </div>
++      <table class="perf-log-table">
++        <thead>
++          <tr>
++            <th>Category</th>
++            <th>Target / View</th>
++            <th>Interaction &rarr; Paint (ms)</th>
++            <th>DOM Work (ms)</th>
++            <th>Timestamp</th>
++          </tr>
++        </thead>
++        <tbody id="perf-log-tbody">
++          <tr id="perf-empty-row">
++            <td colspan="5" style="color: #a1887f; text-align: center;">Click the navigation bar, "Order Now", or "Seasonal Favorites" cards to measure paint latency.</td>
++          </tr>
++        </tbody>
++      </table>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-view-target="about">Our Story</a> |
++      <a href="/careers" data-view-target="careers">Join the Team</a> |
++      <a href="/contact" data-view-target="contact">Contact Us</a> |
++      <a href="/privacy-policy" data-view-target="privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var VIEW_CONTENT = {
++        'home': {
++          title: 'Home',
++          isHome: true,
++          html: ''
++        },
++        'menu': {
++          title: 'Full Artisanal Menu',
++          html: '<p>Explore our handcrafted espresso beverages, pour-overs, cold brews, and scratch-baked pastries made fresh every morning.</p><ul style="margin-top:12px; padding-left:20px;"><li><strong>Signature Espresso Bar:</strong> Cortado, Flat White, Cappuccino, Macchiato</li><li><strong>Seasonal Creations:</strong> Maple Oat Latte, Spiced Brown Sugar Shaken Espresso</li><li><strong>Slow Bar:</strong> Chemex, V60 Single-Origin Pour-Over, 18-Hour Cold Brew</li></ul>'
++        },
++        'locations': {
++          title: 'Our Coffeehouse Locations',
++          html: '<p>Visit any of our neighborhood cafes for freshly roasted beans and warm hospitality:</p><ul style="margin-top:12px; padding-left:20px;"><li><strong>Downtown Roastery:</strong> 412 Elm Street &mdash; Open 6:00 AM &ndash; 7:00 PM</li><li><strong>Riverside Cafe:</strong> 88 Harbor Way &mdash; Open 6:30 AM &ndash; 6:00 PM</li><li><strong>University Square:</strong> 19 College Ave &mdash; Open 7:00 AM &ndash; 9:00 PM</li></ul>'
++        },
++        'rewards': {
++          title: 'Daily Grind Rewards',
++          html: '<p>Earn 10 Bean Points for every $1 spent. Redeem points for complimentary handcrafted drinks, whole-bean bags, and exclusive tasting events.</p><p style="margin-top:8px;"><strong>Current Balance:</strong> 240 Bean Points (Free handcrafted drink unlocked!)</p>'
++        },
++        'account': {
++          title: 'My Account',
++          html: '<p><strong>Member:</strong> Alex Rivera (Gold Tier Roaster Club)</p><p style="margin-top:8px;"><strong>Saved Favorite:</strong> Oat Milk Maple Latte (Extra Shot)</p>'
++        },
++        'logout': {
++          title: 'Signed Out',
++          html: '<p>You have been safely signed out of your Daily Grind Rewards account. See you tomorrow morning for your next cup!</p>'
++        },
++        'order-online': {
++          title: 'Order Online for Express Pickup',
++          html: '<p>Skip the morning line! Select your pickup cafe and customize your beverage below:</p><div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;"><span class="btn" style="margin-top:0;"> + Maple Oat Latte ($5.75)</span><span class="btn" style="margin-top:0;"> + Dark Roast Espresso ($3.50)</span><span class="btn" style="margin-top:0;"> + 18h Cold Brew ($4.75)</span></div>'
++        },
++        'menu-seasonal': {
++          title: 'Seasonal Spotlight: Maple Oat Latte',
++          html: '<p>Crafted with velvety steamed oat milk, our signature double-shot espresso, and pure Vermont Grade A maple syrup ($5.75 &bull; 210 cal).</p>'
++        },
++        'menu-espresso': {
++          title: 'Roaster Spotlight: Dark Roast Espresso',
++          html: '<p>Bold, smoky Sumatra and Colombian blend pulled at 9 bars with rich crema and dark chocolate notes ($3.50 &bull; 15 cal).</p>'
++        },
++        'menu-cold-brew': {
++          title: 'Cold Bar Spotlight: 18-Hour Cold Brew',
++          html: '<p>Coarse-ground Ethiopian single-origin steeped cold for 18 hours for silky chocolate depth and naturally sweet finish ($4.75 &bull; 10 cal).</p>'
++        },
++        'about': {
++          title: 'Our Story',
++          html: '<p>Founded by local roasters dedicated to ethical direct-trade coffee farming and small-batch drum roasting.</p>'
++        },
++        'careers': {
++          title: 'Join the Team',
++          html: '<p>We are always looking for passionate baristas, roasters, and bakers. Competitive pay, full benefits, and unlimited coffee.</p>'
++        },
++        'contact': {
++          title: 'Contact Us',
++          html: '<p>Questions about wholesale beans or catering? Reach us at hello@thedailygrind.coffee.</p>'
++        },
++        'privacy-policy': {
++          title: 'Privacy Policy',
++          html: '<p>We respect your privacy and only use client-side performance telemetry to keep your coffee ordering experience fast.</p>'
++        }
++      };
++
++      var currentView = 'home';
++      var metricsStore = [];
++
++      /**
++       * Wait until the browser has finished painting the visual updates produced
++       * in the current task. Uses double requestAnimationFrame (the first rAF runs
++       * right before layout/paint of the next frame; the second rAF or post-frame
++       * macrotask runs immediately after that frame has been painted).
++       */
++      function afterNextPaint(callback) {
++        if (typeof window.requestAnimationFrame === 'function') {
++          window.requestAnimationFrame(function () {
++            setTimeout(function () {
++              callback(performance.now());
++            }, 0);
++          });
++        } else {
++          setTimeout(function () {
++            callback(performance.now());
++          }, 0);
++        }
++      }
++
++      function renderMetricsDashboard(latestEntry) {
++        var tbody = document.getElementById('perf-log-tbody');
++        var emptyRow = document.getElementById('perf-empty-row');
++        var lastDurationEl = document.getElementById('perf-last-duration');
++        var lastViewSwitchEl = document.getElementById('perf-last-view-switch');
++        var avgDurationEl = document.getElementById('perf-avg-duration');
++        var totalCountEl = document.getElementById('perf-total-count');
++
++        if (!tbody) return;
++
++        if (metricsStore.length === 0) {
++          tbody.innerHTML = '<tr id="perf-empty-row"><td colspan="5" style="color: #a1887f; text-align: center;">Click the navigation bar, "Order Now", or "Seasonal Favorites" cards to measure paint latency.</td></tr>';
++          if (lastDurationEl) lastDurationEl.textContent = '\u2014';
++          if (lastViewSwitchEl) lastViewSwitchEl.textContent = '\u2014';
++          if (avgDurationEl) avgDurationEl.textContent = '\u2014';
++          if (totalCountEl) totalCountEl.textContent = '0';
++          return;
++        }
++
++        if (emptyRow && emptyRow.parentNode) {
++          emptyRow.parentNode.removeChild(emptyRow);
++        }
++
++        if (latestEntry) {
++          var tr = document.createElement('tr');
++          tr.setAttribute('data-perf-category', latestEntry.category);
++          tr.innerHTML =
++            '<td><span class="perf-badge">' + latestEntry.category + '</span></td>' +
++            '<td>' + latestEntry.label + '</td>' +
++            '<td><strong>' + latestEntry.paintDurationMs.toFixed(2) + ' ms</strong></td>' +
++            '<td>' + latestEntry.domUpdateDurationMs.toFixed(2) + ' ms</td>' +
++            '<td>' + new Date(latestEntry.timestamp).toLocaleTimeString() + '</td>';
++          tbody.insertBefore(tr, tbody.firstChild);
++
++          if (lastDurationEl) {
++            lastDurationEl.textContent = latestEntry.paintDurationMs.toFixed(2) + ' ms';
++          }
++          if (latestEntry.category === 'view-switch' && lastViewSwitchEl) {
++            lastViewSwitchEl.textContent = latestEntry.paintDurationMs.toFixed(2) + ' ms';
++          }
++        }
++
++        var sum = 0;
++        for (var i = 0; i < metricsStore.length; i++) {
++          sum += metricsStore[i].paintDurationMs;
++        }
++        var avg = sum / metricsStore.length;
++        if (avgDurationEl) avgDurationEl.textContent = avg.toFixed(2) + ' ms';
++        if (totalCountEl) totalCountEl.textContent = String(metricsStore.length);
++      }
++
++      function recordPaintMeasurement(options) {
++        var category = options.category;
++        var label = options.label;
++        var startTime = options.startTime;
++        var domEndTime = options.domEndTime;
++        var detail = options.detail || {};
++
++        afterNextPaint(function (paintEndTime) {
++          var paintDurationMs = Math.max(0, paintEndTime - startTime);
++          var domUpdateDurationMs = Math.max(0, domEndTime - startTime);
++          var id = metricsStore.length + 1;
++          var startMarkName = 'daily-grind:' + category + ':' + id + ':start';
++          var paintMarkName = 'daily-grind:' + category + ':' + id + ':paint';
++          var measureName = 'daily-grind:' + category + ':' + label;
++
++          try {
++            if (typeof performance.mark === 'function' && typeof performance.measure === 'function') {
++              performance.mark(startMarkName, { startTime: startTime });
++              performance.mark(paintMarkName, { startTime: paintEndTime });
++              performance.measure(measureName, {
++                start: startTime,
++                end: paintEndTime,
++                detail: {
++                  category: category,
++                  label: label,
++                  paintDurationMs: paintDurationMs,
++                  domUpdateDurationMs: domUpdateDurationMs
++                }
++              });
++            }
++          } catch (err) {
++            // Fallback for browsers that do not support User Timing Level 3 options
++            try {
++              performance.measure(measureName);
++            } catch (_) {}
++          }
++
++          var entry = {
++            id: id,
++            category: category,
++            label: label,
++            startTime: startTime,
++            domEndTime: domEndTime,
++            paintEndTime: paintEndTime,
++            domUpdateDurationMs: domUpdateDurationMs,
++            paintDurationMs: paintDurationMs,
++            duration: paintDurationMs,
++            timestamp: Date.now(),
++            detail: detail
++          };
++
++          metricsStore.push(entry);
++          renderMetricsDashboard(entry);
++
++          if (typeof window.CustomEvent === 'function') {
++            window.dispatchEvent(new CustomEvent('daily-grind:perf-metric', { detail: entry }));
++          }
++          if (typeof console !== 'undefined' && typeof console.info === 'function') {
++            console.info(
++              '[DailyGrind Perf] ' + category + ' (' + label + ') painted in ' + paintDurationMs.toFixed(2) + 'ms',
++              entry
++            );
++          }
++        });
++      }
++
++      /**
++       * Perform a client-side view switch and measure its visual paint time.
++       */
++      function switchView(targetView, options) {
++        options = options || {};
++        var startTime = typeof options.startTime === 'number' ? options.startTime : performance.now();
++        var viewKey = VIEW_CONTENT[targetView] ? targetView : 'home';
++        var config = VIEW_CONTENT[viewKey];
++        var previousView = currentView;
++        currentView = viewKey;
++
++        var viewContainer = document.getElementById('client-view-container');
++        var viewTitle = document.getElementById('client-view-title');
++        var viewBody = document.getElementById('client-view-body');
++
++        if (viewContainer && viewTitle && viewBody) {
++          if (config.isHome) {
++            viewContainer.classList.remove('active');
++            viewTitle.textContent = '';
++            viewBody.innerHTML = '';
++          } else {
++            viewTitle.textContent = config.title;
++            viewBody.innerHTML = config.html;
++            viewContainer.classList.add('active');
++          }
++        }
++
++        // Update active state on navigation links
++        var navLinks = document.querySelectorAll('nav a[data-view-target]');
++        for (var i = 0; i < navLinks.length; i++) {
++          var link = navLinks[i];
++          if (link.getAttribute('data-view-target') === viewKey) {
++            link.classList.add('active');
++          } else {
++            link.classList.remove('active');
++          }
++        }
++
++        // Update URL hash/history cleanly without full page reload
++        try {
++          if (window.history && typeof window.history.pushState === 'function' && !options.skipHistory) {
++            var newPath = viewKey === 'home' ? '/' : '#' + viewKey;
++            window.history.pushState({ view: viewKey }, '', newPath);
++          }
++        } catch (_) {}
++
++        var domEndTime = performance.now();
++
++        recordPaintMeasurement({
++          category: 'view-switch',
++          label: previousView + ' -> ' + viewKey,
++          startTime: startTime,
++          domEndTime: domEndTime,
++          detail: {
++            fromView: previousView,
++            toView: viewKey,
++            trigger: options.trigger || 'programmatic'
++          }
++        });
++
++        return domEndTime;
++      }
++
++      // 1. Navigation bar click monitoring + client-side view switching
++      var navElement = document.getElementById('main-nav');
++      if (navElement) {
++        navElement.addEventListener('click', function (event) {
++          var targetEl = event.target.closest('a, .logo');
++          if (!targetEl || !navElement.contains(targetEl)) return;
++
++          event.preventDefault();
++          var clickStart = (typeof event.timeStamp === 'number' && event.timeStamp > 0 && event.timeStamp <= performance.now())
++            ? event.timeStamp
++            : performance.now();
++
++          var viewTarget = targetEl.getAttribute('data-view-target') || 'home';
++          var labelText = (targetEl.textContent || viewTarget).trim();
++
++          var domEndTime = switchView(viewTarget, {
++            startTime: clickStart,
++            trigger: 'navigation-bar'
++          });
++
++          recordPaintMeasurement({
++            category: 'navigation-bar',
++            label: 'Nav: ' + labelText,
++            startTime: clickStart,
++            domEndTime: domEndTime,
++            detail: {
++              targetView: viewTarget,
++              href: targetEl.getAttribute('href') || '/'
++            }
++          });
++        });
++      }
++
++      // 2. "Order Now" button click monitoring + client-side view switching
++      var orderNowBtn = document.getElementById('order-now-btn');
++      if (orderNowBtn) {
++        orderNowBtn.addEventListener('click', function (event) {
++          event.preventDefault();
++          var clickStart = (typeof event.timeStamp === 'number' && event.timeStamp > 0 && event.timeStamp <= performance.now())
++            ? event.timeStamp
++            : performance.now();
++
++          var viewTarget = orderNowBtn.getAttribute('data-view-target') || 'order-online';
++          var domEndTime = switchView(viewTarget, {
++            startTime: clickStart,
++            trigger: 'order-now-button'
++          });
++
++          recordPaintMeasurement({
++            category: 'order-now-button',
++            label: 'Order Now CTA',
++            startTime: clickStart,
++            domEndTime: domEndTime,
++            detail: {
++              targetView: viewTarget,
++              href: orderNowBtn.getAttribute('href') || '/order-online'
++            }
++          });
++        });
++      }
++
++      // 3. "Seasonal Favorites" cards click monitoring + visual detail expansion / view switching
++      var seasonalGrid = document.getElementById('seasonal-favorites-grid');
++      if (seasonalGrid) {
++        seasonalGrid.addEventListener('click', function (event) {
++          var card = event.target.closest('.card');
++          if (!card || !seasonalGrid.contains(card)) return;
++
++          var clickStart = (typeof event.timeStamp === 'number' && event.timeStamp > 0 && event.timeStamp <= performance.now())
++            ? event.timeStamp
++            : performance.now();
++
++          var cardLink = event.target.closest('a.btn');
++          var itemName = card.getAttribute('data-item-name') || (card.querySelector('h3') ? card.querySelector('h3').textContent.trim() : 'Seasonal Card');
++          var cardId = card.getAttribute('data-favorite-card') || itemName;
++
++          // Toggle selected state on Seasonal Favorites cards for immediate visual update
++          var allCards = seasonalGrid.querySelectorAll('.card');
++          for (var i = 0; i < allCards.length; i++) {
++            if (allCards[i] === card) {
++              allCards[i].classList.toggle('selected');
++            } else {
++              allCards[i].classList.remove('selected');
++            }
++          }
++
++          var domEndTime = performance.now();
++          var viewTarget = null;
++
++          if (cardLink) {
++            event.preventDefault();
++            card.classList.add('selected');
++            viewTarget = cardLink.getAttribute('data-view-target') || 'menu-seasonal';
++            domEndTime = switchView(viewTarget, {
++              startTime: clickStart,
++              trigger: 'seasonal-favorite-card'
++            });
++          }
++
++          recordPaintMeasurement({
++            category: 'seasonal-favorite-card',
++            label: 'Card: ' + itemName,
++            startTime: clickStart,
++            domEndTime: domEndTime,
++            detail: {
++              cardId: cardId,
++              itemName: itemName,
++              expanded: card.classList.contains('selected'),
++              targetView: viewTarget
++            }
++          });
++        });
++      }
++
++      // 4. Back to Home & Footer client-side view switches
++      var backToHomeBtn = document.getElementById('back-to-home-btn');
++      if (backToHomeBtn) {
++        backToHomeBtn.addEventListener('click', function (event) {
++          event.preventDefault();
++          var clickStart = (typeof event.timeStamp === 'number' && event.timeStamp > 0 && event.timeStamp <= performance.now())
++            ? event.timeStamp
++            : performance.now();
++          switchView('home', { startTime: clickStart, trigger: 'back-button' });
++        });
++      }
++
++      var footerLinks = document.querySelectorAll('.footer-links a[data-view-target]');
++      for (var f = 0; f < footerLinks.length; f++) {
++        footerLinks[f].addEventListener('click', function (event) {
++          event.preventDefault();
++          var clickStart = (typeof event.timeStamp === 'number' && event.timeStamp > 0 && event.timeStamp <= performance.now())
++            ? event.timeStamp
++            : performance.now();
++          var targetView = event.currentTarget.getAttribute('data-view-target');
++          switchView(targetView, { startTime: clickStart, trigger: 'footer-link' });
++        });
++      }
++
++      window.addEventListener('popstate', function (event) {
++        var startTime = performance.now();
++        var nextView = (event.state && event.state.view) || (window.location.hash ? window.location.hash.slice(1) : 'home');
++        switchView(nextView, { startTime: startTime, trigger: 'popstate', skipHistory: true });
++      });
++
++      var clearBtn = document.getElementById('perf-clear-btn');
++      if (clearBtn) {
++        clearBtn.addEventListener('click', function () {
++          metricsStore.length = 0;
++          if (typeof performance.clearMarks === 'function') {
++            performance.clearMarks();
++          }
++          if (typeof performance.clearMeasures === 'function') {
++            performance.clearMeasures();
++          }
++          renderMetricsDashboard(null);
++        });
++      }
++
++      // Expose programmatic client-side performance monitoring API
++      window.dailyGrindPerf = {
++        metrics: metricsStore,
++        getMetrics: function (category) {
++          if (!category) return metricsStore.slice();
++          return metricsStore.filter(function (entry) {
++            return entry.category === category;
++          });
++        },
++        getSummary: function () {
++          var byCategory = {};
++          var totalMs = 0;
++          for (var i = 0; i < metricsStore.length; i++) {
++            var item = metricsStore[i];
++            totalMs += item.paintDurationMs;
++            if (!byCategory[item.category]) {
++              byCategory[item.category] = { count: 0, totalPaintMs: 0, avgPaintMs: 0, lastPaintMs: 0 };
++            }
++            byCategory[item.category].count += 1;
++            byCategory[item.category].totalPaintMs += item.paintDurationMs;
++            byCategory[item.category].lastPaintMs = item.paintDurationMs;
++            byCategory[item.category].avgPaintMs = byCategory[item.category].totalPaintMs / byCategory[item.category].count;
++          }
++          return {
++            totalEvents: metricsStore.length,
++            averagePaintMs: metricsStore.length ? totalMs / metricsStore.length : 0,
++            byCategory: byCategory
++          };
++        },
++        switchView: function (viewName) {
++          return switchView(viewName, { startTime: performance.now(), trigger: 'api' });
++        },
++        measureInteractionPaint: function (category, label, domMutationFn) {
++          var startTime = performance.now();
++          if (typeof domMutationFn === 'function') {
++            domMutationFn();
++          }
++          var domEndTime = performance.now();
++          recordPaintMeasurement({
++            category: category || 'custom',
++            label: label || 'custom-interaction',
++            startTime: startTime,
++            domEndTime: domEndTime
++          });
++        },
++        clear: function () {
++          metricsStore.length = 0;
++          renderMetricsDashboard(null);
++        }
++      };
++    })();
++  </script>
+ </body>
+ 
+ </html>

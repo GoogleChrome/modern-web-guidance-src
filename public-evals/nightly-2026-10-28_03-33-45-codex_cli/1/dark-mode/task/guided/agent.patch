@@ -1,0 +1,475 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -2,36 +2,134 @@
+ <html lang="en">
+ 
+ <head>
+   <meta charset="UTF-8">
++  <meta name="color-scheme" content="light dark">
++  <script>
++    // Restore an explicit choice before the page paints; blocked storage is optional.
++    try {
++      const theme = localStorage.getItem('daily-grind-theme');
++      if (theme === 'light' || theme === 'dark') {
++        document.documentElement.dataset.theme = theme;
++        document.querySelector('meta[name="color-scheme"]').content = theme;
++      }
++    } catch {}
++  </script>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --background: #fbf5eb;
++      --surface: #fffaf3;
++      --primary: #5c3929;
++      --secondary: #eadbc8;
++      --accent: #8a481f;
++      --accent-hover: #653217;
++      --on-accent: #fffaf3;
++      --text: #39281f;
++      --muted: #705a49;
++      --border: #997e66;
++      --nav-background: #4e342e;
++      --nav-text: #fff2df;
++      --nav-accent: #ffd19b;
++      --scrollbar-thumb: #997050;
++      --scrollbar-track: #eadbc8;
++      --shadow: rgba(57, 40, 31, 0.12);
+     }
+ 
+-    * {
+-      box-sizing: border-box;
++    /* Fallback palette also follows the system without JavaScript. */
++    @media (prefers-color-scheme: dark) {
++      :root:not([data-theme="light"]) {
++        --background: #1d1512;
++        --surface: #2b201b;
++        --primary: #e8b98b;
++        --secondary: #362820;
++        --accent: #efb47b;
++        --accent-hover: #ffd1a3;
++        --on-accent: #24160e;
++        --text: #f4e6d6;
++        --muted: #c9b39e;
++        --border: #9d8069;
++        --nav-background: #261b17;
++        --nav-text: #f4e6d6;
++        --nav-accent: #efb47b;
++        --scrollbar-thumb: #ad825f;
++        --scrollbar-track: #362820;
++        --shadow: rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    :root[data-theme="light"] { color-scheme: only light; }
++    :root[data-theme="dark"] { color-scheme: only dark; }
++
++    :root[data-theme="dark"], .late-night {
++      --background: #1d1512;
++      --surface: #2b201b;
++      --primary: #e8b98b;
++      --secondary: #362820;
++      --accent: #efb47b;
++      --accent-hover: #ffd1a3;
++      --on-accent: #24160e;
++      --text: #f4e6d6;
++      --muted: #c9b39e;
++      --border: #9d8069;
++      --nav-background: #261b17;
++      --nav-text: #f4e6d6;
++      --nav-accent: #efb47b;
++      --scrollbar-thumb: #ad825f;
++      --scrollbar-track: #362820;
++      --shadow: rgba(0, 0, 0, 0.3);
++    }
++
++    /* Unregistered tokens keep light-dark() live within nested color schemes. */
++    @supports (color: light-dark(white, black)) {
++      :root, .late-night {
++        --background: light-dark(#fbf5eb, #1d1512);
++        --surface: light-dark(#fffaf3, #2b201b);
++        --primary: light-dark(#5c3929, #e8b98b);
++        --secondary: light-dark(#eadbc8, #362820);
++        --accent: light-dark(#8a481f, #efb47b);
++        --accent-hover: light-dark(#653217, #ffd1a3);
++        --on-accent: light-dark(#fffaf3, #24160e);
++        --text: light-dark(#39281f, #f4e6d6);
++        --muted: light-dark(#705a49, #c9b39e);
++        --border: light-dark(#997e66, #9d8069);
++        --nav-background: light-dark(#4e342e, #261b17);
++        --nav-text: light-dark(#fff2df, #f4e6d6);
++        --nav-accent: light-dark(#ffd19b, #efb47b);
++        --scrollbar-thumb: light-dark(#997050, #ad825f);
++        --scrollbar-track: light-dark(#eadbc8, #362820);
++        --shadow: light-dark(rgba(57, 40, 31, 0.12), rgba(0, 0, 0, 0.3));
++      }
++    }
++
++    :root, .late-night {
++      color: var(--text);
++      background-color: var(--background);
++      accent-color: var(--accent);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: auto;
++    }
++
++    html { box-sizing: border-box; }
++    :where(body, nav, header, main, section, article, div, ul, li, footer, h1, h2, h3, p, figure, blockquote, a, select) {
++      box-sizing: inherit;
+       margin: 0;
+       padding: 0;
+     }
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--background);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-background);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+@@ -55,20 +153,20 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    nav a:hover, nav a:active {
++      color: var(--nav-accent);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--nav-accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+@@ -82,9 +180,9 @@
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--nav-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
+@@ -107,12 +205,12 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+@@ -121,19 +219,19 @@
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--accent);
++      color: var(--on-accent);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:hover, .btn:active {
++      background: var(--accent-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
+@@ -151,12 +249,126 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .theme-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: flex-end;
++      gap: 12px;
++      padding: 12px 5%;
++      background: var(--secondary);
++    }
++
++    select {
++      font: inherit;
++      color: var(--text);
++      background-color: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 5px;
++      padding: 8px 12px;
++      max-inline-size: 100%;
++    }
++
++    :where(a, select, .scroll-container):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    nav a:focus-visible { outline-color: var(--nav-accent); }
++    main > section + section { margin-block-start: 48px; }
++    section > h2, .section-intro { text-align: center; }
++    .section-intro { color: var(--muted); margin-block: 8px 20px; }
++
++    .scroll-container {
++      overflow: auto;
++      max-block-size: 260px;
++      padding: 16px;
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      background: var(--surface);
++      color: var(--text);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: auto;
++      scrollbar-gutter: stable;
++    }
++
++    .review, .special { padding: 16px; }
++    .review + .review, .special + .special { border-block-start: 1px solid var(--border); }
++    figcaption, .special p { color: var(--muted); }
++    figcaption { margin-block-start: 8px; }
++    .special h3 { color: var(--primary); }
++
++    .late-night {
++      /* Reapply inherited color properties at this independent theme boundary. */
++      color-scheme: only dark;
++      padding: 28px;
++      border: 1px solid var(--border);
++      border-radius: 8px;
++    }
++
++    .specials-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 12px;
++      margin-block-end: 20px;
++    }
++
++    @supports not (scrollbar-color: auto) {
++      :root::-webkit-scrollbar, .scroll-container::-webkit-scrollbar { width: 12px; height: 12px; }
++      :root::-webkit-scrollbar-thumb, .scroll-container::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 8px;
++      }
++      :root::-webkit-scrollbar-track, .scroll-container::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin: 0; }
++      .hero h1 { font-size: 2.25rem; }
++      .late-night { padding: 20px; }
++    }
++
++    @media (forced-colors: active) {
++      :root, .late-night {
++        --background: Canvas;
++        --surface: Canvas;
++        --secondary: Canvas;
++        --text: CanvasText;
++        --muted: CanvasText;
++        --primary: CanvasText;
++        --accent: Highlight;
++        --accent-hover: Highlight;
++        --on-accent: HighlightText;
++        --border: ButtonText;
++        --nav-background: Canvas;
++        --nav-text: LinkText;
++        --nav-accent: LinkText;
++        scrollbar-color: auto;
++      }
++      .scroll-container { scrollbar-color: auto; }
++      .hero { background: Canvas; color: CanvasText; }
++      .card, .btn { border: 1px solid ButtonText; }
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <div class="theme-toolbar">
++    <label for="theme-select">Appearance</label>
++    <select id="theme-select">
++      <option value="system">System default</option>
++      <option value="light">Light</option>
++      <option value="dark">Dark</option>
++    </select>
++  </div>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -175,9 +387,9 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -194,8 +406,70 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading">Around the Coffee Table</h2>
++      <p class="section-intro">A few words from our regulars. Scroll to read more.</p>
++      <div class="scroll-container" tabindex="0" role="region" aria-labelledby="reviews-heading">
++        <figure class="review">
++          <blockquote><p>“The maple oat latte is my favorite little morning ritual. Always warm, always welcoming.”</p></blockquote>
++          <figcaption>— Jamie, neighborhood regular</figcaption>
++        </figure>
++        <figure class="review">
++          <blockquote><p>“Smooth cold brew, friendly people, and a sunny corner to slow down in. What more could you ask for?”</p></blockquote>
++          <figcaption>— Alex, cold brew enthusiast</figcaption>
++        </figure>
++        <figure class="review">
++          <blockquote><p>“You can taste the care in every espresso. This is the stop I look forward to on my commute.”</p></blockquote>
++          <figcaption>— Morgan, espresso lover</figcaption>
++        </figure>
++        <figure class="review">
++          <blockquote><p>“A cozy place to catch up with a friend and discover a new seasonal favorite.”</p></blockquote>
++          <figcaption>— Sam, weekend regular</figcaption>
++        </figure>
++      </div>
++    </section>
++
++    <section class="late-night" aria-labelledby="late-night-heading">
++      <h2 id="late-night-heading">Late Night Specials</h2>
++      <p class="section-intro">A little darker. A little cozier. Find your evening favorite.</p>
++      <div class="specials-controls">
++        <label for="specials-select">Explore specials</label>
++        <select id="specials-select" aria-controls="specials-content">
++          <option value="all">All specials</option>
++          <option value="coffee">Coffee</option>
++          <option value="coffee-free">Without coffee</option>
++        </select>
++      </div>
++      <div id="specials-content" class="scroll-container" tabindex="0" role="region" aria-labelledby="late-night-heading">
++        <article class="special" data-category="coffee">
++          <h3>Midnight Mocha</h3>
++          <p>Dark chocolate and espresso with silky steamed milk.</p>
++        </article>
++        <article class="special" data-category="coffee">
++          <h3>Brown Sugar Cortado</h3>
++          <p>A short, balanced cup with a warm brown sugar finish.</p>
++        </article>
++        <article class="special" data-category="coffee-free">
++          <h3>Spiced Hot Chocolate</h3>
++          <p>Rich cocoa with cinnamon and a soft cloud of milk.</p>
++        </article>
++        <article class="special" data-category="coffee-free">
++          <h3>Vanilla Rooibos</h3>
++          <p>A naturally caffeine-free tea for a gentle end to the day.</p>
++        </article>
++        <article class="special" data-category="coffee-free">
++          <h3>Honey Cinnamon Steamer</h3>
++          <p>Steamed milk, honey, and a comforting sprinkle of cinnamon.</p>
++        </article>
++        <article class="special" data-category="coffee-free">
++          <h3>Mint Herbal Tea</h3>
++          <p>A fresh, fragrant herbal infusion to help you unwind.</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +480,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const themeSelect = document.getElementById('theme-select');
++    const themeMeta = document.querySelector('meta[name="color-scheme"]');
++
++    function applyTheme(value) {
++      const theme = value === 'light' || value === 'dark' ? value : 'system';
++      if (theme === 'system') {
++        delete document.documentElement.dataset.theme;
++      } else {
++        document.documentElement.dataset.theme = theme;
++      }
++      themeMeta.content = theme === 'system' ? 'light dark' : theme;
++      themeSelect.value = theme;
++    }
++
++    applyTheme(document.documentElement.dataset.theme);
++    themeSelect.addEventListener('change', () => {
++      applyTheme(themeSelect.value);
++      try {
++        if (themeSelect.value === 'system') localStorage.removeItem('daily-grind-theme');
++        else localStorage.setItem('daily-grind-theme', themeSelect.value);
++      } catch {} // The current choice still works when storage is unavailable.
++    });
++
++    window.addEventListener('storage', (event) => {
++      if (event.key === 'daily-grind-theme' || event.key === null) applyTheme(event.newValue);
++    });
++
++    document.getElementById('specials-select').addEventListener('change', (event) => {
++      document.querySelectorAll('.special').forEach((special) => {
++        special.hidden = event.target.value !== 'all' && special.dataset.category !== event.target.value;
++      });
++      document.getElementById('specials-content').scrollTop = 0;
++    });
++  </script>
+ </body>
+ 
+ </html>

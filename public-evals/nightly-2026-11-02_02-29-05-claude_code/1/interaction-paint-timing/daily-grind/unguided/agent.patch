@@ -1,0 +1,319 @@
+diff --git a/index.html b/index.html
+index 66c9173..87f15bc 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,10 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Soft Navigations / Interaction Contentful Paint origin trial (Chrome).
++       Replace with a token registered for this origin at https://developer.chrome.com/origintrials -->
++  <meta http-equiv="origin-trial" content="REPLACE_WITH_SOFT_NAVIGATIONS_ORIGIN_TRIAL_TOKEN">
++  <script src="/js/interaction-monitor.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -157,7 +161,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-perf-region="nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,24 +175,24 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-perf-region="order-now" data-perf-label="Order Now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="grid" data-perf-region="seasonal-favorites">
++        <div class="card" data-perf-label="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf-label="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf-label="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/js/interaction-monitor.js b/js/interaction-monitor.js
+new file mode 100644
+index 0000000..58f5232
+--- /dev/null
++++ b/js/interaction-monitor.js
+@@ -0,0 +1,259 @@
++/*
++ * Interaction-to-contentful-paint monitoring for The Daily Grind homepage.
++ *
++ * Measures how long it takes from a user interaction (nav bar, "Order Now",
++ * Seasonal Favorites cards) or a client-side (soft) navigation until new
++ * contentful updates are rendered on screen.
++ *
++ * Primary source: Chrome's Soft Navigations / Interaction Contentful Paint APIs
++ *   - 'interaction-contentful-paint' entries (contentful paints caused by an interaction)
++ *   - 'soft-navigation' entries (same-document navigations triggered by an interaction)
++ *   - 'event' entries (Event Timing) for attribution via interactionId
++ * Fallback (browsers without ICP / soft navigation support):
++ *   - Event Timing duration (interaction -> next paint)
++ *   - History API / Navigation API URL changes -> first frame after DOM update
++ *
++ * Results are batched and sent with navigator.sendBeacon when the page is hidden.
++ */
++(function () {
++  'use strict';
++
++  if (typeof PerformanceObserver === 'undefined') return;
++
++  var ENDPOINT = '/analytics/interactions';
++  var FINALIZE_AFTER_MS = 10000;
++  var DEBUG = /[?&]perfdebug\b/.test(location.search);
++  var supported = PerformanceObserver.supportedEntryTypes || [];
++  var hasICP = supported.indexOf('interaction-contentful-paint') !== -1;
++  var hasSoftNav = supported.indexOf('soft-navigation') !== -1;
++  var hasEventTiming = supported.indexOf('event') !== -1;
++
++  var queue = [];
++  // interactionId -> { region, label, eventType, startTime, inputDelay, nextPaint, paints: [] }
++  var interactions = new Map();
++  // event.timeStamp -> { region, label } captured at dispatch time, for entries whose target was removed
++  var targetsByTimeStamp = new Map();
++  var lastInteraction = null;
++
++  function describe(node) {
++    var el = node && node.nodeType === 1 ? node : node && node.parentElement;
++    var regionEl = el && el.closest && el.closest('[data-perf-region]');
++    if (!regionEl) return null;
++    var labelEl = el.closest('[data-perf-label]') || regionEl;
++    return {
++      region: regionEl.getAttribute('data-perf-region'),
++      label: labelEl.getAttribute('data-perf-label') || (el.textContent || '').trim().slice(0, 40)
++    };
++  }
++
++  function round(n) {
++    return Math.round(n * 10) / 10;
++  }
++
++  function paintTimeOf(entry) {
++    return entry.presentationTime || entry.renderTime || entry.paintTime || entry.loadTime || entry.startTime;
++  }
++
++  function enqueue(metric) {
++    metric.page = location.pathname;
++    metric.timestamp = Date.now();
++    queue.push(metric);
++    if (DEBUG) console.debug('[perf]', metric);
++  }
++
++  function flush() {
++    finalizeInteractions(true);
++    if (!queue.length) return;
++    var body = JSON.stringify({ metrics: queue.splice(0, queue.length) });
++    if (!(navigator.sendBeacon && navigator.sendBeacon(ENDPOINT, body))) {
++      fetch(ENDPOINT, { method: 'POST', body: body, keepalive: true, headers: { 'Content-Type': 'application/json' } })
++        .catch(function () {});
++    }
++  }
++
++  // --- Attribution captured at dispatch time --------------------------------
++
++  ['pointerdown', 'keydown', 'click'].forEach(function (type) {
++    addEventListener(type, function (e) {
++      var info = describe(e.target);
++      lastInteraction = { time: e.timeStamp, info: info };
++      if (!info) return;
++      targetsByTimeStamp.set(e.timeStamp, info);
++      if (targetsByTimeStamp.size > 50) targetsByTimeStamp.delete(targetsByTimeStamp.keys().next().value);
++    }, { capture: true, passive: true });
++  });
++
++  function getInteraction(id) {
++    var record = interactions.get(id);
++    if (!record) {
++      record = { paints: [], createdAt: performance.now() };
++      interactions.set(id, record);
++    }
++    return record;
++  }
++
++  // --- Event Timing: attribution + next-paint fallback -----------------------
++
++  if (hasEventTiming) {
++    new PerformanceObserver(function (list) {
++      list.getEntries().forEach(function (entry) {
++        if (!entry.interactionId) return;
++        var info = describe(entry.target) || targetsByTimeStamp.get(entry.startTime);
++        if (!info) return;
++        var record = getInteraction(entry.interactionId);
++        if (!record.region || entry.duration > (record.nextPaint || 0)) {
++          record.region = info.region;
++          record.label = info.label;
++          record.eventType = entry.name;
++          record.startTime = entry.startTime;
++          record.inputDelay = entry.processingStart - entry.startTime;
++          record.nextPaint = entry.duration;
++        }
++      });
++      finalizeInteractions(false);
++    }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
++  }
++
++  // --- Interaction Contentful Paint ------------------------------------------
++
++  if (hasICP) {
++    new PerformanceObserver(function (list) {
++      list.getEntries().forEach(function (entry) {
++        if (!entry.interactionId) return;
++        getInteraction(entry.interactionId).paints.push({
++          time: paintTimeOf(entry),
++          size: entry.size || 0,
++          element: entry.element ? entry.element.tagName.toLowerCase() + (entry.element.id ? '#' + entry.element.id : '') : null
++        });
++      });
++    }).observe({ type: 'interaction-contentful-paint', buffered: true });
++  }
++
++  function finalizeInteractions(all) {
++    var now = performance.now();
++    interactions.forEach(function (record, id) {
++      if (!all && now - record.createdAt < FINALIZE_AFTER_MS) return;
++      interactions.delete(id);
++      if (!record.region || record.startTime == null) return;
++
++      var metric = {
++        type: 'interaction',
++        region: record.region,
++        label: record.label,
++        eventType: record.eventType,
++        interactionId: id,
++        inputDelay: round(record.inputDelay),
++        nextPaint: round(record.nextPaint)
++      };
++      if (record.paints.length) {
++        var first = record.paints.reduce(function (a, b) { return b.time < a.time ? b : a; });
++        var largest = record.paints.reduce(function (a, b) { return b.size > a.size ? b : a; });
++        metric.source = 'interaction-contentful-paint';
++        metric.firstContentfulPaint = round(first.time - record.startTime);
++        metric.largestContentfulPaint = round(largest.time - record.startTime);
++        metric.largestElement = largest.element;
++        metric.value = metric.largestContentfulPaint;
++      } else {
++        // No ICP data (unsupported, or the interaction painted no new content):
++        // fall back to interaction -> next paint.
++        metric.source = 'event-timing';
++        metric.value = metric.nextPaint;
++      }
++      enqueue(metric);
++    });
++  }
++
++  // --- Soft navigations ------------------------------------------------------
++
++  if (hasSoftNav) {
++    var softNavs = new Map(); // navigationId -> metric
++
++    new PerformanceObserver(function (list) {
++      list.getEntries().forEach(function (entry) {
++        var info = (entry.interactionId && interactions.get(entry.interactionId)) || null;
++        var paint = paintTimeOf(entry);
++        var metric = {
++          type: 'soft-navigation',
++          source: 'soft-navigation',
++          url: entry.name,
++          navigationId: entry.navigationId,
++          region: info ? info.region : null,
++          label: info ? info.label : null,
++          value: round(paint > entry.startTime ? paint - entry.startTime : entry.duration)
++        };
++        softNavs.set(entry.navigationId, { metric: metric, startTime: entry.startTime });
++        enqueue(metric);
++      });
++    }).observe({ type: 'soft-navigation', buffered: true });
++
++    // Contentful paints attributed to a soft navigation refine its render time.
++    if (hasICP) {
++      new PerformanceObserver(function (list) {
++        list.getEntries().forEach(function (entry) {
++          var nav = entry.navigationId != null && softNavs.get(entry.navigationId);
++          if (!nav) return;
++          var delta = round(paintTimeOf(entry) - nav.startTime);
++          if (delta > (nav.metric.largestContentfulPaint || 0)) {
++            nav.metric.largestContentfulPaint = delta;
++            nav.metric.value = delta;
++          }
++        });
++      }).observe({ type: 'interaction-contentful-paint', buffered: true });
++    }
++  } else {
++    // Fallback: detect same-document URL changes and time the first frame
++    // rendered after the DOM is updated, measured from the triggering input.
++    var onUrlChange = function () {
++      var start = lastInteraction && performance.now() - lastInteraction.time < 1000
++        ? lastInteraction
++        : { time: performance.now(), info: null };
++      var url = location.href;
++      var done = false;
++      var mo = new MutationObserver(function () {
++        if (done) return;
++        done = true;
++        mo.disconnect();
++        // rAF + task ≈ after the frame containing the update has been produced.
++        requestAnimationFrame(function () {
++          setTimeout(function () {
++            enqueue({
++              type: 'soft-navigation',
++              source: 'mutation-heuristic',
++              url: url,
++              region: start.info ? start.info.region : null,
++              label: start.info ? start.info.label : null,
++              value: round(performance.now() - start.time)
++            });
++          }, 0);
++        });
++      });
++      mo.observe(document.body, { childList: true, subtree: true, characterData: true });
++      setTimeout(function () { if (!done) { done = true; mo.disconnect(); } }, FINALIZE_AFTER_MS);
++    };
++
++    if (window.navigation && typeof navigation.addEventListener === 'function') {
++      // navigatesuccess only fires for same-document navigations.
++      navigation.addEventListener('navigatesuccess', onUrlChange);
++    } else {
++      ['pushState', 'replaceState'].forEach(function (method) {
++        var original = history[method];
++        history[method] = function () {
++          var before = location.href;
++          var result = original.apply(this, arguments);
++          if (location.href !== before) onUrlChange();
++          return result;
++        };
++      });
++      addEventListener('popstate', onUrlChange);
++    }
++  }
++
++  // --- Reporting -------------------------------------------------------------
++
++  addEventListener('visibilitychange', function () {
++    if (document.visibilityState === 'hidden') flush();
++  });
++  addEventListener('pagehide', flush);
++
++  window.__dailyGrindPerf = { queue: queue, flush: flush, support: { icp: hasICP, softNavigation: hasSoftNav, eventTiming: hasEventTiming } };
++})();

@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -87,8 +87,59 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero {
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
++    }
++
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative coffee-splash block. Positioned absolutely so it never affects
++       hero layout; if the mask or photo fails, it degrades to a soft rounded
++       block filled with a coffee gradient. */
++    .shaped-element {
++      position: absolute;
++      right: -2%;
++      bottom: -6%;
++      z-index: 0;
++      width: clamp(160px, 32vw, 420px);
++      aspect-ratio: 1;
++      pointer-events: none;
++      opacity: 0.85;
++      border-radius: 42% 58% 55% 45% / 48% 40% 60% 52%;
++      background:
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=70') center / cover no-repeat,
++        radial-gradient(circle at 35% 35%, #8d6e63, var(--primary) 60%, #2b1a14);
++
++      /* Inline SVG mask: no extra network request, so the shape cannot fail to load */
++      --splash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 8C60 8 64 18 72 20C82 22 92 18 94 28C96 38 86 42 88 52C90 62 98 70 92 80C86 90 74 84 66 90C58 96 50 100 40 94C30 88 20 92 12 84C4 76 10 66 8 56C6 46 2 38 10 30C18 22 28 26 34 18C40 10 42 8 50 8Z'/%3E%3Ccircle cx='95' cy='9' r='3.5'/%3E%3Ccircle cx='86' cy='6' r='1.8'/%3E%3Ccircle cx='5' cy='14' r='2.6'/%3E%3Ccircle cx='97' cy='93' r='2.2'/%3E%3Ccircle cx='17' cy='97' r='2.8'/%3E%3C/svg%3E");
++      -webkit-mask-image: var(--splash);
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-image: var(--splash);
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++    }
++
++    /* Fallback for browsers without masking: a simple organic ellipse */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        clip-path: ellipse(48% 45% at 50% 50%);
++      }
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        opacity: 0.5;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +219,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

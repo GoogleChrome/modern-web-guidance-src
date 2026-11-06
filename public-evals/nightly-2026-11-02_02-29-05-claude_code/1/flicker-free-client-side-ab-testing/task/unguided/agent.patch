@@ -1,0 +1,195 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,191 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <title>Launchpad — Ship faster with less effort</title>
++  <meta name="description" content="Launchpad helps teams plan, build, and ship products faster." />
++
++  <!-- Open connections to the experiment CDN early to cut SDK load time. -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin />
++  <link rel="preload" href="https://cdn.example.com/experiment-sdk.js" as="script" crossorigin />
++  <link rel="preconnect" href="https://images.unsplash.com" />
++
++  <!--
++    Anti-flicker: must come before any visible content and before the stylesheet
++    paints the body. The class is added by JS (not hard-coded in the markup) so
++    visitors without JavaScript still see the page.
++  -->
++  <style>
++    html.exp-pending body { opacity: 0 !important; }
++  </style>
++  <script>
++    (function () {
++      var root = document.documentElement;
++      var TIMEOUT_MS = 2500; // Max time we'll hold the page hidden.
++      var revealed = false;
++
++      function reveal(reason) {
++        if (revealed) return;
++        revealed = true;
++        clearTimeout(timer);
++        // Wait one frame so variant DOM changes are committed before painting.
++        requestAnimationFrame(function () {
++          root.classList.remove('exp-pending');
++          root.setAttribute('data-exp-reveal', reason);
++        });
++      }
++
++      root.classList.add('exp-pending');
++
++      // Fail open: if the SDK is slow or blocked, show the original content
++      // and tell the SDK not to swap the DOM afterwards (avoids a late flash).
++      var timer = setTimeout(function () {
++        window.__experimentTimedOut = true;
++        reveal('timeout');
++      }, TIMEOUT_MS);
++
++      // Integration points for the SDK once it has applied the variant:
++      //   window.experimentReady()                       or
++      //   document.dispatchEvent(new Event('experiment:applied'))
++      window.experimentReady = function () { reveal('applied'); };
++      document.addEventListener('experiment:applied', function () { reveal('applied'); });
++
++      window.__experimentReveal = reveal;
++    })();
++  </script>
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    crossorigin="anonymous"
++    onerror="window.__experimentReveal('error')"
++  ></script>
++
++  <style>
++    :root {
++      --bg: #0b1020;
++      --fg: #f5f7ff;
++      --muted: #b6bdd6;
++      --accent: #6c5ce7;
++      --accent-hover: #5a4bd4;
++      --radius: 12px;
++    }
++    * { box-sizing: border-box; }
++    html, body { margin: 0; }
++    body {
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++      background: var(--bg);
++      color: var(--fg);
++      line-height: 1.5;
++      transition: opacity 120ms ease-out;
++    }
++    .nav {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1.25rem clamp(1.25rem, 5vw, 4rem);
++      position: absolute;
++      inset: 0 0 auto 0;
++      z-index: 2;
++    }
++    .logo { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; color: var(--fg); text-decoration: none; }
++    .nav a.link { color: var(--muted); text-decoration: none; margin-left: 1.5rem; }
++    .nav a.link:hover { color: var(--fg); }
++
++    .hero {
++      position: relative;
++      min-height: 100vh;
++      display: grid;
++      place-items: center;
++      text-align: center;
++      padding: 6rem clamp(1.25rem, 5vw, 4rem) 4rem;
++      overflow: hidden;
++    }
++    .hero__bg {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 0;
++    }
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(180deg, rgba(11,16,32,0.65) 0%, rgba(11,16,32,0.9) 100%);
++      z-index: 1;
++    }
++    .hero__content { position: relative; z-index: 2; max-width: 46rem; }
++    .eyebrow {
++      display: inline-block;
++      padding: 0.35rem 0.85rem;
++      border: 1px solid rgba(255,255,255,0.2);
++      border-radius: 999px;
++      font-size: 0.85rem;
++      color: var(--muted);
++      margin-bottom: 1.5rem;
++    }
++    .hero h1 {
++      font-size: clamp(2.25rem, 6vw, 4rem);
++      line-height: 1.1;
++      letter-spacing: -0.03em;
++      margin: 0 0 1.25rem;
++    }
++    .hero p {
++      font-size: clamp(1.05rem, 2vw, 1.25rem);
++      color: var(--muted);
++      margin: 0 auto 2.25rem;
++      max-width: 36rem;
++    }
++    .cta {
++      display: inline-block;
++      background: var(--accent);
++      color: #fff;
++      font-weight: 600;
++      font-size: 1.1rem;
++      padding: 1rem 2rem;
++      border-radius: var(--radius);
++      text-decoration: none;
++      box-shadow: 0 10px 30px rgba(108, 92, 231, 0.4);
++      transition: background 150ms, transform 150ms;
++    }
++    .cta:hover { background: var(--accent-hover); transform: translateY(-2px); }
++    .cta:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
++    .fineprint { margin-top: 1rem; font-size: 0.875rem; color: var(--muted); }
++    .credit { position: absolute; right: 1rem; bottom: 0.75rem; z-index: 2; font-size: 0.7rem; color: rgba(255,255,255,0.45); }
++    .credit a { color: inherit; }
++  </style>
++</head>
++<body>
++  <header class="nav">
++    <a href="/" class="logo">Launchpad</a>
++    <nav>
++      <a href="#features" class="link">Features</a>
++      <a href="#pricing" class="link">Pricing</a>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" data-experiment="hero">
++      <img
++        class="hero__bg"
++        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=70"
++        alt=""
++        fetchpriority="high"
++      />
++      <div class="hero__content">
++        <span class="eyebrow" data-experiment-slot="eyebrow">New: AI-powered roadmaps</span>
++        <h1 data-experiment-slot="headline">Ship your best work, faster.</h1>
++        <p data-experiment-slot="subheadline">
++          Launchpad brings planning, building, and shipping into one workspace so
++          your team can focus on what matters.
++        </p>
++        <a href="/signup" class="cta" id="cta" data-experiment-slot="cta">Start free trial</a>
++        <div class="fineprint">No credit card required · 14-day free trial</div>
++      </div>
++      <div class="credit">Photo: <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a></div>
++    </section>
++  </main>
++</body>
++</html>

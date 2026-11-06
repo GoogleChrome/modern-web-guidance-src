@@ -1,0 +1,273 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..cede2fe
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,120 @@
++import React, { useState, useRef } from 'react';
++import { flushSync } from 'react-dom';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++export interface TopStoryItem {
++  id: string;
++  title: string;
++  dateFormatted: string;
++  category?: string;
++}
++
++interface TopStoriesSliderProps {
++  stories: TopStoryItem[];
++  baseUrl?: string;
++}
++
++export default function TopStoriesSlider({ stories, baseUrl = '/' }: TopStoriesSliderProps) {
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [fallbackDir, setFallbackDir] = useState<'forward' | 'backward' | null>(null);
++  const scopeRef = useRef<HTMLDivElement>(null);
++
++  if (!stories || stories.length === 0) {
++    return null;
++  }
++
++  const navigate = (direction: 'forward' | 'backward') => {
++    const nextIndex =
++      direction === 'forward'
++        ? (currentIndex + 1) % stories.length
++        : (currentIndex - 1 + stories.length) % stories.length;
++
++    const updateDOM = () => {
++      flushSync(() => {
++        setCurrentIndex(nextIndex);
++      });
++    };
++
++    const scopeEl = scopeRef.current as (HTMLDivElement & {
++      startViewTransition?: (options: { update: () => void; types: string[] } | (() => void)) => { ready: Promise<void> };
++    }) | null;
++
++    // Prefer element-scoped view transitions so external fixed elements/popovers and concurrent transitions stay unaffected
++    if (scopeEl && 'startViewTransition' in Element.prototype && typeof scopeEl.startViewTransition === 'function') {
++      setFallbackDir(null);
++      const transition = scopeEl.startViewTransition({
++        update: updateDOM,
++        types: [direction],
++      });
++      transition.ready.catch(() => {});
++      return;
++    }
++
++    // Fallback: apply the DOM update immediately without animation
++    setFallbackDir(direction);
++    updateDOM();
++  };
++
++  const currentStory = stories[currentIndex];
++  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
++
++  const fallbackClass =
++    fallbackDir === 'forward'
++      ? 'slide-in-right'
++      : fallbackDir === 'backward'
++        ? 'slide-in-left'
++        : '';
++
++  return (
++    <section aria-label="Top Stories" className="bg-white border-b border-gray-300">
++      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
++        <div className="flex items-center justify-between gap-4">
++          <button
++            type="button"
++            onClick={() => navigate('backward')}
++            aria-label="Previous story"
++            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 rounded transition-colors shrink-0 cursor-pointer"
++          >
++            <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
++            <span>Previous</span>
++          </button>
++
++          <div
++            ref={scopeRef}
++            className="top-stories-viewport flex-1 overflow-hidden text-center px-2"
++            aria-live="polite"
++            aria-atomic="true"
++          >
++            <div key={currentStory.id} className={`py-1 ${fallbackClass}`}>
++              <a
++                href={`${normalizedBaseUrl}articles/${currentStory.id}`}
++                className="inline-block"
++              >
++                <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer text-base sm:text-lg">
++                  {currentStory.title}
++                </h3>
++              </a>
++              <div className="text-xs text-gray-500 mt-0.5">
++                <span>{currentStory.dateFormatted}</span>
++                <span className="mx-2" aria-hidden="true">•</span>
++                <span>
++                  {currentIndex + 1} / {stories.length}
++                </span>
++              </div>
++            </div>
++          </div>
++
++          <button
++            type="button"
++            onClick={() => navigate('forward')}
++            aria-label="Next story"
++            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 rounded transition-colors shrink-0 cursor-pointer"
++          >
++            <span>Next</span>
++            <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
++          </button>
++        </div>
++      </div>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..b43c1cc 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -12,7 +13,12 @@ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+ 
+ // Slicing articles for different sections
+ const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
++const topStories = articles.slice(1, 4).map(article => ({
++    id: article.id,
++    title: article.data.title,
++    dateFormatted: article.data.date.toLocaleDateString(),
++    category: article.data.category,
++}));
+ const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+ const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+ const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+@@ -39,20 +45,7 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider client:load stories={topStories} baseUrl={import.meta.env.BASE_URL} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..7905f63 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,92 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++@keyframes slide-to-left {
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++@keyframes slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-to-right {
++  to {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++}
++
++.top-stories-viewport {
++  view-transition-scope: all;
++}
++
++.top-stories-viewport::view-transition-group(*) {
++  animation: 0.4s ease-in-out both;
++}
++
++.top-stories-viewport:active-view-transition-type(forward)::view-transition-old(root) {
++  animation-name: slide-to-left;
++}
++
++.top-stories-viewport:active-view-transition-type(forward)::view-transition-new(root) {
++  animation-name: slide-from-right;
++}
++
++.top-stories-viewport:active-view-transition-type(backward)::view-transition-old(root) {
++  animation-name: slide-to-right;
++}
++
++.top-stories-viewport:active-view-transition-type(backward)::view-transition-new(root) {
++  animation-name: slide-from-left;
++}
++
++@keyframes css-slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++@keyframes css-slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++.slide-in-right {
++  animation: css-slide-from-right 0.4s ease-in-out both;
++  @media (prefers-reduced-motion: reduce) {
++    animation: none;
++  }
++}
++
++.slide-in-left {
++  animation: css-slide-from-left 0.4s ease-in-out both;
++  @media (prefers-reduced-motion: reduce) {
++    animation: none;
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(*),
++  ::view-transition-old(*),
++  ::view-transition-new(*) {
++    animation: none !important;
++  }
++}

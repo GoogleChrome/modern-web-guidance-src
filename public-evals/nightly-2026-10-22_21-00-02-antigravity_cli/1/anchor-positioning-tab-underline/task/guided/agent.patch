@@ -1,0 +1,79 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -50,12 +50,35 @@
+       display: flex;
+       list-style: none;
+     }
+ 
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active;
++      inset-block-start: calc(anchor(bottom) + .1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: .25lh;
++      background: var(--accent);
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: inset .2s;
++      }
++    }
++
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
++    nav ul li.active {
++      anchor-name: --active;
++
++      @supports not (position-anchor: auto) {
++        border-bottom: .25lh var(--accent) solid;
++      }
++    }
++
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -156,19 +179,37 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <script>
++    const navList = document.querySelector('nav ul');
++    navList.addEventListener('click', (e) => {
++      const link = e.target.closest('a');
++      if (!link || link.classList.contains('logout-link')) return;
++      e.preventDefault();
++
++      navList.querySelectorAll('li').forEach((li) => {
++        li.classList.remove('active');
++        li.querySelector('a')?.removeAttribute('aria-current');
++      });
++
++      const activeLi = link.closest('li');
++      activeLi.classList.add('active');
++      link.setAttribute('aria-current', 'page');
++    });
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

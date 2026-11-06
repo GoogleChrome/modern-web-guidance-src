@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,82 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping address */
++    .shipping {
++      margin-top: 40px;
++      padding: 30px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .shipping h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .shipping-form {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 18px 20px;
++      margin-top: 24px;
++    }
++
++    .shipping-field {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      min-width: 0;
++    }
++
++    .shipping-wide {
++      grid-column: 1 / -1;
++    }
++
++    .shipping-field label {
++      font-weight: 600;
++    }
++
++    .shipping-field input {
++      width: 100%;
++      padding: 11px 12px;
++      border: 1px solid #8d7b75;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .shipping-field input:focus-visible,
++    .shipping-form button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .shipping-form button {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      justify-self: start;
++    }
++
++    .shipping-note {
++      font-size: 0.9rem;
++    }
++
++    @media (max-width: 600px) {
++      .shipping {
++        padding: 20px;
++      }
++
++      .shipping-form {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +268,54 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="shipping" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Fresh beans, delivered to your door</h2>
++      <p>Enter your shipping address for coffee bean delivery. Use your browser’s autofill to fill in your details.</p>
++      <p class="shipping-note" id="shipping-help">All fields are required except apartment or suite. This form checks your details locally; it does not send or save them.</p>
++
++      <form class="shipping-form" id="shipping-form" autocomplete="on" aria-describedby="shipping-help">
++        <div class="shipping-field shipping-wide">
++          <label for="shipping-name">Recipient full name</label>
++          <input id="shipping-name" name="name" type="text" autocomplete="shipping name" required>
++        </div>
++        <div class="shipping-field shipping-wide">
++          <label for="shipping-address-line1">Street address</label>
++          <input id="shipping-address-line1" name="address-line1" type="text" autocomplete="shipping address-line1" required>
++        </div>
++        <div class="shipping-field shipping-wide">
++          <label for="shipping-address-line2">Apartment, suite, etc. (optional)</label>
++          <input id="shipping-address-line2" name="address-line2" type="text" autocomplete="shipping address-line2">
++        </div>
++        <div class="shipping-field">
++          <label for="shipping-city">City / town</label>
++          <input id="shipping-city" name="city" type="text" autocomplete="shipping address-level2" required>
++        </div>
++        <div class="shipping-field">
++          <label for="shipping-region">State / province / region</label>
++          <input id="shipping-region" name="region" type="text" autocomplete="shipping address-level1" required>
++        </div>
++        <div class="shipping-field">
++          <label for="shipping-postal-code">ZIP / postal code</label>
++          <input id="shipping-postal-code" name="postal-code" type="text" autocomplete="shipping postal-code" required>
++        </div>
++        <div class="shipping-field">
++          <label for="shipping-country">Country</label>
++          <input id="shipping-country" name="country" type="text" autocomplete="shipping country-name" required>
++        </div>
++        <div class="shipping-field">
++          <label for="shipping-email">Email address</label>
++          <input id="shipping-email" name="email" type="email" autocomplete="shipping email" required>
++        </div>
++        <div class="shipping-field">
++          <label for="shipping-phone">Phone number</label>
++          <input id="shipping-phone" name="tel" type="tel" autocomplete="shipping tel" required>
++        </div>
++        <button class="btn shipping-wide" type="submit">Check delivery details</button>
++        <p class="shipping-note shipping-wide" id="shipping-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +326,20 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    const shippingForm = document.getElementById('shipping-form');
++    const shippingStatus = document.getElementById('shipping-status');
++
++    shippingForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      shippingStatus.textContent = 'Your delivery details are complete. They have not been sent or saved.';
++    });
++
++    shippingForm.addEventListener('input', () => {
++      shippingStatus.textContent = '';
++    });
++  </script>
+ </body>
+ 
+ </html>

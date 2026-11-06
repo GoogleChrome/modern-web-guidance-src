@@ -1,0 +1,334 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,131 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Section & Form Validation */
++    .order-section {
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 600px;
++      margin: 40px auto 0;
++    }
++
++    .order-section h2 {
++      text-align: center;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .order-subtitle {
++      text-align: center;
++      margin-bottom: 24px;
++      color: var(--text);
++    }
++
++    .field {
++      margin-block-end: 1.5rem;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.5rem;
++      color: var(--primary);
++    }
++
++    .required-indicator {
++      color: #d93025;
++      margin-inline-start: 0.25rem;
++    }
++
++    .field select {
++      width: 100%;
++      font-size: 1rem;
++      font-family: inherit;
++      padding: 0.75rem 2.5rem 0.75rem 0.75rem;
++      min-height: 48px;
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++      background-color: white;
++      color: var(--text);
++      appearance: none;
++      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234e342e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
++      background-repeat: no-repeat;
++      background-position: right 0.85rem center;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    @media (pointer: coarse) {
++      .field select {
++        min-height: 52px;
++      }
++    }
++
++    .field select:focus-visible,
++    .btn:focus-visible,
++    nav a:focus-visible,
++    .footer-links a:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 0.35rem;
++      font-weight: 500;
++    }
++
++    /* Only show error after the user interacts with the select menu or attempts submission */
++    select:user-invalid,
++    select.user-invalid-fallback {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    select:user-invalid + .error-msg,
++    select.user-invalid-fallback + .error-msg,
++    select:user-invalid ~ .error-msg,
++    select.user-invalid-fallback ~ .error-msg {
++      display: block;
++    }
++
++    select:required:user-valid,
++    select:required.user-valid-fallback {
++      border-color: #188038;
++    }
++
++    .order-submit {
++      width: 100%;
++      font-size: 1rem;
++      font-weight: 600;
++      font-family: inherit;
++      border: none;
++      cursor: pointer;
++      min-height: 48px;
++      margin-top: 0;
++    }
++
++    .order-confirmation {
++      display: none;
++      margin-top: 1rem;
++      padding: 0.75rem 1rem;
++      border-radius: 5px;
++      background-color: #e6f4ea;
++      border: 1px solid #188038;
++      color: #137333;
++      font-weight: 500;
++      text-align: center;
++    }
++
++    .order-confirmation.visible {
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,9 +279,9 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -170,9 +293,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order-section" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +317,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="order-section" class="order-section">
++      <h2>Start Your Order</h2>
++      <p class="order-subtitle">Choose your nearest Daily Grind café for quick pickup.</p>
++      <form id="order-form" action="/order-online" method="GET">
++        <div class="field">
++          <label for="local-shop">
++            Local Shop<span class="required-indicator" aria-hidden="true">*</span>
++          </label>
++          <select
++            id="local-shop"
++            name="local-shop"
++            required
++            aria-errormessage="local-shop-error"
++            aria-describedby="local-shop-error"
++          >
++            <option value="" disabled selected>Select a local shop...</option>
++            <option value="downtown-roastery">Downtown Roastery (124 Main St)</option>
++            <option value="westside-espresso">Westside Espresso Bar (480 Oak Ave)</option>
++            <option value="riverside-cafe">Riverside Café (88 Harbor Blvd)</option>
++            <option value="midtown-market">Midtown Market Stall (310 Elm St)</option>
++            <option value="university-commons">University Commons (55 College Way)</option>
++            <option value="northgate-kitchen">Northgate Coffee &amp; Kitchen (920 Pine Rd)</option>
++          </select>
++          <div id="local-shop-error" class="error-msg" aria-live="polite">
++            <span aria-hidden="true">❌</span> Please select a local shop to start your order.
++          </div>
++        </div>
++        <button type="submit" class="btn order-submit">Continue to Menu</button>
++        <div id="order-confirmation" class="order-confirmation" role="status" aria-live="polite"></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +361,135 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('order-form');
++      const shopSelect = document.getElementById('local-shop');
++      const confirmation = document.getElementById('order-confirmation');
++      const supportsUserInvalid = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('selector(:user-invalid)');
++
++      // Synchronize aria-invalid with the visual :user-invalid state
++      const syncAriaState = (el) => {
++        if (!el || !el.matches?.('input, textarea, select')) return;
++        const isUserInvalid = supportsUserInvalid
++          ? el.matches(':user-invalid')
++          : el.classList.contains('user-invalid-fallback');
++
++        if (isUserInvalid) {
++          el.setAttribute('aria-invalid', 'true');
++        } else {
++          el.removeAttribute('aria-invalid');
++        }
++      };
++
++      document.addEventListener('blur', (event) => syncAriaState(event.target), true);
++      document.addEventListener('focus', (event) => syncAriaState(event.target), true);
++
++      const handleValueUpdate = (event) => {
++        const input = event.target;
++        if (!input || !input.matches?.('input, textarea, select')) return;
++        if (input.hasAttribute('aria-invalid')) {
++          syncAriaState(input);
++        }
++        if (confirmation) {
++          confirmation.classList.remove('visible');
++          confirmation.textContent = '';
++        }
++      };
++
++      document.addEventListener('input', handleValueUpdate);
++      document.addEventListener('change', handleValueUpdate);
++
++      // Sync ARIA state when invalid event fires (e.g., on form submission attempt)
++      form.addEventListener('invalid', (event) => {
++        const target = event.target;
++        if (!supportsUserInvalid && target.classList) {
++          target.classList.add('user-invalid-fallback');
++          target.classList.remove('user-valid-fallback');
++        }
++        requestAnimationFrame(() => syncAriaState(target));
++      }, true);
++
++      form.addEventListener('submit', (event) => {
++        if (!form.checkValidity()) {
++          event.preventDefault();
++          form.querySelectorAll('input[required], select[required], textarea[required]').forEach(syncAriaState);
++          return;
++        }
++        event.preventDefault();
++        const selectedOption = shopSelect.options[shopSelect.selectedIndex];
++        if (confirmation && selectedOption) {
++          confirmation.textContent = `Ordering from ${selectedOption.text}. Loading menu...`;
++          confirmation.classList.add('visible');
++        }
++      });
++
++      // Fallback for browsers without native :user-invalid support
++      const UserInvalidFallback = (() => {
++        const dirtyState = new WeakMap();
++
++        const updateState = (input) => {
++          const isValid = input.checkValidity();
++
++          input.classList.toggle('user-invalid-fallback', !isValid);
++          input.classList.toggle('user-valid-fallback', isValid);
++
++          if (!isValid) {
++            input.setAttribute('aria-invalid', 'true');
++          } else {
++            input.removeAttribute('aria-invalid');
++          }
++        };
++
++        const handleEvent = (event) => {
++          const input = event.target;
++
++          if (event.type === 'reset' && input.matches?.('form')) {
++            const controls = input.elements || [];
++            for (const control of controls) {
++              dirtyState.delete(control);
++              control.classList.remove('user-invalid-fallback');
++              control.classList.remove('user-valid-fallback');
++              control.removeAttribute('aria-invalid');
++            }
++            return;
++          }
++
++          if (!input.matches?.('input, textarea, select') || !input.checkValidity) return;
++
++          if (event.type === 'input' || event.type === 'change') {
++            const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++            state.hasInteracted = true;
++            dirtyState.set(input, state);
++            if (state.hasBlurred) {
++              updateState(input);
++            }
++          } else if (event.type === 'blur') {
++            const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++            state.hasBlurred = true;
++            dirtyState.set(input, state);
++            if (state.hasInteracted) {
++              updateState(input);
++            }
++          }
++        };
++
++        const init = (root = document) => {
++          if (supportsUserInvalid) return;
++
++          root.addEventListener('blur', handleEvent, true);
++          root.addEventListener('input', handleEvent, true);
++          root.addEventListener('change', handleEvent, true);
++          root.addEventListener('reset', handleEvent, true);
++        };
++
++        return { init };
++      })();
++
++      UserInvalidFallback.init(form);
++    })();
++  </script>
+ </body>
+ 
+ </html>

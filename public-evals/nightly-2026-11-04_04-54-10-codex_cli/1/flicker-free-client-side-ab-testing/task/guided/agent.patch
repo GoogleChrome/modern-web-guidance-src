@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,65 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f8f9f5">
++  <meta name="description" content="A little more clarity. A lot more possibility. Gather your projects, notes, and team in one calm workspace with Gather.">
++  <title>Gather — Make room for your best work</title>
++  <style>.experiment-pending body{visibility:hidden}</style>
++  <script>
++    // Establish the fallback before the body can paint. Native support needs no hiding snippet.
++    if (!('blocking' in HTMLScriptElement.prototype)) document.documentElement.classList.add('experiment-pending');
++    window.experimentLoaded = new Promise(resolve => {
++      // Async SDKs must set gatherExperimentAsync=true during execution and call
++      // onExperimentReady() only after applying their visual changes.
++      window.onExperimentReady = () => resolve(true);
++      document.addEventListener('load', event => { if (event.target.id === 'experiment-sdk' && !window.gatherExperimentAsync) resolve(true); }, true);
++      document.addEventListener('error', event => { if (event.target.id === 'experiment-sdk') resolve(false); }, true);
++    });
++  </script>
++  <script id="experiment-sdk" src="https://cdn.example.com/experiment-sdk.js" async blocking="render"></script>
++  <script type="module" blocking="render" src="./experiment.js"></script>
++  <link rel="stylesheet" href="./style.css">
++</head>
++<body>
++  <a class="skip-link" href="#main">Skip to content</a>
++  <header class="site-header wrap">
++    <a href="./" class="brand" aria-label="Gather home"><span class="brand-symbol" aria-hidden="true">✳</span>gather<span class="brand-dot">.</span></a>
++    <nav aria-label="Main navigation"><a href="#features">Why Gather</a><a href="#workspace">Product <span aria-hidden="true">⌄</span></a><a href="#pricing">Pricing</a><a href="#resources">Resources</a></nav>
++    <div class="header-actions"><button class="login text-button" data-open="login">Log in</button><button class="button small" data-open="signup">Get started free <span aria-hidden="true">↗</span></button></div>
++  </header>
++  <main id="main">
++    <section class="hero wrap" aria-labelledby="hero-title">
++      <div class="hero-copy">
++        <a href="#features" class="announcement"><span class="new-label">NEW</span> A calmer way to work is here <span aria-hidden="true">↗</span></a>
++        <h1 id="hero-title" data-experiment-heading>Big ideas.<br>Less <em>busywork.</em></h1>
++        <p class="hero-description">Bring your projects, notes, and people together.<br class="desktop-break"> One thoughtful workspace. More room to do<br class="desktop-break"> what you do best.</p>
++        <div class="hero-actions"><button class="button primary-cta" data-open="signup" data-experiment-cta>Find your flow <span aria-hidden="true">↗</span></button><button class="demo-button" id="watch-demo"><span class="play" aria-hidden="true">▶</span> See how it works</button></div>
++        <p class="cta-note"><span aria-hidden="true">✓</span> Free to start <span class="note-dot">·</span> No credit card needed</p>
++        <div class="social-proof"><div class="avatars" aria-hidden="true"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=72&h=72&fit=crop&crop=faces" width="34" height="34" alt=""><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=72&h=72&fit=crop&crop=faces" width="34" height="34" alt=""><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=72&h=72&fit=crop&crop=faces" width="34" height="34" alt=""><span>+2k</span></div><div><span class="stars" aria-label="5 out of 5 stars">★★★★★</span><p>Good company for your next big thing.</p></div></div>
++      </div>
++      <div class="hero-visual" id="workspace">
++        <div class="visual-orbit orbit-one"></div><div class="visual-orbit orbit-two"></div>
++        <span class="floating-spark" aria-hidden="true">✳</span>
++        <div class="workspace-window" aria-label="Preview of the Gather project workspace">
++          <div class="window-bar"><div class="window-dots"><i></i><i></i><i></i></div><span>your good-work place</span><span>↗</span></div>
++          <div class="app-layout">
++            <aside class="app-sidebar"><div class="mini-brand">✳ <strong>gather.</strong></div><div class="workspace-select"><span class="team-icon">S</span> Studio workspace <span>⌄</span></div><div class="sidebar-item">⌕ <span>Search anything</span><kbd>⌘ K</kbd></div><div class="sidebar-item">⌂ <span>Home</span></div><div class="sidebar-item">▣ <span>My tasks</span><small>6</small></div><div class="sidebar-item">◷ <span>Inbox</span><b class="notification-dot"></b></div><p class="sidebar-label">YOUR WORKSPACE <span>+</span></p><div class="sidebar-item selected"><span>▤</span> Brand refresh</div><div class="sidebar-item"><span>▧</span> Website launch</div><div class="sidebar-item"><span>▥</span> The idea garden</div><div class="sidebar-bottom"><span>◉</span> A little space to think.</div></aside>
++            <div class="app-content"><div class="app-breadcrumb">Workspace <span>/</span> Brand refresh <span class="app-menu">•••</span></div><div class="project-header"><div class="project-icon">✷</div><h2>Fresh start, big ideas.</h2><p>A little focus. A lot of possibility. Let's make it happen.</p></div><div class="project-tabs"><span class="active">▦ &nbsp; Overview</span><span>☷ &nbsp; Board</span><span>▣ &nbsp; Timeline</span><span class="tab-plus">+</span></div><div class="project-toolbar"><span>Our next chapter <small>3 projects</small></span><span>⚑ &nbsp; Filter</span></div><div class="project-cards"><article class="project-card"><div class="card-cover lavender"><span class="cover-shape shape-flower">✳</span><span class="cover-star">✧</span></div><div class="card-details"><span class="tag purple">DESIGN</span><h3>A new look & feel</h3><p>Something a little more us.</p><div class="card-footer"><span class="tiny-avatar peach">JL</span><span>☑ 4/6</span><span>May 24</span></div></div></article><article class="project-card"><div class="card-cover peach-cover"><span class="cover-shape shape-circle"></span><span class="cover-scribble">↗</span></div><div class="card-details"><span class="tag orange">STRATEGY</span><h3>Find our voice</h3><p>Words that feel like home.</p><div class="card-footer"><span class="tiny-avatar green">AM</span><span>☑ 2/4</span><span>May 28</span></div></div></article></div><div class="team-note"><span>💡</span><div><strong>Room for a bright idea?</strong><p>Every great thing starts with a little spark.</p></div><span>+</span></div></div>
++          </div>
++        </div>
++        <div class="floating-note"><span class="note-check">✓</span><div>A little less chaos.<br><strong>A lot more clarity.</strong></div><span class="note-decoration" aria-hidden="true">✧</span></div>
++        <div class="cursor-label" aria-hidden="true"><span>➤</span><b>You, in your element</b></div>
++      </div>
++    </section>
++    <section class="trusted wrap" aria-label="Trusted by teams"><p>BIG IDEAS LIVE IN GOOD COMPANY</p><div class="company-logos"><span class="logo-acme">acme<span>✳</span></span><span class="logo-layers">▱ layers</span><span class="logo-quotient">◒ Quotient</span><span class="logo-circooles">◉ Circooles</span><span class="logo-sisyphus">♧ Sisyphus</span></div></section>
++    <section class="features wrap" id="features"><div class="section-intro"><span class="eyebrow">LESS FRICTION. MORE FLOW.</span><h2>Everything in its happy place.</h2><p>Make space for the work that matters. We'll help with the rest.</p></div><div class="feature-grid"><article><span class="feature-icon mint">▤</span><h3>One home for every project</h3><p>From the first spark to the final detail, keep your plans and progress together.</p></article><article><span class="feature-icon lilac">✧</span><h3>Ideas, meet possibilities</h3><p>Capture the messy notes and lightbulb moments. Give your best ideas room to grow.</p></article><article><span class="feature-icon apricot">♡</span><h3>Better work, together</h3><p>Stay in sync without another meeting. A shared space for everyone to move forward.</p></article></div></section>
++    <section class="bottom-section wrap" id="pricing"><div><span class="eyebrow">A LITTLE ROOM TO GROW</span><h2>Your next big thing starts here.</h2><p>Start free with unlimited notes and up to 3 projects. Gather Plus brings unlimited projects for $12 per person, per month.</p></div><button class="button" data-open="signup">Start gathering <span aria-hidden="true">↗</span></button></section>
++    <section class="resources wrap" id="resources"><h2>A fresh perspective</h2><details><summary>How can Gather help my team?</summary><p>Organize projects, keep shared notes, and see what’s next in one workspace. Start with a single project, invite your team, and build a rhythm that works for you.</p></details><details><summary>Can I try Gather for free?</summary><p>Yes. Your free workspace includes unlimited notes and three projects, with no credit card required.</p></details></section>
++  </main>
++  <footer class="wrap"><a class="brand" href="./"><span class="brand-symbol" aria-hidden="true">✳</span>gather.</a><span>A little more together. © 2026 Gather</span><a href="mailto:hello@gather.example">Say hello ↗</a></footer>
++  <dialog id="signup-dialog" aria-labelledby="dialog-title"><button class="close-dialog" aria-label="Close">×</button><span class="brand-symbol" aria-hidden="true">✳</span><h2 id="dialog-title">Make room for good work.</h2><p id="dialog-description">Get your own little corner of Gather.</p><form id="signup-form"><label for="email">Work email</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com" required><button class="button" type="submit">Create your free workspace ↗</button><p class="form-note">This is a preview. No account will be created.</p></form><p id="form-status" role="status"></p></dialog>
++  <script src="./app.js" defer></script>
++</body>
++</html>

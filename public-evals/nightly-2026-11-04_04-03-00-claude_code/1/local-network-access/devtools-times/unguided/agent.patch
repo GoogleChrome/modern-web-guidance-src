@@ -1,0 +1,453 @@
+diff --git a/src/components/DiagnosticsConnect.tsx b/src/components/DiagnosticsConnect.tsx
+new file mode 100644
+index 0000000..9e0ec43
+--- /dev/null
++++ b/src/components/DiagnosticsConnect.tsx
+@@ -0,0 +1,396 @@
++import React, { useEffect, useRef, useState } from 'react';
++
++/**
++ * Developer diagnostics connection widget.
++ *
++ * All requests are made directly from the reader's browser to the target —
++ * there is intentionally NO server-side proxy, so this site can never be used
++ * to reach hosts on *our* network (no SSRF surface). Targets are restricted to:
++ *
++ *  - "device": RFC 1918 private IPv4 addresses (e.g. 192.168.1.x) or *.local
++ *              mDNS names on the reader's LAN
++ *  - "cli":    loopback only (127.0.0.1 / localhost / [::1])
++ *
++ * Requests opt in to Chrome's Local Network Access via `targetAddressSpace`,
++ * which makes the browser ask the reader for permission and requires the target
++ * to answer the CORS preflight (incl. `Access-Control-Allow-Private-Network`).
++ * Requests never carry cookies (`credentials: 'omit'`).
++ */
++
++type TargetKind = 'device' | 'cli';
++type Status = 'idle' | 'connecting' | 'connected' | 'error';
++
++interface TargetState {
++  host: string;
++  port: string;
++  path: string;
++  status: Status;
++  message: string;
++  latencyMs: number | null;
++  body: string;
++}
++
++const REQUEST_TIMEOUT_MS = 5000;
++const MAX_BODY_CHARS = 4000;
++const STORAGE_KEY = 'devtools-times:diagnostics';
++
++const DEFAULTS: Record<TargetKind, Pick<TargetState, 'host' | 'port' | 'path'>> = {
++  device: { host: '192.168.1.50', port: '80', path: '/status' },
++  cli: { host: '127.0.0.1', port: '7777', path: '/health' },
++};
++
++const LABELS: Record<TargetKind, { title: string; description: string; addressSpace: string }> = {
++  device: {
++    title: 'Hardware test device',
++    description: 'A device on your private Wi-Fi LAN (192.168.x.x, 10.x.x.x, 172.16–31.x.x or *.local).',
++    addressSpace: 'local',
++  },
++  cli: {
++    title: 'Companion CLI',
++    description: 'The diagnostics CLI running on this machine (127.0.0.1 / localhost).',
++    addressSpace: 'loopback',
++  },
++};
++
++// ---------------------------------------------------------------------------
++// Validation
++// ---------------------------------------------------------------------------
++
++function parseIPv4(host: string): number[] | null {
++  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
++  if (!m) return null;
++  const octets = m.slice(1).map(Number);
++  return octets.every((o) => o >= 0 && o <= 255) ? octets : null;
++}
++
++function isPrivateLanHost(host: string): boolean {
++  const ip = parseIPv4(host);
++  if (ip) {
++    const [a, b] = ip;
++    return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
++  }
++  // mDNS names such as "testrig.local"
++  return /^(?=.{1,253}\.local$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+local$/i.test(host);
++}
++
++function isLoopbackHost(host: string): boolean {
++  if (host === 'localhost' || host === '[::1]' || host === '::1') return true;
++  const ip = parseIPv4(host);
++  return !!ip && ip[0] === 127;
++}
++
++function normalizeHost(host: string): string {
++  const h = host.trim().toLowerCase();
++  return h === '::1' ? '[::1]' : h;
++}
++
++function validate(kind: TargetKind, host: string, port: string, path: string): string | null {
++  const h = normalizeHost(host);
++  if (kind === 'device' && !isPrivateLanHost(h)) {
++    return 'Device address must be a private LAN IPv4 address (e.g. 192.168.1.50) or a *.local name.';
++  }
++  if (kind === 'cli' && !isLoopbackHost(h)) {
++    return 'The companion CLI must be on loopback (127.0.0.1, localhost or [::1]).';
++  }
++  if (!/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
++    return 'Port must be a number between 1 and 65535.';
++  }
++  if (!/^\/[A-Za-z0-9\-._~/]*$/.test(path)) {
++    return 'Path must start with "/" and contain only URL-safe characters (no query string).';
++  }
++  return null;
++}
++
++function buildUrl(host: string, port: string, path: string): string {
++  // Built from validated parts; URL() normalises and guards against oddities.
++  return new URL(`http://${normalizeHost(host)}:${Number(port)}${path}`).toString();
++}
++
++// ---------------------------------------------------------------------------
++// Persistence (host/port/path only — never the pairing token)
++// ---------------------------------------------------------------------------
++
++function loadSaved(): Partial<Record<TargetKind, Partial<TargetState>>> {
++  try {
++    const raw = localStorage.getItem(STORAGE_KEY);
++    if (!raw) return {};
++    const parsed = JSON.parse(raw);
++    const out: Partial<Record<TargetKind, Partial<TargetState>>> = {};
++    for (const kind of ['device', 'cli'] as TargetKind[]) {
++      const v = parsed?.[kind];
++      if (v && typeof v.host === 'string' && typeof v.port === 'string' && typeof v.path === 'string') {
++        out[kind] = { host: v.host, port: v.port, path: v.path };
++      }
++    }
++    return out;
++  } catch {
++    return {};
++  }
++}
++
++function initialState(kind: TargetKind): TargetState {
++  return { ...DEFAULTS[kind], status: 'idle', message: '', latencyMs: null, body: '' };
++}
++
++// ---------------------------------------------------------------------------
++// Component
++// ---------------------------------------------------------------------------
++
++export default function DiagnosticsConnect() {
++  const [targets, setTargets] = useState<Record<TargetKind, TargetState>>({
++    device: initialState('device'),
++    cli: initialState('cli'),
++  });
++  // Pairing token for the CLI: kept in memory only.
++  const [cliToken, setCliToken] = useState('');
++  const [permission, setPermission] = useState<Record<TargetKind, string>>({ device: 'unknown', cli: 'unknown' });
++  const controllers = useRef<Partial<Record<TargetKind, AbortController>>>({});
++
++  useEffect(() => {
++    const saved = loadSaved();
++    setTargets((prev) => ({
++      device: { ...prev.device, ...saved.device },
++      cli: { ...prev.cli, ...saved.cli },
++    }));
++
++    // Best-effort permission status (names differ across Chrome versions).
++    const query = async (names: string[]): Promise<string> => {
++      for (const name of names) {
++        try {
++          const res = await navigator.permissions.query({ name } as unknown as PermissionDescriptor);
++          return res.state;
++        } catch {
++          /* unsupported name */
++        }
++      }
++      return 'unsupported';
++    };
++    query(['local-network', 'local-network-access']).then((s) => setPermission((p) => ({ ...p, device: s })));
++    query(['loopback-network', 'local-network-access']).then((s) => setPermission((p) => ({ ...p, cli: s })));
++
++    return () => {
++      Object.values(controllers.current).forEach((c) => c?.abort());
++    };
++  }, []);
++
++  const persist = (next: Record<TargetKind, TargetState>) => {
++    try {
++      localStorage.setItem(
++        STORAGE_KEY,
++        JSON.stringify({
++          device: { host: next.device.host, port: next.device.port, path: next.device.path },
++          cli: { host: next.cli.host, port: next.cli.port, path: next.cli.path },
++        }),
++      );
++    } catch {
++      /* storage unavailable */
++    }
++  };
++
++  const update = (kind: TargetKind, patch: Partial<TargetState>) => {
++    setTargets((prev) => {
++      const next = { ...prev, [kind]: { ...prev[kind], ...patch } };
++      if ('host' in patch || 'port' in patch || 'path' in patch) persist(next);
++      return next;
++    });
++  };
++
++  const connect = async (kind: TargetKind) => {
++    const t = targets[kind];
++    const error = validate(kind, t.host, t.port, t.path);
++    if (error) {
++      update(kind, { status: 'error', message: error, latencyMs: null, body: '' });
++      return;
++    }
++
++    controllers.current[kind]?.abort();
++    const controller = new AbortController();
++    controllers.current[kind] = controller;
++    const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
++
++    const url = buildUrl(t.host, t.port, t.path);
++    update(kind, { status: 'connecting', message: `Connecting to ${url}…`, latencyMs: null, body: '' });
++
++    const headers: Record<string, string> = { Accept: 'application/json, text/plain;q=0.9' };
++    if (kind === 'cli' && cliToken.trim()) headers['Authorization'] = `Bearer ${cliToken.trim()}`;
++
++    const started = performance.now();
++    try {
++      const init: RequestInit & { targetAddressSpace?: string } = {
++        method: 'GET',
++        mode: 'cors',
++        credentials: 'omit',
++        cache: 'no-store',
++        redirect: 'error',
++        referrerPolicy: 'no-referrer',
++        headers,
++        signal: controller.signal,
++        // Chrome Local Network Access: declares intent so the browser can
++        // prompt the reader and permit the request from this HTTPS page.
++        targetAddressSpace: LABELS[kind].addressSpace,
++      };
++      const res = await fetch(url, init);
++      const latencyMs = Math.round(performance.now() - started);
++      let text = await res.text();
++      const type = res.headers.get('content-type') ?? '';
++      if (type.includes('json')) {
++        try {
++          text = JSON.stringify(JSON.parse(text), null, 2);
++        } catch {
++          /* show raw */
++        }
++      }
++      if (text.length > MAX_BODY_CHARS) text = `${text.slice(0, MAX_BODY_CHARS)}\n… (truncated)`;
++      update(kind, {
++        status: res.ok ? 'connected' : 'error',
++        message: `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`,
++        latencyMs,
++        body: text,
++      });
++    } catch (err) {
++      const aborted = controller.signal.aborted;
++      update(kind, {
++        status: 'error',
++        message: aborted
++          ? `Timed out after ${REQUEST_TIMEOUT_MS / 1000}s.`
++          : `Connection failed (${err instanceof Error ? err.message : 'unknown error'}). Check that the target is running, ` +
++            'that you allowed local network access when prompted, and that it answers CORS / ' +
++            'Access-Control-Allow-Private-Network preflights for this origin.',
++        latencyMs: null,
++        body: '',
++      });
++    } finally {
++      window.clearTimeout(timer);
++      if (controllers.current[kind] === controller) delete controllers.current[kind];
++    }
++  };
++
++  const disconnect = (kind: TargetKind) => {
++    controllers.current[kind]?.abort();
++    update(kind, { status: 'idle', message: '', latencyMs: null, body: '' });
++  };
++
++  const renderTarget = (kind: TargetKind) => {
++    const t = targets[kind];
++    const label = LABELS[kind];
++    const id = (field: string) => `diag-${kind}-${field}`;
++    const dot = {
++      idle: 'bg-gray-300',
++      connecting: 'bg-amber-400 animate-pulse',
++      connected: 'bg-green-500',
++      error: 'bg-red-500',
++    }[t.status];
++
++    return (
++      <section className="border border-gray-200 rounded-lg p-5 flex flex-col gap-4" aria-labelledby={id('title')}>
++        <header className="flex items-start justify-between gap-4">
++          <div>
++            <h2 id={id('title')} className="text-lg font-bold text-gray-900">{label.title}</h2>
++            <p className="text-sm text-gray-600">{label.description}</p>
++          </div>
++          <span className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-600 shrink-0">
++            <span className={`inline-block w-2.5 h-2.5 rounded-full ${dot}`} aria-hidden="true"></span>
++            {t.status}
++          </span>
++        </header>
++
++        <form
++          className="grid grid-cols-6 gap-3"
++          onSubmit={(e) => {
++            e.preventDefault();
++            connect(kind);
++          }}
++        >
++          <label className="col-span-4 text-xs font-semibold text-gray-700" htmlFor={id('host')}>
++            Host
++            <input
++              id={id('host')}
++              className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 font-mono text-sm"
++              value={t.host}
++              onChange={(e) => update(kind, { host: e.target.value })}
++              autoComplete="off"
++              spellCheck={false}
++            />
++          </label>
++          <label className="col-span-2 text-xs font-semibold text-gray-700" htmlFor={id('port')}>
++            Port
++            <input
++              id={id('port')}
++              className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 font-mono text-sm"
++              value={t.port}
++              inputMode="numeric"
++              onChange={(e) => update(kind, { port: e.target.value })}
++            />
++          </label>
++          <label className="col-span-6 text-xs font-semibold text-gray-700" htmlFor={id('path')}>
++            Endpoint path
++            <input
++              id={id('path')}
++              className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 font-mono text-sm"
++              value={t.path}
++              onChange={(e) => update(kind, { path: e.target.value })}
++              autoComplete="off"
++              spellCheck={false}
++            />
++          </label>
++          {kind === 'cli' && (
++            <label className="col-span-6 text-xs font-semibold text-gray-700" htmlFor={id('token')}>
++              Pairing token <span className="font-normal text-gray-500">(optional, printed by the CLI; kept in memory only)</span>
++              <input
++                id={id('token')}
++                type="password"
++                className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 font-mono text-sm"
++                value={cliToken}
++                onChange={(e) => setCliToken(e.target.value)}
++                autoComplete="off"
++              />
++            </label>
++          )}
++          <div className="col-span-6 flex gap-2">
++            <button
++              type="submit"
++              disabled={t.status === 'connecting'}
++              className="bg-black text-white text-sm font-semibold px-4 py-2 rounded disabled:opacity-50"
++            >
++              {t.status === 'connected' ? 'Reconnect' : 'Connect'}
++            </button>
++            {t.status !== 'idle' && (
++              <button
++                type="button"
++                onClick={() => disconnect(kind)}
++                className="border border-gray-300 text-sm font-semibold px-4 py-2 rounded"
++              >
++                {t.status === 'connecting' ? 'Cancel' : 'Reset'}
++              </button>
++            )}
++          </div>
++        </form>
++
++        <div className="text-xs text-gray-500">
++          Browser permission: <span className="font-mono">{permission[kind]}</span>
++        </div>
++
++        <div aria-live="polite" className="text-sm">
++          {t.message && (
++            <p className={t.status === 'error' ? 'text-red-700' : 'text-gray-800'}>
++              {t.message}
++              {t.latencyMs !== null && <span className="text-gray-500"> · {t.latencyMs} ms</span>}
++            </p>
++          )}
++          {t.body && (
++            <pre className="mt-2 max-h-64 overflow-auto bg-gray-900 text-green-200 text-xs p-3 rounded whitespace-pre-wrap break-all">
++              {t.body}
++            </pre>
++          )}
++        </div>
++      </section>
++    );
++  };
++
++  return (
++    <div className="grid md:grid-cols-2 gap-6">
++      {renderTarget('device')}
++      {renderTarget('cli')}
++    </div>
++  );
++}
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..d742b89 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -51,6 +51,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
+             <ul class="space-y-2">
+                 <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
++                <li><a href={`${baseUrl}diagnostics`} class="text-sm hover:underline">Developer Diagnostics</a></li>
+             </ul>
+         </div>
+ 
+diff --git a/src/pages/diagnostics.astro b/src/pages/diagnostics.astro
+new file mode 100644
+index 0000000..49824f9
+--- /dev/null
++++ b/src/pages/diagnostics.astro
+@@ -0,0 +1,33 @@
++---
++import Layout from '../layouts/Layout.astro';
++import DiagnosticsConnect from '../components/DiagnosticsConnect.tsx';
++---
++<Layout title="Developer Diagnostics | The DevTools Times">
++    <div class="max-w-5xl mx-auto px-4 py-8 md:py-12">
++        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 pb-2 border-b-2">Developer Diagnostics</h1>
++        <p class="text-gray-700 mb-8">
++            Connect this page to a hardware test device on your private Wi-Fi network and to the companion CLI
++            running on your own machine. Connections are made directly from your browser; nothing is relayed
++            through our servers, and your browser will ask for permission before this site can reach your local network.
++        </p>
++
++        <DiagnosticsConnect client:only="react" />
++
++        <div class="prose max-w-none mt-10">
++            <h2>Setting up your targets</h2>
++            <p>
++                Both the device and the CLI must explicitly allow this site. For every request (including the
++                <code>OPTIONS</code> preflight) they should respond with:
++            </p>
++            <pre><code>Access-Control-Allow-Origin: {Astro.url.origin}
++Access-Control-Allow-Headers: Authorization, Accept
++Access-Control-Allow-Methods: GET
++Access-Control-Allow-Private-Network: true</code></pre>
++            <ul>
++                <li>Only private LAN addresses (<code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>, <code>*.local</code>) are accepted for the device, and only loopback for the CLI.</li>
++                <li>Do not use <code>Access-Control-Allow-Origin: *</code> on the CLI — allow-list this origin and require the pairing token so other websites cannot drive it.</li>
++                <li>Requests are sent without cookies, never follow redirects, and time out after 5 seconds.</li>
++            </ul>
++        </div>
++    </div>
++</Layout>

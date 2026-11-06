@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,68 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Feedback Form */
++    .feedback-form {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 16px;
++      max-width: 100%;
++      margin: 20px auto 0;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      width: fit-content;
++    }
++
++    .feedback-form label {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 4px;
++      max-width: 100%;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    /* Size controls to fit their content instead of a fixed default width */
++    .feedback-form input,
++    .feedback-form textarea,
++    .feedback-form select {
++      field-sizing: content;
++      min-width: 12ch;
++      max-width: 100%;
++      font: inherit;
++      font-weight: normal;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .feedback-form textarea {
++      min-height: 3lh;
++      resize: none;
++    }
++
++    .feedback-form input:focus,
++    .feedback-form textarea:focus,
++    .feedback-form select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .feedback-form button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +254,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Tell Us What You Think</h2>
++      <form class="feedback-form" action="/feedback" method="post">
++        <label>
++          Your name
++          <input type="text" name="name" placeholder="Jane Barista" required>
++        </label>
++        <label>
++          Topic
++          <select name="topic">
++            <option value="general">General</option>
++            <option value="menu">Menu suggestion</option>
++            <option value="service">Service feedback</option>
++            <option value="catering">Catering and large orders</option>
++          </select>
++        </label>
++        <label>
++          Message
++          <textarea name="message" placeholder="Share your thoughts..." required></textarea>
++        </label>
++        <button type="submit" class="btn">Send</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

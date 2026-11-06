@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,43 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .sign-in {
++      max-width: 420px;
++      margin: 40px auto;
++      text-align: left;
++    }
++
++    .sign-in label,
++    .sign-in input {
++      display: block;
++      width: 100%;
++      margin-top: 10px;
++    }
++
++    .sign-in input {
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .sign-in button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .sign-in button:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
++    .sign-in [role="status"] {
++      margin-top: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +209,18 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card sign-in" aria-labelledby="sign-in-heading">
++      <h2 id="sign-in-heading">Sign in to your account</h2>
++      <form id="sign-in-form">
++        <label for="username">Username</label>
++        <input id="username" name="username" type="text" autocomplete="username webauthn"
++          autocapitalize="none" spellcheck="false" data-testid="username-field">
++        <button type="submit" class="btn" data-testid="auth-button">Sign in with passkey</button>
++      </form>
++      <p role="status" aria-live="polite" data-testid="auth-status">Use a saved passkey to sign in.</p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +251,141 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.querySelector('#sign-in-form');
++      const username = document.querySelector('[data-testid="username-field"]');
++      const button = document.querySelector('[data-testid="auth-button"]');
++      const status = document.querySelector('[data-testid="auth-status"]');
++      let activeController = null;
++      let activeTask = null;
++      let explicitPending = false;
++      let signedIn = false;
++
++      function decode(value) {
++        const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        return Uint8Array.from(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')),
++          character => character.charCodeAt(0));
++      }
++
++      function encode(value) {
++        const bytes = new Uint8Array(value);
++        let binary = '';
++        for (const byte of bytes) binary += String.fromCharCode(byte);
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      async function authenticate(mediation, controller) {
++        const { signal } = controller;
++        try {
++          // The server must issue a fresh challenge and bind it to this session.
++          const optionsResponse = await fetch('/api/login/options', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify(mediation === 'conditional' ? {} : { username: username.value.trim() }),
++            signal
++          });
++          if (!optionsResponse.ok) throw new Error('Unable to start passkey sign-in. Please try again.');
++          const options = await optionsResponse.json();
++          const publicKey = { ...(options.publicKey || options) };
++          publicKey.challenge = decode(publicKey.challenge);
++          publicKey.userVerification = 'required';
++          if (mediation === 'conditional') {
++            // Discoverable credentials let autofill offer every account on this site.
++            delete publicKey.allowCredentials;
++          } else if (publicKey.allowCredentials) {
++            publicKey.allowCredentials = publicKey.allowCredentials.map(credential => ({
++              ...credential, id: decode(credential.id)
++            }));
++          }
++          if (signal.aborted) return;
++          const credential = await navigator.credentials.get({ publicKey, mediation, signal });
++          if (signal.aborted || !credential) return;
++          status.textContent = 'Verifying your passkey…';
++          const response = credential.response;
++          const verification = await fetch('/api/login/verify', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({
++              id: credential.id,
++              rawId: encode(credential.rawId),
++              type: credential.type,
++              authenticatorAttachment: credential.authenticatorAttachment,
++              response: {
++                clientDataJSON: encode(response.clientDataJSON),
++                authenticatorData: encode(response.authenticatorData),
++                signature: encode(response.signature),
++                userHandle: response.userHandle ? encode(response.userHandle) : null
++              },
++              clientExtensionResults: credential.getClientExtensionResults()
++            }),
++            signal
++          });
++          if (!verification.ok) throw new Error('Passkey verification failed. Please try again.');
++          const result = await verification.json();
++          if (result.verified === false || result.success === false) {
++            throw new Error('Passkey verification failed. Please try again.');
++          }
++          if (signal.aborted) return;
++          signedIn = true;
++          button.disabled = true;
++          status.textContent = 'Successfully signed in with your passkey.';
++        } catch (error) {
++          if (signal.aborted || error.name === 'AbortError') return;
++          status.textContent = error.name === 'NotAllowedError'
++            ? 'Passkey sign-in was canceled or timed out. Please try again.'
++            : (error.message || 'Unable to sign in with a passkey. Please try again.');
++        } finally {
++          if (activeController === controller) {
++            activeController = null;
++            activeTask = null;
++          }
++        }
++      }
++
++      async function startAutofill() {
++        try {
++          if (typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function'
++            || !await PublicKeyCredential.isConditionalMediationAvailable()) return;
++          if (explicitPending || activeController || signedIn) return;
++          activeController = new AbortController();
++          activeTask = authenticate('conditional', activeController);
++        } catch {
++          // Explicit sign-in remains available when conditional UI is unsupported.
++        }
++      }
++
++      form.addEventListener('submit', async event => {
++        event.preventDefault();
++        if (explicitPending || signedIn || button.disabled) return;
++        explicitPending = true;
++        button.disabled = true;
++        status.textContent = 'Complete the passkey prompt on your device.';
++        // Wait for the autofill request to end before starting a modal request.
++        const previousTask = activeTask;
++        if (activeController) activeController.abort();
++        await previousTask;
++        activeController = new AbortController();
++        activeTask = authenticate('required', activeController);
++        await activeTask;
++        explicitPending = false;
++        button.disabled = signedIn;
++        if (!signedIn) void startAutofill();
++      });
++
++      if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) {
++        button.disabled = true;
++        status.textContent = 'Passkey sign-in requires a supported browser and HTTPS (or localhost).';
++        return;
++      }
++      // Start early so focusing the username field can show passkey autofill.
++      void startAutofill();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

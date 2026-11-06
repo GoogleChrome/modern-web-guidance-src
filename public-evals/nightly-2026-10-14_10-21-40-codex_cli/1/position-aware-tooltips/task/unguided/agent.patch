@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,95 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .info-btn {
++      anchor-name: --latte-info;
++      width: 36px;
++      height: 36px;
++      border: 1px solid var(--secondary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: bold 1rem Georgia, serif;
++      cursor: pointer;
++    }
++
++    .info-btn:hover {
++      background: var(--secondary);
++    }
++
++    .info-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .latte-tooltip {
++      position: fixed;
++      position-anchor: --latte-info;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      container-name: latte-tooltip;
++      inset: auto;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      width: min(260px, calc(100vw - 32px));
++      overflow: visible;
++      background: transparent;
++      color: white;
++      text-align: left;
++      font-size: 0.875rem;
++    }
++
++    /* Query descendants so the surface and arrow follow the active fallback. */
++    .tooltip-surface {
++      position: relative;
++      margin: 0 0 12px;
++      padding: 14px 16px;
++      border-radius: 10px 10px 4px 4px;
++      background: var(--primary);
++      box-shadow: 0 4px 14px rgb(62 39 35 / 20%);
++    }
++
++    .tooltip-surface::after {
++      content: "";
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      transform: translateX(-50%);
++      border: 8px solid transparent;
++      border-bottom: 0;
++      border-top-color: var(--primary);
++    }
++
++    @container latte-tooltip anchored(fallback: flip-block) {
++      .tooltip-surface {
++        margin: 12px 0 0;
++        border-radius: 4px 4px 10px 10px;
++      }
++
++      .tooltip-surface::after {
++        top: auto;
++        bottom: 100%;
++        border-top: 0;
++        border-bottom: 8px solid var(--primary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +267,17 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button id="anchor" class="info-btn" type="button"
++              aria-label="More information about Maple Oat Latte"
++              aria-describedby="latte-tooltip" popovertarget="latte-tooltip">i</button>
++          </div>
++          <div id="latte-tooltip" class="latte-tooltip" popover="auto" role="tooltip">
++            <div class="tooltip-surface">A creamy blend of oat milk and Vermont maple syrup. Explore View Details for more about this seasonal favorite.</div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

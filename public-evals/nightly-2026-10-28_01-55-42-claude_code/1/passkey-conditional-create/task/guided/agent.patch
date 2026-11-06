@@ -1,0 +1,345 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,130 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Sign-in */
++    .signin {
++      max-width: 420px;
++      margin: 0 auto;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .signin p.lede {
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .field {
++      margin-bottom: 16px;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .field input {
++      width: 100%;
++      padding: 10px 12px;
++      font: inherit;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: var(--light);
++    }
++
++    .field input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .field input:user-invalid {
++      border-color: #c62828;
++    }
++
++    .password-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .password-row input {
++      flex: 1;
++    }
++
++    .toggle-password {
++      font: inherit;
++      padding: 0 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .signin .btn {
++      width: 100%;
++      border: 0;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++      margin-top: 4px;
++    }
++
++    .signin .btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .signin-links {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 14px;
++      font-size: 0.85rem;
++    }
++
++    .signin-links a {
++      color: var(--primary);
++    }
++
++    .form-status {
++      min-height: 1.4em;
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .form-status.error {
++      color: #c62828;
++    }
++
++    .form-status.success {
++      color: #2e7d32;
++    }
++
++    .signin[hidden],
++    .welcome[hidden] {
++      display: none;
++    }
++
++    .welcome {
++      max-width: 420px;
++      margin: 0 auto;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +296,46 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section id="signin-section" aria-labelledby="signin-heading">
++      <form class="signin" id="signin-form" method="post" action="/api/login" novalidate>
++        <h2 id="signin-heading">Sign In</h2>
++        <p class="lede">Welcome back. Sign in to earn rewards on every cup.</p>
++
++        <div class="field">
++          <label for="email">Email</label>
++          <input type="email" id="email" name="email" autocomplete="username" spellcheck="false"
++            enterkeyhint="next" required>
++        </div>
++
++        <div class="field">
++          <label for="current-password">Password</label>
++          <div class="password-row">
++            <input type="password" id="current-password" name="password" autocomplete="current-password"
++              enterkeyhint="done" required>
++            <button type="button" class="toggle-password" id="toggle-password" aria-controls="current-password"
++              aria-pressed="false">Show</button>
++          </div>
++        </div>
++
++        <button type="submit" class="btn" id="signin-button" data-testid="signin-button">Sign In</button>
++
++        <p class="form-status" id="signin-status" role="status" aria-live="polite"></p>
++
++        <div class="signin-links">
++          <a href="/forgot-password">Forgot password?</a>
++          <a href="/signup">Create an account</a>
++        </div>
++      </form>
++
++      <div class="welcome" id="welcome" hidden>
++        <h2>You're signed in</h2>
++        <p id="welcome-message">Head to your account to see your rewards.</p>
++        <a href="/account" class="btn">My Account</a>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +366,163 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Ensure getClientCapabilities / parseCreationOptionsFromJSON / toJSON exist on
++    // older browsers. Loaded best-effort; a failed load must not break sign-in.
++    if ('PublicKeyCredential' in window) {
++      try {
++        await import('https://cdn.jsdelivr.net/npm/webauthn-polyfills/+esm');
++      } catch { /* ignore: fall back to native support only */ }
++    }
++
++    const form = document.getElementById('signin-form');
++    const button = document.getElementById('signin-button');
++    const status = document.getElementById('signin-status');
++    const welcome = document.getElementById('welcome');
++    const welcomeMessage = document.getElementById('welcome-message');
++    const passwordInput = document.getElementById('current-password');
++    const toggle = document.getElementById('toggle-password');
++
++    toggle.addEventListener('click', () => {
++      const show = passwordInput.type === 'password';
++      passwordInput.type = show ? 'text' : 'password';
++      toggle.textContent = show ? 'Hide' : 'Show';
++      toggle.setAttribute('aria-pressed', String(show));
++    });
++
++    function setStatus(message, kind = '') {
++      status.textContent = message;
++      status.className = 'form-status' + (kind ? ' ' + kind : '');
++    }
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      if (!form.reportValidity()) return;
++
++      const email = form.elements.email.value.trim();
++      const password = form.elements.password.value;
++
++      button.disabled = true;
++      setStatus('Signing in…');
++
++      let result;
++      try {
++        result = await signInWithPassword(email, password);
++      } catch (err) {
++        button.disabled = false;
++        setStatus(err.message || 'Sign-in failed. Please try again.', 'error');
++        return;
++      }
++
++      button.disabled = false;
++      setStatus('');
++      form.hidden = true;
++      welcomeMessage.textContent = `Signed in as ${result.email || email}. Head to your account to see your rewards.`;
++      welcome.hidden = false;
++
++      // Successful *password* sign-in is the right trigger for silent passkey
++      // promotion. Fire-and-forget: it never surfaces UI or errors to the user.
++      promotePasskeyInBackground();
++    });
++
++    async function signInWithPassword(email, password) {
++      const response = await fetch(form.action, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        credentials: 'same-origin',
++        body: JSON.stringify({ email, password }),
++      });
++      if (!response.ok) {
++        throw new Error(response.status === 401 || response.status === 403
++          ? 'Incorrect email or password.'
++          : 'Sign-in failed. Please try again.');
++      }
++      try { return await response.json(); } catch { return {}; }
++    }
++
++    // --- Automatic passkey promotion (WebAuthn conditional create) ---------
++
++    async function promotePasskeyInBackground() {
++      try {
++        await conditionalCreatePasskey();
++      } catch (err) {
++        // Never show any UI for this flow; log unexpected failures only.
++        console.debug('Passkey promotion skipped:', err);
++      }
++    }
++
++    async function conditionalCreatePasskey() {
++      if (!window.PublicKeyCredential ||
++          typeof PublicKeyCredential.getClientCapabilities !== 'function') {
++        return;
++      }
++
++      const capabilities = await PublicKeyCredential.getClientCapabilities();
++      if (capabilities?.conditionalCreate !== true) {
++        return; // Platform cannot create a passkey silently.
++      }
++
++      // Ask the server for creation options, flagging this as a conditional
++      // request so it can relax user-presence checks only for this flow.
++      const optionsResponse = await fetch('/api/register/options', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        credentials: 'same-origin',
++        body: JSON.stringify({ conditional: true }),
++      });
++      if (!optionsResponse.ok) return;
++
++      const optionsJSON = await optionsResponse.json();
++      const rpId = optionsJSON?.rp?.id || location.hostname;
++      const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++
++      let credential;
++      try {
++        credential = await navigator.credentials.create({
++          publicKey,
++          mediation: 'conditional',
++        });
++      } catch (err) {
++        // Expected outcomes (already registered, no password manager consent,
++        // aborted) are swallowed silently with no error UI.
++        if (['InvalidStateError', 'NotAllowedError', 'AbortError'].includes(err?.name)) {
++          return;
++        }
++        console.debug('Unexpected conditional create error:', err);
++        return;
++      }
++      if (!credential) return;
++
++      const encoded = credential.toJSON();
++      let verified = false;
++      try {
++        const verifyResponse = await fetch('/api/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({ ...encoded, conditional: true }),
++        });
++        verified = verifyResponse.ok;
++      } catch (err) {
++        console.debug('Passkey verification network failure:', err);
++      }
++
++      if (!verified) {
++        // Keep the passkey provider in sync so an orphaned credential does not
++        // linger on the device after a failed server-side verification.
++        if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++          try {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId,
++              credentialId: encoded.id,
++            });
++          } catch { /* best-effort */ }
++        }
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

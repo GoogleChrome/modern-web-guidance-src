@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,137 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Modal + backdrop */
++    .modal-backdrop {
++      position: fixed;
++      inset: 0;
++      z-index: 2000;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 20px;
++      background: rgba(0, 0, 0, 0.55);
++      opacity: 0;
++      visibility: hidden;
++      transition: opacity 0.3s ease, visibility 0s linear 0.3s;
++    }
++
++    .modal-backdrop.open {
++      opacity: 1;
++      visibility: visible;
++      transition: opacity 0.3s ease, visibility 0s;
++    }
++
++    .modal {
++      background: white;
++      width: 100%;
++      max-width: 420px;
++      padding: 28px;
++      border-radius: 10px;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      opacity: 0;
++      transform: translateY(24px) scale(0.95);
++      transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
++    }
++
++    .modal-backdrop.open .modal {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    .modal h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    /* Floating info overlay */
++    .info-overlay {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 1500;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      max-width: 340px;
++      padding: 14px 16px;
++      background: var(--primary);
++      color: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      opacity: 0;
++      visibility: hidden;
++      transform: translateY(20px);
++      transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.35s;
++    }
++
++    .info-overlay.open {
++      opacity: 1;
++      visibility: visible;
++      transform: translateY(0);
++      transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
++    }
++
++    .info-overlay button {
++      background: none;
++      border: 0;
++      color: white;
++      font-size: 1.3rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .info-overlay button:hover {
++      color: var(--accent);
++    }
++
++    .hero .btn-row {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    .hero button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .modal-backdrop,
++      .modal,
++      .info-overlay {
++        transition-duration: 0.01s !important;
++        transition-delay: 0s !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +292,19 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="btn-row">
++      <a href="/order-online" class="btn">Order Now</a>
++      <button type="button" id="foobar" class="btn" aria-controls="info-overlay">Ordering Status</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +338,67 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div class="modal-backdrop" id="logout-backdrop" aria-hidden="true">
++    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="logout-title" aria-describedby="logout-desc">
++      <h2 id="logout-title">Log out?</h2>
++      <p id="logout-desc">Are you sure you want to log out of your account?</p>
++      <div class="modal-actions">
++        <button type="button" class="btn btn-secondary" id="close-dialog-btn">Cancel</button>
++        <a href="/logout" class="btn">Log out</a>
++      </div>
++    </div>
++  </div>
++
++  <div class="info-overlay" id="info-overlay" role="status" aria-live="polite">
++    <span>online ordering is currently offline</span>
++    <button type="button" id="info-overlay-close" aria-label="Dismiss">&times;</button>
++  </div>
++
++  <script>
++    (function () {
++      var backdrop = document.getElementById('logout-backdrop');
++      var openBtn = document.getElementById('open-dialog-btn');
++      var closeBtn = document.getElementById('close-dialog-btn');
++
++      function openModal(e) {
++        e.preventDefault();
++        backdrop.classList.add('open');
++        backdrop.setAttribute('aria-hidden', 'false');
++        closeBtn.focus();
++      }
++
++      function closeModal() {
++        backdrop.classList.remove('open');
++        backdrop.setAttribute('aria-hidden', 'true');
++        openBtn.focus();
++      }
++
++      openBtn.addEventListener('click', openModal);
++      closeBtn.addEventListener('click', closeModal);
++      backdrop.addEventListener('click', function (e) {
++        if (e.target === backdrop) closeModal();
++      });
++
++      var overlay = document.getElementById('info-overlay');
++      var overlayClose = document.getElementById('info-overlay-close');
++      var foobar = document.getElementById('foobar');
++
++      foobar.addEventListener('click', function () {
++        overlay.classList.add('open');
++      });
++      overlayClose.addEventListener('click', function () {
++        overlay.classList.remove('open');
++      });
++
++      document.addEventListener('keydown', function (e) {
++        if (e.key !== 'Escape') return;
++        if (backdrop.classList.contains('open')) closeModal();
++        else overlay.classList.remove('open');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

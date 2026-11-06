@@ -1,0 +1,77 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,25 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .preview-box {
++      margin-top: 20px;
++      padding: 20px;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      text-align: center;
++      font-size: 1.25rem;
++      color: #795548;
++      transition: color 0.2s, border-color 0.2s;
++    }
++
++    .preview-box.is-previewing {
++      color: var(--primary);
++      border-color: var(--accent);
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +197,44 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="seasonal-preview">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="seasonal-preview">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="seasonal-preview">View Details</a>
+         </div>
+       </div>
++      <!-- Passive preview: deliberately not a live region, so screen readers don't announce it. -->
++      <div id="seasonal-preview" class="preview-box">Select a drink to preview</div>
+     </section>
+   </main>
+ 
++  <script>
++    // All "View Details" links share this one interest target (declared via interestfor),
++    // so a single pair of listeners here replaces per-button hover/focus handlers.
++    const preview = document.getElementById('seasonal-preview');
++    const defaultText = preview.textContent;
++
++    preview.addEventListener('interest', (event) => {
++      const name = event.source.closest('.card').querySelector('h3').textContent;
++      preview.textContent = name;
++      preview.classList.add('is-previewing');
++    });
++
++    preview.addEventListener('loseinterest', () => {
++      preview.textContent = defaultText;
++      preview.classList.remove('is-previewing');
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

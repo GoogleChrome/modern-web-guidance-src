@@ -1,0 +1,360 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,79 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-in */
++    .signin {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 420px;
++      margin: 0 auto 40px;
++    }
++
++    .signin h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .signin p.hint {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 18px;
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px 12px;
++      font-size: 1rem;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      margin-bottom: 16px;
++    }
++
++    .signin input:focus {
++      outline: 2px solid var(--accent);
++      border-color: transparent;
++    }
++
++    .signin button {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      margin-top: 0;
++    }
++
++    .signin button[disabled] {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .auth-status {
++      margin-top: 14px;
++      min-height: 1.4em;
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .auth-status.success {
++      color: #2e7d32;
++      font-weight: 600;
++    }
++
++    .auth-status.error {
++      color: #c62828;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +245,21 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin" aria-labelledby="signin-title">
++      <h2 id="signin-title">Sign In</h2>
++      <p class="hint">Use a passkey saved on this device. No password needed.</p>
++      <form id="signin-form" novalidate>
++        <label for="username">Username</label>
++        <input id="username" name="username" type="text" autocomplete="username webauthn"
++          autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@example.com"
++          data-testid="username-field">
++        <button type="submit" id="auth-button" class="btn" data-testid="auth-button">Sign in with passkey</button>
++      </form>
++      <p id="auth-status" class="auth-status" role="status" aria-live="polite" data-testid="auth-status">Not signed in</p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +290,254 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var usernameField = document.querySelector('[data-testid="username-field"]');
++      var authButton = document.querySelector('[data-testid="auth-button"]');
++      var authStatus = document.querySelector('[data-testid="auth-status"]');
++      var form = document.getElementById('signin-form');
++
++      // The browser only shows passkeys in the autofill dropdown while a
++      // conditional-mediation credentials.get() call is pending, so we keep
++      // one alive and hold its AbortController to cancel it when the user
++      // chooses the explicit button flow instead.
++      var conditionalController = null;
++      var conditionalPending = false;
++      var modalInFlight = false;
++
++      function setStatus(message, kind) {
++        authStatus.textContent = message;
++        authStatus.className = 'auth-status' + (kind ? ' ' + kind : '');
++      }
++
++      function supportsWebAuthn() {
++        return typeof window.PublicKeyCredential === 'function' &&
++          navigator.credentials && typeof navigator.credentials.get === 'function';
++      }
++
++      // --- base64url helpers -------------------------------------------------
++
++      function base64urlToBuffer(value) {
++        var base64 = String(value).replace(/-/g, '+').replace(/_/g, '/');
++        var pad = base64.length % 4;
++        if (pad) base64 += '===='.slice(pad);
++        var binary = atob(base64);
++        var bytes = new Uint8Array(binary.length);
++        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
++        return bytes.buffer;
++      }
++
++      function bufferToBase64url(buffer) {
++        var bytes = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : new Uint8Array(buffer.buffer || buffer);
++        var binary = '';
++        for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      // --- request options ---------------------------------------------------
++
++      // Ask the server for a fresh challenge. If the options endpoint is not
++      // available, fall back to a locally generated challenge so the UI still
++      // works against a verify-only backend.
++      function getRequestOptions(username) {
++        var url = '/api/login/options' + (username ? '?username=' + encodeURIComponent(username) : '');
++        return fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
++          .then(function (res) {
++            if (!res.ok) throw new Error('options unavailable');
++            return res.json();
++          })
++          .then(function (data) {
++            var opts = data && (data.publicKey || data.options || data);
++            if (!opts || !opts.challenge) throw new Error('options missing challenge');
++            return opts;
++          })
++          .catch(function () {
++            var challenge = new Uint8Array(32);
++            crypto.getRandomValues(challenge);
++            return {
++              challenge: bufferToBase64url(challenge),
++              rpId: location.hostname,
++              timeout: 60000,
++              userVerification: 'preferred',
++              allowCredentials: []
++            };
++          })
++          .then(function (opts) {
++            var publicKey = {
++              challenge: base64urlToBuffer(opts.challenge),
++              rpId: opts.rpId || location.hostname,
++              timeout: opts.timeout || 60000,
++              userVerification: opts.userVerification || 'preferred',
++              allowCredentials: (opts.allowCredentials || []).map(function (c) {
++                return { type: c.type || 'public-key', id: base64urlToBuffer(c.id), transports: c.transports };
++              })
++            };
++            if (opts.extensions) publicKey.extensions = opts.extensions;
++            return publicKey;
++          });
++      }
++
++      // --- credential serialization ------------------------------------------
++
++      function serializeCredential(credential) {
++        if (typeof credential.toJSON === 'function') {
++          return credential.toJSON();
++        }
++        var response = credential.response;
++        var out = {
++          id: credential.id,
++          rawId: bufferToBase64url(credential.rawId),
++          type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment || null,
++          clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
++          response: {
++            clientDataJSON: bufferToBase64url(response.clientDataJSON),
++            authenticatorData: bufferToBase64url(response.authenticatorData),
++            signature: bufferToBase64url(response.signature),
++            userHandle: response.userHandle ? bufferToBase64url(response.userHandle) : null
++          }
++        };
++        return out;
++      }
++
++      // --- verification ------------------------------------------------------
++
++      function verifyCredential(credential) {
++        var payload = serializeCredential(credential);
++        payload.username = usernameField.value.trim() || undefined;
++        setStatus('Verifying passkey…');
++        return fetch('/api/login/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify(payload)
++        }).then(function (res) {
++          return res.text().then(function (text) {
++            var data = null;
++            try { data = text ? JSON.parse(text) : null; } catch (e) { /* non-JSON body */ }
++            if (!res.ok || (data && (data.verified === false || data.success === false))) {
++              var msg = (data && (data.error || data.message)) || ('Verification failed (' + res.status + ')');
++              throw new Error(msg);
++            }
++            return data;
++          });
++        }).then(function (data) {
++          var who = (data && (data.username || data.user && (data.user.username || data.user.name))) ||
++            usernameField.value.trim();
++          if (who) usernameField.value = who;
++          setStatus('Signed in' + (who ? ' as ' + who : '') + '. Welcome back!', 'success');
++          document.dispatchEvent(new CustomEvent('passkey-signin', { detail: data }));
++        });
++      }
++
++      function describeError(err) {
++        if (!err) return 'Sign-in failed.';
++        switch (err.name) {
++          case 'NotAllowedError': return 'Passkey prompt was cancelled or timed out.';
++          case 'InvalidStateError': return 'No matching passkey on this device.';
++          case 'SecurityError': return 'Passkeys are not available on this origin.';
++          case 'NotSupportedError': return 'Passkeys are not supported in this browser.';
++          default: return err.message || 'Sign-in failed.';
++        }
++      }
++
++      // --- flow 1: conditional UI (autofill) ---------------------------------
++
++      function startConditionalUI() {
++        if (!supportsWebAuthn() || conditionalPending || modalInFlight) return Promise.resolve();
++        var check = typeof PublicKeyCredential.isConditionalMediationAvailable === 'function'
++          ? PublicKeyCredential.isConditionalMediationAvailable()
++          : Promise.resolve(false);
++
++        return check.then(function (available) {
++          if (!available || conditionalPending || modalInFlight) return;
++          conditionalPending = true;
++          conditionalController = new AbortController();
++          var controller = conditionalController;
++
++          return getRequestOptions('').then(function (publicKey) {
++            if (controller.signal.aborted) return null;
++            return navigator.credentials.get({
++              publicKey: publicKey,
++              mediation: 'conditional',
++              signal: controller.signal
++            });
++          }).then(function (credential) {
++            if (!credential) return;
++            return verifyCredential(credential);
++          }).catch(function (err) {
++            if (err && err.name === 'AbortError') return; // superseded by button flow
++            setStatus(describeError(err), 'error');
++          }).then(function () {
++            if (conditionalController === controller) {
++              conditionalController = null;
++              conditionalPending = false;
++            }
++          });
++        }).catch(function () { /* feature detection failed; ignore */ });
++      }
++
++      function stopConditionalUI() {
++        if (conditionalController) {
++          conditionalController.abort();
++          conditionalController = null;
++        }
++        conditionalPending = false;
++      }
++
++      // --- flow 2: explicit button (modal prompt) ----------------------------
++
++      function signInWithPasskey() {
++        if (modalInFlight) return;
++        if (!supportsWebAuthn()) {
++          setStatus('Passkeys are not supported in this browser.', 'error');
++          return;
++        }
++        modalInFlight = true;
++        authButton.disabled = true;
++        stopConditionalUI();
++        setStatus('Waiting for your passkey…');
++
++        var username = usernameField.value.trim();
++        getRequestOptions(username).then(function (publicKey) {
++          return navigator.credentials.get({ publicKey: publicKey, mediation: 'required' });
++        }).then(function (credential) {
++          if (!credential) throw new Error('No credential returned.');
++          return verifyCredential(credential);
++        }).catch(function (err) {
++          setStatus(describeError(err), 'error');
++        }).then(function () {
++          modalInFlight = false;
++          authButton.disabled = false;
++          // Re-arm autofill suggestions for the next focus.
++          startConditionalUI();
++        });
++      }
++
++      // --- wiring ------------------------------------------------------------
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        signInWithPasskey();
++      });
++
++      // The conditional request must already be pending when the field gains
++      // focus for the browser to list passkeys in the autofill dropdown, so
++      // arm it on load and re-arm on focus in case it was cancelled/consumed.
++      usernameField.addEventListener('focus', function () { startConditionalUI(); });
++      usernameField.addEventListener('click', function () { startConditionalUI(); });
++
++      if (!supportsWebAuthn()) {
++        setStatus('Passkeys are not supported in this browser.', 'error');
++      } else {
++        startConditionalUI();
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

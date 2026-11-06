@@ -1,0 +1,302 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,16 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --muted: #715c55;
++      --border: #977f74;
++      --control-accent: #a84b0a;
++      --track: #ded4cc;
++      --heading: #4e342e;
++      color-scheme: light dark;
++      accent-color: var(--control-accent);
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -107,18 +115,18 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+@@ -134,8 +142,193 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    :focus-visible {
++      outline: 3px solid var(--control-accent);
++      outline-offset: 4px;
++    }
++
++    .subscription {
++      display: grid;
++      grid-template-columns: 0.85fr 1.15fr;
++      margin-top: 56px;
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      overflow: hidden;
++      background: var(--surface);
++    }
++
++    .subscription-intro {
++      background: var(--primary);
++      color: #fff5e9;
++      padding: 40px 32px;
++    }
++
++    .eyebrow {
++      color: var(--accent);
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++    }
++
++    .subscription-intro h2 {
++      font-size: clamp(1.8rem, 3vw, 2.5rem);
++      line-height: 1.2;
++      margin: 16px 0;
++    }
++
++    .subscription-intro p + p { margin-top: 24px; }
++    .subscription-intro .small { color: #e2d3c9; }
++    .small { font-size: 0.875rem; }
++    .muted { color: var(--muted); }
++
++    .subscription-form { padding: 32px; min-width: 0; }
++    .form-field { margin-bottom: 24px; }
++    .field-label, legend { font-weight: 600; margin-bottom: 8px; }
++    .field-label { display: block; }
++    fieldset { border: 0; min-width: 0; }
++    legend { padding: 0; }
++    input { font: inherit; }
++    input[type="text"], input[type="email"] {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid var(--border);
++      border-radius: 5px;
++      color: var(--text);
++      background: var(--surface);
++    }
++    input:user-invalid { border-color: var(--control-accent); border-width: 2px; }
++    .frequency-options { display: flex; flex-wrap: wrap; gap: 8px; }
++    .choice {
++      position: relative;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid var(--border);
++      border-radius: 5px;
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++    .choice:has(input:checked) { border-color: var(--control-accent); box-shadow: inset 0 0 0 1px var(--control-accent); }
++    input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; flex-shrink: 0; }
++    .roast-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
++    output { color: var(--control-accent); font-weight: 600; }
++    input[type="range"] { width: 100%; min-height: 48px; cursor: pointer; }
++    .range-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); }
++    .email-choice { border: 0; padding: 10px 0; align-items: flex-start; }
++    .email-choice input { margin-top: 4px; }
++    .email-choice small { display: block; color: var(--muted); }
++    .setup-progress { padding-top: 20px; border-top: 1px solid var(--border); }
++    .progress-heading { display: flex; justify-content: space-between; gap: 12px; font-size: 0.875rem; }
++    progress { display: block; width: 100%; height: 10px; margin: 10px 0; accent-color: var(--control-accent); }
++    .subscription-form .btn {
++      width: 100%;
++      min-height: 48px;
++      border: 0;
++      background: var(--accent);
++      color: #3e2723;
++      font: inherit;
++      font-weight: 700;
++      cursor: pointer;
++    }
++    .subscription-form .btn:hover { background: #ffc170; }
++    .form-status { margin-top: 12px; font-size: 0.875rem; }
++    .form-status:empty { display: none; }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --light: #1d1613;
++        --surface: #2b211d;
++        --text: #f5e9df;
++        --heading: #f5e9df;
++        --muted: #cbb8aa;
++        --secondary: #352822;
++        --border: #a68e7e;
++        --control-accent: #ffab40;
++        --track: #655247;
++      }
++    }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 8px 16px; }
++      nav ul li { margin: 0; }
++      .hero h1 { font-size: 2.25rem; }
++      .subscription { grid-template-columns: 1fr; }
++      .subscription-intro, .subscription-form { padding: 24px; }
++    }
++
++    @supports not (accent-color: #a84b0a) {
++      .choice input {
++        position: absolute;
++        clip-path: inset(50%);
++        overflow: hidden;
++        width: 1px;
++        height: 1px;
++        margin: -1px;
++        padding: 0;
++        border: 0;
++        white-space: nowrap;
++      }
++      .choice input + span { position: relative; padding-inline-start: 28px; }
++      .choice input + span::before {
++        content: "";
++        position: absolute;
++        inset-inline-start: 0;
++        top: 3px;
++        width: 18px;
++        height: 18px;
++        border: 2px solid var(--border);
++        border-radius: 3px;
++      }
++      .choice input[type="radio"] + span::before { border-radius: 50%; }
++      .choice input:checked + span::before { border-color: var(--control-accent); background: var(--control-accent); }
++      .choice input:checked + span::after {
++        content: "✓";
++        position: absolute;
++        inset-inline-start: 3px;
++        top: 0;
++        color: var(--surface);
++        font-weight: bold;
++      }
++      .choice input[type="radio"]:checked + span::after {
++        content: "";
++        inset-inline-start: 6px;
++        top: 9px;
++        width: 6px;
++        height: 6px;
++        border-radius: 50%;
++        background: var(--surface);
++      }
++      .choice input:focus-visible + span::before { outline: 3px solid var(--control-accent); outline-offset: 4px; }
++      input[type="range"] { appearance: none; background: transparent; }
++      input[type="range"]::-webkit-slider-runnable-track {
++        height: 6px;
++        border-radius: 6px;
++        background: linear-gradient(to right, var(--control-accent) var(--range-fill, 50%), var(--track) var(--range-fill, 50%));
++      }
++      input[type="range"]::-webkit-slider-thumb {
++        appearance: none;
++        width: 20px;
++        height: 20px;
++        margin-top: -7px;
++        border-radius: 50%;
++        background: var(--control-accent);
++      }
++      input[type="range"]::-moz-range-track { height: 6px; background: var(--track); border-radius: 6px; }
++      input[type="range"]::-moz-range-progress { height: 6px; background: var(--control-accent); }
++      input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border: 0; border-radius: 50%; background: var(--control-accent); }
++      progress { appearance: none; border: 0; border-radius: 8px; background: var(--track); overflow: hidden; }
++      progress::-webkit-progress-bar { background: var(--track); }
++      progress::-webkit-progress-value { background: var(--control-accent); }
++      progress::-moz-progress-bar { background: var(--control-accent); }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +387,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="subscription" aria-labelledby="subscription-title">
++      <div class="subscription-intro">
++        <p class="eyebrow">Your daily ritual, delivered</p>
++        <h2 id="subscription-title">Good coffee.<br>On your terms.</h2>
++        <p>Make every morning a little more you. Tell us how you like your coffee and we’ll help you find your perfect routine.</p>
++        <p class="small">Freshly roasted. Ethically sourced.<br>A little joy in every cup.</p>
++        <p class="small">Personalize your subscription preferences to get started.</p>
++      </div>
++      <form id="subscription-form" class="subscription-form" method="post" action="#subscription-title" aria-labelledby="subscription-title">
++        <div class="form-field">
++          <label class="field-label" for="subscriber-name">Your name (required)</label>
++          <input id="subscriber-name" name="name" type="text" autocomplete="name" required maxlength="100">
++        </div>
++        <div class="form-field">
++          <label class="field-label" for="subscriber-email">Email address (required)</label>
++          <input id="subscriber-email" name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" required>
++        </div>
++        <fieldset class="form-field">
++          <legend>How often should we deliver? (required)</legend>
++          <div class="frequency-options">
++            <label class="choice" for="delivery-weekly"><input id="delivery-weekly" type="radio" name="frequency" value="weekly" required><span>Every week</span></label>
++            <label class="choice" for="delivery-fortnightly"><input id="delivery-fortnightly" type="radio" name="frequency" value="fortnightly" required><span>Every 2 weeks</span></label>
++            <label class="choice" for="delivery-monthly"><input id="delivery-monthly" type="radio" name="frequency" value="monthly" required><span>Every month</span></label>
++          </div>
++        </fieldset>
++        <div class="form-field">
++          <div class="roast-heading">
++            <label class="field-label" for="roast-level">Find your roast</label>
++            <output id="roast-value" for="roast-level">Medium</output>
++          </div>
++          <p id="roast-help" class="small muted">Start with medium, or adjust to your taste.</p>
++          <input id="roast-level" type="range" name="roast" min="1" max="5" step="1" value="3" aria-valuetext="Medium" aria-describedby="roast-help">
++          <div class="range-labels" aria-hidden="true"><span>Light & bright</span><span>Dark & bold</span></div>
++        </div>
++        <label class="choice email-choice" for="email-updates">
++          <input id="email-updates" name="email_updates" type="checkbox" value="yes">
++          <span>Send a little coffee inspiration my way<small>Optional emails with news, brewing tips, and offers.</small></span>
++        </label>
++        <div class="setup-progress">
++          <div class="progress-heading"><label for="setup-progress">Setup progress</label><span id="progress-text" aria-live="polite">1 of 4 details ready</span></div>
++          <progress id="setup-progress" max="4" value="1">25%</progress>
++          <p class="small muted">Name, email, delivery frequency, and roast. Email updates are optional.</p>
++        </div>
++        <button class="btn" type="submit" disabled>Save my preferences <span aria-hidden="true">→</span></button>
++        <p class="small muted" style="margin-top: 10px;">Saved on this device only. No subscription or payment is started.</p>
++        <p id="form-status" class="form-status" role="status"></p>
++        <noscript><p>Enable JavaScript to track your setup and save your preferences on this device.</p></noscript>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +448,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script src="subscription.js"></script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,95 @@
+diff --git a/index.html b/index.html
+index 66c9173..4abb24d 100644
+--- a/index.html
++++ b/index.html
+@@ -55,14 +55,15 @@
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    :where(nav a) {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
++      text-decoration: underline solid currentColor max(1px, 0.1em);
++      text-underline-offset: 0.25em;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
+@@ -100,6 +101,13 @@
+       padding: 0 20px;
+     }
+ 
++    :where(main section h2) {
++      text-align: center;
++      text-decoration: underline wavy var(--accent) max(2px, 0.1em);
++      text-underline-offset: 0.25em;
++      text-decoration-inset: -0.15em;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -115,9 +123,12 @@
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    :where(.card h3) {
+       margin-bottom: 10px;
+       color: var(--primary);
++      text-decoration: underline solid var(--accent) max(1px, 0.1em);
++      text-underline-offset: 0.2em;
++      text-decoration-inset: 0.15em;
+     }
+ 
+     .btn {
+@@ -146,11 +157,32 @@
+       margin-bottom: 20px;
+     }
+ 
+-    .footer-links a {
++    :where(.footer-links a) {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
++      text-decoration: underline solid color-mix(in srgb, currentColor, transparent) max(1px, 0.08em);
++      text-underline-offset: 0.2em;
++    }
++
++    :where(.footer-links a:is(:hover, :focus-visible)) {
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.12em);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      :where(nav a, .footer-links a) {
++        text-decoration-inset: 0 100%;
++        transition:
++          color 0.3s,
++          text-decoration-color 0.25s ease-out,
++          text-decoration-thickness 0.25s ease-out,
++          text-decoration-inset 0.25s ease-out;
++      }
++
++      :where(nav a, .footer-links a):is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +208,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

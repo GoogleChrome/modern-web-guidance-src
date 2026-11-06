@@ -1,0 +1,326 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,9 +27,9 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-header {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,28 +45,149 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .menu-button, .drawer-close {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
++      min-height: 44px;
++      padding: 8px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: transparent;
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .menu-button:hover, .drawer-close:hover {
++      background: #ffffff18;
++    }
++
++    .menu-button svg {
++      width: 20px;
++      height: 20px;
++    }
++
++    :is(button, a):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    html.drawer-open, html.drawer-open body {
++      overflow: hidden;
++    }
++
++    .drawer {
++      --drawer-width: min(320px, 80vw);
++      --drawer-backdrop: 0;
++      position: fixed;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      max-width: none;
++      max-height: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      color: white;
++      overflow: hidden;
++    }
++
++    .drawer::backdrop {
++      background: black;
++      opacity: calc(var(--drawer-backdrop) * 0.5);
++    }
++
++    .drawer-scroller {
++      display: grid;
++      grid-template-columns: var(--drawer-width) 100%;
++      height: 100%;
++      overflow-x: auto;
++      overscroll-behavior: none;
++      scrollbar-width: none;
++      scroll-snap-type: x mandatory;
++    }
++
++    .drawer-scroller::-webkit-scrollbar {
++      display: none;
++    }
++
++    .drawer-scroller::after {
++      content: '';
++      scroll-snap-align: end;
++      scroll-initial-target: nearest;
++    }
++
++    .drawer-sheet {
++      height: 100svh;
++      min-width: 0;
++      padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      background: var(--primary);
++      scroll-snap-align: start;
++    }
++
++    .drawer-heading {
+       display: flex;
+-      list-style: none;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      margin-bottom: 28px;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .drawer-heading h2 {
++      font-size: 1.25rem;
+     }
+ 
+-    nav a {
++    .drawer ul {
++      display: grid;
++      gap: 12px;
++      list-style: none;
++    }
++
++    .drawer a {
++      display: block;
++      padding: 12px;
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      border-radius: 4px;
+     }
+ 
+-    nav a:hover {
++    .drawer a:hover {
+       color: var(--accent);
++      background: #ffffff0d;
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      .drawer-scroller { scroll-behavior: smooth; }
++    }
++
++    @supports (animation-timeline: scroll()) {
++      @property --drawer-backdrop {
++        syntax: '<number>';
++        inherits: true;
++        initial-value: 0;
++      }
++
++      .drawer {
++        timeline-scope: --drawer-fade;
++        animation: fade-drawer-backdrop linear both;
++        animation-timeline: --drawer-fade;
++      }
++
++      .drawer-scroller { scroll-timeline: --drawer-fade x; }
++
++      @keyframes fade-drawer-backdrop {
++        from { --drawer-backdrop: 1; }
++        to { --drawer-backdrop: 0; }
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -156,24 +277,42 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <header class="site-header">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <button class="menu-button" id="drawer-open" type="button"
++      aria-controls="navigation-drawer" aria-expanded="false" aria-haspopup="dialog">
++      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
++        <path d="M3 6h18M3 12h18M3 18h18" />
++      </svg>
++      Menu
++    </button>
++  </header>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++  <dialog class="drawer" id="navigation-drawer" popover="manual" aria-labelledby="drawer-title">
++    <div class="drawer-scroller">
++      <nav class="drawer-sheet" aria-label="Main navigation">
++        <div class="drawer-heading">
++          <h2 id="drawer-title">The Daily Grind</h2>
++          <button class="drawer-close" id="drawer-close" type="button" autofocus>Close</button>
++        </div>
++        <ul>
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </nav>
++    </div>
++  </dialog>
++
++  <section class="hero" aria-labelledby="hero-title">
++    <h1 id="hero-title">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  </section>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -206,7 +345,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const drawer = document.getElementById('navigation-drawer');
++    const openButton = document.getElementById('drawer-open');
++    const closeButton = document.getElementById('drawer-close');
++    const scroller = drawer.querySelector('.drawer-scroller');
++    const sheet = drawer.querySelector('.drawer-sheet');
++    const pageRegions = document.querySelectorAll('.site-header, .hero, main, footer');
++    let state = 'closed';
++
++    function finishClosing() {
++      if (state === 'closed') return;
++      state = 'closed';
++      drawer.hidePopover();
++      drawer.removeAttribute('aria-modal');
++      pageRegions.forEach((region) => { region.inert = false; });
++      document.documentElement.classList.remove('drawer-open');
++      openButton.setAttribute('aria-expanded', 'false');
++      openButton.focus();
++    }
++
++    async function openDrawer() {
++      if (state !== 'closed') return;
++      state = 'opening';
++      drawer.showPopover();
++      // Always reset on reopen; scroll-initial-target is not supported everywhere.
++      scroller.scrollTo({ left: sheet.offsetWidth, behavior: 'instant' });
++      pageRegions.forEach((region) => { region.inert = true; });
++      document.documentElement.classList.add('drawer-open');
++      drawer.setAttribute('aria-modal', 'true');
++      openButton.setAttribute('aria-expanded', 'true');
++      drawer.focus();
++      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
++      if (state === 'opening') scroller.scrollTo({ left: 0, behavior: 'auto' });
++    }
++
++    function closeDrawer() {
++      if (state === 'closed') return;
++      state = 'closing';
++      if (scroller.scrollLeft >= sheet.offsetWidth - 1) {
++        finishClosing();
++      } else {
++        scroller.scrollTo({ left: sheet.offsetWidth, behavior: 'auto' });
++      }
++    }
++
++    // Ignore the initial off-screen position while the opening animation starts.
++    // Every dismissal path, including a native swipe, ends at the same snap stop.
++    new IntersectionObserver((entries) => {
++      if (state === 'closed') return;
++      const entry = entries.at(-1);
++      if (!entry.isIntersecting || entry.intersectionRatio < 0.001) {
++        if (state !== 'opening') finishClosing();
++      } else {
++        if (state === 'opening') state = 'open';
++        if (entry.intersectionRatio >= 0.999 && state === 'open') closeButton.focus();
++      }
++    }, { root: scroller, threshold: [0, 0.001, 0.999, 1] }).observe(sheet);
++
++    if (!CSS.supports('animation-timeline: scroll()')) {
++      scroller.addEventListener('scroll', () => {
++        const opacity = Math.max(0, Math.min(1, 1 - scroller.scrollLeft / sheet.offsetWidth));
++        drawer.style.setProperty('--drawer-backdrop', opacity);
++      }, { passive: true });
++    }
++
++    openButton.addEventListener('click', openDrawer);
++    closeButton.addEventListener('click', closeDrawer);
++    drawer.addEventListener('click', (event) => {
++      if (!sheet.contains(event.target) || event.target.closest('a')) closeDrawer();
++    });
++    document.addEventListener('keydown', (event) => {
++      if (state === 'closed') return;
++      if (event.key === 'Escape') {
++        event.preventDefault();
++        closeDrawer();
++      }
++      // A manual popover needs an explicit keyboard focus boundary.
++      if (event.key === 'Tab') {
++        const controls = [...sheet.querySelectorAll('button, a[href]')];
++        const first = controls[0];
++        const last = controls.at(-1);
++        if (event.shiftKey && (document.activeElement === first || !sheet.contains(document.activeElement))) {
++          event.preventDefault();
++          last.focus();
++        } else if (!event.shiftKey && (document.activeElement === last || !sheet.contains(document.activeElement))) {
++          event.preventDefault();
++          first.focus();
++        }
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

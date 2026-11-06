@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,65 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical Media Feed Section */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .section-title {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    .media-scroller {
++      max-width: 640px;
++      height: 460px;
++      margin-inline: auto;
++      padding: 20px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 24px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--secondary);
++    }
++
++    .media-card {
++      background: var(--light);
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      flex-shrink: 0;
++    }
++
++    .media-card.target,
++    .target {
++      scroll-initial-target: nearest;
++      outline: 2px solid var(--accent);
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: 260px;
++      aspect-ratio: 600 / 260;
++      object-fit: cover;
++    }
++
++    .media-card-body {
++      padding: 16px;
++    }
++
++    .media-card-body h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +251,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="roastery-moments-heading">
++      <h2 id="roastery-moments-heading" class="section-title">Roastery Moments</h2>
++      <div class="media-scroller" tabindex="0" aria-label="Roastery media feed">
++        <article class="media-card item">
++          <img
++            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
++            alt="Warm interior of our neighborhood coffee shop"
++            width="600"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>Morning Pour</h3>
++            <p>Freshly ground single-origin beans prepared at dawn.</p>
++          </div>
++        </article>
++
++        <article class="media-card item">
++          <img
++            src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80"
++            alt="Close-up of roasted coffee beans"
++            width="600"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>Small-Batch Roasting</h3>
++            <p>Carefully roasted in small batches to bring out rich caramel notes.</p>
++          </div>
++        </article>
++
++        <article class="media-card item target">
++          <img
++            src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++            alt="Barista pouring steamed milk into an espresso cup for latte art"
++            width="600"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>Featured: Signature Latte Art</h3>
++            <p>Our flagship craft beverage, highlighted at the center of today's feed.</p>
++          </div>
++        </article>
++
++        <article class="media-card item">
++          <img
++            src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=600&q=80"
++            alt="Overhead view of coffee cups on a wooden table"
++            width="600"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>Community Table</h3>
++            <p>A welcoming space to gather, work, and savor every cup.</p>
++          </div>
++        </article>
++
++        <article class="media-card item">
++          <img
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++            alt="Iced coffee with milk swirling in a tall glass"
++            width="600"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>Afternoon Cold Brew</h3>
++            <p>Slow-steeped for 18 hours and served over crystal-clear ice.</p>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +333,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener("DOMContentLoaded", () => {
++      if (!CSS.supports("scroll-initial-target", "nearest")) {
++        const feedTarget = document.querySelector(".item.target");
++        if (feedTarget) {
++          feedTarget.scrollIntoView({ behavior: "instant", block: "center" });
++        }
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

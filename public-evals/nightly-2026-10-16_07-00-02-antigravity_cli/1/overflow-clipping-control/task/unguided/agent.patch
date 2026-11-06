@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,103 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Showcase Section */
++    .showcase-section {
++      margin-bottom: 50px;
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++      margin-top: 20px;
++    }
++
++    /* Nested Curve Parent */
++    .nested-curve-parent {
++      background: white;
++      padding: 24px;
++      border-radius: 32px;
++      overflow: clip;
++      overflow-clip-margin: content-box;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .nested-curve-parent .card-media img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .nested-curve-parent .card-body {
++      padding: 16px 0;
++    }
++
++    .nested-curve-parent .card-body h3 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .nested-curve-parent .card-footer,
++    .nested-curve-parent footer {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 12px 16px;
++      text-align: center;
++      font-weight: 600;
++      font-size: 0.85rem;
++    }
++
++    /* Safety Zone Parent */
++    .safety-zone-parent {
++      background: white;
++      padding: 24px;
++      border-radius: 16px;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .safety-zone-parent h3 {
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
++    .safety-zone-parent .promo-text {
++      margin-bottom: 20px;
++    }
++
++    .glow-btn,
++    .safety-zone-parent button {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      font-size: 1rem;
++      padding: 12px 24px;
++      border: none;
++      border-radius: 6px;
++      cursor: pointer;
++      box-shadow: 0 0 25px rgba(255, 171, 64, 0.95), 0 0 15px rgba(255, 171, 64, 0.8);
++      transition: background 0.3s, box-shadow 0.3s;
++    }
++
++    .glow-btn:hover,
++    .safety-zone-parent button:hover {
++      background: #ffa000;
++      box-shadow: 0 0 35px rgba(255, 171, 64, 1), 0 0 20px rgba(255, 171, 64, 0.9);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +269,36 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase showcase-section">
++      <h2 style="text-align: center;">Coffee Showcase &amp; Promos</h2>
++      <div class="showcase-grid">
++        <div class="nested-curve-parent">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80" alt="Artisanal Single-Origin Coffee">
++          </div>
++          <div class="card-body">
++            <h3>Artisanal Single-Origin</h3>
++            <p>Carefully roasted Ethiopian Yirgacheffe with delicate notes of bergamot, honeysuckle, and bright citrus zest.</p>
++          </div>
++          <footer class="card-footer">
++            <span>Roaster's Choice &bull; Limited Batch</span>
++          </footer>
++        </div>
++
++        <div class="safety-zone-parent">
++          <div class="promo-content">
++            <h3>Exclusive Member Promos</h3>
++            <p class="promo-text">
++              Join our Roasters Club today and unlock 20% off all artisan beans, complimentary monthly tastings, and invitations to private barista masterclasses across all locations.
++            </p>
++          </div>
++          <button class="btn glow-btn" type="button">Claim 20% Off Promo</button>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

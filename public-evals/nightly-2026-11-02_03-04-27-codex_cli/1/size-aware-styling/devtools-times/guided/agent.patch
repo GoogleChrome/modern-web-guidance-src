@@ -1,0 +1,102 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..230669c 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -16,13 +16,14 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
++<div class="article-card-container h-full min-w-0">
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
++    <div class="article-card--featured bg-white p-6 shadow-sm">
++        <div class="article-card-layout grid grid-cols-1 gap-8">
++            <div class="flex flex-col min-w-0">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 class="article-card-title mt-2 text-3xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+                     <p class="mt-4 text-lg text-gray-700">
+@@ -37,7 +38,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                     <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                 </div>
+             </div>
+-            <div class="lg:col-span-2">
++            <div class="min-w-0">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                     <Image 
+                         src={image} 
+@@ -52,7 +53,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
++    <article class="article-card--standard flex flex-col gap-3 h-full group">
+         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+             <Image 
+                 src={image} 
+@@ -60,13 +61,13 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 width={400}
+                 height={225}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                class="w-full h-auto object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+             />
+         </a>
+-        <div class="flex flex-col flex-grow mt-3">
++        <div class="flex flex-col flex-grow min-w-0">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 class="article-card-title text-lg font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+@@ -80,4 +81,41 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
++</div>
++
++<style>
++    /* Query a wrapper: container queries can only style its descendants. */
++    .article-card-container {
++        container: article-card / inline-size;
++        overflow-wrap: anywhere;
++    }
++
++    @container article-card (min-width: 24rem) {
++        .article-card--standard .article-card-title {
++            font-size: 1.25rem;
++        }
++    }
++
++    @container article-card (min-width: 40rem) {
++        .article-card--featured {
++            padding: 2rem;
++        }
++
++        .article-card--featured .article-card-title {
++            font-size: 2.25rem;
++        }
++
++        .article-card--standard {
++            display: grid;
++            grid-template-columns: repeat(2, minmax(0, 1fr));
++            gap: 1.5rem;
++        }
++    }
++
++    @container article-card (min-width: 56rem) {
++        .article-card-layout {
++            grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
++        }
++    }
++</style>

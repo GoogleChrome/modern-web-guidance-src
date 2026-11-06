@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites header + featured promo badge */
++    .section-header {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 24px;
++      flex-wrap: wrap;
++    }
++
++    .target {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 84px;
++      height: 84px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.7rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      text-align: center;
++      line-height: 1.2;
++      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
++      cursor: default;
++
++      /* Identity transforms on the base element: the badge owns a stacking
++         context at rest, so hover (scale) and the running animations never
++         create or destroy one. No will-change needed. */
++      translate: 0px;
++      rotate: 0deg;
++      scale: 1;
++      isolation: isolate;
++      position: relative;
++      z-index: 1;
++
++      /* Two independent, simultaneous animations on separate individual
++         transform properties: spin drives `rotate`, slide drives `translate`. */
++      animation:
++        badge-spin 6s linear infinite,
++        badge-slide 2.4s ease-in-out infinite alternate;
++
++      /* Only `scale` transitions on hover, so the animations above keep
++         running untouched. */
++      transition: scale 0.3s ease;
++
++      @media (prefers-reduced-motion: reduce) {
++        animation: none;
++        transition: none;
++      }
++    }
++
++    .target:hover {
++      scale: 1.2;
++    }
++
++    @keyframes badge-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes badge-slide {
++      from { translate: -16px 0; }
++      to { translate: 16px 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -175,9 +242,12 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <span class="target" aria-label="Featured promotion: new this season">New<br>This<br>Season</span>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

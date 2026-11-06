@@ -1,0 +1,1255 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -6,15 +6,122 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
++      /* Light Mode Palette */
+       --primary: #4e342e;
++      --primary-hover: #3b2722;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+-      --text: #3e2723;
++      --accent-hover: #f59e28;
++      /* Accessible high-contrast orange for form controls on light backgrounds (WCAG AA > 4.5:1) */
++      --form-accent: #c44000;
++      --text: #2e1c18;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --surface-card: #fdfbf9;
++      --border: #d7ccc8;
++      --border-subtle: #ebdcd6;
++      --input-bg: #ffffff;
++      --progress-track: #e8ded9;
++      --progress-border: #8d6e63;
++      --progress-fill: linear-gradient(90deg, #4e342e 0%, #c44000 100%);
++      --range-track: #d7ccc8;
++      --range-thumb: #4e342e;
++      --range-thumb-border: #ffab40;
++      --card-shadow: 0 4px 18px rgba(78, 52, 46, 0.08);
++      --radio-checked-bg: #fff5eb;
++      --radio-checked-border: #c44000;
+     }
+ 
++    /* Dark Mode Palette via prefers-color-scheme */
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --primary: #8d6e63;
++        --primary-hover: #a1887f;
++        --secondary: #3e2723;
++        --accent: #ffab40;
++        --accent-hover: #ffb74d;
++        /* Vibrant orange accent with high contrast on dark backgrounds (WCAG AAA > 8:1) */
++        --form-accent: #ffab40;
++        --text: #f5ebe6;
++        --text-muted: #cbbab4;
++        --light: #150f0d;
++        --surface: #221815;
++        --surface-card: #2a1f1b;
++        --border: #523932;
++        --border-subtle: #412c26;
++        --input-bg: #191210;
++        --progress-track: #352520;
++        --progress-border: #5d4037;
++        --progress-fill: linear-gradient(90deg, #d87d32 0%, #ffab40 100%);
++        --range-track: #3e2c26;
++        --range-thumb: #ffab40;
++        --range-thumb-border: #221815;
++        --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
++        --radio-checked-bg: #38241b;
++        --radio-checked-border: #ffab40;
++      }
++    }
++
++    /* Manual Dark Mode Override */
++    :root[data-theme="dark"] {
++      color-scheme: dark;
++      --primary: #8d6e63;
++      --primary-hover: #a1887f;
++      --secondary: #3e2723;
++      --accent: #ffab40;
++      --accent-hover: #ffb74d;
++      --form-accent: #ffab40;
++      --text: #f5ebe6;
++      --text-muted: #cbbab4;
++      --light: #150f0d;
++      --surface: #221815;
++      --surface-card: #2a1f1b;
++      --border: #523932;
++      --border-subtle: #412c26;
++      --input-bg: #191210;
++      --progress-track: #352520;
++      --progress-border: #5d4037;
++      --progress-fill: linear-gradient(90deg, #d87d32 0%, #ffab40 100%);
++      --range-track: #3e2c26;
++      --range-thumb: #ffab40;
++      --range-thumb-border: #221815;
++      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
++      --radio-checked-bg: #38241b;
++      --radio-checked-border: #ffab40;
++    }
++
++    /* Manual Light Mode Override */
++    :root[data-theme="light"] {
++      color-scheme: light;
++      --primary: #4e342e;
++      --primary-hover: #3b2722;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --accent-hover: #f59e28;
++      --form-accent: #c44000;
++      --text: #2e1c18;
++      --text-muted: #5d4037;
++      --light: #fafafa;
++      --surface: #ffffff;
++      --surface-card: #fdfbf9;
++      --border: #d7ccc8;
++      --border-subtle: #ebdcd6;
++      --input-bg: #ffffff;
++      --progress-track: #e8ded9;
++      --progress-border: #8d6e63;
++      --progress-fill: linear-gradient(90deg, #4e342e 0%, #c44000 100%);
++      --range-track: #d7ccc8;
++      --range-thumb: #4e342e;
++      --range-thumb-border: #ffab40;
++      --card-shadow: 0 4px 18px rgba(78, 52, 46, 0.08);
++      --radio-checked-bg: #fff5eb;
++      --radio-checked-border: #c44000;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -24,13 +131,14 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      transition: background-color 0.3s ease, color 0.3s ease;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: #4e342e;
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -43,13 +151,21 @@
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: #ffffff;
+     }
+ 
++    .nav-actions {
++      display: flex;
++      align-items: center;
++      gap: 15px;
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -61,22 +177,49 @@
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
++      outline: none;
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .theme-toggle-btn {
++      background: transparent;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      color: white;
++      padding: 6px 12px;
++      border-radius: 20px;
++      cursor: pointer;
++      font-size: 0.85rem;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      transition: background 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .theme-toggle-btn:hover {
++      background: rgba(255, 255, 255, 0.15);
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
++    .theme-toggle-btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -90,10 +233,24 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+     }
+ 
++    .hero p {
++      font-size: 1.2rem;
++      max-width: 650px;
++      margin-bottom: 1.5rem;
++    }
++
++    .hero-buttons {
++      display: flex;
++      gap: 15px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -107,40 +264,611 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--surface);
++      color: var(--text);
++      padding: 24px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--border);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      transition: transform 0.2s ease, box-shadow 0.2s ease;
+     }
+ 
++    .card:hover {
++      transform: translateY(-3px);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--form-accent);
+     }
+ 
++    .card p {
++      color: var(--text-muted);
++    }
++
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: #4e342e;
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-weight: 600;
++      border: 1px solid transparent;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s, border-color 0.3s, transform 0.15s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: #3b2722;
++      color: var(--accent);
+     }
+ 
++    .btn-accent {
++      background: var(--accent);
++      color: #2e1c18;
++      border-color: var(--accent);
++    }
++
++    .btn-accent:hover {
++      background: #ffa000;
++      color: #1a0f0b;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* =========================================================
++       PERSONALIZED COFFEE SUBSCRIPTION FORM
++       ========================================================= */
++    .subscription-section {
++      background: var(--surface);
++      border: 1.5px solid var(--border);
++      border-radius: 12px;
++      box-shadow: var(--card-shadow);
++      padding: 40px;
++      margin-bottom: 50px;
++      transition: background-color 0.3s ease, border-color 0.3s ease;
++    }
++
++    .subscription-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .badge {
++      display: inline-block;
++      background: #4e342e;
++      color: var(--accent);
++      font-size: 0.8rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      padding: 5px 14px;
++      border-radius: 50px;
++      margin-bottom: 12px;
++      border: 1px solid var(--border-subtle);
++    }
++
++    .subscription-header h2 {
++      font-size: 2.2rem;
++      color: var(--text);
++      margin-bottom: 8px;
++    }
++
++    .subscription-header .subtitle {
++      color: var(--text-muted);
++      font-size: 1.05rem;
++      max-width: 620px;
++      margin: 0 auto;
++    }
++
++    /* Progress Bar (Modern Web Guidance Compliant) */
++    .progress-box {
++      background: var(--surface-card);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 18px 24px;
++      margin-bottom: 30px;
++    }
++
++    .progress-labels {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 8px;
++    }
++
++    .progress-title-label {
++      font-size: 0.95rem;
++      font-weight: 700;
++      color: var(--text);
++      display: inline-block;
++      cursor: default;
++    }
++
++    .progress-metric {
++      font-size: 0.95rem;
++      font-weight: 700;
++      color: var(--form-accent);
++    }
++
++    /* Native <progress> element styled per modern web guidance */
++    progress#subscription-progress {
++      appearance: none;
++      border: 0 solid;
++      overflow: clip;
++      width: 100%;
++      height: 14px;
++      border-radius: 9999px;
++      background: var(--progress-track);
++      border: 1.5px solid var(--progress-border);
++      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
++      display: block;
++    }
++
++    progress#subscription-progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    /* Webkit/Chrome progress fill - MUST NOT be grouped with moz */
++    progress#subscription-progress::-webkit-progress-value {
++      background: var(--progress-fill);
++      border-radius: 9999px;
++      transition: inline-size 0.35s ease;
++    }
++
++    /* Firefox progress fill - MUST NOT be grouped with webkit */
++    progress#subscription-progress::-moz-progress-bar {
++      background: var(--progress-fill);
++      border-radius: 9999px;
++      transition: inline-size 0.35s ease;
++    }
++
++    /* Accessible visually hidden utility for screen reader status */
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    /* Form Fields & Sections */
++    .subscription-form {
++      accent-color: var(--form-accent);
++      display: flex;
++      flex-direction: column;
++      gap: 28px;
++    }
++
++    .form-fieldset {
++      border: 1px solid var(--border);
++      background: var(--surface-card);
++      border-radius: 8px;
++      padding: 24px;
++      margin: 0;
++    }
++
++    .form-legend {
++      font-size: 1.1rem;
++      font-weight: 700;
++      color: var(--text);
++      padding: 0 10px;
++    }
++
++    .field-hint {
++      font-size: 0.88rem;
++      color: var(--text-muted);
++      margin-top: 4px;
++      margin-bottom: 16px;
++    }
++
++    /* Subscriber Info Row */
++    .form-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 20px;
++    }
++
++    @media (max-width: 650px) {
++      .form-row {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .input-field {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .input-field label {
++      font-size: 0.95rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .input-field input[type="text"],
++    .input-field input[type="email"] {
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 12px 14px;
++      min-height: 48px;
++      background-color: var(--input-bg);
++      color: var(--text);
++      border: 1.5px solid var(--border);
++      border-radius: 6px;
++      box-sizing: border-box;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .input-field input[type="text"]:focus-visible,
++    .input-field input[type="email"]:focus-visible {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.4);
++    }
++
++    /* Radio Buttons: Delivery Frequency */
++    .radio-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 16px;
++      margin-top: 10px;
++    }
++
++    .radio-option {
++      position: relative;
++      background: var(--surface);
++      border: 2px solid var(--border);
++      border-radius: 8px;
++      padding: 16px;
++      display: flex;
++      align-items: flex-start;
++      gap: 12px;
++      cursor: pointer;
++      transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
++    }
++
++    .radio-option:hover {
++      border-color: var(--form-accent);
++      background-color: var(--radio-checked-bg);
++    }
++
++    .radio-option:has(input[type="radio"]:checked) {
++      border-color: var(--radio-checked-border);
++      background-color: var(--radio-checked-bg);
++      box-shadow: 0 2px 8px rgba(78, 52, 46, 0.1);
++    }
++
++    .subscription-form input[type="radio"] {
++      accent-color: var(--form-accent);
++      width: 1.35rem;
++      height: 1.35rem;
++      min-width: 1.35rem;
++      min-height: 1.35rem;
++      margin-top: 3px;
++      cursor: pointer;
++    }
++
++    .subscription-form input[type="radio"]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .radio-label {
++      cursor: pointer;
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      width: 100%;
++    }
++
++    .radio-title {
++      font-size: 1rem;
++      font-weight: 700;
++      color: var(--text);
++    }
++
++    .radio-badge {
++      font-size: 0.72rem;
++      background: var(--form-accent);
++      color: white;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-weight: 600;
++      margin-left: 6px;
++      vertical-align: middle;
++    }
++
++    .radio-desc {
++      font-size: 0.85rem;
++      color: var(--text-muted);
++      line-height: 1.4;
++    }
++
++    /* Range Slider: Roast Preference Level */
++    .slider-container {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .slider-header-info {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .slider-label {
++      font-size: 1rem;
++      font-weight: 700;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .roast-badge {
++      display: inline-block;
++      background: #4e342e;
++      color: var(--accent);
++      padding: 4px 12px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-weight: 700;
++      border: 1px solid var(--border-subtle);
++    }
++
++    /* Styled native range slider */
++    .subscription-form input[type="range"] {
++      accent-color: var(--form-accent);
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: 10px;
++      border-radius: 9999px;
++      background: var(--range-track);
++      border: 1px solid var(--border);
++      outline: none;
++      cursor: pointer;
++      margin: 14px 0 6px;
++    }
++
++    .subscription-form input[type="range"]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Slider thumb - Webkit */
++    .subscription-form input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: 24px;
++      height: 24px;
++      border-radius: 50%;
++      background: var(--range-thumb);
++      border: 2.5px solid var(--range-thumb-border);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
++      cursor: pointer;
++      transition: transform 0.15s ease, box-shadow 0.15s ease;
++    }
++
++    .subscription-form input[type="range"]::-webkit-slider-thumb:hover {
++      transform: scale(1.15);
++      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
++    }
++
++    /* Slider thumb - Firefox */
++    .subscription-form input[type="range"]::-moz-range-thumb {
++      width: 24px;
++      height: 24px;
++      border-radius: 50%;
++      background: var(--range-thumb);
++      border: 2.5px solid var(--range-thumb-border);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
++      cursor: pointer;
++      transition: transform 0.15s ease, box-shadow 0.15s ease;
++    }
++
++    .subscription-form input[type="range"]::-moz-range-thumb:hover {
++      transform: scale(1.15);
++      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
++    }
++
++    /* Slider progress fill - Firefox */
++    .subscription-form input[type="range"]::-moz-range-progress {
++      background-color: var(--form-accent);
++      height: 10px;
++      border-radius: 9999px;
++    }
++
++    .range-ticks {
++      display: flex;
++      justify-content: space-between;
++      color: var(--text-muted);
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 0 4px;
++    }
++
++    .roast-description-card {
++      background: var(--surface);
++      border-left: 4px solid var(--form-accent);
++      padding: 12px 16px;
++      border-radius: 0 6px 6px 0;
++      margin-top: 10px;
++      font-size: 0.92rem;
++      color: var(--text);
++    }
++
++    /* Checkbox: Email Updates */
++    .checkbox-container {
++      display: flex;
++      align-items: flex-start;
++      gap: 14px;
++      background: var(--surface);
++      border: 1.5px solid var(--border);
++      border-radius: 8px;
++      padding: 16px 20px;
++      cursor: pointer;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .checkbox-container:hover {
++      border-color: var(--form-accent);
++      background-color: var(--radio-checked-bg);
++    }
++
++    .checkbox-container:has(input[type="checkbox"]:checked) {
++      border-color: var(--radio-checked-border);
++      background-color: var(--radio-checked-bg);
++    }
++
++    .subscription-form input[type="checkbox"] {
++      accent-color: var(--form-accent);
++      width: 1.35rem;
++      height: 1.35rem;
++      min-width: 1.35rem;
++      min-height: 1.35rem;
++      margin-top: 3px;
++      cursor: pointer;
++    }
++
++    .subscription-form input[type="checkbox"]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .checkbox-label {
++      cursor: pointer;
++      font-size: 0.95rem;
++      color: var(--text);
++      line-height: 1.5;
++    }
++
++    .checkbox-label strong {
++      color: var(--text);
++      display: block;
++      margin-bottom: 2px;
++    }
++
++    .checkbox-subtext {
++      color: var(--text-muted);
++      font-size: 0.85rem;
++    }
++
++    /* Submit Action */
++    .form-submit-row {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      align-items: flex-start;
++      margin-top: 5px;
++    }
++
++    .btn-submit-subscription {
++      font-size: 1.1rem;
++      padding: 14px 32px;
++      background: #4e342e;
++      color: #ffffff;
++      border: 2px solid var(--accent);
++      border-radius: 6px;
++      cursor: pointer;
++      font-weight: 700;
++      letter-spacing: 0.5px;
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.25);
++      transition: background 0.25s, transform 0.15s, box-shadow 0.25s;
++    }
++
++    .btn-submit-subscription:hover {
++      background: #3b2722;
++      color: var(--accent);
++      box-shadow: 0 6px 16px rgba(78, 52, 46, 0.35);
++      transform: translateY(-2px);
++    }
++
++    .btn-submit-subscription:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Success / Confirmation Card */
++    .confirmation-banner {
++      background: var(--surface-card);
++      border: 2px solid var(--form-accent);
++      border-radius: 8px;
++      padding: 24px;
++      margin-top: 25px;
++      display: none;
++    }
++
++    .confirmation-banner.visible {
++      display: block;
++      animation: fadeIn 0.4s ease-out;
++    }
++
++    @keyframes fadeIn {
++      from {
++        opacity: 0;
++        transform: translateY(8px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    .confirmation-title {
++      font-size: 1.3rem;
++      color: var(--form-accent);
++      margin-bottom: 12px;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .summary-list {
++      list-style: none;
++      margin: 12px 0 16px;
++      padding: 0;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .summary-list strong {
++      color: var(--form-accent);
++    }
++
++    /* Fallback for older browsers without accent-color per brand-consistent-forms */
++    @supports not (accent-color: #c44000) {
++      .subscription-form input[type="range"]::-webkit-slider-runnable-track {
++        background: linear-gradient(to right, var(--form-accent) 50%, var(--range-track) 50%);
++      }
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      transition: background-color 0.3s ease, color 0.3s ease;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -151,31 +879,178 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--form-accent);
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-actions">
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="#coffee-subscription">Subscription</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++      <button type="button" id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle dark and light color theme">
++        <span id="theme-toggle-icon" aria-hidden="true">🌙</span>
++        <span id="theme-toggle-label">Dark Mode</span>
++      </button>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, delivered to your cup on your schedule.</p>
++    <div class="hero-buttons">
++      <a href="#coffee-subscription" class="btn btn-accent">Personalize Your Subscription</a>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
++    <!-- Personalized Coffee Subscription Form Section -->
++    <section id="coffee-subscription" class="subscription-section" aria-labelledby="subscription-heading">
++      <div class="subscription-header">
++        <span class="badge">Artisanal Club</span>
++        <h2 id="subscription-heading">Personalized Coffee Subscription</h2>
++        <p class="subtitle">Customize your roast profile and delivery frequency. Freshly roasted micro-lots shipped directly to your door.</p>
++      </div>
++
++      <!-- Completion Status Progress Bar (Modern Web Guidance Compliant) -->
++      <div class="progress-box">
++        <div class="progress-labels">
++          <label for="subscription-progress" id="progress-bar-label" class="progress-title-label">Subscription Setup Progress</label>
++          <span id="progress-percentage-text" class="progress-metric" aria-hidden="true">50% Complete</span>
++        </div>
++        <progress id="subscription-progress" max="100" value="50" aria-labelledby="progress-bar-label"></progress>
++        <div id="progress-live-announcer" class="visually-hidden" role="status" aria-live="polite">Subscription setup is 50 percent complete</div>
++      </div>
++
++      <form id="coffee-subscription-form" class="subscription-form" novalidate>
++        <!-- Step 1: Subscriber Info -->
++        <fieldset class="form-fieldset">
++          <legend class="form-legend">1. Personal Information</legend>
++          <p class="field-hint">Enter your details to associate your custom flavor profile and delivery address.</p>
++          <div class="form-row">
++            <div class="input-field">
++              <label for="subscriber-name">Full Name</label>
++              <input type="text" id="subscriber-name" name="subscriber_name" placeholder="e.g. Jordan Miller" autocomplete="name" required>
++            </div>
++            <div class="input-field">
++              <label for="subscriber-email">Email Address</label>
++              <input type="email" id="subscriber-email" name="subscriber_email" placeholder="e.g. jordan@example.com" autocomplete="email" required>
++            </div>
++          </div>
++        </fieldset>
++
++        <!-- Step 2: Preferred Delivery Frequency (Radio Buttons) -->
++        <fieldset class="form-fieldset">
++          <legend class="form-legend">2. Preferred Delivery Frequency</legend>
++          <p class="field-hint">Select how frequently you'd like your freshly roasted coffee beans delivered.</p>
++          <div class="radio-grid" role="radiogroup" aria-labelledby="freq-legend-title">
++            <span id="freq-legend-title" class="visually-hidden">Delivery Frequency Options</span>
++
++            <div class="radio-option">
++              <input type="radio" id="freq-weekly" name="delivery_frequency" value="Weekly">
++              <label for="freq-weekly" class="radio-label">
++                <span class="radio-title">Weekly</span>
++                <span class="radio-desc">Delivered every 7 days. Recommended for avid households drinking 2+ cups daily.</span>
++              </label>
++            </div>
++
++            <div class="radio-option">
++              <input type="radio" id="freq-biweekly" name="delivery_frequency" value="Every 2 Weeks" checked>
++              <label for="freq-biweekly" class="radio-label">
++                <span class="radio-title">Every 2 Weeks <span class="radio-badge">Most Popular</span></span>
++                <span class="radio-desc">Shipped every 14 days. Ideal balance of peak roast freshness and steady supply.</span>
++              </label>
++            </div>
++
++            <div class="radio-option">
++              <input type="radio" id="freq-monthly" name="delivery_frequency" value="Monthly">
++              <label for="freq-monthly" class="radio-label">
++                <span class="radio-title">Monthly</span>
++                <span class="radio-desc">Shipped once every 4 weeks. Great for weekend sippers and espresso explorers.</span>
++              </label>
++            </div>
++          </div>
++        </fieldset>
++
++        <!-- Step 3: Roast Preference Level (Range Slider) -->
++        <fieldset class="form-fieldset">
++          <legend class="form-legend">3. Roast Preference Level</legend>
++          <p class="field-hint">Adjust the slider to discover and lock in your favorite bean roast profile.</p>
++
++          <div class="slider-container">
++            <div class="slider-header-info">
++              <label for="roast-level" id="roast-slider-label" class="slider-label">Roast Profile:</label>
++              <span id="roast-badge" class="roast-badge">Level 3: Medium Roast</span>
++            </div>
++
++            <input type="range" id="roast-level" name="roast_level" min="1" max="5" value="3" step="1"
++              aria-labelledby="roast-slider-label" aria-describedby="roast-description-note">
++
++            <div class="range-ticks" aria-hidden="true">
++              <span>1: Light</span>
++              <span>2: Medium-Light</span>
++              <span>3: Medium</span>
++              <span>4: Medium-Dark</span>
++              <span>5: Dark</span>
++            </div>
++
++            <div id="roast-description-note" class="roast-description-card" aria-live="polite">
++              <strong>Tasting Notes:</strong> Smooth and balanced with rich milk chocolate, brown sugar, and toasted hazelnut finish.
++            </div>
++          </div>
++        </fieldset>
++
++        <!-- Step 4: Email Updates & Brew Guides (Checkbox) -->
++        <fieldset class="form-fieldset">
++          <legend class="form-legend">4. Subscription Notifications</legend>
++          <p class="field-hint">Stay updated on origin farm stories, cupping notes, and roast schedules.</p>
++
++          <div class="checkbox-container">
++            <input type="checkbox" id="email-optin" name="email_optin" checked>
++            <label for="email-optin" class="checkbox-label">
++              <strong>Receive roast alerts, brew recipes & subscriber perks via email</strong>
++              <span class="checkbox-subtext">We send weekly cupping notes and subscriber-exclusive release notifications. Unsubscribe anytime.</span>
++            </label>
++          </div>
++        </fieldset>
++
++        <!-- Submit & Confirmation -->
++        <div class="form-submit-row">
++          <button type="submit" id="submit-subscription" class="btn btn-submit-subscription">
++            Complete Subscription Setup
++          </button>
++        </div>
++
++        <div id="confirmation-banner" class="confirmation-banner" role="region" aria-live="polite">
++          <h3 class="confirmation-title">
++            <span aria-hidden="true">✓</span> Your Subscription is Active!
++          </h3>
++          <p id="confirmation-greeting">Thank you for joining The Daily Grind Coffee Club.</p>
++          <ul id="confirmation-summary" class="summary-list">
++            <!-- Populated via JavaScript -->
++          </ul>
++          <p class="field-hint">You can modify your roast profile or delivery frequency anytime from your account dashboard.</p>
++        </div>
++      </form>
++    </section>
++
++    <!-- Seasonal Favorites -->
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +1081,204 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Roast profile definitions
++      const ROAST_PROFILES = {
++        '1': {
++          title: 'Level 1: Light Roast (Cinnamon/New England)',
++          notes: 'Bright citrus acidity, floral jasmine aromas, delicate white tea body with subtle apricot sweetness.'
++        },
++        '2': {
++          title: 'Level 2: Medium-Light Roast (American)',
++          notes: 'Crisp green apple, wildflower honey, and Meyer lemon with an elegant lingering caramel finish.'
++        },
++        '3': {
++          title: 'Level 3: Medium Roast (City/Breakfast)',
++          notes: 'Smooth and balanced with rich milk chocolate, brown sugar, and toasted hazelnut finish.'
++        },
++        '4': {
++          title: 'Level 4: Medium-Dark Roast (Full City)',
++          notes: 'Robust dark cocoa, warm clove spice, toasted walnut, and velvety dark caramel crema.'
++        },
++        '5': {
++          title: 'Level 5: Dark Roast (French/Italian)',
++          notes: 'Bold, smoky, and intense with bittersweet chocolate, molasses, and a rich, heavy body.'
++        }
++      };
++
++      // DOM Elements
++      const form = document.getElementById('coffee-subscription-form');
++      const progressBar = document.getElementById('subscription-progress');
++      const progressText = document.getElementById('progress-percentage-text');
++      const progressAnnouncer = document.getElementById('progress-live-announcer');
++      const nameInput = document.getElementById('subscriber-name');
++      const emailInput = document.getElementById('subscriber-email');
++      const roastSlider = document.getElementById('roast-level');
++      const roastBadge = document.getElementById('roast-badge');
++      const roastDescription = document.getElementById('roast-description-note');
++      const emailOptin = document.getElementById('email-optin');
++      const confirmationBanner = document.getElementById('confirmation-banner');
++      const confirmationGreeting = document.getElementById('confirmation-greeting');
++      const confirmationSummary = document.getElementById('confirmation-summary');
++      const themeToggleBtn = document.getElementById('theme-toggle');
++      const themeIcon = document.getElementById('theme-toggle-icon');
++      const themeLabel = document.getElementById('theme-toggle-label');
++
++      // Update roast slider label and notes
++      function updateRoastProfile() {
++        const profile = ROAST_PROFILES[roastSlider.value] || ROAST_PROFILES['3'];
++        roastBadge.textContent = profile.title;
++        roastDescription.innerHTML = `<strong>Tasting Notes:</strong> ${profile.notes}`;
++      }
++
++      // Calculate and update progress bar
++      function updateProgress() {
++        let score = 0;
++        const totalSteps = 4;
++
++        // Step 1: Name filled (25%)
++        if (nameInput.value.trim().length >= 2) {
++          score += 25;
++        }
++
++        // Step 2: Email filled and contains @ and . (25%)
++        const emailVal = emailInput.value.trim();
++        if (emailVal.length > 5 && emailVal.includes('@') && emailVal.includes('.')) {
++          score += 25;
++        }
++
++        // Step 3: Delivery frequency selected (25%)
++        const freqSelected = form.querySelector('input[name="delivery_frequency"]:checked');
++        if (freqSelected) {
++          score += 25;
++        }
++
++        // Step 4: Roast level preference set (25%)
++        if (roastSlider.value) {
++          score += 25;
++        }
++
++        progressBar.value = score;
++        progressText.textContent = `${score}% Complete`;
++
++        if (score === 100) {
++          progressAnnouncer.textContent = 'Subscription setup is 100 percent complete and ready to submit.';
++        } else {
++          progressAnnouncer.textContent = `Subscription setup is ${score} percent complete.`;
++        }
++      }
++
++      // Event listeners for inputs
++      nameInput.addEventListener('input', updateProgress);
++      emailInput.addEventListener('input', updateProgress);
++      
++      roastSlider.addEventListener('input', function () {
++        updateRoastProfile();
++        updateProgress();
++      });
++
++      const frequencyRadios = form.querySelectorAll('input[name="delivery_frequency"]');
++      frequencyRadios.forEach(function (radio) {
++        radio.addEventListener('change', updateProgress);
++      });
++
++      emailOptin.addEventListener('change', updateProgress);
++
++      // Form submission handling
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++
++        // Validate basic inputs
++        if (!nameInput.value.trim()) {
++          nameInput.focus();
++          return;
++        }
++        if (!emailInput.value.trim() || !emailInput.checkValidity()) {
++          emailInput.focus();
++          return;
++        }
++
++        const selectedFreq = form.querySelector('input[name="delivery_frequency"]:checked');
++        const freqValue = selectedFreq ? selectedFreq.value : 'Every 2 Weeks';
++        const roastProfile = ROAST_PROFILES[roastSlider.value] || ROAST_PROFILES['3'];
++        const isEmailOpted = emailOptin.checked;
++
++        // Build personalized summary
++        confirmationGreeting.textContent = `Thank you, ${nameInput.value.trim()}! Your subscription order has been processed.`;
++        confirmationSummary.innerHTML = `
++          <li><strong>Subscriber:</strong> ${nameInput.value.trim()} (${emailInput.value.trim()})</li>
++          <li><strong>Delivery Schedule:</strong> ${freqValue}</li>
++          <li><strong>Roast Profile:</strong> ${roastProfile.title}</li>
++          <li><strong>Email Notifications:</strong> ${isEmailOpted ? 'Subscribed to brew guides & tasting notes' : 'Delivery receipts only'}</li>
++        `;
++
++        confirmationBanner.classList.add('visible');
++        confirmationBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++      });
++
++      // Theme toggle functionality (supports light & dark mode)
++      function getCurrentTheme() {
++        if (document.documentElement.getAttribute('data-theme')) {
++          return document.documentElement.getAttribute('data-theme');
++        }
++        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
++      }
++
++      function applyTheme(theme) {
++        document.documentElement.setAttribute('data-theme', theme);
++        if (theme === 'dark') {
++          themeIcon.textContent = '☀️';
++          themeLabel.textContent = 'Light Mode';
++        } else {
++          themeIcon.textContent = '🌙';
++          themeLabel.textContent = 'Dark Mode';
++        }
++        try {
++          localStorage.setItem('daily-grind-theme', theme);
++        } catch (e) {
++          // Local storage unavailable/restricted
++        }
++      }
++
++      // Initialize theme toggle
++      try {
++        const savedTheme = localStorage.getItem('daily-grind-theme');
++        if (savedTheme) {
++          applyTheme(savedTheme);
++        } else {
++          applyTheme(getCurrentTheme());
++        }
++      } catch (e) {
++        applyTheme(getCurrentTheme());
++      }
++
++      themeToggleBtn.addEventListener('click', function () {
++        const current = getCurrentTheme();
++        const nextTheme = current === 'dark' ? 'light' : 'dark';
++        applyTheme(nextTheme);
++      });
++
++      // Listen for OS theme changes if user hasn't set an explicit preference
++      if (window.matchMedia) {
++        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
++          try {
++            if (!localStorage.getItem('daily-grind-theme')) {
++              applyTheme(e.matches ? 'dark' : 'light');
++            }
++          } catch (err) {
++            applyTheme(e.matches ? 'dark' : 'light');
++          }
++        });
++      }
++
++      // Initial state updates
++      updateRoastProfile();
++      updateProgress();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

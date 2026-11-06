@@ -1,0 +1,1431 @@
+diff --git a/public/images/articles/air-pollution.jpg b/src/assets/images/articles/air-pollution.jpg
+similarity index 100%
+rename from public/images/articles/air-pollution.jpg
+rename to src/assets/images/articles/air-pollution.jpg
+diff --git a/public/images/articles/ballet.jpg b/src/assets/images/articles/ballet.jpg
+similarity index 100%
+rename from public/images/articles/ballet.jpg
+rename to src/assets/images/articles/ballet.jpg
+diff --git a/public/images/articles/baseball-stadium-at-night.jpg b/src/assets/images/articles/baseball-stadium-at-night.jpg
+similarity index 100%
+rename from public/images/articles/baseball-stadium-at-night.jpg
+rename to src/assets/images/articles/baseball-stadium-at-night.jpg
+diff --git a/public/images/articles/bike-race.jpg b/src/assets/images/articles/bike-race.jpg
+similarity index 100%
+rename from public/images/articles/bike-race.jpg
+rename to src/assets/images/articles/bike-race.jpg
+diff --git a/public/images/articles/construction-site-from-below.jpg b/src/assets/images/articles/construction-site-from-below.jpg
+similarity index 100%
+rename from public/images/articles/construction-site-from-below.jpg
+rename to src/assets/images/articles/construction-site-from-below.jpg
+diff --git a/public/images/articles/construction-workers.jpg b/src/assets/images/articles/construction-workers.jpg
+similarity index 100%
+rename from public/images/articles/construction-workers.jpg
+rename to src/assets/images/articles/construction-workers.jpg
+diff --git a/public/images/articles/countryside-highway.jpg b/src/assets/images/articles/countryside-highway.jpg
+similarity index 100%
+rename from public/images/articles/countryside-highway.jpg
+rename to src/assets/images/articles/countryside-highway.jpg
+diff --git a/public/images/articles/crime-fingerprints-printouts.jpg b/src/assets/images/articles/crime-fingerprints-printouts.jpg
+similarity index 100%
+rename from public/images/articles/crime-fingerprints-printouts.jpg
+rename to src/assets/images/articles/crime-fingerprints-printouts.jpg
+diff --git a/public/images/articles/crime-net-board.jpg b/src/assets/images/articles/crime-net-board.jpg
+similarity index 100%
+rename from public/images/articles/crime-net-board.jpg
+rename to src/assets/images/articles/crime-net-board.jpg
+diff --git a/public/images/articles/crime-profiler-investigation.jpg b/src/assets/images/articles/crime-profiler-investigation.jpg
+similarity index 100%
+rename from public/images/articles/crime-profiler-investigation.jpg
+rename to src/assets/images/articles/crime-profiler-investigation.jpg
+diff --git a/public/images/articles/death-statistics.jpg b/src/assets/images/articles/death-statistics.jpg
+similarity index 100%
+rename from public/images/articles/death-statistics.jpg
+rename to src/assets/images/articles/death-statistics.jpg
+diff --git a/public/images/articles/girl-megaphone.jpg b/src/assets/images/articles/girl-megaphone.jpg
+similarity index 100%
+rename from public/images/articles/girl-megaphone.jpg
+rename to src/assets/images/articles/girl-megaphone.jpg
+diff --git a/public/images/articles/housing-construction.jpg b/src/assets/images/articles/housing-construction.jpg
+similarity index 100%
+rename from public/images/articles/housing-construction.jpg
+rename to src/assets/images/articles/housing-construction.jpg
+diff --git a/public/images/articles/juggling-festival.jpg b/src/assets/images/articles/juggling-festival.jpg
+similarity index 100%
+rename from public/images/articles/juggling-festival.jpg
+rename to src/assets/images/articles/juggling-festival.jpg
+diff --git a/public/images/articles/live-concert.jpg b/src/assets/images/articles/live-concert.jpg
+similarity index 100%
+rename from public/images/articles/live-concert.jpg
+rename to src/assets/images/articles/live-concert.jpg
+diff --git a/public/images/articles/meeting.jpg b/src/assets/images/articles/meeting.jpg
+similarity index 100%
+rename from public/images/articles/meeting.jpg
+rename to src/assets/images/articles/meeting.jpg
+diff --git a/public/images/articles/news-reporter.jpg b/src/assets/images/articles/news-reporter.jpg
+similarity index 100%
+rename from public/images/articles/news-reporter.jpg
+rename to src/assets/images/articles/news-reporter.jpg
+diff --git a/public/images/articles/news-shop.jpg b/src/assets/images/articles/news-shop.jpg
+similarity index 100%
+rename from public/images/articles/news-shop.jpg
+rename to src/assets/images/articles/news-shop.jpg
+diff --git a/public/images/articles/newspaper-croissant.jpg b/src/assets/images/articles/newspaper-croissant.jpg
+similarity index 100%
+rename from public/images/articles/newspaper-croissant.jpg
+rename to src/assets/images/articles/newspaper-croissant.jpg
+diff --git a/public/images/articles/newspaper-stacks.jpg b/src/assets/images/articles/newspaper-stacks.jpg
+similarity index 100%
+rename from public/images/articles/newspaper-stacks.jpg
+rename to src/assets/images/articles/newspaper-stacks.jpg
+diff --git a/public/images/articles/newspapers.jpg b/src/assets/images/articles/newspapers.jpg
+similarity index 100%
+rename from public/images/articles/newspapers.jpg
+rename to src/assets/images/articles/newspapers.jpg
+diff --git a/public/images/articles/open-water-swimming.jpg b/src/assets/images/articles/open-water-swimming.jpg
+similarity index 100%
+rename from public/images/articles/open-water-swimming.jpg
+rename to src/assets/images/articles/open-water-swimming.jpg
+diff --git a/public/images/articles/protest-crowd.jpg b/src/assets/images/articles/protest-crowd.jpg
+similarity index 100%
+rename from public/images/articles/protest-crowd.jpg
+rename to src/assets/images/articles/protest-crowd.jpg
+diff --git a/public/images/articles/protests-better-tomorrow.jpg b/src/assets/images/articles/protests-better-tomorrow.jpg
+similarity index 100%
+rename from public/images/articles/protests-better-tomorrow.jpg
+rename to src/assets/images/articles/protests-better-tomorrow.jpg
+diff --git a/public/images/articles/protests-no-future.jpg b/src/assets/images/articles/protests-no-future.jpg
+similarity index 100%
+rename from public/images/articles/protests-no-future.jpg
+rename to src/assets/images/articles/protests-no-future.jpg
+diff --git a/public/images/articles/railyard-switzerland.jpg b/src/assets/images/articles/railyard-switzerland.jpg
+similarity index 100%
+rename from public/images/articles/railyard-switzerland.jpg
+rename to src/assets/images/articles/railyard-switzerland.jpg
+diff --git a/public/images/articles/railyard.jpg b/src/assets/images/articles/railyard.jpg
+similarity index 100%
+rename from public/images/articles/railyard.jpg
+rename to src/assets/images/articles/railyard.jpg
+diff --git a/public/images/articles/red-curtain.jpg b/src/assets/images/articles/red-curtain.jpg
+similarity index 100%
+rename from public/images/articles/red-curtain.jpg
+rename to src/assets/images/articles/red-curtain.jpg
+diff --git a/public/images/articles/scientist-microscope.jpg b/src/assets/images/articles/scientist-microscope.jpg
+similarity index 100%
+rename from public/images/articles/scientist-microscope.jpg
+rename to src/assets/images/articles/scientist-microscope.jpg
+diff --git a/public/images/articles/small-stage-improv-theater.jpg b/src/assets/images/articles/small-stage-improv-theater.jpg
+similarity index 100%
+rename from public/images/articles/small-stage-improv-theater.jpg
+rename to src/assets/images/articles/small-stage-improv-theater.jpg
+diff --git a/public/images/articles/sports-tennis-court-birds-eye.jpg b/src/assets/images/articles/sports-tennis-court-birds-eye.jpg
+similarity index 100%
+rename from public/images/articles/sports-tennis-court-birds-eye.jpg
+rename to src/assets/images/articles/sports-tennis-court-birds-eye.jpg
+diff --git a/public/images/articles/street-construction.jpg b/src/assets/images/articles/street-construction.jpg
+similarity index 100%
+rename from public/images/articles/street-construction.jpg
+rename to src/assets/images/articles/street-construction.jpg
+diff --git a/public/images/articles/subway.jpg b/src/assets/images/articles/subway.jpg
+similarity index 100%
+rename from public/images/articles/subway.jpg
+rename to src/assets/images/articles/subway.jpg
+diff --git a/public/images/articles/swimming-competition.jpg b/src/assets/images/articles/swimming-competition.jpg
+similarity index 100%
+rename from public/images/articles/swimming-competition.jpg
+rename to src/assets/images/articles/swimming-competition.jpg
+diff --git a/public/images/articles/thailand-backyard.jpg b/src/assets/images/articles/thailand-backyard.jpg
+similarity index 100%
+rename from public/images/articles/thailand-backyard.jpg
+rename to src/assets/images/articles/thailand-backyard.jpg
+diff --git a/public/images/articles/urban-cycling-blur.jpg b/src/assets/images/articles/urban-cycling-blur.jpg
+similarity index 100%
+rename from public/images/articles/urban-cycling-blur.jpg
+rename to src/assets/images/articles/urban-cycling-blur.jpg
+diff --git a/public/images/articles/usa-protests.jpg b/src/assets/images/articles/usa-protests.jpg
+similarity index 100%
+rename from public/images/articles/usa-protests.jpg
+rename to src/assets/images/articles/usa-protests.jpg
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..f681571 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -17,14 +17,14 @@ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <article class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h2 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+-                    </h1>
++                    </h2>
+                     <p class="mt-4 text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+@@ -39,18 +39,24 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+             <div class="lg:col-span-2">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                    <!-- Above-the-fold hero image: load eagerly with high priority -->
+                     <Image 
+                         src={image} 
+                         alt=""
+                         width={800}
+                         height={533}
++                        widths={[400, 600, 800, 1200]}
++                        sizes="(min-width: 1152px) 750px, (min-width: 1024px) 62vw, 100vw"
+                         format="webp"
++                        loading="eager"
++                        fetchpriority="high"
++                        decoding="async"
+                         class="w-full h-auto object-cover"
+                     />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ ) : (
+     <article class="flex flex-col h-full group">
+         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+@@ -59,7 +65,11 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 alt={article.data.title} 
+                 width={400}
+                 height={225}
++                widths={[240, 400, 640, 800]}
++                sizes="(min-width: 1152px) 360px, (min-width: 768px) 33vw, 100vw"
+                 format="webp"
++                loading="lazy"
++                decoding="async"
+                 class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+             />
+         </a>
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..0f76381 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -23,8 +23,8 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button type="button" onClick={handleClick} aria-pressed={isBookmarked} aria-label="Save to reading list" className="p-1">
++      <BookmarkIcon aria-hidden="true" className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+     </button>
+   );
+ }
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..dc2ac3c 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useRef, useState } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -10,6 +10,7 @@ interface BottomNavProps {
+ 
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const navRef = useRef<HTMLDivElement>(null);
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+@@ -28,8 +29,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+ 
+     return (
+         <div onMouseLeave={handleMouseLeave}>
+-            <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++            <div ref={navRef} className="border-t border-b border-gray-900">
++                <nav aria-label="Sections" className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
+                         return (
+                             <div 
+@@ -37,15 +38,19 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                                 onMouseEnter={() => setActiveCategory(groupName)}
+                                 className="h-full flex items-center"
+                             >
+-                                <a 
+-                                    href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                <button
++                                    type="button"
++                                    aria-haspopup="true"
++                                    aria-expanded={activeCategory === groupName}
++                                    onClick={() => setActiveCategory(groupName)}
++                                    onFocus={() => setActiveCategory(groupName)}
++                                    className="flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap"
+                                 >
+                                     <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                     </svg>
+-                                </a>
++                                </button>
+                             </div>
+                         );
+                     })}
+@@ -57,6 +62,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                 articles={articles}
+                 reports={filteredReports}
+                 multimedia={filteredMultimedia}
++                anchor={navRef.current}
++                onClose={handleMouseLeave}
+             />
+         </div>
+     );
+diff --git a/src/components/DialogCloseButton.tsx b/src/components/DialogCloseButton.tsx
+new file mode 100644
+index 0000000..52ca1d7
+--- /dev/null
++++ b/src/components/DialogCloseButton.tsx
+@@ -0,0 +1,16 @@
++import React from 'react';
++
++export default function DialogCloseButton({ onClick }: { onClick: () => void }) {
++  return (
++    <button
++      type="button"
++      onClick={onClick}
++      aria-label="Close"
++      className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10"
++    >
++      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
++      </svg>
++    </button>
++  );
++}
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..e94cf6e 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,4 +1,4 @@
+-import React from 'react';
++import React, { useLayoutEffect, useRef } from 'react';
+ 
+ interface FlyoutMenuProps {
+   isOpen: boolean;
+@@ -6,9 +6,26 @@ interface FlyoutMenuProps {
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
++  /** Element the popover is placed under, spanning its width */
++  anchor?: HTMLElement | null;
++  onClose?: () => void;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia, anchor, onClose }) => {
++  const ref = useRef<HTMLDivElement>(null);
++
++  // Promote to the top layer; light dismiss and Escape are handled natively by popover="auto"
++  useLayoutEffect(() => {
++    const el = ref.current;
++    if (!isOpen || !el) return;
++    if (!el.matches(':popover-open')) el.showPopover();
++    const handleToggle = (event: Event) => {
++      if ((event as ToggleEvent).newState === 'closed') onClose?.();
++    };
++    el.addEventListener('toggle', handleToggle);
++    return () => el.removeEventListener('toggle', handleToggle);
++  }, [isOpen, onClose]);
++
+   if (!isOpen) {
+     return null;
+   }
+@@ -26,13 +43,25 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+   }
+ 
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
++    <div
++      ref={ref}
++      popover="auto"
++      aria-label="Section menu"
++      className="flyout-menu m-0 p-0 overflow-visible text-inherit bg-white border-0 border-b border-gray-300 shadow-lg"
++      style={{
++        position: 'absolute',
++        inset: 'auto',
++        top: anchor ? anchor.getBoundingClientRect().bottom + window.scrollY : 0,
++        left: anchor ? anchor.getBoundingClientRect().left + window.scrollX : 0,
++        width: anchor ? anchor.getBoundingClientRect().width : '100%',
++      }}
++    >
+       <div className="container mx-auto px-4 py-6">
+         <div className="grid grid-cols-4 gap-x-8">
+           
+           {/* Column 1: SECTIONS */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h2>
+             <ul className="space-y-2 text-sm">
+               {categories.map(category => (
+                 <li key={category}>
+@@ -46,7 +75,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 2: TOP STORIES */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h2>
+             <ul className="space-y-2 text-sm">
+                 {topStories.map(article => (
+                     <li key={article.id}>
+@@ -58,7 +87,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 3: REPORTS */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
++              <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h2>
+               <ul className="space-y-4 text-sm">
+                   {reports.map(report => (
+                       <li key={report.slug}>
+@@ -81,11 +110,11 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 4: MULTIMEDIA */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
++              <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h2>
+               <ul className="space-y-4 text-sm">
+                     {multimedia.map(item => (
+                         <li key={item.slug}>
+-                            <a href={`/multimedia/${item.slug}`} className="flex items-start space-x-2 group/item">
++                            <a href={`${import.meta.env.BASE_URL}multimedia/${item.slug}`} className="flex items-start space-x-2 group/item">
+                                 <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                     <span className="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
+                                 </div>
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..e466ae2 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -5,52 +5,56 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+     <!-- Top section: Logo -->
+     <div class="border-b border-gray-300 pb-6 mb-6">
+-        <a href={baseUrl}>
++        <a href={baseUrl} aria-label="The DevTools Times home">
+             <img
+                 src=`${baseUrl}logo.svg`
+-                alt="The DevTools Times"
++                alt=""
+                 class="h-10"
++                width="342"
++                height="40"
++                loading="lazy"
++                decoding="async"
+             />
+         </a>
+     </div>
+ 
+     <!-- Middle section: Main navigation links -->
+-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
++    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
+         
+         <!-- Column 1: NEWS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">News</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
+-                <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
+-                <li><a href="/category/business" class="text-sm hover:underline">Business</a></li>
++                <li><a href={`${baseUrl}category/national`} class="text-sm hover:underline">National</a></li>
++                <li><a href={`${baseUrl}category/politics`} class="text-sm hover:underline">Politics</a></li>
++                <li><a href={`${baseUrl}category/business`} class="text-sm hover:underline">Business</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 2: ARTS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+-                <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
++                <li><a href={`${baseUrl}category/culture`} class="text-sm hover:underline">Culture</a></li>
++                <li><a href={`${baseUrl}category/media`} class="text-sm hover:underline">Media</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 3: LIFESTYLE -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
+-                <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
+-                <li><a href="/category/urban%20development" class="text-sm hover:underline">Urban Development</a></li>
++                <li><a href={`${baseUrl}category/lifestyle`} class="text-sm hover:underline">Lifestyle</a></li>
++                <li><a href={`${baseUrl}category/sports`} class="text-sm hover:underline">Sports</a></li>
++                <li><a href={`${baseUrl}category/urban%20development`} class="text-sm hover:underline">Urban Development</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 4: SCIENCE & TECH -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
++                <li><a href={`${baseUrl}category/science`} class="text-sm hover:underline">Science</a></li>
+             </ul>
+         </div>
+ 
+@@ -60,17 +64,17 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+         <!-- Column 7: ACCOUNT -->
+         <div class="col-span-2 sm:col-span-1">
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h2>
+             <ul class="space-y-2 mb-4">
+                 <li>
+                     <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                         Subscribe
+                     </a>
+                 </li>
+                 <li>
+                     <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+                 </li>
+@@ -82,7 +86,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             </ul>
+         </div>
+ 
+-    </div>
++    </nav>
+ 
+     <!-- Bottom section: Legal, copyright, and privacy -->
+     <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..51f072a 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -15,7 +15,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+ <header class="font-inter group relative bg-white">
+   <!-- Row 1: Search, Subscribe, Log In -->
+-  <div class="container mx-auto px-4 py-2 border-b border-gray-300">
++  <div role="toolbar" aria-label="Site tools" class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+       <!-- Left: Search Icon -->
+       <div class="flex items-center space-x-3">
+@@ -48,13 +48,13 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     <div class="grid grid-cols-3 items-center">
+       <!-- Left Section: Date -->
+       <div class="text-xs">
+-        <p class="font-semibold">{todaysDate}</p>
++        <p class="font-semibold"><time datetime={new Date().toISOString().slice(0, 10)}>{todaysDate}</time></p>
+       </div>
+ 
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+         <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++          <img src={`${baseUrl}logo.svg`} alt="The DevTools Times" width="320" height="37" fetchpriority="high" decoding="async" class="w-80 h-auto mx-auto" />
+         </a>
+       </div>
+ 
+diff --git a/src/components/ModalDialog.tsx b/src/components/ModalDialog.tsx
+new file mode 100644
+index 0000000..4e4040a
+--- /dev/null
++++ b/src/components/ModalDialog.tsx
+@@ -0,0 +1,50 @@
++import React, { useEffect, useLayoutEffect, useRef } from 'react';
++
++interface Props {
++  open: boolean;
++  onClose: () => void;
++  label: string;
++  children: React.ReactNode;
++}
++
++/**
++ * Wraps the native <dialog> element. The browser provides the top layer,
++ * inert background, focus trapping, Escape handling and focus restoration
++ * to the previously focused element when the dialog closes.
++ */
++export default function ModalDialog({ open, onClose, label, children }: Props) {
++  const ref = useRef<HTMLDialogElement>(null);
++
++  // Layout effect so the dialog is shown before child effects move focus (e.g. to an input)
++  useLayoutEffect(() => {
++    const dialog = ref.current;
++    if (!dialog) return;
++    if (open && !dialog.open) {
++      dialog.showModal();
++    } else if (!open && dialog.open) {
++      dialog.close();
++    }
++  }, [open]);
++
++  // Keep state in sync when the browser closes the dialog itself (Escape key)
++  useEffect(() => {
++    const dialog = ref.current;
++    if (!dialog) return;
++    dialog.addEventListener('close', onClose);
++    return () => dialog.removeEventListener('close', onClose);
++  }, [onClose]);
++
++  return (
++    <dialog
++      ref={ref}
++      aria-label={label}
++      // Clicks on the backdrop target the dialog element itself
++      onClick={e => {
++        if (e.target === e.currentTarget) onClose();
++      }}
++      className="m-auto mt-[15vh] p-0 bg-transparent w-[calc(100%-2rem)] max-w-2xl overflow-visible backdrop:bg-white/30 backdrop:backdrop-blur-sm"
++    >
++      {open && children}
++    </dialog>
++  );
++}
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..395e40d 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -1,5 +1,6 @@
+ 
+ import React, { useState, useEffect } from 'react';
++import ModalDialog from './ModalDialog';
+ import ReadingListFlyout from './ReadingListFlyout';
+ 
+ interface Article {
+@@ -24,8 +25,9 @@ export default function ReadingListButton() {
+ 
+   return (
+     <>
+-      <button onClick={() => setIsOpen(true)} className="p-1">
++      <button type="button" onClick={() => setIsOpen(true)} aria-label="Reading list" aria-haspopup="dialog" className="p-1">
+         <svg
++          aria-hidden="true"
+           xmlns="http://www.w3.org/2000/svg"
+           className="h-6 w-6 text-gray-600"
+           fill="none"
+@@ -40,7 +42,9 @@ export default function ReadingListButton() {
+           />
+         </svg>
+       </button>
+-      {isOpen && <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />}
++      <ModalDialog open={isOpen} onClose={() => setIsOpen(false)} label="Your reading list">
++        <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />
++      </ModalDialog>
+     </>
+   );
+ }
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..f2d4a12 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,6 @@
+ 
+ import React, { useState, useEffect } from 'react';
++import DialogCloseButton from './DialogCloseButton';
+ 
+ interface Article {
+   slug: string;
+@@ -24,18 +25,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+ 
+   useEffect(() => {
+     fetchReadingList();
+-
+-    const handleKeyDown = (event: KeyboardEvent) => {
+-      if (event.key === 'Escape') {
+-        onClose();
+-      }
+-    };
+-    window.addEventListener('keydown', handleKeyDown);
+-
+-    return () => {
+-      window.removeEventListener('keydown', handleKeyDown);
+-    };
+-  }, [onClose]);
++  }, []);
+ 
+   const handleRemove = async (slug: string) => {
+     await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+@@ -51,36 +41,35 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
+   return (
+-    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-          </svg>
+-        </button>
+-        <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
+-        </div>
+-        <div className="p-4 max-h-[60vh] overflow-y-auto">
+-          {readingListArticles.length === 0 && (
+-            <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
+-          )}
+-          <ul className="space-y-2">
+-            {readingListArticles.map(article => (
+-              <li key={article.slug} className="flex items-center">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+-                  <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                  <p className="text-sm text-gray-600">{article.summary}</p>
+-                </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+-                    </svg>
+-                </button>
+-              </li>
+-            ))}
+-          </ul>
+-        </div>
++    <div className="bg-white shadow-xl w-full relative">
++      <DialogCloseButton onClick={onClose} />
++      <div className="p-4">
++        <h2 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h2>
++      </div>
++      <div className="p-4 max-h-[60vh] overflow-y-auto">
++        {readingListArticles.length === 0 && (
++          <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
++        )}
++        <ul className="space-y-2">
++          {readingListArticles.map(article => (
++            <li key={article.slug} className="flex items-center">
++              <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
++                <h3 className="font-bold text-lg text-gray-800">{article.title}</h3>
++                <p className="text-sm text-gray-600">{article.summary}</p>
++              </a>
++              <button
++                type="button"
++                onClick={() => handleRemove(article.slug)}
++                aria-label={`Remove ${article.title} from reading list`}
++                className="p-2 text-gray-500 hover:text-amber-400"
++              >
++                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
++                </svg>
++              </button>
++            </li>
++          ))}
++        </ul>
+       </div>
+     </div>
+   );
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..15038c9 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,49 +1,26 @@
+-
+ import React, { useState } from 'react';
++import ModalDialog from './ModalDialog';
+ import SearchFlyout from './SearchFlyout';
+ 
+-interface Article {
+-    slug: string;
+-    title: string;
+-    summary: string;
+-}
+-
+ export default function SearchButton() {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+-    const [articles, setArticles] = useState<Article[]>([]);
+-    const [isLoading, setIsLoading] = useState(false);
+-
+-    const openSearch = async () => {
+-        try {
+-            setArticles([]);
+-            setIsFlyoutOpen(true);
+-        } catch (error) {
+-            console.error('Failed to fetch articles:', error);
+-        } finally {
+-            setIsLoading(false);
+-        }
+-    };
+-
+-    const closeSearch = () => {
+-        setIsFlyoutOpen(false);
+-    };
+ 
+     return (
+         <>
+             <button
++                type="button"
++                aria-label="Search"
++                aria-haspopup="dialog"
+                 className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+-                onClick={openSearch}
+-                disabled={isLoading}
++                onClick={() => setIsFlyoutOpen(true)}
+             >
+-                {isLoading ? (
+-                    <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+-                ) : (
+-                    <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+-                    </svg>
+-                )}
++                <svg aria-hidden="true" className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
++                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
++                </svg>
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            <ModalDialog open={isFlyoutOpen} onClose={() => setIsFlyoutOpen(false)} label="Search">
++                <SearchFlyout articles={[]} onClose={() => setIsFlyoutOpen(false)} />
++            </ModalDialog>
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..8dd54e4 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,6 @@
+ 
+-import React, { useState, useMemo, useEffect } from 'react';
++import React, { useState, useMemo, useEffect, useRef } from 'react';
++import DialogCloseButton from './DialogCloseButton';
+ 
+ interface Article {
+     slug: string;
+@@ -22,14 +23,11 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+     const [searchTerm, setSearchTerm] = useState('');
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
+ 
++    const inputRef = useRef<HTMLInputElement>(null);
++
+     useEffect(() => {
+-        const handleKeyDown = (event: KeyboardEvent) => {
+-            if (event.key === 'Escape') {
+-                onClose();
+-            }
+-        };
+-        window.addEventListener('keydown', handleKeyDown);
+-        
++        inputRef.current?.focus();
++
+         // Bug: Redundant fetch for suggestions
+         const fetchSuggestions = async () => {
+             try {
+@@ -42,11 +40,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         };
+ 
+         fetchSuggestions();
+-
+-        return () => {
+-            window.removeEventListener('keydown', handleKeyDown);
+-        };
+-    }, [onClose]);
++    }, []);
+ 
+     const filteredArticles = useMemo(() => {
+         if (!searchTerm) {
+@@ -59,59 +53,63 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+     }, [articles, searchTerm]);
+ 
+     return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-                    </svg>
+-                </button>
+-                <div className="p-4">
+-                    {!searchTerm && suggestions.length > 0 && (
+-                        <div>
+-                            <h3 className="text-sm font-semibold text-gray-500 mb-3">Featured</h3>
+-                            <ul className="grid grid-cols-3 gap-4 mb-4">
+-                                {suggestions.map(article => {
+-                                    const imagePath = article.image ? article.image.replace(/^\//, '') : '';
+-                                    return (
+-                                        <li key={article.slug}>
+-                                            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+-                                                <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+-                                                <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                            </a>
+-                                        </li>
+-                                    );
+-                                })}
+-                            </ul>
+-                        </div>
+-                    )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
+-                </div>
+-                <div className="p-4 max-h-[60vh] overflow-y-auto">
+-                    {searchTerm && filteredArticles.length === 0 && (
+-                        <p className="text-gray-500 text-center py-8">No results found for "{searchTerm}".</p>
+-                    )}
+-                    {searchTerm && (
+-                        <ul className="space-y-2">
+-                            {filteredArticles.map(article => (
++        <div className="bg-white shadow-xl w-full relative">
++            <DialogCloseButton onClick={onClose} />
++            <div className="p-4">
++                {!searchTerm && suggestions.length > 0 && (
++                    <section aria-labelledby="search-featured-heading">
++                        <h2 id="search-featured-heading" className="text-sm font-semibold text-gray-500 mb-3">Featured</h2>
++                        <ul className="grid grid-cols-3 gap-4 mb-4">
++                            {suggestions.map(article => (
+                                 <li key={article.slug}>
+-                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+-                                        <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                        <p className="text-sm text-gray-600">{article.summary}</p>
++                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
++                                        <img
++                                            src={article.image}
++                                            alt=""
++                                            width={320}
++                                            height={180}
++                                            loading="lazy"
++                                            decoding="async"
++                                            className="w-full h-20 object-cover rounded-md mb-2"
++                                        />
++                                        <h3 className="font-bold text-sm text-gray-800">{article.title}</h3>
+                                     </a>
+                                 </li>
+                             ))}
+                         </ul>
+-                    )}
+-                </div>
++                    </section>
++                )}
++                <label htmlFor="site-search" className="block text-sm font-semibold text-gray-500 mb-3">Search</label>
++                <input
++                    ref={inputRef}
++                    id="site-search"
++                    type="search"
++                    name="q"
++                    placeholder="Search for articles..."
++                    autoComplete="off"
++                    enterKeyHint="search"
++                    spellCheck={false}
++                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++                    value={searchTerm}
++                    onChange={e => setSearchTerm(e.target.value)}
++                />
++            </div>
++            <div className="p-4 max-h-[60vh] overflow-y-auto" aria-live="polite">
++                {searchTerm && filteredArticles.length === 0 && (
++                    <p className="text-gray-500 text-center py-8">No results found for "{searchTerm}".</p>
++                )}
++                {searchTerm && (
++                    <ul className="space-y-2">
++                        {filteredArticles.map(article => (
++                            <li key={article.slug}>
++                                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
++                                    <h3 className="font-bold text-lg text-gray-800">{article.title}</h3>
++                                    <p className="text-sm text-gray-600">{article.summary}</p>
++                                </a>
++                            </li>
++                        ))}
++                    </ul>
++                )}
+             </div>
+         </div>
+     );
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..9542e60 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -41,7 +41,7 @@ export default function SignInForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -50,12 +50,12 @@ export default function SignInForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form method="post" onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,6 +63,12 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            autoFocus
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +83,8 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..3850722 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -42,7 +42,7 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h1>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -51,12 +51,12 @@ export default function SignUpForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form method="post" onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,6 +64,12 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            autoFocus
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,12 +84,16 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            minLength={8}
++            aria-describedby="password-hint"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
++          <p id="password-hint" className="text-xs text-gray-500 mt-1">
+              Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..115b59a 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -32,7 +32,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <article class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+                 <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+@@ -55,11 +55,11 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             </div>
+             <div class="w-full order-first lg:order-last">
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++                    <Image width={640} height={360} widths={[320, 480, 640, 960]} sizes="(min-width: 1152px) 560px, (min-width: 1024px) 50vw, 100vw" loading="lazy" decoding="async" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ 
+     <!-- Bottom Section: Three Smaller Articles -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+@@ -67,10 +67,10 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+             const isBookmarked = readingList.includes(article.id);
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <article class="flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                            <Image width={640} height={360} widths={[320, 480, 640]} sizes="(min-width: 1152px) 360px, (min-width: 768px) 33vw, 100vw" loading="lazy" decoding="async" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+@@ -95,7 +95,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                             <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                         </div>
+                     </div>
+-                </div>
++                </article>
+             )
+         })}
+     </div>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..940fc80 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,22 +8,26 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  description?: string;
+ }
+ 
+-const { title } = Astro.props;
++const {
++  title,
++  description = "The DevTools Times: news, reports and multimedia.",
++} = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="description" content={description} />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+@@ -32,23 +36,23 @@ const baseUrl = import.meta.env.BASE_URL;
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+-    <link rel="icon" href=`${baseUrl}/favicon.svg` />
++    <link rel="icon" href={`${baseUrl}favicon.svg`} type="image/svg+xml" />
+ 
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+-    <div class="mx-auto">
+-      <AdSlotFireplace client:load />
+-      <div
+-        class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+-      >
+-        <div>
+-          <Header />
+-        </div>
+-        <main class="bg-white relative">
+-          <slot />
+-        </main>
+-      </div>
++    <a
++      href="#main-content"
++      class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100000] focus:bg-white focus:px-4 focus:py-2 focus:shadow-lg"
++    >
++      Skip to main content
++    </a>
++    <AdSlotFireplace client:load />
++    <div class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 mx-auto">
++      <Header />
++      <main id="main-content" tabindex="-1" class="bg-white relative focus:outline-none">
++        <slot />
++      </main>
+     </div>
+     <Footer />
+   </body>
+diff --git a/src/pages/api/articles.json.ts b/src/pages/api/articles.json.ts
+index 4cd4be4..7c26157 100644
+--- a/src/pages/api/articles.json.ts
++++ b/src/pages/api/articles.json.ts
+@@ -1,16 +1,25 @@
+-
+ import { getCollection } from 'astro:content';
++import { getImage } from 'astro:assets';
+ import type { APIRoute } from 'astro';
++import { getArticleImage } from '../../utils/images';
+ 
+-export const GET: APIRoute = async ({ params, request }) => {
++export const GET: APIRoute = async () => {
+     const articles = await getCollection('articles');
+-    const formattedArticles = articles.map(article => ({
+-        slug: article.id,
+-        title: article.data.title,
+-        summary: article.data.summary,
+-        image: article.data.image,
++    const formattedArticles = await Promise.all(articles.map(async article => {
++        const source = await getArticleImage(article);
++        // Thumbnail-sized image for the search and reading list dialogs
++        const image = typeof source === 'string'
++            ? source
++            : (await getImage({ src: source, width: 320, height: 180, format: 'webp' })).src;
++        return {
++            slug: article.id,
++            title: article.data.title,
++            summary: article.data.summary,
++            image,
++        };
+     }));
+ 
+-    // Simulate a network delay to make the INP issue more noticeable
+-    return new Response(JSON.stringify(formattedArticles));
++    return new Response(JSON.stringify(formattedArticles), {
++        headers: { 'Content-Type': 'application/json' },
++    });
+ }
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..53b9e56 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -32,15 +32,15 @@ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3)
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.slug);
++const isBookmarked = readingList.includes(article.id);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={article.data.title} description={article.data.summary}>
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
++        <nav aria-label="Breadcrumb" class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+-        </div>
++        </nav>
+ 
+         <!-- Headline -->
+         <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+@@ -54,7 +54,7 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         <!-- Author / Date -->
+         <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            By <span class="font-semibold text-gray-700">{article.data.author}</span> | <time datetime={article.data.date.toISOString()}>{article.data.date.toDateString()}</time>
+         </div>
+ 
+         <!-- Main Article Image -->
+@@ -68,6 +68,9 @@ const isBookmarked = readingList.includes(article.slug);
+                     height="675"
+                     class="w-full h-auto"
+                     crossorigin="use-credentials"
++                    loading="eager"
++                    fetchpriority="high"
++                    decoding="async"
+                 />
+             ) : (
+                 <Image 
+@@ -75,7 +78,12 @@ const isBookmarked = readingList.includes(article.slug);
+                     alt={article.data.title} 
+                     width={1200}
+                     height={675}
++                    widths={[480, 768, 1024, 1200]}
++                    sizes="(min-width: 768px) 720px, 100vw"
+                     format="webp"
++                    loading="eager"
++                    fetchpriority="high"
++                    decoding="async"
+                     class="w-full h-auto"
+                 />
+             )}
+@@ -91,15 +99,15 @@ const isBookmarked = readingList.includes(article.slug);
+             <!-- Social Share Icons (Placeholders) -->
+             <div class="flex space-x-3 items-center">
+                 <span class="text-sm font-semibold text-gray-800">Share:</span>
+-                <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
++                <a href="#" aria-label="Share on Facebook" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
++                <a href="#" aria-label="Share on X" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
++                <a href="#" aria-label="Copy link" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
++                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+                 </a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
++                <a href="#" aria-label="Share by email" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
++                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
+         </div>
+@@ -116,11 +124,10 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <aside aria-labelledby="related-heading" class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++        <h2 id="related-heading" class="sr-only">Related articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+-    </section>
+-
+-
++    </aside>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..947c440 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -37,16 +37,21 @@ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArt
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+ 
+-<Layout title={`Category: ${capitalizedCategory}`}>
++<Layout title={`Category: ${capitalizedCategory}`} description={`Latest ${capitalizedCategory} articles from The DevTools Times.`}>
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <div class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+-                    alt={`Background for ${capitalizedCategory}`} 
++                    alt="" 
+                     width={1200}
+                     height={400}
++                    widths={[480, 768, 1200]}
++                    sizes="(min-width: 1152px) 1128px, 100vw"
++                    loading="eager"
++                    fetchpriority="high"
++                    decoding="async"
+                     format="webp"
+                     quality={80}
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+@@ -61,7 +66,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     </h1>
+                 </div>
+             </div>
+-        </header>
++        </div>
+ 
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+@@ -73,6 +78,10 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             alt={featuredArticle.data.title} 
+                             width={1200}
+                             height={675}
++                            widths={[480, 768, 1024, 1200]}
++                            sizes="(min-width: 1152px) 1080px, calc(100vw - 32px)"
++                            loading="lazy"
++                            decoding="async"
+                             format="webp"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..cde9783 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -39,25 +39,25 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <section aria-label="Top stories" class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                    <article class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                             <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+                         </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
++                        <time class="text-xs text-gray-500" datetime={article.data.date.toISOString()}>{article.data.date.toLocaleDateString()}</time>
++                    </article>
+                 ))}
+             </div>
+         </div>
+-    </div>
++    </section>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <section aria-label="Top story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+diff --git a/src/utils/images.ts b/src/utils/images.ts
+index b8fe01e..f6ee485 100644
+--- a/src/utils/images.ts
++++ b/src/utils/images.ts
+@@ -1,23 +1,22 @@
+-
+ import type { CollectionEntry } from 'astro:content';
+ 
+-// Get all images from the content directory
++// Local article images live in src/assets so Astro can optimize and resize them
+ const allImages = import.meta.glob<{ default: ImageMetadata }>(
+-    '/public/images/articles/*'
++    '/src/assets/images/articles/*.{jpg,jpeg,png,webp}'
+ );
+ 
+ export async function getArticleImage(article: CollectionEntry<'articles'>) {
+     const imagePath = article.data.image;
+     if (!imagePath) {
+-        throw new Error(`Image path is missing for article: ${article.slug}`);
++        throw new Error(`Image path is missing for article: ${article.id}`);
+     }
+ 
+     if (imagePath.startsWith('http')) {
+         return imagePath;
+     }
+ 
+-    // Find the matching image module in the glob import
+-    const imageModuleKey = Object.keys(allImages).find(key => key.endsWith(imagePath.split('/').pop()));
++    const fileName = imagePath.split('/').pop();
++    const imageModuleKey = Object.keys(allImages).find(key => key.endsWith(`/${fileName}`));
+ 
+     if (!imageModuleKey) {
+         throw new Error(`Could not find image module for path: ${imagePath}`);

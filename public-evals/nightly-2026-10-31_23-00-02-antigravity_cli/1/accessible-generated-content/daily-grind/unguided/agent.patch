@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+index 66c9173..ccd0de2 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,46 @@
+       color: var(--primary);
+     }
+ 
++    .card h3::before {
++      content: "☕ " / "";
++      speak: never;
++    }
++
++    .card:nth-child(1) h3::before {
++      content: "🍁 " / "";
++    }
++
++    .card:nth-child(2) h3::before {
++      content: "☕ " / "";
++    }
++
++    .card:nth-child(3) h3::before {
++      content: "🧊 " / "";
++    }
++
++    .card h3::after {
++      content: " ✦" / "";
++      color: var(--accent);
++      font-size: 0.85em;
++      speak: never;
++    }
++
++    .section-heading {
++      text-align: center;
++    }
++
++    .section-heading::before {
++      content: "✦ — " / "";
++      color: var(--accent);
++      speak: never;
++    }
++
++    .section-heading::after {
++      content: " — ✦" / "";
++      color: var(--accent);
++      speak: never;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -131,6 +171,22 @@
+       transition: background 0.3s;
+     }
+ 
++    .btn::before {
++      content: "✦ " / "";
++      color: var(--accent);
++      speak: never;
++    }
++
++    .hero .btn::before {
++      content: "☕ " / "";
++      speak: never;
++    }
++
++    .btn::after {
++      content: " →" / "";
++      speak: never;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+@@ -176,7 +232,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

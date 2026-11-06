@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,131 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <title>Type Study — Mixed fonts, balanced.</title>
++    <style>
++      :root {
++        color-scheme: light;
++        font-family: Arial, Helvetica, sans-serif;
++        color: #24362f;
++        background: #f5f5ef;
++      }
++
++      * { box-sizing: border-box; }
++      body { margin: 0; line-height: 1.6; }
++      main { width: min(100% - 3rem, 68rem); margin: 0 auto; padding: 2rem 0 4rem; }
++      header { display: flex; align-items: center; gap: .65rem; padding-bottom: 1.5rem; border-bottom: 1px solid #d9dfd5; }
++      .mark { display: grid; place-items: center; width: 2rem; height: 2rem; background: #284e3c; color: white; border-radius: .5rem; font-family: Georgia, serif; }
++      .brand { font-weight: 700; letter-spacing: -.025em; }
++      .edition { margin-left: auto; font-size: .75rem; color: #637266; }
++      .intro { margin: 4rem 0 2.5rem; }
++      .eyebrow { font-size: .7rem; letter-spacing: .15em; text-transform: uppercase; color: #61775a; font-weight: 700; }
++      h1 { margin: .7rem 0 1rem; font-size: clamp(2.5rem, 1.7rem + 3vw, 4.25rem); line-height: 1.1; font-weight: 500; letter-spacing: -.055em; text-wrap: balance; }
++      .intro p { color: #6a756b; max-width: 50ch; margin: 0; }
++      .examples { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; }
++      article { display: flex; flex-direction: column; border: 1px solid #d9dfd5; border-radius: 1rem; overflow: hidden; background: #fffefa; }
++      .card-heading { display: flex; align-items: center; gap: .6rem; padding: 1.3rem 1.5rem; border-bottom: 1px solid #e4e7df; }
++      .number { color: #75816f; font-size: .75rem; }
++      h2 { font-size: .9rem; font-weight: 600; margin: 0; }
++      .badge { margin-left: auto; background: #eaf0e3; color: #526943; border-radius: 1rem; padding: .2rem .6rem; font-size: .65rem; }
++      .specimen { display: flex; align-items: center; flex: 1; min-height: 16rem; padding: 2rem; }
++      #mixed-fonts-container {
++        margin: 0;
++        font-family: Arial, Helvetica, sans-serif;
++        font-size: 1.6rem;
++        line-height: 1.7;
++        font-size-adjust: from-font;
++      }
++      code { font-family: "Courier New", Courier, monospace; }
++      #mixed-fonts-container code {
++        font-size: 1em;
++        background: #edf0e6;
++        padding: .12em .25em;
++        border-radius: .2rem;
++        color: #47643c;
++      }
++      #independent-theme-container {
++        flex: 1;
++        margin: 1rem;
++        padding: 1.6rem;
++        border-radius: .6rem;
++        background: #263e34;
++        color: #f5f4e5;
++        font-family: Georgia, "Times New Roman", serif;
++        font-size: 1.6rem;
++        line-height: 1.65;
++        /* Lock the x-height/font-size ratio independently of the other theme. */
++        font-size-adjust: 0.5;
++      }
++      #independent-theme-container p { margin: 0; }
++      #independent-theme-container .theme-label {
++        display: block;
++        margin-bottom: 1.4rem;
++        font-family: Arial, Helvetica, sans-serif;
++        font-size: .6rem;
++        letter-spacing: .15em;
++        text-transform: uppercase;
++        color: #b4c6aa;
++      }
++      .source { padding: 1rem 1.5rem; background: #f0f1e9; border-top: 1px solid #e0e4d9; font-size: .75rem; overflow-wrap: anywhere; }
++      .source span { color: #718068; }
++      .note { margin: 1rem .2rem 0; color: #73806f; font-size: .75rem; max-width: 80ch; }
++      footer { margin-top: 3rem; border-top: 1px solid #d9dfd5; padding-top: 1rem; font-size: .7rem; color: #7b8577; }
++
++      @supports not (font-size-adjust: from-font) {
++        #mixed-fonts-container { line-height: 1.75; }
++        #mixed-fonts-container code { font-size: 1.02em; }
++      }
++      @supports not (font-size-adjust: 0.5) {
++        #independent-theme-container { font-size: 1.75rem; line-height: 1.6; }
++      }
++      @media (max-width: 44rem) {
++        .examples { grid-template-columns: 1fr; }
++        .intro { margin-top: 2.5rem; }
++        .specimen { min-height: 13rem; }
++      }
++    </style>
++  </head>
++  <body>
++    <main>
++      <header>
++        <span class="mark" aria-hidden="true">T</span>
++        <span class="brand">Type Study</span>
++        <span class="edition">Notes on modern CSS · 001</span>
++      </header>
++      <section class="intro" aria-labelledby="page-title">
++        <span class="eyebrow">Typography / Font metrics</span>
++        <h1>Mixed fonts, balanced.</h1>
++        <p>Different families. The same visual rhythm. A small study in keeping type comfortably in proportion.</p>
++      </section>
++      <section class="examples" aria-label="Font size adjustment examples">
++        <article>
++          <div class="card-heading">
++            <span class="number">01</span>
++            <h2>One shared rhythm</h2>
++            <span class="badge">Automatic</span>
++          </div>
++          <div class="specimen">
++            <p id="mixed-fonts-container">Good typography brings regular text and inline <code>code</code> into harmony. Even a little <code>hello world</code> belongs.</p>
++          </div>
++          <div class="source"><code><span>font-size-adjust:</span> from-font;</code></div>
++        </article>
++        <article>
++          <div class="card-heading">
++            <span class="number">02</span>
++            <h2>A theme of its own</h2>
++            <span class="badge">Explicit · 0.5</span>
++          </div>
++          <div id="independent-theme-container">
++            <span class="theme-label">The independent theme</span>
++            <p>A different character.<br />An equally considered proportion.</p>
++          </div>
++          <div class="source"><code><span>font-size-adjust:</span> 0.5;</code></div>
++        </article>
++      </section>
++      <p class="note">The first sample inherits its primary font’s x-height ratio. The second sets its own: a lowercase x measures half the font size.</p>
++      <footer>Built with native CSS. Designed around the details.</footer>
++    </main>
++  </body>
++</html>

@@ -1,0 +1,211 @@
+diff --git a/components/drink-card.js b/components/drink-card.js
+new file mode 100644
+index 0000000..dcc78c9
+--- /dev/null
++++ b/components/drink-card.js
+@@ -0,0 +1,137 @@
++/**
++ * <drink-card> — a self-contained menu card.
++ *
++ * Usage:
++ *   <drink-card href="/menu/seasonal" action-label="View Details" limited>
++ *     <h3 slot="title">Maple Oat Latte</h3>
++ *     <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++ *   </drink-card>
++ *
++ * Attributes:
++ *   href          URL for the action link. The link is omitted when absent.
++ *   action-label  Text for the action link (default: "View Details").
++ *   limited       Boolean. Shows the "Limited" badge; add/remove at any time.
++ *
++ * Slots:
++ *   title         The drink name (use a heading element suited to the page).
++ *   (default)     The description.
++ *
++ * Theming (optional custom properties, set on any ancestor):
++ *   --drink-card-bg, --drink-card-accent, --drink-card-accent-hover,
++ *   --drink-card-on-accent, --drink-card-badge-bg, --drink-card-badge-fg
++ *
++ * Parts: card, badge, action
++ */
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  :host {
++    --_bg: var(--drink-card-bg, #fff);
++    --_accent: var(--drink-card-accent, #4e342e);
++    --_accent-hover: var(--drink-card-accent-hover, #3e2723);
++    --_on-accent: var(--drink-card-on-accent, #fff);
++    --_badge-bg: var(--drink-card-badge-bg, #ffab40);
++    --_badge-fg: var(--drink-card-badge-fg, #3e2723);
++    display: block;
++  }
++
++  :host([hidden]) { display: none; }
++
++  * { box-sizing: border-box; }
++
++  .card {
++    position: relative;
++    height: 100%;
++    background: var(--_bg);
++    padding: 20px;
++    border-radius: 8px;
++    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    text-align: center;
++  }
++
++  .badge {
++    position: absolute;
++    top: 12px;
++    right: 12px;
++    padding: 2px 10px;
++    border-radius: 999px;
++    background: var(--_badge-bg);
++    color: var(--_badge-fg);
++    font-size: 0.75rem;
++    font-weight: bold;
++    letter-spacing: 0.5px;
++    text-transform: uppercase;
++  }
++
++  :host(:not([limited])) .badge { display: none; }
++
++  /* Spacing/colour live on shadow wrappers so they can't be overridden by
++     page-level resets that target the slotted light-DOM nodes. */
++  .title {
++    margin-bottom: 10px;
++    color: var(--_accent);
++  }
++
++  .action {
++    display: inline-block;
++    background: var(--_accent);
++    color: var(--_on-accent);
++    padding: 10px 20px;
++    text-decoration: none;
++    border-radius: 5px;
++    margin-top: 15px;
++    transition: background 0.3s;
++  }
++
++  .action:hover { background: var(--_accent-hover); }
++
++  .action:not([href]) { display: none; }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <article class="card" part="card">
++    <span class="badge" part="badge">Limited</span>
++    <div class="title"><slot name="title"></slot></div>
++    <div class="description"><slot></slot></div>
++    <a class="action" part="action"></a>
++  </article>
++`;
++
++class DrinkCard extends HTMLElement {
++  static observedAttributes = ['href', 'action-label'];
++
++  #link;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.adoptedStyleSheets = [sheet];
++    root.append(template.content.cloneNode(true));
++    this.#link = root.querySelector('.action');
++    this.#render();
++  }
++
++  attributeChangedCallback() {
++    this.#render();
++  }
++
++  #render() {
++    const href = this.getAttribute('href');
++    if (href) this.#link.setAttribute('href', href);
++    else this.#link.removeAttribute('href');
++    this.#link.textContent = this.getAttribute('action-label') || 'View Details';
++  }
++
++  get limited() {
++    return this.hasAttribute('limited');
++  }
++
++  set limited(value) {
++    this.toggleAttribute('limited', Boolean(value));
++  }
++}
++
++if (!customElements.get('drink-card')) {
++  customElements.define('drink-card', DrinkCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..77ef4aa 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,15 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    /* Pre-upgrade placeholder so cards don't flash unstyled before the
++       <drink-card> definition loads. */
++    drink-card:not(:defined) {
++      display: block;
++      min-height: 180px;
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -153,6 +149,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/components/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +175,18 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <drink-card href="/menu/seasonal" limited>
++          <h3 slot="title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        </drink-card>
++        <drink-card href="/menu/espresso">
++          <h3 slot="title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        </drink-card>
++        <drink-card href="/menu/cold-brew">
++          <h3 slot="title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </drink-card>
+       </div>
+     </section>
+   </main>

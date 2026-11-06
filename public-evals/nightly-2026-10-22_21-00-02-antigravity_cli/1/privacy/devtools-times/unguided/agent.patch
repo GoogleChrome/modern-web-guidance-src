@@ -1,0 +1,253 @@
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..68bb8e0 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -7,6 +7,8 @@ export default function SignInForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
++  const baseUrl = import.meta.env.BASE_URL || '/devtools-times/';
++
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setError(null);
+@@ -30,7 +32,7 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        setPassword('');
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -41,7 +43,10 @@ export default function SignInForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
++      <h2 className="text-2xl font-bold mb-2 text-center text-gray-800">Sign In</h2>
++      <p className="text-xs text-gray-500 text-center mb-6">
++        Sign in with your account credentials. We only collect the minimum data required to authenticate your session.
++      </p>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -63,6 +68,8 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +84,8 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -87,12 +96,24 @@ export default function SignInForm() {
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
++
++        <p className="text-xs text-gray-500 text-center pt-2">
++          Your credentials are used solely for authentication and are never shared for advertising or tracking. Read our{' '}
++          <a href={`${baseUrl}legal/privacy`} className="underline text-gray-700 hover:text-gray-900">
++            Privacy Policy
++          </a>{' '}
++          and{' '}
++          <a href={`${baseUrl}legal/terms`} className="underline text-gray-700 hover:text-gray-900">
++            Terms of Service
++          </a>.
++        </p>
+       </form>
+     </div>
+   );
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..37dd50b 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -3,14 +3,23 @@ import React, { useState } from 'react';
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [consent, setConsent] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
++  const baseUrl = import.meta.env.BASE_URL || '/devtools-times/';
++
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setError(null);
+     setSuccess(null);
++
++    if (!consent) {
++      setError('Please acknowledge the Privacy Policy and Terms of Service to create an account.');
++      return;
++    }
++
+     setLoading(true);
+ 
+     try {
+@@ -32,6 +41,7 @@ export default function SignUpForm() {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+         setPassword('');
++        setConsent(false);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -42,7 +52,10 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
++      <h2 className="text-2xl font-bold mb-2 text-center text-gray-800">Sign Up</h2>
++      <p className="text-xs text-gray-500 text-center mb-6">
++        Following data minimization principles, we only collect a username and password to create your account—no email address, phone number, or personal profile data required.
++      </p>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -64,11 +77,16 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p className="text-xs text-gray-500 mt-1">
++            Choose a pseudonym or handle. Avoid using your real name or email address.
++          </p>
+         </div>
+         
+         <div>
+@@ -78,6 +96,9 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
++            minLength={8}
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -88,6 +109,28 @@ export default function SignUpForm() {
+           </p>
+         </div>
+ 
++        <div className="flex items-start space-x-2 pt-1">
++          <input
++            type="checkbox"
++            id="privacy-consent"
++            name="privacy-consent"
++            checked={consent}
++            onChange={(e) => setConsent(e.target.checked)}
++            required
++            className="mt-1 h-4 w-4 text-gray-900 border-gray-300 rounded focus:ring-blue-500"
++          />
++          <label htmlFor="privacy-consent" className="text-xs text-gray-600 leading-relaxed">
++            I understand that my username and password will be processed solely for account authentication in accordance with the{' '}
++            <a href={`${baseUrl}legal/privacy`} className="underline text-gray-800 hover:text-gray-900">
++              Privacy Policy
++            </a>{' '}
++            and{' '}
++            <a href={`${baseUrl}legal/terms`} className="underline text-gray-800 hover:text-gray-900">
++              Terms of Service
++            </a>.
++          </label>
++        </div>
++
+         <button
+           type="submit"
+           disabled={loading}
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..3860946 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -19,18 +19,18 @@ const baseUrl = import.meta.env.BASE_URL;
+   <head>
+     <meta charset="UTF8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script> -->
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..001a570 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -2,12 +2,19 @@
+ import { defineMiddleware } from 'astro:middleware';
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
+-    }
+-  }
+-  return next();
++  const response = await next();
++
++  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++  response.headers.set('X-Content-Type-Options', 'nosniff');
++  response.headers.set('X-Frame-Options', 'DENY');
++  response.headers.set(
++    'Permissions-Policy',
++    'camera=(), microphone=(), geolocation=(), browsing-topics=(), interest-cohort=()'
++  );
++  response.headers.set(
++    'Strict-Transport-Security',
++    'max-age=63072000; includeSubDomains; preload'
++  );
++
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..cebf6e9 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -12,6 +12,8 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+     
+     <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <p><strong>Cookies & Sessions</strong></p>
++    <p>In alignment with privacy by design and data minimization principles, we do not set tracking cookies or initialize server-side sessions merely when you browse our website. A functional session cookie is only created when you actively save an article to your reading list.</p>
++    <p><strong>Account Registration & Authentication</strong></p>
++    <p>When you sign up or sign in, we only collect a username and password. We do not require an email address, real name, or other personal identifiers, and we do not load third-party click-tracking scripts on our pages.</p>
+ </LegalLayout>

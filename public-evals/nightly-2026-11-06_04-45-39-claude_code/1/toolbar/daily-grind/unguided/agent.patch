@@ -1,0 +1,347 @@
+diff --git a/index.html b/index.html
+index 66c9173..c77f3c6 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,168 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Favorites toolbar */
++    .favorites-header {
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .toolbar {
++      display: inline-flex;
++      align-items: center;
++      gap: 4px;
++      padding: 4px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
++    }
++
++    .toolbar-group {
++      display: inline-flex;
++      gap: 4px;
++    }
++
++    .toolbar-separator {
++      width: 1px;
++      align-self: stretch;
++      margin: 4px 2px;
++      background: var(--secondary);
++    }
++
++    .icon-btn {
++      position: relative;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 40px;
++      height: 40px;
++      border: none;
++      border-radius: 6px;
++      background: transparent;
++      color: var(--primary);
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .icon-btn svg {
++      width: 20px;
++      height: 20px;
++      pointer-events: none;
++    }
++
++    .icon-btn:hover {
++      background: #efebe9;
++    }
++
++    .icon-btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .icon-btn[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .icon-btn .icon-alt {
++      display: none;
++    }
++
++    .icon-btn.is-copied .icon-main {
++      display: none;
++    }
++
++    .icon-btn.is-copied .icon-alt {
++      display: block;
++    }
++
++    /* Tooltip for icon-only buttons */
++    .icon-btn::after {
++      content: attr(data-tooltip);
++      position: absolute;
++      bottom: calc(100% + 8px);
++      left: 50%;
++      transform: translateX(-50%);
++      padding: 4px 8px;
++      border-radius: 4px;
++      background: var(--text);
++      color: white;
++      font-size: 0.75rem;
++      white-space: nowrap;
++      opacity: 0;
++      pointer-events: none;
++      transition: opacity 0.15s;
++      z-index: 10;
++    }
++
++    .icon-btn:hover::after,
++    .icon-btn:focus-visible::after {
++      opacity: 1;
++    }
++
++    .toolbar-status {
++      font-size: 0.85rem;
++      color: var(--primary);
++      min-height: 1.2em;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* List view */
++    .grid.list-view {
++      grid-template-columns: 1fr;
++    }
++
++    .grid.list-view .card {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      grid-template-areas:
++        "title action"
++        "desc action";
++      align-items: center;
++      column-gap: 20px;
++      text-align: left;
++    }
++
++    .grid.list-view .card h3 {
++      grid-area: title;
++      margin-bottom: 4px;
++    }
++
++    .grid.list-view .card p {
++      grid-area: desc;
++    }
++
++    .grid.list-view .card .btn {
++      grid-area: action;
++      margin-top: 0;
++    }
++
++    /* Hidden details */
++    .grid.details-hidden .card p {
++      display: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .icon-btn,
++      .icon-btn::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -177,7 +339,59 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="favorites-header">
++        <p id="favorites-status" class="toolbar-status" role="status" aria-live="polite"></p>
++        <div id="favorites-actions" class="toolbar" role="toolbar" aria-label="Seasonal favorites view options"
++          aria-controls="favorites-list">
++          <div class="toolbar-group" role="group" aria-label="Layout">
++            <button type="button" class="icon-btn" data-action="grid" aria-pressed="true" aria-label="Grid view"
++              data-tooltip="Grid view" tabindex="0">
++              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
++                stroke-linejoin="round" aria-hidden="true" focusable="false">
++                <rect x="3" y="3" width="7" height="7" rx="1" />
++                <rect x="14" y="3" width="7" height="7" rx="1" />
++                <rect x="3" y="14" width="7" height="7" rx="1" />
++                <rect x="14" y="14" width="7" height="7" rx="1" />
++              </svg>
++            </button>
++            <button type="button" class="icon-btn" data-action="list" aria-pressed="false" aria-label="List view"
++              data-tooltip="List view" tabindex="-1">
++              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
++                stroke-linejoin="round" aria-hidden="true" focusable="false">
++                <line x1="8" y1="6" x2="21" y2="6" />
++                <line x1="8" y1="12" x2="21" y2="12" />
++                <line x1="8" y1="18" x2="21" y2="18" />
++                <circle cx="4" cy="6" r="1" />
++                <circle cx="4" cy="12" r="1" />
++                <circle cx="4" cy="18" r="1" />
++              </svg>
++            </button>
++          </div>
++          <span class="toolbar-separator" aria-hidden="true"></span>
++          <button type="button" class="icon-btn" data-action="details" aria-pressed="true"
++            aria-label="Show drink details" data-tooltip="Show drink details" tabindex="-1">
++            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
++              stroke-linejoin="round" aria-hidden="true" focusable="false">
++              <circle cx="12" cy="12" r="9" />
++              <line x1="12" y1="11" x2="12" y2="16" />
++              <circle cx="12" cy="8" r="0.5" fill="currentColor" />
++            </svg>
++          </button>
++          <button type="button" class="icon-btn" data-action="copy" aria-label="Copy featured drinks list"
++            data-tooltip="Copy featured drinks" tabindex="-1">
++            <svg class="icon-main" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
++              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
++              <rect x="9" y="9" width="12" height="12" rx="2" />
++              <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
++            </svg>
++            <svg class="icon-alt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
++              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
++              <polyline points="20 6 9 17 4 12" />
++            </svg>
++          </button>
++        </div>
++      </div>
++      <div class="grid" id="favorites-list">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -207,6 +421,112 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var toolbar = document.getElementById('favorites-actions');
++      var list = document.getElementById('favorites-list');
++      var status = document.getElementById('favorites-status');
++      if (!toolbar || !list) return;
++
++      var buttons = Array.prototype.slice.call(toolbar.querySelectorAll('.icon-btn'));
++      var statusTimer;
++
++      function announce(msg) {
++        status.textContent = msg;
++        clearTimeout(statusTimer);
++        statusTimer = setTimeout(function () { status.textContent = ''; }, 2500);
++      }
++
++      function setLayout(layout) {
++        var isList = layout === 'list';
++        list.classList.toggle('list-view', isList);
++        toolbar.querySelector('[data-action="grid"]').setAttribute('aria-pressed', String(!isList));
++        toolbar.querySelector('[data-action="list"]').setAttribute('aria-pressed', String(isList));
++        announce(isList ? 'Showing list view' : 'Showing grid view');
++      }
++
++      function toggleDetails(btn) {
++        var show = btn.getAttribute('aria-pressed') !== 'true';
++        btn.setAttribute('aria-pressed', String(show));
++        list.classList.toggle('details-hidden', !show);
++        announce(show ? 'Drink details shown' : 'Drink details hidden');
++      }
++
++      function getDrinksText() {
++        return Array.prototype.map.call(list.querySelectorAll('.card'), function (card) {
++          var name = card.querySelector('h3').textContent.trim();
++          var desc = card.querySelector('p');
++          return '• ' + name + (desc ? ' — ' + desc.textContent.trim() : '');
++        }).join('\n');
++      }
++
++      function fallbackCopy(text) {
++        var ta = document.createElement('textarea');
++        ta.value = text;
++        ta.setAttribute('readonly', '');
++        ta.style.position = 'fixed';
++        ta.style.opacity = '0';
++        document.body.appendChild(ta);
++        ta.select();
++        var ok = false;
++        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
++        document.body.removeChild(ta);
++        return ok ? Promise.resolve() : Promise.reject(new Error('copy failed'));
++      }
++
++      function copyDrinks(btn) {
++        var text = 'Seasonal Favorites at The Daily Grind\n' + getDrinksText();
++        var p = (navigator.clipboard && window.isSecureContext)
++          ? navigator.clipboard.writeText(text).catch(function () { return fallbackCopy(text); })
++          : fallbackCopy(text);
++        p.then(function () {
++          btn.classList.add('is-copied');
++          btn.setAttribute('data-tooltip', 'Copied!');
++          announce('Featured drinks copied to clipboard');
++          setTimeout(function () {
++            btn.classList.remove('is-copied');
++            btn.setAttribute('data-tooltip', 'Copy featured drinks');
++          }, 2000);
++        }, function () {
++          announce('Unable to copy. Please try again.');
++        });
++      }
++
++      toolbar.addEventListener('click', function (e) {
++        var btn = e.target.closest('.icon-btn');
++        if (!btn) return;
++        setActive(btn);
++        switch (btn.dataset.action) {
++          case 'grid': setLayout('grid'); break;
++          case 'list': setLayout('list'); break;
++          case 'details': toggleDetails(btn); break;
++          case 'copy': copyDrinks(btn); break;
++        }
++      });
++
++      // Roving tabindex + arrow-key navigation (WAI-ARIA toolbar pattern)
++      function setActive(btn) {
++        buttons.forEach(function (b) { b.tabIndex = b === btn ? 0 : -1; });
++      }
++
++      toolbar.addEventListener('keydown', function (e) {
++        var i = buttons.indexOf(document.activeElement);
++        if (i === -1) return;
++        var next = null;
++        switch (e.key) {
++          case 'ArrowRight': case 'ArrowDown': next = buttons[(i + 1) % buttons.length]; break;
++          case 'ArrowLeft': case 'ArrowUp': next = buttons[(i - 1 + buttons.length) % buttons.length]; break;
++          case 'Home': next = buttons[0]; break;
++          case 'End': next = buttons[buttons.length - 1]; break;
++          default: return;
++        }
++        e.preventDefault();
++        setActive(next);
++        next.focus();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

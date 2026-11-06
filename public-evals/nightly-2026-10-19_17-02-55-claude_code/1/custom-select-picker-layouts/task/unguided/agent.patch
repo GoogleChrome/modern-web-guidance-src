@@ -1,0 +1,150 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,128 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast picker */
++    .roast-picker {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 6px;
++      margin-top: 15px;
++    }
++
++    .roast-picker label {
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++    }
++
++    .roast-picker select {
++      min-width: 220px;
++      padding: 10px 14px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .roast-picker .roast-swatch {
++      display: none;
++    }
++
++    /* Customizable select: the options popup becomes a 3-column grid.
++       Browsers without support fall back to the native vertical list. */
++    @supports (appearance: base-select) {
++
++      .roast-picker select,
++      .roast-picker select::picker(select) {
++        appearance: base-select;
++      }
++
++      .roast-picker select {
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        gap: 10px;
++        cursor: pointer;
++      }
++
++      .roast-picker select::picker(select) {
++        margin-top: 6px;
++        padding: 12px;
++        border: 1px solid var(--secondary);
++        border-radius: 10px;
++        background: white;
++        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      }
++
++      /* Only grid when open so the closed popover stays hidden */
++      .roast-picker select:open::picker(select) {
++        display: grid;
++        grid-template-columns: repeat(3, 1fr);
++        gap: 10px;
++      }
++
++      .roast-picker option {
++        display: flex;
++        flex-direction: column;
++        align-items: center;
++        gap: 6px;
++        width: 100px;
++        padding: 12px 8px;
++        border: 2px solid transparent;
++        border-radius: 8px;
++        background: var(--light);
++        text-align: center;
++        cursor: pointer;
++        transition: border-color 0.2s, transform 0.2s;
++      }
++
++      .roast-picker option::checkmark {
++        display: none;
++      }
++
++      .roast-picker option:hover,
++      .roast-picker option:focus-visible {
++        border-color: var(--accent);
++        transform: translateY(-2px);
++      }
++
++      .roast-picker option:checked {
++        border-color: var(--primary);
++        font-weight: bold;
++      }
++
++      .roast-picker .roast-swatch {
++        display: block;
++        width: 44px;
++        height: 44px;
++        border-radius: 50%;
++        box-shadow: inset -6px -6px 10px rgba(0, 0, 0, 0.3);
++        background: var(--swatch);
++      }
++
++      .roast-picker selectedcontent .roast-swatch {
++        width: 18px;
++        height: 18px;
++        display: inline-block;
++        vertical-align: middle;
++        margin-right: 8px;
++        box-shadow: inset -3px -3px 5px rgba(0, 0, 0, 0.3);
++      }
++
++      .roast-picker selectedcontent .roast-desc {
++        display: none;
++      }
++    }
++
++    .roast-desc {
++      font-size: 0.7rem;
++      color: #795548;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +290,17 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker">
++      <label for="roast">Choose your roast</label>
++      <select id="roast" name="roast">
++        <button type="button"><selectedcontent></selectedcontent></button>
++        <option value="light" style="--swatch: #c8a27a"><span class="roast-swatch"></span>Light<small class="roast-desc">Bright &amp; fruity</small></option>
++        <option value="medium" style="--swatch: #8d5a36" selected><span class="roast-swatch"></span>Medium<small class="roast-desc">Smooth &amp; balanced</small></option>
++        <option value="dark" style="--swatch: #3e2315"><span class="roast-swatch"></span>Dark<small class="roast-desc">Bold &amp; smoky</small></option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

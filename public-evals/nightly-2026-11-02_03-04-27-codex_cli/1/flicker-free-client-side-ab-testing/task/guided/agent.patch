@@ -1,0 +1,26 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,21 @@
++# Forma landing page
++
++A responsive, buildless landing page. `index.html`, `styles.css`, and `main.js` can be served as static files. No dependencies or build step are required.
++
++## Experiment integration
++
++The exact requested SDK URL, `https://cdn.example.com/experiment-sdk.js`, is loaded in the head with `async` and `blocking="render"`. This example-domain URL must be replaced with a working vendor endpoint for actual experiment assignment.
++
++The native rendering barrier also waits for document parsing and SDK execution via a render-blocking module. Browsers without the `blocking` API use a feature-detected `visibility: hidden` fallback, so hidden links cannot be clicked or focused. No timer reveals the original page while an experiment could still arrive. A definitive network error selects the control.
++
++The integration assumes the SDK applies its variant synchronously during execution or in its DOMContentLoaded handler. If it performs asynchronous assignment, its adapter must synchronously expose `window.experimentApplied` as a Promise that resolves only after all variant DOM changes are complete. The page waits for that Promise before revealing content. A rejected or never-resolving Promise intentionally keeps the content hidden: coordinate an explicit cancellation with the SDK before revealing a control to prevent late variant flashes. The actual vendor API is unspecified and cannot be inferred from the placeholder URL.
++
++The hero headline and CTA have stable IDs and `data-experiment` attributes for targeting. Do not add timers that reveal control content while the SDK is still running.
++
++## Concept interactions
++
++Navigation and CTA links lead to page sections. The email form validates input and displays an explicit demo confirmation. It does not store or send email addresses. Connect a mailing-list service before using it for real signups.
++
++## Verification
++
++No browser verification, dev/preview servers, or server entrypoint imports were used. No build is needed for this static page.

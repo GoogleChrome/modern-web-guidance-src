@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+index 66c9173..1218092 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,32 @@
+       color: var(--primary);
+     }
+ 
++    /* Decorative CSS-generated icons and visual flourishes */
++    section h2::before,
++    section h2::after {
++      content: "✦" / "";
++      color: var(--accent);
++      margin: 0 10px;
++      font-size: 0.85em;
++      vertical-align: middle;
++    }
++
++    .card h3::before {
++      content: "☕" / "";
++      margin-right: 8px;
++      color: var(--accent);
++      display: inline-block;
++    }
++
++    .card h3::after {
++      content: "✦" / "";
++      margin-left: 8px;
++      color: var(--accent);
++      font-size: 0.75em;
++      vertical-align: middle;
++      display: inline-block;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -131,10 +157,29 @@
+       transition: background 0.3s;
+     }
+ 
++    .btn::before {
++      content: "✦" / "";
++      margin-right: 8px;
++      color: var(--accent);
++      font-size: 0.85em;
++      display: inline-block;
++    }
++
++    .btn::after {
++      content: "→" / "";
++      margin-left: 8px;
++      display: inline-block;
++      transition: transform 0.3s;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:hover::after {
++      transform: translateX(3px);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;

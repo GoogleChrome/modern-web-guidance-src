@@ -1,0 +1,297 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..425ea6b
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.com/": {
++    "allow_migration": true
++  }
++}
+diff --git a/icon-192.png b/icon-192.png
+new file mode 100644
+index 0000000..5cbf04e
+Binary files /dev/null and b/icon-192.png differ
+diff --git a/icon-512.png b/icon-512.png
+new file mode 100644
+index 0000000..ce533a8
+Binary files /dev/null and b/icon-512.png differ
+diff --git a/index.html b/index.html
+index 66c9173..60ef68d 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,11 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#4e342e">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.json">
++  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
++  <link rel="apple-touch-icon" href="/icon-192.png">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -207,6 +211,56 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Register service worker for PWA installation and origin migration support
++    if ('serviceWorker' in navigator) {
++      window.addEventListener('load', () => {
++        navigator.serviceWorker.register('/sw.js').catch(() => {});
++      });
++    }
++
++    // Preserve and transfer client-side user configuration across origins
++    (function migrateUserConfiguration() {
++      const CONFIG_KEY = 'daily_grind_user_config';
++      const ALLOWED_ORIGINS = [
++        'https://old.dailygrind.com',
++        'https://app.dailygrind.com'
++      ];
++
++      // 1. Import configuration passed via URL migration payload if present
++      const params = new URLSearchParams(window.location.search);
++      const encodedConfig = params.get('migrated_config');
++      if (encodedConfig) {
++        try {
++          const parsed = JSON.parse(atob(encodedConfig));
++          if (parsed && typeof parsed === 'object') {
++            const existing = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
++            localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...existing, ...parsed }));
++          }
++          params.delete('migrated_config');
++          const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
++          window.history.replaceState({}, document.title, cleanUrl);
++        } catch (err) {
++          console.warn('Failed to import migrated user configuration:', err);
++        }
++      }
++
++      // 2. Listen for cross-origin configuration sync messages
++      window.addEventListener('message', (event) => {
++        if (!ALLOWED_ORIGINS.includes(event.origin) && event.origin !== window.location.origin) {
++          return;
++        }
++        if (event.data && event.data.type === 'REQUEST_USER_CONFIG') {
++          const config = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
++          event.source.postMessage({ type: 'USER_CONFIG_PAYLOAD', config }, event.origin);
++        } else if (event.data && event.data.type === 'USER_CONFIG_PAYLOAD' && event.data.config) {
++          const existing = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
++          localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...existing, ...event.data.config }));
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..e30bfd0
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,77 @@
++{
++  "name": "The Daily Grind | Artisanal Coffee",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "id": "/",
++  "start_url": "/index.html",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "/icon-192.png",
++      "sizes": "192x192",
++      "type": "image/png",
++      "purpose": "any maskable"
++    },
++    {
++      "src": "/icon-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "any maskable"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Online",
++      "short_name": "Order",
++      "description": "Order your favorite artisanal coffee online",
++      "url": "/order-online",
++      "icons": [
++        {
++          "src": "/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "View Menu",
++      "short_name": "Menu",
++      "description": "Browse seasonal favorites and espresso drinks",
++      "url": "/menu",
++      "icons": [
++        {
++          "src": "/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Rewards",
++      "short_name": "Rewards",
++      "description": "Check your Daily Grind rewards",
++      "url": "/rewards",
++      "icons": [
++        {
++          "src": "/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://old.dailygrind.com/",
++      "install_url": "https://old.dailygrind.com/index.html",
++      "behavior": "suggest"
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.com/",
++    "install_url": "https://app.dailygrind.com/index.html"
++  }
++}
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..e30bfd0
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,77 @@
++{
++  "name": "The Daily Grind | Artisanal Coffee",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "id": "/",
++  "start_url": "/index.html",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "/icon-192.png",
++      "sizes": "192x192",
++      "type": "image/png",
++      "purpose": "any maskable"
++    },
++    {
++      "src": "/icon-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "any maskable"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Online",
++      "short_name": "Order",
++      "description": "Order your favorite artisanal coffee online",
++      "url": "/order-online",
++      "icons": [
++        {
++          "src": "/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "View Menu",
++      "short_name": "Menu",
++      "description": "Browse seasonal favorites and espresso drinks",
++      "url": "/menu",
++      "icons": [
++        {
++          "src": "/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Rewards",
++      "short_name": "Rewards",
++      "description": "Check your Daily Grind rewards",
++      "url": "/rewards",
++      "icons": [
++        {
++          "src": "/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://old.dailygrind.com/",
++      "install_url": "https://old.dailygrind.com/index.html",
++      "behavior": "suggest"
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.com/",
++    "install_url": "https://app.dailygrind.com/index.html"
++  }
++}
+diff --git a/sw.js b/sw.js
+new file mode 100644
+index 0000000..ff13ebf
+--- /dev/null
++++ b/sw.js
+@@ -0,0 +1,33 @@
++const CACHE_NAME = 'daily-grind-v1';
++const ASSETS = [
++  '/',
++  '/index.html',
++  '/manifest.json',
++  '/icon-192.png',
++  '/icon-512.png'
++];
++
++self.addEventListener('install', (event) => {
++  event.waitUntil(
++    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
++  );
++  self.skipWaiting();
++});
++
++self.addEventListener('activate', (event) => {
++  event.waitUntil(
++    caches.keys().then((keys) =>
++      Promise.all(
++        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
++      )
++    )
++  );
++  self.clients.claim();
++});
++
++self.addEventListener('fetch', (event) => {
++  if (event.request.method !== 'GET') return;
++  event.respondWith(
++    caches.match(event.request).then((cached) => cached || fetch(event.request))
++  );
++});

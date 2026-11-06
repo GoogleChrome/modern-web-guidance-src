@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,100 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Address */
++    .shipping-section {
++      margin-top: 60px;
++      padding: 32px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
++    }
++
++    .shipping-section > p {
++      margin: 6px 0 24px;
++    }
++
++    .shipping-fields {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 18px 20px;
++    }
++
++    .shipping-field {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .shipping-field-wide {
++      grid-column: 1 / -1;
++    }
++
++    .shipping-field label {
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .shipping-field label span {
++      font-weight: 400;
++    }
++
++    .shipping-field input {
++      width: 100%;
++      min-height: 46px;
++      padding: 10px 12px;
++      border: 1px solid #bca9a2;
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++      font: inherit;
++    }
++
++    .shipping-field input:focus-visible,
++    .shipping-section button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .shipping-section button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 24px;
++    }
++
++    .shipping-note {
++      margin-top: 12px;
++      font-size: 0.85rem;
++    }
++
++    .shipping-preview:not(:empty) {
++      margin-top: 24px;
++      padding: 16px;
++      background: #f5f0ed;
++      border-left: 3px solid var(--primary);
++      border-radius: 4px;
++      white-space: pre-line;
++      overflow-wrap: anywhere;
++    }
++
++    @media (max-width: 600px) {
++      .shipping-section {
++        padding: 24px 20px;
++      }
++
++      .shipping-fields {
++        grid-template-columns: 1fr;
++      }
++
++      .shipping-section button {
++        width: 100%;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +286,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping-section" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Shipping Address</h2>
++      <p>A little closer to your next great cup. Enter your delivery details below.</p>
++      <form id="shipping-form">
++        <div class="shipping-fields">
++          <div class="shipping-field">
++            <label for="shipping-first-name">First name</label>
++            <input id="shipping-first-name" name="firstName" autocomplete="shipping given-name" required maxlength="100">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-last-name">Last name</label>
++            <input id="shipping-last-name" name="lastName" autocomplete="shipping family-name" required maxlength="100">
++          </div>
++          <div class="shipping-field shipping-field-wide">
++            <label for="shipping-address">Street address</label>
++            <input id="shipping-address" name="address" autocomplete="shipping address-line1" required maxlength="200">
++          </div>
++          <div class="shipping-field shipping-field-wide">
++            <label for="shipping-apartment">Apartment, suite, etc. <span>(optional)</span></label>
++            <input id="shipping-apartment" name="apartment" autocomplete="shipping address-line2" maxlength="200">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-city">City</label>
++            <input id="shipping-city" name="city" autocomplete="shipping address-level2" required maxlength="100">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-state">State / province / region <span>(optional)</span></label>
++            <input id="shipping-state" name="region" autocomplete="shipping address-level1" maxlength="100">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-postal-code">ZIP / postal code</label>
++            <input id="shipping-postal-code" name="postalCode" autocomplete="shipping postal-code" required maxlength="20">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-country">Country</label>
++            <input id="shipping-country" name="country" autocomplete="shipping country-name" required maxlength="100">
++          </div>
++        </div>
++        <button class="btn" type="submit">Review shipping address</button>
++        <p class="shipping-note">All fields are required unless marked optional. Your address is only previewed here; it is not saved or sent.</p>
++      </form>
++      <div id="shipping-preview" class="shipping-preview" role="status" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +342,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const shippingForm = document.getElementById('shipping-form');
++    const shippingPreview = document.getElementById('shipping-preview');
++
++    shippingForm.addEventListener('input', () => {
++      shippingPreview.textContent = '';
++    });
++
++    shippingForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      for (const input of shippingForm.querySelectorAll('input')) {
++        input.value = input.value.trim();
++      }
++      if (!shippingForm.reportValidity()) return;
++
++      const address = new FormData(shippingForm);
++      shippingPreview.textContent = [
++        'Your shipping address preview',
++        `${address.get('firstName')} ${address.get('lastName')}`,
++        address.get('address'),
++        address.get('apartment'),
++        [address.get('city'), address.get('region'), address.get('postalCode')].filter(Boolean).join(', '),
++        address.get('country')
++      ].filter(Boolean).join('\n');
++    });
++  </script>
++
+ </body>
+ 
+ </html>

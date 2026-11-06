@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,8 +19,57 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Scrollbars: dark thumb on a light track for strong contrast */
++    :root {
++      --scrollbar-thumb: #4e342e;
++      --scrollbar-track: #d7ccc8;
++    }
++
++    html {
++      scrollbar-width: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    /* Safari and other browsers without scrollbar-color support */
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 16px;
++        height: 16px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++        border-left: 1px solid var(--scrollbar-thumb);
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border: 3px solid var(--scrollbar-track);
++        border-radius: 8px;
++      }
++
++      ::-webkit-scrollbar-thumb:hover {
++        background: #000;
++      }
++    }
++
++    /* Maximum contrast when the user asks for it */
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-thumb: #000;
++        --scrollbar-track: #fff;
++      }
++    }
++
++    /* In forced-colors mode the OS draws scrollbars; keep system colors */
++    @media (forced-colors: active) {
++      html {
++        scrollbar-color: auto;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);

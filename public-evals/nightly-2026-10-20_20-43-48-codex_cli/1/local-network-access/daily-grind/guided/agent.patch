@@ -1,0 +1,226 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..b3dabdb
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,23 @@
++# The Daily Grind
++
++Run `pnpm start` to serve the site (default port: 11222).
++
++## Local service connections
++
++Serve the deployed page over HTTPS. Localhost is a secure-context exception for
++development. In **Connect a local service**, choose a local network device or a
++loopback service, enter its full HTTP/HTTPS resource URL, and select **Connect**.
++The page sends a GET request only after this action and displays the response as
++plain text. No device discovery or automatic connection runs on page load.
++
++The browser controls access through its network permissions. If access is blocked,
++allow Local network or Loopback network access in the browser's site settings.
++Browsers without the permission-query API still attempt the connection on click;
++their normal network and mixed-content restrictions apply.
++
++The device or companion service must be running and return standard CORS headers
++allowing the page's origin, for example `Access-Control-Allow-Origin: https://your-site.example`.
++This app does not bypass CORS or browser permissions. Production hosting must not
++disable `local-network` or `loopback-network` in its Permissions-Policy. If the
++page is embedded across origins, the parent must delegate both permissions via
++the iframe's `allow` attribute and its Permissions-Policy configuration.
+diff --git a/index.html b/index.html
+index 66c9173..df34f82 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,43 @@
+       background: #3e2723;
+     }
+ 
++    .connection {
++      margin-top: 40px;
++      text-align: left;
++    }
++
++    .connection form {
++      display: grid;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .connection input,
++    .connection select,
++    .connection button {
++      width: 100%;
++      padding: 10px;
++      font: inherit;
++    }
++
++    .connection button {
++      border: 0;
++      cursor: pointer;
++    }
++
++    .connection button:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    .connection pre {
++      white-space: pre-wrap;
++      overflow-wrap: anywhere;
++      max-height: 240px;
++      overflow: auto;
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +232,24 @@
+         </div>
+       </div>
+     </section>
++    <section class="card connection" aria-labelledby="connection-heading">
++      <h2 id="connection-heading">Connect a local service</h2>
++      <p>Access a device on your network or a companion app on this computer. Your browser may ask for permission when you connect.</p>
++      <form id="connection-form">
++        <label for="connection-space">Service location</label>
++        <select id="connection-space">
++          <option value="local">Local network device</option>
++          <option value="loopback">This computer (loopback)</option>
++        </select>
++        <label for="connection-url">Resource URL</label>
++        <input id="connection-url" type="url" placeholder="http://device.local:8080/status" required aria-describedby="connection-help">
++        <p id="connection-help">Enter the full HTTP or HTTPS address provided by your device or companion app.</p>
++        <button class="btn" id="connection-submit" type="submit">Connect</button>
++      </form>
++      <p id="connection-status" role="status" aria-live="polite"></p>
++      <pre id="connection-result" hidden aria-label="Service response"></pre>
++      <noscript>Enable JavaScript to connect to a local service.</noscript>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +262,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="local-network.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/local-network.js b/local-network.js
+new file mode 100644
+index 0000000..25f4ad8
+--- /dev/null
++++ b/local-network.js
+@@ -0,0 +1,110 @@
++const form = document.querySelector('#connection-form');
++const space = document.querySelector('#connection-space');
++const endpoint = document.querySelector('#connection-url');
++const button = document.querySelector('#connection-submit');
++const status = document.querySelector('#connection-status');
++const result = document.querySelector('#connection-result');
++const permissions = new Map();
++const blockedMessage = 'Access is blocked. Open browser site settings, allow Local network or Loopback network access for this site, then connect again.';
++
++function showPermission(state) {
++  status.textContent = state === 'denied' ? blockedMessage
++    : state === 'granted' ? 'Permission granted. Enter a resource URL and connect.'
++      : 'Ready. Choose a service and connect to request access.';
++}
++
++async function checkPermission(targetSpace) {
++  if (!navigator.permissions?.query) return 'prompt';
++  const name = `${targetSpace}-network`;
++  try {
++    if (!permissions.has(name)) {
++      const permission = await navigator.permissions.query({ name });
++      permissions.set(name, permission);
++      permission.addEventListener('change', () => {
++        if (space.value === targetSpace) showPermission(permission.state);
++      });
++    }
++    return permissions.get(name).state;
++  } catch {
++    // Unsupported permission names still allow a user-initiated attempt.
++    return 'prompt';
++  }
++}
++
++async function refreshPermission() {
++  if (!window.isSecureContext) {
++    status.textContent = 'Open this page over HTTPS to connect to local services (localhost is supported for development).';
++    button.disabled = true;
++    return;
++  }
++  const targetSpace = space.value;
++  const state = await checkPermission(targetSpace);
++  if (space.value === targetSpace) showPermission(state);
++}
++
++space.addEventListener('change', () => {
++  endpoint.placeholder = space.value === 'loopback'
++    ? 'http://localhost:8080/status' : 'http://device.local:8080/status';
++  result.hidden = true;
++  void refreshPermission();
++});
++
++form.addEventListener('submit', async (event) => {
++  event.preventDefault();
++  if (!window.isSecureContext || button.disabled) return;
++
++  let url;
++  try {
++    url = new URL(endpoint.value);
++    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
++      throw new Error('Invalid URL');
++    }
++  } catch {
++    status.textContent = 'Enter a valid HTTP or HTTPS URL without a username or password.';
++    return;
++  }
++
++  const targetSpace = space.value;
++  button.disabled = true;
++  space.disabled = true;
++  result.hidden = true;
++  result.textContent = '';
++
++  try {
++    if (await checkPermission(targetSpace) === 'denied') {
++      status.textContent = blockedMessage;
++      return;
++    }
++    status.textContent = 'Connecting… Allow access if your browser asks.';
++    const response = await fetch(url.href, {
++      method: 'GET',
++      mode: 'cors',
++      credentials: 'omit',
++      redirect: 'error',
++      targetAddressSpace: targetSpace,
++      signal: AbortSignal.timeout(30000),
++    });
++    if (!response.ok) {
++      status.textContent = `The service responded with HTTP ${response.status}. Check the resource URL and try again.`;
++      return;
++    }
++    const text = await response.text();
++    result.textContent = text || '(Empty response)';
++    result.hidden = false;
++    status.textContent = 'Connected. Response received from the service.';
++  } catch (error) {
++    if (await checkPermission(targetSpace) === 'denied') {
++      status.textContent = blockedMessage;
++    } else if (error.name === 'TimeoutError') {
++      status.textContent = 'Connection timed out. Check the service address and that the device or companion app is running, then try again.';
++    } else {
++      status.textContent = 'Could not connect. Check that the service is running, the device is on your network, and browser site settings allow access. The service must allow this site through CORS. Your browser may require HTTPS for the service.';
++    }
++  } finally {
++    button.disabled = false;
++    space.disabled = false;
++  }
++});
++
++// Check permission only; network requests wait for an explicit form submission.
++void refreshPermission();

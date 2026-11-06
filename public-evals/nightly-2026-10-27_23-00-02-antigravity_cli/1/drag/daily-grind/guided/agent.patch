@@ -1,0 +1,655 @@
+diff --git a/index.html b/index.html
+index 66c9173..61e56cb 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,307 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating Quick-Order Panel */
++    .quick-order-panel {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      width: 340px;
++      max-width: calc(100vw - 32px);
++      background: #ffffff;
++      border-radius: 12px;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.22), 0 2px 6px rgba(62, 39, 35, 0.12);
++      border: 1px solid var(--secondary);
++      z-index: 1100;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .quick-order-header {
++      background: var(--primary);
++      color: #ffffff;
++      padding: 12px 16px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++      border-bottom: 2px solid var(--accent);
++    }
++
++    .quick-order-header.drag-enabled {
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .quick-order-header.drag-enabled.dragging {
++      cursor: grabbing;
++    }
++
++    .quick-order-header:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    .header-title-group {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: 600;
++      font-size: 0.95rem;
++      letter-spacing: 0.3px;
++    }
++
++    .drag-grip {
++      display: none;
++      opacity: 0.75;
++      font-size: 1rem;
++      line-height: 1;
++    }
++
++    .drag-enabled .drag-grip {
++      display: inline-block;
++    }
++
++    .header-controls {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .cart-badge {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      font-size: 0.75rem;
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
++    .minimize-btn {
++      background: rgba(255, 255, 255, 0.15);
++      color: #ffffff;
++      border: none;
++      width: 26px;
++      height: 26px;
++      border-radius: 6px;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1rem;
++      line-height: 1;
++      transition: background 0.2s;
++    }
++
++    .minimize-btn:hover {
++      background: rgba(255, 255, 255, 0.28);
++    }
++
++    .minimize-btn:focus-visible {
++      outline: 2px solid var(--accent);
++    }
++
++    .quick-order-body {
++      padding: 14px 16px 16px;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      max-height: 75vh;
++      overflow-y: auto;
++    }
++
++    .quick-order-panel.minimized .quick-order-body {
++      display: none;
++    }
++
++    .cart-items {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .cart-item {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++      padding-bottom: 8px;
++      border-bottom: 1px solid #efebe9;
++    }
++
++    .cart-item-info {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .cart-item-name {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .cart-item-price {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .qty-controls {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 2px 4px;
++    }
++
++    .qty-btn {
++      background: transparent;
++      border: none;
++      color: var(--primary);
++      width: 24px;
++      height: 24px;
++      border-radius: 4px;
++      font-weight: bold;
++      font-size: 0.95rem;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      transition: background 0.15s;
++    }
++
++    .qty-btn:hover {
++      background: var(--secondary);
++    }
++
++    .qty-value {
++      min-width: 20px;
++      text-align: center;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .quick-options {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 8px;
++      background: #fbe9e7;
++      background: #f5f0ee;
++      padding: 10px;
++      border-radius: 8px;
++    }
++
++    .option-group {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .option-group label {
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .option-group select {
++      padding: 5px 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 0.8rem;
++      color: var(--text);
++      background: #ffffff;
++    }
++
++    .cart-summary {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-weight: 700;
++      font-size: 0.95rem;
++      padding-top: 4px;
++      color: var(--text);
++    }
++
++    .cart-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .checkout-btn {
++      flex: 1;
++      background: var(--primary);
++      color: #ffffff;
++      border: none;
++      padding: 10px 14px;
++      border-radius: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .checkout-btn:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .checkout-btn:disabled {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    .clear-btn {
++      background: transparent;
++      color: #6d4c41;
++      border: 1px solid var(--secondary);
++      padding: 10px 10px;
++      border-radius: 6px;
++      font-size: 0.8rem;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .clear-btn:hover {
++      background: #efebe9;
++    }
++
++    .order-status {
++      font-size: 0.8rem;
++      text-align: center;
++      color: #2e7d32;
++      font-weight: 600;
++      min-height: 1.2em;
++    }
++
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-add-cart {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      font-weight: 600;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
++    }
++
++    .btn-add-cart:hover {
++      background: #ff9100;
++    }
+   </style>
+ </head>
+ 
+@@ -181,22 +482,114 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" class="btn btn-add-cart" data-add-item="maple-oat-latte">Add to Cart ($5.50)</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <button type="button" class="btn btn-add-cart" data-add-item="dark-roast-espresso">Add to Cart ($3.75)</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <button type="button" class="btn btn-add-cart" data-add-item="cold-brew">Add to Cart ($4.50)</button>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <aside id="quick-order-panel" class="quick-order-panel" aria-label="Quick Order Coffee Cart">
++    <div id="quick-order-handle" class="quick-order-header">
++      <div class="header-title-group">
++        <span class="drag-grip" aria-hidden="true">⋮⋮</span>
++        <span>Quick Order Cart</span>
++      </div>
++      <div class="header-controls">
++        <span id="cart-count-badge" class="cart-badge" aria-live="polite">2 items</span>
++        <button type="button" id="minimize-cart-btn" class="minimize-btn" aria-expanded="true" aria-controls="quick-order-body" aria-label="Minimize quick order panel" title="Minimize / Expand">−</button>
++      </div>
++    </div>
++
++    <div id="quick-order-body" class="quick-order-body">
++      <div class="cart-items" id="cart-items-list">
++        <div class="cart-item" data-item-id="maple-oat-latte" data-price="5.50">
++          <div class="cart-item-info">
++            <div class="cart-item-name">Maple Oat Latte</div>
++            <div class="cart-item-price">$5.50 each</div>
++          </div>
++          <div class="qty-controls">
++            <button type="button" class="qty-btn" data-action="decrease" aria-label="Decrease Maple Oat Latte quantity">−</button>
++            <span class="qty-value" data-qty>1</span>
++            <button type="button" class="qty-btn" data-action="increase" aria-label="Increase Maple Oat Latte quantity">+</button>
++          </div>
++        </div>
++
++        <div class="cart-item" data-item-id="dark-roast-espresso" data-price="3.75">
++          <div class="cart-item-info">
++            <div class="cart-item-name">Dark Roast Espresso</div>
++            <div class="cart-item-price">$3.75 each</div>
++          </div>
++          <div class="qty-controls">
++            <button type="button" class="qty-btn" data-action="decrease" aria-label="Decrease Dark Roast Espresso quantity">−</button>
++            <span class="qty-value" data-qty>0</span>
++            <button type="button" class="qty-btn" data-action="increase" aria-label="Increase Dark Roast Espresso quantity">+</button>
++          </div>
++        </div>
++
++        <div class="cart-item" data-item-id="cold-brew" data-price="4.50">
++          <div class="cart-item-info">
++            <div class="cart-item-name">Cold Brew</div>
++            <div class="cart-item-price">$4.50 each</div>
++          </div>
++          <div class="qty-controls">
++            <button type="button" class="qty-btn" data-action="decrease" aria-label="Decrease Cold Brew quantity">−</button>
++            <span class="qty-value" data-qty>1</span>
++            <button type="button" class="qty-btn" data-action="increase" aria-label="Increase Cold Brew quantity">+</button>
++          </div>
++        </div>
++      </div>
++
++      <div class="quick-options">
++        <div class="option-group">
++          <label for="cup-size-select">Cup Size</label>
++          <select id="cup-size-select">
++            <option value="0">Small (12oz)</option>
++            <option value="0.75" selected>Medium (+$0.75)</option>
++            <option value="1.50">Large (+$1.50)</option>
++          </select>
++        </div>
++        <div class="option-group">
++          <label for="milk-option-select">Milk Choice</label>
++          <select id="milk-option-select">
++            <option value="0">Whole Milk</option>
++            <option value="0.50" selected>Oat Milk (+$0.50)</option>
++            <option value="0.50">Almond (+$0.50)</option>
++          </select>
++        </div>
++      </div>
++
++      <div class="cart-summary">
++        <span>Estimated Total</span>
++        <span id="cart-total-price" aria-live="polite">$12.50</span>
++      </div>
++
++      <div class="cart-actions">
++        <button type="button" id="clear-cart-btn" class="clear-btn">Clear</button>
++        <button type="button" id="place-order-btn" class="checkout-btn">Place Quick Order</button>
++      </div>
++      <div id="order-status-msg" class="order-status" role="status" aria-live="polite"></div>
++    </div>
++  </aside>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +600,224 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const panel = document.getElementById('quick-order-panel');
++      const handle = document.getElementById('quick-order-handle');
++      const minimizeBtn = document.getElementById('minimize-cart-btn');
++      const countBadge = document.getElementById('cart-count-badge');
++      const totalPriceEl = document.getElementById('cart-total-price');
++      const sizeSelect = document.getElementById('cup-size-select');
++      const milkSelect = document.getElementById('milk-option-select');
++      const clearBtn = document.getElementById('clear-cart-btn');
++      const placeOrderBtn = document.getElementById('place-order-btn');
++      const statusMsg = document.getElementById('order-status-msg');
++      const itemRows = Array.from(panel.querySelectorAll('.cart-item'));
++
++      // Progressive enhancement: attach drag affordances and keyboard accessibility when JS initializes
++      handle.classList.add('drag-enabled');
++      handle.tabIndex = 0;
++      handle.setAttribute(
++        'aria-label',
++        'Quick Order Cart header handle. Drag or use arrow keys to move panel.'
++      );
++
++      let offsetX = 0;
++      let offsetY = 0;
++      let startX = 0;
++      let startY = 0;
++      let isDragging = false;
++      let hasCustomPosition = false;
++
++      function ensureExplicitPosition() {
++        if (!hasCustomPosition) {
++          const rect = panel.getBoundingClientRect();
++          panel.style.right = 'auto';
++          panel.style.bottom = 'auto';
++          panel.style.left = `${rect.left}px`;
++          panel.style.top = `${rect.top}px`;
++          hasCustomPosition = true;
++        }
++      }
++
++      function moveTo(left, top) {
++        ensureExplicitPosition();
++        const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
++
++        panel.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++        panel.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++      }
++
++      handle.addEventListener('pointerdown', (event) => {
++        if (
++          event.button !== 0 ||
++          event.target.closest('button, input, select, textarea, a')
++        ) {
++          return;
++        }
++
++        const rect = panel.getBoundingClientRect();
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        startX = event.clientX;
++        startY = event.clientY;
++        isDragging = false;
++        handle.setPointerCapture(event.pointerId);
++      });
++
++      handle.addEventListener('pointermove', (event) => {
++        if (!handle.hasPointerCapture(event.pointerId)) return;
++
++        if (!isDragging) {
++          if (Math.hypot(event.clientX - startX, event.clientY - startY) < 4) {
++            return;
++          }
++          isDragging = true;
++          handle.classList.add('dragging');
++        }
++
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++
++      handle.addEventListener('lostpointercapture', () => {
++        isDragging = false;
++        handle.classList.remove('dragging');
++      });
++
++      handle.addEventListener('keydown', (event) => {
++        if (event.target !== handle) return;
++        const step = 15;
++        const rect = panel.getBoundingClientRect();
++
++        switch (event.key) {
++          case 'ArrowLeft':
++            event.preventDefault();
++            moveTo(rect.left - step, rect.top);
++            break;
++          case 'ArrowRight':
++            event.preventDefault();
++            moveTo(rect.left + step, rect.top);
++            break;
++          case 'ArrowUp':
++            event.preventDefault();
++            moveTo(rect.left, rect.top - step);
++            break;
++          case 'ArrowDown':
++            event.preventDefault();
++            moveTo(rect.left, rect.top + step);
++            break;
++        }
++      });
++
++      function reclampIfNeeded() {
++        if (!hasCustomPosition) return;
++        const currentLeft = parseFloat(panel.style.left) || 0;
++        const currentTop = parseFloat(panel.style.top) || 0;
++        moveTo(currentLeft, currentTop);
++      }
++
++      window.addEventListener('resize', reclampIfNeeded);
++      if (typeof ResizeObserver !== 'undefined') {
++        new ResizeObserver(reclampIfNeeded).observe(panel);
++      }
++
++      // Interactive Cart Logic
++      const quantities = {
++        'maple-oat-latte': 1,
++        'dark-roast-espresso': 0,
++        'cold-brew': 1,
++      };
++
++      function updateCartUI() {
++        let totalItems = 0;
++        let baseSum = 0;
++
++        itemRows.forEach((row) => {
++          const id = row.getAttribute('data-item-id');
++          const price = parseFloat(row.getAttribute('data-price')) || 0;
++          const qty = quantities[id] || 0;
++          const qtyEl = row.querySelector('[data-qty]');
++          if (qtyEl) qtyEl.textContent = String(qty);
++
++          totalItems += qty;
++          baseSum += qty * price;
++        });
++
++        const sizeAddon = parseFloat(sizeSelect.value) || 0;
++        const milkAddon = parseFloat(milkSelect.value) || 0;
++        const total = totalItems > 0 ? baseSum + totalItems * (sizeAddon + milkAddon) : 0;
++
++        countBadge.textContent = `${totalItems} ${totalItems === 1 ? 'item' : 'items'}`;
++        totalPriceEl.textContent = `$${total.toFixed(2)}`;
++        placeOrderBtn.disabled = totalItems === 0;
++      }
++
++      itemRows.forEach((row) => {
++        const id = row.getAttribute('data-item-id');
++        row.addEventListener('click', (event) => {
++          const btn = event.target.closest('button[data-action]');
++          if (!btn) return;
++          const action = btn.getAttribute('data-action');
++          if (action === 'increase') {
++            quantities[id] = (quantities[id] || 0) + 1;
++          } else if (action === 'decrease') {
++            quantities[id] = Math.max(0, (quantities[id] || 0) - 1);
++          }
++          statusMsg.textContent = '';
++          updateCartUI();
++        });
++      });
++
++      document.querySelectorAll('[data-add-item]').forEach((btn) => {
++        btn.addEventListener('click', () => {
++          const id = btn.getAttribute('data-add-item');
++          if (id in quantities) {
++            quantities[id] += 1;
++            if (panel.classList.contains('minimized')) {
++              panel.classList.remove('minimized');
++              minimizeBtn.setAttribute('aria-expanded', 'true');
++              minimizeBtn.textContent = '−';
++            }
++            statusMsg.textContent = 'Added to your cart!';
++            updateCartUI();
++          }
++        });
++      });
++
++      sizeSelect.addEventListener('change', () => {
++        statusMsg.textContent = '';
++        updateCartUI();
++      });
++
++      milkSelect.addEventListener('change', () => {
++        statusMsg.textContent = '';
++        updateCartUI();
++      });
++
++      clearBtn.addEventListener('click', () => {
++        Object.keys(quantities).forEach((key) => {
++          quantities[key] = 0;
++        });
++        statusMsg.textContent = 'Cart cleared.';
++        updateCartUI();
++      });
++
++      placeOrderBtn.addEventListener('click', () => {
++        const totalText = totalPriceEl.textContent;
++        statusMsg.textContent = `Order placed (${totalText})! Ready in ~5 mins.`;
++      });
++
++      minimizeBtn.addEventListener('click', () => {
++        const isMinimized = panel.classList.toggle('minimized');
++        minimizeBtn.setAttribute('aria-expanded', String(!isMinimized));
++        minimizeBtn.textContent = isMinimized ? '+' : '−';
++      });
++
++      updateCartUI();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,66 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall / Roaster's Secrets Preview */
++    .paywall-section {
++      margin-block-start: 60px;
++      position: relative;
++    }
++
++    .paywall-section h2 {
++      text-align: center;
++      margin-block-end: 20px;
++    }
++
++    .paywall-container {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-height: 320px;
++      overflow: hidden;
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      /* Standard property for modern browsers */
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin-block-end: 12px;
++    }
++
++    .paywall-container p {
++      margin-block-end: 15px;
++    }
++
++    /* Fallback using an overlay for browsers that do not support masking */
++    @supports (not (mask-image: linear-gradient(to bottom, black, transparent))) and (not (-webkit-mask-image: linear-gradient(to bottom, black, transparent))) {
++      .paywall-container {
++        position: relative;
++      }
++
++      .paywall-container::after {
++        content: '';
++        position: absolute;
++        bottom: 0;
++        left: 0;
++        right: 0;
++        height: 50%;
++        background: linear-gradient(to bottom, rgba(250, 250, 250, 0), rgba(250, 250, 250, 1));
++        pointer-events: none;
++      }
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-block-start: -20px;
++      position: relative;
++      z-index: 1;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +252,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-section">
++      <h2>Roaster's Secrets</h2>
++      <div class="paywall-container">
++        <h3>Mastering the First Crack: Our Signature Thermal Profile</h3>
++        <p>Every small-batch roast at The Daily Grind begins with strict moisture equilibration. When our high-elevation Ethiopian Yirgacheffe beans enter the drum at 395°F, the initial drying phase sets the foundation for caramelized sweetness without scorching the delicate outer chaff.</p>
++        <p>As the Maillard reaction accelerates around minute six, we carefully taper airflow by 15% while increasing drum rotation speed. This subtle adjustment preserves volatile floral aromatics—specifically jasmine and bergamot notes—before the exothermic surge of the first crack begins.</p>
++        <p>The true secret lies in the development time ratio (DTR) during the final 45 seconds. By dropping the gas pressure precisely 12 seconds prior to first crack audible peaks, we coast through caramelization at a controlled rate of rise (RoR) of 8°F per minute, unlocking a silky body with zero astringency...</p>
++      </div>
++      <div class="paywall-cta">
++        <p><strong>Want to read the full roasting guide and unlock secret brew recipes?</strong></p>
++        <a href="/rewards" class="btn">Unlock Exclusive Member Access</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

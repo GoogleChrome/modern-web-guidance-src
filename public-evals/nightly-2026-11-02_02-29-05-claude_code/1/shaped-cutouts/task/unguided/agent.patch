@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,92 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    /* Shaped Elements */
++    .shaped-section {
++      margin-top: 60px;
++    }
++
++    .shaped-section h2 {
++      text-align: center;
++    }
++
++    .shaped-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 40px;
++      align-items: center;
++      margin-top: 30px;
++    }
++
++    .barista-feature {
++      text-align: center;
++    }
++
++    .barista-feature figcaption h3 {
++      color: var(--primary);
++      margin-top: 10px;
++    }
++
++    /* Clip path uses objectBoundingBox units, so the splat scales with the image */
++    .shaped-avatar {
++      display: block;
++      width: min(320px, 100%);
++      aspect-ratio: 4 / 5;
++      height: auto;
++      margin: 0 auto;
++      object-fit: cover;
++      -webkit-clip-path: url(#paint-splat);
++      clip-path: url(#paint-splat);
++    }
++
++    /* drop-shadow follows the combined (masked) silhouette of both children */
++    .unified-card {
++      display: flex;
++      filter: drop-shadow(0 10px 18px rgba(62, 39, 35, 0.25));
++    }
++
++    .unified-card .card-body {
++      flex: 1;
++      background: white;
++      padding: 24px;
++      border-radius: 16px 0 0 16px;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .unified-card .card-accent {
++      flex: 0 0 120px;
++      background: linear-gradient(160deg, var(--accent), var(--primary));
++      border-radius: 0 16px 16px 0;
++      -webkit-mask: radial-gradient(56px 80px at 100% 50%, transparent 98%, #000 100%);
++      mask: radial-gradient(56px 80px at 100% 50%, transparent 98%, #000 100%);
++    }
++
++    .gradient-masked-card {
++      background: var(--primary);
++      color: white;
++      text-align: center;
++      padding: 60px 24px 28px;
++      border-radius: 16px;
++      -webkit-mask: radial-gradient(circle 28px at 50% 0, transparent 98%, #000 100%);
++      mask: radial-gradient(circle 28px at 50% 0, transparent 98%, #000 100%);
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .gradient-masked-card .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -194,10 +278,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shaped-section">
++      <h2>Meet the Crew</h2>
++      <div class="shaped-grid">
++        <figure class="barista-feature">
++          <img class="shaped-avatar"
++            src="https://images.unsplash.com/photo-1581299894007-aaa50297cf16?auto=format&fit=crop&w=640&q=80"
++            alt="Our featured barista smiling behind the counter with a fresh cup of coffee">
++          <figcaption>
++            <h3>Featured Barista</h3>
++            <p>Ask about this month's pour-over pick.</p>
++          </figcaption>
++        </figure>
++
++        <div>
++          <div class="unified-card">
++            <div class="card-body">
++              <h3>Grind Rewards</h3>
++              <p>Earn a star with every cup. Collect 10 and your next drink is on us.</p>
++              <a href="/rewards" class="btn">Join Rewards</a>
++            </div>
++            <div class="card-accent" aria-hidden="true"></div>
++          </div>
++
++          <div class="gradient-masked-card" style="margin-top: 40px;">
++            <h3>Happy Hour Promo</h3>
++            <p>Half-price cold brew every weekday from 2&ndash;4pm.</p>
++            <a href="/menu/cold-brew" class="btn">Grab One</a>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <svg width="0" height="0" style="position: absolute;" aria-hidden="true" focusable="false">
++    <defs>
++      <clipPath id="paint-splat" clipPathUnits="objectBoundingBox">
++        <path d="M0.5,0.03 C0.6,0 0.66,0.08 0.73,0.06 C0.81,0.03 0.9,0.09 0.9,0.18 C0.9,0.26 0.98,0.3 0.98,0.4
++          C0.98,0.5 0.92,0.54 0.94,0.62 C0.97,0.72 1,0.8 0.92,0.86 C0.85,0.91 0.78,0.88 0.72,0.93
++          C0.66,0.98 0.58,1 0.5,0.96 C0.42,0.92 0.36,0.99 0.28,0.96 C0.18,0.92 0.16,0.84 0.1,0.78
++          C0.03,0.72 0,0.62 0.04,0.54 C0.07,0.47 0.01,0.4 0.03,0.31 C0.05,0.2 0.14,0.16 0.2,0.1
++          C0.27,0.03 0.38,0.06 0.5,0.03 Z" />
++        <circle cx="0.96" cy="0.1" r="0.025" />
++        <circle cx="0.05" cy="0.92" r="0.03" />
++        <circle cx="0.99" cy="0.7" r="0.015" />
++      </clipPath>
++    </defs>
++  </svg>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

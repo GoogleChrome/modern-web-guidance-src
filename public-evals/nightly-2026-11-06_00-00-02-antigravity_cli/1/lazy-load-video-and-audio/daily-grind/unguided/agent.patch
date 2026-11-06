@@ -1,0 +1,458 @@
+diff --git a/index.html b/index.html
+index 66c9173..9484973 100644
+--- a/index.html
++++ b/index.html
+@@ -74,11 +74,10 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      position: relative;
++      height: 75vh;
++      min-height: 480px;
++      background-color: #2b1d19;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,6 +85,29 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
++    }
++
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 0;
++    }
++
++    .hero-overlay {
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(rgba(30, 18, 14, 0.55), rgba(30, 18, 14, 0.65));
++      z-index: 1;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 2;
++      max-width: 720px;
+     }
+ 
+     .hero h1 {
+@@ -100,6 +122,26 @@
+       padding: 0 20px;
+     }
+ 
++    .section-block {
++      margin-bottom: 64px;
++    }
++
++    .section-header {
++      text-align: center;
++      max-width: 680px;
++      margin: 0 auto 28px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .section-header p {
++      color: #5d4037;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -109,7 +151,7 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+@@ -135,11 +177,112 @@
+       background: #3e2723;
+     }
+ 
++    /* Below-the-fold Media Section (Roasting Video & Podcast Audio) */
++    .media-showcase {
++      margin-top: 80px;
++      padding-top: 40px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .media-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 32px;
++      align-items: start;
++    }
++
++    .media-card {
++      background: white;
++      border-radius: 12px;
++      padding: 28px;
++      box-shadow: 0 4px 14px rgba(62, 39, 35, 0.08);
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .media-badge {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      padding: 4px 10px;
++      border-radius: 999px;
++    }
++
++    .media-card h3 {
++      font-size: 1.4rem;
++      color: var(--primary);
++    }
++
++    .video-frame {
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      background: #2b1d19;
++      border-radius: 8px;
++      overflow: hidden;
++      position: relative;
++    }
++
++    .video-frame video {
++      width: 100%;
++      height: 100%;
++      display: block;
++      object-fit: cover;
++    }
++
++    .podcast-card-body {
++      display: flex;
++      gap: 16px;
++      align-items: center;
++      background: #f5f0ee;
++      padding: 16px;
++      border-radius: 8px;
++    }
++
++    .podcast-cover {
++      width: 80px;
++      height: 80px;
++      border-radius: 8px;
++      object-fit: cover;
++      flex-shrink: 0;
++      background: var(--secondary);
++    }
++
++    .podcast-meta h4 {
++      font-size: 1.05rem;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .podcast-meta p {
++      font-size: 0.875rem;
++      color: #5d4037;
++    }
++
++    .audio-player-wrapper {
++      width: 100%;
++    }
++
++    .audio-player-wrapper audio {
++      width: 100%;
++      display: block;
++    }
++
++    .media-status {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+     .footer-links {
+@@ -169,32 +312,139 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <video
++      class="hero-video"
++      id="hero-video"
++      autoplay
++      muted
++      loop
++      playsinline
++      preload="metadata"
++      poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      aria-label="Freshly brewed coffee pouring into a cup"
++    >
++      <source src="/media/hero.mp4" type="video/mp4">
++    </video>
++    <div class="hero-overlay" aria-hidden="true"></div>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="section-block">
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p>Handcrafted signature drinks brewed fresh with single-origin beans and house-made syrups.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p>Creamy oat milk with a hint of Vermont maple syrup and double-shot espresso.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p>Bold, smokey, and velvety with dark chocolate notes for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p>Small-batch coarse grounds steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="section-block">
++      <div class="section-header">
++        <h2>Our Craft &amp; Sourcing</h2>
++        <p>From high-altitude partner farms to our cast-iron drum roasters, every step is tuned for clarity and sweetness.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Direct Trade</h3>
++          <p>Long-term partnerships with smallholder growers in Colombia, Ethiopia, and Guatemala.</p>
++        </div>
++        <div class="card">
++          <h3>Small-Batch Roasting</h3>
++          <p>Roasted daily in 15kg batches with precision temperature profiling.</p>
++        </div>
++        <div class="card">
++          <h3>Peak Freshness</h3>
++          <p>Nitrogen-flushed and sealed within hours of cooling to preserve delicate aromatics.</p>
++        </div>
++      </div>
++    </section>
++
++    <section class="section-block media-showcase" id="roastery-and-podcast" aria-labelledby="media-showcase-heading">
++      <div class="section-header">
++        <h2 id="media-showcase-heading">Inside the Roastery &amp; The Grind Podcast</h2>
++        <p>Watch our head roaster bring out caramel notes in every batch, or tune in to our weekly coffee culture podcast.</p>
++      </div>
++
++      <div class="media-grid">
++        <!-- Below-the-fold Roasting Video -->
++        <article class="media-card" id="roasting-video-section">
++          <span class="media-badge">Roastery Film</span>
++          <h3>Small-Batch Drum Roasting</h3>
++          <p>Step behind the scenes as green single-origin beans reach first crack in our vintage cast-iron roaster.</p>
++          <div class="video-frame">
++            <video
++              id="roasting-video"
++              class="lazy-media"
++              controls
++              playsinline
++              preload="none"
++              data-src="/media/roasting.mp4"
++              data-poster="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=900&q=80"
++              aria-label="Coffee bean roasting process video"
++            >
++              <source data-src="/media/roasting.mp4" type="video/mp4">
++              Your browser does not support HTML5 video.
++            </video>
++          </div>
++          <p class="media-status" id="roasting-video-status" data-lazy-status="deferred">Video deferred until near viewport</p>
++        </article>
++
++        <!-- Below-the-fold Podcast Audio -->
++        <article class="media-card" id="podcast-audio-section">
++          <span class="media-badge">Podcast Episode 42</span>
++          <h3>Dialing In: The Science of First Crack</h3>
++          <p>Host Elena Vance sits down with Master Roaster Marcus Chen to unpack Maillard reactions, airflow, and cup sweetness.</p>
++          <div class="podcast-card-body">
++            <img
++              class="podcast-cover lazy-poster"
++              alt="Coffee beans and microphone cover art for The Daily Grind Podcast"
++              loading="lazy"
++              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
++              data-src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=300&q=80"
++            >
++            <div class="podcast-meta">
++              <h4>Ep. 42 &mdash; Roasting Profiles Explained</h4>
++              <p>Duration: 24 mins &bull; Released Weekly</p>
++            </div>
++          </div>
++          <div class="audio-player-wrapper">
++            <audio
++              id="podcast-audio"
++              class="lazy-media"
++              controls
++              preload="none"
++              data-src="/media/podcast.mp3"
++              data-preload="metadata"
++              aria-label="Podcast Episode 42: Dialing In: The Science of First Crack"
++            >
++              <source data-src="/media/podcast.mp3" type="audio/mpeg">
++              Your browser does not support HTML5 audio.
++            </audio>
++          </div>
++          <p class="media-status" id="podcast-audio-status" data-lazy-status="deferred">Audio deferred until near viewport</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +457,85 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      function hydrateMediaElement(mediaEl) {
++        if (!mediaEl || mediaEl.dataset.loaded === 'true') {
++          return;
++        }
++        mediaEl.dataset.loaded = 'true';
++
++        if (mediaEl.dataset.poster) {
++          mediaEl.setAttribute('poster', mediaEl.dataset.poster);
++          mediaEl.removeAttribute('data-poster');
++        }
++
++        var sources = mediaEl.querySelectorAll('source[data-src]');
++        sources.forEach(function (sourceEl) {
++          sourceEl.setAttribute('src', sourceEl.dataset.src);
++          sourceEl.removeAttribute('data-src');
++        });
++
++        if (mediaEl.dataset.src) {
++          mediaEl.setAttribute('src', mediaEl.dataset.src);
++          mediaEl.removeAttribute('data-src');
++        }
++
++        var targetPreload = mediaEl.dataset.preload || 'metadata';
++        mediaEl.setAttribute('preload', targetPreload);
++
++        if (typeof mediaEl.load === 'function') {
++          mediaEl.load();
++        }
++
++        var card = mediaEl.closest('.media-card');
++        if (card) {
++          var coverImg = card.querySelector('img[data-src]');
++          if (coverImg) {
++            coverImg.setAttribute('src', coverImg.dataset.src);
++            coverImg.removeAttribute('data-src');
++          }
++          var statusEl = card.querySelector('[data-lazy-status]');
++          if (statusEl) {
++            statusEl.dataset.lazyStatus = 'loaded';
++            statusEl.textContent = mediaEl.tagName === 'VIDEO'
++              ? 'Ready to play HD roastery film'
++              : 'Ready to stream episode audio';
++          }
++        }
++      }
++
++      var lazyMediaElements = document.querySelectorAll('.lazy-media');
++
++      lazyMediaElements.forEach(function (el) {
++        ['pointerenter', 'focusin', 'click', 'play'].forEach(function (eventName) {
++          el.addEventListener(eventName, function () {
++            hydrateMediaElement(el);
++          }, { once: true });
++        });
++      });
++
++      if ('IntersectionObserver' in window) {
++        var mediaObserver = new IntersectionObserver(function (entries, observer) {
++          entries.forEach(function (entry) {
++            if (entry.isIntersecting) {
++              hydrateMediaElement(entry.target);
++              observer.unobserve(entry.target);
++            }
++          });
++        }, {
++          rootMargin: '200px 0px',
++          threshold: 0.01
++        });
++
++        lazyMediaElements.forEach(function (el) {
++          mediaObserver.observe(el);
++        });
++      } else {
++        lazyMediaElements.forEach(hydrateMediaElement);
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/media/hero-poster.jpg b/media/hero-poster.jpg
+new file mode 100644
+index 0000000..6cee8d6
+Binary files /dev/null and b/media/hero-poster.jpg differ
+diff --git a/media/hero.mp4 b/media/hero.mp4
+new file mode 100644
+index 0000000..febc809
+Binary files /dev/null and b/media/hero.mp4 differ
+diff --git a/media/podcast-cover.jpg b/media/podcast-cover.jpg
+new file mode 100644
+index 0000000..9bb3d85
+Binary files /dev/null and b/media/podcast-cover.jpg differ
+diff --git a/media/podcast.mp3 b/media/podcast.mp3
+new file mode 100644
+index 0000000..dbbf4f3
+Binary files /dev/null and b/media/podcast.mp3 differ
+diff --git a/media/roasting-poster.jpg b/media/roasting-poster.jpg
+new file mode 100644
+index 0000000..b888bdc
+Binary files /dev/null and b/media/roasting-poster.jpg differ
+diff --git a/media/roasting.mp4 b/media/roasting.mp4
+new file mode 100644
+index 0000000..bf59d16
+Binary files /dev/null and b/media/roasting.mp4 differ

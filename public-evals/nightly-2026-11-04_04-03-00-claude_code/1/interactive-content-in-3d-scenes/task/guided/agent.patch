@@ -1,0 +1,488 @@
+diff --git a/coffee-box.js b/coffee-box.js
+new file mode 100644
+--- a/coffee-box.js
++++ b/coffee-box.js
+@@ -0,0 +1,483 @@
++// Spinning 3D coffee box rendered with WebGL 2. The subscription form is a
++// real <form> drawn onto the box's front face via the HTML-in-Canvas API
++// (content="drawable"), so it stays fully interactive while the box rotates.
++
++const stage = document.getElementById('box-stage');
++const canvas = document.getElementById('box-canvas');
++const form = document.getElementById('box-form');
++
++setupForm(form);
++
++const supportsHTMLInCanvas = 'content' in HTMLCanvasElement.prototype;
++const gl = canvas.getContext('webgl2', { antialias: true });
++
++if (!gl) {
++  // No WebGL: show the form as a normal card.
++  stage.append(form);
++  stage.classList.add('no-webgl');
++} else {
++  if (!supportsHTMLInCanvas) {
++    // Fallback: canvas children aren't rendered, so overlay the form with CSS.
++    stage.append(form);
++    stage.classList.add('no-hic');
++  }
++  initScene();
++}
++
++/* ------------------------------------------------------------------ */
++/* Form behaviour                                                      */
++/* ------------------------------------------------------------------ */
++
++function setupForm(form) {
++  const bagsOut = form.querySelector('#bags');
++  const priceOut = form.querySelector('#price');
++  const status = form.querySelector('#box-status');
++  let bags = 2;
++
++  form.querySelectorAll('.segmented').forEach((group) => {
++    group.addEventListener('click', (e) => {
++      const btn = e.target.closest('button');
++      if (!btn) return;
++      for (const b of group.querySelectorAll('button')) {
++        b.setAttribute('aria-pressed', String(b === btn));
++      }
++    });
++  });
++
++  form.querySelectorAll('[data-step]').forEach((btn) => {
++    btn.addEventListener('click', () => {
++      bags = Math.min(6, Math.max(1, bags + Number(btn.dataset.step)));
++      bagsOut.value = String(bags);
++      priceOut.textContent = String(bags * 16);
++    });
++  });
++
++  form.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const pick = (name) =>
++      form.querySelector(`[data-name="${name}"] [aria-pressed="true"]`).value;
++    status.textContent = `Subscribed! ${bags} × ${pick('roast')} roast, ${pick('grind')} grind.`;
++  });
++}
++
++/* ------------------------------------------------------------------ */
++/* WebGL scene                                                         */
++/* ------------------------------------------------------------------ */
++
++function initScene() {
++  // Box dimensions in world units. Front face (W × H) matches the form's
++  // 320 × 400 CSS pixel size (1 : 1.25).
++  const W = 1, H = 1.25, D = 0.6;
++
++  const vs = `#version 300 es
++    in vec3 aPos;
++    in vec3 aNormal;
++    in vec2 aUV;
++    uniform mat4 uMVP;
++    uniform mat4 uModel;
++    out vec3 vNormal;
++    out vec2 vUV;
++    void main() {
++      vNormal = mat3(uModel) * aNormal;
++      vUV = aUV;
++      gl_Position = uMVP * vec4(aPos, 1.0);
++    }`;
++  const fs = `#version 300 es
++    precision mediump float;
++    in vec3 vNormal;
++    in vec2 vUV;
++    uniform sampler2D uTex;
++    uniform float uAmbient;
++    out vec4 outColor;
++    void main() {
++      vec3 light = normalize(vec3(0.4, 0.7, 1.0));
++      float diff = max(dot(normalize(vNormal), light), 0.0);
++      vec4 c = texture(uTex, vUV);
++      outColor = vec4(c.rgb * (uAmbient + (1.0 - uAmbient) * diff), 1.0);
++    }`;
++
++  const program = createProgram(gl, vs, fs);
++  const loc = {
++    aPos: gl.getAttribLocation(program, 'aPos'),
++    aNormal: gl.getAttribLocation(program, 'aNormal'),
++    aUV: gl.getAttribLocation(program, 'aUV'),
++    uMVP: gl.getUniformLocation(program, 'uMVP'),
++    uModel: gl.getUniformLocation(program, 'uModel'),
++    uTex: gl.getUniformLocation(program, 'uTex'),
++    uAmbient: gl.getUniformLocation(program, 'uAmbient'),
++  };
++
++  // Faces: center, right (u) axis, up (v) axis, width, height.
++  const faces = [
++    { name: 'front',  c: [0, 0, D / 2],  r: [1, 0, 0],  u: [0, 1, 0],  w: W, h: H },
++    { name: 'back',   c: [0, 0, -D / 2], r: [-1, 0, 0], u: [0, 1, 0],  w: W, h: H },
++    { name: 'right',  c: [W / 2, 0, 0],  r: [0, 0, -1], u: [0, 1, 0],  w: D, h: H },
++    { name: 'left',   c: [-W / 2, 0, 0], r: [0, 0, 1],  u: [0, 1, 0],  w: D, h: H },
++    { name: 'top',    c: [0, H / 2, 0],  r: [1, 0, 0],  u: [0, 0, -1], w: W, h: D },
++    { name: 'bottom', c: [0, -H / 2, 0], r: [1, 0, 0],  u: [0, 0, 1],  w: W, h: D },
++  ];
++
++  const data = [];
++  for (const f of faces) {
++    const n = cross(f.r, f.u);
++    const corner = (x, y) => {
++      const p = f.c.map((c, i) => c + f.r[i] * f.w * x + f.u[i] * f.h * y);
++      // v = 0 is the top row of an uploaded image (no UNPACK_FLIP_Y).
++      data.push(...p, ...n, x + 0.5, 0.5 - y);
++    };
++    corner(-0.5, -0.5); corner(0.5, -0.5); corner(0.5, 0.5);
++    corner(-0.5, -0.5); corner(0.5, 0.5); corner(-0.5, 0.5);
++  }
++
++  const vao = gl.createVertexArray();
++  gl.bindVertexArray(vao);
++  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
++  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
++  const stride = 8 * 4;
++  gl.enableVertexAttribArray(loc.aPos);
++  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, stride, 0);
++  gl.enableVertexAttribArray(loc.aNormal);
++  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, stride, 12);
++  gl.enableVertexAttribArray(loc.aUV);
++  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, stride, 24);
++
++  // Printed-cardboard textures for the non-interactive faces.
++  for (const f of faces) {
++    if (f.name === 'front' && supportsHTMLInCanvas) continue;
++    f.texture = canvasTexture(gl, drawFaceArt(f.name, f.w, f.h));
++  }
++
++  // Texture for the live HTML form (front face).
++  const formTexture = gl.createTexture();
++  const formTextureState = { width: 0, height: 0 };
++  if (supportsHTMLInCanvas) {
++    // Placeholder pixel until the form's first paint record is available.
++    gl.bindTexture(gl.TEXTURE_2D, formTexture);
++    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
++      new Uint8Array([255, 250, 242, 255]));
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++    faces[0].texture = formTexture;
++  }
++
++  gl.enable(gl.DEPTH_TEST);
++  gl.enable(gl.CULL_FACE);
++
++  // Match the canvas backing store to device pixels.
++  const resizeObserver = new ResizeObserver(([entry]) => {
++    const dpc = entry.devicePixelContentBoxSize;
++    canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * devicePixelRatio);
++    canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * devicePixelRatio);
++  });
++  const supportsDPCB =
++    typeof ResizeObserverEntry !== 'undefined' &&
++    'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++  resizeObserver.observe(canvas, supportsDPCB ? { box: 'device-pixel-content-box' } : {});
++
++  /* ---------------- Animation state ---------------- */
++
++  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++  const SPIN_SPEED = 0.6; // rad/s
++  let angle = reducedMotion.matches ? -0.45 : 0;
++  let lastTime = performance.now();
++  let hovering = false;
++  let focused = false;
++  let formHasGeometry = false;
++
++  // Turn the form toward the viewer while the user interacts with it.
++  canvas.addEventListener('pointerenter', () => { hovering = true; });
++  canvas.addEventListener('pointerleave', () => { hovering = false; });
++  form.addEventListener('focusin', () => { focused = true; });
++  form.addEventListener('focusout', () => { focused = form.matches(':focus-within'); });
++
++  function step(now) {
++    const dt = Math.min(0.1, (now - lastTime) / 1000);
++    lastTime = now;
++    const TAU = Math.PI * 2;
++    if (hovering || focused) {
++      // Ease to the nearest rotation where the front face looks at the camera.
++      const target = Math.round(angle / TAU) * TAU;
++      angle += (target - angle) * Math.min(1, dt * 6);
++    } else if (reducedMotion.matches) {
++      const target = Math.round(angle / TAU) * TAU - 0.45;
++      angle += (target - angle) * Math.min(1, dt * 6);
++    } else {
++      angle += SPIN_SPEED * dt;
++    }
++    return now;
++  }
++
++  function computeMatrices(now) {
++    const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
++    const fov = (32 * Math.PI) / 180;
++    const f = 1 / Math.tan(fov / 2);
++    const near = 0.1, far = 20;
++    // Keep the box in frame on narrow (portrait) canvases.
++    const camZ = aspect < 0.9 ? 3.4 / aspect : 3.4;
++    const proj = new DOMMatrix([
++      f / aspect, 0, 0, 0,
++      0, f, 0, 0,
++      0, 0, (far + near) / (near - far), -1,
++      0, 0, (2 * far * near) / (near - far), 0,
++    ]);
++    // In the CSS-overlay fallback, shift the box left so the form doesn't cover it.
++    const offsetX = !supportsHTMLInCanvas && aspect > 1.2 ? -0.75 : 0;
++    const view = new DOMMatrix().translate(offsetX, 0, -camZ).rotateAxisAngle(1, 0, 0, 12);
++    const bob = reducedMotion.matches ? 0 : Math.sin(now / 900) * 0.04;
++    const model = new DOMMatrix()
++      .translate(0, bob, 0)
++      .rotateAxisAngle(0, 1, 0, (angle * 180) / Math.PI)
++      .rotateAxisAngle(0, 0, 1, Math.sin(angle) * 3);
++    const viewProj = proj.multiply(view);
++    const mvp = viewProj.multiply(model);
++    // Maps the -0.5..0.5 unit quad onto the box's front face.
++    const formMVP = mvp.translate(0, 0, D / 2).scale(W, H, 1);
++    const cameraPos = view.inverse().transformPoint(new DOMPoint(0, 0, 0, 1));
++    return { model, mvp, formMVP, cameraPos };
++  }
++
++  function drawScene(m) {
++    gl.viewport(0, 0, canvas.width, canvas.height);
++    gl.clearColor(0, 0, 0, 0);
++    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++    gl.useProgram(program);
++    gl.bindVertexArray(vao);
++    gl.uniformMatrix4fv(loc.uMVP, false, m.mvp.toFloat32Array());
++    gl.uniformMatrix4fv(loc.uModel, false, m.model.toFloat32Array());
++    gl.uniform1i(loc.uTex, 0);
++    gl.activeTexture(gl.TEXTURE0);
++    faces.forEach((face, i) => {
++      // Keep the form label bright and readable.
++      gl.uniform1f(loc.uAmbient, face.name === 'front' ? 0.75 : 0.45);
++      gl.bindTexture(gl.TEXTURE_2D, face.texture);
++      gl.drawArrays(gl.TRIANGLES, i * 6, 6);
++    });
++  }
++
++  function isFrontFacingCamera(m) {
++    const center = m.model.transformPoint(new DOMPoint(0, 0, D / 2, 1));
++    const origin = m.model.transformPoint(new DOMPoint(0, 0, 0, 1));
++    const normal = [center.x - origin.x, center.y - origin.y, center.z - origin.z];
++    const toCam = [m.cameraPos.x - center.x, m.cameraPos.y - center.y, m.cameraPos.z - center.z];
++    return normal[0] * toCam[0] + normal[1] * toCam[1] + normal[2] * toCam[2] > 0.02;
++  }
++
++  /* ---------------- Render loop ---------------- */
++
++  let running = true;
++  let rafId = 0;
++
++  if (supportsHTMLInCanvas) {
++    canvas.onpaint = (event) => {
++      const now = step(performance.now());
++
++      // Re-upload the form texture only when it hasn't been captured yet or
++      // its rendering changed (typing, focus rings, button states…).
++      if (!formTextureState.width || event.changedElements?.length) {
++        try {
++          uploadElementWebGL(gl, canvas, formTexture, form, formTextureState);
++        } catch (err) {
++          console.error('texElementSubImage2D copy failed:', err);
++        }
++      }
++
++      const m = computeMatrices(now);
++      drawScene(m);
++
++      // Keep the real <form> aligned with its rendered pixels so clicks,
++      // text selection and focus rings hit the right place. Remove it from
++      // hit testing while it faces away from the camera.
++      if (isFrontFacingCamera(m)) {
++        canvas.updateElementGeometry(form, {
++          canvasTransform: computeCanvasTransform(canvas, form, m.formMVP),
++        });
++        formHasGeometry = true;
++      } else if (formHasGeometry) {
++        canvas.clearElementGeometry(form);
++        formHasGeometry = false;
++      }
++    };
++  }
++
++  function frame() {
++    if (!running) return;
++    if (supportsHTMLInCanvas) {
++      canvas.requestPaint();
++    } else {
++      drawScene(computeMatrices(step(performance.now())));
++    }
++    rafId = requestAnimationFrame(frame);
++  }
++
++  function start() {
++    if (running && rafId) return;
++    running = true;
++    lastTime = performance.now();
++    rafId = requestAnimationFrame(frame);
++  }
++
++  function stop() {
++    running = false;
++    cancelAnimationFrame(rafId);
++    rafId = 0;
++  }
++
++  // Pause rendering while the section is skipped by content-visibility.
++  const section = stage.closest('.box-section');
++  section.addEventListener('contentvisibilityautostatechange', (e) => {
++    if (e.skipped) stop(); else start();
++  });
++
++  start();
++}
++
++/* ------------------------------------------------------------------ */
++/* HTML-in-Canvas helpers                                              */
++/* ------------------------------------------------------------------ */
++
++// Returns the element's size in canvas grid pixels, or null if the element
++// has no paint record yet.
++function getElementImageSize(canvas, element) {
++  let elementImage;
++  try {
++    elementImage = canvas.captureElementImage(element);
++  } catch {
++    canvas.requestPaint(); // No paint record yet: retry on the next paint event.
++    return null;
++  }
++  const width = Math.ceil(elementImage.width);
++  const height = Math.ceil(elementImage.height);
++  elementImage.close();
++  return width > 0 && height > 0 ? { width, height } : null;
++}
++
++// Binds the texture, and (re)allocates its storage on first upload or resize.
++function allocateElementTexture(gl, texture, state, width, height) {
++  gl.bindTexture(gl.TEXTURE_2D, texture);
++  if (state.width === width && state.height === height) return;
++  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++  state.width = width;
++  state.height = height;
++}
++
++// Uploads the element into the texture. Returns false if it has no paint
++// record yet; it will be uploaded on a later paint event.
++function uploadElementWebGL(gl, canvas, texture, element, state) {
++  const size = getElementImageSize(canvas, element);
++  if (!size) return false;
++  const { width, height } = size;
++  allocateElementTexture(gl, texture, state, width, height);
++  gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, element, { width, height });
++  return true;
++}
++
++// Maps the element's border box (CSS px) to the canvas (CSS px), for a quad
++// spanning -0.5..0.5 in model space drawn with the `mvp` matrix.
++function computeCanvasTransform(canvas, element, mvp) {
++  const width = element.offsetWidth;
++  const height = element.offsetHeight;
++  const toGLModel = new DOMMatrix()
++    .scale(1 / width, -1 / height, 1 / height)
++    .translate(-width / 2, -height / 2);
++  const clipToCanvasViewport = new DOMMatrix()
++    .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
++    .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
++  return clipToCanvasViewport.multiply(mvp).multiply(toGLModel);
++}
++
++/* ------------------------------------------------------------------ */
++/* Generic WebGL helpers                                               */
++/* ------------------------------------------------------------------ */
++
++function createProgram(gl, vsSource, fsSource) {
++  const compile = (type, src) => {
++    const shader = gl.createShader(type);
++    gl.shaderSource(shader, src);
++    gl.compileShader(shader);
++    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++      throw new Error(gl.getShaderInfoLog(shader));
++    }
++    return shader;
++  };
++  const program = gl.createProgram();
++  gl.attachShader(program, compile(gl.VERTEX_SHADER, vsSource));
++  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fsSource));
++  gl.linkProgram(program);
++  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++    throw new Error(gl.getProgramInfoLog(program));
++  }
++  return program;
++}
++
++function canvasTexture(gl, source) {
++  const tex = gl.createTexture();
++  gl.bindTexture(gl.TEXTURE_2D, tex);
++  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, source);
++  gl.generateMipmap(gl.TEXTURE_2D);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++  return tex;
++}
++
++function cross(a, b) {
++  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
++}
++
++// Draws printed-box artwork for a face into a 2D canvas.
++function drawFaceArt(name, w, h) {
++  const PX = 512; // texture pixels per world unit
++  const c = document.createElement('canvas');
++  c.width = Math.round(w * PX);
++  c.height = Math.round(h * PX);
++  const ctx = c.getContext('2d');
++  const cw = c.width, ch = c.height;
++
++  // Kraft-paper base with subtle fibres.
++  ctx.fillStyle = '#6d4c41';
++  ctx.fillRect(0, 0, cw, ch);
++  ctx.globalAlpha = 0.08;
++  for (let i = 0; i < 400; i++) {
++    ctx.fillStyle = i % 2 ? '#000' : '#fff';
++    ctx.fillRect(Math.random() * cw, Math.random() * ch, 1 + Math.random() * 6, 1);
++  }
++  ctx.globalAlpha = 1;
++  ctx.strokeStyle = '#ffab40';
++  ctx.lineWidth = 8;
++  ctx.strokeRect(14, 14, cw - 28, ch - 28);
++
++  ctx.fillStyle = '#fafafa';
++  ctx.textAlign = 'center';
++  ctx.textBaseline = 'middle';
++  const font = (size, weight = 'bold') =>
++    `${weight} ${size}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
++
++  if (name === 'left' || name === 'right') {
++    ctx.save();
++    ctx.translate(cw / 2, ch / 2);
++    ctx.rotate(-Math.PI / 2);
++    ctx.font = font(64);
++    ctx.fillText('THE DAILY GRIND', 0, -30);
++    ctx.font = font(30, 'normal');
++    ctx.fillStyle = '#ffab40';
++    ctx.fillText(name === 'left' ? 'Locally Roasted' : 'Ethically Sourced', 0, 40);
++    ctx.restore();
++  } else if (name === 'top' || name === 'bottom') {
++    ctx.font = font(52);
++    ctx.fillText(name === 'top' ? '☕ THIS SIDE UP' : 'Roasted with care', cw / 2, ch / 2);
++  } else {
++    // Back face (and front face when HTML-in-Canvas is unavailable).
++    ctx.font = font(48, 'normal');
++    ctx.fillText('☕', cw / 2, ch * 0.28);
++    ctx.font = font(66);
++    ctx.fillText('THE DAILY', cw / 2, ch * 0.42);
++    ctx.fillText('GRIND', cw / 2, ch * 0.52);
++    ctx.fillStyle = '#ffab40';
++    ctx.font = font(32, 'normal');
++    ctx.fillText(name === 'back' ? 'Monthly Coffee Box' : 'Fresh-roasted monthly', cw / 2, ch * 0.66);
++    ctx.fillText('Single origin · 2 × 12 oz', cw / 2, ch * 0.73);
++  }
++  return c;
++}

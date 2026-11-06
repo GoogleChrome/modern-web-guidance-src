@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+index 66c9173..42c7078 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,27 @@
+       color: var(--accent);
+     }
+ 
++    /* Scrollspy: track in-page links and highlight the one whose section is in view */
++    nav ul {
++      scroll-target-group: auto;
++    }
++
++    nav a:is(:target-current, .\:target-current) {
++      color: var(--accent);
++      font-weight: bold;
++      border-bottom: 2px solid var(--accent);
++    }
++
++    html {
++      scroll-padding-top: 4rem;
++    }
++
++    .page-section {
++      min-height: 70vh;
++      padding-top: 40px;
++      text-align: center;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,10 +181,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,7 +196,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="menu" class="page-section">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -195,6 +216,21 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="page-section">
++      <h2>Locations</h2>
++      <p>Find a Daily Grind near you: Downtown, Riverside, and the University District.</p>
++    </section>
++
++    <section id="rewards" class="page-section">
++      <h2>Rewards</h2>
++      <p>Earn a star for every purchase and enjoy a free drink every ten stars.</p>
++    </section>
++
++    <section id="account" class="page-section">
++      <h2>My Account</h2>
++      <p>Manage your orders, payment methods, and preferences.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +243,34 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const links = document.querySelectorAll('nav a[href^="#"]');
++
++    if (CSS.supports('scroll-target-group: auto')) {
++      const syncAriaCurrent = () => {
++        const current = document.querySelector('nav a:target-current');
++        links.forEach(link => {
++          link.setAttribute('aria-current', link === current ? 'true' : 'false');
++        });
++      };
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      // Fallback for browsers without scroll-target-group
++      const observer = new IntersectionObserver(entries => {
++        entries.forEach(entry => {
++          if (!entry.isIntersecting) return;
++          links.forEach(link => {
++            const active = link.getAttribute('href') === `#${entry.target.id}`;
++            link.classList.toggle(':target-current', active);
++            link.setAttribute('aria-current', active);
++          });
++        });
++      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++
++      document.querySelectorAll('main section[id]').forEach(section => observer.observe(section));
++    }
++  </script>
+ </body>
+ 
+ </html>

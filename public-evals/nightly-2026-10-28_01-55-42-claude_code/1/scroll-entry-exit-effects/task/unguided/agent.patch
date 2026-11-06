@@ -1,0 +1,53 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,49 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /*
++      Scroll-driven reveal (no JavaScript).
++      Each card is scaled by its own position in the scrollport: it grows
++      from half size to full size while entering the viewport and shrinks
++      back to half size while leaving it. The animation runs in both
++      directions as the user scrolls up or down.
++    */
++    @supports (animation-timeline: view()) {
++      .card {
++        animation: card-reveal linear both;
++        animation-timeline: view();
++        /* Only the scale property changes, so layout, reading order and
++           focus order of the cards are unaffected. */
++        transform-origin: center;
++      }
++
++      @keyframes card-reveal {
++        entry 0% {
++          scale: 0.5;
++        }
++
++        entry 100%,
++        exit 0% {
++          scale: 1;
++        }
++
++        exit 100% {
++          scale: 0.5;
++        }
++      }
++
++      /* Respect the user's motion preference: render cards at full size
++         with no scroll-linked movement. */
++      @media (prefers-reduced-motion: reduce) {
++        .card {
++          animation: none;
++          scale: 1;
++        }
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

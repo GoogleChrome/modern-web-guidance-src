@@ -1,0 +1,491 @@
+diff --git a/public/smallpt/smallpt-worker.js b/public/smallpt/smallpt-worker.js
+new file mode 100644
+index 0000000..35664e1
+--- /dev/null
++++ b/public/smallpt/smallpt-worker.js
+@@ -0,0 +1,55 @@
++// Web Worker that drives the smallpt WebAssembly module (smallpt.js, built from
++// wasm/smallpt/smallpt.cpp). Rendering happens here so the page stays
++// responsive; rows are streamed back to the main thread as they finish.
++//
++// Messages in:  { type: 'render', id, width, height, spp, seed, colors }
++//               colors: Float64Array of r,g,b per sphere (or null = keep)
++// Messages out: { type: 'ready', spheres }
++//               { type: 'rows', id, row0, row1, width, data }  (RGBA rows)
++//               { type: 'done', id, ms }
++//               { type: 'error', id, message }
++importScripts('./smallpt.js');
++
++const ROWS_PER_CHUNK = 6;
++let mod = null;
++let currentJob = 0;
++
++const ready = createSmallpt().then((m) => {
++  mod = m;
++  postMessage({ type: 'ready', spheres: m._smallpt_sphere_count() });
++  return m;
++});
++
++self.onmessage = async (event) => {
++  const msg = event.data;
++  if (msg.type !== 'render') return;
++  const m = await ready;
++  const id = (currentJob = msg.id);
++  try {
++    if (msg.colors) {
++      const n = m._smallpt_sphere_count() * 3;
++      const ptr = m._malloc(n * 8);
++      m.HEAPF64.set(msg.colors.subarray(0, n), ptr / 8);
++      m._smallpt_set_colors(ptr);
++      m._free(ptr);
++    }
++    const { width, height, spp, seed } = msg;
++    const pixels = m._smallpt_setup(width, height, spp, seed >>> 0);
++    const start = performance.now();
++    for (let row0 = 0; row0 < height; row0 += ROWS_PER_CHUNK) {
++      if (currentJob !== id) return; // superseded by a newer render request
++      const row1 = Math.min(height, row0 + ROWS_PER_CHUNK);
++      m._smallpt_render_rows(row0, row1);
++      // HEAPU8 may be replaced on memory growth, so re-read it each time.
++      const data = new Uint8ClampedArray(
++        m.HEAPU8.buffer.slice(pixels + row0 * width * 4, pixels + row1 * width * 4),
++      );
++      postMessage({ type: 'rows', id, row0, row1, width, data }, [data.buffer]);
++      // Yield so a newer 'render' message can cancel this job.
++      await new Promise((r) => setTimeout(r, 0));
++    }
++    if (currentJob === id) postMessage({ type: 'done', id, ms: performance.now() - start });
++  } catch (err) {
++    postMessage({ type: 'error', id, message: String(err && err.message || err) });
++  }
++};
+diff --git a/public/smallpt/smallpt.js b/public/smallpt/smallpt.js
+new file mode 100644
+index 0000000..00bc327
+Binary files /dev/null and b/public/smallpt/smallpt.js differ
+diff --git a/src/components/SmallptDemo.astro b/src/components/SmallptDemo.astro
+new file mode 100644
+index 0000000..2c5c1e8
+--- /dev/null
++++ b/src/components/SmallptDemo.astro
+@@ -0,0 +1,188 @@
++---
++// smallpt (Kevin Beason's 99-line C++ path tracer) compiled to WebAssembly and
++// run client-side in a Web Worker. Source: wasm/smallpt/smallpt.cpp, build with
++// wasm/smallpt/build.sh. The rendering never leaves the browser.
++const width = 320;
++const height = 240;
++---
++<section class="p-4 md:p-6" id="smallpt-demo" data-width={width} data-height={height}>
++  <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++    Rendered in Your Browser
++  </h2>
++
++  <div class="grid md:grid-cols-5 gap-6 items-start">
++    <figure class="md:col-span-3">
++      <div class="relative bg-black" style={`aspect-ratio: ${width} / ${height}`}>
++        <canvas
++          id="smallpt-canvas"
++          width={width}
++          height={height}
++          class="block w-full h-full"
++          aria-label="Cornell box scene rendered by the smallpt path tracer"
++        ></canvas>
++        <div
++          id="smallpt-progress"
++          class="absolute left-0 bottom-0 h-1 bg-amber-400 transition-[width] duration-150"
++          style="width: 0%"
++        ></div>
++      </div>
++      <figcaption class="text-xs text-gray-500 mt-2">
++        <span id="smallpt-status" aria-live="polite">Loading WebAssembly module…</span>
++      </figcaption>
++    </figure>
++
++    <div class="md:col-span-2 space-y-4">
++      <p class="text-gray-700 leading-relaxed">
++        This Cornell box is traced live on your machine by
++        <a class="underline hover:text-amber-500" href="http://www.kevinbeason.com/smallpt/" target="_blank" rel="noopener">smallpt</a>,
++        Kevin Beason's 99-line C++ global illumination renderer, compiled to WebAssembly with Emscripten.
++        No server, no GPU: just Monte Carlo path tracing in a Web Worker.
++      </p>
++
++      <div class="flex flex-wrap items-center gap-3">
++        <button
++          id="smallpt-rerender"
++          type="button"
++          class="bg-gray-900 text-white font-semibold px-4 py-2 rounded hover:bg-amber-400 hover:text-gray-900 disabled:opacity-50 disabled:cursor-wait transition-colors"
++          disabled
++        >
++          Render with random colors
++        </button>
++        <label class="text-sm text-gray-700">
++          Quality
++          <select id="smallpt-spp" class="ml-1 border border-gray-300 rounded px-2 py-1 bg-white">
++            <option value="16">16 spp (fast)</option>
++            <option value="32" selected>32 spp</option>
++            <option value="64">64 spp</option>
++            <option value="128">128 spp (slow)</option>
++          </select>
++        </label>
++      </div>
++
++      <div>
++        <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">Sphere colors</p>
++        <ul id="smallpt-swatches" class="flex flex-wrap gap-2 text-xs text-gray-600"></ul>
++      </div>
++    </div>
++  </div>
++</section>
++
++<script>
++  // Sphere order matches the `spheres[]` array in smallpt.cpp.
++  const SPHERE_NAMES = ['Left wall', 'Right wall', 'Back wall', 'Front wall', 'Floor', 'Ceiling', 'Mirror', 'Glass', 'Light'];
++  const ORIGINAL_COLORS: number[][] = [
++    [0.75, 0.25, 0.25], [0.25, 0.25, 0.75], [0.75, 0.75, 0.75], [0, 0, 0], [0.75, 0.75, 0.75],
++    [0.75, 0.75, 0.75], [0.999, 0.999, 0.999], [0.999, 0.999, 0.999], [0, 0, 0],
++  ];
++
++  function hslToRgb(h: number, s: number, l: number): number[] {
++    const k = (n: number) => (n + h * 12) % 12;
++    const a = s * Math.min(l, 1 - l);
++    const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
++    return [f(0), f(8), f(4)];
++  }
++
++  function randomColors(): number[][] {
++    return ORIGINAL_COLORS.map((orig, i) => {
++      if (i === 3 || i === 8) return orig; // front wall stays black, light is emission-only
++      if (i === 6 || i === 7) {
++        // Mirror / glass: a light tint so reflections and refractions stay bright.
++        return hslToRgb(Math.random(), 0.6 + Math.random() * 0.4, 0.86 + Math.random() * 0.1);
++      }
++      // Diffuse walls: saturated-ish colours, capped so the scene stays well behaved.
++      return hslToRgb(Math.random(), 0.45 + Math.random() * 0.5, 0.3 + Math.random() * 0.3).map((c) => Math.min(c, 0.85));
++    });
++  }
++
++  function toCss(c: number[]): string {
++    return `rgb(${c.map((v) => Math.round(Math.pow(v, 1 / 2.2) * 255)).join(',')})`;
++  }
++
++  function setup(root: HTMLElement) {
++    if (root.dataset.ready) return;
++    root.dataset.ready = '1';
++
++    const canvas = root.querySelector<HTMLCanvasElement>('#smallpt-canvas')!;
++    const ctx = canvas.getContext('2d')!;
++    const status = root.querySelector<HTMLElement>('#smallpt-status')!;
++    const progress = root.querySelector<HTMLElement>('#smallpt-progress')!;
++    const button = root.querySelector<HTMLButtonElement>('#smallpt-rerender')!;
++    const sppSelect = root.querySelector<HTMLSelectElement>('#smallpt-spp')!;
++    const swatches = root.querySelector<HTMLUListElement>('#smallpt-swatches')!;
++    const width = Number(root.dataset.width);
++    const height = Number(root.dataset.height);
++
++    const base = import.meta.env.BASE_URL;
++    const worker = new Worker(`${base}smallpt/smallpt-worker.js`);
++    let jobId = 0;
++    let colors = ORIGINAL_COLORS;
++
++    function showSwatches() {
++      swatches.innerHTML = '';
++      colors.forEach((c, i) => {
++        if (i === 3 || i === 8) return;
++        const li = document.createElement('li');
++        li.className = 'flex items-center gap-1';
++        const dot = document.createElement('span');
++        dot.className = 'inline-block w-4 h-4 rounded-full border border-gray-300';
++        dot.style.background = toCss(c);
++        li.append(dot, document.createTextNode(SPHERE_NAMES[i]));
++        swatches.append(li);
++      });
++    }
++
++    function render(newColors: number[][]) {
++      colors = newColors;
++      showSwatches();
++      const id = ++jobId;
++      const spp = Number(sppSelect.value);
++      button.disabled = true;
++      progress.style.width = '0%';
++      status.textContent = `Rendering ${width}×${height} at ${spp} samples per pixel…`;
++      ctx.fillStyle = '#000';
++      ctx.fillRect(0, 0, width, height);
++      worker.postMessage({
++        type: 'render',
++        id,
++        width,
++        height,
++        spp,
++        seed: (Math.random() * 0xffffffff) >>> 0,
++        colors: Float64Array.from(colors.flat()),
++      });
++    }
++
++    worker.onmessage = (event: MessageEvent) => {
++      const msg = event.data;
++      if (msg.type === 'ready') {
++        render(ORIGINAL_COLORS);
++      } else if (msg.type === 'rows') {
++        if (msg.id !== jobId) return;
++        const image = new ImageData(msg.data, msg.width, msg.row1 - msg.row0);
++        ctx.putImageData(image, 0, msg.row0);
++        progress.style.width = `${(msg.row1 / height) * 100}%`;
++      } else if (msg.type === 'done') {
++        if (msg.id !== jobId) return;
++        progress.style.width = '0%';
++        button.disabled = false;
++        status.textContent = `Rendered ${width}×${height} at ${sppSelect.value} spp in ${(msg.ms / 1000).toFixed(1)} s, entirely in your browser via WebAssembly.`;
++      } else if (msg.type === 'error') {
++        button.disabled = false;
++        status.textContent = `Render failed: ${msg.message}`;
++      }
++    };
++    worker.onerror = (e) => {
++      status.textContent = `Could not start the WebAssembly worker: ${e.message}`;
++    };
++
++    button.addEventListener('click', () => render(randomColors()));
++    sppSelect.addEventListener('change', () => render(colors));
++  }
++
++  function init() {
++    const root = document.getElementById('smallpt-demo');
++    if (root) setup(root);
++  }
++  init();
++  document.addEventListener('astro:page-load', init);
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..321fa3e 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SmallptDemo from '../components/SmallptDemo.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -73,6 +74,9 @@ politicsArticles[2] = {
+ 
+         <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+ 
++        <!-- smallpt path tracer compiled to WebAssembly, rendered client-side -->
++        <SmallptDemo />
++
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+diff --git a/wasm/smallpt/README.md b/wasm/smallpt/README.md
+new file mode 100644
+index 0000000..c8b84a8
+--- /dev/null
++++ b/wasm/smallpt/README.md
+@@ -0,0 +1,15 @@
++# smallpt → WebAssembly
++
++`smallpt.cpp` is Kevin Beason's [smallpt](http://www.kevinbeason.com/smallpt/)
++path tracer with `main()` replaced by a tiny C API (`smallpt_setup`,
++`smallpt_set_colors`, `smallpt_render_rows`, `smallpt_pixels`). The rendering
++code itself is unchanged.
++
++`./build.sh` (requires Emscripten's `em++`) produces `public/smallpt/smallpt.js`,
++a single self-contained file with the `.wasm` embedded. It is loaded by
++`public/smallpt/smallpt-worker.js`, which the `SmallptDemo.astro` component
++on the home page runs in a Web Worker.
++
++Note: `-sSTACK_SIZE=16MB` is required. smallpt's `radiance()` recurses once per
++bounce and Russian roulette lets mirror/glass paths run deep; Emscripten's
++default 64 KB stack overflows.
+diff --git a/wasm/smallpt/build.sh b/wasm/smallpt/build.sh
+new file mode 100755
+index 0000000..0fa1944
+--- /dev/null
++++ b/wasm/smallpt/build.sh
+@@ -0,0 +1,22 @@
++#!/bin/sh
++# Compiles smallpt to WebAssembly. Requires the Emscripten SDK (em++).
++# Output: public/smallpt/smallpt.js — a single self-contained file (the .wasm
++# binary is embedded) exposing a `createSmallpt()` factory, loaded from
++# public/smallpt/smallpt-worker.js.
++set -eu
++cd "$(dirname "$0")"
++OUT=../../public/smallpt/smallpt.js
++em++ -O3 -std=c++17 smallpt.cpp -o "$OUT" \
++  --no-entry \
++  -sWASM=1 \
++  -sSINGLE_FILE=1 \
++  -sMODULARIZE=1 \
++  -sEXPORT_NAME=createSmallpt \
++  -sENVIRONMENT=web,worker \
++  -sALLOW_MEMORY_GROWTH=1 \
++  -sINITIAL_MEMORY=64MB \
++  -sSTACK_SIZE=16MB \
++  -sFILESYSTEM=0 \
++  -sEXPORTED_FUNCTIONS=_smallpt_sphere_count,_smallpt_set_colors,_smallpt_setup,_smallpt_pixels,_smallpt_width,_smallpt_height,_smallpt_render_rows,_malloc,_free \
++  -sEXPORTED_RUNTIME_METHODS=HEAPU8,HEAPF64
++echo "built $OUT ($(wc -c < "$OUT") bytes)"
+diff --git a/wasm/smallpt/smallpt.cpp b/wasm/smallpt/smallpt.cpp
+new file mode 100644
+index 0000000..724b2d4
+--- /dev/null
++++ b/wasm/smallpt/smallpt.cpp
+@@ -0,0 +1,155 @@
++// smallpt, a Path Tracer by Kevin Beason, 2008  (http://www.kevinbeason.com/smallpt/)
++// WebAssembly port: the rendering code below is the original smallpt.cpp, with
++// main() replaced by a small C API (smallpt_setup / smallpt_render_rows /
++// smallpt_pixels) so the browser can drive it row-by-row from a Web Worker and
++// supply its own sphere colours.
++//
++// Build: see build.sh (em++ ... -o public/smallpt/smallpt.js)
++#include <math.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <emscripten/emscripten.h>
++
++struct Vec {
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(const Vec&b)const{return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++static const int NUM_SPHERES = sizeof(spheres)/sizeof(Sphere);
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) { if (erand48(Xi)<p) f=f*(1/p); else return obj.e; } //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++// ---------------------------------------------------------------------------
++// C API used from JavaScript (replaces the original main()).
++// ---------------------------------------------------------------------------
++static int g_w = 0, g_h = 0, g_samps = 1;
++static unsigned g_seed = 0;
++static unsigned char *g_pixels = 0;   // RGBA, g_w * g_h * 4, top row first
++
++extern "C" {
++
++EMSCRIPTEN_KEEPALIVE int smallpt_sphere_count(){ return NUM_SPHERES; }
++
++// Replace the diffuse/reflective colour of every sphere. `colors` holds
++// 3 doubles (r,g,b in 0..1) per sphere, NUM_SPHERES spheres in scene order.
++// Emission (the light) is left untouched so the scene stays lit.
++EMSCRIPTEN_KEEPALIVE void smallpt_set_colors(const double *colors){
++  for (int i = 0; i < NUM_SPHERES; i++)
++    spheres[i].c = Vec(colors[i*3], colors[i*3+1], colors[i*3+2]);
++}
++
++// Prepare a render of a w x h image with spp = samps*4 samples per pixel.
++// Returns a pointer to the RGBA output buffer (also available via
++// smallpt_pixels()). Memory is reused across calls when the size matches.
++EMSCRIPTEN_KEEPALIVE unsigned char *smallpt_setup(int w, int h, int spp, unsigned seed){
++  if (w != g_w || h != g_h) {
++    free(g_pixels);
++    g_pixels = (unsigned char*)calloc((size_t)w * h * 4, 1);
++    g_w = w; g_h = h;
++  }
++  g_samps = spp / 4 > 0 ? spp / 4 : 1;
++  g_seed = seed;
++  return g_pixels;
++}
++
++EMSCRIPTEN_KEEPALIVE unsigned char *smallpt_pixels(){ return g_pixels; }
++EMSCRIPTEN_KEEPALIVE int smallpt_width(){ return g_w; }
++EMSCRIPTEN_KEEPALIVE int smallpt_height(){ return g_h; }
++
++// Render image rows [row0, row1) counted from the TOP of the image, writing
++// gamma-corrected RGBA into the pixel buffer. This is the body of smallpt's
++// main() loop; the row index is mapped back to smallpt's bottom-up `y`.
++EMSCRIPTEN_KEEPALIVE void smallpt_render_rows(int row0, int row1){
++  int w = g_w, h = g_h, samps = g_samps;
++  if (!g_pixels || w <= 0 || h <= 0) return;
++  if (row0 < 0) row0 = 0; if (row1 > h) row1 = h;
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r;
++  for (int row = row0; row < row1; row++){
++    int y = h - 1 - row;                             // smallpt's row index
++    unsigned short Xi[3]={ (unsigned short)g_seed, (unsigned short)(g_seed>>16),
++                           (unsigned short)(y*y*y) };
++    for (unsigned short x=0; x<w; x++){                          // Loop cols
++      Vec c;
++      for (int sy=0; sy<2; sy++)                     // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){         // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          c = c + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++      unsigned char *px = g_pixels + ((size_t)row * w + x) * 4;
++      px[0] = toInt(c.x); px[1] = toInt(c.y); px[2] = toInt(c.z); px[3] = 255;
++    }
++  }
++}
++
++} // extern "C"

@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+index 66c9173..bd2f38e 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,23 @@
+       background: #3e2723;
+     }
+ 
++    /* SPA views: inactive views keep their rendered state cached in memory */
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      inset-inline: 0;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
++    .spa-view:focus {
++      outline: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -168,6 +185,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="views">
++  <div class="spa-view" data-route="/" tabindex="-1">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -196,6 +215,8 @@
+       </div>
+     </section>
+   </main>
++  </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +228,74 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const MAX_CACHED_VIEWS = 5; // views are kept in memory, so evict least recently used
++    const container = document.getElementById('views');
++    const views = new Map(); // route -> element, ordered least to most recently used
++    views.set('/', container.querySelector('[data-route="/"]'));
++
++    const titles = new Map();
++    document.querySelectorAll('a[href^="/"]').forEach(a => {
++      if (!titles.has(a.pathname)) titles.set(a.pathname, a.textContent.trim());
++    });
++
++    function createView(route) {
++      const view = document.createElement('div');
++      view.className = 'spa-view inactive';
++      view.dataset.route = route;
++      view.tabIndex = -1;
++      view.setAttribute('aria-hidden', 'true');
++      const main = document.createElement('main');
++      main.className = 'container';
++      const h1 = document.createElement('h1');
++      h1.textContent = titles.get(route) || 'Page';
++      const p = document.createElement('p');
++      p.textContent = 'Content for ' + route + ' coming soon.';
++      main.append(h1, p);
++      view.append(main);
++      container.append(view);
++      return view;
++    }
++
++    function showRoute(route, { focus = true } = {}) {
++      let view = views.get(route);
++      if (view) {
++        views.delete(route); // re-insert to mark as most recently used
++      } else {
++        view = createView(route);
++      }
++      views.set(route, view);
++
++      for (const [r, v] of views) {
++        const active = r === route;
++        v.classList.toggle('inactive', !active);
++        v.setAttribute('aria-hidden', String(!active));
++      }
++
++      // Evict least recently used views (never the active one, which is last)
++      while (views.size > MAX_CACHED_VIEWS) {
++        const [oldRoute, oldView] = views.entries().next().value;
++        oldView.remove();
++        views.delete(oldRoute);
++      }
++
++      if (focus) view.focus({ preventScroll: true });
++      window.scrollTo(0, 0);
++    }
++
++    document.addEventListener('click', e => {
++      const a = e.target.closest('a[href]');
++      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++      if (a.origin !== location.origin || a.target || a.pathname === '/logout') return;
++      e.preventDefault();
++      if (a.pathname !== location.pathname) history.pushState(null, '', a.pathname);
++      showRoute(a.pathname);
++    });
++
++    addEventListener('popstate', () => showRoute(location.pathname));
++
++    if (location.pathname !== '/') showRoute(location.pathname, { focus: false });
++  </script>
+ </body>
+ 
+ </html>

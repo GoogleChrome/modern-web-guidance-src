@@ -1,0 +1,215 @@
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..bea30bf
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,85 @@
++---
++interface Props {
++    sections: { id: string; label: string }[];
++}
++
++const { sections } = Astro.props;
++---
++
++<nav aria-label="On this page" data-section-nav class="section-nav sticky top-0 z-30 border-b border-gray-300 bg-white shadow-sm">
++    <div class="flex items-center gap-6 overflow-x-auto px-4 md:px-6">
++        <span class="shrink-0 text-xs font-semibold uppercase tracking-wider text-gray-500">On this page</span>
++        {sections.map(({ id, label }, index) => (
++            <a href={`#${id}`} aria-current={index === 0 ? 'location' : undefined} class="section-nav-link shrink-0 border-b-2 border-transparent py-3 text-sm font-semibold text-gray-600 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-amber-600">
++                {label}
++            </a>
++        ))}
++    </div>
++</nav>
++
++<style>
++    .section-nav-link[aria-current="location"] {
++        border-color: #d97706;
++        color: #92400e;
++    }
++</style>
++
++<script>
++    let cleanup: (() => void) | undefined;
++
++    function setupSectionNav() {
++        cleanup?.();
++        const nav = document.querySelector<HTMLElement>('[data-section-nav]');
++        if (!nav) return;
++
++        const links = Array.from(nav.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'));
++        const entries = links.flatMap(link => {
++            const section = document.getElementById(link.hash.slice(1));
++            return section ? [{ link, section }] : [];
++        });
++        if (!entries.length) return;
++
++        let frame = 0;
++        let activeLink: HTMLAnchorElement | undefined;
++        const update = () => {
++            frame = 0;
++            // Keep the preceding section selected through gaps such as ad slots.
++            const readingLine = nav.getBoundingClientRect().bottom + Math.min(120, window.innerHeight * 0.2);
++            let current = entries[0];
++            for (const entry of entries) {
++                if (entry.section.getBoundingClientRect().top <= readingLine) current = entry;
++            }
++            for (const entry of entries) {
++                if (entry === current) entry.link.setAttribute('aria-current', 'location');
++                else entry.link.removeAttribute('aria-current');
++            }
++            if (activeLink !== current.link) {
++                activeLink = current.link;
++                const menu = activeLink.parentElement!;
++                const menuBounds = menu.getBoundingClientRect();
++                const linkBounds = activeLink.getBoundingClientRect();
++                if (linkBounds.left < menuBounds.left) menu.scrollLeft -= menuBounds.left - linkBounds.left;
++                else if (linkBounds.right > menuBounds.right) menu.scrollLeft += linkBounds.right - menuBounds.right;
++            }
++        };
++        const scheduleUpdate = () => {
++            if (!frame) frame = requestAnimationFrame(update);
++        };
++
++        window.addEventListener('scroll', scheduleUpdate, { passive: true });
++        window.addEventListener('resize', scheduleUpdate);
++        const observer = new ResizeObserver(scheduleUpdate);
++        entries.forEach(({ section }) => observer.observe(section));
++        update();
++
++        cleanup = () => {
++            window.removeEventListener('scroll', scheduleUpdate);
++            window.removeEventListener('resize', scheduleUpdate);
++            observer.disconnect();
++            cancelAnimationFrame(frame);
++        };
++    }
++
++    document.addEventListener('astro:page-load', setupSectionNav);
++    document.addEventListener('astro:before-swap', () => cleanup?.());
++</script>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..06e8f85 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -3,13 +3,14 @@ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..b62e554 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -6,11 +6,12 @@ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..4689331 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SectionNav from '../components/SectionNav.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -54,10 +55,17 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
++    <SectionNav sections={[
++        { id: 'top-stories', label: 'Top Stories' },
++        { id: 'top-news', label: 'Top News' },
++        { id: 'world', label: 'World' },
++        { id: 'politics', label: 'Politics' },
++    ]} />
++
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <section id="top-stories" aria-label="Top Stories" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +73,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..3ccd8ad 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,11 @@
+ @import "tailwindcss";
+ 
++section[id] {
++  scroll-margin-top: 4rem;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

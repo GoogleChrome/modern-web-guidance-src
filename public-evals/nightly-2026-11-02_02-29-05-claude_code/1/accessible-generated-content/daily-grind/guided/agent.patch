@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+index 66c9173..e692d7d 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,13 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Decorative icon tokens (single-color SVGs rendered via CSS masks) */
++      --icon-maple: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M12 2l1.6 3.6 2.4-1.1-.6 3.9 3.3-1.4-.9 2.6L21 11l-3.2 2.1.8 1.9-3.6-.4-.3 2.4-2.2-1.4V22h-1v-6.4l-2.2 1.4-.3-2.4-3.6.4.8-1.9L3 11l2.2-1.4-.9-2.6 3.3 1.4-.6-3.9 2.4 1.1z'/%3E%3C/svg%3E");
++      --icon-bean: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'%3E%3Cellipse cx='12' cy='12' rx='6.5' ry='9.5' transform='rotate(35 12 12)'/%3E%3Cpath d='M8 18c3-2 2-5 4-6s3-4 4-6'/%3E%3C/svg%3E");
++      --icon-ice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 3.5l3 2 3-2M9 20.5l3-2 3 2'/%3E%3C/svg%3E");
++      --icon-cup: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 2v3M12 2v3'/%3E%3C/svg%3E");
++      --icon-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E");
+     }
+ 
+     * {
+@@ -135,6 +142,121 @@
+       background: #3e2723;
+     }
+ 
++    /* Decorative CSS icons
++       Icons are purely decorative: the heading/link text already carries the
++       meaning, so generated content gets empty alt text ("/ ''") and is never
++       announced. The single-value `content` line is a fallback for browsers
++       without the alt-text syntax. */
++    .icon-start::before,
++    .icon-end::after {
++      content: "";
++      content: "" / "";
++      display: inline-block;
++      width: var(--icon-size, 1em);
++      height: var(--icon-size, 1em);
++      background-color: var(--icon-color, currentColor);
++      mask: var(--icon) no-repeat center / contain;
++      vertical-align: calc(0.5cap - var(--icon-size, 1em) / 2 - 0.02em);
++      flex: none;
++      pointer-events: none;
++      /* Keep masked icons visible in forced-colors mode */
++      forced-color-adjust: none;
++    }
++
++    .icon-start::before {
++      margin-inline-end: 0.4em;
++    }
++
++    .icon-end::after {
++      margin-inline-start: 0.4em;
++    }
++
++    /* Section heading flourish: ornamental glyphs hidden from screen readers */
++    .section-title {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .section-title::before,
++    .section-title::after {
++      color: var(--accent);
++      font-size: 0.8em;
++    }
++
++    .section-title::before {
++      content: "\2766\00a0";
++      content: "\2766\00a0" / "";
++    }
++
++    .section-title::after {
++      content: "\00a0\2766";
++      content: "\00a0\2766" / "";
++      display: inline-block;
++      transform: scaleX(-1);
++    }
++
++    /* Drink heading icons */
++    .card h3 {
++      --icon-color: var(--accent);
++      --icon-size: 1.1em;
++    }
++
++    .card h3::after {
++      /* Accent underline flourish (no content, so nothing to announce) */
++      content: "";
++      display: block;
++      width: 3rem;
++      height: 3px;
++      margin: 0.4rem auto 0;
++      border-radius: 3px;
++      background: linear-gradient(90deg, transparent, var(--accent), transparent);
++    }
++
++    .drink-maple {
++      --icon: var(--icon-maple);
++    }
++
++    .drink-espresso {
++      --icon: var(--icon-bean);
++    }
++
++    .drink-cold-brew {
++      --icon: var(--icon-ice);
++    }
++
++    /* Button icons */
++    .btn-order {
++      --icon: var(--icon-cup);
++      --icon-size: 1.15em;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-order:hover {
++      background: #ffc370;
++    }
++
++    .btn-details {
++      --icon: var(--icon-arrow);
++      --icon-size: 0.9em;
++    }
++
++    .btn-details::after {
++      transition: translate 0.2s ease;
++    }
++
++    .btn-details:hover::after,
++    .btn-details:focus-visible::after {
++      translate: 0.2em 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn-details::after {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,27 +293,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-order icon-start">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="icon-start drink-maple">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn btn-details icon-end">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="icon-start drink-espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn btn-details icon-end">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="icon-start drink-cold-brew">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn btn-details icon-end">View Details</a>
+         </div>
+       </div>
+     </section>

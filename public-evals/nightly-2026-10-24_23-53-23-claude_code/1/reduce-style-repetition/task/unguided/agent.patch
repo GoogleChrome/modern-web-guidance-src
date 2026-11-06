@@ -1,0 +1,60 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,34 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Reusable CSS functions (native @function, Chromium 139+) */
++    @function --gradient(--from <color>, --to <color>, --angle <angle>: 135deg) {
++      result: linear-gradient(var(--angle), var(--from), var(--to));
++    }
++
++    @function --columns(--count <integer>) {
++      result: repeat(var(--count), minmax(0, 1fr));
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      background-image: --gradient(#fff3e0, #d7ccc8, 160deg);
++      background-attachment: fixed;
++      min-height: 100vh;
+     }
+ 
++    h2 {
++      background-image: --gradient(var(--primary), #bf5b04);
++      color: white;
++      padding: 0.4em 1em;
++      border-radius: 8px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -101,13 +120,20 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: --columns(1);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    /* Two equal columns on wider screens (~1000px); one column on narrow (~400px) */
++    @media (min-width: 700px) {
++      .grid {
++        grid-template-columns: --columns(2);
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;

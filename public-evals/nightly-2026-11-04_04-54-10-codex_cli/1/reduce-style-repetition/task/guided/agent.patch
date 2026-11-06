@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -5,8 +5,20 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    @function --cool-gradient(--start <color>, --end <color>, --angle <angle>: 135deg) returns <image> {
++      result: linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --responsive-columns(--count <integer>: 2) {
++      result: minmax(0, 1fr);
++
++      @media (min-width: 800px) {
++        result: repeat(var(--count), minmax(0, 1fr));
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+@@ -24,16 +36,36 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      --gradient-start: #f0f9ff;
++      --gradient-end: #dff4ef;
++      min-block-size: 100dvh;
+     }
+ 
++    body,
++    h2 {
++      /* Shared gradient fallback for browsers without custom functions. */
++      background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
++      background-image: --cool-gradient(var(--gradient-start), var(--gradient-end));
++    }
++
++    h2 {
++      --gradient-start: #c5e9ed;
++      --gradient-end: #c7d2fe;
++      padding: 0.75rem 1rem;
++      border-radius: 8px;
++      text-align: center;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+@@ -47,15 +79,13 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -101,13 +131,22 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      --column-count: 1;
++      grid-template-columns: repeat(var(--column-count), minmax(0, 1fr));
++      grid-template-columns: --responsive-columns(2);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    /* Keep the same responsive layout when custom functions are unavailable. */
++    @media (min-width: 800px) {
++      .grid {
++        --column-count: 2;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -175,9 +214,9 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

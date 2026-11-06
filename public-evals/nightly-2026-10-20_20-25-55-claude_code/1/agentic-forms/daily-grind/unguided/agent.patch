@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+index 66c9173..454f0e1 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,49 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Form-based actions (also exposed as agent tools) */
++    form {
++      display: inline;
++    }
++
++    button {
++      font: inherit;
++      color: inherit;
++      background: none;
++      border: 0;
++      cursor: pointer;
++    }
++
++    nav button {
++      color: white;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav button:hover {
++      color: var(--accent);
++    }
++
++    nav button.logout-link {
++      border: 1px solid var(--accent);
++    }
++
++    button.btn {
++      color: white;
++      background: var(--primary);
++      font-size: 1rem;
++    }
++
++    button.btn:hover {
++      background: #3e2723;
++    }
++
++    .footer-links button {
++      margin: 0 10px;
++      color: var(--text);
++      font-size: 0.85rem;
++    }
+   </style>
+ </head>
+ 
+@@ -160,18 +203,18 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><form action="/menu" method="get" toolname="browse_menu" tooldescription="Open the full coffee menu"><button type="submit">Menu</button></form></li>
++      <li><form action="/locations" method="get" toolname="find_locations" tooldescription="Show Daily Grind cafe locations"><button type="submit">Locations</button></form></li>
++      <li><form action="/rewards" method="get" toolname="view_rewards" tooldescription="Open the rewards program page"><button type="submit">Rewards</button></form></li>
++      <li><form action="/account" method="get" toolname="open_account" tooldescription="Open the signed-in customer account page"><button type="submit">My Account</button></form></li>
++      <li><form action="/logout" method="get" toolname="logout" tooldescription="Log out of the current account"><button type="submit" class="logout-link">Logout</button></form></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form action="/order-online" method="get" toolname="order_online" tooldescription="Start an online coffee order"><button type="submit" class="btn">Order Now</button></form>
+   </header>
+ 
+   <main class="container">
+@@ -181,17 +224,17 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <form action="/menu/seasonal" method="get" toolname="view_maple_oat_latte" tooldescription="View details for the seasonal favorite: Maple Oat Latte"><button type="submit" class="btn">View Details</button></form>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <form action="/menu/espresso" method="get" toolname="view_dark_roast_espresso" tooldescription="View details for the seasonal favorite: Dark Roast Espresso"><button type="submit" class="btn">View Details</button></form>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <form action="/menu/cold-brew" method="get" toolname="view_cold_brew" tooldescription="View details for the seasonal favorite: Cold Brew"><button type="submit" class="btn">View Details</button></form>
+         </div>
+       </div>
+     </section>
+@@ -199,10 +242,10 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <form action="/about" method="get" toolname="read_our_story" tooldescription="Read about the history of The Daily Grind"><button type="submit">Our Story</button></form> |
++      <form action="/careers" method="get" toolname="view_careers" tooldescription="See job openings and join the team"><button type="submit">Join the Team</button></form> |
++      <form action="/contact" method="get" toolname="contact_us" tooldescription="Open the contact page to reach The Daily Grind"><button type="submit">Contact Us</button></form> |
++      <form action="/privacy-policy" method="get" toolname="read_privacy_policy" tooldescription="Read the privacy policy"><button type="submit">Privacy</button></form>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>

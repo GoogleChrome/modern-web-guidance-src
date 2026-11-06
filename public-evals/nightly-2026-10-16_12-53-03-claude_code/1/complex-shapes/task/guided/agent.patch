@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,10 +85,59 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
+     }
+ 
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative coffee-splash block. Absolutely positioned, so it takes no
++       space in the flow: if the mask or photo fails, the hero layout is unchanged. */
++    .shaped-element {
++      position: absolute;
++      right: -4%;
++      bottom: -12%;
++      width: clamp(180px, 34vw, 420px);
++      aspect-ratio: 1;
++      z-index: 0;
++      pointer-events: none;
++      background-color: var(--accent);
++      background-image: linear-gradient(rgba(78, 52, 46, 0.35), rgba(78, 52, 46, 0.35)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80');
++      background-size: cover;
++      background-position: center;
++      opacity: 0.9;
++      transform: rotate(-8deg);
++      /* Inline SVG splash (data URI, so no extra request to fail) */
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M101 8c22-4 31 18 48 24 20 8 47 4 48 30 1 21-22 28-20 47 2 20 22 32 8 51-13 18-37 8-55 14-19 6-28 28-50 23-22-5-18-30-34-42C27 143 3 140 4 118c1-22 26-24 28-44C34 52 14 38 30 22 46 7 76 12 101 8z'/%3E%3Ccircle cx='178' cy='20' r='9'/%3E%3Ccircle cx='20' cy='176' r='7'/%3E%3Ccircle cx='190' cy='118' r='5'/%3E%3C/svg%3E");
++      -webkit-mask-size: contain;
++      -webkit-mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M101 8c22-4 31 18 48 24 20 8 47 4 48 30 1 21-22 28-20 47 2 20 22 32 8 51-13 18-37 8-55 14-19 6-28 28-50 23-22-5-18-30-34-42C27 143 3 140 4 118c1-22 26-24 28-44C34 52 14 38 30 22 46 7 76 12 101 8z'/%3E%3Ccircle cx='178' cy='20' r='9'/%3E%3Ccircle cx='20' cy='176' r='7'/%3E%3Ccircle cx='190' cy='118' r='5'/%3E%3C/svg%3E");
++      mask-size: contain;
++      mask-repeat: no-repeat;
++      mask-position: center;
++    }
++
++    /* Browsers without mask support: simple rounded fallback instead of a hard rectangle */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        clip-path: inset(5% round 15px);
++      }
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        opacity: 0.5;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +217,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

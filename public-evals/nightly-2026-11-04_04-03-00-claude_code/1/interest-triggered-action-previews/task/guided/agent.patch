@@ -1,0 +1,99 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,39 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Seasonal preview (interest invokers) */
++    .seasonal-preview {
++      margin-top: 30px;
++      padding: 24px;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      background: white;
++      text-align: center;
++      font-size: 1.25rem;
++      font-weight: 600;
++      color: #6d4c41;
++      transition: color 0.2s, border-color 0.2s, background-color 0.2s;
++    }
++
++    /* Native :interest-target plus the polyfill's .interest-target class */
++    .seasonal-preview:is(:interest-target, .interest-target) {
++      border-style: solid;
++      border-color: var(--accent);
++      background: #fff8e1;
++    }
++
++    .seasonal-preview[data-drink="maple-oat-latte"] { color: #b45309; }
++    .seasonal-preview[data-drink="dark-roast-espresso"] { color: #3e2723; }
++    .seasonal-preview[data-drink="cold-brew"] { color: #1e3a5f; }
++
++    [interestfor] {
++      --interest-delay-start: 0.15s;
++      interest-delay-start: var(--interest-delay-start);
++      --interest-delay-end: 0.1s;
++      interest-delay-end: var(--interest-delay-end);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,21 +211,23 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="seasonal-preview" data-drink="maple-oat-latte" data-drink-name="Maple Oat Latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="seasonal-preview" data-drink="dark-roast-espresso" data-drink-name="Dark Roast Espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="seasonal-preview" data-drink="cold-brew" data-drink-name="Cold Brew">View Details</a>
+         </div>
+       </div>
++      <!-- Passive preview: intentionally NOT a live region (no aria-live / role="status") -->
++      <div id="seasonal-preview" class="seasonal-preview">Select a drink to preview</div>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +239,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load the interestfor polyfill only where interest invokers aren't supported natively.
++    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
++      await import("https://unpkg.com/interestfor@latest");
++    }
++
++    const preview = document.getElementById("seasonal-preview");
++    const DEFAULT_TEXT = "Select a drink to preview";
++
++    preview.addEventListener("interest", (event) => {
++      const { drink, drinkName } = event.source.dataset;
++      preview.dataset.drink = drink;
++      preview.textContent = drinkName;
++    });
++
++    preview.addEventListener("loseinterest", () => {
++      delete preview.dataset.drink;
++      preview.textContent = DEFAULT_TEXT;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

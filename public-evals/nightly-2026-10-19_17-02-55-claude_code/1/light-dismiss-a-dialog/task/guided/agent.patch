@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,49 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Logout confirmation dialog */
++    .logout-dialog {
++      margin: auto;
++      padding: 24px;
++      border: none;
++      border-radius: 8px;
++      color: var(--text);
++    }
++
++    .logout-dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0.5);
++    }
++
++    .logout-dialog h2 {
++      font-size: 1.25rem;
++      margin-bottom: 16px;
++    }
++
++    .logout-dialog .actions {
++      display: flex;
++      gap: 10px;
++      justify-content: flex-end;
++    }
++
++    .logout-dialog button,
++    .logout-dialog .btn {
++      margin-top: 0;
++      padding: 8px 16px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .logout-dialog .btn {
++      background: var(--primary);
++      color: white;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,9 +204,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -206,7 +247,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="logout-dialog" class="logout-dialog" closedby="any" aria-labelledby="logout-dialog-title">
++    <h2 id="logout-dialog-title">Are you sure?</h2>
++    <form method="dialog" class="actions">
++      <button type="submit">Cancel</button>
++      <a href="/logout" class="btn">Logout</a>
++    </form>
++  </dialog>
++
++  <script>
++    const logoutDialog = document.getElementById('logout-dialog');
++
++    document.querySelector('.test-dialog-trigger').addEventListener('click', (event) => {
++      event.preventDefault();
++      logoutDialog.showModal();
++    });
++
++    // Fallback for browsers without closedby support
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      logoutDialog.addEventListener('click', (event) => {
++        // Backdrop clicks target the dialog element itself
++        if (event.target !== logoutDialog) return;
++
++        const rect = logoutDialog.getBoundingClientRect();
++        const isDialogContent = (
++          rect.top <= event.clientY &&
++          event.clientY <= rect.top + rect.height &&
++          rect.left <= event.clientX &&
++          event.clientX <= rect.left + rect.width
++        );
++        if (isDialogContent) return;
++
++        logoutDialog.close();
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

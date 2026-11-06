@@ -1,0 +1,244 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,240 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <title>Northwind — Ship faster with less overhead</title>
++  <meta name="description" content="Northwind helps product teams plan, build, and ship without the busywork.">
++
++  <!--
++    Anti-flicker strategy
++    ---------------------
++    1. Browsers that support `blocking="render"` (Chromium 105+, Safari 18.2+)
++       do not paint anything until the experiment SDK has downloaded and
++       executed. `async` keeps HTML parsing going in parallel.
++    2. Browsers without support (e.g. Firefox) ignore the attribute, so the
++       inline fallback below hides the page until the SDK loads (or fails),
++       with a safety timeout so a slow/broken CDN never leaves a blank page.
++
++    The fallback runs BEFORE the SDK tag so the `revealPage` hook exists
++    by the time the async script's load/error handler can fire.
++  -->
++  <style>
++    .ab-loading { opacity: 0 !important; }
++  </style>
++  <script>
++    (function () {
++      var root = document.documentElement;
++      var supportsRenderBlocking =
++        Object.hasOwn && Object.hasOwn(HTMLScriptElement.prototype, 'blocking');
++
++      // Exposed so the SDK can call it explicitly once variants are applied,
++      // e.g. if it fetches its config asynchronously after executing.
++      window.revealPage = function () {
++        root.classList.remove('ab-loading');
++      };
++
++      if (!supportsRenderBlocking) {
++        root.classList.add('ab-loading');
++        setTimeout(window.revealPage, 3000);
++      }
++    })();
++  </script>
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++    onload="revealPage()"
++    onerror="revealPage()"
++  ></script>
++
++  <link rel="preconnect" href="https://images.unsplash.com">
++
++  <style>
++    :root {
++      color-scheme: light dark;
++      --bg: light-dark(#ffffff, #0d1117);
++      --fg: light-dark(#111827, #e6edf3);
++      --muted: light-dark(#4b5563, #9da7b3);
++      --accent: light-dark(#4f46e5, #818cf8);
++      --accent-fg: light-dark(#ffffff, #0d1117);
++      --radius: 0.75rem;
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++    }
++
++    *, *::before, *::after { box-sizing: border-box; }
++
++    body {
++      margin: 0;
++      background: var(--bg);
++      color: var(--fg);
++      line-height: 1.5;
++    }
++
++    .site-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      max-width: 72rem;
++      margin-inline: auto;
++      padding: 1.25rem 1.5rem;
++    }
++
++    .logo {
++      font-weight: 800;
++      font-size: 1.25rem;
++      color: inherit;
++      text-decoration: none;
++      letter-spacing: -0.02em;
++    }
++
++    .site-header nav a {
++      color: var(--muted);
++      text-decoration: none;
++      margin-inline-start: 1.5rem;
++    }
++    .site-header nav a:hover { color: var(--fg); }
++
++    .hero {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 3rem;
++      align-items: center;
++      max-width: 72rem;
++      margin-inline: auto;
++      padding: 3rem 1.5rem 5rem;
++    }
++
++    @media (min-width: 900px) {
++      .hero { grid-template-columns: 1.1fr 1fr; padding-block: 5rem 7rem; }
++    }
++
++    .eyebrow {
++      display: inline-block;
++      font-size: 0.875rem;
++      font-weight: 600;
++      color: var(--accent);
++      background: color-mix(in oklab, var(--accent) 12%, transparent);
++      padding: 0.25rem 0.75rem;
++      border-radius: 999px;
++      margin-block-end: 1rem;
++    }
++
++    .hero h1 {
++      font-size: clamp(2.25rem, 5vw + 1rem, 4rem);
++      line-height: 1.05;
++      letter-spacing: -0.03em;
++      margin: 0 0 1.25rem;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: 1.25rem;
++      color: var(--muted);
++      max-width: 36rem;
++      margin: 0 0 2rem;
++      text-wrap: pretty;
++    }
++
++    .cta-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
++      align-items: center;
++    }
++
++    .cta-button {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--accent-fg);
++      font-weight: 600;
++      font-size: 1.125rem;
++      padding: 0.9rem 1.75rem;
++      border-radius: var(--radius);
++      text-decoration: none;
++      box-shadow: 0 8px 24px -8px color-mix(in oklab, var(--accent) 60%, transparent);
++      transition: transform 150ms ease, box-shadow 150ms ease;
++    }
++    .cta-button:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 12px 28px -8px color-mix(in oklab, var(--accent) 70%, transparent);
++    }
++    .cta-button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .cta-secondary {
++      color: var(--fg);
++      font-weight: 600;
++      text-decoration: none;
++    }
++    .cta-secondary:hover { text-decoration: underline; }
++
++    .hero-media img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: calc(var(--radius) * 1.5);
++      box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.35);
++    }
++
++    .fine-print {
++      font-size: 0.875rem;
++      color: var(--muted);
++      margin-block-start: 1rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .cta-button { transition: none; }
++      .cta-button:hover { transform: none; }
++    }
++  </style>
++</head>
++<body>
++  <header class="site-header">
++    <a class="logo" href="/">Northwind</a>
++    <nav aria-label="Primary">
++      <a href="#features">Features</a>
++      <a href="#pricing">Pricing</a>
++      <a href="#login">Log in</a>
++    </nav>
++  </header>
++
++  <main>
++    <!--
++      Stable `data-experiment` hooks let the A/B SDK target elements without
++      depending on class names or DOM structure.
++    -->
++    <section class="hero" aria-labelledby="hero-title" data-experiment="hero">
++      <div class="hero-copy">
++        <span class="eyebrow" data-experiment="hero-eyebrow">New: AI-assisted planning</span>
++        <h1 id="hero-title" data-experiment="hero-headline">Ship faster with less overhead.</h1>
++        <p data-experiment="hero-subheadline">
++          Northwind brings roadmaps, sprints, and releases into one calm workspace,
++          so your team spends time building instead of updating spreadsheets.
++        </p>
++        <div class="cta-row">
++          <a class="cta-button" href="#signup" data-experiment="hero-cta">Start your free trial</a>
++          <a class="cta-secondary" href="#demo">Watch a 2-min demo →</a>
++        </div>
++        <p class="fine-print">No credit card required · Free for teams up to 5</p>
++      </div>
++
++      <div class="hero-media">
++        <img
++          src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=1600&q=75"
++          alt="A product team collaborating around laptops in a bright office"
++          width="1600"
++          height="1200"
++          fetchpriority="high"
++          data-experiment="hero-image"
++        >
++      </div>
++    </section>
++  </main>
++</body>
++</html>

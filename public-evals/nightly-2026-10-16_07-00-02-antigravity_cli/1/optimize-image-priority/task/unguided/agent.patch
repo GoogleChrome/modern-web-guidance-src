@@ -1,0 +1,311 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,307 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Product Landing</title>
++
++  <!-- LCP Optimization: Preload the hero image with high priority -->
++  <link rel="preload" as="image" href="hero-lcp.jpg" fetchpriority="high">
++
++  <style>
++    /* Minimal inline CSS to eliminate external stylesheet render-blocking */
++    *, *::before, *::after {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++    body {
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++      line-height: 1.5;
++      color: #1a1a1a;
++      background: #fafafa;
++    }
++    header {
++      background: #ffffff;
++      border-bottom: 1px solid #e5e7eb;
++      position: sticky;
++      top: 0;
++      z-index: 100;
++    }
++    nav {
++      max-width: 1080px;
++      margin: 0 auto;
++      padding: 0.75rem 1.5rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++    .brand {
++      font-weight: 700;
++      font-size: 1.25rem;
++      text-decoration: none;
++      color: #111;
++    }
++    .nav-menu {
++      display: flex;
++      gap: 1.5rem;
++      align-items: center;
++      list-style: none;
++    }
++    .nav-item {
++      position: relative;
++    }
++    .nav-link {
++      text-decoration: none;
++      color: #4b5563;
++      font-weight: 500;
++      cursor: pointer;
++    }
++    /* Mega menu dropdown - initially hidden */
++    .mega-menu {
++      display: none;
++      position: absolute;
++      top: 100%;
++      right: 0;
++      width: 280px;
++      padding: 1rem;
++      background: #ffffff;
++      border: 1px solid #e5e7eb;
++      border-radius: 8px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
++      z-index: 200;
++    }
++    .nav-item:hover .mega-menu,
++    .nav-item:focus-within .mega-menu {
++      display: block;
++    }
++    .mega-menu img {
++      width: 100%;
++      height: auto;
++      border-radius: 4px;
++      display: block;
++      margin-bottom: 0.5rem;
++    }
++    main {
++      max-width: 1080px;
++      margin: 0 auto;
++      padding: 2.5rem 1.5rem;
++    }
++    .hero {
++      text-align: center;
++      margin-bottom: 3.5rem;
++    }
++    .hero h1 {
++      font-size: 2.5rem;
++      margin-bottom: 0.75rem;
++      letter-spacing: -0.025em;
++    }
++    .hero p {
++      font-size: 1.125rem;
++      color: #4b5563;
++      max-width: 600px;
++      margin: 0 auto 1.5rem;
++    }
++    .hero-img-container {
++      width: 100%;
++      max-width: 800px;
++      margin: 0 auto;
++      border-radius: 12px;
++      overflow: hidden;
++      background-color: #f3f4f6;
++      aspect-ratio: 16 / 9;
++    }
++    /* Main Hero LCP element */
++    .hero-img-container img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++    .gallery-section {
++      background: #ffffff;
++      border: 1px solid #e5e7eb;
++      border-radius: 12px;
++      padding: 2rem;
++      margin-bottom: 4rem;
++    }
++    .gallery-section h2 {
++      font-size: 1.5rem;
++      margin-bottom: 1rem;
++    }
++    .gallery-grid {
++      display: flex;
++      gap: 1.5rem;
++      flex-wrap: wrap;
++      margin-top: 1rem;
++    }
++    .gallery-card {
++      flex: 1 1 300px;
++      background: #f9fafb;
++      border: 1px solid #e5e7eb;
++      border-radius: 8px;
++      overflow: hidden;
++      padding: 0.75rem;
++    }
++    .gallery-card img {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 6px;
++      display: block;
++    }
++    .gallery-toggle-btn {
++      margin-top: 1rem;
++      padding: 0.5rem 1rem;
++      font-size: 0.875rem;
++      font-weight: 500;
++      color: #ffffff;
++      background-color: #1f2937;
++      border: none;
++      border-radius: 6px;
++      cursor: pointer;
++    }
++    .gallery-toggle-btn:hover {
++      background-color: #111827;
++    }
++    .content-spacer {
++      padding: 4rem 0;
++      color: #6b7280;
++      text-align: center;
++      min-height: 800px;
++    }
++    footer {
++      background: #111827;
++      color: #9ca3af;
++      padding: 4rem 1.5rem;
++      text-align: center;
++      border-top: 1px solid #374151;
++    }
++    .footer-logo {
++      display: inline-block;
++      margin-bottom: 1rem;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <nav>
++      <a href="#" class="brand">ApexProduct</a>
++      <ul class="nav-menu">
++        <li><a href="#features" class="nav-link">Features</a></li>
++        <li class="nav-item">
++          <a href="#promo" class="nav-link">Promotions &#x25BE;</a>
++          <!-- Navigation Mega Menu with initially hidden promotional image -->
++          <div class="mega-menu" id="navMegaMenu">
++            <img 
++              src="mega-menu-promo.jpg" 
++              alt="Special Promotion" 
++              width="280" 
++              height="150" 
++              loading="lazy" 
++              decoding="async"
++              fetchpriority="low"
++            >
++            <p style="font-size: 0.85rem; color: #4b5563;">Exclusive seasonal offer available for a limited time.</p>
++          </div>
++        </li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <!-- Hero Section with Largest Contentful Element (LCP) -->
++    <section class="hero">
++      <h1>Engineered for Performance</h1>
++      <p>Minimal design, instantaneous delivery, and next-generation architecture.</p>
++      <div class="hero-img-container">
++        <img 
++          src="hero-lcp.jpg" 
++          alt="Featured Product Showcase" 
++          width="800" 
++          height="450" 
++          fetchpriority="high" 
++          loading="eager" 
++          decoding="async"
++        >
++      </div>
++    </section>
++
++    <!-- Product Image Gallery Section -->
++    <section class="gallery-section" id="features">
++      <h2>Product Gallery</h2>
++      <p style="color: #6b7280;">Explore different perspectives of the product.</p>
++
++      <div class="gallery-grid">
++        <!-- First gallery image: Visible by default -->
++        <div class="gallery-card" id="gallery-primary">
++          <img 
++            src="gallery-main.jpg" 
++            alt="Product Primary View" 
++            width="400" 
++            height="300" 
++            loading="lazy" 
++            decoding="async"
++          >
++          <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #374151;">Primary Perspective</p>
++        </div>
++
++        <!-- Second gallery image: Hidden behind a toggle -->
++        <div class="gallery-card" id="gallery-secondary" style="display: none;">
++          <img 
++            src="gallery-alt.jpg" 
++            alt="Product Alternate View" 
++            width="400" 
++            height="300" 
++            loading="lazy" 
++            decoding="async"
++            fetchpriority="low"
++          >
++          <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #374151;">Alternate Perspective</p>
++        </div>
++      </div>
++
++      <button 
++        type="button" 
++        class="gallery-toggle-btn" 
++        id="toggle-gallery-alt" 
++        onclick="toggleGalleryAlt()"
++      >
++        Show Alternate View
++      </button>
++    </section>
++
++    <!-- Spacing to ensure footer content is well below the fold -->
++    <section class="content-spacer">
++      <h3>Designed for Clarity &amp; Speed</h3>
++      <p>Content below the fold loads on demand to keep initial rendering instantaneous.</p>
++    </section>
++  </main>
++
++  <!-- Below the fold Footer -->
++  <footer>
++    <div>
++      <img 
++        src="footer-logo.png" 
++        alt="ApexProduct Logo" 
++        class="footer-logo" 
++        width="120" 
++        height="40" 
++        loading="lazy" 
++        decoding="async"
++      >
++    </div>
++    <p style="font-size: 0.875rem;">&copy; 2026 ApexProduct Inc. All rights reserved.</p>
++  </footer>
++
++  <script>
++    function toggleGalleryAlt() {
++      const card = document.getElementById('gallery-secondary');
++      const btn = document.getElementById('toggle-gallery-alt');
++      const isHidden = card.style.display === 'none';
++      card.style.display = isHidden ? 'block' : 'none';
++      btn.textContent = isHidden ? 'Hide Alternate View' : 'Show Alternate View';
++    }
++  </script>
++</body>
++</html>

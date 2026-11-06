@@ -1,0 +1,279 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,107 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Toast Notifications */
++    .toast[popover] {
++      --toast-height: 3.5rem;
++      --toast-gap: 0.75rem;
++      --toast-offset: 1.5rem;
++      --index: var(--sibling-index, 1);
++      --toast-rank: calc(var(--index) - 5);
++
++      position: fixed;
++      inset: auto;
++      right: var(--toast-offset);
++      bottom: calc(var(--toast-offset) + (var(--toast-rank) - 1) * (var(--toast-height) + var(--toast-gap)));
++      margin: 0;
++      min-height: var(--toast-height);
++      padding: 0.75rem 1.25rem;
++      background: var(--primary);
++      color: var(--light);
++      border: 1px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++
++      opacity: 0;
++      transform: translateY(1rem) scale(0.95);
++      transition-property: opacity, transform, bottom, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    @supports (top: calc(sibling-index() * 1px)) {
++      .toast[popover] {
++        --index: sibling-index();
++        --toast-rank: calc(sibling-index() - 5);
++        bottom: calc(var(--toast-offset) + (sibling-index() - 6) * (var(--toast-height) + var(--toast-gap)));
++      }
++    }
++
++    .toast[popover]:is(:popover-open, .\:popover-open) {
++      display: flex;
++    }
++
++    .toast[popover]:is(:popover-open, .\:popover-open):where(:not([data-closing])) {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++
++      @starting-style {
++        opacity: 0;
++        transform: translateY(1rem) scale(0.95);
++      }
++    }
++
++    .toast-close {
++      background: transparent;
++      border: 1px solid rgba(255, 255, 255, 0.3);
++      color: var(--light);
++      border-radius: 4px;
++      width: 1.75rem;
++      height: 1.75rem;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1.1rem;
++      line-height: 1;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .toast-close:hover {
++      background: rgba(255, 171, 64, 0.2);
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .toast[popover] {
++        transform: none;
++        transition-duration: 0.1s;
++      }
++
++      @starting-style {
++        .toast[popover]:is(:popover-open, .\:popover-open):where(:not([data-closing])) {
++          transform: none;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +263,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn toast-trigger">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -180,19 +273,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +299,133 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++
++    let toastIdCounter = 0;
++
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    function supportsTopLayerExit() {
++      return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
++    }
++
++    function syncSiblingFallback() {
++      if (!window.CSS?.supports?.('top: calc(sibling-index() * 1px)')) {
++        const children = [...document.body.children];
++        children.forEach((el, index) => {
++          if (el.classList.contains('toast')) {
++            el.style.setProperty('--sibling-index', index + 1);
++            el.style.setProperty('--sibling-count', children.length);
++          }
++        });
++      }
++    }
++
++    async function dismissToast(toast) {
++      if (!toast.isConnected || toast.dataset.dismissing === 'true') return;
++      toast.dataset.dismissing = 'true';
++
++      if (!supportsTopLayerExit()) {
++        toast.setAttribute('data-closing', '');
++        const animations = toast.getAnimations({ subtree: true });
++        if (animations.length > 0) {
++          await Promise.race([
++            Promise.allSettled(animations.map((a) => a.finished)),
++            new Promise((r) => setTimeout(r, 2000)),
++          ]);
++        }
++        if (!toast.hasAttribute('data-closing')) return;
++        toast.removeAttribute('data-closing');
++      }
++
++      if (typeof toast.hidePopover === 'function') {
++        try {
++          toast.hidePopover();
++        } catch {
++          // Ignore if already hidden
++        }
++      }
++
++      if (supportsTopLayerExit()) {
++        const animations = toast.getAnimations({ subtree: true });
++        if (animations.length > 0) {
++          await Promise.race([
++            Promise.allSettled(animations.map((a) => a.finished)),
++            new Promise((r) => setTimeout(r, 2000)),
++          ]);
++        }
++      }
++
++      toast.remove();
++      syncSiblingFallback();
++    }
++
++    function showToast(message = 'added to cart!') {
++      const id = `toast-${++toastIdCounter}`;
++      const toast = document.createElement('div');
++      toast.id = id;
++      toast.className = 'toast';
++      toast.setAttribute('popover', 'manual');
++      toast.setAttribute('role', 'status');
++      toast.setAttribute('aria-live', 'polite');
++
++      const textSpan = document.createElement('span');
++      textSpan.className = 'toast-message';
++      textSpan.textContent = message;
++
++      const closeBtn = document.createElement('button');
++      closeBtn.type = 'button';
++      closeBtn.className = 'toast-close';
++      closeBtn.setAttribute('popovertarget', id);
++      closeBtn.setAttribute('popovertargetaction', 'hide');
++      closeBtn.setAttribute('aria-label', 'Close notification');
++      closeBtn.textContent = '×';
++
++      let autoDismissTimer;
++
++      closeBtn.addEventListener('click', (event) => {
++        event.preventDefault();
++        clearTimeout(autoDismissTimer);
++        dismissToast(toast);
++      });
++
++      toast.append(textSpan, closeBtn);
++      document.body.appendChild(toast);
++      syncSiblingFallback();
++
++      if (typeof toast.showPopover === 'function') {
++        toast.showPopover();
++      }
++
++      autoDismissTimer = setTimeout(() => {
++        dismissToast(toast);
++      }, 3000);
++    }
++
++    document.querySelectorAll('.toast-trigger').forEach((trigger) => {
++      trigger.addEventListener('click', () => {
++        showToast('added to cart!');
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

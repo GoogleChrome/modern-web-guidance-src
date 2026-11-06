@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,139 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Launchpad – Ship your ideas faster</title>
++  <meta name="description" content="Launchpad helps teams go from idea to launch in days, not months.">
++
++  <style>
++    /* Fallback only: hides the page in browsers without blocking="render" (see below). */
++    .ab-loading { opacity: 0 !important; }
++  </style>
++
++  <script>
++    // Defined before the SDK tag so its load/error handlers can always call it.
++    function revealPage() {
++      document.documentElement.classList.remove('ab-loading');
++    }
++    // Browsers without blocking="render" support (e.g. Firefox) would flash the
++    // original content, so hide the page until the SDK has run (or 4s elapse).
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      document.documentElement.classList.add('ab-loading');
++      setTimeout(revealPage, 4000);
++    }
++  </script>
++
++  <!--
++    async + blocking="render": the parser keeps building the DOM, but nothing is
++    painted until the SDK has executed and applied the variant. onload/onerror
++    release the fallback hiding (and a failed SDK never leaves a blank page).
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++    onload="revealPage()"
++    onerror="revealPage()"
++  ></script>
++
++  <style>
++    :root {
++      color-scheme: light dark;
++      --bg: light-dark(#f8f9fc, #0e1018);
++      --fg: light-dark(#161a26, #eef0f6);
++      --muted: light-dark(#555c70, #a3a9bd);
++      --accent: #5b5bf0;
++    }
++
++    * { box-sizing: border-box; }
++
++    body {
++      margin: 0;
++      font-family: system-ui, sans-serif;
++      background: var(--bg);
++      color: var(--fg);
++      line-height: 1.5;
++    }
++
++    header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1.25rem clamp(1rem, 5vw, 4rem);
++    }
++
++    .logo { font-weight: 800; font-size: 1.25rem; }
++
++    .hero {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
++      gap: clamp(2rem, 5vw, 4rem);
++      align-items: center;
++      padding: clamp(2rem, 6vw, 5rem) clamp(1rem, 5vw, 4rem);
++      max-width: 75rem;
++      margin-inline: auto;
++    }
++
++    .hero h1 {
++      font-size: clamp(2.25rem, 5vw, 3.75rem);
++      line-height: 1.1;
++      margin: 0 0 1rem;
++    }
++
++    .hero p {
++      font-size: 1.2rem;
++      color: var(--muted);
++      margin: 0 0 2rem;
++      max-width: 36rem;
++    }
++
++    .cta-button {
++      display: inline-block;
++      padding: 0.9rem 2rem;
++      border-radius: 0.6rem;
++      background: var(--accent);
++      color: #fff;
++      font-size: 1.1rem;
++      font-weight: 700;
++      text-decoration: none;
++    }
++
++    .cta-button:hover { filter: brightness(1.1); }
++    .cta-button:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
++
++    .hero img {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 1rem;
++    }
++
++    /* Example variant styling: the SDK can set <html data-variant="b"> */
++    [data-variant="b"] .cta-button { background: #12a05c; }
++  </style>
++</head>
++<body>
++  <header>
++    <span class="logo">Launchpad</span>
++  </header>
++
++  <main>
++    <section class="hero">
++      <div>
++        <h1 data-experiment="headline">Ship your ideas faster</h1>
++        <p data-experiment="subhead">Launchpad gives your team everything it needs to go from idea to launch in days, not months.</p>
++        <a class="cta-button" data-experiment="cta" href="#signup">Get started free</a>
++      </div>
++      <img
++        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
++        alt="A team collaborating around a table with laptops"
++        width="1200"
++        height="900"
++        fetchpriority="high"
++      >
++    </section>
++  </main>
++</body>
++</html>

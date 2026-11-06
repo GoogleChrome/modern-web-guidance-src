@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,108 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Showcase Section */
++    .showcase {
++      max-width: 1100px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      align-items: start;
++    }
++
++    /* Card wrapper: children are clipped at the inner content box, with the
++       clip curve automatically following the concentric inner radius. */
++    .nested-curve-parent {
++      background: white;
++      padding: 14px;
++      border-radius: 24px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
++      /* Fallback: clips roughly at the padding box */
++      overflow: hidden;
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 10;
++      object-fit: cover;
++    }
++
++    .nested-curve-body {
++      padding: 16px 4px;
++    }
++
++    .nested-curve-body h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .nested-curve-footer {
++      background: var(--primary);
++      color: white;
++      padding: 12px 16px;
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.9rem;
++    }
++
++    @supports (overflow-clip-margin: content-box) {
++      .nested-curve-parent {
++        /* overflow: clip is required for overflow-clip-margin to apply */
++        overflow: clip;
++        overflow-clip-margin: content-box;
++      }
++    }
++
++    /* Promos block: clips its overflowing text, but lets the button's glow
++       bleed 15px outside the box. */
++    .safety-zone-parent {
++      background: var(--secondary);
++      padding: 24px;
++      border-radius: 12px;
++      height: 260px;
++      display: flex;
++      flex-direction: column;
++      /* Fallback: clips overflow (and, unavoidably, the button glow) */
++      overflow: hidden;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .promo-copy {
++      white-space: nowrap;
++      margin-bottom: 8px;
++    }
++
++    .promo-glow-btn {
++      display: block;
++      width: 100%;
++      margin-top: auto;
++      padding: 12px 20px;
++      font: inherit;
++      font-weight: bold;
++      color: var(--text);
++      background: var(--accent);
++      border: 0;
++      border-radius: 8px;
++      cursor: pointer;
++      box-shadow: 0 6px 14px 4px rgba(255, 171, 64, 0.75);
++    }
++
++    @supports (overflow-clip-margin: 15px) {
++      .safety-zone-parent {
++        overflow: clip;
++        overflow-clip-margin: 15px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +273,32 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="showcase" aria-label="Showcase">
++    <article class="nested-curve-parent">
++      <img
++        src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80"
++        alt="Latte art in a ceramic cup" width="900" height="563" loading="lazy">
++      <div class="nested-curve-body">
++        <h3>Roaster's Pick: Ethiopia Yirgacheffe</h3>
++        <p>Bright and floral with notes of jasmine, bergamot, and ripe stone fruit.</p>
++      </div>
++      <div class="nested-curve-footer">
++        <span>Light roast &middot; 12oz bag</span>
++        <strong>$18</strong>
++      </div>
++    </article>
++
++    <aside class="safety-zone-parent">
++      <h3>This Week's Promos</h3>
++      <p class="promo-copy">Buy one pastry, get a drip coffee half off &mdash; every weekday before 9am at all participating locations.</p>
++      <p class="promo-copy">Double rewards stars on all cold brew orders through Sunday when you order ahead in the app.</p>
++      <p class="promo-copy">Bring your own mug and save 25&cent; on any handcrafted beverage, every single day.</p>
++      <button type="button" class="promo-glow-btn">Claim Offer</button>
++    </aside>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

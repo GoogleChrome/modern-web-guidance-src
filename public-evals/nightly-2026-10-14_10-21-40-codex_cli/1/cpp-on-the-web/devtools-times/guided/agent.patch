@@ -1,0 +1,765 @@
+diff --git a/README.md b/README.md
+index 4479b53..daf88b2 100644
+--- a/README.md
++++ b/README.md
+@@ -1,17 +1,38 @@
+-# The DevTools Times
++# smallpt lab
+ 
+-This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
++A browser playground for [Kevin Beason’s smallpt](https://www.kevinbeason.com/smallpt/), compiled from C++ to WebAssembly with Emscripten. Rendering runs in a dedicated Web Worker; pixels are progressively copied onto a canvas. No render server or cross-origin isolation headers are needed.
+ 
++## Run
+ 
+ ```sh
+-pnpm install && pnpm run start
++pnpm install
++pnpm dev --host 0.0.0.0
+ ```
+ 
+-The application will now be running on `http://localhost:11224`.
++The homepage renders the original Cornell box. Randomize colors changes both foreground sphere colors and the wall palette, then starts a new render. You can also edit sphere colors, select quality, reset the scene, or save the current image as a PNG. Starting another render terminates the previous worker.
+ 
+-## Tech Stack
++## Build
+ 
+-- **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+-- **[React](https://react.dev/)**: Used for UI components.
+-- **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+-- **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++```sh
++pnpm build
++pnpm start
++```
++
++The homepage is prerendered to `dist/client/index.html`. Compiled WebAssembly files are included in `public/wasm`, so the app build does not require Emscripten. Use HTTP to serve the page; module workers cannot run from a `file://` URL.
++
++To rebuild the renderer with Emscripten installed:
++
++```sh
++pnpm build:wasm
++pnpm check:wasm
++```
++
++`native/smallpt-original.cpp` preserves the upstream source. `native/smallpt.cpp` keeps its integrator and adds an incremental RGBA output interface and sphere color setters. The MIT license is in `native/LICENSE.smallpt`. The browser port uses one worker instead of OpenMP.
++
++The included preview is real output from the compiled WebAssembly renderer, generated at 640 × 480 and 512 samples per pixel. Regenerate it without a browser:
++
++```sh
++node scripts/check-renderer.mjs --preview
++```
++
++This script also checks illuminated RGBA output, deterministic reset, the effect of changing sphere colors, and progressive sampling. Browser verification was intentionally omitted.
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..41f9e97 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -8,7 +8,7 @@ import node from "@astrojs/node";
+ // https://astro.build/config
+ export default defineConfig({
+   site: 'https://astro-news-pytrpecapa-uc.a.run.app/',
+-  base: 'devtools-times/',
++  base: '/',
+   integrations: [react()],
+   vite: {
+     plugins: [tailwindcss()],
+diff --git a/native/LICENSE.smallpt b/native/LICENSE.smallpt
+new file mode 100644
+index 0000000..08255c8
+--- /dev/null
++++ b/native/LICENSE.smallpt
+@@ -0,0 +1,22 @@
++LICENSE
++
++Copyright (c) 2006-2008 Kevin Beason (kevin.beason@gmail.com)
++
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of this software and associated documentation files (the
++"Software"), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish,
++distribute, sublicense, and/or sell copies of the Software, and to
++permit persons to whom the Software is furnished to do so, subject to
++the following conditions:
++
++The above copyright notice and this permission notice shall be included
++in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/native/smallpt-original.cpp b/native/smallpt-original.cpp
+new file mode 100644
+index 0000000..61e2eda
+--- /dev/null
++++ b/native/smallpt-original.cpp
+@@ -0,0 +1,99 @@
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++int main(int argc, char *argv[]){
++  int w=1024, h=768, samps = argc==2 ? atoi(argv[1])/4 : 1; // # samples
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r, *c=new Vec[w*h];
++#pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
++  for (int y=0; y<h; y++){                       // Loop over image rows
++    fprintf(stderr,"\rRendering (%d spp) %5.2f%%",samps*4,100.*y/(h-1));
++    for (unsigned short x=0, Xi[3]={0,0,y*y*y}; x<w; x++)   // Loop cols
++      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++  }
++  FILE *f = fopen("image.ppm", "w");         // Write image to PPM file.
++  fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
++  for (int i=0; i<w*h; i++)
++    fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
++}
+diff --git a/native/smallpt.cpp b/native/smallpt.cpp
+new file mode 100644
+index 0000000..ee19d56
+--- /dev/null
++++ b/native/smallpt.cpp
+@@ -0,0 +1,116 @@
++// Adapted from smallpt by Kevin Beason. See LICENSE.smallpt.
++#include <stdint.h>
++
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) { if (erand48(Xi)<p) f=f*(1/p); else return obj.e; } //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++// Incremental browser interface. The path integrator above is unmodified.
++static int width, height, passes;
++static uint32_t sceneSeed;
++static Vec* accumulation = nullptr;
++static unsigned char* pixels = nullptr;
++extern "C" {
++void init(int w, int h, unsigned int seed) {
++  width=w; height=h; passes=0; sceneSeed=seed;
++  free(accumulation); free(pixels);
++  accumulation=(Vec*)calloc(w*h, sizeof(Vec)); pixels=(unsigned char*)calloc(w*h*4, 1);
++}
++void set_color(int id, double r, double g, double b) {
++  if (id>=0 && id<9 && id!=3 && id!=8) spheres[id].c=Vec(r,g,b);
++}
++unsigned char* render_pass() {
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
++  Vec cx=Vec(width*.5135/height), cy=(cx%cam.d).norm()*.5135;
++  for (int y=0;y<height;y++) {
++    unsigned short Xi[3]={(unsigned short)(sceneSeed+passes*97),
++      (unsigned short)(passes*137+sceneSeed/65536), (unsigned short)(y*y*y+passes*271)};
++    for (int x=0;x<width;x++) {
++      Vec color;
++      for (int sy=0;sy<2;sy++) for(int sx=0;sx<2;sx++) {
++        double r1=2*erand48(Xi), dx=r1<1?sqrt(r1)-1:1-sqrt(2-r1);
++        double r2=2*erand48(Xi), dy=r2<1?sqrt(r2)-1:1-sqrt(2-r2);
++        Vec d=cx*(((sx+.5+dx)/2+x)/width-.5)+cy*(((sy+.5+dy)/2+y)/height-.5)+cam.d;
++        color=color+radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*.25;
++      }
++      int i=(height-y-1)*width+x;
++      accumulation[i]=accumulation[i]+color;
++      Vec c=accumulation[i]*(1./(passes+1));
++      pixels[i*4]=toInt(c.x);pixels[i*4+1]=toInt(c.y);pixels[i*4+2]=toInt(c.z);pixels[i*4+3]=255;
++    }
++  }
++  passes++;
++  return pixels;
++}
++}
+diff --git a/package.json b/package.json
+index 66c3a6d..a83c154 100644
+--- a/package.json
++++ b/package.json
+@@ -7,7 +7,9 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "build:wasm": "bash scripts/build-wasm.sh",
++    "check:wasm": "node scripts/check-renderer.mjs"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.3",
+diff --git a/public/favicon.svg b/public/favicon.svg
+index beeeb40..9e0f955 100644
+--- a/public/favicon.svg
++++ b/public/favicon.svg
+@@ -1,4 +1 @@
+-<svg width="284" height="284" viewBox="0 0 284 284" fill="none" xmlns="http://www.w3.org/2000/svg">
+-<rect width="284" height="284" fill="black"/>
+-<path d="M52.456 117.6V110.56C53.9067 110.389 55.6133 110.219 57.576 110.048C59.624 109.792 61.6293 109.579 63.592 109.408C65.64 109.152 67.3893 108.981 68.84 108.896C70.376 108.725 71.3573 108.683 71.784 108.768C72.552 109.024 73.2773 109.536 73.96 110.304C74.728 110.987 75.4107 111.755 76.008 112.608C76.6053 113.461 76.9467 114.101 77.032 114.528V176.608L96.232 180.96C97.0853 181.131 97.8533 180.96 98.536 180.448C99.2187 179.936 99.816 179.125 100.328 178.016C100.84 176.907 101.267 175.541 101.608 173.92C102.291 170.933 102.717 167.221 102.888 162.784C103.144 158.261 103.272 153.355 103.272 148.064C103.272 143.712 103.059 139.659 102.632 135.904C102.205 132.149 101.565 128.864 100.712 126.048C99.944 123.232 98.92 121.056 97.64 119.52C96.4453 117.984 94.9947 117.301 93.288 117.472L85.48 118.112L87.528 108.64H95.08C98.3227 108.64 101.523 109.28 104.68 110.56C107.837 111.755 110.696 113.803 113.256 116.704C115.901 119.605 117.949 123.531 119.4 128.48C120.936 133.429 121.704 139.616 121.704 147.04C121.704 152.416 121.491 157.067 121.064 160.992C120.637 164.917 119.912 168.416 118.888 171.488C118.547 172.427 117.651 173.621 116.2 175.072C114.835 176.523 113.128 178.101 111.08 179.808C109.032 181.429 106.899 183.008 104.68 184.544C102.547 185.995 100.584 187.189 98.792 188.128C97 189.067 95.6347 189.536 94.696 189.536C91.0267 189.536 87.4853 189.451 84.072 189.28C80.744 189.195 77.5013 188.981 74.344 188.64C71.1867 188.299 68.0293 187.915 64.872 187.488C64.1893 187.317 63.4213 186.891 62.568 186.208C61.8 185.44 61.1173 184.629 60.52 183.776C59.9227 182.923 59.5813 182.283 59.496 181.856V120.16L52.456 117.6ZM85.48 108.64H89.576V173.28C89.576 173.792 89.2773 174.731 88.68 176.096C88.168 177.376 87.4427 178.869 86.504 180.576H82.792V117.856C82.792 117.088 83.048 115.851 83.56 114.144C84.1573 112.437 84.7973 110.603 85.48 108.64ZM153.023 124.256C151.658 124.256 150.548 125.109 149.695 126.816C148.842 128.523 148.159 130.784 147.647 133.6C147.22 136.331 146.922 139.36 146.751 142.688C146.58 146.016 146.495 149.259 146.495 152.416C146.495 157.109 146.964 161.291 147.903 164.96C148.927 168.544 150.506 171.36 152.639 173.408C154.858 175.371 157.716 176.352 161.215 176.352L177.215 176.224V186.08C175.85 186.507 174.058 186.933 171.839 187.36C169.62 187.701 167.359 188 165.055 188.256C162.751 188.597 160.746 188.853 159.039 189.024C157.332 189.195 156.223 189.28 155.711 189.28C149.567 189.28 144.404 187.829 140.223 184.928C136.042 181.941 132.927 177.717 130.879 172.256C128.831 166.795 127.807 160.309 127.807 152.8C127.807 149.387 128.106 146.059 128.703 142.816C129.386 139.573 130.282 136.629 131.391 133.984C132.5 132.619 134.036 131.125 135.999 129.504C138.047 127.797 140.266 126.304 142.655 125.024C145.044 123.744 147.348 123.019 149.567 122.848L153.023 124.256ZM182.335 110.56L179.775 121.952C178.068 122.635 176.148 123.317 174.015 124C171.967 124.683 169.962 125.237 167.999 125.664C166.036 126.091 164.33 126.304 162.879 126.304C160.916 126.304 159.21 126.091 157.759 125.664C156.394 125.237 154.986 124.811 153.535 124.384C152.17 123.957 150.548 123.744 148.671 123.744C148.159 123.744 147.476 123.787 146.623 123.872C145.77 123.957 145.002 124.085 144.319 124.256L144.063 123.488L121.663 121.056L124.095 106.976C129.983 107.829 135.572 108.64 140.863 109.408C146.154 110.176 150.719 110.816 154.559 111.328C158.484 111.755 161.258 111.968 162.879 111.968C164.159 111.968 165.652 111.84 167.359 111.584C169.151 111.328 171.156 110.987 173.375 110.56C175.679 110.048 178.154 109.536 180.799 109.024L182.335 110.56ZM154.047 176.352V117.6H160.831V169.056C160.831 169.568 160.532 170.507 159.935 171.872C159.423 173.152 158.698 174.645 157.759 176.352H154.047ZM204.807 123.744C203.186 123.744 201.82 124.683 200.711 126.56C199.687 128.437 198.876 130.784 198.279 133.6C197.682 136.416 197.255 139.317 196.999 142.304C196.828 145.291 196.743 147.893 196.743 150.112C196.743 155.232 197.212 160.053 198.151 164.576C199.175 169.099 200.882 172.768 203.271 175.584C205.66 178.315 208.946 179.68 213.127 179.68L229.767 179.552V186.208C228.658 186.549 226.951 186.891 224.647 187.232C222.343 187.573 219.911 187.872 217.351 188.128C214.876 188.469 212.658 188.725 210.695 188.896C208.818 189.067 207.623 189.152 207.111 189.152C201.991 189.152 197.724 187.445 194.311 184.032C190.898 180.619 188.338 176.096 186.631 170.464C184.924 164.832 184.071 158.773 184.071 152.288C184.071 147.851 184.37 144.181 184.967 141.28C185.65 138.293 186.631 135.392 187.911 132.576C188.508 131.637 189.447 130.443 190.727 128.992C192.092 127.541 193.756 126.176 195.719 124.896C197.682 123.616 199.858 122.763 202.247 122.336L204.807 123.744ZM234.247 112.352L231.687 122.336C229.81 123.019 227.847 123.659 225.799 124.256C223.751 124.768 221.788 125.195 219.911 125.536C218.034 125.792 216.327 125.92 214.791 125.92C212.658 125.92 210.951 125.707 209.671 125.28C208.391 124.853 207.154 124.427 205.959 124C204.764 123.573 203.186 123.36 201.223 123.36C200.711 123.36 200.156 123.403 199.559 123.488C199.047 123.488 198.535 123.573 198.023 123.744L197.767 122.976L177.799 120.8L180.231 108.64C185.778 109.323 190.812 110.048 195.335 110.816C199.943 111.499 203.911 112.053 207.239 112.48C210.567 112.907 213.042 113.12 214.663 113.12C215.858 113.12 217.266 113.077 218.887 112.992C220.594 112.821 222.599 112.565 224.903 112.224C227.207 111.797 229.81 111.285 232.711 110.688L234.247 112.352ZM205.063 179.936V117.984H211.719V172.64C211.719 173.152 211.506 174.091 211.079 175.456C210.652 176.736 209.97 178.229 209.031 179.936H205.063Z" fill="white"/>
+-</svg>
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" rx="10" fill="#8057cc"/><path d="m20 8 11 6v12l-11 6-11-6V14l11-6Zm0 12 11-6m-11 6L9 14m11 6v12M14.5 11l11 6" stroke="white" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg>
+diff --git a/public/render-preview.png b/public/render-preview.png
+new file mode 100644
+index 0000000..f2e38d7
+Binary files /dev/null and b/public/render-preview.png differ
+diff --git a/public/wasm/render-worker.js b/public/wasm/render-worker.js
+new file mode 100644
+index 0000000..19f8b3b
+--- /dev/null
++++ b/public/wasm/render-worker.js
+@@ -0,0 +1,26 @@
++import createSmallpt from './smallpt.js';
++const modulePromise = createSmallpt();
++let generation = 0;
++self.onmessage = async ({ data }) => {
++  const run = ++generation;
++  try {
++    const module = await modulePromise;
++    if (run !== generation) return;
++    const { width, height, samples, seed, colors } = data;
++    module._init(width, height, seed);
++    for (const [id, color] of Object.entries(colors)) {
++      module._set_color(Number(id), ...color);
++    }
++    const started = performance.now();
++    for (let pass = 0; pass < samples / 4; pass++) {
++      if (run !== generation) return;
++      const pointer = module._render_pass();
++      const pixels = module.HEAPU8.slice(pointer, pointer + width * height * 4);
++      self.postMessage({ pixels, width, height, samples: (pass + 1) * 4,
++        elapsed: performance.now() - started, done: (pass + 1) * 4 >= samples }, [pixels.buffer]);
++      await new Promise(resolve => setTimeout(resolve, 0));
++    }
++  } catch (error) {
++    self.postMessage({ error: error.message || String(error) });
++  }
++};
+diff --git a/public/wasm/smallpt.js b/public/wasm/smallpt.js
+new file mode 100644
+index 0000000..734fe93
+--- /dev/null
++++ b/public/wasm/smallpt.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;(function(){function humanReadableVersionToPacked(str){str=str.split("-")[0];var vers=str.split(".").slice(0,3);while(vers.length<3)vers.push("00");vers=vers.map((n,i,arr)=>n.padStart(2,"0"));return vers.join("")}var packedVersionToHumanReadable=n=>[n/1e4|0,(n/100|0)%100,n%100].join(".");var TARGET_NOT_SUPPORTED=2147483647;var currentNodeVersion=typeof process!=="undefined"&&process.versions?.node?humanReadableVersionToPacked(process.versions.node):TARGET_NOT_SUPPORTED;if(currentNodeVersion<TARGET_NOT_SUPPORTED){throw new Error("not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)")}if(currentNodeVersion<2147483647){throw new Error(`This emscripten-generated code requires node v${packedVersionToHumanReadable(2147483647)} (detected v${packedVersionToHumanReadable(currentNodeVersion)})`)}var userAgent=typeof navigator!=="undefined"&&navigator.userAgent;if(!userAgent){return}var currentSafariVersion=userAgent.includes("Safari/")&&!userAgent.includes("Chrome/")&&userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)?humanReadableVersionToPacked(userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]):TARGET_NOT_SUPPORTED;if(currentSafariVersion<15e4){throw new Error(`This emscripten-generated code requires Safari v${packedVersionToHumanReadable(15e4)} (detected v${currentSafariVersion})`)}var currentFirefoxVersion=userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)?parseFloat(userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]):TARGET_NOT_SUPPORTED;if(currentFirefoxVersion<79){throw new Error(`This emscripten-generated code requires Firefox v79 (detected v${currentFirefoxVersion})`)}var currentChromeVersion=userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)?parseFloat(userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]):TARGET_NOT_SUPPORTED;if(currentChromeVersion<85){throw new Error(`This emscripten-generated code requires Chrome v85 (detected v${currentChromeVersion})`)}})();var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var ENVIRONMENT_IS_SHELL=!ENVIRONMENT_IS_WEB&&!ENVIRONMENT_IS_NODE&&!ENVIRONMENT_IS_WORKER;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_SHELL){}else if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}if(!(globalThis.window||globalThis.WorkerGlobalScope))throw new Error("not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)");{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{assert(!isFileURI(url),"readAsync does not work with file:// URLs");var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{throw new Error("environment detection error")}var out=console.log.bind(console);var err=console.error.bind(console);assert(!ENVIRONMENT_IS_WEB,"web environment detected but not enabled at build time (add `web` to `-sENVIRONMENT` to enable)");assert(!ENVIRONMENT_IS_NODE,"node environment detected but not enabled at build time (add `node` to `-sENVIRONMENT` to enable)");assert(!ENVIRONMENT_IS_SHELL,"shell environment detected but not enabled at build time (add `shell` to `-sENVIRONMENT` to enable)");var wasmBinary;if(!globalThis.WebAssembly){err("no native wasm support detected")}var ABORT=false;var EXITSTATUS;function assert(condition,text){if(!condition){abort("Assertion failed"+(text?": "+text:""))}}var isFileURI=filename=>filename.startsWith("file://");function writeStackCookie(){var max=_emscripten_stack_get_end();assert((max&3)==0);if(max==0){max+=4}HEAPU32[max>>2]=34821223;HEAPU32[max+4>>2]=2310721022;HEAPU32[0>>2]=1668509029}function checkStackCookie(){if(ABORT)return;var max=_emscripten_stack_get_end();if(max==0){max+=4}var cookie1=HEAPU32[max>>2];var cookie2=HEAPU32[max+4>>2];if(cookie1!=34821223||cookie2!=2310721022){abort(`Stack overflow! Stack cookie has been overwritten at ${ptrToString(max)}, expected hex dwords 0x89BACDFE and 0x2135467, but received ${ptrToString(cookie2)} ${ptrToString(cookie1)}`)}if(HEAPU32[0>>2]!=1668509029){abort("Runtime error: The application has corrupted its heap memory area (address zero)!")}}class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeDebug=true;(()=>{var h16=new Int16Array(1);var h8=new Int8Array(h16.buffer);h16[0]=25459;if(h8[0]!==115||h8[1]!==99)abort("Runtime error: expected the system to be little-endian! (Run with -sSUPPORT_BIG_ENDIAN to bypass)")})();function makeInvalidEarlyAccess(name){return()=>assert(false,`call to '${name}' via reference taken before Wasm module initialization`)}function ignoredModuleProp(prop){if(Object.getOwnPropertyDescriptor(Module,prop)){abort(`\`Module.${prop}\` was supplied but \`${prop}\` not included in INCOMING_MODULE_JS_API`)}}function isExportedByForceFilesystem(name){return name==="FS_createPath"||name==="FS_createDataFile"||name==="FS_createPreloadedFile"||name==="FS_preloadFile"||name==="FS_unlink"||name==="addRunDependency"||name==="FS_createLazyFile"||name==="FS_createDevice"||name==="removeRunDependency"}function missingLibrarySymbol(sym){unexportedRuntimeSymbol(sym)}function unexportedRuntimeSymbol(sym){if(!Object.getOwnPropertyDescriptor(Module,sym)){Object.defineProperty(Module,sym,{configurable:true,get(){var msg=`'${sym}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)`;if(isExportedByForceFilesystem(sym)){msg+=". Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you"}abort(msg)}})}}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}assert(globalThis.Int32Array&&globalThis.Float64Array&&Int32Array.prototype.subarray&&Int32Array.prototype.set,"JS engine does not provide full typed array support");function preRun(){}function initRuntime(){assert(!runtimeInitialized);runtimeInitialized=true;checkStackCookie();wasmExports["__wasm_call_ctors"]()}function postRun(){checkStackCookie()}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;var e=new WebAssembly.RuntimeError(what);throw e}function fsMissing(){abort("Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM")}var FS={init:fsMissing,createDataFile:fsMissing,createPreloadedFile:fsMissing,createLazyFile:fsMissing,open:fsMissing,mkdev:fsMissing,registerDevice:fsMissing,analyzePath:fsMissing,ErrnoError:fsMissing};function createExportWrapper(name,nargs){return(...args)=>{assert(runtimeInitialized,`native function \`${name}\` called before runtime initialization`);var f=wasmExports[name];assert(f,`exported native function \`${name}\` not found`);assert(args.length<=nargs,`native function \`${name}\` called with ${args.length} args but expects ${nargs}`);return f(...args)}}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(file==wasmBinaryFile&&wasmBinary){return new Uint8Array(wasmBinary)}if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);if(isFileURI(binaryFile)){err(`warning: Loading from a file URI (${binaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`)}abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={env:wasmImports,wasi_snapshot_preview1:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}var trueModule=Module;function receiveInstantiationResult(result){assert(Module===trueModule,"the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?");trueModule=null;return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;function ptrToString(ptr){assert(typeof ptr==="number",`ptrToString expects a number, got ${typeof ptr}`);ptr>>>=0;return"0x"+ptr.toString(16).padStart(8,"0")}var warnOnce=text=>{warnOnce.shown||={};if(!warnOnce.shown[text]){warnOnce.shown[text]=1;err(text)}};var __abort_js=()=>abort("native code called abort()");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}checkStackCookie();if(e instanceof WebAssembly.RuntimeError){if(_emscripten_stack_get_current()<=0){err("Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to 65536)")}}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;checkUnflushedContent();if(keepRuntimeAlive()&&!implicit){var msg=`program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;err(msg)}_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){err("user callback triggered after runtime exited or application aborted.  Ignoring.");return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{assert(which in timers);delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>{assert(alignment,"alignment argument is required");return Math.ceil(size/alignment)*alignment};var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`)}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;assert(requestedSize>oldSize);var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){err(`Cannot enlarge memory, requested ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}err(`Failed to grow the heap from ${oldSize} bytes to ${newSize} bytes, not enough memory!`);return false};var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{if((u0&248)!=240)warnOnce(`Invalid UTF-8 leading byte ${ptrToString(u0)} encountered when deserializing a UTF-8 string in wasm memory to a JS string!`);u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>{assert(typeof ptr=="number",`UTF8ToString expects a number (got ${typeof ptr})`);return ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):""};var _fd_close=fd=>{abort("fd_close called without SYSCALLS_REQUIRE_FILESYSTEM")};var INT53_MAX=9007199254740992;var INT53_MIN=-9007199254740992;var bigintToI53Checked=num=>num<INT53_MIN||num>INT53_MAX?NaN:Number(num);function _fd_seek(fd,offset,whence,newOffset){offset=bigintToI53Checked(offset);return 70}var printCharBuffers=[null,[],[]];var printChar=(stream,curr)=>{var buffer=printCharBuffers[stream];assert(buffer);if(curr===0||curr===10){(stream===1?out:err)(UTF8ArrayToString(buffer));buffer.length=0}else{buffer.push(curr)}};var flush_NO_FILESYSTEM=()=>{_fflush(0);if(printCharBuffers[1].length)printChar(1,10);if(printCharBuffers[2].length)printChar(2,10)};var _fd_write=(fd,iov,iovcnt,pnum)=>{var num=0;for(var i=0;i<iovcnt;i++){var ptr=HEAPU32[iov>>2];var len=HEAPU32[iov+4>>2];iov+=8;for(var j=0;j<len;j++){printChar(fd,HEAPU8[ptr+j])}num+=len}HEAPU32[pnum>>2]=num;return 0};{if(Module["wasmBinary"])wasmBinary=Module["wasmBinary"];Module["FS_createDataFile"]=FS.createDataFile;Module["FS_createPreloadedFile"]=FS.createPreloadedFile;checkIncomingModuleAPI();assert(typeof Module["memoryInitializerPrefixURL"]=="undefined","Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["pthreadMainPrefixURL"]=="undefined","Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["cdInitializerPrefixURL"]=="undefined","Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["filePackagePrefixURL"]=="undefined","Module.filePackagePrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["read"]=="undefined","Module.read option was removed");assert(typeof Module["readAsync"]=="undefined","Module.readAsync option was removed (modify readAsync in JS)");assert(typeof Module["readBinary"]=="undefined","Module.readBinary option was removed (modify readBinary in JS)");assert(typeof Module["setWindowTitle"]=="undefined","Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)");assert(typeof Module["TOTAL_MEMORY"]=="undefined","Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY");assert(typeof Module["ENVIRONMENT"]=="undefined","Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)");assert(typeof Module["STACK_SIZE"]=="undefined","STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time");assert(typeof Module["wasmMemory"]=="undefined","Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally");assert(typeof Module["INITIAL_MEMORY"]=="undefined","Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically")}var missingLibrarySymbols=["writeI53ToI64","writeI53ToI64Clamped","writeI53ToI64Signaling","writeI53ToU64Clamped","writeI53ToU64Signaling","readI53FromI64","readI53FromU64","convertI32PairToI53","convertI32PairToI53Checked","convertU32PairToI53","stackAlloc","getTempRet0","setTempRet0","createNamedFunction","zeroMemory","withStackSave","strError","inetPton4","inetNtop4","inetPton6","inetNtop6","readSockaddr","writeSockaddr","readEmAsmArgs","jstoi_q","getExecutableName","autoResumeAudioContext","getDynCaller","dynCall","runtimeKeepalivePush","runtimeKeepalivePop","asyncLoad","asmjsMangle","mmapAlloc","HandleAllocator","getUniqueRunDependency","addRunDependency","removeRunDependency","addOnPreRun","addOnInit","addOnPostCtor","addOnPreMain","addOnExit","addOnPostRun","STACK_SIZE","STACK_ALIGN","POINTER_SIZE","ASSERTIONS","ccall","cwrap","convertJsFunctionToWasm","getEmptyTableSlot","updateTableMap","getFunctionAddress","addFunction","removeFunction","stringToUTF8Array","stringToUTF8","lengthBytesUTF8","intArrayFromString","intArrayToString","AsciiToString","stringToAscii","UTF16ToString","stringToUTF16","lengthBytesUTF16","UTF32ToString","stringToUTF32","lengthBytesUTF32","stringToNewUTF8","stringToUTF8OnStack","writeArrayToMemory","registerKeyEventCallback","maybeCStringToJsString","findEventTarget","getBoundingClientRect","fillMouseEventData","registerMouseEventCallback","registerWheelEventCallback","registerUiEventCallback","registerFocusEventCallback","fillDeviceOrientationEventData","registerDeviceOrientationEventCallback","fillDeviceMotionEventData","registerDeviceMotionEventCallback","screenOrientation","fillOrientationChangeEventData","registerOrientationChangeEventCallback","fillFullscreenChangeEventData","registerFullscreenChangeEventCallback","JSEvents_requestFullscreen","JSEvents_resizeCanvasForFullscreen","registerRestoreOldStyle","hideEverythingExceptGivenElement","restoreHiddenElements","setLetterbox","softFullscreenResizeWebGLRenderTarget","doRequestFullscreen","fillPointerlockChangeEventData","registerPointerlockChangeEventCallback","registerPointerlockErrorEventCallback","requestPointerLock","fillVisibilityChangeEventData","registerVisibilityChangeEventCallback","registerTouchEventCallback","fillGamepadEventData","registerGamepadEventCallback","registerBeforeUnloadEventCallback","fillBatteryEventData","registerBatteryEventCallback","setCanvasElementSize","getCanvasElementSize","jsStackTrace","getCallstack","convertPCtoSourceLocation","getEnvStrings","checkWasiClock","wasiRightsToMuslOFlags","wasiOFlagsToMuslOFlags","initRandomFill","randomFill","safeSetTimeout","setImmediateWrapped","safeRequestAnimationFrame","clearImmediateWrapped","registerPostMainLoop","registerPreMainLoop","getPromise","makePromise","addPromise","idsToPromises","makePromiseCallback","Browser_asyncPrepareDataCounter","isLeapYear","ydayFromDate","arraySum","addDays","getSocketFromFD","getSocketAddress"];missingLibrarySymbols.forEach(missingLibrarySymbol);var unexportedSymbols=["run","out","err","callMain","abort","wasmExports","writeStackCookie","checkStackCookie","INT53_MAX","INT53_MIN","bigintToI53Checked","HEAP8","HEAP16","HEAPU16","HEAP32","HEAPU32","HEAPF32","HEAPF64","HEAP64","HEAPU64","stackSave","stackRestore","ptrToString","exitJS","getHeapMax","growMemory","ENV","ERRNO_CODES","DNS","Protocols","Sockets","timers","warnOnce","readEmAsmArgsArray","handleException","keepRuntimeAlive","callUserCallback","maybeExit","alignMemory","wasmTable","wasmMemory","noExitRuntime","freeTableIndexes","functionsInTableMap","setValue","getValue","PATH","PATH_FS","UTF8Decoder","UTF8ArrayToString","UTF8ToString","UTF16Decoder","JSEvents","specialHTMLTargets","findCanvasEventTarget","currentFullscreenStrategy","restoreOldWindowedStyle","UNWIND_CACHE","ExitStatus","flush_NO_FILESYSTEM","emSetImmediate","emClearImmediate_deps","emClearImmediate","promiseMap","Browser","requestFullscreen","requestFullScreen","setCanvasSize","getUserMedia","createContext","getPreloadedImageData__data","wget","MONTH_DAYS_REGULAR","MONTH_DAYS_LEAP","MONTH_DAYS_REGULAR_CUMULATIVE","MONTH_DAYS_LEAP_CUMULATIVE","SYSCALLS"];unexportedSymbols.forEach(unexportedRuntimeSymbol);function checkIncomingModuleAPI(){ignoredModuleProp("ENVIRONMENT");ignoredModuleProp("GL_MAX_TEXTURE_IMAGE_UNITS");ignoredModuleProp("SDL_canPlayWithWebAudio");ignoredModuleProp("SDL_numSimultaneouslyQueuedBuffers");ignoredModuleProp("INITIAL_MEMORY");ignoredModuleProp("wasmMemory");ignoredModuleProp("arguments");ignoredModuleProp("buffer");ignoredModuleProp("canvas");ignoredModuleProp("doNotCaptureKeyboard");ignoredModuleProp("dynamicLibraries");ignoredModuleProp("elementPointerLock");ignoredModuleProp("extraStackTrace");ignoredModuleProp("forcedAspectRatio");ignoredModuleProp("instantiateWasm");ignoredModuleProp("keyboardListeningElement");ignoredModuleProp("freePreloadedMediaOnUse");ignoredModuleProp("locateFile");ignoredModuleProp("mainScriptUrlOrBlob");ignoredModuleProp("mem");ignoredModuleProp("monitorRunDependencies");ignoredModuleProp("noExitRuntime");ignoredModuleProp("noInitialRun");ignoredModuleProp("onAbort");ignoredModuleProp("onExit");ignoredModuleProp("onFullScreen");ignoredModuleProp("onRuntimeInitialized");ignoredModuleProp("postMainLoop");ignoredModuleProp("postRun");ignoredModuleProp("preInit");ignoredModuleProp("preMainLoop");ignoredModuleProp("preRun");ignoredModuleProp("preinitializedWebGLContext");ignoredModuleProp("preloadPlugins");ignoredModuleProp("print");ignoredModuleProp("printErr");ignoredModuleProp("setStatus");ignoredModuleProp("statusMessage");ignoredModuleProp("stderr");ignoredModuleProp("stdin");ignoredModuleProp("stdout");ignoredModuleProp("thisProgram");ignoredModuleProp("wasm");ignoredModuleProp("websocket");ignoredModuleProp("fetchSettings");ignoredModuleProp("logReadFiles");ignoredModuleProp("loadSplitModule");ignoredModuleProp("onMalloc");ignoredModuleProp("onRealloc");ignoredModuleProp("onFree");ignoredModuleProp("onSbrkGrow");ignoredModuleProp("onCOSCacheHit");ignoredModuleProp("onCOSCacheMiss");ignoredModuleProp("onCOSStore")}var _init=Module["_init"]=makeInvalidEarlyAccess("_init");var _set_color=Module["_set_color"]=makeInvalidEarlyAccess("_set_color");var _render_pass=Module["_render_pass"]=makeInvalidEarlyAccess("_render_pass");var _fflush=makeInvalidEarlyAccess("_fflush");var __emscripten_timeout=makeInvalidEarlyAccess("__emscripten_timeout");var _emscripten_stack_init=makeInvalidEarlyAccess("_emscripten_stack_init");var _emscripten_stack_get_free=makeInvalidEarlyAccess("_emscripten_stack_get_free");var _emscripten_stack_get_base=makeInvalidEarlyAccess("_emscripten_stack_get_base");var _emscripten_stack_get_end=makeInvalidEarlyAccess("_emscripten_stack_get_end");var __emscripten_stack_restore=makeInvalidEarlyAccess("__emscripten_stack_restore");var __emscripten_stack_alloc=makeInvalidEarlyAccess("__emscripten_stack_alloc");var _emscripten_stack_get_current=makeInvalidEarlyAccess("_emscripten_stack_get_current");var memory=makeInvalidEarlyAccess("memory");var __indirect_function_table=makeInvalidEarlyAccess("__indirect_function_table");var wasmMemory=makeInvalidEarlyAccess("wasmMemory");function assignWasmExports(wasmExports){assert(typeof wasmExports["init"]!="undefined","missing Wasm export: init");assert(typeof wasmExports["set_color"]!="undefined","missing Wasm export: set_color");assert(typeof wasmExports["render_pass"]!="undefined","missing Wasm export: render_pass");assert(typeof wasmExports["fflush"]!="undefined","missing Wasm export: fflush");assert(typeof wasmExports["_emscripten_timeout"]!="undefined","missing Wasm export: _emscripten_timeout");assert(typeof wasmExports["emscripten_stack_init"]!="undefined","missing Wasm export: emscripten_stack_init");assert(typeof wasmExports["emscripten_stack_get_free"]!="undefined","missing Wasm export: emscripten_stack_get_free");assert(typeof wasmExports["emscripten_stack_get_base"]!="undefined","missing Wasm export: emscripten_stack_get_base");assert(typeof wasmExports["emscripten_stack_get_end"]!="undefined","missing Wasm export: emscripten_stack_get_end");assert(typeof wasmExports["_emscripten_stack_restore"]!="undefined","missing Wasm export: _emscripten_stack_restore");assert(typeof wasmExports["_emscripten_stack_alloc"]!="undefined","missing Wasm export: _emscripten_stack_alloc");assert(typeof wasmExports["emscripten_stack_get_current"]!="undefined","missing Wasm export: emscripten_stack_get_current");assert(typeof wasmExports["memory"]!="undefined","missing Wasm export: memory");assert(typeof wasmExports["__indirect_function_table"]!="undefined","missing Wasm export: __indirect_function_table");_init=Module["_init"]=createExportWrapper("init",3);_set_color=Module["_set_color"]=createExportWrapper("set_color",4);_render_pass=Module["_render_pass"]=createExportWrapper("render_pass",0);_fflush=createExportWrapper("fflush",1);__emscripten_timeout=createExportWrapper("_emscripten_timeout",2);_emscripten_stack_init=wasmExports["emscripten_stack_init"];_emscripten_stack_get_free=wasmExports["emscripten_stack_get_free"];_emscripten_stack_get_base=wasmExports["emscripten_stack_get_base"];_emscripten_stack_get_end=wasmExports["emscripten_stack_get_end"];__emscripten_stack_restore=wasmExports["_emscripten_stack_restore"];__emscripten_stack_alloc=wasmExports["_emscripten_stack_alloc"];_emscripten_stack_get_current=wasmExports["emscripten_stack_get_current"];memory=wasmMemory=wasmExports["memory"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={_abort_js:__abort_js,_emscripten_runtime_keepalive_clear:__emscripten_runtime_keepalive_clear,_setitimer_js:__setitimer_js,emscripten_resize_heap:_emscripten_resize_heap,fd_close:_fd_close,fd_seek:_fd_seek,fd_write:_fd_write,proc_exit:_proc_exit};var calledRun;function stackCheckInit(){_emscripten_stack_init();writeStackCookie()}async function run(){assert(!calledRun);calledRun=true;stackCheckInit();preRun();if(ABORT)return;initRuntime();assert(!Module["_main"],'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');postRun();checkStackCookie()}function checkUnflushedContent(){var oldOut=out;var oldErr=err;var has=false;out=err=x=>{has=true};try{flush_NO_FILESYSTEM()}catch(e){}out=oldOut;err=oldErr;if(has){warnOnce("stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the Emscripten FAQ), or make sure to emit a newline when you printf etc.");warnOnce("(this may also be due to not including full filesystem support - try building with -sFORCE_FILESYSTEM)")}}var wasmExports;wasmExports=await createWasm();await run();for(const prop of Object.keys(Module)){if(!(prop in moduleArg)){Object.defineProperty(moduleArg,prop,{configurable:true,get(){abort(`Access to module property ('${prop}') is no longer possible via the module constructor argument; Instead, use the result of the module constructor.`)}})}}
++;return Module}export default Module;
+diff --git a/public/wasm/smallpt.wasm b/public/wasm/smallpt.wasm
+new file mode 100755
+index 0000000..ee1f600
+Binary files /dev/null and b/public/wasm/smallpt.wasm differ
+diff --git a/scripts/build-wasm.sh b/scripts/build-wasm.sh
+new file mode 100755
+index 0000000..d01f35d
+--- /dev/null
++++ b/scripts/build-wasm.sh
+@@ -0,0 +1,9 @@
++#!/usr/bin/env bash
++set -euo pipefail
++cd "$(dirname "$0")/.."
++em++ -fno-exceptions native/smallpt.cpp -O3 -flto --no-entry \
++  -sEXPORT_ES6=1 -sMODULARIZE=1 -sSTRICT=1 -sENVIRONMENT=worker \
++  -sINCOMING_MODULE_JS_API='["wasmBinary"]' -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 -sASSERTIONS=1 \
++  -sEXPORTED_RUNTIME_METHODS='["HEAPU8"]' \
++  -sEXPORTED_FUNCTIONS='["_init","_set_color","_render_pass"]' \
++  -o public/wasm/smallpt.js
+diff --git a/scripts/check-renderer.mjs b/scripts/check-renderer.mjs
+new file mode 100644
+index 0000000..6022109
+--- /dev/null
++++ b/scripts/check-renderer.mjs
+@@ -0,0 +1,45 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import createSmallpt from '../public/wasm/smallpt.js';
++
++// Supply the browser worker globals and binary without opening a browser.
++const wasmBinary = await readFile(new URL('../public/wasm/smallpt.wasm', import.meta.url));
++const nodeProcess = globalThis.process;
++globalThis.process = undefined;
++globalThis.WorkerGlobalScope = class {};
++let module;
++try { module = await createSmallpt({ wasmBinary }); }
++finally { globalThis.process = nodeProcess; delete globalThis.WorkerGlobalScope; }
++const getFrame = (w, h) => {
++  const pointer = module._render_pass();
++  return module.HEAPU8.slice(pointer, pointer + w * h * 4);
++};
++module._init(48, 36, 1);
++const original = getFrame(48, 36);
++assert.equal(original.length, 48 * 36 * 4);
++assert(original.some((value, index) => index % 4 !== 3 && value > 0), 'Scene contains illuminated pixels');
++assert(original.every((value, index) => index % 4 !== 3 || value === 255), 'All pixels are opaque');
++module._init(48, 36, 1);
++assert.deepEqual(getFrame(48, 36), original, 'Same seed reproduces output');
++module._init(48, 36, 1);
++module._set_color(6, .8, .25, .4);
++module._set_color(7, .25, .7, .4);
++assert.notDeepEqual(getFrame(48, 36), original, 'Changing sphere colors changes rendered output');
++module._init(48, 36, 2);
++const first = getFrame(48, 36);
++assert.notDeepEqual(getFrame(48, 36), first, 'Subsequent passes add samples');
++console.log('Wasm checks passed: valid pixels, deterministic reset, sphere color changes, progressive passes.');
++if (nodeProcess.argv.includes('--preview')) {
++  const { default: sharp } = await import('sharp');
++  module._set_color(6, 244 / 255, 244 / 255, 244 / 255);
++  module._set_color(7, 244 / 255, 244 / 255, 244 / 255);
++  module._init(640, 480, 1);
++  let frame;
++  const start = performance.now();
++  for (let pass = 0; pass < 128; pass++) {
++    frame = getFrame(640, 480);
++    if ((pass + 1) % 32 === 0) console.log(`Preview: ${(pass + 1) * 4} / 512 samples per pixel`);
++  }
++  await sharp(frame, { raw: { width: 640, height: 480, channels: 4 } }).png().toFile('public/render-preview.png');
++  console.log(`Preview rendered from Wasm at 512 spp in ${((performance.now() - start) / 1000).toFixed(1)}s.`);
++}
+diff --git a/src/components/LabIcon.astro b/src/components/LabIcon.astro
+new file mode 100644
+index 0000000..b32985f
+--- /dev/null
++++ b/src/components/LabIcon.astro
+@@ -0,0 +1,20 @@
++---
++const { name, size = 18 } = Astro.props;
++const paths: Record<string, string> = {
++  cube: 'm12 3 9 5v8l-9 5-9-5V8l9-5Zm0 9 9-4M12 12 3 8m9 4v9M7.5 5.5l9 5',
++  arrow: 'M7 17 17 7M7 7h10v10',
++  shuffle: 'm18 14 4 4-4 4M18 2l4 4-4 4M2 18h2.5c6 0 9-12 15-12H22M2 6h2.5c2.5 0 4.5 2 6 4M14 15c1.5 2 3 3 5.5 3H22',
++  download: 'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',
++  reset: 'M3 11a9 9 0 1 1 2.6 7M3 4v7h7',
++  play: 'm8 4 12 8-12 8V4Z',
++  chevron: 'm9 5 7 7-7 7',
++  code: 'm8 6-6 6 6 6m8-12 6 6-6 6m-3-16-2 20',
++  cpu: 'M6 6h12v12H6V6Zm3 3h6v6H9V9ZM9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4',
++  sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5',
++  info: 'M12 8h.01M12 11v6M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z',
++  check: 'm5 12 4 4L19 6',
++  image: 'M3 3h18v18H3V3Zm0 14 6-6 4 4 3-3 5 5M15 7h.01',
++  github: 'M9 19c-4 1-4-2-6-2m12 5v-4c0-1 .1-1.5-.5-2 4-.5 7-2 7-6a5 5 0 0 0-1.5-3.5 5 5 0 0 0-.1-3.5S18.5 2.5 15 4a13 13 0 0 0-6 0C5.5 2.5 4.1 3 4.1 3A5 5 0 0 0 4 6.5 5 5 0 0 0 2.5 10c0 4 3 5.5 7 6-.6.5-.5 1.5-.5 2v4',
++};
++---
++<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={paths[name] || paths.info} /></svg>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..2212d56 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,73 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++export const prerender = true;
++import Icon from '../components/LabIcon.astro';
++const base = import.meta.env.BASE_URL;
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <meta name="description" content="A tiny C++ path tracer, running right in your browser. Explore light, materials, and color with smallpt lab." />
++  <title>smallpt lab — A little code. A world of light.</title>
++  <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
++  <link rel="preconnect" href="https://fonts.googleapis.com" />
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
++</head>
++<body>
++  <header class="site-header">
++    <a class="brand" href={base} aria-label="smallpt lab home"><span class="brand-mark"><Icon name="cube" size={24} /></span><span>smallpt<span class="brand-light"> lab</span></span><span class="beta">PLAYGROUND</span></a>
++    <nav aria-label="Main navigation"><a class="active" href="#playground">Playground</a><a href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">About smallpt <Icon name="arrow" size={14} /></a><a class="source-link" href="https://www.kevinbeason.com/smallpt/smallpt.cpp" target="_blank" rel="noreferrer"><Icon name="code" size={17} /> View source <Icon name="arrow" size={14} /></a></nav>
++  </header>
++  <main>
++    <section class="intro">
++      <div><div class="eyebrow"><span></span> SMALL CODE. INFINITE POSSIBILITIES.</div><h1>A little code. <span>A world of light.</span></h1><p>A classic path tracer, reimagined for your browser. Play with color and watch light do its thing.</p></div>
++      <span class="local-badge"><span></span> All on your device <Icon name="cpu" size={15} /></span>
++    </section>
++    <section class="workspace" id="playground" aria-label="Path tracing playground" data-base={base}>
++      <div class="workspace-header"><div class="scene-heading"><span class="scene-icon"><Icon name="cube" size={19} /></span><h2>Cornell box</h2><span class="scene-tag">THE CLASSIC SCENE</span></div><button id="download" class="text-button"><Icon name="download" size={16} /> Save image</button></div>
++      <div class="workspace-body">
++        <div class="render-column">
++          <div class="viewport">
++            <div class="viewport-label"><span class="live-dot"></span> LIVE RENDER</div>
++            <img id="preview" src={`${base}render-preview.png`} alt="Path-traced Cornell box with a mirror sphere, glass sphere, and colored walls" width="640" height="480" />
++            <canvas id="render" width="640" height="480" aria-label="Live smallpt path-traced Cornell box"></canvas>
++            <span class="viewport-engine"><Icon name="cube" size={12} /> smallpt / wasm</span>
++            <div class="viewport-resolution">640 × 480</div>
++          </div>
++          <div class="render-status"><div><span class="status-dot" id="status-dot"></span><span id="status" role="status">Preparing renderer</span></div><div class="render-stats"><span><strong id="samples-stat">0</strong> samples / pixel</span><span class="stat-divider"></span><span id="time-stat">0.0s</span></div></div>
++          <div class="progress-track"><div id="progress"></div></div>
+         </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++        <aside class="controls">
++          <div class="control-title"><h3>Make it yours</h3><span>01 — SCENE</span></div>
++          <p class="control-description">Same scene. A whole new atmosphere.</p>
++          <div class="section-label">SPHERE COLORS <span class="tooltip" title="The Cornell box is built entirely from spheres, including its walls."><Icon name="info" size={14} /></span></div>
++          <div class="color-row"><span><span class="material-icon mirror"></span>Mirror sphere</span><label class="color-picker"><input id="mirror-color" type="color" value="#f4f4f4" aria-label="Mirror sphere color" /><span id="mirror-hex">#F4F4F4</span><Icon name="chevron" size={12} /></label></div>
++          <div class="color-row"><span><span class="material-icon glass"></span>Glass sphere</span><label class="color-picker"><input id="glass-color" type="color" value="#f4f4f4" aria-label="Glass sphere color" /><span id="glass-hex">#F4F4F4</span><Icon name="chevron" size={12} /></label></div>
++          <div class="wall-colors"><span>Room palette</span><div><i style="--swatch:#bf4040" title="Left wall"></i><i style="--swatch:#4040bf" title="Right wall"></i><i style="--swatch:#bfbfbf" title="Floor and ceiling"></i></div></div>
++          <div class="control-divider"></div>
++          <div class="section-label">RENDER QUALITY</div>
++          <div class="quality-options" role="group" aria-label="Render quality"><button data-samples="32">Quick</button><button class="selected" data-samples="128" aria-pressed="true">Balanced</button><button data-samples="512">Fine</button></div>
++          <div class="quality-hint"><span id="quality-description">128 samples per pixel</span><span id="quality-note">A happy medium</span></div>
++          <button id="randomize" class="primary-button"><Icon name="shuffle" size={17} /> Randomize colors <span>↗</span></button>
++          <button id="rerender" class="secondary-button"><Icon name="play" size={14} /> Render again</button>
++          <button id="reset" class="reset-button"><Icon name="reset" size={13} /> Reset to original</button>
++          <div class="privacy-note"><Icon name="cpu" size={16} /><span>Rendered with WebAssembly.<br />Your device does all the work.</span></div>
++        </aside>
++      </div>
++    </section>
++    <div class="under-workspace"><span><Icon name="info" size={14} /> A little grain is a good thing. The image gets clearer as more samples arrive.</span><span class="mono">C++ → WASM → PIXELS</span></div>
++    <section class="feature-grid" aria-label="About this experiment">
++      <article><span class="feature-icon"><Icon name="code" size={20} /></span><div><h3>99 lines. Really.</h3><p>Kevin Beason’s tiny C++ renderer.<br />A beautiful lesson in doing more with less.</p></div><span class="feature-number">01</span></article>
++      <article><span class="feature-icon"><Icon name="sun" size={20} /></span><div><h3>Light, the natural way.</h3><p>Real path tracing. Soft shadows, reflections,<br />and a little Monte Carlo magic.</p></div><span class="feature-number">02</span></article>
++      <article><span class="feature-icon"><Icon name="cpu" size={20} /></span><div><h3>No server. Just your browser.</h3><p>Compiled to WebAssembly and rendered<br />locally. Small footprint, big possibilities.</p></div><span class="feature-number">03</span></article>
++    </section>
++    <footer><span>A small experiment in light & possibility.</span><span>Built on <a href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">smallpt by Kevin Beason <Icon name="arrow" size={12} /></a><span class="footer-divider">/</span> Open source, always.</span></footer>
++  </main>
++  <script src="../scripts/playground.ts"></script>
++</body>
++</html>
++<style is:global>
++  :root{font-family:'DM Sans',sans-serif;color:#292832;background:#f8f9fb;font-synthesis:none;font-weight:400}*{box-sizing:border-box}body{margin:0}button,a,input{-webkit-tap-highlight-color:transparent}button{font:inherit;cursor:pointer}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #b5a1ef;outline-offset:4px}svg{flex-shrink:0}button{display:flex;align-items:center;justify-content:center;gap:9px}button:hover{filter:brightness(.97)}.site-header{height:88px;display:flex;align-items:center;justify-content:space-between;padding:0 5.2%;background:#fff;border-bottom:1px solid #e8e8ed}.brand{display:flex;align-items:center;gap:11px;font-size:23px;font-weight:700;letter-spacing:-.8px}.brand-mark{height:38px;width:38px;display:grid;place-items:center;background:#7754ce;color:white;border-radius:10px;box-shadow:0 3px 7px #7754ce20}.brand-light{font-weight:400;color:#7f7b88}.beta{font:9px 'IBM Plex Mono',monospace;color:#908b9b;border:1px solid #e7e4ed;background:#faf9fc;border-radius:4px;padding:5px 7px;letter-spacing:1px;margin-left:7px}nav{display:flex;align-items:center;gap:31px;font-size:12px;color:#77737e}nav a{display:flex;align-items:center;gap:7px}nav .active{color:#7754ce;font-weight:600}.source-link{border:1px solid #e5e3eb;padding:10px 13px;border-radius:7px;color:#4c4856}main{max-width:1264px;margin:0 auto;padding:0 34px}.intro{display:flex;align-items:center;justify-content:space-between;padding:46px 0 34px}.eyebrow{display:flex;align-items:center;gap:7px;font:9px 'IBM Plex Mono',monospace;letter-spacing:1.4px;color:#827492}.eyebrow>span{width:6px;height:6px;background:#9a7cdb;border-radius:50%}h1{font-size:36px;line-height:1.3;letter-spacing:-1.35px;font-weight:550;margin:13px 0 10px}h1>span{color:#8763cd}.intro p{color:#83818c;font-size:13px;margin:0;line-height:1.7}.local-badge{display:flex;gap:8px;align-items:center;color:#85818e;font-size:10px;background:#fff;border:1px solid #e7e6ec;padding:8px 10px;border-radius:6px;margin-top:34px}.local-badge>span{width:5px;height:5px;background:#71a98c;border-radius:50%}.workspace{border:1px solid #e1dfe8;border-radius:12px;background:#fff;box-shadow:0 5px 22px #36304f05;overflow:hidden;scroll-margin-top:20px}.workspace-header{height:63px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #eae8ee}.scene-heading{display:flex;align-items:center;gap:10px}.scene-icon{color:#92859f;display:flex}h2{font-size:13px;font-weight:600;margin:0}.scene-tag{font:8px 'IBM Plex Mono',monospace;color:#9992a2;background:#f5f4f8;padding:5px 7px;border-radius:4px;margin-left:4px;letter-spacing:.5px}.text-button{border:0;background:transparent;font-size:11px;color:#746e7f;gap:7px}.workspace-body{display:grid;grid-template-columns:minmax(0,1fr) 293px}.render-column{padding:22px 23px 18px;min-width:0}.viewport{position:relative;background:#1c1b20;border-radius:7px;overflow:hidden;aspect-ratio:1.59;display:flex;align-items:center;justify-content:center}.viewport img,.viewport canvas{height:100%;width:auto;max-width:100%;object-fit:contain;display:block}.viewport canvas{position:absolute;inset:0;margin:auto;opacity:0}.viewport-label{position:absolute;top:17px;left:16px;display:flex;align-items:center;gap:7px;z-index:2;font:8px 'IBM Plex Mono',monospace;letter-spacing:1px;color:#e7e4ee;background:#25232bd6;border:1px solid #ffffff18;padding:6px 8px;border-radius:4px}.live-dot{width:5px;height:5px;background:#b1a0da;border-radius:50%}.viewport-engine{position:absolute;bottom:13px;left:15px;display:flex;align-items:center;gap:5px;color:#aaa4b6;font:8px 'IBM Plex Mono',monospace}.viewport-resolution{position:absolute;right:15px;bottom:13px;color:#aaa4b6;font:8px 'IBM Plex Mono',monospace}.render-status{display:flex;align-items:center;justify-content:space-between;font-size:10px;margin:17px 0 12px;color:#817b8d;gap:10px}.render-status>div{display:flex;align-items:center;gap:7px}.status-dot{width:6px;height:6px;background:#a78bdb;border-radius:50%}.status-dot.complete{background:#73a58c}.render-stats strong{color:#686172;font-weight:500}.render-stats .stat-divider{height:10px;width:1px;background:#e6e3eb;margin:0 6px}.progress-track{height:3px;border-radius:2px;background:#efedf4;overflow:hidden}.progress-track>div{height:100%;width:0;background:#9d80d9;transition:width .25s}.controls{border-left:1px solid #eae8ef;padding:24px 23px 19px}.control-title{display:flex;align-items:center;justify-content:space-between}h3{margin:0;font-size:13px;font-weight:600}.control-title>span{font:8px 'IBM Plex Mono',monospace;color:#aaa3b3}.control-description{font-size:10px;color:#938b9d;margin:9px 0 27px}.section-label{font:8px 'IBM Plex Mono',monospace;letter-spacing:1px;color:#948b9d;display:flex;align-items:center;gap:7px;margin-bottom:14px}.tooltip{display:flex;color:#b6afc0}.color-row{display:flex;align-items:center;justify-content:space-between;margin:13px 0;font-size:10px;color:#6c6477}.color-row>span{display:flex;align-items:center;gap:7px}.material-icon{display:block;width:14px;height:14px;border-radius:50%;border:1px solid #c9c6cd;background:linear-gradient(135deg,#fff 15%,#898594 50%,#e2dfea 85%)}.material-icon.glass{background:radial-gradient(circle at 30% 30%,#fff,#f3f2f8 35%,#ccc6d9 75%,#fff)}.color-picker{display:flex;align-items:center;gap:5px;font:8px 'IBM Plex Mono',monospace;border:1px solid #e8e5ed;border-radius:5px;padding:5px 6px;color:#8c8496;cursor:pointer}.color-picker input{width:15px;height:15px;border:0;padding:0;background:none;cursor:pointer}.color-picker input::-webkit-color-swatch-wrapper{padding:0}.color-picker input::-webkit-color-swatch{border:1px solid #dcd8e3;border-radius:3px}.wall-colors{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#8f8799;margin-top:17px}.wall-colors>div{display:flex;gap:5px}.wall-colors i{height:13px;width:13px;display:block;background:var(--swatch);border:1px solid #00000009;border-radius:3px}.control-divider{height:1px;background:#ece9f0;margin:23px 0 20px}.quality-options{display:flex;padding:3px;background:#f4f2f7;border-radius:6px;gap:2px}.quality-options button{flex:1;border:0;border-radius:4px;background:none;font-size:10px;padding:7px 3px;color:#96909e}.quality-options button.selected{background:white;color:#7852bc;box-shadow:0 1px 5px #36274713;font-weight:600}.quality-hint{display:flex;justify-content:space-between;font-size:8px;color:#9d94a7;margin-top:9px}.quality-hint span:first-child{color:#80768e}.primary-button{background:#8057cc;color:#fff;width:100%;border:1px solid #8057cc;padding:12px 9px;border-radius:6px;font-size:11px;font-weight:500;margin-top:24px;box-shadow:0 3px 4px #8057cc13}.primary-button>span{margin-left:auto;font-size:16px;font-weight:400}.primary-button svg{margin-right:3px}.secondary-button{background:#fff;border:1px solid #e6e1ed;color:#736980;border-radius:6px;width:100%;padding:10px;font-size:10px;margin-top:9px}.reset-button{background:none;border:0;font-size:9px;color:#a095ad;margin:14px auto 0}.privacy-note{display:flex;align-items:center;gap:9px;color:#a098ac;line-height:1.7;font-size:9px;margin-top:23px;padding-top:17px;border-top:1px solid #eeeaf3}.privacy-note svg{color:#aca1ba}.under-workspace{display:flex;justify-content:space-between;align-items:center;color:#aaa3b2;font-size:9px;padding:14px 2px 29px;gap:16px}.under-workspace>span:first-child{display:flex;gap:6px;align-items:center}.mono{font:8px 'IBM Plex Mono',monospace;letter-spacing:1px;white-space:nowrap}.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}.feature-grid article{position:relative;display:flex;align-items:flex-start;gap:13px;padding:22px 17px;background:#f6f5f9;border:1px solid #ece9f0;border-radius:8px}.feature-icon{height:34px;width:34px;display:grid;place-items:center;border:1px solid #e5dfee;border-radius:7px;background:#fcfbfe;color:#9985b5;flex-shrink:0}.feature-grid h3{font-size:11px;color:#63596e;margin:2px 0 7px}.feature-grid p{font-size:10px;line-height:1.8;margin:0;color:#9b93a4}.feature-number{position:absolute;top:14px;right:12px;font:8px 'IBM Plex Mono',monospace;color:#c5becf}footer{display:flex;justify-content:space-between;font-size:9px;color:#aca4b5;padding:30px 0}footer>span:last-child{display:flex;align-items:center;gap:4px}footer a{display:flex;align-items:center;gap:3px;color:#8b7a9f}.footer-divider{margin:0 8px;color:#d5cedd}button:disabled{opacity:.5;cursor:wait}@media(min-width:1450px){main{padding-top:13px}.intro{padding-bottom:40px}.viewport{aspect-ratio:1.55}.controls{padding-top:28px}.control-description{margin-bottom:30px}.control-divider{margin:28px 0 24px}.primary-button{margin-top:31px}}@media(max-width:900px){main{padding:0 24px}.site-header{padding:0 24px}.workspace-body{grid-template-columns:minmax(0,1fr) 250px}.render-column{padding:16px}.controls{padding:22px 17px}.intro h1{font-size:29px}.local-badge{display:none}.scene-tag{display:none}.feature-grid article{padding:17px 12px;gap:9px}.feature-grid p br{display:none}.feature-icon{width:28px;height:28px}.feature-number{display:none}.viewport{aspect-ratio:1.2}.render-status{font-size:9px;flex-wrap:wrap}nav{gap:19px}.beta{display:none}}@media(max-width:640px){.site-header{height:70px;padding:0 18px}.brand{font-size:20px}.brand-mark{width:32px;height:32px}nav>a:not(.source-link){display:none}.source-link{font-size:10px;padding:9px}main{padding:0 16px}.intro{padding:31px 0 25px}.eyebrow{font-size:7px;letter-spacing:1px}h1{font-size:28px!important;line-height:1.25;letter-spacing:-1px}h1>span{display:block}.intro p{font-size:11px;max-width:310px}.workspace-header{padding:0 16px;height:56px}.workspace-body{grid-template-columns:1fr}.viewport{aspect-ratio:1.4}.controls{border-left:0;border-top:1px solid #eae8ef;padding:23px}.control-description{margin-bottom:20px}.control-title>span{font-size:9px}.color-row{font-size:12px}.color-picker{font-size:10px}.color-picker input{height:18px;width:18px}.wall-colors{font-size:12px}.section-label{font-size:9px}.quality-options button{font-size:12px}.quality-hint{font-size:9px}.primary-button{font-size:12px}.secondary-button{font-size:12px}.reset-button{font-size:10px}.privacy-note{justify-content:center}.under-workspace{line-height:1.7;padding:13px 0 22px}.under-workspace .mono{display:none}.feature-grid{grid-template-columns:1fr;gap:10px}.feature-grid article{padding:17px}.feature-grid p br{display:none}.feature-grid h3{font-size:12px}.feature-grid p{font-size:11px}.feature-icon{width:34px;height:34px}.feature-number{display:block}footer{flex-direction:column;gap:12px;padding:24px 0}}
++</style>
+diff --git a/src/scripts/playground.ts b/src/scripts/playground.ts
+new file mode 100644
+index 0000000..3557500
+--- /dev/null
++++ b/src/scripts/playground.ts
+@@ -0,0 +1,114 @@
++const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
++const canvas = element<HTMLCanvasElement>('render');
++const context = canvas.getContext('2d')!;
++const base = document.querySelector<HTMLElement>('.workspace')!.dataset.base!;
++const mirror = element<HTMLInputElement>('mirror-color');
++const glass = element<HTMLInputElement>('glass-color');
++let worker: Worker | undefined;
++let targetSamples = 128;
++let seed = 1;
++let hasPixels = false;
++let colors: Record<number, number[]>;
++const normalize = (hex: string) => [1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16) / 255);
++function original() {
++  mirror.value = glass.value = '#f4f4f4';
++  colors = { 0: [.75, .25, .25], 1: [.25, .25, .75], 2: [.75, .75, .75], 4: [.75, .75, .75], 5: [.75, .75, .75], 6: normalize(mirror.value), 7: normalize(glass.value) };
++  updateSwatches();
++}
++function updateSwatches() {
++  element('mirror-hex').textContent = mirror.value.toUpperCase();
++  element('glass-hex').textContent = glass.value.toUpperCase();
++  document.querySelectorAll<HTMLElement>('.wall-colors i').forEach((swatch, index) => {
++    swatch.style.setProperty('--swatch', `rgb(${colors[[0, 1, 4][index]].map(c => Math.round(c * 255)).join(',')})`);
++  });
++}
++function render() {
++  worker?.terminate();
++  element('status').textContent = 'Tracing light…';
++  element('status-dot').classList.remove('complete');
++  element('progress').style.width = '0%';
++  element('samples-stat').textContent = '0';
++  element('time-stat').textContent = '0.0s';
++  try {
++    if (!window.WebAssembly || !window.Worker) throw new Error('This browser needs WebAssembly and Web Workers to render.');
++    worker = new Worker(`${base}wasm/render-worker.js`, { type: 'module' });
++    worker.onmessage = ({ data }) => {
++      if (data.error) { fail(data.error); return; }
++      canvas.width = data.width;
++      canvas.height = data.height;
++      context.putImageData(new ImageData(new Uint8ClampedArray(data.pixels), data.width, data.height), 0, 0);
++      canvas.style.opacity = '1';
++      hasPixels = true;
++      element('samples-stat').textContent = String(data.samples);
++      element('time-stat').textContent = `${(data.elapsed / 1000).toFixed(1)}s`;
++      element('progress').style.width = `${data.samples / targetSamples * 100}%`;
++      element('status').textContent = data.done ? 'Render complete' : 'Tracing light…';
++      element('status-dot').classList.toggle('complete', data.done);
++      if (data.done) { worker?.terminate(); worker = undefined; }
++    };
++    worker.onerror = () => fail('Could not load the renderer. Try Render again.');
++    worker.postMessage({ width: 640, height: 480, samples: targetSamples, seed, colors });
++  } catch (error) { fail((error as Error).message); }
++}
++function fail(message: string) {
++  element('status').textContent = message;
++  worker?.terminate();
++}
++element('randomize').addEventListener('click', () => {
++  const values = crypto.getRandomValues(new Uint32Array(7));
++  seed = values[0];
++  const randomColor = (value: number) => {
++    const hue = value % 360;
++    const rgb = [0, 8, 4].map(n => {
++      const k = (n + hue / 30) % 12;
++      return .62 - .25 * Math.max(-1, Math.min(k - 3, 9 - k, 1));
++    });
++    return '#' + rgb.map(c => Math.round(c * 255).toString(16).padStart(2, '0')).join('');
++  };
++  mirror.value = randomColor(values[1]);
++  glass.value = randomColor(values[2]);
++  colors[6] = normalize(mirror.value);
++  colors[7] = normalize(glass.value);
++  colors[0] = normalize(randomColor(values[3]));
++  colors[1] = normalize(randomColor(values[4]));
++  updateSwatches();
++  render();
++});
++for (const [input, id] of [[mirror, 6], [glass, 7]] as const) {
++  input.addEventListener('input', () => { colors[id] = normalize(input.value); updateSwatches(); });
++  input.addEventListener('change', render);
++}
++element('rerender').addEventListener('click', () => { seed = crypto.getRandomValues(new Uint32Array(1))[0]; render(); });
++element('reset').addEventListener('click', () => { seed = 1; original(); render(); });
++document.querySelectorAll<HTMLButtonElement>('[data-samples]').forEach(button => {
++  button.setAttribute('aria-pressed', String(button.classList.contains('selected')));
++  button.addEventListener('click', () => {
++    targetSamples = Number(button.dataset.samples);
++    document.querySelectorAll('[data-samples]').forEach(option => {
++      const selected = option === button;
++      option.classList.toggle('selected', selected);
++      option.setAttribute('aria-pressed', String(selected));
++    });
++    element('quality-description').textContent = `${targetSamples} samples per pixel`;
++    element('quality-note').textContent = targetSamples === 32 ? 'A quick exploration' : targetSamples === 128 ? 'A happy medium' : 'Worth the wait';
++    render();
++  });
++});
++element('download').addEventListener('click', async () => {
++  if (!hasPixels) {
++    const image = element<HTMLImageElement>('preview');
++    await image.decode();
++    context.drawImage(image, 0, 0, canvas.width, canvas.height);
++  }
++  canvas.toBlob(blob => {
++    if (!blob) return;
++    const url = URL.createObjectURL(blob);
++    const anchor = document.createElement('a');
++    anchor.href = url;
++    anchor.download = `smallpt-${seed}.png`;
++    anchor.click();
++    setTimeout(() => URL.revokeObjectURL(url), 1000);
++  }, 'image/png');
++});
++original();
++render();

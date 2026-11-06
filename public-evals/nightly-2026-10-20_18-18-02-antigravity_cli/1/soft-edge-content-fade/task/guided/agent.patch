@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,70 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Secrets Preview Section */
++    .roasters-secrets-section {
++      margin-block-start: 60px;
++    }
++
++    .roasters-secrets-section h2 {
++      text-align: center;
++      margin-block-end: 8px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--primary);
++      margin-block-end: 24px;
++      font-style: italic;
++    }
++
++    .paywall-container {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-height: 320px;
++      overflow: hidden;
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      /* Standard property for modern browsers */
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin-block-end: 12px;
++    }
++
++    .paywall-container p {
++      margin-block-end: 16px;
++    }
++
++    /* Fallback using an overlay for browsers that do not support masking */
++    @supports (not (mask-image: linear-gradient(to bottom, black, transparent))) and (not (-webkit-mask-image: linear-gradient(to bottom, black, transparent))) {
++      .paywall-container {
++        position: relative;
++      }
++
++      .paywall-container::after {
++        content: '';
++        position: absolute;
++        bottom: 0;
++        left: 0;
++        right: 0;
++        height: 50%;
++        background: linear-gradient(to bottom, rgba(250, 250, 250, 0), rgba(250, 250, 250, 1));
++        pointer-events: none;
++      }
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-block-start: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +256,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasters-secrets-section">
++      <h2>Roaster's Secrets</h2>
++      <p class="section-subtitle">Exclusive insights into our small-batch craft</p>
++      <article class="paywall-container">
++        <h3>Mastering the First Crack: Temperature Curves &amp; Airflow</h3>
++        <p>Every exceptional cup begins long before water touches the grounds. In our roastery, the transition into the Maillard reaction is monitored down to the half-second. By subtly reducing drum airflow just before the endothermic peak, we preserve the delicate jasmine and bergamot aromatics native to our high-altitude Ethiopian heirloom lots.</p>
++        <p>When the beans approach 385°F, the internal steam pressure builds toward the critical first crack. Rather than coasting through with static heat, our head roaster applies a precise three-stage heat soak technique that caramelizes complex sugars without scorching the chaff or muting the vibrant stone-fruit acidity.</p>
++        <p>During the development time ratio phase—which we strictly hold between 14.5% and 16.2% for filter profiles—rate-of-rise (RoR) must descend along a smooth, uninterrupted logarithmic curve. Any sudden flick or stall at this stage introduces baked, papery notes that mask terroir. Below, we share our exact gas pressure adjustments, drum RPM settings, and moisture-loss benchmarks for each origin...</p>
++      </article>
++      <div class="paywall-cta">
++        <p>Want to read the full roasting guide and unlock member-only brew recipes?</p>
++        <a href="/rewards" class="btn">Unlock Full Access</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

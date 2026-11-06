@@ -1,0 +1,736 @@
+diff --git a/SECURITY.md b/SECURITY.md
+new file mode 100644
+index 0000000..792f1e4
+--- /dev/null
++++ b/SECURITY.md
+@@ -0,0 +1,30 @@
++# Daily Grind security audit and deployment
++
++## Findings and changes
++
++- The original page contained an inline stylesheet and style attribute. Both now live in `/styles.css`; no inline allowances, script nonces, or hashes are necessary.
++- No client-side scripts, DOM injection sinks, cookies, storage, messaging, API calls, embeds, popup integrations, or third-party executable dependencies were found. CSP blocks all scripts, event handlers, eval, plugins, frames and outbound fetches through `default-src 'none'` and explicit directives. Trusted Types is required with no allowed policies in supporting browsers; CSP still protects browsers without Trusted Types support. Future JavaScript must receive a deliberate policy review.
++- The only third-party resource is the existing HTTPS Unsplash background image. Only that image origin is allowed. No third-party script or stylesheet requires SRI. Referrer policy limits cross-origin disclosure to the origin.
++- Responses previously had no browser security headers. The handler now applies CSP, frame protection, nosniff, referrer and permissions restrictions, COOP and CORP to success and error responses. COOP uses `same-origin-allow-popups`; COEP is intentionally omitted because shared-memory isolation is unnecessary and could break the image.
++- Logout previously responded to GET. It now uses a POST form, rejects GET/HEAD, requires the configured Origin, rejects non-same-origin Fetch Metadata, and emits `Clear-Site-Data` only on success. This is still a demonstration endpoint: there are no server sessions to revoke. Real authentication must revoke sessions server-side and use Secure, HttpOnly, SameSite cookies.
++- Fetch Metadata blocks cross-origin resource requests and unsafe methods while allowing normal incoming top-level GET/HEAD navigation. Missing metadata is tolerated for older clients; logout independently requires Origin. No cross-site APIs or webhook exemptions were needed. All responses include the corresponding `Vary` fields and `no-store`.
++
++## Deployment configuration
++
++Set `PUBLIC_ORIGIN` to the exact public origin, such as `https://coffee.example`, without a trailing slash or path. This is required for deployed logout Origin checks and absolute reporting URLs. The local default is `http://localhost:11222` (or the configured PORT). Host and forwarded headers cannot override this setting.
++
++Terminate TLS at the deployment edge, redirect public HTTP traffic to HTTPS there, and restrict direct access to the HTTP backend. The Node server remains an HTTP listener. With an HTTPS public origin, responses advertise an initial `Strict-Transport-Security: max-age=300`; increase the duration after confirming TLS and redirects. Subdomains and preload are not opted in automatically. Neither HSTS nor modern Reporting API delivery is advertised for the local HTTP default.
++
++`CSP_MODE=enforce` is the default for this audited, script-free page. `CSP_MODE=report-only` keeps frame/base/plugin/form protections enforced and observes the full candidate policy through `Content-Security-Policy-Report-Only`. Invalid values stop startup rather than silently disabling protection. For deployment changes or new integrations, start with report-only, collect representative real traffic for days to weeks, triage repeat legitimate violations, update the source and policy together, then switch to enforce. Do not add unsafe-inline, unsafe-eval, permissive Trusted Types policies, or broad script allowlists to silence reports.
++
++HTTPS responses configure `Reporting-Endpoints: security="<PUBLIC_ORIGIN>/security-reports"` and `report-to security`. `report-uri /security-reports` provides legacy CSP reporting fallback. Reports are diagnostic, unauthenticated, untrusted, and potentially forged; absence of reports is not proof of compatibility.
++
++The endpoint accepts CSP and Reporting API JSON only, caps each body at 16 KiB and each batch at 20 records, and accepts at most 100 report requests per minute per process. It logs only allowlisted directive names and `report`/`enforce` dispositions. It never logs raw bodies, URLs, samples, referrers, cookies or IP addresses. Configure proxy/body/time/rate limits and log retention at the edge as well; do not enable request-body logging for this endpoint. Multiple processes have independent limits. Filter extension noise before promoting a new policy. Modern reporting requires HTTPS and browser support; delivery can be delayed.
++
++If a CDN serves documents or styles without passing through the Node handler, mirror these headers and MIME types at that layer. Review policy and Fetch Metadata exceptions before adding payments, OAuth, embeds, APIs or browser features.
++
++## Verification
++
++`npm test` exercises the isolated `app.js` request handler using in-memory request/response objects. It never imports `server.js`, opens a listening socket, or launches a browser. Tests cover markup compatibility, headers, CSS MIME type, HEAD responses, staging configuration, origin validation, logout, Fetch Metadata, reporting formats, redaction, payload limits and rate limits. `npm run build` only checks server and handler syntax. No development/preview servers or manual browser verification were used. TLS-edge behavior and actual browser report delivery remain deployment checks.
++
++References: [MDN CSP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP), [Reporting API deployment](https://developer.chrome.com/docs/capabilities/web-apis/reporting-api), [Clear-Site-Data](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Clear-Site-Data).
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..4cb8cd9
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,156 @@
++const fs = require('node:fs/promises');
++const path = require('node:path');
++
++const REPORT_PATH = '/security-reports';
++const MAX_REPORT_BYTES = 16 * 1024;
++const DIRECTIVES = new Set([
++  'default-src', 'script-src', 'script-src-elem', 'script-src-attr',
++  'style-src', 'style-src-elem', 'style-src-attr', 'img-src', 'font-src',
++  'connect-src', 'object-src', 'base-uri', 'frame-src', 'frame-ancestors',
++  'form-action', 'worker-src', 'manifest-src', 'media-src',
++  'require-trusted-types-for', 'trusted-types',
++]);
++
++function createHandler({ publicOrigin = 'http://localhost:11222', cspMode = 'enforce',
++  onReport = (report) => console.info('security-report', JSON.stringify(report)) } = {}) {
++  const originUrl = new URL(publicOrigin);
++  if (!['https:', 'http:'].includes(originUrl.protocol) || originUrl.origin !== publicOrigin) {
++    throw new Error('PUBLIC_ORIGIN must be an HTTP(S) origin without a path or trailing slash');
++  }
++  if (!['enforce', 'report-only'].includes(cspMode)) {
++    throw new Error('CSP_MODE must be enforce or report-only');
++  }
++  const policy = [
++    "default-src 'none'",
++    // The site needs no JavaScript, so authorize no script sources or policies.
++    "script-src 'none'", "script-src-attr 'none'",
++    "style-src 'self'", "style-src-attr 'none'",
++    'img-src https://images.unsplash.com',
++    "object-src 'none'", "base-uri 'none'", "frame-ancestors 'none'",
++    "form-action 'self'", "require-trusted-types-for 'script'", "trusted-types 'none'",
++    `report-uri ${REPORT_PATH}`, 'report-to security',
++  ].join('; ');
++  // Bound logging globally per process without retaining IPs or raw payloads.
++  let windowStart = Date.now();
++  let reportCount = 0;
++
++  return async function handle(req, res) {
++    const headers = {
++      'X-Content-Type-Options': 'nosniff',
++      'X-Frame-Options': 'DENY',
++      'Referrer-Policy': 'strict-origin-when-cross-origin',
++      'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), focus-without-user-activation=()',
++      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
++      'Cross-Origin-Resource-Policy': 'same-origin',
++      'Cache-Control': 'no-store',
++      'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++      'Content-Security-Policy': cspMode === 'enforce' ? policy
++        : "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
++    };
++    if (cspMode === 'report-only') headers['Content-Security-Policy-Report-Only'] = policy;
++    if (originUrl.protocol === 'https:') {
++      headers['Reporting-Endpoints'] = `security="${publicOrigin}${REPORT_PATH}"`;
++      // Start small; the TLS edge must redirect HTTP to HTTPS.
++      headers['Strict-Transport-Security'] = 'max-age=300';
++    }
++    for (const [name, value] of Object.entries(headers)) res.setHeader(name, value);
++    const send = (status, body = '', type = 'text/plain; charset=utf-8') => {
++      res.writeHead(status, { 'Content-Type': type });
++      res.end(req.method === 'HEAD' ? undefined : body);
++    };
++
++    try {
++      // Do not trust Host or forwarded headers for policy URLs or origin checks.
++      const pathname = new URL(req.url, publicOrigin).pathname;
++      const site = req.headers['sec-fetch-site'];
++      const navigation = ['GET', 'HEAD'].includes(req.method)
++        && req.headers['sec-fetch-mode'] === 'navigate'
++        && req.headers['sec-fetch-dest'] === 'document';
++      if (site && !['same-origin', 'none'].includes(site) && !navigation) {
++        send(403, 'Forbidden');
++        return;
++      }
++
++      if (pathname === REPORT_PATH) {
++        if (req.method !== 'POST') {
++          res.setHeader('Allow', 'POST');
++          send(405, 'Method not allowed');
++          return;
++        }
++        if (!['application/csp-report', 'application/reports+json'].includes(
++          (req.headers['content-type'] || '').split(';')[0].trim())) {
++          send(415, 'Unsupported report type');
++          return;
++        }
++        if (Date.now() - windowStart >= 60_000) {
++          windowStart = Date.now();
++          reportCount = 0;
++        }
++        if (++reportCount > 100) {
++          send(429, 'Too many reports');
++          return;
++        }
++        let bytes = 0;
++        const chunks = [];
++        for await (const chunk of req) {
++          bytes += chunk.length;
++          if (bytes > MAX_REPORT_BYTES) {
++            send(413, 'Report too large');
++            return;
++          }
++          chunks.push(chunk);
++        }
++        let payload;
++        try {
++          payload = JSON.parse(Buffer.concat(chunks).toString('utf8'));
++        } catch {
++          send(400, 'Invalid report');
++          return;
++        }
++        const reports = Array.isArray(payload) ? payload : [payload];
++        if (reports.length > 20) {
++          send(413, 'Too many batched reports');
++          return;
++        }
++        for (const report of reports) {
++          const body = report?.['csp-report']
++            || (report?.type === 'csp-violation' ? report.body : null);
++          const directive = body?.['effective-directive'] || body?.effectiveDirective;
++          if (!DIRECTIVES.has(directive)) continue;
++          // Drop URLs, samples, cookies, IPs, referrers, and arbitrary strings.
++          onReport({ directive, disposition: body.disposition === 'report' ? 'report' : 'enforce' });
++        }
++        send(204);
++        return;
++      }
++
++      if (pathname === '/logout' || pathname === '/logout/') {
++        if (req.method !== 'POST') {
++          res.setHeader('Allow', 'POST');
++          send(405, 'Use the Logout button to sign out.');
++          return;
++        }
++        if (req.headers.origin !== publicOrigin || (site && site !== 'same-origin')) {
++          send(403, 'Forbidden');
++          return;
++        }
++        res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
++        send(200, 'Logged out');
++        return;
++      }
++
++      if (!['GET', 'HEAD'].includes(req.method)) {
++        res.setHeader('Allow', 'GET, HEAD');
++        send(405, 'Method not allowed');
++        return;
++      }
++      const stylesheet = pathname === '/styles.css';
++      const data = await fs.readFile(path.join(__dirname, stylesheet ? 'styles.css' : 'index.html'));
++      send(200, data, stylesheet ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8');
++    } catch {
++      send(500, 'Server error');
++    }
++  };
++}
++
++module.exports = { createHandler };
+diff --git a/index.html b/index.html
+index 66c9173..b242fc6 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <link rel="stylesheet" href="/styles.css">
+ </head>
+ 
+ <body>
+@@ -164,7 +18,11 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form method="post" action="/logout">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +34,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/package.json b/package.json
+index cffdc93..639b0ab 100644
+--- a/package.json
++++ b/package.json
+@@ -3,7 +3,8 @@
+   "version": "1.0.0",
+   "scripts": {
+     "start": "node server.js",
+-    "build": "node --check server.js"
++    "build": "node --check server.js && node --check app.js",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+index 52c2fd5..1424088 100644
+--- a/server.js
++++ b/server.js
+@@ -1,32 +1,12 @@
+ const http = require('node:http');
+-const fs = require('node:fs');
+-const path = require('node:path');
++const { createHandler } = require('./app');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+-const WORK_DIR = __dirname;
+-
+-const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
+-
+-  if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end('Logged out');
+-    return;
+-  }
+-
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
+-    if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
+-      return;
+-    }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
+-  });
++const handler = createHandler({
++  publicOrigin: process.env.PUBLIC_ORIGIN || `http://localhost:${PORT}`,
++  cspMode: process.env.CSP_MODE || 'enforce',
+ });
+ 
+-server.listen(PORT, () => {
++http.createServer(handler).listen(PORT, () => {
+   console.log(`Server running on port ${PORT}`);
+ });
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..5862b37
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,162 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.section-title {
++  text-align: center;
++}
++
++.logout-link {
++  color: white;
++  background: transparent;
++  font: inherit;
++  font-size: 0.9rem;
++  cursor: pointer;
++}
++
++.logout-link:hover {
++  color: var(--accent);
++}
+diff --git a/test/security.test.js b/test/security.test.js
+new file mode 100644
+index 0000000..8ecc036
+--- /dev/null
++++ b/test/security.test.js
+@@ -0,0 +1,125 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { Readable } = require('node:stream');
++const { readFile } = require('node:fs/promises');
++// This module exports a handler only; it never imports server.js or opens sockets.
++const { createHandler } = require('../app');
++
++const origin = 'https://coffee.example';
++async function request(handler, { url = '/', method = 'GET', headers = {}, body = '' } = {}) {
++  const req = Readable.from([Buffer.from(body)]);
++  Object.assign(req, { url, method, headers });
++  const response = { headers: {}, setHeader(name, value) { this.headers[name] = value; },
++    writeHead(status, headers) { this.status = status; Object.assign(this.headers, headers); },
++    end(body) { this.body = body?.toString() || ''; } };
++  await handler(req, response);
++  return response;
++}
++
++test('markup and CSS remain compatible with a no-script, no-inline policy', async () => {
++  const html = await readFile('index.html', 'utf8');
++  assert.doesNotMatch(html, /<script\b|<style\b|\sstyle\s*=|\son\w+\s*=|javascript:/i);
++  assert.match(html, /<link rel="stylesheet" href="\/styles.css">/);
++  assert.match(html, /<form method="post" action="\/logout">/);
++  const res = await request(createHandler({ publicOrigin: origin }));
++  assert.equal(res.status, 200);
++  const csp = res.headers['Content-Security-Policy'];
++  for (const directive of ["default-src 'none'", "script-src 'none'", "style-src 'self'",
++    "trusted-types 'none'", "require-trusted-types-for 'script'", "frame-ancestors 'none'",
++    'img-src https://images.unsplash.com', 'report-uri /security-reports', 'report-to security']) {
++    assert.ok(csp.includes(directive), directive);
++  }
++  assert.equal(res.headers['Reporting-Endpoints'], 'security="https://coffee.example/security-reports"');
++  assert.equal(res.headers['Strict-Transport-Security'], 'max-age=300');
++  assert.equal(res.headers['X-Content-Type-Options'], 'nosniff');
++  assert.equal(res.headers['X-Frame-Options'], 'DENY');
++  assert.equal(res.headers['Cross-Origin-Opener-Policy'], 'same-origin-allow-popups');
++  assert.equal(res.headers['Cross-Origin-Resource-Policy'], 'same-origin');
++  assert.equal(res.headers['Referrer-Policy'], 'strict-origin-when-cross-origin');
++  assert.match(res.headers['Permissions-Policy'], /camera=\(\)/);
++});
++
++test('stylesheet and HEAD use correct MIME and empty HEAD body', async () => {
++  const handler = createHandler();
++  const css = await request(handler, { url: '/styles.css' });
++  assert.equal(css.headers['Content-Type'], 'text/css; charset=utf-8');
++  assert.match(css.body, /\.hero/);
++  const head = await request(handler, { method: 'HEAD' });
++  assert.equal(head.status, 200);
++  assert.equal(head.body, '');
++  assert.equal(head.headers['Strict-Transport-Security'], undefined);
++});
++
++test('report-only mode retains baseline protections; invalid config fails closed', async () => {
++  const res = await request(createHandler({ cspMode: 'report-only' }));
++  assert.match(res.headers['Content-Security-Policy-Report-Only'], /script-src 'none'/);
++  assert.match(res.headers['Content-Security-Policy'], /frame-ancestors 'none'/);
++  assert.doesNotMatch(res.headers['Content-Security-Policy'], /script-src/);
++  assert.throws(() => createHandler({ cspMode: 'off' }));
++  assert.throws(() => createHandler({ publicOrigin: 'https://coffee.example/path' }));
++});
++
++test('logout rejects GET, cross-origin and missing Origin, clearing data only on valid POST', async () => {
++  const handler = createHandler({ publicOrigin: origin });
++  for (const url of ['/logout', '/logout/']) {
++    const get = await request(handler, { url });
++    assert.equal(get.status, 405);
++    assert.equal(get.headers['Clear-Site-Data'], undefined);
++    for (const headers of [{}, { origin: 'https://evil.example' },
++      { origin, 'sec-fetch-site': 'same-site' }]) {
++      assert.equal((await request(handler, { url, method: 'POST', headers })).status, 403);
++    }
++    const post = await request(handler, { url, method: 'POST', headers: { origin, 'sec-fetch-site': 'same-origin' } });
++    assert.equal(post.status, 200);
++    assert.equal(post.headers['Clear-Site-Data'], '"cookies", "storage", "cache"');
++  }
++});
++
++test('fetch metadata blocks cross-site resources while preserving incoming navigations', async () => {
++  const handler = createHandler();
++  const blocked = await request(handler, { headers: { 'sec-fetch-site': 'cross-site' } });
++  assert.equal(blocked.status, 403);
++  assert.equal(blocked.headers['X-Content-Type-Options'], 'nosniff');
++  assert.match(blocked.headers.Vary, /Sec-Fetch-Site/);
++  const nav = await request(handler, { headers: { 'sec-fetch-site': 'cross-site',
++    'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document' } });
++  assert.equal(nav.status, 200);
++});
++
++test('both report formats log only allowlisted fields, never supplied secrets', async () => {
++  const reports = [];
++  const handler = createHandler({ onReport: (report) => reports.push(report) });
++  const body = { 'effective-directive': 'script-src-elem', disposition: 'report',
++    'document-uri': 'https://coffee.example/?secret=token', 'script-sample': 'private' };
++  assert.equal((await request(handler, { url: '/security-reports', method: 'POST',
++    headers: { 'content-type': 'application/csp-report' }, body: JSON.stringify({ 'csp-report': body }) })).status, 204);
++  assert.equal((await request(handler, { url: '/security-reports', method: 'POST',
++    headers: { 'content-type': 'application/reports+json' }, body: JSON.stringify([
++      { type: 'csp-violation', body: { effectiveDirective: 'trusted-types', disposition: 'enforce', sourceFile: 'secret' } },
++      { type: 'deprecation', body: { effectiveDirective: 'script-src' } }, null,
++    ]) })).status, 204);
++  assert.deepEqual(reports, [{ directive: 'script-src-elem', disposition: 'report' },
++    { directive: 'trusted-types', disposition: 'enforce' }]);
++});
++
++test('report endpoint bounds body size, batches, content type and malformed JSON', async () => {
++  const handler = createHandler();
++  const base = { url: '/security-reports', method: 'POST', headers: { 'content-type': 'application/csp-report' } };
++  assert.equal((await request(handler, { ...base, body: 'x'.repeat(16385) })).status, 413);
++  assert.equal((await request(handler, { ...base, body: JSON.stringify(Array(21).fill({})) })).status, 413);
++  assert.equal((await request(handler, { ...base, body: '{' })).status, 400);
++  assert.equal((await request(handler, { ...base, headers: { 'content-type': 'text/plain' } })).status, 415);
++  assert.equal((await request(handler, { url: '/security-reports' })).status, 405);
++});
++
++test('reports are rate limited and untrusted Host does not affect reporting URLs', async () => {
++  const handler = createHandler({ publicOrigin: origin });
++  const res = await request(handler, { headers: { host: 'evil.example', 'x-forwarded-proto': 'http' } });
++  assert.equal(res.headers['Reporting-Endpoints'], 'security="https://coffee.example/security-reports"');
++  for (let i = 0; i < 100; i++) {
++    assert.equal((await request(handler, { url: '/security-reports', method: 'POST',
++      headers: { 'content-type': 'application/reports+json' }, body: '[]' })).status, 204);
++  }
++  assert.equal((await request(handler, { url: '/security-reports', method: 'POST',
++    headers: { 'content-type': 'application/reports+json' }, body: '[]' })).status, 429);
++});

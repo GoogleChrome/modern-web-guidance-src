@@ -1,0 +1,25 @@
+diff --git a/404.html b/404.html
+new file mode 100644
+--- a/404.html
++++ b/404.html
+@@ -0,0 +1,20 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <title>The Daily Grind</title>
++  <script>
++    // Static hosts without an SPA fallback serve this for deep links like
++    // /menu/espresso; hand the path to index.html, which restores it.
++    if (location.pathname.startsWith('/menu/')) {
++      location.replace('/?route=' + encodeURIComponent(location.pathname));
++    }
++  </script>
++</head>
++
++<body>
++  <p>Page not found. <a href="/">Return to The Daily Grind</a></p>
++</body>
++
++</html>

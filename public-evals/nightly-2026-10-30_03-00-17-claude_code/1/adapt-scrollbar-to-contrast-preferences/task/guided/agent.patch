@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,8 +19,41 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Scrollbar */
++    html {
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
++
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: auto;
++      scrollbar-gutter: stable;
++    }
++
++    @media (prefers-contrast: more) {
++      html {
++        --scrollbar-thumb: #000000;
++        --scrollbar-track: #ffffff;
++      }
++    }
++
++    @supports not (scrollbar-color: auto) {
++      html::-webkit-scrollbar {
++        width: 14px;
++        height: 14px;
++      }
++
++      html::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 7px;
++      }
++
++      html::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);

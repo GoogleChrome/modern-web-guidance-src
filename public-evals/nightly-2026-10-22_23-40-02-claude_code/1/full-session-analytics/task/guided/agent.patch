@@ -1,0 +1,13 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,8 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++  <script type="module" src="vitals.js"></script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

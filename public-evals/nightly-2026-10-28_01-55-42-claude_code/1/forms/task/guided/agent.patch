@@ -1,0 +1,1180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,33 +3,72 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <!-- The server should render a per-session anti-CSRF token here (synchronizer-token pattern).
++       The form script copies it into the hidden csrf_token field and the X-CSRF-Token header. -->
++  <meta name="csrf-token" content="">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --muted: #5f5f5f;
++      --border: #8d8d8d;
++      --focus: #0b57d0;
++      --error: #b3261e;
++      --error-bg: #fdeceb;
++      --success: #1e6b3a;
++      --success-bg: #e8f5e9;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      /* Keep focused fields and step headings clear of the sticky nav */
++      scroll-padding-top: 5.5rem;
++      scroll-behavior: smooth;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    [hidden] {
++      display: none !important;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
+     /* Navigation */
+-    nav {
++    nav.site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,25 +84,25 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .site-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -134,8 +173,483 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    :focus-visible {
++      outline: 3px solid var(--focus);
++      outline-offset: 2px;
++    }
++
++    /* ---------- Rewards registration ---------- */
++    .rewards-section {
++      margin-top: 4rem;
++    }
++
++    .rewards-section > h2 {
++      text-align: center;
++      margin-bottom: 0.5rem;
++    }
++
++    .rewards-section > .lede {
++      text-align: center;
++      color: var(--muted);
++      max-width: 40rem;
++      margin: 0 auto 1.5rem;
++    }
++
++    .rewards {
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      padding: clamp(1.25rem, 4vw, 2.5rem);
++      display: grid;
++      gap: 2rem;
++      grid-template-columns: minmax(0, 1fr);
++    }
++
++    @media (min-width: 880px) {
++      .rewards {
++        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
++        align-items: start;
++      }
++    }
++
++    .rewards-intro img {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 1rem;
++    }
++
++    .rewards-intro h3 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .perks {
++      list-style: none;
++      margin-top: 0.75rem;
++    }
++
++    .perks li {
++      position: relative;
++      padding-inline-start: 1.75rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .perks li::before {
++      content: "\2713";
++      position: absolute;
++      inset-inline-start: 0;
++      color: var(--success);
++      font-weight: 700;
++    }
++
++    .rewards-intro .fine-print {
++      font-size: 0.85rem;
++      color: var(--muted);
++      margin-top: 1rem;
++    }
++
++    /* Progress tracker */
++    .steps {
++      list-style: none;
++      display: flex;
++      gap: 0.5rem;
++      counter-reset: step;
++      margin-bottom: 1.75rem;
++    }
++
++    .steps li {
++      flex: 1;
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      font-size: 0.9rem;
++      color: var(--muted);
++      padding-bottom: 0.5rem;
++      border-bottom: 3px solid var(--secondary);
++    }
++
++    .steps li::before {
++      counter-increment: step;
++      content: counter(step);
++      inline-size: 1.75rem;
++      block-size: 1.75rem;
++      border-radius: 50%;
++      display: inline-grid;
++      place-items: center;
++      border: 2px solid currentColor;
++      font-weight: 600;
++      flex-shrink: 0;
++    }
++
++    .steps li[aria-current="step"] {
++      color: var(--primary);
++      border-color: var(--primary);
++      font-weight: 700;
++    }
++
++    .steps li.is-done {
++      color: var(--success);
++      border-color: var(--success);
++    }
++
++    .steps li.is-done::before {
++      content: "\2713";
++      background: var(--success);
++      color: white;
++      border-color: var(--success);
++    }
++
++    @media (max-width: 520px) {
++      .steps li span.step-label {
++        position: absolute;
++        clip-path: inset(50%);
++        width: 1px;
++        height: 1px;
++        overflow: hidden;
++      }
++
++      .steps li[aria-current="step"] span.step-label {
++        position: static;
++        clip-path: none;
++        width: auto;
++        height: auto;
++      }
++    }
++
++    /* Fieldsets and fields */
++    .rewards-form fieldset {
++      border: 0;
++      min-inline-size: 0;
++    }
++
++    .rewards-form .step {
++      margin-bottom: 2rem;
++    }
++
++    .rewards-form .step > legend {
++      font-size: 1.35rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 0.25rem;
++      scroll-margin-top: 6rem;
++    }
++
++    .rewards-form .step-intro {
++      color: var(--muted);
++      margin-bottom: 1.25rem;
++    }
++
++    .field {
++      margin-bottom: 1.5rem;
++    }
++
++    .field > label,
++    .field > legend {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.3rem;
++    }
++
++    .optional {
++      font-weight: 400;
++      color: var(--muted);
++    }
++
++    .hint {
++      display: block;
++      color: var(--muted);
++      font-size: 0.875rem;
++      margin-bottom: 0.35rem;
++    }
++
++    .rules-list {
++      color: var(--muted);
++      font-size: 0.875rem;
++      margin: 0 0 0.5rem 1.25rem;
++    }
++
++    .field input:not([type="checkbox"]):not([type="radio"]),
++    .field select,
++    .field textarea {
++      font: inherit;
++      font-size: 1rem;
++      inline-size: 100%;
++      min-block-size: 48px;
++      padding: 0.65rem 0.8rem;
++      border: 2px solid var(--border);
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++    }
++
++    .field select {
++      appearance: none;
++      padding-inline-end: 2.5rem;
++      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'><path fill='%234e342e' d='M3 6l5 5 5-5z'/></svg>");
++      background-repeat: no-repeat;
++      background-position: right 0.8rem center;
++    }
++
++    .field select:dir(rtl) {
++      background-position: left 0.8rem center;
++    }
++
++    @media (pointer: coarse) {
++      .field input:not([type="checkbox"]):not([type="radio"]),
++      .field select {
++        min-block-size: 52px;
++      }
++    }
++
++    .field input[type="checkbox"],
++    .field input[type="radio"] {
++      accent-color: var(--primary);
++      inline-size: 1.35rem;
++      block-size: 1.35rem;
++      flex-shrink: 0;
++    }
++
++    .field-row {
++      display: grid;
++      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
++      gap: 0.75rem;
++    }
++
++    .field-row label {
++      display: block;
++      font-size: 0.9rem;
++      margin-bottom: 0.25rem;
++    }
++
++    .choice {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      min-block-size: 48px;
++    }
++
++    .choice label {
++      flex: 1;
++      padding-block: 0.6rem;
++      cursor: pointer;
++    }
++
++    .choice-group .choice + .choice {
++      border-top: 1px solid #eee;
++    }
++
++    .password-wrap {
++      position: relative;
++    }
++
++    .password-wrap input {
++      padding-inline-end: 5.5rem !important;
++    }
++
++    .toggle-pw {
++      position: absolute;
++      inset-inline-end: 0.4rem;
++      inset-block-start: 50%;
++      translate: 0 -50%;
++      min-block-size: 40px;
++      padding: 0 0.75rem;
++      background: none;
++      border: 1px solid transparent;
++      border-radius: 4px;
++      color: var(--primary);
++      font: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .toggle-pw:hover {
++      text-decoration: underline;
++    }
++
++    /* Validation state: only after the user has interacted (or JS marked it after a Next/submit attempt) */
++    .error-msg {
++      display: none;
++      color: var(--error);
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-top: 0.4rem;
++    }
++
++    .field:has(:user-invalid) .error-msg,
++    .field:has([aria-invalid="true"]) .error-msg,
++    .field[aria-invalid="true"] .error-msg {
++      display: block;
++    }
++
++    .field :is(input, select, textarea):is(:user-invalid, [aria-invalid="true"]) {
++      border-color: var(--error);
++      background-color: var(--error-bg);
++    }
++
++    .field :is(input, select):required:user-valid:not([type="checkbox"]):not([type="radio"]) {
++      border-color: var(--success);
++    }
++
++    .field:has(input[type="password"]:user-valid) .rules-list {
++      color: var(--success);
++    }
++
++    /* Browser-autofilled, not yet edited */
++    .field input:autofill,
++    .field select:autofill {
++      border: 2px solid var(--success);
++      box-shadow: 0 0 0 100vmax var(--success-bg) inset;
++    }
++
++    .field input:-webkit-autofill,
++    .field select:-webkit-autofill {
++      border: 2px solid var(--success);
++      box-shadow: 0 0 0 100vmax var(--success-bg) inset;
++    }
++
++    .field input:autofill:focus-visible,
++    .field select:autofill:focus-visible {
++      outline: 3px solid #000;
++      outline-offset: 2px;
++    }
++
++    .field input:-webkit-autofill:focus-visible,
++    .field select:-webkit-autofill:focus-visible {
++      outline: 3px solid #000;
++      outline-offset: 2px;
++    }
++
++    /* Buttons */
++    .button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.4rem;
++      min-block-size: 48px;
++      padding: 0.6rem 1.4rem;
++      border: 2px solid var(--primary);
++      border-radius: 6px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .button:hover {
++      background: #3e2723;
++    }
++
++    .button-secondary {
++      background: white;
++      color: var(--primary);
++    }
++
++    .button-secondary:hover {
++      background: #f3eeec;
++    }
++
++    .button-link {
++      background: none;
++      border: 0;
++      color: var(--primary);
++      font: inherit;
++      font-weight: 600;
++      text-decoration: underline;
++      cursor: pointer;
++      min-block-size: 44px;
++      padding: 0 0.5rem;
++    }
++
++    .button[disabled],
++    .button[aria-busy="true"] {
++      opacity: 0.65;
++      cursor: progress;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem;
++      justify-content: space-between;
++      margin-top: 1.5rem;
++    }
++
++    .form-actions .spacer {
++      flex: 1;
++    }
++
++    /* Review step */
++    .review-group {
++      border: 1px solid #e0e0e0;
++      border-radius: 8px;
++      padding: 1rem 1.25rem;
++      margin-bottom: 1rem;
++    }
++
++    .review-group header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .review-group h4 {
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .review-group dl {
++      display: grid;
++      grid-template-columns: max-content minmax(0, 1fr);
++      gap: 0.35rem 1.25rem;
++    }
++
++    .review-group dt {
++      font-weight: 600;
++    }
++
++    .review-group dd {
++      overflow-wrap: anywhere;
++    }
++
++    .review-group dd.muted {
++      color: var(--muted);
++      font-style: italic;
++    }
++
++    /* Alerts and success */
++    .form-alert {
++      border-inline-start: 4px solid var(--error);
++      background: var(--error-bg);
++      color: var(--text);
++      padding: 0.75rem 1rem;
++      border-radius: 6px;
++      margin-bottom: 1.25rem;
++      font-weight: 600;
++    }
++
++    .signup-success {
++      border-inline-start: 4px solid var(--success);
++      background: var(--success-bg);
++      padding: 1.25rem 1.5rem;
++      border-radius: 8px;
++    }
++
++    .signup-success h3 {
++      color: var(--success);
++      margin-bottom: 0.5rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,9 +670,9 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -194,8 +708,246 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- ===================== Rewards registration ===================== -->
++    <section id="rewards-signup" class="rewards-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Join Daily Grind Rewards</h2>
++      <p class="lede">Earn a point for every dollar, get a free drink on your birthday, and skip the line with mobile ordering. It takes about a minute.</p>
++
++      <div class="rewards">
++        <aside class="rewards-intro" aria-labelledby="perks-heading">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++               alt="" width="800" height="600" loading="lazy" decoding="async">
++          <h3 id="perks-heading">What you get</h3>
++          <ul class="perks">
++            <li>1 point per $1 spent, 100 points = a free drink</li>
++            <li>A free birthday drink of your choice</li>
++            <li>Early access to seasonal menus</li>
++            <li>Order ahead and skip the line</li>
++          </ul>
++          <p class="fine-print">We only ask for what the program needs. Read our <a href="/privacy-policy">privacy policy</a> to see how we use your details.</p>
++        </aside>
++
++        <div class="rewards-form-wrap">
++          <form id="rewards-form" class="rewards-form" action="/api/rewards/register" method="POST" accept-charset="UTF-8">
++            <!-- Anti-CSRF token: populated server-side or from the csrf-token meta / XSRF-TOKEN cookie by script. -->
++            <input type="hidden" name="csrf_token" value="">
++
++            <!-- Honeypot: invisible to people and assistive tech, bots tend to fill it. Server rejects non-empty values. -->
++            <div class="visually-hidden" aria-hidden="true">
++              <label for="rw-website">Leave this field empty</label>
++              <input type="text" id="rw-website" name="website" tabindex="-1" autocomplete="off">
++            </div>
++
++            <nav id="progress-tracker" class="js-only" aria-label="Registration progress" hidden>
++              <ol class="steps">
++                <li aria-current="step"><span class="visually-hidden step-state">Current: </span><span class="step-label">Account</span></li>
++                <li><span class="visually-hidden step-state"></span><span class="step-label">Preferences</span></li>
++                <li><span class="visually-hidden step-state"></span><span class="step-label">Review</span></li>
++              </ol>
++            </nav>
++
++            <p id="step-status" class="visually-hidden" role="status" aria-live="polite"></p>
++            <div id="form-alert" class="form-alert" role="alert" tabindex="-1" hidden></div>
++
++            <!-- ---------- Step 1: Account ---------- -->
++            <fieldset class="step" data-title="Your account">
++              <legend>Step 1 of 3: Your account</legend>
++              <p class="step-intro">All fields are required unless marked optional.</p>
++
++              <div class="field">
++                <label for="rw-name">Full name</label>
++                <input type="text" id="rw-name" name="name" autocomplete="name" required maxlength="100"
++                       pattern="[\p{L}\p{M}\p{N}\p{Zs}'’.,\-]+" enterkeyhint="next" spellcheck="false"
++                       aria-errormessage="rw-name-error"
++                       data-msg-missing="Enter your full name."
++                       data-msg-invalid="Names can include letters, spaces, apostrophes, periods and hyphens.">
++                <p id="rw-name-error" class="error-msg"><span aria-hidden="true">&#9888;</span> <span class="error-text">Enter your full name.</span></p>
++              </div>
++
++              <div class="field">
++                <label for="rw-email">Email</label>
++                <span id="rw-email-hint" class="hint">We'll send a confirmation link here. Format: you@example.com</span>
++                <input type="email" id="rw-email" name="email" autocomplete="username" required maxlength="254"
++                       spellcheck="false" enterkeyhint="next"
++                       aria-describedby="rw-email-hint" aria-errormessage="rw-email-error"
++                       data-msg-missing="Enter your email address."
++                       data-msg-invalid="Enter a valid email address, like you@example.com.">
++                <p id="rw-email-error" class="error-msg"><span aria-hidden="true">&#9888;</span> <span class="error-text">Enter a valid email address, like you@example.com.</span></p>
++              </div>
++
++              <div class="field">
++                <label for="rw-tel">Mobile number <span class="optional">(optional)</span></label>
++                <span id="rw-tel-hint" class="hint">Only used to text you order-ready alerts if you opt in.</span>
++                <input type="tel" id="rw-tel" name="tel" autocomplete="tel" maxlength="30" enterkeyhint="next"
++                       aria-describedby="rw-tel-hint" aria-errormessage="rw-tel-error"
++                       data-msg-invalid="Enter a phone number using digits, spaces, +, ( ) or -."
++                       pattern="[\p{N}\p{Zs}+\(\)\-.]{6,30}">
++                <p id="rw-tel-error" class="error-msg"><span aria-hidden="true">&#9888;</span> <span class="error-text">Enter a phone number using digits, spaces, +, ( ) or -.</span></p>
++              </div>
++
++              <div class="field">
++                <label for="rw-password">Password</label>
++                <ul id="rw-password-rules" class="rules-list">
++                  <li>At least 8 characters. Longer passphrases are stronger.</li>
++                  <li>Let your browser suggest one and save it, or paste from a password manager.</li>
++                </ul>
++                <div class="password-wrap">
++                  <input type="password" id="rw-password" name="password" autocomplete="new-password" required
++                         minlength="8" maxlength="128" enterkeyhint="next" spellcheck="false"
++                         aria-describedby="rw-password-rules" aria-errormessage="rw-password-error"
++                         data-msg-missing="Create a password of at least 8 characters."
++                         data-msg-invalid="Your password needs at least 8 characters.">
++                  <button type="button" class="toggle-pw js-only" aria-controls="rw-password" aria-pressed="false" hidden>
++                    <span class="toggle-pw-text" aria-hidden="true">Show</span><span class="visually-hidden">Show password</span>
++                  </button>
++                </div>
++                <p id="rw-password-error" class="error-msg"><span aria-hidden="true">&#9888;</span> <span class="error-text">Your password needs at least 8 characters.</span></p>
++              </div>
++
++              <div class="form-actions js-only" hidden>
++                <span class="spacer"></span>
++                <button type="button" class="button" data-action="next">Continue to preferences</button>
++              </div>
++            </fieldset>
++
++            <!-- ---------- Step 2: Preferences ---------- -->
++            <fieldset class="step" data-title="Your preferences">
++              <legend>Step 2 of 3: Your preferences</legend>
++              <p class="step-intro">Help us personalize your rewards.</p>
++
++              <fieldset class="field choice-group" aria-errormessage="rw-drink-error">
++                <legend>What do you usually order?</legend>
++                <div class="choice">
++                  <input type="radio" id="rw-drink-espresso" name="drink" value="espresso" required>
++                  <label for="rw-drink-espresso">Espresso drinks and lattes</label>
++                </div>
++                <div class="choice">
++                  <input type="radio" id="rw-drink-drip" name="drink" value="drip">
++                  <label for="rw-drink-drip">Drip and pour-over</label>
++                </div>
++                <div class="choice">
++                  <input type="radio" id="rw-drink-cold" name="drink" value="cold">
++                  <label for="rw-drink-cold">Cold brew and iced drinks</label>
++                </div>
++                <div class="choice">
++                  <input type="radio" id="rw-drink-tea" name="drink" value="tea">
++                  <label for="rw-drink-tea">Tea and non-coffee</label>
++                </div>
++                <p id="rw-drink-error" class="error-msg"><span aria-hidden="true">&#9888;</span> <span class="error-text">Choose the kind of drink you order most.</span></p>
++              </fieldset>
++
++              <div class="field">
++                <label for="rw-cafe">Home café</label>
++                <span id="rw-cafe-hint" class="hint">Where you'll pick up most orders. You can change this later.</span>
++                <select id="rw-cafe" name="home_cafe" required autocomplete="off"
++                        aria-describedby="rw-cafe-hint" aria-errormessage="rw-cafe-error"
++                        data-msg-missing="Select your home café.">
++                  <option value="" disabled selected>Select a café…</option>
++                  <option value="downtown">Downtown Roastery, 112 Main St</option>
++                  <option value="riverside">Riverside, 8 Mill Rd</option>
++                  <option value="university">University Ave, 2201 University Ave</option>
++                  <option value="maple-heights">Maple Heights, 45 Elm Plaza</option>
++                  <option value="old-town">Old Town Market, 7 Market Sq</option>
++                  <option value="airport">Airport, Terminal B</option>
++                </select>
++                <p id="rw-cafe-error" class="error-msg"><span aria-hidden="true">&#9888;</span> <span class="error-text">Select your home café.</span></p>
++              </div>
++
++              <fieldset class="field" aria-describedby="rw-bday-hint" aria-errormessage="rw-bday-error">
++                <legend>Birthday <span class="optional">(optional)</span></legend>
++                <span id="rw-bday-hint" class="hint">For your free birthday drink. We don't need the year.</span>
++                <div class="field-row">
++                  <div>
++                    <label for="rw-bday-month">Month</label>
++                    <select id="rw-bday-month" name="bday-month" autocomplete="bday-month"
++                            data-msg-invalid="Choose a month to go with the day.">
++                      <option value="">Month</option>
++                      <option value="1">January</option>
++                      <option value="2">February</option>
++                      <option value="3">March</option>
++                      <option value="4">April</option>
++                      <option value="5">May</option>
++                      <option value="6">June</option>
++                      <option value="7">July</option>
++                      <option value="8">August</option>
++                      <option value="9">September</option>
++                      <option value="10">October</option>
++                      <option value="11">November</option>
++                      <option value="12">December</option>
++                    </select>
++                  </div>
++                  <div>
++                    <label for="rw-bday-day">Day</label>
++                    <input type="text" id="rw-bday-day" name="bday-day" autocomplete="bday-day" inputmode="numeric"
++                           pattern="0?[1-9]|[12][0-9]|3[01]" maxlength="2" enterkeyhint="next"
++                           data-msg-invalid="Enter a day from 1 to 31.">
++                  </div>
++                </div>
++                <p id="rw-bday-error" class="error-msg"><span aria-hidden="true">&#9888;</span> <span class="error-text">Enter both a month and a day, or leave your birthday blank.</span></p>
++              </fieldset>
++
++              <div class="form-actions js-only" hidden>
++                <button type="button" class="button button-secondary" data-action="back">Back</button>
++                <button type="button" class="button" data-action="next">Review your details</button>
++              </div>
++            </fieldset>
++
++            <!-- ---------- Step 3: Review and confirm ---------- -->
++            <fieldset class="step" data-title="Review and confirm">
++              <legend>Step 3 of 3: Review and confirm</legend>
++              <p class="step-intro js-only" hidden>Check everything looks right, then create your account.</p>
++
++              <div class="review js-only" hidden>
++                <section class="review-group" aria-labelledby="review-account-heading">
++                  <header>
++                    <h4 id="review-account-heading">Account</h4>
++                    <button type="button" class="button-link" data-action="goto" data-step="0" aria-describedby="review-account-heading">Edit<span class="visually-hidden"> account details</span></button>
++                  </header>
++                  <dl id="review-account"></dl>
++                </section>
++                <section class="review-group" aria-labelledby="review-prefs-heading">
++                  <header>
++                    <h4 id="review-prefs-heading">Preferences</h4>
++                    <button type="button" class="button-link" data-action="goto" data-step="1" aria-describedby="review-prefs-heading">Edit<span class="visually-hidden"> preferences</span></button>
++                  </header>
++                  <dl id="review-prefs"></dl>
++                </section>
++              </div>
++
++              <div class="field">
++                <div class="choice">
++                  <input type="checkbox" id="rw-terms" name="terms" value="accepted" required
++                         aria-errormessage="rw-terms-error"
++                         data-msg-missing="You need to agree to the terms to join.">
++                  <label for="rw-terms">I agree to the <a href="/rewards/terms">Rewards terms</a> and the <a href="/privacy-policy">privacy policy</a>.</label>
++                </div>
++                <p id="rw-terms-error" class="error-msg"><span aria-hidden="true">&#9888;</span> <span class="error-text">You need to agree to the terms to join.</span></p>
++              </div>
++
++              <div class="field">
++                <div class="choice">
++                  <input type="checkbox" id="rw-marketing" name="marketing_email" value="yes">
++                  <label for="rw-marketing">Email me offers, double-points days and new menu news <span class="optional">(optional)</span></label>
++                </div>
++              </div>
++
++              <div class="form-actions">
++                <button type="button" class="button button-secondary js-only" data-action="back" hidden>Back</button>
++                <button type="submit" class="button">Create my rewards account</button>
++              </div>
++            </fieldset>
++          </form>
++
++          <div id="signup-success" class="signup-success" role="status" tabindex="-1" hidden>
++            <h3>Welcome to Daily Grind Rewards!</h3>
++            <p>We've sent a confirmation link to <strong id="signup-success-email"></strong>. Click it to activate your account and claim your first 25 bonus points.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +958,330 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const form = document.getElementById('rewards-form');
++      if (!form) return;
++
++      const steps = Array.from(form.querySelectorAll('fieldset.step'));
++      const trackerItems = Array.from(form.querySelectorAll('#progress-tracker li'));
++      const status = document.getElementById('step-status');
++      const alertBox = document.getElementById('form-alert');
++      const success = document.getElementById('signup-success');
++      const submitBtn = form.querySelector('button[type="submit"]');
++      const field = (name) => form.elements.namedItem(name);
++      let current = 0;
++      let submitted = false;
++
++      /* ---------- Progressive enhancement: switch to stepped mode ---------- */
++      form.noValidate = true; // Hidden steps can't show native bubbles; we validate per step instead.
++      form.dataset.enhanced = 'true';
++      form.querySelectorAll('.js-only').forEach((el) => { el.hidden = false; });
++      steps.forEach((step) => {
++        const legend = step.querySelector('legend');
++        if (legend) legend.tabIndex = -1;
++      });
++      showStep(0, { focus: false });
++
++      /* ---------- Helpers ---------- */
++      function isControl(el) {
++        return el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement;
++      }
++
++      function controlsIn(step) {
++        return Array.from(step.querySelectorAll('input, select, textarea'))
++          .filter((c) => !c.disabled && c.type !== 'hidden');
++      }
++
++      // Radios report state on their group fieldset; everything else on itself.
++      function ariaTarget(control) {
++        return control.type === 'radio' ? control.closest('.field') : control;
++      }
++
++      function describe(target, id, add) {
++        const ids = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
++        const i = ids.indexOf(id);
++        if (add && i === -1) ids.push(id);
++        if (!add && i !== -1) ids.splice(i, 1);
++        if (ids.length) target.setAttribute('aria-describedby', ids.join(' '));
++        else target.removeAttribute('aria-describedby');
++      }
++
++      function setInvalid(control, invalid) {
++        const wrapper = control.closest('.field');
++        const target = ariaTarget(control);
++        if (!wrapper || !target) return;
++        const err = wrapper.querySelector('.error-msg');
++        if (invalid) {
++          target.setAttribute('aria-invalid', 'true');
++          if (err) describe(target, err.id, true);
++          writeMessage(control);
++        } else {
++          target.removeAttribute('aria-invalid');
++          if (err) describe(target, err.id, false);
++        }
++      }
++
++      function writeMessage(control) {
++        const wrapper = control.closest('.field');
++        const text = wrapper && wrapper.querySelector('.error-text');
++        if (!text) return;
++        if (!text.dataset.default) text.dataset.default = text.textContent;
++        const v = control.validity;
++        let msg;
++        if (v.customError) msg = control.validationMessage;
++        else if (v.valueMissing) msg = control.dataset.msgMissing || text.dataset.default;
++        else msg = control.dataset.msgInvalid || control.dataset.msgMissing || text.dataset.default;
++        text.textContent = msg; // textContent only: never interpret user-influenced strings as HTML
++      }
++
++      // Cross-field rule: birthday month and day must be given together.
++      function applyCustomRules() {
++        const month = field('bday-month');
++        const day = field('bday-day');
++        if (!month || !day) return;
++        const pair = 'Enter both a month and a day, or leave your birthday blank.';
++        month.setCustomValidity(!month.value && day.value ? pair : '');
++        day.setCustomValidity(month.value && !day.value ? pair : '');
++      }
++
++      function validateStep(step, { focus = true } = {}) {
++        applyCustomRules();
++        const seenGroups = new Set();
++        let first = null;
++        for (const c of controlsIn(step)) {
++          if (c.type === 'radio') {
++            if (seenGroups.has(c.name)) continue;
++            seenGroups.add(c.name);
++          }
++          const ok = c.checkValidity();
++          setInvalid(c, !ok);
++          if (!ok && !first) first = c;
++        }
++        if (first) {
++          if (focus) first.focus();
++          if (status) status.textContent = 'Some details need attention before you can continue.';
++        }
++        return !first;
++      }
++
++      function showStep(index, { focus = true } = {}) {
++        current = Math.max(0, Math.min(index, steps.length - 1));
++        steps.forEach((step, i) => { step.hidden = i !== current; });
++        trackerItems.forEach((li, i) => {
++          li.classList.toggle('is-done', i < current);
++          if (i === current) li.setAttribute('aria-current', 'step');
++          else li.removeAttribute('aria-current');
++          const state = li.querySelector('.step-state');
++          if (state) state.textContent = i < current ? 'Completed: ' : (i === current ? 'Current: ' : '');
++        });
++        if (current === steps.length - 1) buildReview();
++        if (status) status.textContent = `Step ${current + 1} of ${steps.length}: ${steps[current].dataset.title}`;
++        if (focus) {
++          const legend = steps[current].querySelector('legend');
++          if (legend) {
++            legend.scrollIntoView({ block: 'start' });
++            legend.focus({ preventScroll: true });
++          }
++        }
++      }
++
++      /* ---------- Review step ---------- */
++      function fillReview(id, rows) {
++        const dl = document.getElementById(id);
++        if (!dl) return;
++        dl.replaceChildren();
++        for (const [label, value] of rows) {
++          const dt = document.createElement('dt');
++          dt.textContent = label;
++          const dd = document.createElement('dd');
++          const v = (value || '').trim();
++          dd.textContent = v || 'Not provided';
++          if (!v) dd.classList.add('muted');
++          dl.append(dt, dd);
++        }
++      }
++
++      function buildReview() {
++        const month = field('bday-month');
++        const day = field('bday-day');
++        const cafe = field('home_cafe');
++        const drink = form.querySelector('input[name="drink"]:checked');
++        fillReview('review-account', [
++          ['Full name', field('name').value],
++          ['Email', field('email').value],
++          ['Mobile number', field('tel').value],
++          ['Password', field('password').value ? '••••••••' : ''],
++        ]);
++        fillReview('review-prefs', [
++          ['Usual order', drink && drink.labels[0] ? drink.labels[0].textContent : ''],
++          ['Home café', cafe.value ? cafe.selectedOptions[0].text : ''],
++          ['Birthday', month.value && day.value ? `${month.selectedOptions[0].text} ${day.value.trim()}` : ''],
++        ]);
++      }
++
++      /* ---------- Alerts ---------- */
++      function showAlert(message) {
++        if (!alertBox) return;
++        alertBox.textContent = message;
++        alertBox.hidden = false;
++        alertBox.focus();
++      }
++
++      function hideAlert() {
++        if (!alertBox) return;
++        alertBox.hidden = true;
++        alertBox.textContent = '';
++      }
++
++      /* ---------- Events ---------- */
++      form.addEventListener('click', (e) => {
++        const btn = e.target.closest('button[data-action], button.toggle-pw');
++        if (!btn || !form.contains(btn)) return;
++        if (btn.classList.contains('toggle-pw')) { togglePassword(btn); return; }
++        switch (btn.dataset.action) {
++          case 'next':
++            hideAlert();
++            if (validateStep(steps[current])) showStep(current + 1);
++            break;
++          case 'back':
++            showStep(current - 1);
++            break;
++          case 'goto':
++            showStep(Number(btn.dataset.step));
++            break;
++        }
++      });
++
++      // Enter in a text field advances the step (matches enterkeyhint="next") instead of submitting early.
++      form.addEventListener('keydown', (e) => {
++        if (e.key !== 'Enter' || e.isComposing || e.defaultPrevented) return;
++        const t = e.target;
++        if (!(t instanceof HTMLInputElement) || t.type === 'checkbox' || t.type === 'radio') return;
++        if (current < steps.length - 1) {
++          e.preventDefault();
++          const next = steps[current].querySelector('button[data-action="next"]');
++          if (next) next.click();
++        }
++      });
++
++      // Sync aria-invalid with the browser's :user-invalid state once the user leaves a field.
++      form.addEventListener('focusout', (e) => {
++        const c = e.target;
++        if (!isControl(c) || c.type === 'hidden') return;
++        applyCustomRules();
++        let userInvalid = false;
++        try { userInvalid = c.matches(':user-invalid'); } catch { userInvalid = !c.checkValidity(); }
++        if (userInvalid) setInvalid(c, true);
++      });
++
++      // Clear errors as soon as the user fixes them; refresh the message while still wrong.
++      const onEdit = (e) => {
++        const c = e.target;
++        if (!isControl(c)) return;
++        if (c.name !== 'bday-month' && c.name !== 'bday-day') c.setCustomValidity('');
++        applyCustomRules();
++        const target = ariaTarget(c);
++        if (target && target.getAttribute('aria-invalid') === 'true') {
++          if (c.checkValidity()) setInvalid(c, false);
++          else writeMessage(c);
++        }
++        if (c.name === 'bday-month' || c.name === 'bday-day') {
++          const other = field(c.name === 'bday-month' ? 'bday-day' : 'bday-month');
++          if (other && other.getAttribute('aria-invalid') === 'true' && other.checkValidity()) setInvalid(other, false);
++        }
++      };
++      form.addEventListener('input', onEdit);
++      form.addEventListener('change', onEdit);
++
++      function togglePassword(btn) {
++        const input = document.getElementById(btn.getAttribute('aria-controls'));
++        if (!input) return;
++        const show = input.type === 'password';
++        input.type = show ? 'text' : 'password';
++        btn.setAttribute('aria-pressed', String(show));
++        const text = btn.querySelector('.toggle-pw-text');
++        if (text) text.textContent = show ? 'Hide' : 'Show';
++        input.focus({ preventScroll: true });
++      }
++
++      /* ---------- Submission ---------- */
++      function readCookie(name) {
++        const row = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
++        return row ? decodeURIComponent(row.slice(name.length + 1)) : '';
++      }
++
++      function csrfToken() {
++        const meta = document.querySelector('meta[name="csrf-token"]');
++        return (meta && meta.content) || readCookie('XSRF-TOKEN') || field('csrf_token').value || '';
++      }
++
++      form.addEventListener('submit', async (e) => {
++        e.preventDefault();
++        if (submitted) return;
++        hideAlert();
++
++        for (let i = 0; i < steps.length; i++) {
++          if (!validateStep(steps[i], { focus: false })) {
++            showStep(i, { focus: false });
++            const firstBad = steps[i].querySelector('[aria-invalid="true"]');
++            const focusable = firstBad && firstBad.matches('fieldset') ? firstBad.querySelector('input') : firstBad;
++            if (focusable) focusable.focus();
++            return;
++          }
++        }
++
++        const token = csrfToken();
++        field('csrf_token').value = token;
++
++        submitted = true;
++        const originalLabel = submitBtn.textContent;
++        submitBtn.disabled = true;               // prevent double posts after a valid submit
++        submitBtn.setAttribute('aria-busy', 'true');
++        submitBtn.textContent = 'Creating your account…';
++
++        try {
++          const response = await fetch(form.action, {
++            method: 'POST',
++            body: new FormData(form),
++            credentials: 'same-origin',
++            headers: {
++              'Accept': 'application/json',
++              'X-CSRF-Token': token,
++              'X-Requested-With': 'XMLHttpRequest',
++            },
++          });
++
++          if (response.status === 409) {
++            const email = field('email');
++            showStep(0, { focus: false });
++            email.setCustomValidity('An account with this email already exists. Try signing in instead.');
++            setInvalid(email, true);
++            email.focus();
++            throw new Error('duplicate');
++          }
++          if (!response.ok) throw new Error(`HTTP ${response.status}`);
++
++          document.getElementById('signup-success-email').textContent = field('email').value;
++          form.hidden = true;
++          success.hidden = false;
++          success.focus();
++        } catch (err) {
++          submitted = false;
++          submitBtn.disabled = false;
++          submitBtn.removeAttribute('aria-busy');
++          submitBtn.textContent = originalLabel;
++          if (err && err.message !== 'duplicate') {
++            showAlert("We couldn't create your account right now. Check your connection and try again.");
++          }
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

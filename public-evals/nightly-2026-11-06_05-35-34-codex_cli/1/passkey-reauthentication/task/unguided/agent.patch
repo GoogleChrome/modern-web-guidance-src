@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,19 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +185,14 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card" aria-labelledby="reauth-heading">
++      <h2 id="reauth-heading">Confirm your identity</h2>
++      <p>Use your registered passkey or security key before making a sensitive account change.</p>
++      <button type="button" class="btn" data-testid="reauth-button" aria-describedby="reauth-status">Confirm identity</button>
++      <p id="reauth-status" role="status" aria-live="polite"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +223,97 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const reauthButton = document.querySelector('[data-testid="reauth-button"]');
++    const reauthStatus = document.getElementById('reauth-status');
++
++    function decodeBase64url(value) {
++      if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+={0,2}$/.test(value)) {
++        throw new Error('The server returned invalid verification options.');
++      }
++      const base64 = value.replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
++      return Uint8Array.from(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')), c => c.charCodeAt(0));
++    }
++
++    function encodeBase64url(value) {
++      return btoa(Array.from(new Uint8Array(value), byte => String.fromCharCode(byte)).join(''))
++        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    async function postReauth(url, body) {
++      const response = await fetch(url, {
++        method: 'POST',
++        credentials: 'same-origin',
++        cache: 'no-store',
++        redirect: 'error',
++        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++        body: JSON.stringify(body)
++      });
++      if (!response.ok) {
++        throw new Error('Identity confirmation failed. Please try again.');
++      }
++      return response.json();
++    }
++
++    reauthButton.addEventListener('click', async () => {
++      if (reauthButton.disabled) return;
++      reauthButton.disabled = true;
++      reauthStatus.textContent = '';
++      try {
++        if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials?.get) {
++          throw new Error('Use a browser that supports passkeys over HTTPS to confirm your identity.');
++        }
++
++        const options = await postReauth('/api/reauth/options', {});
++        const publicKey = options.publicKey ?? options;
++        // An empty list permits discovery of other accounts; fail closed instead.
++        if (!Array.isArray(publicKey.allowCredentials) || publicKey.allowCredentials.length === 0) {
++          throw new Error('No registered passkey or security key is available for this account.');
++        }
++        const request = {
++          ...publicKey,
++          challenge: decodeBase64url(publicKey.challenge),
++          allowCredentials: publicKey.allowCredentials.map(credential => {
++            if (credential.type !== 'public-key') {
++              throw new Error('The server returned invalid verification options.');
++            }
++            return { ...credential, id: decodeBase64url(credential.id) };
++          }),
++          userVerification: 'required'
++        };
++        reauthStatus.textContent = 'Follow your browser’s prompt to use your passkey or security key.';
++        const credential = await navigator.credentials.get({ publicKey: request });
++        if (!credential || credential.type !== 'public-key') {
++          throw new Error('Identity confirmation was not completed. Please try again.');
++        }
++
++        const result = await postReauth('/api/reauth/verify', {
++          id: credential.id,
++          rawId: encodeBase64url(credential.rawId),
++          type: credential.type,
++          response: {
++            clientDataJSON: encodeBase64url(credential.response.clientDataJSON),
++            authenticatorData: encodeBase64url(credential.response.authenticatorData),
++            signature: encodeBase64url(credential.response.signature),
++            userHandle: credential.response.userHandle == null ? null : encodeBase64url(credential.response.userHandle)
++          },
++          clientExtensionResults: credential.getClientExtensionResults()
++        });
++        if (result.verified !== true) {
++          throw new Error('Identity confirmation failed. Please try again.');
++        }
++        reauthStatus.textContent = 'Identity confirmed. You can continue with your account change.';
++      } catch (error) {
++        reauthStatus.textContent = error.name === 'NotAllowedError' || error.name === 'AbortError'
++          ? 'Identity confirmation was canceled or timed out. Please try again.'
++          : error instanceof Error ? error.message : 'Identity confirmation failed. Please try again.';
++      } finally {
++        reauthButton.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

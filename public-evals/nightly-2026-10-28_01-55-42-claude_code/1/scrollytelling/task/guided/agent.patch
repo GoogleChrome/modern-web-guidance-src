@@ -1,0 +1,242 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,175 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollytelling: "From Farm to Cup" */
++    .scrolly {
++      margin-top: 60px;
++      /* Hoist the view-timeline names so #animated (a sibling branch) can reference them. */
++      timeline-scope: --story-1, --story-2, --story-3, --story-4;
++    }
++
++    .scrolly > h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .scrolly-layout {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 20px;
++    }
++
++    @media (min-width: 800px) {
++      .scrolly-layout {
++        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
++        gap: 40px;
++      }
++    }
++
++    /* Text sections drive the timelines */
++    #tracked section {
++      min-height: 100vh;
++      min-height: 100dvh;
++      display: grid;
++      align-content: center;
++      gap: 12px;
++      padding: 20px 0;
++    }
++
++    #tracked section:nth-child(1) { view-timeline: --story-1 block; }
++    #tracked section:nth-child(2) { view-timeline: --story-2 block; }
++    #tracked section:nth-child(3) { view-timeline: --story-3 block; }
++    #tracked section:nth-child(4) { view-timeline: --story-4 block; }
++
++    .step-label {
++      color: var(--accent);
++      font-weight: bold;
++      font-size: 0.85rem;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    #tracked h3 {
++      font-size: 2rem;
++      line-height: 1.2;
++      color: var(--primary);
++    }
++
++    /* Visual sections: static fallback layout (no scroll-driven animation support,
++       or reduced motion) simply lines each visual up beside its text section. */
++    #animated {
++      display: grid;
++    }
++
++    #animated section {
++      position: relative;
++      min-height: calc(100vh - 20px);
++      min-height: calc(100dvh - 20px);
++      margin: 10px 0;
++      border-radius: 12px;
++      overflow: hidden;
++      background: var(--primary);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #animated img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      position: absolute;
++      inset: 0;
++    }
++
++    #animated figcaption {
++      position: absolute;
++      inset: auto 0 0 0;
++      padding: 16px 20px;
++      color: white;
++      font-size: 0.9rem;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
++    }
++
++    /* Progressive enhancement: sticky visual column with scroll-driven crossfades.
++       Only enabled when the browser fully supports scroll-driven animations and
++       the user has not asked for reduced motion. */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++        #animated {
++          display: grid;
++          align-self: start;
++          position: sticky;
++          top: 5.5rem;
++          height: calc(100vh - 7rem);
++          height: calc(100dvh - 7rem);
++          order: -1;
++        }
++
++        @media (min-width: 800px) {
++          #animated {
++            order: 0;
++          }
++        }
++
++        #animated section {
++          grid-area: 1 / 1;
++          min-height: 0;
++          height: 100%;
++          margin: 0;
++          /* Compositor-friendly properties only (opacity + individual transforms). */
++          animation:
++            story-in auto linear both,
++            story-out auto linear forwards;
++          /* Declared after the shorthand so it is not reset by it. */
++          animation-range:
++            entry 30% entry 100%,
++            exit 0% exit 70%;
++        }
++
++        #animated section:nth-child(1) { animation-timeline: --story-1; }
++        #animated section:nth-child(2) { animation-timeline: --story-2; }
++        #animated section:nth-child(3) { animation-timeline: --story-3; }
++        #animated section:nth-child(4) { animation-timeline: --story-4; }
++
++        /* On narrow screens the visual sits above the text, so push text below it. */
++        @media (max-width: 799px) {
++          #animated {
++            height: 38vh;
++            height: 38dvh;
++            z-index: 1;
++          }
++
++          #tracked section {
++            align-content: end;
++            padding-bottom: 15vh;
++          }
++        }
++      }
++    }
++
++    @keyframes story-in {
++      from {
++        opacity: 0;
++        scale: 0.94;
++        translate: 0 2rem;
++      }
++      to {
++        opacity: 1;
++        scale: 1;
++        translate: 0 0;
++      }
++    }
++
++    @keyframes story-out {
++      to {
++        opacity: 0;
++        scale: 1.04;
++        translate: 0 -2rem;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +361,62 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrolly" aria-labelledby="scrolly-title">
++      <h2 id="scrolly-title">From Farm to Cup</h2>
++      <div class="scrolly-layout">
++        <div id="tracked">
++          <section>
++            <span class="step-label">Step 01 &mdash; Source</span>
++            <h3>Grown with care</h3>
++            <p>We partner directly with smallholder farms in Colombia, Ethiopia, and Guatemala. Every lot is traceable to the family that grew it, and every farmer is paid above Fair Trade minimums.</p>
++          </section>
++          <section>
++            <span class="step-label">Step 02 &mdash; Roast</span>
++            <h3>Roasted in small batches</h3>
++            <p>Our roastery sits just three blocks from the caf&eacute;. Beans are roasted in 12&nbsp;kg batches and profiled by hand so each origin tastes like where it came from, never like the roaster.</p>
++          </section>
++          <section>
++            <span class="step-label">Step 03 &mdash; Brew</span>
++            <h3>Brewed to order</h3>
++            <p>Filtered water at 94&deg;C, a fresh grind for every cup, and baristas who weigh every pour. Whether it&rsquo;s a pour-over or an 18-hour cold brew, nothing sits around waiting.</p>
++          </section>
++          <section>
++            <span class="step-label">Step 04 &mdash; Serve</span>
++            <h3>Served with a smile</h3>
++            <p>The last step is yours. Grab a seat by the window, bring a friend, or take it to go. However you drink it, we think a good cup should feel like a small daily celebration.</p>
++          </section>
++        </div>
++        <div id="animated">
++          <section>
++            <figure>
++              <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=900&q=80" alt="A burlap sack overflowing with unroasted coffee beans" width="900" height="600" loading="lazy" decoding="async">
++              <figcaption>Green beans arriving from the farm</figcaption>
++            </figure>
++          </section>
++          <section>
++            <figure>
++              <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80" alt="A bed of freshly roasted, glossy dark coffee beans" width="900" height="600" loading="lazy" decoding="async">
++              <figcaption>Fresh out of the roaster</figcaption>
++            </figure>
++          </section>
++          <section>
++            <figure>
++              <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=80" alt="A barista pouring hot water from a gooseneck kettle into a pour-over brewer" width="900" height="600" loading="lazy" decoding="async">
++              <figcaption>A slow pour-over at the bar</figcaption>
++            </figure>
++          </section>
++          <section>
++            <figure>
++              <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80" alt="Three lattes with heart-shaped latte art on a wooden table surrounded by plants" width="900" height="600" loading="lazy" decoding="async">
++              <figcaption>Ready for you</figcaption>
++            </figure>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

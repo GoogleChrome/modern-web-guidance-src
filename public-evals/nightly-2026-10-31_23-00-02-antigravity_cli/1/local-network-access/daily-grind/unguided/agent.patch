@@ -1,0 +1,1020 @@
+diff --git a/index.html b/index.html
+index 66c9173..b0ec8d0 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,397 @@
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    button.btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background: #fff;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    /* Equipment Connection Panel */
++    .equipment-section {
++      margin-top: 50px;
++      background: #fff;
++      border-radius: 12px;
++      padding: 32px;
++      box-shadow: 0 4px 16px rgba(62, 39, 35, 0.08);
++      border: 1px solid #e6dedb;
++    }
++
++    .equipment-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 16px;
++      margin-bottom: 24px;
++      padding-bottom: 16px;
++      border-bottom: 2px solid var(--secondary);
++    }
++
++    .equipment-header h2 {
++      color: var(--primary);
++      font-size: 1.75rem;
++      margin-bottom: 6px;
++    }
++
++    .equipment-subtitle {
++      color: #5d4037;
++      font-size: 0.95rem;
++      max-width: 680px;
++    }
++
++    .equipment-header-actions {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++      flex-wrap: wrap;
++    }
++
++    .equipment-header-actions .btn {
++      margin-top: 0;
++    }
++
++    .context-banner {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 12px;
++      padding: 12px 16px;
++      border-radius: 8px;
++      margin-bottom: 24px;
++      font-size: 0.9rem;
++      background: #f5f0ee;
++      border-left: 4px solid var(--primary);
++    }
++
++    .context-banner.insecure {
++      background: #fff3e0;
++      border-left-color: #e65100;
++      color: #bf360c;
++    }
++
++    .equipment-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++    }
++
++    .equipment-card {
++      background: var(--light);
++      border: 1px solid #dfd5d0;
++      border-radius: 10px;
++      padding: 24px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .equipment-card-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++    }
++
++    .equipment-card-title h3 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      margin-bottom: 4px;
++    }
++
++    .address-space-tag {
++      display: inline-block;
++      font-family: monospace;
++      font-size: 0.78rem;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 4px;
++      border: 1px solid var(--secondary);
++    }
++
++    .status-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 4px 10px;
++      border-radius: 999px;
++      white-space: nowrap;
++    }
++
++    .status-pill::before {
++      content: '';
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: currentColor;
++    }
++
++    .status-disconnected {
++      background: #eceff1;
++      color: #546e7a;
++    }
++
++    .status-connecting {
++      background: #fff8e1;
++      color: #f57f17;
++    }
++
++    .status-connected {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .status-error {
++      background: #ffebee;
++      color: #c62828;
++    }
++
++    .permission-box {
++      background: #fff;
++      border: 1px solid #e0d6d2;
++      border-radius: 8px;
++      padding: 12px 14px;
++      font-size: 0.88rem;
++    }
++
++    .permission-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      margin-bottom: 6px;
++    }
++
++    .permission-label {
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .permission-label code {
++      background: #f3ecea;
++      padding: 2px 5px;
++      border-radius: 4px;
++      font-size: 0.82rem;
++    }
++
++    .perm-badge {
++      display: inline-block;
++      padding: 2px 10px;
++      border-radius: 12px;
++      font-size: 0.78rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.4px;
++    }
++
++    .perm-granted {
++      background: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++    }
++
++    .perm-prompt {
++      background: #fff3e0;
++      color: #e65100;
++      border: 1px solid #ffcc80;
++    }
++
++    .perm-denied {
++      background: #ffebee;
++      color: #b71c1c;
++      border: 1px solid #ef9a9a;
++    }
++
++    .perm-unknown {
++      background: #eceff1;
++      color: #455a64;
++      border: 1px solid #cfd8dc;
++    }
++
++    .permission-hint {
++      color: #5d4037;
++      font-size: 0.82rem;
++      line-height: 1.4;
++    }
++
++    .field-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .field-group label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .endpoint-input {
++      width: 100%;
++      padding: 9px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-family: monospace;
++      color: var(--text);
++      background: #fff;
++    }
++
++    .endpoint-input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .preset-links {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      align-items: center;
++      font-size: 0.78rem;
++      color: #6d4c41;
++    }
++
++    .preset-btn {
++      background: #efebe9;
++      border: 1px solid #d7ccc8;
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.76rem;
++      font-family: monospace;
++    }
++
++    .preset-btn:hover {
++      background: var(--secondary);
++    }
++
++    .card-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++      flex: 1;
++      text-align: center;
++    }
++
++    .feedback-panel {
++      border-radius: 8px;
++      padding: 12px 14px;
++      font-size: 0.86rem;
++      line-height: 1.45;
++      display: none;
++    }
++
++    .feedback-panel.visible {
++      display: block;
++    }
++
++    .feedback-error {
++      background: #ffebee;
++      border: 1px solid #ef9a9a;
++      color: #b71c1c;
++    }
++
++    .feedback-success {
++      background: #e8f5e9;
++      border: 1px solid #a5d6a7;
++      color: #1b5e20;
++    }
++
++    .feedback-info {
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      color: #e65100;
++    }
++
++    .feedback-title {
++      font-weight: 700;
++      margin-bottom: 4px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .feedback-meta {
++      margin-top: 6px;
++      font-family: monospace;
++      font-size: 0.78rem;
++      background: rgba(255, 255, 255, 0.65);
++      padding: 6px 8px;
++      border-radius: 4px;
++      word-break: break-all;
++    }
++
++    .activity-log-container {
++      margin-top: 24px;
++      background: #2b1d19;
++      color: #f5ebe6;
++      border-radius: 8px;
++      padding: 16px;
++      font-family: monospace;
++      font-size: 0.82rem;
++    }
++
++    .activity-log-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 10px;
++      padding-bottom: 8px;
++      border-bottom: 1px solid #4e342e;
++    }
++
++    .activity-log-list {
++      list-style: none;
++      max-height: 180px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .activity-log-item {
++      line-height: 1.4;
++      word-break: break-word;
++    }
++
++    .log-time {
++      color: var(--accent);
++      margin-right: 6px;
++    }
++
++    .log-error {
++      color: #ff8a80;
++    }
++
++    .log-success {
++      color: #b9f6ca;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -161,6 +552,7 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
++      <li><a href="#equipment-panel">Equipment</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -195,6 +587,176 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="equipment-panel" class="equipment-section" aria-labelledby="equipment-heading">
++      <div class="equipment-header">
++        <div>
++          <h2 id="equipment-heading">Smart Brew Equipment Connection Panel</h2>
++          <p class="equipment-subtitle">
++            Connect directly from your browser to a Wi-Fi coffee brewer on your local network and a companion brewing utility on your local loopback interface using Web Local Network Access (LNA).
++          </p>
++        </div>
++        <div class="equipment-header-actions">
++          <button type="button" id="refresh-permissions-btn" class="btn btn-secondary">
++            Refresh Permissions
++          </button>
++          <button type="button" id="connect-all-btn" class="btn">
++            Connect All Equipment
++          </button>
++        </div>
++      </div>
++
++      <div id="security-context-banner" class="context-banner" role="status" aria-live="polite">
++        <span id="security-context-text">Checking browser security context and Local Network Access support...</span>
++        <span id="lna-policy-hint" style="font-size: 0.8rem; opacity: 0.85;">
++          Permissions: <code>local-network</code> &amp; <code>loopback-network</code>
++        </span>
++      </div>
++
++      <div class="equipment-grid">
++        <!-- Wi-Fi Coffee Brewer (Local Network) -->
++        <article class="equipment-card" id="brewer-card" data-device="brewer">
++          <div class="equipment-card-top">
++            <div class="equipment-card-title">
++              <h3>Wi-Fi Coffee Brewer</h3>
++              <span class="address-space-tag">targetAddressSpace: "local"</span>
++            </div>
++            <span id="brewer-connection-badge" class="status-pill status-disconnected" aria-live="polite">
++              Disconnected
++            </span>
++          </div>
++
++          <p style="font-size: 0.9rem; color: #4e342e;">
++            Connect to a Daily Grind smart Wi-Fi espresso &amp; pour-over brewer on your local subnet (private IP or <code>.local</code> mDNS hostname) to monitor boiler temperature and trigger brew cycles.
++          </p>
++
++          <div class="permission-box" aria-live="polite">
++            <div class="permission-row">
++              <span class="permission-label">
++                Permission (<code id="brewer-perm-name">local-network</code>):
++              </span>
++              <span id="brewer-perm-badge" class="perm-badge perm-unknown" data-permission-state="unknown">
++                Checking...
++              </span>
++            </div>
++            <p id="brewer-perm-hint" class="permission-hint">
++              Querying browser permission status for local network device access...
++            </p>
++          </div>
++
++          <div class="field-group">
++            <label for="brewer-endpoint-input">Local Network Brewer Endpoint URL</label>
++            <input
++              type="url"
++              id="brewer-endpoint-input"
++              class="endpoint-input"
++              value="http://192.168.1.120:8080/api/status"
++              placeholder="http://192.168.1.120:8080/api/status"
++              aria-describedby="brewer-presets"
++            />
++            <div id="brewer-presets" class="preset-links">
++              <span>Presets:</span>
++              <button type="button" class="preset-btn" data-target="brewer-endpoint-input" data-url="http://192.168.1.120:8080/api/status">
++                192.168.1.120:8080
++              </button>
++              <button type="button" class="preset-btn" data-target="brewer-endpoint-input" data-url="http://dailygrind-brewer.local:8080/api/status">
++                dailygrind-brewer.local
++              </button>
++              <button type="button" class="preset-btn" data-target="brewer-endpoint-input" data-url="http://10.0.0.55:8080/api/status">
++                10.0.0.55:8080
++              </button>
++            </div>
++          </div>
++
++          <div class="card-actions">
++            <button type="button" id="brewer-connect-btn" class="btn">
++              Connect to Wi-Fi Brewer
++            </button>
++            <button type="button" id="brewer-check-perm-btn" class="btn btn-secondary">
++              Check Permission
++            </button>
++          </div>
++
++          <div id="brewer-feedback" class="feedback-panel" role="alert" aria-live="assertive"></div>
++        </article>
++
++        <!-- Companion Brewing Utility (Local Loopback Interface) -->
++        <article class="equipment-card" id="loopback-card" data-device="loopback">
++          <div class="equipment-card-top">
++            <div class="equipment-card-title">
++              <h3>Companion Brewing Utility</h3>
++              <span class="address-space-tag">targetAddressSpace: "loopback"</span>
++            </div>
++            <span id="loopback-connection-badge" class="status-pill status-disconnected" aria-live="polite">
++              Disconnected
++            </span>
++          </div>
++
++          <p style="font-size: 0.9rem; color: #4e342e;">
++            Connect to the Daily Grind Barista Companion daemon running on your machine's local loopback interface (<code>127.0.0.1</code> / <code>localhost</code>) for USB scale readouts, grinder calibration, and recipe sync.
++          </p>
++
++          <div class="permission-box" aria-live="polite">
++            <div class="permission-row">
++              <span class="permission-label">
++                Permission (<code id="loopback-perm-name">loopback-network</code>):
++              </span>
++              <span id="loopback-perm-badge" class="perm-badge perm-unknown" data-permission-state="unknown">
++                Checking...
++              </span>
++            </div>
++            <p id="loopback-perm-hint" class="permission-hint">
++              Querying browser permission status for local loopback interface access...
++            </p>
++          </div>
++
++          <div class="field-group">
++            <label for="loopback-endpoint-input">Loopback Utility Endpoint URL</label>
++            <input
++              type="url"
++              id="loopback-endpoint-input"
++              class="endpoint-input"
++              value="http://127.0.0.1:4580/api/status"
++              placeholder="http://127.0.0.1:4580/api/status"
++              aria-describedby="loopback-presets"
++            />
++            <div id="loopback-presets" class="preset-links">
++              <span>Presets:</span>
++              <button type="button" class="preset-btn" data-target="loopback-endpoint-input" data-url="http://127.0.0.1:4580/api/status">
++                127.0.0.1:4580
++              </button>
++              <button type="button" class="preset-btn" data-target="loopback-endpoint-input" data-url="http://localhost:4580/api/status">
++                localhost:4580
++              </button>
++              <button type="button" class="preset-btn" data-target="loopback-endpoint-input" data-url="http://[::1]:4580/api/status">
++                [::1]:4580
++              </button>
++            </div>
++          </div>
++
++          <div class="card-actions">
++            <button type="button" id="loopback-connect-btn" class="btn">
++              Connect to Loopback Utility
++            </button>
++            <button type="button" id="loopback-check-perm-btn" class="btn btn-secondary">
++              Check Permission
++            </button>
++          </div>
++
++          <div id="loopback-feedback" class="feedback-panel" role="alert" aria-live="assertive"></div>
++        </article>
++      </div>
++
++      <div class="activity-log-container" aria-label="Equipment connection and permission log">
++        <div class="activity-log-header">
++          <strong>Equipment Diagnostics &amp; Permission Log</strong>
++          <button type="button" id="clear-log-btn" class="preset-btn" style="background: #3e2723; color: #fff; border-color: #5d4037;">
++            Clear Log
++          </button>
++        </div>
++        <ul id="equipment-activity-log" class="activity-log-list" aria-live="polite"></ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +769,432 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const DEVICES = {
++        brewer: {
++          key: 'brewer',
++          label: 'Wi-Fi Coffee Brewer (Local Network)',
++          targetAddressSpace: 'local',
++          primaryPermission: 'local-network',
++          fallbackPermission: 'local-network-access',
++          inputEl: document.getElementById('brewer-endpoint-input'),
++          connectBtn: document.getElementById('brewer-connect-btn'),
++          checkPermBtn: document.getElementById('brewer-check-perm-btn'),
++          connBadge: document.getElementById('brewer-connection-badge'),
++          permNameEl: document.getElementById('brewer-perm-name'),
++          permBadgeEl: document.getElementById('brewer-perm-badge'),
++          permHintEl: document.getElementById('brewer-perm-hint'),
++          feedbackEl: document.getElementById('brewer-feedback'),
++          permissionStatusObj: null,
++          lastPermissionState: 'unknown',
++          resolvedPermissionName: 'local-network'
++        },
++        loopback: {
++          key: 'loopback',
++          label: 'Companion Brewing Utility (Loopback Interface)',
++          targetAddressSpace: 'loopback',
++          primaryPermission: 'loopback-network',
++          fallbackPermission: 'local-network-access',
++          inputEl: document.getElementById('loopback-endpoint-input'),
++          connectBtn: document.getElementById('loopback-connect-btn'),
++          checkPermBtn: document.getElementById('loopback-check-perm-btn'),
++          connBadge: document.getElementById('loopback-connection-badge'),
++          permNameEl: document.getElementById('loopback-perm-name'),
++          permBadgeEl: document.getElementById('loopback-perm-badge'),
++          permHintEl: document.getElementById('loopback-perm-hint'),
++          feedbackEl: document.getElementById('loopback-feedback'),
++          permissionStatusObj: null,
++          lastPermissionState: 'unknown',
++          resolvedPermissionName: 'loopback-network'
++        }
++      };
++
++      const logListEl = document.getElementById('equipment-activity-log');
++      const securityBannerEl = document.getElementById('security-context-banner');
++      const securityTextEl = document.getElementById('security-context-text');
++
++      function appendLog(message, type) {
++        if (!logListEl) return;
++        const li = document.createElement('li');
++        li.className = 'activity-log-item' + (type ? ' log-' + type : '');
++        const timeSpan = document.createElement('span');
++        timeSpan.className = 'log-time';
++        const now = new Date();
++        timeSpan.textContent = '[' + now.toTimeString().split(' ')[0] + ']';
++        const textSpan = document.createElement('span');
++        textSpan.textContent = message;
++        li.appendChild(timeSpan);
++        li.appendChild(textSpan);
++        logListEl.prepend(li);
++      }
++
++      function updateSecurityContextBanner() {
++        const isSecure = Boolean(window.isSecureContext);
++        const hasPermissionsApi = Boolean(navigator.permissions && typeof navigator.permissions.query === 'function');
++        if (!isSecure) {
++          securityBannerEl.classList.add('insecure');
++          securityTextEl.textContent =
++            'Warning: Insecure context detected. Browser Local Network Access (local-network & loopback-network) requires HTTPS or a secure context.';
++          appendLog('Insecure browsing context detected (window.isSecureContext = false). LNA requests may be blocked.', 'error');
++        } else if (!hasPermissionsApi) {
++          securityTextEl.textContent =
++            'Secure context active, but navigator.permissions.query() is unavailable in this browser.';
++        } else {
++          securityBannerEl.classList.remove('insecure');
++          securityTextEl.textContent =
++            'Secure context verified. Ready to query Local Network Access permissions and connect to local & loopback equipment.';
++        }
++      }
++
++      function getPermissionDescription(device, state, errorDetail) {
++        const permLabel = device.resolvedPermissionName;
++        if (state === 'granted') {
++          return 'Browser permission "' + permLabel + '" is granted. Direct connections to ' +
++            (device.targetAddressSpace === 'local' ? 'your local Wi-Fi network' : 'your local loopback interface') +
++            ' are allowed.';
++        }
++        if (state === 'prompt') {
++          return 'Browser permission "' + permLabel + '" requires confirmation. Clicking Connect will trigger the browser permission prompt.';
++        }
++        if (state === 'denied') {
++          return 'Browser permission "' + permLabel + '" is denied. Requests to ' +
++            (device.targetAddressSpace === 'local' ? 'local network devices' : 'loopback services') +
++            ' are blocked. Re-enable Local Network Access in your browser site settings.';
++        }
++        if (state === 'unsupported') {
++          return 'Permission "' + device.primaryPermission + '" is not exposed via navigator.permissions.query in this browser' +
++            (errorDetail ? ' (' + errorDetail + ')' : '') + '. You can still attempt a direct fetch connection.';
++        }
++        return 'Permission status unknown.';
++      }
++
++      function renderPermissionState(device, state, errorDetail) {
++        device.lastPermissionState = state;
++        device.permNameEl.textContent = device.resolvedPermissionName;
++        device.permBadgeEl.setAttribute('data-permission-state', state);
++
++        device.permBadgeEl.className = 'perm-badge';
++        if (state === 'granted') {
++          device.permBadgeEl.classList.add('perm-granted');
++          device.permBadgeEl.textContent = 'Granted';
++        } else if (state === 'prompt') {
++          device.permBadgeEl.classList.add('perm-prompt');
++          device.permBadgeEl.textContent = 'Prompt Required';
++        } else if (state === 'denied') {
++          device.permBadgeEl.classList.add('perm-denied');
++          device.permBadgeEl.textContent = 'Denied';
++        } else if (state === 'unsupported') {
++          device.permBadgeEl.classList.add('perm-unknown');
++          device.permBadgeEl.textContent = 'Unsupported';
++        } else {
++          device.permBadgeEl.classList.add('perm-unknown');
++          device.permBadgeEl.textContent = state || 'Unknown';
++        }
++
++        device.permHintEl.textContent = getPermissionDescription(device, state, errorDetail);
++      }
++
++      async function queryDevicePermission(device) {
++        if (!navigator.permissions || typeof navigator.permissions.query !== 'function') {
++          renderPermissionState(device, 'unsupported', 'Permissions API unavailable');
++          appendLog(device.label + ': navigator.permissions.query is not available.', 'error');
++          return { state: 'unsupported', name: device.primaryPermission };
++        }
++
++        const candidateNames = [device.primaryPermission, device.fallbackPermission];
++        let lastError = null;
++
++        for (const permName of candidateNames) {
++          try {
++            const status = await navigator.permissions.query({ name: permName });
++            device.resolvedPermissionName = permName;
++
++            if (device.permissionStatusObj !== status) {
++              device.permissionStatusObj = status;
++              const onStateChange = function () {
++                renderPermissionState(device, status.state);
++                appendLog(
++                  device.label + ': Permission "' + permName + '" changed to "' + status.state + '".',
++                  status.state === 'denied' ? 'error' : status.state === 'granted' ? 'success' : ''
++                );
++                if (status.state === 'denied') {
++                  showFeedback(device, 'error', 'Permission Denied (' + permName + ')',
++                    'Browser permission for "' + permName + '" was changed to denied. Allow access in your browser address bar or site settings to connect.',
++                    'permission=' + permName + ' | state=denied | targetAddressSpace=' + device.targetAddressSpace
++                  );
++                }
++              };
++              if (typeof status.addEventListener === 'function') {
++                status.addEventListener('change', onStateChange);
++              } else {
++                status.onchange = onStateChange;
++              }
++            }
++
++            renderPermissionState(device, status.state);
++            appendLog(device.label + ': Permission "' + permName + '" state is "' + status.state + '".');
++            if (status.state === 'denied') {
++              setConnectionBadge(device, 'error', 'Permission Denied');
++              showFeedback(
++                device,
++                'error',
++                'Local Network Access Permission Denied (' + permName + ')',
++                'Browser permission "' + permName + '" is currently denied for this site. Allow access in your browser site settings to connect to ' + device.label + '.',
++                'permission=' + permName + ' | state=denied | targetAddressSpace=' + device.targetAddressSpace
++              );
++            }
++            return { state: status.state, name: permName };
++          } catch (err) {
++            lastError = err;
++          }
++        }
++
++        const errMsg = lastError && lastError.message ? lastError.message : 'Unsupported permission descriptor';
++        device.resolvedPermissionName = device.primaryPermission;
++        renderPermissionState(device, 'unsupported', errMsg);
++        appendLog(device.label + ': Permission query for "' + device.primaryPermission + '" unsupported (' + errMsg + ').');
++        return { state: 'unsupported', name: device.primaryPermission, error: errMsg };
++      }
++
++      function setConnectionBadge(device, statusType, labelText) {
++        device.connBadge.className = 'status-pill status-' + statusType;
++        device.connBadge.textContent = labelText;
++        device.connBadge.setAttribute('data-connection-status', statusType);
++      }
++
++      function showFeedback(device, kind, title, message, metaText) {
++        const el = device.feedbackEl;
++        el.className = 'feedback-panel visible feedback-' + kind;
++        el.innerHTML = '';
++
++        const titleDiv = document.createElement('div');
++        titleDiv.className = 'feedback-title';
++        titleDiv.textContent = title;
++        el.appendChild(titleDiv);
++
++        const bodyP = document.createElement('p');
++        bodyP.textContent = message;
++        el.appendChild(bodyP);
++
++        if (metaText) {
++          const metaDiv = document.createElement('div');
++          metaDiv.className = 'feedback-meta';
++          metaDiv.textContent = metaText;
++          el.appendChild(metaDiv);
++        }
++      }
++
++      async function connectToDevice(device) {
++        const rawUrl = (device.inputEl.value || '').trim();
++        let parsedUrl;
++        try {
++          parsedUrl = new URL(rawUrl);
++          if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
++            throw new Error('Protocol must be http: or https:');
++          }
++        } catch (urlErr) {
++          setConnectionBadge(device, 'error', 'Invalid Endpoint');
++          const msg = 'Please enter a valid HTTP or HTTPS endpoint URL (for example, ' +
++            (device.targetAddressSpace === 'local' ? 'http://192.168.1.120:8080/api/status' : 'http://127.0.0.1:4580/api/status') + ').';
++          showFeedback(device, 'error', 'Invalid Endpoint URL', msg, 'input="' + rawUrl + '"');
++          appendLog(device.label + ': Connection aborted due to invalid URL "' + rawUrl + '".', 'error');
++          return;
++        }
++
++        const prePerm = await queryDevicePermission(device);
++
++        if (!window.isSecureContext) {
++          setConnectionBadge(device, 'error', 'Insecure Context');
++          showFeedback(
++            device,
++            'error',
++            'Secure Context Required for Local Network Access',
++            'Browsers block requests to ' + device.targetAddressSpace + ' endpoints from non-HTTPS pages. Load The Daily Grind over HTTPS or localhost and try again.',
++            'url=' + parsedUrl.href + ' | targetAddressSpace=' + device.targetAddressSpace + ' | isSecureContext=false'
++          );
++          appendLog(device.label + ': Warning — window.isSecureContext is false.', 'error');
++        } else if (prePerm.state === 'denied') {
++          setConnectionBadge(device, 'error', 'Permission Denied');
++          showFeedback(
++            device,
++            'error',
++            'Local Network Access Permission Denied (' + prePerm.name + ')',
++            'Your browser has blocked access to ' +
++              (device.targetAddressSpace === 'local'
++                ? 'devices on your local Wi-Fi network'
++                : 'services on your local loopback interface') +
++              '. Open your browser site permissions for this page, set "' + prePerm.name + '" to Allow, and reconnect.',
++            'url=' + parsedUrl.href + ' | targetAddressSpace=' + device.targetAddressSpace + ' | permission=' + prePerm.name + '=denied'
++          );
++        } else {
++          setConnectionBadge(device, 'connecting', 'Connecting...');
++          showFeedback(
++            device,
++            'info',
++            'Connecting to ' + device.label + '...',
++            prePerm.state === 'prompt'
++              ? 'Waiting for browser "' + prePerm.name + '" permission prompt and equipment response...'
++              : 'Sending fetch request with targetAddressSpace: "' + device.targetAddressSpace + '"...',
++            'GET ' + parsedUrl.href + ' | targetAddressSpace=' + device.targetAddressSpace + ' | permission=' + prePerm.state
++          );
++        }
++
++        device.connectBtn.disabled = true;
++        appendLog(device.label + ': Fetching ' + parsedUrl.href + ' (targetAddressSpace: "' + device.targetAddressSpace + '")...');
++
++        const controller = new AbortController();
++        const timeoutId = setTimeout(function () {
++          controller.abort();
++        }, 1500);
++
++        try {
++          const response = await fetch(parsedUrl.href, {
++            method: 'GET',
++            mode: 'cors',
++            targetAddressSpace: device.targetAddressSpace,
++            headers: {
++              'Accept': 'application/json, text/plain, */*'
++            },
++            signal: controller.signal
++          });
++          clearTimeout(timeoutId);
++
++          const postPerm = await queryDevicePermission(device);
++
++          if (!response.ok) {
++            setConnectionBadge(device, 'error', 'HTTP ' + response.status);
++            showFeedback(
++              device,
++              'error',
++              'Equipment Returned HTTP Error (' + response.status + ')',
++              'Reached ' + parsedUrl.host + ', but the endpoint returned status ' + response.status + ' (' + (response.statusText || 'Error') + '). Verify the API path and equipment firmware status.',
++              'url=' + parsedUrl.href + ' | status=' + response.status + ' | targetAddressSpace=' + device.targetAddressSpace + ' | permission=' + postPerm.state
++            );
++            appendLog(device.label + ': HTTP error ' + response.status + ' from ' + parsedUrl.href, 'error');
++            return;
++          }
++
++          let payloadPreview = '';
++          try {
++            const text = await response.text();
++            payloadPreview = text ? text.slice(0, 160) : 'OK (empty body)';
++          } catch (readErr) {
++            payloadPreview = 'OK';
++          }
++
++          setConnectionBadge(device, 'connected', 'Connected');
++          showFeedback(
++            device,
++            'success',
++            'Connected to ' + device.label,
++            'Successfully established connection over the ' + device.targetAddressSpace + ' address space. Equipment is online and ready for barista & customer commands.',
++            'url=' + parsedUrl.href + ' | targetAddressSpace=' + device.targetAddressSpace + ' | permission=' + postPerm.state + ' | response=' + payloadPreview
++          );
++          appendLog(device.label + ': Connected to ' + parsedUrl.href + ' (' + payloadPreview + ').', 'success');
++        } catch (err) {
++          clearTimeout(timeoutId);
++          const postPerm = await queryDevicePermission(device);
++          const isTimeout = err && err.name === 'AbortError';
++          const rawErrMessage = err && err.message ? err.message : String(err);
++
++          if (postPerm.state === 'denied') {
++            setConnectionBadge(device, 'error', 'Permission Denied');
++            showFeedback(
++              device,
++              'error',
++              'Local Network Access Permission Denied (' + postPerm.name + ')',
++              'The connection failed because the "' + postPerm.name + '" browser permission was denied. To connect, click the tune/lock icon in your browser address bar, allow "' + postPerm.name + '", and try again.',
++              'url=' + parsedUrl.href + ' | targetAddressSpace=' + device.targetAddressSpace + ' | permission=' + postPerm.name + '=denied | error=' + rawErrMessage
++            );
++            appendLog(device.label + ': Fetch blocked — permission "' + postPerm.name + '" was denied (' + rawErrMessage + ').', 'error');
++          } else if (isTimeout) {
++            setConnectionBadge(device, 'error', 'Connection Timed Out');
++            showFeedback(
++              device,
++              'error',
++              'Connection Timed Out',
++              'No response received from ' + parsedUrl.host + ' within 5 seconds. Ensure the ' +
++                (device.targetAddressSpace === 'local'
++                  ? 'Wi-Fi coffee brewer is powered on and connected to the same local network'
++                  : 'Companion Brewing Utility is running on your computer\'s loopback interface') + '.',
++              'url=' + parsedUrl.href + ' | targetAddressSpace=' + device.targetAddressSpace + ' | permission=' + postPerm.state + ' | error=Timeout (5000ms)'
++            );
++            appendLog(device.label + ': Connection to ' + parsedUrl.href + ' timed out after 5s.', 'error');
++          } else {
++            setConnectionBadge(device, 'error', 'Connection Error');
++            showFeedback(
++              device,
++              'error',
++              'Unable to Reach ' + device.label,
++              'The browser could not complete the request (' + rawErrMessage + '). Verify that ' +
++                (device.targetAddressSpace === 'local'
++                  ? 'the Wi-Fi brewer is reachable at ' + parsedUrl.host + ', Local Network Access ("' + postPerm.name + '") is allowed, and the brewer includes CORS headers.'
++                  : 'the companion utility is listening on ' + parsedUrl.host + ', Loopback Access ("' + postPerm.name + '") is allowed, and CORS is enabled.'),
++              'url=' + parsedUrl.href + ' | targetAddressSpace=' + device.targetAddressSpace + ' | permission=' + postPerm.name + ':' + postPerm.state + ' | error=' + rawErrMessage
++            );
++            appendLog(device.label + ': Connection error for ' + parsedUrl.href + ' — ' + rawErrMessage, 'error');
++          }
++        } finally {
++          device.connectBtn.disabled = false;
++        }
++      }
++
++      // Wire up event listeners
++      Object.values(DEVICES).forEach(function (device) {
++        device.connectBtn.addEventListener('click', function () {
++          connectToDevice(device);
++        });
++        device.checkPermBtn.addEventListener('click', function () {
++          queryDevicePermission(device);
++        });
++      });
++
++      document.querySelectorAll('.preset-btn[data-target]').forEach(function (btn) {
++        btn.addEventListener('click', function () {
++          const targetId = btn.getAttribute('data-target');
++          const url = btn.getAttribute('data-url');
++          const input = document.getElementById(targetId);
++          if (input && url) {
++            input.value = url;
++            appendLog('Selected preset endpoint: ' + url);
++          }
++        });
++      });
++
++      const refreshAllBtn = document.getElementById('refresh-permissions-btn');
++      if (refreshAllBtn) {
++        refreshAllBtn.addEventListener('click', function () {
++          updateSecurityContextBanner();
++          queryDevicePermission(DEVICES.brewer);
++          queryDevicePermission(DEVICES.loopback);
++        });
++      }
++
++      const connectAllBtn = document.getElementById('connect-all-btn');
++      if (connectAllBtn) {
++        connectAllBtn.addEventListener('click', function () {
++          connectToDevice(DEVICES.brewer);
++          connectToDevice(DEVICES.loopback);
++        });
++      }
++
++      const clearLogBtn = document.getElementById('clear-log-btn');
++      if (clearLogBtn) {
++        clearLogBtn.addEventListener('click', function () {
++          if (logListEl) {
++            logListEl.innerHTML = '';
++          }
++          appendLog('Activity log cleared.');
++        });
++      }
++
++      // Initial check on load
++      updateSecurityContextBanner();
++      queryDevicePermission(DEVICES.brewer);
++      queryDevicePermission(DEVICES.loopback);
++    })();
++  </script>
+ </body>
+ 
+ </html>

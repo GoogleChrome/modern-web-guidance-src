@@ -1,0 +1,363 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -6,8 +6,9 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      interpolate-size: allow-keywords;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+@@ -151,19 +152,268 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo Alert (Pure CSS Smooth Collapse) */
++    .promo-toggle {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++      width: 0;
++      height: 0;
++      margin: 0;
++    }
++
++    #promo-alert {
++      display: grid;
++      grid-template-rows: 1fr;
++      transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
++      background: linear-gradient(90deg, #ffab40 0%, #ffc107 100%);
++      color: #3e2723;
++      overflow: hidden;
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
++    }
++
++    .promo-toggle:checked ~ #promo-alert {
++      grid-template-rows: 0fr;
++      opacity: 0;
++      visibility: hidden;
++      transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, visibility 0s 0.4s;
++    }
++
++    .promo-inner {
++      overflow: hidden;
++      min-height: 0;
++    }
++
++    .promo-content {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding: 10px 5%;
++      max-width: 1200px;
++      margin: 0 auto;
++      font-size: 0.95rem;
++    }
++
++    .promo-text {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .promo-badge {
++      background: #3e2723;
++      color: white;
++      padding: 2px 9px;
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    #alert-dismiss {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: rgba(62, 39, 35, 0.12);
++      color: #3e2723;
++      border-radius: 50%;
++      width: 28px;
++      height: 28px;
++      font-size: 1.25rem;
++      line-height: 1;
++      cursor: pointer;
++      border: none;
++      margin-left: 15px;
++      transition: background 0.2s, transform 0.2s;
++      user-select: none;
++      flex-shrink: 0;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(62, 39, 35, 0.25);
++      transform: scale(1.08);
++    }
++
++    #alert-dismiss:focus-visible {
++      outline: 2px solid #3e2723;
++      outline-offset: 2px;
++    }
++
++    /* FAQ Accordion (Smooth Animation) */
++    .faq-section {
++      margin-top: 60px;
++    }
++
++    .faq-header {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .faq-header h2 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .faq-header p {
++      color: #6d4c41;
++    }
++
++    .faq-accordion {
++      max-width: 800px;
++      margin: 0 auto;
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++    }
++
++    .faq-item {
++      background: white;
++      border: 1px solid #e0d8d5;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
++      transition: border-color 0.3s, box-shadow 0.3s;
++    }
++
++    .faq-item:hover {
++      border-color: var(--accent);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
++    }
++
++    /* Modern details-content transition support */
++    .faq-item details::details-content {
++      transition: height 0.35s ease, content-visibility 0.35s allow-discrete;
++      height: 0;
++      overflow: clip;
++    }
++
++    .faq-item details[open]::details-content {
++      height: auto;
++    }
++
++    .faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 18px 22px;
++      font-size: 1.05rem;
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++      user-select: none;
++      list-style: none;
++      background: white;
++      transition: background-color 0.2s, color 0.2s;
++    }
++
++    .faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    .faq-trigger:hover {
++      background-color: #faf7f5;
++      color: #2b1810;
++    }
++
++    .faq-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    .faq-icon {
++      position: relative;
++      width: 18px;
++      height: 18px;
++      flex-shrink: 0;
++      margin-left: 16px;
++    }
++
++    .faq-icon::before,
++    .faq-icon::after {
++      content: '';
++      position: absolute;
++      background-color: var(--primary);
++      top: 50%;
++      left: 50%;
++      transform: translate(-50%, -50%);
++      transition: transform 0.35s ease, opacity 0.3s ease;
++    }
++
++    .faq-icon::before {
++      width: 14px;
++      height: 2px;
++    }
++
++    .faq-icon::after {
++      width: 2px;
++      height: 14px;
++    }
++
++    .faq-item[open] .faq-icon::after {
++      transform: translate(-50%, -50%) rotate(90deg);
++      opacity: 0;
++    }
++
++    .faq-item[open] .faq-trigger {
++      background-color: #f8f4f2;
++      border-bottom: 1px solid #efe8e5;
++    }
++
++    /* Grid transition for smooth content expansion */
++    .faq-content {
++      display: grid;
++      grid-template-rows: 0fr;
++      transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out;
++      opacity: 0;
++    }
++
++    .faq-item[open] .faq-content {
++      grid-template-rows: 1fr;
++      opacity: 1;
++    }
++
++    .faq-inner {
++      overflow: hidden;
++      min-height: 0;
++    }
++
++    .faq-body {
++      padding: 18px 22px;
++      color: #4a342f;
++      line-height: 1.7;
++      font-size: 0.98rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Dismissible Promo Alert (Pure CSS Smooth Collapse) -->
++  <input type="checkbox" id="promo-alert-toggle" class="promo-toggle" aria-hidden="true">
++  <aside id="promo-alert" class="promo-alert" role="region" aria-label="Special Promotion">
++    <div class="promo-inner">
++      <div class="promo-content">
++        <span class="promo-text">
++          <span class="promo-badge">Special Offer</span>
++          Enjoy 20% off all artisanal beans this week with code <strong>DAILYROAST</strong>!
++        </span>
++        <label for="promo-alert-toggle" id="alert-dismiss" role="button" tabindex="0" aria-label="Dismiss promotional alert">&times;</label>
++      </div>
++    </div>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#faq">FAQ</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,13 +444,80 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- FAQ Accordion Section -->
++    <section class="faq-section" id="faq">
++      <div class="faq-header">
++        <h2>Frequently Asked Questions</h2>
++        <p>Everything you need to know about our sourcing, roasting, and deliveries.</p>
++      </div>
++      
++      <div class="faq-accordion">
++        <details class="faq-item">
++          <summary id="faq-trigger" class="faq-trigger" role="button">
++            <span>What makes The Daily Grind coffee ethically sourced?</span>
++            <span class="faq-icon" aria-hidden="true"></span>
++          </summary>
++          <div id="faq-content" class="faq-content">
++            <div class="faq-inner">
++              <div class="faq-body">
++                <p>We work directly with certified organic, fair-trade smallholder cooperatives across Ethiopia, Colombia, and Guatemala. We pay above-market premiums directly to growers and invest 5% of profits into local farming infrastructure and clean water projects.</p>
++              </div>
++            </div>
++          </div>
++        </details>
++
++        <details class="faq-item">
++          <summary class="faq-trigger" role="button">
++            <span>How fresh is the coffee when it arrives?</span>
++            <span class="faq-icon" aria-hidden="true"></span>
++          </summary>
++          <div class="faq-content">
++            <div class="faq-inner">
++              <div class="faq-body">
++                <p>All our beans are roasted weekly in small batches. Online orders are packaged in one-way degassing valve bags within 24 hours of roasting and dispatched immediately to ensure peak freshness and flavor in every cup.</p>
++              </div>
++            </div>
++          </div>
++        </details>
++
++        <details class="faq-item">
++          <summary class="faq-trigger" role="button">
++            <span>What grind size should I choose for my brew method?</span>
++            <span class="faq-icon" aria-hidden="true"></span>
++          </summary>
++          <div class="faq-content">
++            <div class="faq-inner">
++              <div class="faq-body">
++                <p>For the optimal extraction, we recommend Whole Bean if you have a grinder. Otherwise, select Coarse for French Press and Cold Brew, Medium for Drip and Chemex, or Fine for Espresso and Moka pot.</p>
++              </div>
++            </div>
++          </div>
++        </details>
++
++        <details class="faq-item">
++          <summary class="faq-trigger" role="button">
++            <span>Can I customize or pause my subscription?</span>
++            <span class="faq-icon" aria-hidden="true"></span>
++          </summary>
++          <div class="faq-content">
++            <div class="faq-inner">
++              <div class="faq-body">
++                <p>Yes, absolutely! You can pause, skip, swap roast profiles, or cancel your subscription at any time with no penalties directly from your Account dashboard.</p>
++              </div>
++            </div>
++          </div>
++        </details>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
++      <a href="#faq">FAQ</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>

@@ -1,0 +1,221 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,8 +128,11 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+@@ -151,8 +154,103 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    dialog {
++      position: fixed;
++      inset: 0;
++      margin: auto;
++      width: min(420px, calc(100% - 32px));
++      padding: 32px;
++      border: 0;
++      border-radius: 12px;
++      color: var(--text);
++      box-shadow: 0 24px 80px #0004;
++    }
++
++    dialog[open] {
++      animation: dialog-in 220ms ease-out both;
++    }
++
++    dialog::backdrop {
++      background: rgb(30 20 17 / 55%);
++      animation: fade-in 220ms ease-out both;
++    }
++
++    dialog.is-closing {
++      animation: dialog-out 200ms ease-in both;
++    }
++
++    dialog.is-closing::backdrop {
++      animation: fade-out 200ms ease-in both;
++    }
++
++    dialog h2 { margin: 0 24px 12px 0; }
++    .dialog-actions { display: flex; justify-content: flex-end; gap: 12px; }
++    .btn-secondary { background: var(--secondary); color: var(--text); }
++    .btn-secondary:hover { background: #c5b6b0; }
++
++    .close-button {
++      position: absolute;
++      top: 10px;
++      right: 12px;
++      width: 32px;
++      height: 32px;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font-size: 24px;
++      cursor: pointer;
++    }
++
++    .close-button:hover { background: var(--secondary); }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    body:has(dialog[open]) { overflow: hidden; }
++
++    .order-notice {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      z-index: 1100;
++      width: min(380px, calc(100% - 32px));
++      padding: 22px 52px 22px 24px;
++      border: 1px solid var(--secondary);
++      border-left: 4px solid var(--accent);
++      border-radius: 10px;
++      background: white;
++      box-shadow: 0 8px 32px #3e272326;
++      animation: notice-in 220ms ease-out both;
++    }
++
++    .order-notice[hidden] { display: none; }
++    .order-notice.is-closing { animation: notice-out 200ms ease-in both; }
++
++    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
++    @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
++    @keyframes dialog-in {
++      from { opacity: 0; transform: translateY(16px) scale(.96); }
++      to { opacity: 1; transform: translateY(0) scale(1); }
++    }
++    @keyframes dialog-out {
++      from { opacity: 1; transform: translateY(0) scale(1); }
++      to { opacity: 0; transform: translateY(12px) scale(.96); }
++    }
++    @keyframes notice-in {
++      from { opacity: 0; transform: translateY(20px); }
++      to { opacity: 1; transform: translateY(0); }
++    }
++    @keyframes notice-out {
++      from { opacity: 1; transform: translateY(0); }
++      to { opacity: 0; transform: translateY(20px); }
++    }
++    @media (prefers-reduced-motion: reduce) {
++      dialog[open], dialog::backdrop, dialog.is-closing,
++      dialog.is-closing::backdrop, .order-notice, .order-notice.is-closing {
++        animation-duration: 1ms;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +261,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn" aria-haspopup="dialog" aria-controls="logout-dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" class="btn" aria-controls="order-notice" aria-expanded="false">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +304,82 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-description">
++    <button type="button" id="close-dialog-btn" class="close-button" aria-label="Close logout confirmation">&times;</button>
++    <h2 id="logout-title">Log out?</h2>
++    <p id="logout-description">Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" id="cancel-logout" autofocus>Cancel</button>
++      <button type="button" class="btn" id="confirm-logout">Log out</button>
++    </div>
++  </dialog>
++
++  <aside id="order-notice" class="order-notice" aria-label="Ordering information" hidden>
++    <p role="status">online ordering is currently offline</p>
++    <button type="button" id="dismiss-notice" class="close-button" aria-label="Dismiss ordering information">&times;</button>
++  </aside>
++
++  <script>
++    const logoutLink = document.getElementById('open-dialog-btn');
++    const dialog = document.getElementById('logout-dialog');
++    const orderButton = document.getElementById('foobar');
++    const notice = document.getElementById('order-notice');
++
++    // Keep elements visible until their CSS exit animations have finished.
++    async function animateOut(element, finish) {
++      if (element.classList.contains('is-closing')) return;
++      element.classList.add('is-closing');
++      await Promise.allSettled(element.getAnimations().map(animation => animation.finished));
++      finish();
++      element.classList.remove('is-closing');
++    }
++
++    function closeDialog(logout = false) {
++      animateOut(dialog, () => {
++        dialog.close();
++        if (logout) window.location.assign(logoutLink.href);
++      });
++    }
++
++    function dismissNotice() {
++      if (notice.hidden) return;
++      if (notice.contains(document.activeElement)) orderButton.focus();
++      notice.inert = true;
++      orderButton.setAttribute('aria-expanded', 'false');
++      animateOut(notice, () => { notice.hidden = true; });
++    }
++
++    logoutLink.addEventListener('click', event => {
++      event.preventDefault();
++      if (!dialog.open) dialog.showModal();
++    });
++    document.getElementById('close-dialog-btn').addEventListener('click', () => closeDialog());
++    document.getElementById('cancel-logout').addEventListener('click', () => closeDialog());
++    document.getElementById('confirm-logout').addEventListener('click', () => closeDialog(true));
++    dialog.addEventListener('cancel', event => {
++      event.preventDefault();
++      closeDialog();
++    });
++    dialog.addEventListener('click', event => {
++      const bounds = dialog.getBoundingClientRect();
++      if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right ||
++          event.clientY < bounds.top || event.clientY > bounds.bottom)) closeDialog();
++    });
++
++    orderButton.addEventListener('click', () => {
++      if (notice.classList.contains('is-closing')) return;
++      if (!notice.hidden) return dismissNotice();
++      notice.inert = false;
++      notice.hidden = false;
++      orderButton.setAttribute('aria-expanded', 'true');
++    });
++    document.getElementById('dismiss-notice').addEventListener('click', dismissNotice);
++    document.addEventListener('keydown', event => {
++      if (event.key === 'Escape' && !dialog.open) dismissNotice();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

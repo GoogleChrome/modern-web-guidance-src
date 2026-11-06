@@ -1,0 +1,373 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..01afd54
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,26 @@
++# Daily Grind browser tools
++
++The homepage registers client-side WebMCP tools when
++`document.modelContext.registerTool` is available in a secure browser context.
++Browsers without that API retain the normal page and order controls.
++
++| Tool | Input | Effect |
++| --- | --- | --- |
++| `query_seasonal_menu` | `{ "query": "oat" }` (query optional) | Returns matching displayed drink names, descriptions, and IDs without changing the page. |
++| `order_drink` | `{ "drinkId": "maple-oat-latte", "quantity": 2 }` | Adds drinks to the visible local order. Quantity defaults to 1 and must be an integer from 1 to 10 per invocation. |
++| `highlight_drink` | `{ "drinkId": "cold-brew" }` | Highlights, scrolls to, and focuses the requested drink card. |
++
++Drink IDs are `maple-oat-latte`, `dark-roast-espresso`, and `cold-brew`.
++Invalid inputs return structured errors without changing the order or highlight.
++Orders exist only in the current page's memory, reset on reload, and never charge
++money or send an order to a café. The page buttons use the same ordering action
++as the tools. The menu is read from the displayed cards rather than a separate
++catalog. Registrations use abort signals for page lifecycle cleanup and are
++restored on return from the browser's back/forward cache.
++
++Run the non-browser checks with:
++
++```sh
++node --test menu-tools.test.mjs
++node --check daily-grind.mjs
++```
+diff --git a/daily-grind.mjs b/daily-grind.mjs
+new file mode 100644
+index 0000000..74d5d15
+--- /dev/null
++++ b/daily-grind.mjs
+@@ -0,0 +1,78 @@
++import { createMenuTools } from './menu-tools.mjs';
++
++const cards = [...document.querySelectorAll('[data-drink-id]')];
++// Read the displayed menu so agents and visitors always see the same drinks.
++const menu = cards.map((card) => ({
++  id: card.dataset.drinkId,
++  name: card.querySelector('h3').textContent.trim(),
++  description: card.querySelector('p').textContent.trim(),
++}));
++const status = document.querySelector('#drink-status');
++const summary = document.querySelector('.order-summary');
++const orderItems = document.querySelector('#order-items');
++const order = new Map();
++
++function renderOrder() {
++  orderItems.replaceChildren(...[...order.values()].map((item) => {
++    const row = document.createElement('li');
++    row.textContent = `${item.quantity} × ${item.name}`;
++    return row;
++  }));
++  summary.hidden = order.size === 0;
++}
++
++const tools = createMenuTools(menu, {
++  order(drink, quantity) {
++    const previous = order.get(drink.id)?.quantity ?? 0;
++    order.set(drink.id, { ...drink, quantity: previous + quantity });
++    renderOrder();
++    status.textContent = `Added ${quantity} × ${drink.name} to your local order.`;
++    return { status: 'added', localOnly: true, items: [...order.values()].map((item) => ({ ...item })) };
++  },
++  highlight(drink) {
++    for (const card of cards) card.classList.toggle('is-highlighted', card.dataset.drinkId === drink.id);
++    const card = cards.find((card) => card.dataset.drinkId === drink.id);
++    card.scrollIntoView({ block: 'center', behavior: 'instant' });
++    card.focus({ preventScroll: true });
++    status.textContent = `${drink.name}: ${drink.description}`;
++    return { status: 'highlighted', drink: { ...drink } };
++  },
++});
++
++const orderTool = tools.find((tool) => tool.name === 'order_drink');
++for (const card of cards) {
++  const button = card.querySelector('.order-drink');
++  button.hidden = false;
++  button.addEventListener('click', () => orderTool.execute({ drinkId: card.dataset.drinkId }));
++}
++document.querySelector('#clear-order').addEventListener('click', () => {
++  order.clear();
++  renderOrder();
++  status.textContent = 'Your local order has been cleared.';
++});
++
++// WebMCP is progressive enhancement; ordinary controls work without it.
++let registration;
++async function registerTools() {
++  const context = document.modelContext;
++  if (typeof context?.registerTool !== 'function' || registration) return;
++  const controller = new AbortController();
++  registration = controller;
++  try {
++    for (const tool of tools) {
++      if (controller.signal.aborted) return;
++      await context.registerTool(tool, { signal: controller.signal });
++    }
++  } catch (error) {
++    controller.abort();
++    if (registration === controller) registration = undefined;
++    console.warn('Daily Grind browser tools could not be registered.', error);
++  }
++}
++
++window.addEventListener('pagehide', () => {
++  registration?.abort();
++  registration = undefined;
++});
++window.addEventListener('pageshow', () => { void registerTools(); });
++void registerTools();
+diff --git a/index.html b/index.html
+index 66c9173..e1f9315 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,40 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn[hidden] {
++      display: none;
++    }
++
++    .card.is-highlighted {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .card:focus-visible, .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .order-summary {
++      margin-top: 30px;
++      padding: 20px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .order-summary ul {
++      padding-left: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,29 +199,39 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#seasonal-favorites" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink-id="maple-oat-latte" tabindex="-1">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn order-drink" hidden>Order Maple Oat Latte</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="dark-roast-espresso" tabindex="-1">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn order-drink" hidden>Order Dark Roast Espresso</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="cold-brew" tabindex="-1">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn order-drink" hidden>Order Cold Brew</button>
+         </div>
+       </div>
++      <aside class="order-summary" aria-labelledby="order-heading" hidden>
++        <h3 id="order-heading">Your drink order</h3>
++        <p>This order stays on this page. No payment is taken or order sent to a café.</p>
++        <ul id="order-items"></ul>
++        <button type="button" class="btn" id="clear-order">Clear order</button>
++      </aside>
++      <p id="drink-status" role="status" aria-live="polite" aria-atomic="true"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +245,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./daily-grind.mjs"></script>
+ </body>
+ 
+ </html>
+diff --git a/menu-tools.mjs b/menu-tools.mjs
+new file mode 100644
+index 0000000..fb38ee1
+--- /dev/null
++++ b/menu-tools.mjs
+@@ -0,0 +1,72 @@
++// Tool callbacks and page controls share the same validated actions.
++export function createMenuTools(menu, actions) {
++  const drinkIds = menu.map((drink) => drink.id);
++  const drinkProperty = {
++    type: 'string', enum: drinkIds,
++    description: 'The drink identifier returned by the seasonal menu.',
++  };
++  const error = (message) => ({ error: message, availableDrinkIds: drinkIds });
++  const validObject = (input, keys) => input !== null && typeof input === 'object'
++    && !Array.isArray(input) && Object.keys(input).every((key) => keys.includes(key));
++  const findDrink = (input) => menu.find((drink) => drink.id === input.drinkId);
++
++  return [
++    {
++      name: 'query_seasonal_menu',
++      description: 'Find drinks in the Daily Grind Seasonal Favorites menu, including descriptions and identifiers for ordering.',
++      inputSchema: {
++        type: 'object', additionalProperties: false,
++        properties: {
++          query: { type: 'string', default: '', description: 'Words to match against a drink name or description.' },
++        },
++      },
++      execute(input = {}) {
++        if (!validObject(input, ['query']) || (input.query !== undefined && typeof input.query !== 'string')) {
++          return error('Provide an object with an optional text query.');
++        }
++        const query = (input.query ?? '').trim().toLowerCase();
++        const drinks = menu.filter((drink) => `${drink.name} ${drink.description}`.toLowerCase().includes(query));
++        return { section: 'Seasonal Favorites', drinks: drinks.map((drink) => ({ ...drink })), count: drinks.length };
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: 'order_drink',
++      description: 'Add a seasonal drink to the visible local order on this page. This does not send an order to a café or take payment.',
++      inputSchema: {
++        type: 'object', additionalProperties: false,
++        properties: {
++          drinkId: drinkProperty,
++          quantity: { type: 'integer', minimum: 1, maximum: 10, default: 1, description: 'Number of drinks to add to the local order.' },
++        },
++        required: ['drinkId'],
++      },
++      execute(input = {}) {
++        if (!validObject(input, ['drinkId', 'quantity'])) return error('Provide a drink identifier and optional quantity.');
++        const drink = findDrink(input);
++        if (!drink) return error('Choose a drink from the seasonal menu.');
++        const quantity = input.quantity === undefined ? 1 : input.quantity;
++        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
++          return error('Quantity must be an integer from 1 to 10.');
++        }
++        return actions.order(drink, quantity);
++      },
++      annotations: { readOnlyHint: false },
++    },
++    {
++      name: 'highlight_drink',
++      description: 'Highlight a seasonal drink card and bring it into view to show the user a recommendation.',
++      inputSchema: {
++        type: 'object', additionalProperties: false,
++        properties: { drinkId: drinkProperty }, required: ['drinkId'],
++      },
++      execute(input = {}) {
++        if (!validObject(input, ['drinkId'])) return error('Provide a drink identifier.');
++        const drink = findDrink(input);
++        if (!drink) return error('Choose a drink from the seasonal menu.');
++        return actions.highlight(drink);
++      },
++      annotations: { readOnlyHint: false },
++    },
++  ];
++}
+diff --git a/menu-tools.test.mjs b/menu-tools.test.mjs
+new file mode 100644
+index 0000000..c751d48
+--- /dev/null
++++ b/menu-tools.test.mjs
+@@ -0,0 +1,74 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { createMenuTools } from './menu-tools.mjs';
++
++// Use the real displayed menu to catch drift between the page and tool schemas.
++const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
++const menu = [...html.matchAll(/data-drink-id="([^"]+)"[^>]*>\s*<h3>([^<]+)<\/h3>\s*<p>([^<]+)<\/p>/g)]
++  .map(([, id, name, description]) => ({ id, name, description }));
++
++function setup() {
++  const calls = [];
++  const tools = createMenuTools(menu, {
++    order: (drink, quantity) => { calls.push({ drink, quantity }); return { status: 'added' }; },
++    highlight: (drink) => { calls.push({ drink }); return { status: 'highlighted' }; },
++  });
++  return { calls, tools, get: (name) => tools.find((tool) => tool.name === name) };
++}
++
++test('menu query returns actual displayed drinks and filters without changing state', () => {
++  const { get, calls } = setup();
++  const tool = get('query_seasonal_menu');
++  assert.equal(tool.annotations.readOnlyHint, true);
++  assert.equal(tool.execute().count, 3);
++  assert.deepEqual(tool.execute({ query: ' MAPLE ' }).drinks, [menu[0]]);
++  assert.deepEqual(tool.execute({ query: '18 hours' }).drinks, [menu[2]]);
++  assert.equal(tool.execute({ query: 'missing' }).count, 0);
++  const result = tool.execute();
++  result.drinks[0].name = 'Changed';
++  assert.equal(tool.execute().drinks[0].name, 'Maple Oat Latte');
++  assert.deepEqual(calls, []);
++});
++
++test('ordering validates inputs before calling the shared action and applies defaults', () => {
++  const { get, calls } = setup();
++  const tool = get('order_drink');
++  for (const input of [null, [], 'coffee', {}, { drinkId: 'missing' },
++    ...[0, -1, 11, 1.5, '2', null, NaN].map((quantity) => ({ drinkId: menu[0].id, quantity })),
++    { drinkId: menu[0].id, extra: true }]) {
++    assert.ok(tool.execute(input).error);
++  }
++  assert.equal(calls.length, 0);
++  assert.deepEqual(tool.execute({ drinkId: menu[0].id }), { status: 'added' });
++  assert.equal(calls[0].quantity, 1);
++  tool.execute({ drinkId: menu[2].id, quantity: 10 });
++  assert.deepEqual(calls[1], { drink: menu[2], quantity: 10 });
++});
++
++test('highlight only changes UI for a valid menu drink', () => {
++  const { get, calls } = setup();
++  const tool = get('highlight_drink');
++  for (const input of [null, [], {}, { drinkId: 'unknown' }, { drinkId: menu[0].id, extra: true }]) {
++    assert.ok(tool.execute(input).error);
++  }
++  assert.equal(calls.length, 0);
++  assert.deepEqual(tool.execute({ drinkId: menu[1].id }), { status: 'highlighted' });
++  assert.equal(calls[0].drink, menu[1]);
++});
++
++test('all tools publish distinct names, typed schemas, and matching drink identifiers', () => {
++  const { tools } = setup();
++  assert.equal(new Set(tools.map((tool) => tool.name)).size, 3);
++  for (const tool of tools) {
++    assert.equal(tool.inputSchema.type, 'object');
++    assert.equal(tool.inputSchema.additionalProperties, false);
++    if (tool.inputSchema.properties.drinkId) {
++      assert.deepEqual(tool.inputSchema.properties.drinkId.enum, menu.map((drink) => drink.id));
++      assert.equal(tool.annotations.readOnlyHint, false);
++    }
++  }
++  for (const input of [null, [], { query: 1 }, { unexpected: true }]) {
++    assert.ok(tools[0].execute(input).error);
++  }
++});

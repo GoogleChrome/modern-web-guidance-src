@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,10 +112,17 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
++      z-index: 1;
+     }
+ 
++    .card:hover,
++    .card:focus-within {
++      z-index: 10;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -134,8 +141,83 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Tooltip / Popover */
++    .tooltip-wrapper {
++      position: relative;
++      display: inline-block;
++      margin-top: 15px;
++    }
++
++    .tooltip-wrapper .btn {
++      margin-top: 0;
++    }
++
++    .tooltip {
++      position: absolute;
++      left: calc(100% + 12px);
++      top: 50%;
++      transform: translateY(-50%) translateX(-4px);
++      background: var(--text);
++      color: var(--light);
++      padding: 10px 14px;
++      border-radius: 6px;
++      font-size: 0.8rem;
++      line-height: 1.45;
++      text-align: left;
++      width: max-content;
++      max-width: 190px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      border: 1px solid rgba(255, 171, 64, 0.35);
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
++      z-index: 20;
++    }
++
++    .tooltip::before {
++      content: "";
++      position: absolute;
++      right: 100%;
++      top: 50%;
++      transform: translateY(-50%);
++      border-width: 6px;
++      border-style: solid;
++      border-color: transparent var(--text) transparent transparent;
++    }
++
++    .tooltip-wrapper:hover .tooltip,
++    .tooltip-wrapper:focus-within .tooltip {
++      opacity: 1;
++      visibility: visible;
++      transform: translateY(-50%) translateX(0);
++    }
++
++    .tooltip-title {
++      font-weight: bold;
++      color: var(--accent);
++      margin-bottom: 4px;
++      font-size: 0.82rem;
++      border-bottom: 1px solid rgba(215, 204, 200, 0.25);
++      padding-bottom: 3px;
++    }
++
++    .tooltip-stat {
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++    }
++
++    .tooltip-stat span:first-child {
++      color: var(--secondary);
++    }
++
++    .tooltip-stat span:last-child {
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +262,46 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tooltip-maple-oat">View Details</a>
++            <div class="tooltip" id="tooltip-maple-oat" role="tooltip">
++              <div class="tooltip-title">Nutrition (12 oz)</div>
++              <div class="tooltip-stat"><span>Calories:</span> <span>210 kcal</span></div>
++              <div class="tooltip-stat"><span>Caffeine:</span> <span>150 mg</span></div>
++              <div class="tooltip-stat"><span>Sugar:</span> <span>18 g</span></div>
++              <div class="tooltip-stat"><span>Dietary:</span> <span>Dairy-Free</span></div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/espresso" class="btn" aria-describedby="tooltip-dark-roast">View Details</a>
++            <div class="tooltip" id="tooltip-dark-roast" role="tooltip">
++              <div class="tooltip-title">Nutrition (2 oz)</div>
++              <div class="tooltip-stat"><span>Calories:</span> <span>5 kcal</span></div>
++              <div class="tooltip-stat"><span>Caffeine:</span> <span>185 mg</span></div>
++              <div class="tooltip-stat"><span>Sugar:</span> <span>0 g</span></div>
++              <div class="tooltip-stat"><span>Bean:</span> <span>100% Arabica</span></div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tooltip-cold-brew">View Details</a>
++            <div class="tooltip" id="tooltip-cold-brew" role="tooltip">
++              <div class="tooltip-title">Nutrition (16 oz)</div>
++              <div class="tooltip-stat"><span>Calories:</span> <span>15 kcal</span></div>
++              <div class="tooltip-stat"><span>Caffeine:</span> <span>200 mg</span></div>
++              <div class="tooltip-stat"><span>Sugar:</span> <span>0 g</span></div>
++              <div class="tooltip-stat"><span>Brew:</span> <span>18-Hr Steeped</span></div>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>

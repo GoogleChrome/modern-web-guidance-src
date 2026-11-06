@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,79 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Details tooltip */
++    .tooltip-wrap {
++      position: relative;
++      display: inline-block;
++    }
++
++    .tooltip {
++      position: absolute;
++      top: calc(50% + 7.5px); /* center on the button (offsets the button's top margin) */
++      left: calc(100% + 12px);
++      transform: translateY(-50%);
++      width: 210px;
++      background: var(--text);
++      color: white;
++      text-align: left;
++      font-size: 0.85rem;
++      line-height: 1.5;
++      padding: 12px 14px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      z-index: 500;
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.2s, visibility 0.2s;
++    }
++
++    /* Arrow pointing back at the button */
++    .tooltip::before {
++      content: '';
++      position: absolute;
++      top: 50%;
++      right: 100%;
++      transform: translateY(-50%);
++      border: 6px solid transparent;
++      border-right-color: var(--text);
++    }
++
++    /* Flipped to the left side when there's no room on the right */
++    .tooltip-wrap.flip .tooltip {
++      left: auto;
++      right: calc(100% + 12px);
++    }
++
++    .tooltip-wrap.flip .tooltip::before {
++      right: auto;
++      left: 100%;
++      border-right-color: transparent;
++      border-left-color: var(--text);
++    }
++
++    .tooltip-wrap:hover .tooltip,
++    .tooltip-wrap:focus-within .tooltip {
++      opacity: 1;
++      visibility: visible;
++    }
++
++    .tooltip strong {
++      display: block;
++      color: var(--accent);
++      margin-bottom: 4px;
++    }
++
++    .tooltip ul {
++      list-style: none;
++    }
++
++    .tooltip li {
++      display: flex;
++      justify-content: space-between;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,19 +251,52 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <span class="tooltip-wrap">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tip-maple">View Details</a>
++            <span class="tooltip" role="tooltip" id="tip-maple">
++              <strong>Maple Oat Latte (16 oz)</strong>
++              <ul>
++                <li><span>Calories</span><span>190</span></li>
++                <li><span>Sugar</span><span>18 g</span></li>
++                <li><span>Caffeine</span><span>150 mg</span></li>
++                <li><span>Dairy-free</span><span>Yes</span></li>
++              </ul>
++            </span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <span class="tooltip-wrap">
++            <a href="/menu/espresso" class="btn" aria-describedby="tip-espresso">View Details</a>
++            <span class="tooltip" role="tooltip" id="tip-espresso">
++              <strong>Dark Roast Espresso (double)</strong>
++              <ul>
++                <li><span>Calories</span><span>5</span></li>
++                <li><span>Sugar</span><span>0 g</span></li>
++                <li><span>Caffeine</span><span>125 mg</span></li>
++                <li><span>Dairy-free</span><span>Yes</span></li>
++              </ul>
++            </span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="tooltip-wrap">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tip-coldbrew">View Details</a>
++            <span class="tooltip" role="tooltip" id="tip-coldbrew">
++              <strong>Cold Brew (16 oz)</strong>
++              <ul>
++                <li><span>Calories</span><span>5</span></li>
++                <li><span>Sugar</span><span>0 g</span></li>
++                <li><span>Caffeine</span><span>205 mg</span></li>
++                <li><span>Dairy-free</span><span>Yes</span></li>
++              </ul>
++            </span>
++          </span>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +310,22 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Flip a tooltip to the left of its button if it would overflow the viewport on the right.
++    document.querySelectorAll('.tooltip-wrap').forEach(function (wrap) {
++      function place() {
++        var tip = wrap.querySelector('.tooltip');
++        wrap.classList.remove('flip');
++        if (tip.getBoundingClientRect().right > document.documentElement.clientWidth - 8) {
++          wrap.classList.add('flip');
++        }
++      }
++      wrap.addEventListener('mouseenter', place);
++      wrap.addEventListener('focusin', place);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

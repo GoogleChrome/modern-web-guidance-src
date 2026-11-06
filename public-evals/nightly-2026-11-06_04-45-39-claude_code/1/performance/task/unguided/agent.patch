@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,9 +3,21 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="description" content="The Daily Grind: ethically sourced, locally roasted artisanal coffee. Explore seasonal favorites and order online.">
++  <meta name="theme-color" content="#4e342e">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Warm up the connection to the image CDN and fetch the LCP hero image ASAP, at the right size -->
++  <link rel="preconnect" href="https://images.unsplash.com">
++  <link rel="dns-prefetch" href="https://images.unsplash.com">
++  <link rel="preload" as="image" fetchpriority="high"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1280&amp;q=70"
++    imagesrcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=640&amp;q=70 640w,
++      https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=960&amp;q=70 960w,
++      https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1280&amp;q=70 1280w,
++      https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1920&amp;q=70 1920w"
++    imagesizes="100vw">
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -47,8 +59,9 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
+       list-style: none;
+     }
+ 
+     nav ul li {
+@@ -73,13 +86,16 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      height: 60svh;
++      min-height: 320px;
++      /* Solid fallback colour so text is readable before the image paints */
++      background-color: #2b1d19;
++      overflow: hidden;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+@@ -87,8 +103,26 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero-img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      z-index: -2;
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: -1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -108,8 +142,9 @@
+     }
+ 
+     .card {
+       background: white;
++      contain: layout paint;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+@@ -135,8 +170,10 @@
+       background: #3e2723;
+     }
+ 
+     footer {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 160px;
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -145,8 +182,24 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    @media (max-width: 600px) {
++      .hero h1 {
++        font-size: 2.25rem;
++      }
++
++      nav ul li {
++        margin-left: 12px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      * {
++        transition: none !important;
++      }
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -168,8 +221,15 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <img class="hero-img"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1280&amp;q=70"
++      srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=640&amp;q=70 640w,
++        https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=960&amp;q=70 960w,
++        https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1280&amp;q=70 1280w,
++        https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1920&amp;q=70 1920w"
++      sizes="100vw" width="1920" height="1280" alt="" fetchpriority="high">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

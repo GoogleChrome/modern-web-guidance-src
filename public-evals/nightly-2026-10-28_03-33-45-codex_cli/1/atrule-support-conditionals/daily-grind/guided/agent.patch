@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+index 66c9173..0986fb4 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,30 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Optional color enhancements; the rules above provide the fallback. */
++    @function --coffee-tint(--base <color>, --amount <percentage>) returns <color> {
++      result: color-mix(in srgb, var(--base), white var(--amount));
++    }
++
++    /* Guard declarations that depend on @function, not just its definition. */
++    @supports at-rule(@function) {
++      .card {
++        background-color: --coffee-tint(var(--secondary), 85%);
++      }
++
++      nav {
++        background-color: --coffee-tint(var(--primary), 5%);
++      }
++
++      .hero .btn {
++        background-color: --coffee-tint(var(--primary), 10%);
++      }
++
++      .hero .btn:hover {
++        background-color: --coffee-tint(var(--primary), 0%);
++      }
++    }
+   </style>
+ </head>
+ 

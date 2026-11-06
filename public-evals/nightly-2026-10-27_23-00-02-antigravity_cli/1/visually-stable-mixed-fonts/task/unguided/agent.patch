@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,127 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Modern Font Metric Normalization & Aspect Ratio Override</title>
++  <link rel="stylesheet" href="styles.css">
++  <style>
++    :root {
++      --bg-color: #f8fafc;
++      --text-color: #0f172a;
++      --card-bg: #ffffff;
++      --border-color: #e2e8f0;
++      --code-bg: #f1f5f9;
++      --code-color: #0284c7;
++    }
++
++    * {
++      box-sizing: border-box;
++    }
++
++    body {
++      margin: 0;
++      padding: 2.5rem 1.5rem;
++      font-family: Georgia, "Times New Roman", Times, serif;
++      background-color: var(--bg-color);
++      color: var(--text-color);
++      line-height: 1.65;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 2rem;
++    }
++
++    main {
++      width: 100%;
++      max-width: 48rem;
++      display: flex;
++      flex-direction: column;
++      gap: 2rem;
++    }
++
++    /* 1. Mixed font families with automatic visual height normalization */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", Times, serif;
++      font-size: 1.15rem;
++      font-size-adjust: from-font;
++      background-color: var(--card-bg);
++      border: 1px solid var(--border-color);
++      border-radius: 0.75rem;
++      padding: 1.5rem;
++      margin: 0;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
++    }
++
++    #mixed-fonts-container code {
++      font-family: "Courier New", Courier, Consolas, monospace;
++      font-size-adjust: inherit;
++      background-color: var(--code-bg);
++      color: var(--code-color);
++      padding: 0.15em 0.4em;
++      border-radius: 0.35rem;
++    }
++
++    /* 2. Independent theme container with specific numeric aspect-ratio override */
++    #independent-theme-container {
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++      font-size: 1.1rem;
++      /* Specific numeric aspect-ratio override for font-size-adjust */
++      font-size-adjust: 0.52;
++      aspect-ratio: 16 / 9;
++      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
++      color: #f8fafc;
++      border: 1px solid #334155;
++      border-radius: 0.75rem;
++      padding: 2rem;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
++    }
++
++    #independent-theme-container h2 {
++      margin: 0 0 0.75rem 0;
++      font-size: 1.5rem;
++      color: #38bdf8;
++      font-size-adjust: 0.52;
++    }
++
++    #independent-theme-container p {
++      margin: 0 0 1rem 0;
++      color: #cbd5e1;
++      font-size-adjust: 0.52;
++    }
++
++    #independent-theme-container code {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size-adjust: 0.52;
++      background-color: rgba(56, 189, 248, 0.15);
++      color: #7dd3fc;
++      padding: 0.15em 0.4em;
++      border-radius: 0.35rem;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <p id="mixed-fonts-container">
++      Modern typography often combines body prose with inline technical tokens such as
++      <code>font-size-adjust: from-font</code>, <code>const scale = 1.0</code>, and
++      <code>getComputedStyle(element)</code>. By normalizing the lowercase x-height automatically
++      from the primary font and inheriting that metric onto inline <code>&lt;code&gt;</code> elements,
++      both serif text and monospace snippets share a harmonious visual height without manual magic numbers.
++    </p>
++
++    <div id="independent-theme-container">
++      <h2>Independent Theme Environment</h2>
++      <p>
++        This isolated theme container locks down its visual proportions using an explicit numeric
++        aspect-ratio override (<code>font-size-adjust: 0.52</code> alongside container
++        <code>aspect-ratio: 16 / 9</code>) so typography and layout remain consistent across fallback
++        fonts and display environments.
++      </p>
++    </div>
++  </main>
++</body>
++</html>

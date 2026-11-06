@@ -1,0 +1,117 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,13 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+       height: 60vh;
++      min-height: 320px;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,11 +88,61 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 0;
+     }
+ 
++    .hero-content {
++      position: relative;
++      z-index: 1;
++      width: 100%;
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      padding: 24px 20px;
++    }
++
++    .hero-content .btn {
++      flex: 0 0 auto;
++    }
++
++    .hero-canvas {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      pointer-events: none;
++    }
++
++    .hero-canvas[data-html] {
++      z-index: 1;
++      pointer-events: auto;
++    }
++
++    .hero[data-ripple-fallback] .hero-content {
++      filter: url(#hero-ripple-filter);
++    }
++
++    .ripple-filter-definitions {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    .hero a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 5px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .hero[data-ripple-fallback] .hero-content { filter: none; }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,13 +222,24 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
++  <svg class="ripple-filter-definitions" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
++    <defs>
++      <filter id="hero-ripple-filter" x="-5%" y="-10%" width="110%" height="120%" color-interpolation-filters="sRGB">
++        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.035" numOctaves="1" seed="4" result="waves" />
++        <feDisplacementMap in="SourceGraphic" in2="waves" scale="0" xChannelSelector="R" yChannelSelector="G" />
++      </filter>
++    </defs>
++  </svg>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +271,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./hero-ripple.js"></script>
+ </body>
+ 
+ </html>

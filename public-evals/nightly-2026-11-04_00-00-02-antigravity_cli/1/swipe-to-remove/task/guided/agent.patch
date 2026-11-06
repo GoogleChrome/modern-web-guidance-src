@@ -1,0 +1,355 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,172 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shopping Cart & SwipeableList */
++    .cart-section {
++      margin-top: 40px;
++    }
++
++    .cart-section h2 {
++      text-align: center;
++      margin-bottom: 8px;
++    }
++
++    .cart-hint {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .SwipeableList {
++      list-style: none;
++      max-width: 700px;
++      margin: 0 auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .SwipeableList-item {
++      /* Establishes a containing block for the absolutely positioned action
++         icons and clips overflow during the row's removal animation. */
++      contain: content;
++    }
++
++    /* The track only becomes a scroll snap container after JS upgrades
++       the row by adding `.is-initialized`. */
++    .SwipeableList-item.is-initialized .SwipeableList-track {
++      /* Three full-width columns: left spacer | content | right spacer.
++         Width is 100% of the track, so each column fills the viewport row. */
++      display: grid;
++      grid-template-columns: 100% 100% 100%;
++
++      /* Horizontal scroll only; vertical overflow is clipped so the
++         reveal stays inside the row. */
++      overflow: scroll clip;
++
++      /* Prevent the swipe from chaining into the page scroll or browser
++         back-gesture on iOS/Android. */
++      overscroll-behavior-x: none;
++
++      /* Hide the scrollbar; the gesture is the affordance. */
++      scrollbar-width: none;
++
++      /* `mandatory` ensures the track always rests on a snap point
++         (spacer or content), never partially scrolled. */
++      scroll-snap-type: x mandatory;
++    }
++
++    .SwipeableList-item.is-initialized .SwipeableList-track::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Spacers act as the left and right snap targets, AND carry the action's
++       reveal color. As the user swipes, the colored spacer slides into view,
++       which is what the user sees behind the content. */
++    .SwipeableList-item.is-initialized .SwipeableList-track::before,
++    .SwipeableList-item.is-initialized .SwipeableList-track::after {
++      content: '';
++      scroll-snap-align: start;
++      background-color: hsl(0 65% 50%);
++    }
++
++    .SwipeableList-content {
++      /* The content sits above the action icons, so it covers
++         them until the user swipes. */
++      position: relative;
++      z-index: 2;
++
++      /* Required to make the content a valid snap target (its resting
++         position). */
++      scroll-snap-align: start;
++
++      /* The content must paint over the revealed spacer color. */
++      background: Canvas;
++
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 16px 20px;
++      border-bottom: 1px solid #eee;
++    }
++
++    /* Gate `scroll-initial-target` behind `.is-initialized` so it only
++       applies once the track is actually a scroll container. */
++    .SwipeableList-item.is-initialized .SwipeableList-content {
++      scroll-initial-target: nearest;
++    }
++
++    /* Project the focus affordance onto the content element using
++       `:focus-visible` on the track. */
++    .SwipeableList-track:focus-visible .SwipeableList-content {
++      outline: auto;
++      outline-offset: -2px;
++    }
++
++    /* Action icons painted on the list item. */
++    .SwipeableList-item.is-initialized::before,
++    .SwipeableList-item.is-initialized::after {
++      --action-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9zm0 5h2v9H9V8zm4 0h2v9h-2V8z'/></svg>");
++
++      content: '';
++      position: absolute;
++      z-index: 1;
++      width: 1.5em;
++      aspect-ratio: 1;
++      top: 50%;
++      translate: 0 -50%;
++      transition: scale 0.2s ease, opacity 0.2s ease;
++      background: var(--action-icon) center / contain no-repeat;
++    }
++
++    .SwipeableList-item.is-initialized::before { left: 1.5em; }
++    .SwipeableList-item.is-initialized::after  { right: 1.5em; }
++
++    /* Activating pop: scale the icon up when the user is past the visual
++       activate point. */
++    .SwipeableList-item.is-activating::before,
++    .SwipeableList-item.is-activating::after {
++      scale: 1.333;
++    }
++
++    /* Removal affordance: fade and shrink the icons as the row collapses. */
++    .SwipeableList-item.is-removing::before,
++    .SwipeableList-item.is-removing::after {
++      scale: 0.5;
++      opacity: 0;
++    }
++
++    /* Only show the icon on the leading side of the swipe; hide the
++       trailing-side one. */
++    .SwipeableList-item.is-activating[data-swipe-direction="left"]::after,
++    .SwipeableList-item.is-activating[data-swipe-direction="right"]::before {
++      visibility: hidden;
++    }
++
++    .cart-item-info {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .cart-item-title {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .cart-item-meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .cart-item-price {
++      font-weight: bold;
++      color: var(--text);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +358,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="cart-section">
++      <h2>Shopping Cart</h2>
++      <p class="cart-hint">Swipe an item left or right to remove it from your cart.</p>
++      <ul class="SwipeableList">
++        <li id="list-item-1" class="SwipeableList-item">
++          <div class="SwipeableList-track" tabindex="0" aria-label="Maple Oat Latte - Swipe or scroll horizontally to remove">
++            <div class="SwipeableList-content">
++              <div class="cart-item-info">
++                <span class="cart-item-title">Maple Oat Latte</span>
++                <span class="cart-item-meta">12 oz · Oat Milk</span>
++              </div>
++              <span class="cart-item-price">$5.50</span>
++            </div>
++          </div>
++        </li>
++        <li id="list-item-2" class="SwipeableList-item">
++          <div class="SwipeableList-track" tabindex="0" aria-label="Dark Roast Espresso - Swipe or scroll horizontally to remove">
++            <div class="SwipeableList-content">
++              <div class="cart-item-info">
++                <span class="cart-item-title">Dark Roast Espresso</span>
++                <span class="cart-item-meta">Double Shot</span>
++              </div>
++              <span class="cart-item-price">$3.75</span>
++            </div>
++          </div>
++        </li>
++        <li id="list-item-3" class="SwipeableList-item">
++          <div class="SwipeableList-track" tabindex="0" aria-label="Cold Brew - Swipe or scroll horizontally to remove">
++            <div class="SwipeableList-content">
++              <div class="cart-item-info">
++                <span class="cart-item-title">Cold Brew</span>
++                <span class="cart-item-meta">16 oz · Iced</span>
++              </div>
++              <span class="cart-item-price">$4.50</span>
++            </div>
++          </div>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +410,129 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const needsScrollWorkaround = !CSS.supports('scroll-initial-target', 'nearest');
++
++    const trackResizeObserver = needsScrollWorkaround
++      ? new ResizeObserver((entries) => {
++          for (const entry of entries) {
++            entry.target.scrollLeft = entry.target.clientWidth;
++          }
++        })
++      : null;
++
++    // Per-item handles. Populated when an item is first lazily wired up; read by
++    // the outer viewport observer to start/stop the inner observer as items enter
++    // and leave the viewport.
++    const swipeObservers = new WeakMap();
++
++    // Outer observer: drives the entire swipe lifecycle off viewport visibility.
++    const viewportObserver = new IntersectionObserver((entries) => {
++      for (const entry of entries) {
++        const item = entry.target;
++        if (entry.isIntersecting) {
++          const handle = swipeObservers.get(item) ?? setupItem(item);
++          handle.observer.observe(handle.content);
++        } else {
++          const handle = swipeObservers.get(item);
++          if (handle) handle.observer.unobserve(handle.content);
++        }
++      }
++    });
++
++    function setupItem(item) {
++      const track = item.querySelector('.SwipeableList-track');
++      const content = track.querySelector('.SwipeableList-content');
++
++      // Upgrade the row into "swipeable" mode before programmatic scroll or inner observer.
++      item.classList.add('is-initialized');
++
++      if (needsScrollWorkaround) {
++        track.scrollLeft = track.clientWidth;
++        trackResizeObserver.observe(track);
++      }
++
++      const activateThreshold = 0.8;
++      const commitThreshold = 0.2;
++
++      const observer = new IntersectionObserver((entries, observer) => {
++        const entry = entries.at(-1);
++        const ratio = entry.intersectionRatio;
++
++        const direction = (entry.boundingClientRect.x - entry.rootBounds.x) > 0
++          ? 'left'
++          : 'right';
++
++        if (ratio < commitThreshold) {
++          removeItem(item, content, direction, entry);
++          viewportObserver.unobserve(item);
++          if (needsScrollWorkaround) trackResizeObserver.unobserve(track);
++          observer.disconnect();
++          return;
++        }
++
++        item.classList.toggle('is-activating', ratio < activateThreshold);
++
++        if (entry.boundingClientRect.x !== entry.rootBounds.x) {
++          item.dataset.swipeDirection = direction;
++        }
++      }, {
++        root: track,
++        threshold: [commitThreshold, activateThreshold],
++      });
++
++      const handle = { observer, content };
++      swipeObservers.set(item, handle);
++      return handle;
++    }
++
++    async function removeItem(item, content, direction, entry) {
++      const opts = { duration: 300, easing: 'ease', fill: 'forwards' };
++
++      const rect = entry.boundingClientRect;
++      const x = rect.x - entry.rootBounds.x;
++      const translate = direction === 'left'
++        ? rect.width - x
++        : -(x + rect.width);
++
++      item.classList.add('is-removing');
++      item.animate([{ height: `${rect.height}px` }, { height: '0px' }], opts);
++      content.animate([{ translate: `${translate}px` }], opts);
++      await Promise.allSettled(
++        item.getAnimations({ subtree: true }).map((a) => a.finished),
++      );
++
++      if (globalThis.GestureEvent) {
++        item.inert = true;
++        setTimeout(() => item.remove(), 5000);
++      } else {
++        item.remove();
++      }
++    }
++
++    function setupList(list) {
++      for (const item of list.children) {
++        if (item.matches('.SwipeableList-item')) {
++          viewportObserver.observe(item);
++        }
++      }
++
++      new MutationObserver((mutations) => {
++        for (const mutation of mutations) {
++          for (const node of mutation.addedNodes) {
++            if (node.nodeType === Node.ELEMENT_NODE &&
++                node.matches('.SwipeableList-item')) {
++              viewportObserver.observe(node);
++            }
++          }
++        }
++      }).observe(list, { childList: true });
++    }
++
++    document.querySelectorAll('.SwipeableList').forEach(setupList);
++  </script>
++
+ </body>
+ 
+ </html>

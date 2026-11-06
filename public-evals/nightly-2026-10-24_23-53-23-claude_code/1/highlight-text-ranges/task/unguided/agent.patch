@@ -1,0 +1,100 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,34 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .search-wrap {
++      max-width: 400px;
++      margin: 20px auto 0;
++    }
++
++    #search-input {
++      width: 100%;
++      padding: 10px 14px;
++      font: inherit;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    #search-input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    mark.search-highlight {
++      background: gold;
++      color: inherit;
++      padding: 0;
++      margin: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,8 +202,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="search-wrap">
++        <input type="search" id="search-input" placeholder="Search the menu..." aria-label="Search seasonal favorites" autocomplete="off">
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +235,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var input = document.getElementById('search-input');
++      var targets = document.querySelectorAll('.grid .card h3, .grid .card p');
++
++      function clearHighlights() {
++        document.querySelectorAll('mark.search-highlight').forEach(function (mark) {
++          mark.replaceWith(document.createTextNode(mark.textContent));
++        });
++        targets.forEach(function (el) { el.normalize(); });
++      }
++
++      function highlight(el, query) {
++        var text = el.textContent;
++        var lower = text.toLowerCase();
++        var q = query.toLowerCase();
++        var frag = document.createDocumentFragment();
++        var pos = 0;
++        var idx;
++        while ((idx = lower.indexOf(q, pos)) !== -1) {
++          if (idx > pos) frag.appendChild(document.createTextNode(text.slice(pos, idx)));
++          var mark = document.createElement('mark');
++          mark.className = 'search-highlight';
++          mark.textContent = text.slice(idx, idx + q.length);
++          frag.appendChild(mark);
++          pos = idx + q.length;
++        }
++        if (pos === 0) return;
++        if (pos < text.length) frag.appendChild(document.createTextNode(text.slice(pos)));
++        el.textContent = '';
++        el.appendChild(frag);
++      }
++
++      input.addEventListener('input', function () {
++        clearHighlights();
++        var query = input.value.trim();
++        if (!query) return;
++        targets.forEach(function (el) { highlight(el, query); });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

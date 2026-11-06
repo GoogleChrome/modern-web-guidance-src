@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,80 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scroll container */
++    .scroller {
++      position: relative;
++      height: 100dvh;
++      overflow-y: auto;
++    }
++
++    .scroller:focus {
++      outline: none;
++    }
++
++    /* Sentinel at the top of the scroller content; observed by JS to know when the user has scrolled away */
++    .scroll-sentinel {
++      position: absolute;
++      inset: 0 0 auto 0;
++      height: 200px;
++      visibility: hidden;
++      pointer-events: none;
++    }
++
++    /* Back to top button: zero net layout height, pinned to the scrollport's bottom edge */
++    .back-to-top {
++      position: sticky;
++      bottom: 1.5rem;
++      z-index: 1100;
++      display: grid;
++      place-items: center;
++      width: 3rem;
++      height: 3rem;
++      margin: -3rem 1.5rem 0 auto;
++      padding: 0;
++      border: 0;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
++    }
++
++    .back-to-top:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Only hide when JS is there to reveal it again. `visibility: hidden` also removes it from the tab order. */
++    .scroller[data-scroll-aware]:not([data-scrolled]) .back-to-top {
++      opacity: 0;
++      translate: 0 1rem;
++      visibility: hidden;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .scroller[data-scroll-aware] .back-to-top {
++        transition: opacity 0.3s, translate 0.3s, visibility 0.3s, background 0.3s;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="scroller" tabindex="-1">
++    <div class="scroll-sentinel" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +273,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++    <button type="button" class="back-to-top" aria-label="Back to top">&uarr;</button>
++  </div>
++
++  <script>
++    const scroller = document.querySelector('.scroller');
++    const sentinel = scroller.querySelector('.scroll-sentinel');
++    const backToTop = scroller.querySelector('.back-to-top');
++
++    // Observe a sentinel instead of listening to scroll events: the callback only fires when it crosses the edge.
++    new IntersectionObserver(([entry]) => {
++      scroller.toggleAttribute('data-scrolled', !entry.isIntersecting);
++    }, { root: scroller }).observe(sentinel);
++    scroller.setAttribute('data-scroll-aware', '');
++
++    backToTop.addEventListener('click', () => {
++      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
++      scroller.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
++      // The button is about to be hidden, so move focus somewhere that stays valid.
++      scroller.focus({ preventScroll: true });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

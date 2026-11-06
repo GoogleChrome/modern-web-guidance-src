@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+index 66c9173..28c10e0 100644
+--- a/index.html
++++ b/index.html
+@@ -27,6 +27,10 @@
+       background-color: var(--light);
+     }
+ 
++    html {
++      scroll-padding-top: var(--nav-height, 72px);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -49,6 +53,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      scroll-target-group: auto;
+     }
+ 
+     nav ul li {
+@@ -66,6 +71,30 @@
+       color: var(--accent);
+     }
+ 
++    nav a:is(:target-current, [aria-current="location"]) {
++      color: var(--accent);
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 7px;
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-direction: column;
++        gap: 12px;
++      }
++
++      nav ul {
++        justify-content: center;
++        flex-wrap: wrap;
++        gap: 12px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -107,6 +136,12 @@
+       margin-top: 20px;
+     }
+ 
++    main section + section {
++      margin-top: 64px;
++      padding-top: 40px;
++      border-top: 1px solid var(--secondary);
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -157,26 +192,27 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#home">Home</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="home">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +231,18 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Find Your Daily Grind</h2>
++      <p>Make time for a freshly roasted coffee at a location near you.</p>
++      <a href="/locations" class="btn">Explore Locations</a>
++    </section>
++
++    <section id="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">A Little More in Every Cup</h2>
++      <p>Discover The Daily Grind rewards and make the most of your coffee routine.</p>
++      <a href="/rewards" class="btn">Explore Rewards</a>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +255,64 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const nav = document.querySelector('nav');
++    const links = [...nav.querySelectorAll('a[href^="#"]')];
++    const sections = links.map(link => document.getElementById(link.hash.slice(1)));
++    const nativeTracking = CSS.supports('scroll-target-group: auto') &&
++      CSS.supports('selector(:target-current)');
++    let pendingFrame = null;
++
++    function updateCurrentSection() {
++      pendingFrame = null;
++      let currentLink;
++
++      if (nativeTracking) {
++        currentLink = nav.querySelector('a:target-current');
++      } else {
++        const readingLine = nav.getBoundingClientRect().bottom + 1;
++        let currentIndex = 0;
++        sections.forEach((section, index) => {
++          if (section.getBoundingClientRect().top <= readingLine) currentIndex = index;
++        });
++        // Short final sections may never reach the sticky navigation.
++        if (window.scrollY > 0 &&
++            window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
++          currentIndex = sections.length - 1;
++        }
++        currentLink = links[currentIndex];
++      }
++
++      links.forEach(link => {
++        if (link === currentLink) link.setAttribute('aria-current', 'location');
++        else link.removeAttribute('aria-current');
++      });
++    }
++
++    function scheduleUpdate() {
++      if (pendingFrame === null) pendingFrame = requestAnimationFrame(updateCurrentSection);
++    }
++
++    // Account for wrapped navigation and changes in text size when following anchors.
++    const navObserver = new ResizeObserver(() => {
++      document.documentElement.style.setProperty('--nav-height', `${nav.offsetHeight}px`);
++      scheduleUpdate();
++    });
++    navObserver.observe(nav);
++
++    if (!nativeTracking) {
++      const sectionObserver = new IntersectionObserver(scheduleUpdate);
++      sections.forEach(section => sectionObserver.observe(section));
++    }
++
++    document.addEventListener('scroll', scheduleUpdate, { passive: true });
++    document.addEventListener('scrollend', scheduleUpdate);
++    window.addEventListener('resize', scheduleUpdate);
++    window.addEventListener('hashchange', scheduleUpdate);
++    window.addEventListener('pageshow', scheduleUpdate);
++    scheduleUpdate();
++  </script>
++
+ </body>
+ 
+ </html>

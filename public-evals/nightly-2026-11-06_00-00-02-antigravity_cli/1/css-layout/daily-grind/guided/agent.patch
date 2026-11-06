@@ -1,0 +1,462 @@
+diff --git a/index.html b/index.html
+index 7400c85..6942718 100644
+--- a/index.html
++++ b/index.html
+@@ -5,159 +5,291 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer reset, theme, base, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
++    @layer theme {
++      :root {
++        --primary: #4e342e;
++        --primary-hover: #3e2723;
++        --secondary: #d7ccc8;
++        --accent: #ffab40;
++        --text: #3e2723;
++        --light: #fafafa;
++        --surface: #ffffff;
++        --shadow-card: 0 2px 5px rgb(0 0 0 / 0.1);
++      }
+     }
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++    @layer reset {
++      html,
++      body,
++      nav,
++      ul,
++      li,
++      header,
++      main,
++      section,
++      article,
++      footer,
++      div,
++      h1,
++      h2,
++      h3,
++      p,
++      a {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++    @layer base {
++      body {
++        display: flex;
++        flex-direction: column;
++        min-block-size: 100dvh;
++        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        line-height: 1.6;
++        color: var(--text);
++        background-color: var(--light);
++      }
+ 
+-    nav::after {
+-      content: "";
+-      display: table;
+-      clear: both;
++      img,
++      picture,
++      video,
++      svg {
++        display: block;
++        max-inline-size: 100%;
++      }
+     }
+ 
+-    .logo {
+-      float: left;
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++    @layer components {
++      /* Navigation */
++      nav {
++        display: flex;
++        flex-wrap: wrap;
++        align-items: safe center;
++        justify-content: space-between;
++        gap: 1rem;
++        background: var(--primary);
++        color: var(--surface);
++        padding-block: 1rem;
++        padding-inline: 5%;
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 1000;
++      }
+ 
+-    nav ul {
+-      float: right;
+-      list-style: none;
+-    }
++      .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++        inline-size: max-content;
++      }
+ 
+-    nav ul li {
+-      display: inline-block;
+-      margin-left: 20px;
+-    }
++      nav ul {
++        display: flex;
++        flex-wrap: wrap;
++        flex-wrap: balance;
++        align-items: safe center;
++        gap: 1.25rem;
++        margin-inline-start: auto;
++        list-style: none;
++      }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++      nav a {
++        color: inherit;
++        text-decoration: none;
++        font-size: 0.9rem;
++        transition: color 0.3s;
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        &:hover {
++          color: var(--accent);
++        }
++      }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++      .logout-link {
++        border: 1px solid var(--accent);
++        padding-block: 0.3125rem;
++        padding-inline: 0.75rem;
++        border-radius: 0.25rem;
++      }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      color: white;
+-      text-align: center;
+-      padding: 15vh 20px 0;
+-    }
++      /* Hero Section */
++      .hero {
++        display: grid;
++        place-content: safe center;
++        justify-items: center;
++        gap: 1rem;
++        min-block-size: 60dvh;
++        background: linear-gradient(rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.5)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        color: var(--surface);
++        text-align: center;
++        padding-block: 4rem;
++        padding-inline: 1.25rem;
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++      .hero h1 {
++        font-size: clamp(2rem, 1.25rem + 3vw, 3.25rem);
++        line-height: 1.2;
++      }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++      .hero p {
++        max-inline-size: 60ch;
++        font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
++      }
+ 
+-    .grid {
+-      margin: 20px -10px 0;
+-    }
++      /* Content Sections */
++      .container {
++        flex: 1;
++        inline-size: min(1100px, 100%);
++        margin-block: 2.5rem;
++        margin-inline: auto;
++        padding-inline: 1.25rem;
++      }
+ 
+-    .grid::after {
+-      content: "";
+-      display: table;
+-      clear: both;
+-    }
++      .container section > h2 {
++        text-align: center;
++        font-size: clamp(1.5rem, 1.2rem + 1.5vw, 2rem);
++      }
+ 
+-    .card {
+-      float: left;
+-      width: calc(33.333% - 20px);
+-      margin: 0 10px 20px;
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++      /* Seasonal Favorites Card Grid */
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
++        grid-template-rows: auto auto 1fr auto;
++        grid-auto-rows: auto auto 1fr auto;
++        column-gap: 1.25rem;
++        row-gap: 0.75rem;
++        margin-block-start: 1.5rem;
++      }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++      .card {
++        container: card / inline-size;
++        grid-row: span 4;
++        display: grid;
++        /* Same-cascade fallback: ignored when subgrid is supported. */
++        grid-template-rows: auto auto 1fr auto;
++        grid-template-rows: subgrid;
++        align-items: start;
++        background: var(--surface);
++        padding: 1.5rem;
++        border-radius: 0.5rem;
++        box-shadow: var(--shadow-card);
++        text-align: center;
++      }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++      .card > :is(img, picture, video, svg, .media) {
++        grid-row: 1;
++      }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++      .card > :is(img, video) {
++        inline-size: 100%;
++        block-size: auto;
++        aspect-ratio: 16 / 9;
++        object-fit: cover;
++        border-radius: 0.375rem;
++      }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++      .card > :is(h1, h2, h3, h4, h5, h6, hgroup, header) {
++        grid-row: 2;
++        color: var(--primary);
++        font-size: clamp(1.15rem, 4cqi, 1.35rem);
++      }
++
++      .card > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer) {
++        grid-row: 3;
++      }
++
++      .card > footer {
++        grid-row: 4;
++        align-self: end;
++        padding-block-start: 0.5rem;
++      }
++
++      /* Adapt card layout when media is present and container has sufficient space */
++      .card:has(> :is(img, picture, video, svg, .media)) {
++        grid-template-columns: minmax(120px, 35%) 1fr;
++        column-gap: 1.25rem;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > * {
++        grid-column: 1 / -1;
++      }
++
++      @container card (inline-size >= 24rem) {
++        .card:has(> :is(img, picture, video, svg, .media)) > :is(img, picture, video, svg, .media) {
++          grid-column: 1;
++          grid-row: 1 / -1;
++          block-size: 100%;
++        }
++
++        .card:has(> :is(img, picture, video, svg, .media)) > :not(img, picture, video, svg, .media) {
++          grid-column: 2;
++          text-align: start;
++        }
++      }
++
++      .btn {
++        display: inline-block;
++        inline-size: fit-content;
++        background: var(--primary);
++        color: var(--surface);
++        padding-block: 0.625rem;
++        padding-inline: 1.25rem;
++        text-decoration: none;
++        border-radius: 0.3125rem;
++        transition: background-color 0.3s;
++
++        &:hover {
++          background-color: var(--primary-hover);
++        }
++      }
++
++      /* Site Footer */
++      body > footer {
++        background: var(--secondary);
++        text-align: center;
++        padding-block: 2.5rem;
++        padding-inline: 1.25rem;
++        margin-block-start: auto;
++      }
++
++      .footer-links {
++        display: flex;
++        flex-wrap: wrap;
++        flex-wrap: balance;
++        justify-content: safe center;
++        align-items: safe center;
++        gap: 0.5rem;
++        margin-block-end: 1.25rem;
++      }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++      .footer-links a {
++        margin-inline: 0.375rem;
++        color: var(--text);
++        text-decoration: none;
++        font-size: 0.85rem;
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer utilities {
++      .visually-hidden {
++        position: absolute;
++        inline-size: 1px;
++        block-size: 1px;
++        padding: 0;
++        margin: -1px;
++        overflow: clip;
++        clip-path: inset(50%);
++        white-space: nowrap;
++        border: 0;
++      }
+     }
+   </style>
+ </head>
+@@ -183,23 +315,29 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
++          </footer>
++        </article>
++        <article class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++        <article class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>

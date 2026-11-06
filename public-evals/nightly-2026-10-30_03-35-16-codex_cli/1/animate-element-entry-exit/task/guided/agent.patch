@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,68 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promos {
++      margin-top: 40px;
++    }
++
++    .promo-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .promo-controls .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .promo-controls .btn:disabled {
++      opacity: 0.5;
++      cursor: default;
++    }
++
++    #domContainer .card {
++      opacity: 1;
++      transform: scale(1);
++      transition: opacity 280ms ease, transform 280ms ease, display 280ms;
++      transition-behavior: allow-discrete;
++    }
++
++    #domContainer .card[hidden] {
++      display: none;
++    }
++
++    #domContainer .card:is([hidden], [data-closing]) {
++      opacity: 0;
++      transform: scale(0.94);
++    }
++
++    @starting-style {
++      #domContainer .card {
++        opacity: 0;
++        transform: scale(0.94);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #domContainer .card {
++        transition-duration: 100ms;
++      }
++
++      #domContainer .card:is([hidden], [data-closing]) {
++        transform: none;
++      }
++
++      @starting-style {
++        #domContainer .card {
++          transform: none;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +254,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="promos" aria-labelledby="promoHeading">
++      <h2 id="promoHeading">Special Promos</h2>
++      <p>A little extra to brighten your next coffee break.</p>
++      <div class="promo-controls">
++        <button type="button" class="btn" id="addBtn" aria-controls="domContainer">Add Promo</button>
++        <button type="button" class="btn" id="removeBtn" aria-controls="domContainer">Remove Last Promo</button>
++        <button type="button" class="btn" id="toggleBtn" aria-controls="toggleCard" aria-expanded="true">Hide Default Promo</button>
++      </div>
++      <div id="domContainer" class="grid" aria-live="polite" aria-relevant="additions removals">
++        <div id="toggleCard" class="card">
++          <h3>Your Morning, Upgraded</h3>
++          <p>Enjoy a complimentary size upgrade with your next latte.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +281,89 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const domContainer = document.getElementById('domContainer');
++    const addBtn = document.getElementById('addBtn');
++    const removeBtn = document.getElementById('removeBtn');
++    const toggleCard = document.getElementById('toggleCard');
++    const toggleBtn = document.getElementById('toggleBtn');
++    const pendingExits = new WeakMap();
++    let promoNumber = 1;
++
++    function updateControls() {
++      removeBtn.disabled = !domContainer.querySelector('.card:not([data-removing])');
++      toggleBtn.disabled = !toggleCard.isConnected || toggleCard.hasAttribute('data-removing');
++    }
++
++    function showCard(card) {
++      pendingExits.delete(card);
++      card.removeAttribute('data-closing');
++      card.hidden = false;
++      // Older browsers without @starting-style still get an entry animation.
++      if (!('CSSStartingStyleRule' in window)) {
++        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++        card.animate([
++          { opacity: 0, transform: reducedMotion ? 'none' : 'scale(0.94)' },
++          { opacity: 1, transform: 'scale(1)' }
++        ], { duration: reducedMotion ? 100 : 280, easing: 'ease' });
++      }
++    }
++
++    async function hideCard(card) {
++      const exit = {};
++      pendingExits.set(card, exit);
++      // Stage the exit before setting hidden so browsers without discrete
++      // display transitions also finish the fade and scale before hiding.
++      card.setAttribute('data-closing', '');
++      const animations = card.getAnimations();
++      let timeout;
++      await Promise.race([
++        Promise.allSettled(animations.map(animation => animation.finished)),
++        new Promise(resolve => { timeout = setTimeout(resolve, 1000); })
++      ]);
++      clearTimeout(timeout);
++      if (pendingExits.get(card) === exit) {
++        pendingExits.delete(card);
++        card.hidden = true;
++        card.removeAttribute('data-closing');
++      }
++    }
++
++    addBtn.addEventListener('click', () => {
++      const card = document.createElement('div');
++      card.className = 'card';
++      const heading = document.createElement('h3');
++      heading.textContent = `Coffee Break Special ${promoNumber++}`;
++      const description = document.createElement('p');
++      description.textContent = 'Pair your favorite coffee with a fresh pastry for a delicious afternoon treat.';
++      card.append(heading, description);
++      domContainer.append(card);
++      showCard(card);
++      updateControls();
++    });
++
++    removeBtn.addEventListener('click', async () => {
++      const cards = domContainer.querySelectorAll('.card:not([data-removing])');
++      const card = cards[cards.length - 1];
++      if (!card) return;
++      card.setAttribute('data-removing', '');
++      updateControls();
++      await hideCard(card);
++      card.remove();
++      updateControls();
++    });
++
++    toggleBtn.addEventListener('click', () => {
++      if (!toggleCard.isConnected || toggleCard.hasAttribute('data-removing')) return;
++      const show = toggleCard.hidden || toggleCard.hasAttribute('data-closing');
++      if (show) showCard(toggleCard);
++      else hideCard(toggleCard);
++      toggleBtn.setAttribute('aria-expanded', String(show));
++      toggleBtn.textContent = show ? 'Hide Default Promo' : 'Show Default Promo';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

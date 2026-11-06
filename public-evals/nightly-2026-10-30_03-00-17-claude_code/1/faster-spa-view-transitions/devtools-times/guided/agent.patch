@@ -1,0 +1,175 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..b02d3b5 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,8 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++// Identifies this page's view in the client-side view cache (see script below).
++const viewKey = Astro.url.pathname.replace(/\/+$/, "") + Astro.url.search;
+ ---
+ 
+ <!doctype html>
+@@ -45,11 +47,17 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-spa-view-host transition:persist="spa-view-host">
++          <div class="spa-view" data-spa-view={viewKey} tabindex="-1">
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import { initViewCache } from "../scripts/view-cache";
++      initViewCache();
++    </script>
+   </body>
+ </html>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..3604fcd
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,108 @@
++import type {
++  TransitionBeforePreparationEvent,
++  TransitionBeforeSwapEvent,
++} from "astro:transitions/client";
++
++/*
++ * Keeps previously visited views alive across ClientRouter navigations.
++ *
++ * Every page renders its content into a single `[data-spa-view]` element inside
++ * the `[data-spa-view-host]` container. The host is `transition:persist`ed, so it
++ * survives the body swap. Instead of discarding the outgoing view, we hide it with
++ * `content-visibility: hidden` (see global.css): the browser skips its layout and
++ * paint but keeps its rendering state, DOM and island state, so navigating back
++ * to it restores almost instantly instead of rebuilding it from fresh HTML.
++ */
++
++// Cached views cost memory. The number of article/category routes is open-ended,
++// so we keep only the most recently used views and evict the rest.
++const MAX_CACHED_VIEWS = 6;
++
++const HOST_SELECTOR = "[data-spa-view-host]";
++const VIEW_SELECTOR = "[data-spa-view]";
++
++// Least recently used first.
++let recentViews: HTMLElement[] = [];
++let isFormSubmission = false;
++
++function setActive(view: HTMLElement, active: boolean) {
++  view.toggleAttribute("data-inactive", !active);
++  view.inert = !active;
++  if (active) {
++    view.removeAttribute("aria-hidden");
++  } else {
++    view.setAttribute("aria-hidden", "true");
++  }
++}
++
++function markRecentlyUsed(view: HTMLElement) {
++  recentViews = recentViews.filter((v) => v !== view && v.isConnected);
++  recentViews.push(view);
++  while (recentViews.length > MAX_CACHED_VIEWS) {
++    // Removing the view lets Astro unmount its islands after the swap.
++    recentViews.shift()!.remove();
++  }
++}
++
++// Media parsed into the fetched (inert) document never get a working media stack.
++// Astro recreates them for the elements it swaps in; do the same for our views.
++function reifyMediaElements(root: HTMLElement) {
++  for (const media of root.querySelectorAll("video, audio")) {
++    const fresh = document.createElement(media.localName);
++    for (const attr of media.attributes) fresh.setAttribute(attr.name, attr.value);
++    fresh.innerHTML = media.innerHTML;
++    if (fresh instanceof HTMLMediaElement && fresh.hasAttribute("muted")) fresh.muted = true;
++    media.replaceWith(fresh);
++  }
++}
++
++function onBeforePreparation(event: TransitionBeforePreparationEvent) {
++  isFormSubmission = event.formData !== undefined;
++}
++
++function onBeforeSwap(event: TransitionBeforeSwapEvent) {
++  const host = document.querySelector<HTMLElement>(HOST_SELECTOR);
++  const incoming = event.newDocument.querySelector<HTMLElement>(`${HOST_SELECTOR} > ${VIEW_SELECTOR}`);
++  if (!host || !incoming) return; // Not a cache-aware page: use the default swap.
++
++  const key = incoming.dataset.spaView;
++  const views = [...host.querySelectorAll<HTMLElement>(`:scope > ${VIEW_SELECTOR}`)];
++  const current = views.find((v) => !v.hasAttribute("data-inactive"));
++  const cached = views.find((v) => v.dataset.spaView === key);
++  // Form responses and re-navigating to the current page always render fresh.
++  const reuse = cached && cached !== current && !isFormSubmission;
++
++  const defaultSwap = event.swap;
++  event.swap = () => {
++    // Swaps head and body. The live host is persisted into the new body,
++    // replacing the incoming host (which still holds the incoming view).
++    defaultSwap();
++
++    let target: HTMLElement;
++    if (reuse) {
++      target = cached;
++    } else {
++      cached?.remove();
++      host.append(incoming);
++      reifyMediaElements(incoming);
++      target = incoming;
++    }
++
++    for (const view of host.querySelectorAll<HTMLElement>(`:scope > ${VIEW_SELECTOR}`)) {
++      setActive(view, view === target);
++    }
++    markRecentlyUsed(target);
++    // The previously focused element is now inert; move focus into the new view.
++    target.focus({ preventScroll: true });
++  };
++}
++
++export function initViewCache() {
++  const initial = document.querySelector<HTMLElement>(`${HOST_SELECTOR} > ${VIEW_SELECTOR}`);
++  if (initial) markRecentlyUsed(initial);
++
++  document.addEventListener("astro:before-preparation", (e) =>
++    onBeforePreparation(e as TransitionBeforePreparationEvent),
++  );
++  document.addEventListener("astro:before-swap", (e) => onBeforeSwap(e as TransitionBeforeSwapEvent));
++}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..a6443c0 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,21 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Cached SPA views: keep inactive views in the DOM but skip their layout and
++   paint, so returning to them reuses the retained rendering state. */
++.spa-view:focus {
++  outline: none;
++}
++
++.spa-view[data-inactive] {
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0 0 auto;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view[data-inactive] {
++    display: none;
++  }
++}

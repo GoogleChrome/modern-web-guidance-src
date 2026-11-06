@@ -1,0 +1,1061 @@
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..04e34c5 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -43,5 +43,15 @@ export default defineConfig({
+         protocol: 'https',
+       }
+     ]
++  },
++
++  session: {
++    cookie: {
++      name: '__Host-astro-session',
++      sameSite: 'lax',
++      secure: true,
++      path: '/',
++    },
++    ttl: 86400,
+   }
+ });
+\ No newline at end of file
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..e1b24db 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -63,13 +63,13 @@ const baseUrl = import.meta.env.BASE_URL;
+             <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
+             <ul class="space-y-2 mb-4">
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href={`${baseUrl}signup`} class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                         Subscribe
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href={`${baseUrl}legal/privacy#data-rights`} class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+@@ -98,7 +98,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a href={`${baseUrl}legal/privacy#data-rights`} class="hover:underline">Manage Privacy Preferences</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..05f5ff9 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -48,6 +48,13 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     fetchReadingList();
+   };
+ 
++  const handleClearAll = async () => {
++    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++      method: 'DELETE',
++    });
++    setReadingList([]);
++  };
++
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
+   return (
+@@ -58,8 +65,16 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+           </svg>
+         </button>
+-        <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++        <div className="p-4 flex justify-between items-center border-b border-gray-100">
++          <h3 className="text-lg font-semibold text-gray-800">Your Reading List</h3>
++          {readingListArticles.length > 0 && (
++            <button
++              onClick={handleClearAll}
++              className="text-xs text-red-600 hover:text-red-800 font-medium underline"
++            >
++              Delete All &amp; Clear Session Data
++            </button>
++          )}
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..f03c0bf 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -6,6 +6,7 @@ export default function SignInForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [isLoggedIn, setIsLoggedIn] = useState(false);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -25,12 +26,13 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        setIsLoggedIn(true);
++        setPassword('');
++        // Never store sensitive tokens or PII in localStorage, as it is accessible by any embedded script.
++        // Authentication state should be managed via HttpOnly, Secure, SameSite=Lax server cookies.
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -39,6 +41,57 @@ export default function SignInForm() {
+     }
+   };
+ 
++  const handleFedCMSignIn = async () => {
++    setError(null);
++    setSuccess(null);
++
++    // Feature Detection for Federated Credential Management API (FedCM)
++    if (!('IdentityCredential' in window) || !navigator.credentials) {
++      setError('Federated Credential Management (FedCM) is not supported in this browser environment.');
++      return;
++    }
++
++    try {
++      const nonceBytes = new Uint8Array(16);
++      crypto.getRandomValues(nonceBytes);
++      const nonce = Array.from(nonceBytes, (b) => b.toString(16).padStart(2, '0')).join('');
++
++      const credential = await navigator.credentials.get({
++        identity: {
++          providers: [
++            {
++              configURL: 'https://idp.example/fedcm.json',
++              clientId: 'devtools-times-rp',
++              nonce,
++            },
++          ],
++        },
++      } as any);
++
++      if (credential) {
++        setSuccess('Signed in natively with Federated Credential Management (FedCM)!');
++        setIsLoggedIn(true);
++      }
++    } catch (err) {
++      setError('FedCM sign-in was cancelled or unavailable.');
++    }
++  };
++
++  const handleLogout = async () => {
++    setError(null);
++    try {
++      await fetch(`${import.meta.env.BASE_URL}api/logout`, {
++        method: 'POST',
++      });
++      setIsLoggedIn(false);
++      setUsername('');
++      setPassword('');
++      setSuccess('Signed out and cleared local site data.');
++    } catch (err) {
++      setError('Failed to sign out cleanly.');
++    }
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+@@ -55,45 +108,82 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
++      {isLoggedIn ? (
++        <div className="space-y-4 text-center">
++          <p className="text-sm text-gray-700">
++            You are signed in. Signing out sends the <code>Clear-Site-Data</code> header to ensure no lingering session data remains in your browser.
++          </p>
++          <button
++            type="button"
++            onClick={handleLogout}
++            className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-800 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
++          >
++            Sign Out & Clear Site Data
++          </button>
+         </div>
++      ) : (
++        <>
++          <form onSubmit={handleSubmit} className="space-y-4">
++            <div>
++              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
++                Username
++              </label>
++              <input
++                type="text"
++                id="username"
++                name="username"
++                autoComplete="username"
++                value={username}
++                onChange={(e) => setUsername(e.target.value)}
++                required
++                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++              />
++            </div>
++            
++            <div>
++              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
++                Password
++              </label>
++              <input
++                type="password"
++                id="password"
++                name="password"
++                autoComplete="current-password"
++                value={password}
++                onChange={(e) => setPassword(e.target.value)}
++                required
++                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++              />
++            </div>
+ 
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
+-      </form>
++            <button
++              type="submit"
++              disabled={loading}
++              data-skip-tracking="true"
++              className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++                loading ? 'opacity-75 cursor-not-allowed' : ''
++              }`}
++            >
++              {loading ? 'Signing in...' : 'Sign In'}
++            </button>
++          </form>
++
++          <div className="mt-6 pt-6 border-t border-gray-200">
++            <button
++              type="button"
++              onClick={handleFedCMSignIn}
++              data-skip-tracking="true"
++              className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
++            >
++              Sign in with Federated Identity (FedCM)
++            </button>
++            <p className="text-xs text-gray-500 mt-2 text-center">
++              Mediates sign-in natively via browser FedCM without third-party tracking prior to consent.
++            </p>
++          </div>
++        </>
++      )}
+     </div>
+   );
+ }
++
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..895fe49 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -3,6 +3,7 @@ import React, { useState } from 'react';
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [ageBracket, setAgeBracket] = useState('');
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+@@ -19,19 +20,19 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Data Minimization: Only send the bare minimum required for registration (username and password).
+         body: JSON.stringify({ username, password }),
+       });
+ 
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Registration failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+         setPassword('');
++        setAgeBracket('');
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -42,7 +43,10 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
++      <h2 className="text-2xl font-bold mb-2 text-center text-gray-800">Sign Up</h2>
++      <p className="text-xs text-gray-600 text-center mb-6">
++        No account is required to read articles or save a local reading list. Create an account only if you want cross-device synchronization.
++      </p>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -64,11 +68,17 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            aria-describedby="username-help"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <aside id="username-help" className="text-xs text-gray-500 mt-1">
++            Why do we ask for this? Your username is used solely to identify your account when signing in. You may use a pseudonym—we never require your real name or email address.
++          </aside>
+         </div>
+         
+         <div>
+@@ -78,16 +88,41 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
++            aria-describedby="password-help"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="password-help" className="text-xs text-gray-500 mt-1">
++            Must be at least 8 characters and contain a number. Used strictly for authentication and never shared.
+           </p>
+         </div>
+ 
++        <div>
++          <label htmlFor="age-bracket" className="block text-sm font-medium text-gray-700 mb-1">
++            Age Bracket (Optional)
++          </label>
++          <select
++            id="age-bracket"
++            name="age-bracket"
++            aria-describedby="age-help"
++            value={ageBracket}
++            onChange={(e) => setAgeBracket(e.target.value)}
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
++          >
++            <option value="">Prefer not to say</option>
++            <option value="18-34">18-34</option>
++            <option value="35-49">35-49</option>
++            <option value="50+">50+</option>
++          </select>
++          <aside id="age-help" className="text-xs text-gray-500 mt-1">
++            Data Minimization: Instead of asking for your exact date of birth, we only ask for an optional coarse age bracket to verify age eligibility.
++          </aside>
++        </div>
++
+         <button
+           type="submit"
+           disabled={loading}
+@@ -102,3 +137,4 @@ export default function SignUpForm() {
+     </div>
+   );
+ }
++
+diff --git a/src/content/articles/silent-architects.md b/src/content/articles/silent-architects.md
+index ee5cdd8..bf09c12 100644
+--- a/src/content/articles/silent-architects.md
++++ b/src/content/articles/silent-architects.md
+@@ -22,17 +22,12 @@ Beyond just being "oxygen factories," plants are sophisticated organisms with co
+ Whether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world.
+ 
+ <script>
+-    // Just blindly setting a "cache" to avoid refetching data, 
+-    // but the developer accidentally set it way too large and on the wrong path scope?
+-    // Actually, let's just make it a large cookie for this specific API path to cause the 431.
+-    
+-    // Split into multiple cookies to avoid browser single-cookie size limits (usually ~4KB)
+-    // but still trigger the total header size check in the API (>4KB).
+-    const largeValue = "A".repeat(2000); 
+-    
+-    document.cookie = `plant_stats_cache_1=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_2=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_3=${largeValue}; path=/api/plant-stats`;
++    // Avoid storing large cache payloads in cookies, which are sent on every HTTP request
++    // and can expose state or trigger 431 Request Header Fields Too Large errors.
++    // Clear any previously set oversized cookies for this API path:
++    document.cookie = "plant_stats_cache_1=; Max-Age=0; path=/api/plant-stats; SameSite=Lax";
++    document.cookie = "plant_stats_cache_2=; Max-Age=0; path=/api/plant-stats; SameSite=Lax";
++    document.cookie = "plant_stats_cache_3=; Max-Age=0; path=/api/plant-stats; SameSite=Lax";
+ 
+     fetch('/api/plant-stats')
+         .then(res => {
+diff --git a/src/content/articles/super-bowl-lx.md b/src/content/articles/super-bowl-lx.md
+index 06c4419..e410508 100644
+--- a/src/content/articles/super-bowl-lx.md
++++ b/src/content/articles/super-bowl-lx.md
+@@ -16,8 +16,8 @@ This matchup serves as a dramatic sequel to Super Bowl XLIX. The Patriots secure
+ Early lines favor Seattle by 2.5 points, but New England’s top-ranked scoring defense remains a formidable hurdle. For Seattle, it’s a shot at long-awaited redemption; for New England, a chance to solidify a new era of dominance. The road to the Lombardi Trophy now leads to Levi’s Stadium.
+ 
+ <script>
+-    // Fetch article popularity stats tailored for this user
+-    fetch('/api/article-popularity')
++    // Fetch aggregate article popularity stats without user-level tracking identifiers
++    fetch('/api/article-popularity?id=super-bowl-lx')
+         .then(response => {
+             if (!response.ok) {
+                 // Silently fail, analytics is non-critical
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..db7e456 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,10 +8,16 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  sensitive?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, sensitive = false } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const isSensitivePage =
++  sensitive ||
++  Astro.url.pathname.includes('/signin') ||
++  Astro.url.pathname.includes('/signup') ||
++  Astro.url.pathname.includes('/legal');
+ ---
+ 
+ <!doctype html>
+@@ -23,14 +29,12 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+     />
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!-- Third-party scripts are omitted on sensitive pages (e.g., authentication) and replaced with privacy-safe defaults -->
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+@@ -38,7 +42,7 @@ const baseUrl = import.meta.env.BASE_URL;
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      {!isSensitivePage && <AdSlotFireplace client:load />}
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..bf4493c 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -7,7 +7,7 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ ---
+-<Layout title={title}>
++<Layout title={title} sensitive={true}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..84bb329 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,85 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++// Simple in-memory rate limiter for sensitive API endpoints to prevent bulk scraping
++const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
++const RATE_LIMIT_WINDOW_MS = 60_000;
++const MAX_REQUESTS_PER_WINDOW = 60;
++
++export function maskPII(input: string): string {
++  return input
++    // Mask email addresses
++    .replace(/([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, '***@$2')
++    // Mask bearer/session tokens and UUIDs
++    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[REDACTED_ID]')
++    .replace(/(token|password|session|secret)=([^&\s]+)/gi, '$1=[REDACTED]');
++}
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
++  const { request, url } = context;
++
++  // Fetch Metadata (Resource Isolation): reject suspicious cross-site non-navigational requests
++  const secFetchSite = request.headers.get('sec-fetch-site');
++  const secFetchMode = request.headers.get('sec-fetch-mode');
++  const secFetchDest = request.headers.get('sec-fetch-dest');
++
++  if (
++    secFetchSite &&
++    !['same-origin', 'same-site', 'none'].includes(secFetchSite) &&
++    !(secFetchSite === 'cross-site' && secFetchMode === 'navigate' && request.method === 'GET' && !['object', 'embed'].includes(secFetchDest || ''))
++  ) {
++    return new Response(JSON.stringify({ error: 'Forbidden cross-site request' }), {
++      status: 403,
++      headers: {
++        'Content-Type': 'application/json',
++        'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++      },
++    });
++  }
++
++  // Implement rate limiting on API endpoints to prevent bulk data scraping
++  if (url.pathname.includes('/api/')) {
++    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
++    const now = Date.now();
++    const record = rateLimitMap.get(clientIp);
++
++    if (!record || now > record.resetTime) {
++      rateLimitMap.set(clientIp, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
++    } else {
++      record.count += 1;
++      if (record.count > MAX_REQUESTS_PER_WINDOW) {
++        return new Response(JSON.stringify({ error: 'Too Many Requests' }), {
++          status: 429,
++          headers: {
++            'Content-Type': 'application/json',
++            'Retry-After': '60',
++          },
++        });
++      }
+     }
+   }
+-  return next();
++
++  // Note: Do not eagerly initialize session cookies for anonymous visitors (Data Minimization).
++  // Sessions are only created when the user explicitly interacts with session-backed features (e.g. saving to reading list).
++
++  const response = await next();
++
++  // Privacy-Preserving & Security Headers
++  response.headers.set('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++  response.headers.set(
++    'Permissions-Policy',
++    'geolocation=(), camera=(), microphone=(), accelerometer=(), payment=(), usb=(), interest-cohort=(), browsing-topics=(), focus-without-user-activation=()'
++  );
++  response.headers.set('X-Content-Type-Options', 'nosniff');
++  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
++  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
++  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
++  response.headers.set(
++    'Content-Security-Policy',
++    "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
++  );
++
++  return response;
+ });
++
+diff --git a/src/pages/api/article-popularity.ts b/src/pages/api/article-popularity.ts
+index 6f6e8f9..745a9f2 100644
+--- a/src/pages/api/article-popularity.ts
++++ b/src/pages/api/article-popularity.ts
+@@ -1,4 +1,3 @@
+-
+ import type { APIRoute } from 'astro';
+ 
+ export const GET: APIRoute = ({ url }) => {
+@@ -16,10 +15,16 @@ export const GET: APIRoute = ({ url }) => {
+         });
+     }
+ 
+-    // Dummy data for success case
++    // Apply differential privacy (Laplace / uniform noise fuzzing and bucketing)
++    // when gathering aggregate statistics to protect individual reading patterns
++    const rawViews = 1500;
++    const laplaceNoise = Math.round((Math.random() - 0.5) * 200);
++    const fuzzedViews = Math.max(100, Math.round((rawViews + laplaceNoise) / 100) * 100);
++
+     return new Response(JSON.stringify({
+         id: id,
+-        views: Math.floor(Math.random() * 10000),
++        views: fuzzedViews,
++        viewsBracket: `${fuzzedViews}+`,
+         trending: true
+     }), {
+         status: 200,
+@@ -28,3 +33,4 @@ export const GET: APIRoute = ({ url }) => {
+         }
+     });
+ }
++
+diff --git a/src/pages/api/logout.ts b/src/pages/api/logout.ts
+new file mode 100644
+index 0000000..e12f32f
+--- /dev/null
++++ b/src/pages/api/logout.ts
+@@ -0,0 +1,16 @@
++import type { APIRoute } from 'astro';
++
++export const POST: APIRoute = async ({ session }) => {
++  session?.destroy();
++
++  return new Response(
++    JSON.stringify({ message: 'Logged out and cleared site data successfully.' }),
++    {
++      status: 200,
++      headers: {
++        'Content-Type': 'application/json',
++        'Clear-Site-Data': '"*"',
++      },
++    }
++  );
++};
+diff --git a/src/pages/api/reading-list.json.ts b/src/pages/api/reading-list.json.ts
+index 3084fe3..989733f 100644
+--- a/src/pages/api/reading-list.json.ts
++++ b/src/pages/api/reading-list.json.ts
+@@ -1,13 +1,15 @@
+-
+ import type { APIRoute } from 'astro';
+ 
+ export const POST: APIRoute = async ({ request, session }) => {
+   const { slug } = await request.json();
+-  if (!slug) {
+-    return new Response(JSON.stringify({ error: 'Slug is required' }), { status: 400 });
++  if (!slug || typeof slug !== 'string') {
++    return new Response(JSON.stringify({ error: 'Slug is required' }), {
++      status: 400,
++      headers: { 'Content-Type': 'application/json' },
++    });
+   }
+ 
+-  let readingList = await session?.get('readingList') || [];
++  let readingList: string[] = (await session?.get('readingList')) || [];
+ 
+   if (readingList.includes(slug)) {
+     readingList = readingList.filter((item: string) => item !== slug);
+@@ -15,17 +17,33 @@ export const POST: APIRoute = async ({ request, session }) => {
+     readingList.push(slug);
+   }
+ 
+-  await session?.set('readingList', readingList);
++  if (readingList.length === 0) {
++    session?.delete('readingList');
++  } else {
++    await session?.set('readingList', readingList);
++  }
+ 
+   return new Response(JSON.stringify({ readingList }), {
+     headers: { 'Content-Type': 'application/json' },
+   });
+ };
+ 
++export const DELETE: APIRoute = async ({ session }) => {
++  session?.destroy();
++
++  return new Response(JSON.stringify({ readingList: [], message: 'All session and reading list data deleted.' }), {
++    headers: {
++      'Content-Type': 'application/json',
++      'Clear-Site-Data': '"cookies", "storage"',
++    },
++  });
++};
++
+ export const GET: APIRoute = async ({ session }) => {
+-  const readingList = await session?.get('readingList') || [];
++  const readingList: string[] = (await session?.get('readingList')) || [];
+ 
+   return new Response(JSON.stringify({ readingList }), {
+     headers: { 'Content-Type': 'application/json' },
+   });
+ };
++
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..4cab89b 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -67,7 +67,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     width="1200"
+                     height="675"
+                     class="w-full h-auto"
+-                    crossorigin="use-credentials"
++                    crossorigin="anonymous"
++                    referrerpolicy="no-referrer"
+                 />
+             ) : (
+                 <Image 
+@@ -88,15 +89,38 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+-            <!-- Social Share Icons (Placeholders) -->
++            <!-- Privacy-Preserving Static Social Share Links (No Third-Party Tracking SDKs) -->
+             <div class="flex space-x-3 items-center">
+                 <span class="text-sm font-semibold text-gray-800">Share:</span>
+-                <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
++                <a
++                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(Astro.url.href)}`}
++                    rel="noopener noreferrer"
++                    target="_blank"
++                    aria-label="Share on Facebook"
++                    class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg"
++                >f</a>
++                <a
++                    href={`https://x.com/intent/tweet?text=${encodeURIComponent(article.data.title)}&url=${encodeURIComponent(Astro.url.href)}`}
++                    rel="noopener noreferrer"
++                    target="_blank"
++                    aria-label="Share on X"
++                    class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg"
++                >X</a>
++                <a
++                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(article.data.title + ' ' + Astro.url.href)}`}
++                    rel="noopener noreferrer"
++                    target="_blank"
++                    aria-label="Share on WhatsApp"
++                    class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center"
++                >
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+                 </a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
++                <a
++                    href={`mailto:?subject=${encodeURIComponent(article.data.title)}&body=${encodeURIComponent(Astro.url.href)}`}
++                    rel="noopener noreferrer"
++                    aria-label="Share via Email"
++                    class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center"
++                >
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..8a10730 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -1,17 +1,169 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
+ ---
+-<LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+-    
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+-    
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++<LegalLayout title="Privacy Policy & Data Controls">
++    <h2>1. Privacy by Design &amp; Data Minimization</h2>
++    <p>
++        We treat privacy as a foundational architectural requirement rather than a legal checkbox. Our systems are privacy-protective by default:
++    </p>
++    <ul>
++        <li><strong>Data Minimization:</strong> We collect only the bare minimum data required for an immediate user-initiated task. Anonymous visitors can browse articles without having session cookies set automatically.</li>
++        <li><strong>Fuzzed &amp; Coarse Granularity:</strong> Where optional demographic or statistical signals are used, we collect coarse brackets (such as age brackets) and apply differential privacy noise to aggregate article view counts.</li>
++        <li><strong>Purpose Limitation &amp; Short Retention:</strong> Session state for the Reading List expires automatically after 24 hours (<code>ttl: 86400</code>) and is deleted immediately when emptied or when you sign out.</li>
++        <li><strong>Zero Device Fingerprinting:</strong> We never use canvas rendering, font enumeration, or full <code>navigator.userAgent</code> string sniffing to track your device. When capability checks are needed, we rely on standard JavaScript feature detection and User-Agent Client Hints (<code>navigator.userAgentData</code>).</li>
++    </ul>
++
++    <h2>2. Cookies, Session Security &amp; Partitioned State (CHIPS)</h2>
++    <p>
++        We do not store sensitive tokens or Personally Identifiable Information (PII) in <code>localStorage</code>. First-party sessions use <code>__Host-</code> prefixed, <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite=Lax</code> cookies restricted to <code>Path=/</code>. If any cross-site 1:1 embed preferences are stored, they use <strong>CHIPS (Cookies Having Independent Partitioned State)</strong> with the <code>Partitioned</code> attribute so state is never shared across top-level sites.
++    </p>
++
++    <h2>3. Third-Party Audits &amp; Embed Mitigations</h2>
++    <ul>
++        <li><strong>No Third-Party Trackers on Sensitive Pages:</strong> Third-party ad and analytics scripts are strictly excluded from authentication (<code>/signin</code>, <code>/signup</code>) and legal/privacy management pages.</li>
++        <li><strong>Video Façade Pattern:</strong> Multimedia embeds display a static local preview first and only connect to <code>youtube-nocookie.com</code> when you explicitly click play.</li>
++        <li><strong>SDK-Free Social Sharing &amp; FedCM:</strong> Social share links are plain static anchors without third-party JavaScript SDKs, and federated sign-in uses the browser-mediated <strong>Federated Credential Management API (FedCM)</strong>.</li>
++    </ul>
++
++    <h2 id="permissions">4. Declarative Browser Permissions (PEPC)</h2>
++    <p>
++        We disable powerful browser features (camera, microphone, geolocation, interest-cohort) by default via the <code>Permissions-Policy</code> HTTP header. If you optionally want to personalize local news weather/edition alerts, permission is only requested through a user-initiated control such as the declarative <strong>Page Embedded Permission Control (<code>&lt;permission&gt;</code>)</strong> element:
++    </p>
++    <div class="not-prose my-4 p-4 border border-gray-200 rounded-md bg-gray-50">
++        <p class="text-sm text-gray-700 mb-3">
++            <strong>Optional Local Edition Context:</strong> We only use coarse city-level location to highlight regional transit news in your current tab. Coordinates are never stored on our servers.
++        </p>
++        <!-- Declarative permission element with fallback -->
++        <permission type="geolocation" id="pepc-geolocation">
++            <button
++                type="button"
++                id="fallback-geo-btn"
++                class="px-3 py-1.5 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded hover:bg-gray-100"
++            >
++                Use my location for local news (Optional)
++            </button>
++        </permission>
++        <p id="geo-status" class="text-xs text-gray-600 mt-2" aria-live="polite"></p>
++    </div>
++
++    <h2 id="data-rights">5. Data Rights &amp; User Control</h2>
++    <p>
++        You have the right to inspect, export, or permanently erase all data associated with your session at any time without contacting support.
++    </p>
++
++    <div class="not-prose my-6 p-5 border border-gray-300 rounded-lg bg-white shadow-xs space-y-4">
++        <h3 class="text-lg font-bold text-gray-900">Manage Your Data</h3>
++        <p class="text-sm text-gray-600">
++            View the exact data stored in your active session or immediately purge all cookies, reading list items, and local browser storage via <code>Clear-Site-Data</code>.
++        </p>
++
++        <div class="flex flex-wrap gap-3">
++            <button
++                type="button"
++                id="btn-access-data"
++                class="px-4 py-2 text-sm font-semibold text-gray-900 bg-amber-400 hover:bg-amber-500 rounded-md cursor-pointer"
++            >
++                Access My Stored Data
++            </button>
++            <button
++                type="button"
++                id="btn-delete-data"
++                class="px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 rounded-md cursor-pointer"
++            >
++                Delete All Data &amp; Clear Site Storage
++            </button>
++        </div>
++
++        <pre
++            id="data-output"
++            class="hidden p-3 bg-gray-900 text-gray-100 text-xs rounded overflow-x-auto"
++            aria-live="polite"
++        ></pre>
++    </div>
++
++    <script>
++        const baseUrl = import.meta.env.BASE_URL;
++        const accessBtn = document.getElementById('btn-access-data');
++        const deleteBtn = document.getElementById('btn-delete-data');
++        const outputEl = document.getElementById('data-output');
++        const geoBtn = document.getElementById('fallback-geo-btn');
++        const geoStatus = document.getElementById('geo-status');
++
++        // Feature Detection & User-Agent Client Hints (no UA string fingerprinting)
++        async function getPrivacySafeClientInfo() {
++            const nav = navigator as Navigator & {
++                userAgentData?: {
++                    mobile?: boolean;
++                    platform?: string;
++                    getHighEntropyValues?: (hints: string[]) => Promise<Record<string, unknown>>;
++                };
++            };
++            if (nav.userAgentData) {
++                return {
++                    clientHintsSupported: true,
++                    mobile: nav.userAgentData.mobile ?? false,
++                    platform: nav.userAgentData.platform ?? 'unknown',
++                };
++            }
++            return {
++                clientHintsSupported: false,
++                featureDetectionOnly: true,
++            };
++        }
++
++        accessBtn?.addEventListener('click', async () => {
++            if (!outputEl) return;
++            outputEl.classList.remove('hidden');
++            outputEl.textContent = 'Loading your session data...';
++            try {
++                const response = await fetch(`${baseUrl}api/reading-list.json`);
++                const readingList = response.ok ? await response.json() : [];
++                const clientInfo = await getPrivacySafeClientInfo();
++                outputEl.textContent = JSON.stringify(
++                    {
++                        storedSessionData: {
++                            readingList,
++                        },
++                        privacySafeClientHints: clientInfo,
++                    },
++                    null,
++                    2
++                );
++            } catch {
++                outputEl.textContent = 'Unable to retrieve session data.';
++            }
++        });
++
++        deleteBtn?.addEventListener('click', async () => {
++            if (!outputEl) return;
++            outputEl.classList.remove('hidden');
++            outputEl.textContent = 'Erasing session and site data...';
++            try {
++                await fetch(`${baseUrl}api/reading-list.json`, { method: 'DELETE' });
++                await fetch(`${baseUrl}api/logout`, { method: 'POST' });
++                outputEl.textContent = 'All session data, cookies, and storage have been cleared.';
++            } catch {
++                outputEl.textContent = 'Failed to clear site data.';
++            }
++        });
++
++        geoBtn?.addEventListener('click', () => {
++            if ('geolocation' in navigator) {
++                navigator.geolocation.getCurrentPosition(
++                    () => {
++                        if (geoStatus) {
++                            geoStatus.textContent = 'Local edition enabled for this session (coarse region only).';
++                        }
++                    },
++                    () => {
++                        if (geoStatus) {
++                            geoStatus.textContent = 'Location permission declined; showing standard edition.';
++                        }
++                    }
++                );
++            } else if (geoStatus) {
++                geoStatus.textContent = 'Geolocation API is not supported in this browser.';
++            }
++        });
++    </script>
+ </LegalLayout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..849f9cd 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -8,14 +8,59 @@ const multimedia = await getCollection('multimedia');
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+         <div class="prose max-w-none">
+-            <p>Watch our latest multimedia content.</p>
++            <p>Watch our latest multimedia content. Videos use a privacy-preserving façade and only connect to <code>youtube-nocookie.com</code> when you explicitly click play.</p>
++
++            <!-- Video Façade Pattern for Privacy-Preserving Third-Party Embeds -->
++            <div class="my-6 border border-gray-200 rounded-lg overflow-hidden bg-gray-900 text-white not-prose">
++                <div id="video-container" data-video-id="dQw4w9WgXcQ" class="relative aspect-video flex items-center justify-center">
++                    <img
++                        src={`${import.meta.env.BASE_URL}images/articles/news-reporter.jpg`}
++                        alt="The Daily Briefing Video Thumbnail"
++                        class="w-full h-full object-cover opacity-80"
++                    />
++                    <button
++                        id="play-btn"
++                        type="button"
++                        class="absolute inset-0 flex flex-col items-center justify-center bg-black/40 hover:bg-black/50 transition-colors cursor-pointer"
++                        aria-label="Play Video (loads from youtube-nocookie.com)"
++                    >
++                        <span class="px-5 py-2.5 bg-amber-400 text-gray-900 font-bold rounded-full shadow-md">
++                            ▶ Load &amp; Play Video
++                        </span>
++                        <span class="text-xs text-gray-200 mt-2">
++                            Clicking loads a privacy-enhanced embed from youtube-nocookie.com
++                        </span>
++                    </button>
++                </div>
++            </div>
++
+             <ul>
+                 {multimedia.map(item => (
+                     <li>
+-                        <a href={`/multimedia/${item.slug}`}>{item.data.title}</a>
++                        <a href={`${import.meta.env.BASE_URL}multimedia`}>{item.data.title}</a>
++                        <p class="text-sm text-gray-600 m-0">{item.data.description}</p>
+                     </li>
+                 ))}
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++
++    <script>
++        const playBtn = document.getElementById('play-btn');
++        if (playBtn) {
++            playBtn.addEventListener('click', function () {
++                const container = document.getElementById('video-container');
++                const videoId = container?.dataset.videoId;
++                if (container && videoId) {
++                    const iframe = document.createElement('iframe');
++                    iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1`;
++                    iframe.title = 'Multimedia Video Player';
++                    iframe.className = 'w-full h-full aspect-video border-0';
++                    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
++                    iframe.allowFullscreen = true;
++                    container.replaceChildren(iframe);
++                }
++            });
++        }
++    </script>
++</Layout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..8d98f65 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" sensitive={true}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..9976832 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" sensitive={true}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>

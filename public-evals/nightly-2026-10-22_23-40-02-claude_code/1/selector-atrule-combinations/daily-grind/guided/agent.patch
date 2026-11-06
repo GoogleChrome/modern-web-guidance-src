@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+index 66c9173..2682cf5 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,41 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: white;
++      --heading: var(--primary);
++
++      /* Single source of truth for the color scheme: OS preference or explicit .dark/.light override */
++      --color-scheme: light;
++
++      @media (prefers-color-scheme: dark) {
++        --color-scheme: dark;
++      }
++
++      &:is(.dark) {
++        --color-scheme: dark;
++      }
++
++      &:is(.light) {
++        --color-scheme: light;
++      }
++    }
++
++    /* Dark tokens are defined once, however dark mode was triggered */
++    @container style(--color-scheme: dark) {
++      body {
++        --primary: #6d4c41;
++        --primary-dark: #8d6e63;
++        --secondary: #2c1f1a;
++        --text: #efebe9;
++        --light: #1b1310;
++        --card-bg: #2c1f1a;
++        --heading: var(--accent);
++      }
+     }
+ 
+     * {
+@@ -38,32 +69,43 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+-    }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++      ul {
++        display: flex;
++        list-style: none;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        li {
++          margin-left: 20px;
++        }
++      }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++      a {
++        color: white;
++        text-decoration: none;
++        font-size: 0.9rem;
++        transition: color 0.3s;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++        &:is(:hover, :focus-visible) {
++          color: var(--accent);
++        }
++      }
++
++      @media (width < 700px) {
++        flex-direction: column;
++        gap: 0.5rem;
++
++        ul {
++          flex-wrap: wrap;
++          justify-content: center;
++          gap: 0.5rem 0;
++        }
++      }
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
+     }
+ 
+     .logout-link {
+@@ -86,11 +128,15 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
+-    }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      h1 {
++        font-size: 3rem;
++        margin-bottom: 1rem;
++
++        @media (width < 700px) {
++          font-size: 2rem;
++        }
++      }
+     }
+ 
+     /* Content Sections */
+@@ -108,16 +154,16 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+-    }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      h3 {
++        margin-bottom: 10px;
++        color: var(--heading);
++      }
+     }
+ 
+     .btn {
+@@ -129,10 +175,10 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+-    }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++      &:is(:hover, :focus-visible) {
++        background: var(--primary-dark);
++      }
+     }
+ 
+     footer {
+@@ -144,13 +190,13 @@
+ 
+     .footer-links {
+       margin-bottom: 20px;
+-    }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++      a {
++        margin: 0 10px;
++        color: var(--text);
++        text-decoration: none;
++        font-size: 0.85rem;
++      }
+     }
+   </style>
+ </head>

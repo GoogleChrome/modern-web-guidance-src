@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,58 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Detects whether the page was initially loaded in a background tab and
++    // when it was first backgrounded (ms, relative to navigation start).
++    (() => {
++      const log = (isBackground, backgroundTime, source) => {
++        console.log({ isBackground, backgroundTime, source });
++      };
++
++      // Accurate path: the visibility-state performance timeline is recorded by
++      // the browser regardless of when this script runs (Chrome/Edge 115+).
++      if ('VisibilityStateEntry' in window) {
++        const entries = performance.getEntriesByType('visibility-state');
++        if (entries.length > 0) {
++          const firstHidden = entries.find((entry) => entry.name === 'hidden');
++          log(
++            entries[0].name === 'hidden',
++            // startTime is the browser's exact timestamp of the change.
++            firstHidden ? firstHidden.startTime : null,
++            'performance-timeline'
++          );
++          return;
++        }
++      }
++
++      // ⚠️ FALLBACK ACTIVE (Firefox/Safari, older browsers): UNRELIABLE. ⚠️
++      // document.visibilityState only reflects the state when this script runs.
++      // If the tab was opened in the background and foregrounded before this
++      // script executed (e.g. async/slow load), it reads 'visible' and the
++      // initial background state is MISSED (false negative). Times are also
++      // approximate: 0 is assumed when already hidden, and later changes use
++      // performance.now() at event-dispatch time, not the true change time.
++      console.warn(
++        '[background-detection] Fallback active: document.visibilityState is ' +
++        'potentially inaccurate for initial background state.'
++      );
++
++      let backgroundTime = null;
++      const initiallyHidden = document.visibilityState === 'hidden';
++      if (initiallyHidden) backgroundTime = 0; // approximation
++      log(initiallyHidden, backgroundTime, 'fallback-UNRELIABLE');
++
++      if (!initiallyHidden) {
++        document.addEventListener('visibilitychange', () => {
++          if (document.visibilityState === 'hidden' && backgroundTime === null) {
++            backgroundTime = performance.now(); // listener time, not exact
++            log(false, backgroundTime, 'fallback-UNRELIABLE');
++          }
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

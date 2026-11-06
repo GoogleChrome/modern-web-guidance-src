@@ -1,0 +1,80 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,76 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      if (typeof document.modelContext?.registerTool !== 'function') return;
++
++      let registrationController;
++
++      function registerMenuTool() {
++        if (registrationController && !registrationController.signal.aborted) return;
++        const controller = new AbortController();
++        registrationController = controller;
++
++        const tool = {
++          name: 'get_menu_item',
++          description: 'Look up a coffee menu item and return its name, description, and details page URL. Use when someone asks about a drink on the menu.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              itemName: {
++                type: 'string',
++                minLength: 1,
++                description: 'The menu item to look up, such as Maple Oat Latte, Dark Roast Espresso, or Cold Brew. Matching ignores capitalization and surrounding whitespace.'
++              }
++            },
++            required: ['itemName'],
++            additionalProperties: false
++          },
++          execute(input) {
++            if (!input || typeof input !== 'object' || Array.isArray(input) ||
++                typeof input.itemName !== 'string' || !input.itemName.trim() ||
++                Object.keys(input).some(key => key !== 'itemName')) {
++              return { error: 'Provide a non-empty itemName string as the only parameter.' };
++            }
++
++            const menuItems = Array.from(document.querySelectorAll('main .card'), card => ({
++              name: card.querySelector('h3').textContent.trim(),
++              description: card.querySelector('p').textContent.trim(),
++              detailsUrl: card.querySelector('a').href
++            }));
++            const item = menuItems.find(entry =>
++              entry.name.toLowerCase() === input.itemName.trim().toLowerCase()
++            );
++
++            return item || {
++              error: `Menu item "${input.itemName.trim()}" not found.`,
++              availableItems: menuItems.map(entry => entry.name)
++            };
++          },
++          annotations: { readOnlyHint: true }
++        };
++
++        async function register() {
++          try {
++            await document.modelContext.registerTool(tool, { signal: controller.signal });
++          } catch (error) {
++            controller.abort();
++            if (error.name !== 'AbortError') console.warn('Menu tool registration failed.', error);
++          }
++        }
++        register();
++      }
++
++      window.addEventListener('pagehide', () => registrationController?.abort());
++      // A page restored from the back/forward cache needs a fresh registration.
++      window.addEventListener('pageshow', event => {
++        if (event.persisted) registerMenuTool();
++      });
++      registerMenuTool();
++    })();
++  </script>
+ </body>
+ 
+ </html>

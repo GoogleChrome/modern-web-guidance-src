@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,76 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Secrets Paywall Preview Section */
++    .roasters-secrets {
++      margin-top: 60px;
++      position: relative;
++    }
++
++    .roasters-secrets h2 {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .roasters-secrets .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 25px;
++      font-style: italic;
++    }
++
++    .paywall-container {
++      background: white;
++      padding: 35px;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++      max-height: 360px;
++      overflow: hidden;
++      position: relative;
++      -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 45%, rgba(0, 0, 0, 0) 100%);
++      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 45%, rgba(0, 0, 0, 0) 100%);
++    }
++
++    .secret-article {
++      display: grid;
++      grid-template-columns: 1fr 2fr;
++      gap: 25px;
++      align-items: start;
++    }
++
++    .secret-article img {
++      width: 100%;
++      border-radius: 6px;
++      object-fit: cover;
++      height: 220px;
++    }
++
++    .secret-content h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.4rem;
++    }
++
++    .secret-content p {
++      margin-bottom: 15px;
++      color: var(--text);
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-top: -40px;
++      position: relative;
++      z-index: 2;
++    }
++
++    @media (max-width: 768px) {
++      .secret-article {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +262,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasters-secrets">
++      <h2>Roaster's Secrets</h2>
++      <p class="section-subtitle">An exclusive behind-the-scenes look for our Reserve Members</p>
++      <div class="paywall-container">
++        <article class="secret-article">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Artisanal coffee roasting process">
++          <div class="secret-content">
++            <h3>Mastering the First Crack: How Temperature Curves Shape Flavor</h3>
++            <p>Every exceptional cup of coffee begins long before water touches the grounds. In our micro-roastery, the critical transition happens around 385°F—a moment known among master roasters as the "first crack." As moisture escapes the dense Ethiopian heirloom beans, caramelized sugars begin to develop complex floral and stone-fruit aromatics.</p>
++            <p>The secret to preserving bright acidity without introducing bitter char lies in executing a precise rate-of-rise (RoR) drop just twelve seconds prior to audible fracturing. By modulating airflow damper velocity while simultaneously tapering gas pressure by 18%, we lock in delicate jasmine notes while building a velvety chocolate undertone.</p>
++            <p>In our upcoming winter harvest batch, we further refine this technique with a dual-stage drum conditioning protocol. Below, we share the exact roast profile logs, bean density ratios, and water mineral targets you need to replicate our signature extraction at home...</p>
++          </div>
++        </article>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Unlock Full Roaster's Guide</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

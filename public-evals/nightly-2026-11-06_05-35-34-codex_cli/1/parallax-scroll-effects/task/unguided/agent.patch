@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,132 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* A static composition first; scroll timelines progressively add depth. */
++    .coffee-story {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      overflow: clip;
++      display: grid;
++      align-items: center;
++      min-height: 560px;
++      padding: 100px max(24px, calc((100vw - 1060px) / 2));
++      background: #211813;
++      color: #fff8ef;
++      view-timeline-name: --coffee-story;
++      view-timeline-axis: block;
++    }
++
++    .story-layer {
++      position: absolute;
++      pointer-events: none;
++      z-index: -1;
++    }
++
++    .story-photo {
++      /* Overscan exceeds the full travel, keeping the image edges hidden. */
++      inset: -80px 0;
++      background: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80') center 60% / cover;
++      opacity: 0.5;
++      --travel: 60px;
++    }
++
++    .coffee-story::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      pointer-events: none;
++      background: linear-gradient(90deg, rgba(24, 17, 13, 0.97), rgba(24, 17, 13, 0.8) 45%, rgba(24, 17, 13, 0.25));
++    }
++
++    .story-glow {
++      inset: -120px -10%;
++      background: radial-gradient(ellipse at 80% 45%, rgba(255, 196, 126, 0.25), transparent 55%);
++      --travel: 100px;
++    }
++
++    .story-rings {
++      width: clamp(260px, 38vw, 520px);
++      aspect-ratio: 1;
++      right: -4%;
++      bottom: -110px;
++      border: 1px solid rgba(255, 218, 169, 0.35);
++      border-radius: 50%;
++      box-shadow: 0 0 0 35px rgba(255, 218, 169, 0.06), 0 0 0 70px rgba(255, 218, 169, 0.04);
++      --travel: 150px;
++    }
++
++    .story-copy {
++      max-width: 510px;
++    }
++
++    .story-eyebrow {
++      color: #ffcf93;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.2em;
++      text-transform: uppercase;
++      margin-bottom: 20px;
++    }
++
++    .story-copy h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2.5rem, 5vw, 4rem);
++      font-weight: 400;
++      line-height: 1.1;
++      margin-bottom: 24px;
++    }
++
++    .story-copy > p:last-of-type {
++      max-width: 390px;
++      color: #e5d7ca;
++      font-size: 1.05rem;
++    }
++
++    .story-link {
++      display: inline-block;
++      color: #ffcf93;
++      text-underline-offset: 7px;
++      margin-top: 28px;
++      padding: 8px 0;
++    }
++
++    .story-link:focus-visible {
++      outline: 2px solid #ffcf93;
++      outline-offset: 6px;
++    }
++
++    /* Transform-only motion, driven by the section's position in the viewport.
++       Unsupported browsers and reduced-motion users keep the static design. */
++    @supports (animation-timeline: --coffee-story) and (view-timeline-name: --coffee-story) {
++      @media (prefers-reduced-motion: no-preference) {
++        .story-layer {
++          animation: coffee-depth 1ms linear both;
++          animation-timeline: --coffee-story;
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
++    @keyframes coffee-depth {
++      from { transform: translateY(calc(0px - var(--travel))); }
++      to { transform: translateY(var(--travel)); }
++    }
++
++    @media (max-width: 600px) {
++      .coffee-story {
++        min-height: 500px;
++        padding-block: 72px;
++      }
++
++      .story-rings {
++        right: -120px;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +297,22 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="coffee-story" aria-labelledby="coffee-story-title">
++      <div class="story-layer story-photo" aria-hidden="true"></div>
++      <div class="story-layer story-glow" aria-hidden="true"></div>
++      <div class="story-layer story-rings" aria-hidden="true"></div>
++      <div class="story-copy">
++        <p class="story-eyebrow">From the source to your senses</p>
++        <h2 id="coffee-story-title">A little more depth.<br>A lot more character.</h2>
++        <p>Good coffee has a story. Ours starts with thoughtfully sourced beans, comes to life in the roast, and finds its way into your everyday ritual.</p>
++        <a class="story-link" href="/about">Discover our story <span aria-hidden="true">&rarr;</span></a>
++      </div>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,118 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Choose Your Store Dropdown */
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .store-select-wrapper {
++      margin: 1.25rem 0 0.75rem;
++    }
++
++    /* Opt into customizable select */
++    select,
++    .store-select,
++    ::picker(select),
++    .store-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .store-select {
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 500;
++      color: var(--text);
++      background-color: rgba(255, 255, 255, 0.95);
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      border-radius: 8px;
++      padding: 10px 16px;
++      min-width: 280px;
++      cursor: pointer;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
++      transition: background-color 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .store-select:hover {
++      background-color: #ffffff;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++    }
++
++    .store-select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Dropdown Arrow Rotation */
++    select::picker-icon,
++    .store-select::picker-icon {
++      color: var(--primary);
++      transition: transform 0.3s ease, rotate 0.3s ease;
++    }
++
++    select:open::picker-icon,
++    .store-select:open::picker-icon {
++      transform: rotate(180deg);
++      rotate: 180deg;
++    }
++
++    /* Native Picker Menu Smooth Fade In & Fade Out */
++    ::picker(select),
++    .store-select::picker(select) {
++      background-color: #ffffff;
++      color: var(--text);
++      border: 1px solid rgba(0, 0, 0, 0.1);
++      border-radius: 8px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
++      padding: 6px;
++      margin-top: 6px;
++      opacity: 0;
++      transition: opacity 0.3s ease, display 0.3s ease allow-discrete, overlay 0.3s ease allow-discrete;
++      transition-behavior: allow-discrete;
++    }
++
++    :open::picker(select),
++    select:open::picker(select),
++    .store-select:open::picker(select) {
++      opacity: 1;
++    }
++
++    @starting-style {
++      :open::picker(select),
++      select:open::picker(select),
++      .store-select:open::picker(select) {
++        opacity: 0;
++      }
++    }
++
++    .store-select option {
++      padding: 8px 12px;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      cursor: pointer;
++    }
++
++    .store-select option:hover,
++    .store-select option:focus {
++      background-color: var(--secondary);
++      color: var(--primary);
++    }
++
++    .store-select option:checked {
++      background-color: var(--primary);
++      color: white;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +280,18 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="store-select-wrapper">
++      <label for="store-select" class="visually-hidden">Choose your store</label>
++      <select id="store-select" name="store" class="store-select" aria-label="Choose your store">
++        <option value="" selected>Choose your store</option>
++        <option value="downtown">Downtown Roastery — 104 Main St</option>
++        <option value="uptown">Uptown Café — 452 Broadway</option>
++        <option value="brooklyn">Brooklyn Roastery — 88 Atlantic Ave</option>
++        <option value="west-end">West End Coffee Bar — 210 Park Ave</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

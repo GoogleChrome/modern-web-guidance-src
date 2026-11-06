@@ -1,0 +1,507 @@
+diff --git a/index.html b/index.html
+index 66c9173..db49163 100644
+--- a/index.html
++++ b/index.html
+@@ -164,6 +164,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><a href="/signing.html">Sign &amp; Verify</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+diff --git a/signer.js b/signer.js
+new file mode 100644
+index 0000000..874146d
+--- /dev/null
++++ b/signer.js
+@@ -0,0 +1,188 @@
++// Browser-side signing and verification.
++// Classical: ECDSA P-256, Ed25519 (WebCrypto). Post-quantum: ML-DSA-65 (FIPS 204),
++// using WebCrypto when the browser supports it, else @noble/post-quantum loaded on demand.
++
++const enc = new TextEncoder();
++const dec = new TextDecoder();
++
++export const b64u = {
++  encode(buf) {
++    const bytes = new Uint8Array(buf);
++    let s = '';
++    for (const b of bytes) s += String.fromCharCode(b);
++    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++  },
++  decode(str) {
++    const s = str.replace(/-/g, '+').replace(/_/g, '/');
++    const bin = atob(s + '='.repeat((4 - (s.length % 4)) % 4));
++    return Uint8Array.from(bin, (c) => c.charCodeAt(0));
++  },
++};
++
++const NOBLE_URL = 'https://esm.sh/@noble/post-quantum@0.5.2/ml-dsa';
++let noblePromise;
++const loadNoble = () => (noblePromise ??= import(NOBLE_URL));
++
++async function nativeSupported(algo, usages = ['sign', 'verify']) {
++  try {
++    await crypto.subtle.generateKey(algo, true, usages);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++// Provider for algorithms implemented by WebCrypto. `jwsAlg` is the JOSE name.
++function webCryptoProvider({ id, label, jwsAlg, pq, keyAlgo, signAlgo }) {
++  return {
++    id, label, jwsAlg, pq, impl: 'webcrypto',
++    available: () => nativeSupported(keyAlgo),
++    async generate() {
++      const pair = await crypto.subtle.generateKey(keyAlgo, true, ['sign', 'verify']);
++      return {
++        publicKey: await crypto.subtle.exportKey('jwk', pair.publicKey),
++        privateKey: await crypto.subtle.exportKey('jwk', pair.privateKey),
++      };
++    },
++    async sign(privateKey, data) {
++      const key = await crypto.subtle.importKey('jwk', privateKey, keyAlgo, false, ['sign']);
++      return new Uint8Array(await crypto.subtle.sign(signAlgo, key, data));
++    },
++    async verify(publicKey, sig, data) {
++      const key = await crypto.subtle.importKey('jwk', publicKey, keyAlgo, false, ['verify']);
++      return crypto.subtle.verify(signAlgo, key, sig, data);
++    },
++  };
++}
++
++const mldsaNative = webCryptoProvider({
++  id: 'ML-DSA-65', label: 'ML-DSA-65 (post-quantum, native)', jwsAlg: 'ML-DSA-65', pq: true,
++  keyAlgo: { name: 'ML-DSA-65' }, signAlgo: { name: 'ML-DSA-65' },
++});
++
++// Fallback ML-DSA-65 via JS library. Keys are raw bytes, base64url encoded.
++const mldsaLibrary = {
++  id: 'ML-DSA-65', label: 'ML-DSA-65 (post-quantum, JS library)', jwsAlg: 'ML-DSA-65', pq: true,
++  impl: 'noble',
++  available: async () => {
++    try { await loadNoble(); return true; } catch { return false; }
++  },
++  async generate() {
++    const { ml_dsa65 } = await loadNoble();
++    const { publicKey, secretKey } = ml_dsa65.keygen();
++    return { publicKey: { raw: b64u.encode(publicKey) }, privateKey: { raw: b64u.encode(secretKey) } };
++  },
++  async sign(privateKey, data) {
++    const { ml_dsa65 } = await loadNoble();
++    return ml_dsa65.sign(data, b64u.decode(privateKey.raw));
++  },
++  async verify(publicKey, sig, data) {
++    const { ml_dsa65 } = await loadNoble();
++    return ml_dsa65.verify(sig, data, b64u.decode(publicKey.raw));
++  },
++};
++
++const PROVIDERS = [
++  webCryptoProvider({
++    id: 'ECDSA-P256', label: 'ECDSA P-256 / SHA-256 (classical)', jwsAlg: 'ES256', pq: false,
++    keyAlgo: { name: 'ECDSA', namedCurve: 'P-256' }, signAlgo: { name: 'ECDSA', hash: 'SHA-256' },
++  }),
++  webCryptoProvider({
++    id: 'Ed25519', label: 'Ed25519 (classical)', jwsAlg: 'EdDSA', pq: false,
++    keyAlgo: { name: 'Ed25519' }, signAlgo: { name: 'Ed25519' },
++  }),
++  mldsaNative,
++  mldsaLibrary,
++];
++
++/** Providers usable in this browser; the native ML-DSA wins over the library fallback. */
++export async function listAlgorithms() {
++  const out = [];
++  for (const p of PROVIDERS) {
++    if (out.some((o) => o.id === p.id)) continue;
++    if (await p.available()) out.push(p);
++  }
++  return out;
++}
++
++const providerFor = async (id) => {
++  const p = (await listAlgorithms()).find((x) => x.id === id);
++  if (!p) throw new Error(`Algorithm ${id} is not supported in this browser`);
++  return p;
++};
++
++const toBytes = (data) => (typeof data === 'string' ? enc.encode(data) : new Uint8Array(data));
++
++/** Generate a key pair; returns serializable { alg, publicKey, privateKey }. */
++export async function generateKeyPair(algId) {
++  const p = await providerFor(algId);
++  return { alg: p.id, ...(await p.generate()) };
++}
++
++/** Sign a string or bytes. Returns base64url signature. */
++export async function sign(algId, privateKey, data) {
++  const p = await providerFor(algId);
++  return b64u.encode(await p.sign(privateKey, toBytes(data)));
++}
++
++/** Verify a base64url signature. Returns false on mismatch or malformed input. */
++export async function verify(algId, publicKey, signature, data) {
++  const p = await providerFor(algId);
++  try {
++    return await p.verify(publicKey, b64u.decode(signature), toBytes(data));
++  } catch {
++    return false;
++  }
++}
++
++/** SHA-256 hex digest, used to fingerprint keys and files. */
++export async function sha256Hex(data) {
++  const d = await crypto.subtle.digest('SHA-256', toBytes(data));
++  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
++}
++
++/** Stable fingerprint of a public key (canonical JSON, keys sorted). */
++export async function fingerprint(publicKey) {
++  const canon = JSON.stringify(Object.fromEntries(Object.entries(publicKey).sort()));
++  return (await sha256Hex(canon)).slice(0, 32).match(/.{4}/g).join(':');
++}
++
++// ---- Compact signed tokens (JWS-style: header.payload.signature) ----
++
++/** Create a signed token. Signature covers the ASCII "header.payload" string. */
++export async function signToken(algId, privateKey, payload, extraHeader = {}) {
++  const p = await providerFor(algId);
++  const header = { alg: p.jwsAlg, typ: 'JWT', ...extraHeader };
++  const input = `${b64u.encode(enc.encode(JSON.stringify(header)))}.${b64u.encode(enc.encode(JSON.stringify(payload)))}`;
++  return `${input}.${b64u.encode(await p.sign(privateKey, enc.encode(input)))}`;
++}
++
++/**
++ * Verify a token and check `exp`/`nbf`. The algorithm is taken from the caller
++ * (algId), never trusted from the token header, to prevent algorithm confusion.
++ * Returns { valid, reason?, header?, payload? }.
++ */
++export async function verifyToken(algId, publicKey, token) {
++  const parts = token.trim().split('.');
++  if (parts.length !== 3) return { valid: false, reason: 'Token must have three dot-separated parts' };
++  const p = await providerFor(algId);
++  let header, payload;
++  try {
++    header = JSON.parse(dec.decode(b64u.decode(parts[0])));
++    payload = JSON.parse(dec.decode(b64u.decode(parts[1])));
++  } catch {
++    return { valid: false, reason: 'Header or payload is not valid base64url JSON' };
++  }
++  if (header.alg !== p.jwsAlg) {
++    return { valid: false, reason: `Header alg "${header.alg}" does not match expected "${p.jwsAlg}"`, header, payload };
++  }
++  let ok = false;
++  try {
++    ok = await p.verify(publicKey, b64u.decode(parts[2]), enc.encode(`${parts[0]}.${parts[1]}`));
++  } catch { /* malformed signature */ }
++  if (!ok) return { valid: false, reason: 'Signature does not match', header, payload };
++  const now = Math.floor(Date.now() / 1000);
++  if (typeof payload.exp === 'number' && now >= payload.exp) return { valid: false, reason: 'Token expired', header, payload };
++  if (typeof payload.nbf === 'number' && now < payload.nbf) return { valid: false, reason: 'Token not yet valid', header, payload };
++  return { valid: true, header, payload };
++}
+diff --git a/signing.html b/signing.html
+new file mode 100644
+index 0000000..0ce6895
+--- /dev/null
++++ b/signing.html
+@@ -0,0 +1,295 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Order Signing &amp; Verification | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --ok: #2e7d32;
++      --bad: #c62828;
++    }
++
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    nav a { color: white; text-decoration: none; font-size: 0.9rem; }
++    nav a:hover { color: var(--accent); }
++    .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
++
++    main { max-width: 900px; margin: 30px auto; padding: 0 20px; }
++    h1 { color: var(--primary); margin-bottom: 6px; }
++    .lead { margin-bottom: 20px; }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 20px;
++    }
++
++    .card h2 { font-size: 1.15rem; color: var(--primary); margin-bottom: 10px; }
++
++    label { display: block; font-size: 0.85rem; font-weight: 600; margin: 12px 0 4px; }
++
++    textarea, select, input[type=file] {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.8rem; min-height: 90px; resize: vertical; }
++
++    .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
++
++    button {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      padding: 9px 18px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button:hover { background: #3e2723; }
++    button.secondary { background: var(--secondary); color: var(--text); }
++    button:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
++
++    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
++    .tabs button { background: var(--secondary); color: var(--text); }
++    .tabs button[aria-selected=true] { background: var(--primary); color: white; }
++
++    .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.75rem; background: var(--secondary); }
++    .badge.pq { background: var(--accent); }
++
++    .result { margin-top: 12px; padding: 10px 12px; border-radius: 4px; font-weight: 600; }
++    .result.ok { background: #e8f5e9; color: var(--ok); }
++    .result.bad { background: #ffebee; color: var(--bad); }
++    .result.info { background: #f3ece9; }
++    .hidden { display: none; }
++    .muted { font-size: 0.85rem; opacity: 0.8; }
++    pre { white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; margin-top: 8px; }
++  </style>
++</head>
++
++<body>
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <a href="/">&larr; Back to home</a>
++  </nav>
++
++  <main>
++    <h1>Sign &amp; Verify</h1>
++    <p class="lead">Prove that a message, order token or file came from you and was not altered. Everything runs in your browser; private keys never leave this page.</p>
++
++    <section class="card" aria-labelledby="keys-h">
++      <h2 id="keys-h">1. Key pair</h2>
++      <label for="alg">Algorithm</label>
++      <select id="alg"></select>
++      <p class="muted" id="alg-note"></p>
++      <div class="row">
++        <button id="gen">Generate new key pair</button>
++        <button id="dl-priv" class="secondary" disabled>Download private key</button>
++        <button id="dl-pub" class="secondary" disabled>Download public key</button>
++      </div>
++      <div id="key-status" class="result info hidden" role="status"></div>
++      <label for="priv">Private key (JSON, used for signing)</label>
++      <textarea id="priv" spellcheck="false" placeholder="Generate a key pair, or paste a private key here"></textarea>
++      <label for="pub">Public key (JSON, share this for verification)</label>
++      <textarea id="pub" spellcheck="false" placeholder="Generate a key pair, or paste a public key here"></textarea>
++    </section>
++
++    <section class="card" aria-labelledby="what-h">
++      <h2 id="what-h">2. What to sign</h2>
++      <div class="tabs" role="tablist">
++        <button role="tab" id="tab-message" aria-selected="true" data-mode="message">Message</button>
++        <button role="tab" id="tab-token" aria-selected="false" data-mode="token">Token</button>
++        <button role="tab" id="tab-file" aria-selected="false" data-mode="file">File</button>
++      </div>
++
++      <div id="mode-message">
++        <label for="msg">Message</label>
++        <textarea id="msg">Order #1042: 2x Maple Oat Latte, 1x Cold Brew</textarea>
++      </div>
++      <div id="mode-token" class="hidden">
++        <label for="claims">Claims (JSON payload)</label>
++        <textarea id="claims"></textarea>
++        <p class="muted">Produces a compact <code>header.payload.signature</code> token. <code>exp</code> and <code>nbf</code> (Unix seconds) are enforced on verification.</p>
++      </div>
++      <div id="mode-file" class="hidden">
++        <label for="file">File</label>
++        <input type="file" id="file">
++        <p class="muted">The file's bytes are signed directly; nothing is uploaded.</p>
++      </div>
++
++      <div class="row"><button id="do-sign">Sign</button></div>
++      <label for="sig">Signature / token</label>
++      <textarea id="sig" spellcheck="false" placeholder="Output appears here. Paste one here to verify."></textarea>
++      <div class="row">
++        <button id="do-verify">Verify with public key</button>
++        <button id="tamper" class="secondary">Tamper (flip a character) to test</button>
++      </div>
++      <div id="result" class="result hidden" role="status" aria-live="polite"></div>
++      <pre id="detail"></pre>
++    </section>
++  </main>
++
++  <script type="module">
++    import * as S from './signer.js';
++
++    const $ = (id) => document.getElementById(id);
++    let mode = 'message';
++    let algs = [];
++
++    $('claims').value = JSON.stringify({
++      sub: 'customer-1042',
++      order: 'Maple Oat Latte',
++      iat: Math.floor(Date.now() / 1000),
++      exp: Math.floor(Date.now() / 1000) + 3600,
++    }, null, 2);
++
++    function show(el, text, cls) {
++      el.textContent = text;
++      el.className = `result ${cls}`;
++    }
++
++    function setMode(m) {
++      mode = m;
++      for (const name of ['message', 'token', 'file']) {
++        $(`mode-${name}`).classList.toggle('hidden', name !== m);
++        $(`tab-${name}`).setAttribute('aria-selected', String(name === m));
++      }
++      $('tamper').classList.toggle('hidden', m === 'file');
++    }
++    document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
++
++    function updateNote() {
++      const a = algs.find((x) => x.id === $('alg').value);
++      $('alg-note').textContent = a?.pq
++        ? 'Post-quantum: designed to resist attacks from large quantum computers. Signatures are about 3.3 KB.'
++        : 'Classical: fast and compact, but breakable by a sufficiently large quantum computer.';
++    }
++
++    (async () => {
++      algs = await S.listAlgorithms();
++      $('alg').innerHTML = algs.map((a) => `<option value="${a.id}">${a.label}</option>`).join('');
++      if (!algs.some((a) => a.pq)) $('alg-note').textContent = 'Post-quantum ML-DSA is unavailable (no native support and the library could not be loaded).';
++      else updateNote();
++    })();
++    $('alg').addEventListener('change', updateNote);
++
++    function download(name, text) {
++      const a = document.createElement('a');
++      a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
++      a.download = name;
++      a.click();
++      URL.revokeObjectURL(a.href);
++    }
++
++    const keyDoc = (alg, key) => JSON.stringify({ alg, key }, null, 2);
++
++    // Parse a pasted key; its embedded algorithm wins over the dropdown.
++    function parseKey(text, what) {
++      let doc;
++      try { doc = JSON.parse(text); } catch { throw new Error(`${what} key is not valid JSON`); }
++      if (!doc.alg || !doc.key) throw new Error(`${what} key must look like {"alg": ..., "key": ...}`);
++      return doc;
++    }
++
++    $('gen').addEventListener('click', async () => {
++      try {
++        const kp = await S.generateKeyPair($('alg').value);
++        $('priv').value = keyDoc(kp.alg, kp.privateKey);
++        $('pub').value = keyDoc(kp.alg, kp.publicKey);
++        $('dl-priv').disabled = $('dl-pub').disabled = false;
++        show($('key-status'), `Generated ${kp.alg} key. Public key fingerprint: ${await S.fingerprint(kp.publicKey)}`, 'info');
++      } catch (e) {
++        show($('key-status'), e.message, 'bad');
++      }
++    });
++    $('dl-priv').addEventListener('click', () => download('private-key.json', $('priv').value));
++    $('dl-pub').addEventListener('click', () => download('public-key.json', $('pub').value));
++
++    async function input() {
++      if (mode === 'message') return $('msg').value;
++      if (mode === 'file') {
++        const f = $('file').files[0];
++        if (!f) throw new Error('Choose a file first');
++        return new Uint8Array(await f.arrayBuffer());
++      }
++      return JSON.parse($('claims').value);
++    }
++
++    $('do-sign').addEventListener('click', async () => {
++      try {
++        const k = parseKey($('priv').value, 'Private');
++        const data = await input();
++        $('sig').value = mode === 'token'
++          ? await S.signToken(k.alg, k.key, data)
++          : await S.sign(k.alg, k.key, data);
++        show($('result'), 'Signed.', 'info');
++        $('detail').textContent = mode === 'file' ? `SHA-256 of file: ${await S.sha256Hex(data)}` : '';
++      } catch (e) {
++        show($('result'), `Could not sign: ${e.message}`, 'bad');
++      }
++    });
++
++    $('do-verify').addEventListener('click', async () => {
++      try {
++        const k = parseKey($('pub').value, 'Public');
++        const sig = $('sig').value.trim();
++        $('detail').textContent = '';
++        if (mode === 'token') {
++          const r = await S.verifyToken(k.alg, k.key, sig);
++          show($('result'), r.valid ? 'Valid: token is authentic and current.' : `Invalid: ${r.reason}`, r.valid ? 'ok' : 'bad');
++          if (r.payload) $('detail').textContent = `Header: ${JSON.stringify(r.header)}\nPayload (untrusted unless valid): ${JSON.stringify(r.payload)}`;
++          return;
++        }
++        const ok = await S.verify(k.alg, k.key, sig, await input());
++        show($('result'), ok ? 'Valid: the signature matches this content and key.' : 'Invalid: signature does not match.', ok ? 'ok' : 'bad');
++      } catch (e) {
++        show($('result'), `Could not verify: ${e.message}`, 'bad');
++      }
++    });
++
++    // Alter the message (or token payload part) so the user can watch verification fail.
++    $('tamper').addEventListener('click', () => {
++      if (mode === 'message') {
++        $('msg').value += ' ';
++      } else {
++        const t = $('sig').value.trim().split('.');
++        if (t.length !== 3) return show($('result'), 'Sign a token first.', 'info');
++        t[1] = t[1].slice(0, -2) + (t[1].slice(-2) === 'AA' ? 'BB' : 'AA');
++        $('sig').value = t.join('.');
++      }
++      show($('result'), 'Content altered. Click Verify to see it rejected.', 'info');
++    });
++  </script>
++</body>
++
++</html>

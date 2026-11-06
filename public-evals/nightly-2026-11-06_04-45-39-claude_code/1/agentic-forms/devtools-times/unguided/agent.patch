@@ -1,0 +1,261 @@
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..e94e2c9 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,5 @@
+ import React, { useState } from 'react';
++import { useWebMCPTool, textResult, type ModelContextToolResult } from '../utils/webmcp';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -7,8 +8,7 @@ export default function SignInForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  const submitCredentials = async (user: string, pass: string): Promise<ModelContextToolResult> => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -19,7 +19,7 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({ username: user, password: pass }),
+       });
+ 
+       const data = await response.json();
+@@ -27,18 +27,53 @@ export default function SignInForm() {
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+         // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        const message = `Login failed: ${data.error || 'Unknown error'}`;
++        setError(message);
++        return textResult(message, true);
+       } else {
+         setSuccess('Login successful!');
+         // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        return textResult(`Login successful! Signed in as "${user}".`);
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      const message = 'An unexpected error occurred. Please try again later.';
++      setError(message);
++      return textResult(message, true);
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const handleSubmit = async (e: React.FormEvent) => {
++    e.preventDefault();
++    await submitCredentials(username, password);
++  };
++
++  useWebMCPTool<{ username: string; password: string }>({
++    name: 'sign_in',
++    description:
++      'Sign in to The DevTools Times with an existing account. Fills in and submits the sign-in form on this page and returns whether the login succeeded (including any error code).',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        username: { type: 'string', description: 'The account username.' },
++        password: { type: 'string', description: 'The account password.' },
++      },
++      required: ['username', 'password'],
++    },
++    execute: async ({ username: user, password: pass }) => {
++      if (!user?.trim() || !pass) {
++        return textResult('Both "username" and "password" are required.', true);
++      }
++      if (loading) {
++        return textResult('A sign-in request is already in progress. Please try again shortly.', true);
++      }
++      setUsername(user);
++      setPassword(pass);
++      return submitCredentials(user, pass);
++    },
++  });
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..0b79605 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,5 @@
+ import React, { useState } from 'react';
++import { useWebMCPTool, textResult, type ModelContextToolResult } from '../utils/webmcp';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -7,8 +8,7 @@ export default function SignUpForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  const submitCredentials = async (user: string, pass: string): Promise<ModelContextToolResult> => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -19,7 +19,7 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({ username: user, password: pass }),
+       });
+ 
+       const data = await response.json();
+@@ -27,19 +27,58 @@ export default function SignUpForm() {
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+         // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        const message = `Registration failed: ${data.error || 'Unknown error'}`;
++        setError(message);
++        return textResult(message, true);
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+         setPassword('');
++        return textResult(`User "${user}" registered successfully! The account can now be used to sign in at /signin.`);
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      const message = 'An unexpected error occurred. Please try again later.';
++      setError(message);
++      return textResult(message, true);
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const handleSubmit = async (e: React.FormEvent) => {
++    e.preventDefault();
++    await submitCredentials(username, password);
++  };
++
++  useWebMCPTool<{ username: string; password: string }>({
++    name: 'sign_up',
++    description:
++      'Register a new account on The DevTools Times. Fills in and submits the sign-up form on this page and returns whether registration succeeded (including any error code). The password must be at least 8 characters long and contain a number.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        username: { type: 'string', description: 'The desired username for the new account.' },
++        password: {
++          type: 'string',
++          description: 'The password for the new account. Must be at least 8 characters and contain a number.',
++          minLength: 8,
++        },
++      },
++      required: ['username', 'password'],
++    },
++    execute: async ({ username: user, password: pass }) => {
++      if (!user?.trim() || !pass) {
++        return textResult('Both "username" and "password" are required.', true);
++      }
++      if (loading) {
++        return textResult('A registration request is already in progress. Please try again shortly.', true);
++      }
++      setUsername(user);
++      setPassword(pass);
++      return submitCredentials(user, pass);
++    },
++  });
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+diff --git a/src/utils/webmcp.ts b/src/utils/webmcp.ts
+new file mode 100644
+index 0000000..faab921
+--- /dev/null
++++ b/src/utils/webmcp.ts
+@@ -0,0 +1,80 @@
++import { useEffect, useRef } from 'react';
++
++/**
++ * Minimal typings for the WebMCP API (`navigator.modelContext`), which lets a
++ * page expose client-side functionality as tools to AI agents.
++ * See https://github.com/webmachinelearning/webmcp
++ */
++export interface ModelContextToolResult {
++  content: Array<{ type: 'text'; text: string }>;
++  isError?: boolean;
++}
++
++export interface ModelContextTool<TInput = any> {
++  name: string;
++  description: string;
++  inputSchema: Record<string, unknown>;
++  annotations?: { readOnlyHint?: boolean };
++  execute: (input: TInput, client?: unknown) => Promise<ModelContextToolResult> | ModelContextToolResult;
++}
++
++export interface ModelContext {
++  registerTool: (tool: ModelContextTool, options?: { signal?: AbortSignal }) => unknown;
++  unregisterTool?: (name: string) => void;
++}
++
++declare global {
++  interface Navigator {
++    modelContext?: ModelContext;
++  }
++}
++
++export const textResult = (text: string, isError = false): ModelContextToolResult => ({
++  content: [{ type: 'text', text }],
++  ...(isError ? { isError: true } : {}),
++});
++
++/**
++ * Registers a WebMCP tool for as long as the calling component is mounted.
++ * The latest `execute` implementation is always used, so callers don't need to
++ * memoize it. No-op in browsers without WebMCP support.
++ */
++export function useWebMCPTool<TInput>(tool: ModelContextTool<TInput>) {
++  const executeRef = useRef(tool.execute);
++  executeRef.current = tool.execute;
++
++  const { name, description } = tool;
++  const schema = JSON.stringify(tool.inputSchema);
++  const annotations = JSON.stringify(tool.annotations ?? {});
++
++  useEffect(() => {
++    const modelContext = typeof navigator !== 'undefined' ? navigator.modelContext : undefined;
++    if (!modelContext?.registerTool) return;
++
++    const controller = new AbortController();
++    try {
++      modelContext.registerTool(
++        {
++          name,
++          description,
++          inputSchema: JSON.parse(schema),
++          annotations: JSON.parse(annotations),
++          execute: (input: TInput, client?: unknown) => executeRef.current(input, client),
++        },
++        { signal: controller.signal },
++      );
++    } catch (err) {
++      console.warn(`[WebMCP] Failed to register tool "${name}":`, err);
++      return;
++    }
++
++    return () => {
++      controller.abort();
++      try {
++        modelContext.unregisterTool?.(name);
++      } catch {
++        // Already unregistered via the abort signal.
++      }
++    };
++  }, [name, description, schema, annotations]);
++}

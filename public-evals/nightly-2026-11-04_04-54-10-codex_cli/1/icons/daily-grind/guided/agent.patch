@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+index 66c9173..5e4e9f9 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,17 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Embedded vector tokens: no icon font, script, or extra network requests. */
++      --icon-cup: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%208h13v9a3%203%200%200%201-3%203H7a3%203%200%200%201-3-3ZM17%209h2a3%203%200%200%201%200%206h-2M7%203v2m4-2v2m4-2v2M3%2023h15%22%2F%3E%3C%2Fsvg%3E");
++      --icon-pin: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2010c0%206-8%2012-8%2012S4%2016%204%2010a8%208%200%201%201%2016%200Z%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2210%22%20r%3D%223%22%2F%3E%3C%2Fsvg%3E");
++      --icon-gift: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208h18v4H3ZM5%2012v9h14v-9M12%208v13%22%2F%3E%3Cpath%20d%3D%22M12%208H8a3%203%200%201%201%203-3Zm0%200h4a3%203%200%201%200-3-3Z%22%2F%3E%3C%2Fsvg%3E");
++      --icon-user: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%227%22%20r%3D%224%22%2F%3E%3Cpath%20d%3D%22M4%2021v-2a8%208%200%200%201%2016%200v2%22%2F%3E%3C%2Fsvg%3E");
++      --icon-logout: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%203H4v18h5m6-14%205%205-5%205m-6-5h11%22%2F%3E%3C%2Fsvg%3E");
++      --icon-bag: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%207h16l1%2014H3ZM8%208V6a4%204%200%200%201%208%200v2%22%2F%3E%3C%2Fsvg%3E");
++      --icon-leaf: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%203C10%202%203%206%203%2013a7%207%200%200%200%207%207c7%200%2011-7%2010-17ZM3%2021%2015%209M8%2016v-5m0%205h5%22%2F%3E%3C%2Fsvg%3E");
++      --icon-snowflake: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%202v20M3.34%207l17.32%2010M3.34%2017%2020.66%207M9%204l3%203%203-3M9%2020l3-3%203%203M4%2010l4-1-1-4m10%2014-1-4%204-1M4%2014l4%201-1%204M17%205l-1%204%204%201%22%2F%3E%3C%2Fsvg%3E");
++      --icon-arrow: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2012h16m-6-6%206%206-6%206%22%2F%3E%3C%2Fsvg%3E");
+     }
+ 
+     * {
+@@ -27,6 +38,47 @@
+       background-color: var(--light);
+     }
+ 
++    /* CSS selects the icon; these component hooks also work without style queries.
++       Customize size, color, spacing, or alignment on any component/ancestor.
++       All current icons repeat visible text, so their generated alt is empty.
++       For future informative icons, keep their meaning in visible HTML; name
++       icon-only controls in HTML with aria-label. */
++    :where(nav a, .card h3, .btn)::before {
++      content: "";
++      content: "" / "";
++      display: inline-block;
++      inline-size: var(--icon-style-size, 1em);
++      block-size: var(--icon-style-size, 1em);
++      margin-inline-end: var(--icon-style-spacing, 0.4em);
++      vertical-align: var(--icon-style-voffset, -0.125em);
++      background-color: var(--icon-style-color, currentColor);
++      -webkit-mask: var(--icon) no-repeat center / contain;
++      mask: var(--icon) no-repeat center / contain;
++      pointer-events: none;
++      forced-color-adjust: none;
++    }
++
++    nav a[href="/menu"] { --icon: var(--icon-cup); }
++    nav a[href="/locations"] { --icon: var(--icon-pin); }
++    nav a[href="/rewards"] { --icon: var(--icon-gift); }
++    nav a[href="/account"] { --icon: var(--icon-user); }
++    nav a[href="/logout"] { --icon: var(--icon-logout); }
++    .hero .btn { --icon: var(--icon-bag); }
++    .card .btn { --icon: var(--icon-arrow); }
++    .favorite-latte { --icon: var(--icon-leaf); }
++    .favorite-espresso { --icon: var(--icon-cup); }
++    .favorite-cold-brew { --icon: var(--icon-snowflake); }
++
++    .card h3 {
++      --icon-style-size: 2rem;
++      --icon-style-color: var(--primary);
++    }
++
++    .card h3::before {
++      display: block;
++      margin: 0 auto 0.75rem;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -34,6 +86,8 @@
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 1rem;
+       align-items: center;
+       position: sticky;
+       top: 0;
+@@ -49,16 +103,16 @@
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.75rem 20px;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      display: inline-block;
+       transition: color 0.3s;
+     }
+ 
+@@ -179,19 +233,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="favorite-latte">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" aria-label="View Details: Maple Oat Latte">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="favorite-espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" aria-label="View Details: Dark Roast Espresso">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="favorite-cold-brew">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" aria-label="View Details: Cold Brew">View Details</a>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,96 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Global Tasting Coordinator */
++    .coordinator {
++      margin-top: 60px;
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++      padding: 32px 24px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
++    }
++
++    .coordinator h2,
++    .coordinator > p {
++      text-align: center;
++    }
++
++    .coordinator > p {
++      color: var(--secondary);
++      max-width: 640px;
++      margin: 8px auto 24px;
++    }
++
++    .planner {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 16px;
++    }
++
++    .planner label {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      font-size: 0.85rem;
++      color: var(--secondary);
++    }
++
++    .planner input,
++    .planner select {
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 8px 10px;
++    }
++
++    .planner input:focus-visible,
++    .planner select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #hostWarning {
++      margin: 20px auto 0;
++      max-width: 720px;
++      padding: 12px 16px;
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      background: rgba(255, 171, 64, 0.15);
++      color: white;
++      font-size: 0.9rem;
++    }
++
++    #hostWarning[hidden] {
++      display: none;
++    }
++
++    #grid .card {
++      background: #3e2723;
++      color: white;
++      box-shadow: none;
++      border: 1px solid rgba(215, 204, 200, 0.25);
++    }
++
++    #grid .card h3 {
++      color: var(--accent);
++    }
++
++    #grid .time {
++      font-size: 1.8rem;
++      font-weight: bold;
++    }
++
++    #grid .meta {
++      font-size: 0.8rem;
++      color: var(--secondary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +282,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="coordinator" aria-labelledby="coordinator-title">
++      <h2 id="coordinator-title">Global Tasting Coordinator</h2>
++      <p>Hosting a virtual coffee tasting for friends around the world? Pick the date, time, and your timezone, and we'll show what that moment is on the clock in New York, London, Tokyo, and UTC, with a heads-up if daylight saving time changes things.</p>
++      <div class="planner">
++        <label>Date
++          <input type="date" id="dateInput">
++        </label>
++        <label>Time
++          <input type="time" id="timeInput" value="09:00">
++        </label>
++        <label>Host timezone
++          <select id="hostTzSelect">
++            <option value="America/New_York">New York (America/New_York)</option>
++            <option value="Europe/London">London (Europe/London)</option>
++            <option value="Asia/Tokyo">Tokyo (Asia/Tokyo)</option>
++            <option value="UTC">UTC</option>
++          </select>
++        </label>
++      </div>
++      <p id="hostWarning" role="status" hidden></p>
++      <div class="grid" id="grid" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +316,102 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Temporal is not available everywhere yet (e.g. Safari); load a polyfill if needed.
++    if (typeof Temporal === 'undefined') {
++      const { Temporal: T } = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = T;
++    }
++
++    const TARGETS = [
++      { label: 'New York', zone: 'America/New_York' },
++      { label: 'London', zone: 'Europe/London' },
++      { label: 'Tokyo', zone: 'Asia/Tokyo' },
++      { label: 'UTC', zone: 'UTC' },
++    ];
++    const TIME_FMT = { hour: 'numeric', minute: '2-digit' };
++    const DAY_FMT = { weekday: 'short', month: 'short', day: 'numeric' };
++
++    const dateInput = document.getElementById('dateInput');
++    const timeInput = document.getElementById('timeInput');
++    const hostTzSelect = document.getElementById('hostTzSelect');
++    const hostWarning = document.getElementById('hostWarning');
++    const grid = document.getElementById('grid');
++
++    dateInput.value = Temporal.Now.plainDateISO().add({ days: 7 }).toString();
++
++    function fmt(zdt, options) {
++      return zdt.toLocaleString('en-US', options);
++    }
++
++    // Returns { zdt, warning } where zdt is the resolved ZonedDateTime.
++    function resolveHost(date, time, zone) {
++      const wall = `${date}T${time}[${zone}]`;
++      try {
++        return { zdt: Temporal.ZonedDateTime.from(wall, { disambiguation: 'reject' }), warning: '' };
++      } catch (e) {
++        if (!(e instanceof RangeError)) throw e;
++      }
++
++      // Time is in a gap or overlap; 'compatible' is the default resolution.
++      const zdt = Temporal.ZonedDateTime.from(wall, { disambiguation: 'compatible' });
++      const earlier = Temporal.ZonedDateTime.from(wall, { disambiguation: 'earlier' });
++      const later = Temporal.ZonedDateTime.from(wall, { disambiguation: 'later' });
++      const asked = fmt(Temporal.PlainTime.from(time), TIME_FMT);
++      const day = fmt(Temporal.PlainDate.from(date), { month: 'long', day: 'numeric', year: 'numeric' });
++      const resolved = `${fmt(zdt, TIME_FMT)} ${fmt(zdt, { timeZoneName: 'short' }).split(' ').pop()}`;
++
++      let warning;
++      if (earlier.toPlainTime().equals(later.toPlainTime())) {
++        // Same wall-clock time at two different offsets: clocks were set back.
++        warning = `${asked} happens twice in ${zone} on ${day} because clocks are set back. `
++          + `We used the first occurrence (${resolved}). The second occurrence is at ${fmt(later, { timeZoneName: 'short' })}.`;
++      } else {
++        // Wall-clock time was skipped: clocks jumped forward.
++        warning = `${asked} does not exist in ${zone} on ${day} because clocks jump forward. `
++          + `We moved it ahead by the length of the gap to ${resolved}.`;
++      }
++      return { zdt, warning };
++    }
++
++    function render() {
++      const { value: date } = dateInput;
++      const { value: time } = timeInput;
++      grid.replaceChildren();
++      hostWarning.hidden = true;
++      if (!date || !time) return;
++
++      const { zdt, warning } = resolveHost(date, time, hostTzSelect.value);
++      if (warning) {
++        hostWarning.textContent = warning;
++        hostWarning.hidden = false;
++      }
++
++      // withTimeZone returns new objects; the host ZonedDateTime is never mutated.
++      grid.append(...TARGETS.map(({ label, zone }) => {
++        const local = zdt.withTimeZone(zone);
++        const card = document.createElement('div');
++        card.className = 'card';
++        const h3 = document.createElement('h3');
++        h3.textContent = label;
++        const t = document.createElement('p');
++        t.className = 'time';
++        t.textContent = fmt(local, TIME_FMT);
++        const meta = document.createElement('p');
++        meta.className = 'meta';
++        meta.textContent = `${fmt(local, DAY_FMT)} · UTC${local.offset}`;
++        card.append(h3, t, meta);
++        return card;
++      }));
++    }
++
++    for (const el of [dateInput, timeInput, hostTzSelect]) {
++      el.addEventListener('input', render);
++      el.addEventListener('change', render);
++    }
++    render();
++  </script>
+ </body>
+ 
+ </html>

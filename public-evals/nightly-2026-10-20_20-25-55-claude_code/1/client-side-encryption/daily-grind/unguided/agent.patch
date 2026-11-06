@@ -1,0 +1,223 @@
+diff --git a/index.html b/index.html
+index 66c9173..0b92b34 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,50 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .secure-card {
++      max-width: 640px;
++      margin: 20px auto 0;
++      text-align: left;
++    }
++
++    .secure-card label {
++      font-weight: 600;
++    }
++
++    .secure-card textarea {
++      width: 100%;
++      margin-top: 8px;
++      padding: 10px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .secure-card .btn {
++      border: 0;
++      cursor: pointer;
++    }
++
++    .secure-card .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .secure-card pre {
++      white-space: pre-wrap;
++      word-break: break-all;
++      font-size: 0.75rem;
++      background: var(--light);
++      padding: 10px;
++      border-radius: 5px;
++      margin: 10px 0;
++    }
++
++    #secure-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +239,21 @@
+         </div>
+       </div>
+     </section>
++    <section id="secure-order" style="margin-top: 50px;">
++      <h2 style="text-align: center;">Secure Order Notes</h2>
++      <p style="text-align: center;">Allergies, delivery instructions, gift messages: encrypted on your device before they leave it.</p>
++      <div class="card secure-card">
++        <label for="secure-input">Sensitive note</label>
++        <textarea id="secure-input" rows="3" placeholder="e.g. Severe nut allergy. Leave at door code 4821."></textarea>
++        <button id="secure-btn" class="btn" type="button" disabled>Encrypt &amp; Send</button>
++        <p id="secure-status" role="status" aria-live="polite">Loading cryptography…</p>
++        <details id="secure-details" hidden>
++          <summary>What was sent</summary>
++          <pre id="secure-envelope"></pre>
++          <p><strong>Recipient decrypted:</strong> <span id="secure-roundtrip"></span></p>
++        </details>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +266,44 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { generateRecipientKeys, encryptFor, decryptWith } from './secure-crypto.js';
++
++    const $ = (id) => document.getElementById(id);
++    const btn = $('secure-btn'), status = $('secure-status');
++
++    // DEMO: this site has no backend, so a throwaway "server" key pair is made here.
++    // In production, fetch the server's public keys (x25519 + ml-kem-768) from your API,
++    // POST the envelope, and keep the private keys only on the server.
++    let server;
++    try {
++      server = await generateRecipientKeys();
++      status.textContent = 'Protected by X25519 + ML-KEM-768 hybrid key exchange and AES-256-GCM.';
++      btn.disabled = false;
++    } catch (e) {
++      status.textContent = 'Secure notes are unavailable: this browser lacks required cryptography support.';
++      console.error(e);
++    }
++
++    btn.addEventListener('click', async () => {
++      const text = $('secure-input').value.trim();
++      if (!text) { status.textContent = 'Please enter a note first.'; return; }
++      btn.disabled = true;
++      try {
++        const envelope = await encryptFor(server.publicKeys, text);
++        $('secure-envelope').textContent = JSON.stringify(envelope, null, 2);
++        $('secure-roundtrip').textContent = await decryptWith(server, envelope);
++        $('secure-details').hidden = false;
++        $('secure-input').value = '';
++        status.textContent = 'Encrypted and sent.';
++      } catch (e) {
++        status.textContent = 'Encryption failed. Nothing was sent.';
++        console.error(e);
++      } finally {
++        btn.disabled = false;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/secure-crypto.js b/secure-crypto.js
+new file mode 100644
+index 0000000..5606abc
+--- /dev/null
++++ b/secure-crypto.js
+@@ -0,0 +1,95 @@
++// Hybrid (X25519 + ML-KEM-768) key establishment + AES-256-GCM, in the browser.
++// X25519 and HKDF/AES-GCM come from Web Crypto; ML-KEM-768 (FIPS 203) from @noble/post-quantum.
++// The session key is secure as long as EITHER X25519 or ML-KEM-768 remains unbroken.
++import { ml_kem768 } from 'https://esm.sh/@noble/post-quantum@0.5.2/ml-kem.js';
++
++const enc = new TextEncoder();
++const dec = new TextDecoder();
++const subtle = crypto.subtle;
++const VERSION = 'dg-hybrid-v1';
++
++export const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
++export const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
++
++const concat = (...parts) => {
++  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
++  let o = 0;
++  for (const p of parts) { out.set(p, o); o += p.length; }
++  return out;
++};
++
++async function importX25519Public(raw) {
++  return subtle.importKey('raw', raw, { name: 'X25519' }, true, []);
++}
++
++async function x25519Secret(priv, pub) {
++  const bits = await subtle.deriveBits({ name: 'X25519', public: pub }, priv, 256);
++  const out = new Uint8Array(bits);
++  // Reject the all-zero output produced by low-order points.
++  if (out.every((b) => b === 0)) throw new Error('Invalid X25519 public key');
++  return out;
++}
++
++// Combine both shared secrets and bind the transcript (all public values) into the key.
++async function deriveKey(ssX, ssK, transcript, usage) {
++  const ikm = await subtle.importKey('raw', concat(ssK, ssX), 'HKDF', false, ['deriveKey']);
++  return subtle.deriveKey(
++    { name: 'HKDF', hash: 'SHA-256', salt: enc.encode(VERSION), info: transcript },
++    ikm,
++    { name: 'AES-GCM', length: 256 },
++    false,
++    [usage]
++  );
++}
++
++/** Recipient (normally the server) creates a long-term hybrid key pair. */
++export async function generateRecipientKeys() {
++  const x = await subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
++  const k = ml_kem768.keygen();
++  return {
++    x25519Private: x.privateKey,
++    mlkemSecret: k.secretKey,
++    publicKeys: {
++      x25519: new Uint8Array(await subtle.exportKey('raw', x.publicKey)),
++      mlkem768: k.publicKey,
++    },
++  };
++}
++
++/** Encrypt `plaintext` to the recipient's public keys. Returns a JSON-safe envelope. */
++export async function encryptFor(publicKeys, plaintext) {
++  const eph = await subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
++  const ephPub = new Uint8Array(await subtle.exportKey('raw', eph.publicKey));
++  const ssX = await x25519Secret(eph.privateKey, await importX25519Public(publicKeys.x25519));
++  const { cipherText, sharedSecret: ssK } = ml_kem768.encapsulate(publicKeys.mlkem768);
++
++  const header = { v: VERSION, epk: b64(ephPub), kem: b64(cipherText) };
++  const aad = enc.encode(JSON.stringify(header));
++  const transcript = concat(enc.encode(VERSION), publicKeys.x25519, publicKeys.mlkem768, ephPub, cipherText);
++  const key = await deriveKey(ssX, ssK, transcript, 'encrypt');
++
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const ct = await subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aad }, key, enc.encode(plaintext));
++  ssK.fill(0);
++  ssX.fill(0);
++  return { ...header, iv: b64(iv), ct: b64(ct) };
++}
++
++/** Recipient decrypts an envelope. Throws if anything was tampered with. */
++export async function decryptWith(keys, envelope) {
++  const { iv, ct, ...header } = envelope;
++  if (header.v !== VERSION) throw new Error('Unsupported envelope version');
++  const ephPub = unb64(header.epk);
++  const cipherText = unb64(header.kem);
++  const ssX = await x25519Secret(keys.x25519Private, await importX25519Public(ephPub));
++  const ssK = ml_kem768.decapsulate(cipherText, keys.mlkemSecret);
++
++  const transcript = concat(enc.encode(VERSION), keys.publicKeys.x25519, keys.publicKeys.mlkem768, ephPub, cipherText);
++  const key = await deriveKey(ssX, ssK, transcript, 'decrypt');
++  const pt = await subtle.decrypt(
++    { name: 'AES-GCM', iv: unb64(iv), additionalData: enc.encode(JSON.stringify(header)) },
++    key,
++    unb64(ct)
++  );
++  return dec.decode(pt);
++}

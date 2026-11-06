@@ -1,0 +1,935 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,423 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Rewards Registration */
++    .rewards-signup {
++      max-width: 1100px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++    }
++
++    .rewards-signup__inner {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .rewards-perks {
++      background: linear-gradient(rgba(62, 39, 35, 0.82), rgba(62, 39, 35, 0.92)),
++        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80');
++      background-size: cover;
++      background-position: center;
++      color: white;
++      padding: 32px 28px;
++    }
++
++    .rewards-perks h2 {
++      font-size: 1.6rem;
++      line-height: 1.25;
++      margin-bottom: 12px;
++    }
++
++    .rewards-perks ul {
++      list-style: none;
++      margin-top: 20px;
++    }
++
++    .rewards-perks li {
++      padding-left: 28px;
++      position: relative;
++      margin-bottom: 12px;
++    }
++
++    .rewards-perks li::before {
++      content: "\2615";
++      position: absolute;
++      left: 0;
++      color: var(--accent);
++    }
++
++    .reg-form {
++      padding: 32px 28px;
++      scroll-margin-top: 80px; /* clear the sticky nav */
++    }
++
++    .reg-progress {
++      list-style: none;
++      display: flex;
++      gap: 6px;
++      margin-bottom: 24px;
++      counter-reset: step;
++    }
++
++    .reg-progress li {
++      flex: 1;
++      font-size: 0.8rem;
++      color: #5d4037;
++      border-top: 4px solid var(--secondary);
++      padding-top: 6px;
++      counter-increment: step;
++    }
++
++    .reg-progress li::before {
++      content: counter(step) ". ";
++    }
++
++    .reg-progress li.is-complete {
++      border-top-color: var(--primary);
++    }
++
++    .reg-progress li[aria-current="step"] {
++      border-top-color: var(--accent);
++      font-weight: 700;
++      color: var(--text);
++    }
++
++    .reg-step {
++      border: 0;
++      min-width: 0;
++    }
++
++    .reg-step + .reg-step {
++      margin-top: 32px;
++    }
++
++    .js-enabled .reg-step + .reg-step {
++      margin-top: 0;
++    }
++
++    .reg-step legend {
++      font-size: 1.35rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 4px;
++      padding: 0;
++    }
++
++    .reg-step__intro {
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    .reg-field {
++      margin-bottom: 20px;
++    }
++
++    .reg-field > label,
++    .reg-label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .reg-optional {
++      font-weight: 400;
++      color: #5d4037;
++    }
++
++    .reg-hint {
++      display: block;
++      font-size: 0.875rem;
++      color: #5d4037;
++      margin-bottom: 6px;
++    }
++
++    .reg-form input[type="text"],
++    .reg-form input[type="email"],
++    .reg-form input[type="password"],
++    .reg-form input[type="tel"],
++    .reg-form select {
++      width: 100%;
++      max-width: 28rem;
++      font: inherit;
++      color: var(--text);
++      padding: 10px 12px;
++      min-height: 44px;
++      border: 2px solid #6d4c41;
++      border-radius: 4px;
++      background: white;
++    }
++
++    .reg-form input.reg-input--short {
++      max-width: 8rem;
++    }
++
++    .reg-form :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .reg-form [aria-invalid="true"] {
++      border-color: #b71c1c;
++      border-width: 3px;
++    }
++
++    .reg-error {
++      display: block;
++      color: #b71c1c;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++    }
++
++    .reg-error:empty {
++      display: none;
++    }
++
++    .reg-error:not(:empty)::before {
++      content: "\26A0\FE0E  ";
++    }
++
++    .reg-inline {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .reg-inline > div {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .reg-inline label {
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
++    .reg-password {
++      display: flex;
++      gap: 8px;
++      max-width: 28rem;
++    }
++
++    .reg-password input {
++      flex: 1;
++    }
++
++    .reg-toggle {
++      font: inherit;
++      font-size: 0.9rem;
++      padding: 0 14px;
++      min-height: 44px;
++      border: 2px solid #6d4c41;
++      border-radius: 4px;
++      background: var(--light);
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .reg-choice {
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++      margin-bottom: 12px;
++    }
++
++    .reg-choice input {
++      width: 22px;
++      height: 22px;
++      margin-top: 2px;
++      flex-shrink: 0;
++      accent-color: var(--primary);
++    }
++
++    .reg-subgroup {
++      border: 0;
++      margin-bottom: 20px;
++      min-width: 0;
++    }
++
++    .reg-subgroup legend {
++      font-weight: 600;
++      margin-bottom: 8px;
++      padding: 0;
++    }
++
++    .reg-form a {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .reg-error-summary {
++      border: 3px solid #b71c1c;
++      border-radius: 4px;
++      padding: 16px;
++      margin-bottom: 24px;
++    }
++
++    .reg-error-summary:focus {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .reg-error-summary h3 {
++      color: #b71c1c;
++      font-size: 1.05rem;
++      margin-bottom: 8px;
++    }
++
++    .reg-error-summary ul {
++      padding-left: 20px;
++    }
++
++    .reg-error-summary a {
++      color: #b71c1c;
++    }
++
++    .reg-review {
++      margin: 0 0 20px;
++    }
++
++    .reg-review div {
++      display: grid;
++      grid-template-columns: 10rem 1fr auto;
++      gap: 12px;
++      padding: 10px 0;
++      border-bottom: 1px solid var(--secondary);
++      align-items: baseline;
++    }
++
++    .reg-review dt {
++      font-weight: 600;
++    }
++
++    .reg-review dd {
++      overflow-wrap: anywhere;
++    }
++
++    .reg-link-btn {
++      font: inherit;
++      font-size: 0.9rem;
++      background: none;
++      border: 0;
++      color: var(--primary);
++      text-decoration: underline;
++      cursor: pointer;
++      padding: 4px;
++    }
++
++    .reg-actions {
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++      margin-top: 28px;
++      flex-wrap: wrap;
++    }
++
++    .reg-actions .reg-submit {
++      margin-left: auto;
++    }
++
++    .reg-btn {
++      font: inherit;
++      font-weight: 600;
++      min-height: 44px;
++      padding: 10px 22px;
++      border-radius: 5px;
++      border: 2px solid var(--primary);
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++      transition: background 0.3s;
++    }
++
++    .reg-btn:hover {
++      background: #3e2723;
++    }
++
++    .reg-btn--secondary {
++      background: white;
++      color: var(--primary);
++    }
++
++    .reg-btn--secondary:hover {
++      background: var(--secondary);
++    }
++
++    .reg-btn[disabled] {
++      opacity: 0.7;
++      cursor: progress;
++    }
++
++    .reg-security-note {
++      font-size: 0.8rem;
++      color: #5d4037;
++      margin-top: 16px;
++    }
++
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .reg-hp {
++      position: absolute;
++      left: -10000px;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++    }
++
++    [hidden] {
++      display: none !important;
++    }
++
++    @media (max-width: 760px) {
++      .rewards-signup__inner {
++        grid-template-columns: 1fr;
++      }
++
++      .reg-progress li {
++        font-size: 0;
++      }
++
++      .reg-progress li::before {
++        font-size: 0.8rem;
++      }
++
++      .reg-review div {
++        grid-template-columns: 1fr auto;
++      }
++
++      .reg-review dd {
++        grid-column: 1;
++      }
++
++      .reg-review dd + dd {
++        grid-column: 2;
++        grid-row: 1 / span 2;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      * {
++        transition: none !important;
++        scroll-behavior: auto !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +611,196 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="rewards-signup" id="join-rewards" aria-labelledby="rewards-heading">
++    <div class="rewards-signup__inner">
++      <div class="rewards-perks">
++        <h2 id="rewards-heading">Join Daily Grind Rewards</h2>
++        <p>Earn a star with every purchase and turn your daily cup into free coffee.</p>
++        <ul>
++          <li>A free drink when you sign up</li>
++          <li>A birthday treat on us</li>
++          <li>Early access to seasonal favorites</li>
++          <li>Order ahead and skip the line</li>
++        </ul>
++      </div>
++
++      <!--
++        The server must render a fresh, per-session CSRF token into csrf_token,
++        verify it on POST, and repeat all validation server-side. Client-side
++        checks here are for usability only.
++      -->
++      <form class="reg-form" id="rewards-form" action="/rewards/register" method="post"
++        accept-charset="UTF-8" autocomplete="on">
++        <input type="hidden" name="csrf_token" value="">
++
++        <!-- Honeypot: hidden from people and assistive tech; bots tend to fill it in. -->
++        <div class="reg-hp" aria-hidden="true">
++          <label for="reg-website">Leave this field empty</label>
++          <input type="text" id="reg-website" name="website" tabindex="-1" autocomplete="off">
++        </div>
++
++        <ol class="reg-progress" id="reg-progress" hidden aria-label="Registration progress">
++          <li data-step="0">Account</li>
++          <li data-step="1">About you</li>
++          <li data-step="2">Preferences</li>
++          <li data-step="3">Review</li>
++        </ol>
++
++        <div class="reg-error-summary" id="reg-error-summary" tabindex="-1" hidden
++          aria-labelledby="reg-error-summary-title">
++          <h3 id="reg-error-summary-title">There is a problem</h3>
++          <ul id="reg-error-list"></ul>
++        </div>
++
++        <!-- Step 1 -->
++        <fieldset class="reg-step" data-step="0" aria-describedby="reg-step0-intro">
++          <legend tabindex="-1"><span class="reg-step-count visually-hidden"></span>Create your account</legend>
++          <p class="reg-step__intro" id="reg-step0-intro">You'll use these details to sign in.</p>
++
++          <div class="reg-field">
++            <label for="reg-email">Email address</label>
++            <span class="reg-hint" id="reg-email-hint">We'll send your receipts and a confirmation link here.</span>
++            <span class="reg-error" id="reg-email-error"></span>
++            <input type="email" id="reg-email" name="email" autocomplete="email" required maxlength="254"
++              spellcheck="false" autocapitalize="off" aria-describedby="reg-email-hint reg-email-error">
++          </div>
++
++          <div class="reg-field">
++            <label for="reg-password">Create a password</label>
++            <span class="reg-hint" id="reg-password-hint">Use at least 12 characters. A short phrase of a few words is easy to remember and hard to guess.</span>
++            <span class="reg-error" id="reg-password-error"></span>
++            <div class="reg-password">
++              <input type="password" id="reg-password" name="password" autocomplete="new-password" required
++                minlength="12" maxlength="128" spellcheck="false" autocapitalize="off"
++                aria-describedby="reg-password-hint reg-password-error">
++              <button type="button" class="reg-toggle" id="reg-password-toggle" aria-controls="reg-password"
++                aria-pressed="false" hidden>Show<span class="visually-hidden"> password</span></button>
++            </div>
++          </div>
++        </fieldset>
++
++        <!-- Step 2 -->
++        <fieldset class="reg-step" data-step="1" aria-describedby="reg-step1-intro">
++          <legend tabindex="-1"><span class="reg-step-count visually-hidden"></span>About you</legend>
++          <p class="reg-step__intro" id="reg-step1-intro">Help us personalize your rewards.</p>
++
++          <div class="reg-field">
++            <label for="reg-name">Full name</label>
++            <span class="reg-error" id="reg-name-error"></span>
++            <input type="text" id="reg-name" name="full_name" autocomplete="name" required maxlength="100"
++              spellcheck="false" aria-describedby="reg-name-error">
++          </div>
++
++          <div class="reg-field">
++            <label for="reg-nickname">What should our baristas call you? <span class="reg-optional">(optional)</span></label>
++            <span class="reg-hint" id="reg-nickname-hint">This is the name we'll write on your cup.</span>
++            <input type="text" id="reg-nickname" name="preferred_name" autocomplete="nickname" maxlength="40"
++              spellcheck="false" aria-describedby="reg-nickname-hint">
++          </div>
++
++          <fieldset class="reg-subgroup" aria-describedby="reg-bday-hint reg-bday-error">
++            <legend>Birthday <span class="reg-optional">(optional)</span></legend>
++            <span class="reg-hint" id="reg-bday-hint">For your birthday treat. We don't need the year.</span>
++            <span class="reg-error" id="reg-bday-error"></span>
++            <div class="reg-inline">
++              <div>
++                <label for="reg-bday-month">Month</label>
++                <select id="reg-bday-month" name="birthday_month" autocomplete="bday-month">
++                  <option value="">Select month</option>
++                  <option value="1">January</option>
++                  <option value="2">February</option>
++                  <option value="3">March</option>
++                  <option value="4">April</option>
++                  <option value="5">May</option>
++                  <option value="6">June</option>
++                  <option value="7">July</option>
++                  <option value="8">August</option>
++                  <option value="9">September</option>
++                  <option value="10">October</option>
++                  <option value="11">November</option>
++                  <option value="12">December</option>
++                </select>
++              </div>
++              <div>
++                <label for="reg-bday-day">Day</label>
++                <input type="text" id="reg-bday-day" name="birthday_day" class="reg-input--short"
++                  autocomplete="bday-day" inputmode="numeric" pattern="[0-9]{1,2}" maxlength="2">
++              </div>
++            </div>
++          </fieldset>
++
++          <div class="reg-field">
++            <label for="reg-phone">Mobile number <span class="reg-optional">(optional)</span></label>
++            <span class="reg-hint" id="reg-phone-hint">Only needed if you'd like text alerts. Include your country code if outside the US.</span>
++            <span class="reg-error" id="reg-phone-error"></span>
++            <input type="tel" id="reg-phone" name="phone" autocomplete="tel" maxlength="20"
++              aria-describedby="reg-phone-hint reg-phone-error">
++          </div>
++
++          <div class="reg-field">
++            <label for="reg-postal">ZIP or postal code <span class="reg-optional">(optional)</span></label>
++            <span class="reg-hint" id="reg-postal-hint">We'll suggest your nearest store.</span>
++            <span class="reg-error" id="reg-postal-error"></span>
++            <input type="text" id="reg-postal" name="postal_code" class="reg-input--short" autocomplete="postal-code"
++              maxlength="10" spellcheck="false" autocapitalize="characters"
++              aria-describedby="reg-postal-hint reg-postal-error">
++          </div>
++        </fieldset>
++
++        <!-- Step 3 -->
++        <fieldset class="reg-step" data-step="2" aria-describedby="reg-step2-intro">
++          <legend tabindex="-1"><span class="reg-step-count visually-hidden"></span>Your preferences</legend>
++          <p class="reg-step__intro" id="reg-step2-intro">Choose how you hear from us. You can change this any time in My Account.</p>
++
++          <fieldset class="reg-subgroup" aria-describedby="reg-comms-error">
++            <legend>Send me offers and news by <span class="reg-optional">(optional)</span></legend>
++            <span class="reg-error" id="reg-comms-error"></span>
++            <div class="reg-choice">
++              <input type="checkbox" id="reg-optin-email" name="marketing_email" value="yes">
++              <label for="reg-optin-email">Email</label>
++            </div>
++            <div class="reg-choice">
++              <input type="checkbox" id="reg-optin-sms" name="marketing_sms" value="yes"
++                aria-describedby="reg-optin-sms-hint">
++              <div>
++                <label for="reg-optin-sms">Text message</label>
++                <span class="reg-hint" id="reg-optin-sms-hint">Requires a mobile number. Message and data rates may apply.</span>
++              </div>
++            </div>
++          </fieldset>
++
++          <div class="reg-field">
++            <span class="reg-error" id="reg-terms-error"></span>
++            <div class="reg-choice">
++              <input type="checkbox" id="reg-terms" name="accept_terms" value="yes" required
++                aria-describedby="reg-terms-error">
++              <label for="reg-terms">I agree to the <a href="/rewards/terms" target="_blank" rel="noopener">Rewards Terms<span class="visually-hidden"> (opens in a new tab)</span></a>
++                and have read the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy<span class="visually-hidden"> (opens in a new tab)</span></a>.</label>
++            </div>
++          </div>
++        </fieldset>
++
++        <!-- Step 4 (only shown when JavaScript is available) -->
++        <fieldset class="reg-step" data-step="3" hidden aria-describedby="reg-step3-intro">
++          <legend tabindex="-1"><span class="reg-step-count visually-hidden"></span>Check your details</legend>
++          <p class="reg-step__intro" id="reg-step3-intro">Make sure everything looks right before creating your account.</p>
++          <dl class="reg-review" id="reg-review"></dl>
++        </fieldset>
++
++        <div class="reg-actions">
++          <button type="button" class="reg-btn reg-btn--secondary reg-back" id="reg-back" hidden>Back</button>
++          <button type="submit" class="reg-btn reg-submit" id="reg-submit">Create my rewards account</button>
++        </div>
++
++        <p class="reg-security-note">Your information is sent securely and never sold. See our <a href="/privacy-policy">Privacy Policy</a>.</p>
++
++        <div class="visually-hidden" id="reg-status" role="status" aria-live="polite"></div>
++      </form>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +809,310 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var form = document.getElementById('rewards-form');
++      if (!form || !('querySelector' in document)) return;
++
++      var steps = Array.prototype.slice.call(form.querySelectorAll('.reg-step[data-step]'));
++      var progressItems = Array.prototype.slice.call(document.querySelectorAll('#reg-progress li'));
++      var summary = document.getElementById('reg-error-summary');
++      var summaryList = document.getElementById('reg-error-list');
++      var backBtn = document.getElementById('reg-back');
++      var submitBtn = document.getElementById('reg-submit');
++      var status = document.getElementById('reg-status');
++      var review = document.getElementById('reg-review');
++      var lastStep = steps.length - 1;
++      var current = 0;
++      var submitting = false;
++      var submitLabel = submitBtn.textContent;
++
++      function $(id) { return document.getElementById(id); }
++      function val(id) { return $(id).value.trim(); }
++
++      // Each rule returns an error message, or '' when valid. `focus` is the
++      // control an error summary link should move to.
++      var rules = {
++        email: {
++          step: 0, fields: ['reg-email'], error: 'reg-email-error',
++          check: function () {
++            var el = $('reg-email');
++            if (!val('reg-email')) return 'Enter your email address';
++            if (el.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val('reg-email'))) {
++              return 'Enter an email address in the correct format, like name@example.com';
++            }
++            return '';
++          }
++        },
++        password: {
++          step: 0, fields: ['reg-password'], error: 'reg-password-error',
++          check: function () {
++            var pw = $('reg-password').value;
++            if (!pw) return 'Create a password';
++            if (pw.length < 12) return 'Password must be at least 12 characters';
++            if (pw.length > 128) return 'Password must be 128 characters or fewer';
++            var localPart = val('reg-email').toLowerCase().split('@')[0];
++            if (localPart.length > 3 && pw.toLowerCase().indexOf(localPart) !== -1) {
++              return 'Password must not contain your email address';
++            }
++            return '';
++          }
++        },
++        name: {
++          step: 1, fields: ['reg-name'], error: 'reg-name-error',
++          check: function () {
++            return val('reg-name') ? '' : 'Enter your full name';
++          }
++        },
++        birthday: {
++          step: 1, fields: ['reg-bday-month', 'reg-bday-day'], error: 'reg-bday-error',
++          check: function () {
++            var m = val('reg-bday-month');
++            var d = val('reg-bday-day');
++            if (!m && !d) return '';
++            if (!m) return 'Select the month of your birthday';
++            if (!d) return 'Enter the day of your birthday';
++            var maxDay = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][Number(m) - 1];
++            if (!/^\d{1,2}$/.test(d) || Number(d) < 1 || Number(d) > maxDay) {
++              return 'Enter a day between 1 and ' + maxDay;
++            }
++            return '';
++          },
++          focus: function () { return val('reg-bday-month') ? 'reg-bday-day' : 'reg-bday-month'; }
++        },
++        phone: {
++          step: 1, fields: ['reg-phone'], error: 'reg-phone-error',
++          check: function () {
++            var p = val('reg-phone');
++            if (!p) return '';
++            var digits = p.replace(/[\s().\-]/g, '');
++            if (!/^\+?\d{10,15}$/.test(digits)) return 'Enter a mobile number, like 555 123 4567 or +44 7700 900123';
++            return '';
++          }
++        },
++        postal: {
++          step: 1, fields: ['reg-postal'], error: 'reg-postal-error',
++          check: function () {
++            var z = val('reg-postal');
++            if (z && !/^[A-Za-z0-9][A-Za-z0-9 \-]{1,8}[A-Za-z0-9]$/.test(z)) return 'Enter a valid ZIP or postal code';
++            return '';
++          }
++        },
++        sms: {
++          step: 2, fields: ['reg-optin-sms'], error: 'reg-comms-error',
++          check: function () {
++            return $('reg-optin-sms').checked && !val('reg-phone')
++              ? 'To get text messages, add a mobile number in the "About you" step' : '';
++          }
++        },
++        terms: {
++          step: 2, fields: ['reg-terms'], error: 'reg-terms-error',
++          check: function () {
++            return $('reg-terms').checked ? '' : 'You must agree to the Rewards Terms to join';
++          }
++        }
++      };
++
++      function setError(rule, message) {
++        $(rule.error).textContent = message;
++        rule.fields.forEach(function (id) {
++          if (message) $(id).setAttribute('aria-invalid', 'true');
++          else $(id).removeAttribute('aria-invalid');
++        });
++      }
++
++      function rulesFor(step) {
++        return Object.keys(rules).map(function (k) { return rules[k]; })
++          .filter(function (r) { return step === 'all' || r.step === step; });
++      }
++
++      function validate(step) {
++        var errors = [];
++        rulesFor(step).forEach(function (rule) {
++          var msg = rule.check();
++          setError(rule, msg);
++          if (msg) errors.push({ rule: rule, message: msg });
++        });
++        return errors;
++      }
++
++      function hideSummary() {
++        summary.hidden = true;
++        summaryList.textContent = '';
++      }
++
++      function showSummary(errors) {
++        summaryList.textContent = '';
++        errors.forEach(function (e) {
++          var target = e.rule.focus ? e.rule.focus() : e.rule.fields[0];
++          var li = document.createElement('li');
++          var a = document.createElement('a');
++          a.href = '#' + target;
++          a.textContent = e.message;
++          a.addEventListener('click', function (ev) {
++            ev.preventDefault();
++            if (e.rule.step !== current) goTo(e.rule.step, false);
++            $(target).focus();
++          });
++          li.appendChild(a);
++          summaryList.appendChild(li);
++        });
++        summary.hidden = false;
++        summary.focus();
++      }
++
++      // Validate a field once the user leaves it, then re-check as they type so
++      // errors clear as soon as they're fixed (but don't nag before that).
++      rulesFor('all').forEach(function (rule) {
++        rule.fields.forEach(function (id) {
++          var el = $(id);
++          var touched = false;
++          el.addEventListener('blur', function () {
++            if (el.value || touched) {
++              touched = true;
++              setError(rule, rule.check());
++            }
++          });
++          el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input', function () {
++            if (el.getAttribute('aria-invalid') === 'true') setError(rule, rule.check());
++          });
++        });
++      });
++
++      // Show / hide password
++      var pwToggle = $('reg-password-toggle');
++      var pwInput = $('reg-password');
++      pwToggle.hidden = false;
++      pwToggle.addEventListener('click', function () {
++        var show = pwInput.type === 'password';
++        pwInput.type = show ? 'text' : 'password';
++        pwToggle.setAttribute('aria-pressed', String(show));
++        pwToggle.firstChild.nodeValue = show ? 'Hide' : 'Show';
++        status.textContent = show ? 'Your password is visible' : 'Your password is hidden';
++      });
++
++      function buildReview() {
++        var month = $('reg-bday-month');
++        var optins = [];
++        if ($('reg-optin-email').checked) optins.push('Email');
++        if ($('reg-optin-sms').checked) optins.push('Text message');
++        var rows = [
++          ['Email', val('reg-email'), 0, 'reg-email'],
++          ['Full name', val('reg-name'), 1, 'reg-name'],
++          ['Called', val('reg-nickname'), 1, 'reg-nickname'],
++          ['Birthday', month.value ? month.options[month.selectedIndex].text + ' ' + val('reg-bday-day') : '', 1, 'reg-bday-month'],
++          ['Mobile', val('reg-phone'), 1, 'reg-phone'],
++          ['ZIP / postal code', val('reg-postal').toUpperCase(), 1, 'reg-postal'],
++          ['Offers by', optins.join(', '), 2, 'reg-optin-email']
++        ];
++        review.textContent = '';
++        rows.forEach(function (row) {
++          var wrap = document.createElement('div');
++          var dt = document.createElement('dt');
++          var dd = document.createElement('dd');
++          var ddAction = document.createElement('dd');
++          var btn = document.createElement('button');
++          dt.textContent = row[0];
++          dd.textContent = row[1] || 'Not provided'; // textContent: user input is never parsed as HTML
++          btn.type = 'button';
++          btn.className = 'reg-link-btn';
++          var hidden = document.createElement('span');
++          hidden.className = 'visually-hidden';
++          hidden.textContent = ' ' + row[0].toLowerCase();
++          btn.textContent = 'Change';
++          btn.appendChild(hidden);
++          btn.addEventListener('click', function () {
++            goTo(row[2], false);
++            $(row[3]).focus();
++          });
++          ddAction.appendChild(btn);
++          wrap.appendChild(dt);
++          wrap.appendChild(dd);
++          wrap.appendChild(ddAction);
++          review.appendChild(wrap);
++        });
++      }
++
++      function goTo(index, moveFocus) {
++        current = index;
++        hideSummary();
++        steps.forEach(function (s, i) { s.hidden = i !== index; });
++        progressItems.forEach(function (li, i) {
++          li.classList.toggle('is-complete', i < index);
++          if (i === index) li.setAttribute('aria-current', 'step');
++          else li.removeAttribute('aria-current');
++        });
++        if (index === lastStep) buildReview();
++        backBtn.hidden = index === 0;
++        submitBtn.textContent = index === lastStep ? submitLabel : 'Continue';
++        if (moveFocus) {
++          // Moving focus to the new step's legend announces it to screen readers.
++          steps[index].querySelector('legend').focus({ preventScroll: true });
++          form.scrollIntoView({ block: 'start' });
++        }
++      }
++
++      // Enhance: turn the long form into steps.
++      form.noValidate = true; // custom accessible messages replace native bubbles
++      form.classList.add('js-enabled');
++      $('reg-progress').hidden = false;
++      steps.forEach(function (s, i) {
++        s.querySelector('.reg-step-count').textContent = 'Step ' + (i + 1) + ' of ' + steps.length + ': ';
++      });
++      goTo(0, false);
++
++      backBtn.addEventListener('click', function () {
++        if (current > 0) goTo(current - 1, true);
++      });
++
++      // A single submit button means pressing Enter in any field advances the
++      // current step, and only the final step actually posts the form.
++      form.addEventListener('submit', function (ev) {
++        if (submitting) { ev.preventDefault(); return; }
++
++        if (current < lastStep) {
++          ev.preventDefault();
++          var stepErrors = validate(current);
++          if (stepErrors.length) showSummary(stepErrors);
++          else goTo(current + 1, true);
++          return;
++        }
++
++        var allErrors = validate('all');
++        if (allErrors.length) {
++          ev.preventDefault();
++          goTo(allErrors[0].rule.step, false);
++          showSummary(allErrors);
++          return;
++        }
++
++        // Normalise before sending; the server must still validate everything.
++        $('reg-email').value = val('reg-email');
++        $('reg-postal').value = val('reg-postal').toUpperCase();
++        pwInput.type = 'password';
++
++        submitting = true;
++        submitBtn.disabled = true;
++        submitBtn.textContent = 'Creating your account…';
++        form.setAttribute('aria-busy', 'true');
++        status.textContent = 'Creating your account, please wait.';
++      });
++
++      // Re-enable if the user navigates back to a cached copy of the page.
++      window.addEventListener('pageshow', function (ev) {
++        if (ev.persisted && submitting) {
++          submitting = false;
++          submitBtn.disabled = false;
++          form.removeAttribute('aria-busy');
++          goTo(lastStep, false);
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

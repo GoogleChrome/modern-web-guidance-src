@@ -1,0 +1,60 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -74,12 +74,8 @@
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+@@ -87,8 +83,32 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    /* Weathered grunge: the background lives on a pseudo-element so the mask
++       erodes only the background, not the hero text and button. */
++    .weathered-bg {
++      position: relative;
++      isolation: isolate;
++    }
++
++    .weathered-bg::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      -webkit-mask-image: url('grunge-texture.svg');
++      mask-image: url('grunge-texture.svg');
++      -webkit-mask-repeat: repeat;
++      mask-repeat: repeat;
++      -webkit-mask-size: 400px 400px;
++      mask-size: 400px 400px;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -167,9 +187,9 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero weathered-bg">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

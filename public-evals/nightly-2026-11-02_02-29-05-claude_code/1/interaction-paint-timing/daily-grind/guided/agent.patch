@@ -1,0 +1,199 @@
+diff --git a/index.html b/index.html
+index 66c9173..27e9fe4 100644
+--- a/index.html
++++ b/index.html
+@@ -153,11 +153,12 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/perf-monitoring.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-perf-region="nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,13 +172,13 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-perf-region="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid" data-perf-region="seasonal-favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+diff --git a/perf-monitoring.js b/perf-monitoring.js
+new file mode 100644
+index 0000000..f3c389c
+--- /dev/null
++++ b/perf-monitoring.js
+@@ -0,0 +1,159 @@
++// Client-side performance monitoring for the homepage.
++//
++// Measures how long it takes from a user interaction (on the nav bar, the
++// "Order Now" button, or a "Seasonal Favorites" card) or a client-side view
++// navigation until new contentful updates are painted on screen.
++//
++// Uses the `interaction-contentful-paint` and `soft-navigation` performance
++// entry types as a progressive enhancement: browsers without support skip
++// the observers entirely.
++
++const supportedTypes = globalThis.PerformanceObserver?.supportedEntryTypes ?? [];
++const supportsInteractionPaint = supportedTypes.includes('interaction-contentful-paint');
++const supportsSoftNav = supportedTypes.includes('soft-navigation');
++
++// Replace with a real telemetry endpoint (e.g. navigator.sendBeacon) when available.
++function report(metric) {
++  console.info('[perf]', metric);
++}
++
++// --- Interaction region attribution -----------------------------------------
++// Elements opt in to monitoring via `data-perf-region`. We resolve which region
++// an interaction came from by its interactionId (Event Timing), falling back to
++// matching the interaction start time against recently seen input events, since
++// Event Timing only reports interactions slower than its duration threshold.
++
++const regionByInteractionId = new Map();
++const recentInputs = [];
++const MAX_RECENT_INPUTS = 20;
++
++function regionFor(target) {
++  return target instanceof Element
++    ? target.closest('[data-perf-region]')?.dataset.perfRegion ?? null
++    : null;
++}
++
++for (const type of ['pointerdown', 'keydown', 'click']) {
++  addEventListener(type, (event) => {
++    recentInputs.push({ timeStamp: event.timeStamp, region: regionFor(event.target) });
++    if (recentInputs.length > MAX_RECENT_INPUTS) recentInputs.shift();
++  }, { capture: true, passive: true });
++}
++
++if (supportedTypes.includes('event')) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      if (entry.interactionId && !regionByInteractionId.has(entry.interactionId)) {
++        regionByInteractionId.set(entry.interactionId, regionFor(entry.target));
++      }
++    }
++  }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
++}
++
++function resolveRegion(interactionId, startTime) {
++  if (regionByInteractionId.has(interactionId)) {
++    return regionByInteractionId.get(interactionId);
++  }
++  // The interaction's startTime equals the timeStamp of its first input event.
++  const match = recentInputs.find((input) => Math.abs(input.timeStamp - startTime) < 1);
++  return match?.region ?? null;
++}
++
++function describeElement(element) {
++  if (!element) return null;
++  const id = element.id ? `#${element.id}` : '';
++  const classes = [...element.classList].map((c) => `.${c}`).join('');
++  return `${element.tagName.toLowerCase()}${id}${classes}`;
++}
++
++// --- Interaction contentful paints ------------------------------------------
++// Entries are emitted progressively as an interaction produces larger paints;
++// keep the latest (largest) per interaction and report it once finalized.
++
++const pendingInteractions = new Map();
++
++function finalizeInteraction(interactionId) {
++  const entry = pendingInteractions.get(interactionId);
++  if (!entry) return;
++  pendingInteractions.delete(interactionId);
++
++  const region = resolveRegion(interactionId, entry.startTime);
++  if (!region) return;
++
++  report({
++    type: 'interaction-paint',
++    region,
++    interactionId,
++    // duration = presentationTime - startTime: interaction start to contentful paint.
++    duration: Math.round(entry.duration),
++    largestElement: describeElement(entry.largestContentfulPaint?.element),
++    largestSize: entry.largestContentfulPaint?.size ?? null,
++  });
++}
++
++if (supportsInteractionPaint) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      // A new interaction means earlier ones are done painting; finalize them.
++      for (const id of pendingInteractions.keys()) {
++        if (id !== entry.interactionId) finalizeInteraction(id);
++      }
++      pendingInteractions.set(entry.interactionId, entry);
++    }
++  }).observe({ type: 'interaction-contentful-paint', buffered: true });
++}
++
++// --- Soft navigations (client-side view navigations) ------------------------
++
++let activeSoftNav = null;
++let activeSoftNavLcp = null;
++
++function finalizeSoftNav() {
++  if (!activeSoftNav) return;
++
++  report({
++    type: 'soft-navigation',
++    url: activeSoftNav.name,
++    region: resolveRegion(activeSoftNav.interactionId, activeSoftNav.startTime),
++    navigationId: activeSoftNav.navigationId,
++    interactionId: activeSoftNav.interactionId,
++    // First contentful paint, relative to the initiating interaction.
++    fcp: Math.round(activeSoftNav.duration),
++    // Largest contentful paint, relative to the initiating interaction.
++    lcp: activeSoftNavLcp ? Math.round(activeSoftNavLcp.duration) : null,
++    lcpElement: describeElement(activeSoftNavLcp?.largestContentfulPaint?.element),
++    lcpSize: activeSoftNavLcp?.largestContentfulPaint?.size ?? null,
++  });
++
++  activeSoftNav = null;
++  activeSoftNavLcp = null;
++}
++
++if (supportsSoftNav && supportsInteractionPaint) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      finalizeSoftNav();
++      activeSoftNav = entry;
++      // Seed with paints that happened before the URL was updated.
++      activeSoftNavLcp = entry.getLargestInteractionContentfulPaint();
++    }
++  }).observe({ type: 'soft-navigation', buffered: true });
++
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      // Match by interactionId (not navigationId) so paints from before the URL
++      // update count and paints from later, unrelated interactions don't.
++      if (activeSoftNav && entry.interactionId === activeSoftNav.interactionId) {
++        activeSoftNavLcp = entry;
++      }
++    }
++  }).observe({ type: 'interaction-contentful-paint', buffered: true });
++}
++
++// --- Flush on page hide -----------------------------------------------------
++
++addEventListener('visibilitychange', () => {
++  if (document.visibilityState !== 'hidden') return;
++  for (const id of [...pendingInteractions.keys()]) finalizeInteraction(id);
++  finalizeSoftNav();
++});

@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,67 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Order Note Form */
++    .note-form {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 16px;
++    }
++
++    .note-form .field {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 4px;
++      max-width: 100%;
++    }
++
++    .note-form label {
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.9rem;
++    }
++
++    /* Controls grow and shrink to fit their content */
++    .autosize {
++      field-sizing: content;
++      font: inherit;
++      color: var(--text);
++      padding: 6px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: var(--light);
++      min-width: 8ch;
++      max-width: 100%;
++    }
++
++    textarea.autosize {
++      resize: none;
++      min-height: calc(1.6em + 14px);
++      line-height: 1.6;
++    }
++
++    .autosize:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .note-form button {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +253,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Leave a Note for Your Barista</h2>
++      <form class="note-form" action="/order-notes" method="post">
++        <div class="field">
++          <label for="note-name">Name</label>
++          <input class="autosize" type="text" id="note-name" name="name" placeholder="Your name" required>
++        </div>
++        <div class="field">
++          <label for="note-drink">Drink</label>
++          <select class="autosize" id="note-drink" name="drink">
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="cappuccino">Cappuccino</option>
++            <option value="chai">Chai</option>
++          </select>
++        </div>
++        <div class="field">
++          <label for="note-message">Message</label>
++          <textarea class="autosize" id="note-message" name="message" rows="1" placeholder="Extra hot, light foam..."></textarea>
++        </div>
++        <button type="submit" class="btn">Send Note</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +290,64 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without CSS `field-sizing: content` support.
++    (function () {
++      if (CSS.supports('field-sizing', 'content')) return;
++
++      var canvas = document.createElement('canvas');
++      var ctx = canvas.getContext('2d');
++
++      function textWidth(el, text) {
++        var cs = getComputedStyle(el);
++        ctx.font = cs.font || (cs.fontSize + ' ' + cs.fontFamily);
++        return ctx.measureText(text).width;
++      }
++
++      function chrome(el) {
++        var cs = getComputedStyle(el);
++        return parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) +
++          parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
++      }
++
++      function sizeInput(el) {
++        var w = textWidth(el, el.value || el.placeholder || '');
++        el.style.width = Math.ceil(w + chrome(el) + 2) + 'px';
++      }
++
++      function sizeSelect(el) {
++        var opt = el.options[el.selectedIndex];
++        var w = textWidth(el, opt ? opt.text : '');
++        // Extra room for the native dropdown arrow
++        el.style.width = Math.ceil(w + chrome(el) + 28) + 'px';
++      }
++
++      function sizeTextarea(el) {
++        var lines = (el.value || el.placeholder || '').split('\n');
++        var widest = Math.max.apply(null, lines.map(function (l) { return textWidth(el, l); }));
++        el.style.width = Math.ceil(widest + chrome(el) + 4) + 'px';
++        el.style.height = 'auto';
++        var cs = getComputedStyle(el);
++        el.style.height = (el.scrollHeight + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)) + 'px';
++      }
++
++      function size(el) {
++        if (el.tagName === 'SELECT') sizeSelect(el);
++        else if (el.tagName === 'TEXTAREA') sizeTextarea(el);
++        else sizeInput(el);
++      }
++
++      document.querySelectorAll('.autosize').forEach(function (el) {
++        size(el);
++        el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function () { size(el); });
++      });
++      window.addEventListener('resize', function () {
++        document.querySelectorAll('.autosize').forEach(size);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

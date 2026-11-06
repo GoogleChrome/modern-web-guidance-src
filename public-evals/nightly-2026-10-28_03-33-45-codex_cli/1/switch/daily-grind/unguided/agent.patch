@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+index 66c9173..0bf4bde 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,21 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --muted: #6d554e;
++      --border: #ded3cd;
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      --primary: #e3bda7;
++      --secondary: #302722;
++      --text: #f2e6df;
++      --light: #1c1816;
++      --surface: #28211e;
++      --muted: #cbb8ad;
++      --border: #59483e;
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -29,7 +44,7 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: #4e342e;
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -108,7 +123,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -122,7 +137,7 @@
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: #4e342e;
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -135,6 +150,98 @@
+       background: #3e2723;
+     }
+ 
++    .appearance {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 24px;
++      padding: 20px 24px;
++      margin-bottom: 36px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++    }
++
++    .appearance h2 {
++      font-size: 1rem;
++    }
++
++    .appearance p {
++      color: var(--muted);
++      font-size: 0.9rem;
++    }
++
++    .theme-switch {
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      min-height: 44px;
++      position: relative;
++      cursor: pointer;
++      flex-shrink: 0;
++      font-weight: 600;
++    }
++
++    .theme-switch input {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      opacity: 0;
++      cursor: pointer;
++    }
++
++    .switch-track {
++      display: inline-flex;
++      align-items: center;
++      width: 52px;
++      height: 30px;
++      padding: 3px;
++      border: 2px solid var(--muted);
++      border-radius: 20px;
++      background: var(--surface);
++    }
++
++    .switch-track::before {
++      content: "";
++      width: 20px;
++      height: 20px;
++      background: var(--muted);
++      border-radius: 50%;
++      transition: transform 160ms ease;
++    }
++
++    .theme-switch input:checked + .switch-track {
++      background: var(--text);
++      border-color: var(--text);
++    }
++
++    .theme-switch input:checked + .switch-track::before {
++      background: var(--surface);
++      transform: translateX(22px);
++    }
++
++    .theme-switch input:focus-visible + .switch-track {
++      outline: 3px solid var(--text);
++      outline-offset: 4px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .switch-track::before { transition: none; }
++    }
++
++    @media (max-width: 600px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .appearance { align-items: flex-start; flex-direction: column; gap: 12px; }
++    }
++
++    @media (forced-colors: active) {
++      .switch-track::before { background: ButtonText; }
++      .theme-switch input:checked + .switch-track::before { background: Highlight; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +282,17 @@
+   </header>
+ 
+   <main class="container">
++    <section class="appearance" aria-labelledby="appearance-heading">
++      <div>
++        <h2 id="appearance-heading">Make yourself comfortable</h2>
++        <p id="theme-description">Choose a darker look for your daily coffee break.</p>
++      </div>
++      <label class="theme-switch">
++        <input type="checkbox" id="dark-mode" role="switch" aria-describedby="theme-description">
++        <span class="switch-track" aria-hidden="true"></span>
++        <span>Dark mode</span>
++      </label>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +325,35 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const themeSwitch = document.getElementById('dark-mode');
++    let darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
++
++    try {
++      const savedTheme = localStorage.getItem('daily-grind-theme');
++      if (savedTheme === 'dark' || savedTheme === 'light') {
++        darkMode = savedTheme === 'dark';
++      }
++    } catch {
++      // The switch still works when browser storage is unavailable.
++    }
++
++    function applyTheme() {
++      document.documentElement.dataset.theme = themeSwitch.checked ? 'dark' : 'light';
++    }
++
++    themeSwitch.checked = darkMode;
++    applyTheme();
++
++    themeSwitch.addEventListener('change', () => {
++      applyTheme();
++      try {
++        localStorage.setItem('daily-grind-theme', themeSwitch.checked ? 'dark' : 'light');
++      } catch {
++        // Keep the current theme usable without persistence.
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

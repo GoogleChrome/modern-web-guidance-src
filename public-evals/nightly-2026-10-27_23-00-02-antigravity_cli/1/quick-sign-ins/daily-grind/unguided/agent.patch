@@ -1,0 +1,532 @@
+diff --git a/index.html b/index.html
+index 66c9173..3ac2356 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,125 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-In Modal & Toast */
++    .auth-status {
++      color: var(--accent);
++      font-size: 0.9rem;
++      margin-left: 20px;
++      font-weight: 600;
++    }
++
++    .signin-link {
++      background: var(--accent);
++      color: var(--text) !important;
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-weight: 600;
++    }
++
++    .modal-backdrop {
++      display: none;
++      position: fixed;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.55);
++      z-index: 2000;
++      justify-content: center;
++      align-items: center;
++      padding: 20px;
++    }
++
++    .modal-backdrop.active {
++      display: flex;
++    }
++
++    .modal {
++      background: white;
++      border-radius: 10px;
++      max-width: 400px;
++      width: 100%;
++      padding: 28px 24px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++      position: relative;
++    }
++
++    .modal h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .modal p.subtitle {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 18px;
++    }
++
++    .modal-close {
++      position: absolute;
++      top: 12px;
++      right: 16px;
++      background: none;
++      border: none;
++      font-size: 1.5rem;
++      color: #6d4c41;
++      cursor: pointer;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 0.95rem;
++    }
++
++    .modal .btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++    }
++
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--text);
++      margin-top: 10px;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .toast {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      z-index: 3000;
++      display: none;
++      font-size: 0.9rem;
++    }
++
++    .toast.visible {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+@@ -160,18 +279,20 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-auth-trigger="menu">Menu</a></li>
++      <li><a href="/locations" data-auth-trigger="locations">Locations</a></li>
++      <li><a href="/rewards" data-auth-trigger="rewards">Rewards</a></li>
++      <li><a href="/account" data-auth-trigger="account">My Account</a></li>
++      <li id="signin-nav-item"><a href="#signin" id="signin-btn" class="signin-link" data-auth-trigger="signin">Sign In</a></li>
++      <li id="user-status-item" class="auth-status" style="display: none;"></li>
++      <li><a href="/logout" id="logout-btn" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-auth-trigger="order">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -181,17 +302,17 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-auth-trigger="order">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-auth-trigger="order">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-auth-trigger="order">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +328,353 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Inline Sign-In Modal Fallback (stays on the current page without redirecting) -->
++  <div id="signin-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="signin-modal-title">
++    <div class="modal">
++      <button type="button" class="modal-close" id="modal-close-btn" aria-label="Close">&times;</button>
++      <h2 id="signin-modal-title">Sign In</h2>
++      <p class="subtitle" id="signin-modal-subtitle">Sign in to access your Daily Grind account and rewards.</p>
++      <form id="signin-form">
++        <div class="form-group">
++          <label for="username-input">Email or Username</label>
++          <input
++            type="text"
++            id="username-input"
++            name="username"
++            autocomplete="username webauthn"
++            placeholder="you@example.com"
++            required
++          >
++        </div>
++        <div class="form-group">
++          <label for="password-input">Password</label>
++          <input
++            type="password"
++            id="password-input"
++            name="password"
++            autocomplete="current-password webauthn"
++            placeholder="••••••••"
++          >
++        </div>
++        <button type="submit" class="btn">Continue</button>
++        <button type="button" id="passkey-signin-btn" class="btn btn-secondary">Sign in with a Passkey or Saved Password</button>
++      </form>
++    </div>
++  </div>
++
++  <div id="auth-toast" class="toast" role="status" aria-live="polite"></div>
++
++  <script>
++    (function () {
++      let currentUser = null;
++      let pendingAction = null;
++      let conditionalAbortController = null;
++
++      const modal = document.getElementById('signin-modal');
++      const modalSubtitle = document.getElementById('signin-modal-subtitle');
++      const closeBtn = document.getElementById('modal-close-btn');
++      const signinForm = document.getElementById('signin-form');
++      const passkeyBtn = document.getElementById('passkey-signin-btn');
++      const usernameInput = document.getElementById('username-input');
++      const passwordInput = document.getElementById('password-input');
++      const signinNavItem = document.getElementById('signin-nav-item');
++      const userStatusItem = document.getElementById('user-status-item');
++      const logoutBtn = document.getElementById('logout-btn');
++      const toastEl = document.getElementById('auth-toast');
++
++      function showToast(message) {
++        toastEl.textContent = message;
++        toastEl.classList.add('visible');
++        clearTimeout(showToast._timer);
++        showToast._timer = setTimeout(() => {
++          toastEl.classList.remove('visible');
++        }, 4000);
++      }
++
++      function generateChallenge() {
++        const challenge = new Uint8Array(32);
++        if (window.crypto && window.crypto.getRandomValues) {
++          window.crypto.getRandomValues(challenge);
++        }
++        return challenge;
++      }
++
++      function getRpId() {
++        return window.location.hostname || 'localhost';
++      }
++
++      function createPublicKeyOptions() {
++        return {
++          challenge: generateChallenge(),
++          rpId: getRpId(),
++          allowCredentials: [],
++          userVerification: 'preferred',
++        };
++      }
++
++      function handleSuccessfulAuth(credential, actionContext) {
++        if (conditionalAbortController) {
++          conditionalAbortController.abort();
++          conditionalAbortController = null;
++        }
++
++        const displayName =
++          (credential && (credential.name || credential.id)) || 'Coffee Lover';
++        currentUser = {
++          id: credential ? credential.id : 'user',
++          name: displayName,
++          type: credential ? credential.type : 'password',
++        };
++
++        closeSignInModal();
++        updateAuthUI();
++
++        const contextLabel =
++          actionContext === 'rewards'
++            ? 'Rewards'
++            : actionContext === 'account'
++            ? 'My Account'
++            : actionContext === 'order'
++            ? 'Order Online'
++            : null;
++
++        if (contextLabel) {
++          showToast(`Signed in as ${currentUser.name} — ${contextLabel} unlocked!`);
++        } else {
++          showToast(`Welcome back, ${currentUser.name}!`);
++        }
++      }
++
++      function updateAuthUI() {
++        if (currentUser) {
++          if (signinNavItem) signinNavItem.style.display = 'none';
++          if (userStatusItem) {
++            userStatusItem.textContent = `Hi, ${currentUser.name}`;
++            userStatusItem.style.display = 'inline-block';
++          }
++        } else {
++          if (signinNavItem) signinNavItem.style.display = '';
++          if (userStatusItem) {
++            userStatusItem.textContent = '';
++            userStatusItem.style.display = 'none';
++          }
++        }
++      }
++
++      function openSignInModal(actionContext) {
++        pendingAction = actionContext || null;
++        if (actionContext === 'rewards') {
++          modalSubtitle.textContent = 'Sign in right here to view and redeem your Daily Grind Rewards.';
++        } else if (actionContext === 'account') {
++          modalSubtitle.textContent = 'Sign in right here to manage your Daily Grind account.';
++        } else if (actionContext === 'order') {
++          modalSubtitle.textContent = 'Sign in right here for fast checkout on your coffee order.';
++        } else {
++          modalSubtitle.textContent = 'Sign in with your saved passkey or password without leaving this page.';
++        }
++        modal.classList.add('active');
++        startConditionalSignIn();
++      }
++
++      function closeSignInModal() {
++        modal.classList.remove('active');
++      }
++
++      /**
++       * Immediate credential lookup for returning customers on user gesture
++       * (clicking "Rewards", "My Account", "Order Now", or "Sign In").
++       * Uses `mediation: 'immediate'` / `uiMode: 'immediate'` alongside `publicKey`
++       * and `password: true` so the browser immediately surfaces saved passkeys
++       * or passwords in-page, falling back smoothly on `NotAllowedError`.
++       */
++      async function attemptImmediateSignIn(actionContext) {
++        if (!navigator.credentials || !navigator.credentials.get) {
++          openSignInModal(actionContext);
++          return;
++        }
++
++        if (conditionalAbortController) {
++          conditionalAbortController.abort();
++          conditionalAbortController = null;
++        }
++
++        try {
++          if (
++            window.PublicKeyCredential &&
++            typeof PublicKeyCredential.getClientCapabilities === 'function'
++          ) {
++            await PublicKeyCredential.getClientCapabilities();
++          }
++
++          const credential = await navigator.credentials.get({
++            publicKey: createPublicKeyOptions(),
++            password: true,
++            mediation: 'immediate',
++            uiMode: 'immediate',
++          });
++
++          if (credential) {
++            handleSuccessfulAuth(credential, actionContext);
++            return;
++          }
++
++          openSignInModal(actionContext);
++        } catch (error) {
++          if (error && error.name === 'NotAllowedError') {
++            // No local passkey or saved password available (or user dismissed prompt);
++            // fall back to the inline modal without leaving the page.
++            openSignInModal(actionContext);
++          } else {
++            openSignInModal(actionContext);
++          }
++        }
++      }
++
++      /**
++       * Ambient / non-intrusive credential check when returning customers browse the site,
++       * using optional/silent PasswordCredential mediation and Conditional WebAuthn UI.
++       */
++      async function startConditionalSignIn() {
++        if (currentUser || !navigator.credentials || !navigator.credentials.get) {
++          return;
++        }
++
++        try {
++          if (
++            window.PublicKeyCredential &&
++            typeof PublicKeyCredential.isConditionalMediationAvailable === 'function'
++          ) {
++            const available = await PublicKeyCredential.isConditionalMediationAvailable();
++            if (available) {
++              if (conditionalAbortController) {
++                conditionalAbortController.abort();
++              }
++              conditionalAbortController = new AbortController();
++              navigator.credentials
++                .get({
++                  publicKey: createPublicKeyOptions(),
++                  password: true,
++                  mediation: 'conditional',
++                  signal: conditionalAbortController.signal,
++                })
++                .then((credential) => {
++                  if (credential) {
++                    handleSuccessfulAuth(credential, pendingAction);
++                  }
++                })
++                .catch(() => {
++                  // Ignore abort or non-fatal conditional errors
++                });
++            }
++          }
++        } catch (_) {
++          // Ignore feature detection errors
++        }
++      }
++
++      async function attemptAmbientBrowseSignIn() {
++        if (!navigator.credentials || !navigator.credentials.get) {
++          return;
++        }
++
++        // Start conditional mediation for passkey/password autofill
++        startConditionalSignIn();
++
++        // Also check silent/optional saved credentials for returning customers browsing the page
++        if (window.PasswordCredential) {
++          try {
++            const cred = await navigator.credentials.get({
++              password: true,
++              mediation: 'silent',
++            });
++            if (cred) {
++              handleSuccessfulAuth(cred, null);
++            }
++          } catch (_) {
++            // Ignore if silent mediation is not allowed or fails
++          }
++        }
++      }
++
++      // Attach click handlers to in-page auth triggers ("Rewards", "My Account", "Order Now", "Sign In")
++      document.querySelectorAll('[data-auth-trigger]').forEach((el) => {
++        el.addEventListener('click', (event) => {
++          event.preventDefault();
++          const actionContext = el.getAttribute('data-auth-trigger');
++          if (currentUser) {
++            handleSuccessfulAuth(currentUser, actionContext);
++            return;
++          }
++          attemptImmediateSignIn(actionContext);
++        });
++      });
++
++      // Handle Logout without leaving the page
++      if (logoutBtn) {
++        logoutBtn.addEventListener('click', async (event) => {
++          event.preventDefault();
++          currentUser = null;
++          updateAuthUI();
++          if (navigator.credentials && navigator.credentials.preventSilentAccess) {
++            try {
++              await navigator.credentials.preventSilentAccess();
++            } catch (_) {}
++          }
++          showToast('You have been signed out.');
++        });
++      }
++
++      // Modal close & form submission handlers
++      if (closeBtn) {
++        closeBtn.addEventListener('click', closeSignInModal);
++      }
++
++      if (modal) {
++        modal.addEventListener('click', (event) => {
++          if (event.target === modal) {
++            closeSignInModal();
++          }
++        });
++      }
++
++      if (passkeyBtn) {
++        passkeyBtn.addEventListener('click', () => {
++          attemptImmediateSignIn(pendingAction);
++        });
++      }
++
++      if (signinForm) {
++        signinForm.addEventListener('submit', async (event) => {
++          event.preventDefault();
++          const username = usernameInput.value.trim();
++          const password = passwordInput.value;
++          if (!username) return;
++
++          if (window.PasswordCredential && password && navigator.credentials && navigator.credentials.store) {
++            try {
++              const pwdCred = new PasswordCredential({
++                id: username,
++                password: password,
++                name: username,
++              });
++              await navigator.credentials.store(pwdCred);
++            } catch (_) {}
++          }
++
++          handleSuccessfulAuth({ id: username, name: username, type: 'password' }, pendingAction);
++          signinForm.reset();
++        });
++      }
++
++      // Run ambient sign-in check when returning customers browse the page
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', attemptAmbientBrowseSignIn);
++      } else {
++        attemptAmbientBrowseSignIn();
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

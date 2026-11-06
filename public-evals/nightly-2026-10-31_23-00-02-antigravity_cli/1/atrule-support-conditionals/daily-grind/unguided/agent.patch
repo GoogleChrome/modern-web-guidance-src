@@ -1,0 +1,100 @@
+diff --git a/index.html b/index.html
+index 66c9173..3140f45 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,95 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Conditional At-Rule Feature Queries (@supports at-rule()) */
++
++    /* Navigation Bar: conditionally apply view transition and entry styles */
++    @supports at-rule(@view-transition) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      nav {
++        view-transition-name: main-nav;
++        backdrop-filter: blur(8px);
++        background: rgba(78, 52, 46, 0.95);
++        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
++      }
++    }
++
++    /* Hero Section: conditionally apply entry transitions when @starting-style is supported */
++    @supports at-rule(@starting-style) {
++      .hero h1,
++      .hero p,
++      .hero .btn {
++        transition: opacity 0.6s ease-out, transform 0.6s ease-out;
++        opacity: 1;
++        transform: translateY(0);
++
++        @starting-style {
++          opacity: 0;
++          transform: translateY(20px);
++        }
++      }
++    }
++
++    /* Hero Section: conditionally apply keyframe animation when @keyframes is supported */
++    @supports at-rule(@keyframes) {
++      @keyframes heroFadeIn {
++        from {
++          opacity: 0.85;
++        }
++        to {
++          opacity: 1;
++        }
++      }
++
++      .hero {
++        animation: heroFadeIn 0.8s ease-out;
++      }
++    }
++
++    /* Seasonal Favorite Cards: conditionally apply container queries when @container is supported */
++    @supports at-rule(@container) {
++      .grid {
++        container-type: inline-size;
++        container-name: favorites-grid;
++      }
++
++      .card {
++        display: flex;
++        flex-direction: column;
++        justify-content: space-between;
++        align-items: center;
++        transition: transform 0.3s ease, box-shadow 0.3s ease;
++      }
++
++      .card:hover {
++        transform: translateY(-4px);
++        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
++      }
++
++      @container favorites-grid (min-width: 700px) {
++        .card {
++          padding: 28px;
++          border-top: 4px solid var(--accent);
++        }
++      }
++    }
++
++    /* Seasonal Favorite Cards & Scoped Styles: conditionally apply when @scope is supported */
++    @supports at-rule(@scope) {
++      @scope (.card) {
++        :scope {
++          border: 1px solid var(--secondary);
++        }
++
++        h3 {
++          letter-spacing: 0.5px;
++        }
++      }
++    }
+   </style>
+ </head>
+ 

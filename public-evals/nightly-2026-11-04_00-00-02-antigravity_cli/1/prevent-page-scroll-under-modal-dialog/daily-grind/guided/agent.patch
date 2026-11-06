@@ -1,0 +1,53 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..0caef90 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,13 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
+-      overflow: hidden;
+-      position: fixed;
+-    }
+-
+-    dialog {
+-      overflow: visible;
++    dialog:modal {
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
++      overflow: hidden;
++      overscroll-behavior: contain;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -212,10 +208,12 @@
+   </main>
+ 
+ 
+-  <dialog id="notice-dialog">
+-    <h2>Special Notice</h2>
++  <dialog id="notice-dialog" aria-labelledby="notice-title">
++    <h2 id="notice-title">Special Notice</h2>
+     <p>Our patio is open for the season.</p>
+-    <button type="button" id="close-notice" class="btn">Close</button>
++    <form method="dialog">
++      <button type="submit" id="close-notice" class="btn" autofocus>Close</button>
++    </form>
+   </dialog>
+ 
+   <footer>
+@@ -231,9 +229,7 @@
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      noticeDialog.showModal();
+     }
+   </script>
+ </body>

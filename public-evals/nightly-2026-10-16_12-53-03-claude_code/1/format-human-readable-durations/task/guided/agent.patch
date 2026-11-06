@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,52 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Steeping Calculator */
++    .steep-form {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 20px;
++      justify-content: center;
++      align-items: end;
++      margin-top: 20px;
++    }
++
++    .steep-form label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.9rem;
++      gap: 4px;
++    }
++
++    .steep-form input[type="number"] {
++      width: 6rem;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .steep-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 6px 12px 8px;
++    }
++
++    .steep-form fieldset label {
++      flex-direction: row;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .steep-result {
++      margin-top: 20px;
++      font-size: 1.5rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +238,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="card" style="margin-top: 40px;" aria-labelledby="steepHeading">
++      <h2 id="steepHeading">Coffee Steeping Time Calculator</h2>
++      <form class="steep-form" onsubmit="return false">
++        <label>Hours
++          <input type="number" id="hoursInput" min="0" step="1" value="0" inputmode="numeric">
++        </label>
++        <label>Minutes
++          <input type="number" id="minutesInput" min="0" step="1" value="18" inputmode="numeric">
++        </label>
++        <fieldset>
++          <legend>Display as</legend>
++          <label><input type="radio" name="largestUnit" value="hours" checked> Hours</label>
++          <label><input type="radio" name="largestUnit" value="minutes"> Minutes</label>
++        </fieldset>
++      </form>
++      <p class="steep-result" id="humanValue" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +267,44 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const hoursInput = document.getElementById('hoursInput');
++    const minutesInput = document.getElementById('minutesInput');
++    const humanValue = document.getElementById('humanValue');
++    const locale = navigator.language;
++
++    if (typeof Temporal === 'undefined') {
++      const module = await import('https://esm.sh/@js-temporal/polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    function formatDuration(duration) {
++      if (typeof Intl.DurationFormat !== 'undefined' && duration.sign !== 0) {
++        return new Intl.DurationFormat(locale, { style: 'long' }).format(duration);
++      }
++      const unit = (value, unit) =>
++        new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: 'long' }).format(value);
++      const parts = [];
++      if (duration.hours) parts.push(unit(duration.hours, 'hour'));
++      if (duration.minutes || !parts.length) parts.push(unit(duration.minutes, 'minute'));
++      return new Intl.ListFormat(locale, { style: 'long', type: 'unit' }).format(parts);
++    }
++
++    function update() {
++      const hours = Math.max(0, Math.trunc(Number(hoursInput.value)) || 0);
++      const minutes = Math.max(0, Math.trunc(Number(minutesInput.value)) || 0);
++      const largestUnit = document.querySelector('input[name="largestUnit"]:checked').value;
++      const duration = Temporal.Duration.from({ hours, minutes }).round({ largestUnit });
++      humanValue.textContent = formatDuration(duration);
++    }
++
++    for (const el of document.querySelectorAll('#hoursInput, #minutesInput, input[name="largestUnit"]')) {
++      el.addEventListener('input', update);
++    }
++    update();
++  </script>
++
+ </body>
+ 
+ </html>

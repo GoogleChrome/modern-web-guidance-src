@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,122 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++
++    /* Parallax Section (scroll-driven, CSS only; decorative layers) */
++    .parallax {
++      position: relative;
++      min-height: 80vh;
++      display: grid;
++      place-items: center;
++      overflow: clip;
++      isolation: isolate;
++      background: var(--primary);
++      color: white;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: -120px 0;
++      pointer-events: none;
++      z-index: -1;
++    }
++
++    .parallax-bg {
++      background: linear-gradient(rgba(62, 39, 35, 0.65), rgba(62, 39, 35, 0.65)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++    }
++
++    .parallax-mid::before,
++    .parallax-mid::after,
++    .parallax-front::before,
++    .parallax-front::after {
++      content: "";
++      position: absolute;
++      border-radius: 50%;
++    }
++
++    .parallax-mid::before {
++      width: 220px;
++      height: 220px;
++      left: 8%;
++      top: 25%;
++      background: radial-gradient(circle at 30% 30%, rgba(255, 171, 64, 0.5), rgba(255, 171, 64, 0));
++    }
++
++    .parallax-mid::after {
++      width: 160px;
++      height: 160px;
++      right: 12%;
++      top: 55%;
++      background: radial-gradient(circle at 30% 30%, rgba(215, 204, 200, 0.45), rgba(215, 204, 200, 0));
++    }
++
++    .parallax-front::before {
++      width: 90px;
++      height: 60px;
++      right: 22%;
++      top: 22%;
++      background: #3e2723;
++      box-shadow: inset -8px -6px 0 rgba(0, 0, 0, 0.35);
++      transform: rotate(-25deg);
++    }
++
++    .parallax-front::after {
++      width: 70px;
++      height: 46px;
++      left: 18%;
++      top: 62%;
++      background: #5d4037;
++      box-shadow: inset -6px -5px 0 rgba(0, 0, 0, 0.35);
++      transform: rotate(20deg);
++    }
++
++    .parallax-content {
++      max-width: 600px;
++      padding: 40px 20px;
++      text-align: center;
++    }
++
++    .parallax-content h2 {
++      font-size: 2.2rem;
++      margin-bottom: 1rem;
++    }
++
++    /* Progressive enhancement: layers stay static where unsupported or when motion is reduced */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        @keyframes parallax-drift {
++          from {
++            transform: translate3d(0, var(--shift), 0);
++          }
++
++          to {
++            transform: translate3d(0, calc(var(--shift) * -1), 0);
++          }
++        }
++
++        .parallax {
++          view-timeline: --parallax block;
++        }
++
++        .parallax-layer {
++          animation: parallax-drift linear both;
++          animation-timeline: --parallax;
++          animation-range: entry 0% exit 100%;
++          will-change: transform;
++        }
++
++        /* Slow background = far away; faster layers = closer */
++        .parallax-bg { --shift: 60px; }
++        .parallax-mid { --shift: 140px; }
++        .parallax-front { --shift: 280px; }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +287,19 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax-layer parallax-bg" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-mid" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-front" aria-hidden="true"></div>
++    <div class="parallax-content">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>Every batch is small-lot roasted each morning, so what lands in your cup is only days from the farm.</p>
++      <a href="/our-story" class="btn">Our Story</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

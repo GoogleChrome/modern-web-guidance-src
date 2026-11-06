@@ -1,0 +1,289 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,203 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling Section Styles */
++    html {
++      timeline-scope: --tl-1, --tl-2, --tl-3, --tl-4;
++    }
++
++    .scrollytelling {
++      margin: 60px 0 80px;
++    }
++
++    .scrolly-header {
++      text-align: center;
++      margin-bottom: 40px;
++    }
++
++    .scrolly-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .scrolly-header p {
++      color: var(--text);
++      font-size: 1.1rem;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .scrolly-layout {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++      position: relative;
++    }
++
++    #animated {
++      position: sticky;
++      top: 100px;
++      height: 480px;
++      display: grid;
++      grid-template-columns: 1fr;
++      grid-template-rows: 1fr;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
++      background: #2e1d19;
++    }
++
++    #animated section {
++      grid-area: 1 / 1 / 2 / 2;
++      width: 100%;
++      height: 100%;
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-end;
++      border-radius: 12px;
++      overflow: hidden;
++      backface-visibility: hidden;
++      will-change: transform, opacity;
++      animation: animate-in auto linear both, animate-out auto linear forwards;
++      animation-range: entry 25% cover 50%, exit 50% exit 75%;
++    }
++
++    #animated section img {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 1;
++    }
++
++    #animated section .card-overlay {
++      position: relative;
++      z-index: 2;
++      background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
++      color: white;
++      padding: 24px;
++    }
++
++    #animated section .card-overlay .tag {
++      display: inline-block;
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      background: var(--accent);
++      color: var(--primary);
++      padding: 3px 8px;
++      border-radius: 4px;
++      margin-bottom: 8px;
++    }
++
++    #animated section .card-overlay h4 {
++      font-size: 1.4rem;
++      margin-bottom: 6px;
++      color: white;
++    }
++
++    #animated section .card-overlay p {
++      font-size: 0.95rem;
++      line-height: 1.4;
++      color: #f0f0f0;
++    }
++
++    #animated section:nth-child(1) { animation-timeline: --tl-1; }
++    #animated section:nth-child(2) { animation-timeline: --tl-2; }
++    #animated section:nth-child(3) { animation-timeline: --tl-3; }
++    #animated section:nth-child(4) { animation-timeline: --tl-4; }
++
++    #tracked {
++      display: flex;
++      flex-direction: column;
++      gap: 30px;
++    }
++
++    #tracked section {
++      min-height: 70vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      padding: 40px 30px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
++      border-left: 5px solid var(--accent);
++    }
++
++    #tracked section:nth-child(1) { view-timeline: --tl-1 block; }
++    #tracked section:nth-child(2) { view-timeline: --tl-2 block; }
++    #tracked section:nth-child(3) { view-timeline: --tl-3 block; }
++    #tracked section:nth-child(4) { view-timeline: --tl-4 block; }
++
++    #tracked section .step-label {
++      font-size: 0.85rem;
++      font-weight: bold;
++      color: var(--accent);
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      margin-bottom: 8px;
++    }
++
++    #tracked section h3 {
++      font-size: 1.7rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    #tracked section p {
++      font-size: 1.05rem;
++      color: var(--text);
++      line-height: 1.7;
++    }
++
++    @keyframes animate-in {
++      from {
++        opacity: 0;
++        transform: scale(0.92) translateY(30px);
++      }
++      to {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++      }
++    }
++
++    @keyframes animate-out {
++      to {
++        opacity: 0;
++        transform: scale(1.04) translateY(-30px);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #animated section {
++        animation: none !important;
++        opacity: 1 !important;
++        transform: none !important;
++      }
++    }
++
++    @media (max-width: 768px) {
++      .scrolly-layout {
++        grid-template-columns: 1fr;
++      }
++
++      #animated {
++        position: sticky;
++        top: 70px;
++        height: 320px;
++        z-index: 10;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +369,81 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="scrollytelling">
++      <div class="scrolly-header">
++        <h2>From Bean to Cup: Our Craft</h2>
++        <p>Experience the journey behind every cup we brew, from high-altitude farms to your morning ritual.</p>
++      </div>
++
++      <div class="scrolly-layout">
++        <div id="animated">
++          <section>
++            <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=800&q=80" alt="Ethical coffee farm harvest" loading="lazy">
++            <div class="card-overlay">
++              <span class="tag">Origin</span>
++              <h4>Ethical Harvesting</h4>
++              <p>Hand-picked cherries at peak ripeness across volcanic soil slopes.</p>
++            </div>
++          </section>
++
++          <section>
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80" alt="Freshly roasted coffee beans" loading="lazy">
++            <div class="card-overlay">
++              <span class="tag">Roastery</span>
++              <h4>Artisanal Drum Roasting</h4>
++              <p>Tailored temperature curves that unlock complex aromatic profiles.</p>
++            </div>
++          </section>
++
++          <section>
++            <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80" alt="Barista preparing coffee" loading="lazy">
++            <div class="card-overlay">
++              <span class="tag">Barista</span>
++              <h4>Precision Extraction</h4>
++              <p>Calibrated grind profiles and precise mineralized water chemistry.</p>
++            </div>
++          </section>
++
++          <section>
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80" alt="Artisanal cup of coffee" loading="lazy">
++            <div class="card-overlay">
++              <span class="tag">Experience</span>
++              <h4>The Perfect Cup</h4>
++              <p>Velvety micro-foam, balanced crema, and unparalleled taste.</p>
++            </div>
++          </section>
++        </div>
++
++        <div id="tracked">
++          <section>
++            <span class="step-label">Step 01 / Harvesting</span>
++            <h3>Single-Origin & Fair Harvest</h3>
++            <p>Great coffee begins at the source. We partner directly with smallholder farming cooperatives in Colombia, Ethiopia, and Guatemala. Grown under natural canopy shade, only the ripest red cherries are selectively hand-harvested to guarantee natural sweetness and complexity.</p>
++          </section>
++
++          <section>
++            <span class="step-label">Step 02 / Roasting</span>
++            <h3>Custom Small-Batch Profiles</h3>
++            <p>Every coffee lot is distinct. In our local roastery, we roast in micro-batches using cast-iron drum roasters. Our roast masters monitor airflow, rate-of-rise, and bean temperature in real time to draw out terroir-specific flavors—from bright citrus to dark chocolate.</p>
++          </section>
++
++          <section>
++            <span class="step-label">Step 03 / Extraction</span>
++            <h3>Science Meets Artistry</h3>
++            <p>Brewing is all about equilibrium. We precision-grind fresh before every extraction using large flat burrs for unimodal particle size distribution. With pure mountain water held steadily at 93.5&deg;C, we achieve maximum sweetness without undesirable astringency.</p>
++          </section>
++
++          <section>
++            <span class="step-label">Step 04 / Pouring</span>
++            <h3>Savor Every Sip</h3>
++            <p>Whether you are enjoying a bold pour-over or a silk-textured flat white, every cup represents months of dedication from farmers, roasters, and baristas. Sit back, breathe in the aromas, and elevate your daily ritual.</p>
++          </section>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

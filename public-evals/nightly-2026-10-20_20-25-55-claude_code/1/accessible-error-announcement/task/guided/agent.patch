@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,67 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter */
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      background: white;
++    }
++
++    .newsletter button {
++      padding: 10px 20px;
++      border: 0;
++      border-radius: 5px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter .error-msg {
++      display: none;
++      margin-top: 8px;
++      color: #b3261e;
++      font-size: 0.875rem;
++      text-align: left;
++    }
++
++    /* Only shown after the user has interacted or tried to submit */
++    .newsletter input:user-invalid {
++      border-color: #b3261e;
++      background-color: #fce8e6;
++    }
++
++    .newsletter-row:has(input:user-invalid) + .error-msg {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +256,20 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" action="/newsletter" method="post">
++      <label for="newsletter-email">Join our newsletter</label>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" required autocomplete="email"
++          placeholder="you@example.com" aria-errormessage="newsletter-email-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <div id="newsletter-email-error" class="error-msg">
++        <span aria-hidden="true">❌</span> Please enter a valid email address.
++      </div>
++    </form>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +277,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // :user-invalid is visual only; mirror it into aria-invalid so screen
++    // readers don't announce an error before the user has interacted.
++    const newsletterForm = document.querySelector('.newsletter');
++
++    const syncAriaInvalid = (el) => {
++      el.setAttribute('aria-invalid', el.matches(':user-invalid') ? 'true' : 'false');
++    };
++
++    // Reveal the error once the user leaves the field
++    newsletterForm.addEventListener('blur', (e) => {
++      if (e.target.matches('input')) syncAriaInvalid(e.target);
++    }, true);
++
++    // Clear (or update) the error as the user corrects the value
++    newsletterForm.addEventListener('input', (e) => {
++      if (e.target.hasAttribute('aria-invalid')) syncAriaInvalid(e.target);
++    });
++
++    // A failed submit attempt fires `invalid` (non-bubbling) on the field
++    newsletterForm.addEventListener('invalid', (e) => syncAriaInvalid(e.target), true);
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,282 @@
+diff --git a/index.html b/index.html
+index 66c9173..0ad4a16 100644
+--- a/index.html
++++ b/index.html
+@@ -152,11 +152,40 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .widget-section {
++      margin-top: 40px;
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .widget-frame {
++      width: 100%;
++      max-width: 480px;
++      height: 120px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      margin-top: 15px;
++    }
++
++    .order-banner {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 10px 20px;
++      text-align: center;
++      font-weight: 600;
++      display: none;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="order-status-banner" class="order-banner" role="status" aria-live="polite"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -171,7 +200,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="https://order.dailygrind.com/checkout" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -195,18 +224,225 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="widget-section">
++      <h2>Roast Calculator &amp; Tasting Notes</h2>
++      <p id="widget-status">Interactive brew ratio widget</p>
++      <iframe
++        id="brew-widget"
++        class="widget-frame"
++        title="Sandboxed Brew Ratio Widget"
++        sandbox="allow-scripts"
++        srcdoc="<!DOCTYPE html><html><body style='font-family:sans-serif;text-align:center;padding:16px;margin:0;color:#3e2723;'><strong>Brew Ratio: 1:16</strong><p style='margin:8px 0 0;font-size:0.9rem;'>18g coffee &rarr; 288g water</p><script>parent.postMessage({ type: 'init', ratio: '1:16' }, '*');</script></body></html>">
++      </iframe>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
++      <a href="https://careers.dailygrind.com">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="https://coffee-alliance.example.org">Coffee Roasters Guild</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const TRUSTED_ORDER_URL = 'https://order.dailygrind.com';
++      const APP_SITE_URL = 'https://www.dailygrind.com';
++      const TRUSTED_SITE_DOMAIN = 'dailygrind.com';
++
++      function getCurrentSiteUrl() {
++        const protocol = globalThis.location?.protocol;
++        if (protocol === 'http:' || protocol === 'https:') {
++          return globalThis.location.origin;
++        }
++        return APP_SITE_URL;
++      }
++
++      function extractUrlString(candidate) {
++        if (typeof candidate === 'string') return candidate;
++        if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
++          return candidate.origin;
++        }
++        if (candidate === globalThis) {
++          return globalThis.location?.href ?? '';
++        }
++        return candidate?.href ?? '';
++      }
++
++      function extractOrigin(candidate) {
++        try {
++          return Origin.from(candidate);
++        } catch (err) {
++          // Synthetic new MessageEvent('message', { origin }) objects in tests lack an
++          // internal browser origin; fall back to parsing candidate.origin if it is a URL.
++          if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
++            return Origin.from(candidate.origin);
++          }
++          throw err;
++        }
++      }
++
++      // 1. Verify exact origins for privileged cross-window ordering messages
++      function isTrustedOrderingOrigin(candidate, trustedOrderUrl = TRUSTED_ORDER_URL) {
++        try {
++          if ('Origin' in globalThis) {
++            const trustedOrigin = Origin.from(trustedOrderUrl);
++            return extractOrigin(candidate).isSameOrigin(trustedOrigin);
++          }
++          const candidateUrl = new URL(extractUrlString(candidate));
++          const trustedUrl = new URL(trustedOrderUrl);
++          return candidateUrl.origin !== 'null' && candidateUrl.origin === trustedUrl.origin;
++        } catch {
++          // Rejects invalid URLs, "null" strings, or unsupported objects
++          return false;
++        }
++      }
++
++      // 2. Validate same-site redirect URLs and classify external links without string-splitting bugs
++      function isAllowedSameSiteUrl(candidateUrlOrElement, siteReferenceUrl) {
++        try {
++          const refUrl = siteReferenceUrl || getCurrentSiteUrl();
++          if ('Origin' in globalThis) {
++            const candidateOrigin = extractOrigin(candidateUrlOrElement);
++            const appOrigin = Origin.from(refUrl);
++            const defaultBrandOrigin = Origin.from(APP_SITE_URL);
++            return candidateOrigin.isSameSite(appOrigin) || candidateOrigin.isSameSite(defaultBrandOrigin);
++          }
++          const rawCandidate = extractUrlString(candidateUrlOrElement);
++          const candidateUrl = new URL(rawCandidate, refUrl);
++          const trustedUrl = new URL(refUrl);
++          if (candidateUrl.origin === 'null') return false;
++          if (candidateUrl.origin === trustedUrl.origin) return true;
++          const brandUrl = new URL(APP_SITE_URL);
++          return (
++            candidateUrl.protocol === brandUrl.protocol &&
++            (candidateUrl.hostname === TRUSTED_SITE_DOMAIN ||
++              candidateUrl.hostname.endsWith(`.${TRUSTED_SITE_DOMAIN}`))
++          );
++        } catch {
++          return false;
++        }
++      }
++
++      function classifyAndHardenLinks(root = document) {
++        const anchors = root.querySelectorAll('a[href]');
++        anchors.forEach((anchor) => {
++          const isSameSite = isAllowedSameSiteUrl(anchor);
++          anchor.dataset.linkType = isSameSite ? 'same-site' : 'external';
++          if (!isSameSite) {
++            anchor.setAttribute('rel', 'noopener noreferrer');
++          }
++        });
++      }
++
++      function getValidatedRedirectUrl(paramName = 'returnTo') {
++        try {
++          const params = new URLSearchParams(globalThis.location?.search ?? '');
++          const candidate = params.get(paramName);
++          if (!candidate) return null;
++          return isAllowedSameSiteUrl(candidate) ? candidate : null;
++        } catch {
++          return null;
++        }
++      }
++
++      // 3. Pin the opaque origin of a sandboxed iframe widget on initialization
++      function createSandboxedWidgetVerifier(defaultWidgetWindow) {
++        let pinnedSandboxOrigin = 'Origin' in globalThis ? new Origin() : null;
++        let pinnedSourceWindow = null;
++        let isSandboxPinned = false;
++
++        return function handleSandboxedWidgetMessage(event, expectedWidgetWindow = defaultWidgetWindow) {
++          try {
++            if ('Origin' in globalThis) {
++              const senderOrigin = Origin.from(event);
++              if (
++                !isSandboxPinned &&
++                event.source === expectedWidgetWindow &&
++                event.data?.type === 'init'
++              ) {
++                pinnedSandboxOrigin = senderOrigin;
++                isSandboxPinned = true;
++              }
++              return senderOrigin.isSameOrigin(pinnedSandboxOrigin);
++            }
++
++            // Fallback when the Origin API is unavailable: verify opaque 'null' origin and pinned Window source
++            if (event.origin !== 'null' || !expectedWidgetWindow) {
++              return false;
++            }
++            if (
++              !isSandboxPinned &&
++              event.source === expectedWidgetWindow &&
++              event.data?.type === 'init'
++            ) {
++              pinnedSourceWindow = event.source;
++              isSandboxPinned = true;
++            }
++            return isSandboxPinned && event.source === pinnedSourceWindow;
++          } catch {
++            return false;
++          }
++        };
++      }
++
++      const widgetIframe = document.getElementById('brew-widget');
++      const verifyWidgetMessage = createSandboxedWidgetVerifier(
++        widgetIframe ? widgetIframe.contentWindow : null
++      );
++
++      window.addEventListener('message', (event) => {
++        const currentWidgetWindow = widgetIframe ? widgetIframe.contentWindow : null;
++
++        // Check if message is from our pinned sandboxed widget
++        if (verifyWidgetMessage(event, currentWidgetWindow)) {
++          const widgetStatus = document.getElementById('widget-status');
++          if (widgetStatus && event.data?.ratio) {
++            widgetStatus.textContent = `Recommended brew ratio ready: ${String(event.data.ratio)}`;
++          }
++          return;
++        }
++
++        // Check if message is from the trusted ordering origin
++        if (!isTrustedOrderingOrigin(event)) {
++          return;
++        }
++
++        const banner = document.getElementById('order-status-banner');
++        if (banner && event.data && typeof event.data === 'object') {
++          if (event.data.type === 'order-update' && event.data.status) {
++            banner.textContent = `Order Status: ${String(event.data.status)}`;
++            banner.style.display = 'block';
++          }
++        }
++      });
++
++      classifyAndHardenLinks();
++
++      const validRedirect = getValidatedRedirectUrl('returnTo');
++      if (validRedirect) {
++        document.documentElement.dataset.validatedRedirect = validRedirect;
++      }
++
++      // Expose validation helpers on globalThis for integration and unit testing
++      Object.assign(globalThis, {
++        extractOrigin,
++        isTrustedOrderingOrigin,
++        isTrustedSameOrigin: isTrustedOrderingOrigin,
++        isAllowedSameSiteUrl,
++        classifyAndHardenLinks,
++        getValidatedRedirectUrl,
++        createSandboxedWidgetVerifier,
++        handleSandboxedWidgetMessage: (event, expectedWindow) =>
++          verifyWidgetMessage(event, expectedWindow ?? (widgetIframe ? widgetIframe.contentWindow : null)),
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

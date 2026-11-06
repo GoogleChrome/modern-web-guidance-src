@@ -1,0 +1,1012 @@
+diff --git a/index.html b/index.html
+index 66c9173..0f38399 100644
+--- a/index.html
++++ b/index.html
+@@ -46,32 +46,273 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .nav-links {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 6px 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .nav-links > li {
++      position: relative;
+     }
+ 
+-    nav a {
++    .nav-links > li > a,
++    .nav-trigger {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .nav-links > li > a:hover,
++    .nav-trigger:hover,
++    .nav-trigger[aria-expanded="true"] {
+       color: var(--accent);
+     }
+ 
++    .nav-trigger {
++      background: none;
++      border: 0;
++      font-family: inherit;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 0;
++    }
++
++    .nav-trigger:focus-visible,
++    .nav-links > li > a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 2px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .cart-count {
++      display: inline-block;
++      min-width: 1.4em;
++      padding: 0 6px;
++      margin-left: 4px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-align: center;
++      line-height: 1.4em;
++    }
++
++    .cart-count.bump {
++      animation: bump 0.4s ease;
++    }
++
++    @keyframes bump {
++      50% { transform: scale(1.35); }
++    }
++
++    /* Caret used by menu triggers */
++    .caret {
++      width: 0;
++      height: 0;
++      border-left: 4px solid transparent;
++      border-right: 4px solid transparent;
++      border-top: 5px solid currentColor;
++      transition: transform 0.2s;
++    }
++
++    [aria-expanded="true"] > .caret {
++      transform: rotate(180deg);
++    }
++
++    /* ---------- Menu component ---------- */
++    .menu-wrap {
++      position: relative;
++      display: inline-block;
++    }
++
++    .menu {
++      position: absolute;
++      top: calc(100% + 10px);
++      left: 0;
++      z-index: 50;
++      min-width: 230px;
++      list-style: none;
++      margin: 0;
++      padding: 6px;
++      background: white;
++      color: var(--text);
++      text-align: left;
++      font-size: 0.9rem;
++      line-height: 1.4;
++      border-radius: 10px;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.22), 0 2px 6px rgba(62, 39, 35, 0.12);
++      animation: menu-in 0.12s ease-out;
++    }
++
++    .menu[hidden] {
++      display: none;
++    }
++
++    @keyframes menu-in {
++      from { opacity: 0; transform: translateY(-4px); }
++    }
++
++    .menu.align-end,
++    .menu.flip-x {
++      left: auto;
++      right: 0;
++    }
++
++    /* Nested submenus fly out to the side */
++    .menu .menu {
++      top: -6px;
++      left: calc(100% + 4px);
++      right: auto;
++    }
++
++    .menu .menu.flip-x {
++      left: auto;
++      right: calc(100% + 4px);
++    }
++
++    .menu li {
++      position: relative;
++    }
++
++    .menu [role="menuitem"],
++    .menu [role="menuitemcheckbox"],
++    .menu [role="menuitemradio"] {
++      position: relative;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 8px 12px 8px 30px;
++      border-radius: 6px;
++      color: inherit;
++      text-decoration: none;
++      white-space: nowrap;
++      cursor: pointer;
++      user-select: none;
++      outline: none;
++    }
++
++    .menu [role^="menuitem"]:focus,
++    .menu [role^="menuitem"][aria-expanded="true"] {
++      background: #efe6e2;
++    }
++
++    .menu [role^="menuitem"]:focus-visible {
++      box-shadow: inset 0 0 0 2px var(--accent);
++    }
++
++    .menu [aria-disabled="true"] {
++      opacity: 0.5;
++      cursor: default;
++    }
++
++    .menu-label {
++      flex: 1;
++    }
++
++    .menu-value,
++    .menu-hint {
++      color: #8d6e63;
++      font-size: 0.8rem;
++    }
++
++    .menu-value:empty {
++      display: none;
++    }
++
++    /* Submenu arrow */
++    .menu [aria-haspopup="menu"]::after {
++      content: "";
++      width: 6px;
++      height: 6px;
++      border-top: 2px solid currentColor;
++      border-right: 2px solid currentColor;
++      transform: rotate(45deg);
++      opacity: 0.6;
++    }
++
++    /* Checkbox / radio indicators */
++    .menu [role="menuitemcheckbox"]::before,
++    .menu [role="menuitemradio"]::before {
++      content: "";
++      position: absolute;
++      left: 9px;
++      top: 50%;
++      transform: translateY(-50%);
++    }
++
++    .menu [role="menuitemcheckbox"]::before {
++      width: 12px;
++      height: 12px;
++      border: 2px solid #a1887f;
++      border-radius: 3px;
++    }
++
++    .menu [role="menuitemcheckbox"][aria-checked="true"]::before {
++      background: var(--primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.5l2.2 2.2L9.5 3.5' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E") center / 100% no-repeat;
++      border-color: var(--primary);
++    }
++
++    .menu [role="menuitemradio"]::before {
++      width: 12px;
++      height: 12px;
++      border: 2px solid #a1887f;
++      border-radius: 50%;
++    }
++
++    .menu [role="menuitemradio"][aria-checked="true"]::before {
++      border-color: var(--primary);
++      background: var(--primary);
++      box-shadow: inset 0 0 0 2px white;
++    }
++
++    .menu [role="separator"] {
++      height: 1px;
++      margin: 6px 8px;
++      background: #e7dcd8;
++    }
++
++    .menu .menu-primary {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    @media (max-width: 640px) {
++      nav {
++        flex-direction: column;
++        gap: 8px;
++      }
++
++      /* On small screens nested submenus expand inline instead of flying out */
++      .menu .menu,
++      .menu .menu.flip-x {
++        position: static;
++        min-width: 0;
++        margin: 2px 0 4px 14px;
++        padding: 0 0 0 6px;
++        box-shadow: none;
++        border-left: 2px solid #e7dcd8;
++        border-radius: 0;
++        animation: none;
++      }
++
++      .menu [aria-haspopup="menu"][aria-expanded="true"]::after {
++        transform: rotate(135deg);
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -122,6 +363,9 @@
+ 
+     .btn {
+       display: inline-block;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -135,6 +379,89 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .menu-trigger.btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      box-shadow: inset 0 0 0 2px var(--primary);
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .card {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .card > p:first-of-type {
++      flex: 1;
++    }
++
++    .card-config {
++      margin-top: 12px;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      min-height: 2.6em;
++    }
++
++    .card-config strong {
++      color: var(--primary);
++    }
++
++    .card-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    /* Toast */
++    .toast {
++      position: fixed;
++      left: 50%;
++      bottom: 24px;
++      z-index: 2000;
++      max-width: calc(100vw - 32px);
++      padding: 12px 20px;
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++      transform: translate(-50%, 150%);
++      opacity: 0;
++      transition: transform 0.25s, opacity 0.25s;
++      pointer-events: none;
++    }
++
++    .toast.show {
++      transform: translate(-50%, 0);
++      opacity: 1;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .menu, .toast, .caret, .cart-count.bump {
++        animation: none;
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,14 +484,90 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
++    <ul class="nav-links">
++      <li>
++        <button type="button" class="nav-trigger menu-trigger" id="nav-menu-trigger" aria-haspopup="menu"
++          aria-expanded="false" aria-controls="nav-menu">Menu <span class="caret" aria-hidden="true"></span></button>
++        <ul role="menu" class="menu" id="nav-menu" hidden>
++          <li role="none">
++              <div role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="nav-hot"><span class="menu-label">Hot Drinks</span></div>
++              <ul role="menu" class="menu" id="nav-hot" aria-label="Hot Drinks" hidden>
++              <li role="none">
++                <div role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="nav-espresso"><span class="menu-label">Espresso Bar</span></div>
++                <ul role="menu" class="menu" id="nav-espresso" aria-label="Espresso Bar" hidden>
++                <li role="none"><a role="menuitem" href="/menu/hot/espresso/espresso">Espresso</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/espresso/americano">Americano</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/espresso/cappuccino">Cappuccino</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/espresso/latte">Caffè Latte</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/espresso/flat-white">Flat White</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/espresso/mocha">Mocha</a></li>
++                </ul>
++              </li>
++              <li role="none">
++                <div role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="nav-brewed"><span class="menu-label">Brewed Coffee</span></div>
++                <ul role="menu" class="menu" id="nav-brewed" aria-label="Brewed Coffee" hidden>
++                <li role="none"><a role="menuitem" href="/menu/hot/brewed/house-blend">House Blend</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/brewed/dark-roast">Dark Roast</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/brewed/pour-over">Single-Origin Pour-Over</a></li>
++                </ul>
++              </li>
++              <li role="none">
++                <div role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="nav-tea"><span class="menu-label">Tea &amp; Chai</span></div>
++                <ul role="menu" class="menu" id="nav-tea" aria-label="Tea &amp; Chai" hidden>
++                <li role="none"><a role="menuitem" href="/menu/hot/tea/chai">Chai Latte</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/tea/matcha">Matcha Latte</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/tea/earl-grey">Earl Grey</a></li>
++                <li role="none"><a role="menuitem" href="/menu/hot/tea/herbal">Herbal Infusions</a></li>
++                </ul>
++              </li>
++              </ul>
++            </li>
++          <li role="none">
++              <div role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="nav-cold"><span class="menu-label">Cold Drinks</span></div>
++              <ul role="menu" class="menu" id="nav-cold" aria-label="Cold Drinks" hidden>
++              <li role="none">
++                <div role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="nav-coldbrew"><span class="menu-label">Cold Brew</span></div>
++                <ul role="menu" class="menu" id="nav-coldbrew" aria-label="Cold Brew" hidden>
++                <li role="none"><a role="menuitem" href="/menu/cold/cold-brew/classic">Classic Cold Brew</a></li>
++                <li role="none"><a role="menuitem" href="/menu/cold/cold-brew/nitro">Nitro Cold Brew</a></li>
++                <li role="none"><a role="menuitem" href="/menu/cold/cold-brew/sweet-cream">Vanilla Sweet Cream</a></li>
++                </ul>
++              </li>
++              <li role="none">
++                <div role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="nav-iced"><span class="menu-label">Iced Espresso</span></div>
++                <ul role="menu" class="menu" id="nav-iced" aria-label="Iced Espresso" hidden>
++                <li role="none"><a role="menuitem" href="/menu/cold/iced/latte">Iced Latte</a></li>
++                <li role="none"><a role="menuitem" href="/menu/cold/iced/americano">Iced Americano</a></li>
++                <li role="none"><a role="menuitem" href="/menu/cold/iced/shaken">Brown Sugar Shaken Espresso</a></li>
++                </ul>
++              </li>
++              <li role="none"><a role="menuitem" href="/menu/cold/refreshers">Fruit Refreshers</a></li>
++              </ul>
++            </li>
++          <li role="none"><a role="menuitem" href="#seasonal">Seasonal Favorites</a></li>
++          <li role="none"><a role="menuitem" href="/menu/bakery">Bakery &amp; Snacks</a></li>
++          <li role="separator"></li>
++          <li role="none"><a role="menuitem" href="/menu" class="menu-primary">View Full Menu</a></li>
++        </ul>
++      </li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/order-online">Order<span class="cart-count" id="cart-count" aria-label="0 items in order">0</span></a></li>
++      <li>
++        <button type="button" class="nav-trigger menu-trigger logout-link" id="account-menu-trigger" aria-haspopup="menu"
++          aria-expanded="false" aria-controls="account-menu">My Account <span class="caret" aria-hidden="true"></span></button>
++        <ul role="menu" class="menu align-end" id="account-menu" hidden>
++          <li role="none"><a role="menuitem" href="/account">My Account</a></li>
++          <li role="none"><a role="menuitem" href="/rewards">Rewards <span class="menu-hint">240 ★</span></a></li>
++          <li role="none"><a role="menuitem" href="/account/orders">Order History</a></li>
++          <li role="none"><a role="menuitem" href="/account/favorites">Saved Favorites</a></li>
++          <li role="none"><a role="menuitem" href="/account/settings">Settings</a></li>
++          <li role="separator"></li>
++          <li role="none"><a role="menuitem" href="/logout">Logout</a></li>
++        </ul>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -175,24 +578,39 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal" aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card" data-drink="Maple Oat Latte" data-price="5.25" data-href="/menu/seasonal"
++          data-defaults='{"size":"medium","temp":"hot","milk":"oat","sweet":"regular","syrup":"maple"}'>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <p class="card-config" aria-live="polite"><strong data-price-display>$5.25</strong> <span data-summary></span></p>
++          <div class="card-actions">
++            <div class="menu-wrap" data-menu-slot></div>
++            <a href="/menu/seasonal" class="btn btn-outline">View Details</a>
++          </div>
++        </article>
++        <article class="card" data-drink="Dark Roast Espresso" data-price="3.25" data-href="/menu/espresso"
++          data-defaults='{"size":"small","temp":"hot","milk":"none","sweet":"none","syrup":"none"}'>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <p class="card-config" aria-live="polite"><strong data-price-display>$3.25</strong> <span data-summary></span></p>
++          <div class="card-actions">
++            <div class="menu-wrap" data-menu-slot></div>
++            <a href="/menu/espresso" class="btn btn-outline">View Details</a>
++          </div>
++        </article>
++        <article class="card" data-drink="Cold Brew" data-price="4.50" data-href="/menu/cold-brew"
++          data-defaults='{"size":"medium","temp":"iced","milk":"none","sweet":"none","syrup":"none"}'>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <p class="card-config" aria-live="polite"><strong data-price-display>$4.50</strong> <span data-summary></span></p>
++          <div class="card-actions">
++            <div class="menu-wrap" data-menu-slot></div>
++            <a href="/menu/cold-brew" class="btn btn-outline">View Details</a>
++          </div>
++        </article>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +625,481 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div class="toast" id="toast" role="status" aria-live="polite"></div>
++
++  <!-- Order customization menu, cloned into each seasonal card -->
++  <template id="customize-template">
++    <button type="button" class="btn menu-trigger" aria-haspopup="menu" aria-expanded="false">
++      Customize &amp; Order <span class="caret" aria-hidden="true"></span>
++    </button>
++    <ul role="menu" class="menu" hidden>
++      <li role="none">
++        <div role="menuitem" aria-haspopup="menu" aria-expanded="false"><span class="menu-label">Size</span><span class="menu-value" data-value-for="size"></span></div>
++        <ul role="menu" class="menu" aria-label="Size" hidden>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="size" data-value="small" data-short="Small" data-price="-0.50"><span class="menu-label">Small · 12 oz</span><span class="menu-hint">−$0.50</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="size" data-value="medium" data-short="Medium" data-price="0"><span class="menu-label">Medium · 16 oz</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="size" data-value="large" data-short="Large" data-price="0.60"><span class="menu-label">Large · 20 oz</span><span class="menu-hint">+$0.60</span></div></li>
++        </ul>
++      </li>
++      <li role="none">
++        <div role="menuitem" aria-haspopup="menu" aria-expanded="false"><span class="menu-label">Temperature</span><span class="menu-value" data-value-for="temp"></span></div>
++        <ul role="menu" class="menu" aria-label="Temperature" hidden>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="temp" data-value="hot" data-short="Hot"><span class="menu-label">Hot</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="temp" data-value="iced" data-short="Iced"><span class="menu-label">Iced</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="temp" data-value="blended" data-short="Blended" data-price="0.40"><span class="menu-label">Blended</span><span class="menu-hint">+$0.40</span></div></li>
++        </ul>
++      </li>
++      <li role="none">
++        <div role="menuitem" aria-haspopup="menu" aria-expanded="false"><span class="menu-label">Milk</span><span class="menu-value" data-value-for="milk"></span></div>
++        <ul role="menu" class="menu" aria-label="Milk" hidden>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="milk" data-value="none" data-short="No milk"><span class="menu-label">No milk</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="milk" data-value="whole" data-short="Whole"><span class="menu-label">Whole</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="milk" data-value="2pct" data-short="2%"><span class="menu-label">2%</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="milk" data-value="skim" data-short="Skim"><span class="menu-label">Skim</span></div></li>
++          <li role="separator"></li>
++          <li role="none">
++            <div role="menuitem" aria-haspopup="menu" aria-expanded="false"><span class="menu-label">Plant-based</span><span class="menu-hint">+$0.70</span></div>
++            <ul role="menu" class="menu" aria-label="Plant-based milk" hidden>
++              <li role="none"><div role="menuitemradio" aria-checked="false" data-group="milk" data-value="oat" data-short="Oat" data-price="0.70"><span class="menu-label">Oat</span></div></li>
++              <li role="none"><div role="menuitemradio" aria-checked="false" data-group="milk" data-value="almond" data-short="Almond" data-price="0.70"><span class="menu-label">Almond</span></div></li>
++              <li role="none"><div role="menuitemradio" aria-checked="false" data-group="milk" data-value="soy" data-short="Soy" data-price="0.70"><span class="menu-label">Soy</span></div></li>
++              <li role="none"><div role="menuitemradio" aria-checked="false" data-group="milk" data-value="coconut" data-short="Coconut" data-price="0.70"><span class="menu-label">Coconut</span></div></li>
++            </ul>
++          </li>
++        </ul>
++      </li>
++      <li role="none">
++        <div role="menuitem" aria-haspopup="menu" aria-expanded="false"><span class="menu-label">Sweetness</span><span class="menu-value" data-value-for="sweet"></span></div>
++        <ul role="menu" class="menu" aria-label="Sweetness" hidden>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="sweet" data-value="none" data-short="Unsweetened"><span class="menu-label">Unsweetened</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="sweet" data-value="light" data-short="Light"><span class="menu-label">Lightly sweet</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="sweet" data-value="regular" data-short="Regular"><span class="menu-label">Regular</span></div></li>
++          <li role="none"><div role="menuitemradio" aria-checked="false" data-group="sweet" data-value="extra" data-short="Extra sweet"><span class="menu-label">Extra sweet</span></div></li>
++          <li role="separator"></li>
++          <li role="none">
++            <div role="menuitem" aria-haspopup="menu" aria-expanded="false"><span class="menu-label">Syrup flavor</span><span class="menu-value" data-value-for="syrup"></span></div>
++            <ul role="menu" class="menu" aria-label="Syrup flavor" hidden>
++              <li role="none"><div role="menuitemradio" aria-checked="false" data-group="syrup" data-value="none" data-short="No syrup"><span class="menu-label">No syrup</span></div></li>
++              <li role="none"><div role="menuitemradio" aria-checked="false" data-group="syrup" data-value="maple" data-short="Maple" data-price="0.50"><span class="menu-label">Vermont Maple</span><span class="menu-hint">+$0.50</span></div></li>
++              <li role="none"><div role="menuitemradio" aria-checked="false" data-group="syrup" data-value="vanilla" data-short="Vanilla" data-price="0.50"><span class="menu-label">Vanilla</span><span class="menu-hint">+$0.50</span></div></li>
++              <li role="none"><div role="menuitemradio" aria-checked="false" data-group="syrup" data-value="caramel" data-short="Caramel" data-price="0.50"><span class="menu-label">Caramel</span><span class="menu-hint">+$0.50</span></div></li>
++              <li role="none"><div role="menuitemradio" aria-checked="false" data-group="syrup" data-value="hazelnut" data-short="Hazelnut" data-price="0.50"><span class="menu-label">Hazelnut</span><span class="menu-hint">+$0.50</span></div></li>
++            </ul>
++          </li>
++        </ul>
++      </li>
++      <li role="none">
++        <div role="menuitem" aria-haspopup="menu" aria-expanded="false"><span class="menu-label">Extras</span><span class="menu-value" data-value-for="extras"></span></div>
++        <ul role="menu" class="menu" aria-label="Extras" hidden>
++          <li role="none"><div role="menuitemcheckbox" aria-checked="false" data-extra="Extra shot" data-price="0.90"><span class="menu-label">Extra espresso shot</span><span class="menu-hint">+$0.90</span></div></li>
++          <li role="none"><div role="menuitemcheckbox" aria-checked="false" data-extra="Decaf"><span class="menu-label">Make it decaf</span></div></li>
++          <li role="none"><div role="menuitemcheckbox" aria-checked="false" data-extra="Cold foam" data-price="0.80"><span class="menu-label">Sweet cream cold foam</span><span class="menu-hint">+$0.80</span></div></li>
++          <li role="none"><div role="menuitemcheckbox" aria-checked="false" data-extra="Whipped cream" data-price="0.50"><span class="menu-label">Whipped cream</span><span class="menu-hint">+$0.50</span></div></li>
++          <li role="none"><div role="menuitemcheckbox" aria-checked="false" data-extra="Cinnamon"><span class="menu-label">Cinnamon dusting</span></div></li>
++        </ul>
++      </li>
++      <li role="separator"></li>
++      <li role="none"><div role="menuitem" class="menu-primary" data-action="add"><span class="menu-label">Add to Order</span><span class="menu-hint" data-add-price></span></div></li>
++      <li role="none"><div role="menuitem" data-action="favorite"><span class="menu-label">Save as Favorite</span></div></li>
++      <li role="none"><div role="menuitem" data-action="reset"><span class="menu-label">Reset to Default</span></div></li>
++      <li role="none"><a role="menuitem" data-details href="#"><span class="menu-label">View Details</span></a></li>
++    </ul>
++  </template>
++
++  <script>
++    (() => {
++      'use strict';
++
++      const ITEM_SEL = '[role="menuitem"],[role="menuitemcheckbox"],[role="menuitemradio"]';
++      const HOVER_DELAY = 150;
++      const instances = new Set();
++
++      /**
++       * Accessible menu button with arbitrarily nested submenus
++       * (WAI-ARIA Authoring Practices "Menu Button" pattern).
++       *
++       * Markup: <button aria-haspopup="menu" aria-controls="id"> + <ul role="menu" id="id" hidden>.
++       * Each <li role="none"> holds one item (menuitem / menuitemcheckbox / menuitemradio);
++       * an item followed by a sibling <ul role="menu"> opens that submenu.
++       *
++       * Emits bubbling events on the root menu:
++       *   menu:change  – a checkbox or radio item changed state
++       *   menu:select  – a plain menuitem was activated
++       */
++      class MenuButton {
++        constructor(trigger) {
++          this.trigger = trigger;
++          this.root = document.getElementById(trigger.getAttribute('aria-controls'));
++          this.hoverTimer = null;
++          this.typeBuffer = '';
++          this.typeTimer = null;
++          this.viaKeyboard = false;
++          this.pointerType = 'mouse';
++
++          this.root.querySelectorAll(ITEM_SEL).forEach((item) => { item.tabIndex = -1; });
++          if (!this.root.hasAttribute('aria-label') && !this.root.hasAttribute('aria-labelledby')) {
++            this.root.setAttribute('aria-labelledby', trigger.id);
++          }
++
++          trigger.addEventListener('click', () => (this.isOpen() ? this.close(true) : this.open('first')));
++          trigger.addEventListener('keydown', (e) => this.onTriggerKey(e));
++          this.root.addEventListener('keydown', (e) => this.onMenuKey(e));
++          this.root.addEventListener('click', (e) => this.onMenuClick(e));
++          this.root.addEventListener('pointerover', (e) => this.onPointerOver(e));
++          this.root.addEventListener('pointerdown', (e) => { this.pointerType = e.pointerType; });
++          instances.add(this);
++        }
++
++        /* ---- structure helpers ---- */
++        isOpen() { return !this.root.hidden; }
++        itemsOf(menu) {
++          return [...menu.children]
++            .filter((li) => !li.hidden)
++            .flatMap((li) => [...li.children].filter((el) => el.matches(ITEM_SEL)));
++        }
++        submenuOf(item) {
++          const next = item.nextElementSibling;
++          return next && next.getAttribute('role') === 'menu' ? next : null;
++        }
++        parentItemOf(menu) { return menu === this.root ? null : menu.previousElementSibling; }
++        menuOf(item) { return item.closest('[role="menu"]'); }
++        contains(node) { return this.root.contains(node) || this.trigger.contains(node); }
++
++        /* ---- open / close ---- */
++        open(focus) {
++          instances.forEach((m) => { if (m !== this && m.isOpen()) m.close(false); });
++          this.root.hidden = false;
++          this.trigger.setAttribute('aria-expanded', 'true');
++          this.place(this.root);
++          this.focusIn(this.root, focus);
++        }
++
++        openSub(item, focus) {
++          const sub = this.submenuOf(item);
++          if (!sub) return;
++          this.closeSiblings(item);
++          if (sub.hidden) {
++            sub.hidden = false;
++            item.setAttribute('aria-expanded', 'true');
++            this.place(sub);
++          }
++          if (focus) this.focusIn(sub, focus);
++        }
++
++        hide(menu) {
++          menu.hidden = true;
++          menu.classList.remove('flip-x');
++          (this.parentItemOf(menu) || this.trigger).setAttribute('aria-expanded', 'false');
++        }
++
++        closeMenu(menu) {
++          menu.querySelectorAll('[role="menu"]').forEach((m) => this.hide(m));
++          this.hide(menu);
++        }
++
++        closeSiblings(item) {
++          this.itemsOf(this.menuOf(item)).forEach((other) => {
++            const sub = other !== item && this.submenuOf(other);
++            if (sub && !sub.hidden) this.closeMenu(sub);
++          });
++        }
++
++        close(returnFocus) {
++          clearTimeout(this.hoverTimer);
++          this.closeMenu(this.root);
++          if (returnFocus) this.trigger.focus();
++        }
++
++        /** Flip a menu to the other side when it would overflow the viewport. */
++        place(menu) {
++          menu.classList.remove('flip-x');
++          if (getComputedStyle(menu).position !== 'absolute') return;
++          const { right } = menu.getBoundingClientRect();
++          if (right > document.documentElement.clientWidth - 8) menu.classList.add('flip-x');
++        }
++
++        reposition() {
++          if (!this.isOpen()) return;
++          [this.root, ...this.root.querySelectorAll('[role="menu"]:not([hidden])')].forEach((m) => this.place(m));
++        }
++
++        focusIn(menu, which) {
++          const items = this.itemsOf(menu);
++          if (!items.length) return;
++          const target = which === 'last' ? items[items.length - 1] : items[0];
++          target.focus();
++        }
++
++        /* ---- keyboard ---- */
++        onTriggerKey(e) {
++          // Enter / Space fall through to the native button click.
++          if (e.key === 'ArrowDown') { e.preventDefault(); this.open('first'); }
++          else if (e.key === 'ArrowUp') { e.preventDefault(); this.open('last'); }
++          else if (e.key === 'Escape' && this.isOpen()) { e.preventDefault(); this.close(true); }
++        }
++
++        onMenuKey(e) {
++          const item = e.target.closest(ITEM_SEL);
++          if (!item || !this.root.contains(item)) return;
++          const menu = this.menuOf(item);
++          const items = this.itemsOf(menu);
++          const idx = items.indexOf(item);
++
++          switch (e.key) {
++            case 'ArrowDown': items[(idx + 1) % items.length].focus(); break;
++            case 'ArrowUp': items[(idx - 1 + items.length) % items.length].focus(); break;
++            case 'Home': case 'PageUp': items[0].focus(); break;
++            case 'End': case 'PageDown': items[items.length - 1].focus(); break;
++            case 'ArrowRight':
++              if (!this.submenuOf(item)) return;
++              this.openSub(item, 'first');
++              break;
++            case 'ArrowLeft':
++              if (menu === this.root) return;
++              this.closeMenu(menu);
++              this.parentItemOf(menu).focus();
++              break;
++            case 'Escape':
++              if (menu === this.root) {
++                this.close(true);
++              } else {
++                this.closeMenu(menu);
++                this.parentItemOf(menu).focus();
++              }
++              break;
++            case 'Enter':
++            case ' ':
++              this.viaKeyboard = true;
++              item.click();
++              this.viaKeyboard = false;
++              break;
++            case 'Tab':
++              // Move focus back to the trigger so the browser's default Tab continues from there.
++              this.trigger.focus();
++              this.close(false);
++              return;
++            default:
++              if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
++                this.typeahead(e.key, items, idx);
++                break;
++              }
++              return;
++          }
++          e.preventDefault();
++          e.stopPropagation();
++        }
++
++        typeahead(ch, items, idx) {
++          clearTimeout(this.typeTimer);
++          this.typeBuffer += ch.toLowerCase();
++          this.typeTimer = setTimeout(() => { this.typeBuffer = ''; }, 500);
++          const buf = this.typeBuffer;
++          const label = (el) => (el.querySelector('.menu-label') || el).textContent.trim().toLowerCase();
++          // A single key cycles past the current item; a longer string may still match it.
++          const start = buf.length > 1 ? idx : idx + 1;
++          const ordered = [...items.slice(start), ...items.slice(0, start)];
++          const repeated = [...buf].every((c) => c === buf[0]);
++          const match = ordered.find((el) => label(el).startsWith(buf)) ||
++            (repeated && [...items.slice(idx + 1), ...items.slice(0, idx + 1)].find((el) => label(el).startsWith(buf[0])));
++          if (match) match.focus();
++        }
++
++        /* ---- pointer ---- */
++        onPointerOver(e) {
++          if (e.pointerType !== 'mouse') return;
++          const item = e.target.closest(ITEM_SEL);
++          if (!item || !this.root.contains(item) || item.contains(e.relatedTarget)) return;
++          if (document.activeElement !== item) item.focus({ preventScroll: true });
++          clearTimeout(this.hoverTimer);
++          this.hoverTimer = setTimeout(() => {
++            if (!this.isOpen() || this.menuOf(item).hidden) return;
++            if (this.submenuOf(item)) this.openSub(item, null);
++            else this.closeSiblings(item);
++          }, HOVER_DELAY);
++        }
++
++        onMenuClick(e) {
++          const item = e.target.closest(ITEM_SEL);
++          if (!item || !this.root.contains(item)) return;
++          if (item.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
++
++          const sub = this.submenuOf(item);
++          if (sub) {
++            e.preventDefault();
++            clearTimeout(this.hoverTimer);
++            if (this.viaKeyboard) {
++              this.openSub(item, 'first');
++            } else {
++              // Mouse users have usually opened it by hovering, so clicking keeps it open; touch toggles.
++              if (sub.hidden || this.pointerType === 'mouse') this.openSub(item, null);
++              else this.closeMenu(sub);
++              item.focus({ preventScroll: true });
++            }
++            return;
++          }
++
++          const role = item.getAttribute('role');
++          if (role === 'menuitemcheckbox') {
++            item.setAttribute('aria-checked', String(item.getAttribute('aria-checked') !== 'true'));
++            this.emit('menu:change', item);
++            return;
++          }
++          if (role === 'menuitemradio') {
++            this.setRadio(item);
++            this.emit('menu:change', item);
++            return;
++          }
++
++          this.emit('menu:select', item);
++          this.close(true); // links continue with their native navigation
++        }
++
++        /** Radio groups are scoped to the whole menu tree, so a group may span nested submenus. */
++        setRadio(item) {
++          const group = item.dataset.group;
++          this.root.querySelectorAll('[role="menuitemradio"]').forEach((r) => {
++            if (r.dataset.group === group) r.setAttribute('aria-checked', String(r === item));
++          });
++        }
++
++        emit(type, item) {
++          this.root.dispatchEvent(new CustomEvent(type, {
++            bubbles: true,
++            detail: { item, action: item.dataset.action, group: item.dataset.group, value: item.dataset.value },
++          }));
++        }
++      }
++
++      const closeOutside = (target) => instances.forEach((m) => {
++        if (m.isOpen() && !m.contains(target)) m.close(false);
++      });
++      document.addEventListener('pointerdown', (e) => closeOutside(e.target));
++      document.addEventListener('focusin', (e) => closeOutside(e.target));
++      window.addEventListener('resize', () => instances.forEach((m) => m.reposition()));
++
++      /* ---------- Order / toast helpers ---------- */
++      const toastEl = document.getElementById('toast');
++      let toastTimer;
++      const toast = (msg) => {
++        toastEl.textContent = msg;
++        toastEl.classList.add('show');
++        clearTimeout(toastTimer);
++        toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3200);
++      };
++
++      const cartEl = document.getElementById('cart-count');
++      let cartCount = 0;
++      const addToCart = () => {
++        cartCount += 1;
++        cartEl.textContent = cartCount;
++        cartEl.setAttribute('aria-label', `${cartCount} item${cartCount === 1 ? '' : 's'} in order`);
++        cartEl.classList.remove('bump');
++        void cartEl.offsetWidth; // restart animation
++        cartEl.classList.add('bump');
++      };
++
++      const money = (n) => `$${n.toFixed(2)}`;
++
++      /* ---------- Seasonal card customization menus ---------- */
++      const template = document.getElementById('customize-template');
++
++      document.querySelectorAll('.card[data-drink]').forEach((card, n) => {
++        const drink = card.dataset.drink;
++        const basePrice = parseFloat(card.dataset.price);
++        const defaults = JSON.parse(card.dataset.defaults || '{}');
++        const slot = card.querySelector('[data-menu-slot]');
++        const frag = template.content.cloneNode(true);
++        const trigger = frag.querySelector('.menu-trigger');
++        const prefix = `customize-${n}`;
++
++        trigger.id = `${prefix}-trigger`;
++        trigger.setAttribute('aria-label', `Customize & Order ${drink}`);
++        frag.querySelectorAll('[role="menu"]').forEach((menu, i) => {
++          menu.id = `${prefix}-menu-${i}`;
++          const owner = menu.previousElementSibling;
++          (owner && owner.matches(ITEM_SEL) ? owner : trigger).setAttribute('aria-controls', menu.id);
++        });
++        frag.querySelector('[data-details]').href = card.dataset.href;
++        slot.appendChild(frag);
++
++        const root = slot.querySelector('ul[role="menu"]');
++        const menuButton = new MenuButton(trigger);
++        const summaryEl = card.querySelector('[data-summary]');
++        const priceEl = card.querySelector('[data-price-display]');
++        const addPriceEl = root.querySelector('[data-add-price]');
++
++        const selected = (group) => root.querySelector(`[role="menuitemradio"][data-group="${group}"][aria-checked="true"]`);
++        const extras = () => [...root.querySelectorAll('[role="menuitemcheckbox"][aria-checked="true"]')];
++        const delta = (els) => els.reduce((sum, el) => sum + (parseFloat(el && el.dataset.price) || 0), 0);
++        const groups = () => [...new Set([...root.querySelectorAll('[data-group]')].map((el) => el.dataset.group))];
++
++        const applyDefaults = () => {
++          groups().forEach((g) => {
++            const pick = root.querySelector(`[data-group="${g}"][data-value="${defaults[g]}"]`) ||
++              root.querySelector(`[data-group="${g}"]`);
++            menuButton.setRadio(pick);
++          });
++          root.querySelectorAll('[role="menuitemcheckbox"]').forEach((c) => c.setAttribute('aria-checked', 'false'));
++        };
++        applyDefaults();
++        // The listed price already includes the drink's default options.
++        const defaultDelta = delta(groups().map(selected));
++
++        const describe = () => {
++          const parts = [selected('size'), selected('temp')].map((el) => el.dataset.short);
++          const milk = selected('milk');
++          if (milk.dataset.value !== 'none') parts.push(`${milk.dataset.short} milk`);
++          const sweet = selected('sweet');
++          if (sweet.dataset.value !== 'none') parts.push(`${sweet.dataset.short.toLowerCase()} sweetness`);
++          const syrup = selected('syrup');
++          if (syrup.dataset.value !== 'none') parts.push(`${syrup.dataset.short} syrup`);
++          extras().forEach((x) => parts.push(x.dataset.extra));
++          return parts.join(' · ');
++        };
++
++        const price = () => basePrice - defaultDelta + delta(groups().map(selected)) + delta(extras());
++
++        const update = () => {
++          const total = money(price());
++          priceEl.textContent = total;
++          addPriceEl.textContent = total;
++          summaryEl.textContent = describe();
++          root.querySelectorAll('[data-value-for]').forEach((el) => {
++            const g = el.dataset.valueFor;
++            if (g === 'extras') {
++              const count = extras().length;
++              el.textContent = count ? `${count} added` : '';
++            } else {
++              el.textContent = selected(g).dataset.short;
++            }
++          });
++        };
++        update();
++
++        root.addEventListener('menu:change', update);
++        root.addEventListener('menu:select', (e) => {
++          switch (e.detail.action) {
++            case 'add':
++              addToCart();
++              toast(`Added ${drink} (${describe()}) — ${money(price())}`);
++              break;
++            case 'favorite':
++              toast(`Saved your ${drink} to Favorites`);
++              break;
++            case 'reset':
++              applyDefaults();
++              update();
++              toast(`${drink} reset to the house recipe`);
++              break;
++          }
++        });
++      });
++
++      /* ---------- Navigation menus ---------- */
++      document.querySelectorAll('nav .menu-trigger').forEach((trigger) => new MenuButton(trigger));
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

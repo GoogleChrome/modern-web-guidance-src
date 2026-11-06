@@ -1,0 +1,248 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,9 +134,195 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+-    footer {
++    /* A content-box clip automatically follows the inset border curves. */
++    .showcase {
++      padding-bottom: 12px;
++      border-bottom: 1px solid #e8dfd9;
++      margin-bottom: 40px;
++    }
++
++    .showcase-heading {
++      display: flex;
++      justify-content: space-between;
++      align-items: end;
++      gap: 20px;
++      margin-bottom: 24px;
++    }
++
++    .eyebrow {
++      display: block;
++      color: #8a5a36;
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .showcase h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(1.8rem, 4vw, 2.4rem);
++      font-weight: 400;
++      line-height: 1.2;
++    }
++
++    .showcase-heading > p {
++      color: #806b62;
++      font-size: 0.9rem;
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: 1.3fr 1fr;
++      gap: 28px;
++      align-items: stretch;
++      margin-bottom: 28px;
++    }
++
++    .nested-curve-parent {
++      padding: 18px 22px 22px;
++      border: 1px solid #dfd1c3;
++      border-radius: 40px;
++      background: #f0e6da;
++      display: flex;
++      flex-direction: column;
++      overflow: clip;
++      overflow-clip-margin: content-box;
++    }
++
++    .showcase-photo {
++      display: block;
++      width: 100%;
++      height: 235px;
++      object-fit: cover;
++      object-position: center 55%;
++    }
++
++    .showcase-card-copy {
++      padding: 23px 26px;
++      background: #fffdf9;
++      flex: 1;
++    }
++
++    .showcase h3 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: 1.65rem;
++      font-weight: 400;
++      line-height: 1.25;
++      margin-bottom: 10px;
++    }
++
++    .showcase-card-copy p {
++      font-size: 0.9rem;
++      color: #806b62;
++      max-width: 34ch;
++    }
++
++    .showcase-card-footer {
++      background: #e2d1bb;
++      padding: 16px 26px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      font-size: 0.8rem;
++    }
++
++    .showcase-card-footer a {
++      color: var(--primary);
++      font-weight: 700;
++      text-underline-offset: 4px;
++    }
++
++    .safety-zone-parent {
++      position: relative;
++      min-width: 0;
++      padding: 38px 30px 0;
++      border-radius: 28px;
++      background: #302e23;
++      color: #fff7e9;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      overflow: clip;
++      /* Keep up to 15px of ink overflow, including the button's glow. */
++      overflow-clip-margin: 15px;
++    }
++
++    .promo-copy {
++      width: 100%;
++      min-width: 0;
++      overflow: clip;
++      overflow-wrap: anywhere;
++    }
++
++    .promo-copy .eyebrow {
++      color: #e5bd83;
++      margin-bottom: 25px;
++    }
++
++    .promo-copy h3 {
++      font-size: clamp(2rem, 4vw, 2.8rem);
++      max-width: 10ch;
++      margin-bottom: 18px;
++    }
++
++    .promo-copy p {
++      max-width: 28ch;
++      color: #d0c8b7;
++      font-size: 0.9rem;
++    }
++
++    .promo-perk {
++      display: block;
++      margin-top: 26px;
++      padding-top: 18px;
++      border-top: 1px solid #595344;
++      color: #e5bd83;
++      font-size: 0.75rem;
++      letter-spacing: 0.05em;
++    }
++
++    .promo-action {
++      width: 100%;
++      margin-top: auto;
++      padding-top: 30px;
++    }
++
++    .promo-button {
++      width: 100%;
++      display: block;
++      padding: 17px 20px;
++      border: 0;
++      border-radius: 12px 12px 0 0;
++      background: #f5bd70;
++      color: #302619;
++      font: inherit;
++      font-size: 0.9rem;
++      font-weight: 700;
++      cursor: pointer;
++      box-shadow: 0 0 28px 6px rgb(255 181 78 / 48%);
++      transition: background 0.2s;
++    }
++
++    .promo-button:hover {
++      background: #ffd49a;
++    }
++
++    .promo-button:focus-visible {
++      outline: 3px solid #fff7e9;
++      outline-offset: 4px;
++    }
++
++    @media (max-width: 640px) {
++      .showcase-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
++      .showcase-grid { grid-template-columns: 1fr; }
++      .safety-zone-parent { min-height: 420px; }
++    }
++
++    body > footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -174,8 +360,47 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase" aria-labelledby="showcase-title">
++      <div class="showcase-heading">
++        <div>
++          <span class="eyebrow">Fresh from the grind</span>
++          <h2 id="showcase-title">A little more to savor.</h2>
++        </div>
++        <p>Good coffee. Even better rituals.</p>
++      </div>
++
++      <div class="showcase-grid">
++        <article class="nested-curve-parent" aria-labelledby="featured-coffee-title">
++          <img class="showcase-photo"
++            src="https://images.unsplash.com/photo-1511081692775-05d0f180a065?auto=format&fit=crop&w=1000&q=80"
++            alt="Freshly poured latte with delicate milk foam art" loading="lazy" width="1000" height="650">
++          <div class="showcase-card-copy">
++            <span class="eyebrow">Made for slow mornings</span>
++            <h3 id="featured-coffee-title">Your daily moment of bliss.</h3>
++            <p>Carefully roasted beans, silky steamed milk, and a little time just for you.</p>
++          </div>
++          <footer class="showcase-card-footer">
++            <span>Crafted with care, every cup.</span>
++            <a href="/menu">Explore the menu &rarr;</a>
++          </footer>
++        </article>
++
++        <aside class="safety-zone-parent" aria-labelledby="promo-title">
++          <div class="promo-copy">
++            <span class="eyebrow">The daily perks</span>
++            <h3 id="promo-title">Your next cup could be on us.</h3>
++            <p>Make your coffee ritual a little more rewarding. Collect points with every sip and enjoy treats along the way.</p>
++            <span class="promo-perk">More sips. More perks. More you.</span>
++          </div>
++          <form class="promo-action" action="/rewards" method="get">
++            <button class="promo-button" type="submit">Discover your rewards &nbsp; &rarr;</button>
++          </form>
++        </aside>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

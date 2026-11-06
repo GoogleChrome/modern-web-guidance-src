@@ -1,0 +1,568 @@
+diff --git a/app.mjs b/app.mjs
+new file mode 100644
+index 0000000..89d8869
+--- /dev/null
++++ b/app.mjs
+@@ -0,0 +1,157 @@
++import { createIdentity, signDocument, verifyDocument, exportVerificationKey, importVerificationKey } from './signing.mjs';
++const $ = id => document.getElementById(id);
++const coffees = { maple: { name: 'Maple Oat Latte', cents: 650, note: 'Oat milk. Vermont maple. A little magic.' }, espresso: { name: 'Dark Roast Espresso', cents: 350, note: 'Deep, smoky, and ready when you are.' }, cold: { name: 'Cold Brew', cents: 500, note: 'Slow-steeped for 18 hours. Smooth by nature.' } };
++const money = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
++let identity, trustedIdentity, signed, importedTrust = false, busy = false;
++const type = () => document.querySelector('input[name=type]:checked').value;
++const status = (message, error = false) => { $('status').textContent = message; $('status').classList.toggle('error', error); };
++function invalidate() {
++  signed = undefined;
++  $('download-document').disabled = $('check-document').disabled = true;
++  $('signature-seal').classList.remove('signed');
++  $('seal-title').textContent = 'Ready for your signature';
++  $('seal-subtitle').textContent = 'A little proof that it’s authentically yours.';
++  $('document-id').textContent = 'CRAFTED WITH CARE • THE DAILY GRIND';
++}
++function preview() {
++  invalidate();
++  const voucher = type() === 'voucher';
++  $('receipt-fields').hidden = voucher;
++  $('voucher-fields').hidden = !voucher;
++  $('quantity').required = !voucher;
++  $('recipient').required = voucher;
++  $('amount').required = voucher;
++  ['coffee', 'quantity'].forEach(id => $(id).disabled = voucher);
++  ['recipient', 'amount', 'message'].forEach(id => $(id).disabled = !voucher);
++  const coffee = coffees[$('coffee').value];
++  const quantity = Number($('quantity').value) || 1;
++  const total = voucher ? Number($('amount').value) * 100 : coffee.cents * quantity;
++  $('preview-type').textContent = voucher ? 'GIFT VOUCHER' : 'COFFEE RECEIPT';
++  $('preview-item').textContent = voucher ? 'A coffee for ' + ($('recipient').value.trim() || 'someone special') : (quantity > 1 ? quantity + ' × ' : '') + coffee.name;
++  $('preview-note').textContent = voucher ? $('message').value || 'The next coffee is on me.' : coffee.note;
++  $('preview-price').textContent = money(total);
++  $('preview-total').textContent = money(total);
++  $('sign-button').innerHTML = '<span aria-hidden="true">♧</span> Sign ' + (voucher ? 'gift voucher' : 'coffee receipt') + '<span aria-hidden="true">↗</span>';
++  $('preview-date').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
++}
++function setTrust(key, imported = false) {
++  trustedIdentity = key;
++  importedTrust = imported;
++  $('verification-result').hidden = true;
++  $('verification-source').textContent = imported ? 'Checking against your imported trusted key: ' + key.id : 'Checking against this session’s signing key.';
++  $('trusted-key-info').textContent = (imported ? 'Imported verification key: ' + key.id + '. ' : '') + 'Only use a key obtained directly from a signer you trust. Compare its full fingerprint through a separate trusted channel. A key included with an unknown document does not establish issuer identity.';
++}
++async function setupIdentity() {
++  if (busy) return;
++  busy = true;
++  $('algorithm').disabled = true;
++  identity = undefined;
++  $('sign-button').disabled = $('export-key').disabled = true;
++  invalidate();
++  status('Preparing your secure signing key…');
++  try {
++    identity = await createIdentity($('algorithm').value);
++    if (!importedTrust) setTrust(identity);
++    $('key-fingerprint').textContent = identity.id;
++    $('key-summary').textContent = identity.suite === 'ML-DSA-65' ? 'Quantum-resistant · ML-DSA-65' : 'Classical · ' + (identity.suite === 'ECDSA' ? 'ECDSA P-256' : identity.suite);
++    status('Signing key ready · ' + identity.suite + '. Nothing leaves your browser.');
++    $('sign-button').disabled = $('export-key').disabled = false;
++    $('verify-button').disabled = !trustedIdentity;
++  } catch (error) {
++    $('key-summary').textContent = 'Signing unavailable';
++    $('key-fingerprint').textContent = 'No active signing key';
++    if (!importedTrust) { trustedIdentity = undefined; $('verify-button').disabled = true; }
++    status(error.message, true);
++  } finally { busy = false; $('algorithm').disabled = false; }
++}
++function selectTab(verify) {
++  ['create', 'verify'].forEach(name => {
++    const selected = (name === 'verify') === verify;
++    $(name + '-tab').setAttribute('aria-selected', String(selected));
++    $(name + '-tab').tabIndex = selected ? 0 : -1;
++    $(name + '-panel').hidden = !selected;
++  });
++}
++$('create-tab').onclick = () => selectTab(false);
++$('verify-tab').onclick = () => selectTab(true);
++document.querySelector('.tabs').addEventListener('keydown', event => {
++  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
++  event.preventDefault();
++  const verify = event.key === 'End' || (event.key !== 'Home' && $('verify-tab').getAttribute('aria-selected') !== 'true');
++  selectTab(verify);
++  $(verify ? 'verify-tab' : 'create-tab').focus();
++});
++$('sign-form').addEventListener('input', event => { if (event.target.id !== 'algorithm') { preview(); status(identity ? 'Details updated. Sign to seal this version.' : 'Choose a supported signature algorithm.', !identity); } });
++$('algorithm').addEventListener('change', setupIdentity);
++$('sign-form').addEventListener('submit', async event => {
++  event.preventDefault();
++  if (!identity || busy) return;
++  busy = true;
++  const signingIdentity = identity;
++  const controls = [...$('sign-form').elements].filter(control => !control.disabled);
++  controls.forEach(control => control.disabled = true);
++  try {
++    const voucher = type() === 'voucher';
++    const coffee = coffees[$('coffee').value];
++    const payload = { type: type(), issuer: 'Daily Grind · browser signing demo', id: crypto.randomUUID(), issuedAt: new Date().toISOString(), currency: 'USD', amountCents: voucher ? Number($('amount').value) * 100 : coffee.cents * Number($('quantity').value), ...(voucher ? { recipient: $('recipient').value.trim(), message: $('message').value } : { item: coffee.name, quantity: Number($('quantity').value) }) };
++    signed = await signDocument(signingIdentity, payload);
++    $('signature-seal').classList.add('signed');
++    $('seal-title').textContent = 'Digitally signed & sealed';
++    $('seal-subtitle').textContent = signingIdentity.suite + ' · ' + signingIdentity.id.slice(0, 16) + '…';
++    $('document-id').textContent = 'ID ' + payload.id;
++    $('download-document').disabled = $('check-document').disabled = false;
++    status('Document signed. Save your document and public verification key.');
++  } catch (error) { status(error.message, true); }
++  finally { controls.forEach(control => control.disabled = false); busy = false; }
++});
++function download(name, object) {
++  const url = URL.createObjectURL(new Blob([JSON.stringify(object, null, 2)], { type: 'application/json' }));
++  const link = document.createElement('a');
++  link.href = url; link.download = name; link.click();
++  setTimeout(() => URL.revokeObjectURL(url), 1000);
++}
++$('download-document').onclick = () => { if (signed) download('daily-grind-' + signed.payload.type + '-' + signed.payload.id + '.json', signed); };
++$('export-key').onclick = async () => { try { if (identity) download('daily-grind-public-key-' + identity.id.slice(0, 12) + '.json', await exportVerificationKey(identity)); } catch (error) { status(error.message, true); } };
++async function readFile(file) {
++  if (!file) return null;
++  if (file.size > 100000) throw new Error('Please choose a JSON file smaller than 100 KB.');
++  return file.text();
++}
++$('document-file').onchange = async event => {
++  $('verification-result').hidden = true;
++  try { const value = await readFile(event.target.files[0]); if (value !== null) $('document-json').value = value; }
++  catch (error) { status(error.message, true); }
++};
++$('document-json').oninput = () => $('verification-result').hidden = true;
++$('key-file').onchange = async event => {
++  try {
++    const text = await readFile(event.target.files[0]);
++    if (text === null) return;
++    const key = await importVerificationKey(JSON.parse(text));
++    setTrust(key, true); $('verify-button').disabled = false;
++    status('Public key loaded. Compare the fingerprint with your signer before relying on it.');
++  } catch (error) { status('Could not import key: ' + error.message, true); }
++  event.target.value = '';
++};
++$('reset-key').onclick = () => { if (identity) { setTrust(identity); $('verify-button').disabled = false; status('Verification now uses this session’s key.'); } else status('Choose a supported algorithm to create a session key first.', true); };
++async function verify() {
++  const result = $('verification-result');
++  result.hidden = true;
++  $('verify-button').disabled = true;
++  try {
++    if (!trustedIdentity) throw new Error('Load a separately trusted public verification key first.');
++    const text = $('document-json').value;
++    if (text.length > 100000) throw new Error('The document exceeds the 100 KB limit.');
++    let doc;
++    try { doc = JSON.parse(text); } catch { throw new Error('Choose a signed JSON file or paste valid JSON to continue.'); }
++    if (!await verifyDocument(doc, trustedIdentity)) throw new Error('Signature does not match. This document may have been changed.');
++    result.classList.remove('error');
++    result.textContent = '✓ Signature verified\n' + (doc.payload.type === 'voucher' ? 'Gift voucher' : 'Coffee receipt') + ' · ' + money(doc.payload.amountCents) + '\nAll signed details are intact. Signer key: ' + trustedIdentity.id + '\nBrowser demo only. This is not proof of purchase or voucher redemption eligibility.';
++  } catch (error) { result.classList.add('error'); result.textContent = 'Verification failed\n' + error.message; }
++  finally { result.hidden = false; $('verify-button').disabled = !trustedIdentity; }
++}
++$('verify-button').onclick = verify;
++$('check-document').onclick = () => { if (!signed) return; $('document-json').value = JSON.stringify(signed, null, 2); selectTab(true); verify(); };
++document.querySelectorAll('[data-coffee]').forEach(button => button.onclick = () => { $('coffee').value = button.dataset.coffee; document.querySelector('input[value=receipt]').checked = true; selectTab(false); preview(); $('studio').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); });
++preview();
++setupIdentity();
+diff --git a/index.html b/index.html
+index 66c9173..3390e5a 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,51 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="theme-color" content="#f7f5ef">
++  <title>The Daily Grind | Good coffee. Signed & sealed.</title>
++  <link rel="stylesheet" href="styles.css">
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++  <nav aria-label="Main navigation" class="navigation">
++    <a class="brand" href="#home"><span class="brand-icon" aria-hidden="true">☕</span> THE DAILY GRIND<span class="brand-dot">®</span></a>
++    <div class="nav-links"><a href="#favorites">Our coffee</a><a href="#studio" class="active">Receipts & gifts</a><a href="#our-story">Our story</a></div>
++    <a href="#studio" class="nav-cta">A little peace of mind <span aria-hidden="true">↗</span></a>
+   </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="hero" id="home">
++    <div class="hero-copy"><div class="eyebrow"><span class="tiny-line"></span> GOOD COFFEE. REAL CONNECTIONS.</div><h1>Good coffee.<br>Signed <em>& sealed.</em></h1><p>From your morning ritual to a little gift for someone special.<br class="desktop"> Give every receipt and gift voucher a signature you can trust.</p><a href="#studio" class="primary-button">Make it official <span aria-hidden="true">↗</span></a><div class="hero-note"><span class="check-circle">✓</span> A small signature. A whole lot of confidence.</div></div>
++    <div class="hero-image"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1100&q=85" alt="A freshly poured cup of coffee on a warm wooden café table" fetchpriority="high"><span class="image-label">CRAFTED WITH CARE. VERIFIED WITH CONFIDENCE.</span><div class="photo-stamp"><span aria-hidden="true">✳</span><div>Thoughtfully brewed.<br><strong>Authentically yours.</strong></div></div></div>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++  <div class="benefit-bar"><span><span aria-hidden="true">◇</span> Protected by digital signatures</span><span><span aria-hidden="true">⌁</span> Signed right in your browser</span><span><span aria-hidden="true">↗</span> Easy to share. Easy to verify.</span></div>
++  <main>
++    <section class="studio section-wrap" id="studio" aria-labelledby="studio-title">
++      <div class="section-heading"><div><div class="eyebrow">THE TRUST STUDIO</div><h2 id="studio-title">A little proof goes a long way.</h2><p>Create a signed keepsake, or check that every detail is just as it should be.</p></div><span class="local-pill"><span></span> Private by design</span></div>
++      <div class="workspace">
++        <div class="editor">
++          <div class="tabs" role="tablist" aria-label="Document action"><button role="tab" aria-selected="true" aria-controls="create-panel" id="create-tab">Create & sign</button><button role="tab" aria-selected="false" aria-controls="verify-panel" id="verify-tab" tabindex="-1">Verify a document <span aria-hidden="true">↗</span></button></div>
++          <div id="create-panel" role="tabpanel" aria-labelledby="create-tab">
++            <form id="sign-form">
++              <fieldset class="type-picker"><legend class="field-label">WHAT ARE WE MAKING?</legend><label><input type="radio" name="type" value="receipt" checked><span><span class="type-icon" aria-hidden="true">▤</span><strong>Coffee receipt</strong><small>Your daily ritual, on record</small><span class="radio-dot"></span></span></label><label><input type="radio" name="type" value="voucher"><span><span class="type-icon" aria-hidden="true">♧</span><strong>Gift voucher</strong><small>A cup of something kind</small><span class="radio-dot"></span></span></label></fieldset>
++              <div id="receipt-fields"><div class="field-row"><label class="grow">Your coffee<select id="coffee"><option value="maple">Maple Oat Latte</option><option value="espresso">Dark Roast Espresso</option><option value="cold">Cold Brew</option></select></label><label class="quantity-label">Quantity<input id="quantity" type="number" min="1" max="20" value="1" required></label></div><p class="field-help">Made with care. Signed with confidence.</p></div>
++              <div id="voucher-fields" hidden><div class="field-row"><label class="grow">Recipient<input id="recipient" maxlength="100" placeholder="Someone who deserves a coffee"></label><label class="quantity-label">Value ($)<input id="amount" type="number" min="1" max="500" step="1" value="25"></label></div><label class="message-label">A little note <span>(optional)</span><input id="message" maxlength="250" placeholder="The next coffee is on me."></label></div>
++              <div class="algorithm-row"><label for="algorithm">Signature protection</label><span class="info-label">Public-key signatures</span></div><select id="algorithm"><option value="auto">Automatic · strongest available</option><option value="ECDSA">Classical · ECDSA P-256</option><option value="Ed25519">Classical · Ed25519</option><option value="ML-DSA-65">Quantum-resistant · ML-DSA-65 (if supported)</option></select><p class="field-help">Quantum-resistant when supported. A trusted classical fallback otherwise.</p>
++              <button class="primary-button sign-button" id="sign-button" type="submit" disabled><span aria-hidden="true">♧</span> Sign coffee receipt <span aria-hidden="true">↗</span></button>
++              <p class="form-footnote"><span aria-hidden="true">⌑</span> Your private key stays in this browser session.</p>
++            </form>
++          </div>
++          <div id="verify-panel" role="tabpanel" aria-labelledby="verify-tab" hidden><h3>Trust, but verify.</h3><p class="verify-intro">Upload a signed receipt or gift voucher, or paste its JSON below.</p><label class="upload-box"> <span aria-hidden="true">↥</span><strong>Choose a signed document</strong><small>JSON files · up to 100 KB</small><input type="file" id="document-file" accept=".json,application/json"></label><label for="document-json">Signed document</label><textarea id="document-json" rows="6" placeholder="Paste your signed JSON here…" spellcheck="false"></textarea><p class="field-help" id="verification-source">Checking against this session’s signing key.</p><button class="primary-button sign-button" id="verify-button" disabled>Verify signature <span aria-hidden="true">↗</span></button><div id="verification-result" class="verification-result" role="status" hidden></div></div>
++          <p id="status" role="status" class="status">Preparing your secure signing key…</p>
+         </div>
++        <aside class="preview-area" aria-label="Document preview"><div class="preview-heading"><span>YOUR DOCUMENT</span><span class="preview-live"><span></span> LIVE PREVIEW</span></div><article class="receipt-paper"><div class="paper-logo" aria-hidden="true">☕</div><h3>THE DAILY GRIND</h3><p class="paper-tagline">A good day starts with a good cup.</p><div class="paper-divider"></div><div class="receipt-meta"><span id="preview-type">COFFEE RECEIPT</span><span id="preview-date"></span></div><div class="receipt-item"><span id="preview-item">Maple Oat Latte</span><strong id="preview-price">$6.50</strong></div><p id="preview-note" class="paper-note">Oat milk. Vermont maple. A little magic.</p><div class="paper-divider"></div><div class="receipt-total"><span>Total <small>USD</small></span><strong id="preview-total">$6.50</strong></div><div class="paper-divider"></div><div class="signature-seal" id="signature-seal"><span class="seal-icon" aria-hidden="true">◇</span><strong id="seal-title">Ready for your signature</strong><small id="seal-subtitle">A little proof that it’s authentically yours.</small></div><p id="document-id" class="document-id">CRAFTED WITH CARE • THE DAILY GRIND</p><div class="paper-bottom"></div></article><div class="download-actions"><button id="download-document" disabled>↓ Download signed document</button><button id="check-document" disabled>Verify this document ↗</button></div><p class="preview-caption">More than a receipt. A record you can trust.</p></aside>
+       </div>
++      <details class="key-details"><summary><span><span aria-hidden="true">⌑</span> Your keys, your confidence <small id="key-summary">Setting up…</small></span><span aria-hidden="true">+</span></summary><div class="key-content"><p id="key-description">Your signing key is generated locally and cannot be exported. Save the public key before leaving this page to verify downloaded documents later.</p><label>Active signing key fingerprint<output id="key-fingerprint">Preparing…</output></label><div class="key-buttons"><button id="export-key" disabled>↓ Save public verification key</button><label class="file-button">↥ Use a trusted public key<input type="file" id="key-file" accept=".json,application/json"></label><button id="reset-key" type="button">Use this session’s key</button></div><p id="trusted-key-info">Only import a key obtained directly from a signer you trust. A key included with an unknown document does not prove who issued it.</p></div></details>
++      <div class="demo-note"><span aria-hidden="true">ⓘ</span><p><strong>A transparent note.</strong> This is a browser signing demo, not a purchase or redeemable voucher. Signatures confirm integrity against your trusted public key. Official Daily Grind authenticity requires a separately authenticated issuer key. Reloading creates a new signing key.</p></div>
+     </section>
++    <section class="favorites section-wrap" id="favorites"><div class="section-heading"><div><div class="eyebrow">FAMILIAR FAVORITES, ALWAYS A GOOD IDEA</div><h2>Your next little pick-me-up.</h2></div><a href="#studio">Make a signed receipt <span aria-hidden="true">↗</span></a></div><div class="coffee-grid"><article class="coffee-card"><div class="coffee-image"><img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Creamy iced maple oat latte" loading="lazy"><span>THE SEASONAL ONE</span></div><div class="coffee-title"><h3>Maple Oat Latte</h3><span>$6.50</span></div><p>Creamy oat milk. A hint of Vermont maple.</p><button data-coffee="maple">A little sweet, a lot to love <span>↗</span></button></article><article class="coffee-card"><div class="coffee-image"><img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80" alt="A rich espresso in a ceramic cup" loading="lazy"><span>THE BOLD ONE</span></div><div class="coffee-title"><h3>Dark Roast Espresso</h3><span>$3.50</span></div><p>Deep, smoky, and ready when you are.</p><button data-coffee="espresso">Small cup. Big energy. <span>↗</span></button></article><article class="coffee-card"><div class="coffee-image"><img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold brew coffee served over ice" loading="lazy"><span>THE COOL ONE</span></div><div class="coffee-title"><h3>Cold Brew</h3><span>$5.00</span></div><p>Slow-steeped for 18 hours. Smooth by nature.</p><button data-coffee="cold">Take the slow road <span>↗</span></button></article></div></section>
++    <section class="story-strip section-wrap" id="our-story"><span aria-hidden="true">✳</span><h2>Good things are made with care.</h2><p>Ethically sourced. Locally roasted.<br>From the first bean to the final signature.</p></section>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <footer><a class="brand" href="#home">THE DAILY GRIND<span class="brand-dot">®</span></a><p>Good coffee. Real connections.</p><span>© 2026 The Daily Grind Coffee Co.</span></footer>
++  <script type="module" src="app.mjs"></script>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..16aad2e 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test tests/signing.test.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/signing.mjs b/signing.mjs
+new file mode 100644
+index 0000000..0192fae
+--- /dev/null
++++ b/signing.mjs
+@@ -0,0 +1,68 @@
++const encoder = new TextEncoder();
++const suites = ['ML-DSA-65', 'Ed25519', 'ECDSA'];
++export const canonical = value => {
++  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
++  if (value !== null && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
++  return JSON.stringify(value);
++};
++const base64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
++const unbase64 = value => Uint8Array.from(atob(value), char => char.charCodeAt(0));
++const keyAlgorithm = suite => suite === 'ECDSA' ? { name: 'ECDSA', namedCurve: 'P-256' } : suite;
++const operation = suite => suite === 'ECDSA' ? { name: suite, hash: 'SHA-256' } : suite;
++export async function fingerprint(publicKey) {
++  const bytes = await crypto.subtle.exportKey('spki', publicKey);
++  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
++}
++export async function createIdentity(preference = 'auto') {
++  if (!globalThis.crypto?.subtle) throw new Error('Secure signing requires HTTPS or localhost and a browser with Web Crypto support.');
++  const choices = preference === 'auto' ? suites : [preference];
++  for (const suite of choices) {
++    if (!suites.includes(suite)) throw new Error('Unsupported signature algorithm.');
++    if (suite.startsWith('ML-DSA') && !globalThis.SubtleCrypto?.supports?.('sign', suite)) continue;
++    try {
++      const keys = await crypto.subtle.generateKey(keyAlgorithm(suite), false, ['sign', 'verify']);
++      return { ...keys, suite, id: await fingerprint(keys.publicKey) };
++    } catch (error) {
++      if (error.name !== 'NotSupportedError' || preference !== 'auto') throw error;
++    }
++  }
++  throw new Error('This signature algorithm is unavailable in your browser. Choose Automatic or ECDSA P-256.');
++}
++export async function exportVerificationKey(identity) {
++  return { format: 'daily-grind-public-key-v1', algorithm: identity.suite, fingerprint: identity.id, spki: base64(await crypto.subtle.exportKey('spki', identity.publicKey)) };
++}
++export async function importVerificationKey(document) {
++  if (document.format !== 'daily-grind-public-key-v1' || !suites.includes(document.algorithm) || typeof document.spki !== 'string' || document.spki.length > 12000) throw new Error('Invalid verification key file.');
++  const publicKey = await crypto.subtle.importKey('spki', unbase64(document.spki), keyAlgorithm(document.algorithm), true, ['verify']);
++  const id = await fingerprint(publicKey);
++  if (id !== document.fingerprint) throw new Error('The public key fingerprint does not match.');
++  return { publicKey, id, suite: document.algorithm };
++}
++function validatePayload(payload) {
++  if (!payload || !['receipt', 'voucher'].includes(payload.type) || payload.issuer !== 'Daily Grind · browser signing demo' || typeof payload.id !== 'string' || !payload.id || !Number.isFinite(Date.parse(payload.issuedAt)) || payload.currency !== 'USD' || !Number.isSafeInteger(payload.amountCents) || payload.amountCents <= 0 || payload.amountCents > 10000000) throw new Error('Invalid receipt or gift voucher details.');
++  if (payload.type === 'receipt' && (typeof payload.item !== 'string' || !payload.item || !Number.isInteger(payload.quantity) || payload.quantity < 1 || payload.quantity > 20)) throw new Error('Invalid order details.');
++  if (payload.type === 'voucher' && (typeof payload.recipient !== 'string' || !payload.recipient.trim() || typeof payload.message !== 'string')) throw new Error('Invalid gift voucher details.');
++}
++function signingBytes(unsigned) {
++  // A length-prefixed application context prevents signatures being reused in another protocol.
++  const context = encoder.encode('daily-grind/' + unsigned.payload.type + '/v1');
++  const payload = encoder.encode(canonical(unsigned));
++  const framed = new Uint8Array(1 + context.length + payload.length);
++  framed[0] = context.length;
++  framed.set(context, 1);
++  framed.set(payload, context.length + 1);
++  return framed;
++}
++export async function signDocument(identity, payload) {
++  validatePayload(payload);
++  const unsigned = { version: 1, algorithm: identity.suite, keyId: identity.id, payload };
++  const signature = await crypto.subtle.sign(operation(identity.suite), identity.privateKey, signingBytes(unsigned));
++  return { ...unsigned, signature: base64(signature) };
++}
++export async function verifyDocument(document, trustedIdentity) {
++  if (!document || canonical(Object.keys(document).sort()) !== canonical(['algorithm', 'keyId', 'payload', 'signature', 'version']) || document.version !== 1 || !suites.includes(document.algorithm) || typeof document.signature !== 'string' || document.signature.length > 12000) throw new Error('Invalid signed document format.');
++  validatePayload(document.payload);
++  if (document.keyId !== trustedIdentity.id || document.algorithm !== trustedIdentity.suite) throw new Error('Unknown signer. Select a separately trusted public key matching this document.');
++  const { signature, ...unsigned } = document;
++  return crypto.subtle.verify(operation(document.algorithm), trustedIdentity.publicKey, unbase64(signature), signingBytes(unsigned));
++}
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..5b010f1
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,2 @@
++@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap');
++:root{--ink:#283c33;--muted:#7b8077;--orange:#bf512c;--cream:#f7f5ef;--line:#dedfd5;--green:#486451;--serif:'Playfair Display',Georgia,serif}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:30px}body{margin:0;background:var(--cream);color:var(--ink);font:14px/1.6 'DM Sans',sans-serif}button,input,select,textarea{font:inherit}a{color:inherit;text-decoration:none}button,a,input,select,textarea,summary{outline-offset:5px}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}button{color:inherit}button,a{touch-action:manipulation}[hidden]{display:none!important}.navigation{max-width:1440px;margin:auto;height:100px;padding:0 5%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);gap:25px}.brand{font-size:18px;letter-spacing:1px;font-weight:700;display:flex;align-items:center;gap:10px;white-space:nowrap}.brand-icon{font-size:27px}.brand-dot{font-size:10px;align-self:flex-start;margin-top:4px;margin-left:-5px}.nav-links{display:flex;gap:30px;font-size:13px}.nav-links .active{color:var(--orange);position:relative}.nav-links .active:after{content:'';position:absolute;width:4px;height:4px;border-radius:50%;background:var(--orange);bottom:-10px;left:50%}.nav-cta{font-size:12px;border:1px solid #bfc5b8;border-radius:5px;padding:10px 15px}.nav-cta span{margin-left:15px}.hero{max-width:1440px;display:grid;grid-template-columns:1fr 1fr;margin:auto;padding:43px 5% 48px;gap:40px;align-items:center}.eyebrow{font-size:10px;font-weight:700;letter-spacing:1.9px;display:flex;align-items:center;gap:10px;color:var(--green)}.tiny-line{height:1px;width:24px;background:var(--orange)}h1,h2,h3,p{margin:0}h1{font:500 clamp(44px,4.6vw,70px)/1.12 var(--serif);letter-spacing:-2.3px;margin:22px 0}h1 em{color:var(--orange);font-weight:500}.hero-copy>p{color:#797d73;font-size:13px;line-height:1.9}.primary-button{display:inline-flex;align-items:center;justify-content:center;gap:22px;border:0;background:var(--orange);border-radius:5px;color:white;padding:13px 23px;font-weight:600;font-size:12px;transition:background .2s}.primary-button:hover{background:#a84424}.hero .primary-button{margin-top:26px}.hero-note{margin-top:22px;font-size:10px;color:#7c8277;display:flex;gap:8px;align-items:center}.check-circle{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;background:#e3e8dc;color:var(--green);font-size:9px}.hero-image{height:365px;position:relative;border-radius:7px;overflow:hidden;background:#3f362c}.hero-image>img{width:100%;height:100%;object-fit:cover;filter:brightness(.76);object-position:center 58%}.image-label{position:absolute;top:22px;left:24px;color:#fff;font-size:8px;letter-spacing:1.6px}.photo-stamp{position:absolute;bottom:25px;left:24px;color:white;display:flex;gap:13px;align-items:center;font-size:12px;line-height:1.6}.photo-stamp>span{font-size:38px;line-height:1}.photo-stamp strong{font-weight:500}.benefit-bar{border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;justify-content:center;gap:100px;padding:17px 5%;background:#efeee5;color:#677460;font-size:11px}.benefit-bar>span{display:flex;align-items:center;gap:12px}.benefit-bar>span>span{font-size:19px;line-height:1}.section-wrap{max-width:1240px;margin:auto;padding-left:35px;padding-right:35px}.studio{padding-top:58px}.section-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;gap:20px}h2{font:500 32px/1.3 var(--serif);letter-spacing:-.7px}.section-heading h2{margin-top:9px}.section-heading p{font-size:12px;color:var(--muted);margin-top:9px}.local-pill{display:flex;align-items:center;gap:7px;border:1px solid #d8dfd2;background:#f0f2e9;border-radius:20px;padding:6px 12px;font-size:10px;white-space:nowrap}.local-pill>span,.preview-live>span{width:5px;height:5px;background:#74906b;border-radius:50%}.workspace{display:grid;grid-template-columns:1.15fr 1fr;background:white;border:1px solid var(--line);border-radius:9px;overflow:hidden}.editor{padding:0 34px 24px}.tabs{display:flex;gap:30px;border-bottom:1px solid #e8e9e2;margin-bottom:27px}.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:20px 0 15px;font-size:12px;color:#91968c}.tabs button[aria-selected=true]{border-bottom-color:var(--orange);color:var(--orange);font-weight:600}.tabs button span{margin-left:7px}.type-picker{border:0;padding:0;margin:0 0 24px;display:flex;gap:12px}.field-label{font-size:9px;font-weight:700;letter-spacing:1.3px;margin-bottom:11px}.type-picker label{width:50%;cursor:pointer;position:relative}.type-picker input{position:absolute;opacity:0}.type-picker label>span{display:flex;flex-direction:column;border:1px solid #e3e5dc;border-radius:5px;padding:14px;position:relative}.type-picker input:checked+span{border-color:#859279;background:#f5f6f0}.type-picker input:focus-visible+span{outline:2px solid var(--orange);outline-offset:3px}.type-icon{font-size:24px;line-height:1;margin-bottom:10px}.type-picker strong{font-size:12px;font-weight:600}.type-picker small{font-size:9px;color:#8d9386;margin-top:2px}.radio-dot{position:absolute;top:14px;right:12px;border:1px solid #c7cbbd;width:12px;height:12px;border-radius:50%}.type-picker input:checked+span .radio-dot{border:4px solid #697e5b}.field-row{display:flex;gap:15px}.grow{flex:1;min-width:0}.quantity-label{width:90px}label{display:block;font-size:11px;font-weight:500}input:not([type=radio]):not([type=file]),select,textarea{width:100%;display:block;background:#fff;border:1px solid #dfe2d7;border-radius:4px;padding:10px 12px;color:var(--ink);margin-top:7px;font-size:11px;min-height:39px}select{cursor:pointer;padding-right:25px}.field-help{color:#94998d;font-size:9px;margin-top:7px}.algorithm-row{display:flex;justify-content:space-between;align-items:center;margin-top:25px;gap:10px}.info-label{font-size:9px;color:#9a9e93}.sign-button{width:100%;margin-top:23px;justify-content:space-between}.sign-button>span:first-child{font-size:16px}.form-footnote{font-size:9px;text-align:center;color:#9b9f95;margin-top:12px}.form-footnote>span{margin-right:4px}.status{font-size:11px;margin-top:12px;color:var(--green);overflow-wrap:anywhere}.status.error{color:#b44029}.message-label{margin-top:14px}.message-label>span{color:var(--muted);font-weight:400}.preview-area{background:#eeefe7;padding:22px 42px 24px;display:flex;flex-direction:column;align-items:center;border-left:1px solid var(--line)}.preview-heading{display:flex;justify-content:space-between;align-items:center;width:100%;font-size:8px;letter-spacing:1.3px;color:#858d7f;font-weight:600;margin-bottom:22px}.preview-live{display:flex;gap:5px;align-items:center;font-size:7px}.receipt-paper{position:relative;background:#fffefb;width:100%;max-width:330px;padding:23px 26px 21px;box-shadow:0 5px 15px #45563809;text-align:center}.paper-logo{font-size:27px;line-height:1.2}.receipt-paper h3{font-size:14px;letter-spacing:1.8px;margin-top:7px}.paper-tagline{font-size:8px;color:#929787;margin-top:3px}.paper-divider{border-top:1px dashed #dadfd1;margin:19px 0}.receipt-meta{font-size:7px;letter-spacing:1px;display:flex;justify-content:space-between;color:#969c8e}.receipt-item{display:flex;justify-content:space-between;font-size:11px;margin-top:17px;gap:10px;text-align:left}.receipt-item strong{font-weight:500;white-space:nowrap}.paper-note{font-size:8px;color:#929a86;text-align:left;margin-top:4px;overflow-wrap:anywhere}.receipt-total{display:flex;justify-content:space-between;align-items:center;font-size:11px}.receipt-total small{font-size:7px;font-weight:400;color:#929a86;margin-left:5px}.receipt-total strong{font-size:22px;letter-spacing:-.5px}.signature-seal{display:flex;flex-direction:column;align-items:center}.seal-icon{display:grid;place-items:center;width:30px;height:33px;font-size:24px;color:#728360}.signature-seal strong{font-size:10px;font-weight:500;margin-top:6px}.signature-seal small{font-size:7px;color:#939e88;margin-top:4px;overflow-wrap:anywhere;max-width:100%}.signature-seal.signed{color:var(--green)}.document-id{font-size:6px;letter-spacing:1px;color:#a4ab98;margin-top:19px;overflow-wrap:anywhere}.paper-bottom{position:absolute;bottom:-7px;height:8px;left:0;right:0;background:linear-gradient(135deg,#fffefb 5px,transparent 0) 0 0/10px 10px,linear-gradient(225deg,#fffefb 5px,transparent 0) 0 0/10px 10px}.preview-caption{font-size:9px;color:#939c87;margin-top:13px}.download-actions{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:23px}.download-actions button{border:0;background:none;font-size:10px;color:var(--green)}.download-actions button:disabled{display:none}.key-details{margin-top:15px;border:1px solid var(--line);border-radius:5px;font-size:11px;background:#f1f2e9}.key-details summary{padding:14px 19px;display:flex;justify-content:space-between;cursor:pointer;list-style:none}.key-details summary>span:first-child{display:flex;gap:10px;align-items:center}.key-details summary small{color:#909986;font-size:9px;font-weight:400;margin-left:12px}.key-content{padding:0 20px 18px;border-top:1px solid var(--line)}.key-content p{font-size:11px;color:#77836d;margin:13px 0}.key-content output{display:block;overflow-wrap:anywhere;font-family:monospace;font-size:11px;margin-top:6px}.key-buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}.key-buttons button,.file-button{border:1px solid #cdd4c1;padding:8px 12px;background:#fff;border-radius:4px;font-size:10px;cursor:pointer}.file-button input{display:block;font-size:10px;margin-top:5px;max-width:200px}.demo-note{display:flex;gap:10px;margin-top:17px;color:#8c9383;font-size:9px;line-height:1.7}.demo-note>span{font-size:15px}.demo-note strong{color:#6f7b64;font-weight:500}.verify-intro{font-size:11px;color:var(--muted);margin:6px 0 17px}.upload-box{border:1px dashed #b9c5ad;border-radius:5px;text-align:center;padding:15px;margin-bottom:15px;background:#f8f9f4;cursor:pointer}.upload-box>span{display:block;font-size:23px}.upload-box strong,.upload-box small{display:block;font-size:11px}.upload-box small{font-size:9px;color:var(--muted);margin:4px 0}.upload-box input{font-size:10px;max-width:100%;margin-top:8px}textarea{resize:vertical;font-family:monospace!important}.verification-result{padding:13px;border:1px solid #c4d3b8;background:#f1f6ed;border-radius:5px;margin-top:15px;font-size:11px;white-space:pre-line;overflow-wrap:anywhere}.verification-result.error{background:#fff3ed;border-color:#edc1ac;color:#a33c25}.favorites{padding-top:66px;padding-bottom:50px}.favorites .section-heading>a{font-size:11px;color:var(--orange);border-bottom:1px solid #d2b6a5;padding-bottom:4px;white-space:nowrap}.favorites .section-heading>a span{margin-left:12px}.coffee-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:25px}.coffee-image{height:205px;position:relative;overflow:hidden;border-radius:6px}.coffee-image img{height:100%;width:100%;object-fit:cover}.coffee-image>span{position:absolute;top:13px;left:13px;font-size:7px;letter-spacing:1px;background:#f8f6eced;border-radius:3px;padding:5px 8px}.coffee-title{display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:10px}.coffee-title h3{font:500 19px var(--serif)}.coffee-title>span{font-size:11px;color:#75816a}.coffee-card>p{font-size:10px;color:#8c9381;margin-top:8px}.coffee-card>button{border:0;border-top:1px solid #dedfd4;background:none;width:100%;padding:12px 0;display:flex;justify-content:space-between;font-size:10px;color:#6f7a65;margin-top:17px}.story-strip{display:flex;align-items:center;gap:23px;padding-top:28px;padding-bottom:30px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.story-strip>span{font-size:41px;color:var(--orange)}.story-strip h2{font-size:25px;flex:1}.story-strip p{font-size:10px;color:#8a9380;line-height:1.9}footer{max-width:1240px;margin:auto;padding:32px 35px;display:flex;justify-content:space-between;align-items:center;gap:20px}footer .brand{font-size:12px}footer p,footer>span{font-size:9px;color:#959c8b}a:hover,button:not(.primary-button):not(:disabled):hover{color:var(--orange)}@media(min-width:1450px){.hero{padding-top:55px;padding-bottom:55px}.hero-image{height:420px}}@media(max-width:950px){.nav-cta{display:none}.navigation{height:80px}.hero{gap:25px}.hero-image{height:330px}h1{font-size:48px}.benefit-bar{gap:35px}.editor{padding-left:24px;padding-right:24px}.preview-area{padding-left:25px;padding-right:25px}.info-label{display:none}.coffee-image{height:180px}.type-picker small{font-size:8px}}@media(max-width:700px){.navigation{padding:0 6%;height:75px}.brand{font-size:14px}.brand-icon{font-size:23px}.nav-links{gap:14px;font-size:10px}.nav-links a:first-child,.nav-links a:last-child{display:none}.hero{grid-template-columns:1fr;padding:32px 6%;gap:28px}.hero h1{font-size:52px}.hero-image{height:265px}.hero-copy>p{font-size:12px}.hero-note{margin-top:16px}.benefit-bar{gap:10px;padding:13px 5%;flex-wrap:wrap;justify-content:space-around;font-size:8px}.benefit-bar>span{gap:5px}.benefit-bar>span:last-child{display:none}.section-wrap{padding-left:6%;padding-right:6%}.studio{padding-top:35px}.section-heading{align-items:flex-start}.local-pill{display:none}h2{font-size:28px}.section-heading p{font-size:11px}.workspace{grid-template-columns:1fr}.editor{padding:0 21px 20px}.preview-area{border-left:0;border-top:1px solid var(--line);padding:22px 35px}.preview-heading{max-width:330px}.key-details summary small{display:none}.key-details summary{padding:13px}.key-details summary>span:first-child{gap:7px}.favorites{padding-top:42px}.favorites .section-heading{display:block}.favorites .section-heading>a{display:inline-block;margin-top:14px}.coffee-grid{grid-template-columns:1fr;gap:25px}.coffee-image{height:250px}.coffee-title h3{font-size:23px}.coffee-card>p{font-size:12px}.coffee-card>button{font-size:11px}.story-strip{gap:14px;flex-wrap:wrap;margin:0 6%;padding-left:0;padding-right:0}.story-strip h2{font-size:23px}.story-strip p{margin-left:50px}footer{padding:25px 6%;flex-wrap:wrap;gap:12px}footer p{display:none}footer>span{font-size:8px}.desktop{display:none}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+diff --git a/tests/signing.test.mjs b/tests/signing.test.mjs
+new file mode 100644
+index 0000000..5e75b98
+--- /dev/null
++++ b/tests/signing.test.mjs
+@@ -0,0 +1,50 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { createIdentity, signDocument, verifyDocument, exportVerificationKey, importVerificationKey } from '../signing.mjs';
++const receipt = { type: 'receipt', issuer: 'Daily Grind · browser signing demo', id: 'order-123', issuedAt: new Date().toISOString(), currency: 'USD', amountCents: 650, item: 'Maple Oat Latte', quantity: 1 };
++for (const suite of ['ECDSA', 'Ed25519']) {
++  test(suite + ': receipt and voucher verify using independently exported public keys', async () => {
++    const identity = await createIdentity(suite);
++    assert.equal(identity.privateKey.extractable, false);
++    const publicDocument = await exportVerificationKey(identity);
++    assert.equal('privateKey' in publicDocument, false);
++    const trusted = await importVerificationKey(publicDocument);
++    for (const payload of [receipt, { ...receipt, type: 'voucher', recipient: 'Alex', message: 'Enjoy!', amountCents: 2500 }]) {
++      const signed = await signDocument(identity, payload);
++      assert.equal(await verifyDocument(JSON.parse(JSON.stringify(signed)), trusted), true);
++      const edited = structuredClone(signed);
++      edited.payload.amountCents += 100;
++      assert.equal(await verifyDocument(edited, trusted), false);
++      const reordered = { ...signed, payload: Object.fromEntries(Object.entries(payload).reverse()) };
++      assert.equal(await verifyDocument(reordered, trusted), true);
++      const crossType = structuredClone(signed);
++      crossType.payload.type = payload.type === 'receipt' ? 'voucher' : 'receipt';
++      crossType.payload.recipient = 'Alex';
++      crossType.payload.message = 'Enjoy!';
++      assert.equal(await verifyDocument(crossType, trusted), false);
++    }
++  });
++}
++test('rejects unknown signers, substituted keys, tampered fingerprints and malformed documents', async () => {
++  const identity = await createIdentity('ECDSA');
++  const attacker = await createIdentity('ECDSA');
++  const signed = await signDocument(identity, receipt);
++  await assert.rejects(verifyDocument(signed, attacker), /Unknown signer/);
++  const forged = await signDocument(attacker, receipt);
++  forged.keyId = identity.id;
++  assert.equal(await verifyDocument(forged, identity), false);
++  const publicKey = await exportVerificationKey(identity);
++  publicKey.fingerprint = attacker.id;
++  await assert.rejects(importVerificationKey(publicKey), /fingerprint/);
++  await assert.rejects(verifyDocument({ ...signed, extra: true }, identity), /format/);
++  await assert.rejects(verifyDocument({ ...signed, algorithm: 'HMAC' }, identity), /format/);
++  await assert.rejects(signDocument(identity, { ...receipt, amountCents: -1 }), /Invalid/);
++  await assert.rejects(verifyDocument(null, identity), /format/);
++  const altered = structuredClone(signed);
++  altered.signature = altered.signature.slice(4);
++  assert.equal(await verifyDocument(altered, identity), false);
++});
++test('automatic algorithm selection yields working asymmetric signatures', async () => {
++  const identity = await createIdentity();
++  assert.equal(await verifyDocument(await signDocument(identity, receipt), identity), true);
++});

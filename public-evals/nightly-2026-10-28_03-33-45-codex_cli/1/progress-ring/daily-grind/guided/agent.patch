@@ -1,0 +1,151 @@
+diff --git a/index.html b/index.html
+index 66c9173..d7a65fe 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,105 @@
+       color: var(--primary);
+     }
+ 
++    .content-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 300px;
++      gap: 28px;
++      align-items: start;
++    }
++
++    .section-title {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .seasonal-favorites .grid {
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
++    }
++
++    .rewards-card {
++      margin-top: 20px;
++      padding: 24px 20px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .rewards-eyebrow {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .rewards-ring {
++      position: relative;
++      display: grid;
++      place-items: center;
++      width: 200px;
++      height: 200px;
++      max-width: 100%;
++      aspect-ratio: 1;
++      margin: 20px auto;
++      border-radius: 50%;
++      background: conic-gradient(var(--primary) var(--reward-progress), var(--secondary) 0);
++    }
++
++    .rewards-ring::before {
++      content: '';
++      position: absolute;
++      inset: 12px;
++      border-radius: 50%;
++      background: white;
++    }
++
++    .rewards-ring-content {
++      position: relative;
++      display: grid;
++      justify-items: center;
++      line-height: 1.4;
++    }
++
++    .rewards-count {
++      color: var(--primary);
++      font-size: 2.75rem;
++      font-weight: 700;
++      line-height: 1.2;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .rewards-count span {
++      font-size: 1.1rem;
++      font-weight: 400;
++    }
++
++    .rewards-remaining {
++      margin-top: 8px;
++      padding: 3px 10px;
++      border-radius: 20px;
++      background: var(--accent);
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    @media (max-width: 900px) {
++      .content-layout {
++        grid-template-columns: minmax(0, 1fr);
++        gap: 32px;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -174,9 +273,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container content-layout">
++    <section class="seasonal-favorites" aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +294,27 @@
+         </div>
+       </div>
+     </section>
++
++    <section aria-labelledby="rewards-title">
++      <h2 id="rewards-title" class="section-title">Loyalty Rewards</h2>
++      <div class="card rewards-card">
++        <p class="rewards-eyebrow">Your daily ritual, rewarded</p>
++        <!-- Example balance: replace the value, fill, and copy with customer reward data together. -->
++        <div class="rewards-ring" style="--reward-progress: 70%;">
++          <progress class="visually-hidden" value="7" max="10"
++            aria-label="Drinks toward your next free drink"
++            aria-valuetext="7 of 10 drinks collected. 3 more drinks until your next free drink."></progress>
++          <div class="rewards-ring-content" aria-hidden="true">
++            <p class="rewards-count">7 <span>/ 10</span></p>
++            <p>drinks collected</p>
++            <p class="rewards-remaining">3 more to go</p>
++          </div>
++        </div>
++        <h3>Your next one's on us.</h3>
++        <p>Collect 10 drinks and enjoy a free drink. You're just 3 drinks away!</p>
++        <a href="/rewards" class="btn">View My Rewards</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

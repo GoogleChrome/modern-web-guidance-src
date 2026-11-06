@@ -1,0 +1,298 @@
+diff --git a/index.html b/index.html
+index 66c9173..3009e0e 100644
+--- a/index.html
++++ b/index.html
+@@ -152,10 +152,138 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    :root {
++      --ease-out: cubic-bezier(.22, 1, .36, 1);
++    }
++
++    html { scroll-behavior: smooth; }
++    button { font: inherit; cursor: pointer; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
++    nav a {
++      position: relative;
++      display: inline-block;
++      transition: color 200ms ease, transform 250ms var(--ease-out), background-color 200ms ease;
++    }
++    nav a::after {
++      content: "";
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: -5px;
++      height: 2px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: left;
++      transition: transform 250ms var(--ease-out);
++    }
++    nav a:hover, nav a:focus-visible { color: var(--accent); transform: translateY(-2px); }
++    nav a:hover::after, nav a:focus-visible::after { transform: scaleX(1); }
++    .logout-link:hover, .logout-link:focus-visible { background: #ffffff12; }
++    .logout-link::after { display: none; }
++    .hero { min-height: 470px; height: auto; padding: 64px 20px 32px; overflow: hidden; }
++    .hero h1 { font-size: clamp(2.25rem, 6vw, 3.5rem); line-height: 1.15; }
++    .hero > h1, .hero > p, .hero > .btn { animation: rise-in 750ms var(--ease-out) both; }
++    .hero > p { animation-delay: 100ms; }
++    .hero > .btn { animation-delay: 200ms; }
++    .btn {
++      border: 1px solid transparent;
++      font: inherit;
++      cursor: pointer;
++      transition: background-color 220ms ease, color 220ms ease,
++        transform 300ms var(--ease-out), box-shadow 300ms ease;
++    }
++    .btn:hover, .btn:focus-visible { transform: translateY(-3px); box-shadow: 0 7px 16px #3e272326; }
++    .btn:active { transform: translateY(0) scale(.98); }
++    .hero > .btn { background: var(--accent); color: var(--text); font-weight: 700; padding: 12px 28px; }
++    .hero > .btn:hover { background: #ffc16e; }
++    .roast-banner {
++      display: flex;
++      align-items: center;
++      gap: 16px;
++      width: min(100%, 680px);
++      margin-top: 40px;
++      padding: 12px 16px;
++      border: 1px solid #ffffff50;
++      border-radius: 10px;
++      background: #24140ed9;
++      text-align: left;
++    }
++    .roast-window { flex: 1; min-width: 0; overflow: hidden; }
++    .roast-track { display: flex; width: max-content; animation: daily-roast 24s linear infinite; }
++    .roast-track span { flex: none; padding-right: 48px; white-space: nowrap; font-size: .9rem; letter-spacing: .03em; }
++    .roast-banner[data-paused="true"] .roast-track { animation-play-state: paused; }
++    .roast-toggle {
++      flex: none;
++      color: white;
++      background: transparent;
++      border: 1px solid #ffffff70;
++      border-radius: 5px;
++      padding: 5px 12px;
++      transition: background-color 200ms ease;
++    }
++    .roast-toggle:hover { background: #ffffff20; }
++    .card {
++      border: 1px solid #4e342e0d;
++      transition: transform 350ms var(--ease-out), box-shadow 350ms ease, border-color 250ms ease;
++    }
++    .card:focus-within { transform: translateY(-6px); box-shadow: 0 12px 26px #3e272318; border-color: #d7ccc8; }
++    @media (hover: hover) {
++      .card:hover { transform: translateY(-6px); box-shadow: 0 12px 26px #3e272318; border-color: #d7ccc8; }
++    }
++    .footer-links a { transition: color 200ms ease; }
++    .footer-links a:hover { color: #8b4a21; text-decoration: underline; text-underline-offset: 4px; }
++    .drink-dialog {
++      position: fixed;
++      inset: 0;
++      margin: auto;
++      width: min(480px, calc(100% - 32px));
++      max-height: calc(100dvh - 48px);
++      overflow: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 16px;
++      padding: 36px;
++      color: var(--text);
++      background: #fffdf9;
++      box-shadow: 0 24px 80px #0004;
++    }
++    .drink-dialog[open] { animation: dialog-in 300ms var(--ease-out) both; }
++    .drink-dialog[open]::backdrop { background: #24140eaa; animation: backdrop-in 300ms ease both; }
++    .drink-dialog.is-closing { animation: dialog-out 220ms ease both; }
++    .drink-dialog.is-closing::backdrop { animation: backdrop-out 220ms ease both; }
++    .dialog-eyebrow { color: #795548; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 12px; }
++    .drink-dialog h2 { margin-bottom: 12px; padding-right: 16px; line-height: 1.25; }
++    .drink-dialog dl { margin-top: 24px; display: grid; gap: 6px 16px; grid-template-columns: auto 1fr; }
++    .drink-dialog dt { font-weight: 600; }
++    .drink-dialog dd { text-align: right; }
++    .dialog-close { position: absolute; right: 12px; top: 10px; border: 0; background: transparent; color: var(--text); font-size: 1.6rem; width: 36px; height: 36px; border-radius: 50%; transition: background-color 200ms ease; }
++    .dialog-close:hover { background: var(--secondary); }
++    body:has(.drink-dialog[open]) { overflow: hidden; }
++    @keyframes rise-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
++    @keyframes daily-roast { to { transform: translateX(-50%); } }
++    @keyframes dialog-in { from { opacity: 0; transform: translateY(20px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
++    @keyframes dialog-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(12px) scale(.97); } }
++    @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
++    @keyframes backdrop-out { from { opacity: 1; } to { opacity: 0; } }
++    @media (max-width: 600px) {
++      nav { flex-direction: column; gap: 12px; padding: 12px 16px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 10px 16px; }
++      nav ul li { margin: 0; }
++      nav a { font-size: .8rem; }
++      .roast-banner { gap: 8px; padding: 10px; }
++      .drink-dialog { padding: 32px 24px; }
++    }
++    @media (prefers-reduced-motion: reduce) {
++      html { scroll-behavior: auto; }
++      *, *::before, *::after { animation: none !important; transition: none !important; }
++      .roast-track { width: auto; transform: none; }
++      .roast-track span { white-space: normal; padding: 0; }
++      .roast-track span[aria-hidden] { display: none; }
++      .card:hover, .card:focus-within, .btn:hover, .btn:active, nav a:hover, nav a:focus-visible { transform: none; }
++    }
+   </style>
+ </head>
+ 
+-<body>
++<body data-last-animation-state="idle">
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+@@ -172,6 +300,15 @@
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-banner" data-paused="false" role="region" aria-label="Daily roast">
++      <div class="roast-window">
++        <div class="roast-track">
++          <span>Today's roast · A fresh start, one small batch at a time · Roasted daily, brewed with care ·</span>
++          <span aria-hidden="true">Today's roast · A fresh start, one small batch at a time · Roasted daily, brewed with care ·</span>
++        </div>
++      </div>
++      <button class="roast-toggle" type="button" aria-pressed="false" aria-label="Pause daily roast animation">Pause</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+@@ -181,22 +318,31 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="maple" aria-haspopup="dialog" aria-controls="drink-details">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="espresso" aria-haspopup="dialog" aria-controls="drink-details">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="cold-brew" aria-haspopup="dialog" aria-controls="drink-details">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="drink-details" class="drink-dialog" aria-labelledby="drink-title" aria-describedby="drink-description">
++    <button type="button" class="dialog-close" aria-label="Close drink details" autofocus>×</button>
++    <p class="dialog-eyebrow">Seasonal Favorites</p>
++    <h2 id="drink-title"></h2>
++    <p id="drink-description"></p>
++    <dl><dt>Tasting notes</dt><dd id="drink-notes"></dd><dt>Served</dt><dd id="drink-served"></dd></dl>
++    <a class="btn" href="/order-online">Order Now</a>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +353,102 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
++    const banner = document.querySelector('.roast-banner');
++    const track = document.querySelector('.roast-track');
++    const toggle = document.querySelector('.roast-toggle');
++    let userPaused = false;
++
++    function updateRoastMotion() {
++      const reduced = motionPreference.matches;
++      const paused = userPaused || reduced;
++      banner.dataset.paused = String(paused);
++      toggle.disabled = reduced;
++      toggle.textContent = reduced ? 'Motion off' : paused ? 'Resume' : 'Pause';
++      toggle.setAttribute('aria-pressed', String(paused));
++      toggle.setAttribute('aria-label', reduced ? 'Daily roast animation disabled by reduced motion preference' : `${paused ? 'Resume' : 'Pause'} daily roast animation`);
++      const animation = track.getAnimations()[0];
++      document.body.dataset.lastAnimationState = animation ? animation.playState : 'idle';
++    }
++    toggle.addEventListener('click', () => {
++      userPaused = !userPaused;
++      updateRoastMotion();
++    });
++    motionPreference.addEventListener('change', () => {
++      updateRoastMotion();
++      if (closing) finishClose();
++    });
++
++    // Some event sources expose the Animation directly. Native CSS events
++    // generally expose its name/property instead, so resolve that animation.
++    function recordAnimationState(event) {
++      const animation = event.animation ?? event.target.getAnimations().find(candidate =>
++        (event.animationName && candidate.animationName === event.animationName) ||
++        (event.propertyName && candidate.transitionProperty === event.propertyName)
++      );
++      const ended = event.type === 'animationend' || event.type === 'transitionend';
++      const cancelled = event.type === 'animationcancel' || event.type === 'transitioncancel';
++      document.body.dataset.lastAnimationState = animation?.playState ?? (cancelled ? 'idle' : ended ? 'finished' : 'running');
++    }
++    for (const type of ['animationstart', 'animationiteration', 'animationend', 'animationcancel',
++      'transitionrun', 'transitionstart', 'transitionend', 'transitioncancel']) {
++      document.addEventListener(type, recordAnimationState);
++    }
++
++    const drinks = {
++      maple: { name: 'Maple Oat Latte', description: 'Espresso meets creamy oat milk and a hint of Vermont maple syrup. A gently sweet, comforting cup for a slower morning.', notes: 'Maple · toasted oats', served: 'Hot or iced' },
++      espresso: { name: 'Dark Roast Espresso', description: 'A rich, full-bodied espresso with a bold, smoky finish. Enjoy a concentrated morning boost, crafted one shot at a time.', notes: 'Dark cocoa · smoky finish', served: 'Hot' },
++      'cold-brew': { name: 'Cold Brew', description: 'Slow-steeped for 18 hours for a smooth, mellow coffee. Poured over ice for an easy, refreshing pick-me-up.', notes: 'Smooth · mellow', served: 'Over ice' }
++    };
++    const dialog = document.querySelector('.drink-dialog');
++    let closing = false;
++    let closeTimer;
++    let opener;
++
++    function finishClose() {
++      clearTimeout(closeTimer);
++      dialog.close();
++      dialog.classList.remove('is-closing');
++      closing = false;
++      opener?.focus({ preventScroll: true });
++    }
++    function closeDetails() {
++      if (!dialog.open || closing) return;
++      closing = true;
++      if (motionPreference.matches) return finishClose();
++      dialog.classList.add('is-closing');
++      // Keep dismissal reliable if CSS animations are interrupted or unavailable.
++      closeTimer = setTimeout(finishClose, 300);
++    }
++    document.querySelectorAll('[data-drink]').forEach(button => {
++      button.addEventListener('click', () => {
++        const drink = drinks[button.dataset.drink];
++        opener = button;
++        document.querySelector('#drink-title').textContent = drink.name;
++        document.querySelector('#drink-description').textContent = drink.description;
++        document.querySelector('#drink-notes').textContent = drink.notes;
++        document.querySelector('#drink-served').textContent = drink.served;
++        dialog.showModal();
++      });
++    });
++    dialog.querySelector('.dialog-close').addEventListener('click', closeDetails);
++    dialog.addEventListener('cancel', event => { event.preventDefault(); closeDetails(); });
++    let backdropPointer = false;
++    function outsideDialog(event) {
++      const rect = dialog.getBoundingClientRect();
++      return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
++    }
++    dialog.addEventListener('pointerdown', event => { backdropPointer = event.target === dialog && outsideDialog(event); });
++    dialog.addEventListener('click', event => {
++      if (backdropPointer && event.target === dialog && outsideDialog(event)) closeDetails();
++      backdropPointer = false;
++    });
++    dialog.addEventListener('animationend', event => {
++      if (event.target === dialog && !event.pseudoElement && event.animationName === 'dialog-out' && closing) finishClose();
++    });
++    updateRoastMotion();
++  </script>
+ </body>
+ 
+ </html>

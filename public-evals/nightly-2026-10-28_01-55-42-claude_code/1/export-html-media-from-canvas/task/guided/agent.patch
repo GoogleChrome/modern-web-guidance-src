@@ -1,0 +1,461 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,217 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Gift Card Designer */
++    .designer-intro {
++      text-align: center;
++      max-width: 60ch;
++      margin: 0.5rem auto 1.5rem;
++    }
++
++    .designer {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 30px;
++      align-items: start;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .designer-field {
++      margin-bottom: 1.25rem;
++    }
++
++    .designer-field > label,
++    .designer-field legend {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.35rem;
++    }
++
++    .designer-field input[type="text"] {
++      width: 100%;
++      font: inherit;
++      padding: 10px 12px;
++      border: 1px solid #bdbdbd;
++      border-radius: 5px;
++    }
++
++    .designer-field input[type="text"]:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .designer-hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 0.25rem;
++    }
++
++    .swatches {
++      border: 0;
++      padding: 0;
++    }
++
++    .swatch-list {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .swatch {
++      position: relative;
++      inline-size: 40px;
++      block-size: 40px;
++      border-radius: 50%;
++      border: 2px solid white;
++      box-shadow: 0 0 0 1px #bdbdbd;
++      cursor: pointer;
++      background: var(--swatch);
++    }
++
++    .swatch input {
++      position: absolute;
++      inset: 0;
++      opacity: 0;
++      margin: 0;
++      cursor: pointer;
++    }
++
++    .swatch:has(input:checked) {
++      box-shadow: 0 0 0 3px var(--accent);
++    }
++
++    .swatch:has(input:focus-visible) {
++      outline: 2px solid var(--text);
++      outline-offset: 3px;
++    }
++
++    .swatch-custom {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      margin-left: 6px;
++      font-size: 0.9rem;
++    }
++
++    .swatch-custom input[type="color"] {
++      inline-size: 40px;
++      block-size: 40px;
++      padding: 0;
++      border: 2px solid white;
++      border-radius: 50%;
++      box-shadow: 0 0 0 1px #bdbdbd;
++      background: none;
++      cursor: pointer;
++    }
++
++    .designer-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++    }
++
++    .designer-actions .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .designer-actions .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .designer-status {
++      font-size: 0.9rem;
++      min-height: 1.4em;
++    }
++
++    .designer-status[data-tone="error"] {
++      color: #b71c1c;
++    }
++
++    /* The stage is the exact footprint of the exported image. The canvas and
++       the fallback wrapper share it so the card looks the same either way. */
++    .gift-card-stage {
++      position: relative;
++      display: block;
++      inline-size: min(100%, 440px);
++      aspect-ratio: 85 / 54;
++      margin: 0 auto;
++      border-radius: 16px;
++      box-shadow: 0 10px 30px rgba(62, 39, 35, 0.25);
++      container-type: inline-size;
++    }
++
++    .gift-card {
++      --card-bg: #4e342e;
++      --card-ink: #fff8f0;
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      padding: 7% 8%;
++      border-radius: 16px;
++      overflow: hidden;
++      color: var(--card-ink);
++      background-color: var(--card-bg);
++      background-image:
++        radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.18), transparent 45%),
++        linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.18));
++      font-family: Georgia, 'Times New Roman', serif;
++      overflow-wrap: anywhere;
++    }
++
++    .gift-card.is-light {
++      --card-ink: #3e2723;
++    }
++
++    .gift-card-brand {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.15em;
++      text-transform: uppercase;
++    }
++
++    .gift-card-brand svg {
++      inline-size: 1.6em;
++      block-size: 1.6em;
++      fill: currentColor;
++    }
++
++    .gift-card-message {
++      font-size: clamp(1.1rem, 4.5cqi, 1.7rem);
++      line-height: 1.25;
++      font-style: italic;
++      text-align: center;
++      padding: 0 2%;
++    }
++
++    .gift-card-foot {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size: 0.75rem;
++      opacity: 0.9;
++    }
++
++    .gift-card-foot strong {
++      font-size: 1.1rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +403,75 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="designer-section" aria-labelledby="designer-heading">
++      <h2 id="designer-heading" style="text-align: center; margin-top: 60px;">Design a Gift Card</h2>
++      <p class="designer-intro">Add a name or a short message, pick a colour, and download your card as an image to share.</p>
++
++      <div class="designer">
++        <form class="designer-controls" id="designer_form">
++          <div class="designer-field">
++            <label for="card_message">Message or name</label>
++            <input type="text" id="card_message" name="message" maxlength="60" autocomplete="off"
++              enterkeyhint="done" value="Happy Birthday, Sam!">
++            <p class="designer-hint" id="card_message_hint">Up to 60 characters.</p>
++          </div>
++
++          <fieldset class="designer-field swatches">
++            <legend>Background colour</legend>
++            <div class="swatch-list">
++              <label class="swatch" style="--swatch: #4e342e">
++                <input type="radio" name="bg" value="#4e342e" aria-label="Espresso" checked>
++              </label>
++              <label class="swatch" style="--swatch: #8d6e63">
++                <input type="radio" name="bg" value="#8d6e63" aria-label="Latte">
++              </label>
++              <label class="swatch" style="--swatch: #1b5e20">
++                <input type="radio" name="bg" value="#1b5e20" aria-label="Matcha">
++              </label>
++              <label class="swatch" style="--swatch: #b71c1c">
++                <input type="radio" name="bg" value="#b71c1c" aria-label="Cranberry">
++              </label>
++              <label class="swatch" style="--swatch: #ffab40">
++                <input type="radio" name="bg" value="#ffab40" aria-label="Caramel">
++              </label>
++              <label class="swatch" style="--swatch: #d7ccc8">
++                <input type="radio" name="bg" value="#d7ccc8" aria-label="Oat Milk">
++              </label>
++              <label class="swatch-custom">
++                <input type="color" id="card_custom_color" name="customColor" value="#4e342e">
++                Custom
++              </label>
++            </div>
++          </fieldset>
++
++          <div class="designer-actions">
++            <button type="button" class="btn" id="export_button" aria-describedby="designer_status">Download Card Image</button>
++            <p class="designer-status" id="designer_status" role="status" aria-live="polite"></p>
++          </div>
++        </form>
++
++        <div class="designer-preview">
++          <canvas id="card_canvas" class="gift-card-stage" content="drawable">
++            <div id="export_element" class="gift-card" drawable>
++              <div class="gift-card-brand">
++                <span>The Daily Grind</span>
++                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
++                  <path d="M4 8h12a1 1 0 0 1 1 1v1h1.5A2.5 2.5 0 0 1 21 12.5v1a2.5 2.5 0 0 1-2.5 2.5H17.4A6 6 0 0 1 12 20H9a6 6 0 0 1-6-6V9a1 1 0 0 1 1-1Zm13 3v4h1.5a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H17ZM7 2.5c.8 1 .8 2 0 3s-.8 2 0 3h1.5c-.8-1-.8-2 0-3s.8-2 0-3H7Zm4 0c.8 1 .8 2 0 3s-.8 2 0 3h1.5c-.8-1-.8-2 0-3s.8-2 0-3H11Z"/>
++                </svg>
++              </div>
++              <p class="gift-card-message" id="card_message_preview">Happy Birthday, Sam!</p>
++              <div class="gift-card-foot">
++                <span>Gift Card</span>
++                <strong>$25</strong>
++              </div>
++            </div>
++          </canvas>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +482,163 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('card_canvas');
++      const card = document.getElementById('export_element');
++      const form = document.getElementById('designer_form');
++      const messageInput = document.getElementById('card_message');
++      const messagePreview = document.getElementById('card_message_preview');
++      const customColor = document.getElementById('card_custom_color');
++      const exportButton = document.getElementById('export_button');
++      const status = document.getElementById('designer_status');
++
++      const setStatus = (text, tone = 'info') => {
++        status.textContent = text;
++        status.dataset.tone = tone;
++      };
++
++      // --- Feature detection ------------------------------------------------
++      const supportsHtmlInCanvas =
++        'content' in HTMLCanvasElement.prototype &&
++        typeof canvas.requestPaint === 'function' &&
++        typeof CanvasRenderingContext2D.prototype.drawElementImage === 'function';
++
++      // --- Card state -------------------------------------------------------
++      const isLightColor = (hex) => {
++        const value = hex.replace('#', '');
++        const [r, g, b] = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16) / 255);
++        const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
++        const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
++        return luminance > 0.4;
++      };
++
++      const applyBackground = (hex) => {
++        card.style.setProperty('--card-bg', hex);
++        card.classList.toggle('is-light', isLightColor(hex));
++      };
++
++      const applyMessage = () => {
++        const text = messageInput.value.trim();
++        messagePreview.textContent = text || 'Your message here';
++      };
++
++      form.addEventListener('input', (event) => {
++        const target = event.target;
++        if (target === messageInput) {
++          applyMessage();
++        } else if (target === customColor) {
++          // Picking a custom colour deselects the preset swatches.
++          form.querySelectorAll('input[name="bg"]').forEach((r) => { r.checked = false; });
++          applyBackground(customColor.value);
++        } else if (target.name === 'bg') {
++          customColor.value = target.value;
++          applyBackground(target.value);
++        }
++        // The DOM changed, so ask the canvas to repaint the drawable element.
++        if (supportsHtmlInCanvas) canvas.requestPaint();
++      });
++
++      form.addEventListener('submit', (event) => event.preventDefault());
++
++      if (!supportsHtmlInCanvas) {
++        // Fallback: show the card as plain HTML (canvas fallback content is
++        // normally hidden) and explain that image export is unavailable.
++        const stage = document.createElement('div');
++        stage.className = 'gift-card-stage';
++        stage.append(card);
++        canvas.replaceWith(stage);
++        exportButton.disabled = true;
++        setStatus('Image download needs a browser that supports HTML-in-Canvas. You can still preview your design here.', 'error');
++        applyMessage();
++        applyBackground(customColor.value);
++        return;
++      }
++
++      // --- HTML-in-Canvas rendering -----------------------------------------
++      const ctx = canvas.getContext('2d');
++
++      // Paint handler: draws the latest snapshot of the card into the canvas.
++      // drawElementImage() also keeps the element's hit-test geometry in sync.
++      canvas.addEventListener('paint', () => {
++        ctx.reset();
++        try {
++          ctx.drawElementImage(card, 0, 0);
++        } catch (err) {
++          // No paint record for the element yet; try again on the next frame.
++          canvas.requestPaint();
++        }
++      });
++
++      // Keep the canvas backing store at device-pixel resolution so the
++      // exported PNG is crisp on high-DPI screens.
++      const resizeObserver = new ResizeObserver(([entry]) => {
++        const dpc = entry.devicePixelContentBoxSize;
++        canvas.width = dpc
++          ? dpc[0].inlineSize
++          : Math.round(entry.contentRect.width * window.devicePixelRatio);
++        canvas.height = dpc
++          ? dpc[0].blockSize
++          : Math.round(entry.contentRect.height * window.devicePixelRatio);
++        canvas.requestPaint();
++      });
++      const supportsDevicePixelContentBox =
++        typeof ResizeObserverEntry !== 'undefined' &&
++        'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++      resizeObserver.observe(canvas, supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {});
++
++      // Resolves after the next paint event so the export reflects the latest
++      // DOM state. Times out as a safety net if no paint event is delivered.
++      const afterNextPaint = () => new Promise((resolve) => {
++        const timer = setTimeout(resolve, 500);
++        canvas.addEventListener('paint', () => {
++          clearTimeout(timer);
++          // Let the paint listener above finish drawing before we read pixels.
++          requestAnimationFrame(() => resolve());
++        }, { once: true });
++        canvas.requestPaint();
++      });
++
++      const toBlob = (type) => new Promise((resolve, reject) => {
++        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Canvas export failed'))), type);
++      });
++
++      const fileNameFor = (text) => {
++        const slug = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
++        return `daily-grind-gift-card${slug ? '-' + slug : ''}.png`;
++      };
++
++      exportButton.addEventListener('click', async () => {
++        exportButton.disabled = true;
++        setStatus('Preparing your image…');
++        try {
++          await afterNextPaint();
++          const blob = await toBlob('image/png');
++          const url = URL.createObjectURL(blob);
++          const link = document.createElement('a');
++          link.href = url;
++          link.download = fileNameFor(messageInput.value);
++          document.body.append(link);
++          link.click();
++          link.remove();
++          // Give the browser a moment to start the download before revoking.
++          setTimeout(() => URL.revokeObjectURL(url), 1000);
++          setStatus('Your gift card image has been downloaded.');
++        } catch (err) {
++          console.error(err);
++          setStatus('Sorry, the image could not be exported. Please try again.', 'error');
++        } finally {
++          exportButton.disabled = false;
++        }
++      });
++
++      applyMessage();
++      applyBackground(customColor.value);
++      canvas.requestPaint();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

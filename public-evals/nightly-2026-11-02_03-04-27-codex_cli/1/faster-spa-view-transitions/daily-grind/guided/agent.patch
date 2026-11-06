@@ -1,0 +1,254 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..f027cae
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,60 @@
++(() => {
++  const views = new Map(
++    [...document.querySelectorAll('.spa-view')].map(view => [view.id.slice(5), view])
++  );
++  const navigation = document.querySelectorAll('[data-view-link]');
++  const scrollPositions = new Map();
++  let currentView;
++
++  // Hash routes work on static hosting, including reloads and Back/Forward.
++  history.scrollRestoration = 'manual';
++
++  function showView({ initial = false } = {}) {
++    const route = location.hash.slice(2) || 'home';
++    const nextView = views.has(route) ? route : 'home';
++    if (nextView === currentView) return;
++    if (currentView) scrollPositions.set(currentView, window.scrollY);
++
++    for (const [name, view] of views) {
++      const inactive = name !== nextView;
++      view.classList.toggle('inactive', inactive);
++      view.toggleAttribute('inert', inactive);
++      view.setAttribute('aria-hidden', String(inactive));
++    }
++    for (const link of navigation) {
++      if (link.dataset.viewLink === nextView) link.setAttribute('aria-current', 'page');
++      else link.removeAttribute('aria-current');
++    }
++
++    currentView = nextView;
++    const heading = views.get(nextView).querySelector('h1');
++    document.title = `${nextView === 'home' ? 'Artisanal Coffee' : heading.textContent} | The Daily Grind`;
++    if (!initial) heading.focus({ preventScroll: true });
++    window.scrollTo({ top: scrollPositions.get(nextView) || 0, behavior: 'instant' });
++  }
++
++  const category = document.getElementById('menu-category');
++  function filterMenu() {
++    document.querySelectorAll('[data-category]').forEach(card => {
++      card.hidden = category.value !== 'all' && card.dataset.category !== category.value;
++    });
++  }
++  category.addEventListener('change', filterMenu);
++
++  document.querySelectorAll('[data-menu-category]').forEach(link => {
++    link.addEventListener('click', event => {
++      // Preserve native modified-click behavior (new tabs/windows).
++      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++      category.value = link.dataset.menuCategory;
++      filterMenu();
++    });
++  });
++
++  document.getElementById('account-form').addEventListener('submit', event => {
++    event.preventDefault();
++    document.getElementById('account-status').textContent = 'Preferences kept for this visit. They reset when you reload the page.';
++  });
++
++  window.addEventListener('hashchange', () => showView());
++  showView({ initial: true });
++})();
+diff --git a/index.html b/index.html
+index 66c9173..f4dba68 100644
+--- a/index.html
++++ b/index.html
+@@ -62,7 +62,8 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="page"] {
+       color: var(--accent);
+     }
+ 
+@@ -152,49 +153,153 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    main { position: relative; }
++
++    /* Keep this bounded set of views mounted and cache their rendering state. */
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      pointer-events: none;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive { display: none; }
++    }
++
++    .view-heading { margin-bottom: 12px; }
++    .view-heading:focus { outline: none; }
++    .view-heading:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
++    .view-intro { margin-bottom: 24px; }
++    .field { display: block; margin: 16px 0; }
++    input:not([type="checkbox"]), select {
++      display: block;
++      width: 100%;
++      max-width: 420px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++    button.btn { border: 0; font: inherit; cursor: pointer; }
++    .account-form { max-width: 480px; }
++    .status { margin-top: 16px; }
++    nav { gap: 16px; flex-wrap: wrap; }
++    nav ul { flex-wrap: wrap; gap: 12px 20px; }
++    nav ul li { margin-left: 0; }
++    nav .logo { font-size: 1.5rem; }
++    [hidden] { display: none !important; }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Main navigation">
++    <a class="logo" href="#/home">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#/menu" data-view-link="menu">Menu</a></li>
++      <li><a href="#/locations" data-view-link="locations">Locations</a></li>
++      <li><a href="#/rewards" data-view-link="rewards">Rewards</a></li>
++      <li><a href="#/account" data-view-link="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <main id="views">
++  <section id="view-home" class="spa-view" aria-labelledby="heading-home">
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 id="heading-home" class="view-heading" tabindex="-1">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#/menu" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/menu" data-menu-category="seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/menu" data-menu-category="espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/menu" data-menu-category="cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++  </div>
++  </section>
++
++  <section id="view-menu" class="spa-view inactive" aria-labelledby="heading-menu" aria-hidden="true" inert>
++    <div class="container">
++      <h1 id="heading-menu" class="view-heading" tabindex="-1">Our Menu</h1>
++      <p class="view-intro">Find your daily favorite, from a bold espresso to a smooth cold brew.</p>
++      <label class="field" for="menu-category">Browse drinks
++        <select id="menu-category">
++          <option value="all">All drinks</option>
++          <option value="seasonal">Seasonal favorites</option>
++          <option value="espresso">Espresso</option>
++          <option value="cold-brew">Cold brew</option>
++        </select>
++      </label>
++      <div class="grid">
++        <article class="card" data-category="seasonal"><h2>Maple Oat Latte</h2><p>Creamy oat milk with a hint of Vermont maple syrup.</p></article>
++        <article class="card" data-category="espresso"><h2>Dark Roast Espresso</h2><p>Bold, smokey, and perfect for a morning boost.</p></article>
++        <article class="card" data-category="cold-brew"><h2>Cold Brew</h2><p>Steeped for 18 hours for maximum smoothness.</p></article>
++      </div>
++    </div>
++  </section>
++
++  <section id="view-locations" class="spa-view inactive" aria-labelledby="heading-locations" aria-hidden="true" inert>
++    <div class="container">
++      <h1 id="heading-locations" class="view-heading" tabindex="-1">Locations</h1>
++      <p class="view-intro">A good day starts at your neighborhood coffee shop.</p>
++      <label class="field" for="location-search">Your city or ZIP code
++        <input id="location-search" type="search" placeholder="Enter a city or ZIP code" autocomplete="postal-code">
++      </label>
++      <p>Store listings are coming soon. <a href="/contact">Contact us</a> for location information.</p>
++    </div>
++  </section>
++
++  <section id="view-rewards" class="spa-view inactive" aria-labelledby="heading-rewards" aria-hidden="true" inert>
++    <div class="container">
++      <h1 id="heading-rewards" class="view-heading" tabindex="-1">Daily Grind Rewards</h1>
++      <p class="view-intro">Make every coffee count.</p>
++      <div class="grid">
++        <article class="card"><h2>Sip</h2><p>Enjoy your favorite Daily Grind drinks.</p></article>
++        <article class="card"><h2>Earn</h2><p>Ask your barista about earning rewards with each visit.</p></article>
++        <article class="card"><h2>Enjoy</h2><p>Discover member perks and seasonal favorites.</p></article>
++      </div>
++      <a href="#/account" class="btn">My Account</a>
++    </div>
++  </section>
++
++  <section id="view-account" class="spa-view inactive" aria-labelledby="heading-account" aria-hidden="true" inert>
++    <div class="container">
++      <h1 id="heading-account" class="view-heading" tabindex="-1">My Account</h1>
++      <p class="view-intro">Plan your next coffee break. Your draft stays here while you explore.</p>
++      <form id="account-form" class="account-form">
++        <label class="field" for="account-name">Name<input id="account-name" name="name" autocomplete="name"></label>
++        <label class="field" for="account-drink">Favorite drink
++          <select id="account-drink" name="drink">
++            <option value="">Choose a favorite</option>
++            <option>Maple Oat Latte</option><option>Dark Roast Espresso</option><option>Cold Brew</option>
++          </select>
++        </label>
++        <button class="btn" type="submit">Keep preferences for this visit</button>
++        <p id="account-status" class="status" role="status"></p>
++      </form>
++    </div>
++  </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +312,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="app.js" defer></script>
+ </body>
+ 
+ </html>

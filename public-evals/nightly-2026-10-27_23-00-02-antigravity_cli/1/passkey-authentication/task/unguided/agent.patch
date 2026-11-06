@@ -1,0 +1,243 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,55 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Auth Section */
++    .auth-section {
++      max-width: 400px;
++      margin: 0 auto 40px;
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .auth-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 15px;
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 5px;
++      font-weight: bold;
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 1rem;
++    }
++
++    .auth-btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    .auth-status {
++      margin-top: 15px;
++      text-align: center;
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +221,34 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="auth-section">
++      <h2>Sign In</h2>
++      <form id="login-form" onsubmit="event.preventDefault();">
++        <div class="form-group">
++          <label for="username">Username</label>
++          <input
++            type="text"
++            id="username"
++            name="username"
++            autocomplete="username webauthn"
++            placeholder="Enter your username"
++            data-testid="username-field"
++          >
++        </div>
++        <button
++          type="button"
++          class="btn auth-btn"
++          data-testid="auth-button"
++          id="auth-button"
++        >
++          Sign in with Passkey
++        </button>
++      </form>
++      <div id="auth-status" class="auth-status" data-testid="auth-status"></div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +279,148 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      let abortController = null;
++      const authButton = document.querySelector('[data-testid="auth-button"]');
++      const authStatus = document.querySelector('[data-testid="auth-status"]');
++
++      function bufferToBase64Url(buffer) {
++        if (!buffer) return null;
++        const bytes = new Uint8Array(buffer);
++        let binary = '';
++        for (let i = 0; i < bytes.byteLength; i++) {
++          binary += String.fromCharCode(bytes[i]);
++        }
++        return btoa(binary)
++          .replace(/\+/g, '-')
++          .replace(/\//g, '_')
++          .replace(/=+$/, '');
++      }
++
++      function serializeCredential(credential) {
++        if (typeof credential.toJSON === 'function') {
++          return credential.toJSON();
++        }
++        return {
++          id: credential.id,
++          rawId: bufferToBase64Url(credential.rawId),
++          type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment || null,
++          response: {
++            clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
++            authenticatorData: bufferToBase64Url(credential.response.authenticatorData),
++            signature: bufferToBase64Url(credential.response.signature),
++            userHandle: credential.response.userHandle
++              ? bufferToBase64Url(credential.response.userHandle)
++              : null,
++          },
++          clientExtensionResults: credential.getClientExtensionResults
++            ? credential.getClientExtensionResults()
++            : {},
++        };
++      }
++
++      async function verifyCredential(credential) {
++        const payload = serializeCredential(credential);
++        const response = await fetch('/api/login/verify', {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          body: JSON.stringify(payload),
++        });
++
++        if (!response.ok) {
++          throw new Error('Verification failed');
++        }
++
++        let data = {};
++        try {
++          data = await response.json();
++        } catch (e) {
++          // Response may not be JSON
++        }
++
++        authStatus.textContent = data.message || 'Successfully signed in with passkey!';
++      }
++
++      function getChallenge() {
++        const challenge = new Uint8Array(32);
++        if (window.crypto && window.crypto.getRandomValues) {
++          window.crypto.getRandomValues(challenge);
++        }
++        return challenge;
++      }
++
++      async function initConditionalAuth() {
++        if (
++          !window.PublicKeyCredential ||
++          !PublicKeyCredential.isConditionalMediationAvailable
++        ) {
++          return;
++        }
++
++        try {
++          const available = await PublicKeyCredential.isConditionalMediationAvailable();
++          if (!available) return;
++
++          abortController = new AbortController();
++
++          const credential = await navigator.credentials.get({
++            mediation: 'conditional',
++            publicKey: {
++              challenge: getChallenge(),
++              userVerification: 'preferred',
++            },
++            signal: abortController.signal,
++          });
++
++          if (credential) {
++            await verifyCredential(credential);
++          }
++        } catch (err) {
++          if (err.name !== 'AbortError') {
++            console.error('Conditional passkey authentication error:', err);
++          }
++        }
++      }
++
++      async function handleExplicitAuth() {
++        if (abortController) {
++          abortController.abort();
++          abortController = null;
++        }
++
++        try {
++          const credential = await navigator.credentials.get({
++            publicKey: {
++              challenge: getChallenge(),
++              userVerification: 'required',
++            },
++          });
++
++          if (credential) {
++            await verifyCredential(credential);
++          }
++        } catch (err) {
++          console.error('Passkey authentication error:', err);
++          authStatus.textContent = 'Authentication failed or cancelled.';
++        }
++      }
++
++      if (authButton) {
++        authButton.addEventListener('click', handleExplicitAuth);
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initConditionalAuth);
++      } else {
++        initConditionalAuth();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

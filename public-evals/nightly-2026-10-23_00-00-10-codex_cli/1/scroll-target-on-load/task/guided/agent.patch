@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,15 +99,52 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
++    .media-feed {
++      position: relative;
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: minmax(0, 1fr);
+       gap: 20px;
+-      margin-top: 20px;
++      width: 100%;
++      max-width: 700px;
++      height: 460px;
++      margin: 20px auto 0;
++      padding: 16px;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f1eeec;
+     }
+ 
++    .media-feed:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .media-feed .target {
++      scroll-initial-target: nearest;
++    }
++
++    .card img {
++      display: block;
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      border-radius: 5px;
++      margin-bottom: 16px;
++    }
++
++    /* Keep fallback positioning out of sight while preserving layout. */
++    @supports not (scroll-initial-target: nearest) {
++      .media-feed:not([data-ready]) {
++        visibility: hidden;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -175,26 +212,54 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="media-feed" role="region" aria-labelledby="seasonal-heading" tabindex="0">
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=640&amp;h=360&amp;q=80" width="640" height="360" alt="Iced latte served in a tall glass">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=640&amp;h=360&amp;q=80" width="640" height="360" alt="Freshly brewed espresso in a small cup">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card target">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=640&amp;h=360&amp;q=80" width="640" height="360" fetchpriority="high" alt="Cold coffee served over ice">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&amp;fit=crop&amp;w=640&amp;h=360&amp;q=80" width="640" height="360" alt="Cappuccino topped with milk foam">
++          <h3>Classic Cappuccino</h3>
++          <p>Rich espresso under a cloud of silky steamed milk.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&amp;fit=crop&amp;w=640&amp;h=360&amp;q=80" width="640" height="360" alt="A warm cup of freshly prepared coffee">
++          <h3>Vanilla Latte</h3>
++          <p>Our signature espresso with milk and a touch of vanilla.</p>
++          <a href="/menu/vanilla-latte" class="btn">View Details</a>
++        </article>
+       </div>
++      <script>
++        // Run synchronously after the cards are parsed, before revealing the feed.
++        // Only move this container, keeping the surrounding page in place.
++        const feed = document.querySelector('.media-feed');
++        if (!CSS.supports('scroll-initial-target', 'nearest')) {
++          const target = feed.querySelector('.target');
++          feed.scrollTop = target.offsetTop - (feed.clientHeight - target.offsetHeight) / 2;
++        }
++        feed.setAttribute('data-ready', '');
++      </script>
++      <noscript>
++        <style>.media-feed { visibility: visible !important; }</style>
++      </noscript>
+     </section>
+   </main>
+ 
+   <footer>

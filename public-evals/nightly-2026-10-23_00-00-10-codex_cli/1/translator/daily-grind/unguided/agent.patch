@@ -1,0 +1,246 @@
+diff --git a/index.html b/index.html
+index 66c9173..e8fad8d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,63 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    body { background: #f9f6f1; }
++    nav { gap: 24px; flex-wrap: wrap; }
++    .logo { font-size: 1.15rem; letter-spacing: 2px; }
++    .hero { min-height: 360px; max-height: 620px; }
++    .hero h1 { font-family: Georgia, serif; font-weight: 400; font-size: clamp(2.5rem, 5vw, 4.5rem); }
++    .hero p { max-width: 520px; font-size: 1.05rem; }
++    .hero .btn { background: #ffab40; color: #3e2723; font-weight: 600; padding: 12px 26px; }
++    .container { margin-top: 0; }
++    .language-bar {
++      display: flex; justify-content: space-between; align-items: center; gap: 20px;
++      padding: 24px 0; margin-bottom: 36px; border-bottom: 1px solid #ded5cb;
++    }
++    .language-intro { display: flex; align-items: center; gap: 12px; }
++    .language-icon { display: grid; place-items: center; width: 40px; height: 40px;
++      border-radius: 50%; background: #eee7dd; flex-shrink: 0; }
++    .language-intro strong { display: block; font-size: .9rem; }
++    .language-intro p { color: #75665c; font-size: .8rem; }
++    .language-control { display: flex; align-items: center; gap: 12px; }
++    .language-control label { font-size: .85rem; font-weight: 600; }
++    select { font: inherit; font-size: .9rem; color: var(--text); background: #fffdf9;
++      border: 1px solid #c7b8aa; border-radius: 6px; padding: 10px 32px 10px 14px; cursor: pointer; }
++    :focus-visible { outline: 3px solid #c67b26; outline-offset: 4px; }
++    .section-heading { text-align: center; font: 400 2.2rem/1.2 Georgia, serif; }
++    .eyebrow { text-align: center; text-transform: uppercase; letter-spacing: 2px;
++      color: #8d694c; font-size: .7rem; font-weight: 700; margin-bottom: 10px; }
++    .grid { margin-top: 28px; gap: 24px; }
++    .card { padding: 32px 24px; border: 1px solid #e9dfd3; box-shadow: none; border-radius: 10px;
++      display: flex; flex-direction: column; align-items: center; }
++    .coffee-mark { font-size: 1.7rem; color: #8a6042; margin-bottom: 16px; }
++    .card h3 { font: 400 1.4rem Georgia, serif; }
++    .card p { color: #75665c; font-size: .95rem; margin-bottom: 8px; }
++    .card .btn { margin-top: auto; background: transparent; color: #684a34;
++      text-decoration: underline; text-underline-offset: 5px; padding-bottom: 0; }
++    .story { margin-top: 64px; padding: 42px; border-radius: 10px; background: #eee7dd;
++      display: grid; grid-template-columns: 1fr 1.5fr; gap: 44px; align-items: start; }
++    .story .eyebrow, .story .section-heading { text-align: left; }
++    .story p { color: #6a584c; margin-bottom: 14px; }
++    .story a { color: var(--primary); text-underline-offset: 5px; font-size: .9rem; font-weight: 600; }
++    footer { background: #eee7dd; color: #75665c; font-size: .8rem; }
++    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
++      overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
++    [hidden] { display: none !important; }
++    @media (max-width: 700px) {
++      nav { padding: 18px 20px; justify-content: center; gap: 12px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 10px 16px; }
++      nav ul li { margin: 0; }
++      nav a { font-size: .8rem; }
++      .hero { height: 55vh; }
++      .language-bar { align-items: stretch; flex-direction: column; gap: 16px; }
++      .language-control { justify-content: space-between; }
++      .language-control select { flex: 1; max-width: 240px; }
++      .story { grid-template-columns: 1fr; gap: 20px; padding: 28px; margin-top: 40px; }
++      .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
++    }
+   </style>
++  <script src="/translations.js" defer></script>
+ </head>
+ 
+ <body>
+@@ -175,26 +231,57 @@
+   </header>
+ 
+   <main class="container">
++    <div class="language-bar" id="language-tools" hidden>
++      <div class="language-intro">
++        <span class="language-icon" aria-hidden="true">
++          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/></svg>
++        </span>
++        <div><strong data-i18n="welcome">Everyone’s welcome at our table.</strong>
++          <p data-i18n="privacy">Translations stay on your device.</p></div>
++      </div>
++      <div class="language-control">
++        <label for="language" data-i18n="language">Language</label>
++        <select id="language" aria-describedby="translation-scope">
++          <option value="en" lang="en">English</option>
++          <option value="es" lang="es">Español</option>
++          <option value="fr" lang="fr">Français</option>
++          <option value="de" lang="de">Deutsch</option>
++        </select>
++      </div>
++      <span id="translation-scope" class="sr-only" data-i18n="scope">Translate the coffee menu and our story.</span>
++    </div>
++    <p id="translation-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <p class="eyebrow" data-i18n="eyebrow">Crafted with care, enjoyed slowly</p>
++      <h2 class="section-heading" data-i18n="favorites">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <span class="coffee-mark" aria-hidden="true">☕</span>
++          <h3 data-i18n="latte">Maple Oat Latte</h3>
++          <p data-i18n="latteDescription">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn" data-i18n="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <span class="coffee-mark" aria-hidden="true">☕</span>
++          <h3 data-i18n="espresso">Dark Roast Espresso</h3>
++          <p data-i18n="espressoDescription">Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn" data-i18n="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="coffee-mark" aria-hidden="true">◷</span>
++          <h3 data-i18n="coldBrew">Cold Brew</h3>
++          <p data-i18n="coldBrewDescription">Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn" data-i18n="details">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="story" aria-labelledby="story-heading">
++      <div><p class="eyebrow" data-i18n="storyEyebrow">From bean to belonging</p>
++        <h2 id="story-heading" class="section-heading" data-i18n="storyHeading">A good day starts with a great cup.</h2></div>
++      <div><p data-i18n="storyOne">At The Daily Grind, we believe coffee is a reason to slow down and connect. We bring ethically sourced beans and local roasting together in every cup.</p>
++        <p data-i18n="storyTwo">Whether you’re finding your morning rhythm or catching up with an old friend, there’s a place for you here. Come as you are. We’ll put the coffee on.</p>
++        <a href="/about" data-i18n="storyLink">Get to know us →</a></div>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/translations.js b/translations.js
+new file mode 100644
+index 0000000..ca33a93
+--- /dev/null
++++ b/translations.js
+@@ -0,0 +1,104 @@
++// Bundled translations: switching languages never sends text to a service.
++(() => {
++  const translations = {
++    es: {
++      welcome: 'Todos tienen un lugar en nuestra mesa.',
++      privacy: 'Las traducciones se quedan en tu dispositivo.',
++      language: 'Idioma',
++      scope: 'Traduce el menú de café y nuestra historia.',
++      eyebrow: 'Preparado con esmero, disfrutado sin prisa',
++      favorites: 'Favoritos de temporada',
++      latte: 'Latte de avena y arce',
++      latteDescription: 'Cremosa leche de avena con un toque de sirope de arce de Vermont.',
++      espresso: 'Espresso de tueste oscuro',
++      espressoDescription: 'Intenso, ahumado y perfecto para empezar la mañana con energía.',
++      coldBrew: 'Café de extracción en frío',
++      coldBrewDescription: 'Infusionado durante 18 horas para una suavidad excepcional.',
++      details: 'Ver detalles',
++      storyEyebrow: 'Del grano a un lugar para todos',
++      storyHeading: 'Un buen día empieza con una gran taza.',
++      storyOne: 'En The Daily Grind, creemos que el café es un motivo para bajar el ritmo y conectar. En cada taza reunimos granos de origen ético y tueste local.',
++      storyTwo: 'Ya sea para encontrar tu ritmo por la mañana o ponerte al día con un viejo amigo, aquí tienes tu lugar. Ven tal como eres. Nosotros ponemos el café.',
++      storyLink: 'Conócenos →',
++      status: 'El menú y nuestra historia ahora están en español.'
++    },
++    fr: {
++      welcome: 'Tout le monde a sa place à notre table.',
++      privacy: 'Les traductions restent sur votre appareil.',
++      language: 'Langue',
++      scope: 'Traduisez la carte des cafés et notre histoire.',
++      eyebrow: 'Préparé avec soin, savouré sans hâte',
++      favorites: 'Les favoris de saison',
++      latte: 'Latte à l’avoine et à l’érable',
++      latteDescription: 'Du lait d’avoine onctueux avec une touche de sirop d’érable du Vermont.',
++      espresso: 'Espresso à torréfaction foncée',
++      espressoDescription: 'Intense, fumé et parfait pour bien démarrer la matinée.',
++      coldBrew: 'Café infusé à froid',
++      coldBrewDescription: 'Infusé pendant 18 heures pour une douceur incomparable.',
++      details: 'Voir les détails',
++      storyEyebrow: 'Du grain au plaisir d’être ensemble',
++      storyHeading: 'Une belle journée commence par un bon café.',
++      storyOne: 'Chez The Daily Grind, nous pensons que le café est une invitation à ralentir et à se retrouver. Chaque tasse réunit des grains issus de sources éthiques et une torréfaction locale.',
++      storyTwo: 'Que vous cherchiez votre rythme du matin ou retrouviez un ami de longue date, vous avez votre place ici. Venez comme vous êtes. On s’occupe du café.',
++      storyLink: 'Faites notre connaissance →',
++      status: 'La carte et notre histoire sont maintenant en français.'
++    },
++    de: {
++      welcome: 'An unserem Tisch sind alle willkommen.',
++      privacy: 'Die Übersetzungen bleiben auf deinem Gerät.',
++      language: 'Sprache',
++      scope: 'Übersetze die Kaffeekarte und unsere Geschichte.',
++      eyebrow: 'Mit Sorgfalt zubereitet, in Ruhe genossen',
++      favorites: 'Unsere saisonalen Favoriten',
++      latte: 'Hafer-Latte mit Ahornsirup',
++      latteDescription: 'Cremige Hafermilch mit einem Hauch Ahornsirup aus Vermont.',
++      espresso: 'Dunkel gerösteter Espresso',
++      espressoDescription: 'Kräftig, rauchig und perfekt für einen schwungvollen Start in den Morgen.',
++      coldBrew: 'Cold Brew',
++      coldBrewDescription: '18 Stunden kalt gezogen für einen besonders milden Geschmack.',
++      details: 'Details ansehen',
++      storyEyebrow: 'Von der Bohne zum Miteinander',
++      storyHeading: 'Ein guter Tag beginnt mit einer großartigen Tasse Kaffee.',
++      storyOne: 'Bei The Daily Grind glauben wir, dass Kaffee ein Anlass ist, innezuhalten und zusammenzukommen. In jeder Tasse vereinen wir ethisch bezogene Bohnen mit lokaler Röstung.',
++      storyTwo: 'Ob du morgens in deinen Rhythmus findest oder dich mit einem alten Freund austauschst: Hier ist Platz für dich. Komm, wie du bist. Wir setzen den Kaffee auf.',
++      storyLink: 'Lerne uns kennen →',
++      status: 'Die Kaffeekarte und unsere Geschichte sind jetzt auf Deutsch.'
++    }
++  };
++
++  const storageKey = 'daily-grind-language';
++  const selector = document.getElementById('language');
++  const status = document.getElementById('translation-status');
++  const elements = [...document.querySelectorAll('[data-i18n]')];
++  // The original HTML is the English source and remains useful without JavaScript.
++  translations.en = Object.fromEntries(elements.map(element => [element.dataset.i18n, element.textContent]));
++  translations.en.status = 'The coffee menu and our story are now in English.';
++
++  function setLanguage(language, announce = false) {
++    const supported = Object.hasOwn(translations, language) ? language : 'en';
++    const copy = translations[supported];
++    elements.forEach(element => {
++      element.textContent = copy[element.dataset.i18n];
++      // Only these regions are translated; navigation and hero remain in English.
++      element.lang = supported;
++    });
++    selector.value = supported;
++    status.lang = supported;
++    if (announce) status.textContent = copy.status;
++    try {
++      localStorage.setItem(storageKey, supported);
++    } catch {
++      // Translation still works when storage is unavailable or disabled.
++    }
++  }
++
++  let savedLanguage = 'en';
++  try {
++    savedLanguage = localStorage.getItem(storageKey) || 'en';
++  } catch {
++    // Use English if the visitor blocks local storage.
++  }
++  setLanguage(savedLanguage);
++  selector.addEventListener('change', () => setLanguage(selector.value, true));
++  document.getElementById('language-tools').hidden = false;
++})();

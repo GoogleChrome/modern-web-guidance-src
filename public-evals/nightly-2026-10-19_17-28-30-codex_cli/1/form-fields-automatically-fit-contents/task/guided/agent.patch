@@ -1,0 +1,313 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,189 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      display: grid;
++      grid-template-columns: 0.85fr 1.15fr;
++      margin-block: 56px 64px;
++      border: 1px solid #ded4ca;
++      border-radius: 14px;
++      overflow: hidden;
++      background: #fffdf9;
++    }
++
++    .preferences-intro {
++      padding: 42px 36px;
++      background: #efe8de;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++    }
++
++    .eyebrow {
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++    }
++
++    .preferences h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2rem, 4vw, 2.8rem);
++      font-weight: 400;
++      line-height: 1.15;
++      margin-block: 20px 16px;
++      max-width: 10ch;
++    }
++
++    .preferences-intro > p:not(.eyebrow) {
++      color: #705f54;
++      font-size: 0.95rem;
++      max-width: 29ch;
++    }
++
++    .fit-note {
++      margin-block-start: auto;
++      padding-block-start: 36px;
++      display: flex;
++      align-items: center;
++      gap: 9px;
++      font-size: 0.75rem;
++      color: #705f54;
++    }
++
++    .fit-note span {
++      width: 7px;
++      height: 7px;
++      border-radius: 50%;
++      background: #728166;
++    }
++
++    .preferences-form {
++      padding: 36px;
++      min-width: 0;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 8px;
++      margin-block-end: 22px;
++      min-width: 0;
++    }
++
++    .form-field label {
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .form-field label span {
++      font-weight: 400;
++      color: #79685d;
++    }
++
++    .form-field input,
++    .form-field textarea,
++    .form-field select {
++      field-sizing: content;
++      width: auto;
++      max-inline-size: 100%;
++      min-block-size: 48px;
++      padding: 11px 14px;
++      border: 1px solid #b8aba0;
++      border-radius: 6px;
++      background: #fff;
++      color: var(--text);
++      font: inherit;
++      font-size: 1rem;
++      line-height: 1.5;
++      align-self: flex-start;
++    }
++
++    .form-field input {
++      min-inline-size: min(12ch, 100%);
++    }
++
++    .form-field textarea {
++      width: 100%;
++      height: auto;
++      min-block-size: calc(2lh + 24px);
++      max-block-size: 10lh;
++      resize: vertical;
++      overflow-wrap: anywhere;
++    }
++
++    .form-field select {
++      cursor: pointer;
++      padding-inline-end: 30px;
++    }
++
++    .form-field :is(input, textarea)::placeholder {
++      color: #82756c;
++      opacity: 1;
++    }
++
++    :is(input, textarea, select, button, a):focus-visible {
++      outline: 3px solid #a66a2c;
++      outline-offset: 4px;
++    }
++
++    .form-hint {
++      font-size: 0.75rem;
++      color: #79685d;
++    }
++
++    .form-actions {
++      display: flex;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px 18px;
++      margin-block-start: 28px;
++    }
++
++    .form-actions button {
++      min-height: 48px;
++      font: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .save-preferences {
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      border: 1px solid var(--primary);
++      border-radius: 6px;
++    }
++
++    .save-preferences:hover { background: #3e2723; }
++
++    .reset-preferences {
++      background: transparent;
++      border: 0;
++      color: #705f54;
++      padding-inline: 8px;
++    }
++
++    .form-status {
++      margin-block-start: 12px;
++      font-size: 0.75rem;
++      color: #705f54;
++    }
++
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .preferences { grid-template-columns: 1fr; margin-block: 32px 40px; }
++      .preferences-intro, .preferences-form { padding: 28px 24px; }
++      .preferences h2 { max-width: none; }
++      .fit-note { padding-block-start: 20px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +355,43 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="preferences" aria-labelledby="preferences-heading">
++      <div class="preferences-intro">
++        <p class="eyebrow">A little more personal</p>
++        <h2 id="preferences-heading">Your cup,<br>your way.</h2>
++        <p>Good coffee is personal. Keep your favorite drink and the little details that make it yours.</p>
++        <div class="fit-note"><span aria-hidden="true"></span>Fields that fit what you have to say.</div>
++      </div>
++      <form class="preferences-form" id="preferences-form" action="#preferences-heading" method="post">
++        <div class="form-field">
++          <label for="coffee-name">What should we call you?</label>
++          <input id="coffee-name" name="name" type="text" placeholder="Your name" autocomplete="given-name" maxlength="100">
++        </div>
++        <div class="form-field">
++          <label for="coffee-drink">Your go-to drink</label>
++          <select id="coffee-drink" name="drink">
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++            <option>Cappuccino</option>
++            <option>Flat White</option>
++            <option>Americano</option>
++          </select>
++        </div>
++        <div class="form-field">
++          <label for="coffee-notes">Make it yours <span>— optional</span></label>
++          <textarea id="coffee-notes" name="notes" rows="2" placeholder="Oat milk, an extra shot, a little less sweet…" maxlength="2000" aria-describedby="notes-hint"></textarea>
++          <p id="notes-hint" class="form-hint">A little note or a longer order. There’s room for both.</p>
++        </div>
++        <div class="form-actions">
++          <button type="submit" class="save-preferences">Save my preferences <span aria-hidden="true">↗</span></button>
++          <button type="reset" class="reset-preferences">Start fresh</button>
++        </div>
++        <p class="form-status" id="preferences-status" role="status">Saved only on this device. Make yourself at home.</p>
++      </form>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +422,75 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.getElementById('preferences-form');
++    const status = document.getElementById('preferences-status');
++    const fields = [form.elements.name, form.elements.drink, form.elements.notes];
++    const storageKey = 'daily-grind-coffee-preferences';
++
++    try {
++      const saved = JSON.parse(localStorage.getItem(storageKey));
++      if (saved && typeof saved === 'object') {
++        fields.forEach(field => {
++          if (typeof saved[field.name] === 'string') field.value = saved[field.name];
++        });
++        if (!form.elements.drink.value) form.elements.drink.selectedIndex = 0;
++      }
++    } catch { /* The form remains usable when device storage is unavailable. */ }
++
++    let resizeFields = () => {};
++    if (!CSS.supports('field-sizing', 'content')) {
++      const canvas = document.createElement('canvas');
++      const context = canvas.getContext('2d');
++      resizeFields = () => {
++        fields.forEach(field => {
++          if (field.tagName === 'TEXTAREA') {
++            field.style.height = 'auto';
++            field.style.height = `${field.scrollHeight + 2}px`;
++          } else if (context) {
++            const style = getComputedStyle(field);
++            context.font = style.font;
++            const value = field.tagName === 'SELECT'
++              ? field.selectedOptions[0].textContent
++              : field.value || field.placeholder;
++            const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
++            field.style.width = `${Math.ceil(context.measureText(value).width + padding + 4)}px`;
++          }
++        });
++      };
++      form.addEventListener('input', resizeFields);
++      form.addEventListener('change', resizeFields);
++      window.addEventListener('resize', resizeFields);
++      document.fonts.ready.then(resizeFields);
++      resizeFields();
++    }
++
++    form.addEventListener('submit', event => {
++      event.preventDefault();
++      try {
++        localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(new FormData(form))));
++        status.textContent = 'Your preferences are saved on this device. Here’s to your next good cup.';
++      } catch {
++        status.textContent = 'Device storage is unavailable. Your preferences will stay here until you leave this page.';
++      }
++    });
++
++    form.addEventListener('input', () => {
++      status.textContent = 'You have unsaved changes.';
++    });
++
++    form.addEventListener('reset', () => {
++      try {
++        localStorage.removeItem(storageKey);
++        status.textContent = 'A fresh start. Your saved preferences have been cleared.';
++      } catch {
++        status.textContent = 'Form cleared. Device storage is unavailable, so saved preferences could not be removed.';
++      }
++      requestAnimationFrame(resizeFields);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

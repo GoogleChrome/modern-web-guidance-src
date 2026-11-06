@@ -1,0 +1,566 @@
+diff --git a/index.html b/index.html
+index 66c9173..cef22a2 100644
+--- a/index.html
++++ b/index.html
+@@ -6,151 +6,428 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer base, components;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    @layer base {
++      :root {
++        --primary: #4e342e;
++        --primary-hover: #3e2723;
++        --secondary: #d7ccc8;
++        --accent: #ffab40;
++        --text: #3e2723;
++        --light: #fafafa;
++        --surface: #ffffff;
++        --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
++        --shadow-lg: 0 12px 24px rgba(62, 39, 35, 0.16);
++        --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
++      }
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++      html {
++        scroll-behavior: smooth;
++        @media (prefers-reduced-motion: reduce) {
++          scroll-behavior: auto;
++        }
++      }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++      body,
++      h1,
++      h2,
++      h3,
++      p,
++      ul,
++      li {
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++      body {
++        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        line-height: 1.6;
++        color: var(--text);
++        background-color: var(--light);
++      }
+     }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++    @layer components {
++      /* Navigation */
++      nav {
++        background: var(--primary);
++        color: var(--surface);
++        padding: 1rem 5%;
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        position: sticky;
++        top: 0;
++        z-index: 1000;
++        box-shadow: var(--shadow-sm);
++      }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++      .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++        opacity: 1;
++        translate: 0 0;
++        transition:
++          opacity 0.5s var(--ease-out),
++          translate 0.5s var(--ease-out);
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        @starting-style {
++          opacity: 0;
++          translate: -16px 0;
++        }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        @media (prefers-reduced-motion: reduce) {
++          translate: none;
++          transition-duration: 0.15s;
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++          @starting-style {
++            translate: none;
++          }
++        }
++      }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++      nav ul {
++        display: flex;
++        list-style: none;
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++      nav ul li {
++        margin-inline-start: 20px;
++      }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++      nav a {
++        position: relative;
++        display: inline-block;
++        color: var(--surface);
++        text-decoration: none;
++        font-size: 0.9rem;
++        translate: 0 0;
++        transition:
++          color 0.25s var(--ease-out),
++          translate 0.25s var(--ease-out);
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++        &:not(.logout-link)::after {
++          content: "";
++          position: absolute;
++          inset-inline: 0;
++          bottom: -4px;
++          height: 2px;
++          background: var(--accent);
++          scale: 0 1;
++          transform-origin: center;
++          transition: scale 0.25s var(--ease-out);
++        }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++        &:where(:hover, :focus-visible) {
++          color: var(--accent);
++          translate: 0 -2px;
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++          &:not(.logout-link)::after {
++            scale: 1 1;
++          }
++        }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++        @media (prefers-reduced-motion: reduce) {
++          translate: none;
++          transition-duration: 0.1s;
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++          &:where(:hover, :focus-visible) {
++            translate: none;
++          }
++        }
++      }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++      .logout-link {
++        border: 1px solid var(--accent);
++        padding: 5px 12px;
++        border-radius: 4px;
++        scale: 1;
++        transition:
++          color 0.25s var(--ease-out),
++          translate 0.25s var(--ease-out),
++          scale 0.2s var(--ease-out);
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
++        &:active {
++          scale: 0.96;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          scale: none;
++
++          &:active {
++            scale: none;
++          }
++        }
++      }
++
++      /* Hero Section */
++      .hero {
++        height: 60vh;
++        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: center;
++        color: var(--surface);
++        text-align: center;
++        padding: 0 20px;
++        overflow: hidden;
++      }
++
++      .hero :is(h1, p, .btn) {
++        opacity: 1;
++        translate: 0 0;
++        transition:
++          opacity 0.6s var(--ease-out),
++          translate 0.6s var(--ease-out),
++          scale 0.25s var(--ease-out),
++          background-color 0.25s var(--ease-out);
++
++        @starting-style {
++          opacity: 0;
++          translate: 0 24px;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          translate: none;
++          transition-duration: 0.15s;
++
++          @starting-style {
++            translate: none;
++          }
++        }
++      }
++
++      .hero h1 {
++        font-size: 3rem;
++        margin-bottom: 1rem;
++        transition-delay: 0.05s;
++      }
++
++      .hero p {
++        transition-delay: 0.15s;
++      }
++
++      .hero .btn {
++        transition-delay: 0.25s, 0.25s, 0s, 0s;
++      }
++
++      /* Content Sections */
++      .container {
++        max-width: 1100px;
++        margin: 40px auto;
++        padding: 0 20px;
++      }
++
++      .section-title {
++        text-align: center;
++        opacity: 1;
++        translate: 0 0;
++        transition:
++          opacity 0.5s var(--ease-out),
++          translate 0.5s var(--ease-out);
++
++        @starting-style {
++          opacity: 0;
++          translate: 0 16px;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          translate: none;
++          transition-duration: 0.15s;
++
++          @starting-style {
++            translate: none;
++          }
++        }
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++        gap: 20px;
++        margin-top: 20px;
++      }
++
++      .card {
++        position: relative;
++        background: var(--surface);
++        padding: 20px;
++        border-radius: 8px;
++        box-shadow: var(--shadow-sm);
++        text-align: center;
++        opacity: 1;
++        translate: 0 0;
++        scale: 1;
++        transition:
++          opacity 0.5s var(--ease-out),
++          translate 0.35s var(--ease-out),
++          scale 0.35s var(--ease-out);
++        transition-behavior: allow-discrete;
++
++        /* Compositor-friendly elevation shadow via pseudo-element opacity */
++        &::after {
++          content: "";
++          position: absolute;
++          inset: 0;
++          border-radius: inherit;
++          box-shadow: var(--shadow-lg);
++          opacity: 0;
++          pointer-events: none;
++          transition: opacity 0.35s var(--ease-out);
++        }
++
++        &:nth-child(1) {
++          transition-delay: 0.1s, 0s, 0s;
++        }
++
++        &:nth-child(2) {
++          transition-delay: 0.2s, 0s, 0s;
++        }
++
++        &:nth-child(3) {
++          transition-delay: 0.3s, 0s, 0s;
++        }
++
++        @starting-style {
++          opacity: 0;
++          translate: 0 24px;
++        }
++
++        &:where(:hover, :focus-within) {
++          translate: 0 -6px;
++          scale: 1.02;
++
++          &::after {
++            opacity: 1;
++          }
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          translate: none;
++          scale: none;
++          transition-duration: 0.15s;
++
++          @starting-style {
++            translate: none;
++          }
++
++          &:where(:hover, :focus-within) {
++            translate: none;
++            scale: none;
++          }
++        }
++      }
++
++      /* Progressive enhancement: Scroll-driven entry animation when supported */
++      @supports ((animation-timeline: view()) and (animation-range: 0% 100%)) {
++        @media (prefers-reduced-motion: no-preference) {
++          @keyframes card-reveal {
++            from {
++              opacity: 0;
++              translate: 0 28px;
++            }
++            to {
++              opacity: 1;
++              translate: 0 0;
++            }
++          }
++
++          .card {
++            animation: card-reveal auto var(--ease-out) both;
++            animation-timeline: view();
++            animation-range: entry 0% cover 25%;
++          }
++        }
++      }
++
++      .card h3 {
++        margin-bottom: 10px;
++        color: var(--primary);
++      }
++
++      .btn {
++        display: inline-block;
++        background: var(--primary);
++        color: var(--surface);
++        padding: 10px 20px;
++        text-decoration: none;
++        border-radius: 5px;
++        margin-top: 15px;
++        translate: 0 0;
++        scale: 1;
++        transition:
++          background-color 0.25s var(--ease-out),
++          translate 0.25s var(--ease-out),
++          scale 0.2s var(--ease-out);
++
++        &:where(:hover, :focus-visible) {
++          background: var(--primary-hover);
++          translate: 0 -2px;
++          scale: 1.03;
++        }
++
++        &:active {
++          translate: 0 0;
++          scale: 0.97;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          translate: none;
++          scale: none;
++          transition-duration: 0.1s;
++
++          &:where(:hover, :focus-visible, :active) {
++            translate: none;
++            scale: none;
++          }
++        }
++      }
++
++      footer {
++        background: var(--secondary);
++        text-align: center;
++        padding: 40px 20px;
++        margin-top: 40px;
++      }
++
++      .footer-links {
++        margin-bottom: 20px;
++      }
++
++      .footer-links a {
++        display: inline-block;
++        margin: 0 10px;
++        color: var(--text);
++        text-decoration: none;
++        font-size: 0.85rem;
++        opacity: 0.85;
++        translate: 0 0;
++        transition:
++          opacity 0.25s var(--ease-out),
++          translate 0.25s var(--ease-out),
++          color 0.25s var(--ease-out);
++
++        &:where(:hover, :focus-visible) {
++          opacity: 1;
++          color: var(--primary);
++          translate: 0 -2px;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          translate: none;
++          transition-duration: 0.1s;
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++          &:where(:hover, :focus-visible) {
++            translate: none;
++          }
++        }
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +453,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

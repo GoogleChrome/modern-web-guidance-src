@@ -1,0 +1,743 @@
+diff --git a/index.html b/index.html
+index 66c9173..c2321b9 100644
+--- a/index.html
++++ b/index.html
+@@ -152,22 +152,279 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    /* SPA views: inactive views stay in the DOM but are hidden */
++    .view[hidden] {
++      display: none !important;
++    }
++
++    .view:focus {
++      outline: none;
++    }
++
++    .page-header {
++      background: var(--primary);
++      color: white;
++      text-align: center;
++      padding: 50px 20px 40px;
++    }
++
++    .page-header h1 {
++      font-size: 2.2rem;
++    }
++
++    .page-header p {
++      opacity: 0.85;
++    }
++
++    .toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .chips {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .chip {
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      border-radius: 999px;
++      padding: 6px 14px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
++
++    .chip[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .input {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      min-width: 220px;
++    }
++
++    .menu-item {
++      text-align: left;
++      padding: 0;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transition: box-shadow 0.3s;
++    }
++
++    .menu-item img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      background: var(--secondary);
++      display: block;
++    }
++
++    .menu-item .body {
++      padding: 16px 20px 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .menu-item .row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: auto;
++      padding-top: 10px;
++    }
++
++    .menu-item.highlight {
++      box-shadow: 0 0 0 3px var(--accent), 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .btn-sm {
++      margin-top: 0;
++      padding: 6px 14px;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
++
++    .btn:disabled {
++      background: #a1887f;
++      cursor: not-allowed;
++    }
++
++    .order-bar {
++      position: sticky;
++      bottom: 0;
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      border-radius: 8px 8px 0 0;
++      margin-top: 30px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .order-bar .btn {
++      background: var(--accent);
++      color: var(--text);
++      margin-top: 0;
++    }
++
++    .location {
++      text-align: left;
++    }
++
++    .badge {
++      display: inline-block;
++      font-size: 0.75rem;
++      padding: 2px 8px;
++      border-radius: 999px;
++      background: #c8e6c9;
++      color: #1b5e20;
++    }
++
++    .badge.closed {
++      background: #ffcdd2;
++      color: #b71c1c;
++    }
++
++    .empty {
++      text-align: center;
++      margin-top: 30px;
++      color: #6d4c41;
++    }
++
++    .points-card {
++      background: linear-gradient(135deg, var(--primary), #795548);
++      color: white;
++      border-radius: 12px;
++      padding: 30px;
++      text-align: center;
++    }
++
++    .points-card .points {
++      font-size: 3rem;
++      font-weight: bold;
++      color: var(--accent);
++    }
++
++    .progress {
++      background: rgba(255, 255, 255, 0.25);
++      border-radius: 999px;
++      height: 12px;
++      overflow: hidden;
++      margin: 15px auto 5px;
++      max-width: 400px;
++    }
++
++    .progress span {
++      display: block;
++      height: 100%;
++      background: var(--accent);
++      transition: width 0.4s;
++    }
++
++    .form {
++      display: grid;
++      gap: 15px;
++      max-width: 520px;
++    }
++
++    .form label {
++      display: grid;
++      gap: 4px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .check {
++      display: flex;
++      gap: 8px;
++      align-items: center;
++      font-weight: normal;
++    }
++
++    .two-col {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 40px;
++    }
++
++    table {
++      width: 100%;
++      border-collapse: collapse;
++      background: white;
++    }
++
++    th,
++    td {
++      text-align: left;
++      padding: 10px;
++      border-bottom: 1px solid var(--secondary);
++      font-size: 0.9rem;
++    }
++
++    .status {
++      font-size: 0.85rem;
++      color: #2e7d32;
++      min-height: 1.4em;
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-direction: column;
++        gap: 8px;
++      }
++
++      nav ul li {
++        margin: 0 8px;
++      }
++
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="#/" class="logo">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#/menu" data-route="menu">Menu</a></li>
++      <li><a href="#/locations" data-route="locations">Locations</a></li>
++      <li><a href="#/rewards" data-route="rewards">Rewards</a></li>
++      <li><a href="#/account" data-route="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="app">
++    <section class="view" data-view="home" tabindex="-1" aria-label="Home">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -181,21 +438,139 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
+   </main>
++    </section>
++  </div>
++
++  <!-- View templates: each is cloned into #app on its first visit only, then kept alive (hidden) offscreen. -->
++  <template id="view-menu">
++    <section class="view" data-view="menu" tabindex="-1" aria-labelledby="menu-title">
++      <header class="page-header">
++        <h1 id="menu-title">Our Menu</h1>
++        <p>Roasted in small batches every morning.</p>
++      </header>
++      <div class="container">
++        <div class="toolbar">
++          <div class="chips" role="group" aria-label="Filter by category">
++            <button type="button" class="chip" data-filter="all" aria-pressed="true">All</button>
++            <button type="button" class="chip" data-filter="espresso" aria-pressed="false">Espresso</button>
++            <button type="button" class="chip" data-filter="brewed" aria-pressed="false">Brewed</button>
++            <button type="button" class="chip" data-filter="seasonal" aria-pressed="false">Seasonal</button>
++            <button type="button" class="chip" data-filter="bakery" aria-pressed="false">Bakery</button>
++          </div>
++          <input type="search" class="input" data-search placeholder="Search the menu…" aria-label="Search the menu">
++        </div>
++        <div class="grid" data-items></div>
++        <p class="empty" data-empty hidden>No items match your search.</p>
++        <div class="order-bar" data-order-bar hidden>
++          <span data-order-summary></span>
++          <a href="/order-online" class="btn btn-sm">Checkout</a>
++        </div>
++      </div>
++    </section>
++  </template>
++
++  <template id="view-locations">
++    <section class="view" data-view="locations" tabindex="-1" aria-labelledby="locations-title">
++      <header class="page-header">
++        <h1 id="locations-title">Find a Cafe</h1>
++        <p>Your neighborhood cup is closer than you think.</p>
++      </header>
++      <div class="container">
++        <div class="toolbar">
++          <input type="search" class="input" data-search placeholder="Search by city or neighborhood…" aria-label="Search locations">
++          <label class="check"><input type="checkbox" data-open-only> Open now only</label>
++        </div>
++        <div class="grid" data-items></div>
++        <p class="empty" data-empty hidden>No locations match your search.</p>
++      </div>
++    </section>
++  </template>
++
++  <template id="view-rewards">
++    <section class="view" data-view="rewards" tabindex="-1" aria-labelledby="rewards-title">
++      <header class="page-header">
++        <h1 id="rewards-title">Grind Rewards</h1>
++        <p>Earn 10 beans for every dollar you spend.</p>
++      </header>
++      <div class="container">
++        <div class="points-card">
++          <div>Your balance</div>
++          <div class="points"><span data-points></span> beans</div>
++          <div class="progress" role="progressbar" aria-label="Progress to Gold tier" aria-valuemin="0" aria-valuemax="100" data-progress><span></span></div>
++          <small data-tier-note></small>
++        </div>
++        <h2 style="text-align: center; margin-top: 40px;">Redeem Your Beans</h2>
++        <div class="grid" data-items></div>
++        <p class="status" data-status role="status" style="text-align: center; margin-top: 15px;"></p>
++      </div>
++    </section>
++  </template>
++
++  <template id="view-account">
++    <section class="view" data-view="account" tabindex="-1" aria-labelledby="account-title">
++      <header class="page-header">
++        <h1 id="account-title">My Account</h1>
++        <p>Manage your profile and view recent orders.</p>
++      </header>
++      <div class="container two-col">
++        <form class="form" data-profile>
++          <h2>Profile</h2>
++          <label>Full name <input class="input" name="name" value="Alex Rivera" required></label>
++          <label>Email <input class="input" type="email" name="email" value="alex@example.com" required></label>
++          <label>Home cafe
++            <select class="input" name="home">
++              <option>Downtown Roastery</option>
++              <option>Riverside Kiosk</option>
++              <option>Northgate Commons</option>
++              <option>Old Town Corner</option>
++            </select>
++          </label>
++          <label>Usual order <textarea class="input" name="usual" rows="3">Oat flat white, extra hot</textarea></label>
++          <label class="check"><input type="checkbox" name="news" checked> Email me about seasonal drinks</label>
++          <div><button type="submit" class="btn btn-sm">Save changes</button></div>
++          <p class="status" data-status role="status"></p>
++        </form>
++        <div>
++          <h2>Recent Orders</h2>
++          <table>
++            <thead><tr><th>Date</th><th>Items</th><th>Total</th></tr></thead>
++            <tbody>
++              <tr><td>Nov 2, 2026</td><td>Maple Oat Latte, Croissant</td><td>$9.75</td></tr>
++              <tr><td>Oct 29, 2026</td><td>Cold Brew</td><td>$4.50</td></tr>
++              <tr><td>Oct 24, 2026</td><td>Dark Roast Espresso ×2</td><td>$6.00</td></tr>
++              <tr><td>Oct 18, 2026</td><td>Pour Over, Banana Bread</td><td>$8.25</td></tr>
++            </tbody>
++          </table>
++        </div>
++      </div>
++    </section>
++  </template>
++
++  <template id="view-not-found">
++    <section class="view" data-view="not-found" tabindex="-1" aria-labelledby="nf-title">
++      <div class="container" style="text-align: center;">
++        <h1 id="nf-title">Page not found</h1>
++        <p>We couldn't find that page. Maybe a fresh cup will help?</p>
++        <a href="#/" class="btn">Back to Home</a>
++      </div>
++    </section>
++  </template>
++
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +582,310 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=600&q=70`;
++
++      // ---------- Data ----------
++      const MENU = [
++        { id: 'seasonal', name: 'Maple Oat Latte', cat: 'seasonal', price: 5.75, desc: 'Creamy oat milk with a hint of Vermont maple syrup.', img: img('photo-1509042239860-f550ce710b93') },
++        { id: 'pumpkin', name: 'Spiced Pumpkin Cortado', cat: 'seasonal', price: 5.25, desc: 'Espresso, steamed milk and house pumpkin spice.', img: img('photo-1514432324607-a09d9b4aefdd') },
++        { id: 'espresso', name: 'Dark Roast Espresso', cat: 'espresso', price: 3.00, desc: 'Bold, smokey, and perfect for a morning boost.', img: img('photo-1510591509098-f4fdc6d0ff04') },
++        { id: 'flat-white', name: 'Flat White', cat: 'espresso', price: 4.50, desc: 'Velvety microfoam over a double ristretto.', img: img('photo-1495474472287-4d71bcdd2085') },
++        { id: 'cold-brew', name: 'Cold Brew', cat: 'brewed', price: 4.50, desc: 'Steeped for 18 hours for maximum smoothness.', img: img('photo-1461023058943-07fcbe16d735') },
++        { id: 'pour-over', name: 'Single-Origin Pour Over', cat: 'brewed', price: 4.75, desc: 'Rotating Ethiopian and Colombian beans, brewed to order.', img: img('photo-1442512595331-e89e73853f31') },
++        { id: 'croissant', name: 'Butter Croissant', cat: 'bakery', price: 4.00, desc: 'Flaky, golden and baked fresh at dawn.', img: img('photo-1555507036-ab1f4038808a') },
++        { id: 'banana-bread', name: 'Banana Walnut Bread', cat: 'bakery', price: 3.50, desc: 'Moist, nutty and lightly spiced.', img: img('photo-1606101273945-e9eba91c0dc4') },
++      ];
++
++      const LOCATIONS = [
++        { name: 'Downtown Roastery', area: 'Downtown', address: '120 Main St', hours: [6, 20], img: img('photo-1501339847302-ac426a4a7cbb') },
++        { name: 'Riverside Kiosk', area: 'Riverside', address: '8 Harbor Walk', hours: [7, 15], img: img('photo-1554118811-1e0d58224f24') },
++        { name: 'Northgate Commons', area: 'Northgate', address: '455 College Ave', hours: [6, 22], img: img('photo-1453614512568-c4024d13c247') },
++        { name: 'Old Town Corner', area: 'Old Town', address: '31 Mill Rd', hours: [8, 17], img: img('photo-1445116572660-236099ec97a0') },
++      ];
++
++      const REWARDS = [
++        { id: 'shot', name: 'Extra Shot or Syrup', cost: 50 },
++        { id: 'pastry', name: 'Any Bakery Item', cost: 150 },
++        { id: 'drink', name: 'Any Handcrafted Drink', cost: 200 },
++        { id: 'beans', name: '12oz Bag of Beans', cost: 450 },
++      ];
++
++      const $ = (root, sel) => root.querySelector(sel);
++      const $$ = (root, sel) => Array.from(root.querySelectorAll(sel));
++      const money = (n) => `$${n.toFixed(2)}`;
++      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
++
++      // ---------- View definitions ----------
++      // setup(el) runs ONCE, when a view is first created. It returns optional
++      // lifecycle hooks: show(param) runs on every activation, hide() on deactivation.
++      const VIEWS = {
++        home: { title: 'Artisanal Coffee' },
++
++        menu: {
++          title: 'Menu',
++          template: 'view-menu',
++          setup(el) {
++            const grid = $(el, '[data-items]');
++            const search = $(el, '[data-search]');
++            const empty = $(el, '[data-empty]');
++            const bar = $(el, '[data-order-bar]');
++            const summary = $(el, '[data-order-summary]');
++            let filter = 'all';
++            const order = new Map();
++
++            grid.innerHTML = MENU.map((m) => `
++              <article class="card menu-item" data-id="${m.id}" data-cat="${m.cat}">
++                <img src="${m.img}" alt="${esc(m.name)}" loading="lazy" decoding="async" width="600" height="400">
++                <div class="body">
++                  <h3>${esc(m.name)}</h3>
++                  <p>${esc(m.desc)}</p>
++                  <div class="row">
++                    <span class="price">${money(m.price)}</span>
++                    <button type="button" class="btn btn-sm" data-add="${m.id}">Add</button>
++                  </div>
++                </div>
++              </article>`).join('');
++            const cards = $$(grid, '.menu-item');
++
++            const apply = () => {
++              const q = search.value.trim().toLowerCase();
++              let shown = 0;
++              cards.forEach((card, i) => {
++                const m = MENU[i];
++                const ok = (filter === 'all' || m.cat === filter) &&
++                  (!q || m.name.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q));
++                card.hidden = !ok;
++                if (ok) shown++;
++              });
++              empty.hidden = shown > 0;
++            };
++
++            $(el, '.chips').addEventListener('click', (e) => {
++              const chip = e.target.closest('[data-filter]');
++              if (!chip) return;
++              filter = chip.dataset.filter;
++              $$(el, '[data-filter]').forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
++              apply();
++            });
++            search.addEventListener('input', apply);
++
++            grid.addEventListener('click', (e) => {
++              const btn = e.target.closest('[data-add]');
++              if (!btn) return;
++              const id = btn.dataset.add;
++              order.set(id, (order.get(id) || 0) + 1);
++              btn.textContent = `Added (${order.get(id)})`;
++              let count = 0, total = 0;
++              order.forEach((qty, key) => {
++                count += qty;
++                total += qty * MENU.find((m) => m.id === key).price;
++              });
++              summary.textContent = `${count} item${count === 1 ? '' : 's'} · ${money(total)}`;
++              bar.hidden = false;
++            });
++
++            return {
++              // Deep link like #/menu/cold-brew highlights and scrolls to an item.
++              show(param) {
++                cards.forEach((c) => c.classList.remove('highlight'));
++                if (!param) return false;
++                const card = cards.find((c) => c.dataset.id === param);
++                if (!card) return false;
++                if (card.hidden) {
++                  filter = 'all';
++                  search.value = '';
++                  $$(el, '[data-filter]').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.filter === 'all')));
++                  apply();
++                }
++                card.classList.add('highlight');
++                card.scrollIntoView({ block: 'center' });
++                return true; // handled scrolling
++              },
++            };
++          },
++        },
++
++        locations: {
++          title: 'Locations',
++          template: 'view-locations',
++          setup(el) {
++            const grid = $(el, '[data-items]');
++            const search = $(el, '[data-search]');
++            const openOnly = $(el, '[data-open-only]');
++            const empty = $(el, '[data-empty]');
++            const fmt = (h) => `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`;
++
++            grid.innerHTML = LOCATIONS.map((l) => `
++              <article class="card location menu-item">
++                <img src="${l.img}" alt="${esc(l.name)} interior" loading="lazy" decoding="async" width="600" height="400">
++                <div class="body">
++                  <h3>${esc(l.name)}</h3>
++                  <p>${esc(l.address)} · ${esc(l.area)}</p>
++                  <p>Open ${fmt(l.hours[0])} – ${fmt(l.hours[1])}</p>
++                  <div class="row"><span class="badge" data-badge></span></div>
++                </div>
++              </article>`).join('');
++            const cards = $$(grid, '.location');
++
++            const isOpen = (l) => {
++              const h = new Date().getHours();
++              return h >= l.hours[0] && h < l.hours[1];
++            };
++            const apply = () => {
++              const q = search.value.trim().toLowerCase();
++              let shown = 0;
++              cards.forEach((card, i) => {
++                const l = LOCATIONS[i];
++                const open = isOpen(l);
++                const badge = $(card, '[data-badge]');
++                badge.textContent = open ? 'Open now' : 'Closed';
++                badge.classList.toggle('closed', !open);
++                const ok = (!openOnly.checked || open) &&
++                  (!q || `${l.name} ${l.area} ${l.address}`.toLowerCase().includes(q));
++                card.hidden = !ok;
++                if (ok) shown++;
++              });
++              empty.hidden = shown > 0;
++            };
++            search.addEventListener('input', apply);
++            openOnly.addEventListener('change', apply);
++            // Open/closed status is time-dependent, so refresh it cheaply on each visit.
++            return { show: apply };
++          },
++        },
++
++        rewards: {
++          title: 'Rewards',
++          template: 'view-rewards',
++          setup(el) {
++            let points = 620;
++            const GOLD = 1000;
++            const grid = $(el, '[data-items]');
++            const status = $(el, '[data-status]');
++            const progress = $(el, '[data-progress]');
++
++            grid.innerHTML = REWARDS.map((r) => `
++              <div class="card">
++                <h3>${esc(r.name)}</h3>
++                <p>${r.cost} beans</p>
++                <button type="button" class="btn btn-sm" data-redeem="${r.id}">Redeem</button>
++              </div>`).join('');
++
++            const render = () => {
++              $(el, '[data-points]').textContent = points;
++              const pct = Math.min(100, Math.round((points / GOLD) * 100));
++              progress.firstElementChild.style.width = `${pct}%`;
++              progress.setAttribute('aria-valuenow', pct);
++              $(el, '[data-tier-note]').textContent = points >= GOLD
++                ? 'You have reached Gold tier!'
++                : `${GOLD - points} beans to Gold tier`;
++              $$(grid, '[data-redeem]').forEach((b) => {
++                b.disabled = REWARDS.find((r) => r.id === b.dataset.redeem).cost > points;
++              });
++            };
++
++            grid.addEventListener('click', (e) => {
++              const btn = e.target.closest('[data-redeem]');
++              if (!btn || btn.disabled) return;
++              const r = REWARDS.find((x) => x.id === btn.dataset.redeem);
++              points -= r.cost;
++              status.textContent = `Redeemed: ${r.name}. Show this screen at the counter.`;
++              render();
++            });
++            render();
++          },
++        },
++
++        account: {
++          title: 'My Account',
++          template: 'view-account',
++          setup(el) {
++            const form = $(el, '[data-profile]');
++            const status = $(el, '[data-status]');
++            form.addEventListener('input', () => { status.textContent = 'Unsaved changes'; });
++            form.addEventListener('submit', (e) => {
++              e.preventDefault();
++              status.textContent = 'Profile saved.';
++            });
++          },
++        },
++
++        'not-found': { title: 'Page Not Found', template: 'view-not-found' },
++      };
++
++      // ---------- Router with keep-alive view cache ----------
++      const app = document.getElementById('app');
++      const navLinks = $$(document, 'nav a[data-route]');
++      const cache = new Map(); // name -> { el, hooks, scrollY }
++      let current = null;
++
++      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++
++      const parse = () => {
++        const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
++        const name = parts[0] || 'home';
++        return { name: VIEWS[name] && name !== 'not-found' ? name : 'not-found', param: parts[1] ? decodeURIComponent(parts[1]) : null };
++      };
++
++      // Build a view once; afterwards it's served from the cache.
++      const getView = (name) => {
++        let entry = cache.get(name);
++        if (entry) return { entry, fresh: false };
++        const def = VIEWS[name];
++        let el = app.querySelector(`[data-view="${name}"]`); // home is pre-rendered
++        if (!el) {
++          el = document.getElementById(def.template).content.firstElementChild.cloneNode(true);
++          el.hidden = true;
++          app.appendChild(el);
++        }
++        entry = { el, hooks: (def.setup && def.setup(el)) || {}, scrollY: 0 };
++        cache.set(name, entry);
++        return { entry, fresh: true };
++      };
++
++      const render = () => {
++        const { name, param } = parse();
++        const { entry, fresh } = getView(name);
++        const switching = current !== entry;
++
++        if (current && switching) {
++          // Park the outgoing view offscreen: DOM, listeners, form input and
++          // internal state all survive; we only remember where the user was.
++          current.scrollY = window.scrollY;
++          current.el.hidden = true;
++          current.hooks.hide && current.hooks.hide();
++        }
++
++        entry.el.hidden = false;
++        current = entry;
++
++        const handledScroll = entry.hooks.show ? entry.hooks.show(param) === true : false;
++        if (!handledScroll && switching) window.scrollTo(0, fresh ? 0 : entry.scrollY);
++
++        navLinks.forEach((a) => {
++          if (a.dataset.route === name) a.setAttribute('aria-current', 'page');
++          else a.removeAttribute('aria-current');
++        });
++        document.title = `The Daily Grind | ${VIEWS[name].title}`;
++        if (switching && document.activeElement !== document.body) entry.el.focus({ preventScroll: true });
++      };
++
++      window.addEventListener('hashchange', render);
++
++      // If a stock photo fails to load, keep the tinted placeholder box instead of a broken icon.
++      app.addEventListener('error', (e) => {
++        if (e.target.tagName === 'IMG') e.target.style.visibility = 'hidden';
++      }, true);
++
++      // Prefetch view markup during idle time so first visits are instant too.
++      const warm = () => Object.keys(VIEWS).forEach((n) => { if (n !== 'not-found') getView(n); });
++      render();
++      ('requestIdleCallback' in window ? requestIdleCallback : (cb) => setTimeout(cb, 300))(warm);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

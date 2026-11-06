@@ -1,0 +1,386 @@
+diff --git a/index.html b/index.html
+index 66c9173..54b5f25 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,18 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Fail-open guard for client-rendered instances that miss the SSR pass */
++    coffee-card:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -178,21 +190,227 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <coffee-card open>
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++              }
++              .card {
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++              ::slotted(h3) {
++                margin-bottom: 10px;
++                color: var(--primary, #4e342e);
++              }
++              .body {
++                margin-bottom: 10px;
++              }
++              .details {
++                display: none;
++                margin-top: 12px;
++                padding-top: 12px;
++                border-top: 1px solid var(--secondary, #d7ccc8);
++                font-size: 0.9rem;
++              }
++              :host([open]) .details {
++                display: block;
++              }
++              .actions {
++                display: flex;
++                justify-content: center;
++                align-items: center;
++                gap: 10px;
++                margin-top: 15px;
++                flex-wrap: wrap;
++              }
++              .toggle-btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 20px;
++                border: none;
++                border-radius: 5px;
++                font: inherit;
++                cursor: pointer;
++                transition: background 0.3s;
++              }
++              .toggle-btn:hover {
++                background: #3e2723;
++              }
++              ::slotted(a.btn) {
++                margin-top: 0 !important;
++              }
++            </style>
++            <article class="card">
++              <slot name="header"></slot>
++              <div class="body"><slot></slot></div>
++              <div class="details" id="details">
++                <slot name="details"></slot>
++              </div>
++              <div class="actions">
++                <button type="button" id="toggle" class="toggle-btn" aria-expanded="true" aria-controls="details">Toggle Notes</button>
++                <slot name="action"></slot>
++              </div>
++            </article>
++          </template>
++          <h3 slot="header">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <p slot="details">Notes: Toasted pecan, rich grade-A maple, velvety microfoam (160 kcal).</p>
++          <a slot="action" href="/menu/seasonal" class="btn">View Details</a>
++        </coffee-card>
++
++        <coffee-card>
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++              }
++              .card {
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++              ::slotted(h3) {
++                margin-bottom: 10px;
++                color: var(--primary, #4e342e);
++              }
++              .body {
++                margin-bottom: 10px;
++              }
++              .details {
++                display: none;
++                margin-top: 12px;
++                padding-top: 12px;
++                border-top: 1px solid var(--secondary, #d7ccc8);
++                font-size: 0.9rem;
++              }
++              :host([open]) .details {
++                display: block;
++              }
++              .actions {
++                display: flex;
++                justify-content: center;
++                align-items: center;
++                gap: 10px;
++                margin-top: 15px;
++                flex-wrap: wrap;
++              }
++              .toggle-btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 20px;
++                border: none;
++                border-radius: 5px;
++                font: inherit;
++                cursor: pointer;
++                transition: background 0.3s;
++              }
++              .toggle-btn:hover {
++                background: #3e2723;
++              }
++              ::slotted(a.btn) {
++                margin-top: 0 !important;
++              }
++            </style>
++            <article class="card">
++              <slot name="header"></slot>
++              <div class="body"><slot></slot></div>
++              <div class="details" id="details">
++                <slot name="details"></slot>
++              </div>
++              <div class="actions">
++                <button type="button" id="toggle" class="toggle-btn" aria-expanded="false" aria-controls="details">Toggle Notes</button>
++                <slot name="action"></slot>
++              </div>
++            </article>
++          </template>
++          <h3 slot="header">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <p slot="details">Notes: Dark cocoa, roasted walnut, syrupy crema finish (15 kcal).</p>
++          <a slot="action" href="/menu/espresso" class="btn">View Details</a>
++        </coffee-card>
++
++        <coffee-card>
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++              }
++              .card {
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++              ::slotted(h3) {
++                margin-bottom: 10px;
++                color: var(--primary, #4e342e);
++              }
++              .body {
++                margin-bottom: 10px;
++              }
++              .details {
++                display: none;
++                margin-top: 12px;
++                padding-top: 12px;
++                border-top: 1px solid var(--secondary, #d7ccc8);
++                font-size: 0.9rem;
++              }
++              :host([open]) .details {
++                display: block;
++              }
++              .actions {
++                display: flex;
++                justify-content: center;
++                align-items: center;
++                gap: 10px;
++                margin-top: 15px;
++                flex-wrap: wrap;
++              }
++              .toggle-btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 20px;
++                border: none;
++                border-radius: 5px;
++                font: inherit;
++                cursor: pointer;
++                transition: background 0.3s;
++              }
++              .toggle-btn:hover {
++                background: #3e2723;
++              }
++              ::slotted(a.btn) {
++                margin-top: 0 !important;
++              }
++            </style>
++            <article class="card">
++              <slot name="header"></slot>
++              <div class="body"><slot></slot></div>
++              <div class="details" id="details">
++                <slot name="details"></slot>
++              </div>
++              <div class="actions">
++                <button type="button" id="toggle" class="toggle-btn" aria-expanded="false" aria-controls="details">Toggle Notes</button>
++                <slot name="action"></slot>
++              </div>
++            </article>
++          </template>
++          <h3 slot="header">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <p slot="details">Notes: Caramelized brown sugar, zero-acid finish, single-origin Colombian beans (5 kcal).</p>
++          <a slot="action" href="/menu/cold-brew" class="btn">View Details</a>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +425,122 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const fallbackTemplate = document.createElement('template');
++    fallbackTemplate.innerHTML = `
++      <style>
++        :host {
++          display: block;
++        }
++        .card {
++          background: white;
++          padding: 20px;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++          text-align: center;
++        }
++        ::slotted(h3) {
++          margin-bottom: 10px;
++          color: var(--primary, #4e342e);
++        }
++        .body {
++          margin-bottom: 10px;
++        }
++        .details {
++          display: none;
++          margin-top: 12px;
++          padding-top: 12px;
++          border-top: 1px solid var(--secondary, #d7ccc8);
++          font-size: 0.9rem;
++        }
++        :host([open]) .details {
++          display: block;
++        }
++        .actions {
++          display: flex;
++          justify-content: center;
++          align-items: center;
++          gap: 10px;
++          margin-top: 15px;
++          flex-wrap: wrap;
++        }
++        .toggle-btn {
++          display: inline-block;
++          background: var(--primary, #4e342e);
++          color: white;
++          padding: 10px 20px;
++          border: none;
++          border-radius: 5px;
++          font: inherit;
++          cursor: pointer;
++          transition: background 0.3s;
++        }
++        .toggle-btn:hover {
++          background: #3e2723;
++        }
++        ::slotted(a.btn) {
++          margin-top: 0 !important;
++        }
++      </style>
++      <article class="card">
++        <slot name="header"></slot>
++        <div class="body"><slot></slot></div>
++        <div class="details" id="details">
++          <slot name="details"></slot>
++        </div>
++        <div class="actions">
++          <button type="button" id="toggle" class="toggle-btn" aria-expanded="false" aria-controls="details">Toggle Notes</button>
++          <slot name="action"></slot>
++        </div>
++      </article>
++    `;
++
++    class CoffeeCard extends HTMLElement {
++      static observedAttributes = ['open'];
++
++      constructor() {
++        super();
++        // Reuse the server-rendered shadow root if present; only create one if absent.
++        if (!this.shadowRoot) {
++          this.attachShadow({ mode: 'open' });
++          const dsdTemplate = !Object.hasOwn(HTMLTemplateElement.prototype, 'shadowRootMode')
++            ? this.querySelector('template[shadowrootmode]')
++            : null;
++          if (dsdTemplate) {
++            this.shadowRoot.append(dsdTemplate.content.cloneNode(true));
++            dsdTemplate.remove();
++          } else {
++            this.shadowRoot.append(fallbackTemplate.content.cloneNode(true));
++          }
++        }
++
++        // Hydrate in place: attach listeners once against existing markup without re-rendering.
++        this.shadowRoot.getElementById('toggle')
++          ?.addEventListener('click', () => {
++            this.open = !this.open;
++            this.dispatchEvent(new CustomEvent('change', { detail: { open: this.open }, bubbles: true }));
++          });
++      }
++
++      get open() {
++        return this.hasAttribute('open');
++      }
++
++      set open(val) {
++        this.toggleAttribute('open', !!val);
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (name === 'open' && oldVal !== newVal) {
++          this.shadowRoot?.getElementById('toggle')
++            ?.setAttribute('aria-expanded', String(this.open));
++        }
++      }
++    }
++
++    customElements.define('coffee-card', CoffeeCard);
++  </script>
++
+ </body>
+ 
+ </html>

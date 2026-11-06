@@ -1,0 +1,524 @@
+diff --git a/index.html b/index.html
+index 66c9173..b0450e1 100644
+--- a/index.html
++++ b/index.html
+@@ -7,11 +7,106 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
++      /* Brand Palette (Coffee-Brown Core) */
+       --primary: #4e342e;
++      --primary-hover: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --accent-soft: #fff3e0;
++
++      /* Light Mode Surface & Text Tokens */
++      --bg-page: #fbf8f5;
++      --bg-surface: #ffffff;
++      --bg-nav: #4e342e;
++      --bg-footer: #efe7e2;
++      --text-main: #2d1b15;
++      --text-muted: #5d4037;
++      --text-heading: #3e2723;
++      --text-on-nav: #fdfaf7;
++      --border-subtle: #e3d6cf;
++      --card-shadow: 0 6px 16px rgba(62, 39, 35, 0.08);
++      --card-shadow-hover: 0 10px 24px rgba(62, 39, 35, 0.14);
++
++      /* Buttons */
++      --btn-bg: #4e342e;
++      --btn-bg-hover: #3e2723;
++      --btn-text: #ffffff;
++      --btn-hero-bg: #ffab40;
++      --btn-hero-bg-hover: #ff9100;
++      --btn-hero-text: #2d1b15;
++      --btn-disabled-bg: #e6dcd7;
++      --btn-disabled-text: #795548;
++
++      /* Status Badges */
++      --badge-new-bg: #e6f4ea;
++      --badge-new-text: #1b5e20;
++      --badge-new-border: #a5d6a7;
++      --badge-soldout-bg: #fbe9e7;
++      --badge-soldout-text: #b71c1c;
++      --badge-soldout-border: #ef9a9a;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root:not([data-theme="light"]) {
++        --bg-page: #18110e;
++        --bg-surface: #251a16;
++        --bg-nav: #2c1d18;
++        --bg-footer: #1f1612;
++        --text-main: #f5ebe6;
++        --text-muted: #cbb8b0;
++        --text-heading: #ffdfc2;
++        --text-on-nav: #f5ebe6;
++        --border-subtle: #3d2b24;
++        --card-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
++        --card-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.65);
++
++        --btn-bg: #8d6e63;
++        --btn-bg-hover: #a1887f;
++        --btn-text: #fffaf7;
++        --btn-hero-bg: #ffab40;
++        --btn-hero-bg-hover: #ffc470;
++        --btn-hero-text: #1f130e;
++        --btn-disabled-bg: #382822;
++        --btn-disabled-text: #9c847a;
++
++        --badge-new-bg: rgba(46, 125, 50, 0.25);
++        --badge-new-text: #a5d6a7;
++        --badge-new-border: rgba(129, 199, 132, 0.45);
++        --badge-soldout-bg: rgba(198, 40, 40, 0.25);
++        --badge-soldout-text: #ffcdd2;
++        --badge-soldout-border: rgba(239, 154, 154, 0.45);
++      }
++    }
++
++    :root[data-theme="dark"] {
++      --bg-page: #18110e;
++      --bg-surface: #251a16;
++      --bg-nav: #2c1d18;
++      --bg-footer: #1f1612;
++      --text-main: #f5ebe6;
++      --text-muted: #cbb8b0;
++      --text-heading: #ffdfc2;
++      --text-on-nav: #f5ebe6;
++      --border-subtle: #3d2b24;
++      --card-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
++      --card-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.65);
++
++      --btn-bg: #8d6e63;
++      --btn-bg-hover: #a1887f;
++      --btn-text: #fffaf7;
++      --btn-hero-bg: #ffab40;
++      --btn-hero-bg-hover: #ffc470;
++      --btn-hero-text: #1f130e;
++      --btn-disabled-bg: #382822;
++      --btn-disabled-text: #9c847a;
++
++      --badge-new-bg: rgba(46, 125, 50, 0.25);
++      --badge-new-text: #a5d6a7;
++      --badge-new-border: rgba(129, 199, 132, 0.45);
++      --badge-soldout-bg: rgba(198, 40, 40, 0.25);
++      --badge-soldout-text: #ffcdd2;
++      --badge-soldout-border: rgba(239, 154, 154, 0.45);
+     }
+ 
+     * {
+@@ -23,14 +118,15 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      color: var(--text-main);
++      background-color: var(--bg-page);
++      transition: background-color 0.25s ease, color 0.25s ease;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--bg-nav);
++      color: var(--text-on-nav);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,16 +134,31 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      border-bottom: 1px solid rgba(255, 171, 64, 0.2);
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: var(--text-on-nav);
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .logo-dot {
++      display: inline-block;
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: var(--accent);
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -56,10 +167,11 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--text-on-nav);
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.92rem;
++      font-weight: 500;
++      transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease;
+     }
+ 
+     nav a:hover {
+@@ -68,14 +180,36 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      padding: 6px 14px;
++      border-radius: 6px;
++    }
++
++    .logout-link:hover {
++      background: rgba(255, 171, 64, 0.14);
++    }
++
++    .theme-toggle {
++      background: rgba(255, 255, 255, 0.08);
++      color: var(--text-on-nav);
++      border: 1px solid rgba(255, 255, 255, 0.22);
++      padding: 6px 12px;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
++    }
++
++    .theme-toggle:hover {
++      border-color: var(--accent);
++      color: var(--accent);
++      background: rgba(255, 171, 64, 0.12);
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(135deg, rgba(45, 27, 21, 0.78), rgba(78, 52, 46, 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,74 +217,181 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #fdfaf7;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
++      border-bottom: 3px solid var(--accent);
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.75rem;
++      letter-spacing: 0.5px;
++      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
++    }
++
++    .hero p {
++      font-size: 1.15rem;
++      max-width: 560px;
++      color: #f3e5dc;
++      margin-bottom: 0.5rem;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 48px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--text-heading);
++      margin-bottom: 8px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--text-muted);
++      font-size: 1rem;
++      margin-bottom: 28px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--bg-surface);
++      padding: 26px 22px;
++      border-radius: 12px;
++      border: 1px solid var(--border-subtle);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
++      position: relative;
++      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
++    }
++
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: var(--card-shadow-hover);
++    }
++
++    .card-header {
++      width: 100%;
++      display: flex;
++      justify-content: flex-end;
++      min-height: 28px;
++      margin-bottom: 8px;
++    }
++
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 5px;
++      padding: 3px 11px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.4px;
++      text-transform: uppercase;
++      border: 1px solid transparent;
++    }
++
++    .badge-new {
++      background-color: var(--badge-new-bg);
++      color: var(--badge-new-text);
++      border-color: var(--badge-new-border);
++    }
++
++    .badge-sold-out {
++      background-color: var(--badge-soldout-bg);
++      color: var(--badge-soldout-text);
++      border-color: var(--badge-soldout-border);
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--text-heading);
++      font-size: 1.3rem;
++    }
++
++    .card p {
++      color: var(--text-muted);
++      margin-bottom: 6px;
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
++      background: var(--btn-bg);
++      color: var(--btn-text);
++      padding: 10px 22px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      font-weight: 600;
++      border-radius: 6px;
++      margin-top: 16px;
++      border: 1px solid transparent;
++      transition: background 0.25s ease, color 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
++    }
++
++    .hero .btn {
++      background: var(--btn-hero-bg);
++      color: var(--btn-hero-text);
++      padding: 12px 28px;
++      font-size: 1rem;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
++    }
++
++    .hero .btn:hover {
++      background: var(--btn-hero-bg-hover);
++    }
++
++    .btn-disabled {
++      background: var(--btn-disabled-bg);
++      color: var(--btn-disabled-text);
++      cursor: not-allowed;
++    }
++
++    .btn-disabled:hover {
++      background: var(--btn-disabled-bg);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--bg-footer);
++      color: var(--text-muted);
++      border-top: 1px solid var(--border-subtle);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 56px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 18px;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
++      margin: 0 12px;
++      color: var(--text-main);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: 0.9rem;
++      font-weight: 500;
++      transition: color 0.2s ease;
++    }
++
++    .footer-links a:hover {
++      color: var(--accent);
+     }
+   </style>
+ </head>
+@@ -158,13 +399,14 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo">THE DAILY GRIND <span class="logo-dot" aria-hidden="true"></span></div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme">Theme</button></li>
+     </ul>
+   </nav>
+ 
+@@ -176,22 +418,38 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <p class="section-subtitle">Small-batch signature pours crafted for the season.</p>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="card-header">
++            <span class="badge badge-new">New</span>
++          </div>
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div class="card-header">
++            <span class="badge badge-new">New</span>
++          </div>
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-header">
++            <span class="badge badge-sold-out">Sold out</span>
++          </div>
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn btn-disabled" aria-disabled="true">Sold Out</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +465,33 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const root = document.documentElement;
++      const toggleBtn = document.getElementById('theme-toggle');
++      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
++
++      function getEffectiveTheme() {
++        const explicit = root.getAttribute('data-theme');
++        if (explicit === 'dark' || explicit === 'light') return explicit;
++        return mediaQuery.matches ? 'dark' : 'light';
++      }
++
++      function updateButtonLabel() {
++        const current = getEffectiveTheme();
++        toggleBtn.textContent = current === 'dark' ? '☀ Light' : '☾ Dark';
++      }
++
++      toggleBtn.addEventListener('click', function () {
++        const next = getEffectiveTheme() === 'dark' ? 'light' : 'dark';
++        root.setAttribute('data-theme', next);
++        updateButtonLabel();
++      });
++
++      mediaQuery.addEventListener('change', updateButtonLabel);
++      updateButtonLabel();
++    })();
++  </script>
+ </body>
+ 
+ </html>

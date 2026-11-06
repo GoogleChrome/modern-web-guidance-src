@@ -1,0 +1,634 @@
+diff --git a/src/assets/fonts/grenze-500-latin-ext.woff2 b/src/assets/fonts/grenze-500-latin-ext.woff2
+new file mode 100644
+index 0000000..7a18f1d
+Binary files /dev/null and b/src/assets/fonts/grenze-500-latin-ext.woff2 differ
+diff --git a/src/assets/fonts/grenze-500-latin.woff2 b/src/assets/fonts/grenze-500-latin.woff2
+new file mode 100644
+index 0000000..37fde00
+Binary files /dev/null and b/src/assets/fonts/grenze-500-latin.woff2 differ
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..7826ca6 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -98,8 +98,53 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <button type="button" data-privacy-open data-skip-tracking class="hover:underline cursor-pointer">
++                Manage Privacy Preferences
++            </button>
+         </div>
+     </div>
+ 
++    <!-- Behaviour lives in src/scripts/privacy.ts -->
++    <dialog
++        id="privacy-preferences"
++        aria-labelledby="privacy-preferences-title"
++        class="m-auto max-w-lg w-[calc(100%-2rem)] rounded-lg p-6 text-sm text-gray-800 backdrop:bg-black/50"
++    >
++        <form id="privacy-preferences-form" method="dialog" class="space-y-4">
++            <h2 id="privacy-preferences-title" class="text-lg font-bold">Privacy preferences</h2>
++            <p>
++                We only use what is needed to run this site. Your reading list is kept in
++                a first-party session cookie. Nothing else is collected unless you turn it on below.
++            </p>
++
++            <fieldset class="border border-gray-200 rounded-md p-4 space-y-2">
++                <legend class="px-1 font-semibold">Optional</legend>
++                <label class="flex items-start gap-3">
++                    <input type="checkbox" name="analytics" class="mt-1" />
++                    <span>
++                        <strong>Usage analytics</strong> (off by default)<br />
++                        When you click a link or button, we record its type, its visible text, and the time.
++                        This data goes to our analytics service on Google Cloud
++                        (<code>us-central1-web-devrel-apps.cloudfunctions.net</code>). It never includes form
++                        input, and it is never collected on the sign-in or sign-up pages.
++                    </span>
++                </label>
++                <p data-gpc-notice hidden class="text-gray-600">
++                    Your browser is sending a Global Privacy Control signal, so analytics stays off.
++                </p>
++            </fieldset>
++
++            <p class="text-gray-600">
++                Your choice is saved only in this browser. You can change it at any time.
++                Read more in our <a href={`${baseUrl}legal/privacy`} class="underline">Privacy Policy</a>.
++            </p>
++
++            <div class="flex justify-end gap-2">
++                <button type="submit" value="save" data-skip-tracking class="py-2 px-4 rounded-md text-white bg-gray-900 hover:bg-gray-800">
++                    Save preferences
++                </button>
++            </div>
++        </form>
++    </dialog>
++
+ </footer>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..4947cc3 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -28,6 +28,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
++          data-astro-reload
+           class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
+         >
+           Sign up
+@@ -35,6 +36,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         <a
+           href={`${baseUrl}signin`}
+           data-skip-tracking="true"
++          data-astro-reload
+           class="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400"
+         >
+           Sign in
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..c2bd8e4 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -6,6 +6,7 @@ export default function SignInForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [showPassword, setShowPassword] = useState(false);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -19,6 +20,8 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Don't reveal which page the reader came from to the auth service.
++        referrerPolicy: 'no-referrer',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -30,7 +33,10 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        // Don't keep the password in memory longer than needed.
++        setPassword('');
++        // Never persist auth tokens in localStorage: any script on the page can
++        // read it. Prefer an HttpOnly; Secure; SameSite cookie set by the server.
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -63,6 +69,12 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            enterKeyHint="next"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -75,18 +87,30 @@ export default function SignInForm() {
+             Password
+           </label>
+           <input
+-            type="password"
++            type={showPassword ? 'text' : 'password'}
+             id="password"
++            name="password"
++            autoComplete="current-password"
++            enterKeyHint="done"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <label className="mt-2 flex items-center gap-2 text-sm text-gray-600">
++            <input
++              type="checkbox"
++              checked={showPassword}
++              onChange={(e) => setShowPassword(e.target.checked)}
++            />
++            Show password
++          </label>
+         </div>
+ 
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+@@ -94,6 +118,14 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      <p className="mt-6 text-xs text-gray-500">
++        Your username and password are sent over HTTPS only to verify your identity and are not used
++        for anything else. No analytics or advertising scripts run on this page.{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">
++          Privacy Policy
++        </a>
++      </p>
+     </div>
+   );
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..2cd3125 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -6,6 +6,7 @@ export default function SignUpForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [showPassword, setShowPassword] = useState(false);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -19,6 +20,8 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Don't reveal which page the reader came from to the auth service.
++        referrerPolicy: 'no-referrer',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -56,7 +59,12 @@ export default function SignUpForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <p id="signup-data-notice" className="mb-4 text-sm text-gray-600">
++        We only ask for a username and a password. No email address, real name, or phone number is
++        needed to create an account.
++      </p>
++
++      <form onSubmit={handleSubmit} aria-describedby="signup-data-notice" className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,6 +72,12 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            enterKeyHint="next"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -76,16 +90,31 @@ export default function SignUpForm() {
+             Password
+           </label>
+           <input
+-            type="password"
++            type={showPassword ? 'text' : 'password'}
+             id="password"
++            name="password"
++            autoComplete="new-password"
++            enterKeyHint="done"
++            minLength={8}
++            pattern="(?=.*\d).{8,}"
++            title="At least 8 characters, including a number."
++            aria-describedby="password-hint"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="password-hint" className="text-xs text-gray-500 mt-1">
++            Must be at least 8 characters and contain a number.
+           </p>
++          <label className="mt-2 flex items-center gap-2 text-sm text-gray-600">
++            <input
++              type="checkbox"
++              checked={showPassword}
++              onChange={(e) => setShowPassword(e.target.checked)}
++            />
++            Show password
++          </label>
+         </div>
+ 
+         <button
+@@ -99,6 +128,15 @@ export default function SignUpForm() {
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      <p className="mt-6 text-xs text-gray-500">
++        Your username and password are sent over HTTPS only to create and secure your account and are
++        not used for marketing or shared with advertisers. No analytics or advertising scripts run on
++        this page.{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">
++          Privacy Policy
++        </a>
++      </p>
+     </div>
+   );
+ }
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..b80d390 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,29 +8,34 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  /**
++   * Marks pages that handle personal data (e.g. credentials). Third-party
++   * scripts and ad slots are never loaded on these pages.
++   */
++  sensitive?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, sensitive = false } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+ <!doctype html>
+-<html lang="en">
++<html lang="en" data-sensitive={sensitive ? "" : undefined}>
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <!-- Fallback for the Referrer-Policy header set in src/middleware.ts -->
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
++    {sensitive && <meta name="robots" content="noindex" />}
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!--
++      Third-party analytics is opt-in only and is never loaded on sensitive
++      pages. See src/scripts/privacy.ts.
++    -->
++    <script>
++      import "../scripts/privacy.ts";
++    </script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+@@ -38,7 +43,7 @@ const baseUrl = import.meta.env.BASE_URL;
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      {!sensitive && <AdSlotFireplace client:load />}
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..736e460 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,6 +1,59 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++/** Origin hosting the auth API and the (opt-in) analytics client. */
++const TIMES_CDN_ORIGIN = 'https://us-central1-web-devrel-apps.cloudfunctions.net';
++
++/** Pages that handle credentials and must never be cached or shared with third parties. */
++const SENSITIVE_PATHS = /\/(signin|signup)\/?$/;
++
++/**
++ * Privacy-protective defaults applied to every response:
++ * - Referrer-Policy: never leak full URLs (paths, query strings) cross-origin.
++ * - Permissions-Policy: powerful features and Topics are off for every origin.
++ * - CSP: restrict where scripts may load from and where data may be sent.
++ */
++const PRIVACY_HEADERS: Record<string, string> = {
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': [
++    'accelerometer=()',
++    'browsing-topics=()',
++    'camera=()',
++    'display-capture=()',
++    'geolocation=()',
++    'gyroscope=()',
++    'magnetometer=()',
++    'microphone=()',
++    'payment=()',
++    'usb=()',
++  ].join(', '),
++  'X-Content-Type-Options': 'nosniff',
++  'Content-Security-Policy': [
++    "default-src 'self'",
++    // 'unsafe-inline' is required for Astro's island hydration and view-transition scripts.
++    `script-src 'self' 'unsafe-inline' ${TIMES_CDN_ORIGIN}`,
++    `connect-src 'self' ${TIMES_CDN_ORIGIN}`,
++    "img-src 'self' data: https:",
++    "style-src 'self' 'unsafe-inline'",
++    "font-src 'self'",
++    "object-src 'none'",
++    "base-uri 'self'",
++    "form-action 'self'",
++    "frame-ancestors 'self'",
++  ].join('; '),
++};
++
++function applyPrivacyHeaders(response: Response, pathname: string) {
++  for (const [name, value] of Object.entries(PRIVACY_HEADERS)) {
++    if (!response.headers.has(name)) {
++      response.headers.set(name, value);
++    }
++  }
++
++  if (SENSITIVE_PATHS.test(pathname)) {
++    response.headers.set('Cache-Control', 'no-store');
++  }
++}
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+@@ -9,5 +62,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  let response = await next();
++
++  try {
++    applyPrivacyHeaders(response, context.url.pathname);
++  } catch {
++    // Some responses (e.g. Response.redirect()) have immutable headers.
++    response = new Response(response.body, response);
++    applyPrivacyHeaders(response, context.url.pathname);
++  }
++
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..cb6ba14 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -13,5 +13,17 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     
+     <h2>3. Recording of data on our website</h2>
+     <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <p>We set a single first-party session cookie so that your reading list is kept while you browse. It is not used for tracking and is not shared with third parties. We do not use advertising or cross-site tracking cookies.</p>
++
++    <p><strong>Accounts (sign up and sign in)</strong></p>
++    <p>To create an account we only ask for a username and a password. We do not ask for your email address, real name, or phone number. These credentials are sent over HTTPS to our authentication service (hosted on Google Cloud at <code>us-central1-web-devrel-apps.cloudfunctions.net</code>) and are used only to create your account and sign you in. No analytics or advertising scripts are loaded on the sign-in and sign-up pages, and these pages are never cached.</p>
++
++    <p><strong>Usage analytics (opt-in)</strong></p>
++    <p>Analytics is <em>off by default</em>. If you turn it on under "Manage Privacy Preferences" (in the footer of every page), we record the element type, visible text, and time of the links and buttons you click. This data is sent to our analytics service on Google Cloud. It never includes anything you type into forms. If your browser sends a Global Privacy Control signal, analytics stays off regardless of your stored choice. Your choice is saved only in your browser's local storage, and you can withdraw it at any time. Withdrawing takes effect immediately.</p>
++
++    <p><strong>Fonts and other third parties</strong></p>
++    <p>All fonts are served from our own servers. We do not load fonts or other resources from Google Fonts. Our pages tell browsers to send only our site's origin, never the full page address, when requesting resources from other sites. They also disable access to your camera, microphone, location, and the Topics API.</p>
++
++    <h2>4. Your rights</h2>
++    <p>You have the right to access, correct, and delete the personal data we hold about you, and to withdraw any consent you have given. To exercise these rights, please use the contact details given in our <a href="../imprint">Imprint</a>.</p>
+ </LegalLayout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..26e8951 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" sensitive>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..1920fe4 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" sensitive>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/privacy.ts b/src/scripts/privacy.ts
+new file mode 100644
+index 0000000..9432ecc
+--- /dev/null
++++ b/src/scripts/privacy.ts
+@@ -0,0 +1,123 @@
++/**
++ * Privacy-by-default loader for third-party scripts.
++ *
++ * - Analytics is OFF unless the reader explicitly opts in via
++ *   "Manage Privacy Preferences" (footer).
++ * - A Global Privacy Control signal always wins over a stored opt-in.
++ * - Pages marked with `data-sensitive` on <html> (sign in / sign up) never
++ *   load third-party scripts.
++ * - Only a non-identifying boolean preference is stored on the device.
++ */
++
++const ANALYTICS_SRC =
++  'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js';
++const STORAGE_KEY = 'dt-privacy-preferences';
++
++interface PrivacyPreferences {
++  analytics: boolean;
++}
++
++declare global {
++  interface Navigator {
++    globalPrivacyControl?: boolean;
++  }
++}
++
++function hasGlobalPrivacyControl(): boolean {
++  return navigator.globalPrivacyControl === true;
++}
++
++function readPreferences(): PrivacyPreferences {
++  try {
++    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
++    return { analytics: parsed?.analytics === true };
++  } catch {
++    return { analytics: false };
++  }
++}
++
++function writePreferences(prefs: PrivacyPreferences) {
++  try {
++    if (prefs.analytics) {
++      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
++    } else {
++      // Nothing to remember when the reader declines: keep storage empty.
++      localStorage.removeItem(STORAGE_KEY);
++    }
++  } catch {
++    // Storage unavailable (e.g. blocked); fall back to the private default.
++  }
++}
++
++function isSensitivePage(): boolean {
++  return document.documentElement.hasAttribute('data-sensitive');
++}
++
++function analyticsAllowed(): boolean {
++  return !hasGlobalPrivacyControl() && !isSensitivePage() && readPreferences().analytics;
++}
++
++let analyticsLoaded = false;
++
++function loadAnalytics() {
++  if (analyticsLoaded || !analyticsAllowed()) return;
++  analyticsLoaded = true;
++  const script = document.createElement('script');
++  script.src = ANALYTICS_SRC;
++  script.async = true;
++  // Don't tell the analytics host which article the reader is on.
++  script.referrerPolicy = 'no-referrer';
++  document.head.append(script);
++}
++
++function syncPreferencesDialog() {
++  const dialog = document.querySelector<HTMLDialogElement>('#privacy-preferences');
++  if (!dialog) return;
++  const checkbox = dialog.querySelector<HTMLInputElement>('input[name="analytics"]');
++  const gpcNotice = dialog.querySelector<HTMLElement>('[data-gpc-notice]');
++  const gpc = hasGlobalPrivacyControl();
++  if (checkbox) {
++    checkbox.checked = !gpc && readPreferences().analytics;
++    checkbox.disabled = gpc;
++  }
++  if (gpcNotice) gpcNotice.hidden = !gpc;
++}
++
++function onPageLoad() {
++  // The analytics client attaches a document-wide click listener that cannot
++  // be removed. If it is running and we navigated (client-side) to a page
++  // that handles credentials, reload to drop it.
++  if (analyticsLoaded && isSensitivePage()) {
++    location.reload();
++    return;
++  }
++  loadAnalytics();
++}
++
++document.addEventListener('click', (event) => {
++  const target = event.target as Element | null;
++  if (target?.closest('[data-privacy-open]')) {
++    event.preventDefault();
++    syncPreferencesDialog();
++    document.querySelector<HTMLDialogElement>('#privacy-preferences')?.showModal();
++  }
++});
++
++document.addEventListener('submit', (event) => {
++  const form = event.target as HTMLFormElement | null;
++  if (form?.id !== 'privacy-preferences-form') return;
++  const wantsAnalytics =
++    form.querySelector<HTMLInputElement>('input[name="analytics"]')?.checked === true;
++  const hadAnalytics = analyticsLoaded;
++  writePreferences({ analytics: wantsAnalytics && !hasGlobalPrivacyControl() });
++  // <form method="dialog"> closes the dialog for us.
++  if (hadAnalytics && !wantsAnalytics) {
++    // Withdrawing consent must take effect immediately.
++    location.reload();
++  } else {
++    loadAnalytics();
++  }
++});
++
++// Fires on the initial load and after every client-side navigation.
++document.addEventListener('astro:page-load', onPageLoad);
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d64e0c9 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,5 +1,28 @@
+ @import "tailwindcss";
+ 
++/*
++ * Grenze is self-hosted (SIL Open Font License) instead of loaded from
++ * Google Fonts so that page views don't send visitors' IP addresses and
++ * referrers to a third party.
++ */
++@font-face {
++  font-family: "Grenze";
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src: url("../assets/fonts/grenze-500-latin-ext.woff2") format("woff2");
++  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
++}
++
++@font-face {
++  font-family: "Grenze";
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src: url("../assets/fonts/grenze-500-latin.woff2") format("woff2");
++  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;

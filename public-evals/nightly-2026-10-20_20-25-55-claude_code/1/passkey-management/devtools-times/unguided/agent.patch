@@ -1,0 +1,293 @@
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..4d3baf1 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -39,6 +39,13 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         >
+           Sign in
+         </a>
++        <a
++          href={`${baseUrl}account/passkeys`}
++          data-skip-tracking="true"
++          class="text-xs font-semibold py-2 px-3 hover:underline"
++        >
++          Passkeys
++        </a>
+       </div>
+     </div>
+   </div>
+diff --git a/src/components/PasskeyManager.tsx b/src/components/PasskeyManager.tsx
+new file mode 100644
+index 0000000..09cfde6
+--- /dev/null
++++ b/src/components/PasskeyManager.tsx
+@@ -0,0 +1,182 @@
++import React, { useEffect, useState } from 'react';
++
++interface Passkey {
++  id: string;
++  name: string;
++  createdAt: string;
++}
++
++const API = `${import.meta.env.BASE_URL}api/passkeys.json`;
++
++const toBase64Url = (buffer: ArrayBuffer) =>
++  btoa(String.fromCharCode(...new Uint8Array(buffer)))
++    .replace(/\+/g, '-')
++    .replace(/\//g, '_')
++    .replace(/=+$/, '');
++
++async function request(method: string, body?: unknown) {
++  const response = await fetch(API, {
++    method,
++    headers: { 'Content-Type': 'application/json' },
++    body: body ? JSON.stringify(body) : undefined,
++  });
++  const data = await response.json();
++  if (!response.ok) throw new Error(data.error || 'Request failed');
++  return data.passkeys as Passkey[];
++}
++
++export default function PasskeyManager() {
++  const [passkeys, setPasskeys] = useState<Passkey[] | null>(null);
++  const [error, setError] = useState<string | null>(null);
++  const [busy, setBusy] = useState(false);
++  const [editingId, setEditingId] = useState<string | null>(null);
++  const [editName, setEditName] = useState('');
++
++  useEffect(() => {
++    fetch(API)
++      .then((r) => r.json())
++      .then((data) => setPasskeys(data.passkeys))
++      .catch(() => setError('Could not load your passkeys.'));
++  }, []);
++
++  const run = async (action: () => Promise<Passkey[] | void>) => {
++    setError(null);
++    setBusy(true);
++    try {
++      const result = await action();
++      if (result) setPasskeys(result);
++    } catch (err) {
++      setError(err instanceof Error ? err.message : 'Something went wrong.');
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  const addPasskey = () =>
++    run(async () => {
++      if (!window.PublicKeyCredential) {
++        throw new Error('Passkeys are not supported in this browser.');
++      }
++      const userId = crypto.getRandomValues(new Uint8Array(16));
++      let credential: Credential | null;
++      try {
++        credential = await navigator.credentials.create({
++          publicKey: {
++            challenge: crypto.getRandomValues(new Uint8Array(32)),
++            rp: { name: 'The DevTools Times', id: window.location.hostname },
++            user: { id: userId, name: 'reader', displayName: 'Reader' },
++            pubKeyCredParams: [
++              { type: 'public-key', alg: -7 },
++              { type: 'public-key', alg: -257 },
++            ],
++            authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
++          },
++        });
++      } catch {
++        throw new Error('Passkey creation was cancelled or failed.');
++      }
++      if (!credential) throw new Error('No passkey was created.');
++      return request('POST', {
++        id: toBase64Url((credential as PublicKeyCredential).rawId),
++        name: `Passkey ${(passkeys?.length ?? 0) + 1}`,
++      });
++    });
++
++  const saveName = (id: string) =>
++    run(async () => {
++      const result = await request('PATCH', { id, name: editName });
++      setEditingId(null);
++      return result;
++    });
++
++  const remove = (passkey: Passkey) => {
++    if (!window.confirm(`Remove "${passkey.name}"? You won't be able to sign in with it anymore.`)) return;
++    return run(() => request('DELETE', { id: passkey.id }));
++  };
++
++  return (
++    <div className="max-w-2xl mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <div className="flex items-center justify-between mb-2">
++        <h2 className="text-2xl font-bold text-gray-800">Passkeys</h2>
++        <button
++          type="button"
++          onClick={addPasskey}
++          disabled={busy}
++          className="py-2 px-4 rounded-md text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 disabled:opacity-75"
++        >
++          Add a passkey
++        </button>
++      </div>
++      <p className="text-sm text-gray-600 mb-6">
++        Passkeys let you sign in with your fingerprint, face, or screen lock instead of a password.
++      </p>
++
++      {error && (
++        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++          {error}
++        </div>
++      )}
++
++      {passkeys === null ? (
++        <p className="text-sm text-gray-500">Loading…</p>
++      ) : passkeys.length === 0 ? (
++        <p className="text-sm text-gray-500">You haven't registered any passkeys yet.</p>
++      ) : (
++        <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
++          {passkeys.map((passkey) => (
++            <li key={passkey.id} className="flex items-center justify-between gap-4 p-4">
++              {editingId === passkey.id ? (
++                <form
++                  className="flex flex-1 gap-2"
++                  onSubmit={(e) => {
++                    e.preventDefault();
++                    saveName(passkey.id);
++                  }}
++                >
++                  <input
++                    autoFocus
++                    aria-label="Passkey name"
++                    value={editName}
++                    maxLength={64}
++                    onChange={(e) => setEditName(e.target.value)}
++                    className="flex-1 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++                  />
++                  <button type="submit" disabled={busy || !editName.trim()} className="text-sm font-medium text-gray-900 hover:underline">
++                    Save
++                  </button>
++                  <button type="button" onClick={() => setEditingId(null)} className="text-sm text-gray-600 hover:underline">
++                    Cancel
++                  </button>
++                </form>
++              ) : (
++                <>
++                  <div>
++                    <p className="font-medium text-gray-800">{passkey.name}</p>
++                    <p className="text-xs text-gray-500">
++                      Added {new Date(passkey.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
++                    </p>
++                  </div>
++                  <div className="flex gap-4">
++                    <button
++                      type="button"
++                      onClick={() => {
++                        setEditingId(passkey.id);
++                        setEditName(passkey.name);
++                      }}
++                      className="text-sm text-gray-700 hover:underline"
++                    >
++                      Rename
++                    </button>
++                    <button type="button" disabled={busy} onClick={() => remove(passkey)} className="text-sm text-red-700 hover:underline">
++                      Remove
++                    </button>
++                  </div>
++                </>
++              )}
++            </li>
++          ))}
++        </ul>
++      )}
++    </div>
++  );
++}
+diff --git a/src/pages/account/passkeys.astro b/src/pages/account/passkeys.astro
+new file mode 100644
+index 0000000..f98a851
+--- /dev/null
++++ b/src/pages/account/passkeys.astro
+@@ -0,0 +1,10 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import PasskeyManager from '../../components/PasskeyManager';
++---
++
++<Layout title="Passkeys | The DevTools Times">
++  <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <PasskeyManager client:load />
++  </div>
++</Layout>
+diff --git a/src/pages/api/passkeys.json.ts b/src/pages/api/passkeys.json.ts
+new file mode 100644
+index 0000000..4170a09
+--- /dev/null
++++ b/src/pages/api/passkeys.json.ts
+@@ -0,0 +1,65 @@
++import type { APIRoute } from 'astro';
++
++export interface Passkey {
++  id: string;
++  name: string;
++  createdAt: string;
++}
++
++const json = (body: unknown, status = 200) =>
++  new Response(JSON.stringify(body), {
++    status,
++    headers: { 'Content-Type': 'application/json' },
++  });
++
++const load = async (session: App.Locals['session'] | undefined): Promise<Passkey[]> =>
++  (await session?.get('passkeys')) || [];
++
++export const GET: APIRoute = async ({ session }) => {
++  return json({ passkeys: await load(session) });
++};
++
++// Registers a new passkey. `id` is the WebAuthn credential id.
++export const POST: APIRoute = async ({ request, session }) => {
++  const { id, name } = await request.json();
++  if (!id || typeof id !== 'string') {
++    return json({ error: 'Credential id is required' }, 400);
++  }
++  const passkeys = await load(session);
++  if (passkeys.some((p) => p.id === id)) {
++    return json({ error: 'Passkey already registered' }, 409);
++  }
++  passkeys.push({
++    id,
++    name: (typeof name === 'string' && name.trim()) || 'Passkey',
++    createdAt: new Date().toISOString(),
++  });
++  await session?.set('passkeys', passkeys);
++  return json({ passkeys }, 201);
++};
++
++export const PATCH: APIRoute = async ({ request, session }) => {
++  const { id, name } = await request.json();
++  if (!id || typeof name !== 'string' || !name.trim()) {
++    return json({ error: 'Id and name are required' }, 400);
++  }
++  const passkeys = await load(session);
++  const passkey = passkeys.find((p) => p.id === id);
++  if (!passkey) {
++    return json({ error: 'Passkey not found' }, 404);
++  }
++  passkey.name = name.trim().slice(0, 64);
++  await session?.set('passkeys', passkeys);
++  return json({ passkeys });
++};
++
++export const DELETE: APIRoute = async ({ request, session }) => {
++  const { id } = await request.json();
++  const passkeys = await load(session);
++  if (!passkeys.some((p) => p.id === id)) {
++    return json({ error: 'Passkey not found' }, 404);
++  }
++  const remaining = passkeys.filter((p) => p.id !== id);
++  await session?.set('passkeys', remaining);
++  return json({ passkeys: remaining });
++};

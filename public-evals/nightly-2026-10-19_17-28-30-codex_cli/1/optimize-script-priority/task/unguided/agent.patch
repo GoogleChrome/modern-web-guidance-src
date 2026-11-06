@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,72 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Overview — Dashboard</title>
++    <script async src="/js/app.js"></script>
++    <style>
++      * { box-sizing: border-box; }
++      body { margin: 0; color: #232722; background: #f8f9f6; font: 15px/1.5 system-ui, sans-serif; }
++      header { background: #fff; border-bottom: 1px solid #e5e8e1; }
++      nav, main { max-width: 1040px; margin: auto; padding: 24px 32px; }
++      nav { display: flex; align-items: center; gap: 32px; }
++      .brand { font-weight: 750; letter-spacing: -.5px; margin-right: auto; }
++      a { color: inherit; text-decoration: none; }
++      nav a { font-size: 13px; color: #687064; }
++      nav a[aria-current] { color: #232722; }
++      main { padding-top: 56px; }
++      .eyebrow { color: #6b7564; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
++      h1 { margin: 8px 0; font-size: 32px; font-weight: 550; letter-spacing: -1.2px; }
++      .subtitle { margin: 0 0 32px; color: #777e73; }
++      .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
++      article, section { border: 1px solid #e3e7dd; border-radius: 10px; background: #fff; padding: 24px; }
++      h2 { margin: 0; font-size: 13px; font-weight: 500; color: #687064; }
++      .value { margin: 16px 0 8px; font-size: 32px; letter-spacing: -1px; }
++      .note { margin: 0; color: #7b8375; font-size: 12px; }
++      section { margin-top: 24px; }
++      section h2 { color: #232722; font-size: 15px; }
++      .empty { padding: 48px 0; text-align: center; color: #7b8375; font-size: 13px; }
++      footer { margin-top: 24px; color: #899080; font-size: 11px; }
++      @media (max-width: 600px) { nav, main { padding: 24px; } .metrics { grid-template-columns: 1fr; } nav { gap: 20px; } }
++    </style>
++  </head>
++  <body>
++    <header>
++      <nav aria-label="Main navigation">
++        <a class="brand" href="/">folio<span style="color: #7c965b">.</span></a>
++        <a href="#overview" aria-current="page">Overview</a>
++        <a href="#activity">Activity</a>
++      </nav>
++    </header>
++    <main id="overview">
++      <div class="eyebrow">Your workspace</div>
++      <h1>Overview</h1>
++      <p class="subtitle">A little clarity for your day.</p>
++      <div class="metrics" aria-label="Workspace metrics">
++        <article>
++          <h2>Total projects</h2>
++          <p class="value">0</p>
++          <p class="note">Across your workspace</p>
++        </article>
++        <article>
++          <h2>In progress</h2>
++          <p class="value">0</p>
++          <p class="note">Projects moving forward</p>
++        </article>
++        <article>
++          <h2>Completed</h2>
++          <p class="value">0</p>
++          <p class="note">Projects wrapped up</p>
++        </article>
++      </div>
++      <section id="activity" aria-labelledby="activity-title">
++        <h2 id="activity-title">Recent activity</h2>
++        <p class="empty">All quiet here. Your workspace activity will appear here.</p>
++      </section>
++      <footer>Less noise. More focus.</footer>
++    </main>
++    <script src="/js/legacy-widgets.js"></script>
++    <script async src="/js/tracker.js"></script>
++  </body>
++</html>

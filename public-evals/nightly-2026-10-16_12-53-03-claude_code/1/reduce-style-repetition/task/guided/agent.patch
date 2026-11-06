@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,21 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    /* Reusable gradient: diagonal blend between two colors */
++    @function --gradient(--from <color>, --to <color>, --angle: 135deg) returns <image> {
++      result: linear-gradient(var(--angle), var(--from), var(--to));
++    }
++
++    /* Reusable columns: 1 column by default, `--count` equal columns from 700px up */
++    @function --columns(--count <number>: 2) returns <track-list> {
++      result: 1fr;
++      @media (min-width: 700px) {
++        result: repeat(var(--count), minmax(0, 1fr));
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,11 +36,23 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      min-height: 100vh;
++      background: var(--secondary);
++      background: --gradient(#fff3e0, #d7ccc8);
+     }
+ 
++    h2 {
++      width: fit-content;
++      margin-inline: auto;
++      padding: 0.1em 0.6em;
++      border-radius: 6px;
++      color: white;
++      background: var(--primary);
++      background: --gradient(var(--primary), #bf6c2d);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -97,8 +122,12 @@
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
++      display: grid;
++      grid-template-columns: 1fr;
++      grid-template-columns: --columns(2);
++      gap: 20px;
+     }
+ 
+     .grid {
+       display: grid;

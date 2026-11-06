@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,13 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* Navbar shrinks from --nav-h-max to --nav-h-min over the first
++         (max - min) px of scrolling, so it stays glued to the content below */
++      --nav-h-max: 88px;
++      --nav-h-min: 56px;
++      --nav-shrink-distance: 32px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -24,29 +29,78 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      /* Reserve room for the fixed navbar at its full height */
++      padding-top: var(--nav-h-max);
+     }
+ 
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: var(--nav-h-max);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      /* Fixed (not sticky) so shrinking it doesn't change the scroll distance */
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      transform-origin: left center;
+     }
+ 
++    /* Scroll-linked shrink: native scroll-driven animations */
++    @keyframes nav-shrink {
++      to {
++        height: var(--nav-h-min);
++        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    @keyframes logo-shrink {
++      to {
++        transform: scale(0.8);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++        nav {
++          animation: nav-shrink auto linear both;
++          animation-timeline: scroll(block root);
++          animation-range: 0px var(--nav-shrink-distance);
++        }
++
++        .logo {
++          animation: logo-shrink auto linear both;
++          animation-timeline: scroll(block root);
++          animation-range: 0px var(--nav-shrink-distance);
++        }
++      }
++
++      /* Fallback for older browsers: JS sets --nav-progress (0 to 1) on scroll */
++      @supports not ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++        nav {
++          height: calc(var(--nav-h-max) - (var(--nav-h-max) - var(--nav-h-min)) * var(--nav-progress, 0));
++          box-shadow: 0 2px 10px rgba(0, 0, 0, calc(0.3 * var(--nav-progress, 0)));
++        }
++
++        .logo {
++          transform: scale(calc(1 - 0.2 * var(--nav-progress, 0)));
++        }
++      }
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+@@ -206,7 +260,37 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-driven animations: mirror the
++    // native effect by exposing scroll progress as a CSS custom property.
++    (function () {
++      var supportsScrollTimeline = window.CSS && CSS.supports &&
++        CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)');
++      if (supportsScrollTimeline) return;
++
++      var nav = document.querySelector('nav');
++      var root = document.documentElement;
++      var distance = parseFloat(getComputedStyle(root).getPropertyValue('--nav-shrink-distance')) || 32;
++      var ticking = false;
++
++      function update() {
++        ticking = false;
++        var progress = Math.min(1, Math.max(0, window.pageYOffset / distance));
++        nav.style.setProperty('--nav-progress', progress);
++      }
++
++      window.addEventListener('scroll', function () {
++        if (!ticking) {
++          ticking = true;
++          window.requestAnimationFrame(update);
++        }
++      }, { passive: true });
++
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

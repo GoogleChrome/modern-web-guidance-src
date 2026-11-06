@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,60 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .customer-feedback {
++      margin-top: 40px;
++    }
++
++    .customer-feedback h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-log {
++      max-height: 300px;
++      overflow-y: auto;
++      padding: 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--accent) var(--primary);
++    }
++
++    .feedback-log::-webkit-scrollbar {
++      width: 6px;
++    }
++
++    .feedback-log::-webkit-scrollbar-track {
++      background: var(--primary);
++      border-radius: 8px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb {
++      background: var(--accent);
++      border-radius: 8px;
++    }
++
++    .feedback-log:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .feedback-log blockquote + blockquote {
++      margin-top: 20px;
++      padding-top: 20px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .feedback-log cite {
++      display: block;
++      margin-top: 8px;
++      font-style: normal;
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +246,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="customer-feedback" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback</h2>
++      <div class="feedback-log" role="region" aria-labelledby="feedback-heading" tabindex="0">
++        <blockquote>
++          <p>“The maple oat latte is my new fall favorite. Warm, creamy, and just sweet enough.”</p>
++          <cite>— Jamie R.</cite>
++        </blockquote>
++        <blockquote>
++          <p>“A smooth cold brew and a friendly welcome make this my favorite morning stop.”</p>
++          <cite>— Alex M.</cite>
++        </blockquote>
++        <blockquote>
++          <p>“The dark roast espresso has the rich, bold flavor I was looking for.”</p>
++          <cite>— Taylor S.</cite>
++        </blockquote>
++        <blockquote>
++          <p>“Such a cozy place to take a break. The team always makes me feel at home.”</p>
++          <cite>— Morgan L.</cite>
++        </blockquote>
++        <blockquote>
++          <p>“I love trying the seasonal drinks. There is always something delicious to discover.”</p>
++          <cite>— Casey D.</cite>
++        </blockquote>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

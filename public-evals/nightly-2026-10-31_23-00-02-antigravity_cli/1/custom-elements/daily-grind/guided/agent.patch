@@ -1,0 +1,314 @@
+diff --git a/index.html b/index.html
+index 66c9173..3f23fe6 100644
+--- a/index.html
++++ b/index.html
+@@ -107,15 +107,60 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
++    .card,
++    coffee-card {
++      display: block;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
++      transition: transform 0.2s, opacity 0.2s;
+     }
+ 
+-    .card h3 {
++    coffee-card:not(:defined) {
++      opacity: 0;
++      /* Reveal anyway after 2s, so a failed or slow script never hides content for good. */
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
++    }
++
++    coffee-card[featured] {
++      border: 2px solid var(--accent);
++      box-shadow: 0 4px 12px rgba(255, 171, 64, 0.25);
++    }
++
++    coffee-card[sold-out] {
++      opacity: 0.7;
++    }
++
++    .card-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-bottom: 8px;
++    }
++
++    .card-price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++      font-size: 1.1rem;
++    }
++
++    .card h3,
++    coffee-card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -129,12 +174,24 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn[aria-disabled="true"],
++    .btn:disabled {
++      background: var(--secondary);
++      color: var(--text);
++      cursor: not-allowed;
++      pointer-events: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -178,21 +235,34 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <coffee-card
++          name="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal"
++          price="5.5"
++          featured>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </coffee-card>
++        <coffee-card
++          name="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso"
++          price="3.75">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </coffee-card>
++        <coffee-card
++          name="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew"
++          price="4.5">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +277,180 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    class CoffeeCard extends HTMLElement {
++      static observedAttributes = [
++        'name',
++        'description',
++        'href',
++        'price',
++        'featured',
++        'sold-out',
++        'disabled'
++      ];
++
++      #internals;
++      #clickHandler;
++
++      constructor() {
++        super();
++        if (typeof this.attachInternals === 'function') {
++          this.#internals = this.attachInternals();
++        }
++        this.#clickHandler = (event) => this.#onClick(event);
++      }
++
++      // String attributes reflected via getter/setter
++      get name() {
++        return this.getAttribute('name') ?? '';
++      }
++      set name(v) {
++        v ? this.setAttribute('name', String(v)) : this.removeAttribute('name');
++      }
++
++      get description() {
++        return this.getAttribute('description') ?? '';
++      }
++      set description(v) {
++        v ? this.setAttribute('description', String(v)) : this.removeAttribute('description');
++      }
++
++      get href() {
++        return this.getAttribute('href') ?? '';
++      }
++      set href(v) {
++        v ? this.setAttribute('href', String(v)) : this.removeAttribute('href');
++      }
++
++      // Numeric attribute: coerce from string on read, serialize on write
++      get price() {
++        return Number(this.getAttribute('price')) || 0;
++      }
++      set price(v) {
++        this.setAttribute('price', String(Number(v) || 0));
++      }
++
++      // Boolean attributes: present = true, absent = false. Never set to "false"
++      get featured() {
++        return this.hasAttribute('featured');
++      }
++      set featured(on) {
++        this.toggleAttribute('featured', !!on);
++      }
++
++      get soldOut() {
++        return this.hasAttribute('sold-out');
++      }
++      set soldOut(on) {
++        this.toggleAttribute('sold-out', !!on);
++      }
++
++      get disabled() {
++        return this.hasAttribute('disabled');
++      }
++      set disabled(on) {
++        this.toggleAttribute('disabled', !!on);
++      }
++
++      connectedCallback() {
++        // Make setup idempotent as connectedCallback can run more than once
++        this.classList.add('card');
++        this.removeEventListener('click', this.#clickHandler);
++        this.addEventListener('click', this.#clickHandler);
++        this.render();
++      }
++
++      connectedMoveCallback() {
++        // Skips disconnect/reconnect teardown and re-render when relocated via Node.moveBefore()
++      }
++
++      disconnectedCallback() {
++        // Clean up listeners without treating teardown as permanent
++        this.removeEventListener('click', this.#clickHandler);
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (oldVal !== newVal && this.isConnected) {
++          this.render();
++        }
++      }
++
++      #onClick(event) {
++        if (this.soldOut || this.disabled) {
++          event.preventDefault();
++          return;
++        }
++        const link = event.target.closest('a.btn');
++        if (link && this.#internals?.states) {
++          this.#internals.states.add('selected');
++        }
++      }
++
++      render() {
++        let badgeEl = this.querySelector('.card-badge');
++        if (this.featured) {
++          if (!badgeEl) {
++            badgeEl = document.createElement('span');
++            badgeEl.className = 'card-badge';
++            this.prepend(badgeEl);
++          }
++          badgeEl.textContent = 'Seasonal Pick';
++        } else if (badgeEl) {
++          badgeEl.remove();
++        }
++
++        let headingEl = this.querySelector('h3');
++        if (!headingEl) {
++          headingEl = document.createElement('h3');
++          this.append(headingEl);
++        }
++        if (this.name) {
++          headingEl.textContent = this.name;
++        }
++
++        let descEl = this.querySelector('p:not(.card-price)');
++        if (!descEl) {
++          descEl = document.createElement('p');
++          headingEl.after(descEl);
++        }
++        if (this.description) {
++          descEl.textContent = this.description;
++        }
++
++        let priceEl = this.querySelector('.card-price');
++        if (this.price > 0) {
++          if (!priceEl) {
++            priceEl = document.createElement('p');
++            priceEl.className = 'card-price';
++            descEl.after(priceEl);
++          }
++          priceEl.textContent = `$${this.price.toFixed(2)}`;
++        } else if (priceEl) {
++          priceEl.remove();
++        }
++
++        let linkEl = this.querySelector('a.btn');
++        if (!linkEl) {
++          linkEl = document.createElement('a');
++          linkEl.className = 'btn';
++          this.append(linkEl);
++        }
++        const isUnavailable = this.soldOut || this.disabled;
++        linkEl.setAttribute('href', this.href || '#');
++        if (isUnavailable) {
++          linkEl.setAttribute('aria-disabled', 'true');
++          linkEl.textContent = this.soldOut ? 'Sold Out' : 'Unavailable';
++        } else {
++          linkEl.removeAttribute('aria-disabled');
++          linkEl.textContent = 'View Details';
++        }
++      }
++    }
++
++    if (!customElements.get('coffee-card')) {
++      customElements.define('coffee-card', CoffeeCard);
++    }
++  </script>
+ </body>
+ 
+ </html>

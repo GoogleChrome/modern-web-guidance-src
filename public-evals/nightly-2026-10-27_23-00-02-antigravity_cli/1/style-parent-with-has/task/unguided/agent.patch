@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,70 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Section */
++    .contact-section {
++      max-width: 600px;
++      margin: 40px auto;
++      padding: 30px 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .contact-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    .form-group {
++      margin-bottom: 16px;
++      padding: 12px;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--light);
++      transition: border-color 0.2s;
++    }
++
++    .form-group:has(:invalid) {
++      border-color: red;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .form-group input,
++    .form-group textarea {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid #ccc;
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .form-group input:focus,
++    .form-group textarea:focus {
++      outline: none;
++      border-color: var(--primary);
++    }
++
++    .contact-section button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      width: 100%;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +258,27 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="contact-section">
++    <h2>Contact Us</h2>
++    <form class="contact-form">
++      <div class="form-group">
++        <label for="name">Name</label>
++        <input type="text" id="name" name="name" placeholder="Your name" required>
++      </div>
++      <div class="form-group">
++        <label for="email">Email</label>
++        <input type="email" id="email" name="email" placeholder="you@example.com" required>
++      </div>
++      <div class="form-group">
++        <label for="message">Message</label>
++        <textarea id="message" name="message" rows="4" placeholder="How can we help?" required></textarea>
++      </div>
++      <button type="submit" class="btn">Send Message</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,239 @@
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..646ae69 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+-<header class="font-inter group relative bg-white">
++<header id="site-header" class="font-inter group relative bg-white">
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..54f2ef1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,17 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  /**
++   * id of the element that marks the end of this page's above-the-fold
++   * content. Rendering (and therefore the incoming cross-document view
++   * transition) is blocked until that element has been fully parsed.
++   */
++  expect?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, expect } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -23,7 +27,6 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+@@ -34,7 +37,14 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    <!--
++      Hold the first render (and the incoming cross-document view transition)
++      until the above-the-fold HTML has been parsed. Critical CSS (global
++      stylesheet + font CSS above) is already render-blocking in <head>.
++      Third-party scripts such as analytics are intentionally NOT blocking.
++    -->
++    <link rel="expect" href="#site-header" blocking="render" />
++    {expect && <link rel="expect" href={`#${expect}`} blocking="render" />}
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..42a826c 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -7,9 +7,9 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ ---
+-<Layout title={title}>
++<Layout title={title} expect="page-title">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++        <h1 id="page-title" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+             <slot />
+         </div>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..fd204a3 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -3,8 +3,8 @@
+ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+-<Layout title="Page Not Found">
+-    <div class="flex flex-col items-center justify-center text-center py-20">
++<Layout title="Page Not Found" expect="not-found">
++    <div id="not-found" class="flex flex-col items-center justify-center text-center py-20">
+         <h1 class="text-6xl font-bold text-amber-400">404</h1>
+         <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+         <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..3fb0a7c 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -35,7 +35,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={article.data.title} expect="article-lead">
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+@@ -58,7 +58,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Main Article Image -->
+-        <figure class="mb-5">
++        <figure id="article-lead" class="mb-5">
+             {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+             {article.data.prompt_comment ? (
+                 <img 
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..4f76f22 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -37,10 +37,10 @@ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArt
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+ 
+-<Layout title={`Category: ${capitalizedCategory}`}>
++<Layout title={`Category: ${capitalizedCategory}`} expect="category-hero">
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header id="category-hero" class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..9507d51 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -37,7 +37,7 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times" expect="top-story">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main id="top-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..3b2c533 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -4,10 +4,10 @@ import { getCollection } from 'astro:content';
+ 
+ const multimedia = await getCollection('multimedia');
+ ---
+-<Layout title="Multimedia">
++<Layout title="Multimedia" expect="page-content">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+-        <div class="prose max-w-none">
++        <div id="page-content" class="prose max-w-none">
+             <p>Watch our latest multimedia content.</p>
+             <ul>
+                 {multimedia.map(item => (
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..e264bdc 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -4,10 +4,10 @@ import { getCollection } from 'astro:content';
+ 
+ const reports = await getCollection('reports');
+ ---
+-<Layout title="Reports">
++<Layout title="Reports" expect="page-content">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+-        <div class="prose max-w-none">
++        <div id="page-content" class="prose max-w-none">
+             <p>Read our latest reports.</p>
+             <ul>
+                 {reports.map(report => (
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..a9e67fe 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,8 +3,8 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++<Layout title="Sign In | The DevTools Times" expect="auth-form">
++  <div id="auth-form" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..9cdfd18 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,8 +3,8 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++<Layout title="Sign Up | The DevTools Times" expect="auth-form">
++  <div id="auth-form" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..5230a7a 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,5 +1,16 @@
+ @import "tailwindcss";
+ 
++/* Opt every page in to native cross-document view transitions. */
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;

@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,63 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Logout confirmation dialog */
++    .logout-dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 0;
++      max-width: 360px;
++      width: 90%;
++      margin: auto;
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++    }
++
++    .logout-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .logout-dialog-content {
++      padding: 1.5rem;
++      text-align: center;
++    }
++
++    .logout-dialog h2 {
++      font-size: 1.25rem;
++      margin-bottom: 0.5rem;
++      color: var(--primary);
++    }
++
++    .logout-dialog-actions {
++      display: flex;
++      justify-content: center;
++      gap: 0.75rem;
++      margin-top: 1.25rem;
++    }
++
++    .logout-dialog-actions button,
++    .logout-dialog-actions a {
++      font: inherit;
++      font-size: 0.9rem;
++      padding: 6px 16px;
++      border-radius: 4px;
++      cursor: pointer;
++      text-decoration: none;
++    }
++
++    .logout-dialog-actions button {
++      background: var(--secondary);
++      border: 1px solid var(--secondary);
++      color: var(--text);
++    }
++
++    .logout-dialog-actions a {
++      background: var(--primary);
++      border: 1px solid var(--primary);
++      color: white;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,12 +218,23 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger" aria-haspopup="dialog" aria-controls="logout-dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" class="logout-dialog" aria-labelledby="logout-dialog-title" closedby="any">
++    <div class="logout-dialog-content">
++      <h2 id="logout-dialog-title">Are you sure?</h2>
++      <p>Do you really want to log out?</p>
++      <form method="dialog" class="logout-dialog-actions">
++        <button type="submit" value="cancel" autofocus>Cancel</button>
++        <a href="/logout">Log out</a>
++      </form>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +272,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var trigger = document.querySelector('.test-dialog-trigger');
++      var dialog = document.getElementById('logout-dialog');
++      if (!trigger || !dialog || typeof dialog.showModal !== 'function') return;
++
++      trigger.addEventListener('click', function (event) {
++        event.preventDefault();
++        dialog.showModal();
++      });
++
++      // Close when clicking the backdrop (anywhere outside the dialog box).
++      dialog.addEventListener('click', function (event) {
++        if (event.target !== dialog) return;
++        var rect = dialog.getBoundingClientRect();
++        var inside = event.clientX >= rect.left && event.clientX <= rect.right &&
++          event.clientY >= rect.top && event.clientY <= rect.bottom;
++        if (!inside) dialog.close();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

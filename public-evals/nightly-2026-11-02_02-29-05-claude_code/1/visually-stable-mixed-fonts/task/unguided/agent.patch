@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,87 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Normalized Mixed Fonts</title>
++  <style>
++    :root {
++      color-scheme: light dark;
++    }
++
++    body {
++      margin: 0;
++      padding: 3rem 1.5rem;
++      font-family: Georgia, "Times New Roman", serif;
++      line-height: 1.6;
++      background: Canvas;
++      color: CanvasText;
++    }
++
++    main {
++      max-width: 42rem;
++      margin-inline: auto;
++      display: grid;
++      gap: 2rem;
++    }
++
++    code {
++      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
++      padding: 0.1em 0.35em;
++      border-radius: 0.3em;
++      background: color-mix(in srgb, CanvasText 10%, transparent);
++    }
++
++    /*
++     * Mixed fonts: every descendant scales its glyphs so its x-height
++     * matches the x-height of the paragraph's primary font. `from-font`
++     * reads the ratio from the primary font, so no magic number is needed.
++     */
++    #mixed-fonts-container,
++    #mixed-fonts-container * {
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container {
++      font-size: 1.25rem;
++    }
++
++    /*
++     * Independent theme: pins an explicit numeric aspect value
++     * (x-height ÷ font-size) so its text proportions stay locked
++     * regardless of which fallback font ends up rendering.
++     */
++    #independent-theme-container {
++      font-family: "Trebuchet MS", Verdana, sans-serif;
++      font-size-adjust: 0.5;
++      padding: 1.5rem;
++      border-radius: 0.75rem;
++      background: #1e293b;
++      color: #f1f5f9;
++    }
++
++    #independent-theme-container code {
++      background: #334155;
++      font-size-adjust: inherit;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <p id="mixed-fonts-container">
++      Serif body text sits next to inline code such as
++      <code>font-size-adjust: from-font</code> and
++      <code>const height = "even";</code>, and both share the same
++      visual x-height instead of the monospace font looking oversized.
++    </p>
++
++    <div id="independent-theme-container">
++      <p>
++        This independent theme locks its font proportions with
++        <code>font-size-adjust: 0.5</code>, so any font it falls back to
++        renders with the same x-height ratio.
++      </p>
++    </div>
++  </main>
++</body>
++</html>

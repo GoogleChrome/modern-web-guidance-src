@@ -1,0 +1,300 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,295 @@
++/**
++ * The Daily Grind — client-side analytics.
++ *
++ * Records page views and click interactions, then debounces and batches them
++ * into a single deferred background request so rapid interactions coalesce
++ * instead of producing one request per event.
++ *
++ * Delivery uses `fetchLater()` (Chrome/Edge 135+) with `activateAfter`, which
++ * sends the pending batch when the window expires OR when the user leaves the
++ * page, whichever comes first. A small polyfill covers other browsers using
++ * `fetch({ keepalive: true })` / `navigator.sendBeacon()` on `visibilitychange`.
++ */
++(() => {
++  'use strict';
++
++  // ---------------------------------------------------------------------------
++  // Configuration
++  // ---------------------------------------------------------------------------
++
++  const script = document.currentScript;
++
++  /** Where batches are POSTed. Override with <script data-endpoint="..."> */
++  const ANALYTICS_ENDPOINT = script?.dataset.endpoint || '/api/analytics';
++
++  /** Events occurring within this window are coalesced into one request. */
++  const BATCH_WINDOW_MS = Number(script?.dataset.batchWindow) || 5000;
++
++  /**
++   * Caps that keep a single batch well under the fetchLater() quota
++   * (~64KB per origin). When exceeded, the pending batch is left to send
++   * on its own and a fresh one is started.
++   */
++  const MAX_QUEUE_SIZE = 50;
++  const MAX_BATCH_BYTES = 16 * 1024;
++
++  /** Max characters of element text recorded for a click. */
++  const MAX_TEXT_LENGTH = 60;
++
++  const DEBUG =
++    /[?&]analytics_debug\b/.test(location.search) ||
++    safeStorage('localStorage')?.getItem('analytics_debug') === '1';
++
++  // Honor browser-level opt-out signals; record nothing at all.
++  if (navigator.globalPrivacyControl === true || navigator.doNotTrack === '1') {
++    log('opt-out signal detected; analytics disabled');
++    return;
++  }
++
++  // ---------------------------------------------------------------------------
++  // fetchLater() polyfill (no-op where the native API exists)
++  // ---------------------------------------------------------------------------
++
++  globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++    let timeoutHandle;
++    let activated = false;
++
++    function sendNow() {
++      if (!(init.signal && init.signal.aborted)) {
++        // Use fetch keepalive if the browser supports it or if custom fetch
++        // parameters are specified (e.g. custom headers or methods).
++        // Otherwise fall back to `navigator.sendBeacon()`.
++        if (
++          'keepalive' in Request.prototype ||
++          init.method !== 'POST' ||
++          init.headers
++        ) {
++          fetch(url, Object.assign({}, init, { keepalive: true })).catch(() => {});
++          activated = true;
++        } else {
++          activated = navigator.sendBeacon(url, init.body);
++        }
++      }
++      destroy();
++    }
++
++    function destroy() {
++      document.removeEventListener('visibilitychange', sendNow);
++      clearTimeout(timeoutHandle);
++    }
++
++    if (document.visibilityState === 'hidden') {
++      // If the beacon was created while the page is already hidden, send data
++      // ASAP but wait until the next microtask to allow all sync code to run.
++      queueMicrotask(sendNow);
++    } else {
++      document.addEventListener('visibilitychange', sendNow);
++
++      if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++        timeoutHandle = setTimeout(sendNow, init.activateAfter);
++      }
++    }
++
++    if (init.signal) {
++      init.signal.addEventListener('abort', destroy);
++    }
++
++    return {
++      get activated() {
++        return activated;
++      },
++    };
++  };
++
++  // ---------------------------------------------------------------------------
++  // Session / page identity
++  // ---------------------------------------------------------------------------
++
++  const sessionId = getSessionId();
++  const pageLoadId = uuid();
++  let sequence = 0;
++
++  // ---------------------------------------------------------------------------
++  // Debounced batch queue
++  // ---------------------------------------------------------------------------
++
++  const eventQueue = [];
++  let pendingResult = null;
++  let pendingController = null;
++
++  /**
++   * Record an analytics event. Events are appended to the current batch and
++   * the deferred request is rescheduled, so a burst of events within
++   * BATCH_WINDOW_MS results in exactly one request.
++   */
++  function track(type, data = {}) {
++    const event = {
++      type,
++      ts: Date.now(),
++      t: Math.round(performance.now()),
++      seq: ++sequence,
++      ...data,
++    };
++
++    // If the previously queued batch has already been sent, or the batch
++    // has hit its size cap, start a new batch. (A capped-but-unsent batch is
++    // intentionally NOT aborted: it will still be sent on its own schedule.)
++    if (
++      pendingResult?.activated ||
++      eventQueue.length >= MAX_QUEUE_SIZE ||
++      batchBytes(eventQueue, event) > MAX_BATCH_BYTES
++    ) {
++      pendingResult = null;
++      pendingController = null;
++      eventQueue.length = 0;
++    }
++
++    eventQueue.push(event);
++    scheduleBatch();
++    log('queued', event, `(${eventQueue.length} in batch)`);
++  }
++
++  function scheduleBatch() {
++    // Cancel the pending deferred request and replace it with one carrying
++    // the full queue. This is what debounces rapid interactions.
++    pendingController?.abort();
++    pendingController = new AbortController();
++
++    const payload = {
++      session: sessionId,
++      page: pageLoadId,
++      url: location.pathname + location.search,
++      events: eventQueue,
++    };
++
++    try {
++      pendingResult = fetchLater(ANALYTICS_ENDPOINT, {
++        method: 'POST',
++        headers: { 'content-type': 'application/json' },
++        body: JSON.stringify(payload),
++        signal: pendingController.signal,
++        activateAfter: BATCH_WINDOW_MS,
++        // Analytics should never compete with user-initiated requests.
++        priority: 'low',
++      });
++    } catch (error) {
++      // Most likely a QuotaExceededError. Drop this batch rather than
++      // retrying in a loop; the next event will start a fresh one.
++      log('fetchLater failed; dropping batch', error);
++      pendingResult = null;
++      pendingController = null;
++      eventQueue.length = 0;
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // Page views
++  // ---------------------------------------------------------------------------
++
++  function trackPageView(extra = {}) {
++    track('page_view', {
++      title: document.title,
++      referrer: document.referrer || undefined,
++      viewport: `${window.innerWidth}x${window.innerHeight}`,
++      lang: navigator.language,
++      ...extra,
++    });
++  }
++
++  trackPageView();
++
++  // Pages restored from the back/forward cache do not re-run scripts, so
++  // treat a restore as a fresh view.
++  window.addEventListener('pageshow', (e) => {
++    if (e.persisted) trackPageView({ restored: true });
++  });
++
++  // ---------------------------------------------------------------------------
++  // Click interactions
++  // ---------------------------------------------------------------------------
++
++  // Capture phase so navigation clicks are recorded before the page unloads.
++  document.addEventListener(
++    'click',
++    (e) => {
++      const target = e.target instanceof Element ? e.target : null;
++      if (!target) return;
++      track('click', serializeElement(target));
++    },
++    { capture: true, passive: true },
++  );
++
++  /**
++   * Describe the clicked element compactly. Prefers the nearest interactive
++   * ancestor (link/button) so clicks on nested text still attribute cleanly.
++   */
++  function serializeElement(el) {
++    const interactive =
++      el.closest('a[href], button, [role="button"], [data-analytics]') || el;
++
++    const out = { tag: interactive.tagName.toLowerCase() };
++
++    if (interactive.id) out.id = interactive.id;
++    if (interactive.classList.length) out.classes = [...interactive.classList].join(' ');
++    if (interactive.dataset.analytics) out.label = interactive.dataset.analytics;
++
++    const href = interactive.getAttribute('href');
++    if (href) out.href = href;
++
++    const text = (interactive.textContent || '').trim().replace(/\s+/g, ' ');
++    if (text) out.text = text.slice(0, MAX_TEXT_LENGTH);
++
++    // Coarse location for heatmap-style grouping (nav, header, main, footer).
++    const region = interactive.closest('nav, header, main, footer, section');
++    if (region) out.region = region.tagName.toLowerCase();
++
++    return out;
++  }
++
++  // ---------------------------------------------------------------------------
++  // Public hook for custom events: dailyGrindAnalytics.track('add_to_cart', {...})
++  // ---------------------------------------------------------------------------
++
++  globalThis.dailyGrindAnalytics = Object.freeze({ track });
++
++  // ---------------------------------------------------------------------------
++  // Helpers
++  // ---------------------------------------------------------------------------
++
++  function batchBytes(queue, nextEvent) {
++    // Rough UTF-16 length is a good enough proxy for payload size.
++    return JSON.stringify(queue).length + JSON.stringify(nextEvent).length;
++  }
++
++  function getSessionId() {
++    const store = safeStorage('sessionStorage');
++    const key = 'dg_sid';
++    let id = store?.getItem(key);
++    if (!id) {
++      id = uuid();
++      try {
++        store?.setItem(key, id);
++      } catch {
++        /* storage full or disabled; fall back to in-memory id */
++      }
++    }
++    return id;
++  }
++
++  function uuid() {
++    if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID();
++    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
++  }
++
++  function safeStorage(name) {
++    try {
++      return globalThis[name] ?? null;
++    } catch {
++      return null; // Access can throw under strict privacy settings.
++    }
++  }
++
++  function log(...args) {
++    if (DEBUG) console.debug('[analytics]', ...args);
++  }
++})();

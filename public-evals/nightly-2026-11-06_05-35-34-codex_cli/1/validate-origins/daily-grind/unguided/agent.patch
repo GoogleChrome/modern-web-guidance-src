@@ -1,0 +1,293 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..a97246c
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,21 @@
++# The Daily Grind
++
++Run the security checks with `npm test` (no server required).
++
++`message-security.mjs` configures the trusted ordering origin as
++`https://orders.thedailygrind.com`. Set `ORDERING_ORIGIN` to the real service's
++exact origin when deploying. Ordering messages use these payloads:
++
++- `{ type: 'order:redirect', url: '/thanks' }`: navigation within the page's
++  exact origin (including scheme and port).
++- `{ type: 'order:external-link', url: 'https://example.com/' }`: HTTPS links
++  without embedded credentials, opened with `noopener,noreferrer`.
++
++URLs are parsed with `URL`, rather than splitting strings or matching domain
++substrings. Outbound page anchors receive the same external-link checks.
++
++The sandboxed ordering widget sends `widget:init` before `widget:status`
++(`text`) or `widget:resize` (`height`, an integer from 40 to 600). The parent
++requires both the opaque `null` origin and the known iframe's `contentWindow`,
++then pins that sender for subsequent messages. A different sandboxed iframe
++cannot initialize or replace that identity. Widget status uses `textContent`.
+diff --git a/index.html b/index.html
+index 66c9173..7e44a30 100644
+--- a/index.html
++++ b/index.html
+@@ -195,6 +195,10 @@
+         </div>
+       </div>
+     </section>
++    <section aria-label="Online ordering" style="text-align: center; margin-top: 32px;">
++      <p id="ordering-status" role="status">Order your next cup online.</p>
++      <iframe id="ordering-widget" title="Coffee ordering widget" sandbox="allow-scripts" style="border: 0; width: 100%; height: 48px;"></iframe>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +211,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./page.mjs"></script>
+ </body>
+ 
+ </html>
+diff --git a/message-security.mjs b/message-security.mjs
+new file mode 100644
+index 0000000..c824fe7
+--- /dev/null
++++ b/message-security.mjs
+@@ -0,0 +1,60 @@
++// Deployment configuration: this must be the ordering service's exact origin.
++export const ORDERING_ORIGIN = 'https://orders.thedailygrind.com';
++
++export function parseWebURL(value, base) {
++  if (typeof value !== 'string' || !value.trim()) return null;
++  try {
++    const url = new URL(value, base);
++    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return null;
++    return url;
++  } catch {
++    return null;
++  }
++}
++
++export function sameSiteRedirect(value, pageURL) {
++  const page = new URL(pageURL);
++  const url = parseWebURL(value, page);
++  // Keep redirects within the exact origin, including scheme and port.
++  return url && url.origin === page.origin ? url.href : null;
++}
++
++export function externalLink(value, pageURL) {
++  const url = parseWebURL(value, pageURL);
++  return url && url.protocol === 'https:' ? url.href : null;
++}
++
++export function createMessageHandler({ pageURL, widgetWindow, redirect, openExternal, setStatus, resizeWidget }) {
++  let pinnedWidget = null;
++
++  return function handleMessage(event) {
++    const data = event.data;
++    if (!data || typeof data !== 'object' || Array.isArray(data) || !event.source) return;
++
++    if (event.origin === ORDERING_ORIGIN) {
++      if (data.type === 'order:redirect') {
++        const url = sameSiteRedirect(data.url, pageURL);
++        if (url) redirect(url);
++      } else if (data.type === 'order:external-link') {
++        const url = externalLink(data.url, pageURL);
++        if (url) openExternal(url);
++      }
++      return;
++    }
++
++    // Sandboxed frames share the opaque origin "null". Authenticate the
++    // expected iframe's WindowProxy as well; never trust the first null sender.
++    if (event.origin !== 'null' || event.source !== widgetWindow) return;
++    if (data.type === 'widget:init') {
++      if (!pinnedWidget) pinnedWidget = event.source;
++      return;
++    }
++    if (!pinnedWidget || event.source !== pinnedWidget) return;
++
++    if (data.type === 'widget:status' && typeof data.text === 'string' && data.text.length <= 500) {
++      setStatus(data.text);
++    } else if (data.type === 'widget:resize' && Number.isInteger(data.height) && data.height >= 40 && data.height <= 600) {
++      resizeWidget(data.height);
++    }
++  };
++}
+diff --git a/message-security.test.mjs b/message-security.test.mjs
+new file mode 100644
+index 0000000..6858baa
+--- /dev/null
++++ b/message-security.test.mjs
+@@ -0,0 +1,88 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { ORDERING_ORIGIN, sameSiteRedirect, externalLink, createMessageHandler } from './message-security.mjs';
++
++const pageURL = 'https://www.thedailygrind.com/menu';
++
++test('redirects compare parsed origins, including scheme and port', () => {
++  assert.equal(sameSiteRedirect('/order?next=%2Faccount', pageURL), 'https://www.thedailygrind.com/order?next=%2Faccount');
++  assert.equal(sameSiteRedirect('https://WWW.THEDAILYGRIND.COM:443/thanks', pageURL), 'https://www.thedailygrind.com/thanks');
++  for (const url of [
++    '//evil.example/order', 'https://www.thedailygrind.com.evil.example/',
++    'https://www.thedailygrind.com@evil.example/', 'https://evil.example/www.thedailygrind.com',
++    'https://www.thedailygrind.com:444/', 'http://www.thedailygrind.com/',
++    'https://orders.thedailygrind.com/',
++    'javascript:alert(1)', 'data:text/html,hello', 'https://[invalid', '', null, {},
++    'https://user:password@www.thedailygrind.com/',
++  ]) {
++    assert.equal(sameSiteRedirect(url, pageURL), null);
++  }
++  // Backslashes are path separators under the browser's URL parsing rules.
++  assert.equal(sameSiteRedirect(String.raw`https://www.thedailygrind.com\@evil.example/`, pageURL),
++    'https://www.thedailygrind.com/@evil.example/');
++  assert.equal(sameSiteRedirect(String.raw`/\evil.example/order`, pageURL), null);
++});
++
++test('external links require parsed HTTPS URLs without credentials', () => {
++  assert.equal(externalLink('https://coffee.example:443/beans', pageURL), 'https://coffee.example/beans');
++  for (const url of ['javascript:alert(1)', 'data:text/html,hello', 'http://coffee.example', 'https://user@coffee.example', 'https://[', null]) {
++    assert.equal(externalLink(url, pageURL), null);
++  }
++});
++
++function harness() {
++  const widgetWindow = {};
++  const calls = [];
++  const handle = createMessageHandler({
++    pageURL, widgetWindow,
++    redirect: value => calls.push(['redirect', value]),
++    openExternal: value => calls.push(['external', value]),
++    setStatus: value => calls.push(['status', value]),
++    resizeWidget: value => calls.push(['resize', value]),
++  });
++  const send = (data, origin = 'null', source = widgetWindow) => handle({ data, origin, source });
++  return { calls, send, widgetWindow };
++}
++
++test('ordering messages require exact trusted origin and validated destinations', () => {
++  const { send, calls } = harness();
++  for (const origin of ['null', 'https://orders.thedailygrind.com.evil.example', 'http://orders.thedailygrind.com', `${ORDERING_ORIGIN}:444`]) {
++    send({ type: 'order:redirect', url: '/thanks' }, origin, {});
++  }
++  send({ type: 'order:redirect', url: '//evil.example' }, ORDERING_ORIGIN, {});
++  send({ type: 'order:external-link', url: 'javascript:alert(1)' }, ORDERING_ORIGIN, {});
++  send({ type: 'order:redirect', url: '/thanks' }, ORDERING_ORIGIN, null);
++  assert.deepEqual(calls, []);
++  send({ type: 'order:redirect', url: '/thanks' }, ORDERING_ORIGIN, {});
++  send({ type: 'order:external-link', url: 'https://coffee.example/' }, ORDERING_ORIGIN, {});
++  assert.deepEqual(calls, [['redirect', 'https://www.thedailygrind.com/thanks'], ['external', 'https://coffee.example/']]);
++});
++
++test('only the expected sandboxed widget can initialize and send subsequent messages', () => {
++  const { send, calls } = harness();
++  const stranger = {};
++  send({ type: 'widget:status', text: 'before initialization' });
++  send({ type: 'widget:init' }, 'null', stranger);
++  send({ type: 'widget:status', text: 'stranger' }, 'null', stranger);
++  send({ type: 'widget:init' }, 'https://untrusted.example');
++  send({ type: 'widget:status', text: 'still uninitialized' });
++  assert.deepEqual(calls, []);
++  send({ type: 'widget:init' });
++  send({ type: 'widget:status', text: 'Ready' });
++  send({ type: 'widget:init' }, 'null', stranger);
++  send({ type: 'widget:status', text: 'spoofed' }, 'null', stranger);
++  send({ type: 'widget:status', text: 'Still ready' });
++  send({ type: 'widget:resize', height: 120 });
++  send({ type: 'order:redirect', url: '/stolen' });
++  assert.deepEqual(calls, [['status', 'Ready'], ['status', 'Still ready'], ['resize', 120]]);
++});
++
++test('malformed payloads and invalid widget values have no effects', () => {
++  const { send, calls } = harness();
++  send({ type: 'widget:init' });
++  for (const data of [null, 'hello', [], {}, { type: 'widget:status', text: {} },
++    { type: 'widget:status', text: 'x'.repeat(501) }, { type: 'widget:resize', height: '100' },
++    { type: 'widget:resize', height: 1 }, { type: 'widget:resize', height: 601 },
++    { type: 'widget:resize', height: NaN }]) send(data);
++  assert.deepEqual(calls, []);
++});
+diff --git a/ordering-widget.html b/ordering-widget.html
+new file mode 100644
+index 0000000..118c67d
+--- /dev/null
++++ b/ordering-widget.html
+@@ -0,0 +1,21 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Ordering widget</title>
++  <style>
++    body { margin: 0; padding: 12px; font: 16px 'Segoe UI', sans-serif; color: #3e2723; text-align: center; }
++  </style>
++</head>
++<body>
++  <p style="margin: 0;">Fresh coffee is a click away.</p>
++  <script>
++    // The sandbox gives this document an opaque origin. The parent verifies
++    // our WindowProxy; '*' is necessary because the host origin varies.
++    parent.postMessage({ type: 'widget:init' }, '*');
++    parent.postMessage({ type: 'widget:status', text: 'Online ordering is ready.' }, '*');
++    parent.postMessage({ type: 'widget:resize', height: 48 }, '*');
++  </script>
++</body>
++</html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/page.mjs b/page.mjs
+new file mode 100644
+index 0000000..74d4860
+--- /dev/null
++++ b/page.mjs
+@@ -0,0 +1,38 @@
++import { createMessageHandler, externalLink } from './message-security.mjs';
++
++const widget = document.getElementById('ordering-widget');
++const status = document.getElementById('ordering-status');
++
++window.addEventListener('message', createMessageHandler({
++  pageURL: window.location.href,
++  widgetWindow: widget.contentWindow,
++  redirect: url => window.location.assign(url),
++  openExternal: url => window.open(url, '_blank', 'noopener,noreferrer'),
++  setStatus: text => { status.textContent = text; },
++  resizeWidget: height => { widget.style.height = `${height}px`; },
++}));
++
++// Validate outbound anchors too, including links inserted after page load.
++document.addEventListener('click', event => {
++  const anchor = event.target.closest?.('a[href]');
++  if (!anchor) return;
++  let url;
++  try {
++    url = new URL(anchor.getAttribute('href'), window.location.href);
++  } catch {
++    event.preventDefault();
++    return;
++  }
++  if (url.origin !== window.location.origin || !['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
++    const safeURL = externalLink(anchor.getAttribute('href'), window.location.href);
++    if (!safeURL) {
++      event.preventDefault();
++      return;
++    }
++    anchor.href = safeURL;
++    anchor.rel = 'noopener noreferrer';
++  }
++});
++
++// Attach the listener before loading the widget so its initialization is seen.
++widget.src = './ordering-widget.html';

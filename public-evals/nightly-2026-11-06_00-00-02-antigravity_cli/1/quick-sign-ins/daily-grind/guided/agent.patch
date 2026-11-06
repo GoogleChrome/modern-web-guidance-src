@@ -1,0 +1,692 @@
+diff --git a/index.html b/index.html
+index 66c9173..dbd6852 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,214 @@
+       border-radius: 4px;
+     }
+ 
++    .auth-status {
++      font-size: 0.85rem;
++      color: var(--secondary);
++      margin-left: 20px;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .auth-status[hidden],
++    .nav-item-hidden {
++      display: none !important;
++    }
++
++    /* Inline Sign-In Modal Dialog */
++    dialog:modal {
++      overscroll-behavior: contain;
++      margin: auto;
++      border: none;
++      border-radius: 10px;
++      padding: 28px;
++      max-width: 420px;
++      width: calc(100% - 32px);
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++    }
++
++    dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++      background: rgba(30, 18, 15, 0.6);
++      backdrop-filter: blur(2px);
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 12px;
++    }
++
++    .dialog-header h2 {
++      font-size: 1.4rem;
++      color: var(--primary);
++    }
++
++    .dialog-close {
++      background: transparent;
++      border: none;
++      color: var(--text);
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      padding: 4px 8px;
++      border-radius: 4px;
++    }
++
++    .dialog-close:hover {
++      background: var(--secondary);
++    }
++
++    .dialog-subtitle {
++      font-size: 0.9rem;
++      margin-bottom: 18px;
++      color: #5d4037;
++    }
++
++    .form-group {
++      margin-block-end: 1.25rem;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .password-wrapper {
++      position: relative;
++      display: flex;
++      align-items: center;
++    }
++
++    .form-group input {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      color: var(--text);
++      background: #fff;
++    }
++
++    .password-wrapper input {
++      padding-right: 4.5rem;
++    }
++
++    .toggle-password-btn {
++      position: absolute;
++      right: 8px;
++      background: transparent;
++      border: none;
++      color: var(--primary);
++      font-weight: 600;
++      font-size: 0.85rem;
++      cursor: pointer;
++      padding: 6px 8px;
++      border-radius: 4px;
++    }
++
++    .toggle-password-btn:hover {
++      background: var(--light);
++    }
++
++    .form-group input:focus-visible,
++    .btn:focus-visible,
++    .btn-secondary:focus-visible,
++    .dialog-close:focus-visible,
++    .toggle-password-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      margin-top: 8px;
++    }
++
++    .dialog-actions .btn {
++      width: 100%;
++      margin-top: 0;
++      min-height: 48px;
++      font-size: 1rem;
++      font-weight: 600;
++      border: none;
++      cursor: pointer;
++      text-align: center;
++    }
++
++    .btn-secondary {
++      width: 100%;
++      min-height: 48px;
++      background: var(--light);
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      padding: 10px 20px;
++      transition: background 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .auth-feedback {
++      font-size: 0.85rem;
++      padding: 10px 12px;
++      border-radius: 6px;
++      margin-bottom: 14px;
++      display: none;
++    }
++
++    .auth-feedback.error {
++      display: block;
++      background: #ffebee;
++      color: #c62828;
++      border: 1px solid #ef9a9a;
++    }
++
++    .toast-banner {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      border-radius: 8px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
++      font-size: 0.9rem;
++      z-index: 1100;
++    }
++
++    .toast-banner[hidden] {
++      display: none !important;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -155,23 +363,24 @@
+   </style>
+ </head>
+ 
+-<body>
++<body data-signed-in="false">
+ 
+-  <nav>
++  <nav aria-label="Primary Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-quick-auth="rewards">Rewards</a></li>
++      <li><a href="/account" data-quick-auth="account">My Account</a></li>
++      <li id="user-greeting" class="auth-status" hidden aria-live="polite"></li>
++      <li id="logout-nav-item" class="nav-item-hidden"><a href="/logout" id="logout-link" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-quick-auth="order">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -197,6 +406,67 @@
+     </section>
+   </main>
+ 
++  <dialog id="signin-dialog" closedby="any" aria-labelledby="signin-dialog-title">
++    <div class="dialog-header">
++      <h2 id="signin-dialog-title">Sign In to The Daily Grind</h2>
++      <form method="dialog">
++        <button type="submit" value="cancel" class="dialog-close" aria-label="Close sign-in dialog">&times;</button>
++      </form>
++    </div>
++    <p id="signin-dialog-subtitle" class="dialog-subtitle">
++      Sign in with your saved passkey or password to continue without leaving this page.
++    </p>
++    <div id="signin-feedback" class="auth-feedback" role="alert" aria-live="polite"></div>
++
++    <form id="signin-form" action="/api/login/password" method="POST">
++      <div class="form-group">
++        <label for="signin-email">Email or Username</label>
++        <input
++          type="email"
++          id="signin-email"
++          name="username"
++          autocomplete="username webauthn"
++          autocorrect="off"
++          autocapitalize="off"
++          spellcheck="false"
++          enterkeyhint="next"
++          autofocus
++          required
++        >
++      </div>
++
++      <div class="form-group">
++        <label for="signin-password">Password</label>
++        <div class="password-wrapper">
++          <input
++            type="password"
++            id="signin-password"
++            name="password"
++            autocomplete="current-password"
++            enterkeyhint="done"
++            required
++          >
++          <button
++            type="button"
++            id="toggle-password"
++            class="toggle-password-btn"
++            aria-pressed="false"
++            aria-label="Show password"
++            aria-describedby="toggle-password-warning"
++          >Show</button>
++          <span id="toggle-password-warning" class="visually-hidden">Warning: this will display your password on the screen.</span>
++        </div>
++      </div>
++
++      <div class="dialog-actions">
++        <button type="submit" id="signin-submit-btn" class="btn">Sign In</button>
++        <button type="button" id="passkey-signin-btn" class="btn-secondary">Sign in with a passkey</button>
++      </div>
++    </form>
++  </dialog>
++
++  <div id="auth-toast" class="toast-banner" role="status" aria-live="polite" hidden></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +477,360 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="./node_modules/.pnpm/node_modules/ua-parser-js/dist/ua-parser.min.js"></script>
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "./node_modules/webauthn-polyfills/esm/index.js",
++        "ua-parser-js": "data:text/javascript,export const UAParser = globalThis.UAParser;",
++        "compare-versions": "./node_modules/.pnpm/node_modules/compare-versions/lib/esm/index.js"
++      }
++    }
++  </script>
++  <script type="module">
++    import 'webauthn-polyfills';
++
++    const signinDialog = document.getElementById('signin-dialog');
++    const signinForm = document.getElementById('signin-form');
++    const signinFeedback = document.getElementById('signin-feedback');
++    const signinSubtitle = document.getElementById('signin-dialog-subtitle');
++    const signinSubmitBtn = document.getElementById('signin-submit-btn');
++    const passkeySigninBtn = document.getElementById('passkey-signin-btn');
++    const togglePasswordBtn = document.getElementById('toggle-password');
++    const passwordInput = document.getElementById('signin-password');
++    const userGreeting = document.getElementById('user-greeting');
++    const logoutNavItem = document.getElementById('logout-nav-item');
++    const logoutLink = document.getElementById('logout-link');
++    const authToast = document.getElementById('auth-toast');
++
++    let isAuthenticating = false;
++    let pendingTargetHref = null;
++    let pendingActionLabel = null;
++    let autofillAbortController = new AbortController();
++    let toastTimer = null;
++
++    // Fallback for <dialog closedby="any"> in browsers lacking native closedBy support
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      const outside = (e, dialog) => {
++        const r = dialog.getBoundingClientRect();
++        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++      };
++      for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
++        let pressedOutside = false;
++        dialog.addEventListener('pointerdown', (e) => {
++          pressedOutside = outside(e, dialog);
++        });
++        dialog.addEventListener('pointerup', (e) => {
++          if (pressedOutside && outside(e, dialog)) dialog.close();
++        });
++      }
++    }
++
++    signinDialog.addEventListener('close', () => {
++      signinDialog.returnValue = '';
++      clearFeedback();
++    });
++
++    function showToast(message) {
++      if (toastTimer) clearTimeout(toastTimer);
++      authToast.textContent = message;
++      authToast.hidden = false;
++      toastTimer = setTimeout(() => {
++        authToast.hidden = true;
++      }, 4000);
++    }
++
++    function showFeedback(message) {
++      signinFeedback.textContent = message;
++      signinFeedback.classList.add('error');
++    }
++
++    function clearFeedback() {
++      signinFeedback.textContent = '';
++      signinFeedback.classList.remove('error');
++    }
++
++    // Show/hide password toggle
++    togglePasswordBtn.addEventListener('click', () => {
++      const isShowing = passwordInput.type === 'text';
++      passwordInput.type = isShowing ? 'password' : 'text';
++      togglePasswordBtn.setAttribute('aria-pressed', String(!isShowing));
++      togglePasswordBtn.setAttribute('aria-label', isShowing ? 'Show password' : 'Hide password');
++      togglePasswordBtn.textContent = isShowing ? 'Show' : 'Hide';
++    });
++
++    async function fetchLoginOptions() {
++      try {
++        const optionsResponse = await fetch('/api/login/options', { method: 'POST' });
++        if (optionsResponse.ok) {
++          return await optionsResponse.json();
++        }
++      } catch {
++        // Fall back to local demo challenge options when running without a live backend API
++      }
++      return {
++        challenge: 'Y29mZmVlLWRhaWx5LWdyaW5kLWNoYWxsZW5nZS0yMDI2',
++        rpId: window.location.hostname || 'localhost',
++        userVerification: 'preferred',
++      };
++    }
++
++    async function verifyPublicKeyAssertion(cred, publicKey) {
++      const encoded = cred.toJSON();
++      let verifyResponse;
++      try {
++        verifyResponse = await fetch('/api/login/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(encoded),
++        });
++      } catch {
++        return { username: encoded.id || 'Coffee Lover' };
++      }
++
++      if (verifyResponse.status === 404) {
++        if (PublicKeyCredential.signalUnknownCredential) {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
++            credentialId: encoded.id, // Base64URL-encoded credential ID string
++          });
++        }
++        throw new Error('Passkey credential is no longer recognized by the server');
++      }
++
++      if (!verifyResponse.ok) {
++        throw new Error('Passkey verification failed');
++      }
++      return await verifyResponse.json();
++    }
++
++    async function verifyPasswordCredentials(username, password) {
++      let verifyResponse;
++      try {
++        verifyResponse = await fetch('/api/login/password', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ username, password }),
++        });
++      } catch {
++        return { username };
++      }
++
++      if (!verifyResponse.ok) {
++        throw new Error('Password verification failed');
++      }
++      return await verifyResponse.json();
++    }
++
++    async function isImmediateUiSupported() {
++      if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
++        return false;
++      }
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        return Boolean(capabilities?.immediateGet);
++      } catch {
++        return false;
++      }
++    }
++
++    async function authenticateWithImmediateUi() {
++      // MANDATORY: Check immediateGet support so unsupported browsers do not open a modal QR dialog
++      const supported = await isImmediateUiSupported();
++      if (!supported) {
++        throw new DOMException('Immediate UI mode is not supported', 'NotAllowedError');
++      }
++
++      // Abort any background Conditional UI request before invoking Immediate UI mode
++      autofillAbortController.abort();
++      autofillAbortController = new AbortController();
++
++      const optionsJSON = await fetchLoginOptions();
++      const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++      // MANDATORY: Request both password and publicKey with uiMode: 'immediate' and NO signal parameter
++      const cred = await navigator.credentials.get({
++        password: true,
++        publicKey,
++        uiMode: 'immediate',
++      });
++
++      if (!cred) {
++        throw new DOMException('No credential returned', 'NotAllowedError');
++      }
++
++      if (cred.type === 'public-key') {
++        return await verifyPublicKeyAssertion(cred, publicKey);
++      }
++
++      if (cred.type === 'password') {
++        return await verifyPasswordCredentials(cred.id, cred.password);
++      }
++
++      throw new Error(`Unsupported credential type: ${cred.type}`);
++    }
++
++    async function initializeConditionalAutofill() {
++      if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
++        return;
++      }
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities?.conditionalGet === true) {
++          const optionsJSON = await fetchLoginOptions();
++          const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++          const credential = await navigator.credentials.get({
++            publicKey,
++            signal: autofillAbortController.signal,
++            mediation: 'conditional',
++          });
++
++          if (credential && credential.type === 'public-key') {
++            const user = await verifyPublicKeyAssertion(credential, publicKey);
++            completeAuthentication(user);
++          }
++        }
++      } catch (err) {
++        if (['NotAllowedError', 'AbortError'].includes(err?.name)) {
++          return;
++        }
++        console.error('Unexpected conditional get error:', err);
++      }
++    }
++
++    function completeAuthentication(user) {
++      const displayName = user?.username || user?.name || user?.email || 'Member';
++      document.body.dataset.signedIn = 'true';
++      userGreeting.textContent = `Welcome back, ${displayName}`;
++      userGreeting.hidden = false;
++      logoutNavItem.classList.remove('nav-item-hidden');
++
++      if (signinDialog.open) {
++        signinDialog.close();
++      }
++
++      const destination = pendingTargetHref;
++      const actionName = pendingActionLabel;
++      pendingTargetHref = null;
++      pendingActionLabel = null;
++
++      if (destination) {
++        showToast(`Signed in as ${displayName}. Opening ${actionName || destination}...`);
++      } else {
++        showToast(`Signed in as ${displayName}.`);
++      }
++    }
++
++    function showFallbackSignInUi({ href, label }) {
++      pendingTargetHref = href;
++      pendingActionLabel = label;
++      clearFeedback();
++      signinSubtitle.textContent = label
++        ? `Sign in with your passkey or password to continue to ${label}.`
++        : 'Sign in with your saved passkey or password to continue without leaving this page.';
++
++      if (!signinDialog.open) {
++        signinDialog.showModal();
++      }
++      initializeConditionalAutofill();
++    }
++
++    // Intercept customer navigation/action links ("Rewards", "My Account", "Order Now")
++    const quickAuthLinks = document.querySelectorAll('[data-quick-auth]');
++    for (const link of quickAuthLinks) {
++      link.addEventListener('click', async (event) => {
++        if (document.body.dataset.signedIn === 'true') {
++          return;
++        }
++
++        event.preventDefault();
++        if (isAuthenticating) return;
++
++        const targetHref = link.getAttribute('href');
++        const label = link.textContent.trim();
++        pendingTargetHref = targetHref;
++        pendingActionLabel = label;
++
++        isAuthenticating = true;
++        try {
++          const user = await authenticateWithImmediateUi();
++          completeAuthentication(user);
++        } catch (err) {
++          if (err?.name === 'NotAllowedError') {
++            showFallbackSignInUi({ href: targetHref, label });
++            return;
++          }
++          console.error('Authentication error:', err);
++          showFallbackSignInUi({ href: targetHref, label });
++          if (err?.message) {
++            showFeedback(err.message);
++          }
++        } finally {
++          isAuthenticating = false;
++        }
++      });
++    }
++
++    // Explicit passkey sign-in button inside the fallback dialog
++    passkeySigninBtn.addEventListener('click', async () => {
++      clearFeedback();
++      autofillAbortController.abort();
++      autofillAbortController = new AbortController();
++
++      try {
++        const optionsJSON = await fetchLoginOptions();
++        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++        const credential = await navigator.credentials.get({
++          publicKey,
++          signal: autofillAbortController.signal,
++        });
++
++        if (credential && credential.type === 'public-key') {
++          const user = await verifyPublicKeyAssertion(credential, publicKey);
++          completeAuthentication(user);
++        }
++      } catch (err) {
++        if (err?.name === 'NotAllowedError' || err?.name === 'AbortError') {
++          initializeConditionalAutofill();
++          return;
++        }
++        showFeedback(err?.message || 'Unable to sign in with passkey.');
++        initializeConditionalAutofill();
++      }
++    });
++
++    // Inline password sign-in form submission inside the fallback dialog
++    signinForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      clearFeedback();
++      signinSubmitBtn.disabled = true;
++
++      const formData = new FormData(signinForm);
++      const username = String(formData.get('username') || '').trim();
++      const password = String(formData.get('password') || '');
++
++      try {
++        const user = await verifyPasswordCredentials(username, password);
++        completeAuthentication(user);
++      } catch (err) {
++        showFeedback(err?.message || 'Invalid username or password.');
++      } finally {
++        signinSubmitBtn.disabled = false;
++      }
++    });
++
++    // Handle Logout in place
++    logoutLink.addEventListener('click', (event) => {
++      event.preventDefault();
++      document.body.dataset.signedIn = 'false';
++      userGreeting.hidden = true;
++      userGreeting.textContent = '';
++      logoutNavItem.classList.add('nav-item-hidden');
++      showToast('You have been signed out.');
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..29770db 100644
+--- a/package.json
++++ b/package.json
+@@ -6,5 +6,8 @@
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "webauthn-polyfills": "^0.1.7"
+   }
+ }

@@ -1,0 +1,300 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,103 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Global Calendar Converter */
++    .calendar-tool {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .calendar-tool label {
++      display: inline-flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 15px;
++      font-weight: 600;
++    }
++
++    .calendar-tool input[type="date"] {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++    }
++
++    .calendar-tool input[type="date"]:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .calendar-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .calendar-card {
++      text-align: left;
++    }
++
++    .calendar-card .formatted-date {
++      font-size: 1.15rem;
++      font-weight: 600;
++      margin-bottom: 10px;
++    }
++
++    .calendar-card dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 12px;
++      font-size: 0.9rem;
++    }
++
++    .calendar-card dt {
++      font-weight: 600;
++    }
++
++    .timeline {
++      display: inline-block;
++      padding: 0 8px;
++      border-radius: 4px;
++      background: var(--secondary);
++    }
++
++    .timeline[data-timeline="Today"] {
++      background: var(--accent);
++    }
++
++    .calendar-card details {
++      margin-top: 12px;
++      font-size: 0.85rem;
++    }
++
++    .calendar-card summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .month-list {
++      list-style: none;
++      margin-top: 8px;
++    }
++
++    .month-list li {
++      display: flex;
++      justify-content: space-between;
++      gap: 10px;
++      padding: 2px 6px;
++      border-bottom: 1px solid var(--light);
++    }
++
++    .month-list li[aria-current="true"] {
++      background: var(--secondary);
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +289,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-tool" aria-labelledby="calendar-tool-heading">
++      <h2 id="calendar-tool-heading">Global Calendar Converter</h2>
++      <p>Pick a date to see it in calendars celebrated by our guests around the world.</p>
++      <label>
++        Date
++        <input type="date" id="calendar-date-input">
++      </label>
++      <p class="calendar-status" id="calendar-status" role="status"></p>
++      <div class="grid" id="calendar-results" aria-live="polite">
++        <article class="card calendar-card" data-calendar="islamic-umalqura">
++          <h3>Islamic (Umm al-Qura)</h3>
++          <p class="formatted-date" id="islamic-date"></p>
++        </article>
++        <article class="card calendar-card" data-calendar="hebrew">
++          <h3>Hebrew</h3>
++          <p class="formatted-date"></p>
++        </article>
++        <article class="card calendar-card" data-calendar="japanese">
++          <h3>Japanese</h3>
++          <p class="formatted-date"></p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +325,159 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const input = document.getElementById('calendar-date-input');
++    const status = document.getElementById('calendar-status');
++    const cards = document.querySelectorAll('.calendar-card');
++
++    // Load the Temporal polyfill only where the native API is missing.
++    try {
++      if (typeof globalThis.Temporal === 'undefined') {
++        const { Temporal } = await import('https://cdn.jsdelivr.net/npm/temporal-polyfill@1/full/+esm');
++        globalThis.Temporal = Temporal;
++      }
++    } catch {
++      status.textContent = 'Sorry, the calendar converter could not be loaded in this browser.';
++      input.disabled = true;
++      throw new Error('Temporal is unavailable');
++    }
++
++    const supportedCalendars = (() => {
++      try {
++        return new Set(Intl.supportedValuesOf('calendar'));
++      } catch {
++        return new Set();
++      }
++    })();
++
++    const userLocale = navigator.languages?.[0] ?? navigator.language ?? 'en';
++
++    function localeFor(calendarId) {
++      try {
++        return new Intl.Locale(userLocale, { calendar: calendarId }).toString();
++      } catch {
++        return new Intl.Locale('en', { calendar: calendarId }).toString();
++      }
++    }
++
++    function toCalendar(isoDate, calendarId) {
++      if (!supportedCalendars.has(calendarId)) return isoDate;
++      try {
++        return isoDate.withCalendar(calendarId);
++      } catch {
++        return isoDate;
++      }
++    }
++
++    function addField(list, term, value) {
++      const dt = document.createElement('dt');
++      const dd = document.createElement('dd');
++      dt.textContent = term;
++      if (value instanceof Node) dd.append(value);
++      else dd.textContent = value;
++      list.append(dt, dd);
++    }
++
++    function buildMonthBreakdown(date, locale) {
++      const details = document.createElement('details');
++      const summary = document.createElement('summary');
++      summary.textContent = 'Month breakdown';
++      const list = document.createElement('ol');
++      list.className = 'month-list';
++
++      // Iterate up to monthsInYear: lunisolar years can have 13 months.
++      const yearMonth = date.toPlainYearMonth();
++      for (let month = 1; month <= date.monthsInYear; month++) {
++        const current = yearMonth.with({ month });
++        const name = current.toPlainDate({ day: 1 }).toLocaleString(locale, { month: 'long' });
++        const item = document.createElement('li');
++        if (month === date.month) item.setAttribute('aria-current', 'true');
++        const label = document.createElement('span');
++        label.textContent = `${current.monthCode} · ${name}`;
++        const days = document.createElement('span');
++        days.textContent = `${current.daysInMonth} days`;
++        item.append(label, days);
++        list.append(item);
++      }
++
++      details.append(summary, list);
++      return details;
++    }
++
++    function renderCard(card, isoDate, todayISO) {
++      const requested = card.dataset.calendar;
++      const date = toCalendar(isoDate, requested);
++      const today = todayISO.withCalendar(date.calendarId);
++      const locale = localeFor(date.calendarId);
++
++      card.querySelector('.formatted-date').textContent = date.toLocaleString(locale, {
++        era: date.era === undefined ? undefined : 'long',
++        year: 'numeric',
++        month: 'long',
++        day: 'numeric',
++      });
++
++      const fields = document.createElement('dl');
++      const yearLabel = date.era === undefined ? `${date.year}` : `${date.year} (${date.era} ${date.eraYear})`;
++      addField(fields, 'Year', yearLabel);
++      addField(fields, 'Month', `${date.month}`);
++      addField(fields, 'Month code', date.monthCode.endsWith('L') ? `${date.monthCode} (leap month)` : date.monthCode);
++      addField(fields, 'Months in year', date.inLeapYear ? `${date.monthsInYear} (leap year)` : `${date.monthsInYear}`);
++
++      const comparison = Temporal.PlainDate.compare(date, today);
++      const timeline = comparison < 0 ? 'Past' : comparison > 0 ? 'Future' : 'Today';
++      const badge = document.createElement('span');
++      badge.className = 'timeline';
++      badge.dataset.timeline = timeline;
++      badge.textContent = timeline;
++      addField(fields, 'Timeline', badge);
++
++      let extra = card.querySelector('.calendar-details');
++      if (!extra) {
++        extra = document.createElement('div');
++        extra.className = 'calendar-details';
++        card.append(extra);
++      }
++      extra.replaceChildren(fields, buildMonthBreakdown(date, locale));
++
++      return date.calendarId === requested;
++    }
++
++    function clearCards() {
++      for (const card of cards) {
++        card.querySelector('.formatted-date').textContent = '';
++        card.querySelector('.calendar-details')?.replaceChildren();
++      }
++    }
++
++    function render() {
++      let isoDate;
++      try {
++        isoDate = Temporal.PlainDate.from(input.value);
++      } catch {
++        clearCards();
++        status.textContent = 'Please choose a valid date.';
++        return;
++      }
++
++      const todayISO = Temporal.Now.plainDateISO();
++      const unsupported = [];
++      for (const card of cards) {
++        if (!renderCard(card, isoDate, todayISO)) {
++          unsupported.push(card.querySelector('h3').textContent);
++        }
++      }
++      status.textContent = unsupported.length
++        ? `Your browser does not support: ${unsupported.join(', ')}. Showing ISO 8601 dates instead.`
++        : '';
++    }
++
++    input.value = Temporal.Now.plainDateISO().toString();
++    input.addEventListener('input', render);
++    render();
++  </script>
++
+ </body>
+ 
+ </html>

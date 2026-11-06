@@ -1,0 +1,799 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..470ac19
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,7 @@
++node_modules/
++dist/
++data/
++*.sqlite
++*.sqlite-shm
++*.sqlite-wal
++.env
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..dd878df
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,43 @@
++# The Daily Grind
++
++A coffee homepage with a server-rendered rewards registration form and browser-assisted email ownership verification. Requires Node.js 24+ and pnpm.
++
++## Commands
++
++- `pnpm install --frozen-lockfile`
++- `pnpm test` — isolated request-handler and cryptographic verification tests; no listening server or real email provider required.
++- `pnpm build` — syntax-checks source and copies runtime files into `dist/`; does not start or import the server entrypoint.
++- `pnpm start` — production-capable Node HTTP entrypoint, normally behind an HTTPS reverse proxy.
++
++## Runtime configuration
++
++Set environment variables in your hosting environment (see `.env.example`; files are not automatically loaded):
++
++- `PUBLIC_ORIGIN`: exact public HTTPS origin used as the verification audience and expected POST Origin. Mandatory with `NODE_ENV=production`. Never inferred from Host or forwarded headers.
++- `EMAIL_VERIFICATION_ORIGIN_TRIAL_TOKEN`: valid Email Verification origin-trial token registered for the public origin. Returned in the homepage's `Origin-Trial` response header. No placeholder token is used at runtime.
++- `DATA_DIR`: writable, persistent directory for SQLite (default `./data`). Keep private and back up with normal SQLite procedures; never serve it as static content.
++- `PORT`: HTTP listening port (default `11222`).
++
++Use a host that supports a long-running Node process and persistent storage. A static-only server cannot run the verification endpoint. The build output can run with `node dist/server.mjs` after installing production dependencies. Bind a single instance to a persistent SQLite database; session challenges and rate limits are stored alongside accounts. The basic rate limiter uses the direct socket address and intentionally does not trust forwarded headers, so a reverse proxy may share an attempt budget across customers; configure a trusted-edge rate limiter before scaling.
++
++## Verification flow
++
++`GET /` creates a random 256-bit challenge and anti-CSRF token in server-side SQLite state. The session cookie is HttpOnly, SameSite=Lax, and Secure on HTTPS. The hidden `autocomplete="email-verification-token"` control receives a fresh nonce in the same native POST form as `autocomplete="email"`. Pages are served with `Cache-Control: no-store`.
++
++`POST /api/verify-email` atomically consumes the session challenge, checks request origin, CSRF token, body size, input constraints, and attempt budget. It then verifies:
++
++1. Email-domain DNS TXT delegation to the claimed HTTPS issuer.
++2. Issuer discovery metadata and public JWKS, with private-network addresses and redirects rejected.
++3. Issuer JWT signature, type, issuer, algorithm and freshness.
++4. Browser holder-key signature, audience, nonce, timestamp and SD-JWT hash binding.
++5. Verified email claim and case-insensitive equality with the submitted address, including selectively disclosed claims.
++
++Only successful verification creates an account with a unique email key and scrypt password hash. No raw password or verification token is saved or logged. Duplicate accounts cannot overwrite an existing account. The sample implements registration; returning-user sign-in, password recovery and points/redemption are separate features.
++
++Email Verification is an experimental browser/provider capability, currently requiring an origin trial. A valid deployment token, supported browser and participating email provider with an active customer session are external prerequisites. See [Chrome's relying-party documentation](https://developer.chrome.com/docs/identity/email-verification/verifier).
++
++Per the requirement to send **no OTP or magic link**, absent or invalid tokens show an accessible retry explanation, preserve non-sensitive form values, and create no account. There is deliberately no email-sending fallback and no claim that email syntax validation proves ownership. Verification cannot be completed by an unsupported browser. No browser API is simulated.
++
++## Checks performed
++
++Automated tests cover genuine issuer/browser signatures, missing-key-id rotation, selective disclosures, email mismatch, false verification claims, wrong nonce/audience/hash/key, expired tokens, discovery mismatch, private-address rejection, secure cookies, CSRF, replay, unsupported browsers, escaped form values, password hashing and durable account creation. Manual browser verification and server startup were not performed.
+diff --git a/index.html b/index.html
+index 66c9173..615961e 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,55 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="description" content="Good coffee. Better mornings. Join Daily Grind Rewards and make your daily ritual a little more rewarding.">
++  <title>The Daily Grind | Coffee & Good Company</title>
++  <link rel="stylesheet" href="/styles.css">
++  <script src="/signup.js" defer></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++  <a class="skip-link" href="#main">Skip to content</a>
++  <div class="announcement">Your daily ritual, a little more rewarding. <a href="#rewards">Meet Daily Grind Rewards <span aria-hidden="true">↗</span></a></div>
++  <nav class="navigation" aria-label="Main navigation">
++    <a class="brand" href="/" aria-label="The Daily Grind homepage"><span class="brand-symbol" aria-hidden="true">◒</span><span>THE DAILY<br><strong>GRIND<span class="brand-dot">.</span></strong></span></a>
++    <ul><li><a href="/menu">Our coffee</a></li><li><a href="/locations">Find your grind</a></li><li><a href="#rewards">Rewards</a></li></ul>
++    <a class="nav-cta" href="#rewards">Join the good stuff <span aria-hidden="true">↗</span></a>
+   </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main id="main">
++    <header class="hero">
++      <div class="hero-copy"><p class="eyebrow">LOCALLY ROASTED. LOVINGLY POURED.</p><h1>A good day<br>starts with<br><em>a great cup.</em></h1><p>Thoughtfully sourced coffee. Familiar faces.<br>A little something to look forward to, every day.</p><a class="button dark" href="/menu">Find your favorite <span aria-hidden="true">↗</span></a><div class="hero-note"><span aria-hidden="true">✳</span> Good coffee. Better company.</div></div>
++      <div class="hero-image"><img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1500&q=85" alt="Freshly poured coffee, ready for a slow morning" width="1500" height="1200" fetchpriority="high"><div class="image-stamp">FRESHLY<br><strong>roasted</strong><br>DAILY <span aria-hidden="true">✳</span></div><span class="image-caption">A small moment. A whole lot of good.</span></div>
++    </header>
++    <div class="values-strip"><span>ETHICALLY SOURCED</span><span aria-hidden="true">✳</span><span>SMALL BATCH ROASTED</span><span aria-hidden="true">✳</span><span>MADE FOR YOUR EVERYDAY</span><span aria-hidden="true">✳</span><span>ALWAYS GOOD COMPANY</span></div>
++    <section class="rewards section-wrap" id="rewards" aria-labelledby="rewards-title">
++      <div class="rewards-copy"><p class="eyebrow">THE DAILY GRIND REWARDS</p><h2 id="rewards-title">Your usual.<br><em>With a little extra.</em></h2><p>You bring the daily ritual. We’ll bring the perks.<br>Join our coffee-loving community and make every<br class="desktop-break"> visit count.</p>
++        <ul class="perks"><li><span class="perk-icon" aria-hidden="true">✳</span><div><h3>A little back with every cup</h3><p>Earn points whenever you stop by.</p></div></li><li><span class="perk-icon" aria-hidden="true">♧</span><div><h3>A birthday worth sipping</h3><p>A treat from us on your special day.</p></div></li><li><span class="perk-icon" aria-hidden="true">♡</span><div><h3>Good things, just for you</h3><p>Member offers and first sips of seasonal favorites.</p></div></li></ul>
++        <p class="rewards-footnote">Same neighborhood feeling. A few more reasons to visit.</p>
++      </div>
++      <div class="signup-card"><div class="card-topline"><span class="eyebrow">YOUR NEXT GOOD THING</span><span aria-hidden="true">✦</span></div><h3>Let’s make it a daily thing.</h3><p class="card-intro">Create your free rewards account.</p>
++        <!--STATUS-->
++        <form id="rewards-form" action="/api/verify-email" method="POST" <!--SUCCESS-->>
++          <div class="field"><label for="full-name">Full name</label><input id="full-name" name="name" type="text" autocomplete="name" maxlength="100" value="<!--NAME-->" placeholder="Your name" required></div>
++          <div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" spellcheck="false" autocapitalize="off" autocorrect="off" maxlength="254" value="<!--EMAIL-->" placeholder="you@example.com" aria-describedby="email-help" required><p class="field-hint" id="email-help">Your browser can securely confirm your email. No codes, no inbox detours.</p></div>
++          <input type="hidden" name="token" nonce="<!--NONCE-->" autocomplete="email-verification-token">
++          <input type="hidden" name="csrf" value="<!--CSRF-->">
++          <div class="field"><label for="password">Password</label><div class="password-wrap"><input id="password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="Make it a good one" aria-describedby="password-help" required><button id="toggle-password" class="password-toggle" type="button" aria-controls="password" aria-pressed="false" hidden>Show</button></div><p class="field-hint" id="password-help">Use 12–128 characters.</p></div>
++          <div class="honeypot" aria-hidden="true"><label for="website">Leave this field empty</label><input id="website" name="website" autocomplete="off" tabindex="-1"></div>
++          <button type="submit" class="button signup-button">Create my rewards account <span aria-hidden="true">↗</span></button>
++          <p class="form-progress" role="status" id="form-progress"></p>
++          <p class="signup-note"><span aria-hidden="true">◇</span> Free to join. Made for your everyday.</p>
++          <p class="compatibility-note">Browser verification requires a supported browser and email provider. If it’s unavailable, we’ll help you retry without sending an email.</p>
++        </form>
+       </div>
+     </section>
++    <section class="seasonal section-wrap" aria-labelledby="seasonal-title"><div class="section-heading"><div><p class="eyebrow">SOMETHING TO SIP ON</p><h2 id="seasonal-title">Meet your next favorite.</h2></div><a href="/menu" class="text-link">Explore the menu <span aria-hidden="true">↗</span></a></div><div class="coffee-grid">
++      <article class="coffee-card"><div class="coffee-picture maple"><img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=650&q=80" alt="A creamy iced latte in a tall glass" width="650" height="750" loading="lazy"><span>SEASONAL FAVORITE</span></div><div class="coffee-title"><h3>Maple Oat Latte</h3><a href="/menu/seasonal" aria-label="View Maple Oat Latte">↗</a></div><p>Oat milk, real maple, a little fall magic.</p></article>
++      <article class="coffee-card"><div class="coffee-picture"><img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=650&q=80" alt="Rich espresso served in a ceramic cup" width="650" height="750" loading="lazy"></div><div class="coffee-title"><h3>Dark Roast Espresso</h3><a href="/menu/espresso" aria-label="View Dark Roast Espresso">↗</a></div><p>Bold, full-bodied, beautifully uncomplicated.</p></article>
++      <article class="coffee-card"><div class="coffee-picture"><img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=650&q=80" alt="Cold coffee served over ice" width="650" height="750" loading="lazy"></div><div class="coffee-title"><h3>Slow-Steeped Cold Brew</h3><a href="/menu/cold-brew" aria-label="View Cold Brew">↗</a></div><p>18 hours of patience. One seriously smooth sip.</p></article>
++    </div></section>
++    <section class="closing"><span aria-hidden="true">✳</span><h2>There’s a place for you here.</h2><a href="/locations" class="text-link">Find your neighborhood Daily Grind <span aria-hidden="true">↗</span></a></section>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <footer><a class="footer-brand" href="/">THE DAILY GRIND<span>.</span></a><p>Good coffee. Better company.</p><div class="footer-links"><a href="/about">Our story</a><a href="/careers">Join the team</a><a href="/contact">Get in touch</a><a href="/privacy-policy">Privacy</a></div><div class="footer-bottom"><span>© 2026 The Daily Grind Coffee Co.</span><span>Made with care. Poured with love.</span></div></footer>
+ </body>
+-
+ </html>
+diff --git a/lib/app.mjs b/lib/app.mjs
+new file mode 100644
+index 0000000..5e740ee
+--- /dev/null
++++ b/lib/app.mjs
+@@ -0,0 +1,83 @@
++import { randomBytes, randomUUID, scrypt as scryptCallback } from 'node:crypto';
++import { promisify } from 'node:util';
++import { DatabaseSync } from 'node:sqlite';
++import { verifyEmailVerificationToken } from './verify-email.mjs';
++
++const scrypt = promisify(scryptCallback);
++const random = () => randomBytes(32).toString('base64url');
++const escape = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
++const ttl = 10 * 60 * 1000;
++
++export function createApp({ template, origin, databasePath = 'rewards.sqlite', trialToken = '', verify = verifyEmailVerificationToken }) {
++  const publicOrigin = new URL(origin).origin;
++  const secure = publicOrigin.startsWith('https:');
++  const cookieName = secure ? '__Host-dg_signup' : 'dg_signup';
++  const db = new DatabaseSync(databasePath);
++  db.exec(`PRAGMA journal_mode=WAL;
++    CREATE TABLE IF NOT EXISTS challenges (id TEXT PRIMARY KEY, nonce TEXT NOT NULL, csrf TEXT NOT NULL, expires INTEGER NOT NULL);
++    CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, email_key TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, email_verified INTEGER NOT NULL, created_at TEXT NOT NULL);
++    CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);`);
++  function render(message = '', values = {}, status = 200, success = false) {
++    const now = Date.now();
++    db.prepare('DELETE FROM challenges WHERE expires < ?').run(now);
++    db.prepare('DELETE FROM limits WHERE expires < ?').run(now);
++    const id = random(), nonce = random(), csrf = random();
++    db.prepare('INSERT INTO challenges VALUES (?, ?, ?, ?)').run(id, nonce, csrf, now + ttl);
++    const html = template.replaceAll('<!--NONCE-->', nonce).replaceAll('<!--CSRF-->', csrf)
++      .replaceAll('<!--NAME-->', escape(values.name ?? '')).replaceAll('<!--EMAIL-->', escape(values.email ?? ''))
++      .replace('<!--STATUS-->', message ? `<p class="form-message ${success ? 'success' : 'error'}" role="${success ? 'status' : 'alert'}" tabindex="-1" autofocus>${escape(message)}</p>` : '')
++      .replace('<!--SUCCESS-->', success ? 'hidden' : '');
++    const headers = {
++      'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store',
++      'Set-Cookie': `${cookieName}=${id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=600${secure ? '; Secure' : ''}`,
++      'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin',
++      'Content-Security-Policy': "default-src 'self'; img-src 'self' https://images.unsplash.com; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
++    };
++    if (trialToken) headers['Origin-Trial'] = trialToken;
++    return new Response(html, { status, headers });
++  }
++  async function handle(request, clientAddress = 'unknown') {
++    const url = new URL(request.url);
++    if (request.method === 'GET' && url.pathname === '/') return render();
++    if (url.pathname !== '/api/verify-email') return new Response('Not found', { status: 404 });
++    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: { Allow: 'POST' } });
++    // Origin is checked against configuration, never attacker-controlled Host headers.
++    if (request.headers.get('origin') !== publicOrigin) return render('Please return to the homepage and try again.', {}, 403);
++    const cookie = request.headers.get('cookie')?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1);
++    // SQLite DELETE RETURNING atomically consumes the session challenge, even on failure.
++    const challenge = cookie ? db.prepare('DELETE FROM challenges WHERE id = ? RETURNING *').get(cookie) : null;
++    if (!challenge || challenge.expires < Date.now()) return render('Your sign-up session expired. Please try again with this fresh form.', {}, 400);
++    const limit = db.prepare(`INSERT INTO limits VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET count = count + 1 RETURNING count`).get(clientAddress, Date.now() + ttl);
++    if (limit.count > 15) return render('Too many attempts. Please try again in 10 minutes.', {}, 429);
++    const contentType = request.headers.get('content-type') ?? '';
++    if (!contentType.startsWith('application/x-www-form-urlencoded')) return render('Please use the sign-up form below.', {}, 415);
++    const body = await request.text();
++    if (Buffer.byteLength(body) > 65536) return render('That submission is too large. Please try again.', {}, 413);
++    const data = new URLSearchParams(body);
++    const name = (data.get('name') ?? '').trim();
++    const email = (data.get('email') ?? '').trim();
++    const password = data.get('password') ?? '';
++    const values = { name, email };
++    if (data.get('csrf') !== challenge.csrf) return render('Your form could not be confirmed. Please try again.', values, 403);
++    if (data.get('website')) return render('Your sign-up could not be completed.', {}, 400);
++    if (!name || name.length > 100 || email.length > 254 || !/^[^\s@<>]+@[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$/.test(email) || password.length < 12 || password.length > 128) return render('Please enter your name, a valid email, and a password of 12–128 characters.', values, 400);
++    const rawToken = data.get('token') ?? '';
++    if (!rawToken) return render('Your browser could not verify this email. Try a supported Chrome browser while signed in to your email provider. No account was created and no verification email was sent.', values, 422);
++    try {
++      await verify({ rawToken, submittedEmail: email, expectedNonce: challenge.nonce, expectedAudience: publicOrigin });
++    } catch {
++      // Never log credentials, raw tokens, or customer email addresses.
++      return render('We couldn’t confirm this email securely. Please check your email-provider session and try again. No verification email was sent.', values, 422);
++    }
++    const salt = randomBytes(16).toString('hex');
++    const hash = (await scrypt(password, salt, 64)).toString('hex');
++    try {
++      db.prepare('INSERT INTO accounts VALUES (?, ?, ?, ?, ?, 1, ?)').run(randomUUID(), name, email, email.toLowerCase(), `scrypt:${salt}:${hash}`, new Date().toISOString());
++    } catch (error) {
++      if (error.code?.startsWith('ERR_SQLITE') && error.message.includes('UNIQUE')) return render('An account with this email already exists. Your existing account has not changed.', values, 409);
++      throw error;
++    }
++    return render(`Welcome to Daily Grind Rewards, ${name}! Your email is verified and your account is ready. We’ll see you for your next cup.`, {}, 201, true);
++  }
++  return { handle, close: () => db.close() };
++}
+diff --git a/lib/verify-email.mjs b/lib/verify-email.mjs
+new file mode 100644
+index 0000000..1480edf
+--- /dev/null
++++ b/lib/verify-email.mjs
+@@ -0,0 +1,101 @@
++import { createHash } from 'node:crypto';
++import { resolveTxt, lookup } from 'node:dns/promises';
++import { request } from 'node:https';
++import ipaddr from 'ipaddr.js';
++import { decodeSdJwtSync, SDJwtInstance } from '@sd-jwt/core';
++import { createLocalJWKSet, importJWK, jwtVerify } from 'jose';
++
++const algorithms = ['Ed25519', 'EdDSA', 'ES256'];
++const normalizeAlg = (alg) => alg === 'Ed25519' ? 'EdDSA' : alg;
++const hasher = (data, alg) => {
++  if (alg !== 'sha-256') throw new Error('Unsupported digest');
++  return createHash('sha256').update(data).digest();
++};
++
++// Resolve and pin public addresses before fetching untrusted issuer metadata.
++// Redirects are intentionally rejected, including redirects to private networks.
++export async function publicJson(address) {
++  const url = new URL(address);
++  if (url.protocol !== 'https:' || url.port || url.username || url.password || url.hash) throw new Error('Invalid issuer URL');
++  const addresses = await lookup(url.hostname, { all: true });
++  if (!addresses.length || addresses.some(({ address }) => ipaddr.process(address).range() !== 'unicast')) throw new Error('Non-public issuer');
++  const pinned = addresses[0];
++  return new Promise((resolve, reject) => {
++    const req = request(url, {
++      headers: { Accept: 'application/json' },
++      lookup: (_hostname, options, callback) => options.all
++        ? callback(null, [pinned]) : callback(null, pinned.address, pinned.family),
++    }, (res) => {
++      if (res.statusCode !== 200) { res.resume(); reject(new Error('Issuer discovery failed')); return; }
++      let size = 0;
++      const chunks = [];
++      res.on('data', (chunk) => {
++        size += chunk.length;
++        if (size > 128 * 1024) { res.destroy(new Error('Issuer response too large')); return; }
++        chunks.push(chunk);
++      });
++      res.on('error', reject);
++      res.on('end', () => {
++        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch (error) { reject(error); }
++      });
++    });
++    const timeout = setTimeout(() => req.destroy(new Error('Issuer request timed out')), 5000);
++    req.on('close', () => clearTimeout(timeout));
++    req.on('error', reject);
++    req.end();
++  });
++}
++
++export async function verifyEmailVerificationToken({ rawToken, submittedEmail, expectedNonce, expectedAudience }, dependencies = {}) {
++  const txtLookup = dependencies.resolveTxt ?? resolveTxt;
++  const getJson = dependencies.getJson ?? publicJson;
++  if (!rawToken || rawToken.length > 32768 || !expectedNonce) throw new Error('Missing verification');
++  const decoded = decodeSdJwtSync(rawToken, hasher);
++  const payload = decoded.jwt?.payload;
++  const issuer = payload?.iss;
++  if (!decoded.kbJwt || typeof issuer !== 'string') throw new Error('Missing issuer or key binding');
++  const issuerUrl = new URL(issuer);
++  if (issuerUrl.protocol !== 'https:' || issuerUrl.origin !== issuer || issuerUrl.port || issuerUrl.username || issuerUrl.password) throw new Error('Invalid issuer');
++  const domain = submittedEmail.slice(submittedEmail.lastIndexOf('@') + 1).toLowerCase();
++  const records = await txtLookup(`_email-verification.${domain}`);
++  if (!records.some((parts) => `https://${parts.join('').replace(/^iss=/, '').trim()}` === issuer && parts.join('').startsWith('iss='))) throw new Error('Issuer not delegated');
++  const metadata = await getJson(`${issuer}/.well-known/email-verification`);
++  if (metadata.issuer !== issuer || typeof metadata.jwks_uri !== 'string') throw new Error('Invalid issuer metadata');
++  const jwks = await getJson(metadata.jwks_uri);
++  if (!Array.isArray(jwks.keys)) throw new Error('Invalid issuer keys');
++  const keys = createLocalJWKSet({ keys: jwks.keys.filter((key) => !key.d && (
++    (key.kty === 'EC' && key.crv === 'P-256') || (key.kty === 'OKP' && key.crv === 'Ed25519')
++  )) });
++  const options = { typ: 'ev+sd-jwt', issuer, algorithms, maxTokenAge: '5m', clockTolerance: 60 };
++  const instance = new SDJwtInstance({
++    hasher,
++    verifier: async (data, sig) => {
++      const compact = `${data}.${sig}`;
++      try { await jwtVerify(compact, keys, options); }
++      catch (error) {
++        if (error.code !== 'ERR_JWKS_MULTIPLE_MATCHING_KEYS') throw error;
++        let matched = false;
++        for await (const key of error) {
++          try { await jwtVerify(compact, key, options); matched = true; break; } catch { /* try next issuer key */ }
++        }
++        if (!matched) throw error;
++      }
++      return true;
++    },
++    kbVerifier: async (data, sig) => {
++      const jwk = payload.cnf?.jwk;
++      const alg = decoded.kbJwt.header.alg;
++      if (!jwk || jwk.d || !((jwk.kty === 'EC' && jwk.crv === 'P-256') || (jwk.kty === 'OKP' && jwk.crv === 'Ed25519')) || !algorithms.includes(jwk.alg) || !algorithms.includes(alg) || normalizeAlg(jwk.alg) !== normalizeAlg(alg)) throw new Error('Invalid holder key');
++      await jwtVerify(`${data}.${sig}`, await importJWK(jwk, alg), {
++        typ: 'kb+jwt', audience: expectedAudience, algorithms: [alg], maxTokenAge: '5m', clockTolerance: 60,
++      });
++      return true;
++    },
++  });
++  const verified = await instance.verify(rawToken, {
++    requiredClaimKeys: ['email', 'email_verified'], keyBindingNonce: expectedNonce,
++    expectedKeyBindingAudience: expectedAudience, keyBindingMaxAgeSeconds: 300, skewSeconds: 60,
++  });
++  if (verified.payload.email_verified !== true || typeof verified.payload.email !== 'string' || verified.payload.email.toLowerCase() !== submittedEmail.toLowerCase()) throw new Error('Email mismatch');
++  return verified.payload;
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..1a4d157 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,20 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "build": "node scripts/build.mjs",
++    "test": "node --test test/*.test.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@sd-jwt/core": "^0.24.3",
++    "ipaddr.js": "^2.5.0",
++    "jose": "^6.2.15"
++  },
++  "type": "module",
++  "engines": {
++    "node": ">=24"
+   }
+ }
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..99905dd
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,6 @@
++import { mkdir, cp } from 'node:fs/promises';
++import { execFileSync } from 'node:child_process';
++for (const file of ['server.mjs', 'lib/app.mjs', 'lib/verify-email.mjs', 'signup.js']) execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
++await mkdir('dist', { recursive: true });
++for (const file of ['index.html', 'styles.css', 'signup.js', 'server.mjs', 'lib']) await cp(file, `dist/${file}`, { recursive: true });
++console.log('Build complete: dist/ (server was not started).');
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..36f4b26
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,49 @@
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { mkdirSync } from 'node:fs';
++import { createApp } from './lib/app.mjs';
++
++const port = Number(process.env.PORT || 11222);
++const origin = process.env.PUBLIC_ORIGIN || `http://localhost:${port}`;
++if (process.env.NODE_ENV === 'production' && (!process.env.PUBLIC_ORIGIN || !origin.startsWith('https://'))) throw new Error('Production requires an HTTPS PUBLIC_ORIGIN');
++const dataDirectory = process.env.DATA_DIR || './data';
++mkdirSync(dataDirectory, { recursive: true, mode: 0o700 });
++const app = createApp({
++  template: await readFile(new URL('./index.html', import.meta.url), 'utf8'),
++  origin, databasePath: `${dataDirectory}/rewards.sqlite`, trialToken: process.env.EMAIL_VERIFICATION_ORIGIN_TRIAL_TOKEN || '',
++});
++const assets = new Map([
++  ['/styles.css', { body: await readFile(new URL('./styles.css', import.meta.url)), type: 'text/css; charset=utf-8' }],
++  ['/signup.js', { body: await readFile(new URL('./signup.js', import.meta.url)), type: 'text/javascript; charset=utf-8' }],
++]);
++const server = createServer(async (req, res) => {
++  try {
++    const path = new URL(req.url, origin).pathname;
++    const asset = assets.get(path);
++    if (asset && req.method === 'GET') {
++      res.writeHead(200, { 'Content-Type': asset.type, 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' });
++      res.end(asset.body); return;
++    }
++    const chunks = [];
++    let length = 0;
++    for await (const chunk of req) {
++      length += chunk.length;
++      if (length > 65536) { res.writeHead(413); res.end('Submission too large'); return; }
++      chunks.push(chunk);
++    }
++    const request = new Request(new URL(req.url, origin), {
++      method: req.method, headers: req.headers,
++      ...(['GET', 'HEAD'].includes(req.method) ? {} : { body: Buffer.concat(chunks) }),
++    });
++    const result = await app.handle(request, req.socket.remoteAddress);
++    res.writeHead(result.status, Object.fromEntries(result.headers));
++    res.end(Buffer.from(await result.arrayBuffer()));
++  } catch {
++    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
++    res.end('We couldn’t complete your request. Please return to the homepage and try again.');
++  }
++});
++server.requestTimeout = 15000;
++server.headersTimeout = 10000;
++server.listen(port, '0.0.0.0');
++for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(() => { app.close(); process.exit(0); }));
+diff --git a/signup.js b/signup.js
+new file mode 100644
+index 0000000..15f678c
+--- /dev/null
++++ b/signup.js
+@@ -0,0 +1,25 @@
++const form = document.querySelector('#rewards-form');
++const toggle = document.querySelector('#toggle-password');
++const password = document.querySelector('#password');
++if (toggle && password) {
++  toggle.hidden = false;
++  toggle.addEventListener('click', () => {
++    const visible = password.type === 'password';
++    password.type = visible ? 'text' : 'password';
++    toggle.textContent = visible ? 'Hide' : 'Show';
++    toggle.setAttribute('aria-pressed', String(visible));
++  });
++}
++// Preserve native form submission: the browser adds the email token at submission.
++// Reading FormData or replacing this with fetch could miss the browser-issued token.
++form?.addEventListener('submit', () => {
++  form.querySelector('[type="submit"]').disabled = true;
++  form.setAttribute('aria-busy', 'true');
++  document.querySelector('#form-progress').textContent = 'Securely confirming your email…';
++});
++window.addEventListener('pageshow', () => {
++  if (!form) return;
++  form.querySelector('[type="submit"]').disabled = false;
++  form.removeAttribute('aria-busy');
++  document.querySelector('#form-progress').textContent = '';
++});
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..2bb9171
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1 @@
++:root{--ink:#2b342c;--muted:#6a6b60;--paper:#f8f6ef;--green:#344b39;--line:#deded2;--gold:#e1b967;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--paper);font-synthesis:none}*{box-sizing:border-box}body{margin:0}a{color:inherit;text-decoration:none}button,input{font:inherit}button,a,input{ -webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #a87831;outline-offset:4px}button{cursor:pointer}h1,h2,h3,p{margin:0}h1,h2,.signup-card>h3{font-family:Georgia,'Times New Roman',serif;font-weight:400}em{font-weight:400}html{scroll-padding-top:24px}.skip-link{position:absolute;top:-100px;left:12px;padding:14px;background:white;z-index:10}.skip-link:focus{top:12px}.announcement{background:var(--green);color:#fff;text-align:center;padding:12px 16px;font-size:11px;letter-spacing:.35px}.announcement a{margin-left:12px;text-decoration:underline;text-underline-offset:3px}.navigation{display:flex;justify-content:space-between;align-items:center;max-width:1440px;margin:auto;padding:23px 6%}.brand{display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:2px;line-height:1.25}.brand strong{font-size:24px;letter-spacing:1px}.brand-dot{color:#a57537}.brand-symbol{font-size:48px;line-height:1;transform:rotate(-35deg)}.navigation ul{display:flex;list-style:none;gap:35px;padding:0;font-size:13px}.navigation li a{display:inline-block;padding-block:14px}.nav-cta{font-size:12px;border:1px solid #8e9489;padding:14px 18px}.nav-cta span{margin-left:22px}.hero{display:grid;grid-template-columns:1fr 1fr;max-width:1440px;margin:auto;min-height:510px}.hero-copy{padding:48px 10% 38px 12%}.eyebrow{font-size:10px;letter-spacing:1.9px;font-weight:600}.hero h1{font-size:clamp(46px,5.3vw,76px);line-height:1.04;letter-spacing:-2.6px;margin:24px 0}.hero h1 em{color:#647052}.hero-copy>p:not(.eyebrow){font-size:13px;line-height:1.9;color:var(--muted)}.button{display:flex;align-items:center;justify-content:space-between;gap:22px;min-height:49px;padding:16px 22px;font-size:12px;border:0}.dark{background:var(--green);color:white;width:max-content;margin-top:27px;min-width:192px}.button:hover{background:#253d2b;color:#fff}.hero-note{display:flex;align-items:center;gap:10px;font-size:10px;color:var(--muted);margin-top:28px}.hero-note>span{font-size:25px;color:#7f835f}.hero-image{position:relative;overflow:hidden}.hero-image>img{height:100%;width:100%;object-fit:cover;display:block;filter:brightness(.83);position:absolute;inset:0}.image-stamp{position:absolute;top:35px;right:33px;width:112px;height:112px;border-radius:50%;background:#e7d5ac;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;letter-spacing:2px;line-height:1.7;transform:rotate(12deg);color:#3a3f2e}.image-stamp strong{font-family:Georgia,serif;font-style:italic;font-weight:400;font-size:23px;letter-spacing:0}.image-caption{position:absolute;bottom:28px;left:30px;color:white;font-size:10px;letter-spacing:.6px}.values-strip{display:flex;justify-content:space-around;align-items:center;gap:20px;padding:23px 6%;border-bottom:1px solid var(--line);border-top:1px solid var(--line);font-size:9px;letter-spacing:1.4px;background:#eeeee4}.values-strip>span:nth-child(even){font-size:20px;color:#83886b}.section-wrap{max-width:1220px;margin:auto;padding-inline:6%}.rewards{display:grid;grid-template-columns:1fr 1fr;gap:70px;padding-block:75px 80px;align-items:center}.rewards h2{font-size:clamp(34px,3.8vw,49px);line-height:1.15;letter-spacing:-1.4px;margin:21px 0}.rewards h2 em{color:#737958}.rewards-copy>p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.9}.perks{padding:0;list-style:none;display:grid;gap:25px;margin-top:31px}.perks li{display:flex;align-items:center;gap:16px}.perk-icon{width:42px;height:42px;display:grid;place-items:center;flex-shrink:0;border:1px solid #d7d8c7;background:#eeeee1;border-radius:50%;font-size:23px;color:#717954}.perks h3{font-size:12px;font-weight:600;margin-bottom:7px}.perks p{font-size:11px;color:var(--muted);line-height:1.5}.rewards-copy .rewards-footnote{font-size:10px;margin-top:32px;font-style:italic}.signup-card{padding:30px 32px;background:#fffefa;border:1px solid #ddded1;border-radius:6px;box-shadow:0 8px 24px #293b2410}.card-topline{display:flex;justify-content:space-between;align-items:center;color:#78805f}.card-topline>span:last-child{font-size:25px}.card-topline .eyebrow{font-size:8px;letter-spacing:1.5px}.signup-card>h3{font-size:27px;letter-spacing:-.6px;margin:9px 0}.card-intro{font-size:11px;color:var(--muted);margin-bottom:23px}.field{margin-bottom:17px}.field>label{display:block;font-size:11px;font-weight:600;margin-bottom:8px}.field input{width:100%;height:45px;min-height:48px;border:1px solid #b5b9ac;border-radius:3px;padding:12px;background:#fffefa;color:var(--ink);font-size:16px}.field input::placeholder{color:#8e9187;font-size:12px}.field input:user-invalid{border-color:#9c3e27}.field-hint{font-size:10px;color:var(--muted);line-height:1.6;margin-top:7px}.password-wrap{position:relative}.password-wrap input{padding-right:65px}.password-toggle{position:absolute;right:4px;top:0;height:48px;min-width:52px;border:0;background:transparent;font-size:11px;color:var(--green)}.signup-button{width:100%;background:var(--green);color:white;border-radius:3px;margin-top:8px}.signup-button:disabled{opacity:.7;cursor:wait}.signup-note{text-align:center;font-size:9px;color:var(--muted);margin-top:14px}.signup-note span{margin-right:4px;font-size:14px}.compatibility-note{font-size:9px;color:var(--muted);line-height:1.6;margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.form-progress:empty{display:none}.form-progress{font-size:12px;margin-top:12px}.form-message{font-size:13px;line-height:1.7;padding:15px;margin:16px 0;background:#f8eee4;border:1px solid #c69d81;border-radius:3px}.form-message.success{background:#ecf1e8;border-color:#829778}.honeypot{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}[hidden]{display:none!important}.seasonal{border-top:1px solid var(--line);padding-block:55px 65px}.section-heading{display:flex;justify-content:space-between;align-items:end;margin-bottom:28px}.section-heading h2{font-size:34px;margin-top:13px;letter-spacing:-.8px}.text-link{font-size:11px;padding-block:14px;border-bottom:1px solid #949a84}.text-link>span{margin-left:20px}.coffee-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:25px}.coffee-picture{position:relative;background:#e6dfd2;height:240px;overflow:hidden;border-radius:3px}.coffee-picture img{width:100%;height:100%;object-fit:cover;display:block}.coffee-picture>span{position:absolute;top:14px;left:13px;font-size:7px;letter-spacing:1px;background:var(--paper);padding:7px 9px}.coffee-title{display:flex;align-items:center;justify-content:space-between;margin-top:10px}.coffee-title h3{font-family:Georgia,serif;font-weight:400;font-size:19px}.coffee-title a{font-size:21px;min-width:48px;min-height:48px;display:grid;place-items:center}.coffee-card>p{font-size:10px;color:var(--muted);line-height:1.7}.closing{background:#e9eadf;text-align:center;padding:37px 20px 44px}.closing>span{font-size:31px;color:#7d8463}.closing h2{font-size:31px;margin:12px 0 8px}.closing a{display:inline-block}footer{background:var(--green);color:#f1f0e6;padding:40px 6% 20px;text-align:center}.footer-brand{font-size:18px;letter-spacing:2px;font-weight:600}.footer-brand>span{color:var(--gold)}footer>p{font-family:Georgia,serif;font-style:italic;font-size:13px;margin:10px 0 20px}.footer-links{display:flex;justify-content:center;gap:27px;font-size:10px}.footer-links a{padding-block:14px}.footer-bottom{display:flex;justify-content:space-between;max-width:1100px;margin:25px auto 0;border-top:1px solid #ffffff25;padding-top:20px;font-size:8px;color:#d0d4c7}@media(min-width:1450px){.hero-image{border-radius:3px}.hero{padding-bottom:35px}}@media(max-width:850px){.navigation{padding:20px 5%}.navigation ul{gap:18px}.nav-cta{display:none}.hero-copy{padding:38px 10%}.hero h1{font-size:55px}.hero{min-height:490px}.rewards{gap:30px;padding-block:50px}.signup-card{padding:25px 22px}.signup-card>h3{font-size:24px}.values-strip{flex-wrap:wrap;font-size:8px;gap:12px}.values-strip>span:last-child{display:none}.coffee-picture{height:200px}}@media(max-width:600px){.announcement{font-size:9px}.announcement a{display:inline-block;margin-left:5px}.navigation ul{gap:15px;font-size:11px}.brand-symbol{font-size:35px}.brand{font-size:8px;gap:7px}.brand strong{font-size:20px}.hero{grid-template-columns:1fr}.hero-copy{padding:35px 7%}.hero h1{font-size:62px}.hero-image{height:310px}.hero-image>img{position:static}.image-stamp{width:95px;height:95px;top:22px;right:22px}.values-strip{padding:17px 5%;gap:12px 16px}.values-strip>span:nth-last-child(2){display:none}.values-strip>span:nth-child(4){display:none}.section-wrap{padding-inline:7%}.rewards{grid-template-columns:1fr;gap:30px;padding-block:45px}.rewards h2{font-size:41px}.perks{gap:22px}.rewards-copy .rewards-footnote{margin-top:24px}.signup-card{padding:25px}.signup-card>h3{font-size:27px}.section-heading{align-items:start;gap:15px;flex-direction:column}.section-heading h2{font-size:30px}.section-heading .text-link{padding-top:0}.coffee-grid{grid-template-columns:1fr;gap:30px}.coffee-picture{height:310px}.coffee-title h3{font-size:23px}.coffee-card>p{font-size:12px}.closing h2{font-size:28px}.footer-links{gap:18px}.footer-bottom{gap:16px;text-align:left;font-size:8px}.desktop-break{display:none}}
+diff --git a/test/signup.test.mjs b/test/signup.test.mjs
+new file mode 100644
+index 0000000..0c6dc2f
+--- /dev/null
++++ b/test/signup.test.mjs
+@@ -0,0 +1,75 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { DatabaseSync } from 'node:sqlite';
++import { createApp } from '../lib/app.mjs';
++const template = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
++const origin = 'https://coffee.example';
++async function fresh(app) {
++  const res = await app.handle(new Request(origin));
++  const html = await res.text();
++  return { html, response: res, cookie: res.headers.get('set-cookie').split(';')[0], csrf: html.match(/name="csrf" value="([^"]+)"/)[1], nonce: html.match(/name="token" nonce="([^"]+)"/)[1] };
++}
++function submit(app, session, overrides = {}, headers = {}) {
++  return app.handle(new Request(`${origin}/api/verify-email`, { method: 'POST', headers: { origin, cookie: session.cookie, 'content-type': 'application/x-www-form-urlencoded', ...headers }, body: new URLSearchParams({ name: 'Avery', email: 'avery@example.com', password: 'a long coffee password', csrf: session.csrf, token: 'browser-token', ...overrides }) }));
++}
++test('fresh server-rendered nonce and secure cookie; no template markers remain', async () => {
++  const app = createApp({ template, origin, databasePath: ':memory:', trialToken: 'trial' });
++  try {
++    const a = await fresh(app), b = await fresh(app);
++    assert.notEqual(a.nonce, b.nonce);
++    assert.ok(a.nonce.length >= 43);
++    assert.match(a.response.headers.get('set-cookie'), /HttpOnly; SameSite=Lax; Path=\/; Max-Age=600; Secure/);
++    assert.equal(a.response.headers.get('cache-control'), 'no-store');
++    assert.equal(a.response.headers.get('origin-trial'), 'trial');
++    assert.doesNotMatch(a.html, /<!--(?:NONCE|CSRF|NAME|EMAIL|STATUS|SUCCESS)-->/);
++  } finally { app.close(); }
++});
++test('unsupported browsers get clear retry feedback, escaped values, and a consumed nonce', async () => {
++  let called = false;
++  const app = createApp({ template, origin, databasePath: ':memory:', verify: async () => { called = true; } });
++  try {
++    const session = await fresh(app);
++    const res = await submit(app, session, { token: '', name: '<script>alert(1)</script>' });
++    assert.equal(res.status, 422);
++    const html = await res.text();
++    assert.match(html, /No account was created/);
++    assert.match(html, /&lt;script&gt;/);
++    assert.equal(called, false);
++    assert.equal((await submit(app, session)).status, 400);
++  } finally { app.close(); }
++});
++test('enforces CSRF, request origin, server input constraints and verified token', async () => {
++  const app = createApp({ template, origin, databasePath: ':memory:', verify: async () => { throw new Error('Invalid'); } });
++  try {
++    assert.equal((await submit(app, await fresh(app), {}, { origin: 'https://attacker.example' })).status, 403);
++    assert.equal((await submit(app, await fresh(app), { csrf: 'wrong' })).status, 403);
++    assert.equal((await submit(app, await fresh(app), { password: 'short' })).status, 400);
++    assert.equal((await submit(app, await fresh(app))).status, 422);
++  } finally { app.close(); }
++});
++test('persists verified accounts with salted hashes, blocks duplicates and replay', async () => {
++  const dir = mkdtempSync(join(tmpdir(), 'dg-test-'));
++  const path = join(dir, 'accounts.sqlite');
++  let expected;
++  const app = createApp({ template, origin, databasePath: path, verify: async (args) => {
++    assert.equal(args.expectedAudience, origin);
++    assert.equal(args.expectedNonce, expected);
++  } });
++  try {
++    const session = await fresh(app); expected = session.nonce;
++    assert.equal((await submit(app, session)).status, 201);
++    assert.equal((await submit(app, session)).status, 400);
++    const next = await fresh(app); expected = next.nonce;
++    assert.equal((await submit(app, next, { email: 'AVERY@example.com' })).status, 409);
++    const db = new DatabaseSync(path);
++    const rows = db.prepare('SELECT * FROM accounts').all();
++    assert.equal(rows.length, 1);
++    assert.equal(rows[0].email_verified, 1);
++    assert.match(rows[0].password_hash, /^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/);
++    assert.notEqual(rows[0].password_hash, 'a long coffee password');
++    db.close();
++  } finally { app.close(); rmSync(dir, { recursive: true, force: true }); }
++});
+diff --git a/test/verification.test.mjs b/test/verification.test.mjs
+new file mode 100644
+index 0000000..0b25066
+--- /dev/null
++++ b/test/verification.test.mjs
+@@ -0,0 +1,64 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createHash, randomBytes } from 'node:crypto';
++import { generateKeyPair, exportJWK, SignJWT } from 'jose';
++import { SDJwtInstance } from '@sd-jwt/core';
++import { verifyEmailVerificationToken, publicJson } from '../lib/verify-email.mjs';
++
++const issuer = 'https://issuer.example';
++const audience = 'https://coffee.example';
++const issuerKey = await generateKeyPair('ES256');
++const holderKey = await generateKeyPair('ES256');
++const issuerJwk = { ...await exportJWK(issuerKey.publicKey), alg: 'ES256' };
++const holderJwk = { ...await exportJWK(holderKey.publicKey), alg: 'ES256' };
++const otherKey = await generateKeyPair('ES256');
++const otherJwk = { ...await exportJWK(otherKey.publicKey), alg: 'ES256' };
++const hasher = (data) => createHash('sha256').update(data).digest();
++const dependencies = {
++  resolveTxt: async () => [['iss=issuer.example']],
++  getJson: async (url) => url.endsWith('/.well-known/email-verification')
++    ? { issuer, jwks_uri: `${issuer}/keys` } : { keys: [otherJwk, issuerJwk] },
++};
++async function presentation({ email = 'Member@example.com', email_verified = true, nonce = 'test-nonce', aud = audience, iat = Math.floor(Date.now() / 1000), sd_hash, holder = holderKey, kbAlg = 'ES256' } = {}) {
++  const jwt = await new SignJWT({ email, email_verified, cnf: { jwk: holderJwk } }).setProtectedHeader({ alg: 'ES256', typ: 'ev+sd-jwt' }).setIssuer(issuer).setIssuedAt(iat).setExpirationTime(iat + 300).sign(issuerKey.privateKey);
++  const sd = `${jwt}~`;
++  const binding = await new SignJWT({ nonce, aud, iat, sd_hash: sd_hash ?? hasher(sd).toString('base64url') }).setProtectedHeader({ alg: kbAlg, typ: 'kb+jwt' }).sign(holder.privateKey);
++  return sd + binding;
++}
++const verify = async (token, overrides = {}, deps = dependencies) => verifyEmailVerificationToken({ rawToken: token, submittedEmail: 'member@example.com', expectedNonce: 'test-nonce', expectedAudience: audience, ...overrides }, deps);
++
++test('valid browser presentation accepts case differences and tries all issuer keys without kid', async () => {
++  assert.equal((await verify(await presentation())).email_verified, true);
++});
++test('requires email_verified true and exact case-insensitive email match', async () => {
++  await assert.rejects(verify(await presentation({ email_verified: false })));
++  await assert.rejects(verify(await presentation({ email: 'attacker@example.com' })));
++});
++test('rejects wrong nonce, audience, hash, signing key and stale tokens', async () => {
++  for (const values of [{ nonce: 'wrong' }, { aud: 'https://other.example' }, { sd_hash: 'wrong' }, { holder: otherKey }, { iat: Math.floor(Date.now() / 1000) - 600 }]) await assert.rejects(verify(await presentation(values)));
++});
++test('rejects missing key binding and malformed token', async () => {
++  const token = await presentation();
++  await assert.rejects(verify(token.slice(0, token.lastIndexOf('~') + 1)));
++  await assert.rejects(verify('forged'));
++});
++test('checks domain delegation before metadata fetch', async () => {
++  let fetched = false;
++  await assert.rejects(verify(await presentation(), {}, { resolveTxt: async () => [['iss=attacker.example']], getJson: async () => { fetched = true; } }));
++  assert.equal(fetched, false);
++});
++test('rejects discovery issuer mismatch', async () => {
++  await assert.rejects(verify(await presentation(), {}, { ...dependencies, getJson: async () => ({ issuer: 'https://wrong.example', jwks_uri: `${issuer}/keys` }) }));
++});
++test('rejects non-HTTPS and private-network metadata requests', async () => {
++  for (const url of ['http://issuer.example', 'https://127.0.0.1/keys', 'https://[::1]/keys', 'https://user:password@issuer.example/keys']) await assert.rejects(publicJson(url));
++});
++test('accepts selectively disclosed email claims', async () => {
++  const sd = new SDJwtInstance({ hasher, hashAlg: 'sha-256', saltGenerator: () => randomBytes(16).toString('base64url'), signAlg: 'ES256', signer: async (data) => {
++    const [header, payload] = data.split('.');
++    return (await new SignJWT(JSON.parse(Buffer.from(payload, 'base64url'))).setProtectedHeader(JSON.parse(Buffer.from(header, 'base64url'))).sign(issuerKey.privateKey)).split('.')[2];
++  } });
++  const issued = await sd.issue({ iss: issuer, iat: Math.floor(Date.now() / 1000), email: 'member@example.com', email_verified: true, cnf: { jwk: holderJwk } }, { _sd: ['email', 'email_verified'] }, { header: { typ: 'ev+sd-jwt' } });
++  const kb = await new SignJWT({ nonce: 'test-nonce', aud: audience, iat: Math.floor(Date.now() / 1000), sd_hash: hasher(issued).toString('base64url') }).setProtectedHeader({ alg: 'ES256', typ: 'kb+jwt' }).sign(holderKey.privateKey);
++  assert.equal((await verify(issued + kb)).email, 'member@example.com');
++});

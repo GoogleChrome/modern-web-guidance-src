@@ -1,0 +1,73 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..e40b597
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,22 @@
++# The Daily Grind
++
++Install dependencies with `pnpm install` and serve the application with `pnpm start`.
++The port defaults to `11222` and can be overridden with `PORT`.
++
++The server sends `Permissions-Policy` directives allowing this application's
++origin to request resources on the user's local network and loopback interface.
++It includes both the current `local-network` and `loopback-network` directives
++and the older `local-network-access` alias.
++
++Public deployments must use HTTPS. Users must grant any browser network access
++permission, and local services must allow the application's origin through CORS
++when requests need to read cross-origin responses. These headers do not grant
++permission on the user's behalf.
++
++If embedding this app in a cross-origin iframe, the parent must delegate
++`local-network; loopback-network; local-network-access` through the iframe's
++`allow` attribute and permit the app's origin in any parent Permissions-Policy.
++If deploying with another static host, configure that host to send the same
++Permissions-Policy header; HTML meta tags cannot replace this response header.
++
++Reference: https://wicg.github.io/local-network-access/
+diff --git a/package.json b/package.json
+index 2bd4d77..28d9b59 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "statikk": "^3.1.0"
+   }
+ }
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..4582c9e
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,14 @@
++import statikk from 'statikk';
++import { fileURLToPath } from 'node:url';
++
++await statikk({
++  root: fileURLToPath(new URL('.', import.meta.url)),
++  port: process.env.PORT || 11222,
++  setHeaders(response) {
++    // Include the original name for browsers predating the split permissions.
++    response.setHeader(
++      'Permissions-Policy',
++      'local-network=(self), loopback-network=(self), local-network-access=(self)',
++    );
++  },
++});

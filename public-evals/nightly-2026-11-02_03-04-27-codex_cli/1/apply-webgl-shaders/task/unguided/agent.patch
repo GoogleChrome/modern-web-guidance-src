@@ -1,0 +1,260 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,8 +73,12 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      min-height: 400px;
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -87,10 +91,38 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero > :not(canvas) {
++      position: relative;
++      z-index: 1;
++    }
++
++    .hero-ripple {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      z-index: 2;
++      pointer-events: none;
++      display: none;
++    }
++
++    .hero.ripple-ready .hero-ripple { display: block; }
++    .hero.ripple-ready h1,
++    .hero.ripple-ready .btn { color: transparent; }
++    .hero.ripple-ready .btn { background: transparent; }
++    .hero h1::selection,
++    .hero .btn::selection { color: white; background: #805c42; }
++    .hero .btn { transition: none; }
++    .hero .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 6px; }
++
++    @media (prefers-reduced-motion: reduce) {
++      .hero-ripple { display: none !important; }
++    }
++
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 5vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
+     /* Content Sections */
+@@ -168,8 +200,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <canvas class="hero-ripple" aria-hidden="true"></canvas>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -206,7 +239,193 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const hero = document.querySelector('.hero');
++      const heading = hero.querySelector('h1');
++      const button = hero.querySelector('.btn');
++      const canvas = hero.querySelector('.hero-ripple');
++      const motion = matchMedia('(prefers-reduced-motion: reduce)');
++      const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true });
++      if (!gl) return;
++
++      const vertexSource = `
++        attribute vec2 position;
++        varying vec2 uv;
++        void main() {
++          uv = position * .5 + .5;
++          gl_Position = vec4(position, 0., 1.);
++        }
++      `;
++      const fragmentSource = `
++        precision mediump float;
++        varying vec2 uv;
++        uniform sampler2D content;
++        uniform vec2 resolution;
++        uniform vec2 pointer;
++        uniform float time;
++        uniform float strength;
++        void main() {
++          vec2 point = uv * resolution;
++          vec2 delta = point - pointer;
++          float distance = length(delta);
++          vec2 direction = delta / max(distance, 1.);
++          float envelope = exp(-distance / 270.);
++          float wave = sin(distance * .045 - time * 4.5);
++          vec2 ripple = direction * wave * envelope * strength * 9.;
++          // A quiet travelling wave keeps the hero alive before interaction.
++          ripple.y += sin(point.x * .018 + time * 1.1) * 1.25;
++          vec2 sampleUV = uv + ripple / resolution;
++          gl_FragColor = texture2D(content, sampleUV);
++        }
++      `;
++      function compile(type, source) {
++        const shader = gl.createShader(type);
++        gl.shaderSource(shader, source);
++        gl.compileShader(shader);
++        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++          gl.deleteShader(shader);
++          throw new Error('Hero shader could not compile');
++        }
++        return shader;
++      }
++      let program;
++      try {
++        program = gl.createProgram();
++        const vertex = compile(gl.VERTEX_SHADER, vertexSource);
++        const fragment = compile(gl.FRAGMENT_SHADER, fragmentSource);
++        gl.attachShader(program, vertex);
++        gl.attachShader(program, fragment);
++        gl.linkProgram(program);
++        gl.deleteShader(vertex);
++        gl.deleteShader(fragment);
++        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error('Hero shader could not link');
++      } catch {
++        return; // The original HTML remains visible if shader setup fails.
++      }
++      gl.useProgram(program);
++      const buffer = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
++      const position = gl.getAttribLocation(program, 'position');
++      gl.enableVertexAttribArray(position);
++      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
++      const uniforms = Object.fromEntries(['content', 'resolution', 'pointer', 'time', 'strength'].map(name => [name, gl.getUniformLocation(program, name)]));
++      const texture = gl.createTexture();
++      gl.bindTexture(gl.TEXTURE_2D, texture);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
++      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
++      gl.uniform1i(uniforms.content, 0);
++      const snapshot = document.createElement('canvas');
++      const ctx = snapshot.getContext('2d');
++      if (!ctx) return;
++      let width = 1, height = 1, frame = 0, visible = true, lost = false;
++      let pointer = { x: 0, y: 0 }, strength = 0, targetStrength = 0;
++
++      function drawText(element, bounds, color) {
++        const style = getComputedStyle(element);
++        ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
++        ctx.fillStyle = color;
++        ctx.textBaseline = 'alphabetic';
++        // DOM ranges preserve the browser's actual wrapping and word positions.
++        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
++        while (walker.nextNode()) {
++          const node = walker.currentNode;
++          for (const match of node.textContent.matchAll(/\S+/g)) {
++            const range = document.createRange();
++            range.setStart(node, match.index);
++            range.setEnd(node, match.index + match[0].length);
++            const rect = range.getBoundingClientRect();
++            const metrics = ctx.measureText(match[0]);
++            const ascent = metrics.fontBoundingBoxAscent ?? parseFloat(style.fontSize) * .9;
++            const descent = metrics.fontBoundingBoxDescent ?? parseFloat(style.fontSize) * .2;
++            ctx.fillText(match[0], rect.left - bounds.left, rect.top - bounds.top + (rect.height - ascent - descent) / 2 + ascent);
++          }
++        }
++      }
++      function capture() {
++        if (lost || motion.matches) return;
++        hero.classList.remove('ripple-ready');
++        const bounds = hero.getBoundingClientRect();
++        width = bounds.width;
++        height = bounds.height;
++        const dpr = Math.min(devicePixelRatio || 1, 2);
++        canvas.width = snapshot.width = Math.round(width * dpr);
++        canvas.height = snapshot.height = Math.round(height * dpr);
++        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
++        const buttonBounds = button.getBoundingClientRect();
++        const buttonStyle = getComputedStyle(button);
++        ctx.fillStyle = buttonStyle.backgroundColor;
++        ctx.beginPath();
++        ctx.roundRect(buttonBounds.left - bounds.left, buttonBounds.top - bounds.top, buttonBounds.width, buttonBounds.height, parseFloat(buttonStyle.borderRadius));
++        ctx.fill();
++        drawText(heading, bounds, getComputedStyle(heading).color);
++        drawText(button, bounds, buttonStyle.color);
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, snapshot);
++        gl.viewport(0, 0, canvas.width, canvas.height);
++        gl.uniform2f(uniforms.resolution, width, height);
++        render(performance.now());
++        hero.classList.add('ripple-ready');
++      }
++      function render(now) {
++        strength += (targetStrength - strength) * .065;
++        gl.uniform2f(uniforms.pointer, pointer.x, pointer.y);
++        gl.uniform1f(uniforms.time, now / 1000);
++        gl.uniform1f(uniforms.strength, strength);
++        gl.drawArrays(gl.TRIANGLES, 0, 6);
++      }
++      function animate(now) {
++        frame = 0;
++        if (motion.matches || !visible || document.hidden || lost) return;
++        render(now);
++        frame = requestAnimationFrame(animate);
++      }
++      function resume() {
++        cancelAnimationFrame(frame);
++        frame = 0;
++        if (motion.matches || lost) {
++          hero.classList.remove('ripple-ready');
++          return;
++        }
++        capture();
++        if (visible && !document.hidden) frame = requestAnimationFrame(animate);
++      }
++      hero.addEventListener('pointermove', event => {
++        const bounds = hero.getBoundingClientRect();
++        pointer = { x: event.clientX - bounds.left, y: height - (event.clientY - bounds.top) };
++        targetStrength = 1;
++      }, { passive: true });
++      hero.addEventListener('pointerleave', () => { targetStrength = 0; });
++      hero.addEventListener('pointerup', event => {
++        if (event.pointerType !== 'mouse') targetStrength = 0;
++      });
++      for (const event of ['pointerenter', 'pointerleave', 'focus', 'blur']) {
++        button.addEventListener(event, capture);
++      }
++      new ResizeObserver(resume).observe(hero);
++      new IntersectionObserver(entries => {
++        visible = entries[0].isIntersecting;
++        resume();
++      }).observe(hero);
++      document.addEventListener('visibilitychange', resume);
++      motion.addEventListener('change', resume);
++      canvas.addEventListener('webglcontextlost', event => {
++        event.preventDefault();
++        lost = true;
++        cancelAnimationFrame(frame);
++        hero.classList.remove('ripple-ready');
++      });
++      // A restored context falls back to HTML until the page is reloaded.
++      document.fonts.ready.then(resume);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

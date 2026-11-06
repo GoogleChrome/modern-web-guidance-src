@@ -1,0 +1,178 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,173 @@
++/*
++ * Daily Grind client-side analytics.
++ *
++ * Records page views and click interactions, then coalesces them into a
++ * single batched POST. Events are debounced (the timer resets on each new
++ * event) with a hard max-wait so a steady stream of clicks still flushes
++ * periodically. Pending events are flushed with sendBeacon when the page is
++ * hidden or unloaded so navigation clicks are not lost.
++ */
++(function () {
++  'use strict';
++
++  var ENDPOINT = '/api/analytics';
++  var DEBOUNCE_MS = 1000;   // quiet period before sending
++  var MAX_WAIT_MS = 5000;   // upper bound on how long an event can wait
++  var MAX_BATCH = 50;       // flush immediately once this many are queued
++  var MAX_QUEUE = 500;      // drop oldest events beyond this (e.g. endpoint down)
++
++  if (navigator.doNotTrack === '1' || window.doNotTrack === '1') return;
++
++  var queue = [];
++  var debounceTimer = null;
++  var maxWaitTimer = null;
++  var sessionId = getSessionId();
++
++  function getSessionId() {
++    var key = 'dg_analytics_sid';
++    try {
++      var id = sessionStorage.getItem(key);
++      if (!id) {
++        id = (window.crypto && crypto.randomUUID)
++          ? crypto.randomUUID()
++          : Date.now().toString(36) + Math.random().toString(36).slice(2);
++        sessionStorage.setItem(key, id);
++      }
++      return id;
++    } catch (e) {
++      return null;
++    }
++  }
++
++  // Strip query strings and fragments so tokens or PII in URLs are never sent.
++  function cleanUrl(url) {
++    try {
++      var u = new URL(url, location.href);
++      return u.origin === location.origin ? u.pathname : u.origin + u.pathname;
++    } catch (e) {
++      return null;
++    }
++  }
++
++  function track(type, data) {
++    var event = { type: type, ts: Date.now(), path: location.pathname };
++    for (var k in data) {
++      if (Object.prototype.hasOwnProperty.call(data, k)) event[k] = data[k];
++    }
++    queue.push(event);
++    if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
++    schedule();
++  }
++
++  function schedule() {
++    if (queue.length >= MAX_BATCH) {
++      flush();
++      return;
++    }
++    clearTimeout(debounceTimer);
++    debounceTimer = setTimeout(flush, DEBOUNCE_MS);
++    if (!maxWaitTimer) maxWaitTimer = setTimeout(flush, MAX_WAIT_MS);
++  }
++
++  function clearTimers() {
++    clearTimeout(debounceTimer);
++    clearTimeout(maxWaitTimer);
++    debounceTimer = maxWaitTimer = null;
++  }
++
++  function flush(useBeacon) {
++    clearTimers();
++    if (!queue.length) return;
++
++    var batch = queue.splice(0, MAX_BATCH);
++    var body = JSON.stringify({ sessionId: sessionId, sentAt: Date.now(), events: batch });
++
++    if (useBeacon === true && navigator.sendBeacon) {
++      var blob = new Blob([body], { type: 'application/json' });
++      if (!navigator.sendBeacon(ENDPOINT, blob)) {
++        // Browser refused (payload quota); keep events for the next flush.
++        queue = batch.concat(queue);
++        return;
++      }
++    } else {
++      send(body, batch);
++    }
++
++    // More than one batch was queued; keep draining.
++    if (queue.length) {
++      if (useBeacon === true) flush(true);
++      else schedule();
++    }
++  }
++
++  function send(body, batch) {
++    var restore = function () { queue = batch.concat(queue); };
++    if (!window.fetch) return;
++    fetch(ENDPOINT, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: body,
++      keepalive: true,
++      credentials: 'same-origin'
++    }).then(function (res) {
++      // Retry later on server errors; drop on 4xx so bad payloads don't loop.
++      if (res.status >= 500) restore();
++    }).catch(restore);
++  }
++
++  // --- Page views -----------------------------------------------------------
++
++  function trackPageView() {
++    track('page_view', {
++      title: document.title,
++      referrer: document.referrer ? cleanUrl(document.referrer) : null,
++      viewport: window.innerWidth + 'x' + window.innerHeight
++    });
++  }
++
++  // --- Clicks ---------------------------------------------------------------
++
++  function describe(el) {
++    var tag = el.tagName.toLowerCase();
++    var text = (el.getAttribute('aria-label') || el.textContent || '')
++      .replace(/\s+/g, ' ').trim().slice(0, 80);
++    var info = { tag: tag, text: text };
++    if (el.id) info.id = el.id;
++    if (el.className && typeof el.className === 'string') info.classes = el.className.trim();
++    if (el.dataset && el.dataset.track) info.label = el.dataset.track;
++    if (tag === 'a' && el.getAttribute('href')) info.href = cleanUrl(el.href);
++    var section = el.closest('nav, header, main, footer, section, .card');
++    if (section) {
++      info.section = section.classList.contains('card')
++        ? 'card:' + ((section.querySelector('h3') || {}).textContent || '').trim()
++        : section.tagName.toLowerCase();
++    }
++    return info;
++  }
++
++  document.addEventListener('click', function (e) {
++    var target = e.target instanceof Element ? e.target : null;
++    if (!target) return;
++    var el = target.closest('a, button, [data-track], [role="button"], input[type="submit"]') || target;
++    var data = describe(el);
++    data.x = e.clientX;
++    data.y = e.clientY;
++    track('click', data);
++  }, { capture: true, passive: true });
++
++  // --- Lifecycle ------------------------------------------------------------
++
++  document.addEventListener('visibilitychange', function () {
++    if (document.visibilityState === 'hidden') flush(true);
++  });
++  window.addEventListener('pagehide', function () { flush(true); });
++
++  // Restored from back/forward cache: count as a fresh view.
++  window.addEventListener('pageshow', function (e) {
++    if (e.persisted) trackPageView();
++  });
++
++  trackPageView();
++
++  window.dgAnalytics = { track: track, flush: flush };
++})();

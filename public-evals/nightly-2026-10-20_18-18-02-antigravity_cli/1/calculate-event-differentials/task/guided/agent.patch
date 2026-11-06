@@ -1,0 +1,125 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,27 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promo-timer {
++      margin: 12px 0;
++      padding: 10px;
++      background-color: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      font-size: 0.9rem;
++      text-align: left;
++    }
++
++    .promo-timer p {
++      margin: 4px 0;
++    }
++
++    .promo-timer .label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,8 +199,12 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div id="maple-oat-timer" class="promo-timer" aria-live="polite">
++            <p><span class="label">Ends in:</span> <span id="maple-oat-remaining">Calculating...</span></p>
++            <p><span class="label">Time since promotion started:</span> <span id="maple-oat-elapsed">Calculating...</span></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +229,80 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    function formatDaysAndHours(duration) {
++      if (typeof Intl.DurationFormat !== 'undefined') {
++        const formatter = new Intl.DurationFormat(undefined, { style: 'long' });
++        return formatter.format({ days: duration.days, hours: duration.hours });
++      }
++      if (typeof duration.toLocaleString === 'function') {
++        const formatted = duration.toLocaleString(undefined, { style: 'long' });
++        if (formatted && !formatted.startsWith('P')) {
++          return formatted;
++        }
++      }
++      const d = duration.days;
++      const h = duration.hours;
++      const daysStr = `${d} day${d === 1 ? '' : 's'}`;
++      const hoursStr = `${h} hour${h === 1 ? '' : 's'}`;
++      return `${daysStr} and ${hoursStr}`;
++    }
++
++    function updateMapleOatTimer() {
++      const remainingEl = document.getElementById('maple-oat-remaining');
++      const elapsedEl = document.getElementById('maple-oat-elapsed');
++      if (!remainingEl || !elapsedEl) return;
++
++      // 1. Get current time point in the user's local system time zone
++      const now = Temporal.Now.zonedDateTimeISO();
++      const tz = now.timeZoneId;
++
++      // 2. Combine separate date and time strings via Temporal methods
++      const startDateStr = '2026-01-01';
++      const startTimeStr = '00:00:00';
++      const endDateStr = '2026-03-01';
++      const endTimeStr = '00:00:00';
++
++      const start = Temporal.PlainDate.from(startDateStr)
++        .toPlainDateTime(startTimeStr)
++        .toZonedDateTime(tz);
++      const end = Temporal.PlainDate.from(endDateStr)
++        .toPlainDateTime(endTimeStr)
++        .toZonedDateTime(tz);
++
++      // 3. Calculate elapsed time with .since() and remaining time with .until()
++      const timeElapsed = now.since(start, { largestUnit: 'day', smallestUnit: 'hour' });
++      const timeRemaining = now.until(end, { largestUnit: 'day', smallestUnit: 'hour' });
++
++      // 4. Check status using .sign and render formatted durations
++      if (timeRemaining.sign <= 0) {
++        remainingEl.textContent = `Offer has ended (${formatDaysAndHours(timeRemaining.abs())} ago)`;
++      } else {
++        remainingEl.textContent = formatDaysAndHours(timeRemaining);
++      }
++
++      if (timeElapsed.sign < 0) {
++        elapsedEl.textContent = `Starts in ${formatDaysAndHours(timeElapsed.abs())}`;
++      } else {
++        elapsedEl.textContent = formatDaysAndHours(timeElapsed);
++      }
++    }
++
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/@js-temporal/polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', updateMapleOatTimer);
++      } else {
++        updateMapleOatTimer();
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

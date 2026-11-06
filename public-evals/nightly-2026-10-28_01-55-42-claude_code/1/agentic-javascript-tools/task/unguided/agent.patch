@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,218 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // ---------------------------------------------------------------------
++    // WebMCP client-side tool: menu item lookup for AI assistants
++    //
++    // Registers a tool on document.modelContext (the Web Model Context API)
++    // so browser-integrated assistants can look up menu item details on this
++    // page by name. The registration is tied to an AbortController and is
++    // torn down on pagehide. Browsers without WebMCP are left untouched.
++    // ---------------------------------------------------------------------
++    (function () {
++      'use strict';
++
++      // Source of truth for the tool. Keep in sync with the cards above.
++      const MENU_ITEMS = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          aliases: ['maple latte', 'oat latte', 'maple oat'],
++          category: 'Seasonal',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          prices: { small: 5.25, medium: 5.75, large: 6.25 },
++          currency: 'USD',
++          servedAs: ['hot', 'iced'],
++          caffeineMg: 150,
++          caloriesMedium: 240,
++          allergens: ['oats'],
++          dietary: ['vegan', 'dairy-free'],
++          availability: 'Seasonal (fall and winter)',
++          url: '/menu/seasonal',
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          aliases: ['espresso', 'dark roast', 'double espresso'],
++          category: 'Espresso',
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          prices: { single: 2.75, double: 3.5 },
++          currency: 'USD',
++          servedAs: ['hot'],
++          caffeineMg: 128,
++          caloriesMedium: 5,
++          allergens: [],
++          dietary: ['vegan', 'dairy-free', 'sugar-free'],
++          availability: 'Year-round',
++          url: '/menu/espresso',
++        },
++        {
++          id: 'cold-brew',
++          name: 'Cold Brew',
++          aliases: ['cold brew coffee', 'coldbrew', 'iced cold brew'],
++          category: 'Cold Drinks',
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          prices: { small: 4.25, medium: 4.75, large: 5.25 },
++          currency: 'USD',
++          servedAs: ['iced'],
++          caffeineMg: 205,
++          caloriesMedium: 10,
++          allergens: [],
++          dietary: ['vegan', 'dairy-free', 'sugar-free'],
++          availability: 'Year-round',
++          url: '/menu/cold-brew',
++        },
++      ];
++
++      function normalize(text) {
++        return String(text)
++          .toLowerCase()
++          .replace(/[^a-z0-9]+/g, ' ')
++          .trim();
++      }
++
++      // Exact name/alias match first, then a forgiving partial match.
++      function findMenuItem(rawName) {
++        const query = normalize(rawName);
++        if (!query) return null;
++
++        const exact = MENU_ITEMS.find(
++          (item) =>
++            normalize(item.name) === query ||
++            item.aliases.some((alias) => normalize(alias) === query)
++        );
++        if (exact) return exact;
++
++        return (
++          MENU_ITEMS.find((item) => {
++            const candidates = [item.name, ...item.aliases].map(normalize);
++            return candidates.some(
++              (c) => c.includes(query) || query.includes(c)
++            );
++          }) || null
++        );
++      }
++
++      function publicDetails(item) {
++        // Strip internal-only fields before handing data to the assistant.
++        const { aliases, ...details } = item;
++        return details;
++      }
++
++      const menuItemTool = {
++        name: 'get_menu_item_details',
++        description:
++          'Look up details for a drink on The Daily Grind coffee menu by its ' +
++          'name (for example "Maple Oat Latte", "Dark Roast Espresso", or ' +
++          '"Cold Brew"). Returns the item description, prices by size, ' +
++          'caffeine and calorie information, allergens, dietary notes, and ' +
++          'availability. Use this when a user asks about a specific menu ' +
++          'item, its price, ingredients, or whether it suits a dietary need. ' +
++          'Matching is case-insensitive and tolerates common short forms ' +
++          'such as "espresso" or "oat latte". If no item matches, the ' +
++          'response lists the available menu item names so you can retry.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            item_name: {
++              type: 'string',
++              description:
++                'The name of the menu item to look up, as the user said it. ' +
++                'Full names ("Maple Oat Latte") or short forms ("cold brew") ' +
++                'both work. Case and punctuation are ignored.',
++              minLength: 1,
++            },
++          },
++          required: ['item_name'],
++          additionalProperties: false,
++        },
++        annotations: {
++          readOnlyHint: true,
++          untrustedContentHint: false,
++          consequentialHint: false,
++        },
++        async execute(input) {
++          // Chrome before 155 delivered arguments as a JSON string.
++          const args = typeof input === 'string' ? JSON.parse(input) : input || {};
++          const itemName = args.item_name;
++
++          if (typeof itemName !== 'string' || !itemName.trim()) {
++            return {
++              found: false,
++              error: 'item_name must be a non-empty string.',
++              availableItems: MENU_ITEMS.map((item) => item.name),
++            };
++          }
++
++          const item = findMenuItem(itemName);
++          if (!item) {
++            return {
++              found: false,
++              query: itemName,
++              message: `No menu item matches "${itemName}".`,
++              availableItems: MENU_ITEMS.map((item) => item.name),
++            };
++          }
++
++          return { found: true, query: itemName, item: publicDetails(item) };
++        },
++      };
++
++      let registration = null;
++
++      async function activateMenuTool() {
++        const modelContext = document.modelContext;
++        if (!modelContext || typeof modelContext.registerTool !== 'function') {
++          return; // WebMCP not supported here; nothing to register.
++        }
++        if (registration) return; // Already active.
++
++        const controller = new AbortController();
++        registration = controller;
++        try {
++          await modelContext.registerTool(menuItemTool, {
++            signal: controller.signal,
++          });
++        } catch (err) {
++          // NotAllowedError (permissions policy), InvalidStateError (duplicate
++          // name), or an abort before the registration settled.
++          registration = null;
++          if (err && err.name !== 'AbortError') {
++            console.warn('[WebMCP] Could not register menu item tool:', err);
++          }
++        }
++      }
++
++      // Aborting the signal is the spec's unregistration mechanism.
++      function deactivateMenuTool() {
++        if (!registration) return;
++        registration.abort();
++        registration = null;
++      }
++
++      // pagehide fires on navigation, tab close, and bfcache entry, and
++      // (unlike unload) does not disable the back/forward cache.
++      window.addEventListener('pagehide', deactivateMenuTool);
++      // Re-register if the page is restored from the back/forward cache.
++      window.addEventListener('pageshow', (event) => {
++        if (event.persisted) activateMenuTool();
++      });
++
++      // Exposed so other scripts (or DevTools) can toggle the tool.
++      window.dailyGrindMenuTool = {
++        activate: activateMenuTool,
++        deactivate: deactivateMenuTool,
++        findMenuItem,
++        get isActive() {
++          return registration !== null;
++        },
++      };
++
++      activateMenuTool();
++    })();
++  </script>
+ </body>
+ 
+ </html>

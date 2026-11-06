@@ -1,0 +1,298 @@
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..58b1d5d 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -91,6 +91,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <span>© 2025 The DevTools Times Company</span>
+             <a href="#" class="hover:underline">Contact Us</a>
+             <a href="#" class="hover:underline">Work with us</a>
++            <a href=`${baseUrl}translate` class="hover:underline">Translate</a>
+             <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+             <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+             <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
+diff --git a/src/components/TranslateArticleButton.tsx b/src/components/TranslateArticleButton.tsx
+new file mode 100644
+index 0000000..87f7b18
+--- /dev/null
++++ b/src/components/TranslateArticleButton.tsx
+@@ -0,0 +1,74 @@
++import React, { useState } from 'react';
++import { LANGUAGES, createTranslator, isTranslationSupported } from '../utils/translate';
++
++interface Props {
++    // CSS selector of the element whose text should be translated in place
++    targetSelector: string;
++    sourceLanguage?: string;
++}
++
++const TEXT_SELECTOR = 'h1, h2, h3, h4, p, li, blockquote, figcaption';
++
++export default function TranslateArticleButton({ targetSelector, sourceLanguage = 'en' }: Props) {
++    const [language, setLanguage] = useState('es');
++    const [status, setStatus] = useState('');
++    const [translated, setTranslated] = useState(false);
++    const [originals] = useState(() => new Map<Element, string>());
++
++    if (!isTranslationSupported()) return null;
++
++    const nodes = () => Array.from(document.querySelectorAll(`${targetSelector} :is(${TEXT_SELECTOR}), ${targetSelector}:is(${TEXT_SELECTOR})`));
++
++    const restore = () => {
++        originals.forEach((html, el) => { el.innerHTML = html; el.removeAttribute('lang'); });
++        originals.clear();
++        setTranslated(false);
++    };
++
++    const translate = async () => {
++        if (translated) restore();
++        if (language === sourceLanguage) return;
++        try {
++            setStatus('Preparing translator…');
++            const translator = await createTranslator(sourceLanguage, language, (f) =>
++                setStatus(`Downloading language pack… ${Math.round(f * 100)}%`),
++            );
++            const els = nodes();
++            for (let i = 0; i < els.length; i++) {
++                setStatus(`Translating… ${i + 1}/${els.length}`);
++                const el = els[i];
++                const text = el.textContent?.trim();
++                if (!text) continue;
++                originals.set(el, el.innerHTML);
++                el.textContent = await translator.translate(text);
++                el.setAttribute('lang', language);
++            }
++            setTranslated(true);
++            setStatus('');
++        } catch (e) {
++            restore();
++            setStatus(e instanceof Error ? e.message : 'Translation failed.');
++        }
++    };
++
++    return (
++        <div className="flex flex-wrap items-center gap-2 text-sm">
++            <span className="font-semibold text-gray-800">Translate:</span>
++            <select
++                aria-label="Translate article into"
++                value={language}
++                onChange={(e) => setLanguage(e.target.value)}
++                className="border border-gray-300 rounded px-2 py-1"
++            >
++                {Object.entries(LANGUAGES).filter(([c]) => c !== sourceLanguage).map(([code, name]) => (
++                    <option key={code} value={code}>{name}</option>
++                ))}
++            </select>
++            <button type="button" onClick={translate} className="bg-gray-800 text-white font-semibold py-1 px-3 rounded hover:bg-gray-700">
++                Translate
++            </button>
++            {translated && <button type="button" onClick={restore} className="underline text-gray-600 hover:text-amber-500">Show original</button>}
++            {status && <span className="text-gray-500" role="status">{status}</span>}
++        </div>
++    );
++}
+diff --git a/src/components/TranslateTool.tsx b/src/components/TranslateTool.tsx
+new file mode 100644
+index 0000000..b16caf7
+--- /dev/null
++++ b/src/components/TranslateTool.tsx
+@@ -0,0 +1,104 @@
++import React, { useState } from 'react';
++import { LANGUAGES, createTranslator, detectLanguage, isTranslationSupported } from '../utils/translate';
++
++export default function TranslateTool() {
++    const [text, setText] = useState('');
++    const [source, setSource] = useState('en');
++    const [target, setTarget] = useState('es');
++    const [result, setResult] = useState('');
++    const [status, setStatus] = useState('');
++    const [error, setError] = useState('');
++    const [busy, setBusy] = useState(false);
++
++    const supported = isTranslationSupported();
++
++    const swap = () => {
++        setSource(target);
++        setTarget(source);
++        setText(result);
++        setResult('');
++    };
++
++    const detect = async () => {
++        const lang = await detectLanguage(text);
++        if (lang && lang in LANGUAGES) setSource(lang);
++        else setError('Could not detect the language.');
++    };
++
++    const translate = async () => {
++        setError('');
++        setResult('');
++        setBusy(true);
++        try {
++            if (source === target) {
++                setResult(text);
++                return;
++            }
++            setStatus('Preparing translator…');
++            const translator = await createTranslator(source, target, (f) =>
++                setStatus(`Downloading language pack… ${Math.round(f * 100)}%`),
++            );
++            setStatus('Translating…');
++            setResult(await translator.translate(text));
++        } catch (e) {
++            setError(e instanceof Error ? e.message : 'Translation failed.');
++        } finally {
++            setStatus('');
++            setBusy(false);
++        }
++    };
++
++    if (!supported) {
++        return (
++            <p className="p-4 bg-amber-50 border border-amber-200 rounded text-sm text-gray-700">
++                Your browser doesn't support the Translator API. Try a recent version of Chrome.
++            </p>
++        );
++    }
++
++    const select = (value: string, onChange: (v: string) => void, label: string) => (
++        <select
++            aria-label={label}
++            value={value}
++            onChange={(e) => onChange(e.target.value)}
++            className="border border-gray-300 rounded px-2 py-1 text-sm"
++        >
++            {Object.entries(LANGUAGES).map(([code, name]) => (
++                <option key={code} value={code}>{name}</option>
++            ))}
++        </select>
++    );
++
++    return (
++        <div className="space-y-4">
++            <div className="flex flex-wrap items-center gap-3">
++                {select(source, setSource, 'Source language')}
++                <button type="button" onClick={swap} aria-label="Swap languages" className="px-2 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100">⇄</button>
++                {select(target, setTarget, 'Target language')}
++                <button type="button" onClick={detect} disabled={!text.trim()} className="text-sm underline text-gray-600 hover:text-amber-500 disabled:opacity-50">
++                    Detect language
++                </button>
++            </div>
++            <textarea
++                value={text}
++                onChange={(e) => setText(e.target.value)}
++                rows={6}
++                placeholder="Enter text to translate"
++                className="w-full border border-gray-300 rounded p-3 text-sm"
++            />
++            <button
++                type="button"
++                onClick={translate}
++                disabled={busy || !text.trim()}
++                className="bg-gray-800 text-white text-sm font-semibold py-2 px-4 rounded hover:bg-gray-700 disabled:opacity-50"
++            >
++                Translate
++            </button>
++            {status && <p className="text-sm text-gray-500" role="status">{status}</p>}
++            {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
++            {result && (
++                <div className="border border-gray-200 rounded p-3 bg-gray-50 whitespace-pre-wrap" lang={target}>{result}</div>
++            )}
++        </div>
++    );
++}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..89980d3 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -7,6 +7,7 @@ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
++import TranslateArticleButton from '../../components/TranslateArticleButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ 
+ export const getStaticPaths = (async () => {
+@@ -104,8 +105,12 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         </div>
+ 
++        <div class="mb-6" id="article-translate">
++            <TranslateArticleButton client:load targetSelector="#article-translate-target" />
++        </div>
++
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div class="prose max-w-none" id="article-translate-target">
+             <Content />
+         </div>
+ 
+diff --git a/src/pages/translate.astro b/src/pages/translate.astro
+new file mode 100644
+index 0000000..9357c32
+--- /dev/null
++++ b/src/pages/translate.astro
+@@ -0,0 +1,12 @@
++---
++import Layout from '../layouts/Layout.astro';
++import TranslateTool from '../components/TranslateTool.tsx';
++---
++
++<Layout title="Translate">
++    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Translate</h1>
++        <p class="text-gray-600 mb-6">Translate text between languages, right in your browser.</p>
++        <TranslateTool client:load />
++    </div>
++</Layout>
+diff --git a/src/utils/translate.ts b/src/utils/translate.ts
+new file mode 100644
+index 0000000..a0a37d6
+--- /dev/null
++++ b/src/utils/translate.ts
+@@ -0,0 +1,46 @@
++// Thin wrapper around the browser's on-device Translator and LanguageDetector APIs.
++
++export const LANGUAGES: Record<string, string> = {
++  en: 'English',
++  es: 'Spanish',
++  fr: 'French',
++  de: 'German',
++  it: 'Italian',
++  pt: 'Portuguese',
++  ja: 'Japanese',
++  ko: 'Korean',
++  zh: 'Chinese',
++  ru: 'Russian',
++  ar: 'Arabic',
++  hi: 'Hindi',
++};
++
++export function isTranslationSupported(): boolean {
++  return typeof window !== 'undefined' && 'Translator' in window;
++}
++
++export async function detectLanguage(text: string): Promise<string | null> {
++  if (!('LanguageDetector' in window)) return null;
++  const detector = await (window as any).LanguageDetector.create();
++  const [best] = await detector.detect(text);
++  return best && best.confidence > 0.5 ? best.detectedLanguage : null;
++}
++
++export async function createTranslator(
++  source: string,
++  target: string,
++  onProgress?: (fraction: number) => void,
++) {
++  const T = (window as any).Translator;
++  const availability = await T.availability({ sourceLanguage: source, targetLanguage: target });
++  if (availability === 'unavailable') {
++    throw new Error(`Translating ${LANGUAGES[source] ?? source} to ${LANGUAGES[target] ?? target} is not supported.`);
++  }
++  return T.create({
++    sourceLanguage: source,
++    targetLanguage: target,
++    monitor(m: EventTarget) {
++      m.addEventListener('downloadprogress', (e: any) => onProgress?.(e.loaded));
++    },
++  });
++}

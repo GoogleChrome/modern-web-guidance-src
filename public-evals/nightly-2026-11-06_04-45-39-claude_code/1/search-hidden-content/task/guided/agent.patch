@@ -1,0 +1,277 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,162 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Main + sidebar layout */
++    .layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 260px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (max-width: 800px) {
++      .layout {
++        grid-template-columns: minmax(0, 1fr);
++      }
++    }
++
++    .sidebar {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      position: sticky;
++      top: 90px;
++    }
++
++    .sidebar h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .sidebar p {
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    /* Custom-themed reveal button */
++    .reveal-coupon-btn {
++      appearance: none;
++      width: 100%;
++      font: inherit;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      color: var(--primary);
++      background: var(--accent);
++      border: 2px dashed var(--primary);
++      border-radius: 6px;
++      padding: 12px 16px;
++      cursor: pointer;
++      transition: background 0.3s, transform 0.15s;
++    }
++
++    .reveal-coupon-btn:hover:not(:disabled) {
++      background: #ffc174;
++    }
++
++    .reveal-coupon-btn:active:not(:disabled) {
++      transform: scale(0.98);
++    }
++
++    .reveal-coupon-btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .reveal-coupon-btn:disabled {
++      background: var(--secondary);
++      border-style: solid;
++      cursor: default;
++    }
++
++    /* Coupon panel: no display/visibility/box styles on the hidden="until-found"
++       element itself — visual styling lives on the inner wrapper. */
++    .coupon-panel-inner {
++      margin-top: 30px;
++      padding: 20px;
++      border: 2px dashed var(--accent);
++      border-radius: 8px;
++      background: #fff8ee;
++      text-align: center;
++    }
++
++    .coupon-code {
++      display: inline-block;
++      font-family: monospace;
++      font-size: 1.6rem;
++      font-weight: bold;
++      letter-spacing: 3px;
++      color: var(--primary);
++      background: white;
++      padding: 6px 18px;
++      margin: 10px 0;
++      border-radius: 4px;
++      user-select: all;
++    }
++
++    /* Wholesale & catering tabs (exclusive <details> group) */
++    .wholesale-section {
++      margin-top: 50px;
++    }
++
++    .wholesale-section h2 {
++      margin-bottom: 15px;
++    }
++
++    .wholesale-tab {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 10px;
++      overflow: hidden;
++    }
++
++    .wholesale-tab summary {
++      cursor: pointer;
++      padding: 14px 20px;
++      font-weight: 600;
++      color: var(--primary);
++      background: var(--secondary);
++      list-style: none;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .wholesale-tab summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .wholesale-tab summary::after {
++      content: "+";
++      font-size: 1.3rem;
++      line-height: 1;
++    }
++
++    .wholesale-tab[open] summary {
++      background: var(--primary);
++      color: white;
++    }
++
++    .wholesale-tab[open] summary::after {
++      content: "\2212";
++    }
++
++    .wholesale-tab summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .tab-body {
++      padding: 20px;
++    }
++
++    .tab-body ul {
++      margin: 10px 0 0 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,9 +327,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container layout">
++  <main>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +349,61 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Coupon panel: hidden="until-found" keeps the code findable via Find in page
++         before the button is clicked; the browser reveals it on a match. -->
++    <section id="coupon-panel" hidden="until-found" aria-labelledby="coupon-heading">
++      <div class="coupon-panel-inner">
++        <h2 id="coupon-heading">Your Discount Code</h2>
++        <p>Enjoy 15% off your next online order.</p>
++        <p class="coupon-code">GRIND15</p>
++        <p>Enter this code at checkout. One use per customer.</p>
++      </div>
++    </section>
++
++    <section class="wholesale-section" aria-labelledby="wholesale-heading">
++      <h2 id="wholesale-heading">Wholesale &amp; Catering</h2>
++      <!-- Shared name makes the group exclusive; <details> content stays findable while closed. -->
++      <details class="wholesale-tab" name="wholesale-catering" open>
++        <summary>Wholesale</summary>
++        <div class="tab-body">
++          <p>Serve The Daily Grind at your caf&eacute;, restaurant, or office. Our wholesale program offers
++            freshly roasted beans delivered on your schedule.</p>
++          <ul>
++            <li>Minimum order: 10 lb per delivery</li>
++            <li>Roasted to order within 48 hours of shipping</li>
++            <li>Free barista training and equipment consultation</li>
++            <li>Volume pricing for accounts over 50 lb per month</li>
++          </ul>
++          <a href="/wholesale" class="btn">Apply for a Wholesale Account</a>
++        </div>
++      </details>
++      <details class="wholesale-tab" name="wholesale-catering">
++        <summary>Catering</summary>
++        <div class="tab-body">
++          <p>Fuel your next meeting, wedding, or event with a full-service coffee bar or drop-off coffee boxes.</p>
++          <ul>
++            <li>Coffee boxes serve 10&ndash;12 cups each</li>
++            <li>Full espresso bar with barista for events of 30+ guests</li>
++            <li>Pastry and seasonal drink add-ons available</li>
++            <li>Please book at least 72 hours in advance</li>
++          </ul>
++          <a href="/catering" class="btn">Request a Catering Quote</a>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
++  <aside class="sidebar" aria-label="Offers">
++    <h3>Special Offer</h3>
++    <p>Unlock an exclusive discount for your next order.</p>
++    <button type="button" class="reveal-coupon-btn" id="reveal-coupon-btn" aria-controls="coupon-panel"
++      aria-expanded="false">Reveal Coupon</button>
++  </aside>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +412,36 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const panel = document.getElementById('coupon-panel');
++      const button = document.getElementById('reveal-coupon-btn');
++
++      // One-way: once revealed, the panel stays visible and the button is retired.
++      const markRevealed = () => {
++        button.setAttribute('aria-expanded', 'true');
++        button.disabled = true;
++        button.textContent = 'Coupon Revealed';
++      };
++
++      button.addEventListener('click', () => {
++        panel.removeAttribute('hidden');
++        markRevealed();
++        panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      });
++
++      // Find-in-page match: the browser removes hidden itself; just sync the button.
++      panel.addEventListener('beforematch', markRevealed);
++
++      // Fallback: browsers without hidden="until-found" treat it as plain hidden,
++      // so show the coupon up front to keep it searchable.
++      if (!('onbeforematch' in HTMLElement.prototype)) {
++        panel.removeAttribute('hidden');
++        markRevealed();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

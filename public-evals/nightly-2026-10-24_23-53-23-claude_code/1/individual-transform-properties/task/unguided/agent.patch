@@ -1,0 +1,82 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,66 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured promo badge */
++    .seasonal {
++      position: relative;
++    }
++
++    /*
++      Each effect drives its own independent transform property (rotate,
++      translate, scale), so the two keyframe animations and the hover
++      transition compose instead of overriding each other.
++    */
++    .target {
++      position: absolute;
++      top: 0;
++      right: 0;
++      z-index: 1;
++      isolation: isolate; /* stable stacking context, even when not hovered */
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      width: 90px;
++      height: 90px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-align: center;
++      line-height: 1.2;
++      text-transform: uppercase;
++      cursor: pointer;
++      scale: 1;
++      transition: scale 0.3s ease;
++      animation:
++        target-spin 6s linear infinite,
++        target-slide 3s ease-in-out infinite alternate;
++    }
++
++    .target:hover {
++      scale: 1.25;
++    }
++
++    @keyframes target-spin {
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes target-slide {
++      from {
++        translate: 0 0;
++      }
++
++      to {
++        translate: -60px 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,9 +232,10 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
++      <div class="target">Featured<br>Pick</div>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

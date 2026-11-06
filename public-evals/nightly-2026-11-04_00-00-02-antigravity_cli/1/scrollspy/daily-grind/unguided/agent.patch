@@ -1,0 +1,517 @@
+diff --git a/index.html b/index.html
+index 66c9173..7e7a410 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --muted: #6d4c41;
+     }
+ 
+     * {
+@@ -38,6 +40,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+@@ -49,6 +52,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,13 +63,23 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding: 6px 4px;
++      border-bottom: 2px solid transparent;
++      transition: color 0.3s, border-color 0.3s, background-color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active,
++    nav li.active > a {
+       color: var(--accent);
+     }
+ 
++    nav a.active,
++    nav li.active > a {
++      font-weight: 600;
++      border-bottom-color: var(--accent);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -96,30 +110,123 @@
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 0 auto;
+       padding: 0 20px;
+     }
+ 
++    .page-section {
++      padding: 70px 0;
++      min-height: 80vh;
++      scroll-margin-top: 64px;
++      border-bottom: 1px solid #e0d6d2;
++    }
++
++    .page-section:last-of-type {
++      border-bottom: none;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 35px;
++    }
++
++    .section-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .section-header p {
++      color: var(--muted);
++      max-width: 650px;
++      margin: 0 auto;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--card-bg);
++      padding: 24px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 8px;
+       color: var(--primary);
+     }
+ 
++    .price-tag {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-weight: bold;
++      padding: 3px 10px;
++      border-radius: 12px;
++      font-size: 0.85rem;
++      margin-bottom: 10px;
++    }
++
++    .meta-list {
++      list-style: none;
++      text-align: left;
++      margin: 12px 0;
++      font-size: 0.92rem;
++      color: var(--muted);
++    }
++
++    .meta-list li {
++      margin-bottom: 6px;
++    }
++
++    .rewards-banner {
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++      padding: 28px;
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .rewards-banner h3 {
++      color: var(--accent);
++      font-size: 1.5rem;
++      margin-bottom: 8px;
++    }
++
++    .progress-bar-wrap {
++      background: #e0d6d2;
++      border-radius: 999px;
++      height: 14px;
++      width: 100%;
++      margin: 14px 0;
++      overflow: hidden;
++    }
++
++    .progress-bar-fill {
++      background: var(--accent);
++      height: 100%;
++      width: 80%;
++      border-radius: 999px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -160,10 +267,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu" class="active" aria-current="true">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,27 +278,198 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- Menu Section -->
++    <section id="menu" class="page-section">
++      <div class="section-header">
++        <h2>Seasonal Favorites &amp; Menu</h2>
++        <p>Handcrafted espresso beverages, small-batch cold brews, and freshly baked pastries made daily.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++            <h3>Maple Oat Latte</h3>
++            <span class="price-tag">$5.50</span>
++            <p>Creamy oat milk with a hint of Vermont maple syrup and double-shot espresso.</p>
++          </div>
++          <a href="#menu" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++            <h3>Dark Roast Espresso</h3>
++            <span class="price-tag">$3.75</span>
++            <p>Bold, smokey, and perfect for a morning boost with rich dark chocolate notes.</p>
++          </div>
++          <a href="#menu" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++            <h3>Cold Brew</h3>
++            <span class="price-tag">$4.75</span>
++            <p>Steeped for 18 hours for maximum smoothness and served over artisan ice.</p>
++          </div>
++          <a href="#menu" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Caramel Cortado">
++            <h3>Caramel Cortado</h3>
++            <span class="price-tag">$4.95</span>
++            <p>Equal parts velvety steamed milk and rich espresso finished with house caramel.</p>
++          </div>
++          <a href="#menu" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=600&q=80" alt="Ceremonial Matcha Latte">
++            <h3>Ceremonial Matcha Latte</h3>
++            <span class="price-tag">$5.25</span>
++            <p>Stone-ground Uji green tea whisked to order with lightly sweetened steamed milk.</p>
++          </div>
++          <a href="#menu" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80" alt="Almond Butter Croissant">
++            <h3>Almond Butter Croissant</h3>
++            <span class="price-tag">$4.50</span>
++            <p>Flaky French pastry filled with house-made roasted almond frangipane and toasted flakes.</p>
++          </div>
++          <a href="#menu" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Locations Section -->
++    <section id="locations" class="page-section">
++      <div class="section-header">
++        <h2>Our Locations</h2>
++        <p>Visit one of our neighborhood cafes for freshly roasted beans, cozy seating, and friendly baristas.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80" alt="Downtown Roastery and Cafe">
++            <h3>Downtown Roastery &amp; Cafe</h3>
++            <ul class="meta-list">
++              <li><strong>Address:</strong> 412 Market Street, Suite 100</li>
++              <li><strong>Hours:</strong> Mon–Fri 6:00 AM – 7:00 PM, Sat–Sun 7:00 AM – 6:00 PM</li>
++              <li><strong>Features:</strong> Pour-Over Bar, Heated Patio, High-Speed Wi-Fi</li>
++            </ul>
++          </div>
++          <a href="#locations" class="btn">Get Directions</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80" alt="Riverside Artisanal Lounge">
++            <h3>Riverside Artisanal Lounge</h3>
++            <ul class="meta-list">
++              <li><strong>Address:</strong> 88 Harbor View Avenue</li>
++              <li><strong>Hours:</strong> Daily 6:30 AM – 8:00 PM</li>
++              <li><strong>Features:</strong> Waterfront Seating, Weekly Cuppings, Order-Ahead Pickup</li>
++            </ul>
++          </div>
++          <a href="#locations" class="btn">Get Directions</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=600&q=80" alt="University District Study Hub">
++            <h3>University District Study Hub</h3>
++            <ul class="meta-list">
++              <li><strong>Address:</strong> 215 College Way</li>
++              <li><strong>Hours:</strong> Daily 6:00 AM – 10:00 PM</li>
++              <li><strong>Features:</strong> Quiet Study Booths, Power Outlets at Every Table, Bike Racks</li>
++            </ul>
++          </div>
++          <a href="#locations" class="btn">Get Directions</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Rewards Section -->
++    <section id="rewards" class="page-section">
++      <div class="section-header">
++        <h2>Daily Grind Rewards</h2>
++        <p>Turn every morning coffee run into free drinks, bakery treats, and exclusive member experiences.</p>
++      </div>
++      <div class="rewards-banner">
++        <h3>Earn 10 Beans for Every $1 Spent</h3>
++        <p>Members enjoy free birthday drinks, Double Bean Tuesdays, and complimentary alternative milk upgrades.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <div>
++            <span class="price-tag">100 Beans</span>
++            <h3>Espresso Boost or Syrup</h3>
++            <p>Add an extra shot of single-origin espresso or house-made seasonal syrup to any beverage.</p>
++          </div>
++          <a href="#account" class="btn">Redeem 100 Beans</a>
++        </div>
++        <div class="card">
++          <div>
++            <span class="price-tag">250 Beans</span>
++            <h3>Artisanal Bakery Item</h3>
++            <p>Enjoy any freshly baked croissant, morning bun, or gluten-free muffin on the house.</p>
++          </div>
++          <a href="#account" class="btn">Redeem 250 Beans</a>
++        </div>
++        <div class="card">
++          <div>
++            <span class="price-tag">400 Beans</span>
++            <h3>Free Handcrafted Drink</h3>
++            <p>Claim any size signature latte, cold brew reserve, or seasonal specialty beverage for free.</p>
++          </div>
++          <a href="#account" class="btn">Redeem 400 Beans</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- My Account Section -->
++    <section id="account" class="page-section">
++      <div class="section-header">
++        <h2>My Account</h2>
++        <p>Manage your member profile, check your Rewards balance, and reorder your favorite drinks in seconds.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <div>
++            <h3>Member Profile</h3>
++            <ul class="meta-list">
++              <li><strong>Name:</strong> Alex Morgan</li>
++              <li><strong>Email:</strong> alex.morgan@example.com</li>
++              <li><strong>Tier:</strong> Gold Roast Member</li>
++              <li><strong>Home Cafe:</strong> Downtown Roastery &amp; Cafe</li>
++            </ul>
++          </div>
++          <a href="#account" class="btn">Edit Profile</a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Rewards Balance</h3>
++            <p><strong>320 Beans</strong> Available</p>
++            <div class="progress-bar-wrap" aria-label="Rewards progress">
++              <div class="progress-bar-fill"></div>
++            </div>
++            <p>You are only <strong>80 Beans</strong> away from your next Free Handcrafted Drink (400 Beans).</p>
++          </div>
++          <a href="#rewards" class="btn">View Reward Tiers</a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Recent Orders</h3>
++            <ul class="meta-list">
++              <li><strong>Maple Oat Latte</strong> (16oz, Extra Shot) — $5.50</li>
++              <li><strong>Cold Brew</strong> (16oz, Light Ice) — $4.75</li>
++              <li><strong>Almond Butter Croissant</strong> (Warmed) — $4.50</li>
++            </ul>
++          </div>
++          <a href="#menu" class="btn">Reorder Favorites</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +485,104 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const nav = document.querySelector('nav');
++      const navLinks = Array.from(document.querySelectorAll('nav ul a[href^="#"]'));
++      const sections = navLinks
++        .map((link) => {
++          const id = link.getAttribute('href').slice(1);
++          return document.getElementById(id);
++        })
++        .filter(Boolean);
++
++      function setActiveSection(activeId) {
++        navLinks.forEach((link) => {
++          const isMatch = link.getAttribute('href') === '#' + activeId;
++          link.classList.toggle('active', isMatch);
++          if (link.parentElement && link.parentElement.tagName === 'LI') {
++            link.parentElement.classList.toggle('active', isMatch);
++          }
++          if (isMatch) {
++            link.setAttribute('aria-current', 'true');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      function updateActiveNav() {
++        if (!sections.length) return;
++
++        const navHeight = nav ? nav.offsetHeight : 60;
++        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
++
++        const scrollBottom = window.scrollY + viewportHeight;
++        const docHeight = document.documentElement.scrollHeight;
++        if (docHeight - scrollBottom <= 10) {
++          const lastSection = sections[sections.length - 1];
++          const lastRect = lastSection.getBoundingClientRect();
++          if (lastRect.top < viewportHeight && lastRect.bottom > navHeight) {
++            setActiveSection(lastSection.id);
++            return;
++          }
++        }
++
++        const triggerLine = navHeight + Math.min(120, (viewportHeight - navHeight) * 0.25);
++        for (const section of sections) {
++          const rect = section.getBoundingClientRect();
++          if (rect.top <= triggerLine && rect.bottom > triggerLine) {
++            setActiveSection(section.id);
++            return;
++          }
++        }
++
++        let bestSectionId = sections[0].id;
++        let maxVisibleHeight = -1;
++
++        for (const section of sections) {
++          const rect = section.getBoundingClientRect();
++          const visibleTop = Math.max(rect.top, navHeight);
++          const visibleBottom = Math.min(rect.bottom, viewportHeight);
++          const visibleHeight = Math.max(0, visibleBottom - visibleTop);
++
++          if (visibleHeight > maxVisibleHeight) {
++            maxVisibleHeight = visibleHeight;
++            bestSectionId = section.id;
++          }
++        }
++
++        setActiveSection(bestSectionId);
++      }
++
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver(
++          () => {
++            updateActiveNav();
++          },
++          {
++            threshold: [0, 0.1, 0.25, 0.5, 0.75, 1]
++          }
++        );
++        sections.forEach((section) => observer.observe(section));
++      }
++
++      navLinks.forEach((link) => {
++        link.addEventListener('click', () => {
++          const targetId = link.getAttribute('href').slice(1);
++          setActiveSection(targetId);
++          requestAnimationFrame(updateActiveNav);
++        });
++      });
++
++      window.addEventListener('scroll', updateActiveNav, { passive: true });
++      window.addEventListener('resize', updateActiveNav);
++      window.addEventListener('hashchange', updateActiveNav);
++      document.addEventListener('DOMContentLoaded', updateActiveNav);
++      updateActiveNav();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

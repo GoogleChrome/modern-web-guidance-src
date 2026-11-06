@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,89 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Physical hover motion for seasonal cards.
++       linear() easing approximates real spring/bounce curves; the
++       cubic-bezier declared first is the fallback for browsers that
++       don't understand linear(). Only compositor-friendly properties
++       (scale / translate / box-shadow) are animated. */
++    .spring,
++    .bounce {
++      position: relative;
++    }
++
++    .spring:hover,
++    .spring:focus-within,
++    .bounce:hover,
++    .bounce:focus-within {
++      z-index: 1;
++      box-shadow: 0 12px 28px rgba(62, 39, 35, 0.18);
++    }
++
++    /* Spring: overshoots the target scale, then rings down into place */
++    .spring {
++      transition: scale 0.7s cubic-bezier(0.34, 1.56, 0.64, 1),
++        box-shadow 0.7s ease;
++      /* Overrides the fallback above wherever linear() is supported */
++      transition-timing-function: linear(
++        0, 0.009 1%, 0.035 2.1%, 0.141 4.4%, 0.723 10.9%, 0.938 13.4%,
++        1.077 15.6%, 1.149 17.5%, 1.187 19.3%, 1.2 21.2%, 1.194 22.9%,
++        1.169 24.9%, 1.062 29.5%, 1.004 32.2%, 0.962 35.1%, 0.944 38%,
++        0.947 40.7%, 0.967 43.9%, 1.011 50.2%, 1.02 54.1%, 1.015 58.8%,
++        0.995 67.9%, 0.998 77.6%, 1.002 87.4%, 1
++      ), ease;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    .spring:hover,
++    .spring:focus-within {
++      scale: 1.05;
++
++      @media (prefers-reduced-motion: reduce) {
++        scale: none;
++      }
++    }
++
++    /* Bounce: hops up, drops, and bounces a couple of times before settling */
++    .bounce {
++      transition: translate 0.7s cubic-bezier(0.34, 1.56, 0.64, 1),
++        scale 0.7s cubic-bezier(0.34, 1.56, 0.64, 1),
++        box-shadow 0.7s ease;
++      /* Overrides the fallback above wherever linear() is supported */
++      transition-timing-function: linear(
++        0, 0.004 1.5%, 0.021 3.3%, 0.069 6.1%, 0.253 11.5%, 0.512 16.3%,
++        0.807 21.2%, 0.996 24.9%, 1.117 28.3%, 1.149 30.6%, 1.133 33.5%,
++        1.063 37.2%, 0.981 41.4%, 0.942 45%, 0.95 48.4%, 0.985 52.5%,
++        1.016 56.4%, 1.022 59.8%, 1.01 64.5%, 0.994 69.8%, 0.996 77.2%,
++        1.002 86%, 1
++      ), linear(
++        0, 0.004 1.5%, 0.021 3.3%, 0.069 6.1%, 0.253 11.5%, 0.512 16.3%,
++        0.807 21.2%, 0.996 24.9%, 1.117 28.3%, 1.149 30.6%, 1.133 33.5%,
++        1.063 37.2%, 0.981 41.4%, 0.942 45%, 0.95 48.4%, 0.985 52.5%,
++        1.016 56.4%, 1.022 59.8%, 1.01 64.5%, 0.994 69.8%, 0.996 77.2%,
++        1.002 86%, 1
++      ), ease;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    .bounce:hover,
++    .bounce:focus-within {
++      translate: 0 -10px;
++      scale: 1.03;
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        scale: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,14 +258,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

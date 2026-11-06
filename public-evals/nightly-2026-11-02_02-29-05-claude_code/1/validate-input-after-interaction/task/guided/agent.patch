@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,84 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter Signup */
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++      text-align: left;
++    }
++
++    .newsletter label {
++      display: block;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .newsletter .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-bottom: 0.25rem;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      font: inherit;
++      border: 2px solid #a1887f;
++      border-radius: 5px;
++      background: white;
++    }
++
++    .newsletter input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    /* Only show error state after the user has left the field (or tried to submit) */
++    .newsletter input:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    .newsletter input:user-valid {
++      border-color: #2e7d32;
++    }
++
++    .newsletter button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      font: inherit;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter .error-msg {
++      display: none;
++      color: #c62828;
++      font-size: 0.85rem;
++      margin-top: 0.25rem;
++    }
++
++    .newsletter:has(input:user-invalid) .error-msg {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +273,20 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" action="/newsletter" method="post">
++      <label for="newsletter-email">Join our newsletter</label>
++      <span id="newsletter-hint" class="hint">New roasts and seasonal drinks, straight to your inbox.</span>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" required autocomplete="email"
++          placeholder="you@example.com" aria-describedby="newsletter-hint" aria-errormessage="newsletter-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <div id="newsletter-error" class="error-msg">
++        <span aria-hidden="true">⚠</span> Please enter a valid email address.
++      </div>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +294,24 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep aria-invalid in sync with the visual :user-invalid state
++    const newsletterEmail = document.getElementById('newsletter-email');
++    const syncAriaInvalid = () => {
++      if (newsletterEmail.matches(':user-invalid')) {
++        newsletterEmail.setAttribute('aria-invalid', 'true');
++      } else {
++        newsletterEmail.removeAttribute('aria-invalid');
++      }
++    };
++    newsletterEmail.addEventListener('blur', syncAriaInvalid);
++    newsletterEmail.addEventListener('invalid', syncAriaInvalid);
++    newsletterEmail.addEventListener('input', () => {
++      if (newsletterEmail.hasAttribute('aria-invalid')) syncAriaInvalid();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

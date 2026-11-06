@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -47,13 +47,14 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-inline-start: 20px;
+     }
+ 
+     nav a {
+       color: white;
+@@ -71,8 +72,81 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options Dropdown Trigger & Anchored Action Panel */
++    #trigger-btn {
++      anchor-name: --options-trigger;
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.4rem;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      transition: color 0.3s, border-color 0.3s, background-color 0.3s;
++    }
++
++    #trigger-btn:hover:not(:disabled) {
++      color: var(--accent);
++      border-color: var(--accent);
++      background-color: rgba(255, 255, 255, 0.08);
++    }
++
++    #trigger-btn:focus-visible,
++    .action-item:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #action-panel {
++      position-anchor: --options-trigger;
++      position-area: block-end span-inline-end;
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(left);
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      margin: 0;
++      padding: 0.4rem;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
++      min-inline-size: 190px;
++    }
++
++    #action-panel:where(:popover-open, .\:popover-open) {
++      display: flex;
++      flex-direction: column;
++      gap: 0.2rem;
++    }
++
++    .action-item {
++      background: transparent;
++      color: var(--text);
++      border: none;
++      border-radius: 5px;
++      padding: 0.55rem 0.85rem;
++      font-family: inherit;
++      font-size: 0.9rem;
++      text-align: start;
++      cursor: pointer;
++      min-block-size: 24px;
++      transition: background-color 0.2s, color 0.2s;
++    }
++
++    .action-item:hover:not(:disabled) {
++      background-color: var(--secondary);
++      color: var(--primary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,8 +237,18 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button id="trigger-btn" type="button" popovertarget="action-panel">
++          Options
++        </button>
++        <div id="action-panel" popover="auto" class="panel">
++          <button class="action-item" type="button">Seasonal Offers</button>
++          <button class="action-item" type="button">Account Settings</button>
++          <button class="action-item" type="button">Support</button>
++        </div>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -206,7 +290,16 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!CSS.supports("anchor-name: --a")) {
++      import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++  </script>
++
+ </body>
+ 
+ </html>

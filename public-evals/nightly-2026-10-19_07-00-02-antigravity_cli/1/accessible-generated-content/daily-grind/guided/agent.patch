@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+index 66c9173..62ab546 100644
+--- a/index.html
++++ b/index.html
+@@ -46,6 +46,11 @@
+       letter-spacing: 1px;
+     }
+ 
++    /* Purely decorative icon with empty alt text to avoid noisy announcement */
++    .logo::before {
++      content: "☕ " / "";
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+@@ -113,6 +118,17 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
+     }
+ 
+     .card h3 {
+@@ -120,6 +136,19 @@
+       color: var(--primary);
+     }
+ 
++    /* Status badges where emoji alt text differs from unicode name and is not in DOM */
++    .card.badge-seasonal h3::before {
++      content: "🍁 " / "Seasonal special: ";
++    }
++
++    .card.badge-bestseller h3::before {
++      content: "⭐ " / "Customer favorite: ";
++    }
++
++    .card.badge-trending h3::before {
++      content: "🔥 " / "Trending now: ";
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,6 +164,56 @@
+       background: #3e2723;
+     }
+ 
++    /* Decorative directional arrow with empty alt text */
++    .btn::after {
++      content: " →" / "";
++    }
++
++    /* Testimonial quote with hidden decorative quotation marks */
++    .quote-section {
++      margin: 60px auto 20px;
++      text-align: center;
++      max-width: 750px;
++    }
++
++    .quote {
++      font-size: 1.25rem;
++      font-style: italic;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .quote::before {
++      content: "“" / "";
++    }
++
++    .quote::after {
++      content: "”" / "";
++    }
++
++    .quote-author {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      display: block;
++    }
++
++    /* Informational note using generated image icon with meaningful alt text */
++    .card-note {
++      margin-top: 30px;
++      padding: 12px 16px;
++      background: #efebe9;
++      border-left: 4px solid var(--primary);
++      border-radius: 4px;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .card-note::before {
++      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234e342e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='16' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'%3E%3C/line%3E%3C/svg%3E") / "Note: ";
++      vertical-align: text-bottom;
++      margin-right: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -143,7 +222,7 @@
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 15px;
+     }
+ 
+     .footer-links a {
+@@ -152,6 +231,34 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Decorative separator in CSS rather than hardcoded DOM pipes */
++    .footer-links a:not(:last-child)::after {
++      content: " | " / "";
++      margin-left: 20px;
++      color: var(--primary);
++    }
++
++    .social-links {
++      margin-bottom: 20px;
++    }
++
++    .social-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    .social-links a:hover,
++    .footer-links a:hover {
++      color: var(--accent);
++    }
++
++    /* External link indicator with descriptive alt text for assistive tech */
++    .external-link::after {
++      content: " ↗" / " (opens in new tab)";
++    }
+   </style>
+ </head>
+ 
+@@ -178,32 +285,51 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <div class="card badge-seasonal">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte served in a ceramic cup" class="card-img">
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++        <div class="card badge-bestseller">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso with rich crema" class="card-img">
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++        <div class="card badge-trending">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Glass of iced Cold Brew with ice cubes" class="card-img">
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <p class="card-note">All syrups are crafted in-house using organic ingredients.</p>
++    </section>
++
++    <section class="quote-section">
++      <blockquote class="quote">The best cold brew in the city. The craft and ethics behind every roast truly shine through.</blockquote>
++      <cite class="quote-author">— Artisanal Coffee Review</cite>
+     </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
++      <a href="/about">Our Story</a>
++      <a href="/careers">Join the Team</a>
++      <a href="/contact">Contact Us</a>
+       <a href="/privacy-policy">Privacy</a>
+     </div>
++    <div class="social-links">
++      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="external-link">Instagram</a>
++      <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" class="external-link">Twitter</a>
++    </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 

@@ -1,0 +1,347 @@
+diff --git a/index.html b/index.html
+index 66c9173..2bfaf3f 100644
+--- a/index.html
++++ b/index.html
+@@ -115,6 +115,103 @@
+       text-align: center;
+     }
+ 
++    .card:focus {
++      outline: none;
++    }
++
++    .card:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++      box-shadow: 0 0 0 6px rgba(78, 52, 46, 0.35);
++    }
++
++    /* Layout toggle */
++    .section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 12px 20px;
++    }
++
++    .layout-toggle {
++      display: inline-flex;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      overflow: hidden;
++    }
++
++    .layout-toggle button {
++      font: inherit;
++      font-size: 0.85rem;
++      background: white;
++      color: var(--primary);
++      border: 0;
++      padding: 6px 14px;
++      cursor: pointer;
++    }
++
++    .layout-toggle button + button {
++      border-left: 1px solid var(--primary);
++    }
++
++    .layout-toggle button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .layout-toggle button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .grid-hint {
++      text-align: center;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 8px;
++    }
++
++    /* List layout */
++    .grid.is-list {
++      grid-template-columns: 1fr;
++    }
++
++    .grid.is-list .card {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      grid-template-areas: "title btn" "desc btn";
++      align-items: center;
++      column-gap: 20px;
++      text-align: left;
++    }
++
++    .grid.is-list .card h3 {
++      grid-area: title;
++      margin-bottom: 4px;
++    }
++
++    .grid.is-list .card p {
++      grid-area: desc;
++    }
++
++    .grid.is-list .card .btn {
++      grid-area: btn;
++      margin-top: 0;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -175,25 +272,49 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <div class="layout-toggle" role="group" aria-label="Card layout">
++          <button type="button" data-layout="grid" aria-pressed="true">Grid</button>
++          <button type="button" data-layout="list" aria-pressed="false">List</button>
+         </div>
+       </div>
++      <p class="grid-hint" id="grid-instructions">
++        Tip: use the arrow keys to move between cards, Home/End to jump, and Enter to view details.
++      </p>
++      <div class="grid" role="list" aria-labelledby="seasonal-heading" aria-describedby="grid-instructions" data-spatial-nav>
++        <article class="card" role="listitem" tabindex="0" aria-labelledby="card-maple-title" aria-describedby="card-maple-desc">
++          <h3 id="card-maple-title">Maple Oat Latte</h3>
++          <p id="card-maple-desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn" tabindex="-1">View Details<span class="visually-hidden"> for Maple Oat Latte</span></a>
++        </article>
++        <article class="card" role="listitem" tabindex="-1" aria-labelledby="card-espresso-title" aria-describedby="card-espresso-desc">
++          <h3 id="card-espresso-title">Dark Roast Espresso</h3>
++          <p id="card-espresso-desc">Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn" tabindex="-1">View Details<span class="visually-hidden"> for Dark Roast Espresso</span></a>
++        </article>
++        <article class="card" role="listitem" tabindex="-1" aria-labelledby="card-cold-brew-title" aria-describedby="card-cold-brew-desc">
++          <h3 id="card-cold-brew-title">Cold Brew</h3>
++          <p id="card-cold-brew-desc">Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn" tabindex="-1">View Details<span class="visually-hidden"> for Cold Brew</span></a>
++        </article>
++        <article class="card" role="listitem" tabindex="-1" aria-labelledby="card-chai-title" aria-describedby="card-chai-desc">
++          <h3 id="card-chai-title">Spiced Chai</h3>
++          <p id="card-chai-desc">Black tea simmered with cinnamon, cardamom, and clove.</p>
++          <a href="/menu/chai" class="btn" tabindex="-1">View Details<span class="visually-hidden"> for Spiced Chai</span></a>
++        </article>
++        <article class="card" role="listitem" tabindex="-1" aria-labelledby="card-mocha-title" aria-describedby="card-mocha-desc">
++          <h3 id="card-mocha-title">Pumpkin Mocha</h3>
++          <p id="card-mocha-desc">Rich chocolate, espresso, and a warm pumpkin spice finish.</p>
++          <a href="/menu/pumpkin-mocha" class="btn" tabindex="-1">View Details<span class="visually-hidden"> for Pumpkin Mocha</span></a>
++        </article>
++        <article class="card" role="listitem" tabindex="-1" aria-labelledby="card-pour-over-title" aria-describedby="card-pour-over-desc">
++          <h3 id="card-pour-over-title">Single-Origin Pour Over</h3>
++          <p id="card-pour-over-desc">Hand-poured Ethiopian beans with bright citrus notes.</p>
++          <a href="/menu/pour-over" class="btn" tabindex="-1">View Details<span class="visually-hidden"> for Single-Origin Pour Over</span></a>
++        </article>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +328,171 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var grid = document.querySelector('[data-spatial-nav]');
++      if (!grid) return;
++
++      var DIRECTIONS = {
++        ArrowUp: { x: 0, y: -1 },
++        ArrowDown: { x: 0, y: 1 },
++        ArrowLeft: { x: -1, y: 0 },
++        ArrowRight: { x: 1, y: 0 }
++      };
++
++      // Penalty applied to off-axis distance so that items in the same row/column win
++      // over items that are nearer diagonally.
++      var ORTHOGONAL_WEIGHT = 2;
++      // Small tolerance in px so sub-pixel rounding doesn't disqualify neighbours.
++      var EPSILON = 1;
++
++      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++      function getCards() {
++        return Array.prototype.filter.call(grid.querySelectorAll('.card'), function (card) {
++          // Skip cards that are hidden (display: none, hidden attribute, etc.).
++          return card.getClientRects().length > 0;
++        });
++      }
++
++      function setActive(card, moveFocus) {
++        getCards().forEach(function (c) {
++          c.tabIndex = c === card ? 0 : -1;
++        });
++        if (moveFocus) {
++          card.focus({ preventScroll: true });
++          card.scrollIntoView({
++            block: 'nearest',
++            inline: 'nearest',
++            behavior: reducedMotion.matches ? 'auto' : 'smooth'
++          });
++        }
++      }
++
++      // Ensure exactly one visible card is in the tab order.
++      function ensureTabStop() {
++        var cards = getCards();
++        if (!cards.length) return;
++        var current = cards.filter(function (c) { return c.tabIndex === 0; })[0];
++        setActive(current || cards[0], false);
++      }
++
++      // Find the closest card in the given visual direction using on-screen geometry,
++      // so it works for any column count, list layout, wrapping, or RTL text direction.
++      function findNeighbor(from, dir, cards) {
++        var a = from.getBoundingClientRect();
++        var best = null;
++        var bestScore = Infinity;
++
++        cards.forEach(function (card) {
++          if (card === from) return;
++          var b = card.getBoundingClientRect();
++          var primary, orthogonal, overlaps;
++
++          if (dir.x !== 0) {
++            // Horizontal: candidate must lie entirely beyond the current card's edge.
++            primary = dir.x > 0 ? b.left - a.right : a.left - b.right;
++            overlaps = b.top < a.bottom - EPSILON && b.bottom > a.top + EPSILON;
++            orthogonal = overlaps ? 0 : Math.abs((b.top + b.bottom) / 2 - (a.top + a.bottom) / 2);
++          } else {
++            primary = dir.y > 0 ? b.top - a.bottom : a.top - b.bottom;
++            overlaps = b.left < a.right - EPSILON && b.right > a.left + EPSILON;
++            orthogonal = overlaps ? 0 : Math.abs((b.left + b.right) / 2 - (a.left + a.right) / 2);
++          }
++
++          if (primary < -EPSILON) return;
++
++          var score = Math.max(primary, 0) + orthogonal * ORTHOGONAL_WEIGHT;
++          // Items aligned with the current row/column always beat diagonal ones.
++          if (!overlaps) score += 1e6;
++
++          if (score < bestScore) {
++            bestScore = score;
++            best = card;
++          }
++        });
++
++        return best;
++      }
++
++      grid.addEventListener('keydown', function (event) {
++        if (event.altKey || event.metaKey) return;
++
++        var current = event.target.closest('.card');
++        if (!current || !grid.contains(current)) return;
++        var cards = getCards();
++        if (!cards.length) return;
++
++        var target = null;
++        var dir = DIRECTIONS[event.key];
++
++        if (dir) {
++          if (event.ctrlKey || event.shiftKey) return;
++          target = findNeighbor(current, dir, cards);
++          // At an edge: consume the key anyway so the page doesn't scroll unexpectedly.
++          event.preventDefault();
++          if (!target) return;
++        } else if (event.key === 'Home') {
++          target = cards[0];
++        } else if (event.key === 'End') {
++          target = cards[cards.length - 1];
++        } else if ((event.key === 'Enter' || event.key === ' ') && event.target === current) {
++          var link = current.querySelector('a[href]');
++          if (link) {
++            event.preventDefault();
++            link.click();
++          }
++          return;
++        } else {
++          return;
++        }
++
++        event.preventDefault();
++        setActive(target, true);
++      });
++
++      // Keep the roving tab stop in sync with mouse clicks / programmatic focus.
++      grid.addEventListener('focusin', function (event) {
++        var card = event.target.closest('.card');
++        if (card && grid.contains(card) && card.tabIndex !== 0) setActive(card, false);
++      });
++
++      // Re-validate the tab stop if cards are added, removed, or hidden.
++      new MutationObserver(ensureTabStop).observe(grid, {
++        childList: true,
++        subtree: true,
++        attributes: true,
++        attributeFilter: ['hidden', 'class', 'style']
++      });
++
++      // Layout mode toggle (grid / list).
++      var STORAGE_KEY = 'dailyGrind.cardLayout';
++      var buttons = document.querySelectorAll('.layout-toggle [data-layout]');
++
++      function applyLayout(layout) {
++        grid.classList.toggle('is-list', layout === 'list');
++        Array.prototype.forEach.call(buttons, function (btn) {
++          btn.setAttribute('aria-pressed', String(btn.dataset.layout === layout));
++        });
++      }
++
++      Array.prototype.forEach.call(buttons, function (btn) {
++        btn.addEventListener('click', function () {
++          applyLayout(btn.dataset.layout);
++          try { localStorage.setItem(STORAGE_KEY, btn.dataset.layout); } catch (e) { /* storage unavailable */ }
++        });
++      });
++
++      var saved = null;
++      try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) { /* storage unavailable */ }
++      if (saved === 'list' || saved === 'grid') applyLayout(saved);
++
++      ensureTabStop();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

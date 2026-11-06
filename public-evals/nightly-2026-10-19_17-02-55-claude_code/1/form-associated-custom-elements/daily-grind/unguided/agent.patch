@@ -1,0 +1,285 @@
+diff --git a/index.html b/index.html
+index 66c9173..29d07ab 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,81 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback form */
++    .feedback {
++      max-width: 480px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .feedback fieldset {
++      border: 0;
++    }
++
++    .feedback label,
++    .feedback .label {
++      display: block;
++      font-weight: 600;
++      margin: 12px 0 4px;
++    }
++
++    .feedback input[type="text"] {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .feedback button {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-right: 8px;
++    }
++
++    .feedback button:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .feedback pre {
++      margin-top: 15px;
++      white-space: pre-wrap;
++      font-size: 0.85rem;
++    }
++
++    star-rating {
++      display: inline-flex;
++      gap: 2px;
++      font-size: 2rem;
++      line-height: 1;
++      color: var(--secondary);
++      cursor: pointer;
++      border-radius: 4px;
++    }
++
++    star-rating:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    star-rating span.on {
++      color: var(--accent);
++    }
++
++    star-rating:state(invalid) {
++      outline: 2px solid #c62828;
++    }
++
++    star-rating:state(disabled) {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +270,25 @@
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Rate Your Last Brew</h2>
++      <form class="feedback" id="feedback">
++        <fieldset>
++          <label for="drink">Drink</label>
++          <input type="text" id="drink" name="drink" required>
++
++          <span class="label" id="rating-label">Rating</span>
++          <star-rating name="rating" required max="5" aria-labelledby="rating-label"></star-rating>
++        </fieldset>
++        <p style="margin-top: 15px;">
++          <button class="btn" type="submit">Submit</button>
++          <button class="btn" type="reset">Reset</button>
++          <button class="btn" type="button" id="toggle">Disable rating</button>
++        </p>
++        <pre id="result" aria-live="polite"></pre>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +301,172 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * <star-rating name="rating" required max="5" value="3">
++     * A form-associated custom element: submits its value under `name`,
++     * takes part in constraint validation (required), and responds to
++     * form reset, disabled fieldsets and state restoration.
++     */
++    class StarRating extends HTMLElement {
++      static formAssociated = true;
++      static observedAttributes = ['max', 'required', 'disabled'];
++
++      #internals = this.attachInternals();
++      #value = '';
++      #stars = [];
++
++      get max() { return Math.max(1, parseInt(this.getAttribute('max'), 10) || 5); }
++      get required() { return this.hasAttribute('required'); }
++      set required(v) { this.toggleAttribute('required', !!v); }
++      get disabled() { return this.hasAttribute('disabled'); }
++      set disabled(v) { this.toggleAttribute('disabled', !!v); }
++      get name() { return this.getAttribute('name') ?? ''; }
++      get form() { return this.#internals.form; }
++      get validity() { return this.#internals.validity; }
++      get validationMessage() { return this.#internals.validationMessage; }
++      checkValidity() { return this.#internals.checkValidity(); }
++      reportValidity() { return this.#internals.reportValidity(); }
++
++      get value() { return this.#value; }
++      set value(v) {
++        const n = parseInt(v, 10);
++        this.#value = n >= 1 && n <= this.max ? String(n) : '';
++        this.#sync();
++      }
++
++      connectedCallback() {
++        // Failed submit / reportValidity() fires `invalid`; show it visually.
++        this.addEventListener('invalid', () => this.#state('invalid', true));
++        this.setAttribute('role', 'slider');
++        this.setAttribute('aria-valuemin', '1');
++        this.addEventListener('click', this.#onClick);
++        this.addEventListener('keydown', this.#onKey);
++        this.#render();
++        // The value attribute is the default value, restored on form reset.
++        this.value = this.getAttribute('value');
++      }
++
++      disconnectedCallback() {
++        this.removeEventListener('click', this.#onClick);
++        this.removeEventListener('keydown', this.#onKey);
++      }
++
++      attributeChangedCallback(name) {
++        if (name === 'max') {
++          this.#render();
++          this.value = this.#value;
++        } else if (name === 'disabled') {
++          this.#syncDisabled();
++        } else {
++          this.#sync();
++        }
++      }
++
++      // Form lifecycle callbacks
++      formResetCallback() {
++        this.#state('invalid', false);
++        this.value = this.getAttribute('value');
++      }
++
++      formDisabledCallback() {
++        this.#syncDisabled();
++      }
++
++      formStateRestoreCallback(state) {
++        this.value = state;
++      }
++
++      #render() {
++        this.#stars = Array.from({ length: this.max }, () => {
++          const s = document.createElement('span');
++          s.setAttribute('aria-hidden', 'true');
++          s.textContent = '★';
++          return s;
++        });
++        this.replaceChildren(...this.#stars);
++        this.setAttribute('aria-valuemax', String(this.max));
++      }
++
++      #isDisabled() {
++        // :disabled covers both the attribute and a disabled ancestor fieldset.
++        return this.disabled || this.matches(':disabled');
++      }
++
++      #syncDisabled() {
++        const off = this.#isDisabled();
++        this.setAttribute('aria-disabled', String(off));
++        this.tabIndex = off ? -1 : 0;
++        this.#state('disabled', off);
++      }
++
++      #sync() {
++        const n = Number(this.#value) || 0;
++        this.#stars.forEach((s, i) => s.classList.toggle('on', i < n));
++        if (n) this.setAttribute('aria-valuenow', String(n));
++        else this.removeAttribute('aria-valuenow');
++        this.setAttribute('aria-valuetext', n ? `${n} of ${this.max}` : 'not rated');
++        this.setAttribute('aria-required', String(this.required));
++
++        // Submitted value; the same string doubles as restorable state.
++        this.#internals.setFormValue(this.#value || null, this.#value);
++        if (this.required && !this.#value) {
++          this.#internals.setValidity({ valueMissing: true }, 'Please choose a rating.', this);
++        } else {
++          this.#internals.setValidity({});
++        }
++        this.#syncDisabled();
++        if (this.validity.valid) this.#state('invalid', false);
++      }
++
++      #state(name, on) {
++        try {
++          on ? this.#internals.states.add(name) : this.#internals.states.delete(name);
++        } catch { /* custom states unsupported */ }
++      }
++
++      #set(n) {
++        if (this.#isDisabled()) return;
++        this.value = n;
++        this.#state('invalid', !this.checkValidity());
++        this.dispatchEvent(new Event('input', { bubbles: true }));
++        this.dispatchEvent(new Event('change', { bubbles: true }));
++      }
++
++      #onClick = (e) => {
++        const i = this.#stars.indexOf(e.target);
++        if (i >= 0) this.#set(i + 1);
++      };
++
++      #onKey = (e) => {
++        const n = Number(this.#value) || 0;
++        const next = {
++          ArrowRight: n + 1, ArrowUp: n + 1,
++          ArrowLeft: n - 1, ArrowDown: n - 1,
++          Home: 1, End: this.max,
++        }[e.key];
++        if (next === undefined) return;
++        e.preventDefault();
++        this.#set(Math.min(this.max, Math.max(1, next)));
++      };
++    }
++    customElements.define('star-rating', StarRating);
++
++    const form = document.getElementById('feedback');
++    const rating = form.querySelector('star-rating');
++    const result = document.getElementById('result');
++
++    form.addEventListener('submit', (e) => {
++      e.preventDefault();
++      result.textContent = JSON.stringify(Object.fromEntries(new FormData(form)), null, 2);
++    });
++    form.addEventListener('reset', () => { result.textContent = ''; });
++
++    document.getElementById('toggle').addEventListener('click', (e) => {
++      rating.disabled = !rating.disabled;
++      e.target.textContent = rating.disabled ? 'Enable rating' : 'Disable rating';
++    });
++  </script>
+ </body>
+ 
+ </html>

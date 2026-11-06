@@ -1,0 +1,266 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,128 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 32px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .roast-field {
++      width: min(260px, 100%);
++      margin-top: 20px;
++      text-align: left;
++    }
++
++    .roast-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .roast-select,
++    .roast-trigger {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      padding: 10px 14px;
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      background: var(--primary);
++      color: var(--accent);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .roast-select:focus-visible,
++    .roast-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .roast-select,
++    .roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-select::picker(select),
++    .roast-options {
++      padding: 5px;
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      background: var(--primary);
++      color: var(--accent);
++      font: inherit;
++      box-shadow: 0 6px 18px #4e342e55;
++    }
++
++    .roast-select::picker-icon,
++    .roast-trigger::after {
++      content: '';
++      width: 8px;
++      height: 8px;
++      margin: 0 2px 4px 12px;
++      border-right: 2px solid var(--accent);
++      border-bottom: 2px solid var(--accent);
++      rotate: 45deg;
++    }
++
++    .roast-select option,
++    .roast-options [role="option"] {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      padding: 8px 10px;
++      border-radius: 3px;
++      background: var(--primary);
++      color: var(--accent);
++      cursor: pointer;
++    }
++
++    .roast-select option::checkmark,
++    .roast-options [role="option"]::before {
++      content: '\2713';
++      color: var(--accent);
++    }
++
++    .roast-select option:hover,
++    .roast-select option:focus,
++    .roast-options [role="option"]:hover,
++    .roast-options [data-active="true"] {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    .roast-select option:hover::checkmark,
++    .roast-select option:focus::checkmark,
++    .roast-options [role="option"]:hover::before,
++    .roast-options [data-active="true"]::before {
++      color: var(--primary);
++    }
++
++    .roast-options [aria-selected="false"]::before {
++      visibility: hidden;
++    }
++
++    .roast-fallback {
++      position: relative;
++    }
++
++    .roast-options {
++      position: absolute;
++      inset: calc(100% + 6px) 0 auto;
++      z-index: 1;
++      list-style: none;
++    }
++
++    .roast-field [hidden] {
++      display: none;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +282,16 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-field">
++      <label id="roast-label" for="coffee-roast">Choose your roast</label>
++      <select class="roast-select" id="coffee-roast" name="roast">
++        <option value="light">Light</option>
++        <option value="medium" selected>Medium</option>
++        <option value="dark">Dark</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -206,7 +326,104 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep the full brand palette in browsers without customizable selects.
++    if (!CSS.supports('appearance', 'base-select')) {
++      const select = document.getElementById('coffee-roast');
++      const wrapper = document.createElement('div');
++      wrapper.className = 'roast-fallback';
++      wrapper.innerHTML = `
++        <button type="button" class="roast-trigger" id="roast-trigger"
++          role="combobox" aria-haspopup="listbox" aria-expanded="false"
++          aria-controls="roast-options" aria-labelledby="roast-label roast-value">
++          <span id="roast-value"></span>
++        </button>
++        <ul class="roast-options" id="roast-options" role="listbox"
++          aria-labelledby="roast-label" hidden></ul>`;
++      select.after(wrapper);
++      select.hidden = true;
++      const trigger = wrapper.querySelector('button');
++      const list = wrapper.querySelector('ul');
++      const value = wrapper.querySelector('span');
++      document.getElementById('roast-label').htmlFor = trigger.id;
++      let active = select.selectedIndex;
++      let search = '';
++      let searchTimer;
++      const options = Array.from(select.options, (option, index) => {
++        const item = document.createElement('li');
++        item.id = `roast-option-${index}`;
++        item.setAttribute('role', 'option');
++        item.textContent = option.textContent;
++        item.addEventListener('click', () => choose(index));
++        list.append(item);
++        return item;
++      });
++      function render() {
++        value.textContent = select.options[select.selectedIndex].textContent;
++        options.forEach((option, index) => {
++          option.setAttribute('aria-selected', String(index === select.selectedIndex));
++          option.dataset.active = String(index === active);
++        });
++        if (!list.hidden) trigger.setAttribute('aria-activedescendant', options[active].id);
++      }
++      function open() {
++        active = select.selectedIndex;
++        list.hidden = false;
++        trigger.setAttribute('aria-expanded', 'true');
++        render();
++      }
++      function close() {
++        list.hidden = true;
++        trigger.setAttribute('aria-expanded', 'false');
++        trigger.removeAttribute('aria-activedescendant');
++      }
++      function choose(index) {
++        select.selectedIndex = index;
++        active = index;
++        select.dispatchEvent(new Event('change', { bubbles: true }));
++        close();
++        render();
++        trigger.focus();
++      }
++      trigger.addEventListener('click', () => list.hidden ? open() : close());
++      list.addEventListener('pointerdown', event => event.preventDefault());
++      trigger.addEventListener('keydown', (event) => {
++        if (event.key === 'Tab' || event.key === 'Escape') {
++          close();
++          return;
++        }
++        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
++          event.preventDefault();
++          if (list.hidden) open();
++          else if (event.key === 'ArrowDown') active = (active + 1) % options.length;
++          else if (event.key === 'ArrowUp') active = (active + options.length - 1) % options.length;
++          if (event.key === 'Home') active = 0;
++          if (event.key === 'End') active = options.length - 1;
++          render();
++        } else if (event.key === 'Enter' || event.key === ' ') {
++          event.preventDefault();
++          if (list.hidden) open();
++          else choose(active);
++        } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
++          event.preventDefault();
++          if (list.hidden) open();
++          clearTimeout(searchTimer);
++          search += event.key.toLowerCase();
++          const match = options.findIndex(option => option.textContent.toLowerCase().startsWith(search));
++          if (match !== -1) active = match;
++          render();
++          searchTimer = setTimeout(() => { search = ''; }, 500);
++        }
++      });
++      document.addEventListener('pointerdown', event => {
++        if (!wrapper.contains(event.target)) close();
++      });
++      trigger.addEventListener('blur', close);
++      select.addEventListener('change', render);
++      render();
++    }
++  </script>
+ </body>
+ 
+ </html>

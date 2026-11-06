@@ -1,0 +1,172 @@
+diff --git a/index.html b/index.html
+index 66c9173..5b7241c 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,14 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="referrer" content="no-referrer">
++  <!-- Version-pinned CDN assets: update the SHA-384 digest when changing a URL. -->
++  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.css"
++    integrity="sha384-M86HUGbBFILBBZ9ykMAbT3nVb0+2C7yZlF8X2CiKNpDOQjKroMJqIeGZ/Le8N2Qp"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++  <script defer src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/dayjs.min.js"
++    integrity="sha384-DpVxUeeBWjUvUV1czyIHJAjh+jYUZFu2lLakbdua5vbwOrBGi1UgaKCHjTC+x3Ky"
++    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -27,6 +35,11 @@
+       background-color: var(--light);
+     }
+ 
++    h1, h2, h3, .logo {
++      font-family: 'Lora', Georgia, serif;
++      font-weight: 400;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -75,8 +88,9 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        var(--hero-image, none);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -115,6 +129,14 @@
+       text-align: center;
+     }
+ 
++    .card-image {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 5px;
++      margin-bottom: 15px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -179,16 +201,22 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img id="latte-image" class="card-image" width="600" height="400"
++            alt="A creamy latte with foam art" hidden>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img id="espresso-image" class="card-image" width="600" height="400"
++            alt="A freshly poured espresso" hidden>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img id="coldBrew-image" class="card-image" width="600" height="400"
++            alt="Iced coffee served in a glass" hidden>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -204,9 +232,89 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p>&copy; <span id="copyright-year">2026</span> The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Fonts and images are fetched with SRI before their bytes reach a renderer.
++    // Never fall back to the original URL: changed or unavailable assets stay unused.
++    // Photos use a fixed JPEG format so content negotiation cannot change the digest.
++    const assets = {
++      "font": {
++        "url": "https://cdn.jsdelivr.net/npm/@fontsource/lora@5.1.1/files/lora-latin-400-normal.woff2",
++        "integrity": "sha384-l9U4hpuXvD+l+EFv6G1yCdXR5QTgqh3KTS7oWKueUdtbW2OoySBd6//69e9OA7ro"
++      },
++      "hero": {
++        "url": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80",
++        "integrity": "sha384-YUet8nBDHQZZytDjKEaBDYSEY+6j+mSlWjiARMNti2PWhjnHa74ouBxvRVcUN10H"
++      },
++      "latte": {
++        "url": "https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=jpg&fit=crop&w=600&q=80",
++        "integrity": "sha384-2WFWQLT/1Eqcaxll4bOFYFCC7h/cBXjjJnnmjOV+LCv2DD2clo3PTPGoTN08yR3F"
++      },
++      "espresso": {
++        "url": "https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?fm=jpg&fit=crop&w=600&q=80",
++        "integrity": "sha384-wqGHChbcB+Va9BNMq8h0BtppueEH5J6RxXVw812ezagRlAVbtRiItVxNYYHsYbP5"
++      },
++      "coldBrew": {
++        "url": "https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=jpg&fit=crop&w=600&q=80",
++        "integrity": "sha384-8KwOXhfBGsorT8gUeIAr+TRIQLjKMcI1EuhN+Z8URvsqDK94JS3Y0VI3jQJgRaGW"
++      }
++    };
++
++    async function verifiedResponse(asset) {
++      const response = await fetch(asset.url, {
++        integrity: asset.integrity,
++        mode: 'cors',
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer'
++      });
++      if (!response.ok) throw new Error(`Asset request failed: ${response.status}`);
++      return response;
++    }
++
++    async function loadFont() {
++      const response = await verifiedResponse(assets.font);
++      const font = new FontFace('Lora', await response.arrayBuffer(), {
++        weight: '400', style: 'normal', display: 'swap'
++      });
++      await font.load();
++      document.fonts.add(font);
++    }
++
++    async function loadImage(name) {
++      const response = await verifiedResponse(assets[name]);
++      const objectURL = URL.createObjectURL(await response.blob());
++      try {
++        if (name === 'hero') {
++          document.querySelector('.hero').style.setProperty('--hero-image', `url("${objectURL}")`);
++        } else {
++          const image = document.getElementById(`${name}-image`);
++          image.src = objectURL;
++          await image.decode();
++          image.hidden = false;
++        }
++        // Keep successful blob URLs alive for the document's lifetime.
++      } catch (error) {
++        URL.revokeObjectURL(objectURL);
++        throw error;
++      }
++    }
++
++    if (window.dayjs) {
++      document.getElementById('copyright-year').textContent = window.dayjs().format('YYYY');
++    }
++
++    // Each asset fails independently, preserving readable text and fallback fonts.
++    const results = await Promise.allSettled([
++      loadFont(),
++      ...['hero', 'latte', 'espresso', 'coldBrew'].map(loadImage)
++    ]);
++    for (const result of results) {
++      if (result.status === 'rejected') console.warn('External asset was not loaded.', result.reason);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

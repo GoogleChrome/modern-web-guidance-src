@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical Scroll Media Gallery */
++    .media-section {
++      margin-top: 50px;
++    }
++
++    .media-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .scroll-container {
++      position: relative;
++      height: 400px;
++      max-width: 700px;
++      margin: 0 auto;
++      overflow-y: scroll;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 20px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card {
++      background: var(--light);
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++      flex-shrink: 0;
++    }
++
++    .media-card img {
++      display: block;
++      width: 600px;
++      max-width: 100%;
++      height: 240px;
++      object-fit: cover;
++    }
++
++    .media-card-content {
++      padding: 16px;
++    }
++
++    .media-card-content h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .target {
++      scroll-start-target: auto;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +248,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <h2>Behind the scenes at our roastery</h2>
++      <div class="scroll-container">
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
++            alt="Coffee beans being harvested"
++            width="600"
++            height="240"
++          >
++          <div class="media-card-content">
++            <h3>1. Ethical Sourcing</h3>
++            <p>We partner directly with small-lot farmers to select the finest Arabica cherries.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++            alt="Small-batch coffee roaster"
++            width="600"
++            height="240"
++          >
++          <div class="media-card-content">
++            <h3>2. Small-Batch Roasting</h3>
++            <p>Every batch is roasted to bring out origin-specific flavor notes and aroma.</p>
++          </div>
++        </article>
++
++        <article class="media-card target">
++          <img
++            src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80"
++            alt="Barista pouring precision latte art"
++            width="600"
++            height="240"
++          >
++          <div class="media-card-content">
++            <h3>3. Precision Brewing</h3>
++            <p>Our baristas dial in every espresso shot and pour-over for peak extraction.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++            alt="Freshly brewed cup of coffee on wooden table"
++            width="600"
++            height="240"
++          >
++          <div class="media-card-content">
++            <h3>4. Tasting &amp; Cupping</h3>
++            <p>Daily cupping sessions ensure consistency and quality across every seasonal blend.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80"
++            alt="Cozy coffee shop interior"
++            width="600"
++            height="240"
++          >
++          <div class="media-card-content">
++            <h3>5. Community Space</h3>
++            <p>Enjoy your favorite cup in our warm, welcoming neighborhood cafes.</p>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

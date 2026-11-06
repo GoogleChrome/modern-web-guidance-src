@@ -1,0 +1,215 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..27a5bf3 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -38,18 +38,176 @@ const baseUrl = import.meta.env.BASE_URL;
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      <AdSlotFireplace client:load transition:persist="fireplace" />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div transition:persist="header">
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main id="spa-view-container" class="bg-white relative" transition:persist="spa-views">
++          <div
++            class="spa-view"
++            data-view-path={Astro.url.pathname}
++            aria-hidden="false"
++            tabindex="-1"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+-    <Footer />
++    <Footer transition:persist="footer" />
++
++    <script>
++      import {
++        swapFunctions,
++        type TransitionBeforePreparationEvent,
++        type TransitionBeforeSwapEvent,
++      } from "astro:transitions/client";
++
++      const MAX_CACHED_VIEWS = 5;
++      const viewLruOrder: string[] = [];
++
++      function normalizeViewPath(pathname: string): string {
++        if (pathname.length > 1 && pathname.endsWith("/")) {
++          return pathname.slice(0, -1);
++        }
++        return pathname;
++      }
++
++      function touchViewInLru(path: string, container: HTMLElement) {
++        const existingIndex = viewLruOrder.indexOf(path);
++        if (existingIndex !== -1) {
++          viewLruOrder.splice(existingIndex, 1);
++        }
++        viewLruOrder.push(path);
++
++        while (viewLruOrder.length > MAX_CACHED_VIEWS) {
++          const oldestPath = viewLruOrder.shift();
++          if (oldestPath && oldestPath !== path) {
++            const oldView = container.querySelector<HTMLElement>(
++              `.spa-view[data-view-path="${CSS.escape(oldestPath)}"]`,
++            );
++            oldView?.remove();
++          }
++        }
++      }
++
++      function activateView(activeView: HTMLElement, container: HTMLElement) {
++        container.querySelectorAll<HTMLElement>(".spa-view").forEach((view) => {
++          if (view !== activeView) {
++            view.classList.add("inactive");
++            view.setAttribute("aria-hidden", "true");
++            view.setAttribute("inert", "inert");
++          }
++        });
++
++        activeView.classList.remove("inactive");
++        activeView.setAttribute("aria-hidden", "false");
++        activeView.removeAttribute("inert");
++        if (!activeView.hasAttribute("tabindex")) {
++          activeView.setAttribute("tabindex", "-1");
++        }
++        activeView.focus({ preventScroll: true });
++      }
++
++      // Initialize the initial view in the LRU cache
++      const initialContainer = document.getElementById("spa-view-container");
++      const initialView = initialContainer?.querySelector<HTMLElement>(".spa-view");
++      if (initialContainer && initialView) {
++        const initialPath = normalizeViewPath(
++          initialView.dataset.viewPath || window.location.pathname,
++        );
++        initialView.dataset.viewPath = initialPath;
++        touchViewInLru(initialPath, initialContainer);
++      }
++
++      const cachedTitles = new Map<string, string>();
++      if (initialView?.dataset.viewPath) {
++        cachedTitles.set(initialView.dataset.viewPath, document.title);
++      }
++
++      document.addEventListener("astro:before-preparation", ((
++        event: TransitionBeforePreparationEvent,
++      ) => {
++        const container = document.getElementById("spa-view-container");
++        if (!container || event.formData) return;
++
++        const currentPath = normalizeViewPath(event.from.pathname);
++        cachedTitles.set(currentPath, document.title);
++
++        const targetPath = normalizeViewPath(event.to.pathname);
++        const cachedView = container.querySelector<HTMLElement>(
++          `.spa-view[data-view-path="${CSS.escape(targetPath)}"]`,
++        );
++
++        if (cachedView) {
++          const originalLoader = event.loader;
++          event.loader = async () => {
++            // Skip network fetch when returning to a previously visited cached view
++            const cachedTitle = cachedTitles.get(targetPath);
++            if (cachedTitle !== undefined) {
++              const doc = document.implementation.createHTMLDocument(cachedTitle);
++              const meta = doc.createElement("meta");
++              meta.name = "astro-view-transitions-enabled";
++              meta.content = "true";
++              doc.head.appendChild(meta);
++              event.newDocument = doc;
++            } else {
++              await originalLoader();
++            }
++          };
++        }
++      }) as EventListener);
++
++      document.addEventListener("astro:before-swap", ((
++        event: TransitionBeforeSwapEvent,
++      ) => {
++        const container = document.getElementById("spa-view-container");
++        if (!container) return;
++
++        const targetPath = normalizeViewPath(event.to.pathname);
++        const incomingView =
++          event.newDocument !== document
++            ? event.newDocument.querySelector<HTMLElement>(
++                "#spa-view-container > .spa-view",
++              )
++            : null;
++        const incomingTitle = event.newDocument?.title;
++
++        event.swap = () => {
++          swapFunctions.deselectScripts(event.newDocument);
++          swapFunctions.swapRootAttributes(event.newDocument);
++
++          // If we fetched a full new document from the server, swap head elements;
++          // if restoring from DOM cache, simply update the document title.
++          if (incomingView) {
++            swapFunctions.swapHeadElements(event.newDocument);
++          } else if (incomingTitle) {
++            document.title = incomingTitle;
++          }
++
++          if (incomingTitle) {
++            cachedTitles.set(targetPath, incomingTitle);
++          }
++
++          let activeView = container.querySelector<HTMLElement>(
++            `.spa-view[data-view-path="${CSS.escape(targetPath)}"]`,
++          );
++
++          if (!activeView && incomingView) {
++            incomingView.dataset.viewPath = targetPath;
++            container.appendChild(incomingView);
++            activeView = incomingView;
++          }
++
++          if (activeView) {
++            activateView(activeView, container);
++            touchViewInLru(targetPath, container);
++          }
++        };
++      }) as EventListener);
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..a9c4f74 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,22 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.spa-view:focus {
++  outline: none;
++}
++
++.spa-view.inactive {
++  /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++  content-visibility: hidden;
++
++  /* Prevent hidden views from taking up physical space in layout flow */
++  position: absolute;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

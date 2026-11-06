@@ -1,0 +1,172 @@
+diff --git a/index.html b/index.html
+index 66c9173..6c9280f 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,108 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites: drink cards adapt to their own width (container queries) */
++    .drink-grid {
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
++    }
++
++    .drink-card-wrap {
++      container-type: inline-size;
++      container-name: drink-card;
++      display: flex;
++    }
++
++    .drink-card {
++      display: flex;
++      flex-direction: column;
++      width: 100%;
++      padding: 0;
++      overflow: hidden;
++      text-align: center;
++    }
++
++    .drink-card__media {
++      aspect-ratio: 16 / 10;
++      background: var(--secondary);
++    }
++
++    .drink-card__media img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .drink-card__body {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      flex: 1;
++      padding: 20px;
++    }
++
++    .drink-card__body p {
++      flex: 1;
++    }
++
++    .drink-card__tag {
++      display: inline-block;
++      font-size: 0.7rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--primary);
++      background: #fff3e0;
++      border-radius: 999px;
++      padding: 2px 10px;
++      margin-bottom: 8px;
++    }
++
++    /* Wide card: image beside content */
++    @container drink-card (min-width: 480px) {
++      .drink-card {
++        flex-direction: row;
++        text-align: left;
++      }
++
++      .drink-card__media {
++        flex: 0 0 40%;
++        aspect-ratio: auto;
++        min-height: 200px;
++      }
++
++      .drink-card__body {
++        align-items: flex-start;
++        justify-content: center;
++        padding: 24px 28px;
++      }
++
++      .drink-card__body h3 {
++        font-size: 1.4rem;
++      }
++    }
++
++    /* Extra-wide card: more breathing room */
++    @container drink-card (min-width: 720px) {
++      .drink-card__media {
++        flex-basis: 45%;
++        min-height: 260px;
++      }
++
++      .drink-card__body {
++        padding: 32px 40px;
++      }
++
++      .drink-card__body h3 {
++        font-size: 1.75rem;
++      }
++
++      .drink-card__body p {
++        font-size: 1.05rem;
++        flex: 0 0 auto;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,21 +279,45 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="grid drink-grid">
++        <div class="drink-card-wrap">
++          <article class="card drink-card">
++            <div class="drink-card__media">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80" alt="A latte in a glass with layered milk and coffee" loading="lazy">
++            </div>
++            <div class="drink-card__body">
++              <span class="drink-card__tag">Fall Special</span>
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="drink-card-wrap">
++          <article class="card drink-card">
++            <div class="drink-card__media">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80" alt="A shot of espresso in a small cup" loading="lazy">
++            </div>
++            <div class="drink-card__body">
++              <span class="drink-card__tag">House Favorite</span>
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="drink-card-wrap">
++          <article class="card drink-card">
++            <div class="drink-card__media">
++              <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=800&q=80" alt="Iced cold brew coffee in a glass" loading="lazy">
++            </div>
++            <div class="drink-card__body">
++              <span class="drink-card__tag">Slow Steeped</span>
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </article>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+index 66c9173..227102b 100644
+--- a/index.html
++++ b/index.html
+@@ -93,6 +93,62 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Hero video */
++    .hero {
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
++    }
++
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: -2;
++    }
++
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: -1;
++    }
++
++    /* Roasting video + podcast */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-section h2,
++    .media-section > p {
++      text-align: center;
++    }
++
++    .roast-video {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      margin: 20px 0;
++      border-radius: 8px;
++      background: var(--primary);
++    }
++
++    .podcast {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .podcast audio {
++      width: 100%;
++      margin-top: 10px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,6 +225,13 @@
+   </nav>
+ 
+   <header class="hero">
++    <!-- Above the fold: no loading="lazy" so poster and data load immediately -->
++    <video class="hero-video" autoplay muted loop playsinline width="1350" height="900"
++      poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      preload="metadata" aria-hidden="true" tabindex="-1">
++      <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" type="video/webm">
++      <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
++    </video>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -195,6 +258,25 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <h2>From Bean to Cup</h2>
++      <p>Watch our roasters at work, then listen in on the Daily Grind podcast.</p>
++
++      <!-- Below the fold: poster and preload are deferred until near the viewport -->
++      <video class="roast-video" controls loading="lazy" width="1280" height="720"
++        poster="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1280&q=80"
++        preload="metadata">
++        <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" type="video/webm">
++        <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
++      </video>
++
++      <figure class="podcast">
++        <figcaption id="episode-title"><strong>Episode 12:</strong> The Perfect Pour</figcaption>
++        <audio controls loading="lazy" preload="metadata" aria-labelledby="episode-title"
++          src="https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3"></audio>
++      </figure>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +289,53 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Respect reduced motion: stop the autoplaying hero video
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++    function syncReducedMotion() {
++      if (!reducedMotion.matches) return;
++      for (const video of document.querySelectorAll('video[autoplay]')) {
++        video.removeAttribute('autoplay');
++        video.pause();
++      }
++    }
++    syncReducedMotion();
++    reducedMotion.addEventListener('change', syncReducedMotion);
++
++    // Fallback for browsers without native loading="lazy" on media
++    if (!Object.hasOwn(HTMLMediaElement.prototype, 'loading')) {
++      const observer = new IntersectionObserver((entries, obs) => {
++        for (const { isIntersecting, target: media } of entries) {
++          if (!isIntersecting) continue;
++          if (media.dataset.poster) media.poster = media.dataset.poster;
++          media.preload = media.dataset.preload || 'metadata';
++          for (const source of media.querySelectorAll('source[data-src]')) source.src = source.dataset.src;
++          if (media.dataset.src) media.src = media.dataset.src;
++          media.load();
++          obs.unobserve(media);
++        }
++      }, { rootMargin: '200px 0px' });
++
++      for (const media of document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"][controls]')) {
++        if (media.hasAttribute('poster')) {
++          media.dataset.poster = media.getAttribute('poster');
++          media.removeAttribute('poster');
++        }
++        media.dataset.preload = media.getAttribute('preload') || 'metadata';
++        media.preload = 'none';
++        // Move sources to data-src so nothing is fetched until intersection
++        for (const source of media.querySelectorAll('source[src]')) {
++          source.dataset.src = source.getAttribute('src');
++          source.removeAttribute('src');
++        }
++        if (media.hasAttribute('src')) {
++          media.dataset.src = media.getAttribute('src');
++          media.removeAttribute('src');
++        }
++        observer.observe(media);
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

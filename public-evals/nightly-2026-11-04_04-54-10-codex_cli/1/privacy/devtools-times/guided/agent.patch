@@ -1,0 +1,396 @@
+diff --git a/docs/privacy-audit.md b/docs/privacy-audit.md
+new file mode 100644
+index 0000000..59d9b0c
+--- /dev/null
++++ b/docs/privacy-audit.md
+@@ -0,0 +1,24 @@
++# Privacy audit
++
++Scope: sign-in/sign-up components, shared document layout and response headers, and the privacy notice. Source audit only; no browser sessions, live credential submissions, or servers were used.
++
++## Findings and changes
++
++- Account payloads already contain only username and password. Kept that contract and added inline purpose, recipient, demo credential guidance, and a link to the privacy notice. No additional identity or consent fields were added.
++- Both account requests now explicitly omit cookies, request no caching, suppress the referrer, and reject redirects. Removed response-body parsing and raw backend error display so tokens and internal error details are not retained or shown. Password state is cleared after completed requests. No client token persistence was introduced.
++- Added POST semantics to prevent the native default GET from placing credentials in a URL before hydration, plus a JavaScript requirement notice. The remote API expects JSON; a functional non-JavaScript submission path would require a server-side integration and remains unavailable.
++- Added stable field names and password-manager autocomplete, disabled text correction for usernames, associated help text, and enforced the existing advertised sign-up password constraint in the browser. Server validation remains the account service's responsibility.
++- Removed the automatically loaded remote analytics script and the commented advertising loader from the shared layout. Ad slot components remain inert without an ad network loader. Removed Google Fonts requests and preconnects, using installed serif fonts instead. Optional tracking is absent by default, so no consent state or cookie banner is needed.
++- Added a document referrer meta policy and actual Referrer-Policy, Permissions-Policy, and X-Content-Type-Options response headers in middleware. Account documents also receive Cache-Control: no-store. Existing features do not require the disabled camera, microphone, location, motion sensors, payment, or USB capabilities.
++- Removed eager reading-list session initialization on every request; the existing reading-list write endpoint initializes its list on the first save.
++- Replaced generic privacy boilerplate and the dead privacy preferences link with a notice and working link reflecting the implementation and known limits.
++
++## Remaining boundaries
++
++The external Google Cloud account service is outside this repository. Verify its password hashing, validation, rate limiting, operational logs, retention/deletion controls, and response cache headers before collecting real personal data. This audit did not make live requests to the account service or verify those controls. The frontend cannot impose retention or deletion on that service.
++
++External editorial images still cause third-party requests. Self-hosting those assets would reduce that exposure further. The plant-stats article retains its intentional cookie/cache demonstration; it is disclosed in the notice and was outside the requested account/layout scope. Session configuration is not present in this repository, so reading-list persistence and session cookie flags need deployment-level review.
++
++A comprehensive script CSP/Trusted Types rollout is deferred: Astro hydration, the client router, and inline article scripts require compatibility work and verification beyond this source-only privacy pass. No telemetry/reporting endpoint was added, avoiding collection of document URLs and script samples.
++
++Validation: `pnpm build` passed, and `git diff --check` passed. The build reported existing Vite plugin deprecations and ignored `getStaticPaths` warnings for server-rendered routes. No development/preview server was started and no built server entrypoint was imported.
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..fa009ed 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -98,7 +98,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a href={`${baseUrl}legal/privacy#privacy-defaults`} class="hover:underline">Your Privacy Choices</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..2515f35 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -9,6 +9,7 @@ export default function SignInForm() {
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
++    if (loading) return;
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -16,25 +17,25 @@ export default function SignInForm() {
+     try {
+       const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+         method: 'POST',
++        credentials: 'omit',
++        cache: 'no-store',
++        referrerPolicy: 'no-referrer',
++        redirect: 'error',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({ username, password }),
+       });
+ 
+-      const data = await response.json();
+-
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        setError('Unable to sign in. Check your credentials or try again later.');
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
++      setPassword('');
+       setLoading(false);
+     }
+   };
+@@ -50,33 +51,50 @@ export default function SignInForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form method="post" onSubmit={handleSubmit} aria-describedby="account-privacy" aria-busy={loading} data-skip-tracking="true" className="space-y-4">
++        <p id="account-privacy" className="text-sm text-gray-600">
++          This is a demo. Use a made-up username and a password you do not use elsewhere.
++          When you submit, only these two fields are sent to our Google Cloud-hosted
++          account service to check your credentials.{' '}
++          <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Read how your data is handled</a>.
++        </p>
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++            Username (required)
+           </label>
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            aria-describedby="username-help"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="username-help" className="text-xs text-gray-600 mt-1">
++            Your username identifies your demo account; it does not need to be your real name or email.
++          </p>
+         </div>
+         
+         <div>
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
++            Password (required)
+           </label>
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..3d1aa23 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -9,6 +9,7 @@ export default function SignUpForm() {
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
++    if (loading) return;
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -16,26 +17,27 @@ export default function SignUpForm() {
+     try {
+       const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+         method: 'POST',
++        credentials: 'omit',
++        cache: 'no-store',
++        referrerPolicy: 'no-referrer',
++        redirect: 'error',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({ username, password }),
+       });
+ 
+-      const data = await response.json();
+-
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        setError('Unable to create an account. Try another username or try again later.');
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+         setPassword('');
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
++      setPassword('');
+       setLoading(false);
+     }
+   };
+@@ -51,39 +53,59 @@ export default function SignUpForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form method="post" onSubmit={handleSubmit} aria-describedby="account-privacy" aria-busy={loading} data-skip-tracking="true" className="space-y-4">
++        <p id="account-privacy" className="text-sm text-gray-600">
++          This is a demo. Use a made-up username and a password you do not use elsewhere.
++          When you submit, only these two fields are sent to our Google Cloud-hosted
++          account service to create your demo account.{' '}
++          <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Read how your data is handled</a>.
++        </p>
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++            Username (required)
+           </label>
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            aria-describedby="username-help"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="username-help" className="text-xs text-gray-600 mt-1">
++            Your username identifies your demo account; it does not need to be your real name or email.
++          </p>
+         </div>
+         
+         <div>
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
++            Password (required)
+           </label>
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
++            minLength={8}
++            pattern=".*[0-9].*"
++            aria-describedby="password-help"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
++          <p id="password-help" className="text-xs text-gray-600 mt-1">
+              Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..1c5a6f2 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -17,20 +17,13 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="referrer" content="no-referrer" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!-- Optional analytics, advertising scripts, and remote fonts are deliberately
++         omitted: reading and account access must not require third-party tracking. -->
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..abc668b 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -2,12 +2,21 @@
+ import { defineMiddleware } from 'astro:middleware';
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
+-    }
++  const response = await next();
++
++  // Send actual response headers; Permissions-Policy has no meta-tag equivalent.
++  response.headers.set('Referrer-Policy', 'no-referrer');
++  response.headers.set(
++    'Permissions-Policy',
++    'camera=(), microphone=(), geolocation=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()'
++  );
++  response.headers.set('X-Content-Type-Options', 'nosniff');
++
++  const path = context.url.pathname.replace(/\/$/, '');
++  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
++  if (path === `${base}/signin` || path === `${base}/signup`) {
++    response.headers.set('Cache-Control', 'no-store');
+   }
+-  return next();
++
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..3a84c06 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -2,16 +2,21 @@
+ import LegalLayout from '../../layouts/LegalLayout.astro';
+ ---
+ <LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+-    
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+-    
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <p>The DevTools Times is a demonstration news site. You can read articles without creating an account.</p>
++
++    <h2 id="privacy-defaults">Privacy by default and your choices</h2>
++    <p>We do not load optional analytics or advertising scripts. Fonts use your device’s installed fonts, without contacting a font provider. There is no optional tracking to enable or decline in this version of the site.</p>
++
++    <h2>Sign-in and sign-up data</h2>
++    <p>Both forms ask only for a username and password. Your username identifies your demo account; you do not need to provide a real name, email address, phone number, or date of birth. Use made-up credentials and never reuse a password from another service.</p>
++    <p>Only when you submit a form, your browser sends those two fields over HTTPS to our account service hosted on Google Cloud at <code>us-central1-web-devrel-apps.cloudfunctions.net</code>. Sign-up requests create a demo account, and sign-in requests check your credentials. As with any network request, the service also receives connection information such as your IP address and browser headers.</p>
++    <p>The forms omit cookies from these requests, request that responses not be cached, and do not send the referring page URL. This frontend does not save your credentials or authentication tokens in local storage or session storage. The password field is cleared after each completed request. Your browser’s password manager may separately offer to save credentials under your control.</p>
++
++    <h2>Retention and account controls</h2>
++    <p>This repository does not contain the account service implementation. Its password storage, logs, retention period, and deletion practices cannot be verified here. This demo currently provides no account export, correction, password recovery, or deletion flow. Avoid submitting personal information; do not use this demo for an account that requires those controls.</p>
++
++    <h2>Other requests and browser storage</h2>
++    <p>Pages and images are requested as you browse. Some editorial images are hosted by external providers, including Imgur and the CinemAI demo service; those providers receive connection information when their images load. The site sends no referring page URL with these requests. Clicking an external link also takes you to a service with its own data practices.</p>
++    <p>The reading-list feature uses a server session when session support is available, which may require a session cookie when you save an article. Ordinary page requests do not initialize a reading list. The “Silent Architects” demo article also contains a cookie-based cache demonstration for its plant-stats endpoint. These are separate from the account forms and are not optional analytics cookies.</p>
++    <p>The hosting and account services may keep operational logs. Their retention settings are outside this frontend repository. Clearing this site’s browser data removes locally stored site data, but does not delete records held by those services.</p>
+ </LegalLayout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..377f120 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -5,6 +5,9 @@ import SignInForm from '../components/SignInForm';
+ 
+ <Layout title="Sign In | The DevTools Times">
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <noscript>
++      <p class="text-center">JavaScript is required to submit this demo form. Please do not enter credentials while JavaScript is disabled.</p>
++    </noscript>
+     <SignInForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..7c3b1a6 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -5,6 +5,9 @@ import SignUpForm from '../components/SignUpForm';
+ 
+ <Layout title="Sign Up | The DevTools Times">
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <noscript>
++      <p class="text-center">JavaScript is required to submit this demo form. Please do not enter credentials while JavaScript is disabled.</p>
++    </noscript>
+     <SignUpForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ce4e27d 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,7 @@
+ @import "tailwindcss";
+ 
+ .font-brand {
+-  font-family: "Grenze", serif;
++  font-family: Georgia, "Times New Roman", serif;
+   font-weight: 500;
+   font-style: normal;
+ }
+\ No newline at end of file

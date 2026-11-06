@@ -1,0 +1,60 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,56 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Product</title>
++<link rel="preload" as="image" href="hero-lcp.jpg" fetchpriority="high">
++<style>
++  body { margin: 0; font-family: system-ui, sans-serif; }
++  nav { padding: 1rem; }
++  .mega { display: none; }
++  .mega.open { display: block; }
++  .hero { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
++  section { padding: 1rem; }
++  .gallery img { max-width: 100%; height: auto; }
++  #alt { display: none; }
++  #alt.open { display: block; }
++  .spacer { height: 200vh; }
++  footer { padding: 2rem 1rem; }
++</style>
++</head>
++<body>
++<nav>
++  <button id="menu-btn" aria-expanded="false" aria-controls="mega">Menu</button>
++  <div id="mega" class="mega">
++    <img src="mega-menu-promo.jpg" alt="Promo" width="400" height="200" loading="lazy">
++  </div>
++</nav>
++
++<main>
++  <img class="hero" src="hero-lcp.jpg" alt="Product hero" width="1600" height="900" fetchpriority="high" decoding="async">
++
++  <section class="gallery">
++    <img src="hero-lcp.jpg" alt="Product view 1" width="800" height="600">
++    <img id="alt" src="gallery-alt.jpg" alt="Product view 2" width="800" height="600" loading="lazy">
++    <button id="toggle">Toggle image</button>
++  </section>
++
++  <div class="spacer"></div>
++</main>
++
++<footer>
++  <img src="footer-logo.png" alt="Logo" width="120" height="40" loading="lazy">
++</footer>
++
++<script>
++  var menu = document.getElementById('mega'), mb = document.getElementById('menu-btn');
++  mb.onclick = function () {
++    mb.setAttribute('aria-expanded', menu.classList.toggle('open'));
++  };
++  document.getElementById('toggle').onclick = function () {
++    document.getElementById('alt').classList.toggle('open');
++  };
++</script>
++</body>
++</html>

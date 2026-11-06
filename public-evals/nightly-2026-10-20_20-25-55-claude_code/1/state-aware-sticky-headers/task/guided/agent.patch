@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 4rem;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -34,8 +35,9 @@
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      height: var(--nav-height);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+@@ -151,8 +153,62 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sticky section headers */
++    .section {
++      /* Prevent flicker when the stuck state changes the header's padding */
++      overflow-anchor: none;
++      margin-bottom: 60px;
++    }
++
++    .intro {
++      text-align: center;
++      max-width: 700px;
++      margin: 0 auto 60px;
++    }
++
++    .intro p {
++      margin-bottom: 1rem;
++    }
++
++    .sticky-container {
++      position: sticky;
++      /* Stick just below the site navigation */
++      top: var(--nav-height);
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 20px;
++      text-align: center;
++      border-radius: 8px;
++      transition: background-color 0.3s, box-shadow 0.3s, padding 0.3s;
++    }
++
++    .sticky-header h2 {
++      font-size: 1.75rem;
++      transition: font-size 0.3s;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: #0056b3;
++        color: white;
++        box-shadow: 0 4px 6px rgb(0 0 0 / 0.25);
++        padding: 6px 20px;
++        border-radius: 0 0 8px 8px;
++      }
++
++      .sticky-header h2 {
++        font-size: 1.1rem;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,10 +230,21 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="intro">
++      <h2>Our Story</h2>
++      <p>The Daily Grind started as a tiny cart on a busy corner, serving neighbors one carefully pulled shot at a time.</p>
++      <p>Today we partner directly with farmers around the world, roast in small batches, and craft every cup with care.</p>
++      <p>Whether you stop in for a quick espresso or settle in with a pastry and a good book, there is a seat for you.</p>
++      <p>Scroll on to explore our seasonal favorites, fresh bakery, and whole bean selection.</p>
++    </section>
++    <section class="section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Seasonal Favorites</h2>
++        </div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -194,8 +261,86 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Fresh From the Bakery</h2>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden, baked fresh every morning.</p>
++          <a href="/menu/bakery/butter-croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Muffin</h3>
++          <p>Packed with wild blueberries.</p>
++          <a href="/menu/bakery/blueberry-muffin" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Biscotti</h3>
++          <p>Twice-baked and perfect for dunking.</p>
++          <a href="/menu/bakery/almond-biscotti" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cinnamon Roll</h3>
++          <p>Warm, gooey, and generously frosted.</p>
++          <a href="/menu/bakery/cinnamon-roll" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Banana Bread</h3>
++          <p>Moist, rich, and lightly spiced.</p>
++          <a href="/menu/bakery/banana-bread" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Lemon Loaf</h3>
++          <p>Bright and tangy with a sweet glaze.</p>
++          <a href="/menu/bakery/lemon-loaf" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++    <section class="section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Whole Bean Coffee</h2>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Floral and citrusy with a tea-like body.</p>
++          <a href="/shop/beans/ethiopia-yirgacheffe" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombia Huila</h3>
++          <p>Caramel sweetness and a balanced finish.</p>
++          <a href="/shop/beans/colombia-huila" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy, full-bodied, low acidity.</p>
++          <a href="/shop/beans/sumatra-mandheling" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Guatemala Antigua</h3>
++          <p>Chocolatey with a hint of spice.</p>
++          <a href="/shop/beans/guatemala-antigua" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Kenya AA</h3>
++          <p>Juicy berry notes and bright acidity.</p>
++          <a href="/shop/beans/kenya-aa" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>House Blend</h3>
++          <p>Our everyday medley, smooth and approachable.</p>
++          <a href="/shop/beans/house-blend" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

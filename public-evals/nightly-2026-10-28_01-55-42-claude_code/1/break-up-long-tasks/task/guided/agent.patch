@@ -1,0 +1,719 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,205 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Flavor Profile Lab */
++    .lab {
++      margin-top: 60px;
++    }
++
++    .lab h2 {
++      text-align: center;
++    }
++
++    .lab .lead {
++      text-align: center;
++      max-width: 60ch;
++      margin: 8px auto 20px;
++      color: #5d4037;
++    }
++
++    .lab-panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .lab-controls {
++      border: 0;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px 16px;
++      align-items: end;
++    }
++
++    .lab-controls label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.9rem;
++      gap: 4px;
++    }
++
++    .lab-controls select {
++      font: inherit;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .lab-controls .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn.btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn.btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .lab-progress {
++      margin-top: 20px;
++    }
++
++    .lab-progress progress {
++      width: 100%;
++      height: 14px;
++      accent-color: var(--accent);
++    }
++
++    .lab-status {
++      font-size: 0.9rem;
++      margin-top: 6px;
++      min-height: 1.5em;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .lab-live {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px 24px;
++      align-items: center;
++      margin-top: 16px;
++      padding: 12px 16px;
++      background: var(--light);
++      border-radius: 6px;
++      font-size: 0.9rem;
++    }
++
++    .lab-live .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      padding: 6px 14px;
++    }
++
++    .lab-live output {
++      font-variant-numeric: tabular-nums;
++      font-weight: 600;
++    }
++
++    .lab-metrics {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
++      gap: 12px;
++      margin-top: 20px;
++      font-size: 0.9rem;
++    }
++
++    .lab-metrics div {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    .lab-metrics dt {
++      color: #6d4c41;
++      font-size: 0.8rem;
++    }
++
++    .lab-metrics dd {
++      font-weight: 600;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .lab-results {
++      margin-top: 24px;
++    }
++
++    .lab-results h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .lab-results p {
++      font-size: 0.9rem;
++      margin-bottom: 12px;
++    }
++
++    .table-wrap {
++      overflow-x: auto;
++    }
++
++    .lab-results table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++      white-space: nowrap;
++    }
++
++    .lab-results th,
++    .lab-results td {
++      padding: 8px 10px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: left;
++    }
++
++    .lab-results th {
++      background: var(--light);
++      color: var(--primary);
++    }
++
++    .lab-results td.num,
++    .lab-results th.num {
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .lab-results tbody tr:nth-child(odd) {
++      background: #fcfaf9;
++    }
++
++    .lab-note {
++      margin-top: 16px;
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +391,94 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="lab" aria-labelledby="lab-heading">
++      <h2 id="lab-heading">Flavor Profile Lab</h2>
++      <p class="lead">
++        Simulate extraction for thousands of recipe blends and find the best-balanced cups.
++        The batch runs on the page itself, in short slices, so you can keep scrolling and clicking while it works.
++      </p>
++
++      <div class="lab-panel">
++        <form id="lab-form">
++          <fieldset class="lab-controls">
++            <legend class="visually-hidden">Simulation settings</legend>
++            <label>
++              Batch size
++              <select id="lab-batch-size" name="batch">
++                <option value="10000">Small (10,000 blends)</option>
++                <option value="50000">Standard (50,000 blends)</option>
++                <option value="250000" selected>Large (250,000 blends)</option>
++                <option value="1000000">Massive (1,000,000 blends)</option>
++              </select>
++            </label>
++            <label>
++              Brew focus
++              <select id="lab-method" name="method">
++                <option value="all" selected>All methods</option>
++                <option value="Espresso">Espresso</option>
++                <option value="Pour Over">Pour Over</option>
++                <option value="French Press">French Press</option>
++                <option value="Cold Brew">Cold Brew</option>
++                <option value="AeroPress">AeroPress</option>
++              </select>
++            </label>
++            <button type="submit" id="lab-run" class="btn">Run simulation</button>
++            <button type="button" id="lab-cancel" class="btn btn-outline" disabled>Cancel</button>
++          </fieldset>
++        </form>
++
++        <div class="lab-progress">
++          <progress id="lab-progress" max="100" value="0" aria-label="Simulation progress"></progress>
++          <p id="lab-status" class="lab-status">Ready. Pick a batch size and run the simulation.</p>
++        </div>
++
++        <div class="lab-live">
++          <span>Responsiveness check:</span>
++          <button type="button" id="lab-tap" class="btn">Tap me while it runs</button>
++          <span>Taps: <output id="lab-tap-count" for="lab-tap">0</output></span>
++          <span>Live clock: <output id="lab-clock">0.0 s</output></span>
++        </div>
++
++        <dl class="lab-metrics" id="lab-metrics" hidden>
++          <div><dt>Blends processed</dt><dd id="m-processed">0</dd></div>
++          <div><dt>Elapsed</dt><dd id="m-elapsed">0 ms</dd></div>
++          <div><dt>Slices / yields</dt><dd id="m-yields">0 / 0</dd></div>
++          <div><dt>Longest slice</dt><dd id="m-longest">0 ms</dd></div>
++          <div><dt>Frames painted during run</dt><dd id="m-frames">0</dd></div>
++          <div><dt>Long tasks observed</dt><dd id="m-longtasks">n/a</dd></div>
++        </dl>
++
++        <div class="lab-results" id="lab-results" aria-live="polite" hidden>
++          <h3>Top blends</h3>
++          <p id="lab-summary"></p>
++          <div class="table-wrap">
++            <table>
++              <thead>
++                <tr>
++                  <th scope="col">#</th>
++                  <th scope="col">Blend</th>
++                  <th scope="col">Roast</th>
++                  <th scope="col">Method</th>
++                  <th scope="col">Recipe</th>
++                  <th scope="col" class="num">Acidity</th>
++                  <th scope="col" class="num">Body</th>
++                  <th scope="col" class="num">Sweetness</th>
++                  <th scope="col" class="num">Bitterness</th>
++                  <th scope="col" class="num">Aroma</th>
++                  <th scope="col" class="num">Score</th>
++                </tr>
++              </thead>
++              <tbody id="lab-results-body"></tbody>
++            </table>
++          </div>
++        </div>
++
++        <p class="lab-note" id="lab-scheduler-note"></p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +489,414 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      // ---------- DOM ----------
++      const $ = (id) => document.getElementById(id);
++      const form = $('lab-form');
++      const sizeSelect = $('lab-batch-size');
++      const methodSelect = $('lab-method');
++      const runBtn = $('lab-run');
++      const cancelBtn = $('lab-cancel');
++      const progress = $('lab-progress');
++      const statusEl = $('lab-status');
++      const tapBtn = $('lab-tap');
++      const tapCount = $('lab-tap-count');
++      const clockEl = $('lab-clock');
++      const metricsEl = $('lab-metrics');
++      const resultsEl = $('lab-results');
++      const resultsBody = $('lab-results-body');
++      const summaryEl = $('lab-summary');
++      const noteEl = $('lab-scheduler-note');
++
++      // ---------- Yielding to the main thread ----------
++      // 50 ms is the long-task threshold; each slice stops at that budget and yields.
++      const SLICE_BUDGET_MS = 50;
++      const hasSchedulerYield = 'scheduler' in window && 'yield' in window.scheduler;
++
++      function yieldToMain() {
++        if (hasSchedulerYield) {
++          // Continuation goes to the front of the queue, so input still gets handled
++          // first but the batch does not starve behind other queued tasks.
++          return window.scheduler.yield();
++        }
++        // Fallback: a macrotask at the back of the queue.
++        return new Promise((resolve) => setTimeout(resolve, 0));
++      }
++
++      noteEl.textContent = hasSchedulerYield
++        ? 'Yielding with scheduler.yield(). Each work slice is capped at 50 ms before control returns to the browser.'
++        : 'scheduler.yield() is not available in this browser; falling back to setTimeout-based yielding every 50 ms.';
++
++      // ---------- Responsiveness probes ----------
++      let taps = 0;
++      tapBtn.addEventListener('click', () => {
++        taps += 1;
++        tapCount.value = String(taps);
++      });
++
++      let longTaskCount = 0;
++      let longTaskObserver = null;
++      const supportsLongTask =
++        'PerformanceObserver' in window &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.includes('longtask');
++
++      // ---------- Deterministic data ----------
++      function mulberry32(seed) {
++        let a = seed >>> 0;
++        return () => {
++          a = (a + 0x6D2B79F5) >>> 0;
++          let t = a;
++          t = Math.imul(t ^ (t >>> 15), t | 1);
++          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
++          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++        };
++      }
++
++      // Base flavor tendencies per origin, on a 0-1 scale.
++      const ORIGINS = [
++        { name: 'Ethiopia Yirgacheffe', acidity: 0.90, body: 0.40, sweetness: 0.70, bitterness: 0.20, aroma: 0.95 },
++        { name: 'Colombia Huila', acidity: 0.65, body: 0.60, sweetness: 0.75, bitterness: 0.30, aroma: 0.70 },
++        { name: 'Sumatra Mandheling', acidity: 0.25, body: 0.95, sweetness: 0.45, bitterness: 0.55, aroma: 0.50 },
++        { name: 'Brazil Cerrado', acidity: 0.35, body: 0.70, sweetness: 0.80, bitterness: 0.35, aroma: 0.55 },
++        { name: 'Kenya AA', acidity: 0.95, body: 0.55, sweetness: 0.60, bitterness: 0.25, aroma: 0.85 },
++        { name: 'Guatemala Antigua', acidity: 0.60, body: 0.70, sweetness: 0.65, bitterness: 0.40, aroma: 0.75 },
++      ];
++      const ROASTS = ['Light', 'Medium', 'Medium-Dark', 'Dark'];
++      const METHODS = {
++        'Espresso': { ratioMin: 1.8, ratioMax: 2.5, tempMin: 90, tempMax: 96, timeMin: 22, timeMax: 36, grind: 0.95 },
++        'Pour Over': { ratioMin: 14, ratioMax: 17, tempMin: 90, tempMax: 96, timeMin: 150, timeMax: 240, grind: 0.55 },
++        'French Press': { ratioMin: 12, ratioMax: 16, tempMin: 90, tempMax: 95, timeMin: 210, timeMax: 300, grind: 0.25 },
++        'Cold Brew': { ratioMin: 5, ratioMax: 9, tempMin: 4, tempMax: 22, timeMin: 43200, timeMax: 72000, grind: 0.20 },
++        'AeroPress': { ratioMin: 10, ratioMax: 15, tempMin: 80, tempMax: 94, timeMin: 60, timeMax: 150, grind: 0.70 },
++      };
++      const METHOD_NAMES = Object.keys(METHODS);
++
++      function pickOrigins(rand) {
++        const count = rand() < 0.4 ? 2 : 3;
++        const picked = [];
++        while (picked.length < count) {
++          const idx = Math.floor(rand() * ORIGINS.length);
++          if (!picked.some((p) => p.origin === ORIGINS[idx])) {
++            picked.push({ origin: ORIGINS[idx], weight: 0.5 + rand() });
++          }
++        }
++        const total = picked.reduce((s, p) => s + p.weight, 0);
++        for (const p of picked) p.weight /= total;
++        return picked;
++      }
++
++      function makeBlend(index, rand, methodFilter) {
++        const method = methodFilter === 'all'
++          ? METHOD_NAMES[Math.floor(rand() * METHOD_NAMES.length)]
++          : methodFilter;
++        const spec = METHODS[method];
++        return {
++          index,
++          origins: pickOrigins(rand),
++          roast: Math.floor(rand() * ROASTS.length),
++          method,
++          ratio: spec.ratioMin + rand() * (spec.ratioMax - spec.ratioMin),
++          tempC: spec.tempMin + rand() * (spec.tempMax - spec.tempMin),
++          timeSec: spec.timeMin + rand() * (spec.timeMax - spec.timeMin),
++          grind: Math.min(1, Math.max(0, spec.grind + (rand() - 0.5) * 0.2)),
++        };
++      }
++
++      // ---------- Extraction model ----------
++      // Integrates a first-order extraction curve for each flavor compound family
++      // over a fixed number of steps. Acids dissolve fastest, sugars next, and
++      // bitter compounds slowest, which is why under- and over-extraction taste
++      // the way they do. This is intentionally compute-heavy per blend.
++      const STEPS = 160;
++
++      function simulateBlend(blend) {
++        const roastFactor = 0.6 + blend.roast * 0.25;        // darker roast: more soluble, more bitter
++        const tempFactor = blend.tempC < 40
++          ? 0.015 + blend.tempC * 0.0004                       // cold brew regime
++          : 0.35 + (blend.tempC - 80) * 0.03;
++        const grindFactor = 0.4 + blend.grind * 1.2;           // finer grind: larger surface area
++        const strength = 1 / blend.ratio;                      // more coffee per water: stronger
++        const k = tempFactor * grindFactor * roastFactor;
++
++        // Normalise time so cold brew and espresso share the same curve scale.
++        const tEnd = blend.tempC < 40 ? blend.timeSec / 36000 : blend.timeSec / 60;
++        const dt = tEnd / STEPS;
++
++        let acid = 0, sugar = 0, bitter = 0, oils = 0, volatiles = 0;
++        for (let s = 1; s <= STEPS; s++) {
++          const t = s * dt;
++          const fast = 1 - Math.exp(-k * 2.2 * t);
++          const mid = 1 - Math.exp(-k * 1.1 * t);
++          const slow = 1 - Math.exp(-k * 0.45 * t);
++          acid += (fast - (acid / s)) * dt;
++          sugar += (mid - (sugar / s)) * dt;
++          bitter += (slow - (bitter / s)) * dt;
++          oils += (slow * (1 - blend.grind) + mid * 0.2) * dt;
++          volatiles += Math.max(0, fast - slow * 0.6) * Math.exp(-0.002 * t) * dt;
++        }
++        const norm = 1 / tEnd;
++        acid *= norm; sugar *= norm; bitter *= norm; oils *= norm; volatiles *= norm;
++
++        let acidity = 0, body = 0, sweetness = 0, bitterness = 0, aroma = 0;
++        for (const { origin, weight } of blend.origins) {
++          acidity += origin.acidity * weight;
++          body += origin.body * weight;
++          sweetness += origin.sweetness * weight;
++          bitterness += origin.bitterness * weight;
++          aroma += origin.aroma * weight;
++        }
++
++        const roastShift = blend.roast / (ROASTS.length - 1);
++        acidity = clamp01(acidity * (1.1 - roastShift * 0.6) * (0.5 + acid * 1.2) * (0.8 + strength));
++        body = clamp01(body * (0.7 + roastShift * 0.5) * (0.5 + oils * 1.4) * (0.7 + strength * 2));
++        sweetness = clamp01(sweetness * (1.05 - Math.abs(roastShift - 0.4)) * (0.3 + sugar * 1.05));
++        bitterness = clamp01(bitterness * (0.6 + roastShift) * (0.4 + bitter * 1.6) * (0.8 + strength));
++        aroma = clamp01(aroma * (1.1 - roastShift * 0.4) * (0.5 + volatiles * 1.1));
++
++        // Balance score: reward sweetness and aroma, penalise bitterness that
++        // overtakes sweetness, and penalise extremes in acidity.
++        const balance = 1 - Math.abs(acidity - 0.55) * 0.8;
++        const harmony = 1 - Math.max(0, bitterness - sweetness) * 1.5;
++        const score = clamp01(
++          0.30 * sweetness + 0.25 * aroma + 0.15 * body + 0.15 * balance + 0.15 * harmony
++        );
++
++        return { acidity, body, sweetness, bitterness, aroma, score };
++      }
++
++      function clamp01(v) {
++        return v < 0 ? 0 : v > 1 ? 1 : v;
++      }
++
++      // ---------- Batch runner ----------
++      const TOP_N = 8;
++      let activeController = null;
++
++      async function runBatch(total, methodFilter, signal) {
++        const rand = mulberry32(0xC0FFEE ^ total);
++        const top = [];
++        const roastCounts = new Array(ROASTS.length).fill(0);
++        const methodTotals = Object.create(null);
++        let scoreSum = 0;
++        let processed = 0;
++
++        let slices = 0;
++        let yields = 0;
++        let longestSlice = 0;
++        let frames = 0;
++        const start = performance.now();
++
++        // Count painted frames during the run. If the main thread were blocked,
++        // this would stall, so it doubles as evidence the page stayed responsive.
++        let rafId = 0;
++        const tick = () => {
++          frames += 1;
++          clockEl.value = ((performance.now() - start) / 1000).toFixed(1) + ' s';
++          rafId = requestAnimationFrame(tick);
++        };
++        rafId = requestAnimationFrame(tick);
++
++        longTaskCount = 0;
++        if (supportsLongTask) {
++          longTaskObserver = new PerformanceObserver((list) => {
++            longTaskCount += list.getEntries().length;
++          });
++          longTaskObserver.observe({ type: 'longtask' });
++        }
++
++        let cancelled = false;
++        try {
++          let sliceStart = performance.now();
++          let deadline = sliceStart + SLICE_BUDGET_MS;
++          slices = 1;
++
++          while (processed < total) {
++            const blend = makeBlend(processed, rand, methodFilter);
++            const profile = simulateBlend(blend);
++            processed += 1;
++
++            scoreSum += profile.score;
++            roastCounts[blend.roast] += 1;
++            const mt = methodTotals[blend.method] || (methodTotals[blend.method] = { sum: 0, n: 0 });
++            mt.sum += profile.score;
++            mt.n += 1;
++            insertTop(top, { blend, profile });
++
++            // Yield once the slice budget is spent, then update the UI in one batch
++            // of writes before starting the next slice.
++            const now = performance.now();
++            if (now >= deadline) {
++              longestSlice = Math.max(longestSlice, now - sliceStart);
++              yields += 1;
++              await yieldToMain();
++              if (signal.aborted) {
++                cancelled = true;
++                break;
++              }
++              renderProgress(processed, total, start, slices, yields, longestSlice, frames);
++              sliceStart = performance.now();
++              deadline = sliceStart + SLICE_BUDGET_MS;
++              slices += 1;
++            }
++          }
++          longestSlice = Math.max(longestSlice, performance.now() - sliceStart);
++        } finally {
++          cancelAnimationFrame(rafId);
++          if (longTaskObserver) {
++            longTaskObserver.disconnect();
++            longTaskObserver = null;
++          }
++        }
++
++        const elapsed = performance.now() - start;
++        renderProgress(processed, total, start, slices, yields, longestSlice, frames);
++        return {
++          cancelled, processed, total, elapsed, slices, yields, longestSlice, frames,
++          top, roastCounts, methodTotals, scoreSum,
++        };
++      }
++
++      function insertTop(top, entry) {
++        if (top.length === TOP_N && entry.profile.score <= top[TOP_N - 1].profile.score) return;
++        let i = top.length;
++        while (i > 0 && top[i - 1].profile.score < entry.profile.score) i -= 1;
++        top.splice(i, 0, entry);
++        if (top.length > TOP_N) top.pop();
++      }
++
++      // ---------- Rendering ----------
++      const fmtInt = new Intl.NumberFormat('en-US');
++      const fmtMs = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(2) + ' s' : Math.round(ms) + ' ms');
++      const fmt10 = (v) => (v * 10).toFixed(1);
++
++      function renderProgress(processed, total, start, slices, yields, longestSlice, frames) {
++        const pct = (processed / total) * 100;
++        progress.value = pct;
++        statusEl.textContent =
++          `Processing ${fmtInt.format(processed)} of ${fmtInt.format(total)} blends (${pct.toFixed(0)}%)`;
++        $('m-processed').textContent = fmtInt.format(processed);
++        $('m-elapsed').textContent = fmtMs(performance.now() - start);
++        $('m-yields').textContent = `${fmtInt.format(slices)} / ${fmtInt.format(yields)}`;
++        $('m-longest').textContent = Math.round(longestSlice) + ' ms';
++        $('m-frames').textContent = fmtInt.format(frames);
++        $('m-longtasks').textContent = supportsLongTask ? fmtInt.format(longTaskCount) : 'n/a';
++      }
++
++      function describeBlend(blend) {
++        return blend.origins
++          .slice()
++          .sort((a, b) => b.weight - a.weight)
++          .map((p) => `${Math.round(p.weight * 100)}% ${p.origin.name}`)
++          .join(' + ');
++      }
++
++      function describeRecipe(blend) {
++        const ratio = blend.method === 'Espresso'
++          ? `1:${blend.ratio.toFixed(1)}`
++          : `1:${Math.round(blend.ratio)}`;
++        const secs = Math.round(blend.timeSec);
++        const time = secs >= 3600
++          ? `${Math.round(secs / 3600)} h`
++          : secs >= 60
++            ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
++            : `${secs} s`;
++        return `${ratio}, ${Math.round(blend.tempC)}°C, ${time}`;
++      }
++
++      function renderResults(result) {
++        const frag = document.createDocumentFragment();
++        result.top.forEach(({ blend, profile }, i) => {
++          const tr = document.createElement('tr');
++          const cells = [
++            [String(i + 1), ''],
++            [describeBlend(blend), ''],
++            [ROASTS[blend.roast], ''],
++            [blend.method, ''],
++            [describeRecipe(blend), ''],
++            [fmt10(profile.acidity), 'num'],
++            [fmt10(profile.body), 'num'],
++            [fmt10(profile.sweetness), 'num'],
++            [fmt10(profile.bitterness), 'num'],
++            [fmt10(profile.aroma), 'num'],
++            [fmt10(profile.score), 'num'],
++          ];
++          for (const [text, cls] of cells) {
++            const td = document.createElement('td');
++            td.textContent = text;
++            if (cls) td.className = cls;
++            tr.appendChild(td);
++          }
++          frag.appendChild(tr);
++        });
++        resultsBody.replaceChildren(frag);
++
++        const avg = result.processed ? result.scoreSum / result.processed : 0;
++        const bestMethod = Object.entries(result.methodTotals)
++          .map(([name, t]) => [name, t.sum / t.n])
++          .sort((a, b) => b[1] - a[1])[0];
++        const roastMix = ROASTS
++          .map((name, i) => `${name} ${Math.round((result.roastCounts[i] / Math.max(1, result.processed)) * 100)}%`)
++          .join(', ');
++
++        summaryEl.textContent =
++          `${result.cancelled ? 'Cancelled after' : 'Processed'} ${fmtInt.format(result.processed)} blends ` +
++          `in ${fmtMs(result.elapsed)} across ${fmtInt.format(result.slices)} slices. ` +
++          `Average balance score ${fmt10(avg)} / 10` +
++          (bestMethod ? `; best-performing method: ${bestMethod[0]} (${fmt10(bestMethod[1])}).` : '.') +
++          ` Roast mix: ${roastMix}.`;
++        resultsEl.hidden = false;
++      }
++
++      // ---------- Wiring ----------
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        if (activeController) return;
++
++        const total = Number(sizeSelect.value);
++        const methodFilter = methodSelect.value;
++        activeController = new AbortController();
++
++        runBtn.disabled = true;
++        cancelBtn.disabled = false;
++        sizeSelect.disabled = true;
++        methodSelect.disabled = true;
++        metricsEl.hidden = false;
++        resultsEl.hidden = true;
++        progress.value = 0;
++        statusEl.textContent = `Starting ${fmtInt.format(total)} blends…`;
++
++        try {
++          const result = await runBatch(total, methodFilter, activeController.signal);
++          statusEl.textContent = result.cancelled
++            ? `Cancelled at ${fmtInt.format(result.processed)} of ${fmtInt.format(total)} blends.`
++            : `Done. ${fmtInt.format(total)} blends simulated in ${fmtMs(result.elapsed)}.`;
++          renderResults(result);
++        } catch (err) {
++          statusEl.textContent = 'The simulation hit an error: ' + (err && err.message ? err.message : err);
++        } finally {
++          activeController = null;
++          runBtn.disabled = false;
++          cancelBtn.disabled = true;
++          sizeSelect.disabled = false;
++          methodSelect.disabled = false;
++        }
++      });
++
++      cancelBtn.addEventListener('click', () => {
++        if (activeController) {
++          activeController.abort();
++          cancelBtn.disabled = true;
++          statusEl.textContent = 'Cancelling after the current slice…';
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,3953 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..7bc7736
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++keys/*.secret.json
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..468f2ea
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,65 @@
++# The Daily Grind
++
++Static marketing site for The Daily Grind Coffee Co. Served as plain files
++(`pnpm start` runs a static file server); there is no build step.
++
++## Encrypted delivery notes
++
++The homepage lets customers attach private notes for the courier (gate codes,
++allergies, drop-off instructions). Notes are encrypted **in the browser** before
++anything is sent, so the web server, database and anyone with read access to
++them only ever see ciphertext. Only the kitchen's secret key can open a note.
++
++### Cryptography
++
++Suite identifier: `XWING-HKDF-SHA256-AES256GCM`
++
++| Step | Primitive | Notes |
++| --- | --- | --- |
++| Shared secret | **X-Wing** hybrid KEM = ML-KEM-768 (FIPS 203, post-quantum) + X25519 | `draft-connolly-cfrg-xwing-kem`; an attacker must break both components. Implementation: vendored, audited `@noble/post-quantum`. |
++| Key derivation | HKDF-SHA-256 (WebCrypto) | `info` = label ‖ SHA-256(envelope header); fresh key per note, non-extractable. |
++| Encryption | AES-256-GCM (WebCrypto) | 96-bit random nonce, 128-bit tag, envelope header as AAD. |
++| Padding | 2-byte length prefix, zero-padded to 128-byte blocks | Hides note length. |
++
++The envelope header (version, suite, key id, purpose, order reference,
++timestamp and the KEM ciphertext) is bound into both the derived key and the
++GCM tag, so changing any of it makes decryption fail.
++
++**Not provided:** sender authentication. X-Wing is a KEM, so an envelope proves
++it was encrypted to the store key, not who encrypted it. The logged-in ordering
++session that submits the envelope is responsible for customer identity.
++
++### Files
++
++| Path | Purpose |
++| --- | --- |
++| `js/delivery-notes-crypto.js` | Shared browser/Node module: key handling, `encryptDeliveryNote`, `decryptDeliveryNote`, envelope parsing. |
++| `js/delivery-notes.js` | Homepage UI. Fetches the store key, encrypts, keeps the envelope (never the plaintext) in `localStorage` for the next order. |
++| `vendor/noble-xwing.js` | Bundled `@noble/post-quantum` 0.7.1 X-Wing KEM. Rebuild with `scripts/build-vendor.sh`. |
++| `keys/delivery-recipient.json` | Published store public key (`kid`, suite, base64 key, expiry). Safe to commit. |
++| `keys/delivery-recipient.secret.json` | Store secret seed. **Git-ignored**; lives only on the kitchen/back-office system. |
++| `scripts/generate-recipient-keys.mjs` | Creates/rotates the key pair (`pnpm keys:generate [kid] [--force]`). |
++| `scripts/decrypt-note.mjs` | Kitchen-side decrypt: `pnpm notes:decrypt envelope.json [secret.json]` (use `-` for stdin). |
++| `test/delivery-notes-crypto.test.mjs` | Round-trip, tamper, wrong-key, padding and validation tests (`pnpm test`, Node ≥ 20). |
++
++### Envelope format
++
++```json
++{
++  "v": 1,
++  "suite": "XWING-HKDF-SHA256-AES256GCM",
++  "kid": "dg-delivery-2026-10",
++  "ctx": { "purpose": "delivery-note", "orderRef": "DG-10422", "createdAt": "2026-10-28T02:11:14.103Z" },
++  "kemCt": "<base64, 1120 bytes>",
++  "nonce": "<base64, 12 bytes>",
++  "ct": "<base64, padded plaintext + 16-byte tag>"
++}
++```
++
++### Key rotation
++
++1. On the kitchen system run `pnpm keys:generate dg-delivery-YYYY-MM --force`.
++2. Commit the new `keys/delivery-recipient.json`; keep the `.secret.json` file private.
++3. Keep the previous secret until all envelopes with the old `kid` have been read.
++4. Print the fingerprint shown by the generator on receipts so customers can
++   compare it with the one displayed on the homepage.
+diff --git a/index.html b/index.html
+index 66c9173..4ab17a0 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,159 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Encrypted delivery notes */
++    .notes-section {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 30px;
++      margin-top: 50px;
++    }
++
++    .notes-section h2 {
++      text-align: center;
++      margin-bottom: 6px;
++    }
++
++    .notes-intro {
++      text-align: center;
++      max-width: 700px;
++      margin: 0 auto 20px;
++      color: #5d4037;
++    }
++
++    .notes-key {
++      font-size: 0.85rem;
++      text-align: center;
++      background: var(--secondary);
++      border-radius: 6px;
++      padding: 8px 12px;
++      margin-bottom: 20px;
++      word-break: break-word;
++    }
++
++    .notes-key code {
++      font-size: 0.85rem;
++    }
++
++    .notes-form {
++      display: grid;
++      gap: 14px;
++      max-width: 700px;
++      margin: 0 auto;
++    }
++
++    .notes-form label {
++      font-weight: 600;
++      display: block;
++      margin-bottom: 4px;
++    }
++
++    .notes-form input,
++    .notes-form textarea {
++      width: 100%;
++      font: inherit;
++      padding: 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: var(--light);
++    }
++
++    .notes-form textarea {
++      min-height: 120px;
++      resize: vertical;
++    }
++
++    .notes-form .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      justify-self: start;
++      margin-top: 0;
++    }
++
++    .notes-form .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .notes-counter {
++      font-size: 0.8rem;
++      color: #795548;
++      text-align: right;
++    }
++
++    .notes-status {
++      min-height: 1.4em;
++      font-size: 0.9rem;
++      margin-top: 4px;
++    }
++
++    .notes-status[data-kind="ok"] {
++      color: #2e7d32;
++    }
++
++    .notes-status[data-kind="error"] {
++      color: #c62828;
++    }
++
++    .notes-result {
++      max-width: 700px;
++      margin: 20px auto 0;
++      border-top: 1px dashed #bcaaa4;
++      padding-top: 16px;
++    }
++
++    .notes-result summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .notes-result-meta {
++      font-size: 0.8rem;
++      color: #5d4037;
++      margin: 8px 0;
++    }
++
++    .notes-result textarea {
++      width: 100%;
++      min-height: 160px;
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      font-size: 0.75rem;
++      padding: 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: var(--light);
++    }
++
++    .notes-actions {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .btn.btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn.btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .notes-how {
++      max-width: 700px;
++      margin: 24px auto 0;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    .notes-how ul {
++      margin: 6px 0 0 20px;
++    }
+   </style>
+ </head>
+ 
+@@ -163,6 +316,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#delivery-notes">Delivery Notes</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +349,53 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="delivery-notes" class="notes-section" aria-labelledby="dn-heading">
++      <h2 id="dn-heading">Private Delivery Notes</h2>
++      <p class="notes-intro">
++        Gate codes, allergies, where to leave the bag &mdash; tell our courier without telling the internet.
++        Your note is sealed on this device with hybrid post-quantum encryption and can only be opened
++        by the Daily Grind kitchen key.
++      </p>
++
++      <p id="dn-key-info" class="notes-key" aria-live="polite">Loading store key&hellip;</p>
++
++      <form id="dn-form" class="notes-form" novalidate>
++        <div>
++          <label for="dn-order-ref">Order reference <span style="font-weight: normal;">(optional)</span></label>
++          <input id="dn-order-ref" name="orderRef" type="text" maxlength="64" autocomplete="off"
++            placeholder="e.g. DG-10422">
++        </div>
++        <div>
++          <label for="dn-note">Note for the courier</label>
++          <textarea id="dn-note" name="note" maxlength="500" required
++            placeholder="Gate code 4471#. Peanut allergy – please keep away from the pastry bag."></textarea>
++          <div id="dn-counter" class="notes-counter">0 / 500</div>
++        </div>
++        <button id="dn-submit" type="submit" class="btn" disabled>Encrypt &amp; attach to my order</button>
++        <p id="dn-status" class="notes-status" role="status" aria-live="polite">Preparing encryption&hellip;</p>
++      </form>
++
++      <details id="dn-result" class="notes-result" hidden>
++        <summary>Encrypted note attached to your next order</summary>
++        <p id="dn-result-meta" class="notes-result-meta"></p>
++        <textarea id="dn-envelope" readonly aria-label="Encrypted envelope (JSON)" spellcheck="false"></textarea>
++        <div class="notes-actions">
++          <button id="dn-copy" type="button" class="btn btn-secondary">Copy envelope</button>
++          <button id="dn-clear" type="button" class="btn btn-secondary">Remove note</button>
++        </div>
++      </details>
++
++      <div class="notes-how">
++        <strong>How it works</strong>
++        <ul>
++          <li>Your browser runs the X-Wing key encapsulation: ML-KEM-768 (post-quantum) combined with X25519, against the store's published public key.</li>
++          <li>The resulting shared secret is expanded with HKDF-SHA-256 into a one-time AES-256-GCM key.</li>
++          <li>The note is padded and encrypted with authenticated encryption, so it cannot be read or altered in transit or at rest.</li>
++          <li>Compare the key fingerprint above with the one printed on your receipt to be sure you are sealing notes to the real kitchen key.</li>
++        </ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +408,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/js/delivery-notes.js"></script>
++
+ </body>
+ 
+ </html>
+diff --git a/js/delivery-notes-crypto.js b/js/delivery-notes-crypto.js
+new file mode 100644
+index 0000000..a83fb2d
+--- /dev/null
++++ b/js/delivery-notes-crypto.js
+@@ -0,0 +1,286 @@
++/**
++ * Daily Grind – encrypted delivery notes (shared browser/Node module).
++ *
++ * Construction (suite "XWING-HKDF-SHA256-AES256GCM"):
++ *
++ *   1. Key establishment: X-Wing hybrid KEM = ML-KEM-768 (post-quantum, FIPS 203)
++ *      combined with X25519 (classical ECDH) as specified in
++ *      draft-connolly-cfrg-xwing-kem. The customer's browser encapsulates to the
++ *      store's published public key; the combined 32-byte shared secret is only
++ *      recoverable with the store's secret key. An attacker must break BOTH
++ *      ML-KEM-768 and X25519 to recover it.
++ *   2. Key derivation: HKDF-SHA-256 over the KEM shared secret. The `info`
++ *      parameter is a label plus SHA-256 of the envelope header (version, suite,
++ *      key id, context and the KEM ciphertext) so a key derived for one envelope
++ *      cannot be reused for another.
++ *   3. Authenticated encryption: AES-256-GCM (WebCrypto, non-extractable key)
++ *      with a fresh 96-bit nonce and the same header as additional
++ *      authenticated data. Any change to ciphertext *or* header fails decryption.
++ *   4. The plaintext is length-prefixed and padded to a multiple of PAD_BLOCK
++ *      bytes so ciphertext length reveals little about note length.
++ *
++ * The KEM is provided by the vendored, audited @noble/post-quantum bundle; HKDF
++ * and AES-GCM come from the platform WebCrypto implementation.
++ *
++ * Limitations: X-Wing provides no sender authentication, so the envelope proves
++ * confidentiality/integrity, not who wrote it. Authentication of the customer is
++ * left to the (logged-in) ordering session that submits the envelope.
++ */
++import { xwing } from '../vendor/noble-xwing.js';
++
++export const SUITE = 'XWING-HKDF-SHA256-AES256GCM';
++export const ENVELOPE_VERSION = 1;
++export const PURPOSE = 'delivery-note';
++export const MAX_NOTE_CHARS = 500;
++export const PAD_BLOCK = 128;
++
++export const KEM_PUBLIC_KEY_BYTES = xwing.lengths.publicKey;  // 1216
++export const KEM_SECRET_KEY_BYTES = xwing.lengths.secretKey;  // 32 (seed)
++export const KEM_CIPHERTEXT_BYTES = xwing.lengths.cipherText; // 1120
++
++const HKDF_SALT = utf8('the-daily-grind/delivery-note/v1');
++const NONCE_BYTES = 12;
++const subtle = () => {
++  const s = globalThis.crypto && globalThis.crypto.subtle;
++  if (!s) throw new Error('WebCrypto (crypto.subtle) is not available; a secure context (HTTPS or localhost) is required.');
++  return s;
++};
++
++// ---------- encoding helpers ----------
++
++export function utf8(str) {
++  return new TextEncoder().encode(str);
++}
++
++export function bytesToBase64(bytes) {
++  let bin = '';
++  for (let i = 0; i < bytes.length; i += 0x8000) {
++    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
++  }
++  return btoa(bin);
++}
++
++export function base64ToBytes(b64) {
++  if (typeof b64 !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(b64) || b64.length % 4 !== 0) {
++    throw new Error('Invalid base64 value');
++  }
++  const bin = atob(b64);
++  const out = new Uint8Array(bin.length);
++  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
++  return out;
++}
++
++function bytesToHex(bytes) {
++  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
++}
++
++function concat(...parts) {
++  const len = parts.reduce((n, p) => n + p.length, 0);
++  const out = new Uint8Array(len);
++  let o = 0;
++  for (const p of parts) { out.set(p, o); o += p.length; }
++  return out;
++}
++
++function assertBytes(value, length, name) {
++  if (!(value instanceof Uint8Array)) throw new TypeError(`${name} must be a Uint8Array`);
++  if (length !== undefined && value.length !== length) {
++    throw new RangeError(`${name} must be ${length} bytes, got ${value.length}`);
++  }
++  return value;
++}
++
++// ---------- recipient (store) keys ----------
++
++/** Generate a new X-Wing key pair for the store. secretKey is a 32-byte seed. */
++export function generateRecipientKeyPair() {
++  const { publicKey, secretKey } = xwing.keygen();
++  return { publicKey, secretKey };
++}
++
++/** Re-derive the public key from a stored secret seed. */
++export function recipientPublicKeyFromSecret(secretKey) {
++  return xwing.getPublicKey(assertBytes(secretKey, KEM_SECRET_KEY_BYTES, 'secretKey'));
++}
++
++/** Short human-comparable fingerprint of a public key (first 16 hex chars of SHA-256). */
++export async function publicKeyFingerprint(publicKey) {
++  assertBytes(publicKey, KEM_PUBLIC_KEY_BYTES, 'publicKey');
++  const digest = new Uint8Array(await subtle().digest('SHA-256', publicKey));
++  return bytesToHex(digest.subarray(0, 8)).replace(/(.{4})(?=.)/g, '$1 ');
++}
++
++/**
++ * Parse and validate a published recipient key document, e.g. keys/delivery-recipient.json:
++ *   { "kid": "...", "suite": SUITE, "kem": "X-Wing", "publicKey": "<base64>", "createdAt": "..." }
++ */
++export function parseRecipientKeyDocument(doc) {
++  if (!doc || typeof doc !== 'object') throw new Error('Recipient key document is not an object');
++  if (doc.suite !== SUITE) throw new Error(`Unsupported suite "${doc.suite}" (expected ${SUITE})`);
++  if (typeof doc.kid !== 'string' || !/^[A-Za-z0-9._-]{1,64}$/.test(doc.kid)) {
++    throw new Error('Recipient key id (kid) is missing or malformed');
++  }
++  const publicKey = base64ToBytes(doc.publicKey);
++  assertBytes(publicKey, KEM_PUBLIC_KEY_BYTES, 'recipient publicKey');
++  if (doc.expiresAt && Date.parse(doc.expiresAt) < Date.now()) {
++    throw new Error(`Recipient key ${doc.kid} expired on ${doc.expiresAt}`);
++  }
++  return { kid: doc.kid, publicKey, createdAt: doc.createdAt || null, expiresAt: doc.expiresAt || null };
++}
++
++// ---------- envelope header / AAD ----------
++
++function normaliseContext(ctx = {}) {
++  const orderRef = String(ctx.orderRef ?? '').trim();
++  if (orderRef.length > 64 || /[\u0000-\u001f\u007f]/.test(orderRef)) {
++    throw new Error('orderRef must be at most 64 printable characters');
++  }
++  const createdAt = ctx.createdAt ?? new Date().toISOString();
++  if (Number.isNaN(Date.parse(createdAt))) throw new Error('createdAt must be an ISO-8601 timestamp');
++  return { purpose: PURPOSE, orderRef, createdAt };
++}
++
++/**
++ * Canonical header bytes used both as HKDF info and AES-GCM AAD. Fields are
++ * length-prefixed to avoid ambiguity; the KEM ciphertext is included so the
++ * derived key and the tag are bound to this exact encapsulation.
++ */
++function headerBytes({ v, suite, kid, ctx, kemCt }) {
++  const fields = [String(v), suite, kid, ctx.purpose, ctx.orderRef, ctx.createdAt].map(utf8);
++  const parts = [];
++  for (const f of fields) {
++    const len = new Uint8Array(4);
++    new DataView(len.buffer).setUint32(0, f.length);
++    parts.push(len, f);
++  }
++  parts.push(kemCt);
++  return concat(...parts);
++}
++
++// ---------- padding ----------
++
++function padPlaintext(bytes) {
++  if (bytes.length > 0xffff) throw new RangeError('note too long');
++  const total = Math.ceil((2 + bytes.length) / PAD_BLOCK) * PAD_BLOCK;
++  const out = new Uint8Array(total);
++  new DataView(out.buffer).setUint16(0, bytes.length);
++  out.set(bytes, 2);
++  return out;
++}
++
++function unpadPlaintext(padded) {
++  if (padded.length < 2 || padded.length % PAD_BLOCK !== 0) throw new Error('Malformed padded plaintext');
++  const len = new DataView(padded.buffer, padded.byteOffset).getUint16(0);
++  if (2 + len > padded.length) throw new Error('Malformed padded plaintext');
++  for (let i = 2 + len; i < padded.length; i++) {
++    if (padded[i] !== 0) throw new Error('Malformed padding');
++  }
++  return padded.slice(2, 2 + len);
++}
++
++// ---------- key derivation ----------
++
++const HKDF_INFO_LABEL = utf8('the-daily-grind/delivery-note/v1/aes-256-gcm');
++
++/**
++ * HKDF info = label || SHA-256(header). Hashing keeps info under the 1024-byte
++ * limit some WebCrypto implementations enforce while still binding the derived
++ * key to the full header (including the KEM ciphertext).
++ */
++async function deriveAesKey(sharedSecret, header, usage) {
++  const s = subtle();
++  try {
++    const info = concat(HKDF_INFO_LABEL, new Uint8Array(await s.digest('SHA-256', header)));
++    const ikm = await s.importKey('raw', sharedSecret, 'HKDF', false, ['deriveKey']);
++    return await s.deriveKey(
++      { name: 'HKDF', hash: 'SHA-256', salt: HKDF_SALT, info },
++      ikm,
++      { name: 'AES-GCM', length: 256 },
++      false,
++      [usage],
++    );
++  } finally {
++    sharedSecret.fill(0); // best-effort zeroisation; the imported key is non-extractable
++  }
++}
++
++// ---------- public API ----------
++
++/**
++ * Encrypt a delivery note to the store's public key.
++ * @param {{ recipient: { kid: string, publicKey: Uint8Array }, note: string, context?: { orderRef?: string, createdAt?: string }, randomness?: Uint8Array }} args
++ * @returns {Promise<object>} JSON-serialisable envelope
++ */
++export async function encryptDeliveryNote({ recipient, note, context, randomness }) {
++  if (!recipient || typeof recipient.kid !== 'string') throw new Error('recipient.kid is required');
++  assertBytes(recipient.publicKey, KEM_PUBLIC_KEY_BYTES, 'recipient.publicKey');
++  if (typeof note !== 'string') throw new TypeError('note must be a string');
++  const trimmed = note.trim();
++  if (!trimmed) throw new Error('Note is empty');
++  if (trimmed.length > MAX_NOTE_CHARS) throw new Error(`Note must be at most ${MAX_NOTE_CHARS} characters`);
++
++  const ctx = normaliseContext(context);
++  const { sharedSecret, cipherText: kemCt } = xwing.encapsulate(recipient.publicKey, randomness);
++  const header = { v: ENVELOPE_VERSION, suite: SUITE, kid: recipient.kid, ctx, kemCt };
++  const aad = headerBytes(header);
++
++  const key = await deriveAesKey(sharedSecret, aad, 'encrypt');
++  const nonce = globalThis.crypto.getRandomValues(new Uint8Array(NONCE_BYTES));
++  const padded = padPlaintext(utf8(trimmed));
++  const ct = new Uint8Array(await subtle().encrypt({ name: 'AES-GCM', iv: nonce, additionalData: aad, tagLength: 128 }, key, padded));
++  padded.fill(0);
++
++  return {
++    v: ENVELOPE_VERSION,
++    suite: SUITE,
++    kid: recipient.kid,
++    ctx,
++    kemCt: bytesToBase64(kemCt),
++    nonce: bytesToBase64(nonce),
++    ct: bytesToBase64(ct),
++  };
++}
++
++/** Validate envelope structure and decode binary fields. Throws on any problem. */
++export function parseEnvelope(envelope) {
++  const e = typeof envelope === 'string' ? JSON.parse(envelope) : envelope;
++  if (!e || typeof e !== 'object') throw new Error('Envelope is not an object');
++  if (e.v !== ENVELOPE_VERSION) throw new Error(`Unsupported envelope version ${e.v}`);
++  if (e.suite !== SUITE) throw new Error(`Unsupported suite "${e.suite}"`);
++  if (typeof e.kid !== 'string' || !e.kid) throw new Error('Envelope kid missing');
++  if (!e.ctx || e.ctx.purpose !== PURPOSE) throw new Error('Envelope purpose mismatch');
++  const ctx = normaliseContext(e.ctx);
++  const kemCt = assertBytes(base64ToBytes(e.kemCt), KEM_CIPHERTEXT_BYTES, 'kemCt');
++  const nonce = assertBytes(base64ToBytes(e.nonce), NONCE_BYTES, 'nonce');
++  const ct = base64ToBytes(e.ct);
++  if (ct.length < 16 + PAD_BLOCK) throw new Error('Ciphertext too short');
++  return { v: e.v, suite: e.suite, kid: e.kid, ctx, kemCt, nonce, ct };
++}
++
++/**
++ * Decrypt an envelope with the store's secret key (kitchen / back-office side).
++ * @param {{ recipient: { kid: string, secretKey: Uint8Array }, envelope: object|string }} args
++ * @returns {Promise<{ note: string, ctx: object, kid: string }>}
++ */
++export async function decryptDeliveryNote({ recipient, envelope }) {
++  if (!recipient || typeof recipient.kid !== 'string') throw new Error('recipient.kid is required');
++  assertBytes(recipient.secretKey, KEM_SECRET_KEY_BYTES, 'recipient.secretKey');
++  const parsed = parseEnvelope(envelope);
++  if (parsed.kid !== recipient.kid) {
++    throw new Error(`Envelope was encrypted to key "${parsed.kid}", but secret key is "${recipient.kid}"`);
++  }
++  const aad = headerBytes(parsed);
++  // X-Wing decapsulation is implicit-rejection: an invalid KEM ciphertext yields a
++  // random secret rather than an error, and AES-GCM then fails authentication.
++  const sharedSecret = xwing.decapsulate(parsed.kemCt, recipient.secretKey);
++  const key = await deriveAesKey(sharedSecret, aad, 'decrypt');
++  let padded;
++  try {
++    padded = new Uint8Array(await subtle().decrypt({ name: 'AES-GCM', iv: parsed.nonce, additionalData: aad, tagLength: 128 }, key, parsed.ct));
++  } catch {
++    throw new Error('Decryption failed: envelope has been tampered with or was encrypted to a different key');
++  }
++  const plain = unpadPlaintext(padded);
++  padded.fill(0);
++  return { note: new TextDecoder().decode(plain), ctx: parsed.ctx, kid: parsed.kid };
++}
+diff --git a/js/delivery-notes.js b/js/delivery-notes.js
+new file mode 100644
+index 0000000..222cb51
+--- /dev/null
++++ b/js/delivery-notes.js
+@@ -0,0 +1,144 @@
++/**
++ * Homepage UI for encrypted delivery notes. Thin layer over delivery-notes-crypto.js:
++ * fetches the store's public key, encrypts the note in the browser and keeps the
++ * resulting envelope (never the plaintext) in localStorage until the next order
++ * submission picks it up.
++ */
++import {
++  SUITE,
++  MAX_NOTE_CHARS,
++  parseRecipientKeyDocument,
++  publicKeyFingerprint,
++  encryptDeliveryNote,
++  parseEnvelope,
++} from './delivery-notes-crypto.js';
++
++const KEY_URL = '/keys/delivery-recipient.json';
++const STORAGE_KEY = 'dg.deliveryNote.envelope';
++
++const $ = (id) => document.getElementById(id);
++const els = {
++  form: $('dn-form'),
++  orderRef: $('dn-order-ref'),
++  note: $('dn-note'),
++  counter: $('dn-counter'),
++  submit: $('dn-submit'),
++  status: $('dn-status'),
++  keyInfo: $('dn-key-info'),
++  result: $('dn-result'),
++  resultMeta: $('dn-result-meta'),
++  envelope: $('dn-envelope'),
++  copy: $('dn-copy'),
++  clear: $('dn-clear'),
++};
++
++let recipient = null;
++
++function setStatus(message, kind = 'info') {
++  els.status.textContent = message;
++  els.status.dataset.kind = kind;
++}
++
++function showEnvelope(envelope) {
++  const parsed = parseEnvelope(envelope);
++  const json = JSON.stringify(envelope, null, 2);
++  els.envelope.value = json;
++  els.resultMeta.textContent =
++    `Key ${parsed.kid} · ${SUITE} · KEM ciphertext ${parsed.kemCt.length} B · note ciphertext ${parsed.ct.length} B · created ${parsed.ctx.createdAt}` +
++    (parsed.ctx.orderRef ? ` · order ${parsed.ctx.orderRef}` : '');
++  els.result.hidden = false;
++}
++
++function hideEnvelope() {
++  els.envelope.value = '';
++  els.resultMeta.textContent = '';
++  els.result.hidden = true;
++}
++
++function updateCounter() {
++  els.counter.textContent = `${els.note.value.length} / ${MAX_NOTE_CHARS}`;
++}
++
++async function loadRecipientKey() {
++  if (!window.isSecureContext || !crypto.subtle) {
++    throw new Error('This page must be served over HTTPS (or localhost) to encrypt notes.');
++  }
++  const res = await fetch(KEY_URL, { cache: 'no-store' });
++  if (!res.ok) throw new Error(`Could not load the store key (${res.status})`);
++  const doc = await res.json();
++  const key = parseRecipientKeyDocument(doc);
++  const fp = await publicKeyFingerprint(key.publicKey);
++  els.keyInfo.innerHTML = '';
++  const strong = document.createElement('strong');
++  strong.textContent = 'Store key: ';
++  const code = document.createElement('code');
++  code.textContent = `${key.kid} · fingerprint ${fp}`;
++  els.keyInfo.append(strong, code, document.createTextNode(' · ML-KEM-768 + X25519 (X-Wing) · AES-256-GCM'));
++  return key;
++}
++
++async function onSubmit(event) {
++  event.preventDefault();
++  if (!recipient) return;
++  els.submit.disabled = true;
++  setStatus('Encrypting on your device…');
++  try {
++    const envelope = await encryptDeliveryNote({
++      recipient,
++      note: els.note.value,
++      context: { orderRef: els.orderRef.value },
++    });
++    localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
++    showEnvelope(envelope);
++    els.note.value = '';
++    updateCounter();
++    setStatus('Encrypted and attached to your next order. The plain text never left this device.', 'ok');
++  } catch (err) {
++    setStatus(err.message || String(err), 'error');
++  } finally {
++    els.submit.disabled = false;
++  }
++}
++
++async function onCopy() {
++  try {
++    await navigator.clipboard.writeText(els.envelope.value);
++    setStatus('Encrypted envelope copied to clipboard.', 'ok');
++  } catch {
++    els.envelope.select();
++    setStatus('Clipboard unavailable; the envelope text is selected so you can copy it manually.', 'info');
++  }
++}
++
++function onClear() {
++  localStorage.removeItem(STORAGE_KEY);
++  hideEnvelope();
++  setStatus('Attached note removed.', 'info');
++}
++
++async function init() {
++  if (!els.form) return;
++  updateCounter();
++  els.note.addEventListener('input', updateCounter);
++  els.form.addEventListener('submit', onSubmit);
++  els.copy.addEventListener('click', onCopy);
++  els.clear.addEventListener('click', onClear);
++
++  try {
++    const stored = localStorage.getItem(STORAGE_KEY);
++    if (stored) showEnvelope(JSON.parse(stored));
++  } catch {
++    localStorage.removeItem(STORAGE_KEY);
++  }
++
++  try {
++    recipient = await loadRecipientKey();
++    els.submit.disabled = false;
++    setStatus('Ready. Notes are encrypted in your browser before anything is sent.');
++  } catch (err) {
++    setStatus(err.message || String(err), 'error');
++    els.submit.disabled = true;
++  }
++}
++
++init();
+diff --git a/keys/delivery-recipient.json b/keys/delivery-recipient.json
+new file mode 100644
+index 0000000..8eb3654
+--- /dev/null
++++ b/keys/delivery-recipient.json
+@@ -0,0 +1,8 @@
++{
++  "kid": "dg-delivery-2026-10",
++  "suite": "XWING-HKDF-SHA256-AES256GCM",
++  "kem": "X-Wing (ML-KEM-768 + X25519, draft-connolly-cfrg-xwing-kem)",
++  "publicKey": "QHukAMI520io9ToISFkhiuG94hohlQQpIfzBIqMwWHgVkUE1A1WjTxA2U/AT4Uigi/q0BVIIo+uHWOqkevKaPuoactxGRGk/WvPBZmyLr7I1HKJdXAUMt+kg4wQEiNHJDaa6/AqcikAGKuGX1EuoozJ6lZtB6JaWtQt57eO/VlfItxfJroBQmRFjp0et3kGWNjiNpxHJ5gS0noY67Qersjcyq7bLHZoe3nJl5uOT9gCW1RczLUTBYWFoDzpHArdk+1eSSfBv0Nmq5kMs9GOSDXVHQvlez9YAnVhOkvNX3RnBK4dceVShQ/EFLAu+7vixEESJKRNXlfZn48uvFrJqAZiG43loPLYlmzRQEDNRK5VvJMfJwOEWrfSIm+IIvrU5WZySI+w+r6RZkmEryUtnBPW5USYyp7lFnGZA3OzFM5h+QbQyZHoS17rE7Zs3Xzi267tt2wgd3OwmXDRwtohB3Kpg7AuNZSgF4HVaOzKphsgZJWWnQCVGLZu05usyaCoIXbEWybss3NsatHhgsnw7shGeTOKAd7hXSGk8VHURTfGzjwzAYlZ2csKv7xlOyDyHdgqJPihZMmibPfDKwQNcQfUduKsr3OBiyNxtcze2I2JCzIF3jVYJF8JBIdMyFHB+53xPEvhJg1QBV2gtvdusTXmIx5KoLnRXifOulAJaxwWPjWkvMTpi4Hkf6xuRNwUNlYwRCTepi+hjF9Yf6JB6xqEdqtx3qPDB91pSIouI8NVj1kBVtIatq7pObgFB8IKIzLetnSQLx2yq4qiuphIRnuifMxG4bugqDfp4uJFOhEZqD+gAwYV32QAo/VYOfZm6tccXcbU0BnayN8Ynr0kH2QEP3jqMJDZCoJgD7ydTU5ws8MwrinAAqyOBepKHvte8BgxyByoEvXmeKZa6UiBVdOQcQXIGxfC3DJlBpyMpeTyaVZc3zeUcmuVaCUQOeRdK6kcYeLWojxh2RAhCTkPIEts2KAe97wuLz1bEx1l4hakOmcpFyNlHFiIbVcQDsCar5uylwLVhaDt7splQRtiot3wthDGfiVMdjZAWnrtC3Iw8rgASa4Fb69NVdLde36hOi7FmNnpYpjJmQYIqTKNREkMDdumgu6qxoXB/GfUeEKBn2gOwjugathnI0DtakwfMfzgTfyqrwpJi9WB7qxxBhRtnrvNBFbPOKXRq6/wozeAF7UNQCtAduMjAonNdaUBL36Y2C1InnfRuaygUTiZbtBeCWjZvW3DA8uGsavuMrWQ20GpmxShJ1mRVEfuDdDpT+8AWz2CSraaSCvNDGxTLAouEAEIY00RXuNQMvxvDBMeRGhOxgyAzHFN2HYEuwgEV5vQ2+xtQyXy1oAK4noDJsERamtRn5sSDB3bBe1AUEPdsx6oOe8GMKAhhtiJu99Aw74OAPqUCA+cYYvVF5NdciWKwAuRHciZOB+m7V3cM7uPMthwsrhJiiVYKHUlk5JpuZQaSdDl/l4y8t6kWGCKNVju0NYlgRqlFHQMNT9W1RZQ5Uvxad7EYeFuI4HfFVuedA1g3dYYxg1g/RpNzh/Jam5rmN8RWk2kR+qsm1E7FbsHPw/5a/CVz5O8pnDDxjZVP2hReWD6AcejqoHelMdbAYA==",
++  "createdAt": "2026-10-28T02:10:11.858Z",
++  "expiresAt": "2027-10-28T02:10:11.858Z"
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..2f94c16 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,12 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test \"test/**/*.test.mjs\"",
++    "keys:generate": "node scripts/generate-recipient-keys.mjs",
++    "notes:decrypt": "node scripts/decrypt-note.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/scripts/build-vendor.sh b/scripts/build-vendor.sh
+new file mode 100755
+index 0000000..3acd05b
+--- /dev/null
++++ b/scripts/build-vendor.sh
+@@ -0,0 +1,18 @@
++#!/bin/sh
++# Rebuilds vendor/noble-xwing.js from the pinned @noble/post-quantum release.
++# Run from the repo root. Requires network access for the one-off install.
++set -eu
++ROOT=$(cd "$(dirname "$0")/.." && pwd)
++WORK=$(mktemp -d)
++trap 'rm -rf "$WORK"' EXIT
++cd "$WORK"
++printf '{"name":"vendor-build","private":true,"type":"module"}\n' > package.json
++pnpm add --silent @noble/post-quantum@0.7.1 esbuild@0.28.2
++cat > entry.js <<'JS'
++// Entry for vendored bundle: X-Wing hybrid KEM (ML-KEM-768 + X25519) from @noble/post-quantum.
++export { ml_kem768_x25519 as xwing } from '@noble/post-quantum/hybrid.js';
++export { ml_kem768 } from '@noble/post-quantum/ml-kem.js';
++JS
++node node_modules/esbuild/bin/esbuild entry.js --bundle --format=esm --platform=browser --target=es2022 --legal-comments=none \
++  --banner:js="/* Vendored bundle of @noble/post-quantum 0.7.1 (+ @noble/curves, @noble/hashes 2.4.0), MIT License, (c) Paul Miller (paulmillr.com). Built with esbuild; exports: xwing (X-Wing hybrid KEM = ML-KEM-768 + X25519, draft-connolly-cfrg-xwing-kem), ml_kem768. Regenerate with scripts/build-vendor.sh */" \
++  --outfile="$ROOT/vendor/noble-xwing.js"
+diff --git a/scripts/decrypt-note.mjs b/scripts/decrypt-note.mjs
+new file mode 100755
+index 0000000..5591d43
+--- /dev/null
++++ b/scripts/decrypt-note.mjs
+@@ -0,0 +1,43 @@
++#!/usr/bin/env node
++/**
++ * Kitchen / back-office tool: decrypt a customer's delivery-note envelope.
++ *
++ *   node scripts/decrypt-note.mjs <envelope.json | -> [keys/delivery-recipient.secret.json]
++ *
++ * Reads the envelope from a file (or stdin with "-") and prints the note.
++ */
++import { readFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import path from 'node:path';
++import { decryptDeliveryNote, base64ToBytes } from '../js/delivery-notes-crypto.js';
++
++const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
++const [envelopeArg, secretArg] = process.argv.slice(2);
++if (!envelopeArg) {
++  console.error('usage: decrypt-note.mjs <envelope.json | -> [secret-key.json]');
++  process.exit(2);
++}
++
++const envelopeText = envelopeArg === '-'
++  ? await new Promise((resolve, reject) => {
++      let s = '';
++      process.stdin.setEncoding('utf8');
++      process.stdin.on('data', (d) => (s += d)).on('end', () => resolve(s)).on('error', reject);
++    })
++  : await readFile(envelopeArg, 'utf8');
++const secretDoc = JSON.parse(await readFile(secretArg || path.join(root, 'keys', 'delivery-recipient.secret.json'), 'utf8'));
++
++try {
++  const { note, ctx, kid } = await decryptDeliveryNote({
++    recipient: { kid: secretDoc.kid, secretKey: base64ToBytes(secretDoc.secretKey) },
++    envelope: envelopeText,
++  });
++  console.log(`key:      ${kid}`);
++  console.log(`order:    ${ctx.orderRef || '(none)'}`);
++  console.log(`created:  ${ctx.createdAt}`);
++  console.log('note:');
++  console.log(note);
++} catch (err) {
++  console.error(`✗ ${err.message}`);
++  process.exit(1);
++}
+diff --git a/scripts/generate-recipient-keys.mjs b/scripts/generate-recipient-keys.mjs
+new file mode 100755
+index 0000000..0e1c574
+--- /dev/null
++++ b/scripts/generate-recipient-keys.mjs
+@@ -0,0 +1,60 @@
++#!/usr/bin/env node
++/**
++ * Generate the store's X-Wing (ML-KEM-768 + X25519) delivery-note key pair.
++ *
++ *   node scripts/generate-recipient-keys.mjs [kid]
++ *
++ * Writes:
++ *   keys/delivery-recipient.json         – public key document served to browsers (commit this)
++ *   keys/delivery-recipient.secret.json  – 32-byte secret seed (git-ignored; keep in the kitchen/back office only)
++ */
++import { writeFile, access } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import path from 'node:path';
++import {
++  SUITE,
++  generateRecipientKeyPair,
++  bytesToBase64,
++  publicKeyFingerprint,
++} from '../js/delivery-notes-crypto.js';
++
++const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
++const publicPath = path.join(root, 'keys', 'delivery-recipient.json');
++const secretPath = path.join(root, 'keys', 'delivery-recipient.secret.json');
++
++const now = new Date();
++const kid = process.argv[2] || `dg-delivery-${now.toISOString().slice(0, 7)}`;
++const force = process.argv.includes('--force');
++
++try {
++  await access(secretPath);
++  if (!force) {
++    console.error(`Refusing to overwrite existing ${path.relative(root, secretPath)} (pass --force to rotate).`);
++    process.exit(1);
++  }
++} catch (err) {
++  if (err.code !== 'ENOENT') throw err;
++}
++
++const { publicKey, secretKey } = generateRecipientKeyPair();
++const expires = new Date(now);
++expires.setFullYear(expires.getFullYear() + 1);
++
++const publicDoc = {
++  kid,
++  suite: SUITE,
++  kem: 'X-Wing (ML-KEM-768 + X25519, draft-connolly-cfrg-xwing-kem)',
++  publicKey: bytesToBase64(publicKey),
++  createdAt: now.toISOString(),
++  expiresAt: expires.toISOString(),
++};
++const secretDoc = { kid, suite: SUITE, secretKey: bytesToBase64(secretKey), createdAt: now.toISOString() };
++
++await writeFile(publicPath, JSON.stringify(publicDoc, null, 2) + '\n');
++await writeFile(secretPath, JSON.stringify(secretDoc, null, 2) + '\n', { mode: 0o600 });
++secretKey.fill(0);
++
++console.log(`kid:         ${kid}`);
++console.log(`fingerprint: ${await publicKeyFingerprint(publicKey)}`);
++console.log(`public key:  ${path.relative(root, publicPath)}`);
++console.log(`secret key:  ${path.relative(root, secretPath)}  (NOT committed – move to the kitchen system)`);
+diff --git a/test/delivery-notes-crypto.test.mjs b/test/delivery-notes-crypto.test.mjs
+new file mode 100644
+index 0000000..5028561
+--- /dev/null
++++ b/test/delivery-notes-crypto.test.mjs
+@@ -0,0 +1,145 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import {
++  SUITE,
++  PAD_BLOCK,
++  MAX_NOTE_CHARS,
++  KEM_PUBLIC_KEY_BYTES,
++  KEM_CIPHERTEXT_BYTES,
++  generateRecipientKeyPair,
++  recipientPublicKeyFromSecret,
++  parseRecipientKeyDocument,
++  publicKeyFingerprint,
++  encryptDeliveryNote,
++  decryptDeliveryNote,
++  parseEnvelope,
++  bytesToBase64,
++  base64ToBytes,
++} from '../js/delivery-notes-crypto.js';
++
++const kp = generateRecipientKeyPair();
++const recipient = { kid: 'test-key', publicKey: kp.publicKey, secretKey: kp.secretKey };
++const NOTE = 'Gate code 4471#. Severe peanut allergy – please leave at side door. 🚪☕';
++
++test('key pair has X-Wing sizes and public key is re-derivable from the seed', async () => {
++  assert.equal(kp.publicKey.length, KEM_PUBLIC_KEY_BYTES);
++  assert.equal(kp.secretKey.length, 32);
++  assert.deepEqual(recipientPublicKeyFromSecret(kp.secretKey), kp.publicKey);
++  assert.match(await publicKeyFingerprint(kp.publicKey), /^[0-9a-f]{4}( [0-9a-f]{4}){3}$/);
++});
++
++test('encrypt → decrypt round trip preserves note and context', async () => {
++  const envelope = await encryptDeliveryNote({ recipient, note: NOTE, context: { orderRef: 'DG-10422' } });
++  assert.equal(envelope.suite, SUITE);
++  assert.equal(envelope.kid, 'test-key');
++  assert.equal(base64ToBytes(envelope.kemCt).length, KEM_CIPHERTEXT_BYTES);
++  assert.equal(base64ToBytes(envelope.nonce).length, 12);
++
++  const json = JSON.stringify(envelope); // as it would travel to the server
++  const out = await decryptDeliveryNote({ recipient, envelope: json });
++  assert.equal(out.note, NOTE);
++  assert.equal(out.ctx.orderRef, 'DG-10422');
++  assert.equal(out.kid, 'test-key');
++});
++
++test('plaintext is never present in the envelope and ciphertext length is padded', async () => {
++  const short = await encryptDeliveryNote({ recipient, note: 'ring twice' });
++  const longer = await encryptDeliveryNote({ recipient, note: 'ring twice, please, and leave by the planter' });
++  const text = JSON.stringify(short);
++  assert.ok(!text.includes('ring twice'));
++  assert.equal(base64ToBytes(short.ct).length, PAD_BLOCK + 16);
++  assert.equal(base64ToBytes(short.ct).length, base64ToBytes(longer.ct).length);
++  const max = await encryptDeliveryNote({ recipient, note: 'x'.repeat(MAX_NOTE_CHARS) });
++  assert.equal(base64ToBytes(max.ct).length % PAD_BLOCK, 16);
++});
++
++test('encapsulations are fresh: two envelopes for the same note differ', async () => {
++  const a = await encryptDeliveryNote({ recipient, note: NOTE });
++  const b = await encryptDeliveryNote({ recipient, note: NOTE });
++  assert.notEqual(a.kemCt, b.kemCt);
++  assert.notEqual(a.nonce, b.nonce);
++  assert.notEqual(a.ct, b.ct);
++});
++
++test('any tampering with ciphertext or header is rejected', async () => {
++  const envelope = await encryptDeliveryNote({ recipient, note: NOTE, context: { orderRef: 'DG-1' } });
++  const flip = (b64, i = 5) => {
++    const bytes = base64ToBytes(b64);
++    bytes[i] ^= 0x01;
++    return bytesToBase64(bytes);
++  };
++  const cases = {
++    ciphertext: { ...envelope, ct: flip(envelope.ct) },
++    tag: { ...envelope, ct: flip(envelope.ct, base64ToBytes(envelope.ct).length - 1) },
++    nonce: { ...envelope, nonce: flip(envelope.nonce) },
++    kemCiphertext: { ...envelope, kemCt: flip(envelope.kemCt) },
++    orderRef: { ...envelope, ctx: { ...envelope.ctx, orderRef: 'DG-2' } },
++    createdAt: { ...envelope, ctx: { ...envelope.ctx, createdAt: '2020-01-01T00:00:00.000Z' } },
++  };
++  for (const [name, bad] of Object.entries(cases)) {
++    await assert.rejects(
++      decryptDeliveryNote({ recipient, envelope: bad }),
++      /tampered|different key/,
++      `tampered ${name} must not decrypt`,
++    );
++  }
++  // sanity: the untouched envelope still decrypts
++  assert.equal((await decryptDeliveryNote({ recipient, envelope })).note, NOTE);
++});
++
++test('wrong secret key or mismatched key id fails', async () => {
++  const other = generateRecipientKeyPair();
++  const envelope = await encryptDeliveryNote({ recipient, note: NOTE });
++  await assert.rejects(
++    decryptDeliveryNote({ recipient: { kid: 'test-key', secretKey: other.secretKey }, envelope }),
++    /tampered|different key/,
++  );
++  await assert.rejects(
++    decryptDeliveryNote({ recipient: { kid: 'other-kid', secretKey: kp.secretKey }, envelope }),
++    /encrypted to key "test-key"/,
++  );
++});
++
++test('malformed envelopes and inputs are rejected before any crypto runs', async () => {
++  const envelope = await encryptDeliveryNote({ recipient, note: NOTE });
++  assert.throws(() => parseEnvelope({ ...envelope, v: 2 }), /version/);
++  assert.throws(() => parseEnvelope({ ...envelope, suite: 'AES-128-CBC' }), /suite/);
++  assert.throws(() => parseEnvelope({ ...envelope, ctx: { ...envelope.ctx, purpose: 'other' } }), /purpose/);
++  assert.throws(() => parseEnvelope({ ...envelope, kemCt: envelope.kemCt.slice(0, -4) }), /kemCt|base64/);
++  assert.throws(() => parseEnvelope({ ...envelope, ct: 'not base64!' }), /base64/);
++  assert.throws(() => parseEnvelope({ ...envelope, ct: bytesToBase64(new Uint8Array(20)) }), /too short/);
++
++  await assert.rejects(encryptDeliveryNote({ recipient, note: '   ' }), /empty/);
++  await assert.rejects(encryptDeliveryNote({ recipient, note: 'x'.repeat(MAX_NOTE_CHARS + 1) }), /at most/);
++  await assert.rejects(encryptDeliveryNote({ recipient, note: NOTE, context: { orderRef: 'a\nb' } }), /orderRef/);
++  await assert.rejects(
++    encryptDeliveryNote({ recipient: { kid: 'k', publicKey: kp.publicKey.slice(0, 100) }, note: NOTE }),
++    /1216 bytes/,
++  );
++});
++
++test('published key document validation', () => {
++  const doc = { kid: 'dg-delivery-2026-10', suite: SUITE, publicKey: bytesToBase64(kp.publicKey) };
++  assert.deepEqual(parseRecipientKeyDocument(doc).publicKey, kp.publicKey);
++  assert.throws(() => parseRecipientKeyDocument({ ...doc, suite: 'RSA' }), /suite/);
++  assert.throws(() => parseRecipientKeyDocument({ ...doc, kid: 'bad kid!' }), /kid/);
++  assert.throws(() => parseRecipientKeyDocument({ ...doc, publicKey: bytesToBase64(kp.publicKey.slice(1)) }), /1216/);
++  assert.throws(() => parseRecipientKeyDocument({ ...doc, expiresAt: '2000-01-01T00:00:00Z' }), /expired/);
++});
++
++test('the committed store key document is valid and matches the local secret (if present)', async () => {
++  const doc = JSON.parse(await readFile(new URL('../keys/delivery-recipient.json', import.meta.url), 'utf8'));
++  const pub = parseRecipientKeyDocument(doc);
++  let secretDoc;
++  try {
++    secretDoc = JSON.parse(await readFile(new URL('../keys/delivery-recipient.secret.json', import.meta.url), 'utf8'));
++  } catch {
++    return; // secret stays out of the repo; nothing more to check
++  }
++  const secretKey = base64ToBytes(secretDoc.secretKey);
++  assert.deepEqual(recipientPublicKeyFromSecret(secretKey), pub.publicKey);
++  const envelope = await encryptDeliveryNote({ recipient: pub, note: NOTE });
++  const out = await decryptDeliveryNote({ recipient: { kid: secretDoc.kid, secretKey }, envelope });
++  assert.equal(out.note, NOTE);
++});
+diff --git a/vendor/noble-xwing.js b/vendor/noble-xwing.js
+new file mode 100644
+index 0000000..a7cec13
+--- /dev/null
++++ b/vendor/noble-xwing.js
+@@ -0,0 +1,2869 @@
++/* Vendored bundle of @noble/post-quantum 0.7.1 (+ @noble/curves, @noble/hashes 2.4.0), MIT License, (c) Paul Miller (paulmillr.com). Built with esbuild; exports: xwing (X-Wing hybrid KEM = ML-KEM-768 + X25519, draft-connolly-cfrg-xwing-kem), ml_kem768. Regenerate with scripts/build-vendor.sh */
++
++// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/utils.js
++function isBytes(a) {
++  return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array" && "BYTES_PER_ELEMENT" in a && a.BYTES_PER_ELEMENT === 1;
++}
++var atitle = (title) => title ? `"${title}" ` : "";
++function anumber(n, title = "") {
++  if (typeof n !== "number")
++    throw new TypeError(atitle(title) + "expected number, got " + typeof n);
++  if (!Number.isSafeInteger(n) || n < 0)
++    throw new RangeError(atitle(title) + "expected integer >= 0, got " + n);
++  return n;
++}
++function abool(value, title = "") {
++  if (typeof value !== "boolean")
++    throw new TypeError(atitle(title) + "expected boolean, got type=" + typeof value);
++  return value;
++}
++function abytes(value, length, title = "") {
++  if (isBytes(value) && (length === void 0 || value.length === length))
++    return value;
++  if (length !== void 0)
++    anumber(length, "length");
++  const bytes = isBytes(value);
++  const ofLen = length !== void 0 ? ` of length ${length}` : "";
++  const got = bytes ? `length=${value.length}` : `type=${typeof value}`;
++  const message = atitle(title) + "expected Uint8Array" + ofLen + ", got " + got;
++  if (!bytes)
++    throw new TypeError(message);
++  throw new RangeError(message);
++}
++var aobject = (value, label) => {
++  if (value === null || typeof value !== "object" || Array.isArray(value))
++    throw new TypeError((label === "object" ? "" : `"${label}" `) + "expected object, got type=" + typeof value);
++};
++var aopts = (value, label) => {
++  aobject(value, label);
++  const proto = Object.getPrototypeOf(value);
++  if (proto !== Object.prototype && proto !== null)
++    throw new TypeError(`"${label}" expected plain object`);
++  if (Object.hasOwn(value, "__proto__"))
++    throw new TypeError(`"${label}.__proto__" is not allowed`);
++};
++function aexists(instance, checkFinished = true) {
++  if (instance.destroyed)
++    throw new Error("hash was destroyed");
++  if (checkFinished && instance.finished)
++    throw new Error("digest() was already called");
++}
++function aoutput(out, instance) {
++  abytes(out, void 0, "output");
++  const min = instance.outputLen;
++  if (!(out.length >= min)) {
++    throw new RangeError('"output" expected length >= ' + min);
++  }
++}
++function u32(arr) {
++  return new Uint32Array(arr.buffer, arr.byteOffset, Math.floor(arr.byteLength / 4));
++}
++function clean(...arrays) {
++  for (let i = 0; i < arrays.length; i++) {
++    arrays[i].fill(0);
++  }
++}
++var isLE = /* @__PURE__ */ (() => new Uint8Array(new Uint32Array([287454020]).buffer)[0] === 68)();
++function byteSwap(word) {
++  return word << 24 & 4278190080 | word << 8 & 16711680 | word >>> 8 & 65280 | word >>> 24 & 255;
++}
++function byteSwap32(arr) {
++  for (let i = 0; i < arr.length; i++) {
++    arr[i] = byteSwap(arr[i]);
++  }
++  return arr;
++}
++var swap32IfBE = isLE ? (u) => u : byteSwap32;
++var hasHexBuiltin = /* @__PURE__ */ (() => (
++  // @ts-ignore
++  typeof Uint8Array.from([]).toHex === "function" && typeof Uint8Array.fromHex === "function"
++))();
++var hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
++function bytesToHex(bytes) {
++  abytes(bytes);
++  if (hasHexBuiltin)
++    return bytes.toHex();
++  let hex = "";
++  for (let i = 0; i < bytes.length; i++) {
++    hex += hexes[bytes[i]];
++  }
++  return hex;
++}
++function asciiToBase16(ch) {
++  return ch >= 48 && ch <= 57 ? ch - 48 : ch >= 65 && ch <= 70 ? ch - (65 - 10) : ch >= 97 && ch <= 102 ? ch - (97 - 10) : void 0;
++}
++function hexToBytes(hex) {
++  if (typeof hex !== "string")
++    throw new TypeError("hex string expected, got " + typeof hex);
++  if (hasHexBuiltin) {
++    try {
++      return Uint8Array.fromHex(hex);
++    } catch (error) {
++      if (error instanceof SyntaxError)
++        throw new RangeError(error.message);
++      throw error;
++    }
++  }
++  const hl = hex.length;
++  const al = hl / 2;
++  if (hl % 2)
++    throw new RangeError("hex string expected, got unpadded hex of length " + hl);
++  const array = new Uint8Array(al);
++  for (let ai = 0, hi = 0; ai < al; ai++, hi += 2) {
++    const n1 = asciiToBase16(hex.charCodeAt(hi));
++    const n2 = asciiToBase16(hex.charCodeAt(hi + 1));
++    if (n1 === void 0 || n2 === void 0) {
++      const char = hex[hi] + hex[hi + 1];
++      throw new RangeError('hex string expected, got non-hex character "' + char + '" at index ' + hi);
++    }
++    array[ai] = n1 * 16 + n2;
++  }
++  return array;
++}
++function concatBytes(...arrays) {
++  let sum = 0;
++  for (let i = 0; i < arrays.length; i++) {
++    const a = arrays[i];
++    abytes(a);
++    sum += a.length;
++  }
++  const res = new Uint8Array(sum);
++  for (let i = 0, pad = 0; i < arrays.length; i++) {
++    const a = arrays[i];
++    res.set(a, pad);
++    pad += a.length;
++  }
++  return res;
++}
++function checkOpts(defaults, opts2, title = "opts") {
++  aopts(defaults, "defaults");
++  if (opts2 !== void 0)
++    aopts(opts2, title);
++  const merged = Object.assign(/* @__PURE__ */ Object.create(null), defaults, opts2);
++  return merged;
++}
++function createHasher(hashCons, info = {}) {
++  if (typeof hashCons !== "function")
++    throw new TypeError('"hashCons" expected function, got type=' + typeof hashCons);
++  info = checkOpts({}, info, "info");
++  const hashC = (msg, opts2) => hashCons(opts2).update(msg).digest();
++  const tmp = hashCons(void 0);
++  hashC.outputLen = tmp.outputLen;
++  hashC.blockLen = tmp.blockLen;
++  hashC.canXOF = tmp.canXOF;
++  hashC.create = (opts2) => hashCons(opts2);
++  Object.assign(hashC, info);
++  return Object.freeze(hashC);
++}
++function randomBytes(bytesLength = 32) {
++  anumber(bytesLength, "bytesLength");
++  const cr = typeof globalThis === "object" ? globalThis.crypto : null;
++  if (typeof cr?.getRandomValues !== "function")
++    throw new Error("crypto.getRandomValues must be defined");
++  if (bytesLength > 65536)
++    throw new RangeError(`"bytesLength" expected <= 65536, got ${bytesLength}`);
++  return cr.getRandomValues(new Uint8Array(bytesLength));
++}
++var oidNist = (suffix) => ({
++  // Current NIST hashAlgs suffixes used here fit in one DER subidentifier octet.
++  // Larger suffix values would need base-128 OID encoding and a different length byte.
++  oid: Uint8Array.from([6, 9, 96, 134, 72, 1, 101, 3, 4, 2, suffix])
++});
++
++// node_modules/.pnpm/@noble+curves@2.4.0/node_modules/@noble/curves/utils.js
++function aarray(item, title, inner = () => {
++}) {
++  if (!Array.isArray(item))
++    throw new TypeError(`"${title}" expected array, got type=${typeof item}`);
++  for (let i = 0; i < item.length; i++)
++    inner(item[i], `${title}[${i}]`);
++  return item;
++}
++var abytes2 = (value, length, title) => abytes(value, length, title);
++var anumber2 = anumber;
++function aobject2(value, title = "object") {
++  if (value === null || typeof value !== "object" || Array.isArray(value))
++    throw new TypeError(title === "object" ? "expected valid options object" : `"${title}" expected object, got type=${typeof value}`);
++  return value;
++}
++function afunction(value, title) {
++  if (typeof value !== "function")
++    throw new TypeError(`"${title}" is invalid: expected function, got ${typeof value}`);
++  return value;
++}
++var bytesToHex2 = bytesToHex;
++var concatBytes2 = (...arrays) => concatBytes(...arrays);
++var hexToBytes2 = (hex) => hexToBytes(hex);
++var isBytes2 = isBytes;
++var randomBytes2 = (bytesLength) => randomBytes(bytesLength);
++var _0n = /* @__PURE__ */ BigInt(0);
++var _1n = /* @__PURE__ */ BigInt(1);
++var atitle2 = (title) => title ? `"${title}" ` : "";
++function abool2(value, title = "") {
++  if (typeof value !== "boolean")
++    throw new TypeError(atitle2(title) + "expected boolean, got type=" + typeof value);
++  return value;
++}
++function abignumber(n) {
++  if (typeof n === "bigint") {
++    if (!isPosBig(n))
++      throw new RangeError("positive bigint expected, got " + n);
++  } else
++    anumber2(n);
++  return n;
++}
++function asafenumber(value, title = "") {
++  if (typeof value !== "number") {
++    const prefix = title && `"${title}" `;
++    throw new TypeError(prefix + "expected number, got type=" + typeof value);
++  }
++  if (!Number.isSafeInteger(value)) {
++    const prefix = title && `"${title}" `;
++    throw new RangeError(prefix + "expected safe integer, got " + value);
++  }
++}
++function hexToNumber(hex) {
++  if (typeof hex !== "string")
++    throw new TypeError("hex string expected, got " + typeof hex);
++  return hex === "" ? _0n : BigInt("0x" + hex);
++}
++function bytesToNumberBE(bytes) {
++  return hexToNumber(bytesToHex(bytes));
++}
++function bytesToNumberLE(bytes) {
++  return hexToNumber(bytesToHex(copyBytes(abytes(bytes)).reverse()));
++}
++function numberToBytesBE(n, len) {
++  anumber(len);
++  if (len === 0)
++    throw new Error("zero output length is invalid");
++  n = abignumber(n);
++  const expectedLen = len * 2;
++  const hex = n.toString(16);
++  if (hex.length > expectedLen)
++    throw new RangeError("number is too large");
++  return hexToBytes(hex.padStart(expectedLen, "0"));
++}
++function numberToBytesLE(n, len) {
++  return numberToBytesBE(n, len).reverse();
++}
++function copyBytes(bytes) {
++  return Uint8Array.from(abytes2(bytes));
++}
++function asciiToBytes(ascii) {
++  if (typeof ascii !== "string")
++    throw new TypeError("ascii string expected, got " + typeof ascii);
++  return Uint8Array.from(ascii, (c, i) => {
++    const charCode = c.charCodeAt(0);
++    if (c.length !== 1 || charCode > 127) {
++      throw new RangeError(`string contains non-ASCII character "${ascii[i]}" with code ${charCode} at position ${i}`);
++    }
++    return charCode;
++  });
++}
++function isPosBig(n) {
++  return typeof n === "bigint" && _0n <= n;
++}
++function inRange(n, min, max) {
++  return isPosBig(n) && isPosBig(min) && isPosBig(max) && min <= n && n < max;
++}
++function aInRange(title, n, min, max) {
++  if (!inRange(n, min, max))
++    throw new RangeError("expected valid " + title + ": " + min + " <= n < " + max + ", got " + n);
++}
++function bitLen(n) {
++  if (n < _0n)
++    throw new Error("expected non-negative bigint, got " + n);
++  return n === _0n ? 0 : n.toString(2).length;
++}
++var bitMask = (n) => {
++  asafenumber(n, "n");
++  return (_1n << BigInt(n)) - _1n;
++};
++function validateObject(object, fields = {}, optFields = {}, title = "object") {
++  aobject2(object, title);
++  aobject2(fields, "fields");
++  aobject2(optFields, "optFields");
++  function checkField(fieldName, expectedType, isOpt) {
++    const label = title === "object" ? `param "${String(fieldName)}"` : `"${title}.${String(fieldName)}"`;
++    const val = object[fieldName];
++    if (!Object.hasOwn(object, fieldName) && (isOpt ? val !== void 0 : expectedType !== "function")) {
++      throw new TypeError(`${label} is invalid: expected own property`);
++    }
++    if (isOpt && val === void 0)
++      return;
++    const current = typeof val;
++    if (current !== expectedType || val === null)
++      throw new TypeError(`${label} is invalid: expected ${expectedType}, got ${current}`);
++  }
++  const iter = (f, isOpt) => Object.entries(f).forEach(([k, v]) => checkField(k, v, isOpt));
++  iter(fields, false);
++  iter(optFields, true);
++}
++
++// node_modules/.pnpm/@noble+curves@2.4.0/node_modules/@noble/curves/abstract/modular.js
++var _0n2 = /* @__PURE__ */ BigInt(0);
++var _1n2 = /* @__PURE__ */ BigInt(1);
++var _2n = /* @__PURE__ */ BigInt(2);
++var _3n = /* @__PURE__ */ BigInt(3);
++var _4n = /* @__PURE__ */ BigInt(4);
++var _5n = /* @__PURE__ */ BigInt(5);
++var _7n = /* @__PURE__ */ BigInt(7);
++var _8n = /* @__PURE__ */ BigInt(8);
++var _9n = /* @__PURE__ */ BigInt(9);
++var _15n = /* @__PURE__ */ BigInt(15);
++var _16n = /* @__PURE__ */ BigInt(16);
++var POW_WINDOWED_MIN = /* @__PURE__ */ BigInt("0x10000000000000000");
++function mod(a, b) {
++  if (b <= _0n2)
++    throw new Error("mod: expected positive modulus, got " + b);
++  const result = a % b;
++  return result >= _0n2 ? result : b + result;
++}
++function pow(num, power, modulo) {
++  if (modulo <= _1n2)
++    throw new Error("pow: expected modulus > 1, got " + modulo);
++  if (typeof power !== "bigint")
++    throw new TypeError("invalid exponent: expected bigint, got " + typeof power);
++  if (power < _0n2)
++    throw new Error("invalid exponent, negatives unsupported");
++  if (power === _0n2)
++    return _1n2;
++  if (power === _1n2)
++    return num;
++  let d = num % modulo;
++  if (d < _0n2)
++    d += modulo;
++  if (power < POW_WINDOWED_MIN) {
++    let p2 = _1n2;
++    while (power > _0n2) {
++      if (power & _1n2)
++        p2 = p2 * d % modulo;
++      d = d * d % modulo;
++      power >>= _1n2;
++    }
++    return p2;
++  }
++  const digits = [];
++  while (power > _0n2) {
++    digits.push(Number(power & _15n));
++    power >>= _4n;
++  }
++  const table = new Array(16);
++  table[0] = _1n2;
++  table[1] = d;
++  for (let i = 2; i < 16; i++)
++    table[i] = table[i - 1] * d % modulo;
++  let p = table[digits[digits.length - 1]];
++  for (let w = digits.length - 2; w >= 0; w--) {
++    p = p * p % modulo;
++    p = p * p % modulo;
++    p = p * p % modulo;
++    p = p * p % modulo;
++    const digit = digits[w];
++    if (digit !== 0)
++      p = p * table[digit] % modulo;
++  }
++  return p;
++}
++function pow2(x, power, modulo) {
++  if (modulo <= _1n2)
++    throw new Error("pow2: expected modulus > 1, got " + modulo);
++  if (power < _0n2)
++    throw new Error("pow2: expected non-negative exponent, got " + power);
++  let res = x;
++  while (power-- > _0n2) {
++    res *= res;
++    res %= modulo;
++  }
++  return res;
++}
++function invert(number, modulo) {
++  if (number === _0n2)
++    throw new Error("invert: expected non-zero number");
++  if (modulo <= _1n2)
++    throw new Error("invert: expected modulus > 1, got " + modulo);
++  let a = mod(number, modulo);
++  let b = modulo;
++  let x = _0n2, u = _1n2;
++  while (a !== _0n2) {
++    const q = b / a;
++    const r = b - a * q;
++    const m = x - u * q;
++    b = a, a = r, x = u, u = m;
++  }
++  const gcd = b;
++  if (gcd !== _1n2)
++    throw new Error("invert: does not exist");
++  return mod(x, modulo);
++}
++function assertIsSquare(Fp, root, n) {
++  const F2 = Fp;
++  if (!F2.eql(F2.sqr(root), n))
++    throw new Error("Cannot find square root");
++}
++function aoddModulus(order, fnName) {
++  if ((order & _1n2) === _0n2)
++    throw new Error(fnName + ": expected odd modulus, got " + order);
++}
++function sqrt3mod4(Fp, n) {
++  const F2 = Fp;
++  const p1div4 = (F2.ORDER + _1n2) / _4n;
++  const root = F2.pow(n, p1div4);
++  assertIsSquare(F2, root, n);
++  return root;
++}
++function sqrt5mod8(Fp, n) {
++  const F2 = Fp;
++  const p5div8 = (F2.ORDER - _5n) / _8n;
++  const n2 = F2.mul(n, _2n);
++  const v = F2.pow(n2, p5div8);
++  const nv = F2.mul(n, v);
++  const i = F2.mul(F2.mul(nv, _2n), v);
++  const root = F2.mul(nv, F2.sub(i, F2.ONE));
++  assertIsSquare(F2, root, n);
++  return root;
++}
++function sqrt9mod16(P) {
++  const Fp_ = Field(P);
++  const tn = tonelliShanks(P);
++  const c1 = tn(Fp_, Fp_.neg(Fp_.ONE));
++  const c2 = tn(Fp_, c1);
++  const c3 = tn(Fp_, Fp_.neg(c1));
++  const c4 = (P + _7n) / _16n;
++  return ((Fp, n) => {
++    const F2 = Fp;
++    let tv1 = F2.pow(n, c4);
++    let tv2 = F2.mul(tv1, c1);
++    const tv3 = F2.mul(tv1, c2);
++    const tv4 = F2.mul(tv1, c3);
++    const e1 = F2.eql(F2.sqr(tv2), n);
++    const e2 = F2.eql(F2.sqr(tv3), n);
++    tv1 = F2.cmov(tv1, tv2, e1);
++    tv2 = F2.cmov(tv4, tv3, e2);
++    const e3 = F2.eql(F2.sqr(tv2), n);
++    const root = F2.cmov(tv1, tv2, e3);
++    assertIsSquare(F2, root, n);
++    return root;
++  });
++}
++function tonelliShanks(P) {
++  if (P < _3n)
++    throw new Error("sqrt is not defined for small field");
++  aoddModulus(P, "tonelliShanks");
++  let Q2 = P - _1n2;
++  let S = 0;
++  while (Q2 % _2n === _0n2) {
++    Q2 /= _2n;
++    S++;
++  }
++  let Z = _2n;
++  const _Fp = Field(P);
++  while (FpLegendre(_Fp, Z) === 1) {
++    if (Z++ > 1e3)
++      throw new Error("Cannot find square root: probably non-prime P");
++  }
++  if (S === 1)
++    return sqrt3mod4;
++  let cc = _Fp.pow(Z, Q2);
++  const Q1div2 = (Q2 + _1n2) / _2n;
++  return function tonelliSlow(Fp, n) {
++    const F2 = Fp;
++    if (F2.is0(n))
++      return n;
++    if (FpLegendre(F2, n) !== 1)
++      throw new Error("Cannot find square root");
++    let M = S;
++    let c = F2.mul(F2.ONE, cc);
++    let t = F2.pow(n, Q2);
++    let R = F2.pow(n, Q1div2);
++    while (!F2.eql(t, F2.ONE)) {
++      if (F2.is0(t))
++        throw new Error("Cannot find square root: probably non-prime P");
++      let i = 1;
++      let t_tmp = F2.sqr(t);
++      while (!F2.eql(t_tmp, F2.ONE)) {
++        i++;
++        t_tmp = F2.sqr(t_tmp);
++        if (i === M)
++          throw new Error("Cannot find square root");
++      }
++      const exponent = _1n2 << BigInt(M - i - 1);
++      const b = F2.pow(c, exponent);
++      M = i;
++      c = F2.sqr(b);
++      t = F2.mul(t, c);
++      R = F2.mul(R, b);
++    }
++    return R;
++  };
++}
++function FpSqrt(P) {
++  aoddModulus(P, "Fp.sqrt");
++  if (P % _4n === _3n)
++    return sqrt3mod4;
++  if (P % _8n === _5n)
++    return sqrt5mod8;
++  if (P % _16n === _9n)
++    return sqrt9mod16(P);
++  return tonelliShanks(P);
++}
++var isNegativeLE = (num, modulo) => (mod(num, modulo) & _1n2) === _1n2;
++var FIELD_FIELDS = [
++  "create",
++  "isValid",
++  "is0",
++  "neg",
++  "inv",
++  "sqrt",
++  "sqr",
++  "eql",
++  "add",
++  "sub",
++  "mul",
++  "pow",
++  "div",
++  "addN",
++  "subN",
++  "mulN",
++  "sqrN"
++];
++function validateField(field) {
++  aobject2(field, "field");
++  if (typeof field.ORDER !== "bigint")
++    throw new TypeError('param "ORDER" is invalid: expected bigint, got ' + typeof field.ORDER);
++  asafenumber(field.BYTES, "BYTES");
++  asafenumber(field.BITS, "BITS");
++  for (const name of FIELD_FIELDS)
++    afunction(field[name], "field." + name);
++  if (field.BYTES < 1 || field.BITS < 1)
++    throw new Error("invalid field: expected BYTES/BITS > 0");
++  if (field.ORDER <= _1n2)
++    throw new Error("invalid field: expected ORDER > 1, got " + field.ORDER);
++  return field;
++}
++function FpInvertBatch(Fp, nums, passZero = false) {
++  validateField(Fp);
++  aarray(nums, "nums");
++  abool2(passZero, "passZero");
++  const F2 = Fp;
++  const inverted = new Array(nums.length).fill(passZero ? F2.ZERO : void 0);
++  const multipliedAcc = nums.reduce((acc, num, i) => {
++    if (F2.is0(num))
++      return acc;
++    inverted[i] = acc;
++    return F2.mul(acc, num);
++  }, F2.ONE);
++  const invertedAcc = F2.inv(multipliedAcc);
++  nums.reduceRight((acc, num, i) => {
++    if (F2.is0(num))
++      return acc;
++    inverted[i] = F2.mul(acc, inverted[i]);
++    return F2.mul(acc, num);
++  }, invertedAcc);
++  return inverted;
++}
++function FpLegendre(Fp, n) {
++  validateField(Fp);
++  const F2 = Fp;
++  aoddModulus(F2.ORDER, "FpLegendre");
++  const p1mod2 = (F2.ORDER - _1n2) / _2n;
++  const powered = F2.pow(n, p1mod2);
++  const yes = F2.eql(powered, F2.ONE);
++  const zero = F2.eql(powered, F2.ZERO);
++  const no = F2.eql(powered, F2.neg(F2.ONE));
++  if (!yes && !zero && !no)
++    throw new Error("invalid Legendre symbol result");
++  return yes ? 1 : zero ? 0 : -1;
++}
++function nLength(n, nBitLength) {
++  if (nBitLength !== void 0)
++    anumber2(nBitLength);
++  if (n <= _0n2)
++    throw new Error("invalid n length: expected positive n, got " + n);
++  if (nBitLength !== void 0 && nBitLength < 1)
++    throw new Error("invalid n length: expected positive bit length, got " + nBitLength);
++  const bits = bitLen(n);
++  if (nBitLength !== void 0 && nBitLength < bits)
++    throw new Error(`invalid n length: expected nBitLength (${nBitLength}) >= bitLen(n) (${bits})`);
++  const _nBitLength = nBitLength !== void 0 ? nBitLength : bits;
++  const nByteLength = Math.ceil(_nBitLength / 8);
++  return { nBitLength: _nBitLength, nByteLength };
++}
++var FIELD_SQRT = /* @__PURE__ */ new WeakMap();
++var _Field = class {
++  ORDER;
++  BITS;
++  BYTES;
++  isLE;
++  ZERO = _0n2;
++  ONE = _1n2;
++  _lengths;
++  _mod;
++  constructor(ORDER, opts2 = {}) {
++    if (ORDER <= _1n2)
++      throw new Error("invalid field: expected ORDER > 1, got " + ORDER);
++    let _nbitLength = void 0;
++    this.isLE = false;
++    if (opts2 != null && typeof opts2 === "object") {
++      if (typeof opts2.BITS === "number")
++        _nbitLength = opts2.BITS;
++      if (typeof opts2.sqrt === "function")
++        Object.defineProperty(this, "sqrt", { value: opts2.sqrt, enumerable: true });
++      if (typeof opts2.isLE === "boolean")
++        this.isLE = opts2.isLE;
++      if (opts2.allowedLengths)
++        this._lengths = Object.freeze(opts2.allowedLengths.slice());
++      if (typeof opts2.modFromBytes === "boolean")
++        this._mod = opts2.modFromBytes;
++    }
++    const { nBitLength, nByteLength } = nLength(ORDER, _nbitLength);
++    if (nByteLength > 2048)
++      throw new Error("invalid field: expected ORDER of <= 2048 bytes");
++    this.ORDER = ORDER;
++    this.BITS = nBitLength;
++    this.BYTES = nByteLength;
++    Object.freeze(this);
++  }
++  create(num) {
++    return mod(num, this.ORDER);
++  }
++  isValid(num) {
++    if (typeof num !== "bigint")
++      throw new TypeError("invalid field element: expected bigint, got " + typeof num);
++    return _0n2 <= num && num < this.ORDER;
++  }
++  is0(num) {
++    return num === _0n2;
++  }
++  // is valid and invertible
++  isValidNot0(num) {
++    return !this.is0(num) && this.isValid(num);
++  }
++  isOdd(num) {
++    return (num & _1n2) === _1n2;
++  }
++  neg(num) {
++    return mod(-num, this.ORDER);
++  }
++  eql(lhs, rhs) {
++    return lhs === rhs;
++  }
++  sqr(num) {
++    return mod(num * num, this.ORDER);
++  }
++  add(lhs, rhs) {
++    return mod(lhs + rhs, this.ORDER);
++  }
++  sub(lhs, rhs) {
++    return mod(lhs - rhs, this.ORDER);
++  }
++  mul(lhs, rhs) {
++    return mod(lhs * rhs, this.ORDER);
++  }
++  pow(num, power) {
++    return pow(num, power, this.ORDER);
++  }
++  div(lhs, rhs) {
++    return mod(lhs * invert(rhs, this.ORDER), this.ORDER);
++  }
++  // Same as above, but doesn't normalize
++  sqrN(num) {
++    return num * num;
++  }
++  addN(lhs, rhs) {
++    return lhs + rhs;
++  }
++  subN(lhs, rhs) {
++    return lhs - rhs;
++  }
++  mulN(lhs, rhs) {
++    return lhs * rhs;
++  }
++  inv(num) {
++    return invert(num, this.ORDER);
++  }
++  sqrt(num) {
++    let sqrt = FIELD_SQRT.get(this);
++    if (!sqrt)
++      FIELD_SQRT.set(this, sqrt = FpSqrt(this.ORDER));
++    return sqrt(this, num);
++  }
++  toBytes(num) {
++    return this.isLE ? numberToBytesLE(num, this.BYTES) : numberToBytesBE(num, this.BYTES);
++  }
++  fromBytes(bytes, skipValidation = false) {
++    abytes2(bytes);
++    const { _lengths: allowedLengths, BYTES, isLE: isLE2, ORDER, _mod: modFromBytes } = this;
++    if (allowedLengths) {
++      if (bytes.length < 1 || !allowedLengths.includes(bytes.length) || bytes.length > BYTES) {
++        throw new Error("Field.fromBytes: expected " + allowedLengths + " bytes, got " + bytes.length);
++      }
++      const padded = new Uint8Array(BYTES);
++      padded.set(bytes, isLE2 ? 0 : padded.length - bytes.length);
++      bytes = padded;
++    }
++    if (bytes.length !== BYTES)
++      throw new Error("Field.fromBytes: expected " + BYTES + " bytes, got " + bytes.length);
++    let scalar = isLE2 ? bytesToNumberLE(bytes) : bytesToNumberBE(bytes);
++    if (modFromBytes)
++      scalar = mod(scalar, ORDER);
++    if (!skipValidation) {
++      if (!this.isValid(scalar))
++        throw new Error("invalid field element: outside of range 0..ORDER");
++    }
++    return scalar;
++  }
++  // TODO: we don't need it here, move out to separate fn
++  invertBatch(lst) {
++    return FpInvertBatch(this, lst, true);
++  }
++  // We can't move this out because Fp6, Fp12 implement it
++  // and it's unclear what to return in there.
++  cmov(a, b, condition) {
++    abool2(condition, "condition");
++    return condition ? b : a;
++  }
++};
++function Field(ORDER, opts2 = {}) {
++  Object.freeze(_Field.prototype);
++  return new _Field(ORDER, opts2);
++}
++
++// node_modules/.pnpm/@noble+curves@2.4.0/node_modules/@noble/curves/abstract/curve.js
++var _0n3 = /* @__PURE__ */ BigInt(0);
++var _1n3 = /* @__PURE__ */ BigInt(1);
++var _4n2 = /* @__PURE__ */ BigInt(4);
++var BLIND_BYTES = 16;
++var BLIND_BITS = 128;
++var FW_WINDOW = 5;
++var TABLE_BYTES_MAX = /* @__PURE__ */ (() => 2 ** 31)();
++function validatePointCons(Point) {
++  const pc = Point;
++  if (typeof pc !== "function")
++    throw new TypeError('"Point" expected constructor, got type=' + typeof Point);
++  afunction(pc.fromAffine, "Point.fromAffine");
++  afunction(pc.fromBytes, "Point.fromBytes");
++  afunction(pc.fromHex, "Point.fromHex");
++  aobject2(pc.BASE, "Point.BASE");
++  aobject2(pc.ZERO, "Point.ZERO");
++  validateField(pc.Fp);
++  validateField(pc.Fn);
++}
++function normalizeZ(c, points) {
++  validatePointCons(c);
++  validateMSMPoints(points, c);
++  const invertedZs = FpInvertBatch(c.Fp, points.map((p) => p.Z));
++  return points.map((p, i) => c.fromAffine(p.toAffine(invertedZs[i])));
++}
++function validateW(W, bits, min = 1) {
++  if (!Number.isSafeInteger(W) || W < min || W > bits)
++    throw new Error("invalid window size, expected [" + min + ".." + bits + "], got W=" + W);
++}
++function validateTableBytes(numPoints, fpBytes) {
++  const bytes = numPoints * (4 * fpBytes + 128);
++  if (bytes > TABLE_BYTES_MAX)
++    throw new Error("invalid window size: table would need ~" + Math.ceil(bytes / 2 ** 20) + " MiB, max " + TABLE_BYTES_MAX / 2 ** 20 + " MiB");
++}
++function probeRandomBytes(randomBytes4, length) {
++  if (randomBytes4 === void 0)
++    return void 0;
++  afunction(randomBytes4, "randomBytes");
++  try {
++    const probe = randomBytes4(length);
++    if (!isBytes2(probe) || probe.length !== length)
++      return void 0;
++  } catch {
++    return void 0;
++  }
++  return randomBytes4;
++}
++function validateMSMPoints(points, c) {
++  aarray(points, "points");
++  points.forEach((p, i) => {
++    if (!(p instanceof c))
++      throw new Error("invalid point at index " + i);
++  });
++}
++function validateMSMScalars(scalars, field, maxScalar) {
++  if (!Array.isArray(scalars))
++    throw new Error("array of scalars expected");
++  scalars.forEach((s, i) => {
++    const ok = maxScalar === void 0 ? field.isValid(s) : isPosBig(s) && s < maxScalar;
++    if (!ok)
++      throw new Error("invalid scalar at index " + i);
++  });
++}
++var pointWindowSizes = /* @__PURE__ */ new WeakMap();
++function getWindowSize(P) {
++  return pointWindowSizes.get(P) || 1;
++}
++function oddMultiples(p, size) {
++  const dbl = p.double();
++  const t = [p];
++  for (let j = 1; j < size; j++)
++    t.push(t[j - 1].add(dbl));
++  return t;
++}
++function wnafDigits(n, W) {
++  const size = 2 ** W;
++  const half = size / 2;
++  const mask = BigInt(size - 1);
++  const d = [];
++  while (n > _0n3) {
++    let w = 0;
++    if (n & _1n3) {
++      w = Number(n & mask);
++      if (w >= half)
++        w -= size;
++      n -= BigInt(w);
++    }
++    d.push(w);
++    n >>= _1n3;
++  }
++  return d;
++}
++function signedWindowDigits(n, W, windows) {
++  const size = 2 ** W;
++  const half = size / 2;
++  const mask = BigInt(size - 1);
++  const shiftBy = BigInt(W);
++  const d = [];
++  for (let w = 0; w < windows; w++) {
++    let v = Number(n & mask);
++    n >>= shiftBy;
++    if (v > half) {
++      v -= size;
++      n += _1n3;
++    }
++    d.push(v);
++  }
++  if (n !== _0n3)
++    throw new Error("invalid wnaf");
++  return d;
++}
++function wnafWalk(zero, tables, digits) {
++  let max = 0;
++  for (const d of digits)
++    max = Math.max(max, d.length);
++  let acc = zero;
++  for (let bit = max - 1; bit >= 0; bit--) {
++    if (bit !== max - 1)
++      acc = acc.double();
++    for (let i = 0; i < digits.length; i++) {
++      const w = digits[i][bit];
++      if (w) {
++        const item = tables[i][Math.abs(w) - 1 >> 1];
++        acc = acc.add(w < 0 ? item.negate() : item);
++      }
++    }
++  }
++  return acc;
++}
++var ScalarMultiplier = class {
++  Point;
++  BASE;
++  ZERO;
++  randomBytes;
++  wnafPrecomputes = /* @__PURE__ */ new WeakMap();
++  baseCanBeBlinded;
++  bits;
++  // Parametrized with a given Point class (not individual point)
++  constructor(Point, randomBytes4) {
++    validatePointCons(Point);
++    this.randomBytes = probeRandomBytes(randomBytes4, BLIND_BYTES);
++    this.Point = Point;
++    this.BASE = Point.BASE;
++    this.ZERO = Point.ZERO;
++    this.bits = Point.Fn.BITS;
++  }
++  /**
++   * Creates a signed fixed-window wNAF precomputation table: for every window w, the
++   * multiples `[1..2^(W−1)]⋅2^(w⋅W)⋅P`, flattened. All doublings are baked into the table,
++   * so cached multiplication is additions-only. `windows = ceil(bits/W) + 1`: the extra
++   * window absorbs the final carry of signed-digit recoding.
++   * For a 256-bit curve and W=6, the table is 44⋅32 = 1408 points.
++   * @param point - Point instance
++   * @param W - window size
++   * @param bits - scalar bitlength the table must cover
++   */
++  buildWnafTable(point, W, bits) {
++    const windows = Math.ceil(bits / W) + 1;
++    const half = 2 ** (W - 1);
++    const comp = [];
++    let base = point;
++    for (let w = 0; w < windows; w++) {
++      let acc = base;
++      for (let i = 0; i < half; i++) {
++        comp.push(acc);
++        acc = acc.add(base);
++      }
++      base = comp[comp.length - 1].double();
++    }
++    return { W, bits, windows, comp };
++  }
++  /**
++   * Implements ec multiplication using precomputed signed fixed-window wNAF tables.
++   * Constant-time: fixed window count with one table addition per window — zero digits feed
++   * the fake accumulator — and no doublings; the lookup scans the whole window slice.
++   * Scalar bounds are validated by the public entry points ({@link ScalarMultiplier.mulCT},
++   * {@link ScalarMultiplier.mulCTBlinded}, {@link ScalarMultiplier.mulUnsafe});
++   * signedWindowDigits throws if `n` exceeds the table.
++   * @returns real and fake (for const-time) points
++   */
++  wnafCachedCT(precomputes, n) {
++    const { W, windows, comp } = precomputes;
++    const half = 2 ** (W - 1);
++    const digits = signedWindowDigits(n, W, windows);
++    let p = this.ZERO;
++    let f = this.BASE;
++    for (let w = 0; w < windows; w++) {
++      const digit = digits[w];
++      const start = w * half;
++      const idx = Math.abs(digit) - 1;
++      let sel = comp[start];
++      for (let i = 1; i < half; i++)
++        sel = i === idx ? comp[start + i] : sel;
++      const neg = sel.negate();
++      if (digit === 0)
++        f = f.add(comp[start]);
++      else
++        p = p.add(digit < 0 ? neg : sel);
++    }
++    return { p, f };
++  }
++  // Cache key is point identity plus (W, bits); at most two entries exist per point (public-width
++  // `Fn.BITS` and blinded `Fn.BITS + BLIND_BITS`). Callers must not reuse the same point with
++  // incompatible `transform(...)` layouts and expect a separate cache entry.
++  getWnafPrecomputes(W, point, bits, transform) {
++    let entries = this.wnafPrecomputes.get(point);
++    let comp = entries?.find((entry) => entry.W === W && entry.bits === bits);
++    if (!comp) {
++      comp = this.buildWnafTable(point, W, bits);
++      if (typeof transform === "function")
++        comp = { ...comp, comp: transform(comp.comp) };
++      if (!entries) {
++        entries = [];
++        this.wnafPrecomputes.set(point, entries);
++      }
++      entries.push(comp);
++    }
++    return comp;
++  }
++  assertPoint(point) {
++    if (!(point instanceof this.Point))
++      throw new TypeError('"point" expected Point instance, got type=' + typeof point);
++  }
++  // Shared prologue of the constant-time entry points. Rejects scalar 0: in key/signature-style
++  // callers a zero scalar means broken upstream plumbing, and concrete Points already reject it.
++  // Uses inRange instead of Fn.isValidNot0: validateField() only certifies the arithmetic subset.
++  validateMulInput(point, scalar) {
++    this.assertPoint(point);
++    if (!inRange(scalar, _1n3, this.Point.Fn.ORDER))
++      throw new Error("invalid scalar");
++  }
++  // Constant-time dispatch shared by mulCT / mulCTBlinded. Un-precomputed points (W===1, e.g.
++  // ECDH peer keys) skip building a throwaway cached table in favor of a small fixed-window
++  // multiply. `n` must be < 2^bits.
++  runCT(point, n, bits, transform) {
++    const W = getWindowSize(point);
++    if (W === 1)
++      return this.fixedWindowCT(point, n, bits);
++    return this.wnafCachedCT(this.getWnafPrecomputes(W, point, bits, transform), n);
++  }
++  mulCT(point, scalar, transform) {
++    this.validateMulInput(point, scalar);
++    return this.runCT(point, scalar, this.bits, transform);
++  }
++  mulCTBlinded(point, scalar, transform) {
++    this.validateMulInput(point, scalar);
++    if (this.randomBytes === void 0)
++      throw new Error("randomBytes is required for scalar blinding");
++    const bits = this.Point.Fn.BITS + BLIND_BITS;
++    const blind = this.randomBytes(BLIND_BYTES);
++    if (!isBytes2(blind) || blind.length !== BLIND_BYTES)
++      throw new Error("randomBytes returned invalid byte array");
++    blind[0] = blind[0] & 63 | 128;
++    const n = scalar + bytesToNumberBE(blind) * this.Point.Fn.ORDER;
++    return this.runCT(point, n, bits, transform);
++  }
++  /**
++   * Constant-time multiplication `n*point` for an un-precomputed point, via a small fixed window.
++   * A cached wNAF table only pays off when reused; a flat 2^FW_WINDOW table (`size-1` adds) is
++   * far cheaper to build for a single use. The point-operation sequence is independent of `n`:
++   * build the table, then per window exactly FW_WINDOW doublings, a data-oblivious scan over
++   * every table entry, and one addition (adds the identity when the window digit is 0 — never
++   * skipped).
++   *
++   * `n` must be `< 2^bits`. Assumes complete addition (adding the identity costs the same as any
++   * add), which holds for the Weierstrass/Edwards point types used here. The table is left in
++   * projective form (no normalizeZ): normalizing this small a table costs more than the
++   * mixed-add savings it would buy for a single multiply.
++   * @returns real point `p`; `f` duplicates it only to match {@link wnafCachedCT}'s return shape
++   * (this path needs no fake accumulator — its op-count is already scalar-independent).
++   */
++  fixedWindowCT(point, n, bits) {
++    const W = FW_WINDOW;
++    const size = 1 << W;
++    const mask = bitMask(W);
++    const table = new Array(size);
++    table[0] = this.ZERO;
++    for (let i = 1; i < size; i++)
++      table[i] = table[i - 1].add(point);
++    const windows = Math.ceil(bits / W);
++    let acc = this.ZERO;
++    for (let window = windows - 1; window >= 0; window--) {
++      if (window !== windows - 1)
++        for (let d = 0; d < W; d++)
++          acc = acc.double();
++      const digit = Number(n >> BigInt(window * W) & mask);
++      let sel = table[0];
++      for (let i = 1; i < size; i++)
++        sel = i === digit ? table[i] : sel;
++      acc = acc.add(sel);
++    }
++    return { p: acc, f: acc };
++  }
++  shouldBlind(point, cofactor) {
++    if (this.randomBytes === void 0)
++      return false;
++    if (cofactor === _1n3)
++      return true;
++    if (point !== this.BASE)
++      return false;
++    if (this.baseCanBeBlinded === void 0)
++      this.baseCanBeBlinded = this.mulUnsafe(this.BASE, this.Point.Fn.ORDER).is0();
++    return this.baseCanBeBlinded;
++  }
++  mulSecret(point, scalar, cofactor, transform) {
++    return this.shouldBlind(point, cofactor) ? this.mulCTBlinded(point, scalar, transform) : this.mulCT(point, scalar, transform);
++  }
++  mulUnsafe(point, scalar, transform) {
++    this.assertPoint(point);
++    if (!isPosBig(scalar))
++      throw new Error("invalid scalar");
++    const W = getWindowSize(point);
++    if (W === 1 || scalar >= this.Point.Fn.ORDER)
++      return mulAddUnsafe(this.Point, [point], [scalar], true);
++    const precomputes = this.getWnafPrecomputes(W, point, this.bits, transform);
++    return this.wnafCachedCT(precomputes, scalar).p;
++  }
++  // Remembers the window size used for precomputed wNAF multiplication of the given point
++  // and drops any previously built tables. Usually only the base point is precomputed.
++  // W=1 resets the point to the un-precomputed (table-less) paths.
++  // W is additionally capped so tables stay under ~2 GiB ({@link TABLE_BYTES_MAX}).
++  setWindowSize(point, W) {
++    this.assertPoint(point);
++    validateW(W, this.bits);
++    const windows = Math.ceil((this.bits + BLIND_BITS) / W) + 1;
++    validateTableBytes(windows * 2 ** (W - 1), this.Point.Fp.BYTES);
++    pointWindowSizes.set(point, W);
++    this.wnafPrecomputes.delete(point);
++  }
++  // True when a window size is set: tables themselves are built lazily on first multiply.
++  hasWindowSize(point) {
++    return getWindowSize(point) !== 1;
++  }
++};
++function mulAddUnsafe(c, points, scalars, allowOversized = false) {
++  validatePointCons(c);
++  validateMSMPoints(points, c);
++  abool2(allowOversized, "allowOversized");
++  validateMSMScalars(scalars, c.Fn, allowOversized ? c.Fn.ORDER ** _4n2 : void 0);
++  if (points.length !== scalars.length)
++    throw new Error("arrays of points and scalars must have equal length");
++  const tables = points.map((p) => oddMultiples(p, 4));
++  const digits = scalars.map((n) => wnafDigits(n, 4));
++  return wnafWalk(c.ZERO, tables, digits);
++}
++function createField(order, field, isLE2) {
++  if (field) {
++    if (field.ORDER !== order)
++      throw new Error("Field.ORDER must match order: Fp == p, Fn == n");
++    validateField(field);
++    return field;
++  } else {
++    return Field(order, { isLE: isLE2 });
++  }
++}
++function createCurveFields(type, CURVE, curveOpts = {}, FpFnLE) {
++  if (type !== "weierstrass" && type !== "edwards")
++    throw new Error('expected curve type "weierstrass" or "edwards"');
++  if (FpFnLE === void 0)
++    FpFnLE = type === "edwards";
++  if (!CURVE || typeof CURVE !== "object")
++    throw new Error(`expected valid ${type} CURVE object`);
++  validateObject(curveOpts);
++  for (const p of ["p", "n", "h"]) {
++    const val = CURVE[p];
++    if (!(isPosBig(val) && val !== _0n3))
++      throw new Error(`CURVE.${p} must be positive bigint`);
++  }
++  const Fp = createField(CURVE.p, curveOpts.Fp, FpFnLE);
++  const Fn = createField(CURVE.n, curveOpts.Fn, FpFnLE);
++  const _b = type === "weierstrass" ? "b" : "d";
++  const params = ["Gx", "Gy", "a", _b];
++  for (const p of params) {
++    if (!Fp.isValid(CURVE[p]))
++      throw new Error(`CURVE.${p} must be valid field element of CURVE.Fp`);
++  }
++  CURVE = Object.freeze(Object.assign({}, CURVE));
++  return { CURVE, Fp, Fn };
++}
++function createKeygen(randomSecretKey, getPublicKey) {
++  return function keygen(seed) {
++    const secretKey = randomSecretKey(seed);
++    return { secretKey, publicKey: getPublicKey(secretKey) };
++  };
++}
++
++// node_modules/.pnpm/@noble+curves@2.4.0/node_modules/@noble/curves/abstract/edwards.js
++var _0n4 = /* @__PURE__ */ BigInt(0);
++var _1n4 = /* @__PURE__ */ BigInt(1);
++var _2n2 = /* @__PURE__ */ BigInt(2);
++var _4n3 = /* @__PURE__ */ BigInt(4);
++var _8n2 = /* @__PURE__ */ BigInt(8);
++function isEdValidXY(Fp, CURVE, x, y) {
++  const x2 = Fp.sqr(x);
++  const y2 = Fp.sqr(y);
++  const left = Fp.add(Fp.mul(CURVE.a, x2), y2);
++  const right = Fp.add(Fp.ONE, Fp.mul(CURVE.d, Fp.mul(x2, y2)));
++  return Fp.eql(left, right);
++}
++function edwards(params, extraOpts = {}) {
++  validateObject(extraOpts, {}, {}, "extraOpts");
++  const opts2 = extraOpts;
++  const validated = createCurveFields("edwards", params, opts2, opts2.FpFnLE);
++  const { Fp, Fn } = validated;
++  let CURVE = validated.CURVE;
++  const { h: cofactor } = CURVE;
++  if (FpLegendre(Fp, CURVE.a) !== 1)
++    throw new Error("edwards: CURVE.a must be a square in Fp for complete addition formulas");
++  if (FpLegendre(Fp, CURVE.d) !== -1)
++    throw new Error("edwards: CURVE.d must be a non-square in Fp for complete addition formulas");
++  validateObject(opts2, {}, { uvRatio: "function", randomBytes: "function" });
++  const randomBytes4 = opts2.randomBytes === void 0 ? randomBytes2 : opts2.randomBytes;
++  const MASK = _2n2 << BigInt(Fp.BYTES * 8) - _1n4;
++  function isOdd(n) {
++    if (!Fp.isOdd)
++      throw new Error("Field does not have .isOdd()");
++    return Fp.isOdd(n);
++  }
++  const uvRatio2 = opts2.uvRatio === void 0 ? (u, v) => {
++    try {
++      return { isValid: true, value: Fp.sqrt(Fp.div(u, v)) };
++    } catch (e) {
++      return { isValid: false, value: _0n4 };
++    }
++  } : opts2.uvRatio;
++  if (!isEdValidXY(Fp, CURVE, CURVE.Gx, CURVE.Gy))
++    throw new Error("bad curve params: generator point");
++  const mulA = Fp.eql(CURVE.a, Fp.neg(Fp.ONE)) ? (x) => Fp.neg(x) : Fp.eql(CURVE.a, Fp.ONE) ? (x) => x : (x) => Fp.mul(CURVE.a, x);
++  function acoord(title, n, banZero = false) {
++    const min = banZero ? _1n4 : _0n4;
++    aInRange("coordinate " + title, n, min, MASK);
++    return n;
++  }
++  function aedpoint(other) {
++    if (!(other instanceof Point))
++      throw new Error("EdwardsPoint expected");
++  }
++  class Point {
++    static BASE = new Point(CURVE.Gx, CURVE.Gy, Fp.ONE, Fp.mul(CURVE.Gx, CURVE.Gy));
++    static ZERO = new Point(Fp.ZERO, Fp.ONE, Fp.ONE, Fp.ZERO);
++    static Fp = Fp;
++    static Fn = Fn;
++    X;
++    Y;
++    Z;
++    T;
++    constructor(X, Y, Z, T) {
++      this.X = acoord("x", X);
++      this.Y = acoord("y", Y);
++      this.Z = acoord("z", Z, true);
++      this.T = acoord("t", T);
++      Object.freeze(this);
++    }
++    static CURVE() {
++      return CURVE;
++    }
++    /**
++     * Create one extended Edwards point from affine coordinates.
++     * Does NOT validate that the point is on-curve or torsion-free.
++     * Use `.assertValidity()` on adversarial inputs.
++     */
++    static fromAffine(p) {
++      if (p instanceof Point)
++        throw new Error("extended point not allowed");
++      const { x, y } = p || {};
++      acoord("x", x);
++      acoord("y", y);
++      return new Point(x, y, Fp.ONE, Fp.mul(x, y));
++    }
++    // Uses algo from RFC8032 5.1.3.
++    static fromBytes(bytes, zip215 = false) {
++      const len = Fp.BYTES;
++      const { a, d } = CURVE;
++      bytes = copyBytes(abytes2(bytes, len, "point"));
++      abool2(zip215, "zip215");
++      const normed = copyBytes(bytes);
++      const lastByte = bytes[len - 1];
++      normed[len - 1] = lastByte & ~128;
++      const y = bytesToNumberLE(normed);
++      const max = zip215 ? MASK : Fp.ORDER;
++      aInRange("point.y", y, _0n4, max);
++      const y2 = Fp.sqr(y);
++      const u = Fp.sub(y2, Fp.ONE);
++      const v = Fp.sub(Fp.mulN(d, y2), a);
++      let { isValid, value: x } = uvRatio2(u, v);
++      if (!isValid)
++        throw new Error("bad point: invalid y coordinate");
++      const isXOdd = isOdd(x);
++      const isLastByteOdd = (lastByte & 128) !== 0;
++      if (!zip215 && Fp.is0(x) && isLastByteOdd)
++        throw new Error("bad point: x=0 and x_0=1");
++      if (isLastByteOdd !== isXOdd)
++        x = Fp.neg(x);
++      return Point.fromAffine({ x, y });
++    }
++    static fromHex(hex, zip215 = false) {
++      return Point.fromBytes(hexToBytes2(hex), zip215);
++    }
++    get x() {
++      return this.toAffine().x;
++    }
++    get y() {
++      return this.toAffine().y;
++    }
++    precompute(windowSize = 6, isLazy = true) {
++      wnaf.setWindowSize(this, windowSize);
++      if (!isLazy)
++        this.multiply(_2n2);
++      return this;
++    }
++    // Useful in fromAffine() - not for fromBytes(), which always created valid points.
++    assertValidity() {
++      const p = this;
++      const { a, d } = CURVE;
++      if (p.is0())
++        throw new Error("bad point: ZERO");
++      const { X, Y, Z, T } = p;
++      const X2 = Fp.sqr(X);
++      const Y2 = Fp.sqr(Y);
++      const Z2 = Fp.sqr(Z);
++      const Z4 = Fp.sqr(Z2);
++      const aX2 = Fp.mul(X2, a);
++      const left = Fp.mul(Fp.add(aX2, Y2), Z2);
++      const right = Fp.add(Z4, Fp.mul(d, Fp.mul(X2, Y2)));
++      if (!Fp.eql(left, right))
++        throw new Error("bad point: equation left != right (1)");
++      const XY = Fp.mul(X, Y);
++      const ZT = Fp.mul(Z, T);
++      if (!Fp.eql(XY, ZT))
++        throw new Error("bad point: equation left != right (2)");
++    }
++    // Compare one point to another.
++    equals(other) {
++      aedpoint(other);
++      const { X: X1, Y: Y1, Z: Z1 } = this;
++      const { X: X2, Y: Y2, Z: Z2 } = other;
++      const X1Z2 = Fp.mul(X1, Z2);
++      const X2Z1 = Fp.mul(X2, Z1);
++      const Y1Z2 = Fp.mul(Y1, Z2);
++      const Y2Z1 = Fp.mul(Y2, Z1);
++      return Fp.eql(X1Z2, X2Z1) && Fp.eql(Y1Z2, Y2Z1);
++    }
++    is0() {
++      return this.equals(Point.ZERO);
++    }
++    negate() {
++      return new Point(Fp.neg(this.X), this.Y, this.Z, Fp.neg(this.T));
++    }
++    // Fast algo for doubling Extended Point.
++    // https://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#doubling-dbl-2008-hwcd
++    // Cost: 4M + 4S + 1*a + 6add + 1*2.
++    double() {
++      const { X: X1, Y: Y1, Z: Z1 } = this;
++      const A = Fp.sqr(X1);
++      const B2 = Fp.sqr(Y1);
++      const C = Fp.mul(Fp.sqr(Z1), _2n2);
++      const D = mulA(A);
++      const x1y1 = Fp.addN(X1, Y1);
++      const E = Fp.sub(Fp.subN(Fp.sqr(x1y1), A), B2);
++      const G = Fp.addN(D, B2);
++      const F2 = Fp.subN(G, C);
++      const H = Fp.subN(D, B2);
++      const X3 = Fp.mul(E, F2);
++      const Y3 = Fp.mul(G, H);
++      const T3 = Fp.mul(E, H);
++      const Z3 = Fp.mul(F2, G);
++      return new Point(X3, Y3, Z3, T3);
++    }
++    // Fast algo for adding 2 Extended Points.
++    // https://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#addition-add-2008-hwcd
++    // Cost: 9M + 1*a + 1*d + 7add.
++    add(other) {
++      aedpoint(other);
++      const { d } = CURVE;
++      const { X: X1, Y: Y1, Z: Z1, T: T1 } = this;
++      const { X: X2, Y: Y2, Z: Z2, T: T2 } = other;
++      const A = Fp.mul(X1, X2);
++      const B2 = Fp.mul(Y1, Y2);
++      const C = Fp.mul(Fp.mulN(T1, d), T2);
++      const D = Fp.mul(Z1, Z2);
++      const E = Fp.sub(Fp.subN(Fp.mulN(Fp.addN(X1, Y1), Fp.addN(X2, Y2)), A), B2);
++      const F2 = Fp.subN(D, C);
++      const G = Fp.addN(D, C);
++      const H = Fp.sub(B2, mulA(A));
++      const X3 = Fp.mul(E, F2);
++      const Y3 = Fp.mul(G, H);
++      const T3 = Fp.mul(E, H);
++      const Z3 = Fp.mul(F2, G);
++      return new Point(X3, Y3, Z3, T3);
++    }
++    subtract(other) {
++      aedpoint(other);
++      return this.add(other.negate());
++    }
++    // Constant-time multiplication.
++    multiply(scalar) {
++      if (!Fn.isValidNot0(scalar))
++        throw new RangeError("invalid scalar: expected 1 <= sc < curve.n");
++      const { p, f } = wnaf.mulSecret(this, scalar, cofactor, normalize);
++      return normalize([p, f])[0];
++    }
++    // Non-constant-time multiplication. Uses double-and-add algorithm.
++    // It's faster, but should only be used when you don't care about
++    // an exposed private key e.g. sig verification.
++    // Keeps the same subgroup-scalar contract: 0 is allowed for public-scalar callers, but
++    // n and larger values are rejected instead of being reduced mod n to the identity point.
++    multiplyUnsafe(scalar) {
++      if (!Fn.isValid(scalar))
++        throw new RangeError("invalid scalar: expected 0 <= sc < curve.n");
++      if (scalar === _0n4)
++        return Point.ZERO;
++      if (this.is0() || scalar === _1n4)
++        return this;
++      return wnaf.mulUnsafe(this, scalar, normalize);
++    }
++    // Checks if point is of small order.
++    // If you add something to small order point, you will have "dirty"
++    // point with torsion component.
++    // Clears cofactor and checks if the result is 0.
++    isSmallOrder() {
++      return this.clearCofactor().is0();
++    }
++    // Multiplies point by curve order and checks if the result is 0.
++    // Returns `false` is the point is dirty.
++    isTorsionFree() {
++      return wnaf.mulUnsafe(this, CURVE.n).is0();
++    }
++    // Converts Extended point to default (x, y) coordinates.
++    // Can accept precomputed Z^-1 - for example, from invertBatch.
++    toAffine(invertedZ) {
++      const p = this;
++      let iz = invertedZ;
++      if (iz != null && typeof iz !== "bigint")
++        throw new TypeError('"invertedZ" expected bigint, got type=' + typeof iz);
++      const { X, Y, Z } = p;
++      const is0 = p.is0();
++      if (iz == null)
++        iz = is0 ? Fp.create(_8n2) : Fp.inv(Z);
++      const x = Fp.mul(X, iz);
++      const y = Fp.mul(Y, iz);
++      const zz = Fp.mul(Z, iz);
++      if (is0)
++        return { x: Fp.ZERO, y: Fp.ONE };
++      if (!Fp.eql(zz, Fp.ONE))
++        throw new Error("invZ was invalid");
++      return { x, y };
++    }
++    clearCofactor() {
++      if (cofactor === _1n4)
++        return this;
++      if (cofactor === _2n2)
++        return this.double();
++      if (cofactor === _4n3)
++        return this.double().double();
++      if (cofactor === _8n2)
++        return this.double().double().double();
++      return this.multiplyUnsafe(cofactor);
++    }
++    toBytes() {
++      const { x, y } = this.toAffine();
++      const bytes = Fp.toBytes(y);
++      bytes[bytes.length - 1] |= isOdd(x) ? 128 : 0;
++      return bytes;
++    }
++    toHex() {
++      return bytesToHex2(this.toBytes());
++    }
++    toString() {
++      return `<Point ${this.is0() ? "ZERO" : this.toHex()}>`;
++    }
++  }
++  const normalize = (points) => normalizeZ(Point, points);
++  const wnaf = new ScalarMultiplier(Point, randomBytes4);
++  if (wnaf.bits >= 6)
++    Point.BASE.precompute(6);
++  Object.freeze(Point.prototype);
++  Object.freeze(Point);
++  return Point;
++}
++
++// node_modules/.pnpm/@noble+curves@2.4.0/node_modules/@noble/curves/abstract/montgomery.js
++var _0n5 = /* @__PURE__ */ BigInt(0);
++var _1n5 = /* @__PURE__ */ BigInt(1);
++var _2n3 = /* @__PURE__ */ BigInt(2);
++function cmask(P, swap) {
++  return P + swap - (swap >> _1n5 << _1n5);
++}
++function cswap(P) {
++  const offset = BigInt(6) * P;
++  return (mask, x_2, x_3) => {
++    const sum = x_2 + x_3;
++    const d = offset + x_3 - x_2;
++    const a = (d * mask + x_2) % P;
++    return { x_2: a, x_3: sum - a };
++  };
++}
++function validateOpts(curve) {
++  validateObject(curve, {
++    P: "bigint",
++    type: "string",
++    adjustScalarBytes: "function",
++    powPminus2: "function"
++  }, {
++    randomBytes: "function",
++    scalarMultBase: "function"
++  });
++  return Object.freeze({ ...curve });
++}
++function montgomery(curveDef) {
++  const CURVE = validateOpts(curveDef);
++  const { P, type, adjustScalarBytes: adjustScalarBytes2, powPminus2, randomBytes: rand } = CURVE;
++  const mulBaseHook = CURVE.scalarMultBase;
++  const is25519 = type === "x25519";
++  if (!is25519 && type !== "x448")
++    throw new Error("invalid type");
++  const randomBytes_ = rand === void 0 ? randomBytes2 : rand;
++  const montgomeryBits = is25519 ? 255 : 448;
++  const swap = cswap(P);
++  const fieldLen = is25519 ? 32 : 56;
++  const Gu = is25519 ? BigInt(9) : BigInt(5);
++  const a24 = is25519 ? BigInt(121665) : BigInt(39081);
++  const minScalar = is25519 ? _2n3 ** BigInt(254) : _2n3 ** BigInt(447);
++  const maxAdded = is25519 ? BigInt(8) * (_2n3 ** BigInt(251) - _1n5) : BigInt(4) * (_2n3 ** BigInt(445) - _1n5);
++  const maxScalar = minScalar + maxAdded + _1n5;
++  const modP = (n) => mod(n, P);
++  const GuBytes = encodeU(Gu);
++  function encodeU(u) {
++    return numberToBytesLE(modP(u), fieldLen);
++  }
++  function decodeU(u) {
++    const _u = copyBytes(abytes2(u, fieldLen, "uCoordinate"));
++    if (is25519)
++      _u[31] &= 127;
++    return modP(bytesToNumberLE(_u));
++  }
++  function decodeScalar(scalar) {
++    return bytesToNumberLE(adjustScalarBytes2(copyBytes(abytes2(scalar, fieldLen, "scalar"))));
++  }
++  const lowOrderU = new Set(is25519 ? [
++    _0n5,
++    _1n5,
++    P - _1n5,
++    BigInt("325606250916557431795983626356110631294008115727848805560023387167927233504"),
++    BigInt("39382357235489614581723060781553021112529911719440698176882885853963445705823")
++  ] : [_0n5, _1n5, P - _1n5]);
++  function scalarMult(scalar, u) {
++    const pointU = decodeU(u);
++    if (lowOrderU.has(pointU))
++      throw new Error("invalid private or public key received");
++    const pu = montgomeryLadder(pointU, decodeScalar(scalar));
++    if (pu === _0n5)
++      throw new Error("invalid private or public key received");
++    return encodeU(pu);
++  }
++  function scalarMultBase(scalar) {
++    if (mulBaseHook === void 0)
++      return scalarMult(scalar, GuBytes);
++    const k = decodeScalar(scalar);
++    aInRange("scalar", k, minScalar, maxScalar);
++    const pu = modP(mulBaseHook(k));
++    if (pu === _0n5)
++      throw new Error("invalid private or public key received");
++    return encodeU(pu);
++  }
++  const getPublicKey = scalarMultBase;
++  const getSharedSecret = scalarMult;
++  function montgomeryLadder(u, scalar) {
++    aInRange("u", u, _0n5, P);
++    aInRange("scalar", scalar, minScalar, maxScalar);
++    const k = scalar;
++    const x_1 = u;
++    let x_2 = _1n5;
++    let z_2 = _0n5;
++    let x_3 = u;
++    let z_3 = _1n5;
++    const kx = k ^ k >> _1n5;
++    for (let t = BigInt(montgomeryBits - 1); t >= _0n5; t--) {
++      const mask2 = cmask(P, kx >> t);
++      ({ x_2, x_3 } = swap(mask2, x_2, x_3));
++      ({ x_2: z_2, x_3: z_3 } = swap(mask2, z_2, z_3));
++      const A = x_2 + z_2;
++      const AA = modP(A * A);
++      const B2 = x_2 - z_2;
++      const BB = modP(B2 * B2);
++      const E = AA - BB;
++      const C = x_3 + z_3;
++      const D = x_3 - z_3;
++      const DA = modP(D * A);
++      const CB = modP(C * B2);
++      const dacb = DA + CB;
++      const da_cb = DA - CB;
++      x_3 = modP(dacb * dacb);
++      z_3 = modP(x_1 * modP(da_cb * da_cb));
++      x_2 = modP(AA * BB);
++      z_2 = modP(E * (AA + modP(a24 * E)));
++    }
++    const mask = cmask(P, k);
++    ({ x_2, x_3 } = swap(mask, x_2, x_3));
++    ({ x_2: z_2, x_3: z_3 } = swap(mask, z_2, z_3));
++    const z2 = powPminus2(z_2);
++    return modP(x_2 * z2);
++  }
++  const lengths = {
++    secretKey: fieldLen,
++    publicKey: fieldLen,
++    seed: fieldLen
++  };
++  const randomSecretKey = (seed) => {
++    seed = seed === void 0 ? randomBytes_(fieldLen) : seed;
++    abytes2(seed, lengths.seed, "seed");
++    return seed;
++  };
++  const utils = { randomSecretKey };
++  Object.freeze(lengths);
++  Object.freeze(utils);
++  return Object.freeze({
++    keygen: createKeygen(randomSecretKey, getPublicKey),
++    getSharedSecret,
++    getPublicKey,
++    scalarMult,
++    scalarMultBase,
++    utils,
++    GuBytes: GuBytes.slice(),
++    lengths
++  });
++}
++
++// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/_u64.js
++var U32_MASK64 = /* @__PURE__ */ (() => BigInt(2 ** 32 - 1))();
++var _32n = /* @__PURE__ */ BigInt(32);
++function fromBig(n, le = false) {
++  if (le)
++    return { h: Number(n & U32_MASK64), l: Number(n >> _32n & U32_MASK64) };
++  return { h: Number(n >> _32n & U32_MASK64) | 0, l: Number(n & U32_MASK64) | 0 };
++}
++function split(lst, le = false) {
++  const len = lst.length;
++  let Ah = new Uint32Array(len);
++  let Al = new Uint32Array(len);
++  for (let i = 0; i < len; i++) {
++    const { h, l } = fromBig(lst[i], le);
++    [Ah[i], Al[i]] = [h, l];
++  }
++  return [Ah, Al];
++}
++
++// node_modules/.pnpm/@noble+curves@2.4.0/node_modules/@noble/curves/abstract/fft.js
++function checkU32(n, title = "n") {
++  if (typeof n !== "number")
++    throw new TypeError(`wrong u32 integer "${title}": expected number, got type=${typeof n}`);
++  if (!Number.isSafeInteger(n) || n < 0 || n > 4294967295)
++    throw new RangeError(`wrong u32 integer "${title}": expected 0..4294967295, got ${n}`);
++  return n;
++}
++function isPowerOfTwo(x) {
++  checkU32(x, "x");
++  return (x & x - 1) === 0 && x !== 0;
++}
++function reverseBits(n, bits) {
++  checkU32(n);
++  if (typeof bits !== "number")
++    throw new TypeError('"bits" expected number, got type=' + typeof bits);
++  if (!Number.isSafeInteger(bits) || bits < 0 || bits > 32)
++    throw new Error(`expected integer 0 <= bits <= 32, got ${bits}`);
++  let reversed = 0;
++  for (let i = 0; i < bits; i++, n >>>= 1)
++    reversed = reversed << 1 | n & 1;
++  return reversed >>> 0;
++}
++function log2(n) {
++  checkU32(n);
++  return 31 - Math.clz32(n);
++}
++function bitReversalInplace(values) {
++  if (!values || typeof values !== "object" || typeof values.length !== "number")
++    throw new TypeError('"values" expected array-like, got type=' + typeof values);
++  const n = values.length;
++  if (!isPowerOfTwo(n))
++    throw new Error("expected positive power-of-two length, got " + n);
++  const bits = log2(n);
++  for (let i = 0; i < n; i++) {
++    const j = reverseBits(i, bits);
++    if (i < j) {
++      const tmp = values[i];
++      values[i] = values[j];
++      values[j] = tmp;
++    }
++  }
++  return values;
++}
++var FFTCore = (F2, coreOpts) => {
++  validateObject(coreOpts, { N: "number", roots: "object", dit: "boolean" }, { invertButterflies: "boolean", skipStages: "number", brp: "boolean" }, "coreOpts");
++  const { N: N2, roots, dit, invertButterflies = false, skipStages = 0, brp = true } = coreOpts;
++  checkU32(N2, "coreOpts.N");
++  const bits = log2(N2);
++  if (!isPowerOfTwo(N2))
++    throw new Error("FFT: Polynomial size should be power of two");
++  checkU32(skipStages, "coreOpts.skipStages");
++  const maxSkipStages = bits === 0 ? 0 : bits - 1;
++  if (skipStages > maxSkipStages)
++    throw new Error(`FFT: wrong skipStages: expected 0 <= skipStages <= ${maxSkipStages}`);
++  if (roots.length !== N2)
++    throw new Error(`FFT: wrong roots length: expected ${N2}, got ${roots.length}`);
++  const isDit = dit !== invertButterflies;
++  return (values) => {
++    if (values.length !== N2)
++      throw new Error("FFT: wrong Polynomial length");
++    if (dit && brp)
++      bitReversalInplace(values);
++    for (let i = 0, g = 1; i < bits - skipStages; i++) {
++      const s = dit ? i + 1 + skipStages : bits - i;
++      const m = 1 << s;
++      const m2 = m >> 1;
++      const stride = N2 >> s;
++      for (let k = 0; k < N2; k += m) {
++        for (let j = 0, grp = g++; j < m2; j++) {
++          const rootPos = invertButterflies ? dit ? N2 - grp : grp : j * stride;
++          const i0 = k + j;
++          const i1 = k + j + m2;
++          const omega = roots[rootPos];
++          const b = values[i1];
++          const a = values[i0];
++          if (isDit) {
++            const t = F2.mul(b, omega);
++            values[i0] = F2.add(a, t);
++            values[i1] = F2.sub(a, t);
++          } else if (invertButterflies) {
++            values[i0] = F2.add(b, a);
++            values[i1] = F2.mul(F2.sub(b, a), omega);
++          } else {
++            values[i0] = F2.add(a, b);
++            values[i1] = F2.mul(F2.sub(a, b), omega);
++          }
++        }
++      }
++    }
++    if (!dit && brp)
++      bitReversalInplace(values);
++    return values;
++  };
++};
++
++// node_modules/.pnpm/@noble+curves@2.4.0/node_modules/@noble/curves/ed25519.js
++var _0n6 = /* @__PURE__ */ BigInt(0);
++var _1n6 = /* @__PURE__ */ BigInt(1);
++var _2n4 = /* @__PURE__ */ BigInt(2);
++var _3n2 = /* @__PURE__ */ BigInt(3);
++var _5n2 = /* @__PURE__ */ BigInt(5);
++var _8n3 = /* @__PURE__ */ BigInt(8);
++var ed25519_CURVE_p = /* @__PURE__ */ BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed");
++var ed25519_CURVE = /* @__PURE__ */ (() => ({
++  p: ed25519_CURVE_p,
++  n: BigInt("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"),
++  h: _8n3,
++  a: BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"),
++  d: BigInt("0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"),
++  Gx: BigInt("0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a"),
++  Gy: BigInt("0x6666666666666666666666666666666666666666666666666666666666666658")
++}))();
++function ed25519_pow_2_252_3(x) {
++  const _10n = BigInt(10), _20n = BigInt(20), _40n = BigInt(40), _80n = BigInt(80);
++  const P = ed25519_CURVE_p;
++  const x2 = x * x % P;
++  const b2 = x2 * x % P;
++  const b4 = pow2(b2, _2n4, P) * b2 % P;
++  const b5 = pow2(b4, _1n6, P) * x % P;
++  const b10 = pow2(b5, _5n2, P) * b5 % P;
++  const b20 = pow2(b10, _10n, P) * b10 % P;
++  const b40 = pow2(b20, _20n, P) * b20 % P;
++  const b80 = pow2(b40, _40n, P) * b40 % P;
++  const b160 = pow2(b80, _80n, P) * b80 % P;
++  const b240 = pow2(b160, _80n, P) * b80 % P;
++  const b250 = pow2(b240, _10n, P) * b10 % P;
++  const pow_p_5_8 = pow2(b250, _2n4, P) * x % P;
++  return { pow_p_5_8, b2 };
++}
++function adjustScalarBytes(bytes) {
++  bytes[0] &= 248;
++  bytes[31] &= 127;
++  bytes[31] |= 64;
++  return bytes;
++}
++var ED25519_SQRT_M1 = /* @__PURE__ */ BigInt("19681161376707505956807079304988542015446066515923890162744021073123829784752");
++function uvRatio(u, v) {
++  const P = ed25519_CURVE_p;
++  const v3 = mod(v * v * v, P);
++  const v7 = mod(v3 * v3 * v, P);
++  const pow3 = ed25519_pow_2_252_3(u * v7).pow_p_5_8;
++  let x = mod(u * v3 * pow3, P);
++  const vx2 = mod(v * x * x, P);
++  const root1 = x;
++  const root2 = mod(x * ED25519_SQRT_M1, P);
++  const useRoot1 = vx2 === u;
++  const useRoot2 = vx2 === mod(-u, P);
++  const noRoot = vx2 === mod(-u * ED25519_SQRT_M1, P);
++  if (useRoot1)
++    x = root1;
++  if (useRoot2 || noRoot)
++    x = root2;
++  if (isNegativeLE(x, P))
++    x = mod(-x, P);
++  return { isValid: useRoot1 || useRoot2, value: x };
++}
++var ed25519_Point = /* @__PURE__ */ edwards(ed25519_CURVE, { uvRatio });
++var x25519 = /* @__PURE__ */ (() => {
++  const P = ed25519_CURVE_p;
++  const powPminus2 = (x) => {
++    const { pow_p_5_8, b2 } = ed25519_pow_2_252_3(x);
++    return mod(pow2(pow_p_5_8, _3n2, P) * b2, P);
++  };
++  return montgomery({
++    P,
++    type: "x25519",
++    powPminus2,
++    adjustScalarBytes,
++    // ~3x faster fixed-base: [k]B on the birationally-equivalent Edwards curve using cached
++    // base tables, mapped back via u = (1+y)/(1-y) = (Z+Y)/(Z-Y) with one Fermat inversion.
++    // Same construction as libsodium's crypto_scalarmult_curve25519_base.
++    scalarMultBase: (k) => {
++      const kn = mod(k, ed25519_Point.Fn.ORDER);
++      if (kn === _0n6)
++        return _0n6;
++      const p = ed25519_Point.BASE.multiply(kn);
++      return mod((p.Z + p.Y) * powPminus2(mod(p.Z - p.Y, P)), P);
++    }
++  });
++})();
++
++// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/sha3.js
++var _0n7 = BigInt(0);
++var _1n7 = BigInt(1);
++var _2n5 = BigInt(2);
++var _7n2 = BigInt(7);
++var _256n = BigInt(256);
++var _0x71n = BigInt(113);
++var SHA3_PI = [];
++var SHA3_ROTL = [];
++var _SHA3_IOTA = [];
++for (let round = 0, R = _1n7, x = 1, y = 0; round < 24; round++) {
++  [x, y] = [y, (2 * x + 3 * y) % 5];
++  SHA3_PI.push(2 * (5 * y + x));
++  SHA3_ROTL.push((round + 1) * (round + 2) / 2 % 64);
++  let t = _0n7;
++  for (let j = 0; j < 7; j++) {
++    R = (R << _1n7 ^ (R >> _7n2) * _0x71n) % _256n;
++    if (R & _2n5)
++      t ^= _1n7 << (_1n7 << BigInt(j)) - _1n7;
++  }
++  _SHA3_IOTA.push(t);
++}
++var IOTAS = split(_SHA3_IOTA, true);
++var SHA3_IOTA_H = IOTAS[0];
++var SHA3_IOTA_L = IOTAS[1];
++var rotlSH = (h, l, s) => h << s | l >>> 32 - s;
++var rotlSL = (h, l, s) => l << s | h >>> 32 - s;
++var rotlBH = (h, l, s) => l << s - 32 | h >>> 64 - s;
++var rotlBL = (h, l, s) => h << s - 32 | l >>> 64 - s;
++var rotlH = (h, l, s) => s > 32 ? rotlBH(h, l, s) : rotlSH(h, l, s);
++var rotlL = (h, l, s) => s > 32 ? rotlBL(h, l, s) : rotlSL(h, l, s);
++var B = new Uint32Array(5 * 2);
++function keccakP(s, rounds = 24) {
++  if (!(s instanceof Uint32Array))
++    throw new TypeError('"s" expected Uint32Array(50), got type=' + typeof s);
++  if (s.length !== 50)
++    throw new RangeError('"s" expected Uint32Array(50), got length=' + s.length);
++  anumber(rounds, "rounds");
++  if (rounds < 1 || rounds > 24)
++    throw new Error('"rounds" expected integer 1..24');
++  for (let round = 24 - rounds; round < 24; round++) {
++    for (let x = 0; x < 10; x++)
++      B[x] = s[x] ^ s[x + 10] ^ s[x + 20] ^ s[x + 30] ^ s[x + 40];
++    for (let x = 0; x < 10; x += 2) {
++      const idx1 = (x + 8) % 10;
++      const idx0 = (x + 2) % 10;
++      const B0 = B[idx0];
++      const B1 = B[idx0 + 1];
++      const Th = rotlH(B0, B1, 1) ^ B[idx1];
++      const Tl = rotlL(B0, B1, 1) ^ B[idx1 + 1];
++      for (let y = 0; y < 50; y += 10) {
++        s[x + y] ^= Th;
++        s[x + y + 1] ^= Tl;
++      }
++    }
++    let curH = s[2];
++    let curL = s[3];
++    for (let t = 0; t < 24; t++) {
++      const shift = SHA3_ROTL[t];
++      const Th = rotlH(curH, curL, shift);
++      const Tl = rotlL(curH, curL, shift);
++      const PI = SHA3_PI[t];
++      curH = s[PI];
++      curL = s[PI + 1];
++      s[PI] = Th;
++      s[PI + 1] = Tl;
++    }
++    for (let y = 0; y < 50; y += 10) {
++      const b0 = s[y], b1 = s[y + 1], b2 = s[y + 2], b3 = s[y + 3];
++      s[y] ^= ~s[y + 2] & s[y + 4];
++      s[y + 1] ^= ~s[y + 3] & s[y + 5];
++      s[y + 2] ^= ~s[y + 4] & s[y + 6];
++      s[y + 3] ^= ~s[y + 5] & s[y + 7];
++      s[y + 4] ^= ~s[y + 6] & s[y + 8];
++      s[y + 5] ^= ~s[y + 7] & s[y + 9];
++      s[y + 6] ^= ~s[y + 8] & b0;
++      s[y + 7] ^= ~s[y + 9] & b1;
++      s[y + 8] ^= ~b0 & b2;
++      s[y + 9] ^= ~b1 & b3;
++    }
++    s[0] ^= SHA3_IOTA_H[round];
++    s[1] ^= SHA3_IOTA_L[round];
++  }
++  clean(B);
++}
++var Keccak = class _Keccak {
++  state;
++  pos = 0;
++  posOut = 0;
++  finished = false;
++  state32;
++  destroyed = false;
++  blockLen;
++  suffix;
++  outputLen;
++  canXOF;
++  enableXOF = false;
++  rounds;
++  // NOTE: we accept arguments in bytes instead of bits here.
++  constructor(blockLen, suffix, outputLen, enableXOF = false, rounds = 24) {
++    anumber(blockLen, "blockLen");
++    anumber(suffix, "suffix");
++    anumber(rounds, "rounds");
++    abool(enableXOF, "enableXOF");
++    this.blockLen = blockLen;
++    this.suffix = suffix;
++    this.outputLen = outputLen;
++    this.enableXOF = enableXOF;
++    this.canXOF = enableXOF;
++    this.rounds = rounds;
++    anumber(outputLen, "outputLen");
++    if (!(0 < blockLen && blockLen < 200))
++      throw new Error('"blockLen" must be 1..199');
++    this.state = new Uint8Array(200);
++    this.state32 = u32(this.state);
++  }
++  clone() {
++    return this._cloneInto();
++  }
++  keccak() {
++    swap32IfBE(this.state32);
++    keccakP(this.state32, this.rounds);
++    swap32IfBE(this.state32);
++    this.posOut = 0;
++    this.pos = 0;
++  }
++  update(data) {
++    aexists(this);
++    abytes(data);
++    const { blockLen, state, state32 } = this;
++    const len = data.length;
++    const canUseU32 = blockLen % 4 === 0 && data.byteOffset % 4 === 0;
++    const blockLen32 = blockLen / 4;
++    const data32 = canUseU32 && len >= blockLen ? u32(data) : void 0;
++    for (let pos = 0; pos < len; ) {
++      if (data32 !== void 0 && this.pos === 0 && pos % 4 === 0 && len - pos >= blockLen) {
++        for (let i = 0, o = pos / 4; i < blockLen32; i++)
++          state32[i] ^= data32[o + i];
++        pos += blockLen;
++        this.pos = blockLen;
++        this.keccak();
++        continue;
++      }
++      const take = Math.min(blockLen - this.pos, len - pos);
++      for (let i = 0; i < take; i++)
++        state[this.pos++] ^= data[pos++];
++      if (this.pos === blockLen)
++        this.keccak();
++    }
++    return this;
++  }
++  finish() {
++    if (this.finished)
++      return;
++    this.finished = true;
++    const { state, suffix, pos, blockLen } = this;
++    state[pos] ^= suffix;
++    if ((suffix & 128) !== 0 && pos === blockLen - 1)
++      this.keccak();
++    state[blockLen - 1] ^= 128;
++    this.keccak();
++  }
++  writeInto(out) {
++    aexists(this, false);
++    abytes(out);
++    this.finish();
++    const bufferOut = this.state;
++    const { blockLen } = this;
++    for (let pos = 0, len = out.length; pos < len; ) {
++      if (this.posOut >= blockLen)
++        this.keccak();
++      const take = Math.min(blockLen - this.posOut, len - pos);
++      out.set(bufferOut.subarray(this.posOut, this.posOut + take), pos);
++      this.posOut += take;
++      pos += take;
++    }
++    return out;
++  }
++  xofInto(out) {
++    if (!this.enableXOF)
++      throw new Error("XOF is not enabled");
++    return this.writeInto(out);
++  }
++  xof(bytes) {
++    anumber(bytes);
++    return this.xofInto(new Uint8Array(bytes));
++  }
++  digestInto(out) {
++    aoutput(out, this);
++    if (this.finished)
++      throw new Error("digest() was already called");
++    this.writeInto(out.length === this.outputLen ? out : out.subarray(0, this.outputLen));
++    this.destroy();
++  }
++  digest() {
++    const out = new Uint8Array(this.outputLen);
++    this.digestInto(out);
++    return out;
++  }
++  destroy() {
++    this.destroyed = true;
++    clean(this.state);
++  }
++  _cloneInto(to) {
++    const { blockLen, suffix, outputLen, rounds, enableXOF } = this;
++    to ||= new _Keccak(blockLen, suffix, outputLen, enableXOF, rounds);
++    to.blockLen = blockLen;
++    to.state32.set(this.state32);
++    to.pos = this.pos;
++    to.posOut = this.posOut;
++    to.finished = this.finished;
++    to.rounds = rounds;
++    to.suffix = suffix;
++    to.outputLen = outputLen;
++    to.enableXOF = enableXOF;
++    to.canXOF = this.canXOF;
++    to.destroyed = this.destroyed;
++    return to;
++  }
++};
++var genKeccak = (suffix, blockLen, outputLen, info = {}) => createHasher(() => new Keccak(blockLen, suffix, outputLen), info);
++var sha3_256 = /* @__PURE__ */ genKeccak(
++  6,
++  136,
++  32,
++  /* @__PURE__ */ oidNist(8)
++);
++var sha3_512 = /* @__PURE__ */ genKeccak(
++  6,
++  72,
++  64,
++  /* @__PURE__ */ oidNist(10)
++);
++var genShake = (suffix, blockLen, outputLen, info = {}) => createHasher((opts2 = {}) => {
++  opts2 = checkOpts({}, opts2);
++  return new Keccak(blockLen, suffix, opts2.dkLen === void 0 ? outputLen : opts2.dkLen, true);
++}, info);
++var shake128 = /* @__PURE__ */ genShake(31, 168, 16, /* @__PURE__ */ oidNist(11));
++var shake256 = /* @__PURE__ */ genShake(31, 136, 32, /* @__PURE__ */ oidNist(12));
++
++// node_modules/.pnpm/@noble+post-quantum@0.7.1/node_modules/@noble/post-quantum/utils.js
++var abytesDoc = abytes;
++var randomBytes3 = randomBytes;
++function aarray2(item, title, inner = () => {
++}) {
++  if (!Array.isArray(item))
++    throw new TypeError(`"${title}" expected array, got type=${typeof item}`);
++  for (let i = 0; i < item.length; i++)
++    inner(item[i], `${title}[${i}]`);
++  return item;
++}
++function aobject3(value, title = "object") {
++  if (value === null || typeof value !== "object" || Array.isArray(value))
++    throw new TypeError(title === "object" ? "expected valid options object" : `"${title}" expected object, got type=${typeof value}`);
++  return value;
++}
++function equalBytes(a, b) {
++  a = abytes(a);
++  b = abytes(b);
++  if (a.length !== b.length)
++    return false;
++  let diff = 0;
++  for (let i = 0; i < a.length; i++)
++    diff |= a[i] ^ b[i];
++  return diff === 0;
++}
++function copyBytes2(bytes) {
++  return new Uint8Array(abytes(bytes));
++}
++function splitCoder(label, ...lengths) {
++  const getLength = (c) => typeof c === "number" ? c : c.bytesLen;
++  const bytesLen = lengths.reduce((sum, a) => sum + getLength(a), 0);
++  return {
++    bytesLen,
++    encode: (bufs) => {
++      const res = new Uint8Array(bytesLen);
++      for (let i = 0, pos = 0; i < lengths.length; i++) {
++        const c = lengths[i];
++        const l = getLength(c);
++        const b = typeof c === "number" ? bufs[i] : c.encode(bufs[i]);
++        abytes(b, l, label);
++        res.set(b, pos);
++        if (typeof c !== "number")
++          b.fill(0);
++        pos += l;
++      }
++      return res;
++    },
++    decode: (buf) => {
++      abytes(buf, bytesLen, label);
++      const res = [];
++      for (const c of lengths) {
++        const l = getLength(c);
++        const b = buf.subarray(0, l);
++        res.push(typeof c === "number" ? b : c.decode(b));
++        buf = buf.subarray(l);
++      }
++      return res;
++    }
++  };
++}
++function vecCoder(c, vecLen) {
++  const coder = c;
++  const bytesLen = vecLen * coder.bytesLen;
++  return {
++    bytesLen,
++    encode: (u) => {
++      const uArr = aarray2(u, "u");
++      if (uArr.length !== vecLen)
++        throw new RangeError(`vecCoder.encode: wrong length=${uArr.length}. Expected: ${vecLen}`);
++      const res = new Uint8Array(bytesLen);
++      for (let i = 0, pos = 0; i < uArr.length; i++) {
++        const b = coder.encode(uArr[i]);
++        res.set(b, pos);
++        b.fill(0);
++        pos += b.length;
++      }
++      return res;
++    },
++    decode: (a) => {
++      abytes(a, bytesLen);
++      const r = [];
++      for (let i = 0; i < a.length; i += coder.bytesLen)
++        r.push(coder.decode(a.subarray(i, i + coder.bytesLen)));
++      return r;
++    }
++  };
++}
++function cleanBytes(...list) {
++  for (const t of list) {
++    if (Array.isArray(t))
++      for (const b of t)
++        b.fill(0);
++    else
++      t.fill(0);
++  }
++}
++function getMask(bits) {
++  anumber(bits, "bits");
++  if (bits > 32)
++    throw new RangeError('"bits" expected <= 32, got ' + bits);
++  return bits === 32 ? 4294967295 : ~(-1 << bits) >>> 0;
++}
++
++// node_modules/.pnpm/@noble+post-quantum@0.7.1/node_modules/@noble/post-quantum/_crystals.js
++var genCrystals = (opts2) => {
++  const { newPoly, N: N2, Q: Q2, F: F2, ROOT_OF_UNITY: ROOT_OF_UNITY2, brvBits, isKyber } = opts2;
++  const mod2 = (a, modulo = Q2) => {
++    const result = a % modulo | 0;
++    return (result >= 0 ? result | 0 : modulo + result | 0) | 0;
++  };
++  const smod = (a, modulo = Q2) => {
++    const r = mod2(a, modulo) | 0;
++    return (r > modulo >> 1 ? r - modulo | 0 : r) | 0;
++  };
++  function getZettas() {
++    const out = newPoly(N2);
++    for (let i = 0; i < N2; i++) {
++      const b = reverseBits(i, brvBits);
++      const p = BigInt(ROOT_OF_UNITY2) ** BigInt(b) % BigInt(Q2);
++      out[i] = Number(p) | 0;
++    }
++    return out;
++  }
++  const nttZetas = getZettas();
++  const inv = (_a) => {
++    throw new Error("not implemented");
++  };
++  const field = isKyber ? {
++    add: (a, b) => {
++      const r = a + b | 0;
++      return r >= Q2 ? r - Q2 | 0 : r;
++    },
++    sub: (a, b) => {
++      const r = a - b | 0;
++      return r < 0 ? r + Q2 | 0 : r;
++    },
++    mul: (a, b) => mod2((a | 0) * (b | 0)) | 0,
++    inv
++  } : {
++    add: (a, b) => mod2((a | 0) + (b | 0)) | 0,
++    sub: (a, b) => mod2((a | 0) - (b | 0)) | 0,
++    mul: (a, b) => mod2((a | 0) * (b | 0)) | 0,
++    inv
++  };
++  const nttOpts = {
++    N: N2,
++    roots: nttZetas,
++    invertButterflies: true,
++    skipStages: isKyber ? 1 : 0,
++    brp: false
++  };
++  const dif = FFTCore(field, { dit: false, ...nttOpts });
++  const dit = FFTCore(field, { dit: true, ...nttOpts });
++  const NTT = {
++    encode: (r) => {
++      return dif(r);
++    },
++    decode: (r) => {
++      dit(r);
++      for (let i = 0; i < r.length; i++)
++        r[i] = mod2(F2 * r[i]);
++      return r;
++    }
++  };
++  const bitsCoder = (d, c) => {
++    for (let i = 0, bufLen = 0; i < N2; i++) {
++      bufLen += d;
++      if (bufLen > 32)
++        getMask(bufLen);
++      bufLen %= 8;
++    }
++    const mask = getMask(d);
++    const bytesLen = d * (N2 / 8);
++    return {
++      bytesLen,
++      encode: (poly_) => {
++        const poly = poly_;
++        const r = new Uint8Array(bytesLen);
++        for (let i = 0, buf = 0, bufLen = 0, pos = 0; i < poly.length; i++) {
++          buf |= (c.encode(poly[i]) & mask) << bufLen;
++          bufLen += d;
++          for (; bufLen >= 8; bufLen -= 8, buf >>= 8)
++            r[pos++] = buf & 255;
++        }
++        return r;
++      },
++      decode: (bytes) => {
++        const r = newPoly(N2);
++        for (let i = 0, buf = 0, bufLen = 0, pos = 0; i < bytes.length; i++) {
++          buf |= bytes[i] << bufLen;
++          bufLen += 8;
++          for (; bufLen >= d; bufLen -= d, buf >>= d)
++            r[pos++] = c.decode(buf & mask);
++        }
++        return r;
++      }
++    };
++  };
++  return {
++    mod: mod2,
++    smod,
++    nttZetas,
++    NTT: {
++      encode: (r) => NTT.encode(r),
++      decode: (r) => NTT.decode(r)
++    },
++    bitsCoder
++  };
++};
++var createXofShake = (shake) => (seed, blockLen) => {
++  if (!blockLen)
++    blockLen = shake.blockLen;
++  const _seed = new Uint8Array(seed.length + 2);
++  _seed.set(seed);
++  const seedLen = seed.length;
++  const buf = new Uint8Array(blockLen);
++  let h = shake.create({});
++  let calls = 0;
++  let xofs = 0;
++  return {
++    stats: () => ({ calls, xofs }),
++    get: (x, y) => {
++      _seed[seedLen + 0] = x;
++      _seed[seedLen + 1] = y;
++      h.destroy();
++      h = shake.create({}).update(_seed);
++      calls++;
++      return () => {
++        xofs++;
++        return h.xofInto(buf);
++      };
++    },
++    clean: () => {
++      h.destroy();
++      cleanBytes(buf, _seed);
++    }
++  };
++};
++var XOF128 = /* @__PURE__ */ createXofShake(shake128);
++
++// node_modules/.pnpm/@noble+post-quantum@0.7.1/node_modules/@noble/post-quantum/ml-kem.js
++var N = 256;
++var Q = 3329;
++var F = 3303;
++var ROOT_OF_UNITY = 17;
++var crystals = /* @__PURE__ */ genCrystals({
++  N,
++  Q,
++  F,
++  ROOT_OF_UNITY,
++  newPoly: (n) => new Uint16Array(n),
++  brvBits: 7,
++  isKyber: true
++});
++var PARAMS = /* @__PURE__ */ (() => Object.freeze({
++  512: Object.freeze({ N, Q, K: 2, ETA1: 3, ETA2: 2, du: 10, dv: 4, RBGstrength: 128 }),
++  768: Object.freeze({ N, Q, K: 3, ETA1: 2, ETA2: 2, du: 10, dv: 4, RBGstrength: 192 }),
++  1024: Object.freeze({ N, Q, K: 4, ETA1: 2, ETA2: 2, du: 11, dv: 5, RBGstrength: 256 })
++}))();
++var compress = (d) => {
++  if (d >= 12)
++    return { encode: (i) => i, decode: (i) => i >= Q ? i - Q : i };
++  const a = 2 ** (d - 1);
++  return {
++    // This only matches standalone Compress_d after bitsCoder masks the result into Z_(2^d).
++    encode: (i) => ((i << d) + Q / 2) / Q,
++    // const decompress = (i: number) => round((Q / 2 ** d) * i);
++    decode: (i) => i * Q + a >>> d
++  };
++};
++var byteCoder = (d) => crystals.bitsCoder(d, d === 12 ? { encode: (i) => i, decode: (i) => i >= Q ? i - Q : i } : { encode: (i) => i, decode: (i) => i });
++var polyCoder = (d) => d === 12 ? byteCoder(12) : crystals.bitsCoder(d, compress(d));
++function polyAdd(a_, b_) {
++  const a = a_;
++  const b = b_;
++  for (let i = 0; i < N; i++) {
++    const r = a[i] + b[i];
++    a[i] = r >= Q ? r - Q : r;
++  }
++}
++function polySub(a_, b_) {
++  const a = a_;
++  const b = b_;
++  for (let i = 0; i < N; i++) {
++    const r = a[i] - b[i];
++    a[i] = r < 0 ? r + Q : r;
++  }
++}
++function BaseCaseMultiply(a0, a1, b0, b1, zeta) {
++  const c0 = crystals.mod(crystals.mod(a1 * b1) * zeta + a0 * b0);
++  const c1 = crystals.mod(a0 * b1 + a1 * b0);
++  return { c0, c1 };
++}
++function MultiplyNTTs(f_, g_) {
++  const f = f_;
++  const g = g_;
++  for (let i = 0; i < N / 2; i++) {
++    let z = crystals.nttZetas[64 + (i >> 1)];
++    if (i & 1)
++      z = -z;
++    const { c0, c1 } = BaseCaseMultiply(f[2 * i + 0], f[2 * i + 1], g[2 * i + 0], g[2 * i + 1], z);
++    f[2 * i + 0] = c0;
++    f[2 * i + 1] = c1;
++  }
++  return f;
++}
++function SampleNTT(xof_) {
++  const xof = xof_;
++  const r = new Uint16Array(N);
++  for (let j = 0; j < N; ) {
++    const b = xof();
++    if (b.length % 3)
++      throw new Error("SampleNTT: unaligned block");
++    for (let i = 0; j < N && i + 3 <= b.length; i += 3) {
++      const d1 = (b[i + 0] >> 0 | b[i + 1] << 8) & 4095;
++      const d2 = (b[i + 1] >> 4 | b[i + 2] << 4) & 4095;
++      if (d1 < Q)
++        r[j++] = d1;
++      if (j < N && d2 < Q)
++        r[j++] = d2;
++    }
++  }
++  return r;
++}
++var sampleCBDBytes = (buf, eta) => {
++  const r = new Uint16Array(N);
++  const b32 = u32(buf);
++  swap32IfBE(b32);
++  let len = 0;
++  for (let i = 0, p = 0, bb = 0, t0 = 0; i < b32.length; i++) {
++    let b = b32[i];
++    for (let j = 0; j < 32; j++) {
++      bb += b & 1;
++      b >>= 1;
++      len += 1;
++      if (len === eta) {
++        t0 = bb;
++        bb = 0;
++      } else if (len === 2 * eta) {
++        r[p++] = crystals.mod(t0 - bb);
++        bb = 0;
++        len = 0;
++      }
++    }
++  }
++  swap32IfBE(b32);
++  if (len)
++    throw new Error(`sampleCBD: leftover bits: ${len}`);
++  return r;
++};
++function sampleCBD(PRF_, seed, nonce, eta) {
++  const PRF = PRF_;
++  return sampleCBDBytes(PRF(eta * N / 4, seed, nonce), eta);
++}
++var genKPKE = (opts_) => {
++  const opts2 = opts_;
++  const { K, PRF, XOF, HASH512, ETA1, ETA2, du, dv } = opts2;
++  const poly1 = polyCoder(1);
++  const polyV = polyCoder(dv);
++  const polyU = polyCoder(du);
++  const publicCoder = splitCoder("publicKey", vecCoder(polyCoder(12), K), 32);
++  const secretCoder = vecCoder(polyCoder(12), K);
++  const cipherCoder = splitCoder("ciphertext", vecCoder(polyU, K), polyV);
++  const seedCoder = splitCoder("seed", 32, 32);
++  const encryptCore = (tHat, getA, msg, seed) => {
++    const rHat = [];
++    for (let i = 0; i < K; i++)
++      rHat.push(crystals.NTT.encode(sampleCBD(PRF, seed, i, ETA1)));
++    const tmp2 = new Uint16Array(N);
++    const u = [];
++    for (let i = 0; i < K; i++) {
++      const e1 = sampleCBD(PRF, seed, K + i, ETA2);
++      const tmp = new Uint16Array(N);
++      for (let j = 0; j < K; j++) {
++        const aij = getA(i, j);
++        polyAdd(tmp, MultiplyNTTs(aij, rHat[j]));
++      }
++      polyAdd(e1, crystals.NTT.decode(tmp));
++      u.push(e1);
++      polyAdd(tmp2, MultiplyNTTs(tHat[i], rHat[i]));
++      cleanBytes(tmp);
++    }
++    const e2 = sampleCBD(PRF, seed, 2 * K, ETA2);
++    polyAdd(e2, crystals.NTT.decode(tmp2));
++    const v = poly1.decode(msg);
++    polyAdd(v, e2);
++    cleanBytes(tHat, rHat, tmp2, e2);
++    return cipherCoder.encode([u, v]);
++  };
++  return {
++    secretCoder,
++    lengths: {
++      secretKey: secretCoder.bytesLen,
++      publicKey: publicCoder.bytesLen,
++      cipherText: cipherCoder.bytesLen
++    },
++    keygen: (seed) => {
++      abytesDoc(seed, 32, "seed");
++      const seedDst = new Uint8Array(33);
++      seedDst.set(seed);
++      seedDst[32] = K;
++      const seedHash = HASH512(seedDst);
++      const [rho, sigma] = seedCoder.decode(seedHash);
++      const sHat = [];
++      const tHat = [];
++      for (let i = 0; i < K; i++)
++        sHat.push(crystals.NTT.encode(sampleCBD(PRF, sigma, i, ETA1)));
++      const x = XOF(rho);
++      for (let i = 0; i < K; i++) {
++        const e = crystals.NTT.encode(sampleCBD(PRF, sigma, K + i, ETA1));
++        for (let j = 0; j < K; j++) {
++          const aji = SampleNTT(x.get(j, i));
++          polyAdd(e, MultiplyNTTs(aji, sHat[j]));
++        }
++        tHat.push(e);
++      }
++      x.clean();
++      const res = {
++        publicKey: publicCoder.encode([tHat, rho]),
++        secretKey: secretCoder.encode(sHat)
++      };
++      cleanBytes(rho, sigma, sHat, tHat, seedDst, seedHash);
++      return res;
++    },
++    encrypt: (publicKey, msg, seed) => {
++      const [tHat, rho] = publicCoder.decode(publicKey);
++      const x = XOF(rho);
++      const res = encryptCore(tHat, (i, j) => SampleNTT(x.get(i, j)), msg, seed);
++      x.clean();
++      return res;
++    },
++    // Expands the full Â matrix (public data derived from rho) once, so repeated encryptions
++    // against the same ek skip the K² SampleNTT XOF expansions. Cached polys are copied per
++    // call because encryptCore mutates its inputs in place.
++    prepare: (publicKey) => {
++      const [tHat, rho] = publicCoder.decode(publicKey);
++      const x = XOF(rho);
++      const A = [];
++      for (let i = 0; i < K; i++)
++        for (let j = 0; j < K; j++)
++          A.push(SampleNTT(x.get(i, j)));
++      x.clean();
++      return {
++        encrypt: (msg, seed) => encryptCore(tHat.map((p) => p.slice()), (i, j) => A[i * K + j].slice(), msg, seed),
++        clean: () => cleanBytes(tHat, A)
++      };
++    },
++    decrypt: (cipherText, privateKey) => {
++      const [u, v] = cipherCoder.decode(cipherText);
++      const sk = secretCoder.decode(privateKey);
++      const tmp = new Uint16Array(N);
++      for (let i = 0; i < K; i++)
++        polyAdd(tmp, MultiplyNTTs(sk[i], crystals.NTT.encode(u[i])));
++      polySub(v, crystals.NTT.decode(tmp));
++      const res = poly1.encode(v);
++      cleanBytes(tmp, sk, u, v);
++      return res;
++    }
++  };
++};
++function createKyber(opts2) {
++  const rawOpts = opts2;
++  const KPKE = genKPKE(rawOpts);
++  const { HASH256, HASH512, KDF } = rawOpts;
++  const { secretCoder: KPKESecretCoder, lengths } = KPKE;
++  const secretCoder = splitCoder("secretKey", lengths.secretKey, lengths.publicKey, 32, 32);
++  const msgLen = 32;
++  const seedLen = 64;
++  const validateModulus = (publicKey, fn) => {
++    const eke = publicKey.subarray(0, 384 * rawOpts.K);
++    const ek = KPKESecretCoder.encode(KPKESecretCoder.decode(copyBytes2(eke)));
++    const ok = equalBytes(ek, eke);
++    cleanBytes(ek);
++    if (!ok)
++      throw new Error(`ML-KEM.${fn}: wrong publicKey modulus`);
++  };
++  const kemLengths = Object.freeze({
++    ...lengths,
++    seed: 64,
++    msg: msgLen,
++    msgRand: msgLen,
++    secretKey: secretCoder.bytesLen
++  });
++  return Object.freeze({
++    info: Object.freeze({ type: "ml-kem" }),
++    lengths: kemLengths,
++    keygen: (seed) => {
++      const ownSeed = seed === void 0;
++      const s = ownSeed ? randomBytes3(seedLen) : seed;
++      let sk;
++      let publicKeyHash;
++      try {
++        abytesDoc(s, seedLen, "seed");
++        const keys = KPKE.keygen(s.subarray(0, 32));
++        const publicKey = keys.publicKey;
++        sk = keys.secretKey;
++        publicKeyHash = HASH256(publicKey);
++        const secretKey = secretCoder.encode([sk, publicKey, publicKeyHash, s.subarray(32)]);
++        return {
++          publicKey,
++          secretKey
++        };
++      } finally {
++        if (sk !== void 0)
++          cleanBytes(sk);
++        if (publicKeyHash !== void 0)
++          cleanBytes(publicKeyHash);
++        if (ownSeed)
++          cleanBytes(s);
++      }
++    },
++    getPublicKey: (secretKey) => {
++      const [_sk, publicKey, _publicKeyHash, _z] = secretCoder.decode(secretKey);
++      return Uint8Array.from(publicKey);
++    },
++    encapsulate: (publicKey, msg) => {
++      const ownMsg = msg === void 0;
++      const m = ownMsg ? randomBytes3(msgLen) : msg;
++      let kr;
++      try {
++        abytesDoc(publicKey, lengths.publicKey, "publicKey");
++        abytesDoc(m, msgLen, "message");
++        validateModulus(publicKey, "encapsulate");
++        kr = HASH512.create().update(m).update(HASH256(publicKey)).digest();
++        const cipherText = KPKE.encrypt(publicKey, m, kr.subarray(32, 64));
++        return {
++          cipherText,
++          sharedSecret: kr.subarray(0, 32)
++        };
++      } finally {
++        if (kr !== void 0)
++          cleanBytes(kr.subarray(32));
++        if (ownMsg)
++          cleanBytes(m);
++      }
++    },
++    decapsulate: (cipherText, secretKey) => {
++      abytesDoc(secretKey, secretCoder.bytesLen, "secretKey");
++      abytesDoc(cipherText, lengths.cipherText, "cipherText");
++      const k768 = secretCoder.bytesLen - 96;
++      const start = k768 + 32;
++      const test = HASH256(secretKey.subarray(k768 / 2, start));
++      if (!equalBytes(test, secretKey.subarray(start, start + 32)))
++        throw new Error("invalid secretKey: hash check failed");
++      const [sk, publicKey, publicKeyHash, z] = secretCoder.decode(secretKey);
++      const msg = KPKE.decrypt(cipherText, sk);
++      const kr = HASH512.create().update(msg).update(publicKeyHash).digest();
++      const Khat = kr.subarray(0, 32);
++      const cipherText2 = KPKE.encrypt(publicKey, msg, kr.subarray(32, 64));
++      const isValid = equalBytes(cipherText, cipherText2);
++      const Kbar = KDF.create({ dkLen: 32 }).update(z).update(cipherText).digest();
++      cleanBytes(msg, cipherText2, kr.subarray(32), !isValid ? Khat : Kbar);
++      return isValid ? Khat : Kbar;
++    },
++    /**
++     * Experimental prototype: pre-expand a public key so repeated encapsulate/decapsulate
++     * against the same key skip re-validation, H(ek), t̂ decoding and the K² SampleNTT
++     * XOF expansions of Â. Only public data is cached; see {@link KEMPrepared}.
++     */
++    prepare: (publicKey) => {
++      abytesDoc(publicKey, lengths.publicKey, "publicKey");
++      validateModulus(publicKey, "prepare");
++      const ek = copyBytes2(publicKey);
++      const publicKeyHash = HASH256(ek);
++      const cached = KPKE.prepare(ek);
++      return Object.freeze({
++        publicKey: ek,
++        encapsulate: (msg) => {
++          const ownMsg = msg === void 0;
++          const m = ownMsg ? randomBytes3(msgLen) : msg;
++          let kr;
++          try {
++            abytesDoc(m, msgLen, "message");
++            kr = HASH512.create().update(m).update(publicKeyHash).digest();
++            const cipherText = cached.encrypt(m, kr.subarray(32, 64));
++            return {
++              cipherText,
++              sharedSecret: kr.subarray(0, 32)
++            };
++          } finally {
++            if (kr !== void 0)
++              cleanBytes(kr.subarray(32));
++            if (ownMsg)
++              cleanBytes(m);
++          }
++        },
++        decapsulate: (cipherText, secretKey) => {
++          abytesDoc(secretKey, secretCoder.bytesLen, "secretKey");
++          abytesDoc(cipherText, lengths.cipherText, "cipherText");
++          const [sk, ekEmbedded, storedHash, z] = secretCoder.decode(secretKey);
++          if (!equalBytes(ekEmbedded, ek) || !equalBytes(storedHash, publicKeyHash))
++            throw new Error("ML-KEM.decapsulate: secretKey does not match prepared publicKey");
++          const msg = KPKE.decrypt(cipherText, sk);
++          const kr = HASH512.create().update(msg).update(publicKeyHash).digest();
++          const Khat = kr.subarray(0, 32);
++          const cipherText2 = cached.encrypt(msg, kr.subarray(32, 64));
++          const isValid = equalBytes(cipherText, cipherText2);
++          const Kbar = KDF.create({ dkLen: 32 }).update(z).update(cipherText).digest();
++          cleanBytes(msg, cipherText2, kr.subarray(32), !isValid ? Khat : Kbar);
++          return isValid ? Khat : Kbar;
++        },
++        clean: cached.clean
++      });
++    }
++  });
++}
++function shakePRF(dkLen, key, nonce) {
++  return shake256.create({ dkLen }).update(key).update(new Uint8Array([nonce])).digest();
++}
++var opts = /* @__PURE__ */ (() => ({
++  HASH256: sha3_256,
++  HASH512: sha3_512,
++  KDF: shake256,
++  XOF: XOF128,
++  PRF: shakePRF
++}))();
++var mk = (params) => createKyber({
++  ...opts,
++  ...params
++});
++var ml_kem768 = /* @__PURE__ */ (() => mk(PARAMS[768]))();
++
++// node_modules/.pnpm/@noble+post-quantum@0.7.1/node_modules/@noble/post-quantum/hybrid.js
++var validateKEM = (kem, title) => {
++  const k = aobject3(kem, title);
++  aobject3(k.lengths, `${title}.lengths`);
++  afunction(k.keygen, `${title}.keygen`);
++  afunction(k.getPublicKey, `${title}.getPublicKey`);
++  afunction(k.encapsulate, `${title}.encapsulate`);
++  afunction(k.decapsulate, `${title}.decapsulate`);
++  return k;
++};
++function ecKeygen(curve, allowZeroKey = false) {
++  const c = aobject3(curve, "curve");
++  aobject3(c.lengths, "curve.lengths");
++  afunction(c.keygen, "curve.keygen");
++  afunction(c.getPublicKey, "curve.getPublicKey");
++  abool2(allowZeroKey, "allowZeroKey");
++  const lengths = curve.lengths;
++  let keygen = curve.keygen;
++  if (allowZeroKey) {
++    if (!("getSharedSecret" in curve && "sign" in curve && "verify" in curve))
++      throw new Error("allowZeroKey requires a Weierstrass curve");
++    const wCurve = curve;
++    const Fn = wCurve.Point.Fn;
++    keygen = (seed = randomBytes3(lengths.seed)) => {
++      abytes(seed, lengths.seed, "seed");
++      const seedScalar = Fn.isLE ? bytesToNumberLE(seed) : bytesToNumberBE(seed);
++      const secretKey = Fn.toBytes(Fn.create(seedScalar));
++      return {
++        secretKey,
++        publicKey: curve.getPublicKey(secretKey)
++      };
++    };
++  }
++  return {
++    lengths: { secretKey: lengths.secretKey, publicKey: lengths.publicKey, seed: lengths.seed },
++    keygen: (seed) => keygen(seed),
++    getPublicKey: (secretKey) => curve.getPublicKey(secretKey)
++  };
++}
++function _ecdhKem(curve, allowZeroKey = false) {
++  const kg = ecKeygen(curve, allowZeroKey);
++  if (!curve.getSharedSecret)
++    throw new Error("wrong curve");
++  const decapsulate = (cipherText, secretKey) => {
++    const res = curve.getSharedSecret(secretKey, cipherText);
++    return curve.lengths.publicKeyHasPrefix ? res.subarray(1) : res;
++  };
++  return {
++    lengths: { ...kg.lengths, msg: kg.lengths.seed, cipherText: kg.lengths.publicKey },
++    keygen: kg.keygen,
++    getPublicKey: kg.getPublicKey,
++    encapsulate(publicKey, rand = randomBytes3(curve.lengths.seed)) {
++      const seed = copyBytes2(rand);
++      let ek = void 0;
++      try {
++        ek = kg.keygen(seed).secretKey;
++        const sharedSecret = decapsulate(publicKey, ek);
++        const cipherText = curve.getPublicKey(ek);
++        return { sharedSecret, cipherText };
++      } finally {
++        cleanBytes(seed);
++        if (ek)
++          cleanBytes(ek);
++      }
++    },
++    decapsulate
++  };
++}
++function positiveLength(value, title) {
++  const length = anumber(value, title);
++  if (length === 0)
++    throw new RangeError(`"${title}" expected integer greater than 0, got 0`);
++  return length;
++}
++function splitLengths(lst, name) {
++  const coder = splitCoder(name, ...lst.map((i) => {
++    if (typeof i.lengths[name] !== "number")
++      throw new Error("wrong length: " + name);
++    return positiveLength(i.lengths[name], name);
++  }));
++  positiveLength(coder.bytesLen, name);
++  return coder;
++}
++function expandSeedXof(xof) {
++  return ((seed, seedLen) => xof(seed, { dkLen: seedLen }));
++}
++function combineKeys(realSeedLen, expandSeed_, ...ck_) {
++  const expandSeed = expandSeed_;
++  const ck = ck_;
++  const seedCoder = splitLengths(ck, "seed");
++  const pkCoder = splitLengths(ck, "publicKey");
++  const rootSeedLen = positiveLength(realSeedLen === void 0 ? seedCoder.bytesLen : realSeedLen, "realSeedLen");
++  function expandDecapsulationKey(seed) {
++    abytes(seed, rootSeedLen);
++    const expandedRaw = expandSeed(seed, seedCoder.bytesLen);
++    const expandedSeed = expandedRaw.buffer === seed.buffer ? copyBytes2(expandedRaw) : expandedRaw;
++    const expanded = [];
++    const keySecret = [];
++    const secretKey = [];
++    const publicKey = [];
++    let ok = false;
++    try {
++      for (const part of seedCoder.decode(expandedSeed))
++        expanded.push(copyBytes2(part));
++      for (let i = 0; i < ck.length; i++) {
++        const keys = ck[i].keygen(expanded[i]);
++        keySecret.push(keys.secretKey);
++        secretKey.push(copyBytes2(keys.secretKey));
++        publicKey.push(keys.publicKey);
++      }
++      ok = true;
++      return { secretKey, publicKey };
++    } finally {
++      cleanBytes(expandedSeed, expanded, keySecret);
++      if (!ok)
++        cleanBytes(secretKey);
++    }
++  }
++  const keygen = (seed) => {
++    const root = seed === void 0 ? randomBytes3(rootSeedLen) : copyBytes2(seed);
++    let res;
++    try {
++      const { publicKey: pk, secretKey } = expandDecapsulationKey(root);
++      try {
++        res = {
++          secretKey: root,
++          publicKey: pkCoder.encode(pk)
++        };
++      } finally {
++        cleanBytes(pk, secretKey);
++      }
++      return res;
++    } finally {
++      if (!res)
++        cleanBytes(root);
++    }
++  };
++  return {
++    info: { lengths: { seed: rootSeedLen, publicKey: pkCoder.bytesLen, secretKey: rootSeedLen } },
++    // Composite secret keys are root seeds, so public-key derivation reruns key expansion from
++    // that seed instead of decoding a packed child-secret-key structure.
++    getPublicKey: (secretKey) => {
++      const keys = keygen(secretKey);
++      cleanBytes(keys.secretKey);
++      return keys.publicKey;
++    },
++    keygen,
++    expandDecapsulationKey,
++    realSeedLen: rootSeedLen
++  };
++}
++function combineKEMS(realSeedLen, realMsgLen, expandSeed, combiner, ...kems) {
++  if (realSeedLen !== void 0)
++    positiveLength(realSeedLen, "realSeedLen");
++  if (realMsgLen !== void 0)
++    positiveLength(realMsgLen, "realMsgLen");
++  if (typeof expandSeed !== "function")
++    throw new TypeError('"expandSeed" expected function, got type=' + typeof expandSeed);
++  if (typeof combiner !== "function")
++    throw new TypeError('"combiner" expected function, got type=' + typeof combiner);
++  const rawCombiner = combiner;
++  const rawKems = kems;
++  if (rawKems.length === 0)
++    throw new RangeError("combineKEMS requires at least one KEM");
++  for (let i = 0; i < rawKems.length; i++)
++    validateKEM(rawKems[i], `kems[${i}]`);
++  const keys = combineKeys(realSeedLen, expandSeed, ...rawKems);
++  const ctCoder = splitLengths(rawKems, "cipherText");
++  const pkCoder = splitLengths(rawKems, "publicKey");
++  const msgCoder = splitLengths(rawKems, "msg");
++  const sharedSecretLen = positiveLength(realMsgLen === void 0 ? msgCoder.bytesLen : realMsgLen, "realMsgLen");
++  const lengths = Object.freeze({
++    ...keys.info.lengths,
++    msg: sharedSecretLen,
++    msgRand: msgCoder.bytesLen,
++    cipherText: ctCoder.bytesLen
++  });
++  const combine = (publicKeys, cipherTexts, sharedSecrets) => {
++    const combined = rawCombiner(publicKeys, cipherTexts, sharedSecrets);
++    try {
++      return copyBytes2(abytes(combined, sharedSecretLen, "sharedSecret"));
++    } catch (error) {
++      if (isBytes(combined)) {
++        const overlaps = (value) => combined.buffer === value.buffer && combined.byteOffset < value.byteOffset + value.byteLength && value.byteOffset < combined.byteOffset + combined.byteLength;
++        const aliasesPublicInput = publicKeys.some(overlaps) || cipherTexts.some(overlaps);
++        if (!aliasesPublicInput)
++          cleanBytes(combined);
++      }
++      throw error;
++    }
++  };
++  return Object.freeze({
++    lengths,
++    getPublicKey: keys.getPublicKey,
++    keygen: keys.keygen,
++    encapsulate(pk, randomness = randomBytes3(msgCoder.bytesLen)) {
++      const pks = pkCoder.decode(pk);
++      const rand = msgCoder.decode(randomness);
++      const sharedSecret = [];
++      const cipherText = [];
++      try {
++        for (let i = 0; i < rawKems.length; i++) {
++          const enc = rawKems[i].encapsulate(pks[i], rand[i]);
++          sharedSecret.push(enc.sharedSecret);
++          cipherText.push(enc.cipherText);
++        }
++        const encodedCipherText = ctCoder.encode(cipherText);
++        return {
++          // Detach the combiner result before cleanup: a caller-provided combiner may alias one of
++          // the child sharedSecret buffers, and those child buffers are zeroized immediately below.
++          sharedSecret: combine(pks, cipherText, sharedSecret),
++          cipherText: encodedCipherText
++        };
++      } finally {
++        cleanBytes(sharedSecret, cipherText);
++      }
++    },
++    decapsulate(ct, seed) {
++      const cts = ctCoder.decode(ct);
++      const { publicKey, secretKey } = keys.expandDecapsulationKey(seed);
++      const sharedSecret = [];
++      try {
++        for (let i = 0; i < rawKems.length; i++)
++          sharedSecret.push(rawKems[i].decapsulate(cts[i], secretKey[i]));
++        return combine(publicKey, cts, sharedSecret);
++      } finally {
++        cleanBytes(secretKey, sharedSecret);
++      }
++    }
++  });
++}
++var x25519kem = /* @__PURE__ */ _ecdhKem(x25519);
++var ml_kem768_x25519 = /* @__PURE__ */ (() => combineKEMS(
++  32,
++  32,
++  expandSeedXof(shake256),
++  // Awesome label, so much escaping hell in a single line.
++  (pk, ct, ss) => sha3_256(concatBytes2(ss[0], ss[1], ct[1], pk[1], asciiToBytes("\\.//^\\"))),
++  ml_kem768,
++  x25519kem
++))();
++export {
++  ml_kem768,
++  ml_kem768_x25519 as xwing
++};

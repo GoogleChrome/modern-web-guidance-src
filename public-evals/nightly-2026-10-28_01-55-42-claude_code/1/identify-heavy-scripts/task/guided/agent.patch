@@ -1,0 +1,20 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,16 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!--
++    Performance monitor: attributes main-thread blocking, slow downloads and
++    sluggish interactions to specific scripts. Loaded async so it never blocks
++    rendering; buffered observers still capture everything that ran before it.
++    Run __scriptMonitor.report() in DevTools, or set data-endpoint to beacon a
++    JSON summary to your analytics server.
++  -->
++  <script src="/script-monitor.js" async data-log="true"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

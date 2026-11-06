@@ -1,0 +1,355 @@
+diff --git a/index.html b/index.html
+index 66c9173..7e62a62 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +165,210 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <drink-card drink-id="maple-oat-latte">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                position: relative;
++                transition: box-shadow 0.3s;
++              }
++
++              :host([favorited]) {
++                box-shadow: 0 0 0 2px var(--accent), 0 2px 5px rgba(0, 0, 0, 0.1);
++              }
++
++              .title {
++                margin: 0 2rem 10px;
++              }
++
++              ::slotted([slot="title"]) {
++                color: var(--primary);
++              }
++
++              .favorite {
++                position: absolute;
++                top: 12px;
++                right: 12px;
++                width: 2rem;
++                height: 2rem;
++                border: 1px solid var(--secondary);
++                border-radius: 50%;
++                background: white;
++                color: var(--primary);
++                font-size: 1rem;
++                line-height: 1;
++                cursor: pointer;
++                transition: background 0.3s, color 0.3s, border-color 0.3s;
++              }
++
++              .favorite:hover,
++              .favorite:focus-visible {
++                border-color: var(--accent);
++              }
++
++              .favorite[aria-pressed="true"] {
++                background: var(--accent);
++                border-color: var(--accent);
++                color: white;
++              }
++
++              /* Server-rendered but not yet hydrated */
++              :host(:not(:defined)) .favorite {
++                cursor: progress;
++              }
++            </style>
++            <button class="favorite" part="favorite" type="button" aria-pressed="false"
++              aria-label="Add Maple Oat Latte to favorites">&#9734;</button>
++            <div class="title"><slot name="title"></slot></div>
++            <slot></slot>
++            <slot name="action"></slot>
++          </template>
++          <h3 slot="title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <a slot="action" href="/menu/seasonal" class="btn">View Details</a>
++        </drink-card>
++        <drink-card drink-id="dark-roast-espresso">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                position: relative;
++                transition: box-shadow 0.3s;
++              }
++
++              :host([favorited]) {
++                box-shadow: 0 0 0 2px var(--accent), 0 2px 5px rgba(0, 0, 0, 0.1);
++              }
++
++              .title {
++                margin: 0 2rem 10px;
++              }
++
++              ::slotted([slot="title"]) {
++                color: var(--primary);
++              }
++
++              .favorite {
++                position: absolute;
++                top: 12px;
++                right: 12px;
++                width: 2rem;
++                height: 2rem;
++                border: 1px solid var(--secondary);
++                border-radius: 50%;
++                background: white;
++                color: var(--primary);
++                font-size: 1rem;
++                line-height: 1;
++                cursor: pointer;
++                transition: background 0.3s, color 0.3s, border-color 0.3s;
++              }
++
++              .favorite:hover,
++              .favorite:focus-visible {
++                border-color: var(--accent);
++              }
++
++              .favorite[aria-pressed="true"] {
++                background: var(--accent);
++                border-color: var(--accent);
++                color: white;
++              }
++
++              /* Server-rendered but not yet hydrated */
++              :host(:not(:defined)) .favorite {
++                cursor: progress;
++              }
++            </style>
++            <button class="favorite" part="favorite" type="button" aria-pressed="false"
++              aria-label="Add Dark Roast Espresso to favorites">&#9734;</button>
++            <div class="title"><slot name="title"></slot></div>
++            <slot></slot>
++            <slot name="action"></slot>
++          </template>
++          <h3 slot="title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <a slot="action" href="/menu/espresso" class="btn">View Details</a>
++        </drink-card>
++        <drink-card drink-id="cold-brew">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                position: relative;
++                transition: box-shadow 0.3s;
++              }
++
++              :host([favorited]) {
++                box-shadow: 0 0 0 2px var(--accent), 0 2px 5px rgba(0, 0, 0, 0.1);
++              }
++
++              .title {
++                margin: 0 2rem 10px;
++              }
++
++              ::slotted([slot="title"]) {
++                color: var(--primary);
++              }
++
++              .favorite {
++                position: absolute;
++                top: 12px;
++                right: 12px;
++                width: 2rem;
++                height: 2rem;
++                border: 1px solid var(--secondary);
++                border-radius: 50%;
++                background: white;
++                color: var(--primary);
++                font-size: 1rem;
++                line-height: 1;
++                cursor: pointer;
++                transition: background 0.3s, color 0.3s, border-color 0.3s;
++              }
++
++              .favorite:hover,
++              .favorite:focus-visible {
++                border-color: var(--accent);
++              }
++
++              .favorite[aria-pressed="true"] {
++                background: var(--accent);
++                border-color: var(--accent);
++                color: white;
++              }
++
++              /* Server-rendered but not yet hydrated */
++              :host(:not(:defined)) .favorite {
++                cursor: progress;
++              }
++            </style>
++            <button class="favorite" part="favorite" type="button" aria-pressed="false"
++              aria-label="Add Cold Brew to favorites">&#9734;</button>
++            <div class="title"><slot name="title"></slot></div>
++            <slot></slot>
++            <slot name="action"></slot>
++          </template>
++          <h3 slot="title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <a slot="action" href="/menu/cold-brew" class="btn">View Details</a>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +383,107 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Hydrates server-rendered <drink-card> elements. The shadow root and its
++    // styles already exist from the declarative template, so we only attach
++    // behavior to it -- nothing is re-rendered.
++    const STORAGE_KEY = 'daily-grind:favorites';
++
++    const loadFavorites = () => {
++      try {
++        return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? []);
++      } catch {
++        return new Set();
++      }
++    };
++
++    const saveFavorites = (favorites) => {
++      try {
++        localStorage.setItem(STORAGE_KEY, JSON.stringify([...favorites]));
++      } catch {
++        // Storage unavailable (private mode, quota); favorites stay in-memory.
++      }
++    };
++
++    class DrinkCard extends HTMLElement {
++      static observedAttributes = ['favorited'];
++
++      #internals = this.attachInternals();
++      #button = null;
++
++      connectedCallback() {
++        if (this.#button) return;
++
++        let root = this.#internals.shadowRoot;
++        if (!root) {
++          // Fallback for browsers without Declarative Shadow DOM support.
++          const template = this.querySelector(':scope > template[shadowrootmode]');
++          root = this.attachShadow({ mode: 'open' });
++          if (template) {
++            root.append(template.content);
++            template.remove();
++          }
++        }
++
++        this.#button = root.querySelector('.favorite');
++        this.#button.addEventListener('click', () => this.toggleFavorite());
++
++        if (loadFavorites().has(this.drinkId)) {
++          this.favorited = true;
++        }
++        this.#syncButton();
++      }
++
++      get drinkId() {
++        return this.getAttribute('drink-id');
++      }
++
++      get name() {
++        return this.querySelector('[slot="title"]')?.textContent.trim() ?? '';
++      }
++
++      get favorited() {
++        return this.hasAttribute('favorited');
++      }
++
++      set favorited(value) {
++        this.toggleAttribute('favorited', Boolean(value));
++      }
++
++      toggleFavorite() {
++        this.favorited = !this.favorited;
++
++        const favorites = loadFavorites();
++        if (this.favorited) {
++          favorites.add(this.drinkId);
++        } else {
++          favorites.delete(this.drinkId);
++        }
++        saveFavorites(favorites);
++
++        this.dispatchEvent(new CustomEvent('favorite-change', {
++          bubbles: true,
++          composed: true,
++          detail: { drinkId: this.drinkId, favorited: this.favorited },
++        }));
++      }
++
++      attributeChangedCallback() {
++        this.#syncButton();
++      }
++
++      #syncButton() {
++        if (!this.#button) return;
++        const on = this.favorited;
++        this.#button.setAttribute('aria-pressed', String(on));
++        this.#button.setAttribute('aria-label', `${on ? 'Remove' : 'Add'} ${this.name} ${on ? 'from' : 'to'} favorites`);
++        this.#button.textContent = on ? '\u2605' : '\u2606';
++      }
++    }
++
++    customElements.define('drink-card', DrinkCard);
++  </script>
++
+ </body>
+ 
+ </html>

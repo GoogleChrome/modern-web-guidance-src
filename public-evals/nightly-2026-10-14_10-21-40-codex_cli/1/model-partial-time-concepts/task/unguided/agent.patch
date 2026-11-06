@@ -1,0 +1,38 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -204,9 +204,34 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p id="credit-card-expiry">Credit card expires December 2027.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      // Cards remain valid through their expiration month, until January 1.
++      const expirationDate = Date.UTC(2028, 0, 1);
++      const millisecondsPerDay = 24 * 60 * 60 * 1000;
++      const expiryMessage = document.getElementById('credit-card-expiry');
++
++      function updateExpirationCountdown() {
++        const now = new Date();
++        // Map local calendar dates to UTC midnights so DST cannot change
++        // the day count. Date.UTC accounts for leap years automatically.
++        const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
++        const daysRemaining = Math.max(0, (expirationDate - today) / millisecondsPerDay);
++
++        expiryMessage.textContent = daysRemaining > 0
++          ? `Credit card expires December 2027 (${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} remaining).`
++          : 'Credit card expired December 2027.';
++      }
++
++      updateExpirationCountdown();
++      setInterval(updateExpirationCountdown, 60 * 1000);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

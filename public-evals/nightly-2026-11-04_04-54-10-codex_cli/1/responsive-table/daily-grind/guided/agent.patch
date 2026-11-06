@@ -1,0 +1,150 @@
+diff --git a/index.html b/index.html
+index 66c9173..d311377 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,84 @@
+       color: var(--primary);
+     }
+ 
++    /* Keep table semantics and confine narrow-screen scrolling to this region. */
++    .nutrition-scroll {
++      margin-top: 30px;
++      max-inline-size: 100%;
++      max-block-size: 28rem;
++      overflow: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .nutrition-scroll:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .nutrition-table {
++      inline-size: 100%;
++      min-inline-size: 56rem;
++      border-collapse: separate;
++      border-spacing: 0;
++      background: white;
++    }
++
++    .nutrition-table caption {
++      padding: 1rem;
++      text-align: start;
++      font-size: 1.15rem;
++      font-weight: bold;
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 0.85rem 1rem;
++      border-block-end: 1px solid var(--secondary);
++      text-align: end;
++      vertical-align: top;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .nutrition-table thead th {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 2;
++      background: var(--primary);
++      color: white;
++    }
++
++    .nutrition-table tr > :first-child {
++      position: sticky;
++      inset-inline-start: 0;
++      inline-size: 10rem;
++      min-inline-size: 10rem;
++      max-inline-size: 10rem;
++      text-align: start;
++      border-inline-end: 1px solid var(--secondary);
++    }
++
++    .nutrition-table thead th:first-child {
++      z-index: 3;
++    }
++
++    .nutrition-table tbody th {
++      z-index: 1;
++      background: white;
++    }
++
++    .nutrition-table tbody tr:nth-child(even) > * {
++      background: #f5f0ed;
++    }
++
++    .nutrition-table tbody tr:last-child > * {
++      border-block-end: 0;
++    }
++
++    .nutrition-note {
++      margin-top: 10px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -194,6 +272,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="nutrition-scroll" role="region" aria-labelledby="nutrition-caption"
++        aria-describedby="nutrition-help nutrition-note" tabindex="0">
++        <table class="nutrition-table" aria-describedby="nutrition-note">
++          <caption id="nutrition-caption">Seasonal Favorites: nutrition &amp; pricing</caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Serving</th>
++              <th scope="col">Calories (kcal)</th>
++              <th scope="col">Fat (g)</th>
++              <th scope="col">Carbohydrates (g)</th>
++              <th scope="col">Sugars (g)</th>
++              <th scope="col">Protein (g)</th>
++              <th scope="col">Price (USD)</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>12 fl oz</td>
++              <td>210</td>
++              <td>7</td>
++              <td>34</td>
++              <td>22</td>
++              <td>3</td>
++              <td>$5.50</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>2 fl oz (double shot)</td>
++              <td>5</td>
++              <td>0</td>
++              <td>1</td>
++              <td>0</td>
++              <td>0</td>
++              <td>$3.00</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>12 fl oz</td>
++              <td>5</td>
++              <td>0</td>
++              <td>1</td>
++              <td>0</td>
++              <td>0</td>
++              <td>$4.25</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++      <p id="nutrition-help" class="nutrition-note">Scroll horizontally to compare all columns on smaller screens.
++        Keyboard users can focus the table region and use the left and right arrow keys.</p>
++      <p id="nutrition-note" class="nutrition-note">Illustrative prices and nutrition estimates per serving, pending
++        confirmation. Espresso and cold brew are shown without milk or sweeteners; customizations change nutrition and price.</p>
+     </section>
+   </main>
+ 

@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,38 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .security-card {
++      max-width: 520px;
++      margin: 40px auto 0;
++    }
++
++    .security-card button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    .security-card button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .reauth-status {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      min-height: 1.4em;
++    }
++
++    .reauth-status.error {
++      color: #b71c1c;
++    }
++
++    .reauth-status.success {
++      color: #2e7d32;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +224,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card security-card" aria-labelledby="security-heading">
++      <h3 id="security-heading">Account Security</h3>
++      <p>Before changing sensitive account details, please confirm it's you with your passkey or security key.</p>
++      <button type="button" class="btn" data-testid="reauth-button" id="reauth-button">Confirm it's me</button>
++      <p class="reauth-status" id="reauth-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +243,154 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var button = document.getElementById('reauth-button');
++      var statusEl = document.getElementById('reauth-status');
++      if (!button) return;
++
++      function setStatus(message, kind) {
++        statusEl.textContent = message;
++        statusEl.className = 'reauth-status' + (kind ? ' ' + kind : '');
++      }
++
++      function base64urlToBuffer(value) {
++        var base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        var padded = base64 + '==='.slice((base64.length + 3) % 4);
++        var binary = atob(padded);
++        var bytes = new Uint8Array(binary.length);
++        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
++        return bytes.buffer;
++      }
++
++      function bufferToBase64url(buffer) {
++        var bytes = new Uint8Array(buffer);
++        var binary = '';
++        for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      // Convert the server's JSON options (base64url strings) into the
++      // binary form expected by navigator.credentials.get().
++      function toRequestOptions(json) {
++        var options = Object.assign({}, json);
++        options.challenge = base64urlToBuffer(json.challenge);
++        options.allowCredentials = json.allowCredentials.map(function (cred) {
++          return Object.assign({}, cred, { id: base64urlToBuffer(cred.id) });
++        });
++        return options;
++      }
++
++      function credentialToJSON(credential) {
++        if (typeof credential.toJSON === 'function') {
++          try { return credential.toJSON(); } catch (e) { /* fall through */ }
++        }
++        var response = credential.response;
++        return {
++          id: credential.id,
++          rawId: bufferToBase64url(credential.rawId),
++          type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment || undefined,
++          clientExtensionResults: credential.getClientExtensionResults(),
++          response: {
++            clientDataJSON: bufferToBase64url(response.clientDataJSON),
++            authenticatorData: bufferToBase64url(response.authenticatorData),
++            signature: bufferToBase64url(response.signature),
++            userHandle: response.userHandle ? bufferToBase64url(response.userHandle) : undefined
++          }
++        };
++      }
++
++      async function postJSON(url, body) {
++        var res = await fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          body: JSON.stringify(body || {})
++        });
++        var data = null;
++        try { data = await res.json(); } catch (e) { /* non-JSON body */ }
++        if (!res.ok) {
++          var err = new Error((data && (data.error || data.message)) || 'Request failed (' + res.status + ')');
++          err.status = res.status;
++          throw err;
++        }
++        return data;
++      }
++
++      async function reauthenticate() {
++        if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.get) {
++          setStatus('Your browser does not support passkeys or security keys, so we cannot verify your identity here.', 'error');
++          return;
++        }
++
++        button.disabled = true;
++        button.setAttribute('aria-busy', 'true');
++        setStatus('Requesting a verification challenge…');
++
++        try {
++          // 1. Fetch a fresh, single-use challenge scoped to the signed-in
++          //    user's registered credentials.
++          var data = await postJSON('/api/reauth/options', {});
++          var json = data && data.publicKey ? data.publicKey : data;
++
++          if (!json || typeof json.challenge !== 'string') {
++            throw new Error('The server returned an invalid challenge.');
++          }
++          // Re-auth must be bound to this user's existing credentials; never
++          // fall back to an unscoped (discoverable) prompt.
++          if (!Array.isArray(json.allowCredentials) || json.allowCredentials.length === 0) {
++            throw new Error('No passkey or security key is registered for your account. Please add one before making sensitive changes.');
++          }
++
++          var publicKey = toRequestOptions(json);
++          // Require user verification (PIN / biometric) so possession of the
++          // authenticator alone is not enough.
++          publicKey.userVerification = 'required';
++
++          // 2. Run the WebAuthn ceremony in the browser.
++          setStatus('Follow your browser\'s prompt to confirm with your passkey or security key…');
++          var credential = await navigator.credentials.get({ publicKey: publicKey });
++          if (!credential) throw new Error('No credential was returned.');
++
++          // 3. Submit the signed assertion for server-side verification.
++          setStatus('Verifying…');
++          var result = await postJSON('/api/reauth/verify', credentialToJSON(credential));
++
++          if (result && result.verified === false) {
++            throw new Error('Verification failed. Please try again.');
++          }
++
++          setStatus('Identity confirmed. You can now make changes to your account.', 'success');
++          document.dispatchEvent(new CustomEvent('reauth:success', { detail: result }));
++        } catch (err) {
++          var message;
++          if (err && err.name === 'NotAllowedError') {
++            message = 'Verification was cancelled or timed out. Please try again.';
++          } else if (err && err.name === 'InvalidStateError') {
++            message = 'This authenticator is not registered to your account.';
++          } else if (err && err.name === 'SecurityError') {
++            message = 'Verification is not allowed on this site.';
++          } else if (err && err.status === 401) {
++            message = 'Your session has expired. Please sign in again.';
++          } else {
++            message = (err && err.message) || 'Something went wrong. Please try again.';
++          }
++          setStatus(message, 'error');
++          document.dispatchEvent(new CustomEvent('reauth:failure', { detail: { error: err } }));
++        } finally {
++          button.disabled = false;
++          button.removeAttribute('aria-busy');
++        }
++      }
++
++      button.addEventListener('click', reauthenticate);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

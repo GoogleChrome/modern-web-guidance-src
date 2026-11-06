@@ -1,0 +1,89 @@
+diff --git a/index.html b/index.html
+index 66c9173..e5b0e7d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,84 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /*
++     * Progressive enhancements gated on at-rule support.
++     * `@supports at-rule(...)` only matches when the browser implements the
++     * named at-rule; browsers that don't understand `at-rule()` treat the
++     * condition as false, so they keep the base styles above.
++     */
++
++    /* Navigation: animated hover underline via a registered custom property */
++    @supports at-rule(@property) {
++      @property --nav-underline {
++        syntax: '<percentage>';
++        inherits: false;
++        initial-value: 0%;
++      }
++
++      nav ul a:not(.logout-link) {
++        padding-bottom: 2px;
++        background: linear-gradient(var(--accent), var(--accent)) no-repeat left bottom / var(--nav-underline) 2px;
++        transition: color 0.3s, --nav-underline 0.3s ease;
++      }
++
++      nav ul a:not(.logout-link):hover,
++      nav ul a:not(.logout-link):focus-visible {
++        --nav-underline: 100%;
++      }
++    }
++
++    /* Hero: fade/slide content in on first render */
++    @supports at-rule(@starting-style) {
++      @media (prefers-reduced-motion: no-preference) {
++        .hero > * {
++          transition: opacity 0.8s ease, transform 0.8s ease;
++        }
++
++        .hero p {
++          transition-delay: 0.15s;
++        }
++
++        .hero .btn {
++          transition: opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s, background 0.3s;
++        }
++
++        @starting-style {
++          .hero > * {
++            opacity: 0;
++            transform: translateY(20px);
++          }
++        }
++      }
++    }
++
++    /* Seasonal favorite cards: adapt to the grid's width, not the viewport */
++    @supports at-rule(@container) {
++      .grid {
++        container: favorites / inline-size;
++      }
++
++      @container favorites (max-width: 520px) {
++        .card {
++          text-align: left;
++          padding: 16px 20px;
++          border-left: 4px solid var(--accent);
++        }
++      }
++
++      @container favorites (min-width: 760px) {
++        .card {
++          border-top: 4px solid var(--accent);
++          transition: transform 0.3s, box-shadow 0.3s;
++        }
++
++        .card:hover {
++          transform: translateY(-4px);
++          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
++        }
++      }
++    }
+   </style>
+ </head>
+ 

@@ -1,0 +1,235 @@
+diff --git a/drink-card.js b/drink-card.js
+new file mode 100644
+index 0000000..056fde6
+--- /dev/null
++++ b/drink-card.js
+@@ -0,0 +1,43 @@
++// Module scripts run after parsing, so the server-rendered shadow trees are ready.
++class DrinkCard extends HTMLElement {
++  #button;
++
++  #toggleFavorite = () => {
++    const favorite = this.#button.getAttribute('aria-pressed') !== 'true';
++    this.#button.setAttribute('aria-pressed', String(favorite));
++    this.dispatchEvent(new CustomEvent('favorite-change', {
++      bubbles: true,
++      composed: true,
++      detail: { drink: this.dataset.drink, favorite },
++    }));
++  };
++
++  connectedCallback() {
++    // Older browsers leave DSD inert. Move the same server-authored nodes into
++    // a shadow root only when the parser hasn't already created one.
++    if (!this.shadowRoot) {
++      const template = this.querySelector('template[shadowrootmode="open"]');
++      if (!template) return;
++      this.attachShadow({ mode: 'open' }).append(template.content);
++      template.remove();
++    }
++
++    // Hydration only adds behavior: never replace the rendered markup or CSS.
++    this.#button = this.shadowRoot.querySelector('button');
++    if (!this.#button) return;
++    this.#button.addEventListener('click', this.#toggleFavorite);
++    this.#button.disabled = false;
++  }
++
++  disconnectedCallback() {
++    // A card can reconnect after being moved; preserve its state and avoid
++    // leaving a detached card's control active without its listener.
++    if (!this.#button) return;
++    this.#button.removeEventListener('click', this.#toggleFavorite);
++    this.#button.disabled = true;
++  }
++}
++
++if (!customElements.get('drink-card')) {
++  customElements.define('drink-card', DrinkCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..6b2c020 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -153,6 +140,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +166,138 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card data-drink="maple-oat-latte">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                min-width: 0;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++
++              *, *::before, *::after { box-sizing: border-box; }
++              h3, p { margin: 0; padding: 0; }
++              h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
++              .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
++              a, button {
++                display: inline-block;
++                border: 1px solid var(--primary, #4e342e);
++                border-radius: 5px;
++                padding: 10px 20px;
++                font: inherit;
++                line-height: inherit;
++                text-decoration: none;
++              }
++              a { background: var(--primary, #4e342e); color: white; }
++              a:hover { background: #3e2723; }
++              button { background: white; color: var(--primary, #4e342e); cursor: pointer; }
++              button:disabled { cursor: default; }
++              button:enabled:hover { background: var(--secondary, #d7ccc8); }
++              button[aria-pressed="true"] { background: var(--secondary, #d7ccc8); }
++              a:focus-visible, button:focus-visible { outline: 3px solid var(--primary, #4e342e); outline-offset: 3px; }
++            </style>
++            <article aria-labelledby="drink-name">
++              <h3 id="drink-name">Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <div class="actions">
++                <a href="/menu/seasonal">View Details</a>
++                <button type="button" aria-label="Favorite Maple Oat Latte" aria-pressed="false" disabled>Favorite</button>
++              </div>
++            </article>
++          </template>
++        </drink-card>
++        <drink-card data-drink="dark-roast-espresso">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                min-width: 0;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++
++              *, *::before, *::after { box-sizing: border-box; }
++              h3, p { margin: 0; padding: 0; }
++              h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
++              .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
++              a, button {
++                display: inline-block;
++                border: 1px solid var(--primary, #4e342e);
++                border-radius: 5px;
++                padding: 10px 20px;
++                font: inherit;
++                line-height: inherit;
++                text-decoration: none;
++              }
++              a { background: var(--primary, #4e342e); color: white; }
++              a:hover { background: #3e2723; }
++              button { background: white; color: var(--primary, #4e342e); cursor: pointer; }
++              button:disabled { cursor: default; }
++              button:enabled:hover { background: var(--secondary, #d7ccc8); }
++              button[aria-pressed="true"] { background: var(--secondary, #d7ccc8); }
++              a:focus-visible, button:focus-visible { outline: 3px solid var(--primary, #4e342e); outline-offset: 3px; }
++            </style>
++            <article aria-labelledby="drink-name">
++              <h3 id="drink-name">Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <div class="actions">
++                <a href="/menu/espresso">View Details</a>
++                <button type="button" aria-label="Favorite Dark Roast Espresso" aria-pressed="false" disabled>Favorite</button>
++              </div>
++            </article>
++          </template>
++        </drink-card>
++        <drink-card data-drink="cold-brew">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                min-width: 0;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++
++              *, *::before, *::after { box-sizing: border-box; }
++              h3, p { margin: 0; padding: 0; }
++              h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
++              .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
++              a, button {
++                display: inline-block;
++                border: 1px solid var(--primary, #4e342e);
++                border-radius: 5px;
++                padding: 10px 20px;
++                font: inherit;
++                line-height: inherit;
++                text-decoration: none;
++              }
++              a { background: var(--primary, #4e342e); color: white; }
++              a:hover { background: #3e2723; }
++              button { background: white; color: var(--primary, #4e342e); cursor: pointer; }
++              button:disabled { cursor: default; }
++              button:enabled:hover { background: var(--secondary, #d7ccc8); }
++              button[aria-pressed="true"] { background: var(--secondary, #d7ccc8); }
++              a:focus-visible, button:focus-visible { outline: 3px solid var(--primary, #4e342e); outline-offset: 3px; }
++            </style>
++            <article aria-labelledby="drink-name">
++              <h3 id="drink-name">Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <div class="actions">
++                <a href="/menu/cold-brew">View Details</a>
++                <button type="button" aria-label="Favorite Cold Brew" aria-pressed="false" disabled>Favorite</button>
++              </div>
++            </article>
++          </template>
++        </drink-card>
+       </div>
+     </section>
+   </main>

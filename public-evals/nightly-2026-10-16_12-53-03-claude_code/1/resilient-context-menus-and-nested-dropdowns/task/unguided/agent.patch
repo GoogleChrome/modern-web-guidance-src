@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,71 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options dropdown */
++    #trigger-btn {
++      anchor-name: --options-trigger;
++      background: transparent;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      border: 1px solid var(--secondary);
++      padding: 5px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    #trigger-btn:hover,
++    #trigger-btn[aria-expanded="true"] {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    /* Rendered in the top layer via the Popover API, so no z-index or overflow clipping */
++    #action-panel {
++      position: fixed;
++      position-anchor: --options-trigger;
++      inset: auto;
++      margin: 0;
++      /* Directly below the trigger, left edges aligned */
++      top: anchor(bottom);
++      left: anchor(left);
++      /* Flip vertically/horizontally when colliding with the viewport */
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      min-width: 200px;
++      max-width: calc(100vw - 16px);
++      padding: 6px;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
++    }
++
++    #action-panel:popover-open {
++      display: flex;
++      flex-direction: column;
++    }
++
++    #action-panel button {
++      background: none;
++      border: 0;
++      font: inherit;
++      font-size: 0.9rem;
++      color: inherit;
++      text-align: left;
++      padding: 8px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    #action-panel button:hover,
++    #action-panel button:focus-visible {
++      background: var(--secondary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -164,11 +227,34 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" id="trigger-btn" popovertarget="action-panel" aria-expanded="false"
++          aria-controls="action-panel">Options</button>
++      </li>
+     </ul>
+   </nav>
+ 
++  <div id="action-panel" popover="auto" aria-label="Options">
++    <button type="button" data-action="seasonal-offers">Seasonal Offers</button>
++    <button type="button" data-action="account-settings">Account Settings</button>
++    <button type="button" data-action="support">Support</button>
++  </div>
++
++  <script>
++    const panel = document.getElementById('action-panel');
++    const trigger = document.getElementById('trigger-btn');
++
++    panel.addEventListener('toggle', (e) => {
++      trigger.setAttribute('aria-expanded', e.newState === 'open');
++    });
++
++    panel.addEventListener('click', (e) => {
++      if (e.target.closest('button')) panel.hidePopover();
++    });
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

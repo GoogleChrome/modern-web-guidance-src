@@ -1,0 +1,57 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -65,8 +65,42 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    /* Active tab indicator: sliding underline tethered to li.active */
++    nav ul li.active {
++      @supports not (position-anchor: auto) {
++        /* Unanimated fallback */
++        border-bottom: .25lh solid var(--accent);
++      }
++    }
++
++    @supports (position-anchor: auto) {
++      nav ul {
++        position: relative;
++      }
++
++      nav ul li.active {
++        anchor-name: --active;
++      }
++
++      nav ul::before {
++        content: '';
++        position: absolute;
++        position-anchor: --active;
++        /* Not position-area: it can't be transitioned */
++        inset-block-start: calc(anchor(bottom) + .1lh);
++        inset-inline-start: anchor(left);
++        inset-inline-end: anchor(right);
++        block-size: .25lh;
++        background: var(--accent);
++
++        @media (prefers-reduced-motion: no-preference) {
++          transition: inset .2s;
++        }
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -159,9 +193,9 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>

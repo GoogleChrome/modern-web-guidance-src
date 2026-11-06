@@ -1,0 +1,159 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -188,16 +188,155 @@
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" style="width: 100%; height: 160px; object-fit: cover; border-radius: 6px; margin-bottom: 12px;" />
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- High-Frequency Sequencing System Simulation -->
++    <section class="sequencing-section" style="margin-top: 50px;">
++      <div class="card" style="text-align: left; max-width: 900px; margin: 0 auto; padding: 25px;">
++        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
++          <div>
++            <h2 style="color: var(--primary); margin-bottom: 5px;">High-Frequency Order Sequencing &amp; Tracing</h2>
++            <p style="color: #666; font-size: 0.95rem;">Simulate distributed microservice order ingestion with nanosecond-resolution event sequencing.</p>
++          </div>
++          <span style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; font-weight: 600;">Temporal.Now.instant() [ns]</span>
++        </div>
++
++        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
++          <button id="simulate-order-btn" class="btn" style="cursor: pointer; border: none; font-size: 1rem; font-weight: 600;">
++            ⚡ Simulate Coffee Order
++          </button>
++          <button id="simulate-burst-btn" class="btn" style="cursor: pointer; border: 1px solid var(--primary); background: transparent; color: var(--primary); font-size: 0.95rem;">
++            💥 Simulate Burst (5 Concurrent Orders)
++          </button>
++          <button id="clear-telemetry-btn" class="btn" style="cursor: pointer; border: 1px solid #ccc; background: #eee; color: #555; font-size: 0.95rem;">
++            Clear Log
++          </button>
++        </div>
++
++        <!-- Telemetry Stats & Latest Click Latency -->
++        <div id="click-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
++          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px;">
++            <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Consecutive Click Latency</div>
++            <div id="latest-latency" style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-top: 4px;">--</div>
++          </div>
++          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px;">
++            <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Latest Timestamp (Nanoseconds)</div>
++            <div id="latest-timestamp" style="font-size: 0.85rem; font-family: monospace; font-weight: 600; color: #0f172a; margin-top: 6px; word-break: break-all;">--</div>
++          </div>
++          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px;">
++            <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Total Sequenced Events</div>
++            <div id="total-events" style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-top: 4px;">0</div>
++          </div>
++        </div>
++
++        <!-- Telemetry Console / Table -->
++        <div style="background: #1e1e2e; color: #cdd6f4; border-radius: 6px; padding: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; max-height: 350px; overflow-y: auto;">
++          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #313244; padding-bottom: 8px; margin-bottom: 10px; color: #89b4fa; font-weight: 600;">
++            <span>Distributed Microservices Event Log (Chronologically Sequenced)</span>
++            <span style="font-size: 0.75rem; color: #a6adc8;">Browser console mirroring active</span>
++          </div>
++          <div id="telemetry-log">
++            <p style="color: #6c7086;">Ready. Click "Simulate Coffee Order" to begin high-frequency telemetry tracing.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script type="module">
++    import { initTemporal, CoffeeSequencingTelemetry } from './telemetry.js';
++
++    // Initialize Temporal API with fallback
++    await initTemporal();
++
++    const telemetry = new CoffeeSequencingTelemetry();
++
++    const simulateBtn = document.getElementById('simulate-order-btn');
++    const burstBtn = document.getElementById('simulate-burst-btn');
++    const clearBtn = document.getElementById('clear-telemetry-btn');
++    const latencyDisplay = document.getElementById('latest-latency');
++    const timestampDisplay = document.getElementById('latest-timestamp');
++    const totalEventsDisplay = document.getElementById('total-events');
++    const logContainer = document.getElementById('telemetry-log');
++
++    const coffeeItems = ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew', 'Vanilla Flat White', 'Nitro Cold Brew'];
++
++    function updateUI(result) {
++      totalEventsDisplay.textContent = telemetry.events.length;
++      timestampDisplay.textContent = result.clickTimestamp.toString();
++      latencyDisplay.textContent = result.diffFormatted;
++
++      const sorted = telemetry.sequenceEvents();
++      renderLog(sorted);
++    }
++
++    function renderLog(sorted) {
++      if (sorted.length === 0) {
++        logContainer.innerHTML = '<p style="color: #6c7086;">Ready. Click "Simulate Coffee Order" to begin high-frequency telemetry tracing.</p>';
++        return;
++      }
++
++      let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
++      for (let i = 0; i < sorted.length; i++) {
++        const curr = sorted[i];
++        let deltaText = 'Initial Event';
++        if (i > 0) {
++          const prev = sorted[i - 1];
++          const diff = curr.timestamp.since(prev.timestamp);
++          const ns = diff.total('nanoseconds');
++          deltaText = `+${ns.toLocaleString()} ns (${(ns / 1_000_000).toFixed(4)} ms)`;
++        }
++
++        html += `
++          <div style="border-bottom: 1px solid #282a36; padding: 4px 0; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
++            <div>
++              <span style="color: #f9e2af; font-weight: bold;">[#${i + 1}]</span>
++              <span style="color: #a6e3a1; font-weight: 600;">${curr.id}</span>
++              <span style="color: #cdd6f4;">${curr.type}</span>
++              <span style="color: #fab387; font-size: 0.8rem;">(${curr.nodeId})</span>
++            </div>
++            <div>
++              <span style="color: #89dceb; font-size: 0.8rem;">${curr.timestamp.toString()}</span>
++              <span style="color: #f38ba8; margin-left: 8px; font-weight: 600;">${deltaText}</span>
++            </div>
++          </div>
++        `;
++      }
++      html += '</div>';
++      logContainer.innerHTML = html;
++    }
++
++    simulateBtn.addEventListener('click', () => {
++      const randomItem = coffeeItems[Math.floor(Math.random() * coffeeItems.length)];
++      const result = telemetry.handleClick(randomItem);
++      updateUI(result);
++    });
++
++    burstBtn.addEventListener('click', () => {
++      for (let i = 0; i < 5; i++) {
++        const item = coffeeItems[Math.floor(Math.random() * coffeeItems.length)];
++        const result = telemetry.handleClick(item);
++        updateUI(result);
++      }
++    });
++
++    clearBtn.addEventListener('click', () => {
++      telemetry.clear();
++      latencyDisplay.textContent = '--';
++      timestampDisplay.textContent = '--';
++      totalEventsDisplay.textContent = '0';
++      renderLog([]);
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

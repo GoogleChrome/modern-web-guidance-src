@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,45 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Mask the teaser itself so its bottom becomes fully transparent. */
++    .paywall-container {
++      margin-top: 56px;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .secrets-label {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .paywall-container h2 {
++      font-size: 2rem;
++      margin-bottom: 8px;
++    }
++
++    .secrets-preview {
++      max-width: 760px;
++      margin-top: 24px;
++      -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
++    }
++
++    .secrets-preview h3 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .secrets-preview p + h3 {
++      margin-top: 24px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +231,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="secrets-title">
++      <p class="secrets-label">Exclusive preview · From our roastery</p>
++      <h2 id="secrets-title">Roaster's Secrets</h2>
++      <p>A little craft behind every cup. Take a peek inside our roasting notebook.</p>
++      <div class="secrets-preview">
++        <h3>Let the beans tell the story</h3>
++        <p>Every batch starts with a question: what makes this coffee special? We look for the sweetness, fruit, and texture that give each origin its character, then shape the roast to bring those qualities to the surface.</p>
++        <h3>The pause that makes a difference</h3>
++        <p>Freshly roasted coffee needs a little breathing room. As the beans rest, trapped gases gradually escape, helping water move more evenly through the grounds. That patience can turn a sharp, restless cup into something beautifully balanced.</p>
++        <h3>Dial in one detail at a time</h3>
++        <p>Keep your coffee dose and water consistent, then make a small adjustment to your grind. Taste, take a note, and repeat. The best brewing discoveries often begin with a single thoughtful change.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

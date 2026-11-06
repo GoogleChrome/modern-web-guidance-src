@@ -1,0 +1,538 @@
+diff --git a/index.html b/index.html
+index 66c9173..63ae93e 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,14 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
++      --ease-standard: cubic-bezier(0.2, 0, 0, 1);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
+     }
+ 
+     * {
+@@ -25,6 +33,7 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-x: hidden;
+     }
+ 
+     /* Navigation */
+@@ -38,12 +47,51 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
++      opacity: 1;
++      translate: 0 0;
++      transition:
++        opacity 0.5s var(--ease-out-expo),
++        translate 0.5s var(--ease-out-expo),
++        box-shadow 0.3s var(--ease-standard);
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        transition-duration: 0.1s;
++      }
++    }
++
++    @starting-style {
++      nav {
++        opacity: 0;
++        translate: 0 -12px;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        nav {
++          translate: none;
++        }
++      }
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: inline-block;
++      transition: scale 0.3s var(--ease-out-expo);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    .logo:hover {
++      scale: 1.03;
++
++      @media (prefers-reduced-motion: reduce) {
++        scale: none;
++      }
+     }
+ 
+     nav ul {
+@@ -59,17 +107,88 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      position: relative;
++      display: inline-block;
++      padding-bottom: 2px;
++      transition:
++        color 0.25s var(--ease-standard),
++        translate 0.25s var(--ease-out-expo);
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        transition: color 0.15s var(--ease-standard);
++      }
++    }
++
++    nav a:not(.logout-link)::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      height: 2px;
++      background: var(--accent);
++      scale: 0 1;
++      transform-origin: right center;
++      transition: scale 0.3s var(--ease-out-expo);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: opacity 0.15s var(--ease-standard);
++        scale: 1 1;
++        opacity: 0;
++      }
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
++      translate: 0 -1px;
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++      }
++    }
++
++    nav a:not(.logout-link):hover::after,
++    nav a:not(.logout-link):focus-visible::after {
++      scale: 1 1;
++      transform-origin: left center;
++
++      @media (prefers-reduced-motion: reduce) {
++        opacity: 1;
++      }
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition:
++        color 0.25s var(--ease-standard),
++        background-color 0.25s var(--ease-standard),
++        translate 0.25s var(--ease-out-expo),
++        scale 0.2s var(--ease-out-expo);
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        scale: none;
++        transition:
++          color 0.15s var(--ease-standard),
++          background-color 0.15s var(--ease-standard);
++      }
++    }
++
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background-color: rgba(255, 171, 64, 0.15);
++    }
++
++    .logout-link:active {
++      scale: 0.97;
++
++      @media (prefers-reduced-motion: reduce) {
++        scale: none;
++      }
+     }
+ 
+     /* Hero Section */
+@@ -86,11 +205,67 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
++    }
++
++    .hero h1,
++    .hero p,
++    .hero .btn {
++      opacity: 1;
++      translate: 0 0;
++      transition:
++        opacity 0.7s var(--ease-out-expo),
++        translate 0.7s var(--ease-out-expo),
++        scale 0.25s var(--ease-out-expo),
++        background-color 0.3s var(--ease-standard);
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        transition-duration: 0.15s;
++      }
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      transition-delay: 0.05s;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition-delay: 0s;
++      }
++    }
++
++    .hero p {
++      transition-delay: 0.15s;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition-delay: 0s;
++      }
++    }
++
++    .hero .btn {
++      transition-delay: 0.25s;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition-delay: 0s;
++      }
++    }
++
++    @starting-style {
++      .hero h1,
++      .hero p,
++      .hero .btn {
++        opacity: 0;
++        translate: 0 24px;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        .hero h1,
++        .hero p,
++        .hero .btn {
++          translate: none;
++        }
++      }
+     }
+ 
+     /* Content Sections */
+@@ -100,6 +275,32 @@
+       padding: 0 20px;
+     }
+ 
++    main section h2 {
++      opacity: 1;
++      translate: 0 0;
++      transition:
++        opacity 0.6s var(--ease-out-expo),
++        translate 0.6s var(--ease-out-expo);
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        transition-duration: 0.15s;
++      }
++    }
++
++    @starting-style {
++      main section h2 {
++        opacity: 0;
++        translate: 0 16px;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        main section h2 {
++          translate: none;
++        }
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,11 +309,113 @@
+     }
+ 
+     .card {
++      display: block;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      opacity: 1;
++      translate: 0 0;
++      scale: 1;
++      transition:
++        display 0.5s,
++        opacity 0.5s var(--ease-out-expo),
++        translate 0.5s var(--ease-out-expo),
++        scale 0.35s var(--ease-out-expo),
++        box-shadow 0.35s var(--ease-out-expo);
++      transition-behavior: allow-discrete;
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        scale: none;
++        transition-duration: 0.1s;
++      }
++    }
++
++    .card:nth-child(1) {
++      transition-delay: 0.1s;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition-delay: 0s;
++      }
++    }
++
++    .card:nth-child(2) {
++      transition-delay: 0.2s;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition-delay: 0s;
++      }
++    }
++
++    .card:nth-child(3) {
++      transition-delay: 0.3s;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition-delay: 0s;
++      }
++    }
++
++    @starting-style {
++      .card {
++        opacity: 0;
++        translate: 0 24px;
++        scale: 0.97;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        .card {
++          translate: none;
++          scale: none;
++        }
++      }
++    }
++
++    .card:where([hidden], [data-closing]) {
++      opacity: 0;
++      translate: 0 -20px;
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++      }
++    }
++
++    .card[hidden] {
++      display: none;
++    }
++
++    .card:hover,
++    .card:focus-within {
++      translate: 0 -6px;
++      scale: 1.015;
++      box-shadow: 0 12px 24px rgba(62, 39, 35, 0.14);
++      transition-delay: 0s;
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        scale: none;
++      }
++    }
++
++    /* Scroll-driven reveal animations for cards and footer */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        @keyframes scroll-reveal-in {
++          from {
++            opacity: 0;
++            translate: 0 28px;
++            scale: 0.96;
++          }
++        }
++
++        .card,
++        footer {
++          animation: scroll-reveal-in auto var(--ease-out-expo) backwards;
++          animation-timeline: view(block);
++          animation-range: entry 0% entry 35%;
++        }
++      }
+     }
+ 
+     .card h3 {
+@@ -128,11 +431,43 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      translate: 0 0;
++      scale: 1;
++      box-shadow: 0 2px 6px rgba(62, 39, 35, 0.2);
++      transition:
++        background-color 0.25s var(--ease-standard),
++        translate 0.25s var(--ease-out-expo),
++        scale 0.2s var(--ease-out-expo),
++        box-shadow 0.25s var(--ease-out-expo);
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        scale: none;
++        transition: background-color 0.15s var(--ease-standard);
++      }
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
++      translate: 0 -2px;
++      scale: 1.03;
++      box-shadow: 0 6px 14px rgba(62, 39, 35, 0.3);
++      transition-delay: 0s;
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        scale: none;
++      }
++    }
++
++    .btn:active {
++      translate: 0 0;
++      scale: 0.98;
++
++      @media (prefers-reduced-motion: reduce) {
++        scale: none;
++      }
+     }
+ 
+     footer {
+@@ -151,6 +486,25 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      display: inline-block;
++      transition:
++        color 0.2s var(--ease-standard),
++        translate 0.2s var(--ease-out-expo);
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++        transition: color 0.15s var(--ease-standard);
++      }
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--primary);
++      translate: 0 -2px;
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: none;
++      }
+     }
+   </style>
+ </head>
+@@ -207,6 +561,80 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Discrete display transition probe and exit fallback helpers
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    async function hideElement(el) {
++      if (canTransitionDisplay()) {
++        el.hidden = true;
++      } else {
++        el.setAttribute('data-closing', '');
++      }
++
++      const animations = el.getAnimations();
++      if (animations.length > 0) {
++        await Promise.race([
++          Promise.allSettled(animations.map((a) => a.finished)),
++          new Promise((r) => setTimeout(r, 2000)),
++        ]);
++      }
++
++      if (el.hasAttribute('data-closing')) {
++        el.removeAttribute('data-closing');
++        el.hidden = true;
++      }
++    }
++
++    function showElement(el) {
++      el.removeAttribute('data-closing');
++      el.hidden = false;
++    }
++
++    // Fallback for browsers that do not support view() scroll-driven animations
++    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    if (
++      !prefersReducedMotion.matches &&
++      !window.CSS?.supports?.('(animation-timeline: view()) and (animation-range: entry)')
++    ) {
++      const observer = new IntersectionObserver(
++        (entries) => {
++          for (const entry of entries) {
++            if (prefersReducedMotion.matches) {
++              entry.target.style.opacity = '';
++              entry.target.style.scale = '';
++              continue;
++            }
++            const ratio = Math.min(1, entry.intersectionRatio / 0.35);
++            entry.target.style.opacity = String(0.2 + ratio * 0.8);
++            entry.target.style.scale = String(0.96 + ratio * 0.04);
++          }
++        },
++        {
++          threshold: Array.from({ length: 21 }, (_, i) => i / 20),
++        }
++      );
++
++      document.querySelectorAll('.card, footer').forEach((el) => {
++        observer.observe(el);
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

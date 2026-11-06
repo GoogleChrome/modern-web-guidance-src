@@ -1,0 +1,82 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,78 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Font Size Adjust Demo</title>
++  <style>
++    body {
++      margin: 0;
++      padding: 2rem;
++      font-family: Georgia, "Times New Roman", serif;
++      line-height: 1.6;
++      color: #1f2328;
++      background: #f6f8fa;
++    }
++
++    main {
++      max-width: 42rem;
++      margin: 0 auto;
++      display: grid;
++      gap: 1.5rem;
++    }
++
++    /* Mixed fonts: let each font's own x-height ratio drive the adjustment,
++       so serif body text and monospace code render at matching visual heights. */
++    #mixed-fonts-container {
++      font-size: 1.25rem;
++      font-size-adjust: from-font;
++      margin: 0;
++      padding: 1.25rem 1.5rem;
++      background: #fff;
++      border: 1px solid #d0d7de;
++      border-radius: 8px;
++    }
++
++    #mixed-fonts-container code {
++      font-family: "Courier New", Courier, monospace;
++      font-size: 1em; /* keep the same nominal size; font-size-adjust handles the rest */
++      padding: 0.1em 0.3em;
++      background: #eff1f3;
++      border-radius: 4px;
++    }
++
++    /* Independent theme: pin an explicit numeric aspect value so its
++       proportions stay locked regardless of the fonts used or inherited. */
++    #independent-theme-container {
++      font-family: Verdana, Geneva, sans-serif;
++      font-size: 1.25rem;
++      font-size-adjust: 0.5;
++      padding: 1.25rem 1.5rem;
++      color: #f0f6fc;
++      background: #24292f;
++      border-radius: 8px;
++    }
++
++    #independent-theme-container code {
++      font-family: "Courier New", Courier, monospace;
++      font-size: 1em;
++      color: #ffa657;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <p id="mixed-fonts-container">
++      Regular serif text sits alongside inline code such as
++      <code>const total = items.length;</code> and <code>font-size-adjust</code>,
++      and both share the same visual x-height thanks to <code>from-font</code>.
++    </p>
++
++    <div id="independent-theme-container">
++      This independent theme locks its proportions with
++      <code>font-size-adjust: 0.5</code>, so every font inside it renders with
++      an x-height of half the font size.
++    </div>
++  </main>
++</body>
++</html>

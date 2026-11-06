@@ -1,0 +1,2823 @@
+diff --git a/README.md b/README.md
+index 4479b53..b53fbb9 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,11 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Text translation
++
++Lingua is available at `/devtools-times/` and `/devtools-times/translate`. The news homepage is at `/devtools-times/news`. It supports 16 languages, language swapping, device speech playback, copying, and local saved translations/history.
++
++`POST /devtools-times/api/translate` accepts JSON `{ "text": "Hello", "source": "en", "target": "fr" }`. Text is limited to 500 characters and split into UTF-8-safe segments for MyMemory. No API key is required; the public service has daily usage limits. Requests time out after 15 seconds, and service/quota errors are displayed in the workspace. Text is sent to MyMemory; saved items and the last 30 translations stay in browser local storage.
++
++Run `pnpm install`, `pnpm build`, then `pnpm start`.
+diff --git a/public/lingua.svg b/public/lingua.svg
+new file mode 100644
+index 0000000..f9fdf8b
+--- /dev/null
++++ b/public/lingua.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="14" fill="#285544"/><path d="M15 12v22h19M15 28l17-16M23 20l11 14" fill="none" stroke="#e9f0d9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..cfeecf0 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -21,6 +21,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <a href={`${baseUrl}translate`} class="text-xs font-semibold text-emerald-800 hover:underline">Translate text ↗</a>
+       </div>
+ 
+       <!-- Right: Buttons -->
+@@ -53,7 +54,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+-        <a href={`${import.meta.env.BASE_URL}`}>
++        <a href={`${baseUrl}news`}>
+           <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
+         </a>
+       </div>
+diff --git a/src/components/Translator.tsx b/src/components/Translator.tsx
+new file mode 100644
+index 0000000..1a92c14
+--- /dev/null
++++ b/src/components/Translator.tsx
+@@ -0,0 +1,885 @@
++import { useEffect, useRef, useState } from "react";
++import {
++  LanguageIcon,
++  ArrowsRightLeftIcon,
++  ArrowRightIcon,
++  ArrowUpRightIcon,
++  BookmarkIcon,
++  ClockIcon,
++  QuestionMarkCircleIcon,
++  SpeakerWaveIcon,
++  DocumentDuplicateIcon,
++  XMarkIcon,
++  CheckIcon,
++  GlobeAltIcon,
++  SparklesIcon,
++  TrashIcon,
++  ArrowLeftIcon,
++  ChatBubbleLeftRightIcon,
++  ChevronDownIcon,
++} from "@heroicons/react/24/outline";
++import { languages, languageName } from "../lib/languages";
++
++type Entry = {
++  id: string;
++  text: string;
++  translation: string;
++  source: string;
++  target: string;
++  date: string;
++};
++type View = "translate" | "saved" | "history";
++const base = import.meta.env.BASE_URL;
++const examples = [
++  {
++    text: "The best journeys begin with a simple hello.",
++    source: "en",
++    target: "fr",
++    title: "A new adventure",
++    label: "English → French",
++    icon: GlobeAltIcon,
++  },
++  {
++    text: "Thank you for making me feel at home.",
++    source: "en",
++    target: "ja",
++    title: "A little connection",
++    label: "English → Japanese",
++    icon: ChatBubbleLeftRightIcon,
++  },
++  {
++    text: "Great ideas can come from anywhere.",
++    source: "en",
++    target: "es",
++    title: "A world of ideas",
++    label: "English → Spanish",
++    icon: SparklesIcon,
++  },
++];
++function readEntries(key: string): Entry[] {
++  try {
++    const data = JSON.parse(localStorage.getItem(key) || "[]");
++    return Array.isArray(data)
++      ? data
++          .filter(
++            (e) =>
++              e &&
++              ["id", "text", "translation", "source", "target", "date"].every(
++                (k) => typeof e[k] === "string",
++              ),
++          )
++          .slice(0, 30)
++      : [];
++  } catch {
++    return [];
++  }
++}
++export default function Translator() {
++  const [view, setView] = useState<View>("translate");
++  const [text, setText] = useState("");
++  const [source, setSource] = useState("en");
++  const [target, setTarget] = useState("fr");
++  const [result, setResult] = useState<Entry | null>(null);
++  const [history, setHistory] = useState<Entry[]>([]);
++  const [saved, setSaved] = useState<Entry[]>([]);
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState("");
++  const [notice, setNotice] = useState("");
++  const [help, setHelp] = useState(false);
++  const [speaking, setSpeaking] = useState("");
++  const controller = useRef<AbortController | null>(null);
++  const input = useRef<HTMLTextAreaElement>(null);
++  const helpDialog = useRef<HTMLElement>(null);
++  useEffect(() => {
++    setHistory(readEntries("lingua-history"));
++    setSaved(readEntries("lingua-saved"));
++    return () => {
++      controller.current?.abort();
++      window.speechSynthesis?.cancel();
++    };
++  }, []);
++  useEffect(() => {
++    if (notice) {
++      const timer = setTimeout(() => setNotice(""), 3500);
++      return () => clearTimeout(timer);
++    }
++  }, [notice]);
++  useEffect(() => {
++    if (!help) return;
++    const previousFocus = document.activeElement as HTMLElement | null;
++    function handleKey(event: KeyboardEvent) {
++      if (event.key === "Escape") setHelp(false);
++      if (event.key !== "Tab") return;
++      const controls =
++        helpDialog.current?.querySelectorAll<HTMLElement>("button, a[href]");
++      if (!controls?.length) return;
++      const first = controls[0];
++      const last = controls[controls.length - 1];
++      if (event.shiftKey && document.activeElement === first) {
++        event.preventDefault();
++        last.focus();
++      } else if (!event.shiftKey && document.activeElement === last) {
++        event.preventDefault();
++        first.focus();
++      }
++    }
++    document.addEventListener("keydown", handleKey);
++    return () => {
++      document.removeEventListener("keydown", handleKey);
++      previousFocus?.focus();
++    };
++  }, [help]);
++  function store(key: string, entries: Entry[]) {
++    try {
++      localStorage.setItem(key, JSON.stringify(entries));
++    } catch {
++      setNotice("Your browser could not save this translation.");
++    }
++  }
++  function invalidate() {
++    controller.current?.abort();
++    controller.current = null;
++    setLoading(false);
++    setResult(null);
++    setError("");
++    window.speechSynthesis?.cancel();
++    setSpeaking("");
++  }
++  async function translate() {
++    if (!text.trim() || loading) return;
++    const requestController = new AbortController();
++    controller.current?.abort();
++    controller.current = requestController;
++    setLoading(true);
++    setError("");
++    setResult(null);
++    try {
++      const response = await fetch(`${base}api/translate`, {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ text, source, target }),
++        signal: requestController.signal,
++      });
++      const data = await response.json();
++      if (!response.ok)
++        throw new Error(
++          data.error || "Translation is unavailable. Please try again.",
++        );
++      const entry = {
++        id: crypto.randomUUID(),
++        text,
++        translation: data.translation,
++        source,
++        target,
++        date: new Date().toISOString(),
++      };
++      setResult(entry);
++      setHistory((previous) => {
++        const next = [
++          entry,
++          ...previous.filter(
++            (e) =>
++              e.text !== text || e.source !== source || e.target !== target,
++          ),
++        ].slice(0, 30);
++        store("lingua-history", next);
++        return next;
++      });
++    } catch (e) {
++      if (!requestController.signal.aborted)
++        setError(
++          e instanceof Error
++            ? e.message
++            : "Something went wrong. Please try again.",
++        );
++    } finally {
++      if (controller.current === requestController) {
++        setLoading(false);
++        controller.current = null;
++      }
++    }
++  }
++  function swap() {
++    const translated = result?.translation || "";
++    if (translated.length > 500) {
++      setNotice(
++        "This translation is too long to swap. Copy a shorter section to translate it.",
++      );
++      return;
++    }
++    invalidate();
++    setSource(target);
++    setTarget(source);
++    setText(translated || text);
++  }
++  function load(
++    entry: Pick<Entry, "text" | "source" | "target"> & Partial<Entry>,
++  ) {
++    invalidate();
++    setText(entry.text);
++    setSource(entry.source);
++    setTarget(entry.target);
++    setResult(entry.translation ? (entry as Entry) : null);
++    setView("translate");
++    setTimeout(() => input.current?.focus(), 0);
++  }
++  async function copy() {
++    if (!result) return;
++    try {
++      await navigator.clipboard.writeText(result.translation);
++      setNotice("Translation copied to clipboard.");
++    } catch {
++      setNotice("Copy is unavailable. Select the translation to copy it.");
++    }
++  }
++  function speak(value: string, lang: string, side: string) {
++    if (!("speechSynthesis" in window)) {
++      setNotice("Audio playback is not supported by your browser.");
++      return;
++    }
++    window.speechSynthesis.cancel();
++    if (speaking === side) {
++      setSpeaking("");
++      return;
++    }
++    const utterance = new SpeechSynthesisUtterance(value);
++    utterance.lang = lang;
++    utterance.onend = () => setSpeaking("");
++    utterance.onerror = () => {
++      setSpeaking("");
++      setNotice("Audio playback is unavailable for this language.");
++    };
++    setSpeaking(side);
++    window.speechSynthesis.speak(utterance);
++  }
++  function toggleSaved(entry: Entry) {
++    const exists = saved.some(
++      (e) =>
++        e.text === entry.text &&
++        e.source === entry.source &&
++        e.target === entry.target,
++    );
++    const next = exists
++      ? saved.filter(
++          (e) =>
++            !(
++              e.text === entry.text &&
++              e.source === entry.source &&
++              e.target === entry.target
++            ),
++        )
++      : [entry, ...saved].slice(0, 30);
++    setSaved(next);
++    store("lingua-saved", next);
++    setNotice(
++      exists ? "Removed from saved translations." : "Translation saved.",
++    );
++  }
++  const isSaved =
++    result &&
++    saved.some(
++      (e) =>
++        e.text === result.text &&
++        e.source === result.source &&
++        e.target === result.target,
++    );
++  const currentEntries = view === "saved" ? saved : history;
++  return (
++    <div className="app-shell">
++      <aside className="sidebar">
++        <a href={base} className="wordmark">
++          <span className="brand-symbol">
++            <LanguageIcon />
++          </span>
++          lingua<span className="brand-dot">.</span>
++        </a>
++        <div className="sidebar-label">YOUR WORKSPACE</div>
++        <nav aria-label="Workspace">
++          <button
++            className={view === "translate" ? "nav-link active" : "nav-link"}
++            onClick={() => setView("translate")}
++          >
++            <LanguageIcon />
++            Translator
++            <span className="nav-active-dot" />
++          </button>
++          <button
++            className={view === "saved" ? "nav-link active" : "nav-link"}
++            onClick={() => setView("saved")}
++          >
++            <BookmarkIcon />
++            Saved translations
++            {saved.length > 0 && (
++              <span className="nav-count">{saved.length}</span>
++            )}
++          </button>
++          <button
++            className={view === "history" ? "nav-link active" : "nav-link"}
++            onClick={() => setView("history")}
++          >
++            <ClockIcon />
++            History
++          </button>
++        </nav>
++        <div className="sidebar-bottom">
++          <div className="little-note">
++            <span className="note-star">✳</span>
++            <p>
++              A world of words.
++              <br />
++              <strong>One place to connect.</strong>
++            </p>
++            <span className="note-line" />
++          </div>
++          <button className="nav-link help-link" onClick={() => setHelp(true)}>
++            <QuestionMarkCircleIcon />
++            Help & information
++            <ArrowUpRightIcon />
++          </button>
++          <a className="publisher" href={`${base}news`}>
++            A tool by
++            <br />
++            <strong>
++              The DevTools Times <ArrowUpRightIcon />
++            </strong>
++          </a>
++        </div>
++      </aside>
++      <div className="workspace">
++        <header className="workspace-header">
++          <div>
++            <span className="header-breadcrumb">Workspace</span>
++            <span className="breadcrumb-slash">/</span>
++            <span>
++              {view === "translate"
++                ? "Translator"
++                : view === "saved"
++                  ? "Saved translations"
++                  : "History"}
++            </span>
++          </div>
++          <div className="header-right">
++            <span className="status-dot" />
++            <a href={`${base}news`} aria-label="Read The DevTools Times">
++              The DevTools Times
++              <ArrowUpRightIcon />
++            </a>
++            <span className="avatar" title="Local workspace">
++              Y
++            </span>
++          </div>
++        </header>
++        <main className="workspace-main">
++          {view === "translate" ? (
++            <>
++              <section className="intro">
++                <div>
++                  <div className="eyebrow">
++                    <span />
++                    WORDS WITHOUT BORDERS
++                  </div>
++                  <h1>
++                    A little more
++                    <br />
++                    <em>understanding.</em>
++                  </h1>
++                  <p>
++                    Different languages. Shared meaning. Bring your words
++                    together.
++                  </p>
++                </div>
++                <div className="language-art" aria-hidden="true">
++                  <span className="art-orbit orbit-one" />
++                  <span className="art-orbit orbit-two" />
++                  <span className="art-spark">✳</span>
++                  <span className="art-letter letter-a">a</span>
++                  <span className="art-letter letter-jp">あ</span>
++                  <span className="art-letter letter-ar">ع</span>
++                  <span className="art-small-dot" />
++                </div>
++              </section>
++              <section
++                className="translation-section"
++                aria-label="Text translator"
++              >
++                <div className="section-heading">
++                  <h2>
++                    <LanguageIcon />
++                    Text translation
++                  </h2>
++                  <span>
++                    <GlobeAltIcon />
++                    16 languages. Endless possibilities.
++                  </span>
++                </div>
++                <div className="translator-card">
++                  <div className="language-bar">
++                    <div className="language-selector">
++                      <label htmlFor="source-language">Translate from</label>
++                      <div className="select-wrap">
++                        <select
++                          id="source-language"
++                          value={source}
++                          onChange={(e) => {
++                            invalidate();
++                            setSource(e.target.value);
++                          }}
++                        >
++                          {languages.map((l) => (
++                            <option key={l.code} value={l.code}>
++                              {l.name}
++                            </option>
++                          ))}
++                        </select>
++                        <ChevronDownIcon />
++                      </div>
++                      <div className="quick-languages">
++                        {["en", "es", "de"]
++                          .filter((c) => c !== source)
++                          .slice(0, 2)
++                          .map((code) => (
++                            <button
++                              key={code}
++                              onClick={() => {
++                                invalidate();
++                                setSource(code);
++                              }}
++                            >
++                              {languageName(code)}
++                            </button>
++                          ))}
++                      </div>
++                    </div>
++                    <button
++                      className="swap-button"
++                      onClick={swap}
++                      title="Swap languages"
++                      aria-label="Swap languages"
++                    >
++                      <ArrowsRightLeftIcon />
++                    </button>
++                    <div className="language-selector target-selector">
++                      <label htmlFor="target-language">Translate to</label>
++                      <div className="select-wrap">
++                        <select
++                          id="target-language"
++                          value={target}
++                          onChange={(e) => {
++                            invalidate();
++                            setTarget(e.target.value);
++                          }}
++                        >
++                          {languages.map((l) => (
++                            <option key={l.code} value={l.code}>
++                              {l.name}
++                            </option>
++                          ))}
++                        </select>
++                        <ChevronDownIcon />
++                      </div>
++                      <span className="native-label">
++                        {languages.find((l) => l.code === target)?.native}
++                      </span>
++                    </div>
++                  </div>
++                  <div className="text-panels">
++                    <div className="text-panel source-panel">
++                      <label htmlFor="source-text" className="sr-only">
++                        Text to translate
++                      </label>
++                      <textarea
++                        ref={input}
++                        id="source-text"
++                        value={text}
++                        maxLength={500}
++                        dir={source === "ar" ? "rtl" : "auto"}
++                        lang={source}
++                        placeholder={
++                          "The world is full of things to say.\nStart typing here…"
++                        }
++                        onChange={(e) => {
++                          invalidate();
++                          setText(e.target.value);
++                        }}
++                        onKeyDown={(e) => {
++                          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
++                            e.preventDefault();
++                            void translate();
++                          }
++                        }}
++                      />
++                      {text && (
++                        <button
++                          className="clear-button icon-button"
++                          onClick={() => {
++                            invalidate();
++                            setText("");
++                            input.current?.focus();
++                          }}
++                          title="Clear text"
++                          aria-label="Clear text"
++                        >
++                          <XMarkIcon />
++                        </button>
++                      )}
++                      <div className="panel-tools">
++                        <button
++                          className={`icon-button ${speaking === "source" ? "is-speaking" : ""}`}
++                          disabled={!text.trim()}
++                          onClick={() => speak(text, source, "source")}
++                          title="Listen to original"
++                          aria-label="Listen to original"
++                        >
++                          <SpeakerWaveIcon />
++                        </button>
++                        <span
++                          className={
++                            text.length === 500
++                              ? "character-count at-limit"
++                              : "character-count"
++                          }
++                        >
++                          {text.length} <span>/ 500</span>
++                        </span>
++                      </div>
++                    </div>
++                    <div
++                      className="text-panel result-panel"
++                      aria-busy={loading}
++                    >
++                      <div
++                        className={
++                          result
++                            ? "translation-output"
++                            : "translation-output empty-output"
++                        }
++                        dir={target === "ar" ? "rtl" : "auto"}
++                        lang={target}
++                        aria-live="polite"
++                      >
++                        {loading ? (
++                          <span className="loading-state">
++                            <span className="loading-dots">•••</span>Finding the
++                            right words…
++                          </span>
++                        ) : error ? (
++                          <span className="translation-error" role="alert">
++                            {error}
++                          </span>
++                        ) : result ? (
++                          result.translation
++                        ) : (
++                          "Your translation will appear here"
++                        )}
++                      </div>
++                      <div className="panel-tools">
++                        <button
++                          className={`icon-button ${speaking === "target" ? "is-speaking" : ""}`}
++                          disabled={!result}
++                          onClick={() =>
++                            result &&
++                            speak(result.translation, target, "target")
++                          }
++                          title="Listen to translation"
++                          aria-label="Listen to translation"
++                        >
++                          <SpeakerWaveIcon />
++                        </button>
++                        <div className="output-actions">
++                          <button
++                            className="icon-button"
++                            disabled={!result}
++                            onClick={() => result && toggleSaved(result)}
++                            title={
++                              isSaved
++                                ? "Unsave translation"
++                                : "Save translation"
++                            }
++                            aria-label={
++                              isSaved
++                                ? "Unsave translation"
++                                : "Save translation"
++                            }
++                          >
++                            <BookmarkIcon
++                              className={isSaved ? "filled-icon" : ""}
++                            />
++                          </button>
++                          <button
++                            className="icon-button"
++                            disabled={!result}
++                            onClick={copy}
++                            title="Copy translation"
++                            aria-label="Copy translation"
++                          >
++                            <DocumentDuplicateIcon />
++                          </button>
++                        </div>
++                      </div>
++                    </div>
++                  </div>
++                  <div className="translator-footer">
++                    <span>
++                      <span className="keyboard-key">⌘</span> / Ctrl + Enter to
++                      translate
++                    </span>
++                    <button
++                      className="translate-button"
++                      disabled={!text.trim() || loading}
++                      onClick={translate}
++                    >
++                      {loading ? "Translating…" : "Translate text"}
++                      <ArrowRightIcon />
++                    </button>
++                  </div>
++                </div>
++                <div className="translation-footnote">
++                  <span>
++                    <span className="tiny-spark">✧</span>A little help for your
++                    everyday conversations.
++                  </span>
++                  <span>
++                    Powered by{" "}
++                    <a
++                      href="https://mymemory.translated.net/"
++                      target="_blank"
++                      rel="noreferrer"
++                    >
++                      MyMemory <ArrowUpRightIcon />
++                    </a>
++                  </span>
++                </div>
++              </section>
++              <section className="inspiration">
++                <div className="inspiration-heading">
++                  <div>
++                    <h2>Not sure where to start?</h2>
++                    <p>A few words can open a whole new world.</p>
++                  </div>
++                  <span>
++                    TRY A LITTLE INSPIRATION <ArrowRightIcon />
++                  </span>
++                </div>
++                <div className="example-grid">
++                  {examples.map((example) => (
++                    <button
++                      key={example.title}
++                      className="example-card"
++                      onClick={() => load(example)}
++                    >
++                      <span className="example-icon">
++                        <example.icon />
++                      </span>
++                      <span className="example-title">
++                        {example.title}
++                        <ArrowUpRightIcon />
++                      </span>
++                      <span className="example-text">“{example.text}”</span>
++                      <span className="example-language">{example.label}</span>
++                    </button>
++                  ))}
++                </div>
++              </section>
++              <div className="bottom-message">
++                <span className="bottom-message-icon">
++                  <GlobeAltIcon />
++                </span>
++                <span>
++                  However you say it, <em>make a connection.</em>
++                </span>
++                <span className="bottom-message-end">
++                  A SMALL TOOL. A WORLD OF DIFFERENCE.
++                </span>
++              </div>
++            </>
++          ) : (
++            <section className="collection-section">
++              <button
++                className="back-link"
++                onClick={() => setView("translate")}
++              >
++                <ArrowLeftIcon />
++                Back to translator
++              </button>
++              <div className="collection-header">
++                <div className="eyebrow">YOUR WORDS, TOGETHER</div>
++                <h1>
++                  {view === "saved"
++                    ? "Words worth keeping."
++                    : "A little look back."}
++                </h1>
++                <p>
++                  {view === "saved"
++                    ? "Your saved translations, ready when you need them."
++                    : "Your last 30 translations, stored on this device."}
++                </p>
++              </div>
++              {currentEntries.length > 0 ? (
++                <>
++                  <div className="collection-toolbar">
++                    <span>{currentEntries.length} translations</span>
++                    <button
++                      onClick={() => {
++                        if (view === "saved") {
++                          setSaved([]);
++                          store("lingua-saved", []);
++                        } else {
++                          setHistory([]);
++                          store("lingua-history", []);
++                        }
++                      }}
++                    >
++                      <TrashIcon />
++                      Clear {view === "saved" ? "saved" : "history"}
++                    </button>
++                  </div>
++                  <div className="entry-list">
++                    {currentEntries.map((entry) => (
++                      <article className="entry-card" key={entry.id}>
++                        <div className="entry-meta">
++                          {languageName(entry.source)}
++                          <ArrowRightIcon />
++                          {languageName(entry.target)}
++                          <span>
++                            {new Date(entry.date).toLocaleDateString()}
++                          </span>
++                        </div>
++                        <div className="entry-texts">
++                          <p dir="auto">{entry.text}</p>
++                          <p dir="auto">{entry.translation}</p>
++                        </div>
++                        <div className="entry-actions">
++                          <button onClick={() => load(entry)}>
++                            Open translation
++                            <ArrowUpRightIcon />
++                          </button>
++                          <button onClick={() => toggleSaved(entry)}>
++                            <BookmarkIcon
++                              className={
++                                saved.some(
++                                  (e) =>
++                                    e.id === entry.id ||
++                                    (e.text === entry.text &&
++                                      e.source === entry.source &&
++                                      e.target === entry.target),
++                                )
++                                  ? "filled-icon"
++                                  : ""
++                              }
++                            />
++                            {view === "saved" ? "Remove" : "Save / unsave"}
++                          </button>
++                        </div>
++                      </article>
++                    ))}
++                  </div>
++                </>
++              ) : (
++                <div className="collection-empty">
++                  <BookmarkIcon />
++                  <h2>
++                    {view === "saved"
++                      ? "Keep your favorite words close."
++                      : "Every conversation starts somewhere."}
++                  </h2>
++                  <p>
++                    {view === "saved"
++                      ? "Use the bookmark button on a translation to save it here."
++                      : "Translate your first words and they’ll appear here."}
++                  </p>
++                  <button
++                    className="translate-button"
++                    onClick={() => setView("translate")}
++                  >
++                    Start translating
++                    <ArrowRightIcon />
++                  </button>
++                </div>
++              )}
++            </section>
++          )}
++          <footer className="workspace-footer">
++            <span>Made for a world that speaks many languages.</span>
++            <span>
++              Lingua © {new Date().getFullYear()}
++              <span className="footer-dot">·</span>
++              <button onClick={() => setHelp(true)}>
++                About Lingua
++                <ArrowUpRightIcon />
++              </button>
++            </span>
++          </footer>
++        </main>
++      </div>
++      {notice && (
++        <div className="toast" role="status">
++          <CheckIcon />
++          {notice}
++          <button
++            onClick={() => setNotice("")}
++            aria-label="Dismiss notification"
++          >
++            <XMarkIcon />
++          </button>
++        </div>
++      )}
++      {help && (
++        <div
++          className="modal-backdrop"
++          onClick={(e) => {
++            if (e.target === e.currentTarget) setHelp(false);
++          }}
++        >
++          <section
++            className="help-modal"
++            ref={helpDialog}
++            role="dialog"
++            aria-modal="true"
++            aria-labelledby="help-title"
++            onKeyDown={(e) => {
++              if (e.key === "Escape") setHelp(false);
++            }}
++          >
++            <button
++              className="icon-button modal-close"
++              autoFocus
++              onClick={() => setHelp(false)}
++              aria-label="Close help"
++            >
++              <XMarkIcon />
++            </button>
++            <span className="example-icon">
++              <LanguageIcon />
++            </span>
++            <h2 id="help-title">A little help from Lingua.</h2>
++            <p>
++              Choose your languages, enter up to 500 characters, and select
++              Translate text. You can also press Ctrl or ⌘ + Enter.
++            </p>
++            <p>
++              Listen to words, copy the result, or bookmark it for later.
++              History and saved translations stay in this browser. Audio voices
++              depend on your device.
++            </p>
++            <p>
++              Text is sent to MyMemory for translation. The free service has
++              daily usage limits. Avoid entering sensitive information.
++            </p>
++            <a
++              href="https://mymemory.translated.net/doc/en/tos.php"
++              target="_blank"
++              rel="noreferrer"
++            >
++              Translation service terms
++              <ArrowUpRightIcon />
++            </a>
++            <button className="translate-button" onClick={() => setHelp(false)}>
++              Got it
++              <CheckIcon />
++            </button>
++          </section>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/lib/languages.ts b/src/lib/languages.ts
+new file mode 100644
+index 0000000..a323df1
+--- /dev/null
++++ b/src/lib/languages.ts
+@@ -0,0 +1,20 @@
++export const languages = [
++  { code: "en", name: "English", native: "English" },
++  { code: "es", name: "Spanish", native: "Español" },
++  { code: "fr", name: "French", native: "Français" },
++  { code: "de", name: "German", native: "Deutsch" },
++  { code: "it", name: "Italian", native: "Italiano" },
++  { code: "pt", name: "Portuguese", native: "Português" },
++  { code: "ja", name: "Japanese", native: "日本語" },
++  { code: "ko", name: "Korean", native: "한국어" },
++  { code: "zh", name: "Chinese", native: "中文" },
++  { code: "ar", name: "Arabic", native: "العربية" },
++  { code: "hi", name: "Hindi", native: "हिन्दी" },
++  { code: "ru", name: "Russian", native: "Русский" },
++  { code: "nl", name: "Dutch", native: "Nederlands" },
++  { code: "tr", name: "Turkish", native: "Türkçe" },
++  { code: "sv", name: "Swedish", native: "Svenska" },
++  { code: "el", name: "Greek", native: "Ελληνικά" },
++];
++export const languageName = (code: string) =>
++  languages.find((l) => l.code === code)?.name || code;
+diff --git a/src/pages/api/translate.ts b/src/pages/api/translate.ts
+new file mode 100644
+index 0000000..b226e8b
+--- /dev/null
++++ b/src/pages/api/translate.ts
+@@ -0,0 +1,91 @@
++import type { APIRoute } from "astro";
++import { languages } from "../../lib/languages";
++
++const json = (data: object, status = 200) =>
++  new Response(JSON.stringify(data), {
++    status,
++    headers: {
++      "Content-Type": "application/json",
++      "Cache-Control": "no-store",
++    },
++  });
++
++export const POST: APIRoute = async ({ request }) => {
++  let body;
++  try {
++    body = await request.json();
++  } catch {
++    return json({ error: "Please send a valid translation request." }, 400);
++  }
++  const { text, source, target } = body ?? {};
++  if (typeof text !== "string" || !text.trim() || text.length > 500) {
++    return json({ error: "Enter between 1 and 500 characters." }, 400);
++  }
++  if (
++    ![source, target].every((code) => languages.some((l) => l.code === code))
++  ) {
++    return json({ error: "Please choose supported languages." }, 400);
++  }
++  if (source === target) return json({ translation: text });
++
++  // MyMemory accepts at most 500 UTF-8 bytes per segment. Keep words and whitespace.
++  const encoder = new TextEncoder();
++  const segments: string[] = [];
++  let segment = "";
++  for (const token of text.split(/(\s+)/)) {
++    if (encoder.encode(segment + token).length <= 480) {
++      segment += token;
++      continue;
++    }
++    if (segment) {
++      segments.push(segment);
++      segment = "";
++    }
++    for (const char of token) {
++      if (encoder.encode(segment + char).length > 480) {
++        segments.push(segment);
++        segment = "";
++      }
++      segment += char;
++    }
++  }
++  if (segment) segments.push(segment);
++  try {
++    const translated = await Promise.all(
++      segments.map(async (part) => {
++        if (!part.trim()) return part;
++        const url = new URL("https://api.mymemory.translated.net/get");
++        url.searchParams.set("q", part.trim());
++        url.searchParams.set("langpair", `${source}|${target}`);
++        const response = await fetch(url, {
++          signal: AbortSignal.timeout(15000),
++        });
++        if (!response.ok) throw new Error("service");
++        const data = await response.json();
++        if (data.quotaFinished || Number(data.responseStatus) === 429)
++          throw new Error("quota");
++        if (
++          Number(data.responseStatus) !== 200 ||
++          typeof data.responseData?.translatedText !== "string"
++        )
++          throw new Error("service");
++        return (
++          (part.match(/^\s*/)?.[0] || "") +
++          data.responseData.translatedText +
++          (part.match(/\s*$/)?.[0] || "")
++        );
++      }),
++    );
++    return json({ translation: translated.join("") });
++  } catch (error) {
++    return json(
++      {
++        error:
++          error instanceof Error && error.message === "quota"
++            ? "The translation service has reached its daily limit. Please try again later."
++            : "We couldn’t reach the translation service. Please try again.",
++      },
++      503,
++    );
++  }
++};
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..eb5c68a 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,19 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++import Translator from '../components/Translator';
++import '../styles/global.css';
++import '../styles/translator.css';
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <meta name="description" content="A little more understanding. Translate text across 16 languages with Lingua, a tool by The DevTools Times." />
++    <title>Lingua — Words without borders</title>
++    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}lingua.svg`} />
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
++  </head>
++  <body class="lingua-app"><Translator client:load /></body>
++</html>
+diff --git a/src/pages/news.astro b/src/pages/news.astro
+new file mode 100644
+index 0000000..92f6399
+--- /dev/null
++++ b/src/pages/news.astro
+@@ -0,0 +1,84 @@
++---
++import Layout from '../layouts/Layout.astro';
++import ArticleTeaser from '../components/ArticleTeaser.astro';
++import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import Ad from '../components/AdSlotBanner';
++import { getCollection } from 'astro:content';
++import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import type { RenderResult } from 'astro:content';
++
++const articles = await getCollection('articles');
++articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++
++// Slicing articles for different sections
++const topArticle = articles[0];
++const topStories = articles.slice(1, 4);
++const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
++const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
++const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++
++// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
++politicsArticles[2] = {
++    id: 'public-transit-overhaul',
++    data: {
++      title: 'What\'s new in DevTools',
++      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
++      author: 'Chrome DevTools Team',
++      date: new Date('2025-09-16T00:00:00.000Z'),
++      category: 'Web Development',
++      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
++      image_caption: '',
++      readingTime: 3
++    },
++    body: '',
++    collection: 'articles',
++    slug: 'public-transit-overhaul',
++    render: async () => '' as unknown as RenderResult,
++  };
++---
++
++<Layout title="The DevTools Times">
++    <!-- Top Stories Bar -->
++    <div class="bg-white border-b border-gray-300">
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                {topStories.map(article => (
++                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                        </a>
++                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    </div>
++                ))}
++            </div>
++        </div>
++    </div>
++
++    <!-- Main Content Area -->
++    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} large={true} />
++    </main>
++
++    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Top News" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Politics" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        
++    </div>
++</Layout>
+\ No newline at end of file
+diff --git a/src/pages/translate.astro b/src/pages/translate.astro
+new file mode 100644
+index 0000000..e24cee4
+--- /dev/null
++++ b/src/pages/translate.astro
+@@ -0,0 +1,4 @@
++---
++import TranslationPage from './index.astro';
++---
++<TranslationPage />
+diff --git a/src/styles/translator.css b/src/styles/translator.css
+new file mode 100644
+index 0000000..3c8fc7c
+--- /dev/null
++++ b/src/styles/translator.css
+@@ -0,0 +1,1551 @@
++.lingua-app {
++  margin: 0;
++  background: #fafbf8;
++  color: #293d35;
++  font-family: "DM Sans", sans-serif;
++  font-size: 14px;
++  -webkit-font-smoothing: antialiased;
++}
++.lingua-app * {
++  box-sizing: border-box;
++}
++.lingua-app button,
++.lingua-app select,
++.lingua-app textarea {
++  font: inherit;
++}
++.lingua-app button,
++.lingua-app a,
++.lingua-app select {
++  -webkit-tap-highlight-color: transparent;
++}
++.lingua-app button {
++  cursor: pointer;
++}
++.lingua-app button:disabled {
++  cursor: default;
++}
++.lingua-app a {
++  color: inherit;
++  text-decoration: none;
++}
++.lingua-app button {
++  transition:
++    background 0.18s,
++    color 0.18s,
++    box-shadow 0.18s,
++    transform 0.18s;
++}
++.lingua-app button:focus-visible,
++.lingua-app a:focus-visible,
++.lingua-app select:focus-visible {
++  outline: 2px solid #64836b;
++  outline-offset: 4px;
++}
++.lingua-app svg {
++  width: 20px;
++  height: 20px;
++  flex-shrink: 0;
++  stroke-width: 1.6;
++}
++.app-shell {
++  min-height: 100vh;
++  display: flex;
++}
++.sidebar {
++  width: 224px;
++  flex-shrink: 0;
++  padding: 38px 20px 24px;
++  background: #f2f4ed;
++  border-right: 1px solid #e2e6dc;
++  position: fixed;
++  inset: 0 auto 0 0;
++  display: flex;
++  flex-direction: column;
++  z-index: 20;
++}
++.wordmark {
++  font-size: 37px;
++  letter-spacing: -1.8px;
++  font-weight: 650;
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding: 0 12px;
++  line-height: 40px;
++}
++.brand-symbol {
++  display: flex;
++  background: #2e5947;
++  color: #f2f5dc;
++  width: 36px;
++  height: 39px;
++  align-items: center;
++  justify-content: center;
++  border-radius: 11px 11px 11px 3px;
++}
++.brand-symbol svg {
++  width: 25px;
++  height: 25px;
++  stroke-width: 1.8;
++}
++.brand-dot {
++  margin-left: -12px;
++  color: #6d855d;
++}
++.sidebar-label {
++  font-size: 9px;
++  letter-spacing: 1.8px;
++  font-weight: 600;
++  color: #8d9689;
++  margin: 53px 14px 17px;
++}
++.sidebar nav {
++  display: flex;
++  flex-direction: column;
++  gap: 8px;
++}
++.nav-link {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  background: transparent;
++  border: 0;
++  color: #727b70;
++  text-align: left;
++  padding: 13px 14px;
++  border-radius: 7px;
++  font-size: 12px;
++  white-space: nowrap;
++  width: 100%;
++}
++.nav-link svg {
++  width: 18px;
++  height: 18px;
++}
++.nav-link:hover {
++  background: #e8ede1;
++}
++.nav-link.active {
++  color: #35563d;
++  background: #e2ead7;
++  font-weight: 600;
++}
++.nav-active-dot {
++  display: none;
++  margin-left: auto;
++  width: 5px;
++  height: 5px;
++  border-radius: 50%;
++  background: #4d704d;
++}
++.active .nav-active-dot {
++  display: block;
++}
++.nav-count {
++  margin-left: auto;
++  font-size: 10px;
++  background: #dde6d1;
++  padding: 1px 5px;
++  border-radius: 4px;
++}
++.sidebar-bottom {
++  margin-top: auto;
++  padding-top: 65px;
++}
++.little-note {
++  margin: 10px 12px 35px;
++  padding: 22px 13px 13px;
++  border-top: 1px solid #dce2d3;
++  position: relative;
++}
++.note-star {
++  font-size: 35px;
++  color: #718761;
++  line-height: 1;
++}
++.little-note p {
++  font-size: 12px;
++  line-height: 1.9;
++  color: #858d7d;
++  margin: 12px 0 7px;
++}
++.little-note strong {
++  color: #5a6b51;
++  font-weight: 500;
++}
++.note-line {
++  display: block;
++  width: 33px;
++  height: 2px;
++  background: #cdd7bf;
++  margin-top: 16px;
++}
++.help-link {
++  font-size: 11px;
++  padding: 12px 11px;
++}
++.help-link svg:last-child {
++  margin-left: auto;
++  width: 13px;
++}
++.publisher {
++  display: block;
++  border-top: 1px solid #dce2d3;
++  margin: 16px 12px 0;
++  padding-top: 20px;
++  color: #90978a !important;
++  font-size: 9px;
++  line-height: 1.8;
++}
++.publisher strong {
++  font-family: Georgia, serif;
++  font-size: 13px;
++  color: #5a6553;
++  font-weight: 500;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++}
++.publisher svg {
++  width: 12px;
++}
++.workspace {
++  margin-left: 224px;
++  flex: 1;
++  min-width: 0;
++}
++.workspace-header {
++  height: 83px;
++  border-bottom: 1px solid #e7e9e0;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  padding: 0 48px;
++  font-size: 11px;
++  background: #fcfdfb;
++}
++.header-breadcrumb {
++  color: #959b90;
++}
++.breadcrumb-slash {
++  color: #b9bfb1;
++  margin: 0 16px;
++}
++.header-right {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  font-size: 10px;
++  color: #7e887b;
++}
++.status-dot {
++  width: 5px;
++  height: 5px;
++  border-radius: 50%;
++  background: #87a877;
++}
++.avatar {
++  display: flex;
++  width: 30px;
++  height: 30px;
++  align-items: center;
++  justify-content: center;
++  border: 3px solid #fff;
++  background: #e9eddf;
++  border-radius: 50%;
++  color: #617453;
++  font-size: 10px;
++  font-weight: 600;
++  margin-left: 18px;
++  box-shadow: 0 0 0 1px #e7eadd;
++}
++.workspace-main {
++  max-width: 1220px;
++  margin: auto;
++  padding: 0 48px;
++}
++.intro {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  padding: 44px 0 38px;
++  position: relative;
++}
++.eyebrow {
++  font-size: 9px;
++  letter-spacing: 2px;
++  font-weight: 600;
++  color: #7c8b66;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++.eyebrow > span {
++  width: 5px;
++  height: 5px;
++  background: #8b9f70;
++  border-radius: 50%;
++}
++.intro h1 {
++  font-family: "Instrument Serif", Georgia, serif;
++  font-size: 64px;
++  line-height: 1.01;
++  letter-spacing: -1.4px;
++  font-weight: 400;
++  margin: 18px 0 19px;
++}
++.intro h1 em {
++  font-weight: 400;
++  color: #71865c;
++}
++.intro p {
++  font-size: 12px;
++  color: #899083;
++  margin: 0;
++  line-height: 1.7;
++}
++.language-art {
++  position: relative;
++  width: 250px;
++  height: 190px;
++  margin-right: 24px;
++  flex-shrink: 0;
++}
++.art-orbit {
++  position: absolute;
++  display: block;
++  border: 1px solid #e0e6d6;
++  border-radius: 50%;
++  width: 215px;
++  height: 125px;
++  left: 15px;
++  top: 36px;
++  transform: rotate(-34deg);
++}
++.orbit-two {
++  transform: rotate(38deg);
++  width: 188px;
++  height: 155px;
++  left: 26px;
++  top: 29px;
++}
++.art-letter {
++  position: absolute;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  font-family: "Instrument Serif", Georgia, serif;
++  box-shadow: 0 6px 14px #56674406;
++  border: 1px solid #dfe5d6;
++}
++.letter-a {
++  width: 85px;
++  height: 95px;
++  left: 28px;
++  top: 55px;
++  background: #e6ecd9;
++  border-radius: 19px;
++  transform: rotate(-13deg);
++  font-size: 71px;
++  color: #61734e;
++  padding-bottom: 9px;
++}
++.letter-jp {
++  width: 78px;
++  height: 82px;
++  left: 128px;
++  top: 23px;
++  background: #f5f1e7;
++  border-color: #e9e1d3;
++  border-radius: 17px;
++  transform: rotate(11deg);
++  font-family: Georgia, serif;
++  font-size: 43px;
++  color: #ad9478;
++}
++.letter-ar {
++  width: 64px;
++  height: 68px;
++  left: 146px;
++  top: 116px;
++  background: #e6ece6;
++  border-radius: 15px;
++  transform: rotate(9deg);
++  font-size: 44px;
++  color: #6a8371;
++  padding-bottom: 10px;
++}
++.art-spark {
++  position: absolute;
++  top: 6px;
++  left: 69px;
++  color: #9baf80;
++  font-size: 28px;
++}
++.art-small-dot {
++  position: absolute;
++  left: 229px;
++  top: 88px;
++  width: 6px;
++  height: 6px;
++  background: #bdc9a5;
++  border-radius: 50%;
++}
++.section-heading {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 16px;
++}
++.section-heading h2 {
++  font-size: 12px;
++  font-weight: 600;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  margin: 0;
++}
++.section-heading h2 svg {
++  width: 17px;
++  height: 17px;
++}
++.section-heading > span {
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  color: #8a9283;
++  font-size: 10px;
++}
++.section-heading > span svg {
++  width: 13px;
++  height: 13px;
++}
++.translator-card {
++  border: 1px solid #dce2d4;
++  border-radius: 12px;
++  background: white;
++  overflow: hidden;
++  box-shadow: 0 6px 18px #3f573b04;
++}
++.language-bar {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  position: relative;
++  border-bottom: 1px solid #e5e8df;
++  background: #fff;
++  min-height: 77px;
++}
++.language-selector {
++  display: flex;
++  align-items: center;
++  padding: 18px 24px;
++  gap: 18px;
++  flex-wrap: wrap;
++}
++.language-selector label {
++  width: 100%;
++  font-size: 9px;
++  color: #92998c;
++  margin-bottom: -14px;
++}
++.select-wrap {
++  position: relative;
++  display: flex;
++  align-items: center;
++}
++.select-wrap select {
++  appearance: none;
++  outline: none;
++  background: transparent;
++  border: 0;
++  font-size: 13px !important;
++  font-weight: 600;
++  padding: 0 18px 0 0;
++  color: #314a3b;
++  max-width: 150px;
++  cursor: pointer;
++}
++.select-wrap > svg {
++  position: absolute;
++  right: 0;
++  pointer-events: none;
++  width: 11px;
++  height: 11px;
++}
++.quick-languages {
++  display: flex;
++  gap: 17px;
++}
++.quick-languages button {
++  border: 0;
++  background: transparent;
++  color: #a0a496;
++  font-size: 11px;
++}
++.quick-languages button:hover {
++  color: #425e45;
++}
++.target-selector {
++  border-left: 1px solid #e5e8df;
++  padding-left: 32px;
++  background: #f7f9f3;
++}
++.native-label {
++  font-size: 10px;
++  color: #a0a991;
++}
++.swap-button {
++  position: absolute;
++  left: 50%;
++  top: 50%;
++  transform: translate(-50%, -50%);
++  height: 30px;
++  width: 30px;
++  border: 1px solid #dfe5d6;
++  border-radius: 8px;
++  background: #fff;
++  color: #6c815c;
++  z-index: 2;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++}
++.swap-button:hover {
++  background: #e9efdf;
++}
++.swap-button svg {
++  height: 15px;
++  width: 15px;
++}
++.text-panels {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++}
++.text-panel {
++  min-height: 241px;
++  padding: 25px 24px 15px;
++  display: flex;
++  flex-direction: column;
++  position: relative;
++  min-width: 0;
++}
++.source-panel textarea {
++  resize: none;
++  border: 0;
++  outline: 0;
++  flex: 1;
++  min-height: 153px;
++  width: 100%;
++  color: #354e3e;
++  background: transparent;
++  font-size: 17px;
++  line-height: 1.8;
++  padding: 0 15px 0 0;
++}
++.source-panel:focus-within {
++  box-shadow: inset 0 0 0 2px #9baa8670;
++}
++.source-panel textarea::placeholder {
++  color: #adb2a4;
++  opacity: 1;
++}
++.result-panel {
++  background: #f7f9f3;
++  border-left: 1px solid #e5e8df;
++}
++.translation-output {
++  font-size: 17px;
++  line-height: 1.8;
++  min-height: 153px;
++  overflow-wrap: anywhere;
++  white-space: pre-wrap;
++  flex: 1;
++  color: #35523e;
++}
++.empty-output {
++  font-size: 17px;
++  color: #a9b19e;
++}
++.panel-tools {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-top: 15px;
++  height: 26px;
++}
++.icon-button {
++  padding: 5px;
++  border: 0;
++  background: transparent;
++  color: #8b9b80;
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  border-radius: 5px;
++}
++.icon-button svg {
++  width: 17px;
++  height: 17px;
++}
++.icon-button:not(:disabled):hover {
++  background: #e8eede;
++  color: #395b41;
++}
++.icon-button:disabled {
++  color: #b9c3af;
++  opacity: 0.7;
++}
++.icon-button.is-speaking {
++  color: #2e6340;
++  background: #e1ead4;
++}
++.output-actions {
++  display: flex;
++  gap: 12px;
++}
++.character-count {
++  font-size: 10px;
++  color: #8e9785;
++}
++.character-count span {
++  color: #b3b9a9;
++}
++.character-count.at-limit {
++  color: #9d6f48;
++}
++.clear-button {
++  position: absolute;
++  right: 13px;
++  top: 12px;
++}
++.clear-button svg {
++  width: 13px;
++  height: 13px;
++}
++.translator-footer {
++  padding: 15px 21px;
++  border-top: 1px solid #e5e8df;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  background: #fff;
++}
++.translator-footer > span {
++  font-size: 9px;
++  color: #969e8d;
++  display: flex;
++  align-items: center;
++  gap: 4px;
++}
++.keyboard-key {
++  border: 1px solid #e5e8de;
++  border-radius: 3px;
++  padding: 0 4px;
++  font-size: 10px;
++}
++.translate-button {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 22px;
++  border: 1px solid #2d5340;
++  border-radius: 6px;
++  background: #2d5340;
++  color: #fff;
++  padding: 12px 18px;
++  font-size: 11px;
++  font-weight: 500;
++  min-height: 40px;
++}
++.translate-button svg {
++  width: 15px;
++  height: 15px;
++}
++.translate-button:hover:not(:disabled) {
++  background: #204430;
++  box-shadow: 0 3px 8px #304c3720;
++}
++.translate-button:disabled {
++  opacity: 0.55;
++}
++.translation-footnote {
++  display: flex;
++  justify-content: space-between;
++  gap: 10px;
++  padding: 13px 2px;
++  color: #979e8d;
++  font-size: 9px;
++}
++.translation-footnote > span {
++  display: flex;
++  align-items: center;
++  gap: 6px;
++}
++.translation-footnote a {
++  display: inline-flex;
++  align-items: center;
++  gap: 3px;
++  color: #738566;
++}
++.translation-footnote a svg {
++  height: 10px;
++  width: 10px;
++}
++.tiny-spark {
++  font-size: 16px;
++  color: #83966c;
++  line-height: 1;
++}
++.inspiration {
++  margin-top: 35px;
++}
++.inspiration-heading {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 19px;
++}
++.inspiration-heading h2 {
++  font-size: 14px;
++  font-weight: 500;
++  margin: 0 0 7px;
++}
++.inspiration-heading p {
++  font-size: 11px;
++  color: #92998a;
++  margin: 0;
++}
++.inspiration-heading > span {
++  font-size: 8px;
++  letter-spacing: 1.2px;
++  color: #8c987f;
++  display: flex;
++  align-items: center;
++  gap: 7px;
++}
++.inspiration-heading > span svg {
++  width: 12px;
++  height: 12px;
++}
++.example-grid {
++  display: grid;
++  grid-template-columns: repeat(3, 1fr);
++  gap: 15px;
++}
++.example-card {
++  border: 1px solid #e2e6db;
++  border-radius: 8px;
++  background: #fff;
++  text-align: left;
++  padding: 19px 18px;
++  display: flex;
++  flex-direction: column;
++  align-items: flex-start;
++  min-height: 174px;
++}
++.example-card:hover {
++  border-color: #a3b28f;
++  transform: translateY(-3px);
++  box-shadow: 0 5px 10px #37492d06;
++}
++.example-icon {
++  background: #f0f3e8;
++  color: #7d906b;
++  border-radius: 7px;
++  display: inline-flex;
++  padding: 8px;
++}
++.example-icon svg {
++  height: 17px;
++  width: 17px;
++}
++.example-card:nth-child(2) .example-icon {
++  background: #f5f0e8;
++  color: #af957a;
++}
++.example-card:nth-child(3) .example-icon {
++  background: #edf1ec;
++  color: #7c9480;
++}
++.example-title {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  width: 100%;
++  font-size: 11px;
++  font-weight: 600;
++  margin-top: 13px;
++}
++.example-title svg {
++  height: 12px;
++  width: 12px;
++  color: #9aa38e;
++}
++.example-text {
++  font-family: "Instrument Serif", Georgia, serif;
++  font-size: 18px;
++  line-height: 1.3;
++  color: #929a85;
++  margin-top: 9px;
++  max-width: 230px;
++}
++.example-language {
++  font-size: 9px;
++  color: #a0a88f;
++  margin-top: auto;
++  padding-top: 14px;
++}
++.bottom-message {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  margin: 30px 0 31px;
++  background: #eff3e8;
++  border: 1px solid #e6ebdc;
++  border-radius: 7px;
++  padding: 17px;
++  color: #79896b;
++  font-size: 11px;
++}
++.bottom-message-icon {
++  width: 25px;
++  display: flex;
++}
++.bottom-message-icon svg {
++  width: 19px;
++  height: 19px;
++}
++.bottom-message em {
++  font-style: normal;
++  color: #4d6540;
++}
++.bottom-message-end {
++  font-size: 7px;
++  letter-spacing: 1.3px;
++  margin-left: auto;
++  color: #96a285;
++}
++.workspace-footer {
++  display: flex;
++  justify-content: space-between;
++  gap: 15px;
++  padding: 21px 0 24px;
++  border-top: 1px solid #e5e9de;
++  font-size: 9px;
++  color: #9da492;
++}
++.workspace-footer > span:last-child {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++.workspace-footer button {
++  padding: 0;
++  border: 0;
++  background: transparent;
++  display: inline-flex;
++  align-items: center;
++  gap: 4px;
++  color: inherit;
++  font-size: 9px;
++}
++.workspace-footer button:hover {
++  color: #426140;
++}
++.workspace-footer svg {
++  width: 10px;
++  height: 10px;
++}
++.footer-dot {
++  color: #c0c8b4;
++}
++.loading-state {
++  font-size: 14px;
++  display: flex;
++  flex-direction: column;
++  align-items: flex-start;
++  color: #7f906d;
++}
++.loading-dots {
++  font-size: 23px;
++  letter-spacing: 7px;
++  animation: pulse 1s infinite alternate;
++}
++.translation-error {
++  font-size: 14px;
++  color: #a0674e;
++  display: block;
++  line-height: 1.6;
++}
++.filled-icon {
++  fill: #698159;
++  stroke: #698159;
++}
++.toast {
++  position: fixed;
++  bottom: 24px;
++  left: calc(50% + 112px);
++  transform: translateX(-50%);
++  background: #2e523e;
++  color: white;
++  padding: 14px 17px;
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  border-radius: 8px;
++  box-shadow: 0 6px 30px #193b3120;
++  z-index: 70;
++  font-size: 12px;
++  max-width: calc(100% - 30px);
++}
++.toast svg {
++  width: 16px;
++  height: 16px;
++}
++.toast button {
++  background: none;
++  border: 0;
++  color: #d5e1cf;
++  margin-left: 8px;
++  display: flex;
++  padding: 0;
++}
++.collection-section {
++  padding: 37px 0;
++  min-height: calc(100vh - 155px);
++}
++.back-link {
++  display: inline-flex;
++  gap: 7px;
++  align-items: center;
++  background: transparent;
++  border: 0;
++  padding: 0;
++  color: #839476;
++  font-size: 11px;
++}
++.back-link svg {
++  width: 13px;
++  height: 13px;
++}
++.collection-header {
++  margin: 35px 0;
++}
++.collection-header h1 {
++  font-family: "Instrument Serif", Georgia, serif;
++  font-weight: 400;
++  font-size: 49px;
++  line-height: 1.1;
++  margin: 16px 0;
++}
++.collection-header p {
++  color: #929c86;
++  font-size: 12px;
++}
++.collection-toolbar {
++  display: flex;
++  justify-content: space-between;
++  font-size: 11px;
++  color: #8a977e;
++  margin-bottom: 15px;
++}
++.collection-toolbar button {
++  display: flex;
++  gap: 6px;
++  align-items: center;
++  background: none;
++  border: 0;
++  color: inherit;
++  font-size: 11px;
++}
++.collection-toolbar svg {
++  width: 13px;
++  height: 13px;
++}
++.entry-list {
++  display: flex;
++  flex-direction: column;
++  gap: 15px;
++}
++.entry-card {
++  border: 1px solid #e0e6d6;
++  border-radius: 9px;
++  background: white;
++  padding: 22px;
++}
++.entry-meta {
++  display: flex;
++  gap: 10px;
++  align-items: center;
++  font-size: 11px;
++  color: #718562;
++}
++.entry-meta svg {
++  height: 13px;
++  width: 13px;
++}
++.entry-meta > span {
++  margin-left: auto;
++  color: #a5ad9b;
++  font-size: 10px;
++}
++.entry-texts {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 25px;
++  font-size: 16px;
++  line-height: 1.6;
++  overflow-wrap: anywhere;
++}
++.entry-texts > p:last-child {
++  color: #7f916f;
++}
++.entry-actions {
++  display: flex;
++  justify-content: space-between;
++}
++.entry-actions button {
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  background: transparent;
++  border: 0;
++  padding: 6px 0;
++  color: #8b9a80;
++  font-size: 10px;
++}
++.entry-actions svg {
++  height: 13px;
++  width: 13px;
++}
++.collection-empty {
++  border: 1px dashed #d8e2cc;
++  border-radius: 12px;
++  padding: 70px 20px;
++  text-align: center;
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  background: #f4f7ee;
++}
++.collection-empty > svg {
++  width: 34px;
++  height: 34px;
++  color: #93a47e;
++}
++.collection-empty h2 {
++  font-family: "Instrument Serif", serif;
++  font-weight: 400;
++  font-size: 31px;
++  margin: 20px 0 8px;
++}
++.collection-empty p {
++  color: #8a977c;
++  font-size: 12px;
++  margin-bottom: 25px;
++}
++.modal-backdrop {
++  position: fixed;
++  inset: 0;
++  background: #1d332b60;
++  z-index: 100;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  padding: 20px;
++  backdrop-filter: blur(4px);
++}
++.help-modal {
++  background: #fafbf7;
++  border: 1px solid #dce4cf;
++  border-radius: 16px;
++  max-width: 460px;
++  padding: 35px;
++  position: relative;
++  box-shadow: 0 16px 70px #203c3720;
++}
++.modal-close {
++  position: absolute;
++  right: 17px;
++  top: 17px;
++}
++.help-modal h2 {
++  font-family: "Instrument Serif", serif;
++  font-size: 34px;
++  font-weight: 400;
++  margin: 20px 0;
++}
++.help-modal p {
++  font-size: 12px;
++  line-height: 1.8;
++  color: #7d8c72;
++}
++.help-modal > a {
++  display: inline-flex;
++  align-items: center;
++  gap: 5px;
++  font-size: 11px;
++  color: #68845a;
++  margin: 8px 0 25px;
++}
++.help-modal > a svg {
++  height: 12px;
++  width: 12px;
++}
++.help-modal > .translate-button {
++  display: flex;
++  width: 100%;
++}
++@keyframes pulse {
++  from {
++    opacity: 0.35;
++  }
++  to {
++    opacity: 1;
++  }
++}
++@media (min-width: 1500px) {
++  .workspace-main {
++    padding: 0 65px;
++  }
++  .intro {
++    padding-top: 54px;
++    padding-bottom: 48px;
++  }
++  .text-panel {
++    min-height: 275px;
++  }
++  .text-panel textarea,
++  .translation-output {
++    min-height: 185px;
++  }
++}
++@media (max-width: 1150px) {
++  .sidebar {
++    width: 198px;
++    padding: 33px 14px 22px;
++  }
++  .workspace {
++    margin-left: 198px;
++  }
++  .workspace-main {
++    padding: 0 32px;
++  }
++  .workspace-header {
++    padding: 0 32px;
++  }
++  .intro h1 {
++    font-size: 58px;
++  }
++  .language-art {
++    margin-right: 0;
++    transform: scale(0.87);
++    transform-origin: right center;
++    width: 220px;
++  }
++  .language-selector {
++    gap: 12px;
++    padding-right: 18px;
++    padding-left: 20px;
++  }
++  .target-selector {
++    padding-left: 29px;
++  }
++  .quick-languages {
++    gap: 10px;
++  }
++  .example-card {
++    padding: 17px 14px;
++  }
++  .example-text {
++    font-size: 17px;
++  }
++  .toast {
++    left: calc(50% + 99px);
++  }
++}
++@media (max-width: 900px) {
++  .sidebar {
++    width: 76px;
++    padding: 30px 12px;
++  }
++  .wordmark {
++    font-size: 0;
++    padding: 0;
++    justify-content: center;
++    gap: 0;
++  }
++  .brand-symbol {
++    width: 36px;
++  }
++  .brand-dot {
++    display: none;
++  }
++  .sidebar-label {
++    font-size: 0;
++    margin: 34px 0 10px;
++  }
++  .nav-link {
++    font-size: 0;
++    gap: 0;
++    justify-content: center;
++    padding: 14px;
++  }
++  .nav-link svg {
++    width: 21px;
++    height: 21px;
++  }
++  .nav-active-dot,
++  .active .nav-active-dot,
++  .nav-count,
++  .little-note,
++  .publisher,
++  .help-link svg:last-child {
++    display: none;
++  }
++  .sidebar-bottom {
++    padding: 0;
++  }
++  .workspace {
++    margin-left: 76px;
++  }
++  .workspace-header {
++    height: 70px;
++  }
++  .workspace-main {
++    padding: 0 27px;
++  }
++  .intro {
++    padding: 36px 0;
++  }
++  .intro h1 {
++    font-size: 56px;
++  }
++  .intro p {
++    font-size: 11px;
++  }
++  .language-art {
++    transform: scale(0.75);
++    width: 170px;
++  }
++  .quick-languages {
++    display: none;
++  }
++  .inspiration-heading > span {
++    display: none;
++  }
++  .bottom-message-end {
++    display: none;
++  }
++  .toast {
++    left: calc(50% + 38px);
++  }
++}
++@media (max-width: 640px) {
++  .sidebar {
++    position: static;
++    width: 100%;
++    height: auto;
++    border-right: 0;
++    border-bottom: 1px solid #e2e6dc;
++    padding: 14px 18px;
++    flex-direction: row;
++    align-items: center;
++    gap: 15px;
++  }
++  .wordmark {
++    font-size: 26px;
++    gap: 7px;
++    justify-content: flex-start;
++    letter-spacing: -1px;
++  }
++  .brand-symbol {
++    width: 27px;
++    height: 30px;
++    border-radius: 8px 8px 8px 2px;
++  }
++  .brand-symbol svg {
++    width: 20px;
++    height: 20px;
++  }
++  .brand-dot {
++    display: inline;
++    margin-left: -8px;
++  }
++  .sidebar-label,
++  .sidebar-bottom {
++    display: none;
++  }
++  .sidebar nav {
++    flex-direction: row;
++    margin-left: auto;
++    gap: 3px;
++  }
++  .nav-link {
++    padding: 10px;
++  }
++  .nav-link svg {
++    width: 19px;
++    height: 19px;
++  }
++  .app-shell {
++    flex-direction: column;
++  }
++  .workspace {
++    margin-left: 0;
++  }
++  .workspace-header {
++    height: 52px;
++    padding: 0 20px;
++    font-size: 10px;
++  }
++  .header-right {
++    font-size: 0;
++    gap: 0;
++  }
++  .status-dot {
++    display: none;
++  }
++  .avatar {
++    margin-left: 0;
++    width: 26px;
++    height: 26px;
++  }
++  .workspace-main {
++    padding: 0 20px;
++  }
++  .intro {
++    padding: 30px 0 28px;
++    overflow: hidden;
++  }
++  .eyebrow {
++    font-size: 8px;
++    letter-spacing: 1.5px;
++  }
++  .intro h1 {
++    font-size: 48px;
++    margin: 16px 0;
++  }
++  .intro p {
++    font-size: 11px;
++    max-width: 235px;
++  }
++  .language-art {
++    position: absolute;
++    right: -20px;
++    top: 21px;
++    opacity: 0.7;
++    transform: scale(0.55);
++    width: 185px;
++    transform-origin: right top;
++    pointer-events: none;
++  }
++  .section-heading h2 {
++    font-size: 11px;
++  }
++  .section-heading > span {
++    font-size: 0;
++    gap: 0;
++  }
++  .section-heading > span svg {
++    width: 15px;
++    height: 15px;
++  }
++  .section-heading {
++    margin-bottom: 12px;
++  }
++  .language-selector {
++    padding: 16px;
++    gap: 15px;
++    min-height: 72px;
++  }
++  .language-selector label {
++    font-size: 9px;
++    margin-bottom: -12px;
++  }
++  .target-selector {
++    padding-left: 24px;
++  }
++  .native-label {
++    display: none;
++  }
++  .select-wrap select {
++    font-size: 12px !important;
++    max-width: 125px;
++  }
++  .text-panel {
++    padding: 17px 15px 12px;
++    min-height: 237px;
++  }
++  .source-panel textarea,
++  .translation-output {
++    font-size: 15px;
++    line-height: 1.7;
++    min-height: 159px;
++  }
++  .clear-button {
++    top: 3px;
++    right: 5px;
++  }
++  .panel-tools {
++    margin-top: 12px;
++  }
++  .output-actions {
++    gap: 5px;
++  }
++  .translator-footer {
++    padding: 13px;
++  }
++  .translator-footer > span {
++    font-size: 0;
++    gap: 0;
++  }
++  .keyboard-key {
++    font-size: 10px;
++    border: 0;
++  }
++  .translator-footer > span::after {
++    content: "Ctrl / ⌘ + Enter";
++    font-size: 8px;
++  }
++  .translator-footer .keyboard-key {
++    display: none;
++  }
++  .translate-button {
++    font-size: 10px;
++    gap: 13px;
++    padding: 10px 13px;
++  }
++  .translation-footnote {
++    font-size: 8px;
++    line-height: 1.5;
++    align-items: center;
++  }
++  .translation-footnote > span:first-child {
++    max-width: 180px;
++  }
++  .translation-footnote > span:last-child {
++    white-space: nowrap;
++    gap: 4px;
++  }
++  .inspiration {
++    margin-top: 27px;
++  }
++  .inspiration-heading h2 {
++    font-size: 14px;
++  }
++  .inspiration-heading p {
++    font-size: 10px;
++  }
++  .example-grid {
++    grid-template-columns: 1fr;
++    gap: 10px;
++  }
++  .example-card {
++    padding: 16px 16px 16px 66px;
++    position: relative;
++    min-height: 112px;
++  }
++  .example-icon {
++    position: absolute;
++    left: 16px;
++    top: 17px;
++  }
++  .example-title {
++    margin-top: 0;
++    font-size: 11px;
++  }
++  .example-text {
++    max-width: none;
++    font-size: 19px;
++    margin-top: 7px;
++  }
++  .example-language {
++    padding-top: 9px;
++    font-size: 9px;
++  }
++  .bottom-message {
++    font-size: 10px;
++    padding: 14px 11px;
++    margin: 23px 0;
++    gap: 6px;
++  }
++  .workspace-footer {
++    font-size: 8px;
++    padding: 17px 0 22px;
++    flex-wrap: wrap;
++    gap: 12px;
++  }
++  .workspace-footer button {
++    font-size: 8px;
++  }
++  .toast {
++    left: 50%;
++    font-size: 11px;
++    width: max-content;
++  }
++  .collection-header h1 {
++    font-size: 40px;
++  }
++  .collection-header {
++    margin-top: 30px;
++  }
++  .entry-card {
++    padding: 17px;
++  }
++  .entry-texts {
++    grid-template-columns: 1fr;
++    gap: 0;
++    font-size: 14px;
++  }
++  .entry-texts p {
++    margin: 12px 0;
++  }
++  .entry-texts p:last-child {
++    border-top: 1px solid #e8edde;
++    padding-top: 15px;
++  }
++  .help-modal {
++    padding: 28px;
++  }
++  .help-modal > .example-icon {
++    position: static;
++  }
++  .help-modal h2 {
++    font-size: 30px;
++  }
++  .collection-empty {
++    padding: 45px 15px;
++  }
++  .collection-empty h2 {
++    font-size: 28px;
++  }
++  .collection-empty p {
++    font-size: 11px;
++  }
++  .loading-state {
++    font-size: 12px;
++  }
++  .translation-error {
++    font-size: 12px;
++  }
++}
++@media (prefers-reduced-motion: reduce) {
++  .lingua-app * {
++    animation: none !important;
++    transition: none !important;
++  }
++}
++.header-right a {
++  display: inline-flex;
++  align-items: center;
++  gap: 5px;
++}
++.header-right a:hover {
++  color: #49643e;
++}
++.header-right a svg {
++  height: 12px;
++  width: 12px;
++}

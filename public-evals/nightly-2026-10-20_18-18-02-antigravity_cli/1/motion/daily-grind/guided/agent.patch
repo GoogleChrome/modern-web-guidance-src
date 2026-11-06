@@ -1,0 +1,1383 @@
+diff --git a/index.html b/index.html
+index 66c9173..a465459 100644
+--- a/index.html
++++ b/index.html
+@@ -6,159 +6,924 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer reset, base, components, animations;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    @layer reset {
++      :root {
++        --primary: #4e342e;
++        --primary-dark: #3e2723;
++        --secondary: #d7ccc8;
++        --accent: #ffab40;
++        --accent-hover: #ff9100;
++        --text: #3e2723;
++        --text-muted: #5d4037;
++        --light: #fafafa;
++        --surface: #ffffff;
++        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
++        --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++        /* Opt-in to keyword interpolation for smooth intrinsic height transitions */
++        interpolate-size: allow-keywords;
++      }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++      body, h1, h2, h3, h4, p, ul, li, figure, dialog {
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++      *, *::before, *::after {
++        box-sizing: border-box;
++      }
+     }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++    @layer base {
++      html {
++        scroll-behavior: smooth;
++        @media (prefers-reduced-motion: reduce) {
++          scroll-behavior: auto;
++        }
++      }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++      body {
++        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        line-height: 1.6;
++        color: var(--text);
++        background-color: var(--light);
++        overflow-x: clip;
++      }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++      /* Scroll progress indicator driven by scroll() timeline */
++      .scroll-progress {
++        position: fixed;
++        inset-block-start: 0;
++        inset-inline: 0;
++        block-size: 4px;
++        background: linear-gradient(90deg, var(--accent), #ffd180);
++        transform-origin: 0 50%;
++        scale: 0 1;
++        z-index: 2000;
++        pointer-events: none;
++      }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++      @media (prefers-reduced-motion: no-preference) {
++        @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++          @keyframes scale-progress {
++            to {
++              scale: 1 1;
++            }
++          }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++          .scroll-progress {
++            animation: scale-progress auto linear forwards;
++            animation-timeline: scroll(root block);
++          }
++        }
++      }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      :where(a:any-link, button, summary):focus-visible {
++        outline: 3px solid var(--accent);
++        outline-offset: 3px;
++      }
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++    @layer components {
++      /* Promo Banner with intrinsic size collapse animation */
++      .promo-banner {
++        background: var(--primary-dark);
++        color: var(--secondary);
++        text-align: center;
++        font-size: 0.9rem;
++        block-size: auto;
++        overflow: clip;
++        transition:
++          block-size 0.4s var(--ease-out-expo),
++          opacity 0.35s ease,
++          padding-block 0.4s var(--ease-out-expo);
++        padding-block: 8px;
++        padding-inline: 20px;
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++        @media (prefers-reduced-motion: reduce) {
++          transition: none !important;
++        }
++      }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++      .promo-banner.is-dismissed {
++        block-size: 0;
++        opacity: 0;
++        padding-block: 0;
++        pointer-events: none;
++      }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++      .promo-banner-inner {
++        max-inline-size: 1100px;
++        margin-inline: auto;
++        display: flex;
++        justify-content: center;
++        align-items: center;
++        gap: 12px;
++      }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++      .promo-close {
++        background: transparent;
++        border: 1px solid rgba(255, 255, 255, 0.3);
++        color: white;
++        border-radius: 4px;
++        padding: 2px 8px;
++        cursor: pointer;
++        font-size: 0.75rem;
++        transition: background-color 0.2s ease, scale 0.2s ease;
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++        &:hover {
++          background: rgba(255, 255, 255, 0.15);
++        }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++        &:active {
++          scale: 0.95;
++        }
++      }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++      /* Navigation */
++      nav {
++        background: var(--primary);
++        color: white;
++        padding: 1rem 5%;
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 1000;
++        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
++      }
++
++      .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++        display: inline-flex;
++        align-items: center;
++        gap: 8px;
++        transition: scale 0.3s var(--ease-spring);
++
++        &:hover {
++          scale: 1.03;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          transition: none;
++          &:hover {
++            scale: none;
++          }
++        }
++      }
++
++      .logo-steam {
++        display: inline-block;
++        color: var(--accent);
++        @media (prefers-reduced-motion: no-preference) {
++          animation: float-steam 2.8s ease-in-out infinite;
++        }
++      }
++
++      nav ul {
++        display: flex;
++        align-items: center;
++        list-style: none;
++        gap: 20px;
++      }
++
++      nav a {
++        color: white;
++        text-decoration: none;
++        font-size: 0.9rem;
++        position: relative;
++        padding-block: 4px;
++        transition: color 0.3s ease, translate 0.25s var(--ease-out-expo);
++
++        &:not(.logout-link)::after {
++          content: '';
++          position: absolute;
++          inset-inline: 0;
++          inset-block-end: 0;
++          block-size: 2px;
++          background: var(--accent);
++          scale: 0 1;
++          transform-origin: 100% 50%;
++          transition: scale 0.3s var(--ease-out-expo);
++        }
++
++        &:hover {
++          color: var(--accent);
++        }
++
++        &:not(.logout-link):hover::after,
++        &:not(.logout-link):focus-visible::after {
++          scale: 1 1;
++          transform-origin: 0% 50%;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          transition: color 0.15s ease;
++          &:not(.logout-link)::after {
++            transition: none;
++          }
++        }
++      }
++
++      .logout-link {
++        border: 1px solid var(--accent);
++        padding: 5px 12px;
++        border-radius: 4px;
++        transition:
++          background-color 0.25s ease,
++          color 0.25s ease,
++          translate 0.25s var(--ease-out-expo);
++
++        &:hover {
++          background-color: var(--accent);
++          color: var(--primary-dark);
++          translate: 0 -2px;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          &:hover {
++            translate: none;
++          }
++        }
++      }
++
++      /* Hero Section with Parallax & Entry Motion */
++      .hero {
++        position: relative;
++        block-size: 65vh;
++        min-block-size: 420px;
++        overflow: clip;
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: center;
++        color: white;
++        text-align: center;
++        padding: 0 20px;
++        view-timeline: --hero-tl block;
++      }
++
++      .hero-bg {
++        position: absolute;
++        inset: -12% 0;
++        background: linear-gradient(rgba(30, 18, 14, 0.58), rgba(30, 18, 14, 0.65)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        z-index: -1;
++        will-change: transform;
++
++        @media (prefers-reduced-motion: no-preference) {
++          animation: hero-bg-zoom 1.4s var(--ease-out-expo) backwards;
++        }
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        @supports ((animation-timeline: view()) and (animation-range: entry)) {
++          @keyframes hero-parallax {
++            from {
++              transform: translateY(-6%);
++            }
++            to {
++              transform: translateY(12%);
++            }
++          }
++
++          .hero-bg {
++            animation: hero-parallax auto linear both;
++            animation-timeline: --hero-tl;
++            animation-range: cover 0% exit 100%;
++          }
++        }
++      }
++
++      .hero-content {
++        max-inline-size: 720px;
++      }
++
++      .hero h1 {
++        font-size: clamp(2.2rem, 5vw, 3.4rem);
++        margin-block-end: 0.75rem;
++        letter-spacing: -0.5px;
++
++        @media (prefers-reduced-motion: no-preference) {
++          animation: fade-slide-up 0.8s var(--ease-out-expo) 0.1s backwards;
++        }
++      }
++
++      .hero p {
++        font-size: 1.15rem;
++        opacity: 0.95;
++        margin-block-end: 0.5rem;
++
++        @media (prefers-reduced-motion: no-preference) {
++          animation: fade-slide-up 0.8s var(--ease-out-expo) 0.25s backwards;
++        }
++      }
++
++      .hero .btn {
++        @media (prefers-reduced-motion: no-preference) {
++          animation: fade-slide-up 0.8s var(--ease-out-expo) 0.4s backwards;
++        }
++      }
++
++      /* Content Sections */
++      .container {
++        max-inline-size: 1100px;
++        margin: 56px auto;
++        padding: 0 20px;
++      }
++
++      .section-header {
++        text-align: center;
++        margin-block-end: 28px;
++      }
++
++      .section-header h2 {
++        font-size: 2rem;
++        color: var(--primary);
++        margin-block-end: 8px;
++      }
++
++      .section-header p {
++        color: var(--text-muted);
++      }
++
++      /* Filter Pills for View Transitions */
++      .filter-bar {
++        display: flex;
++        justify-content: center;
++        flex-wrap: wrap;
++        gap: 10px;
++        margin-block-end: 28px;
++      }
++
++      .filter-btn {
++        background: var(--surface);
++        color: var(--primary);
++        border: 1px solid var(--secondary);
++        padding: 8px 18px;
++        border-radius: 999px;
++        font-size: 0.9rem;
++        font-weight: 600;
++        cursor: pointer;
++        transition:
++          background-color 0.25s ease,
++          color 0.25s ease,
++          border-color 0.25s ease,
++          translate 0.25s var(--ease-out-expo),
++          scale 0.2s var(--ease-spring);
++
++        &:hover:not([aria-pressed="true"]) {
++          border-color: var(--primary);
++          translate: 0 -2px;
++        }
++
++        &:active {
++          scale: 0.96;
++        }
++
++        &[aria-pressed="true"] {
++          background: var(--primary);
++          color: white;
++          border-color: var(--primary);
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          transition: background-color 0.15s ease, color 0.15s ease;
++          &:hover:not([aria-pressed="true"]),
++          &:active {
++            translate: none;
++            scale: none;
++          }
++        }
++      }
++
++      /* Grid & Cards */
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++        gap: 24px;
++        margin-block-start: 20px;
++      }
++
++      .card {
++        background: var(--surface);
++        border-radius: 12px;
++        box-shadow: 0 4px 12px rgba(62, 39, 35, 0.08);
++        text-align: center;
++        overflow: clip;
++        display: flex;
++        flex-direction: column;
++        opacity: 1;
++        translate: 0 0;
++        scale: 1;
++        view-transition-class: menu-card;
++        transition:
++          display 0.4s,
++          opacity 0.4s var(--ease-out-expo),
++          translate 0.4s var(--ease-out-expo),
++          scale 0.4s var(--ease-out-expo),
++          box-shadow 0.35s ease;
++        transition-behavior: allow-discrete;
++
++        @starting-style {
++          opacity: 0;
++          translate: 0 24px;
++          scale: 0.96;
++        }
++
++        &:hover {
++          translate: 0 -6px;
++          box-shadow: 0 14px 28px rgba(62, 39, 35, 0.16);
++        }
++
++        &:where([hidden], [data-closing]) {
++          opacity: 0;
++          translate: 0 16px;
++          scale: 0.95;
++        }
++
++        &[hidden] {
++          display: none;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          transition: opacity 0.15s ease;
++          translate: none !important;
++          scale: none !important;
++
++          @starting-style {
++            opacity: 0;
++            translate: none;
++            scale: none;
++          }
++
++          &:hover {
++            translate: none;
++          }
++
++          &:where([hidden], [data-closing]) {
++            translate: none;
++            scale: none;
++          }
++        }
++      }
++
++      /* Staggered entry on initial load and scroll-driven reveal */
++      .card:nth-child(1) { --stagger: 0.08s; view-transition-name: card-maple; }
++      .card:nth-child(2) { --stagger: 0.18s; view-transition-name: card-espresso; }
++      .card:nth-child(3) { --stagger: 0.28s; view-transition-name: card-coldbrew; }
++
++      @media (prefers-reduced-motion: no-preference) {
++        @supports ((animation-timeline: view()) and (animation-range: entry)) {
++          @keyframes scroll-card-in {
++            from {
++              opacity: 0;
++              translate: 0 36px;
++              scale: 0.94;
++            }
++          }
++
++          .card {
++            animation: scroll-card-in auto var(--ease-out-expo) backwards;
++            animation-timeline: view(block);
++            animation-range: entry 5% cover 28%;
++          }
++        }
++      }
++
++      .card-media {
++        position: relative;
++        block-size: 200px;
++        overflow: clip;
++        background: var(--secondary);
++      }
++
++      .card-media img {
++        inline-size: 100%;
++        block-size: 100%;
++        object-fit: cover;
++        display: block;
++        transition: scale 0.6s var(--ease-out-expo);
++
++        @media (prefers-reduced-motion: reduce) {
++          transition: none;
++        }
++      }
++
++      .card:hover .card-media img {
++        scale: 1.07;
++
++        @media (prefers-reduced-motion: reduce) {
++          scale: none;
++        }
++      }
++
++      .card-badge {
++        position: absolute;
++        inset-block-start: 12px;
++        inset-inline-end: 12px;
++        background: rgba(62, 39, 35, 0.85);
++        color: var(--accent);
++        padding: 4px 10px;
++        border-radius: 999px;
++        font-size: 0.75rem;
++        font-weight: 600;
++        backdrop-filter: blur(4px);
++      }
++
++      .card-body {
++        padding: 22px 20px 24px;
++        display: flex;
++        flex-direction: column;
++        flex: 1;
++        align-items: center;
++      }
++
++      .card h3 {
++        margin-block-end: 8px;
++        color: var(--primary);
++        font-size: 1.3rem;
++      }
++
++      .card p {
++        color: var(--text-muted);
++        font-size: 0.95rem;
++      }
++
++      /* Animated Expandable Tasting Notes using interpolate-size */
++      .tasting-notes {
++        inline-size: 100%;
++        margin-block-start: 14px;
++        text-align: start;
++        background: var(--light);
++        border-radius: 8px;
++        border: 1px solid var(--secondary);
++        overflow: clip;
++      }
++
++      .tasting-toggle {
++        inline-size: 100%;
++        background: transparent;
++        border: none;
++        padding: 10px 14px;
++        font-size: 0.85rem;
++        font-weight: 600;
++        color: var(--primary);
++        cursor: pointer;
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++      }
++
++      .tasting-icon {
++        display: inline-block;
++        transition: rotate 0.3s var(--ease-out-expo);
++
++        @media (prefers-reduced-motion: reduce) {
++          transition: none;
++        }
++      }
++
++      .tasting-toggle[aria-expanded="true"] .tasting-icon {
++        rotate: 180deg;
++      }
++
++      .tasting-panel {
++        block-size: 0;
++        opacity: 0;
++        overflow: clip;
++        padding-inline: 14px;
++        font-size: 0.85rem;
++        color: var(--text-muted);
++        transition:
++          block-size 0.35s var(--ease-out-expo),
++          opacity 0.3s ease,
++          padding-block 0.35s var(--ease-out-expo);
++
++        &.is-expanded {
++          block-size: auto;
++          opacity: 1;
++          padding-block: 0 12px;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          transition: none !important;
++        }
++      }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++      .card-actions {
++        margin-block-start: auto;
++        padding-block-start: 16px;
++        display: flex;
++        gap: 10px;
++        justify-content: center;
++        flex-wrap: wrap;
++      }
++
++      /* Buttons */
++      .btn {
++        display: inline-flex;
++        align-items: center;
++        justify-content: center;
++        gap: 8px;
++        background: var(--primary);
++        color: white;
++        padding: 10px 22px;
++        text-decoration: none;
++        border-radius: 6px;
++        border: none;
++        font-size: 0.95rem;
++        font-weight: 600;
++        cursor: pointer;
++        margin-block-start: 15px;
++        transition:
++          background-color 0.25s ease,
++          translate 0.25s var(--ease-out-expo),
++          scale 0.2s var(--ease-spring),
++          box-shadow 0.25s ease;
++
++        &:hover {
++          background: var(--primary-dark);
++          translate: 0 -2px;
++          box-shadow: 0 6px 16px rgba(62, 39, 35, 0.25);
++        }
++
++        &:active {
++          translate: 0 0;
++          scale: 0.97;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          transition: background-color 0.15s ease;
++          &:hover,
++          &:active {
++            translate: none;
++            scale: none;
++          }
++        }
++      }
++
++      .card-actions .btn {
++        margin-block-start: 0;
++      }
++
++      /* Brewing Craft Feature Banner with Scroll-Driven Reveal */
++      .craft-showcase {
++        margin-block-start: 64px;
++        background: var(--primary);
++        color: white;
++        border-radius: 16px;
++        overflow: clip;
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++        align-items: center;
++        box-shadow: 0 12px 32px rgba(62, 39, 35, 0.15);
++
++        @media (prefers-reduced-motion: no-preference) {
++          @supports ((animation-timeline: view()) and (animation-range: entry)) {
++            animation: scroll-card-in auto var(--ease-out-expo) backwards;
++            animation-timeline: view(block);
++            animation-range: entry 10% cover 30%;
++          }
++        }
++      }
++
++      .craft-content {
++        padding: 40px;
++      }
++
++      .craft-content h2 {
++        font-size: 1.85rem;
++        margin-block-end: 12px;
++        color: var(--accent);
++      }
++
++      .craft-content p {
++        opacity: 0.9;
++        margin-block-end: 16px;
++      }
++
++      .craft-image {
++        block-size: 100%;
++        min-block-size: 280px;
++        overflow: clip;
++      }
++
++      .craft-image img {
++        inline-size: 100%;
++        block-size: 100%;
++        object-fit: cover;
++        display: block;
++        transition: scale 0.7s var(--ease-out-expo);
++
++        &:hover {
++          scale: 1.05;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          transition: none;
++          &:hover {
++            scale: none;
++          }
++        }
++      }
++
++      /* Top-layer Modal Dialog for Quick Preview */
++      dialog.quick-view-dialog {
++        margin: auto;
++        padding: 0;
++        border: none;
++        border-radius: 16px;
++        max-inline-size: 480px;
++        inline-size: 90%;
++        background: var(--surface);
++        color: var(--text);
++        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
++        overflow: clip;
++        opacity: 0;
++        transform: scale(0.92) translateY(12px);
++        transition-property: opacity, transform, display, overlay;
++        transition-duration: 0.3s;
++        transition-timing-function: var(--ease-out-expo);
++        transition-behavior: allow-discrete;
++
++        &::backdrop {
++          background-color: rgb(0 0 0 / 0);
++          backdrop-filter: blur(0px);
++          transition-property: background-color, backdrop-filter, display, overlay;
++          transition-duration: 0.3s;
++          transition-timing-function: ease-out;
++          transition-behavior: allow-discrete;
++        }
++      }
++
++      :is(dialog.quick-view-dialog[open]):where(:not([data-closing])) {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++
++        @starting-style {
++          opacity: 0;
++          transform: scale(0.92) translateY(12px);
++        }
++
++        &::backdrop {
++          background-color: rgb(0 0 0 / 0.55);
++          backdrop-filter: blur(3px);
++
++          @starting-style {
++            background-color: rgb(0 0 0 / 0);
++            backdrop-filter: blur(0px);
++          }
++        }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        dialog.quick-view-dialog {
++          transform: none;
++          transition-duration: 0.1s;
++        }
++
++        @starting-style {
++          :is(dialog.quick-view-dialog[open]):where(:not([data-closing])) {
++            transform: none;
++          }
++        }
++      }
++
++      .dialog-body {
++        padding: 24px;
++      }
++
++      .dialog-header {
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        margin-block-end: 12px;
++      }
++
++      .dialog-close {
++        background: var(--light);
++        border: 1px solid var(--secondary);
++        border-radius: 50%;
++        inline-size: 32px;
++        block-size: 32px;
++        cursor: pointer;
++        font-weight: bold;
++        color: var(--primary);
++      }
++
++      /* Footer */
++      footer {
++        background: var(--secondary);
++        text-align: center;
++        padding: 40px 20px;
++        margin-block-start: 60px;
++      }
++
++      .footer-links {
++        margin-block-end: 20px;
++      }
++
++      .footer-links a {
++        margin: 0 10px;
++        color: var(--text);
++        text-decoration: none;
++        font-size: 0.85rem;
++        transition: color 0.25s ease, translate 0.25s ease;
++        display: inline-block;
++
++        &:hover {
++          color: var(--primary);
++          translate: 0 -2px;
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++          &:hover {
++            translate: none;
++          }
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer animations {
++      /* View transitions configuration */
++      :root {
++        view-transition-name: none;
++      }
++
++      ::view-transition {
++        pointer-events: none;
++      }
++
++      ::view-transition-group(.menu-card) {
++        animation-duration: 0.4s;
++        animation-timing-function: var(--ease-out-expo);
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        ::view-transition-group(*),
++        ::view-transition-old(*),
++        ::view-transition-new(*) {
++          animation: none !important;
++        }
++      }
++
++      @keyframes fade-slide-up {
++        from {
++          opacity: 0;
++          translate: 0 24px;
++        }
++        to {
++          opacity: 1;
++          translate: 0 0;
++        }
++      }
++
++      @keyframes hero-bg-zoom {
++        from {
++          scale: 1.08;
++        }
++        to {
++          scale: 1;
++        }
++      }
++
++      @keyframes float-steam {
++        0%, 100% {
++          translate: 0 0;
++          opacity: 0.85;
++        }
++        50% {
++          translate: 0 -3px;
++          opacity: 1;
++        }
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroll-progress" aria-hidden="true"></div>
++
++  <aside class="promo-banner" aria-label="Seasonal Promotion">
++    <div class="promo-banner-inner">
++      <span>Autumn Harvest Roast is here — Free shipping on orders over $35!</span>
++      <button type="button" class="promo-close" aria-label="Dismiss promotion banner">Dismiss</button>
++    </div>
++  </aside>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary">
++    <div class="logo">
++      <span class="logo-steam" aria-hidden="true">&#9749;</span>
++      <span>THE DAILY GRIND</span>
++    </div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -169,34 +934,123 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-bg" aria-hidden="true"></div>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-header">
++        <h2 id="favorites-heading" tabindex="-1">Seasonal Favorites</h2>
++        <p>Handcrafted small-batch beverages roasted fresh daily.</p>
++      </div>
++
++      <div class="filter-bar" role="group" aria-label="Filter drinks by temperature">
++        <button type="button" class="filter-btn" data-filter="all" aria-pressed="true">All Favorites</button>
++        <button type="button" class="filter-btn" data-filter="hot" aria-pressed="false">Hot Signatures</button>
++        <button type="button" class="filter-btn" data-filter="iced" aria-pressed="false">Cold &amp; Refreshing</button>
++      </div>
++
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card" data-category="hot">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=700&q=80" alt="Maple Oat Latte with latte art in a ceramic mug" loading="lazy">
++            <span class="card-badge">Seasonal</span>
++          </div>
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <div class="tasting-notes">
++              <button type="button" class="tasting-toggle" aria-expanded="false" aria-controls="notes-maple">
++                <span>Tasting Notes</span>
++                <span class="tasting-icon" aria-hidden="true">&#9662;</span>
++              </button>
++              <div id="notes-maple" class="tasting-panel" hidden>
++                Toasted pecan, pure grade-A amber maple, velvety micro-foam finish.
++              </div>
++            </div>
++            <div class="card-actions">
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++
++        <div class="card" data-category="hot">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=700&q=80" alt="Rich dark roast espresso shot being pulled" loading="lazy">
++            <span class="card-badge">Roaster's Pick</span>
++          </div>
++          <div class="card-body">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <div class="tasting-notes">
++              <button type="button" class="tasting-toggle" aria-expanded="false" aria-controls="notes-espresso">
++                <span>Tasting Notes</span>
++                <span class="tasting-icon" aria-hidden="true">&#9662;</span>
++              </button>
++              <div id="notes-espresso" class="tasting-panel" hidden>
++                Bittersweet dark cacao, caramelized cedar, full-bodied crema.
++              </div>
++            </div>
++            <div class="card-actions">
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <div class="card" data-category="iced">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=700&q=80" alt="Chilled glass of artisanal cold brew coffee over ice" loading="lazy">
++            <span class="card-badge">18-Hr Steep</span>
++          </div>
++          <div class="card-body">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <div class="tasting-notes">
++              <button type="button" class="tasting-toggle" aria-expanded="false" aria-controls="notes-coldbrew">
++                <span>Tasting Notes</span>
++                <span class="tasting-icon" aria-hidden="true">&#9662;</span>
++              </button>
++              <div id="notes-coldbrew" class="tasting-panel" hidden>
++                Sweet molasses, crisp stone fruit, ultra-low acidity over crystal ice.
++              </div>
++            </div>
++            <div class="card-actions">
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+       </div>
++
++      <article class="craft-showcase">
++        <div class="craft-content">
++          <h2>Roasted with Intention</h2>
++          <p>Every batch is profile-roasted in small drums to highlight the natural terroir of our single-origin partner farms across Colombia, Ethiopia, and Guatemala.</p>
++          <button type="button" class="btn" id="open-roast-modal">Explore Today's Roast Profile</button>
++        </div>
++        <div class="craft-image">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80" alt="Freshly roasted whole coffee beans cooling in a roaster tray" loading="lazy">
++        </div>
++      </article>
+     </section>
+   </main>
+ 
++  <dialog class="quick-view-dialog" id="roast-dialog" aria-labelledby="roast-dialog-title">
++    <div class="dialog-body">
++      <div class="dialog-header">
++        <h3 id="roast-dialog-title">Autumn Harvest Batch #42</h3>
++        <button type="button" class="dialog-close" id="close-roast-modal" aria-label="Close dialog">&times;</button>
++      </div>
++      <p><strong>Origin:</strong> Huila, Colombia &amp; Yirgacheffe, Ethiopia</p>
++      <p><strong>Process:</strong> Washed &amp; Sun-Dried on Raised Beds</p>
++      <p><strong>Roast Level:</strong> Medium-Dark City+ Roast</p>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +1061,189 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Feature-detect discrete display transition support (guards against Firefox bug 1882408)
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    function supportsTopLayerExit() {
++      return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
++    }
++
++    // 1. Promo Banner intrinsic-size collapse with accessibility synchronization
++    const promoBanner = document.querySelector('.promo-banner');
++    const promoCloseBtn = document.querySelector('.promo-close');
++    if (promoBanner && promoCloseBtn) {
++      promoCloseBtn.addEventListener('click', () => {
++        promoBanner.classList.add('is-dismissed');
++        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !window.CSS?.supports?.('interpolate-size', 'allow-keywords')) {
++          promoBanner.hidden = true;
++        }
++      });
++
++      promoBanner.addEventListener('transitionend', (e) => {
++        if (e.propertyName === 'block-size' && promoBanner.classList.contains('is-dismissed')) {
++          promoBanner.hidden = true;
++        }
++      });
++    }
++
++    // 2. Tasting Notes intrinsic size accordion with aria-expanded and hidden sync
++    document.querySelectorAll('.tasting-toggle').forEach((btn) => {
++      const panelId = btn.getAttribute('aria-controls');
++      const panel = document.getElementById(panelId);
++      if (!panel) return;
++
++      btn.addEventListener('click', () => {
++        const isExpanded = btn.getAttribute('aria-expanded') === 'true';
++        btn.setAttribute('aria-expanded', String(!isExpanded));
++
++        if (!isExpanded) {
++          panel.hidden = false;
++          // Trigger reflow so transition runs from 0 -> auto
++          panel.offsetHeight;
++          panel.classList.add('is-expanded');
++        } else {
++          panel.classList.remove('is-expanded');
++          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !window.CSS?.supports?.('interpolate-size', 'allow-keywords')) {
++            panel.hidden = true;
++          }
++        }
++      });
++
++      panel.addEventListener('transitionend', (e) => {
++        if (e.propertyName === 'block-size' && !panel.classList.contains('is-expanded')) {
++          panel.hidden = true;
++        }
++      });
++    });
++
++    // 3. Seasonal Favorites category filter using Group View Transitions & discrete display fallback
++    const filterButtons = document.querySelectorAll('.filter-btn');
++    const cards = document.querySelectorAll('.grid .card');
++
++    async function hideCardElement(el) {
++      if (canTransitionDisplay()) {
++        el.hidden = true;
++      } else {
++        el.setAttribute('data-closing', '');
++      }
++      const animations = el.getAnimations();
++      if (animations.length > 0) {
++        await Promise.race([
++          Promise.allSettled(animations.map((a) => a.finished)),
++          new Promise((r) => setTimeout(r, 2000)),
++        ]);
++      }
++      if (el.hasAttribute('data-closing')) {
++        el.removeAttribute('data-closing');
++        el.hidden = true;
++      }
++    }
++
++    function showCardElement(el) {
++      el.removeAttribute('data-closing');
++      el.hidden = false;
++    }
++
++    filterButtons.forEach((btn) => {
++      btn.addEventListener('click', () => {
++        const filter = btn.dataset.filter;
++        filterButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
++
++        const applyFilter = () => {
++          cards.forEach((card) => {
++            const matches = filter === 'all' || card.dataset.category === filter;
++            if (matches) {
++              showCardElement(card);
++            } else if (document.startViewTransition) {
++              card.hidden = true;
++            } else {
++              hideCardElement(card);
++            }
++          });
++        };
++
++        if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++          document.startViewTransition(() => applyFilter());
++        } else {
++          applyFilter();
++        }
++      });
++    });
++
++    // 4. Scroll-driven animations fallback using IntersectionObserver
++    if (
++      !window.CSS?.supports?.('(animation-timeline: view()) and (animation-range: entry)') &&
++      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
++    ) {
++      const revealObserver = new IntersectionObserver(
++        (entries) => {
++          for (const entry of entries) {
++            const ratio = Math.min(1, Math.max(0, entry.intersectionRatio / 0.35));
++            entry.target.style.opacity = String(0.2 + ratio * 0.8);
++            entry.target.style.translate = `0 ${(1 - ratio) * 24}px`;
++          }
++        },
++        {
++          threshold: Array.from({ length: 21 }, (_, i) => i / 20),
++        }
++      );
++
++      document.querySelectorAll('.card, .craft-showcase').forEach((el) => {
++        revealObserver.observe(el);
++      });
++    }
++
++    // 5. Top-layer Modal Dialog with smooth entry/exit and fallback
++    const roastDialog = document.getElementById('roast-dialog');
++    const openRoastBtn = document.getElementById('open-roast-modal');
++    const closeRoastBtn = document.getElementById('close-roast-modal');
++
++    async function closeTopLayer(element) {
++      if (!supportsTopLayerExit()) {
++        element.setAttribute('data-closing', '');
++        const animations = element.getAnimations({ subtree: true });
++        if (animations.length > 0) {
++          await Promise.race([
++            Promise.allSettled(animations.map((a) => a.finished)),
++            new Promise((r) => setTimeout(r, 2000)),
++          ]);
++        }
++        if (!element.hasAttribute('data-closing')) return;
++        element.removeAttribute('data-closing');
++      }
++      element.close();
++    }
++
++    if (roastDialog && openRoastBtn && closeRoastBtn) {
++      openRoastBtn.addEventListener('click', () => {
++        roastDialog.showModal();
++      });
++
++      closeRoastBtn.addEventListener('click', () => {
++        closeTopLayer(roastDialog);
++      });
++
++      roastDialog.addEventListener('cancel', (event) => {
++        event.preventDefault();
++        closeTopLayer(roastDialog);
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,205 @@
+diff --git a/index.html b/index.html
+index 66c9173..aa4723c 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,19 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #d7ccc8;
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      --primary: #e5c2a8;
++      --secondary: #302722;
++      --text: #f5e9e0;
++      --light: #1b1715;
++      --surface: #27211e;
++      --border: #716158;
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -29,7 +42,7 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: #4e342e;
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -107,8 +120,100 @@
+       margin-top: 20px;
+     }
+ 
++    .appearance {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 24px;
++      padding: 20px 24px;
++      margin-bottom: 40px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++    }
++
++    .appearance h2 {
++      font-size: 1rem;
++    }
++
++    .appearance p {
++      font-size: 0.9rem;
++    }
++
++    .switch-control {
++      position: relative;
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      min-height: 44px;
++      cursor: pointer;
++      flex-shrink: 0;
++    }
++
++    .switch-control input {
++      position: absolute;
++      width: 100%;
++      height: 100%;
++      inset: 0;
++      opacity: 0;
++      cursor: pointer;
++      margin: 0;
++    }
++
++    .switch-track {
++      display: inline-flex;
++      align-items: center;
++      width: 48px;
++      height: 28px;
++      padding: 3px;
++      border: 2px solid #78665c;
++      border-radius: 20px;
++      background: #78665c;
++    }
++
++    .switch-track::before {
++      content: "";
++      width: 18px;
++      height: 18px;
++      border-radius: 50%;
++      background: #fff;
++    }
++
++    .switch-control input:checked + .switch-track {
++      background: #90521e;
++      border-color: #90521e;
++    }
++
++    .switch-control input:checked + .switch-track::before {
++      transform: translateX(20px);
++    }
++
++    .switch-control input:focus-visible + .switch-track {
++      outline: 3px solid var(--text);
++      outline-offset: 4px;
++    }
++
++    .switch-state {
++      min-width: 2em;
++      font-size: 0.9rem;
++    }
++
++    @media (max-width: 600px) {
++      .appearance { align-items: flex-start; flex-direction: column; gap: 12px; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
++
++    @media (forced-colors: active) {
++      .switch-track { border-color: ButtonText; }
++      .switch-track::before { background: ButtonText; }
++      .switch-control input:checked + .switch-track { border-color: Highlight; background: Highlight; }
++      .switch-control input:checked + .switch-track::before { background: HighlightText; }
++    }
++
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -122,7 +227,7 @@
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: #4e342e;
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -175,6 +280,18 @@
+   </header>
+ 
+   <main class="container">
++    <section class="appearance" aria-labelledby="appearance-heading">
++      <div>
++        <h2 id="appearance-heading">Make yourself comfortable</h2>
++        <p id="dark-mode-description">A darker look for your daily coffee break.</p>
++      </div>
++      <label class="switch-control">
++        <span>Dark mode</span>
++        <input id="dark-mode" type="checkbox" role="switch" aria-describedby="dark-mode-description">
++        <span class="switch-track" aria-hidden="true"></span>
++        <span class="switch-state" aria-hidden="true">Off</span>
++      </label>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +324,41 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const themeSwitch = document.getElementById('dark-mode');
++    const switchState = document.querySelector('.switch-state');
++    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
++    let savedTheme = null;
++
++    try {
++      savedTheme = localStorage.getItem('daily-grind-theme');
++    } catch {
++      // The switch still works when browser storage is unavailable.
++    }
++
++    function applyTheme(dark) {
++      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
++      themeSwitch.checked = dark;
++      switchState.textContent = dark ? 'On' : 'Off';
++    }
++
++    applyTheme(savedTheme === 'dark' || (savedTheme !== 'light' && systemTheme.matches));
++
++    themeSwitch.addEventListener('change', () => {
++      savedTheme = themeSwitch.checked ? 'dark' : 'light';
++      applyTheme(themeSwitch.checked);
++      try {
++        localStorage.setItem('daily-grind-theme', savedTheme);
++      } catch {
++        // Keep the current preference for this visit.
++      }
++    });
++
++    systemTheme.addEventListener('change', (event) => {
++      if (savedTheme !== 'dark' && savedTheme !== 'light') applyTheme(event.matches);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

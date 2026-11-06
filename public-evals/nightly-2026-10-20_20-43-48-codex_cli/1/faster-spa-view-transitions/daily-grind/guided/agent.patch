@@ -1,0 +1,393 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/index.html b/index.html
+index 66c9173..8815fc1 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/navigation.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -46,6 +47,54 @@
+       letter-spacing: 1px;
+     }
+ 
++    .logo a {
++      font: inherit;
++    }
++
++    nav a[aria-current="page"] {
++      color: var(--accent);
++      text-decoration: underline;
++      text-underline-offset: 5px;
++    }
++
++    #views {
++      position: relative;
++      display: flow-root;
++    }
++
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      inset: 0 0 auto;
++      /* The container itself still paints when its contents are skipped. */
++      visibility: hidden;
++      pointer-events: none;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
++    .spa-view:focus {
++      outline: none;
++    }
++
++    .spa-view > h1 {
++      margin-bottom: 1rem;
++    }
++
++    label, input {
++      display: block;
++    }
++
++    input {
++      font: inherit;
++      max-width: 100%;
++      padding: 8px;
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+@@ -158,7 +207,7 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,6 +217,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="views">
++  <div id="home-view" class="spa-view" tabindex="-1" aria-label="Home">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -196,6 +247,54 @@
+       </div>
+     </section>
+   </main>
++  </div>
++  </div>
++
++  <!-- Finite, lazy-mounted views: each template is cloned only on its first visit. -->
++  <template data-route="/menu" data-title="Menu">
++    <h1>Our Menu</h1>
++    <div class="grid">
++      <article class="card"><h2>Maple Oat Latte</h2><p>Creamy oat milk with Vermont maple syrup.</p><a class="btn" href="/menu/seasonal">View Details</a></article>
++      <article class="card"><h2>Dark Roast Espresso</h2><p>Bold, smokey, and perfect for a morning boost.</p><a class="btn" href="/menu/espresso">View Details</a></article>
++      <article class="card"><h2>Cold Brew</h2><p>Steeped for 18 hours for maximum smoothness.</p><a class="btn" href="/menu/cold-brew">View Details</a></article>
++    </div>
++  </template>
++  <template data-route="/menu/seasonal" data-title="Maple Oat Latte">
++    <h1>Maple Oat Latte</h1><p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++    <details><summary>About this favorite</summary><p>A cozy combination of espresso, oat milk, and maple sweetness.</p></details>
++    <a class="btn" href="/menu">Back to Menu</a>
++  </template>
++  <template data-route="/menu/espresso" data-title="Dark Roast Espresso">
++    <h1>Dark Roast Espresso</h1><p>Bold, smokey, and perfect for a morning boost.</p><a class="btn" href="/menu">Back to Menu</a>
++  </template>
++  <template data-route="/menu/cold-brew" data-title="Cold Brew">
++    <h1>Cold Brew</h1><p>Steeped for 18 hours for maximum smoothness.</p><a class="btn" href="/menu">Back to Menu</a>
++  </template>
++  <template data-route="/locations" data-title="Locations">
++    <h1>Locations</h1><p>Looking for your next cup? Contact our team for coffee shop locations and opening hours.</p><a class="btn" href="/contact">Contact Us</a>
++  </template>
++  <template data-route="/rewards" data-title="Rewards">
++    <h1>Rewards</h1><p>Find out more about Daily Grind rewards from our team.</p><a class="btn" href="/contact">Ask About Rewards</a>
++  </template>
++  <template data-route="/account" data-title="My Account">
++    <h1>My Account</h1><p>Keep a note of your favorite coffee while you browse. This note stays here during your visit.</p>
++    <label for="favorite-coffee">Favorite coffee</label><input id="favorite-coffee" name="favorite-coffee" autocomplete="off">
++  </template>
++  <template data-route="/order-online" data-title="Order Online">
++    <h1>Order Online</h1><p>Explore our favorites and contact the team for ordering availability.</p><a class="btn" href="/menu">Browse Menu</a>
++  </template>
++  <template data-route="/about" data-title="Our Story">
++    <h1>Our Story</h1><p>Ethically sourced, locally roasted, delivered to your cup. Welcome to The Daily Grind.</p>
++  </template>
++  <template data-route="/careers" data-title="Join the Team">
++    <h1>Join the Team</h1><p>Interested in sharing your love of coffee? Contact our team about opportunities.</p><a class="btn" href="/contact">Contact Us</a>
++  </template>
++  <template data-route="/contact" data-title="Contact Us">
++    <h1>Contact Us</h1><p>Stop by your local Daily Grind to speak with our team about coffee, rewards, and ordering.</p>
++  </template>
++  <template data-route="/privacy-policy" data-title="Privacy">
++    <h1>Privacy</h1><p>Your favorite coffee note is held in this page's memory during your visit. It is not submitted or saved by this site.</p>
++  </template>
+ 
+   <footer>
+     <div class="footer-links">
+diff --git a/navigation.js b/navigation.js
+new file mode 100644
+index 0000000..414492f
+--- /dev/null
++++ b/navigation.js
+@@ -0,0 +1,65 @@
++(() => {
++  const outlet = document.getElementById('views');
++  const templates = new Map(
++    [...document.querySelectorAll('template[data-route]')].map(template => [template.dataset.route, template])
++  );
++  // Only the finite set of declared routes can enter this cache.
++  const views = new Map([['/', document.getElementById('home-view')]]);
++  let activePath = '/';
++
++  function showView(path, { focus = true } = {}) {
++    if (path !== '/' && !templates.has(path)) return false;
++
++    if (!views.has(path)) {
++      const template = templates.get(path);
++      const view = document.createElement('main');
++      view.className = 'spa-view container';
++      view.tabIndex = -1;
++      view.setAttribute('aria-label', template.dataset.title);
++      view.append(template.content.cloneNode(true));
++      outlet.append(view);
++      views.set(path, view);
++    }
++
++    const target = views.get(path);
++    // Release focus before making its previous ancestor inaccessible.
++    if (focus && document.activeElement instanceof HTMLElement) {
++      document.activeElement.blur();
++    }
++    for (const view of views.values()) {
++      const inactive = view !== target;
++      view.classList.toggle('inactive', inactive);
++      view.inert = inactive;
++      view.setAttribute('aria-hidden', String(inactive));
++    }
++    activePath = path;
++    document.title = path === '/'
++      ? 'The Daily Grind | Artisanal Coffee'
++      : `${templates.get(path).dataset.title} | The Daily Grind`;
++    document.querySelectorAll('nav a').forEach(link => {
++      if (new URL(link.href).pathname === path) link.setAttribute('aria-current', 'page');
++      else link.removeAttribute('aria-current');
++    });
++    if (focus) target.focus();
++    return true;
++  }
++
++  document.addEventListener('click', event => {
++    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++    const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
++    if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
++    const url = new URL(link.href);
++    if (url.origin !== location.origin || url.search || url.hash) return;
++    if (url.pathname !== '/' && !templates.has(url.pathname)) return;
++
++    event.preventDefault();
++    if (activePath === url.pathname) return;
++    history.pushState(null, '', url.pathname);
++    showView(url.pathname);
++  });
++
++  window.addEventListener('popstate', () => {
++    if (!showView(location.pathname)) location.reload();
++  });
++  showView(location.pathname, { focus: false });
++})();
+diff --git a/navigation.test.cjs b/navigation.test.cjs
+new file mode 100644
+index 0000000..b7ae200
+--- /dev/null
++++ b/navigation.test.cjs
+@@ -0,0 +1,112 @@
++const { readFileSync } = require('node:fs');
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { JSDOM } = require('jsdom');
++
++const html = readFileSync(`${__dirname}/index.html`, 'utf8');
++const script = readFileSync(`${__dirname}/navigation.js`, 'utf8');
++
++function app(path = '/') {
++  const dom = new JSDOM(html, { url: `https://daily-grind.test${path}`, runScripts: 'outside-only' });
++  dom.window.eval(script);
++  return dom;
++}
++
++function navigate(window, path) {
++  const link = window.document.createElement('a');
++  link.href = path;
++  window.document.body.append(link);
++  link.click();
++  link.remove();
++}
++
++test('revisiting a view reuses its DOM, input values, and event listeners', t => {
++  const dom = app();
++  t.after(() => dom.window.close());
++  const { window } = dom;
++  const { document } = window;
++  assert.equal(document.querySelectorAll('.spa-view').length, 1);
++  navigate(window, '/account');
++  const input = document.getElementById('favorite-coffee');
++  const account = input.closest('.spa-view');
++  input.value = 'Oat latte';
++  let events = 0;
++  input.addEventListener('input', () => events++);
++  input.focus();
++
++  navigate(window, '/menu');
++  assert.equal(account.isConnected, true);
++  assert.equal(account.classList.contains('inactive'), true);
++  assert.equal(account.inert, true);
++  assert.equal(account.getAttribute('aria-hidden'), 'true');
++  assert.notEqual(document.activeElement, input);
++
++  navigate(window, '/account');
++  assert.equal(document.getElementById('favorite-coffee'), input);
++  assert.equal(input.value, 'Oat latte');
++  input.dispatchEvent(new window.Event('input'));
++  assert.equal(events, 1);
++  assert.equal(account.inert, false);
++  assert.equal(account.getAttribute('aria-hidden'), 'false');
++  assert.equal(document.activeElement, account);
++  assert.equal(document.querySelectorAll('.spa-view:not(.inactive)').length, 1);
++  assert.equal(document.querySelectorAll('.spa-view').length, 3);
++  assert.equal(document.querySelector('nav [aria-current="page"]').pathname, '/account');
++});
++
++test('native disclosure state survives navigation and history Back/Forward', async t => {
++  const dom = app('/menu/seasonal');
++  t.after(() => dom.window.close());
++  const { window } = dom;
++  const details = window.document.querySelector('#views details');
++  details.open = true;
++  navigate(window, '/menu');
++  const back = new Promise(resolve => window.addEventListener('popstate', resolve, { once: true }));
++  window.history.back();
++  await back;
++  assert.equal(window.location.pathname, '/menu/seasonal');
++  assert.equal(window.document.querySelector('#views details'), details);
++  assert.equal(details.open, true);
++  assert.equal(details.closest('.spa-view').classList.contains('inactive'), false);
++  assert.equal(window.document.title, 'Maple Oat Latte | The Daily Grind');
++
++  const forward = new Promise(resolve => window.addEventListener('popstate', resolve, { once: true }));
++  window.history.forward();
++  await forward;
++  assert.equal(window.location.pathname, '/menu');
++  assert.equal(details.closest('.spa-view').inert, true);
++});
++
++test('routing respects native links and never caches undeclared routes', t => {
++  const dom = app();
++  t.after(() => dom.window.close());
++  const { window } = dom;
++  for (const { href, attributes = {}, options = {} } of [
++    { href: 'https://example.com' },
++    { href: '/logout' },
++    { href: '/menu?query=coffee' },
++    { href: '/menu#coffee' },
++    { href: '/menu', attributes: { target: '_blank' } },
++    { href: '/menu', attributes: { download: '' } },
++    { href: '/menu', options: { ctrlKey: true } },
++    { href: '/menu', options: { metaKey: true } },
++    { href: '/menu', options: { shiftKey: true } },
++    { href: '/menu', options: { altKey: true } },
++    { href: '/menu', options: { button: 1 } }
++  ]) {
++    const link = window.document.createElement('a');
++    link.href = href;
++    Object.entries(attributes).forEach(([key, value]) => link.setAttribute(key, value));
++    window.document.body.append(link);
++    let intercepted;
++    window.addEventListener('click', event => {
++      intercepted = event.defaultPrevented;
++      event.preventDefault(); // Suppress jsdom's unsupported native navigation.
++    }, { once: true });
++    link.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, ...options }));
++    assert.equal(intercepted, false, href);
++    link.remove();
++  }
++  assert.equal(window.location.pathname, '/');
++  assert.equal(window.document.querySelectorAll('.spa-view').length, 1);
++});
+diff --git a/package.json b/package.json
+index 2bd4d77..eb74dc0 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "test": "node --test",
++    "start": "node server.cjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "jsdom": "^30.1.3"
+   }
+ }
+diff --git a/server.cjs b/server.cjs
+new file mode 100644
+index 0000000..a4e51da
+--- /dev/null
++++ b/server.cjs
+@@ -0,0 +1,32 @@
++const { createServer } = require('node:http');
++const { readFileSync } = require('node:fs');
++
++const index = readFileSync(`${__dirname}/index.html`);
++const navigation = readFileSync(`${__dirname}/navigation.js`);
++const routes = new Set(['/', '/index.html', ...Array.from(
++  index.toString().matchAll(/<template data-route="([^"]+)"/g), match => match[1]
++)]);
++
++// Serve the app shell for declared routes so reloads and deep links work too.
++const server = createServer((request, response) => {
++  if (request.method !== 'GET' && request.method !== 'HEAD') {
++    response.writeHead(405, { Allow: 'GET, HEAD' });
++    response.end();
++    return;
++  }
++  const path = new URL(request.url, 'http://localhost').pathname;
++  const isScript = path === '/navigation.js';
++  if (!isScript && !routes.has(path)) {
++    response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++    response.end('Not found');
++    return;
++  }
++  response.writeHead(200, {
++    'Content-Type': isScript ? 'text/javascript; charset=utf-8' : 'text/html; charset=utf-8'
++  });
++  response.end(request.method === 'HEAD' ? undefined : isScript ? navigation : index);
++});
++
++server.listen(process.env.PORT || 11222, '0.0.0.0', () => {
++  console.log(`The Daily Grind is listening on port ${server.address().port}`);
++});

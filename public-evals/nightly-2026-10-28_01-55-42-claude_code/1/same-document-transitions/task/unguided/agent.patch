@@ -1,0 +1,693 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,12 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --radius-thumb: 12px;
++      --radius-hero: 16px;
++      --morph-duration: 420ms;
++      --morph-easing: cubic-bezier(0.4, 0, 0.2, 1);
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -26,8 +30,17 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    img {
++      display: block;
++      max-width: 100%;
++    }
++
++    [hidden] {
++      display: none !important;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -37,8 +50,10 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      /* Keep the nav static (no cross-fade) while pages morph beneath it. */
++      view-transition-name: site-nav;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -71,10 +86,10 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
+-    .hero {
++    /* Site banner (the marketing header on the list page) */
++    .banner {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -87,9 +102,9 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
+-    .hero h1 {
++    .banner h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
+@@ -99,28 +114,169 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    /* Headings that receive programmatic focus should not show a ring on mouse users,
++       but keep a visible ring for keyboard users. */
++    [tabindex="-1"]:focus {
++      outline: none;
++    }
++
++    [tabindex="-1"]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 4px;
++    }
++
++    #list-heading {
++      text-align: center;
++      font-size: 2rem;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    /* ---- List view: thumbnail cards ---- */
++    .thumbnail {
++      position: relative;
++      display: block;
++      aspect-ratio: 4 / 3;
++      border-radius: var(--radius-thumb);
++      overflow: hidden;
++      background: var(--primary);
++      color: white;
++      text-decoration: none;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
++      transition: transform 0.25s, box-shadow 0.25s;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .thumbnail:hover,
++    .thumbnail:focus-visible {
++      transform: translateY(-3px);
++      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
++    }
++
++    .thumbnail:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .thumbnail img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .thumbnail .caption {
++      position: absolute;
++      inset: auto 0 0 0;
++      padding: 48px 16px 14px;
++      background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0));
++    }
++
++    .thumbnail .title {
++      /* fit-content keeps the snapshot box hugging the text, so the morph scales
++         the glyphs instead of stretching an over-wide block. */
++      width: fit-content;
++      max-width: 100%;
++      font-size: 1.25rem;
++      line-height: 1.2;
++      font-weight: 700;
++      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
++    }
++
++    .thumbnail .tagline {
++      font-size: 0.85rem;
++      opacity: 0.9;
++      margin-top: 4px;
++    }
++
++    /* ---- Detail view ---- */
++    #detail-page .container {
++      margin-top: 24px;
++    }
++
++    .back-link {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
+       color: var(--primary);
++      text-decoration: none;
++      font-weight: 600;
++      margin-bottom: 16px;
+     }
+ 
++    .back-link:hover {
++      color: var(--accent);
++    }
++
++    #hero {
++      position: relative;
++      width: 100%;
++      aspect-ratio: 21 / 9;
++      max-height: 480px;
++      border-radius: var(--radius-hero);
++      overflow: hidden;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++    }
++
++    #hero img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    #hero .caption {
++      position: absolute;
++      inset: auto 0 0 0;
++      padding: 96px 32px 28px;
++      background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0));
++    }
++
++    #title {
++      width: fit-content;
++      max-width: 100%;
++      font-size: clamp(1.75rem, 4vw, 3rem);
++      line-height: 1.15;
++      font-weight: 700;
++      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
++    }
++
++    .detail-body {
++      max-width: 720px;
++      margin: 28px auto 0;
++    }
++
++    .detail-body p {
++      margin-bottom: 1rem;
++      font-size: 1.05rem;
++    }
++
++    .detail-meta {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin: 12px 0 20px;
++      list-style: none;
++    }
++
++    .detail-meta li {
++      background: var(--secondary);
++      padding: 4px 12px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -151,8 +307,76 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---- View transition (morph) styling ---- */
++
++    /* The detail view's hero and title always carry their transition names.
++       The matching thumbnail/.title only get the same names temporarily (via
++       inline style) while a transition is running; see the script below. */
++    #hero {
++      view-transition-name: hero;
++    }
++
++    #title {
++      view-transition-name: title;
++    }
++
++    ::view-transition-group(*) {
++      animation-duration: var(--morph-duration);
++      animation-timing-function: var(--morph-easing);
++    }
++
++    /* Keep the title above the hero while both groups fly. */
++    ::view-transition-group(title) {
++      z-index: 2;
++    }
++
++    /* Hero morph: the thumbnail (4:3) and hero (21:9) have different aspect
++       ratios. Make both snapshots fill the animating box and crop with
++       object-fit: cover so the photo never stretches. */
++    ::view-transition-old(hero),
++    ::view-transition-new(hero) {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    /* Title morph: text snapshots must scale uniformly. Letting each snapshot
++       fit inside the animating box (object-fit: contain, anchored to the
++       left) keeps the glyphs' proportions even when the line wraps or the
++       font size ratio differs from the box ratio. */
++    ::view-transition-old(title),
++    ::view-transition-new(title) {
++      width: 100%;
++      height: 100%;
++      object-fit: contain;
++      object-position: left center;
++    }
++
++    /* Avoid accidental interaction while a morph is running. */
++    html.is-transitioning {
++      pointer-events: none;
++    }
++
++    /* ---- Reduced motion: no animations of any kind ---- */
++    @media (prefers-reduced-motion: reduce) {
++
++      *,
++      *::before,
++      *::after {
++        animation: none !important;
++        transition: none !important;
++      }
++
++      ::view-transition-group(*),
++      ::view-transition-image-pair(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,37 +391,48 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <!-- ===== List view ===== -->
++  <div id="list-page">
++    <header class="banner">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <main class="container">
++      <section aria-labelledby="list-heading">
++        <h2 id="list-heading" tabindex="-1">Seasonal Favorites</h2>
++        <div class="grid" id="favorites-grid">
++          <!-- .thumbnail cards are rendered from the DRINKS data below -->
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
++      </section>
++    </main>
++  </div>
+ 
++  <!-- ===== Detail view ===== -->
++  <div id="detail-page" hidden>
++    <main class="container">
++      <a href="#/" class="back-link" id="back-link" aria-label="Back to Seasonal Favorites">
++        <span aria-hidden="true">&larr;</span> Back to Seasonal Favorites
++      </a>
++
++      <figure id="hero">
++        <img id="hero-image" src="" alt="">
++        <figcaption class="caption">
++          <h1 id="title" tabindex="-1"></h1>
++        </figcaption>
++      </figure>
++
++      <article class="detail-body">
++        <ul class="detail-meta" id="detail-meta"></ul>
++        <div id="detail-description"></div>
++        <a href="/order-online" class="btn">Order Now</a>
++      </article>
++    </main>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +441,293 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // ---------- Data ----------
++      var DRINKS = [
++        {
++          slug: 'maple-oat-latte',
++          title: 'Maple Oat Latte',
++          tagline: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735',
++          alt: 'A latte with leaf-pattern foam art in a white ceramic cup',
++          meta: ['Hot', 'Oat milk', 'Seasonal', '12 / 16 oz'],
++          description: [
++            'Our signature autumn drink pairs a double shot of medium-roast espresso with silky steamed oat milk and a drizzle of real Vermont maple syrup.',
++            'We finish each cup with a dusting of cinnamon and a touch of flaky sea salt to balance the sweetness. Available hot or iced while the season lasts.'
++          ]
++        },
++        {
++          slug: 'dark-roast-espresso',
++          title: 'Dark Roast Espresso',
++          tagline: 'Bold, smokey, and perfect for a morning boost.',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04',
++          alt: 'A freshly pulled shot of espresso with thick crema in a small cup',
++          meta: ['Hot', 'Single origin', 'Dark roast', 'Double shot'],
++          description: [
++            'Pulled from a small-lot Sumatran bean roasted in-house to the edge of second crack, this espresso delivers notes of dark chocolate, toasted cedar, and a lingering smoky finish.',
++            'Order it as a straight double, a cortado, or as the backbone of any of our milk drinks.'
++          ]
++        },
++        {
++          slug: 'cold-brew',
++          title: 'Cold Brew',
++          tagline: 'Steeped for 18 hours for maximum smoothness.',
++          image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c',
++          alt: 'A tall glass of iced cold brew coffee on a wooden table',
++          meta: ['Iced', 'Low acidity', '18-hour steep', '16 / 20 oz'],
++          description: [
++            'Coarse-ground Colombian beans are steeped in cold, filtered water for a full 18 hours, then slowly pressed for a naturally sweet, low-acid concentrate.',
++            'Served over ice, black or with a splash of your milk of choice. Try it with a shot of our house vanilla syrup.'
++          ]
++        }
++      ];
++
++      // ---------- DOM references ----------
++      var root = document.documentElement;
++      var listPage = document.getElementById('list-page');
++      var detailPage = document.getElementById('detail-page');
++      var listHeading = document.getElementById('list-heading');
++      var grid = document.getElementById('favorites-grid');
++      var heroImage = document.getElementById('hero-image');
++      var titleEl = document.getElementById('title');
++      var metaEl = document.getElementById('detail-meta');
++      var descriptionEl = document.getElementById('detail-description');
++
++      var SITE_TITLE = 'The Daily Grind | Artisanal Coffee';
++      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++      // ---------- Images ----------
++      function imageUrl(base, width) {
++        return base + '?auto=format&fit=crop&w=' + width + '&q=80';
++      }
++
++      var preloaded = {};
++
++      // Warm the cache for the large hero image so the morph lands on a
++      // painted photo rather than an empty box. Resolves when decoded, or
++      // after a short cap so a slow network never blocks navigation.
++      function preloadHero(drink, maxWait) {
++        var url = imageUrl(drink.image, 1400);
++        if (!preloaded[url]) {
++          var img = new Image();
++          img.src = url;
++          preloaded[url] = (img.decode ? img.decode() : Promise.resolve()).catch(function () {});
++        }
++        if (!maxWait) return preloaded[url];
++        return Promise.race([
++          preloaded[url],
++          new Promise(function (resolve) { setTimeout(resolve, maxWait); })
++        ]);
++      }
++
++      // ---------- Render list ----------
++      function renderList() {
++        var frag = document.createDocumentFragment();
++        DRINKS.forEach(function (drink) {
++          var card = document.createElement('a');
++          card.className = 'thumbnail';
++          card.href = '#/drink/' + drink.slug;
++          card.dataset.slug = drink.slug;
++
++          var img = document.createElement('img');
++          img.src = imageUrl(drink.image, 600);
++          img.alt = drink.alt;
++          img.width = 600;
++          img.height = 450;
++
++          var caption = document.createElement('div');
++          caption.className = 'caption';
++
++          var h2 = document.createElement('h2');
++          h2.className = 'title';
++          h2.textContent = drink.title;
++
++          var tagline = document.createElement('p');
++          tagline.className = 'tagline';
++          tagline.textContent = drink.tagline;
++
++          caption.appendChild(h2);
++          caption.appendChild(tagline);
++          card.appendChild(img);
++          card.appendChild(caption);
++
++          // Start fetching the hero image as soon as the user shows intent.
++          var warm = function () { preloadHero(drink); };
++          card.addEventListener('pointerenter', warm, { once: true });
++          card.addEventListener('focus', warm, { once: true });
++
++          frag.appendChild(card);
++        });
++        grid.appendChild(frag);
++      }
++
++      // ---------- Render detail ----------
++      function renderDetail(drink) {
++        heroImage.src = imageUrl(drink.image, 1400);
++        heroImage.alt = drink.alt;
++        titleEl.textContent = drink.title;
++
++        metaEl.textContent = '';
++        drink.meta.forEach(function (item) {
++          var li = document.createElement('li');
++          li.textContent = item;
++          metaEl.appendChild(li);
++        });
++
++        descriptionEl.textContent = '';
++        drink.description.forEach(function (paragraph) {
++          var p = document.createElement('p');
++          p.textContent = paragraph;
++          descriptionEl.appendChild(p);
++        });
++      }
++
++      // ---------- Routing ----------
++      function parseRoute() {
++        var match = /^#\/drink\/([\w-]+)\/?$/.exec(location.hash);
++        if (match) {
++          var drink = DRINKS.filter(function (d) { return d.slug === match[1]; })[0];
++          if (drink) return { view: 'detail', drink: drink };
++        }
++        return { view: 'list', drink: null };
++      }
++
++      function sameRoute(a, b) {
++        return a.view === b.view &&
++          (a.drink ? a.drink.slug : null) === (b.drink ? b.drink.slug : null);
++      }
++
++      function thumbnailFor(drink) {
++        return drink ? grid.querySelector('.thumbnail[data-slug="' + drink.slug + '"]') : null;
++      }
++
++      // ---------- Temporary morph tags ----------
++      // #hero / #title carry their view-transition-names permanently in CSS.
++      // The matching .thumbnail / .title only get the same names (as inline
++      // styles) while a transition is in flight, and are stripped afterwards.
++      var tagOwner = new WeakMap();
++
++      function tagThumbnail(thumb, owner) {
++        if (!thumb) return;
++        thumb.style.viewTransitionName = 'hero';
++        var t = thumb.querySelector('.title');
++        if (t) t.style.viewTransitionName = 'title';
++        tagOwner.set(thumb, owner);
++      }
++
++      function untagThumbnail(thumb, owner) {
++        // A newer transition may have re-tagged this thumbnail; leave it alone.
++        if (!thumb || tagOwner.get(thumb) !== owner) return;
++        [thumb, thumb.querySelector('.title')].forEach(function (el) {
++          if (!el) return;
++          el.style.removeProperty('view-transition-name');
++          if (!el.getAttribute('style')) el.removeAttribute('style');
++        });
++        tagOwner.delete(thumb);
++      }
++
++      // ---------- Navigation ----------
++      var current = { view: 'list', drink: null };
++      var savedListScroll = 0;
++      var generation = 0;
++
++      // Swap the DOM to the target route. Runs synchronously (inside the
++      // view-transition update callback when one is active).
++      function applyRoute(route) {
++        if (route.view === 'detail') {
++          renderDetail(route.drink);
++          listPage.hidden = true;
++          detailPage.hidden = false;
++          document.title = route.drink.title + ' | The Daily Grind';
++          window.scrollTo(0, 0);
++          // Keep keyboard focus on the active heading so it is never lost.
++          titleEl.focus({ preventScroll: true });
++        } else {
++          detailPage.hidden = true;
++          listPage.hidden = false;
++          document.title = SITE_TITLE;
++          window.scrollTo(0, savedListScroll);
++          listHeading.focus({ preventScroll: true });
++        }
++        current = route;
++      }
++
++      function navigate(route) {
++        if (sameRoute(route, current)) return;
++
++        var previous = current;
++        var myGeneration = ++generation;
++        if (previous.view === 'list') savedListScroll = window.scrollY;
++
++        var canAnimate = typeof document.startViewTransition === 'function' &&
++          !reducedMotion.matches;
++
++        if (!canAnimate) {
++          applyRoute(route);
++          return;
++        }
++
++        var ready = route.view === 'detail'
++          ? preloadHero(route.drink, 350)
++          : Promise.resolve();
++
++        ready.then(function () {
++          // A later navigation superseded this one while the image loaded.
++          if (myGeneration !== generation) return;
++
++          var tagged = [];
++
++          // list -> detail: the source thumbnail must carry the names in the
++          // OLD state, so tag it before the snapshot is taken.
++          if (route.view === 'detail' && previous.view === 'list') {
++            var source = thumbnailFor(route.drink);
++            tagThumbnail(source, myGeneration);
++            tagged.push(source);
++          }
++
++          root.classList.add('is-transitioning');
++
++          var transition = document.startViewTransition(function () {
++            applyRoute(route);
++            // detail -> list: the target thumbnail must carry the names in the
++            // NEW state, so tag it inside the update callback.
++            if (route.view === 'list' && previous.view === 'detail') {
++              var target = thumbnailFor(previous.drink);
++              tagThumbnail(target, myGeneration);
++              tagged.push(target);
++            }
++          });
++
++          function cleanup() {
++            tagged.forEach(function (el) { untagThumbnail(el, myGeneration); });
++            if (myGeneration === generation) root.classList.remove('is-transitioning');
++          }
++
++          // Clean up whether the transition finished or was skipped/aborted.
++          transition.finished.then(cleanup, cleanup);
++        });
++      }
++
++      // ---------- Boot ----------
++      renderList();
++      window.addEventListener('hashchange', function () { navigate(parseRoute()); });
++
++      // Initial render: no transition, and don't steal focus on page load.
++      var initialRoute = parseRoute();
++      if (initialRoute.view === 'detail') {
++        renderDetail(initialRoute.drink);
++        listPage.hidden = true;
++        detailPage.hidden = false;
++        document.title = initialRoute.drink.title + ' | The Daily Grind';
++      }
++      current = initialRoute;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

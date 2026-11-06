@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,40 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roasting simulator */
++    #roasting-widget {
++      position: relative;
++      height: 400px;
++      max-width: 1100px;
++      margin: 40px auto 0;
++      background: #2b1a14;
++      border-radius: 8px;
++      overflow: hidden;
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      height: 100%;
++    }
++
++    .roast-readout {
++      position: absolute;
++      top: 12px;
++      left: 16px;
++      color: white;
++      font-size: 1.1rem;
++      background: rgba(0, 0, 0, 0.45);
++      padding: 4px 12px;
++      border-radius: 4px;
++    }
++
++    .roast-readout strong {
++      color: var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +228,15 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-label="Live roasting simulator">
++    <canvas id="roast-canvas" width="800" height="400"></canvas>
++    <div class="roast-readout">
++      Drum temperature: <strong><span id="roast-temp-value">--</span>&deg;C</strong>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +245,140 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var widget = document.getElementById('roasting-widget');
++      var canvas = document.getElementById('roast-canvas');
++      var tempEl = document.getElementById('roast-temp-value');
++      var ctx = canvas.getContext('2d');
++      var W = canvas.width, H = canvas.height;
++
++      var temp = 180;
++      var rafId = null;
++      var tempTimer = null;
++      var inView = false;
++      var pageVisible = !document.hidden;
++
++      // Beans: roast color darkens as temperature rises
++      var beans = [];
++      for (var i = 0; i < 28; i++) {
++        beans.push({
++          angle: Math.random() * Math.PI * 2,
++          radius: 40 + Math.random() * 110,
++          speed: 0.01 + Math.random() * 0.02,
++          spin: Math.random() * Math.PI * 2,
++          size: 14 + Math.random() * 6
++        });
++      }
++
++      function roastColor() {
++        var t = Math.min(1, Math.max(0, (temp - 180) / 50));
++        var r = Math.round(150 - t * 100);
++        var g = Math.round(200 - t * 165 - (1 - t) * 80);
++        var b = Math.round(70 - t * 50);
++        return 'rgb(' + r + ',' + Math.max(g, 20) + ',' + Math.max(b, 10) + ')';
++      }
++
++      function draw() {
++        ctx.clearRect(0, 0, W, H);
++        var cx = W / 2, cy = H / 2 + 20;
++        // drum
++        ctx.beginPath();
++        ctx.arc(cx, cy, 160, 0, Math.PI * 2);
++        ctx.fillStyle = '#1a0f0b';
++        ctx.fill();
++        ctx.lineWidth = 6;
++        ctx.strokeStyle = '#6d4c41';
++        ctx.stroke();
++
++        var color = roastColor();
++        for (var i = 0; i < beans.length; i++) {
++          var b = beans[i];
++          b.angle += b.speed;
++          b.spin += 0.05;
++          var x = cx + Math.cos(b.angle) * b.radius;
++          var y = cy + Math.sin(b.angle) * b.radius;
++          ctx.save();
++          ctx.translate(x, y);
++          ctx.rotate(b.spin);
++          ctx.beginPath();
++          ctx.ellipse(0, 0, b.size, b.size * 0.65, 0, 0, Math.PI * 2);
++          ctx.fillStyle = color;
++          ctx.fill();
++          ctx.beginPath();
++          ctx.moveTo(-b.size * 0.8, 0);
++          ctx.quadraticCurveTo(0, b.size * 0.3, b.size * 0.8, 0);
++          ctx.strokeStyle = 'rgba(0,0,0,0.5)';
++          ctx.lineWidth = 2;
++          ctx.stroke();
++          ctx.restore();
++        }
++      }
++
++      function frame() {
++        draw();
++        rafId = requestAnimationFrame(frame);
++      }
++
++      function tick() {
++        // Climb toward ~230°C with jitter, then restart a new batch
++        temp += 0.4 + Math.random() * 1.2;
++        if (temp > 230) temp = 180;
++        tempEl.textContent = temp.toFixed(1);
++      }
++
++      function start() {
++        if (rafId === null) rafId = requestAnimationFrame(frame);
++        if (tempTimer === null) tempTimer = setInterval(tick, 500);
++      }
++
++      function stop() {
++        if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
++        if (tempTimer !== null) { clearInterval(tempTimer); tempTimer = null; }
++      }
++
++      function update() {
++        if (inView && pageVisible) start(); else stop();
++      }
++
++      tick();
++      draw();
++
++      // Pause when the tab is hidden too
++      document.addEventListener('visibilitychange', function () {
++        pageVisible = !document.hidden;
++        update();
++      });
++
++      function checkRect() {
++        var r = widget.getBoundingClientRect();
++        var vh = window.innerHeight || document.documentElement.clientHeight;
++        var vw = window.innerWidth || document.documentElement.clientWidth;
++        inView = r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw;
++        update();
++      }
++
++      if ('IntersectionObserver' in window) {
++        new IntersectionObserver(function (entries) {
++          inView = entries[entries.length - 1].isIntersecting;
++          update();
++        }).observe(widget);
++      } else {
++        // Fallback for older browsers: throttled scroll/resize geometry check
++        var pending = false;
++        var onMove = function () {
++          if (pending) return;
++          pending = true;
++          setTimeout(function () { pending = false; checkRect(); }, 100);
++        };
++        window.addEventListener('scroll', onMove, { passive: true });
++        window.addEventListener('resize', onMove);
++        window.addEventListener('load', checkRect);
++        checkRect();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

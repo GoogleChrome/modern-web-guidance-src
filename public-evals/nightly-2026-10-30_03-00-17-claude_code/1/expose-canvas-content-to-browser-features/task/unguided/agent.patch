@@ -1,0 +1,355 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,109 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Coffee Customizer */
++    .customizer {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .customizer>p {
++      margin-top: 5px;
++    }
++
++    .cup-stage {
++      position: relative;
++      width: 100%;
++      max-width: 560px;
++      margin: 20px auto 0;
++    }
++
++    #canvas {
++      display: block;
++      width: 100%;
++      height: 560px;
++    }
++
++    .cup-form {
++      width: min(320px, calc(100% - 140px));
++      text-align: left;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    /* Used only when the browser can't draw HTML into the canvas */
++    .cup-stage.fallback .cup-form {
++      position: absolute;
++    }
++
++    .cup-form h3 {
++      color: var(--primary);
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .cup-form label,
++    .cup-form legend {
++      font-weight: 600;
++    }
++
++    .cup-form input[type="text"] {
++      display: block;
++      width: 100%;
++      margin: 4px 0 12px;
++      padding: 6px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .cup-form fieldset {
++      border: none;
++      margin-bottom: 10px;
++    }
++
++    .cup-form .options {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 4px 12px;
++    }
++
++    .cup-form .options label {
++      font-weight: normal;
++      cursor: pointer;
++    }
++
++    .cup-form input:focus-visible,
++    .cup-form button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .cup-form button {
++      display: block;
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 5px;
++      padding: 8px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .cup-form button:hover {
++      background: #3e2723;
++    }
++
++    .cup-form output {
++      display: block;
++      margin-top: 10px;
++      text-align: center;
++      font-style: italic;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +295,44 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-title">
++      <h2 id="customizer-title">Customize Your Cup</h2>
++      <p>Build your perfect drink and watch it come together.</p>
++      <div class="cup-stage">
++        <!-- layoutsubtree lets the canvas lay out, hit-test and expose its HTML children,
++             which are then drawn onto the cup with drawElementImage(). -->
++        <canvas id="canvas" layoutsubtree>
++          <form class="cup-form" id="cup-form">
++            <h3>Your Order</h3>
++            <label for="cup-name">Name for the cup</label>
++            <input type="text" id="cup-name" name="name" autocomplete="given-name" placeholder="e.g. Alex">
++            <fieldset>
++              <legend>Milk</legend>
++              <div class="options">
++                <label><input type="radio" name="milk" value="whole" checked> Whole</label>
++                <label><input type="radio" name="milk" value="oat"> Oat</label>
++                <label><input type="radio" name="milk" value="almond"> Almond</label>
++                <label><input type="radio" name="milk" value="none"> No milk</label>
++              </div>
++            </fieldset>
++            <fieldset>
++              <legend>Syrup</legend>
++              <div class="options">
++                <label><input type="radio" name="syrup" value="none" checked> None</label>
++                <label><input type="radio" name="syrup" value="vanilla"> Vanilla</label>
++                <label><input type="radio" name="syrup" value="caramel"> Caramel</label>
++                <label><input type="radio" name="syrup" value="maple"> Maple</label>
++              </div>
++            </fieldset>
++            <button type="submit">Add to Order</button>
++            <output id="cup-summary" for="cup-name" aria-live="polite"></output>
++          </form>
++        </canvas>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +343,196 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('canvas');
++      const stage = canvas.parentElement;
++      const form = document.getElementById('cup-form');
++      const summary = document.getElementById('cup-summary');
++      const ctx = canvas.getContext('2d');
++
++      const drawElement = ctx.drawElementImage || ctx.drawElement;
++      const supportsHtmlInCanvas = typeof drawElement === 'function' && 'onpaint' in canvas;
++
++      // Without HTML-in-canvas support, canvas children are never rendered, so move the
++      // form next to the canvas and absolutely position it over the drawn cup instead.
++      if (!supportsHtmlInCanvas) {
++        stage.classList.add('fallback');
++        stage.appendChild(form);
++      }
++
++      const MILK_COLORS = { whole: '#c8a27a', oat: '#bf9466', almond: '#b3875c', none: '#3b2418' };
++      const SYRUP_COLORS = { vanilla: '#f3e5ab', caramel: '#c46f1e', maple: '#8b4513' };
++      const MILK_NAMES = { whole: 'whole milk', oat: 'oat milk', almond: 'almond milk' };
++
++      // Cup geometry in CSS pixels, built around the form's laid-out size so the
++      // drawn cup always contains the HTML layer exactly.
++      function layout() {
++        const width = canvas.clientWidth;
++        const formW = form.offsetWidth;
++        const formH = form.offsetHeight;
++        const padX = 28;
++        const rimH = 36;
++        const cupW = formW + padX * 2;
++        const cupX = Math.round((width - cupW) / 2 - 24);
++        const cupTop = 80;
++        const formX = cupX + padX;
++        const formY = cupTop + rimH / 2 + 20;
++        const cupBottom = formY + formH + 30;
++        return { width, cupX, cupW, cupTop, rimH, cupBottom, formX, formY, height: cupBottom + 40 };
++      }
++
++      function drawCup(g) {
++        const { cupX, cupW, cupTop, rimH, cupBottom } = g;
++        const milk = form.elements.milk.value;
++        const syrup = form.elements.syrup.value;
++        const taper = 18;
++        const rimY = cupTop + rimH / 2;
++        const cx = cupX + cupW / 2;
++
++        // Saucer
++        ctx.fillStyle = '#efebe9';
++        ctx.strokeStyle = '#bcaaa4';
++        ctx.lineWidth = 2;
++        ctx.beginPath();
++        ctx.ellipse(cx, cupBottom + 4, cupW / 2 + 50, 22, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.stroke();
++
++        // Handle
++        ctx.strokeStyle = '#f5f5f5';
++        ctx.lineWidth = 18;
++        ctx.beginPath();
++        ctx.ellipse(cupX + cupW - 6, rimY + (cupBottom - rimY) * 0.42, 46, 62, 0, -Math.PI / 2, Math.PI / 2);
++        ctx.stroke();
++        ctx.strokeStyle = '#bcaaa4';
++        ctx.lineWidth = 2;
++        ctx.beginPath();
++        ctx.ellipse(cupX + cupW - 6, rimY + (cupBottom - rimY) * 0.42, 55, 71, 0, -Math.PI / 2, Math.PI / 2);
++        ctx.stroke();
++
++        // Body
++        const body = new Path2D();
++        body.moveTo(cupX, rimY);
++        body.lineTo(cupX + cupW, rimY);
++        body.lineTo(cupX + cupW - taper, cupBottom - 30);
++        body.quadraticCurveTo(cupX + cupW - taper - 6, cupBottom, cupX + cupW - taper - 40, cupBottom);
++        body.lineTo(cupX + taper + 40, cupBottom);
++        body.quadraticCurveTo(cupX + taper + 6, cupBottom, cupX + taper, cupBottom - 30);
++        body.closePath();
++        const shade = ctx.createLinearGradient(cupX, 0, cupX + cupW, 0);
++        shade.addColorStop(0, '#e0e0e0');
++        shade.addColorStop(0.25, '#ffffff');
++        shade.addColorStop(0.8, '#fafafa');
++        shade.addColorStop(1, '#d6d6d6');
++        ctx.fillStyle = shade;
++        ctx.fill(body);
++        ctx.stroke(body);
++
++        // Rim and coffee surface
++        ctx.fillStyle = '#ffffff';
++        ctx.beginPath();
++        ctx.ellipse(cx, rimY, cupW / 2, rimH / 2, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.stroke();
++        ctx.fillStyle = MILK_COLORS[milk] || MILK_COLORS.whole;
++        ctx.beginPath();
++        ctx.ellipse(cx, rimY + 2, cupW / 2 - 10, rimH / 2 - 6, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        // Syrup drizzle swirl
++        if (SYRUP_COLORS[syrup]) {
++          ctx.strokeStyle = SYRUP_COLORS[syrup];
++          ctx.lineWidth = 3;
++          ctx.lineCap = 'round';
++          ctx.beginPath();
++          for (let t = 0; t <= Math.PI * 6; t += 0.1) {
++            const r = t / (Math.PI * 6);
++            const x = cx + Math.cos(t) * (cupW / 2 - 24) * r;
++            const y = rimY + 2 + Math.sin(t) * (rimH / 2 - 9) * r;
++            t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
++          }
++          ctx.stroke();
++        }
++
++        // Steam
++        ctx.strokeStyle = 'rgba(141, 110, 99, 0.35)';
++        ctx.lineWidth = 4;
++        ctx.lineCap = 'round';
++        for (const dx of [-40, 0, 40]) {
++          ctx.beginPath();
++          ctx.moveTo(cx + dx, rimY - 14);
++          ctx.bezierCurveTo(cx + dx - 18, rimY - 34, cx + dx + 18, rimY - 50, cx + dx, rimY - 70);
++          ctx.stroke();
++        }
++      }
++
++      function paint() {
++        const g = layout();
++        // Draw in CSS pixels; the backing store is sized in device pixels.
++        const scale = canvas.width / (canvas.clientWidth || 1);
++        ctx.reset ? ctx.reset() : ctx.clearRect(0, 0, canvas.width, canvas.height);
++        ctx.setTransform(scale, 0, 0, scale, 0, 0);
++        drawCup(g);
++
++        if (supportsHtmlInCanvas) {
++          // Draw the live form onto the cup, then move its hit-testing/accessibility box
++          // to exactly where it was drawn.
++          const transform = drawElement.call(ctx, form, g.formX, g.formY);
++          if (transform) form.style.transform = transform.toString();
++        } else {
++          form.style.left = g.formX + 'px';
++          form.style.top = g.formY + 'px';
++        }
++      }
++
++      function requestPaint() {
++        if (supportsHtmlInCanvas && canvas.requestPaint) canvas.requestPaint();
++        else paint();
++      }
++
++      if (supportsHtmlInCanvas) canvas.addEventListener('paint', paint);
++
++      // Grow the canvas to fit the cup around the form.
++      new ResizeObserver(() => {
++        const height = layout().height + 'px';
++        if (canvas.style.height !== height) canvas.style.height = height;
++        requestPaint();
++      }).observe(form);
++
++      // Size the backing store in device pixels to stay crisp on high-DPI displays.
++      const sizeObserver = new ResizeObserver(([entry]) => {
++        const box = entry.devicePixelContentBoxSize?.[0];
++        canvas.width = box ? box.inlineSize : Math.round(entry.contentRect.width * devicePixelRatio);
++        canvas.height = box ? box.blockSize : Math.round(entry.contentRect.height * devicePixelRatio);
++        requestPaint();
++      });
++      try {
++        sizeObserver.observe(canvas, { box: 'device-pixel-content-box' });
++      } catch {
++        sizeObserver.observe(canvas);
++      }
++
++      form.addEventListener('change', () => {
++        summary.textContent = '';
++        requestPaint();
++      });
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const name = form.elements.name.value.trim();
++        const milk = MILK_NAMES[form.elements.milk.value];
++        const syrup = form.elements.syrup.value;
++        let drink = milk ? `latte with ${milk}` : 'black coffee';
++        if (syrup !== 'none') drink += ` and ${syrup} syrup`;
++        summary.textContent = name
++          ? `Thanks, ${name}! Your ${drink} is on its way.`
++          : `Your ${drink} has been added to your order.`;
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

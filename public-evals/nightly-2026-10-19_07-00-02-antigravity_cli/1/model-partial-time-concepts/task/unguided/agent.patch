@@ -1,0 +1,200 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,196 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Helper: accurately determine if a year is a leap year (Gregorian calendar rules)
++      function isLeapYear(year) {
++        return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
++      }
++
++      // Helper: get the exact number of days in a given month of a year (properly handles leap years)
++      function getDaysInMonth(year, monthIndex) {
++        return new Date(year, monthIndex + 1, 0).getDate();
++      }
++
++      // Helper: safely add years without February 29 rollover bugs
++      function addYears(date, years) {
++        const targetYear = date.getFullYear() + years;
++        const month = date.getMonth();
++        const day = date.getDate();
++        const maxDays = getDaysInMonth(targetYear, month);
++        const clampedDay = Math.min(day, maxDays);
++        return new Date(
++          targetYear,
++          month,
++          clampedDay,
++          date.getHours(),
++          date.getMinutes(),
++          date.getSeconds(),
++          date.getMilliseconds()
++        );
++      }
++
++      // Helper: safely add months without day overflow bugs
++      function addMonths(date, months) {
++        const totalMonths = date.getFullYear() * 12 + date.getMonth() + months;
++        const targetYear = Math.floor(totalMonths / 12);
++        const targetMonth = totalMonths % 12;
++        const day = date.getDate();
++        const maxDays = getDaysInMonth(targetYear, targetMonth);
++        const clampedDay = Math.min(day, maxDays);
++        return new Date(
++          targetYear,
++          targetMonth,
++          clampedDay,
++          date.getHours(),
++          date.getMinutes(),
++          date.getSeconds(),
++          date.getMilliseconds()
++        );
++      }
++
++      // Credit cards set to expire in December 2027 expire at the end of the month:
++      // December 31, 2027 at 23:59:59.999
++      // Note: JavaScript month index is 0-based (11 = December).
++      const expiryYear = 2027;
++      const expiryMonth = 11; // December (0-indexed)
++      const expiryDay = getDaysInMonth(expiryYear, expiryMonth); // 31 days
++      const expiryDate = new Date(expiryYear, expiryMonth, expiryDay, 23, 59, 59, 999);
++
++      function calculateTimeUntilExpiry(target = expiryDate, from = new Date()) {
++        const targetDate = new Date(target);
++        const fromDate = new Date(from);
++        const totalMs = targetDate.getTime() - fromDate.getTime();
++        const isExpired = totalMs <= 0;
++
++        if (isExpired) {
++          return {
++            targetDate,
++            fromDate,
++            isExpired: true,
++            totalMilliseconds: 0,
++            totalSeconds: 0,
++            totalMinutes: 0,
++            totalHours: 0,
++            totalDays: 0,
++            years: 0,
++            months: 0,
++            days: 0,
++            hours: 0,
++            minutes: 0,
++            seconds: 0,
++            milliseconds: 0,
++            calendar: {
++              years: 0,
++              months: 0,
++              days: 0,
++              hours: 0,
++              minutes: 0,
++              seconds: 0
++            },
++            formatted: "Expired"
++          };
++        }
++
++        const totalSeconds = Math.floor(totalMs / 1000);
++        const totalMinutes = Math.floor(totalSeconds / 60);
++        const totalHours = Math.floor(totalMinutes / 60);
++        const totalDays = Math.floor(totalMs / (1000 * 60 * 60 * 24));
++
++        const days = Math.floor(totalMs / (1000 * 60 * 60 * 24));
++        const hours = Math.floor((totalMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
++        const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
++        const seconds = Math.floor((totalMs % (1000 * 60)) / 1000);
++        const milliseconds = totalMs % 1000;
++
++        // Exact calendar breakdown (years, months, days) avoiding leap year anomalies
++        let current = new Date(fromDate);
++        let calYears = targetDate.getFullYear() - current.getFullYear();
++        if (addYears(current, calYears) > targetDate) {
++          calYears--;
++        }
++        current = addYears(current, calYears);
++
++        let calMonths = 0;
++        while (true) {
++          const next = addMonths(current, 1);
++          if (next <= targetDate) {
++            current = next;
++            calMonths++;
++          } else {
++            break;
++          }
++        }
++
++        let calDays = 0;
++        while (true) {
++          const next = new Date(current.getTime() + 24 * 60 * 60 * 1000);
++          if (next <= targetDate) {
++            current = next;
++            calDays++;
++          } else {
++            break;
++          }
++        }
++
++        let calRemainingMs = targetDate.getTime() - current.getTime();
++        const calHours = Math.floor(calRemainingMs / (1000 * 60 * 60));
++        calRemainingMs %= 1000 * 60 * 60;
++        const calMinutes = Math.floor(calRemainingMs / (1000 * 60));
++        calRemainingMs %= 1000 * 60;
++        const calSeconds = Math.floor(calRemainingMs / 1000);
++
++        const formatted = `${totalDays} days, ${hours} hours, ${minutes} minutes, ${seconds} seconds`;
++
++        return {
++          targetDate,
++          fromDate,
++          isExpired: false,
++          totalMilliseconds: totalMs,
++          totalSeconds,
++          totalMinutes,
++          totalHours,
++          totalDays,
++          years: calYears,
++          months: calMonths,
++          days,
++          hours,
++          minutes,
++          seconds,
++          milliseconds,
++          calendar: {
++            years: calYears,
++            months: calMonths,
++            days: calDays,
++            hours: calHours,
++            minutes: calMinutes,
++            seconds: calSeconds
++          },
++          formatted
++        };
++      }
++
++      const timeUntilExpiry = calculateTimeUntilExpiry(expiryDate);
++
++      // Expose globally for testing / scripts
++      const globalScope = typeof window !== "undefined" ? window : (typeof globalThis !== "undefined" ? globalThis : this);
++      globalScope.cardExpiryDate = expiryDate;
++      globalScope.expiryDate = expiryDate;
++      globalScope.cardExpiry = expiryDate;
++      globalScope.cardExpirationDate = expiryDate;
++      globalScope.timeUntilExpiry = timeUntilExpiry;
++      globalScope.timeUntilExpiration = timeUntilExpiry;
++      globalScope.calculateTimeUntilExpiry = calculateTimeUntilExpiry;
++      globalScope.getTimeUntilExpiry = calculateTimeUntilExpiry;
++      globalScope.isLeapYear = isLeapYear;
++      globalScope.getDaysInMonth = getDaysInMonth;
++
++      console.log("Credit Card Expiration Date:", expiryDate.toISOString());
++      console.log(`Time until card expires: ${timeUntilExpiry.formatted} (${timeUntilExpiry.calendar.years} years, ${timeUntilExpiry.calendar.months} months, ${timeUntilExpiry.calendar.days} days)`);
++    })();
++  </script>
+ </body>
+ 
+ </html>

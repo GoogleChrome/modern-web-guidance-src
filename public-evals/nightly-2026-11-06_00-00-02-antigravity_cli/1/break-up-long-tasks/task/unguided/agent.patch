@@ -1,0 +1,1284 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,392 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1.5px solid var(--primary);
++      cursor: pointer;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    /* Flavor Profile Simulator Section */
++    .simulator-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 18px rgba(62, 39, 35, 0.1);
++      border: 1px solid #e0d6d1;
++      overflow: hidden;
++    }
++
++    .simulator-banner {
++      background: linear-gradient(135deg, #3e2723 0%, #5d4037 100%);
++      color: white;
++      padding: 28px 32px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 20px;
++    }
++
++    .simulator-banner h2 {
++      font-size: 1.75rem;
++      margin-bottom: 6px;
++      color: #fff;
++    }
++
++    .simulator-banner p {
++      color: var(--secondary);
++      font-size: 0.95rem;
++      max-width: 650px;
++    }
++
++    .scheduler-badges {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 6px 12px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      background: rgba(255, 255, 255, 0.12);
++      color: #fff;
++      border: 1px solid rgba(255, 171, 64, 0.4);
++    }
++
++    .badge-dot {
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: #69f0ae;
++      display: inline-block;
++    }
++
++    .simulator-body {
++      padding: 28px 32px;
++    }
++
++    .simulator-controls-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
++      gap: 18px;
++      background: #fbf9f8;
++      padding: 20px;
++      border-radius: 8px;
++      border: 1px solid #ece5e1;
++      margin-bottom: 22px;
++    }
++
++    .control-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .control-group label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      display: flex;
++      justify-content: space-between;
++    }
++
++    .control-group select,
++    .control-group input[type="number"],
++    .control-group input[type="text"] {
++      padding: 9px 12px;
++      border: 1px solid #cbbdb5;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .control-group input[type="range"] {
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .simulator-actions {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      margin-bottom: 24px;
++    }
++
++    .action-buttons {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      align-items: center;
++    }
++
++    .action-buttons .btn {
++      margin-top: 0;
++    }
++
++    .responsiveness-widget {
++      display: flex;
++      align-items: center;
++      gap: 14px;
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      padding: 8px 14px;
++      border-radius: 8px;
++      font-size: 0.85rem;
++    }
++
++    .pulse-spinner {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      background: var(--accent);
++      animation: pulse-beat 1s infinite ease-in-out;
++    }
++
++    @keyframes pulse-beat {
++      0%, 100% { transform: scale(0.85); opacity: 0.7; }
++      50% { transform: scale(1.2); opacity: 1; }
++    }
++
++    .progress-panel {
++      background: #f6f2f0;
++      border-radius: 8px;
++      padding: 18px 20px;
++      margin-bottom: 26px;
++      border: 1px solid #e6dcd7;
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 8px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .progress-track {
++      width: 100%;
++      height: 12px;
++      background: #dfd5cf;
++      border-radius: 999px;
++      overflow: hidden;
++      margin-bottom: 14px;
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: 0%;
++      background: linear-gradient(90deg, var(--primary), var(--accent));
++      border-radius: 999px;
++      transition: width 0.08s linear;
++    }
++
++    .telemetry-metrics {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
++      gap: 12px;
++    }
++
++    .metric-box {
++      background: white;
++      padding: 10px 14px;
++      border-radius: 6px;
++      border: 1px solid #e5dcd7;
++    }
++
++    .metric-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #795548;
++    }
++
++    .metric-value {
++      font-size: 1.15rem;
++      font-weight: 700;
++      color: var(--text);
++      margin-top: 2px;
++    }
++
++    .simulator-results-layout {
++      display: grid;
++      grid-template-columns: 1fr 1.35fr;
++      gap: 24px;
++    }
++
++    @media (max-width: 820px) {
++      .simulator-results-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .profile-summary-card,
++    .top-blends-card {
++      background: #fcfbfa;
++      border: 1px solid #e6ddd8;
++      border-radius: 8px;
++      padding: 20px;
++    }
++
++    .profile-summary-card h3,
++    .top-blends-card h3 {
++      color: var(--primary);
++      margin-bottom: 14px;
++      font-size: 1.15rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .flavor-bars {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      margin-top: 12px;
++    }
++
++    .flavor-bar-row {
++      display: flex;
++       flex-direction: column;
++      gap: 4px;
++    }
++
++    .flavor-bar-label {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .flavor-bar-track {
++      height: 9px;
++      background: #e6dcd7;
++      border-radius: 99px;
++      overflow: hidden;
++    }
++
++    .flavor-bar-fill {
++      height: 100%;
++      background: var(--primary);
++      border-radius: 99px;
++      transition: width 0.2s ease;
++    }
++
++    .tasting-notes-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 16px;
++    }
++
++    .note-tag {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 4px 10px;
++      border-radius: 99px;
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    .blend-list {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      max-height: 410px;
++      overflow-y: auto;
++    }
++
++    .blend-item {
++      background: white;
++      border: 1px solid #e3d9d4;
++      border-radius: 8px;
++      padding: 14px 16px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .blend-item:hover {
++      border-color: var(--accent);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
++    }
++
++    .blend-item-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .blend-name {
++      font-weight: 700;
++      color: var(--primary);
++      font-size: 0.98rem;
++    }
++
++    .blend-score {
++      background: #efebe9;
++      color: var(--primary);
++      font-weight: 700;
++      padding: 3px 9px;
++      border-radius: 6px;
++      font-size: 0.82rem;
++    }
++
++    .blend-meta {
++      font-size: 0.82rem;
++      color: #5d4037;
++      margin-bottom: 8px;
++    }
++
++    .blend-mini-metrics {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      font-size: 0.76rem;
++      color: #4e342e;
++    }
++
++    .blend-mini-metrics span {
++      background: #f5f0ed;
++      padding: 2px 8px;
++      border-radius: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +578,190 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="flavor-simulator" class="simulator-section" aria-labelledby="simulator-title">
++      <div class="simulator-banner">
++        <div>
++          <h2 id="simulator-title">Artisanal Coffee Flavor Profile Simulator</h2>
++          <p>Simulate thousands of multi-origin roast and extraction recipe blends in batches while yielding to the main thread to keep the UI silky-smooth.</p>
++        </div>
++        <div class="scheduler-badges">
++          <span class="badge" id="scheduler-mode-badge">
++            <span class="badge-dot"></span>
++            <span id="scheduler-api-label">Yielding Ready</span>
++          </span>
++          <span class="badge" id="thread-health-badge">Main Thread: Responsive (&lt;50ms slices)</span>
++        </div>
++      </div>
++
++      <div class="simulator-body">
++        <div class="simulator-controls-grid">
++          <div class="control-group">
++            <label for="target-profile-select">Target Sensory Profile</label>
++            <select id="target-profile-select">
++              <option value="balanced" selected>Balanced House Blend (Caramel &amp; Citrus)</option>
++              <option value="bright">Bright &amp; Floral (Berry, Jasmine, Crisp)</option>
++              <option value="bold">Bold &amp; Velvety (Dark Cocoa, Smokey, Full Body)</option>
++              <option value="sweet">Honeyed Nut &amp; Toffee (Low Acid, Syrupy)</option>
++              <option value="espresso">Modern Espresso (Rich Crema, Stone Fruit)</option>
++            </select>
++          </div>
++
++          <div class="control-group">
++            <label for="roast-temp-range">
++              <span>Roast Curve Peak</span>
++              <span id="roast-temp-display">208°C (Medium)</span>
++            </label>
++            <input type="range" id="roast-temp-range" min="192" max="228" value="208" step="1">
++          </div>
++
++          <div class="control-group">
++            <label for="brew-method-select">Extraction Method</label>
++            <select id="brew-method-select">
++              <option value="pourover" selected>V60 Pour Over (93°C, 3:00)</option>
++              <option value="espresso">9-Bar Espresso (94°C, 0:28)</option>
++              <option value="frenchpress">Immersion French Press (95°C, 4:00)</option>
++              <option value="coldbrew">18-Hr Slow Cold Steep (18°C)</option>
++              <option value="aeropress">Inverted AeroPress (90°C, 1:45)</option>
++            </select>
++          </div>
++
++          <div class="control-group">
++            <label for="batch-size-select">Recipe Batch Size</label>
++            <select id="batch-size-select">
++              <option value="600">600 Recipe Blends</option>
++              <option value="1500" selected>1,500 Recipe Blends</option>
++              <option value="3000">3,000 Recipe Blends</option>
++              <option value="5000">5,000 Recipe Blends</option>
++            </select>
++          </div>
++
++          <div class="control-group">
++            <label for="chunk-budget-select">Task Slice Budget</label>
++            <select id="chunk-budget-select">
++              <option value="8">8ms Slice + Yield (Ultra Smooth)</option>
++              <option value="12" selected>12ms Slice + Yield (Recommended)</option>
++              <option value="20">20ms Slice + Yield (High Throughput)</option>
++            </select>
++          </div>
++
++          <div class="control-group">
++            <label for="blend-filter-input">Live Note Filter (Test UI Responsiveness)</label>
++            <input type="text" id="blend-filter-input" placeholder="e.g. Jasmine, Cocoa, Ethiopia...">
++          </div>
++        </div>
++
++        <div class="simulator-actions">
++          <div class="action-buttons">
++            <button type="button" id="run-simulation-btn" class="btn btn-accent">
++              Simulate Recipe Batch
++            </button>
++            <button type="button" id="cancel-simulation-btn" class="btn btn-outline" disabled>
++              Stop Batch
++            </button>
++            <button type="button" id="sample-tasting-btn" class="btn btn-outline">
++              Quick Cupping Check (<span id="cupping-click-count">0</span>)
++            </button>
++          </div>
++
++          <div class="responsiveness-widget" aria-live="polite">
++            <span class="pulse-spinner" aria-hidden="true"></span>
++            <span>UI Frame Latency: <strong id="frame-latency-val">16.6 ms</strong></span>
++            <span>|</span>
++            <span id="simulation-status-text">Ready to simulate batch</span>
++          </div>
++        </div>
++
++        <div class="progress-panel">
++          <div class="progress-header">
++            <span id="progress-label">Batch Progress: Initial Baseline Loaded (1,500 blends)</span>
++            <span id="progress-percent">100%</span>
++          </div>
++          <div class="progress-track" role="progressbar" id="simulation-progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Flavor profile simulation progress">
++            <div class="progress-fill" id="progress-fill" style="width: 100%;"></div>
++          </div>
++
++          <div class="telemetry-metrics">
++            <div class="metric-box">
++              <div class="metric-label">Blends Processed</div>
++              <div class="metric-value" id="metric-processed">1,500 / 1,500</div>
++            </div>
++            <div class="metric-box">
++              <div class="metric-label">Main Thread Yields</div>
++              <div class="metric-value" id="metric-yields">30 yields</div>
++            </div>
++            <div class="metric-box">
++              <div class="metric-label">Avg Slice Duration</div>
++              <div class="metric-value" id="metric-slice-duration">9.4 ms</div>
++            </div>
++            <div class="metric-box">
++              <div class="metric-label">Long Tasks (&gt;50ms)</div>
++              <div class="metric-value" id="metric-long-tasks">0</div>
++            </div>
++            <div class="metric-box">
++              <div class="metric-label">Best Match Score</div>
++              <div class="metric-value" id="metric-best-score">98.4%</div>
++            </div>
++          </div>
++        </div>
++
++        <div class="simulator-results-layout">
++          <div class="profile-summary-card">
++            <h3>
++              <span>Aggregate Sensory Profile</span>
++              <span style="font-size: 0.8rem; font-weight: 500; color: #6d4c41;" id="extraction-yield-badge">Extraction Yield: 20.4%</span>
++            </h3>
++            <p style="font-size: 0.85rem; color: #5d4037;">
++              Weighted sensory profile across top-performing blends from the simulated batch:
++            </p>
++
++            <div class="flavor-bars" id="flavor-bars-container">
++              <div class="flavor-bar-row">
++                <div class="flavor-bar-label"><span>Acidity &amp; Brightness</span><span id="val-acidity">78 / 100</span></div>
++                <div class="flavor-bar-track"><div class="flavor-bar-fill" id="bar-acidity" style="width: 78%;"></div></div>
++              </div>
++              <div class="flavor-bar-row">
++                <div class="flavor-bar-label"><span>Sweetness &amp; Caramelization</span><span id="val-sweetness">88 / 100</span></div>
++                <div class="flavor-bar-track"><div class="flavor-bar-fill" id="bar-sweetness" style="width: 88%;"></div></div>
++              </div>
++              <div class="flavor-bar-row">
++                <div class="flavor-bar-label"><span>Body &amp; Mouthfeel</span><span id="val-body">82 / 100</span></div>
++                <div class="flavor-bar-track"><div class="flavor-bar-fill" id="bar-body" style="width: 82%;"></div></div>
++              </div>
++              <div class="flavor-bar-row">
++                <div class="flavor-bar-label"><span>Aroma Complexity</span><span id="val-aroma">91 / 100</span></div>
++                <div class="flavor-bar-track"><div class="flavor-bar-fill" id="bar-aroma" style="width: 91%;"></div></div>
++              </div>
++              <div class="flavor-bar-row">
++                <div class="flavor-bar-label"><span>Clean Finish &amp; Aftertaste</span><span id="val-finish">85 / 100</span></div>
++                <div class="flavor-bar-track"><div class="flavor-bar-fill" id="bar-finish" style="width: 85%;"></div></div>
++              </div>
++              <div class="flavor-bar-row">
++                <div class="flavor-bar-label"><span>Bitterness Balance</span><span id="val-bitterness">32 / 100</span></div>
++                <div class="flavor-bar-track"><div class="flavor-bar-fill" id="bar-bitterness" style="width: 32%;"></div></div>
++              </div>
++            </div>
++
++            <div class="tasting-notes-tags" id="dominant-notes-container">
++              <span class="note-tag">Toasted Hazelnut</span>
++              <span class="note-tag">Bergamot Citrus</span>
++              <span class="note-tag">Brown Sugar</span>
++              <span class="note-tag">Velvet Cocoa</span>
++            </div>
++          </div>
++
++          <div class="top-blends-card">
++            <h3>
++              <span>Top Ranked Recipe Blends</span>
++              <span style="font-size: 0.8rem; font-weight: 500; color: #6d4c41;" id="matched-count-label">Showing top 8 matches</span>
++            </h3>
++            <div class="blend-list" id="top-blends-list" aria-live="polite"></div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +772,696 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Bean origins catalogue with authentic chemical/sensory baselines
++      const ORIGINS = [
++        {
++          name: 'Ethiopia Yirgacheffe',
++          acidity: 92,
++          sweetness: 84,
++          body: 64,
++          aroma: 95,
++          finish: 88,
++          bitterness: 22,
++          density: 1.24,
++          notes: ['Jasmine', 'Bergamot', 'White Peach', 'Meyer Lemon']
++        },
++        {
++          name: 'Colombia Huila',
++          acidity: 78,
++          sweetness: 89,
++          body: 79,
++          aroma: 85,
++          finish: 86,
++          bitterness: 28,
++          density: 1.19,
++          notes: ['Caramel', 'Red Apple', 'Panela Sugar', 'Toasted Almond']
++        },
++        {
++          name: 'Guatemala Antigua',
++          acidity: 74,
++          sweetness: 83,
++          body: 84,
++          aroma: 87,
++          finish: 84,
++          bitterness: 34,
++          density: 1.22,
++          notes: ['Milk Chocolate', 'Orange Peel', 'Nutmeg', 'Toffee']
++        },
++        {
++          name: 'Sumatra Mandheling',
++          acidity: 48,
++          sweetness: 72,
++          body: 95,
++          aroma: 82,
++          finish: 89,
++          bitterness: 54,
++          density: 1.15,
++          notes: ['Dark Cocoa', 'Cedar Spice', 'Earthy Velvet', 'Molasses']
++        },
++        {
++          name: 'Brazil Cerrado',
++          acidity: 55,
++          sweetness: 86,
++          body: 88,
++          aroma: 78,
++          finish: 82,
++          bitterness: 38,
++          density: 1.14,
++          notes: ['Roasted Hazelnut', 'Cacao Nib', 'Sweet Cream', 'Praline']
++        },
++        {
++          name: 'Kenya Nyeri AA',
++          acidity: 95,
++          sweetness: 82,
++          body: 76,
++          aroma: 93,
++          finish: 90,
++          bitterness: 25,
++          density: 1.26,
++          notes: ['Blackcurrant', 'Grapefruit', 'Hibiscus', 'Cane Sugar']
++        }
++      ];
++
++      const TARGET_PROFILES = {
++        balanced: { acidity: 76, sweetness: 88, body: 80, aroma: 88, finish: 85, bitterness: 30 },
++        bright:   { acidity: 92, sweetness: 84, body: 68, aroma: 94, finish: 88, bitterness: 20 },
++        bold:     { acidity: 54, sweetness: 76, body: 94, aroma: 84, finish: 88, bitterness: 52 },
++        sweet:    { acidity: 62, sweetness: 94, body: 85, aroma: 86, finish: 87, bitterness: 28 },
++        espresso: { acidity: 70, sweetness: 90, body: 91, aroma: 90, finish: 89, bitterness: 36 }
++      };
++
++      const BREW_MODIFIERS = {
++        pourover:    { acidity: 1.08, sweetness: 1.03, body: 0.92, aroma: 1.07, finish: 1.05, bitterness: 0.90, baseYield: 20.2 },
++        espresso:    { acidity: 0.96, sweetness: 1.06, body: 1.16, aroma: 1.09, finish: 1.04, bitterness: 1.08, baseYield: 21.1 },
++        frenchpress: { acidity: 0.90, sweetness: 1.01, body: 1.14, aroma: 0.98, finish: 0.96, bitterness: 1.06, baseYield: 19.6 },
++        coldbrew:    { acidity: 0.74, sweetness: 1.10, body: 1.06, aroma: 0.95, finish: 1.08, bitterness: 0.78, baseYield: 18.9 },
++        aeropress:   { acidity: 1.03, sweetness: 1.05, body: 1.04, aroma: 1.04, finish: 1.03, bitterness: 0.93, baseYield: 20.5 }
++      };
++
++      // Yield to main thread helper using scheduler.yield() when available, falling back to macrotask yield
++      function yieldToMain() {
++        if (typeof globalThis.scheduler !== 'undefined' && typeof globalThis.scheduler.yield === 'function') {
++          return globalThis.scheduler.yield();
++        }
++        return new Promise(function (resolve) {
++          setTimeout(resolve, 0);
++        });
++      }
++
++      // Check if user input is pending or time slice budget has elapsed
++      function shouldYieldToMain(sliceStartTime, budgetMs) {
++        const elapsed = performance.now() - sliceStartTime;
++        if (elapsed >= budgetMs) {
++          return true;
++        }
++        if (
++          typeof navigator !== 'undefined' &&
++          navigator.scheduling &&
++          typeof navigator.scheduling.isInputPending === 'function' &&
++          elapsed >= 4 &&
++          navigator.scheduling.isInputPending()
++        ) {
++          return true;
++        }
++        return false;
++      }
++
++      // Expose helpers on window for programmatic inspection/testing
++      window.yieldToMain = yieldToMain;
++      window.shouldYieldToMain = shouldYieldToMain;
++
++      // DOM elements
++      const targetProfileSelect = document.getElementById('target-profile-select');
++      const roastTempRange = document.getElementById('roast-temp-range');
++      const roastTempDisplay = document.getElementById('roast-temp-display');
++      const brewMethodSelect = document.getElementById('brew-method-select');
++      const batchSizeSelect = document.getElementById('batch-size-select');
++      const chunkBudgetSelect = document.getElementById('chunk-budget-select');
++      const blendFilterInput = document.getElementById('blend-filter-input');
++      const runBtn = document.getElementById('run-simulation-btn');
++      const cancelBtn = document.getElementById('cancel-simulation-btn');
++      const sampleTastingBtn = document.getElementById('sample-tasting-btn');
++      const cuppingClickCountEl = document.getElementById('cupping-click-count');
++      const schedulerApiLabel = document.getElementById('scheduler-api-label');
++      const threadHealthBadge = document.getElementById('thread-health-badge');
++      const frameLatencyVal = document.getElementById('frame-latency-val');
++      const simulationStatusText = document.getElementById('simulation-status-text');
++      const progressLabel = document.getElementById('progress-label');
++      const progressPercent = document.getElementById('progress-percent');
++      const progressBar = document.getElementById('simulation-progressbar');
++      const progressFill = document.getElementById('progress-fill');
++      const metricProcessed = document.getElementById('metric-processed');
++      const metricYields = document.getElementById('metric-yields');
++      const metricSliceDuration = document.getElementById('metric-slice-duration');
++      const metricLongTasks = document.getElementById('metric-long-tasks');
++      const metricBestScore = document.getElementById('metric-best-score');
++      const extractionYieldBadge = document.getElementById('extraction-yield-badge');
++      const dominantNotesContainer = document.getElementById('dominant-notes-container');
++      const topBlendsList = document.getElementById('top-blends-list');
++      const matchedCountLabel = document.getElementById('matched-count-label');
++
++      // Detect scheduler support
++      const hasSchedulerYield =
++        typeof globalThis.scheduler !== 'undefined' &&
++        typeof globalThis.scheduler.yield === 'function';
++      schedulerApiLabel.textContent = hasSchedulerYield
++        ? 'scheduler.yield() Active'
++        : 'Time-Sliced Yielding (setTimeout)';
++
++      // Track Long Tasks via PerformanceObserver if supported
++      let observedLongTasks = 0;
++      if (typeof PerformanceObserver !== 'undefined') {
++        try {
++          const observer = new PerformanceObserver(function (list) {
++            const entries = list.getEntries();
++            observedLongTasks += entries.length;
++            if (metricLongTasks) {
++              metricLongTasks.textContent = String(observedLongTasks);
++            }
++          });
++          observer.observe({ entryTypes: ['longtask'] });
++        } catch (e) {
++          // Ignore if longtask entryType is unsupported in environment
++        }
++      }
++
++      // Live frame latency monitor
++      let lastFrameTime = performance.now();
++      function trackFrameLatency(now) {
++        const delta = now - lastFrameTime;
++        lastFrameTime = now;
++        if (delta > 0 && delta < 250) {
++          frameLatencyVal.textContent = delta.toFixed(1) + ' ms';
++        }
++        requestAnimationFrame(trackFrameLatency);
++      }
++      requestAnimationFrame(trackFrameLatency);
++
++      function formatRoastLabel(tempC) {
++        if (tempC < 200) return tempC + '°C (Light Cinnamon)';
++        if (tempC < 207) return tempC + '°C (City Light-Med)';
++        if (tempC < 214) return tempC + '°C (Full City Medium)';
++        if (tempC < 221) return tempC + '°C (Vienna Med-Dark)';
++        return tempC + '°C (French Dark)';
++      }
++
++      roastTempRange.addEventListener('input', function () {
++        roastTempDisplay.textContent = formatRoastLabel(Number(roastTempRange.value));
++      });
++
++      let cuppingClicks = 0;
++      sampleTastingBtn.addEventListener('click', function () {
++        cuppingClicks += 1;
++        cuppingClickCountEl.textContent = String(cuppingClicks);
++      });
++
++      // Deterministic pseudo-random generator for reproducible recipe blend synthesis
++      function createSeededRng(seed) {
++        let state = seed >>> 0;
++        return function () {
++          state = (1664525 * state + 1013904223) >>> 0;
++          return state / 4294967296;
++        };
++      }
++
++      // Simulate a single recipe blend with non-trivial thermodynamic Maillard & extraction kinetics
++      function simulateSingleRecipeBlend(index, config, rng) {
++        // Pick 3 distinct origins for the tri-origin artisanal blend
++        const idxA = index % ORIGINS.length;
++        const idxB = (index * 3 + 1 + Math.floor(rng() * 5)) % ORIGINS.length;
++        const idxC = (index * 5 + 2 + Math.floor(rng() * 5)) % ORIGINS.length;
++
++        const originA = ORIGINS[idxA];
++        const originB = ORIGINS[idxB === idxA ? (idxA + 1) % ORIGINS.length : idxB];
++        const originC = ORIGINS[
++          idxC === idxA || idxC === idxB ? (idxA + 2) % ORIGINS.length : idxC
++        ];
++
++        // Generate normalized blend ratios (in 5% increments)
++        const rawW1 = 0.25 + rng() * 0.55;
++        const rawW2 = (1 - rawW1) * (0.35 + rng() * 0.45);
++        const pctA = Math.max(10, Math.min(80, Math.round((rawW1 * 100) / 5) * 5));
++        const pctB = Math.max(10, Math.min(100 - pctA - 5, Math.round((rawW2 * 100) / 5) * 5));
++        const pctC = Math.max(5, 100 - pctA - pctB);
++
++        const wA = pctA / 100;
++        const wB = pctB / 100;
++        const wC = pctC / 100;
++
++        // Multi-step Maillard & caramelization thermal simulation over 45 roast time-steps
++        const roastTemp = config.roastTemp + (rng() - 0.5) * 5;
++        const normTemp = (roastTemp - 192) / 36; // 0.0 (light) to 1.0 (dark)
++        let maillardAccum = 0;
++        let caramelAccum = 0;
++        let organicAcidRetention = 1.0;
++        let pyrolysisBitterness = 0;
++
++        const avgDensity = originA.density * wA + originB.density * wB + originC.density * wC;
++        for (let step = 0; step < 45; step++) {
++          const progress = step / 44;
++          const drumTemp = 155 + (roastTemp - 155) * Math.pow(progress, 0.72);
++          const rateMaillard = Math.exp(-28 / (drumTemp * 0.015)) * avgDensity;
++          const rateCaramel = drumTemp > 185 ? Math.pow((drumTemp - 185) / 45, 1.35) : 0;
++          maillardAccum += rateMaillard * 0.045;
++          caramelAccum += rateCaramel * 0.05;
++          organicAcidRetention *= 1 - 0.0065 * normTemp * progress;
++          if (drumTemp > 210) {
++            pyrolysisBitterness += Math.pow((drumTemp - 210) / 22, 1.5) * 1.4;
++          }
++        }
++
++        const brewMod = BREW_MODIFIERS[config.brewMethod] || BREW_MODIFIERS.pourover;
++
++        // Weighted origin baselines
++        const baseAcidity = originA.acidity * wA + originB.acidity * wB + originC.acidity * wC;
++        const baseSweetness = originA.sweetness * wA + originB.sweetness * wB + originC.sweetness * wC;
++        const baseBody = originA.body * wA + originB.body * wB + originC.body * wC;
++        const baseAroma = originA.aroma * wA + originB.aroma * wB + originC.aroma * wC;
++        const baseFinish = originA.finish * wA + originB.finish * wB + originC.finish * wC;
++        const baseBitterness = originA.bitterness * wA + originB.bitterness * wB + originC.bitterness * wC;
++
++        // Apply thermal kinetics & brew extraction modifiers
++        const acidity = clampScore(
++          baseAcidity * organicAcidRetention * brewMod.acidity * (1.06 - normTemp * 0.22)
++        );
++        const sweetness = clampScore(
++          (baseSweetness * 0.85 + caramelAccum * 18) *
++            brewMod.sweetness *
++            (1 - Math.abs(normTemp - 0.48) * 0.22)
++        );
++        const body = clampScore(
++          (baseBody * 0.88 + maillardAccum * 9 + normTemp * 12) * brewMod.body
++        );
++        const aroma = clampScore(
++          (baseAroma * 0.9 + maillardAccum * 11) *
++            brewMod.aroma *
++            (1 - Math.max(0, normTemp - 0.72) * 0.3)
++        );
++        const finish = clampScore(
++          (baseFinish * 0.9 + caramelAccum * 10 - pyrolysisBitterness * 0.8) * brewMod.finish
++        );
++        const bitterness = clampScore(
++          (baseBitterness * 0.8 + normTemp * 26 + pyrolysisBitterness * 3.5) * brewMod.bitterness
++        );
++
++        const extractionYield = Number(
++          (
++            brewMod.baseYield +
++            (sweetness - 80) * 0.03 +
++            (normTemp - 0.45) * 0.8 +
++            (rng() - 0.5) * 0.6
++          ).toFixed(1)
++        );
++
++        // Compute sensory distance to target profile
++        const target = TARGET_PROFILES[config.targetProfile] || TARGET_PROFILES.balanced;
++        const diffSq =
++          Math.pow(acidity - target.acidity, 2) * 1.1 +
++          Math.pow(sweetness - target.sweetness, 2) * 1.25 +
++          Math.pow(body - target.body, 2) * 1.1 +
++          Math.pow(aroma - target.aroma, 2) * 1.0 +
++          Math.pow(finish - target.finish, 2) * 0.95 +
++          Math.pow(bitterness - target.bitterness, 2) * 1.15;
++
++        const rmsError = Math.sqrt(diffSq / 6.55);
++        const matchScore = Number(Math.max(40, Math.min(99.8, 100 - rmsError * 1.35)).toFixed(1));
++
++        // Assemble tasting notes
++        const note1 = originA.notes[index % originA.notes.length];
++        const note2 = originB.notes[(index + 1) % originB.notes.length];
++        const note3 = originC.notes[(index + 2) % originC.notes.length];
++        const notes = Array.from(new Set([note1, note2, note3]));
++
++        return {
++          id: 'BLD-' + String(index + 1).padStart(4, '0'),
++          name:
++            'Lot #' +
++            String(index + 101) +
++            ' ' +
++            originA.name.split(' ')[0] +
++            '-' +
++            originB.name.split(' ')[0] +
++            ' Reserve',
++          composition:
++            pctA +
++            '% ' +
++            originA.name +
++            ' · ' +
++            pctB +
++            '% ' +
++            originB.name +
++            ' · ' +
++            pctC +
++            '% ' +
++            originC.name,
++          roastTemp: Math.round(roastTemp),
++          extractionYield: extractionYield,
++          matchScore: matchScore,
++          scores: {
++            acidity: Math.round(acidity),
++            sweetness: Math.round(sweetness),
++            body: Math.round(body),
++            aroma: Math.round(aroma),
++            finish: Math.round(finish),
++            bitterness: Math.round(bitterness)
++          },
++          notes: notes
++        };
++      }
++
++      function clampScore(val) {
++        return Math.max(10, Math.min(99, val));
++      }
++
++      // State for current simulation and results
++      let activeRunId = 0;
++      let latestSimulatedBlends = [];
++
++      function renderSimulationResults(blends, filterQuery) {
++        if (!blends || blends.length === 0) return;
++
++        const query = (filterQuery || '').trim().toLowerCase();
++        const filtered = query
++          ? blends.filter(function (b) {
++              return (
++                b.name.toLowerCase().includes(query) ||
++                b.composition.toLowerCase().includes(query) ||
++                b.notes.some(function (n) {
++                  return n.toLowerCase().includes(query);
++                })
++              );
++            })
++          : blends;
++
++        const topMatches = filtered.slice(0, 8);
++        matchedCountLabel.textContent = query
++          ? 'Showing ' + topMatches.length + ' of ' + filtered.length + ' filtered blends'
++          : 'Showing top ' + topMatches.length + ' of ' + blends.length.toLocaleString() + ' blends';
++
++        // Update top blends list DOM
++        topBlendsList.innerHTML = '';
++        if (topMatches.length === 0) {
++          const emptyEl = document.createElement('div');
++          emptyEl.className = 'blend-item';
++          emptyEl.textContent = 'No recipe blends match "' + filterQuery + '". Try clearing the filter.';
++          topBlendsList.appendChild(emptyEl);
++        } else {
++          const fragment = document.createDocumentFragment();
++          for (let i = 0; i < topMatches.length; i++) {
++            const item = topMatches[i];
++            const card = document.createElement('div');
++            card.className = 'blend-item';
++            card.innerHTML =
++              '<div class="blend-item-header">' +
++              '<span class="blend-name">' +
++              item.name +
++              '</span>' +
++              '<span class="blend-score">' +
++              item.matchScore.toFixed(1) +
++              '% Match</span>' +
++              '</div>' +
++              '<div class="blend-meta">' +
++              item.composition +
++              '</div>' +
++              '<div class="blend-mini-metrics">' +
++              '<span>Roast: ' +
++              item.roastTemp +
++              '°C</span>' +
++              '<span>Yield: ' +
++              item.extractionYield +
++              '%</span>' +
++              '<span>Acidity: ' +
++              item.scores.acidity +
++              '</span>' +
++              '<span>Sweetness: ' +
++              item.scores.sweetness +
++              '</span>' +
++              '<span>Body: ' +
++              item.scores.body +
++              '</span>' +
++              '<span>Notes: ' +
++              item.notes.join(', ') +
++              '</span>' +
++              '</div>';
++            fragment.appendChild(card);
++          }
++          topBlendsList.appendChild(fragment);
++        }
++
++        // Compute aggregate profile across top 25 blends
++        const samplePool = (filtered.length > 0 ? filtered : blends).slice(0, 25);
++        const totals = {
++          acidity: 0,
++          sweetness: 0,
++          body: 0,
++          aroma: 0,
++          finish: 0,
++          bitterness: 0,
++          yield: 0
++        };
++        const noteFreq = {};
++
++        for (let i = 0; i < samplePool.length; i++) {
++          const b = samplePool[i];
++          totals.acidity += b.scores.acidity;
++          totals.sweetness += b.scores.sweetness;
++          totals.body += b.scores.body;
++          totals.aroma += b.scores.aroma;
++          totals.finish += b.scores.finish;
++          totals.bitterness += b.scores.bitterness;
++          totals.yield += b.extractionYield;
++          for (let j = 0; j < b.notes.length; j++) {
++            const note = b.notes[j];
++            noteFreq[note] = (noteFreq[note] || 0) + 1;
++          }
++        }
++
++        const count = samplePool.length;
++        const avg = {
++          acidity: Math.round(totals.acidity / count),
++          sweetness: Math.round(totals.sweetness / count),
++          body: Math.round(totals.body / count),
++          aroma: Math.round(totals.aroma / count),
++          finish: Math.round(totals.finish / count),
++          bitterness: Math.round(totals.bitterness / count),
++          yield: (totals.yield / count).toFixed(1)
++        };
++
++        updateBar('acidity', avg.acidity);
++        updateBar('sweetness', avg.sweetness);
++        updateBar('body', avg.body);
++        updateBar('aroma', avg.aroma);
++        updateBar('finish', avg.finish);
++        updateBar('bitterness', avg.bitterness);
++        extractionYieldBadge.textContent = 'Extraction Yield: ' + avg.yield + '%';
++
++        const topNotes = Object.keys(noteFreq)
++          .sort(function (a, b) {
++            return noteFreq[b] - noteFreq[a];
++          })
++          .slice(0, 5);
++
++        dominantNotesContainer.innerHTML = '';
++        for (let i = 0; i < topNotes.length; i++) {
++          const span = document.createElement('span');
++          span.className = 'note-tag';
++          span.textContent = topNotes[i];
++          dominantNotesContainer.appendChild(span);
++        }
++      }
++
++      function updateBar(key, val) {
++        const valEl = document.getElementById('val-' + key);
++        const barEl = document.getElementById('bar-' + key);
++        if (valEl) valEl.textContent = val + ' / 100';
++        if (barEl) barEl.style.width = val + '%';
++      }
++
++      // Main chunked batch processor that breaks up long tasks and yields to the main thread
++      async function runFlavorSimulation(customOptions) {
++        activeRunId += 1;
++        const currentRunId = activeRunId;
++
++        const config = Object.assign(
++          {
++            targetProfile: targetProfileSelect.value,
++            roastTemp: Number(roastTempRange.value),
++            brewMethod: brewMethodSelect.value,
++            batchSize: Number(batchSizeSelect.value),
++            chunkBudgetMs: Number(chunkBudgetSelect.value)
++          },
++          customOptions || {}
++        );
++
++        const totalBlends = Math.max(1, config.batchSize);
++        const timeBudgetMs = Math.max(4, Math.min(25, config.chunkBudgetMs));
++        const maxItemsPerSlice = 60; // Hard cap per slice in addition to time budget
++
++        cancelBtn.disabled = false;
++        simulationStatusText.textContent = 'Simulating blends (yielding to main thread)...';
++        threadHealthBadge.textContent = 'Main Thread: Yielding (' + timeBudgetMs + 'ms budget)';
++
++        const rng = createSeededRng(
++          config.roastTemp * 131 +
++            totalBlends * 17 +
++            config.targetProfile.charCodeAt(0) * 31 +
++            config.brewMethod.charCodeAt(0) * 19
++        );
++
++        const results = [];
++        let processed = 0;
++        let yieldCount = 0;
++        let totalSliceTimeMs = 0;
++        let sliceCount = 0;
++        let maxSliceMs = 0;
++        let bestMatch = 0;
++
++        let sliceStart = performance.now();
++        let itemsInCurrentSlice = 0;
++
++        while (processed < totalBlends) {
++          if (currentRunId !== activeRunId) {
++            return null; // Aborted or superseded by a newer run
++          }
++
++          const blend = simulateSingleRecipeBlend(processed, config, rng);
++          results.push(blend);
++          if (blend.matchScore > bestMatch) {
++            bestMatch = blend.matchScore;
++          }
++
++          processed += 1;
++          itemsInCurrentSlice += 1;
++
++          const needYield =
++            processed < totalBlends &&
++            (itemsInCurrentSlice >= maxItemsPerSlice ||
++              shouldYieldToMain(sliceStart, timeBudgetMs));
++
++          if (needYield || processed === totalBlends) {
++            const sliceDuration = performance.now() - sliceStart;
++            totalSliceTimeMs += sliceDuration;
++            sliceCount += 1;
++            if (sliceDuration > maxSliceMs) {
++              maxSliceMs = sliceDuration;
++            }
++
++            const pct = Math.round((processed / totalBlends) * 100);
++            progressLabel.textContent =
++              processed < totalBlends
++                ? 'Simulating Recipe Batch (' +
++                  processed.toLocaleString() +
++                  ' / ' +
++                  totalBlends.toLocaleString() +
++                  ' blends)...'
++                : 'Batch Complete (' + totalBlends.toLocaleString() + ' blends simulated)';
++            progressPercent.textContent = pct + '%';
++            progressBar.setAttribute('aria-valuenow', String(pct));
++            progressFill.style.width = pct + '%';
++
++            metricProcessed.textContent =
++              processed.toLocaleString() + ' / ' + totalBlends.toLocaleString();
++            metricYields.textContent = yieldCount + ' yields';
++            const avgSlice = totalSliceTimeMs / sliceCount;
++            metricSliceDuration.textContent = avgSlice.toFixed(1) + ' ms';
++            metricBestScore.textContent = bestMatch.toFixed(1) + '%';
++
++            if (processed < totalBlends) {
++              yieldCount += 1;
++              metricYields.textContent = yieldCount + ' yields';
++              await yieldToMain();
++              sliceStart = performance.now();
++              itemsInCurrentSlice = 0;
++            }
++          }
++        }
++
++        if (currentRunId !== activeRunId) {
++          return null;
++        }
++
++        // Sort top blends in non-blocking stages if large
++        if (shouldYieldToMain(sliceStart, timeBudgetMs)) {
++          yieldCount += 1;
++          metricYields.textContent = yieldCount + ' yields';
++          await yieldToMain();
++        }
++
++        results.sort(function (a, b) {
++          return b.matchScore - a.matchScore;
++        });
++
++        latestSimulatedBlends = results;
++        renderSimulationResults(latestSimulatedBlends, blendFilterInput.value);
++
++        cancelBtn.disabled = true;
++        simulationStatusText.textContent =
++          'Completed ' +
++          totalBlends.toLocaleString() +
++          ' blends across ' +
++          yieldCount +
++          ' main-thread yields';
++        threadHealthBadge.textContent =
++          'Main Thread: Responsive (max slice ' + maxSliceMs.toFixed(1) + 'ms)';
++
++        return {
++          processed: processed,
++          yieldCount: yieldCount,
++          avgSliceMs: totalSliceTimeMs / Math.max(1, sliceCount),
++          maxSliceMs: maxSliceMs,
++          topBlends: results.slice(0, 8)
++        };
++      }
++
++      window.runFlavorSimulation = runFlavorSimulation;
++
++      // Event bindings
++      runBtn.addEventListener('click', function () {
++        runFlavorSimulation();
++      });
++
++      cancelBtn.addEventListener('click', function () {
++        activeRunId += 1;
++        cancelBtn.disabled = true;
++        simulationStatusText.textContent = 'Batch simulation paused by user';
++        progressLabel.textContent = 'Simulation Paused';
++      });
++
++      blendFilterInput.addEventListener('input', function () {
++        renderSimulationResults(latestSimulatedBlends, blendFilterInput.value);
++      });
++
++      targetProfileSelect.addEventListener('change', function () {
++        runFlavorSimulation();
++      });
++
++      brewMethodSelect.addEventListener('change', function () {
++        runFlavorSimulation();
++      });
++
++      // Populate initial baseline synchronously with a small sample, then kick off full chunked simulation
++      (function initBaseline() {
++        const seedRng = createSeededRng(42026);
++        const baselineConfig = {
++          targetProfile: targetProfileSelect.value,
++          roastTemp: Number(roastTempRange.value),
++          brewMethod: brewMethodSelect.value
++        };
++        const initialPool = [];
++        for (let i = 0; i < 40; i++) {
++          initialPool.push(simulateSingleRecipeBlend(i, baselineConfig, seedRng));
++        }
++        initialPool.sort(function (a, b) {
++          return b.matchScore - a.matchScore;
++        });
++        latestSimulatedBlends = initialPool;
++        renderSimulationResults(latestSimulatedBlends, '');
++      })();
++    })();
++  </script>
+ </body>
+ 
+ </html>

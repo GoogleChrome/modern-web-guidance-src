@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+index 66c9173..61f50c4 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,130 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Decorative text lines ---------- */
++
++    /* Nav links: underline that wipes in from the left on hover/focus */
++    nav a:not(.logout-link) {
++      text-decoration: underline solid var(--accent) max(1px, 0.1em);
++      text-underline-offset: 0.3em;
++      text-decoration-skip-ink: all;
++    }
++
++    /* Logout keeps its border, but gets a thin overline that grows from the center */
++    nav a.logout-link {
++      text-decoration: overline solid var(--accent) max(1px, 0.08em);
++      text-decoration-inset: 0.2em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav a:not(.logout-link) {
++        text-decoration-inset: 0 100%;
++        transition: color 0.3s, text-decoration-inset 0.25s ease-out;
++      }
++
++      nav a:not(.logout-link):is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
++
++      nav a.logout-link {
++        text-decoration-inset: 50%;
++        transition: color 0.3s, text-decoration-inset 0.3s ease-out;
++      }
++
++      nav a.logout-link:is(:hover, :focus-visible) {
++        text-decoration-inset: 0.2em;
++      }
++    }
++
++    /* Footer links: soft dashed underline that firms up and reaches past the text on hover */
++    .footer-links a {
++      text-decoration: underline dashed color-mix(in srgb, currentColor 45%, transparent) max(1px, 0.08em);
++      text-underline-offset: 0.25em;
++      text-decoration-skip-ink: all;
++      text-decoration-inset: 0.15em;
++      transition: text-decoration-color 0.25s, text-decoration-inset 0.25s ease-out;
++    }
++
++    .footer-links a:is(:hover, :focus-visible) {
++      text-decoration-style: solid;
++      text-decoration-color: var(--primary);
++      text-decoration-thickness: max(1px, 0.12em);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .footer-links a:is(:hover, :focus-visible) {
++        text-decoration-inset: -0.2em;
++      }
++    }
++
++    /* "Seasonal Favorites": hand-drawn squiggle that draws itself in on load */
++    .section-title {
++      position: relative;
++      width: fit-content;
++      margin-inline: auto;
++      padding-block-end: 0.45em;
++      text-align: center;
++    }
++
++    .section-title::after {
++      content: "";
++      position: absolute;
++      /* Horizontal end insets: the squiggle stops just short of each end */
++      inset: auto 0.3em 0 0.3em;
++      pointer-events: none;
++      /* Fallback: a straight accent line */
++      border-block-end: max(2px, 0.08em) solid var(--accent);
++    }
++
++    @supports (border-shape: circle(50%)) {
++      .section-title::after {
++        block-size: 0.4em;
++        border: max(2px, 0.08em) solid var(--accent);
++        border-shape: shape(from 0% 50%,
++          curve to 12.5% 50% with 3% 0% / 9.5% 0%,
++          smooth to 25% 50% with 22% 100%,
++          smooth to 37.5% 50% with 34.5% 0%,
++          smooth to 50% 50% with 47% 100%,
++          smooth to 62.5% 50% with 59.5% 0%,
++          smooth to 75% 50% with 72% 100%,
++          smooth to 87.5% 50% with 84.5% 0%,
++          smooth to 100% 50% with 97% 100%);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .section-title::after {
++        animation: draw-line 0.9s 0.3s ease-out both;
++      }
++    }
++
++    @keyframes draw-line {
++      from { clip-path: inset(-1em 100% -1em 0); }
++      to   { clip-path: inset(-1em 0 -1em 0); }
++    }
++
++    /* Card titles: highlighter-style underline that crosses the descenders
++       (ink skips around p, y, g...) and stretches past the text on card hover.
++       Not a link, so it uses the accent color and a heavy stroke rather than
++       a link-like thin line. */
++    .card h3 {
++      text-decoration: underline solid color-mix(in srgb, var(--accent) 70%, transparent) 0.18em;
++      text-underline-offset: 0.08em;
++      text-decoration-skip-ink: all;
++      text-decoration-inset: 0.6em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .card h3 {
++        transition: text-decoration-inset 0.35s ease-out, text-decoration-color 0.35s;
++      }
++
++      .card:is(:hover, :focus-within) h3 {
++        text-decoration-inset: -0.25em;
++        text-decoration-color: var(--accent);
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,7 +300,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

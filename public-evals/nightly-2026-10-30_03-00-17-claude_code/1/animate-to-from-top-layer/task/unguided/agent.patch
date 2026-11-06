@@ -1,0 +1,343 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,215 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Logout confirmation modal */
++    .modal {
++      border: none;
++      border-radius: 10px;
++      padding: 0;
++      max-width: 400px;
++      width: calc(100% - 40px);
++      margin: auto;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
++    }
++
++    .modal[open] {
++      animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
++    }
++
++    .modal[open]::backdrop {
++      background: rgba(30, 18, 14, 0.6);
++      animation: backdrop-in 0.3s ease both;
++    }
++
++    .modal.is-closing {
++      animation: modal-out 0.2s ease-in both;
++    }
++
++    .modal.is-closing::backdrop {
++      animation: backdrop-out 0.2s ease-in both;
++    }
++
++    .modal-content {
++      padding: 28px 24px 24px;
++      text-align: center;
++    }
++
++    .modal-content h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      font-size: 1.4rem;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    @keyframes modal-in {
++      from {
++        opacity: 0;
++        transform: translateY(20px) scale(0.95);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @keyframes modal-out {
++      from {
++        opacity: 1;
++        transform: none;
++      }
++
++      to {
++        opacity: 0;
++        transform: translateY(10px) scale(0.97);
++      }
++    }
++
++    @keyframes backdrop-in {
++      from {
++        opacity: 0;
++      }
++
++      to {
++        opacity: 1;
++      }
++    }
++
++    @keyframes backdrop-out {
++      from {
++        opacity: 1;
++      }
++
++      to {
++        opacity: 0;
++      }
++    }
++
++    /* Ordering status overlay */
++    .hero-actions {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    .btn-outline {
++      background: transparent;
++      border: 1px solid white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-outline:hover {
++      background: rgba(255, 255, 255, 0.15);
++    }
++
++    .info-overlay {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      display: flex;
++      align-items: flex-start;
++      gap: 12px;
++      max-width: 340px;
++      padding: 16px 18px;
++      background: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++    }
++
++    .info-overlay[hidden] {
++      display: none;
++    }
++
++    .info-overlay.is-open {
++      animation: overlay-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
++    }
++
++    .info-overlay.is-closing {
++      animation: overlay-out 0.25s ease-in both;
++    }
++
++    .info-overlay p {
++      flex: 1;
++      margin: 0;
++    }
++
++    .info-overlay-close {
++      background: none;
++      border: none;
++      font-size: 1.4rem;
++      line-height: 1;
++      color: var(--text);
++      cursor: pointer;
++      opacity: 0.6;
++      transition: opacity 0.2s;
++    }
++
++    .info-overlay-close:hover {
++      opacity: 1;
++    }
++
++    @keyframes overlay-in {
++      from {
++        opacity: 0;
++        transform: translateY(16px) scale(0.96);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @keyframes overlay-out {
++      from {
++        opacity: 1;
++        transform: none;
++      }
++
++      to {
++        opacity: 0;
++        transform: translateY(16px) scale(0.96);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .modal,
++      .modal::backdrop,
++      .info-overlay {
++        animation-duration: 0.01ms !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +370,19 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <button type="button" class="btn btn-outline" id="foobar" aria-controls="ordering-overlay">Ordering Status</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +416,101 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog class="modal" id="logout-dialog" aria-labelledby="logout-dialog-title">
++    <div class="modal-content">
++      <h2 id="logout-dialog-title">Log out?</h2>
++      <p>Are you sure you want to log out of your account?</p>
++      <div class="modal-actions">
++        <button type="button" class="btn btn-secondary" id="close-dialog-btn">Cancel</button>
++        <a href="/logout" class="btn">Log Out</a>
++      </div>
++    </div>
++  </dialog>
++
++  <div class="info-overlay" id="ordering-overlay" role="status" hidden>
++    <p>Online ordering is currently offline.</p>
++    <button type="button" class="info-overlay-close" aria-label="Dismiss">&times;</button>
++  </div>
++
++  <script>
++    // Runs `done` once the element's exit animation finishes (or immediately if there is none).
++    function afterAnimation(el, done) {
++      const name = getComputedStyle(el).animationName;
++      if (!name || name === 'none') return done();
++      function handler(e) {
++        if (e.target !== el) return;
++        el.removeEventListener('animationend', handler);
++        el.removeEventListener('animationcancel', handler);
++        // Skip if the exit was interrupted (e.g. reopened mid-animation)
++        if (e.type === 'animationend' && e.animationName === name) done();
++      }
++      el.addEventListener('animationend', handler);
++      el.addEventListener('animationcancel', handler);
++    }
++
++    // Logout confirmation modal
++    const dialog = document.getElementById('logout-dialog');
++
++    function closeDialog() {
++      if (!dialog.open || dialog.classList.contains('is-closing')) return;
++      dialog.classList.add('is-closing');
++      afterAnimation(dialog, () => {
++        dialog.classList.remove('is-closing');
++        dialog.close();
++      });
++    }
++
++    document.getElementById('open-dialog-btn').addEventListener('click', (e) => {
++      e.preventDefault();
++      dialog.classList.remove('is-closing');
++      if (!dialog.open) dialog.showModal();
++    });
++
++    document.getElementById('close-dialog-btn').addEventListener('click', closeDialog);
++
++    // Animate Escape-key dismissal instead of closing instantly
++    dialog.addEventListener('cancel', (e) => {
++      e.preventDefault();
++      closeDialog();
++    });
++
++    // Clicking the backdrop (outside the content box) dismisses the modal
++    dialog.addEventListener('click', (e) => {
++      if (e.target === dialog) closeDialog();
++    });
++
++    // Ordering status overlay
++    const overlay = document.getElementById('ordering-overlay');
++    const overlayTrigger = document.getElementById('foobar');
++
++    function hideOverlay() {
++      if (overlay.hidden || overlay.classList.contains('is-closing')) return;
++      overlay.classList.remove('is-open');
++      overlay.classList.add('is-closing');
++      overlayTrigger.setAttribute('aria-expanded', 'false');
++      afterAnimation(overlay, () => {
++        overlay.classList.remove('is-closing');
++        overlay.hidden = true;
++      });
++    }
++
++    overlayTrigger.setAttribute('aria-expanded', 'false');
++    overlayTrigger.addEventListener('click', () => {
++      if (!overlay.hidden && !overlay.classList.contains('is-closing')) return hideOverlay();
++      overlay.classList.remove('is-closing');
++      overlay.hidden = false;
++      overlay.classList.add('is-open');
++      overlayTrigger.setAttribute('aria-expanded', 'true');
++    });
++
++    overlay.querySelector('.info-overlay-close').addEventListener('click', hideOverlay);
++
++    document.addEventListener('keydown', (e) => {
++      if (e.key === 'Escape' && !dialog.open) hideOverlay();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

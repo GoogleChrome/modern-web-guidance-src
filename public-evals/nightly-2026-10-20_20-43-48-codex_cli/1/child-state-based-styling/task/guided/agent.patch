@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,37 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .iced-option {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 0.5rem;
++      min-block-size: 44px;
++      margin-block-start: 10px;
++      cursor: pointer;
++    }
++
++    .iced-option input {
++      accent-color: #163d67;
++      inline-size: 1em;
++      block-size: 1em;
++    }
++
++    .card:has(.iced-option input:checked) {
++      background: #e3f2fd;
++      color: #163d67;
++    }
++
++    .card:has(.iced-option input:checked) :is(h3, .btn) {
++      color: inherit;
++    }
++
++    .card:has(.iced-option input:checked) .btn {
++      background: #bbdefb;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,18 +209,30 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label class="iced-option">
++            <input type="checkbox">
++            make it iced
++          </label>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label class="iced-option">
++            <input type="checkbox">
++            make it iced
++          </label>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label class="iced-option">
++            <input type="checkbox">
++            make it iced
++          </label>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>

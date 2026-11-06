@@ -1,0 +1,566 @@
+diff --git a/index.html b/index.html
+index 66c9173..bb392df 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,142 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Form Section */
++    .feedback-section {
++      margin-top: 60px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 680px;
++      margin-inline: auto;
++    }
++
++    .feedback-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      text-align: center;
++    }
++
++    .feedback-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
++    .form-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 20px;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-fieldset legend {
++      font-weight: 600;
++      padding: 0 8px;
++      color: var(--primary);
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group:last-child {
++      margin-block-end: 0;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .required-indicator {
++      color: #c62828;
++      margin-inline-start: 2px;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .form-control {
++      width: 100%;
++      font-size: 1rem;
++      font-family: inherit;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background-color: #fff;
++      color: var(--text);
++    }
++
++    textarea.form-control {
++      min-height: 100px;
++      resize: vertical;
++    }
++
++    .form-control:focus-visible,
++    button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .btn-group {
++      display: flex;
++      gap: 12px;
++    }
++
++    button.btn {
++      margin-top: 0;
++      border: none;
++      font-size: 1rem;
++      font-family: inherit;
++      cursor: pointer;
++      min-height: 48px;
++    }
++
++    button.btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    button.btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .submission-output {
++      margin-top: 20px;
++      padding: 16px;
++      border-radius: 6px;
++      background: #efebe9;
++      border-inline-start: 4px solid var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .submission-output[hidden] {
++      display: none;
++    }
++
++    rating-input {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +331,56 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Rate Your Roast</h2>
++      <p class="feedback-subtitle">Tell us how your latest cup tasted so our roasters can keep perfecting every batch.</p>
++
++      <form id="roast-feedback-form" action="/feedback" method="POST">
++        <fieldset id="feedback-fieldset" class="form-fieldset">
++          <legend>Tasting Notes &amp; Rating</legend>
++
++          <div class="form-group">
++            <label for="customer-name">Full name <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input type="text" id="customer-name" name="customer_name" class="form-control" autocomplete="name" required>
++          </div>
++
++          <div class="form-group">
++            <label for="blend-select">Blend Ordered <span class="required-indicator" aria-hidden="true">*</span></label>
++            <select id="blend-select" name="blend" class="form-control" required>
++              <option value="">Select a blend...</option>
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">18-Hour Cold Brew</option>
++              <option value="single-origin-ethiopia">Single-Origin Ethiopia</option>
++              <option value="house-drip">Daily Grind House Drip</option>
++              <option value="decaf-colombian">Decaf Colombian Supremo</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="cup-rating" id="cup-rating-label">Cup Rating <span class="required-indicator" aria-hidden="true">*</span></label>
++            <rating-input id="cup-rating" name="rating" aria-labelledby="cup-rating-label" aria-describedby="rating-hint" required></rating-input>
++            <span id="rating-hint" class="hint">Select 1 to 5 coffee beans to rate your drink.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="tasting-notes">Tasting Notes</label>
++            <textarea id="tasting-notes" name="notes" class="form-control" maxlength="300"></textarea>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <div class="btn-group">
++            <button type="submit" class="btn">Submit Review</button>
++            <button type="reset" class="btn btn-secondary">Reset</button>
++          </div>
++          <button type="button" id="toggle-disabled-btn" class="btn btn-secondary" aria-pressed="false">Disable Fieldset</button>
++        </div>
++
++        <div id="submission-output" class="submission-output" role="status" aria-live="polite" hidden></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +393,361 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const supportsFACE =
++      'attachInternals' in HTMLElement.prototype &&
++      typeof ElementInternals !== 'undefined' &&
++      'setFormValue' in ElementInternals.prototype;
++
++    class RatingInput extends HTMLElement {
++      // MANDATORY: opt in. Without this, attachInternals() form APIs are unavailable.
++      static formAssociated = true;
++
++      static get observedAttributes() {
++        return ['value', 'required', 'disabled'];
++      }
++
++      #internals = null;
++      #value = '';
++      #defaultValue = '';
++      #fallbackInput = null;
++
++      constructor() {
++        super();
++        if (supportsFACE) {
++          this.#internals = this.attachInternals();
++        }
++        this.attachShadow({ mode: 'open', delegatesFocus: true });
++        this.#render();
++      }
++
++      connectedCallback() {
++        if (this.hasAttribute('value')) {
++          this.#defaultValue = this.getAttribute('value') || '';
++          if (!this.#value) {
++            this.#value = this.#defaultValue;
++          }
++        }
++        if (!supportsFACE) {
++          this.#ensureFallbackInput();
++        }
++        this.#syncFormValue();
++        this.#updateUI();
++        this.#validate();
++      }
++
++      attributeChangedCallback(name, oldValue, newValue) {
++        if (oldValue === newValue) return;
++        if (name === 'value' && newValue !== null) {
++          this.value = newValue;
++        } else if (name === 'required') {
++          this.#validate();
++        } else if (name === 'disabled') {
++          this.formDisabledCallback(this.hasAttribute('disabled'));
++        }
++      }
++
++      get value() {
++        return this.#value;
++      }
++
++      set value(v) {
++        const normalized = v == null ? '' : String(v);
++        this.#value = normalized;
++        this.#syncFormValue();
++        this.#updateUI();
++        this.#validate();
++      }
++
++      get form() {
++        return this.#internals ? this.#internals.form : this.closest('form');
++      }
++
++      get name() {
++        return this.getAttribute('name');
++      }
++
++      get type() {
++        return this.localName;
++      }
++
++      get validity() {
++        return this.#internals ? this.#internals.validity : this.#fallbackInput?.validity;
++      }
++
++      get validationMessage() {
++        return this.#internals ? this.#internals.validationMessage : (this.#fallbackInput?.validationMessage || '');
++      }
++
++      get willValidate() {
++        return this.#internals ? this.#internals.willValidate : Boolean(this.#fallbackInput?.willValidate);
++      }
++
++      checkValidity() {
++        return this.#internals ? this.#internals.checkValidity() : Boolean(this.#fallbackInput?.checkValidity());
++      }
++
++      reportValidity() {
++        return this.#internals ? this.#internals.reportValidity() : Boolean(this.#fallbackInput?.reportValidity());
++      }
++
++      #ensureFallbackInput() {
++        if (this.#fallbackInput) return;
++        const input = document.createElement('input');
++        input.type = 'text';
++        input.tabIndex = -1;
++        input.setAttribute('aria-hidden', 'true');
++        input.name = this.name || '';
++        input.required = this.hasAttribute('required');
++        Object.assign(input.style, {
++          position: 'absolute',
++          clipPath: 'inset(50%)',
++          overflow: 'hidden',
++          width: '1px',
++          height: '1px',
++          margin: '-1px',
++          padding: '0',
++          border: '0',
++          whiteSpace: 'nowrap',
++        });
++        this.appendChild(input);
++        this.#fallbackInput = input;
++      }
++
++      #syncFormValue() {
++        if (this.#internals) {
++          // Push the value into the owning <form> for submission.
++          this.#internals.setFormValue(this.#value);
++        } else if (this.#fallbackInput) {
++          this.#fallbackInput.name = this.name || '';
++          this.#fallbackInput.value = this.#value;
++          this.#fallbackInput.required = this.hasAttribute('required');
++        }
++      }
++
++      #validate() {
++        const anchor = this.shadowRoot.querySelector('[tabindex="0"], button');
++        if (this.hasAttribute('required') && !this.#value) {
++          // Mark invalid and supply the native validation message + anchor.
++          if (this.#internals) {
++            this.#internals.setValidity(
++              { valueMissing: true },
++              'Please choose a rating.',
++              anchor
++            );
++          } else if (this.#fallbackInput) {
++            this.#fallbackInput.setCustomValidity('Please choose a rating.');
++          }
++        } else {
++          if (this.#internals) {
++            this.#internals.setValidity({}); // clear
++          } else if (this.#fallbackInput) {
++            this.#fallbackInput.setCustomValidity('');
++          }
++        }
++      }
++
++      // FACE lifecycle hooks:
++      formResetCallback() {
++        this.value = this.getAttribute('value') || this.#defaultValue || '';
++      }
++
++      formDisabledCallback(disabled) {
++        // Disable internal controls so they leave the tab order and ignore clicks.
++        // Do NOT toggle `disabled` on `this`, or a `<fieldset disabled>` toggle will
++        // leave the host permanently stuck with its own `disabled` attribute.
++        for (const el of this.shadowRoot.querySelectorAll('button')) {
++          el.disabled = disabled;
++        }
++        if (this.#fallbackInput) {
++          this.#fallbackInput.disabled = disabled;
++        }
++      }
++
++      formStateRestoreCallback(state, mode) {
++        this.value = state;
++      }
++
++      #selectRating(newVal) {
++        if (this.matches(':disabled')) return;
++        const changed = this.#value !== newVal;
++        this.value = newVal;
++        // Follow platform conventions for dispatched events: `input` (InputEvent) and `change` (Event)
++        this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: newVal }));
++        if (changed) {
++          this.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++      }
++
++      #updateUI() {
++        const buttons = Array.from(this.shadowRoot.querySelectorAll('button'));
++        const numericVal = Number(this.#value) || 0;
++        const statusEl = this.shadowRoot.querySelector('.rating-status');
++
++        buttons.forEach((btn, idx) => {
++          const rating = idx + 1;
++          const isSelected = rating === numericVal;
++          const isFilled = rating <= numericVal;
++          btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
++          btn.classList.toggle('filled', isFilled);
++          btn.classList.toggle('selected', isSelected);
++          // Roving tabindex so the first or selected button is the focusable anchor
++          const isTabStop = numericVal > 0 ? isSelected : idx === 0;
++          btn.setAttribute('tabindex', isTabStop ? '0' : '-1');
++        });
++
++        if (statusEl) {
++          const labels = ['', '1 / 5 (Weak)', '2 / 5 (Fair)', '3 / 5 (Balanced)', '4 / 5 (Rich)', '5 / 5 (Exceptional)'];
++          statusEl.textContent = numericVal ? labels[numericVal] : 'No rating selected';
++        }
++      }
++
++      #render() {
++        this.shadowRoot.innerHTML = `
++          <style>
++            :host {
++              display: inline-block;
++              font-family: inherit;
++            }
++            :host(:disabled) .rating-group {
++              opacity: 0.55;
++              cursor: not-allowed;
++            }
++            .rating-group {
++              display: inline-flex;
++              align-items: center;
++              gap: 8px;
++              padding: 6px 10px;
++              border: 1px solid #bcaaa4;
++              border-radius: 6px;
++              background: #fff;
++              transition: border-color 0.2s, box-shadow 0.2s;
++            }
++            :host(:invalid) .rating-group {
++              border-color: #d32f2f;
++            }
++            :host(:valid) .rating-group {
++              border-color: #388e3c;
++            }
++            button {
++              appearance: none;
++              border: 1px solid transparent;
++              background: #f5f5f5;
++              color: #8d6e63;
++              min-width: 48px;
++              min-height: 48px;
++              padding: 6px;
++              border-radius: 6px;
++              cursor: pointer;
++              display: inline-flex;
++              flex-direction: column;
++              align-items: center;
++              justify-content: center;
++              font-size: 1.25rem;
++              font-family: inherit;
++              transition: transform 0.15s, background-color 0.15s, color 0.15s, border-color 0.15s;
++            }
++            button:hover:not(:disabled) {
++              background: #efebe9;
++              transform: translateY(-1px);
++            }
++            button:focus-visible {
++              outline: 3px solid #ffab40;
++              outline-offset: 2px;
++            }
++            button.filled {
++              background: #fff8e1;
++              color: #4e342e;
++              border-color: #ffca28;
++            }
++            button.selected {
++              background: #ffecb3;
++              border-color: #ffab40;
++              font-weight: 700;
++            }
++            button:disabled {
++              cursor: not-allowed;
++            }
++            .bean-icon {
++              font-size: 1.3rem;
++              line-height: 1;
++            }
++            .bean-num {
++              font-size: 0.75rem;
++              margin-top: 2px;
++            }
++            .rating-status {
++              margin-inline-start: 8px;
++              font-size: 0.9rem;
++              font-weight: 600;
++              color: #4e342e;
++              min-width: 135px;
++            }
++          </style>
++          <div class="rating-group" role="radiogroup" aria-label="Cup rating from 1 to 5">
++            ${[1, 2, 3, 4, 5].map((n) => `
++              <button type="button" role="radio" data-value="${n}" aria-checked="false" aria-label="${n} out of 5 beans" tabindex="${n === 1 ? '0' : '-1'}">
++                <span class="bean-icon" aria-hidden="true">&#9749;</span>
++                <span class="bean-num" aria-hidden="true">${n}</span>
++              </button>
++            `).join('')}
++            <span class="rating-status" aria-live="polite">No rating selected</span>
++          </div>
++        `;
++
++        const buttons = Array.from(this.shadowRoot.querySelectorAll('button'));
++        buttons.forEach((btn, index) => {
++          btn.addEventListener('click', () => {
++            this.#selectRating(btn.dataset.value);
++          });
++
++          btn.addEventListener('keydown', (e) => {
++            let nextIndex = null;
++            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
++              nextIndex = (index + 1) % buttons.length;
++            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
++              nextIndex = (index - 1 + buttons.length) % buttons.length;
++            }
++            if (nextIndex !== null) {
++              e.preventDefault();
++              const targetBtn = buttons[nextIndex];
++              this.#selectRating(targetBtn.dataset.value);
++              targetBtn.focus();
++            }
++          });
++        });
++      }
++    }
++
++    customElements.define('rating-input', RatingInput);
++
++    // Wire up form submission, reset, and fieldset disable toggle
++    const feedbackForm = document.getElementById('roast-feedback-form');
++    const feedbackFieldset = document.getElementById('feedback-fieldset');
++    const toggleDisabledBtn = document.getElementById('toggle-disabled-btn');
++    const submissionOutput = document.getElementById('submission-output');
++
++    feedbackForm.addEventListener('submit', (e) => {
++      e.preventDefault();
++      const data = new FormData(feedbackForm);
++      const entries = Object.fromEntries(data.entries());
++      submissionOutput.hidden = false;
++      submissionOutput.textContent = `Thank you, ${entries.customer_name}! Recorded rating ${entries.rating}/5 for "${entries.blend}".`;
++    });
++
++    feedbackForm.addEventListener('reset', () => {
++      submissionOutput.hidden = true;
++      submissionOutput.textContent = '';
++    });
++
++    toggleDisabledBtn.addEventListener('click', () => {
++      const nextDisabled = !feedbackFieldset.disabled;
++      feedbackFieldset.disabled = nextDisabled;
++      toggleDisabledBtn.setAttribute('aria-pressed', String(nextDisabled));
++      toggleDisabledBtn.textContent = nextDisabled ? 'Enable Fieldset' : 'Disable Fieldset';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

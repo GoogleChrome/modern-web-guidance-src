@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,88 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script type="module">
++    import {onCLS, onINP, onLCP} from 'https://unpkg.com/web-vitals@5?module';
++
++    // Minimal fetchLater() polyfill for browsers without native support
++    // (Firefox, Safari). Delivery is deferred until the page is hidden.
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if ('keepalive' in Request.prototype || init.method !== 'POST' || init.headers) {
++            fetch(url, Object.assign({}, init, {keepalive: true}));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    const sessionId = crypto.randomUUID();
++    const metrics = {};
++    let fetchLaterController = null;
++
++    // Replace the pending beacon with a snapshot of the latest metric values.
++    // The browser sends the most recent one when the user leaves the page.
++    function queueBeacon() {
++      fetchLaterController?.abort();
++      fetchLaterController = new AbortController();
++
++      try {
++        fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: {'content-type': 'application/json'},
++          body: JSON.stringify({
++            id: sessionId,
++            url: location.href,
++            metrics,
++          }),
++          signal: fetchLaterController.signal,
++        });
++      } catch (error) {
++        // Ignore quota errors; telemetry is best-effort.
++      }
++    }
++
++    function handleMetric({name, value, rating, delta, id, navigationType}) {
++      metrics[name] = {value, rating, delta, id, navigationType};
++      queueBeacon();
++    }
++
++    // reportAllChanges keeps the queued snapshot current throughout the
++    // session, so the final values are what get sent on page exit.
++    onCLS(handleMetric, {reportAllChanges: true});
++    onINP(handleMetric, {reportAllChanges: true});
++    onLCP(handleMetric, {reportAllChanges: true});
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

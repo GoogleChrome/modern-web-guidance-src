@@ -1,0 +1,156 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,19 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +185,15 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card" aria-labelledby="passkey-heading">
++      <h2 id="passkey-heading">Secure your account</h2>
++      <p>Create a passkey to sign in with your device’s screen lock.</p>
++      <button type="button" class="btn" data-testid="register-button"
++        aria-describedby="passkey-status" disabled>Create passkey</button>
++      <p id="passkey-status" role="status" aria-live="polite">Checking passkey support…</p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +224,116 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load only the JSON compatibility helpers; no external scripts receive account data.
++    import './node_modules/webauthn-polyfills/esm/json_serialization.js';
++
++    const registerButton = document.querySelector('[data-testid="register-button"]');
++    const passkeyStatus = document.querySelector('#passkey-status');
++    let registrationInProgress = false;
++    let registrationComplete = false;
++
++    async function checkPasskeySupport() {
++      try {
++        if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials?.create) {
++          throw new Error('Unsupported browser');
++        }
++
++        let supported;
++        if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
++          const capabilities = await PublicKeyCredential.getClientCapabilities();
++          supported = capabilities.conditionalGet && capabilities.passkeyPlatformAuthenticator;
++        } else {
++          // Older browsers can still support platform passkeys and conditional sign-in.
++          const [platform, conditional] = await Promise.all([
++            PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.(),
++            PublicKeyCredential.isConditionalMediationAvailable?.(),
++          ]);
++          supported = platform && conditional;
++        }
++
++        if (!supported) throw new Error('Unsupported authenticator');
++        registerButton.disabled = false;
++        passkeyStatus.textContent = '';
++      } catch {
++        passkeyStatus.textContent = 'Passkey creation is unavailable. Use a supported browser over HTTPS with a device screen lock.';
++      }
++    }
++
++    async function postJSON(url, body) {
++      return fetch(url, {
++        method: 'POST',
++        credentials: 'same-origin',
++        mode: 'same-origin',
++        redirect: 'error',
++        cache: 'no-store',
++        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++        body: JSON.stringify(body),
++      });
++    }
++
++    async function signalUnregisteredCredential(publicKey, credential) {
++      if (typeof PublicKeyCredential.signalUnknownCredential !== 'function') return;
++      try {
++        await PublicKeyCredential.signalUnknownCredential({
++          rpId: publicKey.rp.id || window.location.hostname,
++          credentialId: credential.id,
++        });
++      } catch {
++        // A password-manager synchronization failure must not mask verification failure.
++      }
++    }
++
++    registerButton.addEventListener('click', async () => {
++      if (registerButton.disabled || registrationInProgress || registrationComplete) return;
++      registrationInProgress = true;
++      registerButton.disabled = true;
++      registerButton.setAttribute('aria-busy', 'true');
++      passkeyStatus.textContent = 'Follow your device’s instructions to create a passkey…';
++
++      try {
++        const optionsResponse = await postJSON('/api/register/options', { promotion: true });
++        if (!optionsResponse.ok) throw new Error('Unable to start passkey registration. Please try again.');
++        // Keep the server-issued challenge, RP identity, and security policies intact.
++        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(await optionsResponse.json());
++        const credential = await navigator.credentials.create({ publicKey });
++        if (!credential) throw new DOMException('No credential created', 'NotAllowedError');
++        const encodedCredential = credential.toJSON();
++
++        // Only verification failures trigger cleanup, never prompt cancellations or options errors.
++        try {
++          const verificationResponse = await postJSON('/api/register/verify', encodedCredential);
++          if (!verificationResponse.ok) throw new Error('Verification rejected');
++          // Also honor an explicit rejection in an otherwise successful JSON response.
++          if (verificationResponse.headers.get('content-type')?.includes('application/json')) {
++            const result = await verificationResponse.json();
++            if (result?.verified === false) throw new Error('Verification rejected');
++          }
++        } catch {
++          await signalUnregisteredCredential(publicKey, encodedCredential);
++          throw new Error('Passkey registration could not be verified. Please try again.');
++        }
++
++        registrationComplete = true;
++        passkeyStatus.textContent = 'Your passkey has been registered.';
++      } catch (error) {
++        const messages = {
++          InvalidStateError: 'A passkey already exists for this account on this authenticator.',
++          NotAllowedError: 'Passkey creation was cancelled or timed out. You can try again.',
++          AbortError: 'Passkey creation was interrupted. You can try again.',
++          SecurityError: 'Passkey creation requires HTTPS and a correctly configured account domain.',
++        };
++        passkeyStatus.textContent = messages[error.name] || 'Passkey registration failed. Please try again.';
++      } finally {
++        registrationInProgress = false;
++        registerButton.disabled = registrationComplete;
++        registerButton.removeAttribute('aria-busy');
++      }
++    });
++
++    checkPasskeySupport();
++  </script>
+ </body>
+ 
+ </html>

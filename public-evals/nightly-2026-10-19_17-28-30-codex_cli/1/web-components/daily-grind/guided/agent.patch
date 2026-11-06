@@ -1,0 +1,486 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..660c384
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,111 @@
++import './components/coffee-card.js';
++import { createModal } from './components/modal.js';
++
++const photo = (id, width = 800) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=85`;
++export const products = [
++  { id: 'maple', name: 'Maple Oat Latte', price: 5.50, description: 'A little maple sweetness. A whole lot of comfort.', notes: 'Cozy · Creamy · Gently sweet', badge: 'THE SEASON’S SWEETHEART', category: 'Hot coffee', image: photo('photo-1461023058943-07fcbe16d735'), alt: 'Creamy iced oat milk latte in a glass', details: 'Our signature espresso meets velvety oat milk and pure maple syrup. Finished with a touch of cinnamon. A cozy favorite, hot or over ice.' },
++  { id: 'espresso', name: 'Dark Roast Espresso', price: 3.25, description: 'Bold by nature. Smooth to the very last sip.', notes: 'Rich · Chocolatey · Full-bodied', badge: 'THE EVERYDAY CLASSIC', category: 'Hot coffee', image: photo('photo-1510707577719-ae7c14805e3a'), alt: 'Rich espresso in a ceramic cup on a café table', details: 'A carefully pulled double shot of our small-batch house espresso. Expect dark chocolate notes, a full body, and a beautifully smooth finish.' },
++  { id: 'coldbrew', name: 'Slow-Steeped Cold Brew', price: 4.75, description: '18 hours of patience. Pure, smooth refreshment.', notes: 'Smooth · Refreshing · Low acidity', badge: 'COOL, CALM & CAFFEINATED', category: 'Cold coffee', image: photo('photo-1517701604599-bb29b565090c'), alt: 'Cold brew coffee served over ice in a tall glass', details: 'Slow-steeped in cool water for 18 hours for a naturally sweet, low-acidity brew. Served over ice. Add your favorite milk to make it yours.' }
++];
++
++const dialog = document.querySelector('#app-dialog');
++const content = document.querySelector('#dialog-content');
++const { show } = createModal(dialog, content);
++const cart = [];
++let account = null;
++try { account = JSON.parse(localStorage.getItem('daily-grind-account')); } catch { /* Storage can be unavailable in private contexts. */ }
++const money = n => `$${n.toFixed(2)}`;
++let toastTimer;
++function toast(message) {
++  const el = document.querySelector('#toast');
++  clearTimeout(toastTimer);
++  el.textContent = message;
++  el.classList.add('visible');
++  toastTimer = setTimeout(() => el.classList.remove('visible'), 3500);
++}
++function title(text) { return `<h2 id="dialog-title">${text}</h2>`; }
++function updateAccount() { document.querySelector('#account-label').textContent = account ? 'My account' : 'Sign in'; }
++function updateCart() {
++  const el = document.querySelector('#cart-count');
++  el.hidden = cart.length === 0;
++  el.textContent = `(${cart.length})`;
++}
++function showProduct(p) {
++  show(`${title(p.name)}<img class="detail-image" src="${p.image}" alt="${p.alt}"><p>${p.details}</p>
++    <form class="dialog-form" id="product-form"><label>Make it yours<select name="milk"><option>As crafted</option><option>Oat milk</option><option>Whole milk</option><option>Almond milk</option><option>No milk</option></select></label>
++    <label>Serve it<select name="temperature"><option>${p.category === 'Cold coffee' ? 'Iced' : 'Hot'}</option>${p.category !== 'Cold coffee' ? '<option>Iced</option>' : ''}</select></label>
++    <button class="button" type="submit">Add to your order <span>${money(p.price)}</span></button></form>`);
++  document.querySelector('#product-form').addEventListener('submit', event => {
++    event.preventDefault();
++    const data = new FormData(event.currentTarget);
++    cart.push({ ...p, milk: data.get('milk'), temperature: data.get('temperature') });
++    updateCart();
++    showCart();
++    toast(`${p.name} added to your order`);
++  });
++}
++function showMenu(category = 'All coffee') {
++  const visible = products.filter(p => category === 'All coffee' || p.category === category);
++  show(`${title('Find your next favorite.')}<p>Thoughtfully crafted, one cup at a time.</p>
++    <div class="dialog-tabs" aria-label="Filter menu">${['All coffee', 'Hot coffee', 'Cold coffee'].map(c => `<button aria-pressed="${c === category}" data-category="${c}">${c}</button>`).join('')}</div>
++    ${visible.map(p => `<div class="menu-item"><img src="${p.image}" alt="${p.alt}"><div><h3>${p.name}</h3><p>${p.notes}</p></div><button class="button" data-product="${p.id}">${money(p.price)} <span aria-hidden="true">+</span></button></div>`).join('')}
++    ${cart.length ? '<button class="text-button" data-cart>View your order →</button>' : ''}`);
++  content.querySelectorAll('[data-category]').forEach(button => button.addEventListener('click', () => showMenu(button.dataset.category)));
++  content.querySelectorAll('[data-product]').forEach(button => button.addEventListener('click', () => showProduct(products.find(p => p.id === button.dataset.product))));
++  content.querySelector('[data-cart]')?.addEventListener('click', showCart);
++}
++function showCart() {
++  if (!cart.length) { showMenu(); return; }
++  show(`${title('A little cup of happiness.')}<p>Your order, made just for you.</p>
++    ${cart.map((p, i) => `<div class="cart-item"><strong>${p.name}<br><small>${p.temperature} · ${p.milk}</small></strong><span>${money(p.price)}</span><button data-remove="${i}" aria-label="Remove ${p.name}">Remove</button></div>`).join('')}
++    <div class="cart-summary"><span>Subtotal</span><span>${money(cart.reduce((sum, p) => sum + p.price, 0))}</span></div>
++    <p class="helper">This is a sample order. Online checkout is coming soon; no payment is collected.</p><div class="cart-actions"><button class="button button-outline" data-more>Add another cup</button><button class="button" data-location>See pickup location ↗</button></div>`);
++  content.querySelectorAll('[data-remove]').forEach(button => button.addEventListener('click', () => { cart.splice(Number(button.dataset.remove), 1); updateCart(); showCart(); }));
++  content.querySelector('[data-more]').addEventListener('click', () => showMenu());
++  content.querySelector('[data-location]').addEventListener('click', () => openSection('locations'));
++}
++function accountForm(rewards = false) {
++  if (account) {
++    show(`${title(rewards ? 'You’re in good company.' : 'Your little coffee corner.')}<p id="welcome-email"></p><div class="info-box"><h3>${rewards ? 'A fresh start.' : 'Make yourself at home.'}</h3><p>Your profile is saved on this device. Rewards tracking and online checkout are coming soon.</p></div><button class="button button-outline" id="sign-out">Sign out</button>`);
++    content.querySelector('#welcome-email').textContent = `Welcome, ${account.name}. ${account.email}`;
++    content.querySelector('#sign-out').addEventListener('click', () => {
++      account = null;
++      try { localStorage.removeItem('daily-grind-account'); } catch { /* Optional local persistence. */ }
++      updateAccount(); dialog.close(); toast('You’ve been signed out. See you soon!');
++    });
++    return;
++  }
++  show(`${title(rewards ? 'Good coffee has its perks.' : 'Welcome to the good company.')}<p>${rewards ? 'Create a local profile and be ready for our upcoming rewards program.' : 'Save your coffee profile on this device for your next visit.'}</p>
++    <form id="account-form" class="dialog-form"><label>Your name<input name="name" autocomplete="given-name" required maxlength="60" placeholder="First name"></label><label>Email address<input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label><button class="button" type="submit">${rewards ? 'Join the good company' : 'Save my profile'} <span aria-hidden="true">↗</span></button></form><p class="helper">A local demo profile — no password required. Your information stays in this browser.</p>`);
++  content.querySelector('#account-form').addEventListener('submit', event => {
++    event.preventDefault();
++    const data = new FormData(event.currentTarget);
++    const name = data.get('name').trim();
++    if (!name) { event.currentTarget.elements.name.setCustomValidity('Please enter your name.'); event.currentTarget.elements.name.reportValidity(); return; }
++    account = { name, email: data.get('email').trim() };
++    try { localStorage.setItem('daily-grind-account', JSON.stringify(account)); } catch { /* Profile still works for this session. */ }
++    updateAccount(); accountForm(rewards); toast('Your coffee profile is ready.');
++  });
++  content.querySelector('[name="name"]').addEventListener('input', event => event.target.setCustomValidity(''));
++}
++function openSection(section) {
++  if (section === 'menu') return showMenu();
++  if (section === 'order') return cart.length ? showCart() : showMenu();
++  if (section === 'account' || section === 'rewards') return accountForm(section === 'rewards');
++  if (section === 'locations') {
++    show(`${title('Your new favorite corner.')}<p>Good coffee tastes even better in good company.</p><div class="info-box"><h3>The neighborhood café</h3><p>Our first location is brewing. Address and opening hours will be announced here soon.</p></div><p>Until then, explore the menu and find the cup you’ll try first.</p><button class="button" id="location-menu">Explore our menu ↗</button>`);
++    content.querySelector('#location-menu').addEventListener('click', () => showMenu());
++    return;
++  }
++  if (section === 'story') return show(`${title('A little ritual. A better day.')}<p>The Daily Grind started with a simple idea: great coffee should feel like coming home.</p><p>We choose thoughtfully sourced beans, roast in small batches, and take our time with every cup. From a quiet morning espresso to an afternoon catch-up, we’re here for the moments that make your day.</p><div class="info-box"><h3>Good coffee. Better company.</h3><p>That’s our kind of everyday.</p></div>`);
++  if (section === 'contact') return show(`${title('Let’s talk over coffee.')}<p>Questions about our beans, your next favorite drink, or the café? We’d love to hear from you.</p><div class="info-box"><h3>Come say hello</h3><p>Our contact channels will be announced alongside our first café opening. In the meantime, take a look around and make yourself at home.</p></div>`);
++}
++
++for (const product of products) {
++  const card = document.createElement('coffee-card');
++  card.product = product;
++  document.querySelector('#favorites').append(card);
++}
++document.addEventListener('product-select', event => showProduct(event.detail));
++document.querySelectorAll('[data-open]').forEach(button => button.addEventListener('click', () => openSection(button.dataset.open)));
++updateAccount();
+diff --git a/components/README.md b/components/README.md
+new file mode 100644
+index 0000000..8fcf6a4
+--- /dev/null
++++ b/components/README.md
+@@ -0,0 +1,34 @@
++# Reusable UI components
++
++This application uses browser-native ES modules and custom elements, with no build step.
++
++## Coffee card
++
++Import `coffee-card.js` once, then supply a product object:
++
++```js
++import './components/coffee-card.js';
++const card = document.createElement('coffee-card');
++card.product = {
++  id: 'house', name: 'House Coffee', price: 3.50,
++  description: 'Your everyday favorite.', notes: 'Smooth · Balanced',
++  badge: 'HOUSE FAVORITE', image: '/coffee.jpg', alt: 'A cup of coffee'
++};
++document.querySelector('.product-grid').append(card);
++```
++
++Listen for the bubbling `product-select` event; its `detail` contains the product. Set `card.product` again to update an existing card. Product strings must come from trusted application data.
++
++## Modal
++
++`createModal(dialogElement, contentElement)` returns `show(trustedMarkup)` and `close()`. Provide a native `<dialog>` containing a `[data-close-modal]` button and a content element. The native dialog manages keyboard dismissal, focus trapping, and background inertness; the controller adds backdrop dismissal. Give the dialog an accessible label with `aria-labelledby` and a corresponding heading inside each content template. Use `textContent` for user-supplied values.
++
++## Shared styles
++
++`styles.css` exposes design tokens on `:root` and three cascade layers (`base`, `components`, `layout`). Reuse `.button`, `.button-small`, `.button-outline`, `.text-button`, `.eyebrow`, `.badge`, `.info-box`, and `.dialog-form`. Use `<button>` for actions and `<a>` for navigation. The `.product-grid` and `.wrap` utilities provide responsive composition.
++
++## Application behavior
++
++`app.js` owns product data and composes these components. The cart is session-only. Profile storage uses localStorage and gracefully falls back to session state. Profile creation is a local demonstration, not authentication. Checkout, rewards tracking, contact channels, and location details require real service data before launch.
++
++Run locally with `pnpm start`.
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..97deabd
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,23 @@
++/** Reusable, data-driven product card. Set `product` to render any menu item. */
++export class CoffeeCard extends HTMLElement {
++  set product(product) {
++    this._product = product;
++    this.render();
++  }
++  get product() { return this._product; }
++  render() {
++    const p = this._product;
++    if (!p) return;
++    // Product data is controlled by the application; user input never enters this template.
++    this.innerHTML = `<article class="product-card">
++      <div class="product-photo"><img src="${p.image}" alt="${p.alt}" width="700" height="430" loading="lazy"><span class="badge">${p.badge}</span></div>
++      <div class="product-info"><div class="product-title-row"><h3>${p.name}</h3><span class="price">$${p.price.toFixed(2)}</span></div>
++      <p class="product-description">${p.description}</p>
++      <div class="product-bottom"><span class="product-notes">${p.notes}</span><button type="button" aria-label="View ${p.name} details">View details <span aria-hidden="true">↗</span></button></div></div>
++    </article>`;
++    this.querySelector('button').addEventListener('click', () => {
++      this.dispatchEvent(new CustomEvent('product-select', { detail: p, bubbles: true }));
++    });
++  }
++}
++customElements.define('coffee-card', CoffeeCard);
+diff --git a/components/modal.js b/components/modal.js
+new file mode 100644
+index 0000000..26660d1
+--- /dev/null
++++ b/components/modal.js
+@@ -0,0 +1,18 @@
++/** A shared native dialog with keyboard dismissal, focus trapping, and backdrop dismissal. */
++export function createModal(dialog, content) {
++  dialog.querySelector('[data-close-modal]').addEventListener('click', () => dialog.close());
++  dialog.addEventListener('click', event => {
++    if (event.target !== dialog) return;
++    const rect = dialog.getBoundingClientRect();
++    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
++  });
++  return {
++    show(markup) {
++      // Only pass trusted application templates; insert user-provided strings with textContent.
++      content.innerHTML = markup;
++      if (!dialog.open) dialog.showModal();
++      else content.querySelector('input,button,select')?.focus();
++    },
++    close() { dialog.close(); }
++  };
++}
+diff --git a/index.html b/index.html
+index 66c9173..9cdbfb8 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,37 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="theme-color" content="#f7f5ef">
++  <meta name="description" content="Good coffee. Better days. Discover locally roasted coffee and seasonal favorites at The Daily Grind.">
++  <title>The Daily Grind — Good coffee. Better days.</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="styles.css">
++  <script type="module" src="app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <a class="skip-link" href="#main">Skip to content</a>
++  <div class="announcement">A little ritual. A better day. <span aria-hidden="true">✦</span> Freshly roasted, always.</div>
++  <header class="site-header wrap">
++    <a class="brand" href="#" aria-label="The Daily Grind home"><span class="brand-mark" aria-hidden="true">✳</span><span>the daily grind<span class="brand-subtitle">COFFEE & GOOD COMPANY</span></span></a>
++    <nav aria-label="Main navigation"><a href="#menu">Our menu</a><button class="nav-link" data-open="locations">Locations</button><button class="nav-link" data-open="rewards">Rewards <span class="tiny-star" aria-hidden="true">✧</span></button></nav>
++    <div class="header-actions"><button class="account-button" data-open="account"><span class="user-icon" aria-hidden="true"></span><span id="account-label">My account</span></button><button class="button button-small" data-open="order">Order online <span aria-hidden="true">↗</span><span id="cart-count" hidden></span></button></div>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++  <main id="main">
++    <section class="hero wrap" aria-labelledby="hero-title">
++      <div class="hero-copy"><div class="eyebrow"><span class="short-line"></span> YOUR DAILY DOSE OF SOMETHING GOOD</div><h1 id="hero-title">Good coffee.<br>Better <em>days.</em></h1><p>Slow mornings. Big ideas. Your favorite corner.<br>Whatever your day holds, it starts with a great cup.</p><div class="hero-actions"><button class="button" data-open="order">Find your next cup <span aria-hidden="true">↗</span></button><button class="text-button" data-open="locations"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg> Find a location</button></div><div class="hero-note"><span class="little-bean" aria-hidden="true">◒</span> Thoughtfully sourced. Locally roasted. Made with love.</div></div>
++      <div class="hero-visual"><img class="hero-image" src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=85" alt="A freshly poured cup of coffee on a warm wooden café table" width="1000" height="1000" fetchpriority="high"><div class="roast-stamp"><span>SMALL BATCH</span><span class="stamp-flower" aria-hidden="true">✳</span><span>BIG ON FLAVOR</span></div><div class="photo-caption"><span class="caption-dot"></span> A good day starts right here.</div></div>
+     </section>
++    <section class="values-strip" aria-label="Our coffee values"><div class="wrap values-inner"><span><span aria-hidden="true">♧</span> Ethically sourced</span><span class="divider" aria-hidden="true">✦</span><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h12v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5Zm12 1h2a3 3 0 0 1 0 6h-2M8 7c-3-3 3-3 0-6m5 6c-3-3 3-3 0-6"/></svg> Roasted with care</span><span class="divider" aria-hidden="true">✦</span><span><span aria-hidden="true">♡</span> Crafted for your everyday</span><span class="divider" aria-hidden="true">✦</span><span><span aria-hidden="true">☀</span> Always a warm welcome</span></div></section>
++    <section class="seasonal wrap" id="menu" aria-labelledby="seasonal-title"><div class="section-heading"><div><div class="eyebrow">FRESH SIPS, FAMILIAR FEELINGS</div><h2 id="seasonal-title">Meet your new favorites.</h2></div><button class="text-button menu-link" data-open="menu">Explore the full menu <span aria-hidden="true">↗</span></button></div><div class="product-grid" id="favorites"></div></section>
++    <section class="story wrap" id="story"><div class="story-symbol" aria-hidden="true">✳</div><div><div class="eyebrow">MORE THAN WHAT’S IN YOUR CUP</div><h2>A neighborhood kind of coffee.</h2><p>We believe the best things happen over coffee. That’s why we put care into every bean, every cup, and every hello. Come as you are. Stay a little longer.</p></div><button class="button button-outline" data-open="story">Our story <span aria-hidden="true">↗</span></button></section>
++    <section class="rewards-banner wrap"><div><div class="eyebrow">GOOD TASTE. GREAT PERKS.</div><h2>Your daily ritual, rewarded.</h2><p>A little something back for every cup you love.</p></div><button class="button" data-open="rewards">Join the good company <span aria-hidden="true">↗</span></button></section>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <footer class="site-footer wrap"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true">✳</span><span>the daily grind<span class="brand-subtitle">COFFEE & GOOD COMPANY</span></span></a><p>© 2026 The Daily Grind Coffee Co.</p><div><button class="nav-link" data-open="story">Our story</button><button class="nav-link" data-open="contact">Get in touch <span aria-hidden="true">↗</span></button></div></footer>
++  <dialog id="app-dialog" aria-labelledby="dialog-title"><div class="dialog-heading"><span class="eyebrow">THE DAILY GRIND</span><button class="icon-button" id="close-dialog" data-close-modal aria-label="Close dialog">×</button></div><div id="dialog-content"></div></dialog>
++  <div id="toast" role="status" class="toast"></div>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..3693774 100644
+--- a/package.json
++++ b/package.json
+@@ -6,5 +6,6 @@
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+-  }
++  },
++  "type": "module"
+ }
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..9f21cca
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,16 @@
++@layer base, components, layout;
++@layer base {
++:root{--paper:#f8f6f0;--ink:#293d32;--muted:#77796c;--accent:#b75537;--accent-hover:#98442c;--line:#dfdfd3;--serif:'Libre Caslon Display',Georgia,serif;--sans:'DM Sans',sans-serif;font-family:var(--sans);color:var(--ink);background:var(--paper);font-synthesis:none;scroll-behavior:smooth;scroll-padding-block-start:30px}
++body{margin:0} :where(div,section,header,footer,main,nav,article,button,input,dialog){box-sizing:border-box}h1,h2,h3,p{margin:0}button,input,select{font:inherit}button,a{-webkit-tap-highlight-color:transparent}button{cursor:pointer}a{color:inherit;text-decoration:none}button{color:inherit}img,svg{display:block;max-inline-size:100%}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:5px}::selection{background:#e5c9ad}button:disabled{opacity:.5;cursor:default}p{line-height:1.7}h2{font:46px/1.1 var(--serif);letter-spacing:-1.1px}svg{inline-size:20px;block-size:20px;fill:none;stroke:currentColor;stroke-width:1.5} [hidden]{display:none!important}
++}
++@layer components {
++.wrap{inline-size:min(1240px,calc(100% - 112px));margin-inline:auto}.eyebrow{font-size:10px;letter-spacing:1.8px;font-weight:650}.button{display:inline-flex;justify-content:center;align-items:center;gap:26px;min-block-size:51px;padding:14px 23px;background:var(--accent);border:1px solid var(--accent);border-radius:5px;color:#fffaf3;font-size:13px;font-weight:550;transition:background .2s,transform .2s}.button:hover:not(:disabled){background:var(--accent-hover);transform:translateY(-1px)}.button>span[aria-hidden]{font-size:20px;line-height:1}.button-small{min-block-size:43px;padding:10px 18px;gap:21px;font-size:12px}.button-outline{background:transparent;color:var(--ink);border-color:#a4ab99}.button-outline:hover:not(:disabled){background:#e9ecdf}.text-button{display:inline-flex;align-items:center;gap:10px;background:none;border:0;padding:12px 0;font-size:12px;font-weight:550}.text-button:hover,.nav-link:hover{color:var(--accent)}.nav-link{padding:8px 0;background:none;border:0;font-size:12px}.brand{display:flex;gap:11px;align-items:center}.brand-mark{font-size:55px;font-weight:400;line-height:1}.brand>span:last-child{font:29px/1.1 var(--serif);letter-spacing:-.8px}.brand-subtitle{display:block;margin-block-start:6px;font:8px var(--sans);letter-spacing:2.05px}.short-line{inline-size:25px;block-size:1px;background:var(--accent);display:inline-block;vertical-align:middle;margin-inline-end:10px}.product-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:25px}coffee-card{display:block;min-inline-size:0}.product-card{display:flex;flex-direction:column;block-size:100%}.product-photo{position:relative}.product-photo>img{inline-size:100%;aspect-ratio:1.64;object-fit:cover;border-radius:8px}.badge{position:absolute;inset-block-start:15px;inset-inline-start:15px;background:var(--paper);padding:7px 11px;border-radius:3px;font-size:9px;letter-spacing:.75px;font-weight:600}.product-info{padding:19px 1px 0}.product-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.product-title-row h3{font:28px/1.2 var(--serif);letter-spacing:-.25px}.price{font-size:12px}.product-description{font-size:11px;color:var(--muted);margin-block-start:9px}.product-bottom{display:flex;align-items:center;justify-content:space-between;margin-block-start:15px;padding-block-start:12px;border-block-start:1px solid var(--line)}.product-notes{font-size:9px;letter-spacing:1.2px;color:#717866;text-transform:uppercase}.product-bottom button{border:0;background:none;color:var(--accent);font-size:11px;display:flex;align-items:center;gap:12px;padding:5px 0}.product-bottom button:hover{text-decoration:underline}.icon-button{background:none;border:1px solid var(--line);border-radius:50%;inline-size:35px;block-size:35px;font-size:24px;line-height:1}.skip-link{position:absolute;inset-block-start:-100px;padding:12px;background:var(--paper);z-index:10}.skip-link:focus{inset-block-start:10px}dialog{inline-size:min(640px,calc(100% - 32px));max-block-size:85dvh;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);padding:26px;overscroll-behavior:contain}dialog::backdrop{background:#13251dd1;backdrop-filter:blur(4px)}.dialog-heading{display:flex;justify-content:space-between;align-items:center;margin-block-end:18px}dialog h2{font-size:40px;margin-block-end:15px}dialog p{color:var(--muted);font-size:14px;margin-block-end:20px}.dialog-form{display:grid;gap:14px}.dialog-form label{font-size:12px;display:grid;gap:7px}.dialog-form input,.dialog-form select{padding:12px;border:1px solid #c9ccbe;border-radius:4px;background:#fffdf7;color:var(--ink);inline-size:100%}.dialog-form .button{margin-block-start:8px}.detail-image{inline-size:100%;aspect-ratio:2;object-fit:cover;border-radius:6px;margin-block-end:20px}.dialog-tabs{display:flex;gap:8px;margin-block-end:20px;flex-wrap:wrap}.dialog-tabs button{padding:9px 15px;border:1px solid var(--line);border-radius:30px;background:none;font-size:12px}.dialog-tabs button[aria-pressed=true]{background:var(--ink);color:var(--paper)}.menu-item,.cart-item{display:flex;gap:15px;align-items:center;padding-block:15px;border-block-end:1px solid var(--line)}.menu-item img{inline-size:70px;block-size:70px;object-fit:cover;border-radius:5px}.menu-item h3{font:23px var(--serif)}.menu-item p{font-size:11px;margin:5px 0 0}.menu-item .button{margin-inline-start:auto;min-block-size:38px;padding:8px 12px;font-size:11px;white-space:nowrap}.cart-summary{display:flex;justify-content:space-between;margin-block:20px;font-weight:600}.cart-item strong{flex:1;font-size:13px}.cart-item button{border:0;background:none;color:var(--accent);font-size:12px}.cart-actions{display:flex;flex-wrap:wrap;gap:10px}.toast{position:fixed;inset-block-end:25px;inset-inline-start:50%;transform:translate(-50%,20px);background:var(--ink);color:var(--paper);padding:15px 24px;border-radius:6px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:5;inline-size:max-content;max-inline-size:85%}.toast.visible{opacity:1;transform:translate(-50%,0)}.info-box{padding:20px;border:1px solid var(--line);border-radius:6px;margin-block-end:20px}.info-box h3{font:26px var(--serif);margin-block-end:8px}.info-box p{margin:0}.helper{font-size:11px!important;margin-block-start:15px!important}
++}
++@layer layout {
++.announcement{background:var(--ink);color:#f3f2e7;text-align:center;font-size:10px;letter-spacing:.6px;padding:10px 15px}.announcement span{margin-inline:13px;color:#d2b48a}.site-header{display:flex;align-items:center;justify-content:space-between;gap:30px;min-block-size:100px;border-block-end:1px solid var(--line)}.site-header nav{display:flex;gap:31px;align-items:center;margin-inline-start:50px}.site-header nav>a{font-size:12px}.tiny-star{color:var(--accent);font-size:17px;margin-inline-start:4px}.header-actions{display:flex;gap:25px;align-items:center}.account-button{display:flex;align-items:center;gap:9px;border:0;background:none;padding:10px 0;font-size:11px}.user-icon{inline-size:15px;block-size:17px;position:relative;display:block}.user-icon:before{content:'';position:absolute;inline-size:5px;block-size:5px;border:1px solid;border-radius:50%;inset-inline-start:5px;inset-block-start:0}.user-icon:after{content:'';position:absolute;inline-size:13px;block-size:7px;border:1px solid;border-radius:9px 9px 2px 2px;inset-block-end:0;inset-inline-start:1px}.hero{display:grid;grid-template-columns:1fr 1fr;gap:55px;padding-block:54px 55px;align-items:center}.hero-copy{padding-block:12px}.hero-copy>.eyebrow{font-size:9px;letter-spacing:1.5px}.hero h1{font:clamp(65px,6.9vw,100px)/.99 var(--serif);letter-spacing:-3.3px;margin-block:27px 23px}.hero h1 em{font-style:italic;color:var(--accent)}.hero-copy>p{font-size:13px;line-height:1.85;color:#707366}.hero-actions{display:flex;align-items:center;gap:28px;margin-block-start:29px}.hero-note{display:flex;gap:9px;align-items:center;font-size:9px;color:var(--muted);margin-block-start:34px}.little-bean{font-size:19px;transform:rotate(-40deg);color:#758064}.hero-visual{position:relative;padding-inline-end:10px}.hero-image{inline-size:100%;block-size:452px;object-fit:cover;object-position:50% 60%;border-radius:100px 8px 100px 8px}.roast-stamp{position:absolute;inset-block-start:-24px;inset-inline-end:-15px;inline-size:114px;block-size:114px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#e6e9d9;color:#3b4a32;border-radius:50%;transform:rotate(12deg);outline:1px dashed #a5ad94;outline-offset:-8px;box-shadow:0 0 0 6px var(--paper)}.roast-stamp>span:not(.stamp-flower){font-size:8px;letter-spacing:1.7px}.stamp-flower{font-size:42px;line-height:1.2}.photo-caption{position:absolute;inset-block-end:20px;inset-inline-start:26px;display:flex;align-items:center;gap:8px;background:#faf8efed;border-radius:4px;padding:11px 15px;font-size:10px}.caption-dot{inline-size:6px;block-size:6px;background:var(--accent);border-radius:50%}.values-strip{border-block:1px solid var(--line);background:#eeeee4}.values-inner{display:flex;align-items:center;justify-content:space-between;padding-block:20px}.values-inner>span:not(.divider){display:flex;align-items:center;gap:11px;font-size:11px}.values-inner>span>span{font-size:23px;line-height:1}.values-inner .divider{font-size:12px;color:#8f9a7e}.values-inner svg{inline-size:23px;block-size:23px}.seasonal{padding-block:56px 58px}.section-heading{display:flex;justify-content:space-between;align-items:end;gap:25px;margin-block-end:27px}.section-heading h2{margin-block-start:12px}.menu-link{gap:23px;font-size:11px;padding-block-end:7px}.menu-link span{font-size:20px}.story{display:flex;align-items:center;gap:35px;border-block-start:1px solid var(--line);padding-block:42px}.story-symbol{font-size:100px;color:#8b9776;line-height:1}.story>div:nth-child(2){max-inline-size:690px}.story h2{font-size:37px;margin-block:10px}.story p{font-size:12px;color:var(--muted)}.story>.button{margin-inline-start:auto;white-space:nowrap}.rewards-banner{background:#e9ebdf;border-radius:7px;padding:35px 40px;display:flex;align-items:center;justify-content:space-between;gap:25px}.rewards-banner h2{font-size:37px;margin-block:10px}.rewards-banner p{font-size:12px;color:var(--muted)}.site-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-block:42px}.site-footer .brand-mark{font-size:38px}.site-footer .brand>span:last-child{font-size:23px}.site-footer .brand-subtitle{font-size:6px;letter-spacing:1.7px}.site-footer p{font-size:9px;color:var(--muted)}.site-footer>div{display:flex;gap:25px}.site-footer .nav-link{font-size:10px}
++@media(min-width:1500px){.hero{padding-block:65px}.hero-image{block-size:490px}}
++@media(max-width:1100px){.wrap{inline-size:calc(100% - 64px)}.site-header nav{margin:0;gap:20px}.header-actions{gap:17px}.brand>span:last-child{font-size:25px}.brand-mark{font-size:46px}.brand-subtitle{font-size:7px;letter-spacing:1.5px}.hero{gap:30px}.hero-actions{gap:20px;flex-wrap:wrap}.hero-image{block-size:430px}.hero-copy>.eyebrow{font-size:8px;letter-spacing:.9px}.roast-stamp{inline-size:100px;block-size:100px;inset-inline-end:-8px}.hero h1{font-size:80px}.hero-note{font-size:8px}.values-inner>span:not(.divider){font-size:10px;gap:8px}.product-title-row h3{font-size:25px}}
++@media(max-width:800px){.wrap{inline-size:calc(100% - 40px)}.site-header{flex-wrap:wrap;gap:10px;padding-block:19px}.site-header nav{order:3;inline-size:100%;justify-content:center;gap:35px;padding-block-start:15px}.account-button{font-size:0}.header-actions{gap:15px}.hero{gap:25px;padding-block:40px}.hero h1{font-size:65px;letter-spacing:-2px}.hero-copy>.eyebrow{font-size:7px;letter-spacing:.7px}.hero-copy>p{font-size:12px}.hero-copy>p br{display:none}.hero-image{block-size:390px;border-start-start-radius:70px;border-end-end-radius:70px}.hero-actions{gap:10px;margin-block-start:22px}.hero-actions .button{font-size:11px;gap:15px;padding-inline:15px}.hero-note{line-height:1.7;margin-block-start:20px}.values-inner{flex-wrap:wrap;gap:17px;justify-content:space-around}.values-inner .divider{display:none}.values-inner>span:not(.divider){flex-basis:40%;justify-content:center}.section-heading h2{font-size:38px}.product-grid{gap:17px}.product-title-row{align-items:start;flex-direction:column;gap:5px}.product-description{font-size:10px}.product-photo>img{aspect-ratio:1.2}.badge{inset:10px auto auto 10px;font-size:7px;padding:6px}.product-notes{font-size:7px}.product-bottom button{font-size:10px;gap:4px}.story{gap:20px}.story-symbol{font-size:60px}.story h2{font-size:30px}.story>.button{font-size:11px;gap:10px}.site-footer{flex-wrap:wrap}.site-footer p{order:3;inline-size:100%;text-align:center}}
++@media(max-width:560px){.announcement{font-size:8px}.announcement span{margin-inline:7px}.brand>span:last-child{font-size:24px}.brand-mark{font-size:42px}.header-actions .button{font-size:10px;gap:10px;padding:10px 12px}.hero{grid-template-columns:minmax(0,1fr);gap:37px;padding-block:35px}.hero h1{font-size:78px;margin-block:23px}.hero-copy>.eyebrow{font-size:8px;letter-spacing:1px}.hero-copy>p{font-size:13px}.hero-actions{gap:25px}.hero-note{font-size:9px}.hero-visual{padding-inline:0 8px}.hero-image{block-size:330px}.roast-stamp{inset-inline-end:0;inset-block-start:-22px}.hero h1 br{display:block}.hero-actions .button{font-size:12px;padding-inline:20px}.hero-copy{padding:0}.section-heading{align-items:start;flex-direction:column;gap:12px;margin-block-end:22px}.section-heading h2{font-size:39px}.seasonal{padding-block:36px}.menu-link{padding:0}.product-grid{grid-template-columns:minmax(0,1fr);gap:30px}.product-photo>img{aspect-ratio:1.6}.product-title-row{flex-direction:row;align-items:center}.product-title-row h3{font-size:29px}.product-description{font-size:12px}.product-notes{font-size:9px}.product-bottom button{font-size:12px}.badge{font-size:9px}.story{flex-wrap:wrap;gap:18px}.story-symbol{display:none}.story>.button{margin:0}.rewards-banner{padding:28px;align-items:start;flex-direction:column}.rewards-banner h2{font-size:35px}.site-footer .brand>span:last-child{font-size:20px}.site-footer>div{gap:17px}.site-footer{padding-block:30px}.values-inner>span:not(.divider){font-size:9px;gap:6px}.values-inner{padding-block:17px}.eyebrow{font-size:9px}.dialog-heading{margin-block-end:15px}dialog{padding:20px}.menu-item{gap:10px}.menu-item img{inline-size:50px;block-size:60px}.menu-item h3{font-size:20px}.menu-item p{font-size:10px}.menu-item .button{padding:8px;font-size:10px}}
++@media(prefers-reduced-motion:reduce){:root{scroll-behavior:auto}.button,.toast{transition:none}}
++}

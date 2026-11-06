@@ -1,0 +1,156 @@
+diff --git a/README.md b/README.md
+index 4479b53..d2b43f8 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,18 @@
+ 
+ This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
+ 
++## View preservation
++
++Client-side navigation retains the DOM for up to five views, including the active
++view. Returning to a cached pathname and query string reuses its original nodes
++and hydrated islands. Inactive views are hidden and inert; the least recently
++used views are removed when the cache fills up. Fragment links share a view.
++
++Astro still fetches the destination and updates the page title, shared navigation,
++history, and scroll position. Cached content remains as last visited until it is
++evicted or the page is reloaded. Sign-in and sign-up forms opt out using the
++layout's `cacheView={false}` prop. The cache lasts only for the current document.
++
+ 
+ ```sh
+ pnpm install && pnpm run start
+diff --git a/src/components/CachedViews.astro b/src/components/CachedViews.astro
+new file mode 100644
+index 0000000..618a962
+--- /dev/null
++++ b/src/components/CachedViews.astro
+@@ -0,0 +1,66 @@
++---
++interface Props {
++  cacheable?: boolean;
++}
++
++const { cacheable = true } = Astro.props;
++// Fragments identify positions within a view; query parameters identify views.
++const viewKey = `view-${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`;
++---
++
++<div data-view-cache>
++  <main
++    class="bg-white relative"
++    data-cached-view={viewKey}
++    transition:persist={cacheable ? viewKey : undefined}
++  >
++    <slot />
++  </main>
++</div>
++
++<script>
++  // Retain at most five views, including the active one. Only structural page
++  // content persists: Astro still replaces the head and shared navigation.
++  const MAX_VIEWS = 5;
++  const persistAttribute = 'data-astro-transition-persist';
++
++  document.addEventListener('astro:before-swap', (event) => {
++    const current = document.querySelector('[data-view-cache]');
++    const incoming = event.newDocument.querySelector('[data-view-cache]');
++    const nextView = incoming?.querySelector<HTMLElement>('[data-cached-view]');
++    if (!current || !incoming || !nextView) return;
++
++    const swap = event.swap;
++    event.swap = () => {
++      const views = Array.from(current.children).filter(
++        (node): node is HTMLElement => node instanceof HTMLElement,
++      );
++      const nextKey = nextView.getAttribute(persistAttribute);
++      const restored = nextKey
++        ? views.find((view) => view.getAttribute(persistAttribute) === nextKey)
++        : undefined;
++
++      // DOM order is least to most recently used. The active destination is
++      // always last, so evict the oldest views when the cache fills up.
++      const retained = views
++        .filter((view) => view !== restored && view.hasAttribute(persistAttribute))
++        .slice(-(MAX_VIEWS - 1));
++
++      for (const view of retained) {
++        view.hidden = true;
++        view.inert = true;
++        // Astro moves the original node into this empty matching placeholder.
++        // Do not clone its subtree: that would discard listeners and state.
++        incoming.insertBefore(view.cloneNode(false), nextView);
++      }
++
++      if (restored) {
++        restored.hidden = false;
++        restored.inert = false;
++      }
++
++      // Keep Astro's script, stylesheet, focus, history and scroll handling.
++      swap();
++    };
++  });
++</script>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..b22bb56 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -2,15 +2,17 @@
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
++import CachedViews from "../components/CachedViews.astro";
+ import "../styles/global.css";
+ 
+ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -45,9 +47,9 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <CachedViews cacheable={cacheView}>
+           <slot />
+-        </main>
++        </CachedViews>
+       </div>
+     </div>
+     <Footer />
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>

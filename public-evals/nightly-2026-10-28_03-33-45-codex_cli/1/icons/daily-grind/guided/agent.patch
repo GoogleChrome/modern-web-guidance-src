@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+index 66c9173..47da338 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,18 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* Embedded vector tokens: no font, script, or additional icon requests. */
++      --icon-cup: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9h13v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM17 10h2a3 3 0 0 1 0 6h-2M7 3v2m4-2v2m4-2v2'/%3E%3C/svg%3E");
++      --icon-pin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E");
++      --icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z'/%3E%3C/svg%3E");
++      --icon-user: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3Cpath d='M4 21v-2a8 8 0 0 1 16 0v2'/%3E%3C/svg%3E");
++      --icon-logout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4H4v16h5m5-13 5 5-5 5M8 12h13'/%3E%3C/svg%3E");
++      --icon-leaf: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 3C9 2 3 7 5 14c2 7 16 7 15-11ZM3 22 15 10'/%3E%3C/svg%3E");
++      --icon-snowflake: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 4l3 3 3-3M9 20l3-3 3 3M3.5 10.5l4-1-1-4m11 13-1-4 4-1M6.5 18.5l1-4-4-1m17-3-4-1 1-4'/%3E%3C/svg%3E");
++      --icon-bag: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7h14l1 14H4ZM9 9V6a3 3 0 0 1 6 0v3'/%3E%3C/svg%3E");
++      --icon-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12h16m-6-6 6 6-6 6'/%3E%3C/svg%3E");
++      --icon-style-size: 1.1em;
++      --icon-style-spacing: 0.45em;
+     }
+ 
+     * {
+@@ -27,12 +39,46 @@
+       background-color: var(--light);
+     }
+ 
++    /* CSS selects the image; the explicit hook also works without style queries.
++       Decorative icons use aria-hidden. Informative standalone icons should use
++       role="img" and aria-label instead; icon-only controls need their own label. */
++    .icon {
++      display: inline-block;
++      inline-size: var(--icon-style-size);
++      block-size: var(--icon-style-size);
++      flex: none;
++      background-color: var(--icon-style-color, currentColor);
++      -webkit-mask: var(--icon) no-repeat center / contain;
++      mask: var(--icon) no-repeat center / contain;
++      pointer-events: none;
++      forced-color-adjust: none;
++    }
++
++    nav a[href="/menu"] { --icon: var(--icon-cup); }
++    nav a[href="/locations"] { --icon: var(--icon-pin); }
++    nav a[href="/rewards"] { --icon: var(--icon-star); }
++    nav a[href="/account"] { --icon: var(--icon-user); }
++    .logout-link { --icon: var(--icon-logout); }
++    .hero .btn { --icon: var(--icon-bag); }
++    .card .btn { --icon: var(--icon-arrow); }
++    .card--maple { --icon: var(--icon-leaf); }
++    .card--espresso { --icon: var(--icon-cup); }
++    .card--cold-brew { --icon: var(--icon-snowflake); }
++
++    .card > .icon {
++      --icon-style-size: 2.5rem;
++      --icon-style-color: var(--primary);
++      margin-block-end: 12px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -48,11 +94,18 @@
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 12px 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    nav a,
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: var(--icon-style-spacing);
+     }
+ 
+     nav a {
+@@ -121,7 +174,7 @@
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -160,38 +213,41 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu"><span class="icon" aria-hidden="true"></span>Menu</a></li>
++      <li><a href="/locations"><span class="icon" aria-hidden="true"></span>Locations</a></li>
++      <li><a href="/rewards"><span class="icon" aria-hidden="true"></span>Rewards</a></li>
++      <li><a href="/account"><span class="icon" aria-hidden="true"></span>My Account</a></li>
++      <li><a href="/logout" class="logout-link"><span class="icon" aria-hidden="true"></span>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn"><span class="icon" aria-hidden="true"></span>Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card card--maple">
++          <span class="icon" aria-hidden="true"></span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" aria-label="View Details for Maple Oat Latte">View Details<span class="icon" aria-hidden="true"></span></a>
+         </div>
+-        <div class="card">
++        <div class="card card--espresso">
++          <span class="icon" aria-hidden="true"></span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" aria-label="View Details for Dark Roast Espresso">View Details<span class="icon" aria-hidden="true"></span></a>
+         </div>
+-        <div class="card">
++        <div class="card card--cold-brew">
++          <span class="icon" aria-hidden="true"></span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" aria-label="View Details for Cold Brew">View Details<span class="icon" aria-hidden="true"></span></a>
+         </div>
+       </div>
+     </section>

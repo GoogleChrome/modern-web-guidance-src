@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+index 66c9173..6824de7 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,19 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Signed documents */
++    .signing { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.1); padding: 24px; margin-top: 20px; }
++    .signing .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
++    .signing label { display: block; font-size: .85rem; margin-top: 10px; }
++    .signing input, .signing select, .signing textarea { width: 100%; padding: 8px; border: 1px solid var(--secondary); border-radius: 4px; font: inherit; }
++    .signing textarea { font-family: monospace; font-size: .75rem; min-height: 160px; }
++    .signing button.btn { border: 0; cursor: pointer; font: inherit; margin-right: 8px; }
++    .signing .fp { font-family: monospace; font-size: .75rem; word-break: break-all; }
++    .verdict { margin-top: 12px; padding: 10px; border-radius: 4px; display: none; }
++    .verdict.ok { display: block; background: #e8f5e9; color: #1b5e20; }
++    .verdict.bad { display: block; background: #ffebee; color: #b71c1c; }
++    .verdict.warn { display: block; background: #fff8e1; color: #8a5a00; }
+   </style>
+ </head>
+ 
+@@ -195,6 +208,47 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="signing">
++      <h2 style="text-align: center; margin-top: 40px;">Signed Receipts &amp; Gift Vouchers</h2>
++      <div class="signing">
++        <p>Documents are signed in your browser with an ECDSA P-256 / SHA-256 key (Web Crypto). The private key is non-extractable and kept in this browser's IndexedDB; any change to a signed document breaks verification.</p>
++        <p class="fp">Signing key fingerprint: <span id="fp">generating…</span></p>
++        <div class="cols">
++          <div>
++            <h3>Create</h3>
++            <label>Type
++              <select id="doc-type">
++                <option value="receipt">Order receipt</option>
++                <option value="voucher">Gift voucher</option>
++              </select>
++            </label>
++            <div id="receipt-fields">
++              <label>Item
++                <select id="item">
++                  <option value="Maple Oat Latte|5.50">Maple Oat Latte – $5.50</option>
++                  <option value="Dark Roast Espresso|3.25">Dark Roast Espresso – $3.25</option>
++                  <option value="Cold Brew|4.75">Cold Brew – $4.75</option>
++                </select>
++              </label>
++              <label>Quantity <input id="qty" type="number" min="1" max="50" value="1"></label>
++            </div>
++            <div id="voucher-fields" hidden>
++              <label>Recipient <input id="recipient" type="text" maxlength="80" placeholder="Name"></label>
++              <label>Amount (USD) <input id="amount" type="number" min="1" max="500" step="1" value="25"></label>
++            </div>
++            <button class="btn" id="sign-btn" type="button">Sign document</button>
++            <button class="btn" id="download-btn" type="button">Download</button>
++          </div>
++          <div>
++            <h3>Signed document / Verify</h3>
++            <textarea id="doc" spellcheck="false" aria-label="Signed document JSON" placeholder="Signed document appears here. Paste one to verify it."></textarea>
++            <button class="btn" id="verify-btn" type="button">Verify</button>
++            <div id="verdict" class="verdict" role="status"></div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +261,112 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const $ = (id) => document.getElementById(id);
++      const ALG = { name: 'ECDSA', namedCurve: 'P-256' };
++      const SIG = { name: 'ECDSA', hash: 'SHA-256' };
++      const enc = new TextEncoder();
++
++      // Deterministic JSON: sorted keys, so signer and verifier hash identical bytes.
++      const canon = (v) => Array.isArray(v) ? '[' + v.map(canon).join(',') + ']'
++        : v && typeof v === 'object' ? '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}'
++        : JSON.stringify(v);
++      const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
++      const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
++
++      const idb = () => new Promise((res, rej) => {
++        const r = indexedDB.open('daily-grind-signing', 1);
++        r.onupgradeneeded = () => r.result.createObjectStore('keys');
++        r.onsuccess = () => res(r.result);
++        r.onerror = () => rej(r.error);
++      });
++      const idbOp = async (mode, fn) => {
++        const db = await idb();
++        return new Promise((res, rej) => {
++          const req = fn(db.transaction('keys', mode).objectStore('keys'));
++          req.onsuccess = () => res(req.result);
++          req.onerror = () => rej(req.error);
++        });
++      };
++
++      async function getKeys() {
++        let keys = await idbOp('readonly', (s) => s.get('issuer'));
++        if (!keys) {
++          keys = await crypto.subtle.generateKey(ALG, false, ['sign', 'verify']);
++          await idbOp('readwrite', (s) => s.put(keys, 'issuer'));
++        }
++        return keys;
++      }
++      async function fingerprint(jwk) {
++        const d = await crypto.subtle.digest('SHA-256', enc.encode(canon({ crv: jwk.crv, kty: jwk.kty, x: jwk.x, y: jwk.y })));
++        return Array.from(new Uint8Array(d).slice(0, 16), (b) => b.toString(16).padStart(2, '0')).join(':');
++      }
++      const pubJwk = async (keys) => crypto.subtle.exportKey('jwk', keys.publicKey)
++        .then((j) => ({ crv: j.crv, kty: j.kty, x: j.x, y: j.y }));
++
++      function verdict(cls, msg) { const v = $('verdict'); v.className = 'verdict ' + cls; v.textContent = msg; }
++
++      $('doc-type').addEventListener('change', (e) => {
++        $('receipt-fields').hidden = e.target.value !== 'receipt';
++        $('voucher-fields').hidden = e.target.value === 'receipt';
++      });
++
++      $('sign-btn').addEventListener('click', async () => {
++        try {
++          const keys = await getKeys();
++          const id = crypto.randomUUID();
++          const issuedAt = new Date().toISOString();
++          let payload;
++          if ($('doc-type').value === 'receipt') {
++            const [item, price] = $('item').value.split('|');
++            const qty = Math.max(1, Math.min(50, parseInt($('qty').value, 10) || 1));
++            payload = { type: 'receipt', id, issuedAt, item, qty, total: (qty * parseFloat(price)).toFixed(2), currency: 'USD' };
++          } else {
++            const amount = Math.max(1, Math.min(500, parseInt($('amount').value, 10) || 0));
++            payload = { type: 'voucher', id, issuedAt, recipient: $('recipient').value.trim().slice(0, 80), amount: amount.toFixed(2), currency: 'USD' };
++          }
++          const jwk = await pubJwk(keys);
++          const sig = await crypto.subtle.sign(SIG, keys.privateKey, enc.encode(canon(payload)));
++          $('doc').value = JSON.stringify({ payload, signature: b64(sig), alg: 'ECDSA-P256-SHA256', publicKey: jwk }, null, 2);
++          verdict('ok', 'Document signed.');
++        } catch (e) { verdict('bad', 'Signing failed: ' + e.message); }
++      });
++
++      $('verify-btn').addEventListener('click', async () => {
++        try {
++          const doc = JSON.parse($('doc').value);
++          if (!doc.payload || !doc.signature || !doc.publicKey || doc.alg !== 'ECDSA-P256-SHA256') throw new Error('Malformed document');
++          const jwk = { crv: doc.publicKey.crv, kty: doc.publicKey.kty, x: doc.publicKey.x, y: doc.publicKey.y };
++          const key = await crypto.subtle.importKey('jwk', jwk, ALG, false, ['verify']);
++          const valid = await crypto.subtle.verify(SIG, key, unb64(doc.signature), enc.encode(canon(doc.payload)));
++          if (!valid) return verdict('bad', 'INVALID: signature does not match – the document was altered or forged.');
++          const trusted = await pubJwk(await getKeys());
++          const fp = await fingerprint(jwk);
++          if (fp === await fingerprint(trusted)) verdict('ok', 'VALID: authentic, unmodified, and signed by this browser\'s Daily Grind key.');
++          else verdict('warn', 'Signature is internally valid, but the signer (' + fp + ') is not this browser\'s trusted key. Confirm that fingerprint with The Daily Grind.');
++        } catch (e) { verdict('bad', 'INVALID: ' + e.message); }
++      });
++
++      $('download-btn').addEventListener('click', () => {
++        if (!$('doc').value) return;
++        let name = 'signed-document';
++        try { const p = JSON.parse($('doc').value).payload; name = p.type + '-' + p.id; } catch (e) { /* keep default */ }
++        const a = document.createElement('a');
++        a.href = URL.createObjectURL(new Blob([$('doc').value], { type: 'application/json' }));
++        a.download = name + '.json';
++        a.click();
++        URL.revokeObjectURL(a.href);
++      });
++
++      if (!window.crypto || !crypto.subtle) {
++        $('fp').textContent = 'Web Crypto unavailable (requires HTTPS or localhost)';
++      } else {
++        getKeys().then(pubJwk).then(fingerprint).then((f) => { $('fp').textContent = f; })
++          .catch((e) => { $('fp').textContent = 'key error: ' + e.message; });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

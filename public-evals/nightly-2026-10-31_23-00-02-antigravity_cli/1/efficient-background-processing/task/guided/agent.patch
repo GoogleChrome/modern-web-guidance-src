@@ -1,0 +1,217 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roasting Simulator Widget */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      contain: layout style paint;
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 25px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .roasting-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .roasting-header h2 {
++      color: var(--primary);
++      margin: 0;
++    }
++
++    .temp-readout {
++      background: var(--primary);
++      color: var(--accent);
++      padding: 8px 16px;
++      border-radius: 6px;
++      font-family: monospace;
++      font-size: 1.1rem;
++      font-weight: bold;
++    }
++
++    #roast-canvas {
++      width: 100%;
++      max-width: 700px;
++      height: 260px;
++      background: #2b1d1a;
++      border-radius: 8px;
++      display: block;
++      margin: 0 auto;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +244,18 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-labelledby="roasting-title">
++    <div class="roasting-header">
++      <h2 id="roasting-title">Live Roasting Simulator</h2>
++      <div class="temp-readout">
++        Drum Temp: <span id="roast-temp-value">385°F</span>
++      </div>
++    </div>
++    <canvas id="roast-canvas" width="700" height="260"></canvas>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +264,137 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const tempValueEl = document.getElementById('roast-temp-value');
++      if (!widget || !canvas || !tempValueEl) return;
++
++      const ctx = canvas.getContext('2d');
++      let animationFrameId = null;
++      let tempIntervalId = null;
++      let isRunning = false;
++      let currentTemp = 385;
++
++      // Initialize simulated coffee beans
++      const beans = Array.from({ length: 28 }, () => ({
++        x: Math.random() * (canvas.width - 40) + 20,
++        y: Math.random() * (canvas.height - 40) + 20,
++        vx: (Math.random() - 0.5) * 3.5,
++        vy: (Math.random() - 0.5) * 3.5,
++        angle: Math.random() * Math.PI * 2,
++        vAngle: (Math.random() - 0.5) * 0.08,
++        roastLevel: Math.random()
++      }));
++
++      function drawBeans() {
++        ctx.fillStyle = '#2b1d1a';
++        ctx.fillRect(0, 0, canvas.width, canvas.height);
++
++        for (const bean of beans) {
++          bean.x += bean.vx;
++          bean.y += bean.vy;
++          bean.angle += bean.vAngle;
++
++          if (bean.x < 16 || bean.x > canvas.width - 16) bean.vx *= -1;
++          if (bean.y < 16 || bean.y > canvas.height - 16) bean.vy *= -1;
++
++          ctx.save();
++          ctx.translate(bean.x, bean.y);
++          ctx.rotate(bean.angle);
++
++          // Bean body
++          ctx.beginPath();
++          ctx.ellipse(0, 0, 12, 8, 0, 0, Math.PI * 2);
++          ctx.fillStyle = bean.roastLevel > 0.5 ? '#4e342e' : '#6d4c41';
++          ctx.fill();
++          ctx.strokeStyle = '#3e2723';
++          ctx.lineWidth = 1.5;
++          ctx.stroke();
++
++          // Center crease
++          ctx.beginPath();
++          ctx.moveTo(-9, 0);
++          ctx.quadraticCurveTo(0, 3, 9, 0);
++          ctx.strokeStyle = '#271917';
++          ctx.lineWidth = 1.5;
++          ctx.stroke();
++
++          ctx.restore();
++        }
++      }
++
++      function renderLoop() {
++        if (!isRunning) return;
++        drawBeans();
++        animationFrameId = requestAnimationFrame(renderLoop);
++      }
++
++      function updateTemperature() {
++        const delta = (Math.random() - 0.45) * 2.4;
++        currentTemp = Math.min(445, Math.max(370, currentTemp + delta));
++        tempValueEl.textContent = `${Math.round(currentTemp)}°F`;
++      }
++
++      function startSimulation() {
++        if (isRunning) return;
++        isRunning = true;
++        if (animationFrameId === null) {
++          animationFrameId = requestAnimationFrame(renderLoop);
++        }
++        if (tempIntervalId === null) {
++          tempIntervalId = setInterval(updateTemperature, 800);
++        }
++      }
++
++      function stopSimulation() {
++        isRunning = false;
++        if (animationFrameId !== null) {
++          cancelAnimationFrame(animationFrameId);
++          animationFrameId = null;
++        }
++        if (tempIntervalId !== null) {
++          clearInterval(tempIntervalId);
++          tempIntervalId = null;
++        }
++      }
++
++      // Draw initial frame
++      drawBeans();
++
++      // Pause/resume when off-screen via contentvisibilityautostatechange
++      widget.addEventListener('contentvisibilityautostatechange', (event) => {
++        if (event.skipped) {
++          stopSimulation();
++        } else {
++          startSimulation();
++        }
++      });
++
++      // Fallback using IntersectionObserver for older browsers lacking content-visibility support
++      const isSupported = 'contentVisibility' in document.documentElement.style;
++      if (!isSupported) {
++        if ('IntersectionObserver' in window) {
++          const observer = new IntersectionObserver((entries) => {
++            entries.forEach((entry) => {
++              if (entry.isIntersecting) {
++                startSimulation();
++              } else {
++                stopSimulation();
++              }
++            });
++          }, {
++            rootMargin: '200px'
++          });
++          observer.observe(widget);
++        } else {
++          startSimulation();
++        }
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

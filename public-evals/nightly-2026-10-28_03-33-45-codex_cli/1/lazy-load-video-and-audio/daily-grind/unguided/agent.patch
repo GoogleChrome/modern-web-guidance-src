@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+index 66c9173..56e2daa 100644
+--- a/index.html
++++ b/index.html
+@@ -74,18 +74,15 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 60vh;
++      background: var(--primary);
+       display: flex;
+-      flex-direction: column;
++      gap: 40px;
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 5%;
+     }
+ 
+     .hero h1 {
+@@ -93,6 +90,47 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-copy { max-width: 520px; }
++    .hero .btn { background: var(--accent); color: var(--text); }
++    .hero-player { width: min(100%, 480px); }
++    video {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      background: #241915;
++      border-radius: 8px;
++    }
++    .media-section { margin-top: 72px; }
++    .media-section > p { max-width: 650px; margin: 10px 0 24px; }
++    .media-layout {
++      display: grid;
++      grid-template-columns: 3fr 2fr;
++      align-items: center;
++      gap: 32px;
++    }
++    .eyebrow {
++      font-size: 0.8rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      margin-bottom: 8px;
++    }
++    .media-credit { font-size: 0.8rem; margin-top: 10px; }
++    .media-credit a { color: inherit; }
++    .podcast { background: #eee7e2; padding: 32px; border-radius: 8px; }
++    .podcast audio { display: block; width: 100%; margin-top: 24px; }
++    .media-error { margin-top: 10px; }
++    @media (max-width: 720px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero { flex-direction: column; gap: 28px; }
++      .hero h1 { font-size: 2.3rem; }
++      .media-layout { grid-template-columns: 1fr; }
++      .podcast { padding: 24px; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,9 +207,23 @@
+   </nav>
+ 
+   <header class="hero">
++    <div class="hero-copy">
++    <p class="eyebrow">A little ritual. A better day.</p>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <figure class="hero-player">
++      <video controls playsinline muted preload="none" data-media
++        aria-label="Watch coffee being freshly brewed"
++        data-poster="https://assets.mixkit.co/videos/41865/41865-thumb-360-0.jpg">
++        <source data-src="https://assets.mixkit.co/videos/41865/41865-720.mp4" type="video/mp4">
++        Your browser does not support video playback.
++      </video>
++      <figcaption class="media-credit">Your morning starts here · Footage by
++        <a href="https://mixkit.co/free-stock-video/cup-being-filled-with-coffee-in-a-coffee-machine-41865/">Mixkit</a>
++      </figcaption>
++    </figure>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +247,43 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="roasting-title">
++      <p class="eyebrow">Behind the beans</p>
++      <h2 id="roasting-title">Good coffee takes its time.</h2>
++      <p>From green bean to deep, fragrant roast, see the craft that brings every cup to life.</p>
++      <div class="media-layout">
++        <figure>
++          <video controls playsinline preload="none" data-media
++            aria-label="Watch a coffee roaster in operation"
++            data-poster="https://assets.mixkit.co/videos/88001/88001-thumb-360-0.jpg">
++            <source data-src="https://assets.mixkit.co/videos/88001/88001-720.mp4" type="video/mp4">
++            Your browser does not support video playback.
++          </video>
++          <figcaption class="media-credit">A closer look at the roasting process · Footage by
++            <a href="https://mixkit.co/free-stock-video/coffee-roaster-in-operation-88001/">Mixkit</a>
++          </figcaption>
++        </figure>
++        <div>
++          <h3>The art of the roast</h3>
++          <p>Heat, movement, and careful attention turn humble beans into something extraordinary. Take a moment to watch the process in motion.</p>
++        </div>
++      </div>
++    </section>
++
++    <section class="media-section podcast" aria-labelledby="podcast-title">
++      <p class="eyebrow">The coffee break · Featured podcast</p>
++      <h2 id="podcast-title">Home Coffee Roasting, part 2</h2>
++      <p>Pour a cup and settle in with dnt from Hacker Public Radio for a conversation about roasting coffee at home.</p>
++      <audio controls preload="none" data-media aria-labelledby="podcast-title">
++        <source data-src="https://hub.hackerpublicradio.org/ccdn.php?filename=/eps/hpr3573/hpr3573.mp3" type="audio/mpeg">
++        Your browser does not support audio playback.
++      </audio>
++      <p class="media-credit">Episode 3573 · dnt / Hacker Public Radio ·
++        <a href="https://hackerpublicradio.org/eps/hpr3573/index.html">Episode notes and transcript</a>
++      </p>
++    </section>
++    <noscript><p>Enable JavaScript to use the media players. You can also watch the videos and listen to the podcast using their source links above.</p></noscript>
+   </main>
+ 
+   <footer>
+@@ -207,6 +296,64 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const players = document.querySelectorAll('[data-media]');
++      const hydrate = (player) => {
++        if (player.dataset.loaded) return;
++        player.dataset.loaded = 'true';
++        if (player.dataset.poster) {
++          player.poster = player.dataset.poster;
++          delete player.dataset.poster;
++        }
++        player.querySelectorAll('source[data-src]').forEach((source) => {
++          source.src = source.dataset.src;
++          delete source.dataset.src;
++        });
++        // Metadata requests are safe only after the player is near the viewport.
++        player.preload = 'metadata';
++        player.load();
++      };
++
++      players.forEach((player) => {
++        player.addEventListener('error', () => {
++          if (player.parentElement.querySelector('.media-error')) return;
++          const message = document.createElement('p');
++          message.className = 'media-error';
++          message.setAttribute('role', 'status');
++          message.textContent = 'This player is unavailable. Please use the source link below.';
++          player.after(message);
++        });
++      });
++
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          entries.forEach((entry) => {
++            if (!entry.isIntersecting) return;
++            hydrate(entry.target);
++            observer.unobserve(entry.target);
++          });
++        }, { rootMargin: '200px 0px', threshold: 0 });
++        players.forEach((player) => observer.observe(player));
++      } else {
++        // Keep offscreen assets deferred in browsers without IntersectionObserver.
++        const checkViewport = () => {
++          players.forEach((player) => {
++            const bounds = player.getBoundingClientRect();
++            if (bounds.top <= window.innerHeight + 200 && bounds.bottom >= -200) hydrate(player);
++          });
++          if ([...players].every((player) => player.dataset.loaded)) {
++            window.removeEventListener('scroll', checkViewport);
++            window.removeEventListener('resize', checkViewport);
++          }
++        };
++        window.addEventListener('scroll', checkViewport, { passive: true });
++        window.addEventListener('resize', checkViewport);
++        checkViewport();
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

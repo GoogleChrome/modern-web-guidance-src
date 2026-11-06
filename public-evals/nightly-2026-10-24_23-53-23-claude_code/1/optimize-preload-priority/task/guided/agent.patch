@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,31 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Watch the film</title>
++
++<link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++<link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++<link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++<style>
++@font-face{font-family:Brand;src:url(brand-font.woff2) format("woff2");font-display:swap}
++@font-face{font-family:Secondary;src:url(secondary-font.woff2) format("woff2");font-display:swap}
++*{box-sizing:border-box}
++body{margin:0;background:#000;color:#fff;font:1rem/1.5 Secondary,system-ui,sans-serif}
++h1{margin:0;padding:1rem;font:700 2rem/1.2 Brand,system-ui,sans-serif}
++video{display:block;width:100%;max-width:1280px;height:auto;aspect-ratio:16/9;margin:0 auto;background:#000;object-fit:cover}
++a{display:inline-block;margin:1rem;color:#fff}
++</style>
++</head>
++<body>
++<header><h1>Brand</h1></header>
++<main>
++  <video controls playsinline preload="none" poster="poster.jpg" width="1280" height="720">
++    <source src="video.mp4" type="video/mp4">
++  </video>
++  <a href="#">Learn more</a>
++</main>
++</body>
++</html>

@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,22 +73,94 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+-      flex-direction: column;
+       justify-content: center;
+       align-items: center;
++      gap: clamp(24px, 5vw, 72px);
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 20px;
+     }
+ 
++    .hero-content {
++      flex: 0 1 560px;
++      min-width: 0;
++    }
++
++    .hero-shape-defs {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    .shaped-element {
++      flex: 0 1 360px;
++      width: 100%;
++      max-width: 360px;
++      aspect-ratio: 1;
++      position: relative;
++      overflow: hidden;
++      pointer-events: none;
++      /* A soft silhouette remains if clipping is unavailable. */
++      border-radius: 43% 57% 62% 38% / 56% 39% 61% 44%;
++      background-color: #b87945;
++      background-image:
++        radial-gradient(ellipse at 35% 28%, #f2d3a2 0%, transparent 48%),
++        radial-gradient(ellipse at 72% 78%, #593323 0%, transparent 58%),
++        linear-gradient(135deg, #dfae72, #a46538);
++    }
++
++    @supports (clip-path: url("#coffee-splash")) {
++      .shaped-element {
++        clip-path: url("#coffee-splash");
++      }
++    }
++
++    /* Off-center rings suggest the sweep of coffee in a handmade cup. */
++    .shaped-element::before,
++    .shaped-element::after {
++      content: "";
++      position: absolute;
++      border: 2px solid rgba(255, 238, 204, 0.45);
++      border-radius: 48% 52% 44% 56%;
++      transform: rotate(-28deg);
++    }
++
++    .shaped-element::before {
++      inset: 19% 16% 22% 20%;
++      box-shadow: 0 0 0 12px rgba(255, 238, 204, 0.12),
++        0 0 0 28px rgba(255, 238, 204, 0.08);
++    }
++
++    .shaped-element::after {
++      inset: 29% 25% 32% 29%;
++      border-width: 1px;
++    }
++
++    @media (max-width: 720px) {
++      .hero {
++        flex-direction: column;
++      }
++
++      .hero-content {
++        flex: 0 1 auto;
++      }
++
++      .shaped-element {
++        flex: 0 0 auto;
++        max-width: 240px;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,11 +240,21 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <svg class="hero-shape-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
++      <defs>
++        <clipPath id="coffee-splash" clipPathUnits="objectBoundingBox">
++          <path d="M .12,.30 C .02,.19 .20,.09 .31,.13 C .41,.17 .43,.01 .55,.04 C .67,.07 .64,.18 .77,.16 C .94,.12 1,.29 .90,.39 C .81,.48 1,.55 .94,.67 C .90,.77 .77,.69 .75,.83 C .73,.98 .56,1 .48,.90 C .40,.80 .32,.98 .20,.90 C .08,.82 .18,.71 .08,.64 C -.02,.57 .02,.43 .12,.42 C .20,.41 .17,.35 .12,.30 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <div class="shaped-element" aria-hidden="true"></div>
+   </header>
+ 
+   <main class="container">
+     <section>

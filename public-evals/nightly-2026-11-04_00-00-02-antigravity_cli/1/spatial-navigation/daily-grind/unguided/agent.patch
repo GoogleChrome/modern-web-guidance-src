@@ -1,0 +1,443 @@
+diff --git a/index.html b/index.html
+index 66c9173..85ac343 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,57 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      margin-bottom: 10px;
++    }
++
++    .layout-controls {
++      display: inline-flex;
++      gap: 6px;
++      background: var(--secondary);
++      padding: 4px;
++      border-radius: 6px;
++    }
++
++    .layout-btn {
++      background: transparent;
++      border: 1px solid transparent;
++      color: var(--text);
++      padding: 6px 12px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .layout-btn[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .layout-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -107,12 +158,48 @@
+       margin-top: 20px;
+     }
+ 
++    .grid[data-layout="compact"],
++    .grid.layout-compact {
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++    }
++
++    .grid[data-layout="list"],
++    .grid.layout-list {
++      grid-template-columns: 1fr;
++    }
++
++    .grid[data-layout="list"] .card,
++    .grid.layout-list .card {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      text-align: left;
++      gap: 20px;
++    }
++
++    .grid[data-layout="list"] .card .btn,
++    .grid.layout-list .card .btn {
++      margin-top: 0;
++      white-space: nowrap;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      border: 2px solid transparent;
++      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
++    }
++
++    .card:focus,
++    .card:focus-visible,
++    .card:focus-within {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++      border-color: var(--primary);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.2);
+     }
+ 
+     .card h3 {
+@@ -135,6 +222,11 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +267,63 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <div class="layout-controls" role="group" aria-label="Layout mode">
++          <button type="button" class="layout-btn" data-set-layout="grid" aria-pressed="true">Grid</button>
++          <button type="button" class="layout-btn" data-set-layout="compact" aria-pressed="false">Compact</button>
++          <button type="button" class="layout-btn" data-set-layout="list" aria-pressed="false">List</button>
++        </div>
++      </div>
++      <p id="grid-instructions" class="sr-only">
++        Use arrow keys to navigate between cards in any direction. Press Home or End to jump to the first or last card, and Enter or Space to view details.
++      </p>
++      <div class="grid" id="card-grid" role="region" aria-labelledby="seasonal-heading" aria-describedby="grid-instructions" data-layout="grid">
++        <div class="card" tabindex="0" aria-labelledby="card-title-1">
++          <div class="card-content">
++            <h3 id="card-title-1">Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
++          <a href="/menu/seasonal" class="btn" tabindex="-1">View Details</a>
++        </div>
++        <div class="card" tabindex="-1" aria-labelledby="card-title-2">
++          <div class="card-content">
++            <h3 id="card-title-2">Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++          </div>
++          <a href="/menu/espresso" class="btn" tabindex="-1">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card" tabindex="-1" aria-labelledby="card-title-3">
++          <div class="card-content">
++            <h3 id="card-title-3">Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn" tabindex="-1">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card" tabindex="-1" aria-labelledby="card-title-4">
++          <div class="card-content">
++            <h3 id="card-title-4">Spiced Chai Cortado</h3>
++            <p>Rich espresso balanced with house-made masala chai and steamed milk.</p>
++          </div>
++          <a href="/menu/chai-cortado" class="btn" tabindex="-1">View Details</a>
++        </div>
++        <div class="card" tabindex="-1" aria-labelledby="card-title-5">
++          <div class="card-content">
++            <h3 id="card-title-5">Honey Cinnamon Flat White</h3>
++            <p>Velvety microfoam poured over double ristretto with wildflower honey.</p>
++          </div>
++          <a href="/menu/flat-white" class="btn" tabindex="-1">View Details</a>
++        </div>
++        <div class="card" tabindex="-1" aria-labelledby="card-title-6">
++          <div class="card-content">
++            <h3 id="card-title-6">Single Origin Pour Over</h3>
++            <p>Hand-brewed Ethiopian Yirgacheffe with bright floral and citrus notes.</p>
++          </div>
++          <a href="/menu/pour-over" class="btn" tabindex="-1">View Details</a>
+         </div>
+       </div>
++      <div id="grid-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +337,240 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const grid = document.querySelector('.grid');
++      if (!grid) return;
++
++      const announcer = document.getElementById('grid-announcer');
++      const layoutButtons = document.querySelectorAll('[data-set-layout]');
++
++      function getCards() {
++        return Array.from(grid.querySelectorAll('.card')).filter((card) => {
++          const style = window.getComputedStyle(card);
++          return style.display !== 'none' && style.visibility !== 'hidden';
++        });
++      }
++
++      /**
++       * Groups cards into 2D visual rows based on their live bounding rectangles.
++       * Works across responsive multi-column grids, compact grids, single-column lists,
++       * and RTL/LTR directions.
++       */
++      function getVisualMatrix(cards) {
++        const items = cards.map((card, domIndex) => {
++          const rect = card.getBoundingClientRect();
++          return {
++            card,
++            domIndex,
++            rect,
++            centerX: rect.left + rect.width / 2,
++            centerY: rect.top + rect.height / 2,
++          };
++        });
++
++        // Sort top-to-bottom, then left-to-right
++        const sorted = [...items].sort((a, b) => {
++          const rowThreshold = Math.min(a.rect.height, b.rect.height) * 0.4 || 15;
++          if (Math.abs(a.rect.top - b.rect.top) > rowThreshold) {
++            return a.rect.top - b.rect.top;
++          }
++          return a.rect.left - b.rect.left;
++        });
++
++        const rows = [];
++        sorted.forEach((item) => {
++          if (rows.length === 0) {
++            rows.push([item]);
++            return;
++          }
++          const currentRow = rows[rows.length - 1];
++          const firstInRow = currentRow[0];
++          const rowThreshold = Math.min(firstInRow.rect.height, item.rect.height) * 0.4 || 15;
++          if (Math.abs(item.rect.top - firstInRow.rect.top) <= rowThreshold) {
++            currentRow.push(item);
++          } else {
++            rows.push([item]);
++          }
++        });
++
++        // Ensure each row is sorted horizontally left-to-right
++        rows.forEach((row) => row.sort((a, b) => a.rect.left - b.rect.left));
++        return rows;
++      }
++
++      /**
++       * Finds the target card in the given arrow direction using visual geometry
++       * and 2D row/column structure.
++       */
++      function findSpatialTarget(currentCard, key) {
++        const cards = getCards();
++        if (cards.length === 0) return null;
++
++        const currentIndex = cards.indexOf(currentCard);
++        if (currentIndex === -1) return cards[0];
++
++        if (key === 'Home') return cards[0];
++        if (key === 'End') return cards[cards.length - 1];
++
++        const rows = getVisualMatrix(cards);
++        let currentRowIdx = -1;
++        let currentColIdx = -1;
++        let currentItem = null;
++
++        for (let r = 0; r < rows.length; r++) {
++          const c = rows[r].findIndex((item) => item.card === currentCard);
++          if (c !== -1) {
++            currentRowIdx = r;
++            currentColIdx = c;
++            currentItem = rows[r][c];
++            break;
++          }
++        }
++
++        if (!currentItem) return null;
++
++        const isRTL = window.getComputedStyle(grid).direction === 'rtl';
++        const horizontalStep =
++          key === 'ArrowRight' ? (isRTL ? -1 : 1) : key === 'ArrowLeft' ? (isRTL ? 1 : -1) : 0;
++
++        if (horizontalStep !== 0) {
++          const currentRow = rows[currentRowIdx];
++          const nextColIdx = currentColIdx + horizontalStep;
++          if (nextColIdx >= 0 && nextColIdx < currentRow.length) {
++            return currentRow[nextColIdx].card;
++          }
++          // In single-column list mode, allow Left/Right to also move to previous/next item
++          if (rows.every((r) => r.length === 1)) {
++            const nextRowIdx = currentRowIdx + horizontalStep;
++            if (nextRowIdx >= 0 && nextRowIdx < rows.length) {
++              return rows[nextRowIdx][0].card;
++            }
++          }
++          return null;
++        }
++
++        const verticalStep = key === 'ArrowDown' ? 1 : key === 'ArrowUp' ? -1 : 0;
++        if (verticalStep !== 0) {
++          const targetRowIdx = currentRowIdx + verticalStep;
++          if (targetRowIdx < 0 || targetRowIdx >= rows.length) {
++            return null;
++          }
++          const targetRow = rows[targetRowIdx];
++          // Pick the card in the target row whose horizontal center is closest to the current card's center
++          let bestMatch = targetRow[0];
++          let bestDist = Math.abs(bestMatch.centerX - currentItem.centerX);
++          for (let i = 1; i < targetRow.length; i++) {
++            const dist = Math.abs(targetRow[i].centerX - currentItem.centerX);
++            if (dist < bestDist) {
++              bestDist = dist;
++              bestMatch = targetRow[i];
++            }
++          }
++          return bestMatch.card;
++        }
++
++        return null;
++      }
++
++      /**
++       * Updates roving tabindex across cards and optionally focuses the active card.
++       */
++      function setActiveCard(targetCard, focusTarget = true) {
++        const cards = getCards();
++        if (!targetCard || !cards.includes(targetCard)) return;
++
++        const wasFocusedInsideLink =
++          document.activeElement &&
++          document.activeElement.tagName === 'A' &&
++          document.activeElement.closest('.card');
++
++        cards.forEach((card) => {
++          const isTarget = card === targetCard;
++          card.setAttribute('tabindex', isTarget ? '0' : '-1');
++          const link = card.querySelector('a, button');
++          if (link) {
++            link.setAttribute('tabindex', '-1');
++          }
++        });
++
++        if (focusTarget) {
++          if (wasFocusedInsideLink) {
++            const targetLink = targetCard.querySelector('a, button');
++            if (targetLink) {
++              targetLink.setAttribute('tabindex', '0');
++              targetLink.focus();
++            } else {
++              targetCard.focus();
++            }
++          } else {
++            targetCard.focus();
++          }
++        }
++      }
++
++      // Keyboard navigation handler
++      grid.addEventListener('keydown', (event) => {
++        const currentCard = event.target.closest('.card');
++        if (!currentCard || !grid.contains(currentCard)) return;
++
++        const navKeys = ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'];
++        if (navKeys.includes(event.key)) {
++          event.preventDefault();
++          const nextCard = findSpatialTarget(currentCard, event.key);
++          if (nextCard && nextCard !== currentCard) {
++            setActiveCard(nextCard, true);
++          }
++          return;
++        }
++
++        // Enter or Space on the card container triggers its primary action link
++        if ((event.key === 'Enter' || event.key === ' ') && event.target === currentCard) {
++          const primaryAction = currentCard.querySelector('a, button');
++          if (primaryAction) {
++            event.preventDefault();
++            primaryAction.click();
++          }
++        }
++      });
++
++      // Keep roving tabindex synced when user clicks or focuses a card
++      grid.addEventListener('focusin', (event) => {
++        const card = event.target.closest('.card');
++        if (card && grid.contains(card)) {
++          setActiveCard(card, false);
++        }
++      });
++
++      // Layout mode switching
++      layoutButtons.forEach((btn) => {
++        btn.addEventListener('click', () => {
++          const mode = btn.getAttribute('data-set-layout');
++          if (!mode) return;
++
++          grid.setAttribute('data-layout', mode);
++          grid.classList.remove('layout-grid', 'layout-compact', 'layout-list');
++          grid.classList.add(`layout-${mode}`);
++
++          layoutButtons.forEach((b) => {
++            b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
++          });
++
++          if (announcer) {
++            announcer.textContent = `Switched to ${mode} layout`;
++          }
++        });
++      });
++
++      // Ensure initial roving tabindex state is valid
++      const initialCards = getCards();
++      if (initialCards.length > 0) {
++        const currentActive =
++          initialCards.find((c) => c.getAttribute('tabindex') === '0') || initialCards[0];
++        setActiveCard(currentActive, false);
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

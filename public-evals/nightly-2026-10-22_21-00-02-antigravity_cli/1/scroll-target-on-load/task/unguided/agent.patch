@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,70 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Media Feed Scroll Container */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .scroll-container {
++      max-width: 650px;
++      height: 420px;
++      margin: 0 auto;
++      overflow-y: auto;
++      scroll-snap-type: y mandatory;
++      display: flex;
++      flex-direction: column;
++      gap: 24px;
++      padding: 20px;
++      background: #efebe9;
++      border-radius: 12px;
++      border: 1px solid var(--secondary);
++      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.08);
++      position: relative;
++    }
++
++    .media-card {
++      background: white;
++      border-radius: 8px;
++      padding: 16px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      flex-shrink: 0;
++      scroll-snap-align: start;
++    }
++
++    .media-card.target {
++      scroll-initial-target: nearest;
++      border: 2px solid var(--accent);
++    }
++
++    .media-card img {
++      width: 100%;
++      height: 240px;
++      object-fit: cover;
++      border-radius: 6px;
++      display: block;
++    }
++
++    .media-card-content h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .media-card-content p {
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +256,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <h2>Behind the scenes at the Roastery</h2>
++      <div class="scroll-container" id="media-scroll-container">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&h=240&q=80" width="600" height="240" alt="Morning Pour-Over">
++          <div class="media-card-content">
++            <h3>1. Morning Pour-Over</h3>
++            <p>Precision brewing starts with freshly ground single-origin beans and water at 200°F.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&h=240&q=80" width="600" height="240" alt="Small-Batch Roasting">
++          <div class="media-card-content">
++            <h3>2. Small-Batch Roasting</h3>
++            <p>Each batch is carefully monitored to unlock rich caramel and chocolate flavor notes.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&h=240&q=80" width="600" height="240" alt="Featured: Signature Latte Art">
++          <div class="media-card-content">
++            <h3>3. Signature Latte Art (Featured)</h3>
++            <p>Our baristas craft velvety microfoam into every cup right at the heart of our café.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&h=240&q=80" width="600" height="240" alt="Ethical Bean Sourcing">
++          <div class="media-card-content">
++            <h3>4. Ethical Bean Sourcing</h3>
++            <p>Direct trade partnerships with high-altitude farms ensure fair wages and peak quality.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&h=240&q=80" width="600" height="240" alt="Artisanal Pastries">
++          <div class="media-card-content">
++            <h3>5. Artisanal Pastries</h3>
++            <p>Baked fresh every morning to pair with your favorite espresso or cold brew.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        (function () {
++          const container = document.getElementById('media-scroll-container');
++          const target = container && container.querySelector('.target');
++          if (container && target) {
++            const containerStyle = window.getComputedStyle(container);
++            const paddingTop = parseFloat(containerStyle.paddingTop) || 0;
++            container.scrollTop = target.offsetTop - paddingTop;
++          }
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

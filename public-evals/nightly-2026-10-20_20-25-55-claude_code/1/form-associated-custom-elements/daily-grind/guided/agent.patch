@@ -1,0 +1,196 @@
+diff --git a/index.html b/index.html
+index 66c9173..c9977df 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,32 @@
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      max-width: 480px;
++      margin: 20px auto 0;
++    }
++
++    .feedback fieldset {
++      border: 0;
++      display: grid;
++      gap: 12px;
++      justify-items: center;
++    }
++
++    .feedback textarea {
++      display: block;
++      width: 100%;
++      font: inherit;
++      padding: 8px;
++    }
++
++    .feedback .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-inline: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +221,25 @@
+         </div>
+       </div>
+     </section>
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Rate Your Visit</h2>
++      <form class="card feedback" action="/feedback" method="post">
++        <fieldset>
++          <legend>Tell us how we did</legend>
++          <label id="rating-label">Rating</label>
++          <rating-input name="rating" required aria-labelledby="rating-label"></rating-input>
++          <label>Comments
++            <textarea name="comments" rows="3"></textarea>
++          </label>
++        </fieldset>
++        <button type="submit" class="btn">Send Feedback</button>
++        <button type="reset" class="btn">Reset</button>
++      </form>
++    </section>
+   </main>
+ 
++  <script src="rating-input.js"></script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+diff --git a/rating-input.js b/rating-input.js
+new file mode 100644
+index 0000000..8373fd2
+--- /dev/null
++++ b/rating-input.js
+@@ -0,0 +1,127 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: inline-flex; gap: 4px; }
++    :host([hidden]) { display: none; }
++    button {
++      all: unset;
++      cursor: pointer;
++      font-size: 1.8rem;
++      line-height: 1;
++      color: #bcaaa4;
++      border-radius: 4px;
++    }
++    button[aria-checked="true"],
++    button[data-filled] { color: #ffab40; }
++    button:focus-visible { outline: 2px solid #4e342e; outline-offset: 2px; }
++    button:disabled { cursor: not-allowed; opacity: 0.5; }
++  </style>
++  ${[1, 2, 3, 4, 5]
++    .map((n) => `<button type="button" role="radio" aria-checked="false" aria-label="${n} star${n > 1 ? 's' : ''}" data-value="${n}">★</button>`)
++    .join('')}
++`;
++
++class RatingInput extends HTMLElement {
++  // Opt in to form association; unlocks the form-related ElementInternals APIs.
++  static formAssociated = true;
++
++  #internals;
++  #value = '';
++  #buttons;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    this.#internals.role = 'radiogroup';
++    this.attachShadow({ mode: 'open', delegatesFocus: true }).append(template.content.cloneNode(true));
++    this.#buttons = [...this.shadowRoot.querySelectorAll('button')];
++
++    this.shadowRoot.addEventListener('click', (e) => {
++      const button = e.target.closest('button');
++      if (button) this.#commit(button.dataset.value);
++    });
++    this.shadowRoot.addEventListener('keydown', (e) => this.#onKeydown(e));
++  }
++
++  connectedCallback() {
++    // Attributes (value, required) are available now; sync initial state.
++    if (!this.#value && this.hasAttribute('value')) this.#value = this.getAttribute('value');
++    this.#sync();
++  }
++
++  static observedAttributes = ['required', 'value'];
++
++  attributeChangedCallback(name) {
++    if (!this.isConnected) return;
++    if (name === 'required') this.#sync();
++  }
++
++  get value() { return this.#value; }
++  set value(v) {
++    this.#value = v == null ? '' : String(v);
++    this.#sync();
++  }
++
++  get required() { return this.hasAttribute('required'); }
++  set required(v) { this.toggleAttribute('required', Boolean(v)); }
++
++  get form() { return this.#internals.form; }
++  get validity() { return this.#internals.validity; }
++  get validationMessage() { return this.#internals.validationMessage; }
++  checkValidity() { return this.#internals.checkValidity(); }
++  reportValidity() { return this.#internals.reportValidity(); }
++
++  // User-initiated change: update value and fire the standard events.
++  #commit(v) {
++    if (v === this.#value) return;
++    this.value = v;
++    this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++
++  #onKeydown(e) {
++    const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
++    if (!step) return;
++    e.preventDefault();
++    const next = Math.min(5, Math.max(1, (Number(this.#value) || (step > 0 ? 0 : 6)) + step));
++    this.#commit(String(next));
++    this.#buttons[next - 1].focus();
++  }
++
++  #sync() {
++    const n = Number(this.#value) || 0;
++    // Nothing is submitted when no rating is chosen, like an unchecked radio.
++    this.#internals.setFormValue(this.#value || null, this.#value);
++
++    this.#buttons.forEach((b, i) => {
++      const checked = i + 1 === n;
++      b.setAttribute('aria-checked', String(checked));
++      b.toggleAttribute('data-filled', i + 1 <= n);
++      // Roving tabindex: one stop in the tab order.
++      b.tabIndex = checked || (!n && i === 0) ? 0 : -1;
++    });
++
++    if (this.required && !this.#value) {
++      this.#internals.setValidity({ valueMissing: true }, 'Please choose a rating.', this.#buttons[0]);
++    } else {
++      this.#internals.setValidity({});
++    }
++  }
++
++  formResetCallback() {
++    this.value = this.getAttribute('value') ?? '';
++  }
++
++  formDisabledCallback(disabled) {
++    // Disable inner controls, not the host, so fieldset[disabled] can re-enable us.
++    for (const b of this.#buttons) b.disabled = disabled;
++  }
++
++  formStateRestoreCallback(state) {
++    this.value = state;
++  }
++}
++
++if ('attachInternals' in HTMLElement.prototype && 'setFormValue' in ElementInternals.prototype) {
++  customElements.define('rating-input', RatingInput);
++}

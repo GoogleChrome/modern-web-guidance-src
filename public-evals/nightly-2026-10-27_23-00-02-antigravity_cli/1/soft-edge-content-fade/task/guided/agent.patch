@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,128 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Exclusive Paywall Preview Section */
++    .roasters-secrets-section {
++      margin-top: 60px;
++    }
++
++    .roasters-secrets-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .exclusive-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++    }
++
++    .roasters-secrets-header h2 {
++      color: var(--primary);
++      font-size: 2rem;
++    }
++
++    .roasters-secrets-header p {
++      color: var(--text);
++      opacity: 0.85;
++      max-width: 600px;
++      margin: 6px auto 0;
++    }
++
++    .paywall-container {
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-height: 360px;
++      overflow-y: hidden;
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
++      /* Standard property for modern browsers */
++      mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
++    }
++
++    /* Fallback using an overlay for browsers that do not support masking */
++    @supports (not (mask-image: linear-gradient(to bottom, black, transparent))) and (not (-webkit-mask-image: linear-gradient(to bottom, black, transparent))) {
++      .paywall-container {
++        position: relative;
++      }
++
++      .paywall-container::after {
++        content: '';
++        position: absolute;
++        bottom: 0;
++        left: 0;
++        right: 0;
++        height: 45%;
++        background: linear-gradient(to bottom, rgba(250, 250, 250, 0), rgba(250, 250, 250, 1));
++        pointer-events: none;
++      }
++    }
++
++    .secret-article {
++      display: grid;
++      grid-template-columns: 280px 1fr;
++      gap: 28px;
++      align-items: start;
++    }
++
++    .secret-article img {
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .secret-content h3 {
++      color: var(--primary);
++      font-size: 1.4rem;
++      margin-bottom: 12px;
++    }
++
++    .secret-content p {
++      margin-bottom: 14px;
++    }
++
++    .roast-metrics {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
++      gap: 12px;
++      margin: 16px 0;
++      padding: 14px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .roast-metrics div strong {
++      display: block;
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--primary);
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-top: 16px;
++    }
++
++    @media (max-width: 700px) {
++      .secret-article {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +314,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasters-secrets-section">
++      <div class="roasters-secrets-header">
++        <span class="exclusive-badge">Members Exclusive</span>
++        <h2>Roaster's Secrets</h2>
++        <p>Go behind the drum with our head roaster's private batch logs, thermal curves, and extraction recipes.</p>
++      </div>
++
++      <div class="paywall-container">
++        <article class="secret-article">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80"
++            alt="Freshly roasted specialty coffee beans"
++            loading="lazy"
++          >
++          <div class="secret-content">
++            <h3>Mastering the First Crack: Ethiopian Yirgacheffe Thermal Curve</h3>
++            <p>
++              Achieving the signature jasmine aromatics and bergamot brightness in our washed Yirgacheffe requires precise heat management right before the endothermic-to-exothermic transition. Most home and commercial roasters drop the gas too late, scorching the delicate chaff and muting the floral top notes.
++            </p>
++            <div class="roast-metrics">
++              <div>
++                <strong>Charge Temp</strong>
++                <span>385°F (196°C)</span>
++              </div>
++              <div>
++                <strong>Turning Point</strong>
++                <span>1:28 @ 164°F</span>
++              </div>
++              <div>
++                <strong>First Crack</strong>
++                <span>8:12 @ 388°F (14.5% DTR)</span>
++              </div>
++            </div>
++            <p>
++              At 7 minutes and 15 seconds, as the Maillard reaction deepens and steam pressure builds inside the bean cell walls, we reduce burner output by 35% while increasing drum airflow to 60 Pa. This prevents a flick in the Rate of Rise (RoR) curve and preserves the volatile organic compounds responsible for stone-fruit sweetness.
++            </p>
++            <p>
++              During the final 75 seconds of development time, our secret water-mineralization profile—formulated at 45 ppm GH and 18 ppm KH—unlocks the remaining citric acidity without astringency...
++            </p>
++          </div>
++        </article>
++      </div>
++
++      <div class="paywall-cta">
++        <p>Want the full roast profile, RoR curves, and water chemistry recipes?</p>
++        <a href="/rewards" class="btn">Unlock Roaster's Secrets</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

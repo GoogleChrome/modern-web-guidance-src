@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,28 +99,79 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .media-scroll {
++      position: relative;
++      height: 400px;
+       margin-top: 20px;
++      overflow-y: auto;
++      overflow-x: hidden;
++      scroll-behavior: auto;
++      overflow-anchor: none;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: var(--secondary);
+     }
+ 
++    .media-scroll[data-initializing] {
++      visibility: hidden;
++    }
++
++    .media-scroll:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
+     .card {
+-      background: white;
++      display: flex;
++      align-items: center;
++      gap: 24px;
++      min-height: 200px;
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      background: white;
++      border-bottom: 1px solid var(--secondary);
+     }
+ 
++    .card:last-child {
++      border-bottom: 0;
++    }
++
++    .card img {
++      width: 220px;
++      height: 160px;
++      flex: 0 0 auto;
++      object-fit: cover;
++      border-radius: 6px;
++      background: var(--secondary);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card.target {
++      border-left: 4px solid var(--accent);
++      padding-left: 16px;
++    }
++
++    @media (max-width: 600px) {
++      .card {
++        gap: 16px;
++        padding: 16px;
++      }
++
++      .card img {
++        width: 100px;
++        height: 160px;
++      }
++
++      .card.target {
++        padding-left: 12px;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,25 +227,62 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <div class="media-scroll" data-initializing tabindex="0" role="region" aria-label="Seasonal coffee favorites">
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=440&amp;h=320&amp;q=80" width="220" height="160" alt="A creamy iced latte in a glass">
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=440&amp;h=320&amp;q=80" width="220" height="160" alt="Fresh espresso served in a small cup">
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card target">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=440&amp;h=320&amp;q=80" width="220" height="160" alt="Cold coffee served over ice">
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&amp;fit=crop&amp;w=440&amp;h=320&amp;q=80" width="220" height="160" alt="A warm latte topped with milk foam art">
++          <div>
++            <h3>Vanilla Bean Latte</h3>
++            <p>Our signature espresso with steamed milk and real vanilla.</p>
++            <a href="/menu/vanilla-latte" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=440&amp;h=320&amp;q=80" width="220" height="160" alt="Freshly brewed coffee with a pour-over setup">
++          <div>
++            <h3>Single Origin Pour Over</h3>
++            <p>A carefully brewed cup that brings out every delicate note.</p>
++            <a href="/menu/pour-over" class="btn">View Details</a>
++          </div>
++        </article>
+       </div>
++      <script>
++        // Run synchronously before revealing the region, without moving the page.
++        (() => {
++          const container = document.querySelector('.media-scroll');
++          const target = container.querySelector('.target');
++          container.scrollTop = target.offsetTop;
++          container.removeAttribute('data-initializing');
++        })();
++      </script>
++      <noscript>
++        <style>.media-scroll[data-initializing] { visibility: visible; }</style>
++      </noscript>
+     </section>
+   </main>
+ 
+   <footer>

@@ -1,0 +1,43 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,38 @@
++# INP diagnostics
++
++The static page loads the self-hosted `web-vitals` 6.2.3 attribution build.
++It measures real INP candidates, including the metric's outlier handling and
++page lifecycle behavior, rather than treating every long event as INP.
++
++Set the `inp-report-endpoint` meta tag in `index.html` to an analytics ingestion
++URL to collect reports. No collector is included in this static app. The endpoint
++must accept POST bodies containing JSON with a `text/plain` content type;
++cross-origin collectors must allow the site's origin for the fetch fallback.
++Reports use `sendBeacon`, falling back to `fetch` with `keepalive` if needed.
++An empty endpoint disables network reporting. Each report also dispatches the
++`inp-diagnostic` window event with the JSON-safe report in `event.detail`.
++
++Reports include the metric ID, value in milliseconds, rating, interaction label,
++input delay, processing duration, and presentation delay. Where available, they
++also include script/rendering totals and the longest overlapping script's URL,
++function, character position, forced layout time, and affected delay phase.
++Use the largest delay phase to narrow an investigation: input delay suggests
++existing main-thread work, processing duration suggests interaction handlers,
++and presentation delay suggests work before the next frame. These are clues,
++not proof of a particular root cause.
++
++Candidate updates are enabled. Upsert by metric `id` (using the latest received
++value), rather than counting updates as separate visits. The library also
++reports on visibility changes and handles back/forward cache restoration.
++Unsupported Event Timing browsers produce no INP report. Without Long Animation
++Frames, the delay breakdown remains available but script details may be absent.
++
++Interaction labels come from explicitly authored `data-inp-target` attributes,
++falling back to the element tag; no text, input values, or arbitrary DOM IDs are
++collected. Page/script URLs omit queries and fragments. Keep labels and URL
++paths free of sensitive data, and apply your analytics collection policy when
++configuring a collector.
++
++Run `pnpm test` for Node-based attribution and transport checks. No browser is
++required. After upgrading `web-vitals`, run `pnpm vendor:web-vitals` and commit
++the lockfile, vendor module, and license so the site still needs no build step.

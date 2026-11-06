@@ -1,0 +1,138 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..8bfd55f 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -42,14 +42,105 @@ const baseUrl = import.meta.env.BASE_URL;
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div transition:persist="site-header">
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main id="spa-view-container" class="bg-white relative" transition:persist="spa-view-container">
++          <div class="spa-view" data-view-path={Astro.url.pathname} aria-hidden="false" tabindex="-1">
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+-    <Footer />
++    <div transition:persist="site-footer">
++      <Footer />
++    </div>
++
++    <script>
++      import {
++        deselectScripts,
++        swapRootAttributes,
++        swapHeadElements,
++        saveFocus,
++      } from "astro:transitions/client";
++
++      const MAX_CACHED_VIEWS = 5;
++      // Track LRU order of cached view paths (oldest first, most recently used last)
++      const viewCacheOrder: string[] = [];
++
++      function touchViewInCache(path: string, container: HTMLElement) {
++        const existingIdx = viewCacheOrder.indexOf(path);
++        if (existingIdx !== -1) {
++          viewCacheOrder.splice(existingIdx, 1);
++        }
++        viewCacheOrder.push(path);
++
++        // Evict least recently used views when exceeding the threshold
++        while (viewCacheOrder.length > MAX_CACHED_VIEWS) {
++          const oldestPath = viewCacheOrder.shift();
++          if (oldestPath && oldestPath !== path) {
++            const oldView = container.querySelector<HTMLElement>(
++              `.spa-view[data-view-path="${CSS.escape(oldestPath)}"]`
++            );
++            oldView?.remove();
++          }
++        }
++      }
++
++      function switchToView(activeView: HTMLElement, container: HTMLElement) {
++        container.querySelectorAll<HTMLElement>(".spa-view").forEach((view) => {
++          if (view !== activeView) {
++            view.classList.add("inactive");
++            view.setAttribute("aria-hidden", "true");
++          }
++        });
++
++        activeView.classList.remove("inactive");
++        activeView.setAttribute("aria-hidden", "false");
++        activeView.focus({ preventScroll: true });
++      }
++
++      // Initialize current view on initial load
++      const initialContainer = document.getElementById("spa-view-container");
++      const initialView = initialContainer?.querySelector<HTMLElement>(".spa-view:not(.inactive)");
++      if (initialContainer && initialView) {
++        const initialPath = initialView.dataset.viewPath || window.location.pathname;
++        touchViewInCache(initialPath, initialContainer);
++      }
++
++      document.addEventListener("astro:before-swap", (event: any) => {
++        const currentContainer = document.getElementById("spa-view-container");
++        const incomingContainer = event.newDocument.getElementById("spa-view-container");
++        const incomingView = incomingContainer?.querySelector<HTMLElement>(".spa-view");
++
++        if (!currentContainer || !incomingView) {
++          return;
++        }
++
++        const targetPath =
++          incomingView.dataset.viewPath || event.to?.pathname || window.location.pathname;
++
++        event.swap = () => {
++          deselectScripts(event.newDocument);
++          swapRootAttributes(event.newDocument);
++          swapHeadElements(event.newDocument);
++          const restoreFocusFunction = saveFocus();
++
++          let targetView = currentContainer.querySelector<HTMLElement>(
++            `.spa-view[data-view-path="${CSS.escape(targetPath)}"]`
++          );
++
++          if (!targetView) {
++            targetView = document.adoptNode(incomingView) as HTMLElement;
++            targetView.dataset.viewPath = targetPath;
++            currentContainer.appendChild(targetView);
++          }
++
++          switchToView(targetView, currentContainer);
++          touchViewInCache(targetPath, currentContainer);
++          restoreFocusFunction();
++        };
++      });
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..cd5e37e 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,17 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++  inset-inline: 0;
++  pointer-events: none;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

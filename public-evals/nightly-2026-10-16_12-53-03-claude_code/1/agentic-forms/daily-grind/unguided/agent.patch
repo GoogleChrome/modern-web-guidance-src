@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+index 66c9173..0cdbe50 100644
+--- a/index.html
++++ b/index.html
+@@ -27,6 +27,10 @@
+       background-color: var(--light);
+     }
+ 
++    .agent-tools[hidden] {
++      display: none;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -157,6 +161,23 @@
+ 
+ <body>
+ 
++  <!-- Agent tools (WebMCP declarative API): each form exposes a site action to AI agents. -->
++  <div class="agent-tools" hidden>
++    <form action="/menu" toolname="view_menu" tooldescription="Open the full coffee menu." toolautosubmit="true"></form>
++    <form action="/locations" toolname="view_locations" tooldescription="Open the list of Daily Grind cafe locations." toolautosubmit="true"></form>
++    <form action="/rewards" toolname="view_rewards" tooldescription="Open the rewards program page." toolautosubmit="true"></form>
++    <form action="/account" toolname="view_account" tooldescription="Open the signed-in user's account page." toolautosubmit="true"></form>
++    <form action="/logout" toolname="logout" tooldescription="Log the current user out of The Daily Grind. The user must confirm."></form>
++    <form action="/order-online" toolname="order_online" tooldescription="Start an online order." toolautosubmit="true"></form>
++    <form action="/menu/seasonal" toolname="view_maple_oat_latte" tooldescription="Open details for the seasonal Maple Oat Latte (oat milk with Vermont maple syrup)." toolautosubmit="true"></form>
++    <form action="/menu/espresso" toolname="view_dark_roast_espresso" tooldescription="Open details for the Dark Roast Espresso." toolautosubmit="true"></form>
++    <form action="/menu/cold-brew" toolname="view_cold_brew" tooldescription="Open details for the 18-hour Cold Brew." toolautosubmit="true"></form>
++    <form action="/about" toolname="view_our_story" tooldescription="Open the Our Story page about the company." toolautosubmit="true"></form>
++    <form action="/careers" toolname="view_careers" tooldescription="Open the careers page for joining the team." toolautosubmit="true"></form>
++    <form action="/contact" toolname="contact_us" tooldescription="Open the contact page." toolautosubmit="true"></form>
++    <form action="/privacy-policy" toolname="view_privacy_policy" tooldescription="Open the privacy policy." toolautosubmit="true"></form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>

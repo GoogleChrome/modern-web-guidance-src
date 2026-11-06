@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+index 66c9173..9ac8a3c 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,111 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Motion: transform/opacity only; all gated by reduced-motion below */
++    @media (prefers-reduced-motion: no-preference) {
++      @keyframes fade-up {
++        from { opacity: 0; transform: translateY(24px); }
++        to { opacity: 1; transform: none; }
++      }
++
++      @keyframes fade-down {
++        from { opacity: 0; transform: translateY(-100%); }
++        to { opacity: 1; transform: none; }
++      }
++
++      @keyframes hero-zoom {
++        from { transform: scale(1.08); }
++        to { transform: scale(1); }
++      }
++
++      nav {
++        animation: fade-down 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
++      }
++
++      .hero {
++        position: relative;
++        overflow: hidden;
++        isolation: isolate;
++      }
++
++      /* Zoom a pseudo-layer instead of the background to stay on the compositor */
++      .hero::before {
++        content: "";
++        position: absolute;
++        inset: 0;
++        z-index: -1;
++        background: inherit;
++        animation: hero-zoom 1.8s cubic-bezier(0.22, 1, 0.36, 1) both;
++      }
++
++      .hero > * {
++        animation: fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
++      }
++
++      .hero > :nth-child(1) { animation-delay: 0.15s; }
++      .hero > :nth-child(2) { animation-delay: 0.3s; }
++      .hero > :nth-child(3) { animation-delay: 0.45s; }
++
++      nav a,
++      .btn {
++        transition: color 0.3s, background 0.3s, transform 0.2s ease, box-shadow 0.3s ease;
++      }
++
++      .btn:hover {
++        transform: translateY(-2px);
++        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
++      }
++
++      .btn:active {
++        transform: translateY(0) scale(0.97);
++      }
++
++      .logout-link:hover {
++        background: rgba(255, 171, 64, 0.15);
++      }
++
++      .footer-links a {
++        transition: opacity 0.3s;
++      }
++
++      .footer-links a:hover {
++        opacity: 0.6;
++      }
++
++      .card {
++        transition: transform 0.3s ease, box-shadow 0.3s ease;
++      }
++
++      .card:hover {
++        transform: translateY(-6px);
++        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
++      }
++
++      /* Scroll reveal (only hidden when JS has opted in) */
++      .js .reveal {
++        opacity: 0;
++        transform: translateY(24px);
++        transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
++          transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
++        transition-delay: var(--delay, 0s);
++      }
++
++      .js .reveal.in-view {
++        opacity: 1;
++        transform: none;
++      }
++
++      /* Keep hover lift snappy once revealed */
++      .js .card.reveal.in-view {
++        transition: transform 0.3s ease, box-shadow 0.3s ease;
++        transition-delay: 0s;
++      }
++
++      .js .card.reveal.in-view:hover {
++        transform: translateY(-6px);
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,19 +281,19 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="reveal" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card reveal">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card reveal" style="--delay: 0.12s">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card reveal" style="--delay: 0.24s">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -197,7 +302,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="reveal">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +312,23 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var items = document.querySelectorAll('.reveal');
++      if (!items.length || !('IntersectionObserver' in window) ||
++        window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
++
++      document.documentElement.classList.add('js');
++      var io = new IntersectionObserver(function (entries) {
++        entries.forEach(function (e) {
++          if (!e.isIntersecting) return;
++          e.target.classList.add('in-view');
++          io.unobserve(e.target);
++        });
++      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
++      items.forEach(function (el) { io.observe(el); });
++    })();
++  </script>
+ </body>
+ 
+ </html>

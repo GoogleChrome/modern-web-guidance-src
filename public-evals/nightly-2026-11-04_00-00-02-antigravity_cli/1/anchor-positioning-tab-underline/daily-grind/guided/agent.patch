@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+index 66c9173..e13c15e 100644
+--- a/index.html
++++ b/index.html
+@@ -51,10 +51,33 @@
+       list-style: none;
+     }
+ 
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active;
++      inset-block-start: calc(anchor(bottom) + 0.1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: 0.25lh;
++      background: var(--accent);
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: inset 0.2s;
++      }
++    }
++
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
++    nav ul li.active {
++      anchor-name: --active;
++
++      @supports not (position-anchor: auto) {
++        border-bottom: 0.25lh var(--accent) solid;
++      }
++    }
++
+     nav a {
+       color: white;
+       text-decoration: none;
+@@ -157,10 +180,10 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -207,6 +230,21 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navLinks = document.querySelectorAll('nav ul a:not(.logout-link)');
++    navLinks.forEach((link) => {
++      link.addEventListener('click', (event) => {
++        event.preventDefault();
++        navLinks.forEach((item) => {
++          item.parentElement.classList.remove('active');
++          item.removeAttribute('aria-current');
++        });
++        link.parentElement.classList.add('active');
++        link.setAttribute('aria-current', 'page');
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,100 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,96 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Mixed Fonts &amp; Independent Theme</title>
++  <style>
++    :root {
++      color-scheme: light dark;
++    }
++
++    body {
++      margin: 0;
++      padding: 2rem;
++      font-family: system-ui, sans-serif;
++      line-height: 1.5;
++    }
++
++    main {
++      max-width: 65ch;
++      margin-inline: auto;
++      display: grid;
++      gap: 1.5rem;
++    }
++
++    /* Mixed fonts: inline code inherits the x-height ratio of the primary font */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", serif;
++      font-size: 1.125rem;
++      /* Extract the primary font's x-height/size ratio and apply it to descendants */
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
++      /* Undo UA monospace shrink so font-size-adjust alone handles normalization */
++      font-size: 1em;
++      padding: 0.1em 0.3em;
++      border-radius: 0.25em;
++      background: color-mix(in oklab, currentColor 10%, transparent);
++    }
++
++    /* Independent theme: not a descendant of the primary font, so lock a numeric ratio */
++    #independent-theme-container {
++      font-family: Verdana, Geneva, sans-serif;
++      /* Specific aspect-ratio (x-height / font-size) override */
++      font-size-adjust: 0.5;
++      padding: 1rem 1.25rem;
++      border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
++      border-radius: 0.5rem;
++    }
++
++    #independent-theme-container code {
++      font-family: ui-monospace, Menlo, Consolas, monospace;
++      font-size: 1em;
++    }
++
++    /* Fallback for browsers without font-size-adjust support */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code {
++        font-size: 0.9em;
++      }
++      #mixed-fonts-container {
++        line-height: 1.6;
++      }
++    }
++
++    @supports not (font-size-adjust: 0.5) {
++      #independent-theme-container {
++        font-size: 0.95rem;
++        line-height: 1.6;
++      }
++      #independent-theme-container code {
++        font-size: 0.9em;
++      }
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <p id="mixed-fonts-container">
++      Serif body text sits alongside inline code such as
++      <code>font-size-adjust: from-font</code> and <code>document.querySelector()</code>,
++      and both share the same visual x-height so neither looks too big or too small.
++    </p>
++
++    <div id="independent-theme-container">
++      <p>
++        This independent theme uses a different font family with its x-height
++        locked to <code>font-size-adjust: 0.5</code>, keeping its proportions
++        consistent no matter which font in the stack ends up rendering.
++      </p>
++    </div>
++  </main>
++</body>
++</html>

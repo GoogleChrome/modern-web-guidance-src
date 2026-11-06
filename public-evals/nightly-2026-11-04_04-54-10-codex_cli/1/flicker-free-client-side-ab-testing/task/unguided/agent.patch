@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,132 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f7f5ef">
++  <title>FORME — A little more considered.</title>
++  <meta name="description" content="Thoughtful furniture and everyday objects. Discover timeless pieces that make a space feel like you.">
++  <link rel="preconnect" href="https://images.unsplash.com">
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++  <style>
++    :root{--paper:#f7f5ef;--ink:#252923;--muted:#72756c;--orange:#dc5635;--line:#ddded4}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}button,a{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:2px solid var(--orange);outline-offset:5px}.announcement{height:33px;background:#e8ecdf;display:flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:1.4px;text-transform:uppercase}.announcement span{margin:0 13px;font-size:9px}header{height:94px;max-width:1440px;margin:auto;padding:0 5.5%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{font-family:'Manrope',sans-serif;font-size:33px;font-weight:800;letter-spacing:-2.7px;display:flex;align-items:center;gap:3px}.brand i{width:7px;height:7px;border-radius:50%;background:var(--orange);margin-top:17px}.navigation{display:flex;gap:31px;font-size:12px}.navigation a{position:relative}.navigation a:hover:after{content:'';position:absolute;left:0;bottom:-7px;width:100%;height:1px;background:var(--ink)}.nav-tools{display:flex;align-items:center;gap:23px}.icon-button{border:0;background:transparent;padding:5px;cursor:pointer;display:flex;align-items:center;gap:7px;font-size:11px}.icon{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}.bag-count{border:1px solid var(--line);border-radius:50%;height:18px;width:18px;display:grid;place-items:center;font-size:9px}main{max-width:1440px;margin:auto}.hero{display:grid;grid-template-columns:46% 54%;padding:40px 5.5% 42px;min-height:660px}.hero-copy{padding:42px 35px 0 0;display:flex;flex-direction:column;align-items:flex-start}.eyebrow{display:flex;align-items:center;gap:10px;font-size:10px;text-transform:uppercase;letter-spacing:1.8px;font-weight:600}.eyebrow:before{content:'';height:7px;width:7px;background:var(--orange);border-radius:50%}h1{font-family:'Manrope',sans-serif;font-size:clamp(45px,5.5vw,78px);font-weight:500;line-height:1.09;letter-spacing:-4.8px;margin:25px 0 22px}h1 em{font-style:normal;color:var(--orange)}.intro{font-size:13px;line-height:1.9;max-width:300px;margin:0;color:#6c7067}.primary{display:inline-flex;align-items:center;justify-content:space-between;gap:33px;background:var(--orange);color:#fff;padding:17px 22px;font-size:12px;min-width:207px;transition:background .2s,transform .2s}.primary:hover{background:#bd4428;transform:translateY(-2px)}.primary .icon{width:18px}.hero-action{margin-top:27px}.social-proof{display:flex;align-items:center;gap:12px;margin-top:29px}.avatars{display:flex;padding-left:0}.avatars img{width:29px;height:29px;border-radius:50%;object-fit:cover;border:2px solid var(--paper);margin-left:-8px}.avatars img:first-child{margin-left:0}.stars{font-size:10px;letter-spacing:2px;color:#444b3d}.proof-copy{font-size:9px;color:#777c70;margin-top:4px}.proof-copy b{color:var(--ink);font-weight:600}.hero-visual{position:relative;min-width:0}.room{width:100%;height:100%;position:absolute;inset:0;object-fit:cover;object-position:50% 55%;border-radius:3px}.image-label{position:absolute;top:21px;left:22px;display:flex;gap:6px;align-items:center;padding:8px 11px;border-radius:2px;background:rgba(248,246,239,.9);font-size:9px;letter-spacing:1.1px;text-transform:uppercase}.image-label .icon{width:13px;height:13px}.photo-caption{position:absolute;left:25px;bottom:27px;color:white;font-size:10px;letter-spacing:.4px;text-shadow:0 1px 8px #000}.photo-caption span{display:block;font-size:20px;font-family:'Manrope',sans-serif;margin-top:6px;letter-spacing:-.5px}.product-tag{position:absolute;right:20px;bottom:23px;display:flex;align-items:center;gap:15px;background:rgba(248,246,239,.96);padding:14px 15px;box-shadow:0 4px 25px #0000000d}.product-tag small{display:block;font-size:8px;color:#777c70;letter-spacing:1.2px;margin-bottom:5px}.product-tag strong{font-size:11px;font-weight:500}.product-tag .icon{width:17px}.image-index{position:absolute;right:20px;top:23px;color:white;font-size:10px;letter-spacing:2px}.values{display:grid;grid-template-columns:repeat(3,1fr);margin:0 5.5%;padding:22px 0 25px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.value{display:flex;align-items:center;justify-content:center;gap:14px;border-right:1px solid var(--line)}.value:last-child{border:0}.value .icon{width:27px;height:27px;stroke-width:1.1}.value h3{font-size:11px;font-weight:600;margin:0 0 5px}.value p{font-size:10px;color:var(--muted);margin:0}.collection{padding:44px 5.5% 55px}.section-top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:23px}.section-kicker{font-size:9px;letter-spacing:1.7px;color:var(--muted);text-transform:uppercase;margin:0 0 9px}h2{font-family:'Manrope',sans-serif;font-size:30px;font-weight:500;letter-spacing:-1.1px;margin:0}.text-link{display:flex;align-items:center;gap:15px;font-size:10px;padding-bottom:4px;border-bottom:1px solid #a5a79c}.text-link .icon{width:15px}.categories{display:grid;grid-template-columns:repeat(4,1fr);gap:19px}.category-image{height:205px;overflow:hidden;background:#e9e6dc;border-radius:2px;position:relative}.category-image img{width:100%;height:100%;object-fit:cover;transition:transform .5s}.category:hover img{transform:scale(1.045)}.category-label{display:flex;align-items:center;justify-content:space-between;padding-top:13px;font-size:12px}.category-label .icon{width:16px}.category small{display:block;font-size:9px;color:var(--muted);margin-top:5px}.endnote{text-align:center;border-top:1px solid var(--line);margin:0 5.5%;padding:28px 0;font-size:10px;color:var(--muted);letter-spacing:.3px}.endnote span{color:var(--orange)}
++    /* Only this region is an experiment target. The surrounding page is invariant.
++       Visibility is guarded in CSS before the SDK is requested. Never reveal on load,
++       timeout, or error: the SDK must explicitly confirm all variant writes are done. */
++    #experiment-offer{margin-top:15px;min-height:17px;font-size:10px;color:var(--muted);position:relative}#experiment-offer{visibility:hidden}#experiment-offer[data-state="ready"]{visibility:visible}#experiment-offer[data-state="pending"]:after{visibility:visible;content:'';position:absolute;left:0;top:3px;width:171px;height:8px;background:#e8e8df;border-radius:4px}#experiment-offer[data-state="unavailable"]{display:none}
++    .search-panel{position:fixed;inset:0;background:#25292366;z-index:10;display:flex;justify-content:center;align-items:flex-start;padding-top:160px}.search-panel[hidden]{display:none}.search-box{width:min(500px,90vw);background:var(--paper);padding:28px;box-shadow:0 12px 70px #0002}.search-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.search-box input{width:100%;font:inherit;font-size:14px;padding:14px;border:1px solid var(--line);background:white}.search-result{font-size:12px;line-height:1.8;margin-top:15px}.search-result a{text-decoration:underline;text-underline-offset:3px}
++    @media(min-width:1440px){.hero{min-height:700px}.hero-copy{padding-top:55px}}@media(max-width:900px){header{padding:0 5%;height:80px}.navigation{gap:18px}.hero{padding:30px 5%;grid-template-columns:48% 52%;min-height:570px}.hero-copy{padding:28px 20px 0 0}h1{font-size:53px;letter-spacing:-3px}.intro{font-size:12px}.product-tag{right:12px;bottom:16px;padding:12px}.photo-caption{display:none}.category-image{height:170px}.values{margin:0 5%}.value{gap:9px}.value p{font-size:9px}.collection{padding:35px 5%}.categories{gap:12px}}@media(max-width:620px){.announcement{font-size:8px;letter-spacing:1px;height:29px}header{height:73px}.brand{font-size:29px}.navigation{gap:16px;font-size:10px}.navigation a:nth-child(2),.navigation a:nth-child(3){display:none}.nav-tools{gap:9px}.hero{display:flex;flex-direction:column;padding-top:14px;gap:30px}.hero-copy{padding-top:20px}h1{font-size:58px;margin:20px 0;letter-spacing:-3.4px}.intro{max-width:290px;font-size:12px}.hero-action{margin-top:22px}.social-proof{margin-top:22px}.hero-visual{height:400px}.values{padding:21px 0;gap:10px}.value{flex-direction:column;gap:10px;text-align:center;padding:0 6px}.value h3{font-size:9px}.value p{font-size:8px;line-height:1.6}.value .icon{width:23px;height:23px}h2{font-size:25px}.text-link{font-size:9px;gap:7px}.categories{grid-template-columns:repeat(2,1fr);row-gap:24px}.category-image{height:195px}.collection{padding-top:31px}.section-top{margin-bottom:22px}.endnote{font-size:9px;line-height:1.8}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important}}
++  </style>
++  <script>
++    // SDK integration contract: mutate only #experiment-offer, then invoke
++    // window.formeExperiment.ready() or dispatch `experiment:ready` with
++    // detail: { experimentId: 'first-order-offer' }. Async variant work must
++    // finish before signalling. A successful network load is not readiness.
++    (() => {
++      let completed = false;
++      window.formeExperiment = Object.freeze({
++        target: '#experiment-offer',
++        ready() {
++          if (completed) return;
++          const reveal = () => {
++            const region = document.getElementById('experiment-offer');
++            if (!region) return;
++            completed = true;
++            region.dataset.state = 'ready';
++            region.removeAttribute('aria-busy');
++            region.removeAttribute('inert');
++          };
++          if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', reveal, {once:true});
++          else reveal();
++        }
++      });
++      window.addEventListener('experiment:ready', event => {
++        if (event.detail?.experimentId === 'first-order-offer') window.formeExperiment.ready();
++      });
++      window.addEventListener('DOMContentLoaded', () => {
++        const sdk = document.createElement('script');
++        sdk.src = 'https://cdn.example.com/experiment-sdk.js';
++        sdk.async = true;
++        sdk.dataset.experimentTarget = '#experiment-offer';
++        sdk.addEventListener('error', () => {
++          if (!completed) document.getElementById('experiment-offer').dataset.state = 'unavailable';
++        }, {once:true});
++        document.head.appendChild(sdk);
++      }, {once:true});
++    })();
++  </script>
++</head>
++<body>
++  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol><symbol id="bag" viewBox="0 0 24 24"><path d="M5 7h14l1 14H4L5 7Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol><symbol id="leaf" viewBox="0 0 24 24"><path d="M20 3C9 2 3 7 5 14s16 7 15-11Z"/><path d="M3 22 16 9M8 16v-5m0 5h5"/></symbol><symbol id="craft" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Zm-9 5v10l9 5 9-5V7M12 12v10M7 5l10 5"/></symbol><symbol id="truck" viewBox="0 0 24 24"><path d="M3 5h12v12H3V5Zm12 5h4l3 4v3h-7M3 10H1m2 3H1"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></symbol></svg>
++  <div class="announcement">Good design. A little closer to home. <span>✳</span> Free shipping on orders $150+</div>
++  <header>
++    <a class="brand" href="#" aria-label="Forme home">FORME<i></i></a>
++    <nav class="navigation" aria-label="Main navigation"><a href="#collection">Shop all</a><a href="#collection">New arrivals</a><a href="#values">Our philosophy</a><a href="#collection">The collection ↗</a></nav>
++    <div class="nav-tools"><button class="icon-button" id="search-button" aria-label="Search collection"><svg class="icon" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button><button class="icon-button" id="bag-button" aria-label="Shopping bag, 0 items"><svg class="icon"><use href="#bag"/></svg><span class="bag-count">0</span></button></div>
++  </header>
++  <main>
++    <section class="hero" aria-labelledby="hero-heading">
++      <div class="hero-copy">
++        <div class="eyebrow">Objects with intention</div>
++        <h1 id="hero-heading">A little more<br>considered.<br><em>A lot more you.</em></h1>
++        <p class="intro">Thoughtful furniture and everyday objects.<br>Made to be lived with. Designed to stay.</p>
++        <a class="primary hero-action" href="#collection">Find your everyday <svg class="icon"><use href="#arrow"/></svg></a>
++        <div id="experiment-offer" data-experiment="first-order-offer" data-state="pending" aria-busy="true" inert><span data-experiment-content>Make yourself at home. Discover your welcome offer.</span></div>
++        <div class="social-proof"><div class="avatars"><img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=64&h=64&fit=crop&crop=faces" alt="" width="29" height="29"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=64&h=64&fit=crop&crop=faces" alt="" width="29" height="29"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces" alt="" width="29" height="29"></div><div><div class="stars" aria-label="5 out of 5 stars">★★★★★</div><div class="proof-copy">A place in <b>2,000+ happy homes</b></div></div></div>
++      </div>
++      <div class="hero-visual">
++        <img class="room" src="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1500&q=85" alt="A light-filled living room with warm wood furniture, a natural linen sofa, and sculptural objects" fetchpriority="high">
++        <div class="image-label"><svg class="icon"><use href="#leaf"/></svg> Slow living, well made</div><span class="image-index">01 / 03</span>
++        <div class="photo-caption">THE EVERYDAY COLLECTION<span>Room to be yourself.</span></div>
++        <a class="product-tag" href="#collection"><div><small>MEET YOUR NEW FAVORITES</small><strong>The living collection</strong></div><svg class="icon"><use href="#arrow"/></svg></a>
++      </div>
++    </section>
++    <section class="values" id="values" aria-label="Our commitments">
++      <div class="value"><svg class="icon"><use href="#leaf"/></svg><div><h3>Less, but better.</h3><p>Responsibly sourced. Thoughtfully made.</p></div></div>
++      <div class="value"><svg class="icon"><use href="#craft"/></svg><div><h3>Made for the long run.</h3><p>Timeless pieces. Everyday durability.</p></div></div>
++      <div class="value"><svg class="icon"><use href="#truck"/></svg><div><h3>A warm welcome home.</h3><p>Free shipping $150+ & easy returns.</p></div></div>
++    </section>
++    <section class="collection" id="collection" aria-labelledby="collection-heading">
++      <div class="section-top"><div><p class="section-kicker">Find what feels like you</p><h2>Good things, for every corner.</h2></div><a class="text-link" href="#categories">Explore the collection <svg class="icon"><use href="#arrow"/></svg></a></div>
++      <div class="categories" id="categories">
++        <a class="category" href="#" data-category="Furniture"><div class="category-image"><img loading="lazy" src="https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=650&q=80" alt="Sculptural upholstered lounge chair"></div><div class="category-label">Furniture<svg class="icon"><use href="#arrow"/></svg></div><small>Settle into something good.</small></a>
++        <a class="category" href="#" data-category="Lighting"><div class="category-image"><img loading="lazy" src="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=650&q=80" alt="Warm contemporary lighting"></div><div class="category-label">Lighting<svg class="icon"><use href="#arrow"/></svg></div><small>A softer kind of glow.</small></a>
++        <a class="category" href="#" data-category="Objects & decor"><div class="category-image"><img loading="lazy" src="https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=650&q=80" alt="Handcrafted ceramic vessels in earthy tones"></div><div class="category-label">Objects & decor<svg class="icon"><use href="#arrow"/></svg></div><small>The little things are the big things.</small></a>
++        <a class="category" href="#" data-category="Textiles"><div class="category-image"><img loading="lazy" src="https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=650&q=80" alt="Soft pillows and natural woven textiles"></div><div class="category-label">Textiles<svg class="icon"><use href="#arrow"/></svg></div><small>Comfort, in every thread.</small></a>
++      </div>
++    </section>
++    <footer class="endnote">A home takes shape over time. <span>Make it yours.</span> &nbsp; © 2026 FORME</footer>
++  </main>
++  <div class="search-panel" id="dialog-panel" hidden><section class="search-box" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><div class="search-head"><h2 id="dialog-title">Find your everyday.</h2><button class="icon-button" id="close-dialog" aria-label="Close dialog">✕</button></div><div id="dialog-body"></div></section></div>
++  <script>
++    const panel = document.getElementById('dialog-panel');
++    const title = document.getElementById('dialog-title');
++    const body = document.getElementById('dialog-body');
++    let previousFocus;
++    function openDialog(heading, content) { previousFocus = document.activeElement; title.textContent = heading; body.innerHTML = content; panel.hidden = false; document.body.style.overflow = 'hidden'; (body.querySelector('input') || document.getElementById('close-dialog')).focus(); }
++    function closeDialog() { panel.hidden = true; document.body.style.overflow = ''; previousFocus?.focus(); }
++    document.getElementById('close-dialog').addEventListener('click', closeDialog);
++    panel.addEventListener('click', event => { if (event.target === panel) closeDialog(); });
++    document.addEventListener('keydown', event => {
++      if (panel.hidden) return;
++      if (event.key === 'Escape') closeDialog();
++      if (event.key === 'Tab') { const items = [...panel.querySelectorAll('button,input,a[href]')]; const first = items[0], last = items[items.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } }
++    });
++    document.getElementById('search-button').addEventListener('click', () => {
++      openDialog('Find your everyday.', '<label for="collection-search" class="section-kicker">Search the collection</label><input id="collection-search" type="search" placeholder="Try furniture, lighting, textiles…"><div class="search-result" id="search-result">Find thoughtful pieces for every corner.</div>');
++      document.getElementById('collection-search').addEventListener('input', event => {
++        const term = event.target.value.trim().toLowerCase();
++        const matches = [...document.querySelectorAll('[data-category]')].filter(item => item.dataset.category.toLowerCase().includes(term));
++        const result = document.getElementById('search-result'); result.replaceChildren();
++        if (!matches.length) { result.textContent = 'No matching collections. Try furniture, lighting, decor, or textiles.'; return; }
++        matches.forEach(item => { const link = document.createElement('a'); link.href = '#categories'; link.textContent = item.dataset.category + ' →'; link.style.display = 'block'; link.addEventListener('click', closeDialog); result.appendChild(link); });
++      });
++    });
++    document.getElementById('bag-button').addEventListener('click', () => openDialog('A little room for something good.', '<p class="search-result">Your bag is empty. Your next favorite is waiting.</p><a class="primary" href="#collection" id="continue-shopping">Explore the collection <span>↗</span></a>'));
++    body.addEventListener('click', event => { if (event.target.closest('#continue-shopping')) closeDialog(); });
++    document.querySelectorAll('[data-category]').forEach(item => item.addEventListener('click', event => { event.preventDefault(); openDialog(item.dataset.category, '<p class="search-result">Our ' + item.dataset.category.toLowerCase() + ' collection is taking shape. Thoughtful pieces, worth the wait.</p><button class="primary" id="back-collection">Keep exploring <span>↗</span></button>'); document.getElementById('back-collection').addEventListener('click', closeDialog); }));
++  </script>
++</body>
++</html>

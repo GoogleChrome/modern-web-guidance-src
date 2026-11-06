@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,85 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++
++      list-style: none;
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    .feedback-log:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .feedback-entry {
++      padding: 15px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .feedback-entry:first-child {
++      padding-top: 0;
++    }
++
++    .feedback-entry:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .feedback-entry blockquote {
++      font-style: italic;
++    }
++
++    .feedback-meta {
++      margin-top: 6px;
++      font-size: 0.85rem;
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .feedback-meta .rating {
++      color: var(--accent);
++      margin-left: 8px;
++      letter-spacing: 2px;
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers without scrollbar-color */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 4px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +271,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback</h2>
++      <ul class="feedback-log" tabindex="0" aria-label="Customer testimonials">
++        <li class="feedback-entry">
++          <blockquote>“The Maple Oat Latte is my new autumn ritual. Perfectly sweet without being overpowering.”</blockquote>
++          <p class="feedback-meta">— Sarah M.<span class="rating" aria-label="5 out of 5 stars">★★★★★</span></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>“Best cold brew in town, hands down. Smooth, rich, and never bitter.”</blockquote>
++          <p class="feedback-meta">— James T.<span class="rating" aria-label="5 out of 5 stars">★★★★★</span></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>“The baristas remembered my order after just two visits. That kind of service keeps me coming back.”</blockquote>
++          <p class="feedback-meta">— Priya K.<span class="rating" aria-label="5 out of 5 stars">★★★★★</span></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>“Dark Roast Espresso has that bold, smoky kick I need before my 7 AM meetings.”</blockquote>
++          <p class="feedback-meta">— Daniel R.<span class="rating" aria-label="4 out of 5 stars">★★★★☆</span></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>“Love that the beans are ethically sourced. You can taste the care in every cup.”</blockquote>
++          <p class="feedback-meta">— Elena G.<span class="rating" aria-label="5 out of 5 stars">★★★★★</span></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>“Online ordering was quick and my drink was ready the moment I walked in.”</blockquote>
++          <p class="feedback-meta">— Marcus L.<span class="rating" aria-label="4 out of 5 stars">★★★★☆</span></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>“Cozy atmosphere, great Wi-Fi, and the pastries pair perfectly with the house blend.”</blockquote>
++          <p class="feedback-meta">— Hannah W.<span class="rating" aria-label="5 out of 5 stars">★★★★★</span></p>
++        </li>
++        <li class="feedback-entry">
++          <blockquote>“The rewards program is genuinely generous. Free drink every tenth visit!”</blockquote>
++          <p class="feedback-meta">— Omar S.<span class="rating" aria-label="5 out of 5 stars">★★★★★</span></p>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

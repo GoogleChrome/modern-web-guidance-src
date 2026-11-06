@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,38 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Countdown Timer */
++    .promo-timer {
++      margin: 15px 0 5px;
++      padding: 12px;
++      background-color: #fff8f0;
++      border: 1px solid var(--secondary);
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      font-size: 0.9rem;
++      text-align: left;
++    }
++
++    .promo-timer .timer-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin: 4px 0;
++    }
++
++    .promo-timer .timer-label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .promo-timer .timer-value {
++      font-variant-numeric: tabular-nums;
++      font-weight: bold;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -177,11 +207,21 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="maple-oat-latte-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-oat-countdown" aria-live="polite">
++            <div class="timer-row">
++              <span class="timer-label">Offer ends in:</span>
++              <span class="timer-value" id="countdown-remaining">Calculating...</span>
++            </div>
++            <div class="timer-row">
++              <span class="timer-label">Time elapsed:</span>
++              <span class="timer-value" id="countdown-elapsed">Calculating...</span>
++            </div>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +246,100 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function updateMapleOatTimer() {
++      const remainingEl = document.getElementById('countdown-remaining');
++      const elapsedEl = document.getElementById('countdown-elapsed');
++      if (!remainingEl || !elapsedEl) return;
++
++      const userTimeZone = typeof Temporal !== 'undefined'
++        ? Temporal.Now.timeZoneId()
++        : Intl.DateTimeFormat().resolvedOptions().timeZone;
++
++      let remainingDays = 0;
++      let remainingHours = 0;
++      let elapsedDays = 0;
++      let elapsedHours = 0;
++      let isExpired = false;
++
++      if (typeof Temporal !== 'undefined') {
++        const now = Temporal.Now.zonedDateTimeISO(userTimeZone);
++
++        // Promotion starts February 1, 2026 at midnight in the user's local time zone
++        const promoStart = Temporal.ZonedDateTime.from({
++          year: 2026,
++          month: 2,
++          day: 1,
++          hour: 0,
++          minute: 0,
++          second: 0,
++          timeZone: userTimeZone
++        });
++
++        // Offer ends March 1, 2026 at midnight in the user's local time zone
++        const promoEnd = Temporal.ZonedDateTime.from({
++          year: 2026,
++          month: 3,
++          day: 1,
++          hour: 0,
++          minute: 0,
++          second: 0,
++          timeZone: userTimeZone
++        });
++
++        if (Temporal.ZonedDateTime.compare(now, promoEnd) >= 0) {
++          isExpired = true;
++        } else {
++          const remainingDuration = now.until(promoEnd, {
++            largestUnit: 'days',
++            smallestUnit: 'hours',
++            roundingMode: 'trunc'
++          });
++          remainingDays = remainingDuration.days;
++          remainingHours = remainingDuration.hours;
++        }
++
++        if (Temporal.ZonedDateTime.compare(now, promoStart) > 0) {
++          const elapsedDuration = now.since(promoStart, {
++            largestUnit: 'days',
++            smallestUnit: 'hours',
++            roundingMode: 'trunc'
++          });
++          elapsedDays = elapsedDuration.days;
++          elapsedHours = elapsedDuration.hours;
++        }
++      } else {
++        const now = new Date();
++        const promoStart = new Date(2026, 1, 1, 0, 0, 0);
++        const promoEnd = new Date(2026, 2, 1, 0, 0, 0);
++
++        const remainingMs = promoEnd.getTime() - now.getTime();
++        if (remainingMs <= 0) {
++          isExpired = true;
++        } else {
++          const totalRemainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
++          remainingDays = Math.floor(totalRemainingHours / 24);
++          remainingHours = totalRemainingHours % 24;
++        }
++
++        const elapsedMs = Math.max(0, now.getTime() - promoStart.getTime());
++        const totalElapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
++        elapsedDays = Math.floor(totalElapsedHours / 24);
++        elapsedHours = totalElapsedHours % 24;
++      }
++
++      if (isExpired) {
++        remainingEl.textContent = `0 days, 0 hours (Offer ended)`;
++      } else {
++        remainingEl.textContent = `${remainingDays} days, ${remainingHours} hours`;
++      }
++
++      elapsedEl.textContent = `${elapsedDays} days, ${elapsedHours} hours`;
++    }
++
++    window.addEventListener('DOMContentLoaded', updateMapleOatTimer);
++  </script>
+ </body>
+ 
+ </html>

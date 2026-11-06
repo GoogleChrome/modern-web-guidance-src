@@ -1,0 +1,176 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..5020c75
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,92 @@
++import React, { useState } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++interface Story {
++  id: string;
++  data: {
++    title: string;
++    date: Date | string;
++  };
++}
++
++interface TopStoriesSliderProps {
++  stories: Story[];
++}
++
++export default function TopStoriesSlider({ stories }: TopStoriesSliderProps) {
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
++  const [step, setStep] = useState(0);
++
++  if (!stories || stories.length === 0) {
++    return null;
++  }
++
++  const handlePrevious = () => {
++    setDirection('prev');
++    setCurrentIndex((prev) => (prev - 1 + stories.length) % stories.length);
++    setStep((prev) => prev + 1);
++  };
++
++  const handleNext = () => {
++    setDirection('next');
++    setCurrentIndex((prev) => (prev + 1) % stories.length);
++    setStep((prev) => prev + 1);
++  };
++
++  const currentStory = stories[currentIndex];
++  const formattedDate =
++    currentStory.data.date instanceof Date
++      ? currentStory.data.date.toLocaleDateString()
++      : new Date(currentStory.data.date).toLocaleDateString();
++
++  const animationClass =
++    direction === 'next'
++      ? 'slide-from-right'
++      : direction === 'prev'
++      ? 'slide-from-left'
++      : '';
++
++  return (
++    <section aria-label="Top Stories" className="bg-white border-b border-gray-300">
++      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <div className="flex items-center justify-between gap-4">
++          <button
++            type="button"
++            onClick={handlePrevious}
++            aria-label="Previous"
++            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer shrink-0"
++          >
++            <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
++            <span>Previous</span>
++          </button>
++
++          <div className="overflow-hidden flex-1">
++            <div
++              key={step}
++              data-direction={direction ?? undefined}
++              className={`text-center ${animationClass}`}
++            >
++              <a href={`${import.meta.env.BASE_URL}articles/${currentStory.id}`}>
++                <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">
++                  {currentStory.data.title}
++                </h3>
++              </a>
++              <span className="text-xs text-gray-500">{formattedDate}</span>
++            </div>
++          </div>
++
++          <button
++            type="button"
++            onClick={handleNext}
++            aria-label="Next"
++            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer shrink-0"
++          >
++            <span>Next</span>
++            <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
++          </button>
++        </div>
++      </div>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..58c185b 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -39,20 +40,7 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider client:load stories={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d6ce8d9 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,38 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++@keyframes slide-in-from-right {
++  from {
++    transform: translateX(100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++@keyframes slide-in-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++.slide-from-right {
++  animation: slide-in-from-right 300ms ease-out;
++}
++
++.slide-from-left {
++  animation: slide-in-from-left 300ms ease-out;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .slide-from-right,
++  .slide-from-left {
++    animation: none !important;
++    transition: none !important;
++  }
+ }
+\ No newline at end of file

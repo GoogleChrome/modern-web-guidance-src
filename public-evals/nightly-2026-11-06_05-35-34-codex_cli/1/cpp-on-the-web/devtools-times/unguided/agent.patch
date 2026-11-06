@@ -1,0 +1,747 @@
+diff --git a/README.md b/README.md
+index 4479b53..c19efe9 100644
+--- a/README.md
++++ b/README.md
+@@ -1,17 +1,31 @@
+-# The DevTools Times
++# smallpt in your browser
+ 
+-This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
++Kevin Beason’s C++ path tracer, compiled to WebAssembly with Emscripten. The Astro home page is prerendered to `dist/client/index.html`. The existing deployment base is `/devtools-times/`.
+ 
++The renderer runs entirely on the client in a module worker. Each pass adds four samples per pixel. Randomize changes the mirror and glass sphere reflectance, preserving their original materials and the Cornell box. Settings restart rendering; reset restores the original scene. PNG export saves the current render.
++
++## Build
++
++```sh
++pnpm install
++pnpm build
++```
++
++Compiled WebAssembly and its JavaScript loader are checked in under `public/wasm`, so the app build does not require a C++ toolchain. To rebuild the renderer with Emscripten installed:
+ 
+ ```sh
+-pnpm install && pnpm run start
++pnpm build:wasm
++node scripts/test-wasm.mjs
+ ```
+ 
+-The application will now be running on `http://localhost:11224`.
++`renderer/smallpt-original.cpp` is the unmodified upstream source. `renderer/smallpt.cpp` adds the progressive RGBA adapter, seeded color control, and a depth cap to bound stack usage. The initial preview is rendered from this same C++ source at 128 samples per pixel, and live output replaces it as soon as the first pass completes.
++
++To regenerate the initial preview (requires `g++` and Python 3):
+ 
+-## Tech Stack
++```sh
++g++ renderer/smallpt.cpp -O3 -DSMALLPT_PREVIEW -o /tmp/smallpt-preview
++/tmp/smallpt-preview
++python3 scripts/convert-preview.py
++```
+ 
+-- **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+-- **[React](https://react.dev/)**: Used for UI components.
+-- **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+-- **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++Original project: https://www.kevinbeason.com/smallpt/ — Copyright © 2006–2008 Kevin Beason, MIT license, retained in `renderer/LICENSE.txt` and distributed in `public/wasm/LICENSE.txt`.
+diff --git a/package.json b/package.json
+index bfffcf0..280c195 100644
+--- a/package.json
++++ b/package.json
+@@ -7,7 +7,8 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "build:wasm": "bash scripts/build-wasm.sh"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.9",
+diff --git a/public/favicon.svg b/public/favicon.svg
+index beeeb40..59fa90b 100644
+--- a/public/favicon.svg
++++ b/public/favicon.svg
+@@ -1,4 +1 @@
+-<svg width="284" height="284" viewBox="0 0 284 284" fill="none" xmlns="http://www.w3.org/2000/svg">
+-<rect width="284" height="284" fill="black"/>
+-<path d="M52.456 117.6V110.56C53.9067 110.389 55.6133 110.219 57.576 110.048C59.624 109.792 61.6293 109.579 63.592 109.408C65.64 109.152 67.3893 108.981 68.84 108.896C70.376 108.725 71.3573 108.683 71.784 108.768C72.552 109.024 73.2773 109.536 73.96 110.304C74.728 110.987 75.4107 111.755 76.008 112.608C76.6053 113.461 76.9467 114.101 77.032 114.528V176.608L96.232 180.96C97.0853 181.131 97.8533 180.96 98.536 180.448C99.2187 179.936 99.816 179.125 100.328 178.016C100.84 176.907 101.267 175.541 101.608 173.92C102.291 170.933 102.717 167.221 102.888 162.784C103.144 158.261 103.272 153.355 103.272 148.064C103.272 143.712 103.059 139.659 102.632 135.904C102.205 132.149 101.565 128.864 100.712 126.048C99.944 123.232 98.92 121.056 97.64 119.52C96.4453 117.984 94.9947 117.301 93.288 117.472L85.48 118.112L87.528 108.64H95.08C98.3227 108.64 101.523 109.28 104.68 110.56C107.837 111.755 110.696 113.803 113.256 116.704C115.901 119.605 117.949 123.531 119.4 128.48C120.936 133.429 121.704 139.616 121.704 147.04C121.704 152.416 121.491 157.067 121.064 160.992C120.637 164.917 119.912 168.416 118.888 171.488C118.547 172.427 117.651 173.621 116.2 175.072C114.835 176.523 113.128 178.101 111.08 179.808C109.032 181.429 106.899 183.008 104.68 184.544C102.547 185.995 100.584 187.189 98.792 188.128C97 189.067 95.6347 189.536 94.696 189.536C91.0267 189.536 87.4853 189.451 84.072 189.28C80.744 189.195 77.5013 188.981 74.344 188.64C71.1867 188.299 68.0293 187.915 64.872 187.488C64.1893 187.317 63.4213 186.891 62.568 186.208C61.8 185.44 61.1173 184.629 60.52 183.776C59.9227 182.923 59.5813 182.283 59.496 181.856V120.16L52.456 117.6ZM85.48 108.64H89.576V173.28C89.576 173.792 89.2773 174.731 88.68 176.096C88.168 177.376 87.4427 178.869 86.504 180.576H82.792V117.856C82.792 117.088 83.048 115.851 83.56 114.144C84.1573 112.437 84.7973 110.603 85.48 108.64ZM153.023 124.256C151.658 124.256 150.548 125.109 149.695 126.816C148.842 128.523 148.159 130.784 147.647 133.6C147.22 136.331 146.922 139.36 146.751 142.688C146.58 146.016 146.495 149.259 146.495 152.416C146.495 157.109 146.964 161.291 147.903 164.96C148.927 168.544 150.506 171.36 152.639 173.408C154.858 175.371 157.716 176.352 161.215 176.352L177.215 176.224V186.08C175.85 186.507 174.058 186.933 171.839 187.36C169.62 187.701 167.359 188 165.055 188.256C162.751 188.597 160.746 188.853 159.039 189.024C157.332 189.195 156.223 189.28 155.711 189.28C149.567 189.28 144.404 187.829 140.223 184.928C136.042 181.941 132.927 177.717 130.879 172.256C128.831 166.795 127.807 160.309 127.807 152.8C127.807 149.387 128.106 146.059 128.703 142.816C129.386 139.573 130.282 136.629 131.391 133.984C132.5 132.619 134.036 131.125 135.999 129.504C138.047 127.797 140.266 126.304 142.655 125.024C145.044 123.744 147.348 123.019 149.567 122.848L153.023 124.256ZM182.335 110.56L179.775 121.952C178.068 122.635 176.148 123.317 174.015 124C171.967 124.683 169.962 125.237 167.999 125.664C166.036 126.091 164.33 126.304 162.879 126.304C160.916 126.304 159.21 126.091 157.759 125.664C156.394 125.237 154.986 124.811 153.535 124.384C152.17 123.957 150.548 123.744 148.671 123.744C148.159 123.744 147.476 123.787 146.623 123.872C145.77 123.957 145.002 124.085 144.319 124.256L144.063 123.488L121.663 121.056L124.095 106.976C129.983 107.829 135.572 108.64 140.863 109.408C146.154 110.176 150.719 110.816 154.559 111.328C158.484 111.755 161.258 111.968 162.879 111.968C164.159 111.968 165.652 111.84 167.359 111.584C169.151 111.328 171.156 110.987 173.375 110.56C175.679 110.048 178.154 109.536 180.799 109.024L182.335 110.56ZM154.047 176.352V117.6H160.831V169.056C160.831 169.568 160.532 170.507 159.935 171.872C159.423 173.152 158.698 174.645 157.759 176.352H154.047ZM204.807 123.744C203.186 123.744 201.82 124.683 200.711 126.56C199.687 128.437 198.876 130.784 198.279 133.6C197.682 136.416 197.255 139.317 196.999 142.304C196.828 145.291 196.743 147.893 196.743 150.112C196.743 155.232 197.212 160.053 198.151 164.576C199.175 169.099 200.882 172.768 203.271 175.584C205.66 178.315 208.946 179.68 213.127 179.68L229.767 179.552V186.208C228.658 186.549 226.951 186.891 224.647 187.232C222.343 187.573 219.911 187.872 217.351 188.128C214.876 188.469 212.658 188.725 210.695 188.896C208.818 189.067 207.623 189.152 207.111 189.152C201.991 189.152 197.724 187.445 194.311 184.032C190.898 180.619 188.338 176.096 186.631 170.464C184.924 164.832 184.071 158.773 184.071 152.288C184.071 147.851 184.37 144.181 184.967 141.28C185.65 138.293 186.631 135.392 187.911 132.576C188.508 131.637 189.447 130.443 190.727 128.992C192.092 127.541 193.756 126.176 195.719 124.896C197.682 123.616 199.858 122.763 202.247 122.336L204.807 123.744ZM234.247 112.352L231.687 122.336C229.81 123.019 227.847 123.659 225.799 124.256C223.751 124.768 221.788 125.195 219.911 125.536C218.034 125.792 216.327 125.92 214.791 125.92C212.658 125.92 210.951 125.707 209.671 125.28C208.391 124.853 207.154 124.427 205.959 124C204.764 123.573 203.186 123.36 201.223 123.36C200.711 123.36 200.156 123.403 199.559 123.488C199.047 123.488 198.535 123.573 198.023 123.744L197.767 122.976L177.799 120.8L180.231 108.64C185.778 109.323 190.812 110.048 195.335 110.816C199.943 111.499 203.911 112.053 207.239 112.48C210.567 112.907 213.042 113.12 214.663 113.12C215.858 113.12 217.266 113.077 218.887 112.992C220.594 112.821 222.599 112.565 224.903 112.224C227.207 111.797 229.81 111.285 232.711 110.688L234.247 112.352ZM205.063 179.936V117.984H211.719V172.64C211.719 173.152 211.506 174.091 211.079 175.456C210.652 176.736 209.97 178.229 209.031 179.936H205.063Z" fill="white"/>
+-</svg>
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#183c2c"/><path d="m32 9 22 23-22 23L10 32Z" fill="none" stroke="#c6d5b2" stroke-width="4"/><path d="m32 22 10 10-10 10-10-10Z" fill="#c6d5b2"/></svg>
+diff --git a/public/render-preview.png b/public/render-preview.png
+new file mode 100644
+index 0000000..d71d93e
+Binary files /dev/null and b/public/render-preview.png differ
+diff --git a/public/wasm/LICENSE.txt b/public/wasm/LICENSE.txt
+new file mode 100644
+index 0000000..08255c8
+--- /dev/null
++++ b/public/wasm/LICENSE.txt
+@@ -0,0 +1,22 @@
++LICENSE
++
++Copyright (c) 2006-2008 Kevin Beason (kevin.beason@gmail.com)
++
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of this software and associated documentation files (the
++"Software"), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish,
++distribute, sublicense, and/or sell copies of the Software, and to
++permit persons to whom the Software is furnished to do so, subject to
++the following conditions:
++
++The above copyright notice and this permission notice shall be included
++in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/public/wasm/render-worker.js b/public/wasm/render-worker.js
+new file mode 100644
+index 0000000..d429d70
+--- /dev/null
++++ b/public/wasm/render-worker.js
+@@ -0,0 +1,22 @@
++import createSmallpt from './smallpt.js';
++
++self.onmessage = async ({ data }) => {
++  try {
++    const { width, height, samples, seed, colored } = data;
++    const engine = await createSmallpt();
++    engine._init(width, height, seed, colored ? 1 : 0);
++    const colors = [0, 1].map(sphere => [0, 1, 2].map(channel => engine._get_color(sphere, channel)));
++    self.postMessage({ type: 'ready', colors });
++    const passes = samples / 4;
++    for (let pass = 0; pass < passes; pass++) {
++      for (let row = 0; row < height; row += 8) {
++        engine._render_rows(row, Math.min(8, height - row));
++        self.postMessage({ type: 'progress', progress: (pass + Math.min(row + 8, height) / height) / passes });
++      }
++      const pixels = engine.HEAPU8.slice(engine._get_pixels(), engine._get_pixels() + width * height * 4);
++      self.postMessage({ type: 'frame', pixels, samples: (pass + 1) * 4, done: pass === passes - 1 }, [pixels.buffer]);
++    }
++  } catch (error) {
++    self.postMessage({ type: 'error', message: error instanceof Error ? error.message : String(error) });
++  }
++};
+diff --git a/public/wasm/smallpt.js b/public/wasm/smallpt.js
+new file mode 100644
+index 0000000..7b3966f
+--- /dev/null
++++ b/public/wasm/smallpt.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";if(ENVIRONMENT_IS_NODE){const{createRequire}=await import("node:module");var require=createRequire(import.meta.url)}var programArgs=[];var thisProgram="./this.program";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_NODE){var fs=require("node:fs");if(_scriptName.startsWith("file:")){scriptDirectory=require("node:path").dirname(require("node:url").fileURLToPath(_scriptName))+"/"}readBinary=filename=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename);return ret};readAsync=async(filename,binary=true)=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename,binary?undefined:"utf8");return ret};if(process.argv.length>1){thisProgram=process.argv[1].replace(/\\/g,"/")}programArgs=process.argv.slice(2);quit_=(status,toThrow)=>{process.exitCode=status;throw toThrow}}else if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var isFileURI=filename=>filename.startsWith("file://");class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){if(Module["preRun"]){if(typeof Module["preRun"]=="function")Module["preRun"]=[Module["preRun"]];while(Module["preRun"].length){addOnPreRun(Module["preRun"].shift())}}callRuntimeCallbacks(onPreRuns)}function initRuntime(){runtimeInitialized=true;wasmExports["d"]()}function postRun(){if(Module["postRun"]){if(typeof Module["postRun"]=="function")Module["postRun"]=[Module["postRun"]];while(Module["postRun"].length){addOnPostRun(Module["postRun"].shift())}}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(file==wasmBinaryFile&&wasmBinary){return new Uint8Array(wasmBinary)}if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary&&!ENVIRONMENT_IS_NODE){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();if(Module["instantiateWasm"]){return new Promise((resolve,reject)=>{Module["instantiateWasm"](info,(inst,mod)=>{resolve(receiveInstance(inst,mod))})})}wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0){callbacks.shift()(Module)}};var onPostRuns=[];var addOnPostRun=cb=>onPostRuns.push(cb);var onPreRuns=[];var addOnPreRun=cb=>onPreRuns.push(cb);var noExitRuntime=true;var __abort_js=()=>abort("");var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{if(Module["noExitRuntime"])noExitRuntime=Module["noExitRuntime"];if(Module["print"])out=Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["wasmBinary"])wasmBinary=Module["wasmBinary"];if(Module["arguments"])programArgs=Module["arguments"];if(Module["thisProgram"])thisProgram=Module["thisProgram"];if(Module["preInit"]){if(typeof Module["preInit"]=="function")Module["preInit"]=[Module["preInit"]];while(Module["preInit"].length>0){Module["preInit"].shift()()}}}var _init,_get_pixels,_get_color,_render_rows,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_init=Module["_init"]=wasmExports["e"];_get_pixels=Module["_get_pixels"]=wasmExports["f"];_get_color=Module["_get_color"]=wasmExports["g"];_render_rows=Module["_render_rows"]=wasmExports["h"];memory=wasmMemory=wasmExports["c"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={a:__abort_js,b:_emscripten_resize_heap};async function run(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}export default Module;
+diff --git a/public/wasm/smallpt.wasm b/public/wasm/smallpt.wasm
+new file mode 100755
+index 0000000..bef3215
+Binary files /dev/null and b/public/wasm/smallpt.wasm differ
+diff --git a/renderer/LICENSE.txt b/renderer/LICENSE.txt
+new file mode 100644
+index 0000000..08255c8
+--- /dev/null
++++ b/renderer/LICENSE.txt
+@@ -0,0 +1,22 @@
++LICENSE
++
++Copyright (c) 2006-2008 Kevin Beason (kevin.beason@gmail.com)
++
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of this software and associated documentation files (the
++"Software"), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish,
++distribute, sublicense, and/or sell copies of the Software, and to
++permit persons to whom the Software is furnished to do so, subject to
++the following conditions:
++
++The above copyright notice and this permission notice shall be included
++in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/renderer/smallpt-original.cpp b/renderer/smallpt-original.cpp
+new file mode 100644
+index 0000000..61e2eda
+--- /dev/null
++++ b/renderer/smallpt-original.cpp
+@@ -0,0 +1,99 @@
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++int main(int argc, char *argv[]){
++  int w=1024, h=768, samps = argc==2 ? atoi(argv[1])/4 : 1; // # samples
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r, *c=new Vec[w*h];
++#pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
++  for (int y=0; y<h; y++){                       // Loop over image rows
++    fprintf(stderr,"\rRendering (%d spp) %5.2f%%",samps*4,100.*y/(h-1));
++    for (unsigned short x=0, Xi[3]={0,0,y*y*y}; x<w; x++)   // Loop cols
++      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++  }
++  FILE *f = fopen("image.ppm", "w");         // Write image to PPM file.
++  fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
++  for (int i=0; i<w*h; i++)
++    fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
++}
+diff --git a/renderer/smallpt.cpp b/renderer/smallpt.cpp
+new file mode 100644
+index 0000000..76e7e97
+--- /dev/null
++++ b/renderer/smallpt.cpp
+@@ -0,0 +1,143 @@
++#include <stdint.h>
++#include <string.h>
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  if (depth > 128) return Vec();
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) { if (erand48(Xi)<p) f=f*(1/p); else return obj.e; } //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++// Browser adapter: progressive 2x2 subpixel passes, RGBA output, seeded colors.
++// The scene, BSDFs, camera and integration are from Kevin Beason's smallpt.
++static int width, height, pass;
++static unsigned int sceneSeed;
++static Vec *accum = nullptr;
++static unsigned char *pixels = nullptr;
++static uint32_t rng;
++static double randomColor() {
++  rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5;
++  return .28 + .68 * (rng / 4294967295.0);
++}
++extern "C" {
++void init(int w, int h, unsigned int seed, int colored) {
++  delete[] accum; delete[] pixels;
++  width=w; height=h; pass=0; sceneSeed=seed; rng=seed ? seed : 1;
++  accum=new Vec[w*h](); pixels=new unsigned char[w*h*4]();
++  spheres[6].c=Vec(.999,.999,.999); spheres[7].c=Vec(.999,.999,.999);
++  if (colored) {
++    double r=randomColor(), g=randomColor(), b=randomColor();
++    spheres[6].c=Vec(r,g,b);
++    r=randomColor(); g=randomColor(); b=randomColor();
++    spheres[7].c=Vec(r,g,b);
++  }
++}
++unsigned char* get_pixels() { return pixels; }
++double get_color(int sphere, int channel) {
++  Vec c=spheres[sphere==0?6:7].c;
++  return channel==0 ? c.x : channel==1 ? c.y : c.z;
++}
++void render_rows(int start, int count) {
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
++  Vec cx=Vec(width*.5135/height), cy=(cx%cam.d).norm()*.5135;
++  for(int y=start; y<start+count && y<height; ++y) {
++    unsigned short Xi[3]={(unsigned short)(sceneSeed+pass*7919),
++      (unsigned short)(sceneSeed>>16),(unsigned short)(y*y*y+pass*1777)};
++    for(int x=0; x<width; ++x) {
++      Vec value;
++      for(int sy=0; sy<2; ++sy) for(int sx=0; sx<2; ++sx) {
++        double r1=2*erand48(Xi), dx=r1<1?sqrt(r1)-1:1-sqrt(2-r1);
++        double r2=2*erand48(Xi), dy=r2<1?sqrt(r2)-1:1-sqrt(2-r2);
++        Vec d=cx*(((sx+.5+dx)/2+x)/width-.5)+
++          cy*(((sy+.5+dy)/2+y)/height-.5)+cam.d;
++        Vec r=radiance(Ray(cam.o+d*140,d.norm()),0,Xi);
++        value=value+r*.25;
++      }
++      int i=(height-y-1)*width+x;
++      accum[i]=accum[i]+value;
++      Vec c=accum[i]*(1.0/(pass+1));
++      pixels[4*i]=toInt(c.x); pixels[4*i+1]=toInt(c.y);
++      pixels[4*i+2]=toInt(c.z); pixels[4*i+3]=255;
++    }
++  }
++  if(start+count>=height) ++pass;
++}
++}
++#ifdef SMALLPT_PREVIEW
++int main() {
++  init(640,480,420,0);
++  for(int p=0;p<32;++p) render_rows(0,480);
++  FILE *f=fopen("/tmp/smallpt-preview.ppm","wb");
++  fprintf(f,"P6\n%d %d\n255\n",width,height);
++  for(int i=0;i<width*height;++i) fwrite(pixels+i*4,1,3,f);
++  fclose(f);
++}
++#endif
+diff --git a/scripts/build-wasm.sh b/scripts/build-wasm.sh
+new file mode 100755
+index 0000000..0e3b124
+--- /dev/null
++++ b/scripts/build-wasm.sh
+@@ -0,0 +1,5 @@
++#!/usr/bin/env bash
++set -euo pipefail
++cd "$(dirname "$0")/.."
++mkdir -p public/wasm
++em++ renderer/smallpt.cpp -O3 --no-entry -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT=web,worker,node -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=1048576 -s FILESYSTEM=0 -s EXPORTED_RUNTIME_METHODS='["HEAPU8"]' -s EXPORTED_FUNCTIONS='["_init","_render_rows","_get_pixels","_get_color"]' -o public/wasm/smallpt.js
+diff --git a/scripts/convert-preview.py b/scripts/convert-preview.py
+new file mode 100644
+index 0000000..fef15b5
+--- /dev/null
++++ b/scripts/convert-preview.py
+@@ -0,0 +1,20 @@
++"""Convert the C++ renderer's PPM preview to a dependency-free PNG."""
++from pathlib import Path
++import struct
++import zlib
++
++header, dimensions, maximum, pixels = Path('/tmp/smallpt-preview.ppm').read_bytes().split(b'\n', 3)
++width, height = map(int, dimensions.split())
++assert header == b'P6' and maximum == b'255'
++assert len(pixels) == width * height * 3
++scanlines = b''.join(b'\0' + pixels[y * width * 3:(y + 1) * width * 3] for y in range(height))
++
++def chunk(kind, data):
++    return (struct.pack('>I', len(data)) + kind + data
++            + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff))
++
++Path('public/render-preview.png').write_bytes(
++    b'\x89PNG\r\n\x1a\n'
++    + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0))
++    + chunk(b'IDAT', zlib.compress(scanlines, 9))
++    + chunk(b'IEND', b''))
+diff --git a/scripts/test-wasm.mjs b/scripts/test-wasm.mjs
+new file mode 100644
+index 0000000..97bc2a3
+--- /dev/null
++++ b/scripts/test-wasm.mjs
+@@ -0,0 +1,20 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import createSmallpt from '../public/wasm/smallpt.js';
++const engine = await createSmallpt({ wasmBinary: await readFile(new URL('../public/wasm/smallpt.wasm', import.meta.url)) });
++function frame(seed, colored) {
++  engine._init(32, 24, seed, colored);
++  for (let row = 0; row < 24; row += 8) engine._render_rows(row, 8);
++  return engine.HEAPU8.slice(engine._get_pixels(), engine._get_pixels() + 32 * 24 * 4);
++}
++const original = frame(420, 0);
++assert(original.some((v, i) => i % 4 !== 3 && v > 0), 'Renderer must produce visible pixels');
++assert(original.every((v, i) => i % 4 !== 3 || v === 255), 'All pixels must be opaque');
++const randomized = frame(917, 1);
++assert.notDeepEqual(original, randomized, 'Random colors must change the rendered output');
++assert(engine._get_color(0, 0) < .999, 'Mirror color must be randomized');
++assert(engine._get_color(1, 0) < .999, 'Glass color must be randomized');
++assert.deepEqual(frame(420, 0), original, 'Reset must reproduce the original scene');
++engine._render_rows(0, 24);
++assert.notDeepEqual(engine.HEAPU8.slice(engine._get_pixels(), engine._get_pixels() + 32 * 24 * 4), original, 'Additional passes must refine the render');
++console.log('WASM checks passed: visible RGBA output, randomized colors, deterministic reset, progressive rendering.');
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..5871c2b 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,63 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++export const prerender = true;
++const base = import.meta.env.BASE_URL;
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <meta name="description" content="A little light, a little physics. Explore smallpt, the classic C++ path tracer, running in your browser with WebAssembly." />
++  <title>smallpt — A little light. A lot of possibility.</title>
++  <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
++  <link rel="preconnect" href="https://fonts.googleapis.com" />
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
++</head>
++<body>
++  <header class="site-header">
++    <a class="brand" href={base} aria-label="smallpt home"><span class="brand-mark">◈</span>smallpt<span class="brand-tag">IN YOUR BROWSER</span></a>
++    <nav aria-label="Main navigation"><a class="nav-active" href="#studio">Playground</a><button id="about-button">About smallpt <span>↗</span></button><a href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">Source code <span>↗</span></a></nav>
++    <span class="header-badge"><i></i> POWERED BY WEBASSEMBLY</span>
++  </header>
++
++  <main id="studio">
++    <section class="intro">
++      <div><div class="eyebrow"><span></span> THE SMALLPT PLAYGROUND</div><h1>A little light.<br />A lot of <span>possibility.</span></h1><p>A classic path tracer. A fresh perspective. Explore physically based<br class="desktop-break" /> rendering, running entirely in your browser.</p></div>
++      <div class="intro-note"><span class="orbit">✳</span><p>99 lines of C++.<br />An infinite play of light.</p></div>
++    </section>
++
++    <section class="workspace" aria-label="Path tracer playground">
++      <div class="render-panel">
++        <div class="panel-top"><div><span class="live-dot"></span><strong>Live render</strong><span class="scene-name">/ Cornell box</span></div><span class="engine-label">C++ → WASM <span>↗</span></span></div>
++        <div class="canvas-area" id="canvas-area">
++          <canvas id="render-canvas" width="640" height="480" aria-label="Rendered Cornell box with a mirror sphere and a glass sphere" role="img" style={`background-image: url('${base}render-preview.png')`}></canvas>
++          <span class="canvas-label"><span>01</span> THE CORNELL BOX</span>
++          <button class="expand-button" id="expand-button" title="Expand render" aria-label="Expand render">⛶</button>
+         </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++        <div class="render-status"><div><span class="status-dot" id="status-dot"></span><span id="render-state" role="status" aria-live="polite">Initializing renderer</span><span class="status-divider">/</span><span id="sample-status">0 / 64 samples</span></div><div><span class="clock-icon">◷</span><span id="elapsed">0.0s</span><span class="resolution-status" id="resolution-status">640 × 480</span></div></div>
++        <div class="progress-track"><div id="render-progress"></div></div>
++      </div>
++
++      <aside class="controls">
++        <div class="controls-heading"><span class="sliders-icon">☷</span><h2>Make it your own</h2></div>
++        <p class="controls-description">Same scene. Different possibilities.</p>
++        <div class="control-section colors-section"><div class="label-row"><h3>Sphere colors</h3><span class="small-tag">RANDOMIZED</span></div><div class="sphere-options"><div class="sphere-option"><span id="mirror-swatch" class="sphere-swatch mirror"></span><div><strong>Mirror</strong><span>Specular reflection</span></div></div><div class="sphere-option"><span id="glass-swatch" class="sphere-swatch glass"></span><div><strong>Glass</strong><span>Dielectric refraction</span></div></div></div><button class="random-button" id="randomize"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 6h3c4 0 8 12 12 12h3M17 14l4 4-4 4M3 18h3c2 0 4-3 6-6s4-6 6-6h3M17 2l4 4-4 4"/></svg>Randomize & render<span>↗</span></button><p class="helper">A new palette. A new play of light.</p></div>
++        <div class="control-section settings-section"><h3>Render settings</h3><label for="samples">Samples per pixel <span title="More samples reduce noise and take longer to render.">ⓘ</span></label><div class="select-wrap"><select id="samples"><option value="16">16 samples · Quick</option><option value="64" selected>64 samples · Balanced</option><option value="128">128 samples · Fine</option><option value="256">256 samples · High quality</option></select><span>⌄</span></div><label for="resolution">Resolution</label><div class="select-wrap"><select id="resolution"><option value="320">320 × 240</option><option value="640" selected>640 × 480</option><option value="960">960 × 720</option></select><span>⌄</span></div><p class="settings-note"><span>↳</span> More samples, less noise. Good things<br /> take a few more rays.</p></div>
++        <div class="control-actions"><button id="download" class="download-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v5h16v-5"/></svg>Save image <span>PNG</span></button><button id="reset" class="reset-button">↺ <span>Reset to original scene</span></button></div>
++        <div class="local-note"><span>◈</span> Your browser does all the heavy lifting.<br /><span class="indent">No servers. Just rays.</span></div>
++      </aside>
++    </section>
++
++    <section class="features" aria-label="About the renderer"><article><div class="feature-icon">↗</div><div><h3>Real light. Real physics.</h3><p>Global illumination, soft shadows, reflections,<br /> and refractions. One ray at a time.</p></div></article><article><div class="feature-icon">⌘</div><div><h3>Small code. Big ideas.</h3><p>Kevin Beason’s legendary path tracer.<br />99 lines of C++, compiled to WebAssembly.</p></div></article><article><div class="feature-icon">◎</div><div><h3>Yours to explore.</h3><p>Change the colors. Follow the light.<br />Every render is a little experiment.</p></div></article></section>
++    <footer><span>A small experiment in how we see light.</span><div>Built on <a href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">smallpt by Kevin Beason ↗</a><span class="footer-separator">/</span><span class="open-source-dot"></span> Open source, always.</div></footer>
++  </main>
++  <dialog id="about-dialog"><button id="close-about" aria-label="Close about">×</button><div class="eyebrow">THE BEAUTY OF SMALL THINGS</div><h2>Light, in 99 lines.</h2><p>smallpt is Kevin Beason’s open-source C++ path tracer. It simulates light bouncing through a Cornell box using Monte Carlo sampling, with diffuse walls, a mirror sphere, and a glass sphere.</p><p>This adaptation compiles its C++ renderer to WebAssembly and runs it in a background worker on your device. Watch the image resolve as more samples find their way through the scene.</p><a href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">Explore the original project ↗</a></dialog>
++  <script>
++    import '../scripts/playground';
++  </script>
++</body>
++</html>
++<style is:global>
++  :root{font-family:'DM Sans',sans-serif;color:#26392f;background:#f7f8f4;font-synthesis:none;--green:#183c2c;--muted:#869087;--line:#e2e6de}*{box-sizing:border-box}body{margin:0}button,a,select{-webkit-tap-highlight-color:transparent}button,select{font:inherit}button,a{touch-action:manipulation}button{cursor:pointer}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #9cb563;outline-offset:4px}.site-header{height:87px;padding:0 4.1%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);gap:28px}.brand{display:flex;align-items:center;gap:9px;font-family:'Space Grotesk',sans-serif;font-size:31px;font-weight:700;letter-spacing:-1.5px}.brand-mark{color:var(--green);font-size:40px;font-weight:400;line-height:1}.brand-tag{font-family:'DM Sans',sans-serif;font-size:8px;letter-spacing:1.6px;font-weight:600;margin:5px 0 0 9px;color:#7c877e}.site-header nav{display:flex;align-items:center;gap:32px;height:100%;font-size:12px;font-weight:500}.site-header nav a,.site-header nav button{height:100%;display:flex;align-items:center;gap:9px;background:none;border:0;color:#788077;position:relative;padding:0}.site-header nav .nav-active{color:var(--green)}.nav-active:after{content:'';height:3px;position:absolute;bottom:0;left:0;right:0;background:var(--green)}nav span{font-size:14px}.header-badge{font-size:8px;letter-spacing:1.1px;border:1px solid #dce3d8;background:#eef2e9;border-radius:4px;padding:9px 11px;white-space:nowrap}.header-badge i,.live-dot,.status-dot,.open-source-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#709665;margin-right:6px}main{max-width:1280px;margin:0 auto;padding:0 54px}.intro{display:flex;justify-content:space-between;align-items:center;padding:49px 0 38px}.eyebrow{font-size:9px;font-weight:600;letter-spacing:2px;display:flex;align-items:center;gap:8px}.eyebrow>span{height:6px;width:6px;background:#819263;display:inline-block}h1{font-family:'Space Grotesk',sans-serif;font-size:53px;line-height:1.09;letter-spacing:-2.6px;margin:17px 0 17px;font-weight:500}h1>span{color:#839271}.intro>div>p{font-size:12px;color:#7e877e;line-height:1.8;margin:0}.intro-note{display:flex;align-items:center;gap:16px;margin:53px 28px 0 0}.intro-note .orbit{font-size:64px;color:#9ba58b;font-weight:400;line-height:1}.intro .intro-note p{font-size:11px;line-height:1.65;color:#899180}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 293px;gap:22px;align-items:start}.render-panel{background:white;border:1px solid #dbe0d6;border-radius:7px;overflow:hidden;box-shadow:0 3px 5px #25362504}.panel-top{display:flex;align-items:center;justify-content:space-between;height:49px;padding:0 18px;font-size:10px}.panel-top>div{display:flex;align-items:center;gap:7px}.panel-top strong{font-weight:600}.live-dot{width:5px;height:5px;margin:0}.scene-name{color:#92978d;font-size:10px;margin-left:4px}.engine-label{color:#8b9388;letter-spacing:1px;font-size:8px}.engine-label>span{margin-left:8px}.canvas-area{background:#171b17;position:relative;overflow:hidden;margin:0 10px;line-height:0}canvas{width:100%;height:auto;aspect-ratio:4/3;display:block;background-size:100% 100%;background-repeat:no-repeat}.canvas-label{position:absolute;left:15px;top:16px;color:#ffffff86;font-size:7px;letter-spacing:1.7px;line-height:1}.canvas-label>span{margin-right:7px;color:#ffffff48}.expand-button{position:absolute;right:12px;bottom:12px;color:#f5f8efab;border:1px solid #ffffff30;background:#19221f50;border-radius:4px;width:29px;height:29px;font-size:20px;line-height:1}.render-status{height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 17px;font-size:9px;color:#7e887d;gap:10px}.render-status>div{display:flex;align-items:center;gap:7px}.status-dot{width:5px;height:5px;margin:0}#render-state{color:#5f7557}.status-divider{margin:0 3px;color:#bfc5b8}.resolution-status{margin-left:13px;padding-left:13px;border-left:1px solid var(--line);font-size:9px}.clock-icon{font-size:13px}.progress-track{height:2px;background:#f0f2e9}#render-progress{height:100%;width:0;background:#97aa7a;transition:width .2s}.controls{border:1px solid #dce2d6;border-radius:7px;background:#f1f4ed;overflow:hidden;padding:21px 21px 0}.controls-heading{display:flex;align-items:center;gap:9px}.controls-heading h2{font-size:15px;letter-spacing:-.4px;margin:0;font-weight:600}.sliders-icon{font-size:20px;line-height:16px;transform:rotate(90deg);color:#6c7964}.controls-description{font-size:10px;color:#899181;margin:8px 0 21px}.control-section{border-top:1px solid #dce3d5;padding:19px 0}.control-section h3{font-size:10px;font-weight:600;margin:0}.label-row{display:flex;align-items:center;justify-content:space-between}.small-tag{font-size:6px;letter-spacing:1px;color:#8e9984;border:1px solid #dbe2d3;border-radius:3px;padding:4px 5px}.sphere-options{display:flex;gap:17px;margin:19px 0 21px}.sphere-option{display:flex;align-items:center;gap:8px;flex:1}.sphere-option>div{display:flex;flex-direction:column;gap:4px}.sphere-option strong{font-size:10px;font-weight:500}.sphere-option>div>span{font-size:7px;color:#8e9687;white-space:nowrap}.sphere-swatch{display:block;flex-shrink:0;width:29px;height:29px;border-radius:50%;box-shadow:inset -4px -5px 6px #0004,0 3px 4px #00000012;border:1px solid #b9c0b3}.mirror{background:radial-gradient(circle at 35% 25%,#fafcf4,#b4c0ac 45%,#58654e 80%)}.glass{background:radial-gradient(circle at 33% 23%,#fff,#dde3d3 25%,#9fae91 60%,#f4f6ee 80%)}.random-button{border:0;border-radius:4px;background:#1d422d;color:#f7faee;height:43px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;font-size:11px;font-weight:500;box-shadow:0 2px 3px #172e2210;transition:background .2s,transform .2s}.random-button:hover{background:#2b573a;transform:translateY(-1px)}.random-button svg{width:14px;height:14px}.random-button>span{margin-left:auto;color:#b7c7a8;font-size:16px}.random-button{padding:0 15px}.helper{font-size:8px;text-align:center;color:#939b8b;margin:10px 0 0}.settings-section{padding-top:18px;padding-bottom:17px}.settings-section label{display:flex;justify-content:space-between;font-size:9px;color:#75816d;margin:16px 0 8px}.settings-section label>span{font-size:10px;color:#99a18f}.select-wrap{position:relative}.select-wrap select{width:100%;height:34px;border:1px solid #d7dfcf;border-radius:4px;background:#f9faf6;color:#53634b;font-size:10px;padding:0 11px;appearance:none;cursor:pointer}.select-wrap>span{position:absolute;right:11px;top:5px;pointer-events:none;color:#929d86}.settings-note{font-size:8px;color:#919a86;line-height:1.7;margin:13px 0 0;padding-left:18px;position:relative}.settings-note>span{position:absolute;left:1px;font-size:11px}.control-actions{border-top:1px solid #dce3d5;padding:17px 0 15px}.download-button{display:flex;align-items:center;justify-content:center;gap:9px;background:#f9faf6;border:1px solid #d5ddce;height:36px;width:100%;border-radius:4px;font-size:10px;color:#5e6e55}.download-button svg{width:13px;height:13px}.download-button>span{font-size:7px;color:#9ca68f;margin-left:4px}.download-button:hover{background:white}.reset-button{width:100%;border:0;background:none;color:#89957b;font-size:14px;margin-top:12px}.reset-button>span{font-size:9px;margin-left:4px}.local-note{font-size:8px;color:#93a087;background:#eaf0e3;border-top:1px solid #dde5d4;margin:0 -21px;padding:13px 20px;line-height:1.6}.local-note>span:first-child{font-size:11px;margin-right:5px}.indent{padding-left:17px}.features{display:grid;grid-template-columns:1fr 1fr 1fr;gap:33px;padding:31px 0 29px}.features article{display:flex;gap:13px}.feature-icon{width:29px;height:29px;display:flex;align-items:center;justify-content:center;background:#ecf0e5;border:1px solid #e1e7d9;border-radius:6px;color:#7e8d6e;font-size:17px;flex-shrink:0}.features h3{font-weight:500;font-size:11px;margin:2px 0 8px}.features p{font-size:9px;line-height:1.8;color:#91988c;margin:0}footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);font-size:8px;color:#97a08e;padding:21px 0 28px}footer>div{display:flex;align-items:center;gap:4px}footer a{color:#75846a}.footer-separator{margin:0 10px;color:#c3caba}.open-source-dot{width:4px;height:4px;background:#97a885;margin:0 2px 0 0}dialog{max-width:470px;background:#f7f8f4;color:#26392f;border:1px solid #d5dfcb;border-radius:12px;padding:40px;box-shadow:0 20px 100px #0003}dialog::backdrop{background:#162d2270;backdrop-filter:blur(4px)}dialog h2{font:500 30px 'Space Grotesk',sans-serif;letter-spacing:-1px}dialog p{font-size:13px;line-height:1.8;color:#788370}dialog a{font-size:12px;text-decoration:underline}#close-about{position:absolute;right:16px;top:11px;background:none;border:0;font-size:25px;color:#7a886f}.canvas-area:fullscreen{display:flex;align-items:center;justify-content:center;background:#111}.canvas-area:fullscreen canvas{height:100%;width:auto;max-width:100%;object-fit:contain}.canvas-area:fullscreen .canvas-label{top:25px}.canvas-area:fullscreen .expand-button{bottom:25px;right:25px}@media(min-width:1450px){main{max-width:1390px}.intro{padding-top:58px}.workspace{grid-template-columns:minmax(0,1fr) 310px}.controls{padding:24px 24px 0}.local-note{margin:0 -24px;padding-left:24px}.control-section{padding-top:24px;padding-bottom:24px}.controls-description{margin-bottom:25px}.control-actions{padding:22px 0}.sphere-options{margin:23px 0}.intro h1{font-size:59px}.features{padding-top:36px;padding-bottom:34px}}@media(max-width:1050px){.header-badge{display:none}.site-header{padding:0 32px}main{padding:0 32px}.workspace{grid-template-columns:minmax(0,1fr) 270px;gap:16px}.controls{padding:18px 16px 0}.local-note{margin:0 -16px;padding-left:16px}.sphere-options{gap:8px}.sphere-option{gap:6px}.sphere-option>div>span{font-size:6px}.render-status{font-size:8px;padding:0 10px;gap:5px}.resolution-status{margin-left:3px;padding-left:6px}.intro-note{margin-right:5px}.features{gap:20px}.features p br{display:none}}@media(max-width:760px){.site-header{height:70px;padding:0 22px}.brand{font-size:27px}.brand-mark{font-size:34px}.brand-tag{display:none}.site-header nav{gap:20px;font-size:10px}.site-header nav button{display:none}main{padding:0 22px}.intro{padding:35px 0 28px}h1{font-size:43px;letter-spacing:-2px}.intro-note{display:none}.intro>div>p{font-size:11px}.eyebrow{font-size:8px}.workspace{grid-template-columns:1fr;gap:18px}.controls{display:block;padding:23px 22px 0}.controls-description{margin-bottom:20px}.sphere-options{gap:35px;justify-content:flex-start}.sphere-option{flex:0 1 auto;gap:10px}.sphere-option>div>span{font-size:9px}.sphere-option strong{font-size:12px}.sphere-swatch{width:34px;height:34px}.control-section h3{font-size:12px}.controls-heading h2{font-size:17px}.controls-description,.helper{font-size:11px}.random-button{font-size:13px;height:46px}.settings-section label{font-size:11px}.select-wrap select{height:40px;font-size:12px}.settings-note{font-size:10px}.settings-note br{display:none}.download-button{height:41px;font-size:12px}.reset-button>span{font-size:11px}.local-note{margin:0 -22px;padding:15px 22px;font-size:10px}.features{grid-template-columns:1fr;gap:23px;padding:30px 0}.features h3{font-size:13px}.features p{font-size:11px}.features p br{display:none}.feature-icon{width:35px;height:35px}footer{align-items:flex-start;gap:15px;flex-direction:column;font-size:9px}.render-status{font-size:9px;height:42px}.resolution-status{font-size:8px}.panel-top{height:44px;padding:0 13px}.canvas-area{margin:0 7px}.desktop-break{display:none}}
++</style>
+diff --git a/src/scripts/playground.ts b/src/scripts/playground.ts
+new file mode 100644
+index 0000000..68f8e0b
+--- /dev/null
++++ b/src/scripts/playground.ts
+@@ -0,0 +1,105 @@
++const canvas = document.querySelector<HTMLCanvasElement>('#render-canvas')!;
++const context = canvas.getContext('2d')!;
++const samples = document.querySelector<HTMLSelectElement>('#samples')!;
++const resolution = document.querySelector<HTMLSelectElement>('#resolution')!;
++const state = document.querySelector<HTMLElement>('#render-state')!;
++const sampleStatus = document.querySelector<HTMLElement>('#sample-status')!;
++const elapsed = document.querySelector<HTMLElement>('#elapsed')!;
++const progress = document.querySelector<HTMLElement>('#render-progress')!;
++const dot = document.querySelector<HTMLElement>('#status-dot')!;
++const base = import.meta.env.BASE_URL;
++let worker: Worker | undefined;
++let timer: ReturnType<typeof setInterval>;
++let colored = false;
++let seed = 420;
++let hasFrame = false;
++let started = 0;
++
++function render() {
++  worker?.terminate();
++  clearInterval(timer);
++  const width = Number(resolution.value);
++  const height = width * 3 / 4;
++  const total = Number(samples.value);
++  hasFrame = false;
++  state.textContent = 'Loading WebAssembly';
++  dot.style.background = '#9ba86f';
++  sampleStatus.textContent = `0 / ${total} samples`;
++  document.querySelector('#resolution-status')!.textContent = `${width} × ${height}`;
++  progress.style.width = '0%';
++  started = performance.now();
++  elapsed.textContent = '0.0s';
++  timer = setInterval(() => { elapsed.textContent = `${((performance.now() - started) / 1000).toFixed(1)}s`; }, 100);
++  const fail = (message: string) => {
++    clearInterval(timer);
++    state.textContent = 'Renderer unavailable';
++    state.title = message;
++    dot.style.background = '#ba7860';
++    sampleStatus.textContent = 'Click randomize to retry';
++    worker?.terminate();
++  };
++  try {
++    worker = new Worker(`${base}wasm/render-worker.js`, { type: 'module' });
++    worker.onerror = (event) => fail(event.message);
++    worker.onmessage = ({ data }) => {
++      if (data.type === 'ready') {
++        state.textContent = 'Tracing light';
++        data.colors.forEach((color: number[], i: number) => {
++          const swatch = document.querySelector<HTMLElement>(i === 0 ? '#mirror-swatch' : '#glass-swatch')!;
++          if (!colored) { swatch.style.background = ''; return; }
++          const rgb = color.map(c => Math.round(c * 255)).join(',');
++          swatch.style.background = `radial-gradient(circle at 32% 25%, #fff, rgb(${rgb}) 43%, #263626 100%)`;
++        });
++      }
++      if (data.type === 'progress') progress.style.width = `${data.progress * 100}%`;
++      if (data.type === 'frame') {
++        if (!hasFrame) { canvas.width = width; canvas.height = height; }
++        hasFrame = true;
++        context.putImageData(new ImageData(new Uint8ClampedArray(data.pixels), width, height), 0, 0);
++        sampleStatus.textContent = `${data.samples} / ${total} samples`;
++        if (data.done) {
++          clearInterval(timer);
++          elapsed.textContent = `${((performance.now() - started) / 1000).toFixed(1)}s`;
++          state.textContent = 'Render complete';
++          dot.style.background = '#709665';
++          worker?.terminate();
++        }
++      }
++      if (data.type === 'error') fail(data.message);
++    };
++    worker.postMessage({ width, height, samples: total, seed, colored });
++  } catch (error) { fail(String(error)); }
++}
++
++document.querySelector('#randomize')!.addEventListener('click', () => {
++  colored = true;
++  seed = crypto.getRandomValues(new Uint32Array(1))[0];
++  render();
++});
++document.querySelector('#reset')!.addEventListener('click', () => {
++  colored = false; seed = 420; samples.value = '64'; resolution.value = '640'; render();
++});
++samples.addEventListener('change', render);
++resolution.addEventListener('change', render);
++document.querySelector('#download')!.addEventListener('click', async () => {
++  const link = document.createElement('a');
++  link.download = `smallpt-${colored ? seed : 'original'}.png`;
++  if (hasFrame) link.href = canvas.toDataURL('image/png');
++  else {
++    const response = await fetch(`${base}render-preview.png`);
++    link.href = URL.createObjectURL(await response.blob());
++  }
++  link.click();
++  if (link.href.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(link.href), 1000);
++});
++document.querySelector('#expand-button')!.addEventListener('click', async () => {
++  const area = document.querySelector<HTMLElement>('#canvas-area')!;
++  try { if (document.fullscreenElement) await document.exitFullscreen(); else await area.requestFullscreen(); }
++  catch { state.textContent = 'Fullscreen unavailable'; }
++});
++const dialog = document.querySelector<HTMLDialogElement>('#about-dialog')!;
++document.querySelector('#about-button')!.addEventListener('click', () => dialog.showModal());
++document.querySelector('#close-about')!.addEventListener('click', () => dialog.close());
++dialog.addEventListener('click', event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } });
++window.addEventListener('pagehide', () => { worker?.terminate(); clearInterval(timer); });
++render();

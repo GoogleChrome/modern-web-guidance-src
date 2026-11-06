@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,24 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --cream: #fff3e0;
+     }
+ 
++    /* Reusable gradient: any two colors at any angle. */
++    @function --gradient(--from <color>, --to <color>, --angle: 135deg) returns <image> {
++      result: linear-gradient(in oklab var(--angle), var(--from), var(--to));
++    }
++
++    /* Reusable column layout: one column by default, --count equal columns from 700px up. */
++    @function --columns(--count <number>) returns <track-list> {
++      result: 1fr;
++      @media (min-width: 700px) {
++        result: repeat(var(--count), 1fr);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -24,10 +38,26 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      background-image: --gradient(var(--cream), var(--secondary), 160deg);
++      background-attachment: fixed;
++      min-height: 100vh;
+     }
+ 
++    h2 {
++      /* Solid color fallback for browsers without CSS functions */
++      color: var(--primary);
++    }
++
++    @supports (background: --gradient(red, blue)) {
++      h2 {
++        background-image: --gradient(var(--primary), var(--accent), 90deg);
++        background-clip: text;
++        color: transparent;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -101,9 +131,10 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: 1fr;
++      grid-template-columns: --columns(2);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 

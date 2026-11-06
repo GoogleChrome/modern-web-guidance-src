@@ -1,0 +1,187 @@
+diff --git a/index.html b/index.html
+index 66c9173..c3810d8 100644
+--- a/index.html
++++ b/index.html
+@@ -23,6 +23,7 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
++      min-height: 100dvh;
+       color: var(--text);
+       background-color: var(--light);
+     }
+@@ -35,26 +36,26 @@
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: wrap;
++      gap: 0.5rem 1rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1.15rem, 1rem + 1vw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem 1.25rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+@@ -74,7 +75,9 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      aspect-ratio: 16 / 9;
++      min-height: 50dvh;
++      max-height: 80dvh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +88,24 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 1.5rem 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 1rem + 5vw, 4rem);
+       margin-bottom: 1rem;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: clamp(1rem, 0.9rem + 0.8vw, 1.35rem);
++      max-width: 60ch;
++      text-wrap: pretty;
++    }
++
++    h2 {
++      font-size: clamp(1.5rem, 1.1rem + 2vw, 2.25rem);
++      text-wrap: balance;
+     }
+ 
+     /* Content Sections */
+@@ -107,19 +122,47 @@
+       margin-top: 20px;
+     }
+ 
++    .card-wrapper {
++      container: card / inline-size;
++    }
++
+     .card {
++      height: 100%;
+       background: white;
+-      padding: 20px;
++      padding: clamp(1rem, 6cqi, 1.75rem);
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
++      font-size: clamp(1.1rem, 1rem + 3cqi, 1.6rem);
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Wide containers: lay the card out horizontally */
++    @container card (min-width: 420px) {
++      .card {
++        display: grid;
++        grid-template-columns: 1fr auto;
++        align-items: center;
++        gap: 0.5rem 1.5rem;
++        text-align: start;
++      }
++
++      .card h3,
++      .card p {
++        grid-column: 1;
++      }
++
++      .card .btn {
++        grid-column: 2;
++        grid-row: 1 / span 2;
++        margin-top: 0;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -138,7 +181,7 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      padding: clamp(1.5rem, 5vw, 2.5rem) 20px;
+       margin-top: 40px;
+     }
+ 
+@@ -147,11 +190,18 @@
+     }
+ 
+     .footer-links a {
++      display: inline-block;
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (max-width: 600px) {
++      .hero {
++        aspect-ratio: auto;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -178,21 +228,21 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card-wrapper"><div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </div></div>
++        <div class="card-wrapper"><div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </div></div>
++        <div class="card-wrapper"><div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </div></div>
+       </div>
+     </section>
+   </main>

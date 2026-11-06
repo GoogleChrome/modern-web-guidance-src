@@ -1,0 +1,337 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,9 +13,9 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
+-    * {
++    :where(body, nav, ul, li, header, main, section, div, h1, h2, h3, p, a, footer, button) {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+@@ -24,10 +24,32 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow: hidden;
+     }
+ 
++    /* Scroll Container */
++    .scroller {
++      height: 100vh;
++      overflow-y: auto;
++      /* Establish this element as a scroll-state query container */
++      container-type: scroll-state;
++      scroll-behavior: smooth;
++      position: relative;
++
++      @media (prefers-reduced-motion: reduce) {
++        scroll-behavior: auto;
++      }
++    }
++
++    /* Marker styling to ensure sentinel does not affect layout */
++    .scroll-sentinel {
++      height: 0;
++      width: 0;
++      visibility: hidden;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,8 +121,16 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
++    .content-section + .content-section {
++      margin-top: 60px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -131,15 +161,15 @@
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--text);
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      padding: 40px 20px 96px;
+       margin-top: 40px;
+     }
+ 
+     .footer-links {
+@@ -151,62 +181,212 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating Back to Top Button */
++    .back-to-top {
++      position: sticky;
++      bottom: 20px;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      margin-inline-start: auto;
++      margin-inline-end: 20px;
++      margin-block-end: 20px;
++      min-block-size: 44px;
++      padding: 10px 18px;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      border-radius: 999px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      z-index: 900;
++      visibility: hidden;
++      opacity: 0;
++      translate: 0 20px;
++      transition:
++        visibility 0.3s,
++        opacity 0.3s ease,
++        translate 0.3s ease,
++        background-color 0.2s ease;
++
++      @media (prefers-reduced-motion: reduce) {
++        translate: 0 0;
++        transition:
++          visibility 0.01s,
++          opacity 0.2s ease;
++      }
++    }
++
++    .back-to-top:hover {
++      background: var(--text);
++    }
++
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* When the container can be scrolled toward the top, it means the user has scrolled down */
++    @container scroll-state(scrollable: top) {
++      .back-to-top {
++        visibility: visible;
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    /* Fallback state toggled by IntersectionObserver when container-type: scroll-state is unsupported */
++    .scrolled .back-to-top {
++      visibility: visible;
++      opacity: 1;
++      translate: 0 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroller">
++    <!-- Sentinel element placed at the top of the scroller -->
++    <div class="scroll-sentinel" aria-hidden="true"></div>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <nav aria-label="Primary">
++      <div class="logo">THE DAILY GRIND</div>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <main class="container">
++      <section class="content-section">
++        <h2 class="section-title">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </section>
++
++      <section class="content-section">
++        <h2 class="section-title">Single-Origin Roasts</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Bright floral notes with a clean citrus finish and jasmine aroma.</p>
++            <a href="/menu/ethiopian" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Colombian Supremo</h3>
++            <p>Balanced medium roast featuring rich caramel sweetness and toasted walnut.</p>
++            <a href="/menu/colombian" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Sumatra Mandheling</h3>
++            <p>Full-bodied earthy profile with dark chocolate and warm spice undertones.</p>
++            <a href="/menu/sumatra" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </section>
++
++      <section class="content-section">
++        <h2 class="section-title">Fresh From the Bakery</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Almond Croissant</h3>
++            <p>Flaky laminated pastry filled with house-made sweet almond frangipane.</p>
++            <a href="/menu/almond-croissant" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cardamom Morning Bun</h3>
++            <p>Warm brioche swirled with freshly ground cardamom and orange zest sugar.</p>
++            <a href="/menu/cardamom-bun" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Blueberry Scone</h3>
++            <p>Tender buttermilk scone bursting with wild Maine blueberries and lemon glaze.</p>
++            <a href="/menu/blueberry-scone" class="btn">View Details</a>
++          </div>
+         </div>
++      </section>
++    </main>
++
++    <footer>
++      <div class="footer-links">
++        <a href="/about">Our Story</a> |
++        <a href="/careers">Join the Team</a> |
++        <a href="/contact">Contact Us</a> |
++        <a href="/privacy-policy">Privacy</a>
+       </div>
+-    </section>
+-  </main>
++      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    </footer>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++    <button type="button" class="back-to-top">
++      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
++        <path d="M18 15l-6-6-6 6" />
++      </svg>
++      <span>Back to top</span>
++    </button>
++  </div>
+ 
++  <script>
++    const scroller = document.querySelector('.scroller');
++    const backToTopButton = document.querySelector('.back-to-top');
++
++    if (backToTopButton && scroller) {
++      backToTopButton.addEventListener('click', () => {
++        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++        scroller.scrollTo({
++          top: 0,
++          behavior: prefersReducedMotion ? 'auto' : 'smooth',
++        });
++      });
++    }
++
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const sentinel = document.querySelector('.scroll-sentinel');
++
++      if (sentinel && scroller) {
++        const observer = new IntersectionObserver((entries) => {
++          entries.forEach((entry) => {
++            // If the sentinel is NOT intersecting, it means the user has scrolled down
++            if (!entry.isIntersecting) {
++              scroller.classList.add('scrolled');
++            } else {
++              scroller.classList.remove('scrolled');
++            }
++          });
++        }, { root: scroller });
++
++        observer.observe(sentinel);
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

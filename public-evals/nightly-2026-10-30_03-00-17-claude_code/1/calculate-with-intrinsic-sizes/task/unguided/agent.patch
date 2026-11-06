@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,114 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Promo badge */
++    .promo-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding-block: 4px;
++      padding-inline: 12px;
++      border-radius: 999px;
++      margin-block-end: 10px;
++      /* Fallback for browsers without calc-size() */
++      inline-size: max-content;
++      /* 1.2x the max-content size, clamped between 100px and the parent's inline size */
++      inline-size: calc-size(max-content, size * 1.2);
++      min-inline-size: 100px;
++      max-inline-size: 100%;
++    }
++
++    /* Accordion */
++    /*
++      Note: transitioning directly between different intrinsic keyword sizes
++      (e.g. from max-content to min-content, or fit-content to auto) isn't
++      supported. Interpolation only works between a fixed <length-percentage>
++      and a single intrinsic keyword (e.g. 0 <-> auto), or via calc-size()
++      with a single keyword basis.
++    */
++    :root {
++      /* Enable smooth transitions to and from height: auto / block-size: auto site-wide */
++      interpolate-size: allow-keywords;
++    }
++
++    .accordion {
++      margin-block-start: 40px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #accordion-toggle {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      inline-size: 100%;
++      padding-block: 16px;
++      padding-inline: 20px;
++      background: var(--primary);
++      color: white;
++      border: none;
++      font: inherit;
++      font-size: 1.1rem;
++      font-weight: bold;
++      text-align: start;
++      cursor: pointer;
++    }
++
++    #accordion-toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .accordion-icon {
++      transition: rotate 0.3s ease;
++    }
++
++    #accordion-toggle[aria-expanded="true"] .accordion-icon {
++      rotate: 45deg;
++    }
++
++    .accordion-content {
++      block-size: 0;
++      overflow: hidden;
++      visibility: hidden;
++      transition: block-size 0.4s ease, visibility 0.4s allow-discrete;
++    }
++
++    .accordion.is-open .accordion-content {
++      /* Natural height plus 2rem of breathing room */
++      block-size: auto;
++      block-size: calc-size(auto, size + 2rem);
++      visibility: visible;
++    }
++
++    .accordion-inner {
++      padding-block: 20px 0;
++      padding-inline: 20px;
++    }
++
++    .accordion-inner h3 {
++      color: var(--primary);
++      margin-block-end: 6px;
++    }
++
++    .accordion-inner p + h3 {
++      margin-block-start: 16px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .accordion-content,
++      .accordion-icon {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -178,8 +284,9 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="promo-badge">Staff Pick</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -194,8 +301,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="accordion">
++      <button id="accordion-toggle" type="button" aria-expanded="false" aria-controls="sourcing-content">
++        <span>Our Sourcing</span>
++        <span class="accordion-icon" aria-hidden="true">+</span>
++      </button>
++      <div id="sourcing-content" class="accordion-content" role="region" aria-labelledby="accordion-toggle">
++        <div class="accordion-inner">
++          <h3>Where do your beans come from?</h3>
++          <p>We partner directly with small farms and cooperatives in Ethiopia, Colombia, Guatemala, and Sumatra.</p>
++          <h3>Are your coffees ethically sourced?</h3>
++          <p>Yes. We pay above Fair Trade minimums and visit our partner farms to ensure fair wages and sustainable practices.</p>
++          <h3>Where is your coffee roasted?</h3>
++          <p>Every batch is roasted locally in small lots each week, so your cup is always fresh.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +330,15 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const accordionToggle = document.getElementById('accordion-toggle');
++    accordionToggle.addEventListener('click', () => {
++      const isOpen = accordionToggle.closest('.accordion').classList.toggle('is-open');
++      accordionToggle.setAttribute('aria-expanded', String(isOpen));
++    });
++  </script>
++
+ </body>
+ 
+ </html>

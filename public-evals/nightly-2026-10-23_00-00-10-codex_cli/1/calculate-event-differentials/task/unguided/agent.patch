@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,52 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promotion-timer {
++      margin-top: 20px;
++      padding: 16px;
++      background: #fff7ed;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    .promotion-status {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .countdown {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin: 10px 0;
++    }
++
++    .countdown-unit {
++      min-width: 76px;
++      padding: 8px 12px;
++      background: white;
++      border-radius: 4px;
++    }
++
++    .countdown-unit strong {
++      display: block;
++      font-size: 1.75rem;
++      line-height: 1.2;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .countdown-unit span,
++    .promotion-note {
++      font-size: 0.8rem;
++    }
++
++    .promotion-elapsed {
++      margin-bottom: 8px;
++      font-size: 0.9rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,8 +224,21 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promotion-timer" aria-label="Maple Oat Latte offer timing">
++            <div id="promotion-values" hidden>
++              <p id="promotion-status" class="promotion-status"></p>
++              <div class="countdown" role="timer" aria-label="Time remaining">
++                <div class="countdown-unit"><strong id="promotion-days">0</strong><span>days left</span></div>
++                <div class="countdown-unit"><strong id="promotion-hours">0</strong><span>hours left</span></div>
++              </div>
++              <p id="promotion-elapsed" class="promotion-elapsed"></p>
++            </div>
++            <p class="promotion-note">Offer deadline: <time datetime="2026-03-01T00:00:00">March 1, 2026 at 12:00 a.m.</time><br>In your local time zone.</p>
++            <p class="promotion-note">Promotion start (assumed): <time id="promotion-start" datetime="2026-01-01T00:00:00">January 1, 2026 at 12:00 a.m.</time></p>
++            <noscript><p class="promotion-note">Enable JavaScript to see remaining and elapsed time.</p></noscript>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +263,37 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const hourInMs = 60 * 60 * 1000;
++
++      function updatePromotionTimer() {
++        // Component constructors use the visitor's local time zone (months are zero-based).
++        // The start is an explicit assumption until the promotion's actual start is supplied.
++        const start = new Date(2026, 0, 1, 0, 0, 0);
++        const end = new Date(2026, 2, 1, 0, 0, 0);
++        const now = Date.now();
++        const remainingHours = Math.floor(Math.max(0, end.getTime() - now) / hourInMs);
++        const elapsedHours = Math.floor(Math.max(0, now - start.getTime()) / hourInMs);
++        const elapsedDays = Math.floor(elapsedHours / 24);
++        const elapsedRemainder = elapsedHours % 24;
++
++        document.getElementById('promotion-days').textContent = Math.floor(remainingHours / 24);
++        document.getElementById('promotion-hours').textContent = remainingHours % 24;
++        document.getElementById('promotion-status').textContent = now >= end.getTime()
++          ? 'Offer ended'
++          : now < start.getTime() ? 'Promotion has not started' : 'Limited-time seasonal offer';
++        document.getElementById('promotion-elapsed').textContent =
++          `${elapsedDays} ${elapsedDays === 1 ? 'day' : 'days'} and ${elapsedRemainder} ${elapsedRemainder === 1 ? 'hour' : 'hours'} elapsed since promotion start.`;
++        document.getElementById('promotion-values').hidden = false;
++      }
++
++      updatePromotionTimer();
++      // Also refresh when a browser restores this page from its back/forward cache.
++      window.addEventListener('pageshow', updatePromotionTimer);
++    })();
++  </script>
+ </body>
+ 
+ </html>

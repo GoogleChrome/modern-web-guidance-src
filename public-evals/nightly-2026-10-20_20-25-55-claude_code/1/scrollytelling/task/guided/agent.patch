@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,109 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling */
++    .scrolly {
++      margin-top: 60px;
++      /* Hoist the timeline names so #animated can use timelines declared in #tracked */
++      timeline-scope: --step-1, --step-2, --step-3;
++    }
++
++    .scrolly > h2 {
++      text-align: center;
++    }
++
++    .scrolly-body {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      margin-top: 20px;
++    }
++
++    #tracked section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    #animated {
++      display: grid;
++      align-self: start;
++      gap: 20px;
++    }
++
++    #animated section {
++      aspect-ratio: 4 / 3;
++      border-radius: 8px;
++      background-size: cover;
++      background-position: center;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      align-items: flex-end;
++      padding: 20px;
++      color: white;
++      font-weight: bold;
++      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
++    }
++
++    #animated section:nth-child(1) {
++      background-image: url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=70');
++    }
++
++    #animated section:nth-child(2) {
++      background-image: url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=70');
++    }
++
++    #animated section:nth-child(3) {
++      background-image: url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=70');
++    }
++
++    /* Without support the images simply stay stacked and visible in normal flow */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        #tracked section:nth-child(1) { view-timeline: --step-1 block; }
++        #tracked section:nth-child(2) { view-timeline: --step-2 block; }
++        #tracked section:nth-child(3) { view-timeline: --step-3 block; }
++
++        /* Pin the image stack; later images layer over earlier ones */
++        #animated {
++          position: sticky;
++          top: 90px;
++          gap: 0;
++        }
++
++        #animated section {
++          grid-area: 1 / 1;
++          animation: reveal linear backwards;
++          animation-range: entry 20% entry 100%;
++        }
++
++        #animated section:nth-child(1) { animation-timeline: --step-1; }
++        #animated section:nth-child(2) { animation-timeline: --step-2; }
++        #animated section:nth-child(3) { animation-timeline: --step-3; }
++
++        @keyframes reveal {
++          from {
++            opacity: 0;
++            transform: translateY(40px) scale(0.95);
++          }
++        }
++      }
++    }
++
++    @media (max-width: 700px) {
++      .scrolly-body {
++        grid-template-columns: 1fr;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +295,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrolly">
++      <h2>From Bean to Cup</h2>
++      <div class="scrolly-body">
++        <div id="tracked">
++          <section>
++            <h3>1. Sourced with care</h3>
++            <p>We buy directly from small farms, paying fair prices for beans picked at peak ripeness.</p>
++          </section>
++          <section>
++            <h3>2. Roasted in small batches</h3>
++            <p>Every batch is roasted locally and tasted before it ever reaches a bag.</p>
++          </section>
++          <section>
++            <h3>3. Brewed to order</h3>
++            <p>Our baristas pull each shot and pour each cup fresh, just for you.</p>
++          </section>
++        </div>
++        <div id="animated" aria-hidden="true">
++          <section>Fresh beans</section>
++          <section>Small-batch roast</section>
++          <section>Your cup</section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

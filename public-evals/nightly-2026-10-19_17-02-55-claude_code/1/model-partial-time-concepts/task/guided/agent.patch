@@ -1,0 +1,41 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -204,9 +204,37 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p id="card-expiry" aria-live="polite"></p>
+   </footer>
+ 
++  <script type="module">
++    // Credit card expiry is a year + month only, so model it as a PlainYearMonth.
++    // Calendar-month arithmetic avoids leap-year/day-count pitfalls entirely.
++    if (typeof Temporal === 'undefined') {
++      const { Temporal: polyfill } = await import('https://esm.sh/@js-temporal/polyfill');
++      globalThis.Temporal = polyfill;
++    }
++
++    const expiry = Temporal.PlainYearMonth.from({ year: 2027, month: 12, calendar: 'iso8601' });
++    const currentMonth = Temporal.Now.plainDateISO('iso8601').toPlainYearMonth();
++    const { sign, years, months } = currentMonth.until(expiry, { largestUnit: 'years' });
++
++    const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
++    let message;
++    if (sign < 0) {
++      message = 'Your card on file has expired.';
++    } else if (sign === 0) {
++      message = 'Your card on file expires this month.';
++    } else {
++      const parts = [];
++      if (years) parts.push(plural(years, 'year'));
++      if (months) parts.push(plural(months, 'month'));
++      message = `Your card on file expires in ${parts.join(' and ')} (December 2027).`;
++    }
++    document.getElementById('card-expiry').textContent = message;
++  </script>
++
+ </body>
+ 
+ </html>

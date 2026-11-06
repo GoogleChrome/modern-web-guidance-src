@@ -1,0 +1,137 @@
+diff --git a/src/components/TableOfContents.astro b/src/components/TableOfContents.astro
+new file mode 100644
+index 0000000..04eac20
+--- /dev/null
++++ b/src/components/TableOfContents.astro
+@@ -0,0 +1,87 @@
++---
++export interface Props {
++  /** CSS selector of the container whose headings are listed */
++  target?: string;
++}
++
++const { target = '.prose' } = Astro.props;
++---
++<nav
++  data-toc
++  data-target={target}
++  aria-label="On this page"
++  class="font-inter hidden absolute left-full top-0 h-full ml-8 w-56"
++>
++  <div class="sticky top-6 text-sm">
++    <p class="font-semibold text-gray-900 mb-3 uppercase tracking-wide text-xs">On this page</p>
++    <ul class="space-y-2 border-l border-gray-200" data-toc-list></ul>
++  </div>
++</nav>
++
++<script>
++  const slugify = (text: string) =>
++    text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
++
++  const ACTIVE = ['border-amber-400', 'text-gray-900', 'font-semibold'];
++  const INACTIVE = ['border-transparent', 'text-gray-500'];
++
++  document.querySelectorAll<HTMLElement>('[data-toc]').forEach((toc) => {
++    const container = document.querySelector(toc.dataset.target ?? '.prose');
++    const list = toc.querySelector('[data-toc-list]');
++    const headings = Array.from(container?.querySelectorAll<HTMLElement>('h2, h3') ?? []);
++    if (!list || headings.length < 2) return;
++
++    const links = new Map<Element, HTMLAnchorElement>();
++    const used = new Set<string>();
++    headings.forEach((heading, i) => {
++      if (!heading.id) {
++        let id = slugify(heading.textContent ?? '') || `section-${i}`;
++        while (used.has(id) || document.getElementById(id)) id += `-${i}`;
++        heading.id = id;
++      }
++      used.add(heading.id);
++      heading.classList.add('scroll-mt-6');
++
++      const li = document.createElement('li');
++      const a = document.createElement('a');
++      a.href = `#${heading.id}`;
++      a.textContent = heading.textContent;
++      a.className = `block -ml-px border-l-2 py-0.5 hover:text-gray-900 ${heading.tagName === 'H3' ? 'pl-6' : 'pl-3'} ${INACTIVE.join(' ')}`;
++      li.append(a);
++      list.append(li);
++      links.set(heading, a);
++    });
++    toc.classList.add('xl:block');
++
++    const setActive = (heading: Element) => {
++      links.forEach((a, h) => {
++        const on = h === heading;
++        a.classList.remove(...(on ? INACTIVE : ACTIVE));
++        a.classList.add(...(on ? ACTIVE : INACTIVE));
++        if (on) a.setAttribute('aria-current', 'location');
++        else a.removeAttribute('aria-current');
++      });
++    };
++
++    // The active section is the last heading that has scrolled past the top offset.
++    const update = () => {
++      const offset = window.innerHeight * 0.25;
++      let current = headings[0];
++      for (const h of headings) {
++        if (h.getBoundingClientRect().top - offset <= 0) current = h;
++        else break;
++      }
++      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
++      setActive(atBottom ? headings[headings.length - 1] : current);
++    };
++
++    // IntersectionObserver triggers updates as headings cross the offset line.
++    const observer = new IntersectionObserver(update, {
++      rootMargin: '-25% 0px -75% 0px',
++      threshold: [0, 1],
++    });
++    headings.forEach((h) => observer.observe(h));
++    window.addEventListener('scroll', update, { passive: true });
++    update();
++  });
++</script>
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..23e624e 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from './Layout.astro';
++import TableOfContents from '../components/TableOfContents.astro';
+ 
+ export interface Props {
+ 	title: string;
+@@ -8,7 +9,8 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <div class="relative max-w-3xl mx-auto px-4 py-8 md:py-12">
++        <TableOfContents />
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+             <slot />
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..ab422ff 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -7,6 +7,7 @@ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
++import TableOfContents from '../../components/TableOfContents.astro';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ 
+ export const getStaticPaths = (async () => {
+@@ -36,7 +37,9 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <article class="relative max-w-3xl mx-auto px-4 py-8 md:py-12">
++        <TableOfContents />
++
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>

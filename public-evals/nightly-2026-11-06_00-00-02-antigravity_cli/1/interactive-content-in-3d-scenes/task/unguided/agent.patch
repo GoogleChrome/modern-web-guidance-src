@@ -1,0 +1,566 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,162 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* 3D Interactive Coffee Box Section */
++    .scene-3d-section {
++      margin-bottom: 50px;
++      background: #fff;
++      border-radius: 12px;
++      padding: 30px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++    }
++
++    .scene-3d-header {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .scene-3d-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .scene-3d-viewport {
++      position: relative;
++      width: 100%;
++      max-width: 700px;
++      height: 460px;
++      margin: 0 auto;
++      perspective: 900px;
++      overflow: hidden;
++      border-radius: 10px;
++      background: radial-gradient(circle at center, #f5ebe6 0%, #d7ccc8 100%);
++    }
++
++    #coffee-box-canvas {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      display: block;
++      pointer-events: none;
++      z-index: 1;
++    }
++
++    .scene-3d-html-layer {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      transform-style: preserve-3d;
++      pointer-events: none;
++      z-index: 2;
++    }
++
++    .projected-box-anchor {
++      width: 220px;
++      height: 280px;
++      transform-style: preserve-3d;
++      pointer-events: none;
++    }
++
++    .projected-form-card {
++      width: 220px;
++      height: 280px;
++      padding: 14px;
++      background: rgba(255, 250, 245, 0.92);
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 6px 18px rgba(62, 39, 35, 0.25);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transform: translateZ(82px);
++      backface-visibility: visible;
++      pointer-events: auto;
++      font-size: 0.8rem;
++      color: var(--text);
++    }
++
++    .projected-form-card h3 {
++      font-size: 0.95rem;
++      color: var(--primary);
++      text-align: center;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 4px;
++      margin-bottom: 6px;
++    }
++
++    .projected-form-card label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 2px;
++      font-size: 0.72rem;
++    }
++
++    .projected-form-card input,
++    .projected-form-card select {
++      width: 100%;
++      padding: 5px 7px;
++      margin-bottom: 6px;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      font-size: 0.78rem;
++      background: #fff;
++      color: var(--text);
++      pointer-events: auto;
++    }
++
++    .projected-form-actions {
++      display: flex;
++      gap: 6px;
++      margin-top: 4px;
++    }
++
++    .projected-form-actions button {
++      flex: 1;
++      padding: 6px 8px;
++      border: none;
++      border-radius: 4px;
++      cursor: pointer;
++      font-weight: 600;
++      font-size: 0.75rem;
++      pointer-events: auto;
++      transition: background 0.2s, transform 0.1s;
++    }
++
++    .btn-order-3d {
++      background: var(--primary);
++      color: #fff;
++    }
++
++    .btn-order-3d:hover {
++      background: #3e2723;
++    }
++
++    .btn-spin-3d {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn-spin-3d:hover {
++      background: #ff9100;
++    }
++
++    .projected-form-status {
++      font-size: 0.7rem;
++      text-align: center;
++      color: #2e7d32;
++      min-height: 1.1em;
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +328,47 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="scene-3d-section" aria-label="Interactive 3D Coffee Box Customizer">
++      <div class="scene-3d-header">
++        <h2>Interactive 3D Coffee Box Customizer</h2>
++        <p>Customize your artisanal blend directly on our spinning 3D coffee box.</p>
++      </div>
++
++      <div class="scene-3d-viewport" id="scene-3d-viewport">
++        <canvas id="coffee-box-canvas" width="700" height="460"></canvas>
++        <div class="scene-3d-html-layer">
++          <div class="projected-box-anchor" id="projected-box-anchor">
++            <form class="projected-form-card" id="coffee-box-form">
++              <h3>Custom Coffee Box</h3>
++              <div>
++                <label for="blend-name">Custom Blend Label</label>
++                <input type="text" id="blend-name" name="blendName" value="Morning Reserve" placeholder="Enter blend name" required />
++
++                <label for="grind-type">Grind Preference</label>
++                <select id="grind-type" name="grindType">
++                  <option value="whole-bean">Whole Bean</option>
++                  <option value="espresso">Fine Espresso</option>
++                  <option value="pour-over">Medium Pour-Over</option>
++                  <option value="french-press">Coarse French Press</option>
++                </select>
++
++                <label for="bag-qty">Boxes (12 oz)</label>
++                <input type="number" id="bag-qty" name="quantity" value="2" min="1" max="20" required />
++              </div>
++
++              <div class="projected-form-actions">
++                <button type="submit" class="btn-order-3d" id="submit-box-btn">Add to Box</button>
++                <button type="button" class="btn-spin-3d" id="toggle-spin-btn">Pause Spin</button>
++              </div>
++              <div class="projected-form-status" id="projected-form-status" aria-live="polite"></div>
++            </form>
++          </div>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +399,351 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const viewport = document.getElementById('scene-3d-viewport');
++      const canvas = document.getElementById('coffee-box-canvas');
++      const anchor = document.getElementById('projected-box-anchor');
++      const form = document.getElementById('coffee-box-form');
++      const toggleSpinBtn = document.getElementById('toggle-spin-btn');
++      const statusEl = document.getElementById('projected-form-status');
++      const blendInput = document.getElementById('blend-name');
++
++      const PERSPECTIVE = 900;
++      const BOX_W = 220;
++      const BOX_H = 280;
++      const BOX_D = 160;
++
++      let isSpinning = true;
++      let rotX = -0.14;
++      let rotY = 0.35;
++      let lastTime = performance.now();
++
++      toggleSpinBtn.addEventListener('click', function () {
++        isSpinning = !isSpinning;
++        toggleSpinBtn.textContent = isSpinning ? 'Pause Spin' : 'Resume Spin';
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        const blend = blendInput.value.trim() || 'Custom Blend';
++        const grind = document.getElementById('grind-type').value;
++        const qty = document.getElementById('bag-qty').value;
++        statusEl.textContent = 'Added ' + qty + 'x "' + blend + '" (' + grind + ')!';
++        updateBoxTexture(blend);
++      });
++
++      blendInput.addEventListener('input', function () {
++        updateBoxTexture(blendInput.value.trim() || 'Morning Reserve');
++      });
++
++      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
++
++      const texCanvas = document.createElement('canvas');
++      texCanvas.width = 512;
++      texCanvas.height = 512;
++      const texCtx = texCanvas.getContext('2d');
++      let glTexture = null;
++
++      function drawCoffeeBoxArt(label) {
++        if (!texCtx) return;
++        texCtx.fillStyle = '#4e342e';
++        texCtx.fillRect(0, 0, 512, 512);
++
++        texCtx.strokeStyle = '#ffab40';
++        texCtx.lineWidth = 14;
++        texCtx.strokeRect(20, 20, 472, 472);
++
++        texCtx.fillStyle = '#3e2723';
++        texCtx.fillRect(40, 40, 432, 110);
++
++        texCtx.fillStyle = '#ffab40';
++        texCtx.font = 'bold 34px sans-serif';
++        texCtx.textAlign = 'center';
++        texCtx.fillText('THE DAILY GRIND', 256, 92);
++
++        texCtx.fillStyle = '#d7ccc8';
++        texCtx.font = '20px sans-serif';
++        texCtx.fillText('SINGLE ORIGIN COFFEE BOX', 256, 128);
++
++        texCtx.fillStyle = '#ffab40';
++        texCtx.beginPath();
++        texCtx.ellipse(256, 260, 65, 45, -0.3, 0, Math.PI * 2);
++        texCtx.fill();
++        texCtx.strokeStyle = '#3e2723';
++        texCtx.lineWidth = 6;
++        texCtx.beginPath();
++        texCtx.moveTo(205, 280);
++        texCtx.quadraticCurveTo(256, 240, 307, 240);
++        texCtx.stroke();
++
++        texCtx.fillStyle = '#fafafa';
++        texCtx.font = 'bold 28px sans-serif';
++        texCtx.fillText(label.slice(0, 22), 256, 375);
++
++        texCtx.fillStyle = '#d7ccc8';
++        texCtx.font = '18px sans-serif';
++        texCtx.fillText('NET WT 12 OZ (340g) • WHOLE BEAN / GROUND', 256, 435);
++      }
++
++      function updateBoxTexture(label) {
++        drawCoffeeBoxArt(label);
++        if (gl && glTexture) {
++          gl.bindTexture(gl.TEXTURE_2D, glTexture);
++          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texCanvas);
++        }
++      }
++
++      let programInfo = null;
++      let buffers = null;
++
++      if (gl) {
++        const vsSource = `
++          attribute vec3 aPosition;
++          attribute vec3 aNormal;
++          attribute vec2 aTexCoord;
++          uniform mat4 uProjectionMatrix;
++          uniform mat4 uModelViewMatrix;
++          uniform mat4 uNormalMatrix;
++          varying highp vec2 vTexCoord;
++          varying highp vec3 vLighting;
++          void main(void) {
++            gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
++            vTexCoord = aTexCoord;
++            highp vec3 ambientLight = vec3(0.55, 0.52, 0.50);
++            highp vec3 directionalLightColor = vec3(0.65, 0.58, 0.48);
++            highp vec3 directionalVector = normalize(vec3(0.4, 0.6, 0.85));
++            highp vec4 transformedNormal = uNormalMatrix * vec4(aNormal, 1.0);
++            highp float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);
++            vLighting = ambientLight + (directionalLightColor * directional);
++          }
++        `;
++
++        const fsSource = `
++          varying highp vec2 vTexCoord;
++          varying highp vec3 vLighting;
++          uniform sampler2D uSampler;
++          void main(void) {
++            highp vec4 texelColor = texture2D(uSampler, vTexCoord);
++            gl_FragColor = vec4(texelColor.rgb * vLighting, texelColor.a);
++          }
++        `;
++
++        function compileShader(type, source) {
++          const shader = gl.createShader(type);
++          gl.shaderSource(shader, source);
++          gl.compileShader(shader);
++          return shader;
++        }
++
++        const shaderProgram = gl.createProgram();
++        gl.attachShader(shaderProgram, compileShader(gl.VERTEX_SHADER, vsSource));
++        gl.attachShader(shaderProgram, compileShader(gl.FRAGMENT_SHADER, fsSource));
++        gl.linkProgram(shaderProgram);
++
++        programInfo = {
++          program: shaderProgram,
++          attribLocations: {
++            position: gl.getAttribLocation(shaderProgram, 'aPosition'),
++            normal: gl.getAttribLocation(shaderProgram, 'aNormal'),
++            texCoord: gl.getAttribLocation(shaderProgram, 'aTexCoord'),
++          },
++          uniformLocations: {
++            projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
++            modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
++            normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
++            uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
++          },
++        };
++
++        const hw = BOX_W / 2;
++        const hh = BOX_H / 2;
++        const hd = BOX_D / 2;
++
++        const positions = [
++          // Front
++          -hw, -hh,  hd,   hw, -hh,  hd,   hw,  hh,  hd,  -hw,  hh,  hd,
++          // Back
++          -hw, -hh, -hd,  -hw,  hh, -hd,   hw,  hh, -hd,   hw, -hh, -hd,
++          // Top
++          -hw,  hh, -hd,  -hw,  hh,  hd,   hw,  hh,  hd,   hw,  hh, -hd,
++          // Bottom
++          -hw, -hh, -hd,   hw, -hh, -hd,   hw, -hh,  hd,  -hw, -hh,  hd,
++          // Right
++           hw, -hh, -hd,   hw,  hh, -hd,   hw,  hh,  hd,   hw, -hh,  hd,
++          // Left
++          -hw, -hh, -hd,  -hw, -hh,  hd,  -hw,  hh,  hd,  -hw,  hh, -hd,
++        ];
++
++        const normals = [
++          // Front
++           0,  0,  1,   0,  0,  1,   0,  0,  1,   0,  0,  1,
++          // Back
++           0,  0, -1,   0,  0, -1,   0,  0, -1,   0,  0, -1,
++          // Top
++           0,  1,  0,   0,  1,  0,   0,  1,  0,   0,  1,  0,
++          // Bottom
++           0, -1,  0,   0, -1,  0,   0, -1,  0,   0, -1,  0,
++          // Right
++           1,  0,  0,   1,  0,  0,   1,  0,  0,   1,  0,  0,
++          // Left
++          -1,  0,  0,  -1,  0,  0,  -1,  0,  0,  -1,  0,  0,
++        ];
++
++        const texCoords = [
++          // Front
++          0, 1,  1, 1,  1, 0,  0, 0,
++          // Back
++          1, 1,  1, 0,  0, 0,  0, 1,
++          // Top
++          0, 0,  0, 1,  1, 1,  1, 0,
++          // Bottom
++          1, 0,  0, 0,  0, 1,  1, 1,
++          // Right
++          1, 1,  1, 0,  0, 0,  0, 1,
++          // Left
++          0, 1,  1, 1,  1, 0,  0, 0,
++        ];
++
++        const indices = [
++          0,  1,  2,    0,  2,  3,
++          4,  5,  6,    4,  6,  7,
++          8,  9,  10,   8,  10, 11,
++          12, 13, 14,   12, 14, 15,
++          16, 17, 18,   16, 18, 19,
++          20, 21, 22,   20, 22, 23,
++        ];
++
++        const posBuffer = gl.createBuffer();
++        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
++        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
++
++        const normBuffer = gl.createBuffer();
++        gl.bindBuffer(gl.ARRAY_BUFFER, normBuffer);
++        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
++
++        const uvBuffer = gl.createBuffer();
++        gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
++        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
++
++        const idxBuffer = gl.createBuffer();
++        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuffer);
++        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
++
++        buffers = {
++          position: posBuffer,
++          normal: normBuffer,
++          texCoord: uvBuffer,
++          indices: idxBuffer,
++          vertexCount: indices.length,
++        };
++
++        glTexture = gl.createTexture();
++        gl.bindTexture(gl.TEXTURE_2D, glTexture);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++        updateBoxTexture(blendInput.value);
++      }
++
++      function makePerspective(fovY, aspect, near, far) {
++        const f = 1.0 / Math.tan(fovY / 2);
++        const nf = 1 / (near - far);
++        return new Float32Array([
++          f / aspect, 0, 0, 0,
++          0, f, 0, 0,
++          0, 0, (far + near) * nf, -1,
++          0, 0, (2 * far * near) * nf, 0
++        ]);
++      }
++
++      function makeModelView(tx, ty, tz, rx, ry) {
++        const cx = Math.cos(rx), sx = Math.sin(rx);
++        const cy = Math.cos(ry), sy = Math.sin(ry);
++        // R = Rx(rx) * Ry(ry)
++        return new Float32Array([
++          cy, sx * sy, -cx * sy, 0,
++          0, cx, sx, 0,
++          sy, -sx * cy, cx * cy, 0,
++          tx, ty, tz, 1
++        ]);
++      }
++
++      function resizeCanvas() {
++        const width = viewport.clientWidth || 700;
++        const height = viewport.clientHeight || 460;
++        if (canvas.width !== width || canvas.height !== height) {
++          canvas.width = width;
++          canvas.height = height;
++        }
++      }
++
++      function render(now) {
++        const dt = Math.min((now - lastTime) / 1000, 0.1);
++        lastTime = now;
++
++        if (isSpinning) {
++          rotY += dt * 0.65;
++          rotX = -0.14 + Math.sin(now * 0.0012) * 0.08;
++        }
++
++        resizeCanvas();
++
++        // Sync CSS 3D projection of the HTML form with WebGL box rotation
++        const degX = (-rotX * 180) / Math.PI;
++        const degY = (rotY * 180) / Math.PI;
++        anchor.style.transform = 'rotateX(' + degX.toFixed(3) + 'deg) rotateY(' + degY.toFixed(3) + 'deg)';
++
++        if (gl && programInfo && buffers) {
++          gl.viewport(0, 0, canvas.width, canvas.height);
++          gl.clearColor(0.0, 0.0, 0.0, 0.0);
++          gl.clearDepth(1.0);
++          gl.enable(gl.DEPTH_TEST);
++          gl.depthFunc(gl.LEQUAL);
++          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++
++          const fovY = 2 * Math.atan((canvas.height / 2) / PERSPECTIVE);
++          const aspect = canvas.width / canvas.height;
++          const projMatrix = makePerspective(fovY, aspect, 10, 4000);
++          const mvMatrix = makeModelView(0, 0, -PERSPECTIVE, rotX, rotY);
++          const normalMatrix = makeModelView(0, 0, 0, rotX, rotY);
++
++          gl.useProgram(programInfo.program);
++
++          gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
++          gl.vertexAttribPointer(programInfo.attribLocations.position, 3, gl.FLOAT, false, 0, 0);
++          gl.enableVertexAttribArray(programInfo.attribLocations.position);
++
++          gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normal);
++          gl.vertexAttribPointer(programInfo.attribLocations.normal, 3, gl.FLOAT, false, 0, 0);
++          gl.enableVertexAttribArray(programInfo.attribLocations.normal);
++
++          gl.bindBuffer(gl.ARRAY_BUFFER, buffers.texCoord);
++          gl.vertexAttribPointer(programInfo.attribLocations.texCoord, 2, gl.FLOAT, false, 0, 0);
++          gl.enableVertexAttribArray(programInfo.attribLocations.texCoord);
++
++          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
++
++          gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projMatrix);
++          gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, mvMatrix);
++          gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
++
++          gl.activeTexture(gl.TEXTURE0);
++          gl.bindTexture(gl.TEXTURE_2D, glTexture);
++          gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
++
++          gl.drawElements(gl.TRIANGLES, buffers.vertexCount, gl.UNSIGNED_SHORT, 0);
++        }
++
++        requestAnimationFrame(render);
++      }
++
++      requestAnimationFrame(render);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

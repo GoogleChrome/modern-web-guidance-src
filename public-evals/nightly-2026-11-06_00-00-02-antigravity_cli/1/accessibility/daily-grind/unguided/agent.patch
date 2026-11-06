@@ -1,0 +1,443 @@
+diff --git a/index.html b/index.html
+index 66c9173..b534662 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,12 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --white: #ffffff;
+     }
+ 
+     * {
+@@ -20,6 +22,10 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -27,14 +33,58 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* Screen reader only utility */
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Skip navigation link for keyboard users */
++    .skip-link {
++      position: absolute;
++      top: -100px;
++      left: 1rem;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      padding: 0.75rem 1.25rem;
++      border-radius: 0 0 6px 6px;
++      text-decoration: underline;
++      z-index: 2000;
++      transition: top 0.2s ease-in-out;
++    }
++
++    .skip-link:focus,
++    .skip-link:focus-visible {
++      top: 0;
++      outline: 3px solid var(--white);
++      outline-offset: 2px;
++    }
++
++    /* Global focus indicator defaults */
++    a:focus-visible,
++    button:focus-visible {
++      outline: 3px solid var(--text);
++      outline-offset: 3px;
++    }
++
++    /* Primary Navigation */
++    .primary-nav {
+       background: var(--primary);
+-      color: white;
++      color: var(--white);
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: 1rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -44,38 +94,70 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: var(--white);
++      text-decoration: none;
++      padding: 4px 6px;
++      border-radius: 4px;
++    }
++
++    .logo:hover,
++    .logo:focus-visible {
++      color: var(--accent);
++      text-decoration: underline;
++      text-underline-offset: 4px;
+     }
+ 
+-    nav ul {
++    .primary-nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
+       list-style: none;
++      gap: 12px;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .primary-nav ul li {
++      margin-left: 8px;
+     }
+ 
+-    nav a {
+-      color: white;
++    .primary-nav a {
++      color: var(--white);
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.95rem;
++      padding: 6px 10px;
++      border-radius: 4px;
++      transition: color 0.3s, background-color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .primary-nav a:hover,
++    .primary-nav a:focus-visible {
+       color: var(--accent);
++      text-decoration: underline;
++      text-underline-offset: 4px;
++    }
++
++    .primary-nav a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 6px 14px;
+       border-radius: 4px;
+     }
+ 
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background-color: var(--accent);
++      color: var(--text) !important;
++      font-weight: 600;
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background-color: var(--primary);
++      background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,16 +165,26 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--white);
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 5vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
++    .hero p {
++      font-size: 1.15rem;
++      max-width: 60ch;
++    }
++
++    .hero .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -100,6 +192,22 @@
+       padding: 0 20px;
+     }
+ 
++    .container:focus {
++      outline: none;
++    }
++
++    .container:focus-visible {
++      outline: 3px dashed var(--primary);
++      outline-offset: 6px;
++    }
++
++    .section-heading {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--text);
++      margin-bottom: 10px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,35 +216,53 @@
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--white);
++      padding: 24px 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid rgba(78, 52, 46, 0.12);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.35rem;
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
++      color: var(--white);
+       padding: 10px 20px;
+       text-decoration: none;
++      font-weight: 600;
+       border-radius: 5px;
++      border: 2px solid transparent;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s, border-color 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:hover,
++    .btn:focus-visible {
++      background: var(--primary-dark);
++      text-decoration: underline;
++      text-underline-offset: 4px;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--text);
++      outline-offset: 3px;
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -146,20 +272,73 @@
+       margin-bottom: 20px;
+     }
+ 
++    .footer-links ul {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      list-style: none;
++    }
++
++    .footer-links li {
++      display: flex;
++      align-items: center;
++    }
++
++    .footer-links li:not(:last-child)::after {
++      content: "";
++      display: inline-block;
++      width: 1px;
++      height: 0.9rem;
++      background-color: var(--text);
++      opacity: 0.6;
++      margin: 0 4px;
++    }
++
+     .footer-links a {
+-      margin: 0 10px;
++      margin: 0 6px;
++      padding: 6px 8px;
+       color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++      text-decoration: underline;
++      text-underline-offset: 3px;
++      font-size: 0.95rem;
++      font-weight: 500;
++      border-radius: 4px;
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      background-color: rgba(62, 39, 35, 0.1);
++      text-decoration-thickness: 2px;
++    }
++
++    .footer-links a:focus-visible {
++      outline: 3px solid var(--text);
++      outline-offset: 2px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++
++      *,
++      *::before,
++      *::after {
++        transition-duration: 0.01ms !important;
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
++  <a href="#main-content" class="skip-link">Skip to main content</a>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
++  <nav class="primary-nav" aria-label="Primary navigation">
++    <a href="/" class="logo" aria-current="page">THE DAILY GRIND</a>
++    <ul role="list">
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+@@ -168,42 +347,50 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++  <header class="hero" aria-labelledby="hero-heading">
++    <h1 id="hero-heading">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main id="main-content" class="container" tabindex="-1">
++    <section aria-labelledby="seasonal-favorites-heading">
++      <h2 id="seasonal-favorites-heading" class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <article class="card" aria-labelledby="card-title-maple">
++          <div>
++            <h3 id="card-title-maple">Maple Oat Latte</h3>
++            <p id="card-desc-maple">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
++          <a href="/menu/seasonal" class="btn" aria-label="View Details for Maple Oat Latte" aria-describedby="card-desc-maple">View Details<span class="sr-only"> for Maple Oat Latte</span></a>
++        </article>
++        <article class="card" aria-labelledby="card-title-espresso">
++          <div>
++            <h3 id="card-title-espresso">Dark Roast Espresso</h3>
++            <p id="card-desc-espresso">Bold, smokey, and perfect for a morning boost.</p>
++          </div>
++          <a href="/menu/espresso" class="btn" aria-label="View Details for Dark Roast Espresso" aria-describedby="card-desc-espresso">View Details<span class="sr-only"> for Dark Roast Espresso</span></a>
++        </article>
++        <article class="card" aria-labelledby="card-title-cold-brew">
++          <div>
++            <h3 id="card-title-cold-brew">Cold Brew</h3>
++            <p id="card-desc-cold-brew">Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn" aria-label="View Details for Cold Brew" aria-describedby="card-desc-cold-brew">View Details<span class="sr-only"> for Cold Brew</span></a>
++        </article>
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++  <footer aria-label="Site footer">
++    <nav class="footer-links" aria-label="Footer navigation">
++      <ul role="list">
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy</a></li>
++      </ul>
++    </nav>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 

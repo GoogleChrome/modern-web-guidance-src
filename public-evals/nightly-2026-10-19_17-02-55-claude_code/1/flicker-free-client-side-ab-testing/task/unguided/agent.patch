@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,119 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Acme — Ship better work, together</title>
++
++  <!-- Anti-flicker: hide the page until the experiment has been applied.
++       Must stay inline and before everything else in <head>. -->
++  <style id="experiment-hide">html.experiment-pending body { opacity: 0 !important; }</style>
++  <script>
++    (function () {
++      var root = document.documentElement;
++      var MAX_WAIT_MS = 2000; // failsafe: never keep the page hidden longer than this
++      var done = false;
++
++      root.classList.add('experiment-pending');
++
++      function reveal() {
++        if (done) return;
++        done = true;
++        clearTimeout(timer);
++        root.classList.remove('experiment-pending');
++        var style = document.getElementById('experiment-hide');
++        if (style) style.parentNode.removeChild(style);
++      }
++
++      // Reveal once the SDK has loaded and the DOM is ready (so its mutations have run),
++      // waiting one frame so the variant is painted before the page becomes visible.
++      function revealAfterDom() {
++        function go() { requestAnimationFrame(function () { requestAnimationFrame(reveal); }); }
++        if (document.readyState === 'loading') {
++          document.addEventListener('DOMContentLoaded', go);
++        } else {
++          go();
++        }
++      }
++
++      var timer = setTimeout(reveal, MAX_WAIT_MS);
++
++      // Expose for the SDK / manual use: call window.experimentReady() when variants are applied.
++      window.experimentReady = reveal;
++
++      var s = document.createElement('script');
++      s.src = 'https://cdn.example.com/experiment-sdk.js';
++      s.async = true;
++      s.onload = revealAfterDom;
++      s.onerror = reveal; // SDK unreachable: show original content immediately
++      document.head.appendChild(s);
++    })();
++  </script>
++  <noscript><style>html.experiment-pending body { opacity: 1 !important; }</style></noscript>
++
++  <style>
++    *, *::before, *::after { box-sizing: border-box; }
++    html { scroll-behavior: smooth; }
++    body {
++      margin: 0;
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++      color: #0f172a;
++      line-height: 1.5;
++    }
++    .nav {
++      position: absolute; inset: 0 0 auto 0; z-index: 2;
++      display: flex; justify-content: space-between; align-items: center;
++      padding: 1.25rem clamp(1.25rem, 5vw, 4rem);
++      color: #fff; font-weight: 700; font-size: 1.25rem;
++    }
++    .hero {
++      position: relative; min-height: 100vh;
++      display: grid; place-items: center; text-align: center;
++      padding: 6rem 1.5rem 4rem; color: #fff;
++      background:
++        linear-gradient(rgba(15, 23, 42, .65), rgba(15, 23, 42, .65)),
++        url("https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=80")
++        center / cover no-repeat;
++    }
++    .hero-inner { max-width: 44rem; }
++    .hero h1 { margin: 0 0 1rem; font-size: clamp(2.25rem, 6vw, 4rem); line-height: 1.1; }
++    .hero p { margin: 0 0 2rem; font-size: clamp(1.05rem, 2vw, 1.35rem); color: #e2e8f0; }
++    .cta {
++      display: inline-block; padding: .9rem 2rem; border-radius: 999px;
++      background: #f97316; color: #fff; font-weight: 700; font-size: 1.1rem;
++      text-decoration: none; transition: transform .15s, background .15s;
++    }
++    .cta:hover { background: #ea580c; transform: translateY(-2px); }
++    .cta:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
++    .features {
++      display: grid; gap: 2rem; padding: 4rem clamp(1.25rem, 5vw, 4rem);
++      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
++      max-width: 72rem; margin: 0 auto;
++    }
++    .features h2 { margin: 0 0 .5rem; font-size: 1.25rem; }
++    .features p { margin: 0; color: #475569; }
++    footer { padding: 2rem; text-align: center; color: #64748b; font-size: .9rem; }
++  </style>
++</head>
++<body>
++  <header class="nav"><span>Acme</span></header>
++
++  <main>
++    <section class="hero" id="hero" data-experiment="hero">
++      <div class="hero-inner">
++        <h1 id="hero-title">Ship better work, together</h1>
++        <p id="hero-subtitle">Acme brings your team's plans, files, and conversations into one calm place, so nothing slips through the cracks.</p>
++        <a class="cta" id="cta-button" href="#signup">Get started free</a>
++      </div>
++    </section>
++
++    <section class="features">
++      <div><h2>Plan with clarity</h2><p>Turn goals into clear, trackable steps everyone can see.</p></div>
++      <div><h2>Collaborate in real time</h2><p>Comment, edit, and decide together without the meeting overload.</p></div>
++      <div><h2>Stay on track</h2><p>Automatic updates keep stakeholders informed with zero status meetings.</p></div>
++    </section>
++  </main>
++
++  <footer id="signup">&copy; 2026 Acme, Inc.</footer>
++</body>
++</html>

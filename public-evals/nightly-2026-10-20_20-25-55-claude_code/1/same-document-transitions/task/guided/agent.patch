@@ -1,0 +1,322 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,133 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal favorites: list view */
++    #list-heading {
++      text-align: center;
++    }
++
++    #list-heading:focus,
++    #title:focus {
++      outline: none;
++    }
++
++    .thumbnail {
++      position: relative;
++      display: flex;
++      align-items: flex-end;
++      aspect-ratio: 4 / 3;
++      border-radius: 8px;
++      overflow: hidden;
++      color: white;
++      text-decoration: none;
++      background-color: var(--primary);
++      background-image: linear-gradient(transparent 45%, rgba(0, 0, 0, 0.7)), var(--image);
++      background-size: cover;
++      background-position: center;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .thumbnail:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .thumbnail .title {
++      width: fit-content;
++      padding: 16px;
++      font-size: 1.4rem;
++      line-height: 1.2;
++      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
++    }
++
++    /* Detail view */
++    #hero {
++      position: relative;
++      display: flex;
++      align-items: flex-end;
++      min-height: 55vh;
++      border-radius: 8px;
++      overflow: hidden;
++      color: white;
++      background-color: var(--primary);
++      background-image: linear-gradient(transparent 45%, rgba(0, 0, 0, 0.7)), var(--image);
++      background-size: cover;
++      background-position: center;
++    }
++
++    #title {
++      width: fit-content;
++      padding: 32px;
++      font-size: 2.8rem;
++      line-height: 1.2;
++      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
++    }
++
++    #detail-body {
++      max-width: 700px;
++      margin: 30px auto 0;
++      font-size: 1.15rem;
++    }
++
++    /* Shared-element transition names, only present while a thumbnail is "selected" */
++    #hero {
++      view-transition-name: hero;
++    }
++
++    #title {
++      view-transition-name: title;
++    }
++
++    .thumbnail.selected {
++      view-transition-name: hero;
++    }
++
++    .thumbnail.selected .title {
++      view-transition-name: title;
++    }
++
++    /* Crop (never stretch) the snapshots when the aspect ratio changes */
++    ::view-transition-old(hero),
++    ::view-transition-new(hero) {
++      height: 100%;
++      width: 100%;
++      object-fit: cover;
++    }
++
++    /* Keep text snapshots at their natural aspect ratio */
++    ::view-transition-old(title),
++    ::view-transition-new(title) {
++      height: 100%;
++      width: 100%;
++      object-fit: contain;
++      object-position: left bottom;
++    }
++
++    ::view-transition-group(hero),
++    ::view-transition-group(title) {
++      animation-duration: 0.45s;
++      animation-timing-function: ease-in-out;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      *,
++      *::before,
++      *::after {
++        transition: none !important;
++        animation: none !important;
++        scroll-behavior: auto !important;
++      }
++
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,36 +292,32 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <div id="list-page">
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <main class="container">
++      <section>
++        <h2 id="list-heading" tabindex="-1">Seasonal Favorites</h2>
++        <div class="grid" id="thumbnails"></div>
++      </section>
++    </main>
++  </div>
++
++  <div id="detail-page" hidden>
++    <main class="container">
++      <a href="#/" class="btn" id="back-link">&larr; Back to Seasonal Favorites</a>
++      <div id="hero">
++        <h2 id="title" tabindex="-1"></h2>
+       </div>
+-    </section>
+-  </main>
++      <p id="detail-body"></p>
++    </main>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -206,7 +327,125 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    const unsplash = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1350&q=80`;
++
++    const items = [
++      {
++        id: 'maple-oat-latte',
++        title: 'Maple Oat Latte',
++        image: unsplash('photo-1509042239860-f550ce710b93'),
++        body: 'Creamy oat milk with a hint of Vermont maple syrup, poured over a double shot of our house espresso.'
++      },
++      {
++        id: 'dark-roast-espresso',
++        title: 'Dark Roast Espresso',
++        image: unsplash('photo-1510707577719-ae7c14805e3a'),
++        body: 'Bold, smokey, and perfect for a morning boost. Roasted in small batches and pulled to order.'
++      },
++      {
++        id: 'cold-brew',
++        title: 'Cold Brew',
++        image: unsplash('photo-1461023058943-07fcbe16d735'),
++        body: 'Steeped for 18 hours for maximum smoothness, then served over ice.'
++      }
++    ];
++
++    const listPage = document.getElementById('list-page');
++    const detailPage = document.getElementById('detail-page');
++    const listHeading = document.getElementById('list-heading');
++    const detailTitle = document.getElementById('title');
++    const detailHero = document.getElementById('hero');
++    const detailBody = document.getElementById('detail-body');
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++
++    // Build the thumbnails. Each one links to a hash route, so the back button and deep links work.
++    const grid = document.getElementById('thumbnails');
++    for (const item of items) {
++      const a = document.createElement('a');
++      a.className = 'thumbnail';
++      a.id = `thumb-${item.id}`;
++      a.href = `#/${item.id}`;
++      a.style.setProperty('--image', `url('${item.image}')`);
++      const h2 = document.createElement('h2');
++      h2.className = 'title';
++      h2.textContent = item.title;
++      a.append(h2);
++      grid.append(a);
++    }
++
++    let currentId = null; // id of the item shown in the detail view, or null for the list
++    let listScroll = 0;
++    let activeTransition = null;
++
++    function routeId() {
++      const id = location.hash.replace(/^#\//, '');
++      return items.some((item) => item.id === id) ? id : null;
++    }
++
++    function showDetail(item) {
++      detailTitle.textContent = item.title;
++      detailHero.style.setProperty('--image', `url('${item.image}')`);
++      detailBody.textContent = item.body;
++      listPage.hidden = true;
++      detailPage.hidden = false;
++      window.scrollTo(0, 0);
++    }
++
++    function showList() {
++      detailPage.hidden = true;
++      listPage.hidden = false;
++      window.scrollTo(0, listScroll);
++    }
++
++    function render() {
++      const nextId = routeId();
++      if (nextId === currentId) return;
++      const prevId = currentId;
++      currentId = nextId;
++
++      // The thumbnail involved in the morph is the one for whichever item is the detail.
++      const thumb = document.getElementById(`thumb-${nextId ?? prevId}`);
++      const focusTarget = () => (nextId ? detailTitle : listHeading);
++
++      if (!prevId) listScroll = window.scrollY;
++
++      const update = () => {
++        if (nextId) showDetail(items.find((item) => item.id === nextId));
++        else showList();
++        // On the way back the thumbnail must carry the shared names in the new state.
++        thumb?.classList.add('selected');
++      };
++
++      const finish = () => {
++        // Remove the temporary transition names, then keep focus from being lost.
++        document.querySelectorAll('.thumbnail.selected').forEach((el) => el.classList.remove('selected'));
++        activeTransition = null;
++        focusTarget().focus({ preventScroll: true });
++      };
++
++      activeTransition?.skipTransition();
++
++      if (!document.startViewTransition || reducedMotion.matches) {
++        update();
++        finish();
++        return;
++      }
++
++      // On the way in the thumbnail must carry the shared names in the old state.
++      thumb?.classList.add('selected');
++      activeTransition = document.startViewTransition(update);
++      const transition = activeTransition;
++      transition.finished.finally(() => {
++        if (activeTransition === transition || activeTransition === null) finish();
++      });
++    }
++
++    addEventListener('hashchange', render);
++    render();
++  </script>
+ </body>
+ 
+ </html>

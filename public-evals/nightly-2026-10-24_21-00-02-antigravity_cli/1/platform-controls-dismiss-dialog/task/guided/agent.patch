@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,93 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    /* Modal Dialogs */
++    dialog {
++      margin: auto;
++      padding: 30px;
++      border: none;
++      border-radius: 8px;
++      max-width: 480px;
++      width: calc(100% - 40px);
++      background: white;
++      color: var(--text);
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
++      text-align: left;
++    }
++
++    dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0.55);
++      backdrop-filter: blur(2px);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 12px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 10px;
++    }
++
++    .dialog-header h3 {
++      color: var(--primary);
++      font-size: 1.4rem;
++    }
++
++    .dialog-price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++    }
++
++    .dialog-meta {
++      margin: 15px 0;
++      padding-left: 20px;
++      font-size: 0.95rem;
++    }
++
++    .dialog-meta li {
++      margin-bottom: 6px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -178,23 +257,74 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 id="card-title-maple">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="dialog-maple-oat-latte" command="show-modal" aria-label="View Details for Maple Oat Latte">View Details</button>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 id="card-title-espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="dialog-dark-roast-espresso" command="show-modal" aria-label="View Details for Dark Roast Espresso">View Details</button>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 id="card-title-cold-brew">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="dialog-cold-brew" command="show-modal" aria-label="View Details for Cold Brew">View Details</button>
+         </div>
+       </div>
++
++      <dialog id="dialog-maple-oat-latte" aria-labelledby="dialog-title-maple">
++        <div class="dialog-header">
++          <h3 id="dialog-title-maple">Maple Oat Latte</h3>
++          <span class="dialog-price">$5.75</span>
++        </div>
++        <p>Our signature autumn favorite combines two shots of rich, locally roasted espresso with velvety steamed barista-blend oat milk and pure Grade A Vermont amber maple syrup, finished with a light dusting of organic cinnamon.</p>
++        <ul class="dialog-meta">
++          <li><strong>Tasting Notes:</strong> Toasted maple, warm spice, velvety oat finish</li>
++          <li><strong>Roast Profile:</strong> Medium-Dark House Espresso</li>
++          <li><strong>Dietary Info:</strong> 100% Plant-Based / Dairy-Free (210 kcal, 16 oz)</li>
++        </ul>
++        <form method="dialog" class="dialog-actions">
++          <a href="/order-online" class="btn">Order Now</a>
++          <button type="submit" class="btn btn-secondary" commandfor="dialog-maple-oat-latte" command="close">Close</button>
++        </form>
++      </dialog>
++
++      <dialog id="dialog-dark-roast-espresso" aria-labelledby="dialog-title-espresso">
++        <div class="dialog-header">
++          <h3 id="dialog-title-espresso">Dark Roast Espresso</h3>
++          <span class="dialog-price">$3.50</span>
++        </div>
++        <p>Pulled as a traditional double ristretto from single-origin Sumatra and Colombian beans, roasted deep into second crack for an intense, full-bodied crema and lingering bittersweet cocoa finish.</p>
++        <ul class="dialog-meta">
++          <li><strong>Tasting Notes:</strong> Dark chocolate, charred cedar, molasses</li>
++          <li><strong>Roast Profile:</strong> Full City+ Dark Roast</li>
++          <li><strong>Dietary Info:</strong> Vegan / Zero Sugar (10 kcal, 2 oz double shot)</li>
++        </ul>
++        <form method="dialog" class="dialog-actions">
++          <a href="/order-online" class="btn">Order Now</a>
++          <button type="submit" class="btn btn-secondary" commandfor="dialog-dark-roast-espresso" command="close">Close</button>
++        </form>
++      </dialog>
++
++      <dialog id="dialog-cold-brew" aria-labelledby="dialog-title-cold-brew">
++        <div class="dialog-header">
++          <h3 id="dialog-title-cold-brew">Cold Brew</h3>
++          <span class="dialog-price">$4.75</span>
++        </div>
++        <p>Coarsely ground Ethiopian and Guatemalan beans steeped in filtered cold water for 18 hours in small batches, yielding a naturally sweet, ultra-smooth extraction with 65% less acidity than traditional iced coffee.</p>
++        <ul class="dialog-meta">
++          <li><strong>Tasting Notes:</strong> Sweet caramel, stone fruit, smooth cocoa</li>
++          <li><strong>Roast Profile:</strong> Medium Artisan Blend</li>
++          <li><strong>Dietary Info:</strong> Vegan / Unsweetened (15 kcal, 16 oz over ice)</li>
++        </ul>
++        <form method="dialog" class="dialog-actions">
++          <a href="/order-online" class="btn">Order Now</a>
++          <button type="submit" class="btn btn-secondary" commandfor="dialog-cold-brew" command="close">Close</button>
++        </form>
++      </dialog>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +336,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill').catch(() => {});
++
++      document.addEventListener('click', (event) => {
++        const button = event.target.closest('button[commandfor][command]');
++        if (!button) return;
++
++        const dialog = document.getElementById(button.getAttribute('commandfor'));
++        if (!(dialog instanceof HTMLDialogElement)) return;
++
++        const command = button.getAttribute('command');
++        if (command === 'show-modal' && !dialog.open) {
++          dialog.showModal();
++        } else if (command === 'close' && dialog.open) {
++          dialog.close();
++        }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

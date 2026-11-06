@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,58 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Modern CSS Font Normalization &amp; Aspect-Ratio Lock</title>
++  <link rel="stylesheet" href="styles.css" />
++  <style>
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", Times, serif;
++      font-size: 1.25rem;
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: "Courier New", Courier, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size-adjust: inherit;
++    }
++
++    #independent-theme-container {
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++      font-size: 1.125rem;
++      font-size-adjust: 0.52;
++      aspect-ratio: 16 / 9;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <header>
++      <h1>Typography &amp; Visual Proportions Demo</h1>
++    </header>
++
++    <section aria-labelledby="mixed-heading">
++      <h2 id="mixed-heading">Automatic Mixed-Font Normalization</h2>
++      <p id="mixed-fonts-container">
++        When combining standard prose in a serif or sans-serif typeface with inline code snippets like
++        <code>const normalize = true;</code> or <code>font-size-adjust: from-font;</code>, different font
++        families often exhibit mismatched lowercase heights (x-heights). Applying modern CSS
++        <code>font-size-adjust: from-font</code> automatically reads the primary font's metric ratio and
++        normalizes the visual height of inline <code>&lt;code&gt;</code> elements seamlessly.
++      </p>
++    </section>
++
++    <section aria-labelledby="independent-heading">
++      <h2 id="independent-heading">Independent Theme with Numeric Aspect-Ratio Override</h2>
++      <div id="independent-theme-container">
++        <h2>Independent Theme Module</h2>
++        <p>
++          This independent theme container enforces an explicit numeric aspect-ratio override
++          (<code>font-size-adjust: 0.52</code> and <code>aspect-ratio: 16 / 9</code>) to lock down its
++          visual proportions regardless of the surrounding document styles or fallback fonts loaded.
++        </p>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

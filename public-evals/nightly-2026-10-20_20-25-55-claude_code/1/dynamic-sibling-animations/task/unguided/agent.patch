@@ -1,0 +1,49 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,10 +112,45 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      opacity: 0;
++      animation: card-in 0.5s ease-out forwards;
++      animation-delay: calc(var(--i, 0) * 100ms);
+     }
+ 
++    .grid .card:nth-child(1) { --i: 0; }
++    .grid .card:nth-child(2) { --i: 1; }
++    .grid .card:nth-child(3) { --i: 2; }
++    .grid .card:nth-child(4) { --i: 3; }
++    .grid .card:nth-child(5) { --i: 4; }
++    .grid .card:nth-child(6) { --i: 5; }
++    .grid .card:nth-child(7) { --i: 6; }
++    .grid .card:nth-child(8) { --i: 7; }
++    .grid .card:nth-child(9) { --i: 8; }
++    .grid .card:nth-child(10) { --i: 9; }
++    .grid .card:nth-child(11) { --i: 10; }
++    .grid .card:nth-child(12) { --i: 11; }
++
++    @keyframes card-in {
++      from {
++        opacity: 0;
++        transform: translateY(20px);
++      }
++
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card {
++        opacity: 1;
++        animation: none;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

@@ -1,0 +1,488 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,220 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Feedback overlay ---------- */
++    .fb-dock {
++      /* Theme tokens inherited by the dialog wherever it is mounted.
++         The dialog renders in the top layer, but still inherits styles
++         from its DOM parent, so reparenting visibly re-themes it. */
++      --fb-bg: #ffffff;
++      --fb-fg: var(--text);
++      --fb-accent: var(--primary);
++      --fb-border: var(--secondary);
++      display: flex;
++      justify-content: center;
++      margin-top: 1rem;
++    }
++
++    .fb-dock[data-dock="hero"] {
++      --fb-bg: #2b1d19;
++      --fb-fg: #fff8f0;
++      --fb-accent: var(--accent);
++      --fb-border: #6d4c41;
++    }
++
++    .fb-dock[data-dock="footer"] {
++      --fb-bg: #efebe9;
++      --fb-fg: var(--text);
++      --fb-accent: #8d6e63;
++      --fb-border: #bcaaa4;
++    }
++
++    /* Visible "slot" marker showing where the dialog currently lives in the DOM */
++    .fb-dock::before {
++      content: attr(data-label) " slot";
++      font-size: 0.75rem;
++      letter-spacing: 0.05em;
++      text-transform: uppercase;
++      padding: 4px 10px;
++      border: 1px dashed currentColor;
++      border-radius: 999px;
++      opacity: 0.45;
++    }
++
++    .fb-dock.is-active::before {
++      content: "\2605  Feedback mounted in " attr(data-label);
++      opacity: 1;
++      border-style: solid;
++      border-color: var(--accent);
++    }
++
++    .fb-launcher {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 1100;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 999px;
++      padding: 12px 20px;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    .fb-launcher:focus-visible,
++    .fb-dialog :focus-visible {
++      outline: 3px solid var(--fb-accent, var(--accent));
++      outline-offset: 2px;
++    }
++
++    .fb-dialog {
++      width: min(460px, calc(100vw - 32px));
++      margin: auto;
++      padding: 0;
++      border: 1px solid var(--fb-border);
++      border-radius: 12px;
++      background: var(--fb-bg);
++      color: var(--fb-fg);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
++    }
++
++    .fb-dialog::backdrop {
++      background: rgba(30, 18, 14, 0.55);
++      backdrop-filter: blur(2px);
++    }
++
++    .fb-dialog form {
++      display: grid;
++      gap: 14px;
++      padding: 22px;
++    }
++
++    .fb-head {
++      display: flex;
++      justify-content: space-between;
++      align-items: start;
++      gap: 12px;
++    }
++
++    .fb-head h2 {
++      font-size: 1.25rem;
++      color: var(--fb-accent);
++    }
++
++    .fb-location {
++      font-size: 0.8rem;
++      opacity: 0.8;
++    }
++
++    .fb-close {
++      background: none;
++      border: none;
++      color: inherit;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .fb-dialog fieldset {
++      border: none;
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .fb-dialog legend,
++    .fb-dialog label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .fb-rating input {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .fb-rating label {
++      padding: 6px 12px;
++      border: 1px solid var(--fb-border);
++      border-radius: 6px;
++      cursor: pointer;
++      font-weight: 400;
++      margin: 0;
++    }
++
++    .fb-rating input:checked + label {
++      background: var(--fb-accent);
++      color: var(--fb-bg);
++      border-color: var(--fb-accent);
++    }
++
++    .fb-rating input:focus-visible + label {
++      outline: 3px solid var(--fb-accent);
++      outline-offset: 2px;
++    }
++
++    .fb-dialog textarea {
++      width: 100%;
++      min-height: 110px;
++      resize: vertical;
++      padding: 10px;
++      font: inherit;
++      color: var(--text);
++      background: #fff;
++      border: 1px solid var(--fb-border);
++      border-radius: 6px;
++    }
++
++    .fb-move {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .fb-move button,
++    .fb-submit {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 7px 12px;
++      border-radius: 6px;
++      cursor: pointer;
++      border: 1px solid var(--fb-accent);
++      background: transparent;
++      color: inherit;
++    }
++
++    .fb-move button[aria-pressed="true"] {
++      background: var(--fb-accent);
++      color: var(--fb-bg);
++      cursor: default;
++    }
++
++    .fb-submit {
++      justify-self: end;
++      background: var(--fb-accent);
++      color: var(--fb-bg);
++      font-weight: 600;
++      padding: 9px 18px;
++    }
++
++    .fb-status {
++      font-size: 0.75rem;
++      opacity: 0.75;
++      min-height: 1.2em;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .fb-dialog { transition: none; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -171,8 +383,9 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="fb-dock" data-dock="hero" data-label="Hero"></div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +407,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <div class="fb-dock" data-dock="main" data-label="Menu">
++      <dialog id="feedback-dialog" class="fb-dialog" aria-labelledby="fb-title" aria-describedby="fb-location">
++        <form method="dialog" id="feedback-form">
++          <div class="fb-head">
++            <div>
++              <h2 id="fb-title">How was your coffee?</h2>
++              <p class="fb-location" id="fb-location">Mounted in: Menu</p>
++            </div>
++            <button type="button" class="fb-close" data-fb-close aria-label="Close feedback">&times;</button>
++          </div>
++
++          <fieldset class="fb-rating">
++            <legend>Rating</legend>
++            <input type="radio" name="rating" id="fb-r1" value="1"><label for="fb-r1">1</label>
++            <input type="radio" name="rating" id="fb-r2" value="2"><label for="fb-r2">2</label>
++            <input type="radio" name="rating" id="fb-r3" value="3"><label for="fb-r3">3</label>
++            <input type="radio" name="rating" id="fb-r4" value="4"><label for="fb-r4">4</label>
++            <input type="radio" name="rating" id="fb-r5" value="5"><label for="fb-r5">5</label>
++          </fieldset>
++
++          <div>
++            <label for="fb-message">Tell us more</label>
++            <textarea id="fb-message" name="message" placeholder="What did you love? What could be better?"></textarea>
++          </div>
++
++          <fieldset class="fb-move" aria-describedby="fb-move-hint">
++            <legend>Move this panel to</legend>
++            <button type="button" data-fb-move="hero">Hero</button>
++            <button type="button" data-fb-move="main">Menu</button>
++            <button type="button" data-fb-move="footer">Footer</button>
++          </fieldset>
++
++          <p class="fb-status" id="fb-move-hint" role="status" aria-live="polite"></p>
++
++          <button type="submit" class="fb-submit" value="submit">Send feedback</button>
++        </form>
++      </dialog>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -204,9 +455,206 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <div class="fb-dock" data-dock="footer" data-label="Footer"></div>
+   </footer>
+ 
++  <button type="button" class="fb-launcher" id="fb-launcher" aria-haspopup="dialog" aria-controls="feedback-dialog">
++    Feedback
++  </button>
++
++  <script>
++    (() => {
++      const STORAGE_KEY = 'daily-grind:feedback';
++      const dialog = document.getElementById('feedback-dialog');
++      const form = document.getElementById('feedback-form');
++      const launcher = document.getElementById('fb-launcher');
++      const locationText = document.getElementById('fb-location');
++      const status = document.getElementById('fb-move-hint');
++      const docks = new Map(
++        [...document.querySelectorAll('.fb-dock')].map((el) => [el.dataset.dock, el])
++      );
++
++      // Feature detection. Append ?nomovebefore to the URL to force the fallback path.
++      const forceFallback = new URLSearchParams(location.search).has('nomovebefore');
++      const supportsMoveBefore = !forceFallback && typeof Element.prototype.moveBefore === 'function';
++
++      // Set while the fallback path closes/re-opens the dialog, so that the
++      // transient close doesn't get persisted as "user closed the panel".
++      let relocating = false;
++
++      /* ---------- Persistence ---------- */
++
++      const load = () => {
++        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
++      };
++
++      const save = () => {
++        const data = {
++          open: dialog.open,
++          dock: currentDock(),
++          rating: form.elements.rating.value,
++          message: form.elements.message.value,
++        };
++        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* storage unavailable */ }
++      };
++
++      /* ---------- Helpers ---------- */
++
++      const currentDock = () => dialog.parentElement?.dataset.dock ?? 'main';
++
++      const syncUi = () => {
++        const dock = docks.get(currentDock());
++        locationText.textContent = `Mounted in: ${dock.dataset.label}`;
++        docks.forEach((el) => el.classList.toggle('is-active', el === dock));
++        dialog.querySelectorAll('[data-fb-move]').forEach((btn) => {
++          const here = btn.dataset.fbMove === currentDock();
++          btn.setAttribute('aria-pressed', String(here));
++        });
++      };
++
++      const open = () => {
++        if (!dialog.open) dialog.showModal();
++        save();
++      };
++
++      /** Snapshot everything a remove+insert would destroy. */
++      const captureState = () => {
++        const active = document.activeElement;
++        const focusInside = dialog.contains(active) ? active : null;
++        const state = {
++          wasOpen: dialog.open,
++          wasModal: dialog.matches(':modal'),
++          focusTarget: focusInside,
++          scrollTop: form.scrollTop,
++          rating: form.elements.rating.value,
++          message: form.elements.message.value,
++          selection: null,
++        };
++        if (focusInside && 'selectionStart' in focusInside && focusInside.selectionStart != null) {
++          state.selection = [focusInside.selectionStart, focusInside.selectionEnd, focusInside.selectionDirection];
++        }
++        return state;
++      };
++
++      /** Re-apply a snapshot after a non-preserving move. */
++      const restoreState = (state) => {
++        form.elements.message.value = state.message;
++        if (state.rating) form.elements.rating.value = state.rating;
++
++        if (state.wasOpen && !dialog.open) {
++          state.wasModal ? dialog.showModal() : dialog.show();
++        }
++        form.scrollTop = state.scrollTop;
++
++        // showModal() runs the dialog focusing steps; override with the element
++        // the user was actually on.
++        if (state.focusTarget && state.focusTarget.isConnected) {
++          state.focusTarget.focus({ preventScroll: true });
++          if (state.selection) {
++            try { state.focusTarget.setSelectionRange(...state.selection); } catch { /* not a text control */ }
++          }
++        }
++      };
++
++      /**
++       * Relocate the dialog into another dock.
++       * Prefer the atomic, state-preserving moveBefore(): the dialog stays in the
++       * top layer, stays modal, and keeps focus. Otherwise fall back to
++       * insertBefore() and manually rebuild open/modal/focus/selection state.
++       */
++      const moveTo = (dockName) => {
++        const target = docks.get(dockName);
++        if (!target || target === dialog.parentElement) return;
++
++        let method = 'moveBefore';
++        if (supportsMoveBefore) {
++          try {
++            target.moveBefore(dialog, null);
++          } catch (err) {
++            // moveBefore throws (e.g. HierarchyRequestError) when a state-preserving
++            // move isn't possible; degrade to the manual path.
++            console.warn('moveBefore failed, falling back:', err);
++            method = null;
++          }
++        } else {
++          method = null;
++        }
++
++        if (!method) {
++          method = 'fallback';
++          const state = captureState();
++          relocating = true;
++          try {
++            // Close explicitly so removal doesn't leave a stale non-modal
++            // [open] dialog behind; we re-open it in restoreState().
++            if (dialog.open) dialog.close();
++            target.insertBefore(dialog, null);
++            restoreState(state);
++          } finally {
++            relocating = false;
++          }
++        }
++
++        syncUi();
++        save();
++        status.textContent = `Moved to ${target.dataset.label} (${method === 'moveBefore' ? 'state preserved natively' : 'state restored manually'}).`;
++      };
++
++      /* ---------- Wiring ---------- */
++
++      launcher.addEventListener('click', open);
++
++      dialog.addEventListener('click', (e) => {
++        const moveBtn = e.target.closest('[data-fb-move]');
++        if (moveBtn) moveTo(moveBtn.dataset.fbMove);
++        if (e.target.closest('[data-fb-close]')) dialog.close('dismiss');
++        // Click on the backdrop (outside the form box) closes the dialog.
++        if (e.target === dialog) dialog.close('dismiss');
++      });
++
++      form.addEventListener('input', save);
++
++      form.addEventListener('submit', (e) => {
++        if (!form.elements.rating.value && !form.elements.message.value.trim()) {
++          e.preventDefault();
++          status.textContent = 'Please pick a rating or leave a comment.';
++          form.elements.message.focus();
++          return;
++        }
++        // method="dialog" closes the dialog after this handler.
++        status.textContent = '';
++        queueMicrotask(() => {
++          form.reset();
++          save();
++          launcher.textContent = 'Thanks! \u2615';
++          setTimeout(() => { launcher.textContent = 'Feedback'; }, 3000);
++        });
++      });
++
++      dialog.addEventListener('close', () => {
++        if (relocating) return;
++        save();
++        launcher.focus({ preventScroll: true });
++      });
++
++      /* ---------- Restore persisted state ---------- */
++
++      const saved = load();
++      if (saved.message) form.elements.message.value = saved.message;
++      if (saved.rating) form.elements.rating.value = saved.rating;
++      if (saved.dock && docks.has(saved.dock) && saved.dock !== currentDock()) {
++        docks.get(saved.dock).appendChild(dialog); // closed at this point, plain move is fine
++      }
++      syncUi();
++      if (saved.open) dialog.showModal();
++
++      status.textContent = supportsMoveBefore
++        ? 'Using native moveBefore() for state-preserving moves.'
++        : 'moveBefore() unavailable; using manual re-open fallback.';
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

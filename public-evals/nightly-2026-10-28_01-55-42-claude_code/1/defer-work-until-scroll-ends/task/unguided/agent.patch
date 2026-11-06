@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,72 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee Beans Scroller */
++    .beans-section {
++      margin-top: 50px;
++    }
++
++    .beans-section h2 {
++      text-align: center;
++    }
++
++    #scroller {
++      display: flex;
++      gap: 20px;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x proximity;
++      padding: 20px 4px;
++      margin-top: 20px;
++      -webkit-overflow-scrolling: touch;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .bean-card {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      text-align: left;
++    }
++
++    .bean-card img {
++      display: block;
++      width: 100%;
++      height: 170px;
++      object-fit: cover;
++    }
++
++    .bean-card .bean-body {
++      padding: 16px;
++    }
++
++    .bean-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .bean-card .notes {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      font-style: italic;
++      margin-bottom: 8px;
++    }
++
++    #status {
++      margin-top: 12px;
++      padding: 10px 16px;
++      text-align: center;
++      font-size: 0.9rem;
++      background: var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +258,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="beans-section">
++      <h2>Our Coffee Beans</h2>
++      <p style="text-align: center;">Scroll through our single-origin selection.</p>
++      <div id="scroller" aria-label="Coffee bean origins">
++        <article class="bean-card" data-origin="Ethiopia Yirgacheffe">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Freshly roasted Ethiopian coffee beans" loading="lazy">
++          <div class="bean-body">
++            <h3>Ethiopia Yirgacheffe</h3>
++            <p class="notes">Jasmine, bergamot, lemon zest</p>
++            <p>Washed heirloom varietals grown at 1,900m. Bright, floral, and tea-like.</p>
++          </div>
++        </article>
++        <article class="bean-card" data-origin="Colombia Huila">
++          <img src="https://images.unsplash.com/photo-1559525839-b184a4d698c7?auto=format&fit=crop&w=600&q=80" alt="Colombian coffee beans in a burlap sack" loading="lazy">
++          <div class="bean-body">
++            <h3>Colombia Huila</h3>
++            <p class="notes">Caramel, red apple, milk chocolate</p>
++            <p>Balanced and sweet with a syrupy body. Our everyday crowd-pleaser.</p>
++          </div>
++        </article>
++        <article class="bean-card" data-origin="Brazil Cerrado">
++          <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=600&q=80" alt="Brazilian coffee beans spilling from a scoop" loading="lazy">
++          <div class="bean-body">
++            <h3>Brazil Cerrado</h3>
++            <p class="notes">Hazelnut, cocoa, brown sugar</p>
++            <p>Natural-process beans with low acidity and a heavy, nutty finish.</p>
++          </div>
++        </article>
++        <article class="bean-card" data-origin="Sumatra Mandheling">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80" alt="Dark roasted Sumatran coffee beans" loading="lazy">
++          <div class="bean-body">
++            <h3>Sumatra Mandheling</h3>
++            <p class="notes">Cedar, dark chocolate, earthy spice</p>
++            <p>Wet-hulled for a bold, full-bodied cup with almost no acidity.</p>
++          </div>
++        </article>
++        <article class="bean-card" data-origin="Guatemala Antigua">
++          <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=600&q=80" alt="Guatemalan coffee beans beside a cup of coffee" loading="lazy">
++          <div class="bean-body">
++            <h3>Guatemala Antigua</h3>
++            <p class="notes">Smoky cocoa, orange, toffee</p>
++            <p>Volcanic-soil beans with a velvety body and a clean, lingering sweetness.</p>
++          </div>
++        </article>
++      </div>
++      <div id="status" role="status" aria-live="polite">Scroll to explore our origins.</div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +318,58 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var scroller = document.getElementById('scroller');
++      var status = document.getElementById('status');
++      var cards = scroller.querySelectorAll('.bean-card');
++      var SCROLL_END_DELAY = 150; // ms of inactivity before scrolling is considered finished
++      var isScrolling = false;
++      var endTimer = null;
++
++      // Called only once scrolling has settled. This is the only place that reads layout.
++      function findMostVisibleOrigin() {
++        var box = scroller.getBoundingClientRect();
++        var best = null;
++        var bestArea = 0;
++        for (var i = 0; i < cards.length; i++) {
++          var r = cards[i].getBoundingClientRect();
++          var w = Math.min(r.right, box.right) - Math.max(r.left, box.left);
++          var h = Math.min(r.bottom, box.bottom) - Math.max(r.top, box.top);
++          var area = Math.max(0, w) * Math.max(0, h);
++          if (area > bestArea) {
++            bestArea = area;
++            best = cards[i];
++          }
++        }
++        return best ? best.getAttribute('data-origin') : null;
++      }
++
++      function onScrollEnd() {
++        endTimer = null;
++        isScrolling = false;
++        var origin = findMostVisibleOrigin();
++        status.textContent = origin
++          ? 'Scroll ended. Visible: ' + origin
++          : 'Scroll ended.';
++      }
++
++      // Hot path: no layout reads, no DOM writes after the first event of a scroll burst.
++      function onScroll() {
++        if (!isScrolling) {
++          isScrolling = true;
++          status.textContent = 'Scrolling...';
++        }
++        if (endTimer !== null) {
++          clearTimeout(endTimer);
++        }
++        endTimer = setTimeout(onScrollEnd, SCROLL_END_DELAY);
++      }
++
++      scroller.addEventListener('scroll', onScroll, { passive: true });
++    })();
++  </script>
+ </body>
+ 
+ </html>

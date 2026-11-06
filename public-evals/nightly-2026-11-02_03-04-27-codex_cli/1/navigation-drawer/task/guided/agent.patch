@@ -1,0 +1,326 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,9 +27,9 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-header {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,28 +45,154 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .menu-button,
++    .drawer-close {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++      min-height: 44px;
++      padding: 0.5rem 0.75rem;
++      border: 1px solid var(--accent);
++      border-radius: 4px;
++      background: transparent;
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .menu-button svg {
++      width: 24px;
++      height: 24px;
++    }
++
++    .menu-button:hover,
++    .drawer-close:hover {
++      background: #ffffff15;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    :root {
++      scrollbar-gutter: stable;
++    }
++
++    :root:has(.drawer:popover-open) {
++      overflow: hidden;
++    }
++
++    .drawer {
++      --drawer-width: min(20rem, 80vw);
++      --drawer-backdrop: 0;
++      position: fixed;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      max-width: none;
++      max-height: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      overflow: hidden;
++      background: transparent;
++    }
++
++    .drawer::backdrop {
++      background: black;
++      opacity: calc(var(--drawer-backdrop) * 0.5);
++    }
++
++    .drawer-scroller {
++      display: grid;
++      grid-template-columns: var(--drawer-width) 100%;
++      height: 100%;
++      overflow-x: auto;
++      overscroll-behavior: none;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++    }
++
++    .drawer-scroller::after {
++      content: '';
++      scroll-snap-align: end;
++      scroll-initial-target: nearest;
++    }
++
++    .drawer-sheet {
++      height: 100svh;
++      max-height: 100%;
++      padding: 1.5rem;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-snap-align: start;
++      background: var(--primary);
++      color: white;
++    }
++
++    .drawer-heading {
+       display: flex;
+-      list-style: none;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      margin-bottom: 1.5rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .drawer-heading h2 {
++      font-size: 1.25rem;
+     }
+ 
+-    nav a {
++    .drawer-sheet ul {
++      display: grid;
++      gap: 0.5rem;
++      list-style: none;
++    }
++
++    .drawer-sheet a {
++      display: block;
++      padding: 0.75rem;
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .drawer-sheet a:hover {
+       color: var(--accent);
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      .drawer-scroller {
++        scroll-behavior: smooth;
++      }
++    }
++
++    @supports (animation-timeline: scroll()) {
++      @property --drawer-backdrop {
++        syntax: '<number>';
++        inherits: true;
++        initial-value: 0;
++      }
++
++      .drawer {
++        timeline-scope: --drawer-fade;
++        animation: fade-drawer-backdrop linear both;
++        animation-timeline: --drawer-fade;
++      }
++
++      .drawer-scroller {
++        scroll-timeline: --drawer-fade x;
++      }
++
++      @keyframes fade-drawer-backdrop {
++        from { --drawer-backdrop: 1; }
++        to { --drawer-backdrop: 0; }
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -156,18 +282,18 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <div id="page-content">
++  <header class="site-header">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <button class="menu-button" id="drawer-open" type="button" aria-expanded="false" aria-controls="navigation-drawer">
++      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++        <path d="M3 6h18M3 12h18M3 18h18" />
++      </svg>
++      Menu
++    </button>
++  </header>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -205,8 +331,121 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  </div>
+ 
++  <div class="drawer" id="navigation-drawer" popover="manual">
++    <div class="drawer-scroller">
++      <nav class="drawer-sheet" aria-labelledby="drawer-title" tabindex="-1">
++        <div class="drawer-heading">
++          <h2 id="drawer-title">Explore</h2>
++          <button class="drawer-close" type="button">Close menu</button>
++        </div>
++        <ul>
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </nav>
++    </div>
++  </div>
++
++  <script>
++    const drawer = document.getElementById('navigation-drawer');
++    const openButton = document.getElementById('drawer-open');
++    const page = document.getElementById('page-content');
++    const scroller = drawer.querySelector('.drawer-scroller');
++    const sheet = drawer.querySelector('.drawer-sheet');
++    const closeButton = drawer.querySelector('.drawer-close');
++    let state = 'closed';
++    let hasBeenVisible = false;
++    let hasFocused = false;
++
++    function finishClosing() {
++      if (state === 'closed') return;
++      state = 'closed';
++      drawer.hidePopover();
++      page.inert = false;
++      openButton.setAttribute('aria-expanded', 'false');
++      openButton.focus();
++    }
++
++    async function openDrawer() {
++      if (state !== 'closed') return;
++      state = 'opening';
++      hasBeenVisible = false;
++      hasFocused = false;
++      drawer.showPopover();
++      page.inert = true;
++      openButton.setAttribute('aria-expanded', 'true');
++
++      // Safari and Firefox need an explicit initial closed scroll stop.
++      if (!CSS.supports('scroll-initial-target', 'nearest')) {
++        scroller.scrollTo({ left: sheet.offsetWidth, behavior: 'instant' });
++        await new Promise(resolve => {
++          requestAnimationFrame(() => requestAnimationFrame(resolve));
++        });
++      }
++
++      if (state === 'opening') {
++        scroller.scrollTo({ left: 0, behavior: 'auto' });
++      }
++    }
++
++    function closeDrawer() {
++      if (state === 'closed') return;
++      state = 'closing';
++      if (scroller.scrollLeft >= sheet.offsetWidth - 1) {
++        finishClosing();
++      } else {
++        scroller.scrollTo({ left: sheet.offsetWidth, behavior: 'auto' });
++      }
++    }
++
++    // Observe actual visibility so a native swipe and button dismissal
++    // share the same cleanup, including keyboard focus restoration.
++    const visibleThreshold = 0.001;
++    new IntersectionObserver(entries => {
++      if (state === 'closed') return;
++      const entry = entries.at(-1);
++      if (entry.intersectionRatio >= visibleThreshold) {
++        hasBeenVisible = true;
++      } else if (hasBeenVisible || state === 'closing') {
++        finishClosing();
++        return;
++      }
++      if (entry.intersectionRatio === 1 && state !== 'closing') {
++        state = 'open';
++        if (!hasFocused) {
++          hasFocused = true;
++          sheet.focus();
++        }
++      }
++    }, { root: scroller, threshold: [visibleThreshold, 1] }).observe(sheet);
++
++    if (!CSS.supports('animation-timeline: scroll()')) {
++      const updateBackdrop = () => {
++        const opacity = 1 - scroller.scrollLeft / sheet.offsetWidth;
++        drawer.style.setProperty('--drawer-backdrop', Math.max(0, Math.min(1, opacity)));
++      };
++      scroller.addEventListener('scroll', updateBackdrop, { passive: true });
++    }
++
++    openButton.addEventListener('click', openDrawer);
++    closeButton.addEventListener('click', closeDrawer);
++    drawer.addEventListener('click', event => {
++      if (!sheet.contains(event.target)) closeDrawer();
++    });
++    document.addEventListener('keydown', event => {
++      if (event.key === 'Escape' && state !== 'closed') {
++        event.preventDefault();
++        closeDrawer();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

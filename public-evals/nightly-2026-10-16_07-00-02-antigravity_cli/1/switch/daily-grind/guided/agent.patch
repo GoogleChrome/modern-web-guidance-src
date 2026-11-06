@@ -1,0 +1,577 @@
+diff --git a/index.html b/index.html
+index 66c9173..5765f8d 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,22 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --accent-color: #ffab40;
++      --focus-color: #ff8c00;
++      color-scheme: light;
++    }
++
++    [data-theme="dark"] {
++      --primary: #2d1e19;
++      --secondary: #4e342e;
++      --accent: #ffb74d;
++      --text: #f5ebe6;
++      --light: #1a120e;
++      --card-bg: #271a17;
++      --accent-color: #ffb74d;
++      --focus-color: #ffb74d;
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -25,6 +41,7 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     /* Navigation */
+@@ -38,6 +55,8 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      gap: 1.5rem;
++      flex-wrap: wrap;
+     }
+ 
+     .logo {
+@@ -46,13 +65,18 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .nav-controls {
+       display: flex;
+-      list-style: none;
++      align-items: center;
++      gap: 1.5rem;
++      flex-wrap: wrap;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    nav ul {
++      display: flex;
++      list-style: none;
++      align-items: center;
++      gap: 20px;
+     }
+ 
+     nav a {
+@@ -72,6 +96,29 @@
+       border-radius: 4px;
+     }
+ 
++    /* Switch Styling */
++    .switch-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.65rem;
++      min-block-size: 44px;
++      cursor: pointer;
++      font-size: 0.9rem;
++      color: white;
++      user-select: none;
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--accent-color, #ffab40);
++      margin: 0;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--focus-color, #ff8c00);
++      outline-offset: 4px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -108,11 +155,12 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: background-color 0.3s;
+     }
+ 
+     .card h3 {
+@@ -120,6 +168,10 @@
+       color: var(--primary);
+     }
+ 
++    [data-theme="dark"] .card h3 {
++      color: var(--accent);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,11 +187,22 @@
+       background: #3e2723;
+     }
+ 
++    [data-theme="dark"] .btn {
++      background: var(--accent);
++      color: #1a120e;
++      font-weight: 600;
++    }
++
++    [data-theme="dark"] .btn:hover {
++      background: #ffa726;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      transition: background-color 0.3s;
+     }
+ 
+     .footer-links {
+@@ -153,19 +216,38 @@
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <script type="importmap">
++    {
++      "imports": {
++        "input-switch-polyfill": "./input-switch-polyfill.js"
++      }
++    }
++  </script>
++  <script type="module">
++    if (!('switch' in HTMLInputElement.prototype)) {
++      import('input-switch-polyfill');
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-controls">
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++      <label for="theme-switch" class="switch-label">
++        <span>Dark Mode</span>
++        <input id="theme-switch" type="checkbox" switch>
++      </label>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+@@ -207,6 +289,27 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const themeSwitch = document.getElementById('theme-switch');
++    if (themeSwitch) {
++      themeSwitch.addEventListener('change', (e) => {
++        if (e.target.checked) {
++          document.documentElement.setAttribute('data-theme', 'dark');
++          localStorage.setItem('theme', 'dark');
++        } else {
++          document.documentElement.removeAttribute('data-theme');
++          localStorage.setItem('theme', 'light');
++        }
++      });
++
++      const savedTheme = localStorage.getItem('theme');
++      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
++      if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
++        themeSwitch.checked = true;
++        document.documentElement.setAttribute('data-theme', 'dark');
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/input-switch-polyfill.css b/input-switch-polyfill.css
+new file mode 100644
+index 0000000..990f0ad
+--- /dev/null
++++ b/input-switch-polyfill.css
+@@ -0,0 +1,124 @@
++label:has(input[switch]),
++input[switch] {
++  animation: none;
++}
++
++/* Base styles for the polyfilled switch */
++input.switch {
++  /* Default fallback color */
++  --switch-accent: #2196f3;
++  --switch-background: rgba(192, 192, 192, 1);
++  --switch-thumb: white;
++  appearance: none;
++  height: 1em;
++  width: 2em;
++  border-radius: 1em;
++  box-shadow: inset -1em 0px 0px 0px var(--switch-background);
++  background-color: var(--switch-thumb);
++  border: 1px solid var(--switch-background);
++  font-size: inherit;
++  position: relative;
++  top: 0.2em;
++  touch-action: none;
++}
++
++input.switch:is(:hover, :active, :focus) {
++  transition:
++    box-shadow 0.2s,
++    border 0.2s,
++    opacity 0.2s;
++}
++
++[dir='rtl'] input.switch {
++  transform: rotate(180deg);
++}
++
++.vertical-rl,
++.vertical-lr {
++  transform: rotate(90deg);
++}
++
++.sideways-rl {
++  transform: rotate(90deg);
++  right: 1.6em;
++}
++
++label:has(.sideways-rl) {
++  margin-block-end: 0.8em;
++}
++
++.sideways-lr {
++  transform: rotate(-90deg);
++  left: 1.4em;
++  margin-inline-start: 0.8em;
++}
++
++label:has(.sideways-lr) {
++  margin-block-start: -1.2em;
++}
++
++input.switch:checked {
++  box-shadow: inset 1em 0px 0px 0px var(--switch-accent);
++  border: 1px solid var(--switch-accent);
++}
++
++input.switch[disabled] {
++  opacity: 0.5;
++}
++
++@media (prefers-contrast: more) {
++  input.switch {
++    border: 1px solid ButtonText;
++  }
++
++  /* Shared styles for the indicator */
++  input.switch::after {
++    box-sizing: border-box;
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    width: 50%;
++    height: 100%;
++    top: 0;
++    font-size: 0.5em;
++    font-family: Arial, sans-serif;
++    line-height: 1;
++  }
++
++  /* Default (OFF) state: unchecked and not visually-on, OR visually-off */
++  input.switch:not(:checked):not(.visually-on)::after,
++  input.switch.visually-off::after {
++    content: '◯';
++    position: absolute;
++    left: 50%;
++  }
++
++  /* Checked (ON) state: checked and not visually-off, OR visually-on */
++  input.switch:checked:not(.visually-off),
++  input.switch.visually-on {
++    border-color: ButtonText;
++  }
++
++  input.switch:checked:not(.visually-off)::after,
++  input.switch.visually-on::after {
++    content: '❙';
++    position: absolute;
++    left: 0;
++    color: contrast-color(var(--switch-accent));
++  }
++}
++
++@media (forced-colors: active) {
++  input.switch {
++    forced-color-adjust: none;
++    --switch-accent: Canvas;
++    --switch-background: Canvas;
++    --switch-thumb: ButtonText;
++    border-color: ButtonText;
++  }
++
++  input.switch:checked {
++    box-shadow: inset 1em 0px 0px 0px var(--switch-accent);
++    border-color: ButtonText;
++  }
++}
+diff --git a/input-switch-polyfill.js b/input-switch-polyfill.js
+new file mode 100644
+index 0000000..8522559
+--- /dev/null
++++ b/input-switch-polyfill.js
+@@ -0,0 +1,209 @@
++(async () => {
++  // Feature Detection
++  // If the browser prototype has the 'switch' property, we trust native support.
++  if ('switch' in HTMLInputElement.prototype) {
++    return;
++  }
++
++  const contrastMediaQueryList = matchMedia('(prefers-contrast: more)');
++  let prefersContrastMore = contrastMediaQueryList.matches;
++  contrastMediaQueryList.addEventListener('change', (event) => {
++    prefersContrastMore = event.matches;
++  });
++
++  const sheetPromise = fetch(import.meta.resolve('./input-switch-polyfill.css'))
++    .then((r) => r.text())
++    .then((css) => new CSSStyleSheet().replace(css));
++
++  // Helper to upgrade a single checkbox
++  function upgradeSwitch(input) {
++    // Avoid double-processing
++    if (input.classList.contains('switch')) {
++      return;
++    }
++
++    // Apply the class that triggers our CSS
++    input.classList.add('switch');
++
++    // Set the ARIA role
++    input.setAttribute('role', 'switch');
++
++    // Handle `accent-color` and `writing-mode` support
++    // We read the computed accent-color (inherited or set explicitly)
++    // and assign it to the CSS variable --switch-accent
++    const style = getComputedStyle(input);
++    const { 'accent-color': accentColor, 'writing-mode': writingMode } = style;
++    if (writingMode) {
++      input.classList.add(writingMode);
++    }
++    if (accentColor && accentColor !== 'auto') {
++      input.style.setProperty('--switch-accent', accentColor);
++    }
++
++    // Drag support
++    input.addEventListener('pointerdown', (event) => {
++      if (input.disabled) {
++        return;
++      }
++      // Don't preventDefault here to allow native focus and click if we don't drag
++
++      const target = input;
++      target.setPointerCapture(event.pointerId);
++
++      const startX = event.clientX;
++      const startY = event.clientY;
++      const wasChecked = target.checked;
++      const style = getComputedStyle(target);
++      const fontSize = parseFloat(style.fontSize);
++
++      // Determine orientation
++      const isRtl = style.direction === 'rtl';
++      const isVertical =
++        target.classList.contains('vertical-rl') ||
++        target.classList.contains('vertical-lr') ||
++        target.classList.contains('sideways-rl');
++      const isSidewaysLr = target.classList.contains('sideways-lr');
++
++      let currentProgress = wasChecked ? 1 : 0;
++      let isDragging = false;
++
++      const handlePointerMove = (e) => {
++        if (!target.hasPointerCapture(e.pointerId)) {
++          return;
++        }
++
++        // Check for drag threshold
++        if (!isDragging) {
++          if (
++            Math.abs(e.clientX - startX) > 5 ||
++            Math.abs(e.clientY - startY) > 5
++          ) {
++            isDragging = true;
++            target.style.transition = 'none';
++          } else {
++            return; // Treat as click until moved enough
++          }
++        }
++
++        e.preventDefault(); // Prevent native scrolling/selection during drag
++
++        let delta = 0;
++        if (isVertical) {
++          delta = e.clientY - startY;
++        } else if (isSidewaysLr) {
++          delta = -(e.clientY - startY);
++        } else {
++          delta = e.clientX - startX;
++          if (isRtl) {
++            delta = -delta;
++          }
++        }
++
++        const progressChange = delta / fontSize;
++        let newProgress = (wasChecked ? 1 : 0) + progressChange;
++        newProgress = Math.max(0, Math.min(1, newProgress));
++        currentProgress = newProgress;
++
++        const offset = (2 * newProgress - 1) * fontSize;
++        const isVisuallyOn = newProgress > 0.5;
++
++        // Update styles
++        if (isVisuallyOn) {
++          target.classList.add('visually-on');
++          target.classList.remove('visually-off');
++          target.style.boxShadow = `inset ${offset}px 0px 0px 0px var(--switch-accent)`;
++          target.style.border = `1px solid ${prefersContrastMore ? 'ButtonText' : 'var(--switch-accent)'}`;
++        } else {
++          target.classList.add('visually-off');
++          target.classList.remove('visually-on');
++          target.style.boxShadow = `inset ${offset}px 0px 0px 0px var(--switch-background)`;
++          target.style.border = `1px solid ${prefersContrastMore ? 'ButtonText' : 'var(--switch-background)'}`;
++        }
++      };
++
++      const handlePointerUp = (e) => {
++        target.releasePointerCapture(e.pointerId);
++        target.removeEventListener('pointermove', handlePointerMove);
++        target.removeEventListener('pointerup', handlePointerUp);
++        target.removeEventListener('pointercancel', handlePointerUp);
++
++        target.style.transition = '';
++        target.style.boxShadow = '';
++        target.style.border = '';
++        target.classList.remove('visually-on');
++        target.classList.remove('visually-off');
++
++        if (isDragging) {
++          const finalChecked = currentProgress > 0.5;
++          if (finalChecked !== wasChecked) {
++            target.checked = finalChecked;
++            target.dispatchEvent(new Event('input', { bubbles: true }));
++            target.dispatchEvent(new Event('change', { bubbles: true }));
++          }
++
++          // Suppress the subsequent click event since we handled the drag
++          target.addEventListener(
++            'click',
++            (clickEvent) => {
++              clickEvent.preventDefault();
++              clickEvent.stopPropagation();
++            },
++            { once: true, capture: true }
++          );
++        }
++      };
++
++      target.addEventListener('pointermove', handlePointerMove);
++      target.addEventListener('pointerup', handlePointerUp);
++      target.addEventListener('pointercancel', handlePointerUp);
++    });
++  }
++
++  // Initial Run
++  async function init() {
++    const switches = document.querySelectorAll(
++      'input[type="checkbox"][switch]'
++    );
++    switches.forEach(upgradeSwitch);
++    const newSheet = await sheetPromise;
++    if (!document.adoptedStyleSheets.includes(newSheet)) {
++      document.adoptedStyleSheets = [...document.adoptedStyleSheets, newSheet];
++    }
++  }
++
++  // Observer for dynamic content (SPAs, HTMX, etc.)
++  const observer = new MutationObserver((mutations) => {
++    mutations.forEach((mutation) => {
++      if (mutation.type === 'childList') {
++        mutation.addedNodes.forEach((node) => {
++          if (node.nodeType === 1) {
++            // Element node
++            // Check the node itself
++            if (
++              node.matches &&
++              node.matches('input[type="checkbox"][switch]')
++            ) {
++              upgradeSwitch(node);
++            }
++            // Check descendants
++            const nestedSwitches = node.querySelectorAll
++              ? node.querySelectorAll('input[type="checkbox"][switch]')
++              : [];
++            nestedSwitches.forEach(upgradeSwitch);
++          }
++        });
++      }
++    });
++  });
++
++  // Start logic
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', () => {
++      init();
++      observer.observe(document.body, { childList: true, subtree: true });
++    });
++  } else {
++    init();
++    observer.observe(document.body, { childList: true, subtree: true });
++  }
++})();
+diff --git a/package.json b/package.json
+index 2bd4d77..2c1f499 100644
+--- a/package.json
++++ b/package.json
+@@ -6,5 +6,8 @@
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "input-switch-polyfill": "^1.12.0"
+   }
+ }

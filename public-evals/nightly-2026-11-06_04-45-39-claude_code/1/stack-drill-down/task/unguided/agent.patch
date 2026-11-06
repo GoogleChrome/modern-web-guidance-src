@@ -1,0 +1,640 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+--- a/app.js
++++ b/app.js
+@@ -0,0 +1,635 @@
++/*
++ * The Daily Grind — hierarchical drill-down navigation stack.
++ *
++ * Routes (hash based, so deep links work on any static host):
++ *   #/ (or no hash)              → Home
++ *   #/menu/:item                 → Home › Item
++ *   #/menu/:item/process         → Home › Item › How it's made
++ *
++ * The on-screen stack always mirrors the route hierarchy, and browser history
++ * mirrors the stack: every level of a deep link gets its own history entry,
++ * so Back (browser button, in-app button, Esc, or swipe) always walks up one
++ * level at a time.
++ */
++(function () {
++  'use strict';
++
++  const IMG = (id, w) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w || 1400}&q=75`;
++
++  const ITEMS = [
++    {
++      id: 'maple-oat-latte',
++      name: 'Maple Oat Latte',
++      tagline: 'Creamy oat milk with a hint of Vermont maple syrup.',
++      image: IMG('photo-1509042239860-f550ce710b93'),
++      description:
++        'Our autumn signature: a double shot of house espresso folded into velvety steamed oat milk, ' +
++        'sweetened with grade-A dark Vermont maple syrup and finished with a dusting of cinnamon.',
++      notes: ['Toasted maple', 'Brown sugar', 'Cinnamon', 'Silky oat'],
++      stats: { Caffeine: '130 mg', Calories: '190 (12 oz)', Dairy: 'Dairy-free', Served: 'Hot or iced' },
++      sizes: [['Small · 8 oz', '$4.75'], ['Medium · 12 oz', '$5.50'], ['Large · 16 oz', '$6.25']],
++      process: {
++        image: IMG('photo-1442512595331-e89e73853f31'),
++        intro: 'Every Maple Oat Latte is built to order in about three minutes.',
++        steps: [
++          ['Pull the shots', 'A 36 g double shot of our Grindhouse blend, extracted in 28 seconds.'],
++          ['Sweeten the base', 'Real Vermont maple syrup is stirred directly into the hot espresso so it dissolves completely.'],
++          ['Steam the oat milk', 'Barista-edition oat milk is stretched to 140°F for a glossy microfoam.'],
++          ['Pour & finish', 'Poured with latte art and finished with a pinch of Ceylon cinnamon.'],
++        ],
++        origin: 'Maple syrup from Sugarbush Farm, Woodstock, VT · Espresso roasted in-house every Tuesday.',
++      },
++    },
++    {
++      id: 'dark-roast-espresso',
++      name: 'Dark Roast Espresso',
++      tagline: 'Bold, smokey, and perfect for a morning boost.',
++      image: IMG('photo-1510591509098-f4fdc6d0ff04'),
++      description:
++        'A full-bodied espresso roasted just past second crack. Expect a thick, hazel crema, ' +
++        'a syrupy body and a long bittersweet finish that stands up beautifully to milk — or to Monday.',
++      notes: ['Dark chocolate', 'Smoke', 'Molasses', 'Toasted walnut'],
++      stats: { Caffeine: '150 mg', Origin: 'Sumatra & Brazil', Roast: 'Dark', Served: 'Double shot' },
++      sizes: [['Single', '$2.95'], ['Double', '$3.75'], ['Triple', '$4.50']],
++      process: {
++        image: IMG('photo-1447933601403-0c6688de566e'),
++        intro: 'Our darkest roast takes patience — from green bean to cup in four careful stages.',
++        steps: [
++          ['Source', 'Wet-hulled Sumatra Mandheling blended with naturally processed Brazilian Cerrado.'],
++          ['Roast', 'Small 12 kg batches roasted to 446°F, dropped about 20 seconds into second crack.'],
++          ['Rest', 'Beans degas for five days so the crema is thick but the shot stays balanced.'],
++          ['Extract', '18 g in, 38 g out, 27 seconds at 200°F.'],
++        ],
++        origin: 'Direct-trade partners: Koperasi Gayo (Aceh, Sumatra) and Fazenda Rainha (Minas Gerais, Brazil).',
++      },
++    },
++    {
++      id: 'cold-brew',
++      name: 'Cold Brew',
++      tagline: 'Steeped for 18 hours for maximum smoothness.',
++      image: IMG('photo-1461023058943-07fcbe16d735'),
++      description:
++        'Coarse-ground single-origin Colombian beans steeped in cold filtered water for 18 hours, ' +
++        'then double filtered. The result is naturally sweet, low in acidity and dangerously smooth.',
++      notes: ['Cocoa', 'Caramel', 'Red apple', 'Low acidity'],
++      stats: { Caffeine: '200 mg', Steep: '18 hours', Acidity: 'Low', Served: 'Over ice' },
++      sizes: [['Medium · 16 oz', '$4.95'], ['Large · 24 oz', '$5.75'], ['Growler · 64 oz', '$18.00']],
++      process: {
++        image: IMG('photo-1517701604599-bb29b565090c'),
++        intro: 'Cold brew is mostly waiting. Here is what happens during those 18 hours.',
++        steps: [
++          ['Grind coarse', 'Beans are ground to the texture of raw sugar to prevent over-extraction.'],
++          ['Steep cold', 'One part coffee to eight parts filtered water, steeped at 40°F for 18 hours.'],
++          ['Filter twice', 'A mesh pass removes grounds, then a paper pass for a clean, sediment-free cup.'],
++          ['Serve', 'Cut with water and poured over ice made from the same filtered water.'],
++        ],
++        origin: 'Single-origin Huila, Colombia · Grown at 1,700 m by the Asociación de Productores de Pitalito.',
++      },
++    },
++  ];
++
++  // Legacy URLs from the old multi-page site.
++  const ALIASES = { seasonal: 'maple-oat-latte', espresso: 'dark-roast-espresso' };
++  const itemById = (id) => ITEMS.find((i) => i.id === (ALIASES[id] || id));
++
++  const HOME_TITLE = 'The Daily Grind | Artisanal Coffee';
++  const PARALLAX = 0.3; // how far the screen underneath shifts left (fraction of width)
++
++  const stackEl = document.getElementById('stack');
++  const scrimEl = stackEl.querySelector('.scrim');
++  const announcer = document.getElementById('announcer');
++  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++  /* ------------------------------------------------------------------ */
++  /* Routing                                                             */
++  /* ------------------------------------------------------------------ */
++
++  /**
++   * Resolve a path into the full chain of screens from the root down.
++   * Invalid trailing segments are dropped, so the chain's last path is the
++   * canonical form of the requested path.
++   */
++  function resolve(path) {
++    const segs = path.split('/').filter(Boolean).map(decodeURIComponent);
++    const chain = [{ path: '/', kind: 'home', title: 'Home' }];
++    if (segs[0] === 'menu' && segs[1]) {
++      const item = itemById(segs[1]);
++      if (item) {
++        const itemPath = `/menu/${item.id}`;
++        chain.push({ path: itemPath, kind: 'item', item, title: item.name });
++        if (segs[2] === 'process') {
++          chain.push({ path: `${itemPath}/process`, kind: 'process', item, title: 'How It’s Made' });
++        }
++      }
++    }
++    return chain;
++  }
++
++  function pathFromLocation() {
++    const hash = location.hash.replace(/^#/, '');
++    return hash.startsWith('/') ? hash : '/';
++  }
++
++  function urlFor(path) {
++    return path === '/' ? location.pathname + location.search : '#' + path;
++  }
++
++  function parentPath(path) {
++    const chain = resolve(path);
++    return chain.length > 1 ? chain[chain.length - 2].path : '/';
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Screen rendering                                                    */
++  /* ------------------------------------------------------------------ */
++
++  const esc = (s) =>
++    String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
++
++  const CHEVRON_LEFT =
++    '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></svg>';
++  const CHEVRON_RIGHT =
++    '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
++
++  function topbar(backLabel, title) {
++    return `
++      <div class="topbar">
++        <button type="button" class="back-btn" data-nav-back aria-label="Back to ${esc(backLabel)}">
++          ${CHEVRON_LEFT}<span>${esc(backLabel)}</span>
++        </button>
++        <div class="topbar-title" aria-hidden="true">${esc(title)}</div>
++        <span></span>
++      </div>`;
++  }
++
++  function hero(image, eyebrow, title) {
++    return `
++      <header class="detail-hero" style="background-image:url('${esc(image)}')">
++        <div class="detail-hero-inner">
++          <p class="eyebrow">${esc(eyebrow)}</p>
++          <h1 tabindex="-1" data-screen-heading>${esc(title)}</h1>
++        </div>
++      </header>`;
++  }
++
++  function renderItem(item) {
++    const stats = Object.entries(item.stats)
++      .map(([k, v]) => `<div class="stat"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`)
++      .join('');
++    return `
++      ${topbar('Home', item.name)}
++      ${hero(item.image, 'Seasonal Favorite', item.name)}
++      <div class="detail-body">
++        <p class="lead">${esc(item.description)}</p>
++
++        <section class="detail-section" aria-labelledby="${item.id}-notes">
++          <h2 id="${item.id}-notes">Tasting notes</h2>
++          <ul class="chips">${item.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
++        </section>
++
++        <section class="detail-section" aria-labelledby="${item.id}-facts">
++          <h2 id="${item.id}-facts">At a glance</h2>
++          <dl class="stats">${stats}</dl>
++        </section>
++
++        <section class="detail-section" aria-labelledby="${item.id}-sizes">
++          <h2 id="${item.id}-sizes">Sizes &amp; pricing</h2>
++          <ul class="price-list">
++            ${item.sizes.map(([s, p]) => `<li><span>${esc(s)}</span><strong>${esc(p)}</strong></li>`).join('')}
++          </ul>
++        </section>
++
++        <section class="detail-section" aria-labelledby="${item.id}-more">
++          <h2 id="${item.id}-more">Learn more</h2>
++          <ul class="drill-list">
++            <li>
++              <a class="drill-row" href="#/menu/${item.id}/process">
++                <span class="thumb" style="background-image:url('${esc(item.process.image.replace('w=1400', 'w=200'))}')"></span>
++                <span class="text">
++                  <strong>How it’s made</strong>
++                  <small>From bean to cup in ${item.process.steps.length} steps</small>
++                </span>
++                <span class="chevron">${CHEVRON_RIGHT}</span>
++              </a>
++            </li>
++          </ul>
++        </section>
++
++        <a href="/order-online" class="btn">Order ${esc(item.name)}</a>
++        <p class="swipe-hint">Swipe right to go back</p>
++      </div>`;
++  }
++
++  function renderProcess(item) {
++    const p = item.process;
++    return `
++      ${topbar(item.name, 'How It’s Made')}
++      ${hero(p.image, item.name, 'How It’s Made')}
++      <div class="detail-body">
++        <p class="lead">${esc(p.intro)}</p>
++        <section class="detail-section" aria-labelledby="${item.id}-steps">
++          <h2 id="${item.id}-steps">The process</h2>
++          <ol class="steps">
++            ${p.steps.map(([t, d]) => `<li><strong>${esc(t)}</strong>${esc(d)}</li>`).join('')}
++          </ol>
++        </section>
++        <section class="detail-section" aria-labelledby="${item.id}-origin">
++          <h2 id="${item.id}-origin">Origin</h2>
++          <p>${esc(p.origin)}</p>
++        </section>
++        <p class="swipe-hint">Swipe right to go back</p>
++      </div>`;
++  }
++
++  function createScreen(node) {
++    const el = document.createElement('div');
++    el.className = 'screen is-detail';
++    el.dataset.path = node.path;
++    el.tabIndex = -1;
++    el.setAttribute('role', 'region');
++    el.setAttribute('aria-label', node.title);
++    el.innerHTML = node.kind === 'process' ? renderProcess(node.item) : renderItem(node.item);
++    return el;
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Stack state & transitions                                           */
++  /* ------------------------------------------------------------------ */
++
++  const homeEl = document.getElementById('screen-home');
++  /** @type {{path:string, title:string, el:HTMLElement, returnFocus?:Element|null}[]} */
++  const stack = [{ path: '/', title: 'Home', el: homeEl }];
++
++  const OFF = 'translateX(100%)';
++  const TOP = 'translateX(0)';
++  const UNDER = `translateX(-${PARALLAX * 100}%)`;
++
++  function durationMs() {
++    return reduceMotion.matches ? 0 : 380;
++  }
++
++  function setAnimating(on) {
++    for (const s of stack) s.el.classList.toggle('is-animating', on);
++    scrimEl.classList.toggle('is-animating', on);
++  }
++
++  /** Stack z-order: each screen above the previous, scrim just under the top. */
++  function layer() {
++    stack.forEach((s, i) => (s.el.style.zIndex = String(i * 2)));
++    scrimEl.style.zIndex = String(Math.max(0, stack.length * 2 - 3));
++  }
++
++  /** Only the top screen is interactive / exposed to assistive tech. */
++  function updateInteractivity() {
++    stack.forEach((s, i) => {
++      const isTop = i === stack.length - 1;
++      s.el.inert = !isTop;
++      s.el.toggleAttribute('aria-hidden', !isTop);
++    });
++  }
++
++  function afterTransition(el, fn) {
++    let done = false;
++    const finish = () => {
++      if (done) return;
++      done = true;
++      el.removeEventListener('transitionend', onEnd);
++      fn();
++    };
++    const onEnd = (e) => {
++      if (e.target === el && e.propertyName === 'transform') finish();
++    };
++    el.addEventListener('transitionend', onEnd);
++    setTimeout(finish, durationMs() + 80);
++  }
++
++  let transitionToken = 0;
++
++  /**
++   * Reconcile the on-screen stack with `path`.
++   * Shared ancestors are kept (with their scroll positions); everything else
++   * is popped or pushed. Only the top-most change is animated.
++   */
++  function sync(path, { animate = true } = {}) {
++    const chain = resolve(path);
++    const canonical = chain[chain.length - 1].path;
++    if (canonical !== path) {
++      history.replaceState({ ...(history.state || {}), gd: true, depth: chain.length - 1 }, '', urlFor(canonical));
++    }
++
++    let common = 0;
++    while (common < stack.length && common < chain.length && stack[common].path === chain[common].path) common++;
++
++    const toPop = stack.slice(common);
++    const toPush = chain.slice(common);
++    if (!toPop.length && !toPush.length) {
++      // Nothing structural changed, but a cancelled drag may have left offsets behind.
++      settle();
++      return;
++    }
++
++    const token = ++transitionToken;
++    const doAnimate = animate && durationMs() > 0;
++    const oldTop = stack[stack.length - 1];
++
++    if (toPush.length === 0) {
++      // ---- Pure pop (going back up the hierarchy) ----
++      stack.length = common;
++      const revealed = stack[stack.length - 1];
++      // Intermediate screens (if popping several levels) vanish immediately.
++      toPop.slice(0, -1).forEach((s) => s.el.remove());
++      stack.push(oldTop); // keep old top in the stack temporarily for layering
++      layer();
++      stack.pop();
++
++      if (doAnimate) {
++        oldTop.el.classList.add('is-animating');
++        revealed.el.classList.add('is-animating');
++        scrimEl.classList.add('is-animating');
++        // Ensure the revealed screen starts from its "under" position.
++        if (!revealed.el.style.transform) revealed.el.style.transform = UNDER;
++        void oldTop.el.offsetWidth;
++        oldTop.el.style.transform = OFF;
++        revealed.el.style.transform = TOP;
++        scrimEl.style.opacity = '0';
++        afterTransition(oldTop.el, () => {
++          oldTop.el.remove();
++          if (token === transitionToken) settle();
++        });
++      } else {
++        oldTop.el.remove();
++        settle();
++      }
++
++      updateInteractivity();
++      const target = toPop[0].returnFocus;
++      focusScreen(revealed, target);
++      announce(revealed);
++      return;
++    }
++
++    // ---- Push (possibly after dropping a divergent branch) ----
++    toPop.forEach((s) => s.el.remove());
++    stack.length = common;
++
++    const below = stack[stack.length - 1];
++    const returnFocus = document.activeElement;
++    const created = toPush.map((node, i) => {
++      const el = createScreen(node);
++      const isLast = i === toPush.length - 1;
++      el.style.transform = isLast ? (doAnimate ? OFF : TOP) : UNDER;
++      stackEl.appendChild(el);
++      return { path: node.path, title: node.title, el, returnFocus: i === 0 ? returnFocus : null };
++    });
++    stack.push(...created);
++    layer();
++
++    const newTop = stack[stack.length - 1];
++    if (doAnimate) {
++      scrimEl.classList.remove('is-animating');
++      scrimEl.style.opacity = '0';
++      void scrimEl.offsetWidth;
++      newTop.el.classList.add('is-animating');
++      below.el.classList.add('is-animating');
++      scrimEl.classList.add('is-animating');
++      void newTop.el.offsetWidth;
++      newTop.el.style.transform = TOP;
++      below.el.style.transform = UNDER;
++      scrimEl.style.opacity = '1';
++      afterTransition(newTop.el, () => {
++        if (token === transitionToken) settle();
++      });
++    } else {
++      settle();
++    }
++
++    updateInteractivity();
++    focusScreen(newTop);
++    announce(newTop);
++  }
++
++  /** Snap every screen to its resting position (no animation). */
++  function settle() {
++    setAnimating(false);
++    stack.forEach((s, i) => {
++      s.el.style.transform = i === stack.length - 1 ? TOP : UNDER;
++      s.el.classList.remove('is-dragging');
++    });
++    scrimEl.style.opacity = stack.length > 1 ? '1' : '0';
++    layer();
++    updateInteractivity();
++  }
++
++  function focusScreen(entry, preferred) {
++    requestAnimationFrame(() => {
++      if (preferred && preferred.isConnected && entry.el.contains(preferred)) {
++        preferred.focus({ preventScroll: true });
++        return;
++      }
++      const heading = entry.el.querySelector('[data-screen-heading]');
++      (heading || entry.el).focus({ preventScroll: true });
++    });
++  }
++
++  function announce(entry) {
++    const node = resolve(entry.path).pop();
++    document.title = entry.path === '/' ? HOME_TITLE : `${node.kind === 'process' ? node.item.name + ' · ' : ''}${node.title} | The Daily Grind`;
++    announcer.textContent = entry.path === '/' ? 'Home' : node.title;
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Navigation API (kept in sync with browser history)                  */
++  /* ------------------------------------------------------------------ */
++
++  function navigate(path) {
++    const chain = resolve(path);
++    const canonical = chain[chain.length - 1].path;
++    if (canonical === stack[stack.length - 1].path) return;
++    history.pushState({ gd: true, depth: chain.length - 1 }, '', urlFor(canonical));
++    sync(canonical);
++  }
++
++  function goBack() {
++    if (stack.length <= 1) return;
++    const state = history.state;
++    const current = stack[stack.length - 1].path;
++    if (state && state.gd && state.depth > 0) {
++      // We know the previous history entry is this screen's parent.
++      history.back();
++    } else {
++      // Entered via a URL we did not push (e.g. hand-edited hash): replace in place.
++      const parent = parentPath(current);
++      history.replaceState({ gd: true, depth: resolve(parent).length - 1 }, '', urlFor(parent));
++      sync(parent);
++    }
++  }
++
++  window.addEventListener('popstate', () => sync(pathFromLocation()));
++
++  // Links inside the stack that target hash routes become push navigations.
++  stackEl.addEventListener('click', (e) => {
++    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++    if (suppressClick) {
++      e.preventDefault();
++      e.stopPropagation();
++      return;
++    }
++    if (e.target.closest('[data-nav-back]')) {
++      e.preventDefault();
++      goBack();
++      return;
++    }
++    const a = e.target.closest('a[href^="#/"]');
++    if (a) {
++      e.preventDefault();
++      navigate(a.getAttribute('href').slice(1));
++    }
++  }, true);
++
++  document.addEventListener('keydown', (e) => {
++    if (e.key === 'Escape' && !e.metaKey && !e.ctrlKey && !e.altKey && stack.length > 1) {
++      e.preventDefault();
++      goBack();
++    }
++  });
++
++  /* ------------------------------------------------------------------ */
++  /* Swipe-to-go-back (interactive, follows the finger)                  */
++  /* ------------------------------------------------------------------ */
++
++  let drag = null;
++  let suppressClick = false;
++
++  stackEl.addEventListener('pointerdown', (e) => {
++    if (stack.length <= 1 || drag) return;
++    if (e.pointerType === 'mouse') return; // touch / pen only; mouse users have the back button & Esc
++    const top = stack[stack.length - 1];
++    if (!top.el.contains(e.target)) return;
++    drag = {
++      id: e.pointerId,
++      startX: e.clientX,
++      startY: e.clientY,
++      dx: 0,
++      active: false,
++      width: stackEl.clientWidth,
++      top,
++      below: stack[stack.length - 2],
++      samples: [{ x: e.clientX, t: e.timeStamp }],
++    };
++  });
++
++  stackEl.addEventListener('pointermove', (e) => {
++    if (!drag || e.pointerId !== drag.id) return;
++    const dx = e.clientX - drag.startX;
++    const dy = e.clientY - drag.startY;
++
++    if (!drag.active) {
++      // Decide gesture direction before taking over.
++      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
++        drag = null; // vertical scroll — let the browser have it
++        return;
++      }
++      if (dx > 10 && dx > Math.abs(dy) * 1.2) {
++        drag.active = true;
++        drag.startX = e.clientX; // avoid a jump at gesture start
++        transitionToken++; // cancel pending settle() from an in-flight animation
++        setAnimating(false);
++        drag.top.el.classList.add('is-dragging');
++        try {
++          drag.top.el.setPointerCapture(e.pointerId);
++        } catch (_) { /* pointer may already be gone */ }
++      } else {
++        return;
++      }
++    }
++
++    drag.dx = Math.max(0, e.clientX - drag.startX);
++    drag.samples.push({ x: e.clientX, t: e.timeStamp });
++    if (drag.samples.length > 5) drag.samples.shift();
++    applyDrag(drag.dx);
++  });
++
++  function applyDrag(dx) {
++    const { width, top, below } = drag;
++    const progress = Math.min(1, dx / width);
++    top.el.style.transform = `translateX(${dx}px)`;
++    below.el.style.transform = `translateX(${-PARALLAX * width * (1 - progress)}px)`;
++    scrimEl.style.opacity = String(1 - progress);
++  }
++
++  function endDrag(e, cancelled) {
++    if (!drag || e.pointerId !== drag.id) return;
++    const d = drag;
++    drag = null;
++    if (!d.active) return;
++
++    d.top.el.classList.remove('is-dragging');
++    try {
++      d.top.el.releasePointerCapture(e.pointerId);
++    } catch (_) { /* ignore */ }
++
++    // A completed drag shouldn't also trigger a click on whatever is under the finger.
++    suppressClick = true;
++    setTimeout(() => (suppressClick = false), 0);
++
++    const first = d.samples[0];
++    const last = d.samples[d.samples.length - 1];
++    const velocity = last.t > first.t ? (last.x - first.x) / (last.t - first.t) : 0; // px/ms
++    const commit = !cancelled && (d.dx > d.width * 0.35 || (velocity > 0.45 && d.dx > 20));
++
++    if (commit) {
++      // Animate out from the current finger position. The popstate fired by
++      // history.back() runs the pop transition, which continues from here.
++      goBack();
++    } else {
++      const token = ++transitionToken;
++      setAnimating(true);
++      void d.top.el.offsetWidth;
++      d.top.el.style.transform = TOP;
++      d.below.el.style.transform = UNDER;
++      scrimEl.style.opacity = '1';
++      afterTransition(d.top.el, () => {
++        if (token === transitionToken) settle();
++      });
++    }
++  }
++
++  stackEl.addEventListener('pointerup', (e) => endDrag(e, false));
++  stackEl.addEventListener('pointercancel', (e) => endDrag(e, true));
++
++  /* ------------------------------------------------------------------ */
++  /* Boot: honour deep links and seed history so Back walks up the tree  */
++  /* ------------------------------------------------------------------ */
++
++  function boot() {
++    // Support legacy path URLs (e.g. /menu/cold-brew) if the host serves index.html for them.
++    let path = pathFromLocation();
++    const legacy = location.pathname.match(/\/menu\/([^/]+)\/?$/);
++    if (path === '/' && legacy && itemById(legacy[1])) {
++      path = `/menu/${itemById(legacy[1]).id}`;
++      const base = location.pathname.slice(0, legacy.index) + '/';
++      history.replaceState(history.state, '', base + location.search + '#' + path);
++    }
++
++    const chain = resolve(path);
++    const depth = chain.length - 1;
++    const state = history.state;
++
++    // On a fresh deep link, create one history entry per ancestor so that
++    // Back steps up through the hierarchy instead of leaving the site.
++    // Skip on reload / bfcache restore, where those entries already exist.
++    if (!(state && state.gd && state.depth === depth)) {
++      chain.forEach((node, i) => {
++        const entry = { gd: true, depth: i };
++        if (i === 0) history.replaceState(entry, '', urlFor('/'));
++        else history.pushState(entry, '', urlFor(node.path));
++      });
++    }
++
++    homeEl.style.transform = TOP;
++    sync(chain[depth].path, { animate: false });
++    if (depth === 0) announce(stack[0]);
++  }
++
++  boot();
++})();

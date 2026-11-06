@@ -1,0 +1,57 @@
+diff --git a/index.html b/index.html
+index 66c9173..e21183a 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,13 @@
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current] {
++      color: var(--accent);
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 6px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -207,6 +214,38 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigationLinks = [...document.querySelectorAll('nav a')];
++    const normalizePath = (path) => path.replace(/\/+$/, '') || '/';
++
++    function updateCurrentNavigation() {
++      const currentPath = normalizePath(window.location.pathname);
++      let currentLink = null;
++      let longestMatch = -1;
++
++      for (const link of navigationLinks) {
++        link.removeAttribute('aria-current');
++        const target = new URL(link.href, window.location.href);
++        const targetPath = normalizePath(target.pathname);
++        const matches = currentPath === targetPath ||
++          (targetPath !== '/' && currentPath.startsWith(`${targetPath}/`));
++
++        if (target.origin === window.location.origin && matches && targetPath.length > longestMatch) {
++          currentLink = link;
++          longestMatch = targetPath.length;
++        }
++      }
++
++      if (currentLink) {
++        currentLink.setAttribute('aria-current', 'page');
++      }
++    }
++
++    updateCurrentNavigation();
++    window.addEventListener('popstate', updateCurrentNavigation);
++    window.addEventListener('pageshow', updateCurrentNavigation);
++  </script>
++
+ </body>
+ 
+ </html>

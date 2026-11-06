@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,125 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .info-btn {
++      width: 32px;
++      height: 32px;
++      border: 1px solid var(--primary);
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font: bold 1rem Georgia, serif;
++      cursor: pointer;
++    }
++
++    .info-btn:hover {
++      background: var(--secondary);
++    }
++
++    .info-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #maple-tooltip {
++      position: fixed;
++      width: min(260px, calc(100vw - 32px));
++      padding: 0;
++      border: 0;
++      background: transparent;
++      color: white;
++      overflow: visible;
++      text-align: start;
++      font-size: 0.875rem;
++    }
++
++    .tooltip-content {
++      position: relative;
++      padding: 14px 16px;
++      border-radius: 10px;
++      background: var(--primary);
++      box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
++    }
++
++    @supports (anchor-name: --maple-info) {
++      #anchor {
++        anchor-name: --maple-info;
++      }
++
++      #maple-tooltip {
++        inset: auto;
++        margin: 0;
++        position-anchor: --maple-info;
++        position-area: block-start;
++        position-try-fallbacks: flip-block;
++      }
++
++      .tooltip-content {
++        margin-block: 0 12px;
++        border-radius: 10px 10px 4px 4px;
++      }
++
++      /* Show an arrow only when CSS can track the active fallback. */
++      @supports (container-type: anchored) {
++        #maple-tooltip {
++          container-type: anchored;
++          container-name: maple-tooltip;
++        }
++
++        .tooltip-content::after {
++          content: "";
++          position: absolute;
++          inset-block-start: 100%;
++          inset-inline-start: calc(50% - 8px);
++          width: 16px;
++          height: 8px;
++          background: var(--primary);
++          clip-path: polygon(0 0, 100% 0, 50% 100%);
++        }
++
++        /* Container queries style descendants, so the bubble has a wrapper. */
++        @container maple-tooltip anchored(fallback: flip-block) {
++          .tooltip-content {
++            margin-block: 12px 0;
++            border-radius: 4px 4px 10px 10px;
++          }
++
++          .tooltip-content::after {
++            inset-block-start: auto;
++            inset-block-end: 100%;
++            clip-path: polygon(50% 0, 100% 100%, 0 100%);
++          }
++        }
++      }
++    }
++
++    /* Keep the information readable in browsers without native popovers. */
++    @supports not selector(:popover-open) {
++      #anchor {
++        display: none;
++      }
++
++      #maple-tooltip {
++        display: block;
++        position: static;
++        margin: 12px auto 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +297,17 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" class="info-btn" id="anchor"
++              popovertarget="maple-tooltip" aria-describedby="maple-tooltip"
++              aria-label="More information about Maple Oat Latte">i</button>
++          </div>
++          <div id="maple-tooltip" popover role="tooltip">
++            <div class="tooltip-content">A seasonal favorite made with creamy oat milk and a hint of Vermont maple syrup.</div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

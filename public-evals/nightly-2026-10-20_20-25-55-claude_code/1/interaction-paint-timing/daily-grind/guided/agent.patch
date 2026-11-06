@@ -1,0 +1,82 @@
+diff --git a/index.html b/index.html
+index 66c9173..1b580df 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,77 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Measures time from user interaction / soft navigation to the resulting
++    // contentful paint. Progressive enhancement: Chromium 151+ only.
++    (function () {
++      const supported = (type) =>
++        typeof PerformanceObserver !== 'undefined' &&
++        PerformanceObserver.supportedEntryTypes?.includes(type);
++
++      function report(metric) {
++        // Replace with navigator.sendBeacon('/analytics', ...) for real telemetry.
++        console.log('[perf]', metric);
++      }
++
++      // Contentful paints attributed to any interaction.
++      if (supported('interaction-contentful-paint')) {
++        new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            report({
++              type: 'interaction-paint',
++              interactionId: entry.interactionId,
++              // duration = presentationTime - startTime
++              duration: entry.duration,
++              element: entry.largestContentfulPaint?.element ?? null,
++            });
++          }
++        }).observe({ type: 'interaction-contentful-paint', buffered: true });
++      }
++
++      // FCP/LCP per soft navigation.
++      if (supported('soft-navigation') && supported('interaction-contentful-paint')) {
++        let activeNav = null;
++        let activeLcp = null;
++
++        function finalize() {
++          if (!activeNav) return;
++          report({
++            type: 'soft-navigation',
++            url: activeNav.name,
++            navigationId: activeNav.navigationId,
++            fcp: activeNav.duration,
++            lcp: activeLcp ? activeLcp.duration : null,
++            lcpElement: activeLcp?.largestContentfulPaint?.element ?? null,
++          });
++          activeNav = null;
++          activeLcp = null;
++        }
++
++        new PerformanceObserver((list) => {
++          for (const nav of list.getEntries()) {
++            finalize();
++            activeNav = nav;
++            // Include paints that happened before the URL changed.
++            activeLcp = nav.getLargestInteractionContentfulPaint();
++          }
++        }).observe({ type: 'soft-navigation', buffered: true });
++
++        new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            // Match by interactionId, not navigationId.
++            if (activeNav && entry.interactionId === activeNav.interactionId) {
++              activeLcp = entry;
++            }
++          }
++        }).observe({ type: 'interaction-contentful-paint', buffered: true });
++
++        document.addEventListener('visibilitychange', () => {
++          if (document.visibilityState === 'hidden') finalize();
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

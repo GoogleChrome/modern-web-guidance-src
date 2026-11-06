@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+index 66c9173..8e12df4 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,96 @@
+       color: var(--primary);
+     }
+ 
++    .view-preference {
++      display: flex;
++      justify-content: flex-end;
++      margin-top: 12px;
++    }
++
++    .view-preference label {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      min-height: 48px;
++      cursor: pointer;
++    }
++
++    #compact-view {
++      appearance: none;
++      width: 44px;
++      height: 26px;
++      flex-shrink: 0;
++      border: 2px solid var(--primary);
++      border-radius: 20px;
++      background: var(--secondary);
++      cursor: pointer;
++    }
++
++    #compact-view::before {
++      content: '';
++      display: block;
++      width: 18px;
++      height: 18px;
++      margin: 2px;
++      border-radius: 50%;
++      background: var(--primary);
++    }
++
++    #compact-view:checked {
++      background: var(--primary);
++    }
++
++    #compact-view:checked::before {
++      transform: translateX(18px);
++      background: white;
++    }
++
++    #compact-view:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .preference-state {
++      min-width: 2ch;
++    }
++
++    .preference-on,
++    .view-preference:has(input:checked) .preference-off {
++      display: none;
++    }
++
++    .view-preference:has(input:checked) .preference-on {
++      display: inline;
++    }
++
++    section:has(#compact-view:checked) .grid {
++      gap: 10px;
++      margin-top: 10px;
++    }
++
++    section:has(#compact-view:checked) .card {
++      padding: 12px;
++    }
++
++    section:has(#compact-view:checked) .card h3 {
++      margin-bottom: 4px;
++    }
++
++    section:has(#compact-view:checked) .card .btn {
++      margin-top: 8px;
++      padding: 6px 16px;
++    }
++
++    @media (forced-colors: active) {
++      #compact-view {
++        appearance: auto;
++      }
++
++      #compact-view::before {
++        display: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,6 +267,41 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="view-preference">
++        <label for="compact-view">
++          Compact view
++          <input id="compact-view" name="compact-view" type="checkbox" role="switch">
++          <span class="preference-state" aria-hidden="true">
++            <span class="preference-off">Off</span><span class="preference-on">On</span>
++          </span>
++        </label>
++      </div>
++      <script>
++        (() => {
++          const toggle = document.getElementById('compact-view');
++          const storageKey = 'daily-grind:compact-view';
++
++          try {
++            toggle.checked = localStorage.getItem(storageKey) === 'true';
++          } catch {
++            // The preference still works when device storage is unavailable.
++          }
++
++          toggle.addEventListener('change', () => {
++            try {
++              localStorage.setItem(storageKey, String(toggle.checked));
++            } catch {
++              // Keep the current selection for this page visit.
++            }
++          });
++
++          window.addEventListener('storage', (event) => {
++            if (event.storageArea === localStorage && (event.key === storageKey || event.key === null)) {
++              toggle.checked = event.newValue === 'true';
++            }
++          });
++        })();
++      </script>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

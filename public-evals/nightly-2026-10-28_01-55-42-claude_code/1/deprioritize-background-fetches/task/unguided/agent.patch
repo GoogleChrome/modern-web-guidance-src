@@ -1,0 +1,34 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,30 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<title>Load</title>
++</head>
++<body>
++<button id="go">Load</button>
++<pre id="out"></pre>
++<script>
++document.getElementById('go').addEventListener('click', () => {
++  // Mission-critical: fire first, high priority, await the result.
++  const data = fetch('/api/data', { priority: 'high' }).then(r => r.json());
++
++  // Analytics: fire-and-forget, low priority, keepalive so it survives navigation.
++  fetch('/api/analytics', {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ click: 1 }),
++    priority: 'low',
++    keepalive: true
++  }).catch(() => {});
++
++  data
++    .then(d => { document.getElementById('out').textContent = JSON.stringify(d); })
++    .catch(e => { document.getElementById('out').textContent = 'Error: ' + e.message; });
++});
++</script>
++</body>
++</html>

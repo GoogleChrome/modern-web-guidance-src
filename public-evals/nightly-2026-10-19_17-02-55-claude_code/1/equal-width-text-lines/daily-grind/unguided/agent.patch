@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+index 66c9173..b8a1c61 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,9 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
++      padding-top: 40px;
++      padding-bottom: 40px;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -89,8 +91,24 @@
+     }
+ 
+     .hero h1 {
++      width: min(100%, 640px);
++      margin-bottom: 1.5rem;
++      font-weight: 900;
++      text-transform: uppercase;
++      line-height: 0.9;
++      letter-spacing: -0.01em;
++    }
++
++    /* Each line is sized (by the script below) so its text fills the full
++       lockup width; the fallback size applies if JS is unavailable. */
++    .hero h1 .line {
++      display: block;
++      white-space: nowrap;
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++    }
++
++    .hero p {
++      margin-bottom: 0.5rem;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +187,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 id="hero-title">
++      <span class="line">Wake Up</span>
++      <span class="line">Your</span>
++      <span class="line">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +229,30 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Size each hero heading line so its text spans the full heading width.
++    (function () {
++      var title = document.getElementById('hero-title');
++      var lines = title.querySelectorAll('.line');
++      var REF = 100; // measure at a reference size, then scale linearly
++
++      function fit() {
++        var width = title.clientWidth;
++        lines.forEach(function (line) {
++          line.style.fontSize = REF + 'px';
++          line.style.display = 'inline-block';
++          var natural = line.getBoundingClientRect().width;
++          line.style.display = '';
++          line.style.fontSize = (REF * width / natural) + 'px';
++        });
++      }
++
++      fit();
++      window.addEventListener('resize', fit);
++      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

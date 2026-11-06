@@ -1,0 +1,255 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,110 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Order event timeline */
++    .timeline-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .timeline-section > p {
++      max-width: 700px;
++      margin: 10px auto 0;
++    }
++
++    .timeline-section button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .timeline-section button.btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .timeline-status {
++      margin-top: 15px;
++      min-height: 1.6em;
++      font-size: 0.9rem;
++    }
++
++    .timeline-status.error {
++      color: #b71c1c;
++    }
++
++    .timeline-stats {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .timeline-stats .card {
++      padding: 12px;
++    }
++
++    .timeline-stats .label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #6d4c41;
++    }
++
++    .timeline-stats .value {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      font-size: 1rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .timeline-table-wrap {
++      overflow-x: auto;
++      margin-top: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .timeline-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
++    .timeline-table th,
++    .timeline-table td {
++      padding: 8px 12px;
++      border-bottom: 1px solid #eee;
++      white-space: nowrap;
++    }
++
++    .timeline-table th {
++      background: var(--secondary);
++      position: sticky;
++      top: 0;
++    }
++
++    .timeline-table td.mono {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++    }
++
++    .timeline-table td.num {
++      text-align: right;
++    }
++
++    .timeline-table tr.tie td.delta {
++      color: #e65100;
++      font-weight: bold;
++    }
++
++    .timeline-table tr.subms td.delta {
++      color: #2e7d32;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +296,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="timeline-section" aria-labelledby="timeline-heading">
++      <h2 id="timeline-heading">Behind the Counter: Order Event Timeline</h2>
++      <p>Our POS terminals, mobile app, payment gateway and espresso machines each report events with
++        nanosecond UTC timestamps, and they arrive out of order. Load the latest batch to see it put back
++        in sequence, with the exact gap between each event.</p>
++      <button type="button" id="load-timeline" class="btn">Load Order Events</button>
++      <div id="timeline-status" class="timeline-status" role="status" aria-live="polite"></div>
++      <div id="timeline-stats" class="timeline-stats" hidden></div>
++      <div id="timeline-table-wrap" class="timeline-table-wrap" hidden>
++        <table class="timeline-table">
++          <thead>
++            <tr>
++              <th scope="col">#</th>
++              <th scope="col">Timestamp (UTC, ns)</th>
++              <th scope="col">Δ since previous</th>
++              <th scope="col">Δ (ns)</th>
++              <th scope="col">Since first</th>
++              <th scope="col">Service</th>
++              <th scope="col">Order</th>
++              <th scope="col">Event</th>
++              <th scope="col">Arrived as</th>
++            </tr>
++          </thead>
++          <tbody id="timeline-body"></tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +336,103 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import {
++      loadOrderEvents, buildTimeline, formatDurationNs, groupDigits,
++    } from './js/order-timeline.js';
++
++    const button = document.getElementById('load-timeline');
++    const status = document.getElementById('timeline-status');
++    const statsEl = document.getElementById('timeline-stats');
++    const tableWrap = document.getElementById('timeline-table-wrap');
++    const tbody = document.getElementById('timeline-body');
++
++    const cell = (text, className) => {
++      const td = document.createElement('td');
++      td.textContent = text;
++      if (className) td.className = className;
++      return td;
++    };
++
++    const stat = (label, value, title) => {
++      const card = document.createElement('div');
++      card.className = 'card';
++      const l = document.createElement('div');
++      l.className = 'label';
++      l.textContent = label;
++      const v = document.createElement('div');
++      v.className = 'value';
++      v.textContent = value;
++      if (title) v.title = title;
++      card.append(l, v);
++      return card;
++    };
++
++    const dur = (ns) => (ns === null ? '—' : formatDurationNs(ns));
++    const nsTitle = (ns) => (ns === null ? '' : `${groupDigits(ns)} ns`);
++
++    button.addEventListener('click', async () => {
++      button.disabled = true;
++      status.className = 'timeline-status';
++      status.textContent = 'Loading order events…';
++      try {
++        const { batchId, events } = await loadOrderEvents();
++        const { timeline, rejected, stats } = buildTimeline(events);
++
++        tbody.replaceChildren(...timeline.map((e, i) => {
++          const tr = document.createElement('tr');
++          if (e.deltaNs === 0n) tr.className = 'tie';
++          else if (e.deltaNs !== null && e.deltaNs < 1_000_000n) tr.className = 'subms';
++          tr.append(
++            cell(String(i + 1)),
++            cell(e.utc, 'mono'),
++            cell(dur(e.deltaNs), 'mono num delta'),
++            cell(e.deltaNs === null ? '—' : groupDigits(e.deltaNs), 'mono num delta'),
++            cell(formatDurationNs(e.sinceStartNs), 'mono num'),
++            cell(e.service ?? ''),
++            cell(e.orderId ?? ''),
++            cell(e.type ?? ''),
++            cell(`#${e.index + 1}`, 'num'),
++          );
++          tr.title = `Raw: ${e.timestamp} · epoch ${groupDigits(e.ns)} ns`;
++          return tr;
++        }));
++
++        statsEl.replaceChildren();
++        if (stats) {
++          statsEl.append(
++            stat('Events', String(stats.count)),
++            stat('Total span', dur(stats.spanNs), nsTitle(stats.spanNs)),
++            stat('Shortest gap', dur(stats.minNs), nsTitle(stats.minNs)),
++            stat('Longest gap', dur(stats.maxNs), nsTitle(stats.maxNs)),
++            stat('Mean gap', dur(stats.meanNs), nsTitle(stats.meanNs)),
++            stat('Sub-ms gaps', String(stats.subMs)),
++            stat('Exact ties', String(stats.ties)),
++            stat('Arrived late', String(stats.outOfOrder)),
++          );
++        }
++        statsEl.hidden = !stats;
++        tableWrap.hidden = timeline.length === 0;
++
++        let msg = `Sorted ${timeline.length} event${timeline.length === 1 ? '' : 's'}`
++          + (batchId ? ` from batch ${batchId}` : '') + '.';
++        if (rejected.length) {
++          msg += ` Skipped ${rejected.length} with invalid timestamps: `
++            + rejected.map((r) => `#${r.index + 1} (${r.reason})`).join('; ');
++          status.classList.add('error');
++        }
++        status.textContent = msg;
++        button.textContent = 'Reload Order Events';
++      } catch (err) {
++        status.className = 'timeline-status error';
++        status.textContent = `Could not load order events: ${err.message}`;
++      } finally {
++        button.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

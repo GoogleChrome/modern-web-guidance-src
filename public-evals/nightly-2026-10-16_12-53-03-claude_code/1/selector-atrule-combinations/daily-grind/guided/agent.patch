@@ -1,0 +1,54 @@
+diff --git a/index.html b/index.html
+index 66c9173..2e3a5df 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,31 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: white;
++      --heading: var(--primary);
++      --color-scheme: light;
++
++      /* Union of conditions: OS preference or an explicit .dark class */
++      @media (prefers-color-scheme: dark) {
++        &:not(.light) {
++          --color-scheme: dark;
++        }
++      }
++
++      &.dark {
++        --color-scheme: dark;
++      }
++    }
++
++    /* Intersection of "dark" with any selector, written once */
++    @container style(--color-scheme: dark) {
++      body {
++        --light: #1b1412;
++        --text: #efebe9;
++        --surface: #2a1f1c;
++        --secondary: #2e221f;
++        --heading: var(--accent);
++      }
+     }
+ 
+     * {
+@@ -108,7 +133,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +142,7 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {

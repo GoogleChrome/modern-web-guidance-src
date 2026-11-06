@@ -1,0 +1,217 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,157 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling (CSS scroll-driven animations, no JS) */
++    .story {
++      margin-top: 60px;
++      /* Lift the per-section view timelines to this common ancestor so
++         #animated (a different DOM branch) can reference them. */
++      timeline-scope: --step-1, --step-2, --step-3, --step-4;
++    }
++
++    .story > h2 {
++      text-align: center;
++      margin-bottom: 30px;
++    }
++
++    .story-layout {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 20px;
++    }
++
++    #tracked section {
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-start;
++      /* Clear the sticky panel (top offset + height) on narrow screens. */
++      padding: calc(40vh + 6rem) 0 20px;
++    }
++
++    #tracked section:nth-child(1) { view-timeline-name: --step-1; }
++    #tracked section:nth-child(2) { view-timeline-name: --step-2; }
++    #tracked section:nth-child(3) { view-timeline-name: --step-3; }
++    #tracked section:nth-child(4) { view-timeline-name: --step-4; }
++
++    #tracked h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 10px;
++    }
++
++    #tracked .step-number {
++      display: inline-block;
++      color: var(--accent);
++      font-weight: bold;
++      letter-spacing: 2px;
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      margin-bottom: 6px;
++    }
++
++    #animated {
++      position: sticky;
++      top: 5rem;
++      height: 40vh;
++      display: grid;
++      border-radius: 8px;
++      overflow: hidden;
++      background: var(--primary);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      z-index: 1;
++    }
++
++    #animated section {
++      grid-area: 1 / 1;
++      position: relative;
++      display: flex;
++      align-items: flex-end;
++      color: white;
++      /* Default state when animations are not driven by scroll. */
++      opacity: 1;
++    }
++
++    #animated img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    #animated .caption {
++      position: relative;
++      width: 100%;
++      padding: 16px 20px;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    @media (min-width: 800px) {
++      .story-layout {
++        grid-template-columns: 1fr 1fr;
++        gap: 40px;
++        align-items: start;
++      }
++
++      #tracked section {
++        justify-content: center;
++        padding: 20px 0;
++      }
++
++      #animated {
++        height: 70vh;
++        top: calc(50% - 35vh + 1.5rem);
++      }
++    }
++
++    @supports (animation-timeline: view()) {
++      #animated section {
++        opacity: 0;
++        /* Only compositor-friendly properties are animated. */
++        animation: story-reveal linear both;
++        animation-range: entry 25% exit 75%;
++      }
++
++      #animated section:nth-child(1) { animation-timeline: --step-1; }
++      #animated section:nth-child(2) { animation-timeline: --step-2; }
++      #animated section:nth-child(3) { animation-timeline: --step-3; }
++      #animated section:nth-child(4) { animation-timeline: --step-4; }
++
++      /* Reveal the first panel as soon as its text enters the viewport and let
++         the last panel linger until its text has fully scrolled out. */
++      #animated section:first-child { animation-range-start: entry 0%; }
++      #animated section:last-child { animation-range-end: exit 100%; }
++
++      @keyframes story-reveal {
++        0% {
++          opacity: 0;
++          transform: translateY(24px) scale(1.04);
++        }
++        30%, 70% {
++          opacity: 1;
++          transform: none;
++        }
++        100% {
++          opacity: 0;
++          transform: translateY(-24px) scale(0.98);
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @keyframes story-reveal {
++        0% { opacity: 0; transform: none; }
++        30%, 70% { opacity: 1; transform: none; }
++        100% { opacity: 0; transform: none; }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +343,55 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story" aria-labelledby="story-heading">
++      <h2 id="story-heading">From Farm to Cup</h2>
++      <div class="story-layout">
++        <div id="animated" aria-hidden="true">
++          <section>
++            <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=1200&q=80" alt="" loading="lazy">
++            <p class="caption">01 &mdash; Grown at altitude</p>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=80" alt="" loading="lazy">
++            <p class="caption">02 &mdash; Roasted in small batches</p>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=1200&q=80" alt="" loading="lazy">
++            <p class="caption">03 &mdash; Ground to order</p>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80" alt="" loading="lazy">
++            <p class="caption">04 &mdash; Poured for you</p>
++          </section>
++        </div>
++
++        <div id="tracked">
++          <section>
++            <span class="step-number">Step 01</span>
++            <h3>Grown at altitude</h3>
++            <p>Our beans come from family farms high in the Andes and Ethiopian highlands, where cool nights slow the cherries' ripening and concentrate their sweetness. We pay above fair-trade rates and visit every partner farm each harvest.</p>
++          </section>
++          <section>
++            <span class="step-number">Step 02</span>
++            <h3>Roasted in small batches</h3>
++            <p>Back home, our roasters work in 12-kilo batches so every bean sees the same heat. We profile each origin individually, pulling light roasts for bright, fruity cups and darker roasts for the espresso bar.</p>
++          </section>
++          <section>
++            <span class="step-number">Step 03</span>
++            <h3>Ground to order</h3>
++            <p>Coffee starts losing aroma within minutes of grinding. That's why nothing is ground ahead of time in our shops. Your dose is weighed and ground the moment you order.</p>
++          </section>
++          <section>
++            <span class="step-number">Step 04</span>
++            <h3>Poured for you</h3>
++            <p>Whether it's a pour-over timed to the second or a latte with freshly steamed oat milk, every cup is made by a barista who trained for months before serving their first customer.</p>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

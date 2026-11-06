@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -5,9 +5,18 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /*
++      Allow smooth transitions to/from intrinsic sizing keywords (e.g. height/block-size: auto)
++      site-wide, so simple toggles can animate between 0 and auto.
++      NOTE: Directly transitioning between two *different* intrinsic keyword sizes
++      (e.g. auto -> max-content, or min-content -> fit-content) is NOT supported —
++      interpolate-size / calc-size() can only interpolate between a single intrinsic
++      size and fixed lengths (or calc-size() expressions sharing the same basis).
++    */
+     :root {
++      interpolate-size: allow-keywords;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+@@ -73,9 +82,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      block-size: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -94,9 +103,9 @@
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-inline-size: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+@@ -134,8 +143,122 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Promo badge */
++    .card {
++      position: relative;
++    }
++
++    .promo-badge {
++      display: inline-block;
++      box-sizing: border-box;
++      /* Fallback for browsers without calc-size() */
++      inline-size: max-content;
++      /* 1.2x the max-content size, clamped between 100px and 100% of the parent */
++      inline-size: calc-size(max-content, size * 1.2);
++      min-inline-size: 100px;
++      max-inline-size: 100%;
++      margin-block-end: 10px;
++      padding-block: 4px;
++      padding-inline: 12px;
++      background: var(--accent);
++      color: var(--text);
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      text-align: center;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++    }
++
++    /* Sourcing accordion */
++    .accordion {
++      margin-block-start: 50px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #accordion-toggle {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      inline-size: 100%;
++      padding-block: 18px;
++      padding-inline: 20px;
++      background: var(--primary);
++      color: white;
++      border: none;
++      font: inherit;
++      font-size: 1.2rem;
++      font-weight: bold;
++      text-align: start;
++      cursor: pointer;
++    }
++
++    #accordion-toggle:hover {
++      background: var(--text);
++    }
++
++    #accordion-toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .accordion-icon {
++      transition: rotate 0.3s ease;
++    }
++
++    #accordion-toggle[aria-expanded="true"] .accordion-icon {
++      rotate: 45deg;
++    }
++
++    .accordion-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 0.4s ease, visibility 0.4s allow-discrete;
++      visibility: hidden;
++    }
++
++    .accordion-content.is-open {
++      /* Fallback: no animation, just show at natural size */
++      block-size: auto;
++      visibility: visible;
++    }
++
++    @supports (block-size: calc-size(auto, size)) {
++      .accordion-content.is-open {
++        /* Natural height plus 2rem of breathing room */
++        block-size: calc-size(auto, size + 2rem);
++      }
++    }
++
++    .accordion-inner {
++      padding-block: 20px 0;
++      padding-inline: 20px;
++    }
++
++    .accordion-inner h3 {
++      color: var(--primary);
++      margin-block-end: 6px;
++    }
++
++    .accordion-inner p + h3 {
++      margin-block-start: 16px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .accordion-content,
++      .accordion-icon {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -178,8 +301,9 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="promo-badge">Staff Pick</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -194,8 +318,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="accordion">
++      <h2>
++        <button id="accordion-toggle" type="button" aria-expanded="false" aria-controls="sourcing-content">
++          <span>Our Sourcing</span>
++          <span class="accordion-icon" aria-hidden="true">+</span>
++        </button>
++      </h2>
++      <div id="sourcing-content" class="accordion-content" role="region" aria-labelledby="accordion-toggle">
++        <div class="accordion-inner">
++          <h3>Where do your beans come from?</h3>
++          <p>We partner directly with small farms and cooperatives in Ethiopia, Colombia, Guatemala, and Sumatra, building multi-year relationships with growers we know by name.</p>
++          <h3>Is your coffee fair trade?</h3>
++          <p>We pay well above Fair Trade minimums through direct-trade agreements, so more of every dollar goes to the farmers who grow our coffee.</p>
++          <h3>Where is it roasted?</h3>
++          <p>Every batch is roasted locally in small lots each week, then delivered to our cafés within days for peak freshness.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +349,19 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var toggle = document.getElementById('accordion-toggle');
++      var content = document.getElementById(toggle.getAttribute('aria-controls'));
++      toggle.addEventListener('click', function () {
++        var expanded = toggle.getAttribute('aria-expanded') === 'true';
++        toggle.setAttribute('aria-expanded', String(!expanded));
++        content.classList.toggle('is-open', !expanded);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

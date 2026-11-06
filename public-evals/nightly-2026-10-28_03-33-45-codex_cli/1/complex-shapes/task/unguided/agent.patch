@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,22 +73,72 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: max(60vh, 420px);
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
+       background-size: cover;
+       background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
++      display: grid;
++      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
++      gap: clamp(20px, 4vw, 64px);
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px max(20px, calc((100% - 1100px) / 2));
+     }
+ 
++    .hero-content {
++      position: relative;
++      z-index: 1;
++      min-width: 0;
++    }
++
++    .shape-definitions {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++    }
++
++    .shaped-element {
++      pointer-events: none;
++      /* Explicit dimensions and rounded corners also work without the SVG clip. */
++      width: 100%;
++      max-width: 400px;
++      height: clamp(240px, 30vw, 400px);
++      justify-self: center;
++      border-radius: 44% 56% 62% 38% / 55% 35% 65% 45%;
++      background-color: #b87540;
++      background-image:
++        radial-gradient(ellipse at 30% 24%, #f5d5a0 0%, transparent 48%),
++        radial-gradient(ellipse at 75% 78%, #593320 0%, transparent 58%),
++        repeating-radial-gradient(ellipse at 40% 40%, #d39a60 0 12px, #c28a52 14px 16px, #d39a60 18px 32px);
++      clip-path: url('#coffee-splash');
++      transform: rotate(-8deg);
++    }
++
++    @media (max-width: 700px) {
++      .hero {
++        grid-template-columns: minmax(0, 1fr);
++      }
++
++      .shaped-element {
++        position: absolute;
++        right: -70px;
++        bottom: -60px;
++        width: 280px;
++        height: 280px;
++        opacity: 0.3;
++        z-index: 0;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,11 +218,21 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <svg class="shape-definitions" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
++      <defs>
++        <clipPath id="coffee-splash" clipPathUnits="objectBoundingBox">
++          <path d="M .09 .39 C .02 .29 .12 .13 .28 .16 C .38 .18 .34 .03 .47 .04 C .59 .05 .55 .17 .67 .13 C .83 .06 .96 .20 .89 .34 C .84 .44 1 .45 .96 .58 C .93 .69 .81 .64 .82 .77 C .83 .94 .65 .99 .54 .91 C .44 .84 .42 1 .29 .94 C .17 .89 .23 .76 .12 .73 C -.01 .69 .01 .52 .09 .39 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <div class="shaped-element" aria-hidden="true"></div>
+   </header>
+ 
+   <main class="container">
+     <section>

@@ -1,0 +1,44 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,40 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Autofill highlight: green border plus a light green fill (via inset
++       box-shadow, since background-color can't override the autofill color).
++       Kept as separate rules so an unsupported selector doesn't drop both. */
++    input:autofill,
++    select:autofill,
++    textarea:autofill {
++      border: 2px solid #2e7d32;
++      box-shadow: 0 0 0 100vmax #e8f5e9 inset;
++    }
++
++    input:-webkit-autofill,
++    select:-webkit-autofill,
++    textarea:-webkit-autofill {
++      border: 2px solid #2e7d32;
++      box-shadow: 0 0 0 100vmax #e8f5e9 inset;
++    }
++
++    /* Keep a clear focus indicator on autofilled fields for keyboard users */
++    input:autofill:focus-visible,
++    select:autofill:focus-visible,
++    textarea:autofill:focus-visible {
++      outline: 3px solid var(--text);
++      outline-offset: 2px;
++    }
++
++    input:-webkit-autofill:focus-visible,
++    select:-webkit-autofill:focus-visible,
++    textarea:-webkit-autofill:focus-visible {
++      outline: 3px solid var(--text);
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+ <body>

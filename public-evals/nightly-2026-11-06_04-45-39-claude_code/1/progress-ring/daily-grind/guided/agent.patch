@@ -1,0 +1,239 @@
+diff --git a/index.html b/index.html
+index 66c9173..6a51b40 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,152 @@
+       background: #3e2723;
+     }
+ 
++
++    /* Main layout: Seasonal Favorites alongside Loyalty Rewards */
++    .main-layout {
++      display: grid;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (min-width: 900px) {
++      .main-layout {
++        grid-template-columns: minmax(0, 1fr) 320px;
++      }
++
++      .main-layout .grid {
++        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      }
++    }
++
++    /* Loyalty Rewards */
++    @property --value {
++      syntax: '<number>';
++      inherits: true;
++      initial-value: 0;
++    }
++
++    @property --max {
++      syntax: '<number>';
++      inherits: true;
++      initial-value: 1;
++    }
++
++    .loyalty h2 {
++      text-align: center;
++    }
++
++    .loyalty-card {
++      margin-top: 20px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .loyalty-card .tier {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      padding: 2px 10px;
++      border-radius: 999px;
++      margin-bottom: 15px;
++    }
++
++    .ring-wrapper {
++      position: relative;
++      display: grid;
++      place-items: center;
++      width: fit-content;
++      margin: 0 auto 15px;
++    }
++
++    progress.progress-ring {
++      --size: 180px;
++      --thickness: 14px;
++      --track-color: var(--secondary);
++      --fill-color: var(--primary);
++      --value: attr(value type(<number>), 0);
++      --max: attr(max type(<number>), 1);
++
++      appearance: none;
++      display: block;
++      width: var(--size);
++      height: var(--size);
++      border-radius: 50%;
++      border: var(--thickness) solid transparent;
++      background: conic-gradient(var(--fill-color) calc(var(--value) / var(--max) * 100%),
++          var(--track-color) 0) border-box;
++      background-clip: border-area;
++      color: var(--fill-color);
++
++      transition: --value 0s ease-in-out;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition-duration: 0.8s;
++      }
++
++      @supports not (background-clip: border-area) {
++        border: 0;
++        mask-image: radial-gradient(transparent calc(50% - var(--thickness)),
++            black calc(50% - var(--thickness) + 0.5px));
++      }
++    }
++
++    progress.progress-ring::-webkit-progress-bar,
++    progress.progress-ring::-webkit-progress-value {
++      background: transparent;
++    }
++
++    progress.progress-ring::-moz-progress-bar {
++      background: transparent;
++    }
++
++    /* Reward ready: switch the ring to the accent color */
++    progress.progress-ring.is-complete {
++      --fill-color: var(--accent);
++    }
++
++    .ring-content {
++      position: absolute;
++      inset: 0;
++      display: grid;
++      place-content: center;
++      text-align: center;
++      line-height: 1.2;
++      pointer-events: none;
++    }
++
++    .ring-count {
++      font-size: 2.25rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .ring-count small {
++      font-size: 1rem;
++      font-weight: normal;
++      color: var(--text);
++    }
++
++    .ring-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--text);
++    }
++
++    .loyalty-status {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .loyalty-note {
++      font-size: 0.85rem;
++      margin-top: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -174,9 +320,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container main-layout">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +341,24 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="loyalty" aria-labelledby="loyalty-heading">
++      <h2 id="loyalty-heading">Your Rewards</h2>
++      <div class="card loyalty-card">
++        <span class="tier">Bean Club Member</span>
++        <div class="ring-wrapper">
++          <progress class="progress-ring" id="loyalty-progress" value="7" max="10"
++            aria-label="Stamps collected toward your next free drink" aria-describedby="loyalty-status"></progress>
++          <div class="ring-content" aria-hidden="true">
++            <span class="ring-count"><span id="loyalty-count">7</span><small>/<span id="loyalty-max">10</span></small></span>
++            <span class="ring-label">Stamps</span>
++          </div>
++        </div>
++        <p class="loyalty-status" id="loyalty-status">3 more drinks until your next free one!</p>
++        <p class="loyalty-note">Earn a stamp with every handcrafted drink.</p>
++        <a href="/rewards" class="btn">View Rewards</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +371,43 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keeps the loyalty ring, center text, and status message in sync.
++    // Call updateLoyalty(stamps) whenever the customer's stamp count changes.
++    (() => {
++      const progress = document.getElementById('loyalty-progress');
++      const count = document.getElementById('loyalty-count');
++      const status = document.getElementById('loyalty-status');
++      const needsSync = !CSS.supports('width: attr(value type(<number>))');
++
++      const sync = () => {
++        const value = Number(progress.value);
++        const max = Number(progress.max);
++        if (needsSync) {
++          progress.style.setProperty('--value', value);
++          progress.style.setProperty('--max', max);
++        }
++        progress.classList.toggle('is-complete', value >= max);
++        count.textContent = value;
++        const remaining = max - value;
++        status.textContent = remaining <= 0
++          ? 'Your free drink is ready! Redeem it on your next order.'
++          : `${remaining} more drink${remaining === 1 ? '' : 's'} until your next free one!`;
++      };
++
++      if (needsSync) {
++        new MutationObserver(sync).observe(progress, { attributes: true, attributeFilter: ['value', 'max'] });
++      }
++
++      window.updateLoyalty = (stamps) => {
++        progress.value = stamps;
++        if (!needsSync) sync();
++      };
++
++      sync();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

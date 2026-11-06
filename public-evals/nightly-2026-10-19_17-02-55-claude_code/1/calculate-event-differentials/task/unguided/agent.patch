@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,25 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .countdown {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .countdown-remaining {
++      display: block;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .countdown-elapsed {
++      display: block;
++      font-size: 0.8rem;
++      opacity: 0.75;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +197,14 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Date-times without a UTC offset are parsed in the visitor's local time zone. -->
++          <p class="countdown" id="maple-countdown" aria-live="off"
++            data-start="2025-12-01T00:00:00" data-end="2026-03-01T00:00:00">
++            <span class="countdown-remaining"></span>
++            <span class="countdown-elapsed"></span>
++          </p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +229,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Promotion countdown: computed once on page load, in the visitor's local time zone.
++    (function () {
++      var el = document.getElementById('maple-countdown');
++      if (!el) return;
++
++      var start = new Date(el.getAttribute('data-start'));
++      var end = new Date(el.getAttribute('data-end'));
++      if (isNaN(start) || isNaN(end)) return;
++
++      var MS_HOUR = 60 * 60 * 1000;
++      var MS_DAY = 24 * MS_HOUR;
++
++      function plural(n, unit) {
++        return n + ' ' + unit + (n === 1 ? '' : 's');
++      }
++
++      function format(ms) {
++        var days = Math.floor(ms / MS_DAY);
++        var hours = Math.floor((ms % MS_DAY) / MS_HOUR);
++        return plural(days, 'day') + ', ' + plural(hours, 'hour');
++      }
++
++      var now = new Date();
++      var remaining = el.querySelector('.countdown-remaining');
++      var elapsed = el.querySelector('.countdown-elapsed');
++
++      if (now >= end) {
++        remaining.textContent = 'This offer has ended.';
++        elapsed.textContent = '';
++        return;
++      }
++
++      remaining.textContent = format(end - now) + ' left';
++      elapsed.textContent = now >= start
++        ? format(now - start) + ' since the offer started'
++        : 'Starts in ' + format(start - now);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

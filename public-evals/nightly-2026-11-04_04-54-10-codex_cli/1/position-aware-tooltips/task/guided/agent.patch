@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,114 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .info-button {
++      display: inline-grid;
++      place-items: center;
++      width: 2rem;
++      height: 2rem;
++      margin-inline-start: 0.5rem;
++      border: 1px solid var(--primary);
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font: bold 1rem Georgia, serif;
++      vertical-align: middle;
++      cursor: pointer;
++    }
++
++    .info-button:hover {
++      background: var(--secondary);
++    }
++
++    .info-button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #maple-tooltip {
++      position: fixed;
++      width: min(18rem, calc(100vw - 2rem));
++      padding: 0;
++      border: 0;
++      overflow: visible;
++      background: transparent;
++      color: var(--light);
++      text-align: start;
++    }
++
++    .tooltip-content {
++      position: relative;
++      padding: 0.875rem 1rem;
++      border-radius: 0.75rem;
++      background: var(--primary);
++      box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
++      font-size: 0.875rem;
++    }
++
++    @supports (anchor-name: --maple-info) {
++      #maple-tooltip {
++        /* popovertarget supplies the implicit anchor connection. */
++        inset: auto;
++        margin: 0;
++        position-area: block-start;
++        position-try-fallbacks: flip-block;
++      }
++
++      .tooltip-content {
++        margin-block: 0 0.75rem;
++      }
++    }
++
++    @supports (container-type: anchored) {
++      #maple-tooltip {
++        container-type: anchored;
++      }
++
++      .tooltip-content {
++        border-radius: 0.75rem 0.75rem 0.25rem 0.25rem;
++      }
++
++      .tooltip-content::after {
++        content: "";
++        position: absolute;
++        inset-block-start: 100%;
++        inset-inline-start: 50%;
++        translate: -50% 0;
++        border-inline: 0.5rem solid transparent;
++        border-block-start: 0.5rem solid var(--primary);
++        border-block-end: 0;
++      }
++
++      @container anchored(fallback: flip-block) {
++        .tooltip-content {
++          margin-block: 0.75rem 0;
++          border-radius: 0.25rem 0.25rem 0.75rem 0.75rem;
++        }
++
++        .tooltip-content::after {
++          inset-block-start: auto;
++          inset-block-end: 100%;
++          border-block-start: 0;
++          border-block-end: 0.5rem solid var(--primary);
++        }
++      }
++    }
++
++    /* Keep the description readable in browsers without native popovers. */
++    @supports not selector(:popover-open) {
++      .info-button {
++        display: none;
++      }
++
++      #maple-tooltip {
++        position: static;
++        width: auto;
++        margin-block-start: 1rem;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -181,8 +287,13 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" id="anchor" class="info-button" popovertarget="maple-tooltip"
++            aria-label="About the Maple Oat Latte" aria-describedby="maple-tooltip">i</button>
++          <div id="maple-tooltip" popover role="tooltip">
++            <div class="tooltip-content">Made with creamy oat milk and Vermont maple syrup for a smooth, gently sweet latte.</div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

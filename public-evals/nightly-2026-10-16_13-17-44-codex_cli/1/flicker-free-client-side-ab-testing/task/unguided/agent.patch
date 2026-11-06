@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,115 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f7f8f2">
++  <meta name="description" content="Folio brings your notes, projects, and ideas together in one beautifully simple workspace.">
++  <title>Folio — A little less scattered.</title>
++  <script>document.documentElement.classList.add('experiment-pending');</script>
++  <style>
++    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap');
++    :root{--ink:#25392c;--green:#294c37;--muted:#7a8177;--paper:#f7f8f2;--lime:#d5ef9c}
++    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button,input{font:inherit}button,a{ -webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #88a85d;outline-offset:5px}.wrap{max-width:1320px;margin:auto;padding:0 64px}.header{height:112px;display:flex;align-items:center;justify-content:space-between}.logo{font-family:'Manrope',sans-serif;font-size:30px;font-weight:800;letter-spacing:-1.5px;display:flex;align-items:center;gap:10px}.mark{position:relative;width:28px;height:28px;display:inline-block}.mark i{position:absolute;width:12px;height:12px;background:#34563b;border-radius:7px 7px 2px 7px}.mark i:nth-child(1){left:1px;top:1px}.mark i:nth-child(2){right:1px;top:1px;transform:rotate(90deg)}.mark i:nth-child(3){right:1px;bottom:1px;transform:rotate(180deg)}.mark i:nth-child(4){left:1px;bottom:1px;transform:rotate(270deg)}nav{display:flex;gap:35px;font-size:13px;font-weight:550}nav a:hover{color:#77934c}.header-actions{display:flex;align-items:center;gap:26px;font-size:13px;font-weight:600}.small-btn{background:var(--green);color:white;border:0;padding:13px 20px;border-radius:7px}.small-btn:hover,.primary:hover{background:#3c6245}.arrow{margin-left:16px;font-size:18px}.hero{display:grid;grid-template-columns:1fr 1.05fr;gap:35px;align-items:center;padding-top:67px;padding-bottom:70px}.hero-copy{padding-bottom:8px}.eyebrow{display:inline-flex;gap:9px;align-items:center;border:1px solid #dce2ce;background:#eff3e4;border-radius:30px;padding:7px 12px;font-size:10px;font-weight:650;letter-spacing:1.4px}.eyebrow span{width:6px;height:6px;border-radius:50%;background:#6b8d43}h1{font-family:'Manrope',sans-serif;font-size:68px;line-height:1.1;letter-spacing:-3.5px;font-weight:500;margin:26px 0 23px}h1 em{font-family:Georgia,serif;font-weight:400;color:#6d8556}.description{font-size:16px;line-height:1.85;color:#788075;max-width:375px;margin:0 0 28px}.primary{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:white;border:0;border-radius:7px;padding:17px 24px;font-size:13px;font-weight:550;transition:background .2s}.fine{font-size:10px;color:#868c80;display:flex;gap:16px;margin-top:14px}.fine span:before{content:'✓';margin-right:5px;color:#6b8353}.social-proof{display:flex;gap:12px;align-items:center;margin-top:39px}.avatars{display:flex;padding-left:0}.avatar{width:29px;height:29px;border:2px solid var(--paper);border-radius:50%;margin-left:-7px;background:#d3d5bf;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}.avatar:first-child{margin-left:0;background:#a7836e}.avatar:nth-child(2){background:#b3b98b}.avatar:nth-child(3){background:#71867e}.avatar:nth-child(4){background:#b79874}.stars{letter-spacing:2px;color:#748b45;font-size:11px}.rating{font-size:10px;color:#7e8478;margin-top:3px}.rating b{color:#354132;font-weight:600}
++    .visual{position:relative;min-height:448px;display:flex;align-items:center;justify-content:center}.visual:before{content:'';position:absolute;inset:-27px -20px -22px -8px;background:#e8eddd;border-radius:48% 48% 45% 46%;transform:rotate(-9deg)}.orbit{position:absolute;width:490px;height:385px;border:1px dashed #cbd4bc;border-radius:50%;transform:rotate(-24deg)}.dashboard{position:relative;display:flex;width:506px;height:338px;background:#fffefa;box-shadow:0 24px 45px #344a2920,0 3px 8px #344a2908;border:1px solid #e0e4d9;border-radius:10px;overflow:hidden;transform:rotate(-3deg)}.sidebar{width:113px;flex-shrink:0;background:#f3f4ed;border-right:1px solid #e7e9e0;padding:17px 12px}.app-logo{font-size:15px;letter-spacing:-.7px;font-weight:800;display:flex;gap:6px;align-items:center;margin-bottom:25px}.app-logo .mark{transform:scale(.55);width:18px;height:22px;transform-origin:left center}.side-item{font-size:8px;color:#858c7d;padding:8px 5px;margin:2px 0;border-radius:4px;display:flex;gap:8px}.side-item.selected{background:#e3e9d9;color:#3e5939;font-weight:600}.side-title{font-size:6px;letter-spacing:1px;color:#9aa18e;margin:23px 5px 8px}.side-dot{width:5px;height:5px;background:#b5c398;border-radius:2px;display:inline-block;margin-top:2px}.app-main{padding:20px 20px;flex:1}.app-top{display:flex;justify-content:space-between;align-items:center;font-size:7px;color:#a1a596}.app-top span:last-child{letter-spacing:5px}.greeting{font-size:21px;font-family:'Manrope',sans-serif;font-weight:650;letter-spacing:-.7px;margin:23px 0 4px}.greeting-sub{font-size:8px;color:#969c8c}.app-tabs{display:flex;gap:18px;border-bottom:1px solid #e9ece3;margin-top:20px;font-size:8px;color:#959d8a}.app-tabs span{padding-bottom:8px}.app-tabs .active{color:#405b37;border-bottom:2px solid #6e8753}.project-label{font-size:9px;margin:17px 0 10px;display:flex;justify-content:space-between;font-weight:600}.project-label span{font-size:7px;color:#8d957f;font-weight:400}.project-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.project{padding:12px;background:#edf1e6;border:1px solid #e5e9dc;border-radius:6px;min-height:91px}.project:nth-child(2){background:#f8f0e3;border-color:#eee6d8}.project-icon{font-size:14px}.project h3{font-size:9px;font-weight:600;margin:9px 0 5px}.project p{font-size:6px;color:#909680;margin:0}.progress{height:3px;background:#dce3d0;margin-top:9px;border-radius:3px}.progress:after{content:'';display:block;width:65%;height:3px;background:#8ea16a;border-radius:3px}.project:nth-child(2) .progress{background:#ece0cb}.project:nth-child(2) .progress:after{background:#c2a77f;width:35%}.float-note{position:absolute;top:3px;right:-16px;width:173px;background:#fffdf5;border:1px solid #e7e7d9;border-radius:8px;padding:17px 16px;box-shadow:0 9px 25px #3e4e2510;transform:rotate(7deg)}.note-pin{position:absolute;top:-5px;left:80px;width:9px;height:9px;background:#8ca167;border-radius:50%;box-shadow:0 2px 3px #34532930}.note-caption{font-size:8px;letter-spacing:1px;color:#9b9f8d;margin-bottom:12px}.note-text{font-family:Georgia,serif;font-style:italic;font-size:18px;line-height:1.4;color:#657752}.note-doodle{color:#a4b283;margin-top:7px;font-size:20px}.float-task{position:absolute;bottom:12px;left:-17px;display:flex;align-items:center;gap:11px;background:white;border:1px solid #e5e8dc;border-radius:9px;padding:14px 18px;box-shadow:0 8px 24px #3e4e2512;transform:rotate(2deg)}.check-circle{background:#edf3e4;color:#6e8b4f;width:29px;height:29px;border-radius:50%;display:grid;place-items:center;font-size:14px}.task-title{font-size:10px;font-weight:600}.task-sub{font-size:8px;color:#949b89;margin-top:4px}.spark{position:absolute;color:#82965c;font-size:26px}.spark.one{left:8px;top:4px;transform:rotate(15deg)}.spark.two{right:-23px;bottom:61px;font-size:36px}.visual-caption{position:absolute;bottom:-37px;right:59px;font-size:12px;color:#94a17f;font-family:Georgia,serif;font-style:italic;transform:rotate(-5deg)}
++    .trusted{padding:34px 0 36px;border-bottom:1px solid #e2e6da;text-align:center}.trusted-label{color:#8c9384;font-size:9px;letter-spacing:1.7px;margin-bottom:27px}.brands{display:flex;align-items:center;justify-content:space-between;max-width:850px;margin:auto;color:#8d9585;font-size:22px;letter-spacing:-1px;font-weight:650}.brands .sisyphus{font-family:Georgia,serif;font-size:24px}.brands .layers{font-weight:500}.brands .circooles{font-weight:500;font-size:21px}.brand-symbol{font-size:25px;vertical-align:middle;margin-right:5px}.features{padding:59px 0 44px}.section-kicker{text-align:center;font-size:9px;letter-spacing:1.8px;color:#84906e;font-weight:600}.features h2{text-align:center;font-family:'Manrope',sans-serif;font-size:29px;font-weight:500;letter-spacing:-1px;margin:14px 0 37px}.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:40px}.feature{display:flex;gap:15px}.feature-icon{width:35px;height:35px;flex-shrink:0;border:1px solid #e0e6d6;background:#edf1e5;border-radius:9px;display:grid;place-items:center;color:#647a4f;font-size:17px}.feature h3{margin:2px 0 8px;font-size:13px;font-weight:600}.feature p{font-size:11px;line-height:1.8;color:#8a9182;margin:0;max-width:230px}footer{border-top:1px solid #e2e6da;margin-top:18px;padding:23px 0;display:flex;justify-content:space-between;font-size:10px;color:#919787}.experiment-pending [data-experiment-root]{visibility:hidden}dialog{border:1px solid #dce2ce;border-radius:16px;background:var(--paper);color:var(--ink);padding:32px;width:min(430px,90vw);box-shadow:0 20px 100px #25392c30}dialog::backdrop{background:#25392c70;backdrop-filter:blur(4px)}dialog h2{font-family:Manrope,sans-serif;font-weight:500;font-size:27px;letter-spacing:-1px}dialog p{color:#788075;font-size:14px;line-height:1.7}dialog input{padding:13px;border:1px solid #d4dcc9;border-radius:6px;width:100%;margin:8px 0 14px;background:white}dialog .primary{width:100%}.close{float:right;background:none;border:0;font-size:23px;color:#788075}.form-note{font-size:11px!important}#form-success{display:none}
++    @media(min-width:1400px){.hero{padding-top:85px;padding-bottom:90px}.wrap{max-width:1370px}.hero h1{font-size:75px}.visual{transform:scale(1.06)}}
++    @media(max-width:1050px){.wrap{padding:0 35px}h1{font-size:57px}.hero{gap:20px}.visual{transform:scale(.86);transform-origin:center}.float-note{right:-5px}.dashboard{min-width:465px}.brands{max-width:780px}.hero-copy{position:relative;z-index:2}.hero{padding-top:45px}}
++    @media(max-width:760px){.wrap{padding:0 24px}.header{height:85px}nav{display:none}.header-actions{gap:16px}.header-actions>a{display:none}.logo{font-size:27px}.small-btn{padding:11px 15px;font-size:12px}.hero{grid-template-columns:1fr;padding-top:36px;gap:45px;padding-bottom:25px}.hero-copy{text-align:center}h1{font-size:57px;letter-spacing:-3px}.description{margin-left:auto;margin-right:auto;font-size:15px}.fine,.social-proof{justify-content:center}.social-proof{margin-top:26px}.visual{min-height:380px;transform:scale(.9);width:100%;max-width:520px;margin:auto}.visual:before{inset:0 -5px}.dashboard{min-width:0;width:100%;max-width:485px}.float-note{right:-6px;top:0}.float-task{left:-5px;bottom:0}.visual-caption{bottom:-30px}.trusted{padding-top:43px}.brands{flex-wrap:wrap;justify-content:center;gap:23px 30px;font-size:19px}.brands .sisyphus{font-size:21px}.brands .circooles{font-size:18px}.brand-symbol{font-size:21px}.trusted-label{font-size:8px}.feature-grid{grid-template-columns:1fr;gap:25px;max-width:330px;margin:auto}.features{padding-top:42px}.features h2{font-size:26px}.feature p{max-width:none;font-size:12px}footer{font-size:9px}.orbit{width:100%;height:340px}.spark.two{right:-12px}}
++    @media(prefers-reduced-motion:no-preference){.visual{animation:appear .8s ease both}@keyframes appear{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}}
++  </style>
++  <noscript><style>[data-experiment-root]{visibility:visible!important}</style></noscript>
++</head>
++<body>
++<div class="wrap">
++  <header class="header">
++    <a class="logo" href="#" aria-label="Folio home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>folio</a>
++    <nav aria-label="Main navigation"><a href="#features">Why Folio</a><a href="#workspace">The workspace</a><a href="#features">Made for you</a></nav>
++    <div class="header-actions"><a href="#" data-signup>Log in</a><button class="small-btn" data-signup>Get started <span class="arrow">↗</span></button></div>
++  </header>
++  <main>
++    <section class="hero" aria-label="Your calmer workspace">
++      <div class="hero-copy">
++        <div class="eyebrow"><span></span> A LITTLE SPACE FOR BIG IDEAS</div>
++        <div data-experiment-root aria-busy="true">
++          <h1 data-experiment-headline>A little less scattered.<br><em>A lot more you.</em></h1>
++          <p class="description" data-experiment-description>Your notes, projects, and next big thing.<br>All together in a workspace that feels like a deep breath.</p>
++          <button class="primary" data-signup data-experiment-cta>Find your flow <span class="arrow">↗</span></button>
++        </div>
++        <div class="fine"><span>Free to get started</span><span>No credit card needed</span></div>
++        <div class="social-proof"><div class="avatars" aria-hidden="true"><span class="avatar">JL</span><span class="avatar">AK</span><span class="avatar">MS</span><span class="avatar">RE</span></div><div><div class="stars" aria-label="5 out of 5 stars">★★★★★</div><div class="rating">A happy place for <b>10,000+ minds</b></div></div></div>
++      </div>
++      <div class="visual" id="workspace" role="img" aria-label="A preview of Folio with project boards, notes, and completed tasks in one organized workspace">
++        <div class="orbit"></div><span class="spark one">✧</span>
++        <div class="dashboard">
++          <aside class="sidebar"><div class="app-logo"><span class="mark"><i></i><i></i><i></i><i></i></span>folio</div><div class="side-item selected">⌂ <span>My workspace</span></div><div class="side-item">▤ <span>My notes</span></div><div class="side-item">☑ <span>My tasks</span></div><div class="side-item">▦ <span>All projects</span></div><div class="side-title">YOUR SPACES</div><div class="side-item"><i class="side-dot"></i> The everyday</div><div class="side-item"><i class="side-dot" style="background:#c7b694"></i> A side of ideas</div><div class="side-item">+ New space</div></aside>
++          <div class="app-main"><div class="app-top"><span>My workspace</span><span>⌕ ···</span></div><div class="greeting">A fresh start, Alex <span style="font-size:18px">☀</span></div><div class="greeting-sub">A little clarity for whatever comes next.</div><div class="app-tabs"><span class="active">Overview</span><span>My day</span><span>Saved for later</span></div><div class="project-label">Your little corner <span>View all ↗</span></div><div class="project-grid"><div class="project"><div class="project-icon">🌱</div><h3>Good things in progress</h3><p>4 notes · 8 tasks</p><div class="progress"></div></div><div class="project"><div class="project-icon">💡</div><h3>Ideas for a rainy day</h3><p>12 notes · Endless possibilities</p><div class="progress"></div></div></div></div>
++        </div>
++        <div class="float-note"><span class="note-pin"></span><div class="note-caption">NOTE TO SELF</div><div class="note-text">Less busy.<br>More meaningful.</div><div class="note-doodle">〰</div></div>
++        <div class="float-task"><div class="check-circle">✓</div><div><div class="task-title">Make room for the good stuff</div><div class="task-sub">Look at you, making things happen.</div></div><span style="color:#c4cfb6;font-size:18px;margin-left:8px">✧</span></div><span class="spark two">✳</span><div class="visual-caption">a calmer kind of productive ↗</div>
++      </div>
++    </section>
++    <section class="trusted" aria-label="Our community"><div class="trusted-label">FOR BRIGHT MINDS AT FORWARD-THINKING TEAMS</div><div class="brands"><span><span class="brand-symbol">◒</span>Capsule</span><span class="layers"><span class="brand-symbol">▱</span>Layers</span><span class="sisyphus"><span class="brand-symbol">❋</span>Sisyphus</span><span class="circooles"><span class="brand-symbol">◎</span>Circooles</span><span><span class="brand-symbol">▥</span>Quotient</span></div></section>
++    <section class="features" id="features"><div class="section-kicker">A PLACE FOR EVERYTHING. SPACE TO BE YOU.</div><h2>Goodbye, twenty open tabs.</h2><div class="feature-grid"><article class="feature"><div class="feature-icon">▤</div><div><h3>Catch every little thought</h3><p>From shower thoughts to solid plans. Give your ideas a home of their own.</p></div></article><article class="feature"><div class="feature-icon">▦</div><div><h3>See the bigger picture</h3><p>Bring your projects, tasks, and notes together. It all just clicks.</p></div></article><article class="feature"><div class="feature-icon">✳</div><div><h3>Make it feel like you</h3><p>A space that fits the way your mind works. A little structure, a lot of freedom.</p></div></article></div></section>
++  </main>
++  <footer><span>© 2026 Folio. A little more headspace.</span><span>Made for a more mindful everyday. ✧</span></footer>
++</div>
++<dialog id="signup"><button class="close" aria-label="Close dialog">×</button><div id="form-content"><div class="eyebrow"><span></span> YOUR FRESH START</div><h2>A little more headspace.</h2><p>Join the list. We’ll let you know when your new workspace is ready.</p><form id="signup-form"><label for="email" style="font-size:12px">Your email address</label><input id="email" type="email" placeholder="you@example.com" required autocomplete="email"><button class="primary" type="submit">Join the waitlist <span class="arrow">↗</span></button><p class="form-note">Your address is saved on this device for this preview.</p></form></div><div id="form-success" role="status"><h2>You’re on the list. 🌱</h2><p>A little less scattered starts here. Your interest has been saved on this device.</p></div></dialog>
++<script>
++  // Readiness contract: the SDK must dispatch `experiment:ready` after its
++  // DOM updates finish, or resolve window.folioExperimentReady (a Promise).
++  // Loading the script alone does not mean an asynchronous variant is ready.
++  (() => {
++    const root = document.querySelector('[data-experiment-root]');
++    let settled = false;
++    let deadline;
++    let sdk;
++    const controller = new AbortController();
++    function reveal() {
++      if (settled) return;
++      settled = true;
++      clearTimeout(deadline);
++      root.setAttribute('aria-busy', 'false');
++      document.documentElement.classList.remove('experiment-pending');
++    }
++    function fallback() {
++      if (settled) return;
++      // Replace the controlled region before revealing; never expose baseline.
++      // Remove it from the SDK's reach so late changes cannot flash a variant.
++      const replacement = document.createElement('div');
++      replacement.dataset.experimentState = 'fallback';
++      replacement.innerHTML = '<h1>A little less scattered.<br><em>A lot more you.</em></h1><p class="description">Your notes, projects, and next big thing.<br>All together in a workspace that feels like a deep breath.</p><button class="primary" data-signup>Find your flow <span class="arrow">↗</span></button>';
++      replacement.setAttribute('aria-busy', 'false');
++      root.replaceWith(replacement);
++      controller.abort();
++      if (sdk) sdk.remove();
++      reveal();
++    }
++    window.addEventListener('experiment:ready', reveal, { once: true, signal: controller.signal });
++    deadline = setTimeout(fallback, 3500);
++    sdk = document.createElement('script');
++    sdk.src = 'https://cdn.example.com/experiment-sdk.js';
++    sdk.async = true;
++    sdk.onerror = fallback;
++    sdk.onload = () => {
++      if (window.folioExperimentReady && typeof window.folioExperimentReady.then === 'function') {
++        window.folioExperimentReady.then(reveal, fallback);
++      }
++    };
++    document.head.appendChild(sdk);
++  })();
++  const modal = document.getElementById('signup');
++  document.addEventListener('click', event => {
++    if (event.target.closest('[data-signup]')) { event.preventDefault(); modal.showModal(); }
++  });
++  modal.querySelector('.close').addEventListener('click', () => modal.close());
++  modal.addEventListener('click', event => { if (event.target === modal) { const r=modal.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom) modal.close(); } });
++  document.getElementById('signup-form').addEventListener('submit', event => {
++    event.preventDefault();
++    try { localStorage.setItem('folio-waitlist-email', document.getElementById('email').value); } catch {}
++    document.getElementById('form-content').style.display = 'none';
++    document.getElementById('form-success').style.display = 'block';
++  });
++</script>
++</body>
++</html>

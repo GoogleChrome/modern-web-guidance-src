@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,16 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -134,8 +142,16 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall Preview Section */
++    .paywall-container {
++      margin-top: 60px;
++      position: relative;
++      -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +210,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" id="roasters-secrets">
++      <h2 style="text-align: center;">Roaster's Secrets</h2>
++      <p style="text-align: center; color: #6d4c41; margin-top: 5px;">Exclusive behind-the-scenes techniques and craft brewing guides.</p>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Pourover coffee extraction">
++          <h3>The 93°C Extraction Rule</h3>
++          <p>Why precise water temperature unlocking delicate berry undertones separates standard brews from championship cups.</p>
++          <a href="/secrets/extraction" class="btn">Read Preview</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Roasting drum with coffee beans">
++          <h3>First Crack Dynamics</h3>
++          <p>The exact thermodynamic curve we apply during the first crack to retain origin clarity in Ethiopian microlots.</p>
++          <a href="/secrets/roasting" class="btn">Read Preview</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80" alt="Artisanal coffee cup">
++          <h3>Mineral Water Profiling</h3>
++          <p>How adjusting magnesium and calcium ions completely transforms the perceived sweetness and floral aroma.</p>
++          <a href="/secrets/water" class="btn">Read Preview</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

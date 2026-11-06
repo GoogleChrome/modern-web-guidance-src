@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,98 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++
++    /* Parallax Section (CSS scroll-driven, decorative progressive enhancement) */
++    .parallax {
++      position: relative;
++      height: 80vh;
++      min-height: 420px;
++      overflow: clip;
++      isolation: isolate;
++      display: grid;
++      place-items: center;
++      color: white;
++      text-align: center;
++      background: var(--primary);
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: -25% 0;
++      pointer-events: none;
++    }
++
++    .parallax-bg {
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      z-index: -3;
++    }
++
++    .parallax-beans {
++      z-index: -2;
++      background:
++        radial-gradient(ellipse 60px 36px at 12% 30%, #6d4c41 98%, transparent) ,
++        radial-gradient(ellipse 40px 24px at 80% 20%, #8d6e63 98%, transparent),
++        radial-gradient(ellipse 80px 48px at 70% 75%, #5d4037 98%, transparent),
++        radial-gradient(ellipse 50px 30px at 25% 80%, #795548 98%, transparent);
++      opacity: 0.7;
++    }
++
++    .parallax-steam {
++      z-index: -1;
++      background:
++        radial-gradient(circle 120px at 45% 60%, rgba(255, 255, 255, 0.18), transparent),
++        radial-gradient(circle 180px at 60% 40%, rgba(255, 171, 64, 0.2), transparent);
++    }
++
++    .parallax-content {
++      position: relative;
++      max-width: 600px;
++      padding: 0 20px;
++    }
++
++    .parallax-content h2 {
++      font-size: 2.2rem;
++      margin-bottom: 0.75rem;
++    }
++
++    @keyframes parallax-shift {
++      from { transform: translateY(var(--from)); }
++      to { transform: translateY(var(--to)); }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      .parallax {
++        view-timeline: --parallax block;
++      }
++
++      .parallax-layer,
++      .parallax-content {
++        animation: parallax-shift linear both;
++        animation-timeline: --parallax;
++        animation-range: cover;
++        will-change: transform;
++      }
++
++      /* Farther layers travel less, nearer layers travel more */
++      .parallax-bg { --from: -8%; --to: 8%; }
++      .parallax-beans { --from: -16%; --to: 16%; }
++      .parallax-steam { --from: -24%; --to: 24%; }
++      .parallax-content { --from: 60px; --to: -60px; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer,
++      .parallax-content {
++        animation: none;
++        will-change: auto;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +263,18 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax-layer parallax-bg" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-beans" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-steam" aria-hidden="true"></div>
++    <div class="parallax-content">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>Every batch is roasted in small lots, so what lands in your cup is as fresh as it gets.</p>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

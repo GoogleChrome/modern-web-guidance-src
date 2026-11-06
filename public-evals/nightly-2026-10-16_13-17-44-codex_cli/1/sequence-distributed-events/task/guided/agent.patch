@@ -1,0 +1,236 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,22 @@
+-<!DOCTYPE html>
++<!doctype html>
+ <html lang="en">
+-
+-<head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
+-</head>
+-
++<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#f6f7f9"><title>The Daily Grind — Order telemetry</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css"></head>
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<aside class="sidebar">
++<a class="brand" href="/" aria-label="The Daily Grind home"><span class="brand-icon">☕</span><span>the daily grind<span class="brand-sub">GOOD COFFEE. GREAT SYSTEMS.</span></span></a>
++<div class="workspace"><span class="workspace-icon">DG</span><span>Daily Grind workspace<small>Development environment</small></span><span class="chevrons">⌃<br>⌄</span></div>
++<div class="nav-label">WORKSPACE</div>
++<nav aria-label="Main navigation"><button class="nav-item active" data-view="overview"><span data-icon="grid"></span>Overview</button><button class="nav-item" data-view="stream"><span data-icon="activity"></span>Event stream<span class="nav-count" id="nav-count">0</span></button><button class="nav-item" data-view="services"><span data-icon="layers"></span>Services<span class="tiny-dot"></span></button></nav>
++<div class="sidebar-bottom"><div class="engine"><span class="status-dot"></span>Sequencing engine<small>All systems operational <span>↗</span></small></div><div class="profile"><div class="avatar">JD</div><div>Jamie Davis<small>Workspace admin</small></div><span class="profile-menu">⌘</span></div></div>
++</aside>
++<div class="app"><header class="topbar"><div>Workspace <span>/</span> <strong id="breadcrumb">Overview</strong></div><div class="top-right"><span class="environment"><span class="status-dot"></span>Development</span><span class="top-divider"></span><span class="avatar small">JD</span></div></header>
++<main><div class="heading"><div class="eyebrow">THE DAILY GRIND / TELEMETRY</div><div class="title-row"><div><h1>A little coffee. A lot of precision.</h1><p>Your coffee orders, sequenced down to the nanosecond.</p></div><span class="live-pill"><span class="status-dot"></span>System live</span></div></div>
++<section class="hero"><div class="hero-copy"><div class="hero-kicker"><span class="status-dot"></span>ORDER SEQUENCING SIMULATOR</div><h2>Every great system<br>starts with a coffee.</h2><p>Place an order. Capture the moment.<br>Watch high-frequency sequencing happen in real time.</p><div class="hero-tags"><span>◷ &nbsp; Nanosecond timestamps</span><span>⇄ &nbsp; Chronological ordering</span></div></div><div class="hero-photo"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1000&q=85" alt="Warm cup of coffee on a cafe table"><div class="photo-caption">CRAFTED WITH CARE. CAPTURED WITH PRECISION.</div></div></section>
++<div class="metrics"><article class="metric"><div class="metric-top">Total orders<span data-icon="coffee"></span></div><div class="metric-value" id="total">0<span>orders</span></div><div class="metric-bottom"><span class="green-dot"></span>Recorded this session</div></article><article class="metric"><div class="metric-top">Last click interval<span data-icon="timer"></span></div><div class="metric-value" id="last">—<span>ns</span></div><div class="metric-bottom">Time between consecutive orders</div></article><article class="metric"><div class="metric-top">Average interval<span data-icon="activity"></span></div><div class="metric-value" id="average">—<span>ns</span></div><div class="metric-bottom">Across all recorded orders</div></article><article class="metric"><div class="metric-top">Timestamp precision<span data-icon="target"></span></div><div class="metric-value">1<span>nanosecond</span></div><div class="metric-bottom"><span class="precision-tag">Temporal API</span><span>Simulated clock</span></div></article></div>
++<div class="work-grid"><section class="panel order-panel"><div class="section-heading"><h3>Make it a coffee</h3><span class="little-icon" data-icon="coffee"></span></div><p class="muted">One click. One order. One precise timestamp.</p><label for="coffee">YOUR COFFEE</label><div class="select-wrap"><span data-icon="coffee"></span><select id="coffee"><option>Maple Oat Latte</option><option>Dark Roast Espresso</option><option>Cold Brew</option><option>Flat White</option></select></div><button id="place-order" class="primary-button"><span data-icon="plus"></span>Place an order<span class="button-key">↵</span></button><div class="burst-row"><span>Need a little more traffic?</span><button id="burst">Simulate 10 orders <span>↗</span></button></div><div class="order-note"><span data-icon="shield"></span><span>Every order is timestamped, sorted, and logged.<br>Nanosecond values · browser clock precision varies.</span></div></section>
++<section class="panel chart-panel"><div class="section-heading"><div><h3>A rhythm in every order</h3><p class="muted">Time between consecutive clicks</p></div><span class="chart-unit"><i></i>Interval (ms)</span></div><div class="chart"><div class="y-labels"><span id="max-y">1000</span><span id="mid-y">500</span><span>0</span></div><div class="plot"><div class="grid-line line1"></div><div class="grid-line line2"></div><div class="grid-line line3"></div><svg id="chart" viewBox="0 0 600 135" preserveAspectRatio="none" role="img" aria-label="Click interval chart"><defs><linearGradient id="fade" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#a192d8" stop-opacity=".25"/><stop offset="100%" stop-color="#a192d8" stop-opacity=".015"/></linearGradient></defs><path id="area" fill="url(#fade)"/><path id="line" fill="none" stroke="#a496d4" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg><div id="chart-empty">Your next coffee starts the rhythm.<small>Place two orders to see your first interval.</small></div><div class="x-labels"><span>First order</span><span>Most recent</span></div></div></div><div class="chart-footer"><span class="status-dot"></span>Live updates<span class="chart-footer-right">Last 20 intervals</span></div></section></div>
++<section class="panel event-panel" id="events-section"><div class="event-heading"><div class="section-heading"><h3>Order event stream</h3><span class="count-pill" id="event-count">0 events</span><span class="stream-tag"><span class="status-dot"></span>Live</span></div><div class="event-actions"><button id="clear" class="text-button"><span data-icon="trash"></span>Clear</button><button id="export" class="outline-button"><span data-icon="download"></span>Export CSV</button></div></div><div class="table-wrap"><table><thead><tr><th>SEQUENCE</th><th>ORDER</th><th>TIMESTAMP <span>(UTC · NANOSECONDS)</span></th><th>INTERVAL <span>(ns)</span></th><th>STATUS</th></tr></thead><tbody id="event-rows"></tbody></table></div><div id="empty-state"><span class="empty-icon" data-icon="layers"></span><strong>A fresh start, just like your coffee.</strong><p>Place your first order to start the event stream.</p></div><div class="table-footer"><span><span class="sort-symbol">↓</span> Sorted chronologically · oldest first</span><span id="row-summary">0 orders in this session</span></div></section>
++<footer><span><span class="footer-brand">☕</span> The Daily Grind <span class="footer-separator">/</span> A playground for precise moments.</span><span>Built for the moments between the milliseconds. <span class="footer-spark">✧</span></span></footer>
++</main></div><div id="toast" role="status" aria-live="polite"></div>
++<dialog id="services-dialog"><div class="section-heading"><h3>Sequencing services</h3><button id="close-dialog" class="text-button" aria-label="Close">✕</button></div><p class="muted">Local simulation · no external services connected.</p><div class="service-item"><span class="status-dot"></span>Order gateway <span>Operational</span></div><div class="service-item"><span class="status-dot"></span>Timestamp sequencer <span>Operational</span></div><div class="service-item"><span class="status-dot"></span>Telemetry logger <span>Operational</span></div></dialog>
++<script type="module" src="/main.js"></script></body></html>

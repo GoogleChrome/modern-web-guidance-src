@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,50 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Promo area */
++    .promo-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .promo-controls button {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    #domContainer .card {
++      opacity: 1;
++      transform: scale(1);
++      transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
++    }
++
++    #domContainer .card.card-enter,
++    #domContainer .card.card-leave,
++    #domContainer .card[hidden] {
++      opacity: 0;
++      transform: scale(0.85);
++    }
++
++    /* Keep [hidden] cards rendered so the fade/scale can animate */
++    #domContainer .card[hidden] {
++      display: block;
++      visibility: hidden;
++      pointer-events: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #domContainer .card {
++        transition-duration: 0.01s;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +236,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center;">Special Promotions</h2>
++      <div class="promo-controls">
++        <button id="addBtn" class="btn" type="button">Add Promo</button>
++        <button id="removeBtn" class="btn" type="button">Remove Promo</button>
++        <button id="toggleBtn" class="btn" type="button">Toggle Promo</button>
++      </div>
++      <div id="domContainer" class="grid">
++        <div id="toggleCard" class="card">
++          <h3>Free Pastry Friday</h3>
++          <p>Buy any large drink on Friday and get a pastry on us.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      var container = document.getElementById('domContainer');
++      var count = 0;
++
++      document.getElementById('addBtn').addEventListener('click', function () {
++        count++;
++        var card = document.createElement('div');
++        card.className = 'card card-enter';
++        card.innerHTML = '<h3>Promo #' + count + '</h3><p>Limited-time offer: 10% off your next order.</p>';
++        container.appendChild(card);
++        // Force a reflow so the transition runs from the entering state
++        void card.offsetWidth;
++        card.classList.remove('card-enter');
++      });
++
++      document.getElementById('removeBtn').addEventListener('click', function () {
++        var cards = container.querySelectorAll('.card:not(.card-leave)');
++        var last = cards[cards.length - 1];
++        if (!last) return;
++        last.classList.add('card-leave');
++        var done = false;
++        function finish() {
++          if (done) return;
++          done = true;
++          last.remove();
++        }
++        last.addEventListener('transitionend', finish);
++        setTimeout(finish, 500);
++      });
++
++      document.getElementById('toggleBtn').addEventListener('click', function () {
++        var card = document.getElementById('toggleCard');
++        if (card) card.toggleAttribute('hidden');
++      });
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

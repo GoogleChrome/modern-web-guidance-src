@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+index 66c9173..1009614 100644
+--- a/index.html
++++ b/index.html
+@@ -7,6 +7,7 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      --nav-height: 70px;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+@@ -47,6 +48,7 @@
+     }
+ 
+     nav ul {
++      scroll-target-group: auto;
+       display: flex;
+       list-style: none;
+     }
+@@ -66,6 +68,38 @@
+       color: var(--accent);
+     }
+ 
++    nav a:is(:target-current, .is-current) {
++      color: var(--accent);
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 6px;
++    }
++
++    section[id] {
++      scroll-margin-top: calc(var(--nav-height) + 20px);
++    }
++
++    main > section + section {
++      margin-top: 60px;
++    }
++
++    @media (max-width: 650px) {
++      nav {
++        flex-direction: column;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 12px 20px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -157,12 +191,12 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,8 +209,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +229,24 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" aria-labelledby="locations-heading">
++      <h2 id="locations-heading" style="text-align: center;">Locations</h2>
++      <div class="card">
++        <h3>Find Your Daily Grind</h3>
++        <p>Make time for a coffee break. Find a shop near you and plan your visit.</p>
++        <a href="/locations" class="btn">Find a Location</a>
++      </div>
++    </section>
++
++    <section id="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading" style="text-align: center;">Rewards</h2>
++      <div class="card">
++        <h3>Make Every Visit Count</h3>
++        <p>Explore Daily Grind Rewards and discover more ways to enjoy your coffee routine.</p>
++        <a href="/rewards" class="btn">Explore Rewards</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +259,62 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const nav = document.querySelector('nav');
++    const links = [...nav.querySelectorAll('a[href^="#"]')];
++    const sections = links.map(link => document.getElementById(link.hash.slice(1)));
++    const nativeTracking = CSS.supports('scroll-target-group: auto') &&
++      CSS.supports('selector(:target-current)');
++
++    function setCurrent(currentLink) {
++      links.forEach(link => {
++        const active = link === currentLink;
++        link.classList.toggle('is-current', !nativeTracking && active);
++        if (active) link.setAttribute('aria-current', 'location');
++        else link.removeAttribute('aria-current');
++      });
++    }
++
++    function syncNativeCurrent() {
++      setCurrent(nav.querySelector('a:target-current'));
++    }
++
++    let observer;
++    function observeSections() {
++      const navHeight = nav.getBoundingClientRect().height;
++      document.documentElement.style.setProperty('--nav-height', `${navHeight}px`);
++      if (nativeTracking) {
++        syncNativeCurrent();
++        return;
++      }
++
++      observer?.disconnect();
++      const visible = new Map();
++      observer = new IntersectionObserver(entries => {
++        entries.forEach(entry => {
++          if (entry.isIntersecting) visible.set(entry.target, entry.intersectionRatio);
++          else visible.delete(entry.target);
++        });
++        const current = sections.reduce((best, section) =>
++          (visible.get(section) ?? 0) > (visible.get(best) ?? 0) ? section : best, null);
++        setCurrent(links[sections.indexOf(current)]);
++      }, {
++        rootMargin: `-${navHeight}px 0px 0px 0px`,
++        threshold: Array.from({ length: 21 }, (_, index) => index / 20)
++      });
++      sections.forEach(section => observer.observe(section));
++    }
++
++    new ResizeObserver(observeSections).observe(nav);
++    if (nativeTracking) {
++      // Native CSS handles the highlight; mirror its state for assistive technology.
++      document.addEventListener('scrollend', syncNativeCurrent);
++      window.addEventListener('hashchange', () => requestAnimationFrame(syncNativeCurrent));
++      window.addEventListener('pageshow', syncNativeCurrent);
++    }
++    observeSections();
++  </script>
++
+ </body>
+ 
+ </html>

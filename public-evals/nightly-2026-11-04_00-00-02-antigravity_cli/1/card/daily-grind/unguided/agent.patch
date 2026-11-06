@@ -1,0 +1,553 @@
+diff --git a/index.html b/index.html
+index 66c9173..901f7bf 100644
+--- a/index.html
++++ b/index.html
+@@ -93,6 +93,10 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero .btn {
++      margin-top: 15px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -102,39 +106,328 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
++      margin-top: 24px;
+     }
+ 
++    /* Card Container & Content-Driven Styling */
+     .card {
++      container-type: inline-size;
++      container-name: card;
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 12px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      border: 2px solid transparent;
++      overflow: hidden;
++      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
++      text-align: left;
++    }
++
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 8px 20px rgba(78, 52, 46, 0.14);
++    }
++
++    /* Adjust card layout and styling based on the content it contains (:has) */
++    .card:not(:has(img)) .card-inner {
++      padding: 24px;
+       text-align: center;
+     }
+ 
++    .card:has(img) .card-inner {
++      display: flex;
++      flex-direction: column;
++      height: 100%;
++    }
++
++    .card:has(.seasonal-badge) {
++      border-color: rgba(255, 171, 64, 0.45);
++    }
++
++    .card:has(input[type="radio"]:checked) {
++      border-color: var(--secondary);
++    }
++
++    .card:has(input[value="small"]:checked) {
++      --img-scale: 0.96;
++      --accent-tint: rgba(215, 204, 200, 0.18);
++    }
++
++    .card:has(input[value="medium"]:checked) {
++      --img-scale: 1;
++      --accent-tint: rgba(255, 171, 64, 0.1);
++    }
++
++    .card:has(input[value="large"]:checked) {
++      --img-scale: 1.06;
++      --accent-tint: rgba(255, 171, 64, 0.22);
++      border-color: var(--accent);
++      box-shadow: 0 6px 18px rgba(255, 171, 64, 0.2);
++    }
++
++    .card:has(.add-to-order-btn.added) {
++      border-color: #2e7d32;
++      background-color: #f9fdf9;
++    }
++
++    .card-media {
++      position: relative;
++      width: 100%;
++      aspect-ratio: 16 / 10;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transform: scale(var(--img-scale, 1));
++      transition: transform 0.35s ease;
++    }
++
++    .seasonal-badge {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++    }
++
++    .card-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++      gap: 12px;
++      background: var(--accent-tint, transparent);
++      transition: background 0.25s ease;
++    }
++
++    .card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 8px;
++    }
++
+     .card h3 {
+-      margin-bottom: 10px;
++      margin: 0;
++      color: var(--primary);
++      font-size: clamp(1.15rem, 5cqi, 1.4rem);
++      line-height: 1.25;
++    }
++
++    .card-price {
++      font-weight: 700;
+       color: var(--primary);
++      font-size: 1.1rem;
++      white-space: nowrap;
++    }
++
++    /* Dynamic price display driven by selected size content */
++    .card-price .price-val {
++      display: none;
++    }
++
++    .card:has(input[value="small"]:checked) .card-price .price-small,
++    .card:has(input[value="medium"]:checked) .card-price .price-medium,
++    .card:has(input[value="large"]:checked) .card-price .price-large {
++      display: inline;
++    }
++
++    .card p {
++      color: #5d4037;
++      font-size: 0.95rem;
++      margin: 0;
++      flex: 1;
++    }
++
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      margin-top: auto;
++      padding-top: 8px;
++      border-top: 1px solid rgba(215, 204, 200, 0.6);
++    }
++
++    .size-fieldset {
++      border: none;
++      padding: 0;
++      margin: 0;
++    }
++
++    .size-legend {
++      font-size: 0.8rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #6d4c41;
++      margin-bottom: 6px;
++      display: block;
++    }
++
++    .size-options {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 8px;
++    }
++
++    .size-option {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      padding: 8px 6px;
++      border: 1.5px solid var(--secondary);
++      border-radius: 8px;
++      cursor: pointer;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text);
++      background: white;
++      transition: all 0.2s ease;
++      user-select: none;
++      text-align: center;
++    }
++
++    .size-option:hover {
++      border-color: var(--primary);
++    }
++
++    .size-option input[type="radio"] {
++      position: absolute;
++      opacity: 0;
++      width: 1px;
++      height: 1px;
++      pointer-events: none;
++    }
++
++    .size-option:has(input[type="radio"]:checked) {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++      box-shadow: 0 2px 6px rgba(78, 52, 46, 0.25);
++    }
++
++    .size-option:has(input[type="radio"]:focus-visible) {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .size-oz {
++      font-size: 0.7rem;
++      font-weight: 400;
++      opacity: 0.8;
++    }
++
++    .card-actions {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      border: none;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.25s ease, transform 0.15s ease;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:active {
++      transform: scale(0.98);
++    }
++
++    .add-to-order-btn {
++      width: 100%;
++    }
++
++    .add-to-order-btn.added {
++      background: #2e7d32;
++    }
++
++    .order-feedback {
++      font-size: 0.85rem;
++      color: #2e7d32;
++      font-weight: 600;
++      text-align: center;
++      min-height: 1.2em;
++    }
++
++    .order-feedback:empty {
++      display: none;
++    }
++
++    /* Container Queries: dynamically adjust card layout based on space available to the card itself */
++    @container (max-width: 290px) {
++      .size-options {
++        grid-template-columns: 1fr;
++      }
++
++      .size-option {
++        flex-direction: row;
++        justify-content: space-between;
++        padding: 6px 12px;
++      }
++
++      .card-header {
++        flex-direction: column;
++        align-items: flex-start;
++      }
++    }
++
++    @container (min-width: 380px) {
++      .card-body {
++        padding: 24px;
++      }
++
++      .card-actions {
++        flex-direction: row;
++        align-items: center;
++      }
++    }
++
++    @container (min-width: 480px) {
++      .card:has(img) .card-inner {
++        display: grid;
++        grid-template-columns: 42% 1fr;
++        align-items: stretch;
++      }
++
++      .card-media {
++        aspect-ratio: auto;
++        height: 100%;
++        min-height: 240px;
++      }
++
++      .card-body {
++        justify-content: space-between;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -178,25 +471,182 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <article class="card">
++          <div class="card-inner">
++            <div class="card-media">
++              <img
++                src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80"
++                alt="Maple Oat Latte with frothy oat milk art"
++                loading="lazy"
++              >
++              <span class="seasonal-badge">Seasonal</span>
++            </div>
++            <div class="card-body">
++              <div class="card-header">
++                <h3>Maple Oat Latte</h3>
++                <div class="card-price" aria-live="polite">
++                  <span class="price-val price-small">$4.75</span>
++                  <span class="price-val price-medium">$5.45</span>
++                  <span class="price-val price-large">$6.15</span>
++                </div>
++              </div>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <form class="order-form" data-drink="Maple Oat Latte">
++                <fieldset class="size-fieldset">
++                  <legend class="size-legend">Pick a Size</legend>
++                  <div class="size-options">
++                    <label class="size-option">
++                      <input type="radio" name="size-maple-oat-latte" value="small">
++                      <span>Small</span>
++                      <span class="size-oz">8 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size-maple-oat-latte" value="medium" checked>
++                      <span>Medium</span>
++                      <span class="size-oz">12 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size-maple-oat-latte" value="large">
++                      <span>Large</span>
++                      <span class="size-oz">16 oz</span>
++                    </label>
++                  </div>
++                </fieldset>
++                <div class="card-actions">
++                  <button type="submit" class="btn add-to-order-btn">Add to Order</button>
++                </div>
++                <div class="order-feedback" role="status" aria-live="polite"></div>
++              </form>
++            </div>
++          </div>
++        </article>
++
++        <article class="card">
++          <div class="card-inner">
++            <div class="card-media">
++              <img
++                src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++                alt="Freshly pulled shot of Dark Roast Espresso"
++                loading="lazy"
++              >
++            </div>
++            <div class="card-body">
++              <div class="card-header">
++                <h3>Dark Roast Espresso</h3>
++                <div class="card-price" aria-live="polite">
++                  <span class="price-val price-small">$3.25</span>
++                  <span class="price-val price-medium">$3.95</span>
++                  <span class="price-val price-large">$4.65</span>
++                </div>
++              </div>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <form class="order-form" data-drink="Dark Roast Espresso">
++                <fieldset class="size-fieldset">
++                  <legend class="size-legend">Pick a Size</legend>
++                  <div class="size-options">
++                    <label class="size-option">
++                      <input type="radio" name="size-dark-roast-espresso" value="small">
++                      <span>Small</span>
++                      <span class="size-oz">Single</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size-dark-roast-espresso" value="medium" checked>
++                      <span>Medium</span>
++                      <span class="size-oz">Double</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size-dark-roast-espresso" value="large">
++                      <span>Large</span>
++                      <span class="size-oz">Triple</span>
++                    </label>
++                  </div>
++                </fieldset>
++                <div class="card-actions">
++                  <button type="submit" class="btn add-to-order-btn">Add to Order</button>
++                </div>
++                <div class="order-feedback" role="status" aria-live="polite"></div>
++              </form>
++            </div>
++          </div>
++        </article>
++
++        <article class="card">
++          <div class="card-inner">
++            <div class="card-media">
++              <img
++                src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80"
++                alt="Chilled glass of 18-hour Cold Brew coffee over ice"
++                loading="lazy"
++              >
++            </div>
++            <div class="card-body">
++              <div class="card-header">
++                <h3>Cold Brew</h3>
++                <div class="card-price" aria-live="polite">
++                  <span class="price-val price-small">$4.25</span>
++                  <span class="price-val price-medium">$4.95</span>
++                  <span class="price-val price-large">$5.65</span>
++                </div>
++              </div>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <form class="order-form" data-drink="Cold Brew">
++                <fieldset class="size-fieldset">
++                  <legend class="size-legend">Pick a Size</legend>
++                  <div class="size-options">
++                    <label class="size-option">
++                      <input type="radio" name="size-cold-brew" value="small">
++                      <span>Small</span>
++                      <span class="size-oz">12 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size-cold-brew" value="medium" checked>
++                      <span>Medium</span>
++                      <span class="size-oz">16 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size-cold-brew" value="large">
++                      <span>Large</span>
++                      <span class="size-oz">20 oz</span>
++                    </label>
++                  </div>
++                </fieldset>
++                <div class="card-actions">
++                  <button type="submit" class="btn add-to-order-btn">Add to Order</button>
++                </div>
++                <div class="order-feedback" role="status" aria-live="polite"></div>
++              </form>
++            </div>
++          </div>
++        </article>
+       </div>
+     </section>
+   </main>
+ 
++  <script>
++    document.querySelectorAll('.order-form').forEach((form) => {
++      const btn = form.querySelector('.add-to-order-btn');
++      const feedback = form.querySelector('.order-feedback');
++      const drinkName = form.dataset.drink;
++
++      form.addEventListener('change', () => {
++        btn.classList.remove('added');
++        btn.textContent = 'Add to Order';
++        feedback.textContent = '';
++      });
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const selected = form.querySelector('input[type="radio"]:checked');
++        const size = selected ? selected.value : 'medium';
++        const sizeLabel = size.charAt(0).toUpperCase() + size.slice(1);
++
++        btn.classList.add('added');
++        btn.textContent = `Added (${sizeLabel})`;
++        feedback.textContent = `${sizeLabel} ${drinkName} added to your order!`;
++      });
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

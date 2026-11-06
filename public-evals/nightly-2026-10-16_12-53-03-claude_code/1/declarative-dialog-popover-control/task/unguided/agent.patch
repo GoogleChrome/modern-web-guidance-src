@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -65,14 +65,78 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .logout-btn {
++      background: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      cursor: pointer;
++      transition: color 0.3s;
+     }
+ 
++    .logout-btn:hover {
++      color: var(--accent);
++    }
++
++    dialog,
++    [popover] {
++      margin: auto;
++      padding: 24px;
++      border: none;
++      border-radius: 8px;
++      color: var(--text);
++      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
++      max-width: 320px;
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog h2,
++    [popover] h4 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      gap: 10px;
++      justify-content: flex-end;
++      margin-top: 20px;
++    }
++
++    .dialog-actions .btn,
++    [popover] .btn {
++      margin-top: 0;
++    }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    [popover] ul {
++      list-style: none;
++      text-align: left;
++      margin-bottom: 15px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +227,21 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="logout-btn" commandfor="logout-dialog" command="show-modal">Logout</button></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" aria-labelledby="logout-title">
++    <h2 id="logout-title">Log out?</h2>
++    <p>Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" commandfor="logout-dialog" command="close">Cancel</button>
++      <a href="/logout" class="btn">Log out</a>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -180,14 +253,29 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="latte-info">View Details</button>
++          <div id="latte-info" popover>
++            <h4>Maple Oat Latte</h4>
++            <ul>
++              <li>Calories: 220</li>
++              <li>Fat: 5 g</li>
++              <li>Carbohydrates: 38 g</li>
++              <li>Sugar: 24 g</li>
++              <li>Protein: 4 g</li>
++            </ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="espresso-info" popovertargetaction="show">Show Details</button>
++          <div id="espresso-info" popover>
++            <h4>Dark Roast Espresso</h4>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <button type="button" class="btn" popovertarget="espresso-info" popovertargetaction="hide">Hide</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>

@@ -1,0 +1,156 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,48 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      margin-top: 60px;
++      max-width: 750px;
++      margin-inline: auto;
++    }
++
++    .journal h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .journal p {
++      margin-bottom: 1rem;
++    }
++
++    .journal .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .journal .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    #summarize-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    #summary-list {
++      margin: 10px 0 0 1.5rem;
++    }
++
++    #summary-list:empty {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +234,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="journal" aria-labelledby="journal-title">
++      <h2 id="journal-title">Roaster's Journal</h2>
++      <div id="journal-text">
++        <p>Every bag we roast begins months before it reaches our shop, usually with a long conversation over a
++          crackling video call with a farmer we have come to think of as a friend. We buy almost exclusively from small
++          family-owned farms and cooperatives in Ethiopia, Colombia, Guatemala, and Sumatra, and we try to visit each
++          one at least once every two years. Walking the rows, tasting cherries straight off the branch, and watching
++          the wet mill at work tells us more about a harvest than any spec sheet ever could.</p>
++        <p>When samples arrive, we roast them in tiny batches and cup them blind, scoring each on aroma, acidity, body,
++          sweetness, and finish. Only a small fraction make the cut. We are looking for clarity and character, but also
++          for traceability: we want to know the farm, the altitude, the variety, and the processing method behind every
++          lot. If a supplier cannot tell us those things, we move on.</p>
++        <p>Price matters as much as flavor. We pay well above the commodity "C" market price and agree on it before
++          the harvest, so farmers can plan their season, pay pickers fairly, and invest in better drying beds and
++          fermentation tanks. Many of our partners have used these long-term contracts to fund schools, clean-water
++          projects, and replanting of aging trees with more climate-resilient varieties.</p>
++        <p>Once green coffee lands at our roastery, it rests for a few weeks before we profile-roast it. We log every
++          batch, taste it again after a few days of degassing, and adjust. Coffee is a seasonal crop, so our menu
++          changes as harvests do. When a favorite lot sells out, we would rather say goodbye than serve something
++          past its prime, and we will happily tell you the story of whatever replaces it.</p>
++      </div>
++      <button type="button" id="summarize-btn" class="btn">Summarize</button>
++      <p id="summarize-status" role="status" aria-live="polite"></p>
++      <ul id="summary-list" aria-label="Summary"></ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +271,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const summarizeBtn = document.getElementById('summarize-btn');
++    const statusEl = document.getElementById('summarize-status');
++    const summaryList = document.getElementById('summary-list');
++
++    const summarizerOptions = {
++      sharedContext: 'A coffee roaster describing how it sources green coffee beans.',
++      type: 'key-points',
++      format: 'markdown',
++      length: 'medium',
++      expectedInputLanguages: ['en'],
++      expectedContextLanguages: ['en'],
++      outputLanguage: 'en',
++    };
++
++    function renderBullets(markdown) {
++      summaryList.replaceChildren();
++      for (const line of markdown.split('\n')) {
++        const match = line.match(/^\s*[-*•]\s+(.*\S)/);
++        if (!match) continue;
++        const li = document.createElement('li');
++        li.textContent = match[1].replace(/\*\*|__/g, '');
++        summaryList.append(li);
++      }
++    }
++
++    if (!('Summarizer' in self)) {
++      summarizeBtn.disabled = true;
++      statusEl.textContent = 'Local summarization is currently unsupported in this browser.';
++    }
++
++    summarizeBtn.addEventListener('click', async () => {
++      summarizeBtn.disabled = true;
++      summaryList.replaceChildren();
++      try {
++        const availability = await Summarizer.availability(summarizerOptions);
++        if (availability === 'unavailable') {
++          statusEl.textContent = 'Local summarization is unavailable on this device.';
++          return;
++        }
++        statusEl.textContent = availability === 'available' ? 'Summarizing…' : 'Downloading AI model…';
++        const summarizer = await Summarizer.create({
++          ...summarizerOptions,
++          monitor(m) {
++            m.addEventListener('downloadprogress', (e) => {
++              statusEl.textContent = `Downloading AI model… ${Math.round(e.loaded * 100)}%`;
++            });
++          },
++        });
++        statusEl.textContent = 'Summarizing…';
++        const text = document.getElementById('journal-text').innerText;
++        renderBullets(await summarizer.summarize(text));
++        summarizer.destroy();
++        statusEl.textContent = '';
++      } catch (err) {
++        console.error(err);
++        statusEl.textContent = 'Sorry, we couldn\'t summarize the text.';
++      } finally {
++        summarizeBtn.disabled = false;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

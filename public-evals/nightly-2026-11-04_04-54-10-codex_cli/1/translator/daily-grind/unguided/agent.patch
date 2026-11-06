@@ -1,0 +1,395 @@
+diff --git a/index.html b/index.html
+index 66c9173..082ec23 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,43 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#294b3d">
++  <meta name="description" content="Thoughtfully sourced coffee, locally roasted. Explore seasonal favorites and the story behind The Daily Grind in your language.">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="styles.css">
++  <script src="translations.js" defer></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <div class="announcement"><span class="tiny-star">✦</span> <span data-i18n="announcement">Good coffee. Good company. Every day.</span> <span class="tiny-star">✦</span></div>
++  <header class="site-header">
++    <a class="brand" href="#" aria-label="The Daily Grind home"><svg viewBox="0 0 44 44" fill="none" aria-hidden="true"><path d="M9 15h24v12a12 12 0 0 1-24 0V15Z" stroke="currentColor" stroke-width="1.8"/><path d="M33 18h3a5 5 0 0 1 0 10h-3M5 39h32M17 4c-4 4 4 4 0 8M25 2c-4 4 4 4 0 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>THE DAILY GRIND<small>COFFEE & COMMUNITY</small></span></a>
++    <nav aria-label="Main navigation"><a href="#menu" data-i18n="navMenu">Our menu</a><a href="#story" data-i18n="navStory">Our story</a><a href="/locations" data-i18n="navLocations">Find us</a></nav>
++    <div class="header-actions"><a class="account" href="/account" aria-label="My account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-3a7 7 0 0 1 14 0v3"/></svg></a><a class="button button-small" href="/order-online"><span data-i18n="order">Order online</span><span aria-hidden="true">↗</span></a></div>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main>
++    <section class="hero" aria-labelledby="hero-title">
++      <div class="hero-copy"><p class="eyebrow"><span class="short-line"></span><span data-i18n="heroEyebrow">YOUR DAILY MOMENT, MADE BETTER</span></p><h1 id="hero-title" data-i18n="heroTitle">A little ritual.<br>A whole lot<br>of <em>good.</em></h1><p class="hero-description" data-i18n="heroDescription">Thoughtfully sourced. Locally roasted. Always made with care. Find your new favorite cup at The Daily Grind.</p><a class="button" href="#menu"><span data-i18n="explore">Explore our menu</span><span aria-hidden="true">↗</span></a><div class="hero-note"><span class="bean" aria-hidden="true">◒</span><span data-i18n="heroNote">Better beans. Better mornings.</span></div></div>
++      <div class="hero-photo"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1400&q=85" alt="Freshly brewed coffee in a ceramic cup on a wooden table" fetchpriority="high"><div class="photo-label"><span class="label-star" aria-hidden="true">✳</span><span data-i18n="photoLabel">A good day<br>starts here.</span></div><span class="photo-caption" data-i18n="photoCaption">CRAFTED WITH CARE. SIPPED WITH JOY.</span></div>
++    </section>
++    <section class="language-bar" aria-labelledby="language-heading">
++      <div class="language-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/></svg></div><div class="language-copy"><h2 id="language-heading" data-i18n="languageHeading">Good coffee speaks your language.</h2><p data-i18n="languageDescription">Enjoy our menu and story in the language that feels like home.</p></div>
++      <div class="language-control"><label for="language" data-i18n="languageLabel">READ IN</label><div class="select-wrap"><span aria-hidden="true">文 A</span><select id="language" name="language"><option value="en" lang="en">English</option><option value="es" lang="es">Español</option><option value="fr" lang="fr">Français</option><option value="ja" lang="ja">日本語</option></select></div><span class="local-note"><span aria-hidden="true">◈</span> <span data-i18n="localNote">On your device. Always private.</span></span></div>
++      <p class="sr-only" id="translation-status" role="status" aria-live="polite"></p>
++    </section>
++    <section class="menu-section" id="menu" aria-labelledby="menu-heading">
++      <div class="section-heading"><div><p class="eyebrow" data-i18n="menuEyebrow">FRESH FINDS, FAMILIAR FAVORITES</p><h2 id="menu-heading" data-i18n="menuHeading">Your next favorite cup.</h2></div><a class="text-link" href="/menu"><span data-i18n="fullMenu">View full menu</span><span aria-hidden="true">↗</span></a></div>
++      <div class="coffee-grid">
++        <article class="coffee-card"><a href="/menu/seasonal" class="coffee-image"><img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=720&q=80" alt="Iced latte with creamy oat milk" loading="lazy"><span class="pill" data-i18n="seasonal">SEASONAL FAVORITE</span><span class="image-arrow" aria-hidden="true">↗</span><span class="sr-only" data-i18n="mapleName">Maple Oat Latte</span></a><div class="coffee-heading"><h3 data-i18n="mapleName">Maple Oat Latte</h3><span>$5.50</span></div><p data-i18n="mapleDescription">Velvety espresso, creamy oat milk, and a little Vermont maple magic. Cozy in a cup.</p><span class="coffee-tag" data-i18n="mapleTag">SMOOTH & NATURALLY SWEET</span></article>
++        <article class="coffee-card"><a href="/menu/espresso" class="coffee-image"><img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=720&q=80" alt="Rich espresso served in a small white cup" loading="lazy"><span class="pill cream" data-i18n="classic">THE EVERYDAY CLASSIC</span><span class="image-arrow" aria-hidden="true">↗</span><span class="sr-only" data-i18n="espressoName">Dark Roast Espresso</span></a><div class="coffee-heading"><h3 data-i18n="espressoName">Dark Roast Espresso</h3><span>$3.50</span></div><p data-i18n="espressoDescription">Bold, beautifully balanced, and unapologetically rich. Your morning, with a little more character.</p><span class="coffee-tag" data-i18n="espressoTag">BOLD & CHOCOLATEY</span></article>
++        <article class="coffee-card"><a href="/menu/cold-brew" class="coffee-image"><img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=720&q=80" alt="Refreshing cold brew coffee over ice" loading="lazy"><span class="pill cream" data-i18n="slowBrewed">SLOW BREWED, WORTH THE WAIT</span><span class="image-arrow" aria-hidden="true">↗</span><span class="sr-only" data-i18n="coldName">Signature Cold Brew</span></a><div class="coffee-heading"><h3 data-i18n="coldName">Signature Cold Brew</h3><span>$4.50</span></div><p data-i18n="coldDescription">Steeped for 18 slow hours for a mellow, full-bodied finish. A refreshing way to take your time.</p><span class="coffee-tag" data-i18n="coldTag">COOL & EFFORTLESSLY SMOOTH</span></article>
+       </div>
+     </section>
++    <section class="story-section" id="story" aria-labelledby="story-heading"><div class="story-photo"><img src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=1000&q=80" alt="A warm neighborhood coffee shop filled with natural light" loading="lazy"><span class="story-stamp" aria-hidden="true">GOOD COFFEE<br><span>✳</span><br>GREAT COMPANY</span></div><div class="story-copy"><p class="eyebrow" data-i18n="storyEyebrow">A NEIGHBORHOOD KIND OF COFFEE</p><h2 id="story-heading" data-i18n="storyHeading">More than a cup.<br>A place to belong.</h2><p data-i18n="storyOne">We believe the best things in life start with a little care. Care for the people who grow our beans. Care for the way we roast them. And care for every person who walks through our door.</p><p data-i18n="storyTwo">The Daily Grind is our way of bringing people together, one thoughtfully made cup at a time. Come for the coffee. Stay for the company.</p><a class="text-link" href="/about"><span data-i18n="storyLink">Get to know us</span><span aria-hidden="true">↗</span></a></div></section>
++    <section class="values" aria-label="Our values"><span><span aria-hidden="true">❋</span><span data-i18n="valueOne">Thoughtfully sourced</span></span><span><span aria-hidden="true">☀</span><span data-i18n="valueTwo">Locally roasted</span></span><span><span aria-hidden="true">♡</span><span data-i18n="valueThree">Made for community</span></span></section>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <footer><a class="footer-brand" href="#">THE DAILY GRIND<span data-i18n="footerTagline">A little good, every day.</span></a><div class="footer-links"><a href="/careers" data-i18n="careers">Join the team</a><a href="/contact" data-i18n="contact">Contact</a><a href="/privacy-policy" data-i18n="privacy">Privacy</a></div><p data-i18n="copyright">© 2026 The Daily Grind Coffee Co.</p></footer>
++  <noscript><p class="noscript">Enable JavaScript to switch languages. Translations are stored and displayed entirely on your device.</p></noscript>
+ </body>
+-
+ </html>
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..d954e9a
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,3 @@
++@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
++:root{--green:#294b3d;--ink:#283d32;--paper:#faf8f3;--muted:#73766c;--line:#dddcd1;--serif:'Playfair Display',Georgia,serif}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:30px}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.65}a{color:inherit;text-decoration:none}button,select{font:inherit}a:focus-visible,select:focus-visible{outline:3px solid #ba7a38;outline-offset:5px}img{width:100%;height:100%;object-fit:cover;display:block}.announcement{height:34px;background:var(--green);color:#f4f0df;display:flex;align-items:center;justify-content:center;gap:20px;font-size:10px;letter-spacing:1.2px}.tiny-star{color:#dabf7e;font-size:13px}.site-header{max-width:1440px;margin:auto;min-height:104px;display:flex;align-items:center;justify-content:space-between;padding:20px 6%;gap:28px}.brand{display:flex;align-items:center;gap:11px;font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:.6px;line-height:1.4;white-space:nowrap}.brand svg{height:42px;width:42px}.brand small{display:block;font-family:'DM Sans',sans-serif;font-size:8px;font-weight:500;letter-spacing:3.15px;text-align:center;margin-top:3px}nav{display:flex;gap:34px;font-size:12px;font-weight:500}nav a:hover,.footer-links a:hover{color:#a56b36}.header-actions{display:flex;align-items:center;gap:25px}.account svg{width:20px;height:20px;display:block}.button{background:var(--green);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:32px;padding:15px 23px;border-radius:3px;font-size:12px;font-weight:500;transition:background .2s}.button:hover{background:#3f6551}.button span:last-child{font-size:19px;line-height:1}.button-small{padding:12px 19px;gap:25px}.hero{max-width:1440px;margin:auto;display:grid;grid-template-columns:1fr 1fr;min-height:565px}.hero-copy{padding:48px 9% 46px 12%;display:flex;align-items:flex-start;flex-direction:column;justify-content:center}.eyebrow{font-size:9px;font-weight:650;letter-spacing:1.8px;display:flex;gap:12px;align-items:center;margin:0 0 20px}.short-line{height:1px;width:26px;background:var(--green)}h1,h2,h3,p{margin-top:0}h1{font-family:var(--serif);font-size:clamp(52px,5.1vw,76px);font-weight:400;line-height:1.08;letter-spacing:-2.4px;margin-bottom:22px}h1 em{color:#8b5d3d;font-weight:400}.hero-description{color:#74766d;max-width:332px;font-size:12px;line-height:1.9;margin-bottom:24px}.hero-note{display:flex;align-items:center;gap:8px;margin-top:24px;color:#7a7d70;font-size:10px}.bean{font-size:20px;color:#8e7757;transform:rotate(-35deg);line-height:1}.hero-photo{position:relative;min-height:565px;background:#4b3b27;overflow:hidden}.hero-photo>img{position:absolute;inset:0;filter:brightness(.83)}.photo-label{position:absolute;left:30px;bottom:45px;width:138px;height:138px;border-radius:50%;background:#eee9d7;transform:rotate(-11deg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--serif);font-style:italic;font-size:22px;line-height:1.15;text-align:center}.label-star{font-size:30px;line-height:1.2;font-style:normal;margin-bottom:5px}.photo-caption{position:absolute;bottom:20px;right:25px;color:#fff;font-size:8px;letter-spacing:1.8px}.language-bar{max-width:1100px;margin:34px auto 0;padding:22px 28px;display:flex;align-items:center;gap:18px;border:1px solid #d8ddcf;background:#f0f2e9;border-radius:5px}.language-icon{border-radius:50%;background:#e4e9db;width:43px;height:43px;display:grid;place-items:center;flex-shrink:0}.language-icon svg{width:25px;height:25px}.language-copy h2{font-family:var(--serif);font-size:21px;font-weight:500;line-height:1.35;margin-bottom:4px}.language-copy p{font-size:11px;color:#71796d;margin:0}.language-control{margin-left:auto;display:grid;grid-template-columns:auto 175px;gap:4px 12px;align-items:center;flex-shrink:0}.language-control label{font-size:8px;font-weight:650;letter-spacing:1.3px}.select-wrap{position:relative;display:flex;align-items:center;background:#fafbf6;border:1px solid #c9d0c0;border-radius:3px}.select-wrap>span{position:absolute;left:12px;font-size:12px;pointer-events:none}.select-wrap select{width:100%;padding:10px 10px 10px 43px;color:var(--green);border:0;background:transparent;font-size:11px;cursor:pointer}.local-note{grid-column:2;font-size:8px;color:#7b8273}.local-note>span:first-child{font-size:11px;margin-right:2px}.menu-section{max-width:1100px;margin:68px auto 66px;scroll-margin-top:30px}.section-heading{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;gap:24px}.section-heading .eyebrow{margin-bottom:10px}h2{font-family:var(--serif);font-size:35px;line-height:1.25;font-weight:400;letter-spacing:-.8px;margin-bottom:0}.text-link{font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:22px;border-bottom:1px solid #a6afa1;padding-bottom:5px;white-space:nowrap}.text-link>span:last-child{font-size:19px;line-height:1}.coffee-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:25px}.coffee-image{height:270px;display:block;border-radius:4px;overflow:hidden;position:relative;background:#e2d6c3}.coffee-image img{transition:transform .4s}.coffee-image:hover img{transform:scale(1.045)}.coffee-card:nth-child(1) img{object-position:center 55%}.pill{position:absolute;left:15px;top:15px;background:#e7ead9;color:var(--green);border-radius:2px;padding:5px 9px;font-size:7px;font-weight:650;letter-spacing:1px}.pill.cream{background:#f6f0e3}.image-arrow{position:absolute;bottom:14px;right:14px;width:31px;height:31px;border-radius:50%;background:#fff9;display:grid;place-items:center;font-size:21px;line-height:1}.coffee-heading{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-top:18px;margin-bottom:8px}.coffee-heading h3{font-family:var(--serif);font-weight:500;font-size:21px;line-height:1.3;margin:0;letter-spacing:-.4px}.coffee-heading>span{font-size:12px}.coffee-card>p{color:#77796e;font-size:11px;line-height:1.8;margin-bottom:15px;max-width:310px}.coffee-tag{font-size:7px;letter-spacing:1.3px;font-weight:600;color:#8b7250;display:block}.story-section{max-width:1100px;margin:0 auto 0;display:grid;grid-template-columns:1fr 1fr;background:#efece2;border-radius:4px;overflow:hidden}.story-photo{position:relative;min-height:390px}.story-photo>img{position:absolute;inset:0;filter:brightness(.84)}.story-stamp{position:absolute;bottom:22px;left:24px;color:#fff7e1;font-size:8px;letter-spacing:2px;text-align:center;line-height:1.5;transform:rotate(-10deg)}.story-stamp span{font-size:42px;line-height:1.2}.story-copy{padding:43px 44px}.story-copy .eyebrow{font-size:8px;margin-bottom:16px}.story-copy h2{font-size:35px;margin-bottom:19px}.story-copy>p:not(.eyebrow){font-size:11px;line-height:1.9;color:#77776b;margin-bottom:12px}.story-copy .text-link{margin-top:8px}.values{max-width:1100px;margin:auto;display:flex;justify-content:space-around;gap:20px;padding:33px 10px;border-bottom:1px solid var(--line)}.values>span{display:flex;align-items:center;gap:12px;font-size:11px}.values>span>span:first-child{font-size:24px;color:#788469}footer{max-width:1100px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:36px 0}.footer-brand{font-family:var(--serif);font-size:15px;letter-spacing:.6px}.footer-brand span{display:block;font-family:'DM Sans',sans-serif;letter-spacing:0;color:#89897c;font-size:9px;margin-top:3px}.footer-links{display:flex;gap:24px;font-size:10px;color:#777b6f}footer>p{font-size:9px;color:#8c8d80;margin:0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.noscript{text-align:center;padding:20px}html[lang=ja] h1{font-size:clamp(42px,4.4vw,65px);line-height:1.35}html[lang=ja] h2{line-height:1.5}html[lang=ja] .coffee-heading h3{font-size:18px}
++@media(min-width:1441px){.hero-copy{padding-left:86px}}@media(max-width:1200px){.language-bar,.menu-section,.story-section,.values,footer{margin-left:6%;margin-right:6%}.hero-copy{padding-left:12%;padding-right:8%}.coffee-image{height:235px}.language-copy h2{font-size:19px}.story-copy{padding:34px}.site-header{gap:20px}nav{gap:22px}}@media(max-width:850px){.site-header{min-height:90px}.brand{font-size:16px}.brand svg{width:32px;height:32px}.brand small{font-size:6px;letter-spacing:2.7px}nav{gap:18px;font-size:11px}.header-actions{gap:12px}.account{display:none}.button-small{padding:10px 13px;gap:12px}.hero,.hero-photo{min-height:500px}.hero-copy{padding-top:32px;padding-bottom:32px}h1{font-size:54px}.hero .eyebrow{font-size:7px;letter-spacing:1px}.hero-description{font-size:11px}.language-bar{flex-wrap:wrap;padding:20px}.language-control{margin-left:61px;width:calc(100% - 61px);grid-template-columns:auto 1fr}.language-control label{margin-right:auto}.coffee-grid{gap:18px}.coffee-image{height:215px}.coffee-heading h3{font-size:18px}.coffee-card>p{font-size:10px}.coffee-tag{font-size:6px;letter-spacing:.7px}.story-copy{padding:28px}.story-copy h2{font-size:29px}.story-copy .eyebrow{font-size:7px;letter-spacing:1px}footer{flex-wrap:wrap}footer>p{width:100%}}@media(max-width:600px){.announcement{font-size:8px;letter-spacing:1px}.site-header{padding:18px 6%;flex-wrap:wrap;gap:17px}.brand{font-size:15px}.brand small{letter-spacing:2.3px}.header-actions{margin-left:auto}.button-small{font-size:10px}nav{order:3;width:100%;justify-content:center;gap:42px;border-top:1px solid var(--line);padding-top:12px}.hero{grid-template-columns:1fr;min-height:auto}.hero-copy{padding:34px 7% 36px}.hero .eyebrow{font-size:8px}h1{font-size:62px;line-height:1.04}h1 br:nth-of-type(2){display:none}.hero-description{max-width:310px;font-size:12px}.hero-photo{min-height:320px}.hero-note{margin-top:20px}.photo-label{width:112px;height:112px;font-size:18px;bottom:28px;left:24px}.label-star{font-size:25px}.photo-caption{font-size:6px;right:16px;bottom:12px}.language-bar{margin-top:24px;gap:12px;padding:18px 15px}.language-icon{height:35px;width:35px}.language-copy{flex:1}.language-copy h2{font-size:18px}.language-copy p{font-size:10px}.language-control{margin-left:47px;width:calc(100% - 47px);gap:5px 10px}.local-note{font-size:7px}.menu-section{margin-top:42px;margin-bottom:36px}.section-heading{align-items:flex-start;gap:10px}.section-heading h2{font-size:29px;max-width:230px}.section-heading .eyebrow{font-size:7px;letter-spacing:1px}.section-heading .text-link{font-size:9px;gap:7px;margin-top:30px}.coffee-grid{grid-template-columns:1fr;gap:30px}.coffee-image{height:340px}.coffee-heading h3{font-size:24px}.coffee-card>p{font-size:12px;max-width:none;margin-bottom:10px}.coffee-tag{font-size:8px;letter-spacing:1px}.pill{font-size:8px}.story-section{grid-template-columns:1fr}.story-photo{min-height:300px}.story-copy{padding:30px 25px 34px}.story-copy h2{font-size:34px}.story-copy>p:not(.eyebrow){font-size:12px}.values{gap:13px;padding:26px 0;align-items:flex-start}.values>span{flex-direction:column;text-align:center;gap:5px;font-size:9px;flex:1}.values>span>span:first-child{font-size:25px}footer{padding:28px 0;gap:22px}.footer-brand{font-size:13px}.footer-links{gap:13px;font-size:9px}html[lang=ja] h1{font-size:49px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+diff --git a/translations.js b/translations.js
+new file mode 100644
+index 0000000..d658aff
+--- /dev/null
++++ b/translations.js
+@@ -0,0 +1,134 @@
++'use strict';
++
++// Bundled translations: no API, remote model, or network request is involved.
++const translations = {
++  es: {
++    announcement: 'Buen café. Buena compañía. Cada día.',
++    navMenu: 'El menú', navStory: 'Nuestra historia', navLocations: 'Encuéntranos', order: 'Pedir en línea',
++    heroEyebrow: 'TU MOMENTO DIARIO, AÚN MEJOR',
++    heroTitle: 'Un pequeño ritual.<br>Mucho de<br>lo <em>bueno.</em>',
++    heroDescription: 'De origen responsable. Tostado localmente. Siempre preparado con cariño. Encuentra tu nueva taza favorita en The Daily Grind.',
++    explore: 'Explora nuestro menú', heroNote: 'Mejores granos. Mejores mañanas.',
++    photoLabel: 'Un buen día<br>empieza aquí.', photoCaption: 'HECHO CON CARIÑO. DISFRUTADO CON ALEGRÍA.',
++    languageHeading: 'El buen café habla tu idioma.',
++    languageDescription: 'Disfruta de nuestro menú e historia en el idioma que te hace sentir en casa.',
++    languageLabel: 'LEER EN', localNote: 'En tu dispositivo. Siempre privado.',
++    menuEyebrow: 'NOVEDADES Y FAVORITOS DE SIEMPRE', menuHeading: 'Tu próxima taza favorita.', fullMenu: 'Ver todo el menú',
++    seasonal: 'FAVORITO DE TEMPORADA', classic: 'EL CLÁSICO DE CADA DÍA', slowBrewed: 'PREPARADO SIN PRISA',
++    mapleName: 'Latte de avena y arce',
++    mapleDescription: 'Espresso aterciopelado, cremosa leche de avena y un toque de jarabe de arce de Vermont. Calidez en una taza.',
++    mapleTag: 'SUAVE Y NATURALMENTE DULCE',
++    espressoName: 'Espresso de tueste oscuro',
++    espressoDescription: 'Intenso, equilibrado y deliciosamente rico. Tu mañana, con un poco más de carácter.',
++    espressoTag: 'INTENSO Y ACHOCOLATADO', coldName: 'Cold brew de la casa',
++    coldDescription: 'Infusionado durante 18 horas para un acabado suave y con cuerpo. Una forma refrescante de tomarte tu tiempo.',
++    coldTag: 'FRESCO Y EXTRAORDINARIAMENTE SUAVE',
++    storyEyebrow: 'UN CAFÉ CON ESPÍRITU DE BARRIO', storyHeading: 'Más que una taza.<br>Un lugar para ti.',
++    storyOne: 'Creemos que las mejores cosas de la vida empiezan con un poco de cariño. Por las personas que cultivan nuestros granos. Por la forma en que los tostamos. Y por cada persona que cruza nuestra puerta.',
++    storyTwo: 'The Daily Grind es nuestra manera de unir a las personas, una taza preparada con cariño a la vez. Ven por el café. Quédate por la compañía.',
++    storyLink: 'Conócenos', valueOne: 'De origen responsable', valueTwo: 'Tostado localmente', valueThree: 'Hecho para compartir',
++    footerTagline: 'Un poquito de felicidad, cada día.', careers: 'Únete al equipo', contact: 'Contacto', privacy: 'Privacidad',
++    copyright: '© 2026 The Daily Grind Coffee Co.', status: 'El menú y la historia ahora se muestran en español.'
++  },
++  fr: {
++    announcement: 'Un bon café. De bons moments. Chaque jour.',
++    navMenu: 'La carte', navStory: 'Notre histoire', navLocations: 'Nous trouver', order: 'Commander',
++    heroEyebrow: 'VOTRE PAUSE QUOTIDIENNE, EN MIEUX',
++    heroTitle: 'Un petit rituel.<br>Beaucoup de<br><em>bonheur.</em>',
++    heroDescription: 'Des grains choisis avec soin. Torréfiés près de chez vous. Toujours préparés avec attention. Découvrez votre prochaine tasse préférée chez The Daily Grind.',
++    explore: 'Découvrir la carte', heroNote: 'De meilleurs grains. De beaux matins.',
++    photoLabel: 'Une belle journée<br>commence ici.', photoCaption: 'PRÉPARÉ AVEC SOIN. SAVOURÉ AVEC JOIE.',
++    languageHeading: 'Le bon café parle votre langue.',
++    languageDescription: 'Découvrez notre carte et notre histoire dans la langue qui vous ressemble.',
++    languageLabel: 'LIRE EN', localNote: 'Sur votre appareil. En toute confidentialité.',
++    menuEyebrow: 'NOUVEAUTÉS ET GRANDS CLASSIQUES', menuHeading: 'Votre prochaine tasse préférée.', fullMenu: 'Toute la carte',
++    seasonal: 'LE FAVORI DE LA SAISON', classic: 'LE CLASSIQUE DU QUOTIDIEN', slowBrewed: 'LE PLAISIR DE PRENDRE SON TEMPS',
++    mapleName: 'Latte avoine et érable',
++    mapleDescription: 'Un espresso velouté, du lait d’avoine onctueux et une touche de sirop d’érable du Vermont. Du réconfort en tasse.',
++    mapleTag: 'DOUX ET NATURELLEMENT SUCRÉ',
++    espressoName: 'Espresso torréfaction foncée',
++    espressoDescription: 'Intense, parfaitement équilibré et généreusement corsé. Votre matinée, avec un peu plus de caractère.',
++    espressoTag: 'INTENSE ET CHOCOLATÉ', coldName: 'Cold brew maison',
++    coldDescription: 'Infusé pendant 18 heures pour un résultat doux et rond en bouche. Une façon rafraîchissante de prendre son temps.',
++    coldTag: 'FRAIS ET TOUT EN DOUCEUR',
++    storyEyebrow: 'UN CAFÉ À L’ESPRIT DE QUARTIER', storyHeading: 'Plus qu’une tasse.<br>Un lieu pour se retrouver.',
++    storyOne: 'Nous croyons que les meilleures choses commencent par un peu d’attention. Pour les personnes qui cultivent nos grains. Pour notre façon de les torréfier. Et pour chaque personne qui pousse notre porte.',
++    storyTwo: 'The Daily Grind, c’est notre façon de rassembler les gens, une tasse préparée avec soin à la fois. Venez pour le café. Restez pour la compagnie.',
++    storyLink: 'Faisons connaissance', valueOne: 'Des origines responsables', valueTwo: 'Torréfié localement', valueThree: 'Le goût du partage',
++    footerTagline: 'Un peu de bonheur, chaque jour.', careers: 'Nous rejoindre', contact: 'Contact', privacy: 'Confidentialité',
++    copyright: '© 2026 The Daily Grind Coffee Co.', status: 'La carte et notre histoire sont maintenant affichées en français.'
++  },
++  ja: {
++    announcement: 'おいしいコーヒー。心地よいひととき。毎日、ここで。',
++    navMenu: 'メニュー', navStory: '私たちの想い', navLocations: '店舗案内', order: 'オンライン注文',
++    heroEyebrow: 'いつものひとときに、ちょっといいことを',
++    heroTitle: '小さな習慣。<br>たっぷりの<br><em>しあわせ。</em>',
++    heroDescription: '丁寧に選んだ豆を、地元で焙煎。一杯ずつ、心を込めて。The Daily Grindで、新しいお気に入りを見つけてください。',
++    explore: 'メニューを見る', heroNote: 'いい豆から、いい朝がはじまる。',
++    photoLabel: 'いい一日は、<br>ここから。', photoCaption: '心を込めて淹れる、しあわせの一杯。',
++    languageHeading: 'おいしいコーヒーを、あなたの言葉で。',
++    languageDescription: 'メニューと私たちの想いを、お好きな言語でお楽しみください。',
++    languageLabel: '表示言語', localNote: '端末内で翻訳。プライバシーも大切に。',
++    menuEyebrow: '新しい出会いも、いつものお気に入りも', menuHeading: '次のお気に入りの一杯に。', fullMenu: '全メニュー',
++    seasonal: '季節のおすすめ', classic: '毎日の定番', slowBrewed: 'じっくり抽出したおいしさ',
++    mapleName: 'メープルオーツラテ',
++    mapleDescription: 'なめらかなエスプレッソとクリーミーなオーツミルクに、バーモント産メープルシロップをひとさじ。ほっとする一杯です。',
++    mapleTag: 'なめらかで、自然な甘さ',
++    espressoName: '深煎りエスプレッソ',
++    espressoDescription: '力強く、バランスのとれた豊かなコク。いつもの朝に、ちょっとした個性を添える一杯。',
++    espressoTag: '力強いコクとチョコレートの風味', coldName: '自家製コールドブリュー',
++    coldDescription: '18時間かけてじっくり抽出。まろやかで、深みのある味わいに仕上げました。ゆっくり過ごす時間に、爽やかな一杯を。',
++    coldTag: '爽やかで、すっきりなめらか',
++    storyEyebrow: '街に寄り添うコーヒーショップ', storyHeading: '一杯の、その先に。<br>あなたの居場所を。',
++    storyOne: '毎日を豊かにするものは、小さな思いやりから生まれると信じています。豆を育てる人への想い。焙煎へのこだわり。そして、扉を開けてくださる一人ひとりへの心配り。',
++    storyTwo: '丁寧に淹れた一杯を通して、人と人をつなぐ。それがThe Daily Grindの想いです。コーヒーをきっかけに、心地よい時間をお過ごしください。',
++    storyLink: '私たちについて', valueOne: '丁寧に選んだ豆', valueTwo: '地元で焙煎', valueThree: '地域とともに',
++    footerTagline: '毎日に、ちょっといいことを。', careers: '採用情報', contact: 'お問い合わせ', privacy: 'プライバシー',
++    copyright: '© 2026 The Daily Grind Coffee Co.', status: 'メニューとストーリーを日本語に切り替えました。'
++  }
++};
++
++const languageSelect = document.getElementById('language');
++const status = document.getElementById('translation-status');
++const textElements = Array.from(document.querySelectorAll('[data-i18n]'));
++// Keep the source copy as the English dictionary so it remains readable without JS.
++const formattedKeys = new Set(['heroTitle', 'photoLabel', 'storyHeading']);
++translations.en = Object.fromEntries(textElements.map(element => [
++  element.dataset.i18n, formattedKeys.has(element.dataset.i18n) ? element.innerHTML : element.textContent
++]));
++translations.en.status = 'The menu and story are now displayed in English.';
++const preferenceKey = 'daily-grind-language';
++
++function setLanguage(language, announce = false) {
++  if (!Object.hasOwn(translations, language)) language = 'en';
++  const dictionary = translations[language];
++  for (const element of textElements) {
++    const key = element.dataset.i18n;
++    // Only these headings contain trusted, bundled formatting; all other copy is plain text.
++    if (formattedKeys.has(key)) {
++      element.innerHTML = dictionary[key] ?? translations.en[key];
++    } else {
++      element.textContent = dictionary[key] ?? translations.en[key];
++    }
++  }
++  document.documentElement.lang = language;
++  languageSelect.value = language;
++  if (announce) status.textContent = dictionary.status;
++}
++
++let savedLanguage = 'en';
++try {
++  savedLanguage = localStorage.getItem(preferenceKey) || 'en';
++} catch {
++  // The selector also works when browser storage is unavailable.
++}
++setLanguage(savedLanguage);
++languageSelect.addEventListener('change', event => {
++  const language = event.target.value;
++  setLanguage(language, true);
++  try {
++    localStorage.setItem(preferenceKey, language);
++  } catch {
++    // Translation does not depend on persistence.
++  }
++});

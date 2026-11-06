@@ -1,0 +1,100 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -180,8 +180,31 @@
+       font-weight: bold;
+       margin-top: 1rem;
+     }
+ 
++    /* Skip rendering until the card nears the viewport; the size placeholder prevents scrollbar jumps */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 340px;
++    }
++
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 1rem;
++      box-sizing: border-box;
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 0.5rem;
++      font-family: monospace;
++      /* Isolate so toggling never triggers layout of the cards above */
++      contain: layout style paint;
++    }
++
++    .debug-panel[hidden] {
++      display: none;
++    }
++
+     .info-text {
+       max-width: 600px;
+       margin: 2rem auto;
+       text-align: center;
+@@ -207,8 +230,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="debug-toggle" class="toggle-btn secondary" aria-controls="debug-panel" aria-expanded="false">Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +243,30 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div id="debug-panel" class="debug-panel" hidden>
++    <div>Cards: <span id="debug-cards">0</span></div>
++    <div>Deferred (.off-screen-card): <span id="debug-deferred">0</span></div>
++    <div>Initial render: <span id="debug-render">-</span></div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    // Cards beyond the first few start below the fold
++    const aboveFoldCount = 3;
++    const debugToggle = document.getElementById('debug-toggle');
++    const debugPanel = document.getElementById('debug-panel');
+ 
+ 
+ 
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = index < aboveFoldCount ? 'card' : 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -298,9 +332,21 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    function updateDebugPanel() {
++      document.getElementById('debug-cards').textContent = feed.querySelectorAll('.card').length;
++      document.getElementById('debug-deferred').textContent = feed.querySelectorAll('.off-screen-card').length;
++      document.getElementById('debug-render').textContent = timerSpan.textContent;
++    }
+ 
++    debugToggle.addEventListener('click', () => {
++      debugPanel.hidden = !debugPanel.hidden;
++      debugToggle.setAttribute('aria-expanded', String(!debugPanel.hidden));
++      if (!debugPanel.hidden) updateDebugPanel();
++    });
++
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

@@ -1,0 +1,336 @@
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..cb612cc
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,330 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --danger: #b3261e;
++    }
++
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; color: white; text-decoration: none; }
++    nav ul { display: flex; list-style: none; }
++    nav ul li { margin-left: 20px; }
++    nav a { color: white; text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
++    nav a:hover { color: var(--accent); }
++    .logout-link { border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px; }
++
++    .container { max-width: 760px; margin: 40px auto; padding: 0 20px; }
++    h1 { color: var(--primary); margin-bottom: 0.25rem; }
++    .lede { margin-bottom: 1.5rem; }
++
++    .panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++    }
++
++    .panel-head {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      flex-wrap: wrap;
++      margin-bottom: 16px;
++    }
++
++    .panel-head h2 { color: var(--primary); font-size: 1.25rem; }
++
++    button {
++      font: inherit;
++      cursor: pointer;
++      border-radius: 5px;
++      padding: 8px 16px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      transition: background 0.2s;
++    }
++
++    button:hover { background: var(--secondary); }
++    button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
++    button.primary { background: var(--primary); color: white; }
++    button.primary:hover { background: #3e2723; }
++    button.danger { border-color: var(--danger); color: var(--danger); }
++    button.danger:hover { background: #fbe9e7; }
++    button:disabled { opacity: 0.6; cursor: not-allowed; }
++
++    .passkeys { list-style: none; }
++
++    .passkey {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      flex-wrap: wrap;
++      padding: 16px 0;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .passkey-name { font-weight: 600; }
++    .passkey-meta { font-size: 0.85rem; opacity: 0.8; }
++    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
++    .actions button { padding: 5px 12px; font-size: 0.85rem; }
++
++    .rename-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
++    .rename-form input {
++      font: inherit;
++      padding: 5px 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .empty { text-align: center; padding: 24px 0 8px; border-top: 1px solid var(--secondary); }
++    .status { margin-top: 12px; font-size: 0.9rem; min-height: 1.4em; }
++    .status.error { color: var(--danger); }
++    .note { margin-top: 16px; font-size: 0.8rem; opacity: 0.7; }
++
++    footer { background: var(--secondary); text-align: center; padding: 40px 20px; margin-top: 40px; }
++    .footer-links { margin-bottom: 20px; }
++    .footer-links a { margin: 0 10px; color: var(--text); text-decoration: none; font-size: 0.85rem; }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a class="logo" href="/">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <main class="container">
++    <h1>My Account</h1>
++    <p class="lede">Passkeys let you sign in with your fingerprint, face, or device PIN instead of a password.</p>
++
++    <section class="panel" aria-labelledby="passkeys-title">
++      <div class="panel-head">
++        <h2 id="passkeys-title">Your passkeys</h2>
++        <button id="add" class="primary" type="button">Add a passkey</button>
++      </div>
++      <ul id="list" class="passkeys"></ul>
++      <p id="status" class="status" role="status" aria-live="polite"></p>
++      <p class="note">Removing a passkey here stops it from signing in to your account. You may also want to delete it from your device's password manager.</p>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script>
++    // Storage layer. This site has no backend yet, so passkeys are kept in
++    // localStorage. Swap these four functions for API calls when one exists.
++    const STORE_KEY = 'daily-grind.passkeys';
++
++    const store = {
++      async list() {
++        try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
++        catch { return []; }
++      },
++      async save(all) { localStorage.setItem(STORE_KEY, JSON.stringify(all)); },
++      async add(passkey) { const all = await this.list(); all.push(passkey); await this.save(all); },
++      async rename(id, name) {
++        const all = await this.list();
++        const p = all.find(p => p.id === id);
++        if (p) p.name = name;
++        await this.save(all);
++      },
++      async remove(id) { await this.save((await this.list()).filter(p => p.id !== id)); },
++    };
++
++    const $list = document.getElementById('list');
++    const $status = document.getElementById('status');
++    const $add = document.getElementById('add');
++    let renamingId = null;
++
++    function say(msg, isError = false) {
++      $status.textContent = msg;
++      $status.classList.toggle('error', isError);
++    }
++
++    const fmt = iso => iso
++      ? new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
++      : 'Never';
++
++    function b64url(buf) {
++      return btoa(String.fromCharCode(...new Uint8Array(buf)))
++        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    function defaultName() {
++      const ua = navigator.userAgent;
++      const os = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android'
++        : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : 'This device';
++      return `${os} passkey`;
++    }
++
++    async function render() {
++      const passkeys = await store.list();
++      $list.replaceChildren();
++
++      if (!passkeys.length) {
++        const li = document.createElement('li');
++        li.className = 'empty';
++        li.textContent = "You haven't added any passkeys yet.";
++        $list.append(li);
++        return;
++      }
++
++      for (const p of passkeys) {
++        const li = document.createElement('li');
++        li.className = 'passkey';
++
++        const info = document.createElement('div');
++        if (renamingId === p.id) {
++          const form = document.createElement('form');
++          form.className = 'rename-form';
++          const input = document.createElement('input');
++          input.value = p.name;
++          input.maxLength = 60;
++          input.required = true;
++          input.setAttribute('aria-label', 'Passkey name');
++          const save = Object.assign(document.createElement('button'), { type: 'submit', textContent: 'Save', className: 'primary' });
++          const cancel = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Cancel' });
++          cancel.onclick = () => { renamingId = null; render(); };
++          form.onsubmit = async e => {
++            e.preventDefault();
++            const name = input.value.trim();
++            if (!name) return;
++            await store.rename(p.id, name);
++            renamingId = null;
++            say(`Renamed to "${name}".`);
++            render();
++          };
++          form.append(input, save, cancel);
++          info.append(form);
++          queueMicrotask(() => input.select());
++        } else {
++          const name = document.createElement('div');
++          name.className = 'passkey-name';
++          name.textContent = p.name;
++          info.append(name);
++        }
++        const meta = document.createElement('div');
++        meta.className = 'passkey-meta';
++        meta.textContent = `${p.synced ? 'Synced passkey' : 'Device-bound'} · Added ${fmt(p.createdAt)} · Last used ${fmt(p.lastUsedAt)}`;
++        info.append(meta);
++
++        const actions = document.createElement('div');
++        actions.className = 'actions';
++        const rename = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Rename' });
++        rename.setAttribute('aria-label', `Rename ${p.name}`);
++        rename.onclick = () => { renamingId = p.id; render(); };
++        const del = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Remove', className: 'danger' });
++        del.setAttribute('aria-label', `Remove ${p.name}`);
++        del.onclick = async () => {
++          if (!confirm(`Remove "${p.name}"? You won't be able to sign in with it anymore.`)) return;
++          await store.remove(p.id);
++          say(`Removed "${p.name}".`);
++          render();
++          $add.focus();
++        };
++        actions.append(rename, del);
++
++        li.append(info, actions);
++        $list.append(li);
++      }
++    }
++
++    $add.onclick = async () => {
++      if (!window.PublicKeyCredential) {
++        say('This browser does not support passkeys.', true);
++        return;
++      }
++      $add.disabled = true;
++      say('Follow the prompt on your device…');
++      try {
++        // In production the challenge, user id and excludeCredentials come from the server,
++        // and the server verifies the attestation. This registers a real credential locally.
++        const existing = await store.list();
++        const cred = await navigator.credentials.create({
++          publicKey: {
++            challenge: crypto.getRandomValues(new Uint8Array(32)),
++            rp: { name: 'The Daily Grind' },
++            user: {
++              id: crypto.getRandomValues(new Uint8Array(16)),
++              name: 'customer@dailygrind.example',
++              displayName: 'Daily Grind Customer',
++            },
++            pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
++            excludeCredentials: existing.map(p => ({ type: 'public-key', id: Uint8Array.from(atob(p.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)) })),
++            authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
++            timeout: 60000,
++          },
++        });
++        const flags = cred.response.getAuthenticatorData
++          ? new Uint8Array(cred.response.getAuthenticatorData())[32] : 0;
++        await store.add({
++          id: b64url(cred.rawId),
++          name: defaultName(),
++          createdAt: new Date().toISOString(),
++          lastUsedAt: null,
++          synced: Boolean(flags & 0x08), // backup-eligible flag
++        });
++        say('Passkey added.');
++        render();
++      } catch (err) {
++        say(err.name === 'NotAllowedError' ? 'Passkey setup was cancelled.'
++          : err.name === 'InvalidStateError' ? 'This device already has a passkey for your account.'
++          : 'Could not add a passkey. Please try again.', true);
++      } finally {
++        $add.disabled = false;
++      }
++    };
++
++    render();
++  </script>
++</body>
++
++</html>

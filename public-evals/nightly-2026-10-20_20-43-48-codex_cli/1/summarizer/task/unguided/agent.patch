@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,84 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .journal {
++      margin-top: 60px;
++      padding: clamp(24px, 5vw, 48px);
++      background: #f2ece7;
++      border-top: 3px solid var(--primary);
++      border-radius: 0 0 8px 8px;
++    }
++
++    .journal-kicker {
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    .journal h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2rem, 5vw, 2.75rem);
++      margin: 8px 0;
++      line-height: 1.2;
++    }
++
++    .journal-intro {
++      margin-bottom: 24px;
++      color: #6d4c41;
++    }
++
++    .journal-copy {
++      max-width: 72ch;
++      line-height: 1.85;
++    }
++
++    .journal-copy p + p {
++      margin-top: 18px;
++    }
++
++    .journal .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 28px;
++    }
++
++    .journal .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .journal .btn:disabled {
++      opacity: 0.65;
++      cursor: default;
++    }
++
++    .journal-status {
++      font-size: 0.85rem;
++      margin-top: 10px;
++      color: #6d4c41;
++    }
++
++    .journal-summary {
++      margin-top: 24px;
++      padding: 24px;
++      border-left: 3px solid var(--accent);
++      background: var(--light);
++      border-radius: 0 5px 5px 0;
++    }
++
++    .journal-summary ul {
++      padding-left: 22px;
++      margin-top: 12px;
++    }
++
++    .journal-summary li + li {
++      margin-top: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +270,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="journal" aria-labelledby="journal-title">
++      <p class="journal-kicker">From origin to your morning</p>
++      <h2 id="journal-title">Roaster's Journal</h2>
++      <p class="journal-intro">Good coffee begins long before we switch on the roaster. Here's how we choose the beans behind your daily cup.</p>
++
++      <article class="journal-copy" id="journal-copy" aria-label="Our bean sourcing process">
++        <p>Every coffee has a story rooted in a place: the soil beneath the trees, the rhythm of the rainy season, and the people who know exactly when a cherry is ready to pick. Our sourcing process begins with listening to that story. Before we consider a coffee for our menu, we want to understand where it was grown, who produced it, and how it traveled from the farm to the sample on our cupping table. A memorable flavor matters, but so does knowing the work that made it possible.</p>
++
++        <p>We look for producers, cooperatives, and importing partners who can share clear information about a coffee's origin and harvest. Depending on the lot, that might mean an individual farm or a group of smallholders delivering cherries to a shared washing station. We ask about growing conditions, processing methods, and the challenges of that particular season. We also ask how purchasing arrangements support the people growing the coffee. A certification can be a useful starting point, but it never replaces a thoughtful conversation about traceability, payment, and lasting relationships.</p>
++
++        <p>Next comes the cupping table. We roast small samples and taste them side by side, paying attention to sweetness, balance, aroma, and the way each coffee changes as it cools. We taste more than once because a single impressive sip doesn't tell the whole story. Some lots shine with bright citrus and floral notes; others offer the comforting depth of cocoa, toasted nuts, and caramel. Rather than searching for one universal idea of perfect coffee, we choose beans with a distinct character and a clear place on our menu.</p>
++
++        <p>Processing is an essential part of that character. Washed coffees can offer a crisp, transparent expression of origin, while coffees dried with the fruit intact can bring a rounder sweetness and more pronounced fruit notes. Neither method is automatically better. We consider how carefully the coffee was handled, whether it was dried evenly, and how well its flavors hold together in the cup. We favor partners who are willing to discuss water use, soil care, and practical improvements suited to their own farms, rather than treating sustainability as a single label.</p>
++
++        <p>Once we choose a lot, our attention turns to protecting its quality. We coordinate with our importing partners around harvest and arrival dates, store green beans in cool, dry conditions, and buy with freshness in mind. At the roastery, we develop a profile for each coffee through small trial batches. Our aim is to bring out what the producer has already created, adjusting time and heat until sweetness, texture, and finish feel balanced. We keep tasting as we roast so that the cup you enjoy reflects the coffee we selected.</p>
++
++        <p>Sourcing is an ongoing practice, not a decision we make once. Harvests change, weather is unpredictable, and the same farm can surprise us from one season to the next. We return to the coffees and relationships that work well, share feedback with our partners, and stay open to new origins when a harvest deserves a place at the table. For us, a better daily cup grows from that steady attention: choosing carefully, asking useful questions, and respecting the people whose work comes before ours.</p>
++      </article>
++
++      <button class="btn" id="summarize-journal" type="button" aria-controls="journal-summary" aria-describedby="journal-status">Summarize</button>
++      <p class="journal-status" id="journal-status" role="status">Get the key points with your browser's built-in AI. First use may download a model.</p>
++      <div class="journal-summary" id="journal-summary" aria-labelledby="summary-title" hidden>
++        <h3 id="summary-title">Our sourcing, at a glance</h3>
++        <ul id="journal-summary-points"></ul>
++        <p class="journal-status">AI-generated from the journal above.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +310,87 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const button = document.getElementById('summarize-journal');
++      const status = document.getElementById('journal-status');
++      const summary = document.getElementById('journal-summary');
++      const points = document.getElementById('journal-summary-points');
++      const options = {
++        type: 'key-points',
++        format: 'plain-text',
++        length: 'short',
++        expectedInputLanguages: ['en'],
++        outputLanguage: 'en'
++      };
++      let busy = false;
++
++      if (!('Summarizer' in window)) {
++        button.disabled = true;
++        status.textContent = 'Summaries need a browser with built-in AI support, such as Chrome on a supported desktop. You can still read the full journal above.';
++        return;
++      }
++
++      // Check support without starting a model download on page load.
++      window.Summarizer.availability(options).then((availability) => {
++        if (busy) return;
++        if (availability === 'unavailable') {
++          button.disabled = true;
++          status.textContent = 'Your browser’s AI summarizer is unavailable on this device. You can still read the full journal above.';
++        }
++      }).catch(() => {
++        // Creation on click can retry if the initial availability check fails.
++      });
++
++      button.addEventListener('click', async () => {
++        if (busy) return;
++        busy = true;
++        button.disabled = true;
++        button.textContent = 'Summarizing…';
++        summary.setAttribute('aria-busy', 'true');
++        status.textContent = 'Preparing your browser’s AI…';
++        let summarizer;
++
++        try {
++          // Create directly within the click to preserve user activation.
++          summarizer = await window.Summarizer.create({
++            ...options,
++            monitor(monitor) {
++              monitor.addEventListener('downloadprogress', (event) => {
++                status.textContent = `Downloading your browser’s AI model… ${Math.round(event.loaded * 100)}%`;
++              });
++            }
++          });
++          status.textContent = 'Reading the journal and finding the key points…';
++          const result = await summarizer.summarize(document.getElementById('journal-copy').innerText);
++          const bullets = result.split(/\n+/)
++            .map((line) => line.replace(/^\s*(?:[-*•‣]|\d+[.)])\s*/, '').trim())
++            .filter(Boolean);
++          if (!bullets.length) throw new Error('Empty summary');
++
++          points.replaceChildren(...bullets.map((text) => {
++            const item = document.createElement('li');
++            item.textContent = text;
++            return item;
++          }));
++          summary.hidden = false;
++          status.textContent = 'Your summary is ready below. Generated on your device.';
++        } catch (error) {
++          status.textContent = error.name === 'NotSupportedError'
++            ? 'Your browser’s AI summarizer is unavailable on this device. The full journal is above.'
++            : 'The summary couldn’t be created. Please try again; if a model download was interrupted, check your connection.';
++        } finally {
++          summarizer?.destroy();
++          busy = false;
++          button.disabled = false;
++          button.textContent = summary.hidden ? 'Summarize' : 'Summarize again';
++          summary.setAttribute('aria-busy', 'false');
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

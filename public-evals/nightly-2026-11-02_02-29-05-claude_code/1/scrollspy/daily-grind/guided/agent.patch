@@ -1,0 +1,319 @@
+diff --git a/index.html b/index.html
+index 66c9173..e03bc4c 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,17 @@
+       padding: 0;
+     }
+ 
++    html {
++      /* Keep anchored section headings clear of the sticky nav */
++      scroll-padding-top: 5rem;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      html {
++        scroll-behavior: smooth;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -49,6 +60,8 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      /* Native scrollspy: lets :target-current match the link whose section is in view */
++      scroll-target-group: auto;
+     }
+ 
+     nav ul li {
+@@ -66,6 +79,20 @@
+       color: var(--accent);
+     }
+ 
++    .nav-section-link {
++      display: inline-block;
++      padding-bottom: 2px;
++      border-bottom: 2px solid transparent;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    /* Combined with :is() so browsers without :target-current still apply the fallback class */
++    .nav-section-link:is(:target-current, .target-current) {
++      color: var(--accent);
++      border-bottom-color: var(--accent);
++      font-weight: bold;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -135,6 +162,85 @@
+       background: #3e2723;
+     }
+ 
++    .page-section {
++      padding: 60px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .page-section:last-child {
++      border-bottom: none;
++    }
++
++    .page-section > h2 {
++      text-align: center;
++      color: var(--primary);
++      font-size: 2rem;
++    }
++
++    .section-intro {
++      text-align: center;
++      max-width: 600px;
++      margin: 10px auto 0;
++    }
++
++    .page-section h3.subheading {
++      margin-top: 40px;
++      color: var(--primary);
++    }
++
++    .menu-list {
++      list-style: none;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 10px 40px;
++      margin-top: 15px;
++    }
++
++    .menu-list li {
++      display: flex;
++      justify-content: space-between;
++      border-bottom: 1px dotted var(--secondary);
++      padding: 6px 0;
++    }
++
++    .card img {
++      width: calc(100% + 40px);
++      margin: -20px -20px 15px;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 8px 8px 0 0;
++      display: block;
++    }
++
++    .card .meta {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .rewards-progress {
++      max-width: 500px;
++      margin: 30px auto 0;
++      text-align: center;
++    }
++
++    .rewards-progress progress {
++      width: 100%;
++      height: 14px;
++      accent-color: var(--accent);
++    }
++
++    .account-details {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 8px 20px;
++      text-align: left;
++      margin-top: 10px;
++    }
++
++    .account-details dt {
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,10 +266,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu" class="nav-section-link">Menu</a></li>
++      <li><a href="#locations" class="nav-section-link">Locations</a></li>
++      <li><a href="#rewards" class="nav-section-link">Rewards</a></li>
++      <li><a href="#account" class="nav-section-link">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,8 +281,11 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="page-section" aria-labelledby="menu-heading">
++      <h2 id="menu-heading">Menu</h2>
++      <p class="section-intro">Small-batch roasts and house-made syrups, brewed to order.</p>
++
++      <h3 class="subheading">Seasonal Favorites</h3>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -194,6 +303,101 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <h3 class="subheading">Everyday Classics</h3>
++      <ul class="menu-list">
++        <li><span>Drip Coffee</span><span>$2.75</span></li>
++        <li><span>Americano</span><span>$3.25</span></li>
++        <li><span>Cappuccino</span><span>$4.25</span></li>
++        <li><span>Flat White</span><span>$4.50</span></li>
++        <li><span>Mocha</span><span>$4.75</span></li>
++        <li><span>Chai Latte</span><span>$4.50</span></li>
++        <li><span>Butter Croissant</span><span>$3.50</span></li>
++        <li><span>Blueberry Muffin</span><span>$3.25</span></li>
++      </ul>
++    </section>
++
++    <section id="locations" class="page-section" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Locations</h2>
++      <p class="section-intro">Stop by one of our neighborhood cafés for a fresh cup and a comfy seat.</p>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80"
++            alt="Bright café interior with wooden tables" width="600" height="400" loading="lazy">
++          <h3>Downtown</h3>
++          <p>128 Main Street</p>
++          <p class="meta">Mon–Fri 6am–7pm · Sat–Sun 7am–6pm</p>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
++            alt="Cozy coffee shop counter with hanging lights" width="600" height="400" loading="lazy">
++          <h3>Riverside</h3>
++          <p>45 Harbor Lane</p>
++          <p class="meta">Daily 6:30am–6pm</p>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=600&q=80"
++            alt="Barista preparing drinks behind an espresso bar" width="600" height="400" loading="lazy">
++          <h3>University District</h3>
++          <p>902 College Avenue</p>
++          <p class="meta">Mon–Fri 7am–10pm · Sat–Sun 8am–8pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="page-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Rewards</h2>
++      <p class="section-intro">Earn 10 beans for every dollar you spend and turn them into free treats.</p>
++      <div class="rewards-progress">
++        <label for="beans-progress"><strong>320 / 500 beans</strong> until your next free drink</label>
++        <progress id="beans-progress" max="500" value="320">320 of 500 beans</progress>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>150 Beans</h3>
++          <p>Free espresso shot or syrup add-on.</p>
++        </div>
++        <div class="card">
++          <h3>300 Beans</h3>
++          <p>Any pastry from the bakery case.</p>
++        </div>
++        <div class="card">
++          <h3>500 Beans</h3>
++          <p>Any handcrafted drink, any size.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="page-section" aria-labelledby="account-heading">
++      <h2 id="account-heading">My Account</h2>
++      <p class="section-intro">Manage your profile, payment methods, and order history.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Profile</h3>
++          <dl class="account-details">
++            <dt>Name</dt>
++            <dd>Alex Rivera</dd>
++            <dt>Email</dt>
++            <dd>alex@example.com</dd>
++            <dt>Home café</dt>
++            <dd>Downtown</dd>
++          </dl>
++          <a href="/account/profile" class="btn">Edit Profile</a>
++        </div>
++        <div class="card">
++          <h3>Recent Orders</h3>
++          <p>Maple Oat Latte · Oct 30</p>
++          <p>Cold Brew · Oct 28</p>
++          <p>Flat White · Oct 25</p>
++          <a href="/account/orders" class="btn">View All Orders</a>
++        </div>
++        <div class="card">
++          <h3>Payment</h3>
++          <p>Visa ending in 4242</p>
++          <p>Gift card balance: $18.50</p>
++          <a href="/account/payment" class="btn">Manage Payment</a>
++        </div>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +411,49 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const navLinks = document.querySelectorAll('.nav-section-link');
++
++    const setCurrent = (currentLink) => {
++      navLinks.forEach((link) => {
++        const isCurrent = link === currentLink;
++        link.classList.toggle('target-current', isCurrent);
++        link.setAttribute('aria-current', isCurrent ? 'true' : 'false');
++      });
++    };
++
++    if (CSS.supports('scroll-target-group: auto')) {
++      // Native :target-current handles the visual state; mirror it to aria-current for assistive tech
++      const syncAriaCurrent = () => {
++        const currentLink = document.querySelector('.nav-section-link:target-current');
++        navLinks.forEach((link) => {
++          link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++        });
++      };
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      // Fallback: treat the section crossing the vertical middle of the viewport as current
++      const linkFor = new Map(
++        [...navLinks].map((link) => [document.querySelector(link.hash), link])
++      );
++      const firstSection = linkFor.keys().next().value;
++
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach((entry) => {
++          if (entry.isIntersecting) {
++            setCurrent(linkFor.get(entry.target));
++          } else if (entry.target === firstSection && entry.boundingClientRect.top > 0) {
++            // Scrolled back up above the first section (into the hero)
++            setCurrent(null);
++          }
++        });
++      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++
++      linkFor.forEach((_, section) => observer.observe(section));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,84 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,79 @@
++# The Daily Grind: field INP monitoring
++
++The homepage loads `assets/inp-monitor.js`, a self-hosted, deferred module built
++from `src/inp-monitor.mjs` and Google's `web-vitals/attribution`. Its observers
++measure real interactions throughout the visit, including bfcache restores.
++There are no synthetic interactions, polling timers, or visible page changes.
++
++## Connect production collection
++
++This repository is a static site and has no telemetry backend. Deploy a collector
++or a same-origin proxy to your analytics service, then set its URL in `index.html`:
++
++```html
++<meta name="inp-endpoint" content="/analytics/inp">
++```
++
++The collector must accept POST bodies containing JSON sent as `text/plain`
++(the browser's default for a string body) and return a successful status. Only
++same-origin endpoints are accepted. Until configured, no network reports are
++sent. Every report also emits `window`'s `daily-grind:inp` CustomEvent, with the
++serializable report in `event.detail`, for an existing analytics integration.
++
++Native `fetchLater()` replaces pending snapshots and defers delivery until the
++visitor leaves. A fallback sends on document visibility becoming hidden using
++`sendBeacon`, with keepalive fetch if the beacon queue rejects the request.
++Quota exceptions from native deferred fetch also use this fallback. Delivery is
++best effort; there is no persistent retry queue or delivery acknowledgement.
++
++Upsert by `id`, accepting only a greater `sequence` for that ID. Reports are
++snapshots: use `value`, not a sum or maximum of updates. A new ID represents a new
++metric instance, including after bfcache restoration. `reportAllChanges` reports
++INP candidate changes, **not every interaction**. A visit without qualifying
++interactions (or without Event Timing support) produces no INP measurement.
++
++## Diagnose slow interactions
++
++All durations are milliseconds. Group the latest snapshots by `page`, target,
++and script URL/function; compute field p75 across visits. Good INP is at most
++200 ms, needs improvement is above 200 through 500 ms, and poor is above 500 ms.
++Keep good visits in the dataset to avoid biasing the distribution.
++
++- `phases` separates input delay, event processing, and presentation delay.
++- `interaction` records a static `data-inp-target` label (or element tag), type,
++  relative timestamp, and load state. Labels cover every homepage link.
++- `attribution.longestScript` identifies the largest overlapping script, its
++  source URL, function, character position, invoker type, INP subpart, overlapping
++  duration, and forced style/layout costs. This is diagnostic overlap, not proof
++  of causality; source positions refer to deployed scripts.
++- `totalScriptDuration`, `totalStyleAndLayoutDuration`, `totalPaintDuration`,
++  and `totalUnattributedDuration` are the library's interaction timing buckets.
++- `renderStyleDuration` and `renderLayoutDuration` sum rendering costs across
++  **whole intersecting long frames**. They may extend outside the interaction;
++  do not add them to the INP phases or to the combined style/layout total.
++- Separate style/layout timings are experimental. Missing values are `null`;
++  use combined `forcedStyleAndLayoutDuration` and `totalStyleAndLayoutDuration`
++  on browsers without the split fields. Without Long Animation Frame support,
++  INP and its phases still report but script/render attribution is unavailable.
++  `loafSupported` distinguishes unsupported browsers from zero captured frames.
++
++No text content, input values, DOM IDs, page queries, or fragments are collected.
++Script URLs exclude credentials, query parameters, and fragments. Review script
++paths and function names under your analytics data policy before collection.
++
++## Build and automated checks
++
++```sh
++pnpm install --frozen-lockfile
++pnpm test
++pnpm run build
++```
++
++The generated bundle is committed so the existing static hosting command works
++without a runtime dependency install. Rebuild and commit `assets/inp-monitor.js`
++when its source or dependencies change. Serve that file with revalidation
++(`Cache-Control: no-cache`) so updates are picked up. No server is needed for
++these checks. Tests cover timing serialization, unavailable timings, snapshot
++replacement, page lifecycle delivery, and transport fallbacks.
++
++Reference: [Google's web-vitals attribution documentation](https://github.com/GoogleChrome/web-vitals#attribution-build).

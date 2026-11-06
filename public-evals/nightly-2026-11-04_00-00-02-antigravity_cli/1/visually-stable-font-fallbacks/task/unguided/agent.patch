@@ -1,0 +1,41 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -5,8 +5,25 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    @font-face {
++      font-family: 'Inter';
++      src: url('https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
++      font-weight: 400 700;
++      font-style: normal;
++      font-display: swap;
++    }
++
++    @font-face {
++      font-family: 'Inter Fallback';
++      src: local('Segoe UI'), local('Tahoma'), local('Verdana'), local('Arial');
++      size-adjust: 107%;
++      ascent-override: 90%;
++      descent-override: 22%;
++      line-gap-override: 0%;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+@@ -20,9 +37,10 @@
+       padding: 0;
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Inter', 'Inter Fallback', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size-adjust: 0.52;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }

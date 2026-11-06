@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,158 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const ENDPOINT = '/api/analytics';
++      const DEBOUNCE_DELAY_MS = 1000;
++      const MAX_BATCH_SIZE = 25;
++
++      let eventQueue = [];
++      let debounceTimer = null;
++
++      function getSessionId() {
++        try {
++          let sid = sessionStorage.getItem('dg_analytics_sid');
++          if (!sid) {
++            sid = 'sid_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
++            sessionStorage.setItem('dg_analytics_sid', sid);
++          }
++          return sid;
++        } catch (e) {
++          return 'sid_ephemeral';
++        }
++      }
++
++      const sessionId = getSessionId();
++
++      function sendPayload(batch, useBeacon) {
++        const body = JSON.stringify({
++          sessionId: sessionId,
++          sentAt: new Date().toISOString(),
++          events: batch
++        });
++
++        if (useBeacon && typeof navigator.sendBeacon === 'function') {
++          try {
++            const blob = new Blob([body], { type: 'application/json' });
++            if (navigator.sendBeacon(ENDPOINT, blob)) {
++              return;
++            }
++          } catch (e) {
++            // Fall through to fetch
++          }
++        }
++
++        if (typeof fetch === 'function') {
++          fetch(ENDPOINT, {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: body,
++            keepalive: true
++          }).catch(function () {
++            // Silently ignore background telemetry errors
++          });
++        }
++      }
++
++      function flushQueue(useBeacon) {
++        if (debounceTimer !== null) {
++          clearTimeout(debounceTimer);
++          debounceTimer = null;
++        }
++        if (eventQueue.length === 0) {
++          return;
++        }
++
++        const batch = eventQueue.slice();
++        eventQueue = [];
++
++        if (!useBeacon && typeof window.requestIdleCallback === 'function') {
++          window.requestIdleCallback(function () {
++            sendPayload(batch, false);
++          }, { timeout: 2000 });
++        } else {
++          sendPayload(batch, Boolean(useBeacon));
++        }
++      }
++
++      function scheduleFlush() {
++        if (debounceTimer !== null) {
++          clearTimeout(debounceTimer);
++        }
++        if (eventQueue.length >= MAX_BATCH_SIZE) {
++          flushQueue(false);
++          return;
++        }
++        debounceTimer = setTimeout(function () {
++          debounceTimer = null;
++          flushQueue(false);
++        }, DEBOUNCE_DELAY_MS);
++      }
++
++      function trackEvent(type, data) {
++        eventQueue.push(Object.assign({
++          type: type,
++          timestamp: new Date().toISOString(),
++          path: window.location.pathname,
++          url: window.location.href
++        }, data));
++
++        scheduleFlush();
++      }
++
++      // Record initial page view
++      trackEvent('pageview', {
++        title: document.title,
++        referrer: document.referrer || null,
++        viewport: window.innerWidth + 'x' + window.innerHeight
++      });
++
++      // Record user click interactions via event delegation
++      document.addEventListener('click', function (event) {
++        const rawTarget = event.target;
++        if (!rawTarget || !(rawTarget instanceof Element)) {
++          return;
++        }
++
++        const interactiveEl = rawTarget.closest('a, button, [role="button"], .btn, .card') || rawTarget;
++        const sectionEl = interactiveEl.closest('nav, header, main, footer, section');
++
++        trackEvent('click', {
++          tag: interactiveEl.tagName.toLowerCase(),
++          id: interactiveEl.id || null,
++          className: typeof interactiveEl.className === 'string' && interactiveEl.className.trim() ? interactiveEl.className.trim() : null,
++          text: (interactiveEl.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 100) || null,
++          href: interactiveEl.getAttribute('href') || null,
++          section: sectionEl ? sectionEl.tagName.toLowerCase() : null,
++          coordinates: {
++            x: Math.round(event.clientX),
++            y: Math.round(event.clientY)
++          }
++        });
++      }, { capture: true, passive: true });
++
++      // Flush remaining queued telemetry when page is hidden or unloading
++      document.addEventListener('visibilitychange', function () {
++        if (document.visibilityState === 'hidden') {
++          flushQueue(true);
++        }
++      });
++
++      window.addEventListener('pagehide', function () {
++        flushQueue(true);
++      });
++
++      // Expose analytics helper for testing or custom instrumentation
++      window.DailyGrindAnalytics = {
++        trackEvent: trackEvent,
++        flush: function () { flushQueue(false); },
++        getQueue: function () { return eventQueue.slice(); }
++      };
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

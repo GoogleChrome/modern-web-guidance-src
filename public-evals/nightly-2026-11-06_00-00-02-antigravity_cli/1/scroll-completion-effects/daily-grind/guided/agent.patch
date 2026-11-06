@@ -1,0 +1,440 @@
+diff --git a/index.html b/index.html
+index 66c9173..86558c2 100644
+--- a/index.html
++++ b/index.html
+@@ -10,8 +10,10 @@
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-strong: #e65100;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface-highlight: #fff8e1;
+     }
+ 
+     * {
+@@ -27,6 +29,39 @@
+       background-color: var(--light);
+     }
+ 
++    /* Visually hidden utility for screen reader text and skip links */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    .skip-link {
++      position: fixed;
++      top: 12px;
++      left: 12px;
++      z-index: 2000;
++      background: var(--primary);
++      color: white;
++      padding: 10px 16px;
++      border-radius: 4px;
++      text-decoration: none;
++      font-weight: 600;
++      border: 2px solid var(--accent);
++    }
++
++    /* Accessible Focus Indicators */
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,17 +73,21 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,10 +98,13 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding: 6px 8px;
++      border-radius: 4px;
++      transition: color 0.3s, background-color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="location"] {
+       color: var(--accent);
+     }
+ 
+@@ -100,6 +142,90 @@
+       padding: 0 20px;
+     }
+ 
++    .content-section {
++      margin-bottom: 56px;
++      padding: 32px 28px;
++      border-radius: 12px;
++      background-color: transparent;
++      border: 2px solid transparent;
++      scroll-margin-top: 90px;
++      transition: background-color 0.35s ease, border-color 0.35s ease;
++    }
++
++    .content-section h2 {
++      text-align: center;
++      margin-bottom: 8px;
++      color: var(--primary);
++      border-radius: 4px;
++    }
++
++    .content-section h2:focus,
++    .content-section h2:focus-visible {
++      outline: 3px solid var(--accent-strong);
++      outline-offset: 6px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      max-width: 65ch;
++      margin: 0 auto 24px;
++      color: var(--text);
++    }
++
++    /* Post-scroll completion highlight and animation */
++    .content-section.highlight {
++      background-color: var(--surface-highlight);
++      border-color: var(--accent-strong);
++
++      @media (prefers-reduced-motion: no-preference) {
++        animation: section-arrival 0.65s cubic-bezier(0.22, 1, 0.36, 1);
++      }
++    }
++
++    .content-section.highlight .card {
++      @media (prefers-reduced-motion: no-preference) {
++        animation: card-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
++      }
++    }
++
++    .content-section.highlight .card:nth-child(2) {
++      @media (prefers-reduced-motion: no-preference) {
++        animation-delay: 0.08s;
++      }
++    }
++
++    .content-section.highlight .card:nth-child(3) {
++      @media (prefers-reduced-motion: no-preference) {
++        animation-delay: 0.16s;
++      }
++    }
++
++    @keyframes section-arrival {
++      0% {
++        opacity: 0.85;
++        transform: scale(0.985);
++      }
++      50% {
++        opacity: 1;
++        transform: scale(1.01);
++      }
++      100% {
++        opacity: 1;
++        transform: scale(1);
++      }
++    }
++
++    @keyframes card-rise {
++      0% {
++        opacity: 0.75;
++        transform: translateY(10px);
++      }
++      100% {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -113,6 +239,7 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      border: 1px solid rgba(78, 52, 46, 0.1);
+     }
+ 
+     .card h3 {
+@@ -128,7 +255,7 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s;
+     }
+ 
+     .btn:hover {
+@@ -151,52 +278,124 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      padding: 4px 6px;
++      border-radius: 4px;
+     }
+   </style>
+ </head>
+ 
+ <body>
++  <a href="#main-content" class="skip-link visually-hidden">Skip to main content</a>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary">
++    <a href="#top" class="logo">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header id="top" class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main id="main-content" class="container">
++    <section id="menu" class="content-section">
++      <h2 id="menu-heading" tabindex="-1">Seasonal Favorites</h2>
++      <p class="section-subtitle">Handcrafted small-batch drinks curated for the season.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details <span class="visually-hidden">for Maple Oat Latte</span></a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details <span class="visually-hidden">for Dark Roast Espresso</span></a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details <span class="visually-hidden">for Cold Brew</span></a>
++        </div>
++      </div>
++    </section>
++
++    <section id="locations" class="content-section">
++      <h2 id="locations-heading" tabindex="-1">Neighborhood Locations</h2>
++      <p class="section-subtitle">Visit one of our welcoming cafes for freshly pulled espresso and warm pastries.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>214 Roast Ave &bull; Open daily 6:00 AM – 7:00 PM</p>
++          <a href="/locations/downtown" class="btn">Get Directions <span class="visually-hidden">to Downtown Roastery</span></a>
++        </div>
++        <div class="card">
++          <h3>Riverside Cafe</h3>
++          <p>88 Harbor Walk &bull; Open daily 6:30 AM – 6:00 PM</p>
++          <a href="/locations/riverside" class="btn">Get Directions <span class="visually-hidden">to Riverside Cafe</span></a>
++        </div>
++        <div class="card">
++          <h3>University Corner</h3>
++          <p>502 College St &bull; Open daily 6:00 AM – 9:00 PM</p>
++          <a href="/locations/university" class="btn">Get Directions <span class="visually-hidden">to University Corner</span></a>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="content-section">
++      <h2 id="rewards-heading" tabindex="-1">Daily Grind Rewards</h2>
++      <p class="section-subtitle">Earn beans on every order and unlock complimentary handcrafted drinks.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn 2 Beans per $1</h3>
++          <p>Collect beans automatically when you order ahead or scan in-store.</p>
++          <a href="/rewards/earn" class="btn">Learn More <span class="visually-hidden">about earning beans</span></a>
++        </div>
++        <div class="card">
++          <h3>Free Birthday Drink</h3>
++          <p>Celebrate your day with any handcrafted beverage on the house.</p>
++          <a href="/rewards/birthday" class="btn">Claim Perk <span class="visually-hidden">for Free Birthday Drink</span></a>
++        </div>
++        <div class="card">
++          <h3>Roaster Reserve Access</h3>
++          <p>Early access to single-origin micro-lots and tasting flights.</p>
++          <a href="/rewards/reserve" class="btn">Explore Perks <span class="visually-hidden">for Roaster Reserve Access</span></a>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="content-section">
++      <h2 id="account-heading" tabindex="-1">My Account</h2>
++      <p class="section-subtitle">Manage your coffee subscriptions, saved orders, and reward balance.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Saved Favorites</h3>
++          <p>Re-order your usual Maple Oat Latte with one tap.</p>
++          <a href="/account/favorites" class="btn">Manage Orders <span class="visually-hidden">in Saved Favorites</span></a>
++        </div>
++        <div class="card">
++          <h3>Bean Subscription</h3>
++          <p>Freshly roasted whole beans delivered every two weeks.</p>
++          <a href="/account/subscriptions" class="btn">Edit Delivery <span class="visually-hidden">for Bean Subscription</span></a>
++        </div>
++        <div class="card">
++          <h3>Account Preferences</h3>
++          <p>Update payment methods, default pickup location, and notifications.</p>
++          <a href="/account/settings" class="btn">Update Settings <span class="visually-hidden">for Account Preferences</span></a>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <div id="scroll-status" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +406,99 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    let currentScrollId = 0;
++    const sections = document.querySelectorAll('.content-section');
++    const navLinks = document.querySelectorAll('nav a[href^="#"]');
++    const liveStatus = document.getElementById('scroll-status');
++
++    function scrollIntoViewAsync(element, options, scroller = window) {
++      const result = element.scrollIntoView(options);
++
++      // Feature detect: in supporting browsers, scrollIntoView() returns a Promise
++      if (result instanceof Promise) {
++        return result;
++      }
++
++      // Fallback for browsers where scrollIntoView() returns undefined
++      return new Promise((resolve) => {
++        let timeoutId;
++
++        const finish = () => {
++          clearTimeout(timeoutId);
++          scroller.removeEventListener('scrollend', finish);
++          scroller.removeEventListener('scroll', onScroll);
++          resolve();
++        };
++
++        const onScroll = () => {
++          // Restart the idle timer on every scroll event. If scrollend never fires
++          // (browsers without scrollend support), this resolves once scrolling goes idle.
++          clearTimeout(timeoutId);
++          timeoutId = setTimeout(finish, 100);
++        };
++
++        scroller.addEventListener('scrollend', finish, { once: true });
++        scroller.addEventListener('scroll', onScroll, { passive: true });
++
++        // If no scroll event fires within the idle window (e.g., already in view), resolve.
++        timeoutId = setTimeout(finish, 100);
++      });
++    }
++
++    async function scrollToAndHighlight(targetElement, triggerLink) {
++      const scrollId = ++currentScrollId;
++
++      sections.forEach((sec) => sec.classList.remove('highlight'));
++      navLinks.forEach((link) => {
++        if (link === triggerLink) {
++          link.setAttribute('aria-current', 'location');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++
++      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      const scrollBehavior = prefersReducedMotion ? 'auto' : 'smooth';
++
++      await scrollIntoViewAsync(targetElement, {
++        behavior: scrollBehavior,
++        block: 'center'
++      });
++
++      // Abort follow-up effect if another scroll was triggered while awaiting
++      if (scrollId !== currentScrollId) return;
++
++      if (targetElement.classList.contains('content-section')) {
++        targetElement.classList.add('highlight');
++      }
++
++      const targetHeading = targetElement.querySelector('h1, h2, h3, [tabindex="-1"]') || targetElement;
++      if (!targetHeading.hasAttribute('tabindex') && targetHeading === targetElement) {
++        targetHeading.setAttribute('tabindex', '-1');
++      }
++      targetHeading.focus({ preventScroll: true });
++
++      if (liveStatus && targetHeading.textContent) {
++        liveStatus.textContent = `Navigated to ${targetHeading.textContent.trim()}`;
++      }
++    }
++
++    document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
++      anchor.addEventListener('click', async (event) => {
++        const targetSelector = anchor.getAttribute('href');
++        if (!targetSelector || targetSelector === '#') return;
++
++        const targetElement = document.querySelector(targetSelector);
++        if (!targetElement) return;
++
++        event.preventDefault();
++        history.pushState(null, '', targetSelector);
++
++        await scrollToAndHighlight(targetElement, anchor);
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,182 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,123 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-up Section */
++    .signup-section {
++      margin-top: 60px;
++    }
++
++    .signup-container {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      overflow: hidden;
++      display: flex;
++      flex-wrap: wrap;
++    }
++
++    .signup-image {
++      flex: 1 1 300px;
++      background: url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80') center/cover no-repeat;
++      min-height: 280px;
++    }
++
++    .signup-card {
++      flex: 1 1 340px;
++      padding: 40px 30px;
++    }
++
++    .signup-card h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      font-size: 1.8rem;
++    }
++
++    .signup-card p {
++      color: #666;
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .form-group input[type="text"],
++    .form-group input[type="email"],
++    .form-group input[type="password"] {
++      width: 100%;
++      padding: 10px 14px;
++      border: 1px solid #ccc;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-group input:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .form-checkbox {
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++      margin-bottom: 20px;
++      font-size: 0.85rem;
++      color: #555;
++      text-align: left;
++    }
++
++    .form-checkbox input {
++      margin-top: 4px;
++      accent-color: var(--primary);
++    }
++
++    .form-checkbox a {
++      color: var(--primary);
++      text-decoration: underline;
++    }
++
++    .signup-btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      font-family: inherit;
++    }
++
++    .form-footer {
++      margin-top: 18px;
++      text-align: center;
++      font-size: 0.85rem;
++      color: #666;
++    }
++
++    .form-footer a {
++      color: var(--primary);
++      font-weight: 600;
++      text-decoration: none;
++    }
++
++    .form-footer a:hover {
++      text-decoration: underline;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,8 +278,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><a href="#signup">Sign Up</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -194,8 +310,44 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="signup" class="signup-section">
++      <div class="signup-container">
++        <div class="signup-image" aria-hidden="true"></div>
++        <div class="signup-card">
++          <h2>Create an Account</h2>
++          <p>Join The Daily Grind Club for rewards, exclusive discounts, and easy ordering.</p>
++          <form class="signup-form" action="/signup" method="POST">
++            <div class="form-group">
++              <label for="name">Full Name</label>
++              <input type="text" id="name" name="name" placeholder="Jane Doe" required autocomplete="name">
++            </div>
++            <div class="form-group">
++              <label for="email">Email Address</label>
++              <input type="email" id="email" name="email" placeholder="jane@example.com" required autocomplete="email">
++            </div>
++            <div class="form-group">
++              <label for="password">Password</label>
++              <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="new-password">
++            </div>
++            <div class="form-group">
++              <label for="confirm-password">Confirm Password</label>
++              <input type="password" id="confirm-password" name="confirm-password" placeholder="••••••••" required autocomplete="new-password">
++            </div>
++            <div class="form-checkbox">
++              <input type="checkbox" id="terms" name="terms" required>
++              <label for="terms">I agree to the <a href="/terms">Terms of Service</a> and <a href="/privacy-policy">Privacy Policy</a>.</label>
++            </div>
++            <button type="submit" class="btn signup-btn">Sign Up</button>
++            <div class="form-footer">
++              Already have an account? <a href="/login">Log in</a>
++            </div>
++          </form>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

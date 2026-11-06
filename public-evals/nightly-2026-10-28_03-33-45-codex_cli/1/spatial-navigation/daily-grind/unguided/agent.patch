@@ -1,0 +1,238 @@
+diff --git a/index.html b/index.html
+index 66c9173..a36a7c5 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="spatial-navigation.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -120,6 +121,28 @@
+       color: var(--primary);
+     }
+ 
++    .card:focus-within {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,21 +200,22 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <p id="card-navigation-help" class="sr-only">Use the arrow keys to move between nearby cards, or Tab to visit each link.</p>
++      <div class="grid" role="group" aria-label="Seasonal favorites" aria-describedby="card-navigation-help">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" aria-label="View details for Maple Oat Latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" aria-label="View details for Dark Roast Espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" aria-label="View details for Cold Brew">View Details</a>
+         </div>
+       </div>
+     </section>
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/spatial-navigation.js b/spatial-navigation.js
+new file mode 100644
+index 0000000..c5ee8ee
+--- /dev/null
++++ b/spatial-navigation.js
+@@ -0,0 +1,46 @@
++(() => {
++  const directions = {
++    ArrowLeft: [-1, 0],
++    ArrowRight: [1, 0],
++    ArrowUp: [0, -1],
++    ArrowDown: [0, 1],
++  };
++
++  document.querySelectorAll('.grid').forEach((grid) => {
++    grid.addEventListener('keydown', (event) => {
++      const direction = directions[event.key];
++      if (!direction || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
++
++      // Keep native links, tab order, and any other controls inside cards intact.
++      const cards = Array.from(grid.querySelectorAll(':scope > .card'))
++        .map((card) => ({ card, link: card.querySelector('a[href]') }))
++        .filter(({ card, link }) => link && link.getClientRects().length && !card.closest('[inert]'))
++        .map(({ card, link }) => ({ link, rect: card.getBoundingClientRect() }));
++      const current = cards.find(({ link }) => link === event.target);
++      if (!current) return;
++
++      const [dx, dy] = direction;
++      const center = (rect) => ({ x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 });
++      const origin = center(current.rect);
++      const candidates = cards.filter((item) => item !== current).map((item) => {
++        const target = center(item.rect);
++        const overlapX = Math.min(current.rect.right, item.rect.right) - Math.max(current.rect.left, item.rect.left);
++        const overlapY = Math.min(current.rect.bottom, item.rect.bottom) - Math.max(current.rect.top, item.rect.top);
++        return {
++          ...item,
++          forward: dx ? (target.x - origin.x) * dx : (target.y - origin.y) * dy,
++          // Horizontal movement stays in the current row. Vertical movement
++          // prefers the current column, with a fallback for incomplete rows.
++          eligible: dx ? overlapY > 1 : overlapY <= 1,
++          aligned: dx ? true : overlapX > 1,
++          distance: (target.x - origin.x) ** 2 + (target.y - origin.y) ** 2,
++        };
++      }).filter((item) => item.forward > 1 && item.eligible)
++        .sort((a, b) => Number(b.aligned) - Number(a.aligned) || a.distance - b.distance);
++
++      // Avoid scrolling the page while navigating, including at grid edges.
++      event.preventDefault();
++      candidates[0]?.link.focus();
++    });
++  });
++})();
+diff --git a/tests/spatial-navigation.test.cjs b/tests/spatial-navigation.test.cjs
+new file mode 100644
+index 0000000..e407897
+--- /dev/null
++++ b/tests/spatial-navigation.test.cjs
+@@ -0,0 +1,100 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { runInNewContext } = require('node:vm');
++
++const source = readFileSync(require.resolve('../spatial-navigation.js'), 'utf8');
++const rect = (left, top, width = 100, height = 100) => ({ left, top, right: left + width, bottom: top + height });
++
++function setup(positions) {
++  let handler;
++  let focused = null;
++  const cards = positions.map((position, index) => {
++    const link = {
++      hidden: false,
++      getClientRects() { return this.hidden ? [] : [position]; },
++      focus() { focused = index; },
++    };
++    return {
++      position,
++      link,
++      inert: false,
++      querySelector: () => link,
++      closest() { return this.inert ? this : null; },
++      getBoundingClientRect() { return this.position; },
++    };
++  });
++  const grid = {
++    addEventListener: (_, callback) => { handler = callback; },
++    querySelectorAll: () => cards,
++  };
++  runInNewContext(source, { document: { querySelectorAll: () => [grid] } });
++  return {
++    cards,
++    press(index, key, overrides = {}) {
++      focused = index;
++      let prevented = false;
++      handler({ key, target: cards[index].link, preventDefault() { prevented = true; }, ...overrides });
++      return { focused, prevented };
++    },
++  };
++}
++
++test('three columns follow visual rows and columns without wrapping', () => {
++  const grid = setup([rect(0, 0), rect(120, 0), rect(240, 0), rect(0, 120), rect(120, 120), rect(240, 120)]);
++  assert.equal(grid.press(0, 'ArrowRight').focused, 1);
++  assert.equal(grid.press(1, 'ArrowLeft').focused, 0);
++  assert.equal(grid.press(1, 'ArrowDown').focused, 4);
++  assert.equal(grid.press(4, 'ArrowUp').focused, 1);
++  assert.deepEqual(grid.press(2, 'ArrowRight'), { focused: 2, prevented: true });
++  assert.deepEqual(grid.press(0, 'ArrowUp'), { focused: 0, prevented: true });
++});
++
++test('two columns support an incomplete last row', () => {
++  const grid = setup([rect(0, 0), rect(120, 0), rect(0, 120)]);
++  assert.equal(grid.press(0, 'ArrowDown').focused, 2);
++  assert.equal(grid.press(1, 'ArrowDown').focused, 2);
++  assert.equal(grid.press(2, 'ArrowUp').focused, 0);
++  assert.equal(grid.press(1, 'ArrowRight').focused, 1);
++});
++
++test('one column uses vertical arrows and keeps horizontal arrows at the edge', () => {
++  const grid = setup([rect(0, 0), rect(0, 120), rect(0, 240)]);
++  assert.equal(grid.press(0, 'ArrowDown').focused, 1);
++  assert.equal(grid.press(2, 'ArrowUp').focused, 1);
++  assert.equal(grid.press(1, 'ArrowRight').focused, 1);
++  assert.equal(grid.press(1, 'ArrowLeft').focused, 1);
++});
++
++test('visual order supports reversed layouts and resizing without reinitialization', () => {
++  const grid = setup([rect(240, 0), rect(120, 0), rect(0, 0)]);
++  assert.equal(grid.press(0, 'ArrowLeft').focused, 1);
++  assert.equal(grid.press(1, 'ArrowRight').focused, 0);
++  grid.cards.forEach((card, index) => { card.position = rect(0, index * 120); });
++  assert.equal(grid.press(0, 'ArrowDown').focused, 1);
++  assert.equal(grid.press(0, 'ArrowLeft').focused, 0);
++});
++
++test('hidden and inert cards are skipped', () => {
++  const grid = setup([rect(0, 0), rect(120, 0), rect(240, 0), rect(360, 0)]);
++  grid.cards[1].link.hidden = true;
++  grid.cards[2].inert = true;
++  assert.equal(grid.press(0, 'ArrowRight').focused, 3);
++});
++
++test('native activation, tabbing, modified keys and nested controls are left alone', () => {
++  const grid = setup([rect(0, 0), rect(120, 0)]);
++  for (const key of ['Tab', 'Enter', ' ', 'Escape']) {
++    assert.deepEqual(grid.press(0, key), { focused: 0, prevented: false });
++  }
++  for (const modifier of ['altKey', 'ctrlKey', 'metaKey', 'shiftKey', 'defaultPrevented']) {
++    assert.equal(grid.press(0, 'ArrowRight', { [modifier]: true }).prevented, false);
++  }
++  assert.equal(grid.press(0, 'ArrowRight', { target: {} }).prevented, false);
++});
++
++test('unequal card heights preserve the vertical column', () => {
++  const grid = setup([rect(0, 0, 100, 160), rect(120, 0), rect(0, 180), rect(120, 180)]);
++  assert.equal(grid.press(3, 'ArrowUp').focused, 1);
++  assert.equal(grid.press(1, 'ArrowDown').focused, 3);
++});

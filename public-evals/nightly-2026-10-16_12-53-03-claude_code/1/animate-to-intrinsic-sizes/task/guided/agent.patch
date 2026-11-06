@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,130 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Smooth transitions to/from intrinsic sizes (Chrome/Edge; others jump instantly) */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    /* Promo alert */
++    #promo-alert {
++      background: var(--accent);
++      color: var(--text);
++      block-size: auto;
++      overflow: hidden;
++      transition: block-size 0.4s ease-in-out, opacity 0.4s ease-in-out,
++        visibility 0s 0.4s;
++    }
++
++    #promo-alert .promo-inner {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 1rem;
++      padding: 0.6rem 5%;
++      font-size: 0.9rem;
++    }
++
++    #alert-dismiss {
++      appearance: none;
++      flex: none;
++      inline-size: 1.75rem;
++      block-size: 1.75rem;
++      margin: 0;
++      border-radius: 50%;
++      cursor: pointer;
++      display: grid;
++      place-items: center;
++    }
++
++    #alert-dismiss::before {
++      content: "\00d7";
++      font-size: 1.4rem;
++      line-height: 1;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(0, 0, 0, 0.12);
++    }
++
++    #alert-dismiss:focus-visible {
++      outline: 2px solid var(--primary);
++    }
++
++    /* Dismissed: collapse to zero height, then hide from the accessibility tree */
++    #promo-alert:has(#alert-dismiss:checked) {
++      block-size: 0;
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++    }
++
++    /* FAQ accordion */
++    .faq {
++      max-width: 700px;
++      margin: 60px auto 0;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #faq-trigger {
++      cursor: pointer;
++      padding: 16px 20px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    #faq-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++      border-radius: 8px;
++    }
++
++    .faq details::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 0.4s ease, content-visibility 0.4s allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-content {
++      padding: 0 20px 16px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      #promo-alert,
++      .faq details::details-content {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotion">
++    <div class="promo-inner">
++      <p>Free pastry with any large drink this week!</p>
++      <input type="checkbox" id="alert-dismiss" aria-label="Dismiss promotion">
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +311,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq">
++      <h2>Frequently Asked Questions</h2>
++      <details name="faq">
++        <summary id="faq-trigger">Do you offer dairy-free options?</summary>
++        <div id="faq-content">
++          <p>Yes! We stock oat, almond, and soy milk at every location, and all of our syrups are dairy-free.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

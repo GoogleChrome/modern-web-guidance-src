@@ -1,0 +1,417 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,18 +3,103 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      /* Brand palette */
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Light theme tokens (default) */
++      --bg: var(--light);
++      --text-color: var(--text);
++      --nav-bg: var(--primary);
++      --nav-text: #ffffff;
++      --footer-bg: var(--secondary);
++      --footer-text: var(--text);
++      --card-bg: #ffffff;
++      --card-text: var(--text);
++      --card-heading: var(--primary);
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --btn-bg: var(--primary);
++      --btn-text: #ffffff;
++      --btn-hover-bg: #3e2723;
++      --btn-hover-text: #ffffff;
++      color-scheme: light dark;
+     }
+ 
++    /* Responsive dark theme */
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --bg: #1a120c;
++        --text-color: #f5f5f5;
++        --text: #f5f5f5;
++        --secondary: #2d2019;
++        --nav-bg: #24160e;
++        --nav-text: #ffffff;
++        --footer-bg: #24160e;
++        --footer-text: #f5f5f5;
++        --card-bg: #2c2019;
++        --card-text: #f5f5f5;
++        --card-heading: var(--accent);
++        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
++        --btn-bg: var(--accent);
++        --btn-text: #2c2019;
++        --btn-hover-bg: #ffa000;
++        --btn-hover-text: #1a120c;
++      }
++    }
++
++    /* Explicit dark theme overrides (e.g. data-theme or utility classes) */
++    [data-theme="dark"],
++    .dark-theme,
++    .dark {
++      --bg: #1a120c;
++      --text-color: #f5f5f5;
++      --text: #f5f5f5;
++      --secondary: #2d2019;
++      --nav-bg: #24160e;
++      --nav-text: #ffffff;
++      --footer-bg: #24160e;
++      --footer-text: #f5f5f5;
++      --card-bg: #2c2019;
++      --card-text: #f5f5f5;
++      --card-heading: var(--accent);
++      --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
++      --btn-bg: var(--accent);
++      --btn-text: #2c2019;
++      --btn-hover-bg: #ffa000;
++      --btn-hover-text: #1a120c;
++    }
++
++    /* Explicit light theme overrides */
++    [data-theme="light"],
++    .light-theme,
++    .light {
++      --bg: var(--light);
++      --text-color: #3e2723;
++      --text: #3e2723;
++      --secondary: #d7ccc8;
++      --nav-bg: var(--primary);
++      --nav-text: #ffffff;
++      --footer-bg: var(--secondary);
++      --footer-text: #3e2723;
++      --card-bg: #ffffff;
++      --card-text: #3e2723;
++      --card-heading: var(--primary);
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --btn-bg: var(--primary);
++      --btn-text: #ffffff;
++      --btn-hover-bg: #3e2723;
++      --btn-hover-text: #ffffff;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -22,23 +107,25 @@
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      color: var(--text-color);
++      background-color: var(--bg);
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -55,9 +142,9 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -99,60 +186,234 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .container h2 {
++      color: var(--text-color);
++      transition: color 0.3s;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    /* Shared Themed Cards */
++    .card,
++    .themed-card {
++      background: var(--card-bg);
++      color: var(--card-text);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
+     }
+ 
+-    .card h3 {
++    .card h3,
++    .themed-card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++      transition: color 0.3s;
+     }
+ 
++    .card p,
++    .themed-card p {
++      color: var(--card-text);
++      transition: color 0.3s;
++    }
++
++    /* Buttons with theme-adaptive accents */
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-weight: 600;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
++      color: var(--btn-hover-text);
+     }
+ 
++    .card .btn,
++    .themed-card .btn {
++      background: var(--btn-bg);
++      color: var(--btn-text);
++    }
++
++    .card .btn:hover,
++    .themed-card .btn:hover {
++      background: var(--btn-hover-bg);
++      color: var(--btn-hover-text);
++    }
++
++    /* Responsive dark styling for themed-cards */
++    @media (prefers-color-scheme: dark) {
++      .themed-card:not(.force-light),
++      .card:not(.force-light) {
++        background: #2c2019;
++        color: #f5f5f5;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
++      }
++      .themed-card:not(.force-light) h3,
++      .card:not(.force-light) h3 {
++        color: var(--accent);
++      }
++      .themed-card:not(.force-light) p,
++      .card:not(.force-light) p {
++        color: #f5f5f5;
++      }
++      .themed-card:not(.force-light) .btn,
++      .card:not(.force-light) .btn {
++        background: var(--accent);
++        color: #2c2019;
++      }
++      .themed-card:not(.force-light) .btn:hover,
++      .card:not(.force-light) .btn:hover {
++        background: #ffa000;
++        color: #1a120c;
++      }
++    }
++
++    /* Explicit dark container styles */
++    [data-theme="dark"] .themed-card:not(.force-light),
++    .dark-theme .themed-card:not(.force-light),
++    .dark .themed-card:not(.force-light) {
++      background: #2c2019;
++      color: #f5f5f5;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
++    }
++    [data-theme="dark"] .themed-card:not(.force-light) h3,
++    .dark-theme .themed-card:not(.force-light) h3,
++    .dark .themed-card:not(.force-light) h3 {
++      color: var(--accent);
++    }
++    [data-theme="dark"] .themed-card:not(.force-light) p,
++    .dark-theme .themed-card:not(.force-light) p,
++    .dark .themed-card:not(.force-light) p {
++      color: #f5f5f5;
++    }
++    [data-theme="dark"] .themed-card:not(.force-light) .btn,
++    .dark-theme .themed-card:not(.force-light) .btn,
++    .dark .themed-card:not(.force-light) .btn {
++      background: var(--accent);
++      color: #2c2019;
++    }
++
++    /* Force dark theme: specifically on dark roast espresso card and any force-dark card */
++    .themed-card.force-dark:not(.force-light),
++    .force-dark:not(.force-light),
++    #dark-roast-espresso:not(.force-light) {
++      --card-bg: #2c2019;
++      --card-text: #f5f5f5;
++      --card-heading: var(--accent);
++      --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
++      --btn-bg: var(--accent);
++      --btn-text: #2c2019;
++      --btn-hover-bg: #ffa000;
++      --btn-hover-text: #1a120c;
++      background: #2c2019;
++      color: #f5f5f5;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
++    }
++
++    .themed-card.force-dark:not(.force-light) h3,
++    .force-dark:not(.force-light) h3,
++    #dark-roast-espresso:not(.force-light) h3 {
++      color: var(--accent);
++    }
++
++    .themed-card.force-dark:not(.force-light) p,
++    .force-dark:not(.force-light) p,
++    #dark-roast-espresso:not(.force-light) p {
++      color: #f5f5f5;
++    }
++
++    .themed-card.force-dark:not(.force-light) .btn,
++    .force-dark:not(.force-light) .btn,
++    #dark-roast-espresso:not(.force-light) .btn {
++      background: var(--accent);
++      color: #2c2019;
++    }
++
++    .themed-card.force-dark:not(.force-light) .btn:hover,
++    .force-dark:not(.force-light) .btn:hover,
++    #dark-roast-espresso:not(.force-light) .btn:hover {
++      background: #ffa000;
++      color: #1a120c;
++    }
++
++    /* Force light override: overrides dark mode and force-dark on any themed-card */
++    .themed-card.force-light,
++    .force-light {
++      --card-bg: #ffffff !important;
++      --card-text: #3e2723 !important;
++      --card-heading: var(--primary) !important;
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
++      --btn-bg: var(--primary) !important;
++      --btn-text: #ffffff !important;
++      --btn-hover-bg: #3e2723 !important;
++      --btn-hover-text: #ffffff !important;
++      background: #ffffff !important;
++      color: #3e2723 !important;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
++    }
++
++    .themed-card.force-light h3,
++    .force-light h3 {
++      color: var(--primary) !important;
++    }
++
++    .themed-card.force-light p,
++    .force-light p {
++      color: #3e2723 !important;
++    }
++
++    .themed-card.force-light .btn,
++    .force-light .btn {
++      background: var(--primary) !important;
++      color: #ffffff !important;
++    }
++
++    .themed-card.force-light .btn:hover,
++    .force-light .btn:hover {
++      background: #3e2723 !important;
++      color: #ffffff !important;
++    }
++
++    /* Footer */
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition: color 0.3s;
+     }
++
++    .footer-links a:hover {
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -177,19 +438,19 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card themed-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card themed-card force-dark" id="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card themed-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

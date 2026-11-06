@@ -1,0 +1,227 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -106,8 +106,91 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    .cafe-gallery {
++      margin-bottom: 48px;
++      text-align: center;
++    }
++
++    .cafe-gallery > p {
++      margin: 6px 0 20px;
++    }
++
++    #gallery {
++      position: relative;
++      display: flex;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      overscroll-behavior-x: contain;
++      border-radius: 8px;
++      background: var(--secondary);
++    }
++
++    .gallery-item {
++      position: relative;
++      flex: 0 0 100%;
++      min-width: 0;
++      scroll-snap-align: center;
++    }
++
++    .gallery-item > img {
++      display: block;
++      width: 100%;
++      height: clamp(240px, 40vw, 420px);
++      object-fit: cover;
++    }
++
++    .gallery-caption {
++      position: absolute;
++      inset: auto 0 0;
++      padding: 40px 20px 20px;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
++      color: white;
++      text-align: left;
++      font-size: 1.15rem;
++    }
++
++    .gallery-thumbnails {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .thumbnail {
++      width: 80px;
++      height: 60px;
++      padding: 3px;
++      border: 3px solid transparent;
++      border-radius: 6px;
++      background: var(--secondary);
++      cursor: pointer;
++    }
++
++    .thumbnail img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      border-radius: 2px;
++    }
++
++    .thumbnail.active {
++      border-color: var(--primary);
++    }
++
++    .thumbnail.pending {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px var(--accent);
++    }
++
++    .thumbnail:focus-visible,
++    #gallery:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -174,8 +257,37 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="cafe-gallery" aria-labelledby="gallery-heading">
++      <h2 id="gallery-heading">A Little Taste of Our Everyday</h2>
++      <p>Cozy corners, fresh coffee, and a moment to make your own. Swipe to explore.</p>
++      <div id="gallery" tabindex="0" role="region" aria-roledescription="carousel" aria-label="Our cafe in photos">
++        <div class="gallery-item" id="gallery-cafe" role="group" aria-roledescription="slide" aria-label="1 of 3">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&amp;fit=crop&amp;w=1200&amp;q=80" alt="Warm cafe interior with wooden tables and inviting seating" width="1200" height="800">
++          <p class="gallery-caption">Find your favorite corner.</p>
++        </div>
++        <div class="gallery-item" id="gallery-coffee" role="group" aria-roledescription="slide" aria-label="2 of 3">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1200&amp;q=80" alt="Freshly prepared coffee served on a wooden table" width="1200" height="800" loading="lazy">
++          <p class="gallery-caption">Good mornings start with a great cup.</p>
++        </div>
++        <div class="gallery-item" id="gallery-bar" role="group" aria-roledescription="slide" aria-label="3 of 3">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=1200&amp;q=80" alt="Coffee being carefully prepared at an espresso machine" width="1200" height="800" loading="lazy">
++          <p class="gallery-caption">A little care in every pour.</p>
++        </div>
++      </div>
++      <div class="gallery-thumbnails" role="group" aria-label="Choose a cafe photo">
++        <button type="button" class="thumbnail active" aria-label="Show photo 1: Our cozy cafe" aria-controls="gallery-cafe" aria-current="true">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&amp;fit=crop&amp;w=160&amp;h=100&amp;q=70" alt="" width="80" height="50" loading="lazy">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Show photo 2: Fresh coffee" aria-controls="gallery-coffee">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=160&amp;h=100&amp;q=70" alt="" width="80" height="50" loading="lazy">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Show photo 3: At the espresso bar" aria-controls="gallery-bar">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=160&amp;h=100&amp;q=70" alt="" width="80" height="50" loading="lazy">
++        </button>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +318,93 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const gallery = document.getElementById('gallery');
++    const items = [...gallery.querySelectorAll('.gallery-item')];
++    const thumbnails = [...document.querySelectorAll('.cafe-gallery .thumbnail')];
++    let frame = null;
++    let scrollTimeout;
++
++    function setPending(index) {
++      if (!thumbnails[index]) return;
++      thumbnails.forEach((thumbnail, i) => {
++        thumbnail.classList.toggle('pending', i === index);
++      });
++    }
++
++    function setActive(index) {
++      if (!thumbnails[index]) return;
++      thumbnails.forEach((thumbnail, i) => {
++        thumbnail.classList.remove('pending');
++        thumbnail.classList.toggle('active', i === index);
++        if (i === index) thumbnail.setAttribute('aria-current', 'true');
++        else thumbnail.removeAttribute('aria-current');
++      });
++    }
++
++    function closestItemIndex() {
++      const center = gallery.scrollLeft + gallery.clientWidth / 2;
++      return items.reduce((closest, item, index) => {
++        const distance = Math.abs(item.offsetLeft + item.offsetWidth / 2 - center);
++        const closestDistance = Math.abs(items[closest].offsetLeft + items[closest].offsetWidth / 2 - center);
++        return distance < closestDistance ? index : closest;
++      }, 0);
++    }
++
++    function settle() {
++      clearTimeout(scrollTimeout);
++      cancelAnimationFrame(frame);
++      frame = null;
++      setActive(closestItemIndex());
++    }
++
++    // Native events expose the browser's predicted and selected inline snap targets.
++    gallery.addEventListener('scrollsnapchanging', (event) => {
++      setPending(items.indexOf(event.snapTargetInline));
++    });
++    gallery.addEventListener('scrollsnapchange', (event) => {
++      setActive(items.indexOf(event.snapTargetInline));
++    });
++
++    const nativePending = 'onscrollsnapchanging' in gallery;
++    const nativeScrollEnd = 'onscrollend' in gallery;
++    gallery.addEventListener('scroll', () => {
++      // Approximate the pending target once per frame when snap events are unavailable.
++      if (!nativePending && frame === null) {
++        frame = requestAnimationFrame(() => {
++          frame = null;
++          setPending(closestItemIndex());
++        });
++      }
++      if (!nativeScrollEnd) {
++        clearTimeout(scrollTimeout);
++        scrollTimeout = setTimeout(settle, 180);
++      }
++    }, { passive: true });
++    // Also clears pending when a gesture returns to the already active slide.
++    gallery.addEventListener('scrollend', settle);
++
++    thumbnails.forEach((thumbnail, index) => {
++      thumbnail.addEventListener('click', () => {
++        const left = items[index].offsetLeft + items[index].offsetWidth / 2 - gallery.clientWidth / 2;
++        if (Math.abs(gallery.scrollLeft - left) < 1) {
++          settle();
++          return;
++        }
++        gallery.scrollTo({
++          left,
++          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
++        });
++      });
++    });
++
++    // Account for restored scroll positions, including back/forward navigation.
++    window.addEventListener('pageshow', settle);
++    window.addEventListener('load', settle, { once: true });
++    setActive(closestItemIndex());
++  </script>
++
+ </body>
+ 
+ </html>

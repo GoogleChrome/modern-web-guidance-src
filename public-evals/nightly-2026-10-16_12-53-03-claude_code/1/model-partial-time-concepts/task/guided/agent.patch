@@ -1,0 +1,50 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -203,10 +203,46 @@
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
++    <p id="card-expiry" aria-live="polite"></p>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Cards are valid through the last day of the expiry month, so the card
++    // stops working at the start of the following month. Using PlainYearMonth
++    // and calendar-aware date arithmetic avoids hand-rolled day math (and
++    // therefore leap year bugs).
++    if (typeof Temporal === 'undefined') {
++      const { Temporal: polyfill } = await import('https://esm.sh/@js-temporal/polyfill');
++      globalThis.Temporal = polyfill;
++    }
++
++    const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
++
++    function formatDuration(duration) {
++      if (typeof Intl.DurationFormat !== 'undefined') {
++        return new Intl.DurationFormat('en', { style: 'long' }).format(duration);
++      }
++      return [['years', 'year'], ['months', 'month'], ['days', 'day']]
++        .filter(([prop]) => duration[prop] > 0)
++        .map(([prop, unit]) => plural(duration[prop], unit))
++        .join(', ');
++    }
++
++    const expiry = Temporal.PlainYearMonth.from({ year: 2027, month: 12, calendar: 'iso8601' });
++    const expiresOn = expiry.add({ months: 1 }).toPlainDate({ day: 1 });
++    const today = Temporal.Now.plainDateISO();
++    const output = document.getElementById('card-expiry');
++
++    if (Temporal.PlainDate.compare(today, expiresOn) >= 0) {
++      output.textContent = 'Your card on file has expired. Please update your payment method.';
++    } else {
++      const remaining = today.until(expiresOn, { largestUnit: 'years' });
++      output.textContent = `Your card on file expires in ${formatDuration(remaining)} (12/2027).`;
++    }
++  </script>
++
+ </body>
+ 
+ </html>

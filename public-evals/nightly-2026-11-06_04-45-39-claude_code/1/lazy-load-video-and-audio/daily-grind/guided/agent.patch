@@ -1,0 +1,259 @@
+diff --git a/index.html b/index.html
+index 66c9173..e8aa4ab 100644
+--- a/index.html
++++ b/index.html
+@@ -74,11 +74,10 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      overflow: hidden;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,6 +85,24 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      background: var(--primary);
++    }
++
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: rgba(0, 0, 0, 0.5);
+     }
+ 
+     .hero h1 {
+@@ -93,6 +110,83 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-toggle {
++      position: absolute;
++      right: 16px;
++      bottom: 16px;
++      background: rgba(0, 0, 0, 0.6);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.6);
++      border-radius: 4px;
++      padding: 6px 12px;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++    }
++
++    .hero-toggle:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Media Section */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-section > h2,
++    .media-section > p {
++      text-align: center;
++    }
++
++    .media-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
++      gap: 24px;
++      margin-top: 24px;
++      align-items: start;
++    }
++
++    .media-card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .media-card video,
++    .media-card audio {
++      display: block;
++      width: 100%;
++      border-radius: 6px;
++    }
++
++    .media-card video {
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background: var(--secondary);
++    }
++
++    .media-card figcaption {
++      margin-bottom: 12px;
++    }
++
++    .media-card details {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .media-card summary {
++      cursor: pointer;
++      color: var(--primary);
++      font-weight: 600;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,6 +263,14 @@
+   </nav>
+ 
+   <header class="hero">
++    <!-- Above the fold: eager loading (no loading attribute) so the poster/LCP loads immediately. -->
++    <video class="hero-video" autoplay muted loop playsinline width="1280" height="720"
++      poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      preload="auto" aria-hidden="true" tabindex="-1">
++      <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" type="video/webm">
++      <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
++    </video>
++    <button type="button" class="hero-toggle" aria-pressed="false">Pause background video</button>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -195,6 +297,46 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="bean-to-cup">
++      <h2 id="bean-to-cup">From Bean to Cup</h2>
++      <p>Step inside our roastery and pull up a chair for our weekly coffee podcast.</p>
++      <div class="media-grid">
++        <figure class="media-card">
++          <figcaption>
++            <h3 id="roasting-title">Inside the Roastery</h3>
++            <p>Watch head roaster Mia take a single-origin Ethiopian from green bean to first crack.</p>
++          </figcaption>
++          <!-- Below the fold: poster and metadata requests are deferred until near the viewport. -->
++          <video controls loading="lazy" preload="metadata" width="800" height="450"
++            poster="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++            aria-labelledby="roasting-title">
++            <source src="https://download.samplelib.com/mp4/sample-10s.mp4" type="video/mp4">
++            <track src="/media/roasting-en.vtt" kind="captions" srclang="en" label="English">
++            <p>Your browser can't play this video. <a href="https://download.samplelib.com/mp4/sample-10s.mp4">Download it</a> instead.</p>
++          </video>
++        </figure>
++
++        <figure class="media-card">
++          <figcaption>
++            <h3 id="episode-title">The Grind Podcast — Ep. 12: Light vs. Dark Roast</h3>
++            <p>Our baristas settle the debate (sort of) and share brewing tips for each.</p>
++          </figcaption>
++          <!-- controls is required: lazy audio without controls has no box and never loads. -->
++          <audio controls loading="lazy" preload="metadata"
++            src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
++            aria-labelledby="episode-title" aria-details="episode-transcript">
++            <a href="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">Download the episode</a>
++          </audio>
++          <details id="episode-transcript">
++            <summary>View transcript</summary>
++            <p>Welcome back to The Grind. Today we're tackling the oldest argument behind the counter: light roast
++              or dark roast? Light roasts keep more of the bean's origin character — bright, fruity, floral — while
++              dark roasts bring out caramelized, chocolatey, smoky notes from the roasting itself…</p>
++          </details>
++        </figure>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +349,55 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without native loading="lazy" on <video>/<audio>:
++    // hold back poster and preload fetches until the player nears the viewport.
++    if (!Object.hasOwn(HTMLMediaElement.prototype, 'loading')) {
++      const mediaObserver = new IntersectionObserver((entries, observer) => {
++        for (const entry of entries) {
++          if (!entry.isIntersecting) continue;
++          const media = entry.target;
++          if (media.dataset.poster) {
++            media.poster = media.dataset.poster;
++            delete media.dataset.poster;
++          }
++          if (media.dataset.preload) {
++            media.preload = media.dataset.preload;
++            delete media.dataset.preload;
++          }
++          observer.unobserve(media);
++        }
++      }, { rootMargin: '200px 0px' });
++
++      for (const media of document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"][controls]')) {
++        if (media.hasAttribute('poster')) {
++          media.dataset.poster = media.getAttribute('poster');
++          media.removeAttribute('poster');
++        }
++        const preload = media.getAttribute('preload');
++        if (preload && preload !== 'none') media.dataset.preload = preload;
++        media.preload = 'none';
++        mediaObserver.observe(media);
++      }
++    }
++
++    // Hero background video: respect reduced motion and offer a pause control.
++    const heroVideo = document.querySelector('.hero-video');
++    const heroToggle = document.querySelector('.hero-toggle');
++    const setHeroPlaying = (playing) => {
++      if (playing) heroVideo.play().catch(() => {}); else heroVideo.pause();
++      heroToggle.setAttribute('aria-pressed', String(!playing));
++      heroToggle.textContent = playing ? 'Pause background video' : 'Play background video';
++    };
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++    if (reducedMotion.matches) {
++      heroVideo.removeAttribute('autoplay');
++      setHeroPlaying(false);
++    }
++    reducedMotion.addEventListener('change', (e) => setHeroPlaying(!e.matches));
++    heroToggle.addEventListener('click', () => setHeroPlaying(heroVideo.paused));
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/media/roasting-en.vtt b/media/roasting-en.vtt
+new file mode 100644
+index 0000000..e1a3020
+--- /dev/null
++++ b/media/roasting-en.vtt
+@@ -0,0 +1,7 @@
++WEBVTT
++
++00:00:00.000 --> 00:00:04.000
++[Roaster drum whirring] Green beans go into the drum at about 200 degrees Celsius.
++
++00:00:04.000 --> 00:00:10.000
++Listen for first crack — that's when the beans start to open up and develop flavor.

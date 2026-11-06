@@ -1,0 +1,381 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,107 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Real-Time Roasting Simulator Widget */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: 400px;
++      height: 400px;
++      min-height: 400px;
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 24px 28px;
++      background: linear-gradient(135deg, #2d1b14 0%, #3e2723 60%, #4e342e 100%);
++      color: var(--light);
++      border-radius: 12px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      overflow: hidden;
++    }
++
++    .roast-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-bottom: 12px;
++    }
++
++    .roast-title-group h2 {
++      font-size: 1.5rem;
++      color: var(--accent);
++      margin-bottom: 4px;
++    }
++
++    .roast-title-group p {
++      font-size: 0.9rem;
++      color: var(--secondary);
++    }
++
++    .roast-telemetry {
++      display: flex;
++      align-items: center;
++      gap: 20px;
++      background: rgba(0, 0, 0, 0.35);
++      padding: 10px 18px;
++      border-radius: 8px;
++      border: 1px solid rgba(255, 171, 64, 0.3);
++    }
++
++    .temp-readout {
++      display: flex;
++       flex-direction: column;
++      align-items: flex-end;
++    }
++
++    .temp-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--secondary);
++    }
++
++    .temp-value-wrapper {
++      font-size: 1.75rem;
++      font-weight: bold;
++      color: var(--accent);
++      font-variant-numeric: tabular-nums;
++      line-height: 1.1;
++    }
++
++    .roast-status-badge {
++      font-size: 0.8rem;
++      padding: 4px 10px;
++      border-radius: 999px;
++      background: rgba(255, 171, 64, 0.2);
++      color: var(--accent);
++      border: 1px solid var(--accent);
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .roast-canvas-wrapper {
++      flex: 1;
++      position: relative;
++      background: radial-gradient(circle at center, #1f120d 0%, #120a07 100%);
++      border-radius: 8px;
++      border: 1px solid rgba(215, 204, 200, 0.15);
++      overflow: hidden;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    #roast-canvas {
++      width: 100%;
++      height: 100%;
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +295,29 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-label="Real-Time Coffee Roasting Simulator">
++    <div class="roast-header">
++      <div class="roast-title-group">
++        <h2>Live Drum Roaster Simulator</h2>
++        <p>Real-time bean agitation &amp; thermal profile monitoring</p>
++      </div>
++      <div class="roast-telemetry">
++        <span id="roast-status" class="roast-status-badge">Roasting</span>
++        <div class="temp-readout">
++          <span class="temp-label">Drum Temp</span>
++          <div class="temp-value-wrapper">
++            <span id="roast-temp-value">385</span><span>°F</span>
++          </div>
++        </div>
++      </div>
++    </div>
++    <div class="roast-canvas-wrapper">
++      <canvas id="roast-canvas" width="800" height="260"></canvas>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +326,239 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const tempValueEl = document.getElementById('roast-temp-value');
++      const statusBadgeEl = document.getElementById('roast-status');
++
++      if (!widget || !canvas || !tempValueEl) return;
++
++      const ctx = canvas.getContext('2d');
++      let animationFrameId = null;
++      let tempIntervalId = null;
++      let isRunning = false;
++      let currentTemp = 385;
++      let tempDirection = 1;
++
++      // Initialize coffee beans for the roasting simulation
++      const BEAN_COUNT = 28;
++      const beans = Array.from({ length: BEAN_COUNT }, (_, i) => ({
++        x: 60 + ((i * 27) % (canvas.width - 120)),
++        y: 40 + ((i * 39) % (canvas.height - 80)),
++        vx: (Math.sin(i * 1.7) * 1.8) || 1.2,
++        vy: (Math.cos(i * 2.3) * 1.5) || -1.1,
++        radiusX: 11 + (i % 4),
++        radiusY: 7 + (i % 3),
++        angle: (i * 0.45) % (Math.PI * 2),
++        angularVelocity: ((i % 2 === 0 ? 1 : -1) * (0.025 + (i % 5) * 0.008)),
++        roastShade: i % 3
++      }));
++
++      const beanColors = ['#6d4c41', '#5d4037', '#4e342e', '#3e2723'];
++
++      function drawRoasterScene() {
++        if (!ctx) return;
++        const width = canvas.width;
++        const height = canvas.height;
++
++        ctx.clearRect(0, 0, width, height);
++
++        // Subtle thermal glow at the bottom of the drum
++        const glow = ctx.createLinearGradient(0, height * 0.4, 0, height);
++        glow.addColorStop(0, 'rgba(255, 171, 64, 0)');
++        glow.addColorStop(1, 'rgba(255, 109, 0, 0.16)');
++        ctx.fillStyle = glow;
++        ctx.fillRect(0, 0, width, height);
++
++        // Draw and update each coffee bean
++        for (let i = 0; i < beans.length; i++) {
++          const b = beans[i];
++
++          // Update physics when active
++          if (isRunning) {
++            b.x += b.vx;
++            b.y += b.vy;
++            b.angle += b.angularVelocity;
++
++            if (b.x - b.radiusX < 16) {
++              b.x = 16 + b.radiusX;
++              b.vx = Math.abs(b.vx);
++            } else if (b.x + b.radiusX > width - 16) {
++              b.x = width - 16 - b.radiusX;
++              b.vx = -Math.abs(b.vx);
++            }
++
++            if (b.y - b.radiusX < 16) {
++              b.y = 16 + b.radiusX;
++              b.vy = Math.abs(b.vy);
++            } else if (b.y + b.radiusX > height - 16) {
++              b.y = height - 16 - b.radiusX;
++              b.vy = -Math.abs(b.vy);
++            }
++          }
++
++          ctx.save();
++          ctx.translate(b.x, b.y);
++          ctx.rotate(b.angle);
++
++          // Bean body
++          ctx.beginPath();
++          ctx.ellipse(0, 0, b.radiusX, b.radiusY, 0, 0, Math.PI * 2);
++          ctx.fillStyle = beanColors[b.roastShade % beanColors.length];
++          ctx.fill();
++          ctx.lineWidth = 1.2;
++          ctx.strokeStyle = '#271712';
++          ctx.stroke();
++
++          // Bean center crease
++          ctx.beginPath();
++          ctx.moveTo(-b.radiusX * 0.72, 0);
++          ctx.quadraticCurveTo(0, b.radiusY * 0.35, b.radiusX * 0.72, 0);
++          ctx.strokeStyle = '#1b0f0b';
++          ctx.lineWidth = 1.4;
++          ctx.stroke();
++
++          ctx.restore();
++        }
++      }
++
++      function animateCanvas() {
++        if (!isRunning) return;
++        drawRoasterScene();
++        animationFrameId = window.requestAnimationFrame(animateCanvas);
++      }
++
++      function updateTemperature() {
++        if (!isRunning) return;
++        currentTemp += tempDirection;
++        if (currentTemp >= 435) {
++          currentTemp = 435;
++          tempDirection = -1;
++        } else if (currentTemp <= 380) {
++          currentTemp = 380;
++          tempDirection = 1;
++        }
++        tempValueEl.textContent = String(currentTemp);
++      }
++
++      function startSimulation() {
++        if (isRunning) return;
++        isRunning = true;
++        widget.dataset.roastState = 'running';
++        if (statusBadgeEl) {
++          statusBadgeEl.textContent = 'Roasting';
++        }
++        if (animationFrameId === null) {
++          animationFrameId = window.requestAnimationFrame(animateCanvas);
++        }
++        if (tempIntervalId === null) {
++          tempIntervalId = window.setInterval(updateTemperature, 200);
++        }
++      }
++
++      function pauseSimulation() {
++        if (!isRunning && animationFrameId === null && tempIntervalId === null) {
++          widget.dataset.roastState = 'paused';
++          if (statusBadgeEl) {
++            statusBadgeEl.textContent = 'Paused';
++          }
++          return;
++        }
++        isRunning = false;
++        widget.dataset.roastState = 'paused';
++        if (statusBadgeEl) {
++          statusBadgeEl.textContent = 'Paused';
++        }
++        if (animationFrameId !== null) {
++          window.cancelAnimationFrame(animationFrameId);
++          animationFrameId = null;
++        }
++        if (tempIntervalId !== null) {
++          window.clearInterval(tempIntervalId);
++          tempIntervalId = null;
++        }
++      }
++
++      function isWidgetInViewport() {
++        const rect = widget.getBoundingClientRect();
++        const viewHeight = window.innerHeight || document.documentElement.clientHeight;
++        const viewWidth = window.innerWidth || document.documentElement.clientWidth;
++        return (
++          rect.bottom > 0 &&
++          rect.top < viewHeight &&
++          rect.right > 0 &&
++          rect.left < viewWidth
++        );
++      }
++
++      // Draw initial static frame so canvas is populated immediately
++      drawRoasterScene();
++
++      // 1. Native rendering state change support (content-visibility: auto)
++      widget.addEventListener('contentvisibilityautostatechange', function (event) {
++        const skipped =
++          typeof event.skipped === 'boolean'
++            ? event.skipped
++            : Boolean(event.detail && event.detail.skipped);
++
++        if (skipped) {
++          pauseSimulation();
++        } else if (!event.isTrusted || isWidgetInViewport()) {
++          startSimulation();
++        } else {
++          pauseSimulation();
++        }
++      });
++
++      // 2. Robust fallback for browsers lacking native rendering state change support
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver(
++          function (entries) {
++            for (let i = 0; i < entries.length; i++) {
++              const entry = entries[i];
++              if (!entry.target || entry.target === widget) {
++                if (entry.isIntersecting) {
++                  startSimulation();
++                } else {
++                  pauseSimulation();
++                }
++              }
++            }
++          },
++          { threshold: 0 }
++        );
++        observer.observe(widget);
++      }
++
++      function handleViewportScrollOrResize() {
++        if (isWidgetInViewport()) {
++          startSimulation();
++        } else {
++          pauseSimulation();
++        }
++      }
++
++      window.addEventListener('scroll', handleViewportScrollOrResize, { passive: true });
++      window.addEventListener('resize', handleViewportScrollOrResize, { passive: true });
++      document.addEventListener('visibilitychange', function () {
++        if (document.hidden) {
++          pauseSimulation();
++        } else if (isWidgetInViewport()) {
++          startSimulation();
++        }
++      });
++
++      // Initial state check based on current viewport position
++      if (isWidgetInViewport()) {
++        startSimulation();
++      } else {
++        pauseSimulation();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

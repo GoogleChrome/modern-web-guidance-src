@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,57 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!-- Background-load detection. Inline and synchronous on purpose: it must run before
++       deferred/async scripts so the fallback path reads visibility as early as possible. -->
++  <script>
++    (function () {
++      var result = {
++        loadedInBackground: false,
++        // ms since performance.timeOrigin when the page became hidden; null if never hidden at load
++        backgroundTime: null,
++        method: 'visibility-state-entries'
++      };
++
++      // Preferred (Chrome 115+): the browser records every visibility change with a precise
++      // timestamp, including the initial state at navigation start. Accurate even if this
++      // script runs late, because the entries are recorded by the browser, not by us.
++      var entries = [];
++      try {
++        entries = performance.getEntriesByType('visibility-state');
++      } catch (e) { /* unsupported entry type */ }
++
++      if (entries.length) {
++        var first = entries[0];
++        if (first.name === 'hidden') {
++          result.loadedInBackground = true;
++          result.backgroundTime = first.startTime;
++        }
++      } else {
++        // !!! FALLBACK ACTIVE: potentially UNRELIABLE !!!
++        // Without the visibility-state timeline we can only sample document.visibilityState
++        // at the moment this script executes. That is a point-in-time check: a tab that was
++        // backgrounded and re-foregrounded before now reads "visible", and a tab backgrounded
++        // after navigation start but before now cannot be told apart from one loaded hidden.
++        // backgroundTime is therefore only the sample time (an upper bound), not the real
++        // moment the tab was backgrounded.
++        result.method = 'fallback-document-visibilityState (UNRELIABLE)';
++        if (document.visibilityState === 'hidden') {
++          result.loadedInBackground = true;
++          result.backgroundTime = performance.now();
++        }
++        console.warn('[bg-detect] Fallback detection active: visibility-state timeline unsupported; results may be inaccurate.');
++      }
++
++      console.log({
++        backgroundStatus: result.loadedInBackground,
++        backgroundTime: result.backgroundTime,
++        detectionMethod: result.method
++      });
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

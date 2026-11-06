@@ -1,0 +1,34 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,30 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Visually Stable Mixed Fonts &amp; Themes</title>
++  <link rel="stylesheet" href="styles.css">
++</head>
++<body>
++  <main>
++    <h1>Typography Metric Normalization</h1>
++
++    <section aria-labelledby="mixed-fonts-heading">
++      <h2 id="mixed-fonts-heading">Automatic Mixed Font Normalization</h2>
++      <p id="mixed-fonts-container">
++        When rendering body copy alongside inline code snippets such as <code>font-size-adjust: from-font</code> or <code>const scale = 1.0;</code>, differences in lowercase letter x-height between proportional and monospace typefaces can disrupt reading flow. Normalizing the visual height automatically keeps inline <code>&lt;code&gt;</code> tokens harmonized with the surrounding prose.
++      </p>
++    </section>
++
++    <section aria-labelledby="independent-theme-heading">
++      <h2 id="independent-theme-heading">Independent Theme Proportion Lock</h2>
++      <div id="independent-theme-container">
++        <p>
++          This container uses an alternate serif theme (Times / Georgia) that is not nested inside the primary sans-serif font stack. Applying an explicit numeric aspect-ratio override (<code>font-size-adjust: 0.51</code>) locks down its lowercase visual proportions to match the primary theme independently.
++        </p>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

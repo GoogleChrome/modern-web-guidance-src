@@ -1,0 +1,754 @@
+diff --git a/index.html b/index.html
+index 66c9173..f84e7a4 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,20 @@
+       color: var(--primary);
+     }
+ 
++    drink-card {
++      display: block;
++    }
++
++    drink-card:not(:defined) {
++      opacity: 1;
++    }
++
++    drink-card:state(favorited) {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++      border-radius: 8px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +192,449 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <drink-card href="/menu/seasonal">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                --_card-bg: var(--card-bg, white);
++                --_card-fg: var(--card-fg, var(--text, #3e2723));
++                --_primary: var(--primary, #4e342e);
++                --_accent: var(--accent, #ffab40);
++                container-type: inline-size;
++              }
++              .card {
++                box-sizing: border-box;
++                background: var(--_card-bg);
++                color: var(--_card-fg);
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                display: flex;
++                flex-direction: column;
++                gap: 10px;
++                height: 100%;
++                transition: box-shadow 0.2s ease, transform 0.2s ease;
++              }
++              :host(:state(favorited)) .card,
++              :host([favorited]) .card {
++                box-shadow: 0 4px 12px rgba(255, 171, 64, 0.35);
++              }
++              .header {
++                display: flex;
++                justify-content: space-between;
++                align-items: center;
++                gap: 8px;
++              }
++              ::slotted([slot="title"]) {
++                margin: 0 !important;
++                color: var(--_primary);
++                font-size: 1.17rem;
++                text-align: left;
++              }
++              .body {
++                text-align: left;
++                flex: 1;
++              }
++              ::slotted(p) {
++                margin: 0;
++              }
++              .details {
++                display: none;
++                text-align: left;
++                font-size: 0.9rem;
++                padding: 10px;
++                background: #f5f0ee;
++                border-radius: 6px;
++                border-left: 3px solid var(--_accent);
++              }
++              :host([open]) .details,
++              :host(:state(expanded)) .details {
++                display: block;
++              }
++              .actions {
++                display: flex;
++                gap: 10px;
++                justify-content: center;
++                align-items: center;
++                margin-top: 8px;
++                flex-wrap: wrap;
++              }
++              button, .btn {
++                font: inherit;
++                color: inherit;
++                cursor: pointer;
++              }
++              .fav-btn {
++                background: transparent;
++                border: 1px solid #d7ccc8;
++                border-radius: 999px;
++                padding: 4px 10px;
++                font-size: 0.85rem;
++                display: inline-flex;
++                align-items: center;
++                gap: 4px;
++                transition: background 0.2s, border-color 0.2s, color 0.2s;
++              }
++              .fav-btn:hover {
++                border-color: var(--_accent);
++              }
++              :host(:state(favorited)) .fav-btn,
++              :host([favorited]) .fav-btn {
++                background: #fff3e0;
++                border-color: var(--_accent);
++                color: #e65100;
++                font-weight: 600;
++              }
++              .toggle-btn {
++                background: transparent;
++                color: var(--_primary);
++                border: 1px solid var(--_primary);
++                padding: 8px 14px;
++                border-radius: 5px;
++                font-size: 0.9rem;
++                transition: background 0.2s, color 0.2s;
++              }
++              .toggle-btn:hover {
++                background: #efebe9;
++              }
++              .btn {
++                display: inline-block;
++                background: var(--_primary);
++                color: white;
++                padding: 8px 16px;
++                text-decoration: none;
++                border-radius: 5px;
++                font-size: 0.9rem;
++                transition: background 0.3s;
++              }
++              .btn:hover {
++                background: #3e2723;
++              }
++            </style>
++            <article class="card" part="card">
++              <div class="header">
++                <slot name="title"></slot>
++                <button type="button" id="favorite-toggle" class="fav-btn" part="favorite-button" aria-pressed="false" aria-label="Toggle favorite">
++                  <span aria-hidden="true">♡</span>
++                  <span class="fav-label">Favorite</span>
++                </button>
++              </div>
++              <div class="body">
++                <slot></slot>
++              </div>
++              <div id="details-panel" class="details" part="details">
++                <slot name="details"></slot>
++              </div>
++              <div class="actions">
++                <button type="button" id="details-toggle" class="toggle-btn" part="details-button" aria-expanded="false" aria-controls="details-panel">
++                  Show Details
++                </button>
++                <a id="menu-link" href="/menu/seasonal" class="btn" part="cta">Order</a>
++              </div>
++            </article>
++          </template>
++          <h3 slot="title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <p slot="details"><strong>Notes:</strong> Double-shot espresso, steamed barista oat milk, organic Grade A amber maple syrup, and a dash of cinnamon. (16 oz • 210 kcal)</p>
++        </drink-card>
++
++        <drink-card href="/menu/espresso">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                --_card-bg: var(--card-bg, white);
++                --_card-fg: var(--card-fg, var(--text, #3e2723));
++                --_primary: var(--primary, #4e342e);
++                --_accent: var(--accent, #ffab40);
++                container-type: inline-size;
++              }
++              .card {
++                box-sizing: border-box;
++                background: var(--_card-bg);
++                color: var(--_card-fg);
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                display: flex;
++                flex-direction: column;
++                gap: 10px;
++                height: 100%;
++                transition: box-shadow 0.2s ease, transform 0.2s ease;
++              }
++              :host(:state(favorited)) .card,
++              :host([favorited]) .card {
++                box-shadow: 0 4px 12px rgba(255, 171, 64, 0.35);
++              }
++              .header {
++                display: flex;
++                justify-content: space-between;
++                align-items: center;
++                gap: 8px;
++              }
++              ::slotted([slot="title"]) {
++                margin: 0 !important;
++                color: var(--_primary);
++                font-size: 1.17rem;
++                text-align: left;
++              }
++              .body {
++                text-align: left;
++                flex: 1;
++              }
++              ::slotted(p) {
++                margin: 0;
++              }
++              .details {
++                display: none;
++                text-align: left;
++                font-size: 0.9rem;
++                padding: 10px;
++                background: #f5f0ee;
++                border-radius: 6px;
++                border-left: 3px solid var(--_accent);
++              }
++              :host([open]) .details,
++              :host(:state(expanded)) .details {
++                display: block;
++              }
++              .actions {
++                display: flex;
++                gap: 10px;
++                justify-content: center;
++                align-items: center;
++                margin-top: 8px;
++                flex-wrap: wrap;
++              }
++              button, .btn {
++                font: inherit;
++                color: inherit;
++                cursor: pointer;
++              }
++              .fav-btn {
++                background: transparent;
++                border: 1px solid #d7ccc8;
++                border-radius: 999px;
++                padding: 4px 10px;
++                font-size: 0.85rem;
++                display: inline-flex;
++                align-items: center;
++                gap: 4px;
++                transition: background 0.2s, border-color 0.2s, color 0.2s;
++              }
++              .fav-btn:hover {
++                border-color: var(--_accent);
++              }
++              :host(:state(favorited)) .fav-btn,
++              :host([favorited]) .fav-btn {
++                background: #fff3e0;
++                border-color: var(--_accent);
++                color: #e65100;
++                font-weight: 600;
++              }
++              .toggle-btn {
++                background: transparent;
++                color: var(--_primary);
++                border: 1px solid var(--_primary);
++                padding: 8px 14px;
++                border-radius: 5px;
++                font-size: 0.9rem;
++                transition: background 0.2s, color 0.2s;
++              }
++              .toggle-btn:hover {
++                background: #efebe9;
++              }
++              .btn {
++                display: inline-block;
++                background: var(--_primary);
++                color: white;
++                padding: 8px 16px;
++                text-decoration: none;
++                border-radius: 5px;
++                font-size: 0.9rem;
++                transition: background 0.3s;
++              }
++              .btn:hover {
++                background: #3e2723;
++              }
++            </style>
++            <article class="card" part="card">
++              <div class="header">
++                <slot name="title"></slot>
++                <button type="button" id="favorite-toggle" class="fav-btn" part="favorite-button" aria-pressed="false" aria-label="Toggle favorite">
++                  <span aria-hidden="true">♡</span>
++                  <span class="fav-label">Favorite</span>
++                </button>
++              </div>
++              <div class="body">
++                <slot></slot>
++              </div>
++              <div id="details-panel" class="details" part="details">
++                <slot name="details"></slot>
++              </div>
++              <div class="actions">
++                <button type="button" id="details-toggle" class="toggle-btn" part="details-button" aria-expanded="false" aria-controls="details-panel">
++                  Show Details
++                </button>
++                <a id="menu-link" href="/menu/espresso" class="btn" part="cta">Order</a>
++              </div>
++            </article>
++          </template>
++          <h3 slot="title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <p slot="details"><strong>Notes:</strong> Single-origin Sumatran beans roasted to a rich dark profile with dark cocoa and cedar notes. (2 oz • 10 kcal)</p>
++        </drink-card>
++
++        <drink-card href="/menu/cold-brew">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                --_card-bg: var(--card-bg, white);
++                --_card-fg: var(--card-fg, var(--text, #3e2723));
++                --_primary: var(--primary, #4e342e);
++                --_accent: var(--accent, #ffab40);
++                container-type: inline-size;
++              }
++              .card {
++                box-sizing: border-box;
++                background: var(--_card-bg);
++                color: var(--_card-fg);
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                display: flex;
++                flex-direction: column;
++                gap: 10px;
++                height: 100%;
++                transition: box-shadow 0.2s ease, transform 0.2s ease;
++              }
++              :host(:state(favorited)) .card,
++              :host([favorited]) .card {
++                box-shadow: 0 4px 12px rgba(255, 171, 64, 0.35);
++              }
++              .header {
++                display: flex;
++                justify-content: space-between;
++                align-items: center;
++                gap: 8px;
++              }
++              ::slotted([slot="title"]) {
++                margin: 0 !important;
++                color: var(--_primary);
++                font-size: 1.17rem;
++                text-align: left;
++              }
++              .body {
++                text-align: left;
++                flex: 1;
++              }
++              ::slotted(p) {
++                margin: 0;
++              }
++              .details {
++                display: none;
++                text-align: left;
++                font-size: 0.9rem;
++                padding: 10px;
++                background: #f5f0ee;
++                border-radius: 6px;
++                border-left: 3px solid var(--_accent);
++              }
++              :host([open]) .details,
++              :host(:state(expanded)) .details {
++                display: block;
++              }
++              .actions {
++                display: flex;
++                gap: 10px;
++                justify-content: center;
++                align-items: center;
++                margin-top: 8px;
++                flex-wrap: wrap;
++              }
++              button, .btn {
++                font: inherit;
++                color: inherit;
++                cursor: pointer;
++              }
++              .fav-btn {
++                background: transparent;
++                border: 1px solid #d7ccc8;
++                border-radius: 999px;
++                padding: 4px 10px;
++                font-size: 0.85rem;
++                display: inline-flex;
++                align-items: center;
++                gap: 4px;
++                transition: background 0.2s, border-color 0.2s, color 0.2s;
++              }
++              .fav-btn:hover {
++                border-color: var(--_accent);
++              }
++              :host(:state(favorited)) .fav-btn,
++              :host([favorited]) .fav-btn {
++                background: #fff3e0;
++                border-color: var(--_accent);
++                color: #e65100;
++                font-weight: 600;
++              }
++              .toggle-btn {
++                background: transparent;
++                color: var(--_primary);
++                border: 1px solid var(--_primary);
++                padding: 8px 14px;
++                border-radius: 5px;
++                font-size: 0.9rem;
++                transition: background 0.2s, color 0.2s;
++              }
++              .toggle-btn:hover {
++                background: #efebe9;
++              }
++              .btn {
++                display: inline-block;
++                background: var(--_primary);
++                color: white;
++                padding: 8px 16px;
++                text-decoration: none;
++                border-radius: 5px;
++                font-size: 0.9rem;
++                transition: background 0.3s;
++              }
++              .btn:hover {
++                background: #3e2723;
++              }
++            </style>
++            <article class="card" part="card">
++              <div class="header">
++                <slot name="title"></slot>
++                <button type="button" id="favorite-toggle" class="fav-btn" part="favorite-button" aria-pressed="false" aria-label="Toggle favorite">
++                  <span aria-hidden="true">♡</span>
++                  <span class="fav-label">Favorite</span>
++                </button>
++              </div>
++              <div class="body">
++                <slot></slot>
++              </div>
++              <div id="details-panel" class="details" part="details">
++                <slot name="details"></slot>
++              </div>
++              <div class="actions">
++                <button type="button" id="details-toggle" class="toggle-btn" part="details-button" aria-expanded="false" aria-controls="details-panel">
++                  Show Details
++                </button>
++                <a id="menu-link" href="/menu/cold-brew" class="btn" part="cta">Order</a>
++              </div>
++            </article>
++          </template>
++          <h3 slot="title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <p slot="details"><strong>Notes:</strong> Coarse-ground Colombian blend cold-steeped in filtered water for 18 hours, served over artisanal ice. (16 oz • 15 kcal)</p>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +649,266 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const fallbackTemplate = document.createElement('template');
++    fallbackTemplate.innerHTML = `
++      <style>
++        :host {
++          display: block;
++          --_card-bg: var(--card-bg, white);
++          --_card-fg: var(--card-fg, var(--text, #3e2723));
++          --_primary: var(--primary, #4e342e);
++          --_accent: var(--accent, #ffab40);
++          container-type: inline-size;
++        }
++        .card {
++          box-sizing: border-box;
++          background: var(--_card-bg);
++          color: var(--_card-fg);
++          padding: 20px;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++          text-align: center;
++          display: flex;
++          flex-direction: column;
++          gap: 10px;
++          height: 100%;
++          transition: box-shadow 0.2s ease, transform 0.2s ease;
++        }
++        :host(:state(favorited)) .card,
++        :host([favorited]) .card {
++          box-shadow: 0 4px 12px rgba(255, 171, 64, 0.35);
++        }
++        .header {
++          display: flex;
++          justify-content: space-between;
++          align-items: center;
++          gap: 8px;
++        }
++        ::slotted([slot="title"]) {
++          margin: 0 !important;
++          color: var(--_primary);
++          font-size: 1.17rem;
++          text-align: left;
++        }
++        .body {
++          text-align: left;
++          flex: 1;
++        }
++        ::slotted(p) {
++          margin: 0;
++        }
++        .details {
++          display: none;
++          text-align: left;
++          font-size: 0.9rem;
++          padding: 10px;
++          background: #f5f0ee;
++          border-radius: 6px;
++          border-left: 3px solid var(--_accent);
++        }
++        :host([open]) .details,
++        :host(:state(expanded)) .details {
++          display: block;
++        }
++        .actions {
++          display: flex;
++          gap: 10px;
++          justify-content: center;
++          align-items: center;
++          margin-top: 8px;
++          flex-wrap: wrap;
++        }
++        button, .btn {
++          font: inherit;
++          color: inherit;
++          cursor: pointer;
++        }
++        .fav-btn {
++          background: transparent;
++          border: 1px solid #d7ccc8;
++          border-radius: 999px;
++          padding: 4px 10px;
++          font-size: 0.85rem;
++          display: inline-flex;
++          align-items: center;
++          gap: 4px;
++          transition: background 0.2s, border-color 0.2s, color 0.2s;
++        }
++        .fav-btn:hover {
++          border-color: var(--_accent);
++        }
++        :host(:state(favorited)) .fav-btn,
++        :host([favorited]) .fav-btn {
++          background: #fff3e0;
++          border-color: var(--_accent);
++          color: #e65100;
++          font-weight: 600;
++        }
++        .toggle-btn {
++          background: transparent;
++          color: var(--_primary);
++          border: 1px solid var(--_primary);
++          padding: 8px 14px;
++          border-radius: 5px;
++          font-size: 0.9rem;
++          transition: background 0.2s, color 0.2s;
++        }
++        .toggle-btn:hover {
++          background: #efebe9;
++        }
++        .btn {
++          display: inline-block;
++          background: var(--_primary);
++          color: white;
++          padding: 8px 16px;
++          text-decoration: none;
++          border-radius: 5px;
++          font-size: 0.9rem;
++          transition: background 0.3s;
++        }
++        .btn:hover {
++          background: #3e2723;
++        }
++      </style>
++      <article class="card" part="card">
++        <div class="header">
++          <slot name="title"></slot>
++          <button type="button" id="favorite-toggle" class="fav-btn" part="favorite-button" aria-pressed="false" aria-label="Toggle favorite">
++            <span aria-hidden="true">♡</span>
++            <span class="fav-label">Favorite</span>
++          </button>
++        </div>
++        <div class="body">
++          <slot></slot>
++        </div>
++        <div id="details-panel" class="details" part="details">
++          <slot name="details"></slot>
++        </div>
++        <div class="actions">
++          <button type="button" id="details-toggle" class="toggle-btn" part="details-button" aria-expanded="false" aria-controls="details-panel">
++            Show Details
++          </button>
++          <a id="menu-link" href="/menu" class="btn" part="cta">Order</a>
++        </div>
++      </article>
++    `;
++
++    class DrinkCard extends HTMLElement {
++      static observedAttributes = ['open', 'favorited', 'href'];
++      #internals;
++
++      constructor() {
++        super();
++        this.#internals = this.attachInternals?.() ?? null;
++
++        // Reuse the server-rendered shadow root if present; only create one if absent.
++        if (!this.shadowRoot) {
++          const supportsDSD = Object.hasOwn(HTMLTemplateElement.prototype, 'shadowRootMode');
++          const dsdTemplate = !supportsDSD ? this.querySelector(':scope > template[shadowrootmode]') : null;
++          this.attachShadow({ mode: 'open' });
++          if (dsdTemplate) {
++            this.shadowRoot.append(dsdTemplate.content.cloneNode(true));
++            dsdTemplate.remove();
++          } else {
++            this.shadowRoot.append(fallbackTemplate.content.cloneNode(true));
++          }
++        }
++
++        // Hydrate in place: attach listeners once against existing markup without re-rendering.
++        this.shadowRoot.getElementById('details-toggle')
++          ?.addEventListener('click', () => {
++            this.open = !this.open;
++            this.dispatchEvent(new CustomEvent('toggle', {
++              bubbles: true,
++              detail: { open: this.open }
++            }));
++          });
++
++        this.shadowRoot.getElementById('favorite-toggle')
++          ?.addEventListener('click', () => {
++            this.favorited = !this.favorited;
++            this.dispatchEvent(new CustomEvent('change', {
++              bubbles: true,
++              detail: { favorited: this.favorited }
++            }));
++          });
++      }
++
++      get open() {
++        return this.hasAttribute('open');
++      }
++
++      set open(val) {
++        this.toggleAttribute('open', !!val);
++      }
++
++      get favorited() {
++        return this.hasAttribute('favorited');
++      }
++
++      set favorited(val) {
++        this.toggleAttribute('favorited', !!val);
++      }
++
++      get href() {
++        return this.getAttribute('href') ?? '';
++      }
++
++      set href(val) {
++        val ? this.setAttribute('href', val) : this.removeAttribute('href');
++      }
++
++      connectedCallback() {
++        this.#syncOpenState();
++        this.#syncFavoritedState();
++        this.#syncHref();
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (oldVal === newVal) return;
++        if (name === 'open') this.#syncOpenState();
++        if (name === 'favorited') this.#syncFavoritedState();
++        if (name === 'href') this.#syncHref();
++      }
++
++      #syncOpenState() {
++        const isOpen = this.open;
++        if (this.#internals?.states) {
++          isOpen ? this.#internals.states.add('expanded') : this.#internals.states.delete('expanded');
++        }
++        const btn = this.shadowRoot?.getElementById('details-toggle');
++        if (btn) {
++          btn.setAttribute('aria-expanded', String(isOpen));
++          btn.textContent = isOpen ? 'Hide Details' : 'Show Details';
++        }
++      }
++
++      #syncFavoritedState() {
++        const isFav = this.favorited;
++        if (this.#internals?.states) {
++          isFav ? this.#internals.states.add('favorited') : this.#internals.states.delete('favorited');
++        }
++        const btn = this.shadowRoot?.getElementById('favorite-toggle');
++        if (btn) {
++          btn.setAttribute('aria-pressed', String(isFav));
++          const icon = btn.querySelector('[aria-hidden="true"]');
++          const label = btn.querySelector('.fav-label');
++          if (icon) icon.textContent = isFav ? '♥' : '♡';
++          if (label) label.textContent = isFav ? 'Favorited' : 'Favorite';
++        }
++      }
++
++      #syncHref() {
++        const link = this.shadowRoot?.getElementById('menu-link');
++        if (link && this.href) {
++          link.setAttribute('href', this.href);
++        }
++      }
++    }
++
++    customElements.define('drink-card', DrinkCard);
++  </script>
+ </body>
+ 
+ </html>

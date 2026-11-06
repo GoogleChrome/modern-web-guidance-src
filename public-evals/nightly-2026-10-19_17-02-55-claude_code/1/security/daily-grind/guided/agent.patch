@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+index 66c9173..2d513a5 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <style nonce="__CSP_NONCE__">
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -94,6 +94,10 @@
+     }
+ 
+     /* Content Sections */
++    .section-title {
++      text-align: center;
++    }
++
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -164,7 +168,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" rel="nofollow">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +180,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/server.js b/server.js
+index 52c2fd5..c1f1141 100644
+--- a/server.js
++++ b/server.js
+@@ -1,32 +1,137 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
++// Roll out new CSP changes safely: run with CSP_REPORT_ONLY=1 to log violations
++// (via /csp-report) without blocking anything, then drop the flag to enforce.
++const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY === '1';
++const CSP_HEADER = CSP_REPORT_ONLY
++  ? 'Content-Security-Policy-Report-Only'
++  : 'Content-Security-Policy';
++
++const TEMPLATE_PATH = path.join(WORK_DIR, 'index.html');
++
++function buildCsp(nonce) {
++  return [
++    "default-src 'none'",
++    `style-src 'nonce-${nonce}'`,
++    "img-src 'self' https://images.unsplash.com data:",
++    "script-src 'none'",
++    "connect-src 'none'",
++    "font-src 'none'",
++    "object-src 'none'",
++    "media-src 'none'",
++    "worker-src 'none'",
++    "manifest-src 'none'",
++    "base-uri 'none'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    'upgrade-insecure-requests',
++    'report-uri /csp-report',
++  ].join('; ');
++}
++
++const SECURITY_HEADERS = {
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY', // legacy fallback for frame-ancestors
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Permissions-Policy':
++    'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
++  'X-Permitted-Cross-Domain-Policies': 'none',
++};
++
++function send(res, status, headers, body) {
++  res.writeHead(status, { ...SECURITY_HEADERS, ...headers });
++  res.end(body);
++}
++
++function handleCspReport(req, res) {
++  if (req.method !== 'POST') {
++    return send(res, 405, { Allow: 'POST' }, 'Method Not Allowed');
++  }
++  const chunks = [];
++  let size = 0;
++  let aborted = false;
++  req.on('data', (chunk) => {
++    size += chunk.length;
++    if (size > 10 * 1024) {
++      aborted = true;
++      send(res, 413, { Connection: 'close' }, 'Payload Too Large');
++      req.destroy();
++      return;
++    }
++    chunks.push(chunk);
++  });
++  req.on('end', () => {
++    if (aborted) return;
++    // Log a bounded, JSON-escaped copy to avoid log injection.
++    const body = Buffer.concat(chunks).toString('utf8').slice(0, 4096);
++    console.warn('CSP violation report:', JSON.stringify(body));
++    send(res, 204, {}, undefined);
++  });
++  req.on('error', () => {});
++}
++
+ const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
++  let pathname;
++  try {
++    pathname = new URL(req.url, 'http://localhost').pathname;
++  } catch {
++    return send(res, 400, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Bad Request');
++  }
++
++  if (pathname === '/csp-report') {
++    return handleCspReport(req, res);
++  }
++
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    return send(res, 405, { Allow: 'GET, HEAD' }, 'Method Not Allowed');
++  }
+ 
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end('Logged out');
+-    return;
++    return send(
++      res,
++      200,
++      {
++        'Content-Type': 'text/html; charset=utf-8',
++        'Cache-Control': 'no-store',
++        'Clear-Site-Data': '"cache", "cookies", "storage"',
++      },
++      req.method === 'HEAD' ? undefined : 'Logged out'
++    );
+   }
+ 
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
++  fs.readFile(TEMPLATE_PATH, 'utf8', (err, data) => {
+     if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
+-      return;
++      return send(res, 500, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Server error');
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    const nonce = crypto.randomBytes(16).toString('base64');
++    const html = data.replaceAll('__CSP_NONCE__', nonce);
++    send(
++      res,
++      200,
++      {
++        'Content-Type': 'text/html; charset=utf-8',
++        'Cache-Control': 'no-cache',
++        [CSP_HEADER]: buildCsp(nonce),
++      },
++      req.method === 'HEAD' ? undefined : html
++    );
+   });
+ });
+ 
++// Mitigate slowloris-style resource exhaustion.
++server.headersTimeout = 10_000;
++server.requestTimeout = 15_000;
++server.maxHeadersCount = 50;
++
+ server.listen(PORT, () => {
+-  console.log(`Server running on port ${PORT}`);
++  console.log(`Server running on port ${PORT}${CSP_REPORT_ONLY ? ' (CSP report-only)' : ''}`);
+ });

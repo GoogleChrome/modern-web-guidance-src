@@ -1,0 +1,232 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,48 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .signin {
++      max-width: 420px;
++      margin: 0 auto 40px;
++      text-align: left;
++    }
++
++    .signin label {
++      display: block;
++      margin-top: 16px;
++      font-weight: 600;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .signin button {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .signin button:disabled {
++      cursor: wait;
++      opacity: 0.7;
++    }
++
++    .signin :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    #signin-status {
++      margin-top: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,9 +203,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#signin" class="logout-link">Sign in</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -174,8 +214,21 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section id="signin" class="card signin" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign in</h2>
++      <p>Welcome back to The Daily Grind.</p>
++      <form id="signin-form" action="/api/login" method="post">
++        <label for="username">Username</label>
++        <input id="username" name="username" type="text" autocomplete="username"
++          autocapitalize="none" autocorrect="off" spellcheck="false" required>
++        <label for="password">Password</label>
++        <input id="password" name="password" type="password" autocomplete="current-password" required>
++        <button class="btn" type="submit" data-testid="signin-button">Sign in</button>
++      </form>
++      <p id="signin-status" role="status" aria-live="polite"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +259,146 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const signinForm = document.querySelector('#signin-form');
++    const signinButton = document.querySelector('[data-testid="signin-button"]');
++    const signinStatus = document.querySelector('#signin-status');
++
++    function decodeBase64url(value) {
++      const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
++      return Uint8Array.from(atob(padded), character => character.charCodeAt(0));
++    }
++
++    function encodeBase64url(value) {
++      let binary = '';
++      for (const byte of new Uint8Array(value)) binary += String.fromCharCode(byte);
++      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    function parseCreationOptions(options) {
++      if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++        return PublicKeyCredential.parseCreationOptionsFromJSON(options);
++      }
++      // Older conditional-create clients still need binary WebAuthn fields.
++      return {
++        ...options,
++        challenge: decodeBase64url(options.challenge),
++        user: { ...options.user, id: decodeBase64url(options.user.id) },
++        excludeCredentials: (options.excludeCredentials || []).map(credential => ({
++          ...credential, id: decodeBase64url(credential.id)
++        }))
++      };
++    }
++
++    function serializeCredential(credential) {
++      if (typeof credential.toJSON === 'function') return credential.toJSON();
++      return {
++        id: credential.id,
++        rawId: encodeBase64url(credential.rawId),
++        type: credential.type,
++        authenticatorAttachment: credential.authenticatorAttachment,
++        response: {
++          clientDataJSON: encodeBase64url(credential.response.clientDataJSON),
++          attestationObject: encodeBase64url(credential.response.attestationObject),
++          transports: credential.response.getTransports?.() || []
++        },
++        clientExtensionResults: credential.getClientExtensionResults()
++      };
++    }
++
++    async function promotePasskey() {
++      // This enhancement must never interrupt password sign-in or show error UI.
++      try {
++        if (!window.isSecureContext || !window.PublicKeyCredential ||
++            typeof PublicKeyCredential.getClientCapabilities !== 'function' ||
++            typeof navigator.credentials?.create !== 'function') return;
++
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.conditionalCreate !== true) return;
++
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          // The server must bind the conditional ceremony to the signed-in session
++          // and include existing credentials in excludeCredentials.
++          body: JSON.stringify({ conditional: true })
++        });
++        if (!optionsResponse.ok) return;
++
++        const options = await optionsResponse.json();
++        const publicKey = parseCreationOptions(options.publicKey || options);
++        const credential = await navigator.credentials.create({
++          publicKey,
++          mediation: 'conditional'
++        });
++        if (!credential) return;
++
++        const encodedCredential = serializeCredential(credential);
++        let verified = false;
++        try {
++          const verification = await fetch('/api/register/verify', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({ ...encodedCredential, conditional: true })
++          });
++          const result = await verification.json().catch(() => null);
++          verified = verification.ok && result?.verified !== false && result?.success !== false;
++        } catch {
++          // Registration is optional; a network failure must not affect sign-in.
++        }
++
++        if (!verified && typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: publicKey.rp.id || location.hostname,
++            credentialId: encodedCredential.id
++          });
++        }
++      } catch {
++        // Includes unsupported providers, cancellation, duplicate keys and API errors.
++        // Never fall back to a modal creation request.
++      }
++    }
++
++    signinForm.addEventListener('submit', async event => {
++      event.preventDefault();
++      if (signinButton.disabled) return;
++      signinButton.disabled = true;
++      signinButton.textContent = 'Signing in…';
++      signinStatus.textContent = '';
++
++      try {
++        const response = await fetch(signinForm.action, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            username: signinForm.elements.username.value,
++            password: signinForm.elements.password.value
++          })
++        });
++        const result = await response.json().catch(() => null);
++        // /api/login must establish a full session before returning success.
++        if (!response.ok || result?.success === false || result?.authenticated === false ||
++            result?.requiresMFA === true) {
++          throw new Error('Password sign-in did not complete.');
++        }
++
++        void promotePasskey();
++        signinStatus.textContent = 'You’re signed in. Welcome back!';
++        signinForm.elements.password.value = '';
++        signinForm.hidden = true;
++      } catch {
++        signinStatus.textContent = 'Unable to sign in. Check your credentials and try again.';
++      } finally {
++        signinButton.disabled = false;
++        signinButton.textContent = 'Sign in';
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,36 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .sequencer {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .order-btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .order-log {
++      list-style: none;
++      margin-top: 20px;
++      text-align: left;
++      font-family: ui-monospace, Menlo, Consolas, monospace;
++      font-size: 0.85rem;
++    }
++
++    .order-log li {
++      background: white;
++      padding: 8px 12px;
++      margin-bottom: 6px;
++      border-radius: 4px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
++      overflow-wrap: anywhere;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +222,14 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="sequencer">
++      <h2>Order Sequencer</h2>
++      <p>Each click is stamped with a nanosecond-resolution timestamp, sorted, and diffed against the previous click.</p>
++      <button type="button" id="order-btn" class="btn order-btn">Place Coffee Order</button>
++      <ol id="order-log" class="order-log" aria-live="polite"></ol>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +240,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Temporal is not available in Safari; load a polyfill only when needed.
++    if (typeof Temporal === 'undefined') {
++      const module = await import('https://esm.sh/@js-temporal/polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    const events = [];
++    const logEl = document.getElementById('order-log');
++
++    function recordEvent(eventType, nodeId) {
++      return { nodeId, eventType, timestamp: Temporal.Now.instant() };
++    }
++
++    function sequenceEvents(list) {
++      return [...list].sort((a, b) => Temporal.Instant.compare(a.timestamp, b.timestamp));
++    }
++
++    function renderTelemetry() {
++      const sorted = sequenceEvents(events);
++      logEl.replaceChildren(...sorted.map((evt, i) => {
++        const li = document.createElement('li');
++        let text = `#${i + 1} ${evt.eventType}@${evt.nodeId} ${evt.timestamp.toString({ fractionalSecondDigits: 9 })}`;
++        if (i > 0) {
++          const ns = evt.timestamp.since(sorted[i - 1].timestamp).total('nanoseconds');
++          text += ` (+${ns}ns)`;
++        }
++        li.textContent = text;
++        return li;
++      }));
++      const last = sorted.length - 1;
++      if (last > 0) {
++        const ns = sorted[last].timestamp.since(sorted[last - 1].timestamp).total('nanoseconds');
++        console.log(`Delay between order #${last} and #${last + 1}: ${ns}ns`);
++      }
++    }
++
++    document.getElementById('order-btn').addEventListener('click', () => {
++      events.push(recordEvent('coffee-order', `barista-${(events.length % 3) + 1}`));
++      renderTelemetry();
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,271 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,65 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roasting Simulator Widget */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 400px;
++      max-width: 1100px;
++      min-height: 400px;
++      margin: 40px auto;
++      padding: 25px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .roasting-header {
++      width: 100%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 15px;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .roasting-header h2 {
++      color: var(--primary);
++    }
++
++    .temp-readout {
++      background: var(--primary);
++      color: var(--light);
++      padding: 8px 16px;
++      border-radius: 6px;
++      font-family: monospace;
++      font-size: 1.1rem;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    #roast-temp-value {
++      color: var(--accent);
++      font-weight: bold;
++      font-size: 1.25rem;
++    }
++
++    #roast-canvas {
++      width: 100%;
++      height: 280px;
++      background: #2b1b17;
++      border-radius: 6px;
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +253,22 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-label="Real-Time Roasting Simulator">
++    <div class="roasting-header">
++      <div>
++        <h2>Live Roasting Simulator</h2>
++        <p>Watch our signature artisanal batch roast in real time.</p>
++      </div>
++      <div class="temp-readout">
++        <span>Drum Temp:</span>
++        <span id="roast-temp-value">195.0°C</span>
++      </div>
++    </div>
++    <canvas id="roast-canvas" width="800" height="280"></canvas>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +277,178 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const tempValueEl = document.getElementById('roast-temp-value');
++      if (!widget || !canvas || !tempValueEl) return;
++
++      const ctx = canvas.getContext('2d');
++      let animationFrameId = null;
++      let tempIntervalId = null;
++      let isRunning = false;
++      let currentTemp = 195.0;
++      let tempDirection = 1;
++
++      // Create coffee beans for the simulation
++      const beans = Array.from({ length: 35 }, (_, i) => ({
++        x: Math.random() * canvas.width,
++        y: Math.random() * canvas.height,
++        vx: (Math.random() - 0.5) * 3.5,
++        vy: (Math.random() - 0.5) * 3.5,
++        radiusX: 10 + Math.random() * 4,
++        radiusY: 6 + Math.random() * 3,
++        angle: Math.random() * Math.PI * 2,
++        vAngle: (Math.random() - 0.5) * 0.08,
++        roastLevel: Math.random()
++      }));
++
++      function getBeanColor(temp, offset) {
++        const normalized = Math.min(1, Math.max(0, (temp - 180) / 50 + (offset - 0.5) * 0.15));
++        const r = Math.round(165 - normalized * 100);
++        const g = Math.round(115 - normalized * 78);
++        const b = Math.round(70 - normalized * 48);
++        return `rgb(${r}, ${g}, ${b})`;
++      }
++
++      function renderFrame() {
++        if (!isRunning) return;
++
++        ctx.fillStyle = '#2b1b17';
++        ctx.fillRect(0, 0, canvas.width, canvas.height);
++
++        // Subtle drum agitator lines
++        ctx.strokeStyle = 'rgba(255, 171, 64, 0.12)';
++        ctx.lineWidth = 2;
++        for (let i = 1; i < 4; i++) {
++          ctx.beginPath();
++          ctx.moveTo((canvas.width / 4) * i, 0);
++          ctx.lineTo((canvas.width / 4) * i, canvas.height);
++          ctx.stroke();
++        }
++
++        for (const bean of beans) {
++          bean.x += bean.vx;
++          bean.y += bean.vy;
++          bean.angle += bean.vAngle;
++
++          if (bean.x < bean.radiusX) {
++            bean.x = bean.radiusX;
++            bean.vx *= -1;
++          } else if (bean.x > canvas.width - bean.radiusX) {
++            bean.x = canvas.width - bean.radiusX;
++            bean.vx *= -1;
++          }
++
++          if (bean.y < bean.radiusX) {
++            bean.y = bean.radiusX;
++            bean.vy *= -1;
++          } else if (bean.y > canvas.height - bean.radiusX) {
++            bean.y = canvas.height - bean.radiusX;
++            bean.vy *= -1;
++          }
++
++          ctx.save();
++          ctx.translate(bean.x, bean.y);
++          ctx.rotate(bean.angle);
++
++          // Bean body
++          ctx.beginPath();
++          ctx.ellipse(0, 0, bean.radiusX, bean.radiusY, 0, 0, Math.PI * 2);
++          ctx.fillStyle = getBeanColor(currentTemp, bean.roastLevel);
++          ctx.fill();
++          ctx.strokeStyle = '#1b0f0d';
++          ctx.lineWidth = 1.5;
++          ctx.stroke();
++
++          // Bean center crease
++          ctx.beginPath();
++          ctx.moveTo(-bean.radiusX * 0.7, 0);
++          ctx.quadraticCurveTo(0, bean.radiusY * 0.35, bean.radiusX * 0.7, 0);
++          ctx.strokeStyle = '#261410';
++          ctx.lineWidth = 1.5;
++          ctx.stroke();
++
++          ctx.restore();
++        }
++
++        animationFrameId = requestAnimationFrame(renderFrame);
++      }
++
++      function updateTemperature() {
++        currentTemp += (Math.random() * 0.8 + 0.2) * tempDirection;
++        if (currentTemp >= 225.0) {
++          currentTemp = 225.0;
++          tempDirection = -1;
++        } else if (currentTemp <= 190.0) {
++          currentTemp = 190.0;
++          tempDirection = 1;
++        }
++        tempValueEl.textContent = `${currentTemp.toFixed(1)}°C`;
++      }
++
++      function startSimulation() {
++        if (isRunning) return;
++        isRunning = true;
++        if (animationFrameId === null) {
++          animationFrameId = requestAnimationFrame(renderFrame);
++        }
++        if (tempIntervalId === null) {
++          tempIntervalId = setInterval(updateTemperature, 1000);
++        }
++      }
++
++      function pauseSimulation() {
++        isRunning = false;
++        if (animationFrameId !== null) {
++          cancelAnimationFrame(animationFrameId);
++          animationFrameId = null;
++        }
++        if (tempIntervalId !== null) {
++          clearInterval(tempIntervalId);
++          tempIntervalId = null;
++        }
++      }
++
++      // Pause/resume when widget rendering state changes or scrolls in/out of view,
++      // with fallback for older browsers lacking contentvisibilityautostatechange support
++      if ('oncontentvisibilityautostatechange' in widget || 'ContentVisibilityAutoStateChangeEvent' in window) {
++        widget.addEventListener('contentvisibilityautostatechange', (event) => {
++          if (event.skipped) {
++            pauseSimulation();
++          } else {
++            startSimulation();
++          }
++        });
++      } else if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          for (const entry of entries) {
++            if (entry.isIntersecting) {
++              startSimulation();
++            } else {
++              pauseSimulation();
++            }
++          }
++        });
++        observer.observe(widget);
++      } else {
++        function checkScrollVisibility() {
++          const rect = widget.getBoundingClientRect();
++          const inView = rect.bottom > 0 && rect.top < (window.innerHeight || document.documentElement.clientHeight);
++          if (inView) {
++            startSimulation();
++          } else {
++            pauseSimulation();
++          }
++        }
++        window.addEventListener('scroll', checkScrollVisibility, { passive: true });
++        window.addEventListener('resize', checkScrollVisibility, { passive: true });
++        checkScrollVisibility();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

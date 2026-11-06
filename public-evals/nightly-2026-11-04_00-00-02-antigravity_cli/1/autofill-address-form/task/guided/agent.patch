@@ -1,0 +1,247 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,148 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Address Form */
++    .shipping-section {
++      margin-block-start: 3rem;
++      background: white;
++      padding: 2rem;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 640px;
++      margin-inline: auto;
++    }
++
++    .shipping-section h2 {
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++      text-align: center;
++    }
++
++    .shipping-section .section-subtitle {
++      text-align: center;
++      margin-block-end: 1.5rem;
++      color: var(--text);
++    }
++
++    .shipping-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 1.5rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .shipping-form legend {
++      font-weight: 600;
++      color: var(--primary);
++      padding-inline: 0.5rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group:last-child {
++      margin-block-end: 0;
++    }
++
++    .shipping-form label {
++      display: inline-block;
++      font-weight: 600;
++      padding: 10px 0;
++      margin: -10px 0 0.35rem 0;
++      color: var(--text);
++    }
++
++    .required-indicator {
++      color: #b71c1c;
++    }
++
++    .optional-indicator {
++      font-weight: normal;
++      font-size: 0.875rem;
++      color: #5d4037;
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.875rem;
++      color: #5d4037;
++      margin-block-start: 0.25rem;
++    }
++
++    .shipping-form input,
++    .shipping-form textarea {
++       display: block;
++      width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      line-height: 1.5;
++      padding: 0.75rem;
++      min-height: 48px;
++      color: var(--text);
++      background-color: #fff;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      box-sizing: border-box;
++    }
++
++    .shipping-form textarea {
++      min-height: 96px;
++      resize: vertical;
++    }
++
++    @media (pointer: coarse) {
++      .shipping-form input {
++        min-height: 52px;
++      }
++    }
++
++    .shipping-form input:focus-visible,
++    .shipping-form textarea:focus-visible,
++    .shipping-form button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .shipping-form input:invalid:user-invalid,
++    .shipping-form textarea:invalid:user-invalid {
++      border-color: #b71c1c;
++      background-color: #fff8f8;
++    }
++
++    .submit-btn {
++      display: inline-block;
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 0.875rem 1.5rem;
++      min-height: 48px;
++      border: none;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .submit-btn:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .submit-btn:disabled {
++      opacity: 0.7;
++      cursor: not-allowed;
++    }
++
++    .form-status {
++      margin-block-start: 1rem;
++      font-weight: 600;
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +334,69 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping-section" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Coffee Bean Delivery</h2>
++      <p class="section-subtitle">Enter your shipping address to have freshly roasted beans delivered to your door.</p>
++
++      <form id="shipping-form" class="shipping-form" action="/checkout/shipping" method="POST">
++        <fieldset>
++          <legend>Recipient &amp; Shipping Address</legend>
++
++          <div class="form-group">
++            <label for="fullname">Full name <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input type="text" id="fullname" name="fullname" autocomplete="name" maxlength="100" enterkeyhint="next" required>
++          </div>
++
++          <div class="form-group">
++            <label for="address">Street address <span class="required-indicator" aria-hidden="true">*</span></label>
++            <textarea id="address" name="address" autocomplete="street-address" rows="3" maxlength="300" aria-describedby="address-hint" required></textarea>
++            <span id="address-hint" class="field-hint">Include apartment, suite, unit, or building number if applicable.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="city">City or town <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input type="text" id="city" name="city" autocomplete="address-level2" maxlength="100" enterkeyhint="next" required>
++          </div>
++
++          <div class="form-group">
++            <label for="region">State, province, or region <span class="optional-indicator">(optional)</span></label>
++            <input type="text" id="region" name="region" autocomplete="address-level1" maxlength="100" enterkeyhint="next">
++          </div>
++
++          <div class="form-group">
++            <label for="postal-code">ZIP or postal code <span class="optional-indicator">(optional)</span></label>
++            <input type="text" id="postal-code" name="postal-code" autocomplete="postal-code" maxlength="20" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" aria-describedby="postal-hint">
++            <span id="postal-hint" class="field-hint">Leave blank if your delivery location does not use postal codes.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="country">Country or region <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input type="text" id="country" name="country" autocomplete="country-name" maxlength="100" enterkeyhint="next" required>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Contact Details for Delivery Updates</legend>
++
++          <div class="form-group">
++            <label for="email">Email address <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input type="email" id="email" name="email" autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next" required>
++          </div>
++
++          <div class="form-group">
++            <label for="phone">Phone number <span class="optional-indicator">(optional)</span></label>
++            <input type="tel" id="phone" name="phone" autocomplete="tel" enterkeyhint="done" aria-describedby="phone-hint">
++            <span id="phone-hint" class="field-hint">Used only if the courier needs assistance locating your address.</span>
++          </div>
++        </fieldset>
++
++        <button type="submit" id="shipping-submit" class="submit-btn" enterkeyhint="next">Proceed to Payment</button>
++        <p id="shipping-status" class="form-status" role="status" aria-live="polite" hidden></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +407,24 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const shippingForm = document.getElementById('shipping-form');
++    const shippingSubmit = document.getElementById('shipping-submit');
++    const shippingStatus = document.getElementById('shipping-status');
++
++    shippingForm.addEventListener('submit', (e) => {
++      e.preventDefault();
++      if (!shippingForm.checkValidity()) {
++        shippingForm.reportValidity();
++        return;
++      }
++      shippingSubmit.disabled = true;
++      shippingStatus.textContent = 'Shipping details saved! Redirecting to payment...';
++      shippingStatus.hidden = false;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,226 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,123 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    /* Product Carousel */
++    .carousel {
++      margin-top: 40px;
++    }
++
++    .carousel h2 {
++      text-align: center;
++      padding: 0 20px;
++    }
++
++    .carousel-hint {
++      text-align: center;
++      font-size: 0.9rem;
++      padding: 0 20px;
++    }
++
++    .scroller {
++      --card-width: min(260px, 70vw);
++      display: flex;
++      gap: 24px;
++      list-style: none;
++      overflow-x: auto;
++      overscroll-behavior-x: contain;
++      scroll-snap-type: x mandatory;
++      /* Lets the first and last cards reach the center */
++      padding: 40px calc(50% - var(--card-width) / 2);
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .product-card {
++      flex: 0 0 var(--card-width);
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      overflow: hidden;
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .product-card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .product-card .card-body {
++      padding: 16px 20px 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .product-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .product-card p {
++      flex: 1;
++      font-size: 0.95rem;
++    }
++
++    .product-card .price {
++      flex: 0;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++    }
++
++    .product-card .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Scale cards with their position in the scroller; CSS only, no JS */
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .product-card {
++          animation: card-focus linear both;
++          animation-timeline: view(inline);
++          animation-range: cover;
++        }
++      }
++    }
++
++    @keyframes card-focus {
++      0%,
++      100% {
++        transform: scale(0.8);
++        opacity: 0.7;
++      }
++
++      50% {
++        transform: scale(1.05);
++        opacity: 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +311,98 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="carousel" aria-labelledby="menu-carousel-title">
++    <h2 id="menu-carousel-title">Explore Our Menu</h2>
++    <p class="carousel-hint" id="menu-carousel-hint">Scroll sideways or use the arrow keys to browse.</p>
++    <ul class="scroller" tabindex="0" aria-labelledby="menu-carousel-title"
++      aria-describedby="menu-carousel-hint">
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++          alt="Tall glass of cold brew over ice" width="600" height="450" loading="lazy">
++        <div class="card-body">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p class="price">$4.50</p>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden">: Cold Brew</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++          alt="Two lattes with heart latte art on a wooden table" width="600" height="450" loading="lazy">
++        <div class="card-body">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p class="price">$5.25</p>
++          <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden">: Maple Oat Latte</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++          alt="Portafilters holding coffee beans, fresh grounds, and a finished latte" width="600" height="450"
++          loading="lazy">
++        <div class="card-body">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p class="price">$3.25</p>
++          <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden">: Dark Roast Espresso</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80"
++          alt="Cappuccino with leaf latte art on a white saucer" width="600" height="450" loading="lazy">
++        <div class="card-body">
++          <h3>Cappuccino</h3>
++          <p>Equal parts espresso, steamed milk, and velvety foam.</p>
++          <p class="price">$4.25</p>
++          <a href="/menu/cappuccino" class="btn">View Details<span class="visually-hidden">: Cappuccino</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80"
++          alt="Iced latte in a glass with milk swirling through the coffee" width="600" height="450" loading="lazy">
++        <div class="card-body">
++          <h3>Iced Vanilla Latte</h3>
++          <p>Espresso and cold milk over ice with house-made vanilla.</p>
++          <p class="price">$5.00</p>
++          <a href="/menu/iced-latte" class="btn">View Details<span class="visually-hidden">: Iced Vanilla Latte</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++          alt="Barista pouring steamed milk into a cup to form latte art" width="600" height="450" loading="lazy">
++        <div class="card-body">
++          <h3>Flat White</h3>
++          <p>A double ristretto topped with silky microfoam.</p>
++          <p class="price">$4.50</p>
++          <a href="/menu/flat-white" class="btn">View Details<span class="visually-hidden">: Flat White</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++          alt="Top-down view of a mug of black coffee" width="600" height="450" loading="lazy">
++        <div class="card-body">
++          <h3>House Drip</h3>
++          <p>Our signature medium roast, brewed fresh every hour.</p>
++          <p class="price">$2.75</p>
++          <a href="/menu/drip" class="btn">View Details<span class="visually-hidden">: House Drip</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&q=80"
++          alt="Coffee beans, grounds, espresso, and a latte laid out on wooden boards" width="600" height="450"
++          loading="lazy">
++        <div class="card-body">
++          <h3>Tasting Flight</h3>
++          <p>Sample three single-origin roasts side by side.</p>
++          <p class="price">$8.00</p>
++          <a href="/menu/tasting-flight" class="btn">View Details<span class="visually-hidden">: Tasting Flight</span></a>
++        </div>
++      </li>
++    </ul>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

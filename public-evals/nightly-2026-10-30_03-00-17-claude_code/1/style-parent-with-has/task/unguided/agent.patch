@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,73 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact {
++      max-width: 600px;
++    }
++
++    .contact h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .contact-form {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-field {
++      margin-bottom: 20px;
++      padding: 10px 12px;
++      border: 2px solid transparent;
++      border-radius: 6px;
++      transition: border-color 0.2s;
++    }
++
++    .form-field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .form-field input,
++    .form-field textarea {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++      color: var(--text);
++    }
++
++    .form-field textarea {
++      min-height: 120px;
++      resize: vertical;
++    }
++
++    .form-field input:focus,
++    .form-field textarea:focus {
++      outline: none;
++      border-color: var(--accent);
++    }
++
++    /* Red border on the wrapper once the user has interacted with an invalid field (or tried to submit) */
++    .form-field:has(:user-invalid) {
++      border-color: #d32f2f;
++    }
++
++    .contact-form .btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +261,27 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="container contact" id="contact">
++    <h2>Get in Touch</h2>
++    <form class="contact-form" action="/contact" method="post">
++      <div class="form-field">
++        <label for="contact-name">Name</label>
++        <input type="text" id="contact-name" name="name" autocomplete="name" required>
++      </div>
++      <div class="form-field">
++        <label for="contact-email">Email</label>
++        <input type="email" id="contact-email" name="email" autocomplete="email" required>
++      </div>
++      <div class="form-field">
++        <label for="contact-message">Message</label>
++        <textarea id="contact-message" name="message" required></textarea>
++      </div>
++      <button type="submit" class="btn">Send Message</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

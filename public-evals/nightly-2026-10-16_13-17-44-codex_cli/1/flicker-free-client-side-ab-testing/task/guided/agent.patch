@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,70 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <meta name="theme-color" content="#f7f8f2" />
++  <meta name="description" content="Bring your projects, people, and possibilities together. Forma is a calmer place to do your best work." />
++  <title>Forma — Make room for good work.</title>
++  <style>html.ab-loading body{visibility:hidden}html{background:#f7f8f2}</style>
++  <script>
++    // Install before the remote script to avoid a cached-script race.
++    (() => {
++      const nativeBlocking = 'blocking' in HTMLScriptElement.prototype;
++      if (!nativeBlocking) document.documentElement.classList.add('ab-loading');
++      window.finishExperiment = () => {
++        document.documentElement.classList.remove('ab-loading');
++      };
++      document.addEventListener('experiment:ready', window.finishExperiment, { once: true });
++    })();
++  </script>
++  <!-- The SDK must apply initial mutations during execution for the render-blocking
++       guarantee. An SDK with asynchronous initialization needs its documented
++       readiness API integrated before production; load alone is not async readiness.
++       Stable experiment targets are marked with data-experiment below. -->
++  <script id="experiment-sdk" src="https://cdn.example.com/experiment-sdk.js" async blocking="render"
++    onload="window.finishExperiment()" onerror="window.finishExperiment()"></script>
++  <link rel="preconnect" href="https://fonts.googleapis.com" />
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet" />
++  <link rel="stylesheet" href="styles.css" />
++  <script src="app.js" defer></script>
++</head>
++<body>
++  <div class="announcement">Good work starts with a little space. <a href="#features">Meet your new workspace <span>↗</span></a></div>
++  <header class="site-header wrap">
++    <a class="wordmark" href="#" aria-label="Forma home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>forma<span class="brand-dot">®</span></a>
++    <nav aria-label="Main navigation"><a href="#features">Product <span>⌄</span></a><a href="#solutions">Solutions <span>⌄</span></a><a href="#resources">Resources <span>⌄</span></a><a href="#pricing">Pricing</a></nav>
++    <div class="header-actions"><button class="text-button" data-signup>Log in <span>↗</span></button><button class="button button-small" data-signup>Get started <span>↗</span></button></div>
++  </header>
++  <main>
++    <section class="hero wrap" aria-labelledby="hero-title">
++      <div class="hero-copy">
++        <a class="release" href="#features"><span>WHAT’S NEW</span> A fresh way to work together <b>↗</b></a>
++        <h1 id="hero-title" data-experiment="headline">Make room<br>for <span class="serif">good work.</span><svg class="underline" viewBox="0 0 350 20" aria-hidden="true"><path d="M4 14 Q135 0 343 8 M55 18 Q210 8 300 14"/></svg></h1>
++        <p class="hero-description">Less juggling. More creating. Bring your projects,<br class="desktop-break"> people, and ideas together in one happy place.</p>
++        <div class="hero-actions"><button class="button button-primary" data-signup data-experiment="cta">Get started for free <span>↗</span></button><button class="watch-button" id="tour-button"><span class="play-icon">▶</span> See how it works</button></div>
++        <p class="fineprint"><span>✓</span> Free to start <span>✓</span> No credit card needed</p>
++        <div class="social-proof"><div class="avatars"><img src="https://i.pravatar.cc/64?img=47" alt="" width="34" height="34"><img src="https://i.pravatar.cc/64?img=12" alt="" width="34" height="34"><img src="https://i.pravatar.cc/64?img=49" alt="" width="34" height="34"><img src="https://i.pravatar.cc/64?img=11" alt="" width="34" height="34"></div><div><div class="stars" aria-label="5 out of 5 stars">★★★★★</div><p>A little more loved by 20,000+ teams</p></div></div>
++      </div>
++      <div class="hero-visual" aria-label="Preview of the Forma project workspace">
++        <div class="orb orb-one"></div><div class="orb orb-two"></div><div class="dot-grid" aria-hidden="true"></div>
++        <div class="workspace">
++          <aside class="workspace-sidebar"><span class="mini-logo">f<span>✳</span></span><span class="sidebar-item active">▦</span><span class="sidebar-item">☑</span><span class="sidebar-item">▤</span><span class="sidebar-item">◷</span><span class="sidebar-bottom">✳</span><img src="https://i.pravatar.cc/64?img=47" width="27" height="27" alt="Your profile"></aside>
++          <div class="workspace-main"><div class="workspace-breadcrumb">Workspace <span>/</span> <strong>Studio North</strong><span class="workspace-top-right">⌕ &nbsp; ◉</span></div><div class="project-heading"><div class="project-emoji">✳</div><div><p>LET’S MAKE SOMETHING GREAT</p><h2>Brand refresh</h2></div><span class="more">···</span></div><p class="project-subtitle">A fresh chapter for a brand we love. Let's make it count.</p><div class="project-tabs"><span class="selected">▦ &nbsp; Overview</span><span>☷ &nbsp; Tasks</span><span>▢ &nbsp; Files</span><span class="tab-plus">+</span></div>
++          <div class="dashboard-grid"><div class="project-card progress-card"><div class="card-label">Project progress <span>↗</span></div><div class="progress-number">68<span>%</span><em>Looking good!</em></div><div class="progress-track"><i></i></div><div class="progress-bottom"><span>17 of 25 tasks complete</span><span>✦</span></div></div><div class="project-card people-card"><div class="card-label">The dream team <span>···</span></div><div class="team-avatars"><img src="https://i.pravatar.cc/64?img=47" alt="" width="34" height="34"><img src="https://i.pravatar.cc/64?img=12" alt="" width="34" height="34"><img src="https://i.pravatar.cc/64?img=49" alt="" width="34" height="34"><span>+2</span></div><p>A little teamwork. A lot of magic.</p></div><div class="project-card task-card"><div class="card-label">Coming up next <span>☷</span></div><div class="task"><span class="task-check done">✓</span><span class="completed">Gather a little inspiration</span><small>Today</small></div><div class="task"><span class="task-check"></span><span>Explore visual directions</span><small class="green-tag">In progress</small></div><div class="task"><span class="task-check"></span><span>Make the moodboard</span><img src="https://i.pravatar.cc/64?img=49" alt="Assignee" width="20" height="20"></div></div><div class="mood-card"><img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=700&q=85" alt="Sunlight filtering through a peaceful green forest" width="460" height="210"><span>Room to grow. 🌱</span><small>Our inspiration, all in one place.</small></div></div><div class="workspace-footer"><span>☁ &nbsp; All changes saved</span><span>Made for the way you work. ✳</span></div></div>
++        </div>
++        <div class="floating-note"><span class="note-icon">✓</span><div>A little more in sync.<small>A lot more possible.</small></div><span class="note-spark">✧</span></div>
++        <div class="visual-caption"><svg viewBox="0 0 70 40" aria-hidden="true"><path d="M65 35Q12 38 8 5m0 0 0 14M8 5l13 6"/></svg> Your best work starts here.</div>
++      </div>
++    </section>
++    <section class="trusted wrap" aria-label="Trusted by teams"><p>IN GOOD COMPANY, DOING GOOD THINGS.</p><div class="company-logos"><span class="logo-catalog">◒ Catalog</span><span class="logo-quotient">◩ Quotient</span><span class="logo-circooles">◉ Circooles</span><span class="logo-sisyphus">♧ Sisyphus</span><span class="logo-layers">▱ Layers</span></div></section>
++    <section class="features wrap" id="features"><div class="section-eyebrow">A LITTLE LESS FRICTION. A LITTLE MORE FLOW.</div><h2>Everything you need.<br><span class="serif">Space to do your thing.</span></h2><p>Big ideas deserve a little breathing room. Find yours in Forma.</p><div class="feature-grid"><article><span class="feature-icon">▦</span><h3>One place. All the pieces.</h3><p>Keep your projects, tasks, and files together. Less searching, more moving forward.</p></article><article id="solutions"><span class="feature-icon">✳</span><h3>Good things happen together.</h3><p>From creative studios to growing teams, give everyone a clear view of what’s next.</p></article><article><span class="feature-icon">↗</span><h3>A rhythm that feels like you.</h3><p>Flexible views and simple workflows that make space for the way your team works.</p></article></div></section>
++    <section class="bottom-section wrap" id="pricing"><div><div class="section-eyebrow">LESS ADMIN. MORE POSSIBILITY.</div><h2>Your next great thing starts here.</h2><p>Start free with up to 3 projects. Make a little room for what’s next.</p></div><button class="button button-primary" data-signup>Find your flow <span>↗</span></button></section>
++    <section class="resources wrap" id="resources"><details><summary>A little guidance for getting started <span>+</span></summary><p>Create your workspace, add your first project, then invite your team. Use the Overview to see your progress and Tasks to give every next step a home. Start small. Good work grows from there.</p></details></section>
++  </main>
++  <footer class="wrap"><a href="#" class="footer-brand">forma®</a><span>A little space for your best work.</span><small>© 2026 Forma</small></footer>
++  <dialog id="signup-dialog"><button class="close-dialog" aria-label="Close dialog">×</button><span class="dialog-flower">✳</span><h2>Make a little room.</h2><p>Join the list. We’ll let you know when your workspace is ready.</p><form id="signup-form"><label for="email">Work email</label><input type="email" id="email" name="email" placeholder="you@yourcompany.com" required autocomplete="email"><button class="button button-primary" type="submit">Join the waitlist <span>↗</span></button><p id="form-status" role="status"></p></form><small>This preview saves your interest on this device.</small></dialog>
++  <dialog id="tour-dialog"><button class="close-dialog" aria-label="Close tour">×</button><span class="dialog-flower">▦</span><h2>A calmer way to get there.</h2><p>Three small steps. A little more flow.</p><ol class="tour-steps"><li><strong>Make it a project.</strong><p>Give your next big idea a home with its own tasks, files, and notes.</p></li><li><strong>Bring your people.</strong><p>Invite the team and give every next step a clear owner.</p></li><li><strong>Find your rhythm.</strong><p>See the whole picture in Overview, then focus on what matters today.</p></li></ol><button class="button button-primary" data-signup>Let’s get started <span>↗</span></button></dialog>
++</body>
++</html>

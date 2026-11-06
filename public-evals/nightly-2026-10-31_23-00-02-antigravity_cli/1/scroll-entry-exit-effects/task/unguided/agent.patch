@@ -1,0 +1,60 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -106,16 +106,56 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    @keyframes card-reveal {
++      0% {
++        transform: scale(0.5);
++      }
++      entry 0% {
++        transform: scale(0.5);
++      }
++      entry 100% {
++        transform: scale(1);
++      }
++      50% {
++        transform: scale(1);
++      }
++      exit 0% {
++        transform: scale(1);
++      }
++      exit 100% {
++        transform: scale(0.5);
++      }
++      100% {
++        transform: scale(0.5);
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      animation: card-reveal linear both;
++      animation-timeline: view();
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      .card {
++        animation: card-reveal linear both;
++        animation-timeline: view();
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card {
++        animation: none;
++        transform: none;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

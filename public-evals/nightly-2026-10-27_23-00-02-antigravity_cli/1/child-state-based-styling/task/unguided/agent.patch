@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -110,17 +110,50 @@
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
++      border: 2px solid transparent;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, color 0.3s;
+     }
+ 
++    .card:has(input[type="checkbox"]:checked) {
++      background-color: #e1f5fe;
++      border-color: #29b6f6;
++      box-shadow: 0 4px 12px rgba(41, 182, 246, 0.25);
++      color: #01579b;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      transition: color 0.3s;
+     }
+ 
++    .card:has(input[type="checkbox"]:checked) h3 {
++      color: #01579b;
++    }
++
++    .iced-toggle {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      margin-top: 12px;
++      font-size: 0.95rem;
++      font-weight: 500;
++      cursor: pointer;
++      user-select: none;
++    }
++
++    .iced-toggle input[type="checkbox"] {
++      width: 16px;
++      height: 16px;
++      accent-color: #0288d1;
++      cursor: pointer;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -130,8 +163,16 @@
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
++    .card:has(input[type="checkbox"]:checked) .btn {
++      background: #0288d1;
++    }
++
++    .card:has(input[type="checkbox"]:checked) .btn:hover {
++      background: #01579b;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+@@ -180,18 +221,30 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label class="iced-toggle">
++            <input type="checkbox" class="iced-checkbox">
++            Make it iced
++          </label>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label class="iced-toggle">
++            <input type="checkbox" class="iced-checkbox">
++            Make it iced
++          </label>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label class="iced-toggle">
++            <input type="checkbox" class="iced-checkbox">
++            Make it iced
++          </label>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>

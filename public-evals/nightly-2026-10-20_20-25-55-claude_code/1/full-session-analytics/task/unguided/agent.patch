@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,66 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://cdn.jsdelivr.net/npm/web-vitals@5/dist/web-vitals.js';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    // Latest value per metric. CLS/INP/LCP keep updating throughout the
++    // session, so only the most recent value is kept until we flush.
++    const queue = new Map();
++
++    function enqueue(metric) {
++      queue.set(metric.name, {
++        name: metric.name,
++        value: metric.value,
++        rating: metric.rating,
++        delta: metric.delta,
++        id: metric.id,
++        navigationType: metric.navigationType,
++      });
++    }
++
++    function flushQueue() {
++      if (!queue.size) return;
++
++      const body = JSON.stringify({
++        url: location.href,
++        metrics: [...queue.values()],
++      });
++      queue.clear();
++
++      // sendBeacon queues the request so it survives page unload.
++      // Fall back to a keepalive fetch if it's unavailable or refuses the payload.
++      const blob = new Blob([body], { type: 'application/json' });
++      if (!(navigator.sendBeacon && navigator.sendBeacon(ANALYTICS_ENDPOINT, blob))) {
++        fetch(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          body,
++          headers: { 'Content-Type': 'application/json' },
++          keepalive: true,
++        }).catch(() => { });
++      }
++    }
++
++    // reportAllChanges is off, so values are only finalized when the page is
++    // hidden or unloaded; the callbacks fire at that point.
++    onCLS(enqueue);
++    onINP(enqueue);
++    onLCP(enqueue);
++
++    // visibilitychange is the reliable signal (covers tab close, navigation,
++    // and mobile app switching); pagehide is a fallback for browsers that
++    // don't fire visibilitychange on unload (e.g. Safari bfcache cases).
++    // Both listeners are registered after web-vitals' own, so its callbacks
++    // run first and the queue is populated before we flush.
++    document.addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flushQueue();
++    });
++    addEventListener('pagehide', flushQueue);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

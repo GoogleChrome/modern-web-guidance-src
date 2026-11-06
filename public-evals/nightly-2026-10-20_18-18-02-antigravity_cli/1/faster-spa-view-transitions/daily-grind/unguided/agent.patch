@@ -1,0 +1,782 @@
+diff --git a/index.html b/index.html
+index 66c9173..8053eeb 100644
+--- a/index.html
++++ b/index.html
+@@ -152,61 +152,739 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* SPA View & Router Styles */
++    .spa-view {
++      animation: fadeIn 0.2s ease-in-out;
++    }
++
++    .spa-view[hidden] {
++      display: none !important;
++    }
++
++    @keyframes fadeIn {
++      from { opacity: 0; transform: translateY(4px); }
++      to { opacity: 1; transform: translateY(0); }
++    }
++
++    nav a.active {
++      color: var(--accent);
++      border-bottom: 2px solid var(--accent);
++      padding-bottom: 2px;
++    }
++
++    .logo {
++      cursor: pointer;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++      font-size: 1.5rem;
++      font-weight: bold;
++    }
++
++    .page-header {
++      background: var(--primary);
++      color: white;
++      text-align: center;
++      padding: 3rem 20px;
++      margin-bottom: 2rem;
++      border-bottom: 4px solid var(--accent);
++    }
++
++    .page-header h1 {
++      font-size: 2.4rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .filter-bar, .interactive-box {
++      background: white;
++      padding: 16px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      margin-bottom: 24px;
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .input-field, select.input-field, textarea.input-field {
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      padding: 3px 10px;
++      border-radius: 12px;
++      font-size: 0.8rem;
++      margin-top: 6px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><a href="/" data-route="/">THE DAILY GRIND</a></div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/" data-route="/">Home</a></li>
++      <li><a href="/menu" data-route="/menu">Menu</a></li>
++      <li><a href="/locations" data-route="/locations">Locations</a></li>
++      <li><a href="/rewards" data-route="/rewards">Rewards</a></li>
++      <li><a href="/account" data-route="/account">My Account</a></li>
++      <li><a href="/logout" data-route="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
++  <div id="spa-viewport">
++    <div class="spa-view" data-view-path="/">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" class="btn">Order Now</a>
++      </header>
++
++      <main class="container">
++        <section>
++          <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <div class="card">
++              <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </section>
++      </main>
++    </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-route="/about">Our Story</a> |
++      <a href="/careers" data-route="/careers">Join the Team</a> |
++      <a href="/contact" data-route="/contact">Contact Us</a> |
++      <a href="/privacy-policy" data-route="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const viewport = document.getElementById('spa-viewport');
++
++      /**
++       * DOM View Cache: Maps normalized route path -> mounted DOM Element (.spa-view)
++       * Preserves structural DOM state, form inputs, scroll/interactive states across navigations
++       * instead of destroying and rebuilding views on every transition.
++       */
++      const viewCache = new Map();
++      const scrollPositions = new Map();
++      let currentPath = '/';
++
++      // Register the initial server-rendered Home view into the cache
++      const initialHomeView = viewport.querySelector('[data-view-path="/"]');
++      if (initialHomeView) {
++        viewCache.set('/', initialHomeView);
++      }
++
++      function normalizePath(rawPath) {
++        if (!rawPath) return '/';
++        try {
++          const url = new URL(rawPath, window.location.origin);
++          let p = url.pathname.replace(/\/+$/, '');
++          return p || '/';
++        } catch (e) {
++          let p = String(rawPath).split('?')[0].split('#')[0].replace(/\/+$/, '');
++          return p.startsWith('/') ? (p || '/') : '/' + p;
++        }
++      }
++
++      const routeFactories = {
++        '/menu': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Artisanal Menu</h1>
++              <p>Handcrafted beverages and freshly baked pastries</p>
++            </div>
++            <main class="container">
++              <div class="filter-bar">
++                <div>
++                  <label for="menu-search"><strong>Filter Menu:</strong> </label>
++                  <input id="menu-search" type="text" class="input-field" placeholder="Search drinks or notes...">
++                </div>
++                <div>
++                  <label for="menu-category">Category: </label>
++                  <select id="menu-category" class="input-field">
++                    <option value="all">All Categories</option>
++                    <option value="seasonal">Seasonal</option>
++                    <option value="espresso">Espresso</option>
++                    <option value="cold">Cold Brew & Iced</option>
++                  </select>
++                </div>
++              </div>
++              <div class="grid" data-menu-grid>
++                <div class="card" data-category="seasonal">
++                  <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++                  <h3>Maple Oat Latte</h3>
++                  <p>Creamy oat milk with pure Vermont maple syrup & cinnamon dust.</p>
++                  <span class="badge">$5.75</span><br>
++                  <a href="/menu/seasonal" class="btn">View Details</a>
++                </div>
++                <div class="card" data-category="espresso">
++                  <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++                  <h3>Dark Roast Espresso</h3>
++                  <p>Double shot of single-origin Sumatra beans with rich crema.</p>
++                  <span class="badge">$3.50</span><br>
++                  <a href="/menu/espresso" class="btn">View Details</a>
++                </div>
++                <div class="card" data-category="cold">
++                  <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++                  <h3>Reserve Cold Brew</h3>
++                  <p>Steeped for 18 hours for velvety chocolate notes and zero bitterness.</p>
++                  <span class="badge">$4.75</span><br>
++                  <a href="/menu/cold-brew" class="btn">View Details</a>
++                </div>
++              </div>
++            </main>
++          `;
++          const searchInput = el.querySelector('#menu-search');
++          const categorySelect = el.querySelector('#menu-category');
++          const cards = Array.from(el.querySelectorAll('[data-menu-grid] .card'));
++
++          function filterCards() {
++            const q = searchInput.value.trim().toLowerCase();
++            const cat = categorySelect.value;
++            cards.forEach(card => {
++              const matchesCat = cat === 'all' || card.dataset.category === cat;
++              const matchesText = !q || card.textContent.toLowerCase().includes(q);
++              card.style.display = (matchesCat && matchesText) ? '' : 'none';
++            });
++          }
++          searchInput.addEventListener('input', filterCards);
++          categorySelect.addEventListener('change', filterCards);
++          return el;
++        },
++
++        '/menu/seasonal': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Maple Oat Latte</h1>
++              <p>Seasonal Limited Release</p>
++            </div>
++            <main class="container">
++              <div class="card" style="max-width: 700px; margin: 0 auto; text-align: left;">
++                <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=900&q=80" alt="Maple Oat Latte" style="height: 280px;">
++                <h3>Tasting Notes & Customization</h3>
++                <p>Velvety steamed barista-grade oat milk infused with Grade-A dark amber Vermont maple syrup and our signature espresso roast.</p>
++                <div style="margin-top: 15px;">
++                  <label><strong>Size:</strong>
++                    <select class="input-field">
++                      <option value="12oz">12 oz (Regular) - $5.75</option>
++                      <option value="16oz">16 oz (Large) - $6.50</option>
++                    </select>
++                  </label>
++                  <label style="margin-left: 12px;"><strong>Sweetness:</strong>
++                    <select class="input-field">
++                      <option>Standard Maple</option>
++                      <option>Half Sweet</option>
++                      <option>Extra Maple</option>
++                    </select>
++                  </label>
++                </div>
++                <div style="margin-top: 20px;">
++                  <a href="/order-online" class="btn">Order This Drink</a>
++                  <a href="/menu" class="btn" style="background: #6d4c41; margin-left: 10px;">Back to Menu</a>
++                </div>
++              </div>
++            </main>
++          `;
++          return el;
++        },
++
++        '/menu/espresso': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Dark Roast Espresso</h1>
++              <p>Signature House Roast</p>
++            </div>
++            <main class="container">
++              <div class="card" style="max-width: 700px; margin: 0 auto; text-align: left;">
++                <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=900&q=80" alt="Dark Roast Espresso" style="height: 280px;">
++                <h3>Roast Profile & Origin</h3>
++                <p>Full-bodied dark roast sourced from high-altitude smallholder farms. Notes of dark cacao, toasted cedar, and molasses.</p>
++                <div style="margin-top: 15px;">
++                  <label><strong>Shot Pull:</strong>
++                    <select class="input-field">
++                      <option value="double">Double Shot (Standard)</option>
++                      <option value="ristretto">Ristretto Pull</option>
++                      <option value="triple">Triple Shot (+$1.00)</option>
++                    </select>
++                  </label>
++                </div>
++                <div style="margin-top: 20px;">
++                  <a href="/order-online" class="btn">Order This Drink</a>
++                  <a href="/menu" class="btn" style="background: #6d4c41; margin-left: 10px;">Back to Menu</a>
++                </div>
++              </div>
++            </main>
++          `;
++          return el;
++        },
++
++        '/menu/cold-brew': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>18-Hour Cold Brew</h1>
++              <p>Small-Batch Cold Extraction</p>
++            </div>
++            <main class="container">
++              <div class="card" style="max-width: 700px; margin: 0 auto; text-align: left;">
++                <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80" alt="Cold Brew" style="height: 280px;">
++                <h3>Crafted for Smoothness</h3>
++                <p>Coarse-ground Colombian beans steeped in filtered cold water for 18 hours and served over crystal ice.</p>
++                <div style="margin-top: 15px;">
++                  <label><strong>Finish:</strong>
++                    <select class="input-field">
++                      <option value="black">Pure Black</option>
++                      <option value="oat">Splash of Oat Milk</option>
++                      <option value="sweet-cream">Vanilla Sweet Cream</option>
++                    </select>
++                  </label>
++                </div>
++                <div style="margin-top: 20px;">
++                  <a href="/order-online" class="btn">Order This Drink</a>
++                  <a href="/menu" class="btn" style="background: #6d4c41; margin-left: 10px;">Back to Menu</a>
++                </div>
++              </div>
++            </main>
++          `;
++          return el;
++        },
++
++        '/locations': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Our Cafes & Roasteries</h1>
++              <p>Visit us in person for a freshly poured cup</p>
++            </div>
++            <main class="container">
++              <div class="filter-bar">
++                <label><strong>Find a Cafe:</strong>
++                  <input type="text" class="input-field" data-loc-filter placeholder="Filter by neighborhood or feature...">
++                </label>
++              </div>
++              <div class="grid">
++                <div class="card" data-loc-card>
++                  <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80" alt="Downtown Roastery">
++                  <h3>Downtown Roastery</h3>
++                  <p>142 Roast Ave • Open 6am – 8pm</p>
++                  <span class="badge">Pour-Over Bar & Wi-Fi</span>
++                </div>
++                <div class="card" data-loc-card>
++                  <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80" alt="Riverside Cafe">
++                  <h3>Riverside Garden Cafe</h3>
++                  <p>88 Harbor Walk • Open 7am – 7pm</p>
++                  <span class="badge">Outdoor Patio</span>
++                </div>
++                <div class="card" data-loc-card>
++                  <img src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=600&q=80" alt="Uptown Espresso">
++                  <h3>Uptown Espresso Studio</h3>
++                  <p>510 Artisan Way • Open 6:30am – 6pm</p>
++                  <span class="badge">Bakery On-Site</span>
++                </div>
++              </div>
++            </main>
++          `;
++          const filter = el.querySelector('[data-loc-filter]');
++          const cards = Array.from(el.querySelectorAll('[data-loc-card]'));
++          filter.addEventListener('input', () => {
++            const q = filter.value.trim().toLowerCase();
++            cards.forEach(c => {
++              c.style.display = (!q || c.textContent.toLowerCase().includes(q)) ? '' : 'none';
++            });
++          });
++          return el;
++        },
++
++        '/rewards': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Daily Grind Rewards</h1>
++              <p>Earn beans on every craft coffee purchase</p>
++            </div>
++            <main class="container">
++              <div class="interactive-box">
++                <div>
++                  <h3>Your Current Balance: <span data-points-display>240</span> Beans</h3>
++                  <p>Every 100 Beans unlocks a complimentary handcrafted beverage.</p>
++                </div>
++                <div>
++                  <button type="button" class="btn" data-redeem-btn style="margin-top:0; border:none; cursor:pointer;">Redeem 100 Beans</button>
++                </div>
++              </div>
++              <div class="grid">
++                <div class="card">
++                  <h3>100 Beans</h3>
++                  <p>Free Espresso Shot, Drip Coffee, or Warm Pastry</p>
++                </div>
++                <div class="card">
++                  <h3>200 Beans</h3>
++                  <p>Any Signature Latte, Cold Brew, or Seasonal Beverage</p>
++                </div>
++                <div class="card">
++                  <h3>400 Beans</h3>
++                  <p>12oz Bag of Whole Bean Single-Origin Coffee</p>
++                </div>
++              </div>
++            </main>
++          `;
++          let points = 240;
++          const display = el.querySelector('[data-points-display]');
++          const btn = el.querySelector('[data-redeem-btn]');
++          btn.addEventListener('click', () => {
++            if (points >= 100) {
++              points -= 100;
++              display.textContent = String(points);
++            }
++          });
++          return el;
++        },
++
++        '/account': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>My Account</h1>
++              <p>Manage your coffee preferences and delivery notes</p>
++            </div>
++            <main class="container">
++              <div class="card" style="max-width: 600px; margin: 0 auto; text-align: left;">
++                <h3>Barista Profile Preferences</h3>
++                <div style="margin-top: 15px; display: grid; gap: 12px;">
++                  <label>Display Name<br>
++                    <input type="text" class="input-field" style="width: 100%;" value="Alex Rivera">
++                  </label>
++                  <label>Default Milk Choice<br>
++                    <select class="input-field" style="width: 100%;">
++                      <option value="oat">Barista Oat Milk</option>
++                      <option value="whole">Organic Whole Milk</option>
++                      <option value="almond">Unsweetened Almond</option>
++                    </select>
++                  </label>
++                  <label>Default Pickup Location<br>
++                    <select class="input-field" style="width: 100%;">
++                      <option value="downtown">Downtown Roastery</option>
++                      <option value="riverside">Riverside Garden Cafe</option>
++                      <option value="uptown">Uptown Espresso Studio</option>
++                    </select>
++                  </label>
++                </div>
++              </div>
++            </main>
++          `;
++          return el;
++        },
++
++        '/order-online': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Order Online</h1>
++              <p>Skip the line — freshly prepared for your arrival</p>
++            </div>
++            <main class="container">
++              <div class="card" style="max-width: 650px; margin: 0 auto; text-align: left;">
++                <h3>Build Your Quick Order</h3>
++                <div style="margin-top: 15px; display: grid; gap: 12px;">
++                  <label>Select Beverage<br>
++                    <select class="input-field" style="width: 100%;">
++                      <option>Maple Oat Latte ($5.75)</option>
++                      <option>Dark Roast Espresso ($3.50)</option>
++                      <option>18-Hour Cold Brew ($4.75)</option>
++                    </select>
++                  </label>
++                  <label>Special Instructions for Barista<br>
++                    <input type="text" class="input-field" style="width: 100%;" placeholder="e.g., Extra hot, light ice...">
++                  </label>
++                  <a href="/menu" class="btn" style="text-align: center;">Browse Full Menu</a>
++                </div>
++              </div>
++            </main>
++          `;
++          return el;
++        },
++
++        '/about': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Our Story</h1>
++              <p>Direct trade coffee roasted in small batches since 2014</p>
++            </div>
++            <main class="container">
++              <div class="card" style="max-width: 750px; margin: 0 auto;">
++                <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=80" alt="Our Roastery" style="height: 260px;">
++                <h3>Crafted With Purpose</h3>
++                <p>At The Daily Grind, we partner directly with sustainable coffee growers and roast every batch by hand to highlight each origin's natural character.</p>
++              </div>
++            </main>
++          `;
++          return el;
++        },
++
++        '/careers': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Join the Team</h1>
++              <p>Build your career in specialty coffee</p>
++            </div>
++            <main class="container">
++              <div class="grid">
++                <div class="card">
++                  <h3>Lead Barista</h3>
++                  <p>Full-Time • Downtown Roastery</p>
++                  <span class="badge">Now Hiring</span>
++                </div>
++                <div class="card">
++                  <h3>Apprentice Roaster</h3>
++                  <p>Full-Time • Production Roastery</p>
++                  <span class="badge">Now Hiring</span>
++                </div>
++              </div>
++            </main>
++          `;
++          return el;
++        },
++
++        '/contact': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Contact Us</h1>
++              <p>Questions about wholesale, catering, or your morning cup?</p>
++            </div>
++            <main class="container">
++              <div class="card" style="max-width: 600px; margin: 0 auto; text-align: left;">
++                <h3>Send Us a Message</h3>
++                <div style="margin-top: 12px; display: grid; gap: 12px;">
++                  <input type="text" class="input-field" placeholder="Your Name">
++                  <input type="email" class="input-field" placeholder="Your Email">
++                  <textarea class="input-field" rows="4" placeholder="How can we help?"></textarea>
++                </div>
++              </div>
++            </main>
++          `;
++          return el;
++        },
++
++        '/privacy-policy': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Privacy Policy</h1>
++              <p>How we protect your data and coffee preferences</p>
++            </div>
++            <main class="container">
++              <div class="card" style="max-width: 750px; margin: 0 auto; text-align: left;">
++                <h3>Your Privacy Matters</h3>
++                <p>We only collect the information needed to fulfill your orders and track your Daily Grind Rewards balance. We never sell your personal data.</p>
++              </div>
++            </main>
++          `;
++          return el;
++        },
++
++        '/logout': function () {
++          const el = document.createElement('div');
++          el.innerHTML = `
++            <div class="page-header">
++              <h1>Signed Out</h1>
++              <p>See you tomorrow for your next cup!</p>
++            </div>
++            <main class="container">
++              <div class="card" style="max-width: 500px; margin: 0 auto;">
++                <h3>You have been logged out</h3>
++                <p>Thank you for visiting The Daily Grind.</p>
++                <a href="/" class="btn">Return Home</a>
++              </div>
++            </main>
++          `;
++          return el;
++        }
++      };
++
++      function createFallbackView(path) {
++        const el = document.createElement('div');
++        const title = path.replace(/^\/+/, '').replace(/[-/]/g, ' ') || 'Page';
++        el.innerHTML = `
++          <div class="page-header">
++            <h1 style="text-transform: capitalize;">${title}</h1>
++            <p>The Daily Grind Artisanal Coffee</p>
++          </div>
++          <main class="container">
++            <div class="card">
++              <h3>Explore The Daily Grind</h3>
++              <p>Enjoy our artisanal roasts and seasonal menu selections.</p>
++              <a href="/" class="btn">Back to Home</a>
++            </div>
++          </main>
++        `;
++        return el;
++      }
++
++      /**
++       * Returns a cached view element if previously visited, or builds and caches
++       * the view element on first visit. Never destroys existing views in the DOM.
++       */
++      function getOrCreateView(path) {
++        const normalized = normalizePath(path);
++        if (viewCache.has(normalized)) {
++          return viewCache.get(normalized);
++        }
++
++        const factory = routeFactories[normalized] || (() => createFallbackView(normalized));
++        const viewEl = factory();
++        viewEl.classList.add('spa-view');
++        viewEl.setAttribute('data-view-path', normalized);
++        viewEl.hidden = true;
++
++        viewport.appendChild(viewEl);
++        viewCache.set(normalized, viewEl);
++        return viewEl;
++      }
++
++      function updateActiveNavLinks(path) {
++        const normalized = normalizePath(path);
++        document.querySelectorAll('nav a, footer a').forEach(link => {
++          const linkPath = normalizePath(link.getAttribute('href'));
++          const isActive = linkPath === normalized || (linkPath !== '/' && normalized.startsWith(linkPath + '/'));
++          link.classList.toggle('active', isActive);
++          if (isActive) {
++            link.setAttribute('aria-current', 'page');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      function navigateTo(rawPath, options = { pushState: true }) {
++        const targetPath = normalizePath(rawPath);
++        const isAlreadyRendered = viewCache.has(targetPath);
++
++        // Save current scroll position for the active view before switching
++        scrollPositions.set(currentPath, window.scrollY);
++
++        // Hide all cached views without removing them from the DOM
++        viewCache.forEach((viewEl, cachedPath) => {
++          if (cachedPath !== targetPath) {
++            viewEl.hidden = true;
++            viewEl.style.display = 'none';
++            viewEl.setAttribute('aria-hidden', 'true');
++          }
++        });
++
++        // Retrieve existing DOM node from cache or create and mount on first visit
++        const activeView = getOrCreateView(targetPath);
++        activeView.hidden = false;
++        activeView.style.display = '';
++        activeView.setAttribute('aria-hidden', 'false');
++
++        currentPath = targetPath;
++        updateActiveNavLinks(targetPath);
++
++        if (options.pushState && window.location.pathname !== targetPath) {
++          try {
++            window.history.pushState({ path: targetPath }, '', targetPath);
++          } catch (e) {
++            // Fallback if pushState is restricted in local file environments
++          }
++        }
++
++        // Restore scroll position if returning to a previously visited view, or scroll to top on new view
++        if (isAlreadyRendered && scrollPositions.has(targetPath)) {
++          window.scrollTo(0, scrollPositions.get(targetPath));
++        } else {
++          window.scrollTo(0, 0);
++        }
++
++        return activeView;
++      }
++
++      // Intercept internal link clicks across the entire document for SPA transitions
++      document.addEventListener('click', function (event) {
++        const anchor = event.target.closest('a[href]');
++        if (!anchor) return;
++
++        const href = anchor.getAttribute('href');
++        if (!href || href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:') || href.startsWith('tel:')) {
++          return;
++        }
++        if (anchor.target && anchor.target !== '_self') return;
++        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
++
++        event.preventDefault();
++        navigateTo(href, { pushState: true });
++      });
++
++      // Handle browser back/forward navigation with preserved DOM views
++      window.addEventListener('popstate', function (event) {
++        const statePath = (event.state && event.state.path) ? event.state.path : window.location.pathname;
++        navigateTo(statePath, { pushState: false });
++      });
++
++      // Expose SPA router API for programmatic inspection or navigation
++      window.spaRouter = {
++        navigateTo,
++        getOrCreateView,
++        viewCache,
++        getCurrentPath: () => currentPath
++      };
++
++      // Initialize current route on load
++      navigateTo(window.location.pathname || '/', { pushState: false });
++    })();
++  </script>
+ </body>
+ 
+ </html>

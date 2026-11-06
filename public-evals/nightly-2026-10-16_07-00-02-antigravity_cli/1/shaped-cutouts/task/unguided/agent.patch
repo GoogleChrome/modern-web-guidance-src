@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,156 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* 1. Featured Barista - Organic Paint Splat Avatar */
++    .barista-spotlight {
++      margin-top: 60px;
++      padding: 40px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
++      display: flex;
++      align-items: center;
++      gap: 40px;
++      flex-wrap: wrap;
++    }
++
++    .shaped-avatar {
++      width: 240px;
++      height: 240px;
++      object-fit: cover;
++      display: block;
++      clip-path: url(#paint-splat);
++      -webkit-clip-path: url(#paint-splat);
++      -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none"><path d="M 0.5 0.05 C 0.53 0.05, 0.56 0.12, 0.58 0.18 C 0.63 0.14, 0.71 0.11, 0.75 0.16 C 0.79 0.21, 0.74 0.28, 0.71 0.33 C 0.80 0.30, 0.90 0.29, 0.94 0.36 C 0.98 0.43, 0.91 0.50, 0.85 0.53 C 0.93 0.56, 0.99 0.63, 0.97 0.71 C 0.95 0.78, 0.86 0.80, 0.80 0.77 C 0.83 0.84, 0.86 0.93, 0.79 0.97 C 0.72 1.00, 0.65 0.93, 0.61 0.86 C 0.58 0.93, 0.54 0.98, 0.48 0.98 C 0.41 0.98, 0.38 0.90, 0.36 0.84 C 0.30 0.91, 0.21 0.97, 0.15 0.91 C 0.09 0.85, 0.14 0.76, 0.18 0.70 C 0.10 0.72, 0.02 0.68, 0.01 0.60 C 0.00 0.52, 0.08 0.47, 0.14 0.45 C 0.08 0.41, 0.03 0.33, 0.08 0.26 C 0.13 0.20, 0.22 0.24, 0.28 0.28 C 0.26 0.21, 0.25 0.13, 0.32 0.09 C 0.38 0.05, 0.44 0.13, 0.46 0.18 C 0.48 0.11, 0.47 0.05, 0.5 0.05 Z" fill="black"/></svg>');
++      mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none"><path d="M 0.5 0.05 C 0.53 0.05, 0.56 0.12, 0.58 0.18 C 0.63 0.14, 0.71 0.11, 0.75 0.16 C 0.79 0.21, 0.74 0.28, 0.71 0.33 C 0.80 0.30, 0.90 0.29, 0.94 0.36 C 0.98 0.43, 0.91 0.50, 0.85 0.53 C 0.93 0.56, 0.99 0.63, 0.97 0.71 C 0.95 0.78, 0.86 0.80, 0.80 0.77 C 0.83 0.84, 0.86 0.93, 0.79 0.97 C 0.72 1.00, 0.65 0.93, 0.61 0.86 C 0.58 0.93, 0.54 0.98, 0.48 0.98 C 0.41 0.98, 0.38 0.90, 0.36 0.84 C 0.30 0.91, 0.21 0.97, 0.15 0.91 C 0.09 0.85, 0.14 0.76, 0.18 0.70 C 0.10 0.72, 0.02 0.68, 0.01 0.60 C 0.00 0.52, 0.08 0.47, 0.14 0.45 C 0.08 0.41, 0.03 0.33, 0.08 0.26 C 0.13 0.20, 0.22 0.24, 0.28 0.28 C 0.26 0.21, 0.25 0.13, 0.32 0.09 C 0.38 0.05, 0.44 0.13, 0.46 0.18 C 0.48 0.11, 0.47 0.05, 0.5 0.05 Z" fill="black"/></svg>');
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      flex-shrink: 0;
++    }
++
++    .barista-details {
++      flex: 1;
++      min-width: 260px;
++    }
++
++    .barista-details h3 {
++      color: var(--primary);
++      font-size: 1.8rem;
++      margin-bottom: 6px;
++    }
++
++    .barista-details .subtitle {
++      color: var(--accent);
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      font-size: 0.9rem;
++      margin-bottom: 12px;
++    }
++
++    /* 2. Loyalty Banner - Unified Card */
++    .unified-card {
++      display: flex;
++      margin: 60px auto 0;
++      max-width: 800px;
++      filter: drop-shadow(0 8px 24px rgba(78, 52, 46, 0.16));
++    }
++
++    .unified-card .card-body {
++      background: white;
++      padding: 36px 40px;
++      flex: 1;
++      border-radius: 12px 0 0 12px;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 10px;
++    }
++
++    .unified-card .card-accent {
++      width: 100px;
++      flex-shrink: 0;
++      background: white;
++      -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200" preserveAspectRatio="none"><path d="M 0 0 L 85 0 Q 100 0 100 15 L 100 65 Q 60 100 100 135 L 100 185 Q 100 200 85 200 L 0 200 Z" fill="black"/></svg>');
++      mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200" preserveAspectRatio="none"><path d="M 0 0 L 85 0 Q 100 0 100 15 L 100 65 Q 60 100 100 135 L 100 185 Q 100 200 85 200 L 0 200 Z" fill="black"/></svg>');
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    /* 3. Promo Card - Gradient Masked Notch */
++    .promo-section {
++      margin-top: 60px;
++      display: flex;
++      justify-content: center;
++    }
++
++    .promo-wrapper {
++      max-width: 480px;
++      width: 100%;
++      filter: drop-shadow(0 6px 20px rgba(78, 52, 46, 0.14));
++    }
++
++    .gradient-masked-card {
++      background: white;
++      padding: 44px 32px 32px;
++      border-radius: 12px;
++      text-align: center;
++      -webkit-mask-image: radial-gradient(circle 24px at 50% 0, transparent 0, transparent 24px, black 24.5px);
++      mask-image: radial-gradient(circle 24px at 50% 0, transparent 0, transparent 24px, black 24.5px);
++    }
++
++    .gradient-masked-card .badge {
++      display: inline-block;
++      background: var(--accent);
++      color: white;
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 12px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Hidden SVG vector definitions for shape clipping and masking -->
++  <svg width="0" height="0" style="position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none;" aria-hidden="true">
++    <defs>
++      <clipPath id="paint-splat" clipPathUnits="objectBoundingBox">
++        <path d="M 0.5 0.05 C 0.53 0.05, 0.56 0.12, 0.58 0.18 C 0.63 0.14, 0.71 0.11, 0.75 0.16 C 0.79 0.21, 0.74 0.28, 0.71 0.33 C 0.80 0.30, 0.90 0.29, 0.94 0.36 C 0.98 0.43, 0.91 0.50, 0.85 0.53 C 0.93 0.56, 0.99 0.63, 0.97 0.71 C 0.95 0.78, 0.86 0.80, 0.80 0.77 C 0.83 0.84, 0.86 0.93, 0.79 0.97 C 0.72 1.00, 0.65 0.93, 0.61 0.86 C 0.58 0.93, 0.54 0.98, 0.48 0.98 C 0.41 0.98, 0.38 0.90, 0.36 0.84 C 0.30 0.91, 0.21 0.97, 0.15 0.91 C 0.09 0.85, 0.14 0.76, 0.18 0.70 C 0.10 0.72, 0.02 0.68, 0.01 0.60 C 0.00 0.52, 0.08 0.47, 0.14 0.45 C 0.08 0.41, 0.03 0.33, 0.08 0.26 C 0.13 0.20, 0.22 0.24, 0.28 0.28 C 0.26 0.21, 0.25 0.13, 0.32 0.09 C 0.38 0.05, 0.44 0.13, 0.46 0.18 C 0.48 0.11, 0.47 0.05, 0.5 0.05 Z" />
++      </clipPath>
++      <clipPath id="splat" clipPathUnits="objectBoundingBox">
++        <path d="M 0.5 0.05 C 0.53 0.05, 0.56 0.12, 0.58 0.18 C 0.63 0.14, 0.71 0.11, 0.75 0.16 C 0.79 0.21, 0.74 0.28, 0.71 0.33 C 0.80 0.30, 0.90 0.29, 0.94 0.36 C 0.98 0.43, 0.91 0.50, 0.85 0.53 C 0.93 0.56, 0.99 0.63, 0.97 0.71 C 0.95 0.78, 0.86 0.80, 0.80 0.77 C 0.83 0.84, 0.86 0.93, 0.79 0.97 C 0.72 1.00, 0.65 0.93, 0.61 0.86 C 0.58 0.93, 0.54 0.98, 0.48 0.98 C 0.41 0.98, 0.38 0.90, 0.36 0.84 C 0.30 0.91, 0.21 0.97, 0.15 0.91 C 0.09 0.85, 0.14 0.76, 0.18 0.70 C 0.10 0.72, 0.02 0.68, 0.01 0.60 C 0.00 0.52, 0.08 0.47, 0.14 0.45 C 0.08 0.41, 0.03 0.33, 0.08 0.26 C 0.13 0.20, 0.22 0.24, 0.28 0.28 C 0.26 0.21, 0.25 0.13, 0.32 0.09 C 0.38 0.05, 0.44 0.13, 0.46 0.18 C 0.48 0.11, 0.47 0.05, 0.5 0.05 Z" />
++      </clipPath>
++      <clipPath id="splat-shape" clipPathUnits="objectBoundingBox">
++        <path d="M 0.5 0.05 C 0.53 0.05, 0.56 0.12, 0.58 0.18 C 0.63 0.14, 0.71 0.11, 0.75 0.16 C 0.79 0.21, 0.74 0.28, 0.71 0.33 C 0.80 0.30, 0.90 0.29, 0.94 0.36 C 0.98 0.43, 0.91 0.50, 0.85 0.53 C 0.93 0.56, 0.99 0.63, 0.97 0.71 C 0.95 0.78, 0.86 0.80, 0.80 0.77 C 0.83 0.84, 0.86 0.93, 0.79 0.97 C 0.72 1.00, 0.65 0.93, 0.61 0.86 C 0.58 0.93, 0.54 0.98, 0.48 0.98 C 0.41 0.98, 0.38 0.90, 0.36 0.84 C 0.30 0.91, 0.21 0.97, 0.15 0.91 C 0.09 0.85, 0.14 0.76, 0.18 0.70 C 0.10 0.72, 0.02 0.68, 0.01 0.60 C 0.00 0.52, 0.08 0.47, 0.14 0.45 C 0.08 0.41, 0.03 0.33, 0.08 0.26 C 0.13 0.20, 0.22 0.24, 0.28 0.28 C 0.26 0.21, 0.25 0.13, 0.32 0.09 C 0.38 0.05, 0.44 0.13, 0.46 0.18 C 0.48 0.11, 0.47 0.05, 0.5 0.05 Z" />
++      </clipPath>
++      <mask id="paint-splat-mask" maskContentUnits="objectBoundingBox">
++        <path d="M 0.5 0.05 C 0.53 0.05, 0.56 0.12, 0.58 0.18 C 0.63 0.14, 0.71 0.11, 0.75 0.16 C 0.79 0.21, 0.74 0.28, 0.71 0.33 C 0.80 0.30, 0.90 0.29, 0.94 0.36 C 0.98 0.43, 0.91 0.50, 0.85 0.53 C 0.93 0.56, 0.99 0.63, 0.97 0.71 C 0.95 0.78, 0.86 0.80, 0.80 0.77 C 0.83 0.84, 0.86 0.93, 0.79 0.97 C 0.72 1.00, 0.65 0.93, 0.61 0.86 C 0.58 0.93, 0.54 0.98, 0.48 0.98 C 0.41 0.98, 0.38 0.90, 0.36 0.84 C 0.30 0.91, 0.21 0.97, 0.15 0.91 C 0.09 0.85, 0.14 0.76, 0.18 0.70 C 0.10 0.72, 0.02 0.68, 0.01 0.60 C 0.00 0.52, 0.08 0.47, 0.14 0.45 C 0.08 0.41, 0.03 0.33, 0.08 0.26 C 0.13 0.20, 0.22 0.24, 0.28 0.28 C 0.26 0.21, 0.25 0.13, 0.32 0.09 C 0.38 0.05, 0.44 0.13, 0.46 0.18 C 0.48 0.11, 0.47 0.05, 0.5 0.05 Z" fill="white" />
++      </mask>
++      <mask id="card-accent-mask" maskContentUnits="userSpaceOnUse">
++        <path d="M 0 0 L 85 0 Q 100 0 100 15 L 100 65 Q 60 100 100 135 L 100 185 Q 100 200 85 200 L 0 200 Z" fill="white" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +337,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- 1. Featured Barista Profile -->
++    <section class="barista-spotlight">
++      <img
++        src="https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&w=600&q=80"
++        alt="Elena Vance - Featured Head Barista"
++        class="shaped-avatar"
++      />
++      <div class="barista-details">
++        <div class="subtitle">Artisan Spotlight</div>
++        <h3>Elena Vance</h3>
++        <p>Master Roaster &amp; Head Barista at The Daily Grind. Elena curates our single-origin harvests and designs our signature extraction profiles with over a decade of artisanal roasting craft.</p>
++        <a href="/about" class="btn">Read Elena's Story</a>
++      </div>
++    </section>
++
++    <!-- 2. Loyalty Banner -->
++    <section>
++      <div class="unified-card">
++        <div class="card-body">
++          <h3>Daily Grind Rewards Club</h3>
++          <p>Earn beans with every handcrafted brew. Unlock complimentary specialty drinks, invitations to private tasting sessions, and exclusive member perks all year round.</p>
++          <a href="/rewards" class="btn">Join The Club</a>
++        </div>
++        <div class="card-accent"></div>
++      </div>
++    </section>
++
++    <!-- 3. Promo Card -->
++    <section class="promo-section">
++      <div class="promo-wrapper">
++        <div class="gradient-masked-card">
++          <span class="badge">Limited Offer</span>
++          <h3>Single-Origin Tasting Flight</h3>
++          <p>Enjoy 20% off your first whole-bean flight bag when you order online today. Enter code <strong>GRIND20</strong> at checkout.</p>
++          <a href="/order-online" class="btn">Claim Promo</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

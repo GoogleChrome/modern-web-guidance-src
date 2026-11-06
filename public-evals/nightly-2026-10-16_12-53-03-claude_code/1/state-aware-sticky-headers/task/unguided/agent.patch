@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 4.5rem;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -30,9 +31,10 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: var(--nav-height);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -134,8 +136,43 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky section headers (viewport is the scroll root).
++       The named container avoids clashing with the existing .container class. */
++    .section-block {
++      margin-bottom: 40px;
++    }
++
++    .sticky-container {
++      container-type: scroll-state;
++      container-name: sticky-container;
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 900; /* below nav (1000) */
++    }
++
++    .sticky-header {
++      background: var(--light);
++      color: var(--primary);
++      padding: 1.25rem 1rem;
++      text-align: center;
++      transition: background-color 0.2s, padding 0.2s, box-shadow 0.2s, color 0.2s;
++    }
++
++    @container sticky-container scroll-state(stuck: top) {
++      .sticky-header {
++        background: #1976d2;
++        color: white;
++        padding: 0.35rem 1rem;
++        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    .intro p {
++      margin-bottom: 1rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,10 +211,19 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="intro section-block">
++      <h2 style="text-align: center; margin-bottom: 1rem;">Welcome to The Daily Grind</h2>
++      <p>We started as a tiny cart on a busy corner, roasting small batches by hand and learning every regular's name. Today we partner directly with farms across three continents, paying well above fair-trade prices for the best beans.</p>
++      <p>Every bag is roasted within days of reaching your cup. Our baristas train for months before pulling their first public shot, because a great drink is equal parts craft and care.</p>
++      <p>Scroll down to explore our seasonal favorites, brewing classics, and a few pastries that pair perfectly with them. Pull up a chair &mdash; the kettle is already on.</p>
++      <p>Whether you are after a quick morning boost, a slow weekend pour-over, or beans to brew at home, there is a spot for you at our counter.</p>
++    </section>
++    <section class="section-block">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -192,10 +238,99 @@
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <h3>Pumpkin Spice Mocha</h3>
++          <p>Rich chocolate, espresso, and warm autumn spices.</p>
++          <a href="/menu/pumpkin" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Chai Cortado</h3>
++          <p>Spiced black tea balanced with steamed milk.</p>
++          <a href="/menu/chai" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Caramel Flat White</h3>
++          <p>Velvety microfoam with a ribbon of salted caramel.</p>
++          <a href="/menu/flat-white" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
++    <section class="section-block">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Brewing Classics</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Pour-Over</h3>
++          <p>Single-origin beans brewed slowly, cup by cup.</p>
++          <a href="/menu/pour-over" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>French Press</h3>
++          <p>Full-bodied and aromatic, steeped four minutes.</p>
++          <a href="/menu/french-press" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Americano</h3>
++          <p>Espresso lengthened with hot water for a clean finish.</p>
++          <a href="/menu/americano" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cappuccino</h3>
++          <p>Equal parts espresso, steamed milk, and foam.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Macchiato</h3>
++          <p>Espresso marked with a dollop of milk foam.</p>
++          <a href="/menu/macchiato" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Nitro Cold Brew</h3>
++          <p>Cold brew infused with nitrogen for a creamy pour.</p>
++          <a href="/menu/nitro" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++    <section class="section-block">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Fresh Bakes</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky layers baked fresh every morning.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Scone</h3>
++          <p>Tender crumb studded with wild blueberries.</p>
++          <a href="/menu/scone" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Biscotti</h3>
++          <p>Twice-baked and made for dunking.</p>
++          <a href="/menu/biscotti" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cinnamon Roll</h3>
++          <p>Warm, gooey, and topped with cream cheese icing.</p>
++          <a href="/menu/cinnamon-roll" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Banana Bread</h3>
++          <p>Moist and spiced, with toasted walnuts.</p>
++          <a href="/menu/banana-bread" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Lemon Loaf</h3>
++          <p>Bright citrus glaze over a soft pound cake.</p>
++          <a href="/menu/lemon-loaf" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

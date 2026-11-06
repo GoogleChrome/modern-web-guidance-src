@@ -1,0 +1,240 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..37b9728
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,31 @@
++# The Daily Grind
++
++A static coffee-shop landing page. WebMCP tools are registered by `webmcp.js`,
++loaded with `defer` so the page content is available first.
++
++## Agent tools
++
++| Tool | Input | Behavior |
++| --- | --- | --- |
++| `get_seasonal_favorites` | `{}` | Reads the visible featured drinks, descriptions, and details URLs. |
++| `get_navigation_options` | `{}` | Lists named destinations from the page's links. |
++| `navigate_to_page` | `{"page":"menu"}` | Opens an allowed destination in the current tab. |
++
++The live navigation schema enumerates all supported page identifiers. Tools read
++the same DOM content and links used by visitors. Navigation accepts only marked,
++same-origin HTTP(S) links; the logout link is intentionally not exposed.
++Ordering navigation opens the existing order link; it does not place an order.
++The linked routes are existing links in this static site, not routes implemented
++by this integration.
++
++## Browser support
++
++WebMCP requires a secure context and a browser exposing
++`document.modelContext.registerTool`. Availability is experimental; see the
++[Chrome WebMCP documentation](https://developer.chrome.com/docs/ai/webmcp/imperative-api)
++for current browser enablement. Unsupported browsers keep the ordinary page and
++links, without loading a polyfill or contacting an MCP server.
++
++Registrations use an AbortSignal for cleanup on page exit and are restored when
++the page returns from the back/forward cache. A failed registration rolls back
++the tools already registered by that attempt.
+diff --git a/index.html b/index.html
+index 66c9173..0005465 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/webmcp.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -160,10 +161,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-page="menu">Menu</a></li>
++      <li><a href="/locations" data-page="locations">Locations</a></li>
++      <li><a href="/rewards" data-page="rewards">Rewards</a></li>
++      <li><a href="/account" data-page="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,27 +172,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-page="order-online">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-menu-item>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-page="seasonal">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-menu-item>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-page="espresso">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-menu-item>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-page="cold-brew">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -199,10 +200,10 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-page="about">Our Story</a> |
++      <a href="/careers" data-page="careers">Join the Team</a> |
++      <a href="/contact" data-page="contact">Contact Us</a> |
++      <a href="/privacy-policy" data-page="privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+diff --git a/webmcp.js b/webmcp.js
+new file mode 100644
+index 0000000..8e9a407
+--- /dev/null
++++ b/webmcp.js
+@@ -0,0 +1,120 @@
++(() => {
++  "use strict";
++
++  // Progressive enhancement: links remain usable without WebMCP support.
++  if (!window.isSecureContext ||
++      typeof document.modelContext?.registerTool !== "function") return;
++
++  let registration;
++
++  function getDestinations() {
++    return Array.from(document.querySelectorAll("a[data-page]"), (link) => {
++      const card = link.closest("[data-menu-item]");
++      return {
++        page: link.dataset.page,
++        title: card?.querySelector("h3")?.textContent.trim() || link.textContent.trim(),
++        url: link.href,
++      };
++    }).filter(({ url }) => {
++      const destination = new URL(url);
++      return destination.origin === window.location.origin &&
++        ["https:", "http:"].includes(destination.protocol);
++    });
++  }
++
++  // Schema constraints also need runtime checks: the browser does not enforce them.
++  function validateInput(input, allowedKeys) {
++    if (!input || typeof input !== "object" || Array.isArray(input)) {
++      return { error: "Provide an object containing the tool arguments." };
++    }
++    if (Object.keys(input).some((key) => !allowedKeys.includes(key))) {
++      return { error: "Unexpected argument. Use only the properties in the input schema." };
++    }
++    return null;
++  }
++
++  function createTools() {
++    const pageNames = getDestinations().map(({ page }) => page);
++    const emptySchema = { type: "object", properties: {}, additionalProperties: false };
++
++    return [
++      {
++        name: "get_seasonal_favorites",
++        description: "Read the featured coffee drinks and their descriptions from the current page, with links to details.",
++        inputSchema: emptySchema,
++        execute(input = {}) {
++          const error = validateInput(input, []);
++          if (error) return error;
++          return {
++            items: Array.from(document.querySelectorAll("[data-menu-item]"), (card) => ({
++              name: card.querySelector("h3").textContent.trim(),
++              description: card.querySelector("p").textContent.trim(),
++              detailsUrl: card.querySelector("a[data-page]").href,
++            })),
++          };
++        },
++        annotations: { readOnlyHint: true },
++      },
++      {
++        name: "get_navigation_options",
++        description: "List the available Daily Grind page destinations and their links. Use to find a page before navigating.",
++        inputSchema: emptySchema,
++        execute(input = {}) {
++          return validateInput(input, []) || { destinations: getDestinations() };
++        },
++        annotations: { readOnlyHint: true },
++      },
++      {
++        name: "navigate_to_page",
++        description: "Follow a Daily Grind page link in the current tab. Use to open menu details, ordering, account, or shop information.",
++        inputSchema: {
++          type: "object",
++          properties: {
++            page: {
++              type: "string",
++              enum: pageNames,
++              description: "The destination identifier returned by get_navigation_options.",
++            },
++          },
++          required: ["page"],
++          additionalProperties: false,
++        },
++        execute(input = {}) {
++          const error = validateInput(input, ["page"]);
++          if (error) return error;
++          const destination = getDestinations().find(({ page }) => page === input.page);
++          if (typeof input.page !== "string" || !destination) {
++            return { error: "Choose an available page destination.", availablePages: pageNames };
++          }
++          window.location.assign(destination.url);
++          return { navigatingTo: destination.url };
++        },
++        annotations: { readOnlyHint: false },
++      },
++    ];
++  }
++
++  async function registerTools() {
++    if (registration) return;
++    const controller = new AbortController();
++    registration = controller;
++    try {
++      for (const tool of createTools()) {
++        await document.modelContext.registerTool(tool, { signal: controller.signal });
++      }
++    } catch (error) {
++      const cancelled = controller.signal.aborted;
++      controller.abort(); // Roll back partial registration on failure.
++      if (registration === controller) registration = undefined;
++      if (!cancelled) console.warn("Daily Grind WebMCP registration failed:", error);
++    }
++  }
++
++  window.addEventListener("pagehide", () => {
++    registration?.abort();
++    registration = undefined;
++  });
++  // Restore tools when navigating back from the browser's page cache.
++  window.addEventListener("pageshow", () => void registerTools());
++  void registerTools();
++})();

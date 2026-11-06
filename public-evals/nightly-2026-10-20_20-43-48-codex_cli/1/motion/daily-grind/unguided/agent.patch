@@ -1,0 +1,187 @@
+diff --git a/index.html b/index.html
+index 66c9173..5ebb21a 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --motion-fast: 180ms;
++      --motion-enter: 600ms;
++      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+@@ -59,10 +62,10 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -128,10 +131,10 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
+@@ -152,6 +155,101 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 5px;
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      text-decoration: underline;
++      text-underline-offset: 4px;
++    }
++
++    @keyframes enter {
++      from {
++        opacity: 0;
++        transform: translateY(18px);
++      }
++
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    /* Keep the default page visible when JavaScript or motion is unavailable. */
++    @media (prefers-reduced-motion: no-preference) {
++      nav .logo,
++      nav li,
++      .hero > * {
++        animation: enter var(--motion-enter) var(--ease-out) backwards;
++      }
++
++      nav li:nth-child(2) { animation-delay: 40ms; }
++      nav li:nth-child(3) { animation-delay: 80ms; }
++      nav li:nth-child(4) { animation-delay: 120ms; }
++      nav li:nth-child(5) { animation-delay: 160ms; }
++      .hero h1 { animation-delay: 100ms; }
++      .hero p { animation-delay: 180ms; }
++      .hero .btn { animation-delay: 260ms; }
++
++      nav a,
++      .footer-links a {
++        transition: color var(--motion-fast) ease;
++      }
++
++      .btn {
++        transition: transform var(--motion-fast) var(--ease-out),
++          background-color var(--motion-fast) ease;
++      }
++
++      .card {
++        transition: transform 240ms var(--ease-out);
++      }
++
++      .card:focus-within {
++        transform: translateY(-5px);
++      }
++
++      .btn:focus-visible {
++        transform: translateY(-2px);
++      }
++
++      .btn:active {
++        transform: translateY(0) scale(0.97);
++      }
++
++      .reveal-pending {
++        opacity: 0;
++      }
++
++      .reveal-enter {
++        animation: enter var(--motion-enter) var(--ease-out)
++          var(--reveal-delay, 0ms) backwards;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) and (hover: hover) {
++      .card:hover {
++        transform: translateY(-5px);
++      }
++
++      .btn:hover {
++        transform: translateY(-2px);
++      }
++
++      .btn:active {
++        transform: translateY(0) scale(0.97);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .reveal-pending {
++        opacity: 1;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +305,44 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
++      if (!('IntersectionObserver' in window)) return;
++
++      const targets = document.querySelectorAll('main h2, .card, footer > *');
++      let observer;
++
++      function updateMotion() {
++        observer?.disconnect();
++        targets.forEach((target) => {
++          target.classList.remove('reveal-pending', 'reveal-enter');
++          target.style.removeProperty('--reveal-delay');
++        });
++        if (motionPreference.matches) return;
++
++        observer = new IntersectionObserver((entries) => {
++          let stagger = 0;
++          entries.forEach((entry) => {
++            if (!entry.isIntersecting) return;
++            entry.target.style.setProperty('--reveal-delay', `${stagger++ * 70}ms`);
++            entry.target.classList.remove('reveal-pending');
++            entry.target.classList.add('reveal-enter');
++            observer.unobserve(entry.target);
++          });
++        }, { threshold: 0.1 });
++
++        targets.forEach((target) => {
++          target.classList.add('reveal-pending');
++          observer.observe(target);
++        });
++      }
++
++      updateMotion();
++      motionPreference.addEventListener('change', updateMotion);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

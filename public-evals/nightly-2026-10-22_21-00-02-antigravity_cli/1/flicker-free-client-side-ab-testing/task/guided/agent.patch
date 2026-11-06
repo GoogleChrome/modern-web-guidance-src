@@ -1,0 +1,270 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,266 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Next-Gen Cloud Analytics | Launch Faster</title>
++
++  <link rel="preconnect" href="https://cdn.example.com">
++
++  <!--
++    Load the experimentation script with both `async` and `blocking="render"`:
++    - `async`: Prevents parser-blocking so the DOM is built in parallel.
++    - `blocking="render"`: Blocks first paint until the script executes,
++      ensuring the original content never flashes before the variant is applied.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++  ></script>
++
++  <script>
++    // Fallback for browsers that do not support `blocking="render"` (e.g., Firefox).
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      document.documentElement.classList.add('ab-loading');
++
++      setTimeout(() => {
++        document.documentElement.classList.remove('ab-loading');
++      }, 4000);
++    }
++
++    // Callback for the experiment SDK to reveal the page immediately once ready in fallback mode.
++    window.onExperimentReady = function onExperimentReady() {
++      document.documentElement.classList.remove('ab-loading');
++    };
++  </script>
++
++  <style>
++    @layer base, components, utilities;
++
++    @layer utilities {
++      .ab-loading {
++        opacity: 0 !important;
++      }
++    }
++
++    @layer base {
++      :root {
++        --color-bg: #0f172a;
++        --color-surface: #1e293b;
++        --color-text: #f8fafc;
++        --color-text-muted: #94a3b8;
++        --color-primary: #3b82f6;
++        --color-primary-hover: #2563eb;
++        --color-accent: #10b981;
++        --color-accent-hover: #059669;
++        --color-border: #334155;
++        --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++        --radius-md: 0.5rem;
++        --radius-lg: 1rem;
++      }
++
++      body {
++        margin: 0;
++        font-family: var(--font-sans);
++        background-color: var(--color-bg);
++        color: var(--color-text);
++        line-height: 1.6;
++      }
++    }
++
++    @layer components {
++      .site-header {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        max-inline-size: 75rem;
++        margin-inline: auto;
++        padding-block: 1.25rem;
++        padding-inline: 1.5rem;
++        border-block-end: 1px solid var(--color-border);
++      }
++
++      .brand {
++        font-weight: 700;
++        font-size: 1.25rem;
++        color: var(--color-text);
++        text-decoration: none;
++        letter-spacing: -0.02em;
++      }
++
++      .nav-list {
++        display: flex;
++        gap: 1.5rem;
++        list-style: none;
++        margin: 0;
++        padding: 0;
++      }
++
++      .nav-link {
++        color: var(--color-text-muted);
++        text-decoration: none;
++        font-size: 0.95rem;
++        transition: color 0.15s ease;
++
++        &:hover {
++          color: var(--color-text);
++        }
++      }
++
++      .hero {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
++        gap: 3rem;
++        align-items: center;
++        max-inline-size: 75rem;
++        margin-inline: auto;
++        padding-block: 5rem;
++        padding-inline: 1.5rem;
++      }
++
++      .hero-content {
++        display: flex;
++        flex-direction: column;
++        align-items: flex-start;
++        gap: 1.5rem;
++      }
++
++      .badge {
++        display: inline-block;
++        padding-block: 0.25rem;
++        padding-inline: 0.75rem;
++        background-color: var(--color-surface);
++        border: 1px solid var(--color-border);
++        border-radius: 9999px;
++        font-size: 0.875rem;
++        color: var(--color-primary);
++        font-weight: 500;
++      }
++
++      .hero-title {
++        font-size: clamp(2.25rem, 4vw + 1rem, 3.5rem);
++        line-height: 1.15;
++        letter-spacing: -0.03em;
++        margin: 0;
++      }
++
++      .hero-subtitle {
++        font-size: 1.125rem;
++        color: var(--color-text-muted);
++        margin: 0;
++        max-inline-size: 55ch;
++      }
++
++      .hero-actions {
++        display: flex;
++        flex-wrap: wrap;
++        gap: 1rem;
++        margin-block-start: 0.5rem;
++      }
++
++      .cta-button {
++        display: inline-flex;
++        align-items: center;
++        justify-content: center;
++        padding-block: 0.875rem;
++        padding-inline: 1.75rem;
++        font-size: 1rem;
++        font-weight: 600;
++        font-family: inherit;
++        color: var(--color-text);
++        background-color: var(--color-primary);
++        border: none;
++        border-radius: var(--radius-md);
++        cursor: pointer;
++        text-decoration: none;
++        transition: background-color 0.15s ease, transform 0.15s ease;
++
++        &:hover:not(:disabled) {
++          background-color: var(--color-primary-hover);
++          transform: translateY(-1px);
++        }
++
++        &:focus-visible {
++          outline: 2px solid var(--color-primary);
++          outline-offset: 2px;
++        }
++      }
++
++      /* Variant B styling support when the experiment SDK sets data-variant="b" */
++      [data-variant="b"] .cta-button {
++        background-color: var(--color-accent);
++
++        &:hover:not(:disabled) {
++          background-color: var(--color-accent-hover);
++        }
++      }
++
++      .hero-visual {
++        margin: 0;
++      }
++
++      .hero-image {
++        display: block;
++        inline-size: 100%;
++        block-size: auto;
++        border-radius: var(--radius-lg);
++        border: 1px solid var(--color-border);
++        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.4);
++      }
++    }
++  </style>
++</head>
++<body>
++  <header class="site-header">
++    <a href="/" class="brand">PulseMetrics</a>
++    <nav aria-label="Primary">
++      <ul class="nav-list">
++        <li><a href="#features" class="nav-link">Features</a></li>
++        <li><a href="#pricing" class="nav-link">Pricing</a></li>
++        <li><a href="#docs" class="nav-link">Documentation</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" id="hero-section" data-experiment="hero-cta">
++      <div class="hero-content">
++        <span class="badge" id="hero-badge">Real-Time Telemetry 2.0</span>
++        <h1 class="hero-title" id="hero-heading">
++          Turn production data into instant product decisions
++        </h1>
++        <p class="hero-subtitle" id="hero-description">
++          Observe every user journey, run high-velocity experiments, and ship with confidence—without slowing down your critical rendering path.
++        </p>
++        <div class="hero-actions">
++          <button type="button" class="cta-button" id="hero-cta">
++            Start Free Trial
++          </button>
++        </div>
++      </div>
++
++      <figure class="hero-visual">
++        <img
++          src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
++          alt="Analytics dashboard displaying real-time conversion metrics and charts"
++          width="1200"
++          height="800"
++          fetchpriority="high"
++          class="hero-image"
++          id="hero-image"
++        >
++      </figure>
++    </section>
++  </main>
++
++  <script type="module">
++    const ctaButton = document.getElementById('hero-cta');
++    if (ctaButton) {
++      ctaButton.addEventListener('click', () => {
++        ctaButton.textContent = 'Trial Activated';
++      });
++    }
++  </script>
++</body>
++</html>

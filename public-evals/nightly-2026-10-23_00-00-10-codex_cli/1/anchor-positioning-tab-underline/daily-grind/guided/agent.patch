@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+index 66c9173..b64aad8 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,30 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
++    }
++
++    nav ul[data-indicator-ready]::after {
++      content: '';
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 1px;
++      height: 2px;
++      background: var(--accent);
++      pointer-events: none;
++      transform-origin: left center;
++      transform: translate(var(--indicator-x), var(--indicator-y)) scaleX(var(--indicator-width));
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul[data-indicator-ready]::after {
++        transition: transform 0.3s ease;
++      }
++    }
++
++    nav a[data-nav-item][aria-current] {
++      color: var(--accent);
+     }
+ 
+     nav ul li {
+@@ -160,10 +184,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-nav-item aria-current="true">Menu</a></li>
++      <li><a href="/locations" data-nav-item>Locations</a></li>
++      <li><a href="/rewards" data-nav-item>Rewards</a></li>
++      <li><a href="/account" data-nav-item>My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -207,6 +231,41 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navList = document.querySelector('nav ul');
++    const navItems = [...navList.querySelectorAll('[data-nav-item]')];
++    let activeItem = navItems.find(item => item.pathname === window.location.pathname)
++      || navItems[0];
++
++    function positionIndicator() {
++      const listBounds = navList.getBoundingClientRect();
++      const itemBounds = activeItem.getBoundingClientRect();
++      navList.style.setProperty('--indicator-x', `${itemBounds.left - listBounds.left}px`);
++      navList.style.setProperty('--indicator-y', `${itemBounds.bottom - listBounds.top + 4}px`);
++      navList.style.setProperty('--indicator-width', itemBounds.width);
++      navList.dataset.indicatorReady = '';
++    }
++
++    function selectItem(item) {
++      navItems.forEach(link => link.removeAttribute('aria-current'));
++      activeItem = item;
++      activeItem.setAttribute('aria-current', 'true');
++      positionIndicator();
++    }
++
++    navItems.forEach(item => {
++      item.addEventListener('click', event => {
++        // Preserve modified clicks for opening the link in another tab or window.
++        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        event.preventDefault();
++        selectItem(item);
++      });
++    });
++
++    selectItem(activeItem);
++    window.addEventListener('resize', positionIndicator);
++    document.fonts.ready.then(positionIndicator);
++  </script>
+ </body>
+ 
+ </html>

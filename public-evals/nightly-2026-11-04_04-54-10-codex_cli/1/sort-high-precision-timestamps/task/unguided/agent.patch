@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,33 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .event-panel {
++      margin-top: 40px;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .event-panel p { margin-top: 8px; }
++    button.btn { border: 0; font: inherit; cursor: pointer; }
++    button.btn:disabled { opacity: 0.6; cursor: wait; }
++    .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .event-status { min-height: 1.6em; font-size: 0.9rem; }
++    .event-table-wrap { overflow-x: auto; margin-top: 16px; }
++    .event-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
++    .event-table caption { text-align: left; font-weight: bold; padding-bottom: 12px; }
++    .event-table th, .event-table td {
++      text-align: left;
++      padding: 12px;
++      border-bottom: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++    .event-table th { background: #f5f0ed; }
++    .event-time { font-family: monospace; font-variant-numeric: tabular-nums; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +219,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="event-panel" aria-labelledby="events-heading">
++      <h2 id="events-heading">Behind your cup</h2>
++      <p>Follow a coffee order across our services. Load an out-of-order sample batch to see its timeline, down to the nanosecond.</p>
++      <button class="btn" id="load-events" type="button" aria-controls="event-results">Load order events</button>
++      <p class="event-status" id="event-status" role="status" aria-live="polite">Sample batch · UTC timestamps · Exact nanosecond intervals</p>
++      <div id="event-results" class="event-table-wrap" hidden>
++        <table class="event-table">
++          <caption>Order DG-1042 · Chronological service events</caption>
++          <thead><tr><th scope="col">Event</th><th scope="col">Service</th><th scope="col">Timestamp (UTC)</th><th scope="col">Since previous event (ns)</th></tr></thead>
++          <tbody id="event-rows"></tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +244,70 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Parse only whole seconds with Date; keep fractional nanoseconds as integers.
++    function utcNanoseconds(timestamp) {
++      const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.(\d{9})Z$/.exec(timestamp);
++      if (!match) throw new Error('Expected a UTC timestamp with nine fractional digits.');
++      const wholeSecond = match[1] + 'Z';
++      const milliseconds = Date.parse(wholeSecond);
++      if (!Number.isFinite(milliseconds) || new Date(milliseconds).toISOString() !== match[1] + '.000Z') {
++        throw new Error('Invalid UTC timestamp.');
++      }
++      return BigInt(milliseconds) * 1000000n + BigInt(match[2]);
++    }
++
++    function sortOrderEvents(events) {
++      if (!Array.isArray(events)) throw new Error('Expected an event batch.');
++      const sorted = events.map((event) => {
++        if (!event || typeof event.event !== 'string' || typeof event.service !== 'string' || typeof event.timestamp !== 'string') {
++          throw new Error('Invalid event.');
++        }
++        return { ...event, nanoseconds: utcNanoseconds(event.timestamp) };
++      }).sort((a, b) => a.nanoseconds < b.nanoseconds ? -1 : a.nanoseconds > b.nanoseconds ? 1 : 0);
++      return sorted.map((event, index) => ({
++        ...event,
++        interval: index === 0 ? null : event.nanoseconds - sorted[index - 1].nanoseconds
++      }));
++    }
++
++    const loadButton = document.getElementById('load-events');
++    const eventStatus = document.getElementById('event-status');
++    const eventResults = document.getElementById('event-results');
++    const eventRows = document.getElementById('event-rows');
++
++    loadButton.addEventListener('click', async () => {
++      loadButton.disabled = true;
++      eventResults.hidden = true;
++      eventStatus.textContent = 'Loading order events…';
++      try {
++        const response = await fetch('./order-events.json');
++        if (!response.ok) throw new Error('Unable to load batch.');
++        const events = sortOrderEvents(await response.json());
++        const rows = events.map((event) => {
++          const row = document.createElement('tr');
++          [event.event, event.service, event.timestamp, event.interval === null ? '—' : event.interval.toString()].forEach((value, index) => {
++            const cell = document.createElement('td');
++            cell.textContent = value;
++            if (index >= 2) cell.className = 'event-time';
++            row.appendChild(cell);
++          });
++          return row;
++        });
++        eventRows.replaceChildren(...rows);
++        eventResults.hidden = events.length === 0;
++        eventStatus.textContent = events.length
++          ? `${events.length} sample events sorted chronologically. Intervals are exact nanoseconds; the first event has no previous interval.`
++          : 'The batch contains no events.';
++        loadButton.textContent = 'Reload order events';
++      } catch (error) {
++        eventStatus.textContent = 'Could not load order events. Please try again.';
++      } finally {
++        loadButton.disabled = false;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

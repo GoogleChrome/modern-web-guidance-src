@@ -1,0 +1,1782 @@
+diff --git a/package.json b/package.json
+index 820c637..0bf2eb4 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,7 @@
+     "@astrojs/node": "^11.1.8",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@oddbird/popover-polyfill": "^0.7.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..3404459 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -8,23 +8,25 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+     large?: boolean;
++    headingLevel?: 2 | 3;
+ }
+ 
+-const { article, large = false } = Astro.props;
++const { article, large = false, headingLevel = 3 } = Astro.props;
++const Heading = `h${headingLevel}`;
+ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <article class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h2 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+-                    </h1>
++                    </h2>
+                     <p class="mt-4 text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+@@ -39,9 +41,13 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+             <div class="lg:col-span-2">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
++                    <Image
++                        src={image}
++                        alt={article.data.title}
++                        loading="eager"
++                        fetchpriority="high"
++                        widths={[400, 640, 800, 1200, 1600]}
++                        sizes="(min-width: 1152px) 656px, (min-width: 1024px) 58vw, calc(100vw - 96px)"
+                         width={800}
+                         height={533}
+                         format="webp"
+@@ -50,13 +56,16 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ ) : (
+     <article class="flex flex-col h-full group">
+         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
++            <Image
++                src={image}
++                alt={article.data.title}
++                loading="lazy"
++                widths={[320, 480, 640, 800]}
++                sizes="(min-width: 1152px) 352px, (min-width: 768px) 30vw, calc(100vw - 48px)"
+                 width={400}
+                 height={225}
+                 format="webp"
+@@ -66,9 +75,9 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <Heading class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+-                </h3>
++                </Heading>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+@@ -80,4 +89,4 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..23a5e96 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -23,7 +23,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
++    <button type="button" aria-label={isBookmarked ? "Remove from reading list" : "Save to reading list"} aria-pressed={isBookmarked} onClick={handleClick} className="p-1">
+       <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+     </button>
+   );
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..b615132 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,65 +1,34 @@
+-import React, { useState } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
++import Popover from './Popover';
+ 
+ interface BottomNavProps {
+-    categories: string[];
+-    articles: any[];
+-    reports: any[];
+-    multimedia: any[];
++  categories: string[];
++  articles: any[];
++  reports: any[];
++  multimedia: any[];
+ }
+ 
+-const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+-    const [activeCategory, setActiveCategory] = useState<string | null>(null);
+-
+-    const groupedCategories = {
+-        'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+-        'Arts & Culture': ['Culture', 'Media'],
+-        'Science & Tech': ['science'],
+-        'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+-    };
+-
+-    const handleMouseLeave = () => {
+-        setActiveCategory(null);
+-    };
+-
+-    const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
+-    const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+-    const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
+-
+-    return (
+-        <div onMouseLeave={handleMouseLeave}>
+-            <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+-                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
+-                        return (
+-                            <div 
+-                                key={groupName}
+-                                onMouseEnter={() => setActiveCategory(groupName)}
+-                                className="h-full flex items-center"
+-                            >
+-                                <a 
+-                                    href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
+-                                >
+-                                    <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+-                                    </svg>
+-                                </a>
+-                            </div>
+-                        );
+-                    })}
+-                </nav>
+-            </div>
+-            <FlyoutMenu 
+-                isOpen={activeCategory !== null} 
+-                categories={activeSubCategories.filter(c => categories.includes(c))}
+-                articles={articles}
+-                reports={filteredReports}
+-                multimedia={filteredMultimedia}
+-            />
+-        </div>
+-    );
+-};
+-
+-export default BottomNav;
++export default function BottomNav({ categories, articles, reports, multimedia }: BottomNavProps) {
++  const groups = {
++    'News & Politics': ['news', 'national', 'politics', 'economy', 'labor', 'business'],
++    'Arts & Culture': ['culture', 'media'],
++    'Science & Tech': ['science'],
++    'Lifestyle & Sports': ['lifestyle', 'sports', 'urban development'],
++  };
++  return (
++    <nav aria-label="Sections" className="border-y border-gray-900 px-4">
++      <ul className="flex items-center md:justify-center gap-4 overflow-x-auto text-sm font-semibold">
++        {Object.entries(groups).map(([group, subcategories]) => (
++          <li key={group}>
++            <Popover label={group}>
++              <FlyoutMenu categories={categories.filter(category => subcategories.includes(category.toLowerCase()))}
++                articles={articles.filter(article => subcategories.includes(article.data.category.toLowerCase()))}
++                reports={reports.filter(report => report.data.category === group)}
++                multimedia={multimedia.filter(item => item.data.category === group)} />
++            </Popover>
++          </li>
++        ))}
++      </ul>
++    </nav>
++  );
++}
+diff --git a/src/components/CategoryNavItem.tsx b/src/components/CategoryNavItem.tsx
+index 847fef0..24ee3de 100644
+--- a/src/components/CategoryNavItem.tsx
++++ b/src/components/CategoryNavItem.tsx
+@@ -1,48 +1,18 @@
+-import React, { useState } from 'react';
++import Popover from './Popover';
+ 
+ interface CategoryNavItemProps {
+-    groupName: string;
+-    subCategories: string[];
+-    currentPath: string;
++  groupName: string;
++  subCategories: string[];
++  currentPath: string;
+ }
+ 
+-const CategoryNavItem: React.FC<CategoryNavItemProps> = ({ groupName, subCategories, currentPath }) => {
+-    const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+-
+-    const isActive = subCategories.some(category => currentPath.includes(`/category/${category.toLowerCase().replace(' ', '%20')}`));
+-
+-    return (
+-        <div 
+-            className="relative"
+-            onMouseEnter={() => setIsFlyoutOpen(true)}
+-            onMouseLeave={() => setIsFlyoutOpen(false)}
+-        >
+-            <a 
+-                href="#" 
+-                className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap ${isActive ? 'text-amber-400' : ''}`}
+-            >
+-                <span>{groupName}</span>
+-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+-                </svg>
+-            </a>
+-            {isFlyoutOpen && (
+-                <div className="absolute top-full left-0 bg-white border-b border-gray-300 shadow-sm z-10 mt-2 py-6 px-4">
+-                    <div className="grid grid-cols-1 gap-x-8">
+-                        <ul className="space-y-2 text-sm">
+-                            {subCategories.map(category => (
+-                                <li key={category}>
+-                                    <a href={`/category/${category.toLowerCase().replace(' ', '%20')}`} className="hover:underline capitalize">
+-                                        {category.charAt(0).toUpperCase() + category.slice(1)}
+-                                    </a>
+-                                </li>
+-                            ))}
+-                        </ul>
+-                    </div>
+-                </div>
+-            )}
+-        </div>
+-    );
+-};
+-
+-export default CategoryNavItem;
++export default function CategoryNavItem({ groupName, subCategories, currentPath }: CategoryNavItemProps) {
++  const url = (category: string) => `${import.meta.env.BASE_URL}category/${encodeURIComponent(category.toLowerCase())}`;
++  return <Popover label={groupName} active={subCategories.some(category => currentPath === url(category))}>
++    <ul className="p-4 space-y-2">
++      {subCategories.map(category => <li key={category}>
++        <a href={url(category)} aria-current={currentPath === url(category) ? 'page' : undefined} className="capitalize hover:underline">{category}</a>
++      </li>)}
++    </ul>
++  </Popover>;
++}
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..7aa7a1d 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,38 +1,25 @@
+ import React from 'react';
+ 
+ interface FlyoutMenuProps {
+-  isOpen: boolean;
+   categories: string[];
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
+-  if (!isOpen) {
+-    return null;
+-  }
+-
+-  // Intentionally failing method to demonstrate debugging
+-  const calculateTrendingScore = (article: any) => {
+-    const getScore = article.getScore;
+-    return getScore();
+-  };
+-
+-  const topStories = articles.sort(() => 0.5 - Math.random()).slice(0, 3);
+-
+-  if (topStories.length > 0) {
+-    setTimeout(() => calculateTrendingScore(topStories[0]), 100);
+-  }
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ categories, articles, reports, multimedia }) => {
++  const topStories = [...articles].sort((a, b) =>
++    new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf()
++  ).slice(0, 3);
+ 
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
++    <div className="flyout-menu">
+       <div className="container mx-auto px-4 py-6">
+-        <div className="grid grid-cols-4 gap-x-8">
+-          
++        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8">
++
+           {/* Column 1: SECTIONS */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h2>
+             <ul className="space-y-2 text-sm">
+               {categories.map(category => (
+                 <li key={category}>
+@@ -46,7 +33,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 2: TOP STORIES */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h2>
+             <ul className="space-y-2 text-sm">
+                 {topStories.map(article => (
+                     <li key={article.id}>
+@@ -58,11 +45,11 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 3: REPORTS */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
++              <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h2>
+               <ul className="space-y-4 text-sm">
+                   {reports.map(report => (
+-                      <li key={report.slug}>
+-                          <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`} className="flex items-start space-x-2 group/item">
++                      <li key={report.id}>
++                          <a href={`${import.meta.env.BASE_URL}reports#${report.id}`} className="flex items-start space-x-2 group/item">
+                               <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                                   <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
+                               </div>
+@@ -81,11 +68,11 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 4: MULTIMEDIA */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
++              <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h2>
+               <ul className="space-y-4 text-sm">
+                     {multimedia.map(item => (
+-                        <li key={item.slug}>
+-                            <a href={`/multimedia/${item.slug}`} className="flex items-start space-x-2 group/item">
++                        <li key={item.id}>
++                            <a href={`${import.meta.env.BASE_URL}multimedia#${item.id}`} className="flex items-start space-x-2 group/item">
+                                 <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                     <span className="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
+                                 </div>
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..2a1dcfb 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -2,55 +2,55 @@
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ <footer class="bg-white text-black p-6 md:p-10 w-full relative z-50">
+-        
++
+     <!-- Top section: Logo -->
+     <div class="border-b border-gray-300 pb-6 mb-6">
+         <a href={baseUrl}>
+             <img
+                 src=`${baseUrl}logo.svg`
+-                alt="The DevTools Times"
+-                class="h-10"
++                alt="The DevTools Times" width="872" height="102" loading="lazy"
++                class="h-10 w-auto max-w-full"
+             />
+         </a>
+     </div>
+ 
+     <!-- Middle section: Main navigation links -->
+-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
+-        
++    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
++
+         <!-- Column 1: NEWS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">News</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
+-                <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
+-                <li><a href="/category/business" class="text-sm hover:underline">Business</a></li>
++                <li><a href={`${baseUrl}category/national`} class="text-sm hover:underline">National</a></li>
++                <li><a href={`${baseUrl}category/politics`} class="text-sm hover:underline">Politics</a></li>
++                <li><a href={`${baseUrl}category/business`} class="text-sm hover:underline">Business</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 2: ARTS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+-                <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
++                <li><a href={`${baseUrl}category/culture`} class="text-sm hover:underline">Culture</a></li>
++                <li><a href={`${baseUrl}category/media`} class="text-sm hover:underline">Media</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 3: LIFESTYLE -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
+-                <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
+-                <li><a href="/category/urban%20development" class="text-sm hover:underline">Urban Development</a></li>
++                <li><a href={`${baseUrl}category/lifestyle`} class="text-sm hover:underline">Lifestyle</a></li>
++                <li><a href={`${baseUrl}category/sports`} class="text-sm hover:underline">Sports</a></li>
++                <li><a href={`${baseUrl}category/urban%20development`} class="text-sm hover:underline">Urban Development</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 4: SCIENCE & TECH -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
++                <li><a href={`${baseUrl}category/science`} class="text-sm hover:underline">Science</a></li>
+             </ul>
+         </div>
+ 
+@@ -60,29 +60,29 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+         <!-- Column 7: ACCOUNT -->
+         <div class="col-span-2 sm:col-span-1">
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h2>
+             <ul class="space-y-2 mb-4">
+                 <li>
+                     <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                         Subscribe
+                     </a>
+                 </li>
+                 <li>
+                     <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+                 </li>
+             </ul>
+-            
++
+             <!-- Secondary Account Links -->
+             <ul class="space-y-2 text-xs text-gray-600">
+                 <li><a href="#" class="hover:underline">Email Newsletters</a></li>
+             </ul>
+         </div>
+ 
+-    </div>
++    </nav>
+ 
+     <!-- Bottom section: Legal, copyright, and privacy -->
+     <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
+@@ -95,7 +95,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+             <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
+         </div>
+-        
++
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+             <a href="#" class="hover:underline">Manage Privacy Preferences</a>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..aebd3fa 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -2,11 +2,22 @@
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
++import { getImage } from "astro:assets";
++import { getArticleImage } from "../utils/images";
+ import BottomNav from "./BottomNav.tsx";
+ 
+ const articles = await getCollection("articles");
+ const reports = await getCollection("reports");
+ const multimedia = await getCollection("multimedia");
++const searchArticles = await Promise.all(articles.map(async (article, index) => {
++  const image = index < 3 ? await getImage({ src: await getArticleImage(article), width: 384, height: 216, widths: [192, 384, 640], format: 'webp' }) : null;
++  return { slug: article.id, title: article.data.title, summary: article.data.summary,
++    image: image?.src, imageSrcSet: image?.srcSet.attribute };
++}));
++const navigationArticles = articles.map(({ id, data }) => ({
++  id, data: { title: data.title, category: data.category, date: data.date }
++}));
++const readingListArticles = articles.map(({ id, data }) => ({ slug: id, title: data.title, summary: data.summary }));
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
+@@ -19,8 +30,8 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     <div class="flex justify-between items-center">
+       <!-- Left: Search Icon -->
+       <div class="flex items-center space-x-3">
+-        <SearchButton client:load />
+-        <ReadingListButton client:load />
++        <SearchButton client:load articles={searchArticles} />
++        <ReadingListButton client:load articles={readingListArticles} />
+       </div>
+ 
+       <!-- Right: Buttons -->
+@@ -54,7 +65,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+         <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" width="872" height="102" class="w-80 h-auto mx-auto" />
+         </a>
+       </div>
+ 
+@@ -65,5 +76,5 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+   </div>
+ 
+   <!-- Bottom Navigation Bar -->
+-  <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
++  <BottomNav client:load categories={categories} articles={navigationArticles} reports={reports} multimedia={multimedia} />
+ </header>
+diff --git a/src/components/MenuButton.tsx b/src/components/MenuButton.tsx
+index 4e6592b..c7abc8f 100644
+--- a/src/components/MenuButton.tsx
++++ b/src/components/MenuButton.tsx
+@@ -1,29 +1,11 @@
+-import React, { useState } from 'react';
+-import FlyoutMenu from './FlyoutMenu';
+-
+-interface Props {
+-  categories: string[];
+-}
+-
+-export default function MenuButton({ categories }: Props) {
+-  const [isOpen, setIsOpen] = useState(false);
+-
+-  const toggleMenu = () => {
+-    setIsOpen(!isOpen);
+-  };
+-
+-  const closeMenu = () => {
+-    setIsOpen(false);
+-  };
+-
+-  return (
+-    <>
+-      <button className="text-gray-700 hover:text-amber-400" onClick={toggleMenu}>
+-        <svg className="w-7 h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+-        </svg>
+-      </button>
+-      <FlyoutMenu isOpen={isOpen} onClose={closeMenu} categories={categories} />
+-    </>
+-  );
++import Popover from './Popover';
++
++export default function MenuButton({ categories }: { categories: string[] }) {
++  return <Popover label="All sections">
++    <ul className="p-4 space-y-2">
++      {categories.map(category => <li key={category}>
++        <a href={`${import.meta.env.BASE_URL}category/${encodeURIComponent(category.toLowerCase())}`}>{category}</a>
++      </li>)}
++    </ul>
++  </Popover>;
+ }
+diff --git a/src/components/Modal.tsx b/src/components/Modal.tsx
+new file mode 100644
+index 0000000..9fb5f27
+--- /dev/null
++++ b/src/components/Modal.tsx
+@@ -0,0 +1,52 @@
++import { useEffect, useRef, type ReactNode } from 'react';
++
++interface Props {
++  id: string;
++  titleId: string;
++  open: boolean;
++  onClose: () => void;
++  children: ReactNode;
++}
++
++export default function Modal({ id, titleId, open, onClose, children }: Props) {
++  const ref = useRef<HTMLDialogElement>(null);
++
++  useEffect(() => {
++    const dialog = ref.current!;
++    if (open && !dialog.open) dialog.showModal();
++    else if (!open && dialog.open) dialog.close();
++  }, [open]);
++
++  useEffect(() => {
++    const dialog = ref.current!;
++    // Preserve backdrop dismissal on browsers without closedby support.
++    if ('closedBy' in dialog) return;
++    const outside = (event: PointerEvent) => {
++      const rect = dialog.getBoundingClientRect();
++      return event.clientX < rect.left || event.clientX > rect.right ||
++        event.clientY < rect.top || event.clientY > rect.bottom;
++    };
++    let pressedOutside = false;
++    const down = (event: PointerEvent) => { pressedOutside = outside(event); };
++    const up = (event: PointerEvent) => {
++      if (pressedOutside && outside(event)) dialog.close();
++      pressedOutside = false;
++    };
++    dialog.addEventListener('pointerdown', down);
++    dialog.addEventListener('pointerup', up);
++    return () => {
++      dialog.removeEventListener('pointerdown', down);
++      dialog.removeEventListener('pointerup', up);
++    };
++  }, []);
++
++  return (
++    <dialog ref={ref} id={id} aria-labelledby={titleId} closedBy="any"
++      className="app-dialog bg-white shadow-xl" onClose={onClose}>
++      {children}
++      <form method="dialog" className="absolute top-2 right-2">
++        <button type="submit" className="p-2 text-gray-600 hover:text-amber-700" aria-label="Close dialog">✕</button>
++      </form>
++    </dialog>
++  );
++}
+diff --git a/src/components/Popover.tsx b/src/components/Popover.tsx
+new file mode 100644
+index 0000000..22727d7
+--- /dev/null
++++ b/src/components/Popover.tsx
+@@ -0,0 +1,29 @@
++import { useId, useRef, type ReactNode } from 'react';
++
++export default function Popover({ label, children, active = false }: {
++  label: ReactNode;
++  children: ReactNode;
++  active?: boolean;
++}) {
++  const id = useId();
++  const ref = useRef<HTMLDivElement>(null);
++  return (
++    <>
++      <button type="button" popoverTarget={id}
++        className={`flex items-center gap-1 whitespace-nowrap p-2 hover:text-amber-700 ${active ? 'text-amber-700' : ''}`}
++        onClick={event => {
++          const bottom = event.currentTarget.getBoundingClientRect().bottom;
++          ref.current?.style.setProperty('--popover-top', `${bottom + 8}px`);
++        }}>
++        {label}
++        <svg aria-hidden="true" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
++          <path strokeLinecap="round" strokeLinejoin="round" d="m5 9 7 7 7-7" />
++        </svg>
++      </button>
++      <div ref={ref} id={id} popover="auto" className="nav-popover bg-white border border-gray-300 shadow-lg">
++        {children}
++        <button type="button" popoverTarget={id} popoverTargetAction="hide" className="m-4 p-2 text-sm underline">Close menu</button>
++      </div>
++    </>
++  );
++}
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..6643d90 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -1,31 +1,20 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useState, useId } from 'react';
+ import ReadingListFlyout from './ReadingListFlyout';
+ 
+ interface Article {
+   slug: string;
+   title: string;
+   summary: string;
+-  image: string;
+ }
+ 
+-export default function ReadingListButton() {
++export default function ReadingListButton({ articles }: { articles: Article[] }) {
++  const id = useId();
+   const [isOpen, setIsOpen] = useState(false);
+-  const [articles, setArticles] = useState<Article[]>([]);
+-
+-  useEffect(() => {
+-    const fetchArticles = async () => {
+-      const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-      const data = await response.json();
+-      setArticles(data);
+-    };
+-    fetchArticles();
+-  }, []);
+-
+   return (
+     <>
+-      <button onClick={() => setIsOpen(true)} className="p-1">
+-        <svg
++      <button type="button" aria-label="Open reading list" aria-haspopup="dialog" aria-controls={id} onClick={() => setIsOpen(true)} className="p-1">
++        <svg aria-hidden="true"
+           xmlns="http://www.w3.org/2000/svg"
+           className="h-6 w-6 text-gray-600"
+           fill="none"
+@@ -40,7 +29,7 @@ export default function ReadingListButton() {
+           />
+         </svg>
+       </button>
+-      {isOpen && <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />}
++      <ReadingListFlyout id={id} open={isOpen} articles={articles} onClose={() => setIsOpen(false)} />
+     </>
+   );
+ }
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..4cf5424 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,79 +1,102 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useState, useEffect, useId, useRef } from 'react';
++
++import Modal from './Modal';
+ 
+ interface Article {
+   slug: string;
+   title: string;
+   summary: string;
+-  image: string;
+ }
+ 
+ interface Props {
+   articles: Article[];
++  id: string;
++  open: boolean;
+   onClose: () => void;
+ }
+ 
+-export default function ReadingListFlyout({ articles, onClose }: Props) {
++export default function ReadingListFlyout({ articles, id, open, onClose }: Props) {
++  const titleId = useId();
++  const listRef = useRef<HTMLUListElement>(null);
++  const headingRef = useRef<HTMLHeadingElement>(null);
++  const pendingFocus = useRef<number | null>(null);
++  const [removing, setRemoving] = useState<string | null>(null);
++  const [announcement, setAnnouncement] = useState('');
++  const [error, setError] = useState('');
++  const [loading, setLoading] = useState(false);
+   const [readingList, setReadingList] = useState<string[]>([]);
+ 
+-  const fetchReadingList = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+-    const data = await response.json();
+-    setReadingList(data.readingList);
+-  };
+-
+   useEffect(() => {
+-    fetchReadingList();
++    if (!open) return;
++    let active = true;
++    setLoading(true);
++    setError('');
++    fetch(`${import.meta.env.BASE_URL}api/reading-list.json`)
++      .then(response => {
++        if (!response.ok) throw new Error('Unable to load your reading list.');
++        return response.json();
++      })
++      .then(data => { if (active) setReadingList(data.readingList); })
++      .catch(() => { if (active) setError('Unable to load your reading list. Please try again.'); })
++      .finally(() => { if (active) setLoading(false); });
++    return () => { active = false; };
++  }, [open]);
+ 
+-    const handleKeyDown = (event: KeyboardEvent) => {
+-      if (event.key === 'Escape') {
+-        onClose();
+-      }
+-    };
+-    window.addEventListener('keydown', handleKeyDown);
+-
+-    return () => {
+-      window.removeEventListener('keydown', handleKeyDown);
+-    };
+-  }, [onClose]);
++  useEffect(() => {
++    if (pendingFocus.current === null) return;
++    const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>('button');
++    const target = buttons?.[Math.min(pendingFocus.current, buttons.length - 1)];
++    (target ?? headingRef.current)?.focus();
++    pendingFocus.current = null;
++  }, [readingList]);
+ 
+   const handleRemove = async (slug: string) => {
+-    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    fetchReadingList();
++    if (removing) return;
++    setRemoving(slug);
++    const buttons = Array.from(listRef.current?.querySelectorAll('button') ?? []);
++    const focusedIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
++    try {
++      setError('');
++      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++        method: 'POST', headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ slug }),
++      });
++      if (!response.ok) throw new Error();
++      const data = await response.json();
++      pendingFocus.current = focusedIndex >= 0 && document.activeElement === buttons[focusedIndex] ? focusedIndex : null;
++      setReadingList(data.readingList);
++      setAnnouncement('Article removed from your reading list.');
++    } catch {
++      setError('Unable to remove this article. Please try again.');
++    } finally {
++      setRemoving(null);
++    }
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
+   return (
+-    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-          </svg>
+-        </button>
++    <Modal id={id} titleId={titleId} open={open} onClose={onClose}>
+         <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++          <h2 ref={headingRef} id={titleId} tabIndex={-1} autoFocus className="text-lg font-semibold text-gray-800 mb-3 pr-10">Your Reading List</h2>
+         </div>
+-        <div className="p-4 max-h-[60vh] overflow-y-auto">
+-          {readingListArticles.length === 0 && (
++        <div className="p-4">
++          {error && <p role="alert">{error}</p>}
++          {loading && <p role="status">Loading your reading list…</p>}
++          {!loading && !error && readingListArticles.length === 0 && (
+             <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
+           )}
+-          <ul className="space-y-2">
++          <p role="status" className="sr-only">{announcement}</p>
++          <ul ref={listRef} className="space-y-2">
+             {readingListArticles.map(article => (
+               <li key={article.slug} className="flex items-center">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+-                  <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                  <h3 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h3>
+                   <p className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                <button type="button" aria-disabled={removing !== null} aria-label={`Remove ${article.title} from reading list`} onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
++                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                     </svg>
+                 </button>
+@@ -81,7 +104,6 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+             ))}
+           </ul>
+         </div>
+-      </div>
+-    </div>
++    </Modal>
+   );
+ }
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..cb312f4 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,49 +1,18 @@
++import { useId, useState } from 'react';
++import SearchFlyout, { type SearchArticle } from './SearchFlyout';
+ 
+-import React, { useState } from 'react';
+-import SearchFlyout from './SearchFlyout';
+-
+-interface Article {
+-    slug: string;
+-    title: string;
+-    summary: string;
+-}
+-
+-export default function SearchButton() {
+-    const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+-    const [articles, setArticles] = useState<Article[]>([]);
+-    const [isLoading, setIsLoading] = useState(false);
+-
+-    const openSearch = async () => {
+-        try {
+-            setArticles([]);
+-            setIsFlyoutOpen(true);
+-        } catch (error) {
+-            console.error('Failed to fetch articles:', error);
+-        } finally {
+-            setIsLoading(false);
+-        }
+-    };
+-
+-    const closeSearch = () => {
+-        setIsFlyoutOpen(false);
+-    };
+-
+-    return (
+-        <>
+-            <button
+-                className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+-                onClick={openSearch}
+-                disabled={isLoading}
+-            >
+-                {isLoading ? (
+-                    <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+-                ) : (
+-                    <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+-                    </svg>
+-                )}
+-            </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
+-        </>
+-    );
++export default function SearchButton({ articles }: { articles: SearchArticle[] }) {
++  const [open, setOpen] = useState(false);
++  const id = useId();
++  return (
++    <>
++      <button type="button" aria-label="Search articles" aria-haspopup="dialog" aria-controls={id}
++        onClick={() => setOpen(true)} className="p-2 text-gray-700 hover:text-amber-700">
++        <svg aria-hidden="true" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
++          <path strokeLinecap="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
++        </svg>
++      </button>
++      <SearchFlyout id={id} open={open} articles={articles} onClose={() => setOpen(false)} />
++    </>
++  );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..50fae5f 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,118 +1,62 @@
+-
+-import React, { useState, useMemo, useEffect } from 'react';
+-
+-interface Article {
+-    slug: string;
+-    title: string;
+-    summary: string;
+-    image?: string;
++import { useId, useMemo, useState } from 'react';
++import Modal from './Modal';
++
++export interface SearchArticle {
++  slug: string;
++  title: string;
++  summary: string;
++  image?: string;
++  imageSrcSet?: string;
+ }
+ 
+ interface Props {
+-    articles: Article[];
+-    onClose: () => void;
++  id: string;
++  open: boolean;
++  articles: SearchArticle[];
++  onClose: () => void;
+ }
+ 
+-// Function to shuffle an array and get the first N items
+-const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+-    return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+-};
+-
+-export default function SearchFlyout({ articles, onClose }: Props) {
+-    const [searchTerm, setSearchTerm] = useState('');
+-    const [suggestions, setSuggestions] = useState<Article[]>([]);
+-
+-    useEffect(() => {
+-        const handleKeyDown = (event: KeyboardEvent) => {
+-            if (event.key === 'Escape') {
+-                onClose();
+-            }
+-        };
+-        window.addEventListener('keydown', handleKeyDown);
+-        
+-        // Bug: Redundant fetch for suggestions
+-        const fetchSuggestions = async () => {
+-            try {
+-                const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-                const data = await response.json();
+-                setSuggestions(getShuffledItems(data, 3));
+-            } catch (error) {
+-                console.error('Failed to fetch suggestions:', error);
+-            }
+-        };
+-
+-        fetchSuggestions();
+-
+-        return () => {
+-            window.removeEventListener('keydown', handleKeyDown);
+-        };
+-    }, [onClose]);
+-
+-    const filteredArticles = useMemo(() => {
+-        if (!searchTerm) {
+-            return [];
+-        }
+-        return articles.filter(article =>
+-            article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+-            article.summary.toLowerCase().includes(searchTerm.toLowerCase())
+-        );
+-    }, [articles, searchTerm]);
+-
+-    return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-                    </svg>
+-                </button>
+-                <div className="p-4">
+-                    {!searchTerm && suggestions.length > 0 && (
+-                        <div>
+-                            <h3 className="text-sm font-semibold text-gray-500 mb-3">Featured</h3>
+-                            <ul className="grid grid-cols-3 gap-4 mb-4">
+-                                {suggestions.map(article => {
+-                                    const imagePath = article.image ? article.image.replace(/^\//, '') : '';
+-                                    return (
+-                                        <li key={article.slug}>
+-                                            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+-                                                <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+-                                                <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                            </a>
+-                                        </li>
+-                                    );
+-                                })}
+-                            </ul>
+-                        </div>
+-                    )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
+-                </div>
+-                <div className="p-4 max-h-[60vh] overflow-y-auto">
+-                    {searchTerm && filteredArticles.length === 0 && (
+-                        <p className="text-gray-500 text-center py-8">No results found for "{searchTerm}".</p>
+-                    )}
+-                    {searchTerm && (
+-                        <ul className="space-y-2">
+-                            {filteredArticles.map(article => (
+-                                <li key={article.slug}>
+-                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+-                                        <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                        <p className="text-sm text-gray-600">{article.summary}</p>
+-                                    </a>
+-                                </li>
+-                            ))}
+-                        </ul>
+-                    )}
+-                </div>
+-            </div>
+-        </div>
+-    );
++export default function SearchFlyout({ id, open, articles, onClose }: Props) {
++  const [searchTerm, setSearchTerm] = useState('');
++  const titleId = useId();
++  const inputId = useId();
++  const query = searchTerm.trim().toLowerCase();
++  const results = useMemo(() => query ? articles.filter(article =>
++    article.title.toLowerCase().includes(query) || article.summary.toLowerCase().includes(query)
++  ) : [], [articles, query]);
++
++  return (
++    <Modal id={id} titleId={titleId} open={open} onClose={onClose}>
++      <search className="p-4">
++        <h2 id={titleId} className="text-lg font-semibold pr-10 mb-3">Search articles</h2>
++        <label htmlFor={inputId} className="block text-sm font-semibold mb-2">Search by title or summary</label>
++        <input id={inputId} name="q" type="search" autoComplete="on" enterKeyHint="search"
++          autoCapitalize="off" autoCorrect="off" spellCheck={false} autoFocus
++          placeholder="Search for articles…"
++          className="w-full p-2 border border-gray-300 rounded-md"
++          value={searchTerm} onChange={event => setSearchTerm(event.target.value)} />
++        <p role="status" className="text-sm text-gray-600 mt-2">
++          {query ? `${results.length} ${results.length === 1 ? 'result' : 'results'} found.` : 'Browse featured articles or enter a search.'}
++        </p>
++      </search>
++      <div className="p-4">
++        {!query && <p className="font-semibold mb-3">Featured articles</p>}
++        {query && results.length === 0 && <p>No results found for “{searchTerm}”.</p>}
++        <ul className={query ? 'space-y-2' : 'grid sm:grid-cols-3 gap-4'}>
++          {(query ? results : articles.slice(0, 3)).map(article => (
++            <li key={article.slug}>
++              <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md">
++                {!query && article.image && <img src={article.image} srcSet={article.imageSrcSet}
++                  sizes="(min-width: 640px) 192px, calc(100vw - 64px)"
++                  alt="" width={384} height={216} loading="lazy" fetchPriority="low"
++                  className="w-full h-20 object-cover rounded-md mb-2" />}
++                <h3 className="font-bold text-gray-800">{article.title}</h3>
++                {query && <p className="text-sm text-gray-600">{article.summary}</p>}
++              </a>
++            </li>
++          ))}
++        </ul>
++      </div>
++    </Modal>
++  );
+ }
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..ed076dc 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -41,42 +41,51 @@ export default function SignInForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
++
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form action="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login" method="post" onSubmit={handleSubmit} aria-busy={loading} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++            Username (required)
+           </label>
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="off"
++            autoCorrect="off"
++            spellCheck={false}
++            enterKeyHint="next"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+-        
++
+         <div>
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
++            Password (required)
+           </label>
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
++            enterKeyHint="done"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..f88578b 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -42,48 +42,60 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h1>
++
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form action="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register" method="post" onSubmit={handleSubmit} aria-busy={loading} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++            Username (required)
+           </label>
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="off"
++            autoCorrect="off"
++            spellCheck={false}
++            enterKeyHint="next"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+-        
++
+         <div>
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
++            Password (required)
+           </label>
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
++            minLength={8}
++            pattern=".*[0-9].*"
++            aria-describedby="password-help"
++            enterKeyHint="done"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
++          <p id="password-help" className="text-xs text-gray-500 mt-1">
+              Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..9ebdc0d 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -47,7 +47,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                     {topArticle.data.summary}
+                 </p>
+                 <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                     </svg>
+                     <span>{topArticle.data.readingTime} Min Read</span>
+@@ -55,7 +55,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             </div>
+             <div class="w-full order-first lg:order-last">
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++                    <Image width={800} height={450} widths={[400, 640, 800, 1200]} sizes="(min-width: 1152px) 552px, (min-width: 1024px) 48vw, calc(100vw - 48px)" loading="lazy" format="webp" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                 </a>
+             </div>
+         </div>
+@@ -70,7 +70,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                 <div class="flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                            <Image width={400} height={225} widths={[320, 480, 640, 800]} sizes="(min-width: 1152px) 352px, (min-width: 768px) 30vw, calc(100vw - 48px)" loading="lazy" format="webp" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+diff --git a/src/content/articles/coastal-pulse.md b/src/content/articles/coastal-pulse.md
+index af5e892..af5329f 100644
+--- a/src/content/articles/coastal-pulse.md
++++ b/src/content/articles/coastal-pulse.md
+@@ -13,14 +13,14 @@ Living by the seaside offers a sensory experience that shifts with the tides. It
+ 
+ The air at the coast is rich in negative ions, which are thought to improve oxygen absorption and balance serotonin levels. Furthermore, the "blue space" effect—the mental clarity gained from being near water—is a well-documented phenomenon that reduces cortisol and encourages mindfulness.
+ 
+-### The Coastal Environment
++## The Coastal Environment
+ **Microclimates:** Large bodies of water act as heat sinks, often resulting in cooler summers and milder winters compared to inland areas.
+ 
+ **Salt Spray & Ecology:** The high salinity creates a unique ecosystem where only hardy, salt-tolerant plants (halophytes) thrive.
+ 
+ **Tidal Dynamics:** Understanding the Lunar cycle is essential, as the gravitational pull of the moon creates the high and low tides that reshape the landscape daily.
+ 
+-### Explore
++## Explore
+ While the salt air can be corrosive to infrastructure, the trade-off is a front-row seat to nature’s most dynamic theater.
+ 
+ <script>
+diff --git a/src/content/articles/coffee-alchemy.md b/src/content/articles/coffee-alchemy.md
+index cc7e252..94df1a7 100644
+--- a/src/content/articles/coffee-alchemy.md
++++ b/src/content/articles/coffee-alchemy.md
+@@ -13,7 +13,7 @@ Coffee is more than a morning ritual; it is a complex beverage derived from the
+ 
+ The profile of a cup depends heavily on the roast profile and extraction method. During roasting, chemical reactions like the Maillard reaction transform green beans into aromatic brown ones, developing over 800 distinct flavor compounds.
+ 
+-### Key Varieties
++## Key Varieties
+ **Arabica:** Known for its acidity, sweetness, and nuanced floral notes.
+ 
+ **Robusta:** Noted for its higher caffeine content, bitter edge, and thick "crema."
+diff --git a/src/content/articles/silent-architects.md b/src/content/articles/silent-architects.md
+index ee5cdd8..c4b9be0 100644
+--- a/src/content/articles/silent-architects.md
++++ b/src/content/articles/silent-architects.md
+@@ -13,7 +13,7 @@ Plants are the quiet powerhouses of our planet, serving as the literal foundatio
+ 
+ Beyond just being "oxygen factories," plants are sophisticated organisms with complex systems. Their roots anchor the soil and prevent erosion, while their vascular tissues—xylem and phloem—act like a biological highway, transporting water and nutrients against the pull of gravity.
+ 
+-### Why They Matter
++## Why They Matter
+ 
+ *   **Biodiversity:** They provide habitats and food for countless species.
+ *   **Climate Regulation:** Forests act as "carbon sinks," absorbing $CO_2$ to help mitigate global warming.
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..43203e0 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -17,39 +17,40 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+     />
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+-
+-    <link rel="icon" href=`${baseUrl}/favicon.svg` />
++    <link rel="icon" href={`${baseUrl}favicon.svg`} />
+ 
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
++    <a class="skip-link" href="#main-content">Skip to main content</a>
+     <div class="mx-auto">
+       <AdSlotFireplace client:load />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
+-          <Header />
+-        </div>
+-        <main class="bg-white relative">
++        <Header />
++        <main id="main-content" tabindex="-1" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script is:inline defer fetchpriority="low" src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <script>
++      if (!("popover" in HTMLElement.prototype)) {
++        import("@oddbird/popover-polyfill");
++      }
++    </script>
+   </body>
+ </html>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..6f6d205 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+ <Layout title="Page Not Found">
+-    <div class="flex flex-col items-center justify-center text-center py-20">
++    <div lang="de" class="flex flex-col items-center justify-center text-center py-20">
+         <h1 class="text-6xl font-bold text-amber-400">404</h1>
+         <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+         <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..bfd0797 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -30,9 +30,8 @@ const allArticles = await getCollection('articles');
+ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
+ 
+ const articleImage = await getArticleImage(article);
+-const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.slug);
++const isBookmarked = readingList.includes(article.id);
+ ---
+ 
+ <Layout title={article.data.title}>
+@@ -46,7 +45,7 @@ const isBookmarked = readingList.includes(article.slug);
+         <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+             {article.data.title}
+         </h1>
+-        
++
+         <!-- Sub-headline / Lead Paragraph -->
+         <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
+             {article.data.summary}
+@@ -54,15 +53,17 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         <!-- Author / Date -->
+         <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            By <span class="font-semibold text-gray-700">{article.data.author}</span> | <time datetime={article.data.date.toISOString()}>{article.data.date.toDateString()}</time>
+         </div>
+ 
+         <!-- Main Article Image -->
+         <figure class="mb-5">
+             {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+             {article.data.prompt_comment ? (
+-                <img 
++                <img
+                     src={article.data.image}
++                    loading="eager"
++                    fetchpriority="high"
+                     alt={article.data.title}
+                     width="1200"
+                     height="675"
+@@ -70,9 +71,13 @@ const isBookmarked = readingList.includes(article.slug);
+                     crossorigin="use-credentials"
+                 />
+             ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
++                <Image
++                    src={articleImage}
++                    loading="eager"
++                    fetchpriority="high"
++                    widths={[480, 736, 1200, 1472]}
++                    sizes="(min-width: 768px) 736px, calc(100vw - 32px)"
++                    alt={article.data.title}
+                     width={1200}
+                     height={675}
+                     format="webp"
+@@ -94,12 +99,12 @@ const isBookmarked = readingList.includes(article.slug);
+                 <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+                 <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+                 <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
++                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+                 </a>
+                 <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
++                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
+         </div>
+@@ -110,17 +115,18 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- ADVERTISEMENT -->
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:load />
+-        </section>
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </aside>
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+     <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++        <h2 class="text-2xl font-bold mb-6">Related articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..7192dea 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -10,7 +10,7 @@ import { getArticleImage } from '../../utils/images';
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+     const categories = [...new Set(articles.map(article => article.data.category.toLowerCase()))];
+-    
++
+     return categories.map(category => ({
+         params: { category },
+     }));
+@@ -27,7 +27,7 @@ allArticlesInCategory.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf
+ const featuredArticle = allArticlesInCategory[0];
+ const otherArticles = allArticlesInCategory.slice(1);
+ 
+-const randomArticleForHero = allArticlesInCategory.length > 0 
++const randomArticleForHero = allArticlesInCategory.length > 0
+     ? allArticlesInCategory[Math.floor(Math.random() * allArticlesInCategory.length)]
+     : null;
+ 
+@@ -42,9 +42,12 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <!-- Dynamic Category Header -->
+         <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+-                <Image 
+-                    src={heroImage} 
+-                    alt={`Background for ${capitalizedCategory}`} 
++                <Image
++                    src={heroImage}
++                    alt=""
++                    loading="eager"
++                    widths={[480, 800, 1200]}
++                    sizes="(min-width: 1152px) 1104px, calc(100vw - 48px)"
+                     width={1200}
+                     height={400}
+                     format="webp"
+@@ -68,9 +71,13 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             {featuredArticle && featuredArticleImage && (
+                 <section class="mb-8 pb-8 border-b border-gray-200">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+-                        <Image 
+-                            src={featuredArticleImage} 
+-                            alt={featuredArticle.data.title} 
++                        <Image
++                            src={featuredArticleImage}
++                            loading="eager"
++                            fetchpriority="high"
++                            widths={[480, 768, 1104, 1600, 2208]}
++                            sizes="(min-width: 1152px) 1104px, calc(100vw - 48px)"
++                            alt={featuredArticle.data.title}
+                             width={1200}
+                             height={675}
+                             format="webp"
+@@ -89,7 +96,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+-                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
++                    {otherArticles.map(article => <ArticleTeaser article={article} headingLevel={2} />)}
+                 </div>
+             ) : (
+                 <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..c0819e2 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -38,6 +38,7 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <h1 class="sr-only">The DevTools Times — Latest news</h1>
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -45,7 +46,7 @@ politicsArticles[2] = {
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            <h2 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h2>
+                         </a>
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                     </div>
+@@ -55,30 +56,30 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <!-- "Top News" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <!-- "Politics" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
++
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..e576b38 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -11,11 +11,12 @@ const multimedia = await getCollection('multimedia');
+             <p>Watch our latest multimedia content.</p>
+             <ul>
+                 {multimedia.map(item => (
+-                    <li>
+-                        <a href={`/multimedia/${item.slug}`}>{item.data.title}</a>
++                    <li id={item.id}>
++                        <h2>{item.data.title}</h2>
++                        <p>{item.data.description}</p>
+                     </li>
+                 ))}
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..b9b2218 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -11,11 +11,12 @@ const reports = await getCollection('reports');
+             <p>Read our latest reports.</p>
+             <ul>
+                 {reports.map(report => (
+-                    <li>
+-                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
++                    <li id={report.id}>
++                        <h2>{report.data.title}</h2>
++                        <p>{report.data.description}</p>
+                     </li>
+                 ))}
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..e2165a0 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,59 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++:focus-visible {
++  outline: 3px solid #92400e;
++  outline-offset: 3px;
++}
++
++.skip-link {
++  position: fixed;
++  inset-block-start: 1rem;
++  inset-inline-start: 1rem;
++  z-index: 100;
++  padding: 0.75rem 1rem;
++  background: white;
++  color: #111827;
++  transform: translateY(-200%);
++}
++
++.skip-link:focus {
++  transform: translateY(0);
++}
++
++.app-dialog {
++  position: fixed;
++  inset: 0;
++  margin: 10dvh auto auto;
++  width: min(42rem, calc(100% - 2rem));
++  max-height: 80dvh;
++  overflow-y: auto;
++  padding: 0;
++  border: 0;
++}
++
++.app-dialog:modal {
++  overscroll-behavior: contain;
++}
++
++.app-dialog::backdrop {
++  background: rgb(255 255 255 / 0.3);
++  backdrop-filter: blur(4px);
++  overflow: hidden;
++  overscroll-behavior: contain;
++}
++
++.nav-popover {
++  position: fixed;
++  inset: var(--popover-top, 10rem) 0 auto;
++  margin: 0 auto;
++  width: min(72rem, calc(100% - 2rem));
++  max-height: calc(100dvh - var(--popover-top, 10rem) - 1rem);
++  overflow-y: auto;
++  color: #111827;
++}
++
++[popover]:is(:popover-open, .\:popover-open) {
++  display: block;
++}
+diff --git a/src/utils/images.ts b/src/utils/images.ts
+index b8fe01e..86a82ec 100644
+--- a/src/utils/images.ts
++++ b/src/utils/images.ts
+@@ -1,4 +1,5 @@
+ 
++import type { ImageMetadata } from 'astro';
+ import type { CollectionEntry } from 'astro:content';
+ 
+ // Get all images from the content directory
+@@ -9,7 +10,7 @@ const allImages = import.meta.glob<{ default: ImageMetadata }>(
+ export async function getArticleImage(article: CollectionEntry<'articles'>) {
+     const imagePath = article.data.image;
+     if (!imagePath) {
+-        throw new Error(`Image path is missing for article: ${article.slug}`);
++        throw new Error(`Image path is missing for article: ${article.id}`);
+     }
+ 
+     if (imagePath.startsWith('http')) {

@@ -1,0 +1,105 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..379ec45 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -38,20 +38,24 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
++    <!-- Top Stories Slider -->
+     <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++        <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4" aria-roledescription="carousel" aria-label="Top stories" data-top-stories>
++            <div class="flex items-center gap-4">
++                <button type="button" data-prev aria-label="Previous story" class="shrink-0 px-3 py-1 border border-gray-300 text-sm font-semibold text-gray-900 hover:text-amber-400 cursor-pointer">Previous</button>
++                <div class="top-stories-viewport flex-1 min-w-0" aria-live="polite">
++                    {topStories.map((article, i) => (
++                        <div data-slide hidden={i !== 0} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${topStories.length}`}>
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
++                <button type="button" data-next aria-label="Next story" class="shrink-0 px-3 py-1 border border-gray-300 text-sm font-semibold text-gray-900 hover:text-amber-400 cursor-pointer">Next</button>
+             </div>
+-        </div>
++        </section>
+     </div>
+ 
+     <!-- Main Content Area -->
+@@ -81,4 +85,61 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
++<style is:global>
++    .top-stories-viewport { view-transition-name: top-stories; }
++
++    @keyframes top-stories-to-left { to { transform: translateX(-100%); } }
++    @keyframes top-stories-from-right { from { transform: translateX(100%); } }
++    @keyframes top-stories-to-right { to { transform: translateX(100%); } }
++    @keyframes top-stories-from-left { from { transform: translateX(-100%); } }
++
++    ::view-transition-group(top-stories) {
++        overflow: clip;
++        animation-duration: 0.35s;
++    }
++    ::view-transition-old(top-stories),
++    ::view-transition-new(top-stories) {
++        animation-duration: 0.35s;
++        animation-timing-function: ease-in-out;
++        animation-fill-mode: both;
++    }
++    html:active-view-transition-type(forward)::view-transition-old(top-stories) { animation-name: top-stories-to-left; }
++    html:active-view-transition-type(forward)::view-transition-new(top-stories) { animation-name: top-stories-from-right; }
++    html:active-view-transition-type(backward)::view-transition-old(top-stories) { animation-name: top-stories-to-right; }
++    html:active-view-transition-type(backward)::view-transition-new(top-stories) { animation-name: top-stories-from-left; }
++
++    @media (prefers-reduced-motion: reduce) {
++        ::view-transition-group(top-stories),
++        ::view-transition-old(top-stories),
++        ::view-transition-new(top-stories) {
++            animation: none !important;
++        }
++    }
++</style>
++
++<script>
++    const slider = document.querySelector<HTMLElement>('[data-top-stories]');
++    if (slider) {
++        const slides = Array.from(slider.querySelectorAll<HTMLElement>('[data-slide]'));
++        let current = 0;
++
++        function go(direction: 'forward' | 'backward') {
++            const step = direction === 'forward' ? 1 : -1;
++            const next = (current + step + slides.length) % slides.length;
++            const update = () => {
++                slides[current].hidden = true;
++                slides[next].hidden = false;
++                current = next;
++            };
++            if (!document.startViewTransition) {
++                update();
++                return;
++            }
++            document.startViewTransition({ update, types: [direction] });
++        }
++
++        slider.querySelector('[data-prev]')?.addEventListener('click', () => go('backward'));
++        slider.querySelector('[data-next]')?.addEventListener('click', () => go('forward'));
++    }
++</script>

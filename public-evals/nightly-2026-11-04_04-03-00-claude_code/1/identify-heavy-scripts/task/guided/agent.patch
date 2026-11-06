@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,104 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!--
++    Slow-script monitor: keep this as the first script on the page.
++    It uses the Long Animation Frames (LoAF) API to attribute frames over 50ms
++    to the scripts that ran in them. Chromium-only; other browsers ignore it.
++    View results in DevTools with `window.__slowScripts.report()`.
++  -->
++  <script>
++    (() => {
++      if (!PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) return;
++
++      // Only list scripts whose total time adds up to more than this.
++      const REPORT_THRESHOLD_MS = 100;
++      // Optional: set to an analytics URL to send a summary when the page is hidden.
++      const BEACON_URL = '';
++
++      // Running totals per script source, kept for the page's whole lifetime.
++      const bySource = new Map();
++      let longFrames = 0;
++      let blockingMs = 0;
++
++      const keyFor = (s) =>
++        s.sourceURL ||
++        `(inline) ${s.invoker || s.invokerType || 'unknown'}`;
++
++      const record = (frames) => {
++        for (const frame of frames) {
++          longFrames++;
++          blockingMs += frame.blockingDuration;
++          for (const s of frame.scripts) {
++            const key = keyFor(s);
++            const agg = bySource.get(key) ?? {
++              source: key,
++              count: 0,
++              totalMs: 0,
++              maxMs: 0,
++              forcedLayoutMs: 0,
++              invokers: new Set(),
++              functions: new Set(),
++            };
++            agg.count++;
++            agg.totalMs += s.duration;
++            agg.maxMs = Math.max(agg.maxMs, s.duration);
++            agg.forcedLayoutMs += s.forcedStyleAndLayoutDuration;
++            if (s.invoker) agg.invokers.add(s.invoker);
++            if (s.sourceFunctionName) agg.functions.add(s.sourceFunctionName);
++            bySource.set(key, agg);
++          }
++        }
++      };
++
++      const observer = new PerformanceObserver((list) => record(list.getEntries()));
++      // buffered: true also picks up long frames from before the observer started.
++      observer.observe({ type: 'long-animation-frame', buffered: true });
++
++      const summarize = () =>
++        [...bySource.values()]
++          .filter((a) => a.totalMs > REPORT_THRESHOLD_MS)
++          .sort((a, b) => b.totalMs - a.totalMs)
++          .map((a) => ({
++            source: a.source,
++            count: a.count,
++            totalMs: Math.round(a.totalMs),
++            maxMs: Math.round(a.maxMs),
++            forcedLayoutMs: Math.round(a.forcedLayoutMs),
++            invokers: [...a.invokers].slice(0, 5).join(', '),
++            functions: [...a.functions].slice(0, 5).join(', '),
++          }));
++
++      window.__slowScripts = {
++        summarize,
++        report() {
++          record(observer.takeRecords()); // include entries the observer hasn't delivered yet
++          console.info(
++            `[slow-scripts] ${longFrames} long animation frames, ${Math.round(blockingMs)}ms blocking`
++          );
++          console.table(summarize());
++        },
++      };
++
++      // Log a report once the page has loaded and settled.
++      addEventListener('load', () => setTimeout(() => window.__slowScripts.report(), 5000));
++
++      // Send the final summary to analytics when the page is hidden. This also covers
++      // tabs that are closed or put in the bfcache.
++      if (BEACON_URL) {
++        addEventListener('visibilitychange', () => {
++          if (document.visibilityState !== 'hidden' || !bySource.size) return;
++          record(observer.takeRecords());
++          navigator.sendBeacon(
++            BEACON_URL,
++            JSON.stringify({ page: location.pathname, longFrames, blockingMs, scripts: summarize() })
++          );
++        });
++      }
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

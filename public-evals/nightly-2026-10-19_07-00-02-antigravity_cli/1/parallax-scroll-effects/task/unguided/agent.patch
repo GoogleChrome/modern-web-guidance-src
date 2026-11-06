@@ -1,0 +1,544 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,439 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Parallax Section */
++    .parallax-section {
++      position: relative;
++      overflow: hidden;
++      min-height: 580px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 80px 20px;
++      color: white;
++      timeline-scope: --parallax-section;
++      view-timeline-name: --parallax-section;
++      view-timeline-axis: block;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++      user-select: none;
++    }
++
++    /* Layer 1: Background (Moves slowest) */
++    .parallax-layer-bg {
++      inset: -15% 0;
++      z-index: 1;
++      will-change: transform;
++    }
++
++    .parallax-bg-image {
++      width: 100%;
++      height: 100%;
++      background: url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80') center center / cover no-repeat;
++    }
++
++    .parallax-bg-overlay {
++      position: absolute;
++      inset: 0;
++      background: radial-gradient(ellipse at center, rgba(35, 20, 16, 0.72) 0%, rgba(18, 9, 7, 0.94) 100%);
++    }
++
++    /* Layer 2: Midground (Moderate speed) */
++    .parallax-layer-mid {
++      z-index: 2;
++    }
++
++    .parallax-mid-card {
++      position: absolute;
++      right: 7%;
++      top: 50%;
++      transform: translateY(-50%) rotate(3deg);
++      width: 250px;
++      background: #ffffff;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
++      will-change: transform;
++    }
++
++    .parallax-mid-card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .mid-card-caption {
++      padding: 12px 14px;
++      background: #ffffff;
++      color: var(--text);
++      text-align: left;
++    }
++
++    .caption-tag {
++      display: block;
++      font-size: 0.7rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      font-weight: 700;
++      color: #8d6e63;
++      margin-bottom: 3px;
++    }
++
++    .caption-title {
++      font-size: 0.95rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .parallax-mid-badge {
++      position: absolute;
++      left: 7%;
++      bottom: 22%;
++      background: rgba(46, 28, 22, 0.88);
++      backdrop-filter: blur(10px);
++      -webkit-backdrop-filter: blur(10px);
++      border: 1px solid rgba(255, 171, 64, 0.35);
++      border-radius: 10px;
++      padding: 12px 18px;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
++      will-change: transform;
++      text-align: left;
++    }
++
++    .badge-icon {
++      font-size: 1.4rem;
++    }
++
++    .badge-content strong {
++      display: block;
++      font-size: 0.9rem;
++      color: #ffffff;
++    }
++
++    .badge-content span {
++      display: block;
++      font-size: 0.75rem;
++      color: var(--secondary);
++    }
++
++    /* Layer 3: Foreground Accents (Fastest speed) */
++    .parallax-layer-fore {
++      z-index: 3;
++    }
++
++    .floating-accent {
++      position: absolute;
++      will-change: transform;
++    }
++
++    .accent-bean-1 {
++      top: 14%;
++      right: 23%;
++    }
++
++    .accent-bean-2 {
++      bottom: 10%;
++      left: 20%;
++      filter: blur(1.5px);
++      opacity: 0.85;
++    }
++
++    .accent-pill {
++      top: 16%;
++      left: 8%;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      background: rgba(255, 255, 255, 0.12);
++      backdrop-filter: blur(8px);
++      -webkit-backdrop-filter: blur(8px);
++      border: 1px solid rgba(255, 255, 255, 0.2);
++      padding: 8px 16px;
++      border-radius: 20px;
++      font-size: 0.8rem;
++      font-weight: 500;
++      letter-spacing: 0.5px;
++      color: #fafafa;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
++    }
++
++    .pill-dot {
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: var(--accent);
++      box-shadow: 0 0 8px var(--accent);
++    }
++
++    /* Layer 4: Content */
++    .parallax-content-wrapper {
++      position: relative;
++      z-index: 4;
++      max-width: 680px;
++      width: 100%;
++      margin: 0 auto;
++      text-align: center;
++    }
++
++    .parallax-content-card {
++      background: rgba(30, 18, 14, 0.84);
++      backdrop-filter: blur(14px);
++      -webkit-backdrop-filter: blur(14px);
++      border: 1px solid rgba(255, 171, 64, 0.25);
++      border-radius: 16px;
++      padding: 44px 36px;
++      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
++      will-change: transform;
++    }
++
++    .parallax-eyebrow {
++      display: inline-block;
++      font-size: 0.8rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      color: var(--accent);
++      margin-bottom: 12px;
++    }
++
++    .parallax-content-card h2 {
++      font-size: 2.2rem;
++      line-height: 1.25;
++      margin-bottom: 16px;
++      color: #ffffff;
++    }
++
++    .parallax-content-card p {
++      font-size: 1.05rem;
++      line-height: 1.7;
++      color: #eceff1;
++      margin-bottom: 24px;
++    }
++
++    .parallax-actions {
++      display: flex;
++      justify-content: center;
++      gap: 15px;
++      flex-wrap: wrap;
++    }
++
++    .parallax-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: #2b180d;
++      font-weight: 600;
++      border: 1px solid var(--accent);
++    }
++
++    .btn-accent:hover {
++      background: #ffb74d;
++      border-color: #ffb74d;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: #ffffff;
++      border: 1px solid rgba(255, 255, 255, 0.5);
++    }
++
++    .btn-outline:hover {
++      background: rgba(255, 255, 255, 0.15);
++      border-color: #ffffff;
++    }
++
++    /* Scroll-Driven Parallax Animations (Pure CSS) */
++    @keyframes parallax-bg-motion {
++      from {
++        transform: translateY(-50px) scale(1.1);
++      }
++      to {
++        transform: translateY(50px) scale(1.1);
++      }
++    }
++
++    @keyframes parallax-mid-card-motion {
++      from {
++        transform: translateY(50px) rotate(4deg);
++      }
++      to {
++        transform: translateY(-70px) rotate(1deg);
++      }
++    }
++
++    @keyframes parallax-mid-badge-motion {
++      from {
++        transform: translateY(40px);
++      }
++      to {
++        transform: translateY(-50px);
++      }
++    }
++
++    @keyframes parallax-fore-bean1-motion {
++      from {
++        transform: translateY(110px) rotate(-15deg);
++      }
++      to {
++        transform: translateY(-130px) rotate(25deg);
++      }
++    }
++
++    @keyframes parallax-fore-bean2-motion {
++      from {
++        transform: translateY(160px) rotate(20deg);
++      }
++      to {
++        transform: translateY(-180px) rotate(-30deg);
++      }
++    }
++
++    @keyframes parallax-fore-pill-motion {
++      from {
++        transform: translateY(80px);
++      }
++      to {
++        transform: translateY(-90px);
++      }
++    }
++
++    @keyframes parallax-content-motion {
++      from {
++        transform: translateY(20px);
++      }
++      to {
++        transform: translateY(-20px);
++      }
++    }
++
++    @supports (animation-timeline: view()) or (animation-timeline: --test) {
++      .parallax-layer-bg {
++        animation: parallax-bg-motion linear both;
++        animation-timeline: view();
++        animation-timeline: --parallax-section;
++        animation-range: cover 0% cover 100%;
++      }
++
++      .parallax-mid-card {
++        animation: parallax-mid-card-motion linear both;
++        animation-timeline: view();
++        animation-timeline: --parallax-section;
++        animation-range: cover 0% cover 100%;
++      }
++
++      .parallax-mid-badge {
++        animation: parallax-mid-badge-motion linear both;
++        animation-timeline: view();
++        animation-timeline: --parallax-section;
++        animation-range: cover 0% cover 100%;
++      }
++
++      .accent-bean-1 {
++        animation: parallax-fore-bean1-motion linear both;
++        animation-timeline: view();
++        animation-timeline: --parallax-section;
++        animation-range: cover 0% cover 100%;
++      }
++
++      .accent-bean-2 {
++        animation: parallax-fore-bean2-motion linear both;
++        animation-timeline: view();
++        animation-timeline: --parallax-section;
++        animation-range: cover 0% cover 100%;
++      }
++
++      .accent-pill {
++        animation: parallax-fore-pill-motion linear both;
++        animation-timeline: view();
++        animation-timeline: --parallax-section;
++        animation-range: cover 0% cover 100%;
++      }
++
++      .parallax-content-card {
++        animation: parallax-content-motion linear both;
++        animation-timeline: view();
++        animation-timeline: --parallax-section;
++        animation-range: cover 0% cover 100%;
++      }
++    }
++
++    /* Accessibility: Respect Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer-bg,
++      .parallax-mid-card,
++      .parallax-mid-badge,
++      .accent-bean-1,
++      .accent-bean-2,
++      .accent-pill,
++      .parallax-content-card {
++        animation: none !important;
++        transform: none !important;
++      }
++      .parallax-mid-card {
++        transform: rotate(0deg) !important;
++      }
++    }
++
++    /* Responsive Adjustments */
++    @media (max-width: 960px) {
++      .parallax-mid-card {
++        display: none;
++      }
++      .accent-bean-2 {
++        display: none;
++      }
++      .parallax-mid-badge {
++        position: static;
++        margin: 20px auto 0;
++        display: inline-flex;
++      }
++      .parallax-layer-mid {
++        position: static;
++        display: flex;
++        justify-content: center;
++        margin-top: 15px;
++      }
++    }
++
++    @media (max-width: 600px) {
++      .parallax-section {
++        padding: 50px 15px;
++        min-height: auto;
++      }
++
++      .parallax-content-card {
++        padding: 30px 20px;
++      }
++
++      .parallax-content-card h2 {
++        font-size: 1.6rem;
++      }
++
++      .accent-bean-1,
++      .accent-pill {
++        display: none;
++      }
++
++      .parallax-actions {
++        flex-direction: column;
++      }
++
++      .parallax-actions .btn {
++        width: 100%;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +604,100 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <!-- Scroll-Driven Parallax Section -->
++  <section class="parallax-section" aria-labelledby="roastery-depth-title">
++    <!-- Layer 1: Deep Background (Moves slowest) -->
++    <div class="parallax-layer parallax-layer-bg" aria-hidden="true">
++      <div class="parallax-bg-image"></div>
++      <div class="parallax-bg-overlay"></div>
++    </div>
++
++    <!-- Layer 2: Midground Atmosphere & Details (Moderate speed) -->
++    <div class="parallax-layer parallax-layer-mid" aria-hidden="true">
++      <div class="parallax-mid-card">
++        <img
++          src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++          alt=""
++          loading="lazy"
++          decoding="async"
++        >
++        <div class="mid-card-caption">
++          <span class="caption-tag">Micro-Batch Roast</span>
++          <span class="caption-title">450°F Drum Profile</span>
++        </div>
++      </div>
++      <div class="parallax-mid-badge">
++        <span class="badge-icon">⛰️</span>
++        <div class="badge-content">
++          <strong>1,850m Elevation</strong>
++          <span>High-altitude slow maturation</span>
++        </div>
++      </div>
++    </div>
++
++    <!-- Layer 3: Foreground Accents (Fastest speed & depth-of-field) -->
++    <div class="parallax-layer parallax-layer-fore" aria-hidden="true">
++      <!-- Floating Bean 1 (Near foreground) -->
++      <div class="floating-accent accent-bean-1">
++        <svg class="bean-svg" viewBox="0 0 120 160" width="70" height="93">
++          <defs>
++            <linearGradient id="beanGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
++              <stop offset="0%" stop-color="#a1887f" />
++              <stop offset="45%" stop-color="#4e342e" />
++              <stop offset="100%" stop-color="#211512" />
++            </linearGradient>
++            <filter id="shadow1" x="-20%" y="-20%" width="140%" height="140%">
++              <feDropShadow dx="2" dy="10" stdDeviation="8" flood-color="#000" flood-opacity="0.5" />
++            </filter>
++          </defs>
++          <ellipse cx="60" cy="80" rx="46" ry="66" fill="url(#beanGrad1)" filter="url(#shadow1)" />
++          <path d="M60 20 C50 45, 70 75, 58 100 C48 122, 62 136, 60 140" stroke="#1d110e" stroke-width="6" stroke-linecap="round" fill="none" />
++          <path d="M62 23 C53 47, 72 77, 60 102 C51 123, 63 134, 62 138" stroke="#d7ccc8" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.4" />
++        </svg>
++      </div>
++
++      <!-- Floating Bean 2 (Very close foreground bokeh) -->
++      <div class="floating-accent accent-bean-2">
++        <svg class="bean-svg" viewBox="0 0 120 160" width="95" height="126">
++          <defs>
++            <linearGradient id="beanGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
++              <stop offset="0%" stop-color="#8d6e63" />
++              <stop offset="60%" stop-color="#3e2723" />
++              <stop offset="100%" stop-color="#1b0000" />
++            </linearGradient>
++          </defs>
++          <ellipse cx="60" cy="80" rx="46" ry="66" fill="url(#beanGrad2)" />
++          <path d="M60 20 C50 45, 70 75, 58 100 C48 122, 62 136, 60 140" stroke="#150a08" stroke-width="6" stroke-linecap="round" fill="none" />
++        </svg>
++      </div>
++
++      <!-- Floating Pill Badge -->
++      <div class="floating-accent accent-pill">
++        <span class="pill-dot"></span>
++        <span>Single-Origin Specialty Grade</span>
++      </div>
++    </div>
++
++    <!-- Layer 4: Content (Clear focal point) -->
++    <div class="parallax-content-wrapper">
++      <div class="parallax-content-card">
++        <span class="parallax-eyebrow">The Craft Behind The Cup</span>
++        <h2 id="roastery-depth-title">Roasted With Precision, Brewed With Depth</h2>
++        <p>
++          We source small-lot green beans from volcanic soils across Central America and East Africa.
++          Every roast is calibrated to peak development, delivering rich layered aromas of caramelized cane sugar,
++          dark cacao, and vibrant citrus blossoms.
++        </p>
++        <div class="parallax-actions">
++          <a href="/about" class="btn btn-accent">Explore Our Roastery</a>
++          <a href="/menu" class="btn btn-outline">Browse Single Origins</a>
++        </div>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

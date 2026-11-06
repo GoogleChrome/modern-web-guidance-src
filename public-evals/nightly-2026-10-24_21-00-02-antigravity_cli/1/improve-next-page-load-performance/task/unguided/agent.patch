@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,24 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="speculationrules">
++    {
++      "prefetch": [
++        {
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "selector_matches": ".logout-link, [data-no-prefetch]" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -206,7 +222,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!HTMLScriptElement.supports || !HTMLScriptElement.supports('speculationrules')) {
++      const prefetched = new Set();
++
++      function shouldPrefetch(anchor) {
++        if (!anchor || !anchor.href) return false;
++        if (anchor.classList.contains('logout-link') || anchor.hasAttribute('data-no-prefetch')) return false;
++
++        try {
++          const url = new URL(anchor.href, window.location.origin);
++          if (url.origin !== window.location.origin) return false;
++          if (url.pathname === '/logout' || url.pathname === window.location.pathname) return false;
++          if (prefetched.has(url.href)) return false;
++          return true;
++        } catch {
++          return false;
++        }
++      }
++
++      function prefetchLink(anchor) {
++        if (!shouldPrefetch(anchor)) return;
++        const url = new URL(anchor.href, window.location.origin).href;
++        prefetched.add(url);
++
++        const link = document.createElement('link');
++        link.rel = 'prefetch';
++        link.href = url;
++        link.as = 'document';
++        document.head.appendChild(link);
++      }
++
++      document.addEventListener('pointerover', (e) => {
++        const anchor = e.target.closest('a');
++        if (anchor) prefetchLink(anchor);
++      });
++
++      document.addEventListener('focusin', (e) => {
++        const anchor = e.target.closest('a');
++        if (anchor) prefetchLink(anchor);
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

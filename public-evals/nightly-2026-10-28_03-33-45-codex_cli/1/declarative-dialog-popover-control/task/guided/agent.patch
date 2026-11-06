@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -47,27 +47,34 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    .logout-button {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    .logout-button:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .logout-button {
++      background: transparent;
++      font-family: inherit;
++      line-height: inherit;
++      cursor: pointer;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -121,8 +128,11 @@
+     }
+ 
+     .btn {
+       display: inline-block;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -134,8 +144,59 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    dialog,
++    [popover] {
++      margin: auto;
++      width: min(420px, calc(100% - 40px));
++      max-height: calc(100% - 40px);
++      overflow: auto;
++      padding: 24px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
++      text-align: left;
++    }
++
++    dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .dialog-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .nutrition {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      gap: 8px 20px;
++      margin-top: 16px;
++    }
++
++    .nutrition dd {
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,12 +224,21 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="logout-button" commandfor="logout-dialog" command="show-modal">Logout</button></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-description">
++    <h2 id="logout-title">Log out?</h2>
++    <p id="logout-description">Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" commandfor="logout-dialog" command="close" autofocus>Cancel</button>
++      <a href="/logout" class="btn">Confirm Logout</a>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -180,14 +250,31 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="maple-nutrition" command="toggle-popover">View Details</button>
++          <section id="maple-nutrition" popover aria-labelledby="maple-nutrition-title">
++            <h3 id="maple-nutrition-title">Maple Oat Latte Nutrition</h3>
++            <p>Sample estimates for a 12 fl oz serving. Values vary with preparation.</p>
++            <dl class="nutrition">
++              <dt>Calories</dt><dd>180 kcal</dd>
++              <dt>Total fat</dt><dd>5 g</dd>
++              <dt>Carbohydrates</dt><dd>30 g</dd>
++              <dt>Total sugars</dt><dd>20 g</dd>
++              <dt>Protein</dt><dd>3 g</dd>
++            </dl>
++          </section>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="espresso-popover" command="show-popover">Show Espresso Info</button>
++          <section id="espresso-popover" popover="manual" aria-labelledby="espresso-popover-title">
++            <h3 id="espresso-popover-title">Dark Roast Espresso</h3>
++            <p>A bold, smoky dark roast, served as a rich espresso shot. Enjoy it on its own or as the base for your favorite coffee drink.</p>
++            <button type="button" class="btn" commandfor="espresso-popover" command="hide-popover">Hide Espresso Info</button>
++          </section>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>

@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+index 66c9173..b0bbe10 100644
+--- a/index.html
++++ b/index.html
+@@ -55,15 +55,19 @@
+       margin-left: 20px;
+     }
+ 
+-    nav a {
+-      color: white;
++    /* Links: shared base for nav and footer, union of interaction states */
++    :is(nav, .footer-links) a {
+       text-decoration: none;
+-      font-size: 0.9rem;
+       transition: color 0.3s;
++
++      &:is(:hover, :focus-visible) {
++        color: var(--accent);
++      }
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    nav a {
++      color: white;
++      font-size: 0.9rem;
+     }
+ 
+     .logout-link {
+@@ -131,8 +135,18 @@
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:is(:hover, :focus-visible) {
++      background: var(--text);
++    }
++
++    /* Buttons inside the hero (intersection of .hero and .btn) get the accent colour */
++    .hero .btn {
++      background: var(--accent);
++      color: var(--primary);
++
++      &:is(:hover, :focus-visible) {
++        background: white;
++      }
+     }
+ 
+     footer {
+@@ -149,9 +163,69 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Headings share colour; only cards/hero differ */
++    :is(.card h3, .container h2) {
++      color: var(--primary);
++    }
++
++    /* Conditional @-rules: nested so selectors aren't repeated */
++    :is(nav, .hero, .card, .btn) {
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    nav {
++      @media (max-width: 700px) {
++        flex-direction: column;
++        gap: 0.75rem;
++
++        ul {
++          flex-wrap: wrap;
++          justify-content: center;
++
++          li {
++            margin: 0 10px;
++          }
++        }
++      }
++    }
++
++    .hero h1 {
++      @media (max-width: 700px) {
++        font-size: 2rem;
++      }
++    }
++
++    /* Intersection of a media query and hover capability: lift cards only on real hover devices */
++    .card {
++      @media (hover: hover) and (prefers-reduced-motion: no-preference) {
++        transition: transform 0.2s, box-shadow 0.2s;
++
++        &:hover {
++          transform: translateY(-4px);
++          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
++        }
++      }
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --light: #1b1210;
++        --text: #efebe9;
++      }
++
++      :is(.card, footer) {
++        background: #2a1d1a;
++      }
++
++      :is(.card h3, .container h2) {
++        color: var(--accent);
++      }
++    }
+   </style>
+ </head>
+ 

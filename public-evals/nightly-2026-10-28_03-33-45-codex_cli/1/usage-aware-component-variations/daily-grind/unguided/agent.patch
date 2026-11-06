@@ -1,0 +1,89 @@
+diff --git a/index.html b/index.html
+index 66c9173..201857b 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,55 @@
+       margin-top: 20px;
+     }
+ 
++    /* Section context supplies inherited tokens; cards need no theme classes. */
++    section[data-category="seasonal"] {
++      --card-surface: #fff8ed;
++      --card-text: #583923;
++      --card-accent: #8b451d;
++      --card-accent-hover: #683215;
++      --card-border: #e8cba6;
++    }
++
++    section[data-category="espresso"] {
++      --card-surface: #f2e9e4;
++      --card-text: #3e2723;
++      --card-accent: #54352b;
++      --card-accent-hover: #38231d;
++      --card-border: #cbb5a9;
++    }
++
++    section[data-category="cold-brew"] {
++      --card-surface: #eef7f8;
++      --card-text: #24464b;
++      --card-accent: #24616b;
++      --card-accent-hover: #19464e;
++      --card-border: #b7d6da;
++    }
++
++    /* Theme follows category so dark sections consistently use dark surfaces. */
++    section[data-theme="dark"] {
++      --card-surface: #2d2522;
++      --card-text: #f5e9df;
++      --card-accent: #ffbc70;
++      --card-accent-hover: #ffd29e;
++      --card-button-text: #2d2522;
++      --card-border: #685246;
++      --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
+     .card {
+-      background: white;
++      background: var(--card-surface, white);
++      color: var(--card-text, var(--text));
+       padding: 20px;
++      border: 1px solid var(--card-border, transparent);
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow, 0 2px 5px rgba(0, 0, 0, 0.1));
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-accent, var(--primary));
+     }
+ 
+     .btn {
+@@ -135,6 +173,16 @@
+       background: #3e2723;
+     }
+ 
++    .card .btn {
++      background: var(--card-accent, var(--primary));
++      color: var(--card-button-text, white);
++    }
++
++    .card .btn:hover,
++    .card .btn:focus-visible {
++      background: var(--card-accent-hover, #3e2723);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,7 +223,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section data-category="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

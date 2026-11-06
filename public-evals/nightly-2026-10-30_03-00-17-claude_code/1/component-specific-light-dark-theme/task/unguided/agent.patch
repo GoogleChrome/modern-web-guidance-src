@@ -1,0 +1,240 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -5,16 +5,82 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
++    /*
++     * Theme tokens.
++     * Every color is a custom property that is (re)declared on each theme
++     * scope, and each scope also resets `color`/`background-color`. Derived
++     * colors are never pre-resolved on :root, so nested scopes (a light card
++     * on a dark page, a dark card on a light page) recompute correctly
++     * instead of inheriting their ancestor's already-resolved values.
++     */
++    :root,
++    .force-light {
++      color-scheme: light;
++      --bg: #fafafa;
++      --surface: #ffffff;
++      --surface-alt: #d7ccc8;
+       --text: #3e2723;
+-      --light: #fafafa;
++      --text-muted: #6d4c41;
++      --heading: #4e342e;
++      --accent: #ffab40;
++      --border: rgba(62, 39, 35, 0.12);
++      --shadow: rgba(0, 0, 0, 0.1);
++      --btn-bg: #4e342e;
++      --btn-text: #ffffff;
++      --btn-hover-bg: #3e2723;
++      --nav-bg: #4e342e;
++      --nav-text: #ffffff;
+     }
+ 
++    @media (prefers-color-scheme: dark) {
++      :root:not(.force-light) {
++        color-scheme: dark;
++        --bg: #1b1412;
++        --surface: #2a1f1b;
++        --surface-alt: #2a1f1b;
++        --text: #efebe9;
++        --text-muted: #bcaaa4;
++        --heading: #ffcc80;
++        --accent: #ffab40;
++        --border: rgba(255, 255, 255, 0.08);
++        --shadow: rgba(0, 0, 0, 0.5);
++        --btn-bg: #ffab40;
++        --btn-text: #2a1f1b;
++        --btn-hover-bg: #ffc46b;
++        --nav-bg: #120d0b;
++        --nav-text: #efebe9;
++      }
++    }
++
++    /* Forced dark scope; `.force-light` on the same element still wins. */
++    .theme-dark:not(.force-light) {
++      color-scheme: dark;
++      --bg: #1b1412;
++      --surface: #2a1f1b;
++      --surface-alt: #2a1f1b;
++      --text: #efebe9;
++      --text-muted: #bcaaa4;
++      --heading: #ffcc80;
++      --accent: #ffab40;
++      --border: rgba(255, 255, 255, 0.08);
++      --shadow: rgba(0, 0, 0, 0.5);
++      --btn-bg: #ffab40;
++      --btn-text: #2a1f1b;
++      --btn-hover-bg: #ffc46b;
++      --nav-bg: #120d0b;
++      --nav-text: #efebe9;
++    }
++
++    /* Re-apply colors on every scope so inherited `color` doesn't leak across themes. */
++    .themed-card,
++    .theme-dark,
++    .force-light {
++      color: var(--text);
++      background-color: var(--surface);
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,15 +89,15 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+@@ -55,9 +121,9 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -106,38 +172,48 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    .themed-card {
+       padding: 20px;
++      border: 1px solid var(--border);
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--shadow);
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .themed-card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
++    .themed-card p {
++      color: var(--text-muted);
++    }
++
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
+     }
+ 
++    .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     footer {
+-      background: var(--secondary);
++      background: var(--surface-alt);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+@@ -147,12 +223,36 @@
+     }
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      color: var(--heading);
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-direction: column;
++        gap: 0.5rem;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++      }
++
++      nav ul li {
++        margin: 0 10px;
++      }
++
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -177,19 +277,19 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card theme-dark">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

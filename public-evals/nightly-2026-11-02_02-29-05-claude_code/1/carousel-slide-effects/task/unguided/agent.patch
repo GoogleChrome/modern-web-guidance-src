@@ -1,0 +1,224 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,124 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Product Carousel */
++    .carousel {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .carousel-hint {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .scroller {
++      --card-width: min(260px, 75vw);
++      display: flex;
++      gap: 1.5rem;
++      list-style: none;
++      overflow-x: auto;
++      overscroll-behavior-inline: contain;
++      scroll-snap-type: x mandatory;
++      /* Lets the first and last cards scroll all the way to the center */
++      padding: 2rem calc(50% - var(--card-width) / 2);
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
++    .product-card {
++      flex: 0 0 var(--card-width);
++      scroll-snap-align: center;
++      display: flex;
++      flex-direction: column;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      overflow: hidden;
++    }
++
++    .product-card img {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      display: block;
++    }
++
++    .product-card .card-body {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      padding: 16px 20px 20px;
++    }
++
++    .product-card h3 {
++      color: var(--primary);
++    }
++
++    .product-card .price {
++      font-weight: bold;
++      color: #6d4c41;
++      margin-bottom: 8px;
++    }
++
++    .product-card .btn {
++      margin-top: auto;
++      align-self: center;
++    }
++
++    .product-card p:last-of-type {
++      margin-bottom: 15px;
++    }
++
++    /* Scale cards up as they approach the center of the scroller and back
++       down as they leave. Pure CSS via a scroll-driven view timeline;
++       browsers without support (or users who prefer reduced motion) get
++       static, full-size cards. */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports (animation-timeline: view()) {
++        .product-card {
++          animation: card-focus linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
++    @keyframes card-focus {
++      0%,
++      100% {
++        scale: 0.8;
++      }
++
++      50% {
++        scale: 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +310,95 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="carousel" aria-labelledby="carousel-heading">
++      <h2 id="carousel-heading">Explore the Menu</h2>
++      <p id="carousel-hint" class="carousel-hint">Scroll sideways, swipe, or focus the list and use the arrow keys to browse.</p>
++      <ul class="scroller" role="list" tabindex="0" aria-labelledby="carousel-heading"
++        aria-describedby="carousel-hint">
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=520&h=390&q=80"
++            alt="Two lattes with heart-shaped foam art on a wooden table surrounded by plants" width="520" height="390" loading="lazy">
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p class="price">$5.25</p>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> for Maple Oat Latte</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=520&h=390&q=80"
++            alt="Top-down view of a white mug of black coffee on a wooden table" width="520" height="390" loading="lazy">
++          <div class="card-body">
++            <h3>House Drip Coffee</h3>
++            <p class="price">$3.00</p>
++            <p>Our signature medium roast, brewed fresh every hour.</p>
++            <a href="/menu/drip" class="btn">View Details<span class="visually-hidden"> for House Drip Coffee</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=520&h=390&q=80"
++            alt="Tall glass of iced cold brew coffee on a counter" width="520" height="390" loading="lazy">
++          <div class="card-body">
++            <h3>Cold Brew</h3>
++            <p class="price">$4.50</p>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> for Cold Brew</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=520&h=390&q=80"
++            alt="Glass of iced latte with milk swirling into coffee, a kettle and pour-over in the background" width="520" height="390" loading="lazy">
++          <div class="card-body">
++            <h3>Iced Vanilla Latte</h3>
++            <p class="price">$5.00</p>
++            <p>Espresso and Madagascar vanilla swirled over ice and milk.</p>
++            <a href="/menu/iced-vanilla-latte" class="btn">View Details<span class="visually-hidden"> for Iced Vanilla Latte</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=520&h=390&q=80"
++            alt="Barista pouring steamed milk into a cup held in one hand" width="520" height="390" loading="lazy">
++          <div class="card-body">
++            <h3>Flat White</h3>
++            <p class="price">$4.75</p>
++            <p>Velvety microfoam poured over a double ristretto.</p>
++            <a href="/menu/flat-white" class="btn">View Details<span class="visually-hidden"> for Flat White</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1559496417-e7f25cb247f3?auto=format&fit=crop&w=520&h=390&q=80"
++            alt="Small glass of cortado on a sunlit white surface" width="520" height="390" loading="lazy">
++          <div class="card-body">
++            <h3>Cortado</h3>
++            <p class="price">$4.00</p>
++            <p>Equal parts espresso and warm milk, served in a glass.</p>
++            <a href="/menu/cortado" class="btn">View Details<span class="visually-hidden"> for Cortado</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=520&h=390&q=80"
++            alt="Top-down view of a cappuccino with leaf latte art on a saucer" width="520" height="390" loading="lazy">
++          <div class="card-body">
++            <h3>Cappuccino</h3>
++            <p class="price">$4.50</p>
++            <p>Rich espresso topped with a thick layer of foam.</p>
++            <a href="/menu/cappuccino" class="btn">View Details<span class="visually-hidden"> for Cappuccino</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=520&h=390&q=80"
++            alt="Espresso portafilters, coffee beans, ground coffee and a latte on wooden boards" width="520" height="390" loading="lazy">
++          <div class="card-body">
++            <h3>Espresso Tasting Flight</h3>
++            <p class="price">$8.00</p>
++            <p>Sample three single-origin espressos side by side.</p>
++            <a href="/menu/espresso-flight" class="btn">View Details<span class="visually-hidden"> for Espresso Tasting Flight</span></a>
++          </div>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

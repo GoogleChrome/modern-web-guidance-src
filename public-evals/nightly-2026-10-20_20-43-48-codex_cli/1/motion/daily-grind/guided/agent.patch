@@ -1,0 +1,227 @@
+diff --git a/index.html b/index.html
+index 66c9173..8b04b34 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --motion-fast: 160ms;
++      --motion-enter: 560ms;
++      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+@@ -59,10 +62,10 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -128,10 +131,10 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
+@@ -152,6 +155,108 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    nav a,
++    .footer-links a {
++      display: inline-block;
++    }
++
++    nav a:not(.logout-link),
++    .footer-links a {
++      position: relative;
++    }
++
++    nav a:not(.logout-link)::after,
++    .footer-links a::after {
++      content: '';
++      position: absolute;
++      inset: auto 0 -3px;
++      height: 2px;
++      background: currentColor;
++      transform: scaleX(0);
++      transform-origin: left;
++    }
++
++    nav a:hover::after,
++    nav a:focus-visible::after,
++    .footer-links a:hover::after,
++    .footer-links a:focus-visible::after {
++      transform: scaleX(1);
++    }
++
++    /* Static is the default, including when JavaScript is unavailable. */
++    @media (prefers-reduced-motion: no-preference) {
++      .logo,
++      nav li,
++      .hero > * {
++        animation: enter var(--motion-enter) var(--ease-out) both;
++      }
++
++      nav li:nth-child(2) { animation-delay: 40ms; }
++      nav li:nth-child(3) { animation-delay: 80ms; }
++      nav li:nth-child(4) { animation-delay: 120ms; }
++      nav li:nth-child(5) { animation-delay: 160ms; }
++      .hero h1 { animation-delay: 100ms; }
++      .hero p { animation-delay: 180ms; }
++      .hero .btn { animation-delay: 260ms; }
++
++      .reveal {
++        transition:
++          opacity var(--motion-enter) var(--ease-out) var(--reveal-delay, 0ms),
++          translate var(--motion-enter) var(--ease-out) var(--reveal-delay, 0ms);
++      }
++
++      .reveal-pending {
++        opacity: 0;
++        translate: 0 18px;
++      }
++
++      .card:nth-child(2) { --reveal-delay: 70ms; }
++      .card:nth-child(3) { --reveal-delay: 140ms; }
++
++      .btn,
++      .logout-link,
++      .card {
++        transition: transform var(--motion-fast) var(--ease-out);
++      }
++
++      /* Keep reveal transitions alongside the card's hover transition. */
++      .card.reveal {
++        transition:
++          opacity var(--motion-enter) var(--ease-out) var(--reveal-delay, 0ms),
++          translate var(--motion-enter) var(--ease-out) var(--reveal-delay, 0ms),
++          transform var(--motion-fast) var(--ease-out);
++      }
++
++      nav a::after,
++      .footer-links a::after {
++        transition: transform var(--motion-fast) var(--ease-out);
++      }
++
++      @media (hover: hover) and (pointer: fine) {
++        .card:hover { transform: translateY(-4px); }
++        .btn:hover,
++        .logout-link:hover { transform: translateY(-2px); }
++      }
++
++      .btn:active,
++      .logout-link:active { transform: scale(0.97); }
++    }
++
++    @keyframes enter {
++      from { opacity: 0; translate: 0 12px; }
++      to { opacity: 1; translate: 0 0; }
++    }
++
++    @media print {
++      .reveal-pending { opacity: 1; translate: none; }
++      .logo, nav li, .hero > * { animation: none; }
++    }
+   </style>
+ </head>
+ 
+@@ -176,19 +281,19 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="reveal" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card reveal">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card reveal">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card reveal">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -197,7 +302,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="reveal">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +312,44 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Reveal once, with no scroll listeners or animation dependencies.
++    const motionPreference = window.matchMedia('(prefers-reduced-motion: no-preference)');
++    const revealElements = document.querySelectorAll('.reveal');
++
++    if (motionPreference.matches && 'IntersectionObserver' in window) {
++      const observer = new IntersectionObserver((entries) => {
++        for (const entry of entries) {
++          if (entry.isIntersecting) {
++            entry.target.classList.remove('reveal-pending');
++            observer.unobserve(entry.target);
++          }
++        }
++      }, { threshold: 0.1 });
++
++      for (const element of revealElements) {
++        element.classList.add('reveal-pending');
++        observer.observe(element);
++      }
++
++      // Keyboard navigation must never land on an invisible link.
++      document.addEventListener('focusin', (event) => {
++        const element = event.target.closest('.reveal-pending');
++        if (element) {
++          element.classList.remove('reveal-pending');
++          observer.unobserve(element);
++        }
++      });
++
++      motionPreference.addEventListener('change', () => {
++        observer.disconnect();
++        for (const element of revealElements) {
++          element.classList.remove('reveal-pending');
++        }
++      }, { once: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

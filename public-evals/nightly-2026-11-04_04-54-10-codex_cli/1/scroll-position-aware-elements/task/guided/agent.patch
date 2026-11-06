@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,72 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .scroller {
++      height: 100vh;
++      height: 100dvh;
++      overflow-y: auto;
++      container-type: scroll-state;
++      container-name: page-scroll;
++      padding-bottom: 6rem;
++    }
++
++    .scroll-sentinel {
++      width: 0;
++      height: 0;
++      visibility: hidden;
++    }
++
++    .back-to-top {
++      position: fixed;
++      right: 1.25rem;
++      bottom: 1.25rem;
++      z-index: 1001;
++      border: 0;
++      border-radius: 999px;
++      padding: 0.85rem 1.25rem;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++      box-shadow: 0 4px 14px rgb(0 0 0 / 20%);
++      visibility: hidden;
++      opacity: 0;
++      translate: 0 20px;
++      transition: visibility 0.3s, opacity 0.3s ease, translate 0.3s ease;
++    }
++
++    .back-to-top:hover {
++      background: var(--text);
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @container page-scroll scroll-state(scrollable: top) {
++      .back-to-top {
++        visibility: visible;
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    .scroller.scrolled .back-to-top {
++      visibility: visible;
++      opacity: 1;
++      translate: 0 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .back-to-top {
++        translate: none;
++        transition: none;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -155,8 +219,10 @@
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroller" tabindex="-1">
++  <div class="scroll-sentinel" aria-hidden="true"></div>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -206,7 +272,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button class="back-to-top" type="button">
++    <span aria-hidden="true">↑</span> Back to top
++  </button>
++  </div>
++
++  <script>
++    const scroller = document.querySelector('.scroller');
++    const backToTop = scroller.querySelector('.back-to-top');
++
++    backToTop.addEventListener('click', () => {
++      // Move focus to the start before the button becomes hidden again.
++      scroller.focus({ preventScroll: true });
++      scroller.scrollTo({
++        top: 0,
++        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
++      });
++    });
++
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const observer = new IntersectionObserver(([entry]) => {
++        scroller.classList.toggle('scrolled', !entry.isIntersecting);
++      }, { root: scroller });
++
++      observer.observe(scroller.querySelector('.scroll-sentinel'));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

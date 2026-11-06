@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+index 66c9173..2d6900c 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,104 @@
+       margin-top: 20px;
+     }
+ 
++    /* Rewards and order progress */
++    .progress-panel {
++      margin-bottom: 40px;
++      padding: clamp(20px, 4vw, 32px);
++      background: #fff8ef;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++    }
++
++    .progress-panel h2 {
++      color: var(--primary);
++    }
++
++    .progress-intro {
++      margin: 4px 0 24px;
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++      gap: 24px 32px;
++    }
++
++    .progress-heading {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: baseline;
++      justify-content: space-between;
++      gap: 4px 12px;
++      margin-bottom: 10px;
++    }
++
++    .progress-heading label {
++      font-weight: 600;
++    }
++
++    .progress-heading span,
++    .progress-note {
++      font-size: 0.875rem;
++    }
++
++    .progress-note {
++      margin-top: 8px;
++    }
++
++    .task-progress {
++      --progress-radius: 100px;
++      --progress-animation-duration: 1.8s;
++      display: block;
++      appearance: none;
++      border: 0 solid;
++      overflow: clip;
++      inline-size: 100%;
++      block-size: 12px;
++      border-radius: var(--progress-radius);
++      background: var(--secondary);
++      container-type: inline-size;
++    }
++
++    .task-progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    .task-progress::-webkit-progress-value {
++      background: var(--primary);
++      border-radius: var(--progress-radius);
++      animation: var(--progress-animation, none);
++    }
++
++    .task-progress::-moz-progress-bar {
++      background: var(--primary);
++      border-radius: var(--progress-radius);
++      animation: var(--progress-animation, none);
++    }
++
++    .task-progress:indeterminate {
++      --progress-animation: progress-pulse var(--progress-animation-duration) linear infinite;
++    }
++
++    .task-progress:indeterminate:dir(rtl) {
++      --progress-animation: progress-pulse var(--progress-animation-duration) linear infinite reverse;
++    }
++
++    @keyframes progress-pulse {
++      from, to {
++        inline-size: 30%;
++        margin-right: auto;
++      }
++      from { translate: -100%; }
++      to { translate: 100cqi; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .task-progress {
++        --progress-animation-duration: 10s;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,6 +273,30 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel" aria-labelledby="progress-title">
++      <h2 id="progress-title">Good things are brewing</h2>
++      <p class="progress-intro">A little progress toward your next perfect cup.</p>
++      <div class="progress-grid">
++        <div>
++          <div class="progress-heading">
++            <label for="reward-progress">Your next coffee reward</label>
++            <span>6 of 10 cups · 60%</span>
++          </div>
++          <progress class="task-progress" id="reward-progress" value="6" max="10"
++            aria-describedby="reward-note"></progress>
++          <p class="progress-note" id="reward-note">Just 4 more cups until your next reward.</p>
++        </div>
++        <div>
++          <div class="progress-heading">
++            <label for="order-progress">Order progress</label>
++            <span>Checking status…</span>
++          </div>
++          <progress class="task-progress" id="order-progress" max="100"
++            aria-describedby="order-note"></progress>
++          <p class="progress-note" id="order-note">Waiting for your order details. Hang tight.</p>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

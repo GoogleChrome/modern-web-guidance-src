@@ -1,0 +1,295 @@
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..cc1b5d6 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -25,6 +25,7 @@ export default defineConfig({
+          limitInputPixels: false,
+       },
+      },
++    domains: ['i.imgur.com', 'cinemai-1026410574114.us-central1.run.app'],
+   },
+ 
+   security: {
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..ab7ed0b 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -17,7 +17,7 @@ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <article class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+@@ -31,7 +31,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 </a>
+                 <div class="flex justify-between items-center mt-6 text-gray-500">
+                     <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
++                        <BookOpenIcon aria-hidden="true" className="w-5 h-5 inline-block mr-1 -mt-px" />
+                         {article.data.readingTime} Min.
+                     </span>
+                     <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+@@ -41,16 +41,21 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                     <Image 
+                         src={image} 
+-                        alt=""
++                        alt={article.data.title}
+                         width={800}
+                         height={533}
++                        widths={[400, 600, 800, 1200]}
++                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 66vw, 800px"
++                        loading="eager"
++                        fetchpriority="high"
++                        decoding="async"
+                         format="webp"
+                         class="w-full h-auto object-cover"
+                     />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ ) : (
+     <article class="flex flex-col h-full group">
+         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+@@ -59,6 +64,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 alt={article.data.title} 
+                 width={400}
+                 height={225}
++                widths={[300, 400, 600]}
++                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
++                loading="lazy"
++                decoding="async"
+                 format="webp"
+                 class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+             />
+@@ -73,7 +82,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                    <BookOpenIcon aria-hidden="true" className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+                 </span>
+                 <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..e51406a 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -32,7 +32,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <article class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+                 <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+@@ -47,7 +47,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                     {topArticle.data.summary}
+                 </p>
+                 <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5" aria-hidden="true">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                     </svg>
+                     <span>{topArticle.data.readingTime} Min Read</span>
+@@ -55,11 +55,11 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             </div>
+             <div class="w-full order-first lg:order-last">
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++                    <Image width={640} height={360} widths={[320, 640, 960]} sizes="(max-width: 1024px) 100vw, 50vw" loading="lazy" decoding="async" format="webp" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ 
+     <!-- Bottom Section: Three Smaller Articles -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+@@ -67,10 +67,10 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+             const isBookmarked = readingList.includes(article.id);
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <article class="flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                            <Image width={320} height={180} widths={[320, 480, 640]} sizes="(max-width: 768px) 100vw, 33vw" loading="lazy" decoding="async" format="webp" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+@@ -89,13 +89,13 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                         )}
+                         <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                             <span class="text-xs font-medium flex items-center">
+-                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                                <BookOpenIcon aria-hidden="true" className="w-4 h-4 inline-block mr-1 -mt-px" />
+                                 {article.data.readingTime} Min.
+                             </span>
+                             <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                         </div>
+                     </div>
+-                </div>
++                </article>
+             )
+         })}
+     </div>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..b0ed0f8 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -17,18 +17,24 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+     />
+ 
++    <!-- Polyfill fallback for Popover API in older browsers -->
++    <script is:inline>
++      if (typeof HTMLElement !== 'undefined' && !('popover' in HTMLElement.prototype)) {
++        import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++      }
++    </script>
++
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+@@ -37,6 +43,10 @@ const baseUrl = import.meta.env.BASE_URL;
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
++    <!-- Accessible skip link for keyboard users -->
++    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100000] focus:px-4 focus:py-2 focus:bg-amber-400 focus:text-gray-900 focus:font-bold focus:shadow-md focus:rounded">
++      Skip to main content
++    </a>
+     <div class="mx-auto">
+       <AdSlotFireplace client:load />
+       <div
+@@ -45,7 +55,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="main-content" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f878927 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -39,46 +39,46 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <section aria-labelledby="top-stories-heading" class="bg-white border-b border-gray-300">
++        <h2 id="top-stories-heading" class="sr-only">Top Stories</h2>
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                    <article class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                             <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+                         </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
++                        <time datetime={article.data.date.toISOString()} class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</time>
++                    </article>
+                 ))}
+             </div>
+         </div>
+-    </div>
++    </section>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <!-- Main Content Area: Lead Story -->
++    <section aria-label="Lead Story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <!-- "Top News" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <!-- "Politics" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..5b09407 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,28 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++/* Native dialog backdrop styling */
++dialog::backdrop {
++  background-color: rgba(0, 0, 0, 0.4);
++  backdrop-filter: blur(4px);
++}
++
++/* Native popover styles & fallback */
++[popover]:is(:popover-open, .\:popover-open) {
++  display: block;
++}
++
++/* Focus visibility improvements */
++:focus-visible {
++  outline: 2px solid #f59e0b;
++  outline-offset: 2px;
++}
++
++/* Global inert styling */
++[inert], [inert] * {
++  opacity: 0.5;
++  cursor: default;
++  user-select: none;
+ }
+\ No newline at end of file

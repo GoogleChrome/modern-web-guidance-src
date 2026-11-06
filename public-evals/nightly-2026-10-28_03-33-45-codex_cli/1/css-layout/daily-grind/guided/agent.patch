@@ -1,0 +1,236 @@
+diff --git a/index.html b/index.html
+index 7400c85..b94a378 100644
+--- a/index.html
++++ b/index.html
+@@ -14,7 +14,7 @@
+       --light: #fafafa;
+     }
+ 
+-    * {
++    :where(html, body, nav, header, main, section, article, footer, div, ul, li, h1, h2, h3, p, a) {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -25,10 +25,16 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-wrap: anywhere;
+     }
+ 
+     /* Navigation */
+     nav {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: safe center;
++      justify-content: space-between;
++      gap: 1rem 2rem;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -37,30 +43,24 @@
+       z-index: 1000;
+     }
+ 
+-    nav::after {
+-      content: "";
+-      display: table;
+-      clear: both;
+-    }
+-
+     .logo {
+-      float: left;
++      min-inline-size: 0;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+     nav ul {
+-      float: right;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: safe center;
++      gap: 0.5rem 1.25rem;
++      min-inline-size: 0;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      display: inline-block;
+-      margin-left: 20px;
+-    }
+-
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -79,42 +79,55 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      display: grid;
++      place-content: center;
++      justify-items: center;
++      gap: 1rem;
++      min-block-size: 60dvh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       color: white;
+       text-align: center;
+-      padding: 15vh 20px 0;
++      padding: clamp(3rem, 10dvh, 7rem) 1.25rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 1.5rem + 2vw, 3rem);
++      line-height: 1.2;
++      max-inline-size: 20ch;
++    }
++
++    .hero p {
++      max-inline-size: 60ch;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-inline-size: 1100px;
++      margin: 2.5rem auto;
++      padding-inline: 1.25rem;
+     }
+ 
+-    .grid {
+-      margin: 20px -10px 0;
++    .container h2 {
++      text-align: center;
+     }
+ 
+-    .grid::after {
+-      content: "";
+-      display: table;
+-      clear: both;
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
++      gap: 1.25rem;
++      margin-block-start: 1.25rem;
+     }
+ 
+     .card {
+-      float: left;
+-      width: calc(33.333% - 20px);
+-      margin: 0 10px 20px;
++      display: grid;
++      grid-row: span 3;
++      /* Content-sized fallback for browsers without subgrid. */
++      grid-template-rows: auto 1fr auto;
++      grid-template-rows: subgrid;
++      min-inline-size: 0;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -123,18 +136,22 @@
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card > footer {
++      align-self: end;
++    }
++
+     .btn {
+       display: inline-block;
++      inline-size: fit-content;
++      max-inline-size: 100%;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+@@ -142,7 +159,12 @@
+       background: #3e2723;
+     }
+ 
+-    footer {
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .site-footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -164,7 +186,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -182,29 +204,35 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/seasonal" class="btn" aria-label="View Details about Maple Oat Latte">View Details</a>
++          </footer>
++        </article>
++        <article class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/espresso" class="btn" aria-label="View Details about Dark Roast Espresso">View Details</a>
++          </footer>
++        </article>
++        <article class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn" aria-label="View Details about Cold Brew">View Details</a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

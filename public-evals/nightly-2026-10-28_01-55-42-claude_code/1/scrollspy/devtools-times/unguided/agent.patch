@@ -1,0 +1,232 @@
+diff --git a/src/components/SectionNav.tsx b/src/components/SectionNav.tsx
+new file mode 100644
+index 0000000..9b9c505
+--- /dev/null
++++ b/src/components/SectionNav.tsx
+@@ -0,0 +1,117 @@
++import React, { useCallback, useEffect, useRef, useState } from 'react';
++
++export interface SectionNavItem {
++    /** The `id` of the section element on the page. */
++    id: string;
++    /** Label shown in the navigation menu. */
++    label: string;
++}
++
++interface SectionNavProps {
++    sections: SectionNavItem[];
++}
++
++/**
++ * Sticky in-page navigation that highlights the section currently in view.
++ *
++ * The active section is the last one whose top edge has scrolled past the
++ * bottom edge of this nav bar. Once the page is scrolled to the very bottom the
++ * final section is marked active, even if it is too short to ever reach the
++ * probe line.
++ */
++const SectionNav: React.FC<SectionNavProps> = ({ sections }) => {
++    const navRef = useRef<HTMLElement>(null);
++    const [activeId, setActiveId] = useState<string | null>(null);
++
++    const updateActive = useCallback(() => {
++        const nav = navRef.current;
++        if (!nav || sections.length === 0) return;
++
++        const doc = document.documentElement;
++        const atBottom = window.innerHeight + window.scrollY >= doc.scrollHeight - 2;
++        if (atBottom) {
++            setActiveId(sections[sections.length - 1].id);
++            return;
++        }
++
++        // A small margin below the nav so a section counts as "visible" as soon
++        // as its heading has settled underneath the bar.
++        const probeLine = nav.getBoundingClientRect().bottom + 8;
++
++        let current: string | null = null;
++        for (const { id } of sections) {
++            const el = document.getElementById(id);
++            if (!el) continue;
++            if (el.getBoundingClientRect().top <= probeLine) {
++                current = id;
++            } else {
++                break;
++            }
++        }
++
++        setActiveId(current ?? sections[0].id);
++    }, [sections]);
++
++    useEffect(() => {
++        let frame = 0;
++        const schedule = () => {
++            if (frame) return;
++            frame = window.requestAnimationFrame(() => {
++                frame = 0;
++                updateActive();
++            });
++        };
++
++        updateActive();
++        window.addEventListener('scroll', schedule, { passive: true });
++        window.addEventListener('resize', schedule);
++
++        return () => {
++            if (frame) window.cancelAnimationFrame(frame);
++            window.removeEventListener('scroll', schedule);
++            window.removeEventListener('resize', schedule);
++        };
++    }, [updateActive]);
++
++    const handleClick = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
++        const target = document.getElementById(id);
++        if (!target) return;
++        event.preventDefault();
++        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
++        history.replaceState(null, '', `#${id}`);
++        setActiveId(id);
++    };
++
++    return (
++        <nav
++            ref={navRef}
++            aria-label="Page sections"
++            className="sticky top-[100px] z-[5] bg-white/95 backdrop-blur border-b border-gray-300"
++        >
++            <ul className="max-w-6xl mx-auto px-4 sm:px-6 flex justify-center items-center space-x-6 text-sm font-semibold overflow-x-auto">
++                {sections.map(({ id, label }) => {
++                    const isActive = id === activeId;
++                    return (
++                        <li key={id} className="shrink-0">
++                            <a
++                                href={`#${id}`}
++                                onClick={(event) => handleClick(event, id)}
++                                aria-current={isActive ? 'location' : undefined}
++                                data-active={isActive ? 'true' : undefined}
++                                className={`block py-3 border-b-2 whitespace-nowrap transition-colors ${
++                                    isActive
++                                        ? 'text-gray-900 border-amber-400'
++                                        : 'text-gray-500 border-transparent hover:text-gray-900'
++                                }`}
++                            >
++                                {label}
++                            </a>
++                        </li>
++                    );
++                })}
++            </ul>
++        </nav>
++    );
++};
++
++export default SectionNav;
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..d8c9654 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,12 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-36">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..65b4260 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -8,9 +8,10 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-36">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..227218a 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SectionNav from '../components/SectionNav';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -35,6 +36,14 @@ politicsArticles[2] = {
+     slug: 'public-transit-overhaul',
+     render: async () => '' as unknown as RenderResult,
+   };
++
++// Sections of this page, in document order, for the sticky section navigation
++const pageSections = [
++    { id: 'top-story', label: 'Top Story' },
++    { id: 'top-news', label: 'Top News' },
++    { id: 'world', label: 'World' },
++    { id: 'politics', label: 'Politics' },
++];
+ ---
+ 
+ <Layout title="The DevTools Times">
+@@ -54,8 +63,11 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
++    <!-- Section Navigation: highlights the section currently in view -->
++    <SectionNav client:load sections={pageSections} />
++
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main id="top-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6 scroll-mt-36">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+@@ -65,20 +77,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file

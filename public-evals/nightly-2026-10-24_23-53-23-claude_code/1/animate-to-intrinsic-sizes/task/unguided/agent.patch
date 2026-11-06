@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,131 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo alert: a non-modal <dialog open>; the form[method=dialog] button closes it with no JS */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    #promo-alert {
++      position: static;
++      display: block;
++      width: 100%;
++      max-width: none;
++      height: auto;
++      margin: 0;
++      border: 0;
++      padding: 0.75rem 5%;
++      overflow: hidden;
++      background: var(--accent);
++      color: var(--text);
++      transition:
++        height 0.4s ease,
++        padding 0.4s ease,
++        opacity 0.3s ease,
++        display 0.4s allow-discrete;
++    }
++
++    #promo-alert:not([open]) {
++      height: 0;
++      padding-block: 0;
++      opacity: 0;
++    }
++
++    #promo-alert form {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 1rem;
++    }
++
++    #alert-dismiss {
++      background: none;
++      border: 0;
++      font-size: 1.5rem;
++      line-height: 1;
++      color: inherit;
++      cursor: pointer;
++    }
++
++    /* FAQ accordion: <details> animated via ::details-content */
++    .faq {
++      max-width: 700px;
++      margin: 40px auto 0;
++    }
++
++    .faq details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #faq-trigger {
++      cursor: pointer;
++      padding: 16px 20px;
++      font-weight: bold;
++      color: var(--primary);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      list-style: none;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: "+";
++      font-size: 1.4rem;
++      transition: transform 0.3s ease;
++    }
++
++    .faq details[open] #faq-trigger::after {
++      transform: rotate(45deg);
++    }
++
++    .faq details::details-content {
++      block-size: 0;
++      overflow: hidden;
++      opacity: 0;
++      transition:
++        block-size 0.35s ease,
++        opacity 0.35s ease,
++        content-visibility 0.35s allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++      opacity: 1;
++    }
++
++    #faq-content {
++      padding: 0 20px 16px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      #promo-alert,
++      .faq details::details-content,
++      #faq-trigger::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <dialog id="promo-alert" open aria-label="Promotion">
++    <form method="dialog">
++      <p>Free pastry with any large cold brew this week!</p>
++      <button id="alert-dismiss" aria-label="Dismiss promotion">&times;</button>
++    </form>
++  </dialog>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +312,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq">
++      <h2 style="text-align: center; margin-bottom: 20px;">FAQ</h2>
++      <details>
++        <summary id="faq-trigger">Do you offer dairy-free options?</summary>
++        <div id="faq-content">
++          <p>Yes! We offer oat, almond, and soy milk at no extra charge on every drink.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

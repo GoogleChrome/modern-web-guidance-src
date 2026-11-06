@@ -1,0 +1,285 @@
+diff --git a/index.html b/index.html
+index 66c9173..bf53aad 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,73 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
++<title>Relay — Email verification, without the email</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++<style>
++:root{--ink:#202628;--muted:#85888b;--line:#e9e9e6;--orange:#f37254;--nav:#202b30;--green:#3c8265}*{box-sizing:border-box}body{margin:0;font-family:'DM Sans',sans-serif;color:var(--ink);font-size:13px;background:#f8f9f7}button,input,select{font:inherit}button,a{ -webkit-tap-highlight-color:transparent}button{cursor:pointer}button{color:inherit}a{color:inherit;text-decoration:none}svg{width:19px;height:19px;flex-shrink:0;stroke-width:1.7;vertical-align:middle}.app{display:flex;min-height:100vh}.sidebar{width:232px;background:var(--nav);color:#b5bec2;position:fixed;inset:0 auto 0 0;padding:34px 20px 20px;display:flex;flex-direction:column;z-index:10}.brand{color:white;font-family:Manrope,sans-serif;font-size:30px;letter-spacing:-1.5px;font-weight:800;display:flex;align-items:center;gap:10px;padding:0 12px}.brand-mark{color:var(--orange);font-size:40px;line-height:30px;transform:rotate(-12deg);letter-spacing:-13px;margin-right:11px;font-weight:800}.workspace{margin:35px 0 28px;border:1px solid #435057;border-radius:7px;display:flex;align-items:center;padding:11px;gap:10px;font-size:12px;color:#f0f3f3}.workspace .avatar{background:#626d68;color:#fff;border-radius:5px;font-size:12px;width:29px;height:29px}.workspace small{color:#96a2a8;font-size:10px;display:block;margin-top:3px}.workspace svg{margin-left:auto;width:13px}.nav-label{text-transform:uppercase;font-size:9px;letter-spacing:1.5px;color:#7d8a91;margin:0 13px 12px;font-weight:600}.nav-item{width:100%;border:0;background:none;color:#aeb9be;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:6px;text-align:left;margin:3px 0;font-size:12px}.nav-item.active{color:#fff;background:#3b4548}.nav-item.active svg{color:#fa8c72}.nav-item:hover{background:#354147}.nav-item .badge{margin-left:auto;background:#4a5356;padding:2px 6px;border-radius:4px;font-size:9px;color:#dbe0e1}.sidebar-bottom{margin-top:auto;padding-top:85px}.help-card{background:#2c373c;border:1px solid #414b50;border-radius:8px;padding:16px 13px;margin:17px 4px}.help-card p{font-size:11px;line-height:1.7;color:#aab4b9;margin:8px 0 12px}.help-card b{font-size:12px;color:#e6eaec;font-weight:500}.help-card button{background:none;border:0;color:#f4f5f5;padding:0;font-size:11px;display:flex;gap:13px;align-items:center}.help-card svg{width:14px}.sidebar-footer{padding:9px 12px;font-size:10px;color:#7f8c93;display:flex;justify-content:space-between}main{margin-left:232px;width:calc(100% - 232px)}.topbar{height:79px;border-bottom:1px solid var(--line);padding:0 40px;display:flex;align-items:center;justify-content:space-between;background:#fff}.breadcrumbs{font-size:12px;display:flex;align-items:center;gap:13px;color:#909394}.breadcrumbs svg{width:14px}.breadcrumbs b{font-weight:500;color:#454b4e}.top-actions{display:flex;gap:24px;align-items:center}.status{font-size:10px;color:#647269;display:flex;align-items:center;gap:6px}.dot{width:6px;height:6px;display:inline-block;border-radius:50%;background:#65a480}.icon-button{border:0;background:transparent;padding:4px;position:relative;color:#687075}.notify-dot{position:absolute;right:5px;top:4px;background:#ef8b6c;width:5px;height:5px;border-radius:50%;border:1px solid white}.avatar{width:31px;height:31px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#ecd7c5;color:#725947;font-size:11px;font-weight:600}.page{max-width:1440px;padding:35px 40px 24px;margin:auto}.heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}h1{font-family:Manrope,sans-serif;font-size:27px;letter-spacing:-1px;font-weight:750;margin:0 0 7px}.subtitle{color:#84888b;font-size:12px;margin:0}.button{border:1px solid #dfE2df;background:#fff;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;font-size:11px;font-weight:550}.button svg{width:15px;height:15px}.primary{background:var(--orange);color:#fff;border-color:var(--orange);box-shadow:0 2px 2px #d35c3c15}.button:hover{filter:brightness(.97)}.hero{background:#f1f0e9;min-height:181px;border:1px solid #e6e6dc;border-radius:9px;display:flex;justify-content:space-between;padding:26px 30px;overflow:hidden;position:relative;margin-bottom:25px}.eyebrow{font-size:9px;letter-spacing:1.7px;color:#8d8e7b;font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:10px}.eyebrow svg{height:13px;width:13px}h2{font-family:Manrope,sans-serif;font-weight:700;letter-spacing:-.6px;font-size:21px;margin:0 0 9px}.hero p{color:#7c807b;font-size:11px;line-height:1.8;margin:0}.hero-link{border:0;background:none;padding:12px 0 0;color:#535e55;font-size:10px;font-weight:600;display:flex;gap:8px;align-items:center}.hero-link svg{width:13px}.hero-art{width:295px;position:relative;display:flex;align-items:center;justify-content:center;margin-right:5px}.orbit{position:absolute;border:1px solid #dfe1d4;border-radius:50%;width:240px;height:240px}.orbit.two{width:178px;height:178px}.orbit.three{width:302px;height:302px;opacity:.6}.art-box{background:#fff;border:1px solid #e3e5da;box-shadow:0 7px 20px #59664c0b;display:flex;align-items:center;justify-content:center;z-index:1;width:62px;height:62px;border-radius:13px}.art-box svg{width:27px;height:27px;color:#7e8b69}.art-box.left{position:absolute;left:3px;top:33px;width:46px;height:46px;transform:rotate(-9deg)}.art-box.left svg{width:22px}.art-box.right{position:absolute;right:7px;bottom:23px;width:44px;height:44px;transform:rotate(9deg);background:#e3ebd9}.art-box.right svg{width:21px}.connector{position:absolute;width:92px;border-top:1.5px dashed #a6b395;left:42px;top:64px;transform:rotate(8deg)}.connector.right{left:auto;right:44px;top:86px;transform:rotate(12deg)}.mini-check{position:absolute;top:30px;left:156px;background:#7b956c;border:3px solid #f1f0e9;border-radius:50%;width:23px;height:23px;color:white;z-index:2;display:flex;align-items:center;justify-content:center}.mini-check svg{width:12px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:17px;margin-bottom:25px}.metric{padding:19px 20px 17px;background:#fff;border:1px solid var(--line);border-radius:8px}.metric-label{font-size:11px;color:#7c8184;display:flex;align-items:center;justify-content:space-between}.metric-label svg{width:14px;height:14px;color:#a3a9a8}.metric-value{font-family:Manrope,sans-serif;font-size:27px;font-weight:700;letter-spacing:-.8px;margin:11px 0 9px}.metric-value span{font-size:17px;color:#909895;margin-left:2px;font-weight:500}.metric-foot{font-size:9px;color:#989b9b;display:flex;gap:6px;align-items:center}.change{background:#eef6ef;color:#52906b;border-radius:4px;padding:3px 5px;font-size:9px}.change svg{width:10px;height:10px}.chart-row{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(270px,1fr);gap:21px;margin-bottom:26px}.panel{border:1px solid var(--line);background:white;border-radius:8px;overflow:hidden}.panel-header{padding:20px 21px 0;display:flex;justify-content:space-between;align-items:flex-start}.panel h3{font-size:12px;font-weight:600;margin:0 0 6px}.panel-description{color:#94989b;font-size:10px;margin:0}.period{padding:7px 9px;border:1px solid #e7e9e5;background:#fff;border-radius:5px;font-size:9px;color:#666f72;display:flex;gap:9px;align-items:center}.period svg{width:11px;height:11px}.legend{font-size:9px;color:#898f8f;display:flex;align-items:center;gap:6px;padding:20px 22px 0}.legend .dot{background:#8ca280;width:6px;height:6px}.legend .dot.second{background:#e9b9a9;margin-left:10px}.chart{width:100%;height:181px;padding:4px 17px 8px 10px}.chart svg{width:100%;height:100%;overflow:visible}.chart text{font-size:9px;fill:#9da3a5;font-family:'DM Sans',sans-serif}.chart .grid{stroke:#eef0ec;stroke-width:1;stroke-dasharray:3 4}.providers{padding:9px 21px 0}.provider{display:flex;align-items:center;gap:10px;margin:18px 0}.provider-logo{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #edf0ed;border-radius:6px}.google{font-size:21px;font-weight:700;font-family:Arial;color:#4285f4}.microsoft{width:15px;height:15px;display:grid;grid-template-columns:1fr 1fr;gap:2px}.microsoft i:nth-child(1){background:#f35325}.microsoft i:nth-child(2){background:#81bc06}.microsoft i:nth-child(3){background:#05a6f0}.microsoft i:nth-child(4){background:#ffba08}.provider-info{flex:1}.provider-name{font-size:10px;display:flex;justify-content:space-between;margin-bottom:7px}.provider-name span:last-child{color:#81888a;font-size:9px}.bar{height:4px;background:#f2f3ef;border-radius:5px}.bar span{height:100%;display:block;background:#8ca180;border-radius:5px}.provider:nth-child(2) .bar span{background:#bdcbb0}.provider:nth-child(3) .bar span{background:#e5beaa}.provider-footer{border-top:1px solid #eef0eb;display:flex;justify-content:space-between;margin-top:20px;padding:13px 21px;color:#929797;font-size:9px}.provider-footer b{font-weight:500;color:#5b6362}.activity-top{display:flex;align-items:center;justify-content:space-between;padding:19px 21px 17px}.activity-top h3{margin-bottom:5px}.activity-top a{font-size:10px;display:flex;align-items:center;gap:7px;color:#69716e}.activity-top svg{width:13px}.table-tools{display:flex;justify-content:space-between;padding:0 21px 14px;gap:15px}.tabs{display:flex;gap:4px;padding:3px;background:#f5f6f3;border:1px solid #edf0e9;border-radius:6px}.tab{border:0;background:none;padding:6px 10px;font-size:9px;color:#858b8b;border-radius:4px}.tab.active{background:white;box-shadow:0 1px 4px #19281e0e;color:#39433c}.search{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:5px;padding:0 9px}.search svg{width:13px;color:#a1a7a6}.search input{width:160px;background:transparent;border:0;outline:0;font-size:9px;padding:8px 0;color:#525b57}table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}th{font-size:9px;color:#949a99;font-weight:500;padding:11px 21px;background:#fbfcfa;border-block:1px solid #eef0eb}td{font-size:10px;padding:14px 21px;border-bottom:1px solid #f0f1ed;color:#717978}td:first-child{color:#444e4c}tbody tr{cursor:pointer}tbody tr:hover{background:#fafbf8}.email-cell{display:flex;gap:9px;align-items:center}.email-avatar{height:24px;width:24px;background:#f2eee8;color:#a18c75;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px}.flow-label{background:#f4f5f2;border:1px solid #eaede7;font-size:9px;padding:3px 6px;border-radius:4px;color:#7b827a}.state{font-size:9px;color:#4d896a;background:#edf6ef;border:1px solid #e1eee3;border-radius:4px;padding:3px 6px;display:inline-flex;align-items:center;gap:4px}.state svg{height:10px;width:10px}.state.pending{color:#aa8c4a;background:#fbf6e8;border-color:#f1e9d2}.state.failed{color:#bd796a;background:#fcf0ed;border-color:#f4e0da}.table-footer{padding:13px 21px;display:flex;justify-content:space-between;align-items:center;color:#929997;font-size:9px}.pages{display:flex;gap:7px}.pages button{border:1px solid #e6e9e2;border-radius:4px;background:#fff;padding:4px 7px;font-size:10px}.pages button.selected{background:#f2f4ed}.page-footer{display:flex;justify-content:space-between;font-size:9px;color:#a3aaa5;padding:22px 0 0}.page-footer span{display:flex;align-items:center;gap:5px}.page-footer svg{width:11px;height:11px}.modal-backdrop{position:fixed;inset:0;background:#18252c66;backdrop-filter:blur(3px);z-index:50;display:none;align-items:center;justify-content:center;padding:20px}.modal-backdrop.open{display:flex}.modal{background:white;max-width:440px;width:100%;border-radius:13px;padding:28px;box-shadow:0 20px 80px #15232933}.modal h2{font-size:22px}.modal p{font-size:12px;color:#808885;line-height:1.7}.modal label{font-size:11px;display:block;margin:17px 0 7px}.modal input,.modal select{width:100%;border:1px solid #dde2da;padding:11px;border-radius:6px;outline-color:#8ca180;background:white}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:24px}.modal-close{float:right;border:0;background:none;color:#8c9490;font-size:22px}.toast{position:fixed;bottom:25px;left:calc(50% + 116px);transform:translateX(-50%);background:#243b30;color:white;padding:13px 20px;border-radius:7px;box-shadow:0 4px 20px #0002;font-size:12px;z-index:100;display:none}.empty{padding:40px;text-align:center;color:#929a96}.secondary-view{display:none}.settings-card{padding:24px;margin-bottom:20px}.settings-card p{color:#85908a;font-size:12px;line-height:1.8}.flow-card{display:flex;justify-content:space-between;align-items:center;padding:22px;border-bottom:1px solid var(--line)}.flow-card h3{margin:0 0 7px;font-size:13px}.flow-card p{margin:0;font-size:11px;color:#919990}button:focus-visible,a:focus-visible{outline:2px solid #ef8e6c;outline-offset:3px}@media(min-width:1500px){.page{padding-top:42px}.hero{min-height:196px}.chart{height:205px}td{padding-block:17px}}@media(max-width:1100px){.sidebar{width:190px;padding-inline:13px}main{margin-left:190px;width:calc(100% - 190px)}.page{padding:28px 24px}.topbar{padding:0 24px}.metric{padding:16px 13px}.metric-foot{font-size:8px}.chart-row{gap:15px;grid-template-columns:1.6fr 1fr}th,td{padding-inline:13px}.toast{left:calc(50% + 95px)}}@media(max-width:800px){.sidebar{width:68px;padding:25px 10px}.brand{font-size:0;padding:0 8px}.brand-mark{font-size:35px}.workspace,.nav-label,.nav-item span,.help-card,.sidebar-footer{display:none}.nav-item{padding:13px;justify-content:center}.sidebar nav{margin-top:35px}.sidebar-bottom{padding-top:0}main{margin-left:68px;width:calc(100% - 68px)}.page{padding:25px 18px}.topbar{height:65px;padding:0 18px}.top-actions{gap:15px}.status{display:none}.metrics{grid-template-columns:repeat(2,1fr);gap:12px}.hero-art{width:190px;margin-right:-30px;flex-shrink:0;opacity:.7}.hero{padding:22px;gap:10px}.hero h2{font-size:18px}.chart-row{grid-template-columns:1fr}.table-scroll{overflow:auto}.chart{height:200px}.toast{left:50%}.hero p br{display:none}.heading{gap:12px}h1{font-size:24px}.subtitle{font-size:11px}.table-tools{flex-wrap:wrap}.search{flex:1}.search input{width:100%}.page-footer span:last-child{display:none}}@media(max-width:500px){.hero-art{display:none}.heading{align-items:flex-start}.heading .button{padding:9px;font-size:10px}.hero p{max-width:250px}.metric-value{font-size:25px}.metric-foot{gap:3px}.breadcrumbs{font-size:10px}.page-footer{font-size:8px}}
++</style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<svg style="display:none" xmlns="http://www.w3.org/2000/svg"><defs>
++<symbol id="grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
++<symbol id="shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
++<symbol id="activity" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></symbol>
++<symbol id="flow" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/></symbol>
++<symbol id="code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16"/></symbol>
++<symbol id="settings" viewBox="0 0 24 24"><path d="m9 3-1 3-3 1-2 4 2 2v4l4 2 3-1 3 1 4-2v-4l2-2-2-4-3-1-1-3H9Z"/><circle cx="12" cy="11" r="3"/></symbol>
++<symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
++<symbol id="chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
++<symbol id="down" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
++<symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
++<symbol id="mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></symbol>
++<symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></symbol>
++<symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
++<symbol id="search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
++<symbol id="bell" viewBox="0 0 24 24"><path d="M5 17h14l-2-4V9a5 5 0 0 0-10 0v4l-2 4ZM10 21h4"/></symbol>
++<symbol id="book" viewBox="0 0 24 24"><path d="M12 5v15M12 5C9 3 5 3 3 4v14c3-1 6-1 9 2 3-3 6-3 9-2V4c-2-1-6-1-9 1Z"/></symbol>
++<symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
++<symbol id="trend" viewBox="0 0 24 24"><path d="m4 16 6-6 4 4 6-8m-6 0h6v6"/></symbol>
++<symbol id="bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z"/></symbol>
++<symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol>
++</defs></svg>
++<div class="app">
++<aside class="sidebar"><a class="brand" href="#overview"><span class="brand-mark">»</span>relay<span style="color:#f18b6f;margin-left:-8px">.</span></a>
++<div class="workspace"><div class="avatar">A</div><div>Acme, Inc.<small>Production workspace</small></div><svg><use href="#down"/></svg></div>
++<div class="nav-label">Workspace</div><nav>
++<button class="nav-item active" data-view="overview"><svg><use href="#grid"/></svg><span>Overview</span></button>
++<button class="nav-item" data-view="verifications"><svg><use href="#shield"/></svg><span>Verifications</span></button>
++<button class="nav-item" data-view="flows"><svg><use href="#flow"/></svg><span>Verification flows</span><span class="badge" id="flow-count">3</span></button>
++<button class="nav-item" data-view="activity"><svg><use href="#activity"/></svg><span>Activity logs</span></button>
++<button class="nav-item" data-view="api"><svg><use href="#code"/></svg><span>API keys</span></button>
++<button class="nav-item" data-view="settings"><svg><use href="#settings"/></svg><span>Settings</span></button>
++</nav><div class="sidebar-bottom"><button class="nav-item" id="docs"><svg><use href="#book"/></svg><span>Documentation</span><svg style="width:12px;margin-left:auto"><use href="#arrow"/></svg></button><div class="help-card"><b>A little help along the way.</b><p>Everything you need to get your<br>first verification up and running.</p><button id="quickstart">View quickstart <svg><use href="#arrow"/></svg></button></div><div class="sidebar-footer"><span>© 2026 Relay</span><span>v1.4</span></div></div></aside>
++<main><header class="topbar"><div class="breadcrumbs">Workspace <svg><use href="#chevron"/></svg><b id="breadcrumb">Overview</b></div><div class="top-actions"><span class="status"><i class="dot"></i> All systems operational</span><button class="icon-button" id="notifications" aria-label="Notifications"><svg><use href="#bell"/></svg><i class="notify-dot"></i></button><button class="icon-button" id="profile" aria-label="Account settings"><span class="avatar">JL</span></button></div></header>
++<div class="page"><div class="heading"><div><h1 id="page-title">Overview</h1><p class="subtitle" id="page-subtitle">A little less friction. A lot more trust.</p></div><button class="button primary" id="create-flow"><svg><use href="#plus"/></svg> Create verification flow</button></div>
++<div id="overview-view"><section class="hero"><div><div class="eyebrow"><svg><use href="#bolt"/></svg> EMAIL VERIFICATION, REIMAGINED</div><h2>Real users. Verified in a moment.</h2><p>Verify email ownership without the codes, links, or inbox detours.<br>A seamless first impression, powered by trusted identity providers.</p><button class="hero-link" id="how-it-works">See how it works <svg><use href="#arrow"/></svg></button></div><div class="hero-art" aria-hidden="true"><div class="orbit three"></div><div class="orbit"></div><div class="orbit two"></div><div class="connector"></div><div class="connector right"></div><div class="art-box left"><svg><use href="#mail"/></svg></div><div class="art-box"><svg><use href="#shield"/></svg></div><span class="mini-check"><svg><use href="#check"/></svg></span><div class="art-box right"><svg><use href="#check"/></svg></div></div></section>
++<section class="metrics"><div class="metric"><div class="metric-label">Total verifications <svg><use href="#shield"/></svg></div><div class="metric-value">24,892</div><div class="metric-foot"><span class="change">↗ 18.6%</span> vs. previous 30 days</div></div><div class="metric"><div class="metric-label">Verification success rate <svg><use href="#check"/></svg></div><div class="metric-value">98.6<span>%</span></div><div class="metric-foot"><span class="change">↗ 2.4%</span> vs. previous 30 days</div></div><div class="metric"><div class="metric-label">Avg. verification time <svg><use href="#clock"/></svg></div><div class="metric-value">1.8<span>s</span></div><div class="metric-foot"><span class="change">↘ 0.6s</span> faster than last month</div></div><div class="metric"><div class="metric-label">Active verification flows <svg><use href="#flow"/></svg></div><div class="metric-value" id="metric-flows">3</div><div class="metric-foot"><i class="dot" style="width:5px;height:5px"></i> All flows running smoothly</div></div></section>
++<section class="chart-row"><div class="panel"><div class="panel-header"><div><h3>Verification activity</h3><p class="panel-description">A clearer picture of your user verifications.</p></div><select class="period" id="period" aria-label="Activity period"><option value="30">Last 30 days</option><option value="7">Last 7 days</option><option value="90">Last 90 days</option></select></div><div class="legend"><i class="dot"></i> Verified <i class="dot second"></i> Unsuccessful</div><div class="chart"><svg viewBox="0 0 600 177" preserveAspectRatio="none" aria-label="Verification activity chart" role="img"><defs><linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#dbe5d3" stop-opacity=".65"/><stop offset="1" stop-color="#eaf0e5" stop-opacity=".15"/></linearGradient></defs><path class="grid" d="M42 18H580M42 57H580M42 96H580M42 135H580"/><text x="6" y="21">1,200</text><text x="16" y="60">800</text><text x="16" y="99">400</text><text x="28" y="138">0</text><path id="area" d="M43 112 61 108 80 114 98 103 117 108 135 92 154 100 172 90 191 102 209 83 228 89 246 67 265 77 283 62 302 73 320 45 339 52 357 64 376 40 394 56 413 37 431 48 450 29 468 39 487 51 505 25 524 33 542 12 561 24 580 17V135H43Z" fill="url(#chart-fill)"/><path id="chart-line" d="M43 112 61 108 80 114 98 103 117 108 135 92 154 100 172 90 191 102 209 83 228 89 246 67 265 77 283 62 302 73 320 45 339 52 357 64 376 40 394 56 413 37 431 48 450 29 468 39 487 51 505 25 524 33 542 12 561 24 580 17" fill="none" stroke="#8fa17e" stroke-width="2" stroke-linejoin="round"/><path d="M43 132 61 131 80 133 98 130 117 132 135 128 154 131 172 128 191 130 209 128 228 130 246 126 265 130 283 127 302 130 320 126 339 130 357 128 376 126 394 129 413 126 431 128 450 125 468 128 487 127 505 124 524 127 542 125 561 128 580 125" fill="none" stroke="#e8bdaa" stroke-width="1.7"/><g id="chart-labels"><text x="43" y="161">Jun 1</text><text x="129" y="161">Jun 5</text><text x="215" y="161">Jun 10</text><text x="305" y="161">Jun 15</text><text x="392" y="161">Jun 20</text><text x="479" y="161">Jun 25</text><text x="552" y="161">Jun 30</text></g></svg></div></div>
++<div class="panel"><div class="panel-header"><div><h3>Verification by provider</h3><p class="panel-description">Trusted connections. Effortless verification.</p></div><svg style="width:14px;color:#a0a6a1"><use href="#info"/></svg></div><div class="providers"><div class="provider"><div class="provider-logo google">G</div><div class="provider-info"><div class="provider-name"><span>Google</span><span>68.4%</span></div><div class="bar"><span style="width:68.4%"></span></div></div></div><div class="provider"><div class="provider-logo"><div class="microsoft"><i></i><i></i><i></i><i></i></div></div><div class="provider-info"><div class="provider-name"><span>Microsoft</span><span>24.8%</span></div><div class="bar"><span style="width:24.8%"></span></div></div></div><div class="provider"><div class="provider-logo"><svg style="width:16px;color:#a4aa9e"><use href="#mail"/></svg></div><div class="provider-info"><div class="provider-name"><span>Other providers</span><span>6.8%</span></div><div class="bar"><span style="width:6.8%"></span></div></div></div></div><div class="provider-footer"><span>Connected to confidence</span><b>3 providers enabled</b></div></div></section></div>
++<section class="panel" id="activity-panel"><div class="activity-top"><div><h3 id="activity-title">Recent verifications</h3><p class="panel-description">The latest people to make a trusted connection.</p></div><a href="#verifications" id="view-all">View all verifications <svg><use href="#arrow"/></svg></a></div><div class="table-tools"><div class="tabs" role="tablist"><button class="tab active" data-filter="All" role="tab">All verifications</button><button class="tab" data-filter="Verified" role="tab">Verified</button><button class="tab" data-filter="Pending" role="tab">Pending</button><button class="tab" data-filter="Failed" role="tab">Failed</button></div><label class="search"><svg><use href="#search"/></svg><input id="search" placeholder="Search by email..." aria-label="Search by email"></label></div><div class="table-scroll"><table><thead><tr><th>Email address</th><th>Provider</th><th>Verification flow</th><th>Status</th><th>Time</th><th></th></tr></thead><tbody id="rows"></tbody></table></div><div class="table-footer"><span id="result-count">Showing 5 of 24,892 verifications</span><div class="pages"><button id="prev-page" aria-label="Previous page">‹</button><button class="selected" id="page-number">1</button><button id="next-page" aria-label="Next page">›</button></div></div></section>
++<div class="secondary-view" id="secondary-view"></div><footer class="page-footer"><span><svg><use href="#lock"/></svg> Built for trust. Designed for people.</span><span>Need a hand? <a href="#docs" id="footer-docs">Visit our documentation ↗</a></span></footer></div></main></div>
++<div class="modal-backdrop" id="modal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close" aria-label="Close dialog">×</button><div id="modal-content"></div></div></div><div class="toast" role="status" id="toast"></div>
++<script>
++const $=s=>document.querySelector(s);const icon=(name)=>`<svg fill="none" stroke="currentColor"><use href="#${name}"/></svg>`;
++document.querySelectorAll('svg:not(.chart svg)').forEach(el=>{if(!el.closest('.chart')){el.setAttribute('fill','none');el.setAttribute('stroke','currentColor')}});
++const records=[['olivia@acme.com','Google','Account creation','Verified','Just now','OL'],['james@linear.app','Microsoft','Sign-in','Verified','2 min ago','JW'],['sarah@notion.so','Google','Account recovery','Verified','4 min ago','SC'],['michael@vercel.com','Google','Account creation','Pending','6 min ago','MC'],['emma@figma.com','Microsoft','Sign-in','Verified','8 min ago','EW'],['alex@studio.co','Google','Account recovery','Failed','12 min ago','AL'],['lily@design.io','Microsoft','Account creation','Verified','15 min ago','LT'],['noah@acme.com','Google','Sign-in','Verified','18 min ago','NS'],['mia@studio.co','Google','Account creation','Failed','21 min ago','MB'],['leo@linear.app','Microsoft','Account recovery','Pending','25 min ago','LK']];
++let filter='All',page=1,currentView='overview';let flows=[{name:'Account creation',purpose:'Account creation'},{name:'Sign-in',purpose:'Sign-in'},{name:'Account recovery',purpose:'Account recovery'}];
++function renderRows(){let matches=records.filter(r=>(filter==='All'||r[3]===filter)&&r[0].includes($('#search').value.toLowerCase()));let subset=matches.slice((page-1)*5,page*5);$('#rows').innerHTML=subset.map(r=>`<tr tabindex="0" data-email="${r[0]}"><td><div class="email-cell"><span class="email-avatar">${r[5]}</span>${r[0]}</div></td><td>${r[1]==='Google'?'<b style="color:#4285f4;font-family:Arial;margin-right:7px;font-size:12px">G</b>':'<span style="color:#79a0b2;margin-right:7px">⊞</span>'}${r[1]}</td><td><span class="flow-label">${r[2]}</span></td><td><span class="state ${r[3].toLowerCase()}">${icon(r[3]==='Verified'?'check':r[3]==='Pending'?'clock':'info')}${r[3]}</span></td><td>${r[4]}</td><td>${icon('chevron')}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">No verifications match your search.</td></tr>';$('#result-count').textContent=filter==='All'&&!$('#search').value?`Showing ${page===1?'5':'10'} of 24,892 verifications`:`Showing ${subset.length} of ${matches.length} verifications`;$('#page-number').textContent=page;$('#prev-page').disabled=page===1;$('#next-page').disabled=page*5>=matches.length;document.querySelectorAll('#rows tr[data-email]').forEach(row=>{const open=()=>showRecord(row.dataset.email);row.onclick=open;row.onkeydown=e=>{if(e.key==='Enter')open()}})}
++function toast(message){$('#toast').textContent=message;$('#toast').style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('#toast').style.display='none',3500)}
++let previousFocus;function modal(html){previousFocus=document.activeElement;$('#modal-content').innerHTML=html;$('#modal').classList.add('open');setTimeout(()=>$('#modal').querySelector('input, .modal-close').focus(),0)}function closeModal(){$('#modal').classList.remove('open');previousFocus?.focus()}$('.modal-close').onclick=closeModal;$('#modal').onclick=e=>{if(e.target===$('#modal'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();if(e.key==='Tab'&&$('#modal').classList.contains('open')){const items=[...$('#modal').querySelectorAll('button,input,select,a[href]')];if(e.shiftKey&&document.activeElement===items[0]){e.preventDefault();items.at(-1).focus()}else if(!e.shiftKey&&document.activeElement===items.at(-1)){e.preventDefault();items[0].focus()}}});
++function showRecord(email){const r=records.find(r=>r[0]===email);modal(`<h2>Verification details</h2><p>${r[0]}</p><div style="background:#f7f8f4;padding:17px;border-radius:7px;line-height:2.5;font-size:12px">Provider <b style="float:right">${r[1]}</b><br>Flow <b style="float:right">${r[2]}</b><br>Status <b style="float:right;color:#64856a">${r[3]}</b><br>Received <b style="float:right">${r[4]}</b></div><p>Demo verification data. Live ownership verification requires a connected identity provider.</p>`)}
++function openCreate(){modal(`<h2>Create verification flow</h2><p>A smooth, trusted connection at every step.</p><form id="flow-form"><label for="flow-name">Flow name</label><input id="flow-name" placeholder="e.g. New customer sign-up" required maxlength="60"><label for="flow-purpose">Verification purpose</label><select id="flow-purpose"><option>Account creation</option><option>Sign-in</option><option>Account recovery</option></select><label for="flow-provider">Identity provider</label><select id="flow-provider"><option>Google and Microsoft</option><option>Google</option><option>Microsoft</option></select><p style="font-size:10px">Demo workspace · Flows are saved for this session. Connect your provider credentials to enable live verification.</p><div class="modal-actions"><button type="button" class="button" id="cancel-create">Cancel</button><button class="button primary" type="submit">Create flow ${icon('arrow')}</button></div></form>`);$('#cancel-create').onclick=closeModal;$('#flow-form').onsubmit=e=>{e.preventDefault();const name=$('#flow-name').value.trim();if(!name){$('#flow-name').setCustomValidity('Enter a flow name.');$('#flow-name').reportValidity();$('#flow-name').oninput=()=>$('#flow-name').setCustomValidity('');return}flows.push({name,purpose:$('#flow-purpose').value});$('#flow-count').textContent=flows.length;$('#metric-flows').textContent=flows.length;closeModal();if(currentView==='flows')renderSecondary();toast('Verification flow created in your demo workspace.')}}
++$('#create-flow').onclick=openCreate;
++const titles={overview:['Overview','A little less friction. A lot more trust.'],verifications:['Verifications','Every verified email starts a trusted connection.'],activity:['Activity logs','Follow the latest activity across your workspace.'],flows:['Verification flows','A seamless experience for every part of the journey.'],api:['API keys','Connect your application to Relay.'],settings:['Settings','Make this workspace yours.']};
++function navigate(view){currentView=view;const [title,sub]=titles[view];$('#page-title').textContent=title;$('#breadcrumb').textContent=title;$('#page-subtitle').textContent=sub;document.querySelectorAll('.nav-item[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));$('#overview-view').style.display=view==='overview'?'block':'none';$('#activity-panel').style.display=['overview','verifications','activity'].includes(view)?'block':'none';$('#secondary-view').style.display=['flows','api','settings'].includes(view)?'block':'none';$('#view-all').style.display=view==='overview'?'flex':'none';$('#activity-title').textContent=view==='activity'?'Workspace activity':view==='verifications'?'All verifications':'Recent verifications';if(['flows','api','settings'].includes(view))renderSecondary();history.replaceState(null,'','#'+view)}
++function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
++function renderSecondary(){if(currentView==='flows'){$('#secondary-view').innerHTML=`<div class="panel">${flows.map(f=>`<div class="flow-card"><div><h3>${escapeHtml(f.name)}</h3><p>${escapeHtml(f.purpose)} · Google & Microsoft · Demo flow</p></div><span class="state">${icon('check')} Enabled</span></div>`).join('')}</div>`}else if(currentView==='api'){$('#secondary-view').innerHTML=`<div class="panel settings-card"><h2>Connect your application</h2><p>This is a demo workspace. Production keys become available when your Relay backend and identity provider credentials are configured.</p><label style="font-size:11px">Demo publishable key</label><div style="display:flex;gap:12px;margin-top:12px"><input readonly value="pk_demo_acme_relay_2026" style="border:1px solid #e2e7dd;padding:10px;border-radius:6px;flex:1;min-width:0" id="demo-key"><button class="button" id="copy-key">Copy key</button></div><p>Use an OpenID Connect provider to authenticate users, validate the signed identity token on your server, and check that the email is verified and matches the requested address.</p></div>`;$('#copy-key').onclick=async()=>{try{await navigator.clipboard.writeText($('#demo-key').value);toast('Demo key copied')}catch{ $('#demo-key').select();toast('Select and copy the demo key')}}}else{$('#secondary-view').innerHTML=`<div class="panel settings-card"><h2>Workspace settings</h2><form id="settings-form"><label style="display:block;margin:20px 0 8px;font-size:11px">Workspace name</label><input id="workspace-name" required value="Acme, Inc." style="width:100%;max-width:350px;padding:11px;border:1px solid #dfe5da;border-radius:6px"><p>Environment: Demo · Workspace owner: Jordan Lee</p><button class="button primary">Save changes</button></form></div>`;$('#settings-form').onsubmit=e=>{e.preventDefault();const name=$('#workspace-name').value.trim();if(!name)return;$('.workspace > div:nth-child(2)').innerHTML=escapeHtml(name)+'<small>Production workspace</small>';toast('Workspace settings saved')}}}
++document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));$('#view-all').onclick=e=>{e.preventDefault();navigate('verifications')};$('#profile').onclick=()=>navigate('settings');$('#notifications').onclick=()=>modal('<h2>You’re all caught up</h2><p>All demo verification flows are running smoothly. New workspace notifications will appear here.</p>');document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{filter=t.dataset.filter;page=1;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b===t));renderRows()});$('#search').oninput=()=>{page=1;renderRows()};$('#next-page').onclick=()=>{page++;renderRows()};$('#prev-page').onclick=()=>{page--;renderRows()};
++function docs(){modal(`<div class="eyebrow">THE RELAY QUICKSTART</div><h2>Trust, in a few simple steps.</h2><p><b>1. Create a verification flow</b><br>Choose account creation, sign-in, or account recovery.</p><p><b>2. Connect an identity provider</b><br>Configure Google or Microsoft OpenID Connect credentials in your backend. Users securely authenticate with their provider.</p><p><b>3. Confirm email ownership</b><br>Your server validates the signed identity token, its issuer, audience and nonce, and the provider's email verification claims. Match the returned email to the address being verified.</p><p style="background:#f3f5ef;padding:12px;border-radius:6px;font-size:11px">This interactive demo uses sample data. It does not connect to providers or verify real email addresses.</p><div class="modal-actions"><button class="button primary" id="start-flow">Create your first flow ${icon('arrow')}</button></div>`);$('#start-flow').onclick=openCreate}['docs','quickstart','how-it-works','footer-docs'].forEach(id=>$('#'+id).onclick=e=>{e.preventDefault();docs()});
++$('#period').onchange=()=>{const days=$('#period').value;const labels=days==='7'?['Jun 24','Jun 25','Jun 26','Jun 27','Jun 28','Jun 29','Jun 30']:days==='90'?['Apr 1','Apr 15','May 1','May 15','Jun 1','Jun 15','Jun 30']:['Jun 1','Jun 5','Jun 10','Jun 15','Jun 20','Jun 25','Jun 30'];$('#chart-labels').querySelectorAll('text').forEach((el,i)=>el.textContent=labels[i]);const pts=Array.from({length:30},(_,i)=>`${43+i*537/29} ${Math.max(14,115-i*(days==='7'?2.1:3.1)+Math.sin(i*(days==='7'?1.7:2.8))*10)}`).join(' ');$('#chart-line').setAttribute('d','M'+pts);$('#area').setAttribute('d','M'+pts+'V135H43Z')};renderRows();if(titles[location.hash.slice(1)])navigate(location.hash.slice(1));
++</script>
++</body></html>

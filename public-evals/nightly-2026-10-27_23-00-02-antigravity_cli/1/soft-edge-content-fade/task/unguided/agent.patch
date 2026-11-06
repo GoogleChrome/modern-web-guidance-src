@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,18 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .paywall-container {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +204,29 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <h2 style="text-align: center;">Roaster's Secrets</h2>
++      <p style="text-align: center; max-width: 700px; margin: 10px auto 20px;">
++        An exclusive behind-the-scenes preview into our master roaster's craft, from green bean sourcing to precision heat profiling.
++      </p>
++      <div class="grid">
++        <div class="card">
++          <h3>Mastering the First Crack</h3>
++          <p>Discover how we modulate airflow and drum speed at 385&deg;F to lock in delicate jasmine and bergamot aromatics.</p>
++        </div>
++        <div class="card">
++          <h3>Water Mineral Alchemy</h3>
++          <p>Our proprietary magnesium-to-bicarbonate ratio that extracts maximum sweetness without bitter astringency.</p>
++        </div>
++        <div class="card">
++          <h3>The 72-Hour Rest</h3>
++          <p>Why our small-batch reserve roasts are aged in climate-controlled silos before ever touching a grinder.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

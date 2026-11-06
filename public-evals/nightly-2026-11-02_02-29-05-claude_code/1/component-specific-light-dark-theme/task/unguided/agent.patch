@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -5,14 +5,89 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /*
++     * Theme tokens. Every themed scope (:root, .theme-dark, .theme-light,
++     * .force-light) redefines the full token set, and every component reads
++     * only these tokens, so colors always follow the nearest themed ancestor.
++     */
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      color-scheme: light;
++      --bg: #fafafa;
++      --surface: #ffffff;
++      --text: #3e2723;
++      --heading: #4e342e;
+       --accent: #ffab40;
++      --btn-bg: #4e342e;
++      --btn-text: #ffffff;
++      --btn-hover-bg: #3e2723;
++      --nav-bg: #4e342e;
++      --nav-text: #ffffff;
++      --footer-bg: #d7ccc8;
++      --footer-text: #3e2723;
++      --shadow: rgba(0, 0, 0, 0.1);
++      --border: transparent;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        color-scheme: dark;
++        --bg: #1b1412;
++        --surface: #2b201c;
++        --text: #efebe9;
++        --heading: #ffcc80;
++        --accent: #ffab40;
++        --btn-bg: #ffab40;
++        --btn-text: #2b1a12;
++        --btn-hover-bg: #ffc06e;
++        --nav-bg: #120d0b;
++        --nav-text: #efebe9;
++        --footer-bg: #2b201c;
++        --footer-text: #d7ccc8;
++        --shadow: rgba(0, 0, 0, 0.5);
++        --border: #3e2f29;
++      }
++    }
++
++    /* Force a subtree dark regardless of the OS preference. */
++    .theme-dark {
++      color-scheme: dark;
++      --bg: #1b1412;
++      --surface: #2b201c;
++      --text: #efebe9;
++      --heading: #ffcc80;
++      --accent: #ffab40;
++      --btn-bg: #ffab40;
++      --btn-text: #2b1a12;
++      --btn-hover-bg: #ffc06e;
++      --nav-bg: #120d0b;
++      --nav-text: #efebe9;
++      --footer-bg: #2b201c;
++      --footer-text: #d7ccc8;
++      --shadow: rgba(0, 0, 0, 0.5);
++      --border: #3e2f29;
++    }
++
++    /* Force a subtree light. Declared after .theme-dark so .force-light wins
++       when both classes are on the same element. */
++    .theme-light,
++    .force-light {
++      color-scheme: light;
++      --bg: #fafafa;
++      --surface: #ffffff;
+       --text: #3e2723;
+-      --light: #fafafa;
++      --heading: #4e342e;
++      --accent: #ffab40;
++      --btn-bg: #4e342e;
++      --btn-text: #ffffff;
++      --btn-hover-bg: #3e2723;
++      --nav-bg: #4e342e;
++      --nav-text: #ffffff;
++      --footer-bg: #d7ccc8;
++      --footer-text: #3e2723;
++      --shadow: rgba(0, 0, 0, 0.1);
++      --border: transparent;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -23,15 +98,15 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+@@ -55,9 +130,9 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -106,38 +181,43 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    /* Shared product card. Sets its own color/background so text never
++       inherits a color resolved against a differently themed ancestor. */
++    .themed-card {
++      background: var(--surface);
++      color: var(--text);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--shadow);
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .themed-card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+@@ -147,9 +227,9 @@
+     }
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
+@@ -177,19 +257,19 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card theme-dark">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

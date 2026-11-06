@@ -1,0 +1,323 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,169 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Buttons that look like .btn but are real <button>s */
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-outline {
++      background: transparent;
++      border: 1px solid white;
++      margin-left: 10px;
++    }
++
++    .btn-outline:hover {
++      background: rgba(255, 255, 255, 0.15);
++    }
++
++    /* ------------------------------------------------------------------
++       Top-layer overlays: logout confirmation <dialog> + ordering notice
++       popover. Entry animates via @starting-style; exit animates via the
++       transition back to the base state (display/overlay allow-discrete).
++       ------------------------------------------------------------------ */
++    .logout-dialog,
++    .ordering-notice {
++      /* Base (closed / exit) state */
++      opacity: 0;
++      transform: translateY(12px) scale(0.96);
++      transition-property: opacity, transform, display, overlay;
++      transition-duration: 0.25s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    /* Open state. :where(:not([data-closing])) lets JS trigger the exit
++       transition in browsers without `overlay` / discrete display support. */
++    :is(.logout-dialog[open], .ordering-notice:popover-open):where(:not([data-closing])) {
++      opacity: 1;
++      transform: none;
++
++      @starting-style {
++        opacity: 0;
++        transform: translateY(12px) scale(0.96);
++      }
++
++      &::backdrop {
++        background-color: rgba(62, 39, 35, 0.55);
++        backdrop-filter: blur(2px);
++
++        @starting-style {
++          background-color: transparent;
++          backdrop-filter: blur(0);
++        }
++      }
++    }
++
++    .logout-dialog::backdrop {
++      background-color: transparent;
++      backdrop-filter: blur(0);
++      transition-property: background-color, backdrop-filter, display, overlay;
++      transition-duration: 0.25s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++      /* Keep scroll gestures over the backdrop from reaching the page */
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .logout-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    .logout-dialog {
++      border: 0;
++      border-radius: 10px;
++      padding: 28px 32px;
++      max-width: min(420px, 90vw);
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
++    }
++
++    .logout-dialog h2 {
++      color: var(--primary);
++      font-size: 1.4rem;
++      margin-bottom: 8px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #c5b8b3;
++    }
++
++    /* Floating informational overlay (bottom-right toast) */
++    .ordering-notice {
++      position: fixed;
++      inset: auto 20px 20px auto;
++      margin: 0;
++      border: 0;
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      padding: 16px 20px;
++      max-width: min(360px, calc(100vw - 40px));
++      color: var(--text);
++      background: white;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++    }
++
++    .ordering-notice:popover-open {
++      display: flex;
++      align-items: flex-start;
++      gap: 12px;
++    }
++
++    .ordering-notice p {
++      flex: 1;
++      font-weight: 600;
++    }
++
++    .notice-close {
++      border: 0;
++      background: transparent;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      color: var(--primary);
++      padding: 0 2px;
++    }
++
++    .notice-close:hover {
++      color: var(--accent);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .logout-dialog,
++      .ordering-notice,
++      .logout-dialog::backdrop {
++        transform: none;
++        transition-duration: 0.1s;
++      }
++
++      @starting-style {
++        :is(.logout-dialog[open], .ordering-notice:popover-open) {
++          transform: none;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +324,20 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <a href="/order-online" class="btn">Order Now</a>
++      <button type="button" id="foobar" class="btn btn-outline" popovertarget="ordering-notice"
++        popovertargetaction="show">Ordering Status</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +371,126 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Logout confirmation modal -->
++  <dialog id="logout-dialog" class="logout-dialog" aria-labelledby="logout-dialog-title" closedby="any">
++    <h2 id="logout-dialog-title">Log out of The Daily Grind?</h2>
++    <p>You'll need to sign in again to view your rewards and order history.</p>
++    <div class="dialog-actions">
++      <button type="button" id="close-dialog-btn" class="btn btn-secondary" autofocus>Stay signed in</button>
++      <a href="/logout" class="btn">Log out</a>
++    </div>
++  </dialog>
++
++  <!-- Dismissible informational overlay -->
++  <div id="ordering-notice" class="ordering-notice" popover="manual" role="status">
++    <p>online ordering is currently offline</p>
++    <button type="button" id="close-notice-btn" class="notice-close" aria-label="Dismiss notice"
++      popovertarget="ordering-notice" popovertargetaction="hide">&times;</button>
++  </div>
++
++  <script>
++    (() => {
++      const dialog = document.getElementById('logout-dialog');
++      const openBtn = document.getElementById('open-dialog-btn');
++      const closeBtn = document.getElementById('close-dialog-btn');
++      const notice = document.getElementById('ordering-notice');
++      const noticeClose = document.getElementById('close-notice-btn');
++
++      /* ---- Exit-animation support detection -------------------------
++         Firefox 129+ claims `allow-discrete` support but does not actually
++         transition `display`, so probe real behaviour instead of trusting
++         CSS.supports alone. */
++      let supportsDisplayTransition;
++      function canTransitionDisplay() {
++        if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++        if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++          return false;
++        }
++        const probe = document.createElement('div');
++        probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++        document.body.appendChild(probe);
++        getComputedStyle(probe).display;
++        probe.style.display = 'none';
++        supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++        probe.remove();
++        return supportsDisplayTransition;
++      }
++
++      function supportsTopLayerExit() {
++        return !!window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
++      }
++
++      /* Close a <dialog> or [popover] with its exit transition, falling back
++         to a data-closing attribute where the browser can't keep the element
++         in the top layer on its own. */
++      async function closeTopLayer(element) {
++        const isPopover = element.hasAttribute('popover');
++        const isOpen = isPopover ? element.matches(':popover-open') : element.open;
++        if (!isOpen || element.hasAttribute('data-closing')) return;
++
++        if (!supportsTopLayerExit()) {
++          element.setAttribute('data-closing', '');
++          const animations = element.getAnimations({ subtree: true });
++          if (animations.length > 0) {
++            await Promise.race([
++              Promise.allSettled(animations.map((a) => a.finished)),
++              new Promise((r) => setTimeout(r, 2000)),
++            ]);
++          }
++          if (!element.hasAttribute('data-closing')) return;
++          element.removeAttribute('data-closing');
++        }
++
++        if (isPopover) element.hidePopover();
++        else element.close();
++      }
++
++      /* ---- Logout confirmation dialog ------------------------------ */
++      openBtn.addEventListener('click', (event) => {
++        event.preventDefault(); // keep the plain /logout navigation as a no-JS fallback
++        if (!dialog.open) dialog.showModal();
++      });
++
++      closeBtn.addEventListener('click', () => closeTopLayer(dialog));
++
++      // Esc, back gesture and closedby="any" light dismiss all fire `cancel`;
++      // route them through the animated close instead of closing instantly.
++      dialog.addEventListener('cancel', (event) => {
++        event.preventDefault();
++        closeTopLayer(dialog);
++      });
++
++      // Light dismiss where `closedby` isn't implemented (Safari).
++      if (!('closedBy' in HTMLDialogElement.prototype)) {
++        const outside = (e) => {
++          const r = dialog.getBoundingClientRect();
++          return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++        };
++        let pressedOutside = false;
++        dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e); });
++        dialog.addEventListener('pointerup', (e) => {
++          if (pressedOutside && outside(e)) closeTopLayer(dialog);
++        });
++      }
++
++      /* ---- Ordering status overlay --------------------------------- */
++      // #foobar opens the popover declaratively via popovertarget. The close
++      // button also has popovertargetaction="hide" as a no-JS fallback; here we
++      // cancel that instant hide so the exit animation can run first.
++      noticeClose.addEventListener('click', (event) => {
++        event.preventDefault();
++        closeTopLayer(notice);
++      });
++
++      // If the notice is closed by other means, drop any stale closing flag.
++      notice.addEventListener('toggle', (event) => {
++        if (event.newState === 'closed') notice.removeAttribute('data-closing');
++      });
++      dialog.addEventListener('close', () => dialog.removeAttribute('data-closing'));
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

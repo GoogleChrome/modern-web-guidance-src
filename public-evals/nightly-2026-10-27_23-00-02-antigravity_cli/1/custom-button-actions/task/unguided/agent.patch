@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,67 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Interactive Action Section */
++    .interactive-section {
++      margin-top: 50px;
++      text-align: center;
++      padding: 30px 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .command-buttons {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      flex-wrap: wrap;
++      margin: 20px 0 30px;
++    }
++
++    .command-buttons button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .command-buttons button:hover {
++      background: #3e2723;
++    }
++
++    #action-target {
++      width: 140px;
++      height: 140px;
++      margin: 20px auto;
++      background: var(--accent);
++      color: var(--text);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-weight: bold;
++      border-radius: 8px;
++      transition: rotate 0.4s ease, scale 0.4s ease, border-radius 0.4s ease, transform 0.4s ease;
++    }
++
++    #action-target.is-spun {
++      rotate: 180deg;
++    }
++
++    #action-target.is-grown {
++      scale: 1.25;
++    }
++
++    #action-target.is-rounded {
++      border-radius: 50%;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +253,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="interactive-section">
++      <h2>Customize Your Cup</h2>
++      <div class="command-buttons">
++        <button type="button" commandfor="action-target" command="--spin">Spin</button>
++        <button type="button" commandfor="action-target" command="--grow">Grow</button>
++        <button type="button" commandfor="action-target" command="--round">Make Round</button>
++        <button type="button" commandfor="action-target" command="--reset">Reset All</button>
++      </div>
++      <div id="action-target">Coffee Cup</div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +276,27 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const actionTarget = document.getElementById('action-target');
++
++    actionTarget.addEventListener('command', (event) => {
++      switch (event.command) {
++        case '--spin':
++          actionTarget.classList.toggle('is-spun');
++          break;
++        case '--grow':
++          actionTarget.classList.toggle('is-grown');
++          break;
++        case '--round':
++          actionTarget.classList.toggle('is-rounded');
++          break;
++        case '--reset':
++          actionTarget.classList.remove('is-spun', 'is-grown', 'is-rounded');
++          break;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

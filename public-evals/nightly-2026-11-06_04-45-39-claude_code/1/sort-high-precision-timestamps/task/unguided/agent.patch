@@ -1,0 +1,374 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,95 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Order Event Timeline */
++    .timeline-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .timeline-section p.lead {
++      max-width: 700px;
++      margin: 10px auto 0;
++    }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    .timeline-status {
++      margin-top: 15px;
++      min-height: 1.6em;
++      font-size: 0.9rem;
++    }
++
++    .timeline-status.error {
++      color: #b71c1c;
++    }
++
++    .timeline-summary {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 15px;
++      margin-top: 20px;
++    }
++
++    .timeline-summary .card strong {
++      display: block;
++      font-size: 1.1rem;
++      color: var(--primary);
++      font-family: Consolas, 'Courier New', monospace;
++      word-break: break-all;
++    }
++
++    .table-wrap {
++      overflow-x: auto;
++      margin-top: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .timeline-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
++    .timeline-table th,
++    .timeline-table td {
++      padding: 8px 12px;
++      border-bottom: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++
++    .timeline-table th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++    }
++
++    .timeline-table td.mono {
++      font-family: Consolas, 'Courier New', monospace;
++    }
++
++    .timeline-table td.num {
++      text-align: right;
++    }
++
++    .timeline-table tr.tie td.interval {
++      color: #e65100;
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +281,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="timeline-section" aria-labelledby="timeline-heading">
++      <h2 id="timeline-heading">Behind the Counter: Order Event Timeline</h2>
++      <p class="lead">Our order, payment, barista and pickup services each report events with
++        nanosecond UTC timestamps. They arrive out of order &mdash; load a batch to see them
++        lined up chronologically with the exact gap between each step.</p>
++      <button type="button" id="load-events-btn" class="btn">Load &amp; Sort Order Events</button>
++      <div id="timeline-status" class="timeline-status" role="status" aria-live="polite"></div>
++      <div id="timeline-summary" class="timeline-summary" hidden></div>
++      <div id="timeline-table-wrap" class="table-wrap" hidden>
++        <table class="timeline-table">
++          <thead>
++            <tr>
++              <th scope="col">#</th>
++              <th scope="col">Timestamp (UTC, ns)</th>
++              <th scope="col">Service</th>
++              <th scope="col">Order</th>
++              <th scope="col">Event</th>
++              <th scope="col">Arrival #</th>
++              <th scope="col">Interval since previous</th>
++            </tr>
++          </thead>
++          <tbody id="timeline-body"></tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +318,240 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var EVENTS_URL = 'data/order-events.json';
++      var NS_PER_SECOND = 1000000000n;
++
++      // Matches RFC 3339 timestamps with up to 9 fractional-second digits.
++      var RFC3339 = /^(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|z|[+-]\d{2}:\d{2})$/;
++
++      /**
++       * Parse a timestamp into BigInt nanoseconds since the Unix epoch.
++       * JavaScript Date / Number only hold millisecond (and ~2^53) precision,
++       * so the whole-second part and fractional nanoseconds are combined as BigInt.
++       * Accepts RFC 3339 strings or a decimal string of epoch nanoseconds.
++       */
++      function parseTimestampNs(value) {
++        if (typeof value === 'string' && /^-?\d+$/.test(value)) {
++          return BigInt(value);
++        }
++        if (typeof value === 'number') {
++          if (!Number.isSafeInteger(value)) {
++            throw new Error('numeric timestamp ' + value + ' exceeds safe integer precision; send it as a string');
++          }
++          return BigInt(value);
++        }
++        if (typeof value !== 'string') {
++          throw new Error('unsupported timestamp: ' + String(value));
++        }
++        var m = RFC3339.exec(value.trim());
++        if (!m) {
++          throw new Error('invalid timestamp "' + value + '"');
++        }
++        var year = +m[1], month = +m[2], day = +m[3];
++        var hour = +m[4], minute = +m[5], second = +m[6];
++        if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 60) {
++          throw new Error('out-of-range field in timestamp "' + value + '"');
++        }
++        var ms = Date.UTC(year, month - 1, day, hour, minute, second);
++        var check = new Date(ms);
++        if (check.getUTCDate() !== day && second !== 60) {
++          throw new Error('invalid calendar date in timestamp "' + value + '"');
++        }
++        var seconds = BigInt(ms / 1000);
++        var fraction = BigInt((m[7] || '').padEnd(9, '0'));
++        var offsetSeconds = 0n;
++        if (m[8] !== 'Z' && m[8] !== 'z') {
++          var sign = m[8][0] === '-' ? -1n : 1n;
++          offsetSeconds = sign * (BigInt(m[8].slice(1, 3)) * 3600n + BigInt(m[8].slice(4, 6)) * 60n);
++        }
++        return (seconds - offsetSeconds) * NS_PER_SECOND + fraction;
++      }
++
++      /** Format BigInt epoch nanoseconds as an ISO-8601 UTC string with 9 fractional digits. */
++      function formatTimestampNs(ns) {
++        var secs = ns / NS_PER_SECOND;
++        var frac = ns % NS_PER_SECOND;
++        if (frac < 0n) { frac += NS_PER_SECOND; secs -= 1n; }
++        var iso = new Date(Number(secs) * 1000).toISOString(); // YYYY-MM-DDTHH:MM:SS.000Z
++        return iso.slice(0, 19) + '.' + frac.toString().padStart(9, '0') + 'Z';
++      }
++
++      function groupDigits(str) {
++        return str.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
++      }
++
++      /** Human-readable duration from BigInt nanoseconds, exact (no floating point). */
++      function formatDurationNs(ns) {
++        var neg = ns < 0n;
++        var abs = neg ? -ns : ns;
++        var units = [
++          [NS_PER_SECOND, 's'],
++          [1000000n, 'ms'],
++          [1000n, '\u00b5s']
++        ];
++        var out = abs.toString() + ' ns';
++        for (var i = 0; i < units.length; i++) {
++          var size = units[i][0];
++          if (abs >= size) {
++            var whole = abs / size;
++            var rem = abs % size;
++            var digits = size.toString().length - 1;
++            var remStr = rem.toString().padStart(digits, '0').replace(/0+$/, '');
++            out = whole.toString() + (remStr ? '.' + remStr : '') + ' ' + units[i][1];
++            break;
++          }
++        }
++        return (neg ? '-' : '') + out;
++      }
++
++      function compareBigInt(a, b) {
++        return a < b ? -1 : a > b ? 1 : 0;
++      }
++
++      /**
++       * Sort events chronologically by nanosecond timestamp. Ties are broken by
++       * arrival order so the result is deterministic. Returns the sorted events
++       * and the BigInt interval from each event to its predecessor.
++       */
++      function buildTimeline(rawEvents) {
++        var events = rawEvents.map(function (evt, index) {
++          try {
++            return Object.assign({}, evt, { arrivalIndex: index, ns: parseTimestampNs(evt.timestamp) });
++          } catch (err) {
++            throw new Error('Event ' + (evt.id || '#' + (index + 1)) + ': ' + err.message);
++          }
++        });
++        events.sort(function (a, b) {
++          return compareBigInt(a.ns, b.ns) || a.arrivalIndex - b.arrivalIndex;
++        });
++        events.forEach(function (evt, i) {
++          evt.intervalNs = i === 0 ? null : evt.ns - events[i - 1].ns;
++        });
++        return events;
++      }
++
++      function summarize(events) {
++        var intervals = events.slice(1).map(function (e) { return e.intervalNs; });
++        if (!intervals.length) {
++          return { span: 0n, min: null, max: null, mean: null, ties: 0, subMs: 0, outOfOrder: 0 };
++        }
++        var min = intervals[0], max = intervals[0], total = 0n, ties = 0, subMs = 0;
++        intervals.forEach(function (d) {
++          if (d < min) min = d;
++          if (d > max) max = d;
++          total += d;
++          if (d === 0n) ties++;
++          if (d < 1000000n) subMs++;
++        });
++        var outOfOrder = events.filter(function (e, i) { return e.arrivalIndex !== i; }).length;
++        return {
++          span: events[events.length - 1].ns - events[0].ns,
++          min: min,
++          max: max,
++          mean: total / BigInt(intervals.length), // truncated to whole ns
++          ties: ties,
++          subMs: subMs,
++          outOfOrder: outOfOrder
++        };
++      }
++
++      function cell(text, className) {
++        var td = document.createElement('td');
++        td.textContent = text;
++        if (className) td.className = className;
++        return td;
++      }
++
++      function summaryCard(label, value, title) {
++        var div = document.createElement('div');
++        div.className = 'card';
++        var strong = document.createElement('strong');
++        strong.textContent = value;
++        if (title) strong.title = title;
++        var span = document.createElement('span');
++        span.textContent = label;
++        div.appendChild(strong);
++        div.appendChild(span);
++        return div;
++      }
++
++      function render(events, stats) {
++        var body = document.getElementById('timeline-body');
++        body.textContent = '';
++        events.forEach(function (evt, i) {
++          var tr = document.createElement('tr');
++          if (evt.intervalNs === 0n) tr.className = 'tie';
++          tr.appendChild(cell(String(i + 1), 'num'));
++          tr.appendChild(cell(formatTimestampNs(evt.ns), 'mono'));
++          tr.appendChild(cell(evt.service || '\u2014'));
++          tr.appendChild(cell(evt.orderId || '\u2014'));
++          tr.appendChild(cell(evt.type || '\u2014'));
++          tr.appendChild(cell(String(evt.arrivalIndex + 1), 'num'));
++          var intervalTd = cell(
++            evt.intervalNs === null ? '\u2014 (first event)' :
++              formatDurationNs(evt.intervalNs) + (evt.intervalNs === 0n ? ' (simultaneous)' : ''),
++            'mono num interval'
++          );
++          if (evt.intervalNs !== null) intervalTd.title = groupDigits(evt.intervalNs.toString()) + ' ns';
++          tr.appendChild(intervalTd);
++          body.appendChild(tr);
++        });
++
++        var summary = document.getElementById('timeline-summary');
++        summary.textContent = '';
++        function ns(v) { return v === null ? '\u2014' : formatDurationNs(v); }
++        function exact(v) { return v === null ? '' : groupDigits(v.toString()) + ' ns'; }
++        summary.appendChild(summaryCard('Events (' + stats.outOfOrder + ' arrived out of order)', String(events.length)));
++        summary.appendChild(summaryCard('Total span', ns(stats.span), exact(stats.span)));
++        summary.appendChild(summaryCard('Shortest gap', ns(stats.min), exact(stats.min)));
++        summary.appendChild(summaryCard('Longest gap', ns(stats.max), exact(stats.max)));
++        summary.appendChild(summaryCard('Mean gap', ns(stats.mean), exact(stats.mean)));
++        summary.appendChild(summaryCard('Sub-millisecond gaps (' + stats.ties + ' simultaneous)', String(stats.subMs)));
++
++        summary.hidden = false;
++        document.getElementById('timeline-table-wrap').hidden = false;
++      }
++
++      function setStatus(message, isError) {
++        var el = document.getElementById('timeline-status');
++        el.textContent = message;
++        el.className = 'timeline-status' + (isError ? ' error' : '');
++      }
++
++      function loadEvents() {
++        var btn = document.getElementById('load-events-btn');
++        btn.disabled = true;
++        setStatus('Loading event batch\u2026');
++        fetch(EVENTS_URL, { cache: 'no-store' })
++          .then(function (res) {
++            if (!res.ok) throw new Error('Failed to load events (HTTP ' + res.status + ')');
++            return res.json();
++          })
++          .then(function (data) {
++            var raw = Array.isArray(data) ? data : data && data.events;
++            if (!Array.isArray(raw) || raw.length === 0) throw new Error('Event batch is empty or malformed');
++            var events = buildTimeline(raw);
++            render(events, summarize(events));
++            var label = data.batchId ? ' from ' + data.batchId : '';
++            setStatus('Sorted ' + events.length + ' events' + label + ' with nanosecond precision.');
++          })
++          .catch(function (err) {
++            setStatus(err.message, true);
++          })
++          .finally(function () {
++            btn.disabled = false;
++          });
++      }
++
++      document.getElementById('load-events-btn').addEventListener('click', loadEvents);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,51 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,47 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Video Landing Page</title>
++  <link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++  <style>
++    @font-face {
++      font-family: 'BrandFont';
++      src: url('brand-font.woff2') format('woff2');
++      font-display: swap;
++    }
++    @font-face {
++      font-family: 'SecondaryFont';
++      src: url('secondary-font.woff2') format('woff2');
++      font-display: optional;
++    }
++    body {
++      margin: 0;
++      font-family: 'SecondaryFont', sans-serif;
++    }
++    h1 {
++      font-family: 'BrandFont', sans-serif;
++    }
++    video {
++      width: 100%;
++      max-width: 800px;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      display: block;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1>Welcome</h1>
++  </header>
++  <main>
++    <video poster="poster.jpg" preload="none" controls width="800" height="450">
++      <source src="video.mp4" type="video/mp4">
++    </video>
++    <p>Minimal video landing page optimized for Largest Contentful Paint.</p>
++  </main>
++</body>
++</html>

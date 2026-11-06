@@ -1,0 +1,325 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,228 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Select Custom Styling (Base Select) */
++    select.roast-select,
++    select.roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-picker-container {
++      margin-top: 1.5rem;
++      margin-bottom: 0.5rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .roast-picker-label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      color: var(--secondary);
++    }
++
++    select.roast-select {
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: #ffffff;
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      padding: 8px 16px;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      min-width: 240px;
++    }
++
++    select.roast-select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    select.roast-select button {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      background: transparent;
++      border: none;
++      font: inherit;
++      color: inherit;
++      padding: 0;
++      width: 100%;
++      cursor: pointer;
++    }
++
++    select.roast-select::picker-icon {
++      color: var(--primary);
++      font-size: 0.8rem;
++      margin-left: 8px;
++      transition: transform 0.2s ease;
++    }
++
++    select.roast-select:open::picker-icon {
++      transform: rotate(180deg);
++    }
++
++    select.roast-select selectedcontent {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    select.roast-select selectedcontent .option-img {
++      width: 28px;
++      height: 28px;
++      border-radius: 50%;
++      object-fit: cover;
++      flex-shrink: 0;
++    }
++
++    select.roast-select selectedcontent .option-text {
++      display: flex;
++      align-items: center;
++      text-align: left;
++    }
++
++    select.roast-select selectedcontent .option-title {
++      font-weight: 600;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    select.roast-select selectedcontent .option-desc {
++      display: none;
++    }
++
++    /* 3-Column Rich-Media Grid Picker Layout */
++    select.roast-select:open::picker(select) {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 16px;
++      padding: 18px;
++      background-color: #ffffff;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++      margin-top: 8px;
++      max-width: 580px;
++      width: max-content;
++    }
++
++    select.roast-select option {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      text-align: center;
++      padding: 14px 12px;
++      background-color: #fafafa;
++      border: 2px solid #e0e0e0;
++      border-radius: 10px;
++      cursor: pointer;
++      position: relative;
++      transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
++      user-select: none;
++    }
++
++    select.roast-select option:hover {
++      background-color: #fff8e1;
++      border-color: var(--accent);
++      transform: translateY(-2px);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
++    }
++
++    select.roast-select option:checked {
++      border-color: var(--primary);
++      background-color: #efebe9;
++      box-shadow: 0 0 0 1px var(--primary);
++    }
++
++    select.roast-select option .option-img {
++      width: 90px;
++      height: 90px;
++      border-radius: 8px;
++      object-fit: cover;
++      margin-bottom: 10px;
++    }
++
++    select.roast-select option .option-text {
++      display: flex;
++      flex-direction: column;
++      gap: 2px;
++    }
++
++    select.roast-select option .option-title {
++      font-weight: 700;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    select.roast-select option .option-desc {
++      font-size: 0.8rem;
++      color: #795548;
++    }
++
++    select.roast-select option::checkmark {
++      display: none;
++    }
++
++    select.roast-select option:checked::checkmark {
++      position: absolute;
++      top: 8px;
++      right: 8px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      box-sizing: border-box;
++      min-inline-size: 1.5em;
++      aspect-ratio: 1;
++      padding-right: 0.12em;
++      padding-left: 0.05em;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      font-size: 70%;
++      font-weight: bold;
++    }
++
++    @media (max-width: 620px) {
++      select.roast-select:open::picker(select) {
++        gap: 8px;
++        padding: 10px;
++        max-width: 95vw;
++      }
++
++      select.roast-select option {
++        padding: 10px 6px;
++      }
++
++      select.roast-select option .option-img {
++        width: 60px;
++        height: 60px;
++      }
++
++      select.roast-select option .option-title {
++        font-size: 0.85rem;
++      }
++
++      select.roast-select option .option-desc {
++        font-size: 0.7rem;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +382,37 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker-container">
++      <label for="roast-select" class="roast-picker-label">Choose your roast</label>
++      <select class="roast-select" id="roast-select" name="roast">
++        <button type="button">
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light" aria-label="Light Roast: Bright & Floral">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=300&q=80" alt="Light Roast" class="option-img">
++          <div class="option-text">
++            <span class="option-title">Light Roast</span>
++            <span class="option-desc">Bright &amp; Floral</span>
++          </div>
++        </option>
++        <option value="medium" selected aria-label="Medium Roast: Smooth & Balanced">
++          <img src="https://images.unsplash.com/photo-1559525839-b184a4d698c7?auto=format&fit=crop&w=300&q=80" alt="Medium Roast" class="option-img">
++          <div class="option-text">
++            <span class="option-title">Medium Roast</span>
++            <span class="option-desc">Smooth &amp; Balanced</span>
++          </div>
++        </option>
++        <option value="dark" aria-label="Dark Roast: Bold & Smokey">
++          <img src="https://images.unsplash.com/photo-1518832553480-cd0e625ed3e6?auto=format&fit=crop&w=300&q=80" alt="Dark Roast" class="option-img">
++          <div class="option-text">
++            <span class="option-title">Dark Roast</span>
++            <span class="option-desc">Bold &amp; Smokey</span>
++          </div>
++        </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -206,7 +447,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener('DOMContentLoaded', () => {
++      const roastSelect = document.getElementById('roast-select');
++      const orderBtn = document.querySelector('.hero .btn');
++
++      if (roastSelect) {
++        // Sync Order Now URL with chosen roast selection
++        const updateOrderLink = () => {
++          if (orderBtn) {
++            orderBtn.href = `/order-online?roast=${encodeURIComponent(roastSelect.value)}`;
++          }
++        };
++        roastSelect.addEventListener('change', updateOrderLink);
++        updateOrderLink();
++
++        // Spatial keyboard navigation for grid layout (ArrowLeft / ArrowRight)
++        roastSelect.addEventListener('keydown', (e) => {
++          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
++            const options = Array.from(roastSelect.options);
++            const currentIndex = roastSelect.selectedIndex;
++            if (e.key === 'ArrowRight' && currentIndex < options.length - 1) {
++              roastSelect.selectedIndex = currentIndex + 1;
++              roastSelect.dispatchEvent(new Event('change'));
++              e.preventDefault();
++            } else if (e.key === 'ArrowLeft' && currentIndex > 0) {
++              roastSelect.selectedIndex = currentIndex - 1;
++              roastSelect.dispatchEvent(new Event('change'));
++              e.preventDefault();
++            }
++          }
++        });
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

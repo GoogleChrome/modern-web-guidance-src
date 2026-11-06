@@ -1,0 +1,419 @@
+diff --git a/index.html b/index.html
+index 66c9173..7a8b439 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preload" as="image" href="https://assets.mixkit.co/videos/41859/41859-thumb-720-0.jpg" fetchpriority="high">
++  <script src="media.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,25 +76,96 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
++      min-height: 60vh;
++      background: linear-gradient(120deg, #30201c, var(--primary));
++      display: grid;
++      grid-template-columns: 1fr 1.15fr;
++      gap: 40px;
+       align-items: center;
+       color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      padding: 60px max(20px, calc((100% - 1060px) / 2));
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
++      line-height: 1.15;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .eyebrow {
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.15em;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    video {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background: #241914;
++      border-radius: 8px;
++      object-fit: cover;
++    }
++
++    figcaption {
++      margin-top: 12px;
++      font-size: 0.85rem;
++    }
++
++    .hero figcaption { color: var(--secondary); }
++    .hero figcaption a { color: inherit; }
++
++    .media-section {
++      margin-top: 80px;
++      padding-top: 40px;
++      border-top: 1px solid var(--secondary);
++      display: grid;
++      grid-template-columns: 1fr 1.3fr;
++      align-items: center;
++      gap: 40px;
++    }
++
++    .media-section h2 { margin-bottom: 12px; font-size: 2rem; line-height: 1.2; }
++    .media-section a { color: var(--primary); }
++    .media-section .eyebrow { color: #735b50; }
++    .media-description { margin-top: 12px; font-size: 0.9rem; }
++
++    .podcast {
++      background: #efe8e2;
++      border: 0;
++      border-radius: 12px;
++      padding: 36px;
++      grid-template-columns: 1fr 1fr;
++    }
++
++    .podcast-player { min-width: 0; }
++    .podcast-player h3 { margin-bottom: 8px; }
++    audio { display: block; width: 100%; margin: 20px 0 12px; }
++    details { margin-top: 16px; font-size: 0.9rem; }
++    summary { cursor: pointer; }
++    details p { margin-top: 10px; }
++    :focus-visible { outline: 3px solid #bd6c00; outline-offset: 5px; }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero, .media-section { grid-template-columns: 1fr; gap: 24px; }
++      .hero { padding: 40px 20px; }
++      .hero h1 { font-size: 2.4rem; }
++      .media-section { margin-top: 60px; }
++      .podcast { padding: 24px; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,9 +242,25 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <p class="eyebrow">A little craft in every cup</p>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <figure>
++      <!-- Above the fold: the poster and metadata are intentionally eager. -->
++      <video controls playsinline width="1280" height="720" preload="metadata"
++        poster="https://assets.mixkit.co/videos/41859/41859-thumb-720-0.jpg"
++        src="https://assets.mixkit.co/videos/41859/41859-1080.mp4"
++        aria-label="Serving a freshly made cappuccino" aria-describedby="hero-description">
++        <track kind="captions" src="media/cappuccino-en.vtt" srclang="en" label="English" default>
++        Your browser does not support video playback.
++      </video>
++      <figcaption id="hero-description">The finishing touch: a cappuccino, poured with care.
++        <a href="https://mixkit.co/free-stock-video/serving-a-sparkling-cappuccino-in-a-cup-41859/">Film by Mixkit</a>.
++      </figcaption>
++    </figure>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +284,53 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="roasting-title">
++      <div>
++        <p class="eyebrow">From bean to brew</p>
++        <h2 id="roasting-title">Good coffee starts with the roast.</h2>
++        <p>Heat, time, and a practiced hand. Take a closer look at the craft of roasting coffee beans.</p>
++        <p class="media-description" id="roasting-description">A short, narration-free film of coffee beans being stirred in a bowl over a stone stove.</p>
++      </div>
++      <figure>
++        <!-- Keep URLs inert in the HTML: preload="none" alone does not defer posters. -->
++        <video controls playsinline loading="lazy" width="1280" height="720" preload="none"
++          data-preload="metadata" data-poster="https://assets.mixkit.co/videos/4676/4676-thumb-720-0.jpg"
++          data-src="https://assets.mixkit.co/videos/4676/4676-720.mp4"
++          aria-labelledby="roasting-title" aria-describedby="roasting-description">
++          <track kind="captions" data-src="media/roasting-en.vtt" srclang="en" label="English" default>
++          Your browser does not support video playback.
++        </video>
++        <figcaption>Roasting, up close. <a href="https://mixkit.co/free-stock-video/person-roasting-coffee-beans-4676/">Film by Mixkit</a>.</figcaption>
++        <noscript><p><a href="https://assets.mixkit.co/videos/4676/4676-720.mp4">Watch the roasting film</a> (MP4).</p></noscript>
++      </figure>
++    </section>
++
++    <section class="media-section podcast" aria-labelledby="podcast-title">
++      <div>
++        <p class="eyebrow">Listen over a cup</p>
++        <h2 id="podcast-title">Coffee conversations.</h2>
++        <p>Settle in with our podcast pick: a firsthand look at what it takes to roast coffee at home.</p>
++      </div>
++      <div class="podcast-player">
++        <p class="eyebrow">Featured podcast · 18 min</p>
++        <h3 id="episode-title">Home Coffee Roasting, Part 1</h3>
++        <p>With dnt · Hacker Public Radio</p>
++        <audio controls loading="lazy" preload="none" data-preload="metadata"
++          data-src="https://hub.hackerpublicradio.org/ccdn.php?filename=/eps/hpr3563/hpr3563.mp3"
++          aria-labelledby="episode-title" aria-details="episode-notes">
++          Your browser does not support audio playback.
++        </audio>
++        <details id="episode-notes">
++          <summary>Episode notes &amp; credits</summary>
++          <p>dnt shares what it’s like to roast coffee at home.
++            <a href="https://hackerpublicradio.org/eps/hpr3563/index.html">Read the full episode notes</a>.</p>
++          <p>Originally published March 30, 2022. Audio by dnt / Hacker Public Radio,
++            shared under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.</p>
++        </details>
++        <noscript><p><a href="https://hub.hackerpublicradio.org/ccdn.php?filename=/eps/hpr3563/hpr3563.mp3">Listen to the episode</a> (MP3).</p></noscript>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/media.js b/media.js
+new file mode 100644
+index 0000000..63bacae
+--- /dev/null
++++ b/media.js
+@@ -0,0 +1,48 @@
++(() => {
++  const players = document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"]');
++  const supportsLazyMedia = Object.hasOwn(HTMLMediaElement.prototype, 'loading');
++
++  function activate(player) {
++    if (!player.hasAttribute('data-src')) return;
++
++    // Restore the poster and preload hint before selecting the media resource.
++    for (const attribute of ['poster', 'preload', 'src']) {
++      if (player.hasAttribute(`data-${attribute}`)) {
++        player.setAttribute(attribute, player.getAttribute(`data-${attribute}`));
++        player.removeAttribute(`data-${attribute}`);
++      }
++    }
++    for (const track of player.querySelectorAll('track[data-src]')) {
++      track.src = track.dataset.src;
++      delete track.dataset.src;
++    }
++    // Assigning src starts resource selection. Native lazy loading gates it;
++    // the fallback only assigns it after intersection or explicit interaction.
++  }
++
++  if (supportsLazyMedia) {
++    players.forEach(activate);
++    return;
++  }
++
++  const observer = 'IntersectionObserver' in window
++    ? new IntersectionObserver((entries) => {
++      for (const entry of entries) {
++        if (!entry.isIntersecting) continue;
++        activate(entry.target);
++        observer.unobserve(entry.target);
++      }
++    }, { rootMargin: '200px 0px' })
++    : null;
++
++  for (const player of players) {
++    observer?.observe(player);
++    // Keep players usable even when IntersectionObserver is unavailable.
++    const activateOnIntent = () => {
++      activate(player);
++      observer?.unobserve(player);
++    };
++    player.addEventListener('pointerdown', activateOnIntent, { once: true });
++    player.addEventListener('focusin', activateOnIntent, { once: true });
++  }
++})();
+diff --git a/media/cappuccino-en.vtt b/media/cappuccino-en.vtt
+new file mode 100644
+index 0000000..04a3ccb
+--- /dev/null
++++ b/media/cappuccino-en.vtt
+@@ -0,0 +1,4 @@
++WEBVTT
++
++00:00.000 --> 00:20.000
++[A barista pours a cappuccino into a cup. No dialogue.]
+diff --git a/media/roasting-en.vtt b/media/roasting-en.vtt
+new file mode 100644
+index 0000000..37a990b
+--- /dev/null
++++ b/media/roasting-en.vtt
+@@ -0,0 +1,4 @@
++WEBVTT
++
++00:00.000 --> 00:11.000
++[Coffee beans are stirred in a bowl over a stone stove. No dialogue.]
+diff --git a/package.json b/package.json
+index 2bd4d77..b1c23fc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/tests/media-loading.test.cjs b/tests/media-loading.test.cjs
+new file mode 100644
+index 0000000..b7e80f4
+--- /dev/null
++++ b/tests/media-loading.test.cjs
+@@ -0,0 +1,122 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++const path = require('node:path');
++
++const html = readFileSync(path.join(__dirname, '../index.html'), 'utf8');
++const script = readFileSync(path.join(__dirname, '../media.js'), 'utf8');
++
++function setup({ native = false, intersection = true } = {}) {
++  const players = [...html.matchAll(/<(?:video|audio)\b[^>]*loading="lazy"[^>]*>/g)].map(([tag]) => {
++    const attributes = new Map([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(([, key, value]) => [key, value]));
++    const events = {};
++    return {
++      attributes, events,
++      hasAttribute: (key) => attributes.has(key),
++      getAttribute: (key) => attributes.get(key),
++      setAttribute: (key, value) => attributes.set(key, value),
++      removeAttribute: (key) => attributes.delete(key),
++      querySelectorAll: () => [],
++      addEventListener: (name, callback) => { events[name] = callback; },
++    };
++  });
++  let observer;
++  class MediaElement {}
++  if (native) Object.defineProperty(MediaElement.prototype, 'loading', { value: 'eager' });
++  class Observer {
++    constructor(callback, options) {
++      this.callback = callback;
++      this.options = options;
++      this.observed = new Set();
++      observer = this;
++    }
++    observe(player) { this.observed.add(player); }
++    unobserve(player) { this.observed.delete(player); }
++  }
++  const window = intersection ? { IntersectionObserver: Observer } : {};
++  vm.runInNewContext(script, {
++    document: { querySelectorAll: () => players },
++    HTMLMediaElement: MediaElement,
++    window,
++    ...(intersection ? { IntersectionObserver: Observer } : {}),
++  });
++  return { players, observer };
++}
++
++test('initial HTML keeps offscreen posters, media, and captions inert', () => {
++  const lazyTags = [...html.matchAll(/<(video|audio)\b[^>]*loading="lazy"[^>]*>/g)];
++  assert.equal(lazyTags.length, 2);
++  for (const [tag, type] of lazyTags) {
++    assert.doesNotMatch(tag, /\s(?:src|poster)="/);
++    assert.match(tag, /\spreload="none"/);
++    assert.match(tag, /\sdata-src="https:/);
++    assert.match(tag, /\scontrols\b/);
++    if (type === 'video') {
++      assert.match(tag, /width="\d+"/);
++      assert.match(tag, /height="\d+"/);
++      assert.match(tag, /data-poster="https:/);
++    }
++  }
++  const roasting = html.match(/<video[^>]*loading="lazy"[\s\S]*?<\/video>/)[0];
++  assert.doesNotMatch(roasting, /\ssrc="/);
++  assert.doesNotMatch(html, /<link[^>]+(?:4676|hpr3563)/);
++  assert.equal((html.match(/<noscript>/g) || []).length, 2);
++});
++
++test('hero remains eager and reserves its layout space', () => {
++  const hero = html.match(/<video\b[^>]*>/)[0];
++  assert.doesNotMatch(hero, /loading="lazy"/);
++  assert.match(hero, /\ssrc="https:/);
++  assert.match(hero, /\sposter="https:/);
++  assert.match(hero, /width="1280" height="720"/);
++  assert.doesNotMatch(html, /\sautoplay\b/);
++});
++
++test('fallback makes no offscreen resources fetchable on startup', () => {
++  const { players, observer } = setup();
++  assert.equal(observer.options.rootMargin, '200px 0px');
++  assert.equal(observer.observed.size, 2);
++  observer.callback(players.map((target) => ({ target, isIntersecting: false })));
++  for (const player of players) {
++    assert.equal(player.hasAttribute('src'), false);
++    assert.equal(player.hasAttribute('poster'), false);
++    assert.equal(player.getAttribute('preload'), 'none');
++  }
++});
++
++test('approaching one player activates only its resources and unobserves it', () => {
++  const { players, observer } = setup();
++  const [video, audio] = players;
++  observer.callback([{ target: video, isIntersecting: true }]);
++  assert.match(video.getAttribute('src'), /4676-720.mp4$/);
++  assert.match(video.getAttribute('poster'), /4676-thumb-720-0.jpg$/);
++  assert.equal(video.getAttribute('preload'), 'metadata');
++  assert.equal(video.hasAttribute('data-src'), false);
++  assert.equal(observer.observed.has(video), false);
++  assert.equal(audio.hasAttribute('src'), false);
++  observer.callback([{ target: audio, isIntersecting: true }]);
++  assert.match(audio.getAttribute('src'), /hpr3563.mp3$/);
++  assert.equal(audio.getAttribute('preload'), 'metadata');
++  assert.equal(observer.observed.size, 0);
++});
++
++test('native media lazy loading receives URLs without losing loading hints', () => {
++  const { players, observer } = setup({ native: true });
++  assert.equal(observer, undefined);
++  for (const player of players) {
++    assert.equal(player.getAttribute('loading'), 'lazy');
++    assert.equal(player.getAttribute('preload'), 'metadata');
++    assert.equal(player.hasAttribute('src'), true);
++  }
++});
++
++test('without IntersectionObserver, media stays deferred until pointer or keyboard intent', () => {
++  const { players } = setup({ intersection: false });
++  for (const player of players) assert.equal(player.hasAttribute('src'), false);
++  players[0].events.pointerdown();
++  assert.equal(players[0].hasAttribute('src'), true);
++  assert.equal(players[1].hasAttribute('src'), false);
++  players[1].events.focusin();
++  assert.equal(players[1].hasAttribute('src'), true);
++});

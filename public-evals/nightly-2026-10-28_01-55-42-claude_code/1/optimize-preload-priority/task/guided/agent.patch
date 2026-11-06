@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,67 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Launch</title>
++
++  <!-- LCP element: the video poster. Poster images are discovered late and fetched at low
++       priority by default, so preload it with high priority. -->
++  <link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++
++  <!-- Critical header font. Fonts are already high priority; crossorigin is required for the preload to match. -->
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++
++  <!-- Secondary font: start early but never at the expense of the poster or brand font. -->
++  <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++  <style>
++    @font-face {
++      font-family: "Brand";
++      src: url("brand-font.woff2") format("woff2");
++      font-weight: 400 700;
++      font-display: swap;
++    }
++    @font-face {
++      font-family: "Secondary";
++      src: url("secondary-font.woff2") format("woff2");
++      font-weight: 400;
++      font-display: swap;
++    }
++
++    html { color-scheme: light dark; }
++    body {
++      margin: 0;
++      font: 1rem/1.5 "Secondary", system-ui, sans-serif;
++      font-size-adjust: from-font;
++      text-align: center;
++    }
++    h1 {
++      margin: 1.5rem 1rem;
++      font: 700 clamp(2rem, 6vw, 4rem)/1.1 "Brand", system-ui, sans-serif;
++      font-size-adjust: from-font;
++      text-wrap: balance;
++    }
++    video {
++      display: block;
++      inline-size: 100%;
++      max-inline-size: 1280px;
++      block-size: auto;
++      margin-inline: auto;
++      background: #000;
++    }
++    p { margin: 1.5rem 1rem; }
++  </style>
++</head>
++<body>
++  <h1>See it in motion</h1>
++
++  <!-- preload="none": no media bytes compete with the poster during initial load.
++       width/height reserve the box so the poster paints without layout shift. -->
++  <video controls preload="none" poster="poster.jpg" width="1280" height="720" playsinline>
++    <source src="video.mp4" type="video/mp4">
++  </video>
++
++  <p>Press play to watch the full film.</p>
++</body>
++</html>

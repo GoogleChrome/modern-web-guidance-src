@@ -1,0 +1,341 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,337 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>NovaFlow - Modern Team Collaboration Platform</title>
++
++  <!--
++    MANDATORY: Both `async` and `blocking="render"` are required.
++    - `async`: Prevents parser-blocking, so the DOM is built in parallel.
++    - `blocking="render"`: Holds rendering until the script executes,
++      ensuring experiment changes are applied before the user sees anything.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++  ></script>
++
++  <script>
++    // DO: Only apply the anti-flicker fallback in browsers that do not support blocking="render".
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      document.documentElement.classList.add('ab-loading');
++
++      // Failsafe timeout to prevent indefinite blank page on slow or failed script loads
++      setTimeout(() => {
++        document.documentElement.classList.remove('ab-loading');
++      }, 4000);
++
++      window.addEventListener('load', () => {
++        document.documentElement.classList.remove('ab-loading');
++      });
++    }
++  </script>
++
++  <style>
++    /*
++      DO: Use opacity to hide content during experiment loading.
++      This is only applied when blocking="render" is unsupported.
++    */
++    .ab-loading {
++      opacity: 0 !important;
++    }
++
++    :root {
++      --primary: #4f46e5;
++      --primary-hover: #4338ca;
++      --primary-text: #ffffff;
++      --text-main: #0f172a;
++      --text-muted: #64748b;
++      --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
++      --card-bg: #ffffff;
++      --border-color: #e2e8f0;
++      --radius: 12px;
++      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
++      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
++      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: var(--font-sans);
++      color: var(--text-main);
++      background: var(--bg-gradient);
++      min-height: 100vh;
++      line-height: 1.5;
++    }
++
++    header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1.5rem 2rem;
++      max-width: 1200px;
++      margin: 0 auto;
++    }
++
++    .brand {
++      display: flex;
++      align-items: center;
++      gap: 0.65rem;
++      font-weight: 700;
++      font-size: 1.35rem;
++      color: var(--text-main);
++      text-decoration: none;
++    }
++
++    .brand-icon {
++      width: 34px;
++      height: 34px;
++      background: var(--primary);
++      border-radius: 9px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      color: white;
++      font-size: 1.1rem;
++    }
++
++    nav {
++      display: flex;
++      align-items: center;
++      gap: 1.75rem;
++    }
++
++    nav a {
++      color: var(--text-muted);
++      text-decoration: none;
++      font-size: 0.95rem;
++      font-weight: 500;
++      transition: color 0.15s ease;
++    }
++
++    nav a:hover {
++      color: var(--text-main);
++    }
++
++    .hero-section {
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 4rem 2rem 6rem;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 3.5rem;
++      align-items: center;
++    }
++
++    @media (max-width: 900px) {
++      .hero-section {
++        grid-template-columns: 1fr;
++        padding: 2.5rem 1.5rem 4rem;
++        text-align: center;
++      }
++    }
++
++    .hero-content {
++      display: flex;
++      flex-direction: column;
++      gap: 1.5rem;
++    }
++
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      align-self: flex-start;
++      gap: 0.5rem;
++      background: #e0e7ff;
++      color: #3730a3;
++      padding: 0.35rem 0.85rem;
++      border-radius: 9999px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    @media (max-width: 900px) {
++      .badge {
++        align-self: center;
++      }
++    }
++
++    .hero-title {
++      font-size: 3.25rem;
++      line-height: 1.15;
++      font-weight: 800;
++      letter-spacing: -0.025em;
++      color: #0f172a;
++    }
++
++    @media (max-width: 600px) {
++      .hero-title {
++        font-size: 2.25rem;
++      }
++    }
++
++    .hero-description {
++      font-size: 1.2rem;
++      color: var(--text-muted);
++      line-height: 1.6;
++      max-width: 520px;
++    }
++
++    @media (max-width: 900px) {
++      .hero-description {
++        margin: 0 auto;
++      }
++    }
++
++    .cta-group {
++      display: flex;
++      align-items: center;
++      gap: 1rem;
++      margin-top: 0.5rem;
++      flex-wrap: wrap;
++    }
++
++    @media (max-width: 900px) {
++      .cta-group {
++        justify-content: center;
++      }
++    }
++
++    .cta-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background-color: var(--primary);
++      color: var(--primary-text);
++      padding: 0.95rem 2rem;
++      border-radius: var(--radius);
++      font-size: 1.05rem;
++      font-weight: 600;
++      text-decoration: none;
++      box-shadow: var(--shadow-sm);
++      transition: background-color 0.2s, transform 0.15s, box-shadow 0.2s;
++      cursor: pointer;
++      border: none;
++    }
++
++    .cta-button:hover {
++      background-color: var(--primary-hover);
++      box-shadow: var(--shadow-lg);
++      transform: translateY(-1px);
++    }
++
++    .cta-secondary {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.95rem 1.6rem;
++      color: var(--text-main);
++      text-decoration: none;
++      font-size: 1.05rem;
++      font-weight: 600;
++      border-radius: var(--radius);
++      border: 1px solid var(--border-color);
++      background: white;
++      transition: background-color 0.15s;
++    }
++
++    .cta-secondary:hover {
++      background-color: #f1f5f9;
++    }
++
++    .social-proof {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      font-size: 0.875rem;
++      color: var(--text-muted);
++      margin-top: 0.5rem;
++    }
++
++    @media (max-width: 900px) {
++      .social-proof {
++        justify-content: center;
++      }
++    }
++
++    .stars {
++      color: #f59e0b;
++      font-size: 1rem;
++      letter-spacing: 2px;
++    }
++
++    .hero-media {
++      position: relative;
++    }
++
++    .hero-image-wrapper {
++      position: relative;
++      border-radius: 16px;
++      overflow: hidden;
++      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
++      border: 1px solid var(--border-color);
++      background: white;
++    }
++
++    .hero-image {
++      width: 100%;
++      height: 420px;
++      object-fit: cover;
++      display: block;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <a href="#" class="brand">
++      <div class="brand-icon">✦</div>
++      <span>NovaFlow</span>
++    </a>
++    <nav>
++      <a href="#features">Features</a>
++      <a href="#solutions">Solutions</a>
++      <a href="#pricing">Pricing</a>
++      <a href="#login">Sign In</a>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero-section" id="hero">
++      <div class="hero-content">
++        <span class="badge">🚀 NovaFlow 2.0 is Live</span>
++        <h1 class="hero-title" id="hero-headline">Supercharge your team's productivity</h1>
++        <p class="hero-description" id="hero-subheadline">
++          Collaborate seamlessly across all projects, automate routine tasks, and track outcomes with real-time insights designed for modern high-velocity teams.
++        </p>
++        <div class="cta-group">
++          <a href="#get-started" class="cta-button" id="hero-cta-btn">Start Free Trial</a>
++          <a href="#demo" class="cta-secondary">Book a Demo</a>
++        </div>
++        <div class="social-proof">
++          <span class="stars">★★★★★</span>
++          <span>Loved by 15,000+ teams worldwide</span>
++        </div>
++      </div>
++
++      <div class="hero-media">
++        <div class="hero-image-wrapper">
++          <img
++            src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=1000&q=80"
++            alt="NovaFlow product dashboard and team collaboration interface"
++            class="hero-image"
++            loading="eager"
++            fetchpriority="high"
++          >
++        </div>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

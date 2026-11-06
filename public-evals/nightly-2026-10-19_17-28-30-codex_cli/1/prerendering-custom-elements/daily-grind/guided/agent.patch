@@ -1,0 +1,439 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..1fd3a82
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,146 @@
++const $ = (selector) => document.querySelector(selector);
++const host = $('demo-counter');
++// Old engines receive the exact same server template through a small fallback.
++if (!host.shadowRoot) {
++  const template = host.querySelector('template[shadowrootmode]');
++  if (template) host.attachShadow({mode:'open'}).append(template.content);
++}
++const root = host.shadowRoot;
++const serverNodes = [...root.querySelectorAll('*')];
++const initialMarkup = root.innerHTML;
++let hydrated = false;
++let pending = null;
++let toastTimer;
++let generation = 0;
++const examples = {
++  counter: {tag:'demo-counter', title:'Make every click count.', subtitle:'Already rendered. Just add a little life.', initial:0, symbol:'✳'},
++  stepper: {tag:'demo-counter', title:'A little more, or less.', subtitle:'Your next great idea starts with one.', initial:1, symbol:'◇'},
++  toggle: {tag:'demo-counter', title:'A change of state.', subtitle:'Same element. A different possibility.', initial:'Off', symbol:'⏻'}
++};
++class DemoCounter extends HTMLElement {
++  constructor() { super(); }
++  hydrate() {
++    if (this.controller) return;
++    this.controller = new AbortController();
++    const signal = this.controller.signal;
++    const output = this.shadowRoot.getElementById('value');
++    const update = (direction) => {
++      const kind = this.dataset.kind;
++      if (kind === 'toggle') output.value = output.value === 'On' ? 'Off' : 'On';
++      else output.value = String(kind === 'stepper' ? Math.max(1,Number(output.value)+direction) : Number(output.value)+direction);
++      this.dispatchEvent(new CustomEvent('value-change',{detail:{value:output.value},bubbles:true,composed:true}));
++    };
++    this.shadowRoot.getElementById('minus').addEventListener('click',()=>update(-1),{signal});
++    this.shadowRoot.getElementById('plus').addEventListener('click',()=>update(1),{signal});
++  }
++  pause() { this.controller?.abort(); this.controller = null; }
++}
++function toast(message) {
++  $('#toast').textContent = message;
++  $('#toast').classList.add('visible');
++  clearTimeout(toastTimer);
++  toastTimer = setTimeout(()=>$('#toast').classList.remove('visible'),2800);
++}
++function renderTimeline(active=false, duration=0) {
++  const entries = [ ['Server HTML received','Markup and styles ready together','0 ms'], ['Shadow DOM attached','Parsed natively by the browser','0 ms'], active ? ['Hydrated in place','Listeners attached. Every node preserved.',`${duration.toFixed(1)} ms`] : ['Waiting for hydration','Your component is already visible','—'] ];
++  $('#events').replaceChildren(...entries.map(([title,description,time],i)=>{
++    const event = document.createElement('div'); event.className = 'event'+(!active&&i===2?' pending':'');
++    const symbol = document.createElement('span'); symbol.className='event-symbol'; symbol.textContent=!active&&i===2?'○':'✓';
++    const body=document.createElement('div'); const strong=document.createElement('strong'); strong.textContent=title; const p=document.createElement('p');p.textContent=description; body.append(strong,p);
++    const stamp=document.createElement('time');stamp.textContent=time; event.append(symbol,body,stamp);return event;
++  }));
++}
++async function hydrate() {
++  if (pending || hydrated) { if(hydrated) toast('Already hydrated. Try the component or reset to run again.'); return; }
++  const run = ++generation;
++  const delay=Number($('#delay').value);
++  $('#hydrate').disabled=true;
++  $('#hydrate').innerHTML='<span class="play-icon">◷</span> '+(delay?'Waiting to hydrate…':'Hydrating…');
++  if(delay) {
++    $('#timeline-state').textContent=`Hydrating after ${delay.toLocaleString()} ms…`;
++    await new Promise(resolve=>{pending={id:setTimeout(resolve,delay),resolve};});
++    pending=null;
++  }
++  if(run!==generation) return;
++  const start=performance.now();
++  if(!customElements.get('demo-counter')) customElements.define('demo-counter',DemoCounter);
++  host.hydrate();
++  const duration=performance.now()-start;
++  const currentNodes=[...root.querySelectorAll('*')];
++  const preserved=serverNodes.filter((node,i)=>currentNodes[i]===node).length;
++  const replaced=serverNodes.length-preserved;
++  hydrated=true;
++  root.getElementById('card-status').textContent='Hydrated. Go ahead, give it a click.';
++  $('#render-status').classList.add('hydrated');
++  $('#render-status').innerHTML='<span></span>Hydrated in place';
++  $('#hydrate').disabled=false;
++  $('#hydrate').innerHTML='<span class="play-icon">✓</span> Component hydrated<span class="key-hint">↵</span>';
++  $('#dom-stat').innerHTML=`${Math.round(preserved/serverNodes.length*100)}<span>%</span>`;
++  $('#shift-stat').textContent=String(replaced);
++  $('#time-stat').innerHTML=`${duration.toFixed(1)}<span> ms</span>`;
++  renderTimeline(true,duration);
++  $('#timeline-state').textContent='Interactive. No nodes replaced.';
++  toast('Hydrated in place. Your original DOM is intact.');
++}
++function reset(notify=true) {
++  generation++;
++  if(pending){clearTimeout(pending.id);pending.resolve();pending=null;}
++  host.pause?.(); hydrated=false;
++  const kind=$('#component').value;
++  root.getElementById('value').value=String(examples[kind].initial);
++  root.getElementById('card-status').textContent='Rendered on the server';
++  $('#render-status').classList.remove('hydrated');
++  $('#render-status').innerHTML='<span></span>Server rendered';
++  $('#hydrate').disabled=false;
++  $('#hydrate').innerHTML='<span class="play-icon">▷</span> Hydrate component<span class="key-hint">↵</span>';
++  $('#time-stat').innerHTML='—<span> ms</span>';
++  $('#dom-stat').innerHTML='100<span>%</span>';$('#shift-stat').textContent='0';
++  renderTimeline();$('#timeline-state').textContent='Ready when you are.';
++  if(notify) toast('Playground reset. The original DOM is still here.');
++}
++const serverCode = `<demo-counter>\n  <template shadowrootmode="open">\n    <style>/* Component styles, shipped with HTML */</style>\n    <div class="counter">\n      <button id="minus" aria-label="Decrease count">−</button>\n      <output id="value">0</output>\n      <button id="plus" aria-label="Increase count">+</button>\n    </div>\n  </template>\n</demo-counter>`;
++const clientCode = `class DemoCounter extends HTMLElement {\n  constructor() {\n    super();\n    // Reuse the shadow tree. Never replace its HTML.\n    const root = this.shadowRoot;\n    const output = root.getElementById('value');\n    root.getElementById('plus').addEventListener('click', () => {\n      output.value = String(Number(output.value) + 1);\n    });\n  }\n}\ncustomElements.define('demo-counter', DemoCounter);`;
++let selectedCode='html';
++function showCode(which) {
++  selectedCode=which;
++  const code=which==='html'?serverCode:clientCode;
++  const escape=(s)=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
++  $('#code-view').innerHTML=code.split('\n').map((line,i)=>{
++    let content=escape(line);
++    if(which==='html') content=content.replace(/(&lt;\/?)([\w-]+)/g,'$1<span class="syntax-tag">$2</span>').replace(/([\w-]+)=(&quot;|"|')([^"']*)("|')/g,'<span class="syntax-attr">$1</span>=<span class="syntax-string">"$3"</span>');
++    else if(line.trim().startsWith('//')) content=`<span class="syntax-comment">${content}</span>`;
++    return `<span class="code-line"><span class="line-num">${i+1}</span>${content}</span>`;
++  }).join('');
++  for(const type of ['html','js']){const tab=$(`#${type}-tab`);tab.classList.toggle('selected',which===type);tab.setAttribute('aria-selected',String(which===type));tab.tabIndex=which===type?0:-1;}
++  $('#code-view').setAttribute('aria-labelledby',`${which}-tab`);
++  $('#language-label').textContent=which==='html'?'HTML':'JavaScript';
++}
++$('#hydrate').addEventListener('click',hydrate);
++$('#reset').addEventListener('click',()=>reset());
++$('#delay').addEventListener('input',()=>$('#delay-display').textContent=Number($('#delay').value).toLocaleString()+' ms');
++$('#component').addEventListener('change',()=>{
++  reset(false);
++  const kind=$('#component').value;const example=examples[kind];host.dataset.kind=kind;
++  root.querySelector('h3').textContent=example.title;root.querySelector('p').textContent=example.subtitle;root.querySelector('.symbol').textContent=example.symbol;
++  root.getElementById('value').value=String(example.initial);
++  root.getElementById('minus').textContent=kind==='toggle'?'⏻':'−';root.getElementById('plus').textContent=kind==='toggle'?'↔':'+';
++  root.getElementById('minus').setAttribute('aria-label',kind==='toggle'?'Toggle status':'Decrease count');root.getElementById('plus').setAttribute('aria-label',kind==='toggle'?'Toggle status':'Increase count');
++  if($('#auto-hydrate').checked) hydrate();
++});
++try{$('#auto-hydrate').checked=localStorage.getItem('hydrate-auto')==='true';}catch{}
++$('#auto-hydrate').addEventListener('change',()=>{try{localStorage.setItem('hydrate-auto',String($('#auto-hydrate').checked));}catch{}if($('#auto-hydrate').checked)hydrate();else toast('Automatic hydration is off for your next visit.');});
++$('#html-tab').addEventListener('click',()=>showCode('html'));$('#js-tab').addEventListener('click',()=>showCode('js'));
++$('.code-tabs').addEventListener('keydown',event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();showCode(selectedCode==='html'?'js':'html');$(`#${selectedCode}-tab`).focus();}});
++$('#copy-code').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(selectedCode==='html'?serverCode:clientCode);toast('Code copied to your clipboard.');}catch{toast('Clipboard unavailable. Select and copy the code below.');$('#code-view').focus();}});
++$('#export').addEventListener('click',()=>{
++  const script = `class DemoCounter extends HTMLElement {constructor(){super();const root=this.shadowRoot;if(!root)return;const output=root.getElementById('value');root.getElementById('minus').addEventListener('click',()=>output.value=Number(output.value)-1);root.getElementById('plus').addEventListener('click',()=>output.value=Number(output.value)+1);}}customElements.define('demo-counter',DemoCounter);`;
++  const html=`<!doctype html>\n<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hydrate — Counter example</title><style>body{min-height:100vh;display:grid;place-items:center;margin:0;background:#f6f8f1}</style><demo-counter><template shadowrootmode="open">${initialMarkup}</template></demo-counter><script type="module">${script}</script></html>`;
++  const url=URL.createObjectURL(new Blob([html],{type:'text/html'}));const a=document.createElement('a');a.href=url;a.download='hydrate-counter.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Standalone counter example exported.');
++});
++const dialog=$('#docs-dialog');document.querySelectorAll('.docs-trigger').forEach(button=>button.addEventListener('click',()=>dialog.showModal()));$('#how-nav').addEventListener('click',()=>dialog.showModal());$('.dialog-close').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
++$('#components-nav').addEventListener('click',()=>{$('#component').focus();$('#component').showPicker?.();});
++$('#snippets-nav').addEventListener('click',()=>{showCode('js');$('#source-panel').scrollIntoView({behavior:'smooth',block:'center'});});
++$('#playground-nav').addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
++document.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key==='k'){event.preventDefault();$('#component').focus();}if(event.key==='Enter'&&event.target===document.body&&!dialog.open)hydrate();});
++showCode('html');
++if($('#auto-hydrate').checked) hydrate();
+diff --git a/index.html b/index.html
+index 66c9173..a0f1e4f 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,59 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
++<meta name="description" content="An interactive playground for server-rendered web components and in-place hydration.">
++<title>Hydrate — Web component playground</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;450;500&display=swap" rel="stylesheet">
++<link rel="stylesheet" href="styles.css">
++<script type="module" src="app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++<aside class="sidebar">
++<a class="brand" href="./" aria-label="Hydrate home"><span class="brand-mark">h<span>•</span></span>hydrate<span class="brand-period">.</span></a>
++<div class="workspace"><span class="workspace-icon">P</span><div>Personal workspace<small>Local development</small></div><span class="chevrons">⌃<br>⌄</span></div>
++<div class="nav-label">BUILD</div>
++<nav aria-label="Main navigation">
++<button class="nav-item active" id="playground-nav"><span class="nav-icon">▧</span>Playground<span class="shortcut">⌘ K</span></button>
++<button class="nav-item" id="components-nav"><span class="nav-icon">◇</span>Components<span class="nav-count">3</span></button>
++<button class="nav-item" id="snippets-nav"><span class="nav-icon">⟨/⟩</span>Code snippets</button>
++</nav>
++<div class="nav-label resources-label">LEARN</div>
++<nav aria-label="Resources">
++<button class="nav-item docs-trigger"><span class="nav-icon">▤</span>Documentation<span class="external">↗</span></button>
++<button class="nav-item" id="how-nav"><span class="nav-icon">◎</span>How it works</button>
++<a class="nav-item" href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components" target="_blank" rel="noreferrer"><span class="nav-icon">↗</span>Web components<span class="external">↗</span></a>
++</nav>
++<div class="sidebar-bottom"><div class="local-status"><span class="status-dot"></span>All systems local<span>↗</span></div><div class="profile"><span class="avatar">JD</span><div>Your playground<small>Make something seamless.</small></div><span class="profile-dots">···</span></div></div>
++</aside>
++<div class="app-shell">
++<header class="topbar"><div class="breadcrumbs"><span class="crumb-icon">▧</span>Workspace<span class="slash">/</span><strong>Playground</strong><span class="beta">BETA</span></div><div class="top-actions"><a href="https://github.com/topics/declarative-shadow-dom" target="_blank" rel="noreferrer" class="github-link"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.77-.24.77-.54v-2.1c-3.13.68-3.79-1.33-3.79-1.33-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.69.08-.69 1.13.08 1.72 1.16 1.72 1.16 1 1.71 2.62 1.22 3.26.93.1-.73.39-1.22.71-1.5-2.5-.28-5.12-1.25-5.12-5.56 0-1.23.44-2.23 1.16-3.02-.12-.28-.5-1.43.11-2.98 0 0 .95-.3 3.08 1.15a10.7 10.7 0 0 1 5.6 0c2.13-1.45 3.07-1.15 3.07-1.15.61 1.55.23 2.7.12 2.98.72.79 1.15 1.79 1.15 3.02 0 4.32-2.63 5.27-5.14 5.55.4.35.76 1.03.76 2.08v3.11c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg>GitHub<span>↗</span></a><span class="top-divider"></span><button class="icon-button docs-trigger" aria-label="Help">?</button><span class="top-avatar">JD</span></div></header>
++<main>
++<div class="page-heading"><div><div class="eyebrow"><span></span> THE WEB, PROGRESSIVELY ENHANCED</div><h1>HTML first. Magic second.</h1><p>Server-render a custom element. Bring it to life, right where it is.</p></div><button class="button secondary" id="export"><span>↥</span> Export example</button></div>
++<div class="intro-note"><span class="note-icon">✧</span><p>One DOM. From first paint to first interaction.<span> No re-renders. No layout shifts. No flash of unstyled content.</span></p><button class="docs-trigger">How it works <span>↗</span></button></div>
++<div class="section-bar"><div class="section-title"><span class="live-dot"></span>Live playground<span class="subtle-tag">Declarative Shadow DOM</span></div><button id="reset" class="text-button"><span>↻</span>Reset playground</button></div>
++<div class="playground-grid">
++<section class="preview-panel panel" aria-label="Component preview">
++<div class="panel-header"><div><span class="panel-icon">◉</span><h2>Component preview</h2></div><span class="render-status" id="render-status"><span></span>Server rendered</span></div>
++<div class="preview-canvas" id="preview-canvas"><span class="canvas-label">LIVE PREVIEW</span>
++<demo-counter data-kind="counter">
++<template shadowrootmode="open"><style>
++:host{display:block;width:310px;max-width:calc(100% - 40px);font-family:'DM Sans',sans-serif;color:#25352e}*{box-sizing:border-box}.card{padding:27px 29px 23px;background:#fff;border:1px solid #e4e8e3;border-radius:16px;box-shadow:0 8px 24px #233c2b07;text-align:center}.symbol{display:grid;place-items:center;width:51px;height:51px;border-radius:14px;background:#e8f2de;margin:0 auto 18px;color:#567044;font-size:29px}.tag{font-size:9px;font-weight:650;letter-spacing:1.6px;color:#889280;margin-bottom:8px}h3{font-size:20px;font-weight:600;letter-spacing:-.6px;margin:0 0 7px}p{font-size:12px;color:#879087;margin:0;line-height:1.65}.controls{display:flex;justify-content:space-between;align-items:center;border:1px solid #e4e8e0;background:#fafbf8;border-radius:10px;padding:8px;margin:22px 0 18px}button{display:grid;place-items:center;border:1px solid #e1e5dc;border-radius:7px;width:35px;height:35px;background:white;color:#607450;font-size:22px;cursor:pointer}button:hover{background:#edf3e5}button:focus-visible{outline:2px solid #567044;outline-offset:3px}output{font-size:29px;font-weight:550;font-variant-numeric:tabular-nums;line-height:1}.foot{display:flex;align-items:center;justify-content:center;gap:6px;color:#899280;font-size:10px}.dot{width:5px;height:5px;border-radius:50%;background:#90a67c}:host([data-kind="toggle"]) .controls{justify-content:center;gap:35px}:host([data-kind="toggle"]) output{font-size:20px}
++</style><article class="card"><div class="symbol" aria-hidden="true">✳</div><div class="tag">SMALL COMPONENT. BIG POSSIBILITIES.</div><h3>Make every click count.</h3><p>Already rendered. Just add a little life.</p><div class="controls"><button id="minus" aria-label="Decrease count">−</button><output id="value" aria-live="polite">0</output><button id="plus" aria-label="Increase count">+</button></div><div class="foot"><span class="dot"></span><span id="card-status">Rendered on the server</span></div></article></template>
++</demo-counter>
++<div class="canvas-bottom"><span class="element-tag">&lt;demo-counter&gt;</span><span class="canvas-note">Real HTML. Ready before JavaScript.</span></div>
++</div>
++<div class="preview-footer"><span><span class="small-check">✓</span> Styles included in server HTML</span><span><span class="small-check">✓</span> No FOUC</span><span class="preview-size">↔&nbsp; Responsive</span></div>
++</section>
++<aside class="configuration panel"><div class="panel-header"><div><span class="panel-icon">☷</span><h2>Configuration</h2></div><span class="tiny-dots">···</span></div><div class="config-body"><label for="component">Component</label><div class="select-wrap"><span>⟨/⟩</span><select id="component"><option value="counter">Counter</option><option value="stepper">Quantity stepper</option><option value="toggle">Status toggle</option></select></div><div class="field-caption">A little state, without a fresh start.</div><div class="config-divider"></div><div class="setting-row"><div><label for="auto-hydrate">Auto-hydrate</label><p>Bring it to life on page load</p></div><input type="checkbox" role="switch" id="auto-hydrate" aria-label="Auto-hydrate on page load"></div><label class="delay-label" for="delay">Hydration delay<span id="delay-display">0 ms</span></label><input type="range" id="delay" min="0" max="3000" step="250" value="0"><div class="range-labels"><span>Instant</span><span>3,000 ms</span></div><div class="config-divider"></div><div class="mode-row"><span>Shadow root</span><code>open</code></div><div class="mode-row"><span>Hydration strategy</span><span class="in-place">In place <span>↗</span></span></div><button class="button primary" id="hydrate"><span class="play-icon">▷</span> Hydrate component<span class="key-hint">↵</span></button><div class="config-foot"><span>♧</span> Same nodes. New possibilities.</div></div></aside>
++<section class="source-panel panel" id="source-panel"><div class="source-header"><div class="code-tabs" role="tablist" aria-label="Code view"><button class="selected" role="tab" aria-selected="true" id="html-tab" aria-controls="code-view">Server HTML</button><button role="tab" aria-selected="false" id="js-tab" aria-controls="code-view">Client JavaScript</button></div><button class="copy-button" id="copy-code"><span>▢</span> Copy</button></div><div class="code-view" id="code-view" role="tabpanel" aria-labelledby="html-tab" tabindex="0"></div><div class="code-footer"><span><span class="code-dot"></span>Sent by the server. Styled on arrival.</span><span id="language-label">HTML</span></div></section>
++<section class="events-panel panel"><div class="panel-header"><div><span class="panel-icon">≋</span><h2>Event timeline</h2></div><span class="listening"><span></span>Listening</span></div><div class="events" id="events" aria-live="polite"><div class="event"><span class="event-symbol">✓</span><div><strong>Server HTML received</strong><p>Markup and styles ready together</p></div><time>0 ms</time></div><div class="event"><span class="event-symbol">✓</span><div><strong>Shadow DOM attached</strong><p>Parsed natively by the browser</p></div><time>0 ms</time></div><div class="event pending"><span class="event-symbol">○</span><div><strong>Waiting for hydration</strong><p>Your component is already visible</p></div><time>—</time></div></div><div class="timeline-foot"><span class="timeline-dot"></span><span id="timeline-state">Ready when you are.</span></div></section>
++</div>
++<div class="metrics"><div><span class="metric-icon">▱</span><div><strong id="dom-stat">100<span>%</span></strong><small>Server DOM preserved</small></div><span class="metric-info" title="Hydration checks the identity of every node in the shadow tree.">i</span></div><div><span class="metric-icon">⌁</span><div><strong id="shift-stat">0</strong><small>Nodes replaced</small></div><span class="metric-info" title="Existing nodes are retained during hydration.">i</span></div><div><span class="metric-icon">◷</span><div><strong id="time-stat">—<span> ms</span></strong><small>Hydration time</small></div><span class="metric-info" title="Measured time to attach component behavior, excluding any configured delay.">i</span></div><div class="metric-message"><span>✧</span><p>Progressive by nature.<br><strong>Seamless by design.</strong></p></div></div>
++<footer class="page-footer"><span>Built on web standards. No framework required.</span><span><span class="footer-dot"></span>Native web components<span class="footer-divider">/</span>v1.0.0</span></footer>
++</main>
++</div>
++<dialog id="docs-dialog"><button class="dialog-close icon-button" aria-label="Close documentation">×</button><span class="dialog-kicker">UNDER THE HOOD</span><h2>A little JavaScript.<br>The very same HTML.</h2><p>The server delivers a <code>&lt;template shadowrootmode="open"&gt;</code> with the component's markup and styles inside. The browser creates and paints the shadow tree before JavaScript runs.</p><ol><li><strong>Render on the server</strong><p>Send the complete component, including its CSS, in the initial HTML response.</p></li><li><strong>Reuse the shadow root</strong><p>The custom element reads <code>this.shadowRoot</code> instead of creating or replacing a tree.</p></li><li><strong>Attach behavior in place</strong><p>Listeners activate existing buttons. Every node and its state stays intact.</p></li></ol><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html" target="_blank" rel="noreferrer">Read the platform documentation ↗</a></dialog>
++<div id="toast" role="status"></div>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..564c923 100644
+--- a/package.json
++++ b/package.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "daily-grind",
++  "name": "hydrate-playground",
+   "version": "1.0.0",
+   "scripts": {
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..4ce9117
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1 @@
++:root{font-family:'DM Sans',sans-serif;color:#26362f;background:#f9faf7;font-synthesis:none;--green:#426648;--muted:#92998f;--border:#e2e6dd}*{box-sizing:border-box}body{margin:0;font-size:13px}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}a{color:inherit;text-decoration:none}button{color:inherit}button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid #618462;outline-offset:4px}button:disabled{cursor:wait;opacity:.65}.sidebar{width:225px;position:fixed;inset:0 auto 0 0;background:#f1f3ed;border-right:1px solid #dde2d6;padding:30px 17px 0;display:flex;flex-direction:column;z-index:5}.brand{font-size:29px;letter-spacing:-1.5px;font-weight:650;display:flex;align-items:center;gap:9px;padding-left:11px}.brand-mark{width:29px;height:34px;font-size:37px;line-height:29px;font-weight:600;position:relative;color:#4b7045;letter-spacing:-5px}.brand-mark span{font-size:22px;position:absolute;top:8px;right:0}.brand-period{margin-left:-10px;color:#72976a}.workspace{display:flex;align-items:center;gap:9px;margin:34px 0 31px;padding:11px 9px;border:1px solid #dce2d3;border-radius:7px;background:#f8f9f5;font-size:11px;font-weight:600}.workspace-icon{width:28px;height:29px;background:#e8eddf;border:1px solid #d9e1ce;border-radius:5px;display:grid;place-items:center;color:#5e7450;font-size:13px}.workspace small,.profile small{display:block;font-size:9px;color:#8b9383;margin-top:3px;font-weight:400}.chevrons{margin-left:auto;font-size:10px;line-height:7px;color:#87917d}.nav-label{font-size:9px;letter-spacing:1.4px;font-weight:600;color:#9aA18f;margin:0 13px 11px}.nav-item{border:0;background:none;display:flex;align-items:center;width:100%;gap:11px;padding:11px 12px;border-radius:6px;text-align:left;font-size:12px;color:#75806d;margin-bottom:5px;white-space:nowrap}.nav-item:hover{background:#e9eddf}.nav-item.active{background:#e3ead8;color:#3c603a;font-weight:600}.nav-icon{width:16px;text-align:center;font-size:16px;line-height:17px}.shortcut{margin-left:auto;border:1px solid #cad5be;border-radius:4px;padding:2px 4px;font-size:8px;color:#829176}.nav-count{margin-left:auto;font-size:10px;background:#e7ebdf;padding:1px 5px;border-radius:4px}.resources-label{margin-top:29px}.external{margin-left:auto;font-size:12px;color:#9fa694}.sidebar-bottom{margin-top:auto}.local-status{margin:0 10px 20px;font-size:10px;display:flex;align-items:center;gap:7px;color:#7a8670}.status-dot,.live-dot,.listening span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#7c9966}.local-status>span:last-child{margin-left:auto}.profile{display:flex;align-items:center;gap:9px;border-top:1px solid #dfe4d6;padding:20px 2px 22px;font-size:11px;font-weight:500}.avatar,.top-avatar{display:grid;place-items:center;width:31px;height:31px;border:1px solid #d9dfce;border-radius:50%;background:#e4e9d8;color:#6e7c5d;font-size:10px}.profile-dots{margin-left:auto;color:#8b9382;font-size:17px}.app-shell{margin-left:225px}.topbar{height:74px;padding:0 37px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fcfcf9}.breadcrumbs{display:flex;align-items:center;gap:16px;color:#91988b;font-size:11px}.crumb-icon{color:#87927e;font-size:16px}.breadcrumbs strong{font-weight:500;color:#52604c}.slash{color:#c0c6b9}.beta{font-size:8px;letter-spacing:.5px;background:#edf0e7;border:1px solid #e0e5d7;border-radius:4px;padding:3px 5px;color:#849275;margin-left:-7px}.top-actions{display:flex;align-items:center;gap:19px}.github-link{display:flex;align-items:center;gap:7px;font-size:11px;color:#737d6b}.github-link svg{height:14px;width:14px}.github-link>span{margin-left:7px;color:#939e87}.top-divider{height:19px;width:1px;background:#e0e4d8}.icon-button{border:1px solid #a3ad97;border-radius:50%;background:none;width:17px;height:17px;display:grid;place-items:center;padding:0;font-size:11px;color:#8a957f}.top-avatar{width:29px;height:29px;font-size:9px}main{max-width:1440px;margin:auto;padding:36px 37px 0}.page-heading{display:flex;justify-content:space-between;align-items:center;gap:20px}.eyebrow{display:flex;align-items:center;gap:7px;font-size:8px;letter-spacing:1.6px;color:#869278;font-weight:600}.eyebrow>span{width:5px;height:5px;border-radius:50%;background:#91a37b}h1{font-size:34px;letter-spacing:-1.4px;font-weight:550;line-height:1.2;margin:11px 0 10px}.page-heading p{font-size:12px;color:#8b9483;margin:0}.button{display:flex;align-items:center;justify-content:center;gap:9px;border-radius:6px;padding:10px 13px;font-weight:500;font-size:11px;border:1px solid #dce2d3}.secondary{background:#fff;color:#647458;box-shadow:0 2px 2px #35432103;white-space:nowrap}.secondary:hover{background:#edf1e7}.secondary>span{font-size:17px;line-height:12px}.intro-note{display:flex;align-items:center;gap:12px;background:#eef2e6;border:1px solid #dfe6d3;border-radius:6px;padding:12px 15px;margin:27px 0 29px}.note-icon{font-size:20px;color:#7c935f}.intro-note p{margin:0;font-size:10px;color:#687a55}.intro-note p>span{color:#919b85;margin-left:5px}.intro-note button{border:0;background:none;white-space:nowrap;margin-left:auto;font-size:10px;color:#6c805c}.intro-note button span{margin-left:6px}.section-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.section-title{display:flex;gap:8px;align-items:center;font-size:12px;font-weight:550}.live-dot{width:5px;height:5px}.subtle-tag{font-weight:400;font-size:9px;border:1px solid #e2e6db;border-radius:4px;background:#f5f6f0;color:#919a86;margin-left:3px;padding:3px 6px}.text-button{border:0;background:none;font-size:10px;display:flex;align-items:center;gap:5px;color:#8b957f}.text-button>span{font-size:16px}.playground-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px}.panel{border:1px solid var(--border);border-radius:9px;background:#fff;overflow:hidden}.panel-header{height:48px;padding:0 17px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e8ebe3}.panel-header>div{display:flex;align-items:center;gap:8px}h2{font-size:11px;font-weight:550;margin:0}.panel-icon{color:#8c9881;font-size:16px}.render-status{display:flex;align-items:center;gap:5px;border:1px solid #dfe6d3;background:#f5f8ef;color:#8a9975;border-radius:4px;padding:4px 6px;font-size:8px}.render-status>span{width:4px;height:4px;border-radius:50%;background:#9eae8a}.render-status.hydrated{color:#426648;border-color:#d2e1cd;background:#edf5e9}.render-status.hydrated>span{background:#64915d}.preview-canvas{height:348px;background-color:#f6f8f1;background-image:radial-gradient(#dce3d3 .75px,transparent .75px);background-size:16px 16px;position:relative;display:flex;align-items:center;justify-content:center;padding-top:4px}.canvas-label{position:absolute;left:18px;top:17px;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;color:#a1ab95}.canvas-bottom{position:absolute;bottom:14px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:center}.element-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;background:#edf1e5;border:1px solid #e0e5d8;color:#929d83;padding:4px 7px;border-radius:4px}.canvas-note{font-size:9px;color:#a1aa96}.preview-footer{height:37px;padding:0 17px;display:flex;align-items:center;gap:18px;font-size:8px;color:#9ba48f;border-top:1px solid #e7eadf}.small-check{color:#7b9567;margin-right:3px}.preview-size{margin-left:auto}.tiny-dots{color:#a4ad99;letter-spacing:1px}.config-body{padding:18px}label{font-size:10px;font-weight:550;color:#5f6d53}.select-wrap{display:flex;align-items:center;position:relative;margin-top:8px}.select-wrap>span{position:absolute;left:11px;color:#8d9b80;font-family:monospace;font-size:11px;pointer-events:none}select{width:100%;border:1px solid #dfe5d7;border-radius:5px;background:#fdfefa;padding:9px 10px 9px 35px;font-size:11px;color:#68785b;cursor:pointer}.field-caption{font-size:9px;color:#a3ab97;margin-top:7px}.config-divider{height:1px;background:#edf0e6;margin:18px 0}.setting-row{display:flex;align-items:center;justify-content:space-between}.setting-row p{font-size:9px;color:#9ba58e;margin:5px 0 0}input[role=switch]{appearance:none;width:29px;height:17px;border-radius:20px;background:#d9dfd0;cursor:pointer;margin:0;position:relative;transition:background .15s}input[role=switch]:before{content:'';position:absolute;top:3px;left:3px;width:11px;height:11px;background:#fff;border-radius:50%;box-shadow:0 1px 2px #0001;transition:transform .15s}input[role=switch]:checked{background:#5e8053}input[role=switch]:checked:before{transform:translateX(12px)}.delay-label{display:flex;justify-content:space-between;margin:19px 0 7px}.delay-label>span{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#98a18d;font-weight:400}input[type=range]{width:100%;height:4px;accent-color:#6a8354;margin:5px 0 0;cursor:pointer}.range-labels{display:flex;justify-content:space-between;font-size:8px;color:#a9b09e;margin-top:6px}.mode-row{display:flex;justify-content:space-between;font-size:10px;color:#96a087;margin-bottom:11px}.mode-row code{font-size:9px;background:#f0f3e9;color:#849375;border-radius:3px;padding:2px 5px}.in-place{color:#789262}.in-place>span{font-size:9px;margin-left:4px}.primary{width:100%;background:#426648;color:#fff;border-color:#426648;margin-top:19px;box-shadow:0 2px 2px #1c392819;height:36px}.primary:hover{background:#35563b}.play-icon{font-size:15px}.key-hint{font-size:13px;color:#9db397;margin-left:auto}.primary>.play-icon{margin-right:auto}.config-foot{text-align:center;font-size:8px;color:#a3ad95;margin-top:10px}.config-foot>span{font-size:10px;margin-right:3px}.source-panel{background:#202c27;border-color:#202c27;color:#a9b6a6;min-width:0}.source-header{height:44px;display:flex;align-items:stretch;justify-content:space-between;padding:0 16px;border-bottom:1px solid #344036}.code-tabs{display:flex;gap:19px}.code-tabs button{border:0;background:none;padding:0 0 0;color:#84937f;font-size:10px;position:relative}.code-tabs button.selected{color:#d2dec8}.code-tabs button.selected:after{content:'';position:absolute;bottom:-1px;left:0;right:0;background:#bed49a;height:2px}.copy-button{font-size:9px;color:#91a08a;border:0;background:none;padding:0;display:flex;gap:6px;align-items:center}.copy-button:hover{color:#e2eadb}.code-view{font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1.9;padding:15px 15px 14px;overflow:auto;height:213px;white-space:pre;tab-size:2}.code-line{display:block}.line-num{color:#5b6b5e;display:inline-block;width:25px;user-select:none;font-size:9px}.syntax-tag{color:#a7c4a8}.syntax-attr{color:#d2c49b}.syntax-string{color:#c0cd9b}.syntax-comment{color:#687e6c;font-style:italic}.code-footer{height:31px;border-top:1px solid #344036;display:flex;justify-content:space-between;align-items:center;padding:0 16px;color:#7d907d;font-size:8px}.code-footer>span:first-child{display:flex;align-items:center;gap:6px}.code-dot{height:4px;width:4px;border-radius:50%;background:#a4bd88}.listening{display:flex;align-items:center;gap:4px;font-size:8px;color:#98a48b}.listening span{height:4px;width:4px;background:#a4b38f}.events{padding:18px 17px 0;min-height:208px}.event{display:flex;gap:10px;position:relative;padding-bottom:23px}.event:not(:last-child):before{content:'';width:1px;background:#e3e9db;position:absolute;left:7px;top:19px;bottom:3px}.event-symbol{display:grid;place-items:center;width:16px;height:16px;flex-shrink:0;background:#f0f5e9;border:1px solid #e1ead5;border-radius:50%;font-size:8px;color:#87a26c}.event strong{font-size:9px;font-weight:500;color:#68785c}.event p{font-size:8px;color:#a0aa94;margin:5px 0 0}.event time{font-family:'IBM Plex Mono',monospace;margin-left:auto;font-size:8px;color:#9eaa91;padding-top:2px;white-space:nowrap}.event.pending .event-symbol{background:#fafbf8;border:1px dashed #dce3d3;color:#bac2af}.event.pending strong{color:#a0aa94}.timeline-foot{border-top:1px solid #edf0e7;display:flex;align-items:center;gap:6px;height:31px;padding:0 17px;color:#a1ab94;font-size:8px}.timeline-dot{height:4px;width:4px;background:#b4bea5;border-radius:50%}.metrics{display:grid;grid-template-columns:1fr 1fr 1fr 1.1fr;margin-top:20px;border:1px solid var(--border);border-radius:8px;background:#fcfdf9;padding:18px 0}.metrics>div{display:flex;align-items:center;padding:0 20px;gap:12px;border-right:1px solid #e6eadf}.metrics>div:last-child{border:0}.metric-icon{display:grid;place-items:center;background:#eff3e6;border:1px solid #e5eadc;color:#8da278;width:32px;height:32px;border-radius:7px;font-size:19px}.metrics strong{font-size:21px;font-weight:500;line-height:1;letter-spacing:-.6px}.metrics strong>span{font-size:11px;margin-left:2px;color:#9daa8e}.metrics small{display:block;font-size:8px;color:#9da78f;margin-top:6px}.metric-info{margin-left:auto;align-self:flex-start;font-size:7px;border:1px solid #bdc7af;border-radius:50%;color:#a5b096;height:10px;width:10px;text-align:center;line-height:9px}.metric-message>span{font-size:25px;color:#a2b68c}.metric-message p{font-size:10px;line-height:1.7;color:#a3ae94;margin:0}.metric-message p strong{font-size:10px;color:#778a64;font-weight:450;letter-spacing:0}.page-footer{display:flex;justify-content:space-between;margin:20px 0 22px;font-size:8px;color:#a5ad9a}.page-footer>span:last-child{display:flex;align-items:center;gap:5px}.footer-dot{height:4px;width:4px;border-radius:50%;background:#a6b492}.footer-divider{color:#c5ccb9;margin:0 6px}dialog{border:1px solid #dce4d3;border-radius:16px;background:#fafcf6;padding:38px;max-width:520px;width:calc(100% - 32px);box-shadow:0 24px 100px #1a322630;color:#34432e}dialog::backdrop{background:#15291d70;backdrop-filter:blur(3px)}.dialog-close{position:absolute;right:20px;top:20px;width:24px;height:24px;font-size:20px}.dialog-kicker{font-size:9px;letter-spacing:2px;color:#81966a}dialog h2{font-size:30px;line-height:1.2;letter-spacing:-1px;margin:15px 0}dialog p{font-size:12px;line-height:1.8;color:#829077}dialog code{font-size:10px;color:#4d6f43}dialog ol{padding-left:20px;margin:24px 0}dialog li{padding-left:7px;margin-top:17px;font-size:12px}dialog li p{margin:5px 0}dialog a{font-size:11px;color:#4d7340;text-decoration:underline;text-underline-offset:4px}#toast{position:fixed;bottom:26px;left:calc(50% + 110px);transform:translate(-50%,15px);border:1px solid #526e49;background:#2f4d35;color:#eef5e8;border-radius:8px;padding:12px 20px;box-shadow:0 5px 20px #263b3222;font-size:12px;opacity:0;pointer-events:none;transition:.2s;z-index:20}#toast.visible{opacity:1;transform:translate(-50%,0)}@media(min-width:1500px){main{padding-top:45px}.preview-canvas{height:385px}.code-view{height:225px}.events{min-height:220px}}@media(max-width:1180px){.sidebar{width:194px;padding-left:12px;padding-right:12px}.app-shell{margin-left:194px}.topbar{padding:0 26px}main{padding:30px 26px 0}.playground-grid{grid-template-columns:minmax(0,1fr) 275px;gap:14px}.intro-note p>span{display:block;margin:3px 0 0}.preview-size{display:none}.canvas-note{font-size:8px}.metrics>div{padding:0 14px;gap:8px}.metric-icon{width:27px;height:29px}.metric-info{display:none}.code-view{font-size:9px}.preview-footer{gap:12px}}@media(max-width:950px){.sidebar{width:68px;padding:26px 10px}.brand{font-size:0;padding:0;justify-content:center}.brand-mark{font-size:37px}.brand-period,.workspace,.nav-label,.nav-item>.shortcut,.nav-count,.nav-item>.external,.sidebar-bottom{display:none}.sidebar nav{margin-top:35px}.nav-item{font-size:0;justify-content:center;padding:12px 0}.nav-icon{font-size:19px;width:auto}.app-shell{margin-left:68px}.metrics>div{padding:0 12px}.metric-icon{display:none}.metric-message>span{font-size:20px}.subtle-tag{display:none}#toast{left:calc(50% + 34px)}}@media(max-width:740px){.topbar{height:60px;padding:0 20px}.github-link,.top-divider,.beta{display:none}main{padding:26px 20px 0}.page-heading{align-items:flex-start}.page-heading .secondary{font-size:0;padding:9px}.page-heading .secondary>span{font-size:17px}h1{font-size:28px}.page-heading p{font-size:11px;line-height:1.6;max-width:270px}.eyebrow{font-size:6px;letter-spacing:1.1px}.intro-note{margin:23px 0;padding:10px}.intro-note button{display:none}.intro-note p{font-size:9px;line-height:1.6}.note-icon{font-size:17px}.playground-grid{grid-template-columns:1fr}.configuration{grid-row:2}.config-body{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}.config-body>label:first-child,.select-wrap,.field-caption{grid-column:1}.config-body>label:first-child{grid-row:1}.select-wrap{grid-row:2;margin:0}.field-caption{grid-row:3;margin:0}.config-divider{display:none}.setting-row{grid-column:2;grid-row:1/3}.delay-label{grid-column:1;grid-row:4;margin:12px 0 0}input[type=range]{grid-column:1;grid-row:5;margin-top:8px}.range-labels{grid-column:1;grid-row:6}.mode-row{display:none}.primary{grid-column:2;grid-row:4/6;margin:10px 0 0}.config-foot{grid-column:2;grid-row:6;margin:0}.source-panel{grid-row:3}.code-view{font-size:10px}.events{min-height:190px}.metrics{grid-template-columns:1fr 1fr 1fr;padding:15px 0}.metrics>div{padding:0 12px}.metrics>.metric-message{display:none}.metrics>div:nth-child(3){border:0}.metrics strong{font-size:20px}.metrics small{font-size:7px}.page-footer>span:first-child{max-width:150px;line-height:1.6}.page-footer>span:last-child{font-size:7px}.canvas-note{font-size:7px}.breadcrumbs{gap:10px}.preview-canvas{height:348px}.preview-footer{font-size:7px;justify-content:space-between}.source-header{padding:0 12px}}@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}

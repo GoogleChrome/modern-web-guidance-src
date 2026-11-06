@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,10 +112,49 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
++    @keyframes card-reveal {
++      entry 0% {
++        scale: 0.5;
++        opacity: 0;
++      }
++      entry 100% {
++        scale: 1;
++        opacity: 1;
++      }
++      exit 0% {
++        scale: 1;
++        opacity: 1;
++      }
++      exit 100% {
++        scale: 0.5;
++        opacity: 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports (animation-timeline: view()) {
++        .grid .card {
++          animation: card-reveal linear both;
++          animation-timeline: view();
++        }
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -178,22 +217,61 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte with latte art">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Freshly pulled shot of Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Iced glass of Cold Brew coffee">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Spiced Cinnamon Cappuccino topped with foam">
++          <h3>Cinnamon Cappuccino</h3>
++          <p>Velvety microfoam dusted with aromatic Ceylon cinnamon.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Rich Caramel Macchiato in a glass mug">
++          <h3>Caramel Macchiato</h3>
++          <p>Rich espresso layered with steamed milk and house-made caramel drizzle.</p>
++          <a href="/menu/macchiato" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=600&q=80" alt="Ceremonial Matcha Green Tea Latte">
++          <h3>Matcha Latte</h3>
++          <p>Ceremonial-grade Uji matcha whisked with creamy steamed milk.</p>
++          <a href="/menu/matcha" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Pour Over single-origin coffee brewing">
++          <h3>Single-Origin Pour Over</h3>
++          <p>Hand-poured Ethiopian Yirgacheffe with bright floral and citrus notes.</p>
++          <a href="/menu/pour-over" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80" alt="Belgian Mocha topped with cocoa powder">
++          <h3>Artisanal Mocha</h3>
++          <p>Double espresso blended with melted dark Belgian chocolate.</p>
++          <a href="/menu/mocha" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Classic Flat White coffee cup">
++          <h3>Velvet Flat White</h3>
++          <p>Ristretto shots topped with silky, thinly layered steamed milk.</p>
++          <a href="/menu/flat-white" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
+   </main>
+ 

@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,22 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    /* Reusable gradient: two colors along an angle, interpolated in oklab */
++    @function --brand-gradient(--start <color>, --end <color>, --angle <angle>: 135deg) returns <image> {
++      result: linear-gradient(in oklab var(--angle), var(--start), var(--end));
++    }
++
++    /* Responsive columns: stacked on narrow screens, --count equal columns on wider ones */
++    @function --responsive-columns(--count <integer>: 2) {
++      result: 1fr;
++
++      @media (width >= 768px) {
++        result: repeat(var(--count), minmax(0, 1fr));
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,11 +37,21 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
++      min-height: 100vh;
+       background-color: var(--light);
++      background-image: --brand-gradient(var(--light), var(--secondary), 160deg);
+     }
+ 
++    h2 {
++      color: white;
++      padding: 0.5rem 1rem;
++      border-radius: 6px;
++      background-color: var(--primary);
++      background-image: --brand-gradient(var(--primary), #8d6e63, 90deg);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -101,9 +125,11 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      /* Fallback for browsers without @function */
++      grid-template-columns: 1fr;
++      grid-template-columns: --responsive-columns(2);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 

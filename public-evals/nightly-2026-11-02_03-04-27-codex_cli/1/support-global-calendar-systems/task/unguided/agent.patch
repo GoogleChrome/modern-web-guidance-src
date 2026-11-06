@@ -1,0 +1,111 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,60 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .calendar-tool {
++      margin-top: 56px;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .calendar-intro { text-align: center; }
++    .calendar-intro p { max-width: 600px; margin: 8px auto 24px; }
++    .calendar-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: end;
++      gap: 16px;
++      padding: 20px;
++      background: #f1ebe7;
++      border-radius: 8px;
++    }
++    .calendar-field { display: grid; gap: 6px; font-weight: 600; }
++    .calendar-field input, .calendar-field select, .calendar-controls button {
++      font: inherit;
++      min-height: 44px;
++      padding: 8px 12px;
++      border: 1px solid #91776f;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      max-width: 100%;
++    }
++    .calendar-controls button { cursor: pointer; }
++    .calendar-tool :focus-visible { outline: 3px solid #a05b00; outline-offset: 3px; }
++    .calendar-status { text-align: center; margin-top: 12px; min-height: 1.6em; }
++    .calendar-status[data-error="true"] { color: #9b2424; }
++    .calendar-card { text-align: start; border-top: 4px solid var(--accent); min-width: 0; }
++    .calendar-card header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
++    .calendar-card h3 { font-size: 1.1rem; }
++    .calendar-timeline { background: #f1ebe7; border-radius: 20px; padding: 2px 10px; font-size: 0.8rem; }
++    .calendar-date { font-size: 1.3rem; font-weight: 600; min-height: 3.5em; margin: 12px 0; overflow-wrap: anywhere; }
++    .calendar-facts { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; }
++    .calendar-facts dd { font-weight: 600; text-align: end; }
++    .calendar-card details { margin-top: 20px; border-top: 1px solid #e6ded9; padding-top: 12px; }
++    .calendar-card summary { cursor: pointer; font-weight: 600; }
++    .calendar-card table { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 0.85rem; }
++    .calendar-card th, .calendar-card td { text-align: start; padding: 6px 4px; border-bottom: 1px solid #eee7e3; }
++    .calendar-card th:last-child, .calendar-card td:last-child { text-align: end; }
++    .calendar-card tr[aria-current="date"] { background: #fff2dd; font-weight: 600; }
++    .calendar-note { font-size: 0.85rem; margin-top: 18px; color: #654d45; }
++    @media (max-width: 600px) {
++      .calendar-field { width: 100%; }
++      .calendar-grid { grid-template-columns: minmax(0, 1fr); }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +246,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="calendar-tool" aria-labelledby="calendar-heading">
++      <div class="calendar-intro">
++        <h2 id="calendar-heading">One day, around the world</h2>
++        <p>Explore a date through the Islamic, Hebrew, and Japanese calendars. A little connection with every cup.</p>
++      </div>
++      <div class="calendar-controls">
++        <label class="calendar-field" for="calendar-input">Choose a date (Gregorian)
++          <input type="date" id="calendar-input" aria-describedby="calendar-status" disabled>
++        </label>
++        <label class="calendar-field" for="calendar-locale">Date display language
++          <select id="calendar-locale" disabled>
++            <option value="auto">Your browser language</option>
++            <option value="en">English</option>
++            <option value="ar">العربية</option>
++            <option value="he">עברית</option>
++            <option value="ja">日本語</option>
++            <option value="fr">Français</option>
++            <option value="de">Deutsch</option>
++            <option value="es">Español</option>
++            <option value="hi">हिन्दी</option>
++          </select>
++        </label>
++        <button type="button" id="calendar-today" disabled>Today</button>
++      </div>
++      <p id="calendar-status" class="calendar-status" role="status" aria-live="polite">Loading calendars…</p>
++      <div id="calendar-results" class="grid calendar-grid" aria-busy="true"></div>
++      <p class="calendar-note">Dates and “Today” use your device’s local time zone. Month numbers show a month’s position in that year; stable month codes identify the same month across years, including Hebrew leap months. Islamic dates use the calculated Umm al-Qura calendar; local observances may differ.</p>
++      <noscript><p>Enable JavaScript to use the calendar converter.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +287,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./calendar.mjs"></script>
+ </body>
+ 
+ </html>

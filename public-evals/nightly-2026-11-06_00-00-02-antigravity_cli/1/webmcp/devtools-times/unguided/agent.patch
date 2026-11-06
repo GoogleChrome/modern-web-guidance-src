@@ -1,0 +1,218 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..9ef5c89 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,73 @@
++import 'react';
++
++export interface ModelContextToolAnnotations {
++  readOnlyHint?: boolean;
++  destructiveHint?: boolean;
++  idempotentHint?: boolean;
++  openWorldHint?: boolean;
++}
++
++export interface ModelContextTool {
++  name: string;
++  description: string;
++  inputSchema?: Record<string, any>;
++  annotations?: ModelContextToolAnnotations;
++  execute: (params: any, context?: any) => any | Promise<any>;
++}
++
++export interface ModelContext {
++  registerTool: (tool: ModelContextTool) => void | Promise<void>;
++  unregisterTool?: (name: string) => void | Promise<void>;
++  provideContext?: (options: { tools: ModelContextTool[] } | ModelContextTool[]) => void | Promise<void>;
++  clearContext?: () => void | Promise<void>;
++  getTools?: () => ModelContextTool[];
++  callTool?: (name: string, args?: Record<string, any>) => Promise<any>;
++  addEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
++  removeEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
++}
++
+ declare global {
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: any;
++    devToolsTimesTools?: Record<string, any>;
++    articleUtilities?: Record<string, any>;
++  }
++
++  interface Navigator {
++    modelContext?: ModelContext;
++  }
++
++  interface Document {
++    modelContext?: ModelContext;
++  }
++
++  interface SubmitEvent {
++    readonly agentInvoked?: boolean;
++    respondWith?: (result: any | Promise<any>) => void;
++  }
++}
++
++declare module 'react' {
++  interface FormHTMLAttributes<T> {
++    toolname?: string;
++    tooldescription?: string;
++    toolautosubmit?: string | boolean;
++  }
++
++  interface InputHTMLAttributes<T> {
++    toolparamtitle?: string;
++    toolparamdescription?: string;
++  }
++
++  interface SelectHTMLAttributes<T> {
++    toolparamtitle?: string;
++    toolparamdescription?: string;
++  }
++
++  interface TextareaHTMLAttributes<T> {
++    toolparamtitle?: string;
++    toolparamdescription?: string;
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/pages/api/articles.json.ts b/src/pages/api/articles.json.ts
+index 4cd4be4..4efc0af 100644
+--- a/src/pages/api/articles.json.ts
++++ b/src/pages/api/articles.json.ts
+@@ -1,16 +1,42 @@
+-
+ import { getCollection } from 'astro:content';
+ import type { APIRoute } from 'astro';
+ 
+-export const GET: APIRoute = async ({ params, request }) => {
++export const GET: APIRoute = async ({ url }) => {
+     const articles = await getCollection('articles');
+-    const formattedArticles = articles.map(article => ({
++    const query = (url.searchParams.get('query') || url.searchParams.get('q') || '').trim().toLowerCase();
++    const category = (url.searchParams.get('category') || '').trim().toLowerCase();
++
++    let formattedArticles = articles.map(article => ({
+         slug: article.id,
+         title: article.data.title,
+         summary: article.data.summary,
+         image: article.data.image,
++        category: article.data.category,
++        author: article.data.author,
++        date: article.data.date,
++        readingTime: article.data.readingTime ?? 3,
++        tags: article.data.tags ?? [],
+     }));
+ 
++    if (category && category !== 'all') {
++        formattedArticles = formattedArticles.filter(
++            article => article.category.toLowerCase() === category
++        );
++    }
++
++    if (query) {
++        formattedArticles = formattedArticles.filter(
++            article =>
++                article.title.toLowerCase().includes(query) ||
++                article.summary.toLowerCase().includes(query) ||
++                article.category.toLowerCase().includes(query) ||
++                article.author.toLowerCase().includes(query) ||
++                article.tags.some(tag => tag.toLowerCase().includes(query))
++        );
++    }
++
+     // Simulate a network delay to make the INP issue more noticeable
+-    return new Response(JSON.stringify(formattedArticles));
+-}
++    return new Response(JSON.stringify(formattedArticles), {
++        headers: { 'Content-Type': 'application/json' },
++    });
++};
+diff --git a/src/pages/api/reading-list.json.ts b/src/pages/api/reading-list.json.ts
+index 3084fe3..889b469 100644
+--- a/src/pages/api/reading-list.json.ts
++++ b/src/pages/api/reading-list.json.ts
+@@ -1,29 +1,70 @@
+-
+ import type { APIRoute } from 'astro';
+ 
+ export const POST: APIRoute = async ({ request, session }) => {
+-  const { slug } = await request.json();
++  let slug = '';
++  let action = 'toggle';
++
++  const contentType = request.headers.get('content-type') || '';
++  if (contentType.includes('application/json')) {
++    const body = await request.json();
++    slug = typeof body.slug === 'string' ? body.slug.trim() : '';
++    if (typeof body.action === 'string' && body.action.trim()) {
++      action = body.action.trim().toLowerCase();
++    }
++  } else {
++    const formData = await request.formData();
++    slug = String(formData.get('slug') ?? '').trim();
++    const formAction = String(formData.get('action') ?? '').trim().toLowerCase();
++    if (formAction) {
++      action = formAction;
++    }
++  }
++
++  let readingList: string[] = (await session?.get('readingList')) || [];
++
++  if (action === 'clear') {
++    readingList = [];
++    await session?.set('readingList', readingList);
++    return new Response(JSON.stringify({ readingList, action: 'clear' }), {
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
+   if (!slug) {
+     return new Response(JSON.stringify({ error: 'Slug is required' }), { status: 400 });
+   }
+ 
+-  let readingList = await session?.get('readingList') || [];
+-
+-  if (readingList.includes(slug)) {
++  if (action === 'add') {
++    if (!readingList.includes(slug)) {
++      readingList.push(slug);
++    }
++  } else if (action === 'remove') {
+     readingList = readingList.filter((item: string) => item !== slug);
+   } else {
+-    readingList.push(slug);
++    if (readingList.includes(slug)) {
++      readingList = readingList.filter((item: string) => item !== slug);
++    } else {
++      readingList.push(slug);
++    }
+   }
+ 
+   await session?.set('readingList', readingList);
+ 
+-  return new Response(JSON.stringify({ readingList }), {
+-    headers: { 'Content-Type': 'application/json' },
+-  });
++  return new Response(
++    JSON.stringify({
++      readingList,
++      slug,
++      action,
++      isBookmarked: readingList.includes(slug),
++    }),
++    {
++      headers: { 'Content-Type': 'application/json' },
++    }
++  );
+ };
+ 
+ export const GET: APIRoute = async ({ session }) => {
+-  const readingList = await session?.get('readingList') || [];
++  const readingList = (await session?.get('readingList')) || [];
+ 
+   return new Response(JSON.stringify({ readingList }), {
+     headers: { 'Content-Type': 'application/json' },

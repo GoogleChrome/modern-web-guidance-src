@@ -1,0 +1,697 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,16 +3,143 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- MANDATORY: Declare support for both light and dark themes -->
++  <meta name="color-scheme" content="light dark">
++  <script>
++    try {
++      const savedScheme = localStorage.getItem("color-scheme");
++      if (savedScheme === "light" || savedScheme === "dark") {
++        document.querySelector('meta[name="color-scheme"]').content = savedScheme;
++        document.documentElement.style.colorScheme = savedScheme;
++      }
++    } catch (e) {}
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      /* Warm coffee-cream palette (Light Mode) */
++      --bg-light: #faf6f0;
++      --surface-light: #fffdf9;
++      --surface-alt-light: #efe6dc;
++      --primary-light: #4e342e;
++      --primary-hover-light: #3e2723;
++      --secondary-light: #d7ccc8;
++      --text-light: #3e2723;
++      --text-muted-light: #6d4c41;
++      --accent-light: #c86d1f;
++      --border-light: #cbbab0;
++      --scrollbar-thumb-light: #8d6e63;
++      --scrollbar-track-light: #e8ded3;
++
++      /* Cozy dark roast palette (Dark Mode) */
++      --bg-dark: #1c1311;
++      --surface-dark: #2a1d19;
++      --surface-alt-dark: #382722;
++      --primary-dark: #3b2621;
++      --primary-hover-dark: #543730;
++      --secondary-dark: #241815;
++      --text-dark: #f5ebe6;
++      --text-muted-dark: #d7ccc8;
++      --accent-dark: #ffab40;
++      --border-dark: #5d4037;
++      --scrollbar-thumb-dark: #a1887f;
++      --scrollbar-track-dark: #2a1d19;
++
++      /* Fallback defaults for older browsers without light-dark() */
++      --bg: var(--bg-light);
++      --surface: var(--surface-light);
++      --surface-alt: var(--surface-alt-light);
++      --primary: var(--primary-light);
++      --primary-hover: var(--primary-hover-light);
++      --secondary: var(--secondary-light);
++      --text: var(--text-light);
++      --text-muted: var(--text-muted-light);
++      --accent: var(--accent-light);
++      --border: var(--border-light);
++      --scrollbar-thumb: var(--scrollbar-thumb-light);
++      --scrollbar-track: var(--scrollbar-track-light);
++      --light: var(--bg);
++
++      /* MANDATORY: Fallback for browsers without light-dark support */
++      @media (prefers-color-scheme: dark) {
++        --bg: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --surface-alt: var(--surface-alt-dark);
++        --primary: var(--primary-dark);
++        --primary-hover: var(--primary-hover-dark);
++        --secondary: var(--secondary-dark);
++        --text: var(--text-dark);
++        --text-muted: var(--text-muted-dark);
++        --accent: var(--accent-dark);
++        --border: var(--border-dark);
++        --scrollbar-thumb: var(--scrollbar-thumb-dark);
++        --scrollbar-track: var(--scrollbar-track-dark);
++      }
++
++      /* Dynamic light-dark() color tokens */
++      @supports (color: light-dark(white, black)) {
++        --bg: light-dark(var(--bg-light), var(--bg-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --surface-alt: light-dark(var(--surface-alt-light), var(--surface-alt-dark));
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --primary-hover: light-dark(var(--primary-hover-light), var(--primary-hover-dark));
++        --secondary: light-dark(var(--secondary-light), var(--secondary-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --text-muted: light-dark(var(--text-muted-light), var(--text-muted-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --border: light-dark(var(--border-light), var(--border-dark));
++        --scrollbar-thumb: light-dark(var(--scrollbar-thumb-light), var(--scrollbar-thumb-dark));
++        --scrollbar-track: light-dark(var(--scrollbar-track-light), var(--scrollbar-track-dark));
++      }
++
++      /* MANDATORY: Automatically adapt native UI to user system preferences */
++      color-scheme: light dark;
++
++      &:has(> head > meta[name="color-scheme"][content="dark"]),
++      &[data-theme="dark"] {
++        color-scheme: dark;
++        @supports not (color: light-dark(white, black)) {
++          --bg: var(--bg-dark);
++          --surface: var(--surface-dark);
++          --surface-alt: var(--surface-alt-dark);
++          --primary: var(--primary-dark);
++          --primary-hover: var(--primary-hover-dark);
++          --secondary: var(--secondary-dark);
++          --text: var(--text-dark);
++          --text-muted: var(--text-muted-dark);
++          --accent: var(--accent-dark);
++          --border: var(--border-dark);
++          --scrollbar-thumb: var(--scrollbar-thumb-dark);
++          --scrollbar-track: var(--scrollbar-track-dark);
++        }
++      }
++
++      &:has(> head > meta[name="color-scheme"][content="light"]),
++      &[data-theme="light"] {
++        color-scheme: light;
++        @supports not (color: light-dark(white, black)) {
++          --bg: var(--bg-light);
++          --surface: var(--surface-light);
++          --surface-alt: var(--surface-alt-light);
++          --primary: var(--primary-light);
++          --primary-hover: var(--primary-hover-light);
++          --secondary: var(--secondary-light);
++          --text: var(--text-light);
++          --text-muted: var(--text-muted-light);
++          --accent: var(--accent-light);
++          --border: var(--border-light);
++          --scrollbar-thumb: var(--scrollbar-thumb-light);
++          --scrollbar-track: var(--scrollbar-track-light);
++        }
++      }
++
++      /* Inherited color properties on root */
++      color: var(--text);
++      background-color: var(--bg);
++      accent-color: var(--accent);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -23,15 +150,51 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
+     }
+ 
++    /* Top Theme Bar */
++    .theme-bar {
++      background-color: var(--surface-alt);
++      color: var(--text);
++      border-bottom: 1px solid var(--border);
++      padding: 0.5rem 5%;
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 0.75rem;
++      font-size: 0.9rem;
++    }
++
++    .theme-bar label {
++      font-weight: 600;
++    }
++
++    .theme-select,
++    .specials-select {
++      padding: 0.35rem 0.65rem;
++      border-radius: 6px;
++      border: 1px solid var(--border);
++      background-color: var(--surface);
++      color: var(--text);
++      font-family: inherit;
++      font-size: 0.9rem;
++      accent-color: var(--accent);
++      cursor: pointer;
++    }
++
++    .theme-select:focus-visible,
++    .specials-select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: #fffdf9;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+@@ -55,36 +218,36 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: #fffdf9;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--accent-dark);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--accent-dark);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(rgba(28, 19, 17, 0.6), rgba(28, 19, 17, 0.6)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #fffdf9;
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
+@@ -97,50 +260,199 @@
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 48px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      margin-bottom: 8px;
++      color: var(--text);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--text-muted);
++      margin-bottom: 20px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      color: var(--text);
+       padding: 20px;
+       border-radius: 8px;
++      border: 1px solid var(--border);
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--accent);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--accent);
++      color: #1c1311;
++      font-weight: 600;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: filter 0.2s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      filter: brightness(1.1);
+     }
+ 
++    /* Scrollable Containers & Unified Scrollbars */
++    .scroll-container {
++      max-height: 260px;
++      overflow-y: auto;
++      padding: 20px;
++      background-color: var(--surface);
++      color: var(--text);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      scrollbar-width: thin;
++      scrollbar-gutter: stable;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers without scrollbar-color */
++    @supports not (scrollbar-color: auto) {
++      .scroll-container::-webkit-scrollbar {
++        width: 12px;
++        height: 12px;
++      }
++
++      .scroll-container::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 6px;
++      }
++
++      .scroll-container::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .review-item,
++    .special-item {
++      padding: 14px 16px;
++      background-color: var(--surface-alt);
++      border: 1px solid var(--border);
++      border-radius: 6px;
++    }
++
++    .review-header,
++    .special-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .review-rating,
++    .special-price {
++      color: var(--accent);
++      font-weight: 700;
++    }
++
++    /* Late Night Specials (Always Dark-Themed Component Override) */
++    .late-night-specials {
++      /* Force dark color-scheme for this subtree regardless of page color-scheme */
++      color-scheme: only dark;
++
++      /* Fallback token assignments for older browsers without light-dark() */
++      @supports not (color: light-dark(white, black)) {
++        --bg: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --surface-alt: var(--surface-alt-dark);
++        --primary: var(--primary-dark);
++        --primary-hover: var(--primary-hover-dark);
++        --secondary: var(--secondary-dark);
++        --text: var(--text-dark);
++        --text-muted: var(--text-muted-dark);
++        --accent: var(--accent-dark);
++        --border: var(--border-dark);
++        --scrollbar-thumb: var(--scrollbar-thumb-dark);
++        --scrollbar-track: var(--scrollbar-track-dark);
++      }
++
++      /* MANDATORY: Always pair color-scheme with a background and re-specify inherited color properties
++         because light-dark() resolves at computed value time on :root */
++      background-color: var(--surface);
++      color: var(--text);
++      accent-color: var(--accent);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 32px 24px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++    }
++
++    .late-night-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      margin-bottom: 20px;
++    }
++
++    .late-night-header h2 {
++      color: var(--text);
++      margin-bottom: 4px;
++    }
++
++    .late-night-header p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++    }
++
++    .specials-controls {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .specials-controls label {
++      color: var(--text);
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .late-night-specials .scroll-container {
++      background-color: var(--bg);
++      color: var(--text);
++      accent-color: var(--accent);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      border-top: 1px solid var(--border);
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -151,13 +463,26 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="theme-bar" role="region" aria-label="Theme preference">
++    <label for="theme-select">Color Theme:</label>
++    <select id="theme-select" class="theme-select">
++      <option value="light dark" id="theme-option-system">System Default</option>
++      <option value="light">Light (Coffee Cream)</option>
++      <option value="dark">Dark (Dark Roast)</option>
++    </select>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -174,10 +499,11 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
++      <p class="section-subtitle">Handcrafted drinks celebrating the flavors of the season.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -194,8 +520,113 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading" class="section-title">Community Reviews</h2>
++      <p class="section-subtitle">See what our neighborhood coffee lovers are saying.</p>
++      <div class="scroll-container" tabindex="0" aria-label="Customer reviews">
++        <article class="review-item">
++          <div class="review-header">
++            <span>Elena R.</span>
++            <span class="review-rating" aria-label="5 out of 5 stars">★★★★★ (5/5)</span>
++          </div>
++          <p>"The Maple Oat Latte has become my morning ritual. Warm, balanced, and never overly sweet!"</p>
++        </article>
++        <article class="review-item">
++          <div class="review-header">
++            <span>Marcus T.</span>
++            <span class="review-rating" aria-label="5 out of 5 stars">★★★★★ (5/5)</span>
++          </div>
++          <p>"Best dark roast espresso in the city. The crema is rich and the atmosphere makes working late a breeze."</p>
++        </article>
++        <article class="review-item">
++          <div class="review-header">
++            <span>Priya K.</span>
++            <span class="review-rating" aria-label="4.5 out of 5 stars">★★★★☆ (4.5/5)</span>
++          </div>
++          <p>"Their 18-hour cold brew has zero bitterness. Highly recommend pairing it with the cardamom kouign-amann."</p>
++        </article>
++        <article class="review-item">
++          <div class="review-header">
++            <span>Devon L.</span>
++            <span class="review-rating" aria-label="5 out of 5 stars">★★★★★ (5/5)</span>
++          </div>
++          <p>"Love the late night study vibe here. The decaf espresso tonic is a revelation after 8 PM."</p>
++        </article>
++        <article class="review-item">
++          <div class="review-header">
++            <span>Sofia M.</span>
++            <span class="review-rating" aria-label="5 out of 5 stars">★★★★★ (5/5)</span>
++          </div>
++          <p>"Baristas really know their single-origin pour-overs. Ask for the Ethiopian Yirgacheffe!"</p>
++        </article>
++      </div>
++    </section>
++
++    <section class="late-night-specials" aria-labelledby="late-night-heading">
++      <div class="late-night-header">
++        <div>
++          <h2 id="late-night-heading">Late Night Specials</h2>
++          <p>Served daily from 8:00 PM to midnight — crafted for night owls and evening unwinds.</p>
++        </div>
++        <div class="specials-controls">
++          <label for="specials-category">Filter Menu:</label>
++          <select id="specials-category" class="specials-select">
++            <option value="all">All Night Specials</option>
++            <option value="decaf">Decaf &amp; Low-Caf</option>
++            <option value="flights">Roaster Flights</option>
++            <option value="desserts">Midnight Pastries</option>
++          </select>
++        </div>
++      </div>
++
++      <div class="scroll-container" id="specials-scroll" tabindex="0" aria-label="Late night specials menu">
++        <article class="special-item" data-category="decaf">
++          <div class="special-header">
++            <span>Swiss Water Decaf Cortado</span>
++            <span class="special-price">$4.75</span>
++          </div>
++          <p>Velvety micro-foam poured over double-shot chocolatey decaf espresso.</p>
++        </article>
++        <article class="special-item" data-category="flights">
++          <div class="special-header">
++            <span>Midnight Dark Roast Tasting Flight</span>
++            <span class="special-price">$9.50</span>
++          </div>
++          <p>Three 4oz pours comparing Sumatra Mandheling, French Roast, and Smoked Espresso blends.</p>
++        </article>
++        <article class="special-item" data-category="desserts">
++          <div class="special-header">
++            <span>Warm Espresso Brownie Skillet</span>
++            <span class="special-price">$7.25</span>
++          </div>
++          <p>Fudgy dark chocolate brownie infused with espresso grounds and topped with vanilla bean gelato.</p>
++        </article>
++        <article class="special-item" data-category="decaf">
++          <div class="special-header">
++            <span>Spiced Chamomile Honey Steamer</span>
++            <span class="special-price">$4.50</span>
++          </div>
++          <p>Steamed oat milk infused with whole chamomile blossoms, wildflower honey, and Ceylon cinnamon.</p>
++        </article>
++        <article class="special-item" data-category="flights">
++          <div class="special-header">
++            <span>Cold Brew &amp; Tonic Duo</span>
++            <span class="special-price">$8.00</span>
++          </div>
++          <p>Side-by-side tasting of classic 18-hour cold brew and botanical citrus espresso tonic.</p>
++        </article>
++        <article class="special-item" data-category="desserts">
++          <div class="special-header">
++            <span>Tirami-Choux Cream Puff</span>
++            <span class="special-price">$5.75</span>
++          </div>
++          <p>Crisp craquelin choux pastry filled with mascarpone cream and dark roast coffee caramel.</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +637,87 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const themeSelect = document.getElementById('theme-select');
++      const systemOption = document.getElementById('theme-option-system');
++      const metaColorScheme = document.querySelector('meta[name="color-scheme"]');
++      const rootEl = document.documentElement;
++      const darkMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
++
++      function updateSystemOptionLabel() {
++        if (!systemOption) return;
++        const sysTheme = darkMediaQuery.matches ? 'dark' : 'light';
++        systemOption.textContent = `System Default (Currently ${sysTheme})`;
++      }
++
++      function applyTheme(value, persist = true) {
++        const normalized = (value === 'light' || value === 'dark') ? value : 'light dark';
++
++        // Update <meta name="color-scheme"> and force the chosen theme on the root element
++        if (metaColorScheme) {
++          metaColorScheme.content = normalized;
++        }
++        rootEl.style.colorScheme = normalized;
++        rootEl.dataset.theme = normalized === 'light dark' ? 'system' : normalized;
++
++        if (themeSelect && themeSelect.value !== normalized) {
++          themeSelect.value = normalized;
++        }
++
++        if (persist) {
++          try {
++            if (normalized === 'light dark') {
++              localStorage.removeItem('color-scheme');
++            } else {
++              localStorage.setItem('color-scheme', normalized);
++            }
++          } catch (e) {}
++        }
++      }
++
++      // Initialize from stored preference or default to system
++      let initialScheme = 'light dark';
++      try {
++        const stored = localStorage.getItem('color-scheme');
++        if (stored === 'light' || stored === 'dark') {
++          initialScheme = stored;
++        }
++      } catch (e) {}
++
++      updateSystemOptionLabel();
++      applyTheme(initialScheme, false);
++
++      themeSelect.addEventListener('change', (e) => {
++        applyTheme(e.target.value, true);
++      });
++
++      // Listen for system color-scheme changes to keep the System Default label accurate
++      darkMediaQuery.addEventListener('change', () => {
++        updateSystemOptionLabel();
++      });
++
++      // Keep tabs in sync when localStorage changes
++      window.addEventListener('storage', (e) => {
++        if (e.key === 'color-scheme') {
++          applyTheme(e.newValue ?? 'light dark', false);
++        }
++      });
++
++      // Filter functionality for the Late Night Specials select menu
++      const specialsSelect = document.getElementById('specials-category');
++      const specialItems = document.querySelectorAll('#specials-scroll .special-item');
++      if (specialsSelect) {
++        specialsSelect.addEventListener('change', (e) => {
++          const category = e.target.value;
++          specialItems.forEach((item) => {
++            item.hidden = category !== 'all' && item.dataset.category !== category;
++          });
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

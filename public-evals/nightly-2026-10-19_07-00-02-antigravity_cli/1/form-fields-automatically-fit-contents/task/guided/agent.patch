@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,82 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Auto-sized Form */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .auto-sized-form {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin: 25px auto 0;
++      max-width: 600px;
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .auto-sized-form input[type="text"],
++    .auto-sized-form select,
++    .auto-sized-form textarea {
++      field-sizing: content;
++      width: auto;
++      align-self: flex-start;
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 8px 12px;
++      border: 1px solid #ccc;
++      border-radius: 4px;
++      color: var(--text);
++      background-color: #fff;
++    }
++
++    .auto-sized-form input[type="text"]:focus,
++    .auto-sized-form select:focus,
++    .auto-sized-form textarea:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.2);
++    }
++
++    .auto-sized-form input[type="text"] {
++      min-inline-size: 16ch;
++      max-inline-size: 100%;
++    }
++
++    .auto-sized-form select {
++      max-inline-size: 100%;
++      cursor: pointer;
++    }
++
++    .auto-sized-form textarea {
++      min-inline-size: 28ch;
++      max-inline-size: 100%;
++      min-block-size: 3lh;
++      max-block-size: 12lh;
++    }
++
++    .auto-sized-form .btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +268,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2 style="text-align: center;">Tell Us What You Think</h2>
++      <p style="text-align: center; color: #6d4c41; margin-top: 5px;">We craft every cup to your liking. Send us your feedback or custom drink requests.</p>
++
++      <form class="auto-sized-form" onsubmit="event.preventDefault(); alert('Thank you for your feedback!');">
++        <div class="form-group">
++          <label for="customer-name">Your Name</label>
++          <input type="text" id="customer-name" name="name" placeholder="Enter your name" required>
++        </div>
++
++        <div class="form-group">
++          <label for="favorite-roast">Preferred Roast</label>
++          <select id="favorite-roast" name="roast">
++            <option value="espresso">Espresso Roast</option>
++            <option value="house">House Blend Medium Roast</option>
++            <option value="ethiopian">Single-Origin Ethiopian Yirgacheffe Light Roast</option>
++            <option value="decaf">Decaf Colombian Supremo</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="custom-instructions">Special Instructions / Feedback</label>
++          <textarea id="custom-instructions" name="instructions" placeholder="Tell us how you like your coffee brewed..."></textarea>
++        </div>
++
++        <button type="submit" class="btn">Submit</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

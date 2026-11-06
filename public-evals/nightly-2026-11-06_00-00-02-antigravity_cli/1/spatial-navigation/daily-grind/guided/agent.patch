@@ -1,0 +1,348 @@
+diff --git a/index.html b/index.html
+index 66c9173..3ba15e7 100644
+--- a/index.html
++++ b/index.html
+@@ -100,19 +100,109 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: safe center;
++      gap: 1rem;
++      margin-bottom: 20px;
++    }
++
++    .layout-controls {
++      display: flex;
++      gap: 0.5rem;
++    }
++
++    .layout-btn {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 6px 14px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-size: 0.85rem;
++      font-weight: 600;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .layout-btn[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .layout-btn:hover {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .layout-btn[aria-pressed="true"]:hover {
++      background: #3e2723;
++      color: white;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-rows: auto 1fr auto;
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    .grid[data-layout="featured"] {
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++    }
++
++    @media (min-width: 600px) {
++      .grid[data-layout="featured"] .card:first-child {
++        grid-column: span 2;
++      }
++    }
++
++    .grid[data-layout="list"] {
++      display: flex;
++      flex-direction: column;
++      gap: 15px;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      grid-row: span 3;
++      display: grid;
++      grid-template-rows: auto 1fr auto;
++      grid-template-rows: subgrid;
++      align-items: center;
++      justify-items: center;
++    }
++
++    .grid[data-layout="list"] .card {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: safe center;
++      text-align: start;
++      gap: 1rem;
++    }
++
++    .grid[data-layout="list"] .card h3 {
++      margin-bottom: 0;
++      min-inline-size: 180px;
++    }
++
++    .grid[data-layout="list"] .card p {
++      flex: 1 1 250px;
++      margin: 0;
++    }
++
++    .grid[data-layout="list"] .card .btn {
++      margin-top: 0;
++      margin-inline-start: auto;
+     }
+ 
+     .card h3 {
+@@ -128,6 +218,8 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      min-block-size: 24px;
++      min-inline-size: 24px;
+       transition: background 0.3s;
+     }
+ 
+@@ -135,6 +227,11 @@
+       background: #3e2723;
+     }
+ 
++    :where(a:any-link, button, [role="gridcell"]):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,22 +273,56 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="section-header">
++        <h2 id="seasonal-favorites-heading">Seasonal Favorites</h2>
++        <div class="layout-controls" role="group" aria-label="Layout mode">
++          <button type="button" class="layout-btn" data-set-layout="grid" aria-pressed="true">Grid</button>
++          <button type="button" class="layout-btn" data-set-layout="featured" aria-pressed="false">Featured</button>
++          <button type="button" class="layout-btn" data-set-layout="list" aria-pressed="false">List</button>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++      <div class="grid" id="card-grid" role="grid" aria-labelledby="seasonal-favorites-heading" data-layout="grid">
++        <div class="card" role="row">
++          <h3 id="card-title-maple">Maple Oat Latte</h3>
++          <p id="card-desc-maple">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div role="gridcell">
++            <a href="/menu/seasonal" class="btn" tabindex="0" id="btn-maple" aria-labelledby="btn-maple card-title-maple" aria-describedby="card-desc-maple">View Details</a>
++          </div>
++        </div>
++        <div class="card" role="row">
++          <h3 id="card-title-espresso">Dark Roast Espresso</h3>
++          <p id="card-desc-espresso">Bold, smokey, and perfect for a morning boost.</p>
++          <div role="gridcell">
++            <a href="/menu/espresso" class="btn" tabindex="-1" id="btn-espresso" aria-labelledby="btn-espresso card-title-espresso" aria-describedby="card-desc-espresso">View Details</a>
++          </div>
++        </div>
++        <div class="card" role="row">
++          <h3 id="card-title-coldbrew">Cold Brew</h3>
++          <p id="card-desc-coldbrew">Steeped for 18 hours for maximum smoothness.</p>
++          <div role="gridcell">
++            <a href="/menu/cold-brew" class="btn" tabindex="-1" id="btn-coldbrew" aria-labelledby="btn-coldbrew card-title-coldbrew" aria-describedby="card-desc-coldbrew">View Details</a>
++          </div>
++        </div>
++        <div class="card" role="row">
++          <h3 id="card-title-chai">Spiced Chai Cortado</h3>
++          <p id="card-desc-chai">House-ground cardamom and cinnamon balanced with velvety steamed milk.</p>
++          <div role="gridcell">
++            <a href="/menu/chai-cortado" class="btn" tabindex="-1" id="btn-chai" aria-labelledby="btn-chai card-title-chai" aria-describedby="card-desc-chai">View Details</a>
++          </div>
++        </div>
++        <div class="card" role="row">
++          <h3 id="card-title-pistachio">Honey Pistachio Flat White</h3>
++          <p id="card-desc-pistachio">Ristretto shots poured over roasted pistachio cream and wildflower honey.</p>
++          <div role="gridcell">
++            <a href="/menu/pistachio-flat-white" class="btn" tabindex="-1" id="btn-pistachio" aria-labelledby="btn-pistachio card-title-pistachio" aria-describedby="card-desc-pistachio">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card" role="row">
++          <h3 id="card-title-pour-over">Single-Origin Pour Over</h3>
++          <p id="card-desc-pour-over">Floral Ethiopian Yirgacheffe brewed to order with bright bergamot notes.</p>
++          <div role="gridcell">
++            <a href="/menu/pour-over" class="btn" tabindex="-1" id="btn-pour-over" aria-labelledby="btn-pour-over card-title-pour-over" aria-describedby="card-desc-pour-over">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +338,141 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const grid = document.getElementById('card-grid');
++      if (!grid) return;
++
++      const DIRECTION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
++      const TOLERANCE = 2;
++      const FALLBACK_WEIGHT = 2.5;
++
++      function getCandidates(container) {
++        const allFocusable = Array.from(
++          container.querySelectorAll('a[href], button:not(:disabled), [role="gridcell"][tabindex]')
++        );
++        return allFocusable.filter((el) => el.checkVisibility());
++      }
++
++      function setActiveCandidate(candidates, nextActive) {
++        for (const candidate of candidates) {
++          candidate.setAttribute('tabindex', candidate === nextActive ? '0' : '-1');
++        }
++      }
++
++      function findNextCandidate(current, candidates, key) {
++        const currentRect = current.getBoundingClientRect();
++        const currentCenterX = currentRect.left + currentRect.width / 2;
++        const currentCenterY = currentRect.top + currentRect.height / 2;
++
++        const isHorizontal = key === 'ArrowLeft' || key === 'ArrowRight';
++        const aligned = [];
++        const unaligned = [];
++
++        for (const candidate of candidates) {
++          if (candidate === current) continue;
++          const rect = candidate.getBoundingClientRect();
++
++          let gap = -1;
++          if (key === 'ArrowRight' && rect.left >= currentRect.right - TOLERANCE) {
++            gap = Math.max(0, rect.left - currentRect.right);
++          } else if (key === 'ArrowLeft' && rect.right <= currentRect.left + TOLERANCE) {
++            gap = Math.max(0, currentRect.left - rect.right);
++          } else if (key === 'ArrowDown' && rect.top >= currentRect.bottom - TOLERANCE) {
++            gap = Math.max(0, rect.top - currentRect.bottom);
++          } else if (key === 'ArrowUp' && rect.bottom <= currentRect.top + TOLERANCE) {
++            gap = Math.max(0, currentRect.top - rect.bottom);
++          }
++
++          if (gap < 0) continue;
++
++          const candidateCenterX = rect.left + rect.width / 2;
++          const candidateCenterY = rect.top + rect.height / 2;
++
++          const overlapsPerpendicular = isHorizontal
++            ? Math.min(currentRect.bottom, rect.bottom) > Math.max(currentRect.top, rect.top) + TOLERANCE
++            : Math.min(currentRect.right, rect.right) > Math.max(currentRect.left, rect.left) + TOLERANCE;
++
++          const perpendicularCenterOffset = isHorizontal
++            ? Math.abs(candidateCenterY - currentCenterY)
++            : Math.abs(candidateCenterX - currentCenterX);
++
++          const item = {
++            element: candidate,
++            gap,
++            perpendicularCenterOffset,
++            fallbackScore: gap + FALLBACK_WEIGHT * perpendicularCenterOffset,
++          };
++
++          if (overlapsPerpendicular) {
++            aligned.push(item);
++          } else {
++            unaligned.push(item);
++          }
++        }
++
++        if (aligned.length > 0) {
++          aligned.sort((a, b) => a.gap - b.gap || a.perpendicularCenterOffset - b.perpendicularCenterOffset);
++          return aligned[0].element;
++        }
++
++        if (unaligned.length > 0) {
++          unaligned.sort((a, b) => a.fallbackScore - b.fallbackScore || a.gap - b.gap);
++          return unaligned[0].element;
++        }
++
++        return null;
++      }
++
++      grid.addEventListener('keydown', (e) => {
++        if (!DIRECTION_KEYS.has(e.key)) return;
++        if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++
++        const target = e.composedPath()[0];
++        if (!(target instanceof Element)) return;
++
++        if (target.matches(':read-write, select, input[type="range"], [role="slider"]')) {
++          return;
++        }
++
++        const candidates = getCandidates(grid);
++        if (!candidates.includes(target)) return;
++
++        const nextCandidate = findNextCandidate(target, candidates, e.key);
++        if (!nextCandidate) {
++          // Do not call preventDefault() when no candidate exists in the pressed direction,
++          // preserving native browser boundary scrolling.
++          return;
++        }
++
++        e.preventDefault();
++        setActiveCandidate(candidates, nextCandidate);
++        nextCandidate.focus();
++        nextCandidate.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++      });
++
++      grid.addEventListener('focusin', (e) => {
++        const target = e.composedPath()[0];
++        if (!(target instanceof Element)) return;
++        const candidates = getCandidates(grid);
++        if (candidates.includes(target)) {
++          setActiveCandidate(candidates, target);
++        }
++      });
++
++      const layoutButtons = document.querySelectorAll('[data-set-layout]');
++      for (const btn of layoutButtons) {
++        btn.addEventListener('click', () => {
++          const mode = btn.getAttribute('data-set-layout');
++          grid.setAttribute('data-layout', mode);
++          for (const b of layoutButtons) {
++            b.setAttribute('aria-pressed', String(b === btn));
++          }
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

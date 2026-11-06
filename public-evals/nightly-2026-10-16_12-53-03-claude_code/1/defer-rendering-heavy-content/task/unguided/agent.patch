@@ -1,0 +1,101 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -91,8 +91,14 @@
+       position: relative;
+       overflow: hidden;
+     }
+ 
++    /* Skip rendering work for cards until they approach the viewport */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 340px;
++    }
++
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
+@@ -180,8 +186,26 @@
+       font-weight: bold;
+       margin-top: 1rem;
+     }
+ 
++    /* Isolated from the cards so toggling it never triggers their layout */
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 1rem 1.5rem;
++      box-sizing: border-box;
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 0.75rem;
++      font-family: monospace;
++      font-size: 0.85rem;
++      contain: layout paint style;
++    }
++
++    .debug-panel[hidden] {
++      display: none;
++    }
++
+     .info-text {
+       max-width: 600px;
+       margin: 2rem auto;
+       text-align: center;
+@@ -207,8 +231,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn secondary" aria-controls="debug-panel" aria-expanded="false">Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +244,34 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel" hidden>
++    <div>Cards: <span id="debug-cards">0</span></div>
++    <div>Initial render: <span id="debug-render">0ms</span></div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    const debugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
++    const debugRender = document.getElementById('debug-render');
++    document.getElementById('debug-cards').textContent = cardCount;
+ 
++    debugBtn.addEventListener('click', () => {
++      debugPanel.hidden = !debugPanel.hidden;
++      debugBtn.setAttribute('aria-expanded', String(!debugPanel.hidden));
++    });
+ 
+ 
++
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +304,9 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          debugRender.textContent = `${duration}ms${suffix}`;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';

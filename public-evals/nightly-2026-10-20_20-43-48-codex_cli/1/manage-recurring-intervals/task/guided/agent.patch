@@ -1,0 +1,164 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,50 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .delivery-planner {
++      margin-top: 40px;
++      padding: clamp(20px, 4vw, 36px);
++      text-align: left;
++      border: 1px solid var(--secondary);
++    }
++
++    .delivery-planner h2 { color: var(--primary); }
++    .planner-intro { margin: 6px 0 24px; }
++    .planner-fields {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
++      gap: 20px;
++    }
++    .planner-field { min-width: 0; }
++    .planner-field label { display: block; font-weight: 600; margin-bottom: 6px; }
++    .planner-field input, .planner-field select {
++      width: 100%;
++      min-height: 46px;
++      padding: 10px 12px;
++      border: 1px solid #a99188;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++    .planner-field :is(input, select):focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++    .planner-help { display: block; font-size: 0.85rem; margin-top: 6px; }
++    .delivery-result {
++      margin-top: 24px;
++      padding: 18px 20px;
++      border-radius: 6px;
++      background: #f3eeeb;
++      border-left: 4px solid var(--primary);
++    }
++    .delivery-result span { display: block; font-size: 0.85rem; }
++    #resultDate { display: block; font-size: 1.15rem; font-weight: 600; overflow-wrap: anywhere; }
++    .delivery-result:has([data-error="true"]) { background: #fff1ed; border-color: #a32d20; color: #8b241a; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +236,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card delivery-planner" aria-labelledby="plannerTitle">
++      <h2 id="plannerTitle">Coffee subscription delivery planner</h2>
++      <p class="planner-intro">Keep your next cup on the calendar. Choose your start date and delivery interval to see when your next delivery arrives.</p>
++      <div class="planner-fields">
++        <div class="planner-field">
++          <label for="startDateInput">Start date</label>
++          <input type="date" id="startDateInput" required>
++        </div>
++        <div class="planner-field">
++          <label for="yearsInput">Years to add</label>
++          <input type="number" id="yearsInput" min="0" step="1" value="0" required inputmode="numeric">
++        </div>
++        <div class="planner-field">
++          <label for="monthsInput">Months to add</label>
++          <input type="number" id="monthsInput" min="0" step="1" value="1" required inputmode="numeric">
++        </div>
++        <div class="planner-field">
++          <label for="overflowSelect">Month-end handling</label>
++          <select id="overflowSelect" aria-describedby="overflowHelp">
++            <option value="constrain">Constrain — last valid day</option>
++            <option value="reject">Reject — show an error</option>
++          </select>
++          <small class="planner-help" id="overflowHelp">If the day doesn’t exist in the target month, use its last day or show an error.</small>
++        </div>
++      </div>
++      <div class="delivery-result">
++        <span>Next delivery date</span>
++        <output id="resultDate" for="startDateInput yearsInput monthsInput overflowSelect" role="status" aria-live="polite" aria-atomic="true">Loading delivery planner…</output>
++      </div>
++      <noscript><p>Enable JavaScript to calculate your next delivery date.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +280,68 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const startDateInput = document.getElementById('startDateInput');
++    const yearsInput = document.getElementById('yearsInput');
++    const monthsInput = document.getElementById('monthsInput');
++    const overflowSelect = document.getElementById('overflowSelect');
++    const resultDate = document.getElementById('resultDate');
++    let calendar;
++
++    function showResult(message, isError = false) {
++      resultDate.textContent = message;
++      resultDate.dataset.error = String(isError);
++    }
++
++    function readDuration(input, label) {
++      const value = input.valueAsNumber;
++      if (!input.validity.valid || !Number.isSafeInteger(value) || value < 0) {
++        throw new Error(`Enter a non-negative whole number for ${label}.`);
++      }
++      return value;
++    }
++
++    function updateDelivery() {
++      if (!calendar) return;
++      try {
++        if (!startDateInput.value || !startDateInput.validity.valid) {
++          throw new Error('Choose a valid start date.');
++        }
++        const years = readDuration(yearsInput, 'years');
++        const months = readDuration(monthsInput, 'months');
++        const start = calendar.PlainDate.from(startDateInput.value);
++        const next = start.add({ years, months }, { overflow: overflowSelect.value });
++        showResult(next.toLocaleString(undefined, {
++          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
++        }) + ` (${next.toString()})`);
++      } catch (error) {
++        const message = error instanceof RangeError
++          ? 'Unable to calculate this delivery date. The target day may not exist with “reject” selected, or the interval may be too large. Choose “constrain” or adjust the date or interval.'
++          : error.message;
++        showResult(message, true);
++      }
++    }
++
++    for (const input of [startDateInput, yearsInput, monthsInput, overflowSelect]) {
++      input.addEventListener('input', updateDelivery);
++      input.addEventListener('change', updateDelivery);
++    }
++
++    try {
++      // Date-only calendar arithmetic avoids time-zone and daylight-saving shifts.
++      // Keep the polyfill local to this module; do not overwrite native globals.
++      calendar = typeof globalThis.Temporal?.PlainDate?.from === 'function'
++        && typeof globalThis.Temporal?.Now?.plainDateISO === 'function'
++        ? globalThis.Temporal
++        : (await import('https://esm.sh/@js-temporal/polyfill@0.5.1')).Temporal;
++      if (!startDateInput.value) startDateInput.value = calendar.Now.plainDateISO().toString();
++      updateDelivery();
++    } catch {
++      showResult('The delivery planner could not load. Check your connection and reload the page to try again.', true);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

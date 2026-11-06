@@ -1,0 +1,218 @@
+diff --git a/.well-known/security.txt b/.well-known/security.txt
+new file mode 100644
+index 0000000..68b91a7
+--- /dev/null
++++ b/.well-known/security.txt
+@@ -0,0 +1,5 @@
++Contact: mailto:security@dailygrind.example
++Expires: 2027-10-19T00:00:00Z
++Preferred-Languages: en
++Canonical: https://dailygrind.example/.well-known/security.txt
++Policy: https://dailygrind.example/privacy-policy
+diff --git a/PRIVACY.md b/PRIVACY.md
+new file mode 100644
+index 0000000..0f0bc10
+--- /dev/null
++++ b/PRIVACY.md
+@@ -0,0 +1,29 @@
++# Privacy by design
++
++## Data minimization
++- The site collects no personal data: no forms, cookies, storage, analytics, or logs with IPs.
++- `Referrer-Policy: no-referrer` and a restrictive `Permissions-Policy` limit what the browser leaks or exposes.
++- Before adding any data collection, record the purpose, fields, retention, and legal basis here.
++
++## Third-party audit (2026-10-19)
++| Resource | Finding | Action |
++|---|---|---|
++| Hero image from `images.unsplash.com` | Leaked visitor IP/UA to a third party on every page load | Self-hosted at `assets/hero.jpg` |
++| Runtime dependencies | None (`server.js` uses Node built-ins only) | `pnpm dlx statikk` removed from `start` |
++
++Current third-party requests: **none**. CSP `default-src 'none'` makes the browser block any new one.
++`pnpm audit` (script `audit`) fails if an absolute URL appears in the HTML, so third-party resources get a deliberate review.
++Re-audit whenever a dependency or external resource is added, and at least yearly.
++
++## Secure data handling
++- HTTPS only (HSTS, `upgrade-insecure-requests`); server allows only GET/HEAD and serves an explicit allowlist of files (no path traversal).
++- Any future personal data: encrypt in transit and at rest, restrict access, set retention limits, support deletion.
++
++## Security headers
++Set in `server.js` and mirrored in `_headers` for static hosts: CSP, HSTS, X-Content-Type-Options, X-Frame-Options,
++Referrer-Policy, Permissions-Policy, COOP/COEP/CORP. Vulnerability reports: `/.well-known/security.txt`
++(placeholder contact/domain; replace before deploying).
++
++## Known gaps
++- CSP allows `'unsafe-inline'` styles because styles are inline in the HTML; move them to a CSS file to remove it.
++- The nav links to pages that don't exist yet (`/menu`, `/account`, etc.) and return 404.
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..ee98027
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,11 @@
++# Same policy as server.js, for Netlify / Cloudflare Pages style static hosts.
++/*
++  Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
++  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: DENY
++  Referrer-Policy: no-referrer
++  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=(), browsing-topics=()
++  Cross-Origin-Opener-Policy: same-origin
++  Cross-Origin-Resource-Policy: same-origin
++  Cross-Origin-Embedder-Policy: require-corp
+diff --git a/assets/hero.jpg b/assets/hero.jpg
+new file mode 100644
+index 0000000..73ff876
+Binary files /dev/null and b/assets/hero.jpg differ
+diff --git a/index.html b/index.html
+index 66c9173..7b4a635 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -76,7 +77,7 @@
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        url('/assets/hero.jpg');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+diff --git a/package.json b/package.json
+index 2bd4d77..d9ec7c4 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "audit": "pnpm audit --prod && ! grep -nE \"https?://\" index.html privacy-policy.html"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/privacy-policy.html b/privacy-policy.html
+new file mode 100644
+index 0000000..bed8640
+--- /dev/null
++++ b/privacy-policy.html
+@@ -0,0 +1,40 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
++  <title>Privacy Policy | The Daily Grind</title>
++  <style>
++    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #3e2723; background: #fafafa; margin: 0; }
++    main { max-width: 760px; margin: 40px auto; padding: 0 20px; }
++    h1, h2 { color: #4e342e; }
++    h2 { margin-top: 1.5rem; }
++    a { color: #4e342e; }
++  </style>
++</head>
++
++<body>
++  <main>
++    <h1>Privacy Policy</h1>
++    <p><a href="/">&larr; Back to home</a></p>
++
++    <h2>What we collect</h2>
++    <p>This website collects nothing. It has no accounts, forms, analytics, advertising, or tracking, and it sets no cookies and uses no local storage.</p>
++
++    <h2>Third parties</h2>
++    <p>All images, styles, and fonts are served from our own domain. Your browser does not contact any third party when you visit this site, so no one else learns that you were here. Our content security policy enforces this.</p>
++
++    <h2>Server logs</h2>
++    <p>Our server does not write access logs containing IP addresses. Any hosting-provider logs are limited to what the provider needs to run the service and are kept for the shortest period they allow.</p>
++
++    <h2>If this changes</h2>
++    <p>Before we collect any personal data we will collect only what is necessary for a stated purpose, ask for consent where required, document the new processing and any new third party in <code>PRIVACY.md</code>, and update this page.</p>
++
++    <h2>Security</h2>
++    <p>The site is served over HTTPS only with strict security headers. To report a vulnerability, see our <a href="/.well-known/security.txt">security.txt</a>.</p>
++  </main>
++</body>
++
++</html>
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..37c694c
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,64 @@
++// Dependency-free static server that sends security headers on every response.
++// No access logs with IPs are written (data minimization).
++const http = require('http');
++const fs = require('fs');
++const path = require('path');
++
++const PORT = process.env.PORT || 11222;
++const ROOT = __dirname;
++const PUBLIC = new Set(['index.html', 'privacy-policy.html', 'assets/hero.jpg', '.well-known/security.txt']);
++const ROUTES = { '/': 'index.html', '/privacy-policy': 'privacy-policy.html' };
++const TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.jpg': 'image/jpeg',
++  '.txt': 'text/plain; charset=utf-8',
++};
++
++const SECURITY_HEADERS = {
++  'Content-Security-Policy': [
++    "default-src 'none'",
++    "img-src 'self'",
++    "style-src 'self' 'unsafe-inline'",
++    "base-uri 'none'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    'upgrade-insecure-requests',
++  ].join('; '),
++  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'no-referrer',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=(), browsing-topics=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Cross-Origin-Embedder-Policy': 'require-corp',
++  'Cache-Control': 'no-cache',
++};
++
++http.createServer((req, res) => {
++  for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    res.writeHead(405, { Allow: 'GET, HEAD' });
++    return res.end();
++  }
++  let pathname;
++  try {
++    pathname = decodeURIComponent(new URL(req.url, 'http://x').pathname);
++  } catch {
++    res.writeHead(400);
++    return res.end();
++  }
++  const rel = ROUTES[pathname] || pathname.replace(/^\/+/, '');
++  if (!PUBLIC.has(rel)) {
++    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++    return res.end('Not found');
++  }
++  fs.readFile(path.join(ROOT, rel), (err, data) => {
++    if (err) {
++      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++      return res.end('Not found');
++    }
++    res.writeHead(200, { 'Content-Type': TYPES[path.extname(rel)] || 'application/octet-stream' });
++    res.end(req.method === 'HEAD' ? undefined : data);
++  });
++}).listen(PORT, () => console.log(`Listening on :${PORT}`));

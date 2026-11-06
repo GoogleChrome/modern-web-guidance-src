@@ -1,0 +1,264 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,43 +27,131 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-header {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      gap: 1rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1rem, 4vw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .menu-button,
++    .drawer-close {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++      min-height: 44px;
++      padding: 0.5rem 0.75rem;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: transparent;
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    :is(button, a):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    html:has(.drawer[open]) {
++      overflow: hidden;
++    }
++
++    .drawer {
++      position: fixed;
++      inset: 0;
++      width: 100%;
++      max-width: none;
++      height: 100vh;
++      height: 100dvh;
++      max-height: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      color: white;
++      overflow-x: auto;
++      overflow-y: hidden;
++      overscroll-behavior: contain;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++    }
++
++    .drawer[open] {
+       display: flex;
++    }
++
++    .drawer::-webkit-scrollbar {
++      display: none;
++    }
++
++    .drawer::backdrop {
++      background: rgb(0 0 0 / 0.55);
++      opacity: var(--backdrop-opacity, 0);
++    }
++
++    .drawer-panel {
++      flex: 0 0 min(22rem, 85vw);
++      min-width: 0;
++      height: 100%;
++      padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      background: var(--primary);
++      scroll-snap-align: start;
++    }
++
++    .drawer-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      margin-bottom: 2rem;
++    }
++
++    .drawer-heading h2 {
++      font-size: 1.25rem;
++    }
++
++    /* The second snap stop lets the browser swipe the panel fully offscreen. */
++    .drawer-dismiss {
++      flex: 0 0 100%;
++      scroll-snap-align: end;
++    }
++
++    .drawer ul {
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .drawer li + li {
++      margin-top: 0.5rem;
+     }
+ 
+-    nav a {
++    .drawer a {
++      display: block;
++      padding: 0.75rem;
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .drawer a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -156,19 +244,34 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <header class="site-header">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <button class="menu-button" type="button" aria-haspopup="dialog" aria-controls="navigation-drawer" aria-expanded="false">
++      <span aria-hidden="true">&#9776;</span> Menu
++    </button>
++  </header>
+ 
++  <dialog class="drawer" id="navigation-drawer" aria-labelledby="drawer-title">
++    <div class="drawer-panel">
++      <div class="drawer-heading">
++        <h2 id="drawer-title">The Daily Grind</h2>
++        <button class="drawer-close" type="button" aria-label="Close menu" autofocus>&times;</button>
++      </div>
++      <nav aria-label="Main navigation">
++        <ul>
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </nav>
++    </div>
++    <div class="drawer-dismiss" aria-hidden="true"></div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +309,76 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const menuButton = document.querySelector('.menu-button');
++    const drawer = document.querySelector('.drawer');
++    const closeButton = document.querySelector('.drawer-close');
++    const dismissArea = document.querySelector('.drawer-dismiss');
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    let revealed = false;
++    let backdropPointerDown = false;
++
++    const closedPosition = () => drawer.scrollWidth - drawer.clientWidth;
++    const scrollBehavior = () => reducedMotion.matches ? 'instant' : 'smooth';
++
++    function syncDrawer() {
++      if (!drawer.open) return;
++      const end = closedPosition();
++      const progress = end > 0 ? Math.max(0, Math.min(1, 1 - drawer.scrollLeft / end)) : 1;
++      drawer.style.setProperty('--backdrop-opacity', progress);
++      if (drawer.scrollLeft < end - 1) revealed = true;
++      // Native scrolling and snapping handle touch, trackpad and momentum.
++      if (revealed && drawer.scrollLeft >= end - 1) drawer.close();
++    }
++
++    function closeDrawer() {
++      if (!drawer.open) return;
++      if (!revealed) {
++        drawer.close();
++        return;
++      }
++      drawer.scrollTo({ left: closedPosition(), behavior: scrollBehavior() });
++      syncDrawer();
++    }
++
++    menuButton.addEventListener('click', () => {
++      if (drawer.open) return;
++      revealed = false;
++      drawer.style.setProperty('--backdrop-opacity', 0);
++      drawer.showModal();
++      menuButton.setAttribute('aria-expanded', 'true');
++      drawer.scrollTo({ left: closedPosition(), behavior: 'instant' });
++      requestAnimationFrame(() => {
++        if (!drawer.open) return;
++        drawer.scrollTo({ left: 0, behavior: scrollBehavior() });
++        syncDrawer();
++      });
++    });
++
++    drawer.addEventListener('scroll', syncDrawer, { passive: true });
++    closeButton.addEventListener('click', closeDrawer);
++    // Require both ends of a tap on the backdrop so a swipe isn't a click.
++    drawer.addEventListener('pointerdown', (event) => {
++      backdropPointerDown = event.target === dismissArea;
++    }, { passive: true });
++    drawer.addEventListener('pointercancel', () => { backdropPointerDown = false; });
++    drawer.addEventListener('click', (event) => {
++      if (backdropPointerDown && event.target === dismissArea) closeDrawer();
++      backdropPointerDown = false;
++    });
++    drawer.addEventListener('cancel', (event) => {
++      event.preventDefault();
++      closeDrawer();
++    });
++    drawer.addEventListener('close', () => {
++      menuButton.setAttribute('aria-expanded', 'false');
++      menuButton.focus({ preventScroll: true });
++    });
++    drawer.querySelector('nav').addEventListener('click', (event) => {
++      if (event.target.closest('a')) drawer.close();
++    });
++  </script>
+ </body>
+ 
+ </html>

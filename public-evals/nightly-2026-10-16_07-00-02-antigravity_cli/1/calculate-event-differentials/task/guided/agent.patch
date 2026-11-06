@@ -1,0 +1,284 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,69 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Countdown Timer */
++    .countdown-timer {
++      margin: 15px 0;
++      padding: 12px 14px;
++      background: #fdf7f2;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      text-align: left;
++    }
++
++    .countdown-timer .timer-badge {
++      display: inline-block;
++      margin-bottom: 8px;
++      padding: 3px 8px;
++      background: var(--accent);
++      color: var(--primary);
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++    }
++
++    .countdown-timer .timer-badge.expired {
++      background: #d7ccc8;
++      color: #5d4037;
++    }
++
++    .countdown-timer .timer-section {
++      margin-bottom: 8px;
++    }
++
++    .countdown-timer .timer-section:last-child {
++      margin-bottom: 0;
++    }
++
++    .countdown-timer .timer-label {
++      display: block;
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: var(--primary);
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      margin-bottom: 2px;
++    }
++
++    .countdown-timer .timer-value {
++      font-size: 0.95rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .countdown-timer .timer-value span {
++      font-weight: 700;
++      color: #bf360c;
++    }
++
++    .countdown-timer .elapsed-section .timer-value span {
++      color: var(--text);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -177,11 +238,26 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="maple-oat-latte-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="countdown-timer countdown" id="maple-latte-countdown" data-start-date="2026-01-01" data-start-time="00:00:00" data-end-date="2026-03-01" data-end-time="00:00:00">
++            <span class="timer-badge" id="offer-status-badge">Limited Time Offer</span>
++            <div class="timer-section remaining-section">
++              <span class="timer-label">Time Remaining Until Offer Ends (March 1, 2026 at midnight):</span>
++              <div class="timer-value" id="remaining-timer-container">
++                <span id="maple-latte-remaining">Calculating...</span> left
++              </div>
++            </div>
++            <div class="timer-section elapsed-section">
++              <span class="timer-label">Elapsed Time Since Promotion Start:</span>
++              <div class="timer-value" id="elapsed-timer-container">
++                <span id="maple-latte-elapsed">Calculating...</span> elapsed
++              </div>
++            </div>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +282,182 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load Temporal polyfill if native Temporal is not available
++    if (typeof Temporal === 'undefined') {
++      try {
++        const module = await import('@js-temporal/polyfill');
++        globalThis.Temporal = module.Temporal;
++        if (module.toTemporalInstant) {
++          Date.prototype.toTemporalInstant = module.toTemporalInstant;
++        }
++      } catch {
++        try {
++          const module = await import('https://esm.sh/@js-temporal/polyfill');
++          globalThis.Temporal = module.Temporal;
++          if (module.toTemporalInstant) {
++            Date.prototype.toTemporalInstant = module.toTemporalInstant;
++          }
++        } catch (e) {
++          try {
++            const module = await import('./node_modules/@js-temporal/polyfill/dist/index.esm.js');
++            globalThis.Temporal = module.Temporal;
++            if (module.toTemporalInstant) {
++              Date.prototype.toTemporalInstant = module.toTemporalInstant;
++            }
++          } catch (err) {
++            console.warn('Could not load Temporal polyfill, using fallback calculation', err);
++          }
++        }
++      }
++    }
++
++    function formatDuration(duration) {
++      if (typeof Intl.DurationFormat !== 'undefined') {
++        const formatter = new Intl.DurationFormat('en', {
++          style: 'long',
++          daysDisplay: 'always',
++          hoursDisplay: 'always'
++        });
++        return formatter.format(duration);
++      }
++      const d = duration.days || 0;
++      const h = duration.hours || 0;
++      const daysStr = `${d} day${d === 1 ? '' : 's'}`;
++      const hoursStr = `${h} hour${h === 1 ? '' : 's'}`;
++      return `${daysStr}, ${hoursStr}`;
++    }
++
++    function calculatePromotionTimes() {
++      const container = document.getElementById('maple-latte-countdown');
++      const startDateStr = container?.dataset?.startDate || '2026-01-01';
++      const startTimeStr = container?.dataset?.startTime || '00:00:00';
++      const endDateStr = container?.dataset?.endDate || '2026-03-01';
++      const endTimeStr = container?.dataset?.endTime || '00:00:00';
++
++      if (typeof Temporal !== 'undefined') {
++        const now = Temporal.Now.zonedDateTimeISO();
++        const tz = now.timeZoneId;
++
++        const startDate = Temporal.PlainDate.from(startDateStr);
++        const startTime = Temporal.PlainTime.from(startTimeStr);
++        const start = startDate.toPlainDateTime(startTime).toZonedDateTime(tz);
++
++        const endDate = Temporal.PlainDate.from(endDateStr);
++        const endTime = Temporal.PlainTime.from(endTimeStr);
++        const end = endDate.toPlainDateTime(endTime).toZonedDateTime(tz);
++
++        const isExpired = Temporal.ZonedDateTime.compare(now, end) >= 0;
++        const isStarted = Temporal.ZonedDateTime.compare(now, start) >= 0;
++
++        const rawRemaining = now.until(end, { largestUnit: 'day' });
++        const remaining = rawRemaining.round({
++          largestUnit: 'day',
++          smallestUnit: 'hour',
++          roundingMode: 'trunc'
++        });
++
++        const rawElapsed = isStarted
++          ? now.since(start, { largestUnit: 'day' })
++          : Temporal.Duration.from({ days: 0, hours: 0 });
++        const elapsed = rawElapsed.round({
++          largestUnit: 'day',
++          smallestUnit: 'hour',
++          roundingMode: 'trunc'
++        });
++
++        return { now, tz, start, end, isExpired, isStarted, remaining, elapsed };
++      } else {
++        // Fallback using legacy Date in user local time zone
++        const now = new Date();
++        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
++        const [sYear, sMonth, sDay] = startDateStr.split('-').map(Number);
++        const [sHour, sMin, sSec] = startTimeStr.split(':').map(Number);
++        const start = new Date(sYear, sMonth - 1, sDay, sHour, sMin, sSec);
++
++        const [eYear, eMonth, eDay] = endDateStr.split('-').map(Number);
++        const [eHour, eMin, eSec] = endTimeStr.split(':').map(Number);
++        const end = new Date(eYear, eMonth - 1, eDay, eHour, eMin, eSec);
++
++        const isExpired = now >= end;
++        const isStarted = now >= start;
++
++        const diffRemainingMs = Math.max(0, end - now);
++        const remDays = Math.floor(diffRemainingMs / (1000 * 60 * 60 * 24));
++        const remHours = Math.floor((diffRemainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
++
++        const diffElapsedMs = isStarted ? Math.max(0, now - start) : 0;
++        const elDays = Math.floor(diffElapsedMs / (1000 * 60 * 60 * 24));
++        const elHours = Math.floor((diffElapsedMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
++
++        return {
++          now,
++          tz,
++          start,
++          end,
++          isExpired,
++          isStarted,
++          remaining: { days: remDays, hours: remHours },
++          elapsed: { days: elDays, hours: elHours }
++        };
++      }
++    }
++
++    function updatePromotionCountdown() {
++      const remainingElem = document.getElementById('maple-latte-remaining');
++      const elapsedElem = document.getElementById('maple-latte-elapsed');
++      const statusBadge = document.getElementById('offer-status-badge');
++      const container = document.getElementById('maple-latte-countdown');
++      if (!remainingElem || !elapsedElem) return;
++
++      const promo = calculatePromotionTimes();
++      const remainingDuration = promo.isExpired
++        ? { days: 0, hours: 0 }
++        : promo.remaining;
++
++      const remainingFormatted = formatDuration(remainingDuration);
++      const elapsedFormatted = formatDuration(promo.elapsed);
++
++      remainingElem.textContent = remainingFormatted;
++      elapsedElem.textContent = elapsedFormatted;
++
++      if (container) {
++        container.dataset.timeZone = promo.tz;
++        container.dataset.isExpired = promo.isExpired;
++        container.dataset.remainingDays = remainingDuration.days;
++        container.dataset.remainingHours = remainingDuration.hours;
++        container.dataset.elapsedDays = promo.elapsed.days;
++        container.dataset.elapsedHours = promo.elapsed.hours;
++      }
++
++      if (statusBadge) {
++        if (promo.isExpired) {
++          statusBadge.textContent = 'Offer Ended';
++          statusBadge.className = 'timer-badge expired';
++        } else {
++          statusBadge.textContent = 'Limited Time Offer';
++          statusBadge.className = 'timer-badge';
++        }
++      }
++    }
++
++    // Expose helpers globally for testing or manual invocations
++    window.mapleLatteTimer = {
++      update: updatePromotionCountdown,
++      calculate: calculatePromotionTimes,
++      formatDuration: formatDuration
++    };
++    window.updatePromotionCountdown = updatePromotionCountdown;
++
++    // Update on page load
++    if (document.readyState === 'loading') {
++      window.addEventListener('DOMContentLoaded', updatePromotionCountdown);
++    } else {
++      updatePromotionCountdown();
++    }
++    window.addEventListener('load', updatePromotionCountdown);
++  </script>
+ </body>
+ 
+ </html>

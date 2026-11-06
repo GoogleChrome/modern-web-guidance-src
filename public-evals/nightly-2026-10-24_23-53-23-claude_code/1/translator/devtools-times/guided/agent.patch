@@ -1,0 +1,299 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..d41d1c9 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,21 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  // On-device Translator API (not yet in lib.dom)
++  interface TranslatorOptions {
++    sourceLanguage: string;
++    targetLanguage: string;
++    monitor?: (monitor: EventTarget) => void;
++  }
++  interface Translator {
++    translate(text: string): Promise<string>;
++    destroy?(): void;
++  }
++  var Translator: {
++    availability(options: TranslatorOptions): Promise<'unavailable' | 'downloadable' | 'downloading' | 'available'>;
++    create(options: TranslatorOptions): Promise<Translator>;
++  };
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..3867070 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -22,10 +22,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 data-translate class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
++                    <p data-translate class="mt-4 text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+                 </a>
+@@ -66,10 +66,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 data-translate class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p data-translate class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..c4ddc4c 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -39,11 +39,11 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                     {capitalizedCategory}
+                 </a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 data-translate class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
++                <p data-translate class="text-gray-700 mb-4 text-base lg:text-lg">
+                     {topArticle.data.summary}
+                 </p>
+                 <div class="flex items-center text-gray-500 text-sm">
+@@ -78,12 +78,12 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                             {capitalizedBottomCategory}
+                         </a>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                            <h3 data-translate class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
+                                 {article.data.title}
+                             </h3>
+                         </a>
+                         {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
++                             <p data-translate class="text-gray-700 mb-4 flex-grow">
+                                 {article.data.summary}
+                             </p>
+                         )}
+diff --git a/src/components/TranslateControl.tsx b/src/components/TranslateControl.tsx
+new file mode 100644
+index 0000000..559e883
+--- /dev/null
++++ b/src/components/TranslateControl.tsx
+@@ -0,0 +1,145 @@
++import React, { useEffect, useRef, useState } from 'react';
++import { LanguageIcon } from '@heroicons/react/24/outline';
++
++const SOURCE_LANGUAGE = 'en';
++const LANGUAGES: Record<string, string> = {
++  ar: 'Arabic', zh: 'Chinese', nl: 'Dutch', fr: 'French', de: 'German', hi: 'Hindi',
++  it: 'Italian', ja: 'Japanese', ko: 'Korean', pl: 'Polish', pt: 'Portuguese',
++  ru: 'Russian', es: 'Spanish', sv: 'Swedish', tr: 'Turkish', uk: 'Ukrainian',
++};
++
++// Elements marked data-translate are translated as a whole; elements marked
++// data-translate-block have their text content translated. Text nodes are
++// translated individually so inline markup (links, emphasis) survives.
++const TARGET_SELECTOR = '[data-translate], [data-translate-block]';
++
++type Status = 'idle' | 'downloading' | 'translating' | 'done' | 'error';
++
++export default function TranslateControl() {
++  const [supported, setSupported] = useState<boolean | null>(null);
++  const [target, setTarget] = useState('es');
++  const [status, setStatus] = useState<Status>('idle');
++  const [progress, setProgress] = useState(0);
++  const [message, setMessage] = useState('');
++  const originals = useRef(new Map<Text, string>());
++  const runId = useRef(0);
++
++  useEffect(() => {
++    setSupported('Translator' in self);
++    return () => { runId.current++; };
++  }, []);
++
++  const collectTextNodes = () => {
++    const nodes: Text[] = [];
++    document.querySelectorAll(TARGET_SELECTOR).forEach((root) => {
++      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
++      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
++        if (n.nodeValue?.trim()) nodes.push(n as Text);
++      }
++    });
++    return nodes;
++  };
++
++  const restore = () => {
++    runId.current++;
++    originals.current.forEach((text, node) => { node.nodeValue = text; });
++    originals.current.clear();
++    document.querySelectorAll(TARGET_SELECTOR).forEach((el) => el.removeAttribute('lang'));
++    setStatus('idle');
++    setMessage('');
++  };
++
++  const translate = async () => {
++    const id = ++runId.current;
++    const options = { sourceLanguage: SOURCE_LANGUAGE, targetLanguage: target };
++    setMessage('');
++    try {
++      const availability = await Translator.availability(options);
++      if (availability === 'unavailable') {
++        setStatus('error');
++        setMessage('This language pair is not available on your device.');
++        return;
++      }
++      setProgress(0);
++      setStatus(availability === 'available' ? 'translating' : 'downloading');
++      // Called from the click handler, so the user gesture covers model downloads.
++      const translator = await Translator.create({
++        ...options,
++        monitor(m: EventTarget) {
++          m.addEventListener('downloadprogress', (e) => setProgress((e as ProgressEvent).loaded));
++        },
++      });
++      if (id !== runId.current) return;
++      setStatus('translating');
++
++      // Restore any earlier translation first so we always translate from the original.
++      originals.current.forEach((text, node) => { node.nodeValue = text; });
++      originals.current.clear();
++
++      for (const node of collectTextNodes()) {
++        const original = node.nodeValue ?? '';
++        const translated = await translator.translate(original.trim());
++        if (id !== runId.current) return;
++        originals.current.set(node, original);
++        const lead = original.match(/^\s*/)?.[0] ?? '';
++        const trail = original.match(/\s*$/)?.[0] ?? '';
++        node.nodeValue = lead + translated + trail;
++      }
++      document.querySelectorAll(TARGET_SELECTOR).forEach((el) => el.setAttribute('lang', target));
++      translator.destroy?.();
++      setStatus('done');
++    } catch (err) {
++      if (id !== runId.current) return;
++      console.error(err);
++      setStatus('error');
++      setMessage('Translation failed. Please try again.');
++    }
++  };
++
++  const busy = status === 'downloading' || status === 'translating';
++
++  if (supported === null) return null;
++
++  return (
++    <div className="flex flex-wrap items-center gap-2 px-4 py-2 text-sm text-gray-700 border-b border-gray-200 bg-gray-50">
++      <LanguageIcon className="w-5 h-5 text-gray-500" aria-hidden="true" />
++      <label htmlFor="translate-language" className="font-semibold">Translate this page</label>
++      <select
++        id="translate-language"
++        value={target}
++        disabled={!supported || busy}
++        onChange={(e) => setTarget(e.target.value)}
++        className="border border-gray-300 rounded px-2 py-1 bg-white disabled:opacity-50"
++      >
++        {Object.entries(LANGUAGES).map(([code, name]) => (
++          <option key={code} value={code}>{name}</option>
++        ))}
++      </select>
++      <button
++        type="button"
++        onClick={translate}
++        disabled={!supported || busy}
++        className="px-3 py-1 rounded bg-amber-800 text-white hover:bg-amber-700 disabled:opacity-50"
++      >
++        Translate
++      </button>
++      {status === 'done' && (
++        <button type="button" onClick={restore} className="underline text-amber-800 hover:text-amber-600">
++          Show original
++        </button>
++      )}
++      {status === 'downloading' && (
++        <span className="flex items-center gap-2">
++          Downloading language pack…
++          <progress value={progress} max={1} className="w-24" aria-label="Language pack download progress" />
++        </span>
++      )}
++      <span role="status" aria-live="polite">
++        {!supported && 'On-device translation is not supported in this browser.'}
++        {status === 'translating' && 'Translating…'}
++        {status === 'done' && 'Translated on your device.'}
++        {message}
++      </span>
++    </div>
++  );
++}
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..559cfc6 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -1,6 +1,7 @@
+ ---
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
++import TranslateControl from "../components/TranslateControl.tsx";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+@@ -45,6 +46,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
++        <TranslateControl client:idle />
+         <main class="bg-white relative">
+           <slot />
+         </main>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..0283b2d 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -43,12 +43,12 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 data-translate class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p data-translate class="text-lg md:text-xl text-gray-700 font-light mb-5">
+             {article.data.summary}
+         </p>
+ 
+@@ -80,7 +80,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 />
+             )}
+             {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                <figcaption data-translate class="text-xs text-gray-500 mt-2 px-2">
+                     {article.data.image_caption}
+                 </figcaption>
+             )}
+@@ -105,7 +105,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div data-translate-block class="prose max-w-none">
+             <Content />
+         </div>
+ 

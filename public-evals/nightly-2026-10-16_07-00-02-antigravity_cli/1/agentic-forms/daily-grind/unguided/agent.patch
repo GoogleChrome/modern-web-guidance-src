@@ -1,0 +1,1316 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..088af3a
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,475 @@
++import { MENU_ITEMS, LOCATIONS, REWARDS_MEMBERS } from './data.js';
++
++// DOM elements
++const menuContainer = document.getElementById('menu-items-grid');
++const locationsContainer = document.getElementById('locations-grid');
++const rewardsDisplay = document.getElementById('rewards-result');
++const orderModal = document.getElementById('orderConfirmationModal');
++const orderSummaryText = document.getElementById('orderSummaryText');
++const closeOrderModalBtn = document.getElementById('closeOrderModalBtn');
++const agentNotificationBanner = document.getElementById('agent-notification-banner');
++
++// Initial render
++renderMenuItems(MENU_ITEMS);
++renderLocations(LOCATIONS);
++
++// Setup WebMCP lifecycle listeners on document.modelContext or fallback
++const mcpContext = (typeof document !== 'undefined' && document.modelContext) ? document.modelContext : null;
++if (mcpContext) {
++  mcpContext.addEventListener('toolactivated', (e) => {
++    if (agentNotificationBanner) {
++      agentNotificationBanner.textContent = `🤖 Agent interacting with tool: ${e.toolName}`;
++      agentNotificationBanner.classList.add('visible');
++    }
++  });
++
++  mcpContext.addEventListener('toolcancel', (e) => {
++    if (agentNotificationBanner) {
++      agentNotificationBanner.textContent = `🤖 Agent canceled tool: ${e.toolName}`;
++      setTimeout(() => {
++        agentNotificationBanner.classList.remove('visible');
++      }, 2500);
++    }
++  });
++}
++
++// -------------------------------------------------------------
++// 1. TOOL: search_menu
++// -------------------------------------------------------------
++const searchMenuForm = document.getElementById('searchMenuForm');
++if (searchMenuForm) {
++  searchMenuForm.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const formData = new FormData(searchMenuForm);
++    const query = (formData.get('query') || '').trim().toLowerCase();
++    const category = formData.get('category') || 'all';
++    const dietary = formData.get('dietary') || 'all';
++    const maxPriceVal = formData.get('max_price');
++    const maxPrice = maxPriceVal ? parseFloat(maxPriceVal) : null;
++
++    const validationErrors = [];
++    if (maxPrice !== null && (isNaN(maxPrice) || maxPrice <= 0)) {
++      validationErrors.push({
++        field: 'max_price',
++        value: maxPriceVal,
++        message: 'Max price must be a positive number.'
++      });
++    }
++
++    if (validationErrors.length > 0) {
++      if (e.agentInvoked && typeof e.respondWith === 'function') {
++        e.respondWith(Promise.resolve(validationErrors));
++      }
++      return;
++    }
++
++    const filtered = MENU_ITEMS.filter((item) => {
++      const matchQuery = !query || item.name.toLowerCase().includes(query) || item.description.toLowerCase().includes(query);
++      const matchCategory = category === 'all' || item.category === category;
++      const matchDietary = dietary === 'all' || item.dietary === dietary;
++      const matchPrice = maxPrice === null || item.price <= maxPrice;
++      return matchQuery && matchCategory && matchDietary && matchPrice;
++    });
++
++    renderMenuItems(filtered);
++
++    const resultPayload = {
++      count: filtered.length,
++      items: filtered.map((item) => ({
++        id: item.id,
++        name: item.name,
++        category: item.category,
++        dietary: item.dietary,
++        price: item.price,
++        description: item.description
++      }))
++    };
++
++    if (e.agentInvoked && typeof e.respondWith === 'function') {
++      e.respondWith(Promise.resolve(resultPayload));
++    }
++  });
++}
++
++// -------------------------------------------------------------
++// 2. TOOL: order_coffee
++// -------------------------------------------------------------
++const orderForm = document.getElementById('orderCoffeeForm');
++if (orderForm) {
++  orderForm.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const formData = new FormData(orderForm);
++    const item = (formData.get('item') || '').trim();
++    const size = formData.get('size');
++    const milk = formData.get('milk');
++    const sweetness = formData.get('sweetness');
++    const quantity = parseInt(formData.get('quantity'), 10);
++    const customerName = (formData.get('customer_name') || '').trim();
++    const pickupLocation = formData.get('pickup_location');
++    const pickupTime = (formData.get('pickup_time') || '').trim();
++    const specialInstructions = (formData.get('special_instructions') || '').trim();
++
++    const validationErrors = [];
++    if (!item) {
++      validationErrors.push({
++        field: 'item',
++        value: item,
++        message: 'Menu item name is required.'
++      });
++    }
++    if (!size) {
++      validationErrors.push({
++        field: 'size',
++        value: size,
++        message: 'Size selection is required.'
++      });
++    }
++    if (!milk) {
++      validationErrors.push({
++        field: 'milk',
++        value: milk,
++        message: 'Milk selection is required.'
++      });
++    }
++    if (isNaN(quantity) || quantity < 1 || quantity > 20) {
++      validationErrors.push({
++        field: 'quantity',
++        value: formData.get('quantity'),
++        message: 'Quantity must be between 1 and 20.'
++      });
++    }
++    if (!customerName) {
++      validationErrors.push({
++        field: 'customer_name',
++        value: customerName,
++        message: 'Customer name is required for order pickup.'
++      });
++    }
++    if (!pickupLocation) {
++      validationErrors.push({
++        field: 'pickup_location',
++        value: pickupLocation,
++        message: 'Pickup location is required.'
++      });
++    }
++    if (!pickupTime) {
++      validationErrors.push({
++        field: 'pickup_time',
++        value: pickupTime,
++        message: 'Pickup time is required (e.g., "15 mins" or "10:30 AM").'
++      });
++    }
++
++    if (validationErrors.length > 0) {
++      if (e.agentInvoked && typeof e.respondWith === 'function') {
++        e.respondWith(Promise.resolve(validationErrors));
++      }
++      return;
++    }
++
++    // Lookup base item price or default
++    const matchedItem = MENU_ITEMS.find((m) => m.name.toLowerCase() === item.toLowerCase() || m.id === item.toLowerCase());
++    const basePrice = matchedItem ? matchedItem.price : 5.00;
++    const sizeMultiplier = size === 'large' ? 1.5 : (size === 'medium' ? 1.25 : 1.0);
++    const totalPrice = (basePrice * sizeMultiplier * quantity).toFixed(2);
++    const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
++
++    const orderConfirmation = {
++      order_id: orderId,
++      status: 'confirmed',
++      customer_name: customerName,
++      item: matchedItem ? matchedItem.name : item,
++      size,
++      milk,
++      sweetness: sweetness || 'regular',
++      quantity,
++      pickup_location: pickupLocation,
++      pickup_time: pickupTime,
++      total_price: `$${totalPrice}`,
++      special_instructions: specialInstructions || 'None',
++      message: `Order ${orderId} received! Ready for pickup at ${pickupLocation} in ~${pickupTime}.`
++    };
++
++    // Show modal in browser UI
++    if (orderSummaryText && orderModal) {
++      orderSummaryText.innerHTML = `
++        <p><strong>Order #:</strong> ${orderId}</p>
++        <p><strong>Customer:</strong> ${customerName}</p>
++        <p><strong>Item:</strong> ${quantity}x ${orderConfirmation.item} (${size}, ${milk} milk, ${sweetness || 'regular'} sweetness)</p>
++        <p><strong>Pickup at:</strong> ${pickupLocation} (approx. ${pickupTime})</p>
++        <p><strong>Total:</strong> $${totalPrice}</p>
++        ${specialInstructions ? `<p><strong>Notes:</strong> ${specialInstructions}</p>` : ''}
++      `;
++      if (typeof orderModal.showModal === 'function') {
++        orderModal.showModal();
++      }
++    }
++
++    if (e.agentInvoked && typeof e.respondWith === 'function') {
++      e.respondWith(Promise.resolve(orderConfirmation));
++    }
++  });
++}
++
++// -------------------------------------------------------------
++// 3. TOOL: find_locations
++// -------------------------------------------------------------
++const locationsForm = document.getElementById('findLocationsForm');
++if (locationsForm) {
++  locationsForm.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const formData = new FormData(locationsForm);
++    const query = (formData.get('query') || '').trim().toLowerCase();
++    const amenity = formData.get('amenity') || 'all';
++
++    const filtered = LOCATIONS.filter((loc) => {
++      const matchQuery = !query || loc.name.toLowerCase().includes(query) || loc.address.toLowerCase().includes(query);
++      const matchAmenity = amenity === 'all' || loc.amenities.includes(amenity);
++      return matchQuery && matchAmenity;
++    });
++
++    renderLocations(filtered);
++
++    const payload = {
++      count: filtered.length,
++      locations: filtered.map((l) => ({
++        id: l.id,
++        name: l.name,
++        address: l.address,
++        phone: l.phone,
++        hours: l.hours,
++        amenities: l.amenities
++      }))
++    };
++
++    if (e.agentInvoked && typeof e.respondWith === 'function') {
++      e.respondWith(Promise.resolve(payload));
++    }
++  });
++}
++
++// -------------------------------------------------------------
++// 4. TOOL: check_rewards
++// -------------------------------------------------------------
++const rewardsForm = document.getElementById('checkRewardsForm');
++if (rewardsForm) {
++  rewardsForm.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const formData = new FormData(rewardsForm);
++    const rawIdentifier = (formData.get('identifier') || '').trim();
++    const cleanIdentifier = rawIdentifier.replace(/[^a-zA-Z0-9@.]/g, '').toLowerCase();
++
++    const validationErrors = [];
++    if (!rawIdentifier) {
++      validationErrors.push({
++        field: 'identifier',
++        value: rawIdentifier,
++        message: 'Phone number or email is required to look up rewards.'
++      });
++    }
++
++    if (validationErrors.length > 0) {
++      if (e.agentInvoked && typeof e.respondWith === 'function') {
++        e.respondWith(Promise.resolve(validationErrors));
++      }
++      return;
++    }
++
++    const member = REWARDS_MEMBERS[cleanIdentifier] || REWARDS_MEMBERS[rawIdentifier.toLowerCase()];
++
++    if (!member) {
++      const notFoundPayload = {
++        found: false,
++        identifier: rawIdentifier,
++        message: 'No rewards account found with this phone number or email. You can sign up with your barista on your next visit!'
++      };
++
++      if (rewardsDisplay) {
++        rewardsDisplay.innerHTML = `
++          <div class="alert alert-warning">
++            ${notFoundPayload.message}
++          </div>
++        `;
++      }
++
++      if (e.agentInvoked && typeof e.respondWith === 'function') {
++        e.respondWith(Promise.resolve(notFoundPayload));
++      }
++      return;
++    }
++
++    const payload = {
++      found: true,
++      name: member.name,
++      tier: member.tier,
++      points: member.points,
++      perks: member.perks,
++      available_rewards: member.availableRewards
++    };
++
++    if (rewardsDisplay) {
++      rewardsDisplay.innerHTML = `
++        <div class="rewards-card">
++          <div class="rewards-tier-badge">${member.tier}</div>
++          <h3>${member.name}</h3>
++          <p class="points-val"><strong>${member.points}</strong> Grind Points</p>
++          <div class="perks-list">
++            <strong>Active Perks:</strong>
++            <ul>${member.perks.map((p) => `<li>${p}</li>`).join('')}</ul>
++          </div>
++          <div class="rewards-redeem-list">
++            <strong>Ready to Redeem:</strong>
++            <ul>${member.availableRewards.map((r) => `<li>${r}</li>`).join('')}</ul>
++          </div>
++        </div>
++      `;
++    }
++
++    if (e.agentInvoked && typeof e.respondWith === 'function') {
++      e.respondWith(Promise.resolve(payload));
++    }
++  });
++}
++
++// -------------------------------------------------------------
++// 5. TOOL: submit_feedback
++// -------------------------------------------------------------
++const feedbackForm = document.getElementById('submitFeedbackForm');
++if (feedbackForm) {
++  feedbackForm.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const formData = new FormData(feedbackForm);
++    const name = (formData.get('name') || '').trim();
++    const email = (formData.get('email') || '').trim();
++    const topic = formData.get('topic');
++    const message = (formData.get('message') || '').trim();
++
++    const validationErrors = [];
++    if (!name) {
++      validationErrors.push({
++        field: 'name',
++        value: name,
++        message: 'Name is required.'
++      });
++    }
++    if (!email || !email.includes('@')) {
++      validationErrors.push({
++        field: 'email',
++        value: email,
++        message: 'A valid email address is required.'
++      });
++    }
++    if (!topic) {
++      validationErrors.push({
++        field: 'topic',
++        value: topic,
++        message: 'Feedback topic is required.'
++      });
++    }
++    if (!message || message.length < 5) {
++      validationErrors.push({
++        field: 'message',
++        value: message,
++        message: 'Message must be at least 5 characters long.'
++      });
++    }
++
++    if (validationErrors.length > 0) {
++      if (e.agentInvoked && typeof e.respondWith === 'function') {
++        e.respondWith(Promise.resolve(validationErrors));
++      }
++      return;
++    }
++
++    const ticketId = 'FB-' + Math.floor(10000 + Math.random() * 90000);
++    const feedbackResult = {
++      ticket_id: ticketId,
++      status: 'submitted',
++      topic,
++      customer_name: name,
++      message: `Thank you ${name}! Your feedback regarding '${topic}' has been received (Ticket ${ticketId}). Our team will follow up at ${email}.`
++    };
++
++    const feedbackNotice = document.getElementById('feedback-notice');
++    if (feedbackNotice) {
++      feedbackNotice.innerHTML = `
++        <div class="alert alert-success">
++          <strong>Thank you, ${name}!</strong> Your feedback (Ticket #${ticketId}) has been received.
++        </div>
++      `;
++    }
++
++    feedbackForm.reset();
++
++    if (e.agentInvoked && typeof e.respondWith === 'function') {
++      e.respondWith(Promise.resolve(feedbackResult));
++    }
++  });
++}
++
++// Modal closing
++if (closeOrderModalBtn && orderModal) {
++  closeOrderModalBtn.addEventListener('click', () => {
++    orderModal.close();
++  });
++}
++
++// Helper render functions
++function renderMenuItems(items) {
++  if (!menuContainer) return;
++  if (items.length === 0) {
++    menuContainer.innerHTML = '<p class="no-results">No menu items match your search.</p>';
++    return;
++  }
++  menuContainer.innerHTML = items.map((item) => `
++    <div class="card menu-card" data-id="${item.id}">
++      <img src="${item.image}" alt="${item.name}" class="card-img" loading="lazy" />
++      <div class="card-body">
++        <div class="card-header-flex">
++          <h3>${item.name}</h3>
++          <span class="price-tag">$${item.price.toFixed(2)}</span>
++        </div>
++        <p class="desc">${item.description}</p>
++        <div class="tags">
++          <span class="tag tag-cat">${item.category}</span>
++          <span class="tag tag-diet">${item.dietary}</span>
++        </div>
++        <button class="btn btn-secondary select-for-order-btn" data-item="${item.name}">Select for Order</button>
++      </div>
++    </div>
++  `).join('');
++
++  // Quick fill order form
++  menuContainer.querySelectorAll('.select-for-order-btn').forEach((btn) => {
++    btn.addEventListener('click', () => {
++      const itemName = btn.getAttribute('data-item');
++      const itemInput = document.getElementById('orderItemInput');
++      if (itemInput) {
++        itemInput.value = itemName;
++        document.getElementById('order')?.scrollIntoView({ behavior: 'smooth' });
++      }
++    });
++  });
++}
++
++function renderLocations(locations) {
++  if (!locationsContainer) return;
++  if (locations.length === 0) {
++    locationsContainer.innerHTML = '<p class="no-results">No coffee shops match your criteria.</p>';
++    return;
++  }
++  locationsContainer.innerHTML = locations.map((loc) => `
++    <div class="card location-card" data-id="${loc.id}">
++      <img src="${loc.image}" alt="${loc.name}" class="card-img" loading="lazy" />
++      <div class="card-body">
++        <h3>${loc.name}</h3>
++        <p class="address">📍 ${loc.address}</p>
++        <p class="phone">📞 ${loc.phone}</p>
++        <p class="hours">⏰ ${loc.hours}</p>
++        <div class="tags">
++          ${loc.amenities.map((a) => `<span class="tag">${a.replace('_', ' ')}</span>`).join('')}
++        </div>
++      </div>
++    </div>
++  `).join('');
++}
+diff --git a/data.js b/data.js
+new file mode 100644
+index 0000000..8b06b90
+--- /dev/null
++++ b/data.js
+@@ -0,0 +1,127 @@
++// The Daily Grind - Client-side state and data
++
++export const MENU_ITEMS = [
++  {
++    id: "maple-oat-latte",
++    name: "Maple Oat Latte",
++    category: "coffee",
++    dietary: "vegan",
++    price: 6.25,
++    description: "Creamy oat milk paired with rich espresso and pure Vermont maple syrup.",
++    image: "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++  },
++  {
++    id: "dark-roast-espresso",
++    name: "Dark Roast Espresso",
++    category: "coffee",
++    dietary: "vegan",
++    price: 3.75,
++    description: "Bold, smoky double shot roasted locally with notes of dark chocolate.",
++    image: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++  },
++  {
++    id: "nitro-cold-brew",
++    name: "Nitro Cold Brew",
++    category: "cold",
++    dietary: "vegan",
++    price: 5.50,
++    description: "Steeped cold for 18 hours and infused with nitrogen for a velvety head.",
++    image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80"
++  },
++  {
++    id: "matcha-latte",
++    name: "Ceremonial Matcha Latte",
++    category: "tea",
++    dietary: "vegetarian",
++    price: 5.75,
++    description: "First-harvest Uji matcha whisked with steamed milk and organic agave.",
++    image: "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80"
++  },
++  {
++    id: "almond-croissant",
++    name: "Artisan Almond Croissant",
++    category: "bakery",
++    dietary: "vegetarian",
++    price: 4.50,
++    description: "Twice-baked butter croissant filled with frangipane and toasted almonds.",
++    image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80"
++  },
++  {
++    id: "avocado-sourdough",
++    name: "Avocado Sourdough Toast",
++    category: "food",
++    dietary: "vegan",
++    price: 8.50,
++    description: "Naturally leavened sourdough topped with crushed avocado, radish, and chili flakes.",
++    image: "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=600&q=80"
++  }
++];
++
++export const LOCATIONS = [
++  {
++    id: "downtown-flagship",
++    name: "Downtown Flagship & Roastery",
++    address: "452 Market Street, San Francisco, CA 94105",
++    phone: "(415) 555-0142",
++    hours: "6:30 AM - 7:00 PM Daily",
++    amenities: ["wifi", "roastery", "patio", "order_ahead"],
++    image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
++  },
++  {
++    id: "mission-brew-bar",
++    name: "Mission Brew Bar & Garden",
++    address: "982 Valencia Street, San Francisco, CA 94110",
++    phone: "(415) 555-0198",
++    hours: "7:00 AM - 6:00 PM Daily",
++    amenities: ["wifi", "patio", "order_ahead"],
++    image: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80"
++  },
++  {
++    id: "marina-kiosk",
++    name: "Marina Espresso Kiosk",
++    address: "2104 Chestnut Street, San Francisco, CA 94123",
++    phone: "(415) 555-0177",
++    hours: "6:00 AM - 4:00 PM Daily",
++    amenities: ["order_ahead"],
++    image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80"
++  }
++];
++
++export const REWARDS_MEMBERS = {
++  "alex@example.com": {
++    name: "Alex Rivera",
++    email: "alex@example.com",
++    phone: "4155551234",
++    tier: "Gold Grind Master",
++    points: 480,
++    perks: ["Free milk alternatives", "1 free drink per month", "Free birthday pastry"],
++    availableRewards: ["Free handcrafted beverage (400 pts)", "$3 off bakery item (200 pts)"]
++  },
++  "4155551234": {
++    name: "Alex Rivera",
++    email: "alex@example.com",
++    phone: "4155551234",
++    tier: "Gold Grind Master",
++    points: 480,
++    perks: ["Free milk alternatives", "1 free drink per month", "Free birthday pastry"],
++    availableRewards: ["Free handcrafted beverage (400 pts)", "$3 off bakery item (200 pts)"]
++  },
++  "sam@example.com": {
++    name: "Sam Chen",
++    email: "sam@example.com",
++    phone: "5105559876",
++    tier: "Silver Roaster",
++    points: 150,
++    perks: ["Double points on Tuesdays", "Free size upgrade"],
++    availableRewards: ["$2 off any espresso (100 pts)"]
++  },
++  "5105559876": {
++    name: "Sam Chen",
++    email: "sam@example.com",
++    phone: "5105559876",
++    tier: "Silver Roaster",
++    points: 150,
++    perks: ["Double points on Tuesdays", "Free size upgrade"],
++    availableRewards: ["$2 off any espresso (100 pts)"]
++  }
++};
+diff --git a/package.json b/package.json
+index 2bd4d77..b433ccd 100644
+--- a/package.json
++++ b/package.json
+@@ -6,5 +6,8 @@
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "jsdom": "^30.1.3"
+   }
+ }
+diff --git a/webmcp-polyfill.js b/webmcp-polyfill.js
+new file mode 100644
+index 0000000..39d60f8
+--- /dev/null
++++ b/webmcp-polyfill.js
+@@ -0,0 +1,683 @@
++/**
++ * Copyright 2026 Google LLC
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++(function () {
++  if (window.document.modelContext) {
++    return;
++  }
++
++  window.__webmcp_registered_tools = window.__webmcp_registered_tools || new Map();
++
++  function getLocalTools(win) {
++    const tools = [];
++
++    // 1. Imperative tools registered on this window
++    if (win.__webmcp_registered_tools) {
++      for (const tool of win.__webmcp_registered_tools.values()) {
++        tools.push(tool);
++      }
++    }
++
++    // 2. Declarative tools (forms) on this window
++    const forms = win.document.querySelectorAll('form[toolname]');
++    for (const form of forms) {
++      const name = form.getAttribute('toolname');
++      const description = form.getAttribute('tooldescription') || '';
++
++      // Build inputSchema
++      const properties = {};
++      const required = [];
++      const elements = form.querySelectorAll('input[name], select[name], textarea[name]');
++      for (const el of elements) {
++        const propName = el.name;
++        const propDesc = el.getAttribute('toolparamdescription') || '';
++        let type = 'string';
++        let enumValues = undefined;
++
++        if (el.tagName === 'SELECT') {
++          type = 'string';
++          enumValues = Array.from(el.options).map((opt) => opt.value || opt.text);
++        } else if (el.type === 'number' || el.type === 'range') {
++          type = 'number';
++        } else if (el.type === 'checkbox') {
++          type = 'boolean';
++        }
++
++        const property = { type };
++        if (propDesc) {
++          property.description = propDesc;
++        }
++        if (enumValues) {
++          property.enum = enumValues;
++        }
++        properties[propName] = property;
++
++        if (el.hasAttribute('required')) {
++          required.push(propName);
++        }
++      }
++
++      const inputSchema = {
++        type: 'object',
++        properties,
++      };
++      if (required.length > 0) {
++        inputSchema.required = required;
++      }
++
++      tools.push({
++        name,
++        description,
++        inputSchema,
++        window: win,
++        origin: win.origin,
++        _form: form,
++      });
++    }
++
++    return tools;
++  }
++
++  function getRemoteTools(win) {
++    return new Promise((resolve) => {
++      const requestId = Math.random().toString(36).substring(2);
++      const timer = setTimeout(() => {
++        window.removeEventListener('message', listener);
++        resolve([]);
++      }, 500);
++
++      const listener = (event) => {
++        const { data, source } = event;
++        if (source === win && data && data.type === 'WEBMCP_GET_TOOLS_RESPONSE' && data.requestId === requestId) {
++          clearTimeout(timer);
++          window.removeEventListener('message', listener);
++          const toolsWithWindow = (data.tools || []).map((t) => ({
++            ...t,
++            window: win,
++            _isRemote: true,
++          }));
++          resolve(toolsWithWindow);
++        }
++      };
++
++      window.addEventListener('message', listener);
++      win.postMessage({ type: 'WEBMCP_GET_TOOLS_REQUEST', requestId }, '*');
++    });
++  }
++
++  // https://webmachinelearning.github.io/webmcp/#tool-activated-event
++  class ToolActivatedEvent extends Event {
++    #toolName;
++
++    constructor(type, eventInitDict = {}) {
++      super(type, eventInitDict);
++      this.#toolName = eventInitDict.toolName ?? '';
++    }
++
++    get toolName() {
++      return this.#toolName;
++    }
++  }
++
++  // https://webmachinelearning.github.io/webmcp/#tool-cancel-event
++  class ToolCancelEvent extends Event {
++    #toolName;
++
++    constructor(type, eventInitDict = {}) {
++      super(type, eventInitDict);
++      this.#toolName = eventInitDict.toolName ?? '';
++    }
++
++    get toolName() {
++      return this.#toolName;
++    }
++  }
++
++  const TOOL_EVENT_INTERFACES = {
++    toolactivated: ToolActivatedEvent,
++    toolcancel: ToolCancelEvent,
++  };
++
++  // Dispatch a tool lifecycle event on the target window's modelContext.
++  function dispatchToolEvent(win, type, toolName) {
++    const event = new TOOL_EVENT_INTERFACES[type](type, { toolName });
++    try {
++      win.document?.modelContext?.dispatchEvent(event);
++    } catch (e) {
++      // Accessing the document of a cross-origin window throws a SecurityError.
++    }
++  }
++
++  class ModelContext extends EventTarget {
++    #ontoolchange = null;
++    #ontoolactivated = null;
++    #ontoolcancel = null;
++
++    get ontoolchange() {
++      return this.#ontoolchange;
++    }
++
++    set ontoolchange(handler) {
++      if (this.#ontoolchange) {
++        this.removeEventListener('toolchange', this.#ontoolchange);
++      }
++      this.#ontoolchange = handler;
++      if (handler) {
++        this.addEventListener('toolchange', handler);
++      }
++    }
++
++    get ontoolactivated() {
++      return this.#ontoolactivated;
++    }
++
++    set ontoolactivated(handler) {
++      if (this.#ontoolactivated) {
++        this.removeEventListener('toolactivated', this.#ontoolactivated);
++      }
++      this.#ontoolactivated = handler;
++      if (handler) {
++        this.addEventListener('toolactivated', handler);
++      }
++    }
++
++    get ontoolcancel() {
++      return this.#ontoolcancel;
++    }
++
++    set ontoolcancel(handler) {
++      if (this.#ontoolcancel) {
++        this.removeEventListener('toolcancel', this.#ontoolcancel);
++      }
++      this.#ontoolcancel = handler;
++      if (handler) {
++        this.addEventListener('toolcancel', handler);
++      }
++    }
++
++    async registerTool(tool, options = {}) {
++      if (!tool || typeof tool !== 'object') {
++        throw new DOMException('Invalid tool object', 'TypeError');
++      }
++
++      const name = tool.name;
++      const description = tool.description;
++
++      if (!name || typeof name !== 'string') {
++        throw new DOMException('Invalid tool name', 'InvalidStateError');
++      }
++      if (!description || typeof description !== 'string') {
++        throw new DOMException('Invalid tool description', 'InvalidStateError');
++      }
++
++      // Name length must be between 1 and 128, only ASCII alphanumeric, _, -, and .
++      const nameRegex = /^[a-zA-Z0-9_.-]{1,128}$/;
++      if (!nameRegex.test(name)) {
++        throw new DOMException('Invalid tool name format', 'InvalidStateError');
++      }
++
++      if (window.__webmcp_registered_tools.has(name)) {
++        throw new DOMException(`Tool "${name}" is already registered`, 'InvalidStateError');
++      }
++
++      const inputSchema = tool.inputSchema;
++      if (inputSchema) {
++        try {
++          JSON.stringify(inputSchema);
++        } catch (e) {
++          throw new TypeError('Failed to stringify inputSchema');
++        }
++      }
++
++      const signal = options.signal;
++      if (signal) {
++        if (signal.aborted) {
++          throw signal.reason || new DOMException('Aborted', 'AbortError');
++        }
++        signal.addEventListener('abort', () => {
++          this.#unregisterTool(name);
++        });
++      }
++
++      // Store a normalized tool copy
++      const normalizedTool = {
++        name,
++        description,
++        inputSchema,
++        window: window,
++        origin: window.origin,
++        annotations: tool.annotations,
++        _execute: tool.execute,
++      };
++
++      window.__webmcp_registered_tools.set(name, normalizedTool);
++      this.dispatchEvent(new Event('toolchange'));
++    }
++
++    #unregisterTool(name) {
++      if (window.__webmcp_registered_tools.delete(name)) {
++        this.dispatchEvent(new Event('toolchange'));
++      }
++    }
++
++    async getTools(options = {}) {
++      const allWindows = new Set([window]);
++      if (window.parent) {
++        allWindows.add(window.parent);
++        try {
++          for (let i = 0; i < window.parent.frames.length; i++) {
++            allWindows.add(window.parent.frames[i]);
++          }
++        } catch (e) { }
++      }
++      try {
++        const iframes = document.querySelectorAll('iframe');
++        for (const iframe of iframes) {
++          if (iframe.contentWindow) {
++            allWindows.add(iframe.contentWindow);
++          }
++        }
++      } catch (e) { }
++
++      const allTools = [];
++      const remoteToolPromises = [];
++
++      for (const win of allWindows) {
++        if (win === window) {
++          allTools.push(...getLocalTools(window));
++        } else {
++          let isSameOrigin = false;
++          try {
++            isSameOrigin = !!win.document;
++          } catch (e) {}
++
++          if (isSameOrigin) {
++            allTools.push(...getLocalTools(win));
++          } else {
++            remoteToolPromises.push(getRemoteTools(win));
++          }
++        }
++      }
++      const remoteToolsResults = await Promise.all(remoteToolPromises);
++      for (const remoteTools of remoteToolsResults) {
++        allTools.push(...remoteTools);
++      }
++      const uniqueTools = [];
++      const seenNames = new Set();
++      for (const t of allTools) {
++        if (!seenNames.has(t.name)) {
++          seenNames.add(t.name);
++          uniqueTools.push(t);
++        }
++      }
++
++      const origins = Array.isArray(options?.fromOrigins) ? new Set(options.fromOrigins) : null;
++
++      const filteredTools = uniqueTools.filter((t) =>
++        t.origin === window.origin || (origins && origins.size > 0 && origins.has(t.origin))
++      );
++
++      return filteredTools;
++    }
++
++    async executeTool(tool, inputObject = {}, options = {}) {
++      try {
++        const serialized = JSON.stringify(inputObject);
++        if (serialized === undefined) {
++          throw new TypeError('inputObject could not be serialized to a JSON string');
++        }
++      } catch (e) {
++        throw new TypeError('inputObject could not be serialized to a JSON string');
++      }
++
++      const win = tool.window || window;
++
++      if (tool._isRemote) {
++        return new Promise((resolve, reject) => {
++          const requestId = Math.random().toString(36).substring(2);
++          const listener = (event) => {
++            const { data, source } = event;
++            if (source === win && data && data.type === 'WEBMCP_EXECUTE_TOOL_RESPONSE' && data.requestId === requestId) {
++              window.removeEventListener('message', listener);
++              if (data.success) {
++                resolve(data.result);
++              } else {
++                reject(new Error(data.error));
++              }
++            }
++          };
++          window.addEventListener('message', listener);
++          win.postMessage({
++            type: 'WEBMCP_EXECUTE_TOOL_REQUEST',
++            requestId,
++            name: tool.name,
++            inputObject,
++          }, '*');
++        });
++      }
++
++      if (win !== window && win.document && win.document.modelContext && win.document.modelContext.executeTool) {
++        return await win.document.modelContext.executeTool(tool, inputObject, options);
++      }
++
++      // 1. Check if it's an imperative tool registered here
++      if (win.__webmcp_registered_tools && win.__webmcp_registered_tools.has(tool.name)) {
++        const registeredTool = win.__webmcp_registered_tools.get(tool.name);
++        return registeredTool._execute(inputObject, options);
++      }
++
++      // 2. Check if it's a declarative tool
++      const form = tool._form || win.document.querySelector(`form[toolname="${tool.name}"]`);
++      if (!form) {
++        throw new Error(`Tool ${tool.name} not found`);
++      }
++
++      // Apply styling classes
++      form.classList.add('tool-form-active');
++      const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
++      if (submitBtn) {
++        submitBtn.classList.add('tool-submit-active');
++      }
++
++      // Fill form fields
++      for (const [key, value] of Object.entries(inputObject)) {
++        const input = form.elements[key] || form.querySelector(`[name="${key}"]`);
++        if (input) {
++          if (input.tagName === 'SELECT') {
++            input.value = value;
++          } else if (input.type === 'checkbox') {
++            input.checked = !!value;
++          } else if (input.type === 'radio') {
++            const radio = form.querySelector(`input[name="${key}"][value="${value}"]`);
++            if (radio) radio.checked = true;
++          } else {
++            input.value = value;
++          }
++          input.dispatchEvent(new Event('input', { bubbles: true }));
++          input.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++      }
++
++      // Dispatch toolactivated event on the target modelContext
++      dispatchToolEvent(win, 'toolactivated', tool.name);
++
++      return new Promise((resolve, reject) => {
++        let resolved = false;
++        let observer;
++
++        const cleanup = () => {
++          form.classList.remove('tool-form-active');
++          if (submitBtn) {
++            submitBtn.classList.remove('tool-submit-active');
++          }
++          form.removeEventListener('reset', onReset);
++          form.removeEventListener('submit', onSubmit, { capture: true });
++          if (observer) {
++            observer.disconnect();
++          }
++        };
++
++        if (options?.signal) {
++          if (options.signal.aborted) {
++            cleanup();
++            reject(options.signal.reason || new DOMException('Aborted', 'AbortError'));
++            return;
++          }
++          options.signal.addEventListener(
++            'abort',
++            () => {
++              if (resolved) return;
++              resolved = true;
++              cleanup();
++              dispatchToolEvent(win, 'toolcancel', tool.name);
++              reject(options.signal.reason || new DOMException('Aborted', 'AbortError'));
++            },
++            { once: true },
++          );
++        }
++
++        const onReset = () => {
++          resolved = true;
++          cleanup();
++          dispatchToolEvent(win, 'toolcancel', tool.name);
++          resolve(null);
++        };
++        form.addEventListener('reset', onReset);
++
++        const onSubmit = (e) => {
++          if (resolved) return;
++          e.agentInvoked = true;
++          e.respondWith = (val) => {
++            if (val && typeof val.then === 'function') {
++              val.then((actualVal) => {
++                resolved = true;
++                cleanup();
++                resolve(actualVal);
++              }).catch((err) => {
++                resolved = true;
++                cleanup();
++                resolve({ error: err.message || err });
++              });
++            } else {
++              resolved = true;
++              cleanup();
++              resolve(val);
++            }
++          };
++        };
++        form.addEventListener('submit', onSubmit, { capture: true });
++
++        observer = new MutationObserver((mutations) => {
++          let formRemoved = !win.document.body.contains(form);
++          let attributesChanged = false;
++
++          for (const mutation of mutations) {
++            if (mutation.type === 'attributes' && mutation.target === form) {
++              if (mutation.attributeName === 'toolname' || mutation.attributeName === 'tooldescription') {
++                attributesChanged = true;
++              }
++            }
++          }
++
++          if (formRemoved || attributesChanged) {
++            resolved = true;
++            cleanup();
++            dispatchToolEvent(win, 'toolcancel', tool.name);
++            resolve(null);
++          }
++        });
++        observer.observe(form, { attributes: true });
++        if (form.parentNode) {
++          observer.observe(form.parentNode, { childList: true });
++        }
++
++        if (form.hasAttribute('toolautosubmit')) {
++          const submitEvent = new Event('submit', { cancelable: true, bubbles: true });
++          form.dispatchEvent(submitEvent);
++
++          // Timeout only for autosubmit (in case site has a bug and doesn't call respondWith)
++          setTimeout(() => {
++            if (!resolved) {
++              cleanup();
++              resolve(null);
++            }
++          }, 5000);
++        } else {
++          if (submitBtn) {
++            submitBtn.focus();
++          }
++        }
++      });
++    }
++  }
++
++  function polyfillCSSPseudoClasses(win) {
++    const styles = [];
++
++    const processCSSText = (text) => {
++      const regexForm = /:tool-form-active/g;
++      const regexSubmit = /:tool-submit-active/g;
++      const newText = text
++        .replace(regexForm, '.tool-form-active')
++        .replace(regexSubmit, '.tool-submit-active');
++      return newText !== text ? newText : null;
++    };
++
++    // 1. Process existing stylesheets in document
++    for (const sheet of Array.from(win.document.styleSheets)) {
++      if (sheet.href) {
++        // Always fetch external stylesheets to get raw CSS before browser parses and discards invalid selectors
++        fetch(sheet.href)
++          .then((res) => res.text())
++          .then((text) => {
++            const processed = processCSSText(text);
++            if (processed) {
++              const styleEl = win.document.createElement('style');
++              styleEl.textContent = processed;
++              win.document.head.appendChild(styleEl);
++            }
++          })
++          .catch(() => { });
++      } else {
++        try {
++          const rules = sheet.cssRules || sheet.rules;
++          if (rules) {
++            for (const rule of Array.from(rules)) {
++              const ruleText = rule.cssText;
++              const processed = processCSSText(ruleText);
++              if (processed) {
++                styles.push(processed);
++              }
++            }
++          }
++        } catch (e) { }
++      }
++    }
++
++    // 2. Process inline style tags
++    for (const styleTag of Array.from(win.document.querySelectorAll('style'))) {
++      const processed = processCSSText(styleTag.textContent);
++      if (processed) {
++        styles.push(processed);
++      }
++    }
++
++    if (styles.length > 0) {
++      const styleEl = win.document.createElement('style');
++      styleEl.textContent = styles.join('\n');
++      win.document.head.appendChild(styleEl);
++    }
++  }
++
++  const modelContext = new ModelContext();
++
++  window.ToolActivatedEvent = ToolActivatedEvent;
++  window.ToolCancelEvent = ToolCancelEvent;
++
++  Object.defineProperty(window.document, 'modelContext', {
++    value: modelContext,
++    writable: false,
++    configurable: true,
++  });
++
++  window.addEventListener('message', async ({ data, source }) => {
++    if (data.type === 'WEBMCP_GET_TOOLS_REQUEST') {
++      const localTools = getLocalTools(window);
++      const serializableTools = localTools.map((t) => ({
++        name: t.name,
++        description: t.description,
++        inputSchema: t.inputSchema,
++        origin: t.origin,
++        annotations: t.annotations,
++      }));
++      source.postMessage(
++        {
++          type: 'WEBMCP_GET_TOOLS_RESPONSE',
++          requestId: data.requestId,
++          tools: serializableTools,
++        },
++        '*'
++      );
++    }
++
++    if (data.type === 'WEBMCP_EXECUTE_TOOL_REQUEST') {
++      const { name, inputObject, requestId } = data;
++      try {
++        const localTools = getLocalTools(window);
++        const tool = localTools.find((t) => t.name === name);
++        if (!tool) {
++          throw new Error(`Tool ${name} not found`);
++        }
++        const result = await modelContext.executeTool(tool, inputObject);
++        source.postMessage(
++          {
++            type: 'WEBMCP_EXECUTE_TOOL_RESPONSE',
++            requestId,
++            success: true,
++            result,
++          },
++          '*'
++        );
++      } catch (err) {
++        source.postMessage(
++          {
++            type: 'WEBMCP_EXECUTE_TOOL_RESPONSE',
++            requestId,
++            success: false,
++            error: err.message || String(err),
++          },
++          '*'
++        );
++      }
++    }
++  });
++
++  // Fire `toolchange` when declarative (form) tools change, including forms
++  // that are added, removed, or no longer tools (e.g. `toolname` removed).
++  function getDeclarativeToolsSignature() {
++    return JSON.stringify(
++      getLocalTools(window)
++        .filter((t) => t._form)
++        .map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))
++    );
++  }
++
++  function observeDeclarativeTools() {
++    let signature = getDeclarativeToolsSignature();
++    let scheduled = false;
++
++    const check = () => {
++      scheduled = false;
++      const newSignature = getDeclarativeToolsSignature();
++      if (newSignature !== signature) {
++        signature = newSignature;
++        modelContext.dispatchEvent(new Event('toolchange'));
++      }
++    };
++
++    const observer = new MutationObserver(() => {
++      if (!scheduled) {
++        scheduled = true;
++        queueMicrotask(check);
++      }
++    });
++    observer.observe(window.document.documentElement, {
++      subtree: true,
++      childList: true,
++      attributes: true,
++      attributeFilter: ['toolname', 'tooldescription', 'toolparamdescription', 'name', 'type', 'required'],
++    });
++  }
++
++  // Start right away (not on DOMContentLoaded) so that changes made by module
++  // scripts before DOMContentLoaded still fire `toolchange`.
++  observeDeclarativeTools();
++
++  if (window.document.readyState === 'loading') {
++    window.document.addEventListener('DOMContentLoaded', () => polyfillCSSPseudoClasses(window));
++  } else {
++    polyfillCSSPseudoClasses(window);
++  }
++})();

@@ -1,0 +1,258 @@
+diff --git a/index.html b/index.html
+index 66c9173..b74fa8e 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,95 @@
+       background: #3e2723;
+     }
+ 
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Non-modal drink previews stay open while hovered or focused. */
++    .drink-preview {
++      position: fixed;
++      z-index: 1100;
++      width: min(340px, calc(100vw - 32px));
++      max-height: calc(100dvh - 32px);
++      overflow-y: auto;
++      padding: 24px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: white;
++      box-shadow: 0 12px 36px rgba(62, 39, 35, 0.2);
++      text-align: left;
++    }
++
++    .drink-preview[hidden] {
++      display: none;
++    }
++
++    .preview-eyebrow {
++      margin-bottom: 8px;
++      color: #795548;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++    }
++
++    .drink-preview h3 {
++      margin: 0 24px 8px 0;
++      font-size: 1.25rem;
++    }
++
++    .drink-preview p {
++      font-size: 0.9rem;
++    }
++
++    .drink-preview dl {
++      margin-top: 16px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .drink-preview dl div {
++      padding: 10px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .drink-preview dt {
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      color: #795548;
++    }
++
++    .drink-preview dd {
++      font-size: 0.9rem;
++    }
++
++    .preview-close {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      width: 32px;
++      height: 32px;
++      border: 0;
++      border-radius: 50%;
++      color: var(--primary);
++      background: #f4eeeb;
++      font-size: 1.25rem;
++      cursor: pointer;
++    }
++
++    a:focus-visible, button:focus-visible {
++      outline: 3px solid #b56500;
++      outline-offset: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -181,17 +270,53 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn preview-trigger" aria-haspopup="dialog" aria-expanded="false"
++            aria-controls="preview-maple">View Details<span class="sr-only"> for Maple Oat Latte</span></a>
++          <div id="preview-maple" class="drink-preview" role="dialog" aria-labelledby="preview-maple-title" hidden>
++            <button class="preview-close" type="button" aria-label="Close Maple Oat Latte preview">&times;</button>
++            <p class="preview-eyebrow">Seasonal favorite</p>
++            <h3 id="preview-maple-title">Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <dl>
++              <div><dt>In the cup</dt><dd>Oat milk & Vermont maple syrup</dd></div>
++              <div><dt>Flavor</dt><dd>Creamy with a hint of maple</dd></div>
++            </dl>
++            <a href="/menu/seasonal" class="btn">Explore drink <span aria-hidden="true">&rarr;</span></a>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn preview-trigger" aria-haspopup="dialog" aria-expanded="false"
++            aria-controls="preview-espresso">View Details<span class="sr-only"> for Dark Roast Espresso</span></a>
++          <div id="preview-espresso" class="drink-preview" role="dialog" aria-labelledby="preview-espresso-title" hidden>
++            <button class="preview-close" type="button" aria-label="Close Dark Roast Espresso preview">&times;</button>
++            <p class="preview-eyebrow">Espresso selection</p>
++            <h3 id="preview-espresso-title">Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <dl>
++              <div><dt>Roast</dt><dd>Dark roast</dd></div>
++              <div><dt>Flavor</dt><dd>Bold & smokey</dd></div>
++            </dl>
++            <a href="/menu/espresso" class="btn">Explore drink <span aria-hidden="true">&rarr;</span></a>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn preview-trigger" aria-haspopup="dialog" aria-expanded="false"
++            aria-controls="preview-cold-brew">View Details<span class="sr-only"> for Cold Brew</span></a>
++          <div id="preview-cold-brew" class="drink-preview" role="dialog" aria-labelledby="preview-cold-brew-title" hidden>
++            <button class="preview-close" type="button" aria-label="Close Cold Brew preview">&times;</button>
++            <p class="preview-eyebrow">Slow-steeped favorite</p>
++            <h3 id="preview-cold-brew-title">Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <dl>
++              <div><dt>Method</dt><dd>Steeped for 18 hours</dd></div>
++              <div><dt>Flavor</dt><dd>Smooth</dd></div>
++            </dl>
++            <a href="/menu/cold-brew" class="btn">Explore drink <span aria-hidden="true">&rarr;</span></a>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +332,100 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    (() => {
++      let active = null;
++      let closeTimer;
++
++      function positionPreview() {
++        if (!active) return;
++        const { trigger, panel } = active;
++        const rect = trigger.getBoundingClientRect();
++        const gap = 10;
++        const margin = 16;
++        const width = panel.offsetWidth;
++        const height = panel.offsetHeight;
++        const left = Math.max(margin, Math.min(
++          rect.left + (rect.width - width) / 2,
++          window.innerWidth - width - margin
++        ));
++        const below = rect.bottom + gap;
++        const top = below + height <= window.innerHeight - margin
++          ? below
++          : Math.max(margin, rect.top - height - gap);
++        panel.style.left = `${left}px`;
++        panel.style.top = `${top}px`;
++      }
++
++      function closePreview(restoreFocus = false) {
++        clearTimeout(closeTimer);
++        if (!active) return;
++        const { trigger, panel } = active;
++        if (restoreFocus && panel.contains(document.activeElement)) trigger.focus();
++        panel.hidden = true;
++        trigger.setAttribute('aria-expanded', 'false');
++        active = null;
++      }
++
++      function openPreview(trigger, panel) {
++        clearTimeout(closeTimer);
++        if (active?.trigger === trigger) return;
++        closePreview();
++        active = { trigger, panel };
++        panel.hidden = false;
++        trigger.setAttribute('aria-expanded', 'true');
++        positionPreview();
++      }
++
++      function scheduleClose() {
++        clearTimeout(closeTimer);
++        // Allow the pointer to cross the small gap between link and preview.
++        closeTimer = setTimeout(() => {
++          if (!active) return;
++          const { trigger, panel } = active;
++          if (trigger.matches(':hover') || panel.matches(':hover') ||
++              trigger === document.activeElement || panel.contains(document.activeElement)) return;
++          closePreview();
++        }, 180);
++      }
++
++      document.querySelectorAll('.preview-trigger').forEach(trigger => {
++        const panel = document.getElementById(trigger.getAttribute('aria-controls'));
++        trigger.addEventListener('pointerenter', event => {
++          if (event.pointerType !== 'touch') openPreview(trigger, panel);
++        });
++        trigger.addEventListener('focus', () => openPreview(trigger, panel));
++        trigger.addEventListener('keydown', event => {
++          if (event.key === 'ArrowDown') {
++            event.preventDefault();
++            openPreview(trigger, panel);
++            panel.querySelector('button').focus();
++          }
++        });
++        [trigger, panel].forEach(element => {
++          element.addEventListener('pointerleave', scheduleClose);
++          element.addEventListener('focusout', scheduleClose);
++        });
++        panel.addEventListener('pointerenter', () => clearTimeout(closeTimer));
++        panel.addEventListener('focusin', () => clearTimeout(closeTimer));
++        panel.querySelector('.preview-close').addEventListener('click', () => closePreview(true));
++      });
++
++      document.addEventListener('keydown', event => {
++        if (event.key === 'Escape' && active) {
++          event.preventDefault();
++          closePreview(true);
++        }
++      });
++      document.addEventListener('pointerdown', event => {
++        if (active && !active.trigger.contains(event.target) && !active.panel.contains(event.target)) {
++          closePreview();
++        }
++      });
++      window.addEventListener('resize', positionPreview);
++      window.addEventListener('scroll', positionPreview, { passive: true });
++    })();
++  </script>
+ </body>
+ 
+ </html>

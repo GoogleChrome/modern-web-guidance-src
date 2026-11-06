@@ -1,0 +1,174 @@
+diff --git a/index.html b/index.html
+index 66c9173..16d5f01 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,44 @@
+       background: #3e2723;
+     }
+ 
++    .coffee-finder {
++      background: #f3ece7;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: clamp(20px, 4vw, 36px);
++      margin-bottom: 40px;
++      scroll-margin-top: 100px;
++    }
++
++    .coffee-finder h2 { color: var(--primary); }
++    .coffee-finder > p { margin: 8px 0 20px; }
++    .finder-fields {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 20px;
++    }
++    .finder-fields label { display: block; font-weight: 600; margin-bottom: 6px; }
++    .finder-fields select {
++      width: 100%;
++      padding: 12px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++    .coffee-finder button { border: 0; font: inherit; cursor: pointer; }
++    :focus-visible { outline: 3px solid #b85e00; outline-offset: 4px; }
++    .finder-result { margin-top: 20px; padding: 20px; background: white; border-radius: 8px; }
++    .finder-result p { margin-top: 6px; }
++    .finder-result a { color: var(--primary); font-weight: 600; }
++    @media (max-width: 600px) {
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .finder-fields { grid-template-columns: 1fr; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,6 +198,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
++      <li><a href="#coffee-finder">Coffee Finder</a></li>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+@@ -175,6 +214,38 @@
+   </header>
+ 
+   <main class="container">
++    <section id="coffee-finder" class="coffee-finder" aria-labelledby="finder-heading">
++      <h2 id="finder-heading">Find Your Next Favorite</h2>
++      <p>Two little preferences. One delicious place to start.</p>
++      <form id="coffee-finder-form" toolname="find_coffee"
++        tooldescription="Recommend a Daily Grind coffee based on temperature and flavor preferences. Returns a drink suggestion and menu link; does not place an order."
++        toolautosubmit>
++        <div class="finder-fields">
++          <div>
++            <label for="coffee-temperature">How do you like your coffee?</label>
++            <select id="coffee-temperature" name="temperature" required
++              toolparamdescription="Preferred serving temperature: hot or iced.">
++              <option value="">Choose a temperature</option>
++              <option value="hot">Hot &amp; cozy</option>
++              <option value="iced">Iced &amp; refreshing</option>
++            </select>
++          </div>
++          <div>
++            <label for="coffee-flavor">What sounds good?</label>
++            <select id="coffee-flavor" name="flavor" required
++              toolparamdescription="Preferred flavor profile: sweet for maple sweetness, bold for intense espresso, or smooth for a mellow cup.">
++              <option value="">Choose a flavor</option>
++              <option value="sweet">Sweet &amp; creamy</option>
++              <option value="bold">Bold &amp; intense</option>
++              <option value="smooth">Smooth &amp; mellow</option>
++            </select>
++          </div>
++        </div>
++        <button type="submit" class="btn">Find My Coffee</button>
++      </form>
++      <div id="coffee-result" role="status" aria-live="polite" aria-atomic="true"></div>
++      <noscript><p>Enable JavaScript to use the coffee finder, or explore our seasonal favorites below.</p></noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +278,77 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const finderForm = document.getElementById('coffee-finder-form');
++    const resultRegion = document.getElementById('coffee-result');
++    const coffees = {
++      latte: {
++        name: 'Maple Oat Latte',
++        description: 'Creamy oat milk and Vermont maple sweetness make this a cozy, mellow choice.',
++        menuUrl: '/menu/seasonal'
++      },
++      espresso: {
++        name: 'Dark Roast Espresso',
++        description: 'A bold, smoky espresso for an intense coffee flavor.',
++        menuUrl: '/menu/espresso'
++      },
++      coldBrew: {
++        name: 'Cold Brew',
++        description: 'Steeped for 18 hours for a naturally smooth, refreshing cup.',
++        menuUrl: '/menu/cold-brew'
++      }
++    };
++
++    finderForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const data = new FormData(finderForm);
++      const temperature = data.get('temperature');
++      const flavor = data.get('flavor');
++      let response;
++
++      if (!['hot', 'iced'].includes(temperature) || !['sweet', 'bold', 'smooth'].includes(flavor)) {
++        resultRegion.className = 'finder-result';
++        resultRegion.textContent = 'Choose a temperature and flavor so we can find your coffee.';
++        finderForm.reportValidity();
++        response = { error: 'Select a valid temperature (hot or iced) and flavor (sweet, bold, or smooth).' };
++      } else {
++        const coffee = flavor === 'bold' ? coffees.espresso
++          : flavor === 'smooth' && temperature === 'iced' ? coffees.coldBrew : coffees.latte;
++        const serving = temperature === 'iced' ? 'Serve over ice.' : 'Serve hot.';
++        response = {
++          coffee: coffee.name,
++          temperature,
++          flavor,
++          description: `${coffee.description} ${serving}`,
++          menuUrl: coffee.menuUrl
++        };
++
++        const heading = document.createElement('h3');
++        heading.textContent = `Your match: ${coffee.name}`;
++        const description = document.createElement('p');
++        description.textContent = response.description;
++        const link = document.createElement('a');
++        link.href = coffee.menuUrl;
++        link.textContent = 'Explore this coffee';
++        const linkParagraph = document.createElement('p');
++        linkParagraph.append(link);
++        resultRegion.className = 'finder-result';
++        resultRegion.replaceChildren(heading, description, linkParagraph);
++      }
++
++      // Ordinary submissions and agent invocations share validation and visible results.
++      if (event.agentInvoked && typeof event.respondWith === 'function') {
++        event.respondWith(Promise.resolve(response));
++      }
++    });
++
++    // A changed preference makes the previous recommendation stale.
++    finderForm.addEventListener('change', () => {
++      resultRegion.replaceChildren();
++      resultRegion.className = '';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+index 66c9173..73c99b0 100644
+--- a/index.html
++++ b/index.html
+@@ -57,19 +57,33 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
++      text-decoration-line: underline;
++      text-decoration-style: solid;
++      text-decoration-color: var(--accent);
++      text-decoration-thickness: 2px;
++      text-underline-offset: 6px;
++      text-decoration-skip-ink: auto;
++      text-decoration-inset: 50%;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, text-decoration-inset 0.3s ease, text-underline-offset 0.3s ease;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
++      text-decoration-inset: 0%;
++      text-underline-offset: 4px;
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      text-decoration-line: underline overline;
++      text-decoration-inset: 50%;
++    }
++
++    .logout-link:hover {
++      text-decoration-inset: 4px;
+     }
+ 
+     /* Hero Section */
+@@ -100,6 +114,34 @@
+       padding: 0 20px;
+     }
+ 
++    @keyframes headingLineReveal {
++      from {
++        text-decoration-inset: 50%;
++      }
++      to {
++        text-decoration-inset: -12px;
++      }
++    }
++
++    .container section h2 {
++      text-align: center;
++      margin-bottom: 12px;
++      text-decoration-line: underline overline;
++      text-decoration-style: wavy;
++      text-decoration-color: var(--accent);
++      text-decoration-thickness: 2px;
++      text-underline-offset: 8px;
++      text-decoration-skip-ink: auto;
++      text-decoration-inset: -12px;
++      animation: headingLineReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++      transition: text-decoration-inset 0.35s ease, text-underline-offset 0.35s ease;
++    }
++
++    .container section h2:hover {
++      text-decoration-inset: 8px;
++      text-underline-offset: 10px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -116,8 +158,23 @@
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 14px;
+       color: var(--primary);
++      text-decoration-line: underline;
++      text-decoration-style: double;
++      text-decoration-color: var(--accent);
++      text-decoration-thickness: 2px;
++      text-underline-offset: 6px;
++      text-decoration-skip-ink: auto;
++      text-decoration-inset: 15% 15%;
++      transition: text-decoration-inset 0.35s ease, text-underline-offset 0.35s ease, text-decoration-color 0.35s ease;
++    }
++
++    .card:hover h3,
++    .card h3:hover {
++      text-decoration-inset: -4px -4px;
++      text-underline-offset: 8px;
++      text-decoration-color: var(--primary);
+     }
+ 
+     .btn {
+@@ -149,8 +206,24 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
++      text-decoration-line: underline;
++      text-decoration-style: dashed;
++      text-decoration-color: var(--primary);
++      text-decoration-thickness: 1.5px;
++      text-underline-offset: 4px;
++      text-decoration-skip-ink: auto;
++      text-decoration-inset: 35%;
+       font-size: 0.85rem;
++      transition: color 0.3s ease, text-decoration-inset 0.3s ease, text-underline-offset 0.3s ease, text-decoration-color 0.3s ease;
++    }
++
++    .footer-links a:hover {
++      color: var(--primary);
++      text-decoration-line: underline line-through;
++      text-decoration-style: solid;
++      text-decoration-color: var(--accent);
++      text-decoration-inset: -2px;
++      text-underline-offset: 6px;
+     }
+   </style>
+ </head>

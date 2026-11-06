@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,63 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .mailing-list {
++      max-width: 480px;
++      margin: 0 auto 30px;
++    }
++
++    .mailing-list p {
++      margin: 8px 0 16px;
++    }
++
++    .mailing-list label {
++      display: block;
++      text-align: left;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .mailing-list-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .mailing-list input {
++      flex: 1 1 220px;
++      min-width: 0;
++      padding: 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .mailing-list input:focus-visible,
++    .mailing-list button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .mailing-list input[aria-invalid="true"] {
++      border-color: #9c2424;
++    }
++
++    .mailing-list .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .mailing-list .email-error {
++      color: #9c2424;
++      margin: 6px 0 0;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +252,22 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="mailing-list" aria-labelledby="mailing-list-heading">
++      <h2 id="mailing-list-heading">Join our mailing list</h2>
++      <p>Get fresh coffee news, seasonal favorites, and special offers.</p>
++      <form id="mailing-list-form" novalidate>
++        <label for="mailing-list-email">Email address (required)</label>
++        <div class="mailing-list-controls">
++          <input id="mailing-list-email" name="email" type="email" autocomplete="email"
++            placeholder="you@example.com" required aria-describedby="email-error">
++          <button class="btn" type="submit">Join the list</button>
++        </div>
++        <p id="email-error" class="email-error" aria-live="polite" hidden></p>
++        <p id="mailing-list-status" role="status" hidden></p>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +275,50 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const mailingListForm = document.getElementById('mailing-list-form');
++    const emailInput = document.getElementById('mailing-list-email');
++    const emailError = document.getElementById('email-error');
++    const mailingListStatus = document.getElementById('mailing-list-status');
++    let emailTouched = false;
++
++    function validateEmail() {
++      const message = emailInput.validity.valueMissing
++        ? 'Please enter your email address.'
++        : emailInput.validity.typeMismatch
++          ? 'Please enter a valid email address.'
++          : '';
++
++      emailError.textContent = message;
++      emailError.hidden = !message;
++      emailInput.setAttribute('aria-invalid', String(Boolean(message)));
++      return !message;
++    }
++
++    emailInput.addEventListener('blur', () => {
++      emailTouched = true;
++      validateEmail();
++    });
++
++    emailInput.addEventListener('input', () => {
++      mailingListStatus.hidden = true;
++      if (emailTouched) validateEmail();
++    });
++
++    mailingListForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!emailInput.validity.valid) {
++        if (emailTouched) validateEmail();
++        emailInput.focus();
++        return;
++      }
++
++      mailingListStatus.textContent = 'Online signups are coming soon. Please contact us to join our mailing list.';
++      mailingListStatus.hidden = false;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

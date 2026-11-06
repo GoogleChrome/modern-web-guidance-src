@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,63 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Order event trace */
++    .trace {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .trace .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .trace .btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    #trace-status {
++      margin-top: 10px;
++      min-height: 1.6em;
++    }
++
++    #trace-table {
++      width: 100%;
++      margin-top: 10px;
++      border-collapse: collapse;
++      background: white;
++      text-align: left;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow-x: auto;
++      display: block;
++    }
++
++    #trace-table[hidden] {
++      display: none;
++    }
++
++    #trace-table caption {
++      caption-side: top;
++      padding: 8px;
++      font-weight: bold;
++    }
++
++    #trace-table th,
++    #trace-table td {
++      padding: 8px 12px;
++      border-bottom: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++
++    #trace-table td:nth-child(4),
++    #trace-table td:nth-child(5) {
++      font-family: ui-monospace, monospace;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +249,29 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="trace" aria-labelledby="trace-title">
++      <h2 id="trace-title">Order Event Trace</h2>
++      <p>Events from our distributed services arrive out of order. Load them to see the true sequence and the gaps
++        between steps.</p>
++      <button type="button" class="btn" id="load-events">Load Order Events</button>
++      <p id="trace-status" role="status"></p>
++      <table id="trace-table" hidden>
++        <caption>Coffee order events, sorted chronologically (UTC)</caption>
++        <thead>
++          <tr>
++            <th scope="col">#</th>
++            <th scope="col">Service</th>
++            <th scope="col">Event</th>
++            <th scope="col">Timestamp (UTC)</th>
++            <th scope="col">Since previous</th>
++          </tr>
++        </thead>
++        <tbody></tbody>
++      </table>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +282,71 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Simulated batch from distributed services: out of order, nanosecond UTC timestamps.
++    // Several events fall within the same millisecond, so Date would collide them.
++    function fetchOrderEvents() {
++      return Promise.resolve([
++        { service: 'kitchen-display', event: 'drink.ready', ts: '2026-10-22T08:15:03.412907881Z' },
++        { service: 'order-api', event: 'order.received', ts: '2026-10-22T08:15:00.102000123Z' },
++        { service: 'barista-queue', event: 'drink.started', ts: '2026-10-22T08:15:01.870553210Z' },
++        { service: 'payment', event: 'payment.authorized', ts: '2026-10-22T08:15:00.102418456Z' },
++        { service: 'order-api', event: 'order.validated', ts: '2026-10-22T08:15:00.102000987Z' },
++        { service: 'barista-queue', event: 'order.queued', ts: '2026-10-22T08:15:00.102931002Z' },
++        { service: 'pickup-notifier', event: 'customer.notified', ts: '2026-10-22T08:15:03.413250004Z' },
++      ]);
++    }
++
++    async function ensureTemporal() {
++      if (typeof Temporal !== 'undefined') return;
++      const module = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    const loadButton = document.getElementById('load-events');
++    const statusEl = document.getElementById('trace-status');
++    const table = document.getElementById('trace-table');
++
++    function renderTrace(rawEvents) {
++      // Instant.from keeps all nine fractional digits.
++      const events = rawEvents
++        .map((e) => ({ ...e, instant: Temporal.Instant.from(e.ts) }))
++        .sort((a, b) => Temporal.Instant.compare(a.instant, b.instant));
++
++      const rows = events.map((e, i) => {
++        const tr = document.createElement('tr');
++        const gap = i === 0
++          ? '—'
++          : e.instant.since(events[i - 1].instant).toLocaleString(undefined, { style: 'narrow' });
++        for (const text of [i + 1, e.service, e.event, e.instant.toString(), gap]) {
++          const td = document.createElement('td');
++          td.textContent = text;
++          tr.append(td);
++        }
++        return tr;
++      });
++      table.tBodies[0].replaceChildren(...rows);
++      table.hidden = false;
++
++      const total = events.at(-1).instant.since(events[0].instant).toLocaleString(undefined, { style: 'narrow' });
++      statusEl.textContent = `Loaded ${events.length} events, sorted. Total span: ${total}.`;
++    }
++
++    loadButton.addEventListener('click', async () => {
++      loadButton.disabled = true;
++      statusEl.textContent = 'Loading events…';
++      try {
++        const [rawEvents] = await Promise.all([fetchOrderEvents(), ensureTemporal()]);
++        renderTrace(rawEvents);
++      } catch (err) {
++        statusEl.textContent = 'Could not load order events. Please try again.';
++        console.error(err);
++      } finally {
++        loadButton.disabled = false;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

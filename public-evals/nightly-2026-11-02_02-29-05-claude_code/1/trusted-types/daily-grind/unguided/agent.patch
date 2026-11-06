@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+index 66c9173..279deb6 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,8 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy"
++    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com; object-src 'none'; base-uri 'none'; form-action 'self'; require-trusted-types-for 'script'; trusted-types daily-grind-inert daily-grind-sanitizer">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -153,6 +155,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script src="/js/seasonal-cards.js" defer></script>
+ </head>
+ 
+ <body>
+@@ -177,23 +180,10 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <div class="grid" id="seasonal-favorites"></div>
++      <noscript>
++        <p style="text-align: center;">Enable JavaScript to see our seasonal favorites, or browse the <a href="/menu">full menu</a>.</p>
++      </noscript>
+     </section>
+   </main>
+ 
+diff --git a/js/seasonal-cards.js b/js/seasonal-cards.js
+new file mode 100644
+index 0000000..d4c7fa8
+--- /dev/null
++++ b/js/seasonal-cards.js
+@@ -0,0 +1,115 @@
++/*
++ * Seasonal Favorites renderer.
++ *
++ * Cards are authored as HTML strings and rendered into the page. Because the
++ * page enforces Trusted Types (see the CSP in index.html), raw strings can no
++ * longer reach DOM sinks such as innerHTML. Every string must pass through the
++ * sanitizing policy below, which keeps only an allowlist of elements,
++ * attributes and safe URLs.
++ */
++(function () {
++  'use strict';
++
++  var SEASONAL_CARDS = [
++    '<div class="card">' +
++      '<h3>Maple Oat Latte</h3>' +
++      '<p>Creamy oat milk with a hint of Vermont maple syrup.</p>' +
++      '<a href="/menu/seasonal" class="btn">View Details</a>' +
++    '</div>',
++    '<div class="card">' +
++      '<h3>Dark Roast Espresso</h3>' +
++      '<p>Bold, smokey, and perfect for a morning boost.</p>' +
++      '<a href="/menu/espresso" class="btn">View Details</a>' +
++    '</div>',
++    '<div class="card">' +
++      '<h3>Cold Brew</h3>' +
++      '<p>Steeped for 18 hours for maximum smoothness.</p>' +
++      '<a href="/menu/cold-brew" class="btn">View Details</a>' +
++    '</div>'
++  ];
++
++  // Elements and attributes allowed to survive sanitization. Anything else
++  // (script, style, iframe, svg, math, event handlers, inline styles, ...) is
++  // dropped.
++  var ALLOWED_TAGS = {
++    DIV: true, SPAN: true, H3: true, H4: true, P: true, A: true,
++    STRONG: true, EM: true, B: true, I: true, BR: true, UL: true, LI: true
++  };
++  var ALLOWED_ATTRS = {
++    '*': { 'class': true },
++    A: { href: true }
++  };
++  var SAFE_URL_PROTOCOLS = { 'http:': true, 'https:': true };
++
++  var tt = window.trustedTypes;
++
++  // Policy used only to hand a string to DOMParser. DOMParser produces an
++  // inert document (no script execution, no resource loading), and the
++  // result never touches the live DOM until it has been sanitized. It stays
++  // private to this closure so no other code can use it.
++  var inertPolicy = tt && tt.createPolicy
++    ? tt.createPolicy('daily-grind-inert', { createHTML: function (s) { return s; } })
++    : null;
++
++  function parseInert(html) {
++    var input = inertPolicy ? inertPolicy.createHTML(html) : html;
++    return new DOMParser().parseFromString(input, 'text/html').body;
++  }
++
++  function isSafeUrl(value) {
++    try {
++      var url = new URL(value, window.location.href);
++      return SAFE_URL_PROTOCOLS[url.protocol] === true;
++    } catch (e) {
++      return false;
++    }
++  }
++
++  function sanitizeNode(node) {
++    var children = Array.prototype.slice.call(node.childNodes);
++    for (var i = 0; i < children.length; i++) {
++      var child = children[i];
++
++      if (child.nodeType === Node.TEXT_NODE) continue;
++
++      if (child.nodeType !== Node.ELEMENT_NODE || !ALLOWED_TAGS[child.nodeName]) {
++        // Drop comments, processing instructions and disallowed elements
++        // together with their contents.
++        node.removeChild(child);
++        continue;
++      }
++
++      var attrs = Array.prototype.slice.call(child.attributes);
++      var tagAttrs = ALLOWED_ATTRS[child.nodeName] || {};
++      for (var j = 0; j < attrs.length; j++) {
++        var name = attrs[j].name.toLowerCase();
++        var allowed = ALLOWED_ATTRS['*'][name] || tagAttrs[name];
++        if (!allowed || (name === 'href' && !isSafeUrl(attrs[j].value))) {
++          child.removeAttribute(attrs[j].name);
++        }
++      }
++
++      sanitizeNode(child);
++    }
++  }
++
++  function sanitizeHTML(html) {
++    var body = parseInert(String(html));
++    sanitizeNode(body);
++    return body.innerHTML;
++  }
++
++  // The only policy allowed to produce TrustedHTML for the live document.
++  var sanitizerPolicy = tt && tt.createPolicy
++    ? tt.createPolicy('daily-grind-sanitizer', { createHTML: sanitizeHTML })
++    : { createHTML: sanitizeHTML };
++
++  function renderSeasonalCards(container, cards) {
++    container.innerHTML = sanitizerPolicy.createHTML(cards.join(''));
++  }
++
++  document.addEventListener('DOMContentLoaded', function () {
++    var grid = document.getElementById('seasonal-favorites');
++    if (grid) renderSeasonalCards(grid, SEASONAL_CARDS);
++  });
++})();

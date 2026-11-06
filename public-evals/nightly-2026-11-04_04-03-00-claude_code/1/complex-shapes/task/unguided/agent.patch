@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,58 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Hero content sits above the decorative shape */
++    .hero {
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
++    }
++
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative organic "coffee splash" block.
++       Absolutely positioned, so it never affects the hero's flex layout.
++       Layered fallbacks:
++         1. Background: warm gradient always paints even if the photo fails.
++         2. Shape: an organic border-radius blob is the baseline, so it still
++            looks hand-made if the SVG clip-path is unsupported or missing.
++         3. The SVG clip-path then refines it into a splash with droplets. */
++    .shaped-element {
++      position: absolute;
++      z-index: 0;
++      right: -4%;
++      bottom: -10%;
++      width: clamp(180px, 34vw, 460px);
++      aspect-ratio: 1 / 1;
++      pointer-events: none;
++      opacity: 0.85;
++      background-color: var(--primary);
++      background-image:
++        linear-gradient(135deg, rgba(255, 171, 64, 0.35), rgba(78, 52, 46, 0.25)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80'),
++        radial-gradient(circle at 30% 30%, var(--accent), var(--primary) 70%);
++      background-size: cover;
++      background-position: center;
++      /* Baseline organic blob; the splash path below is drawn to sit inside it,
++         so the two can coexist and no @supports switch is needed. */
++      border-radius: 52% 48% 50% 50% / 48% 52% 50% 50%;
++      clip-path: url(#coffee-splash);
++      transform: rotate(-8deg);
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        opacity: 0.45;
++        right: -20%;
++        bottom: -15%;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,9 +217,28 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <!-- Vector clip shape for .shaped-element (objectBoundingBox = scales with the element) -->
++  <svg width="0" height="0" style="position: absolute;" aria-hidden="true" focusable="false">
++    <defs>
++      <clipPath id="coffee-splash" clipPathUnits="objectBoundingBox">
++        <path d="M0.50,0.06 C0.62,0.02 0.70,0.12 0.76,0.16 C0.84,0.10 0.94,0.14 0.93,0.25
++                 C0.92,0.33 0.86,0.36 0.90,0.44 C0.97,0.52 0.99,0.64 0.91,0.72
++                 C0.85,0.78 0.80,0.76 0.78,0.84 C0.75,0.94 0.62,0.97 0.54,0.90
++                 C0.47,0.84 0.42,0.92 0.32,0.91 C0.20,0.90 0.14,0.80 0.17,0.70
++                 C0.19,0.63 0.10,0.62 0.07,0.53 C0.03,0.42 0.11,0.33 0.19,0.32
++                 C0.25,0.31 0.22,0.22 0.28,0.15 C0.35,0.07 0.43,0.09 0.50,0.06 Z" />
++        <!-- splash droplets -->
++        <circle cx="0.94" cy="0.36" r="0.022" />
++        <circle cx="0.10" cy="0.24" r="0.025" />
++        <circle cx="0.40" cy="0.97" r="0.020" />
++      </clipPath>
++    </defs>
++  </svg>
++
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

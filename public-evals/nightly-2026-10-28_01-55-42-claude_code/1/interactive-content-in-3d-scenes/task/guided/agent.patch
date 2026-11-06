@@ -1,0 +1,776 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -1,11 +1,20 @@
+ <!DOCTYPE html>
+-<html lang="en">
++<html lang="en" class="no-js">
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>document.documentElement.classList.remove('no-js');</script>
++  <script type="importmap">
++    {
++      "imports": {
++        "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
++        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
++      }
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -134,8 +143,286 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* 3D coffee box showcase */
++    .showcase {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 40px;
++      align-items: center;
++      margin-top: 40px;
++    }
++
++    .showcase-copy h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .showcase-copy p {
++      margin-bottom: 1rem;
++    }
++
++    .showcase-copy .hint {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .stage-wrap {
++      width: min(100%, 480px);
++      margin-inline: auto;
++    }
++
++    .stage {
++      position: relative;
++      aspect-ratio: 4 / 5;
++      border-radius: 16px;
++      overflow: hidden;
++      background:
++        radial-gradient(ellipse at 50% 30%, #fff8ec 0%, #efe3d3 55%, #d7ccc8 100%);
++      box-shadow: 0 10px 30px rgba(62, 39, 35, 0.15);
++    }
++
++    .stage canvas {
++      position: absolute;
++      inset: 0;
++      display: block;
++      width: 100%;
++      height: 100%;
++      /* Horizontal drag rotates the box; vertical gestures keep scrolling the page. */
++      touch-action: pan-y;
++      cursor: grab;
++    }
++
++    .stage canvas.is-dragging {
++      cursor: grabbing;
++    }
++
++    /* Fallback layer (browsers without HTML-in-Canvas): the live form is placed
++       over the canvas with a CSS matrix3d so it stays a real, clickable element. */
++    .box-overlay {
++      position: absolute;
++      inset: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    .box-overlay .box-face {
++      pointer-events: auto;
++      backface-visibility: hidden;
++    }
++
++    /* Where the form lives before JS runs, and the no-WebGL static layout. */
++    .box-ui-host {
++      display: grid;
++      place-items: center;
++      position: absolute;
++      inset: 0;
++      padding: 20px;
++    }
++
++    html:not(.no-js) .box-ui-host {
++      display: none;
++    }
++
++    html:not(.no-js) .stage.is-static .box-ui-host {
++      display: grid;
++    }
++
++    .stage.is-static canvas,
++    .stage.is-static .box-overlay {
++      display: none;
++    }
++
++    .stage-controls {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 12px;
++    }
++
++    .spin-toggle {
++      background: transparent;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      border-radius: 999px;
++      padding: 8px 18px;
++      font: inherit;
++      font-size: 0.9rem;
++      min-height: 44px;
++      cursor: pointer;
++    }
++
++    .spin-toggle:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* The HTML face projected onto the box. Fixed pixel size: the 3D face has
++       the same 8:11 aspect ratio, so the projection is never stretched. */
++    .box-face {
++      width: 320px;
++      height: 440px;
++      margin: 0;
++      cursor: auto;
++      padding: 20px 22px;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      background: #fbf6ee;
++      color: var(--text);
++      border: 1px solid #e0d6c8;
++      font-size: 0.9rem;
++      line-height: 1.35;
++      overflow: hidden;
++    }
++
++    .box-face .eyebrow {
++      font-size: 0.7rem;
++      letter-spacing: 0.2em;
++      text-transform: uppercase;
++      color: #8d6e63;
++    }
++
++    .box-face h3 {
++      font-size: 1.6rem;
++      line-height: 1.1;
++      color: var(--primary);
++    }
++
++    .box-face .sub {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .box-face fieldset {
++      border: 0;
++      padding: 0;
++      margin: 0;
++    }
++
++    .box-face legend,
++    .box-face label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.8rem;
++      margin-bottom: 4px;
++    }
++
++    .box-face .radio-row {
++      display: flex;
++      gap: 16px;
++      accent-color: var(--primary);
++    }
++
++    .box-face .radio-row label {
++      font-weight: 400;
++      font-size: 0.9rem;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      margin: 0;
++      padding: 6px 0;
++    }
++
++    .box-face input[type="radio"] {
++      width: 18px;
++      height: 18px;
++      margin: 0;
++    }
++
++    .box-face input[type="email"],
++    .box-face input[type="number"] {
++      width: 100%;
++      min-height: 48px;
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.5rem 0.65rem;
++      border: 1px solid #a1887f;
++      border-radius: 6px;
++      background: #fff;
++      color: var(--text);
++    }
++
++    .box-face input[type="number"] {
++      text-align: center;
++      -moz-appearance: textfield;
++      appearance: textfield;
++    }
++
++    .box-face .qty {
++      display: grid;
++      grid-template-columns: 48px 1fr 48px;
++      gap: 6px;
++    }
++
++    .box-face .qty button {
++      min-height: 48px;
++      font: inherit;
++      font-size: 1.25rem;
++      border: 1px solid #a1887f;
++      border-radius: 6px;
++      background: #fff;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .box-face .qty button:hover {
++      background: var(--secondary);
++    }
++
++    .box-face .help {
++      display: block;
++      font-size: 0.75rem;
++      color: #6d4c41;
++      margin-top: 3px;
++    }
++
++    .box-face input:user-invalid {
++      border-color: #c62828;
++    }
++
++    .box-face .submit {
++      min-height: 48px;
++      font: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      border: 0;
++      border-radius: 6px;
++      background: var(--primary);
++      color: #fff;
++      cursor: pointer;
++    }
++
++    .box-face .submit:hover {
++      background: #3e2723;
++    }
++
++    .box-face .submit:disabled {
++      background: #6d4c41;
++      cursor: default;
++    }
++
++    .box-face .status {
++      min-height: 1.3em;
++      font-size: 0.8rem;
++      color: #2e7d32;
++    }
++
++    .box-face :focus-visible,
++    .spin-toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn,
++      nav a {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +461,61 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase" aria-labelledby="showcase-title">
++      <div class="showcase-copy">
++        <h2 id="showcase-title">Take the Roast Home</h2>
++        <p>Our signature Dark Roast box, straight from the roastery. Spin it around, then order right off the label.</p>
++        <p class="hint">Drag the box to rotate it. The order form on the front is live: pick a grind, set a quantity, and add it to your bag.</p>
++      </div>
++
++      <div class="stage-wrap">
++        <div class="stage" id="box-stage">
++          <canvas id="box-canvas" content="drawable" layoutsubtree></canvas>
++          <div class="box-overlay" id="box-overlay"></div>
++          <div class="box-ui-host" id="box-ui-host">
++            <form id="box-order-form" class="box-face" drawable method="post" action="/cart/add">
++              <div>
++                <p class="eyebrow">The Daily Grind</p>
++                <h3>Dark Roast</h3>
++                <p class="sub">340 g &middot; Bold, smokey, chocolate finish</p>
++              </div>
++
++              <fieldset>
++                <legend>Grind</legend>
++                <div class="radio-row">
++                  <label for="grind-whole"><input type="radio" id="grind-whole" name="grind" value="Whole bean" checked> Whole bean</label>
++                  <label for="grind-ground"><input type="radio" id="grind-ground" name="grind" value="Ground"> Ground</label>
++                </div>
++              </fieldset>
++
++              <div>
++                <label for="box-qty">Quantity</label>
++                <div class="qty">
++                  <button type="button" id="qty-minus" aria-label="Decrease quantity">&minus;</button>
++                  <input type="number" id="box-qty" name="quantity" value="1" min="1" max="12" step="1" inputmode="numeric" required>
++                  <button type="button" id="qty-plus" aria-label="Increase quantity">+</button>
++                </div>
++              </div>
++
++              <div>
++                <label for="box-email">Email for pickup code</label>
++                <input type="email" id="box-email" name="email" autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" aria-describedby="box-email-help" required>
++                <span id="box-email-help" class="help">We only use it to send your pickup code.</span>
++              </div>
++
++              <button type="submit" class="submit" id="box-submit">Add 1 box &middot; $18</button>
++              <p class="status" id="box-status" role="status" aria-live="polite"></p>
++            </form>
++          </div>
++        </div>
++        <div class="stage-controls">
++          <button type="button" class="spin-toggle" id="spin-toggle" hidden>Pause spin</button>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +546,401 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // ---------------------------------------------------------------------
++    // Spinning 3D coffee box with a live HTML order form on its front face.
++    //
++    // Preferred path: the HTML-in-Canvas API. The form is a child of the
++    // <canvas content="drawable">, Three.js uploads it as an HTMLTexture, and
++    // InteractionManager keeps the real DOM element aligned with the face so
++    // the browser hit-tests it natively.
++    //
++    // Fallback path (no native support): the same form is placed in an overlay
++    // above the canvas and positioned with the same matrix3d every frame, so it
++    // remains a real, clickable element while the box rotates.
++    // ---------------------------------------------------------------------
++
++    const stage = document.getElementById('box-stage');
++    const canvas = document.getElementById('box-canvas');
++    const overlay = document.getElementById('box-overlay');
++    const form = document.getElementById('box-order-form');
++    const spinToggle = document.getElementById('spin-toggle');
++
++    const FACE_W = 1.6, FACE_H = 2.2, BOX_D = 0.9;   // 8:11, same as the 320x440 form
++    const PRICE = 18;
++
++    wireForm();
++
++    // Three.js renderer path needs texElementImage2D (Chrome's HTML-in-Canvas
++    // upload entry point); the HTML-in-Canvas feature itself is exposed via the
++    // `content` attribute (`layoutsubtree` in earlier builds).
++    const hasHtmlInCanvas =
++      ('content' in HTMLCanvasElement.prototype || 'layoutsubtree' in HTMLCanvasElement.prototype) &&
++      'requestPaint' in HTMLCanvasElement.prototype &&
++      typeof WebGL2RenderingContext !== 'undefined' &&
++      'texElementImage2D' in WebGL2RenderingContext.prototype;
++
++    let THREE, InteractionManager, renderer;
++    try {
++      THREE = await import('three');
++      ({ InteractionManager } = await import('three/addons/interaction/InteractionManager.js'));
++      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
++    } catch (err) {
++      console.warn('3D coffee box unavailable, showing static form instead.', err);
++      stage.classList.add('is-static');
++      throw err;
++    }
++
++    renderer.setClearColor(0x000000, 0);
++    renderer.setPixelRatio(1); // drawing buffer sized in device pixels by the ResizeObserver below
++
++    const scene = new THREE.Scene();
++    const camera = new THREE.PerspectiveCamera(32, 4 / 5, 0.1, 50);
++    camera.position.set(0, 0.35, 6.4);
++    camera.lookAt(0, 0, 0);
++
++    scene.add(new THREE.HemisphereLight(0xfff4e6, 0x8d6e63, 1.1));
++    const key = new THREE.DirectionalLight(0xffffff, 1.6);
++    key.position.set(3, 4, 5);
++    scene.add(key);
++    const rim = new THREE.DirectionalLight(0xffd9a8, 0.6);
++    rim.position.set(-4, 2, -3);
++    scene.add(rim);
++
++    // ----- Box artwork (drawn on 2D canvases; no network needed) -----------
++    const maxAniso = renderer.capabilities.getMaxAnisotropy();
++    function artTexture(w, h, draw) {
++      const c = document.createElement('canvas');
++      c.width = w; c.height = h;
++      const ctx = c.getContext('2d');
++      draw(ctx, w, h);
++      const t = new THREE.CanvasTexture(c);
++      t.colorSpace = THREE.SRGBColorSpace;
++      t.anisotropy = maxAniso;
++      return t;
++    }
++    function kraft(ctx, w, h, base = '#a1887f') {
++      ctx.fillStyle = base;
++      ctx.fillRect(0, 0, w, h);
++      ctx.fillStyle = 'rgba(62,39,35,0.08)';
++      for (let i = 0; i < w * h / 180; i++) {
++        ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
++      }
++    }
++    const sideTexture = (flip) => artTexture(256, 640, (ctx, w, h) => {
++      kraft(ctx, w, h);
++      ctx.fillStyle = '#4e342e';
++      ctx.fillRect(0, 0, w, 36);
++      ctx.fillRect(0, h - 36, w, 36);
++      ctx.save();
++      ctx.translate(w / 2, h / 2);
++      ctx.rotate(flip ? Math.PI / 2 : -Math.PI / 2);
++      ctx.fillStyle = '#fbf6ee';
++      ctx.font = 'bold 54px "Segoe UI", Tahoma, sans-serif';
++      ctx.textAlign = 'center';
++      ctx.textBaseline = 'middle';
++      ctx.fillText('THE DAILY GRIND', 0, -22);
++      ctx.font = '28px "Segoe UI", Tahoma, sans-serif';
++      ctx.fillStyle = '#ffab40';
++      ctx.fillText('DARK ROAST  ·  SMALL BATCH', 0, 34);
++      ctx.restore();
++    });
++    const topTexture = artTexture(512, 288, (ctx, w, h) => {
++      kraft(ctx, w, h, '#8d6e63');
++      ctx.strokeStyle = '#fbf6ee';
++      ctx.lineWidth = 6;
++      ctx.beginPath(); ctx.arc(w / 2, h / 2, 96, 0, Math.PI * 2); ctx.stroke();
++      ctx.fillStyle = '#fbf6ee';
++      ctx.font = 'bold 40px "Segoe UI", Tahoma, sans-serif';
++      ctx.textAlign = 'center';
++      ctx.textBaseline = 'middle';
++      ctx.fillText('DG', w / 2, h / 2 - 8);
++      ctx.font = '18px "Segoe UI", Tahoma, sans-serif';
++      ctx.fillText('EST. 2026', w / 2, h / 2 + 30);
++    });
++    const bottomTexture = artTexture(256, 144, (ctx, w, h) => {
++      kraft(ctx, w, h, '#795548');
++      ctx.fillStyle = '#fbf6ee';
++      ctx.font = '16px "Segoe UI", Tahoma, sans-serif';
++      ctx.textAlign = 'center';
++      ctx.fillText('ROASTED IN VERMONT · 340 g', w / 2, h / 2 + 6);
++    });
++    const backTexture = artTexture(320, 440, (ctx, w, h) => {
++      ctx.fillStyle = '#fbf6ee';
++      ctx.fillRect(0, 0, w, h);
++      ctx.fillStyle = '#4e342e';
++      ctx.fillRect(0, 0, w, 70);
++      ctx.fillStyle = '#fbf6ee';
++      ctx.font = 'bold 24px "Segoe UI", Tahoma, sans-serif';
++      ctx.textAlign = 'center';
++      ctx.fillText('TASTING NOTES', w / 2, 44);
++      ctx.fillStyle = '#3e2723';
++      ctx.font = '20px "Segoe UI", Tahoma, sans-serif';
++      ctx.textAlign = 'left';
++      ['Dark chocolate', 'Toasted hazelnut', 'Brown sugar', 'Smoke & cedar'].forEach((line, i) => {
++        ctx.fillText('•  ' + line, 36, 130 + i * 44);
++      });
++      ctx.fillStyle = '#8d6e63';
++      ctx.font = '16px "Segoe UI", Tahoma, sans-serif';
++      ctx.textAlign = 'center';
++      ctx.fillText('Roasted ' + new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' }), w / 2, h - 60);
++      ctx.fillText('Best within 6 weeks of roast', w / 2, h - 34);
++    });
++
++    const std = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0 });
++    const cream = new THREE.MeshStandardMaterial({ color: 0xfbf6ee, roughness: 0.9 });
++    const backMaterial = std(backTexture);
++    // BoxGeometry material order: +x, -x, +y, -y, +z (front), -z (back)
++    const boxMaterials = [std(sideTexture(false)), std(sideTexture(true)), std(topTexture), std(bottomTexture), cream, backMaterial];
++
++    // Stock photo on the back panel; keeps the drawn tasting notes if it fails to load.
++    new THREE.TextureLoader().load(
++      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&h=880&q=80',
++      (photo) => {
++        photo.colorSpace = THREE.SRGBColorSpace;
++        photo.anisotropy = maxAniso;
++        backMaterial.map = photo;
++        backMaterial.needsUpdate = true;
++        requestRender();
++      }
++    );
++
++    const box = new THREE.Group();
++    scene.add(box);
++    box.add(new THREE.Mesh(new THREE.BoxGeometry(FACE_W, FACE_H, BOX_D), boxMaterials));
++
++    // Front face: the HTML form is projected onto this plane.
++    const faceGeometry = new THREE.PlaneGeometry(FACE_W, FACE_H);
++    const face = new THREE.Mesh(faceGeometry, new THREE.MeshBasicMaterial({ color: 0xfbf6ee, toneMapped: false }));
++    face.position.z = BOX_D / 2 + 0.002;
++    box.add(face);
++
++    // Soft contact shadow under the box.
++    const shadowTexture = artTexture(256, 128, (ctx, w, h) => {
++      const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
++      g.addColorStop(0, 'rgba(62,39,35,0.45)');
++      g.addColorStop(1, 'rgba(62,39,35,0)');
++      ctx.fillStyle = g;
++      ctx.fillRect(0, 0, w, h);
++    });
++    const shadow = new THREE.Mesh(
++      new THREE.PlaneGeometry(2.8, 1.5),
++      new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false })
++    );
++    shadow.rotation.x = -Math.PI / 2;
++    shadow.position.y = -FACE_H / 2 - 0.12;
++    scene.add(shadow);
++
++    // ----- Put the live form into the scene --------------------------------
++    const interactions = new InteractionManager();
++    interactions.connect(renderer, camera);
++
++    if (hasHtmlInCanvas) {
++      canvas.appendChild(form);                    // drawable children must be inside the canvas
++      const htmlTexture = new THREE.HTMLTexture(form);
++      htmlTexture.colorSpace = THREE.SRGBColorSpace;
++      htmlTexture.minFilter = THREE.LinearFilter;
++      face.material.map = htmlTexture;
++      face.material.color.set(0xffffff);
++      face.material.needsUpdate = true;
++      interactions.add(face);
++      // Re-upload only when the browser reports the form actually repainted.
++      canvas.onpaint = (event) => {
++        const changed = event.changedElements;
++        if (changed && !changed.includes(form)) return;   // nothing on the form repainted
++        htmlTexture.needsUpdate = true;
++        if (changed) requestRender();                       // builds without changedElements re-upload on the next frame
++      };
++      canvas.requestPaint();
++    } else {
++      overlay.appendChild(form);
++      // InteractionManager positions elements it finds on registered meshes
++      // via an HTMLTexture. This proxy mesh is never rendered; it only carries
++      // the texture so the manager computes the same matrix3d for the overlay.
++      const proxy = new THREE.Mesh(faceGeometry, new THREE.MeshBasicMaterial({ map: new THREE.HTMLTexture(form) }));
++      proxy.visible = false;
++      proxy.position.copy(face.position);
++      box.add(proxy);
++      interactions.add(proxy);
++    }
++
++    // Newer HTML-in-Canvas builds hit-test through updateElementGeometry; the
++    // matrix InteractionManager writes is exactly the element->canvas transform.
++    const canUpdateGeometry = hasHtmlInCanvas && typeof canvas.updateElementGeometry === 'function';
++    const _normal = new THREE.Vector3(), _toCamera = new THREE.Vector3();
++    function syncElementGeometry() {
++      if (!hasHtmlInCanvas) return; // overlay mode: backface-visibility handles paint + hit-testing
++      // The GPU hides the face when it turns away, but DOM hit-testing does not
++      // know about occlusion, so switch the form off while it faces backwards.
++      _normal.set(0, 0, 1).applyQuaternion(box.quaternion);
++      face.getWorldPosition(_toCamera).subVectors(camera.position, _toCamera);
++      form.style.pointerEvents = _normal.dot(_toCamera) > 0 ? 'auto' : 'none';
++      if (!canUpdateGeometry || !form.style.transform) return;
++      try {
++        canvas.updateElementGeometry(form, { canvasTransform: new DOMMatrix(form.style.transform) });
++      } catch (err) { /* geometry sync is best-effort */ }
++    }
++
++    // ----- Sizing: drawing buffer matches device pixels --------------------
++    const supportsDevicePixelBox = typeof ResizeObserverEntry !== 'undefined' &&
++      'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++    const sizeObserver = new ResizeObserver(([entry]) => {
++      const dpc = entry.devicePixelContentBoxSize;
++      const w = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * devicePixelRatio);
++      const h = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * devicePixelRatio);
++      if (!w || !h) return;
++      renderer.setSize(w, h, false);
++      camera.aspect = w / h;
++      camera.updateProjectionMatrix();
++      requestRender();
++    });
++    sizeObserver.observe(canvas, supportsDevicePixelBox ? { box: 'device-pixel-content-box' } : {});
++
++    // ----- Rotation, interaction and the render loop -----------------------
++    const TAU = Math.PI * 2;
++    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
++    let autoSpin = !reduceMotion.matches;
++    let angle = 0.35;          // current Y rotation
++    let spinSpeed = 0.55;      // rad/s while auto-spinning
++    let velocity = 0;          // leftover drag velocity
++    let hovering = false, focused = false, dragging = false;
++    let inView = true, rafId = 0, lastTime = 0, renderOnce = false;
++
++    spinToggle.hidden = false;
++    const updateToggle = () => { spinToggle.textContent = autoSpin ? 'Pause spin' : 'Resume spin'; };
++    updateToggle();
++    spinToggle.addEventListener('click', () => { autoSpin = !autoSpin; updateToggle(); start(); });
++    reduceMotion.addEventListener('change', (e) => { autoSpin = !e.matches; updateToggle(); start(); });
++
++    // While the visitor is using the form, glide to face the camera and hold still.
++    form.addEventListener('pointerenter', () => { hovering = true; start(); });
++    form.addEventListener('pointerleave', () => { hovering = false; start(); });
++    form.addEventListener('focusin', () => { focused = true; start(); });
++    form.addEventListener('focusout', (e) => { focused = form.contains(e.relatedTarget); start(); });
++
++    // Drag on the empty canvas to rotate (the form is left to its own events).
++    let dragX = 0, dragLast = 0;
++    canvas.addEventListener('pointerdown', (e) => {
++      if (e.target !== canvas || e.button !== 0) return;
++      dragging = true;
++      dragX = e.clientX; dragLast = performance.now(); velocity = 0;
++      canvas.setPointerCapture(e.pointerId);
++      canvas.classList.add('is-dragging');
++      start();
++    });
++    canvas.addEventListener('pointermove', (e) => {
++      if (!dragging) return;
++      const dx = e.clientX - dragX;
++      const now = performance.now();
++      const dt = Math.max(now - dragLast, 1) / 1000;
++      angle += dx * 0.012;
++      velocity = (dx * 0.012) / dt;
++      dragX = e.clientX; dragLast = now;
++    });
++    const endDrag = (e) => {
++      if (!dragging) return;
++      dragging = false;
++      canvas.classList.remove('is-dragging');
++      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
++    };
++    canvas.addEventListener('pointerup', endDrag);
++    canvas.addEventListener('pointercancel', endDrag);
++
++    // Pause the loop when the stage is off-screen or the tab is hidden.
++    new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; start(); }, { threshold: 0.05 })
++      .observe(stage);
++    document.addEventListener('visibilitychange', start);
++
++    function requestRender() { renderOnce = true; start(); }
++
++    function start() {
++      if (rafId || document.hidden || !inView) return;
++      lastTime = performance.now();
++      rafId = requestAnimationFrame(frame);
++    }
++
++    function frame(now) {
++      rafId = 0;
++      const dt = Math.min((now - lastTime) / 1000, 0.1);
++      lastTime = now;
++
++      const engaged = hovering || focused;
++      let moving = false;
++      if (dragging) {
++        moving = true;
++      } else if (engaged) {
++        // Ease to the nearest front-facing orientation.
++        const target = Math.round(angle / TAU) * TAU;
++        const diff = target - angle;
++        angle += diff * Math.min(1, dt * 7);
++        moving = Math.abs(diff) > 0.0005;
++      } else if (Math.abs(velocity) > 0.05) {
++        angle += velocity * dt;
++        velocity *= Math.exp(-dt * 3);
++        moving = true;
++      } else if (autoSpin) {
++        angle += spinSpeed * dt;
++        moving = true;
++      }
++
++      box.rotation.y = angle;
++      box.position.y = autoSpin && !engaged ? Math.sin(now / 1400) * 0.04 : box.position.y * 0.9;
++      box.updateMatrixWorld();
++
++      interactions.update();     // aligns the real DOM form with the 3D face
++      syncElementGeometry();
++      if (hasHtmlInCanvas) canvas.requestPaint();   // keeps the HTML texture fresh
++      renderer.render(scene, camera);
++
++      const bobbing = autoSpin && !engaged;
++      // In native mode the texture only refreshes from the loop, so keep it
++      // running while the visitor is typing or hovering.
++      const liveTexture = hasHtmlInCanvas && engaged;
++      if ((moving || bobbing || liveTexture || renderOnce) && !document.hidden && inView) {
++        renderOnce = false;
++        rafId = requestAnimationFrame(frame);
++      }
++    }
++
++    start();
++
++    // ----- Form behaviour ----------------------------------------------------
++    function wireForm() {
++      const qty = document.getElementById('box-qty');
++      const submit = document.getElementById('box-submit');
++      const status = document.getElementById('box-status');
++
++      const updatePrice = () => {
++        const n = Math.min(12, Math.max(1, parseInt(qty.value, 10) || 1));
++        submit.textContent = `Add ${n} ${n === 1 ? 'box' : 'boxes'} · $${n * PRICE}`;
++      };
++      document.getElementById('qty-minus').addEventListener('click', () => {
++        qty.stepDown(); qty.dispatchEvent(new Event('input', { bubbles: true }));
++      });
++      document.getElementById('qty-plus').addEventListener('click', () => {
++        qty.stepUp(); qty.dispatchEvent(new Event('input', { bubbles: true }));
++      });
++      qty.addEventListener('input', () => { qty.setCustomValidity(''); updatePrice(); });
++      qty.addEventListener('invalid', () => qty.setCustomValidity('Choose between 1 and 12 boxes.'));
++      updatePrice();
++
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        status.textContent = '';
++        if (!form.checkValidity()) {
++          form.reportValidity();
++          return;
++        }
++        const data = new FormData(form);
++        const n = parseInt(data.get('quantity'), 10);
++        submit.disabled = true;                      // prevent double submission
++        status.textContent = `Added ${n} × Dark Roast (${data.get('grind').toLowerCase()}) to your bag. Pickup code sent to ${data.get('email')}.`;
++        setTimeout(() => { submit.disabled = false; }, 1500);
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

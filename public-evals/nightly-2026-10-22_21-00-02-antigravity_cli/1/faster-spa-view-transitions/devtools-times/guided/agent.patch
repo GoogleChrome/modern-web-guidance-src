@@ -1,0 +1,402 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..a2f0790 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -53,6 +53,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+             </div>
+             <FlyoutMenu 
+                 isOpen={activeCategory !== null} 
++                onClose={() => setActiveCategory(null)}
+                 categories={activeSubCategories.filter(c => categories.includes(c))}
+                 articles={articles}
+                 reports={filteredReports}
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..c8a5a49 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -2,13 +2,14 @@ import React from 'react';
+ 
+ interface FlyoutMenuProps {
+   isOpen: boolean;
++  onClose?: () => void;
+   categories: string[];
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, onClose, categories, articles, reports, multimedia }) => {
+   if (!isOpen) {
+     return null;
+   }
+@@ -26,7 +27,14 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+   }
+ 
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
++    <div
++      className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10"
++      onClick={(e) => {
++        if ((e.target as HTMLElement).closest('a') && onClose) {
++          onClose();
++        }
++      }}
++    >
+       <div className="container mx-auto px-4 py-6">
+         <div className="grid grid-cols-4 gap-x-8">
+           
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..7aebaa5 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -68,7 +68,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+           <ul className="space-y-2">
+             {readingListArticles.map(article => (
+               <li key={article.slug} className="flex items-center">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
++                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} onClick={onClose} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+                   <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                   <p className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..ca70efe 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -75,7 +75,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                                     const imagePath = article.image ? article.image.replace(/^\//, '') : '';
+                                     return (
+                                         <li key={article.slug}>
+-                                            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
++                                            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} onClick={onClose} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+                                                 <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+                                                 <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                                             </a>
+@@ -103,7 +103,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                         <ul className="space-y-2">
+                             {filteredArticles.map(article => (
+                                 <li key={article.slug}>
+-                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
++                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} onClick={onClose} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+                                         <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                                         <p className="text-sm text-gray-600">{article.summary}</p>
+                                     </a>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..acee942 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,7 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const currentPath = Astro.url.pathname.replace(/\/+$/, "") || "/";
+ ---
+ 
+ <!doctype html>
+@@ -38,18 +39,267 @@ const baseUrl = import.meta.env.BASE_URL;
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      <AdSlotFireplace client:load transition:persist="ad-fireplace" />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div transition:persist="site-header">
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main
++          id="spa-view-root"
++          class="bg-white relative"
++          transition:persist="spa-view-root"
++        >
++          <div
++            class="spa-view"
++            data-view-path={currentPath}
++            data-view-title={title}
++            aria-hidden="false"
++            tabindex="-1"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+-    <Footer />
++    <Footer transition:persist="site-footer" />
++
++    <script>
++      import {
++        swapFunctions,
++        type TransitionBeforePreparationEvent,
++        type TransitionBeforeSwapEvent,
++      } from "astro:transitions/client";
++
++      const MAX_CACHED_VIEWS = 10;
++      const viewCache = new Map<
++        string,
++        {
++          element: HTMLElement;
++          title: string;
++          styles: HTMLStyleElement[];
++        }
++      >();
++
++      function normalizePath(url: URL | Location): string {
++        const path = url.pathname.replace(/\/+$/, "") || "/";
++        return path + url.search;
++      }
++
++      function captureHeadStyles(doc: Document): HTMLStyleElement[] {
++        return Array.from(doc.head.querySelectorAll("style")).map(
++          (style) => style.cloneNode(true) as HTMLStyleElement,
++        );
++      }
++
++      function ensureHeadStyles(styles: HTMLStyleElement[]) {
++        const existingContents = new Set(
++          Array.from(document.head.querySelectorAll("style")).map(
++            (s) => s.textContent,
++          ),
++        );
++        for (const style of styles) {
++          if (style.textContent && !existingContents.has(style.textContent)) {
++            document.head.appendChild(style.cloneNode(true));
++            existingContents.add(style.textContent);
++          }
++        }
++      }
++
++      function touchView(
++        key: string,
++        entry: {
++          element: HTMLElement;
++          title: string;
++          styles: HTMLStyleElement[];
++        },
++      ) {
++        viewCache.delete(key);
++        viewCache.set(key, entry);
++
++        // LRU eviction strategy to prevent memory bloat in dynamic applications
++        while (viewCache.size > MAX_CACHED_VIEWS) {
++          const oldestKey = viewCache.keys().next().value;
++          if (!oldestKey || oldestKey === key) break;
++          const oldestEntry = viewCache.get(oldestKey);
++          if (oldestEntry) {
++            oldestEntry.element.remove();
++          }
++          viewCache.delete(oldestKey);
++        }
++      }
++
++      function initInitialView() {
++        const root = document.getElementById("spa-view-root");
++        if (!root) return;
++        const activeView = root.querySelector<HTMLElement>(
++          ".spa-view:not(.inactive)",
++        );
++        if (activeView) {
++          const key =
++            activeView.dataset.viewPath || normalizePath(window.location);
++          activeView.dataset.viewPath = key;
++          const title = activeView.dataset.viewTitle || document.title;
++          activeView.dataset.viewTitle = title;
++          if (!viewCache.has(key)) {
++            touchView(key, {
++              element: activeView,
++              title,
++              styles: captureHeadStyles(document),
++            });
++          }
++        }
++      }
++
++      function switchToView(
++        root: HTMLElement,
++        targetKey: string,
++        incomingView?: HTMLElement | null,
++        incomingTitle?: string,
++        incomingStyles?: HTMLStyleElement[],
++      ) {
++        // Hide all currently rendered views inside the container
++        root.querySelectorAll<HTMLElement>(".spa-view").forEach((view) => {
++          if (view.dataset.viewPath !== targetKey) {
++            view.classList.add("inactive");
++            view.setAttribute("aria-hidden", "true");
++            view.setAttribute("inert", "");
++          }
++        });
++
++        let cached = viewCache.get(targetKey);
++        let activeView = cached?.element;
++
++        if (activeView && !root.contains(activeView)) {
++          root.appendChild(activeView);
++        }
++
++        if (!activeView && incomingView) {
++          activeView = incomingView;
++          activeView.dataset.viewPath = targetKey;
++          const title =
++            incomingTitle ||
++            activeView.dataset.viewTitle ||
++            document.title;
++          activeView.dataset.viewTitle = title;
++          root.appendChild(activeView);
++          cached = {
++            element: activeView,
++            title,
++            styles: incomingStyles || captureHeadStyles(document),
++          };
++
++          // Ensure media elements and declarative shadow DOM inside the newly inserted view are initialized
++          activeView.querySelectorAll("template[shadowrootmode]").forEach((template) => {
++            const mode = template.getAttribute("shadowrootmode");
++            const parent = template.parentNode;
++            if ((mode === "closed" || mode === "open") && parent instanceof HTMLElement && !parent.shadowRoot) {
++              const shadowRoot = parent.attachShadow({ mode });
++              shadowRoot.appendChild((template as HTMLTemplateElement).content);
++              template.remove();
++            }
++          });
++          activeView.querySelectorAll("video, audio").forEach((media) => {
++            const fresh = document.createElement(media.localName);
++            for (const attr of Array.from(media.attributes)) {
++              fresh.setAttribute(attr.name, attr.value);
++            }
++            fresh.innerHTML = media.innerHTML;
++            if (fresh.hasAttribute("muted") && "muted" in fresh) {
++              (fresh as HTMLMediaElement).muted = true;
++            }
++            media.replaceWith(fresh);
++          });
++        }
++
++        if (activeView && cached) {
++          ensureHeadStyles(cached.styles);
++          activeView.classList.remove("inactive");
++          activeView.setAttribute("aria-hidden", "false");
++          activeView.removeAttribute("inert");
++          if (!activeView.hasAttribute("tabindex")) {
++            activeView.setAttribute("tabindex", "-1");
++          }
++
++          touchView(targetKey, cached);
++          document.title = cached.title;
++
++          // Move focus to the active view to preserve a logical keyboard tab-order
++          activeView.focus({ preventScroll: true });
++        }
++      }
++
++      initInitialView();
++
++      document.addEventListener("astro:before-preparation", ((
++        event: TransitionBeforePreparationEvent,
++      ) => {
++        // Skip caching on POST/form submissions so mutations always fetch fresh state
++        if (event.formData) return;
++
++        const targetKey = normalizePath(event.to);
++        const cached = viewCache.get(targetKey);
++
++        if (cached && document.getElementById("spa-view-root")?.contains(cached.element)) {
++          event.loader = async () => {
++            // Instant transition back to cached view without network fetch or DOM rebuild
++            const cloneDoc = document.cloneNode(true) as Document;
++            cloneDoc.title = cached.title;
++            event.newDocument = cloneDoc;
++          };
++        }
++      }) as EventListener);
++
++      document.addEventListener("astro:before-swap", ((
++        event: TransitionBeforeSwapEvent,
++      ) => {
++        const root = document.getElementById("spa-view-root");
++        const incomingRoot =
++          event.newDocument.getElementById("spa-view-root");
++
++        if (!root || !incomingRoot) return;
++
++        // Ensure current view is registered in the cache before swapping away
++        const currentKey = normalizePath(event.from);
++        const currentActive = root.querySelector<HTMLElement>(
++          `.spa-view[data-view-path="${CSS.escape(currentKey)}"]`,
++        ) || root.querySelector<HTMLElement>(".spa-view:not(.inactive)");
++
++        if (currentActive && !viewCache.has(currentKey)) {
++          currentActive.dataset.viewPath = currentKey;
++          const currentTitle =
++            currentActive.dataset.viewTitle || document.title;
++          touchView(currentKey, {
++            element: currentActive,
++            title: currentTitle,
++            styles: captureHeadStyles(document),
++          });
++        }
++
++        const targetKey = normalizePath(event.to);
++        const incomingView =
++          incomingRoot.querySelector<HTMLElement>(".spa-view");
++        const incomingTitle =
++          event.newDocument.title ||
++          incomingView?.dataset.viewTitle ||
++          document.title;
++        const incomingStyles = captureHeadStyles(event.newDocument);
++
++        event.swap = () => {
++          swapFunctions.deselectScripts(event.newDocument);
++          swapFunctions.swapRootAttributes(event.newDocument);
++          swapFunctions.swapHeadElements(event.newDocument);
++
++          switchToView(
++            root,
++            targetKey,
++            incomingView,
++            incomingTitle,
++            incomingStyles,
++          );
++        };
++      }) as EventListener);
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..2a95198 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,27 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.spa-view:focus {
++  outline: none;
++}
++
++.spa-view.inactive {
++  /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++  content-visibility: hidden;
++
++  /* Prevent hidden views from taking up physical space in layout flow */
++  position: absolute;
++  pointer-events: none;
++  visibility: hidden;
++  width: 0;
++  height: 0;
++  overflow: hidden;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

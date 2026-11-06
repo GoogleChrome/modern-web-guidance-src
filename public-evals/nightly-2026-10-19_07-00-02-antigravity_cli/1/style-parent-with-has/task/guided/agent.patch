@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,78 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact-section {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++      max-width: 600px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .contact-section h2 {
++      margin-bottom: 20px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .contact-form {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++      padding: 10px;
++      border: 2px solid transparent;
++      border-radius: 6px;
++      transition: border-color 0.2s ease;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .form-group input,
++    .form-group textarea {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid #ccc;
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 1rem;
++      box-sizing: border-box;
++    }
++
++    .form-group input:focus,
++    .form-group textarea:focus {
++      outline: none;
++      border-color: var(--primary);
++    }
++
++    /* Wrapper div gets a red border when input is invalid after interaction */
++    .form-group:has(:user-invalid),
++    .form-group:has(input:user-invalid),
++    .form-group:has(textarea:user-invalid) {
++      border: 2px solid red;
++    }
++
++    .contact-form .btn {
++      align-self: flex-start;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +264,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="contact" class="contact-section">
++      <h2>Contact Us</h2>
++      <form class="contact-form" action="#" method="post">
++        <div class="form-group">
++          <label for="name">Name</label>
++          <input type="text" id="name" name="name" required autocomplete="name">
++        </div>
++        <div class="form-group">
++          <label for="email">Email</label>
++          <input type="email" id="email" name="email" required autocomplete="email">
++        </div>
++        <div class="form-group">
++          <label for="message">Message</label>
++          <textarea id="message" name="message" rows="5" required></textarea>
++        </div>
++        <button type="submit" class="btn">Send Message</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

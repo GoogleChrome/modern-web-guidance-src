@@ -1,0 +1,418 @@
+diff --git a/index.html b/index.html
+index 66c9173..e294162 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,28 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Default Contextual Theme Variables (Inherited by Cards) */
++      --section-bg: transparent;
++      --section-heading-color: var(--primary);
++      --section-accent: var(--accent);
++      --card-bg: #ffffff;
++      --card-surface-tint: rgba(255, 171, 64, 0.06);
++      --card-text: var(--text);
++      --card-muted: #6d4c41;
++      --card-heading: var(--primary);
++      --card-accent: var(--accent);
++      --card-border: rgba(78, 52, 46, 0.12);
++      --card-radius: 12px;
++      --card-shadow: 0 4px 14px rgba(62, 39, 35, 0.08);
++      --card-hover-shadow: 0 12px 24px rgba(62, 39, 35, 0.15);
++      --card-stripe: linear-gradient(90deg, var(--primary), var(--accent));
++      --card-badge-bg: rgba(255, 171, 64, 0.18);
++      --card-badge-text: #bf360c;
++      --card-btn-bg: var(--primary);
++      --card-btn-text: #ffffff;
++      --card-btn-hover: #3e2723;
++      --card-img-filter: none;
+     }
+ 
+     * {
+@@ -93,31 +115,273 @@
+       margin-bottom: 1rem;
+     }
+ 
+-    /* Content Sections */
++    /* Content Sections & Contextual Theme Adaptation */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    main section {
++      container-type: inline-size;
++      container-name: coffee-section;
++      background: var(--section-bg);
++      padding: 32px 28px;
++      border-radius: 16px;
++      transition: background 0.3s ease, border-color 0.3s ease;
++    }
++
++    main section > h2 {
++      text-align: center;
++      color: var(--section-heading-color);
++      font-size: 2rem;
++      margin-bottom: 8px;
++      position: relative;
++    }
++
++    main section > h2::after {
++      content: "";
++      display: block;
++      width: 60px;
++      height: 3px;
++      background: var(--section-accent);
++      margin: 10px auto 0;
++      border-radius: 2px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--card-muted);
++      font-size: 0.95rem;
++      margin-bottom: 24px;
++    }
++
++    /* Parent Section Semantic Themes & Category Contexts */
++    section[data-theme="seasonal"],
++    section[data-category="seasonal"],
++    section[data-category="seasonal-favorites"],
++    section[data-theme="autumn"],
++    section[data-theme="fall"],
++    section.theme-seasonal,
++    section.seasonal-favorites {
++      --section-bg: linear-gradient(145deg, #fff8f0 0%, #f7ebe1 100%);
++      --section-heading-color: #5d2e18;
++      --section-accent: #d97724;
++      --card-bg: #fffdf9;
++      --card-surface-tint: rgba(217, 119, 36, 0.08);
++      --card-text: #4a2c1d;
++      --card-muted: #7c523e;
++      --card-heading: #5d2e18;
++      --card-accent: #d97724;
++      --card-border: rgba(217, 119, 36, 0.28);
++      --card-shadow: 0 6px 18px rgba(93, 46, 24, 0.09);
++      --card-hover-shadow: 0 14px 28px rgba(93, 46, 24, 0.18);
++      --card-stripe: linear-gradient(90deg, #b45309, #f59e0b, #8d3b12);
++      --card-badge-bg: #fef3c7;
++      --card-badge-text: #92400e;
++      --card-btn-bg: #8d3b12;
++      --card-btn-text: #ffffff;
++      --card-btn-hover: #5d2e18;
++      --card-img-filter: sepia(12%) saturate(115%) contrast(103%);
++      border: 1px solid rgba(217, 119, 36, 0.2);
++    }
++
++    section[data-theme="winter"],
++    section[data-category="winter"],
++    section[data-category="holiday"],
++    section.theme-winter {
++      --section-bg: linear-gradient(145deg, #f4f7f9 0%, #e6eef4 100%);
++      --section-heading-color: #1e3a5f;
++      --section-accent: #9b2226;
++      --card-bg: #ffffff;
++      --card-surface-tint: rgba(30, 58, 95, 0.05);
++      --card-text: #2b3a4a;
++      --card-muted: #52667a;
++      --card-heading: #1e3a5f;
++      --card-accent: #9b2226;
++      --card-border: rgba(30, 58, 95, 0.2);
++      --card-shadow: 0 6px 18px rgba(30, 58, 95, 0.08);
++      --card-hover-shadow: 0 14px 28px rgba(30, 58, 95, 0.16);
++      --card-stripe: linear-gradient(90deg, #1e3a5f, #9b2226);
++      --card-badge-bg: #fee2e2;
++      --card-badge-text: #991b1b;
++      --card-btn-bg: #1e3a5f;
++      --card-btn-text: #ffffff;
++      --card-btn-hover: #152943;
++      --card-img-filter: saturate(95%) brightness(102%);
++    }
++
++    section[data-theme="spring"],
++    section[data-category="spring"],
++    section[data-category="botanical"],
++    section.theme-spring {
++      --section-bg: linear-gradient(145deg, #f4fbf7 0%, #e3f3ea 100%);
++      --section-heading-color: #234d36;
++      --section-accent: #40916c;
++      --card-bg: #ffffff;
++      --card-surface-tint: rgba(64, 145, 108, 0.06);
++      --card-text: #264635;
++      --card-muted: #4c725e;
++      --card-heading: #1b4332;
++      --card-accent: #40916c;
++      --card-border: rgba(64, 145, 108, 0.24);
++      --card-stripe: linear-gradient(90deg, #2d6a4f, #74c69d);
++      --card-badge-bg: #d8f3dc;
++      --card-badge-text: #1b4332;
++      --card-btn-bg: #2d6a4f;
++      --card-btn-text: #ffffff;
++      --card-btn-hover: #1b4332;
++    }
++
++    section[data-theme="summer"],
++    section[data-theme="cold-brew"],
++    section[data-theme="iced"],
++    section[data-category="cold-brew"],
++    section[data-category="iced"],
++    section.theme-cold-brew,
++    section.theme-summer {
++      --section-bg: linear-gradient(145deg, #f0f9ff 0%, #e0f2fe 100%);
++      --section-heading-color: #0c4a6e;
++      --section-accent: #0284c7;
++      --card-bg: #ffffff;
++      --card-surface-tint: rgba(2, 132, 199, 0.06);
++      --card-text: #0f3e5c;
++      --card-muted: #3b6b8c;
++      --card-heading: #0c4a6e;
++      --card-accent: #0284c7;
++      --card-border: rgba(2, 132, 199, 0.24);
++      --card-shadow: 0 6px 18px rgba(12, 74, 110, 0.08);
++      --card-hover-shadow: 0 14px 28px rgba(12, 74, 110, 0.16);
++      --card-stripe: linear-gradient(90deg, #0369a1, #38bdf8);
++      --card-badge-bg: #e0f2fe;
++      --card-badge-text: #075985;
++      --card-btn-bg: #0369a1;
++      --card-btn-text: #ffffff;
++      --card-btn-hover: #0c4a6e;
++      --card-img-filter: contrast(105%) saturate(108%);
++    }
++
++    section[data-theme="dark"],
++    section[data-theme="espresso"],
++    section[data-theme="roast"],
++    section[data-category="espresso"],
++    section[data-category="dark-roast"],
++    section.theme-espresso,
++    section.theme-dark {
++      --section-bg: linear-gradient(145deg, #261815 0%, #1a100e 100%);
++      --section-heading-color: #f5ebe6;
++      --section-accent: #ffab40;
++      --card-bg: #32201c;
++      --card-surface-tint: rgba(255, 171, 64, 0.07);
++      --card-text: #e6d5ce;
++      --card-muted: #bda399;
++      --card-heading: #ffcca0;
++      --card-accent: #ffab40;
++      --card-border: rgba(255, 171, 64, 0.28);
++      --card-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
++      --card-hover-shadow: 0 14px 30px rgba(0, 0, 0, 0.5);
++      --card-stripe: linear-gradient(90deg, #ffab40, #d84315);
++      --card-badge-bg: rgba(255, 171, 64, 0.2);
++      --card-badge-text: #ffd180;
++      --card-btn-bg: #ffab40;
++      --card-btn-text: #261815;
++      --card-btn-hover: #ffd180;
++      --card-img-filter: contrast(112%) brightness(92%);
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
++    /* Coffee Cards - Contextually Styled via Parent Section CSS Variables */
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: linear-gradient(180deg, var(--card-bg) 0%, var(--card-bg) 75%, var(--card-surface-tint) 100%);
++      color: var(--card-text);
++      padding: 0 0 24px 0;
++      border-radius: var(--card-radius);
++      border: 1px solid var(--card-border);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      position: relative;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
++    }
++
++    .card::before {
++      content: "";
++      display: block;
++      width: 100%;
++      height: 5px;
++      background: var(--card-stripe);
++    }
++
++    .card:hover {
++      transform: translateY(-6px);
++      box-shadow: var(--card-hover-shadow);
++      border-color: var(--card-accent);
++    }
++
++    .card-media {
++      position: relative;
++      width: 100%;
++      height: 185px;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      filter: var(--card-img-filter);
++      transition: transform 0.45s ease, filter 0.3s ease;
++    }
++
++    .card:hover .card-media img {
++      transform: scale(1.06);
++    }
++
++    .card-badge {
++      display: inline-block;
++      align-self: center;
++      margin-top: 16px;
++      padding: 4px 12px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.06em;
++      background: var(--card-badge-bg);
++      color: var(--card-badge-text);
++      border: 1px solid var(--card-border);
++    }
++
++    .card-body {
++      padding: 14px 22px 0;
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++      font-size: 1.3rem;
++      transition: color 0.3s ease;
++    }
++
++    .card p {
++      color: var(--card-muted);
++      font-size: 0.95rem;
++      margin-bottom: 8px;
++      flex: 1;
+     }
+ 
+     .btn {
+@@ -126,15 +390,43 @@
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
++      border-radius: 6px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-weight: 600;
++      transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Card buttons automatically adapt to the section theme context */
++    section .card .btn {
++      background: var(--card-btn-bg);
++      color: var(--card-btn-text);
++      align-self: center;
++    }
++
++    section .card .btn:hover {
++      background: var(--card-btn-hover);
++      transform: translateY(-1px);
++    }
++
++    /* Sub-category accents when inside a themed section */
++    section[data-theme="seasonal"] .card[data-category="espresso"],
++    section[data-category="seasonal"] .card[data-category="espresso"],
++    section[data-category="seasonal-favorites"] .card[data-category="espresso"] {
++      --card-badge-bg: #ede0d4;
++      --card-badge-text: #4e342e;
++    }
++
++    section[data-theme="seasonal"] .card[data-category="cold-brew"],
++    section[data-category="seasonal"] .card[data-category="cold-brew"],
++    section[data-category="seasonal-favorites"] .card[data-category="cold-brew"] {
++      --card-badge-bg: #e0f2fe;
++      --card-badge-text: #075985;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,23 +467,42 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="theme-seasonal seasonal-favorites" data-theme="seasonal" data-category="seasonal-favorites">
++      <h2>Seasonal Favorites</h2>
++      <p class="section-subtitle">Handcrafted selections inspired by the flavors of the season.</p>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card" data-category="seasonal">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++          </div>
++          <span class="card-badge">Seasonal Special</span>
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card" data-category="espresso">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++          </div>
++          <span class="card-badge">Signature Roast</span>
++          <div class="card-body">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card" data-category="cold-brew">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++          </div>
++          <span class="card-badge">Slow Steeped</span>
++          <div class="card-body">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>

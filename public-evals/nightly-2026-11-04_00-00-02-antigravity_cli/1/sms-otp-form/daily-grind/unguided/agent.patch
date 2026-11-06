@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+index 66c9173..9c33de1 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,62 @@
+       background: #3e2723;
+     }
+ 
++    /* OTP Verification Section */
++    .otp-section {
++      max-width: 480px;
++      margin: 40px auto;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .otp-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      text-align: center;
++    }
++
++    .otp-section p {
++      text-align: center;
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++    }
++
++    .otp-form {
++      display: flex;
++      flex-direction: column;
++      gap: 15px;
++    }
++
++    .otp-form label {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .otp-form input {
++      padding: 12px;
++      font-size: 1.25rem;
++      letter-spacing: 0.25rem;
++      text-align: center;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++    }
++
++    .otp-form input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .otp-form button {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      width: 100%;
++      margin-top: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +231,27 @@
+   </header>
+ 
+   <main class="container">
++    <section class="otp-section" aria-labelledby="otp-heading">
++      <h2 id="otp-heading">Verify Your Identity</h2>
++      <p id="otp-description">Enter the 6-digit SMS one-time passcode sent to your phone to sign in to Rewards or complete your online order.</p>
++      <form id="otp-form" class="otp-form" action="/verify-otp" method="POST">
++        <label for="otp-input">One-Time Passcode</label>
++        <input
++          type="text"
++          id="otp-input"
++          name="otp"
++          autocomplete="one-time-code"
++          inputmode="numeric"
++          pattern="[0-9]*"
++          maxlength="6"
++          placeholder="123456"
++          aria-describedby="otp-description"
++          required
++        />
++        <button type="submit" class="btn">Verify Passcode</button>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +284,30 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if ('OTPCredential' in window) {
++      window.addEventListener('DOMContentLoaded', () => {
++        const input = document.querySelector('input[autocomplete="one-time-code"]');
++        if (!input) return;
++        const ac = new AbortController();
++        const form = input.closest('form');
++        if (form) {
++          form.addEventListener('submit', () => {
++            ac.abort();
++          });
++        }
++        navigator.credentials.get({
++          otp: { transport: ['sms'] },
++          signal: ac.signal
++        }).then(otp => {
++          input.value = otp.code;
++          if (form) form.submit();
++        }).catch(err => {
++          console.log(err);
++        });
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

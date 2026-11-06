@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+index 66c9173..460882f 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,57 @@
+       color: var(--primary);
+     }
+ 
++    .drink-card {
++      overflow: hidden;
++      touch-action: pan-y;
++    }
++
++    .actions-toggle {
++      margin-top: 15px;
++      padding: 8px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .actions-toggle:hover,
++    .actions-toggle[aria-expanded="true"] {
++      background: var(--secondary);
++    }
++
++    .swipe-hint {
++      margin-top: 6px;
++      font-size: 0.8rem;
++    }
++
++    .card-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 8px;
++      margin-top: 15px;
++      padding-top: 15px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .card-actions[hidden] {
++      display: none;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++      padding: 8px 12px;
++    }
++
++    .actions-toggle:focus-visible,
++    .card-actions a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,20 +229,38 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card drink-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="actions-toggle" aria-expanded="false"
++            aria-controls="maple-oat-latte-actions" aria-label="Actions for Maple Oat Latte">Actions</button>
++          <p class="swipe-hint">Swipe sideways to reveal actions</p>
++          <div class="card-actions" id="maple-oat-latte-actions" hidden>
++            <a href="/menu/seasonal" class="btn" aria-label="View details for Maple Oat Latte">View Details</a>
++            <a href="/order-online?drink=maple-oat-latte" class="btn" aria-label="Order Maple Oat Latte">Order</a>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card drink-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="actions-toggle" aria-expanded="false"
++            aria-controls="dark-roast-espresso-actions" aria-label="Actions for Dark Roast Espresso">Actions</button>
++          <p class="swipe-hint">Swipe sideways to reveal actions</p>
++          <div class="card-actions" id="dark-roast-espresso-actions" hidden>
++            <a href="/menu/espresso" class="btn" aria-label="View details for Dark Roast Espresso">View Details</a>
++            <a href="/order-online?drink=dark-roast-espresso" class="btn" aria-label="Order Dark Roast Espresso">Order</a>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card drink-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="actions-toggle" aria-expanded="false"
++            aria-controls="cold-brew-actions" aria-label="Actions for Cold Brew">Actions</button>
++          <p class="swipe-hint">Swipe sideways to reveal actions</p>
++          <div class="card-actions" id="cold-brew-actions" hidden>
++            <a href="/menu/cold-brew" class="btn" aria-label="View details for Cold Brew">View Details</a>
++            <a href="/order-online?drink=cold-brew" class="btn" aria-label="Order Cold Brew">Order</a>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +276,84 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const drinkCards = document.querySelectorAll('.drink-card');
++
++    function setActionsOpen(card, open) {
++      const toggle = card.querySelector('.actions-toggle');
++      const actions = card.querySelector('.card-actions');
++      if (!open && actions.contains(document.activeElement)) toggle.focus();
++      toggle.setAttribute('aria-expanded', String(open));
++      actions.hidden = !open;
++    }
++
++    drinkCards.forEach((card) => {
++      const toggle = card.querySelector('.actions-toggle');
++      let gesture = null;
++      let suppressClickUntil = 0;
++
++      function openActions(open) {
++        if (open) {
++          drinkCards.forEach((other) => {
++            if (other !== card) setActionsOpen(other, false);
++          });
++        }
++        setActionsOpen(card, open);
++      }
++
++      toggle.addEventListener('click', () => {
++        openActions(toggle.getAttribute('aria-expanded') !== 'true');
++      });
++
++      card.addEventListener('pointerdown', (event) => {
++        if (!event.isPrimary || event.button !== 0) return;
++        gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
++      });
++
++      card.addEventListener('pointermove', (event) => {
++        if (!gesture || gesture.id !== event.pointerId) return;
++        const dx = event.clientX - gesture.x;
++        const dy = event.clientY - gesture.y;
++        // Let vertical gestures scroll the page without revealing actions.
++        if (Math.abs(dy) > 12 && Math.abs(dy) >= Math.abs(dx)) {
++          gesture = null;
++          return;
++        }
++        if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5) {
++          card.setPointerCapture(event.pointerId);
++        }
++      });
++
++      card.addEventListener('pointerup', (event) => {
++        if (!gesture || gesture.id !== event.pointerId) return;
++        const dx = event.clientX - gesture.x;
++        const dy = event.clientY - gesture.y;
++        gesture = null;
++        if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
++        // A swipe only reveals or dismisses the tray; actions require a tap.
++        suppressClickUntil = Date.now() + 500;
++        openActions(toggle.getAttribute('aria-expanded') !== 'true');
++      });
++
++      card.addEventListener('pointercancel', () => { gesture = null; });
++      card.addEventListener('lostpointercapture', () => { gesture = null; });
++      card.addEventListener('click', (event) => {
++        if (event.detail !== 0 && Date.now() < suppressClickUntil) {
++          event.preventDefault();
++          event.stopImmediatePropagation();
++        }
++      }, true);
++      card.addEventListener('keydown', (event) => {
++        if (event.key === 'Escape') openActions(false);
++      });
++    });
++
++    document.addEventListener('click', (event) => {
++      drinkCards.forEach((card) => {
++        if (!card.contains(event.target)) setActionsOpen(card, false);
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

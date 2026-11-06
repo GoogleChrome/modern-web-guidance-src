@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+index 66c9173..e2be76e 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+@@ -62,10 +63,54 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="page"] {
+       color: var(--accent);
+     }
+ 
++    /* Active nav indicator: one decorative bar on the list that slides
++       between items. The active <li> is the anchor it follows. */
++    nav ul li.active {
++      anchor-name: --active-nav-item;
++    }
++
++    nav ul::before {
++      content: '';
++      position: absolute;
++      block-size: 2px;
++      border-radius: 1px;
++      background: var(--accent);
++      pointer-events: none;
++    }
++
++    @supports (position-anchor: auto) {
++      nav ul::before {
++        position-anchor: --active-nav-item;
++        inset-block-start: calc(anchor(bottom) + 0.1lh);
++        inset-inline-start: anchor(left);
++        inset-inline-end: anchor(right);
++
++        @media (prefers-reduced-motion: no-preference) {
++          transition: inset 0.3s ease;
++        }
++      }
++    }
++
++    @supports not (position-anchor: auto) {
++      /* Fallback: the script measures the active item into
++         --nav-indicator-x / --nav-indicator-w on the <ul>. */
++      nav ul::before {
++        inset-block-start: calc(100% + 0.1lh);
++        inset-inline-start: 0;
++        inline-size: var(--nav-indicator-w, 0px);
++        translate: var(--nav-indicator-x, 0px) 0;
++
++        @media (prefers-reduced-motion: no-preference) {
++          transition: translate 0.3s ease, inline-size 0.3s ease;
++        }
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -157,13 +202,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li class="nav-item active"><a href="/menu" aria-current="page">Menu</a></li>
++      <li class="nav-item"><a href="/locations">Locations</a></li>
++      <li class="nav-item"><a href="/rewards">Rewards</a></li>
++      <li class="nav-item"><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -207,6 +252,49 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const list = document.querySelector('nav ul');
++      const items = [...list.querySelectorAll('li.nav-item')];
++      const supportsAnchor = CSS.supports('position-anchor: auto');
++
++      // Fallback path only: expose the active item's geometry to CSS so the
++      // indicator can transition via translate/inline-size.
++      const measure = () => {
++        const active = list.querySelector('li.active');
++        if (!active) return;
++        list.style.setProperty('--nav-indicator-x', `${active.offsetLeft}px`);
++        list.style.setProperty('--nav-indicator-w', `${active.offsetWidth}px`);
++      };
++
++      const activate = (item) => {
++        for (const li of items) {
++          const isActive = li === item;
++          li.classList.toggle('active', isActive);
++          const link = li.querySelector('a');
++          if (isActive) link.setAttribute('aria-current', 'page');
++          else link.removeAttribute('aria-current');
++        }
++        if (!supportsAnchor) measure();
++      };
++
++      list.addEventListener('click', (event) => {
++        const link = event.target.closest('li.nav-item > a');
++        if (!link) return;
++        // Let modified clicks (new tab, etc.) behave like normal links.
++        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        // Single-page demo: stay on this page so the indicator can slide.
++        event.preventDefault();
++        activate(link.parentElement);
++      });
++
++      if (!supportsAnchor) {
++        // Fires on observe and whenever the list resizes (e.g. web fonts load).
++        new ResizeObserver(measure).observe(list);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

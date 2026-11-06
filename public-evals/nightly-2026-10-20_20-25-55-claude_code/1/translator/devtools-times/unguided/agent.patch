@@ -1,0 +1,197 @@
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..bd75ff6 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,12 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a
++          href={`${baseUrl}translate`}
++          class="text-xs font-semibold py-2 px-3 hover:underline whitespace-nowrap"
++        >
++          Translate
++        </a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/TranslateForm.tsx b/src/components/TranslateForm.tsx
+new file mode 100644
+index 0000000..7726687
+--- /dev/null
++++ b/src/components/TranslateForm.tsx
+@@ -0,0 +1,158 @@
++import React, { useEffect, useState } from 'react';
++
++// Minimal typing for the browser's built-in Translator API.
++interface TranslatorInstance {
++  translate(text: string): Promise<string>;
++  destroy?: () => void;
++}
++interface TranslatorStatic {
++  availability(opts: { sourceLanguage: string; targetLanguage: string }): Promise<string>;
++  create(opts: {
++    sourceLanguage: string;
++    targetLanguage: string;
++    monitor?: (m: EventTarget) => void;
++  }): Promise<TranslatorInstance>;
++}
++
++const LANGUAGES: Record<string, string> = {
++  en: 'English',
++  es: 'Spanish',
++  fr: 'French',
++  de: 'German',
++  it: 'Italian',
++  pt: 'Portuguese',
++  ja: 'Japanese',
++  ko: 'Korean',
++  zh: 'Chinese',
++  ru: 'Russian',
++  ar: 'Arabic',
++  hi: 'Hindi',
++};
++
++export default function TranslateForm() {
++  const [supported, setSupported] = useState<boolean | null>(null);
++  const [source, setSource] = useState('en');
++  const [target, setTarget] = useState('es');
++  const [input, setInput] = useState('');
++  const [output, setOutput] = useState('');
++  const [error, setError] = useState<string | null>(null);
++  const [status, setStatus] = useState<string | null>(null);
++  const [loading, setLoading] = useState(false);
++
++  useEffect(() => {
++    setSupported('Translator' in self);
++  }, []);
++
++  const swap = () => {
++    setSource(target);
++    setTarget(source);
++    setInput(output);
++    setOutput('');
++  };
++
++  const handleSubmit = async (e: React.FormEvent) => {
++    e.preventDefault();
++    setError(null);
++    setStatus(null);
++    setOutput('');
++
++    if (source === target) {
++      setOutput(input);
++      return;
++    }
++
++    const Translator = (self as unknown as { Translator: TranslatorStatic }).Translator;
++    setLoading(true);
++    try {
++      const pair = { sourceLanguage: source, targetLanguage: target };
++      const availability = await Translator.availability(pair);
++      if (availability === 'unavailable') {
++        setError(`Translating from ${LANGUAGES[source]} to ${LANGUAGES[target]} is not supported in this browser.`);
++        return;
++      }
++      const translator = await Translator.create({
++        ...pair,
++        monitor(m) {
++          m.addEventListener('downloadprogress', (ev) => {
++            const { loaded } = ev as unknown as { loaded: number };
++            setStatus(`Downloading language model… ${Math.round(loaded * 100)}%`);
++          });
++        },
++      });
++      setOutput(await translator.translate(input));
++      translator.destroy?.();
++    } catch (err) {
++      setError('Translation failed. Please try again.');
++    } finally {
++      setStatus(null);
++      setLoading(false);
++    }
++  };
++
++  const select = 'border border-gray-300 rounded-md px-3 py-2 text-sm bg-white';
++
++  return (
++    <div className="max-w-3xl mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <h2 className="text-2xl font-bold mb-6 text-gray-800">Translate</h2>
++
++      {supported === false && (
++        <div className="mb-4 p-3 text-sm text-yellow-800 bg-yellow-100 rounded-lg" role="alert">
++          Your browser does not support the built-in Translator API. Try a recent version of Chrome.
++        </div>
++      )}
++      {error && (
++        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++          {error}
++        </div>
++      )}
++      {status && <div className="mb-4 text-sm text-gray-600" role="status">{status}</div>}
++
++      <form onSubmit={handleSubmit} className="space-y-4">
++        <div className="flex items-center gap-3">
++          <label className="sr-only" htmlFor="source-lang">From</label>
++          <select id="source-lang" className={select} value={source} onChange={(e) => setSource(e.target.value)}>
++            {Object.entries(LANGUAGES).map(([code, name]) => (
++              <option key={code} value={code}>{name}</option>
++            ))}
++          </select>
++          <button type="button" onClick={swap} aria-label="Swap languages" className="px-2 py-2 text-gray-600 hover:text-gray-900">
++            ⇄
++          </button>
++          <label className="sr-only" htmlFor="target-lang">To</label>
++          <select id="target-lang" className={select} value={target} onChange={(e) => setTarget(e.target.value)}>
++            {Object.entries(LANGUAGES).map(([code, name]) => (
++              <option key={code} value={code}>{name}</option>
++            ))}
++          </select>
++        </div>
++
++        <div className="grid md:grid-cols-2 gap-4">
++          <textarea
++            aria-label="Text to translate"
++            value={input}
++            onChange={(e) => setInput(e.target.value)}
++            rows={8}
++            placeholder="Enter text"
++            className="w-full border border-gray-300 rounded-md p-3 text-sm"
++          />
++          <textarea
++            aria-label="Translation"
++            value={output}
++            readOnly
++            rows={8}
++            placeholder="Translation"
++            className="w-full border border-gray-300 rounded-md p-3 text-sm bg-gray-50"
++          />
++        </div>
++
++        <button
++          type="submit"
++          disabled={loading || !input.trim() || supported === false}
++          className="bg-gray-800 text-white text-sm font-semibold py-2 px-4 rounded hover:bg-gray-700 disabled:opacity-50"
++        >
++          {loading ? 'Translating…' : 'Translate'}
++        </button>
++      </form>
++    </div>
++  );
++}
+diff --git a/src/pages/translate.astro b/src/pages/translate.astro
+new file mode 100644
+index 0000000..cb110f4
+--- /dev/null
++++ b/src/pages/translate.astro
+@@ -0,0 +1,10 @@
++---
++import Layout from '../layouts/Layout.astro';
++import TranslateForm from '../components/TranslateForm';
++---
++
++<Layout title="Translate | The DevTools Times">
++  <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <TranslateForm client:load />
++  </div>
++</Layout>

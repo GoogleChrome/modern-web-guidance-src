@@ -1,0 +1,307 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,141 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .ops-queue {
++      margin-top: 60px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .ops-queue h2 {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .ops-intro {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    .ops-controls .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .ops-controls .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .btn.urgent {
++      background: #b71c1c;
++    }
++
++    .btn.urgent:hover {
++      background: #8e0000;
++    }
++
++    .btn.background {
++      background: #6d6d6d;
++    }
++
++    .btn.background:hover {
++      background: #4a4a4a;
++    }
++
++    .btn.batch {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn.batch:hover {
++      background: #ff9100;
++    }
++
++    .ops-status {
++      display: flex;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin: 20px 0 10px;
++      font-size: 0.9rem;
++    }
++
++    .ops-log {
++      list-style: none;
++      max-height: 320px;
++      overflow-y: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .ops-log li {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      align-items: center;
++      gap: 4px 12px;
++      padding: 8px 12px;
++      border-bottom: 1px solid var(--secondary);
++      font-size: 0.9rem;
++    }
++
++    .ops-log li:last-child {
++      border-bottom: none;
++    }
++
++    .ops-log progress {
++      grid-column: 1 / -1;
++      width: 100%;
++      height: 6px;
++      accent-color: var(--primary);
++    }
++
++    .ops-badge {
++      display: inline-block;
++      padding: 1px 8px;
++      margin-right: 6px;
++      border-radius: 10px;
++      font-size: 0.75rem;
++      font-weight: bold;
++      color: white;
++    }
++
++    .ops-badge.user-blocking {
++      background: #b71c1c;
++    }
++
++    .ops-badge.user-visible {
++      background: var(--primary);
++    }
++
++    .ops-badge.background {
++      background: #6d6d6d;
++    }
++
++    .ops-state {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .ops-empty {
++      color: #8d6e63;
++      font-style: italic;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +327,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ops-queue" aria-labelledby="ops-title">
++      <h2 id="ops-title">Operations Queue Simulator</h2>
++      <p class="ops-intro">Long-running jobs are scheduled by priority and split into small chunks so the page stays
++        responsive while they run.</p>
++      <div class="ops-controls">
++        <button type="button" class="btn urgent" data-task="checkout">Run Urgent Checkout</button>
++        <button type="button" class="btn" data-task="menu">Run Menu Update</button>
++        <button type="button" class="btn background" data-task="telemetry">Log Telemetry</button>
++        <button type="button" class="btn batch" id="ops-batch">Run Mixed Batch</button>
++      </div>
++      <div class="ops-status">
++        <span id="ops-counts">Queued: 0 &middot; Running: 0 &middot; Done: 0</span>
++        <span id="ops-engine"></span>
++      </div>
++      <ol class="ops-log" id="ops-log" role="log" aria-label="Task activity">
++        <li class="ops-empty" id="ops-empty">No tasks yet. Pick a job above to get started.</li>
++      </ol>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +358,133 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const TASKS = {
++        checkout: { label: 'Checkout payment', priority: 'user-blocking', units: 120 },
++        menu: { label: 'Menu update', priority: 'user-visible', units: 200 },
++        telemetry: { label: 'Telemetry log', priority: 'background', units: 300 },
++      };
++      const PRIORITY_LABEL = {
++        'user-blocking': 'Urgent',
++        'user-visible': 'Standard',
++        'background': 'Background',
++      };
++      // Submitted lowest-priority first to show the scheduler reordering them.
++      const BATCH = ['telemetry', 'menu', 'telemetry', 'checkout', 'menu', 'checkout'];
++      const CHUNK_BUDGET_MS = 50;
++
++      const log = document.getElementById('ops-log');
++      const empty = document.getElementById('ops-empty');
++      const counts = document.getElementById('ops-counts');
++      const stats = { queued: 0, running: 0, done: 0 };
++      let nextId = 1;
++      let completionOrder = 0;
++
++      const hasPostTask = () => 'scheduler' in window && 'postTask' in window.scheduler;
++
++      function yieldToMain() {
++        if ('scheduler' in window && 'yield' in window.scheduler) {
++          return scheduler.yield();
++        }
++        return new Promise((resolve) => setTimeout(resolve, 0));
++      }
++
++      function updateCounts() {
++        counts.textContent = `Queued: ${stats.queued} · Running: ${stats.running} · Done: ${stats.done}`;
++      }
++
++      // Simulates one unit of CPU-heavy work (~1ms).
++      function doUnitOfWork() {
++        const end = performance.now() + 1;
++        while (performance.now() < end) { /* busy */ }
++      }
++
++      function addLogEntry(type) {
++        const { label, priority, units } = TASKS[type];
++        empty?.remove();
++        const item = document.createElement('li');
++        const title = document.createElement('span');
++        const badge = document.createElement('span');
++        const state = document.createElement('span');
++        const progress = document.createElement('progress');
++        badge.className = `ops-badge ${priority}`;
++        badge.textContent = PRIORITY_LABEL[priority];
++        title.append(badge, `${label} #${nextId++}`);
++        state.className = 'ops-state';
++        state.textContent = 'Queued';
++        progress.max = units;
++        progress.value = 0;
++        progress.setAttribute('aria-label', `${label} progress`);
++        item.append(title, state, progress);
++        log.append(item);
++        return { state, progress };
++      }
++
++      async function runTask(type, entry) {
++        const { units } = TASKS[type];
++        stats.queued--;
++        stats.running++;
++        updateCounts();
++        entry.state.textContent = 'Running';
++
++        let deadline = performance.now() + CHUNK_BUDGET_MS;
++        for (let i = 0; i < units; i++) {
++          doUnitOfWork();
++          if (performance.now() >= deadline) {
++            entry.progress.value = i + 1;
++            await yieldToMain();
++            deadline = performance.now() + CHUNK_BUDGET_MS;
++          }
++        }
++
++        entry.progress.value = units;
++        entry.state.textContent = `Done (finished ${++completionOrder}${ordinalSuffix(completionOrder)})`;
++        stats.running--;
++        stats.done++;
++        updateCounts();
++      }
++
++      function ordinalSuffix(n) {
++        const rem100 = n % 100;
++        if (rem100 >= 11 && rem100 <= 13) return 'th';
++        return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th';
++      }
++
++      function enqueue(type) {
++        const entry = addLogEntry(type);
++        stats.queued++;
++        updateCounts();
++        const { priority } = TASKS[type];
++        scheduler.postTask(() => runTask(type, entry), { priority })
++          .catch((err) => { entry.state.textContent = `Failed: ${err.message}`; });
++      }
++
++      function init(engine) {
++        document.getElementById('ops-engine').textContent = `Engine: ${engine}`;
++        document.querySelectorAll('.ops-controls [data-task]').forEach((button) => {
++          button.addEventListener('click', () => enqueue(button.dataset.task));
++        });
++        document.getElementById('ops-batch').addEventListener('click', () => {
++          BATCH.forEach(enqueue);
++        });
++      }
++
++      if (hasPostTask()) {
++        init('native scheduler');
++      } else {
++        const script = document.createElement('script');
++        script.src = 'https://unpkg.com/scheduler-polyfill';
++        script.onload = () => init('scheduler polyfill');
++        script.onerror = () => {
++          document.getElementById('ops-engine').textContent = 'Engine unavailable: could not load scheduler polyfill';
++        };
++        document.head.appendChild(script);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

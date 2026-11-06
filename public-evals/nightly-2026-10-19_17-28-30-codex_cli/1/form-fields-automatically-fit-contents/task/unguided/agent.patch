@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,101 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .usual-section {
++      display: grid;
++      grid-template-columns: 0.85fr 1.15fr;
++      gap: 48px;
++      padding: 40px;
++      margin-bottom: 48px;
++      background: #f1ebe5;
++      border: 1px solid #e3d8ce;
++      border-radius: 16px;
++    }
++
++    .eyebrow {
++      color: #806044;
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++      margin-bottom: 10px;
++    }
++
++    .usual-section h2 {
++      font-family: Georgia, serif;
++      font-size: 2.3rem;
++      font-weight: 400;
++      line-height: 1.2;
++      margin-bottom: 14px;
++    }
++
++    .usual-intro > p:last-child {
++      color: #79675c;
++      max-width: 30ch;
++      font-size: 0.95rem;
++    }
++
++    .usual-form { min-width: 0; }
++
++    .field { margin-bottom: 20px; }
++
++    .field label {
++      display: block;
++      font-size: 0.8rem;
++      font-weight: 600;
++      margin-bottom: 7px;
++    }
++
++    .content-control {
++      display: block;
++      max-width: 100%;
++      min-width: 0;
++      border: 1px solid #d5c7ba;
++      border-radius: 7px;
++      background: #fffdf9;
++      color: var(--text);
++      font: inherit;
++      font-size: 0.95rem;
++      line-height: 1.5;
++      padding: 10px 13px;
++      transition: border-color 0.2s;
++    }
++
++    .content-control:focus-visible {
++      outline: 3px solid #d8b992;
++      outline-offset: 3px;
++      border-color: #806044;
++    }
++
++    textarea.content-control {
++      resize: none;
++      overflow: hidden;
++    }
++
++    select.content-control {
++      appearance: none;
++      padding-right: 38px;
++      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%234e342e' stroke-width='1.5' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
++      background-repeat: no-repeat;
++      background-position: right 12px center;
++      cursor: pointer;
++    }
++
++    .form-hint { color: #79675c; font-size: 0.75rem; margin-top: 6px; }
++    .usual-form .btn { border: 0; font: inherit; font-size: 0.85rem; cursor: pointer; margin-top: 0; }
++    .form-status { font-size: 0.8rem; color: #52603f; margin-top: 10px; }
++    .form-status:empty { display: none; }
++
++    @media (max-width: 650px) {
++      .usual-section { grid-template-columns: 1fr; gap: 28px; padding: 26px; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +267,39 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="usual-section" aria-labelledby="usual-heading">
++      <div class="usual-intro">
++        <p class="eyebrow">A little more you</p>
++        <h2 id="usual-heading">Make it your usual.</h2>
++        <p>Your name, your favorite pour, your finishing touches. Good coffee is personal.</p>
++      </div>
++      <form class="usual-form" id="usual-form">
++        <div class="field">
++          <label for="coffee-name">Name on your cup</label>
++          <input class="content-control" id="coffee-name" name="name" type="text" placeholder="e.g. Alex" autocomplete="given-name" required>
++        </div>
++        <div class="field">
++          <label for="coffee-drink">Your go-to drink</label>
++          <select class="content-control" id="coffee-drink" name="drink">
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++            <option>Cappuccino</option>
++            <option>Flat White</option>
++          </select>
++        </div>
++        <div class="field">
++          <label for="coffee-notes">The little details <span style="font-weight: 400; color: #79675c;">(optional)</span></label>
++          <textarea class="content-control" id="coffee-notes" name="notes" rows="1" placeholder="Oat milk, an extra shot…" aria-describedby="notes-hint"></textarea>
++          <p class="form-hint" id="notes-hint">A little or a lot. This space grows with your notes.</p>
++        </div>
++        <button class="btn" type="submit">Save my usual <span aria-hidden="true">↗</span></button>
++        <p class="form-hint">Saved on this device for your next visit.</p>
++        <p class="form-status" id="form-status" role="status"></p>
++      </form>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +330,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.querySelector('#usual-form');
++    const controls = [...form.querySelectorAll('.content-control')];
++    const status = document.querySelector('#form-status');
++    const canvas = document.createElement('canvas');
++    const context = canvas.getContext('2d');
++
++    function fitControl(control) {
++      const style = getComputedStyle(control);
++      context.font = style.font;
++      const value = control.tagName === 'SELECT'
++        ? control.selectedOptions[0].text
++        : control.value || control.placeholder || ' ';
++      const textWidth = Math.max(...value.split('\n').map(line => context.measureText(line).width));
++      const horizontalSpace = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
++        + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
++      control.style.width = `${Math.ceil(textWidth + horizontalSpace + 3)}px`;
++      if (control.tagName === 'TEXTAREA') {
++        control.style.height = 'auto';
++        control.style.height = `${control.scrollHeight + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`;
++      }
++    }
++
++    try {
++      const saved = JSON.parse(localStorage.getItem('daily-grind-usual'));
++      if (saved && typeof saved === 'object') {
++        controls.forEach(control => {
++          if (typeof saved[control.name] === 'string' &&
++            (control.tagName !== 'SELECT' || [...control.options].some(option => option.value === saved[control.name]))) {
++            control.value = saved[control.name];
++          }
++        });
++      }
++    } catch { /* The form remains usable when browser storage is unavailable. */ }
++
++    const fitAll = () => controls.forEach(fitControl);
++    controls.forEach(control => {
++      control.addEventListener('input', () => { fitControl(control); status.textContent = ''; });
++      control.addEventListener('change', () => fitControl(control));
++    });
++    new ResizeObserver(fitAll).observe(form);
++    document.fonts.ready.then(fitAll);
++    fitAll();
++
++    form.addEventListener('submit', event => {
++      event.preventDefault();
++      try {
++        localStorage.setItem('daily-grind-usual', JSON.stringify(Object.fromEntries(new FormData(form))));
++        status.textContent = 'Your usual is saved. See you for the next cup!';
++      } catch {
++        status.textContent = 'Your browser could not save your usual. Please allow local storage and try again.';
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

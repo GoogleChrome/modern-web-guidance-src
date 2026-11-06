@@ -1,0 +1,573 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- HTML-in-Canvas origin trial: register at https://developer.chrome.com/origintrials and paste the token below. -->
++  <meta http-equiv="origin-trial" content="REPLACE_WITH_ORIGIN_TRIAL_TOKEN">
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -134,8 +136,184 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* 3D Coffee Box */
++    .box-section {
++      background: radial-gradient(circle at 50% 40%, #6d4c41 0%, var(--primary) 55%, #2b1b17 100%);
++      color: white;
++      padding: 60px 20px 20px;
++      text-align: center;
++    }
++
++    .box-section > p {
++      color: var(--secondary);
++    }
++
++    .box-stage {
++      position: relative;
++      max-width: 1100px;
++      margin: 0 auto;
++    }
++
++    #box-canvas {
++      display: block;
++      width: 100%;
++      height: min(80vh, 640px);
++    }
++
++    /* Canvas children are positioned by updateElementGeometry(); sizes match the box faces (1 : 1.3). */
++    .box-face {
++      width: 360px;
++      height: 468px;
++      border-radius: 6px;
++      color: var(--text);
++      text-align: left;
++    }
++
++    .box-form {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      padding: 24px;
++      background: #fffaf3;
++      border: 6px solid var(--primary);
++    }
++
++    .box-form h3 {
++      color: var(--primary);
++      font-size: 1.3rem;
++      line-height: 1.2;
++    }
++
++    .box-form label,
++    .box-form legend,
++    .qty-heading {
++      display: block;
++      font-size: 0.8rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .box-form select,
++    .box-form input[type="email"] {
++      width: 100%;
++      margin-top: 4px;
++      padding: 6px 8px;
++      font: inherit;
++      border: 1px solid #a1887f;
++      border-radius: 4px;
++      background: white;
++    }
++
++    .box-form fieldset {
++      border: 0;
++    }
++
++    .grind-options {
++      display: flex;
++      gap: 12px;
++      margin-top: 4px;
++    }
++
++    .grind-options label {
++      display: flex;
++      align-items: center;
++      gap: 4px;
++      font-weight: 400;
++      text-transform: none;
++      font-size: 0.9rem;
++    }
++
++    .qty {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .qty button {
++      width: 32px;
++      height: 32px;
++      font-size: 1.1rem;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .qty output {
++      min-width: 2ch;
++      text-align: center;
++      font-weight: 700;
++    }
++
++    .box-form button[type="submit"] {
++      margin-top: auto;
++      padding: 10px;
++      font: inherit;
++      font-weight: 700;
++      color: white;
++      background: var(--primary);
++      border: 0;
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .box-form button:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .box-form :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .box-status {
++      min-height: 1.4em;
++      font-size: 0.85rem;
++      color: #2e7d32;
++    }
++
++    .box-label {
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      padding: 24px;
++      text-align: center;
++      background: #c8a27a;
++      border: 6px solid var(--primary);
++    }
++
++    .box-label .brand {
++      font-size: 2rem;
++      font-weight: 800;
++      line-height: 1.1;
++      letter-spacing: 3px;
++      color: var(--primary);
++    }
++
++    .box-label .blend {
++      padding: 6px 18px;
++      font-size: 1.2rem;
++      font-weight: 700;
++      color: white;
++      background: var(--primary);
++      border-radius: 999px;
++    }
++
++    /* Fallback without HTML-in-Canvas: the form sits on top of the canvas. */
++    .box-stage.fallback .box-form {
++      position: absolute;
++      inset: 0;
++      margin: auto;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +351,56 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="box-section" aria-labelledby="box-heading">
++    <h2 id="box-heading">Build Your Coffee Box</h2>
++    <p>Pick your roast and grind right on the box &mdash; it keeps spinning, and you can still click and type.</p>
++    <div class="box-stage">
++      <canvas id="box-canvas" content="drawable">
++        <form id="box-form" class="box-face box-form" drawable>
++          <h3>Your Daily Grind Box</h3>
++          <div>
++            <label for="roast">Roast</label>
++            <select id="roast" name="roast">
++              <option>Light</option>
++              <option selected>Medium</option>
++              <option>Dark</option>
++            </select>
++          </div>
++          <fieldset>
++            <legend>Grind</legend>
++            <div class="grind-options">
++              <label><input type="radio" name="grind" value="Whole bean" checked> Whole</label>
++              <label><input type="radio" name="grind" value="Drip"> Drip</label>
++              <label><input type="radio" name="grind" value="Espresso"> Espresso</label>
++            </div>
++          </fieldset>
++          <div>
++            <span id="qty-label" class="qty-heading">Bags (12 oz)</span>
++            <div class="qty" role="group" aria-labelledby="qty-label">
++              <button type="button" data-step="-1" aria-label="Fewer bags">&minus;</button>
++              <output id="qty" aria-live="polite">1</output>
++              <button type="button" data-step="1" aria-label="More bags">+</button>
++            </div>
++          </div>
++          <div>
++            <label for="box-email">Email for delivery updates</label>
++            <input id="box-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
++          </div>
++          <output class="box-status" id="box-status"></output>
++          <button type="submit">Add Box to Order</button>
++        </form>
++        <div id="box-label" class="box-face box-label" drawable aria-hidden="true">
++          <div class="brand">THE<br>DAILY<br>GRIND</div>
++          <div class="blend">House Blend</div>
++          <p>Small-batch roasted &middot; Ethically sourced</p>
++          <p><strong>NET WT 12 OZ (340 g)</strong></p>
++        </div>
++      </canvas>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +432,316 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const stage = document.querySelector('.box-stage');
++    const canvas = document.getElementById('box-canvas');
++    const form = document.getElementById('box-form');
++    const label = document.getElementById('box-label');
++    const qtyOutput = document.getElementById('qty');
++    const status = document.getElementById('box-status');
++
++    // --- Form behavior ---
++    let qty = 1;
++    form.addEventListener('click', (event) => {
++      const step = event.target.closest('[data-step]')?.dataset.step;
++      if (!step) return;
++      qty = Math.min(12, Math.max(1, qty + Number(step)));
++      qtyOutput.value = qty;
++    });
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const data = new FormData(form);
++      status.value = `Added ${qty} × ${data.get('roast')} roast (${data.get('grind')}) to your order.`;
++    });
++
++    // --- 3D scene ---
++    const gl = canvas.getContext('webgl2');
++    const htmlInCanvas = 'content' in HTMLCanvasElement.prototype && gl !== null;
++
++    if (!htmlInCanvas) {
++      // Fallback: render the form on top of the canvas with CSS.
++      stage.classList.add('fallback');
++      stage.append(form);
++    }
++
++    const observer = new ResizeObserver(([entry]) => {
++      const dpc = entry.devicePixelContentBoxSize;
++      canvas.width = dpc
++        ? dpc[0].inlineSize
++        : Math.round(entry.contentRect.width * window.devicePixelRatio);
++      canvas.height = dpc
++        ? dpc[0].blockSize
++        : Math.round(entry.contentRect.height * window.devicePixelRatio);
++    });
++    const supportsDevicePixelContentBox =
++      typeof ResizeObserverEntry !== 'undefined' &&
++      'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++    observer.observe(canvas, supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {});
++
++    if (gl) {
++      const program = createProgram(`#version 300 es
++        in vec2 aPos;
++        uniform mat4 uMVP;
++        uniform mat4 uModel;
++        out vec2 vUV;
++        out vec3 vNormal;
++        void main() {
++          // Element textures are uploaded top row first, so flip V.
++          vUV = vec2(aPos.x + 0.5, 0.5 - aPos.y);
++          vNormal = mat3(uModel) * vec3(0.0, 0.0, 1.0);
++          gl_Position = uMVP * vec4(aPos, 0.0, 1.0);
++        }`, `#version 300 es
++        precision highp float;
++        in vec2 vUV;
++        in vec3 vNormal;
++        uniform sampler2D uTex;
++        uniform bool uUseTex;
++        uniform vec3 uColor;
++        out vec4 outColor;
++        void main() {
++          float diffuse = max(dot(normalize(vNormal), normalize(vec3(0.4, 0.6, 1.0))), 0.0);
++          vec3 color;
++          float light;
++          if (uUseTex) {
++            color = texture(uTex, vUV).rgb;
++            light = mix(1.0, 0.6 + 0.4 * diffuse, 0.35); // Keep the form readable.
++          } else {
++            color = uColor;
++            // Accent band printed around the box.
++            if (vUV.y > 0.12 && vUV.y < 0.2) color = vec3(1.0, 0.67, 0.25);
++            light = 0.45 + 0.55 * diffuse;
++          }
++          outColor = vec4(color * light, 1.0);
++        }`);
++
++      const aPos = gl.getAttribLocation(program, 'aPos');
++      const uMVP = gl.getUniformLocation(program, 'uMVP');
++      const uModel = gl.getUniformLocation(program, 'uModel');
++      const uUseTex = gl.getUniformLocation(program, 'uUseTex');
++      const uColor = gl.getUniformLocation(program, 'uColor');
++
++      // Unit quad spanning -0.5..0.5, counter-clockwise when facing +Z.
++      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
++        -0.5, -0.5, 0.5, -0.5, 0.5, 0.5,
++        -0.5, -0.5, 0.5, 0.5, -0.5, 0.5,
++      ]), gl.STATIC_DRAW);
++      gl.enableVertexAttribArray(aPos);
++      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
++
++      gl.enable(gl.DEPTH_TEST);
++      gl.enable(gl.CULL_FACE);
++      gl.useProgram(program);
++
++      // Box dimensions in model units (front face matches the 360x468 form).
++      const W = 1, H = 1.3, D = 0.6;
++      const kraft = [0.78, 0.6, 0.42];
++      const dark = [0.55, 0.38, 0.27];
++      const faces = [
++        { matrix: new DOMMatrix().translate(0, 0, D / 2).scale(W, H, 1), element: form, color: kraft },
++        { matrix: new DOMMatrix().translate(0, 0, -D / 2).rotate(0, 180, 0).scale(W, H, 1), element: label, color: kraft },
++        { matrix: new DOMMatrix().translate(W / 2, 0, 0).rotate(0, 90, 0).scale(D, H, 1), color: kraft },
++        { matrix: new DOMMatrix().translate(-W / 2, 0, 0).rotate(0, -90, 0).scale(D, H, 1), color: kraft },
++        { matrix: new DOMMatrix().translate(0, H / 2, 0).rotate(-90, 0, 0).scale(W, D, 1), color: dark },
++        { matrix: new DOMMatrix().translate(0, -H / 2, 0).rotate(90, 0, 0).scale(W, D, 1), color: dark },
++      ];
++      for (const face of faces) {
++        if (face.element && htmlInCanvas) {
++          face.texture = gl.createTexture();
++          face.textureState = { width: 0, height: 0 };
++          face.interactive = false;
++        }
++      }
++
++      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++      let hovering = false;
++      form.addEventListener('pointerenter', () => { hovering = true; });
++      form.addEventListener('pointerleave', () => { hovering = false; });
++
++      let angle = 0;
++      let lastTime = performance.now();
++
++      function draw() {
++        const now = performance.now();
++        const dt = Math.min((now - lastTime) / 1000, 0.1);
++        lastTime = now;
++
++        if (form.matches(':focus-within')) {
++          // Settle the form face toward the viewer while the user is typing.
++          const target = Math.round(angle / 360) * 360;
++          angle += (target - angle) * Math.min(1, dt * 4);
++        } else if (reducedMotion.matches) {
++          angle = 20 * Math.sin(now / 4000);
++        } else {
++          angle += dt * (hovering ? 10 : 30); // Slow down (but keep spinning) under the pointer.
++        }
++
++        gl.viewport(0, 0, canvas.width, canvas.height);
++        gl.clearColor(0, 0, 0, 0);
++        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++
++        const projection = perspective(35, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
++        const view = new DOMMatrix().translate(0, 0, -2.9);
++        const model = new DOMMatrix()
++          .translate(0, Math.sin(now / 1200) * 0.03, 0)
++          .rotate(-8, 0, 0)
++          .rotate(0, angle, 0);
++
++        for (const face of faces) {
++          const faceModel = model.multiply(face.matrix);
++          const modelView = view.multiply(faceModel);
++          const mvp = projection.multiply(modelView);
++          gl.uniformMatrix4fv(uMVP, false, mvp.toFloat32Array());
++          gl.uniformMatrix4fv(uModel, false, faceModel.toFloat32Array());
++
++          const textured = face.texture && face.textureState.width > 0;
++          gl.uniform1i(uUseTex, textured ? 1 : 0);
++          gl.uniform3fv(uColor, face.color);
++          if (textured) gl.bindTexture(gl.TEXTURE_2D, face.texture);
++          gl.drawArrays(gl.TRIANGLES, 0, 6);
++
++          if (face.texture) syncGeometry(face, modelView, mvp);
++        }
++      }
++
++      // Keep the real element on top of its rendered pixels while it faces the viewer,
++      // and remove it from hit testing when it turns away.
++      function syncGeometry(face, modelView, mvp) {
++        const normal = modelView.transformPoint(new DOMPoint(0, 0, 1, 0));
++        const center = modelView.transformPoint(new DOMPoint(0, 0, 0, 1));
++        const toEye = Math.hypot(center.x, center.y, center.z);
++        const facing = -(normal.x * center.x + normal.y * center.y + normal.z * center.z) /
++          (Math.hypot(normal.x, normal.y, normal.z) * toEye);
++
++        if (facing > 0.15) {
++          canvas.updateElementGeometry(face.element, {
++            canvasTransform: computeCanvasTransform(canvas, face.element, mvp),
++            preserveHitTestOrder: true,
++          });
++          face.interactive = true;
++        } else if (face.interactive) {
++          canvas.clearElementGeometry(face.element);
++          face.interactive = false;
++        }
++      }
++
++      if (htmlInCanvas) {
++        canvas.onpaint = (event) => {
++          const changed = Array.from(event.changedElements ?? []);
++          for (const face of faces) {
++            if (!face.texture) continue;
++            if (face.textureState.width && !changed.includes(face.element)) continue;
++            try {
++              uploadElementWebGL(gl, canvas, face.texture, face.element, face.textureState);
++            } catch (err) {
++              console.error('texElementSubImage2D copy failed:', err);
++            }
++          }
++          draw();
++        };
++      }
++
++      // Only animate while the box is on screen.
++      let frameId = 0;
++      function frame() {
++        if (htmlInCanvas) canvas.requestPaint();
++        else draw();
++        frameId = requestAnimationFrame(frame);
++      }
++      new IntersectionObserver(([entry]) => {
++        cancelAnimationFrame(frameId);
++        if (entry.isIntersecting) {
++          lastTime = performance.now();
++          frameId = requestAnimationFrame(frame);
++        }
++      }).observe(canvas);
++
++      function createProgram(vsSource, fsSource) {
++        const prog = gl.createProgram();
++        for (const [type, source] of [[gl.VERTEX_SHADER, vsSource], [gl.FRAGMENT_SHADER, fsSource]]) {
++          const shader = gl.createShader(type);
++          gl.shaderSource(shader, source);
++          gl.compileShader(shader);
++          if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++            throw new Error(gl.getShaderInfoLog(shader));
++          }
++          gl.attachShader(prog, shader);
++        }
++        gl.linkProgram(prog);
++        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
++          throw new Error(gl.getProgramInfoLog(prog));
++        }
++        return prog;
++      }
++    }
++
++    function perspective(fovDegrees, aspect, near, far) {
++      const f = 1 / Math.tan((fovDegrees * Math.PI) / 360);
++      const nf = 1 / (near - far);
++      return new DOMMatrix([
++        f / aspect, 0, 0, 0,
++        0, f, 0, 0,
++        0, 0, (far + near) * nf, -1,
++        0, 0, 2 * far * near * nf, 0,
++      ]);
++    }
++
++    // Returns the element's size in canvas grid pixels, or null if the element
++    // has no paint record yet.
++    function getElementImageSize(canvas, element) {
++      let elementImage;
++      try {
++        elementImage = canvas.captureElementImage(element);
++      } catch (err) {
++        canvas.requestPaint(); // No paint record yet: retry on the next paint event.
++        return null;
++      }
++      const width = Math.ceil(elementImage.width);
++      const height = Math.ceil(elementImage.height);
++      elementImage.close();
++      return width > 0 && height > 0 ? { width, height } : null;
++    }
++
++    // Binds the texture, and allocates its storage on the first upload, and when
++    // the element size changes.
++    function allocateElementTexture(gl, texture, state, width, height) {
++      gl.bindTexture(gl.TEXTURE_2D, texture);
++      if (state.width === width && state.height === height) return;
++      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++      state.width = width;
++      state.height = height;
++    }
++
++    // Uploads the element into the texture. Returns false if the element has no
++    // paint record yet; it's uploaded on the next paint event.
++    function uploadElementWebGL(gl, canvas, texture, element, state) {
++      const size = getElementImageSize(canvas, element);
++      if (!size) return false;
++      const { width, height } = size;
++      allocateElementTexture(gl, texture, state, width, height);
++      gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, element, { width, height });
++      return true;
++    }
++
++    // Maps the element's border box (CSS pixels) to the canvas (CSS pixels), for a
++    // quad that spans -0.5 to 0.5 in model space and is drawn with the `mvp` matrix.
++    function computeCanvasTransform(canvas, element, mvp) {
++      const width = element.offsetWidth;
++      const height = element.offsetHeight;
++      const toGLModel = new DOMMatrix()
++        .scale(1 / width, -1 / height, 1 / height)
++        .translate(-width / 2, -height / 2);
++      const clipToCanvasViewport = new DOMMatrix()
++        .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
++        .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
++      return clipToCanvasViewport.multiply(mvp).multiply(toGLModel);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

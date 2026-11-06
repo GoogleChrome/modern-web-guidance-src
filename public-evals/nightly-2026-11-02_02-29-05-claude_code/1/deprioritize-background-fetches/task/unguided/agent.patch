@@ -1,0 +1,31 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,27 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Fetch</title>
++</head>
++<body>
++<button id="go">Load</button>
++<script>
++document.getElementById('go').addEventListener('click', () => {
++  fetch('/api/data', { priority: 'high' })
++    .then(r => r.json())
++    .then(data => console.log(data))
++    .catch(console.error);
++
++  fetch('/api/analytics', {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ click: 1 }),
++    priority: 'low',
++    keepalive: true
++  }).catch(console.error);
++});
++</script>
++</body>
++</html>

@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -69,10 +69,59 @@
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      cursor: pointer;
+     }
+ 
++    /* Logout confirmation dialog */
++    .logout-dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 0;
++      max-width: 400px;
++      width: calc(100% - 40px);
++      color: var(--text);
++      background: var(--light);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++    }
++
++    .logout-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .logout-dialog-content {
++      padding: 30px;
++      text-align: center;
++    }
++
++    .logout-dialog-content h2 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .logout-dialog-content p {
++      margin-bottom: 20px;
++    }
++
++    .logout-dialog-actions {
++      display: flex;
++      gap: 10px;
++      justify-content: center;
++    }
++
++    .logout-dialog-actions .btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
++    }
++
++    .logout-dialog-actions .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +212,51 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger" id="logout-trigger">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <dialog class="logout-dialog" id="logout-dialog" aria-labelledby="logout-dialog-title">
++    <div class="logout-dialog-content">
++      <h2 id="logout-dialog-title">Are you sure?</h2>
++      <p>You are about to log out of your Daily Grind account.</p>
++      <div class="logout-dialog-actions">
++        <button type="button" class="btn btn-secondary" id="logout-cancel">Cancel</button>
++        <a href="/logout" class="btn" id="logout-confirm">Yes, log out</a>
++      </div>
++    </div>
++  </dialog>
++
++  <script>
++    (function () {
++      var trigger = document.getElementById('logout-trigger');
++      var dialog = document.getElementById('logout-dialog');
++      var cancel = document.getElementById('logout-cancel');
++
++      trigger.addEventListener('click', function (event) {
++        event.preventDefault();
++        dialog.showModal();
++      });
++
++      cancel.addEventListener('click', function () {
++        dialog.close();
++      });
++
++      // Close when the user clicks anywhere on the backdrop (outside the dialog box).
++      dialog.addEventListener('click', function (event) {
++        var rect = dialog.getBoundingClientRect();
++        var inside =
++          event.clientX >= rect.left && event.clientX <= rect.right &&
++          event.clientY >= rect.top && event.clientY <= rect.bottom;
++        if (!inside || event.target === dialog) {
++          dialog.close();
++        }
++      });
++    })();
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

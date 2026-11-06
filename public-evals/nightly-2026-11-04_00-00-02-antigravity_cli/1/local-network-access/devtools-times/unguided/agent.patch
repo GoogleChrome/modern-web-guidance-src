@@ -1,0 +1,537 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..dcb593e 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,10 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  interface RequestInit {
++    targetAddressSpace?: 'local' | 'loopback' | 'private' | 'public';
++  }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/DiagnosticsWidget.tsx b/src/components/DiagnosticsWidget.tsx
+new file mode 100644
+index 0000000..4009bba
+--- /dev/null
++++ b/src/components/DiagnosticsWidget.tsx
+@@ -0,0 +1,456 @@
++import React, { useState, useEffect, useCallback } from 'react';
++
++type AddressSpace = 'local' | 'loopback';
++type PermissionStateValue = PermissionState | 'unsupported' | 'checking';
++
++interface EndpointDiagnosticState {
++  url: string;
++  targetAddressSpace: AddressSpace;
++  permissionName: 'local-network' | 'loopback-network';
++  permissionState: PermissionStateValue;
++  connectionStatus: 'idle' | 'connecting' | 'connected' | 'error';
++  latencyMs: number | null;
++  responsePreview: string | null;
++  errorMessage: string | null;
++  lastChecked: string | null;
++}
++
++interface DiagnosticsWidgetProps {
++  defaultExpanded?: boolean;
++  compact?: boolean;
++}
++
++export default function DiagnosticsWidget({
++  defaultExpanded = false,
++  compact = false,
++}: DiagnosticsWidgetProps) {
++  const [isOpen, setIsOpen] = useState(defaultExpanded);
++  const [isSecureContextState, setIsSecureContextState] = useState<boolean>(true);
++
++  const [lanDevice, setLanDevice] = useState<EndpointDiagnosticState>({
++    url: 'http://192.168.1.50:8080/diagnostics',
++    targetAddressSpace: 'local',
++    permissionName: 'local-network',
++    permissionState: 'checking',
++    connectionStatus: 'idle',
++    latencyMs: null,
++    responsePreview: null,
++    errorMessage: null,
++    lastChecked: null,
++  });
++
++  const [companionCli, setCompanionCli] = useState<EndpointDiagnosticState>({
++    url: 'http://127.0.0.1:9229/status',
++    targetAddressSpace: 'loopback',
++    permissionName: 'loopback-network',
++    permissionState: 'checking',
++    connectionStatus: 'idle',
++    latencyMs: null,
++    responsePreview: null,
++    errorMessage: null,
++    lastChecked: null,
++  });
++
++  const querySinglePermission = useCallback(
++    async (
++      permissionName: 'local-network' | 'loopback-network',
++      setter: React.Dispatch<React.SetStateAction<EndpointDiagnosticState>>
++    ) => {
++      if (typeof window === 'undefined' || !('permissions' in navigator)) {
++        setter((prev) => ({ ...prev, permissionState: 'unsupported' }));
++        return;
++      }
++
++      try {
++        const status = await navigator.permissions.query({
++          name: permissionName as PermissionName,
++        });
++        setter((prev) => ({ ...prev, permissionState: status.state }));
++
++        status.onchange = () => {
++          setter((prev) => ({ ...prev, permissionState: status.state }));
++        };
++      } catch {
++        // Fallback check for legacy 'local-network-access' if granular permission is unsupported
++        try {
++          const fallbackStatus = await navigator.permissions.query({
++            name: 'local-network-access' as PermissionName,
++          });
++          setter((prev) => ({ ...prev, permissionState: fallbackStatus.state }));
++          fallbackStatus.onchange = () => {
++            setter((prev) => ({ ...prev, permissionState: fallbackStatus.state }));
++          };
++        } catch {
++          setter((prev) => ({ ...prev, permissionState: 'unsupported' }));
++        }
++      }
++    },
++    []
++  );
++
++  const refreshPermissions = useCallback(() => {
++    if (typeof window !== 'undefined') {
++      setIsSecureContextState(window.isSecureContext);
++    }
++    querySinglePermission('local-network', setLanDevice);
++    querySinglePermission('loopback-network', setCompanionCli);
++  }, [querySinglePermission]);
++
++  useEffect(() => {
++    refreshPermissions();
++  }, [refreshPermissions]);
++
++  // Triggered strictly via explicit user gesture (button click) so the browser can show the LNA permission prompt
++  const connectToEndpoint = async (
++    state: EndpointDiagnosticState,
++    setter: React.Dispatch<React.SetStateAction<EndpointDiagnosticState>>
++  ) => {
++    setter((prev) => ({
++      ...prev,
++      connectionStatus: 'connecting',
++      errorMessage: null,
++      responsePreview: null,
++      latencyMs: null,
++    }));
++
++    const startTime = performance.now();
++    const controller = new AbortController();
++    const timeoutId = setTimeout(() => controller.abort(), 5000);
++
++    try {
++      const response = await fetch(state.url, {
++        method: 'GET',
++        mode: 'cors',
++        targetAddressSpace: state.targetAddressSpace,
++        signal: controller.signal,
++      });
++
++      clearTimeout(timeoutId);
++      const elapsed = Math.round(performance.now() - startTime);
++
++      let previewText = `HTTP ${response.status} ${response.statusText || 'OK'}`;
++      try {
++        const text = await response.text();
++        if (text) {
++          previewText = text.slice(0, 160);
++        }
++      } catch {
++        // Ignore body read error if opaque or empty
++      }
++
++      setter((prev) => ({
++        ...prev,
++        connectionStatus: response.ok ? 'connected' : 'error',
++        latencyMs: elapsed,
++        responsePreview: previewText,
++        errorMessage: response.ok ? null : `Endpoint returned HTTP ${response.status}`,
++        lastChecked: new Date().toLocaleTimeString(),
++      }));
++    } catch (err: unknown) {
++      clearTimeout(timeoutId);
++      const elapsed = Math.round(performance.now() - startTime);
++      const isAbort = err instanceof DOMException && err.name === 'AbortError';
++      const rawMessage = err instanceof Error ? err.message : String(err);
++
++      let friendlyError = rawMessage;
++      if (isAbort) {
++        friendlyError = 'Connection timed out after 5s.';
++      } else if (rawMessage.includes('Failed to fetch') || rawMessage.includes('NetworkError')) {
++        friendlyError = `Network error or Local Network Access blocked (${state.permissionName}). Verify the service is running on ${state.url}, CORS headers (Access-Control-Allow-Origin) are enabled, and the browser LNA permission prompt was allowed.`;
++      }
++
++      setter((prev) => ({
++        ...prev,
++        connectionStatus: 'error',
++        latencyMs: elapsed,
++        errorMessage: friendlyError,
++        lastChecked: new Date().toLocaleTimeString(),
++      }));
++    } finally {
++      refreshPermissions();
++    }
++  };
++
++  const getPermissionBadgeClass = (perm: PermissionStateValue) => {
++    switch (perm) {
++      case 'granted':
++        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
++      case 'denied':
++        return 'bg-red-100 text-red-800 border-red-300';
++      case 'prompt':
++        return 'bg-amber-100 text-amber-800 border-amber-300';
++      default:
++        return 'bg-gray-100 text-gray-700 border-gray-300';
++    }
++  };
++
++  const getStatusDotClass = (status: EndpointDiagnosticState['connectionStatus']) => {
++    switch (status) {
++      case 'connected':
++        return 'bg-emerald-500';
++      case 'connecting':
++        return 'bg-amber-400 animate-pulse';
++      case 'error':
++        return 'bg-red-500';
++      default:
++        return 'bg-gray-400';
++    }
++  };
++
++  if (compact) {
++    return (
++      <>
++        <button
++          type="button"
++          onClick={() => setIsOpen(true)}
++          className="flex items-center space-x-1.5 text-xs font-semibold text-gray-700 hover:text-amber-600 bg-gray-100 hover:bg-amber-50 border border-gray-300 rounded px-2.5 py-1.5 transition-colors"
++          title="Developer Diagnostics: Local Network & Companion CLI Connection"
++          aria-label="Open Developer Diagnostics Connection Widget"
++        >
++          <span className="flex space-x-1">
++            <span
++              className={`w-2 h-2 rounded-full ${getStatusDotClass(lanDevice.connectionStatus)}`}
++              title={`Hardware LAN (${lanDevice.permissionName}): ${lanDevice.connectionStatus}`}
++            />
++            <span
++              className={`w-2 h-2 rounded-full ${getStatusDotClass(companionCli.connectionStatus)}`}
++              title={`Companion CLI (${companionCli.permissionName}): ${companionCli.connectionStatus}`}
++            />
++          </span>
++          <span>Dev Diagnostics</span>
++        </button>
++
++        {isOpen && (
++          <div
++            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[99999] flex justify-center items-start p-4 pt-[10vh]"
++            onClick={() => setIsOpen(false)}
++          >
++            <div
++              className="bg-white border border-gray-300 rounded-lg shadow-2xl w-full max-w-3xl overflow-hidden text-left"
++              onClick={(e) => e.stopPropagation()}
++            >
++              {renderWidgetContent(true)}
++            </div>
++          </div>
++        )}
++      </>
++    );
++  }
++
++  function renderEndpointCard(
++    title: string,
++    subtitle: string,
++    badgeLabel: string,
++    state: EndpointDiagnosticState,
++    setter: React.Dispatch<React.SetStateAction<EndpointDiagnosticState>>,
++    presets: { label: string; url: string }[]
++  ) {
++    return (
++      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50/70 flex flex-col justify-between space-y-3">
++        <div>
++          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
++            <div className="flex items-center space-x-2">
++              <span className={`w-2.5 h-2.5 rounded-full ${getStatusDotClass(state.connectionStatus)}`} />
++              <h4 className="font-bold text-sm text-gray-900">{title}</h4>
++            </div>
++            <span className="text-[11px] font-mono bg-gray-900 text-amber-300 px-2 py-0.5 rounded">
++              targetAddressSpace: &quot;{state.targetAddressSpace}&quot;
++            </span>
++          </div>
++
++          <p className="text-xs text-gray-600 mb-3">{subtitle}</p>
++
++          {/* Permission Status Row */}
++          <div className="flex items-center justify-between text-xs bg-white border border-gray-200 rounded px-2.5 py-1.5 mb-3">
++            <span className="text-gray-600 font-medium">
++              Permission (<code className="font-mono text-[11px] text-gray-800">{state.permissionName}</code>):
++            </span>
++            <span
++              className={`text-[11px] font-semibold uppercase px-2 py-0.5 rounded border ${getPermissionBadgeClass(
++                state.permissionState
++              )}`}
++            >
++              {state.permissionState}
++            </span>
++          </div>
++
++          {/* Preset Quick Select */}
++          <div className="flex flex-wrap items-center gap-1.5 mb-2">
++            <span className="text-[11px] text-gray-500 font-medium">{badgeLabel}:</span>
++            {presets.map((preset) => (
++              <button
++                key={preset.url}
++                type="button"
++                onClick={() => setter((prev) => ({ ...prev, url: preset.url }))}
++                className="text-[11px] font-mono bg-white hover:bg-amber-50 text-gray-700 border border-gray-300 rounded px-1.5 py-0.5 transition-colors"
++              >
++                {preset.label}
++              </button>
++            ))}
++          </div>
++
++          {/* Endpoint Input & Connect Button */}
++          <div className="flex flex-col sm:flex-row gap-2">
++            <input
++              type="url"
++              value={state.url}
++              onChange={(e) => setter((prev) => ({ ...prev, url: e.target.value }))}
++              placeholder={ presets[0]?.url }
++              aria-label={`${title} URL`}
++              className="flex-1 text-xs font-mono bg-white border border-gray-300 rounded px-2.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
++            />
++            <button
++              type="button"
++              onClick={() => connectToEndpoint(state, setter)}
++              disabled={state.connectionStatus === 'connecting'}
++              className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white text-xs font-semibold px-3.5 py-2 rounded whitespace-nowrap transition-colors cursor-pointer"
++            >
++              {state.connectionStatus === 'connecting' ? 'Connecting...' : 'Connect'}
++            </button>
++          </div>
++        </div>
++
++        {/* Status / Diagnostics Output */}
++        <div className="text-xs border-t border-gray-200 pt-2.5">
++          {state.connectionStatus === 'idle' && (
++            <p className="text-gray-500">
++              Ready. Click <strong>Connect</strong> to initiate a user-gestured{' '}
++              <code className="font-mono">fetch()</code> with{' '}
++              <code className="font-mono">targetAddressSpace: &apos;{state.targetAddressSpace}&apos;</code>.
++            </p>
++          )}
++          {state.connectionStatus === 'connecting' && (
++            <p className="text-amber-700 font-medium">
++              Sending request... Check your browser address bar if prompted for{' '}
++              <code className="font-mono">{state.permissionName}</code> permission.
++            </p>
++          )}
++          {state.connectionStatus === 'connected' && (
++            <div className="space-y-1 text-emerald-800 bg-emerald-50 border border-emerald-200 rounded p-2">
++              <div className="flex justify-between font-semibold">
++                <span>Connected to {state.targetAddressSpace} endpoint</span>
++                {state.latencyMs !== null && <span>{state.latencyMs} ms</span>}
++              </div>
++              {state.responsePreview && (
++                <pre className="text-[11px] font-mono overflow-x-auto whitespace-pre-wrap text-emerald-900">
++                  {state.responsePreview}
++                </pre>
++              )}
++            </div>
++          )}
++          {state.connectionStatus === 'error' && (
++            <div className="space-y-1 text-red-800 bg-red-50 border border-red-200 rounded p-2">
++              <div className="flex justify-between font-semibold">
++                <span>Connection Failed</span>
++                {state.latencyMs !== null && <span>{state.latencyMs} ms</span>}
++              </div>
++              <p className="text-[11px] leading-relaxed">{state.errorMessage}</p>
++            </div>
++          )}
++        </div>
++      </div>
++    );
++  }
++
++  function renderWidgetContent(isModal: boolean) {
++    return (
++      <div className="bg-white">
++        {/* Header Bar */}
++        <div className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
++          <div className="flex items-center space-x-2.5">
++            <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" />
++            <div>
++              <h3 className="text-sm font-bold tracking-wide">
++                Developer Diagnostics: Local Network &amp; Loopback Bridge
++              </h3>
++              <p className="text-[11px] text-gray-300">
++                Chrome Local Network Access (LNA) hardware &amp; companion CLI connection console
++              </p>
++            </div>
++          </div>
++          <div className="flex items-center space-x-2">
++            <button
++              type="button"
++              onClick={refreshPermissions}
++              className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded px-2.5 py-1 transition-colors"
++            >
++              Refresh Permissions
++            </button>
++            {isModal && (
++              <button
++                type="button"
++                onClick={() => setIsOpen(false)}
++                className="text-gray-400 hover:text-white p-1"
++                aria-label="Close Diagnostics Modal"
++              >
++                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
++                </svg>
++              </button>
++            )}
++          </div>
++        </div>
++
++        {/* Body */}
++        <div className="p-4 space-y-4">
++          {!isSecureContextState && (
++            <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs rounded p-3">
++              <strong>Insecure Context Detected:</strong> Local Network Access permissions (
++              <code className="font-mono">local-network</code> and{' '}
++              <code className="font-mono">loopback-network</code>) require a secure context (
++              <code className="font-mono">https://</code> or <code className="font-mono">localhost</code>).
++            </div>
++          )}
++
++          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
++            {renderEndpointCard(
++              'Hardware Test Device (Private Wi-Fi LAN)',
++              'Connect to a hardware test rig or IoT sensor on your private RFC 1918 Wi-Fi LAN (e.g., 192.168.1.x).',
++              'LAN Presets',
++              lanDevice,
++              setLanDevice,
++              [
++                { label: '192.168.1.50:8080', url: 'http://192.168.1.50:8080/diagnostics' },
++                { label: '192.168.1.100:3000', url: 'http://192.168.1.100:3000/health' },
++                { label: 'hw-test.local', url: 'http://hw-test.local:8080/status' },
++              ]
++            )}
++
++            {renderEndpointCard(
++              'Local Companion CLI (Loopback)',
++              'Connect to the companion diagnostics CLI running on your local machine (127.0.0.1 / localhost).',
++              'Loopback Presets',
++              companionCli,
++              setCompanionCli,
++              [
++                { label: '127.0.0.1:9229', url: 'http://127.0.0.1:9229/status' },
++                { label: '127.0.0.1:4318', url: 'http://127.0.0.1:4318/v1/traces' },
++                { label: 'localhost:8787', url: 'http://localhost:8787/diagnostics' },
++              ]
++            )}
++          </div>
++
++          <div className="bg-gray-50 border border-gray-200 rounded px-3 py-2 text-[11px] text-gray-600 flex flex-wrap items-center justify-between gap-2">
++            <span>
++              <strong>LNA Policy:</strong> Split permissions (<code className="font-mono">local-network</code> &amp;{' '}
++              <code className="font-mono">loopback-network</code>) with explicit{' '}
++              <code className="font-mono">targetAddressSpace</code> fetch hints.
++            </span>
++            <span className="font-mono text-gray-500">
++              Permissions-Policy: local-network=(self), loopback-network=(self)
++            </span>
++          </div>
++        </div>
++      </div>
++    );
++  }
++
++  return (
++    <section
++      aria-label="Developer Diagnostics Connection Widget"
++      className="border border-gray-300 rounded-lg overflow-hidden shadow-xs my-6"
++    >
++      {renderWidgetContent(false)}
++    </section>
++  );
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..0a14358 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,6 +1,7 @@
+ ---
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
++import DiagnosticsWidget from "./DiagnosticsWidget.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
+ 
+@@ -21,6 +22,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <DiagnosticsWidget client:load compact={true} />
+       </div>
+ 
+       <!-- Right: Buttons -->
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..1a64ab6 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network=(self), loopback-network=(self)'
++  );
++  return response;
+ });
++
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..4257c7a 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
++import DiagnosticsWidget from '../components/DiagnosticsWidget.tsx';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
+@@ -57,6 +58,7 @@ politicsArticles[2] = {
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
++        <DiagnosticsWidget client:load />
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">

@@ -1,0 +1,603 @@
+diff --git a/public/fonts/grenze-500-latin-ext.woff2 b/public/fonts/grenze-500-latin-ext.woff2
+new file mode 100644
+index 0000000..7a18f1d
+Binary files /dev/null and b/public/fonts/grenze-500-latin-ext.woff2 differ
+diff --git a/public/fonts/grenze-500-latin.woff2 b/public/fonts/grenze-500-latin.woff2
+new file mode 100644
+index 0000000..37fde00
+Binary files /dev/null and b/public/fonts/grenze-500-latin.woff2 differ
+diff --git a/src/components/ConsentManager.astro b/src/components/ConsentManager.astro
+new file mode 100644
+index 0000000..95581ef
+--- /dev/null
++++ b/src/components/ConsentManager.astro
+@@ -0,0 +1,167 @@
++---
++/**
++ * Consent manager.
++ *
++ * Privacy by design: no optional third-party script is loaded until the reader
++ * explicitly opts in. Rejecting is as easy as accepting, the choice can be
++ * changed at any time via any element with `data-privacy-settings`, and the
++ * choice itself is stored only in this browser (localStorage) — never sent to
++ * a server.
++ */
++const baseUrl = import.meta.env.BASE_URL;
++---
++
++<div
++  id="consent-banner"
++  role="dialog"
++  aria-modal="false"
++  aria-labelledby="consent-title"
++  aria-describedby="consent-desc"
++  hidden
++  transition:persist
++  class="fixed inset-x-0 bottom-0 z-[100] border-t border-gray-300 bg-white p-4 shadow-lg md:p-6"
++>
++  <div class="mx-auto flex max-w-5xl flex-col gap-4 md:flex-row md:items-end md:justify-between">
++    <div class="text-sm text-gray-700">
++      <h2 id="consent-title" class="mb-1 text-base font-bold text-gray-900">Your privacy choices</h2>
++      <p id="consent-desc">
++        We use only what is strictly necessary to run this site by default. With your permission,
++        we would also load an <strong>analytics script</strong> from our provider
++        (<code>us-central1-web-devrel-apps.cloudfunctions.net</code>) that records which links and
++        buttons you click (element type, its visible label, and a timestamp) so we can improve the
++        site. No advertising or cross-site tracking is used.
++        <a href={`${baseUrl}legal/privacy`} class="underline" data-skip-tracking>Read our Privacy Policy</a>.
++      </p>
++    </div>
++    <div class="flex shrink-0 gap-2">
++      <button
++        type="button"
++        data-consent="denied"
++        data-skip-tracking
++        class="rounded-md border border-gray-900 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
++      >
++        Reject analytics
++      </button>
++      <button
++        type="button"
++        data-consent="granted"
++        data-skip-tracking
++        class="rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
++      >
++        Allow analytics
++      </button>
++    </div>
++  </div>
++</div>
++
++<script>
++  const STORAGE_KEY = 'dt-privacy-consent';
++  const CONSENT_VERSION = 1;
++  const ANALYTICS_SRC =
++    'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js';
++
++  type Choice = 'granted' | 'denied';
++
++  function readChoice(): Choice | null {
++    try {
++      const raw = localStorage.getItem(STORAGE_KEY);
++      if (!raw) return null;
++      const parsed = JSON.parse(raw);
++      if (parsed?.v !== CONSENT_VERSION) return null; // re-ask if the disclosure changes
++      return parsed.analytics === 'granted' ? 'granted' : 'denied';
++    } catch {
++      return null;
++    }
++  }
++
++  function saveChoice(choice: Choice) {
++    try {
++      localStorage.setItem(
++        STORAGE_KEY,
++        JSON.stringify({ v: CONSENT_VERSION, analytics: choice, date: new Date().toISOString().slice(0, 10) })
++      );
++    } catch {
++      /* storage unavailable: treat as session-only choice */
++    }
++  }
++
++  function honoursOptOutSignal(): boolean {
++    const nav = navigator as Navigator & { globalPrivacyControl?: boolean };
++    return nav.globalPrivacyControl === true || navigator.doNotTrack === '1';
++  }
++
++  let analyticsLoaded = false;
++  function loadAnalytics() {
++    if (analyticsLoaded || document.querySelector(`script[src="${ANALYTICS_SRC}"]`)) return;
++    analyticsLoaded = true;
++    const s = document.createElement('script');
++    s.src = ANALYTICS_SRC;
++    s.defer = true;
++    s.referrerPolicy = 'no-referrer';
++    document.head.appendChild(s);
++  }
++
++  function banner() {
++    return document.getElementById('consent-banner');
++  }
++
++  function showBanner() {
++    const el = banner();
++    if (!el) return;
++    el.hidden = false;
++    el.querySelector<HTMLButtonElement>('[data-consent="denied"]')?.focus();
++  }
++
++  function hideBanner() {
++    const el = banner();
++    if (el) el.hidden = true;
++  }
++
++  function apply(choice: Choice | null) {
++    if (choice === 'granted') loadAnalytics();
++  }
++
++  function init() {
++    const choice = readChoice();
++    if (choice === null) {
++      // Respect browser-level opt-out signals without asking.
++      if (honoursOptOutSignal()) {
++        hideBanner();
++        return;
++      }
++      showBanner();
++    } else {
++      hideBanner();
++      apply(choice);
++    }
++  }
++
++  document.addEventListener('click', (event) => {
++    const target = event.target as Element | null;
++    if (!target) return;
++
++    const settings = target.closest('[data-privacy-settings]');
++    if (settings) {
++      event.preventDefault();
++      showBanner();
++      return;
++    }
++
++    const button = target.closest<HTMLButtonElement>('#consent-banner [data-consent]');
++    if (!button) return;
++    const choice = button.dataset.consent as Choice;
++    const previous = readChoice();
++    saveChoice(choice);
++    hideBanner();
++
++    if (choice === 'granted') {
++      loadAnalytics();
++    } else if (previous === 'granted' || analyticsLoaded) {
++      // A loaded third-party script cannot be reliably unloaded; reload so it stops immediately.
++      location.reload();
++    }
++  });
++
++  // Runs on first load and after every client-side navigation (ClientRouter).
++  document.addEventListener('astro:page-load', init);
++</script>
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..c1f8613 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -98,7 +98,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a href=`${baseUrl}legal/privacy#your-choices` data-privacy-settings data-skip-tracking class="hover:underline">Manage Privacy Preferences</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/FormPrivacyNotice.tsx b/src/components/FormPrivacyNotice.tsx
+new file mode 100644
+index 0000000..c2df99e
+--- /dev/null
++++ b/src/components/FormPrivacyNotice.tsx
+@@ -0,0 +1,57 @@
++import React from 'react';
++
++/**
++ * Just-in-time privacy notice shown where personal data is collected.
++ * Tells the reader, in plain language, what is collected, why, who receives it,
++ * and where to learn more — before they submit anything.
++ */
++export default function FormPrivacyNotice({ variant }: { variant: 'signin' | 'signup' }) {
++  const base = import.meta.env.BASE_URL.endsWith('/')
++    ? import.meta.env.BASE_URL
++    : `${import.meta.env.BASE_URL}/`;
++
++  return (
++    <aside
++      aria-label="How we handle your data"
++      className="mt-6 border-t border-gray-200 pt-4 text-xs leading-relaxed text-gray-600"
++    >
++      <p className="mb-2 font-semibold text-gray-700">How we handle your data</p>
++      <ul className="list-disc space-y-1 pl-4">
++        {variant === 'signup' ? (
++          <>
++            <li>
++              We only collect a <strong>username</strong> and <strong>password</strong>. No email,
++              real name, or phone number is required.
++            </li>
++            <li>They are used solely to create and secure your account — never for advertising.</li>
++          </>
++        ) : (
++          <li>
++            Your username and password are used only to verify your identity and are not used for
++            any other purpose.
++          </li>
++        )}
++        <li>
++          Data is sent over an encrypted connection to our account service (hosted on Google Cloud
++          in the US). Form fields are excluded from analytics.
++        </li>
++        {variant === 'signup' && (
++          <li>
++            You can ask us to delete your account and its data at any time.
++          </li>
++        )}
++      </ul>
++      <p className="mt-2">
++        {variant === 'signup' ? 'By signing up you agree to our ' : 'See our '}
++        <a href={`${base}legal/terms`} className="underline" data-skip-tracking>
++          Terms of Service
++        </a>{' '}
++        and{' '}
++        <a href={`${base}legal/privacy`} className="underline" data-skip-tracking>
++          Privacy Policy
++        </a>
++        .
++      </p>
++    </aside>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..7940d5b 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,5 @@
+ import React, { useState } from 'react';
++import FormPrivacyNotice from './FormPrivacyNotice';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -19,10 +20,15 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Data minimisation: send only what the endpoint needs. No cookies,
++        // no referrer (page URL) and no caching of credential requests.
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+-      const data = await response.json();
++      const data = await response.json().catch(() => ({}));
+ 
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+@@ -30,11 +36,14 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        // Do not persist tokens in localStorage (readable by any script on the page).
++        // Prefer an HttpOnly, Secure, SameSite session cookie set by the server.
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
++      // Don't keep the password in memory longer than needed.
++      setPassword('');
+       setLoading(false);
+     }
+   };
+@@ -55,7 +64,7 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form method="post" onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,6 +72,11 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +91,8 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -87,6 +103,7 @@ export default function SignInForm() {
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+@@ -94,6 +111,8 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      <FormPrivacyNotice variant="signin" />
+     </div>
+   );
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..cf6aebb 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,5 @@
+ import React, { useState } from 'react';
++import FormPrivacyNotice from './FormPrivacyNotice';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -19,10 +20,15 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Data minimisation: send only what the endpoint needs. No cookies,
++        // no referrer (page URL) and no caching of credential requests.
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+-      const data = await response.json();
++      const data = await response.json().catch(() => ({}));
+ 
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+@@ -56,14 +62,23 @@ export default function SignUpForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form method="post" onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+           </label>
++          <p id="username-hint" className="text-xs text-gray-500 mb-1">
++            Choose a pseudonym. You don't need to use your real name or email address.
++          </p>
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            aria-describedby="username-hint"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,12 +93,18 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
++            minLength={8}
++            pattern="(?=.*\d).{8,}"
++            title="At least 8 characters, including a number"
++            aria-describedby="password-hint"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
++          <p id="password-hint" className="text-xs text-gray-500 mt-1">
+              Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+@@ -91,7 +112,7 @@ export default function SignUpForm() {
+         <button
+           type="submit"
+           disabled={loading}
+-          data-skip-tracking="true"
++          data-skip-tracking
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+@@ -99,6 +120,8 @@ export default function SignUpForm() {
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      <FormPrivacyNotice variant="signup" />
+     </div>
+   );
+ }
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..c76d603 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -2,6 +2,7 @@
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
++import ConsentManager from "../components/ConsentManager.astro";
+ import "../styles/global.css";
+ 
+ import { ClientRouter } from "astro:transitions";
+@@ -17,22 +18,37 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
++    <!--
++      Privacy by design: fonts are self-hosted so that no visitor IP address or
++      page URL is disclosed to a third-party font CDN.
++      Third-party analytics is NOT loaded here; ConsentManager loads it only after opt-in.
++    -->
++    <link rel="preload" href={`${baseUrl}fonts/grenze-500-latin.woff2`} as="font" type="font/woff2" crossorigin />
++    <style is:inline set:html={`
++      @font-face {
++        font-family: 'Grenze';
++        font-style: normal;
++        font-weight: 500;
++        font-display: swap;
++        src: url(${baseUrl}fonts/grenze-500-latin-ext.woff2) format('woff2');
++        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
++      }
++      @font-face {
++        font-family: 'Grenze';
++        font-style: normal;
++        font-weight: 500;
++        font-display: swap;
++        src: url(${baseUrl}fonts/grenze-500-latin.woff2) format('woff2');
++        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
++      }
++    `} />
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+-
+-    <link rel="icon" href=`${baseUrl}/favicon.svg` />
++    <link rel="icon" href={`${baseUrl}favicon.svg`} />
+ 
+     <ClientRouter />
+   </head>
+@@ -51,5 +67,6 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <ConsentManager />
+   </body>
+ </html>
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..11316c6 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,51 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++/**
++ * Privacy-oriented response headers applied to every response.
++ *
++ * - Referrer-Policy: never leak full URLs (paths/query strings) to other origins.
++ * - Permissions-Policy: opt out of interest-based advertising APIs (Topics/FLoC)
++ *   and deny powerful features the site never needs.
++ * - X-Content-Type-Options: prevent MIME sniffing.
++ */
++const PRIVACY_HEADERS: Record<string, string> = {
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': [
++    'browsing-topics=()',
++    'interest-cohort=()',
++    'attribution-reporting=()',
++    'join-ad-interest-group=()',
++    'run-ad-auction=()',
++    'camera=()',
++    'microphone=()',
++    'geolocation=()',
++    'payment=()',
++    'usb=()',
++  ].join(', '),
++  'X-Content-Type-Options': 'nosniff',
++};
++
++// Pages that handle credentials must never be stored by shared or browser caches.
++const SENSITIVE_PATHS = [/\/signin\/?$/, /\/signup\/?$/];
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
++  // Data minimisation: we no longer create a session for every visitor.
++  // The reading-list API lazily creates one only when a reader actually uses it.
++  const response = await next();
++
++  try {
++    for (const [name, value] of Object.entries(PRIVACY_HEADERS)) {
++      if (!response.headers.has(name)) {
++        response.headers.set(name, value);
++      }
+     }
++
++    if (SENSITIVE_PATHS.some((re) => re.test(context.url.pathname))) {
++      response.headers.set('Cache-Control', 'no-store');
++    }
++  } catch {
++    // Some responses (e.g. Response.redirect) have immutable headers; leave them as-is.
+   }
+-  return next();
++
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..33069d3 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -12,6 +12,27 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+     
+     <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <p><strong>Privacy by design</strong></p>
++    <p>We collect as little personal data as possible. By default, no optional third-party scripts are loaded, no advertising or cross-site tracking is used, and fonts are served from our own servers so your IP address is not shared with a font provider.</p>
++
++    <p><strong>Server log data</strong></p>
++    <p>When you request a page, our hosting provider necessarily processes technical data (IP address, requested URL, date and time, browser user agent) to deliver the page and keep the service secure.</p>
++
++    <p><strong>Cookies and local storage</strong></p>
++    <p>We use only what is strictly necessary:</p>
++    <ul>
++        <li><strong>Session cookie</strong> – set only if you use the reading list, to remember the articles you saved. It is not used for tracking.</li>
++        <li><strong>Privacy choice</strong> (<code>dt-privacy-consent</code> in your browser’s local storage) – remembers whether you allowed analytics. It never leaves your device.</li>
++    </ul>
++
++    <p><strong>Account (sign-in and sign-up)</strong></p>
++    <p>To create an account we ask only for a username and a password; no email address or real name is required, and we recommend choosing a pseudonym. These details are sent over an encrypted connection to our account service hosted on Google Cloud (region us-central1, USA) and are used solely to create and authenticate your account. Credential requests are sent without cookies or referrer information, and pages containing these forms are never cached. Legal basis: performance of a contract (Art. 6(1)(b) GDPR). You may request deletion of your account at any time.</p>
++
++    <h2 id="your-choices">4. Analytics and your choices</h2>
++    <p>Only if you click <em>“Allow analytics”</em> do we load an analytics script from <code>us-central1-web-devrel-apps.cloudfunctions.net</code>. It records which links and buttons you click (element type, its visible label, and a timestamp) to help us improve the site. Form fields, privacy controls and the sign-in/sign-up buttons are excluded. Legal basis: your consent (Art. 6(1)(a) GDPR).</p>
++    <p>If your browser sends a Global Privacy Control or Do Not Track signal, we treat it as a refusal and do not ask. You can change or withdraw your choice at any time — withdrawing is as easy as giving consent:</p>
++    <p><a href="#your-choices" data-privacy-settings data-skip-tracking>Manage privacy preferences</a></p>
++
++    <h2>5. Your rights</h2>
++    <p>You have the right to access, rectify, erase, restrict and port your personal data, to object to processing, and to withdraw consent at any time without affecting the lawfulness of processing carried out before withdrawal. You also have the right to lodge a complaint with a supervisory authority. Contact details are listed in our <a href={`${import.meta.env.BASE_URL}legal/imprint`}>Imprint</a>.</p>
+ </LegalLayout>

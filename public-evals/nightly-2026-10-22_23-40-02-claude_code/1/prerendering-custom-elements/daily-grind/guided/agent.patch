@@ -1,0 +1,214 @@
+diff --git a/index.html b/index.html
+index 66c9173..703e3b3 100644
+--- a/index.html
++++ b/index.html
+@@ -178,21 +178,150 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <menu-card>
++          <template shadowrootmode="open">
++            <style>
++              :host { display: block; }
++              .card {
++                position: relative;
++                height: 100%;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++              ::slotted(h3) { margin-bottom: 10px; color: var(--primary, #4e342e); }
++              ::slotted(a) {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 20px;
++                text-decoration: none;
++                border-radius: 5px;
++                margin-top: 15px;
++              }
++              ::slotted(a:hover) { background: #3e2723; }
++              .fav {
++                position: absolute;
++                top: 8px;
++                right: 8px;
++                border: 0;
++                background: none;
++                font-size: 1.5rem;
++                line-height: 1;
++                cursor: pointer;
++                color: var(--primary, #4e342e);
++              }
++              .fav[aria-pressed="true"] { color: var(--accent, #ffab40); }
++            </style>
++            <div class="card">
++              <button type="button" class="fav" id="fav" aria-pressed="false" aria-label="Favorite">&#9734;</button>
++              <slot name="title"></slot>
++              <slot></slot>
++              <slot name="action"></slot>
++            </div>
++          </template>
++          <h3 slot="title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <a slot="action" href="/menu/seasonal">View Details</a>
++        </menu-card>
++        <menu-card>
++          <template shadowrootmode="open">
++            <style>
++              :host { display: block; }
++              .card {
++                position: relative;
++                height: 100%;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++              ::slotted(h3) { margin-bottom: 10px; color: var(--primary, #4e342e); }
++              ::slotted(a) {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 20px;
++                text-decoration: none;
++                border-radius: 5px;
++                margin-top: 15px;
++              }
++              ::slotted(a:hover) { background: #3e2723; }
++              .fav {
++                position: absolute;
++                top: 8px;
++                right: 8px;
++                border: 0;
++                background: none;
++                font-size: 1.5rem;
++                line-height: 1;
++                cursor: pointer;
++                color: var(--primary, #4e342e);
++              }
++              .fav[aria-pressed="true"] { color: var(--accent, #ffab40); }
++            </style>
++            <div class="card">
++              <button type="button" class="fav" id="fav" aria-pressed="false" aria-label="Favorite">&#9734;</button>
++              <slot name="title"></slot>
++              <slot></slot>
++              <slot name="action"></slot>
++            </div>
++          </template>
++          <h3 slot="title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <a slot="action" href="/menu/espresso">View Details</a>
++        </menu-card>
++        <menu-card>
++          <template shadowrootmode="open">
++            <style>
++              :host { display: block; }
++              .card {
++                position: relative;
++                height: 100%;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++              ::slotted(h3) { margin-bottom: 10px; color: var(--primary, #4e342e); }
++              ::slotted(a) {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 20px;
++                text-decoration: none;
++                border-radius: 5px;
++                margin-top: 15px;
++              }
++              ::slotted(a:hover) { background: #3e2723; }
++              .fav {
++                position: absolute;
++                top: 8px;
++                right: 8px;
++                border: 0;
++                background: none;
++                font-size: 1.5rem;
++                line-height: 1;
++                cursor: pointer;
++                color: var(--primary, #4e342e);
++              }
++              .fav[aria-pressed="true"] { color: var(--accent, #ffab40); }
++            </style>
++            <div class="card">
++              <button type="button" class="fav" id="fav" aria-pressed="false" aria-label="Favorite">&#9734;</button>
++              <slot name="title"></slot>
++              <slot></slot>
++              <slot name="action"></slot>
++            </div>
++          </template>
++          <h3 slot="title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <a slot="action" href="/menu/cold-brew">View Details</a>
++        </menu-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +336,46 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Server markup ships the shadow root (declarative shadow DOM). Hydration only
++    // attaches behavior to that existing tree; it never re-renders it.
++
++    class MenuCard extends HTMLElement {
++      static observedAttributes = ['favorite'];
++
++      constructor() {
++        super();
++        if (!this.shadowRoot) {
++          // Engines without DSD leave the template inert: attach from the same markup.
++          this.attachShadow({ mode: 'open' });
++          const tpl = this.querySelector(':scope > template[shadowrootmode]');
++          if (tpl) {
++            this.shadowRoot.append(tpl.content);
++            tpl.remove();
++          }
++        }
++        this.#button = this.shadowRoot.getElementById('fav');
++        this.#button?.addEventListener('click', () => this.toggleAttribute('favorite'));
++        this.#sync();
++      }
++
++      #button;
++
++      attributeChangedCallback() {
++        this.#sync();
++      }
++
++      #sync() {
++        if (!this.#button) return;
++        const on = this.hasAttribute('favorite');
++        this.#button.setAttribute('aria-pressed', on);
++        this.#button.textContent = on ? '\u2605' : '\u2606';
++      }
++    }
++
++    customElements.define('menu-card', MenuCard);
++  </script>
++
+ </body>
+ 
+ </html>

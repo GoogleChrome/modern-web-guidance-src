@@ -1,0 +1,555 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..5a69157
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,179 @@
++const labels = ['Poor', 'Fair', 'Good', 'Great', 'Excellent'];
++const supportsFACE = 'attachInternals' in HTMLElement.prototype && 'ElementInternals' in window && 'setFormValue' in ElementInternals.prototype;
++
++class StarRating extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['required', 'disabled', 'value'];
++  #internals;
++  #value = '';
++  #disabled = false;
++  #fallback;
++  constructor() {
++    super();
++    this.#internals = supportsFACE ? this.attachInternals() : null;
++    this.attachShadow({ mode: 'open', delegatesFocus: true });
++    this.shadowRoot.innerHTML = `<style>
++      :host{display:block;outline:none}.ratings{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}button{font:inherit;min-width:0;border:1px solid #e9e5ee;background:#fff;border-radius:7px;padding:14px 2px 10px;cursor:pointer;color:#d4cedf;display:flex;flex-direction:column;align-items:center;gap:8px;transition:background .15s,border-color .15s,transform .15s}svg{width:25px;height:25px;fill:#f4f1f8;stroke:currentColor;stroke-width:1.3;stroke-linejoin:round}span{font-family:'DM Sans',sans-serif;font-size:8px;color:#aaa3b5}button.filled svg{fill:#c8b5e5;stroke:#c2adde}button[aria-checked=true]{border-color:#a68acb;background:#f6f1fc;box-shadow:0 0 0 1px #ab90d21a}button[aria-checked=true] svg{fill:#ab8bd3;stroke:#ab8bd3}button[aria-checked=true] span{color:#9b7cbb}button:hover:not(:disabled){background:#faf7ff;border-color:#bca3d8;transform:translateY(-2px)}button:focus-visible{outline:2px solid #9a7ac4;outline-offset:3px}button:disabled{opacity:.4;cursor:not-allowed}:host([data-invalid]) button{border-color:#d5a0aa}@media(prefers-reduced-motion:reduce){button{transition:none}}
++      </style><div class="ratings" role="radiogroup" aria-label="How was your experience?">${labels.map((label, i) => `<button type="button" role="radio" aria-checked="false" aria-label="${i + 1} out of 5, ${label}" data-value="${i + 1}" tabindex="${i === 0 ? 0 : -1}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3-5.6-3-5.6 3 1.1-6.3-4.6-4.5 6.3-.9Z"/></svg><span>${label}</span></button>`).join('')}</div>`;
++    this.shadowRoot.addEventListener('click', event => {
++      const button = event.target.closest('button');
++      if (button && !this.#disabled) this.#choose(button.dataset.value);
++    });
++    this.shadowRoot.addEventListener('keydown', event => {
++      const keys = ['ArrowRight', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'Home', 'End'];
++      if (this.#disabled || !keys.includes(event.key)) return;
++      event.preventDefault();
++      const index = Number(this.#value || 1);
++      const next = event.key === 'Home' ? 1 : event.key === 'End' ? 5 : Math.max(1, Math.min(5, index + (['ArrowRight', 'ArrowUp'].includes(event.key) ? 1 : -1)));
++      this.#choose(String(next));
++      this.shadowRoot.querySelector(`[data-value="${next}"]`).focus();
++    });
++    this.addEventListener('invalid', () => { this.dataset.invalid = ''; this.dispatchEvent(new CustomEvent('rating-invalid')); });
++  }
++  connectedCallback() {
++    if (!supportsFACE && !this.#fallback) {
++      this.#fallback = document.createElement('input');
++      this.#fallback.type = 'text';
++      this.#fallback.tabIndex = -1;
++      this.#fallback.setAttribute('aria-label', 'Experience rating');
++      this.#fallback.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none';
++      this.append(this.#fallback);
++      this.closest('form')?.addEventListener('reset', () => this.formResetCallback());
++    }
++    this.value = this.getAttribute('value') || '';
++    this.#sync();
++  }
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue === newValue) return;
++    if (name === 'value') this.value = newValue || '';
++    if (name === 'disabled') this.formDisabledCallback(this.matches(':disabled') || this.hasAttribute('disabled'));
++    this.#sync();
++  }
++  get value() { return this.#value; }
++  set value(value) {
++    this.#value = /^[1-5]$/.test(String(value)) ? String(value) : '';
++    delete this.dataset.invalid;
++    this.#sync();
++  }
++  get form() { return this.#internals?.form || this.closest('form'); }
++  get validity() { return this.#internals?.validity || this.#fallback?.validity; }
++  get validationMessage() { return this.#internals?.validationMessage || this.#fallback?.validationMessage; }
++  get willValidate() { return this.#internals?.willValidate ?? !this.#disabled; }
++  checkValidity() { return this.#internals?.checkValidity() ?? this.#fallback.checkValidity(); }
++  reportValidity() { return this.#internals?.reportValidity() ?? this.#fallback.reportValidity(); }
++  #sync() {
++    const buttons = [...this.shadowRoot.querySelectorAll('button')];
++    const selected = this.#value || '1';
++    buttons.forEach(button => {
++      button.setAttribute('aria-checked', String(button.dataset.value === this.#value));
++      button.tabIndex = button.dataset.value === selected && !this.#disabled ? 0 : -1;
++      button.disabled = this.#disabled;
++      button.classList.toggle('filled', Number(button.dataset.value) <= Number(this.#value));
++    });
++    const required = this.hasAttribute('required');
++    this.shadowRoot.querySelector('[role=radiogroup]').setAttribute('aria-required', String(required));
++    this.shadowRoot.querySelector('[role=radiogroup]').setAttribute('aria-disabled', String(this.#disabled));
++    const missing = required && !this.#value;
++    if (this.#internals) {
++      this.#internals.setFormValue(this.#value, this.#value);
++      this.#internals.setValidity(missing ? { valueMissing: true } : {}, missing ? 'Please choose a rating.' : '', buttons[0]);
++    } else if (this.#fallback) {
++      this.#fallback.name = this.getAttribute('name') || '';
++      this.#fallback.value = this.#value;
++      this.#fallback.required = required;
++      this.#fallback.disabled = this.#disabled;
++    }
++    this.dispatchEvent(new CustomEvent('rating-sync'));
++  }
++  #choose(value) {
++    if (this.value === value) return;
++    this.value = value;
++    this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: value }));
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++  formResetCallback() { this.value = this.getAttribute('value') || ''; this.#lifecycle('reset', 'Restored the default value'); }
++  formDisabledCallback(disabled) { this.#disabled = disabled; this.#sync(); this.#lifecycle('disabled', disabled ? 'Control disabled' : 'Control enabled'); }
++  formStateRestoreCallback(state, mode) { this.value = typeof state === 'string' ? state : ''; this.#lifecycle('restore', `State restored (${mode || 'restore'})`); }
++  #lifecycle(type, message) { this.dispatchEvent(new CustomEvent('rating-lifecycle', { detail: { type, message } })); }
++}
++customElements.define('star-rating', StarRating);
++
++const $ = selector => document.querySelector(selector);
++const form = $('#feedback-form');
++const rating = $('#experience');
++let savedRating = rating.value;
++let eventCount = 0;
++let copyTimer;
++const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
++function record(message) {
++  eventCount++;
++  $('#event-count').textContent = eventCount;
++  const item = document.createElement('li');
++  const time = document.createElement('time');
++  time.textContent = new Date().toLocaleTimeString('en-GB');
++  item.append(time, document.createTextNode(message));
++  $('#event-log').prepend(item);
++  if ($('#event-log').children.length > 30) $('#event-log').lastElementChild.remove();
++}
++function updateInspector() {
++  const data = Object.fromEntries(new FormData(form));
++  const entries = Object.entries(data);
++  $('#form-data').innerHTML = '<span class="json-punctuation">{</span>\n' + entries.map(([key, value], index) => `  <span class="json-key">${escapeHTML(JSON.stringify(key))}</span><span class="json-punctuation">: </span><span class="json-value">${escapeHTML(JSON.stringify(value))}</span>${index < entries.length - 1 ? ',' : ''}`).join('\n') + '\n<span class="json-punctuation">}</span>';
++  $('#state-value').textContent = JSON.stringify(rating.value);
++  $('#state-description').textContent = labels[Number(rating.value) - 1] || 'Not selected';
++  const valid = !rating.willValidate || rating.validity.valid;
++  $('#state-validity').className = valid ? 'valid-state' : 'invalid-state';
++  $('#state-validity').textContent = !rating.willValidate ? '— Disabled' : valid ? '✓ Valid' : '! Value missing';
++  $('#clear-rating').disabled = rating.hasAttribute('disabled');
++  $('#rating-help').textContent = rating.hasAttribute('data-invalid') ? 'Please choose a rating before sending.' : rating.hasAttribute('disabled') ? 'This control is disabled and excluded from submission.' : 'A small rating. A big help.';
++  $('#rating-help').classList.toggle('error', rating.hasAttribute('data-invalid'));
++}
++form.addEventListener('input', updateInspector);
++rating.addEventListener('rating-sync', updateInspector);
++rating.addEventListener('change', () => { record(`change → rating = "${rating.value}"`); $('#form-result').textContent = ''; });
++rating.addEventListener('rating-invalid', () => { updateInspector(); record('invalid → Please choose a rating'); });
++rating.addEventListener('rating-lifecycle', event => { record(`${event.detail.type} → ${event.detail.message}`); updateInspector(); });
++$('#required-toggle').addEventListener('change', event => { rating.toggleAttribute('required', event.target.checked); record(`required → ${event.target.checked}`); });
++$('#disabled-toggle').addEventListener('change', event => { rating.toggleAttribute('disabled', event.target.checked); updateInspector(); });
++$('#clear-rating').addEventListener('click', () => { rating.value = ''; updateInspector(); record('value → Cleared'); $('#form-result').textContent = ''; });
++$('#restore-state').addEventListener('click', () => { rating.formStateRestoreCallback(savedRating, 'restore'); $('#form-result').textContent = 'Saved rating restored. Browser restoration callback simulated.'; });
++form.addEventListener('submit', event => {
++  event.preventDefault();
++  savedRating = rating.value;
++  record(`submit → ${new FormData(form).has('rating') ? `rating = "${rating.value}"` : 'rating omitted (disabled)'}`);
++  $('#form-result').textContent = 'Thanks! Your feedback was captured successfully.';
++  updateInspector();
++});
++form.addEventListener('reset', () => { $('#form-result').textContent = ''; queueMicrotask(updateInspector); });
++$('#reset-all').addEventListener('click', () => {
++  rating.toggleAttribute('required', true); rating.removeAttribute('disabled');
++  $('#required-toggle').checked = true; $('#disabled-toggle').checked = false;
++  form.reset(); savedRating = '4';
++  $('#event-log').replaceChildren(); eventCount = 0; record('ready → Playground reset');
++  switchOutput('data');
++});
++function switchOutput(output) {
++  $('#data-output').hidden = output !== 'data'; $('#events-output').hidden = output !== 'events';
++  document.querySelectorAll('[data-output]').forEach(button => { const selected = button.dataset.output === output; button.classList.toggle('selected', selected); button.setAttribute('aria-selected', selected); });
++}
++document.querySelectorAll('[data-output]').forEach(button => button.addEventListener('click', () => switchOutput(button.dataset.output)));
++$('#copy-data').addEventListener('click', async () => {
++  try {
++    await navigator.clipboard.writeText(JSON.stringify(Object.fromEntries(new FormData(form)), null, 2));
++    $('#copy-data').innerHTML = '<svg><use href="#i-check"/></svg>';
++    $('#copy-data').setAttribute('aria-label', 'Form data copied');
++    record('clipboard → Form data copied');
++    clearTimeout(copyTimer); copyTimer = setTimeout(() => { $('#copy-data').innerHTML = '<svg><use href="#i-copy"/></svg>'; $('#copy-data').setAttribute('aria-label', 'Copy form data'); }, 1800);
++  } catch { record('clipboard → Copy unavailable in this context'); }
++});
++function switchView(view) {
++  $('#playground-view').hidden = view !== 'playground'; $('#code-view').hidden = view !== 'code';
++  document.querySelectorAll('[data-view]').forEach(button => { const selected = button.dataset.view === view; button.classList.toggle(button.classList.contains('nav-item') ? 'active' : 'selected', selected); if (button.getAttribute('role') === 'tab') button.setAttribute('aria-selected', selected); });
++}
++document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.view)));
++$('#implementation-code').textContent = `// The actual custom control registered in this playground.\n// Supporting UI styles are included in its shadow root.\n\n${StarRating.toString()}\n\ncustomElements.define('star-rating', StarRating);`;
++$('#docs-open').addEventListener('click', () => $('#docs-dialog').showModal());
++$('#docs-close').addEventListener('click', () => $('#docs-dialog').close());
++$('#docs-dialog').addEventListener('click', event => { if (event.target === $('#docs-dialog')) { const bounds = event.target.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) event.target.close(); } });
++record('ready → Custom control associated with form');
++updateInspector();
+diff --git a/index.html b/index.html
+index 66c9173..cc0e6c9 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,64 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f7f8fa"><title>Form & Function — Custom control playground</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="styles.css"><script type="module" src="app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++<svg class="svg-defs" xmlns="http://www.w3.org/2000/svg"><defs>
++<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
++<symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18"/></symbol>
++<symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v15"/></symbol>
++<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
++<symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></symbol>
++<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
++<symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol>
++<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
++<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
++<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/></symbol>
++</defs></svg>
++<aside class="sidebar">
++  <a class="brand" href="./" aria-label="Form and Function home"><span class="brand-icon">f<span>·</span></span><span>form<span class="brand-amp">&</span>function</span></a>
++  <div class="workspace"><span class="workspace-icon">F</span><div>Personal workspace<small>Free plan <span>✧</span></small></div><span class="chevrons">⌃<br>⌄</span></div>
++  <div class="nav-label">WORKSPACE</div>
++  <nav aria-label="Main navigation">
++    <button class="nav-item active" data-view="playground"><svg><use href="#i-grid"/></svg>Playground<span class="nav-count">1</span></button>
++    <button class="nav-item" data-view="code"><svg><use href="#i-code"/></svg>Implementation<svg class="external"><use href="#i-arrow"/></svg></button>
++    <button class="nav-item" id="docs-open"><svg><use href="#i-book"/></svg>Documentation<svg class="external"><use href="#i-arrow"/></svg></button>
+   </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <div class="sidebar-note"><span class="note-spark">✧</span><h3>Custom. By nature.</h3><p>Your interface, with all the<br>power of native forms.</p><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals" target="_blank" rel="noreferrer">Explore ElementInternals <span>↗</span></a></div>
++  <div class="sidebar-bottom"><span class="tiny-dot"></span>All systems operational<small>Built for the modern web <span>↗</span></small></div>
++</aside>
++<div class="app-shell">
++  <header class="topbar"><div>Workspace <span>/</span> <strong>Playground</strong></div><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components" target="_blank" rel="noreferrer"><svg><use href="#i-book"/></svg> Developer docs <span>↗</span></a></header>
++  <main>
++    <div class="page-heading"><div><div class="eyebrow"><span></span> THE NATIVE FORM PLAYGROUND</div><h1>Custom control. Native behavior.</h1><p>A little custom on the outside. A real form control on the inside.</p></div><span class="version-badge"><span></span> Web Components <span class="version">v1.0</span></span></div>
++    <div class="workspace-toolbar"><div class="view-tabs" role="tablist" aria-label="Workspace view"><button id="preview-tab" class="selected" role="tab" aria-selected="true" data-view="playground"><svg><use href="#i-grid"/></svg>Playground</button><button id="code-tab" role="tab" aria-selected="false" data-view="code"><svg><use href="#i-code"/></svg>Code</button></div><div class="toolbar-right"><span class="live-dot"></span> Live preview <span class="toolbar-divider"></span><button id="reset-all"><svg><use href="#i-reset"/></svg>Reset playground</button></div></div>
++    <section id="playground-view" class="playground-grid" aria-labelledby="preview-tab">
++      <div class="preview-panel panel"><div class="panel-heading"><span><svg><use href="#i-grid"/></svg>Form preview</span><span class="small-tag">INTERACTIVE</span></div>
++        <div class="preview-content"><div class="form-brand"><span class="feedback-icon"><svg><use href="#i-star"/></svg></span><span>THE FEEDBACK CORNER</span></div><h2>Good things start<br>with your feedback<span>.</span></h2><p class="form-intro">Tell us a little about your experience.<br>We're all ears.</p>
++          <form id="feedback-form"><fieldset id="form-fields"><label class="field-label" for="full-name">Your name <span>Optional</span></label><input id="full-name" name="name" placeholder="e.g. Alex Morgan" autocomplete="name">
++          <div class="rating-label"><label id="rating-label" for="experience">How was your experience? <span>*</span></label><span class="custom-tag"><svg><use href="#i-code"/></svg> Custom control</span></div>
++          <star-rating id="experience" name="rating" value="4" required aria-labelledby="rating-label"></star-rating>
++          <p class="rating-help" id="rating-help">A small rating. A big help.</p>
++          <label class="field-label" for="message">Anything you'd like to add? <span>Optional</span></label><textarea id="message" name="message" placeholder="What went well? What could be better?" rows="3"></textarea>
++          <div class="form-buttons"><button class="primary-button" type="submit">Send feedback<svg><use href="#i-arrow"/></svg></button><button class="reset-button" type="reset"><svg><use href="#i-reset"/></svg>Reset form</button></div></fieldset></form>
++          <div class="privacy-note"><svg><use href="#i-check"/></svg>Your feedback stays in this playground.</div><p id="form-result" role="status"></p>
++        </div><div class="preview-footer"><span class="native-dot"></span>Native form submission. No hidden inputs.<svg><use href="#i-info"/></svg></div>
++      </div>
++      <div class="inspector-column"><section class="panel inspector"><div class="panel-heading"><span><svg><use href="#i-code"/></svg>Control inspector</span><span class="element-tag">&lt;star-rating&gt;</span></div><div class="inspector-content"><div class="section-label">ATTRIBUTES</div><div class="attribute-row"><span><code>required</code><small>A rating must be selected</small></span><label class="switch"><input type="checkbox" id="required-toggle" checked aria-label="Require rating"><span></span></label></div><div class="attribute-row"><span><code>disabled</code><small>Exclude control from the form</small></span><label class="switch"><input type="checkbox" id="disabled-toggle" aria-label="Disable rating"><span></span></label></div><div class="inspector-divider"></div><div class="section-label">CURRENT STATE <span class="auto-badge">AUTO-SYNCED</span></div><dl class="state-list"><div><dt>Value</dt><dd><code id="state-value">"4"</code><span id="state-description">Great</span></dd></div><div><dt>Validity</dt><dd id="state-validity" class="valid-state"><span>✓</span> Valid</dd></div><div><dt>Form associated</dt><dd><span class="green-dot"></span> Yes</dd></div><div><dt>Submission name</dt><dd><code>rating</code></dd></div></dl><div class="state-actions"><button id="clear-rating">Clear value</button><button id="restore-state"><svg><use href="#i-clock"/></svg>Restore state</button></div></div></section>
++      <section class="panel output-panel"><div class="output-tabs" role="tablist" aria-label="Inspector output"><button class="selected" data-output="data" role="tab" aria-selected="true">Form data<span class="tab-dot"></span></button><button data-output="events" role="tab" aria-selected="false">Event log <span id="event-count">1</span></button><button id="copy-data" aria-label="Copy form data" title="Copy form data"><svg><use href="#i-copy"/></svg></button></div><div id="data-output"><div class="code-caption"><span>FormData entries</span><span>JSON</span></div><pre id="form-data"></pre><div class="output-note"><span></span>Updates as you interact with the form</div></div><div id="events-output" hidden><ol id="event-log" aria-live="polite"></ol></div></section>
++      <div class="native-callout"><span class="callout-icon"><svg><use href="#i-check"/></svg></span><div><strong>One control. The whole native lifecycle.</strong><p>Validation, reset, disabled state, and restoration.<br>Handled by the browser. Designed by you.</p></div></div>
+       </div>
+     </section>
++    <section id="code-view" class="panel" hidden><div class="panel-heading"><span><svg><use href="#i-code"/></svg>Native form integration</span><span class="small-tag">JAVASCRIPT</span></div><pre class="implementation-code" id="implementation-code"></pre></section>
++    <div class="capabilities"><span>BUILT ON WEB STANDARDS</span><div><svg><use href="#i-check"/></svg>Form associated</div><div><svg><use href="#i-check"/></svg>Constraint validation</div><div><svg><use href="#i-check"/></svg>Lifecycle callbacks</div><div><svg><use href="#i-check"/></svg>Keyboard accessible</div></div>
++    <footer><span>A playground for controls that belong.</span><span>Made with <code>ElementInternals</code><span class="footer-spark">✧</span></span></footer>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++</div>
++<dialog id="docs-dialog"><div class="dialog-heading"><span class="eyebrow">UNDER THE HOOD</span><button id="docs-close" aria-label="Close documentation">×</button></div><h2>A real member of the form.</h2><p>The star rating uses <code>ElementInternals</code> to work directly with its parent form.</p><dl><dt>Submission</dt><dd><code>setFormValue(value, state)</code> supplies the rating to native FormData and saves its restoration state.</dd><dt>Validation</dt><dd>A required, empty rating blocks submission with the browser's native validation message.</dd><dt>Lifecycle</dt><dd>Reset restores the initial rating. Disabled controls cannot be changed and are omitted from submission. The browser can restore saved state on navigation.</dd><dt>Keyboard</dt><dd>Tab to the rating, then use arrow keys, Home, or End to choose a score.</dd></dl><p>The Restore state button simulates the browser callback using the last submitted rating, or the initial rating before your first submission.</p><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals" target="_blank" rel="noreferrer">Read the platform documentation ↗</a></dialog>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..e341ec0 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,9 @@
+ {
+-  "name": "daily-grind",
++  "name": "form-and-function",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test tests/*.test.cjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..684286b
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1 @@
++:root{font-family:'DM Sans',sans-serif;color:#292b36;background:#f8f9fb;font-synthesis:none;--purple:#7460c9;--line:#e9eaf0;--muted:#9699a5}*{box-sizing:border-box}body{margin:0}button,input,textarea{font:inherit}button,a,input,textarea{-webkit-tap-highlight-color:transparent}button{cursor:pointer}a{color:inherit;text-decoration:none}button{color:inherit}svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.svg-defs{position:absolute;width:0;height:0;overflow:hidden}.sidebar{width:239px;background:#fff;border-right:1px solid var(--line);position:fixed;inset:0 auto 0 0;display:flex;flex-direction:column;padding:31px 20px 22px}.brand{display:flex;align-items:center;gap:10px;font-family:Manrope,sans-serif;font-size:17px;font-weight:800;letter-spacing:-.65px;white-space:nowrap}.brand-icon{width:31px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:#7963cb;color:#fff;font-family:Georgia,serif;font-size:30px;line-height:1;font-style:italic;padding-bottom:3px}.brand-icon span{font-size:28px;margin-left:1px}.brand-amp{color:#8c7db8;font-weight:500;margin:0 1px}.workspace{display:flex;align-items:center;margin:37px 0 34px;border:1px solid var(--line);border-radius:8px;padding:11px 9px;gap:9px;font-size:11px;font-weight:600}.workspace-icon{display:grid;place-items:center;width:30px;height:31px;border:1px solid #e7e2f2;border-radius:6px;background:#f2eff9;color:#8a75bd}.workspace small{display:block;font-size:10px;color:#999ba6;margin-top:3px;font-weight:400}.workspace small span{margin-left:5px}.chevrons{margin-left:auto;color:#a4a5af;font-size:11px;line-height:7px}.nav-label,.section-label{font-size:9px;font-weight:650;letter-spacing:1.3px;color:#979aa8}.nav-label{padding-left:12px;margin-bottom:13px}.nav-item{border:0;background:none;display:flex;align-items:center;gap:12px;width:100%;padding:13px 12px;margin:3px 0;border-radius:6px;font-size:12px;color:#797c8b;text-align:left}.nav-item.active{background:#f0ecfa;color:#7962ba;font-weight:600}.nav-item svg{width:17px;height:17px}.nav-count{margin-left:auto;border:1px solid #e3daf6;border-radius:4px;padding:0 5px;font-size:9px;background:#f9f6ff}.nav-item .external{margin-left:auto;width:12px;transform:rotate(-45deg);color:#a4a4af}.sidebar-note{margin-top:auto;border:1px solid #eeebf5;background:linear-gradient(125deg,#faf9fd,#f5f3fa);border-radius:8px;padding:17px 15px}.note-spark{font-size:25px;color:#9377c8}.sidebar-note h3{font-size:12px;margin:9px 0 7px;font-weight:600}.sidebar-note p{font-size:11px;line-height:1.8;color:#8d8b9b;margin:0 0 16px}.sidebar-note a{font-size:10px;font-weight:500;color:#8470b6;display:flex;justify-content:space-between}.sidebar-bottom{font-size:9px;color:#858a94;margin-top:26px;padding:0 7px}.tiny-dot,.live-dot,.green-dot,.native-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#79aa91;vertical-align:middle;margin-right:6px}.sidebar-bottom small{display:block;margin-top:13px;font-size:9px;color:#a1a3ae}.sidebar-bottom small span{float:right}.app-shell{margin-left:239px}.topbar{height:76px;padding:0 39px;border-bottom:1px solid var(--line);background:#fff;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#9295a1}.topbar div{display:flex;gap:17px;align-items:center}.topbar div span{color:#d2d3da}.topbar strong{font-weight:500;color:#5e6170}.topbar a{display:flex;align-items:center;gap:7px;font-size:10px}.topbar a svg{width:14px;height:14px}.topbar a span{margin-left:7px}main{max-width:1390px;margin:auto;padding:40px 39px 0}.page-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:34px;gap:20px}.eyebrow{font-size:9px;letter-spacing:1.7px;font-weight:600;color:#8b7cae;display:flex;align-items:center;gap:6px}.eyebrow>span{width:5px;height:5px;background:#9b87c9;border-radius:50%}h1{font-family:Manrope,sans-serif;font-size:29px;letter-spacing:-1.2px;font-weight:750;margin:13px 0 9px;line-height:1.35}.page-heading p{font-size:12px;color:#90929e;margin:0}.version-badge{border:1px solid #e4e4eb;background:#fff;border-radius:6px;padding:8px 9px;display:flex;align-items:center;gap:7px;color:#787b88;white-space:nowrap;font-size:9px}.version-badge>span:first-child{width:5px;height:5px;border-radius:50%;background:#8f7ac2}.version{font-family:monospace;color:#aaa7b5;font-size:9px;border-left:1px solid #e9e7ef;padding-left:7px}.workspace-toolbar{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5e6ed;margin-bottom:24px}.view-tabs{display:flex;gap:23px}.view-tabs button{border:0;background:none;font-size:11px;display:flex;align-items:center;gap:7px;color:#9395a3;padding:0 1px 14px;position:relative}.view-tabs button svg{width:14px;height:14px}.view-tabs button.selected{color:#7e66bd;font-weight:600}.view-tabs button.selected:after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#9076cf;border-radius:3px}.toolbar-right{display:flex;align-items:center;font-size:9px;color:#a0a3ad;padding-bottom:13px}.live-dot{width:4px;height:4px;margin-right:6px}.toolbar-divider{height:12px;border-left:1px solid #dddfe6;margin:0 14px}.toolbar-right button{border:0;background:none;color:#7e8190;display:flex;align-items:center;gap:6px;font-size:9px;padding:0}.toolbar-right svg{width:12px;height:12px}.playground-grid{display:grid;grid-template-columns:minmax(350px,1.25fr) minmax(310px,1fr);gap:23px}.panel{border:1px solid #e4e5ed;border-radius:10px;background:#fff;overflow:hidden;box-shadow:0 2px 3px #242a3b02}.panel-heading{height:51px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:11px;font-weight:500}.panel-heading>span:first-child{display:flex;align-items:center;gap:8px}.panel-heading svg{width:14px;height:14px;color:#9598a7}.small-tag{font-size:7px;letter-spacing:1px;color:#9d9eaa;background:#f8f8fa;border:1px solid #ececf1;padding:4px 6px;border-radius:4px}.preview-content{padding:33px 37px 21px}.form-brand{display:flex;align-items:center;gap:9px;color:#9690a6;font-size:8px;letter-spacing:1.6px;font-weight:600}.feedback-icon{height:30px;width:30px;border-radius:9px;background:#eee9f8;display:grid;place-items:center;color:#8f76c4}.feedback-icon svg{width:16px;height:16px;fill:#8f76c420}h2{font-family:Manrope,sans-serif;font-size:29px;line-height:1.32;letter-spacing:-.9px;font-weight:750;margin:21px 0 11px}h2>span{color:#9b83c9}.form-intro{font-size:11px;line-height:1.85;color:#9999a6;margin:0 0 26px}fieldset{margin:0;padding:0;border:0;min-width:0}.field-label{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:600;margin-bottom:9px}.field-label span{font-size:8px;font-weight:400;color:#a6a5b0}input:not([type=checkbox]),textarea{border:1px solid #e3e4ed;width:100%;border-radius:6px;padding:11px 12px;background:#fff;outline:none;color:#4c4b5b;font-size:10px;transition:border-color .2s,box-shadow .2s}input::placeholder,textarea::placeholder{color:#b1afbc}input:not([type=checkbox]):focus,textarea:focus{border-color:#a590d0;box-shadow:0 0 0 3px #a590d013}textarea{resize:vertical;min-height:78px;line-height:1.7}.rating-label{display:flex;justify-content:space-between;align-items:center;margin-top:25px;margin-bottom:12px;gap:8px}.rating-label label{font-size:10px;font-weight:600}.rating-label label>span{color:#a58acb;margin-left:2px}.custom-tag{display:flex;align-items:center;gap:4px;font-size:7px;background:#f6f3fc;border:1px solid #ece5f6;border-radius:4px;color:#a18abf;padding:3px 5px;white-space:nowrap}.custom-tag svg{width:10px;height:10px}star-rating{display:block}.rating-help{color:#aaa6b5;font-size:9px;margin:10px 0 25px}.rating-help.error{color:#bd626c}.form-buttons{display:flex;align-items:center;gap:20px;margin-top:23px}.primary-button{border:1px solid #7c66bf;border-radius:6px;background:#8069c4;color:#fff;box-shadow:0 2px 2px #6852ac12;display:flex;align-items:center;justify-content:center;gap:27px;padding:12px 15px;font-size:10px;font-weight:500;flex:1;transition:background .2s}.primary-button:hover{background:#7059b3}.primary-button svg{width:14px;height:14px}.reset-button{border:0;background:none;color:#9995a8;display:flex;align-items:center;gap:6px;font-size:9px;white-space:nowrap;padding:8px 0}.reset-button svg{width:12px;height:12px}.privacy-note{display:flex;justify-content:center;align-items:center;gap:5px;font-size:8px;color:#aaa7b5;margin-top:17px}.privacy-note svg{width:11px;height:11px;color:#9b96a9}#form-result{font-size:10px;color:#65977e;margin:0;text-align:center}#form-result:not(:empty){margin-top:14px}.preview-footer{background:#fbfbfd;border-top:1px solid var(--line);padding:13px 20px;display:flex;align-items:center;font-size:9px;color:#a4a2b0}.native-dot{width:4px;height:4px;background:#ab99cb}.preview-footer svg{margin-left:auto;width:12px;height:12px;color:#b2aebb}.inspector-column{display:flex;flex-direction:column;gap:18px}.element-tag{font-family:monospace;color:#a59aaf;background:#f8f6fb;border:1px solid #eeebf3;border-radius:4px;font-size:9px;padding:4px 6px}.inspector-content{padding:20px}.section-label{display:flex;justify-content:space-between;font-size:8px;letter-spacing:1.2px}.attribute-row{display:flex;justify-content:space-between;align-items:center;margin-top:19px}.attribute-row code{font-size:10px;color:#5d5d6b}.attribute-row small{display:block;font-size:9px;color:#a4a3b0;margin-top:4px}.switch{display:block;position:relative;flex-shrink:0;width:28px;height:17px;cursor:pointer}.switch input{opacity:0;position:absolute;width:100%;height:100%;margin:0;z-index:2;cursor:pointer}.switch>span{display:block;width:100%;height:100%;border-radius:20px;background:#e3e2e9;transition:background .2s}.switch>span:after{content:'';position:absolute;left:3px;top:3px;width:11px;height:11px;background:#fff;border-radius:50%;box-shadow:0 1px 2px #0001;transition:transform .2s}.switch input:checked+span{background:#8b75c9}.switch input:checked+span:after{transform:translateX(11px)}.switch input:focus-visible+span{outline:2px solid #8b75c9;outline-offset:3px}.inspector-divider{border-top:1px solid var(--line);margin:21px 0 18px}.auto-badge{font-size:6px;letter-spacing:.6px;color:#b2afbc;background:#f7f7fa;padding:2px 4px;border-radius:3px}.state-list{margin:15px 0 19px}.state-list>div{display:flex;align-items:center;justify-content:space-between;font-size:9px;margin-top:15px;min-height:14px}.state-list dt{color:#95939f}.state-list dd{margin:0;display:flex;align-items:center;gap:8px;color:#888390;font-size:9px}.state-list dd code{background:#f5f4f8;border:1px solid #eae7ef;padding:2px 5px;border-radius:4px;font-size:9px;color:#9c88b3}#state-description{font-size:8px;color:#a6a1b1}.state-list dd.valid-state{color:#629b7c}.valid-state>span{font-size:11px}.state-list dd.invalid-state{color:#bc6973}.green-dot{width:4px;height:4px;margin-right:0}.state-actions{display:flex;gap:9px}.state-actions button{background:#fff;border:1px solid #e7e4ee;border-radius:5px;padding:8px;display:flex;align-items:center;justify-content:center;gap:5px;color:#92889f;font-size:9px;flex:1}.state-actions button:hover{background:#f7f4fc}.state-actions svg{width:12px;height:12px}.output-tabs{display:flex;border-bottom:1px solid var(--line);padding:0 16px;align-items:center;gap:21px;height:44px}.output-tabs button{font-size:10px;background:none;border:0;color:#a7a1af;padding:14px 0;position:relative;display:flex;align-items:center;gap:7px;height:100%}.output-tabs button.selected{color:#8c73bb}.output-tabs button.selected:after{content:'';height:2px;background:#9d85cc;position:absolute;bottom:0;left:0;right:0}.tab-dot{width:4px;height:4px;border-radius:50%;background:#a793ca}.output-tabs #event-count{font-size:8px;border-radius:3px;background:#f3f0f7;padding:1px 4px;color:#ac9cbb}.output-tabs #copy-data{margin-left:auto;color:#b0aab9}.output-tabs svg{width:12px;height:12px}.code-caption{display:flex;justify-content:space-between;font-size:8px;color:#b5aebf;padding:16px 20px 0}.code-caption span:last-child{letter-spacing:.8px;font-size:7px}#form-data{padding:0 20px;margin:13px 0 15px;font-size:10px;line-height:1.9;color:#a596bb;white-space:pre-wrap;overflow-wrap:anywhere;min-height:94px}.json-key{color:#9685b1}.json-value{color:#80a48f}.json-punctuation{color:#b7aec5}.output-note{display:flex;align-items:center;padding:0 20px 14px;color:#b4adbe;font-size:8px;gap:6px}.output-note>span{width:4px;height:4px;border-radius:50%;background:#a4bca9}#events-output{height:172px;overflow:auto;padding:8px 17px}#event-log{margin:0;padding:0;list-style:none;font-size:9px}#event-log li{padding:9px 0;border-bottom:1px solid #f0edf4;display:flex;gap:12px;line-height:1.6;color:#93879f}#event-log time{color:#b9b3c0;font-family:monospace;flex-shrink:0}.native-callout{display:flex;align-items:flex-start;gap:10px;padding:2px 7px}.callout-icon{width:24px;height:24px;border:1px solid #e2e9e2;border-radius:7px;display:grid;place-items:center;color:#8baf95;background:#f1f6f1}.callout-icon svg{width:13px;height:13px}.native-callout strong{font-size:9px;color:#838591;font-weight:500}.native-callout p{font-size:9px;line-height:1.9;color:#a6a5b1;margin:5px 0 0}.capabilities{display:flex;align-items:center;justify-content:center;gap:23px;border-top:1px solid #e8e9f0;border-bottom:1px solid #e8e9f0;margin-top:27px;padding:18px 0;color:#9794a5;font-size:8px}.capabilities>span{font-size:6px;letter-spacing:1.1px;color:#b1aabc}.capabilities>div{display:flex;gap:5px;align-items:center}.capabilities svg{width:10px;height:10px;color:#b19dcd}footer{padding:20px 0 22px;display:flex;justify-content:space-between;color:#b2afbd;font-size:8px}footer>span:last-child{display:flex;gap:5px;align-items:center}footer code{font-size:8px;color:#a49aaf}.footer-spark{font-size:19px;color:#ad9bc8;margin-left:9px}button:focus-visible,a:focus-visible{outline:2px solid #8c74c9;outline-offset:4px}button:disabled{cursor:not-allowed;opacity:.5}.implementation-code{padding:25px 30px;overflow:auto;font-size:12px;color:#82729e;line-height:1.9;min-height:550px}dialog{border:1px solid #e4dced;border-radius:14px;padding:30px;max-width:540px;width:calc(100% - 32px);color:#63596e;box-shadow:0 20px 100px #32244325}dialog::backdrop{background:#28213566;backdrop-filter:blur(3px)}.dialog-heading{display:flex;justify-content:space-between;align-items:center}.dialog-heading button{border:0;background:#f2eef8;border-radius:50%;width:27px;height:27px;color:#8d7d9e;font-size:20px}dialog h2{font-size:25px}dialog p,dialog dd{font-size:12px;line-height:1.8;color:#97909f}dialog dt{font-size:12px;font-weight:600;margin-top:18px}dialog dd{margin:5px 0}dialog a{font-size:12px;color:#8f74bf}dialog code{font-size:11px}[hidden]{display:none!important}@media(min-width:1450px){main{padding-top:49px}.preview-content{padding:38px 47px 29px}.inspector-content{padding:23px}.panel-heading{height:54px}.page-heading{margin-bottom:38px}.form-intro{margin-bottom:30px}.rating-label{margin-top:29px}.rating-help{margin-bottom:30px}.form-buttons{margin-top:27px}}@media(max-width:1150px){.sidebar{width:208px;padding:30px 16px}.brand{font-size:15px;gap:8px}.app-shell{margin-left:208px}main{padding:30px 25px 0}.topbar{padding:0 25px}.page-heading{align-items:flex-start}.version-badge{margin-top:9px}h1{font-size:25px}.playground-grid{gap:17px;grid-template-columns:minmax(320px,1.15fr) minmax(280px,1fr)}.preview-content{padding:30px 25px 21px}.panel-heading{padding:0 16px}.inspector-content{padding:18px}.capabilities{gap:15px}.capabilities>span{display:none}.custom-tag{font-size:6px}.rating-label label{font-size:9px}.form-buttons{gap:15px}.primary-button{gap:15px}}@media(max-width:950px){.sidebar{width:75px;padding:25px 17px}.brand>span:last-child,.workspace,.nav-label,.nav-item:not(.active),.sidebar-note,.sidebar-bottom,.nav-item.active .nav-count{display:none}.nav-item.active{font-size:0;padding:12px;margin-top:40px;gap:0}.app-shell{margin-left:75px}.version-badge{display:none}main{max-width:900px}.playground-grid{grid-template-columns:minmax(300px,1.15fr) minmax(260px,1fr)}.preview-content{padding:30px 22px 21px}.inspector-content{padding:18px 16px}h2{font-size:27px}.rating-label{align-items:flex-start;flex-direction:column;gap:7px}.form-buttons{gap:12px}.primary-button{gap:9px}.capabilities{gap:20px}.capabilities>div:last-child{display:none}}@media(max-width:700px){.sidebar{width:58px;padding:23px 12px}.brand-icon{width:32px}.nav-item.active{padding:10px}.app-shell{margin-left:58px}.topbar{height:64px;padding:0 20px}.topbar a{font-size:0;gap:0}.topbar a svg{width:17px;height:17px}.topbar a span{font-size:12px}main{padding:30px 18px 0}.eyebrow{font-size:7px}h1{font-size:25px;max-width:290px;letter-spacing:-.9px}.page-heading p{font-size:11px;line-height:1.8;max-width:280px}.page-heading{margin-bottom:27px}.toolbar-right{font-size:0}.toolbar-right .live-dot,.toolbar-divider{display:none}.toolbar-right button{font-size:0}.toolbar-right button svg{width:15px;height:15px}.playground-grid{grid-template-columns:1fr;gap:20px}.preview-content{padding:30px}.rating-label{flex-direction:row;align-items:center}.custom-tag{font-size:7px}.rating-label label{font-size:10px}.inspector-content{padding:22px}.native-callout{padding:3px 7px 4px}.capabilities{gap:13px;flex-wrap:wrap;font-size:7px}.capabilities>div:last-child{display:flex}footer{font-size:7px;gap:15px;line-height:1.8}footer>span:last-child{display:block;text-align:right}.footer-spark{display:none}.implementation-code{font-size:10px;padding:20px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+diff --git a/tests/control.test.cjs b/tests/control.test.cjs
+new file mode 100644
+index 0000000..5a02a8b
+--- /dev/null
++++ b/tests/control.test.cjs
+@@ -0,0 +1,71 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++function createControl(attributes = {}) {
++  const internals = { form: {}, validity: { valid: true }, willValidate: true,
++    setFormValue(value, state) { this.value = value; this.state = state; },
++    setValidity(flags, message, anchor) { this.validity = { ...flags, valid: !Object.keys(flags).length }; this.message = message; this.anchor = anchor; }
++  };
++  const buttons = Array.from({ length: 5 }, (_, i) => ({ dataset: { value: String(i + 1) }, attrs: {}, classList: { toggle() {} }, setAttribute(key, value) { this.attrs[key] = value; }, focus() {} }));
++  const group = { attrs: {}, setAttribute(key, value) { this.attrs[key] = value; } };
++  class MockHTMLElement extends EventTarget {
++    constructor() { super(); this.attributes = { ...attributes }; this.dataset = {}; }
++    attachInternals() { return internals; }
++    attachShadow() { return this.shadowRoot = { innerHTML: '', addEventListener() {}, querySelectorAll() { return buttons; }, querySelector() { return group; } }; }
++    getAttribute(key) { return this.attributes[key] ?? null; }
++    hasAttribute(key) { return key in this.attributes; }
++    matches() { return this.hasAttribute('disabled'); }
++  }
++  class CustomEvent extends Event { constructor(type, init = {}) { super(type); this.detail = init.detail; } }
++  class ElementInternals { setFormValue() {} }
++  const context = vm.createContext({ HTMLElement: MockHTMLElement, ElementInternals, window: { ElementInternals }, CustomEvent, Event, InputEvent: Event });
++  const source = readFileSync('app.js', 'utf8').split("customElements.define('star-rating', StarRating);")[0];
++  vm.runInContext(source + '\nglobalThis.Control = StarRating;', context);
++  const control = new context.Control();
++  control.connectedCallback();
++  return { control, internals, buttons };
++}
++
++test('submits its own normalized value and saves restoration state', () => {
++  const { control, internals } = createControl({ value: '4' });
++  assert.equal(internals.value, '4');
++  control.value = '5';
++  assert.equal(internals.value, '5');
++  assert.equal(internals.state, '5');
++  control.value = 'unexpected';
++  assert.equal(internals.value, '');
++});
++
++test('required empty control reports valueMissing with an internal focus anchor', () => {
++  const { control, internals, buttons } = createControl({ required: '' });
++  assert.equal(internals.validity.valueMissing, true);
++  assert.equal(internals.message, 'Please choose a rating.');
++  assert.equal(internals.anchor, buttons[0]);
++  control.value = '2';
++  assert.equal(internals.validity.valid, true);
++  assert.equal(internals.message, '');
++});
++
++test('reset restores the attribute default; restoration accepts saved browser state', () => {
++  const { control } = createControl({ value: '4' });
++  control.value = '1';
++  control.formResetCallback();
++  assert.equal(control.value, '4');
++  control.formStateRestoreCallback('3', 'restore');
++  assert.equal(control.value, '3');
++  control.formStateRestoreCallback(new FormData(), 'restore');
++  assert.equal(control.value, '');
++});
++
++test('fieldset disable and re-enable preserve host attributes and keyboard access', () => {
++  const { control, buttons } = createControl({ value: '4' });
++  control.formDisabledCallback(true);
++  assert.ok(buttons.every(button => button.disabled && button.tabIndex === -1));
++  assert.equal(control.hasAttribute('disabled'), false);
++  control.formDisabledCallback(false);
++  assert.ok(buttons.every(button => !button.disabled));
++  assert.equal(buttons[3].tabIndex, 0);
++  assert.equal(buttons.filter(button => button.tabIndex === 0).length, 1);
++});

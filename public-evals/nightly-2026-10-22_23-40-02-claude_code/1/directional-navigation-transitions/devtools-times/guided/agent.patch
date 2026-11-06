@@ -1,0 +1,121 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..5acfb60 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -41,15 +41,19 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++            <div data-top-stories class="flex items-center gap-4" aria-roledescription="carousel" aria-label="Top stories">
++                <button type="button" data-prev hidden class="shrink-0 rounded border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-900 hover:text-amber-400">Previous</button>
++                <div data-viewport class="flex-1 min-w-0">
++                    {topStories.map(article => (
++                        <div data-slide role="group" aria-roledescription="slide" class="text-center">
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
++                <button type="button" data-next hidden class="shrink-0 rounded border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-900 hover:text-amber-400">Next</button>
+             </div>
+         </div>
+     </div>
+@@ -81,4 +85,85 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
++
++<script>
++    const root = document.querySelector<HTMLElement>('[data-top-stories]');
++    if (root) {
++        const viewport = root.querySelector<HTMLElement>('[data-viewport]')!;
++        const slides = [...root.querySelectorAll<HTMLElement>('[data-slide]')];
++        const prev = root.querySelector<HTMLButtonElement>('[data-prev]')!;
++        const next = root.querySelector<HTMLButtonElement>('[data-next]')!;
++        let current = 0;
++
++        const show = () => {
++            slides.forEach((slide, i) => {
++                slide.hidden = i !== current;
++                slide.setAttribute('aria-label', `${i + 1} of ${slides.length}`);
++            });
++        };
++
++        const go = (delta: number) => {
++            const target = (current + delta + slides.length) % slides.length;
++            const update = () => {
++                current = target;
++                show();
++            };
++            if (!document.startViewTransition) {
++                update();
++                return;
++            }
++            document.startViewTransition({
++                update,
++                types: [delta > 0 ? 'top-stories-next' : 'top-stories-prev'],
++            });
++        };
++
++        if (slides.length > 1) {
++            prev.hidden = next.hidden = false;
++            prev.addEventListener('click', () => go(-1));
++            next.addEventListener('click', () => go(1));
++            // Only the viewport is captured, so the rest of the page stays still.
++            viewport.style.viewTransitionName = 'top-stories';
++            root.setAttribute('aria-live', 'polite');
++        }
++        show();
++    }
++</script>
++
++<style is:global>
++    @keyframes top-stories-out-left { to { transform: translateX(-100%); } }
++    @keyframes top-stories-in-right { from { transform: translateX(100%); } }
++    @keyframes top-stories-out-right { to { transform: translateX(100%); } }
++    @keyframes top-stories-in-left { from { transform: translateX(-100%); } }
++
++    /* Clip the sliding snapshots to the slider's bounds */
++    ::view-transition-group(top-stories) {
++        animation-duration: 0.4s;
++        overflow: clip;
++    }
++    ::view-transition-old(top-stories),
++    ::view-transition-new(top-stories) {
++        animation: 0.4s ease-in-out both;
++    }
++    html:active-view-transition-type(top-stories-next)::view-transition-old(top-stories) {
++        animation-name: top-stories-out-left;
++    }
++    html:active-view-transition-type(top-stories-next)::view-transition-new(top-stories) {
++        animation-name: top-stories-in-right;
++    }
++    html:active-view-transition-type(top-stories-prev)::view-transition-old(top-stories) {
++        animation-name: top-stories-out-right;
++    }
++    html:active-view-transition-type(top-stories-prev)::view-transition-new(top-stories) {
++        animation-name: top-stories-in-left;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++        ::view-transition-group(top-stories),
++        ::view-transition-old(top-stories),
++        ::view-transition-new(top-stories) {
++            animation: none !important;
++        }
++    }
++</style>

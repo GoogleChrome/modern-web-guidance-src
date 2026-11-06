@@ -1,0 +1,149 @@
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..f5ce181 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -1,7 +1,7 @@
+ ---
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+-<footer class="bg-white text-black p-6 md:p-10 w-full relative z-50">
++<footer class="bg-white text-black p-6 md:p-10 w-full relative z-50" transition:persist>
+         
+     <!-- Top section: Logo -->
+     <div class="border-b border-gray-300 pb-6 mb-6">
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..95dea0a 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+-<header class="font-inter group relative bg-white">
++<header class="font-inter group relative bg-white" transition:persist>
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..bc4a5b6 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -38,18 +38,116 @@ const baseUrl = import.meta.env.BASE_URL;
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      <AdSlotFireplace client:load transition:persist />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="spa-main-content" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import { swapFunctions } from "astro:transitions/client";
++
++      interface CachedView {
++        title: string;
++        wrapper: HTMLDivElement;
++        children: Node[];
++      }
++
++      const viewCache = new Map<string, CachedView>();
++      const getCacheKey = (url: URL) => url.pathname + url.search;
++
++      let cacheContainer: HTMLDivElement | null = null;
++      function getCacheContainer() {
++        if (!cacheContainer || !cacheContainer.isConnected) {
++          cacheContainer = document.createElement("div");
++          cacheContainer.id = "spa-view-cache";
++          cacheContainer.hidden = true;
++          cacheContainer.style.display = "none";
++          cacheContainer.setAttribute("aria-hidden", "true");
++          cacheContainer.setAttribute("data-astro-transition-persist", "spa-view-cache");
++          document.body.appendChild(cacheContainer);
++        }
++        return cacheContainer;
++      }
++
++      function moveChildren(source: Element, target: Element) {
++        const moveBefore = typeof (target as any).moveBefore === "function"
++          ? (node: Node) => (target as any).moveBefore(node, null)
++          : null;
++        const nodes = Array.from(source.childNodes);
++        for (const node of nodes) {
++          if (moveBefore && node.isConnected) {
++            moveBefore(node);
++          } else {
++            target.appendChild(node);
++          }
++        }
++        return nodes;
++      }
++
++      document.addEventListener("astro:before-preparation", (event) => {
++        const toKey = getCacheKey(event.to);
++        if (viewCache.has(toKey) && !event.formData) {
++          event.loader = async () => {};
++        }
++      });
++
++      document.addEventListener("astro:before-swap", (event) => {
++        const fromKey = getCacheKey(event.from);
++        const toKey = getCacheKey(event.to);
++        const currentMain = document.getElementById("spa-main-content") as HTMLElement | null;
++
++        const originalSwap = event.swap;
++        event.swap = () => {
++          const container = getCacheContainer();
++
++          if (currentMain && fromKey !== toKey) {
++            let existing = viewCache.get(fromKey);
++            if (!existing) {
++              const wrapper = document.createElement("div");
++              wrapper.dataset.cacheKey = fromKey;
++              container.appendChild(wrapper);
++              existing = {
++                title: document.title,
++                wrapper,
++                children: [],
++              };
++              viewCache.set(fromKey, existing);
++            } else {
++              existing.title = document.title;
++              if (!existing.wrapper.isConnected) {
++                container.appendChild(existing.wrapper);
++              }
++            }
++            existing.children = moveChildren(currentMain, existing.wrapper);
++          }
++
++          const cached = viewCache.get(toKey);
++          if (cached && currentMain && !event.formData) {
++            document.title = cached.title;
++            moveChildren(cached.wrapper, currentMain);
++          } else {
++            const newMain = event.newDocument.getElementById("spa-main-content");
++            if (currentMain && newMain) {
++              swapFunctions.deselectScripts(event.newDocument);
++              swapFunctions.swapRootAttributes(event.newDocument);
++              swapFunctions.swapHeadElements(event.newDocument);
++              const restoreFocus = swapFunctions.saveFocus();
++              currentMain.replaceChildren(...Array.from(newMain.childNodes));
++              restoreFocus();
++            } else {
++              originalSwap();
++            }
++          }
++        };
++      });
++    </script>
+   </body>
+ </html>

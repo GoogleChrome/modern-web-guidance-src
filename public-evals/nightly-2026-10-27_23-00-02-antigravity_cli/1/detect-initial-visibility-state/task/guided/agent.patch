@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Accurately determines initial visibility state history and background timestamp
++     * using the Performance VisibilityStateEntry API.
++     */
++    function getVisibilityInfo() {
++      const entries = performance.getEntriesByType('visibility-state');
++
++      if (entries.length > 0) {
++        const firstEntry = entries[0];
++
++        // If the first performance entry for visibility is 'hidden',
++        // the page was initially loaded in a background tab.
++        const initiallyBackgrounded = firstEntry.name === 'hidden';
++
++        // Find the precise, high-resolution timestamp (in ms) of when the page
++        // was first backgrounded.
++        let timeBackgrounded = null;
++        for (const entry of entries) {
++          if (entry.name === 'hidden') {
++            // entry.startTime provides the exact internal browser timestamp
++            // of the visibility change.
++            timeBackgrounded = entry.startTime;
++            break;
++          }
++        }
++
++        return {
++          initiallyBackgrounded,
++          timeBackgrounded,
++          isFallback: false,
++          reliable: true
++        };
++      }
++
++      return getFallbackVisibilityInfo();
++    }
++
++    /**
++     * Fallback implementation using document.visibilityState and visibilitychange.
++     *
++     * WARNING: This legacy fallback is HIGHLY INACCURATE and potentially unreliable
++     * for determining initial background state when scripts load asynchronously.
++     * A page could be opened in a background tab and then foregrounded by the user
++     * BEFORE this script finishes downloading and executing. When this script finally
++     * runs, `document.visibilityState` will synchronously read as `'visible'`,
++     * completely missing the initial hidden state. Additionally, `performance.now()`
++     * only records when the event listener callback fired, lacking the internal
++     * browser precision of `VisibilityStateEntry.startTime`.
++     */
++    function getFallbackVisibilityInfo() {
++      // Synchronous check at script execution time (prone to race conditions with async scripts).
++      const initiallyBackgrounded = document.visibilityState === 'hidden';
++
++      // If hidden right now, approximate that it was hidden from load (0 ms).
++      let timeBackgrounded = initiallyBackgrounded ? 0 : null;
++
++      const fallbackInfo = {
++        initiallyBackgrounded,
++        timeBackgrounded,
++        isFallback: true,
++        reliable: false,
++        warning: 'Fallback active (document.visibilityState): potentially unreliable for async scripts due to race conditions and lower timestamp precision.'
++      };
++
++      // Listen for future visibility changes to capture if the tab is backgrounded later.
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden' && fallbackInfo.timeBackgrounded === null) {
++          // Fallback timestamp using performance.now() reflects when the listener fired,
++          // not the exact browser visibility transition timestamp.
++          fallbackInfo.timeBackgrounded = performance.now();
++        }
++      });
++
++      return fallbackInfo;
++    }
++
++    // Feature-detect the VisibilityStateEntry API before falling back to document.visibilityState.
++    let visibilityDetectionInfo;
++    if ('VisibilityStateEntry' in window) {
++      visibilityDetectionInfo = getVisibilityInfo();
++    } else {
++      visibilityDetectionInfo = getFallbackVisibilityInfo();
++      console.warn(
++        '[Visibility Detection] VisibilityStateEntry API unavailable. Active fallback (document.visibilityState) is potentially unreliable for async scripts.'
++      );
++    }
++
++    console.log(visibilityDetectionInfo);
++  </script>
++
+ </body>
+ 
+ </html>

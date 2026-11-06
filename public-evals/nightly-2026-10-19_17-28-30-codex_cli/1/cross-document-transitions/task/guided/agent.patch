@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/transitions.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -151,8 +152,82 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .pagination {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 20px;
++      margin-top: 24px;
++    }
++
++    .pagination .btn {
++      margin-top: 0;
++    }
++
++    .pagination [aria-disabled="true"] {
++      opacity: 0.45;
++      cursor: default;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation-duration: 320ms;
++        animation-timing-function: ease-in-out;
++        animation-fill-mode: both;
++      }
++
++      html:active-view-transition-type(next)::view-transition-old(root) {
++        animation-name: slide-out-left;
++      }
++
++      html:active-view-transition-type(next)::view-transition-new(root) {
++        animation-name: slide-in-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-old(root) {
++        animation-name: slide-out-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-new(root) {
++        animation-name: slide-in-left;
++      }
++    }
++
++    @keyframes slide-out-left {
++      to { transform: translateX(-12%); opacity: 0; }
++    }
++
++    @keyframes slide-in-right {
++      from { transform: translateX(12%); opacity: 0; }
++    }
++
++    @keyframes slide-out-right {
++      to { transform: translateX(12%); opacity: 0; }
++    }
++
++    @keyframes slide-in-left {
++      from { transform: translateX(-12%); opacity: 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(root),
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation: none !important;
++      }
++
++      nav a, .btn {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -193,8 +268,13 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pages">
++        <a id="previous" href="?page=1" class="btn" rel="prev" aria-disabled="true" tabindex="-1">&larr; Previous</a>
++        <span id="page-number">Page 1 of 3</span>
++        <a id="next" href="?page=2" class="btn" rel="next">Next &rarr;</a>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>

@@ -1,0 +1,258 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,9 +84,9 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+@@ -134,8 +134,171 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    /* Roast Picker */
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      margin-top: 1.5rem;
++    }
++
++    .order-form label {
++      font-size: 0.9rem;
++      margin-bottom: 0.4rem;
++    }
++
++    .roast-picker {
++      width: 14rem;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .roast-picker,
++    .roast-picker::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-picker > button {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      width: 100%;
++    }
++
++    .roast-picker selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .roast-picker selectedcontent img {
++      width: 32px;
++      height: 32px;
++      border-radius: 50%;
++      object-fit: cover;
++    }
++
++    .roast-picker selectedcontent .roast-desc {
++      display: none;
++    }
++
++    .roast-picker::picker-icon {
++      margin-left: auto;
++      color: var(--primary);
++    }
++
++    .roast-picker::picker(select) {
++      position-area: bottom;
++      position-try-fallbacks: flip-block;
++      width: min(34rem, 94vw);
++      margin-block: 8px;
++      padding: 12px;
++      border: none;
++      border-radius: 8px;
++      background: var(--light);
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
++    }
++
++    /* :open is required, otherwise the picker would show while closed */
++    .roast-picker:open::picker(select) {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 12px;
++    }
++
++    .roast-picker option {
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 2px;
++      padding: 8px 8px 12px;
++      border: 2px solid transparent;
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      text-align: center;
++      cursor: pointer;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .roast-picker option img {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 5px;
++      margin-bottom: 6px;
++    }
++
++    .roast-picker option:hover,
++    .roast-picker option:focus-visible {
++      border-color: var(--secondary);
++      outline: none;
++    }
++
++    .roast-name {
++      font-weight: 600;
++    }
++
++    .roast-desc {
++      font-size: 0.75rem;
++      color: #6d4c41;
++    }
++
++    .roast-picker option::checkmark {
++      display: none;
++    }
++
++    .roast-picker option:checked {
++      border-color: var(--accent);
++      background: #fff8ec;
++    }
++
++    .roast-picker option:checked .roast-name {
++      font-weight: 800;
++    }
++
++    .roast-picker option:checked::checkmark {
++      position: absolute;
++      top: -0.5em;
++      right: -0.5em;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      min-width: 1.6em;
++      aspect-ratio: 1;
++      padding-right: 0.12em;
++      padding-left: 0.05em;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: bold;
++    }
++
++    @media (max-width: 480px) {
++      .roast-picker option {
++        padding: 6px 6px 10px;
++      }
++
++      .roast-desc {
++        display: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +333,35 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form class="order-form" action="/order-online" method="get">
++      <label for="roast-picker">Choose your roast</label>
++      <select class="roast-picker" name="roast" id="roast-picker">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light" aria-label="Light roast">
++          <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=240&h=160&q=70"
++            alt="" width="120" height="80">
++          <span class="roast-name">Light</span>
++          <span class="roast-desc">Bright, floral, citrusy</span>
++        </option>
++        <option value="medium" aria-label="Medium roast" selected>
++          <img src="https://images.unsplash.com/photo-1580933073521-dc49ac0d4e6a?auto=format&fit=crop&w=240&h=160&q=70"
++            alt="" width="120" height="80">
++          <span class="roast-name">Medium</span>
++          <span class="roast-desc">Balanced, caramel, nutty</span>
++        </option>
++        <option value="dark" aria-label="Dark roast">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=240&h=160&q=70"
++            alt="" width="120" height="80">
++          <span class="roast-name">Dark</span>
++          <span class="roast-desc">Bold, smoky, chocolatey</span>
++        </option>
++      </select>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +395,23 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Native select only handles Up/Down; let Left/Right move across the single-row grid too.
++    document.getElementById('roast-picker').addEventListener('keydown', (event) => {
++      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
++      const current = document.activeElement;
++      if (!(current instanceof HTMLOptionElement)) return;
++      const rtl = getComputedStyle(current).direction === 'rtl';
++      const forward = (event.key === 'ArrowRight') !== rtl;
++      const next = forward ? current.nextElementSibling : current.previousElementSibling;
++      if (next instanceof HTMLOptionElement) {
++        event.preventDefault();
++        next.focus();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

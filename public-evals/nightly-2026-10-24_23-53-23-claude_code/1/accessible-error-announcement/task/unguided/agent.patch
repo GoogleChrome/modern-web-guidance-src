@@ -1,0 +1,120 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,54 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input {
++      flex: 1;
++      min-width: 0;
++      padding: 10px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter input[aria-invalid="true"] {
++      border-color: #b71c1c;
++    }
++
++    .newsletter button {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      border-radius: 5px;
++      padding: 10px 20px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter-error {
++      color: #b71c1c;
++      font-size: 0.85rem;
++      text-align: left;
++      min-height: 1.4em;
++      margin-top: 6px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +243,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" novalidate>
++      <h3>Join our newsletter</h3>
++      <label for="newsletter-email" class="sr-only" style="position:absolute;left:-9999px">Email address</label>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com" autocomplete="email"
++          required aria-describedby="newsletter-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <!-- Always-present live region: text is only inserted while the visual error is shown -->
++      <div class="newsletter-error" id="newsletter-error" role="alert"></div>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +263,41 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('newsletter-form');
++      var input = document.getElementById('newsletter-email');
++      var error = document.getElementById('newsletter-error');
++      var touched = false;
++
++      // Single source of truth: visual error and SR announcement change together.
++      function render() {
++        var message = '';
++        if (touched && !input.checkValidity()) {
++          message = input.validity.valueMissing
++            ? 'Please enter your email address.'
++            : 'Please enter a valid email address, like name@example.com.';
++        }
++        if (error.textContent !== message) error.textContent = message;
++        if (message) input.setAttribute('aria-invalid', 'true');
++        else input.removeAttribute('aria-invalid');
++      }
++
++      input.addEventListener('blur', function () { touched = true; render(); });
++      input.addEventListener('input', render);
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        touched = true;
++        render();
++        if (!input.checkValidity()) { input.focus(); return; }
++        form.reset();
++        touched = false;
++        render();
++        error.textContent = '';
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

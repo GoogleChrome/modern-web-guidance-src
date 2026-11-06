@@ -1,0 +1,763 @@
+diff --git a/index.html b/index.html
+index 66c9173..79bfe6c 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,215 @@
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    /* Seasonal menu */
++    .filters {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 15px;
++    }
++
++    .filters button {
++      font: inherit;
++      font-size: 0.9rem;
++      padding: 5px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 999px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .filters button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .card img {
++      display: block;
++      width: calc(100% + 40px);
++      height: auto;
++      aspect-ratio: 400 / 260;
++      object-fit: cover;
++      margin: -20px -20px 15px;
++      border-radius: 8px 8px 0 0;
++    }
++
++    .card .tags {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #8d6e63;
++    }
++
++    .card .price {
++      font-weight: bold;
++      margin-top: 8px;
++    }
++
++    .add-form {
++      display: grid;
++      gap: 8px;
++      margin-top: 12px;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .add-form label {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .add-form select {
++      font: inherit;
++      padding: 3px 6px;
++      text-transform: capitalize;
++    }
++
++    .add-form .checkbox-field {
++      justify-content: flex-start;
++    }
++
++    .add-form .btn {
++      justify-self: center;
++    }
++
++    .details-link {
++      display: inline-block;
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: var(--primary);
++    }
++
++    .card.is-highlighted,
++    .order-panel.is-highlighted {
++      animation: highlight 1.6s ease-out;
++    }
++
++    @keyframes highlight {
++      0%, 40% {
++        box-shadow: 0 0 0 4px var(--accent), 0 2px 5px rgba(0, 0, 0, 0.1);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card.is-highlighted,
++      .order-panel.is-highlighted {
++        animation: none;
++        outline: 4px solid var(--accent);
++      }
++    }
++
++    /* Order panel */
++    .order-panel {
++      max-width: 600px;
++      margin: 40px auto 0;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scroll-margin-top: 80px;
++    }
++
++    .order-panel h2 {
++      color: var(--primary);
++    }
++
++    .order-lines {
++      list-style: none;
++      margin: 10px 0;
++    }
++
++    .order-lines li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      padding: 8px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .order-lines small {
++      display: block;
++      color: #8d6e63;
++      text-transform: capitalize;
++    }
++
++    .order-lines button {
++      font: inherit;
++      font-size: 0.8rem;
++      background: none;
++      border: 1px solid #8d6e63;
++      border-radius: 4px;
++      padding: 2px 8px;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .order-total {
++      text-align: right;
++      font-weight: bold;
++    }
++
++    #confirm-dialog {
++      margin: auto;
++      width: min(90vw, 420px);
++      border: 0;
++      border-radius: 8px;
++      padding: 24px;
++      color: var(--text);
++    }
++
++    #confirm-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++    }
++
++    .toast {
++      position: fixed;
++      bottom: 20px;
++      left: 50%;
++      translate: -50% 0;
++      background: var(--primary);
++      color: white;
++      padding: 10px 18px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      max-width: 90vw;
++    }
++
++    .toast:empty {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,28 +384,60 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="filters" role="group" aria-label="Filter seasonal drinks">
++        <button type="button" data-filter="all" aria-pressed="true">All</button>
++        <button type="button" data-filter="hot" aria-pressed="false">Hot</button>
++        <button type="button" data-filter="iced" aria-pressed="false">Iced</button>
++        <button type="button" data-filter="dairy-free" aria-pressed="false">Dairy-free</button>
+       </div>
++      <div class="grid" id="seasonal-grid"></div>
++      <noscript>
++        <p style="text-align: center;">Browse our seasonal drinks on the <a href="/menu/seasonal">full menu</a>.</p>
++      </noscript>
++    </section>
++
++    <section id="order" class="order-panel" aria-labelledby="order-heading">
++      <h2 id="order-heading">Your Order</h2>
++      <p class="order-empty" id="order-empty">Your order is empty. Add a seasonal favorite to get started.</p>
++      <ul class="order-lines" id="order-lines"></ul>
++      <p class="order-total">Total: <output id="order-total">$0.00</output></p>
++      <button type="button" class="btn" id="checkout-btn" disabled>Place Order</button>
+     </section>
+   </main>
+ 
++  <template id="card-template">
++    <article class="card">
++      <img width="400" height="260" loading="lazy" alt="">
++      <h3></h3>
++      <p class="tags"></p>
++      <p class="description"></p>
++      <p class="price"></p>
++      <form class="add-form">
++        <label>Size <select name="size"></select></label>
++        <label class="milk-field">Milk <select name="milk"></select></label>
++        <label class="checkbox-field"><input type="checkbox" name="extraShot"> Extra shot (+<span class="shot-price"></span>)</label>
++        <button type="submit" class="btn">Add to Order</button>
++      </form>
++      <a class="details-link">View Details</a>
++    </article>
++  </template>
++
++  <dialog id="confirm-dialog" aria-labelledby="confirm-heading">
++    <form method="dialog">
++      <h2 id="confirm-heading">Confirm your order</h2>
++      <ul class="order-lines" id="confirm-lines"></ul>
++      <p class="order-total">Total: <strong id="confirm-total"></strong></p>
++      <div class="dialog-actions">
++        <button type="submit" value="cancel" class="btn btn-secondary">Cancel</button>
++        <button type="submit" value="confirm" class="btn" autofocus>Confirm Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <div class="toast" id="toast" role="status" aria-live="polite"></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +448,463 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const EXTRA_SHOT_PRICE = 0.75;
++    const FILTERS = ["all", "hot", "iced", "dairy-free"];
++    const MILKS = ["none", "oat", "almond", "whole"];
++    const DAIRY_FREE_MILKS = ["none", "oat", "almond"];
++    const MAX_QUANTITY = 10;
++
++    const MENU = [
++      {
++        id: "maple-oat-latte",
++        name: "Maple Oat Latte",
++        description: "Creamy oat milk with a hint of Vermont maple syrup.",
++        temperature: "hot",
++        prices: { small: 4.75, medium: 5.25, large: 5.75 },
++        milks: ["oat", "almond", "whole"],
++        image: "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=400&h=260&q=80",
++        detailsUrl: "/menu/seasonal",
++      },
++      {
++        id: "dark-roast-espresso",
++        name: "Dark Roast Espresso",
++        description: "Bold, smokey, and perfect for a morning boost.",
++        temperature: "hot",
++        prices: { single: 3.0, double: 3.75 },
++        milks: ["none"],
++        image: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=400&h=260&q=80",
++        detailsUrl: "/menu/espresso",
++      },
++      {
++        id: "cold-brew",
++        name: "Cold Brew",
++        description: "Steeped for 18 hours for maximum smoothness.",
++        temperature: "iced",
++        prices: { small: 4.25, medium: 4.75, large: 5.25 },
++        milks: ["none", "oat", "almond", "whole"],
++        image: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=400&h=260&q=80",
++        detailsUrl: "/menu/cold-brew",
++      },
++    ];
++    const SIZES = [...new Set(MENU.flatMap((drink) => Object.keys(drink.prices)))];
++
++    const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
++    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
++
++    const grid = document.getElementById("seasonal-grid");
++    const filterButtons = document.querySelectorAll(".filters button");
++    const orderPanel = document.getElementById("order");
++    const orderLinesEl = document.getElementById("order-lines");
++    const orderEmptyEl = document.getElementById("order-empty");
++    const orderTotalEl = document.getElementById("order-total");
++    const checkoutBtn = document.getElementById("checkout-btn");
++    const dialog = document.getElementById("confirm-dialog");
++    const toast = document.getElementById("toast");
++
++    const state = { filter: "all", lines: [], nextLineId: 1 };
++
++    // --- Menu helpers ---------------------------------------------------
++
++    const findDrink = (id) => MENU.find((drink) => drink.id === id);
++    const isDairyFreeOption = (drink) => drink.milks.some((milk) => DAIRY_FREE_MILKS.includes(milk));
++    const defaultSize = (drink) => {
++      const sizes = Object.keys(drink.prices);
++      return sizes.includes("medium") ? "medium" : sizes[0];
++    };
++    const matchesFilter = (drink, filter) =>
++      filter === "all" ||
++      (filter === "dairy-free" ? isDairyFreeOption(drink) : drink.temperature === filter);
++
++    const describeDrink = (drink) => ({
++      id: drink.id,
++      name: drink.name,
++      description: drink.description,
++      temperature: drink.temperature,
++      pricesBySize: drink.prices,
++      defaultSize: defaultSize(drink),
++      milkOptions: drink.milks,
++      defaultMilk: drink.milks[0],
++      dairyFreeOption: isDairyFreeOption(drink),
++      extraShotPrice: EXTRA_SHOT_PRICE,
++      detailsUrl: new URL(drink.detailsUrl, location.href).href,
++    });
++
++    // --- Rendering ------------------------------------------------------
++
++    function renderMenu() {
++      const template = document.getElementById("card-template");
++      for (const drink of MENU) {
++        const card = template.content.firstElementChild.cloneNode(true);
++        card.id = `drink-${drink.id}`;
++        card.dataset.drinkId = drink.id;
++        card.setAttribute("aria-labelledby", `${card.id}-name`);
++
++        const img = card.querySelector("img");
++        img.src = drink.image;
++        const name = card.querySelector("h3");
++        name.id = `${card.id}-name`;
++        name.textContent = drink.name;
++        card.querySelector(".tags").textContent =
++          [drink.temperature, isDairyFreeOption(drink) && "dairy-free option"].filter(Boolean).join(" · ");
++        card.querySelector(".description").textContent = drink.description;
++        card.querySelector(".price").textContent = `From ${currency.format(Math.min(...Object.values(drink.prices)))}`;
++        card.querySelector(".shot-price").textContent = currency.format(EXTRA_SHOT_PRICE);
++
++        const sizeSelect = card.querySelector("select[name=size]");
++        for (const [size, price] of Object.entries(drink.prices)) {
++          sizeSelect.add(new Option(`${size} – ${currency.format(price)}`, size, false, size === defaultSize(drink)));
++        }
++
++        const milkSelect = card.querySelector("select[name=milk]");
++        if (drink.milks.length > 1) {
++          for (const milk of drink.milks) milkSelect.add(new Option(milk === "none" ? "no milk" : milk, milk));
++        } else {
++          card.querySelector(".milk-field").remove();
++        }
++
++        card.querySelector(".add-form").addEventListener("submit", (event) => {
++          event.preventDefault();
++          const data = new FormData(event.target);
++          addToOrder({
++            drinkId: drink.id,
++            size: data.get("size"),
++            milk: data.get("milk") ?? drink.milks[0],
++            extraShot: data.has("extraShot"),
++            quantity: 1,
++          });
++        });
++
++        const link = card.querySelector(".details-link");
++        link.href = drink.detailsUrl;
++        link.setAttribute("aria-label", `View details for ${drink.name}`);
++
++        grid.append(card);
++      }
++    }
++
++    function applyFilter(filter) {
++      state.filter = filter;
++      for (const button of filterButtons) {
++        button.setAttribute("aria-pressed", String(button.dataset.filter === filter));
++      }
++      for (const card of grid.children) {
++        card.hidden = !matchesFilter(findDrink(card.dataset.drinkId), filter);
++      }
++    }
++
++    const linePrice = (line) =>
++      (findDrink(line.drinkId).prices[line.size] + (line.extraShot ? EXTRA_SHOT_PRICE : 0)) * line.quantity;
++    const orderTotal = () => state.lines.reduce((sum, line) => sum + linePrice(line), 0);
++    const lineDetails = (line) =>
++      [line.size, line.milk !== "none" && `${line.milk} milk`, line.extraShot && "extra shot"].filter(Boolean).join(", ");
++
++    function describeOrder() {
++      return {
++        items: state.lines.map((line) => ({
++          lineId: line.lineId,
++          drinkId: line.drinkId,
++          name: findDrink(line.drinkId).name,
++          size: line.size,
++          milk: line.milk,
++          extraShot: line.extraShot,
++          quantity: line.quantity,
++          lineTotal: currency.format(linePrice(line)),
++        })),
++        total: currency.format(orderTotal()),
++      };
++    }
++
++    function renderLines(listEl, { removable }) {
++      listEl.replaceChildren(
++        ...state.lines.map((line) => {
++          const li = document.createElement("li");
++          const info = document.createElement("span");
++          const details = document.createElement("small");
++          details.textContent = lineDetails(line);
++          info.append(`${line.quantity} × ${findDrink(line.drinkId).name}`, details);
++          const price = document.createElement("span");
++          price.textContent = currency.format(linePrice(line));
++          li.append(info, price);
++          if (removable) {
++            const remove = document.createElement("button");
++            remove.type = "button";
++            remove.textContent = "Remove";
++            remove.setAttribute("aria-label", `Remove ${findDrink(line.drinkId).name} (${lineDetails(line)})`);
++            remove.addEventListener("click", () => removeFromOrder(line.lineId));
++            li.append(remove);
++          }
++          return li;
++        }),
++      );
++    }
++
++    function renderOrder() {
++      renderLines(orderLinesEl, { removable: true });
++      orderEmptyEl.hidden = state.lines.length > 0;
++      orderTotalEl.value = currency.format(orderTotal());
++      checkoutBtn.disabled = state.lines.length === 0 || dialog.open;
++    }
++
++    function highlight(element) {
++      element.classList.remove("is-highlighted");
++      // Restart the animation if it is already running.
++      void element.offsetWidth;
++      element.classList.add("is-highlighted");
++      setTimeout(() => element.classList.remove("is-highlighted"), 1600);
++    }
++
++    let toastTimer;
++    function announce(message) {
++      clearTimeout(toastTimer);
++      toast.textContent = message;
++      toastTimer = setTimeout(() => (toast.textContent = ""), 4000);
++    }
++
++    // --- Order actions (shared by the UI and the agent tools) ------------
++
++    function addToOrder({ drinkId, size, milk, extraShot, quantity }) {
++      const existing = state.lines.find(
++        (line) => line.drinkId === drinkId && line.size === size && line.milk === milk && line.extraShot === extraShot,
++      );
++      const qty = existing ? Math.min(existing.quantity + quantity, MAX_QUANTITY) : quantity;
++      const line = existing ?? { lineId: `line-${state.nextLineId++}`, drinkId, size, milk, extraShot };
++      line.quantity = qty;
++      if (!existing) state.lines.push(line);
++      renderOrder();
++      highlight(orderPanel);
++      announce(`Added ${quantity} × ${findDrink(drinkId).name} (${lineDetails(line)}) to your order.`);
++      return line;
++    }
++
++    function removeFromOrder(lineId) {
++      const index = state.lines.findIndex((line) => line.lineId === lineId);
++      if (index === -1) return null;
++      const [line] = state.lines.splice(index, 1);
++      renderOrder();
++      announce(`Removed ${findDrink(line.drinkId).name} from your order.`);
++      return line;
++    }
++
++    // Shows the confirmation dialog and resolves with the user's choice.
++    // Only a click by the user inside the dialog can confirm the order.
++    function requestConfirmation(signal) {
++      signal?.throwIfAborted();
++      renderLines(document.getElementById("confirm-lines"), { removable: false });
++      document.getElementById("confirm-total").textContent = currency.format(orderTotal());
++      dialog.returnValue = "";
++      dialog.showModal();
++      checkoutBtn.disabled = true;
++
++      return new Promise((resolve, reject) => {
++        const onAbort = () => {
++          dialog.close("cancel");
++          reject(signal.reason);
++        };
++        signal?.addEventListener("abort", onAbort, { once: true });
++        dialog.addEventListener(
++          "close",
++          () => {
++            signal?.removeEventListener("abort", onAbort);
++            renderOrder();
++            resolve(dialog.returnValue === "confirm");
++          },
++          { once: true },
++        );
++      });
++    }
++
++    function completeOrder() {
++      const summary = describeOrder();
++      const orderNumber = `DG-${Math.floor(1000 + Math.random() * 9000)}`;
++      state.lines = [];
++      renderOrder();
++      announce(`Order ${orderNumber} placed! It will be ready for pickup in about 10 minutes.`);
++      return { status: "placed", orderNumber, estimatedReadyMinutes: 10, ...summary };
++    }
++
++    // --- UI wiring --------------------------------------------------------
++
++    renderMenu();
++    renderOrder();
++
++    for (const button of filterButtons) {
++      button.addEventListener("click", () => applyFilter(button.dataset.filter));
++    }
++
++    checkoutBtn.addEventListener("click", async () => {
++      if (await requestConfirmation()) completeOrder();
++    });
++
++    // --- WebMCP tools -----------------------------------------------------
++
++    const tools = [
++      {
++        name: "get_seasonal_menu",
++        description:
++          "Lists the drinks in the Daily Grind Seasonal Favorites menu with their prices, sizes, and customization options. Use this to answer questions about seasonal drinks or to find the drink ID needed before ordering.",
++        inputSchema: {
++          type: "object",
++          properties: {
++            temperature: { type: "string", enum: ["hot", "iced"], description: "Only include drinks served at this temperature." },
++            dairyFree: { type: "boolean", description: "Only include drinks that can be made without dairy." },
++            maxPrice: { type: "number", minimum: 0, description: "Only include drinks with at least one size at or under this price in US dollars." },
++            query: { type: "string", description: "Words to match against drink names and descriptions, e.g. \"maple\" or \"smooth\"." },
++          },
++        },
++        execute({ temperature, dairyFree, maxPrice, query } = {}) {
++          if (temperature !== undefined && !["hot", "iced"].includes(temperature)) {
++            return { error: `Unknown temperature "${temperature}".`, temperatures: ["hot", "iced"] };
++          }
++          if (maxPrice !== undefined && (typeof maxPrice !== "number" || maxPrice < 0)) {
++            return { error: "maxPrice must be a non-negative number of US dollars." };
++          }
++          const terms = typeof query === "string" ? query.toLowerCase().split(/\s+/).filter(Boolean) : [];
++          const drinks = MENU.filter(
++            (drink) =>
++              (!temperature || drink.temperature === temperature) &&
++              (!dairyFree || isDairyFreeOption(drink)) &&
++              (maxPrice === undefined || Math.min(...Object.values(drink.prices)) <= maxPrice) &&
++              terms.every((term) => `${drink.name} ${drink.description}`.toLowerCase().includes(term)),
++          );
++          return { currency: "USD", drinks: drinks.map(describeDrink) };
++        },
++        annotations: { readOnlyHint: true },
++      },
++      {
++        name: "show_seasonal_drink",
++        description:
++          "Scrolls the page to a seasonal drink's card and highlights it so the user can see it. Use when the user asks to see or learn about a specific drink.",
++        inputSchema: {
++          type: "object",
++          properties: {
++            drinkId: { type: "string", enum: MENU.map((drink) => drink.id), description: "ID of the drink, as returned by get_seasonal_menu." },
++          },
++          required: ["drinkId"],
++        },
++        execute({ drinkId } = {}) {
++          const drink = findDrink(drinkId);
++          if (!drink) return { error: `Unknown drink "${drinkId}".`, drinkIds: MENU.map((d) => d.id) };
++          if (!matchesFilter(drink, state.filter)) applyFilter("all");
++          const card = document.getElementById(`drink-${drink.id}`);
++          card.scrollIntoView({ behavior: reducedMotion.matches ? "instant" : "smooth", block: "center" });
++          highlight(card);
++          return { shown: describeDrink(drink) };
++        },
++      },
++      {
++        name: "filter_seasonal_menu",
++        description: "Changes which seasonal drinks are visible on the page, so the user sees only the drinks they are interested in.",
++        inputSchema: {
++          type: "object",
++          properties: {
++            filter: { type: "string", enum: FILTERS, default: "all", description: "Category of drinks to show; \"all\" clears the filter." },
++          },
++        },
++        execute({ filter = "all" } = {}) {
++          if (!FILTERS.includes(filter)) return { error: `Unknown filter "${filter}".`, filters: FILTERS };
++          applyFilter(filter);
++          grid.scrollIntoView({ behavior: reducedMotion.matches ? "instant" : "smooth", block: "nearest" });
++          return {
++            filter,
++            visibleDrinks: MENU.filter((drink) => matchesFilter(drink, filter)).map((drink) => drink.name),
++          };
++        },
++      },
++      {
++        name: "add_drink_to_order",
++        description:
++          "Adds a customized seasonal drink to the user's order on this page. The order is not placed until the user confirms it, so this is safe to use while the user is deciding.",
++        inputSchema: {
++          type: "object",
++          properties: {
++            drinkId: { type: "string", enum: MENU.map((drink) => drink.id), description: "ID of the drink, as returned by get_seasonal_menu." },
++            size: { type: "string", enum: SIZES, description: "Cup size. Each drink offers only some sizes; see get_seasonal_menu. Defaults to the drink's default size." },
++            milk: { type: "string", enum: MILKS, description: "Milk to make the drink with. Each drink offers only some milks; see get_seasonal_menu. Defaults to the drink's default milk." },
++            extraShot: { type: "boolean", default: false, description: "Adds an extra espresso shot for an additional charge." },
++            quantity: { type: "integer", minimum: 1, maximum: MAX_QUANTITY, default: 1, description: "How many of this drink to add." },
++          },
++          required: ["drinkId"],
++        },
++        execute({ drinkId, size, milk, extraShot = false, quantity = 1 } = {}) {
++          const drink = findDrink(drinkId);
++          if (!drink) return { error: `Unknown drink "${drinkId}".`, drinkIds: MENU.map((d) => d.id) };
++          size ??= defaultSize(drink);
++          milk ??= drink.milks[0];
++          if (!(size in drink.prices)) {
++            return { error: `${drink.name} is not available in size "${size}".`, availableSizes: Object.keys(drink.prices) };
++          }
++          if (!drink.milks.includes(milk)) {
++            return { error: `${drink.name} cannot be made with milk "${milk}".`, availableMilks: drink.milks };
++          }
++          if (typeof extraShot !== "boolean") return { error: "extraShot must be true or false." };
++          if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
++            return { error: `quantity must be a whole number from 1 to ${MAX_QUANTITY}.` };
++          }
++          const line = addToOrder({ drinkId, size, milk, extraShot, quantity });
++          return { added: { lineId: line.lineId, name: drink.name, size, milk, extraShot, quantity }, order: describeOrder() };
++        },
++      },
++      {
++        name: "remove_drink_from_order",
++        description: "Removes a drink line from the user's order on this page.",
++        inputSchema: {
++          type: "object",
++          properties: {
++            lineId: { type: "string", description: "ID of the order line, as returned by get_current_order or add_drink_to_order." },
++          },
++          required: ["lineId"],
++        },
++        execute({ lineId } = {}) {
++          const line = removeFromOrder(lineId);
++          if (!line) return { error: `No order line with ID "${lineId}".`, order: describeOrder() };
++          return { removed: lineId, order: describeOrder() };
++        },
++      },
++      {
++        name: "get_current_order",
++        description: "Returns the drinks currently in the user's order on this page and the order total.",
++        inputSchema: { type: "object", properties: {} },
++        execute() {
++          return describeOrder();
++        },
++        annotations: { readOnlyHint: true },
++      },
++      {
++        name: "place_order",
++        description:
++          "Asks the user to confirm and place their current drink order for pickup. The user reviews the order in a confirmation dialog and must approve it themselves.",
++        inputSchema: { type: "object", properties: {} },
++        async execute(_input, { signal }) {
++          if (state.lines.length === 0) return { error: "The order is empty. Add drinks with add_drink_to_order first." };
++          if (dialog.open) return { error: "The user is already reviewing this order." };
++          orderPanel.scrollIntoView({ behavior: reducedMotion.matches ? "instant" : "smooth", block: "nearest" });
++          const confirmed = await requestConfirmation(signal);
++          if (!confirmed) return { status: "cancelled", reason: "The user declined to place the order.", order: describeOrder() };
++          return completeOrder();
++        },
++        annotations: { readOnlyHint: false, consequentialHint: true },
++      },
++    ];
++
++    if ("modelContext" in document) {
++      let controller;
++      const registerTools = () => {
++        controller = new AbortController();
++        for (const tool of tools) {
++          (async () => document.modelContext.registerTool(tool, { signal: controller.signal }))().catch((error) =>
++            console.error(`Failed to register WebMCP tool "${tool.name}":`, error),
++          );
++        }
++      };
++      registerTools();
++      addEventListener("pagehide", () => controller.abort());
++      addEventListener("pageshow", (event) => {
++        if (event.persisted) registerTools();
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

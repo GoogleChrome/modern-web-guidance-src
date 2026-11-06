@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,59 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .media-section {
++      margin-top: 40px;
++    }
++
++    .media-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .media-scroller {
++      position: relative;
++      height: 440px;
++      overflow-y: auto;
++      overflow-anchor: none;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
++      padding: 20px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: #f1ebe8;
++      visibility: hidden;
++    }
++
++    .media-card {
++      padding: 0;
++      overflow: hidden;
++      max-width: 720px;
++      margin: 0 auto 20px;
++    }
++
++    .media-card:last-child {
++      margin-bottom: 0;
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .media-card .media-caption {
++      padding: 20px;
++    }
++
++    .media-scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -152,8 +203,11 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <noscript>
++    <style>.media-scroller { visibility: visible; }</style>
++  </noscript>
+ </head>
+ 
+ <body>
+ 
+@@ -194,8 +248,58 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="media-section" aria-labelledby="coffee-moments">
++      <h2 id="coffee-moments">A Little More Coffee Inspiration</h2>
++      <div class="media-scroller" tabindex="0" role="region" aria-label="Coffee inspiration, five cards">
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=720&h=360&q=80" width="720" height="360" alt="Freshly roasted coffee beans">
++          <div class="media-caption">
++            <h3>It Starts with the Bean</h3>
++            <p>Discover the rich aromas behind your everyday ritual.</p>
++          </div>
++        </article>
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=720&h=360&q=80" width="720" height="360" alt="A freshly prepared cup of espresso">
++          <div class="media-caption">
++            <h3>A Perfect Little Pause</h3>
++            <p>A bold espresso and a moment to yourself.</p>
++          </div>
++        </article>
++        <article class="card media-card target">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=720&h=360&q=80" width="720" height="360" alt="Coffee served with care, ready to enjoy">
++          <div class="media-caption">
++            <h3>Your Daily Moment</h3>
++            <p>Slow down, take a sip, and make yourself at home.</p>
++          </div>
++        </article>
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=720&h=360&q=80" width="720" height="360" alt="A warm cup of coffee on a table">
++          <div class="media-caption">
++            <h3>Made for Slow Mornings</h3>
++            <p>Bring a little warmth to the start of your day.</p>
++          </div>
++        </article>
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=720&h=360&q=80" width="720" height="360" alt="An inviting neighborhood coffee shop">
++          <div class="media-caption">
++            <h3>Find Your Favorite Corner</h3>
++            <p>Good coffee tastes even better with good company.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        // Set only the container's position before revealing it. Image space is
++        // reserved by CSS so downloads cannot shift the initial target position.
++        {
++          const scroller = document.querySelector('.media-scroller');
++          const target = scroller.querySelector('.target');
++          scroller.scrollTop = target.offsetTop - parseFloat(getComputedStyle(scroller).paddingTop);
++          scroller.style.visibility = 'visible';
++        }
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

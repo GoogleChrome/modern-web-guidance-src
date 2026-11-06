@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,43 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall Preview Section */
++    .paywall-container {
++      margin-top: 50px;
++      padding: 30px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 45%, rgba(0, 0, 0, 0) 100%);
++      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 45%, rgba(0, 0, 0, 0) 100%);
++    }
++
++    .paywall-container h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .paywall-badge {
++      display: block;
++      width: fit-content;
++      margin: 0 auto 15px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 12px;
++    }
++
++    .paywall-container p {
++      margin-bottom: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +229,16 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <span class="paywall-badge">Members Exclusive Preview</span>
++      <h2>Roaster's Secrets</h2>
++      <p>Behind every signature cup at The Daily Grind is a meticulous roasting curve developed over years of small-batch experimentation. Our head roaster shares the exact temperature milestones and airflow adjustments that unlock caramelized sweetness without bitterness.</p>
++      <p>During the critical Maillard phase, we extend heat application by an extra forty-five seconds for our high-altitude Ethiopian and Colombian lots. This deliberate pacing builds body and preserves delicate floral aromatics before first crack ever begins.</p>
++      <p>Once first crack starts, we drop drum charge heat by 18% while opening the damper to sweep away smoky chaff, finishing at exactly 406°F for an unforgettable velvet crema...</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

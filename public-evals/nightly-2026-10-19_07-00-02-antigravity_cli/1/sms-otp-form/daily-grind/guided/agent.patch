@@ -1,0 +1,1103 @@
+diff --git a/index.html b/index.html
+index 66c9173..d0753cd 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,24 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Artisanal Coffee &amp; Rewards</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-hover: #ff9100;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --border-color: #d7ccc8;
++      --error-color: #c62828;
++      --error-bg: #ffebee;
++      --success-color: #2e7d32;
++      --success-bg: #e8f5e9;
++      --info-color: #0277bd;
++      --info-bg: #e1f5fe;
+     }
+ 
+     * {
+@@ -27,6 +37,25 @@
+       background-color: var(--light);
+     }
+ 
++    /* Accessibility utility */
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Focus styling */
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -49,6 +78,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -66,16 +96,24 @@
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
++    .nav-btn {
++      background-color: var(--accent);
++      color: var(--primary-dark) !important;
++      font-weight: 600;
++      padding: 6px 14px;
+       border-radius: 4px;
++      transition: background-color 0.2s;
++    }
++
++    .nav-btn:hover {
++      background-color: var(--accent-hover);
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 48vh;
++      min-height: 320px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -89,17 +127,428 @@
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.75rem;
++      margin-bottom: 0.75rem;
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+     }
+ 
+-    /* Content Sections */
++    .hero p {
++      font-size: 1.2rem;
++      max-width: 600px;
++      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
++    }
++
++    /* Content Layout */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    /* Buttons */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-height: 48px;
++      padding: 10px 24px;
++      font-size: 1rem;
++      font-weight: 600;
++      text-decoration: none;
++      border-radius: 6px;
++      border: 2px solid transparent;
++      cursor: pointer;
++      transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
++      box-sizing: border-box;
++      line-height: 1.2;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .btn-primary:hover {
++      background: var(--primary-dark);
++      border-color: var(--primary-dark);
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border-color: var(--primary);
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++      border-color: var(--accent);
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-hover);
++      border-color: var(--accent-hover);
++    }
++
++    .btn-sm {
++      min-height: 38px;
++      padding: 6px 16px;
++      font-size: 0.875rem;
++    }
++
++    .link-btn {
++      background: none;
++      border: none;
++      color: var(--primary);
++      text-decoration: underline;
++      cursor: pointer;
++      font-size: 0.95rem;
++      padding: 4px 8px;
++      font-weight: 600;
++    }
++
++    .link-btn:hover {
++      color: var(--accent-hover);
++    }
++
++    /* Verification Component Card */
++    .verification-section {
++      margin-bottom: 50px;
++    }
++
++    .verification-card {
++      background: var(--card-bg);
++      border-radius: 12px;
++      box-shadow: 0 4px 18px rgba(62, 39, 35, 0.08);
++      border: 1px solid var(--border-color);
++      max-width: 640px;
++      margin: 0 auto;
++      padding: 32px 28px;
++    }
++
++    .verification-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .verification-badge {
++      display: inline-block;
++      background-color: var(--secondary);
++      color: var(--primary-dark);
++      font-size: 0.8rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      padding: 4px 12px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++    }
++
++    .verification-header h2 {
++      color: var(--primary);
++      font-size: 1.85rem;
++      margin-bottom: 8px;
++    }
++
++    .verification-subheading {
++      color: #5d4037;
++      font-size: 0.95rem;
++    }
++
++    /* Form Fields & Hints */
++    .form-group {
++      margin-bottom: 20px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++      color: var(--primary-dark);
++      font-size: 1rem;
++    }
++
++    /* MANDATORY: Place format instructions visually above the input so autofill popovers and keyboards never cover it */
++    .field-hint {
++      display: block;
++      font-size: 0.875rem;
++      color: #6d4c41;
++      margin-bottom: 8px;
++      line-height: 1.4;
++    }
++
++    .input-wrapper {
++      position: relative;
++      display: flex;
++      align-items: center;
++    }
++
++    .input-prefix {
++      position: absolute;
++      left: 14px;
++      font-weight: 600;
++      color: #795548;
++      pointer-events: none;
++      font-size: 1rem;
++    }
++
++    input[type="tel"] {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 14px 10px 42px;
++      font-size: 1.05rem;
++      border: 2px solid #bcaaa4;
++      border-radius: 6px;
++      background: #fff;
++      color: var(--text);
++      box-sizing: border-box;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    input[type="tel"]:focus {
++      border-color: var(--primary);
++    }
++
++    /* MANDATORY: Style a single input to visually space digits without splitting into multiple inputs */
++    #otp-input {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 1.75rem;
++      letter-spacing: 0.45em;
++      min-height: 54px;
++      padding: 0.5rem 0.75rem;
++      box-sizing: border-box;
++      text-align: center;
++      width: 100%;
++      max-width: 320px;
++      margin: 8px auto;
++      display: block;
++      border: 2px solid #bcaaa4;
++      border-radius: 8px;
++      background: #fff;
++      color: var(--primary-dark);
++      font-weight: bold;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    #otp-input::placeholder {
++      letter-spacing: 0.45em;
++      color: #bcaaa4;
++      opacity: 0.7;
++    }
++
++    #otp-input:focus {
++      border-color: var(--primary);
++    }
++
++    /* Validation states: defer errors with :user-invalid */
++    .field-error {
++      display: none;
++      color: var(--error-color);
++      font-size: 0.85rem;
++      margin-top: 6px;
++      font-weight: 600;
++      line-height: 1.4;
++    }
++
++    input:user-invalid {
++      border-color: var(--error-color) !important;
++      background-color: var(--error-bg);
++    }
++
++    input:user-invalid ~ .field-error {
++      display: block;
++    }
++
++    input:user-valid:not(:placeholder-shown) {
++      border-color: var(--success-color);
++    }
++
++    /* Dynamic feedback banners */
++    .status-banner {
++      padding: 12px 16px;
++      border-radius: 6px;
++      margin-bottom: 20px;
++      font-size: 0.92rem;
++      line-height: 1.4;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .status-banner.info {
++      background-color: var(--info-bg);
++      color: var(--info-color);
++      border: 1px solid #b3e5fc;
++    }
++
++    .status-banner.success {
++      background-color: var(--success-bg);
++      color: var(--success-color);
++      border: 1px solid #c8e6c9;
++    }
++
++    .status-banner.error {
++      background-color: var(--error-bg);
++      color: var(--error-color);
++      border: 1px solid #ffcdd2;
++    }
++
++    /* Step Panels */
++    .step-panel {
++      transition: opacity 0.25s ease;
++    }
++
++    .step-panel[hidden] {
++      display: none;
++    }
++
++    .phone-summary-bar {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px 14px;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++      color: var(--primary-dark);
++    }
++
++    .otp-actions {
++      display: flex;
++      gap: 12px;
++      justify-content: center;
++      margin-top: 24px;
++      flex-wrap: wrap;
++    }
++
++    .otp-actions .btn {
++      flex: 1 1 160px;
++    }
++
++    /* SMS Simulation Card */
++    .sms-simulation-box {
++      margin-top: 28px;
++      padding: 18px;
++      background: #faf7f5;
++      border: 1px dashed #bcaaa4;
++      border-radius: 8px;
++      text-align: left;
++    }
++
++    .sms-box-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 10px;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .sms-box-header strong {
++      font-size: 0.9rem;
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .sms-tag {
++      font-size: 0.75rem;
++      font-weight: 700;
++      background: var(--secondary);
++      color: var(--primary-dark);
++      padding: 2px 8px;
++      border-radius: 4px;
++    }
++
++    .sms-tag.active {
++      background: #c8e6c9;
++      color: #1b5e20;
++    }
++
++    .sms-bubble {
++      background: #ffffff;
++      border: 1px solid #e0e0e0;
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      padding: 12px 14px;
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 0.88rem;
++      white-space: pre-line;
++      color: #212121;
++      margin-bottom: 12px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
++    }
++
++    .sms-simulation-actions {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .sms-spec-note {
++      font-size: 0.78rem;
++      color: #795548;
++      margin-top: 8px;
++      line-height: 1.4;
++    }
++
++    /* Success State */
++    .success-card {
++      text-align: center;
++      padding: 20px 10px;
++    }
++
++    .success-icon-badge {
++      width: 64px;
++      height: 64px;
++      border-radius: 50%;
++      background: var(--success-bg);
++      color: var(--success-color);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 2rem;
++      margin: 0 auto 16px;
++      border: 2px solid #a5d6a7;
++    }
++
++    .success-card h3 {
++      font-size: 1.6rem;
++      color: var(--primary-dark);
++      margin-bottom: 8px;
++    }
++
++    .success-card p {
++      color: #5d4037;
++      margin-bottom: 24px;
++      font-size: 1rem;
++    }
++
++    .rewards-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      color: #e65100;
++      padding: 8px 16px;
++      border-radius: 20px;
++      font-weight: 700;
++      margin-bottom: 20px;
++    }
++
++    /* Existing Content Sections */
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -120,21 +569,6 @@
+       color: var(--primary);
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,41 +591,187 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#verification-section" class="nav-btn">Verify Phone</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, delivered fresh to your cup.</p>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++
++    <!-- Phone & SMS OTP Verification Section -->
++    <section id="verification-section" class="verification-section" aria-labelledby="verification-heading">
++      <div class="verification-card">
++        <header class="verification-header">
++          <span class="verification-badge">Member Security &amp; Rewards</span>
++          <h2 id="verification-heading">Verify Your Mobile Number</h2>
++          <p class="verification-subheading">
++            Enter your mobile number to receive a one-time passcode over SMS, automatically extract and verify your code, and unlock 50 bonus rewards points.
++          </p>
++        </header>
++
++        <!-- Screen reader live announcement region -->
++        <div id="status-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
++
++        <!-- Visual dynamic status banner -->
++        <div id="status-banner" class="status-banner info" role="status" aria-live="polite" hidden></div>
++
++        <!-- Step 1: Phone Number Input Form -->
++        <div id="step-phone" class="step-panel">
++          <form id="phone-form" method="POST" action="/send-code" novalidate>
++            <div class="form-group">
++              <label for="phone-input">Mobile Phone Number</label>
++              <!-- Place format hint visually above input so virtual keyboards and autocomplete never obscure it -->
++              <p id="phone-format-hint" class="field-hint">
++                Enter your 10-digit mobile number (e.g. 555-234-5678).
++              </p>
++              <div class="input-wrapper">
++                <span class="input-prefix" aria-hidden="true">+1</span>
++                <!-- Use type="tel" for telephone numbers and autocomplete="tel-national" -->
++                <input
++                  type="tel"
++                  id="phone-input"
++                  name="phone"
++                  autocomplete="tel-national"
++                  inputmode="tel"
++                  placeholder="(555) 234-5678"
++                  pattern="^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$"
++                  required
++                  aria-describedby="phone-format-hint"
++                  aria-errormessage="phone-error"
++                >
++              </div>
++              <p id="phone-error" class="field-error" role="alert">
++                Please enter a valid 10-digit mobile phone number.
++              </p>
++            </div>
++
++            <button type="submit" class="btn btn-primary" id="send-code-btn" style="width: 100%;">
++              Send Verification Code
++            </button>
++          </form>
++        </div>
++
++        <!-- Step 2: SMS OTP Code Input Form -->
++        <div id="step-otp" class="step-panel" hidden>
++          <div class="phone-summary-bar">
++            <span>Code sent to <strong id="sent-phone-display"></strong></span>
++            <button type="button" id="edit-phone-btn" class="link-btn" aria-label="Change phone number">
++              Change
++            </button>
++          </div>
++
++          <form id="otp-form" method="POST" action="/verify-otp" novalidate>
++            <div class="form-group" style="text-align: center;">
++              <label for="otp-input">Verification code</label>
++              <!-- MANDATORY: Place format hint visually above input so autofill popovers and keyboards never cover it -->
++              <p id="otp-format-hint" class="field-hint">
++                Enter the 6-digit verification code sent to your phone.
++              </p>
++              <!-- MANDATORY: Use a single input with type="text", inputmode="numeric", and autocomplete="one-time-code" -->
++              <input
++                type="text"
++                id="otp-input"
++                name="otp"
++                inputmode="numeric"
++                autocomplete="one-time-code"
++                pattern="\d{6}"
++                maxlength="6"
++                aria-describedby="otp-format-hint"
++                aria-errormessage="otp-error"
++                placeholder="······"
++                required
++              >
++              <p id="otp-error" class="field-error" role="alert">
++                Please enter the 6-digit numeric verification code.
++              </p>
++            </div>
++
++            <div class="otp-actions">
++              <button type="submit" class="btn btn-primary" id="verify-code-btn">
++                Verify code
++              </button>
++              <button type="button" class="btn btn-outline" id="resend-code-btn">
++                Resend code
++              </button>
++            </div>
++          </form>
++
++          <!-- SMS Origin-bound Delivery Simulator for Testing & Inspection -->
++          <aside class="sms-simulation-box" aria-labelledby="sms-sim-title">
++            <div class="sms-box-header">
++              <strong id="sms-sim-title">
++                <span aria-hidden="true">📱</span> Incoming SMS Message (Origin-Bound)
++              </strong>
++              <span id="webotp-status-badge" class="sms-tag">WebOTP Listening</span>
++            </div>
++            <div class="sms-bubble" id="sms-body-preview" aria-label="Simulated incoming SMS text">
++              <!-- Populated dynamically with the origin-bound syntax -->
++            </div>
++            <div class="sms-simulation-actions">
++              <button type="button" id="simulate-otp-btn" class="btn btn-sm btn-accent">
++                Simulate WebOTP / Autofill Extraction
++              </button>
++              <button type="button" id="copy-sms-btn" class="link-btn" style="font-size: 0.85rem;">
++                Copy SMS Text
++              </button>
++            </div>
++            <p class="sms-spec-note">
++              Origin-bound format strictly complies with WebOTP &amp; Safari specs: human-readable sentence first, followed by empty line, followed by <code>@&lt;domain&gt; #&lt;code&gt;</code> on the very last line with no scheme, port, or path.
++            </p>
++          </aside>
++        </div>
++
++        <!-- Step 3: Success Confirmation State -->
++        <div id="step-success" class="step-panel" hidden tabindex="-1">
++          <div class="success-card">
++            <div class="success-icon-badge" aria-hidden="true">✓</div>
++            <div class="rewards-pill">★ +50 Bonus Rewards Points Unlocked</div>
++            <h3 id="success-heading">Phone Number Verified!</h3>
++            <p>
++              Your mobile number <strong id="verified-phone-display"></strong> has been verified successfully. Your account is now secured and your coffee rewards are activated.
++            </p>
++            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
++              <button type="button" id="reset-verification-btn" class="btn btn-primary">
++                Verify Another Number
++              </button>
++              <a href="/rewards" class="btn btn-outline">View Rewards Balance</a>
++            </div>
++          </div>
++        </div>
++
++      </div>
++    </section>
++
++    <!-- Seasonal Favorites Section -->
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center; margin-bottom: 8px;">Seasonal Favorites</h2>
++      <p style="text-align: center; color: #6d4c41; margin-bottom: 20px;">Handcrafted by our master baristas with freshly roasted beans.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p>Creamy oat milk infused with authentic Vermont maple syrup and a cinnamon dust.</p>
++          <a href="/menu/seasonal" class="btn btn-primary" style="margin-top: 15px;">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p>Bold, smokey profile with dark chocolate undertones for an invigorating morning boost.</p>
++          <a href="/menu/espresso" class="btn btn-primary" style="margin-top: 15px;">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <h3>Slow Steep Cold Brew</h3>
++          <p>Steeped cold for 18 hours for maximum smoothness, zero bitterness, and deep aroma.</p>
++          <a href="/menu/cold-brew" class="btn btn-primary" style="margin-top: 15px;">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +787,353 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Phone & SMS OTP Verification Logic -->
++  <script>
++    (function () {
++      'use strict';
++
++      // State variables
++      let currentPhoneNumber = '';
++      let currentOtpCode = '';
++      let otpAbortController = null;
++
++      // DOM Elements
++      const stepPhone = document.getElementById('step-phone');
++      const stepOtp = document.getElementById('step-otp');
++      const stepSuccess = document.getElementById('step-success');
++
++      const phoneForm = document.getElementById('phone-form');
++      const phoneInput = document.getElementById('phone-input');
++      const sendCodeBtn = document.getElementById('send-code-btn');
++
++      const otpForm = document.getElementById('otp-form');
++      const otpInput = document.getElementById('otp-input');
++      const sentPhoneDisplay = document.getElementById('sent-phone-display');
++      const verifiedPhoneDisplay = document.getElementById('verified-phone-display');
++      const editPhoneBtn = document.getElementById('edit-phone-btn');
++      const resendCodeBtn = document.getElementById('resend-code-btn');
++      const resetVerificationBtn = document.getElementById('reset-verification-btn');
++
++      const statusAnnouncer = document.getElementById('status-announcer');
++      const statusBanner = document.getElementById('status-banner');
++      const smsBodyPreview = document.getElementById('sms-body-preview');
++      const simulateOtpBtn = document.getElementById('simulate-otp-btn');
++      const copySmsBtn = document.getElementById('copy-sms-btn');
++      const webotpStatusBadge = document.getElementById('webotp-status-badge');
++
++      // Announce status to screen readers and visual banner
++      function announceStatus(message, type = 'info') {
++        if (statusAnnouncer) {
++          statusAnnouncer.textContent = message;
++        }
++        if (statusBanner) {
++          statusBanner.textContent = message;
++          statusBanner.className = `status-banner ${type}`;
++          statusBanner.hidden = false;
++        }
++      }
++
++      function clearStatusBanner() {
++        if (statusBanner) {
++          statusBanner.hidden = true;
++          statusBanner.textContent = '';
++        }
++      }
++
++      // Synchronize programmatic accessibility attributes with validation state
++      function syncAriaInvalid(input, errorElementId) {
++        const errorElement = document.getElementById(errorElementId);
++        if (input.matches(':user-invalid') || (!input.checkValidity() && input.value !== '')) {
++          input.setAttribute('aria-invalid', 'true');
++          if (errorElement) {
++            errorElement.style.display = 'block';
++          }
++        } else if (input.checkValidity()) {
++          input.removeAttribute('aria-invalid');
++          if (errorElement) {
++            errorElement.style.display = 'none';
++          }
++        }
++      }
++
++      [phoneInput, otpInput].forEach((input) => {
++        if (!input) return;
++        const errId = input.getAttribute('aria-errormessage');
++        input.addEventListener('blur', () => syncAriaInvalid(input, errId));
++        input.addEventListener('input', () => syncAriaInvalid(input, errId));
++      });
++
++      // Generate a new 6-digit numeric OTP and update origin-bound SMS preview
++      function generateNewOtp() {
++        // 6-digit numeric string preserving leading zeros
++        currentOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
++
++        // Origin domain without scheme, port, or path
++        const domain = window.location.hostname || 'localhost';
++
++        /* Origin-bound SMS format:
++           - Human readable text first
++           - Empty line
++           - @<domain> #<otp> on the very last line
++           - Single space between @<domain> and #<otp>
++        */
++        const smsContent = `Your The Daily Grind verification code is ${currentOtpCode}.\n\n@${domain} #${currentOtpCode}`;
++
++        if (smsBodyPreview) {
++          smsBodyPreview.textContent = smsContent;
++        }
++
++        return currentOtpCode;
++      }
++
++      // Stop any pending WebOTP listener
++      function stopSmsOtpListener() {
++        if (otpAbortController) {
++          otpAbortController.abort();
++          otpAbortController = null;
++        }
++        if (webotpStatusBadge) {
++          webotpStatusBadge.textContent = 'WebOTP Idle';
++          webotpStatusBadge.classList.remove('active');
++        }
++      }
++
++      // Start WebOTP API listener (OTPCredential)
++      async function startSmsOtpListener() {
++        if (!otpInput) return;
++
++        // Cancel previous pending request
++        stopSmsOtpListener();
++
++        // Feature-detect WebOTP support
++        if (!('OTPCredential' in window)) {
++          if (webotpStatusBadge) {
++            webotpStatusBadge.textContent = 'Auto-detect active';
++            webotpStatusBadge.classList.add('active');
++          }
++          return;
++        }
++
++        const ac = new AbortController();
++        otpAbortController = ac;
++
++        if (webotpStatusBadge) {
++          webotpStatusBadge.textContent = 'WebOTP Listening';
++          webotpStatusBadge.classList.add('active');
++        }
++
++        try {
++          // Listen for incoming SMS OTP credential
++          const otp = await navigator.credentials.get({
++            otp: { transport: ['sms'] },
++            signal: ac.signal,
++          });
++
++          if (!otp || !otp.code) return;
++
++          // Populate the single OTP input
++          otpInput.value = otp.code;
++          syncAriaInvalid(otpInput, 'otp-error');
++          announceStatus(`One-time code ${otp.code} extracted automatically from SMS. Verifying...`, 'info');
++
++          // MANDATORY: Call requestSubmit() rather than form.submit() to trigger submit handlers and validation
++          if (otpForm) {
++            otpForm.requestSubmit();
++          }
++        } catch (err) {
++          // Expected when aborted by form submission, resend, or user action
++          if (err && err.name === 'AbortError') {
++            return;
++          }
++          console.error('WebOTP verification error:', err);
++        }
++      }
++
++      // Transition to OTP verification step
++      function showOtpStep() {
++        stepPhone.hidden = true;
++        stepSuccess.hidden = true;
++        stepOtp.hidden = false;
++
++        if (sentPhoneDisplay) {
++          sentPhoneDisplay.textContent = currentPhoneNumber;
++        }
++
++        otpInput.value = '';
++        otpInput.removeAttribute('aria-invalid');
++        const otpError = document.getElementById('otp-error');
++        if (otpError) otpError.style.display = 'none';
++
++        generateNewOtp();
++
++        announceStatus(`Verification code sent to +1 ${currentPhoneNumber}. Please enter the 6-digit code.`, 'info');
++
++        // Focus the single OTP input
++        otpInput.focus();
++
++        // Start listening for automatic SMS code extraction
++        startSmsOtpListener();
++      }
++
++      // Transition to Phone entry step
++      function showPhoneStep() {
++        stopSmsOtpListener();
++        stepOtp.hidden = true;
++        stepSuccess.hidden = true;
++        stepPhone.hidden = false;
++        clearStatusBanner();
++        phoneInput.focus();
++      }
++
++      // Transition to Success confirmation step
++      function showSuccessStep() {
++        stopSmsOtpListener();
++        stepPhone.hidden = true;
++        stepOtp.hidden = true;
++        stepSuccess.hidden = false;
++
++        if (verifiedPhoneDisplay) {
++          verifiedPhoneDisplay.textContent = `+1 ${currentPhoneNumber}`;
++        }
++
++        announceStatus(`Phone number +1 ${currentPhoneNumber} verified successfully! 50 bonus rewards points added.`, 'success');
++        stepSuccess.focus();
++      }
++
++      // Handle Phone Form Submission
++      phoneForm.addEventListener('submit', (event) => {
++        event.preventDefault();
++
++        if (!phoneInput.checkValidity()) {
++          phoneInput.setAttribute('aria-invalid', 'true');
++          const err = document.getElementById('phone-error');
++          if (err) err.style.display = 'block';
++          phoneInput.focus();
++          announceStatus('Please enter a valid 10-digit mobile phone number.', 'error');
++          return;
++        }
++
++        phoneInput.removeAttribute('aria-invalid');
++        const digits = phoneInput.value.replace(/\D/g, '');
++        currentPhoneNumber = digits.length === 10
++          ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
++          : phoneInput.value;
++
++        showOtpStep();
++      });
++
++      // Handle OTP Form Submission
++      otpForm.addEventListener('submit', (event) => {
++        // MANDATORY: Abort any in-flight WebOTP request when form is submitted
++        stopSmsOtpListener();
++        event.preventDefault();
++
++        const enteredCode = otpInput.value.trim();
++
++        if (!otpInput.checkValidity() || enteredCode.length !== 6) {
++          otpInput.setAttribute('aria-invalid', 'true');
++          const err = document.getElementById('otp-error');
++          if (err) {
++            err.textContent = 'Please enter a complete 6-digit numeric verification code.';
++            err.style.display = 'block';
++          }
++          otpInput.focus();
++          announceStatus('Please enter a complete 6-digit numeric verification code.', 'error');
++          return;
++        }
++
++        // Verify the code matches
++        if (enteredCode !== currentOtpCode) {
++          otpInput.setAttribute('aria-invalid', 'true');
++          const err = document.getElementById('otp-error');
++          if (err) {
++            err.textContent = 'The code entered does not match the code sent. Please check your SMS and try again.';
++            err.style.display = 'block';
++          }
++          otpInput.focus();
++          announceStatus('Invalid verification code. Please check the incoming SMS or click Resend code.', 'error');
++          return;
++        }
++
++        // Verification successful
++        otpInput.removeAttribute('aria-invalid');
++        const err = document.getElementById('otp-error');
++        if (err) err.style.display = 'none';
++
++        showSuccessStep();
++      });
++
++      // Handle "Resend code"
++      resendCodeBtn.addEventListener('click', () => {
++        // Abort previous listener and generate new code
++        stopSmsOtpListener();
++        generateNewOtp();
++        otpInput.value = '';
++        otpInput.removeAttribute('aria-invalid');
++        const err = document.getElementById('otp-error');
++        if (err) err.style.display = 'none';
++
++        announceStatus('A new verification code has been sent via SMS.', 'info');
++        otpInput.focus();
++
++        // Restart WebOTP listener for the newly issued code
++        startSmsOtpListener();
++      });
++
++      // Handle "Change" phone number
++      editPhoneBtn.addEventListener('click', () => {
++        showPhoneStep();
++      });
++
++      // Handle "Verify Another Number"
++      resetVerificationBtn.addEventListener('click', () => {
++        phoneInput.value = '';
++        phoneInput.removeAttribute('aria-invalid');
++        const phoneError = document.getElementById('phone-error');
++        if (phoneError) phoneError.style.display = 'none';
++        showPhoneStep();
++      });
++
++      // Handle Simulate WebOTP / Autofill Extraction button
++      simulateOtpBtn.addEventListener('click', () => {
++        if (!currentOtpCode) return;
++
++        // Populate the input automatically as WebOTP / autofill does
++        otpInput.value = currentOtpCode;
++        syncAriaInvalid(otpInput, 'otp-error');
++        announceStatus(`One-time code ${currentOtpCode} automatically extracted from SMS. Verifying...`, 'info');
++
++        // Trigger requestSubmit() on the form
++        if (otpForm) {
++          otpForm.requestSubmit();
++        }
++      });
++
++      // Handle Copy SMS text
++      copySmsBtn.addEventListener('click', async () => {
++        if (!smsBodyPreview) return;
++        try {
++          await navigator.clipboard.writeText(smsBodyPreview.textContent);
++          const origText = copySmsBtn.textContent;
++          copySmsBtn.textContent = 'Copied!';
++          setTimeout(() => {
++            copySmsBtn.textContent = origText;
++          }, 2000);
++        } catch (e) {
++          announceStatus('Could not copy to clipboard.', 'error');
++        }
++      });
++
++      // Prevent mobile keyboards from auto-scrolling issues or obstruction
++      phoneInput.addEventListener('focus', () => {
++        phoneInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      });
++      otpInput.addEventListener('focus', () => {
++        otpInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      });
++
++    })();
++  </script>
+ </body>
+ 
+ </html>

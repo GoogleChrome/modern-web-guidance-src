@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,218 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Launchpad — Ship faster with your team</title>
++  <meta name="description" content="Launchpad helps teams plan, build, and ship products faster.">
++
++  <!--
++    Anti-flicker fallback for browsers without `blocking="render"` support
++    (e.g. Firefox). Must run before the SDK so the page is hidden first.
++    Supporting browsers skip this and rely on native render blocking.
++  -->
++  <script>
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      document.documentElement.classList.add('ab-loading');
++      window.abReveal = () => document.documentElement.classList.remove('ab-loading');
++      // Never leave the page blank if the SDK is slow or unreachable.
++      setTimeout(window.abReveal, 4000);
++    }
++  </script>
++  <style>
++    .ab-loading { opacity: 0 !important; }
++  </style>
++
++  <!--
++    Experiment SDK: `async` keeps HTML parsing going while it downloads;
++    `blocking="render"` holds first paint until it has executed, so the
++    original content is never shown before the variant is applied.
++    onload/onerror reveal the page in fallback (non-supporting) browsers.
++  -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin>
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++    onload="window.abReveal?.()"
++    onerror="window.abReveal?.()"
++  ></script>
++
++  <link rel="preconnect" href="https://images.unsplash.com">
++
++  <style>
++    :root {
++      color-scheme: light dark;
++      --brand: #4f46e5;
++      --brand-hover: #4338ca;
++      --text: light-dark(#0f172a, #f1f5f9);
++      --muted: light-dark(#475569, #94a3b8);
++      --bg: light-dark(#ffffff, #0b1120);
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++    }
++
++    *, *::before, *::after { box-sizing: border-box; }
++
++    body {
++      margin: 0;
++      background: var(--bg);
++      color: var(--text);
++      line-height: 1.5;
++    }
++
++    .site-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      max-width: 72rem;
++      margin-inline: auto;
++      padding: 1.25rem 1.5rem;
++    }
++
++    .logo {
++      font-weight: 800;
++      font-size: 1.25rem;
++      color: inherit;
++      text-decoration: none;
++    }
++
++    .site-header nav a {
++      color: var(--muted);
++      text-decoration: none;
++      margin-inline-start: 1.5rem;
++    }
++
++    .site-header nav a:hover { color: var(--text); }
++
++    .hero {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
++      align-items: center;
++      gap: 3rem;
++      max-width: 72rem;
++      margin-inline: auto;
++      padding: 3rem 1.5rem 5rem;
++    }
++
++    .eyebrow {
++      display: inline-block;
++      margin: 0 0 1rem;
++      padding: 0.25rem 0.75rem;
++      border-radius: 999px;
++      background: color-mix(in srgb, var(--brand) 12%, transparent);
++      color: var(--brand);
++      font-size: 0.875rem;
++      font-weight: 600;
++    }
++
++    .hero h1 {
++      margin: 0 0 1rem;
++      font-size: clamp(2.25rem, 5vw + 1rem, 3.75rem);
++      line-height: 1.1;
++      letter-spacing: -0.02em;
++      text-wrap: balance;
++    }
++
++    .hero p.lead {
++      margin: 0 0 2rem;
++      font-size: 1.125rem;
++      color: var(--muted);
++      max-width: 36rem;
++      text-wrap: pretty;
++    }
++
++    .cta-group {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 1rem;
++    }
++
++    .cta-button {
++      display: inline-block;
++      padding: 0.875rem 1.75rem;
++      border-radius: 0.5rem;
++      background: var(--brand);
++      color: #fff;
++      font-weight: 600;
++      font-size: 1.0625rem;
++      text-decoration: none;
++      transition: background-color 0.15s, transform 0.15s;
++    }
++
++    .cta-button:hover { background: var(--brand-hover); }
++    .cta-button:active { transform: translateY(1px); }
++    .cta-button:focus-visible {
++      outline: 3px solid var(--brand);
++      outline-offset: 3px;
++    }
++
++    .cta-note {
++      color: var(--muted);
++      font-size: 0.875rem;
++    }
++
++    .hero-image {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 1rem;
++      box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
++    }
++
++    /*
++      Variant hooks: the experiment SDK can set data-variant on <html>
++      to restyle the page without heavy DOM work in the blocking script.
++    */
++    [data-variant="b"] .cta-button {
++      background: #059669;
++      border-radius: 999px;
++    }
++    [data-variant="b"] .cta-button:hover { background: #047857; }
++
++    @media (prefers-reduced-motion: reduce) {
++      .cta-button { transition: none; }
++    }
++  </style>
++</head>
++<body>
++  <header class="site-header">
++    <a class="logo" href="/">Launchpad</a>
++    <nav aria-label="Main">
++      <a href="#features">Features</a>
++      <a href="#pricing">Pricing</a>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" aria-labelledby="hero-title" data-experiment="homepage-hero">
++      <div>
++        <p class="eyebrow">New: Launchpad 2.0</p>
++        <h1 id="hero-title" data-experiment-slot="headline">Ship your best work, faster.</h1>
++        <p class="lead" data-experiment-slot="subheadline">
++          Launchpad brings planning, collaboration, and delivery into one place,
++          so your team spends less time coordinating and more time building.
++        </p>
++        <div class="cta-group">
++          <a class="cta-button" href="/signup" data-experiment-slot="cta">Start free trial</a>
++          <span class="cta-note">No credit card required</span>
++        </div>
++      </div>
++      <img
++        class="hero-image"
++        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=80&auto=format&fit=crop"
++        srcset="
++          https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&q=80&auto=format&fit=crop 600w,
++          https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=80&auto=format&fit=crop 1200w,
++          https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1800&q=80&auto=format&fit=crop 1800w"
++        sizes="(min-width: 72rem) 34rem, (min-width: 48rem) 50vw, 100vw"
++        width="1200"
++        height="800"
++        alt="A team collaborating around laptops at a shared table"
++        fetchpriority="high"
++      >
++    </section>
++  </main>
++</body>
++</html>

@@ -1,0 +1,289 @@
+diff --git a/index.html b/index.html
+index 66c9173..a2873b8 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,102 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      color-scheme: light dark;
++
++      /* Brand */
++      --coffee: #4e342e;
++      --espresso: #3e2723;
++      --latte: #d7ccc8;
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++
++      /* Raw light/dark values */
++      --bg-light: #faf6f2;
++      --bg-dark: #1a1310;
++      --surface-light: #ffffff;
++      --surface-dark: #271d19;
++      --text-light: #2b1d17;
++      --text-dark: #f3ebe5;
++      --muted-light: #6d5a50;
++      --muted-dark: #c2b0a5;
++      --heading-light: var(--coffee);
++      --heading-dark: #e6c9b5;
++      --border-light: #e6dbd2;
++      --border-dark: #3d2e28;
++      --btn-bg-light: var(--coffee);
++      --btn-bg-dark: #d9b49b;
++      --btn-hover-light: var(--espresso);
++      --btn-hover-dark: #e8cbb8;
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #1a1310;
++      --nav-bg-light: var(--coffee);
++      --nav-bg-dark: #2e211c;
++      --footer-bg-light: #efe5dd;
++      --footer-bg-dark: #120d0b;
++      --soldout-bg-light: #ece4df;
++      --soldout-bg-dark: #3d2e28;
++      --soldout-text-light: #5d4037;
++      --soldout-text-dark: #e0d4cd;
++      --shadow-light: rgba(62, 39, 35, 0.12);
++      --shadow-dark: rgba(0, 0, 0, 0.45);
++
++      /* Active tokens (fallback for browsers without light-dark()) */
++      --bg: var(--bg-light);
++      --surface: var(--surface-light);
++      --text: var(--text-light);
++      --muted: var(--muted-light);
++      --heading: var(--heading-light);
++      --border: var(--border-light);
++      --btn-bg: var(--btn-bg-light);
++      --btn-hover: var(--btn-hover-light);
++      --btn-text: var(--btn-text-light);
++      --nav-bg: var(--nav-bg-light);
++      --footer-bg: var(--footer-bg-light);
++      --soldout-bg: var(--soldout-bg-light);
++      --soldout-text: var(--soldout-text-light);
++      --shadow: var(--shadow-light);
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --bg: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --text: var(--text-dark);
++        --muted: var(--muted-dark);
++        --heading: var(--heading-dark);
++        --border: var(--border-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-hover: var(--btn-hover-dark);
++        --btn-text: var(--btn-text-dark);
++        --nav-bg: var(--nav-bg-dark);
++        --footer-bg: var(--footer-bg-dark);
++        --soldout-bg: var(--soldout-bg-dark);
++        --soldout-text: var(--soldout-text-dark);
++        --shadow: var(--shadow-dark);
++      }
++    }
++
++    /* light-dark() lets subtrees (e.g. the hero) override color-scheme */
++    @supports (color: light-dark(white, black)) {
++      :root {
++        --bg: light-dark(var(--bg-light), var(--bg-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --muted: light-dark(var(--muted-light), var(--muted-dark));
++        --heading: light-dark(var(--heading-light), var(--heading-dark));
++        --border: light-dark(var(--border-light), var(--border-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-hover: light-dark(var(--btn-hover-light), var(--btn-hover-dark));
++        --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++        --nav-bg: light-dark(var(--nav-bg-light), var(--nav-bg-dark));
++        --footer-bg: light-dark(var(--footer-bg-light), var(--footer-bg-dark));
++        --soldout-bg: light-dark(var(--soldout-bg-light), var(--soldout-bg-dark));
++        --soldout-text: light-dark(var(--soldout-text-light), var(--soldout-text-dark));
++        --shadow: light-dark(var(--shadow-light), var(--shadow-dark));
++      }
+     }
+ 
+     * {
+@@ -24,12 +112,17 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
++    }
++
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: var(--nav-bg);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -38,6 +131,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      border-bottom: 1px solid var(--border);
+     }
+ 
+     .logo {
+@@ -72,18 +166,20 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    /* Hero Section: always a dark surface over the photo */
+     .hero {
++      color-scheme: dark;
++      color: white;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(rgba(26, 19, 16, 0.55), rgba(26, 19, 16, 0.7)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--espresso);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -100,6 +196,11 @@
+       padding: 0 20px;
+     }
+ 
++    .container h2 {
++      text-align: center;
++      color: var(--heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,23 +209,55 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
++      border: 1px solid var(--border);
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 6px var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
++    }
++
++    .card p {
++      color: var(--muted);
++    }
++
++    .badge {
++      display: inline-block;
++      margin-bottom: 8px;
++      padding: 2px 10px;
++      border: 1px solid transparent;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++    }
++
++    .badge-new {
++      background: var(--accent);
++      color: var(--espresso);
++    }
++
++    .badge-sold-out {
++      background: var(--soldout-bg);
++      color: var(--soldout-text);
++    }
++
++    .card.is-sold-out {
++      box-shadow: none;
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
++      border: 1px solid transparent;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+@@ -132,14 +265,16 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--muted);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      border-top: 1px solid var(--border);
+     }
+ 
+     .footer-links {
+@@ -152,6 +287,11 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      color: var(--heading);
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+@@ -176,9 +316,10 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="badge badge-new">New</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -188,7 +329,8 @@
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card is-sold-out">
++          <span class="badge badge-sold-out">Sold out</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

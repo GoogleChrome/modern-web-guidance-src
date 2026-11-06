@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,51 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #feature {
++      anchor-name: --feature;
++    }
++
++    #tour-step {
++      position: fixed;
++      position-anchor: --feature;
++      inset: auto;
++      margin: 0;
++      top: anchor(bottom);
++      left: anchor(center);
++      translate: -50% 12px;
++      background: white;
++      color: var(--text);
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      padding: 16px;
++      max-width: 260px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
++      z-index: 2000;
++    }
++
++    #tour-step p {
++      font-size: 0.9rem;
++      margin-bottom: 12px;
++    }
++
++    #tour-step button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 6px 14px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.85rem;
++      font-weight: 600;
++      transition: background 0.3s;
++    }
++
++    #tour-step button:hover {
++      background: var(--text);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +204,19 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-label="Rewards Onboarding">
++    <p>Earn points on every purchase and redeem them for free coffee and rewards!</p>
++    <button type="button" id="close-tour" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +254,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const featureLink = document.getElementById('feature');
++    const tourStep = document.getElementById('tour-step');
++    const closeBtn = document.getElementById('close-tour');
++
++    function isTourOpen() {
++      if (typeof tourStep.matches === 'function' && tourStep.matches(':popover-open')) {
++        return true;
++      }
++      return tourStep.classList.contains('is-open');
++    }
++
++    if (typeof tourStep.showPopover === 'function') {
++      tourStep.showPopover();
++    } else {
++      tourStep.classList.add('is-open');
++    }
++
++    if (!(window.CSS && CSS.supports && CSS.supports('anchor-name', '--feature'))) {
++      function updateTourPosition() {
++        if (!isTourOpen()) return;
++        const rect = featureLink.getBoundingClientRect();
++        tourStep.style.top = `${rect.bottom + 12}px`;
++        tourStep.style.left = `${rect.left + rect.width / 2}px`;
++        tourStep.style.transform = 'translateX(-50%)';
++      }
++      updateTourPosition();
++      window.addEventListener('resize', updateTourPosition);
++      window.addEventListener('scroll', updateTourPosition, true);
++      if (typeof ResizeObserver !== 'undefined') {
++        const ro = new ResizeObserver(updateTourPosition);
++        ro.observe(document.body);
++        ro.observe(featureLink);
++      }
++    }
++
++    closeBtn.addEventListener('click', () => {
++      if (typeof tourStep.hidePopover === 'function') {
++        if (tourStep.matches(':popover-open')) {
++          tourStep.hidePopover();
++        }
++      } else {
++        tourStep.classList.remove('is-open');
++        tourStep.style.display = 'none';
++      }
++    });
++
++    featureLink.addEventListener('click', (event) => {
++      if (isTourOpen()) {
++        event.preventDefault();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

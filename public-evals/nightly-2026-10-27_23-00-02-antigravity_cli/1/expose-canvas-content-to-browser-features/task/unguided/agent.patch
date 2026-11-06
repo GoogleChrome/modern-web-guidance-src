@@ -1,0 +1,543 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,154 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Interactive Coffee Customizer (HTML-in-Canvas) */
++    .customizer-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .customizer-section h2 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .customizer-subtitle {
++      color: #5d4037;
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
++    #canvas {
++      display: block;
++      width: 100%;
++      max-width: 820px;
++      height: 540px;
++      margin: 0 auto;
++      background: #fffdf9;
++      border-radius: 12px;
++      box-shadow: 0 4px 16px rgba(62, 39, 35, 0.12);
++      border: 1px solid var(--secondary);
++      position: relative;
++      overflow: hidden;
++    }
++
++    #customizer-form {
++      width: 340px;
++      padding: 20px 22px;
++      background: rgba(255, 250, 242, 0.96);
++      border: 2px solid #8d6e63;
++      border-radius: 10px;
++      text-align: left;
++      color: var(--text);
++      transform-origin: 0 0;
++      box-shadow: 0 4px 12px rgba(62, 39, 35, 0.1);
++    }
++
++    #customizer-form h3 {
++      font-size: 1.2rem;
++      color: var(--primary);
++      margin-bottom: 4px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 6px;
++    }
++
++    .customizer-description {
++      font-size: 0.82rem;
++      color: #6d4c41;
++      margin-bottom: 12px;
++    }
++
++    .field-group {
++      margin-bottom: 12px;
++    }
++
++    .field-group label,
++    .field-group .field-label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .field-group input[type="text"],
++    .field-group select {
++      width: 100%;
++      padding: 7px 10px;
++      border: 1px solid #a1887f;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-family: inherit;
++      color: var(--text);
++      background: #ffffff;
++    }
++
++    .field-group input[type="text"]:focus,
++    .field-group select:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .syrup-options {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .syrup-chip {
++      display: inline-flex;
++      align-items: center;
++      gap: 4px;
++      padding: 4px 9px;
++      border: 1px solid #a1887f;
++      border-radius: 16px;
++      font-size: 0.8rem;
++      background: #fff;
++      cursor: pointer;
++      user-select: none;
++    }
++
++    .syrup-chip input[type="radio"] {
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .order-preview-text {
++      font-size: 0.85rem;
++      background: #efebe9;
++      padding: 8px 10px;
++      border-radius: 6px;
++      margin-bottom: 10px;
++      color: var(--text);
++    }
++
++    .customizer-btn {
++      width: 100%;
++      padding: 9px 14px;
++      background: var(--primary);
++      color: #ffffff;
++      border: none;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .customizer-btn:hover {
++      background: #3e2723;
++    }
++
++    .order-status {
++      margin-top: 6px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: #2e7d32;
++      min-height: 1.2em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +340,68 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer-section" aria-labelledby="customizer-heading">
++      <h2 id="customizer-heading">Interactive Coffee Order Customizer</h2>
++      <p class="customizer-subtitle">Personalize your artisanal cup below—type your name, select your milk and syrup, and preview your custom drink live.</p>
++
++      <canvas id="canvas" width="820" height="540" layoutsubtree>
++        <form id="customizer-form" aria-label="Coffee Order Customizer">
++          <h3>Customize Your Cup</h3>
++          <p class="customizer-description">Crafted fresh to order by our baristas.</p>
++
++          <div class="field-group">
++            <label for="customer-name">Name on Cup</label>
++            <input type="text" id="customer-name" name="customerName" value="Alex" placeholder="Enter your name" />
++          </div>
++
++          <div class="field-group">
++            <label for="milk-select">Milk Choice</label>
++            <select id="milk-select" name="milk">
++              <option value="Oat Milk" selected>Oat Milk</option>
++              <option value="Whole Milk">Whole Milk</option>
++              <option value="Almond Milk">Almond Milk</option>
++              <option value="Coconut Milk">Coconut Milk</option>
++            </select>
++          </div>
++
++          <div class="field-group">
++            <span class="field-label" id="syrup-label">Syrup Flavor</span>
++            <div class="syrup-options" role="radiogroup" aria-labelledby="syrup-label">
++              <label class="syrup-chip">
++                <input type="radio" name="syrup" value="Maple" checked />
++                <span>Maple</span>
++              </label>
++              <label class="syrup-chip">
++                <input type="radio" name="syrup" value="Vanilla" />
++                <span>Vanilla</span>
++              </label>
++              <label class="syrup-chip">
++                <input type="radio" name="syrup" value="Caramel" />
++                <span>Caramel</span>
++              </label>
++              <label class="syrup-chip">
++                <input type="radio" name="syrup" value="Hazelnut" />
++                <span>Hazelnut</span>
++              </label>
++              <label class="syrup-chip">
++                <input type="radio" name="syrup" value="No Syrup" />
++                <span>None</span>
++              </label>
++            </div>
++          </div>
++
++          <p id="order-preview" class="order-preview-text">
++            Order for <strong>Alex</strong>: Oat Milk Latte with Maple syrup
++          </p>
++
++          <button type="submit" id="add-order-btn" class="customizer-btn">Add Custom Cup to Order</button>
++          <div id="order-status" class="order-status" role="status" aria-live="polite"></div>
++        </form>
++      </canvas>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +412,315 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const canvas = document.getElementById('canvas');
++    const ctx = canvas.getContext('2d');
++    const customizerForm = document.getElementById('customizer-form');
++    const nameInput = document.getElementById('customer-name');
++    const milkSelect = document.getElementById('milk-select');
++    const orderPreview = document.getElementById('order-preview');
++    const orderStatus = document.getElementById('order-status');
++
++    const milkColors = {
++      'Oat Milk': '#e6d2b5',
++      'Whole Milk': '#f5ebe0',
++      'Almond Milk': '#dfcbb2',
++      'Coconut Milk': '#faf3eb'
++    };
++
++    const syrupColors = {
++      'Maple': '#b5651d',
++      'Vanilla': '#f3cf7a',
++      'Caramel': '#c67d3b',
++      'Hazelnut': '#7b4b2a',
++      'No Syrup': 'transparent'
++    };
++
++    function getOrderState() {
++      const name = (nameInput.value || '').trim() || 'Guest';
++      const milk = milkSelect.value || 'Oat Milk';
++      const checkedSyrup = customizerForm.querySelector('input[name="syrup"]:checked');
++      const syrup = checkedSyrup ? checkedSyrup.value : 'Maple';
++      return { name, milk, syrup };
++    }
++
++    function updateOrderSummary() {
++      const { name, milk, syrup } = getOrderState();
++      const syrupDesc = syrup === 'No Syrup' ? 'no added syrup' : `${syrup} syrup`;
++      orderPreview.innerHTML = '';
++      const prefix = document.createTextNode('Order for ');
++      const strong = document.createElement('strong');
++      strong.textContent = name;
++      const suffix = document.createTextNode(`: ${milk} Latte with ${syrupDesc}`);
++      orderPreview.append(prefix, strong, suffix);
++      requestCanvasPaint();
++    }
++
++    function drawCoffeeCup(ctx, cssWidth, cssHeight, state) {
++      const cupCenterX = Math.min(220, cssWidth * 0.28);
++      const cupCenterY = cssHeight * 0.54;
++
++      // Soft background halo behind the cup
++      const bgGrad = ctx.createRadialGradient(
++        cupCenterX, cupCenterY - 10, 20,
++        cupCenterX, cupCenterY - 10, 190
++      );
++      bgGrad.addColorStop(0, '#f3e5ab55');
++      bgGrad.addColorStop(1, '#fffdf900');
++      ctx.fillStyle = bgGrad;
++      ctx.beginPath();
++      ctx.arc(cupCenterX, cupCenterY - 10, 190, 0, Math.PI * 2);
++      ctx.fill();
++
++      // Drop shadow under the cup base
++      ctx.fillStyle = 'rgba(62, 39, 35, 0.14)';
++      ctx.beginPath();
++      ctx.ellipse(cupCenterX, cupCenterY + 165, 78, 14, 0, 0, Math.PI * 2);
++      ctx.fill();
++
++      // Steam wisps above the lid
++      ctx.save();
++      ctx.strokeStyle = 'rgba(141, 110, 99, 0.35)';
++      ctx.lineWidth = 3;
++      ctx.lineCap = 'round';
++      for (let i = -1; i <= 1; i++) {
++        const offsetX = cupCenterX + i * 26;
++        const startY = cupCenterY - 175;
++        ctx.beginPath();
++        ctx.moveTo(offsetX, startY);
++        ctx.bezierCurveTo(
++          offsetX - 14, startY - 22,
++          offsetX + 14, startY - 40,
++          offsetX - 4, startY - 62
++        );
++        ctx.stroke();
++      }
++      ctx.restore();
++
++      // Cup dimensions
++      const topWidth = 190;
++      const bottomWidth = 132;
++      const cupTopY = cupCenterY - 125;
++      const cupBottomY = cupCenterY + 160;
++
++      // Cup body path
++      ctx.save();
++      ctx.beginPath();
++      ctx.moveTo(cupCenterX - topWidth / 2, cupTopY);
++      ctx.lineTo(cupCenterX + topWidth / 2, cupTopY);
++      ctx.lineTo(cupCenterX + bottomWidth / 2, cupBottomY);
++      ctx.quadraticCurveTo(cupCenterX, cupBottomY + 14, cupCenterX - bottomWidth / 2, cupBottomY);
++      ctx.closePath();
++
++      // Base cup fill reflecting milk choice
++      const cupGrad = ctx.createLinearGradient(cupCenterX - topWidth / 2, cupTopY, cupCenterX + topWidth / 2, cupTopY);
++      cupGrad.addColorStop(0, '#fdfaf6');
++      cupGrad.addColorStop(0.5, milkColors[state.milk] || '#f5ebe0');
++      cupGrad.addColorStop(1, '#e8dccb');
++      ctx.fillStyle = cupGrad;
++      ctx.fill();
++      ctx.lineWidth = 3;
++      ctx.strokeStyle = '#5d4037';
++      ctx.stroke();
++
++      // Clip to cup interior for espresso & syrup visual layers
++      ctx.clip();
++
++      // Espresso layer at bottom
++      ctx.fillStyle = '#4e342e';
++      ctx.fillRect(cupCenterX - topWidth / 2, cupBottomY - 65, topWidth, 80);
++
++      // Syrup swirl ribbon
++      const syrupColor = syrupColors[state.syrup];
++      if (syrupColor && syrupColor !== 'transparent') {
++        ctx.strokeStyle = syrupColor;
++        ctx.lineWidth = 6;
++        ctx.beginPath();
++        ctx.moveTo(cupCenterX - 75, cupTopY + 55);
++        ctx.bezierCurveTo(
++          cupCenterX - 25, cupTopY + 80,
++          cupCenterX + 25, cupTopY + 35,
++          cupCenterX + 75, cupTopY + 62
++        );
++        ctx.stroke();
++      }
++      ctx.restore();
++
++      // Kraft cardboard coffee sleeve in the middle of the cup
++      const sleeveTopY = cupCenterY - 40;
++      const sleeveBottomY = cupCenterY + 68;
++      const t1 = (sleeveTopY - cupTopY) / (cupBottomY - cupTopY);
++      const t2 = (sleeveBottomY - cupTopY) / (cupBottomY - cupTopY);
++      const sleeveTopW = topWidth - (topWidth - bottomWidth) * t1 + 4;
++      const sleeveBottomW = topWidth - (topWidth - bottomWidth) * t2 + 4;
++
++      ctx.save();
++      ctx.beginPath();
++      ctx.moveTo(cupCenterX - sleeveTopW / 2, sleeveTopY);
++      ctx.lineTo(cupCenterX + sleeveTopW / 2, sleeveTopY);
++      ctx.lineTo(cupCenterX + sleeveBottomW / 2, sleeveBottomY);
++      ctx.lineTo(cupCenterX - sleeveBottomW / 2, sleeveBottomY);
++      ctx.closePath();
++
++      const sleeveGrad = ctx.createLinearGradient(cupCenterX - sleeveTopW / 2, sleeveTopY, cupCenterX + sleeveTopW / 2, sleeveTopY);
++      sleeveGrad.addColorStop(0, '#c89f78');
++      sleeveGrad.addColorStop(0.5, '#d7b38c');
++      sleeveGrad.addColorStop(1, '#b58963');
++      ctx.fillStyle = sleeveGrad;
++      ctx.fill();
++      ctx.lineWidth = 2.5;
++      ctx.strokeStyle = '#4e342e';
++      ctx.stroke();
++
++      // Sleeve badge & handwritten-style name preview on the cup
++      ctx.fillStyle = '#fff8ee';
++      ctx.beginPath();
++      ctx.roundRect(cupCenterX - 58, sleeveTopY + 16, 116, 74, 8);
++      ctx.fill();
++      ctx.strokeStyle = '#6d4c41';
++      ctx.lineWidth = 1.5;
++      ctx.stroke();
++
++      ctx.fillStyle = '#4e342e';
++      ctx.font = 'bold 14px "Segoe UI", sans-serif';
++      ctx.textAlign = 'center';
++      ctx.fillText(state.name.slice(0, 14), cupCenterX, sleeveTopY + 40);
++
++      ctx.fillStyle = '#6d4c41';
++      ctx.font = '11px "Segoe UI", sans-serif';
++      ctx.fillText(state.milk, cupCenterX, sleeveTopY + 58);
++      ctx.fillText(state.syrup === 'No Syrup' ? 'Unsweetened' : `+ ${state.syrup}`, cupCenterX, sleeveTopY + 75);
++      ctx.restore();
++
++      // Traveller coffee cup lid
++      ctx.save();
++      ctx.fillStyle = '#3e2723';
++      ctx.strokeStyle = '#271714';
++      ctx.lineWidth = 2.5;
++
++      // Upper lid dome
++      ctx.beginPath();
++      ctx.moveTo(cupCenterX - topWidth / 2 - 4, cupTopY - 10);
++      ctx.lineTo(cupCenterX - topWidth / 2 + 12, cupTopY - 34);
++      ctx.lineTo(cupCenterX + topWidth / 2 - 12, cupTopY - 34);
++      ctx.lineTo(cupCenterX + topWidth / 2 + 4, cupTopY - 10);
++      ctx.closePath();
++      ctx.fill();
++      ctx.stroke();
++
++      // Lower lid rim band
++      ctx.fillStyle = '#4e342e';
++      ctx.beginPath();
++      ctx.roundRect(cupCenterX - topWidth / 2 - 10, cupTopY - 14, topWidth + 20, 18, 6);
++      ctx.fill();
++      ctx.stroke();
++      ctx.restore();
++    }
++
++    function paintCanvas() {
++      if (typeof ctx.reset === 'function') {
++        ctx.reset();
++      } else {
++        ctx.setTransform(1, 0, 0, 1, 0, 0);
++        ctx.clearRect(0, 0, canvas.width, canvas.height);
++      }
++
++      const cssWidth = canvas.clientWidth || 820;
++      const cssHeight = canvas.clientHeight || 540;
++      const dprX = canvas.width / cssWidth;
++      const dprY = canvas.height / cssHeight;
++
++      const state = getOrderState();
++
++      // Draw the coffee cup graphic scaled for high-resolution displays
++      ctx.save();
++      ctx.scale(dprX, dprY);
++      drawCoffeeCup(ctx, cssWidth, cssHeight, state);
++      ctx.restore();
++
++      // Compute target coordinates for the interactive HTML customizer layer
++      const formWidth = customizerForm.offsetWidth || 340;
++      const formHeight = customizerForm.offsetHeight || 420;
++      const cssTargetX = Math.max(20, Math.round(cssWidth - formWidth - 48));
++      const cssTargetY = Math.max(20, Math.round((cssHeight - formHeight) / 2));
++
++      // Draw the interactive HTML element onto the canvas and sync its DOMMatrix transform
++      if (typeof ctx.drawElementImage === 'function') {
++        const transform = ctx.drawElementImage(
++          customizerForm,
++          Math.round(cssTargetX * dprX),
++          Math.round(cssTargetY * dprY)
++        );
++        if (transform) {
++          customizerForm.style.transform = transform.toString();
++        }
++      } else if (typeof ctx.drawElement === 'function') {
++        const transform = ctx.drawElement(
++          customizerForm,
++          Math.round(cssTargetX * dprX),
++          Math.round(cssTargetY * dprY)
++        );
++        if (transform) {
++          customizerForm.style.transform = transform.toString();
++        }
++      } else {
++        customizerForm.style.transform = `translate(${cssTargetX}px, ${cssTargetY}px)`;
++      }
++    }
++
++    function requestCanvasPaint() {
++      if (typeof canvas.requestPaint === 'function') {
++        canvas.requestPaint();
++      } else {
++        paintCanvas();
++      }
++    }
++
++    canvas.onpaint = paintCanvas;
++    canvas.addEventListener('paint', paintCanvas);
++
++    // High-DPI ResizeObserver using device-pixel-content-box to prevent blurriness
++    const resizeObserver = new ResizeObserver(([entry]) => {
++      const dpc = entry.devicePixelContentBoxSize;
++      if (dpc && dpc[0]) {
++        canvas.width = dpc[0].inlineSize;
++        canvas.height = dpc[0].blockSize;
++      } else {
++        const dpr = window.devicePixelRatio || 1;
++        canvas.width = Math.round(entry.contentRect.width * dpr);
++        canvas.height = Math.round(entry.contentRect.height * dpr);
++      }
++      requestCanvasPaint();
++    });
++
++    const supportsDevicePixelContentBox =
++      typeof ResizeObserverEntry !== 'undefined' &&
++      'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++
++    try {
++      resizeObserver.observe(
++        canvas,
++        supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : undefined
++      );
++    } catch {
++      resizeObserver.observe(canvas);
++    }
++
++    nameInput.addEventListener('input', updateOrderSummary);
++    milkSelect.addEventListener('change', updateOrderSummary);
++    customizerForm.addEventListener('change', updateOrderSummary);
++
++    customizerForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const { name, milk, syrup } = getOrderState();
++      const syrupText = syrup === 'No Syrup' ? 'unsweetened' : `with ${syrup} syrup`;
++      orderStatus.textContent = `Added ${name}'s ${milk} Latte (${syrupText}) to your order!`;
++      requestCanvasPaint();
++    });
++
++    requestCanvasPaint();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,768 @@
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..2a457c5
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,263 @@
++/**
++ * <coffee-card> — a menu item card with a persistent "favorite" toggle.
++ *
++ * Light DOM content is projected into named slots so it stays semantic,
++ * crawlable, and readable before (or without) JavaScript:
++ *
++ *   <coffee-card item="cold-brew">
++ *     <img slot="media" src="…" alt="…">
++ *     <h3 slot="heading">Cold Brew</h3>
++ *     <p>Steeped for 18 hours for maximum smoothness.</p>
++ *     <a slot="action" href="/menu/cold-brew">View Details…</a>
++ *   </coffee-card>
++ *
++ * Theming: --coffee-card-bg, --coffee-card-accent, --coffee-card-highlight,
++ *          --coffee-card-radius, and the `card` / `favorite` parts.
++ * State:   coffee-card:state(favorited); `change` event; `favorited` property.
++ */
++
++const STORAGE_KEY = 'daily-grind:favorites';
++
++function readFavorites() {
++  try {
++    return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? []);
++  } catch {
++    return new Set();
++  }
++}
++
++function writeFavorites(favorites) {
++  try {
++    localStorage.setItem(STORAGE_KEY, JSON.stringify([...favorites]));
++  } catch {
++    // Storage may be unavailable (private mode, quota); the toggle still works for the session.
++  }
++}
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  :host {
++    --_bg: var(--coffee-card-bg, white);
++    --_accent: var(--coffee-card-accent, var(--primary, #4e342e));
++    --_highlight: var(--coffee-card-highlight, var(--accent, #ffab40));
++    --_radius: var(--coffee-card-radius, 8px);
++
++    display: block;
++    container-type: inline-size;
++  }
++
++  *, *::before, *::after {
++    box-sizing: border-box;
++  }
++
++  article {
++    display: grid;
++    grid-template-rows: auto auto 1fr auto;
++    height: 100%;
++    overflow: hidden;
++    background: var(--_bg);
++    border-radius: var(--_radius);
++    box-shadow: 0 2px 5px rgb(0 0 0 / 0.1);
++    text-align: center;
++  }
++
++  ::slotted([slot="media"]) {
++    display: block;
++    width: 100%;
++    aspect-ratio: 3 / 2;
++    object-fit: cover;
++  }
++
++  /* Spacing lives on the shadow slots: Light DOM rules (e.g. a page reset)
++     always win over ::slotted(), so slotted margins aren't reliable. */
++  slot[name="heading"] {
++    display: block;
++    padding: 20px 20px 10px;
++  }
++
++  slot:not([name]) {
++    display: block;
++    padding: 0 20px;
++  }
++
++  ::slotted([slot="heading"]) {
++    color: var(--_accent);
++  }
++
++  footer {
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    gap: 12px;
++    padding: 15px 20px 20px;
++  }
++
++  ::slotted([slot="action"]) {
++    display: inline-block;
++    padding: 10px 20px;
++    border-radius: 5px;
++    background: var(--_accent);
++    color: white;
++    text-decoration: none;
++    transition: background 0.3s;
++  }
++
++  ::slotted([slot="action"]:hover) {
++    background: #3e2723;
++  }
++
++  ::slotted([slot="action"]:focus-visible),
++  button:focus-visible {
++    outline: 3px solid var(--_highlight);
++    outline-offset: 2px;
++  }
++
++  button {
++    display: grid;
++    place-items: center;
++    inline-size: 44px;
++    block-size: 44px;
++    padding: 0;
++    border: 2px solid var(--_accent);
++    border-radius: 50%;
++    background: transparent;
++    color: var(--_accent);
++    font: inherit;
++    cursor: pointer;
++    transition: background 0.2s, color 0.2s;
++  }
++
++  button:hover {
++    background: color-mix(in srgb, var(--_accent) 10%, transparent);
++  }
++
++  svg {
++    inline-size: 22px;
++    block-size: 22px;
++    fill: transparent;
++    stroke: currentColor;
++    stroke-width: 2;
++  }
++
++  :host(:state(favorited)) button {
++    background: var(--_accent);
++    color: var(--_highlight);
++  }
++
++  :host(:state(favorited)) svg {
++    fill: currentColor;
++  }
++
++  @media (prefers-reduced-motion: no-preference) {
++    :host(:state(favorited)) svg {
++      animation: pop 0.25s ease-out;
++    }
++  }
++
++  @keyframes pop {
++    50% { scale: 1.25; }
++  }
++
++  /* Wide cards (e.g. a single full-width feature) put media beside the text. */
++  @container (min-width: 36rem) {
++    article:has(slot[name="media"].filled) {
++      grid-template-columns: 2fr 3fr;
++      grid-template-rows: auto 1fr auto;
++      text-align: start;
++    }
++
++    article:has(slot[name="media"].filled) ::slotted([slot="media"]) {
++      grid-row: 1 / -1;
++      height: 100%;
++      aspect-ratio: auto;
++    }
++
++    footer {
++      justify-content: start;
++    }
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <article part="card">
++    <slot name="media"></slot>
++    <slot name="heading"></slot>
++    <slot></slot>
++    <footer>
++      <slot name="action"></slot>
++      <button type="button" part="favorite" aria-pressed="false">
++        <svg viewBox="0 0 24 24" aria-hidden="true">
++          <path d="M12 20.5s-7.5-4.6-9.3-9.4C1.5 7.8 3.6 4.5 7 4.5c2 0 3.5 1.1 5 3 1.5-1.9 3-3 5-3 3.4 0 5.5 3.3 4.3 6.6-1.8 4.8-9.3 9.4-9.3 9.4z"/>
++        </svg>
++      </button>
++    </footer>
++  </article>
++`;
++
++class CoffeeCard extends HTMLElement {
++  #internals;
++  #button;
++  #headingSlot;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    const root = this.attachShadow({ mode: 'open' });
++    root.adoptedStyleSheets = [sheet];
++    root.append(template.content.cloneNode(true));
++
++    this.#button = root.querySelector('button');
++    this.#headingSlot = root.querySelector('slot[name="heading"]');
++
++    this.#button.addEventListener('click', () => this.toggle());
++    this.#headingSlot.addEventListener('slotchange', () => this.#updateLabel());
++    root.querySelector('slot[name="media"]').addEventListener('slotchange', (e) => {
++      e.target.classList.toggle('filled', e.target.assignedElements().length > 0);
++    });
++  }
++
++  connectedCallback() {
++    // Restore persisted state on every connect (idempotent).
++    this.#render(this.item !== '' && readFavorites().has(this.item));
++  }
++
++  /** Stable identifier used to persist the favorite. */
++  get item() {
++    return this.getAttribute('item') ?? '';
++  }
++
++  get favorited() {
++    return this.#internals.states.has('favorited');
++  }
++
++  set favorited(value) {
++    const on = Boolean(value);
++    if (on === this.favorited) return;
++    this.#render(on);
++
++    if (this.item) {
++      const favorites = readFavorites();
++      on ? favorites.add(this.item) : favorites.delete(this.item);
++      writeFavorites(favorites);
++    }
++  }
++
++  toggle() {
++    this.favorited = !this.favorited;
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++
++  #render(on) {
++    on ? this.#internals.states.add('favorited') : this.#internals.states.delete('favorited');
++    this.#button.setAttribute('aria-pressed', String(on));
++  }
++
++  #updateLabel() {
++    const name = this.#headingSlot.assignedElements()[0]?.textContent.trim();
++    // aria-pressed conveys on/off, so the name stays constant.
++    this.#button.setAttribute('aria-label', name ? `Favorite ${name}` : 'Favorite');
++  }
++}
++
++customElements.define('coffee-card', CoffeeCard);
+diff --git a/components/site-nav.js b/components/site-nav.js
+new file mode 100644
+index 0000000..f074ad8
+--- /dev/null
++++ b/components/site-nav.js
+@@ -0,0 +1,264 @@
++/**
++ * <site-nav> — sticky site header whose links collapse into a disclosure
++ * menu when the header is narrow.
++ *
++ *   <site-nav label="Main">
++ *     <a slot="brand" href="/">THE DAILY GRIND</a>
++ *     <a href="/menu">Menu</a>
++ *     <a href="/logout" data-emphasis>Logout</a>
++ *   </site-nav>
++ *
++ * Each unslotted link is wrapped in its own shadow <li> (via imperative slot
++ * assignment), so the links are announced as a list while staying in the
++ * Light DOM where they work without JavaScript.
++ *
++ * Theming: --site-nav-bg, --site-nav-fg, --site-nav-accent, and the
++ *          `brand` / `toggle` / `list` parts.
++ * State:   site-nav:state(open) while the collapsed menu is expanded.
++ */
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  :host {
++    --_bg: var(--site-nav-bg, var(--primary, #4e342e));
++    --_fg: var(--site-nav-fg, white);
++    --_accent: var(--site-nav-accent, var(--accent, #ffab40));
++
++    display: block;
++    position: sticky;
++    top: 0;
++    z-index: 1000;
++    container-type: inline-size;
++    background: var(--_bg);
++    color: var(--_fg);
++  }
++
++  *, *::before, *::after {
++    box-sizing: border-box;
++  }
++
++  nav {
++    display: flex;
++    flex-wrap: wrap;
++    justify-content: space-between;
++    align-items: center;
++    gap: 0.5rem 20px;
++    padding: 1rem 5%;
++  }
++
++  [part="brand"] {
++    font-size: 1.5rem;
++    font-weight: bold;
++    letter-spacing: 1px;
++  }
++
++  ::slotted(a) {
++    color: inherit;
++    text-decoration: none;
++  }
++
++  ul {
++    display: flex;
++    flex-wrap: wrap;
++    align-items: center;
++    gap: 0.5rem 20px;
++    margin: 0;
++    padding: 0;
++    list-style: none;
++  }
++
++  li ::slotted(a) {
++    display: inline-block;
++    font-size: 0.9rem;
++    transition: color 0.3s;
++  }
++
++  li ::slotted(a:hover) {
++    color: var(--_accent);
++  }
++
++  li ::slotted([aria-current="page"]) {
++    color: var(--_accent);
++    text-decoration: underline;
++    text-underline-offset: 4px;
++  }
++
++  li ::slotted([data-emphasis]) {
++    padding: 5px 12px;
++    border: 1px solid var(--_accent);
++    border-radius: 4px;
++  }
++
++  ::slotted(a:focus-visible),
++  button:focus-visible {
++    outline: 2px solid var(--_accent);
++    outline-offset: 3px;
++  }
++
++  button {
++    display: none;
++    align-items: center;
++    gap: 0.5rem;
++    padding: 6px 12px;
++    border: 1px solid currentColor;
++    border-radius: 4px;
++    background: transparent;
++    color: inherit;
++    font: inherit;
++    font-size: 0.9rem;
++    cursor: pointer;
++  }
++
++  button svg {
++    inline-size: 1.1em;
++    block-size: 1.1em;
++    stroke: currentColor;
++    stroke-width: 2;
++    stroke-linecap: round;
++  }
++
++  .bar {
++    transform-box: fill-box;
++    transform-origin: center;
++    transition: transform 0.2s, opacity 0.2s;
++  }
++
++  :host(:state(open)) .bar-top { transform: translateY(6px) rotate(45deg); }
++  :host(:state(open)) .bar-mid { opacity: 0; }
++  :host(:state(open)) .bar-bottom { transform: translateY(-6px) rotate(-45deg); }
++
++  @media (prefers-reduced-motion: reduce) {
++    .bar { transition: none; }
++  }
++
++  @container (max-width: 40rem) {
++    button {
++      display: inline-flex;
++    }
++
++    ul {
++      flex-basis: 100%;
++      flex-direction: column;
++      align-items: stretch;
++      gap: 0;
++      padding-block: 0.5rem;
++    }
++
++    :host(:not(:state(open))) ul {
++      display: none;
++    }
++
++    li ::slotted(a) {
++      display: block;
++      padding: 0.6rem 0;
++    }
++
++    li ::slotted([data-emphasis]) {
++      margin-top: 0.5rem;
++      text-align: center;
++    }
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <nav part="nav">
++    <span part="brand"><slot name="brand"></slot></span>
++    <button type="button" part="toggle" aria-expanded="false" aria-controls="links">
++      <svg viewBox="0 0 24 24" aria-hidden="true">
++        <line class="bar bar-top" x1="4" y1="6" x2="20" y2="6"/>
++        <line class="bar bar-mid" x1="4" y1="12" x2="20" y2="12"/>
++        <line class="bar bar-bottom" x1="4" y1="18" x2="20" y2="18"/>
++      </svg>
++      Menu
++    </button>
++    <ul id="links" part="list"></ul>
++  </nav>
++`;
++
++class SiteNav extends HTMLElement {
++  #internals;
++  #nav;
++  #button;
++  #list;
++  #brandSlot;
++  #observer = new MutationObserver(() => this.#assignSlots());
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    const root = this.attachShadow({ mode: 'open', slotAssignment: 'manual' });
++    root.adoptedStyleSheets = [sheet];
++    root.append(template.content.cloneNode(true));
++
++    this.#nav = root.querySelector('nav');
++    this.#button = root.querySelector('button');
++    this.#list = root.querySelector('ul');
++    this.#brandSlot = root.querySelector('slot[name="brand"]');
++
++    this.#button.addEventListener('click', () => {
++      this.open = !this.open;
++    });
++
++    this.addEventListener('keydown', (e) => {
++      if (e.key === 'Escape' && this.open) {
++        this.open = false;
++        this.#button.focus();
++      }
++    });
++
++    // Collapse after following an in-page link from the expanded menu.
++    this.addEventListener('click', (e) => {
++      if (e.target.closest('a') && this.open) this.open = false;
++    });
++  }
++
++  connectedCallback() {
++    this.#nav.setAttribute('aria-label', this.getAttribute('label') ?? 'Main');
++    this.#assignSlots();
++    // Children may still be parsing, or be changed later; keep slots in sync.
++    this.#observer.observe(this, { childList: true });
++    document.addEventListener('focusin', this.#onFocusOutside);
++  }
++
++  disconnectedCallback() {
++    this.#observer.disconnect();
++    document.removeEventListener('focusin', this.#onFocusOutside);
++  }
++
++  get open() {
++    return this.#internals.states.has('open');
++  }
++
++  set open(value) {
++    const on = Boolean(value);
++    on ? this.#internals.states.add('open') : this.#internals.states.delete('open');
++    this.#button.setAttribute('aria-expanded', String(on));
++  }
++
++  // Close the expanded menu when keyboard focus moves elsewhere on the page.
++  #onFocusOutside = (e) => {
++    if (this.open && !this.contains(e.target)) this.open = false;
++  };
++
++  #assignSlots() {
++    const children = [...this.children];
++    const brand = children.filter((el) => el.slot === 'brand');
++    const links = children.filter((el) => el.slot !== 'brand');
++
++    this.#brandSlot.assign(...brand);
++
++    // Reuse existing <li><slot> pairs where possible; add or trim to match.
++    const items = [...this.#list.children];
++    while (items.length < links.length) {
++      const li = document.createElement('li');
++      li.append(document.createElement('slot'));
++      this.#list.append(li);
++      items.push(li);
++    }
++    items.slice(links.length).forEach((li) => li.remove());
++    links.forEach((link, i) => items[i].firstElementChild.assign(link));
++  }
++}
++
++customElements.define('site-nav', SiteNav);
+diff --git a/index.html b/index.html
+index 66c9173..3be0ac6 100644
+--- a/index.html
++++ b/index.html
+@@ -14,10 +14,20 @@
+       --light: #fafafa;
+     }
+ 
+-    * {
++    *,
++    *::before,
++    *::after {
+       box-sizing: border-box;
++    }
++
++    /* Kept narrow on purpose: Light DOM rules beat a component's ::slotted()
++       styles, so a universal padding reset would strip slotted link padding. */
++    body,
++    h1,
++    h2,
++    h3,
++    p {
+       margin: 0;
+-      padding: 0;
+     }
+ 
+     body {
+@@ -27,49 +37,34 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++    /* Web Components: hide contents until upgraded, but fail open after 2s
++       so a slow or failed script never hides content for good. */
++    site-nav:not(:defined) > *,
++    coffee-card:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
+     }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
+     }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
++    /* Reserve the header's space before upgrade to avoid layout shift. */
++    site-nav:not(:defined) {
++      display: block;
++      min-height: 4.1rem;
++      background: var(--primary);
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
+     }
+ 
+     /* Hero Section */
+@@ -100,24 +95,21 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
++      padding: 0;
++      list-style: none;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    .grid > li {
++      display: grid;
+     }
+ 
+     .btn {
+@@ -135,6 +127,11 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,20 +150,20 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="components/site-nav.js"></script>
++  <script type="module" src="components/coffee-card.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <site-nav label="Main">
++    <a slot="brand" href="/">THE DAILY GRIND</a>
++    <a href="/menu">Menu</a>
++    <a href="/locations">Locations</a>
++    <a href="/rewards">Rewards</a>
++    <a href="/account">My Account</a>
++    <a href="/logout" data-emphasis>Logout</a>
++  </site-nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -175,25 +172,34 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++    <section aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" class="section-title">Seasonal Favorites</h2>
++      <ul class="grid">
++        <li>
++          <coffee-card item="maple-oat-latte">
++            <img slot="media" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=75" alt="Barista pouring steamed milk into a latte, forming a leaf pattern" width="600" height="400" loading="lazy">
++            <h3 slot="heading">Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a slot="action" href="/menu/seasonal">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
++          </coffee-card>
++        </li>
++        <li>
++          <coffee-card item="dark-roast-espresso">
++            <img slot="media" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=75" alt="Top-down view of a shot of espresso in a white cup on dark slate" width="600" height="400" loading="lazy">
++            <h3 slot="heading">Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a slot="action" href="/menu/espresso">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
++          </coffee-card>
++        </li>
++        <li>
++          <coffee-card item="cold-brew">
++            <img slot="media" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=75" alt="Glass of iced cold brew swirled with cream" width="600" height="400" loading="lazy">
++            <h3 slot="heading">Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a slot="action" href="/menu/cold-brew">View Details<span class="visually-hidden"> about Cold Brew</span></a>
++          </coffee-card>
++        </li>
++      </ul>
+     </section>
+   </main>
+ 

@@ -1,0 +1,181 @@
+diff --git a/index.html b/index.html
+index 66c9173..ed928b8 100644
+--- a/index.html
++++ b/index.html
+@@ -153,6 +153,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/perf-monitor.js"></script>
+ </head>
+ 
+ <body>
+diff --git a/perf-monitor.js b/perf-monitor.js
+new file mode 100644
+index 0000000..a797162
+--- /dev/null
++++ b/perf-monitor.js
+@@ -0,0 +1,163 @@
++// Client-side performance monitoring for The Daily Grind homepage.
++//
++// Measures how long user interactions (nav bar, "Order Now", Seasonal Favorites
++// cards) and client-side soft navigations take to render new contentful updates
++// on screen, using `interaction-contentful-paint` and `soft-navigation` entries.
++//
++// Reports are logged to the console, kept on `window.__dailyGrindPerf`, and, if
++// the loading <script> has a `data-endpoint` attribute, beaconed to that URL
++// when the page is hidden.
++
++const endpoint = document.querySelector('script[src$="perf-monitor.js"]')?.dataset.endpoint;
++
++const supports = (type) =>
++  typeof PerformanceObserver !== 'undefined' &&
++  PerformanceObserver.supportedEntryTypes?.includes(type);
++
++// Map an interaction target to the homepage region we want to report on.
++function regionFor(target) {
++  if (!(target instanceof Element)) return null;
++  if (target.closest('nav')) return 'nav';
++  if (target.closest('.hero .btn')) return 'order-now';
++  const card = target.closest('.card');
++  if (card) return `seasonal-card:${card.querySelector('h3')?.textContent.trim() ?? ''}`;
++  return null;
++}
++
++// interactionId -> region, populated from Event Timing entries.
++const regionsByInteraction = new Map();
++
++// Event Timing only reports events above its duration threshold (min 16ms), so
++// also record recent interactions directly and match them by start time.
++const recentInteractions = [];
++for (const type of ['pointerdown', 'keydown', 'click']) {
++  document.addEventListener(type, (event) => {
++    const region = regionFor(event.target);
++    if (!region) return;
++    recentInteractions.push({ timeStamp: event.timeStamp, region });
++    if (recentInteractions.length > 50) recentInteractions.shift();
++  }, { capture: true, passive: true });
++}
++
++function resolveRegion(entry) {
++  const region = regionsByInteraction.get(entry.interactionId);
++  if (region) return region;
++  // The interaction's first event (e.g. pointerdown) shares its startTime.
++  const match = recentInteractions.find((i) => Math.abs(i.timeStamp - entry.startTime) < 1);
++  if (match) regionsByInteraction.set(entry.interactionId, match.region);
++  return match?.region ?? null;
++}
++
++const reports = [];
++window.__dailyGrindPerf = reports;
++
++function report(data) {
++  reports.push(data);
++  console.debug('[perf]', data);
++}
++
++function describeElement(el) {
++  if (!el) return null;
++  return el.id ? `#${el.id}` : `${el.tagName.toLowerCase()}${el.className ? `.${[...el.classList].join('.')}` : ''}`;
++}
++
++if (supports('event')) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      if (!entry.interactionId || regionsByInteraction.has(entry.interactionId)) continue;
++      const region = regionFor(entry.target);
++      if (region) regionsByInteraction.set(entry.interactionId, region);
++    }
++  }).observe({ type: 'event', durationThreshold: 16, buffered: true });
++}
++
++// 1. Interaction -> contentful paint latency for the monitored regions.
++//    Entries arrive progressively as larger paints occur; keep the latest
++//    (largest) one per interaction and report it once the page is hidden or a
++//    newer interaction starts, so each interaction is reported a single time.
++const pendingInteractionPaints = new Map();
++
++function flushInteractionPaints() {
++  for (const [interactionId, entry] of pendingInteractionPaints) {
++    const region = resolveRegion(entry);
++    if (!region) continue;
++    const lcp = entry.largestContentfulPaint;
++    report({
++      type: 'interaction-paint',
++      region,
++      interactionId,
++      // duration = presentationTime - startTime (interaction start -> pixels on screen).
++      duration: Math.round(entry.duration),
++      element: describeElement(lcp?.element),
++      size: lcp?.size ?? null,
++      url: location.href,
++    });
++  }
++  pendingInteractionPaints.clear();
++}
++
++if (supports('interaction-contentful-paint')) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      if (!pendingInteractionPaints.has(entry.interactionId)) {
++        // A new interaction has painted: finalize earlier ones.
++        flushInteractionPaints();
++      }
++      pendingInteractionPaints.set(entry.interactionId, entry);
++    }
++  }).observe({ type: 'interaction-contentful-paint', buffered: true });
++}
++
++// 2. Soft navigation FCP / LCP, correlated by interactionId (not navigationId)
++//    so paints rendered before the URL update are included and paints from
++//    later, unrelated interactions on the new view are excluded.
++let activeSoftNav = null;
++let activeSoftNavLcp = null;
++
++function finalizeSoftNav() {
++  if (!activeSoftNav) return;
++  const lcp = activeSoftNavLcp?.largestContentfulPaint;
++  report({
++    type: 'soft-navigation',
++    region: regionsByInteraction.get(activeSoftNav.interactionId) ?? null,
++    url: activeSoftNav.name,
++    navigationId: activeSoftNav.navigationId,
++    interactionId: activeSoftNav.interactionId,
++    fcpDuration: Math.round(activeSoftNav.duration),
++    lcpDuration: activeSoftNavLcp ? Math.round(activeSoftNavLcp.duration) : null,
++    lcpElement: describeElement(lcp?.element),
++    lcpSize: lcp?.size ?? null,
++  });
++  activeSoftNav = null;
++  activeSoftNavLcp = null;
++}
++
++if (supports('soft-navigation') && supports('interaction-contentful-paint')) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      finalizeSoftNav();
++      activeSoftNav = entry;
++      // Seed with paints that happened before the URL changed.
++      activeSoftNavLcp = entry.getLargestInteractionContentfulPaint();
++    }
++  }).observe({ type: 'soft-navigation', buffered: true });
++
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      if (activeSoftNav && entry.interactionId === activeSoftNav.interactionId) {
++        activeSoftNavLcp = entry;
++      }
++    }
++  }).observe({ type: 'interaction-contentful-paint', buffered: true });
++}
++
++let sentCount = 0;
++document.addEventListener('visibilitychange', () => {
++  if (document.visibilityState !== 'hidden') return;
++  flushInteractionPaints();
++  finalizeSoftNav();
++  if (endpoint && reports.length > sentCount) {
++    navigator.sendBeacon(endpoint, JSON.stringify(reports.slice(sentCount)));
++    sentCount = reports.length;
++  }
++});

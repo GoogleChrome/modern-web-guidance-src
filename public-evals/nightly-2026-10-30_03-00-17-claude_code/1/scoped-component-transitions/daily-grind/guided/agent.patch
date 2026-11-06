@@ -1,0 +1,421 @@
+diff --git a/index.html b/index.html
+index 66c9173..9aa2045 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,199 @@
+       background: #3e2723;
+     }
+ 
++    /* Interactive menu cards */
++    .grid {
++      align-items: start; /* an expanding card shouldn't stretch its row-mates outside its transition scope */
++    }
++
++    .card {
++      overflow: clip; /* scoped transition clips children to the card while it resizes */
++    }
++
++    .card > * {
++      view-transition-name: match-element;
++    }
++
++    .card-details {
++      margin-top: 10px;
++      padding: 10px;
++      border-radius: 6px;
++      background: #f5efec;
++      font-size: 0.9rem;
++      text-align: left;
++    }
++
++    .sizes {
++      display: flex;
++      justify-content: center;
++      gap: 6px;
++      margin-top: 15px;
++    }
++
++    .sizes button {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 4px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 999px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .sizes button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .price {
++      margin-top: 10px;
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    button.btn {
++      font: inherit;
++      border: none;
++      cursor: pointer;
++    }
++
++    .link-btn {
++      font: inherit;
++      font-size: 0.85rem;
++      background: none;
++      border: none;
++      color: var(--primary);
++      text-decoration: underline;
++      cursor: pointer;
++    }
++
++    .card-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 0 15px;
++    }
++
++    .card-actions a:not(.btn) {
++      margin-top: 15px;
++      font-size: 0.85rem;
++      color: var(--primary);
++    }
++
++    /* Order panel */
++    .order-panel {
++      max-width: 520px;
++      margin: 40px auto 0;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: clip;
++    }
++
++    .order-panel > * {
++      view-transition-name: match-element;
++    }
++
++    .order-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .order-sort {
++      display: flex;
++      gap: 6px;
++      font-size: 0.85rem;
++    }
++
++    .order-list {
++      list-style: none;
++      max-height: 260px;
++      overflow-y: auto;
++      margin-top: 10px;
++      /* Clip captured line items to the scrollable list during transitions */
++      view-transition-group: contain;
++      view-transition-class: order-list;
++    }
++
++    ::view-transition-group-children(.order-list) {
++      overflow: clip;
++    }
++
++    .order-list li {
++      view-transition-name: match-element;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      padding: 8px 0;
++      border-bottom: 1px solid #eee;
++      background: white;
++    }
++
++    .order-list .item-name {
++      flex: 1;
++    }
++
++    .order-list .item-name small {
++      color: #8d6e63;
++    }
++
++    .order-list .item-qty {
++      color: #8d6e63;
++      font-size: 0.85rem;
++    }
++
++    .order-list .item-price {
++      font-weight: bold;
++      min-width: 4.5em;
++      text-align: right;
++    }
++
++    .remove-btn {
++      font: inherit;
++      width: 28px;
++      height: 28px;
++      border: 1px solid var(--secondary);
++      border-radius: 50%;
++      background: white;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .order-empty {
++      margin-top: 10px;
++      color: #8d6e63;
++      font-style: italic;
++    }
++
++    .order-total {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 15px;
++      font-size: 1.1rem;
++      font-weight: bold;
++    }
++
++    /* Scoped view transitions */
++    ::view-transition-group(*) {
++      animation-duration: 300ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -178,22 +371,74 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card" data-name="Maple Oat Latte" data-base-price="5.25">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <div class="card-details" id="details-maple" hidden>
++            <p><strong>Tasting notes:</strong> Toasted oat, brown sugar, and a soft maple finish. Pairs well with a blonde roast shot.</p>
++          </div>
++          <div class="sizes" role="group" aria-label="Size">
++            <button type="button" data-size="S" aria-pressed="true">Small</button>
++            <button type="button" data-size="M" aria-pressed="false">Medium</button>
++            <button type="button" data-size="L" aria-pressed="false">Large</button>
++          </div>
++          <p class="price" aria-live="polite">$5.25</p>
++          <div class="card-actions">
++            <button type="button" class="link-btn" data-action="toggle-details" aria-expanded="false" aria-controls="details-maple">Tasting notes</button>
++            <a href="/menu/seasonal">View Details</a>
++          </div>
++          <button type="button" class="btn" data-action="add">Add to Order</button>
++        </article>
++        <article class="card" data-name="Dark Roast Espresso" data-base-price="3.50">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <div class="card-details" id="details-espresso" hidden>
++            <p><strong>Tasting notes:</strong> Dark chocolate, molasses, and a hint of cedar smoke. Pulled as a 36g double.</p>
++          </div>
++          <div class="sizes" role="group" aria-label="Size">
++            <button type="button" data-size="S" aria-pressed="true">Small</button>
++            <button type="button" data-size="M" aria-pressed="false">Medium</button>
++            <button type="button" data-size="L" aria-pressed="false">Large</button>
++          </div>
++          <p class="price" aria-live="polite">$3.50</p>
++          <div class="card-actions">
++            <button type="button" class="link-btn" data-action="toggle-details" aria-expanded="false" aria-controls="details-espresso">Tasting notes</button>
++            <a href="/menu/espresso">View Details</a>
++          </div>
++          <button type="button" class="btn" data-action="add">Add to Order</button>
++        </article>
++        <article class="card" data-name="Cold Brew" data-base-price="4.75">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-details" id="details-coldbrew" hidden>
++            <p><strong>Tasting notes:</strong> Low acidity with notes of cocoa nib and dried cherry. Served over large-format ice.</p>
++          </div>
++          <div class="sizes" role="group" aria-label="Size">
++            <button type="button" data-size="S" aria-pressed="true">Small</button>
++            <button type="button" data-size="M" aria-pressed="false">Medium</button>
++            <button type="button" data-size="L" aria-pressed="false">Large</button>
++          </div>
++          <p class="price" aria-live="polite">$4.75</p>
++          <div class="card-actions">
++            <button type="button" class="link-btn" data-action="toggle-details" aria-expanded="false" aria-controls="details-coldbrew">Tasting notes</button>
++            <a href="/menu/cold-brew">View Details</a>
++          </div>
++          <button type="button" class="btn" data-action="add">Add to Order</button>
++        </article>
++      </div>
++    </section>
++
++    <section class="order-panel" id="order-panel" aria-labelledby="order-title">
++      <div class="order-header">
++        <h2 id="order-title">Your Order</h2>
++        <div class="order-sort" role="group" aria-label="Sort order">
++          <button type="button" class="link-btn" data-sort="name">Sort by name</button>
++          <button type="button" class="link-btn" data-sort="price">Sort by price</button>
+         </div>
+       </div>
++      <p class="order-empty">Your order is empty. Add a seasonal favorite above.</p>
++      <ul class="order-list" id="order-list"></ul>
++      <p class="order-total"><span>Total</span><span id="order-total">$0.00</span></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +452,133 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++
++    // Animate DOM updates within a single component subtree, leaving the rest of the page interactive
++    function runScopedTransition(scopeEl, updateDOM) {
++      if (!supportsScopedTransition) {
++        updateDOM();
++        return;
++      }
++      const transition = scopeEl.startViewTransition(updateDOM);
++      // Re-triggering on the same scope skips the active transition and rejects `ready`
++      transition.ready.catch(() => {});
++    }
++
++    const SIZE_UPCHARGE = { S: 0, M: 0.75, L: 1.5 };
++    const SIZE_LABEL = { S: 'Small', M: 'Medium', L: 'Large' };
++    const formatPrice = (n) => `$${n.toFixed(2)}`;
++
++    const panel = document.getElementById('order-panel');
++    const list = document.getElementById('order-list');
++    const emptyMsg = panel.querySelector('.order-empty');
++    const totalEl = document.getElementById('order-total');
++
++    function selectedSize(card) {
++      return card.querySelector('.sizes [aria-pressed="true"]').dataset.size;
++    }
++
++    function unitPrice(card, size) {
++      return Number(card.dataset.basePrice) + SIZE_UPCHARGE[size];
++    }
++
++    function refreshOrderSummary() {
++      let total = 0;
++      for (const li of list.children) {
++        total += Number(li.dataset.unitPrice) * Number(li.dataset.qty);
++      }
++      totalEl.textContent = formatPrice(total);
++      emptyMsg.hidden = list.children.length > 0;
++    }
++
++    function renderLine(li) {
++      const qty = Number(li.dataset.qty);
++      li.querySelector('.item-qty').textContent = `×${qty}`;
++      li.querySelector('.item-price').textContent = formatPrice(Number(li.dataset.unitPrice) * qty);
++    }
++
++    function createLine(name, size, price) {
++      const li = document.createElement('li');
++      li.dataset.id = `${name}|${size}`;
++      li.dataset.name = name;
++      li.dataset.unitPrice = price;
++      li.dataset.qty = 0;
++      li.innerHTML = `
++        <span class="item-name"></span>
++        <span class="item-qty"></span>
++        <span class="item-price"></span>
++        <button type="button" class="remove-btn"></button>`;
++      li.querySelector('.item-name').append(name, ' ', Object.assign(document.createElement('small'), { textContent: SIZE_LABEL[size] }));
++      li.querySelector('.remove-btn').setAttribute('aria-label', `Remove ${SIZE_LABEL[size]} ${name}`);
++      li.querySelector('.remove-btn').textContent = '×';
++      return li;
++    }
++
++    // Menu cards: each card is its own scope, so several can animate at once
++    document.querySelector('.grid').addEventListener('click', (event) => {
++      const button = event.target.closest('button');
++      if (!button) return;
++      const card = button.closest('.card');
++
++      if (button.dataset.size) {
++        runScopedTransition(card, () => {
++          for (const b of card.querySelectorAll('.sizes button')) {
++            b.setAttribute('aria-pressed', String(b === button));
++          }
++          card.querySelector('.price').textContent = formatPrice(unitPrice(card, button.dataset.size));
++        });
++      } else if (button.dataset.action === 'toggle-details') {
++        const details = document.getElementById(button.getAttribute('aria-controls'));
++        const expand = details.hidden;
++        runScopedTransition(card, () => {
++          details.hidden = !expand;
++          button.setAttribute('aria-expanded', String(expand));
++        });
++      } else if (button.dataset.action === 'add') {
++        const name = card.dataset.name;
++        const size = selectedSize(card);
++        // Scope to the whole panel: the empty message, list height and total all change
++        runScopedTransition(panel, () => {
++          let li = list.querySelector(`li[data-id="${CSS.escape(`${name}|${size}`)}"]`);
++          if (!li) {
++            li = createLine(name, size, unitPrice(card, size));
++            list.append(li);
++          }
++          li.dataset.qty = Number(li.dataset.qty) + 1;
++          renderLine(li);
++          refreshOrderSummary();
++        });
++      }
++    });
++
++    panel.addEventListener('click', (event) => {
++      const button = event.target.closest('button');
++      if (!button) return;
++
++      if (button.dataset.sort) {
++        const key = button.dataset.sort;
++        const sorted = [...list.children].sort((a, b) => key === 'price'
++          ? Number(a.dataset.unitPrice) * a.dataset.qty - Number(b.dataset.unitPrice) * b.dataset.qty
++          : a.dataset.name.localeCompare(b.dataset.name));
++        // Only the order changes, so scope to the list; move existing nodes to keep `match-element` identity
++        runScopedTransition(list, () => list.append(...sorted));
++      } else if (button.classList.contains('remove-btn')) {
++        const li = button.closest('li');
++        const hadFocus = li.contains(document.activeElement);
++        const nextFocusTarget =
++          li.nextElementSibling?.querySelector('button') ??
++          li.previousElementSibling?.querySelector('button') ??
++          panel.querySelector('.order-sort button');
++        runScopedTransition(panel, () => {
++          li.remove();
++          refreshOrderSummary();
++          if (hadFocus) nextFocusTarget?.focus();
++        });
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,2572 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..1914aa9 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -3,7 +3,9 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import { BookOpenIcon } from '@heroicons/react/24/outline';
++import { deriveArticleSemanticProfile, type SemanticDomain } from '../utils/semanticContext';
++import SemanticContextBadge from './SemanticContextBadge';
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+@@ -15,69 +17,196 @@ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const semanticProfile = deriveArticleSemanticProfile(article);
++
++const domainCardStyles: Record<SemanticDomain, {
++    cardWrapper: string;
++    largeWrapper: string;
++    imageFrame: string;
++    headline: string;
++    largeHeadline: string;
++    summary: string;
++    footer: string;
++    metricPill: string;
++}> = {
++    'breaking-civic': {
++        cardWrapper: 'bg-white border-t-4 border-red-700 border-x border-b border-gray-200 p-4 shadow-2xs',
++        largeWrapper: 'bg-white border-t-4 border-red-700 border-x border-b border-gray-200 p-6 md:p-8 shadow-sm',
++        imageFrame: 'rounded-none border-b-2 border-red-700',
++        headline: 'font-brand text-xl md:text-2xl text-gray-950 group-hover:text-red-700 transition-colors leading-snug',
++        largeHeadline: 'mt-3 text-3xl md:text-4xl font-brand text-gray-950 leading-tight hover:text-red-700 transition-colors',
++        summary: 'text-gray-700 mt-2 text-sm leading-relaxed font-serif',
++        footer: 'border-t border-red-100 pt-2.5 mt-3 text-gray-600',
++        metricPill: 'bg-red-50 text-red-800 border border-red-200 font-semibold',
++    },
++    'economic-data': {
++        cardWrapper: 'bg-slate-50/70 border-t-2 border-emerald-700 border-x border-b border-slate-200 p-4 semantic-surface-ledger',
++        largeWrapper: 'bg-slate-50/70 border-t-2 border-emerald-700 border-x border-b border-slate-300 p-6 md:p-8 shadow-sm semantic-surface-ledger',
++        imageFrame: 'rounded-xs border border-slate-300',
++        headline: 'font-sans font-bold text-lg md:text-xl text-slate-900 group-hover:text-emerald-700 transition-colors tracking-tight',
++        largeHeadline: 'mt-3 text-3xl md:text-4xl font-sans font-extrabold text-slate-900 leading-tight hover:text-emerald-700 transition-colors tracking-tight',
++        summary: 'text-slate-600 mt-2 text-sm leading-relaxed',
++        footer: 'border-t border-slate-200 pt-2.5 mt-3 text-slate-600 font-mono',
++        metricPill: 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono',
++    },
++    'scientific-lab': {
++        cardWrapper: 'bg-sky-50/30 border border-sky-200 border-t-4 border-t-sky-600 p-4 rounded-xs semantic-surface-blueprint',
++        largeWrapper: 'bg-sky-50/30 border border-sky-200 border-t-4 border-t-sky-600 p-6 md:p-8 shadow-sm semantic-surface-blueprint',
++        imageFrame: 'rounded-xs ring-1 ring-sky-200',
++        headline: 'font-mono font-bold text-base md:text-lg text-sky-950 group-hover:text-sky-700 transition-colors tracking-tight leading-snug',
++        largeHeadline: 'mt-3 text-2xl md:text-4xl font-mono font-bold text-sky-950 leading-tight hover:text-sky-700 transition-colors tracking-tight',
++        summary: 'text-slate-700 mt-2 text-sm leading-relaxed',
++        footer: 'border-t border-sky-200/80 pt-2.5 mt-3 text-sky-900 font-mono',
++        metricPill: 'bg-white text-sky-800 border border-sky-200 font-mono',
++    },
++    'cultural-stage': {
++        cardWrapper: 'bg-purple-50/20 border-b-4 border-purple-800 border-t border-x border-purple-100 p-4',
++        largeWrapper: 'bg-purple-50/20 border-b-4 border-purple-900 border-t border-x border-purple-200 p-6 md:p-8 shadow-sm',
++        imageFrame: 'rounded-none shadow-xs',
++        headline: 'font-brand italic text-xl md:text-2xl text-purple-950 group-hover:text-purple-700 transition-colors leading-snug',
++        largeHeadline: 'mt-3 text-3xl md:text-4xl font-brand italic text-purple-950 leading-tight hover:text-purple-700 transition-colors',
++        summary: 'text-gray-700 mt-2 text-sm leading-relaxed italic',
++        footer: 'border-t border-purple-100 pt-2.5 mt-3 text-purple-900',
++        metricPill: 'bg-purple-50 text-purple-900 border border-purple-200 italic',
++    },
++    'kinetic-pulse': {
++        cardWrapper: 'bg-orange-50/25 border-l-4 border-orange-600 border-y border-r border-orange-200/80 p-4 semantic-surface-kinetic',
++        largeWrapper: 'bg-orange-50/25 border-l-4 border-orange-600 border-y border-r border-orange-200 p-6 md:p-8 shadow-sm semantic-surface-kinetic',
++        imageFrame: 'rounded-xs border-b-2 border-orange-500',
++        headline: 'font-sans font-black uppercase text-base md:text-lg text-gray-900 group-hover:text-orange-600 transition-colors tracking-tight leading-snug',
++        largeHeadline: 'mt-3 text-2xl md:text-4xl font-sans font-black uppercase text-gray-900 leading-none hover:text-orange-600 transition-colors tracking-tight',
++        summary: 'text-gray-700 mt-2 text-sm font-medium leading-snug',
++        footer: 'border-t border-orange-200/70 pt-2.5 mt-3 text-gray-700 font-mono',
++        metricPill: 'bg-orange-100 text-orange-900 border border-orange-300 font-bold uppercase',
++    },
++    'organic-living': {
++        cardWrapper: 'bg-amber-50/30 border border-amber-200/80 rounded-2xl p-4 shadow-2xs',
++        largeWrapper: 'bg-amber-50/30 border border-amber-200/80 rounded-2xl p-6 md:p-8 shadow-sm',
++        imageFrame: 'rounded-xl',
++        headline: 'font-brand text-xl md:text-2xl text-stone-900 group-hover:text-amber-700 transition-colors',
++        largeHeadline: 'mt-3 text-3xl md:text-4xl font-brand text-stone-900 leading-tight hover:text-amber-700 transition-colors',
++        summary: 'text-stone-600 mt-2 text-sm leading-relaxed',
++        footer: 'border-t border-amber-200/60 pt-2.5 mt-3 text-stone-600',
++        metricPill: 'bg-white text-amber-900 border border-amber-200 rounded-full',
++    },
++};
++
++const activeStyle = domainCardStyles[semanticProfile.domain];
++const primaryMetric = semanticProfile.contextualMetrics[0];
++const categoryUrl = `${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`;
++const articleUrl = `${import.meta.env.BASE_URL}articles/${article.id}`;
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <div
++        class={activeStyle.largeWrapper}
++        data-semantic-component="article-teaser-large"
++        data-semantic-domain={semanticProfile.domain}
++        data-semantic-tone={semanticProfile.tone}
++        data-visual-archetype={semanticProfile.archetype}
++    >
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
++                    <a href={categoryUrl} class="text-amber-800 text-xs font-bold uppercase tracking-widest hover:underline">
++                        {capitalizedCategory}
++                    </a>
++                    <SemanticContextBadge profile={semanticProfile} compact={false} />
++                </div>
++
++                <a href={articleUrl} class="flex-grow">
++                    <h1 class={activeStyle.largeHeadline}>
+                         {article.data.title}
+                     </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
++                    <p class="mt-4 text-base md:text-lg text-gray-700 leading-relaxed">
+                         {article.data.summary}
+                     </p>
+                 </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
++
++                <!-- Semantic Context Mini-Telemetry Strip -->
++                <div class="mt-5 grid grid-cols-3 gap-2 pt-3 border-t border-gray-200/80">
++                    {semanticProfile.contextualMetrics.map((m) => (
++                        <div class="bg-white/80 border border-gray-200/90 px-2.5 py-1.5 rounded-xs">
++                            <div class="text-[10px] uppercase tracking-wider text-gray-500">{m.label}</div>
++                            <div class="text-xs font-bold text-gray-900 font-mono">
++                                {m.value}{m.unit ? ` ${m.unit}` : ''}
++                            </div>
++                        </div>
++                    ))}
++                </div>
++
++                <div class={`flex justify-between items-center ${activeStyle.footer}`}>
++                    <span class="text-xs font-medium flex items-center gap-1.5">
++                        <BookOpenIcon className="w-4 h-4 inline-block -mt-px" />
++                        <span>{article.data.readingTime} Min.</span>
++                        <span class="opacity-50">•</span>
++                        <span class="text-[11px] opacity-85">{semanticProfile.toneLabel}</span>
+                     </span>
+                     <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                 </div>
+             </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++            <div class="lg:col-span-2 relative">
++                <a href={articleUrl} class="block relative group">
+                     <Image 
+                         src={image} 
+-                        alt=""
++                        alt={article.data.title}
+                         width={800}
+                         height={533}
+                         format="webp"
+-                        class="w-full h-auto object-cover"
++                        class={`w-full h-auto object-cover ${activeStyle.imageFrame}`}
+                     />
++                    <div class="absolute bottom-3 left-3 bg-gray-950/85 backdrop-blur-xs text-white px-3 py-1 text-xs font-mono flex items-center gap-2">
++                        <span class="w-2 h-2 rounded-full" style={`background-color: ${semanticProfile.accentPrimary}`} />
++                        <span>Visual Logic: {semanticProfile.archetypeLabel}</span>
++                    </div>
+                 </a>
+             </div>
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++    <article
++        class={`flex flex-col h-full group transition-all duration-200 hover:shadow-md ${activeStyle.cardWrapper}`}
++        data-semantic-component="article-teaser"
++        data-semantic-domain={semanticProfile.domain}
++        data-semantic-tone={semanticProfile.tone}
++        data-visual-archetype={semanticProfile.archetype}
++    >
++        <a href={articleUrl} class="relative block overflow-hidden">
+             <Image 
+                 src={image} 
+                 alt={article.data.title} 
+                 width={400}
+                 height={225}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                class={`w-full object-cover flex-shrink-0 aspect-[16/9] group-hover:scale-[1.02] transition-transform duration-300 ${activeStyle.imageFrame}`}
+             />
++            {primaryMetric && (
++                <span class={`absolute top-2 right-2 text-[10px] px-2 py-0.5 shadow-2xs backdrop-blur-xs ${activeStyle.metricPill}`}>
++                    {primaryMetric.label}: {primaryMetric.value}{primaryMetric.unit ? ` ${primaryMetric.unit}` : ''}
++                </span>
++            )}
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++            <div class="flex items-center justify-between gap-2 mb-1.5">
++                <a href={categoryUrl} class="text-amber-800 text-xs font-bold uppercase tracking-wider hover:underline">
++                    {capitalizedCategory}
++                </a>
++                <SemanticContextBadge profile={semanticProfile} compact={true} />
++            </div>
++            <a href={articleUrl} class="flex flex-col flex-grow">
++                <h3 class={activeStyle.headline}>
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p class={`flex-grow ${activeStyle.summary}`}>{article.data.summary}</p>
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
++            <div class={`flex justify-between items-center text-xs ${activeStyle.footer}`}>
++                <span class="font-medium flex items-center gap-1">
++                    <BookOpenIcon className="w-4 h-4 inline-block -mt-px" />
++                    <span>{article.data.readingTime} Min.</span>
++                    <span class="opacity-40">•</span>
++                    <span class="text-[11px] opacity-80 truncate max-w-[130px]">{semanticProfile.archetypeLabel}</span>
+                 </span>
+                 <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..f90dd1b 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,5 +1,6 @@
+ import React, { useState } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
++import { resolveCategoryDomain, deriveSemanticProfile } from '../utils/semanticContext';
+ 
+ interface BottomNavProps {
+     categories: string[];
+@@ -8,6 +9,13 @@ interface BottomNavProps {
+     multimedia: any[];
+ }
+ 
++const GROUP_ACCENTS: Record<string, string> = {
++    'News & Politics': '#dc2626',   // Crimson
++    'Arts & Culture': '#7e22ce',    // Purple
++    'Science & Tech': '#0369a1',    // Sky/Cyan
++    'Lifestyle & Sports': '#ea580c',// Orange/Amber
++};
++
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
+ 
+@@ -26,26 +34,50 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+     const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+     const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
+ 
++    const activeProfile = activeCategory
++        ? deriveSemanticProfile({
++              title: activeCategory,
++              category: activeCategory,
++          })
++        : null;
++
+     return (
+-        <div onMouseLeave={handleMouseLeave}>
+-            <div className="border-t border-b border-gray-900">
++        <div onMouseLeave={handleMouseLeave} data-semantic-component="bottom-nav">
++            <div className="border-t border-b border-gray-900 bg-white">
+                 <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+-                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                    {Object.entries(groupedCategories).map(([groupName]) => {
++                        const isActive = activeCategory === groupName;
++                        const accentColor = GROUP_ACCENTS[groupName] || '#b45309';
++                        const domain = resolveCategoryDomain(groupName);
+                         return (
+                             <div 
+                                 key={groupName}
+                                 onMouseEnter={() => setActiveCategory(groupName)}
+-                                className="h-full flex items-center"
++                                className="h-full flex items-center relative"
++                                data-semantic-domain={domain}
+                             >
+                                 <a 
+                                     href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                    className="flex items-center space-x-1.5 hover:text-gray-600 whitespace-nowrap py-1"
+                                 >
++                                    <span
++                                        className="w-2 h-2 rounded-full transition-transform duration-200"
++                                        style={{
++                                            backgroundColor: accentColor,
++                                            transform: isActive ? 'scale(1.25)' : 'scale(1)',
++                                        }}
++                                    />
+                                     <span>{groupName}</span>
+                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                     </svg>
+                                 </a>
++                                {isActive && (
++                                    <span
++                                        className="absolute bottom-0 left-0 right-0 h-0.5"
++                                        style={{ backgroundColor: accentColor }}
++                                    />
++                                )}
+                             </div>
+                         );
+                     })}
+@@ -57,6 +89,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                 articles={articles}
+                 reports={filteredReports}
+                 multimedia={filteredMultimedia}
++                semanticProfile={activeProfile}
+             />
+         </div>
+     );
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..bb67ed8 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,4 +1,6 @@
+ import React from 'react';
++import type { SemanticProfile } from '../utils/semanticContext';
++import SemanticContextBadge from './SemanticContextBadge';
+ 
+ interface FlyoutMenuProps {
+   isOpen: boolean;
+@@ -6,9 +8,18 @@ interface FlyoutMenuProps {
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
++  semanticProfile?: SemanticProfile | null;
++  onClose?: () => void;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
++  isOpen,
++  categories,
++  articles = [],
++  reports = [],
++  multimedia = [],
++  semanticProfile,
++}) => {
+   if (!isOpen) {
+     return null;
+   }
+@@ -19,16 +30,38 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+     return getScore();
+   };
+ 
+-  const topStories = articles.sort(() => 0.5 - Math.random()).slice(0, 3);
++  const topStories = [...articles].sort(() => 0.5 - Math.random()).slice(0, 3);
+ 
+   if (topStories.length > 0) {
+     setTimeout(() => calculateTrendingScore(topStories[0]), 100);
+   }
+ 
++  const accentColor = semanticProfile?.accentPrimary || '#b45309';
++  const surfaceBg = semanticProfile?.surfaceBg || '#ffffff';
++
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
++    <div
++      className="flyout-menu absolute top-full left-0 right-0 bg-white border-b-2 shadow-lg z-20 transition-colors"
++      style={{
++        borderBottomColor: accentColor,
++        backgroundColor: surfaceBg,
++      }}
++      data-semantic-component="flyout-menu"
++      data-semantic-domain={semanticProfile?.domain || 'organic-living'}
++    >
+       <div className="container mx-auto px-4 py-6">
+-        <div className="grid grid-cols-4 gap-x-8">
++        {semanticProfile && (
++          <div className="flex flex-wrap items-center justify-between gap-2 pb-4 mb-4 border-b border-gray-200/80">
++            <div className="flex items-center gap-2">
++              <SemanticContextBadge profile={semanticProfile} compact={false} showMetrics={true} />
++            </div>
++            <span className="text-xs font-mono text-gray-500">
++              Visual Archetype: {semanticProfile.archetypeLabel} • Tone: {semanticProfile.toneLabel}
++            </span>
++          </div>
++        )}
++
++        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+           
+           {/* Column 1: SECTIONS */}
+           <div>
+@@ -36,8 +69,12 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+             <ul className="space-y-2 text-sm">
+               {categories.map(category => (
+                 <li key={category}>
+-                  <a href={`${import.meta.env.BASE_URL}category/${category.toLowerCase().replace(' ', '%20')}`} className="hover:underline capitalize">
+-                    {category.charAt(0).toUpperCase() + category.slice(1)}
++                  <a
++                    href={`${import.meta.env.BASE_URL}category/${category.toLowerCase().replace(' ', '%20')}`}
++                    className="hover:underline capitalize font-medium text-gray-900 flex items-center gap-2"
++                  >
++                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
++                    <span>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                   </a>
+                 </li>
+               ))}
+@@ -47,10 +84,12 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+           {/* Column 2: TOP STORIES */}
+           <div>
+             <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
+-            <ul className="space-y-2 text-sm">
++            <ul className="space-y-2.5 text-sm">
+                 {topStories.map(article => (
+                     <li key={article.id}>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} className="hover:underline">{article.data.title}</a>
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} className="hover:underline font-medium text-gray-800 block leading-snug">
++                          {article.data.title}
++                        </a>
+                     </li>
+                 ))}
+             </ul>
+@@ -61,20 +100,25 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+               <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
+               <ul className="space-y-4 text-sm">
+                   {reports.map(report => (
+-                      <li key={report.slug}>
+-                          <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`} className="flex items-start space-x-2 group/item">
+-                              <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
+-                                  <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
++                      <li key={report.slug || report.id}>
++                          <a href={`${import.meta.env.BASE_URL}reports`} className="flex items-start space-x-2.5 group/item">
++                              <div
++                                className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 text-white font-bold shadow-2xs"
++                                style={{ backgroundColor: accentColor }}
++                              >
++                                  <span>{report.data.title.charAt(0)}</span>
+                               </div>
+                               <div>
+-                                  <p className="font-semibold group-hover/item:underline">{report.data.title}</p>
++                                  <p className="font-semibold text-gray-900 group-hover/item:underline">{report.data.title}</p>
+                                   <p className="text-xs text-gray-600">{report.data.description}</p>
+                               </div>
+                           </a>
+                       </li>
+                   ))}
+                   <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}reports`} className="text-xs font-semibold hover:underline">See all reports</a>
++                      <a href={`${import.meta.env.BASE_URL}reports`} className="text-xs font-semibold hover:underline" style={{ color: accentColor }}>
++                        See all reports →
++                      </a>
+                   </li>
+               </ul>
+           </div>
+@@ -84,20 +128,29 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+               <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
+               <ul className="space-y-4 text-sm">
+                     {multimedia.map(item => (
+-                        <li key={item.slug}>
+-                            <a href={`/multimedia/${item.slug}`} className="flex items-start space-x-2 group/item">
+-                                <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+-                                    <span className="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
++                        <li key={item.slug || item.id}>
++                            <a href={`${import.meta.env.BASE_URL}multimedia`} className="flex items-start space-x-2.5 group/item">
++                                <div
++                                  className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 font-bold border"
++                                  style={{
++                                    borderColor: accentColor,
++                                    color: accentColor,
++                                    backgroundColor: '#ffffff',
++                                  }}
++                                >
++                                    <span>{item.data.title.charAt(0)}</span>
+                                 </div>
+                                 <div>
+-                                    <p className="font-semibold group-hover/item:underline">{item.data.title}</p>
++                                    <p className="font-semibold text-gray-900 group-hover/item:underline">{item.data.title}</p>
+                                     <p className="text-xs text-gray-600">{item.data.description}</p>
+                                 </div>
+                             </a>
+                         </li>
+                     ))}
+                   <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}multimedia`} className="text-xs font-semibold hover:underline">See all multimedia</a>
++                      <a href={`${import.meta.env.BASE_URL}multimedia`} className="text-xs font-semibold hover:underline" style={{ color: accentColor }}>
++                        See all multimedia →
++                      </a>
+                   </li>
+               </ul>
+           </div>
+diff --git a/src/components/SemanticAdaptiveCallout.tsx b/src/components/SemanticAdaptiveCallout.tsx
+new file mode 100644
+index 0000000..482f8c4
+--- /dev/null
++++ b/src/components/SemanticAdaptiveCallout.tsx
+@@ -0,0 +1,196 @@
++import React, { useState } from 'react';
++import type { SemanticProfile, SemanticDomain } from '../utils/semanticContext';
++
++interface SemanticAdaptiveCalloutProps {
++  profile: SemanticProfile;
++  title?: string;
++  body?: string;
++  interactiveOverride?: boolean;
++}
++
++const DOMAIN_THEME_CLASSES: Record<
++  SemanticDomain,
++  {
++    wrapper: string;
++    headerBar: string;
++    titleText: string;
++    bodyText: string;
++    metricBox: string;
++    metricValue: string;
++    cueBadge: string;
++  }
++> = {
++  'breaking-civic': {
++    wrapper: 'bg-red-50/40 border-l-4 border-red-700 border-t border-r border-b border-red-200/70 rounded-none shadow-xs',
++    headerBar: 'bg-red-900 text-white px-4 py-1.5 text-xs uppercase tracking-widest font-bold flex items-center justify-between',
++    titleText: 'font-brand text-2xl text-red-950 tracking-tight',
++    bodyText: 'text-gray-800 text-sm leading-relaxed font-serif',
++    metricBox: 'bg-white border border-red-200 p-2.5',
++    metricValue: 'text-lg font-bold text-red-800 font-serif',
++    cueBadge: 'bg-red-100 text-red-900 border border-red-300 text-[11px] px-2 py-0.5 font-medium',
++  },
++  'economic-data': {
++    wrapper: 'bg-slate-50 border-t-2 border-emerald-700 border-x border-b border-slate-300 rounded-xs semantic-surface-ledger',
++    headerBar: 'bg-emerald-950 text-emerald-100 px-4 py-1.5 text-xs font-mono uppercase tracking-wider flex items-center justify-between',
++    titleText: 'font-mono text-lg font-bold text-slate-900 uppercase tracking-tight',
++    bodyText: 'text-slate-700 text-sm leading-relaxed font-sans',
++    metricBox: 'bg-white border border-slate-300 p-2.5 font-mono',
++    metricValue: 'text-base font-bold text-emerald-700 font-mono',
++    cueBadge: 'bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] px-2 py-0.5 font-mono',
++  },
++  'scientific-lab': {
++    wrapper: 'bg-sky-50/40 border border-sky-200 border-t-4 border-t-sky-600 rounded-sm semantic-surface-blueprint',
++    headerBar: 'bg-sky-950 text-sky-100 px-4 py-1.5 text-xs font-mono flex items-center justify-between',
++    titleText: 'font-mono text-lg font-semibold text-sky-950 tracking-tight',
++    bodyText: 'text-slate-700 text-sm leading-relaxed',
++    metricBox: 'bg-white/90 backdrop-blur-xs border border-sky-200 p-2.5 rounded-xs font-mono',
++    metricValue: 'text-base font-bold text-sky-700 font-mono',
++    cueBadge: 'bg-sky-100/80 text-sky-900 border border-sky-300 text-[11px] px-2 py-0.5 font-mono rounded-xs',
++  },
++  'cultural-stage': {
++    wrapper: 'bg-purple-50/30 border-y-2 border-purple-900 border-x border-purple-200/60 rounded-none',
++    headerBar: 'bg-purple-950 text-purple-100 px-4 py-1.5 text-xs italic tracking-wide flex items-center justify-between',
++    titleText: 'font-brand text-2xl text-purple-950 italic',
++    bodyText: 'text-gray-800 text-sm leading-relaxed italic',
++    metricBox: 'bg-white/80 border-b-2 border-purple-300 p-2.5',
++    metricValue: 'text-lg font-brand text-purple-800',
++    cueBadge: 'bg-purple-100 text-purple-900 text-[11px] px-2.5 py-0.5 italic',
++  },
++  'kinetic-pulse': {
++    wrapper: 'bg-orange-50/40 border-l-4 border-orange-600 border-y border-r border-orange-200 rounded-sm semantic-surface-kinetic',
++    headerBar: 'bg-gradient-to-r from-orange-600 to-amber-600 text-white px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest flex items-center justify-between',
++    titleText: 'font-sans text-xl font-black uppercase tracking-tight text-gray-900',
++    bodyText: 'text-gray-800 text-sm font-medium leading-snug',
++    metricBox: 'bg-gray-900 text-white p-2.5 rounded-xs',
++    metricValue: 'text-lg font-black text-orange-400 font-mono',
++    cueBadge: 'bg-orange-100 text-orange-950 border border-orange-300 text-[11px] px-2 py-0.5 font-bold uppercase',
++  },
++  'organic-living': {
++    wrapper: 'bg-amber-50/40 border border-amber-200/90 rounded-2xl shadow-2xs',
++    headerBar: 'bg-amber-100/80 text-amber-950 px-5 py-2 text-xs font-medium rounded-t-2xl flex items-center justify-between border-b border-amber-200/60',
++    titleText: 'font-brand text-2xl text-amber-950',
++    bodyText: 'text-stone-700 text-sm leading-relaxed',
++    metricBox: 'bg-white/90 border border-amber-200/80 p-3 rounded-xl',
++    metricValue: 'text-base font-semibold text-amber-800',
++    cueBadge: 'bg-white text-amber-900 border border-amber-200 text-[11px] px-3 py-0.5 rounded-full',
++  },
++};
++
++export default function SemanticAdaptiveCallout({
++  profile,
++  title,
++  body,
++  interactiveOverride = true,
++}: SemanticAdaptiveCalloutProps) {
++  const [activeDomain, setActiveDomain] = useState<SemanticDomain>(profile.domain);
++  const [showInspector, setShowInspector] = useState(false);
++
++  const theme = DOMAIN_THEME_CLASSES[activeDomain];
++  const displayTitle = title || profile.calloutTitle;
++  const displayBody = body || profile.calloutBody;
++
++  const domainOptions: Array<{ id: SemanticDomain; label: string }> = [
++    { id: 'breaking-civic', label: 'Broadsheet' },
++    { id: 'economic-data', label: 'Ledger' },
++    { id: 'scientific-lab', label: 'Dossier' },
++    { id: 'cultural-stage', label: 'Playbill' },
++    { id: 'kinetic-pulse', label: 'Telemetry' },
++    { id: 'organic-living', label: 'Fieldnote' },
++  ];
++
++  return (
++    <aside
++      className={`my-6 transition-all duration-300 ${theme.wrapper}`}
++      data-semantic-component="adaptive-callout"
++      data-semantic-domain={activeDomain}
++      data-visual-archetype={profile.archetype}
++    >
++      {/* Semantic Context Header Bar */}
++      <div className={theme.headerBar}>
++        <div className="flex items-center gap-2">
++          <span className="inline-block w-2 h-2 rounded-full bg-current opacity-80" />
++          <span>
++            Semantic Context: {profile.domainLabel} • {profile.archetypeLabel}
++          </span>
++        </div>
++        {interactiveOverride && (
++          <button
++            type="button"
++            onClick={() => setShowInspector(!showInspector)}
++            className="text-[11px] underline opacity-90 hover:opacity-100 cursor-pointer"
++          >
++            {showInspector ? 'Hide Visual Logic' : 'Inspect Visual Logic'}
++          </button>
++        )}
++      </div>
++
++      {/* Optional Interactive Visual Logic Switcher / Inspector */}
++      {showInspector && (
++        <div className="px-4 py-3 bg-white/95 border-b border-gray-200 text-xs">
++          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
++            <span className="font-semibold text-gray-700">
++              Preview Adaptive Visual Archetype Override:
++            </span>
++            <div className="flex flex-wrap gap-1">
++              {domainOptions.map((opt) => (
++                <button
++                  key={opt.id}
++                  type="button"
++                  onClick={() => setActiveDomain(opt.id)}
++                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
++                    activeDomain === opt.id
++                      ? 'bg-gray-900 text-white'
++                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
++                  }`}
++                >
++                  {opt.label}
++                </button>
++              ))}
++            </div>
++          </div>
++          <div className="grid grid-cols-3 gap-2 pt-1 text-[11px] text-gray-600 font-mono">
++            <div>Urgency Score: {profile.urgencyScore}/100</div>
++            <div>Analytical Density: {profile.analyticalDensity}/100</div>
++            <div>Sensory Warmth: {profile.sensoryWarmth}/100</div>
++          </div>
++        </div>
++      )}
++
++      {/* Main Callout Body */}
++      <div className="p-4 sm:p-5">
++        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
++          <div className="flex-1">
++            <div className="text-[11px] uppercase tracking-wider opacity-70 font-semibold mb-1">
++              {profile.toneLabel} • {profile.depth.replace('-', ' ')}
++            </div>
++            <h4 className={`mb-2 ${theme.titleText}`}>{displayTitle}</h4>
++            <p className={theme.bodyText}>{displayBody}</p>
++
++            {/* Semantic Cues */}
++            <div className="mt-3 flex flex-wrap items-center gap-1.5">
++              <span className="text-[11px] text-gray-500 font-medium mr-1">Context Signals:</span>
++              {profile.semanticCues.map((cue, idx) => (
++                <span key={idx} className={theme.cueBadge}>
++                  {cue}
++                </span>
++              ))}
++            </div>
++          </div>
++
++          {/* Contextual Metrics Grid */}
++          <div className="grid grid-cols-3 md:grid-cols-1 gap-2 md:w-44 flex-shrink-0">
++            {profile.contextualMetrics.map((metric, idx) => (
++              <div key={idx} className={theme.metricBox}>
++                <div className="text-[10px] uppercase tracking-wider opacity-70">{metric.label}</div>
++                <div className={theme.metricValue}>
++                  {metric.value}
++                  {metric.unit && <span className="text-xs font-normal opacity-75 ml-0.5">{metric.unit}</span>}
++                </div>
++              </div>
++            ))}
++          </div>
++        </div>
++      </div>
++    </aside>
++  );
++}
+diff --git a/src/components/SemanticContextBadge.tsx b/src/components/SemanticContextBadge.tsx
+new file mode 100644
+index 0000000..17b4150
+--- /dev/null
++++ b/src/components/SemanticContextBadge.tsx
+@@ -0,0 +1,100 @@
++import React from 'react';
++import type { SemanticProfile, SemanticDomain, SemanticTone } from '../utils/semanticContext';
++
++interface SemanticContextBadgeProps {
++  profile: SemanticProfile;
++  compact?: boolean;
++  showMetrics?: boolean;
++  href?: string;
++}
++
++const DOMAIN_ICONS: Record<SemanticDomain, React.ReactNode> = {
++  'breaking-civic': (
++    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
++    </svg>
++  ),
++  'economic-data': (
++    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
++    </svg>
++  ),
++  'scientific-lab': (
++    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
++    </svg>
++  ),
++  'cultural-stage': (
++    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
++    </svg>
++  ),
++  'kinetic-pulse': (
++    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
++    </svg>
++  ),
++  'organic-living': (
++    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
++    </svg>
++  ),
++};
++
++const TONE_DOT_COLORS: Record<SemanticTone, string> = {
++  urgent: 'bg-red-600 animate-pulse',
++  analytical: 'bg-sky-600',
++  expressive: 'bg-purple-600',
++  kinetic: 'bg-orange-500 animate-pulse',
++  serene: 'bg-amber-600',
++};
++
++export default function SemanticContextBadge({
++  profile,
++  compact = false,
++  showMetrics = false,
++  href,
++}: SemanticContextBadgeProps) {
++  const pillContent = (
++    <span
++      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium transition-all ${profile.badgeStyle}`}
++      data-semantic-domain={profile.domain}
++      data-semantic-tone={profile.tone}
++      data-visual-archetype={profile.archetype}
++    >
++      <span className="flex-shrink-0">{DOMAIN_ICONS[profile.domain]}</span>
++      <span>{profile.domainLabel}</span>
++      {!compact && (
++        <>
++          <span className="opacity-40">•</span>
++          <span className="inline-flex items-center gap-1 opacity-90">
++            <span className={`w-1.5 h-1.5 rounded-full ${TONE_DOT_COLORS[profile.tone]}`} />
++            <span>{profile.archetypeLabel}</span>
++          </span>
++        </>
++      )}
++    </span>
++  );
++
++  return (
++    <div className="flex flex-wrap items-center gap-2">
++      {href ? (
++        <a href={href} className="hover:opacity-85 transition-opacity">
++          {pillContent}
++        </a>
++      ) : (
++        pillContent
++      )}
++
++      {showMetrics && profile.contextualMetrics.length > 0 && (
++        <div className="inline-flex items-center gap-1.5 text-[11px] text-gray-600 font-mono bg-gray-100/90 px-2 py-0.5 rounded border border-gray-200">
++          <span className="font-semibold text-gray-800">{profile.contextualMetrics[0].label}:</span>
++          <span>
++            {profile.contextualMetrics[0].value}
++            {profile.contextualMetrics[0].unit ? ` ${profile.contextualMetrics[0].unit}` : ''}
++          </span>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/SemanticContextWorkbench.tsx b/src/components/SemanticContextWorkbench.tsx
+new file mode 100644
+index 0000000..cc0de7a
+--- /dev/null
++++ b/src/components/SemanticContextWorkbench.tsx
+@@ -0,0 +1,333 @@
++import React, { useState } from 'react';
++import {
++  deriveSemanticProfile,
++  getAllSemanticDomains,
++  type SemanticDomain,
++} from '../utils/semanticContext';
++import SemanticContextBadge from './SemanticContextBadge';
++import SemanticAdaptiveCallout from './SemanticAdaptiveCallout';
++
++interface SampleItem {
++  id: string;
++  title: string;
++  summary: string;
++  category: string;
++  readingTime: number;
++  tags: string[];
++  author: string;
++}
++
++const PRESET_SAMPLES: SampleItem[] = [
++  {
++    id: 'infrastructure-decay',
++    title: 'Crumbling Infrastructure: A Ticking Time Bomb for Public Safety',
++    summary:
++      'Years of underfunding and neglect have left the nation’s roads, bridges, and public transit systems in a perilous state, with experts warning of catastrophic failures.',
++    category: 'National',
++    readingTime: 3,
++    tags: ['national', 'infrastructure', 'politics', 'safety'],
++    author: 'Emily Carter',
++  },
++  {
++    id: 'manufacturing-boom',
++    title: 'Manufacturing Boom: A New Era for American Industry?',
++    summary:
++      'A recent surge in domestic manufacturing is sparking hope for an industrial renaissance, driven by investments in high-tech sectors and supply chains.',
++    category: 'Business',
++    readingTime: 3,
++    tags: ['business', 'economy', 'manufacturing', 'jobs'],
++    author: 'Michael Chen',
++  },
++  {
++    id: 'breakthrough-research',
++    title: 'Breakthrough Research: A New Era in Medicine',
++    summary:
++      'Scientists are on the verge of a major breakthrough that could change the way we treat a wide range of diseases through molecular sequencing and laboratory trials.',
++    category: 'science',
++    readingTime: 6,
++    tags: ['science', 'medicine', 'research', 'dna'],
++    author: 'Science Today',
++  },
++  {
++    id: 'modern-swan-lake',
++    title: "A Modern 'Swan Lake': How a New Production is Redefining a Classic",
++    summary:
++      "A bold new interpretation of the classic ballet 'Swan Lake' is challenging conventions and captivating audiences with its contemporary choreography and visual stage design.",
++    category: 'Culture',
++    readingTime: 3,
++    tags: ['dance', 'ballet', 'theater', 'arts'],
++    author: 'Isabella Dubois',
++  },
++  {
++    id: 'super-bowl-lx',
++    title: 'Super Bowl LX: A Historic Rematch in Santa Clara',
++    summary:
++      'Following a grueling Conference Championship weekend, the New England Patriots and Seattle Seahawks have officially punched their tickets to Super Bowl LX.',
++    category: 'sports',
++    readingTime: 4,
++    tags: ['sports', 'stadium', 'championships'],
++    author: 'Sports Desk',
++  },
++  {
++    id: 'coastal-pulse',
++    title: 'The Coastal Pulse: Life by the Shore',
++    summary:
++      'Living by the seaside offers a sensory experience that shifts with the tides, where daily activities follow the calm intertidal rhythm and ocean breeze.',
++    category: 'lifestyle',
++    readingTime: 5,
++    tags: ['coastal', 'nature', 'lifestyle'],
++    author: 'Nature Weekly',
++  },
++];
++
++const DOMAIN_CATEGORY_MAP: Record<SemanticDomain, string> = {
++  'breaking-civic': 'Politics',
++  'economic-data': 'Economy',
++  'scientific-lab': 'science',
++  'cultural-stage': 'Culture',
++  'kinetic-pulse': 'sports',
++  'organic-living': 'lifestyle',
++};
++
++export default function SemanticContextWorkbench({ baseUrl = '/' }: { baseUrl?: string }) {
++  const [selectedPresetIndex, setSelectedPresetIndex] = useState(0);
++  const [customCategoryOverride, setCustomCategoryOverride] = useState<string | null>(null);
++  const [isOpen, setIsOpen] = useState(false);
++
++  const activeSample = PRESET_SAMPLES[selectedPresetIndex];
++  const effectiveCategory = customCategoryOverride || activeSample.category;
++
++  const profile = deriveSemanticProfile({
++    title: activeSample.title,
++    summary: activeSample.summary,
++    category: effectiveCategory,
++    readingTime: activeSample.readingTime,
++    tags: activeSample.tags,
++  });
++
++  const allDomains = getAllSemanticDomains();
++
++  return (
++    <section
++      className="border-y border-gray-300 bg-gradient-to-b from-gray-50 to-white px-4 py-5 md:px-6"
++      data-semantic-component="context-workbench"
++      data-semantic-domain={profile.domain}
++    >
++      <div className="max-w-6xl mx-auto">
++        {/* Compact Banner Bar */}
++        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
++          <div className="flex items-start md:items-center gap-3">
++            <span
++              className="inline-flex items-center justify-center w-8 h-8 rounded-md text-white font-mono text-xs font-bold flex-shrink-0 shadow-xs"
++              style={{ backgroundColor: profile.accentPrimary }}
++            >
++              SC
++            </span>
++            <div>
++              <div className="flex flex-wrap items-center gap-2">
++                <h2 className="text-sm font-bold uppercase tracking-wider text-gray-900">
++                  Semantic Visual Logic Engine
++                </h2>
++                <SemanticContextBadge profile={profile} compact={false} showMetrics={true} />
++              </div>
++              <p className="text-xs text-gray-600 mt-0.5">
++                Components across The DevTools Times automatically adapt typography, geometry, color tokens, and telemetry to each story’s semantic domain and tone.
++              </p>
++            </div>
++          </div>
++
++          <div className="flex items-center gap-2 self-start md:self-center">
++            <button
++              type="button"
++              onClick={() => setIsOpen(!isOpen)}
++              className="px-3 py-1.5 text-xs font-semibold rounded border border-gray-800 bg-gray-900 text-white hover:bg-gray-700 transition-colors cursor-pointer whitespace-nowrap"
++            >
++              {isOpen ? 'Close Semantic Matrix' : 'Explore Semantic Matrix'}
++            </button>
++          </div>
++        </div>
++
++        {/* Domain Quick-Pills Row */}
++        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
++          {allDomains.map((dom, idx) => {
++            const isSelected = profile.domain === dom.domain;
++            return (
++              <button
++                key={dom.domain}
++                type="button"
++                onClick={() => {
++                  setSelectedPresetIndex(idx);
++                  setCustomCategoryOverride(null);
++                  setIsOpen(true);
++                }}
++                className={`text-left p-2.5 border transition-all cursor-pointer ${
++                  isSelected
++                    ? 'bg-white border-gray-900 shadow-xs ring-1 ring-gray-900'
++                    : 'bg-white/70 border-gray-200 hover:border-gray-400 hover:bg-white'
++                }`}
++              >
++                <div className="flex items-center justify-between gap-1 mb-1">
++                  <span
++                    className="w-2 h-2 rounded-full flex-shrink-0"
++                    style={{ backgroundColor: dom.accentPrimary }}
++                  />
++                  <span className="text-[10px] font-mono uppercase tracking-wider text-gray-500 truncate">
++                    {dom.archetypeLabel}
++                  </span>
++                </div>
++                <div className="text-xs font-bold text-gray-900 truncate">{dom.label}</div>
++              </button>
++            );
++          })}
++        </div>
++
++        {/* Expanded Interactive Workbench */}
++        {isOpen && (
++          <div className="mt-5 pt-5 border-t border-gray-200 grid grid-cols-1 lg:grid-cols-12 gap-6">
++            {/* Left Column: Semantic Signals & Context Controls */}
++            <div className="lg:col-span-5 space-y-4 bg-white p-4 border border-gray-200">
++              <div>
++                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
++                  1. Select Story Context Input
++                </label>
++                <div className="space-y-1.5">
++                  {PRESET_SAMPLES.map((sample, idx) => (
++                    <button
++                      key={sample.id}
++                      type="button"
++                      onClick={() => {
++                        setSelectedPresetIndex(idx);
++                        setCustomCategoryOverride(null);
++                      }}
++                      className={`w-full text-left px-3 py-2 text-xs border transition-colors cursor-pointer flex items-center justify-between ${
++                        selectedPresetIndex === idx && !customCategoryOverride
++                          ? 'bg-gray-900 text-white border-gray-900 font-semibold'
++                          : 'bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100'
++                      }`}
++                    >
++                      <span className="truncate pr-2">{sample.title}</span>
++                      <span className="text-[10px] uppercase font-mono opacity-75 flex-shrink-0">
++                        {sample.category}
++                      </span>
++                    </button>
++                  ))}
++                </div>
++              </div>
++
++              <div>
++                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
++                  2. Re-Contextualize Semantic Domain (Live Adaptation Test)
++                </label>
++                <div className="flex flex-wrap gap-1.5">
++                  {allDomains.map((dom) => {
++                    const mappedCat = DOMAIN_CATEGORY_MAP[dom.domain];
++                    const active = profile.domain === dom.domain;
++                    return (
++                      <button
++                        key={dom.domain}
++                        type="button"
++                        onClick={() => setCustomCategoryOverride(mappedCat)}
++                        className={`px-2.5 py-1 text-xs border transition-all cursor-pointer ${
++                          active
++                            ? 'bg-gray-900 text-white border-gray-900 font-semibold'
++                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
++                        }`}
++                      >
++                        {dom.archetypeLabel}
++                      </button>
++                    );
++                  })}
++                </div>
++              </div>
++
++              {/* Computed Semantic Vectors */}
++              <div className="pt-2 border-t border-gray-100 space-y-2">
++                <div className="text-xs font-bold uppercase tracking-wider text-gray-700">
++                  Computed Semantic Vector
++                </div>
++                <div className="space-y-1.5 text-xs">
++                  <div>
++                    <div className="flex justify-between font-mono text-[11px] mb-0.5">
++                      <span>Urgency & Civic Velocity</span>
++                      <span>{profile.urgencyScore}/100</span>
++                    </div>
++                    <div className="w-full h-1.5 bg-gray-200 overflow-hidden">
++                      <div
++                        className="h-full transition-all duration-300"
++                        style={{
++                          width: `${profile.urgencyScore}%`,
++                          backgroundColor: profile.accentPrimary,
++                        }}
++                      />
++                    </div>
++                  </div>
++                  <div>
++                    <div className="flex justify-between font-mono text-[11px] mb-0.5">
++                      <span>Analytical & Empirical Density</span>
++                      <span>{profile.analyticalDensity}/100</span>
++                    </div>
++                    <div className="w-full h-1.5 bg-gray-200 overflow-hidden">
++                      <div
++                        className="h-full transition-all duration-300"
++                        style={{
++                          width: `${profile.analyticalDensity}%`,
++                          backgroundColor: profile.accentSecondary,
++                        }}
++                      />
++                    </div>
++                  </div>
++                  <div>
++                    <div className="flex justify-between font-mono text-[11px] mb-0.5">
++                      <span>Sensory & Expressive Warmth</span>
++                      <span>{profile.sensoryWarmth}/100</span>
++                    </div>
++                    <div className="w-full h-1.5 bg-gray-200 overflow-hidden">
++                      <div
++                        className="h-full transition-all duration-300"
++                        style={{
++                          width: `${profile.sensoryWarmth}%`,
++                          backgroundColor: profile.accentPrimary,
++                        }}
++                      />
++                    </div>
++                  </div>
++                </div>
++              </div>
++            </div>
++
++            {/* Right Column: Live Adaptive Component Output */}
++            <div className="lg:col-span-7 flex flex-col justify-between bg-white p-4 border border-gray-200">
++              <div>
++                <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
++                  <span className="text-xs font-mono uppercase tracking-wider text-gray-500">
++                    Adaptive Component Render • Layout: {profile.layoutPattern} • Font: {profile.fontPairing}
++                  </span>
++                  <a
++                    href={`${baseUrl}articles/${activeSample.id}`}
++                    className="text-xs font-semibold hover:underline"
++                    style={{ color: profile.accentPrimary }}
++                  >
++                    Open Full Article →
++                  </a>
++                </div>
++
++                <SemanticAdaptiveCallout
++                  profile={profile}
++                  title={activeSample.title}
++                  body={activeSample.summary}
++                  interactiveOverride={false}
++                />
++              </div>
++
++              <div className="mt-2 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 font-mono">
++                <span>Archetype: {profile.archetype}</span>
++                <span>Tone: {profile.toneLabel}</span>
++                <span>Depth: {profile.depth}</span>
++              </div>
++            </div>
++          </div>
++        )}
++      </div>
++    </section>
++  );
++}
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..3d58e44 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -1,6 +1,8 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
++import { deriveSemanticProfile } from '../utils/semanticContext';
++import SemanticContextBadge from './SemanticContextBadge';
+ 
+ export interface Props {
+     title: string;
+@@ -8,11 +10,31 @@ export interface Props {
+ }
+ 
+ const { title, articles } = Astro.props;
++const leadCategory = articles[0]?.data.category ?? 'news';
++const sectionProfile = deriveSemanticProfile({
++    title,
++    summary: articles[0]?.data.summary ?? '',
++    category: leadCategory,
++    readingTime: articles[0]?.data.readingTime ?? 4,
++});
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+-        {title}
+-    </h2>
++<section
++    class="p-4 md:p-6"
++    data-semantic-component="simple-teaser-grid"
++    data-semantic-domain={sectionProfile.domain}
++    data-visual-archetype={sectionProfile.archetype}
++>
++    <div class="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-gray-900 pb-2.5 mb-6 lg:mb-8 gap-2">
++        <div>
++            <span class="text-[11px] font-mono uppercase tracking-widest text-gray-500 block">
++                Contextual Dispatch • {sectionProfile.archetypeLabel}
++            </span>
++            <h2 class="text-3xl font-bold text-gray-900">
++                {title}
++            </h2>
++        </div>
++        <SemanticContextBadge profile={sectionProfile} compact={false} showMetrics={true} />
++    </div>
+ 
+     <div class="grid md:grid-cols-3 gap-6">
+       {articles.map(article => <ArticleTeaser article={article} />)}
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..7d67c7b 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -3,7 +3,13 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import { BookOpenIcon } from '@heroicons/react/24/outline';
++import {
++    deriveArticleSemanticProfile,
++    deriveSemanticProfile,
++    type SemanticDomain,
++} from '../utils/semanticContext';
++import SemanticContextBadge from './SemanticContextBadge';
+ 
+ export interface Props {
+     title: string;
+@@ -25,78 +31,157 @@ const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage
+ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
++const topSemanticProfile = deriveArticleSemanticProfile(topArticle);
++const sectionProfile = deriveSemanticProfile({
++    title,
++    summary: topArticle.data.summary,
++    category: title.toLowerCase() === 'politics' ? 'Politics' : topArticle.data.category,
++    readingTime: topArticle.data.readingTime ?? 4,
++});
++
++const sectionBorderStyles: Record<SemanticDomain, string> = {
++    'breaking-civic': 'border-red-800',
++    'economic-data': 'border-emerald-800',
++    'scientific-lab': 'border-sky-800',
++    'cultural-stage': 'border-purple-900',
++    'kinetic-pulse': 'border-orange-600',
++    'organic-living': 'border-amber-800',
++};
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+-        {title}
+-    </h2>
++<section
++    class="p-4 md:p-6"
++    data-semantic-component="top-story-teaser-grid"
++    data-semantic-domain={sectionProfile.domain}
++    data-visual-archetype={sectionProfile.archetype}
++>
++    <div class={`flex flex-col sm:flex-row sm:items-end justify-between border-b-2 pb-2.5 mb-6 lg:mb-8 gap-2 ${sectionBorderStyles[sectionProfile.domain]}`}>
++        <div>
++            <span class="text-[11px] font-mono uppercase tracking-widest text-gray-500 block">
++                Semantic Section • {sectionProfile.archetypeLabel}
++            </span>
++            <h2 class="text-3xl font-bold text-gray-900">
++                {title}
++            </h2>
++        </div>
++        <SemanticContextBadge profile={sectionProfile} compact={false} showMetrics={true} />
++    </div>
+ 
+-    <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <!-- Top Section: Large Article with Adaptive Visual Logic -->
++    <div
++        class={`shadow-sm overflow-hidden mb-6 lg:mb-8 border ${topSemanticProfile.borderStyle}`}
++        style={`background-color: ${topSemanticProfile.surfaceBg}`}
++        data-semantic-domain={topSemanticProfile.domain}
++        data-visual-archetype={topSemanticProfile.archetype}
++    >
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
++                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
++                    <a
++                        href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`}
++                        class="font-bold text-xs uppercase tracking-widest hover:underline"
++                        style={`color: ${topSemanticProfile.accentPrimary}`}
++                    >
++                        {capitalizedCategory}
++                    </a>
++                    <SemanticContextBadge profile={topSemanticProfile} compact={false} />
++                </div>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-500 transition-colors text-gray-950">
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
++                <p class="text-gray-700 mb-5 text-base lg:text-lg leading-relaxed">
+                     {topArticle.data.summary}
+                 </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
++
++                <!-- Adaptive Contextual Metrics Strip -->
++                <div class="grid grid-cols-3 gap-2 mb-4 pt-3 border-t border-gray-200/80">
++                    {topSemanticProfile.contextualMetrics.map((metric) => (
++                        <div class="bg-white/90 border border-gray-200 px-2.5 py-1.5">
++                            <div class="text-[10px] uppercase tracking-wider text-gray-500">{metric.label}</div>
++                            <div class="text-xs font-bold font-mono text-gray-900">
++                                {metric.value}{metric.unit ? ` ${metric.unit}` : ''}
++                            </div>
++                        </div>
++                    ))}
++                </div>
++
++                <div class="flex items-center justify-between text-gray-500 text-xs font-mono">
++                    <div class="flex items-center">
++                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
++                        </svg>
++                        <span>{topArticle.data.readingTime} Min Read • {topSemanticProfile.toneLabel}</span>
++                    </div>
++                    <BookmarkButton client:visible slug={topArticle.id} initialIsBookmarked={readingList.includes(topArticle.id)} />
+                 </div>
+             </div>
+-            <div class="w-full order-first lg:order-last">
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++            <div class="w-full order-first lg:order-last relative">
++                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`} class="block h-full">
++                    <Image width="640" height="360" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                 </a>
+             </div>
+         </div>
+     </div>
+ 
+-    <!-- Bottom Section: Three Smaller Articles -->
++    <!-- Bottom Section: Three Smaller Articles with Individual Semantic Profiles -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+         {bottomArticles.map((article, index) => {
+             const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+             const isBookmarked = readingList.includes(article.id);
++            const itemProfile = deriveArticleSemanticProfile(article);
++            const primaryMetric = itemProfile.contextualMetrics[0];
++
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <div
++                    class={`flex flex-col shadow-xs overflow-hidden h-full border bg-white transition-all hover:shadow-md ${itemProfile.borderStyle}`}
++                    data-semantic-component="top-story-subcard"
++                    data-semantic-domain={itemProfile.domain}
++                    data-visual-archetype={itemProfile.archetype}
++                >
+                     {index === 1 && (
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="relative block">
+                             <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                            {primaryMetric && (
++                                <span class="absolute top-2 right-2 bg-gray-950/80 text-white text-[10px] font-mono px-2 py-0.5">
++                                    {primaryMetric.label}: {primaryMetric.value}
++                                </span>
++                            )}
+                         </a>
+                     )}
+-                    <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                            {capitalizedBottomCategory}
+-                        </a>
++                    <div class="p-4 sm:p-5 flex flex-col flex-grow" style={`background-color: ${itemProfile.surfaceBg}`}>
++                        <div class="flex items-center justify-between gap-2 mb-2">
++                            <a
++                                href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`}
++                                class="font-bold text-xs uppercase tracking-wider hover:underline"
++                                style={`color: ${itemProfile.accentPrimary}`}
++                            >
++                                {capitalizedBottomCategory}
++                            </a>
++                            <SemanticContextBadge profile={itemProfile} compact={true} />
++                        </div>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-500 transition-colors text-gray-900 leading-snug">
+                                 {article.data.title}
+                             </h3>
+                         </a>
+                         {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
++                            <p class="text-gray-700 text-sm mb-4 flex-grow leading-relaxed">
+                                 {article.data.summary}
+                             </p>
+                         )}
+-                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                            <span class="text-xs font-medium flex items-center">
+-                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                                {article.data.readingTime} Min.
++                        <div class="flex justify-between items-center text-gray-500 mt-auto pt-2.5 border-t border-gray-200/70">
++                            <span class="text-xs font-medium flex items-center gap-1.5">
++                                <BookOpenIcon className="w-4 h-4 inline-block -mt-px" />
++                                <span>{article.data.readingTime} Min.</span>
++                                <span class="opacity-40">•</span>
++                                <span class="font-mono text-[11px]">{itemProfile.archetypeLabel}</span>
+                             </span>
+                             <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                         </div>
+                     </div>
+                 </div>
+-            )
++            );
+         })}
+     </div>
+ </section>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..3f67fb6 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,12 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import {
++    deriveArticleSemanticProfile,
++    type SemanticDomain,
++} from '../../utils/semanticContext';
++import SemanticContextBadge from '../../components/SemanticContextBadge';
++import SemanticAdaptiveCallout from '../../components/SemanticAdaptiveCallout';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -22,43 +28,127 @@ if (!slug) throw new Error('Slug not found');
+ const article = await getEntry('articles', slug);
+ if (!article) return Astro.redirect('/404');
+ 
+-
+-
+-
+ const { Content } = await render(article);
+ const allArticles = await getCollection('articles');
+ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
+ 
+ const articleImage = await getArticleImage(article);
+-const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
++
++const semanticProfile = deriveArticleSemanticProfile(article);
++
++const domainArticleStyles: Record<SemanticDomain, {
++    articleWrapper: string;
++    headerBanner: string;
++    headline: string;
++    leadParagraph: string;
++    figureFrame: string;
++    caption: string;
++    proseWrapper: string;
++}> = {
++    'breaking-civic': {
++        articleWrapper: 'border-t-4 border-red-700 bg-white',
++        headerBanner: 'border-l-4 border-red-700 pl-4 py-1 bg-red-50/30',
++        headline: 'text-3xl md:text-5xl font-brand text-gray-950 mb-4 leading-tight',
++        leadParagraph: 'text-lg md:text-xl text-gray-800 font-serif mb-5 leading-relaxed',
++        figureFrame: 'border-b-2 border-red-800 pb-2',
++        caption: 'text-xs text-red-950/70 font-serif mt-2 px-1',
++        proseWrapper: 'prose max-w-none prose-headings:font-brand prose-a:text-red-700',
++    },
++    'economic-data': {
++        articleWrapper: 'border-t-2 border-emerald-700 bg-white semantic-surface-ledger',
++        headerBanner: 'border-l-4 border-emerald-700 pl-4 py-1 bg-emerald-50/30',
++        headline: 'text-3xl md:text-5xl font-sans font-extrabold text-slate-900 mb-4 leading-tight tracking-tight',
++        leadParagraph: 'text-lg md:text-xl text-slate-700 font-normal mb-5 leading-relaxed',
++        figureFrame: 'border border-slate-300 p-1 bg-slate-50',
++        caption: 'text-xs text-slate-600 font-mono mt-2 px-2',
++        proseWrapper: 'prose max-w-none prose-headings:font-mono prose-a:text-emerald-700',
++    },
++    'scientific-lab': {
++        articleWrapper: 'border-t-4 border-sky-600 bg-white semantic-surface-blueprint',
++        headerBanner: 'border border-sky-200 border-l-4 border-l-sky-600 p-3 bg-sky-50/40 rounded-xs',
++        headline: 'text-3xl md:text-4xl font-mono font-bold text-sky-950 mb-4 leading-snug tracking-tight',
++        leadParagraph: 'text-base md:text-lg text-slate-700 font-normal mb-5 leading-relaxed',
++        figureFrame: 'border border-sky-200 p-1.5 bg-sky-50/30 rounded-xs',
++        caption: 'text-xs text-sky-900 font-mono mt-2 px-2',
++        proseWrapper: 'prose max-w-none prose-headings:font-mono prose-a:text-sky-700',
++    },
++    'cultural-stage': {
++        articleWrapper: 'border-t-4 border-purple-900 bg-white',
++        headerBanner: 'border-b-2 border-purple-200 pb-3',
++        headline: 'text-3xl md:text-5xl font-brand italic text-purple-950 mb-4 leading-tight',
++        leadParagraph: 'text-lg md:text-xl text-gray-700 italic font-light mb-5 leading-relaxed',
++        figureFrame: 'shadow-sm border-b-4 border-purple-900',
++        caption: 'text-xs text-purple-900 italic mt-2 px-2',
++        proseWrapper: 'prose max-w-none prose-headings:font-brand prose-a:text-purple-700',
++    },
++    'kinetic-pulse': {
++        articleWrapper: 'border-t-4 border-orange-600 bg-white semantic-surface-kinetic',
++        headerBanner: 'border-l-4 border-orange-600 pl-4 py-1 bg-orange-50/40',
++        headline: 'text-3xl md:text-5xl font-sans font-black uppercase text-gray-900 mb-4 leading-none tracking-tight',
++        leadParagraph: 'text-lg md:text-xl text-gray-800 font-medium mb-5 leading-snug',
++        figureFrame: 'border-b-4 border-orange-600',
++        caption: 'text-xs text-gray-700 font-mono uppercase tracking-wider mt-2 px-2',
++        proseWrapper: 'prose max-w-none prose-headings:uppercase prose-headings:font-black prose-a:text-orange-600',
++    },
++    'organic-living': {
++        articleWrapper: 'bg-amber-50/15 rounded-b-2xl',
++        headerBanner: 'bg-amber-50/60 border border-amber-200/80 rounded-xl p-4',
++        headline: 'text-3xl md:text-5xl font-brand text-stone-900 mb-4 leading-tight',
++        leadParagraph: 'text-lg md:text-xl text-stone-700 font-light mb-5 leading-relaxed',
++        figureFrame: 'rounded-2xl overflow-hidden border border-amber-200/70 p-1 bg-white',
++        caption: 'text-xs text-stone-500 mt-2 px-3 italic',
++        proseWrapper: 'prose max-w-none prose-headings:font-brand prose-a:text-amber-700',
++    },
++};
++
++const activeArticleStyle = domainArticleStyles[semanticProfile.domain];
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++    <article
++        class={`max-w-3xl mx-auto px-4 py-8 md:py-12 ${activeArticleStyle.articleWrapper}`}
++        data-semantic-component="article-detail"
++        data-semantic-domain={semanticProfile.domain}
++        data-semantic-tone={semanticProfile.tone}
++        data-visual-archetype={semanticProfile.archetype}
++    >
++        <!-- Breadcrumbs / Category + Semantic Context Badge -->
++        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
++            <div class="text-sm uppercase tracking-widest font-bold" style={`color: ${semanticProfile.accentPrimary}`}>
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:underline">
++                    {article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}
++                </a>
++            </div>
++            <SemanticContextBadge profile={semanticProfile} compact={false} showMetrics={true} />
++        </div>
++
++        <!-- Adaptive Header Framing -->
++        <div class={`mb-5 ${activeArticleStyle.headerBanner}`}>
++            <!-- Headline -->
++            <h1 class={activeArticleStyle.headline}>
++                {article.data.title}
++            </h1>
++            
++            <!-- Sub-headline / Lead Paragraph -->
++            <p class={activeArticleStyle.leadParagraph}>
++                {article.data.summary}
++            </p>
+         </div>
+ 
+-        <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+-            {article.data.title}
+-        </h1>
+-        
+-        <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
+-            {article.data.summary}
+-        </p>
+-
+-        <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++        <!-- Author / Date / Reading Depth -->
++        <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
++            <div>
++                By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            </div>
++            <div class="font-mono text-xs bg-gray-100 px-2.5 py-1 rounded text-gray-700">
++                {article.data.readingTime ?? 4} Min • {semanticProfile.toneLabel}
++            </div>
+         </div>
+ 
+         <!-- Main Article Image -->
+-        <figure class="mb-5">
++        <figure class={`mb-6 ${activeArticleStyle.figureFrame}`}>
+             {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+             {article.data.prompt_comment ? (
+                 <img 
+@@ -80,12 +170,15 @@ const isBookmarked = readingList.includes(article.slug);
+                 />
+             )}
+             {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                <figcaption class={activeArticleStyle.caption}>
+                     {article.data.image_caption}
+                 </figcaption>
+             )}
+         </figure>
+ 
++        <!-- Semantic Context Adaptive Callout & Interactive Archetype Inspector -->
++        <SemanticAdaptiveCallout client:load profile={semanticProfile} interactiveOverride={true} />
++
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+             <!-- Social Share Icons (Placeholders) -->
+@@ -101,11 +194,10 @@ const isBookmarked = readingList.includes(article.slug);
+                 </a>
+                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+             </div>
+-
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div class={activeArticleStyle.proseWrapper}>
+             <Content />
+         </div>
+ 
+@@ -117,10 +209,9 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+     <!-- RELATED ARTICLES SECTION -->
+     <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++        <h2 class="text-xl font-bold text-gray-900 mb-4">Related Contextual Dispatches</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+     </section>
+-
+-
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..92430d7 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -1,4 +1,3 @@
+-
+ ---
+ import Layout from '../../layouts/Layout.astro';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+@@ -6,6 +5,13 @@ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
++import {
++    deriveSemanticProfile,
++    deriveArticleSemanticProfile,
++    type SemanticDomain,
++} from '../../utils/semanticContext';
++import SemanticContextBadge from '../../components/SemanticContextBadge';
++import SemanticAdaptiveCallout from '../../components/SemanticAdaptiveCallout';
+ 
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+@@ -35,12 +41,33 @@ const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForH
+ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+ 
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
++
++const categoryProfile = featuredArticle
++    ? deriveArticleSemanticProfile(featuredArticle)
++    : deriveSemanticProfile({
++        title: capitalizedCategory,
++        category: category,
++    });
++
++const heroOverlayClasses: Record<SemanticDomain, string> = {
++    'breaking-civic': 'bg-gradient-to-r from-red-950/85 via-gray-950/75 to-red-900/70 border-b-4 border-red-600',
++    'economic-data': 'bg-gradient-to-r from-emerald-950/85 via-slate-950/80 to-emerald-900/70 border-b-4 border-emerald-500',
++    'scientific-lab': 'bg-gradient-to-r from-sky-950/85 via-slate-950/80 to-indigo-950/75 border-b-4 border-sky-500',
++    'cultural-stage': 'bg-gradient-to-r from-purple-950/85 via-fuchsia-950/75 to-gray-950/80 border-b-4 border-purple-500',
++    'kinetic-pulse': 'bg-gradient-to-r from-orange-950/85 via-gray-950/80 to-amber-900/75 border-b-4 border-orange-500',
++    'organic-living': 'bg-gradient-to-r from-amber-950/80 via-stone-900/70 to-lime-950/75 border-b-4 border-amber-500',
++};
+ ---
+ 
+ <Layout title={`Category: ${capitalizedCategory}`}>
+-    <div class="pb-8">
+-        <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++    <div
++        class="pb-8"
++        data-semantic-component="category-hub"
++        data-semantic-domain={categoryProfile.domain}
++        data-visual-archetype={categoryProfile.archetype}
++    >
++        <!-- Dynamic Category Header with Semantic Visual Logic -->
++        <header class="relative h-72 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-900">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -52,37 +79,35 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                 />
+             )}
+-            <div class="absolute w-full h-full bg-black opacity-50 z-1"></div>
+-            <div class="absolute w-full h-full flex items-center justify-center z-2">
+-                <div class="text-center text-white">
+-                    <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
+-                    <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
++            <div class={`absolute w-full h-full z-1 ${heroOverlayClasses[categoryProfile.domain]}`}></div>
++            <div class="absolute w-full h-full flex flex-col items-center justify-center z-2 px-4">
++                <div class="text-center text-white max-w-2xl">
++                    <div class="inline-flex justify-center mb-3">
++                        <SemanticContextBadge profile={categoryProfile} compact={false} />
++                    </div>
++                    <p class="text-xs font-mono uppercase tracking-widest opacity-80 mb-1">
++                        Category Hub • Visual Logic: {categoryProfile.archetypeLabel}
++                    </p>
++                    <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm font-brand">
+                         {capitalizedCategory}
+                     </h1>
++                    <div class="mt-4 flex flex-wrap justify-center gap-3 text-xs font-mono text-white/90">
++                        {categoryProfile.contextualMetrics.map((m) => (
++                            <span class="bg-black/40 border border-white/20 px-3 py-1 rounded-xs">
++                                {m.label}: <strong>{m.value}{m.unit ? ` ${m.unit}` : ''}</strong>
++                            </span>
++                        ))}
++                    </div>
+                 </div>
+             </div>
+         </header>
+ 
+         <div class="px-4 md:px-6">
+-            <!-- Featured Article -->
++            <!-- Featured Article with Semantic Callout -->
+             {featuredArticle && featuredArticleImage && (
+                 <section class="mb-8 pb-8 border-b border-gray-200">
+-                    <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+-                        <Image 
+-                            src={featuredArticleImage} 
+-                            alt={featuredArticle.data.title} 
+-                            width={1200}
+-                            height={675}
+-                            format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+-                        />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+-                            {featuredArticle.data.title}
+-                        </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
+-                            {featuredArticle.data.summary}
+-                        </p>
+-                    </a>
++                    <ArticleTeaser article={featuredArticle} large={true} />
++                    <SemanticAdaptiveCallout client:visible profile={categoryProfile} interactiveOverride={true} />
+                 </section>
+             )}
+ 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..fd2f919 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,9 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import { deriveArticleSemanticProfile } from '../utils/semanticContext';
++import SemanticContextBadge from '../components/SemanticContextBadge';
++import SemanticContextWorkbench from '../components/SemanticContextWorkbench';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -38,22 +41,35 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
++    <!-- Top Stories Bar with Semantic Context Indicators -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++                {topStories.map(article => {
++                    const storyProfile = deriveArticleSemanticProfile(article);
++                    return (
++                        <div
++                            class="border-l-2 pl-4 first:border-l-2 flex flex-col justify-between gap-1.5"
++                            style={`border-color: ${storyProfile.accentPrimary}`}
++                            data-semantic-domain={storyProfile.domain}
++                        >
++                            <div class="flex items-center justify-between gap-2">
++                                <SemanticContextBadge profile={storyProfile} compact={true} />
++                                <span class="text-[11px] font-mono text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                            </div>
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-500 cursor-pointer leading-snug">{article.data.title}</h3>
++                            </a>
++                        </div>
++                    );
++                })}
+             </div>
+         </div>
+     </div>
+ 
++    <!-- Interactive Semantic Visual Logic Workbench -->
++    <SemanticContextWorkbench client:load baseUrl={import.meta.env.BASE_URL} />
++
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+@@ -81,4 +97,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..abce88a 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -1,21 +1,75 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import { getCollection } from 'astro:content';
++import { deriveSemanticProfile } from '../utils/semanticContext';
++import SemanticContextBadge from '../components/SemanticContextBadge';
+ 
+ const multimedia = await getCollection('multimedia');
+ ---
+ <Layout title="Multimedia">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+-        <div class="prose max-w-none">
+-            <p>Watch our latest multimedia content.</p>
+-            <ul>
+-                {multimedia.map(item => (
+-                    <li>
+-                        <a href={`/multimedia/${item.slug}`}>{item.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
++    <div class="max-w-5xl mx-auto px-4 py-8 md:py-12">
++        <div class="border-b-2 border-gray-900 pb-4 mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
++            <div>
++                <span class="text-xs font-mono uppercase tracking-widest text-gray-500">
++                    Semantic Broadcast & Stage
++                </span>
++                <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Multimedia</h1>
++            </div>
++            <p class="text-sm text-gray-600">
++                Audio-visual dispatches styled dynamically by subject domain and tempo.
++            </p>
++        </div>
++
++        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
++            {multimedia.map(item => {
++                const profile = deriveSemanticProfile({
++                    title: item.data.title,
++                    summary: item.data.description,
++                    category: item.data.category,
++                    readingTime: 4,
++                });
++                return (
++                    <article
++                        class={`p-5 border bg-white transition-all hover:shadow-md flex flex-col justify-between ${profile.borderStyle}`}
++                        style={`background-color: ${profile.surfaceBg}`}
++                        data-semantic-component="multimedia-card"
++                        data-semantic-domain={profile.domain}
++                        data-visual-archetype={profile.archetype}
++                    >
++                        <div>
++                            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
++                                <SemanticContextBadge profile={profile} compact={false} />
++                                <span class="text-xs font-mono text-gray-500">{item.data.publishDate}</span>
++                            </div>
++                            <div class="flex items-start gap-3">
++                                <div
++                                    class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white shadow-xs mt-1"
++                                    style={`background-color: ${profile.accentPrimary}`}
++                                >
++                                    <svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
++                                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
++                                    </svg>
++                                </div>
++                                <div>
++                                    <h2 class="text-2xl font-brand text-gray-900 mb-1">
++                                        {item.data.title}
++                                    </h2>
++                                    <p class="text-sm text-gray-700 leading-relaxed mb-4">
++                                        {item.data.description}
++                                    </p>
++                                </div>
++                            </div>
++                        </div>
++
++                        <div class="pt-3 border-t border-gray-200/80 flex items-center justify-between text-xs font-mono text-gray-600">
++                            <span>Tone: {profile.toneLabel}</span>
++                            <span class="font-semibold" style={`color: ${profile.accentPrimary}`}>
++                                {profile.archetypeLabel}
++                            </span>
++                        </div>
++                    </article>
++                );
++            })}
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..8c195db 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -1,21 +1,63 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import { getCollection } from 'astro:content';
++import { deriveSemanticProfile } from '../utils/semanticContext';
++import SemanticContextBadge from '../components/SemanticContextBadge';
+ 
+ const reports = await getCollection('reports');
+ ---
+ <Layout title="Reports">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+-        <div class="prose max-w-none">
+-            <p>Read our latest reports.</p>
+-            <ul>
+-                {reports.map(report => (
+-                    <li>
+-                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
++    <div class="max-w-5xl mx-auto px-4 py-8 md:py-12">
++        <div class="border-b-2 border-gray-900 pb-4 mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
++            <div>
++                <span class="text-xs font-mono uppercase tracking-widest text-gray-500">
++                    Semantic Research Archive
++                </span>
++                <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Reports & Briefings</h1>
++            </div>
++            <p class="text-sm text-gray-600">
++                Each briefing card adapts its visual archetype to its domain context.
++            </p>
++        </div>
++
++        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
++            {reports.map(report => {
++                const profile = deriveSemanticProfile({
++                    title: report.data.title,
++                    summary: report.data.description,
++                    category: report.data.category,
++                    readingTime: 6,
++                });
++                return (
++                    <article
++                        class={`p-5 border bg-white transition-all hover:shadow-md flex flex-col justify-between ${profile.borderStyle}`}
++                        style={`background-color: ${profile.surfaceBg}`}
++                        data-semantic-component="report-card"
++                        data-semantic-domain={profile.domain}
++                        data-visual-archetype={profile.archetype}
++                    >
++                        <div>
++                            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
++                                <SemanticContextBadge profile={profile} compact={false} />
++                                <span class="text-xs font-mono text-gray-500">{report.data.publishDate}</span>
++                            </div>
++                            <h2 class="text-2xl font-brand text-gray-900 mb-2">
++                                {report.data.title}
++                            </h2>
++                            <p class="text-sm text-gray-700 leading-relaxed mb-4">
++                                {report.data.description}
++                            </p>
++                        </div>
++
++                        <div class="pt-3 border-t border-gray-200/80 flex items-center justify-between text-xs font-mono text-gray-600">
++                            <span>{profile.calloutTitle}</span>
++                            <span class="font-semibold" style={`color: ${profile.accentPrimary}`}>
++                                {profile.contextualMetrics[0]?.label}: {profile.contextualMetrics[0]?.value}
++                            </span>
++                        </div>
++                    </article>
++                );
++            })}
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..416c7e0 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,82 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Semantic Context Visual Logic Tokens */
++[data-semantic-domain="breaking-civic"] {
++  --semantic-accent: #dc2626;
++  --semantic-accent-soft: #fef2f2;
++  --semantic-border: #fca5a5;
++  --semantic-surface: #fffafa;
++  --semantic-ink: #7f1d1d;
++  --semantic-radius: 0px;
++}
++
++[data-semantic-domain="economic-data"] {
++  --semantic-accent: #047857;
++  --semantic-accent-soft: #ecfdf5;
++  --semantic-border: #6ee7b7;
++  --semantic-surface: #f8fafc;
++  --semantic-ink: #064e3b;
++  --semantic-radius: 2px;
++}
++
++[data-semantic-domain="scientific-lab"] {
++  --semantic-accent: #0369a1;
++  --semantic-accent-soft: #f0f9ff;
++  --semantic-border: #7dd3fc;
++  --semantic-surface: #f8fafc;
++  --semantic-ink: #0c4a6e;
++  --semantic-radius: 4px;
++}
++
++[data-semantic-domain="cultural-stage"] {
++  --semantic-accent: #7e22ce;
++  --semantic-accent-soft: #faf5ff;
++  --semantic-border: #d8b4fe;
++  --semantic-surface: #fdfaff;
++  --semantic-ink: #581c87;
++  --semantic-radius: 2px;
++}
++
++[data-semantic-domain="kinetic-pulse"] {
++  --semantic-accent: #ea580c;
++  --semantic-accent-soft: #fff7ed;
++  --semantic-border: #fdba74;
++  --semantic-surface: #fffaf5;
++  --semantic-ink: #7c2d12;
++  --semantic-radius: 4px;
++}
++
++[data-semantic-domain="organic-living"] {
++  --semantic-accent: #b45309;
++  --semantic-accent-soft: #fefce8;
++  --semantic-border: #fde68a;
++  --semantic-surface: #fffdf7;
++  --semantic-ink: #78350f;
++  --semantic-radius: 12px;
++}
++
++/* Blueprint subtle background for scientific-lab */
++.semantic-surface-blueprint {
++  background-image: radial-gradient(rgba(3, 105, 161, 0.12) 1px, transparent 1px);
++  background-size: 14px 14px;
++}
++
++/* Ledger horizontal lines for economic-data */
++.semantic-surface-ledger {
++  background-image: linear-gradient(to bottom, rgba(4, 120, 87, 0.04) 1px, transparent 1px);
++  background-size: 100% 24px;
++}
++
++/* Diagonal kinetic stripe for kinetic-pulse */
++.semantic-surface-kinetic {
++  background-image: repeating-linear-gradient(
++    -45deg,
++    rgba(234, 88, 12, 0.03),
++    rgba(234, 88, 12, 0.03) 8px,
++    transparent 8px,
++    transparent 16px
++  );
++}
+diff --git a/src/utils/semanticContext.ts b/src/utils/semanticContext.ts
+new file mode 100644
+index 0000000..34df0b4
+--- /dev/null
++++ b/src/utils/semanticContext.ts
+@@ -0,0 +1,504 @@
++import type { CollectionEntry } from 'astro:content';
++
++export type SemanticDomain =
++  | 'breaking-civic'   // News, Politics, National, Criminal Networks, Infrastructure
++  | 'economic-data'    // Economy, Business, Labor, Manufacturing, Markets
++  | 'scientific-lab'   // Science, Tech, Web Development, Forensic, Research
++  | 'cultural-stage'   // Culture, Media, Arts, Ballet, Music, Journalism
++  | 'kinetic-pulse'    // Sports, Athletics, Championships, Super Bowl
++  | 'organic-living';  // Lifestyle, Urban Development, Pets, Coastal, Coffee
++
++export type SemanticTone =
++  | 'urgent'           // Crisis, breaking, crime, strikes, decay
++  | 'analytical'       // Research, data, forensic, outlook, tech, markets
++  | 'expressive'       // Culture, stage, ballet, improv, indie fest
++  | 'kinetic'          // High-energy sports, action, competition
++  | 'serene';          // Nature, coffee, coastal, lifestyle, pets
++
++export type VisualArchetype =
++  | 'editorial-broadsheet' // Authoritative serif, heavy rule borders, urgency indicators
++  | 'market-terminal'      // Structured ledger lines, monospace data metrics, financial accents
++  | 'research-dossier'     // Technical blueprint grid, metadata pills, lab-grade precision
++  | 'gallery-playbill'     // High-contrast artistic framing, asymmetric editorial typography, warm spotlight
++  | 'stadium-scoreboard'   // Bold athletic angles, kinetic telemetry badges, high-contrast energy
++  | 'botanical-journal';   // Soft organic curves, warm tactile paper tones, sensory calm
++
++export type ReadingDepth = 'quick-dispatch' | 'standard-feature' | 'deep-investigation';
++
++export interface SemanticMetric {
++  label: string;
++  value: string;
++  unit?: string;
++  trend?: 'up' | 'down' | 'neutral' | 'alert';
++}
++
++export interface SemanticProfile {
++  domain: SemanticDomain;
++  tone: SemanticTone;
++  archetype: VisualArchetype;
++  depth: ReadingDepth;
++  domainLabel: string;
++  toneLabel: string;
++  archetypeLabel: string;
++  urgencyScore: number; // 1 to 100
++  analyticalDensity: number; // 1 to 100
++  sensoryWarmth: number; // 1 to 100
++  accentPrimary: string;
++  accentSecondary: string;
++  surfaceBg: string;
++  borderStyle: string;
++  badgeStyle: string;
++  fontPairing: 'editorial-serif' | 'technical-mono' | 'display-kinetic' | 'cultural-playbill' | 'organic-humanist';
++  layoutPattern: 'asymmetric-split' | 'technical-bento' | 'gallery-spotlight' | 'kinetic-banner' | 'ledger-grid' | 'journal-card';
++  contextualMetrics: SemanticMetric[];
++  semanticCues: string[];
++  calloutTitle: string;
++  calloutBody: string;
++}
++
++const DOMAIN_CONFIG: Record<SemanticDomain, {
++  archetype: VisualArchetype;
++  domainLabel: string;
++  archetypeLabel: string;
++  defaultTone: SemanticTone;
++  accentPrimary: string;
++  accentSecondary: string;
++  surfaceBg: string;
++  borderStyle: string;
++  badgeStyle: string;
++  fontPairing: SemanticProfile['fontPairing'];
++  layoutPattern: SemanticProfile['layoutPattern'];
++}> = {
++  'breaking-civic': {
++    archetype: 'editorial-broadsheet',
++    domainLabel: 'Civic & Dispatch',
++    archetypeLabel: 'Broadsheet Wire',
++    defaultTone: 'urgent',
++    accentPrimary: '#dc2626',   // Crimson 600
++    accentSecondary: '#991b1b', // Crimson 800
++    surfaceBg: '#fffafa',
++    borderStyle: 'border-l-4 border-red-700',
++    badgeStyle: 'bg-red-50 text-red-800 border border-red-200',
++    fontPairing: 'editorial-serif',
++    layoutPattern: 'asymmetric-split',
++  },
++  'economic-data': {
++    archetype: 'market-terminal',
++    domainLabel: 'Markets & Labor',
++    archetypeLabel: 'Ledger Terminal',
++    defaultTone: 'analytical',
++    accentPrimary: '#047857',   // Emerald 700
++    accentSecondary: '#065f46', // Emerald 800
++    surfaceBg: '#f8fafc',
++    borderStyle: 'border-t-2 border-emerald-700',
++    badgeStyle: 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono',
++    fontPairing: 'technical-mono',
++    layoutPattern: 'ledger-grid',
++  },
++  'scientific-lab': {
++    archetype: 'research-dossier',
++    domainLabel: 'Science & Systems',
++    archetypeLabel: 'Technical Dossier',
++    defaultTone: 'analytical',
++    accentPrimary: '#0369a1',   // Sky/Cyan 700
++    accentSecondary: '#1e3a8a', // Indigo 900
++    surfaceBg: '#f0f9ff',
++    borderStyle: 'border border-sky-200 border-t-4 border-t-sky-600',
++    badgeStyle: 'bg-sky-50 text-sky-800 border border-sky-200 font-mono',
++    fontPairing: 'technical-mono',
++    layoutPattern: 'technical-bento',
++  },
++  'cultural-stage': {
++    archetype: 'gallery-playbill',
++    domainLabel: 'Arts & Criticism',
++    archetypeLabel: 'Gallery Playbill',
++    defaultTone: 'expressive',
++    accentPrimary: '#7e22ce',   // Purple 700
++    accentSecondary: '#be185d', // Pink 700
++    surfaceBg: '#faf5ff',
++    borderStyle: 'border-b-4 border-purple-800',
++    badgeStyle: 'bg-purple-50 text-purple-900 border border-purple-200 italic',
++    fontPairing: 'cultural-playbill',
++    layoutPattern: 'gallery-spotlight',
++  },
++  'kinetic-pulse': {
++    archetype: 'stadium-scoreboard',
++    domainLabel: 'Athletic Arena',
++    archetypeLabel: 'Kinetic Telemetry',
++    defaultTone: 'kinetic',
++    accentPrimary: '#ea580c',   // Orange 600
++    accentSecondary: '#c2410c', // Orange 700
++    surfaceBg: '#fff7ed',
++    borderStyle: 'border-l-4 border-orange-600',
++    badgeStyle: 'bg-orange-100 text-orange-900 border border-orange-300 uppercase tracking-wider font-bold',
++    fontPairing: 'display-kinetic',
++    layoutPattern: 'kinetic-banner',
++  },
++  'organic-living': {
++    archetype: 'botanical-journal',
++    domainLabel: 'Living & Habitat',
++    archetypeLabel: 'Sensory Fieldnote',
++    defaultTone: 'serene',
++    accentPrimary: '#b45309',   // Amber 700
++    accentSecondary: '#4d7c0f', // Lime 700
++    surfaceBg: '#fefce8',
++    borderStyle: 'border border-amber-200/80 rounded-xl',
++    badgeStyle: 'bg-amber-50 text-amber-900 border border-amber-200 rounded-full',
++    fontPairing: 'organic-humanist',
++    layoutPattern: 'journal-card',
++  },
++};
++
++export function resolveCategoryDomain(category: string, textContent = ''): SemanticDomain {
++  const cat = (category || '').toLowerCase().trim();
++  const text = textContent.toLowerCase();
++
++  if (['politics', 'national', 'news', 'news & politics'].includes(cat)) {
++    return 'breaking-civic';
++  }
++  if (['economy', 'business', 'labor'].includes(cat)) {
++    return 'economic-data';
++  }
++  if (['science', 'web development', 'science & tech', 'tech'].includes(cat)) {
++    return 'scientific-lab';
++  }
++  if (['culture', 'media', 'arts & culture', 'arts'].includes(cat)) {
++    return 'cultural-stage';
++  }
++  if (['sports'].includes(cat)) {
++    return 'kinetic-pulse';
++  }
++  if (['lifestyle', 'urban development', 'pets', 'lifestyle & sports'].includes(cat)) {
++    // Disambiguate if text strongly signals sports or civic urgency
++    if (cat === 'lifestyle & sports' && (text.includes('athlete') || text.includes('sports') || text.includes('championship'))) {
++      return 'kinetic-pulse';
++    }
++    return 'organic-living';
++  }
++
++  // Fallback keyword classification
++  if (/(crisis|strike|crime|activism|decay|election)/.test(text)) return 'breaking-civic';
++  if (/(market|economy|manufacturing|housing|supply)/.test(text)) return 'economic-data';
++  if (/(research|forensic|devtools|science|dna|ai)/.test(text)) return 'scientific-lab';
++  if (/(ballet|improv|festival|music|theater|journalism)/.test(text)) return 'cultural-stage';
++  if (/(olympic|bowl|tennis|cycling|game|stadium)/.test(text)) return 'kinetic-pulse';
++
++  return 'organic-living';
++}
++
++export function analyzeSemanticTone(
++  domain: SemanticDomain,
++  title: string,
++  summary: string,
++  tags: string[] = []
++): { tone: SemanticTone; toneLabel: string; urgencyScore: number; analyticalDensity: number; sensoryWarmth: number; cues: string[] } {
++  const combined = `${title} ${summary} ${tags.join(' ')}`.toLowerCase();
++  const cues: string[] = [];
++
++  let urgencyScore = 35;
++  let analyticalDensity = 45;
++  let sensoryWarmth = 45;
++
++  // Check urgent signals
++  const urgentMatches = combined.match(/\b(crisis|ticking time bomb|decay|strikes|unrest|killer|crime|criminal|existential|urgent|gridlock|overhaul|protest)\b/g);
++  if (urgentMatches) {
++    urgencyScore += Math.min(55, urgentMatches.length * 18);
++    cues.push(...Array.from(new Set(urgentMatches)).slice(0, 2).map(w => `Urgency: "${w}"`));
++  }
++
++  // Check analytical signals
++  const analyticalMatches = combined.match(/\b(research|science|forensic|dna|data|manufacturing|supply chains|economic|devtools|performance|verification|microscope|photosynthesis|analysis)\b/g);
++  if (analyticalMatches) {
++    analyticalDensity += Math.min(50, analyticalMatches.length * 16);
++    cues.push(...Array.from(new Set(analyticalMatches)).slice(0, 2).map(w => `Analytical: "${w}"`));
++  }
++
++  // Check kinetic signals
++  const kineticMatches = combined.match(/\b(thrills|championships|super bowl|olympic|roar|race|explosive|electric|stadium|rematch|swimmers|cyclist)\b/g);
++  if (kineticMatches) {
++    urgencyScore += Math.min(40, kineticMatches.length * 14);
++    sensoryWarmth += 20;
++    cues.push(...Array.from(new Set(kineticMatches)).slice(0, 2).map(w => `Kinetic: "${w}"`));
++  }
++
++  // Check expressive/cultural signals
++  const expressiveMatches = combined.match(/\b(ballet|swan lake|improv|unscripted|indie|festival|stage|choreography|classic|art)\b/g);
++  if (expressiveMatches) {
++    sensoryWarmth += Math.min(45, expressiveMatches.length * 16);
++    cues.push(...Array.from(new Set(expressiveMatches)).slice(0, 2).map(w => `Expressive: "${w}"`));
++  }
++
++  // Check serene/organic signals
++  const sereneMatches = combined.match(/\b(coastal|shore|tides|coffee|alchemy|roasted|plants|quiet|cuddle|griffon|sanctuary|breeze|open water)\b/g);
++  if (sereneMatches) {
++    sensoryWarmth += Math.min(50, sereneMatches.length * 18);
++    urgencyScore = Math.max(15, urgencyScore - 15);
++    cues.push(...Array.from(new Set(sereneMatches)).slice(0, 2).map(w => `Sensory: "${w}"`));
++  }
++
++  urgencyScore = Math.min(98, Math.max(12, urgencyScore));
++  analyticalDensity = Math.min(98, Math.max(15, analyticalDensity));
++  sensoryWarmth = Math.min(98, Math.max(15, sensoryWarmth));
++
++  let tone: SemanticTone = DOMAIN_CONFIG[domain].defaultTone;
++  if (urgencyScore >= 72 && domain !== 'kinetic-pulse') {
++    tone = 'urgent';
++  } else if (domain === 'kinetic-pulse' || (kineticMatches && kineticMatches.length >= 2)) {
++    tone = 'kinetic';
++  } else if (analyticalDensity >= 70) {
++    tone = 'analytical';
++  } else if (domain === 'cultural-stage' || (expressiveMatches && expressiveMatches.length >= 2)) {
++    tone = 'expressive';
++  } else if (sensoryWarmth >= 68) {
++    tone = 'serene';
++  }
++
++  const toneLabels: Record<SemanticTone, string> = {
++    urgent: 'High-Urgency Dispatch',
++    analytical: 'Empirical & Analytical',
++    expressive: 'Critical & Expressive',
++    kinetic: 'High-Tempo Action',
++    serene: 'Reflective & Sensory',
++  };
++
++  if (cues.length === 0) {
++    cues.push(`Domain: ${DOMAIN_CONFIG[domain].domainLabel}`);
++  }
++
++  return {
++    tone,
++    toneLabel: toneLabels[tone],
++    urgencyScore,
++    analyticalDensity,
++    sensoryWarmth,
++    cues,
++  };
++}
++
++function buildContextualMetrics(
++  domain: SemanticDomain,
++  tone: SemanticTone,
++  readingTime: number,
++  urgencyScore: number,
++  analyticalDensity: number,
++  sensoryWarmth: number,
++  title: string
++): { metrics: SemanticMetric[]; calloutTitle: string; calloutBody: string } {
++  const lowerTitle = title.toLowerCase();
++
++  switch (domain) {
++    case 'breaking-civic':
++      return {
++        metrics: [
++          { label: 'Civic Impact', value: urgencyScore > 70 ? 'Critical' : 'Elevated', trend: 'alert' },
++          { label: 'Urgency Index', value: `${urgencyScore}`, unit: '/100', trend: 'up' },
++          { label: 'Dispatch Pacing', value: `${readingTime}m`, unit: 'brief', trend: 'neutral' },
++        ],
++        calloutTitle: 'Civic Impact Assessment',
++        calloutBody: lowerTitle.includes('infrastructure')
++          ? 'Structural grade evaluated at D+ across monitored metropolitan corridors; immediate legislative allocation required.'
++          : lowerTitle.includes('criminal')
++          ? 'Multi-jurisdictional intelligence synthesis mapping illicit network topologies and cross-border nodes.'
++          : 'Active civic development with direct implications for public policy, institutional accountability, and community governance.',
++      };
++
++    case 'economic-data':
++      return {
++        metrics: [
++          { label: 'Market Signal', value: tone === 'urgent' ? 'Volatile' : 'Expansion', trend: tone === 'urgent' ? 'alert' : 'up' },
++          { label: 'Data Density', value: `${analyticalDensity}%`, trend: 'up' },
++          { label: 'Sector Horizon', value: 'Q3–Q4', unit: 'cycle', trend: 'neutral' },
++        ],
++        calloutTitle: 'Macroeconomic Ledger Context',
++        calloutBody: lowerTitle.includes('housing')
++          ? 'Urban supply deficit widened by zoning bottlenecks, material inflation, and skilled construction labor constraints.'
++          : lowerTitle.includes('strike')
++          ? 'Collective bargaining momentum accelerating across transit and technology sectors amid real-wage compression.'
++          : 'Domestic industrial reshoring driven by semiconductor capital expenditure and clean-tech supply chain incentives.',
++      };
++
++    case 'scientific-lab':
++      return {
++        metrics: [
++          { label: 'Empirical Rigor', value: `${analyticalDensity}`, unit: 'idx', trend: 'up' },
++          { label: 'Method', value: lowerTitle.includes('forensic') || lowerTitle.includes('killer') ? 'Forensic' : 'Peer-Lab', trend: 'neutral' },
++          { label: 'Depth', value: `${readingTime} min`, unit: 'dossier', trend: 'neutral' },
++        ],
++        calloutTitle: 'Scientific & Technical Dossier',
++        calloutBody: lowerTitle.includes('architects') || lowerTitle.includes('plant')
++          ? 'Photosynthetic carbon fixation and vascular xylem/phloem transport form the primary biosphere equilibrium engine.'
++          : lowerTitle.includes('devtools')
++          ? 'Runtime telemetry, network request conditioning, and flamechart profiling reduce interaction-to-next-paint latency.'
++          : 'Evidence-driven inquiry combining laboratory instrumentation, molecular sequencing, and behavioral pattern analysis.',
++      };
++
++    case 'cultural-stage':
++      return {
++        metrics: [
++          { label: 'Aesthetic Mode', value: lowerTitle.includes('journalism') || lowerTitle.includes('print') ? 'Fourth Estate' : 'Live Stage', trend: 'neutral' },
++          { label: 'Resonance', value: `${sensoryWarmth}%`, trend: 'up' },
++          { label: 'Curation', value: 'Critic’s Pick', trend: 'up' },
++        ],
++        calloutTitle: 'Curatorial & Critical Note',
++        calloutBody: lowerTitle.includes('swan lake')
++          ? 'Minimalist scenography and contemporary athletic phrasing strip away classical artifice to expose raw dramatic tension.'
++          : lowerTitle.includes('journalism') || lowerTitle.includes('print')
++          ? 'Structural transition from legacy print circulation toward algorithmic verification and direct reader stewardship.'
++          : 'Live unscripted performance and independent sonic curation reaffirm the communal vitality of physical stages.',
++      };
++
++    case 'kinetic-pulse':
++      return {
++        metrics: [
++          { label: 'Tempo Rating', value: `${Math.max(78, urgencyScore)}`, unit: 'BPM-eq', trend: 'up' },
++          { label: 'Arena Status', value: lowerTitle.includes('super bowl') ? 'Title Bout' : 'Finals', trend: 'alert' },
++          { label: 'Read Sprint', value: `${readingTime}m`, unit: 'pace', trend: 'neutral' },
++        ],
++        calloutTitle: 'Athletic Telemetry & Matchup Pulse',
++        calloutBody: lowerTitle.includes('super bowl')
++          ? 'Championship rematch pitting New England’s top-ranked scoring defense (10-7 AFC title win) against Seattle’s aerial offense.'
++          : 'High-output physical endurance and tactical execution under peak competitive stadium pressure.',
++      };
++
++    case 'organic-living':
++    default:
++      return {
++        metrics: [
++          { label: 'Sensory Index', value: `${sensoryWarmth}`, unit: '/100', trend: 'up' },
++          { label: 'Cadence', value: readingTime <= 3 ? 'Brisk' : 'Unhurried', trend: 'neutral' },
++          { label: 'Habitat', value: lowerTitle.includes('coastal') ? 'Intertidal' : lowerTitle.includes('coffee') ? 'Botanical' : 'Urban', trend: 'neutral' },
++        ],
++        calloutTitle: 'Fieldnote & Living Context',
++        calloutBody: lowerTitle.includes('coffee')
++          ? 'Maillard roasting kinetics unlock 800+ volatile aromatic compounds across high-altitude Arabica and Robusta cultivars.'
++          : lowerTitle.includes('coastal')
++          ? 'Intertidal microclimates and negative-ion marine aerosols modulate circadian rhythm and reduce systemic cortisol.'
++          : 'Human-scale urban mobility, domestic companionship, and restorative daily rituals anchored in tactile place.',
++      };
++  }
++}
++
++export function deriveSemanticProfile(input: {
++  title: string;
++  summary?: string;
++  category: string;
++  readingTime?: number;
++  tags?: string[];
++}): SemanticProfile {
++  const { title, summary = '', category, readingTime = 4, tags = [] } = input;
++  const domain = resolveCategoryDomain(category, `${title} ${summary}`);
++  const config = DOMAIN_CONFIG[domain];
++  const { tone, toneLabel, urgencyScore, analyticalDensity, sensoryWarmth, cues } = analyzeSemanticTone(
++    domain,
++    title,
++    summary,
++    tags
++  );
++
++  const depth: ReadingDepth =
++    readingTime <= 3 ? 'quick-dispatch' : readingTime >= 6 ? 'deep-investigation' : 'standard-feature';
++
++  const { metrics, calloutTitle, calloutBody } = buildContextualMetrics(
++    domain,
++    tone,
++    readingTime,
++    urgencyScore,
++    analyticalDensity,
++    sensoryWarmth,
++    title
++  );
++
++  return {
++    domain,
++    tone,
++    archetype: config.archetype,
++    depth,
++    domainLabel: config.domainLabel,
++    toneLabel,
++    archetypeLabel: config.archetypeLabel,
++    urgencyScore,
++    analyticalDensity,
++    sensoryWarmth,
++    accentPrimary: config.accentPrimary,
++    accentSecondary: config.accentSecondary,
++    surfaceBg: config.surfaceBg,
++    borderStyle: config.borderStyle,
++    badgeStyle: config.badgeStyle,
++    fontPairing: config.fontPairing,
++    layoutPattern: config.layoutPattern,
++    contextualMetrics: metrics,
++    semanticCues: cues,
++    calloutTitle,
++    calloutBody,
++  };
++}
++
++export function deriveArticleSemanticProfile(article: CollectionEntry<'articles'>): SemanticProfile {
++  return deriveSemanticProfile({
++    title: article.data.title,
++    summary: article.data.summary,
++    category: article.data.category,
++    readingTime: article.data.readingTime ?? 4,
++    tags: article.data.tags ?? [],
++  });
++}
++
++export function getAllSemanticDomains(): Array<{
++  domain: SemanticDomain;
++  label: string;
++  archetype: VisualArchetype;
++  archetypeLabel: string;
++  accentPrimary: string;
++  description: string;
++}> {
++  return [
++    {
++      domain: 'breaking-civic',
++      label: DOMAIN_CONFIG['breaking-civic'].domainLabel,
++      archetype: 'editorial-broadsheet',
++      archetypeLabel: DOMAIN_CONFIG['breaking-civic'].archetypeLabel,
++      accentPrimary: DOMAIN_CONFIG['breaking-civic'].accentPrimary,
++      description: 'High-urgency serif broadsheet logic with crimson dispatch rules and civic impact gauges.',
++    },
++    {
++      domain: 'economic-data',
++      label: DOMAIN_CONFIG['economic-data'].domainLabel,
++      archetype: 'market-terminal',
++      archetypeLabel: DOMAIN_CONFIG['economic-data'].archetypeLabel,
++      accentPrimary: DOMAIN_CONFIG['economic-data'].accentPrimary,
++      description: 'Structured ledger geometry with monospace market signals, trend pills, and tabular framing.',
++    },
++    {
++      domain: 'scientific-lab',
++      label: DOMAIN_CONFIG['scientific-lab'].domainLabel,
++      archetype: 'research-dossier',
++      archetypeLabel: DOMAIN_CONFIG['scientific-lab'].archetypeLabel,
++      accentPrimary: DOMAIN_CONFIG['scientific-lab'].accentPrimary,
++      description: 'Precision blueprint grid with empirical rigor indices, method classification, and cyan laboratory accents.',
++    },
++    {
++      domain: 'cultural-stage',
++      label: DOMAIN_CONFIG['cultural-stage'].domainLabel,
++      archetype: 'gallery-playbill',
++      archetypeLabel: DOMAIN_CONFIG['cultural-stage'].archetypeLabel,
++      accentPrimary: DOMAIN_CONFIG['cultural-stage'].accentPrimary,
++      description: 'Expressive playbill typography with curatorial framing, resonance metrics, and plum stage accents.',
++    },
++    {
++      domain: 'kinetic-pulse',
++      label: DOMAIN_CONFIG['kinetic-pulse'].domainLabel,
++      archetype: 'stadium-scoreboard',
++      archetypeLabel: DOMAIN_CONFIG['kinetic-pulse'].archetypeLabel,
++      accentPrimary: DOMAIN_CONFIG['kinetic-pulse'].accentPrimary,
++      description: 'High-tempo scoreboard telemetry with angled kinetic badges, pace indicators, and stadium orange energy.',
++    },
++    {
++      domain: 'organic-living',
++      label: DOMAIN_CONFIG['organic-living'].domainLabel,
++      archetype: 'botanical-journal',
++      archetypeLabel: DOMAIN_CONFIG['organic-living'].archetypeLabel,
++      accentPrimary: DOMAIN_CONFIG['organic-living'].accentPrimary,
++      description: 'Warm tactile fieldnote aesthetics with soft rounded geometry, sensory warmth meters, and botanical tones.',
++    },
++  ];
++}

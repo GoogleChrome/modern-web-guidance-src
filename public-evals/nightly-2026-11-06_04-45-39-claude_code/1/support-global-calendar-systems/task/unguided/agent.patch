@@ -1,0 +1,343 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,116 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* World Calendar Converter */
++    .calendar-section {
++      margin-top: 60px;
++    }
++
++    .calendar-section h2,
++    .calendar-section .section-intro {
++      text-align: center;
++    }
++
++    .calendar-picker {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++      flex-wrap: wrap;
++    }
++
++    .calendar-picker input[type="date"] {
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      color: var(--text);
++    }
++
++    .calendar-picker .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++
++    .calendar-card {
++      text-align: left;
++      border-top: 4px solid var(--accent);
++    }
++
++    .calendar-card .localized {
++      font-size: 1.15rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .calendar-card .localized-native {
++      font-size: 1.05rem;
++      margin-bottom: 10px;
++    }
++
++    .calendar-card dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 4px 12px;
++      font-size: 0.9rem;
++      margin-bottom: 12px;
++    }
++
++    .calendar-card dt {
++      font-weight: 600;
++    }
++
++    .relation {
++      display: inline-block;
++      padding: 0 8px;
++      border-radius: 10px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: white;
++    }
++
++    .relation-past { background: #8d6e63; }
++    .relation-today { background: #2e7d32; }
++    .relation-future { background: #1565c0; }
++
++    .month-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++    }
++
++    .month-table th,
++    .month-table td {
++      padding: 3px 6px;
++      border-bottom: 1px solid #eee;
++      text-align: left;
++    }
++
++    .month-table tr.current-month {
++      background: #fff3e0;
++      font-weight: 600;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    .calendar-error {
++      color: #b71c1c;
++      text-align: center;
++      margin-top: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +302,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-section" id="world-calendar">
++      <h2>World Calendar Converter</h2>
++      <p class="section-intro">Coffee is enjoyed around the world every day of the year. Pick a date to see it in other calendars.</p>
++      <form class="calendar-picker" id="calendar-form" onsubmit="return false;">
++        <label for="calendar-date-input">Choose a date:</label>
++        <input type="date" id="calendar-date-input" name="date" required>
++        <button type="button" class="btn" id="calendar-today-btn">Today</button>
++      </form>
++      <p class="calendar-error" id="calendar-error" role="alert" hidden></p>
++      <div class="grid" id="calendar-cards" aria-live="polite">
++        <div class="card calendar-card" id="islamic-date" data-calendar="islamic">
++          <h3>Islamic (Hijri)</h3>
++          <div class="calendar-body"></div>
++        </div>
++        <div class="card calendar-card" id="hebrew-date" data-calendar="hebrew">
++          <h3>Hebrew</h3>
++          <div class="calendar-body"></div>
++        </div>
++        <div class="card calendar-card" id="japanese-date" data-calendar="japanese">
++          <h3>Japanese</h3>
++          <div class="calendar-body"></div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +339,188 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // Each card lists calendar IDs in order of preference. Plain "islamic" is
++      // rejected by some Temporal implementations, so fall back to well-defined
++      // Islamic variants.
++      var CALENDARS = {
++        islamic: { ids: ['islamic', 'islamic-umalqura', 'islamic-civil'], nativeLocale: 'ar-SA' },
++        hebrew: { ids: ['hebrew'], nativeLocale: 'he-IL' },
++        japanese: { ids: ['japanese'], nativeLocale: 'ja-JP' }
++      };
++
++      var input = document.getElementById('calendar-date-input');
++      var todayBtn = document.getElementById('calendar-today-btn');
++      var errorEl = document.getElementById('calendar-error');
++
++      function escapeHtml(value) {
++        return String(value).replace(/[&<>"']/g, function (c) {
++          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
++        });
++      }
++
++      function showError(message) {
++        errorEl.textContent = message;
++        errorEl.hidden = !message;
++      }
++
++      function resolveCalendarId(ids) {
++        var probe = Temporal.PlainDate.from('2000-01-01');
++        for (var i = 0; i < ids.length; i++) {
++          try {
++            probe.withCalendar(ids[i]);
++            return ids[i];
++          } catch (e) { /* try next */ }
++        }
++        return null;
++      }
++
++      // Format a Temporal.PlainDate (any calendar) with Intl in the given calendar.
++      function formatDate(plainDate, locale, calendarId, options) {
++        var iso = plainDate.withCalendar('iso8601');
++        var jsDate = new Date(Date.UTC(2000, 0, 1));
++        jsDate.setUTCFullYear(iso.year, iso.month - 1, iso.day);
++        var opts = Object.assign({ calendar: calendarId, timeZone: 'UTC' }, options);
++        return new Intl.DateTimeFormat(locale, opts).format(jsDate);
++      }
++
++      function getRelation(isoDate) {
++        var today = Temporal.Now.plainDateISO();
++        var cmp = Temporal.PlainDate.compare(isoDate, today);
++        return cmp < 0 ? 'Past' : cmp > 0 ? 'Future' : 'Today';
++      }
++
++      function buildMonths(date, calendarId) {
++        var months = [];
++        for (var m = 1; m <= date.monthsInYear; m++) {
++          var first = Temporal.PlainDate.from({ calendar: calendarId, year: date.year, month: m, day: 1 });
++          var name;
++          try {
++            name = formatDate(first, 'en-US', calendarId, { month: 'long' });
++          } catch (e) {
++            name = first.monthCode;
++          }
++          months.push({ month: m, monthCode: first.monthCode, name: name, days: first.daysInMonth });
++        }
++        return months;
++      }
++
++      function renderCard(key, isoDate, relation) {
++        var config = CALENDARS[key];
++        var card = document.querySelector('[data-calendar="' + key + '"]');
++        var body = card.querySelector('.calendar-body');
++        var calendarId = config.resolvedId;
++
++        if (!calendarId) {
++          body.innerHTML = '<p class="calendar-error">This calendar is not supported by your browser.</p>';
++          return;
++        }
++
++        var date = isoDate.withCalendar(calendarId);
++        var localizedEn = formatDate(date, 'en-US', calendarId, {
++          era: key === 'japanese' ? 'long' : 'short', year: 'numeric', month: 'long', day: 'numeric'
++        });
++        var localizedNative = formatDate(date, config.nativeLocale, calendarId, {
++          era: 'long', year: 'numeric', month: 'long', day: 'numeric'
++        });
++        var months = buildMonths(date, calendarId);
++        var eraText = date.era ? date.era.charAt(0).toUpperCase() + date.era.slice(1) + ' ' + date.eraYear : '';
++
++        card.setAttribute('data-calendar-id', calendarId);
++        card.setAttribute('data-relation', relation.toLowerCase());
++
++        var html = '';
++        html += '<p class="localized" data-field="localized">' + escapeHtml(localizedEn) + '</p>';
++        html += '<p class="localized-native" data-field="localized-native" lang="' + escapeHtml(config.nativeLocale) + '">' +
++          escapeHtml(localizedNative) + '</p>';
++        html += '<dl>';
++        html += '<dt>Calendar</dt><dd data-field="calendar">' + escapeHtml(calendarId) + '</dd>';
++        if (eraText) {
++          html += '<dt>Era</dt><dd data-field="era">' + escapeHtml(eraText) + '</dd>';
++        }
++        html += '<dt>Year</dt><dd data-field="year">' + date.year + '</dd>';
++        html += '<dt>Month</dt><dd data-field="month">' + date.month + '</dd>';
++        html += '<dt>Month code</dt><dd data-field="month-code">' + escapeHtml(date.monthCode) + '</dd>';
++        html += '<dt>Day</dt><dd data-field="day">' + date.day + '</dd>';
++        html += '<dt>Months in year</dt><dd data-field="months-in-year">' + date.monthsInYear + '</dd>';
++        html += '<dt>Status</dt><dd><span class="relation relation-' + relation.toLowerCase() +
++          '" data-field="relation">' + relation + '</span></dd>';
++        html += '</dl>';
++        html += '<table class="month-table" data-field="months"><caption class="visually-hidden">Months of ' +
++          escapeHtml(calendarId) + ' year ' + date.year + '</caption>';
++        html += '<thead><tr><th>#</th><th>Month</th><th>Code</th><th>Days</th></tr></thead><tbody>';
++        months.forEach(function (mo) {
++          html += '<tr' + (mo.month === date.month ? ' class="current-month"' : '') +
++            ' data-month-code="' + escapeHtml(mo.monthCode) + '">' +
++            '<td>' + mo.month + '</td><td>' + escapeHtml(mo.name) + '</td>' +
++            '<td>' + escapeHtml(mo.monthCode) + '</td><td>' + mo.days + '</td></tr>';
++        });
++        html += '</tbody></table>';
++        body.innerHTML = html;
++      }
++
++      function render() {
++        if (!input.value) {
++          showError('Please choose a date.');
++          return;
++        }
++        var isoDate;
++        try {
++          isoDate = Temporal.PlainDate.from(input.value);
++        } catch (e) {
++          showError('That date could not be read. Please choose another date.');
++          return;
++        }
++        try {
++          var relation = getRelation(isoDate);
++          Object.keys(CALENDARS).forEach(function (key) {
++            renderCard(key, isoDate, relation);
++          });
++          showError('');
++        } catch (e) {
++          showError('That date is outside the supported range. Please choose another date.');
++        }
++      }
++
++      function init() {
++        if (typeof Temporal === 'undefined') {
++          showError('Calendar conversion is unavailable in this browser.');
++          return;
++        }
++        Object.keys(CALENDARS).forEach(function (key) {
++          CALENDARS[key].resolvedId = resolveCalendarId(CALENDARS[key].ids);
++        });
++        if (!input.value) {
++          input.value = Temporal.Now.plainDateISO().toString();
++        }
++        input.addEventListener('input', render);
++        input.addEventListener('change', render);
++        todayBtn.addEventListener('click', function () {
++          input.value = Temporal.Now.plainDateISO().toString();
++          render();
++        });
++        render();
++      }
++
++      // Use native Temporal when present; otherwise load the vendored polyfill.
++      if (typeof Temporal !== 'undefined') {
++        init();
++      } else {
++        var script = document.createElement('script');
++        script.src = '/vendor/temporal-polyfill.js';
++        script.onload = init;
++        script.onerror = function () {
++          showError('Calendar conversion is unavailable right now. Please try again later.');
++        };
++        document.head.appendChild(script);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

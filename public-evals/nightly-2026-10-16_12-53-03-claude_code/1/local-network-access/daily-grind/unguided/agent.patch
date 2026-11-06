@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+index 66c9173..1e5a084 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,30 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Local Network Access: Chromium asks the user for permission before a page
++    // can reach the local network or loopback. Declaring the target address space
++    // lets the browser show that prompt and attach the request to it.
++    // Usage: fetchLocal('http://localhost:8080/status').then(r => r.json())
++    // Embedded frames also need: <iframe allow="local-network-access" ...>
++    function localAddressSpace(url) {
++      const host = new URL(url, location.href).hostname.replace(/^\[|\]$/g, '');
++      if (host === 'localhost' || host.endsWith('.localhost') || host === '::1' || /^127\./.test(host)) {
++        return 'loopback';
++      }
++      if (/^(10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host) ||
++          /^(fc|fd|fe80)/i.test(host) || host.endsWith('.local')) {
++        return 'local';
++      }
++      return null;
++    }
++
++    window.fetchLocal = function (url, options = {}) {
++      const space = localAddressSpace(url);
++      return fetch(url, space ? { targetAddressSpace: space, ...options } : options);
++    };
++  </script>
++
+ </body>
+ 
+ </html>

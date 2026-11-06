@@ -1,0 +1,15 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -117,8 +117,11 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      /* Trim half-leading so the title's cap height sits flush with the card padding */
++      text-box-trim: trim-both;
++      text-box-edge: cap alphabetic;
+     }
+ 
+     .btn {
+       display: inline-block;

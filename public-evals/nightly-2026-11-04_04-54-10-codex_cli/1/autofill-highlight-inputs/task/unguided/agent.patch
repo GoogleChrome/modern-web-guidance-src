@@ -1,0 +1,21 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,17 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Highlight inputs filled by the browser. */
++    input:-webkit-autofill {
++      border: 2px solid green;
++    }
++
++    input:autofill {
++      border: 2px solid green;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

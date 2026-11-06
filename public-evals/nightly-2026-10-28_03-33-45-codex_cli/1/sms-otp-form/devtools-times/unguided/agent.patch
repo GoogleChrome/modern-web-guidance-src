@@ -1,0 +1,396 @@
+diff --git a/README.md b/README.md
+index 4479b53..40b2e38 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,38 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## SMS verification during sign-up
++
++The sign-up form collects account details and an international phone number, sends
++an SMS, and creates the account only after the server validates the six-digit code
++with Twilio Verify. Set the server environment variables listed in `.env.example`;
++missing credentials produce an unavailable message rather than simulated success.
++The Node deployment reads these variables at runtime from `process.env`.
++
++Create a Twilio Verify Service with SMS enabled and a **six-digit** token length.
++Configure an approved domain-bound template as the service default, or supply its
++SID in `TWILIO_VERIFY_TEMPLATE_SID`. The template must end with the following line,
++using the actual hostname serving the sign-up page (without a scheme or path):
++
++```text
++@your-hostname #{{code}}
++```
++
++See [Twilio's domain-bound SMS setup](https://www.twilio.com/en-us/blog/developers/tutorials/product/domain-bound-sms-otps-verify).
++On HTTPS, supported browsers can extract the code with WebOTP after user consent.
++The input also uses `autocomplete="one-time-code"` for platform autofill; typing
++and pasting remain available when extraction is unavailable or declined.
++
++The form provides a 30-second resend delay. Configure the Verify Service's fraud
++protection, geographic permissions, and provider-side rate limits for production;
++the UI delay is not a security boundary. Provider throttling is surfaced in the
++form. No credentials, passwords, or verification codes are persisted in browser
++storage. A failed registration after approval requires a fresh SMS verification,
++since the approved code has already been consumed.
++
++Account creation still uses the existing external registration service, forwarding
++`username`, `password`, and the verified `phone`. This repository cannot enforce
++verification on clients calling that external service directly; enforcing this as
++an account-wide policy requires the registration service to accept requests only
++from this trusted server and persist the verified number.
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..ddb69d4 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,186 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useRef, useState } from 'react';
++
++const baseUrl = import.meta.env.BASE_URL;
++const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100';
++
++type SMSCredential = Credential & { code: string };
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [phone, setPhone] = useState('');
++  const [code, setCode] = useState('');
++  const [step, setStep] = useState<'details' | 'code' | 'complete'>('details');
+   const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
++  const [notice, setNotice] = useState('');
+   const [loading, setLoading] = useState(false);
++  const [retryAt, setRetryAt] = useState(0);
++  const [remaining, setRemaining] = useState(0);
++  const codeInput = useRef<HTMLInputElement>(null);
++  const phoneInput = useRef<HTMLInputElement>(null);
++  const successHeading = useRef<HTMLHeadingElement>(null);
++  const otpRequest = useRef<AbortController | null>(null);
++  const busy = useRef(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
++  useEffect(() => () => otpRequest.current?.abort(), []);
++  useEffect(() => {
++    if (step === 'code' && !loading) codeInput.current?.focus();
++    if (step === 'complete') successHeading.current?.focus();
++  }, [step, loading]);
++  useEffect(() => {
++    const update = () => setRemaining(Math.max(0, Math.ceil((retryAt - Date.now()) / 1000)));
++    update();
++    const timer = window.setInterval(update, 1000);
++    return () => window.clearInterval(timer);
++  }, [retryAt]);
+ 
+-      const data = await response.json();
++  // Start listening before requesting the SMS so a fast delivery is not missed.
++  const listenForCode = () => {
++    otpRequest.current?.abort();
++    if (!window.isSecureContext || !('OTPCredential' in window) || !navigator.credentials) return;
++    const controller = new AbortController();
++    otpRequest.current = controller;
++    const timeout = window.setTimeout(() => controller.abort(), 120_000);
++    const options = { otp: { transport: ['sms'] }, signal: controller.signal } as CredentialRequestOptions;
++    void navigator.credentials.get(options).then((credential) => {
++      if (!controller.signal.aborted && credential) {
++        const extracted = (credential as SMSCredential).code;
++        if (/^\d{6}$/.test(extracted)) {
++          setCode(extracted);
++          setNotice('Code filled from your SMS. Select Verify and create account to continue.');
++        }
++      }
++    }).catch(() => {
++      // Declining autofill or using an unsupported browser leaves manual entry available.
++    }).finally(() => window.clearTimeout(timeout));
++  };
+ 
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
++  const request = async (body: Record<string, string>) => {
++    const response = await fetch(`${baseUrl}api/signup`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(body),
++    });
++    const data = await response.json();
++    if (!response.ok) {
++      if (data.restart) {
++        otpRequest.current?.abort();
++        setStep('details');
++        setCode('');
+       }
++      if (response.status === 429) setRetryAt(Date.now() + 60_000);
++      throw new Error(data.error || 'Unable to continue. Please try again.');
++    }
++  };
++
++  const sendCode = async () => {
++    if (busy.current) return;
++    busy.current = true;
++    setLoading(true);
++    setError(null);
++    setNotice('');
++    setCode('');
++    listenForCode();
++    try {
++      await request({ action: 'send', phone });
++      setStep('code');
++      setNotice('We sent a 6-digit verification code by SMS.');
++      setRetryAt(Date.now() + 30_000);
++      codeInput.current?.focus();
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      otpRequest.current?.abort();
++      setError(err instanceof Error ? err.message : 'Unable to send your code. Please try again.');
+     } finally {
++      busy.current = false;
++      setLoading(false);
++    }
++  };
++
++  const handleSubmit = async (event: React.FormEvent) => {
++    event.preventDefault();
++    if (step === 'details') return sendCode();
++    if (busy.current) return;
++    busy.current = true;
++    setLoading(true);
++    setError(null);
++    setNotice('');
++    otpRequest.current?.abort();
++    try {
++      await request({ action: 'verify', username, password, phone, code });
++      setStep('complete');
++      setUsername('');
++      setPassword('');
++      setPhone('');
++      setCode('');
++    } catch (err) {
++      setError(err instanceof Error ? err.message : 'Unable to verify your code. Please try again.');
++    } finally {
++      busy.current = false;
+       setLoading(false);
+     }
+   };
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
++      {step === 'complete' ? (
++        <div role="status">
++          <h2 ref={successHeading} tabIndex={-1} className="text-2xl font-bold mb-4 text-gray-800">Your account is ready</h2>
++          <p className="text-gray-700 mb-4">Your phone number is verified and your account has been created.</p>
++          <a href={`${baseUrl}signin`} className="font-medium text-blue-700 underline focus:outline-2 focus:outline-offset-4">Continue to sign in</a>
+         </div>
++      ) : (
++        <>
++          <h2 className="text-2xl font-bold mb-2 text-center text-gray-800">{step === 'details' ? 'Sign Up' : 'Verify your phone number'}</h2>
++          <p className="text-sm text-gray-600 text-center mb-6">{step === 'details' ? 'Step 1 of 2 · Create your account' : 'Step 2 of 2 · Enter your SMS code'}</p>
++          {error && <div id="signup-error" className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">{error}</div>}
++          <p role="status" className="text-sm text-gray-700 mb-4">{notice}</p>
++          <form onSubmit={handleSubmit} className="space-y-4" aria-busy={loading}>
++            {step === 'details' ? (
++              <>
++                <div>
++                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
++                  <input type="text" id="username" name="username" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required maxLength={100} disabled={loading} className={inputClass} />
++                </div>
++                <div>
++                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
++                  <input type="password" id="password" name="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} maxLength={256} pattern=".*[0-9].*" aria-describedby="password-help" disabled={loading} className={inputClass} />
++                  <p id="password-help" className="text-xs text-gray-600 mt-1">Must be at least 8 characters and contain a number.</p>
++                </div>
++                <div>
++                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Mobile phone number</label>
++                  <input ref={phoneInput} type="tel" id="phone" name="phone" autoComplete="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required maxLength={30} pattern={'\\+[0-9\\s\\(\\)\\-]{7,29}'} placeholder="+1 202 555 0123" aria-describedby="phone-help" disabled={loading} className={inputClass} />
++                  <p id="phone-help" className="text-xs text-gray-600 mt-1">Include your country code, starting with +. We’ll text you a verification code. Message and data rates may apply.</p>
++                </div>
++              </>
++            ) : (
++              <>
++                <p id="code-help" className="text-sm text-gray-700">Enter the 6-digit code sent to <strong>{phone}</strong>. You can type or paste it, or use SMS autofill.</p>
++                <div>
++                  <label htmlFor="verification-code" className="block text-sm font-medium text-gray-700 mb-1">Verification code</label>
++                  <input ref={codeInput} type="text" id="verification-code" name="code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required pattern="[0-9]{6}" aria-describedby={error ? 'code-help signup-error' : 'code-help'} disabled={loading} className={`${inputClass} text-2xl tracking-widest`} />
++                </div>
++              </>
++            )}
++            <button type="submit" disabled={loading || (step === 'details' && remaining > 0)} data-skip-tracking="true" className="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-60 disabled:cursor-not-allowed">
++              {loading ? (step === 'details' ? 'Sending code…' : 'Verifying…') : step === 'details' ? (remaining > 0 ? `Try again in ${remaining}s` : 'Send verification code') : 'Verify and create account'}
++            </button>
++            {step === 'code' && (
++              <div className="flex flex-wrap justify-between gap-3 text-sm">
++                <button type="button" onClick={sendCode} disabled={loading || remaining > 0} className="text-blue-700 underline rounded focus:outline-2 focus:outline-offset-4 disabled:text-gray-500 disabled:no-underline">{remaining > 0 ? `Resend code in ${remaining}s` : 'Resend code'}</button>
++                <button type="button" disabled={loading} onClick={() => {
++                  otpRequest.current?.abort();
++                  setCode('');
++                  setError(null);
++                  setNotice('');
++                  setStep('details');
++                  window.setTimeout(() => phoneInput.current?.focus(), 0);
++                }} className="text-blue-700 underline rounded focus:outline-2 focus:outline-offset-4">Change phone number</button>
++              </div>
++            )}
++          </form>
++          <p className="mt-6 text-sm text-center text-gray-600">Already have an account? <a href={`${baseUrl}signin`} className="text-blue-700 underline">Sign in</a></p>
++        </>
+       )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
+     </div>
+   );
+ }
+diff --git a/src/pages/api/signup.ts b/src/pages/api/signup.ts
+new file mode 100644
+index 0000000..1d6357f
+--- /dev/null
++++ b/src/pages/api/signup.ts
+@@ -0,0 +1,75 @@
++import type { APIRoute } from 'astro';
++import { Buffer } from 'node:buffer';
++
++const json = (body: Record<string, unknown>, status = 200) => new Response(JSON.stringify(body), {
++  status,
++  headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
++});
++
++export const POST: APIRoute = async ({ request, url }) => {
++  // This app disables Astro's global origin check; keep SMS requests same-origin.
++  if (request.headers.get('origin') !== url.origin) return json({ error: 'Invalid request origin.' }, 403);
++  let body;
++  try {
++    body = await request.json();
++  } catch {
++    return json({ error: 'Invalid request.' }, 400);
++  }
++  if (!body || typeof body !== 'object') return json({ error: 'Invalid request.' }, 400);
++  const { action, username, password, code } = body;
++  const phone = typeof body.phone === 'string' ? body.phone.replace(/[\s()\-]/g, '') : '';
++  if (!/^\+[1-9]\d{7,14}$/.test(phone)) return json({ error: 'Enter a valid phone number including its country code, starting with +.' }, 400);
++  if (action !== 'send' && action !== 'verify') return json({ error: 'Invalid request.' }, 400);
++  if (action === 'verify' && (
++    typeof username !== 'string' || !username.trim() || username.length > 100 ||
++    typeof password !== 'string' || password.length < 8 || password.length > 256 || !/\d/.test(password) ||
++    typeof code !== 'string' || !/^\d{6}$/.test(code)
++  )) return json({ error: 'Enter a username, a password of at least 8 characters containing a number, and a 6-digit code.' }, 400);
++
++  const account = process.env.TWILIO_ACCOUNT_SID;
++  const token = process.env.TWILIO_AUTH_TOKEN;
++  const service = process.env.TWILIO_VERIFY_SERVICE_SID;
++  if (!account || !token || !service) return json({ error: 'SMS verification is currently unavailable. Please try again later.' }, 503);
++
++  try {
++    const parameters = new URLSearchParams({ To: phone });
++    if (action === 'send') {
++      parameters.set('Channel', 'sms');
++      // The template must end with @your-hostname #{{code}} for WebOTP.
++      if (process.env.TWILIO_VERIFY_TEMPLATE_SID) parameters.set('TemplateSid', process.env.TWILIO_VERIFY_TEMPLATE_SID);
++    } else parameters.set('Code', code);
++    const response = await fetch(`https://verify.twilio.com/v2/Services/${encodeURIComponent(service)}/${action === 'send' ? 'Verifications' : 'VerificationCheck'}`, {
++      method: 'POST',
++      headers: {
++        Authorization: `Basic ${Buffer.from(`${account}:${token}`).toString('base64')}`,
++        'Content-Type': 'application/x-www-form-urlencoded',
++      },
++      body: parameters,
++      signal: AbortSignal.timeout(15_000),
++    });
++    const result = await response.json();
++    if (response.status === 429 || result.code === 60202 || result.code === 60203) return json({ error: 'Too many attempts. Please wait a minute before requesting another code.' }, 429);
++    if (!response.ok) return json({ error: action === 'send' ? 'Unable to send an SMS to that number. Check the number and try again.' : 'Your code is invalid or has expired. Try again or request a new code.' }, 400);
++    if (action === 'send') {
++      if (result.status !== 'pending') return json({ error: 'Unable to send your code. Please try again.' }, 502);
++      return json({ sent: true });
++    }
++    if (result.status !== 'approved') return json({ error: 'That code is incorrect. Please try again.' }, 400);
++
++    // Never create an account until the SMS provider approves the code for this number.
++    try {
++      const registration = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ username, password, phone }),
++        signal: AbortSignal.timeout(15_000),
++      });
++      if (!registration.ok) return json({ error: 'Your phone was verified, but registration failed. Check your account details and request a new code to try again.', restart: true }, 400);
++      return json({ registered: true });
++    } catch {
++      return json({ error: 'Registration could not be confirmed. Try signing in first. If your account was not created, request a new code to try again.', restart: true }, 502);
++    }
++  } catch {
++    return json({ error: 'The SMS service could not be reached. Please try again.' }, 502);
++  }
++};

@@ -1,0 +1,251 @@
+diff --git a/index.html b/index.html
+index 66c9173..3cd266d 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,210 @@
+       background: #3e2723;
+     }
+ 
++    /* ---------------------------------------------------------------
++       Decorative icons & flourishes
++       All decoration lives in ::before/::after pseudo-elements so it
++       never enters the DOM text. Shapes use `content: ""`, which screen
++       readers ignore. Where a text glyph is used, the CSS alt-text
++       syntax (`content: "x" / ""`) gives it empty alternative text; the
++       preceding plain declaration is a fallback for older browsers.
++       --------------------------------------------------------------- */
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* "Seasonal Favorites" section heading: glyph flourishes either side */
++    .section-title {
++      text-align: center;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.75rem;
++    }
++
++    .section-title::before,
++    .section-title::after {
++      content: "\2726";
++      content: "\2726" / "";
++      color: var(--accent);
++      font-size: 0.8em;
++      padding: 0 0.5rem;
++      background: linear-gradient(var(--secondary), var(--secondary)) no-repeat;
++      background-size: 3rem 2px;
++    }
++
++    .section-title::before {
++      padding-left: 3.5rem;
++      background-position: left center;
++    }
++
++    .section-title::after {
++      padding-right: 3.5rem;
++      background-position: right center;
++    }
++
++    /* Drink headings: CSS-drawn icon above, ornamental rule below */
++    .drink-title {
++      position: relative;
++      padding-bottom: 12px;
++    }
++
++    .drink-title::before {
++      content: "";
++      display: block;
++      width: 32px;
++      height: 32px;
++      margin: 0 auto 10px;
++    }
++
++    .drink-title::after {
++      content: "";
++      position: absolute;
++      left: 50%;
++      bottom: 0;
++      width: 70px;
++      height: 6px;
++      transform: translateX(-50%);
++      background:
++        linear-gradient(45deg, transparent 35%, var(--accent) 35% 65%, transparent 65%) center / 6px 6px no-repeat,
++        linear-gradient(var(--secondary), var(--secondary)) left center / 28px 2px no-repeat,
++        linear-gradient(var(--secondary), var(--secondary)) right center / 28px 2px no-repeat;
++    }
++
++    /* Latte: cup with a handle */
++    .drink-title--latte::before {
++      width: 34px;
++      height: 24px;
++      margin-top: 8px;
++      background:
++        linear-gradient(var(--accent), var(--accent)) left top / 26px 4px no-repeat,
++        radial-gradient(ellipse 13px 24px at 13px 0, var(--primary) 98%, transparent 100%) left top / 26px 100% no-repeat,
++        radial-gradient(circle at center, transparent 3px, var(--primary) 3.5px 6px, transparent 6.5px) right 3px / 12px 14px no-repeat;
++    }
++
++    /* Espresso: coffee bean */
++    .drink-title--espresso::before {
++      width: 22px;
++      height: 32px;
++      border-radius: 50%;
++      background: linear-gradient(90deg, var(--primary) 44%, var(--secondary) 44% 56%, var(--primary) 56%);
++      transform: rotate(-30deg);
++    }
++
++    /* Cold brew: ice cube */
++    .drink-title--cold::before {
++      width: 24px;
++      height: 24px;
++      margin-top: 4px;
++      margin-bottom: 14px;
++      border-radius: 4px;
++      background: linear-gradient(135deg, #e3f2fd 0 40%, #90caf9 40% 100%);
++      border: 2px solid #5c8fb8;
++      transform: rotate(45deg);
++    }
++
++    /* Buttons: icon + hover/focus motion */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* View Details: chevron arrow drawn with borders */
++    .btn--details::after {
++      content: "";
++      width: 7px;
++      height: 7px;
++      border-top: 2px solid currentColor;
++      border-right: 2px solid currentColor;
++      transform: rotate(45deg);
++      transition: transform 0.3s;
++    }
++
++    .btn--details:hover::after,
++    .btn--details:focus-visible::after {
++      transform: translateX(4px) rotate(45deg);
++    }
++
++    /* Order Now: glyph with empty alt text, plus a shine sweep */
++    .btn--order {
++      position: relative;
++      overflow: hidden;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++    }
++
++    .btn--order:hover {
++      background: #ffc174;
++    }
++
++    .btn--order::before {
++      content: "\2615";
++      content: "\2615" / "";
++      font-size: 1.1em;
++      line-height: 1;
++    }
++
++    .btn--order::after {
++      content: "";
++      position: absolute;
++      top: 0;
++      left: -75%;
++      width: 50%;
++      height: 100%;
++      background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.6), transparent);
++      transform: skewX(-20deg);
++      transition: left 0.6s;
++    }
++
++    .btn--order:hover::after,
++    .btn--order:focus-visible::after {
++      left: 125%;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .btn--details::after,
++      .btn--order::after {
++        transition: none;
++      }
++
++      .btn--order::after {
++        display: none;
++      }
++    }
++
++    /* Windows High Contrast etc.: gradient-based shapes would vanish, so
++       hide them; border-drawn icons remain and inherit system colours. */
++    @media (forced-colors: active) {
++
++      .drink-title::before,
++      .drink-title::after,
++      .btn--order::after {
++        display: none;
++      }
++
++      .section-title::before,
++      .section-title::after {
++        background: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,27 +375,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn--order">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="drink-title drink-title--latte">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn btn--details">View Details<span class="sr-only"> about Maple Oat Latte</span></a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="drink-title drink-title--espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn btn--details">View Details<span class="sr-only"> about Dark Roast Espresso</span></a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="drink-title drink-title--cold">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn btn--details">View Details<span class="sr-only"> about Cold Brew</span></a>
+         </div>
+       </div>
+     </section>

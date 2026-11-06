@@ -1,0 +1,47 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,42 @@
++# Script performance diagnostics
++
++The page loads `script-performance.js` with `defer`. It uses the Long Animation
++Frames API to attribute JavaScript execution in frames that take over 50 ms.
++Buffered observation includes available frames from before the observer started.
++
++In a supporting browser, use the site normally and inspect the developer console.
++Scripts accumulating at least 100 ms in slow frames are logged as a table, at most
++once every five seconds when new frames arrive. No data is sent or persisted.
++
++To inspect the current ranking manually:
++
++```js
++console.table(window.scriptPerformance.report());
++// Include every observed source, even below the 100 ms reporting threshold:
++console.table(window.scriptPerformance.report({ minDuration: 0 }));
++// Check support and collection status:
++window.scriptPerformance.status;
++// Stop collecting while retaining the report:
++window.scriptPerformance.stop();
++```
++
++Results are sorted by `totalDuration`, the cumulative execution time attributed
++to a source in slow frames. `invocations` counts attributed script entries;
++`longestDuration` is the longest observed invocation, and
++`forcedStyleAndLayoutDuration` highlights synchronous style/layout work. All
++durations are in milliseconds. Reports return copies and drain queued entries.
++
++These measurements identify optimization candidates, not proof that a script
++alone caused a slow frame. They are not total script execution time, network
++download time, or an INP measurement. Cross-origin and other unavailable
++attributions may be omitted by the browser; missing source URLs appear as
++`(unattributed script)`. Inline scripts can be attributed to the document URL.
++
++The API is available in Chromium-based browsers and has limited browser support.
++Unsupported browsers skip collection (`status.supported` is `false`); an empty
++report does not prove there are no performance issues. This static page currently
++has no application scripts besides the diagnostics, so an empty report is normal.
++Storage is capped at 200 distinct sources per page visit; additional sources are
++skipped and counted in `status.droppedAttributions`.
++
++Run the isolated instrumentation checks with `node --test` (no server needed).

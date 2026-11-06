@@ -1,0 +1,38 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <title>Minimal Fetch Page</title>
++</head>
++<body>
++  <button id="action-btn">Fetch Data</button>
++  <pre id="output"></pre>
++
++  <script>
++    document.getElementById('action-btn').addEventListener('click', () => {
++      // Mission-critical data request with high fetch priority
++      fetch('/api/data', {
++        priority: 'high'
++      })
++        .then(res => res.json())
++        .then(data => {
++          document.getElementById('output').textContent = JSON.stringify(data, null, 2);
++        })
++        .catch(err => console.error('Data fetch error:', err));
++
++      // Non-critical analytics request with low fetch priority
++      fetch('/api/analytics', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low',
++        keepalive: true
++      }).catch(err => console.error('Analytics error:', err));
++    });
++  </script>
++</body>
++</html>

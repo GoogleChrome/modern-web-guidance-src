@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,143 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roast Picker (customizable select; falls back to a native select) */
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      margin-top: 1.5rem;
++    }
++
++    .roast-label {
++      font-size: 0.85rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      margin-bottom: 0.4rem;
++      color: var(--secondary);
++    }
++
++    .roast-select {
++      min-width: 280px;
++      padding: 10px 14px;
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .order-form .btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .roast-sep {
++      display: none;
++    }
++
++    @supports (appearance: base-select) {
++      .roast-select,
++      .roast-select::picker(select) {
++        appearance: base-select;
++      }
++
++      .roast-select {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        gap: 10px;
++        width: 320px;
++        text-align: left;
++      }
++
++      .roast-select::picker-icon {
++        color: var(--primary);
++        transition: rotate 0.2s;
++      }
++
++      .roast-select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      .roast-select::picker(select) {
++        margin-top: 6px;
++        padding: 6px;
++        border: none;
++        border-radius: 8px;
++        background: white;
++        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++      }
++
++      .roast-select option {
++        display: flex;
++        align-items: center;
++        gap: 12px;
++        padding: 10px 12px;
++        border-radius: 6px;
++        color: var(--text);
++        text-align: left;
++      }
++
++      .roast-select option:hover,
++      .roast-select option:focus-visible {
++        background: var(--secondary);
++        outline: none;
++      }
++
++      .roast-select option:checked {
++        background: #efebe9;
++      }
++
++      .roast-select option::checkmark {
++        order: 1;
++        margin-left: auto;
++        color: var(--primary);
++      }
++
++      .roast-icon {
++        flex-shrink: 0;
++        width: 32px;
++        height: 32px;
++        color: var(--primary);
++      }
++
++      .roast-text {
++        display: flex;
++        flex-direction: column;
++        line-height: 1.3;
++      }
++
++      .roast-title {
++        font-weight: bold;
++        color: var(--primary);
++      }
++
++      .roast-desc {
++        font-size: 0.8rem;
++        color: #6d4c41;
++      }
++
++      .roast-select selectedcontent {
++        display: flex;
++        align-items: center;
++        gap: 10px;
++      }
++
++      .roast-select selectedcontent .roast-icon {
++        width: 24px;
++        height: 24px;
++      }
++
++      .roast-select selectedcontent .roast-desc {
++        display: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +305,52 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form class="order-form" action="/order-online" method="get">
++      <label class="roast-label" for="roast">Choose your roast</label>
++      <select id="roast" name="roast" class="roast-select">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light">
++          <svg class="roast-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="16" cy="16" rx="9" ry="12" transform="rotate(30 16 16)"/><path d="M11 25c4-4 6-14 10-18"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Light Roast</span><span class="roast-sep"> – </span>
++            <span class="roast-desc">Bright, fruity, and gently acidic.</span>
++          </span>
++        </option>
++        <option value="medium" selected>
++          <svg class="roast-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="16" cy="16" rx="9" ry="12" transform="rotate(30 16 16)" fill="currentColor" fill-opacity="0.35"/><path d="M11 25c4-4 6-14 10-18"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Medium Roast</span><span class="roast-sep"> – </span>
++            <span class="roast-desc">Balanced, nutty, with caramel sweetness.</span>
++          </span>
++        </option>
++        <option value="dark">
++          <svg class="roast-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="16" cy="16" rx="9" ry="12" transform="rotate(30 16 16)" fill="currentColor"/><path d="M11 25c4-4 6-14 10-18" stroke="white"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Dark Roast</span><span class="roast-sep"> – </span>
++            <span class="roast-desc">Bold, smoky, with a rich chocolate finish.</span>
++          </span>
++        </option>
++        <option value="espresso">
++          <svg class="roast-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13h14v5a7 7 0 0 1-14 0z"/><path d="M21 15h2a3 3 0 0 1 0 6h-2"/><path d="M5 27h20"/><path d="M12 5c0 2 2 2 2 4M17 5c0 2 2 2 2 4"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Espresso</span><span class="roast-sep"> – </span>
++            <span class="roast-desc">A concentrated shot of intense flavor.</span>
++          </span>
++        </option>
++        <option value="cold-brew">
++          <svg class="roast-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h16l-2 22H10z"/><path d="M8.6 12h14.8"/><rect x="11" y="15" width="4" height="4" rx="1"/><rect x="16" y="19" width="4" height="4" rx="1"/><path d="M19 6l3-4"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Cold Brew</span><span class="roast-sep"> – </span>
++            <span class="roast-desc">Steeped 18 hours, smooth and low acid.</span>
++          </span>
++        </option>
++      </select>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
+     <section>

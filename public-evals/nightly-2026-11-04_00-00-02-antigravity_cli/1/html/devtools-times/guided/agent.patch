@@ -1,0 +1,1266 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..78ec5b9 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -4,60 +4,85 @@ import FlyoutMenu from './FlyoutMenu';
+ interface BottomNavProps {
+     categories: string[];
+     articles: any[];
+-    reports: any[];
+-    multimedia: any[];
++    reports?: any[];
++    multimedia?: any[];
+ }
+ 
+-const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+-    const [activeCategory, setActiveCategory] = useState<string | null>(null);
+-
+-    const groupedCategories = {
+-        'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+-        'Arts & Culture': ['Culture', 'Media'],
+-        'Science & Tech': ['science'],
+-        'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+-    };
++const groupedCategories: Record<string, string[]> = {
++    'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
++    'Arts & Culture': ['Culture', 'Media'],
++    'Science & Tech': ['science'],
++    'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
++};
+ 
+-    const handleMouseLeave = () => {
+-        setActiveCategory(null);
+-    };
++const toPopoverId = (groupName: string) =>
++    `nav-popover-${groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+ 
+-    const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
+-    const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+-    const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
++const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports = [], multimedia = [] }) => {
++    const [activeCategory, setActiveCategory] = useState<string | null>(null);
+ 
+     return (
+-        <div onMouseLeave={handleMouseLeave}>
++        <div>
+             <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+-                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
+-                        return (
+-                            <div 
+-                                key={groupName}
+-                                onMouseEnter={() => setActiveCategory(groupName)}
+-                                className="h-full flex items-center"
+-                            >
+-                                <a 
+-                                    href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                <nav aria-label="Primary" className="container mx-auto px-4">
++                    <ul className="flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++                        {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                            const popoverId = toPopoverId(groupName);
++                            const isExpanded = activeCategory === groupName;
++                            const filteredSubCategories = subCategories.filter(c => categories.includes(c));
++                            const filteredReports = reports.filter(r => r.data?.category === groupName);
++                            const filteredMultimedia = multimedia.filter(m => m.data?.category === groupName);
++
++                            return (
++                                <li
++                                    key={groupName}
++                                    className="h-full flex items-center"
+                                 >
+-                                    <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+-                                    </svg>
+-                                </a>
+-                            </div>
+-                        );
+-                    })}
++                                    <button
++                                        type="button"
++                                        popoverTarget={popoverId}
++                                        command="toggle-popover"
++                                        commandfor={popoverId}
++                                        aria-expanded={isExpanded}
++                                        onClick={() =>
++                                            setActiveCategory(prev => (prev === groupName ? null : groupName))
++                                        }
++                                        className="flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap py-1 cursor-pointer"
++                                    >
++                                        <span>{groupName}</span>
++                                        <svg
++                                            aria-hidden="true"
++                                            xmlns="http://www.w3.org/2000/svg"
++                                            fill="none"
++                                            viewBox="0 0 24 24"
++                                            strokeWidth="3"
++                                            stroke="currentColor"
++                                            className="w-3 h-3 text-gray-500"
++                                        >
++                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
++                                        </svg>
++                                    </button>
++                                    <FlyoutMenu
++                                        id={popoverId}
++                                        isOpen={isExpanded}
++                                        onToggleOpen={(open) => {
++                                            if (open) {
++                                                setActiveCategory(groupName);
++                                            } else if (activeCategory === groupName) {
++                                                setActiveCategory(null);
++                                            }
++                                        }}
++                                        categories={filteredSubCategories}
++                                        articles={articles}
++                                        reports={filteredReports}
++                                        multimedia={filteredMultimedia}
++                                    />
++                                </li>
++                            );
++                        })}
++                    </ul>
+                 </nav>
+             </div>
+-            <FlyoutMenu 
+-                isOpen={activeCategory !== null} 
+-                categories={activeSubCategories.filter(c => categories.includes(c))}
+-                articles={articles}
+-                reports={filteredReports}
+-                multimedia={filteredMultimedia}
+-            />
+         </div>
+     );
+ };
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..39bb5b1 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,38 +1,87 @@
+-import React from 'react';
++import React, { useMemo, useEffect, useRef } from 'react';
+ 
+ interface FlyoutMenuProps {
+-  isOpen: boolean;
++  id?: string;
++  isOpen?: boolean;
++  onClose?: () => void;
++  onToggleOpen?: (open: boolean) => void;
+   categories: string[];
+-  articles: any[];
+-  reports: any[];
+-  multimedia: any[];
++  articles?: any[];
++  reports?: any[];
++  multimedia?: any[];
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
+-  if (!isOpen) {
+-    return null;
+-  }
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
++  id = 'flyout-menu-popover',
++  isOpen = false,
++  onClose,
++  onToggleOpen,
++  categories,
++  articles = [],
++  reports = [],
++  multimedia = [],
++}) => {
++  const popoverRef = useRef<HTMLDivElement>(null);
+ 
+-  // Intentionally failing method to demonstrate debugging
+-  const calculateTrendingScore = (article: any) => {
+-    const getScore = article.getScore;
+-    return getScore();
+-  };
++  useEffect(() => {
++    const el = popoverRef.current;
++    if (!el) return;
+ 
+-  const topStories = articles.sort(() => 0.5 - Math.random()).slice(0, 3);
++    const handleToggle = (event: Event) => {
++      const toggleEvent = event as ToggleEvent;
++      const open = toggleEvent.newState === 'open';
++      onToggleOpen?.(open);
++      if (!open) {
++        onClose?.();
++      }
++    };
+ 
+-  if (topStories.length > 0) {
+-    setTimeout(() => calculateTrendingScore(topStories[0]), 100);
+-  }
++    el.addEventListener('toggle', handleToggle);
++    return () => {
++      el.removeEventListener('toggle', handleToggle);
++    };
++  }, [onClose, onToggleOpen]);
++
++  useEffect(() => {
++    const el = popoverRef.current as (HTMLDivElement & {
++      showPopover?: () => void;
++      hidePopover?: () => void;
++    }) | null;
++    if (!el || typeof el.showPopover !== 'function') return;
++
++    const isCurrentlyOpen = el.matches(':popover-open') || el.classList.contains(':popover-open');
++    if (isOpen && !isCurrentlyOpen) {
++      try {
++        el.showPopover();
++      } catch {
++        // Ignore if already open or not connected
++      }
++    } else if (!isOpen && isCurrentlyOpen) {
++      try {
++        el.hidePopover?.();
++      } catch {
++        // Ignore if already hidden
++      }
++    }
++  }, [isOpen]);
++
++  const topStories = useMemo(() => {
++    return [...articles].slice(0, 3);
++  }, [articles]);
+ 
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
++    <div
++      ref={popoverRef}
++      id={id}
++      popover="auto"
++      className="flyout-menu w-full max-w-none m-0 p-0 inset-x-0 top-auto bg-white border-b border-gray-300 shadow-lg z-50 text-left"
++    >
+       <div className="container mx-auto px-4 py-6">
+-        <div className="grid grid-cols-4 gap-x-8">
++        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-x-8">
+           
+           {/* Column 1: SECTIONS */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h2>
+             <ul className="space-y-2 text-sm">
+               {categories.map(category => (
+                 <li key={category}>
+@@ -46,60 +95,62 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 2: TOP STORIES */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h2>
+             <ul className="space-y-2 text-sm">
+-                {topStories.map(article => (
+-                    <li key={article.id}>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} className="hover:underline">{article.data.title}</a>
+-                    </li>
+-                ))}
++              {topStories.map(article => (
++                <li key={article.id ?? article.slug}>
++                  <a href={`${import.meta.env.BASE_URL}articles/${article.id ?? article.slug}`} className="hover:underline">
++                    {article.data?.title ?? article.title}
++                  </a>
++                </li>
++              ))}
+             </ul>
+           </div>
+ 
+           {/* Column 3: REPORTS */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
+-              <ul className="space-y-4 text-sm">
+-                  {reports.map(report => (
+-                      <li key={report.slug}>
+-                          <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`} className="flex items-start space-x-2 group/item">
+-                              <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
+-                                  <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
+-                              </div>
+-                              <div>
+-                                  <p className="font-semibold group-hover/item:underline">{report.data.title}</p>
+-                                  <p className="text-xs text-gray-600">{report.data.description}</p>
+-                              </div>
+-                          </a>
+-                      </li>
+-                  ))}
+-                  <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}reports`} className="text-xs font-semibold hover:underline">See all reports</a>
+-                  </li>
+-              </ul>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h2>
++            <ul className="space-y-4 text-sm">
++              {reports.map(report => (
++                <li key={report.slug}>
++                  <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`} className="flex items-start space-x-2 group/item">
++                    <div aria-hidden="true" className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
++                      <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
++                    </div>
++                    <div>
++                      <p className="font-semibold group-hover/item:underline">{report.data.title}</p>
++                      <p className="text-xs text-gray-600">{report.data.description}</p>
++                    </div>
++                  </a>
++                </li>
++              ))}
++              <li className="pt-2">
++                <a href={`${import.meta.env.BASE_URL}reports`} className="text-xs font-semibold hover:underline">See all reports</a>
++              </li>
++            </ul>
+           </div>
+ 
+           {/* Column 4: MULTIMEDIA */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
+-              <ul className="space-y-4 text-sm">
+-                    {multimedia.map(item => (
+-                        <li key={item.slug}>
+-                            <a href={`/multimedia/${item.slug}`} className="flex items-start space-x-2 group/item">
+-                                <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+-                                    <span className="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
+-                                </div>
+-                                <div>
+-                                    <p className="font-semibold group-hover/item:underline">{item.data.title}</p>
+-                                    <p className="text-xs text-gray-600">{item.data.description}</p>
+-                                </div>
+-                            </a>
+-                        </li>
+-                    ))}
+-                  <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}multimedia`} className="text-xs font-semibold hover:underline">See all multimedia</a>
+-                  </li>
+-              </ul>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h2>
++            <ul className="space-y-4 text-sm">
++              {multimedia.map(item => (
++                <li key={item.slug}>
++                  <a href={`${import.meta.env.BASE_URL}multimedia/${item.slug}`} className="flex items-start space-x-2 group/item">
++                    <div aria-hidden="true" className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
++                      <span className="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
++                    </div>
++                    <div>
++                      <p className="font-semibold group-hover/item:underline">{item.data.title}</p>
++                      <p className="text-xs text-gray-600">{item.data.description}</p>
++                    </div>
++                  </a>
++                </li>
++              ))}
++              <li className="pt-2">
++                <a href={`${import.meta.env.BASE_URL}multimedia`} className="text-xs font-semibold hover:underline">See all multimedia</a>
++              </li>
++            </ul>
+           </div>
+ 
+         </div>
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..941df68 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -7,70 +7,74 @@ const baseUrl = import.meta.env.BASE_URL;
+     <div class="border-b border-gray-300 pb-6 mb-6">
+         <a href={baseUrl}>
+             <img
+-                src=`${baseUrl}logo.svg`
++                src={`${baseUrl}logo.svg`}
+                 alt="The DevTools Times"
+-                class="h-10"
++                width="872"
++                height="102"
++                loading="lazy"
++                decoding="async"
++                class="h-10 w-auto"
+             />
+         </a>
+     </div>
+ 
+     <!-- Middle section: Main navigation links -->
+-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
++    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
+         
+         <!-- Column 1: NEWS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">News</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
+-                <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
+-                <li><a href="/category/business" class="text-sm hover:underline">Business</a></li>
++                <li><a href={`${baseUrl}category/national`} class="text-sm hover:underline">National</a></li>
++                <li><a href={`${baseUrl}category/politics`} class="text-sm hover:underline">Politics</a></li>
++                <li><a href={`${baseUrl}category/business`} class="text-sm hover:underline">Business</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 2: ARTS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+-                <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
++                <li><a href={`${baseUrl}category/culture`} class="text-sm hover:underline">Culture</a></li>
++                <li><a href={`${baseUrl}category/media`} class="text-sm hover:underline">Media</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 3: LIFESTYLE -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
+-                <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
+-                <li><a href="/category/urban%20development" class="text-sm hover:underline">Urban Development</a></li>
++                <li><a href={`${baseUrl}category/lifestyle`} class="text-sm hover:underline">Lifestyle</a></li>
++                <li><a href={`${baseUrl}category/sports`} class="text-sm hover:underline">Sports</a></li>
++                <li><a href={`${baseUrl}category/urban%20development`} class="text-sm hover:underline">Urban Development</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 4: SCIENCE & TECH -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
++                <li><a href={`${baseUrl}category/science`} class="text-sm hover:underline">Science</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Empty Spacer Columns -->
+-        <div class="hidden lg:block"></div>
+-        <div class="hidden lg:block"></div>
++        <div class="hidden lg:block" aria-hidden="true"></div>
++        <div class="hidden lg:block" aria-hidden="true"></div>
+ 
+         <!-- Column 7: ACCOUNT -->
+         <div class="col-span-2 sm:col-span-1">
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h2>
+             <ul class="space-y-2 mb-4">
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
++                    <a href={`${baseUrl}signup`} class="flex items-center text-sm font-semibold hover:underline">
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                         Subscribe
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
++                    <a href={`${baseUrl}signin`} class="flex items-center text-sm font-semibold hover:underline">
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+                 </li>
+@@ -78,27 +82,27 @@ const baseUrl = import.meta.env.BASE_URL;
+             
+             <!-- Secondary Account Links -->
+             <ul class="space-y-2 text-xs text-gray-600">
+-                <li><a href="#" class="hover:underline">Email Newsletters</a></li>
++                <li><a href={`${baseUrl}signup`} class="hover:underline">Email Newsletters</a></li>
+             </ul>
+         </div>
+ 
+-    </div>
++    </nav>
+ 
+     <!-- Bottom section: Legal, copyright, and privacy -->
+     <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
+         <!-- Copyright and legal links -->
+-        <div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
+-            <span>© 2025 The DevTools Times Company</span>
+-            <a href="#" class="hover:underline">Contact Us</a>
+-            <a href="#" class="hover:underline">Work with us</a>
+-            <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+-            <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+-            <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
+-        </div>
++        <ul class="flex flex-wrap justify-center gap-x-4 gap-y-2">
++            <li><span>© 2025 The DevTools Times Company</span></li>
++            <li><a href={`${baseUrl}legal/imprint`} class="hover:underline">Contact Us</a></li>
++            <li><a href={`${baseUrl}legal/imprint`} class="hover:underline">Work with us</a></li>
++            <li><a href={`${baseUrl}legal/privacy`} class="hover:underline">Privacy Policy</a></li>
++            <li><a href={`${baseUrl}legal/terms`} class="hover:underline">Terms of Service</a></li>
++            <li><a href={`${baseUrl}legal/imprint`} class="hover:underline">Imprint</a></li>
++        </ul>
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a href={`${baseUrl}legal/privacy`} class="hover:underline">Manage Privacy Preferences</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..ac22fcb 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -10,7 +10,9 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
+-const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
++const now = new Date();
++const todaysDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
++const todayIso = now.toISOString().split('T')[0];
+ ---
+ 
+ <header class="font-inter group relative bg-white">
+@@ -19,7 +21,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     <div class="flex justify-between items-center">
+       <!-- Left: Search Icon -->
+       <div class="flex items-center space-x-3">
+-        <SearchButton client:load />
++        <SearchButton client:load articles={articles} />
+         <ReadingListButton client:load />
+       </div>
+ 
+@@ -48,13 +50,21 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     <div class="grid grid-cols-3 items-center">
+       <!-- Left Section: Date -->
+       <div class="text-xs">
+-        <p class="font-semibold">{todaysDate}</p>
++        <p class="font-semibold">
++          <time datetime={todayIso}>{todaysDate}</time>
++        </p>
+       </div>
+ 
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+         <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++          <img
++            src={`${baseUrl}logo.svg`}
++            alt="The DevTools Times"
++            width="872"
++            height="102"
++            class="w-80 h-auto mx-auto"
++          />
+         </a>
+       </div>
+ 
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..c22f6e2 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -15,17 +15,31 @@ export default function ReadingListButton() {
+ 
+   useEffect(() => {
+     const fetchArticles = async () => {
+-      const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-      const data = await response.json();
+-      setArticles(data);
++      try {
++        const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
++        if (response.ok) {
++          const data = await response.json();
++          setArticles(data);
++        }
++      } catch (error) {
++        console.error('Failed to fetch reading list articles:', error);
++      }
+     };
+     fetchArticles();
+   }, []);
+ 
+   return (
+     <>
+-      <button onClick={() => setIsOpen(true)} className="p-1">
++      <button
++        type="button"
++        command="show-modal"
++        commandfor="reading-list-dialog"
++        aria-label="Open reading list"
++        onClick={() => setIsOpen(true)}
++        className="p-1 text-gray-600 hover:text-amber-400"
++      >
+         <svg
++          aria-hidden="true"
+           xmlns="http://www.w3.org/2000/svg"
+           className="h-6 w-6 text-gray-600"
+           fill="none"
+@@ -40,7 +54,12 @@ export default function ReadingListButton() {
+           />
+         </svg>
+       </button>
+-      {isOpen && <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />}
++      <ReadingListFlyout
++        dialogId="reading-list-dialog"
++        isOpen={isOpen}
++        articles={articles}
++        onClose={() => setIsOpen(false)}
++      />
+     </>
+   );
+ }
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..ec58ddc 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useState, useEffect, useRef } from 'react';
+ 
+ interface Article {
+   slug: string;
+@@ -9,33 +9,81 @@ interface Article {
+ }
+ 
+ interface Props {
++  dialogId?: string;
++  isOpen?: boolean;
+   articles: Article[];
+   onClose: () => void;
+ }
+ 
+-export default function ReadingListFlyout({ articles, onClose }: Props) {
++export default function ReadingListFlyout({
++  dialogId = 'reading-list-dialog',
++  isOpen = false,
++  articles,
++  onClose,
++}: Props) {
+   const [readingList, setReadingList] = useState<string[]>([]);
++  const dialogRef = useRef<HTMLDialogElement>(null);
+ 
+   const fetchReadingList = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+-    const data = await response.json();
+-    setReadingList(data.readingList);
++    try {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
++      if (response.ok) {
++        const data = await response.json();
++        setReadingList(data.readingList ?? []);
++      }
++    } catch (error) {
++      console.error('Failed to fetch reading list:', error);
++    }
+   };
+ 
+   useEffect(() => {
+-    fetchReadingList();
++    const dialog = dialogRef.current;
++    if (!dialog) return;
++
++    if (isOpen && !dialog.open) {
++      fetchReadingList();
++      dialog.showModal();
++    } else if (!isOpen && dialog.open) {
++      dialog.close();
++    }
++  }, [isOpen]);
++
++  // Fallback for browsers that do not support the declarative `closedby="any"` attribute
++  useEffect(() => {
++    const dialog = dialogRef.current;
++    if (!dialog || 'closedBy' in HTMLDialogElement.prototype) return;
++
++    let pointerDownOutside = false;
++
++    const isOutside = (event: PointerEvent) => {
++      const rect = dialog.getBoundingClientRect();
++      return (
++        event.clientX < rect.left ||
++        event.clientX > rect.right ||
++        event.clientY < rect.top ||
++        event.clientY > rect.bottom
++      );
++    };
++
++    const handlePointerDown = (event: PointerEvent) => {
++      pointerDownOutside = isOutside(event);
++    };
+ 
+-    const handleKeyDown = (event: KeyboardEvent) => {
+-      if (event.key === 'Escape') {
+-        onClose();
++    const handlePointerUp = (event: PointerEvent) => {
++      if (pointerDownOutside && isOutside(event)) {
++        dialog.close();
+       }
++      pointerDownOutside = false;
+     };
+-    window.addEventListener('keydown', handleKeyDown);
++
++    dialog.addEventListener('pointerdown', handlePointerDown);
++    dialog.addEventListener('pointerup', handlePointerUp);
+ 
+     return () => {
+-      window.removeEventListener('keydown', handleKeyDown);
++      dialog.removeEventListener('pointerdown', handlePointerDown);
++      dialog.removeEventListener('pointerup', handlePointerUp);
+     };
+-  }, [onClose]);
++  }, []);
+ 
+   const handleRemove = async (slug: string) => {
+     await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+@@ -50,38 +98,67 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
++  const handleCloseClick = () => {
++    dialogRef.current?.close();
++    onClose();
++  };
++
+   return (
+-    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++    <dialog
++      ref={dialogRef}
++      id={dialogId}
++      closedby="any"
++      aria-labelledby="reading-list-dialog-title"
++      onClose={onClose}
++      className="m-auto mt-[15vh] bg-white shadow-xl w-full max-w-2xl p-0 relative overflow-visible backdrop:bg-white/30 backdrop:backdrop-blur-sm"
++    >
++      <div className="relative">
++        <button
++          type="button"
++          command="close"
++          commandfor={dialogId}
++          aria-label="Close reading list"
++          autoFocus
++          onClick={handleCloseClick}
++          className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10"
++        >
++          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+           </svg>
+         </button>
+         <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++          <h2 id="reading-list-dialog-title" className="text-lg font-semibold text-gray-800 mb-3">
++            Your Reading List
++          </h2>
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+             <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
+           )}
+-          <ul className="space-y-2">
+-            {readingListArticles.map(article => (
+-              <li key={article.slug} className="flex items-center">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+-                  <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                  <p className="text-sm text-gray-600">{article.summary}</p>
+-                </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
++          {readingListArticles.length > 0 && (
++            <ul className="space-y-2">
++              {readingListArticles.map(article => (
++                <li key={article.slug} className="flex items-center">
++                  <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
++                    <h3 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h3>
++                    <p className="text-sm text-gray-600">{article.summary}</p>
++                  </a>
++                  <button
++                    type="button"
++                    aria-label={`Remove ${article.title} from reading list`}
++                    onClick={() => handleRemove(article.slug)}
++                    className="p-2 text-gray-500 hover:text-amber-400"
++                  >
++                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                     </svg>
+-                </button>
+-              </li>
+-            ))}
+-          </ul>
++                  </button>
++                </li>
++              ))}
++            </ul>
++          )}
+         </div>
+       </div>
+-    </div>
++    </dialog>
+   );
+ }
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..c812951 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,26 +1,61 @@
+ 
+-import React, { useState } from 'react';
++import React, { useState, useMemo } from 'react';
+ import SearchFlyout from './SearchFlyout';
+ 
+-interface Article {
++interface ArticleItem {
++    slug: string;
++    title?: string;
++    summary?: string;
++    image?: string;
++    data?: {
++        title: string;
++        summary: string;
++        image?: string;
++    };
++}
++
++interface NormalizedArticle {
+     slug: string;
+     title: string;
+     summary: string;
++    image?: string;
+ }
+ 
+-export default function SearchButton() {
++interface Props {
++    articles?: ArticleItem[];
++}
++
++export default function SearchButton({ articles: initialArticles = [] }: Props) {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+-    const [articles, setArticles] = useState<Article[]>([]);
++    const [fetchedArticles, setFetchedArticles] = useState<NormalizedArticle[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
+ 
++    const normalizedInitial = useMemo<NormalizedArticle[]>(() => {
++        return initialArticles.map((item) => ({
++            slug: item.slug,
++            title: item.title ?? item.data?.title ?? '',
++            summary: item.summary ?? item.data?.summary ?? '',
++            image: item.image ?? item.data?.image,
++        }));
++    }, [initialArticles]);
++
++    const articles = normalizedInitial.length > 0 ? normalizedInitial : fetchedArticles;
++
+     const openSearch = async () => {
+-        try {
+-            setArticles([]);
+-            setIsFlyoutOpen(true);
+-        } catch (error) {
+-            console.error('Failed to fetch articles:', error);
+-        } finally {
+-            setIsLoading(false);
++        setIsFlyoutOpen(true);
++        if (normalizedInitial.length === 0 && fetchedArticles.length === 0) {
++            try {
++                setIsLoading(true);
++                const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
++                if (response.ok) {
++                    const data = await response.json();
++                    setFetchedArticles(data);
++                }
++            } catch (error) {
++                console.error('Failed to fetch articles:', error);
++            } finally {
++                setIsLoading(false);
++            }
+         }
+     };
+ 
+@@ -31,19 +66,28 @@ export default function SearchButton() {
+     return (
+         <>
+             <button
++                type="button"
++                command="show-modal"
++                commandfor="search-dialog"
++                aria-label="Search articles"
+                 className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+                 onClick={openSearch}
+                 disabled={isLoading}
+             >
+                 {isLoading ? (
+-                    <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
++                    <div aria-hidden="true" className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                 ) : (
+-                    <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
++                    <svg aria-hidden="true" className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                         <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            <SearchFlyout
++                dialogId="search-dialog"
++                isOpen={isFlyoutOpen}
++                articles={articles}
++                onClose={closeSearch}
++            />
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..4f12cfc 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useMemo, useEffect } from 'react';
++import React, { useState, useMemo, useEffect, useRef } from 'react';
+ 
+ interface Article {
+     slug: string;
+@@ -9,6 +9,8 @@ interface Article {
+ }
+ 
+ interface Props {
++    dialogId?: string;
++    isOpen?: boolean;
+     articles: Article[];
+     onClose: () => void;
+ }
+@@ -18,35 +20,69 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+     return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+ };
+ 
+-export default function SearchFlyout({ articles, onClose }: Props) {
++export default function SearchFlyout({
++    dialogId = 'search-dialog',
++    isOpen = false,
++    articles,
++    onClose,
++}: Props) {
+     const [searchTerm, setSearchTerm] = useState('');
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
++    const dialogRef = useRef<HTMLDialogElement>(null);
+ 
+     useEffect(() => {
+-        const handleKeyDown = (event: KeyboardEvent) => {
+-            if (event.key === 'Escape') {
+-                onClose();
+-            }
++        const dialog = dialogRef.current;
++        if (!dialog) return;
++
++        if (isOpen && !dialog.open) {
++            dialog.showModal();
++        } else if (!isOpen && dialog.open) {
++            dialog.close();
++        }
++    }, [isOpen]);
++
++    useEffect(() => {
++        if (articles.length > 0 && suggestions.length === 0) {
++            setSuggestions(getShuffledItems(articles, 3));
++        }
++    }, [articles, suggestions.length]);
++
++    // Fallback for browsers that do not support the declarative `closedby="any"` attribute
++    useEffect(() => {
++        const dialog = dialogRef.current;
++        if (!dialog || 'closedBy' in HTMLDialogElement.prototype) return;
++
++        let pointerDownOutside = false;
++
++        const isOutside = (event: PointerEvent) => {
++            const rect = dialog.getBoundingClientRect();
++            return (
++                event.clientX < rect.left ||
++                event.clientX > rect.right ||
++                event.clientY < rect.top ||
++                event.clientY > rect.bottom
++            );
++        };
++
++        const handlePointerDown = (event: PointerEvent) => {
++            pointerDownOutside = isOutside(event);
+         };
+-        window.addEventListener('keydown', handleKeyDown);
+-        
+-        // Bug: Redundant fetch for suggestions
+-        const fetchSuggestions = async () => {
+-            try {
+-                const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-                const data = await response.json();
+-                setSuggestions(getShuffledItems(data, 3));
+-            } catch (error) {
+-                console.error('Failed to fetch suggestions:', error);
++
++        const handlePointerUp = (event: PointerEvent) => {
++            if (pointerDownOutside && isOutside(event)) {
++                dialog.close();
+             }
++            pointerDownOutside = false;
+         };
+ 
+-        fetchSuggestions();
++        dialog.addEventListener('pointerdown', handlePointerDown);
++        dialog.addEventListener('pointerup', handlePointerUp);
+ 
+         return () => {
+-            window.removeEventListener('keydown', handleKeyDown);
++            dialog.removeEventListener('pointerdown', handlePointerDown);
++            dialog.removeEventListener('pointerup', handlePointerUp);
+         };
+-    }, [onClose]);
++    }, []);
+ 
+     const filteredArticles = useMemo(() => {
+         if (!searchTerm) {
+@@ -58,15 +94,41 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         );
+     }, [articles, searchTerm]);
+ 
++    const handleDialogClose = () => {
++        onClose();
++    };
++
++    const handleCloseClick = () => {
++        dialogRef.current?.close();
++        onClose();
++    };
++
+     return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++        <dialog
++            ref={dialogRef}
++            id={dialogId}
++            closedby="any"
++            aria-labelledby="search-dialog-title"
++            onClose={handleDialogClose}
++            className="m-auto mt-[15vh] bg-white shadow-xl w-full max-w-2xl p-0 relative overflow-visible backdrop:bg-white/30 backdrop:backdrop-blur-sm"
++        >
++            <div className="relative">
++                <button
++                    type="button"
++                    command="close"
++                    commandfor={dialogId}
++                    aria-label="Close search"
++                    onClick={handleCloseClick}
++                    className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10"
++                >
++                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+                 </button>
+                 <div className="p-4">
++                    <h2 id="search-dialog-title" className="text-lg font-semibold text-gray-800 mb-3">
++                        Search Articles
++                    </h2>
+                     {!searchTerm && suggestions.length > 0 && (
+                         <div>
+                             <h3 className="text-sm font-semibold text-gray-500 mb-3">Featured</h3>
+@@ -76,7 +138,15 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                                     return (
+                                         <li key={article.slug}>
+                                             <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+-                                                <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
++                                                <img
++                                                    src={`${import.meta.env.BASE_URL}${imagePath}`}
++                                                    alt={article.title}
++                                                    width={200}
++                                                    height={80}
++                                                    loading="lazy"
++                                                    decoding="async"
++                                                    className="w-full h-20 object-cover rounded-md mb-2"
++                                                />
+                                                 <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                                             </a>
+                                         </li>
+@@ -85,26 +155,39 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                             </ul>
+                         </div>
+                     )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
++                    <search aria-label="Site articles">
++                        <form onSubmit={e => e.preventDefault()} role="search">
++                            <label htmlFor="search-articles-input" className="block text-sm font-semibold text-gray-500 mb-2">
++                                Search
++                            </label>
++                            <input
++                                id="search-articles-input"
++                                type="search"
++                                name="q"
++                                placeholder="Search for articles..."
++                                enterKeyHint="search"
++                                autoComplete="off"
++                                autoCorrect="off"
++                                autoCapitalize="off"
++                                spellCheck={false}
++                                autoFocus
++                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++                                value={searchTerm}
++                                onChange={e => setSearchTerm(e.target.value)}
++                            />
++                        </form>
++                    </search>
+                 </div>
+-                <div className="p-4 max-h-[60vh] overflow-y-auto">
++                <div className="p-4 max-h-[60vh] overflow-y-auto" aria-live="polite">
+                     {searchTerm && filteredArticles.length === 0 && (
+                         <p className="text-gray-500 text-center py-8">No results found for "{searchTerm}".</p>
+                     )}
+-                    {searchTerm && (
++                    {searchTerm && filteredArticles.length > 0 && (
+                         <ul className="space-y-2">
+                             {filteredArticles.map(article => (
+                                 <li key={article.slug}>
+                                     <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+-                                        <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                                        <h3 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h3>
+                                         <p className="text-sm text-gray-600">{article.summary}</p>
+                                     </a>
+                                 </li>
+@@ -113,6 +196,6 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                     )}
+                 </div>
+             </div>
+-        </div>
++        </dialog>
+     );
+ }
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..04ff7bf 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -17,39 +17,47 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <script is:inline defer fetchpriority="low" src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
++    <a href="#main-content" class="skip-link">Skip to main content</a>
+     <div class="mx-auto">
+       <AdSlotFireplace client:load />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
+-          <Header />
+-        </div>
+-        <main class="bg-white relative">
++        <Header />
++        <main id="main-content" tabindex="-1" class="bg-white relative focus:outline-none">
+           <slot />
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script is:inline>
++      if (typeof window !== 'undefined') {
++        if (!('commandForElement' in HTMLButtonElement.prototype)) {
++          import('https://esm.sh/invokers-polyfill').catch(() => {});
++        }
++        if (!('showPopover' in HTMLElement.prototype)) {
++          import('https://esm.sh/@oddbird/popover-polyfill').catch(() => {});
++        }
++      }
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..2471cfb 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,5 +1,73 @@
+ @import "tailwindcss";
+ 
++@layer base {
++  :focus-visible {
++    outline: 2px solid #f59e0b;
++    outline-offset: 2px;
++  }
++
++  [inert],
++  [inert] * {
++    pointer-events: none;
++    user-select: none;
++  }
++
++  dialog:modal {
++    overscroll-behavior: contain;
++  }
++
++  dialog::backdrop {
++    background-color: rgb(0 0 0 / 0.35);
++    backdrop-filter: blur(4px);
++    overflow: hidden;
++    overscroll-behavior: contain;
++  }
++}
++
++.visually-hidden {
++  position: absolute;
++  width: 1px;
++  height: 1px;
++  padding: 0;
++  margin: -1px;
++  overflow: hidden;
++  clip: rect(0, 0, 0, 0);
++  white-space: nowrap;
++  border: 0;
++}
++
++.skip-link {
++  position: absolute;
++  width: 1px;
++  height: 1px;
++  padding: 0;
++  margin: -1px;
++  overflow: hidden;
++  clip: rect(0, 0, 0, 0);
++  white-space: nowrap;
++  border: 0;
++}
++
++.skip-link:focus-visible {
++  position: fixed;
++  top: 1rem;
++  left: 1rem;
++  z-index: 100;
++  width: auto;
++  height: auto;
++  padding: 0.75rem 1.25rem;
++  margin: 0;
++  overflow: visible;
++  clip: auto;
++  white-space: normal;
++  background-color: #ffffff;
++  color: #111827;
++  font-weight: 600;
++  border-radius: 0.375rem;
++  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
++}
++
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;

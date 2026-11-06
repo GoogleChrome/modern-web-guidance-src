@@ -1,0 +1,657 @@
+diff --git a/index.html b/index.html
+index 66c9173..3992554 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,175 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Equipment Connection Panel */
++    .equipment {
++      margin-top: 60px;
++    }
++
++    .equipment-intro {
++      text-align: center;
++      max-width: 700px;
++      margin: 10px auto 0;
++      color: #6d4c41;
++    }
++
++    .equipment-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++      margin-top: 24px;
++    }
++
++    .device-card {
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .device-card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .device-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      flex: 1;
++    }
++
++    .device-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .device-header h3 {
++      color: var(--primary);
++    }
++
++    .device-sub {
++      font-size: 0.85rem;
++      color: #795548;
++    }
++
++    .status-pill {
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 3px 10px;
++      border-radius: 999px;
++      white-space: nowrap;
++      background: #eceff1;
++      color: #455a64;
++    }
++
++    .status-pill[data-state="connecting"] { background: #fff3e0; color: #e65100; }
++    .status-pill[data-state="connected"] { background: #e8f5e9; color: #2e7d32; }
++    .status-pill[data-state="error"] { background: #ffebee; color: #c62828; }
++
++    .device-form {
++      display: grid;
++      grid-template-columns: 2fr 1fr;
++      gap: 10px;
++    }
++
++    .device-form .full { grid-column: 1 / -1; }
++
++    .device-form label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: var(--primary);
++      gap: 4px;
++    }
++
++    .device-form input,
++    .device-form select {
++      font: inherit;
++      font-weight: normal;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++    }
++
++    .device-form input:focus,
++    .device-form select:focus {
++      outline: 2px solid var(--accent);
++      border-color: transparent;
++    }
++
++    .device-form input[aria-invalid="true"] { border-color: #c62828; }
++
++    .device-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .device-actions button {
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      border: none;
++      border-radius: 5px;
++      padding: 9px 16px;
++      background: var(--primary);
++      color: white;
++      transition: background 0.3s, opacity 0.3s;
++    }
++
++    .device-actions button:hover:not(:disabled) { background: #3e2723; }
++    .device-actions button.secondary { background: var(--secondary); color: var(--text); }
++    .device-actions button.secondary:hover:not(:disabled) { background: #bcaaa4; }
++    .device-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
++
++    .telemetry {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 8px;
++      text-align: center;
++    }
++
++    .telemetry div {
++      background: #efebe9;
++      border-radius: 6px;
++      padding: 8px 4px;
++    }
++
++    .telemetry dt { font-size: 0.7rem; text-transform: uppercase; color: #795548; }
++    .telemetry dd { font-weight: 700; color: var(--primary); }
++
++    .device-log {
++      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
++      font-size: 0.75rem;
++      background: #3e2723;
++      color: #d7ccc8;
++      border-radius: 6px;
++      padding: 10px;
++      height: 110px;
++      overflow-y: auto;
++      list-style: none;
++    }
++
++    .device-log li.err { color: #ff8a80; }
++    .device-log li.ok { color: #b9f6ca; }
++
++    .equipment-note {
++      font-size: 0.8rem;
++      color: #795548;
++      margin-top: 18px;
++      text-align: center;
++    }
+   </style>
+ </head>
+ 
+@@ -163,6 +332,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#equipment">Brew Station</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +365,138 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="equipment" id="equipment" aria-labelledby="equipment-title">
++      <h2 id="equipment-title" style="text-align: center;">Brew Station Connect</h2>
++      <p class="equipment-intro">
++        Pair your browser with the shop's Wi-Fi brewer and your Daily Grind desktop helper to check
++        brewer status and start recipes right from this page. Connections go straight from your browser
++        to the device&nbsp;&mdash; nothing is relayed through our servers.
++      </p>
++
++      <div class="equipment-grid">
++        <!-- Wi-Fi brewer on the shop LAN -->
++        <article class="device-card" data-device="brewer" aria-labelledby="brewer-title">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=70"
++            alt="Barista pouring coffee from a brewer" loading="lazy">
++          <div class="device-body">
++            <div class="device-header">
++              <div>
++                <h3 id="brewer-title">Wi-Fi Coffee Brewer</h3>
++                <div class="device-sub">Shop private network (e.g. 192.168.1.x)</div>
++              </div>
++              <span class="status-pill" data-role="status" data-state="idle" role="status" aria-live="polite">Disconnected</span>
++            </div>
++
++            <form class="device-form" data-role="form" novalidate>
++              <label>Brewer IP address
++                <input name="host" type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
++                  placeholder="192.168.1.50" value="192.168.1.50" required>
++              </label>
++              <label>Port
++                <input name="port" type="number" min="1" max="65535" value="80" required>
++              </label>
++              <label class="full">Pairing code <span class="device-sub">(printed on the brewer's display)</span>
++                <input name="token" type="password" autocomplete="off" placeholder="6–64 characters" minlength="6" maxlength="64">
++              </label>
++              <div class="device-actions full">
++                <button type="submit" data-role="connect">Connect</button>
++                <button type="button" class="secondary" data-role="disconnect" disabled>Disconnect</button>
++              </div>
++            </form>
++
++            <dl class="telemetry" aria-label="Brewer telemetry">
++              <div><dt>State</dt><dd data-field="state">—</dd></div>
++              <div><dt>Temp</dt><dd data-field="temperature">—</dd></div>
++              <div><dt>Water</dt><dd data-field="water">—</dd></div>
++            </dl>
++
++            <form class="device-form" data-role="command-form">
++              <label>Recipe
++                <select name="recipe">
++                  <option value="house-drip">House Drip</option>
++                  <option value="dark-roast">Dark Roast</option>
++                  <option value="maple-oat">Maple Oat Latte Base</option>
++                  <option value="cold-brew-concentrate">Cold Brew Concentrate</option>
++                </select>
++              </label>
++              <label>Cups
++                <input name="cups" type="number" min="1" max="12" value="4">
++              </label>
++              <div class="device-actions full">
++                <button type="submit" data-role="command" disabled>Start Brew</button>
++                <button type="button" class="secondary" data-role="stop" disabled>Stop</button>
++              </div>
++            </form>
++
++            <ol class="device-log" data-role="log" aria-label="Brewer activity log" aria-live="polite"></ol>
++          </div>
++        </article>
++
++        <!-- Desktop helper on the user's own computer -->
++        <article class="device-card" data-device="helper" aria-labelledby="helper-title">
++          <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=70"
++            alt="Laptop on a desk next to a cup of coffee" loading="lazy">
++          <div class="device-body">
++            <div class="device-header">
++              <div>
++                <h3 id="helper-title">Desktop Brewing Helper</h3>
++                <div class="device-sub">Companion app on this computer (127.0.0.1)</div>
++              </div>
++              <span class="status-pill" data-role="status" data-state="idle" role="status" aria-live="polite">Disconnected</span>
++            </div>
++
++            <form class="device-form" data-role="form" novalidate>
++              <label>Host
++                <input name="host" type="text" autocomplete="off" spellcheck="false" value="127.0.0.1" required>
++              </label>
++              <label>Port
++                <input name="port" type="number" min="1024" max="65535" value="47820" required>
++              </label>
++              <label class="full">Helper pairing code <span class="device-sub">(shown in the helper's tray menu)</span>
++                <input name="token" type="password" autocomplete="off" placeholder="6–64 characters" minlength="6" maxlength="64">
++              </label>
++              <div class="device-actions full">
++                <button type="submit" data-role="connect">Connect</button>
++                <button type="button" class="secondary" data-role="disconnect" disabled>Disconnect</button>
++              </div>
++            </form>
++
++            <dl class="telemetry" aria-label="Helper telemetry">
++              <div><dt>Version</dt><dd data-field="version">—</dd></div>
++              <div><dt>Timer</dt><dd data-field="timer">—</dd></div>
++              <div><dt>Scale</dt><dd data-field="scale">—</dd></div>
++            </dl>
++
++            <form class="device-form" data-role="command-form">
++              <label>Brew guide
++                <select name="recipe">
++                  <option value="pour-over">Pour Over (V60)</option>
++                  <option value="french-press">French Press</option>
++                  <option value="aeropress">AeroPress</option>
++                  <option value="chemex">Chemex</option>
++                </select>
++              </label>
++              <label>Dose (g)
++                <input name="dose" type="number" min="5" max="60" value="18">
++              </label>
++              <div class="device-actions full">
++                <button type="submit" data-role="command" disabled>Start Guided Brew</button>
++                <button type="button" class="secondary" data-role="stop" disabled>Stop Timer</button>
++              </div>
++            </form>
++
++            <ol class="device-log" data-role="log" aria-label="Helper activity log" aria-live="polite"></ol>
++          </div>
++        </article>
++      </div>
++
++      <p class="equipment-note">
++        Your browser may ask permission to access devices on your local network&nbsp;&mdash; choose
++        <strong>Allow</strong> to connect. Only private addresses (192.168.x.x, 10.x.x.x, 172.16–31.x.x)
++        and this computer (127.0.0.1) are accepted, and pairing codes are kept only for this browser tab.
++      </p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +509,329 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const REQUEST_TIMEOUT_MS = 5000;
++      const POLL_INTERVAL_MS = 5000;
++      const MAX_LOG_LINES = 50;
++      const STORAGE_PREFIX = 'dailygrind.equipment.';
++
++      const parseIPv4 = (value) => {
++        const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(value);
++        if (!m) return null;
++        const octets = m.slice(1).map(Number);
++        if (octets.some((o, i) => o > 255 || (m[i + 1].length > 1 && m[i + 1][0] === '0'))) return null;
++        return octets;
++      };
++
++      // RFC 1918 private ranges only (no public, loopback, link-local or broadcast targets).
++      const isPrivateLanHost = (host) => {
++        const o = parseIPv4(host);
++        if (!o) return false;
++        const privateRange = o[0] === 10 ||
++          (o[0] === 172 && o[1] >= 16 && o[1] <= 31) ||
++          (o[0] === 192 && o[1] === 168);
++        return privateRange && o[3] !== 0 && o[3] !== 255;
++      };
++
++      const isLoopbackHost = (host) => host === '127.0.0.1' || host === 'localhost';
++
++      /*
++       * Device profiles. Endpoints describe the expected device HTTP API:
++       *   GET  {status}            -> JSON telemetry
++       *   POST {command}           -> JSON body { recipe, ... }
++       *   POST {stop}
++       * Devices must answer CORS / Local Network Access preflights for this origin.
++       */
++      const PROFILES = {
++        brewer: {
++          label: 'Brewer',
++          addressSpace: 'local',        // Chrome Local Network Access: LAN device
++          validateHost: isPrivateLanHost,
++          hostError: 'Enter a private LAN IPv4 address (e.g. 192.168.1.50).',
++          portRange: [1, 65535],
++          endpoints: { status: '/api/v1/status', command: '/api/v1/brew', stop: '/api/v1/brew/stop' },
++          recipes: ['house-drip', 'dark-roast', 'maple-oat', 'cold-brew-concentrate'],
++          buildCommand: (form) => ({
++            recipe: form.recipe.value,
++            cups: clampInt(form.cups.value, 1, 12),
++          }),
++          describeCommand: (body) => `Brewing ${body.cups} cup(s) of ${body.recipe}`,
++          renderTelemetry: (data) => ({
++            state: safeText(data.state),
++            temperature: Number.isFinite(data.temperatureC) ? `${Math.round(data.temperatureC)}°C` : '—',
++            water: Number.isFinite(data.waterLevelPct) ? `${Math.round(data.waterLevelPct)}%` : '—',
++          }),
++        },
++        helper: {
++          label: 'Helper',
++          addressSpace: 'loopback',     // Chrome Local Network Access: this machine
++          validateHost: isLoopbackHost,
++          hostError: 'The desktop helper must run on this computer (127.0.0.1 or localhost).',
++          portRange: [1024, 65535],
++          endpoints: { status: '/v1/status', command: '/v1/guide/start', stop: '/v1/guide/stop' },
++          recipes: ['pour-over', 'french-press', 'aeropress', 'chemex'],
++          buildCommand: (form) => ({
++            recipe: form.recipe.value,
++            doseGrams: clampInt(form.dose.value, 5, 60),
++          }),
++          describeCommand: (body) => `Starting ${body.recipe} guide with ${body.doseGrams} g`,
++          renderTelemetry: (data) => ({
++            version: safeText(data.version),
++            timer: Number.isFinite(data.timerSeconds) ? formatSeconds(data.timerSeconds) : '—',
++            scale: Number.isFinite(data.scaleGrams) ? `${data.scaleGrams.toFixed(1)} g` : '—',
++          }),
++        },
++      };
++
++      function clampInt(value, min, max) {
++        const n = Math.round(Number(value));
++        return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
++      }
++
++      function safeText(value, max = 24) {
++        if (value === undefined || value === null) return '—';
++        return String(value).replace(/[\u0000-\u001f\u007f]/g, '').slice(0, max) || '—';
++      }
++
++      function formatSeconds(total) {
++        const s = Math.max(0, Math.floor(total));
++        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
++      }
++
++      class DeviceConnection {
++        constructor(card, profile) {
++          this.card = card;
++          this.profile = profile;
++          this.key = card.dataset.device;
++          this.form = card.querySelector('[data-role="form"]');
++          this.commandForm = card.querySelector('[data-role="command-form"]');
++          this.statusEl = card.querySelector('[data-role="status"]');
++          this.logEl = card.querySelector('[data-role="log"]');
++          this.buttons = {
++            connect: card.querySelector('[data-role="connect"]'),
++            disconnect: card.querySelector('[data-role="disconnect"]'),
++            command: card.querySelector('[data-role="command"]'),
++            stop: card.querySelector('[data-role="stop"]'),
++          };
++          this.baseUrl = null;
++          this.token = '';
++          this.pollTimer = null;
++          this.inFlight = null;
++          this.failures = 0;
++
++          this.restore();
++          this.form.addEventListener('submit', (e) => { e.preventDefault(); this.connect(); });
++          this.buttons.disconnect.addEventListener('click', () => this.disconnect('Disconnected by user.'));
++          this.commandForm.addEventListener('submit', (e) => { e.preventDefault(); this.sendCommand(); });
++          this.buttons.stop.addEventListener('click', () => this.sendStop());
++          this.setState('idle', 'Disconnected');
++        }
++
++        restore() {
++          try {
++            const saved = JSON.parse(localStorage.getItem(STORAGE_PREFIX + this.key) || 'null');
++            if (saved && this.profile.validateHost(saved.host)) {
++              this.form.host.value = saved.host;
++              this.form.port.value = saved.port;
++            }
++            // Pairing codes live only in sessionStorage (cleared when the tab closes).
++            this.form.token.value = sessionStorage.getItem(STORAGE_PREFIX + this.key + '.token') || '';
++          } catch { /* storage unavailable */ }
++        }
++
++        persist(host, port, token) {
++          try {
++            localStorage.setItem(STORAGE_PREFIX + this.key, JSON.stringify({ host, port }));
++            if (token) sessionStorage.setItem(STORAGE_PREFIX + this.key + '.token', token);
++            else sessionStorage.removeItem(STORAGE_PREFIX + this.key + '.token');
++          } catch { /* storage unavailable */ }
++        }
++
++        validate() {
++          const host = this.form.host.value.trim().toLowerCase();
++          const port = Number(this.form.port.value);
++          const token = this.form.token.value.trim();
++          const [minPort, maxPort] = this.profile.portRange;
++          let ok = true;
++
++          const mark = (input, valid) => { input.setAttribute('aria-invalid', String(!valid)); ok = ok && valid; };
++
++          const hostValid = this.profile.validateHost(host);
++          mark(this.form.host, hostValid);
++          if (!hostValid) this.log(this.profile.hostError, 'err');
++
++          const portValid = Number.isInteger(port) && port >= minPort && port <= maxPort;
++          mark(this.form.port, portValid);
++          if (!portValid) this.log(`Port must be between ${minPort} and ${maxPort}.`, 'err');
++
++          const tokenValid = token === '' || /^[\x21-\x7e]{6,64}$/.test(token);
++          mark(this.form.token, tokenValid);
++          if (!tokenValid) this.log('Pairing code must be 6–64 printable characters.', 'err');
++
++          return ok ? { host, port, token } : null;
++        }
++
++        async request(path, { method = 'GET', body } = {}) {
++          if (!this.baseUrl) throw new Error('Not connected');
++          if (this.inFlight && method === 'GET') return null; // skip overlapping polls
++
++          const controller = new AbortController();
++          const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
++          const headers = { Accept: 'application/json' };
++          if (body) headers['Content-Type'] = 'application/json';
++          if (this.token) headers.Authorization = `Bearer ${this.token}`;
++
++          const req = fetch(this.baseUrl + path, {
++            method,
++            headers,
++            body: body ? JSON.stringify(body) : undefined,
++            mode: 'cors',
++            credentials: 'omit',
++            cache: 'no-store',
++            redirect: 'error',
++            referrerPolicy: 'no-referrer',
++            signal: controller.signal,
++            // Local Network Access hint; ignored by browsers that don't support it.
++            targetAddressSpace: this.profile.addressSpace,
++          });
++          if (method === 'GET') this.inFlight = req;
++
++          try {
++            const res = await req;
++            if (res.status === 401 || res.status === 403) throw new Error('Pairing code rejected by device.');
++            if (!res.ok) throw new Error(`Device responded with HTTP ${res.status}.`);
++            const type = res.headers.get('Content-Type') || '';
++            if (!type.includes('application/json')) return {};
++            const text = await res.text();
++            if (text.length > 16384) throw new Error('Device response too large.');
++            return text ? JSON.parse(text) : {};
++          } catch (err) {
++            if (err.name === 'AbortError') throw new Error('Timed out waiting for device.');
++            if (err instanceof TypeError) {
++              throw new Error('Could not reach device (offline, wrong address, or local network access blocked).');
++            }
++            throw err;
++          } finally {
++            clearTimeout(timeout);
++            if (method === 'GET') this.inFlight = null;
++          }
++        }
++
++        async connect() {
++          const params = this.validate();
++          if (!params) { this.setState('error', 'Check settings'); return; }
++
++          this.stopPolling();
++          const { host, port, token } = params;
++          this.baseUrl = `http://${host}:${port}`;
++          this.token = token;
++          this.setState('connecting', 'Connecting…');
++          this.log(`Connecting to ${this.baseUrl}…`);
++
++          try {
++            const data = await this.request(this.profile.endpoints.status);
++            this.persist(host, port, token);
++            this.failures = 0;
++            this.setState('connected', 'Connected');
++            this.log(`${this.profile.label} connected.`, 'ok');
++            this.updateTelemetry(data);
++            this.pollTimer = setInterval(() => this.poll(), POLL_INTERVAL_MS);
++          } catch (err) {
++            this.baseUrl = null;
++            this.setState('error', 'Connection failed');
++            this.log(err.message, 'err');
++          }
++        }
++
++        async poll() {
++          try {
++            const data = await this.request(this.profile.endpoints.status);
++            if (data) { this.failures = 0; this.updateTelemetry(data); }
++          } catch (err) {
++            this.failures += 1;
++            this.log(err.message, 'err');
++            if (this.failures >= 3) this.disconnect('Lost connection after repeated failures.', true);
++          }
++        }
++
++        async sendCommand() {
++          const body = this.profile.buildCommand(this.commandForm);
++          if (!this.profile.recipes.includes(body.recipe)) { this.log('Unknown recipe.', 'err'); return; }
++          await this.runAction(this.profile.endpoints.command, body, this.profile.describeCommand(body));
++        }
++
++        async sendStop() {
++          await this.runAction(this.profile.endpoints.stop, {}, 'Sending stop…');
++        }
++
++        async runAction(path, body, description) {
++          this.buttons.command.disabled = true;
++          this.buttons.stop.disabled = true;
++          this.log(description);
++          try {
++            const data = await this.request(path, { method: 'POST', body });
++            this.log(safeText(data && data.message, 80) !== '—' ? safeText(data.message, 80) : 'Command accepted.', 'ok');
++            this.poll();
++          } catch (err) {
++            this.log(err.message, 'err');
++          } finally {
++            if (this.baseUrl) { this.buttons.command.disabled = false; this.buttons.stop.disabled = false; }
++          }
++        }
++
++        disconnect(reason, isError = false) {
++          this.stopPolling();
++          this.baseUrl = null;
++          this.token = '';
++          this.updateTelemetry(null);
++          this.setState(isError ? 'error' : 'idle', isError ? 'Connection lost' : 'Disconnected');
++          if (reason) this.log(reason, isError ? 'err' : undefined);
++        }
++
++        stopPolling() {
++          if (this.pollTimer) clearInterval(this.pollTimer);
++          this.pollTimer = null;
++        }
++
++        updateTelemetry(data) {
++          const values = data && typeof data === 'object' ? this.profile.renderTelemetry(data) : {};
++          this.card.querySelectorAll('[data-field]').forEach((el) => {
++            el.textContent = values[el.dataset.field] ?? '—';
++          });
++        }
++
++        setState(state, label) {
++          const connected = state === 'connected';
++          this.statusEl.dataset.state = state;
++          this.statusEl.textContent = label;
++          this.buttons.connect.disabled = state === 'connecting';
++          this.buttons.connect.textContent = connected ? 'Reconnect' : 'Connect';
++          this.buttons.disconnect.disabled = !(connected || state === 'connecting');
++          this.buttons.command.disabled = !connected;
++          this.buttons.stop.disabled = !connected;
++        }
++
++        log(message, kind) {
++          const li = document.createElement('li');
++          const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
++          li.textContent = `[${time}] ${message}`;   // textContent only — never render device data as HTML
++          if (kind) li.className = kind;
++          this.logEl.appendChild(li);
++          while (this.logEl.children.length > MAX_LOG_LINES) this.logEl.firstElementChild.remove();
++          this.logEl.scrollTop = this.logEl.scrollHeight;
++        }
++      }
++
++      document.querySelectorAll('.device-card[data-device]').forEach((card) => {
++        const profile = PROFILES[card.dataset.device];
++        if (profile) new DeviceConnection(card, profile);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,182 @@
+diff --git a/index.html b/index.html
+index 66c9173..15c3a9b 100644
+--- a/index.html
++++ b/index.html
+@@ -27,6 +27,38 @@
+       background-color: var(--light);
+     }
+ 
++    /* Native forms remain usable in browsers without WebMCP support. */
++    form.navigation-tool {
++      display: inline;
++    }
++
++    button {
++      font: inherit;
++      cursor: pointer;
++    }
++
++    nav button,
++    .footer-links button {
++      background: none;
++      border: 0;
++      padding: 0;
++    }
++
++    button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      outline-offset: 4px;
++    }
++
++    button:tool-submit-active {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -55,18 +87,18 @@
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav button {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav button:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    nav .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -122,6 +154,7 @@
+ 
+     .btn {
+       display: inline-block;
++      border: 0;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -146,7 +179,7 @@
+       margin-bottom: 20px;
+     }
+ 
+-    .footer-links a {
++    .footer-links button {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -160,18 +193,36 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><form class="navigation-tool" action="/menu" method="get"
++        toolname="view-menu" tooldescription="Open the coffee menu to browse available drinks." toolautosubmit>
++        <button type="submit">Menu</button>
++      </form></li>
++      <li><form class="navigation-tool" action="/locations" method="get"
++        toolname="view-locations" tooldescription="Open the locations page to find a coffee shop." toolautosubmit>
++        <button type="submit">Locations</button>
++      </form></li>
++      <li><form class="navigation-tool" action="/rewards" method="get"
++        toolname="view-rewards" tooldescription="Open the rewards page to view the loyalty program." toolautosubmit>
++        <button type="submit">Rewards</button>
++      </form></li>
++      <li><form class="navigation-tool" action="/account" method="get"
++        toolname="view-account" tooldescription="Open the account page to view account information." toolautosubmit>
++        <button type="submit">My Account</button>
++      </form></li>
++      <li><form class="navigation-tool" action="/logout" method="get"
++        toolname="logout" tooldescription="Navigate to the logout route to sign out of the current account.">
++        <button type="submit" class="logout-link">Logout</button>
++      </form></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form class="navigation-tool" action="/order-online" method="get"
++        toolname="start-online-order" tooldescription="Open the online ordering page to begin an order. This does not place an order." toolautosubmit>
++        <button type="submit" class="btn">Order Now</button>
++      </form>
+   </header>
+ 
+   <main class="container">
+@@ -181,17 +232,26 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <form class="navigation-tool" action="/menu/seasonal" method="get"
++        toolname="view-seasonal-menu" tooldescription="Open the seasonal menu to view details about the Maple Oat Latte." toolautosubmit>
++        <button type="submit" class="btn">View Details</button>
++      </form>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <form class="navigation-tool" action="/menu/espresso" method="get"
++        toolname="view-espresso-menu" tooldescription="Open the espresso menu to view details about Dark Roast Espresso." toolautosubmit>
++        <button type="submit" class="btn">View Details</button>
++      </form>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <form class="navigation-tool" action="/menu/cold-brew" method="get"
++        toolname="view-cold-brew-menu" tooldescription="Open the cold brew menu to view details about Cold Brew." toolautosubmit>
++        <button type="submit" class="btn">View Details</button>
++      </form>
+         </div>
+       </div>
+     </section>
+@@ -199,10 +259,22 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <form class="navigation-tool" action="/about" method="get"
++        toolname="view-our-story" tooldescription="Open the story page to learn about The Daily Grind." toolautosubmit>
++        <button type="submit">Our Story</button>
++      </form> |
++      <form class="navigation-tool" action="/careers" method="get"
++        toolname="view-careers" tooldescription="Open the careers page to browse job opportunities." toolautosubmit>
++        <button type="submit">Join the Team</button>
++      </form> |
++      <form class="navigation-tool" action="/contact" method="get"
++        toolname="view-contact" tooldescription="Open the contact page to find contact information." toolautosubmit>
++        <button type="submit">Contact Us</button>
++      </form> |
++      <form class="navigation-tool" action="/privacy-policy" method="get"
++        toolname="view-privacy-policy" tooldescription="Open the privacy policy." toolautosubmit>
++        <button type="submit">Privacy</button>
++      </form>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>

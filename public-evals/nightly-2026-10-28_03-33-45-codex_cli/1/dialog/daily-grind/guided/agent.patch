@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+index 66c9173..3f48e5c 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,74 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .drink-dialog {
++      margin: auto;
++      width: min(32rem, calc(100% - 2rem));
++      max-height: calc(100% - 2rem);
++      padding: 24px;
++      border: 0;
++      border-radius: 8px;
++      color: var(--text);
++      background: var(--light);
++      overflow-y: auto;
++    }
++
++    .drink-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    .drink-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.6);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .dialog-header {
++      display: flex;
++      align-items: flex-start;
++      justify-content: space-between;
++      gap: 16px;
++      margin-bottom: 16px;
++    }
++
++    .dialog-header .btn {
++      margin-top: 0;
++    }
++
++    .order-form {
++      display: grid;
++      gap: 8px;
++    }
++
++    .order-form label {
++      font-weight: bold;
++    }
++
++    .order-form select,
++    .order-form input {
++      width: 100%;
++      min-height: 44px;
++      padding: 8px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    #drink-description {
++      margin-bottom: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +233,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" data-drink="maple-oat-latte" aria-haspopup="dialog" aria-controls="drink-dialog">Order Now</button>
+   </header>
+ 
+   <main class="container">
+@@ -181,22 +243,46 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="maple-oat-latte" aria-haspopup="dialog" aria-controls="drink-dialog" aria-label="View Details for Maple Oat Latte">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="dark-roast-espresso" aria-haspopup="dialog" aria-controls="drink-dialog" aria-label="View Details for Dark Roast Espresso">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="cold-brew" aria-haspopup="dialog" aria-controls="drink-dialog" aria-label="View Details for Cold Brew">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="drink-dialog" class="drink-dialog" closedby="any" aria-labelledby="drink-title">
++    <div class="dialog-header">
++      <h2 id="drink-title">Drink details</h2>
++      <form method="dialog">
++        <button type="submit" class="btn">Close</button>
++      </form>
++    </div>
++    <form class="order-form" action="/order-online" method="get">
++      <label for="drink-choice">Drink</label>
++      <select id="drink-choice" name="drink" aria-describedby="drink-description" autofocus>
++        <option value="maple-oat-latte">Maple Oat Latte</option>
++        <option value="dark-roast-espresso">Dark Roast Espresso</option>
++        <option value="cold-brew">Cold Brew</option>
++      </select>
++      <p id="drink-description"></p>
++      <label for="drink-size">Size</label>
++      <select id="drink-size" name="size" required></select>
++      <label for="drink-quantity">Quantity</label>
++      <input id="drink-quantity" name="quantity" type="number" min="1" max="10" value="1" required>
++      <p id="order-help">Continue to online ordering to review availability, pricing, and checkout.</p>
++      <button type="submit" class="btn" aria-describedby="order-help">Continue to order</button>
++    </form>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +293,70 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const drinks = {
++      'maple-oat-latte': {
++        name: 'Maple Oat Latte',
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        sizes: ['Small', 'Medium', 'Large']
++      },
++      'dark-roast-espresso': {
++        name: 'Dark Roast Espresso',
++        description: 'Bold, smokey, and perfect for a morning boost.',
++        sizes: ['Single shot', 'Double shot']
++      },
++      'cold-brew': {
++        name: 'Cold Brew',
++        description: 'Steeped for 18 hours for maximum smoothness.',
++        sizes: ['Small', 'Medium', 'Large']
++      }
++    };
++    const drinkDialog = document.getElementById('drink-dialog');
++    const drinkChoice = document.getElementById('drink-choice');
++    const drinkSize = document.getElementById('drink-size');
++
++    function updateDrinkDetails() {
++      const drink = drinks[drinkChoice.value];
++      document.getElementById('drink-title').textContent = drink.name;
++      document.getElementById('drink-description').textContent = drink.description;
++      drinkSize.replaceChildren(...drink.sizes.map(size => new Option(size, size)));
++    }
++
++    document.querySelectorAll('[data-drink]').forEach(button => {
++      button.addEventListener('click', () => {
++        drinkDialog.querySelector('.order-form').reset();
++        drinkChoice.value = button.dataset.drink;
++        updateDrinkDetails();
++        // Focus the invoker even on platforms that don't focus buttons on click.
++        // The native modal will then restore focus to this button when dismissed.
++        button.focus();
++        drinkDialog.showModal();
++      });
++    });
++
++    drinkChoice.addEventListener('change', updateDrinkDetails);
++
++    // Older browsers ignore closedby. Check both ends of a pointer interaction
++    // so selecting text or clicking dialog padding doesn't dismiss the dialog.
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      let pressedOutside = false;
++      function isOutside(event) {
++        const rect = drinkDialog.getBoundingClientRect();
++        return event.clientX < rect.left || event.clientX > rect.right ||
++          event.clientY < rect.top || event.clientY > rect.bottom;
++      }
++      drinkDialog.addEventListener('pointerdown', event => {
++        pressedOutside = event.isPrimary && event.button === 0 && isOutside(event);
++      });
++      drinkDialog.addEventListener('pointerup', event => {
++        if (event.isPrimary && pressedOutside && isOutside(event)) drinkDialog.close();
++        pressedOutside = false;
++      });
++      drinkDialog.addEventListener('pointercancel', () => { pressedOutside = false; });
++      drinkDialog.addEventListener('close', () => { pressedOutside = false; });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,48 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Scrollbar: dark thumb on a light track so it reads clearly against the page */
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
+     }
+ 
++    /* Scrollbar styling (standard properties) */
++    html {
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      /* Full-width scrollbar; also forces macOS overlay scrollbars to render the custom colors */
++      scrollbar-width: auto;
++      scrollbar-gutter: stable;
++    }
++
++    /* High-contrast preference: maximum thumb/track separation */
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-thumb: #000000;
++        --scrollbar-track: #ffffff;
++      }
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers without scrollbar-color support */
++    @supports not (scrollbar-color: auto) {
++      html::-webkit-scrollbar {
++        width: 14px;
++        height: 14px;
++      }
++
++      html::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 7px;
++        border: 2px solid var(--scrollbar-track);
++      }
++
++      html::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;

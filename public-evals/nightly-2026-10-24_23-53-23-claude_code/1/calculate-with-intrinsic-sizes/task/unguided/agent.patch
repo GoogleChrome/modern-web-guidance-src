@@ -1,0 +1,165 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,19 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    /*
++     * Transitioning directly between different intrinsic keyword sizes (e.g.
++     * auto, min-content, max-content, fit-content) isn't supported: keywords
++     * aren't interpolable. interpolate-size opts in to animating to and from
++     * them (notably height/block-size: auto) site-wide; calc-size() handles
++     * arithmetic on them.
++     */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -134,8 +145,102 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Promo badge */
++    .promo-badge {
++      display: block;
++      inline-size: max-content;
++      /* 1.2x the max-content size, clamped between 100px and 100% of the parent */
++      inline-size: calc-size(max-content, size * 1.2);
++      min-inline-size: 100px;
++      max-inline-size: 100%;
++      margin-block: 0 10px;
++      margin-inline: auto;
++      padding-block: 4px;
++      padding-inline: 12px;
++      background: var(--accent);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-align: center;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      border-radius: 999px;
++    }
++
++    /* Accordion */
++    .accordion {
++      max-inline-size: 700px;
++      margin-block-start: 20px;
++      margin-inline: auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #accordion-toggle {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      inline-size: 100%;
++      padding-block: 16px;
++      padding-inline: 20px;
++      background: none;
++      border: 0;
++      color: var(--primary);
++      font: inherit;
++      font-size: 1.1rem;
++      font-weight: bold;
++      text-align: start;
++      cursor: pointer;
++    }
++
++    #accordion-toggle:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    #accordion-toggle::after {
++      content: '+';
++      font-size: 1.4rem;
++      line-height: 1;
++    }
++
++    #accordion-toggle[aria-expanded="true"]::after {
++      content: '\2212';
++    }
++
++    .accordion-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 0.4s ease;
++    }
++
++    .accordion-content > p {
++      padding-block: 0 16px;
++      padding-inline: 20px;
++    }
++
++    .accordion-content.open {
++      /* Fallback for browsers without calc-size(): jumps without animating */
++      block-size: auto;
++    }
++
++    @supports (block-size: calc-size(auto, size)) {
++      .accordion-content.open {
++        /* Natural height plus 2rem of breathing room */
++        block-size: calc-size(auto, size + 2rem);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .accordion-content {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -178,8 +283,9 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="promo-badge">Staff Pick</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -194,10 +300,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <div class="accordion">
++        <button id="accordion-toggle" type="button" aria-expanded="false" aria-controls="sourcing-content">Our Sourcing</button>
++        <div id="sourcing-content" class="accordion-content" role="region" aria-labelledby="accordion-toggle">
++          <p>Our beans come from small family farms we visit every year. We pay above fair-trade prices, roast in small batches within a few miles of your cup, and our oat milk and maple syrup come from regional producers.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    const toggle = document.getElementById('accordion-toggle');
++    const content = document.querySelector('.accordion-content');
++    toggle.addEventListener('click', () => {
++      const open = content.classList.toggle('open');
++      toggle.setAttribute('aria-expanded', open);
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,223 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,152 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollytelling: Bean to Cup */
++    .story {
++      margin-top: 80px;
++    }
++
++    .story > h2 {
++      text-align: center;
++    }
++
++    .scrolly {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      margin-top: 20px;
++    }
++
++    #tracked section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    #tracked .step {
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: var(--accent);
++    }
++
++    #tracked h3 {
++      font-size: 1.8rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    /* Fallback (no scroll-driven animation support): images stay in normal flow */
++    #animated {
++      display: grid;
++      align-content: space-around;
++      gap: 20px;
++    }
++
++    #animated section {
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #animated img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      aspect-ratio: 4 / 5;
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry) and (timeline-scope: none)) {
++      /* Hoist the timeline names so #animated (a different DOM branch) can see them */
++      .scrolly {
++        timeline-scope: --step-1, --step-2, --step-3, --step-4;
++      }
++
++      #tracked section:nth-child(1) { view-timeline-name: --step-1; }
++      #tracked section:nth-child(2) { view-timeline-name: --step-2; }
++      #tracked section:nth-child(3) { view-timeline-name: --step-3; }
++      #tracked section:nth-child(4) { view-timeline-name: --step-4; }
++
++      #animated {
++        position: sticky;
++        top: max(6rem, 15vh);
++        align-self: start;
++        display: grid;
++        height: 70vh;
++      }
++
++      /* Stack all images in the same cell */
++      #animated section {
++        grid-area: 1 / 1;
++        animation: reveal linear both;
++        animation-range: cover;
++      }
++
++      #animated section:nth-child(1) { animation-timeline: --step-1; }
++      #animated section:nth-child(2) { animation-timeline: --step-2; }
++      #animated section:nth-child(3) { animation-timeline: --step-3; }
++      #animated section:nth-child(4) { animation-timeline: --step-4; }
++
++      #animated img {
++        aspect-ratio: auto;
++      }
++
++      /* Visible while its text section passes through the middle of the viewport */
++      @keyframes reveal {
++        0%, 20% { opacity: 0; }
++        35%, 65% { opacity: 1; }
++        80%, 100% { opacity: 0; }
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        @keyframes reveal {
++          0%, 20% { opacity: 0; scale: 0.9; translate: 0 40px; }
++          35%, 65% { opacity: 1; scale: 1; translate: 0 0; }
++          80%, 100% { opacity: 0; scale: 1.05; translate: 0 -40px; }
++        }
++      }
++    }
++
++    @media (max-width: 700px) {
++      .scrolly {
++        grid-template-columns: 1fr;
++      }
++
++      #tracked section {
++        min-height: 0;
++        padding: 20px 0;
++      }
++
++      @supports ((animation-timeline: view()) and (animation-range: entry) and (timeline-scope: none)) {
++        /* Overlay text cards on top of the sticky image stack */
++        #tracked,
++        #animated {
++          grid-area: 1 / 1;
++        }
++
++        #tracked {
++          position: relative;
++          z-index: 1;
++        }
++
++        #tracked section {
++          min-height: 100vh;
++        }
++
++        #tracked .copy {
++          background: rgba(255, 255, 255, 0.92);
++          padding: 20px;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +338,66 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story" aria-labelledby="story-heading">
++      <h2 id="story-heading">From Bean to Cup</h2>
++      <div class="scrolly">
++        <div id="tracked">
++          <section>
++            <div class="copy">
++              <p class="step">Step 1</p>
++              <h3>Sourced with Care</h3>
++              <p>We partner directly with small farms in Ethiopia, Colombia, and Guatemala, paying above fair-trade
++                prices for hand-picked, fully ripe cherries.</p>
++            </div>
++          </section>
++          <section>
++            <div class="copy">
++              <p class="step">Step 2</p>
++              <h3>Roasted Locally</h3>
++              <p>Every batch is small-batch roasted in our shop and sealed within hours, so the beans reach you at
++                their aromatic peak.</p>
++            </div>
++          </section>
++          <section>
++            <div class="copy">
++              <p class="step">Step 3</p>
++              <h3>Brewed by Hand</h3>
++              <p>Our baristas dial in each origin daily, from slow pour-overs to precisely pulled espresso shots.</p>
++            </div>
++          </section>
++          <section>
++            <div class="copy">
++              <p class="step">Step 4</p>
++              <h3>Served to You</h3>
++              <p>Finished with silky steamed milk and a little latte art, it's the cup that makes your morning.</p>
++            </div>
++          </section>
++        </div>
++        <div id="animated">
++          <section>
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++              alt="A pile of freshly roasted coffee beans" width="800" height="1000" loading="lazy" decoding="async">
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=800&q=80"
++              alt="A sealed bag of freshly roasted coffee" width="800" height="1000" loading="lazy" decoding="async">
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&q=80"
++              alt="A barista brewing pour-over coffee with a gooseneck kettle" width="800" height="1000"
++              loading="lazy" decoding="async">
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++              alt="Lattes with heart-shaped latte art on a wooden table" width="800" height="1000" loading="lazy"
++              decoding="async">
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

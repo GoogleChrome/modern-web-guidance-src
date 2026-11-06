@@ -1,0 +1,174 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..095eaac 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,5 +1,6 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useState } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
++import { groupedCategories } from '../utils/navGroups';
+ 
+ interface BottomNavProps {
+     categories: string[];
+@@ -10,13 +11,31 @@ interface BottomNavProps {
+ 
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const [visibleGroup, setVisibleGroup] = useState<string | null>(null);
+ 
+-    const groupedCategories = {
+-        'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+-        'Arts & Culture': ['Culture', 'Media'],
+-        'Science & Tech': ['science'],
+-        'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+-    };
++    // Scroll-spy: highlight the group of the page section currently in view.
++    // Sections opt in with a `data-nav-group` attribute.
++    useEffect(() => {
++        const update = () => {
++            const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-nav-group]'));
++            let current: HTMLElement | undefined;
++            for (const section of sections) {
++                if (section.getBoundingClientRect().top <= 120) current = section;
++            }
++            // Above the first section: use it if it's already on screen.
++            if (!current && sections[0] && sections[0].getBoundingClientRect().top < window.innerHeight) {
++                current = sections[0];
++            }
++            setVisibleGroup(current?.dataset.navGroup ?? null);
++        };
++        update();
++        window.addEventListener('scroll', update, { passive: true });
++        window.addEventListener('resize', update);
++        return () => {
++            window.removeEventListener('scroll', update);
++            window.removeEventListener('resize', update);
++        };
++    }, []);
+ 
+     const handleMouseLeave = () => {
+         setActiveCategory(null);
+@@ -39,7 +58,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                             >
+                                 <a 
+                                     href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                    aria-current={visibleGroup === groupName ? 'location' : undefined}
++                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap border-b-2 py-1 ${visibleGroup === groupName ? 'text-amber-500 border-amber-400' : 'border-transparent'}`}
+                                 >
+                                     <span>{groupName}</span>
+                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..32e664c 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -2,14 +2,17 @@
+ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
++import { getNavGroup } from '../utils/navGroups';
++
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+ const { title, articles } = Astro.props;
++const navGroup = getNavGroup(articles[0].data.category);
+ ---
+-<section class="p-4 md:p-6">
++<section class="p-4 md:p-6" data-nav-group={navGroup}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..98f087f 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -5,12 +5,15 @@ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
++import { getNavGroup } from '../utils/navGroups';
++
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+ const { title, articles } = Astro.props;
++const navGroup = getNavGroup(articles[0].data.category);
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +29,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section class="p-4 md:p-6" data-nav-group={navGroup}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..293e1ec 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -6,6 +6,7 @@ import { getCollection, getEntry, render } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
++import { getNavGroup } from '../../utils/navGroups';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ 
+@@ -36,7 +37,7 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12" data-nav-group={getNavGroup(article.data.category)}>
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..0bba9a6 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -6,6 +6,7 @@ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
++import { getNavGroup } from '../../utils/navGroups';
+ 
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+@@ -38,7 +39,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ ---
+ 
+ <Layout title={`Category: ${capitalizedCategory}`}>
+-    <div class="pb-8">
++    <div class="pb-8" data-nav-group={getNavGroup(category)}>
+         <!-- Dynamic Category Header -->
+         <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+diff --git a/src/utils/navGroups.ts b/src/utils/navGroups.ts
+new file mode 100644
+index 0000000..0a74697
+--- /dev/null
++++ b/src/utils/navGroups.ts
+@@ -0,0 +1,14 @@
++export const groupedCategories: Record<string, string[]> = {
++    'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
++    'Arts & Culture': ['Culture', 'Media'],
++    'Science & Tech': ['science'],
++    'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
++};
++
++/** Returns the navigation group a category belongs to, if any. */
++export function getNavGroup(category: string): string | undefined {
++    const needle = category.toLowerCase();
++    return Object.keys(groupedCategories).find((group) =>
++        groupedCategories[group].some((c) => c.toLowerCase() === needle),
++    );
++}

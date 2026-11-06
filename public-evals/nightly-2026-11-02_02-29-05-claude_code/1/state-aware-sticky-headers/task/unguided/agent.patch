@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,10 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --sticky-blue: #1e5bb8;
++      --nav-height: 4.5rem;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -30,9 +32,10 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: var(--nav-height);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -134,8 +137,54 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky Section Headers */
++    .content-section {
++      margin-top: 40px;
++    }
++
++    .section-intro {
++      max-width: 720px;
++      margin: 0 auto 30px;
++      text-align: center;
++    }
++
++    .sticky-container {
++      position: sticky;
++      /* Stick just below the site nav so the two never overlap */
++      top: var(--nav-height);
++      z-index: 10;
++      /* Named container so the stuck query only matches these headers */
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 1.25rem 1.5rem;
++      border-radius: 8px;
++      transition: background-color 0.3s, color 0.3s, padding 0.3s, box-shadow 0.3s;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: var(--sticky-blue);
++        color: white;
++        padding: 0.5rem 1.5rem;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    .card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,28 +223,93 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="section-intro">
++      <h2>Crafted With Care, Every Cup</h2>
++      <p>At The Daily Grind, we partner directly with small farms across Ethiopia, Colombia, and Guatemala to bring you
++        beans that are as kind to the planet as they are to your palate. Every batch is roasted in small lots right here
++        in town, then rested for just the right amount of time before it reaches your cup.</p>
++      <p>Browse our menu below &mdash; from seasonal specials to everyday classics and fresh-baked treats.</p>
++    </section>
++
++    <section class="content-section" aria-labelledby="seasonal-favorites">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="seasonal-favorites">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="content-section" aria-labelledby="espresso-classics">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="espresso-classics">Espresso Classics</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Cappuccino">
++          <h3>Cappuccino</h3>
++          <p>Equal parts espresso, steamed milk, and velvety foam.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1577968897966-3d4325b36b61?auto=format&fit=crop&w=600&q=80" alt="Flat White">
++          <h3>Flat White</h3>
++          <p>A double ristretto with silky microfoam.</p>
++          <a href="/menu/flat-white" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80" alt="Caffè Mocha">
++          <h3>Caffè Mocha</h3>
++          <p>Rich espresso blended with dark chocolate and steamed milk.</p>
++          <a href="/menu/mocha" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="content-section" aria-labelledby="fresh-bakery">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="fresh-bakery">Fresh From the Bakery</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80" alt="Butter Croissant">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden layers baked every morning.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1607958996333-41aef7caefaa?auto=format&fit=crop&w=600&q=80" alt="Blueberry Muffin">
++          <h3>Blueberry Muffin</h3>
++          <p>Bursting with wild blueberries and a crumb topping.</p>
++          <a href="/menu/muffin" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1509365465985-25d11c17e812?auto=format&fit=crop&w=600&q=80" alt="Cinnamon Roll">
++          <h3>Cinnamon Roll</h3>
++          <p>Soft, swirled, and finished with cream cheese icing.</p>
++          <a href="/menu/cinnamon-roll" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

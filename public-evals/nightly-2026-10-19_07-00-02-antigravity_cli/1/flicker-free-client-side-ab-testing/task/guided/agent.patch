@@ -1,0 +1,388 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,384 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Apex Cloud - High Performance Cloud Infrastructure</title>
++
++  <!--
++    MANDATORY: Load the experimentation script with async and blocking="render".
++    - async: Prevents parser-blocking so HTML parsing continues in parallel.
++    - blocking="render": Blocks rendering until the script executes, preventing
++      content flash/flicker of the original variant.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++  ></script>
++
++  <!--
++    Fallback anti-flicker snippet for browsers that do not support blocking="render".
++    Feature-detects support and hides the page with opacity: 0 until the experiment
++    script runs, loads, errors, or a safety timeout expires.
++  -->
++  <script>
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      document.documentElement.classList.add('ab-loading');
++      const revealPage = () => {
++        document.documentElement.classList.remove('ab-loading');
++      };
++      // Timeout fallback to ensure content is visible even on slow connections or failure
++      const safetyTimeout = setTimeout(revealPage, 4000);
++
++      // Listen for experiment script load/error events if available
++      window.addEventListener('DOMContentLoaded', () => {
++        const expScript = document.querySelector('script[src*="experiment-sdk.js"]');
++        if (expScript) {
++          expScript.addEventListener('load', () => {
++            clearTimeout(safetyTimeout);
++            revealPage();
++          });
++          expScript.addEventListener('error', () => {
++            clearTimeout(safetyTimeout);
++            revealPage();
++          });
++        }
++      });
++    }
++  </script>
++
++  <style>
++    /* Anti-flicker hiding style active only when blocking="render" is unsupported */
++    .ab-loading {
++      opacity: 0 !important;
++    }
++
++    :root {
++      --primary: #2563eb;
++      --primary-hover: #1d4ed8;
++      --text-main: #0f172a;
++      --text-muted: #64748b;
++      --bg: #ffffff;
++      --bg-alt: #f8fafc;
++      --border: #e2e8f0;
++      --radius: 8px;
++      --container-width: 1200px;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
++      color: var(--text-main);
++      background-color: var(--bg);
++      line-height: 1.6;
++      -webkit-font-smoothing: antialiased;
++    }
++
++    header {
++      border-bottom: 1px solid var(--border);
++      background: var(--bg);
++      position: sticky;
++      top: 0;
++      z-index: 50;
++    }
++
++    .nav-container {
++      max-width: var(--container-width);
++      margin: 0 auto;
++      padding: 1rem 1.5rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .brand {
++      font-size: 1.25rem;
++      font-weight: 700;
++      color: var(--text-main);
++      text-decoration: none;
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .brand-icon {
++      width: 28px;
++      height: 28px;
++      background: linear-gradient(135deg, var(--primary), #818cf8);
++      border-radius: 6px;
++    }
++
++    .nav-links {
++      display: flex;
++      gap: 2rem;
++      align-items: center;
++      list-style: none;
++    }
++
++    .nav-links a {
++      color: var(--text-muted);
++      text-decoration: none;
++      font-weight: 500;
++      font-size: 0.95rem;
++      transition: color 0.15s ease;
++    }
++
++    .nav-links a:hover {
++      color: var(--text-main);
++    }
++
++    .hero-section {
++      padding: 5rem 1.5rem 4rem;
++      max-width: var(--container-width);
++      margin: 0 auto;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 3.5rem;
++      align-items: center;
++    }
++
++    @media (max-width: 900px) {
++      .hero-section {
++        grid-template-columns: 1fr;
++        padding: 3rem 1.5rem;
++        text-align: center;
++      }
++    }
++
++    .hero-content {
++      display: flex;
++      flex-direction: column;
++      gap: 1.5rem;
++    }
++
++    .hero-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      width: fit-content;
++      padding: 0.35rem 0.85rem;
++      background-color: #eff6ff;
++      color: var(--primary);
++      border-radius: 9999px;
++      font-size: 0.875rem;
++      font-weight: 600;
++      border: 1px solid #dbeafe;
++    }
++
++    @media (max-width: 900px) {
++      .hero-badge {
++        margin: 0 auto;
++      }
++    }
++
++    .hero-title {
++      font-size: clamp(2.25rem, 4.5vw, 3.5rem);
++      font-weight: 800;
++      line-height: 1.15;
++      letter-spacing: -0.025em;
++      color: var(--text-main);
++    }
++
++    .hero-description {
++      font-size: 1.15rem;
++      color: var(--text-muted);
++      line-height: 1.6;
++      max-width: 520px;
++    }
++
++    @media (max-width: 900px) {
++      .hero-description {
++        margin: 0 auto;
++      }
++    }
++
++    .hero-actions {
++      display: flex;
++      gap: 1rem;
++      align-items: center;
++      flex-wrap: wrap;
++    }
++
++    @media (max-width: 900px) {
++      .hero-actions {
++        justify-content: center;
++      }
++    }
++
++    .cta-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      padding: 0.875rem 1.75rem;
++      background-color: var(--primary);
++      color: #ffffff;
++      font-size: 1rem;
++      font-weight: 600;
++      text-decoration: none;
++      border-radius: var(--radius);
++      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -2px rgba(37, 99, 235, 0.1);
++      transition: background-color 0.15s ease, transform 0.15s ease;
++      cursor: pointer;
++      border: none;
++    }
++
++    .cta-button:hover {
++      background-color: var(--primary-hover);
++      transform: translateY(-1px);
++    }
++
++    .cta-button:active {
++      transform: translateY(0);
++    }
++
++    .secondary-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      padding: 0.875rem 1.75rem;
++      background-color: transparent;
++      color: var(--text-main);
++      font-size: 1rem;
++      font-weight: 600;
++      text-decoration: none;
++      border-radius: var(--radius);
++      border: 1px solid var(--border);
++      transition: background-color 0.15s ease;
++    }
++
++    .secondary-button:hover {
++      background-color: var(--bg-alt);
++    }
++
++    .hero-image-wrapper {
++      position: relative;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--border);
++      background: var(--bg-alt);
++    }
++
++    .hero-image {
++      display: block;
++      width: 100%;
++      height: auto;
++      object-fit: cover;
++      aspect-ratio: 16 / 10;
++    }
++
++    .features-section {
++      background-color: var(--bg-alt);
++      padding: 4rem 1.5rem;
++      border-top: 1px solid var(--border);
++    }
++
++    .features-container {
++      max-width: var(--container-width);
++      margin: 0 auto;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 2rem;
++    }
++
++    .feature-card {
++      background: var(--bg);
++      padding: 2rem;
++      border-radius: var(--radius);
++      border: 1px solid var(--border);
++    }
++
++    .feature-card h3 {
++      font-size: 1.25rem;
++      margin-bottom: 0.5rem;
++      color: var(--text-main);
++    }
++
++    .feature-card p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <nav class="nav-container" aria-label="Main Navigation">
++      <a href="/" class="brand">
++        <span class="brand-icon" aria-hidden="true"></span>
++        <span>Apex Cloud</span>
++      </a>
++      <ul class="nav-links">
++        <li><a href="#features">Features</a></li>
++        <li><a href="#pricing">Pricing</a></li>
++        <li><a href="#docs">Docs</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero-section" id="hero" aria-labelledby="hero-heading">
++      <div class="hero-content">
++        <div class="hero-badge">
++          <span>⚡ Next-Generation Edge Network</span>
++        </div>
++        <h1 class="hero-title" id="hero-heading" data-experiment="hero-title">
++          Deploy high-performance apps with zero latency
++        </h1>
++        <p class="hero-description" id="hero-desc" data-experiment="hero-desc">
++          Scale effortlessly with our modern edge infrastructure. Built for developers who refuse to compromise on speed, reliability, and developer experience.
++        </p>
++        <div class="hero-actions">
++          <a href="#get-started" class="cta-button" id="cta-button" data-experiment="hero-cta">
++            Get Started Free
++          </a>
++          <a href="#demo" class="secondary-button" id="secondary-cta">
++            Schedule a Demo
++          </a>
++        </div>
++      </div>
++
++      <div class="hero-image-wrapper">
++        <!--
++          LCP Image:
++          - fetchpriority="high" to signal high loading priority
++          - Avoid loading="lazy" on LCP candidate
++          - Explicit width and height to prevent layout shifts (CLS)
++        -->
++        <img
++          src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
++          alt="Apex Cloud Analytics Dashboard"
++          class="hero-image"
++          id="hero-img"
++          data-experiment="hero-image"
++          fetchpriority="high"
++          width="1200"
++          height="750"
++        >
++      </div>
++    </section>
++
++    <section class="features-section" id="features" aria-labelledby="features-heading">
++      <div class="features-container">
++        <div class="feature-card">
++          <h3 id="features-heading">Global Edge CDN</h3>
++          <p>Instant deployments to over 300 points of presence globally for sub-10ms response times.</p>
++        </div>
++        <div class="feature-card">
++          <h3>Instant Rollbacks</h3>
++          <p>Every deployment is immutable and versioned. Rollback to any previous build in seconds.</p>
++        </div>
++        <div class="feature-card">
++          <h3>Real-time Analytics</h3>
++          <p>Monitor performance, Core Web Vitals, and errors with granular end-user metrics.</p>
++        </div>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

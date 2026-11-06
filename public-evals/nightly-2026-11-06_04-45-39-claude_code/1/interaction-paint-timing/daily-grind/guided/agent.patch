@@ -1,0 +1,257 @@
+diff --git a/index.html b/index.html
+index 66c9173..e1dc45a 100644
+--- a/index.html
++++ b/index.html
+@@ -157,7 +157,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-perf-region="nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,24 +171,24 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-perf-region="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-perf-region="seasonal-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf-region="seasonal-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf-region="seasonal-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +207,9 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Client-side paint timing for nav / Order Now / Seasonal Favorites clicks and soft navigations.
++       Add data-endpoint="/your/analytics/url" to beacon results. -->
++  <script type="module" src="/perf-monitor.js" data-perf-monitor></script>
+ </body>
+ 
+ </html>
+diff --git a/perf-monitor.js b/perf-monitor.js
+new file mode 100644
+index 0000000..d1aac57
+--- /dev/null
++++ b/perf-monitor.js
+@@ -0,0 +1,199 @@
++/**
++ * Daily Grind client-side performance monitoring.
++ *
++ * Measures how long it takes, from the user's input, for the page to paint
++ * the visual updates caused by:
++ *   - clicks on the navigation bar             (region: "nav")
++ *   - clicks on the hero "Order Now" button    (region: "order-now")
++ *   - clicks on "Seasonal Favorites" cards     (region: "seasonal-card")
++ *   - client-side view switches / soft navs    (type:   "soft-navigation")
++ *
++ * Metrics per tracked interaction:
++ *   - nextPaint:       input -> very next frame (Event Timing, same basis as INP).
++ *                      Widely supported; used as the fallback everywhere.
++ *   - contentfulPaint: input -> largest contentful paint attributed to that
++ *                      interaction, including async updates after fetch/await/
++ *                      setTimeout (InteractionContentfulPaint, progressive
++ *                      enhancement in supporting browsers).
++ *
++ * Metrics per soft navigation (supporting browsers only):
++ *   - fcp / lcp durations relative to the initiating interaction.
++ *
++ * Reports are logged to the console, exposed on `window.dailyGrindPerf`,
++ * dispatched as a `perf-metric` event on `window`, and, if the script tag has
++ * a `data-endpoint` attribute, beaconed to that URL when the page is hidden
++ * (which also covers the hard navigations these links currently trigger).
++ */
++
++const ENDPOINT = document.querySelector('script[data-perf-monitor]')?.dataset.endpoint
++  ?? null;
++
++const supported = (type) =>
++  typeof PerformanceObserver !== 'undefined' &&
++  PerformanceObserver.supportedEntryTypes?.includes(type);
++
++/** Map a DOM node to one of the tracked page regions (or null). */
++function regionFor(node) {
++  const el = node instanceof Element ? node : node?.parentElement;
++  return el?.closest('[data-perf-region]')?.dataset.perfRegion ?? null;
++}
++
++function describe(el) {
++  if (!(el instanceof Element)) return null;
++  const text = el.textContent?.trim().replace(/\s+/g, ' ').slice(0, 40);
++  return `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${text ? ` "${text}"` : ''}`;
++}
++
++const pending = [];
++const reports = [];
++window.dailyGrindPerf = { reports };
++
++function report(metric) {
++  const rounded = Object.fromEntries(
++    Object.entries(metric).map(([k, v]) => [k, typeof v === 'number' ? Math.round(v) : v]),
++  );
++  reports.push(rounded);
++  pending.push(rounded);
++  console.debug('[perf]', rounded);
++  window.dispatchEvent(new CustomEvent('perf-metric', { detail: rounded }));
++}
++
++/* ------------------------------------------------------------------ */
++/* Interaction tracking (nav, Order Now, Seasonal Favorites cards)     */
++/* ------------------------------------------------------------------ */
++
++/** interactionId -> aggregated record, finalized on the next interaction or page hide. */
++const interactions = new Map();
++/** interactionIds already reported, and the region each one hit (for soft-nav attribution). */
++const finalizedRegions = new Map();
++
++function recordFor(interactionId) {
++  let rec = interactions.get(interactionId);
++  if (!rec) {
++    rec = {
++      interactionId,
++      region: null,
++      target: null,
++      startTime: null,
++      nextPaint: null,
++      contentfulPaint: null,
++      contentfulElement: null,
++    };
++    interactions.set(interactionId, rec);
++  }
++  return rec;
++}
++
++function finalizeInteractions({ all = false } = {}) {
++  // Keep the most recent interaction open (more paints may still arrive) unless flushing.
++  const ids = [...interactions.keys()];
++  const toFinalize = all ? ids : ids.slice(0, -1);
++  for (const id of toFinalize) {
++    const rec = interactions.get(id);
++    interactions.delete(id);
++    finalizedRegions.set(id, rec.region);
++    if (finalizedRegions.size > 200) finalizedRegions.delete(finalizedRegions.keys().next().value);
++    if (!rec.region) continue; // Untracked part of the page.
++    report({ type: 'interaction', ...rec });
++  }
++}
++
++// Event Timing: captures the target element + time to next paint. Works in all
++// Chromium and Firefox; Safari degrades gracefully (no observer registered).
++if (supported('event')) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      if (!entry.interactionId || finalizedRegions.has(entry.interactionId)) continue;
++      const isNew = !interactions.has(entry.interactionId);
++      const rec = recordFor(entry.interactionId);
++      if (isNew) finalizeInteractions();
++      const region = regionFor(entry.target);
++      if (region && !rec.region) {
++        rec.region = region;
++        rec.target = describe(entry.target.closest?.('a, button, [data-perf-region]') ?? entry.target);
++      }
++      rec.startTime ??= entry.startTime;
++      rec.nextPaint = Math.max(rec.nextPaint ?? 0, entry.duration);
++    }
++  }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
++}
++
++// InteractionContentfulPaint: time from input to (progressively larger)
++// contentful paints caused by that interaction, including async updates.
++if (supported('interaction-contentful-paint')) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      if (finalizedRegions.has(entry.interactionId)) continue;
++      const rec = recordFor(entry.interactionId);
++      rec.startTime ??= entry.startTime;
++      rec.contentfulPaint = entry.duration; // presentationTime - startTime
++      rec.contentfulElement = describe(entry.largestContentfulPaint?.element);
++      // Fall back to the painted element's region if the event entry had no target.
++      rec.region ??= regionFor(entry.largestContentfulPaint?.element);
++    }
++  }).observe({ type: 'interaction-contentful-paint', buffered: true });
++}
++
++/* ------------------------------------------------------------------ */
++/* Client-side view switches (soft navigations)                        */
++/* ------------------------------------------------------------------ */
++
++let activeSoftNav = null;
++let activeSoftNavLcp = null;
++
++function finalizeSoftNav() {
++  if (!activeSoftNav) return;
++  report({
++    type: 'soft-navigation',
++    url: activeSoftNav.name,
++    navigationId: activeSoftNav.navigationId,
++    interactionId: activeSoftNav.interactionId,
++    region: interactions.get(activeSoftNav.interactionId)?.region
++      ?? finalizedRegions.get(activeSoftNav.interactionId) ?? null,
++    fcp: activeSoftNav.duration,
++    lcp: activeSoftNavLcp?.duration ?? null,
++    lcpElement: describe(activeSoftNavLcp?.largestContentfulPaint?.element),
++  });
++  activeSoftNav = null;
++  activeSoftNavLcp = null;
++}
++
++if (supported('soft-navigation') && supported('interaction-contentful-paint')) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      finalizeSoftNav();
++      activeSoftNav = entry;
++      // Include contentful paints that happened before the URL changed.
++      activeSoftNavLcp = entry.getLargestInteractionContentfulPaint?.() ?? null;
++    }
++  }).observe({ type: 'soft-navigation', buffered: true });
++
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      // Correlate by interactionId (not navigationId).
++      if (activeSoftNav && entry.interactionId === activeSoftNav.interactionId) {
++        activeSoftNavLcp = entry;
++      }
++    }
++  }).observe({ type: 'interaction-contentful-paint', buffered: true });
++}
++
++/* ------------------------------------------------------------------ */
++/* Flushing                                                            */
++/* ------------------------------------------------------------------ */
++
++function flush() {
++  finalizeSoftNav();
++  finalizeInteractions({ all: true });
++  if (ENDPOINT && pending.length) {
++    const body = JSON.stringify({ page: location.pathname, metrics: pending.splice(0) });
++    navigator.sendBeacon?.(ENDPOINT, body);
++  } else {
++    pending.length = 0;
++  }
++}
++
++document.addEventListener('visibilitychange', () => {
++  if (document.visibilityState === 'hidden') flush();
++});
++window.addEventListener('pagehide', flush);

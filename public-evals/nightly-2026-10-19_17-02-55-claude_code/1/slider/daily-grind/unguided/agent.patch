@@ -1,0 +1,226 @@
+diff --git a/index.html b/index.html
+index 66c9173..224b079 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,172 @@
+       background: #3e2723;
+     }
+ 
++    /* Range slider: native <input type="range"> with custom styling */
++    .slider-card {
++      max-width: 520px;
++      margin: 20px auto 0;
++    }
++
++    .slider-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 14px;
++    }
++
++    .slider-header label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .slider-header output {
++      font-variant-numeric: tabular-nums;
++      font-weight: 600;
++    }
++
++    .slider-scale {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 6px;
++      font-size: 0.8rem;
++      opacity: 0.75;
++    }
++
++    input[type="range"].range {
++      --track-h: 8px;
++      --thumb: 24px;
++      --track-bg: var(--secondary);
++      --fill-bg: var(--primary);
++      --fill: 50%; /* kept in sync by script; defaults are fine without JS */
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: var(--thumb);
++      background: transparent;
++      cursor: pointer;
++      display: block;
++    }
++
++    /* Remove native outline; focus is shown on the thumb instead */
++    input[type="range"].range:focus {
++      outline: none;
++    }
++
++    /* Track + fill (WebKit/Blink) */
++    input[type="range"].range::-webkit-slider-runnable-track {
++      height: var(--track-h);
++      border-radius: var(--track-h);
++      background: linear-gradient(var(--fill-bg), var(--fill-bg)) 0 / var(--fill) 100% no-repeat,
++        var(--track-bg);
++    }
++
++    /* Track + fill (Firefox) */
++    input[type="range"].range::-moz-range-track {
++      height: var(--track-h);
++      border-radius: var(--track-h);
++      background: var(--track-bg);
++    }
++
++    input[type="range"].range::-moz-range-progress {
++      height: var(--track-h);
++      border-radius: var(--track-h);
++      background: var(--fill-bg);
++    }
++
++    /* Thumb */
++    input[type="range"].range::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: var(--thumb);
++      height: var(--thumb);
++      margin-top: calc((var(--track-h) - var(--thumb)) / 2);
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    input[type="range"].range::-moz-range-thumb {
++      width: calc(var(--thumb) - 6px);
++      height: calc(var(--thumb) - 6px);
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    /* Hover / active */
++    input[type="range"].range:hover::-webkit-slider-thumb {
++      transform: scale(1.1);
++    }
++
++    input[type="range"].range:hover::-moz-range-thumb {
++      transform: scale(1.1);
++    }
++
++    input[type="range"].range:active::-webkit-slider-thumb {
++      transform: scale(1.2);
++    }
++
++    input[type="range"].range:active::-moz-range-thumb {
++      transform: scale(1.2);
++    }
++
++    /* Keyboard focus: high-contrast double ring */
++    input[type="range"].range:focus-visible::-webkit-slider-thumb {
++      box-shadow: 0 0 0 3px var(--light), 0 0 0 6px var(--text);
++    }
++
++    input[type="range"].range:focus-visible::-moz-range-thumb {
++      box-shadow: 0 0 0 3px var(--light), 0 0 0 6px var(--text);
++    }
++
++    /* Disabled */
++    input[type="range"].range:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    /* Forced colors (Windows High Contrast) */
++    @media (forced-colors: active) {
++      input[type="range"].range::-webkit-slider-runnable-track {
++        background: ButtonText;
++      }
++
++      input[type="range"].range::-webkit-slider-thumb {
++        background: Highlight;
++        border-color: ButtonText;
++      }
++
++      input[type="range"].range::-moz-range-track {
++        background: ButtonText;
++      }
++
++      input[type="range"].range::-moz-range-thumb {
++        background: Highlight;
++        border-color: ButtonText;
++      }
++
++      input[type="range"].range:focus-visible::-webkit-slider-thumb {
++        outline: 2px solid Highlight;
++        outline-offset: 3px;
++      }
++
++      input[type="range"].range:focus-visible::-moz-range-thumb {
++        outline: 2px solid Highlight;
++        outline-offset: 3px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      input[type="range"].range::-webkit-slider-thumb,
++      input[type="range"].range::-moz-range-thumb {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +361,48 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 50px;">
++      <h2 style="text-align: center;">Dial In Your Brew</h2>
++      <div class="card slider-card">
++        <div class="slider-header">
++          <label for="strength">Brew strength</label>
++          <output id="strength-out" for="strength">Medium</output>
++        </div>
++        <input type="range" id="strength" class="range" min="1" max="5" step="1" value="3"
++          aria-describedby="strength-scale">
++        <div class="slider-scale" id="strength-scale" aria-hidden="true">
++          <span>Mild</span>
++          <span>Bold</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    // Progressive enhancement: the native input handles all interaction and
++    // accessibility; this only syncs the fill width and a readable value label.
++    (function () {
++      var input = document.getElementById('strength');
++      var out = document.getElementById('strength-out');
++      var names = ['Mild', 'Light', 'Medium', 'Strong', 'Bold'];
++
++      function sync() {
++        var min = +input.min, max = +input.max, val = +input.value;
++        var pct = (val - min) / (max - min);
++        var thumb = parseFloat(getComputedStyle(input).getPropertyValue('--thumb')) || 24;
++        // Align fill end with thumb center, which is inset by half the thumb width
++        input.style.setProperty('--fill', 'calc(' + (pct * 100) + '% + ' + (0.5 - pct) * thumb + 'px)');
++        var label = names[val - 1] || val;
++        out.textContent = label;
++        input.setAttribute('aria-valuetext', label);
++      }
++
++      input.addEventListener('input', sync);
++      sync();
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,69 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Action Controls */
++    .actions {
++      text-align: center;
++      margin-top: 40px;
++    }
++
++    .action-buttons {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .action-buttons button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .action-buttons button:hover {
++      background: #3e2723;
++    }
++
++    .action-buttons button[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    #action-target {
++      width: 120px;
++      height: 120px;
++      margin: 40px auto;
++      display: grid;
++      place-items: center;
++      background: var(--secondary);
++      border-radius: 8px;
++      transition: transform 0.5s, border-radius 0.5s;
++    }
++
++    #action-target.is-spun {
++      rotate: 360deg;
++    }
++
++    #action-target.is-grown {
++      scale: 1.5;
++    }
++
++    #action-target.is-rounded {
++      border-radius: 50%;
++    }
++
++    #action-target {
++      transition: rotate 0.5s, scale 0.5s, border-radius 0.5s;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +255,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="actions">
++      <h2>Cup Playground</h2>
++      <div id="action-target">&#9749;</div>
++      <div class="action-buttons">
++        <button type="button" commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
++        <button type="button" commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
++        <button type="button" commandfor="action-target" command="--round" aria-pressed="false">Make Round</button>
++        <button type="button" commandfor="action-target" command="--reset">Reset All</button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +278,37 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Load the invokers polyfill only where native support is missing
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill').catch((err) => console.error('Error loading fallback:', err));
++    }
++
++    const toggleClass = (className) => (target, source) => {
++      const active = target.classList.toggle(className);
++      // Custom commands have no inherent semantics, so sync ARIA manually
++      source?.setAttribute('aria-pressed', active);
++    };
++
++    const commandRegistry = {
++      '--spin': toggleClass('is-spun'),
++      '--grow': toggleClass('is-grown'),
++      '--round': toggleClass('is-rounded'),
++      '--reset': (target) => {
++        target.classList.remove('is-spun', 'is-grown', 'is-rounded');
++        document.querySelectorAll(`button[commandfor="${target.id}"][aria-pressed]`).forEach((btn) => {
++          btn.setAttribute('aria-pressed', 'false');
++        });
++      },
++    };
++
++    // The command event doesn't bubble, so listen on the target itself
++    document.getElementById('action-target').addEventListener('command', (event) => {
++      commandRegistry[event.command]?.(event.target, event.source);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

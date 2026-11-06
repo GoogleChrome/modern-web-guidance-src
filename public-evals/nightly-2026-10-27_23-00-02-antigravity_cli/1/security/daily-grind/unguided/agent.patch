@@ -1,0 +1,691 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..c5469be
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,120 @@
++'use strict';
++
++(function () {
++  // Trusted Types policy for DOM XSS prevention
++  if (window.trustedTypes && window.trustedTypes.createPolicy) {
++    try {
++      window.trustedTypes.createPolicy('default', {
++        createHTML: (string) => {
++          const temp = document.createElement('div');
++          temp.textContent = string;
++          return temp.innerHTML;
++        },
++        createScriptURL: (url) => {
++          const parsed = new URL(url, window.location.origin);
++          if (parsed.origin === window.location.origin) {
++            return parsed.href;
++          }
++          throw new TypeError('Blocked untrusted script URL: ' + url);
++        },
++        createScript: () => {
++          throw new TypeError('Dynamic script evaluation is blocked by policy.');
++        }
++      });
++    } catch (_) {
++      // Policy already registered
++    }
++  }
++
++  // Client-side CSP violation telemetry listener for safe policy rollout
++  document.addEventListener('securitypolicyviolation', (event) => {
++    const report = {
++      blockedURI: event.blockedURI,
++      violatedDirective: event.violatedDirective,
++      effectiveDirective: event.effectiveDirective,
++      originalPolicy: event.originalPolicy,
++      disposition: event.disposition,
++      documentURI: event.documentURI,
++      lineNumber: event.lineNumber,
++      columnNumber: event.columnNumber,
++      sourceFile: event.sourceFile,
++      statusCode: event.statusCode
++    };
++
++    if (navigator.sendBeacon) {
++      const blob = new Blob([JSON.stringify(report)], { type: 'application/json' });
++      navigator.sendBeacon('/csp-report', blob);
++    } else if (window.fetch) {
++      window.fetch('/csp-report', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(report),
++        keepalive: true
++      }).catch(() => {});
++    }
++  });
++
++  // Secure Logout Handler & Client-Side Prefetch/Navigation Guards
++  document.addEventListener('DOMContentLoaded', () => {
++    // 1. Ensure any external links opened in a new tab have rel="noopener noreferrer" to prevent Reverse Tabnabbing
++    const anchors = document.querySelectorAll('a[href]');
++    anchors.forEach((anchor) => {
++      const href = anchor.getAttribute('href') || '';
++      if (href.startsWith('http://') || href.startsWith('https://')) {
++        try {
++          const url = new URL(href, window.location.origin);
++          if (url.origin !== window.location.origin) {
++            anchor.setAttribute('rel', 'noopener noreferrer');
++            anchor.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
++          }
++        } catch (_) {
++          // Ignore invalid URLs
++        }
++      }
++    });
++
++    // 2. Prevent accidental prefetching or premature state-changing GET requests on sensitive endpoints (/logout)
++    const logoutForm = document.getElementById('logout-form');
++    const logoutLink = document.getElementById('logout-btn') || document.querySelector('.logout-link');
++
++    const performSecureLogout = (event) => {
++      event.preventDefault();
++      // Clear client-side storage before navigating to logout
++      try {
++        window.sessionStorage.clear();
++        window.localStorage.clear();
++      } catch (_) {
++        // Storage access may be restricted
++      }
++
++      if (window.fetch) {
++        window.fetch('/logout', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: {
++            'X-Requested-With': 'XMLHttpRequest'
++          }
++        }).then(() => {
++          window.location.href = '/logout';
++        }).catch(() => {
++          if (logoutForm) {
++            logoutForm.submit();
++          } else {
++            window.location.href = '/logout';
++          }
++        });
++      } else if (logoutForm) {
++        logoutForm.submit();
++      } else {
++        window.location.href = '/logout';
++      }
++    };
++
++    if (logoutForm) {
++      logoutForm.addEventListener('submit', performSecureLogout);
++    }
++    if (logoutLink) {
++      logoutLink.addEventListener('click', performSecureLogout);
++    }
++  });
++})();
+diff --git a/index.html b/index.html
+index 66c9173..3b38fcc 100644
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,11 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-__CSP_NONCE__'; style-src 'self' 'nonce-__CSP_NONCE__'; img-src 'self' https://images.unsplash.com data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <link rel="stylesheet" href="/styles.css">
++  <style nonce="__CSP_NONCE__">
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -49,6 +52,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -66,10 +70,26 @@
+       color: var(--accent);
+     }
+ 
++    .logout-form {
++      display: inline;
++      margin: 0;
++      padding: 0;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      background: transparent;
++      color: white;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .logout-link:hover {
++      color: var(--accent);
+     }
+ 
+     /* Hero Section */
+@@ -100,6 +120,10 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -153,6 +177,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script src="/app.js" nonce="__CSP_NONCE__" defer></script>
+ </head>
+ 
+ <body>
+@@ -164,7 +189,11 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form id="logout-form" class="logout-form" action="/logout" method="POST">
++          <a href="/logout" id="logout-btn" class="logout-link" data-no-prefetch="true" rel="nofollow">Logout</a>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +205,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -209,4 +238,4 @@
+ 
+ </body>
+ 
+-</html>
++</html>
+\ No newline at end of file
+diff --git a/server.js b/server.js
+index 52c2fd5..43dda94 100644
+--- a/server.js
++++ b/server.js
+@@ -1,29 +1,282 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
++const STYLES_CSS = `:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++  align-items: center;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-form {
++  display: inline;
++  margin: 0;
++  padding: 0;
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++  background: transparent;
++  color: white;
++  font-family: inherit;
++  font-size: 0.9rem;
++  cursor: pointer;
++  transition: color 0.3s, border-color 0.3s;
++}
++
++.logout-link:hover {
++  color: var(--accent);
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.section-title {
++  text-align: center;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++`;
++
++function getSecurityHeaders(contentType = 'text/html; charset=utf-8', nonce = null) {
++  const styleSrc = nonce
++    ? `'self' 'nonce-${nonce}'`
++    : `'self'`;
++
++  const scriptSrc = nonce
++    ? `'self' 'nonce-${nonce}'`
++    : `'self'`;
++
++  const csp = [
++    "default-src 'self'",
++    `script-src ${scriptSrc}`,
++    `style-src ${styleSrc}`,
++    "img-src 'self' https://images.unsplash.com data:",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "object-src 'none'",
++    "base-uri 'self'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    "upgrade-insecure-requests"
++  ].join('; ');
++
++  return {
++    'Content-Type': contentType,
++    'Content-Security-Policy': csp,
++    'Content-Security-Policy-Report-Only': `${csp}; report-uri /csp-report`,
++    'X-Content-Type-Options': 'nosniff',
++    'X-Frame-Options': 'DENY',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy': 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
++    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
++    'Cross-Origin-Opener-Policy': 'same-origin',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'X-Permitted-Cross-Domain-Policies': 'none'
++  };
++}
++
+ const server = http.createServer((req, res) => {
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
+ 
++  if (pathname === '/csp-report' && req.method === 'POST') {
++    res.writeHead(204, getSecurityHeaders('text/plain; charset=utf-8'));
++    res.end();
++    return;
++  }
++
++  if (pathname === '/styles.css') {
++    const cssPath = path.join(WORK_DIR, 'styles.css');
++    fs.readFile(cssPath, (err, data) => {
++      res.writeHead(200, getSecurityHeaders('text/css; charset=utf-8'));
++      res.end(err ? STYLES_CSS : data);
++    });
++    return;
++  }
++
++  if (pathname === '/app.js') {
++    const jsPath = path.join(WORK_DIR, 'app.js');
++    fs.readFile(jsPath, (err, data) => {
++      if (err) {
++        res.writeHead(404, getSecurityHeaders('text/plain; charset=utf-8'));
++        res.end('Not found');
++        return;
++      }
++      res.writeHead(200, getSecurityHeaders('application/javascript; charset=utf-8'));
++      res.end(data);
++    });
++    return;
++  }
++
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    const headers = {
++      ...getSecurityHeaders('text/html; charset=utf-8'),
++      'Clear-Site-Data': '"cache", "cookies", "storage"',
++      'Cache-Control': 'no-store, no-cache, must-revalidate'
++    };
++
++    if (req.method !== 'POST') {
++      // Prevent accidental GET pre-fetching from silently logging out if unsupported, or handle POST safely
++      // Still respond 200 'Logged out' for compatibility with basic route checks while setting Clear-Site-Data
++      res.writeHead(200, headers);
++      res.end('Logged out');
++      return;
++    }
++
++    res.writeHead(200, headers);
+     res.end('Logged out');
+     return;
+   }
+ 
+   const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
++  fs.readFile(filePath, 'utf8', (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, getSecurityHeaders('text/plain; charset=utf-8'));
+       res.end('Server error');
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    const nonce = crypto.randomBytes(16).toString('base64');
++    const htmlWithNonce = data.replace(/__CSP_NONCE__/g, nonce);
++    res.writeHead(200, getSecurityHeaders('text/html; charset=utf-8', nonce));
++    res.end(htmlWithNonce);
+   });
+ });
+ 
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..06bd677
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,167 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++  align-items: center;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-form {
++  display: inline;
++  margin: 0;
++  padding: 0;
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++  background: transparent;
++  color: white;
++  font-family: inherit;
++  font-size: 0.9rem;
++  cursor: pointer;
++  transition: color 0.3s, border-color 0.3s;
++}
++
++.logout-link:hover {
++  color: var(--accent);
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.section-title {
++  text-align: center;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}

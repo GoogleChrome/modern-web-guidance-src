@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,57 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Logout confirmation dialog */
++    .logout-dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 0;
++      margin: auto;
++      max-width: 90vw;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      color: var(--text);
++    }
++
++    .logout-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .logout-dialog-content {
++      padding: 24px 28px;
++      min-width: 280px;
++      text-align: center;
++    }
++
++    .logout-dialog-content h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .logout-dialog-actions {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .logout-dialog-actions .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .logout-dialog-actions .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .logout-dialog-actions .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,12 +212,23 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger" aria-haspopup="dialog" aria-controls="logout-dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" class="logout-dialog" aria-labelledby="logout-dialog-title" closedby="any">
++    <div class="logout-dialog-content">
++      <h2 id="logout-dialog-title">Are you sure?</h2>
++      <p>Do you really want to log out?</p>
++      <form method="dialog" class="logout-dialog-actions">
++        <button type="submit" class="btn btn-secondary" autofocus>Cancel</button>
++        <a href="/logout" class="btn">Log out</a>
++      </form>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +266,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var trigger = document.querySelector('.test-dialog-trigger');
++      var dialog = document.getElementById('logout-dialog');
++      if (!trigger || !dialog || typeof dialog.showModal !== 'function') return;
++
++      trigger.addEventListener('click', function (event) {
++        event.preventDefault();
++        dialog.showModal();
++      });
++
++      // Close when clicking the backdrop (anywhere outside the dialog box).
++      // The dialog itself has no padding and its content wrapper fills it, so
++      // a click whose target is the <dialog> element can only be a backdrop
++      // click. Fallback for browsers without closedby="any" support.
++      dialog.addEventListener('click', function (event) {
++        if (event.target === dialog) dialog.close();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

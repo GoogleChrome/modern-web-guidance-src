@@ -1,0 +1,277 @@
+diff --git a/index.html b/index.html
+index 66c9173..bb57afc 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="description" content="Ethically sourced coffee, seasonal favorites, and stories from the roast to your morning cup at The Daily Grind.">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,23 +75,92 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
++      min-height: 60vh;
++      background: #eee5de;
++      display: grid;
++      grid-template-columns: 1fr 1.15fr;
++      gap: 48px;
+       align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      padding: 60px max(5%, calc((100vw - 1100px) / 2));
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2.4rem, 4vw, 3.5rem);
++      line-height: 1.15;
++      margin: 12px 0 20px;
++    }
++
++    .eyebrow {
++      color: var(--primary);
++      font-size: .75rem;
++      font-weight: 700;
++      letter-spacing: .15em;
++      text-transform: uppercase;
++    }
++
++    video {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background: var(--primary);
++      border-radius: 8px;
++    }
++
++    figcaption, .media-credit {
++      font-size: .8rem;
++      margin-top: 10px;
++    }
++
++    figcaption a, .media-credit a, .transcript-link {
++      color: inherit;
++      text-underline-offset: 3px;
++    }
++
++    .media-section {
++      margin-top: 88px;
++    }
++
++    .section-intro {
++      max-width: 620px;
++      margin-bottom: 24px;
++    }
++
++    .section-intro h2, .podcast h2 {
++      font-size: clamp(1.6rem, 3vw, 2.2rem);
++      line-height: 1.25;
++      margin: 8px 0 14px;
++    }
++
++    .podcast {
++      background: #eee5de;
++      border-radius: 8px;
++      padding: clamp(24px, 5vw, 48px);
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 32px;
++      align-items: center;
++    }
++
++    audio {
++      display: block;
++      width: 100%;
++      min-height: 54px;
++      margin: 20px 0 12px;
++    }
++
++    :focus-visible {
++      outline: 3px solid #b96300;
++      outline-offset: 5px;
++    }
++
++    @media (max-width: 760px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero { grid-template-columns: 1fr; gap: 28px; padding: 40px 20px; }
++      .podcast { grid-template-columns: 1fr; gap: 12px; }
++      .media-section { margin-top: 60px; }
+     }
+ 
+     /* Content Sections */
+@@ -169,9 +239,24 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <p class="eyebrow">Good mornings start here</p>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <figure>
++      <!-- The visible hero stays eager so its poster is available immediately. -->
++      <video controls playsinline width="1280" height="720" preload="metadata"
++        poster="https://assets.mixkit.co/videos/235/235-thumb-1080-0.jpg"
++        aria-label="A closer look at freshly roasted coffee beans" aria-describedby="hero-caption">
++        <source src="https://assets.mixkit.co/videos/235/235-720.mp4" type="video/mp4">
++        Your browser does not support embedded video. Use the video link below.
++      </video>
++      <figcaption id="hero-caption">Small beans. A whole world of flavor. Silent stock footage from
++        <a href="https://mixkit.co/free-stock-video/coffee-beans-235/">Mixkit</a>.
++      </figcaption>
++    </figure>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +280,49 @@
+         </div>
+       </div>
+     </section>
++    <section class="media-section" aria-labelledby="roasting-title">
++      <div class="section-intro">
++        <p class="eyebrow">Behind the beans</p>
++        <h2 id="roasting-title">A little heat. A lot of craft.</h2>
++        <p>Great coffee starts long before the first sip. Take a closer look at a coffee roaster in action.</p>
++      </div>
++      <figure>
++        <!-- Keep URLs inert in the HTML: preload="none" alone does not defer posters. -->
++        <video controls playsinline loading="lazy" width="1280" height="720" preload="none"
++          data-deferred-media data-preload="metadata"
++          data-poster="https://assets.mixkit.co/videos/88001/88001-thumb-1080-0.jpg"
++          aria-labelledby="roasting-title" aria-describedby="roasting-caption">
++          <source data-src="https://assets.mixkit.co/videos/88001/88001-720.mp4" type="video/mp4">
++          Your browser does not support embedded video. Use the video link below.
++        </video>
++        <figcaption id="roasting-caption">Coffee roaster in operation · Silent stock footage from
++          <a href="https://mixkit.co/free-stock-video/coffee-roaster-in-operation-88001/">Mixkit</a>.
++          <noscript>JavaScript is disabled. Open the linked video to watch.</noscript>
++        </figcaption>
++      </figure>
++    </section>
++
++    <section class="media-section podcast" aria-labelledby="podcast-title">
++      <div>
++        <p class="eyebrow">Something to sip on</p>
++        <h2 id="podcast-title">Coffee for your ears.</h2>
++        <p>Settle in with a fresh cup and a conversation about what goes into a great roast.</p>
++      </div>
++      <div>
++        <h3 id="episode-title">Home Coffee Roasting, part 1</h3>
++        <p>Guest listen · Hacker Public Radio</p>
++        <audio controls loading="lazy" preload="none" data-deferred-media data-preload="metadata"
++          aria-labelledby="episode-title" aria-describedby="episode-credit">
++          <source data-src="https://hub.hackerpublicradio.org/ccdn.php?filename=/eps/hpr3563/hpr3563.mp3" type="audio/mpeg">
++          Your browser does not support embedded audio. Use the episode link below.
++        </audio>
++        <a class="transcript-link" href="https://hackerpublicradio.org/eps.php?id=3563">Episode notes &amp; transcript</a>
++        <p class="media-credit" id="episode-credit">By dnt · Hacker Public Radio, episode 3563 ·
++          <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>
++        </p>
++        <noscript><p>JavaScript is disabled. Listen from the linked episode page.</p></noscript>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +335,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="media.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/media.js b/media.js
+new file mode 100644
+index 0000000..de6bcdf
+--- /dev/null
++++ b/media.js
+@@ -0,0 +1,67 @@
++// Author offscreen URLs as data attributes so the preload scanner cannot fetch
++// posters or media headers, even in browsers without native media lazy loading.
++const deferredMedia = document.querySelectorAll('[data-deferred-media]');
++
++function activateMedia(media) {
++  if (!media.hasAttribute('data-deferred-media')) return;
++  media.removeAttribute('data-deferred-media');
++
++  if (media.dataset.poster) {
++    media.setAttribute('poster', media.dataset.poster);
++    delete media.dataset.poster;
++  }
++  for (const source of media.querySelectorAll('source[data-src]')) {
++    source.src = source.dataset.src;
++    delete source.dataset.src;
++  }
++  media.preload = media.dataset.preload || 'metadata';
++  delete media.dataset.preload;
++  media.load();
++}
++
++if ('IntersectionObserver' in window) {
++  const observer = new IntersectionObserver((entries) => {
++    for (const entry of entries) {
++      if (!entry.isIntersecting) continue;
++      activateMedia(entry.target);
++      observer.unobserve(entry.target);
++    }
++  }, { rootMargin: '200px 0px' });
++
++  for (const media of deferredMedia) {
++    observer.observe(media);
++    // Keyboard or pointer intent can also activate a player immediately.
++    media.addEventListener('focusin', () => {
++      activateMedia(media);
++      observer.unobserve(media);
++    }, { once: true });
++  }
++} else {
++  // Older browsers still defer downloads, rather than loading every asset.
++  let scheduled = false;
++  function checkMedia() {
++    scheduled = false;
++    for (const media of deferredMedia) {
++      if (!media.hasAttribute('data-deferred-media')) continue;
++      const bounds = media.getBoundingClientRect();
++      if (bounds.top <= window.innerHeight + 200 && bounds.bottom >= -200) {
++        activateMedia(media);
++      }
++    }
++    if (![...deferredMedia].some(media => media.hasAttribute('data-deferred-media'))) {
++      window.removeEventListener('scroll', scheduleCheck);
++      window.removeEventListener('resize', scheduleCheck);
++    }
++  }
++  function scheduleCheck() {
++    if (scheduled) return;
++    scheduled = true;
++    window.requestAnimationFrame(checkMedia);
++  }
++  window.addEventListener('scroll', scheduleCheck, { passive: true });
++  window.addEventListener('resize', scheduleCheck);
++  for (const media of deferredMedia) {
++    media.addEventListener('focusin', () => activateMedia(media), { once: true });
++  }
++  checkMedia();
++}

@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,127 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Mixed Fonts and Independent Theme Proportions</title>
++  <link rel="stylesheet" href="style.css">
++  <style>
++    /* Baseline layout styling */
++    body {
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
++      line-height: 1.6;
++      margin: 0;
++      padding: 2rem;
++      background-color: #f8fafc;
++      color: #1e293b;
++    }
++
++    main {
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    /* Mixed fonts container:
++       Uses modern CSS `font-size-adjust: from-font` to normalize the visual height (x-height)
++       of mixed font families (regular serif text and inline monospace code) automatically. */
++    #mixed-fonts-container {
++      font-family: Georgia, 'Times New Roman', Cambria, serif;
++      font-size: 1.25rem;
++      line-height: 1.7;
++      font-size-adjust: from-font;
++      background: #ffffff;
++      padding: 1.5rem 2rem;
++      border-radius: 8px;
++      border-left: 4px solid #3b82f6;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
++      margin-bottom: 2.5rem;
++    }
++
++    #mixed-fonts-container code {
++      font-family: 'Courier New', Courier, monospace;
++      background-color: #f1f5f9;
++      color: #0f172a;
++      padding: 0.2em 0.4em;
++      border-radius: 4px;
++      border: 1px solid #e2e8f0;
++    }
++
++    /* Independent theme container:
++       Represents an independent theme with its visual proportions locked down via modern CSS
++       aspect-ratio (16 / 9) and numeric font-size-adjust (0.5) aspect-ratio override. */
++    #independent-theme-container {
++      /* Modern CSS properties with specific numeric aspect-ratio overrides */
++      aspect-ratio: 16 / 9;
++      font-size-adjust: 0.5;
++
++      /* Independent theme styles */
++      background: linear-gradient(135deg, #1e1e2e 0%, #2d3250 100%);
++      color: #f8fafc;
++      border-radius: 12px;
++      padding: 1.5rem;
++      box-sizing: border-box;
++      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
++      max-width: 640px;
++      margin: 0 auto;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      overflow: hidden;
++      border: 1px solid rgba(255, 255, 255, 0.1);
++    }
++
++    #independent-theme-container h2 {
++      margin-top: 0;
++      margin-bottom: 0.5rem;
++      font-size: 1.35rem;
++      color: #70a5ff;
++    }
++
++    #independent-theme-container p {
++      margin: 0 0 1rem 0;
++      font-size: 0.95rem;
++      color: #cbd5e1;
++    }
++
++    #independent-theme-container .theme-image {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      aspect-ratio: 16 / 9;
++    }
++
++    #independent-theme-container .theme-footer {
++      font-size: 0.85rem;
++      color: #94a3b8;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: 0.5rem;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <h1>Modern CSS Typography & Layout Demonstration</h1>
++
++    <!-- Paragraph containing mixed font families with automatic visual height normalization -->
++    <p id="mixed-fonts-container">
++      In modern web typography, combining a primary serif typeface with inline code elements like <code>const normalizedRatio = "from-font";</code> often produces mismatched visual heights. By leveraging modern CSS, the visual x-height of these mixed fonts is automatically normalized across both regular prose and <code>function adjustFontMetrics()</code> code tokens.
++    </p>
++
++    <!-- Separate container representing an independent theme with locked-down visual proportions -->
++    <div id="independent-theme-container">
++      <div>
++        <h2>Independent Dark Theme Component</h2>
++        <p>This independent theme container locks down its visual proportions using modern CSS aspect ratio controls.</p>
++      </div>
++      <img src="https://picsum.photos/640/360" alt="Stock photo landscape" class="theme-image">
++      <div class="theme-footer">
++        <span>Aspect Ratio: 16 / 9</span>
++        <span>Font Metric Override: 0.5</span>
++      </div>
++    </div>
++  </main>
++</body>
++</html>

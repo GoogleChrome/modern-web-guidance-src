@@ -1,0 +1,417 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -45,34 +45,161 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .menu-toggle,
++    .drawer-close {
++      background: transparent;
++      border: 1px solid rgba(255, 255, 255, 0.25);
++      color: white;
++      padding: 0.45rem 0.65rem;
++      border-radius: 6px;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      transition: background 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .menu-toggle:hover,
++    .menu-toggle:focus-visible,
++    .drawer-close:hover,
++    .drawer-close:focus-visible {
++      background: rgba(255, 255, 255, 0.12);
++      border-color: var(--accent);
++      color: var(--accent);
++      outline: none;
++    }
++
++    .menu-toggle svg,
++    .drawer-close svg {
++      width: 22px;
++      height: 22px;
++      stroke: currentColor;
++      stroke-width: 2;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++      fill: none;
++    }
++
++    /* Slide-out Drawer & Backdrop */
++    .drawer-backdrop {
++      position: fixed;
++      inset: 0;
++      background: rgba(30, 18, 15, 0.6);
++      backdrop-filter: blur(2px);
++      z-index: 1999;
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.3s ease, visibility 0.3s ease;
++    }
++
++    .drawer-backdrop.open {
++      opacity: 1;
++      visibility: visible;
++      pointer-events: auto;
++    }
++
++    .nav-drawer {
++      position: fixed;
++      top: 0;
++      right: 0;
++      bottom: 0;
++      width: min(320px, 85vw);
++      height: 100dvh;
++      background: var(--primary);
++      color: white;
++      z-index: 2000;
+       display: flex;
++      flex-direction: column;
++      padding: 1.25rem 1.5rem;
++      box-shadow: -6px 0 24px rgba(0, 0, 0, 0.35);
++      transform: translateX(100%);
++      visibility: hidden;
++      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.3s ease;
++      touch-action: pan-y;
++      overscroll-behavior: contain;
++      will-change: transform;
++    }
++
++    .nav-drawer.open {
++      transform: translateX(0);
++      visibility: visible;
++    }
++
++    .nav-drawer.swiping,
++    .drawer-backdrop.swiping {
++      transition: none !important;
++    }
++
++    .drawer-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding-bottom: 1rem;
++      margin-bottom: 1rem;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
++    }
++
++    .drawer-title {
++      font-size: 1.1rem;
++      font-weight: bold;
++      letter-spacing: 0.8px;
++      color: var(--secondary);
++    }
++
++    .nav-drawer ul {
++      display: flex;
++      flex-direction: column;
+       list-style: none;
++      gap: 0.5rem;
++      flex: 1;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .nav-drawer ul li {
++      margin: 0;
+     }
+ 
+-    nav a {
++    .nav-drawer a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 1.05rem;
++      padding: 0.75rem 0.85rem;
++      border-radius: 6px;
++      display: block;
++      transition: background 0.2s, color 0.2s;
+     }
+ 
+-    nav a:hover {
++    .nav-drawer a:hover,
++    .nav-drawer a:focus-visible {
++      background: rgba(255, 255, 255, 0.1);
+       color: var(--accent);
++      outline: none;
+     }
+ 
++    .nav-drawer .logout-item {
++      margin-top: auto;
++      padding-top: 1rem;
++      border-top: 1px solid rgba(255, 255, 255, 0.15);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      padding: 0.65rem 1rem;
++      border-radius: 6px;
++      text-align: center;
++      font-weight: 600;
+     }
+ 
++    body.drawer-open {
++      overflow: hidden;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -156,17 +283,58 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <button
++      type="button"
++      id="menu-toggle"
++      class="menu-toggle"
++      aria-label="Open navigation menu"
++      aria-controls="nav-drawer"
++      aria-expanded="false"
++    >
++      <svg viewBox="0 0 24 24" aria-hidden="true">
++        <line x1="3" y1="6" x2="21" y2="6"></line>
++        <line x1="3" y1="12" x2="21" y2="12"></line>
++        <line x1="3" y1="18" x2="21" y2="18"></line>
++      </svg>
++      <span>Menu</span>
++    </button>
++
++    <div id="drawer-backdrop" class="drawer-backdrop" aria-hidden="true"></div>
++
++    <aside
++      id="nav-drawer"
++      class="nav-drawer"
++      role="dialog"
++      aria-modal="true"
++      aria-label="Site Navigation"
++      aria-hidden="true"
++    >
++      <div class="drawer-header">
++        <span class="drawer-title">THE DAILY GRIND</span>
++        <button
++          type="button"
++          id="drawer-close"
++          class="drawer-close"
++          aria-label="Close navigation menu"
++        >
++          <svg viewBox="0 0 24 24" aria-hidden="true">
++            <line x1="18" y1="6" x2="6" y2="18"></line>
++            <line x1="6" y1="6" x2="18" y2="18"></line>
++          </svg>
++        </button>
++      </div>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li class="logout-item"><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </aside>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -206,7 +374,175 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const menuToggle = document.getElementById('menu-toggle');
++      const drawerClose = document.getElementById('drawer-close');
++      const navDrawer = document.getElementById('nav-drawer');
++      const backdrop = document.getElementById('drawer-backdrop');
++
++      let isOpen = false;
++
++      function openDrawer() {
++        if (isOpen) return;
++        isOpen = true;
++        navDrawer.classList.add('open');
++        backdrop.classList.add('open');
++        navDrawer.setAttribute('aria-hidden', 'false');
++        menuToggle.setAttribute('aria-expanded', 'true');
++        document.body.classList.add('drawer-open');
++        navDrawer.style.transform = '';
++        backdrop.style.opacity = '';
++        drawerClose.focus({ preventScroll: true });
++      }
++
++      function closeDrawer() {
++        if (!isOpen) return;
++        isOpen = false;
++        navDrawer.classList.remove('open', 'swiping');
++        backdrop.classList.remove('open', 'swiping');
++        navDrawer.setAttribute('aria-hidden', 'true');
++        menuToggle.setAttribute('aria-expanded', 'false');
++        document.body.classList.remove('drawer-open');
++        navDrawer.style.transform = '';
++        backdrop.style.opacity = '';
++        menuToggle.focus({ preventScroll: true });
++      }
++
++      menuToggle.addEventListener('click', () => {
++        if (isOpen) {
++          closeDrawer();
++        } else {
++          openDrawer();
++        }
++      });
++
++      drawerClose.addEventListener('click', closeDrawer);
++      backdrop.addEventListener('click', closeDrawer);
++
++      document.addEventListener('keydown', (e) => {
++        if (e.key === 'Escape' && isOpen) {
++          e.preventDefault();
++          closeDrawer();
++        }
++      });
++
++      // Native touch & pointer swipe-away gesture support
++      let startX = 0;
++      let startY = 0;
++      let currentX = 0;
++      let startTime = 0;
++      let isTracking = false;
++      let isHorizontalSwipe = null;
++
++      function beginGesture(clientX, clientY) {
++        if (!isOpen) return;
++        startX = clientX;
++        startY = clientY;
++        currentX = clientX;
++        startTime = performance.now();
++        isTracking = true;
++        isHorizontalSwipe = null;
++      }
++
++      function moveGesture(clientX, clientY, e) {
++        if (!isTracking || !isOpen) return;
++
++        const deltaX = clientX - startX;
++        const deltaY = clientY - startY;
++
++        if (isHorizontalSwipe === null) {
++          if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
++            isHorizontalSwipe = Math.abs(deltaX) >= Math.abs(deltaY);
++            if (isHorizontalSwipe) {
++              navDrawer.classList.add('swiping');
++              backdrop.classList.add('swiping');
++            }
++          }
++        }
++
++        if (!isHorizontalSwipe) return;
++
++        if (e && e.cancelable) {
++          e.preventDefault();
++        }
++
++        currentX = clientX;
++        // Drawer is anchored on the right: swiping right (positive deltaX) pulls it closed
++        const offset = Math.max(0, deltaX);
++        const drawerWidth = navDrawer.offsetWidth || 320;
++        const progress = Math.min(1, offset / drawerWidth);
++
++        navDrawer.style.transform = `translateX(${offset}px)`;
++        backdrop.style.opacity = String(1 - progress);
++      }
++
++      function endGesture() {
++        if (!isTracking) return;
++        isTracking = false;
++
++        if (!isHorizontalSwipe) {
++          navDrawer.classList.remove('swiping');
++          backdrop.classList.remove('swiping');
++          return;
++        }
++
++        const deltaX = currentX - startX;
++        const elapsed = Math.max(1, performance.now() - startTime);
++        const velocity = deltaX / elapsed; // px per ms
++        const drawerWidth = navDrawer.offsetWidth || 320;
++
++        navDrawer.classList.remove('swiping');
++        backdrop.classList.remove('swiping');
++
++        // Close if swiped past 25% of drawer width (or 75px) or flicked right with velocity
++        if (deltaX > Math.min(75, drawerWidth * 0.25) || (deltaX > 20 && velocity > 0.35)) {
++          closeDrawer();
++        } else {
++          // Snap back open
++          navDrawer.style.transform = '';
++          backdrop.style.opacity = '';
++        }
++      }
++
++      // Touch events
++      navDrawer.addEventListener('touchstart', (e) => {
++        if (e.touches.length !== 1) return;
++        beginGesture(e.touches[0].clientX, e.touches[0].clientY);
++      }, { passive: true });
++
++      navDrawer.addEventListener('touchmove', (e) => {
++        if (e.touches.length !== 1) return;
++        moveGesture(e.touches[0].clientX, e.touches[0].clientY, e);
++      }, { passive: false });
++
++      navDrawer.addEventListener('touchend', endGesture);
++      navDrawer.addEventListener('touchcancel', endGesture);
++
++      // Pointer events fallback for non-touch pointers (e.g., mouse drag / pen)
++      navDrawer.addEventListener('pointerdown', (e) => {
++        if (e.pointerType === 'touch') return;
++        if (e.button !== 0) return;
++        beginGesture(e.clientX, e.clientY);
++      });
++
++      window.addEventListener('pointermove', (e) => {
++        if (e.pointerType === 'touch' || !isTracking) return;
++        moveGesture(e.clientX, e.clientY, e);
++      });
++
++      window.addEventListener('pointerup', (e) => {
++        if (e.pointerType === 'touch' || !isTracking) return;
++        endGesture();
++      });
++
++      window.addEventListener('pointercancel', (e) => {
++        if (e.pointerType === 'touch' || !isTracking) return;
++        endGesture();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

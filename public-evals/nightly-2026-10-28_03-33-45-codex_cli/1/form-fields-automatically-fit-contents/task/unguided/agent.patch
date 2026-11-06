@@ -1,0 +1,229 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,122 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Content-sized contact form */
++    .note-section {
++      display: grid;
++      grid-template-columns: 0.85fr 1.15fr;
++      gap: 64px;
++      margin: 56px 0 64px;
++      padding: 42px;
++      background: #f3eee7;
++      border: 1px solid #e6ddd2;
++      border-radius: 12px;
++    }
++
++    .eyebrow {
++      color: #82644e;
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++    }
++
++    .note-intro h2 {
++      margin: 12px 0 14px;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2rem, 4vw, 2.6rem);
++      font-weight: 400;
++      line-height: 1.15;
++      letter-spacing: -0.04em;
++    }
++
++    .note-intro p {
++      max-width: 290px;
++      color: #78675d;
++      font-size: 0.9rem;
++    }
++
++    .note-signoff {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      margin-top: 30px;
++      color: #82644e;
++      font-size: 0.78rem;
++    }
++
++    .note-signoff svg { width: 28px; height: 28px; }
++    .note-form { min-width: 0; }
++    .form-field { margin-bottom: 21px; }
++
++    .form-field label {
++      display: block;
++      margin-bottom: 7px;
++      font-size: 0.78rem;
++      font-weight: 600;
++    }
++
++    .content-control {
++      display: block;
++      box-sizing: border-box;
++      max-width: 100%;
++      min-width: min(160px, 100%);
++      padding: 10px 13px;
++      border: 1px solid #d9cec2;
++      border-radius: 6px;
++      background: #fffcf8;
++      color: var(--text);
++      font: 0.9rem/1.6 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      transition: border-color 0.15s, box-shadow 0.15s;
++    }
++
++    .content-control:focus {
++      outline: none;
++      border-color: #94765c;
++      box-shadow: 0 0 0 3px #94765c20;
++    }
++
++    .content-control::placeholder { color: #9b8c80; }
++    textarea.content-control {
++      min-width: min(260px, 100%);
++      min-height: 46px;
++      resize: none;
++      overflow: hidden;
++    }
++    select.content-control {
++      cursor: pointer;
++      padding-right: 35px;
++      appearance: none;
++      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23786554' stroke-width='1.5'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
++      background-repeat: no-repeat;
++      background-position: right 11px center;
++    }
++
++    .form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; }
++    .form-actions .btn {
++      margin: 0;
++      border: none;
++      cursor: pointer;
++      font: 600 0.8rem/1.6 'Segoe UI', sans-serif;
++      padding: 11px 19px;
++    }
++    .form-hint { font-size: 0.7rem; color: #8b796a; }
++    .form-status { font-size: 0.8rem; margin-top: 12px; color: #6e5947; }
++    .form-status:empty { display: none; }
++    .measure-text { position: absolute; visibility: hidden; white-space: pre; pointer-events: none; }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .note-section { grid-template-columns: 1fr; gap: 30px; padding: 26px; margin-top: 30px; }
++      .note-intro p { max-width: none; }
++      .note-signoff { margin-top: 18px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +288,44 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="note-section" aria-labelledby="note-title">
++      <div class="note-intro">
++        <span class="eyebrow">Good coffee. Good conversation.</span>
++        <h2 id="note-title">Drop us a note.</h2>
++        <p>A question, a bright idea, or just a hello. There's always room for a conversation at our table.</p>
++        <div class="note-signoff">
++          <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M5 12h18v9a7 7 0 0 1-7 7h-4a7 7 0 0 1-7-7zM23 14h2a4 4 0 0 1 0 8h-2M3 30h24M11 8c-3-3 3-3 0-6M17 8c-3-3 3-3 0-6"/></svg>
++          <span>From your neighborhood coffee people.</span>
++        </div>
++      </div>
++      <form class="note-form">
++        <div class="form-field">
++          <label for="note-name">Your name</label>
++          <input class="content-control" id="note-name" name="name" type="text" placeholder="First name" autocomplete="given-name" required>
++        </div>
++        <div class="form-field">
++          <label for="note-topic">What's on your mind?</label>
++          <select class="content-control" id="note-topic" name="topic">
++            <option>Just saying hello</option>
++            <option>A question about our coffee</option>
++            <option>Feedback from my visit</option>
++            <option>Events &amp; catering</option>
++            <option>Something else</option>
++          </select>
++        </div>
++        <div class="form-field">
++          <label for="note-message">Your note</label>
++          <textarea class="content-control" id="note-message" name="message" rows="1" placeholder="Make yourself at home…" required></textarea>
++        </div>
++        <div class="form-actions">
++          <button class="btn" type="submit">Save note <span aria-hidden="true">↗</span></button>
++          <span class="form-hint">A little or a lot. The space grows with you.</span>
++        </div>
++        <p class="form-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +356,57 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.querySelector('.note-form');
++    const controls = [...form.querySelectorAll('.content-control')];
++    const measure = document.createElement('span');
++    measure.className = 'measure-text';
++    measure.setAttribute('aria-hidden', 'true');
++    document.body.append(measure);
++
++    function sizeControl(control) {
++      const style = getComputedStyle(control);
++      measure.style.font = style.font;
++      measure.style.letterSpacing = style.letterSpacing;
++      const content = control.tagName === 'SELECT'
++        ? control.selectedOptions[0].text
++        : control.value || control.placeholder || ' ';
++      let width = 0;
++      for (const line of content.split('\n')) {
++        measure.textContent = line;
++        width = Math.max(width, measure.getBoundingClientRect().width);
++      }
++      const extra = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
++        + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
++      control.style.width = `${Math.ceil(width + extra + 3)}px`;
++      if (control.tagName === 'TEXTAREA') {
++        control.style.height = 'auto';
++        control.style.height = `${control.scrollHeight + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`;
++      }
++    }
++
++    function sizeAll() { controls.forEach(sizeControl); }
++    controls.forEach(control => {
++      control.addEventListener('input', () => sizeControl(control));
++      control.addEventListener('change', () => sizeControl(control));
++    });
++    window.addEventListener('resize', sizeAll);
++    document.fonts.ready.then(sizeAll);
++    sizeAll();
++
++    form.addEventListener('submit', event => {
++      event.preventDefault();
++      const note = Object.fromEntries(new FormData(form));
++      const status = form.querySelector('.form-status');
++      try {
++        localStorage.setItem('daily-grind-note', JSON.stringify(note));
++        status.textContent = `Thanks, ${note.name}! Your note is saved on this device. It hasn't been sent to the café.`;
++      } catch {
++        status.textContent = 'Your browser could not save this note. Please copy it before leaving this page.';
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,10 +19,30 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    @font-face {
++      font-family: 'CustomFallback';
++      src: local('Segoe UI'), local('Tahoma'), local('Geneva'), local('Verdana'), local('Arial');
++      size-adjust: 100%;
++      ascent-override: 90%;
++      descent-override: 22%;
++      line-gap-override: 0%;
++    }
++
++    @font-face {
++      font-family: 'BrandFont';
++      src: local('Segoe UI'), local('Tahoma'), local('Geneva'), local('Verdana');
++      font-display: swap;
++      size-adjust: 100%;
++      ascent-override: 90%;
++      descent-override: 22%;
++      line-gap-override: 0%;
++    }
++
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'BrandFont', 'CustomFallback', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size-adjust: 0.5;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }

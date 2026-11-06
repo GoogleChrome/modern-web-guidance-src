@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+index 66c9173..c08cd88 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,48 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating promo card */
++    .floating-card {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      width: 260px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
++      z-index: 900;
++      overflow: hidden;
++    }
++
++    .floating-card-header {
++      background: var(--primary);
++      color: white;
++      padding: 8px 12px;
++      font-size: 0.85rem;
++      font-weight: bold;
++    }
++
++    .floating-card-body {
++      padding: 12px;
++      font-size: 0.9rem;
++    }
++
++    .floating-card-body .btn {
++      margin-top: 10px;
++      padding: 6px 14px;
++    }
++
++    .drag-handle {
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .drag-handle.dragging {
++      cursor: grabbing;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +249,78 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating-card" id="floating-card" aria-label="Today's special">
++    <div class="floating-card-header" id="floating-card-handle">Today's Special</div>
++    <div class="floating-card-body">
++      <p>Free pastry with any large latte before noon.</p>
++      <a href="/rewards" class="btn">Claim Offer</a>
++    </div>
++  </aside>
++
++  <script>
++    (() => {
++      const draggable = document.getElementById('floating-card');
++      const handle = document.getElementById('floating-card-handle');
++      const STEP = 15;
++      let offsetX = 0;
++      let offsetY = 0;
++
++      handle.classList.add('drag-handle');
++      handle.tabIndex = 0;
++      handle.setAttribute('aria-label', "Today's Special. Drag or use arrow keys to move");
++
++      function moveTo(left, top) {
++        const maxLeft = Math.max(0, window.innerWidth - draggable.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - draggable.offsetHeight);
++
++        draggable.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++        draggable.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++        draggable.style.right = 'auto';
++        draggable.style.bottom = 'auto';
++      }
++
++      handle.addEventListener('pointerdown', (event) => {
++        if (event.button !== 0) return;
++
++        const rect = draggable.getBoundingClientRect();
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        handle.setPointerCapture(event.pointerId);
++      });
++
++      handle.addEventListener('pointermove', (event) => {
++        if (!handle.hasPointerCapture(event.pointerId)) return;
++        handle.classList.add('dragging');
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++
++      handle.addEventListener('lostpointercapture', () => {
++        handle.classList.remove('dragging');
++      });
++
++      handle.addEventListener('keydown', (event) => {
++        const delta = {
++          ArrowLeft: [-STEP, 0],
++          ArrowRight: [STEP, 0],
++          ArrowUp: [0, -STEP],
++          ArrowDown: [0, STEP],
++        }[event.key];
++        if (!delta) return;
++
++        event.preventDefault();
++        const rect = draggable.getBoundingClientRect();
++        moveTo(rect.left + delta[0], rect.top + delta[1]);
++      });
++
++      // Keep the card reachable after the viewport shrinks
++      window.addEventListener('resize', () => {
++        if (!draggable.style.left) return;
++        const rect = draggable.getBoundingClientRect();
++        moveTo(rect.left, rect.top);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

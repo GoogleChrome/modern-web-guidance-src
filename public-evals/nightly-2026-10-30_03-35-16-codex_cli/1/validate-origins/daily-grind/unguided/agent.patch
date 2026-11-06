@@ -1,0 +1,250 @@
+diff --git a/index.html b/index.html
+index 66c9173..7a27e82 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Set to the exact HTTPS ordering origin before enabling ordering messages. -->
++  <meta name="ordering-origin" content="">
++  <script src="/security.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -172,6 +175,10 @@
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <iframe id="ordering-widget" title="Quick ordering" sandbox="allow-scripts"
++      style="border: 0; height: 55px; width: 220px; margin-top: 12px;"
++      srcdoc="<!doctype html><html lang='en'><meta charset='utf-8'><style>body{margin:0;text-align:center}button{padding:10px 20px;background:#ffab40;color:#3e2723;border:0;border-radius:5px;cursor:pointer;font:16px sans-serif}</style><button type='button'>Start an order</button><script>addEventListener('message',function(event){if(event.source===parent &amp;&amp; event.data?.type==='widget:init-request')parent.postMessage({type:'widget:init'}, '*')});document.querySelector('button').addEventListener('click',function(){parent.postMessage({type:'redirect',url:'/order-online'}, '*')});</script></html>">
++    </iframe>
+   </header>
+ 
+   <main class="container">
+diff --git a/package.json b/package.json
+index 2bd4d77..1a4f332 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test security.test.cjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/security.js b/security.js
+new file mode 100644
+index 0000000..38c4070
+--- /dev/null
++++ b/security.js
+@@ -0,0 +1,81 @@
++(() => {
++  'use strict';
++
++  const siteURL = new URL(window.location.href);
++  const widget = document.getElementById('ordering-widget');
++  let widgetSource = null;
++
++  // An unset or malformed configuration must never trust an ordering sender.
++  const configuredOrigin = document.querySelector('meta[name="ordering-origin"]')?.content;
++  let orderingOrigin = null;
++  try {
++    const url = new URL(configuredOrigin);
++    if (url.protocol === 'https:' && url.origin === configuredOrigin) {
++      orderingOrigin = url.origin;
++    }
++  } catch {
++    // Ordering messages stay disabled until an exact HTTPS origin is configured.
++  }
++
++  function parseWebURL(value) {
++    if (typeof value !== 'string' || !value.trim()) return null;
++    try {
++      const url = new URL(value, siteURL);
++      if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return null;
++      return url;
++    } catch {
++      return null;
++    }
++  }
++
++  window.addEventListener('message', (event) => {
++    const data = event.data;
++    if (!data || typeof data !== 'object' || Array.isArray(data)) return;
++
++    if (data.type === 'widget:init') {
++      // Opaque origins are shared by unrelated sandboxed frames. Only our
++      // designated frame may initialize, and the first sender stays pinned.
++      if (widgetSource === null && event.origin === 'null' &&
++          widget?.contentWindow && event.source === widget.contentWindow) {
++        widgetSource = event.source;
++      }
++      return;
++    }
++
++    const fromWidget = widgetSource !== null && event.origin === 'null' &&
++      event.source === widgetSource;
++    const fromOrdering = orderingOrigin !== null && event.origin === orderingOrigin;
++    if (!fromWidget && !fromOrdering) return;
++
++    if (data.type === 'redirect') {
++      const url = parseWebURL(data.url);
++      // Use the full origin: scheme, hostname, and port must all match.
++      if (url && url.origin === siteURL.origin) window.location.assign(url.href);
++    }
++  });
++
++  function initializeWidget() {
++    // The wildcard is required for an opaque sandbox origin; this request
++    // contains no secrets. Incoming replies still require the exact source.
++    widget?.contentWindow?.postMessage({ type: 'widget:init-request' }, '*');
++  }
++  widget?.addEventListener('load', initializeWidget);
++  initializeWidget();
++
++  // Validate at activation time, including links added after page load.
++  function validateLink(event) {
++    const link = event.target?.closest?.('a[href]');
++    if (!link) return;
++    const url = parseWebURL(link.getAttribute('href'));
++    if (!url) {
++      event.preventDefault();
++      return;
++    }
++    if (url.origin !== siteURL.origin) {
++      link.relList.add('noopener', 'noreferrer');
++    }
++  }
++
++  document.addEventListener('click', validateLink, true);
++  document.addEventListener('auxclick', validateLink, true);
++})();
+diff --git a/security.test.cjs b/security.test.cjs
+new file mode 100644
+index 0000000..5b491d0
+--- /dev/null
++++ b/security.test.cjs
+@@ -0,0 +1,120 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const script = readFileSync(`${__dirname}/security.js`, 'utf8');
++
++function setup(origin = 'https://orders.dailygrind.example') {
++  const handlers = {};
++  const navigations = [];
++  const requests = [];
++  const frame = { postMessage: (...args) => requests.push(args) };
++  const widget = { contentWindow: frame, addEventListener: (type, fn) => { handlers[`widget:${type}`] = fn; } };
++  vm.runInNewContext(script, {
++    URL,
++    window: {
++      location: { href: 'https://dailygrind.example/home', assign: url => navigations.push(url) },
++      addEventListener: (type, fn) => { handlers[type] = fn; },
++    },
++    document: {
++      getElementById: () => widget,
++      querySelector: () => ({ content: origin }),
++      addEventListener: (type, fn) => { handlers[type] = fn; },
++    },
++  });
++  const send = (origin, source, data) => handlers.message({ origin, source, data });
++  return { handlers, navigations, requests, frame, widget, send };
++}
++
++test('only the exact configured ordering origin may request a redirect', () => {
++  const app = setup();
++  for (const origin of ['null', 'https://evil.example', 'https://orders.dailygrind.example.evil.test',
++    'http://orders.dailygrind.example', 'https://orders.dailygrind.example:444']) {
++    app.send(origin, {}, { type: 'redirect', url: '/checkout' });
++  }
++  assert.deepEqual(app.navigations, []);
++  app.send('https://orders.dailygrind.example', {}, { type: 'redirect', url: '/checkout' });
++  assert.deepEqual(app.navigations, ['https://dailygrind.example/checkout']);
++});
++
++test('redirect validation handles URL parsing edge cases', () => {
++  const app = setup();
++  for (const url of ['//evil.example', 'https://dailygrind.example.evil.test',
++    'https://dailygrind.example@evil.test', 'https://evil.test/?site=dailygrind.example',
++    'https://dailygrind.example:444', 'http://dailygrind.example',
++    'https://sub.dailygrind.example', 'https://evil.test\\@dailygrind.example',
++    'javascript:alert(1)', 'data:text/html,test', 'https://[', '', null, {},
++    'https://user:pass@dailygrind.example']) {
++    app.send('https://orders.dailygrind.example', {}, { type: 'redirect', url });
++  }
++  assert.deepEqual(app.navigations, []);
++  for (const url of ['/checkout?next=a.b#done', 'https://DAILYGRIND.example:443/cart']) {
++    app.send('https://orders.dailygrind.example', {}, { type: 'redirect', url });
++  }
++  assert.deepEqual(app.navigations, ['https://dailygrind.example/checkout?next=a.b#done',
++    'https://dailygrind.example/cart']);
++});
++
++test('widget initialization pins only the designated opaque frame', () => {
++  const app = setup();
++  const stranger = {};
++  const redirect = { type: 'redirect', url: '/order-online' };
++  app.send('null', app.frame, redirect);
++  app.send('null', stranger, { type: 'widget:init' });
++  app.send('null', stranger, redirect);
++  app.send('https://evil.example', app.frame, { type: 'widget:init' });
++  app.send('null', app.frame, redirect);
++  assert.deepEqual(app.navigations, []);
++  app.send('null', app.frame, { type: 'widget:init' });
++  app.send('null', stranger, { type: 'widget:init' });
++  app.send('null', stranger, redirect);
++  app.send('null', app.frame, redirect);
++  app.send('https://evil.example', app.frame, redirect);
++  assert.deepEqual(app.navigations, ['https://dailygrind.example/order-online']);
++  app.widget.contentWindow = stranger;
++  app.send('null', stranger, { type: 'widget:init' });
++  app.send('null', stranger, redirect);
++  app.send('null', app.frame, redirect);
++  assert.equal(app.navigations.length, 2);
++});
++
++test('widget initialization is requested immediately and on iframe load', () => {
++  const app = setup();
++  assert.equal(app.requests.length, 1);
++  app.handlers['widget:load']();
++  assert.equal(app.requests.length, 2);
++  assert.equal(app.requests[0][0].type, 'widget:init-request');
++});
++
++test('missing or invalid ordering configuration fails closed and malformed messages are ignored', () => {
++  for (const origin of ['', 'null', 'http://orders.dailygrind.example',
++    'https://orders.dailygrind.example/path', 'https://user@orders.dailygrind.example']) {
++    const app = setup(origin);
++    app.send(origin, {}, { type: 'redirect', url: '/checkout' });
++    for (const data of [null, undefined, 'redirect', [], 1, {}]) app.send(origin, {}, data);
++    assert.deepEqual(app.navigations, []);
++  }
++});
++
++test('link validation rejects unsafe protocols and credentials and protects external links', () => {
++  const app = setup();
++  for (const type of ['click', 'auxclick']) {
++    for (const href of ['javascript:alert(1)', 'data:text/html,test', 'https://[',
++      'https://user:pass@dailygrind.example', '', 'mailto:test@example.com']) {
++      let prevented = false;
++      app.handlers[type]({ target: { closest: () => ({ getAttribute: () => href }) },
++        preventDefault: () => { prevented = true; } });
++      assert.equal(prevented, true, href);
++    }
++    for (const href of ['/menu', 'https://dailygrind.example/menu',
++      '//external.example', 'https://dailygrind.example.evil.test']) {
++      const rel = new Set();
++      app.handlers[type]({ target: { closest: () => ({ getAttribute: () => href,
++        relList: { add: (...values) => values.forEach(value => rel.add(value)) } }) },
++        preventDefault: () => assert.fail(href) });
++      assert.equal(rel.has('noopener'), new URL(href, 'https://dailygrind.example').origin !== 'https://dailygrind.example');
++      assert.equal(rel.has('noreferrer'), rel.has('noopener'));
++    }
++  }
++});

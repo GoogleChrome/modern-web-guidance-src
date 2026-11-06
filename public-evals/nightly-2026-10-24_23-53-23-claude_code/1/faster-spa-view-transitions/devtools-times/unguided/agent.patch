@@ -1,0 +1,51 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..aa64bed 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -45,7 +45,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main class="bg-white relative" data-view-cache-root>
+           <slot />
+         </main>
+       </div>
+@@ -53,3 +53,37 @@ const baseUrl = import.meta.env.BASE_URL;
+     <Footer />
+   </body>
+ </html>
++
++<script>
++  // Keep the <main> DOM of recently visited views so back/forward navigation
++  // can restore it instead of rebuilding it from the freshly fetched page.
++  const MAX_ENTRIES = 10;
++  const cache = new Map<string, Element>();
++
++  const keyOf = (url: URL) => url.pathname + url.search;
++
++  document.addEventListener("astro:before-swap", (event) => {
++    const { from, to, direction, newDocument } = event;
++    const current = document.querySelector("[data-view-cache-root]");
++
++    // Stash the view being left (re-inserting moves it to the newest slot).
++    if (current) {
++      const fromKey = keyOf(from);
++      cache.delete(fromKey);
++      cache.set(fromKey, current);
++      if (cache.size > MAX_ENTRIES) {
++        cache.delete(cache.keys().next().value!);
++      }
++    }
++
++    // Only history traversals reuse a cached view; fresh navigations always
++    // show current server content.
++    if (direction !== "back" && direction !== "forward") return;
++    const cached = cache.get(keyOf(to));
++    const target = newDocument.querySelector("[data-view-cache-root]");
++    if (cached && target && cached !== current) {
++      target.replaceWith(cached);
++      cache.delete(keyOf(to));
++    }
++  });
++</script>

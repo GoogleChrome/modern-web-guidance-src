@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -107,20 +107,54 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      --card-bg: white;
++      --card-border: transparent;
++      --card-heading: var(--primary);
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++
++      background-color: var(--card-bg);
++      border: 2px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++      transition: color 0.3s;
+     }
+ 
++    /* Iced toggle */
++    .iced-toggle {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      margin-top: 15px;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .iced-toggle input {
++      width: 1.1rem;
++      height: 1.1rem;
++      accent-color: #0277bd;
++      cursor: pointer;
++    }
++
++    /* Card restyles itself when its child checkbox is checked */
++    .card:has(.iced-toggle input:checked) {
++      --card-bg: #e1f5fe;
++      --card-border: #81d4fa;
++      --card-heading: #01579b;
++      --card-shadow: 0 4px 14px rgba(2, 119, 189, 0.25);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,18 +214,30 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label class="iced-toggle">
++            <input type="checkbox" name="iced">
++            Make it iced
++          </label>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label class="iced-toggle">
++            <input type="checkbox" name="iced">
++            Make it iced
++          </label>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label class="iced-toggle">
++            <input type="checkbox" name="iced">
++            Make it iced
++          </label>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>

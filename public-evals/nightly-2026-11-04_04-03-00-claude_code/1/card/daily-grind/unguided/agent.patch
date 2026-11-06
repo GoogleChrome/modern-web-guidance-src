@@ -1,0 +1,650 @@
+diff --git a/index.html b/index.html
+index 66c9173..00bb965 100644
+--- a/index.html
++++ b/index.html
+@@ -100,39 +100,412 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    /* Order indicator in nav */
++    .order-link {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .order-count {
++      min-width: 1.4em;
++      padding: 0 6px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      line-height: 1.4;
++      text-align: center;
++    }
++
++    .order-count.bump {
++      animation: bump 0.35s ease;
++    }
++
++    @keyframes bump {
++      50% { transform: scale(1.35); }
++    }
++
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* ===== Seasonal Favorites: drink cards =====
++       Each grid cell is a size container, so cards respond to the width
++       they are actually given (not the viewport). :has() lets cards react
++       to their own content and state. */
++    .menu-grid {
++      list-style: none;
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
++    .drink {
++      container: drink / inline-size;
++    }
++
++    .drink-card {
++      --card-pad: clamp(14px, 7cqi, 28px);
++      display: grid;
++      grid-template-columns: 1fr;
++      grid-template-areas:
++        "media"
++        "body";
++      grid-template-rows: auto 1fr;
++      height: 100%;
+       background: white;
+-      padding: 20px;
++      border: 2px solid transparent;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
++      transition: box-shadow 0.25s, transform 0.25s;
++    }
++
++    .drink-card:hover,
++    .drink-card:focus-within {
++      box-shadow: 0 8px 20px rgba(62, 39, 35, 0.18);
++    }
++
++    .drink-card__media {
++      grid-area: media;
++      position: relative;
++      aspect-ratio: 4 / 3;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .drink-card__media img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      transition: transform 0.5s ease;
++    }
++
++    .drink-card:hover .drink-card__media img {
++      transform: scale(1.05);
++    }
++
++    .drink-card__badge {
++      position: absolute;
++      top: 10px;
++      left: 10px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++    }
++
++    .drink-card__body {
++      grid-area: body;
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
++      padding: var(--card-pad);
++    }
++
++    .drink-card__title {
++      color: var(--primary);
++      font-size: clamp(1.1rem, 0.85rem + 3cqi, 1.6rem);
++      line-height: 1.2;
++    }
++
++    .drink-card__desc {
++      font-size: 0.95rem;
++      color: #5d4037;
++    }
++
++    .drink-card__form {
++      display: flex;
++      flex-direction: column;
++      gap: 0.9rem;
++      margin-top: auto;
++    }
++
++    /* Size picker */
++    .size-picker {
++      border: 0;
++      min-width: 0;
++    }
++
++    .size-picker legend {
++      margin-bottom: 6px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: #6d4c41;
++    }
++
++    .size-picker__options {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 6px;
++    }
++
++    .size-option {
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      min-height: 44px;
++      padding: 6px 4px;
++      border: 1.5px solid var(--secondary);
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      cursor: pointer;
++      line-height: 1.2;
+       text-align: center;
++      transition: background 0.2s, border-color 0.2s, color 0.2s;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .size-option input {
++      position: absolute;
++      inset: 0;
++      margin: 0;
++      opacity: 0;
++      cursor: pointer;
++    }
++
++    .size-option__abbr {
++      display: none;
++      font-weight: 700;
++    }
++
++    .size-option__name {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .size-option__oz {
++      font-size: 0.75rem;
++      opacity: 0.75;
++    }
++
++    .size-option:hover {
++      border-color: var(--primary);
++    }
++
++    .size-option:has(input:checked) {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++    }
++
++    .size-option:has(input:focus-visible) {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Footer: price + add button */
++    .drink-card__footer {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++    }
++
++    .drink-card__price {
++      font-size: 1.25rem;
++      font-weight: 700;
+       color: var(--primary);
+     }
+ 
+-    .btn {
+-      display: inline-block;
++    /* Show only the price for the selected size (pure CSS via :has) */
++    .drink-card__price [data-size] {
++      display: none;
++    }
++
++    .drink-card:has(input[value="small"]:checked) .drink-card__price [data-size="small"],
++    .drink-card:has(input[value="medium"]:checked) .drink-card__price [data-size="medium"],
++    .drink-card:has(input[value="large"]:checked) .drink-card__price [data-size="large"] {
++      display: inline;
++    }
++
++    .add-btn {
++      flex: 1 1 auto;
++      max-width: 100%;
++      padding: 10px 18px;
++      border: 0;
++      border-radius: 6px;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .add-btn:hover {
++      background: var(--text);
++    }
++
++    .add-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .add-btn[data-state="added"] {
++      background: #2e7d32;
++    }
++
++    /* ---- Content-aware styling (:has) ---- */
++
++    /* Cards carrying a badge get an accent frame */
++    .drink-card:has(.drink-card__badge) {
++      border-color: var(--accent);
++    }
++
++    /* Cards without a photo (or whose photo failed to load) collapse the media
++       slot and get a decorative accent strip instead */
++    .drink-card:not(:has(.drink-card__media)),
++    .drink-card:has(.drink-card__media.is-broken) {
++      grid-template-areas: "body";
++      grid-template-rows: 1fr;
++      border-top: 6px solid var(--accent);
++    }
++
++    .drink-card__media.is-broken {
++      display: none;
++    }
++
++    /* Highlight the card for a moment after it's added to the order */
++    .drink-card:has(.add-btn[data-state="added"]) {
++      box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.35), 0 8px 20px rgba(62, 39, 35, 0.18);
++    }
++
++    /* ---- Container-size-aware layouts ---- */
++
++    /* Very narrow cards: abbreviate sizes, tighten copy, stack footer */
++    @container drink (max-width: 239px) {
++      .drink-card__media {
++        aspect-ratio: 1 / 1;
++      }
++
++      .drink-card__desc {
++        display: -webkit-box;
++        -webkit-line-clamp: 2;
++        -webkit-box-orient: vertical;
++        overflow: hidden;
++        font-size: 0.85rem;
++      }
++
++      .size-option__abbr {
++        display: block;
++      }
++
++      .size-option__name {
++        position: absolute;
++        width: 1px;
++        height: 1px;
++        overflow: hidden;
++        clip: rect(0 0 0 0);
++        white-space: nowrap;
++      }
++
++      .size-option__oz {
++        display: none;
++      }
++
++      .drink-card__footer {
++        flex-direction: column;
++        align-items: stretch;
++        text-align: center;
++      }
++    }
++
++    /* Wide cards: photo beside the content */
++    @container drink (min-width: 480px) {
++      .drink-card {
++        grid-template-columns: minmax(160px, 40%) 1fr;
++        grid-template-areas: "media body";
++        grid-template-rows: 1fr;
++      }
++
++      .drink-card__media {
++        aspect-ratio: auto;
++        min-height: 100%;
++      }
++
++      .drink-card__media img {
++        position: absolute;
++        inset: 0;
++      }
++
++      .add-btn {
++        flex: 0 0 auto;
++      }
++
++      /* No photo → keep a single column even when wide */
++      .drink-card:not(:has(.drink-card__media)),
++      .drink-card:has(.drink-card__media.is-broken) {
++        grid-template-columns: 1fr;
++        grid-template-areas: "body";
++      }
++    }
++
++    /* Extra-wide cards: roomier, sizes laid out as inline chips */
++    @container drink (min-width: 720px) {
++      .drink-card {
++        grid-template-columns: 45% 1fr;
++      }
++
++      .drink-card__desc {
++        font-size: 1.05rem;
++      }
++
++      .size-option {
++        flex-direction: row;
++        gap: 6px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .drink-card,
++      .drink-card__media img,
++      .size-option,
++      .add-btn {
++        transition: none;
++      }
++
++      .drink-card:hover .drink-card__media img {
++        transform: none;
++      }
++
++      .order-count.bump {
++        animation: none;
++      }
+     }
+ 
+     footer {
+@@ -164,6 +537,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><a href="/order-online" class="order-link">Order <span class="order-count" id="order-count" aria-label="0 items in order">0</span></a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -177,23 +551,133 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <ul class="menu-grid" role="list">
++        <li class="drink">
++          <article class="drink-card" aria-labelledby="maple-oat-latte-title">
++            <div class="drink-card__media">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80"
++                alt="Latte with leaf-shaped foam art in a ceramic cup" width="800" height="600" loading="lazy" decoding="async">
++              <span class="drink-card__badge">Seasonal</span>
++            </div>
++            <div class="drink-card__body">
++              <h3 class="drink-card__title" id="maple-oat-latte-title">Maple Oat Latte</h3>
++              <p class="drink-card__desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <form class="drink-card__form" data-drink="Maple Oat Latte" action="/order-online" method="post">
++                <fieldset class="size-picker">
++                  <legend>Size</legend>
++                  <div class="size-picker__options">
++                    <label class="size-option">
++                      <input type="radio" name="size" value="small" data-price="4.75">
++                      <span class="size-option__abbr" aria-hidden="true">S</span>
++                      <span class="size-option__name">Small</span>
++                      <span class="size-option__oz">12 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size" value="medium" data-price="5.50" checked>
++                      <span class="size-option__abbr" aria-hidden="true">M</span>
++                      <span class="size-option__name">Medium</span>
++                      <span class="size-option__oz">16 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size" value="large" data-price="6.25">
++                      <span class="size-option__abbr" aria-hidden="true">L</span>
++                      <span class="size-option__name">Large</span>
++                      <span class="size-option__oz">20 oz</span>
++                    </label>
++                  </div>
++                </fieldset>
++                <div class="drink-card__footer">
++                  <p class="drink-card__price" aria-live="polite"><span data-size="small">$4.75</span><span data-size="medium">$5.50</span><span data-size="large">$6.25</span></p>
++                  <button type="submit" class="add-btn">Add to Order</button>
++                </div>
++              </form>
++            </div>
++          </article>
++        </li>
++        <li class="drink">
++          <article class="drink-card" aria-labelledby="dark-roast-espresso-title">
++            <div class="drink-card__media">
++              <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=800&q=80"
++                alt="Freshly pulled espresso shot with golden crema" width="800" height="600" loading="lazy" decoding="async">
++            </div>
++            <div class="drink-card__body">
++              <h3 class="drink-card__title" id="dark-roast-espresso-title">Dark Roast Espresso</h3>
++              <p class="drink-card__desc">Bold, smokey, and perfect for a morning boost.</p>
++              <form class="drink-card__form" data-drink="Dark Roast Espresso" action="/order-online" method="post">
++                <fieldset class="size-picker">
++                  <legend>Size</legend>
++                  <div class="size-picker__options">
++                    <label class="size-option">
++                      <input type="radio" name="size" value="small" data-price="2.95">
++                      <span class="size-option__abbr" aria-hidden="true">S</span>
++                      <span class="size-option__name">Small</span>
++                      <span class="size-option__oz">1 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size" value="medium" data-price="3.65" checked>
++                      <span class="size-option__abbr" aria-hidden="true">M</span>
++                      <span class="size-option__name">Medium</span>
++                      <span class="size-option__oz">2 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size" value="large" data-price="4.25">
++                      <span class="size-option__abbr" aria-hidden="true">L</span>
++                      <span class="size-option__name">Large</span>
++                      <span class="size-option__oz">3 oz</span>
++                    </label>
++                  </div>
++                </fieldset>
++                <div class="drink-card__footer">
++                  <p class="drink-card__price" aria-live="polite"><span data-size="small">$2.95</span><span data-size="medium">$3.65</span><span data-size="large">$4.25</span></p>
++                  <button type="submit" class="add-btn">Add to Order</button>
++                </div>
++              </form>
++            </div>
++          </article>
++        </li>
++        <li class="drink">
++          <article class="drink-card" aria-labelledby="cold-brew-title">
++            <div class="drink-card__media">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++                alt="Iced coffee in a tall glass" width="800" height="600" loading="lazy" decoding="async">
++            </div>
++            <div class="drink-card__body">
++              <h3 class="drink-card__title" id="cold-brew-title">Cold Brew</h3>
++              <p class="drink-card__desc">Steeped for 18 hours for maximum smoothness.</p>
++              <form class="drink-card__form" data-drink="Cold Brew" action="/order-online" method="post">
++                <fieldset class="size-picker">
++                  <legend>Size</legend>
++                  <div class="size-picker__options">
++                    <label class="size-option">
++                      <input type="radio" name="size" value="small" data-price="4.25">
++                      <span class="size-option__abbr" aria-hidden="true">S</span>
++                      <span class="size-option__name">Small</span>
++                      <span class="size-option__oz">12 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size" value="medium" data-price="4.95" checked>
++                      <span class="size-option__abbr" aria-hidden="true">M</span>
++                      <span class="size-option__name">Medium</span>
++                      <span class="size-option__oz">16 oz</span>
++                    </label>
++                    <label class="size-option">
++                      <input type="radio" name="size" value="large" data-price="5.65">
++                      <span class="size-option__abbr" aria-hidden="true">L</span>
++                      <span class="size-option__name">Large</span>
++                      <span class="size-option__oz">24 oz</span>
++                    </label>
++                  </div>
++                </fieldset>
++                <div class="drink-card__footer">
++                  <p class="drink-card__price" aria-live="polite"><span data-size="small">$4.25</span><span data-size="medium">$4.95</span><span data-size="large">$5.65</span></p>
++                  <button type="submit" class="add-btn">Add to Order</button>
++                </div>
++              </form>
++            </div>
++          </article>
++        </li>
++      </ul>
++      <p id="order-status" class="visually-hidden" role="status" aria-live="polite"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +691,56 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const order = [];
++      const countEl = document.getElementById('order-count');
++      const statusEl = document.getElementById('order-status');
++
++      // Hide the media slot if a photo fails to load so the card falls back to its text-only layout
++      document.querySelectorAll('.drink-card__media img').forEach((img) => {
++        const markBroken = () => img.closest('.drink-card__media').classList.add('is-broken');
++        if (img.complete && img.naturalWidth === 0) markBroken();
++        else img.addEventListener('error', markBroken, { once: true });
++      });
++
++      document.querySelectorAll('.drink-card__form').forEach((form) => {
++        const button = form.querySelector('.add-btn');
++        let resetTimer;
++
++        form.addEventListener('submit', (event) => {
++          event.preventDefault();
++          const selected = form.querySelector('input[name="size"]:checked');
++          if (!selected) return;
++
++          const item = {
++            drink: form.dataset.drink,
++            size: selected.value,
++            price: Number(selected.dataset.price),
++          };
++          order.push(item);
++
++          countEl.textContent = order.length;
++          countEl.setAttribute('aria-label', `${order.length} item${order.length === 1 ? '' : 's'} in order`);
++          countEl.classList.remove('bump');
++          void countEl.offsetWidth; // restart animation
++          countEl.classList.add('bump');
++
++          const sizeLabel = item.size.charAt(0).toUpperCase() + item.size.slice(1);
++          statusEl.textContent = `Added ${sizeLabel} ${item.drink} ($${item.price.toFixed(2)}) to your order.`;
++
++          button.dataset.state = 'added';
++          button.textContent = 'Added \u2713';
++          clearTimeout(resetTimer);
++          resetTimer = setTimeout(() => {
++            delete button.dataset.state;
++            button.textContent = 'Add to Order';
++          }, 1600);
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

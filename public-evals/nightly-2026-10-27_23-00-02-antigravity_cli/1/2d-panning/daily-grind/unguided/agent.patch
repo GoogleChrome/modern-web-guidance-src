@@ -1,0 +1,571 @@
+diff --git a/index.html b/index.html
+index 66c9173..e0dce0f 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,193 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee Shop Locations Map Section */
++    .locations-section {
++      margin-top: 60px;
++    }
++
++    .locations-header {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .locations-header h2 {
++      color: var(--primary);
++      font-size: 2rem;
++      margin-bottom: 8px;
++    }
++
++    .locations-header p {
++      color: #5d4037;
++      max-width: 680px;
++      margin: 0 auto 16px;
++    }
++
++    .map-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      background: white;
++      padding: 12px 16px;
++      border-radius: 8px 8px 0 0;
++      border: 1px solid var(--secondary);
++      border-bottom: none;
++    }
++
++    .map-legend {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      align-items: center;
++    }
++
++    .map-pill {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      padding: 6px 12px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .map-pill:hover,
++    .map-pill.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .map-status {
++      font-size: 0.85rem;
++      color: #5d4037;
++      font-variant-numeric: tabular-nums;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .map-viewport {
++      width: 100%;
++      height: 540px;
++      overflow: auto;
++      overflow-x: auto;
++      overflow-y: auto;
++      touch-action: pan-x pan-y;
++      overscroll-behavior: contain;
++      position: relative;
++      border: 2px solid var(--primary);
++      border-radius: 0 0 8px 8px;
++      background-color: #f3ece4;
++      cursor: grab;
++      user-select: none;
++      -webkit-user-select: none;
++      -webkit-overflow-scrolling: touch;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
++    }
++
++    .map-viewport.is-panning {
++      cursor: grabbing;
++    }
++
++    .map-surface {
++      width: 2400px;
++      height: 1800px;
++      position: relative;
++      touch-action: pan-x pan-y;
++      background-color: #f4eee6;
++      background-image:
++        linear-gradient(rgba(78, 52, 46, 0.08) 1px, transparent 1px),
++        linear-gradient(90deg, rgba(78, 52, 46, 0.08) 1px, transparent 1px),
++        linear-gradient(rgba(78, 52, 46, 0.04) 1px, transparent 1px),
++        linear-gradient(90deg, rgba(78, 52, 46, 0.04) 1px, transparent 1px);
++      background-size: 200px 200px, 200px 200px, 40px 40px, 40px 40px;
++    }
++
++    .map-svg-layer {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      pointer-events: none;
++    }
++
++    .district-label {
++      position: absolute;
++      font-size: 1.1rem;
++      font-weight: 700;
++      letter-spacing: 3px;
++      text-transform: uppercase;
++      color: rgba(78, 52, 46, 0.35);
++      pointer-events: none;
++    }
++
++    .cafe-marker {
++      position: absolute;
++      transform: translate(-50%, -50%);
++      width: 230px;
++      background: white;
++      border: 2px solid var(--primary);
++      border-radius: 10px;
++      padding: 10px;
++      box-shadow: 0 6px 16px rgba(62, 39, 35, 0.18);
++      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
++      cursor: pointer;
++      z-index: 2;
++    }
++
++    .cafe-marker:hover,
++    .cafe-marker.active {
++      transform: translate(-50%, -50%) scale(1.04);
++      border-color: var(--accent);
++      box-shadow: 0 8px 22px rgba(62, 39, 35, 0.28);
++      z-index: 5;
++    }
++
++    .cafe-marker-pin {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 3px 8px;
++      border-radius: 12px;
++      margin-bottom: 6px;
++    }
++
++    .cafe-marker img {
++      width: 100%;
++      height: 90px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 6px;
++      pointer-events: none;
++    }
++
++    .cafe-marker h3 {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 2px;
++    }
++
++    .cafe-marker p {
++      font-size: 0.8rem;
++      color: #5d4037;
++      line-height: 1.35;
++    }
++
++    .cafe-marker .cafe-hours {
++      margin-top: 4px;
++      font-weight: 600;
++      color: #3e2723;
++      font-size: 0.75rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +382,372 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="locations-section" aria-labelledby="locations-heading">
++      <div class="locations-header">
++        <h2 id="locations-heading">Coffee Shop Locations Map</h2>
++        <p>Explore our neighborhood cafes across the city. Drag, pan, or scroll freely in any horizontal, vertical, or diagonal direction to discover every roasting room and espresso bar.</p>
++      </div>
++
++      <div class="map-toolbar">
++        <div class="map-legend" role="group" aria-label="Jump to cafe location">
++          <button type="button" class="map-pill active" data-target="roastery-hq">Roastery HQ (Center)</button>
++          <button type="button" class="map-pill" data-target="harbor-pier">Harbor Pier (NW)</button>
++          <button type="button" class="map-pill" data-target="botanical-conservatory">Botanical Gardens (NE)</button>
++          <button type="button" class="map-pill" data-target="old-town-square">Old Town Square (SW)</button>
++          <button type="button" class="map-pill" data-target="university-commons">University Commons (SE)</button>
++          <button type="button" class="map-pill" data-target="riverside-walk">Riverside Walk (W)</button>
++          <button type="button" class="map-pill" data-target="arts-foundry">Arts Foundry (E)</button>
++        </div>
++        <div class="map-status">
++          <span id="map-coords-readout">Pan: X 650px, Y 600px</span>
++          <button type="button" id="map-reset-btn" class="map-pill">Center Map</button>
++        </div>
++      </div>
++
++      <div
++        id="cafe-map-viewport"
++        class="map-viewport"
++        tabindex="0"
++        role="region"
++        aria-label="Interactive 2D Coffee Shop Locations Map"
++        data-scroll-x="650"
++        data-scroll-y="600"
++      >
++        <div id="cafe-map-surface" class="map-surface">
++          <svg class="map-svg-layer" viewBox="0 0 2400 1800" preserveAspectRatio="none" aria-hidden="true">
++            <!-- Parks and green zones -->
++            <rect x="1550" y="140" width="680" height="460" rx="48" fill="#dcebd8" />
++            <rect x="180" y="1120" width="560" height="480" rx="40" fill="#dcebd8" />
++            <circle cx="1200" cy="900" r="240" fill="#eadfd5" />
++
++            <!-- Winding River across the 2D canvas -->
++            <path
++              d="M 0,480 C 480,520 680,820 1050,880 C 1450,940 1750,740 2400,1040"
++              fill="none"
++              stroke="#bfdced"
++              stroke-width="76"
++              stroke-linecap="round"
++            />
++            <path
++              d="M 0,480 C 480,520 680,820 1050,880 C 1450,940 1750,740 2400,1040"
++              fill="none"
++              stroke="#a3cce3"
++              stroke-width="18"
++              stroke-dasharray="24 18"
++              stroke-linecap="round"
++            />
++
++            <!-- Horizontal, vertical, and diagonal arterial avenues -->
++            <g stroke="#e0d4c8" stroke-width="22" fill="none">
++              <line x1="0" y1="360" x2="2400" y2="360" />
++              <line x1="0" y1="900" x2="2400" y2="900" />
++              <line x1="0" y1="1440" x2="2400" y2="1440" />
++              <line x1="480" y1="0" x2="480" y2="1800" />
++              <line x1="1200" y1="0" x2="1200" y2="1800" />
++              <line x1="1920" y1="0" x2="1920" y2="1800" />
++              <!-- Diagonal boulevards encouraging diagonal 2D exploration -->
++              <line x1="120" y1="120" x2="2280" y2="1680" />
++              <line x1="2280" y1="120" x2="120" y2="1680" />
++            </g>
++
++            <!-- Dashed transit trail connecting all cafes -->
++            <polyline
++              points="480,340 1200,900 1900,360 1820,920 1940,1440 1200,900 460,1420 560,880 480,340"
++              fill="none"
++              stroke="#ffab40"
++              stroke-width="5"
++              stroke-dasharray="12 10"
++            />
++          </svg>
++
++          <!-- Neighborhood District Labels -->
++          <div class="district-label" style="left: 220px; top: 140px;">Harborfront Quarter</div>
++          <div class="district-label" style="left: 1680px; top: 180px;">Botanical Park District</div>
++          <div class="district-label" style="left: 1030px; top: 610px;">Downtown Roastery Plaza</div>
++          <div class="district-label" style="left: 200px; top: 740px;">Riverside Promenade</div>
++          <div class="district-label" style="left: 1620px; top: 760px;">Eastside Arts District</div>
++          <div class="district-label" style="left: 220px; top: 1580px;">Old Town Cobblestone</div>
++          <div class="district-label" style="left: 1640px; top: 1600px;">University Heights</div>
++
++          <!-- Cafe Marker 1: Center (Roastery HQ) -->
++          <article
++            id="cafe-roastery-hq"
++            class="cafe-marker active"
++            data-cafe-id="roastery-hq"
++            style="left: 1200px; top: 900px;"
++          >
++            <span class="cafe-marker-pin">&#9749; Flagship Roastery</span>
++            <img
++              src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80"
++              alt="Roastery HQ interior"
++            >
++            <h3>Roastery HQ &amp; Tasting Bar</h3>
++            <p>100 Central Grind Way &bull; Small-batch siphon &amp; espresso flights.</p>
++            <div class="cafe-hours">Open Daily: 6:00 AM &ndash; 9:00 PM</div>
++          </article>
++
++          <!-- Cafe Marker 2: North-West (Harbor Pier) -->
++          <article
++            id="cafe-harbor-pier"
++            class="cafe-marker"
++            data-cafe-id="harbor-pier"
++            style="left: 480px; top: 340px;"
++          >
++            <span class="cafe-marker-pin">&#9749; Waterfront</span>
++            <img
++              src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=400&q=80"
++              alt="Harbor Pier Cafe"
++            >
++            <h3>Harbor Pier Espresso</h3>
++            <p>42 Maritime Wharf &bull; Sea-salt caramel cold brew on draft.</p>
++            <div class="cafe-hours">Open Daily: 5:30 AM &ndash; 7:00 PM</div>
++          </article>
++
++          <!-- Cafe Marker 3: North-East (Botanical Gardens) -->
++          <article
++            id="cafe-botanical-conservatory"
++            class="cafe-marker"
++            data-cafe-id="botanical-conservatory"
++            style="left: 1900px; top: 360px;"
++          >
++            <span class="cafe-marker-pin">&#9749; Garden Patio</span>
++            <img
++              src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=400&q=80"
++              alt="Botanical Conservatory Cafe"
++            >
++            <h3>Botanical Glasshouse</h3>
++            <p>880 Conservatory Blvd &bull; Lavender honey oat cortados.</p>
++            <div class="cafe-hours">Open Daily: 7:00 AM &ndash; 6:30 PM</div>
++          </article>
++
++          <!-- Cafe Marker 4: West (Riverside Walk) -->
++          <article
++            id="cafe-riverside-walk"
++            class="cafe-marker"
++            data-cafe-id="riverside-walk"
++            style="left: 560px; top: 880px;"
++          >
++            <span class="cafe-marker-pin">&#9749; River Walk</span>
++            <img
++              src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=400&q=80"
++              alt="Riverside Walk Cafe"
++            >
++            <h3>Riverside Pour-Over Bar</h3>
++            <p>215 Riverbank Esplanade &bull; Single-origin V60 &amp; pastries.</p>
++            <div class="cafe-hours">Open Daily: 6:30 AM &ndash; 8:00 PM</div>
++          </article>
++
++          <!-- Cafe Marker 5: East (Arts Foundry) -->
++          <article
++            id="cafe-arts-foundry"
++            class="cafe-marker"
++            data-cafe-id="arts-foundry"
++            style="left: 1820px; top: 920px;"
++          >
++            <span class="cafe-marker-pin">&#9749; Gallery Loft</span>
++            <img
++              src="https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=400&q=80"
++              alt="Arts Foundry Cafe"
++            >
++            <h3>Arts Foundry Roasters</h3>
++            <p>640 Kiln Alley &bull; Nitro cold brew &amp; late-night acoustic sets.</p>
++            <div class="cafe-hours">Open Daily: 7:00 AM &ndash; 10:00 PM</div>
++          </article>
++
++          <!-- Cafe Marker 6: South-West (Old Town Square) -->
++          <article
++            id="cafe-old-town-square"
++            class="cafe-marker"
++            data-cafe-id="old-town-square"
++            style="left: 460px; top: 1420px;"
++          >
++            <span class="cafe-marker-pin">&#9749; Historic Cellar</span>
++            <img
++              src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=400&q=80"
++              alt="Old Town Square Cafe"
++            >
++            <h3>Old Town Square Cafe</h3>
++            <p>19 Heritage Brick Lane &bull; Wood-fired dark roast &amp; biscotti.</p>
++            <div class="cafe-hours">Open Daily: 6:00 AM &ndash; 8:30 PM</div>
++          </article>
++
++          <!-- Cafe Marker 7: South-East (University Commons) -->
++          <article
++            id="cafe-university-commons"
++            class="cafe-marker"
++            data-cafe-id="university-commons"
++            style="left: 1940px; top: 1440px;"
++          >
++            <span class="cafe-marker-pin">&#9749; Study Lounge</span>
++            <img
++              src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80"
++              alt="University Commons Cafe"
++            >
++            <h3>University Commons Study Bar</h3>
++            <p>1420 Scholar Ave &bull; Bottomless drip &amp; maple oat lattes.</p>
++            <div class="cafe-hours">Open Daily: 6:00 AM &ndash; 11:30 PM</div>
++          </article>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      const viewport = document.getElementById('cafe-map-viewport');
++      const surface = document.getElementById('cafe-map-surface');
++      const readout = document.getElementById('map-coords-readout');
++      const resetBtn = document.getElementById('map-reset-btn');
++      const pills = document.querySelectorAll('.map-pill[data-target]');
++      const markers = document.querySelectorAll('.cafe-marker');
++
++      if (!viewport || !surface) return;
++
++      let isDragging = false;
++      let lastX = 0;
++      let lastY = 0;
++      let panX = 0;
++      let panY = 0;
++
++      function updateReadout() {
++        const x = Math.round(viewport.scrollLeft);
++        const y = Math.round(viewport.scrollTop);
++        viewport.setAttribute('data-scroll-x', String(x));
++        viewport.setAttribute('data-scroll-y', String(y));
++        if (readout) {
++          readout.textContent = 'Pan: X ' + x + 'px, Y ' + y + 'px';
++        }
++      }
++
++      function centerOnPoint(targetX, targetY) {
++        const maxScrollX = Math.max(0, surface.offsetWidth - viewport.clientWidth);
++        const maxScrollY = Math.max(0, surface.offsetHeight - viewport.clientHeight);
++        panX = Math.max(0, Math.min(maxScrollX, targetX - viewport.clientWidth / 2));
++        panY = Math.max(0, Math.min(maxScrollY, targetY - viewport.clientHeight / 2));
++        viewport.scrollLeft = panX;
++        viewport.scrollTop = panY;
++        updateReadout();
++      }
++
++      // Initialize centered on the flagship Roastery HQ (1200, 900) so the user can immediately pan in any direction
++      centerOnPoint(1200, 900);
++
++      function startDrag(clientX, clientY) {
++        isDragging = true;
++        lastX = clientX;
++        lastY = clientY;
++        panX = viewport.scrollLeft;
++        panY = viewport.scrollTop;
++        viewport.classList.add('is-panning');
++      }
++
++      function moveDrag(clientX, clientY) {
++        if (!isDragging) return;
++        const dx = clientX - lastX;
++        const dy = clientY - lastY;
++        if (dx === 0 && dy === 0) return;
++        lastX = clientX;
++        lastY = clientY;
++
++        // Apply both horizontal and vertical deltas simultaneously on every frame without locking to a single axis
++        const maxScrollX = Math.max(0, surface.offsetWidth - viewport.clientWidth);
++        const maxScrollY = Math.max(0, surface.offsetHeight - viewport.clientHeight);
++        panX = Math.max(0, Math.min(maxScrollX, panX - dx));
++        panY = Math.max(0, Math.min(maxScrollY, panY - dy));
++        viewport.scrollLeft = panX;
++        viewport.scrollTop = panY;
++        updateReadout();
++      }
++
++      function endDrag() {
++        if (!isDragging) return;
++        isDragging = false;
++        viewport.classList.remove('is-panning');
++      }
++
++      viewport.addEventListener('pointerdown', function (e) {
++        if (e.button !== undefined && e.button !== 0) return;
++        startDrag(e.clientX, e.clientY);
++      });
++
++      window.addEventListener('pointermove', function (e) {
++        if (!isDragging) return;
++        moveDrag(e.clientX, e.clientY);
++      });
++
++      window.addEventListener('pointerup', endDrag);
++      window.addEventListener('pointercancel', endDrag);
++
++      viewport.addEventListener('mousedown', function (e) {
++        if (e.button !== 0) return;
++        startDrag(e.clientX, e.clientY);
++      });
++
++      window.addEventListener('mousemove', function (e) {
++        if (!isDragging) return;
++        moveDrag(e.clientX, e.clientY);
++      });
++
++      window.addEventListener('mouseup', endDrag);
++
++      viewport.addEventListener('touchstart', function (e) {
++        if (e.touches.length === 1) {
++          startDrag(e.touches[0].clientX, e.touches[0].clientY);
++        }
++      }, { passive: true });
++
++      viewport.addEventListener('touchmove', function (e) {
++        if (!isDragging || e.touches.length !== 1) return;
++        moveDrag(e.touches[0].clientX, e.touches[0].clientY);
++      }, { passive: true });
++
++      viewport.addEventListener('touchend', endDrag);
++      viewport.addEventListener('touchcancel', endDrag);
++
++      viewport.addEventListener('scroll', function () {
++        if (!isDragging) {
++          panX = viewport.scrollLeft;
++          panY = viewport.scrollTop;
++        }
++        updateReadout();
++      }, { passive: true });
++
++      function selectLocation(cafeId, shouldPan) {
++        pills.forEach(function (pill) {
++          pill.classList.toggle('active', pill.getAttribute('data-target') === cafeId);
++        });
++        markers.forEach(function (marker) {
++          const isMatch = marker.getAttribute('data-cafe-id') === cafeId;
++          marker.classList.toggle('active', isMatch);
++          if (isMatch && shouldPan) {
++            const x = parseFloat(marker.style.left) || 1200;
++            const y = parseFloat(marker.style.top) || 900;
++            centerOnPoint(x, y);
++          }
++        });
++      }
++
++      pills.forEach(function (pill) {
++        pill.addEventListener('click', function () {
++          selectLocation(pill.getAttribute('data-target'), true);
++        });
++      });
++
++      markers.forEach(function (marker) {
++        marker.addEventListener('click', function () {
++          selectLocation(marker.getAttribute('data-cafe-id'), false);
++        });
++      });
++
++      if (resetBtn) {
++        resetBtn.addEventListener('click', function () {
++          selectLocation('roastery-hq', true);
++        });
++      }
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

@@ -1,0 +1,16 @@
+diff --git a/conditionally-load-polyfill.js b/conditionally-load-polyfill.js
+new file mode 100644
+--- a/conditionally-load-polyfill.js
++++ b/conditionally-load-polyfill.js
+@@ -0,0 +1,11 @@
++// Check if the feature is missing before doing work.
++// Prefer checking HTMLElement.prototype over window or document
++// when checking for a global DOM attribute or property like popover.
++if (!('popover' in HTMLElement.prototype)) {
++  // Use top-level await to pause the execution of any module that imports this file
++  // until the polyfill finishes downloading and executing.
++  await import('./popover-polyfill.js');
++}
++
++// Export a marker if needed by your application
++export const polyfillLoaded = true;

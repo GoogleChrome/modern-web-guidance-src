@@ -1,0 +1,360 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,138 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Global Calendar Converter Section */
++    .calendar-section {
++      margin-top: 50px;
++      padding-top: 30px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .calendar-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .calendar-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .calendar-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-bottom: 25px;
++      flex-wrap: wrap;
++    }
++
++    .calendar-controls label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .calendar-controls input[type="date"] {
++      padding: 8px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .calendar-card {
++      background: white;
++      padding: 22px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .calendar-card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 10px;
++    }
++
++    .calendar-card-header h3 {
++      margin: 0;
++      color: var(--primary);
++      font-size: 1.15rem;
++    }
++
++    .timeline-badge {
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 3px 10px;
++      border-radius: 999px;
++      background: var(--secondary);
++      color: var(--primary);
++    }
++
++    .formatted-date {
++      font-size: 1.2rem;
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .calendar-meta {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 8px;
++      font-size: 0.9rem;
++      background: var(--light);
++      padding: 10px;
++      border-radius: 6px;
++    }
++
++    .calendar-meta div strong {
++      color: var(--primary);
++    }
++
++    .month-breakdown {
++      margin-top: 4px;
++    }
++
++    .month-breakdown h4 {
++      font-size: 0.9rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .month-list {
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
++      gap: 6px;
++      list-style: none;
++      font-size: 0.8rem;
++    }
++
++    .month-item {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 4px 8px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .month-item.active-month {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +324,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-section" aria-labelledby="global-calendar-heading">
++      <div class="calendar-header">
++        <h2 id="global-calendar-heading">Global Harvest &amp; Roastery Calendar</h2>
++        <p>Explore dates across international calendar systems used by our global coffee partners and customers.</p>
++      </div>
++
++      <div class="calendar-controls">
++        <label for="calendar-date-input">Select a Date:</label>
++        <input type="date" id="calendar-date-input" name="calendar-date-input">
++      </div>
++
++      <div id="calendar-cards" class="grid" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +350,194 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    async function getTemporal() {
++      if (typeof Temporal !== 'undefined') {
++        return Temporal;
++      }
++
++      try {
++        const module = await import('https://esm.sh/@js-temporal/polyfill');
++        globalThis.Temporal = module.Temporal;
++        if (module.toTemporalInstant && !Date.prototype.toTemporalInstant) {
++          Date.prototype.toTemporalInstant = module.toTemporalInstant;
++        }
++        return module.Temporal;
++      } catch (e) {
++        console.error('Failed to load Temporal polyfill:', e);
++        throw e;
++      }
++    }
++
++    function isCalendarSupported(calendarId) {
++      try {
++        return Intl.supportedValuesOf('calendar').includes(calendarId);
++      } catch {
++        return false;
++      }
++    }
++
++    const CALENDARS = [
++      {
++        id: 'islamic-umalqura',
++        title: 'Islamic (Umm al-Qura)',
++        locale: 'en-u-ca-islamic-umalqura',
++        formattedId: 'islamic-date',
++        formatOptions: {
++          day: 'numeric',
++          month: 'long',
++          year: 'numeric'
++        }
++      },
++      {
++        id: 'hebrew',
++        title: 'Hebrew Calendar',
++        locale: 'en-u-ca-hebrew',
++        formattedId: 'hebrew-date',
++        formatOptions: {
++          day: 'numeric',
++          month: 'long',
++          year: 'numeric'
++        }
++      },
++      {
++        id: 'japanese',
++        title: 'Japanese Calendar',
++        locale: 'en-u-ca-japanese',
++        formattedId: 'japanese-date',
++        formatOptions: {
++          era: 'long',
++          day: 'numeric',
++          month: 'long',
++          year: 'numeric'
++        }
++      }
++    ];
++
++    function renderCalendars(TemporalRef, isoDateString) {
++      const container = document.getElementById('calendar-cards');
++      if (!container || !isoDateString) return;
++
++      let selectedIsoDate;
++      try {
++        selectedIsoDate = TemporalRef.PlainDate.from(isoDateString);
++      } catch {
++        return;
++      }
++
++      const todayIso = TemporalRef.Now.plainDateISO();
++      container.replaceChildren();
++
++      for (const cal of CALENDARS) {
++        const supported = isCalendarSupported(cal.id);
++        const targetDate = supported
++          ? selectedIsoDate.withCalendar(cal.id)
++          : selectedIsoDate;
++        const todayInCalendar = supported
++          ? todayIso.withCalendar(cal.id)
++          : todayIso;
++
++        const comparison = TemporalRef.PlainDate.compare(targetDate, todayInCalendar);
++        const timelineLabel = comparison < 0 ? 'Past' : comparison > 0 ? 'Future' : 'Today';
++
++        const localizedDisplay = targetDate.toLocaleString(cal.locale, cal.formatOptions);
++
++        const card = document.createElement('article');
++        card.className = 'card calendar-card';
++        card.dataset.calendar = cal.id;
++
++        const header = document.createElement('div');
++        header.className = 'calendar-card-header';
++
++        const titleEl = document.createElement('h3');
++        titleEl.textContent = cal.title;
++
++        const badgeEl = document.createElement('span');
++        badgeEl.className = 'timeline-badge';
++        badgeEl.dataset.timeline = timelineLabel;
++        badgeEl.textContent = timelineLabel;
++
++        header.append(titleEl, badgeEl);
++
++        const formattedEl = document.createElement('div');
++        formattedEl.className = 'formatted-date';
++        formattedEl.id = cal.formattedId;
++        formattedEl.textContent = localizedDisplay;
++
++        const metaGrid = document.createElement('div');
++        metaGrid.className = 'calendar-meta';
++
++        const yearItem = document.createElement('div');
++        yearItem.innerHTML = `<strong>Year:</strong> <span class="calendar-year">${targetDate.year}</span>`;
++
++        const monthItem = document.createElement('div');
++        monthItem.innerHTML = `<strong>Month:</strong> <span class="calendar-month">${targetDate.month}</span>`;
++
++        const monthCodeItem = document.createElement('div');
++        monthCodeItem.innerHTML = `<strong>Month Code:</strong> <span class="calendar-month-code">${targetDate.monthCode}</span>`;
++
++        const monthsInYearItem = document.createElement('div');
++        monthsInYearItem.innerHTML = `<strong>Months in Year:</strong> <span class="calendar-months-in-year">${targetDate.monthsInYear}</span>`;
++
++        metaGrid.append(yearItem, monthItem, monthCodeItem, monthsInYearItem);
++
++        const breakdown = document.createElement('div');
++        breakdown.className = 'month-breakdown';
++
++        const breakdownTitle = document.createElement('h4');
++        breakdownTitle.textContent = `Month Breakdown (${targetDate.monthsInYear} months)`;
++
++        const monthList = document.createElement('ul');
++        monthList.className = 'month-list';
++
++        for (let m = 1; m <= targetDate.monthsInYear; m++) {
++          const monthDate = targetDate.with({ month: m, day: 1 });
++          const li = document.createElement('li');
++          li.className = 'month-item' + (monthDate.monthCode === targetDate.monthCode ? ' active-month' : '');
++          li.dataset.monthCode = monthDate.monthCode;
++          li.dataset.daysInMonth = String(monthDate.daysInMonth);
++
++          const codeSpan = document.createElement('span');
++          codeSpan.className = 'month-code';
++          codeSpan.textContent = monthDate.monthCode;
++
++          const daysSpan = document.createElement('span');
++          daysSpan.className = 'month-days';
++          daysSpan.textContent = `${monthDate.daysInMonth} days`;
++
++          li.append(codeSpan, document.createTextNode(': '), daysSpan);
++          monthList.appendChild(li);
++        }
++
++        breakdown.append(breakdownTitle, monthList);
++        card.append(header, formattedEl, metaGrid, breakdown);
++        container.appendChild(card);
++      }
++    }
++
++    async function initCalendarTool() {
++      const TemporalRef = await getTemporal();
++      const dateInput = document.getElementById('calendar-date-input');
++      if (!dateInput) return;
++
++      const todayIso = TemporalRef.Now.plainDateISO().toString();
++      if (!dateInput.value) {
++        dateInput.value = todayIso;
++      }
++
++      renderCalendars(TemporalRef, dateInput.value);
++
++      dateInput.addEventListener('input', (event) => {
++        renderCalendars(TemporalRef, event.target.value);
++      });
++      dateInput.addEventListener('change', (event) => {
++        renderCalendars(TemporalRef, event.target.value);
++      });
++    }
++
++    initCalendarTool();
++  </script>
+ </body>
+ 
+ </html>

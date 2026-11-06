@@ -1,0 +1,255 @@
+diff --git a/index.html b/index.html
+index 66c9173..5b5db8c 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,99 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Phone verification */
++    .verify {
++      max-width: 480px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .verify h2 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .form-group {
++      margin: 16px 0;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .field-hint {
++      font-size: 0.9rem;
++      margin-bottom: 8px;
++    }
++
++    .verify input {
++      width: 100%;
++      min-height: 48px;
++      padding: 0.5rem 0.75rem;
++      font: inherit;
++      font-size: 1.125rem;
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    #otp-input {
++      font-family: ui-monospace, monospace;
++      font-size: 1.25rem;
++      letter-spacing: 0.35em;
++    }
++
++    .verify input:focus-visible,
++    .verify button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .verify input:user-invalid {
++      border-color: #b71c1c;
++    }
++
++    .verify button {
++      font: inherit;
++      cursor: pointer;
++      border: 0;
++      min-height: 44px;
++      padding: 10px 20px;
++      border-radius: 5px;
++      background: var(--primary);
++      color: white;
++    }
++
++    .verify button.link {
++      background: none;
++      color: var(--primary);
++      text-decoration: underline;
++      padding: 10px 8px;
++    }
++
++    .verify button:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .verify-status {
++      margin-top: 16px;
++      min-height: 1.6em;
++      font-weight: 600;
++    }
++
++    .verify-status[data-state="error"] {
++      color: #b71c1c;
++    }
++
++    .verify-status[data-state="success"] {
++      color: #1b5e20;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +288,33 @@
+         </div>
+       </div>
+     </section>
++    <section class="verify" aria-labelledby="verify-title">
++      <h2 id="verify-title">Verify your phone</h2>
++
++      <form id="phone-form" action="/api/otp/send" method="POST">
++        <div class="form-group">
++          <label for="phone-input">Mobile phone number</label>
++          <p id="phone-hint" class="field-hint">Include your country code, e.g. +1 555 123 4567. We'll text you a 6-digit code.</p>
++          <input type="tel" id="phone-input" name="phone" autocomplete="tel" aria-describedby="phone-hint"
++            pattern="\+?[\d\s().\-]{7,20}" required>
++        </div>
++        <button type="submit">Send code</button>
++      </form>
++
++      <form id="otp-form" action="/api/otp/verify" method="POST" hidden>
++        <div class="form-group">
++          <label for="otp-input">Verification code</label>
++          <p id="otp-format-hint" class="field-hint">Enter the 6-digit code sent to <span id="sent-to">your phone</span>.</p>
++          <input type="text" id="otp-input" name="otp" inputmode="numeric" autocomplete="one-time-code"
++            pattern="\d{6}" maxlength="6" aria-describedby="otp-format-hint" required>
++        </div>
++        <button type="submit">Verify code</button>
++        <button type="button" class="link" id="resend-btn">Resend code</button>
++        <button type="button" class="link" id="change-phone-btn">Change number</button>
++      </form>
++
++      <p id="verify-status" class="verify-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +327,116 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const phoneForm = document.getElementById('phone-form');
++    const phoneInput = document.getElementById('phone-input');
++    const otpForm = document.getElementById('otp-form');
++    const otpInput = document.getElementById('otp-input');
++    const statusEl = document.getElementById('verify-status');
++    const sentTo = document.getElementById('sent-to');
++
++    let otpAbortController = null;
++
++    function setStatus(message, state = 'info') {
++      statusEl.textContent = message;
++      statusEl.dataset.state = state;
++    }
++
++    function stopSmsOtpListener() {
++      if (otpAbortController) {
++        otpAbortController.abort();
++        otpAbortController = null;
++      }
++    }
++
++    async function startSmsOtpListener() {
++      if (!('OTPCredential' in window)) return;
++
++      // Cancel any previous pending request (e.g. when re-sending a code)
++      stopSmsOtpListener();
++      const ac = new AbortController();
++      otpAbortController = ac;
++
++      try {
++        const otp = await navigator.credentials.get({ otp: { transport: ['sms'] }, signal: ac.signal });
++        if (!otp) return;
++        otpInput.value = otp.code;
++        otpForm.requestSubmit();
++      } catch (err) {
++        if (err && err.name === 'AbortError') return;
++        console.error('WebOTP verification error:', err);
++      }
++    }
++
++    async function post(form, data) {
++      const res = await fetch(form.action, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(data),
++      });
++      if (!res.ok) throw new Error(String(res.status));
++    }
++
++    async function sendCode() {
++      setStatus('Sending code…');
++      try {
++        await post(phoneForm, { phone: phoneInput.value.trim() });
++      } catch {
++        setStatus('We couldn\u2019t send a code. Check the number and try again.', 'error');
++        return false;
++      }
++      sentTo.textContent = phoneInput.value.trim();
++      phoneForm.hidden = true;
++      otpForm.hidden = false;
++      otpInput.value = '';
++      otpInput.focus();
++      setStatus('Code sent. Check your text messages.');
++      startSmsOtpListener();
++      return true;
++    }
++
++    phoneForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const btn = phoneForm.querySelector('[type="submit"]');
++      btn.disabled = true;
++      const ok = await sendCode();
++      btn.disabled = false;
++      if (!ok) phoneInput.focus();
++    });
++
++    otpForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      stopSmsOtpListener();
++      const btn = otpForm.querySelector('[type="submit"]');
++      btn.disabled = true;
++      setStatus('Verifying…');
++      try {
++        await post(otpForm, { phone: phoneInput.value.trim(), otp: otpInput.value });
++        otpForm.hidden = true;
++        setStatus('Your phone number is verified. Thank you!', 'success');
++      } catch {
++        btn.disabled = false;
++        setStatus('That code didn\u2019t work. Check it and try again, or request a new one.', 'error');
++        otpInput.select();
++        startSmsOtpListener();
++      }
++    });
++
++    document.getElementById('resend-btn').addEventListener('click', async () => {
++      await sendCode();
++      if (!otpForm.hidden) setStatus('A new code was sent.');
++    });
++
++    document.getElementById('change-phone-btn').addEventListener('click', () => {
++      stopSmsOtpListener();
++      otpForm.hidden = true;
++      phoneForm.hidden = false;
++      setStatus('');
++      phoneInput.focus();
++    });
++
++    window.addEventListener('pagehide', stopSmsOtpListener);
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,1437 @@
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..5adf9fb
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,21 @@
++/*# The Daily Grind - Privacy & Security HTTP Headers Configuration */
++
++/*
++  Path: /*
++  Referrer-Policy: strict-origin-when-cross-origin
++  Permissions-Policy: geolocation=(self), camera=(), microphone=(), accelerometer=(), payment=(), usb=(), focus-without-user-activation=()
++  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: SAMEORIGIN
++  Cross-Origin-Opener-Policy: same-origin-allow-popups
++  Cross-Origin-Resource-Policy: same-origin
++  Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site
++  Reporting-Endpoints: default="/api/security-reports", main-endpoint="/api/security-reports", conn-reports="/api/security-reports"
++  Connection-Allowlist: (response-origin "https://images.unsplash.com/*" "https://img.youtube.com/*" "https://www.youtube-nocookie.com/*"); report-to=conn-reports
++  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha384-hNf9KzgKtyA52mGfuQWQxynWANMXpsJiJOhL0e2am4gOwqbt/uOA+tXRw4+Z25ik' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; font-src 'self'; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; require-trusted-types-for 'script'; trusted-types daily-grind-html default; report-to main-endpoint
++  Set-Cookie: __Host-session_id=ephemeral; Secure; HttpOnly; SameSite=Lax; Path=/
++  Set-Cookie: theme_pref=light; SameSite=None; Secure; Path=/; Partitioned; HttpOnly
++
++/logout
++  Clear-Site-Data: "*"
++  Referrer-Policy: no-referrer
+diff --git a/fedcm.json b/fedcm.json
+new file mode 100644
+index 0000000..dcdd3e6
+--- /dev/null
++++ b/fedcm.json
+@@ -0,0 +1,10 @@
++{
++  "accounts_endpoint": "/api/fedcm/accounts",
++  "client_metadata_endpoint": "/api/fedcm/client_metadata",
++  "id_assertion_endpoint": "/api/fedcm/token",
++  "login_url": "/account",
++  "branding": {
++    "background_color": "#4e342e",
++    "color": "#ffffff"
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..575e7f4 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,12 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Document-level baseline Referrer Policy and Content Security Policy fallback -->
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <meta
++    http-equiv="Content-Security-Policy"
++    content="default-src 'self'; script-src 'self' 'sha384-hNf9KzgKtyA52mGfuQWQxynWANMXpsJiJOhL0e2am4gOwqbt/uOA+tXRw4+Z25ik' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; font-src 'self'; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'"
++  >
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +18,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --muted: #5d4037;
++      --border: #bcaaa4;
+     }
+ 
+     * {
+@@ -49,6 +58,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -72,11 +82,36 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    .status-banner {
++      background: #e8f5e9;
++      color: #1b5e20;
++      border-bottom: 1px solid #a5d6a7;
++      padding: 10px 5%;
++      font-size: 0.9rem;
++      text-align: center;
++    }
++
++    /* Hero Section with Progressive CSS url() Request Modifiers (SRI, CORS, Referrer-Policy) */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      /* 1. Parse-time fallback for browsers without CSS url() modifier support */
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80");
++      /* 2. Parse-time fallback for browsers supporting cross-origin() and referrer-policy() */
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++          "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        );
++      /* 3. Full protection in browsers supporting cross-origin(), referrer-policy(), and integrity() */
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++          "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-X658XX7FT4x7dA0m2twkmNARm3II7IXixj1aWx1X8HldHVYwT8EmSBpjx7wl4A48")
++        );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -100,6 +135,24 @@
+       padding: 0 20px;
+     }
+ 
++    .section-block {
++      margin-bottom: 48px;
++    }
++
++    .section-title {
++      text-align: center;
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--muted);
++      max-width: 700px;
++      margin: 0 auto 24px;
++      font-size: 0.95rem;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,13 +161,17 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .card-left {
++      text-align: left;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -128,6 +185,9 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
+       transition: background 0.3s;
+     }
+ 
+@@ -135,6 +195,122 @@
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-danger {
++      background: #b71c1c;
++      color: white;
++    }
++
++    .btn-danger:hover {
++      background: #7f0000;
++    }
++
++    /* Forms & Inline Transparency */
++    .form-group {
++      margin-bottom: 16px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .form-group input[type="text"],
++    .form-group input[type="tel"],
++    .form-group select {
++      width: 100%;
++      padding: 9px 12px;
++      border: 1px solid var(--border);
++      border-radius: 4px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .inline-explanation {
++      background: #f5f0ee;
++      border-left: 3px solid var(--primary);
++      padding: 8px 12px;
++      margin-top: 6px;
++      font-size: 0.85rem;
++      color: var(--muted);
++      border-radius: 0 4px 4px 0;
++    }
++
++    .help-link {
++      font-size: 0.82rem;
++      color: var(--primary);
++      margin-left: 6px;
++      text-decoration: underline;
++    }
++
++    .checkbox-row {
++      display: flex;
++      align-items: flex-start;
++      gap: 8px;
++      font-size: 0.9rem;
++      margin-top: 8px;
++    }
++
++    .status-note {
++      margin-top: 14px;
++      padding: 10px 12px;
++      background: #efebe9;
++      border-radius: 5px;
++      font-size: 0.88rem;
++      color: var(--text);
++    }
++
++    /* Video Façade */
++    .video-facade {
++      position: relative;
++      border-radius: 8px;
++      overflow: hidden;
++      background: #1b110e;
++      color: white;
++      min-height: 220px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      padding: 20px;
++    }
++
++    .video-facade img {
++      max-width: 100%;
++      height: auto;
++      max-height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .video-iframe {
++      width: 100%;
++      height: 260px;
++      border: 0;
++      border-radius: 6px;
++    }
++
++    /* Button row */
++    .action-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -152,6 +328,22 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .social-share-links {
++      margin-bottom: 16px;
++      font-size: 0.85rem;
++    }
++
++    .social-share-links a {
++      display: inline-block;
++      margin: 0 8px;
++      padding: 4px 10px;
++      background: var(--surface);
++      color: var(--primary);
++      border-radius: 4px;
++      text-decoration: none;
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+@@ -164,19 +356,21 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" id="logout-btn" class="logout-link" referrerpolicy="no-referrer">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="privacy-status-banner" class="status-banner" role="status" aria-live="polite" hidden></div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#guest-checkout-section" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="section-block">
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,9 +389,188 @@
+         </div>
+       </div>
+     </section>
++
++    <!-- Data Minimization, Guest Checkout, Inline Transparency & Purpose Limitation -->
++    <section id="guest-checkout-section" class="section-block">
++      <h2 class="section-title">Privacy-First Express Order &amp; Rewards</h2>
++      <p class="section-subtitle">
++        Designed with data minimization: order ahead with Guest Checkout—no forced account creation, no persistent tracking, and automatic data deletion after pickup.
++      </p>
++
++      <div class="grid">
++        <div class="card card-left">
++          <h3>1. Express Guest Checkout</h3>
++          <form id="guest-order-form" action="/order-online" method="post">
++            <div class="form-group">
++              <label for="checkout-mode">Checkout Option</label>
++              <select id="checkout-mode" name="checkout-mode">
++                <option value="guest" selected>Guest Checkout (Recommended — Zero Account Storage)</option>
++                <option value="member">Rewards Member Express</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label for="pickup-alias">Cup Pickup Alias / First Name</label>
++              <input id="pickup-alias" type="text" name="pickup-alias" placeholder="e.g. Alex" autocomplete="nickname" required>
++              <aside class="inline-explanation">
++                Used strictly to call your order at the pickup counter and deleted immediately once fulfilled.
++              </aside>
++            </div>
++
++            <div class="form-group">
++              <label for="beverage">Select Beverage</label>
++              <select id="beverage" name="beverage">
++                <option value="Maple Oat Latte">Maple Oat Latte</option>
++                <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++                <option value="Cold Brew">Cold Brew</option>
++              </select>
++            </div>
++
++            <!-- Fuzzing Data Collection: Coarse Age Bracket instead of exact Date of Birth -->
++            <div class="form-group">
++              <label for="age-bracket">Age Bracket (Optional — Seasonal Tasting Survey)</label>
++              <select id="age-bracket" name="age-bracket">
++                <option value="prefer-not-to-say" selected>Prefer not to say</option>
++                <option value="18-34">18-34</option>
++                <option value="35-49">35-49</option>
++                <option value="50+">50+</option>
++              </select>
++              <aside class="inline-explanation">
++                We ask for a coarse bracket rather than your date of birth, and apply differential privacy noise to aggregate tasting statistics.
++              </aside>
++            </div>
++
++            <!-- Inline Transparency next to optional input field -->
++            <div class="form-group">
++              <label for="phone">
++                Phone Number (Optional)
++                <a href="#phone-help" class="help-link">Why do we ask for this?</a>
++              </label>
++              <input id="phone" type="tel" name="phone" autocomplete="tel" placeholder="Optional for SMS pickup alert">
++              <aside id="phone-help" class="inline-explanation">
++                We only use your phone number to send a one-time SMS alert when your coffee is ready or a two-factor security code. It is never reused for marketing.
++              </aside>
++              <label class="checkbox-row" for="sms-purpose-consent">
++                <input id="sms-purpose-consent" type="checkbox" name="sms-purpose-consent">
++                <span>Send a one-time ready notification for this order only (purpose-limited).</span>
++              </label>
++            </div>
++
++            <button type="submit" class="btn">Place Privacy-Protected Order</button>
++          </form>
++
++          <p id="order-privacy-status" class="status-note" role="status" aria-live="polite">
++            No order data currently stored in memory.
++          </p>
++
++          <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border);">
++
++          <h4>Optional Federated Sign-In (FedCM)</h4>
++          <p style="font-size: 0.85rem; color: var(--muted); margin-top: 4px;">
++            Prefer to sign in? We use the browser's Federated Credential Management API (FedCM) so identity providers cannot track your visit prior to explicit consent.
++          </p>
++          <button type="button" id="fedcm-signin-btn" class="btn btn-secondary">Sign In with FedCM</button>
++          <p id="fedcm-status" class="status-note" role="status" aria-live="polite">
++            Not signed in (Browsing privately as guest).
++          </p>
++        </div>
++
++        <!-- Location Permission Mediator (PEPC) & Video Façade Pattern -->
++        <div class="card card-left">
++          <h3>2. Find a Roastery &amp; Watch Our Story</h3>
++          <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 10px;">
++            <strong>Why we request location:</strong> If you choose to share your location, we round your coordinates to a coarse neighborhood grid (~11 km) in your browser to highlight the closest roastery and immediately discard exact GPS coordinates.
++          </p>
++
++          <!-- Declarative Page Embedded Permission Control (PEPC) with fallback button -->
++          <permission id="cafe-geolocation-permission" type="geolocation">
++            <button type="button" id="find-cafe-btn" class="btn btn-secondary">
++              Use My Approximate Location
++            </button>
++          </permission>
++
++          <p id="geo-privacy-status" class="status-note" role="status" aria-live="polite">
++            Location access has not been requested. Defaulting to all regional cafes.
++          </p>
++
++          <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border);">
++
++          <h3>Roastery Tour (Click-to-Load Façade)</h3>
++          <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 10px;">
++            To prevent third-party video players from setting cookies or collecting telemetry on page load, the player from <code>youtube-nocookie.com</code> only loads if you click below.
++          </p>
++
++          <div id="video-container" class="video-facade" data-video-id="abc123coffee">
++            <img
++              src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++              alt="Artisanal coffee beans being roasted"
++              crossorigin="anonymous"
++              referrerpolicy="no-referrer"
++              loading="lazy"
++            >
++            <button type="button" id="play-btn" class="btn">
++              Play Roastery Video (youtube-nocookie.com)
++            </button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Data Rights & User Control + Third-Party Technical Audit -->
++    <section id="privacy-controls-section" class="section-block">
++      <h2 class="section-title">Your Data Rights &amp; Live Privacy Audit</h2>
++      <p class="section-subtitle">
++        Exercise full control over your data at any time. Inspect, correct, or permanently erase your session data with one click—no dark patterns or support tickets required.
++      </p>
++
++      <div class="grid">
++        <div class="card card-left">
++          <h3>Data Rights &amp; User Control</h3>
++          <p style="font-size: 0.9rem; color: var(--muted);">
++            We never store sensitive tokens or PII in <code>localStorage</code>. Manage your ephemeral session data directly below:
++          </p>
++          <div class="action-row">
++            <button type="button" id="data-access-btn" class="btn btn-secondary">Access My Data</button>
++            <button type="button" id="data-rectify-btn" class="btn btn-secondary">Update / Correct Alias</button>
++            <button type="button" id="data-delete-btn" class="btn btn-danger">Delete All My Data</button>
++          </div>
++          <p id="data-rights-output" class="status-note" role="status" aria-live="polite">
++            Zero personal data records are stored in memory or browser storage.
++          </p>
++        </div>
++
++        <div class="card card-left">
++          <h3>Third-Party &amp; Anti-Fingerprinting Audit</h3>
++          <p style="font-size: 0.9rem; color: var(--muted);">
++            Verify outbound network requests, Subresource Integrity (SRI), CSS <code>url()</code> modifiers, and feature detection (using User-Agent Client Hints instead of device fingerprinting).
++          </p>
++          <div class="action-row">
++            <button type="button" id="run-audit-btn" class="btn btn-secondary">Run Technical Privacy Audit</button>
++          </div>
++          <p id="audit-report-output" class="status-note" role="status" aria-live="polite">
++            Initializing privacy and subresource audit...
++          </p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
++    <!-- Privacy-Preserving Social Sharing: Static HTML links with rel="noopener noreferrer", zero third-party JS SDKs -->
++    <div class="social-share-links" aria-label="Share without tracking">
++      <span>Share privately (No third-party SDKs):</span>
++      <a
++        href="https://x.com/intent/tweet?text=Enjoying%20ethically%20sourced%20coffee%20at%20The%20Daily%20Grind&amp;url=https%3A%2F%2Fdailygrind.example"
++        rel="noopener noreferrer"
++        target="_blank"
++        referrerpolicy="no-referrer"
++      >Share on X</a>
++      <a
++        href="mailto:?subject=The%20Daily%20Grind%20Coffee&amp;body=Check%20out%20The%20Daily%20Grind%20Artisanal%20Coffee"
++        rel="noopener noreferrer"
++      >Share via Email</a>
++    </div>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +580,15 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- External client-side script secured with Subresource Integrity (SRI), anonymous CORS, and no-referrer -->
++  <script
++    type="module"
++    src="/privacy.js"
++    integrity="sha384-hNf9KzgKtyA52mGfuQWQxynWANMXpsJiJOhL0e2am4gOwqbt/uOA+tXRw4+Z25ik"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  ></script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..fdbb49b 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,10 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "start:statikk": "pnpm dlx statikk --port ${PORT:-11222} --csp \"default-src 'self'; script-src 'self' 'sha384-hNf9KzgKtyA52mGfuQWQxynWANMXpsJiJOhL0e2am4gOwqbt/uOA+tXRw4+Z25ik' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; font-src 'self'; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; require-trusted-types-for 'script'; trusted-types daily-grind-html default\""
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/privacy.js b/privacy.js
+new file mode 100644
+index 0000000..a5310b8
+--- /dev/null
++++ b/privacy.js
+@@ -0,0 +1,572 @@
++/**
++ * The Daily Grind — Privacy by Design & Secure Data Handling Module
++ *
++ * Implements:
++ * 1. Data Minimization & Purpose Limitation (guest checkout, bracketed inputs, differential privacy noise, ephemeral state)
++ * 2. Transparency & Trust (inline purpose explanations, PEPC <permission> location mediator, Clear-Site-Data logout subresource)
++ * 3. Secure Data Handling (PII scrubbing in logs, zero sensitive localStorage/sessionStorage persistence, Trusted Types / DOM safety)
++ * 4. Third-Party Audits & Mitigations (YouTube-nocookie video façade, static social share links, FedCM sign-in, PerformanceObserver network audit)
++ * 5. Privacy-Preserving Headers & Subresource Verification (CSS url() modifier support detection, SRI & Referrer Policy verification)
++ * 6. Anti-Fingerprinting & User-Agent Reduction (feature detection, User-Agent Client Hints via navigator.userAgentData)
++ * 7. Data Rights & User Control (instant self-service data access/export, profile rectification, and one-click erasure)
++ */
++
++// ---------------------------------------------------------------------------
++// 1. Ephemeral In-Memory Store (Zero PII in localStorage / sessionStorage)
++// ---------------------------------------------------------------------------
++const ephemeralSessionStore = new Map();
++
++/**
++ * Scrub Personally Identifiable Information (PII) from client logs and error telemetry.
++ * Masks emails, phone numbers, bearer tokens, and session identifiers before logging.
++ */
++export function scrubPII(input) {
++  const raw = typeof input === 'string' ? input : JSON.stringify(input ?? '');
++  return raw
++    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[REDACTED_EMAIL]')
++    .replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[REDACTED_PHONE]')
++    .replace(/(?:token|session|session_id|auth|key|password|secret)=([^&\s"']+)/gi, '$1=[REDACTED_TOKEN]')
++    .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED_TOKEN]');
++}
++
++/**
++ * Privacy-safe logger that automatically scrubs PII before outputting.
++ */
++export function safeLog(context, payload) {
++  const scrubbedContext = scrubPII(context);
++  const scrubbedPayload = scrubPII(payload);
++  console.info(`[PrivacySafeLog] ${scrubbedContext}:`, scrubbedPayload);
++  return `${scrubbedContext}: ${scrubbedPayload}`;
++}
++
++/**
++ * Remove any lingering sensitive keys from Web Storage (localStorage / sessionStorage)
++ * to ensure tokens or PII are never persisted in script-accessible storage.
++ */
++export function purgeSensitiveWebStorage() {
++  const sensitiveKeyPattern = /token|session|auth|user|email|phone|pii|profile|card|secret/i;
++  const purgedKeys = [];
++  for (const storage of [window.localStorage, window.sessionStorage]) {
++    if (!storage) continue;
++    try {
++      for (let i = storage.length - 1; i >= 0; i--) {
++        const key = storage.key(i);
++        if (key && sensitiveKeyPattern.test(key)) {
++          storage.removeItem(key);
++          purgedKeys.push(key);
++        }
++      }
++    } catch {
++      // Ignore storage access errors in strict sandboxes
++    }
++  }
++  return purgedKeys;
++}
++
++// ---------------------------------------------------------------------------
++// 2. Differential Privacy / Data Fuzzing for Aggregate Telemetry
++// ---------------------------------------------------------------------------
++/**
++ * Add Laplacian / symmetric bounded noise to aggregate metrics (Differential Privacy)
++ * so individual user behavior cannot be reconstructed from telemetry counts.
++ */
++export function addDifferentialPrivacyNoise(exactValue, epsilon = 1.0) {
++  const scale = 1 / Math.max(epsilon, 0.1);
++  const u = Math.random() - 0.5;
++  const laplaceNoise = -scale * Math.sign(u) * Math.log(1 - 2 * Math.abs(u));
++  return Math.max(0, Math.round(Number(exactValue) + laplaceNoise));
++}
++
++// ---------------------------------------------------------------------------
++// 3. Trusted Types Policy for Safe DOM Manipulation
++// ---------------------------------------------------------------------------
++let trustedHtmlPolicy = null;
++if (typeof window !== 'undefined' && window.trustedTypes?.createPolicy) {
++  try {
++    trustedHtmlPolicy = window.trustedTypes.createPolicy('daily-grind-html', {
++      createHTML(input) {
++        return String(input)
++          .replace(/&/g, '&amp;')
++          .replace(/</g, '&lt;')
++          .replace(/>/g, '&gt;')
++          .replace(/"/g, '&quot;')
++          .replace(/'/g, '&#39;');
++      },
++    });
++  } catch {
++    // Policy already registered
++  }
++}
++
++export function setSafeStatusText(element, message) {
++  if (!element) return;
++  element.textContent = String(message);
++}
++
++// ---------------------------------------------------------------------------
++// 4. Feature Detection & User-Agent Client Hints (Anti-Fingerprinting)
++// ---------------------------------------------------------------------------
++/**
++ * Detect browser capabilities via standard feature detection and low-entropy
++ * User-Agent Client Hints (navigator.userAgentData) rather than navigator.userAgent sniffing
++ * or canvas/font/audio fingerprinting.
++ */
++export async function getPrivacyPreservingEnvironmentInfo() {
++  const capabilities = {
++    intersectionObserver: 'IntersectionObserver' in window,
++    credentialsContainer: 'credentials' in navigator,
++    permissionElement: typeof HTMLPermissionElement !== 'undefined' || 'onpromptdismiss' in HTMLElement.prototype,
++    trustedTypes: typeof window.trustedTypes !== 'undefined',
++    cssUrlCrossOriginAndReferrer:
++      typeof CSS !== 'undefined' &&
++      typeof CSS.supports === 'function' &&
++      CSS.supports(
++        'background-image',
++        'url("https://example.com/a.svg" cross-origin(anonymous) referrer-policy(no-referrer))'
++      ),
++    cssUrlIntegrity:
++      typeof CSS !== 'undefined' &&
++      typeof CSS.supports === 'function' &&
++      CSS.supports(
++        'background-image',
++        'url("https://example.com/a.svg" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-X658XX7FT4x7dA0m2twkmNARm3II7IXixj1aWx1X8HldHVYwT8EmSBpjx7wl4A48"))'
++      ),
++    uaClientHintsSupported: Boolean(navigator.userAgentData),
++    mobile: false,
++    platform: 'unknown (privacy-reduced)',
++  };
++
++  if (navigator.userAgentData) {
++    capabilities.mobile = Boolean(navigator.userAgentData.mobile);
++    capabilities.platform = navigator.userAgentData.platform || 'unknown';
++    // Only request specific high-entropy hints when explicitly needed, with graceful handling
++    if (typeof navigator.userAgentData.getHighEntropyValues === 'function') {
++      try {
++        const ua = await navigator.userAgentData.getHighEntropyValues(['platformVersion', 'architecture']);
++        capabilities.architecture = ua.architecture || 'redacted';
++        capabilities.platformVersion = ua.platformVersion || 'redacted';
++      } catch {
++        // User or browser declined high-entropy hints
++      }
++    }
++  }
++
++  return capabilities;
++}
++
++// ---------------------------------------------------------------------------
++// 5. Third-Party Network Audit & Outbound Connection Guard
++// ---------------------------------------------------------------------------
++const ALLOWED_ORIGINS = new Set([
++  window.location.origin,
++  'https://images.unsplash.com',
++  'https://img.youtube.com',
++  'https://www.youtube-nocookie.com',
++]);
++
++/**
++ * Audit loaded resources using the Resource Timing API to identify third-party requests
++ * and ensure no unapproved trackers or scripts are communicating externally.
++ */
++export function runThirdPartyNetworkAudit() {
++  if (typeof performance === 'undefined' || typeof performance.getEntriesByType !== 'function') {
++    return { totalRequests: 0, thirdPartyRequests: [], unapprovedRequests: [] };
++  }
++
++  const entries = performance.getEntriesByType('resource');
++  const thirdPartyRequests = [];
++  const unapprovedRequests = [];
++
++  for (const entry of entries) {
++    try {
++      const url = new URL(entry.name, window.location.origin);
++      if (url.origin !== window.location.origin) {
++        const record = {
++          origin: url.origin,
++          initiatorType: entry.initiatorType || 'other',
++          approved: ALLOWED_ORIGINS.has(url.origin),
++        };
++        thirdPartyRequests.push(record);
++        if (!record.approved) {
++          unapprovedRequests.push(record);
++        }
++      }
++    } catch {
++      // Ignore malformed resource entries
++    }
++  }
++
++  return {
++    totalRequests: entries.length,
++    thirdPartyRequests,
++    unapprovedRequests,
++  };
++}
++
++/**
++ * Perform an outbound fetch wrapped in try...catch to gracefully handle
++ * Connection-Allowlist / CSP network blocks without unhandled promise rejections.
++ */
++export async function fetchWithAllowlistGuard(url, options = {}, statusElement = null) {
++  try {
++    const response = await fetch(url, {
++      ...options,
++      credentials: options.credentials ?? 'same-origin',
++      referrerPolicy: options.referrerPolicy ?? 'strict-origin-when-cross-origin',
++    });
++    return { ok: response.ok, status: response.status, response };
++  } catch (error) {
++    const message = error instanceof Error ? error.message : String(error);
++    if (statusElement) {
++      setSafeStatusText(
++        statusElement,
++        `Blocked: Request to ${scrubPII(String(url))} was rejected by the outbound connection policy (${scrubPII(message)}).`
++      );
++    }
++    return { ok: false, status: 0, error };
++  }
++}
++
++// ---------------------------------------------------------------------------
++// 6. Video Façade Pattern (Privacy-Preserving YouTube-Nocookie Embed)
++// ---------------------------------------------------------------------------
++export function activateVideoFacade(container) {
++  if (!container || container.dataset.loaded === 'true') return;
++  const videoId = container.dataset.videoId || 'abc123coffee';
++  // Validate videoId to strictly alphanumeric, dashes, and underscores
++  if (!/^[a-zA-Z0-9_-]+$/.test(videoId)) return;
++
++  container.dataset.loaded = 'true';
++  container.textContent = '';
++
++  const iframe = document.createElement('iframe');
++  iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1`;
++  iframe.title = 'The Daily Grind — Ethical Roasting Process (Privacy-Enhanced Mode)';
++  iframe.allow = "fullscreen; focus-without-user-activation 'none'";
++  iframe.setAttribute('allowfullscreen', '');
++  iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
++  iframe.setAttribute('loading', 'lazy');
++  iframe.className = 'video-iframe';
++
++  container.appendChild(iframe);
++}
++
++// ---------------------------------------------------------------------------
++// 7. Federated Credential Management API (FedCM) Sign-In
++// ---------------------------------------------------------------------------
++export async function signInWithFedCM(statusElement) {
++  if (!('credentials' in navigator) || typeof navigator.credentials.get !== 'function') {
++    setSafeStatusText(
++      statusElement,
++      'FedCM is not available in this browser environment. Using standard first-party session authentication without third-party IdP tracking.'
++    );
++    return { ok: false, reason: 'unsupported' };
++  }
++
++  try {
++    const nonceBytes = new Uint8Array(16);
++    crypto.getRandomValues(nonceBytes);
++    const nonce = Array.from(nonceBytes, (b) => b.toString(16).padStart(2, '0')).join('');
++
++    const credential = await navigator.credentials.get({
++      identity: {
++        providers: [
++          {
++            configURL: `${window.location.origin}/fedcm.json`,
++            clientId: 'daily-grind-rp-client',
++            nonce,
++          },
++        ],
++      },
++    });
++
++    if (credential && credential.token) {
++      ephemeralSessionStore.set('authMethod', 'FedCM');
++      ephemeralSessionStore.set('signedInAt', new Date().toISOString());
++      setSafeStatusText(
++        statusElement,
++        'Authenticated via browser-mediated FedCM without sharing cross-site tracking cookies.'
++      );
++      return { ok: true, token: '[REDACTED_TOKEN]' };
++    }
++  } catch (error) {
++    safeLog('FedCM sign-in', error?.message || 'dismissed');
++    setSafeStatusText(
++      statusElement,
++      'FedCM sign-in was cancelled or unavailable. You can continue with Guest Checkout—no account required.'
++    );
++  }
++  return { ok: false, reason: 'cancelled' };
++}
++
++// ---------------------------------------------------------------------------
++// 8. Declarative Geolocation Mediator (PEPC <permission> + Fallback)
++// ---------------------------------------------------------------------------
++export function requestNearestCafeLocation(statusElement) {
++  if (!('geolocation' in navigator)) {
++    setSafeStatusText(statusElement, 'Geolocation is not supported by your browser. Showing all cafe regions.');
++    return;
++  }
++
++  setSafeStatusText(statusElement, 'Requesting approximate cafe region (never stored on servers)...');
++
++  navigator.geolocation.getCurrentPosition(
++    (position) => {
++      // Fuzz coordinates to 1 decimal place (~11km) for data minimization & location privacy
++      const approxLat = position.coords.latitude.toFixed(1);
++      const approxLon = position.coords.longitude.toFixed(1);
++      ephemeralSessionStore.set('approxRegion', `${approxLat}, ${approxLon}`);
++      setSafeStatusText(
++        statusElement,
++        `Nearest roasting cafe matched using coarse coordinates (${approxLat}°, ${approxLon}°). Exact GPS coordinates were immediately discarded.`
++      );
++    },
++    () => {
++      setSafeStatusText(
++        statusElement,
++        'Location access declined or unavailable. Browse our neighborhood cafes below without sharing location.'
++      );
++    },
++    { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
++  );
++}
++
++// ---------------------------------------------------------------------------
++// 9. Clear-Site-Data Logout Flow (Subresource Trigger + Local Ephemeral Wipe)
++// ---------------------------------------------------------------------------
++export async function performPrivacyLogout(statusElement) {
++  // 1. Wipe ephemeral in-memory session data immediately
++  ephemeralSessionStore.clear();
++
++  // 2. Purge any Web Storage items and accessible cookies
++  purgeSensitiveWebStorage();
++  try {
++    window.localStorage?.clear();
++    window.sessionStorage?.clear();
++  } catch {
++    // Ignore storage errors
++  }
++
++  // 3. Trigger Clear-Site-Data via subresource fetch so UI rendering is not blocked
++  await fetchWithAllowlistGuard(
++    '/logout',
++    {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      cache: 'no-store',
++    },
++    null
++  );
++
++  if (statusElement) {
++    setSafeStatusText(
++      statusElement,
++      'Logged out: ephemeral session data deleted and Clear-Site-Data ("cookies", "storage", "cache") triggered.'
++    );
++  }
++}
++
++// ---------------------------------------------------------------------------
++// 10. UI Initialization & Event Wiring
++// ---------------------------------------------------------------------------
++export function initPrivacyByDesignApp() {
++  // Purge any unexpected sensitive keys in localStorage/sessionStorage on load
++  purgeSensitiveWebStorage();
++
++  // 1. Logout link handler (triggers subresource Clear-Site-Data + ephemeral wipe)
++  const logoutLink = document.getElementById('logout-btn');
++  const globalStatus = document.getElementById('privacy-status-banner');
++  if (logoutLink) {
++    logoutLink.addEventListener('click', async (event) => {
++      event.preventDefault();
++      if (globalStatus) {
++        globalStatus.hidden = false;
++      }
++      await performPrivacyLogout(globalStatus);
++    });
++  }
++
++  // 2. Minimized Guest Order & Rewards Form (Purpose Limitation + Ephemeral lifecycle)
++  const orderForm = document.getElementById('guest-order-form');
++  const orderStatus = document.getElementById('order-privacy-status');
++  if (orderForm) {
++    orderForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const formData = new FormData(orderForm);
++      const checkoutMode = formData.get('checkout-mode') || 'guest';
++      const pickupAlias = String(formData.get('pickup-alias') || 'Coffee Lover').trim();
++      const beverage = String(formData.get('beverage') || 'Maple Oat Latte');
++      const ageBracket = String(formData.get('age-bracket') || 'prefer-not-to-say');
++      const phone = String(formData.get('phone') || '').trim();
++      const smsOptIn = formData.get('sms-purpose-consent') === 'on';
++
++      // Store only minimal, purpose-bound fields in ephemeral memory
++      const orderRecord = {
++        checkoutMode,
++        pickupAlias,
++        beverage,
++        ageBracket,
++        smsNotificationActive: Boolean(phone && smsOptIn),
++        fuzzedPopularityMetric: addDifferentialPrivacyNoise(1, 1.0),
++        createdAt: new Date().toISOString(),
++      };
++      ephemeralSessionStore.set('currentOrder', orderRecord);
++
++      // Log safely with automatic PII scrubbing
++      safeLog('OrderSubmitted', {
++        pickupAlias,
++        beverage,
++        phone: phone || 'none',
++      });
++
++      setSafeStatusText(
++        orderStatus,
++        `Order queued for "${pickupAlias}" (${beverage}) via ${checkoutMode === 'guest' ? 'Guest Checkout (zero account data stored)' : 'Member Checkout'}. Ephemeral order record will be automatically deleted once fulfilled.`
++      );
++
++      // Automatically delete transient order pickup data once fulfilled (Data Minimization)
++      window.setTimeout(() => {
++        if (ephemeralSessionStore.get('currentOrder') === orderRecord) {
++          ephemeralSessionStore.delete('currentOrder');
++        }
++      }, 120_000);
++    });
++  }
++
++  // 3. Page Embedded Permission Control (<permission type="geolocation">) & Fallback button
++  const pepcElement = document.getElementById('cafe-geolocation-permission');
++  const geoFallbackBtn = document.getElementById('find-cafe-btn');
++  const geoStatus = document.getElementById('geo-privacy-status');
++
++  if (pepcElement) {
++    pepcElement.addEventListener('promptdismiss', () => {
++      requestNearestCafeLocation(geoStatus);
++    });
++    pepcElement.addEventListener('promptaction', () => {
++      requestNearestCafeLocation(geoStatus);
++    });
++  }
++  if (geoFallbackBtn) {
++    geoFallbackBtn.addEventListener('click', () => {
++      requestNearestCafeLocation(geoStatus);
++    });
++  }
++
++  // 4. Video Façade Pattern (YouTube-nocookie on explicit click)
++  const videoContainer = document.getElementById('video-container');
++  const playBtn = document.getElementById('play-btn');
++  if (videoContainer && playBtn) {
++    playBtn.addEventListener('click', () => {
++      activateVideoFacade(videoContainer);
++    });
++  }
++
++  // 5. FedCM Sign-In Mediator Button
++  const fedcmBtn = document.getElementById('fedcm-signin-btn');
++  const fedcmStatus = document.getElementById('fedcm-status');
++  if (fedcmBtn) {
++    fedcmBtn.addEventListener('click', () => {
++      signInWithFedCM(fedcmStatus);
++    });
++  }
++
++  // 6. Data Rights & User Control (Access, Rectification, Erasure)
++  const viewDataBtn = document.getElementById('data-access-btn');
++  const rectifyDataBtn = document.getElementById('data-rectify-btn');
++  const deleteDataBtn = document.getElementById('data-delete-btn');
++  const dataRightsOutput = document.getElementById('data-rights-output');
++
++  if (viewDataBtn && dataRightsOutput) {
++    viewDataBtn.addEventListener('click', () => {
++      const snapshot = Object.fromEntries(ephemeralSessionStore.entries());
++      const keysCount = Object.keys(snapshot).length;
++      setSafeStatusText(
++        dataRightsOutput,
++        keysCount === 0
++          ? 'Data Access Report: Zero personal data records are stored in memory or browser storage.'
++          : `Data Access Report (${keysCount} ephemeral key(s)): ${JSON.stringify(snapshot)}`
++      );
++    });
++  }
++
++  if (rectifyDataBtn && dataRightsOutput) {
++    rectifyDataBtn.addEventListener('click', () => {
++      const aliasInput = document.getElementById('pickup-alias');
++      const currentOrder = ephemeralSessionStore.get('currentOrder');
++      const updatedAlias = aliasInput && aliasInput.value.trim() ? aliasInput.value.trim() : 'Updated Guest';
++      if (currentOrder) {
++        currentOrder.pickupAlias = updatedAlias;
++        ephemeralSessionStore.set('currentOrder', currentOrder);
++        setSafeStatusText(
++          dataRightsOutput,
++          `Data Rectified: Active pickup alias updated to "${updatedAlias}" in ephemeral session memory.`
++        );
++      } else {
++        ephemeralSessionStore.set('preferredAlias', updatedAlias);
++        setSafeStatusText(
++          dataRightsOutput,
++          `Data Rectified: Preferred pickup alias set to "${updatedAlias}" (stored in ephemeral memory only).`
++        );
++      }
++    });
++  }
++
++  if (deleteDataBtn && dataRightsOutput) {
++    deleteDataBtn.addEventListener('click', async () => {
++      ephemeralSessionStore.clear();
++      purgeSensitiveWebStorage();
++      await fetchWithAllowlistGuard('/api/privacy/delete', { method: 'POST' });
++      if (orderForm) orderForm.reset();
++      setSafeStatusText(
++        dataRightsOutput,
++        'Data Erasure Complete: All ephemeral session records, preferences, and site storage have been permanently deleted.'
++      );
++    });
++  }
++
++  // 7. Third-Party Audit & Client-Hints Diagnostics Panel
++  const auditBtn = document.getElementById('run-audit-btn');
++  const auditOutput = document.getElementById('audit-report-output');
++
++  async function renderAuditSummary() {
++    if (!auditOutput) return;
++    const envInfo = await getPrivacyPreservingEnvironmentInfo();
++    const netAudit = runThirdPartyNetworkAudit();
++    setSafeStatusText(
++      auditOutput,
++      `Network Audit: ${netAudit.totalRequests} resource(s) inspected, ${netAudit.unapprovedRequests.length} unapproved third-party trackers. ` +
++        `Feature Detection: IntersectionObserver=${envInfo.intersectionObserver}, UA-CH=${envInfo.uaClientHintsSupported} (platform: ${envInfo.platform}), ` +
++        `CSS url() Modifiers=${envInfo.cssUrlCrossOriginAndReferrer}, TrustedTypes=${envInfo.trustedTypes}.`
++    );
++  }
++
++  if (auditBtn) {
++    auditBtn.addEventListener('click', () => {
++      renderAuditSummary();
++    });
++  }
++
++  // Populate initial audit summary quietly using Feature Detection
++  if ('IntersectionObserver' in window && auditOutput) {
++    const observer = new IntersectionObserver((entries, obs) => {
++      for (const entry of entries) {
++        if (entry.isIntersecting) {
++          renderAuditSummary();
++          obs.disconnect();
++          break;
++        }
++      }
++    });
++    observer.observe(auditOutput);
++  } else {
++    renderAuditSummary();
++  }
++}
++
++if (typeof document !== 'undefined') {
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', initPrivacyByDesignApp);
++  } else {
++    initPrivacyByDesignApp();
++  }
++}
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..96f9f64
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,288 @@
++import http from 'node:http';
++import fs from 'node:fs/promises';
++import path from 'node:path';
++import crypto from 'node:crypto';
++import { fileURLToPath } from 'node:url';
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++const PORT = Number(process.env.PORT) || 11222;
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.js': 'application/javascript; charset=utf-8',
++  '.mjs': 'application/javascript; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.svg': 'image/svg+xml',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.jpeg': 'image/jpeg',
++  '.ico': 'image/x-icon',
++};
++
++/**
++ * Scrub Personally Identifiable Information (PII) from server logs and violation reports.
++ */
++export function scrubPII(input) {
++  if (typeof input !== 'string') return '';
++  return input
++    // Mask email addresses
++    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[REDACTED_EMAIL]')
++    // Mask phone numbers
++    .replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[REDACTED_PHONE]')
++    // Mask bearer tokens, session IDs, and sensitive query parameters
++    .replace(/(?:token|session|session_id|auth|key|password|secret)=([^&\s"']+)/gi, '$1=[REDACTED_TOKEN]')
++    .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED_TOKEN]');
++}
++
++/**
++ * Normalize a config URL or URLPattern string for Connection-Allowlist:
++ * - Rewrites ws:// and wss:// to http:// and https:// (WebSocket matching rule).
++ * - Strips a bare trailing slash on origin-only URLs so all subpaths on the origin are permitted.
++ */
++export function normalizeAllowlistPattern(rawPattern) {
++  const trimmed = String(rawPattern).trim().replace(/^ws(s?):\/\//i, 'http$1://');
++  if (!/^https?:\/\//i.test(trimmed)) return trimmed;
++  return trimmed.replace(/^(https?:\/\/[^/]+)\/$/, '$1');
++}
++
++// Simple in-memory rate limiter for sensitive endpoints (e.g., profile views, data exports)
++const rateLimitMap = new Map();
++const RATE_LIMIT_WINDOW_MS = 60_000;
++const RATE_LIMIT_MAX_REQUESTS = 30;
++
++function checkRateLimit(clientKey) {
++  const now = Date.now();
++  const entry = rateLimitMap.get(clientKey);
++  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
++    rateLimitMap.set(clientKey, { windowStart: now, count: 1 });
++    return true;
++  }
++  entry.count += 1;
++  return entry.count <= RATE_LIMIT_MAX_REQUESTS;
++}
++
++/**
++ * Apply privacy-preserving and security headers to every HTTP response.
++ */
++export function applyPrivacyAndSecurityHeaders(req, res, nonce = null) {
++  // Companion privacy & security headers
++  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++  res.setHeader(
++    'Permissions-Policy',
++    'geolocation=(self), camera=(), microphone=(), accelerometer=(), payment=(), usb=(), focus-without-user-activation=()'
++  );
++  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
++  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++
++  // Reporting API endpoints
++  res.setHeader(
++    'Reporting-Endpoints',
++    'default="/api/security-reports", main-endpoint="/api/security-reports", conn-reports="/api/security-reports"'
++  );
++
++  // Outbound Connection Allowlist (RFC 9651 Inner List)
++  const allowedPatterns = [
++    'https://images.unsplash.com/*',
++    'https://img.youtube.com/*',
++    'https://www.youtube-nocookie.com/*',
++  ].map((p) => `"${normalizeAllowlistPattern(p)}"`);
++  res.setHeader(
++    'Connection-Allowlist',
++    `(response-origin ${allowedPatterns.join(' ')}); report-to=conn-reports`
++  );
++
++  // Content Security Policy (CSP)
++  const scriptDirective = nonce
++    ? `script-src 'self' 'nonce-${nonce}' 'sha384-hNf9KzgKtyA52mGfuQWQxynWANMXpsJiJOhL0e2am4gOwqbt/uOA+tXRw4+Z25ik' 'strict-dynamic' 'report-sample'`
++    : "script-src 'self' 'sha384-hNf9KzgKtyA52mGfuQWQxynWANMXpsJiJOhL0e2am4gOwqbt/uOA+tXRw4+Z25ik' 'report-sample'";
++
++  const csp = [
++    "default-src 'self'",
++    scriptDirective,
++    "style-src 'self' 'unsafe-inline'",
++    "img-src 'self' https://images.unsplash.com https://img.youtube.com data:",
++    "frame-src https://www.youtube-nocookie.com",
++    "connect-src 'self'",
++    "font-src 'self'",
++    "form-action 'self'",
++    "worker-src 'self'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "require-trusted-types-for 'script'",
++    'trusted-types daily-grind-html default',
++    'report-to main-endpoint',
++  ].join('; ');
++
++  res.setHeader('Content-Security-Policy', csp);
++}
++
++/**
++ * Fetch Metadata resource isolation check to reject suspicious cross-site requests.
++ */
++function passesFetchMetadataCheck(req) {
++  const site = req.headers['sec-fetch-site'];
++  const mode = req.headers['sec-fetch-mode'];
++  const dest = req.headers['sec-fetch-dest'];
++
++  if (!site) return true; // Fallback for requests without Sec-Fetch-Site
++  if (['same-origin', 'same-site', 'none'].includes(site)) return true;
++
++  // Allow standard top-level navigation GET requests
++  if (
++    site === 'cross-site' &&
++    mode === 'navigate' &&
++    req.method === 'GET' &&
++    !['object', 'embed'].includes(dest)
++  ) {
++    return true;
++  }
++
++  return false;
++}
++
++const server = http.createServer(async (req, res) => {
++  const rawUrl = req.url || '/';
++  const safeLogUrl = scrubPII(rawUrl);
++  const parsedUrl = new URL(rawUrl, `http://${req.headers.host || 'localhost'}`);
++  const pathname = parsedUrl.pathname;
++
++  // Enforce Fetch Metadata resource isolation before processing
++  if (!passesFetchMetadataCheck(req)) {
++    applyPrivacyAndSecurityHeaders(req, res);
++    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Forbidden: Cross-site request blocked by Fetch Metadata policy.');
++    return;
++  }
++
++  // Logout endpoint: Clear-Site-Data header to ensure complete session & storage termination
++  if (pathname === '/logout' || pathname === '/api/logout') {
++    applyPrivacyAndSecurityHeaders(req, res);
++    res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
++    res.setHeader(
++      'Set-Cookie',
++      [
++        '__Host-session_id=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0',
++        'theme_pref=; SameSite=None; Secure; Path=/; Partitioned; HttpOnly; Max-Age=0',
++      ]
++    );
++    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
++    res.end(
++      JSON.stringify({
++        ok: true,
++        cleared: ['cookies', 'storage', 'cache'],
++        message: 'Session terminated and all browser site data cleared.',
++      })
++    );
++    return;
++  }
++
++  // Privacy Data Rights API endpoints (Access, Rectification, Erasure) with rate limiting
++  if (pathname.startsWith('/api/privacy/')) {
++    const clientIp = req.socket.remoteAddress || 'local';
++    if (!checkRateLimit(clientIp)) {
++      applyPrivacyAndSecurityHeaders(req, res);
++      res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' });
++      res.end(JSON.stringify({ error: 'Too many requests. Rate limit enforced to prevent bulk scraping.' }));
++      return;
++    }
++
++    applyPrivacyAndSecurityHeaders(req, res);
++    if (pathname === '/api/privacy/delete' && req.method === 'POST') {
++      res.setHeader('Clear-Site-Data', '"cookies", "storage"');
++    }
++    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
++    res.end(
++      JSON.stringify({
++        ok: true,
++        endpoint: scrubPII(pathname),
++        timestamp: new Date().toISOString(),
++      })
++    );
++    return;
++  }
++
++  // Security & Privacy Violation Reporting Endpoint (with PII scrubbing)
++  if (pathname === '/api/security-reports' && req.method === 'POST') {
++    let body = '';
++    req.on('data', (chunk) => {
++      body += chunk.toString();
++    });
++    req.on('end', () => {
++      const scrubbedReport = scrubPII(body);
++      console.info(`[Security Report] ${safeLogUrl}:`, scrubbedReport.slice(0, 200));
++      applyPrivacyAndSecurityHeaders(req, res);
++      res.writeHead(204);
++      res.end();
++    });
++    return;
++  }
++
++  // Serve static files
++  const relativePath = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
++  const resolvedPath = path.resolve(__dirname, relativePath);
++
++  // Prevent directory traversal outside workspace root
++  if (!resolvedPath.startsWith(__dirname)) {
++    applyPrivacyAndSecurityHeaders(req, res);
++    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Forbidden');
++    return;
++  }
++
++  try {
++    const stat = await fs.stat(resolvedPath);
++    const targetFile = stat.isDirectory() ? path.join(resolvedPath, 'index.html') : resolvedPath;
++    const ext = path.extname(targetFile).toLowerCase();
++    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++
++    if (ext === '.html') {
++      const nonce = crypto.randomBytes(16).toString('base64');
++      applyPrivacyAndSecurityHeaders(req, res, nonce);
++      // Set secure first-party (__Host-) and partitioned (CHIPS) cookie defaults
++      res.setHeader(
++        'Set-Cookie',
++        [
++          '__Host-session_id=ephemeral; Secure; HttpOnly; SameSite=Lax; Path=/',
++          'theme_pref=light; SameSite=None; Secure; Path=/; Partitioned; HttpOnly',
++        ]
++      );
++      let html = await fs.readFile(targetFile, 'utf8');
++      html = html.replace(/<script\b(?![^>]*\bnonce=)/gi, `<script nonce="${nonce}"`);
++      res.writeHead(200, { 'Content-Type': contentType });
++      res.end(html);
++    } else {
++      applyPrivacyAndSecurityHeaders(req, res);
++      const data = await fs.readFile(targetFile);
++      res.writeHead(200, { 'Content-Type': contentType });
++      res.end(data);
++    }
++  } catch {
++    // SPA fallback to index.html for navigation routes
++    try {
++      const nonce = crypto.randomBytes(16).toString('base64');
++      applyPrivacyAndSecurityHeaders(req, res, nonce);
++      let html = await fs.readFile(path.join(__dirname, 'index.html'), 'utf8');
++      html = html.replace(/<script\b(?![^>]*\bnonce=)/gi, `<script nonce="${nonce}"`);
++      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++      res.end(html);
++    } catch {
++      applyPrivacyAndSecurityHeaders(req, res);
++      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++      res.end('Not Found');
++    }
++  }
++});
++
++if (process.argv[1] === fileURLToPath(import.meta.url)) {
++  server.listen(PORT, () => {
++    console.log(`The Daily Grind server running at http://localhost:${PORT}`);
++  });
++}
++
++export default server;

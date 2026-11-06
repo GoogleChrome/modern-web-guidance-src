@@ -1,0 +1,189 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..3d2ba5c
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://new-app.dailygrind.example.com": {
++    "allow_migration": true
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..ecba0bc 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#4e342e">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.json">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -152,11 +154,66 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Origin Migration Fallback Banner */
++    .migration-banner {
++      background: var(--accent);
++      color: var(--text);
++      padding: 0.75rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      font-size: 0.9rem;
++      font-weight: 500;
++      border-bottom: 1px solid rgba(62, 39, 35, 0.2);
++    }
++
++    .migration-banner[hidden] {
++      display: none;
++    }
++
++    .migration-banner-actions {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      flex-shrink: 0;
++    }
++
++    .migration-banner a {
++      background: var(--primary);
++      color: white;
++      padding: 6px 14px;
++      border-radius: 4px;
++      text-decoration: none;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .migration-banner button {
++      background: transparent;
++      border: 1px solid var(--text);
++      color: var(--text);
++      padding: 5px 10px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.8rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <aside id="origin-migration-banner" class="migration-banner" role="region" aria-label="App Origin Migration Notice">
++    <span>
++      <strong>We've moved to a new web address!</strong> If your browser didn't automatically transfer your installed app, switch to the new origin to keep your preferences and install the updated shortcut.
++    </span>
++    <div class="migration-banner-actions">
++      <a id="migrate-origin-link" href="https://new-app.dailygrind.example.com/">Open New App</a>
++      <button type="button" id="dismiss-migration-banner" aria-label="Dismiss migration notice">Dismiss</button>
++    </div>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -207,6 +264,57 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const STORAGE_KEY = 'daily_grind_user_config';
++      const NEW_ORIGIN = 'https://new-app.dailygrind.example.com';
++      const OLD_ORIGIN = 'https://old-app.dailygrind.example.com';
++
++      // Import migrated configuration if present in URL hash or cross-origin message
++      const params = new URLSearchParams(window.location.hash.slice(1));
++      const migratedConfig = params.get('migrated_config');
++      if (migratedConfig) {
++        try {
++          const parsed = JSON.parse(atob(migratedConfig));
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
++          history.replaceState(null, '', window.location.pathname + window.location.search);
++        } catch (err) {
++          console.error('Failed to restore migrated configuration:', err);
++        }
++      }
++
++      window.addEventListener('message', (event) => {
++        if (event.origin === OLD_ORIGIN && event.data && event.data.type === 'MIGRATE_USER_CONFIG') {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(event.data.payload));
++        }
++      });
++
++      // Attach current user config to the manual migration fallback link
++      const migrateLink = document.getElementById('migrate-origin-link');
++      if (migrateLink) {
++        migrateLink.addEventListener('click', () => {
++          const rawConfig = localStorage.getItem(STORAGE_KEY);
++          if (rawConfig) {
++            const encoded = btoa(rawConfig);
++            migrateLink.href = `${NEW_ORIGIN}/#migrated_config=${encodeURIComponent(encoded)}`;
++          }
++        });
++      }
++
++      // Allow dismissing the manual reinstallation fallback prompt
++      const banner = document.getElementById('origin-migration-banner');
++      const dismissBtn = document.getElementById('dismiss-migration-banner');
++      if (banner && dismissBtn) {
++        if (window.location.origin === NEW_ORIGIN || sessionStorage.getItem('migration_banner_dismissed') === '1') {
++          banner.hidden = true;
++        }
++        dismissBtn.addEventListener('click', () => {
++          banner.hidden = true;
++          sessionStorage.setItem('migration_banner_dismissed', '1');
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..9413d5d
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,33 @@
++{
++  "name": "The Daily Grind | Artisanal Coffee",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=192&h=192&q=80",
++      "sizes": "192x192",
++      "type": "image/jpeg"
++    },
++    {
++      "src": "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=512&h=512&q=80",
++      "sizes": "512x512",
++      "type": "image/jpeg"
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://old-app.dailygrind.example.com/",
++      "behavior": "force"
++    }
++  ],
++  "migrate_to": [
++    {
++      "id": "https://new-app.dailygrind.example.com/",
++      "install_url": "https://new-app.dailygrind.example.com/index.html"
++    }
++  ]
++}

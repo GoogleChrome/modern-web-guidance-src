@@ -1,0 +1,300 @@
+diff --git a/index.html b/index.html
+index 66c9173..c759975 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,62 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Secure order notes */
++    .secure-form {
++      max-width: 640px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .secure-form label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .secure-form textarea {
++      width: 100%;
++      min-height: 90px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .secure-form .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-right: 8px;
++    }
++
++    .secure-form .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .secure-form .intro,
++    .secure-form .status {
++      font-size: 0.85rem;
++      margin-bottom: 14px;
++    }
++
++    .secure-form pre {
++      margin-top: 14px;
++      padding: 10px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      white-space: pre-wrap;
++      word-break: break-all;
++      font-size: 0.75rem;
++      max-height: 180px;
++      overflow: auto;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +251,21 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="secure-notes">
++      <h2 style="text-align: center; margin-top: 40px;">Private Order Notes</h2>
++      <form class="secure-form" id="secure-form" autocomplete="off">
++        <p class="intro">Allergies, door codes, delivery instructions: encrypted in your browser before they go anywhere,
++          using X25519 + ML-KEM-768 (post-quantum hybrid) key agreement and AES-256-GCM.</p>
++        <label for="note">Your note</label>
++        <textarea id="note" required maxlength="2000" placeholder="e.g. Gate code 4821, nut allergy"></textarea>
++        <p class="status" id="sec-status" role="status">Preparing keys…</p>
++        <button class="btn" type="submit" id="encrypt-btn" disabled>Encrypt</button>
++        <button class="btn" type="button" id="decrypt-btn" disabled>Decrypt (demo shop side)</button>
++        <pre id="envelope" hidden></pre>
++        <pre id="plain" hidden></pre>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +278,53 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { isSupported, generateRecipientKeys, seal, open } from './secure-box.js';
++
++    const $ = (id) => document.getElementById(id);
++    const status = (t) => { $('sec-status').textContent = t; };
++    const CONTEXT = 'daily-grind/order-note';
++
++    // Demo only: there is no backend, so the "shop" key pair is created in this tab and kept in memory.
++    // In production, replace `shop.publicKey` with the shop's published public keys and never hold the private half here.
++    let shop = null;
++    let envelope = null;
++
++    try {
++      if (!(await isSupported())) throw new Error('unsupported');
++      shop = await generateRecipientKeys();
++      $('encrypt-btn').disabled = false;
++      status('Ready. Keys are generated in this tab and never stored.');
++    } catch {
++      status('Your browser lacks X25519 in WebCrypto, so encryption is unavailable. Please update your browser.');
++    }
++
++    $('secure-form').addEventListener('submit', async (e) => {
++      e.preventDefault();
++      try {
++        envelope = await seal(shop.publicKey, $('note').value, CONTEXT);
++        $('note').value = '';
++        $('envelope').textContent = JSON.stringify(envelope, null, 1);
++        $('envelope').hidden = false;
++        $('plain').hidden = true;
++        $('decrypt-btn').disabled = false;
++        status('Encrypted. Only the ciphertext envelope below would be sent.');
++      } catch {
++        status('Encryption failed.');
++      }
++    });
++
++    $('decrypt-btn').addEventListener('click', async () => {
++      try {
++        $('plain').textContent = await open(shop.privateKey, shop.publicKey, envelope);
++        $('plain').hidden = false;
++        status('Decrypted and authenticated.');
++      } catch {
++        status('Decryption failed: the data was altered or the key does not match.');
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/secure-box.js b/secure-box.js
+new file mode 100644
+index 0000000..41da3ac
+--- /dev/null
++++ b/secure-box.js
+@@ -0,0 +1,106 @@
++// Hybrid post-quantum "sealed box" for the browser.
++//
++//   key agreement : X25519 (WebCrypto) + ML-KEM-768 (vendored noble, FIPS 203)
++//   KDF           : HKDF-SHA-256 over both secrets, bound to the whole transcript
++//   encryption    : AES-256-GCM, header + caller context authenticated as AAD
++//
++// The session key is safe as long as EITHER X25519 or ML-KEM-768 holds.
++import { ml_kem768 } from './vendor/mlkem768.js';
++
++const VERSION = 1;
++const LABEL = new TextEncoder().encode('daily-grind/seal/v1/x25519+mlkem768');
++const enc = new TextEncoder();
++const dec = new TextDecoder();
++
++const concat = (...parts) => {
++  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
++  let o = 0;
++  for (const p of parts) { out.set(p, o); o += p.length; }
++  return out;
++};
++
++export const b64u = {
++  enc: (u8) => btoa(String.fromCharCode(...u8)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
++  dec: (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)),
++};
++
++export async function isSupported() {
++  try {
++    await crypto.subtle.generateKey({ name: 'X25519' }, false, ['deriveBits']);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++/** Recipient key pair. Private halves never leave this object. */
++export async function generateRecipientKeys() {
++  const x = await crypto.subtle.generateKey({ name: 'X25519' }, false, ['deriveBits']);
++  const pq = ml_kem768.keygen();
++  return {
++    publicKey: {
++      x25519: new Uint8Array(await crypto.subtle.exportKey('raw', x.publicKey)),
++      mlkem768: pq.publicKey,
++    },
++    privateKey: { x25519: x.privateKey, mlkem768: pq.secretKey },
++  };
++}
++
++const importX25519Public = (raw) => crypto.subtle.importKey('raw', raw, { name: 'X25519' }, true, []);
++
++async function deriveKey(ssX, ssPQ, transcript, usage) {
++  // HKDF info is capped at 1024 bytes by some engines, so bind the transcript via its hash.
++  const transcriptHash = new Uint8Array(await crypto.subtle.digest('SHA-256', transcript));
++  const ikm = await crypto.subtle.importKey('raw', concat(ssX, ssPQ), 'HKDF', false, ['deriveKey']);
++  return crypto.subtle.deriveKey(
++    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: concat(LABEL, transcriptHash) },
++    ikm,
++    { name: 'AES-GCM', length: 256 },
++    false,
++    [usage],
++  );
++}
++
++const header = (ephX, ctPQ) => concat(Uint8Array.of(VERSION), ephX, ctPQ);
++
++/** Encrypt `plaintext` (string) to a recipient public key. `context` is authenticated but not secret. */
++export async function seal(recipientPub, plaintext, context = '') {
++  const eph = await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
++  const ephX = new Uint8Array(await crypto.subtle.exportKey('raw', eph.publicKey));
++  const ssX = new Uint8Array(await crypto.subtle.deriveBits(
++    { name: 'X25519', public: await importX25519Public(recipientPub.x25519) }, eph.privateKey, 256));
++  const { cipherText: ctPQ, sharedSecret: ssPQ } = ml_kem768.encapsulate(recipientPub.mlkem768);
++
++  // Transcript binds both public keys and both ciphertexts into the key.
++  const transcript = concat(ephX, ctPQ, recipientPub.x25519, recipientPub.mlkem768);
++  const key = await deriveKey(ssX, ssPQ, transcript, 'encrypt');
++  ssX.fill(0); ssPQ.fill(0);
++
++  const iv = crypto.getRandomValues(new Uint8Array(12)); // key is single-use, so a random nonce is safe
++  const aad = concat(header(ephX, ctPQ), enc.encode(context));
++  const ct = new Uint8Array(await crypto.subtle.encrypt(
++    { name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 }, key, enc.encode(plaintext)));
++
++  return { v: VERSION, kem: 'X25519+ML-KEM-768', ctx: context,
++    ekX: b64u.enc(ephX), ekPQ: b64u.enc(ctPQ), iv: b64u.enc(iv), ct: b64u.enc(ct) };
++}
++
++/** Decrypt an envelope produced by `seal`. Throws if anything was tampered with. */
++export async function open(privateKey, publicKey, envelope) {
++  if (envelope.v !== VERSION) throw new Error('Unsupported envelope version');
++  const ephX = b64u.dec(envelope.ekX);
++  const ctPQ = b64u.dec(envelope.ekPQ);
++  if (ephX.length !== 32 || ctPQ.length !== 1088) throw new Error('Malformed envelope');
++
++  const ssX = new Uint8Array(await crypto.subtle.deriveBits(
++    { name: 'X25519', public: await importX25519Public(ephX) }, privateKey.x25519, 256));
++  const ssPQ = ml_kem768.decapsulate(ctPQ, privateKey.mlkem768); // implicit rejection: bad ct yields a random key
++  const transcript = concat(ephX, ctPQ, publicKey.x25519, publicKey.mlkem768);
++  const key = await deriveKey(ssX, ssPQ, transcript, 'decrypt');
++  ssX.fill(0); ssPQ.fill(0);
++
++  const aad = concat(header(ephX, ctPQ), enc.encode(envelope.ctx ?? ''));
++  const pt = await crypto.subtle.decrypt(
++    { name: 'AES-GCM', iv: b64u.dec(envelope.iv), additionalData: aad, tagLength: 128 }, key, b64u.dec(envelope.ct));
++  return dec.decode(pt);
++}
+diff --git a/vendor/LICENSE-noble-post-quantum b/vendor/LICENSE-noble-post-quantum
+new file mode 100644
+index 0000000..da95be3
+--- /dev/null
++++ b/vendor/LICENSE-noble-post-quantum
+@@ -0,0 +1,21 @@
++The MIT License (MIT)
++
++Copyright (c) 2024 Paul Miller (https://paulmillr.com)
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the “Software”), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in
++all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++THE SOFTWARE.
+\ No newline at end of file
+diff --git a/vendor/mlkem768.js b/vendor/mlkem768.js
+new file mode 100644
+index 0000000..529cc9e
+--- /dev/null
++++ b/vendor/mlkem768.js
+@@ -0,0 +1,11 @@
++var Y=BigInt(4294967295),lt=BigInt(32);function Ft(t,e=!1){return e?{h:Number(t&Y),l:Number(t>>lt&Y)}:{h:Number(t>>lt&Y)|0,l:Number(t&Y)|0}}function yt(t,e=!1){let n=t.length,s=new Uint32Array(n),o=new Uint32Array(n);for(let r=0;r<n;r++){let{h:c,l:f}=Ft(t[r],e);[s[r],o[r]]=[c,f]}return[s,o]}function rt(t){return t instanceof Uint8Array||ArrayBuffer.isView(t)&&t.constructor.name==="Uint8Array"&&"BYTES_PER_ELEMENT"in t&&t.BYTES_PER_ELEMENT===1}var q=t=>t?`"${t}" `:"";function H(t,e=""){if(typeof t!="number")throw new TypeError(q(e)+"expected number, got "+typeof t);if(!Number.isSafeInteger(t)||t<0)throw new RangeError(q(e)+"expected integer >= 0, got "+t);return t}function gt(t,e=""){if(typeof t!="boolean")throw new TypeError(q(e)+"expected boolean, got type="+typeof t);return t}function S(t,e,n=""){if(rt(t)&&(e===void 0||t.length===e))return t;e!==void 0&&H(e,"length");let s=rt(t),o=e!==void 0?` of length ${e}`:"",r=s?`length=${t.length}`:`type=${typeof t}`,c=q(n)+"expected Uint8Array"+o+", got "+r;throw s?new RangeError(c):new TypeError(c)}var Pt=(t,e)=>{if(t===null||typeof t!="object"||Array.isArray(t))throw new TypeError((e==="object"?"":`"${e}" `)+"expected object, got type="+typeof t)},ht=(t,e)=>{Pt(t,e);let n=Object.getPrototypeOf(t);if(n!==Object.prototype&&n!==null)throw new TypeError(`"${e}" expected plain object`);if(Object.hasOwn(t,"__proto__"))throw new TypeError(`"${e}.__proto__" is not allowed`)};function ot(t,e=!0){if(t.destroyed)throw new Error("hash was destroyed");if(e&&t.finished)throw new Error("digest() was already called")}function xt(t,e){S(t,void 0,"output");let n=e.outputLen;if(!(t.length>=n))throw new RangeError('"output" expected length >= '+n)}function z(t){return new Uint32Array(t.buffer,t.byteOffset,Math.floor(t.byteLength/4))}function st(...t){for(let e=0;e<t.length;e++)t[e].fill(0)}var wt=new Uint8Array(new Uint32Array([287454020]).buffer)[0]===68;function Ct(t){return t<<24&4278190080|t<<8&16711680|t>>>8&65280|t>>>24&255}function Mt(t){for(let e=0;e<t.length;e++)t[e]=Ct(t[e]);return t}var C=wt?t=>t:Mt;function ct(t,e,n="opts"){return ht(t,"defaults"),e!==void 0&&ht(e,n),Object.assign(Object.create(null),t,e)}function it(t,e={}){if(typeof t!="function")throw new TypeError('"hashCons" expected function, got type='+typeof t);e=ct({},e,"info");let n=(o,r)=>t(r).update(o).digest(),s=t(void 0);return n.outputLen=s.outputLen,n.blockLen=s.blockLen,n.canXOF=s.canXOF,n.create=o=>t(o),Object.assign(n,e),Object.freeze(n)}function bt(t=32){H(t,"bytesLength");let e=typeof globalThis=="object"?globalThis.crypto:null;if(typeof e?.getRandomValues!="function")throw new Error("crypto.getRandomValues must be defined");if(t>65536)throw new RangeError(`"bytesLength" expected <= 65536, got ${t}`);return e.getRandomValues(new Uint8Array(t))}var D=t=>({oid:Uint8Array.from([6,9,96,134,72,1,101,3,4,2,t])});var zt=BigInt(0),X=BigInt(1),Dt=BigInt(2),Xt=BigInt(7),vt=BigInt(256),Vt=BigInt(113),Tt=[],Ot=[],At=[];for(let t=0,e=X,n=1,s=0;t<24;t++){[n,s]=[s,(2*n+3*s)%5],Tt.push(2*(5*s+n)),Ot.push((t+1)*(t+2)/2%64);let o=zt;for(let r=0;r<7;r++)e=(e<<X^(e>>Xt)*Vt)%vt,e&Dt&&(o^=X<<(X<<BigInt(r))-X);At.push(o)}var Bt=yt(At,!0),Zt=Bt[0],Gt=Bt[1],Yt=(t,e,n)=>t<<n|e>>>32-n,qt=(t,e,n)=>e<<n|t>>>32-n,Qt=(t,e,n)=>e<<n-32|t>>>64-n,Jt=(t,e,n)=>t<<n-32|e>>>64-n,mt=(t,e,n)=>n>32?Qt(t,e,n):Yt(t,e,n),Et=(t,e,n)=>n>32?Jt(t,e,n):qt(t,e,n),M=new Uint32Array(10);function Wt(t,e=24){if(!(t instanceof Uint32Array))throw new TypeError('"s" expected Uint32Array(50), got type='+typeof t);if(t.length!==50)throw new RangeError('"s" expected Uint32Array(50), got length='+t.length);if(H(e,"rounds"),e<1||e>24)throw new Error('"rounds" expected integer 1..24');for(let n=24-e;n<24;n++){for(let r=0;r<10;r++)M[r]=t[r]^t[r+10]^t[r+20]^t[r+30]^t[r+40];for(let r=0;r<10;r+=2){let c=(r+8)%10,f=(r+2)%10,p=M[f],a=M[f+1],k=mt(p,a,1)^M[c],x=Et(p,a,1)^M[c+1];for(let _=0;_<50;_+=10)t[r+_]^=k,t[r+_+1]^=x}let s=t[2],o=t[3];for(let r=0;r<24;r++){let c=Ot[r],f=mt(s,o,c),p=Et(s,o,c),a=Tt[r];s=t[a],o=t[a+1],t[a]=f,t[a+1]=p}for(let r=0;r<50;r+=10){let c=t[r],f=t[r+1],p=t[r+2],a=t[r+3];t[r]^=~t[r+2]&t[r+4],t[r+1]^=~t[r+3]&t[r+5],t[r+2]^=~t[r+4]&t[r+6],t[r+3]^=~t[r+5]&t[r+7],t[r+4]^=~t[r+6]&t[r+8],t[r+5]^=~t[r+7]&t[r+9],t[r+6]^=~t[r+8]&c,t[r+7]^=~t[r+9]&f,t[r+8]^=~c&p,t[r+9]^=~f&a}t[0]^=Zt[n],t[1]^=Gt[n]}st(M)}var Q=class t{state;pos=0;posOut=0;finished=!1;state32;destroyed=!1;blockLen;suffix;outputLen;canXOF;enableXOF=!1;rounds;constructor(e,n,s,o=!1,r=24){if(H(e,"blockLen"),H(n,"suffix"),H(r,"rounds"),gt(o,"enableXOF"),this.blockLen=e,this.suffix=n,this.outputLen=s,this.enableXOF=o,this.canXOF=o,this.rounds=r,H(s,"outputLen"),!(0<e&&e<200))throw new Error('"blockLen" must be 1..199');this.state=new Uint8Array(200),this.state32=z(this.state)}clone(){return this._cloneInto()}keccak(){C(this.state32),Wt(this.state32,this.rounds),C(this.state32),this.posOut=0,this.pos=0}update(e){ot(this),S(e);let{blockLen:n,state:s,state32:o}=this,r=e.length,c=n%4===0&&e.byteOffset%4===0,f=n/4,p=c&&r>=n?z(e):void 0;for(let a=0;a<r;){if(p!==void 0&&this.pos===0&&a%4===0&&r-a>=n){for(let x=0,_=a/4;x<f;x++)o[x]^=p[_+x];a+=n,this.pos=n,this.keccak();continue}let k=Math.min(n-this.pos,r-a);for(let x=0;x<k;x++)s[this.pos++]^=e[a++];this.pos===n&&this.keccak()}return this}finish(){if(this.finished)return;this.finished=!0;let{state:e,suffix:n,pos:s,blockLen:o}=this;e[s]^=n,(n&128)!==0&&s===o-1&&this.keccak(),e[o-1]^=128,this.keccak()}writeInto(e){ot(this,!1),S(e),this.finish();let n=this.state,{blockLen:s}=this;for(let o=0,r=e.length;o<r;){this.posOut>=s&&this.keccak();let c=Math.min(s-this.posOut,r-o);e.set(n.subarray(this.posOut,this.posOut+c),o),this.posOut+=c,o+=c}return e}xofInto(e){if(!this.enableXOF)throw new Error("XOF is not enabled");return this.writeInto(e)}xof(e){return H(e),this.xofInto(new Uint8Array(e))}digestInto(e){if(xt(e,this),this.finished)throw new Error("digest() was already called");this.writeInto(e.length===this.outputLen?e:e.subarray(0,this.outputLen)),this.destroy()}digest(){let e=new Uint8Array(this.outputLen);return this.digestInto(e),e}destroy(){this.destroyed=!0,st(this.state)}_cloneInto(e){let{blockLen:n,suffix:s,outputLen:o,rounds:r,enableXOF:c}=this;return e||=new t(n,s,o,c,r),e.blockLen=n,e.state32.set(this.state32),e.pos=this.pos,e.posOut=this.posOut,e.finished=this.finished,e.rounds=r,e.suffix=s,e.outputLen=o,e.enableXOF=c,e.canXOF=this.canXOF,e.destroyed=this.destroyed,e}},kt=(t,e,n,s={})=>it(()=>new Q(e,t,n),s);var _t=kt(6,136,32,D(8));var Lt=kt(6,72,64,D(10));var Ut=(t,e,n,s={})=>it((o={})=>(o=ct({},o),new Q(e,t,o.dkLen===void 0?n:o.dkLen,!0)),s),$t=Ut(31,168,16,D(11)),J=Ut(31,136,32,D(12));function ft(t,e="object"){if(t===null||typeof t!="object"||Array.isArray(t))throw new TypeError(e==="object"?"expected valid options object":`"${e}" expected object, got type=${typeof t}`);return t}function jt(t,e={},n={},s="object"){ft(t,s),ft(e,"fields"),ft(n,"optFields");function o(c,f,p){let a=s==="object"?`param "${String(c)}"`:`"${s}.${String(c)}"`,k=t[c];if(!Object.hasOwn(t,c)&&(p?k!==void 0:f!=="function"))throw new TypeError(`${a} is invalid: expected own property`);if(p&&k===void 0)return;let x=typeof k;if(x!==f||k===null)throw new TypeError(`${a} is invalid: expected ${f}, got ${x}`)}let r=(c,f)=>Object.entries(c).forEach(([p,a])=>o(p,a,f));r(e,!1),r(n,!0)}function v(t,e="n"){if(typeof t!="number")throw new TypeError(`wrong u32 integer "${e}": expected number, got type=${typeof t}`);if(!Number.isSafeInteger(t)||t<0||t>4294967295)throw new RangeError(`wrong u32 integer "${e}": expected 0..4294967295, got ${t}`);return t}function St(t){return v(t,"x"),(t&t-1)===0&&t!==0}function ut(t,e){if(v(t),typeof e!="number")throw new TypeError('"bits" expected number, got type='+typeof e);if(!Number.isSafeInteger(e)||e<0||e>32)throw new Error(`expected integer 0 <= bits <= 32, got ${e}`);let n=0;for(let s=0;s<e;s++,t>>>=1)n=n<<1|t&1;return n>>>0}function Ht(t){return v(t),31-Math.clz32(t)}function It(t){if(!t||typeof t!="object"||typeof t.length!="number")throw new TypeError('"values" expected array-like, got type='+typeof t);let e=t.length;if(!St(e))throw new Error("expected positive power-of-two length, got "+e);let n=Ht(e);for(let s=0;s<e;s++){let o=ut(s,n);if(s<o){let r=t[s];t[s]=t[o],t[o]=r}}return t}var pt=(t,e)=>{jt(e,{N:"number",roots:"object",dit:"boolean"},{invertButterflies:"boolean",skipStages:"number",brp:"boolean"},"coreOpts");let{N:n,roots:s,dit:o,invertButterflies:r=!1,skipStages:c=0,brp:f=!0}=e;v(n,"coreOpts.N");let p=Ht(n);if(!St(n))throw new Error("FFT: Polynomial size should be power of two");v(c,"coreOpts.skipStages");let a=p===0?0:p-1;if(c>a)throw new Error(`FFT: wrong skipStages: expected 0 <= skipStages <= ${a}`);if(s.length!==n)throw new Error(`FFT: wrong roots length: expected ${n}, got ${s.length}`);let k=o!==r;return x=>{if(x.length!==n)throw new Error("FFT: wrong Polynomial length");o&&f&&It(x);for(let _=0,m=1;_<p-c;_++){let E=o?_+1+c:p-_,A=1<<E,B=A>>1,b=n>>E;for(let T=0;T<n;T+=A)for(let i=0,u=m++;i<B;i++){let d=r?o?n-u:u:i*b,w=T+i,l=T+i+B,y=s[d],g=x[l],O=x[w];if(k){let h=t.mul(g,y);x[w]=t.add(O,h),x[l]=t.sub(O,h)}else r?(x[w]=t.add(g,O),x[l]=t.mul(t.sub(g,O),y)):(x[w]=t.add(O,g),x[l]=t.mul(t.sub(O,g),y))}}return!o&&f&&It(x),x}};var R=S;var W=bt;function te(t,e,n=()=>{}){if(!Array.isArray(t))throw new TypeError(`"${e}" expected array, got type=${typeof t}`);for(let s=0;s<t.length;s++)n(t[s],`${e}[${s}]`);return t}function N(t,e){if(t=S(t),e=S(e),t.length!==e.length)return!1;let n=0;for(let s=0;s<t.length;s++)n|=t[s]^e[s];return n===0}function at(t){return new Uint8Array(S(t))}function V(t,...e){let n=o=>typeof o=="number"?o:o.bytesLen,s=e.reduce((o,r)=>o+n(r),0);return{bytesLen:s,encode:o=>{let r=new Uint8Array(s);for(let c=0,f=0;c<e.length;c++){let p=e[c],a=n(p),k=typeof p=="number"?o[c]:p.encode(o[c]);S(k,a,t),r.set(k,f),typeof p!="number"&&k.fill(0),f+=a}return r},decode:o=>{S(o,s,t);let r=[];for(let c of e){let f=n(c),p=o.subarray(0,f);r.push(typeof c=="number"?p:c.decode(p)),o=o.subarray(f)}return r}}}function tt(t,e){let n=t,s=e*n.bytesLen;return{bytesLen:s,encode:o=>{let r=te(o,"u");if(r.length!==e)throw new RangeError(`vecCoder.encode: wrong length=${r.length}. Expected: ${e}`);let c=new Uint8Array(s);for(let f=0,p=0;f<r.length;f++){let a=n.encode(r[f]);c.set(a,p),a.fill(0),p+=a.length}return c},decode:o=>{S(o,s);let r=[];for(let c=0;c<o.length;c+=n.bytesLen)r.push(n.decode(o.subarray(c,c+n.bytesLen)));return r}}}function L(...t){for(let e of t)if(Array.isArray(e))for(let n of e)n.fill(0);else e.fill(0)}function et(t){if(H(t,"bits"),t>32)throw new RangeError('"bits" expected <= 32, got '+t);return t===32?4294967295:~(-1<<t)>>>0}var Rt=t=>{let{newPoly:e,N:n,Q:s,F:o,ROOT_OF_UNITY:r,brvBits:c,isKyber:f}=t,p=(i,u=s)=>{let d=i%u|0;return(d>=0?d|0:u+d|0)|0},a=(i,u=s)=>{let d=p(i,u)|0;return(d>u>>1?d-u|0:d)|0};function k(){let i=e(n);for(let u=0;u<n;u++){let d=ut(u,c),w=BigInt(r)**BigInt(d)%BigInt(s);i[u]=Number(w)|0}return i}let x=k(),_=i=>{throw new Error("not implemented")},m=f?{add:(i,u)=>{let d=i+u|0;return d>=s?d-s|0:d},sub:(i,u)=>{let d=i-u|0;return d<0?d+s|0:d},mul:(i,u)=>p((i|0)*(u|0))|0,inv:_}:{add:(i,u)=>p((i|0)+(u|0))|0,sub:(i,u)=>p((i|0)-(u|0))|0,mul:(i,u)=>p((i|0)*(u|0))|0,inv:_},E={N:n,roots:x,invertButterflies:!0,skipStages:f?1:0,brp:!1},A=pt(m,{dit:!1,...E}),B=pt(m,{dit:!0,...E}),b={encode:i=>A(i),decode:i=>{B(i);for(let u=0;u<i.length;u++)i[u]=p(o*i[u]);return i}};return{mod:p,smod:a,nttZetas:x,NTT:{encode:i=>b.encode(i),decode:i=>b.decode(i)},bitsCoder:(i,u)=>{for(let l=0,y=0;l<n;l++)y+=i,y>32&&et(y),y%=8;let d=et(i),w=i*(n/8);return{bytesLen:w,encode:l=>{let y=l,g=new Uint8Array(w);for(let O=0,h=0,j=0,K=0;O<y.length;O++)for(h|=(u.encode(y[O])&d)<<j,j+=i;j>=8;j-=8,h>>=8)g[K++]=h&255;return g},decode:l=>{let y=e(n);for(let g=0,O=0,h=0,j=0;g<l.length;g++)for(O|=l[g]<<h,h+=8;h>=i;h-=i,O>>=i)y[j++]=u.decode(O&d);return y}}}}},ee=t=>(e,n)=>{n||(n=t.blockLen);let s=new Uint8Array(e.length+2);s.set(e);let o=e.length,r=new Uint8Array(n),c=t.create({}),f=0,p=0;return{stats:()=>({calls:f,xofs:p}),get:(a,k)=>(s[o+0]=a,s[o+1]=k,c.destroy(),c=t.create({}).update(s),f++,()=>(p++,c.xofInto(r))),clean:()=>{c.destroy(),L(r,s)}}},Kt=ee($t);var $=256,U=3329,ne=3303,re=17,I=Rt({N:$,Q:U,F:ne,ROOT_OF_UNITY:re,newPoly:t=>new Uint16Array(t),brvBits:7,isKyber:!0}),oe=Object.freeze({512:Object.freeze({N:$,Q:U,K:2,ETA1:3,ETA2:2,du:10,dv:4,RBGstrength:128}),768:Object.freeze({N:$,Q:U,K:3,ETA1:2,ETA2:2,du:10,dv:4,RBGstrength:192}),1024:Object.freeze({N:$,Q:U,K:4,ETA1:2,ETA2:2,du:11,dv:5,RBGstrength:256})}),se=t=>{if(t>=12)return{encode:n=>n,decode:n=>n>=U?n-U:n};let e=2**(t-1);return{encode:n=>((n<<t)+U/2)/U,decode:n=>n*U+e>>>t}},ce=t=>I.bitsCoder(t,t===12?{encode:e=>e,decode:e=>e>=U?e-U:e}:{encode:e=>e,decode:e=>e}),Z=t=>t===12?ce(12):I.bitsCoder(t,se(t));function F(t,e){let n=t,s=e;for(let o=0;o<$;o++){let r=n[o]+s[o];n[o]=r>=U?r-U:r}}function ie(t,e){let n=t,s=e;for(let o=0;o<$;o++){let r=n[o]-s[o];n[o]=r<0?r+U:r}}function fe(t,e,n,s,o){let r=I.mod(I.mod(e*s)*o+t*n),c=I.mod(t*s+e*n);return{c0:r,c1:c}}function nt(t,e){let n=t,s=e;for(let o=0;o<$/2;o++){let r=I.nttZetas[64+(o>>1)];o&1&&(r=-r);let{c0:c,c1:f}=fe(n[2*o+0],n[2*o+1],s[2*o+0],s[2*o+1],r);n[2*o+0]=c,n[2*o+1]=f}return n}function dt(t){let e=t,n=new Uint16Array($);for(let s=0;s<$;){let o=e();if(o.length%3)throw new Error("SampleNTT: unaligned block");for(let r=0;s<$&&r+3<=o.length;r+=3){let c=(o[r+0]>>0|o[r+1]<<8)&4095,f=(o[r+1]>>4|o[r+2]<<4)&4095;c<U&&(n[s++]=c),s<$&&f<U&&(n[s++]=f)}}return n}var ue=(t,e)=>{let n=new Uint16Array($),s=z(t);C(s);let o=0;for(let r=0,c=0,f=0,p=0;r<s.length;r++){let a=s[r];for(let k=0;k<32;k++)f+=a&1,a>>=1,o+=1,o===e?(p=f,f=0):o===2*e&&(n[c++]=I.mod(p-f),f=0,o=0)}if(C(s),o)throw new Error(`sampleCBD: leftover bits: ${o}`);return n};function G(t,e,n,s){return ue(t(s*$/4,e,n),s)}var pe=t=>{let e=t,{K:n,PRF:s,XOF:o,HASH512:r,ETA1:c,ETA2:f,du:p,dv:a}=e,k=Z(1),x=Z(a),_=Z(p),m=V("publicKey",tt(Z(12),n),32),E=tt(Z(12),n),A=V("ciphertext",tt(_,n),x),B=V("seed",32,32),b=(T,i,u,d)=>{let w=[];for(let h=0;h<n;h++)w.push(I.NTT.encode(G(s,d,h,c)));let l=new Uint16Array($),y=[];for(let h=0;h<n;h++){let j=G(s,d,n+h,f),K=new Uint16Array($);for(let P=0;P<n;P++){let Nt=i(h,P);F(K,nt(Nt,w[P]))}F(j,I.NTT.decode(K)),y.push(j),F(l,nt(T[h],w[h])),L(K)}let g=G(s,d,2*n,f);F(g,I.NTT.decode(l));let O=k.decode(u);return F(O,g),L(T,w,l,g),A.encode([y,O])};return{secretCoder:E,lengths:{secretKey:E.bytesLen,publicKey:m.bytesLen,cipherText:A.bytesLen},keygen:T=>{R(T,32,"seed");let i=new Uint8Array(33);i.set(T),i[32]=n;let u=r(i),[d,w]=B.decode(u),l=[],y=[];for(let h=0;h<n;h++)l.push(I.NTT.encode(G(s,w,h,c)));let g=o(d);for(let h=0;h<n;h++){let j=I.NTT.encode(G(s,w,n+h,c));for(let K=0;K<n;K++){let P=dt(g.get(K,h));F(j,nt(P,l[K]))}y.push(j)}g.clean();let O={publicKey:m.encode([y,d]),secretKey:E.encode(l)};return L(d,w,l,y,i,u),O},encrypt:(T,i,u)=>{let[d,w]=m.decode(T),l=o(w),y=b(d,(g,O)=>dt(l.get(g,O)),i,u);return l.clean(),y},prepare:T=>{let[i,u]=m.decode(T),d=o(u),w=[];for(let l=0;l<n;l++)for(let y=0;y<n;y++)w.push(dt(d.get(l,y)));return d.clean(),{encrypt:(l,y)=>b(i.map(g=>g.slice()),(g,O)=>w[g*n+O].slice(),l,y),clean:()=>L(i,w)}},decrypt:(T,i)=>{let[u,d]=A.decode(T),w=E.decode(i),l=new Uint16Array($);for(let g=0;g<n;g++)F(l,nt(w[g],I.NTT.encode(u[g])));ie(d,I.NTT.decode(l));let y=k.encode(d);return L(l,w,u,d),y}}};function ae(t){let e=t,n=pe(e),{HASH256:s,HASH512:o,KDF:r}=e,{secretCoder:c,lengths:f}=n,p=V("secretKey",f.secretKey,f.publicKey,32,32),a=32,k=64,x=(m,E)=>{let A=m.subarray(0,384*e.K),B=c.encode(c.decode(at(A))),b=N(B,A);if(L(B),!b)throw new Error(`ML-KEM.${E}: wrong publicKey modulus`)},_=Object.freeze({...f,seed:64,msg:a,msgRand:a,secretKey:p.bytesLen});return Object.freeze({info:Object.freeze({type:"ml-kem"}),lengths:_,keygen:m=>{let E=m===void 0,A=E?W(k):m,B,b;try{R(A,k,"seed");let T=n.keygen(A.subarray(0,32)),i=T.publicKey;B=T.secretKey,b=s(i);let u=p.encode([B,i,b,A.subarray(32)]);return{publicKey:i,secretKey:u}}finally{B!==void 0&&L(B),b!==void 0&&L(b),E&&L(A)}},getPublicKey:m=>{let[E,A,B,b]=p.decode(m);return Uint8Array.from(A)},encapsulate:(m,E)=>{let A=E===void 0,B=A?W(a):E,b;try{return R(m,f.publicKey,"publicKey"),R(B,a,"message"),x(m,"encapsulate"),b=o.create().update(B).update(s(m)).digest(),{cipherText:n.encrypt(m,B,b.subarray(32,64)),sharedSecret:b.subarray(0,32)}}finally{b!==void 0&&L(b.subarray(32)),A&&L(B)}},decapsulate:(m,E)=>{R(E,p.bytesLen,"secretKey"),R(m,f.cipherText,"cipherText");let A=p.bytesLen-96,B=A+32,b=s(E.subarray(A/2,B));if(!N(b,E.subarray(B,B+32)))throw new Error("invalid secretKey: hash check failed");let[T,i,u,d]=p.decode(E),w=n.decrypt(m,T),l=o.create().update(w).update(u).digest(),y=l.subarray(0,32),g=n.encrypt(i,w,l.subarray(32,64)),O=N(m,g),h=r.create({dkLen:32}).update(d).update(m).digest();return L(w,g,l.subarray(32),O?h:y),O?y:h},prepare:m=>{R(m,f.publicKey,"publicKey"),x(m,"prepare");let E=at(m),A=s(E),B=n.prepare(E);return Object.freeze({publicKey:E,encapsulate:b=>{let T=b===void 0,i=T?W(a):b,u;try{return R(i,a,"message"),u=o.create().update(i).update(A).digest(),{cipherText:B.encrypt(i,u.subarray(32,64)),sharedSecret:u.subarray(0,32)}}finally{u!==void 0&&L(u.subarray(32)),T&&L(i)}},decapsulate:(b,T)=>{R(T,p.bytesLen,"secretKey"),R(b,f.cipherText,"cipherText");let[i,u,d,w]=p.decode(T);if(!N(u,E)||!N(d,A))throw new Error("ML-KEM.decapsulate: secretKey does not match prepared publicKey");let l=n.decrypt(b,i),y=o.create().update(l).update(A).digest(),g=y.subarray(0,32),O=B.encrypt(l,y.subarray(32,64)),h=N(b,O),j=r.create({dkLen:32}).update(w).update(b).digest();return L(l,O,y.subarray(32),h?j:g),h?g:j},clean:B.clean})}})}function de(t,e,n){return J.create({dkLen:t}).update(e).update(new Uint8Array([n])).digest()}var le={HASH256:_t,HASH512:Lt,KDF:J,XOF:Kt,PRF:de},ye=t=>ae({...le,...t});var he=ye(oe[768]);export{he as ml_kem768};
++/*! Bundled license information:
++
++@noble/curves/utils.js:
++  (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
++
++@noble/post-quantum/utils.js:
++@noble/post-quantum/_crystals.js:
++@noble/post-quantum/ml-kem.js:
++  (*! noble-post-quantum - MIT License (c) 2024 Paul Miller (paulmillr.com) *)
++*/

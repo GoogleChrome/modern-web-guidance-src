@@ -1,0 +1,333 @@
+diff --git a/index.html b/index.html
+index 66c9173..d8d3565 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,25 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Default section & card context tokens */
++      --section-bg: transparent;
++      --section-heading-color: var(--primary);
++      --section-accent: var(--accent);
++      --card-bg: #ffffff;
++      --card-text: var(--text);
++      --card-heading: var(--primary);
++      --card-border: rgba(78, 52, 46, 0.12);
++      --card-accent-bar: var(--primary);
++      --card-shadow: 0 4px 12px rgba(62, 39, 35, 0.08);
++      --card-shadow-hover: 0 10px 24px rgba(62, 39, 35, 0.16);
++      --card-btn-bg: var(--primary);
++      --card-btn-hover: #3e2723;
++      --card-btn-text: #ffffff;
++      --card-badge-bg: var(--secondary);
++      --card-badge-color: var(--primary);
++      --card-badge-label: "House Selection";
++      --card-img-filter: none;
+     }
+ 
+     * {
+@@ -100,24 +119,242 @@
+       padding: 0 20px;
+     }
+ 
++    /* Parent Section Semantic Theme & Category Contexts */
++    section {
++      container-type: normal;
++      background: var(--section-bg);
++      padding: 32px 28px;
++      border-radius: 16px;
++      transition: background 0.3s ease, border-color 0.3s ease;
++    }
++
++    section > h2 {
++      text-align: center;
++      color: var(--section-heading-color);
++      font-size: 2rem;
++      margin-bottom: 8px;
++      position: relative;
++    }
++
++    section > h2::after {
++      content: "";
++      display: block;
++      width: 60px;
++      height: 4px;
++      background: var(--section-accent);
++      margin: 10px auto 0;
++      border-radius: 2px;
++    }
++
++    /* Seasonal / Autumn Theme Context (Default for Seasonal Favorites) */
++    section[data-category="seasonal"],
++    section[data-theme="seasonal"],
++    section[data-theme="autumn"],
++    section.seasonal-favorites,
++    section.theme-seasonal,
++    section.theme-autumn,
++    section.category-seasonal {
++      --section-bg: linear-gradient(135deg, #fff8f0 0%, #f7ebe1 100%);
++      --section-heading-color: #8c3b1b;
++      --section-accent: #d96b27;
++      --card-bg: #fffdf9;
++      --card-text: #4a2c1d;
++      --card-heading: #9c3d18;
++      --card-border: rgba(217, 107, 39, 0.25);
++      --card-accent-bar: linear-gradient(90deg, #d96b27, #ffab40);
++      --card-shadow: 0 6px 16px rgba(156, 61, 24, 0.08);
++      --card-shadow-hover: 0 12px 28px rgba(156, 61, 24, 0.18);
++      --card-btn-bg: #bf4f1a;
++      --card-btn-hover: #8c3b1b;
++      --card-btn-text: #ffffff;
++      --card-badge-bg: #fde6d2;
++      --card-badge-color: #9c3d18;
++      --card-badge-label: "Seasonal Pick";
++      --card-img-filter: sepia(12%) saturate(115%);
++      border: 1px solid rgba(217, 107, 39, 0.18);
++    }
++
++    /* Winter / Holiday Theme Context */
++    section[data-theme="winter"],
++    section.theme-winter {
++      --section-bg: linear-gradient(135deg, #f3f7fa 0%, #e4eef5 100%);
++      --section-heading-color: #1b3a4b;
++      --section-accent: #2e6f95;
++      --card-bg: #ffffff;
++      --card-text: #27404e;
++      --card-heading: #1b4965;
++      --card-border: rgba(46, 111, 149, 0.22);
++      --card-accent-bar: linear-gradient(90deg, #1b4965, #62b6cb);
++      --card-shadow: 0 6px 16px rgba(27, 73, 101, 0.08);
++      --card-shadow-hover: 0 12px 28px rgba(27, 73, 101, 0.18);
++      --card-btn-bg: #1b4965;
++      --card-btn-hover: #123246;
++      --card-btn-text: #ffffff;
++      --card-badge-bg: #dceef8;
++      --card-badge-color: #1b4965;
++      --card-badge-label: "Winter Warmth";
++      --card-img-filter: contrast(105%) brightness(102%);
++      border: 1px solid rgba(46, 111, 149, 0.18);
++    }
++
++    /* Spring / Botanical Theme Context */
++    section[data-theme="spring"],
++    section.theme-spring {
++      --section-bg: linear-gradient(135deg, #f4fbf7 0%, #e6f4ea 100%);
++      --section-heading-color: #23533a;
++      --section-accent: #40916c;
++      --card-bg: #ffffff;
++      --card-text: #2d4a3a;
++      --card-heading: #2d6a4f;
++      --card-border: rgba(64, 145, 108, 0.22);
++      --card-accent-bar: linear-gradient(90deg, #2d6a4f, #74c69d);
++      --card-shadow: 0 6px 16px rgba(45, 106, 79, 0.08);
++      --card-shadow-hover: 0 12px 28px rgba(45, 106, 79, 0.18);
++      --card-btn-bg: #2d6a4f;
++      --card-btn-hover: #1b4332;
++      --card-btn-text: #ffffff;
++      --card-badge-bg: #d8f3dc;
++      --card-badge-color: #1b4332;
++      --card-badge-label: "Spring Harvest";
++      --card-img-filter: saturate(110%);
++      border: 1px solid rgba(64, 145, 108, 0.18);
++    }
++
++    /* Summer / Refreshers & Cold Brew Context */
++    section[data-theme="summer"],
++    section[data-category="cold-brew"],
++    section.theme-summer,
++    section.category-cold-brew {
++      --section-bg: linear-gradient(135deg, #fffdf2 0%, #fef3c7 100%);
++      --section-heading-color: #92400e;
++      --section-accent: #f59e0b;
++      --card-bg: #ffffff;
++      --card-text: #451a03;
++      --card-heading: #b45309;
++      --card-border: rgba(245, 158, 11, 0.28);
++      --card-accent-bar: linear-gradient(90deg, #f59e0b, #fbbf24);
++      --card-shadow: 0 6px 16px rgba(180, 83, 9, 0.08);
++      --card-shadow-hover: 0 12px 28px rgba(180, 83, 9, 0.18);
++      --card-btn-bg: #d97706;
++      --card-btn-hover: #92400e;
++      --card-btn-text: #ffffff;
++      --card-badge-bg: #fef3c7;
++      --card-badge-color: #92400e;
++      --card-badge-label: "Chilled Craft";
++      --card-img-filter: brightness(104%) saturate(112%);
++      border: 1px solid rgba(245, 158, 11, 0.22);
++    }
++
++    /* Signature / Dark Roast Espresso Context */
++    section[data-theme="dark-roast"],
++    section[data-category="espresso"],
++    section[data-category="signature"],
++    section.theme-dark-roast,
++    section.category-espresso,
++    section.category-signature {
++      --section-bg: linear-gradient(135deg, #2b1d19 0%, #3e2723 100%);
++      --section-heading-color: #ffefe5;
++      --section-accent: #ffab40;
++      --card-bg: #38241f;
++      --card-text: #e6d5cf;
++      --card-heading: #ffcc80;
++      --card-border: rgba(255, 171, 64, 0.25);
++      --card-accent-bar: linear-gradient(90deg, #ffab40, #ffd180);
++      --card-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
++      --card-shadow-hover: 0 14px 30px rgba(0, 0, 0, 0.5);
++      --card-btn-bg: #ffab40;
++      --card-btn-hover: #ff9100;
++      --card-btn-text: #2b1d19;
++      --card-badge-bg: rgba(255, 171, 64, 0.18);
++      --card-badge-color: #ffd180;
++      --card-badge-label: "Bold Roast";
++      --card-img-filter: contrast(112%) brightness(95%);
++      border: 1px solid rgba(255, 171, 64, 0.2);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      gap: 24px;
++      margin-top: 24px;
+     }
+ 
++    /* Context-Adaptive Coffee Card */
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      position: relative;
++      background: var(--card-bg);
++      color: var(--card-text);
++      padding: 24px 20px 22px;
++      border-radius: 12px;
++      border: 1px solid var(--card-border);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      overflow: hidden;
++      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.3s ease, border-color 0.3s ease;
++    }
++
++    /* Top Accent Bar Adapting to Parent Section Context */
++    .card::before {
++      content: "";
++      position: absolute;
++      top: 0;
++      left: 0;
++      right: 0;
++      height: 5px;
++      background: var(--card-accent-bar);
++    }
++
++    /* Automatic Context Badge Driven by Parent Section Theme/Category */
++    .card::after {
++      content: var(--card-badge-label);
++      order: -2;
++      display: inline-block;
++      background: var(--card-badge-bg);
++      color: var(--card-badge-color);
++      font-size: 0.72rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 14px;
++    }
++
++    .card:hover {
++      transform: translateY(-4px);
++      box-shadow: var(--card-shadow-hover);
++    }
++
++    .card-img {
++      order: -1;
++      width: 100%;
++      height: 165px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 14px;
++      filter: var(--card-img-filter);
++      transition: transform 0.35s ease, filter 0.3s ease;
++    }
++
++    .card:hover .card-img {
++      transform: scale(1.03);
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++      font-size: 1.25rem;
++      transition: color 0.3s ease;
++    }
++
++    .card p {
++      color: var(--card-text);
++      font-size: 0.95rem;
++      margin-bottom: 6px;
++      flex-grow: 1;
+     }
+ 
+     .btn {
+@@ -128,13 +365,25 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-weight: 600;
++      transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Buttons inside context-aware cards inherit section theme tokens */
++    .card .btn {
++      background: var(--card-btn-bg);
++      color: var(--card-btn-text);
++      border-radius: 6px;
++    }
++
++    .card .btn:hover {
++      background: var(--card-btn-hover);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,20 +424,23 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="seasonal-favorites theme-seasonal" data-category="seasonal" data-theme="autumn" aria-labelledby="seasonal-favorites-title">
++      <h2 id="seasonal-favorites-title" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

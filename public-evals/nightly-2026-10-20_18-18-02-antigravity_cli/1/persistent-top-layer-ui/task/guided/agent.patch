@@ -1,0 +1,377 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,187 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Trigger & Dock Zones */
++    .feedback-fab {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      padding: 12px 20px;
++      border-radius: 999px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      z-index: 900;
++      transition: transform 0.2s, background 0.2s;
++    }
++
++    .feedback-fab:hover {
++      background: #3e2723;
++      transform: translateY(-2px);
++    }
++
++    .dock-slot {
++      border: 2px dashed rgba(255, 171, 64, 0.5);
++      border-radius: 8px;
++      padding: 8px 14px;
++      font-size: 0.8rem;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .dock-slot-block {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      background: #fff8e1;
++      border-color: var(--accent);
++      color: var(--text);
++      margin-top: 24px;
++      padding: 12px 16px;
++    }
++
++    /* Native Modal Dialog */
++    dialog#feedback-modal {
++      margin: auto;
++      width: min(92vw, 480px);
++      border: none;
++      border-radius: 12px;
++      padding: 24px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
++    }
++
++    dialog#feedback-modal::backdrop {
++      background: rgba(62, 39, 35, 0.55);
++      backdrop-filter: blur(3px);
++    }
++
++    .modal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++      margin-bottom: 14px;
++    }
++
++    .modal-header h2 {
++      font-size: 1.35rem;
++      color: var(--primary);
++    }
++
++    .parent-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.78rem;
++      font-weight: 600;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 14px;
++    }
++
++    .feedback-form {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .feedback-form label {
++      font-size: 0.88rem;
++      font-weight: 600;
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .feedback-form select,
++    .feedback-form input,
++    .feedback-form textarea {
++      font: inherit;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .feedback-form select:focus,
++    .feedback-form input:focus,
++    .feedback-form textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .reparent-toolbar {
++      background: #f5f0ee;
++      border-radius: 8px;
++      padding: 10px 12px;
++      margin-top: 4px;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 8px;
++    }
++
++    .reparent-toolbar span {
++      font-size: 0.82rem;
++      font-weight: 600;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 8px;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++      border: none;
++      padding: 8px 14px;
++      border-radius: 6px;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 16px;
++      border-radius: 6px;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 7px 12px;
++      border-radius: 6px;
++      font-size: 0.82rem;
++      font-weight: 700;
++      cursor: pointer;
++    }
++
++    .status-toast {
++      margin-top: 8px;
++      font-size: 0.8rem;
++      color: var(--primary);
++      min-height: 1.2em;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,15 +346,15 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero-dock-container" data-dock-label="Hero Banner Container (#hero-dock-container)">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-dock-container" data-dock-label="Main Content Container (#main-dock-container)">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -193,12 +372,63 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="dock-slot dock-slot-block" id="feedback-host-main" data-dock-label="Main Feedback Host (#feedback-host-main)">
++        <span>Feedback Modal DOM Host Container</span>
++        <button type="button" class="btn-primary" id="open-feedback-inline">Give Feedback</button>
++      </div>
++
++      <dialog id="feedback-modal" closedby="any" aria-labelledby="feedback-modal-title">
++        <div class="modal-header">
++          <h2 id="feedback-modal-title">Share Your Coffee Feedback</h2>
++          <button type="button" class="btn-secondary" id="close-feedback-btn" aria-label="Close feedback modal">Close</button>
++        </div>
++
++        <div class="parent-badge" id="modal-parent-indicator">
++          Current DOM Parent: #main-dock-container
++        </div>
++
++        <form method="dialog" class="feedback-form" id="feedback-form">
++          <label for="feedback-drink">
++            Favorite Drink
++            <select id="feedback-drink" name="drink">
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">18-Hour Cold Brew</option>
++            </select>
++          </label>
++
++          <label for="feedback-name">
++            Your Name
++            <input type="text" id="feedback-name" name="name" autocomplete="name" placeholder="Alex Rivera">
++          </label>
++
++          <label for="feedback-notes">
++            Tasting Notes &amp; Suggestions
++            <textarea id="feedback-notes" name="notes" rows="3" placeholder="Tell us how your brew tasted while testing DOM reparenting..."></textarea>
++          </label>
++
++          <div class="reparent-toolbar">
++            <span>Relocate open modal in DOM:</span>
++            <button type="button" class="btn-accent" id="move-modal-btn">
++              Move Modal Container
++            </button>
++          </div>
++
++          <p class="status-toast" id="reparent-status" aria-live="polite"></p>
++
++          <div class="modal-actions">
++            <button type="submit" value="cancel" formnovalidate class="btn-secondary">Cancel</button>
++            <button type="submit" value="submit" class="btn-primary">Submit Feedback</button>
++          </div>
++        </form>
++      </dialog>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="footer-dock-container" data-dock-label="Footer Container (#footer-dock-container)">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +436,102 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="feedback-fab" id="open-feedback-fab" aria-haspopup="dialog" aria-controls="feedback-modal">
++    Feedback
++  </button>
++
++  <script>
++    const feedbackDialog = document.getElementById('feedback-modal');
++    const openFabBtn = document.getElementById('open-feedback-fab');
++    const openInlineBtn = document.getElementById('open-feedback-inline');
++    const closeBtn = document.getElementById('close-feedback-btn');
++    const moveModalBtn = document.getElementById('move-modal-btn');
++    const parentIndicator = document.getElementById('modal-parent-indicator');
++    const reparentStatus = document.getElementById('reparent-status');
++    const feedbackNotes = document.getElementById('feedback-notes');
++
++    const dockContainers = [
++      document.getElementById('feedback-host-main'),
++      document.getElementById('hero-dock-container'),
++      document.getElementById('footer-dock-container'),
++    ];
++    let currentDockIndex = 0;
++
++    function updateParentIndicator(methodUsed) {
++      const parent = feedbackDialog.parentElement;
++      const label = parent?.dataset.dockLabel || (parent ? `#${parent.id || parent.tagName.toLowerCase()}` : 'unknown');
++      parentIndicator.textContent = `Current DOM Parent: ${label}`;
++      if (methodUsed) {
++        reparentStatus.textContent = `Relocated to ${label} via ${methodUsed} (modal remained open).`;
++      }
++    }
++
++    function openFeedbackModal() {
++      if (!feedbackDialog.open) {
++        feedbackDialog.showModal();
++        feedbackNotes.focus();
++      }
++      updateParentIndicator();
++    }
++
++    function moveFeedbackModal(targetContainer) {
++      const activeEl = document.activeElement;
++      const hadFocusInside = feedbackDialog.contains(activeEl);
++      const selectionStart = activeEl && 'selectionStart' in activeEl ? activeEl.selectionStart : null;
++      const selectionEnd = activeEl && 'selectionEnd' in activeEl ? activeEl.selectionEnd : null;
++
++      // MANDATORY: Use moveBefore to ensure the <dialog> or popover stays open.
++      if ('moveBefore' in Element.prototype) {
++        targetContainer.moveBefore(feedbackDialog, null);
++        if (hadFocusInside && activeEl && document.activeElement !== activeEl) {
++          activeEl.focus();
++        }
++        updateParentIndicator('Element.prototype.moveBefore()');
++      } else {
++        // Fallback: traditional move.
++        // Note: This WILL close <dialog>, popover, and fullscreen elements.
++        const wasOpen = feedbackDialog.hasAttribute('open') || feedbackDialog.matches(':popover-open');
++        targetContainer.insertBefore(feedbackDialog, null);
++
++        // Manually restore state if possible
++        if (wasOpen && typeof feedbackDialog.showModal === 'function') {
++          feedbackDialog.showModal();
++        } else if (wasOpen && typeof feedbackDialog.showPopover === 'function') {
++          feedbackDialog.showPopover();
++        }
++
++        if (hadFocusInside && activeEl && typeof activeEl.focus === 'function') {
++          activeEl.focus();
++          if (selectionStart !== null && selectionEnd !== null && typeof activeEl.setSelectionRange === 'function') {
++            try {
++              activeEl.setSelectionRange(selectionStart, selectionEnd);
++            } catch {
++              // Ignore inputs that do not support selection ranges
++            }
++          }
++        }
++        updateParentIndicator('insertBefore() fallback + showModal()');
++      }
++    }
++
++    // Place dialog initially inside #feedback-host-main
++    moveFeedbackModal(dockContainers[0]);
++    reparentStatus.textContent = '';
++
++    openFabBtn.addEventListener('click', openFeedbackModal);
++    openInlineBtn.addEventListener('click', openFeedbackModal);
++
++    closeBtn.addEventListener('click', () => {
++      feedbackDialog.close('cancel');
++    });
++
++    moveModalBtn.addEventListener('click', () => {
++      currentDockIndex = (currentDockIndex + 1) % dockContainers.length;
++      const nextContainer = dockContainers[currentDockIndex];
++      moveFeedbackModal(nextContainer);
++    });
++  </script>
+ </body>
+ 
+ </html>

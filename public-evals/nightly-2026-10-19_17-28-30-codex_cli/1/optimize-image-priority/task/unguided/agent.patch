@@ -1,0 +1,89 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,85 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#f6f5f0">
++  <meta name="description" content="The Arc lamp by Forme. A quieter kind of light, thoughtfully made for everyday living.">
++  <title>Forme — A quieter kind of light</title>
++  <link rel="preload" as="image" href="hero-lcp.jpg" fetchpriority="high">
++  <style>
++    :root{--paper:#f6f5f0;--ink:#30372b;--muted:#74786d;--line:#dcded3;--green:#3e4b34}
++    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}button,a{-webkit-tap-highlight-color:transparent}a{color:inherit;text-decoration:none}button{font:inherit;color:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid var(--green);outline-offset:6px}[hidden]{display:none!important}
++    .wrap{max-width:1600px;margin:auto;padding:0 5%}header{height:103px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);position:relative}.wordmark{font-size:35px;font-weight:600;letter-spacing:-2px}.wordmark span{color:#8c967d}nav{display:flex;align-items:center;gap:35px;font-size:12px}nav button{border:0;padding:0;background:none}.nav-arrow{font-size:10px;margin-left:6px}.nav-right{display:flex;align-items:center;gap:29px;font-size:12px}.bag{display:inline-flex;align-items:center;gap:9px}.bag svg{width:16px;height:18px}.menu-panel{position:absolute;top:86px;left:0;right:0;z-index:5;background:var(--paper);border:1px solid var(--line);padding:25px;box-shadow:0 15px 25px #30372b0a;display:flex;justify-content:space-between;gap:30px}.menu-links{display:flex;flex-direction:column;gap:20px;padding:15px}.menu-panel img{width:270px;height:170px;object-fit:cover;background:#e7e5db;font-size:12px}
++    .hero{display:grid;grid-template-columns:43% 57%;padding:48px 0 30px;min-height:652px}.hero-copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:20px 50px 40px 0}.eyebrow{font-size:10px;letter-spacing:2px;text-transform:uppercase;display:flex;align-items:center;gap:9px}.dot{height:5px;width:5px;border-radius:50%;background:#7b876b}h1{font-size:clamp(48px,5.2vw,78px);font-weight:400;letter-spacing:-4px;line-height:1.06;margin:27px 0 22px}h1 em{font-family:Georgia,serif;font-weight:400}.intro{font-size:14px;line-height:1.85;max-width:290px;color:var(--muted);margin:0 0 30px}.cta{background:var(--green);color:var(--paper);padding:18px 23px;display:inline-flex;gap:48px;align-items:center;font-size:12px;border:1px solid var(--green)}.cta:hover{background:#303b28}.small-note{font-size:10px;color:var(--muted);margin-top:18px;display:flex;gap:8px;align-items:center}.hero-art{position:relative;min-width:0;background:#e8e4da}.hero-image{display:block;width:100%;height:550px;object-fit:cover;color:#8b897e;font-size:11px}.image-label{position:absolute;left:24px;bottom:23px;font-size:10px;letter-spacing:1px;text-transform:uppercase}.image-number{position:absolute;right:24px;bottom:23px;font-size:10px}.benefits{border-bottom:1px solid var(--line);display:flex;justify-content:space-between;padding:21px 0 30px;font-size:10px;color:var(--muted)}.benefits span{display:flex;gap:10px;align-items:center}.benefits b{font-weight:400;color:var(--ink)}.benefits i{font-style:normal;font-size:16px;color:#828b76}
++    .gallery-section{padding:85px 0 80px}.section-heading{display:flex;align-items:end;justify-content:space-between;margin-bottom:28px}.section-heading h2{font-size:30px;font-weight:400;letter-spacing:-1px;margin:11px 0 0}.section-heading p{font-size:12px;color:var(--muted);margin:0}.gallery-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:8%}.gallery-frame{background:#e9e8df;position:relative}.gallery-frame img{display:block;width:100%;height:360px;object-fit:cover;font-size:11px;color:#8b897e}.gallery-caption{position:absolute;bottom:20px;left:22px;font-size:10px;letter-spacing:1px;text-transform:uppercase}.product-detail{align-self:center}.product-detail h3{font-size:29px;font-weight:400;letter-spacing:-1px;margin:0 0 10px}.price{font-size:14px;margin:0 0 24px}.detail-text{font-size:13px;line-height:1.9;color:var(--muted);max-width:310px}.view-controls{display:flex;gap:22px;margin-top:28px}.view-controls button{background:none;border:0;border-bottom:1px solid transparent;padding:8px 0;font-size:11px;color:var(--muted)}.view-controls button[aria-pressed="true"]{border-color:var(--ink);color:var(--ink)}.finish{font-size:10px;margin:25px 0;display:flex;align-items:center;gap:10px}.swatch{width:17px;height:17px;border-radius:50%;background:#898c70;outline:1px solid #a0a28d;outline-offset:3px}.story{padding:65px 20px 90px;border-top:1px solid var(--line);text-align:center}.story h2{font-family:Georgia,serif;font-size:38px;font-weight:400;line-height:1.3;letter-spacing:-1px;margin:22px auto;max-width:530px}.story p{font-size:12px;color:var(--muted);line-height:1.8}.story .eyebrow{justify-content:center}footer{border-top:1px solid var(--line);min-height:210px;padding:42px 0;display:flex;justify-content:space-between;align-items:flex-start}footer img{width:100px;height:35px;object-fit:contain;font-size:20px;font-weight:600}footer p{font-size:10px;color:var(--muted);margin-top:20px}.footer-links{display:flex;gap:30px;font-size:11px;padding-top:10px}
++    @media(min-width:1500px){.hero-image{height:650px}}@media(max-width:760px){.wrap{padding:0 6%}header{height:80px}.wordmark{font-size:30px}nav{gap:18px}.nav-right>a{display:none}.nav-right{gap:0}nav>a{display:none}.hero{grid-template-columns:1fr;padding-top:15px}.hero-copy{padding:35px 0 40px}h1{font-size:58px;letter-spacing:-3px;margin:22px 0}.intro{max-width:320px}.hero-image{height:440px}.benefits{gap:15px;flex-wrap:wrap;line-height:1.5}.benefits span:last-child{display:none}.gallery-section{padding:55px 0}.section-heading{align-items:start;gap:20px}.section-heading h2{font-size:26px}.section-heading p{max-width:110px;line-height:1.6}.gallery-grid{grid-template-columns:1fr;gap:30px}.gallery-frame img{height:340px}.product-detail{padding:0 5px}.story{padding:50px 0 65px}.story h2{font-size:30px}footer{gap:35px;min-height:220px}.footer-links{flex-direction:column;gap:18px}.menu-panel{top:70px}.menu-panel img{width:45%;height:150px}}
++  </style>
++</head>
++<body>
++  <div class="wrap">
++    <header>
++      <a class="wordmark" href="#" aria-label="Forme home">forme<span>.</span></a>
++      <nav aria-label="Main navigation">
++        <button id="menu-toggle" aria-expanded="false" aria-controls="shop-menu">Shop <span class="nav-arrow" aria-hidden="true">⌄</span></button>
++        <a href="#philosophy">Our philosophy</a>
++      </nav>
++      <div class="nav-right"><a href="#footer">Get in touch</a><a class="bag" href="#product" aria-label="Explore the Arc lamp"><svg viewBox="0 0 18 20" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3 6h12l1 12H2L3 6Z"/><path d="M6 7V4a3 3 0 0 1 6 0v3"/></svg><span>Explore</span></a></div>
++      <div class="menu-panel" id="shop-menu" hidden>
++        <div class="menu-links"><a href="#product">The Arc lamp ↗</a><a href="#philosophy">Made with intention ↗</a></div>
++        <img src="mega-menu-promo.jpg" alt="Discover the Forme lighting collection" width="270" height="170" loading="lazy" fetchpriority="low" decoding="async">
++      </div>
++    </header>
++    <main>
++      <section class="hero" aria-labelledby="hero-title">
++        <div class="hero-copy">
++          <div class="eyebrow"><span class="dot"></span> Objects for everyday living</div>
++          <h1 id="hero-title">A quieter<br>kind of <em>light.</em></h1>
++          <p class="intro">Meet Arc. Sculptural by nature, warm by design. A little more atmosphere for the spaces you call home.</p>
++          <a href="#product" class="cta">Discover the Arc lamp <span aria-hidden="true">↗</span></a>
++          <div class="small-note"><span aria-hidden="true">↳</span> Considered design. Made to stay.</div>
++        </div>
++        <div class="hero-art">
++          <img class="hero-image" src="hero-lcp.jpg" alt="The Arc lamp in a softly lit living space" width="900" height="850" loading="eager" fetchpriority="high">
++          <span class="image-label">The Arc collection</span><span class="image-number">01 / 01</span>
++        </div>
++      </section>
++      <div class="benefits" aria-label="Our commitments"><span><i aria-hidden="true">◌</i><b>Thoughtfully made</b> Every detail considered</span><span><i aria-hidden="true">↗</i><b>Complimentary shipping</b> On every Arc lamp</span><span><i aria-hidden="true">⟲</i><b>Made for the long run</b> Timeless, by design</span></div>
++      <section class="gallery-section" id="product" aria-labelledby="product-heading">
++        <div class="section-heading"><div><div class="eyebrow">A closer look</div><h2 id="product-heading">Simple form. Lasting presence.</h2></div><p>Good design feels right at home.</p></div>
++        <div class="gallery-grid">
++          <div class="gallery-frame" aria-live="polite">
++            <img id="gallery-first" src="hero-lcp.jpg" alt="Arc lamp, styled in a living space" width="750" height="500" loading="lazy" decoding="async">
++            <img id="gallery-alt" src="gallery-alt.jpg" alt="A closer view of the Arc lamp’s shape and finish" width="750" height="500" loading="lazy" fetchpriority="low" decoding="async" hidden>
++            <span class="gallery-caption" id="gallery-caption">01 — In your space</span>
++          </div>
++          <div class="product-detail"><h3>The Arc lamp</h3><p class="price">$189</p><p class="detail-text">Soft curves. A warm, diffused glow. An everyday object that brings a sense of calm to any corner.</p><div class="finish"><span class="swatch" aria-hidden="true"></span> Finish — Soft olive</div><div class="view-controls" role="group" aria-label="Product image view"><button type="button" data-view="first" aria-pressed="true" aria-controls="gallery-first">01 &nbsp; In your space</button><button type="button" data-view="alt" aria-pressed="false" aria-controls="gallery-alt">02 &nbsp; The details</button></div></div>
++        </div>
++      </section>
++      <section class="story" id="philosophy"><div class="eyebrow">Less, but considered</div><h2>For the everyday moments<br>that make a home.</h2><p>We believe in fewer, better things.<br>Honest materials, thoughtful details, and a place in your life for years to come.</p></section>
++    </main>
++    <footer id="footer"><div><img src="footer-logo.png" alt="Forme" width="100" height="35" loading="lazy" fetchpriority="low" decoding="async"><p>© <span id="year">2026</span> Forme. A little less, a little better.</p></div><div class="footer-links"><a href="#product">Explore Arc</a><a href="#philosophy">Our philosophy</a><a href="mailto:hello@forme.example">Get in touch ↗</a></div></footer>
++  </div>
++  <script>
++    const menuToggle = document.getElementById('menu-toggle');
++    const menu = document.getElementById('shop-menu');
++    function closeMenu() { menu.hidden = true; menuToggle.setAttribute('aria-expanded', 'false'); }
++    menuToggle.addEventListener('click', () => {
++      const open = menuToggle.getAttribute('aria-expanded') !== 'true';
++      menu.hidden = !open;
++      menuToggle.setAttribute('aria-expanded', String(open));
++    });
++    document.addEventListener('click', event => { if (!menu.contains(event.target) && !menuToggle.contains(event.target)) closeMenu(); });
++    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !menu.hidden) { closeMenu(); menuToggle.focus(); } });
++    menu.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
++    document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
++      const alternate = button.dataset.view === 'alt';
++      document.getElementById('gallery-first').hidden = alternate;
++      document.getElementById('gallery-alt').hidden = !alternate;
++      document.getElementById('gallery-caption').textContent = alternate ? '02 — The details' : '01 — In your space';
++      document.querySelectorAll('[data-view]').forEach(control => control.setAttribute('aria-pressed', String(control === button)));
++    }));
++    document.getElementById('year').textContent = new Date().getFullYear();
++  </script>
++</body>
++</html>

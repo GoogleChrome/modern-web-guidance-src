@@ -1,0 +1,363 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,10 +26,10 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* Top bar */
++    .topbar {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,34 +45,184 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .menu-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 44px;
++      height: 44px;
++      background: transparent;
++      color: white;
++      border: 1px solid var(--accent);
++      border-radius: 4px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .menu-button:hover {
++      background: #3e2723;
++    }
++
++    .menu-button svg {
++      width: 24px;
++      height: 24px;
++      fill: currentColor;
++    }
++
++    /* Navigation drawer */
++    .Drawer {
++      /* Cap the sheet width on large screens; on a phone leave a 20% peek of
++         page content visible as the "tap outside to dismiss" affordance. */
++      --drawer-width: min(20em, 80dvw);
++
++      /* 0 = closed (transparent backdrop), 1 = open (visible backdrop).
++         Driven by the scroll-driven animation below (or JS fallback). */
++      --drawer-backdrop: 0;
++
++      /* Reset UA popover styles so the popover fills the viewport. */
++      width: auto;
++      height: auto;
++      padding: 0;
++      margin: 0;
++      background: transparent;
++      border: 0;
++      overflow: visible;
++      color: var(--text);
++    }
++
++    .Drawer::backdrop {
++      background: #000;
++      opacity: calc(var(--drawer-backdrop) / 2);
++    }
++
++    .Drawer-scroller {
++      position: relative;
++      display: grid;
++      /* Sheet on the left, full-viewport spacer on the right. Snapping
++         between the two columns opens and closes the drawer. */
++      grid-template-columns: var(--drawer-width) 100%;
++      overflow-x: scroll;
++      /* Don't chain the swipe into the page's vertical scroll. */
++      overscroll-behavior: none;
++      scrollbar-width: none;
++      /* Always settle fully open or fully closed, never half-way. */
++      scroll-snap-type: x mandatory;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .Drawer-scroller {
++        scroll-behavior: smooth;
++      }
++    }
++
++    /* Empty spacer that creates the "closed" snap stop. */
++    .Drawer-scroller::after {
++      content: '';
++      scroll-snap-align: end;
++      /* Open already scrolled to the closed stop so the drawer slides in. */
++      scroll-initial-target: nearest;
++    }
++
++    .Drawer-sheet {
++      display: grid;
++      grid-template-rows: auto 1fr;
++      /* svh so the sheet doesn't jump when the mobile address bar resizes. */
++      height: 100svh;
++      background: var(--light);
++      box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3);
++      overflow-y: auto;
++      scroll-snap-align: start;
++      scrollbar-width: none;
++      outline: none;
++    }
++
++    .Drawer-header {
+       display: flex;
+-      list-style: none;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1rem 1.25rem;
++      background: var(--primary);
++      color: white;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .Drawer-header .logo {
++      font-size: 1.1rem;
+     }
+ 
+-    nav a {
++    .Drawer-close {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 44px;
++      height: 44px;
++      background: transparent;
+       color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      border: 0;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 1.5rem;
++      line-height: 1;
+     }
+ 
+-    nav a:hover {
++    .Drawer-close:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
++    .Drawer-sheet ul {
++      list-style: none;
++      padding: 0.5rem 0;
++    }
++
++    .Drawer-sheet a {
++      display: block;
++      padding: 0.9rem 1.5rem;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 1rem;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .Drawer-sheet a:hover,
++    .Drawer-sheet a:focus-visible {
++      background: var(--secondary);
++      color: var(--primary);
++    }
++
++    .Drawer-sheet .logout-link {
++      margin: 1rem 1.5rem 0;
++      padding: 0.6rem 1rem;
++      border: 1px solid var(--primary);
+       border-radius: 4px;
++      text-align: center;
+     }
+ 
++    /* Tie backdrop opacity to the swipe position. Wrapped in @supports so
++       browsers without animation-timeline never apply the 0% keyframe. */
++    @supports (animation-timeline: scroll()) {
++      .Drawer {
++        timeline-scope: --drawer-fade;
++        animation: fade-drawer-backdrop linear both;
++        animation-timeline: --drawer-fade;
++      }
++
++      .Drawer-scroller {
++        scroll-timeline: --drawer-fade x;
++      }
++
++      @property --drawer-backdrop {
++        syntax: '<number>';
++        inherits: true;
++        initial-value: 0;
++      }
++
++      @keyframes fade-drawer-backdrop {
++        0% { --drawer-backdrop: 1 }
++        100% { --drawer-backdrop: 0 }
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -156,24 +306,44 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <!-- popover="manual" is required: the browser's built-in light-dismiss
++       would also fire mid-swipe, so dismissal is handled in JS below. -->
++  <div class="Drawer" id="drawer" popover="manual">
++    <div class="Drawer-scroller">
++      <nav class="Drawer-sheet" tabindex="-1" aria-label="Main navigation">
++        <div class="Drawer-header">
++          <span class="logo">THE DAILY GRIND</span>
++          <button type="button" class="Drawer-close" id="drawer-close" aria-label="Close menu">&times;</button>
++        </div>
++        <ul>
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </nav>
++    </div>
++  </div>
++
++  <div id="page">
++  <header class="topbar">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <button type="button" class="menu-button" id="drawer-open"
++            aria-label="Menu" aria-expanded="false" aria-controls="drawer">
++      <svg aria-hidden="true" viewBox="0 0 24 24">
++        <path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/>
++      </svg>
++    </button>
++  </header>
+ 
+-  <header class="hero">
++  <section class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  </section>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -205,8 +375,93 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  </div>
+ 
++  <script>
++    const drawer = document.getElementById('drawer');
++    const openBtn = document.getElementById('drawer-open');
++    const closeBtn = document.getElementById('drawer-close');
++    const page = document.getElementById('page');
++    const scroller = drawer.querySelector('.Drawer-scroller');
++    const sheet = drawer.querySelector('.Drawer-sheet');
++    let isOpen = false;
++
++    async function openDrawer() {
++      // Promote to the top layer first; scroll-initial-target places the
++      // scroller at the closed stop so the sheet starts off-screen.
++      drawer.showPopover();
++
++      if (!CSS.supports('scroll-initial-target', 'nearest')) {
++        // Jump to the closed stop so the scroll below animates the sheet in.
++        scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'instant' });
++        // Two frames: a single rAF isn't enough for the jump to commit.
++        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
++      }
++
++      // behavior: 'auto' defers to CSS scroll-behavior (smooth unless the
++      // user prefers reduced motion); snap locks it fully open at the end.
++      scroller.scrollTo({ left: 0, behavior: 'auto' });
++    }
++
++    function closeDrawer() {
++      if (!drawer.matches(':popover-open')) return;
++      // Don't hidePopover() here: the IntersectionObserver hides it once the
++      // sheet has actually left the viewport, so the slide-out is visible.
++      scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'auto' });
++    }
++
++    function onDrawerOpened() {
++      isOpen = true;
++      page.inert = true;
++      openBtn.setAttribute('aria-expanded', 'true');
++      sheet.focus();
++    }
++
++    function onDrawerClosed() {
++      if (!isOpen) return;
++      isOpen = false;
++      drawer.hidePopover();
++      page.inert = false;
++      openBtn.setAttribute('aria-expanded', 'false');
++      openBtn.focus();
++    }
++
++    // The sheet's visibility inside the popover is the source of truth, so
++    // swipe, backdrop tap, Escape and the close button all converge here.
++    const visibleThreshold = 1 / window.innerWidth;
++    const observer = new IntersectionObserver(
++      (entries) => {
++        const entry = entries.at(-1);
++        if (entry.intersectionRatio < visibleThreshold) onDrawerClosed();
++        if (entry.intersectionRatio === 1) onDrawerOpened();
++      },
++      { root: drawer, threshold: [visibleThreshold, 1] },
++    );
++    observer.observe(sheet);
++
++    openBtn.addEventListener('click', openDrawer);
++    closeBtn.addEventListener('click', closeDrawer);
++
++    // Light dismiss: a tap anywhere in the popover outside the sheet.
++    drawer.addEventListener('click', (event) => {
++      if (!sheet.contains(event.target)) closeDrawer();
++    });
++
++    // Escape: listen on document since focus may be inside the drawer.
++    document.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape') closeDrawer();
++    });
++
++    // Backdrop fade fallback for browsers without scroll-driven animations.
++    if (!CSS.supports('animation-timeline: scroll()')) {
++      scroller.addEventListener('scroll', () => {
++        const ratio = 1 - scroller.scrollLeft / sheet.offsetWidth;
++        drawer.style.setProperty('--drawer-backdrop', Math.min(1, Math.max(0, ratio)));
++      }, { passive: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

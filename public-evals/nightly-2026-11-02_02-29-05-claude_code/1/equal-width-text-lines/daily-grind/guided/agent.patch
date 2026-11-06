@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+index 66c9173..91a7dbe 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +85,36 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
++    /* Poster-style lockup: each forced line is scaled to the same width */
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      /* Definite width: text-fit has no effect on content-sized flex items */
++      width: min(100%, 34rem);
++      margin-bottom: 1.5rem;
++      display: flex;
++      flex-direction: column;
++      gap: 0.35rem;
++      font-size: 2rem;
++      line-height: 1;
++      text-transform: uppercase;
++      text-fit: grow per-line-all 500%;
++    }
++
++    .hero h1 > span {
++      display: block;
++      white-space: nowrap;
++      text-box: trim-both cap alphabetic;
++    }
++
++    @supports not (text-fit: grow) {
++      .hero h1 > span {
++        width: fit-content;
++        align-self: center;
++        /* --text-fit-scale is measured by the script; the cap mirrors the text-fit percentage */
++        font-size: min(var(--text-fit-scale, 1) * 1em, 500%);
++      }
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +193,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="lockup">
++      <span>Wake Up</span>
++      <span>Your</span>
++      <span>Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +235,24 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('text-fit', 'grow per-line-all')) {
++      const fit = lockup => {
++        const lines = [...lockup.querySelectorAll(':scope > span')];
++        // Unscale first: on a refit, offsetWidth would otherwise include the previous scale
++        for (const line of lines) line.style.removeProperty('--text-fit-scale');
++        // All reads, then all writes, to avoid one reflow per line
++        const scales = lines.map(line => lockup.clientWidth / line.offsetWidth);
++        lines.forEach((line, i) => line.style.setProperty('--text-fit-scale', scales[i]));
++      };
++      // Refit on resize and font load
++      for (const lockup of document.querySelectorAll('.lockup')) {
++        new ResizeObserver(() => fit(lockup)).observe(lockup);
++      }
++      document.fonts.ready.then(() => document.querySelectorAll('.lockup').forEach(fit));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

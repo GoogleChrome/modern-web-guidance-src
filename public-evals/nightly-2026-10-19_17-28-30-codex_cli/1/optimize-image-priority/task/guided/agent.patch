@@ -1,0 +1,182 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,178 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#f7f6f2">
++  <meta name="description" content="Meet the Everyday Lamp by Forma. A considered object, a softer glow, and a little more calm in your everyday.">
++  <title>Forma — Light for the everyday</title>
++  <style>
++    :root { color-scheme: light; --paper: #f7f6f2; --ink: #292d27; --muted: #73766d; --line: #dedfd7; --accent: #b84b2b; }
++    * { box-sizing: border-box; }
++    body { margin: 0; background: var(--paper); color: var(--ink); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; }
++    a { color: inherit; text-decoration: none; }
++    button, summary { font: inherit; cursor: pointer; }
++    button { color: inherit; }
++    a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
++    [hidden] { display: none !important; }
++    .wrap { width: min(1440px, 100%); margin-inline: auto; padding-inline: 5%; }
++    .skip { position: absolute; top: -70px; left: 20px; z-index: 5; padding: 12px; background: var(--paper); }
++    .skip:focus { top: 10px; }
++    header { position: relative; display: flex; align-items: center; justify-content: space-between; height: 104px; border-bottom: 1px solid var(--line); }
++    .wordmark { font-size: 33px; font-weight: 700; letter-spacing: -2px; }
++    nav { display: flex; align-items: center; gap: 34px; font-size: 13px; }
++    .menu summary { list-style: none; display: flex; align-items: center; gap: 9px; }
++    .menu summary::-webkit-details-marker { display: none; }
++    .menu summary::after { content: '+'; font-size: 17px; font-weight: 400; }
++    .menu[open] summary::after { content: '−'; }
++    .menu-panel { position: absolute; z-index: 3; top: 88px; right: 0; width: min(420px, 100%); padding: 24px; border: 1px solid var(--line); background: var(--paper); box-shadow: 0 16px 30px #292d270a; }
++    .menu-panel img { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; object-fit: cover; background: #e7e7df; color: var(--muted); font-size: 12px; }
++    .menu-panel a { display: flex; justify-content: space-between; margin-top: 20px; }
++    .header-note { font-size: 11px; color: var(--muted); }
++    .hero { display: grid; grid-template-columns: .85fr 1.15fr; gap: 7%; padding-block: 58px 42px; align-items: center; }
++    .eyebrow { margin: 0 0 30px; display: flex; align-items: center; gap: 9px; font-size: 10px; font-weight: 400; text-transform: uppercase; letter-spacing: 2px; }
++    .eyebrow::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
++    h1 { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: clamp(48px, 5.5vw, 82px); line-height: 1.04; letter-spacing: -3px; }
++    h1 em { font-weight: 400; color: #777e6a; }
++    .intro { max-width: 275px; margin: 26px 0 32px; color: var(--muted); font-size: 14px; line-height: 1.8; }
++    .cta { display: inline-flex; align-items: center; justify-content: space-between; gap: 40px; padding: 16px 22px; background: var(--ink); color: var(--paper); font-size: 12px; }
++    .cta:hover { background: #444b3d; }
++    .product-note { display: block; margin-top: 20px; color: var(--muted); font-size: 10px; }
++    .gallery { min-width: 0; margin: 0; }
++    .gallery-stage { position: relative; background: #e9e9e1; }
++    .gallery-stage img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; color: #7e8276; font-size: 12px; }
++    .edition { position: absolute; top: 20px; left: 20px; font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; pointer-events: none; }
++    .image-index { position: absolute; right: 20px; bottom: 20px; color: #6e7565; font-size: 10px; letter-spacing: 1px; }
++    .gallery-caption { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-top: 18px; }
++    .product-name { margin: 0 0 5px; font-size: 12px; font-weight: 400; }
++    .product-finish { margin: 0; font-size: 10px; color: var(--muted); }
++    .gallery-controls { display: flex; gap: 6px; }
++    .view-button { width: 29px; height: 29px; border: 1px solid var(--line); border-radius: 50%; background: transparent; font-size: 10px; }
++    .view-button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
++    .quiet-strip { display: flex; justify-content: space-between; padding-block: 23px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; letter-spacing: .4px; }
++    .quiet-strip span { display: flex; gap: 10px; align-items: center; }
++    .quiet-strip i { font-size: 13px; font-style: normal; color: #878e7a; }
++    .approach { min-height: 570px; padding-block: 122px 90px; display: grid; grid-template-columns: 1fr 1fr; gap: 7%; }
++    .section-label { margin: 0; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
++    h2 { max-width: 500px; margin: 0 0 24px; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(32px, 3.4vw, 48px); line-height: 1.15; letter-spacing: -1.5px; font-weight: 400; }
++    .approach-copy > p { max-width: 360px; font-size: 13px; color: var(--muted); line-height: 1.9; }
++    .specs { display: flex; flex-wrap: wrap; gap: 30px; margin-top: 35px; }
++    .specs div { border-top: 1px solid var(--line); padding-top: 14px; min-width: 110px; }
++    .specs dt { font-size: 11px; }
++    .specs dd { margin: 7px 0 0; color: var(--muted); font-size: 10px; }
++    footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 25px; min-height: 140px; padding-block: 36px; border-top: 1px solid var(--line); }
++    footer img { display: block; width: 95px; height: 32px; object-fit: contain; text-align: left; font-size: 23px; font-weight: bold; letter-spacing: -1px; }
++    footer p, footer a { color: var(--muted); font-size: 10px; }
++    footer a:hover, nav > a:hover { color: var(--accent); }
++    @media (min-width: 1500px) { .hero { padding-block: 70px 50px; } }
++    @media (max-width: 700px) {
++      .wrap { padding-inline: 6%; }
++      header { height: 82px; }
++      nav { gap: 22px; font-size: 12px; }
++      .header-note { display: none; }
++      .hero { grid-template-columns: 1fr; gap: 35px; padding-block: 42px 32px; }
++      .eyebrow { margin-bottom: 22px; }
++      h1 { font-size: clamp(48px, 10vw, 68px); letter-spacing: -2px; }
++      .intro { margin-block: 22px; max-width: 310px; }
++      .gallery-stage img { aspect-ratio: 1 / 1; }
++      .quiet-strip { gap: 16px; flex-wrap: wrap; font-size: 9px; }
++      .approach { grid-template-columns: 1fr; gap: 32px; min-height: 550px; padding-block: 75px; }
++      footer { gap: 20px; }
++      footer p { flex-basis: 100%; order: 3; }
++    }
++  </style>
++</head>
++<body id="top">
++  <a class="skip" href="#main">Skip to content</a>
++  <div class="wrap">
++    <header>
++      <a class="wordmark" href="#top" aria-label="Forma home">forma.</a>
++      <nav aria-label="Main navigation">
++        <details class="menu">
++          <summary>Collection</summary>
++          <div class="menu-panel">
++            <img src="mega-menu-promo.jpg" alt="Discover the Forma lighting collection" width="600" height="300" fetchpriority="low" loading="lazy">
++            <a href="#product">The Everyday Lamp <span aria-hidden="true">↗</span></a>
++          </div>
++        </details>
++        <a href="#approach">Our approach</a>
++      </nav>
++      <span class="header-note">Considered objects. Everyday living.</span>
++    </header>
++    <main id="main">
++      <section class="hero" aria-labelledby="hero-title">
++        <div class="hero-copy">
++          <p class="eyebrow">Introducing the everyday lamp</p>
++          <h1 id="hero-title">A little light.<br><em>A lot of calm.</em></h1>
++          <p class="intro">Soft light. Simple form. A thoughtful little addition to the spaces you call your own.</p>
++          <a class="cta" href="#approach">Meet your everyday <span aria-hidden="true">↗</span></a>
++          <span class="product-note">Made to fit in. Designed to stay.</span>
++        </div>
++        <figure class="gallery" id="product" aria-label="Everyday Lamp product gallery">
++          <div class="gallery-stage">
++            <!-- The first gallery image is also the LCP hero: discoverable in HTML, eager, and high priority. -->
++            <img id="gallery-front" src="hero-lcp.jpg" alt="Everyday Lamp in a soft chalk finish" width="1200" height="1200" fetchpriority="high" loading="eager">
++            <img id="gallery-detail" src="gallery-alt.jpg" alt="Close-up of the Everyday Lamp's finish and curved shade" width="1200" height="1200" fetchpriority="low" loading="lazy" hidden>
++            <span class="edition">The everyday collection — No. 01</span>
++            <span class="image-index" aria-hidden="true">01 / 02</span>
++          </div>
++          <figcaption class="gallery-caption">
++            <div>
++              <h2 class="product-name">The Everyday Lamp</h2>
++              <p class="product-finish">Chalk / A softer kind of light</p>
++            </div>
++            <div class="gallery-controls" role="group" aria-label="Choose product view">
++              <button class="view-button" type="button" aria-label="Show front view" aria-controls="gallery-front" aria-pressed="true" data-view="front">01</button>
++              <button class="view-button" type="button" aria-label="Show detail view" aria-controls="gallery-detail" aria-pressed="false" data-view="detail">02</button>
++            </div>
++          </figcaption>
++        </figure>
++      </section>
++      <div class="quiet-strip" aria-label="Product qualities">
++        <span><i aria-hidden="true">◌</i> Thoughtfully designed</span>
++        <span><i aria-hidden="true">↗</i> Made for everyday living</span>
++        <span><i aria-hidden="true">✳</i> Less, but considered</span>
++      </div>
++      <section class="approach" id="approach" aria-labelledby="approach-title">
++        <p class="section-label">01 / Our approach</p>
++        <div class="approach-copy">
++          <h2 id="approach-title">Good design leaves<br>room for living.</h2>
++          <p>We believe the things you surround yourself with should make the everyday feel a little better. Quiet shapes. Useful details. Nothing more than you need.</p>
++          <dl class="specs">
++            <div><dt>Simple by nature</dt><dd>A form that feels at home</dd></div>
++            <div><dt>A warmer welcome</dt><dd>Light with a softer touch</dd></div>
++          </dl>
++        </div>
++      </section>
++    </main>
++    <footer>
++      <a href="#top" aria-label="Forma home"><img src="footer-logo.png" alt="forma." width="190" height="64" loading="lazy"></a>
++      <p>© 2026 Forma. A little more considered.</p>
++      <a href="#top">Back to top ↑</a>
++    </footer>
++  </div>
++  <script>
++    const viewButtons = document.querySelectorAll('[data-view]');
++    viewButtons.forEach(button => {
++      button.addEventListener('click', () => {
++        const detail = button.dataset.view === 'detail';
++        document.getElementById('gallery-front').hidden = detail;
++        document.getElementById('gallery-detail').hidden = !detail;
++        document.querySelector('.image-index').textContent = detail ? '02 / 02' : '01 / 02';
++        viewButtons.forEach(view => view.setAttribute('aria-pressed', String(view === button)));
++      });
++    });
++    const menu = document.querySelector('.menu');
++    menu.querySelector('a').addEventListener('click', () => { menu.open = false; });
++    document.addEventListener('keydown', event => {
++      if (event.key === 'Escape' && menu.open) {
++        menu.open = false;
++        menu.querySelector('summary').focus();
++      }
++    });
++    document.addEventListener('click', event => {
++      if (!menu.contains(event.target)) menu.open = false;
++    });
++  </script>
++</body>
++</html>

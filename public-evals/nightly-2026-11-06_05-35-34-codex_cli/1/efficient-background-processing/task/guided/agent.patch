@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,42 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 400px;
++      min-height: 400px;
++      padding: 24px;
++      border-radius: 12px;
++      background: var(--primary);
++      color: var(--light);
++      text-align: center;
++    }
++
++    #roasting-widget p {
++      color: var(--secondary);
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      height: 220px;
++      margin: 16px auto;
++      border-radius: 8px;
++      background: #261b17;
++    }
++
++    .roast-temperature {
++      font-size: 1.25rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    #roast-temp-value {
++      color: var(--accent);
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +230,19 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" class="container" aria-labelledby="roast-title">
++    <h2 id="roast-title">Inside the Roaster</h2>
++    <p>A little heat. A lot of character. Watch our roasting simulation.</p>
++    <canvas id="roast-canvas" width="960" height="220" role="img"
++      aria-label="Coffee beans tumbling in a simulated roasting drum">
++      Coffee beans tumble as the simulated roasting temperature changes.
++    </canvas>
++    <div class="roast-temperature">Simulated temperature: <span id="roast-temp-value">195.0</span> °C</div>
++    <noscript><p>Enable JavaScript to run the roasting simulation.</p></noscript>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +251,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="roasting.js" defer></script>
+ </body>
+ 
+ </html>

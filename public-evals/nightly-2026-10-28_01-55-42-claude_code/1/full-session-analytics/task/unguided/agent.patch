@@ -1,0 +1,14 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Demo</title>
++  <!-- Core Web Vitals monitoring (LCP, INP, CLS); beacons on page hide. -->
++  <script type="module" src="./web-vitals-monitor.js"></script>
+   <style>
+     :root {
+       --primary: #2563eb;
+       --bg: #f8fafc;

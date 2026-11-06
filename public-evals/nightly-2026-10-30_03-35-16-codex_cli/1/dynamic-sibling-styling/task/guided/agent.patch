@@ -1,0 +1,238 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,150 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Each group contains only its items, so CSS counts the live collection. */
++    :is(.spectrum-card, .fan-card, .circle-orb) {
++      --index: var(--sibling-index, 1);
++      --count: var(--sibling-count, 1);
++      --hue: calc((var(--index) - 1) * 360deg / var(--count));
++    }
++
++    @supports (top: calc(sibling-index() * sibling-count() * 1px)) {
++      :is(.spectrum-card, .fan-card, .circle-orb) {
++        --index: sibling-index();
++        --count: sibling-count();
++      }
++    }
++
++    .spectrum-card {
++      background-color: hsl(var(--hue) 65% 90%);
++      border-top: 4px solid hsl(var(--hue) 45% 48%);
++    }
++
++    .collections {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
++      gap: 24px;
++      margin-top: 48px;
++    }
++
++    .collection {
++      min-width: 0;
++      padding: 28px 16px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 16px;
++      background: #f5f0eb;
++      text-align: center;
++    }
++
++    .collection h2 {
++      font-family: Georgia, serif;
++      font-size: 1.75rem;
++    }
++
++    .collection > p {
++      margin-top: 6px;
++      font-size: 0.95rem;
++    }
++
++    .fan-container {
++      position: relative;
++      height: 330px;
++      isolation: isolate;
++    }
++
++    .fan-card {
++      /* Normalize around the midpoint, keeping the whole fan within 56deg. */
++      --offset: calc((var(--index) - (var(--count) + 1) / 2) / max(1, var(--count) - 1));
++      position: absolute;
++      left: 50%;
++      bottom: 48px;
++      width: clamp(110px, 14vw, 150px);
++      height: 200px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      padding: 16px 12px;
++      border: 1px solid hsl(var(--hue) 25% 60%);
++      border-radius: 12px;
++      background: hsl(var(--hue) 35% 83%);
++      box-shadow: 0 6px 16px #3e272326;
++      transform-origin: 50% 125%;
++      transform: translateX(-50%) rotate(calc(var(--offset) * 56deg));
++      text-align: left;
++    }
++
++    .fan-card small {
++      font-size: 0.6rem;
++      font-weight: 700;
++      letter-spacing: 0.1em;
++    }
++
++    .fan-card strong {
++      font-family: Georgia, serif;
++      font-size: 1.15rem;
++    }
++
++    .fan-card span {
++      font-size: 0.7rem;
++    }
++
++    .circle-container {
++      --radius: clamp(90px, 22vw, 120px);
++      position: relative;
++      height: 330px;
++    }
++
++    .circle-container::before {
++      content: "From farm\A to your cup";
++      white-space: pre;
++      position: absolute;
++      inset: 0;
++      display: grid;
++      place-content: center;
++      font-family: Georgia, serif;
++      font-style: italic;
++      color: var(--primary);
++      line-height: 1.4;
++    }
++
++    .circle-orb {
++      --angle: calc((var(--index) - 1) * 360deg / var(--count) - 90deg);
++      position: absolute;
++      left: calc(50% + cos(var(--angle)) * var(--radius));
++      top: calc(50% + sin(var(--angle)) * var(--radius));
++      /* Smaller badges allow larger collections to share the same orbit. */
++      width: min(78px, calc(var(--radius) * 5 / var(--count)));
++      aspect-ratio: 1;
++      display: grid;
++      place-content: center;
++      padding: 4px;
++      border: 1px solid hsl(var(--hue) 28% 65%);
++      border-radius: 50%;
++      background: hsl(var(--hue) 38% 86%);
++      transform: translate(-50%, -50%);
++      font-size: 0.7rem;
++      font-weight: 600;
++      overflow-wrap: anywhere;
++    }
++
++    @media (max-width: 600px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,25 +319,52 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <div class="collections">
++      <section class="collection" aria-labelledby="loyalty-heading">
++        <h2 id="loyalty-heading">Good Coffee. Great Perks.</h2>
++        <p>A little thank you for making us your daily ritual.</p>
++        <div class="fan-container" role="list" aria-label="Loyalty cards">
++          <article class="fan-card" role="listitem"><small>THE DAILY GRIND</small><strong>First Sip</strong><span>Your coffee journey begins.</span></article>
++          <article class="fan-card" role="listitem"><small>THE DAILY GRIND</small><strong>Regular</strong><span>A familiar face. A favorite cup.</span></article>
++          <article class="fan-card" role="listitem"><small>THE DAILY GRIND</small><strong>Coffee Lover</strong><span>More sips, more little perks.</span></article>
++          <article class="fan-card" role="listitem"><small>THE DAILY GRIND</small><strong>Connoisseur</strong><span>For a taste of something special.</span></article>
++          <article class="fan-card" role="listitem"><small>THE DAILY GRIND</small><strong>Inner Circle</strong><span>You're part of the daily grind.</span></article>
++        </div>
++      </section>
++
++      <section class="collection" aria-labelledby="origins-heading">
++        <h2 id="origins-heading">A World in Every Cup</h2>
++        <p>Meet the origins behind your favorite brew.</p>
++        <div class="circle-container" role="list" aria-label="Coffee origins">
++          <div class="circle-orb" role="listitem">Ethiopia</div>
++          <div class="circle-orb" role="listitem">Colombia</div>
++          <div class="circle-orb" role="listitem">Brazil</div>
++          <div class="circle-orb" role="listitem">Guatemala</div>
++          <div class="circle-orb" role="listitem">Kenya</div>
++          <div class="circle-orb" role="listitem">Sumatra</div>
++        </div>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +375,27 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Older browsers get the same live counts, including after DOM edits.
++    if (!CSS.supports('top: calc(sibling-index() * sibling-count() * 1px)')) {
++      const groups = new Set(
++        [...document.querySelectorAll('.spectrum-card, .fan-card, .circle-orb')]
++          .map(item => item.parentElement)
++      );
++      const updateGroup = group => {
++        const items = [...group.children];
++        items.forEach((item, index) => {
++          item.style.setProperty('--sibling-index', index + 1);
++          item.style.setProperty('--sibling-count', items.length);
++        });
++      };
++      groups.forEach(group => {
++        updateGroup(group);
++        new MutationObserver(() => updateGroup(group)).observe(group, { childList: true });
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

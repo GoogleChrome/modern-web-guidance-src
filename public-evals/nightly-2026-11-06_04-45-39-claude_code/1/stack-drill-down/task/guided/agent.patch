@@ -1,0 +1,323 @@
+diff --git a/app.css b/app.css
+new file mode 100644
+--- a/app.css
++++ b/app.css
+@@ -0,0 +1,318 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++html,
++body {
++  height: 100%;
++  overflow: hidden;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* ---------- Drill-down stack ---------- */
++
++.Stack {
++  /* dvh tracks the dynamic mobile viewport as the address bar shows/hides. */
++  height: 100dvh;
++  display: grid;
++  grid-auto-flow: column;
++  grid-auto-columns: 100%;
++  grid-template-rows: 100%;
++  overflow-x: auto;
++  overflow-y: hidden;
++  scroll-snap-type: x mandatory;
++  /* Keep the swipe-back gesture from chaining into the browser's own
++     history gesture. */
++  overscroll-behavior-x: none;
++  scrollbar-width: none;
++}
++
++.Stack::-webkit-scrollbar {
++  display: none;
++}
++
++@media (prefers-reduced-motion: no-preference) {
++  .Stack {
++    scroll-behavior: smooth;
++  }
++}
++
++.Stack-view {
++  scroll-snap-align: start;
++  scroll-snap-stop: always;
++  min-width: 0;
++}
++
++/* Transforms go on this inner element, never on the snap target. */
++.Stack-viewContent {
++  width: 100%;
++  height: 100%;
++  background-color: var(--light);
++  color: var(--text);
++  overflow-y: auto;
++  overscroll-behavior-y: contain;
++}
++
++.Stack-viewContent:focus {
++  outline: none;
++}
++
++@supports (animation-timeline: view()) {
++  .Stack-viewContent {
++    animation: parallax linear both;
++    animation-timeline: view(inline);
++    animation-range: exit 0% exit 100%;
++  }
++
++  .Stack-view:not(:first-child) .Stack-viewContent {
++    animation: parallax linear both, shadow-fade linear both;
++    animation-timeline: view(inline), view(inline);
++    animation-range: exit 0% exit 100%, entry 0% exit 100%;
++  }
++
++  @keyframes parallax {
++    to {
++      transform: translateX(75%);
++      filter: brightness(0.8);
++    }
++  }
++
++  @keyframes shadow-fade {
++    0%, 100% { box-shadow: 0 0 1.5rem #0000; }
++    25%, 75% { box-shadow: 0 0 1.5rem #0006; }
++  }
++}
++
++/* ---------- Home view ---------- */
++
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 0.5rem 1rem;
++  position: sticky;
++  top: 0;
++  z-index: 10;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 0.5rem 20px;
++  list-style: none;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++.hero {
++  min-height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: clamp(2rem, 6vw, 3rem);
++  margin-bottom: 1rem;
++}
++
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++/* ---------- Detail view ---------- */
++
++.DetailBar {
++  position: sticky;
++  top: 0;
++  z-index: 10;
++  display: flex;
++  align-items: center;
++  gap: 0.5rem;
++  padding: 0.75rem 5%;
++  background: var(--primary);
++  color: white;
++}
++
++.DetailBar-title {
++  font-size: 1.25rem;
++  line-height: 1.2;
++}
++
++.back {
++  display: grid;
++  place-items: center;
++  width: 44px;
++  height: 44px;
++  margin-inline-start: -10px;
++  border: 0;
++  border-radius: 50%;
++  background: transparent;
++  color: inherit;
++  cursor: pointer;
++  transition: background 0.2s;
++}
++
++.back:hover {
++  background: rgb(255 255 255 / 0.15);
++}
++
++.back:focus-visible {
++  outline: 2px solid var(--accent);
++  outline-offset: 2px;
++}
++
++.Detail {
++  max-width: 800px;
++  margin: 0 auto;
++  padding-bottom: 40px;
++}
++
++.Detail-image {
++  display: block;
++  width: 100%;
++  height: auto;
++  aspect-ratio: 3 / 2;
++  object-fit: cover;
++  background: var(--secondary);
++}
++
++.Detail-body {
++  padding: 24px 20px;
++}
++
++.Detail-tagline {
++  font-size: 1.15rem;
++  font-style: italic;
++  color: var(--primary);
++}
++
++.Detail-price {
++  margin-top: 8px;
++  font-size: 1.5rem;
++  font-weight: bold;
++}
++
++.Detail-description {
++  margin-top: 16px;
++}
++
++.Detail-facts {
++  display: grid;
++  grid-template-columns: max-content 1fr;
++  gap: 8px 20px;
++  margin-top: 24px;
++  padding: 16px 20px;
++  background: white;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++}
++
++.Detail-facts dt {
++  font-weight: bold;
++  color: var(--primary);
++}

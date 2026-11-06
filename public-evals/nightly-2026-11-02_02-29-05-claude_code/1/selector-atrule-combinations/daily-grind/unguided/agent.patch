@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+index 66c9173..1d23d94 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,50 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /*
++       * Theme tokens. Each is declared once with light-dark(), which resolves
++       * against the computed color-scheme below. Component rules only consume
++       * these tokens, so no themed rule is ever duplicated per theme.
++       */
++      --page-bg: light-dark(var(--light), #1b1412);
++      --page-text: light-dark(var(--text), #efe6e2);
++
++      --nav-bg: light-dark(var(--primary), #120d0b);
++      --nav-text: light-dark(#ffffff, #efe6e2);
++      --nav-link-hover: light-dark(var(--accent), #ffc77a);
++      --nav-border: light-dark(transparent, rgba(255, 171, 64, 0.25));
++      --nav-shadow: light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.6));
++
++      --hero-overlay-top: light-dark(rgba(0, 0, 0, 0.35), rgba(10, 6, 5, 0.65));
++      --hero-overlay-bottom: light-dark(rgba(78, 52, 46, 0.55), rgba(10, 6, 5, 0.85));
++      --hero-text: light-dark(#ffffff, #f5ece8);
++      --hero-subtext: light-dark(rgba(255, 255, 255, 0.9), #d7ccc8);
++
++      --card-bg: light-dark(#ffffff, #2a201c);
++      --card-text: light-dark(var(--text), #d7ccc8);
++      --card-heading: light-dark(var(--primary), var(--accent));
++      --card-border: light-dark(transparent, #3d2f29);
++      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.5));
++
++      --btn-bg: light-dark(var(--primary), var(--accent));
++      --btn-text: light-dark(#ffffff, #1b1412);
++      --btn-hover-bg: light-dark(#3e2723, #ffc77a);
++
++      --footer-bg: light-dark(var(--secondary), #120d0b);
++      --footer-text: light-dark(var(--text), #bcaaa4);
++
++      /* Follow the OS preference by default... */
++      color-scheme: light dark;
++    }
++
++    /* ...unless the root element opts into a theme via attribute or class. */
++    :root:is([data-theme="light"], [data-color-scheme="light"], .light, .theme-light) {
++      color-scheme: light;
++    }
++
++    :root:is([data-theme="dark"], [data-color-scheme="dark"], .dark, .theme-dark) {
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -23,14 +67,16 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      color: var(--page-text);
++      background-color: var(--page-bg);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
++      box-shadow: 0 2px 8px var(--nav-shadow);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +102,14 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-link-hover);
+     }
+ 
+     .logout-link {
+@@ -75,7 +121,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay-top), var(--hero-overlay-bottom)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,11 +129,15 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero p {
++      color: var(--hero-subtext);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -108,22 +158,24 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +184,12 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -148,7 +201,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }

@@ -1,0 +1,236 @@
+diff --git a/index.html b/index.html
+index 66c9173..f889590 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,78 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Vector Icon System (SVG Data URIs for CSS Masking) */
++      --svg-coffee: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3Cline x1='6' y1='2' x2='6' y2='4'/%3E%3Cline x1='10' y1='2' x2='10' y2='4'/%3E%3Cline x1='14' y1='2' x2='14' y2='4'/%3E%3C/svg%3E");
++      --svg-menu: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20'/%3E%3Cpath d='M8 7h6'/%3E%3Cpath d='M8 11h8'/%3E%3C/svg%3E");
++      --svg-location: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E");
++      --svg-rewards: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
++      --svg-account: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
++      --svg-logout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpolyline points='16 17 21 12 16 7'/%3E%3Cline x1='21' y1='12' x2='9' y2='12'/%3E%3C/svg%3E");
++      --svg-order: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/%3E%3Cline x1='3' y1='6' x2='21' y2='6'/%3E%3Cpath d='M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E");
++      --svg-latte: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3Cpath d='M6 2c0 2 2 2 2 4'/%3E%3Cpath d='M10 2c0 2 2 2 2 4'/%3E%3Cpath d='M14 2c0 2 2 2 2 4'/%3E%3C/svg%3E");
++      --svg-espresso: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z'/%3E%3C/svg%3E");
++      --svg-cold-brew: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cline x1='12' y1='2' x2='12' y2='22'/%3E%3Cpath d='m20 16-4-4 4-4'/%3E%3Cpath d='m4 8 4 4-4 4'/%3E%3Cpath d='m16 4-4 4-4-4'/%3E%3Cpath d='m8 20 4-4 4 4'/%3E%3C/svg%3E");
++      --svg-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='12 5 19 12 12 19'/%3E%3C/svg%3E");
++    }
++
++    /* CSS-Driven Vector Icon System */
++    .icon {
++      --icon-size: 1.15em;
++      --icon-color: currentColor;
++      display: inline-block;
++      width: var(--icon-size);
++      height: var(--icon-size);
++      background-color: var(--icon-color);
++      -webkit-mask-image: var(--icon-svg);
++      mask-image: var(--icon-svg);
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-position: center;
++      -webkit-mask-size: contain;
++      mask-size: contain;
++      vertical-align: middle;
++      flex-shrink: 0;
++      transition: background-color 0.3s ease, transform 0.3s ease;
++    }
++
++    .icon[aria-hidden="true"] {
++      pointer-events: none;
++      user-select: none;
++    }
++
++    /* Icon Assignments */
++    .icon-coffee { --icon-svg: var(--svg-coffee); }
++    .icon-menu { --icon-svg: var(--svg-menu); }
++    .icon-location { --icon-svg: var(--svg-location); }
++    .icon-rewards { --icon-svg: var(--svg-rewards); }
++    .icon-account { --icon-svg: var(--svg-account); }
++    .icon-logout { --icon-svg: var(--svg-logout); }
++    .icon-order { --icon-svg: var(--svg-order); }
++    .icon-latte { --icon-svg: var(--svg-latte); }
++    .icon-espresso { --icon-svg: var(--svg-espresso); }
++    .icon-cold-brew { --icon-svg: var(--svg-cold-brew); }
++    .icon-arrow-right { --icon-svg: var(--svg-arrow-right); }
++
++    /* Icon Size & Color Modifiers */
++    .icon-sm { --icon-size: 0.95rem; }
++    .icon-md { --icon-size: 1.25rem; }
++    .icon-lg { --icon-size: 1.75rem; }
++    .icon-xl { --icon-size: 2.25rem; }
++    .icon-primary { --icon-color: var(--primary); }
++    .icon-accent { --icon-color: var(--accent); }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
+     }
+ 
+     * {
+@@ -44,10 +116,19 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .logo .icon {
++      --icon-size: 1.4em;
++      --icon-color: var(--accent);
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -59,6 +140,9 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
+       transition: color 0.3s;
+     }
+ 
+@@ -115,13 +199,35 @@
+       text-align: center;
+     }
+ 
++    .card-icon-badge {
++      width: 56px;
++      height: 56px;
++      margin: 0 auto 14px;
++      border-radius: 50%;
++      background: rgba(78, 52, 46, 0.08);
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      transition: background-color 0.3s, color 0.3s, transform 0.3s;
++    }
++
++    .card:hover .card-icon-badge {
++      background: var(--primary);
++      color: var(--accent);
++      transform: translateY(-2px);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -135,6 +241,10 @@
+       background: #3e2723;
+     }
+ 
++    .btn:hover .icon-arrow-right {
++      transform: translateX(3px);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -158,20 +268,26 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo">
++      <span class="icon icon-coffee" aria-hidden="true"></span>
++      <span>THE DAILY GRIND</span>
++    </div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu"><span class="icon icon-menu" aria-hidden="true"></span><span>Menu</span></a></li>
++      <li><a href="/locations"><span class="icon icon-location" aria-hidden="true"></span><span>Locations</span></a></li>
++      <li><a href="/rewards"><span class="icon icon-rewards" aria-hidden="true"></span><span>Rewards</span></a></li>
++      <li><a href="/account"><span class="icon icon-account" aria-hidden="true"></span><span>My Account</span></a></li>
++      <li><a href="/logout" class="logout-link"><span class="icon icon-logout" aria-hidden="true"></span><span>Logout</span></a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn">
++      <span class="icon icon-order" aria-hidden="true"></span>
++      <span>Order Now</span>
++    </a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +295,37 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-icon-badge" aria-hidden="true">
++            <span class="icon icon-lg icon-latte" aria-hidden="true"></span>
++          </div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">
++            <span>View Details</span>
++            <span class="icon icon-arrow-right" aria-hidden="true"></span>
++          </a>
+         </div>
+         <div class="card">
++          <div class="card-icon-badge" aria-hidden="true">
++            <span class="icon icon-lg icon-espresso" aria-hidden="true"></span>
++          </div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">
++            <span>View Details</span>
++            <span class="icon icon-arrow-right" aria-hidden="true"></span>
++          </a>
+         </div>
+         <div class="card">
++          <div class="card-icon-badge" aria-hidden="true">
++            <span class="icon icon-lg icon-cold-brew" aria-hidden="true"></span>
++          </div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">
++            <span>View Details</span>
++            <span class="icon icon-arrow-right" aria-hidden="true"></span>
++          </a>
+         </div>
+       </div>
+     </section>

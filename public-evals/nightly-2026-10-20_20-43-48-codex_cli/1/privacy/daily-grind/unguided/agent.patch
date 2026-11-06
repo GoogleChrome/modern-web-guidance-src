@@ -1,0 +1,464 @@
+diff --git a/PRIVACY.md b/PRIVACY.md
+new file mode 100644
+index 0000000..ff071a1
+--- /dev/null
++++ b/PRIVACY.md
+@@ -0,0 +1,82 @@
++# Privacy and third-party review
++
++## Scope and data minimization
++
++This application serves static coffee shop content. It has no implemented account,
++checkout, rewards, or contact workflows. Navigation labels do not imply those
++services exist. The only added route is `/privacy-policy`.
++
++The server processes the URL and connection information in memory to deliver a
++response. It does not log requests, read submitted bodies, write visitor data to
++disk, set cookies, use browser storage, or run JavaScript. Query parameters are
++ignored and never reflected. Only GET and HEAD are accepted. The server exposes an
++explicit allowlist of public files; repository files cannot be served.
++
++There is no personal-data database, backup, retention job, export, or deletion
++endpoint because the application stores no visitor records. Do not add dummy
++privacy controls that imply records exist. No consent banner is needed for the
++current implementation because no optional tracking is present.
++
++## Third-party inventory and audit
++
++Implementation review date: 2026-10-20. This is a repository review, not an
++independent audit or compliance certification.
++
++| Component | Finding and disposition | Visitor data shared by application |
++| --- | --- | --- |
++| Unsplash hero photograph | Replaced hotlink with local `public/assets/coffee.jpg`; source below. No runtime vendor request. | None |
++| `pnpm dlx statikk` | Removed executable package download from startup. Replaced with Node standard-library server. | None |
++| npm packages | No direct or transitive third-party dependencies. Committed lockfile; `npm audit --omit=dev` reports zero vulnerabilities. | None |
++| Fonts, analytics, ads, embeds, payment processors | None included. External connections and scripts blocked by CSP. | None |
++| Node runtime | Supplied by deployment environment. Keep on a supported, patched Node 24 release. Package audit does not audit the runtime. | Connection metadata is transiently processed |
++| Hosting, TLS terminator, CDN, DNS | Deployment provider unknown; external review remains required before launch. | Infrastructure may process IP addresses and connection metadata |
++
++Photograph source:
++https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80
++
++Before introducing a vendor, record the owner, purpose, exact fields shared,
++necessity, retention period, deletion process, access controls, subprocessors,
++hosting locations, contractual protections, and review date. Prefer a local asset
++or no collection. New optional analytics must remain disabled until an explicit
++choice is made; honor withdrawal and applicable browser privacy preferences.
++Review the inventory on every integration change and at least quarterly. Arrange
++an independent audit when the production environment and any data workflows are
++available; none has been performed by this change.
++
++## Secure handling and deployment
++
++Run `npm start` (Node 24+) to listen on `PORT`, default 11222. Do not serve the
++`public` directory with a generic server that omits these headers.
++
++- Terminate HTTPS at a trusted reverse proxy. Redirect HTTP to HTTPS there and set
++  `HTTPS_DEPLOYMENT=true` on the application to enable one-year HSTS. The server
++  itself speaks HTTP; do not expose its upstream port publicly. HSTS does not
++  configure certificates or encrypt that upstream connection.
++- Preserve application security headers on all proxy responses, including errors.
++  CSP denies scripts, connections, forms, framing, objects, and external assets;
++  only same-origin images and CSS are allowed. Inline styles have been removed.
++- `Referrer-Policy: no-referrer` prevents link referrer disclosure. `nosniff`,
++  `DENY`, browser permission restrictions, and same-origin resource/opener policies
++  restrict unnecessary capabilities. Responses use `Cache-Control: no-store`.
++- Disable or minimize host/CDN access logs, URL query logging, analytics, and
++  request-body capture. Document any necessary operational retention and deletion
++  period with the hosting operator and update the public privacy page accordingly.
++- Restrict infrastructure access, require MFA, patch Node and the OS, and protect
++  any operational backups. Do not add secrets to public files or URLs.
++- If future services collect personal information, define the minimum fields,
++  purpose, access rules, retention/deletion, encryption, and user rights before
++  enabling collection. Implement server-side authorization and validation then.
++
++Header references:
++[CSP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy),
++[Referrer Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy),
++[Permissions Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy).
++
++## Verification
++
++`npm test` checks headers on pages, assets, errors, and unsupported methods; HEAD
++behavior; blocked repository access; no cookies or query reflection; explicit HSTS
++configuration; and absence of external resources, forms, and inline code.
++`npm audit --omit=dev` checks package advisories. No manual browser verification
++was performed. Production TLS, proxy headers, host logging/retention, and an
++independent assessment must be verified in the actual deployment.
+diff --git a/package.json b/package.json
+index 2bd4d77..4747331 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,9 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "test": "node --test",
++    "audit": "npm audit --omit=dev"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/public/assets/coffee.jpg b/public/assets/coffee.jpg
+new file mode 100644
+index 0000000..73ff876
+Binary files /dev/null and b/public/assets/coffee.jpg differ
+diff --git a/index.html b/public/assets/styles.css
+similarity index 58%
+rename from index.html
+rename to public/assets/styles.css
+index 66c9173..c73c761 100644
+--- a/index.html
++++ b/public/assets/styles.css
+@@ -1,11 +1,3 @@
+-<!DOCTYPE html>
+-<html lang="en">
+-
+-<head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -76,7 +68,7 @@
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        url('/assets/coffee.jpg');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -152,61 +144,19 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+-  </style>
+-</head>
+-
+-<body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++
++    .section-title { text-align: center; }
++    .privacy-note { margin-top: 32px; padding: 20px; border: 1px solid var(--secondary); border-radius: 8px; text-align: center; }
++    .privacy-note a, .policy a { color: var(--primary); text-underline-offset: 3px; }
++    .policy { max-width: 780px; }
++    .policy h1 { font-size: 2.25rem; }
++    .policy h2 { margin-top: 28px; margin-bottom: 8px; }
++    .policy p { margin-bottom: 12px; }
++    .policy .intro { font-size: 1.15rem; margin-top: 12px; }
++    a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
++    @media (max-width: 650px) {
++      nav { flex-direction: column; gap: 12px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++    }
+diff --git a/public/index.html b/public/index.html
+new file mode 100644
+index 0000000..320a440
+--- /dev/null
++++ b/public/index.html
+@@ -0,0 +1,71 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="referrer" content="no-referrer">
++  <link rel="stylesheet" href="/assets/styles.css">
++</head>
++
++<body>
++
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header class="hero">
++    <h1>Wake Up Your Senses</h1>
++    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn">Order Now</a>
++  </header>
++
++  <main class="container">
++    <section>
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++    <aside class="privacy-note" aria-label="Your privacy">
++      <strong>Good coffee. Less data.</strong>
++      <p>No tracking cookies, analytics, or third-party requests on this site.</p>
++      <a href="/privacy-policy">Read our privacy practices</a>
++    </aside>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/public/privacy.html b/public/privacy.html
+new file mode 100644
+index 0000000..10b74f7
+--- /dev/null
++++ b/public/privacy.html
+@@ -0,0 +1,43 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
++  <title>Your Privacy | The Daily Grind</title>
++  <link rel="stylesheet" href="/assets/styles.css">
++</head>
++<body>
++  <nav aria-label="Main navigation"><a class="logo" href="/">THE DAILY GRIND</a><a href="/">Back to home</a></nav>
++  <main class="container policy">
++    <p>THE DAILY GRIND · YOUR PRIVACY</p>
++    <h1>Good coffee. Less data.</h1>
++    <p class="intro">You can explore this site without an account, tracking cookies, or sharing personal details.</p>
++    <h2>Only what’s needed to deliver a page</h2>
++    <p>Your browser sends technical information, such as your IP address and the page requested, so the server can deliver the site. The application does not store that information or create visitor profiles.</p>
++    <p>This site has no account system, checkout, or data collection forms. Please do not include personal details in page URLs.</p>
++    <h2>No tracking or browser storage</h2>
++    <p>We do not use analytics, advertising pixels, cookies, local storage, or fingerprinting. There are no optional tracking features to enable, so there is no cookie consent banner to dismiss.</p>
++    <h2>No third-party requests</h2>
++    <p>Images and styles are served from this site. Visiting a page does not contact an external image provider, font service, or analytics company. The coffee photograph was sourced from Unsplash and is hosted locally.</p>
++    <h2>How data is handled</h2>
++    <p>The application does not retain personal records, request bodies, or access logs. Hosting providers and network infrastructure may process connection information and maintain their own operational logs; their retention and access controls depend on the deployment.</p>
++    <h2>Protection built in</h2>
++    <p>The site restricts scripts, external connections, and sensitive browser permissions. Referrer information is not shared when you follow links. Production hosting must provide HTTPS to protect information in transit.</p>
++    <h2>Reviewing our providers</h2>
++    <p>Changes that introduce a provider or data collection require a review of the purpose, information shared, retention, access controls, and deletion options. No independent third-party audit has been completed for this application.</p>
++    <h2>Your choices</h2>
++    <p>There is no saved visitor profile or application-held personal information to export or delete. You can browse without supplying personal details. Any future account or ordering service will need its own privacy information before collecting data.</p>
++    <p><a href="/">Return to The Daily Grind</a></p>
++  </main>
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++</footer>
++</body>
++</html>
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..bc84f01
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,59 @@
++import http from 'node:http';
++import { readFile } from 'node:fs/promises';
++
++// Explicit public-file allowlist: never expose repository files or user-selected paths.
++const routes = new Map([
++  ['/', ['index.html', 'text/html; charset=utf-8']],
++  ['/privacy-policy', ['privacy.html', 'text/html; charset=utf-8']],
++  ['/privacy-policy/', ['privacy.html', 'text/html; charset=utf-8']],
++  ['/assets/styles.css', ['assets/styles.css', 'text/css; charset=utf-8']],
++  ['/assets/coffee.jpg', ['assets/coffee.jpg', 'image/jpeg']],
++]);
++
++export function createServer({ httpsDeployment = false } = {}) {
++  return http.createServer(async (req, res) => {
++    // Apply controls to errors and assets as well as successful HTML responses.
++    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'self'; img-src 'self'; script-src 'none'; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
++    res.setHeader('Referrer-Policy', 'no-referrer');
++    res.setHeader('X-Content-Type-Options', 'nosniff');
++    res.setHeader('X-Frame-Options', 'DENY');
++    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=(), display-capture=()');
++    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
++    res.setHeader('Cache-Control', 'no-store');
++    // Enable only behind HTTPS termination; do not trust client-supplied forwarding headers.
++    if (httpsDeployment) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
++
++    const reply = (status, message) => {
++      res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
++      res.end(req.method === 'HEAD' ? undefined : message);
++    };
++    if (!['GET', 'HEAD'].includes(req.method)) {
++      res.setHeader('Allow', 'GET, HEAD');
++      return reply(405, 'Method not allowed');
++    }
++    let pathname;
++    try {
++      // Ignore query strings; never persist or reflect request data.
++      pathname = new URL(req.url, 'http://localhost').pathname;
++    } catch {
++      return reply(400, 'Invalid request');
++    }
++    const file = routes.get(pathname);
++    if (!file) return reply(404, 'Page not found');
++    try {
++      const data = await readFile(new URL(`./public/${file[0]}`, import.meta.url));
++      res.writeHead(200, { 'Content-Type': file[1], 'Content-Length': data.length });
++      res.end(req.method === 'HEAD' ? undefined : data);
++    } catch {
++      reply(500, 'Unable to load page');
++    }
++  });
++}
++
++if (import.meta.main) {
++  const server = createServer({ httpsDeployment: process.env.HTTPS_DEPLOYMENT === 'true' });
++  server.requestTimeout = 15_000;
++  server.headersTimeout = 10_000;
++  server.listen(Number(process.env.PORT || 11222), '0.0.0.0');
++}
+diff --git a/test/privacy.test.mjs b/test/privacy.test.mjs
+new file mode 100644
+index 0000000..fcea586
+--- /dev/null
++++ b/test/privacy.test.mjs
+@@ -0,0 +1,54 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { createServer } from '../server.mjs';
++import { readFile } from 'node:fs/promises';
++
++test('privacy controls protect successful, rejected, and asset responses', async (t) => {
++  const server = createServer({ httpsDeployment: true });
++  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
++  t.after(() => new Promise(resolve => server.close(resolve)));
++  const base = `http://127.0.0.1:${server.address().port}`;
++  for (const [path, method, status] of [
++    ['/', 'GET', 200], ['/privacy-policy', 'GET', 200],
++    ['/assets/styles.css', 'GET', 200], ['/assets/coffee.jpg', 'GET', 200],
++    ['/', 'HEAD', 200], ['/', 'POST', 405],
++    ['/.git/config', 'GET', 404], ['/package.json', 'GET', 404],
++    ['/server.mjs', 'GET', 404], ['/assets/%2e%2e/server.mjs', 'GET', 404],
++    ['/?email=private@example.com', 'GET', 200],
++  ]) {
++    const response = await fetch(base + path, { method });
++    assert.equal(response.status, status, `${method} ${path}`);
++    assert.equal(response.headers.get('set-cookie'), null);
++    assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
++    assert.equal(response.headers.get('cache-control'), 'no-store');
++    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
++    assert.equal(response.headers.get('strict-transport-security'), 'max-age=31536000');
++    assert.match(response.headers.get('content-security-policy'), /script-src 'none'/);
++    assert.match(response.headers.get('content-security-policy'), /connect-src 'none'/);
++    assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
++    assert.match(response.headers.get('permissions-policy'), /geolocation=\(\)/);
++    const body = await response.text();
++    assert.ok(!body.includes('private@example.com'));
++    if (method === 'HEAD') assert.equal(body, '');
++  }
++});
++
++test('local development does not enable HSTS', async (t) => {
++  const server = createServer();
++  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
++  t.after(() => new Promise(resolve => server.close(resolve)));
++  const response = await fetch(`http://127.0.0.1:${server.address().port}`, {
++    headers: { 'X-Forwarded-Proto': 'https' },
++  });
++  assert.equal(response.headers.get('strict-transport-security'), null);
++  await response.text();
++});
++
++test('published pages contain no external resources, inline code, or data collection', async () => {
++  for (const file of ['index.html', 'privacy.html', 'assets/styles.css']) {
++    const source = await readFile(new URL(`../public/${file}`, import.meta.url), 'utf8');
++    assert.doesNotMatch(source, /https?:\/\/|<script\b|<form\b|<style\b|\bstyle=|\bon\w+=/i);
++  }
++  const home = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
++  assert.match(home, /href="\/privacy-policy"/);
++});

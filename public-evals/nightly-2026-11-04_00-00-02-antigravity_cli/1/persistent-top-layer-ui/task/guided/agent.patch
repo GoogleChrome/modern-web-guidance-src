@@ -1,0 +1,307 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,170 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Trigger & Host Slots */
++    .feedback-fab {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      padding: 12px 20px;
++      border-radius: 999px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      transition: background 0.3s, transform 0.2s;
++      z-index: 900;
++    }
++
++    .feedback-fab:hover {
++      background: #3e2723;
++      transform: translateY(-2px);
++    }
++
++    .dialog-host-slot {
++      margin-top: 24px;
++      padding: 12px 16px;
++      border: 1px dashed var(--secondary);
++      border-radius: 8px;
++      font-size: 0.85rem;
++      color: var(--primary);
++      background: rgba(215, 204, 200, 0.2);
++    }
++
++    /* Native Modal Dialog */
++    dialog:modal {
++      overscroll-behavior: contain;
++      margin: auto;
++      width: min(92vw, 480px);
++      border: none;
++      border-radius: 12px;
++      padding: 24px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++      background: rgba(62, 39, 35, 0.6);
++      backdrop-filter: blur(2px);
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++      margin-bottom: 12px;
++    }
++
++    .dialog-header h2 {
++      font-size: 1.35rem;
++      color: var(--primary);
++    }
++
++    .dialog-meta {
++      background: var(--light);
++      border-left: 3px solid var(--accent);
++      padding: 8px 12px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      margin-bottom: 16px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .move-btn {
++      background: var(--secondary);
++      color: var(--text);
++      border: 1px solid var(--primary);
++      padding: 6px 12px;
++      border-radius: 6px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .move-btn:hover {
++      background: var(--accent);
++    }
++
++    .feedback-form {
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      text-align: left;
++    }
++
++    .form-field label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .form-field select,
++    .form-field input,
++    .form-field textarea {
++      padding: 9px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .form-field textarea {
++      resize: vertical;
++      min-height: 90px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 6px;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 9px 16px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-weight: 600;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 9px 18px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-weight: 600;
++    }
++
++    .btn-primary:hover {
++      background: #3e2723;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,19 +356,132 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <div id="feedback-host-main" class="dialog-host-slot" data-host-label="Main Content Container (#feedback-host-main)">
++      <span>Dialog DOM Host: <strong>Main Content Container</strong></span>
++
++      <dialog id="feedback-dialog" aria-labelledby="feedback-dialog-title">
++        <div class="dialog-header">
++          <h2 id="feedback-dialog-title">Share Your Coffee Feedback</h2>
++        </div>
++
++        <div class="dialog-meta">
++          <span id="dialog-host-status" aria-live="polite">
++            Current DOM parent: <strong id="current-parent-name">#feedback-host-main</strong>
++          </span>
++          <button type="button" id="move-dialog-btn" class="move-btn">
++            Move Dialog in DOM
++          </button>
++        </div>
++
++        <form method="dialog" class="feedback-form" id="feedback-form">
++          <div class="form-field">
++            <label for="feedback-drink">Favorite Drink</label>
++            <select id="feedback-drink" name="drink">
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++            </select>
++          </div>
++
++          <div class="form-field">
++            <label for="feedback-notes">Your Thoughts</label>
++            <textarea id="feedback-notes" name="notes" placeholder="Tell us about your recent visit or roast..." autofocus></textarea>
++          </div>
++
++          <div class="dialog-actions">
++            <button type="submit" value="cancel" formnovalidate class="btn-secondary">Cancel</button>
++            <button type="submit" value="submit" class="btn-primary">Send Feedback</button>
++          </div>
++        </form>
++      </dialog>
++    </div>
+   </main>
+ 
++  <button type="button" id="open-feedback-btn" class="feedback-fab" command="show-modal" commandfor="feedback-dialog">
++    Give Feedback
++  </button>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <div id="feedback-host-footer" class="dialog-host-slot" data-host-label="Footer Container (#feedback-host-footer)">
++      <span>Dialog DOM Host: <strong>Footer Container</strong></span>
++    </div>
+   </footer>
+ 
++  <script type="module">
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill').catch(() => {});
++    }
++
++    const feedbackDialog = document.getElementById('feedback-dialog');
++    const openFeedbackBtn = document.getElementById('open-feedback-btn');
++    const moveDialogBtn = document.getElementById('move-dialog-btn');
++    const currentParentName = document.getElementById('current-parent-name');
++    const hostContainers = [
++      document.getElementById('feedback-host-main'),
++      document.getElementById('feedback-host-footer'),
++    ];
++
++    // Fallback click handler for browsers where commandForElement isn't natively supported yet
++    openFeedbackBtn.addEventListener('click', () => {
++      if (!('commandForElement' in HTMLButtonElement.prototype) && !feedbackDialog.open) {
++        feedbackDialog.showModal();
++      }
++    });
++
++    function relocateOpenDialog(targetParent, popoverOrDialog) {
++      // Check if moveBefore is supported on Element.prototype
++      if ('moveBefore' in Element.prototype) {
++        targetParent.moveBefore(popoverOrDialog, null);
++      } else {
++        // Fallback: traditional move (will close <dialog> and popover elements)
++        const wasOpen =
++          popoverOrDialog.hasAttribute('open') ||
++          (typeof popoverOrDialog.matches === 'function' && popoverOrDialog.matches(':popover-open'));
++        const previousFocus = document.activeElement;
++
++        targetParent.insertBefore(popoverOrDialog, null);
++
++        // Manually restore state in unsupported browsers
++        if (wasOpen && typeof popoverOrDialog.showModal === 'function') {
++          popoverOrDialog.showModal();
++        } else if (wasOpen && typeof popoverOrDialog.showPopover === 'function') {
++          popoverOrDialog.showPopover();
++        }
++
++        if (previousFocus && popoverOrDialog.contains(previousFocus) && typeof previousFocus.focus === 'function') {
++          previousFocus.focus();
++        }
++      }
++    }
++
++    moveDialogBtn.addEventListener('click', () => {
++      const currentParent = feedbackDialog.parentElement;
++      const nextParent =
++        hostContainers.find((container) => container && container !== currentParent) || hostContainers[0];
++
++      if (!nextParent) return;
++
++      relocateOpenDialog(nextParent, feedbackDialog);
++      currentParentName.textContent = `#${nextParent.id}`;
++    });
++
++    feedbackDialog.addEventListener('close', () => {
++      const action = feedbackDialog.returnValue;
++      feedbackDialog.returnValue = '';
++      if (action === 'submit') {
++        document.getElementById('feedback-form').reset();
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

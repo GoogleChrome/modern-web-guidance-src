@@ -1,0 +1,44 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,39 @@
++# INP diagnostics
++
++The page loads a local, unmodified copy of Google's `web-vitals` 6.2.3 attribution
++build (Apache-2.0, license in `scripts/vendor/web-vitals.LICENSE`). Source release:
++https://registry.npmjs.org/web-vitals/-/web-vitals-6.2.3.tgz.
++No CDN or build step is needed.
++
++Set the `inp-report-endpoint` meta tag in `index.html` to an existing analytics
++collector URL to receive JSON POST bodies via `sendBeacon`, with a keepalive
++fetch fallback. The collector must accept `text/plain` JSON. This static app
++does not provide a collector; no network reports are sent until one is configured.
++Allow the collector in your CSP `connect-src` policy if applicable.
++
++To inspect reports locally, add `?inp-debug=1` to the page URL and enable debug
++messages in the console. Alternatively, subscribe to the `inp-report` window
++event and read `event.detail`.
++
++Each report includes INP in milliseconds, its rating, interaction target/type,
++page load state, and its three phases:
++
++- High `inputDelay`: investigate work already blocking the main thread.
++- High `processingDuration`: investigate interaction event handlers.
++- High `presentationDelay`: investigate rendering, style/layout and paint work.
++
++Where supported, `longestScript` identifies the script URL, function, character
++position, forced layout time, overlapping phase and duration. These are diagnostic
++clues, not proof of causation. Without Long Animation Frames support this field is
++`null`; INP phase reporting still works. Browsers without Event Timing support
++do not report INP. No interaction means no INP measurement.
++
++Reports arrive when the INP candidate changes and when the library finalizes a
++measurement on page hide. Upsert the latest value by metric `id` rather than
++counting every update as a separate page visit. The library handles restoration
++from the back/forward cache. Reports include good interactions too, for comparison.
++Page and script URL query strings/fragments are excluded. Default interaction
++selectors can contain element IDs/classes, so avoid putting sensitive data in
++those attributes.
++
++Run automated checks with `npm test`. No browser is required.

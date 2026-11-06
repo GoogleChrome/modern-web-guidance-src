@@ -1,0 +1,3085 @@
+diff --git a/README.md b/README.md
+index 4479b53..f9f7131 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,13 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Passkey account preview
++
++The home page and `/devtools-times/account/security` expose the new security settings. The original news home is available at `/devtools-times/news`.
++
++The account preview is isolated per server-side Astro session and starts with three clearly labeled example passkeys. Renaming and removing passkeys persist in that session. New passkeys use native WebAuthn with `@simplewebauthn/server` verification, a short-lived single-use challenge, required user verification, and discoverable credentials. Credential public keys stay server-side. Mutations require a matching Origin header. Password-manager synchronization is feature-detected; example credentials are never sent to the password manager.
++
++This is a demo account, not an authenticated production account. Before production use, replace the session-created demo identity with the app’s authenticated user, store credentials in the account database, implement assertion verification for passkey sign-in, and require reauthentication for sensitive account changes. The existing external sign-in form does not currently establish an authenticated session in this app. Device registration requires HTTPS or localhost. The Node adapter’s default filesystem session driver is intended for this local preview; use shared persistent session storage in a multi-instance deployment.
++
++Validation: `pnpm build`, then start the app with `pnpm start` and run `pnpm check:passkeys` in another terminal. API checks cover session isolation, rename/delete persistence, input validation, origin checks, registration options, and rejection of invalid registration responses. Actual device enrollment requires an authenticator and was not manually verified in a browser.
+diff --git a/package.json b/package.json
+index 2e1f2e8..eff8208 100644
+--- a/package.json
++++ b/package.json
+@@ -7,12 +7,14 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "check:passkeys": "node scripts/check-passkeys.mjs"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.7",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -20,10 +22,13 @@
+     "react": "^19.3.0",
+     "react-dom": "^19.3.0",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "webauthn-polyfills": "^0.1.7"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "@types/node": "^26.6.5",
++    "typescript": "^7.0.2"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/scripts/check-passkeys.mjs b/scripts/check-passkeys.mjs
+new file mode 100644
+index 0000000..43b2507
+--- /dev/null
++++ b/scripts/check-passkeys.mjs
+@@ -0,0 +1,97 @@
++import assert from "node:assert/strict";
++
++// Run against a local build: pnpm build && pnpm start
++const origin = process.env.TEST_ORIGIN || "http://localhost:11224";
++const base = `${origin}/devtools-times`;
++let cookie = "";
++async function request(method = "GET", body, requestOrigin = origin) {
++  const response = await fetch(`${base}/api/passkeys/`, {
++    method,
++    headers: {
++      Cookie: cookie,
++      ...(method !== "GET"
++        ? { Origin: requestOrigin, "Content-Type": "application/json" }
++        : {}),
++    },
++    body: body && JSON.stringify(body),
++  });
++  const setCookie = response.headers.get("set-cookie");
++  if (setCookie) cookie = setCookie.split(";")[0];
++  return { status: response.status, data: await response.json() };
++}
++const first = await request();
++assert.equal(first.status, 200);
++assert.equal(first.data.credentials.length, 3);
++const id = first.data.credentials[0].id;
++let result = await request("PATCH", { id, name: "My renamed laptop" });
++assert.equal(result.status, 200);
++assert.equal(result.data.credentials[0].name, "My renamed laptop");
++result = await request();
++assert.equal(result.data.credentials[0].name, "My renamed laptop");
++for (const name of ["   ", "x".repeat(61)]) {
++  assert.equal((await request("PATCH", { id, name })).status, 400);
++}
++assert.equal(
++  (await request("DELETE", { id }, "https://evil.example")).status,
++  403,
++);
++assert.equal((await request("DELETE", { id: "not-owned" })).status, 404);
++const otherSession = await fetch(`${base}/api/passkeys/`);
++const other = await otherSession.json();
++assert.equal(other.credentials.length, 3);
++assert.notEqual(other.id, first.data.id);
++const crossAccount = await fetch(`${base}/api/passkeys/`, {
++  method: "DELETE",
++  headers: {
++    Cookie: otherSession.headers.get("set-cookie").split(";")[0],
++    Origin: origin,
++    "Content-Type": "application/json",
++  },
++  body: JSON.stringify({ id }),
++});
++assert.equal(crossAccount.status, 404);
++result = await request("DELETE", { id });
++assert.equal(result.status, 200);
++assert.equal((await request()).data.credentials.length, 2);
++const registration = await fetch(`${base}/api/passkeys/register`, {
++  method: "POST",
++  headers: {
++    Cookie: cookie,
++    Origin: origin,
++    "Content-Type": "application/json",
++  },
++  body: JSON.stringify({ action: "options" }),
++});
++assert.equal(registration.status, 200);
++const options = await registration.json();
++assert.equal(options.rp.id, new URL(origin).hostname);
++assert.equal(options.authenticatorSelection.residentKey, "required");
++assert.equal(options.authenticatorSelection.userVerification, "required");
++assert.equal(options.authenticatorSelection.authenticatorAttachment, undefined);
++assert.ok(options.challenge);
++assert.equal(
++  options.excludeCredentials.length,
++  0,
++  "Example keys must not be sent to authenticators",
++);
++const invalid = await fetch(`${base}/api/passkeys/register`, {
++  method: "POST",
++  headers: {
++    Cookie: cookie,
++    Origin: origin,
++    "Content-Type": "application/json",
++  },
++  body: JSON.stringify({ action: "verify", credential: {} }),
++});
++assert.equal(invalid.status, 400);
++for (const credential of result.data.credentials)
++  await request("DELETE", { id: credential.id });
++assert.deepEqual((await request()).data.credentials, []);
++for (const path of ["/", "/account/security"]) {
++  const page = await fetch(base + path);
++  assert.equal(page.status, 200);
++  assert.match(await page.text(), /Security &amp; sign-in/);
++}
++console.log(
++  "Passkey checks passed: rendering, session isolation, ownership, validation, rename/delete persistence, empty state, origin checks, registration options, invalid attestation rejection.",
++);
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..1089497 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a href={`${baseUrl}account/security`} class="text-xs font-semibold text-gray-600 hover:text-gray-900">Your account</a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/PasskeySettings.tsx b/src/components/PasskeySettings.tsx
+new file mode 100644
+index 0000000..4dd1602
+--- /dev/null
++++ b/src/components/PasskeySettings.tsx
+@@ -0,0 +1,877 @@
++import { useEffect, useRef, useState, type FormEvent } from "react";
++import type { PasskeyAccount, PasskeyRecord } from "../lib/passkeys";
++
++type IconName =
++  | "shield"
++  | "key"
++  | "device"
++  | "phone"
++  | "user"
++  | "card"
++  | "bookmark"
++  | "arrow"
++  | "chevron"
++  | "check"
++  | "plus"
++  | "edit"
++  | "trash"
++  | "help"
++  | "logout"
++  | "close"
++  | "lock"
++  | "globe"
++  | "clock";
++function Icon({
++  name,
++  size = 20,
++  ...rest
++}: {
++  name: IconName;
++  size?: number;
++  className?: string;
++}) {
++  const paths: Record<IconName, React.ReactNode> = {
++    shield: (
++      <>
++        <path d="m12 3 8 3v5c0 5-4.5 8-8 10-3.5-2-8-5-8-10V6l8-3Z" />
++        <path d="m8.5 11.5 2.5 2.5 4.5-5" />
++      </>
++    ),
++    key: (
++      <>
++        <circle cx="8" cy="8" r="5" />
++        <path d="m11.5 11.5 9 9M16 16l3-3m-1 5 3-3" />
++      </>
++    ),
++    device: (
++      <>
++        <rect x="4" y="3" width="16" height="13" rx="2" />
++        <path d="m4 16-2 4h20l-2-4M9 20h6" />
++      </>
++    ),
++    phone: (
++      <>
++        <rect x="6" y="2" width="12" height="20" rx="3" />
++        <path d="M10 5h4m-3 14h2" />
++      </>
++    ),
++    user: (
++      <>
++        <circle cx="12" cy="8" r="4" />
++        <path d="M4 21v-2a8 8 0 0 1 16 0v2" />
++      </>
++    ),
++    card: (
++      <>
++        <rect x="2" y="5" width="20" height="14" rx="3" />
++        <path d="M2 10h20M6 15h4" />
++      </>
++    ),
++    bookmark: <path d="M6 3h12v18l-6-4-6 4V3Z" />,
++    arrow: (
++      <>
++        <path d="M4 12h16m-6-6 6 6-6 6" />
++      </>
++    ),
++    chevron: <path d="m9 5 7 7-7 7" />,
++    check: <path d="m5 12 4 4L19 6" />,
++    plus: <path d="M12 5v14M5 12h14" />,
++    edit: (
++      <>
++        <path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-4-4L5 15l-1 5Z" />
++      </>
++    ),
++    trash: (
++      <>
++        <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7" />
++      </>
++    ),
++    help: (
++      <>
++        <circle cx="12" cy="12" r="9" />
++        <path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 2m0 3h.01" />
++      </>
++    ),
++    logout: (
++      <>
++        <path d="M9 4H4v16h5m5-13 5 5-5 5m-5-5h13" />
++      </>
++    ),
++    close: <path d="m6 6 12 12M6 18 18 6" />,
++    lock: (
++      <>
++        <rect x="5" y="10" width="14" height="11" rx="2" />
++        <path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2" />
++      </>
++    ),
++    globe: (
++      <>
++        <circle cx="12" cy="12" r="9" />
++        <ellipse cx="12" cy="12" rx="4" ry="9" />
++        <path d="M3 12h18" />
++      </>
++    ),
++    clock: (
++      <>
++        <circle cx="12" cy="12" r="9" />
++        <path d="M12 7v5l3 2" />
++      </>
++    ),
++  };
++  return (
++    <svg
++      width={size}
++      height={size}
++      viewBox="0 0 24 24"
++      fill="none"
++      stroke="currentColor"
++      strokeWidth="1.6"
++      strokeLinecap="round"
++      strokeLinejoin="round"
++      aria-hidden="true"
++      {...rest}
++    >
++      {paths[name]}
++    </svg>
++  );
++}
++const date = (time: number) =>
++  new Date(time).toLocaleDateString("en-US", {
++    month: "short",
++    day: "numeric",
++    year: "numeric",
++  });
++const relativeDate = (time?: number) => {
++  if (!time) return "Not used yet";
++  const days = Math.floor((Date.now() - time) / 86400000);
++  return days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
++};
++const base = import.meta.env.BASE_URL;
++type Mode =
++  | "rename"
++  | "remove"
++  | "add"
++  | "learn"
++  | "help"
++  | "profile"
++  | "subscription"
++  | "saved"
++  | null;
++export default function PasskeySettings() {
++  const [account, setAccount] = useState<PasskeyAccount | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState("");
++  const [notice, setNotice] = useState("");
++  const [mode, setMode] = useState<Mode>(null);
++  const [selected, setSelected] = useState<PasskeyRecord | null>(null);
++  const [name, setName] = useState("");
++  const [busy, setBusy] = useState(false);
++  const [supported, setSupported] = useState(false);
++  const [tab, setTab] = useState("Sign-in methods");
++  const dialog = useRef<HTMLDialogElement>(null);
++  const controller = useRef<AbortController | null>(null);
++  async function api(path = "", method = "GET", body?: unknown) {
++    const response = await fetch(`${base}api/passkeys/${path}`, {
++      method,
++      headers: { "Content-Type": "application/json" },
++      ...(body ? { body: JSON.stringify(body) } : {}),
++    });
++    const result = await response.json();
++    if (!response.ok)
++      throw new Error(
++        result.error || "Something went wrong. Please try again.",
++      );
++    return result;
++  }
++  async function sync(current: PasskeyAccount) {
++    if (!window.PublicKeyCredential?.signalAllAcceptedCredentials) return;
++    try {
++      await PublicKeyCredential.signalAllAcceptedCredentials({
++        rpId: location.hostname,
++        userId: current.id,
++        allAcceptedCredentialIds: current.credentials
++          .filter((c) => !c.demo)
++          .map((c) => c.id),
++      });
++    } catch {
++      /* Optional password-manager synchronization. */
++    }
++  }
++  async function load() {
++    setLoading(true);
++    setError("");
++    try {
++      const result = await api();
++      setAccount(result);
++      await sync(result);
++    } catch (e) {
++      setError((e as Error).message);
++    } finally {
++      setLoading(false);
++    }
++  }
++  useEffect(() => {
++    void load();
++    async function detect() {
++      if (!window.isSecureContext || !window.PublicKeyCredential) return;
++      await import("webauthn-polyfills");
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        setSupported(Boolean(capabilities.passkeyPlatformAuthenticator));
++      } catch {
++        setSupported(false);
++      }
++    }
++    void detect();
++    return () => controller.current?.abort();
++  }, []);
++  useEffect(() => {
++    if (mode && !dialog.current?.open) dialog.current?.showModal();
++  }, [mode]);
++  useEffect(() => {
++    if (!notice) return;
++    const timer = setTimeout(() => setNotice(""), 6000);
++    return () => clearTimeout(timer);
++  }, [notice]);
++  function open(next: Mode, credential?: PasskeyRecord) {
++    setSelected(credential || null);
++    setName(credential?.name || "");
++    setError("");
++    setMode(next);
++  }
++  function close() {
++    controller.current?.abort();
++    dialog.current?.close();
++    setMode(null);
++    setError("");
++  }
++  async function save(event: FormEvent) {
++    event.preventDefault();
++    setBusy(true);
++    setError("");
++    try {
++      if (mode === "rename" && selected) {
++        const updated = await api("", "PATCH", { id: selected.id, name });
++        setAccount(updated);
++        close();
++        setNotice("Passkey renamed successfully.");
++      } else if (mode === "remove" && selected) {
++        const updated = await api("", "DELETE", { id: selected.id });
++        setAccount(updated);
++        await sync(updated);
++        close();
++        setNotice("Passkey removed from your account.");
++      } else if (mode === "add") {
++        const options = await api("register", "POST", { action: "options" });
++        controller.current = new AbortController();
++        const credential = (await navigator.credentials.create({
++          publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options),
++          signal: controller.current.signal,
++        })) as PublicKeyCredential | null;
++        if (!credential)
++          throw new Error("No passkey was created. Please try again.");
++        let updated;
++        try {
++          updated = await api("register", "POST", {
++            action: "verify",
++            credential: credential.toJSON(),
++            name: name.trim() || "New passkey",
++          });
++        } catch (e) {
++          if (PublicKeyCredential.signalUnknownCredential) {
++            try {
++              await PublicKeyCredential.signalUnknownCredential({
++                rpId: location.hostname,
++                credentialId: credential.id,
++              });
++            } catch {
++              /* Optional sync. */
++            }
++          }
++          throw e;
++        }
++        setAccount(updated);
++        await sync(updated);
++        close();
++        setNotice("Your new passkey is ready.");
++      }
++    } catch (e) {
++      const err = e as Error;
++      setError(
++        err.name === "NotAllowedError"
++          ? "Passkey creation was cancelled or timed out. You can try again."
++          : err.name === "InvalidStateError"
++            ? "This device already has a passkey for this account."
++            : err.name === "AbortError"
++              ? "Passkey creation was cancelled."
++              : err.name === "SecurityError"
++                ? "Passkeys require a secure connection (HTTPS or localhost)."
++                : err.message,
++      );
++    } finally {
++      setBusy(false);
++    }
++  }
++  return (
++    <div className="account-app">
++      <header className="site-header">
++        <a
++          className="wordmark"
++          href={base}
++          aria-label="The DevTools Times home"
++        >
++          <span className="brand-symbol">
++            T<span>.</span>
++          </span>
++          <span>
++            The DevTools Times<span className="wordmark-dot">.</span>
++          </span>
++        </a>
++        <nav className="news-nav" aria-label="News">
++          <a href={`${base}news`}>The latest</a>
++          <a href={`${base}category/world`}>World</a>
++          <a href={`${base}category/politics`}>Politics</a>
++          <a href={`${base}multimedia`}>Culture</a>
++        </nav>
++        <div className="header-account">
++          <span className="subscriber-label">
++            <span /> Your daily perspective
++          </span>
++          <button
++            className="avatar"
++            onClick={() => open("profile")}
++            aria-label="Open your profile"
++          >
++            AM
++          </button>
++        </div>
++      </header>
++      <div className="account-shell">
++        <aside className="sidebar">
++          <a className="back-link" href={`${base}news`}>
++            <span>←</span> Back to the news
++          </a>
++          <div className="sidebar-heading">Your account</div>
++          <p className="sidebar-intro">A little space for your preferences.</p>
++          <nav className="account-nav" aria-label="Account settings">
++            <button onClick={() => open("profile")}>
++              <Icon name="user" />
++              Personal information
++            </button>
++            <button onClick={() => open("subscription")}>
++              <Icon name="card" />
++              Subscription & billing
++            </button>
++            <button
++              className="selected"
++              aria-current="page"
++              onClick={() => setTab("Sign-in methods")}
++            >
++              <Icon name="shield" />
++              Security & sign-in
++              <Icon name="chevron" size={14} />
++            </button>
++            <button onClick={() => open("saved")}>
++              <Icon name="bookmark" />
++              Saved articles
++            </button>
++          </nav>
++          <div className="sidebar-support">
++            <div className="support-icon">
++              <Icon name="help" size={22} />
++            </div>
++            <h3>A little help?</h3>
++            <p>Our team is always a click away.</p>
++            <button onClick={() => open("help")}>
++              Visit the help center <Icon name="arrow" size={16} />
++            </button>
++          </div>
++          <div className="sidebar-user">
++            <div className="avatar">AM</div>
++            <div>
++              <strong>{account?.displayName || "Alex Morgan"}</strong>
++              <span>Demo account</span>
++            </div>
++            <button
++              title="Account information"
++              aria-label="Account information"
++              onClick={() => open("profile")}
++            >
++              <Icon name="chevron" size={17} />
++            </button>
++          </div>
++        </aside>
++        <main className="settings-main" id="main-content">
++          <div className="breadcrumb">
++            Your account <Icon name="chevron" size={12} />
++            <span>Security & sign-in</span>
++          </div>
++          <div className="page-heading">
++            <div>
++              <span className="eyebrow">SAFE. SECURE. YOURS.</span>
++              <h1>Security & sign-in</h1>
++              <p>
++                Good stories deserve a secure home. Keep your account protected.
++              </p>
++            </div>
++            <div className="heading-shield">
++              <Icon name="shield" size={27} />
++            </div>
++          </div>
++          <div
++            className="settings-tabs"
++            role="tablist"
++            aria-label="Security settings"
++          >
++            {["Sign-in methods", "Active sessions", "Login activity"].map(
++              (item) => (
++                <button
++                  key={item}
++                  id={`tab-${item.replaceAll(" ", "-")}`}
++                  role="tab"
++                  aria-selected={tab === item}
++                  onClick={() => setTab(item)}
++                >
++                  {item}
++                  {item === "Sign-in methods" && <span className="tab-dot" />}
++                </button>
++              ),
++            )}
++          </div>
++          {tab === "Sign-in methods" ? (
++            <section role="tabpanel" aria-labelledby="tab-Sign-in-methods">
++              <div className="passkey-intro">
++                <div>
++                  <div className="section-kicker">
++                    <Icon name="key" size={18} />
++                    <span>A SMARTER WAY TO SIGN IN</span>
++                  </div>
++                  <h2>Your keys. Your account.</h2>
++                  <p>
++                    Skip the password. Sign in with your fingerprint, face, or
++                    screen lock.
++                    <br className="desktop-break" /> Passkeys are a simple,
++                    secure way to keep your account yours.
++                  </p>
++                </div>
++                <div className="key-art" aria-hidden="true">
++                  <span className="orbit orbit-one" />
++                  <span className="orbit orbit-two" />
++                  <div className="art-key">
++                    <Icon name="key" size={42} />
++                  </div>
++                  <span className="art-spark">✦</span>
++                  <span className="art-check">
++                    <Icon name="check" size={13} />
++                  </span>
++                </div>
++              </div>
++              <div className="passkey-list-heading">
++                <div>
++                  <h3>
++                    Passkeys{" "}
++                    <span className="count">
++                      {account?.credentials.length ?? "–"}
++                    </span>
++                  </h3>
++                  <p>
++                    Manage the devices and security keys you use to sign in.
++                  </p>
++                </div>
++                <button className="primary-button" onClick={() => open("add")}>
++                  <Icon name="plus" size={17} />
++                  Add a passkey
++                </button>
++              </div>
++              {error && !mode && (
++                <div role="alert" className="error-banner">
++                  {error} <button onClick={load}>Try again</button>
++                </div>
++              )}
++              <div className="passkey-list" aria-busy={loading}>
++                {loading ? (
++                  <div className="list-loading">Loading your passkeys…</div>
++                ) : account?.credentials.length ? (
++                  account.credentials.map((credential) => (
++                    <article className="passkey-row" key={credential.id}>
++                      <div className={`device-icon ${credential.kind}`}>
++                        <Icon name={credential.kind} size={26} />
++                      </div>
++                      <div className="credential-details">
++                        <div className="credential-title">
++                          <h4>{credential.name}</h4>
++                          {credential.kind === "device" && (
++                            <span className="credential-badge">
++                              Synced passkey
++                            </span>
++                          )}
++                        </div>
++                        <div className="provider">
++                          {credential.provider}
++                          {credential.demo && (
++                            <span className="example-label">Example</span>
++                          )}
++                        </div>
++                        <div className="credential-dates">
++                          <span>Added {date(credential.registeredAt)}</span>
++                          <span className="date-divider">·</span>
++                          <span>
++                            Last used: {relativeDate(credential.lastUsedAt)}
++                          </span>
++                        </div>
++                      </div>
++                      <div className="row-actions">
++                        <button
++                          onClick={() => open("rename", credential)}
++                          title={`Rename ${credential.name}`}
++                          aria-label={`Rename ${credential.name}`}
++                        >
++                          <Icon name="edit" size={17} />
++                        </button>
++                        <button
++                          className="remove-button"
++                          onClick={() => open("remove", credential)}
++                          title={`Remove ${credential.name}`}
++                          aria-label={`Remove ${credential.name}`}
++                        >
++                          <Icon name="trash" size={17} />
++                        </button>
++                      </div>
++                    </article>
++                  ))
++                ) : !error ? (
++                  <div className="empty-state">
++                    <Icon name="key" size={32} />
++                    <h4>A fresh start for your security.</h4>
++                    <p>
++                      You don’t have any passkeys yet. Add one to make signing
++                      in simpler.
++                    </p>
++                    <button className="text-button" onClick={() => open("add")}>
++                      Add your first passkey <Icon name="arrow" size={16} />
++                    </button>
++                  </div>
++                ) : null}
++                <div className="list-note">
++                  <Icon name="lock" size={14} />
++                  <span>
++                    Your biometric information stays on your device. We never
++                    see or store it.
++                  </span>
++                </div>
++              </div>
++              <div className="explainer-card">
++                <div className="explainer-icon">
++                  <Icon name="shield" size={23} />
++                </div>
++                <div>
++                  <h3>A small change. A big layer of protection.</h3>
++                  <p>
++                    Unlike passwords, passkeys can’t be guessed or stolen in a
++                    phishing attack.
++                    <br className="desktop-break" /> They’re built to protect
++                    you, without getting in your way.
++                  </p>
++                  <button className="text-button" onClick={() => open("learn")}>
++                    Get to know passkeys <Icon name="arrow" size={16} />
++                  </button>
++                </div>
++                <span className="explainer-decoration" aria-hidden="true">
++                  ✳
++                </span>
++              </div>
++              <div className="recovery-note">
++                <Icon name="help" size={17} />
++                <p>
++                  Lost access to a device? You can still{" "}
++                  <a href={`${base}signin`}>sign in with your password.</a>
++                </p>
++              </div>
++            </section>
++          ) : (
++            <section
++              className="alternative-panel"
++              role="tabpanel"
++              aria-labelledby={`tab-${tab.replaceAll(" ", "-")}`}
++            >
++              <div className="section-kicker">
++                <Icon name={tab === "Active sessions" ? "globe" : "clock"} />
++                <span>YOUR ACCOUNT AT A GLANCE</span>
++              </div>
++              <h2>{tab}</h2>
++              <p>
++                {tab === "Active sessions"
++                  ? "This browser is connected to your demo account. Your passkey changes are saved for this browser session."
++                  : "This is a preview account. There is no sign-in history to display yet."}
++              </p>
++              <div className="session-card">
++                <Icon
++                  name={tab === "Active sessions" ? "device" : "clock"}
++                  size={28}
++                />
++                <div>
++                  <strong>
++                    {tab === "Active sessions"
++                      ? "Current browser"
++                      : "No login activity yet"}
++                  </strong>
++                  <p>
++                    {tab === "Active sessions"
++                      ? "Active now · Demo session"
++                      : "Your recent sign-ins will appear here."}
++                  </p>
++                </div>
++                {tab === "Active sessions" && (
++                  <span className="credential-badge">This session</span>
++                )}
++              </div>
++            </section>
++          )}
++          <footer className="settings-footer">
++            <span>Made for curious minds. Built on trust.</span>
++            <span>
++              <Icon name="lock" size={12} /> Your privacy matters.
++            </span>
++          </footer>
++        </main>
++      </div>
++      <footer className="site-footer">
++        <span>© {new Date().getFullYear()} The DevTools Times</span>
++        <div>
++          <button onClick={() => open("help")}>Help & support</button>
++          <span className="footer-separator" />{" "}
++          <button onClick={() => open("learn")}>Privacy & security</button>
++        </div>
++        <span className="footer-tagline">Stay curious.</span>
++      </footer>
++      {notice && (
++        <div className="toast" role="status">
++          <Icon name="check" size={18} />
++          {notice}
++          <button
++            aria-label="Dismiss notification"
++            onClick={() => setNotice("")}
++          >
++            <Icon name="close" size={15} />
++          </button>
++        </div>
++      )}
++      <dialog
++        ref={dialog}
++        className="settings-dialog"
++        aria-labelledby="dialog-title"
++        onCancel={() => {
++          controller.current?.abort();
++          setMode(null);
++          setError("");
++        }}
++        onClose={() => setMode(null)}
++      >
++        <button
++          className="dialog-close"
++          aria-label="Close dialog"
++          onClick={close}
++        >
++          <Icon name="close" />
++        </button>
++        <div className="dialog-icon">
++          <Icon
++            name={
++              mode === "remove"
++                ? "trash"
++                : mode === "profile"
++                  ? "user"
++                  : mode === "help"
++                    ? "help"
++                    : "key"
++            }
++            size={25}
++          />
++        </div>
++        <h2 id="dialog-title">
++          {mode === "rename"
++            ? "Make it your own."
++            : mode === "remove"
++              ? "Remove this passkey?"
++              : mode === "add"
++                ? "A simpler sign-in starts here."
++                : mode === "profile"
++                  ? "Your personal space."
++                  : mode === "subscription"
++                    ? "Your subscription."
++                    : mode === "saved"
++                      ? "Your reading list."
++                      : mode === "help"
++                        ? "How can we help?"
++                        : "Meet your new key."}
++        </h2>
++        {mode === "rename" || mode === "remove" || mode === "add" ? (
++          <form onSubmit={save}>
++            <p>
++              {mode === "rename"
++                ? "Give your passkey a name that’s easy to recognize."
++                : mode === "remove"
++                  ? `“${selected?.name}” will no longer be able to sign in to this account. You can add a new passkey anytime.`
++                  : "Use your fingerprint, face, screen lock, or a security key. Your device will guide you through the next step."}
++            </p>
++            {mode === "remove" && account?.credentials.length === 1 && (
++              <div className="warning-note">
++                This is your last passkey. Make sure you can sign in with your
++                password before removing it.
++              </div>
++            )}
++            {mode !== "remove" && (
++              <label className="input-label">
++                Passkey name
++                <input
++                  autoFocus
++                  value={name}
++                  onChange={(e) => setName(e.target.value)}
++                  maxLength={60}
++                  required={mode === "rename"}
++                  placeholder="e.g. My MacBook"
++                />
++              </label>
++            )}
++            {mode === "add" && (
++              <div className="demo-note">
++                Demo account: this passkey is saved to this browser’s session
++                and is not connected to a production account.
++              </div>
++            )}
++            {mode === "add" && !supported && (
++              <div className="warning-note">
++                Passkeys aren’t available in this browser. Use a supported
++                browser over HTTPS, or continue to sign in with your password.
++              </div>
++            )}
++            {error && (
++              <div className="error-banner" role="alert">
++                {error}
++              </div>
++            )}
++            <div className="dialog-actions">
++              <button
++                type="button"
++                className="secondary-button"
++                onClick={close}
++              >
++                Cancel
++              </button>
++              <button
++                type="submit"
++                className={
++                  mode === "remove" ? "danger-button" : "primary-button"
++                }
++                disabled={
++                  busy ||
++                  (mode === "add" && !supported) ||
++                  (mode === "rename" && !name.trim())
++                }
++              >
++                {busy
++                  ? "Please wait…"
++                  : mode === "rename"
++                    ? "Save name"
++                    : mode === "remove"
++                      ? "Remove passkey"
++                      : "Create passkey"}
++                {!busy && mode === "add" && <Icon name="arrow" size={17} />}
++              </button>
++            </div>
++          </form>
++        ) : mode === "profile" ? (
++          <>
++            <p>Your settings are private to this demo browser session.</p>
++            <div className="profile-info">
++              <span>Name</span>
++              <strong>{account?.displayName || "Alex Morgan"}</strong>
++              <span>Email address</span>
++              <strong>{account?.name || "alex.morgan@example.com"}</strong>
++              <span>Account</span>
++              <strong>Demo · Session-based preview</strong>
++            </div>
++          </>
++        ) : mode === "help" ? (
++          <div className="help-content">
++            <p>Find a quick answer about your account security.</p>
++            <details open>
++              <summary>How do I rename a passkey?</summary>
++              <p>
++                Select the pencil beside a passkey, give it a new name, and save
++                your changes.
++              </p>
++            </details>
++            <details>
++              <summary>What if I lose my device?</summary>
++              <p>
++                Use another registered passkey, or sign in with your password.
++                Remove the lost device’s passkey from this page.
++              </p>
++            </details>
++            <details>
++              <summary>Why are some passkeys marked “Example”?</summary>
++              <p>
++                This preview starts with sample passkeys. You can rename and
++                remove them safely. New passkeys use your device’s real passkey
++                prompt.
++              </p>
++            </details>
++          </div>
++        ) : mode === "subscription" ? (
++          <>
++            <p>
++              You’re exploring a demo account. No payment information is stored,
++              and there is no active paid subscription.
++            </p>
++            <a className="primary-button dialog-link" href={`${base}signup`}>
++              Explore membership <Icon name="arrow" size={16} />
++            </a>
++          </>
++        ) : mode === "saved" ? (
++          <>
++            <p>
++              Your next great read is waiting. Browse the latest stories and use
++              the bookmark button to save an article.
++            </p>
++            <a className="primary-button dialog-link" href={`${base}news`}>
++              Explore stories <Icon name="arrow" size={16} />
++            </a>
++          </>
++        ) : (
++          <div className="learn-content">
++            <p>
++              A passkey is a digital key stored on your device or in your
++              password manager. It replaces a password with a quick, familiar
++              check.
++            </p>
++            <div>
++              <Icon name="user" />
++              <p>
++                <strong>Familiar to you.</strong> Unlock with your fingerprint,
++                face, device PIN, or security key.
++              </p>
++            </div>
++            <div>
++              <Icon name="shield" />
++              <p>
++                <strong>Built to protect.</strong> Each passkey only works with
++                the site it was created for, helping prevent phishing.
++              </p>
++            </div>
++            <div>
++              <Icon name="lock" />
++              <p>
++                <strong>Private by design.</strong> Your biometric data stays on
++                your device. Only a public key is shared with us.
++              </p>
++            </div>
++            <button className="primary-button" onClick={close}>
++              Got it <Icon name="check" size={17} />
++            </button>
++          </div>
++        )}
++      </dialog>
++    </div>
++  );
++}
+diff --git a/src/lib/passkeys.ts b/src/lib/passkeys.ts
+new file mode 100644
+index 0000000..aa2a993
+--- /dev/null
++++ b/src/lib/passkeys.ts
+@@ -0,0 +1,84 @@
++import type { AstroSession } from "astro";
++import { randomBytes } from "node:crypto";
++
++export interface PasskeyRecord {
++  id: string;
++  name: string;
++  provider: string;
++  kind: "device" | "phone" | "key";
++  registeredAt: number;
++  lastUsedAt?: number;
++  demo?: boolean;
++  publicKey?: string;
++  counter?: number;
++  transports?: string[];
++  aaguid?: string;
++  backedUp?: boolean;
++}
++export interface PasskeyAccount {
++  id: string;
++  name: string;
++  displayName: string;
++  credentials: PasskeyRecord[];
++}
++export async function getAccount(
++  session: AstroSession,
++): Promise<PasskeyAccount> {
++  const existing = (await session.get("passkeyAccount")) as
++    PasskeyAccount | undefined;
++  if (existing) return existing;
++  const now = Date.now();
++  const account: PasskeyAccount = {
++    id: randomBytes(32).toString("base64url"),
++    name: "alex.morgan@example.com",
++    displayName: "Alex Morgan",
++    credentials: [
++      {
++        id: randomBytes(24).toString("base64url"),
++        name: "MacBook Pro",
++        provider: "iCloud Keychain",
++        kind: "device",
++        registeredAt: now - 86400000 * 45,
++        lastUsedAt: now - 3600000 * 2,
++        demo: true,
++      },
++      {
++        id: randomBytes(24).toString("base64url"),
++        name: "iPhone 15",
++        provider: "iCloud Keychain",
++        kind: "phone",
++        registeredAt: now - 86400000 * 30,
++        lastUsedAt: now - 86400000 * 2,
++        demo: true,
++      },
++      {
++        id: randomBytes(24).toString("base64url"),
++        name: "YubiKey 5C NFC",
++        provider: "Security key",
++        kind: "key",
++        registeredAt: now - 86400000 * 12,
++        lastUsedAt: now - 86400000 * 5,
++        demo: true,
++      },
++    ],
++  };
++  await session.set("passkeyAccount", account);
++  return account;
++}
++export function publicAccount(account: PasskeyAccount) {
++  return {
++    ...account,
++    credentials: account.credentials.map(
++      ({ publicKey, counter, ...credential }) => credential,
++    ),
++  };
++}
++export function json(data: unknown, status = 200) {
++  return Response.json(data, {
++    status,
++    headers: { "Cache-Control": "no-store" },
++  });
++}
++export function sameOrigin(request: Request) {
++  return request.headers.get("origin") === new URL(request.url).origin;
++}
+diff --git a/src/pages/account/security.astro b/src/pages/account/security.astro
+new file mode 100644
+index 0000000..5571528
+--- /dev/null
++++ b/src/pages/account/security.astro
+@@ -0,0 +1,4 @@
++---
++import Page from '../index.astro';
++---
++<Page />
+diff --git a/src/pages/api/passkeys/index.ts b/src/pages/api/passkeys/index.ts
+new file mode 100644
+index 0000000..29fbec1
+--- /dev/null
++++ b/src/pages/api/passkeys/index.ts
+@@ -0,0 +1,45 @@
++import type { APIRoute } from "astro";
++import {
++  getAccount,
++  json,
++  publicAccount,
++  sameOrigin,
++} from "../../../lib/passkeys";
++export const GET: APIRoute = async ({ session }) => {
++  if (!session) return json({ error: "Session unavailable." }, 503);
++  return json(publicAccount(await getAccount(session)));
++};
++export const PATCH: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request))
++    return json({ error: "Invalid request origin." }, 403);
++  if (!session) return json({ error: "Session unavailable." }, 503);
++  try {
++    const { id, name } = await request.json();
++    if (typeof name !== "string" || !name.trim() || name.trim().length > 60)
++      return json({ error: "Enter a name between 1 and 60 characters." }, 400);
++    const account = await getAccount(session);
++    const credential = account.credentials.find((c) => c.id === id);
++    if (!credential) return json({ error: "Passkey not found." }, 404);
++    credential.name = name.trim();
++    await session.set("passkeyAccount", account);
++    return json(publicAccount(account));
++  } catch {
++    return json({ error: "Unable to rename this passkey." }, 400);
++  }
++};
++export const DELETE: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request))
++    return json({ error: "Invalid request origin." }, 403);
++  if (!session) return json({ error: "Session unavailable." }, 503);
++  try {
++    const { id } = await request.json();
++    const account = await getAccount(session);
++    if (!account.credentials.some((c) => c.id === id))
++      return json({ error: "Passkey not found." }, 404);
++    account.credentials = account.credentials.filter((c) => c.id !== id);
++    await session.set("passkeyAccount", account);
++    return json(publicAccount(account));
++  } catch {
++    return json({ error: "Unable to remove this passkey." }, 400);
++  }
++};
+diff --git a/src/pages/api/passkeys/register.ts b/src/pages/api/passkeys/register.ts
+new file mode 100644
+index 0000000..9f36a24
+--- /dev/null
++++ b/src/pages/api/passkeys/register.ts
+@@ -0,0 +1,89 @@
++import type { APIRoute } from "astro";
++import {
++  generateRegistrationOptions,
++  verifyRegistrationResponse,
++} from "@simplewebauthn/server";
++import {
++  getAccount,
++  publicAccount,
++  json,
++  sameOrigin,
++} from "../../../lib/passkeys";
++export const POST: APIRoute = async ({ request, session, url }) => {
++  if (!sameOrigin(request))
++    return json({ error: "Invalid request origin." }, 403);
++  if (!session) return json({ error: "Session unavailable." }, 503);
++  const account = await getAccount(session);
++  try {
++    const body = await request.json();
++    if (body.action === "options") {
++      const options = await generateRegistrationOptions({
++        rpName: "The DevTools Times · Demo",
++        rpID: url.hostname,
++        userID: new Uint8Array(Buffer.from(account.id, "base64url")),
++        userName: account.name,
++        userDisplayName: account.displayName,
++        excludeCredentials: account.credentials
++          .filter((c) => !c.demo)
++          .map((c) => ({ id: c.id, transports: c.transports })),
++        authenticatorSelection: {
++          residentKey: "required",
++          requireResidentKey: true,
++          userVerification: "required",
++        },
++      });
++      await session.set("passkeyChallenge", {
++        challenge: options.challenge,
++        expiresAt: Date.now() + 300000,
++      });
++      return json(options);
++    }
++    if (body.action !== "verify")
++      return json({ error: "Unknown registration action." }, 400);
++    const challenge = (await session.get("passkeyChallenge")) as
++      { challenge: string; expiresAt: number } | undefined;
++    await session.delete("passkeyChallenge");
++    if (!challenge || challenge.expiresAt < Date.now())
++      return json({ error: "Registration expired. Please try again." }, 400);
++    const result = await verifyRegistrationResponse({
++      response: body.credential,
++      expectedChallenge: challenge.challenge,
++      expectedOrigin: url.origin,
++      expectedRPID: url.hostname,
++      requireUserVerification: true,
++    });
++    if (!result.verified)
++      return json({ error: "Passkey verification failed." }, 400);
++    const info = result.registrationInfo;
++    if (account.credentials.some((c) => c.id === info.credential.id))
++      return json({ error: "This passkey is already registered." }, 409);
++    const providers: Record<string, string> = {
++      "adce0002-35bc-c60a-648b-0b25f1f05503": "iCloud Keychain",
++      "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": "Google Password Manager",
++      "bada5566-a7aa-401f-bd96-45619a55120d": "1Password",
++    };
++    const provider = providers[info.aaguid] || "Passkey provider";
++    account.credentials.push({
++      id: info.credential.id,
++      name:
++        typeof body.name === "string" && body.name.trim()
++          ? body.name.trim().slice(0, 60)
++          : "New passkey",
++      provider,
++      kind: info.credentialDeviceType === "singleDevice" ? "key" : "device",
++      registeredAt: Date.now(),
++      aaguid: info.aaguid,
++      publicKey: Buffer.from(info.credential.publicKey).toString("base64url"),
++      counter: info.credential.counter,
++      transports: info.credential.transports,
++      backedUp: info.credentialBackedUp,
++    });
++    await session.set("passkeyAccount", account);
++    return json(publicAccount(account));
++  } catch {
++    return json(
++      { error: "We couldn’t register the passkey. Please try again." },
++      400,
++    );
++  }
++};
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..142d9b9 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,18 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++import PasskeySettings from '../components/PasskeySettings';
++import '../styles/account.css';
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <meta name="description" content="Manage your passkeys and keep your DevTools Times account secure." />
++    <title>Security & sign-in · The DevTools Times</title>
++    <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.svg`} />
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
++  </head>
++  <body><a class="skip-link" href="#main-content">Skip to content</a><PasskeySettings client:load /></body>
++</html>
+diff --git a/src/pages/news.astro b/src/pages/news.astro
+new file mode 100644
+index 0000000..92f6399
+--- /dev/null
++++ b/src/pages/news.astro
+@@ -0,0 +1,84 @@
++---
++import Layout from '../layouts/Layout.astro';
++import ArticleTeaser from '../components/ArticleTeaser.astro';
++import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import Ad from '../components/AdSlotBanner';
++import { getCollection } from 'astro:content';
++import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import type { RenderResult } from 'astro:content';
++
++const articles = await getCollection('articles');
++articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++
++// Slicing articles for different sections
++const topArticle = articles[0];
++const topStories = articles.slice(1, 4);
++const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
++const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
++const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++
++// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
++politicsArticles[2] = {
++    id: 'public-transit-overhaul',
++    data: {
++      title: 'What\'s new in DevTools',
++      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
++      author: 'Chrome DevTools Team',
++      date: new Date('2025-09-16T00:00:00.000Z'),
++      category: 'Web Development',
++      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
++      image_caption: '',
++      readingTime: 3
++    },
++    body: '',
++    collection: 'articles',
++    slug: 'public-transit-overhaul',
++    render: async () => '' as unknown as RenderResult,
++  };
++---
++
++<Layout title="The DevTools Times">
++    <!-- Top Stories Bar -->
++    <div class="bg-white border-b border-gray-300">
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                {topStories.map(article => (
++                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                        </a>
++                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    </div>
++                ))}
++            </div>
++        </div>
++    </div>
++
++    <!-- Main Content Area -->
++    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} large={true} />
++    </main>
++
++    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Top News" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Politics" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        
++    </div>
++</Layout>
+\ No newline at end of file
+diff --git a/src/styles/account.css b/src/styles/account.css
+new file mode 100644
+index 0000000..047e546
+--- /dev/null
++++ b/src/styles/account.css
+@@ -0,0 +1,1584 @@
++:root {
++  font-family: "DM Sans", sans-serif;
++  color: #242b28;
++  background: #fafbf8;
++  font-synthesis: none;
++  -webkit-font-smoothing: antialiased;
++  font-size: 14px;
++  --green: #285c43;
++  --muted: #7b807b;
++  --border: #e4e7df;
++}
++* {
++  box-sizing: border-box;
++}
++body {
++  margin: 0;
++}
++button,
++input,
++a {
++  -webkit-tap-highlight-color: transparent;
++}
++button,
++input {
++  font: inherit;
++}
++button,
++a {
++  touch-action: manipulation;
++}
++button {
++  cursor: pointer;
++}
++a {
++  color: inherit;
++  text-decoration: none;
++}
++button {
++  color: inherit;
++}
++button:disabled {
++  cursor: not-allowed;
++  opacity: 0.55;
++}
++button:focus-visible,
++a:focus-visible,
++summary:focus-visible {
++  outline: 3px solid #91ae75;
++  outline-offset: 4px;
++}
++button {
++  transition:
++    background 0.16s,
++    color 0.16s,
++    box-shadow 0.16s;
++}
++svg {
++  flex-shrink: 0;
++}
++.site-header {
++  height: 93px;
++  background: #fff;
++  border-bottom: 1px solid var(--border);
++  display: flex;
++  align-items: center;
++  padding: 0 4.25%;
++  gap: 50px;
++}
++.wordmark {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  font-family: "DM Serif Display", Georgia, serif;
++  font-size: 25px;
++  white-space: nowrap;
++  letter-spacing: -0.9px;
++}
++.brand-symbol {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  width: 38px;
++  height: 40px;
++  background: #dbe6c3;
++  border-radius: 4px;
++  color: #254c36;
++  font-size: 34px;
++  line-height: 1;
++  letter-spacing: -4px;
++  padding-right: 5px;
++}
++.brand-symbol span {
++  font-size: 26px;
++  align-self: flex-end;
++  margin-bottom: 5px;
++}
++.wordmark-dot {
++  color: #69905b;
++}
++.news-nav {
++  display: flex;
++  gap: 29px;
++  margin-left: 25px;
++  font-size: 12px;
++  font-weight: 500;
++}
++.news-nav a:hover {
++  color: var(--green);
++}
++.header-account {
++  display: flex;
++  gap: 24px;
++  align-items: center;
++  margin-left: auto;
++}
++.subscriber-label {
++  font-size: 11px;
++  color: #777f76;
++  display: flex;
++  gap: 7px;
++  align-items: center;
++}
++.subscriber-label > span {
++  width: 5px;
++  height: 5px;
++  border-radius: 50%;
++  background: #729267;
++}
++.avatar {
++  background: #eceee4;
++  border: 1px solid #e0e4d7;
++  border-radius: 50%;
++  width: 36px;
++  height: 36px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  font-size: 11px;
++  font-weight: 600;
++  color: #465a3e;
++}
++.account-shell {
++  max-width: 1350px;
++  display: grid;
++  grid-template-columns: 281px minmax(0, 1fr);
++  margin: 0 auto;
++  min-height: calc(100vh - 166px);
++}
++.sidebar {
++  border-right: 1px solid var(--border);
++  padding: 36px 26px 22px 35px;
++  display: flex;
++  flex-direction: column;
++}
++.back-link {
++  font-size: 11px;
++  color: #798076;
++  display: flex;
++  gap: 10px;
++  align-items: center;
++  margin-bottom: 42px;
++}
++.back-link span {
++  font-size: 17px;
++}
++.back-link:hover {
++  color: var(--green);
++}
++.sidebar-heading {
++  font-family: "DM Serif Display", Georgia, serif;
++  font-size: 24px;
++  letter-spacing: -0.5px;
++}
++.sidebar-intro {
++  font-size: 10px;
++  color: #858a81;
++  margin: 8px 0 26px;
++  white-space: nowrap;
++}
++.account-nav {
++  display: flex;
++  flex-direction: column;
++  gap: 7px;
++  margin-left: -10px;
++  margin-right: -7px;
++}
++.account-nav button {
++  border: 0;
++  background: transparent;
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  text-align: left;
++  padding: 13px 12px;
++  border-radius: 5px;
++  font-size: 11px;
++  color: #656e64;
++  min-height: 44px;
++}
++.account-nav button > svg {
++  color: #7b8776;
++  width: 17px;
++}
++.account-nav button.selected {
++  background: #e9eddf;
++  color: #35513c;
++  font-weight: 600;
++}
++.account-nav button.selected > svg {
++  color: #3f6449;
++}
++.account-nav button.selected > svg:last-child {
++  margin-left: auto;
++  width: 12px;
++}
++.account-nav button:hover {
++  background: #eef0e8;
++}
++.sidebar-support {
++  border: 1px solid #e4e7dc;
++  border-radius: 7px;
++  padding: 19px 17px;
++  margin-top: auto;
++  margin-bottom: 28px;
++  background: linear-gradient(125deg, #f6f7f0, #f9faf6);
++}
++.support-icon {
++  color: #6d7e5b;
++  margin-bottom: 11px;
++}
++.sidebar-support h3 {
++  font-size: 12px;
++  font-weight: 550;
++  margin: 0 0 6px;
++}
++.sidebar-support p {
++  font-size: 10px;
++  color: #858a7e;
++  margin: 0 0 17px;
++}
++.sidebar-support button {
++  background: none;
++  border: 0;
++  padding: 0;
++  display: flex;
++  gap: 11px;
++  align-items: center;
++  color: #3c6146;
++  font-weight: 500;
++  font-size: 10px;
++}
++.sidebar-user {
++  border-top: 1px solid var(--border);
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding-top: 20px;
++  margin-top: 0;
++}
++.sidebar-user .avatar {
++  width: 33px;
++  height: 33px;
++  font-size: 10px;
++}
++.sidebar-user strong {
++  display: block;
++  font-size: 11px;
++  font-weight: 550;
++  margin-bottom: 4px;
++}
++.sidebar-user span {
++  display: block;
++  font-size: 9px;
++  color: #92958b;
++}
++.sidebar-user button {
++  border: 0;
++  background: none;
++  margin-left: auto;
++  color: #8a9381;
++  padding: 5px;
++}
++.settings-main {
++  padding: 34px 62px 0;
++  max-width: 1069px;
++  min-width: 0;
++}
++.breadcrumb {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  font-size: 10px;
++  color: #969a90;
++  margin-bottom: 30px;
++}
++.breadcrumb span {
++  color: #5d685b;
++}
++.page-heading {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  margin-bottom: 30px;
++}
++.eyebrow {
++  font-size: 8px;
++  letter-spacing: 1.7px;
++  font-weight: 600;
++  color: #82906f;
++}
++.page-heading h1 {
++  font-family: "DM Serif Display", Georgia, serif;
++  font-size: 37px;
++  line-height: 1.2;
++  letter-spacing: -1px;
++  font-weight: 400;
++  margin: 9px 0 12px;
++}
++.page-heading p {
++  font-size: 11px;
++  color: #85897e;
++  margin: 0;
++}
++.heading-shield {
++  border: 1px solid #dce2d1;
++  border-radius: 50%;
++  width: 54px;
++  height: 54px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  color: #68865a;
++  margin-right: 1px;
++  background: #f3f5eb;
++}
++.settings-tabs {
++  display: flex;
++  gap: 29px;
++  border-bottom: 1px solid var(--border);
++  margin-bottom: 29px;
++}
++.settings-tabs button {
++  display: flex;
++  align-items: center;
++  gap: 7px;
++  padding: 0 0 15px;
++  border: 0;
++  border-bottom: 2px solid transparent;
++  background: none;
++  color: #8a8d84;
++  font-size: 11px;
++  margin-bottom: -1px;
++}
++.settings-tabs button[aria-selected="true"] {
++  border-bottom-color: #426743;
++  color: #35573e;
++  font-weight: 600;
++}
++.tab-dot {
++  width: 4px;
++  height: 4px;
++  border-radius: 50%;
++  background: #56784b;
++}
++.passkey-intro {
++  padding: 26px 28px 27px;
++  border-radius: 8px;
++  background: #eef1e7;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: relative;
++  overflow: hidden;
++  border: 1px solid #e7eadd;
++}
++.section-kicker {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  color: #688258;
++  font-size: 8px;
++  letter-spacing: 1.35px;
++  font-weight: 600;
++}
++.passkey-intro h2 {
++  font-family: "DM Serif Display", Georgia, serif;
++  font-size: 27px;
++  font-weight: 400;
++  letter-spacing: -0.5px;
++  margin: 10px 0 9px;
++}
++.passkey-intro p {
++  color: #7c8475;
++  line-height: 1.8;
++  font-size: 10px;
++  margin: 0;
++}
++.key-art {
++  position: relative;
++  width: 145px;
++  height: 108px;
++  flex-shrink: 0;
++  margin-left: 15px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++}
++.orbit {
++  position: absolute;
++  border: 1px solid #dce4cf;
++  border-radius: 50%;
++  width: 100px;
++  height: 100px;
++}
++.orbit-two {
++  width: 138px;
++  height: 138px;
++}
++.art-key {
++  width: 70px;
++  height: 70px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  background: #dee7ce;
++  color: #577744;
++  border: 1px solid #c7d6b7;
++  border-radius: 19px;
++  transform: rotate(-12deg);
++  box-shadow:
++    0 5px 0 #d1ddc0,
++    0 7px 12px #6a855116;
++}
++.art-key svg {
++  transform: rotate(-30deg);
++}
++.art-spark {
++  position: absolute;
++  right: 5px;
++  top: 2px;
++  color: #8d9d71;
++  font-size: 17px;
++}
++.art-check {
++  position: absolute;
++  left: 12px;
++  bottom: 11px;
++  background: #fff;
++  border: 1px solid #dee5d3;
++  color: #5a7c45;
++  border-radius: 50%;
++  width: 23px;
++  height: 23px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++}
++.passkey-list-heading {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin: 31px 0 17px;
++}
++.passkey-list-heading h3 {
++  font-size: 17px;
++  letter-spacing: -0.3px;
++  font-weight: 550;
++  margin: 0;
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++.count {
++  background: #eef0e8;
++  border: 1px solid #e3e7dc;
++  font-size: 9px;
++  min-width: 20px;
++  height: 19px;
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  border-radius: 5px;
++  color: #6e7d60;
++  font-weight: 500;
++}
++.passkey-list-heading p {
++  font-size: 10px;
++  color: #909387;
++  margin: 8px 0 0;
++}
++.primary-button {
++  background: #2e5c41;
++  color: #fff;
++  border: 1px solid #2e5c41;
++  border-radius: 5px;
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 9px;
++  font-size: 10px;
++  font-weight: 500;
++  padding: 11px 16px;
++  box-shadow: 0 2px 2px #183b1e0b;
++  white-space: nowrap;
++}
++.primary-button:hover {
++  background: #214c34;
++}
++.passkey-list {
++  border: 1px solid #e1e5da;
++  background: #fff;
++  border-radius: 8px;
++  overflow: hidden;
++}
++.passkey-row {
++  display: flex;
++  align-items: center;
++  padding: 24px 23px;
++  gap: 17px;
++  border-bottom: 1px solid #eceee6;
++  min-height: 109px;
++}
++.device-icon {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  width: 48px;
++  height: 48px;
++  border-radius: 10px;
++  border: 1px solid #e4e7df;
++  background: #f6f7f2;
++  color: #79876e;
++  flex-shrink: 0;
++}
++.device-icon.key {
++  background: #f7f5ef;
++  color: #978d70;
++  border-color: #ede8dd;
++}
++.device-icon.phone {
++  background: #f0f3ee;
++  color: #7e8e79;
++}
++.credential-details {
++  min-width: 0;
++}
++.credential-title {
++  display: flex;
++  gap: 10px;
++  align-items: center;
++  flex-wrap: wrap;
++}
++.credential-title h4 {
++  font-weight: 550;
++  font-size: 12px;
++  margin: 0;
++  overflow-wrap: anywhere;
++}
++.credential-badge {
++  font-size: 7px;
++  letter-spacing: 0.05px;
++  background: #edf3e7;
++  border: 1px solid #dce7d4;
++  border-radius: 4px;
++  color: #688357;
++  padding: 3px 6px;
++  white-space: nowrap;
++}
++.provider {
++  font-size: 10px;
++  color: #848b7e;
++  margin-top: 6px;
++  display: flex;
++  align-items: center;
++  gap: 7px;
++}
++.example-label {
++  font-size: 7px;
++  color: #a2a795;
++  border-left: 1px solid #d9ddcf;
++  padding-left: 7px;
++}
++.credential-dates {
++  font-size: 9px;
++  color: #a0a495;
++  display: flex;
++  gap: 8px;
++  margin-top: 8px;
++}
++.date-divider {
++  color: #a2a991;
++}
++.row-actions {
++  margin-left: auto;
++  display: flex;
++  gap: 8px;
++  flex-shrink: 0;
++}
++.row-actions button {
++  border: 0;
++  background: transparent;
++  padding: 8px;
++  color: #8b9381;
++  border-radius: 4px;
++}
++.row-actions button:hover {
++  background: #edf1e5;
++  color: #385a38;
++}
++.row-actions .remove-button:hover {
++  color: #a94e46;
++  background: #faf0ec;
++}
++.list-note {
++  background: #fafbf7;
++  color: #949b89;
++  padding: 13px 22px;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  font-size: 9px;
++}
++.list-note svg {
++  color: #9aa88a;
++}
++.explainer-card {
++  margin-top: 23px;
++  border: 1px solid #e3e7db;
++  border-radius: 7px;
++  background: #f5f7ef;
++  display: flex;
++  gap: 15px;
++  padding: 23px 22px;
++  position: relative;
++  overflow: hidden;
++}
++.explainer-icon {
++  height: 37px;
++  width: 37px;
++  border-radius: 50%;
++  background: #e8eede;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  color: #82976b;
++  flex-shrink: 0;
++}
++.explainer-card h3 {
++  font-size: 12px;
++  font-weight: 550;
++  margin: 1px 0 8px;
++}
++.explainer-card p {
++  font-size: 10px;
++  color: #89917d;
++  line-height: 1.9;
++  margin: 0 0 12px;
++}
++.text-button {
++  display: inline-flex;
++  align-items: center;
++  gap: 8px;
++  background: none;
++  border: 0;
++  font-size: 10px;
++  font-weight: 500;
++  color: #496443;
++  padding: 0;
++}
++.text-button:hover {
++  text-decoration: underline;
++}
++.explainer-decoration {
++  font-size: 78px;
++  position: absolute;
++  right: 27px;
++  top: 28px;
++  color: #e1e7d5;
++  font-family: Georgia, serif;
++}
++.recovery-note {
++  display: flex;
++  justify-content: center;
++  align-items: center;
++  gap: 7px;
++  font-size: 9px;
++  color: #a0a593;
++  margin: 20px 0 31px;
++}
++.recovery-note p {
++  margin: 0;
++}
++.recovery-note a {
++  text-decoration: underline;
++  text-underline-offset: 3px;
++  color: #697b5e;
++}
++.settings-footer {
++  border-top: 1px solid var(--border);
++  padding: 20px 0 23px;
++  display: flex;
++  justify-content: space-between;
++  gap: 10px;
++  font-size: 9px;
++  color: #a3a896;
++}
++.settings-footer > span:last-child {
++  display: flex;
++  gap: 5px;
++  align-items: center;
++}
++.site-footer {
++  border-top: 1px solid var(--border);
++  padding: 23px 4.25%;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  color: #a0a493;
++  font-size: 9px;
++  background: #f7f8f3;
++  min-height: 73px;
++}
++.site-footer > div {
++  display: flex;
++  align-items: center;
++  gap: 15px;
++}
++.site-footer button {
++  background: none;
++  border: 0;
++  padding: 0;
++  font-size: 9px;
++  color: #919986;
++}
++.site-footer button:hover {
++  color: #3e5e3a;
++}
++.footer-separator {
++  height: 10px;
++  border-left: 1px solid #dbdfd1;
++}
++.footer-tagline {
++  font-family: "DM Serif Display", Georgia, serif;
++  font-size: 17px;
++  color: #7c876d;
++  font-style: italic;
++}
++.settings-dialog {
++  position: fixed;
++  margin: auto;
++  border: 1px solid #dfe4d6;
++  border-radius: 14px;
++  padding: 34px;
++  width: min(480px, calc(100% - 32px));
++  color: #2e382d;
++  background: #fafbf7;
++  box-shadow: 0 24px 90px #18241830;
++  max-height: 90vh;
++  overflow: auto;
++}
++.settings-dialog::backdrop {
++  background: #18241865;
++  backdrop-filter: blur(3px);
++}
++.dialog-close {
++  position: absolute;
++  top: 16px;
++  right: 16px;
++  background: none;
++  border: 0;
++  padding: 6px;
++  color: #89907d;
++}
++.dialog-icon {
++  background: #e8efdd;
++  color: #698356;
++  width: 48px;
++  height: 48px;
++  border-radius: 12px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  margin-bottom: 20px;
++}
++.settings-dialog h2 {
++  font-family: "DM Serif Display", Georgia, serif;
++  font-weight: 400;
++  font-size: 27px;
++  margin: 0 0 12px;
++  letter-spacing: -0.4px;
++}
++.settings-dialog p {
++  font-size: 12px;
++  line-height: 1.8;
++  color: #7b8572;
++}
++.input-label {
++  display: block;
++  font-size: 11px;
++  font-weight: 500;
++  margin: 24px 0;
++}
++.input-label input {
++  display: block;
++  margin-top: 9px;
++  width: 100%;
++  border: 1px solid #d5ddcc;
++  border-radius: 5px;
++  background: #fff;
++  padding: 12px;
++  color: #394532;
++  outline: none;
++}
++.input-label input:focus {
++  border-color: #7f9e69;
++  box-shadow: 0 0 0 3px #e2ead8;
++}
++.dialog-actions {
++  display: flex;
++  justify-content: flex-end;
++  gap: 10px;
++  margin-top: 26px;
++}
++.secondary-button {
++  background: #fff;
++  border: 1px solid #dce1d4;
++  border-radius: 5px;
++  padding: 11px 17px;
++  font-size: 10px;
++}
++.secondary-button:hover {
++  background: #f0f3e9;
++}
++.danger-button {
++  background: #a34e42;
++  color: #fff;
++  border: 1px solid #a34e42;
++  border-radius: 5px;
++  padding: 11px 17px;
++  font-size: 10px;
++}
++.danger-button:hover {
++  background: #8d3e34;
++}
++.demo-note,
++.warning-note {
++  font-size: 10px;
++  line-height: 1.7;
++  color: #839073;
++  background: #eef2e5;
++  border-radius: 5px;
++  padding: 12px 14px;
++  margin-top: 15px;
++}
++.warning-note {
++  color: #927442;
++  background: #f5efdf;
++}
++.error-banner {
++  font-size: 11px;
++  background: #fff0eb;
++  color: #a74d3b;
++  padding: 13px;
++  border-radius: 5px;
++  margin: 12px 0;
++  line-height: 1.7;
++}
++.error-banner button {
++  background: none;
++  border: 0;
++  text-decoration: underline;
++  color: inherit;
++}
++.toast {
++  position: fixed;
++  bottom: 25px;
++  left: 50%;
++  transform: translateX(-50%);
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  padding: 15px 18px;
++  background: #2c5239;
++  color: #fff;
++  font-size: 12px;
++  border-radius: 7px;
++  box-shadow: 0 6px 30px #18351b25;
++  z-index: 10;
++  max-width: calc(100% - 24px);
++}
++.toast button {
++  border: 0;
++  background: none;
++  color: inherit;
++  padding: 3px;
++}
++.empty-state,
++.list-loading {
++  padding: 40px 25px;
++  text-align: center;
++  color: #859476;
++  font-size: 12px;
++}
++.empty-state > svg {
++  margin: auto;
++}
++.empty-state h4 {
++  font-family: "DM Serif Display", Georgia, serif;
++  font-size: 22px;
++  font-weight: 400;
++  color: #384b32;
++  margin: 15px 0;
++}
++.empty-state p {
++  line-height: 1.7;
++}
++.empty-state .text-button {
++  margin: 10px;
++}
++.profile-info {
++  display: grid;
++  gap: 8px;
++  margin-top: 24px;
++}
++.profile-info span {
++  font-size: 10px;
++  color: #98a08d;
++  margin-top: 12px;
++}
++.profile-info strong {
++  font-size: 13px;
++  font-weight: 500;
++  overflow-wrap: anywhere;
++}
++.help-content details {
++  border-top: 1px solid #e1e6d9;
++  padding: 16px 0;
++}
++.help-content summary {
++  font-size: 12px;
++  cursor: pointer;
++}
++.help-content p {
++  font-size: 11px;
++}
++.learn-content > div {
++  display: flex;
++  align-items: flex-start;
++  gap: 13px;
++  padding: 10px 0;
++}
++.learn-content > div svg {
++  color: #7b9468;
++  margin-top: 13px;
++}
++.learn-content > div strong {
++  color: #48603d;
++}
++.learn-content > .primary-button {
++  margin-top: 15px;
++}
++.dialog-link {
++  margin-top: 15px;
++}
++.alternative-panel {
++  min-height: 630px;
++  padding-top: 30px;
++}
++.alternative-panel h2 {
++  font-family: "DM Serif Display", Georgia, serif;
++  font-size: 28px;
++  font-weight: 400;
++}
++.alternative-panel > p {
++  font-size: 12px;
++  color: #7d8872;
++  line-height: 1.8;
++  max-width: 500px;
++}
++.session-card {
++  background: #fff;
++  border: 1px solid #e0e5d7;
++  border-radius: 7px;
++  margin-top: 26px;
++  padding: 24px;
++  display: flex;
++  gap: 16px;
++  align-items: center;
++  color: #7f9272;
++}
++.session-card strong {
++  font-size: 12px;
++  color: #3c5134;
++  font-weight: 500;
++}
++.session-card p {
++  font-size: 10px;
++  color: #8a957d;
++  margin-bottom: 0;
++}
++.session-card > .credential-badge {
++  margin-left: auto;
++}
++.skip-link {
++  position: fixed;
++  top: 0;
++  left: 15px;
++  transform: translateY(-120%);
++  background: #2e5c41;
++  color: white;
++  padding: 12px;
++  z-index: 50;
++  border-radius: 0 0 5px 5px;
++}
++.skip-link:focus {
++  transform: translateY(0);
++}
++@media (min-width: 1450px) {
++  .site-header {
++    padding-left: calc((100vw - 1236px) / 2);
++    padding-right: calc((100vw - 1236px) / 2);
++  }
++  .account-shell {
++    max-width: 1320px;
++  }
++  .settings-main {
++    padding-top: 40px;
++    padding-left: 65px;
++    padding-right: 65px;
++  }
++  .sidebar {
++    padding-top: 42px;
++  }
++  .passkey-row {
++    padding-top: 26px;
++    padding-bottom: 26px;
++  }
++  .page-heading {
++    margin-bottom: 34px;
++  }
++  .passkey-intro {
++    padding-top: 30px;
++    padding-bottom: 30px;
++  }
++  .passkey-list-heading {
++    margin-top: 34px;
++  }
++  .explainer-card {
++    margin-top: 26px;
++  }
++  .recovery-note {
++    margin-top: 24px;
++    margin-bottom: 35px;
++  }
++}
++@media (max-width: 1100px) {
++  .site-header {
++    padding: 0 30px;
++    gap: 25px;
++  }
++  .news-nav {
++    gap: 20px;
++    margin-left: 0;
++  }
++  .subscriber-label {
++    display: none;
++  }
++  .account-shell {
++    grid-template-columns: 240px minmax(0, 1fr);
++  }
++  .sidebar {
++    padding: 30px 23px;
++  }
++  .settings-main {
++    padding: 30px 35px 0;
++  }
++  .sidebar-intro {
++    font-size: 9px;
++  }
++  .key-art {
++    width: 105px;
++  }
++  .passkey-intro {
++    padding: 24px;
++  }
++  .explainer-decoration {
++    display: none;
++  }
++  .credential-badge {
++    font-size: 6px;
++  }
++  .credential-title {
++    gap: 7px;
++  }
++  .credential-dates {
++    font-size: 8px;
++  }
++  .passkey-row {
++    padding: 23px 18px;
++    gap: 13px;
++  }
++  .row-actions {
++    gap: 2px;
++  }
++  .page-heading h1 {
++    font-size: 34px;
++  }
++  .page-heading p {
++    font-size: 10px;
++  }
++}
++@media (max-width: 800px) {
++  .site-header {
++    height: 77px;
++    padding: 0 22px;
++  }
++  .wordmark {
++    font-size: 22px;
++    gap: 9px;
++  }
++  .news-nav {
++    display: none;
++  }
++  .account-shell {
++    grid-template-columns: 190px minmax(0, 1fr);
++  }
++  .sidebar {
++    padding: 27px 17px;
++  }
++  .sidebar-heading {
++    font-size: 22px;
++  }
++  .sidebar-intro {
++    white-space: normal;
++    line-height: 1.7;
++  }
++  .account-nav button {
++    font-size: 10px;
++    padding: 12px 9px;
++    gap: 8px;
++  }
++  .account-nav button > svg {
++    width: 15px;
++  }
++  .sidebar-support {
++    padding: 15px 12px;
++  }
++  .sidebar-support p {
++    line-height: 1.8;
++  }
++  .sidebar-support button {
++    font-size: 9px;
++  }
++  .settings-main {
++    padding: 28px 25px 0;
++  }
++  .page-heading h1 {
++    font-size: 29px;
++  }
++  .page-heading p {
++    line-height: 1.7;
++    max-width: 260px;
++  }
++  .heading-shield {
++    width: 43px;
++    height: 43px;
++  }
++  .breadcrumb {
++    font-size: 9px;
++  }
++  .settings-tabs {
++    gap: 23px;
++  }
++  .settings-tabs button {
++    font-size: 10px;
++  }
++  .key-art {
++    display: none;
++  }
++  .passkey-intro h2 {
++    font-size: 25px;
++  }
++  .passkey-intro p {
++    font-size: 10px;
++  }
++  .desktop-break {
++    display: none;
++  }
++  .passkey-list-heading {
++    gap: 12px;
++  }
++  .passkey-list-heading p {
++    font-size: 9px;
++    line-height: 1.7;
++  }
++  .primary-button {
++    font-size: 9px;
++    padding: 10px 12px;
++  }
++  .passkey-list-heading h3 {
++    font-size: 16px;
++  }
++  .passkey-row {
++    padding: 23px 15px;
++    gap: 12px;
++    flex-wrap: wrap;
++  }
++  .credential-details {
++    flex: 1;
++  }
++  .device-icon {
++    width: 39px;
++    height: 43px;
++  }
++  .row-actions {
++    gap: 0;
++    margin-left: 0;
++  }
++  .row-actions button {
++    padding: 6px;
++  }
++  .credential-title {
++    display: block;
++  }
++  .credential-badge {
++    display: inline-block;
++    margin-top: 5px;
++  }
++  .credential-dates {
++    gap: 4px;
++    flex-wrap: wrap;
++    font-size: 8px;
++  }
++  .list-note {
++    font-size: 8px;
++    line-height: 1.6;
++    padding: 12px 15px;
++  }
++  .explainer-card {
++    padding: 19px 16px;
++    gap: 12px;
++  }
++  .explainer-card h3 {
++    font-size: 11px;
++    line-height: 1.6;
++  }
++  .explainer-card p {
++    font-size: 9px;
++  }
++  .explainer-icon {
++    width: 29px;
++    height: 29px;
++  }
++  .explainer-icon svg {
++    width: 19px;
++  }
++  .recovery-note {
++    font-size: 8px;
++    line-height: 1.7;
++    text-align: left;
++  }
++  .settings-footer {
++    font-size: 8px;
++    line-height: 1.7;
++  }
++  .settings-footer > span:last-child {
++    white-space: nowrap;
++  }
++}
++@media (max-width: 600px) {
++  .site-header {
++    height: 73px;
++    padding: 0 20px;
++  }
++  .wordmark {
++    font-size: 21px;
++  }
++  .brand-symbol {
++    height: 32px;
++    width: 31px;
++    font-size: 29px;
++  }
++  .header-account {
++    margin-left: auto;
++  }
++  .header-account .avatar {
++    width: 32px;
++    height: 32px;
++    font-size: 10px;
++  }
++  .account-shell {
++    display: block;
++  }
++  .sidebar {
++    padding: 16px 20px;
++    border-right: 0;
++    border-bottom: 1px solid var(--border);
++  }
++  .back-link,
++  .sidebar-heading,
++  .sidebar-intro,
++  .sidebar-support,
++  .sidebar-user {
++    display: none;
++  }
++  .account-nav {
++    flex-direction: row;
++    gap: 7px;
++    margin: 0;
++    overflow-x: auto;
++    scrollbar-width: none;
++  }
++  .account-nav button {
++    white-space: nowrap;
++    min-height: 37px;
++    gap: 7px;
++    padding: 9px 11px;
++    font-size: 10px;
++  }
++  .account-nav button.selected {
++    order: -1;
++  }
++  .account-nav button.selected > svg:last-child {
++    display: none;
++  }
++  .settings-main {
++    padding: 24px 20px 0;
++  }
++  .breadcrumb {
++    margin-bottom: 25px;
++  }
++  .page-heading {
++    margin-bottom: 26px;
++  }
++  .page-heading h1 {
++    font-size: 33px;
++  }
++  .page-heading p {
++    font-size: 10px;
++    max-width: 270px;
++  }
++  .heading-shield {
++    width: 44px;
++    height: 44px;
++  }
++  .eyebrow {
++    font-size: 7px;
++  }
++  .settings-tabs {
++    gap: 29px;
++    margin-bottom: 24px;
++  }
++  .settings-tabs button {
++    font-size: 10px;
++    padding-bottom: 14px;
++  }
++  .passkey-intro {
++    padding: 22px;
++  }
++  .passkey-intro h2 {
++    font-size: 27px;
++  }
++  .passkey-intro p {
++    font-size: 10px;
++    max-width: 300px;
++    line-height: 1.9;
++  }
++  .passkey-list-heading {
++    margin-top: 27px;
++  }
++  .passkey-list-heading p {
++    max-width: 180px;
++    font-size: 9px;
++  }
++  .primary-button {
++    padding: 11px 12px;
++  }
++  .passkey-row {
++    padding: 22px 16px;
++    gap: 13px;
++    flex-wrap: nowrap;
++  }
++  .credential-title {
++    display: flex;
++    gap: 8px;
++  }
++  .credential-title h4 {
++    font-size: 12px;
++  }
++  .credential-badge {
++    font-size: 6px;
++    margin: 0;
++  }
++  .device-icon {
++    width: 42px;
++    height: 46px;
++  }
++  .provider {
++    font-size: 9px;
++  }
++  .credential-dates {
++    font-size: 8px;
++    line-height: 1.7;
++    gap: 4px;
++  }
++  .row-actions {
++    gap: 3px;
++  }
++  .row-actions button {
++    padding: 7px;
++  }
++  .row-actions svg {
++    width: 15px;
++    height: 15px;
++  }
++  .list-note {
++    font-size: 8px;
++    padding: 12px 15px;
++  }
++  .explainer-card {
++    margin-top: 20px;
++    padding: 21px 18px;
++    gap: 13px;
++  }
++  .explainer-icon {
++    width: 33px;
++    height: 33px;
++  }
++  .explainer-card h3 {
++    font-size: 12px;
++  }
++  .explainer-card p {
++    font-size: 10px;
++  }
++  .recovery-note {
++    font-size: 8px;
++    justify-content: flex-start;
++    margin: 20px 0 27px;
++    padding: 0 6px;
++  }
++  .settings-footer {
++    padding: 18px 0 22px;
++    font-size: 8px;
++  }
++  .site-footer {
++    padding: 22px 20px;
++    gap: 16px;
++    flex-wrap: wrap;
++    font-size: 8px;
++  }
++  .site-footer button {
++    font-size: 8px;
++  }
++  .site-footer > div {
++    gap: 10px;
++  }
++  .footer-tagline {
++    display: none;
++  }
++  .settings-dialog {
++    padding: 29px 25px;
++  }
++  .settings-dialog h2 {
++    font-size: 26px;
++  }
++  .alternative-panel {
++    min-height: 500px;
++  }
++  .session-card {
++    padding: 19px 16px;
++  }
++  .session-card > .credential-badge {
++    display: none;
++  }
++}
++@media (prefers-reduced-motion: reduce) {
++  * {
++    transition: none !important;
++    scroll-behavior: auto !important;
++  }
++}
++/* Keep account controls comfortably readable across desktop displays. */
++@media (min-width: 801px) {
++  .news-nav {
++    font-size: 13px;
++  }
++  .sidebar-intro {
++    font-size: 11px;
++    white-space: normal;
++    line-height: 1.7;
++  }
++  .account-nav button {
++    font-size: 12px;
++  }
++  .sidebar-support h3 {
++    font-size: 13px;
++  }
++  .sidebar-support p,
++  .sidebar-support button {
++    font-size: 11px;
++  }
++  .sidebar-user strong {
++    font-size: 12px;
++  }
++  .sidebar-user span {
++    font-size: 10px;
++  }
++  .breadcrumb {
++    font-size: 11px;
++  }
++  .page-heading p {
++    font-size: 12px;
++  }
++  .settings-tabs button {
++    font-size: 12px;
++  }
++  .passkey-intro p {
++    font-size: 12px;
++  }
++  .passkey-list-heading p {
++    font-size: 11px;
++  }
++  .primary-button {
++    font-size: 12px;
++  }
++  .credential-title h4 {
++    font-size: 14px;
++  }
++  .credential-badge {
++    font-size: 8px;
++  }
++  .provider {
++    font-size: 11px;
++  }
++  .credential-dates {
++    font-size: 10px;
++  }
++  .example-label {
++    font-size: 8px;
++  }
++  .list-note {
++    font-size: 10px;
++  }
++  .explainer-card h3 {
++    font-size: 13px;
++  }
++  .explainer-card p {
++    font-size: 11px;
++  }
++  .text-button {
++    font-size: 11px;
++  }
++  .recovery-note {
++    font-size: 10px;
++  }
++  .settings-footer {
++    font-size: 10px;
++  }
++  .site-footer,
++  .site-footer button {
++    font-size: 10px;
++  }
++  .passkey-row {
++    min-height: 101px;
++    padding-top: 21px;
++    padding-bottom: 21px;
++  }
++  .passkey-intro {
++    padding-top: 22px;
++    padding-bottom: 22px;
++  }
++  .page-heading {
++    margin-bottom: 24px;
++  }
++  .breadcrumb {
++    margin-bottom: 24px;
++  }
++  .settings-main {
++    padding-top: 29px;
++  }
++  .settings-tabs {
++    margin-bottom: 25px;
++  }
++}

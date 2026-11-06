@@ -1,0 +1,2248 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,16 +3,38 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="description" content="Artisanal coffee ethically sourced and locally roasted. Join The Daily Grind Rewards for free drinks, bonus stars, and exclusive member perks.">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://images.unsplash.com data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:;">
++  <meta http-equiv="X-Content-Type-Options" content="nosniff">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <title>The Daily Grind | Artisanal Coffee &amp; Rewards</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #6d4c41;
+       --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
+       --accent: #ffab40;
+-      --text: #3e2723;
++      --accent-hover: #ff9100;
++      --accent-dark: #bf360c;
++      --text: #2d1e18;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --white: #ffffff;
++      --border: #bcaaa4;
++      --border-light: #e0d7d4;
++      --error: #c62828;
++      --error-bg: #ffebee;
++      --success: #1b5e20;
++      --success-bg: #e8f5e9;
++      --focus-ring: #ff9100;
++      --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.08);
++      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
++      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
++      --radius: 8px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -26,187 +48,2146 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Accessibility Skip Link */
++    .skip-link {
++      position: absolute;
++      top: -100px;
++      left: 1.5rem;
++      background: var(--accent);
++      color: #000;
++      padding: 0.75rem 1.25rem;
++      z-index: 10000;
++      font-weight: 700;
++      border-radius: 0 0 6px 6px;
++      text-decoration: none;
++      box-shadow: var(--shadow-md);
++      transition: top 0.2s ease;
++    }
++
++    .skip-link:focus {
++      top: 0;
++      outline: 3px solid #000;
++      outline-offset: 2px;
++    }
++
++    /* Universal Focus Indicators */
++    :focus-visible {
++      outline: 3px solid var(--focus-ring);
++      outline-offset: 3px;
++    }
++
++    /* Screen Reader Only Utility */
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     /* Navigation */
+-    nav {
++    nav[aria-label="Main Navigation"] {
+       background: var(--primary);
+-      color: white;
++      color: var(--white);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: var(--white);
++      text-decoration: none;
++      display: inline-block;
++      padding: 4px 8px;
++      border-radius: 4px;
++      transition: color 0.3s;
+     }
+ 
++    .logo:hover {
++      color: var(--accent);
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      gap: 1.25rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+-      color: white;
++      color: var(--white);
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.95rem;
++      font-weight: 500;
++      padding: 6px 10px;
++      border-radius: 4px;
++      transition: color 0.2s, background-color 0.2s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .nav-rewards-link {
++      background: rgba(255, 171, 64, 0.2);
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    .nav-rewards-link:hover {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    /* Accessible & Secure Logout Form */
++    .logout-form {
++      display: inline-block;
++      margin: 0;
++    }
++
++    .logout-btn {
++      background: transparent;
++      border: 1px solid var(--accent);
++      color: var(--white);
++      padding: 6px 14px;
+       border-radius: 4px;
++      font-size: 0.9rem;
++      font-family: inherit;
++      font-weight: 500;
++      cursor: pointer;
++      transition: all 0.3s;
+     }
+ 
++    .logout-btn:hover {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 420px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--white);
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+     }
+ 
+-    /* Content Sections */
++    .hero p {
++      font-size: 1.25rem;
++      margin-bottom: 1.5rem;
++      max-width: 600px;
++      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
++    }
++
++    /* Content Layout */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      font-size: 2.2rem;
++      color: var(--primary-dark);
++      margin-bottom: 0.5rem;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--text-muted);
++      max-width: 650px;
++      margin: 0 auto 2rem;
++      font-size: 1.05rem;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 25px;
+       margin-top: 20px;
+     }
+ 
++    /* Cards */
+     .card {
+-      background: white;
++      background: var(--white);
++      border-radius: var(--radius);
++      box-shadow: var(--shadow-sm);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.25s ease, box-shadow 0.25s ease;
++      border: 1px solid var(--border-light);
++    }
++
++    .card:hover {
++      transform: translateY(-4px);
++      box-shadow: var(--shadow-md);
++    }
++
++    .card-img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++      background-color: var(--secondary);
++    }
++
++    .card-body {
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.35rem;
+     }
+ 
++    .card p {
++      color: var(--text-muted);
++      flex-grow: 1;
++      font-size: 0.95rem;
++    }
++
++    /* Common Buttons */
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
++      color: var(--white);
++      padding: 12px 24px;
+       text-decoration: none;
+-      border-radius: 5px;
++      border-radius: 6px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      border: none;
++      font-size: 1rem;
++      font-weight: 600;
++      font-family: inherit;
++      cursor: pointer;
++      text-align: center;
++      transition: background 0.25s, transform 0.15s, box-shadow 0.25s;
++      min-height: 44px;
++      line-height: 1.25;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++      box-shadow: var(--shadow-sm);
+     }
+ 
++    .btn-secondary {
++      background: var(--secondary-light);
++      color: var(--primary-dark);
++      border: 1px solid var(--border);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++      color: var(--primary-dark);
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: var(--white);
++    }
++
++    .btn-primary:hover {
++      background: var(--primary-dark);
++    }
++
++    /* =========================================================
++       REWARDS PROGRAM SECTION & MULTI-STEP FORM
++       ========================================================= */
++    .rewards-section {
++      margin-top: 60px;
++      padding-top: 40px;
++      border-top: 2px dashed var(--border);
++    }
++
++    .rewards-header-card {
++      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
++      color: var(--white);
++      padding: 35px 30px;
++      border-radius: 12px;
++      text-align: center;
++      margin-bottom: 35px;
++      box-shadow: var(--shadow-md);
++      position: relative;
++      overflow: hidden;
++    }
++
++    .rewards-badge-tag {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-size: 0.85rem;
++      font-weight: 800;
++      letter-spacing: 1.5px;
++      padding: 4px 14px;
++      border-radius: 20px;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    .rewards-header-card h2 {
++      font-size: 2.3rem;
++      margin-bottom: 10px;
++      color: var(--white);
++    }
++
++    .rewards-header-card p {
++      font-size: 1.1rem;
++      max-width: 720px;
++      margin: 0 auto 25px;
++      color: var(--secondary-light);
++    }
++
++    .perks-ribbon {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 15px;
++      margin-top: 20px;
++    }
++
++    .perk-item {
++      background: rgba(255, 255, 255, 0.1);
++      backdrop-filter: blur(4px);
++      padding: 15px;
++      border-radius: 8px;
++      border: 1px solid rgba(255, 255, 255, 0.15);
++      text-align: left;
++    }
++
++    .perk-item strong {
++      display: block;
++      color: var(--accent);
++      font-size: 1.05rem;
++      margin-bottom: 4px;
++    }
++
++    .perk-item span {
++      font-size: 0.88rem;
++      color: #f5f5f5;
++    }
++
++    /* Multi-Step Stepper Header */
++    .form-container {
++      background: var(--white);
++      border-radius: 12px;
++      border: 1px solid var(--border-light);
++      box-shadow: var(--shadow-md);
++      padding: 35px;
++      margin-bottom: 40px;
++    }
++
++    .stepper-nav {
++      margin-bottom: 30px;
++    }
++
++    .stepper-list {
++      display: flex;
++      list-style: none;
++      justify-content: space-between;
++      position: relative;
++      padding: 0;
++      margin-bottom: 15px;
++    }
++
++    .stepper-list::before {
++      content: '';
++      position: absolute;
++      top: 20px;
++      left: 10%;
++      right: 10%;
++      height: 4px;
++      background: var(--border-light);
++      z-index: 1;
++    }
++
++    .step-item {
++      position: relative;
++      z-index: 2;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      flex: 1;
++      text-align: center;
++    }
++
++    .step-circle {
++      width: 42px;
++      height: 42px;
++      border-radius: 50%;
++      background: var(--white);
++      border: 3px solid var(--border);
++      color: var(--text-muted);
++      font-weight: 700;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      margin-bottom: 8px;
++      font-size: 1.05rem;
++      transition: all 0.3s;
++    }
++
++    .step-title {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--text-muted);
++    }
++
++    .step-item.active .step-circle {
++      background: var(--primary);
++      border-color: var(--accent);
++      color: var(--white);
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.3);
++    }
++
++    .step-item.active .step-title {
++      color: var(--primary-dark);
++      font-weight: 700;
++    }
++
++    .step-item.completed .step-circle {
++      background: var(--success);
++      border-color: var(--success);
++      color: var(--white);
++    }
++
++    .step-item.completed .step-title {
++      color: var(--success);
++    }
++
++    /* Accessible Progress Bar */
++    .progress-bar-track {
++      background: var(--border-light);
++      height: 8px;
++      border-radius: 4px;
++      overflow: hidden;
++      margin-bottom: 25px;
++    }
++
++    .progress-bar-fill {
++      height: 100%;
++      background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
++      width: 33.33%;
++      transition: width 0.35s ease;
++    }
++
++    /* Error Summary Banner */
++    .error-summary {
++      background: var(--error-bg);
++      border: 2px solid var(--error);
++      border-radius: 8px;
++      padding: 18px 20px;
++      margin-bottom: 25px;
++    }
++
++    .error-summary h3 {
++      color: var(--error);
++      font-size: 1.15rem;
++      margin-bottom: 8px;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .error-summary ul {
++      margin-left: 24px;
++      color: var(--error);
++    }
++
++    .error-summary li {
++      margin-bottom: 6px;
++    }
++
++    .error-summary a {
++      color: var(--error);
++      font-weight: 600;
++      text-decoration: underline;
++    }
++
++    .error-summary a:hover {
++      color: #000;
++    }
++
++    /* Fieldsets & Step Content */
++    .form-step {
++      border: none;
++      padding: 0;
++      margin: 0;
++    }
++
++    .form-step[hidden] {
++      display: none;
++    }
++
++    .step-legend {
++      font-size: 1.5rem;
++      font-weight: 700;
++      color: var(--primary-dark);
++      margin-bottom: 6px;
++      display: block;
++      width: 100%;
++    }
++
++    .step-desc {
++      color: var(--text-muted);
++      margin-bottom: 25px;
++      font-size: 0.98rem;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 20px;
++      margin-bottom: 20px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      margin-bottom: 20px;
++      position: relative;
++    }
++
++    .form-group label,
++    .sub-legend {
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--text);
++      font-size: 0.95rem;
++    }
++
++    .required {
++      color: var(--error);
++      font-weight: bold;
++    }
++
++    .form-help {
++      font-size: 0.83rem;
++      color: var(--text-muted);
++      margin-top: 4px;
++    }
++
++    .field-error {
++      font-size: 0.85rem;
++      color: var(--error);
++      font-weight: 600;
++      margin-top: 5px;
++      min-height: 1.2em;
++    }
++
++    .field-error:empty {
++      display: none;
++    }
++
++    input[type="text"],
++    input[type="email"],
++    input[type="tel"],
++    input[type="password"],
++    select {
++      width: 100%;
++      padding: 12px 14px;
++      border: 1.5px solid var(--border);
++      border-radius: 6px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: var(--white);
++      transition: border-color 0.2s, box-shadow 0.2s;
++      min-height: 46px;
++    }
++
++    input[type="text"]:focus,
++    input[type="email"]:focus,
++    input[type="tel"]:focus,
++    input[type="password"]:focus,
++    select:focus {
++      border-color: var(--accent-hover);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    input[aria-invalid="true"],
++    select[aria-invalid="true"] {
++      border-color: var(--error) !important;
++      background-color: #fff9f9;
++    }
++
++    /* Password field with show/hide button */
++    .password-input-wrap {
++      position: relative;
++      display: flex;
++      align-items: stretch;
++    }
++
++    .password-input-wrap input {
++      padding-right: 75px;
++    }
++
++    .btn-toggle-password {
++      position: absolute;
++      right: 6px;
++      top: 50%;
++      transform: translateY(-50%);
++      background: var(--secondary-light);
++      border: 1px solid var(--border);
++      color: var(--primary-dark);
++      padding: 6px 12px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      border-radius: 4px;
++      cursor: pointer;
++      min-height: 32px;
++      transition: background 0.2s;
++    }
++
++    .btn-toggle-password:hover {
++      background: var(--secondary);
++    }
++
++    /* Password Strength Checklist */
++    .password-rules {
++      background: var(--light);
++      border: 1px solid var(--border-light);
++      border-radius: 6px;
++      padding: 12px 16px;
++      margin-top: 8px;
++    }
++
++    .rules-title {
++      font-size: 0.85rem;
++      font-weight: 700;
++      color: var(--primary-dark);
++      margin-bottom: 6px;
++    }
++
++    .rules-list {
++      list-style: none;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 6px;
++      padding: 0;
++    }
++
++    .rule-item {
++      font-size: 0.82rem;
++      color: var(--text-muted);
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .rule-item.valid {
++      color: var(--success);
++      font-weight: 600;
++    }
++
++    .rule-item.valid .rule-icon {
++      color: var(--success);
++    }
++
++    .password-meter-wrap {
++      height: 6px;
++      background: var(--border-light);
++      border-radius: 3px;
++      margin-top: 10px;
++      overflow: hidden;
++    }
++
++    .meter-bar {
++      height: 100%;
++      width: 0%;
++      transition: width 0.3s, background-color 0.3s;
++    }
++
++    .meter-text {
++      font-size: 0.82rem;
++      font-weight: 600;
++      margin-top: 4px;
++      color: var(--text-muted);
++    }
++
++    /* Sub-Fieldsets (Checkboxes / Radio / Preferences) */
++    .sub-fieldset {
++      border: 1.5px solid var(--border-light);
++      border-radius: 8px;
++      padding: 18px 20px;
++      margin-bottom: 25px;
++      background: #fdfdfd;
++    }
++
++    .checkbox-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 12px;
++      margin-top: 12px;
++    }
++
++    .custom-checkbox {
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++      padding: 10px;
++      border: 1px solid var(--border-light);
++      border-radius: 6px;
++      background: var(--white);
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .custom-checkbox:hover {
++      border-color: var(--border);
++      background-color: var(--light);
++    }
++
++    .custom-checkbox input[type="checkbox"] {
++      width: 20px;
++      height: 20px;
++      margin-top: 3px;
++      cursor: pointer;
++      accent-color: var(--primary);
++    }
++
++    .custom-checkbox label {
++      cursor: pointer;
++      font-size: 0.93rem;
++      color: var(--text);
++      display: flex;
++      flex-direction: column;
++    }
++
++    .custom-checkbox label span {
++      font-size: 0.82rem;
++      color: var(--text-muted);
++      font-weight: normal;
++    }
++
++    .agreement-box {
++      background: var(--secondary-light);
++      padding: 15px;
++      border-radius: 6px;
++      border: 1px solid var(--border);
++      margin-bottom: 20px;
++    }
++
++    .agreement-box a {
++      color: var(--primary);
++      font-weight: 600;
++      text-decoration: underline;
++    }
++
++    /* Review Card */
++    .review-card {
++      background: var(--light);
++      border: 1.5px solid var(--border);
++      border-radius: 10px;
++      padding: 24px;
++      margin-bottom: 25px;
++    }
++
++    .review-card-header {
++      border-bottom: 1px solid var(--border-light);
++      padding-bottom: 12px;
++      margin-bottom: 20px;
++    }
++
++    .review-card-header h3 {
++      font-size: 1.3rem;
++      color: var(--primary-dark);
++    }
++
++    .review-card-header p {
++      font-size: 0.9rem;
++      color: var(--text-muted);
++    }
++
++    .review-sections-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 20px;
++    }
++
++    .review-section-block {
++      background: var(--white);
++      padding: 16px;
++      border-radius: 8px;
++      border: 1px solid var(--border-light);
++    }
++
++    .review-block-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 10px;
++      padding-bottom: 6px;
++      border-bottom: 1px dashed var(--border-light);
++    }
++
++    .review-block-header h4 {
++      font-size: 1.05rem;
++      color: var(--primary);
++    }
++
++    .btn-edit-step {
++      background: var(--secondary-light);
++      border: 1px solid var(--border);
++      color: var(--primary-dark);
++      padding: 4px 10px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-edit-step:hover {
++      background: var(--secondary);
++    }
++
++    .review-dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 6px 12px;
++      font-size: 0.9rem;
++    }
++
++    .review-dl dt {
++      font-weight: 600;
++      color: var(--text-muted);
++    }
++
++    .review-dl dd {
++      color: var(--text);
++      word-break: break-word;
++      margin: 0;
++    }
++
++    /* Actions Bar */
++    .step-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++      margin-top: 30px;
++      padding-top: 20px;
++      border-top: 1px solid var(--border-light);
++    }
++
++    /* Success Screen */
++    .rewards-success {
++      text-align: center;
++      padding: 20px 0;
++    }
++
++    .success-badge-card {
++      max-width: 500px;
++      margin: 25px auto;
++      background: linear-gradient(135deg, #2e1d18 0%, #4e342e 60%, #1a0f0b 100%);
++      color: var(--white);
++      padding: 25px;
++      border-radius: 14px;
++      box-shadow: var(--shadow-lg);
++      border: 2px solid var(--accent);
++      text-align: left;
++      position: relative;
++    }
++
++    .badge-card-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
++      padding-bottom: 12px;
++      margin-bottom: 20px;
++    }
++
++    .badge-brand {
++      font-weight: 800;
++      letter-spacing: 1.5px;
++      font-size: 1.1rem;
++      color: var(--accent);
++    }
++
++    .badge-tier {
++      background: var(--accent);
++      color: var(--primary-dark);
++      padding: 3px 10px;
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: 800;
++      letter-spacing: 1px;
++    }
++
++    .badge-card-middle {
++      display: flex;
++      gap: 18px;
++      align-items: center;
++      margin-bottom: 20px;
++    }
++
++    .badge-avatar {
++      font-size: 2.5rem;
++      background: rgba(255, 255, 255, 0.15);
++      width: 60px;
++      height: 60px;
++      border-radius: 50%;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      border: 1px solid var(--accent);
++    }
++
++    .badge-info .badge-name {
++      font-size: 1.3rem;
++      font-weight: 700;
++      color: var(--white);
++    }
++
++    .badge-info .badge-id {
++      font-family: monospace;
++      font-size: 1.05rem;
++      color: var(--accent);
++      letter-spacing: 1px;
++      margin-top: 2px;
++    }
++
++    .badge-info .badge-store {
++      font-size: 0.85rem;
++      color: var(--secondary);
++      margin-top: 2px;
++    }
++
++    .badge-card-perks {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++      background: rgba(0, 0, 0, 0.25);
++      padding: 12px;
++      border-radius: 8px;
++      text-align: center;
++    }
++
++    .perk-box .perk-val {
++      display: block;
++      font-size: 1.15rem;
++      font-weight: 700;
++      color: var(--accent);
++    }
++
++    .perk-box .perk-lbl {
++      font-size: 0.72rem;
++      color: var(--secondary-light);
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
++      border-top: 1px solid var(--border);
+     }
+ 
+     .footer-links {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      list-style: none;
+       margin-bottom: 20px;
++      gap: 8px;
++      padding: 0;
+     }
+ 
++    .footer-links li:not(:last-child)::after {
++      content: "•";
++      margin-left: 8px;
++      color: var(--text-muted);
++      opacity: 0.6;
++    }
++
+     .footer-links a {
+-      margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: 0.9rem;
++      font-weight: 500;
++      padding: 4px 6px;
++      border-radius: 4px;
++      transition: color 0.2s;
+     }
++
++    .footer-links a:hover {
++      color: var(--primary-dark);
++      text-decoration: underline;
++    }
++
++    footer p {
++      font-size: 0.88rem;
++      color: var(--text-muted);
++    }
++
++    /* Responsive Queries */
++    @media (max-width: 768px) {
++      nav[aria-label="Main Navigation"] {
++        flex-direction: column;
++        gap: 15px;
++        padding: 1rem;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 0.75rem;
++      }
++
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++
++      .hero p {
++        font-size: 1.05rem;
++      }
++
++      .form-container {
++        padding: 20px 15px;
++      }
++
++      .stepper-list::before {
++        display: none;
++      }
++
++      .step-title {
++        font-size: 0.78rem;
++      }
++
++      .step-circle {
++        width: 36px;
++        height: 36px;
++        font-size: 0.95rem;
++      }
++
++      .step-actions {
++        flex-direction: column-reverse;
++      }
++
++      .step-actions button {
++        width: 100%;
++      }
++
++      .badge-card-perks {
++        grid-template-columns: 1fr;
++        gap: 8px;
++      }
++    }
++
++    /* High-contrast & Reduced-Motion user preferences */
++    @media (prefers-reduced-motion: reduce) {
++      *, ::before, ::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        transition-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
++  <!-- Accessible Skip Link -->
++  <a href="#main-content" class="skip-link">Skip to main content</a>
++
++  <!-- Accessible Navigation Landmark -->
++  <nav aria-label="Main Navigation">
++    <a href="/" class="logo" aria-label="The Daily Grind Coffee Co. - Home">THE DAILY GRIND</a>
++    <ul role="list">
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#rewards" class="nav-rewards-link">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <!-- Secure POST Logout Form to eliminate CSRF session termination risk -->
++        <form action="/logout" method="POST" class="logout-form">
++          <input type="hidden" name="csrf_token" class="global-csrf-token" value="">
++          <button type="submit" class="logout-btn" aria-label="Log out of your account">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <!-- Hero Header Landmark -->
++  <header class="hero" role="banner">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, delivered fresh to your cup.</p>
++    <a href="/order-online" class="btn" aria-label="Order coffee online">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <!-- Main Content Landmark -->
++  <main class="container" id="main-content" tabindex="-1">
++    
++    <!-- Seasonal Favorites Section -->
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
++      <p class="section-subtitle">Crafted with single-origin beans, house-made syrups, and seasonal spices.</p>
++      
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" 
++               alt="Freshly poured maple oat latte with foam leaf art in a ceramic mug" 
++               class="card-img" 
++               loading="lazy" 
++               width="300" 
++               height="200">
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk paired with single-origin espresso and pure Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn" aria-label="View details for Maple Oat Latte">View Details</a>
++          </div>
++        </article>
++
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" 
++               alt="Double espresso extraction with golden brown crema pouring into a demitasse cup" 
++               class="card-img" 
++               loading="lazy" 
++               width="300" 
++               height="200">
++          <div class="card-body">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and extracted under 9 bars of pressure for a rich morning boost.</p>
++            <a href="/menu/espresso" class="btn" aria-label="View details for Dark Roast Espresso">View Details</a>
++          </div>
++        </article>
++
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" 
++               alt="Slow-steeped cold brew in a tall glass filled with crystal clear ice cubes" 
++               class="card-img" 
++               loading="lazy" 
++               width="300" 
++               height="200">
++          <div class="card-body">
++            <h3>Cold Brew</h3>
++            <p>Steeped cold for 18 hours to reveal sweet chocolate undertones and zero bitterness.</p>
++            <a href="/menu/cold-brew" class="btn" aria-label="View details for Cold Brew">View Details</a>
++          </div>
++        </article>
++      </div>
++    </section>
++
++    <!-- Comprehensive, Accessible, and Secure Rewards Registration Section -->
++    <section id="rewards" class="rewards-section" aria-labelledby="rewards-heading">
++      <div class="rewards-header-card">
++        <span class="rewards-badge-tag">&#9733; Daily Grind Rewards &#9733;</span>
++        <h2 id="rewards-heading">Join The Daily Grind Rewards</h2>
++        <p>
++          Turn every cup into rewards. Earn 2 Stars per $1 spent, receive a complimentary drink on your birthday,
++          and unlock exclusive barista reserve tastings.
++        </p>
++
++        <div class="perks-ribbon">
++          <div class="perk-item">
++            <strong>&#9733; 50 Welcome Stars</strong>
++            <span>Loaded instantly to your digital rewards pass upon joining today.</span>
++          </div>
++          <div class="perk-item">
++            <strong>&#127874; Free Birthday Drink</strong>
++            <span>Any handcrafted size or beverage on the house during your birthday month.</span>
++          </div>
++          <div class="perk-item">
++            <strong>&#9749; Free Custom Upgrades</strong>
++            <span>Complimentary oat/almond dairy subs and house-crafted flavor pumps.</span>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++
++      <div class="form-container">
++        <!-- Live region for Screen Reader Announcements -->
++        <div id="sr-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
++
++        <!-- Accessible Stepper Progress Navigation -->
++        <nav class="stepper-nav" aria-label="Registration Progress">
++          <ol class="stepper-list" role="list">
++            <li id="step-nav-1" class="step-item active" aria-current="step">
++              <span class="step-circle" aria-hidden="true">1</span>
++              <span class="step-title">Account Details</span>
++              <span class="sr-only status-text">(Current Step)</span>
++            </li>
++            <li id="step-nav-2" class="step-item">
++              <span class="step-circle" aria-hidden="true">2</span>
++              <span class="step-title">Coffee Preferences</span>
++              <span class="sr-only status-text">(Upcoming Step)</span>
++            </li>
++            <li id="step-nav-3" class="step-item">
++              <span class="step-circle" aria-hidden="true">3</span>
++              <span class="step-title">Security &amp; Review</span>
++              <span class="sr-only status-text">(Upcoming Step)</span>
++            </li>
++          </ol>
++          <div class="progress-bar-track" role="progressbar" aria-label="Registration Progress" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1" aria-valuetext="Step 1 of 3: Account Details">
++            <div id="progress-bar-fill" class="progress-bar-fill"></div>
++          </div>
++        </nav>
++
++        <!-- Live Validation Error Summary Alert Banner -->
++        <div id="form-error-summary" class="error-summary" role="alert" tabindex="-1" hidden aria-labelledby="error-summary-heading">
++          <h3 id="error-summary-heading">
++            <span aria-hidden="true">&#9888;</span> Please resolve the following issues to continue:
++          </h3>
++          <ul id="error-summary-list"></ul>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <!-- Multi-Step Registration Form -->
++        <form id="rewards-form" novalidate>
++          
++          <!-- Cryptographic Anti-CSRF Protection -->
++          <input type="hidden" id="rewards-csrf-token" name="csrf_token" value="">
++
++          <!-- Anti-Bot Honeypot Field (Inaccessible to assistive tech, hidden from humans) -->
++          <div class="sr-only" aria-hidden="true">
++            <label for="company_fax_trap">Do not fill this field if you are human</label>
++            <input type="text" id="company_fax_trap" name="company_fax_trap" tabindex="-1" autocomplete="off">
++          </div>
++
++          <!-- STEP 1: Account Information -->
++          <fieldset id="step-1" class="form-step">
++            <legend class="step-legend">Step 1: Account Information</legend>
++            <p class="step-desc">Enter your primary contact credentials to create your secure digital membership account.</p>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="first-name">First Name <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                <input type="text" id="first-name" name="first_name" required autocomplete="given-name" maxlength="50" aria-describedby="first-name-help first-name-error">
++                <div id="first-name-help" class="form-help">As printed on your orders and rewards pass.</div>
++                <div id="first-name-error" class="field-error" aria-live="polite"></div>
++              </div>
++
++              <div class="form-group">
++                <label for="last-name">Last Name <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                <input type="text" id="last-name" name="last_name" required autocomplete="family-name" maxlength="50" aria-describedby="last-name-help last-name-error">
++                <div id="last-name-help" class="form-help">Your legal family or surname.</div>
++                <div id="last-name-error" class="field-error" aria-live="polite"></div>
++              </div>
++            </div>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="email">Email Address <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                <input type="email" id="email" name="email" required autocomplete="email" maxlength="100" placeholder="name@example.com" aria-describedby="email-help email-error">
++                <div id="email-help" class="form-help">Used for your login credentials and points updates.</div>
++                <div id="email-error" class="field-error" aria-live="polite"></div>
++              </div>
++
++              <div class="form-group">
++                <label for="phone">Phone Number <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                <input type="tel" id="phone" name="phone" required autocomplete="tel" maxlength="20" placeholder="(555) 234-5678" aria-describedby="phone-help phone-error">
++                <div id="phone-help" class="form-help">For register barcode lookup and mobile order pickup alerts.</div>
++                <div id="phone-error" class="field-error" aria-live="polite"></div>
++              </div>
++            </div>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="password">Create Password <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                <div class="password-input-wrap">
++                  <input type="password" id="password" name="password" required autocomplete="new-password" maxlength="128" aria-describedby="password-rules password-error">
++                  <button type="button" class="btn-toggle-password" id="btn-toggle-pw" aria-label="Show password as plain text" aria-pressed="false">Show</button>
++                </div>
++                
++                <!-- Password Strength Checklist & Meter -->
++                <div id="password-rules" class="password-rules" aria-label="Password complexity requirements">
++                  <div class="rules-title">Password must satisfy:</div>
++                  <ul class="rules-list" role="list">
++                    <li id="rule-length" class="rule-item" data-rule="length"><span class="rule-icon" aria-hidden="true">&#9675;</span> 8+ characters</li>
++                    <li id="rule-upper" class="rule-item" data-rule="upper"><span class="rule-icon" aria-hidden="true">&#9675;</span> Uppercase letter (A-Z)</li>
++                    <li id="rule-lower" class="rule-item" data-rule="lower"><span class="rule-icon" aria-hidden="true">&#9675;</span> Lowercase letter (a-z)</li>
++                    <li id="rule-number" class="rule-item" data-rule="number"><span class="rule-icon" aria-hidden="true">&#9675;</span> One number (0-9)</li>
++                    <li id="rule-special" class="rule-item" data-rule="special"><span class="rule-icon" aria-hidden="true">&#9675;</span> Special character (!@#$%^&*)</li>
++                  </ul>
++                  <div class="password-meter-wrap" aria-hidden="true">
++                    <div id="password-meter" class="meter-bar"></div>
++                  </div>
++                  <div id="password-strength-text" class="meter-text" aria-live="polite">Strength: Not entered</div>
++                </div>
++                <div id="password-error" class="field-error" aria-live="polite"></div>
++              </div>
++
++              <div class="form-group">
++                <label for="confirm-password">Confirm Password <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                <div class="password-input-wrap">
++                  <input type="password" id="confirm-password" name="confirm_password" required autocomplete="new-password" maxlength="128" aria-describedby="confirm-pw-help confirm-password-error">
++                  <button type="button" class="btn-toggle-password" id="btn-toggle-cpw" aria-label="Show confirm password as plain text" aria-pressed="false">Show</button>
++                </div>
++                <div id="confirm-pw-help" class="form-help">Re-enter your password to ensure they match.</div>
++                <div id="confirm-password-error" class="field-error" aria-live="polite"></div>
++              </div>
++            </div>
++
++            <div class="step-actions">
++              <span></span>
++              <button type="button" class="btn btn-primary" id="btn-step-1-next">Continue to Preferences &rarr;</button>
++            </div>
++          </fieldset>
++
++          <!-- STEP 2: Coffee Profile & Preferences -->
++          <fieldset id="step-2" class="form-step" hidden>
++            <legend class="step-legend">Step 2: Coffee Profile &amp; Preferences</legend>
++            <p class="step-desc">Tell us your palate preferences and birthday so we can customize vouchers and promotions.</p>
++
++            <!-- Birthday Perk Selection -->
++            <fieldset class="sub-fieldset" aria-describedby="bday-help">
++              <legend class="sub-legend">Birthday Perk (Free Beverage Voucher) <span class="required" aria-hidden="true">*</span></legend>
++              <p id="bday-help" class="form-help">Receive any free handcrafted beverage during your birthday month! Year is omitted for privacy.</p>
++              
++              <div class="form-row">
++                <div class="form-group">
++                  <label for="bday-month">Birth Month <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                  <select id="bday-month" name="bday_month" autocomplete="bday-month" required aria-required="true" aria-describedby="bday-month-error">
++                    <option value="">Select Birth Month...</option>
++                    <option value="January">January</option>
++                    <option value="February">February</option>
++                    <option value="March">March</option>
++                    <option value="April">April</option>
++                    <option value="May">May</option>
++                    <option value="June">June</option>
++                    <option value="July">July</option>
++                    <option value="August">August</option>
++                    <option value="September">September</option>
++                    <option value="October">October</option>
++                    <option value="November">November</option>
++                    <option value="December">December</option>
++                  </select>
++                  <div id="bday-month-error" class="field-error" aria-live="polite"></div>
++                </div>
++
++                <div class="form-group">
++                  <label for="bday-day">Birth Day <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                  <select id="bday-day" name="bday_day" autocomplete="bday-day" required aria-required="true" aria-describedby="bday-day-error">
++                    <option value="">Select Day...</option>
++                    <!-- Days 1 to 31 populated in markup for fast reliability -->
++                    <option value="1">1</option><option value="2">2</option><option value="3">3</option>
++                    <option value="4">4</option><option value="5">5</option><option value="6">6</option>
++                    <option value="7">7</option><option value="8">8</option><option value="9">9</option>
++                    <option value="10">10</option><option value="11">11</option><option value="12">12</option>
++                    <option value="13">13</option><option value="14">14</option><option value="15">15</option>
++                    <option value="16">16</option><option value="17">17</option><option value="18">18</option>
++                    <option value="19">19</option><option value="20">20</option><option value="21">21</option>
++                    <option value="22">22</option><option value="23">23</option><option value="24">24</option>
++                    <option value="25">25</option><option value="26">26</option><option value="27">27</option>
++                    <option value="28">28</option><option value="29">29</option><option value="30">30</option>
++                    <option value="31">31</option>
++                  </select>
++                  <div id="bday-day-error" class="field-error" aria-live="polite"></div>
++                </div>
++              </div>
++            </fieldset>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="home-store">Primary Store Location <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                <select id="home-store" name="home_store" required aria-required="true" aria-describedby="store-help home-store-error">
++                  <option value="">Select your preferred cafe...</option>
++                  <option value="Downtown Flagship (104 Main St)">Downtown Flagship (104 Main St)</option>
++                  <option value="Uptown Roastery &amp; Lab (520 Elm Ave)">Uptown Roastery &amp; Lab (520 Elm Ave)</option>
++                  <option value="Arts District Espresso Bar (88 Market Way)">Arts District Espresso Bar (88 Market Way)</option>
++                  <option value="West End Drive-Thru &amp; Cafe (1400 Boulevard)">West End Drive-Thru &amp; Cafe (1400 Boulevard)</option>
++                  <option value="University Commons (310 College Rd)">University Commons (310 College Rd)</option>
++                </select>
++                <div id="store-help" class="form-help">Where you will collect welcome perks and reserve releases.</div>
++                <div id="home-store-error" class="field-error" aria-live="polite"></div>
++              </div>
++
++              <div class="form-group">
++                <label for="milk-pref">Preferred Milk / Dairy Alternative</label>
++                <select id="milk-pref" name="milk_pref">
++                  <option value="Whole Milk (Standard Barista)">Whole Milk (Standard Barista)</option>
++                  <option value="Oat Milk (Barista Blend - GF)">Oat Milk (Barista Blend - Gluten Free)</option>
++                  <option value="Almond Milk (Unsweetened Vanilla)">Almond Milk (Unsweetened Vanilla)</option>
++                  <option value="Organic Coconut Milk">Organic Coconut Milk</option>
++                  <option value="Non-Fat / Skim Milk">Non-Fat / Skim Milk</option>
++                  <option value="Half &amp; Half (Breve)">Half &amp; Half (Breve)</option>
++                  <option value="Straight Black / No Dairy">Straight Black / No Dairy</option>
++                </select>
++                <div class="form-help">Custom dairy substitutions are complimentary for Rewards members!</div>
++              </div>
++            </div>
++
++            <!-- Roast Profile Multi-Select Checkboxes -->
++            <fieldset class="sub-fieldset" aria-describedby="roasts-help">
++              <legend class="sub-legend">Favorite Coffee Roasts &amp; Styles (Select at least one) <span class="required" aria-hidden="true">*</span></legend>
++              <p id="roasts-help" class="form-help">We'll alert you to fresh roaster batches and reserve tastings based on your taste.</p>
++
++              <div class="checkbox-grid">
++                <div class="custom-checkbox">
++                  <input type="checkbox" id="roast-light" name="roasts" value="Light Roast">
++                  <label for="roast-light">
++                    <strong>Light Roast</strong>
++                    <span>Bright floral notes, crisp stone fruit acidity (Ethiopian, Kenyan)</span>
++                  </label>
++                </div>
++
++                <div class="custom-checkbox">
++                  <input type="checkbox" id="roast-medium" name="roasts" value="Medium Roast" checked>
++                  <label for="roast-medium">
++                    <strong>Medium Roast</strong>
++                    <span>Balanced body, milk chocolate &amp; caramel notes (Colombian, Huehuetenango)</span>
++                  </label>
++                </div>
++
++                <div class="custom-checkbox">
++                  <input type="checkbox" id="roast-dark" name="roasts" value="Dark Roast">
++                  <label for="roast-dark">
++                    <strong>Dark Roast</strong>
++                    <span>Smoky, molasses undertones, low acidity (Sumatra Mandheling, French Roast)</span>
++                  </label>
++                </div>
++
++                <div class="custom-checkbox">
++                  <input type="checkbox" id="roast-coldbrew" name="roasts" value="Cold Brew & Nitro">
++                  <label for="roast-coldbrew">
++                    <strong>Cold Brew &amp; Nitro</strong>
++                    <span>18-hour cold steeped for silky texture and velvety head</span>
++                  </label>
++                </div>
++
++                <div class="custom-checkbox">
++                  <input type="checkbox" id="roast-espresso" name="roasts" value="Espresso Specialties">
++                  <label for="roast-espresso">
++                    <strong>Espresso Specialties</strong>
++                    <span>Cortados, flat whites, single-origin espresso pulls</span>
++                  </label>
++                </div>
++
++                <div class="custom-checkbox">
++                  <input type="checkbox" id="roast-decaf" name="roasts" value="Decaf & Half-Caf">
++                  <label for="roast-decaf">
++                    <strong>Decaf &amp; Half-Caf</strong>
++                    <span>Swiss Water Process, rich roasted flavor without caffeine</span>
++                  </label>
++                </div>
++              </div>
++              <div id="roasts-error" class="field-error" aria-live="polite"></div>
++            </fieldset>
++
++            <div class="step-actions">
++              <button type="button" class="btn btn-secondary" id="btn-step-2-back">&larr; Back: Account Details</button>
++              <button type="button" class="btn btn-primary" id="btn-step-2-next">Continue to Review &rarr;</button>
++            </div>
++          </fieldset>
++
++          <!-- STEP 3: Security, Communication & Review -->
++          <fieldset id="step-3" class="form-step" hidden>
++            <legend class="step-legend">Step 3: Security, Alerts &amp; Review</legend>
++            <p class="step-desc">Configure security protections, review your profile, and finalize your registration.</p>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="two-factor-method">Two-Factor Authentication (2FA) <span class="required" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
++                <select id="two-factor-method" name="two_factor_method" required aria-required="true" aria-describedby="two-factor-help">
++                  <option value="SMS Passcode (Recommended)">SMS Text One-Time Passcode (Fast &amp; Secure)</option>
++                  <option value="Email Verification Code">Email Verification Code</option>
++                  <option value="Authenticator App (TOTP)">Authenticator App (Google Authenticator / 1Password)</option>
++                </select>
++                <div id="two-factor-help" class="form-help">Guards your saved payment cards, gift balance, and accrued Stars.</div>
++              </div>
++            </div>
++
++            <!-- Communication Preferences -->
++            <fieldset class="sub-fieldset">
++              <legend class="sub-legend">Notification Preferences</legend>
++              <div class="checkbox-grid">
++                <div class="custom-checkbox">
++                  <input type="checkbox" id="notify-promos" name="notify_promos" checked>
++                  <label for="notify-promos">
++                    <strong>Bonus Star Days &amp; Promotions (Email)</strong>
++                    <span>Receive announcements for Double Star Days and seasonal menus.</span>
++                  </label>
++                </div>
++
++                <div class="custom-checkbox">
++                  <input type="checkbox" id="notify-sms" name="notify_sms" checked>
++                  <label for="notify-sms">
++                    <strong>Order Pickup Alerts (SMS)</strong>
++                    <span>Receive an instant text the second your barista places your cup on the bar.</span>
++                  </label>
++                </div>
++
++                <div class="custom-checkbox">
++                  <input type="checkbox" id="notify-receipts" name="notify_receipts" checked>
++                  <label for="notify-receipts">
++                    <strong>Digital Receipts &amp; Statements</strong>
++                    <span>Itemized receipts and monthly Star balance summaries sent to your email.</span>
++                  </label>
++                </div>
++              </div>
++            </fieldset>
++
++            <!-- Terms of Service & Privacy Acceptance -->
++            <div class="agreement-box">
++              <div class="custom-checkbox">
++                <input type="checkbox" id="terms-agree" name="terms_agree" required aria-required="true" aria-describedby="terms-agree-error">
++                <label for="terms-agree">
++                  I agree to The Daily Grind <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service <span class="sr-only">(opens in new window)</span></a> and acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy <span class="sr-only">(opens in new window)</span></a>. <span class="required" aria-hidden="true">*</span>
++                </label>
++              </div>
++              <div id="terms-agree-error" class="field-error" aria-live="polite"></div>
++            </div>
++
++            <!-- Review Summary Card -->
++            <section class="review-card" aria-label="Review your registration details">
++              <div class="review-card-header">
++                <h3>Review Your Registration Information</h3>
++                <p>Please double check your details before activating your rewards account.</p>
++              </div>
++
++              <div class="review-sections-grid">
++                <div class="review-section-block">
++                  <div class="review-block-header">
++                    <h4>Account &amp; Contact</h4>
++                    <button type="button" class="btn-edit-step" data-jump="1" aria-label="Edit Account Details in Step 1">Edit</button>
++                  </div>
++                  <dl class="review-dl">
++                    <dt>Name:</dt><dd id="rev-name">-</dd>
++                    <dt>Email:</dt><dd id="rev-email">-</dd>
++                    <dt>Phone:</dt><dd id="rev-phone">-</dd>
++                  </dl>
++                </div>
++
++                <div class="review-section-block">
++                  <div class="review-block-header">
++                    <h4>Coffee &amp; Rewards</h4>
++                    <button type="button" class="btn-edit-step" data-jump="2" aria-label="Edit Coffee Preferences in Step 2">Edit</button>
++                  </div>
++                  <dl class="review-dl">
++                    <dt>Home Cafe:</dt><dd id="rev-store">-</dd>
++                    <dt>Birthday:</dt><dd id="rev-birthday">-</dd>
++                    <dt>Milk Choice:</dt><dd id="rev-milk">-</dd>
++                    <dt>Roasts:</dt><dd id="rev-roasts">-</dd>
++                  </dl>
++                </div>
++
++                <div class="review-section-block">
++                  <div class="review-block-header">
++                    <h4>Security &amp; Alerts</h4>
++                    <button type="button" class="btn-edit-step" data-jump="3" aria-label="Edit Security in Step 3">Edit</button>
++                  </div>
++                  <dl class="review-dl">
++                    <dt>2FA Security:</dt><dd id="rev-2fa">-</dd>
++                    <dt>Alerts:</dt><dd id="rev-alerts">-</dd>
++                  </dl>
++                </div>
++              </div>
++            </section>
++
++            <div class="step-actions">
++              <button type="button" class="btn btn-secondary" id="btn-step-3-back">&larr; Back: Coffee Preferences</button>
++              <button type="submit" class="btn btn-primary" id="btn-submit-registration">
++                Complete Registration &amp; Claim 50 Stars &#9733;
++              </button>
++            </div>
++          </fieldset>
++        </form>
++
++        <!-- Post-Submission Success Screen -->
++        <div id="rewards-success" class="rewards-success" hidden tabindex="-1" role="region" aria-labelledby="success-heading">
++          <div class="rewards-badge-tag" style="background: var(--success); color: white;">&#10004; Account Activated</div>
++          <h3 id="success-heading" class="section-title" style="margin-top: 10px;">Welcome to The Daily Grind Family!</h3>
++          <p class="section-subtitle">
++            Your rewards account has been registered and 50 Welcome Stars have been deposited to your account balance.
++          </p>
++
++          <!-- Digital Rewards Member Card Badge -->
++          <div class="success-badge-card" aria-label="Digital Membership Card">
++            <div class="badge-card-top">
++              <span class="badge-brand">THE DAILY GRIND</span>
++              <span class="badge-tier">&#9733; ARTISANAL MEMBER &#9733;</span>
++            </div>
++            <div class="badge-card-middle">
++              <div class="badge-avatar" aria-hidden="true">&#9749;</div>
++              <div class="badge-info">
++                <div class="badge-name" id="badge-member-name">Member Name</div>
++                <div class="badge-id" id="badge-member-id">DG-8492-7104</div>
++                <div class="badge-store" id="badge-member-store">Downtown Flagship</div>
++              </div>
++            </div>
++            <div class="badge-card-perks">
++              <div class="perk-box">
++                <span class="perk-val">50 &#9733;</span>
++                <span class="perk-lbl">Starting Balance</span>
++              </div>
++              <div class="perk-box">
++                <span class="perk-val" id="badge-bday-status">Active</span>
++                <span class="perk-lbl">Birthday Drink Perk</span>
++              </div>
++              <div class="perk-box">
++                <span class="perk-val">2x Stars</span>
++                <span class="perk-lbl">Per $1 Spent</span>
++              </div>
++            </div>
++          </div>
++
++          <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 25px;">
++            <a href="/order-online" class="btn btn-primary">Start Your First Mobile Order</a>
++            <button type="button" class="btn btn-secondary" id="btn-restart-registration">Register Another Member</button>
++          </div>
+         </div>
++
+       </div>
+     </section>
++
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++  <!-- Accessible Footer Landmark -->
++  <footer role="contentinfo">
++    <nav aria-label="Footer Navigation">
++      <ul class="footer-links" role="list">
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy Policy</a></li>
++        <li><a href="/terms">Terms of Service</a></li>
++        <li><a href="/accessibility">Accessibility Statement</a></li>
++      </ul>
++    </nav>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Application Logic: Multi-step Navigation, Accessibility, Validation & Security -->
++  <script>
++    (function () {
++      'use strict';
++
++      // --- Security: Cryptographic CSRF Token Generation & Management ---
++      function generateCsrfToken() {
++        if (window.crypto && window.crypto.getRandomValues) {
++          const buffer = new Uint8Array(24);
++          window.crypto.getRandomValues(buffer);
++          return Array.from(buffer, b => b.toString(16).padStart(2, '0')).join('');
++        }
++        return 'csrf_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
++      }
++
++      const activeCsrfToken = generateCsrfToken();
++      const rewardsCsrfInput = document.getElementById('rewards-csrf-token');
++      if (rewardsCsrfInput) rewardsCsrfInput.value = activeCsrfToken;
++
++      document.querySelectorAll('.global-csrf-token').forEach(input => {
++        input.value = activeCsrfToken;
++      });
++
++      // --- DOM References ---
++      const form = document.getElementById('rewards-form');
++      const stepFieldsets = [
++        document.getElementById('step-1'),
++        document.getElementById('step-2'),
++        document.getElementById('step-3')
++      ];
++      const stepNavItems = [
++        document.getElementById('step-nav-1'),
++        document.getElementById('step-nav-2'),
++        document.getElementById('step-nav-3')
++      ];
++      const progressBarTrack = document.querySelector('.progress-bar-track');
++      const progressBarFill = document.getElementById('progress-bar-fill');
++      const errorSummary = document.getElementById('form-error-summary');
++      const errorSummaryList = document.getElementById('error-summary-list');
++      const srAnnouncements = document.getElementById('sr-announcements');
++      const successRegion = document.getElementById('rewards-success');
++
++      let currentStepIndex = 0; // 0-indexed: 0, 1, 2
++
++      // --- Helper: Screen Reader Announcements ---
++      function announceToSR(message) {
++        if (!srAnnouncements) return;
++        srAnnouncements.textContent = '';
++        setTimeout(() => {
++          srAnnouncements.textContent = message;
++        }, 50);
++      }
++
++      // --- Helper: XSS Safe Text Escaping / Content Set ---
++      function setSafeText(elementId, text) {
++        const el = document.getElementById(elementId);
++        if (el) {
++          el.textContent = text || '-';
++        }
++      }
++
++      // --- Password Toggle Visibility Handlers ---
++      function setupPasswordToggle(buttonId, inputId) {
++        const btn = document.getElementById(buttonId);
++        const input = document.getElementById(inputId);
++        if (!btn || !input) return;
++
++        btn.addEventListener('click', function () {
++          const isPassword = input.type === 'password';
++          input.type = isPassword ? 'text' : 'password';
++          btn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
++          btn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password as plain text');
++          btn.textContent = isPassword ? 'Hide' : 'Show';
++        });
++      }
++
++      setupPasswordToggle('btn-toggle-pw', 'password');
++      setupPasswordToggle('btn-toggle-cpw', 'confirm-password');
++
++      // --- Password Strength Meter & Live Rule Checking ---
++      const pwInput = document.getElementById('password');
++      const pwMeter = document.getElementById('password-meter');
++      const pwStrengthText = document.getElementById('password-strength-text');
++      const ruleLength = document.getElementById('rule-length');
++      const ruleUpper = document.getElementById('rule-upper');
++      const ruleLower = document.getElementById('rule-lower');
++      const ruleNumber = document.getElementById('rule-number');
++      const ruleSpecial = document.getElementById('rule-special');
++
++      function evaluatePasswordRules(pw) {
++        const results = {
++          length: pw.length >= 8,
++          upper: /[A-Z]/.test(pw),
++          lower: /[a-z]/.test(pw),
++          number: /[0-9]/.test(pw),
++          special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw)
++        };
++
++        function updateRuleItem(itemEl, isValid) {
++          if (!itemEl) return;
++          const icon = itemEl.querySelector('.rule-icon');
++          if (isValid) {
++            itemEl.classList.add('valid');
++            if (icon) icon.innerHTML = '&#10004;';
++          } else {
++            itemEl.classList.remove('valid');
++            if (icon) icon.innerHTML = '&#9675;';
++          }
++        }
++
++        updateRuleItem(ruleLength, results.length);
++        updateRuleItem(ruleUpper, results.upper);
++        updateRuleItem(ruleLower, results.lower);
++        updateRuleItem(ruleNumber, results.number);
++        updateRuleItem(ruleSpecial, results.special);
++
++        let score = 0;
++        if (results.length) score++;
++        if (results.upper) score++;
++        if (results.lower) score++;
++        if (results.number) score++;
++        if (results.special) score++;
++
++        if (!pw) {
++          if (pwMeter) { pwMeter.style.width = '0%'; pwMeter.style.backgroundColor = 'transparent'; }
++          if (pwStrengthText) pwStrengthText.textContent = 'Strength: Not entered';
++          return score;
++        }
++
++        const meterConfigs = [
++          { width: '20%', color: '#c62828', label: 'Strength: Very Weak' },
++          { width: '40%', color: '#e65100', label: 'Strength: Weak' },
++          { width: '60%', color: '#f57c00', label: 'Strength: Moderate' },
++          { width: '80%', color: '#388e3c', label: 'Strength: Strong' },
++          { width: '100%', color: '#1b5e20', label: 'Strength: Very Strong' }
++        ];
++
++        const cfg = meterConfigs[Math.max(0, score - 1)] || meterConfigs[0];
++        if (pwMeter) {
++          pwMeter.style.width = cfg.width;
++          pwMeter.style.backgroundColor = cfg.color;
++        }
++        if (pwStrengthText) {
++          pwStrengthText.textContent = cfg.label;
++        }
++
++        return score;
++      }
++
++      if (pwInput) {
++        pwInput.addEventListener('input', function () {
++          evaluatePasswordRules(this.value);
++        });
++      }
++
++      // --- Phone Formatting Helper ---
++      const phoneInput = document.getElementById('phone');
++      if (phoneInput) {
++        phoneInput.addEventListener('input', function (e) {
++          let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
++          if (x) {
++            e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
++          }
++        });
++      }
++
++      // --- Validation Logic per Step ---
++      function clearFieldErrors(stepIndex) {
++        const stepFieldset = stepFieldsets[stepIndex];
++        if (!stepFieldset) return;
++        const errorDivs = stepFieldset.querySelectorAll('.field-error');
++        errorDivs.forEach(div => { div.textContent = ''; });
++        const invalidInputs = stepFieldset.querySelectorAll('[aria-invalid="true"]');
++        invalidInputs.forEach(input => { input.removeAttribute('aria-invalid'); });
++        if (errorSummary) {
++          errorSummary.hidden = true;
++          errorSummaryList.innerHTML = '';
++        }
++      }
++
++      function setFieldError(inputId, errorDivId, message, errorsList) {
++        const input = document.getElementById(inputId);
++        const errorDiv = document.getElementById(errorDivId);
++        if (input) {
++          input.setAttribute('aria-invalid', 'true');
++        }
++        if (errorDiv) {
++          errorDiv.textContent = message;
++        }
++        errorsList.push({ id: inputId, message: message });
++      }
++
++      function validateStep(stepIndex) {
++        clearFieldErrors(stepIndex);
++        const errors = [];
++
++        if (stepIndex === 0) {
++          // Step 1: First Name, Last Name, Email, Phone, Password, Confirm Password
++          const fn = document.getElementById('first-name');
++          const ln = document.getElementById('last-name');
++          const email = document.getElementById('email');
++          const phone = document.getElementById('phone');
++          const pw = document.getElementById('password');
++          const cpw = document.getElementById('confirm-password');
++
++          if (!fn || !fn.value.trim()) {
++            setFieldError('first-name', 'first-name-error', 'Please enter your first name.', errors);
++          } else if (fn.value.trim().length < 2) {
++            setFieldError('first-name', 'first-name-error', 'First name must be at least 2 characters.', errors);
++          }
++
++          if (!ln || !ln.value.trim()) {
++            setFieldError('last-name', 'last-name-error', 'Please enter your last name.', errors);
++          } else if (ln.value.trim().length < 2) {
++            setFieldError('last-name', 'last-name-error', 'Last name must be at least 2 characters.', errors);
++          }
++
++          const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
++          if (!email || !email.value.trim()) {
++            setFieldError('email', 'email-error', 'Please enter your email address.', errors);
++          } else if (!emailRegex.test(email.value.trim())) {
++            setFieldError('email', 'email-error', 'Please enter a valid email address (e.g., name@example.com).', errors);
++          }
++
++          const digitsOnlyPhone = phone ? phone.value.replace(/\D/g, '') : '';
++          if (!phone || !phone.value.trim()) {
++            setFieldError('phone', 'phone-error', 'Please enter your phone number.', errors);
++          } else if (digitsOnlyPhone.length < 10) {
++            setFieldError('phone', 'phone-error', 'Please enter a complete 10-digit phone number.', errors);
++          }
++
++          const score = evaluatePasswordRules(pw ? pw.value : '');
++          if (!pw || !pw.value) {
++            setFieldError('password', 'password-error', 'Please create a password.', errors);
++          } else if (score < 4) {
++            setFieldError('password', 'password-error', 'Password must satisfy at least 4 of the complexity requirements above.', errors);
++          }
++
++          if (!cpw || !cpw.value) {
++            setFieldError('confirm-password', 'confirm-password-error', 'Please re-enter your password.', errors);
++          } else if (pw && pw.value !== cpw.value) {
++            setFieldError('confirm-password', 'confirm-password-error', 'Passwords do not match. Please ensure both passwords match.', errors);
++          }
++
++        } else if (stepIndex === 1) {
++          // Step 2: Birthday Month, Birthday Day, Home Store, Roasts (at least one)
++          const bm = document.getElementById('bday-month');
++          const bd = document.getElementById('bday-day');
++          const hs = document.getElementById('home-store');
++          const roasts = document.querySelectorAll('input[name="roasts"]:checked');
++
++          if (!bm || !bm.value) {
++            setFieldError('bday-month', 'bday-month-error', 'Please select your birth month for your birthday drink perk.', errors);
++          }
++
++          if (!bd || !bd.value) {
++            setFieldError('bday-day', 'bday-day-error', 'Please select your birth day.', errors);
++          }
++
++          if (!hs || !hs.value) {
++            setFieldError('home-store', 'home-store-error', 'Please select your primary store location.', errors);
++          }
++
++          if (!roasts || roasts.length === 0) {
++            const roastsErr = document.getElementById('roasts-error');
++            if (roastsErr) roastsErr.textContent = 'Please select at least one favorite coffee roast or style.';
++            errors.push({ id: 'roast-medium', message: 'Please select at least one favorite coffee roast or style.' });
++          }
++
++        } else if (stepIndex === 2) {
++          // Step 3: Terms Agreement & Honeypot Check
++          const terms = document.getElementById('terms-agree');
++          const honeypot = document.getElementById('company_fax_trap');
++
++          // Bot detection: If honeypot filled, block silently or alert
++          if (honeypot && honeypot.value.trim().length > 0) {
++            errors.push({ id: 'terms-agree', message: 'Spam submission detected. Registration aborted.' });
++            return false;
++          }
++
++          if (!terms || !terms.checked) {
++            setFieldError('terms-agree', 'terms-agree-error', 'You must agree to the Terms of Service and Privacy Policy to register.', errors);
++          }
++        }
++
++        if (errors.length > 0) {
++          showErrorSummary(errors);
++          return false;
++        }
++
++        return true;
++      }
++
++      function showErrorSummary(errors) {
++        if (!errorSummary || !errorSummaryList) return;
++        errorSummaryList.innerHTML = '';
++        errors.forEach(err => {
++          const li = document.createElement('li');
++          const link = document.createElement('a');
++          link.href = '#' + err.id;
++          link.textContent = err.message;
++          link.addEventListener('click', function (e) {
++            e.preventDefault();
++            const targetEl = document.getElementById(err.id);
++            if (targetEl) {
++              targetEl.focus();
++              targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
++            }
++          });
++          li.appendChild(link);
++          errorSummaryList.appendChild(li);
++        });
++        errorSummary.hidden = false;
++        errorSummary.focus();
++        announceToSR('There are ' + errors.length + ' error(s) in this step. Please review the error summary above.');
++      }
++
++      // --- Review Step Population ---
++      function populateReviewCard() {
++        const fn = (document.getElementById('first-name')?.value || '').trim();
++        const ln = (document.getElementById('last-name')?.value || '').trim();
++        const email = (document.getElementById('email')?.value || '').trim();
++        const phone = (document.getElementById('phone')?.value || '').trim();
++        setSafeText('rev-name', fn + ' ' + ln);
++        setSafeText('rev-email', email);
++        setSafeText('rev-phone', phone);
++
++        const store = document.getElementById('home-store')?.value || '';
++        const bMonth = document.getElementById('bday-month')?.value || '';
++        const bDay = document.getElementById('bday-day')?.value || '';
++        const milk = document.getElementById('milk-pref')?.value || '';
++        setSafeText('rev-store', store);
++        setSafeText('rev-birthday', bMonth && bDay ? bMonth + ' ' + bDay : '-');
++        setSafeText('rev-milk', milk);
++
++        const checkedRoasts = Array.from(document.querySelectorAll('input[name="roasts"]:checked')).map(cb => cb.value);
++        setSafeText('rev-roasts', checkedRoasts.length ? checkedRoasts.join(', ') : 'None selected');
++
++        const twoFa = document.getElementById('two-factor-method')?.value || '';
++        setSafeText('rev-2fa', twoFa);
++
++        const alerts = [];
++        if (document.getElementById('notify-promos')?.checked) alerts.push('Bonus Stars');
++        if (document.getElementById('notify-sms')?.checked) alerts.push('Order SMS');
++        if (document.getElementById('notify-receipts')?.checked) alerts.push('Receipts');
++        setSafeText('rev-alerts', alerts.length ? alerts.join(', ') : 'None');
++      }
++
++      // --- Step Navigation State Management ---
++      function goToStep(targetIndex) {
++        if (targetIndex < 0 || targetIndex >= stepFieldsets.length) return;
++
++        stepFieldsets.forEach((fs, idx) => {
++          if (idx === targetIndex) {
++            fs.hidden = false;
++          } else {
++            fs.hidden = true;
++          }
++        });
++
++        stepNavItems.forEach((item, idx) => {
++          const statusSpan = item.querySelector('.status-text');
++          if (idx === targetIndex) {
++            item.className = 'step-item active';
++            item.setAttribute('aria-current', 'step');
++            if (statusSpan) statusSpan.textContent = '(Current Step)';
++          } else if (idx < targetIndex) {
++            item.className = 'step-item completed';
++            item.removeAttribute('aria-current');
++            if (statusSpan) statusSpan.textContent = '(Completed Step)';
++          } else {
++            item.className = 'step-item';
++            item.removeAttribute('aria-current');
++            if (statusSpan) statusSpan.textContent = '(Upcoming Step)';
++          }
++        });
++
++        // Update Progress Bar
++        const stepPct = ((targetIndex + 1) / stepFieldsets.length) * 100;
++        if (progressBarFill) {
++          progressBarFill.style.width = stepPct + '%';
++        }
++        if (progressBarTrack) {
++          progressBarTrack.setAttribute('aria-valuenow', targetIndex + 1);
++          const stepNames = ['Account Details', 'Coffee Preferences', 'Security & Review'];
++          progressBarTrack.setAttribute('aria-valuetext', 'Step ' + (targetIndex + 1) + ' of 3: ' + stepNames[targetIndex]);
++        }
++
++        currentStepIndex = targetIndex;
++
++        if (targetIndex === 2) {
++          populateReviewCard();
++        }
++
++        // Focus Management: Set focus to the legend of the new active step
++        const newLegend = stepFieldsets[targetIndex].querySelector('legend');
++        if (newLegend) {
++          newLegend.setAttribute('tabindex', '-1');
++          newLegend.focus();
++        }
++
++        const stepNames = ['Account Details', 'Coffee Preferences', 'Security & Review'];
++        announceToSR('Navigated to Step ' + (targetIndex + 1) + ' of 3: ' + stepNames[targetIndex]);
++      }
++
++      // --- Navigation Button Listeners ---
++      document.getElementById('btn-step-1-next')?.addEventListener('click', function () {
++        if (validateStep(0)) {
++          goToStep(1);
++        }
++      });
++
++      document.getElementById('btn-step-2-back')?.addEventListener('click', function () {
++        clearFieldErrors(1);
++        goToStep(0);
++      });
++
++      document.getElementById('btn-step-2-next')?.addEventListener('click', function () {
++        if (validateStep(1)) {
++          goToStep(2);
++        }
++      });
++
++      document.getElementById('btn-step-3-back')?.addEventListener('click', function () {
++        clearFieldErrors(2);
++        goToStep(1);
++      });
++
++      // Jump links from Review Card
++      document.querySelectorAll('.btn-edit-step').forEach(btn => {
++        btn.addEventListener('click', function () {
++          const jumpStep = parseInt(this.getAttribute('data-jump'), 10) - 1;
++          if (!isNaN(jumpStep)) {
++            goToStep(jumpStep);
++          }
++        });
++      });
++
++      // --- Form Submission Handler ---
++      form?.addEventListener('submit', function (e) {
++        e.preventDefault();
++
++        // Validate final step
++        if (!validateStep(2)) {
++          return;
++        }
++
++        const submitBtn = document.getElementById('btn-submit-registration');
++        if (submitBtn) {
++          submitBtn.disabled = true;
++          submitBtn.textContent = 'Activating Your Rewards Pass...';
++        }
++
++        // Simulate secure server processing
++        setTimeout(() => {
++          const fn = (document.getElementById('first-name')?.value || '').trim();
++          const ln = (document.getElementById('last-name')?.value || '').trim();
++          const store = document.getElementById('home-store')?.value || 'Downtown Flagship';
++          const bMonth = document.getElementById('bday-month')?.value || '';
++
++          // Generate randomized Member ID
++          const randomId = 'DG-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000);
++
++          setSafeText('badge-member-name', fn + ' ' + ln);
++          setSafeText('badge-member-id', randomId);
++          setSafeText('badge-member-store', store);
++          setSafeText('badge-bday-status', bMonth ? bMonth + ' Voucher Ready' : 'Active');
++
++          // Hide form, reveal success state
++          form.hidden = true;
++          if (successRegion) {
++            successRegion.hidden = false;
++            successRegion.focus();
++          }
++
++          announceToSR('Registration successful! Welcome to The Daily Grind Rewards. Your digital membership pass is now active.');
++        }, 600);
++      });
++
++      // --- Reset / Register Another Member Handler ---
++      document.getElementById('btn-restart-registration')?.addEventListener('click', function () {
++        form.reset();
++        evaluatePasswordRules('');
++        clearFieldErrors(0);
++        clearFieldErrors(1);
++        clearFieldErrors(2);
++
++        // Regenerate CSRF Token
++        const newToken = generateCsrfToken();
++        if (rewardsCsrfInput) rewardsCsrfInput.value = newToken;
++
++        const submitBtn = document.getElementById('btn-submit-registration');
++        if (submitBtn) {
++          submitBtn.disabled = false;
++          submitBtn.textContent = 'Complete Registration & Claim 50 Stars \u2605';
++        }
++
++        if (successRegion) successRegion.hidden = true;
++        form.hidden = false;
++        goToStep(0);
++      });
++
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,13 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -24,8 +24,9 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      font-size-adjust: from-font;
+     }
+ 
+     /* Navigation */
+     nav {

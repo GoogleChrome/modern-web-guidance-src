@@ -1,0 +1,68 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,8 +73,11 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -87,8 +90,42 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    .shaped-element {
++      position: absolute;
++      right: -2rem;
++      bottom: -2rem;
++      width: clamp(15rem, 40vw, 32rem);
++      aspect-ratio: 6 / 5;
++      pointer-events: none;
++      background: radial-gradient(ellipse at 35% 30%, #ffce83, #c17a3b 65%, #75452d);
++      opacity: 0.65;
++      transform: rotate(-12deg);
++      /* A soft organic fallback when CSS masking is unsupported. */
++      border-radius: 42% 58% 65% 35% / 55% 35% 65% 45%;
++    }
++
++    @supports (mask-image: url("assets/coffee-splash.svg")) or (-webkit-mask-image: url("assets/coffee-splash.svg")) {
++      .shaped-element {
++        border-radius: 0;
++        -webkit-mask-image: url("assets/coffee-splash.svg");
++        -webkit-mask-size: 100% 100%;
++        -webkit-mask-position: center;
++        -webkit-mask-repeat: no-repeat;
++        mask-image: url("assets/coffee-splash.svg");
++        mask-size: 100% 100%;
++        mask-position: center;
++        mask-repeat: no-repeat;
++        mask-mode: alpha;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +205,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

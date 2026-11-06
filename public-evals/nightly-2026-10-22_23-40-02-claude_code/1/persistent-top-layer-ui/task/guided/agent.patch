@@ -1,0 +1,203 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,100 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback overlay */
++    .feedback-dialog {
++      margin: auto;
++      width: min(90vw, 26rem);
++      padding: 1.5rem;
++      border: none;
++      border-radius: 8px;
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
++    }
++
++    .feedback-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.45);
++    }
++
++    .feedback-dialog h2 {
++      font-size: 1.25rem;
++      margin-bottom: 0.5rem;
++      color: var(--primary);
++    }
++
++    .feedback-dialog label {
++      display: block;
++      margin-top: 0.75rem;
++      font-size: 0.9rem;
++    }
++
++    .feedback-dialog textarea {
++      width: 100%;
++      min-height: 5rem;
++      margin-top: 0.25rem;
++      padding: 0.5rem;
++      font: inherit;
++    }
++
++    .feedback-dialog fieldset {
++      margin-top: 1rem;
++      padding: 0.75rem;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    .feedback-dialog legend {
++      padding: 0 0.25rem;
++      font-size: 0.85rem;
++    }
++
++    .feedback-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem;
++    }
++
++    .feedback-dialog button {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 0.4rem 0.8rem;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .feedback-dialog button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .feedback-dialog button[type="submit"],
++    .feedback-dialog button:active {
++      background: var(--primary);
++      color: white;
++    }
++
++    .feedback-footer {
++      display: flex;
++      justify-content: flex-end;
++      gap: 0.5rem;
++      margin-top: 1rem;
++    }
++
++    .nav-feedback {
++      font: inherit;
++      font-size: 0.9rem;
++      margin-left: 20px;
++      background: none;
++      border: none;
++      color: white;
++      cursor: pointer;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -165,17 +257,18 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
++    <button type="button" class="nav-feedback" id="open-feedback">Feedback</button>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="zone-header">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="zone-main">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -196,9 +289,9 @@
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="zone-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +299,66 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog class="feedback-dialog" id="feedback-dialog" aria-labelledby="feedback-title">
++    <form method="dialog">
++      <h2 id="feedback-title">How are we doing?</h2>
++      <label>Your feedback
++        <textarea name="message" placeholder="Tell us about your visit"></textarea>
++      </label>
++      <fieldset>
++        <legend>Move this overlay to</legend>
++        <div class="feedback-actions">
++          <button type="button" data-move-to="zone-header">Hero</button>
++          <button type="button" data-move-to="zone-main">Main</button>
++          <button type="button" data-move-to="zone-footer">Footer</button>
++          <button type="button" data-move-to="body">Page root</button>
++        </div>
++      </fieldset>
++      <div class="feedback-footer">
++        <button type="submit" value="cancel">Close</button>
++      </div>
++    </form>
++  </dialog>
++
++  <script>
++    const dialog = document.getElementById('feedback-dialog');
++
++    function showFeedback() {
++      if (!dialog.open) dialog.showModal();
++    }
++
++    function moveDialog(target) {
++      if (dialog.parentElement === target) return;
++      const wasOpen = dialog.open;
++      const focused = dialog.contains(document.activeElement) ? document.activeElement : null;
++
++      if ('moveBefore' in Element.prototype) {
++        // Atomic move: stays open, in the top layer, and keeps focus.
++        target.moveBefore(dialog, null);
++      } else {
++        // Traditional reparenting removes the dialog from the top layer,
++        // but leaves the `open` attribute, which would make showModal() throw.
++        target.insertBefore(dialog, null);
++        if (wasOpen) {
++          dialog.removeAttribute('open');
++          dialog.showModal();
++          focused?.focus();
++        }
++      }
++    }
++
++    dialog.addEventListener('click', (e) => {
++      const btn = e.target.closest('[data-move-to]');
++      if (!btn) return;
++      const id = btn.dataset.moveTo;
++      moveDialog(id === 'body' ? document.body : document.getElementById(id));
++    });
++
++    document.getElementById('open-feedback').addEventListener('click', showFeedback);
++    showFeedback();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,73 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Spotlight reveal: register the size properties so they can interpolate.
++       The pointer position properties are intentionally left unregistered
++       (and untransitioned) so the spotlight tracks the pointer directly. */
++    @property --inner-size {
++      syntax: "<length-percentage>";
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    @property --outer-size {
++      syntax: "<length-percentage>";
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    .product-card {
++      --mouse-x: 50%;
++      --mouse-y: 50%;
++      --inner-size: 0px;
++      --outer-size: 0px;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
++      /* Only the sizes transition; --mouse-x / --mouse-y never do. */
++      transition: --inner-size 0.3s ease-out, --outer-size 0.3s ease-out;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition-duration: 0s;
++      }
++
++      @media (hover: hover) {
++        &:hover {
++          --inner-size: 70px;
++          --outer-size: 110px;
++        }
++      }
++    }
++
++    .product-card .spotlight {
++      position: absolute;
++      inset: 0;
++      /* Never intercept clicks/hover: text and buttons stay interactive. */
++      pointer-events: none;
++      /* A light warm wash over the photo keeps the dark card text legible. */
++      background-image:
++        linear-gradient(rgb(255 243 224 / 0.6), rgb(255 243 224 / 0.6)),
++        var(--reveal-image);
++      background-size: cover;
++      background-position: center;
++      -webkit-mask-image: radial-gradient(circle at var(--mouse-x) var(--mouse-y),
++          black var(--inner-size, 0px),
++          transparent var(--outer-size, 0px));
++      mask-image: radial-gradient(circle at var(--mouse-x) var(--mouse-y),
++          black var(--inner-size, 0px),
++          transparent var(--outer-size, 0px));
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    /* Keep the original card content painted above the overlay so the text
++       and buttons stay fully visible (and clickable) at all times. */
++    .product-card > :not(.spotlight) {
++      position: relative;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,19 +242,22 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card product-card">
++          <div class="spotlight" aria-hidden="true" style="--reveal-image: url('https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=70')"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
++          <div class="spotlight" aria-hidden="true" style="--reveal-image: url('https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=70')"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
++          <div class="spotlight" aria-hidden="true" style="--reveal-image: url('https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=70')"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -206,7 +274,20 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Track the pointer position relative to each product card.
++    for (const card of document.querySelectorAll('.product-card')) {
++      const update = (e) => {
++        const rect = card.getBoundingClientRect();
++        card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
++        card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
++      };
++      card.addEventListener('pointerenter', update);
++      card.addEventListener('pointermove', update);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

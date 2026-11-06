@@ -1,0 +1,255 @@
+diff --git a/index.html b/index.html
+index 66c9173..89b7526 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,16 @@
+       background: #3e2723;
+     }
+ 
++    .card .btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .grid-help {
++      text-align: center;
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,21 +187,22 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <p id="grid-help" class="grid-help">Use Tab to reach the cards, then arrow keys to move between them.</p>
++      <div class="grid" aria-describedby="grid-help">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" aria-label="View details for Maple Oat Latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" aria-label="View details for Dark Roast Espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" aria-label="View details for Cold Brew">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +218,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./spatial-navigation.mjs"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/spatial-navigation.mjs b/spatial-navigation.mjs
+new file mode 100644
+index 0000000..a3c6b19
+--- /dev/null
++++ b/spatial-navigation.mjs
+@@ -0,0 +1,75 @@
++const directions = {
++  ArrowLeft: { axis: 'x', sign: -1 },
++  ArrowRight: { axis: 'x', sign: 1 },
++  ArrowUp: { axis: 'y', sign: -1 },
++  ArrowDown: { axis: 'y', sign: 1 },
++};
++
++// Read geometry for every key press so responsive layouts, CSS order, and RTL
++// are reflected immediately. Physical arrow directions do not depend on DOM order.
++export function findSpatialTarget(current, candidates, key) {
++  const direction = directions[key];
++  if (!direction) return null;
++  const horizontal = direction.axis === 'x';
++  const start = horizontal ? 'left' : 'top';
++  const end = horizontal ? 'right' : 'bottom';
++  const crossStart = horizontal ? 'top' : 'left';
++  const crossEnd = horizontal ? 'bottom' : 'right';
++  const center = rect => (rect[start] + rect[end]) / 2;
++  const crossCenter = rect => (rect[crossStart] + rect[crossEnd]) / 2;
++  let best = null;
++  let bestScore = null;
++
++  for (const candidate of candidates) {
++    if (candidate === current) continue;
++    const rect = candidate.rect;
++    if (rect.width <= 0 || rect.height <= 0) continue;
++    const gap = direction.sign > 0
++      ? rect[start] - current.rect[end]
++      : current.rect[start] - rect[end];
++    // Use card edges to avoid treating unequal heights in one row as a new row.
++    if (gap < -1) continue;
++    const aligned = Math.min(rect[crossEnd], current.rect[crossEnd])
++      - Math.max(rect[crossStart], current.rect[crossStart]) > 1;
++    // Left/right stay within the visual row, including at its boundaries.
++    if (horizontal && !aligned) continue;
++    const distance = Math.hypot(center(rect) - center(current.rect),
++      crossCenter(rect) - crossCenter(current.rect));
++    const score = [aligned ? 0 : 1, distance];
++    if (!bestScore || score[0] < bestScore[0]
++      || (score[0] === bestScore[0] && score[1] < bestScore[1])) {
++      best = candidate;
++      bestScore = score;
++    }
++  }
++  return best;
++}
++
++export function enableSpatialNavigation(grid) {
++  grid.addEventListener('keydown', event => {
++    if (!directions[event.key] || event.altKey || event.ctrlKey
++      || event.metaKey || event.shiftKey || event.defaultPrevented) return;
++    // Only the card's primary link participates; leave other controls alone.
++    const link = event.target.closest('.card > a.btn');
++    if (!link || link !== event.target || link.closest('.grid') !== grid) return;
++    const candidates = [...grid.querySelectorAll('.card')]
++      .filter(card => card.closest('.grid') === grid)
++      .map(card => ({
++        rect: card.getBoundingClientRect(),
++        link: card.querySelector(':scope > a.btn'),
++      }))
++      .filter(candidate => candidate.link
++        && !candidate.link.closest('[hidden], [inert], [aria-hidden="true"]')
++        && candidate.link.getClientRects().length > 0
++        && getComputedStyle(candidate.link).visibility === 'visible');
++    const current = candidates.find(candidate => candidate.link === link);
++    if (!current) return;
++    // Consume unmodified arrows even at an edge, without wrapping or scrolling.
++    event.preventDefault();
++    findSpatialTarget(current, candidates, event.key)?.link.focus();
++  });
++}
++
++if (typeof document !== 'undefined') {
++  document.querySelectorAll('.grid').forEach(enableSpatialNavigation);
++}
+diff --git a/spatial-navigation.test.mjs b/spatial-navigation.test.mjs
+new file mode 100644
+index 0000000..46b5dd0
+--- /dev/null
++++ b/spatial-navigation.test.mjs
+@@ -0,0 +1,100 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { findSpatialTarget, enableSpatialNavigation } from './spatial-navigation.mjs';
++
++function card(left, top, width = 100, height = 100) {
++  return { rect: { left, top, right: left + width, bottom: top + height, width, height } };
++}
++
++test('three-column layout moves physically left and right without wrapping', () => {
++  const cards = [card(0, 0), card(120, 0), card(240, 0)];
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowLeft'), cards[0]);
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowRight'), cards[2]);
++  assert.equal(findSpatialTarget(cards[2], cards, 'ArrowRight'), null);
++  assert.equal(findSpatialTarget(cards[0], cards, 'ArrowUp'), null);
++});
++
++test('two-column layout supports an incomplete final row', () => {
++  const cards = [card(0, 0), card(120, 0), card(0, 120)];
++  assert.equal(findSpatialTarget(cards[0], cards, 'ArrowDown'), cards[2]);
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowDown'), cards[2]);
++  assert.equal(findSpatialTarget(cards[2], cards, 'ArrowUp'), cards[0]);
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowRight'), null);
++  assert.equal(findSpatialTarget(cards[2], cards, 'ArrowLeft'), null);
++});
++
++test('single-column layout uses up/down and stops at boundaries', () => {
++  const cards = [card(0, 0), card(0, 120), card(0, 240)];
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowDown'), cards[2]);
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowUp'), cards[0]);
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowRight'), null);
++  assert.equal(findSpatialTarget(cards[2], cards, 'ArrowDown'), null);
++});
++
++test('visual order takes precedence over DOM order, including RTL layouts', () => {
++  const cards = [card(240, 0), card(120, 0), card(0, 0)];
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowRight'), cards[0]);
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowLeft'), cards[2]);
++});
++
++test('unequal card heights do not create false vertical neighbors', () => {
++  const cards = [card(0, 0, 100, 160), card(120, 0), card(0, 180)];
++  assert.equal(findSpatialTarget(cards[0], cards, 'ArrowUp'), null);
++  assert.equal(findSpatialTarget(cards[1], cards, 'ArrowDown'), cards[2]);
++});
++
++test('hidden geometry and unsupported keys are ignored', () => {
++  const cards = [card(0, 0), card(120, 0, 0, 0), card(240, 0)];
++  assert.equal(findSpatialTarget(cards[0], cards, 'ArrowRight'), cards[2]);
++  assert.equal(findSpatialTarget(cards[0], cards, 'Enter'), null);
++});
++
++test('keyboard handler preserves native keys, rereads layout, and focuses links', () => {
++  let handler;
++  let focused;
++  let prevented = false;
++  const grid = {
++    addEventListener: (_, listener) => { handler = listener; },
++    querySelectorAll: () => cards,
++  };
++  const items = [card(0, 0), card(120, 0), card(240, 0)];
++  const cards = items.map((item, index) => {
++    const link = {
++      closest: selector => selector === '.grid' ? grid
++        : selector === '.card > a.btn' ? link : null,
++      getClientRects: () => [item.rect],
++      focus: () => { focused = index; },
++    };
++    return {
++      closest: () => grid,
++      getBoundingClientRect: () => item.rect,
++      querySelector: () => link,
++    };
++  });
++  const oldComputedStyle = globalThis.getComputedStyle;
++  globalThis.getComputedStyle = () => ({ visibility: 'visible' });
++  try {
++    enableSpatialNavigation(grid);
++    const event = key => ({ key, target: cards[0].querySelector(),
++      preventDefault: () => { prevented = true; } });
++    for (const key of ['Tab', 'Enter', ' ']) handler(event(key));
++    handler({ ...event('ArrowRight'), ctrlKey: true });
++    handler({ ...event('ArrowRight'), shiftKey: true });
++    assert.equal(prevented, false);
++    assert.equal(focused, undefined);
++    handler(event('ArrowRight'));
++    assert.equal(focused, 1);
++    assert.equal(prevented, true);
++    focused = undefined;
++    // A resize changes the same cards into a single column.
++    items[1].rect = card(0, 120).rect;
++    items[2].rect = card(0, 240).rect;
++    handler(event('ArrowRight'));
++    assert.equal(focused, undefined);
++    handler(event('ArrowDown'));
++    assert.equal(focused, 1);
++  } finally {
++    if (oldComputedStyle === undefined) delete globalThis.getComputedStyle;
++    else globalThis.getComputedStyle = oldComputedStyle;
++  }
++});

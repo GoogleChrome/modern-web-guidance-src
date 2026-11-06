@@ -1,0 +1,345 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,341 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Lumina — Next-Generation Workflow Intelligence</title>
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin />
++
++  <!-- Anti-flicker snippet: hides page until A/B variant is applied or timeout elapses -->
++  <style>
++    .async-hide {
++      opacity: 0 !important;
++      visibility: hidden !important;
++      pointer-events: none !important;
++    }
++  </style>
++  <script>
++    (function(d, c, t) {
++      var h = d.documentElement;
++      h.classList.add(c);
++      var revealed = false;
++      function reveal() {
++        if (revealed) return;
++        revealed = true;
++        h.classList.remove(c);
++      }
++      window.revealExperimentContent = reveal;
++      var timer = setTimeout(reveal, t);
++      window.onExperimentReady = function() {
++        clearTimeout(timer);
++        reveal();
++      };
++      d.addEventListener('experiment:ready', window.onExperimentReady);
++      d.addEventListener('experiment:applied', window.onExperimentReady);
++    })(document, 'async-hide', 3000);
++  </script>
++
++  <!-- Synchronous A/B testing SDK in <head> to prevent Flash of Original Content (FOOC) -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    onload="window.onExperimentReady && window.onExperimentReady()"
++    onerror="window.onExperimentReady && window.onExperimentReady()"
++  ></script>
++
++  <style>
++    :root {
++      --bg-primary: #090d16;
++      --bg-card: #111827;
++      --text-primary: #f9fafb;
++      --text-secondary: #9ca3af;
++      --accent: #6366f1;
++      --accent-hover: #4f46e5;
++      --accent-glow: rgba(99, 102, 241, 0.35);
++      --border: rgba(255, 255, 255, 0.1);
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    html {
++      transition: opacity 0.18s ease-out;
++    }
++
++    body {
++      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
++      background-color: var(--bg-primary);
++      color: var(--text-primary);
++      line-height: 1.6;
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++      overflow-x: hidden;
++    }
++
++    /* Navigation */
++    header {
++      max-width: 1200px;
++      width: 100%;
++      margin: 0 auto;
++      padding: 1.5rem 2rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .brand {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      font-weight: 700;
++      font-size: 1.25rem;
++      letter-spacing: -0.02em;
++      color: var(--text-primary);
++      text-decoration: none;
++    }
++
++    .brand-icon {
++      width: 32px;
++      height: 32px;
++      border-radius: 8px;
++      background: linear-gradient(135deg, #6366f1, #a855f7);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-weight: 800;
++      font-size: 1rem;
++      color: #fff;
++    }
++
++    nav {
++      display: flex;
++      gap: 2rem;
++      align-items: center;
++    }
++
++    nav a {
++      color: var(--text-secondary);
++      text-decoration: none;
++      font-size: 0.95rem;
++      transition: color 0.15s ease;
++    }
++
++    nav a:hover {
++      color: var(--text-primary);
++    }
++
++    /* Hero Section */
++    main {
++      flex: 1;
++      display: flex;
++      align-items: center;
++    }
++
++    .hero {
++      max-width: 1200px;
++      width: 100%;
++      margin: 0 auto;
++      padding: 4rem 2rem 6rem;
++      display: grid;
++      grid-template-columns: 1.1fr 0.9fr;
++      gap: 4rem;
++      align-items: center;
++    }
++
++    .hero-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.35rem 0.85rem;
++      border-radius: 9999px;
++      background: rgba(99, 102, 241, 0.12);
++      border: 1px solid rgba(99, 102, 241, 0.3);
++      color: #a5b4fc;
++      font-size: 0.85rem;
++      font-weight: 500;
++      margin-bottom: 1.5rem;
++    }
++
++    .hero-title {
++      font-size: clamp(2.5rem, 4.5vw, 3.75rem);
++      font-weight: 800;
++      line-height: 1.12;
++      letter-spacing: -0.03em;
++      margin-bottom: 1.25rem;
++      background: linear-gradient(to right, #ffffff, #cbd5e1);
++      -webkit-background-clip: text;
++      -webkit-text-fill-color: transparent;
++    }
++
++    .hero-subtitle {
++      font-size: 1.15rem;
++      color: var(--text-secondary);
++      margin-bottom: 2.25rem;
++      max-width: 540px;
++    }
++
++    .cta-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
++      align-items: center;
++    }
++
++    .cta-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.6rem;
++      background-color: var(--accent);
++      color: #ffffff;
++      font-size: 1.05rem;
++      font-weight: 600;
++      padding: 0.95rem 1.85rem;
++      border-radius: 0.65rem;
++      border: none;
++      cursor: pointer;
++      text-decoration: none;
++      box-shadow: 0 8px 24px -4px var(--accent-glow);
++      transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
++    }
++
++    .cta-button:hover {
++      background-color: var(--accent-hover);
++      transform: translateY(-1px);
++      box-shadow: 0 12px 28px -4px var(--accent-glow);
++    }
++
++    .cta-button:active {
++      transform: translateY(0);
++    }
++
++    .cta-secondary {
++      color: var(--text-primary);
++      text-decoration: none;
++      font-weight: 500;
++      padding: 0.95rem 1.4rem;
++      border-radius: 0.65rem;
++      border: 1px solid var(--border);
++      background: rgba(255, 255, 255, 0.03);
++      transition: background 0.2s ease, border-color 0.2s ease;
++    }
++
++    .cta-secondary:hover {
++      background: rgba(255, 255, 255, 0.07);
++      border-color: rgba(255, 255, 255, 0.2);
++    }
++
++    .hero-metrics {
++      margin-top: 3rem;
++      padding-top: 2rem;
++      border-top: 1px solid var(--border);
++      display: flex;
++      gap: 2.5rem;
++    }
++
++    .metric-value {
++      font-size: 1.5rem;
++      font-weight: 700;
++      color: var(--text-primary);
++    }
++
++    .metric-label {
++      font-size: 0.85rem;
++      color: var(--text-secondary);
++    }
++
++    /* Hero Visual */
++    .hero-visual {
++      position: relative;
++      border-radius: 1rem;
++      overflow: hidden;
++      border: 1px solid var(--border);
++      background: var(--bg-card);
++      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
++    }
++
++    .hero-visual img {
++      display: block;
++      width: 100%;
++      height: 440px;
++      object-fit: cover;
++    }
++
++    @media (max-width: 900px) {
++      .hero {
++        grid-template-columns: 1fr;
++        padding: 2.5rem 1.5rem 4rem;
++        gap: 2.5rem;
++      }
++
++      nav {
++        display: none;
++      }
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <a href="#" class="brand">
++      <span class="brand-icon">L</span>
++      <span>Lumina</span>
++    </a>
++    <nav>
++      <a href="#features">Features</a>
++      <a href="#solutions">Solutions</a>
++      <a href="#pricing">Pricing</a>
++      <a href="#docs">Docs</a>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" id="hero-section" data-experiment="hero-variant">
++      <div class="hero-content">
++        <div class="hero-badge" id="hero-badge">
++          <span>New: Automated Release Pipelines 2.0</span>
++        </div>
++        <h1 class="hero-title" id="hero-title" data-exp-target="headline">
++          Ship faster with real-time workflow intelligence
++        </h1>
++        <p class="hero-subtitle" id="hero-subtitle" data-exp-target="subheadline">
++          Unify your engineering metrics, automate deployment checks, and eliminate bottlenecks before they impact production.
++        </p>
++        <div class="cta-group">
++          <button type="button" class="cta-button" id="cta-button" data-exp-target="cta">
++            Start Free Trial
++          </button>
++          <a href="#demo" class="cta-secondary" id="cta-secondary">
++            Book a Live Demo
++          </a>
++        </div>
++        <div class="hero-metrics">
++          <div>
++            <div class="metric-value">99.99%</div>
++            <div class="metric-label">Uptime SLA</div>
++          </div>
++          <div>
++            <div class="metric-value">3.4x</div>
++            <div class="metric-label">Faster Deployments</div>
++          </div>
++          <div>
++            <div class="metric-value">12k+</div>
++            <div class="metric-label">Engineering Teams</div>
++          </div>
++        </div>
++      </div>
++
++      <div class="hero-visual">
++        <img
++          id="hero-image"
++          data-exp-target="image"
++          src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1000&q=80"
++          alt="Analytics dashboard overview"
++        />
++      </div>
++    </section>
++  </main>
++</body>
++</html>

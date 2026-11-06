@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .roasters-secrets {
++      margin-top: 56px;
++    }
++
++    .secrets-heading,
++    .secrets-access {
++      text-align: center;
++    }
++
++    .secrets-eyebrow {
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .secrets-heading h2 {
++      margin: 6px 0;
++    }
++
++    .paywall-container {
++      margin-top: 24px;
++      padding: clamp(20px, 4vw, 36px);
++      border-radius: 8px;
++      background: white;
++      -webkit-mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++    }
++
++    .paywall-container article {
++      max-width: 720px;
++      margin: 0 auto;
++    }
++
++    .paywall-container h3 {
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
++    .paywall-container p + p {
++      margin-top: 16px;
++    }
++
++    .secrets-access {
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +242,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasters-secrets" aria-labelledby="secrets-title">
++      <header class="secrets-heading">
++        <p class="secrets-eyebrow">Exclusive member preview</p>
++        <h2 id="secrets-title">Roaster's Secrets</h2>
++        <p>A little craft. A little curiosity. A better cup of coffee.</p>
++      </header>
++
++      <div class="paywall-container">
++        <article aria-labelledby="secrets-preview-title">
++          <h3 id="secrets-preview-title">Behind the roast: finding the sweet spot</h3>
++          <p>Every batch has a moment when sweetness, aroma, and body come together. Our roasters follow the beans from their first grassy notes to the warm scent of caramel, using sight, sound, and a carefully kept roast journal to guide each decision.</p>
++          <p>That familiar crack from inside the drum is one of our favorite clues. As the beans open up, we pay close attention to how their character develops, tasting small batches to find the balance that lets each origin shine.</p>
++          <p>The craft continues at home. In our member journal, we share the brewing notes, small adjustments, and behind-the-scenes rituals that help bring out the best in your daily cup.</p>
++        </article>
++      </div>
++
++      <div class="secrets-access">
++        <p>There’s more brewing for our members.</p>
++        <a href="/rewards" class="btn">Explore Member Rewards</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,261 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..f5e0b88 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect, useRef } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -10,6 +10,7 @@ interface BottomNavProps {
+ 
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const navRef = useRef<HTMLElement>(null);
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+@@ -18,6 +19,65 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+     };
+ 
++    const sectionIds: Record<keyof typeof groupedCategories, string> = {
++        'News & Politics': 'news-politics',
++        'Arts & Culture': 'arts-culture',
++        'Science & Tech': 'science-tech',
++        'Lifestyle & Sports': 'lifestyle-sports',
++    };
++
++    useEffect(() => {
++        const navEl = navRef.current;
++        if (!navEl) return;
++
++        const supportsScrollTargetGroup =
++            typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('scroll-target-group: auto');
++
++        if (supportsScrollTargetGroup) {
++            const syncAriaCurrent = () => {
++                const currentLink = navEl.querySelector('a:target-current');
++                navEl.querySelectorAll('a[href^="#"]').forEach((link) => {
++                    link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++                });
++            };
++
++            syncAriaCurrent();
++            document.addEventListener('scrollend', syncAriaCurrent);
++            return () => {
++                document.removeEventListener('scrollend', syncAriaCurrent);
++            };
++        } else {
++            const navLinks = navEl.querySelectorAll<HTMLAnchorElement>('a[href^="#"]');
++            const sections = Array.from(navLinks)
++                .map((link) => {
++                    const href = link.getAttribute('href');
++                    return href ? document.querySelector(href) : null;
++                })
++                .filter((el): el is Element => el !== null);
++
++            if (sections.length === 0) return;
++
++            const observer = new IntersectionObserver(
++                (entries) => {
++                    entries.forEach((entry) => {
++                        if (entry.isIntersecting) {
++                            const id = entry.target.getAttribute('id');
++                            navLinks.forEach((link) => {
++                                const isActive = link.getAttribute('href') === `#${id}`;
++                                link.classList.toggle('target-current', isActive);
++                                link.setAttribute('aria-current', String(isActive));
++                            });
++                        }
++                    });
++                },
++                { rootMargin: '-50% 0px -50% 0px', threshold: 0 }
++            );
++
++            sections.forEach((section) => observer.observe(section));
++            return () => observer.disconnect();
++        }
++    }, []);
++
+     const handleMouseLeave = () => {
+         setActiveCategory(null);
+     };
+@@ -29,8 +89,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+     return (
+         <div onMouseLeave={handleMouseLeave}>
+             <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+-                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                <nav
++                    ref={navRef}
++                    aria-label="Primary"
++                    className="scrollspy-nav container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto"
++                >
++                    {Object.entries(groupedCategories).map(([groupName]) => {
++                        const targetId = sectionIds[groupName as keyof typeof groupedCategories];
+                         return (
+                             <div 
+                                 key={groupName}
+@@ -38,11 +103,11 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                                 className="h-full flex items-center"
+                             >
+                                 <a 
+-                                    href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                    href={`#${targetId}`}
++                                    className="flex items-center space-x-1 h-full border-b-2 border-transparent hover:text-gray-600 whitespace-nowrap transition-colors"
+                                 >
+                                     <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                     </svg>
+                                 </a>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..7b1393b 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+-<header class="font-inter group relative bg-white">
++<header class="font-inter group sticky top-0 z-30 bg-white">
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..57afc54 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -3,14 +3,16 @@ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++<section id={sectionId} class="p-4 md:p-6 scroll-mt-24">
++    <h2 tabindex="-1" class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..c768a8e 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -6,11 +6,13 @@ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,8 +28,8 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++<section id={sectionId} class="p-4 md:p-6 scroll-mt-24">
++    <h2 tabindex="-1" class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f60817c 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -16,6 +16,7 @@ const topStories = articles.slice(1, 4);
+ const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+ const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+ const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++const scienceArticles = articles.slice(15, 18);    // 3 articles for Science & Tech
+ 
+ // Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+ politicsArticles[2] = {
+@@ -55,30 +56,36 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <!-- "News & Politics" section -->
++        <TopStoryTeaserGrid id="news-politics" title="News & Politics" articles={topNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <SimpleTeaserGrid id="arts-culture" title="Arts & Culture" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="science-tech" title="Science & Tech" articles={scienceArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <!-- "Lifestyle & Sports" section -->
++        <TopStoryTeaserGrid id="lifestyle-sports" title="Lifestyle & Sports" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..e20beea 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,15 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Scrollspy navigation using native CSS scroll-target-group and :target-current with IntersectionObserver fallback */
++.scrollspy-nav {
++  scroll-target-group: auto;
++}
++
++.scrollspy-nav a:is(:target-current, .target-current) {
++  color: #b45309; /* amber-700 for strong contrast */
++  border-bottom-color: #d97706; /* amber-600 */
++  font-weight: 700;
++}

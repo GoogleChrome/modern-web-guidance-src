@@ -1,0 +1,276 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,194 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollytelling Section */
++    .scrollytelling {
++      margin-top: 60px;
++      timeline-scope: --section-1, --section-2, --section-3, --section-4;
++    }
++
++    .scrollytelling-header {
++      text-align: center;
++      margin-bottom: 40px;
++    }
++
++    .scrollytelling-header h2 {
++      color: var(--primary);
++      font-size: 2rem;
++      margin-bottom: 10px;
++    }
++
++    .scrollytelling-layout {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++      position: relative;
++    }
++
++    #tracked {
++      display: flex;
++      flex-direction: column;
++      gap: 40vh;
++      padding: 20vh 0;
++    }
++
++    #tracked section {
++      min-height: 60vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      background: white;
++      padding: 32px;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      border-left: 5px solid var(--accent);
++    }
++
++    #tracked section:nth-child(1) {
++      view-timeline: --section-1 block;
++    }
++
++    #tracked section:nth-child(2) {
++      view-timeline: --section-2 block;
++    }
++
++    #tracked section:nth-child(3) {
++      view-timeline: --section-3 block;
++    }
++
++    #tracked section:nth-child(4) {
++      view-timeline: --section-4 block;
++    }
++
++    #tracked section .step-badge {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--secondary);
++      color: var(--primary);
++      font-weight: bold;
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 12px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++    }
++
++    #tracked section h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 12px;
++    }
++
++    #tracked section p {
++      color: var(--text);
++      font-size: 1.05rem;
++    }
++
++    #animated {
++      position: sticky;
++      top: 15vh;
++      height: 70vh;
++      display: grid;
++      grid-template-areas: "stack";
++      border-radius: 16px;
++      overflow: hidden;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
++      background: var(--primary);
++    }
++
++    #animated section {
++      grid-area: stack;
++      width: 100%;
++      height: 100%;
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-end;
++      padding: 32px;
++      color: white;
++      opacity: 0;
++      transform: scale(0.92) translateY(20px);
++      will-change: transform, opacity;
++      animation: reveal-section linear both;
++    }
++
++    #animated section:nth-child(1) {
++      animation-timeline: --section-1;
++    }
++
++    #animated section:nth-child(2) {
++      animation-timeline: --section-2;
++    }
++
++    #animated section:nth-child(3) {
++      animation-timeline: --section-3;
++    }
++
++    #animated section:nth-child(4) {
++      animation-timeline: --section-4;
++    }
++
++    @keyframes reveal-section {
++      0%, 10% {
++        opacity: 0;
++        transform: scale(0.92) translateY(24px);
++      }
++      30%, 70% {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++      }
++      90%, 100% {
++        opacity: 0;
++        transform: scale(1.05) translateY(-24px);
++      }
++    }
++
++    #animated section img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 0;
++    }
++
++    #animated section .visual-overlay {
++      position: relative;
++      z-index: 1;
++      background: linear-gradient(transparent, rgba(30, 15, 10, 0.85));
++      margin: -32px;
++      padding: 60px 32px 32px;
++    }
++
++    #animated section h4 {
++      font-size: 1.5rem;
++      margin-bottom: 6px;
++      color: var(--accent);
++    }
++
++    @media (max-width: 768px) {
++      .scrollytelling-layout {
++        grid-template-columns: 1fr;
++      }
++
++      #animated {
++        position: sticky;
++        top: 70px;
++        height: 40vh;
++        z-index: 10;
++        order: -1;
++      }
++
++      #tracked {
++        gap: 25vh;
++        padding: 10vh 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +380,77 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrollytelling" aria-labelledby="scrollytelling-title">
++      <div class="scrollytelling-header">
++        <h2 id="scrollytelling-title">From Seed to Cup</h2>
++        <p>Follow the journey of every bean we craft.</p>
++      </div>
++
++      <div class="scrollytelling-layout">
++        <div id="tracked">
++          <section>
++            <span class="step-badge">Step 01</span>
++            <h3>Ethical Harvesting</h3>
++            <p>Our journey begins high in the misty mountain regions of Colombia and Ethiopia. We partner directly with smallholder farms that hand-pick only the ripest coffee cherries at peak sweetness, ensuring sustainable livelihoods and exceptional quality.</p>
++          </section>
++
++          <section>
++            <span class="step-badge">Step 02</span>
++            <h3>Washed &amp; Sun-Dried</h3>
++            <p>After harvest, cherries undergo careful processing and are spread across raised drying beds. Turned by hand beneath the warm sun, the beans slowly reach optimal moisture levels while locking in bright, complex fruit notes.</p>
++          </section>
++
++          <section>
++            <span class="step-badge">Step 03</span>
++            <h3>Small-Batch Roasting</h3>
++            <p>Back at our local roastery, master roasters coax out each origin's signature profile in cast-iron drum roasters. By monitoring temperature curves second by second, we balance caramel sweetness with rich, aromatic depth.</p>
++          </section>
++
++          <section>
++            <span class="step-badge">Step 04</span>
++            <h3>Precision Brewing</h3>
++            <p>Finally, our baristas dial in the grind size, water chemistry, and extraction time to transform freshly roasted beans into a velvety cup—crafted to order and served at the perfect temperature.</p>
++          </section>
++        </div>
++
++        <div id="animated">
++          <section>
++            <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=1000&q=80" alt="Fresh coffee cherries on a branch">
++            <div class="visual-overlay">
++              <h4>1,800m Elevation</h4>
++              <p>100% shade-grown Arabica cherries harvested by hand.</p>
++            </div>
++          </section>
++
++          <section>
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1000&q=80" alt="Green and roasted coffee beans">
++            <div class="visual-overlay">
++              <h4>Natural Sun Drying</h4>
++              <p>Slow-dried for 14 days to preserve delicate origin flavors.</p>
++            </div>
++          </section>
++
++          <section>
++            <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1000&q=80" alt="Artisanal coffee roasting and cafe">
++            <div class="visual-overlay">
++              <h4>205°C First Crack</h4>
++              <p>Precision small-batch roasting for peak aroma and balance.</p>
++            </div>
++          </section>
++
++          <section>
++            <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=1000&q=80" alt="Barista pouring latte art">
++            <div class="visual-overlay">
++              <h4>The Perfect Pour</h4>
++              <p>Dialed-in extraction topped with silky microfoam.</p>
++            </div>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

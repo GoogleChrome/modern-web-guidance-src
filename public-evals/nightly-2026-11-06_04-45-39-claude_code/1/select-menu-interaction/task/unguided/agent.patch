@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,76 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Section */
++    .order-section {
++      max-width: 520px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-section h2 {
++      text-align: center;
++      margin-bottom: 0.5rem;
++    }
++
++    .order-section > p {
++      text-align: center;
++      margin-bottom: 1.5rem;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .form-field label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .required-marker {
++      color: #b71c1c;
++    }
++
++    .form-field select {
++      font: inherit;
++      color: var(--text);
++      padding: 10px 12px;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++      background: white;
++    }
++
++    .form-field select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    /* Only flag invalid state once the user has interacted or tried to submit */
++    .form-field.touched select:invalid {
++      border-color: #b71c1c;
++      box-shadow: 0 0 0 1px #b71c1c;
++    }
++
++    .field-error {
++      color: #b71c1c;
++      font-size: 0.875rem;
++      min-height: 1.4em;
++    }
++
++    .order-section button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      width: 100%;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +262,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="order" class="order-section" aria-labelledby="order-heading">
++      <h2 id="order-heading">Start Your Order</h2>
++      <p>Choose your local shop for pickup.</p>
++      <form id="order-form" action="/order-online" method="get" novalidate>
++        <div class="form-field">
++          <label for="shop">Local shop <span class="required-marker" aria-hidden="true">*</span></label>
++          <select id="shop" name="shop" required aria-describedby="shop-error">
++            <option value="" selected disabled>Select a shop&hellip;</option>
++            <option value="downtown">Downtown &ndash; 120 Main St</option>
++            <option value="riverside">Riverside &ndash; 45 River Rd</option>
++            <option value="uptown">Uptown &ndash; 890 Oak Ave</option>
++            <option value="university">University District &ndash; 12 College Blvd</option>
++          </select>
++          <span id="shop-error" class="field-error" aria-live="polite"></span>
++        </div>
++        <button type="submit" class="btn">Continue to Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +293,46 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('order-form');
++      var select = document.getElementById('shop');
++      var field = select.closest('.form-field');
++      var error = document.getElementById('shop-error');
++
++      function validate() {
++        var valid = select.checkValidity();
++        // Errors only surface after interaction or a submit attempt.
++        if (!field.classList.contains('touched')) return valid;
++        if (valid) {
++          select.removeAttribute('aria-invalid');
++          error.textContent = '';
++        } else {
++          select.setAttribute('aria-invalid', 'true');
++          error.textContent = 'Please select a local shop.';
++        }
++        return valid;
++      }
++
++      function markTouched() {
++        field.classList.add('touched');
++        validate();
++      }
++
++      select.addEventListener('change', markTouched);
++      select.addEventListener('blur', markTouched);
++
++      form.addEventListener('submit', function (event) {
++        field.classList.add('touched');
++        if (!validate()) {
++          event.preventDefault();
++          select.focus();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

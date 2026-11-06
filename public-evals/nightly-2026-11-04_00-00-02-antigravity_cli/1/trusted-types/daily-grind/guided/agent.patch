@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+index 66c9173..3ed5f8f 100644
+--- a/index.html
++++ b/index.html
+@@ -2,9 +2,21 @@
+ <html lang="en">
+ 
+ <head>
++  <meta
++    http-equiv="Content-Security-Policy"
++    content="require-trusted-types-for 'script'; trusted-types sanitize-html escape-html dompurify;"
++  />
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="importmap">
++    {
++      "imports": {
++        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.2.4/+esm"
++      }
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -177,36 +189,103 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid" id="seasonal-favorites-grid"></div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script type="module">
++    import DOMPurify from 'dompurify';
++
++    // Tinyfill for browsers that do not yet support Trusted Types
++    if (!window.trustedTypes) {
++      window.trustedTypes = {
++        createPolicy: (name, rules) => rules,
++      };
++    }
++
++    const elements = ['div', 'h3', 'p', 'a', 'b', 'i', 'strong', 'em'];
++    const attributes = ['class', 'href'];
++
++    const sanitizeHtmlPolicy = window.trustedTypes.createPolicy('sanitize-html', {
++      createHTML: (input) =>
++        DOMPurify.sanitize(input, {
++          ALLOWED_TAGS: [...elements, '#text'],
++          ALLOWED_ATTR: attributes,
++          ALLOW_ARIA_ATTR: false,
++          ALLOW_DATA_ATTR: false,
++          KEEP_CONTENT: false,
++          RETURN_TRUSTED_TYPE: false,
++        }),
++    });
++
++    const escapeHtmlPolicy = window.trustedTypes.createPolicy('escape-html', {
++      createHTML: (input) =>
++        String(input)
++          .replaceAll('&', '&amp;')
++          .replaceAll('<', '&lt;')
++          .replaceAll('>', '&gt;')
++          .replaceAll('"', '&quot;')
++          .replaceAll("'", '&#39;'),
++    });
++
++    let domPurifyPromise;
++
++    function loadDOMPurify() {
++      domPurifyPromise ??= import('dompurify').then((mod) => mod.default ?? mod);
++      return domPurifyPromise;
++    }
++
++    async function safeSetHTML(el, html) {
++      if ('setHTML' in Element.prototype) {
++        // setHTML() accepts a plain configuration object as the sanitizer
++        // and natively sanitizes XSS without needing a Trusted Types policy
++        el.setHTML(html, { sanitizer: { elements, attributes } });
++      } else {
++        await loadDOMPurify();
++        el.innerHTML = sanitizeHtmlPolicy.createHTML(html);
++      }
++    }
++
++    const seasonalFavoritesCards = [
++      `
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
++      `,
++      `
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
++      `,
++      `
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++      `,
++    ];
+ 
++    const gridContainer = document.getElementById('seasonal-favorites-grid');
++    if (gridContainer) {
++      const cardsHTML = seasonalFavoritesCards.join('');
++      await safeSetHTML(gridContainer, cardsHTML);
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,669 @@
+diff --git a/SECURITY.md b/SECURITY.md
+new file mode 100644
+index 0000000..3fa38b5
+--- /dev/null
++++ b/SECURITY.md
+@@ -0,0 +1,36 @@
++# Security audit and deployment
++
++## Scope and findings
++
++This audit covers the dependency-free Node HTTP server and the static Daily Grind page. No authentication, sessions, database, user input rendering, or third-party JavaScript exists in this repository. The account, order, and other navigation routes render the same landing page; `/logout` only returns text. They must not be treated as implemented account or commerce features.
++
++| Finding | Preventative measure |
++| --- | --- |
++| No content policy or safe rollout mechanism | CSP starts in report-only mode; explicit enforcement option, local reporting, and rollback instructions |
++| Inline stylesheet and style attribute obstruct strict CSP | Extracted stylesheet served at `/styles.css`; removed inline attribute |
++| Missing clickjacking, MIME, referrer, and feature controls | DENY framing, nosniff, no-referrer, and restricted Permissions-Policy on application responses |
++| URL parsing trusts Host and can throw | Fixed parsing origin, malformed-target rejection, no Host reflection |
++| Every path and method returns a successful landing page | Explicit page/asset allowlist, 404 responses, GET/HEAD only except report ingestion |
++| Unlimited policy report intake could expose private data or flood logs | 16 KiB bodies, 60 submissions per minute per process, validated JSON, sanitized directive/disposition only |
++| Default connection limits unsuitable for deliberate deployment | Explicit header size, header/request deadlines, keepalive and requests-per-socket limits |
++
++The CSP permits only local CSS and images from the existing `images.unsplash.com` host. Scripts, plugins, base elements, and embedding are prohibited by the candidate policy; forms are restricted to the same origin. No wildcard, unsafe-inline, or unsafe-eval allowances were added. In report-only mode CSP restrictions produce reports rather than blocking resources; X-Frame-Options independently blocks framing.
++
++## Deploy and roll back
++
++1. Use a supported Node release (22 or later), run `npm test` and `npm run build`, and deploy behind an HTTPS reverse proxy. The process itself serves HTTP; certificate management, HTTP-to-HTTPS redirects, connection limits, and edge rate limiting belong at the proxy. Preserve the application's security headers on the public response and supply equivalent headers on proxy-generated errors.
++2. Start with `CSP_MODE=report-only npm start` (also the default). Route stderr into your existing operational log collector and monitor structured `csp-violation` events, report-endpoint errors, and 429 counts. The legacy browser-compatible `report-uri /csp-report` endpoint accepts `application/csp-report` JSON. It intentionally does not accept unrelated telemetry. Verify headers with `curl -I https://YOUR_ORIGIN/` and `curl -I https://YOUR_ORIGIN/styles.css`.
++3. Observe representative traffic across releases and all deployed paths. Investigate violations before promotion; do not automatically add reported origins to the policy. Reports are attacker-controlled, may come from browser extensions, and can be missing or suppressed. An absence of reports alone does not establish compatibility. Automated HTTP tests validate routes and resource declarations; they do not execute browser CSP enforcement.
++4. Promote a staging deployment and then a limited production instance with `CSP_MODE=enforce npm start`. Check report counts and application health before wider promotion. Changing the environment requires restarting the process. Unknown mode values fail startup instead of silently weakening the policy.
++5. If a CSP regression occurs, restore `CSP_MODE=report-only` and restart. Keep baseline response headers and continue collecting reports while correcting the policy or assets. Responses use `Cache-Control: no-store` so browsers do not retain obsolete page or stylesheet policy assumptions.
++6. After HTTPS is stable for the public origin, optionally set `ENABLE_HSTS=true`. This sends a conservative one-day HSTS policy. It deliberately omits `includeSubDomains` and preload. Do not enable it on an origin that needs HTTP access. Disable the setting to stop refreshing HSTS; already stored browser policies remain until expiry. Forwarded headers do not toggle this setting.
++
++## Operational boundaries
++
++- There are no installed runtime dependencies to audit; repeat a dependency audit if dependencies are introduced.
++- The report quota is global to each process. An attacker can exhaust it and hide reports. Use proxy limits and aggregate monitoring for production; these application bounds are not comprehensive denial-of-service protection. Logs exclude document/blocked URLs and script samples to avoid persisting secrets, so investigating resource-specific violations may require an approved external monitoring workflow later.
++- No cookies or credentials are set. Real account/logout/order features require authentication, authorization, POST-based state changes, CSRF defenses, and secure session cookies when implemented. The current logout response does not terminate a session.
++- The existing remote Unsplash image remains a third-party availability and privacy dependency. Referrer information is suppressed and CSP limits its origin.
++- Security headers are defense in depth. New scripts, assets, forms, or external services require policy review and the same report-only promotion process.
++
++References: [MDN CSP guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP), [report-only header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy-Report-Only), [Node HTTP server limits](https://nodejs.org/api/http.html).
+diff --git a/index.html b/index.html
+index 66c9173..c41ed71 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/styles.css">
+ </head>
+ 
+ <body>
+@@ -176,7 +29,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/package.json b/package.json
+index cffdc93..42ed87f 100644
+--- a/package.json
++++ b/package.json
+@@ -3,9 +3,13 @@
+   "version": "1.0.0",
+   "scripts": {
+     "start": "node server.js",
+-    "build": "node --check server.js"
++    "build": "node --check server.js && node --check test/security.test.js",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "engines": {
++    "node": ">=22"
+   }
+ }
+diff --git a/server.js b/server.js
+index 52c2fd5..fa6a218 100644
+--- a/server.js
++++ b/server.js
+@@ -2,31 +2,132 @@ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
+ 
+-const PORT = parseInt(process.env.PORT || '11222', 10);
+-const WORK_DIR = __dirname;
++const PAGES = new Set([
++  '/', '/menu', '/locations', '/rewards', '/account', '/order-online',
++  '/menu/seasonal', '/menu/espresso', '/menu/cold-brew', '/about',
++  '/careers', '/contact', '/privacy-policy',
++]);
++const POLICY = [
++  "default-src 'none'", "script-src 'none'", "style-src 'self'",
++  "style-src-attr 'none'", "img-src 'self' https://images.unsplash.com",
++  "base-uri 'none'", "object-src 'none'", "frame-ancestors 'none'",
++  "form-action 'self'", 'report-uri /csp-report',
++].join('; ');
+ 
+-const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
+-
+-  if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end('Logged out');
+-    return;
++function createServer({ cspMode = process.env.CSP_MODE || 'report-only',
++  hsts = process.env.ENABLE_HSTS === 'true',
++  onReport = (report) => console.warn(JSON.stringify({ event: 'csp-violation', ...report })),
++} = {}) {
++  if (!['report-only', 'enforce'].includes(cspMode)) {
++    throw new Error('CSP_MODE must be report-only or enforce');
+   }
++  // Read once at startup; fail deployment immediately if assets are missing.
++  const html = fs.readFileSync(path.join(__dirname, 'index.html'));
++  const css = fs.readFileSync(path.join(__dirname, 'styles.css'));
++  let reportWindow = Date.now();
++  let reportCount = 0;
++
++  const server = http.createServer({ maxHeaderSize: 16384 }, (req, res) => {
++    res.setHeader(cspMode === 'enforce' ? 'Content-Security-Policy' :
++      'Content-Security-Policy-Report-Only', POLICY);
++    res.setHeader('X-Content-Type-Options', 'nosniff');
++    res.setHeader('X-Frame-Options', 'DENY');
++    res.setHeader('Referrer-Policy', 'no-referrer');
++    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
++    res.setHeader('Cache-Control', 'no-store');
++    // Enable only after the public origin has reliable HTTPS. Never trust forwarded headers.
++    if (hsts) res.setHeader('Strict-Transport-Security', 'max-age=86400');
++
++    const send = (status, body = '', type = 'text/plain; charset=utf-8') => {
++      res.writeHead(status, { 'Content-Type': type });
++      res.end(req.method === 'HEAD' ? undefined : body);
++    };
++    // Accept origin-form request targets only, using a fixed base independent of Host.
++    let pathname;
++    try {
++      if (!req.url.startsWith('/') || req.url.startsWith('//') || req.url.includes('\\') ||
++          /[\x00-\x20\x7f]/.test(req.url) || /%(?![a-f0-9]{2})/i.test(req.url)) {
++        return send(400, 'Bad request');
++      }
++      pathname = new URL(req.url, 'http://localhost').pathname;
++    } catch {
++      return send(400, 'Bad request');
++    }
+ 
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
+-    if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
++    if (pathname === '/csp-report') {
++      if (req.method !== 'POST') {
++        res.setHeader('Allow', 'POST');
++        return send(405, 'Method not allowed');
++      }
++      const contentType = (req.headers['content-type'] || '').split(';')[0].trim();
++      if (contentType !== 'application/csp-report') return send(415, 'Unsupported media type');
++      // Global limit bounds ingestion/logging without a growing per-client address map.
++      if (Date.now() - reportWindow >= 60000) {
++        reportWindow = Date.now();
++        reportCount = 0;
++      }
++      if (++reportCount > 60) {
++        res.setHeader('Retry-After', '60');
++        return send(429, 'Too many reports');
++      }
++      const chunks = [];
++      let size = 0;
++      let rejected = false;
++      req.on('data', (chunk) => {
++        size += chunk.length;
++        if (size > 16384) {
++          if (!rejected) {
++            rejected = true;
++            chunks.length = 0;
++            send(413, 'Report too large');
++          }
++          return;
++        }
++        if (!rejected) chunks.push(chunk);
++      });
++      req.on('error', () => { rejected = true; });
++      req.on('end', () => {
++        if (rejected) return;
++        let report;
++        try {
++          report = JSON.parse(Buffer.concat(chunks).toString('utf8'))['csp-report'];
++          if (!report || typeof report !== 'object' || Array.isArray(report) ||
++              typeof report['effective-directive'] !== 'string') throw new Error();
++        } catch {
++          return send(400, 'Invalid report');
++        }
++        // Reports are untrusted. Never log URLs, query strings, cookies or script samples.
++        const directive = report['effective-directive'];
++        const safeReport = {
++          directive: /^[a-z-]{1,64}$/.test(directive) ? directive : 'unknown',
++          disposition: report.disposition === 'enforce' ? 'enforce' : 'report',
++        };
++        try { onReport(safeReport); } catch { return send(503, 'Reporting unavailable'); }
++        send(204);
++      });
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++
++    if (!['GET', 'HEAD'].includes(req.method)) {
++      res.setHeader('Allow', 'GET, HEAD');
++      return send(405, 'Method not allowed');
++    }
++    if (pathname === '/styles.css') return send(200, css, 'text/css; charset=utf-8');
++    if (pathname === '/logout' || pathname === '/logout/') return send(200, 'Logged out');
++    if (PAGES.has(pathname)) return send(200, html, 'text/html; charset=utf-8');
++    send(404, 'Not found');
+   });
+-});
++  server.requestTimeout = 15000;
++  server.headersTimeout = 10000;
++  server.keepAliveTimeout = 5000;
++  server.maxRequestsPerSocket = 100;
++  return server;
++}
++
++if (require.main === module) {
++  const port = Number(process.env.PORT || 11222);
++  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT');
++  createServer().listen(port, () => console.log(`Server running on port ${port}`));
++}
+ 
+-server.listen(PORT, () => {
+-  console.log(`Server running on port ${PORT}`);
+-});
++module.exports = { createServer };
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..24a48e5
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,148 @@
++:root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++.section-title { text-align: center; }
+diff --git a/test/security.test.js b/test/security.test.js
+new file mode 100644
+index 0000000..7d9a7ca
+--- /dev/null
++++ b/test/security.test.js
+@@ -0,0 +1,121 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const http = require('node:http');
++const { createServer } = require('../server');
++
++async function fixture(t, options = {}) {
++  const server = createServer(options);
++  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
++  t.after(() => new Promise((resolve) => server.close(resolve)));
++  return (path = '/', { method = 'GET', headers = {}, body } = {}) =>
++    new Promise((resolve, reject) => {
++      const req = http.request({ hostname: '127.0.0.1', port: server.address().port,
++        path, method, headers, agent: false }, (res) => {
++        const chunks = [];
++        res.on('data', (chunk) => chunks.push(chunk));
++        res.on('end', () => resolve({ status: res.statusCode, headers: res.headers,
++          body: Buffer.concat(chunks).toString() }));
++      });
++      req.on('error', reject);
++      req.end(body);
++    });
++}
++
++const reportHeaders = { 'Content-Type': 'application/csp-report' };
++const reportBody = JSON.stringify({ 'csp-report': {
++  'effective-directive': 'script-src-elem', disposition: 'report',
++  'document-uri': 'https://example.test/?secret=password',
++  'blocked-uri': 'https://attacker.test/?token=secret', 'script-sample': 'private',
++} });
++
++test('all response paths carry baseline headers and the candidate policy', async (t) => {
++  const request = await fixture(t);
++  for (const path of ['/', '/styles.css', '/logout', '/missing']) {
++    const res = await request(path);
++    assert.equal(res.headers['x-content-type-options'], 'nosniff');
++    assert.equal(res.headers['x-frame-options'], 'DENY');
++    assert.equal(res.headers['referrer-policy'], 'no-referrer');
++    assert.match(res.headers['permissions-policy'], /camera=\(\)/);
++    assert.equal(res.headers['cache-control'], 'no-store');
++    assert.equal(res.headers['strict-transport-security'], undefined);
++    assert.equal(res.headers['content-security-policy'], undefined);
++    const policy = res.headers['content-security-policy-report-only'];
++    for (const directive of ["default-src 'none'", "script-src 'none'", "style-src 'self'",
++      "base-uri 'none'", "frame-ancestors 'none'", 'report-uri /csp-report']) {
++      assert.ok(policy.includes(directive));
++    }
++    assert.doesNotMatch(policy, /unsafe-inline|unsafe-eval|\*/);
++  }
++});
++
++test('enforcement and HTTPS-only HSTS are explicit deployment options', async (t) => {
++  const request = await fixture(t, { cspMode: 'enforce', hsts: true });
++  const res = await request();
++  assert.ok(res.headers['content-security-policy']);
++  assert.equal(res.headers['content-security-policy-report-only'], undefined);
++  assert.equal(res.headers['strict-transport-security'], 'max-age=86400');
++  assert.throws(() => createServer({ cspMode: 'disabled' }), /CSP_MODE/);
++});
++
++test('existing links and assets remain accessible without inline styles', async (t) => {
++  const request = await fixture(t);
++  const home = await request();
++  assert.doesNotMatch(home.body, /<style\b|\sstyle=|<script\b/i);
++  assert.match(home.body, /href="\/styles.css"/);
++  for (const [, path] of home.body.matchAll(/href="([^"]+)"/g)) {
++    assert.equal((await request(path)).status, 200, path);
++  }
++  const css = await request('/styles.css');
++  assert.match(css.headers['content-type'], /text\/css/);
++  assert.match(css.body, /https:\/\/images\.unsplash\.com\//);
++  const head = await request('/', { method: 'HEAD' });
++  assert.equal(head.status, 200);
++  assert.equal(head.body, '');
++});
++
++test('unknown routes, unsupported methods and malformed targets are rejected', async (t) => {
++  const request = await fixture(t);
++  for (const path of ['/server.js', '/package.json', '/.git/config', '/missing']) {
++    assert.equal((await request(path)).status, 404);
++  }
++  for (const path of ['//evil.test/', '/%zz', '/bad\\path']) {
++    assert.equal((await request(path)).status, 400);
++  }
++  const post = await request('/', { method: 'POST' });
++  assert.equal(post.status, 405);
++  assert.equal(post.headers.allow, 'GET, HEAD');
++  assert.equal((await request('/', { headers: { Host: '[malformed' } })).status, 200);
++});
++
++test('report ingestion logs only sanitized metadata', async (t) => {
++  const reports = [];
++  const request = await fixture(t, { onReport: (r) => reports.push(r) });
++  assert.equal((await request('/csp-report', { method: 'POST', headers: reportHeaders,
++    body: reportBody })).status, 204);
++  assert.deepEqual(reports, [{ directive: 'script-src-elem', disposition: 'report' }]);
++});
++
++test('report ingestion rejects wrong methods, types, invalid JSON and oversized bodies', async (t) => {
++  const request = await fixture(t, { onReport: () => assert.fail('Invalid report logged') });
++  assert.equal((await request('/csp-report')).status, 405);
++  assert.equal((await request('/csp-report', { method: 'POST' })).status, 415);
++  for (const body of ['{', 'null', '{}', '{"csp-report":[]}']) {
++    assert.equal((await request('/csp-report', { method: 'POST', headers: reportHeaders, body })).status, 400);
++  }
++  assert.equal((await request('/csp-report', { method: 'POST', headers: reportHeaders,
++    body: 'x'.repeat(16385) })).status, 413);
++});
++
++test('report volume is bounded and does not block page requests', async (t) => {
++  let count = 0;
++  const request = await fixture(t, { onReport: () => count++ });
++  for (let i = 0; i < 60; i++) {
++    assert.equal((await request('/csp-report', { method: 'POST', headers: reportHeaders,
++      body: reportBody })).status, 204);
++  }
++  const limited = await request('/csp-report', { method: 'POST', headers: reportHeaders, body: reportBody });
++  assert.equal(limited.status, 429);
++  assert.equal(limited.headers['retry-after'], '60');
++  assert.equal(count, 60);
++  assert.equal((await request()).status, 200);
++});

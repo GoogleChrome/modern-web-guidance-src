@@ -1,0 +1,259 @@
+diff --git a/README.md b/README.md
+index 4479b53..ee28cc4 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,16 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Text translation
++
++The home page and `/devtools-times/translate` include a text translator supporting
++16 languages and up to 500 characters per translation. Select the source and target
++languages, enter text, and choose **Translate text** (or press Ctrl/Cmd + Enter).
++Translations can be copied or read aloud when the browser supports speech synthesis.
++
++`POST /devtools-times/api/translate` accepts JSON with `text`, `source`, and `target`.
++It validates input and forwards text to the [MyMemory API](https://mymemory.translated.net/doc/spec.php),
++splitting requests to respect the provider's 500-byte UTF-8 limit. No API key is required.
++The free service has a shared daily quota; service failures and quota limits are shown
++in the UI. Text is sent to MyMemory for processing. Read-aloud voices depend on the browser.
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..e2a1ad3 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -30,6 +30,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         <div onMouseLeave={handleMouseLeave}>
+             <div className="border-t border-b border-gray-900">
+                 <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++                    <a href={`${import.meta.env.BASE_URL}translate`} className="whitespace-nowrap text-[#b95736] flex items-center gap-1.5"><span aria-hidden="true">文</span> Translate</a>
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
+                         return (
+                             <div 
+diff --git a/src/components/Translator.tsx b/src/components/Translator.tsx
+new file mode 100644
+index 0000000..89c8dba
+--- /dev/null
++++ b/src/components/Translator.tsx
+@@ -0,0 +1,103 @@
++import { useEffect, useRef, useState } from 'react';
++import { languages, MAX_TEXT_LENGTH } from '../lib/translation';
++import './translator.css';
++
++function Icon({ name, size = 20 }: { name: string; size?: number }) {
++  const paths: Record<string, React.ReactNode> = {
++    arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,
++    swap: <><path d="M4 8h16l-4-4M20 16H4l4 4" /></>,
++    copy: <><rect x="8" y="8" width="12" height="13" rx="2" /><path d="M16 8V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4" /></>,
++    sound: <><path d="m11 4-6 5H2v6h3l6 5V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" /></>,
++    globe: <><circle cx="12" cy="12" r="9" /><ellipse cx="12" cy="12" rx="4" ry="9" /><path d="M3 12h18M5 6h14M5 18h14" /></>,
++    close: <path d="m6 6 12 12M6 18 18 6" />,
++    check: <path d="m5 12 4 4L19 6" />,
++    book: <><path d="M12 5v16M12 5C8 2 4 3 2 4v15c3-1 7-1 10 2 3-3 7-3 10-2V4c-2-1-6-2-10 1Z" /></>,
++  };
++  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
++}
++
++export default function Translator() {
++  const [source, setSource] = useState('en');
++  const [target, setTarget] = useState('es');
++  const [text, setText] = useState('');
++  const [translation, setTranslation] = useState('');
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState('');
++  const [notice, setNotice] = useState('');
++  const requestRef = useRef<AbortController | null>(null);
++  const inputRef = useRef<HTMLTextAreaElement>(null);
++  useEffect(() => () => { requestRef.current?.abort(); window.speechSynthesis?.cancel(); }, []);
++  function invalidate() {
++    requestRef.current?.abort(); requestRef.current = null;
++    setLoading(false); setTranslation(''); setError(''); setNotice('');
++    window.speechSynthesis?.cancel();
++  }
++  async function translate() {
++    if (!text.trim()) return;
++    requestRef.current?.abort();
++    const controller = new AbortController(); requestRef.current = controller;
++    setLoading(true); setError(''); setNotice(''); setTranslation('');
++    try {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/translate`, {
++        method: 'POST', headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ text, source, target }), signal: controller.signal,
++      });
++      const data = await response.json();
++      if (!response.ok) throw new Error(data.error || 'Translation failed. Please try again.');
++      if (requestRef.current === controller) setTranslation(data.translation);
++    } catch (err) {
++      if (requestRef.current === controller && !controller.signal.aborted) setError(err instanceof Error ? err.message : 'Unable to connect. Please try again.');
++    } finally { if (requestRef.current === controller) setLoading(false); }
++  }
++  async function copy() {
++    try { await navigator.clipboard.writeText(translation); setNotice('Translation copied to clipboard.'); }
++    catch { setNotice('Could not copy. Select the translation and copy it manually.'); }
++  }
++  function speak(value: string, language: string) {
++    if (!('speechSynthesis' in window)) { setNotice('Read aloud is unavailable in this browser.'); return; }
++    window.speechSynthesis.cancel();
++    const speech = new SpeechSynthesisUtterance(value); speech.lang = language;
++    speech.onerror = () => setNotice('Read aloud is unavailable for this language.');
++    window.speechSynthesis.speak(speech);
++  }
++  const targetName = languages.find(([code]) => code === target)?.[1];
++  return <section className="translation-workspace" aria-labelledby="translation-title">
++    <div className="translator-breadcrumb"><a href={import.meta.env.BASE_URL}>The DevTools Times</a><span>/</span><span>Translate</span></div>
++    <div className="translator-intro">
++      <div><div className="translator-eyebrow"><span /> WORDS WITHOUT BORDERS</div>
++        <h1 id="translation-title">A little less lost<br />in <em>translation.</em></h1>
++        <p>New perspectives start with understanding.<br className="desktop-break" /> Translate your words, and connect with the world.</p>
++      </div>
++      <div className="language-art" aria-hidden="true"><span className="art-orbit" /><span className="art-a">A</span><span className="art-character">あ</span><span className="art-small">Hola.</span><span className="art-spark">✳</span><span className="art-caption">Different languages. Shared meaning.</span></div>
++    </div>
++    <div className="translator-card">
++      <div className="translator-toolbar">
++        <div className="translator-language"><span>FROM</span><select aria-label="Source language" value={source} onChange={e => { invalidate(); setSource(e.target.value); }}>{languages.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></div>
++        <button className="swap-button" aria-label="Swap languages" title="Swap languages" onClick={() => { const result = translation; invalidate(); setSource(target); setTarget(source); if (result) setText(result.slice(0, MAX_TEXT_LENGTH)); }}><Icon name="swap" /></button>
++        <div className="translator-language"><span>TO</span><select aria-label="Target language" value={target} onChange={e => { invalidate(); setTarget(e.target.value); }}>{languages.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></div>
++      </div>
++      <div className="translator-panels">
++        <div className="translator-source">
++          <label className="sr-only" htmlFor="translate-input">Text to translate</label>
++          <textarea id="translate-input" ref={inputRef} placeholder="Enter your text here…" value={text} maxLength={MAX_TEXT_LENGTH} dir="auto" onChange={e => { invalidate(); setText(e.target.value); }} onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); void translate(); } }} />
++          {text && <button className="clear-button" aria-label="Clear text" onClick={() => { invalidate(); setText(''); inputRef.current?.focus(); }}><Icon name="close" size={17} /></button>}
++          <div className="panel-actions"><button className="icon-button" disabled={!text.trim()} aria-label="Listen to source text" onClick={() => speak(text, source)}><Icon name="sound" /></button><span>{text.length} / {MAX_TEXT_LENGTH}</span></div>
++        </div>
++        <div className="translator-result" aria-busy={loading}>
++          {translation ? <p className="translated-text" dir="auto" aria-live="polite">{translation}</p> : <div className="result-placeholder"><span className={loading ? 'translation-symbol is-loading' : 'translation-symbol'}><Icon name="globe" size={28} /></span><p>{loading ? 'Finding the right words…' : 'Your translation will appear here'}</p><span>{loading ? `Translating into ${targetName}` : 'A new language. The same idea.'}</span></div>}
++          <div className="panel-actions"><button className="icon-button" disabled={!translation} aria-label="Listen to translation" onClick={() => speak(translation, target)}><Icon name="sound" /></button><button className="icon-button" disabled={!translation} aria-label="Copy translation" onClick={copy}><Icon name="copy" /></button></div>
++        </div>
++      </div>
++      <div className="translator-bottom"><span><Icon name="globe" size={15} /> {languages.length} languages. Endless possibilities.</span><button className="translate-button" disabled={loading || !text.trim()} onClick={translate}>{loading ? 'Translating…' : 'Translate text'}<Icon name="arrow" size={18} /></button></div>
++    </div>
++    {error && <p className="translation-error" role="alert">{error}</p>}
++    <p className="translation-notice" role="status">{notice}</p>
++    <div className="translator-helper"><span>Try a little inspiration</span>{['Hello, how are you?', 'The world is full of possibilities.', 'Thank you for your kindness.'].map(sample => <button key={sample} onClick={() => { invalidate(); setText(sample); setSource('en'); inputRef.current?.focus(); }}>{sample}<span>↗</span></button>)}</div>
++    <div className="translator-features">
++      <div><span className="feature-icon"><Icon name="globe" /></span><h2>A world of languages</h2><p>From Spanish to Japanese, find the words<br />to make yourself understood.</p></div>
++      <div><span className="feature-icon"><Icon name="book" /></span><h2>Made for the everyday</h2><p>A headline, a hello, a new idea.<br />Make sense of the moments that matter.</p></div>
++      <div><span className="feature-icon"><Icon name="copy" /></span><h2>Take your words with you</h2><p>Listen to a translation or copy it.<br />Your next conversation starts here.</p></div>
++    </div>
++    <div className="translator-footnote"><span className="footnote-star">✳</span><p>A small tool for a more connected world.</p><span>Powered by <a href="https://mymemory.translated.net/" target="_blank" rel="noreferrer">MyMemory</a>. Text is sent to this service for translation.</span></div>
++  </section>;
++}
+diff --git a/src/components/translator.css b/src/components/translator.css
+new file mode 100644
+index 0000000..6b01c2c
+--- /dev/null
++++ b/src/components/translator.css
+@@ -0,0 +1 @@
++.translation-workspace{--ink:#272c28;--muted:#7b7e73;--line:#dedfd4;--accent:#b95736;background:#f7f7ef;color:var(--ink);padding:28px 48px 0;font-family:Arial,Helvetica,sans-serif}.translator-breadcrumb{display:flex;gap:11px;color:var(--muted);font-size:11px}.translator-breadcrumb a:hover{text-decoration:underline}.translator-breadcrumb span:last-child{color:var(--ink)}.translator-intro{display:flex;align-items:center;justify-content:space-between;padding:44px 0 37px}.translator-eyebrow{display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:2px;font-weight:600}.translator-eyebrow>span{width:6px;height:6px;background:var(--accent);border-radius:50%}.translator-intro h1{font-family:Georgia,'Times New Roman',serif;font-size:58px;font-weight:400;line-height:1.08;letter-spacing:-2px;margin:20px 0}.translator-intro h1 em{color:var(--accent);font-weight:400}.translator-intro p{color:#75786d;font-size:13px;line-height:1.9}.language-art{position:relative;width:310px;height:220px;margin-right:20px}.art-orbit{position:absolute;width:235px;height:160px;border:1px solid #d8d9c9;border-radius:50%;transform:rotate(-27deg);top:27px;left:35px}.art-a{position:absolute;font-family:Georgia,serif;font-size:126px;line-height:1;color:#464d3c;left:43px;top:25px;transform:rotate(-11deg)}.art-character{position:absolute;font-family:Georgia,serif;color:#b95736;font-size:94px;right:25px;top:58px;transform:rotate(12deg)}.art-small{position:absolute;font-family:Georgia,serif;font-style:italic;font-size:22px;right:31px;top:11px;transform:rotate(9deg)}.art-spark{position:absolute;color:#b95736;font-size:29px;left:15px;bottom:29px}.art-caption{position:absolute;bottom:-5px;width:100%;text-align:center;font-size:10px;letter-spacing:.5px;color:#87897c}.translator-card{background:white;border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 20px #303b2410;overflow:hidden}.translator-toolbar{display:grid;grid-template-columns:1fr 50px 1fr;align-items:center;padding:19px 24px;border-bottom:1px solid var(--line);gap:12px}.translator-language{display:flex;align-items:center;gap:17px}.translator-language>span{font-size:9px;letter-spacing:1.5px;color:var(--muted)}.translator-language select{font-size:14px;font-weight:600;background:transparent;border:0;cursor:pointer;padding:5px 28px 5px 0;width:100%;max-width:170px;color:var(--ink)}.translator-language:last-child{padding-left:10px}.swap-button{border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:#fff;cursor:pointer}.swap-button:hover{background:#f7f7ef;color:var(--accent)}.translator-panels{display:grid;grid-template-columns:1fr 1fr}.translator-source,.translator-result{min-height:250px;position:relative;padding:25px 24px 16px;display:flex;flex-direction:column}.translator-source{border-right:1px solid var(--line)}.translator-source textarea{font-family:Arial,sans-serif;resize:none;border:0;outline:none;flex:1;min-height:177px;width:100%;font-size:19px;line-height:1.65;padding-right:18px;background:transparent;color:var(--ink)}.translator-source textarea::placeholder{color:#a0a195}.clear-button{position:absolute;right:13px;top:27px;color:#8a8b80;cursor:pointer;padding:4px}.panel-actions{display:flex;align-items:center;justify-content:space-between;color:#93968b;font-size:10px;margin-top:13px}.icon-button{padding:3px;cursor:pointer;color:#646d5d}.icon-button:disabled{color:#c1c4b8;cursor:default}.icon-button:not(:disabled):hover{color:var(--accent)}.translator-result{background:#fafbf6}.translated-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:19px;line-height:1.65;flex:1}.result-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;text-align:center}.translation-symbol{color:#adb59b;width:50px;height:50px;background:#eff2e6;border-radius:50%;display:grid;place-items:center;margin-bottom:4px}.result-placeholder p{font-size:13px;color:#8b907f}.result-placeholder>span:last-child{font-size:10px;color:#a2a597}.translator-bottom{padding:17px 24px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:15px}.translator-bottom>span{display:flex;align-items:center;gap:7px;color:#898d7e;font-size:10px}.translate-button{display:flex;align-items:center;justify-content:center;gap:22px;padding:12px 19px;background:#b95736;border-radius:5px;color:white;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s}.translate-button:hover{background:#99462a}.translate-button:disabled{opacity:.6;cursor:default}.translation-error{padding:12px 15px;background:#fff0e9;color:#963919;font-size:12px;border-radius:5px;margin-top:12px}.translation-notice{font-size:12px;color:#596749;margin-top:10px}.translation-notice:empty{display:none}.translator-helper{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:19px 0 30px}.translator-helper>span{font-size:10px;color:#85897a;margin-right:5px}.translator-helper button{border:1px solid #dddfd2;border-radius:5px;padding:7px 10px;display:flex;gap:15px;align-items:center;font-size:10px;color:#777d6c;background:#fafaf4;cursor:pointer}.translator-helper button:hover{border-color:#b95736;color:#b95736}.translator-helper button span{font-size:13px}.translator-features{display:grid;grid-template-columns:repeat(3,1fr);padding:30px 0 32px;border-top:1px solid var(--line);gap:30px}.feature-icon{display:inline-flex;color:#737d60;margin-bottom:13px}.translator-features h2{font-family:Georgia,serif;font-size:17px;font-weight:400;margin:0 0 8px}.translator-features p{font-size:11px;color:#838779;line-height:1.9}.translator-footnote{border-top:1px solid var(--line);display:flex;align-items:center;gap:9px;padding:22px 0;color:#858979;font-size:10px}.footnote-star{font-size:20px;color:var(--accent)}.translator-footnote>span:last-child{margin-left:auto;font-size:9px;max-width:280px;text-align:right;line-height:1.6}.translator-footnote a{text-decoration:underline}.translation-workspace button:focus-visible,.translation-workspace select:focus-visible,.translation-workspace textarea:focus-visible,.translation-workspace a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.is-loading{animation:translation-pulse 1.5s ease-in-out infinite}@keyframes translation-pulse{50%{opacity:.4}}@media(prefers-reduced-motion:reduce){.is-loading{animation:none}}@media(min-width:1200px){.translator-source,.translator-result{min-height:280px}}@media(max-width:800px){.translation-workspace{padding:24px 25px 0}.translator-intro h1{font-size:48px}.language-art{transform:scale(.8);transform-origin:right center;margin-right:0;width:240px}.translator-helper{gap:6px}.translator-helper>span{width:100%;margin-bottom:3px}.translator-features{gap:18px}.translator-features h2{font-size:15px}}@media(max-width:560px){.translation-workspace{padding:20px 18px 0}.translator-intro{padding:33px 0 28px}.translator-intro h1{font-size:44px}.translator-intro p{font-size:12px}.language-art{display:none}.translator-toolbar{padding:15px 14px;grid-template-columns:1fr 34px 1fr;gap:8px}.translator-language{display:block}.translator-language>span{display:block;margin-bottom:4px}.translator-language select{font-size:13px;padding-right:5px}.translator-panels{grid-template-columns:1fr}.translator-source{border-right:0;border-bottom:1px solid var(--line)}.translator-source,.translator-result{min-height:200px;padding:20px 18px 15px}.translator-source textarea{min-height:130px;font-size:17px}.translated-text{font-size:17px}.translator-bottom{padding:15px;align-items:center}.translator-bottom>span{max-width:130px;font-size:9px;line-height:1.6}.translate-button{gap:10px;padding:12px}.translator-features{grid-template-columns:1fr;gap:23px;padding-top:24px}.feature-icon{float:left;margin-right:15px;margin-top:4px}.translator-features p,.translator-features h2{margin-left:36px}.translator-features p br{display:none}.translator-footnote{flex-wrap:wrap}.translator-footnote>span:last-child{width:100%;max-width:none;text-align:left;margin-left:29px}.desktop-break{display:none}}
+diff --git a/src/lib/translation.ts b/src/lib/translation.ts
+new file mode 100644
+index 0000000..e210b40
+--- /dev/null
++++ b/src/lib/translation.ts
+@@ -0,0 +1,27 @@
++export const languages = [
++  ['en', 'English'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'],
++  ['it', 'Italian'], ['pt', 'Portuguese'], ['nl', 'Dutch'], ['pl', 'Polish'],
++  ['uk', 'Ukrainian'], ['ar', 'Arabic'], ['hi', 'Hindi'], ['ja', 'Japanese'],
++  ['ko', 'Korean'], ['zh', 'Chinese'], ['tr', 'Turkish'], ['ru', 'Russian'],
++] as const;
++export const MAX_TEXT_LENGTH = 500;
++
++// Keep each provider request within its 500-byte UTF-8 limit, preferring word boundaries.
++export function splitText(text: string): string[] {
++  const chunks: string[] = [];
++  let remaining = text;
++  const encoder = new TextEncoder();
++  while (encoder.encode(remaining).length > 480) {
++    let part = '';
++    for (const char of remaining) {
++      if (encoder.encode(part + char).length > 480) break;
++      part += char;
++    }
++    const boundary = part.lastIndexOf(' ');
++    if (boundary > part.length / 2) part = part.slice(0, boundary + 1);
++    chunks.push(part);
++    remaining = remaining.slice(part.length);
++  }
++  if (remaining) chunks.push(remaining);
++  return chunks;
++}
+diff --git a/src/pages/api/translate.ts b/src/pages/api/translate.ts
+new file mode 100644
+index 0000000..910cf9e
+--- /dev/null
++++ b/src/pages/api/translate.ts
+@@ -0,0 +1,37 @@
++import type { APIRoute } from 'astro';
++import { languages, MAX_TEXT_LENGTH, splitText } from '../../lib/translation';
++
++const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
++  status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
++});
++
++export const POST: APIRoute = async ({ request }) => {
++  let body;
++  try { body = await request.json(); }
++  catch { return json({ error: 'Please send a valid translation request.' }, 400); }
++  const { text, source, target } = body ?? {};
++  if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT_LENGTH) {
++    return json({ error: 'Enter between 1 and 500 characters to translate.' }, 400);
++  }
++  if (![source, target].every(code => languages.some(([language]) => language === code))) {
++    return json({ error: 'Please select a supported language.' }, 400);
++  }
++  if (source === target) return json({ translation: text });
++  try {
++    const translations = await Promise.all(splitText(text).map(async chunk => {
++      const url = new URL('https://api.mymemory.translated.net/get');
++      url.searchParams.set('q', chunk.trim());
++      url.searchParams.set('langpair', `${source}|${target}`);
++      const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
++      if (!response.ok) throw new Error('provider');
++      const data = await response.json();
++      if (Number(data.responseStatus) !== 200 || data.quotaFinished || typeof data.responseData?.translatedText !== 'string') {
++        throw new Error('provider');
++      }
++      return data.responseData.translatedText;
++    }));
++    return json({ translation: translations.join(' ') });
++  } catch {
++    return json({ error: 'The translation service is unavailable or has reached its daily limit. Please try again later.' }, 503);
++  }
++};
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..be7f128 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import Translator from '../components/Translator';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -37,7 +38,8 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times — Translate">
++    <Translator client:load />
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+diff --git a/src/pages/translate.astro b/src/pages/translate.astro
+new file mode 100644
+index 0000000..9dcaed6
+--- /dev/null
++++ b/src/pages/translate.astro
+@@ -0,0 +1,7 @@
++---
++import Layout from '../layouts/Layout.astro';
++import Translator from '../components/Translator';
++---
++<Layout title="Translate — The DevTools Times">
++  <Translator client:load />
++</Layout>

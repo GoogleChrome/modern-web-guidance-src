@@ -1,0 +1,195 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,124 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured Barista Section (.shaped-avatar) */
++    .barista-section {
++      margin-top: 50px;
++      display: flex;
++      align-items: center;
++      gap: 36px;
++      background: #fff8f3;
++      padding: 32px;
++      border-radius: 12px;
++      flex-wrap: wrap;
++    }
++
++    .shaped-avatar {
++      width: 220px;
++      height: 220px;
++      object-fit: cover;
++      display: block;
++      flex-shrink: 0;
++      clip-path: url(#paint-splat-clip);
++      -webkit-clip-path: url(#paint-splat-clip);
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M 0.50,0.06 C 0.58,0.04 0.62,0.16 0.70,0.14 C 0.78,0.12 0.82,0.03 0.89,0.09 C 0.96,0.15 0.84,0.25 0.87,0.34 C 0.90,0.42 0.98,0.45 0.96,0.54 C 0.94,0.63 0.83,0.62 0.82,0.70 C 0.81,0.78 0.93,0.84 0.86,0.91 C 0.79,0.97 0.71,0.85 0.62,0.88 C 0.54,0.91 0.53,0.98 0.44,0.96 C 0.35,0.94 0.36,0.84 0.28,0.82 C 0.20,0.80 0.12,0.92 0.06,0.85 C 0.01,0.78 0.15,0.70 0.13,0.61 C 0.11,0.53 0.02,0.50 0.04,0.41 C 0.06,0.32 0.18,0.34 0.20,0.26 C 0.22,0.18 0.11,0.10 0.18,0.05 C 0.25,0.01 0.34,0.14 0.42,0.12 C 0.46,0.11 0.46,0.07 0.50,0.06 Z'/%3E%3C/svg%3E");
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M 0.50,0.06 C 0.58,0.04 0.62,0.16 0.70,0.14 C 0.78,0.12 0.82,0.03 0.89,0.09 C 0.96,0.15 0.84,0.25 0.87,0.34 C 0.90,0.42 0.98,0.45 0.96,0.54 C 0.94,0.63 0.83,0.62 0.82,0.70 C 0.81,0.78 0.93,0.84 0.86,0.91 C 0.79,0.97 0.71,0.85 0.62,0.88 C 0.54,0.91 0.53,0.98 0.44,0.96 C 0.35,0.94 0.36,0.84 0.28,0.82 C 0.20,0.80 0.12,0.92 0.06,0.85 C 0.01,0.78 0.15,0.70 0.13,0.61 C 0.11,0.53 0.02,0.50 0.04,0.41 C 0.06,0.32 0.18,0.34 0.20,0.26 C 0.22,0.18 0.11,0.10 0.18,0.05 C 0.25,0.01 0.34,0.14 0.42,0.12 C 0.46,0.11 0.46,0.07 0.50,0.06 Z'/%3E%3C/svg%3E");
++      mask-size: 100% 100%;
++      -webkit-mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++      -webkit-mask-repeat: no-repeat;
++    }
++
++    .barista-info {
++      flex: 1;
++      min-width: 240px;
++    }
++
++    .barista-info h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .barista-role {
++      color: #8d6e63;
++      font-weight: 600;
++      margin-bottom: 12px;
++      font-size: 0.95rem;
++    }
++
++    /* Loyalty Banner (.unified-card, .card-body, .card-accent) */
++    .loyalty-section {
++      margin-top: 50px;
++    }
++
++    .unified-card {
++      display: flex;
++      align-items: stretch;
++      filter: drop-shadow(0 10px 22px rgba(62, 39, 35, 0.18));
++    }
++
++    .card-body {
++      flex: 1;
++      background-color: #ffffff;
++      padding: 32px 36px;
++      border-radius: 14px 0 0 14px;
++    }
++
++    .card-body h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .card-accent {
++      width: 120px;
++      flex-shrink: 0;
++      background-color: #ffffff;
++      clip-path: url(#card-cutout-curve);
++      -webkit-clip-path: url(#card-cutout-curve);
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M 0,0 L 1,0 C 0.85,0.15 0.35,0.28 0.35,0.50 C 0.35,0.72 0.85,0.85 1,1 L 0,1 Z'/%3E%3C/svg%3E");
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M 0,0 L 1,0 C 0.85,0.15 0.35,0.28 0.35,0.50 C 0.35,0.72 0.85,0.85 1,1 L 0,1 Z'/%3E%3C/svg%3E");
++      mask-size: 100% 100%;
++      -webkit-mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++      -webkit-mask-repeat: no-repeat;
++    }
++
++    /* Promo Card (.gradient-masked-card) */
++    .promo-section {
++      margin-top: 50px;
++      display: flex;
++      justify-content: center;
++    }
++
++    .gradient-masked-card {
++      background: linear-gradient(135deg, var(--primary), #3e2723);
++      color: white;
++      padding: 48px 36px 32px;
++      border-radius: 14px;
++      text-align: center;
++      max-width: 520px;
++      width: 100%;
++      mask-image: radial-gradient(circle 28px at 50% 0, transparent 27.5px, black 28px);
++      -webkit-mask-image: radial-gradient(circle 28px at 50% 0, transparent 27.5px, black 28px);
++    }
++
++    .gradient-masked-card h2 {
++      color: var(--accent);
++      margin-bottom: 10px;
++    }
++
++    .gradient-masked-card .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++    }
++
++    .gradient-masked-card .btn:hover {
++      background: #ff9100;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +272,25 @@
+ </head>
+ 
+ <body>
+ 
++  <svg width="0" height="0" style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
++    <defs>
++      <clipPath id="paint-splat-clip" clipPathUnits="objectBoundingBox">
++        <path d="M 0.50,0.06 C 0.58,0.04 0.62,0.16 0.70,0.14 C 0.78,0.12 0.82,0.03 0.89,0.09 C 0.96,0.15 0.84,0.25 0.87,0.34 C 0.90,0.42 0.98,0.45 0.96,0.54 C 0.94,0.63 0.83,0.62 0.82,0.70 C 0.81,0.78 0.93,0.84 0.86,0.91 C 0.79,0.97 0.71,0.85 0.62,0.88 C 0.54,0.91 0.53,0.98 0.44,0.96 C 0.35,0.94 0.36,0.84 0.28,0.82 C 0.20,0.80 0.12,0.92 0.06,0.85 C 0.01,0.78 0.15,0.70 0.13,0.61 C 0.11,0.53 0.02,0.50 0.04,0.41 C 0.06,0.32 0.18,0.34 0.20,0.26 C 0.22,0.18 0.11,0.10 0.18,0.05 C 0.25,0.01 0.34,0.14 0.42,0.12 C 0.46,0.11 0.46,0.07 0.50,0.06 Z" />
++      </clipPath>
++      <mask id="paint-splat-mask" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox">
++        <path fill="white" d="M 0.50,0.06 C 0.58,0.04 0.62,0.16 0.70,0.14 C 0.78,0.12 0.82,0.03 0.89,0.09 C 0.96,0.15 0.84,0.25 0.87,0.34 C 0.90,0.42 0.98,0.45 0.96,0.54 C 0.94,0.63 0.83,0.62 0.82,0.70 C 0.81,0.78 0.93,0.84 0.86,0.91 C 0.79,0.97 0.71,0.85 0.62,0.88 C 0.54,0.91 0.53,0.98 0.44,0.96 C 0.35,0.94 0.36,0.84 0.28,0.82 C 0.20,0.80 0.12,0.92 0.06,0.85 C 0.01,0.78 0.15,0.70 0.13,0.61 C 0.11,0.53 0.02,0.50 0.04,0.41 C 0.06,0.32 0.18,0.34 0.20,0.26 C 0.22,0.18 0.11,0.10 0.18,0.05 C 0.25,0.01 0.34,0.14 0.42,0.12 C 0.46,0.11 0.46,0.07 0.50,0.06 Z" />
++      </mask>
++      <clipPath id="card-cutout-curve" clipPathUnits="objectBoundingBox">
++        <path d="M 0,0 L 1,0 C 0.85,0.15 0.35,0.28 0.35,0.50 C 0.35,0.72 0.85,0.85 1,1 L 0,1 Z" />
++      </clipPath>
++      <mask id="card-cutout-mask" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox">
++        <path fill="white" d="M 0,0 L 1,0 C 0.85,0.15 0.35,0.28 0.35,0.50 C 0.35,0.72 0.85,0.85 1,1 L 0,1 Z" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +327,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-section">
++      <img
++        class="shaped-avatar"
++        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80"
++        alt="Featured Barista Mateo Rivera"
++      >
++      <div class="barista-info">
++        <h2>Featured Barista: Mateo Rivera</h2>
++        <div class="barista-role">Head Roaster &amp; Latte Art Champion</div>
++        <p>With over a decade of specialty coffee experience, Mateo crafts our signature seasonal blends and leads our weekly community cupping sessions. Ask him about his single-origin Ethiopian pour-over recommendations!</p>
++      </div>
++    </section>
++
++    <section class="loyalty-section">
++      <div class="unified-card">
++        <div class="card-body">
++          <h2>The Daily Grind Loyalty Club</h2>
++          <p>Earn golden beans with every handcrafted beverage you order. Collect 10 beans to enjoy any artisanal drink on the house, plus complimentary birthday pastries and early access to micro-lot roasts.</p>
++          <a href="/rewards" class="btn">Join Rewards Free</a>
++        </div>
++        <div class="card-accent"></div>
++      </div>
++    </section>
++
++    <section class="promo-section">
++      <div class="gradient-masked-card">
++        <h2>Morning Pour-Over Pass</h2>
++        <p>Stop by before 9:00 AM any weekday and get 25% off any single-origin pour-over when you bring your reusable tumbler.</p>
++        <a href="/order-online" class="btn">Claim Promo</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

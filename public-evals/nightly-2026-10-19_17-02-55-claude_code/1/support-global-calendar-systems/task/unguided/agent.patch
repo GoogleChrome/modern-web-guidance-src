@@ -1,0 +1,241 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,91 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Calendar converter */
++    .calendars {
++      margin-top: 60px;
++    }
++
++    .cal-intro,
++    .cal-status {
++      text-align: center;
++    }
++
++    .cal-picker {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin: 15px 0;
++    }
++
++    .cal-picker input {
++      padding: 8px 10px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .cal-card {
++      text-align: left;
++    }
++
++    .cal-card h3 {
++      text-align: center;
++    }
++
++    .cal-main {
++      font-size: 1.1rem;
++      font-weight: bold;
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .cal-card dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 10px;
++      font-size: 0.9rem;
++    }
++
++    .cal-card dt {
++      font-weight: 600;
++    }
++
++    .cal-badge {
++      display: inline-block;
++      padding: 0 8px;
++      border-radius: 10px;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .cal-months {
++      margin-top: 10px;
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++    }
++
++    .cal-months caption {
++      font-weight: 600;
++      text-align: left;
++    }
++
++    .cal-months th,
++    .cal-months td {
++      padding: 2px 4px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: left;
++    }
++
++    .cal-months tr.current {
++      background: var(--secondary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +277,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendars" aria-labelledby="calendars-title">
++      <h2 id="calendars-title" style="text-align: center;">Global Calendar Converter</h2>
++      <p class="cal-intro">Planning a gift card, event, or holiday order? Pick a date to see it in other calendars.</p>
++      <div class="cal-picker">
++        <label for="cal-date">Date</label>
++        <input type="date" id="cal-date" required>
++      </div>
++      <p id="cal-status" class="cal-status" role="status" aria-live="polite"></p>
++      <div class="grid" id="cal-cards"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +300,125 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const CALENDARS = [
++      { id: 'islamic-umalqura', name: 'Islamic (Umm al-Qura)', mainId: 'islamic-date' },
++      { id: 'hebrew', name: 'Hebrew' },
++      { id: 'japanese', name: 'Japanese' },
++    ];
++    // Polyfills are only fetched when the browser has no native Temporal.
++    const POLYFILLS = [
++      ['https://cdn.jsdelivr.net/npm/temporal-polyfill@0.3.0/global.esm.js', () => globalThis.Temporal],
++      ['https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.5.1/+esm', (m) => m.Temporal],
++    ];
++
++    const input = document.getElementById('cal-date');
++    const status = document.getElementById('cal-status');
++    const cards = document.getElementById('cal-cards');
++    const locale = navigator.language || 'en';
++
++    async function loadTemporal() {
++      if (globalThis.Temporal) return globalThis.Temporal;
++      for (const [url, pick] of POLYFILLS) {
++        try {
++          const T = pick(await import(url));
++          if (T) return T;
++        } catch { /* try the next source */ }
++      }
++      return null;
++    }
++
++    function el(tag, text, className) {
++      const node = document.createElement(tag);
++      if (text !== undefined) node.textContent = text;
++      if (className) node.className = className;
++      return node;
++    }
++
++    function row(dl, label, value) {
++      dl.append(el('dt', label), el('dd', value));
++    }
++
++    function describe(T, iso, today, cal) {
++      const date = iso.withCalendar(cal.id);
++      const formatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
++      if (cal.id === 'japanese') formatOptions.era = 'long';
++      const formatted = date.toLocaleString(locale, formatOptions);
++
++      const first = date.with({ month: 1, day: 1 });
++      const months = [];
++      for (let i = 0; i < date.monthsInYear; i++) {
++        const m = first.add({ months: i });
++        months.push({ code: m.monthCode, days: m.daysInMonth, current: m.monthCode === date.monthCode });
++      }
++
++      const cmp = T.PlainDate.compare(iso, today);
++      const timeline = cmp < 0 ? 'Past' : cmp > 0 ? 'Future' : 'Today';
++      const yearLabel = date.era ? `${date.eraYear} (${date.era}), arithmetic year ${date.year}` : String(date.year);
++      return { formatted, date, months, timeline, yearLabel };
++    }
++
++    function renderCard(T, iso, today, cal) {
++      const card = el('div', undefined, 'card cal-card');
++      card.append(el('h3', cal.name));
++      try {
++        const info = describe(T, iso, today, cal);
++        const main = el('p', info.formatted, 'cal-main');
++        if (cal.mainId) main.id = cal.mainId;
++        card.append(main);
++
++        const dl = el('dl');
++        row(dl, 'Year', info.yearLabel);
++        row(dl, 'Month', String(info.date.month));
++        row(dl, 'Month code', info.date.monthCode);
++        row(dl, 'Months in year', String(info.date.monthsInYear));
++        dl.append(el('dt', 'Timeline'));
++        const dd = el('dd');
++        dd.append(el('span', info.timeline, 'cal-badge'));
++        dl.append(dd);
++        card.append(dl);
++
++        const table = el('table', undefined, 'cal-months');
++        table.append(el('caption', 'Month breakdown'));
++        const head = el('tr');
++        head.append(el('th', 'Code'), el('th', 'Days'));
++        table.append(head);
++        for (const m of info.months) {
++          const tr = el('tr', undefined, m.current ? 'current' : '');
++          tr.append(el('td', m.code), el('td', String(m.days)));
++          table.append(tr);
++        }
++        card.append(table);
++      } catch {
++        card.append(el('p', 'This date is outside the range supported for this calendar.'));
++      }
++      return card;
++    }
++
++    const T = await loadTemporal();
++    if (!T) {
++      status.textContent = 'Calendar conversion is not supported in this browser.';
++      input.disabled = true;
++    } else {
++      const today = T.Now.plainDateISO();
++      const update = () => {
++        cards.replaceChildren();
++        status.textContent = '';
++        let iso;
++        try {
++          iso = T.PlainDate.from(input.value);
++        } catch {
++          status.textContent = 'Please choose a valid date.';
++          return;
++        }
++        for (const cal of CALENDARS) cards.append(renderCard(T, iso, today, cal));
++      };
++      input.value = today.toString();
++      input.addEventListener('input', update);
++      update();
++    }
++  </script>
+ </body>
+ 
+ </html>

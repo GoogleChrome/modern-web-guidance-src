@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,76 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured barista: organic paint-splat mask (viewBox is stretched, so it tracks the image size) */
++    .barista-feature {
++      display: flex;
++      align-items: center;
++      gap: 30px;
++      flex-wrap: wrap;
++      margin-top: 40px;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: 260px;
++      aspect-ratio: 1;
++      object-fit: cover;
++      background: var(--secondary);
++      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 3C60 3 64 12 73 12C83 12 90 20 88 30C87 38 97 41 97 52C97 62 90 66 90 74C90 85 80 90 72 88C64 87 62 97 50 97C40 97 38 89 29 89C18 89 10 82 12 72C13 65 3 62 3 50C3 40 11 36 12 28C13 17 22 11 31 13C39 14 41 3 50 3Z'/%3E%3Ccircle cx='93' cy='14' r='4'/%3E%3Ccircle cx='8' cy='90' r='3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 3C60 3 64 12 73 12C83 12 90 20 88 30C87 38 97 41 97 52C97 62 90 66 90 74C90 85 80 90 72 88C64 87 62 97 50 97C40 97 38 89 29 89C18 89 10 82 12 72C13 65 3 62 3 50C3 40 11 36 12 28C13 17 22 11 31 13C39 14 41 3 50 3Z'/%3E%3Ccircle cx='93' cy='14' r='4'/%3E%3Ccircle cx='8' cy='90' r='3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++    }
++
++    .barista-feature h3 {
++      color: var(--primary);
++    }
++
++    /* Loyalty banner: shadow lives on the unmasked parent via filter so the masked accent doesn't clip it */
++    .unified-card {
++      display: flex;
++      background: white;
++      border-radius: 12px;
++      margin-top: 40px;
++      filter: drop-shadow(0 6px 10px rgba(62, 39, 35, 0.25));
++    }
++
++    .unified-card .card-body {
++      flex: 1;
++      padding: 28px 32px;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--primary);
++    }
++
++    .unified-card .card-accent {
++      flex: 0 0 30%;
++      min-height: 120px;
++      background: linear-gradient(135deg, var(--accent), #ff7043);
++      border-radius: 0 12px 12px 0;
++      /* concave curve cut into the left edge */
++      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V100H0C40 70 40 30 0 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V100H0C40 70 40 30 0 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++    }
++
++    /* Promo card: circular notch on the top edge via radial-gradient mask */
++    .gradient-masked-card {
++      margin-top: 40px;
++      padding: 56px 32px 32px;
++      color: white;
++      text-align: center;
++      border-radius: 12px;
++      background: linear-gradient(160deg, var(--primary), #8d6e63);
++      -webkit-mask: radial-gradient(circle 30px at 50% 0, transparent 98%, #000 100%);
++      mask: radial-gradient(circle 30px at 50% 0, transparent 98%, #000 100%);
++    }
++
++    .gradient-masked-card .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +262,34 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-feature">
++      <img class="shaped-avatar"
++        src="https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=600&q=80"
++        alt="Featured barista pouring latte art">
++      <div>
++        <h2>Barista of the Month</h2>
++        <h3>Maya Torres</h3>
++        <p>Maya has been pulling shots for eight years and her latte art is the talk of the counter.</p>
++      </div>
++    </section>
++
++    <section class="unified-card">
++      <div class="card-body">
++        <h3>Join The Daily Grind Rewards</h3>
++        <p>Earn a star with every cup and enjoy a free drink on us after ten.</p>
++        <a href="/rewards" class="btn">Join Now</a>
++      </div>
++      <div class="card-accent" aria-hidden="true"></div>
++    </section>
++
++    <section class="gradient-masked-card">
++      <h3>Fresh Beans Friday</h3>
++      <p>Take 20% off any bag of whole beans, this Friday only.</p>
++      <a href="/menu/beans" class="btn">Shop Beans</a>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

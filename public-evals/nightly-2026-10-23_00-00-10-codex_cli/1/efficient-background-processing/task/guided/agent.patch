@@ -1,0 +1,228 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,59 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      height: 400px;
++      display: flex;
++      flex-direction: column;
++      padding: 24px;
++      border-radius: 8px;
++      background: var(--primary);
++      color: var(--light);
++    }
++
++    .roast-controls {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      margin: 12px 0;
++    }
++
++    #roast-temp-value {
++      color: var(--accent);
++      font-size: 1.5rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    #roast-toggle {
++      padding: 6px 12px;
++      border: 1px solid var(--accent);
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #roast-toggle:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      height: 190px;
++      flex: 1;
++      min-height: 0;
++      border-radius: 6px;
++      background: #271b17;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +247,21 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" class="container" aria-labelledby="roast-title">
++    <h2 id="roast-title">Inside the Roaster</h2>
++    <p>A little heat. A lot of character. Watch our roasting simulation.</p>
++    <div class="roast-controls">
++      <p>Temperature: <span id="roast-temp-value">180</span> °C</p>
++      <button id="roast-toggle" type="button" aria-pressed="false">Pause simulation</button>
++    </div>
++    <canvas id="roast-canvas" width="960" height="240" role="img"
++      aria-label="Simulated coffee beans tumbling in a roasting drum">
++      Coffee beans tumble as the simulated roasting temperature changes.
++    </canvas>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +270,142 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const temperatureValue = document.getElementById('roast-temp-value');
++      const toggle = document.getElementById('roast-toggle');
++      const context = canvas.getContext('2d');
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const beans = Array.from({ length: 36 }, () => ({
++        x: Math.random() * canvas.width,
++        y: 25 + Math.random() * (canvas.height - 50),
++        angle: Math.random() * Math.PI * 2,
++        speed: 25 + Math.random() * 35,
++      }));
++      let inView = false;
++      let renderingSkipped = false;
++      let pageHidden = false;
++      let manuallyPaused = false;
++      let frameId = null;
++      let intervalId = null;
++      let previousTime = null;
++      let temperature = 180;
++
++      function drawBeans(delta = 0) {
++        if (!context) return;
++        context.clearRect(0, 0, canvas.width, canvas.height);
++        for (const bean of beans) {
++          bean.x = (bean.x + bean.speed * delta) % (canvas.width + 40);
++          bean.angle += delta;
++          context.save();
++          context.translate(bean.x - 20, bean.y);
++          context.rotate(bean.angle);
++          context.fillStyle = '#a66b42';
++          context.beginPath();
++          context.ellipse(0, 0, 17, 11, 0, 0, Math.PI * 2);
++          context.fill();
++          context.strokeStyle = '#4e2c1e';
++          context.lineWidth = 3;
++          context.beginPath();
++          context.moveTo(-12, 0);
++          context.bezierCurveTo(-4, -7, 4, 7, 12, 0);
++          context.stroke();
++          context.restore();
++        }
++      }
++
++      function animate(time) {
++        const delta = previousTime === null ? 0 : Math.min((time - previousTime) / 1000, 0.05);
++        previousTime = time;
++        drawBeans(delta);
++        frameId = requestAnimationFrame(animate);
++      }
++
++      function stopSimulation() {
++        if (frameId !== null) cancelAnimationFrame(frameId);
++        if (intervalId !== null) clearInterval(intervalId);
++        frameId = null;
++        intervalId = null;
++        previousTime = null;
++      }
++
++      function syncSimulation() {
++        if (!inView || renderingSkipped || document.hidden || pageHidden || manuallyPaused) {
++          stopSimulation();
++          return;
++        }
++        // Each resource has its own guard so repeated visibility events cannot duplicate it.
++        if (intervalId === null) {
++          intervalId = setInterval(() => {
++            temperature = Math.max(175, Math.min(225, temperature + (Math.random() - 0.35) * 4));
++            temperatureValue.textContent = temperature.toFixed(0);
++          }, 1000);
++          drawBeans();
++        }
++        if (reducedMotion.matches || !context) {
++          if (frameId !== null) cancelAnimationFrame(frameId);
++          frameId = null;
++          previousTime = null;
++        } else if (frameId === null) {
++          frameId = requestAnimationFrame(animate);
++        }
++      }
++
++      // Listen on the container itself: this event does not reliably bubble.
++      if ('oncontentvisibilityautostatechange' in widget) {
++        widget.addEventListener('contentvisibilityautostatechange', (event) => {
++          renderingSkipped = event.skipped;
++          syncSimulation();
++        });
++      }
++
++      // Also enforce exact viewport visibility: native rendering may begin well offscreen.
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          inView = entries[entries.length - 1].isIntersecting;
++          syncSimulation();
++        });
++        observer.observe(widget);
++      } else {
++        // Older browsers without either API still pause, without a polling interval.
++        const checkViewport = () => {
++          const rect = widget.getBoundingClientRect();
++          inView = rect.bottom > 0 && rect.top < window.innerHeight &&
++            rect.right > 0 && rect.left < window.innerWidth;
++          syncSimulation();
++        };
++        window.addEventListener('scroll', checkViewport, { passive: true, capture: true });
++        window.addEventListener('resize', checkViewport, { passive: true });
++        window.addEventListener('pageshow', checkViewport);
++        checkViewport();
++      }
++
++      document.addEventListener('visibilitychange', syncSimulation);
++      window.addEventListener('pagehide', () => {
++        pageHidden = true;
++        stopSimulation();
++      });
++      window.addEventListener('pageshow', () => {
++        pageHidden = false;
++        syncSimulation();
++      });
++      if (reducedMotion.addEventListener) {
++        reducedMotion.addEventListener('change', syncSimulation);
++      } else {
++        reducedMotion.addListener(syncSimulation);
++      }
++      toggle.addEventListener('click', () => {
++        manuallyPaused = !manuallyPaused;
++        toggle.setAttribute('aria-pressed', String(manuallyPaused));
++        toggle.textContent = manuallyPaused ? 'Resume simulation' : 'Pause simulation';
++        syncSimulation();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

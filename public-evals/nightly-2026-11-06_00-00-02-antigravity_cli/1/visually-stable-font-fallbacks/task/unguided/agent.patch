@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,15 +4,58 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+   <style>
++    @font-face {
++      font-family: 'CustomBody';
++      src: url('https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
++      font-weight: 400 700;
++      font-style: normal;
++      font-display: swap;
++      size-adjust: 107%;
++    }
++
++    @font-face {
++      font-family: 'CustomBodyFallback';
++      src: local('Segoe UI'), local('Arial'), local('Helvetica Neue'), local('Roboto'), local('sans-serif');
++      font-display: swap;
++      size-adjust: 100%;
++      ascent-override: 90%;
++      descent-override: 22%;
++      line-gap-override: 0%;
++    }
++
++    @font-face {
++      font-family: 'CustomHeading';
++      src: url('https://fonts.gstatic.com/s/playfairdisplay/v37/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKeiunDXbtM.woff2') format('woff2');
++      font-weight: 700;
++      font-style: normal;
++      font-display: swap;
++      size-adjust: 105%;
++    }
++
++    @font-face {
++      font-family: 'CustomHeadingFallback';
++      src: local('Georgia'), local('Times New Roman'), local('serif');
++      font-display: swap;
++      size-adjust: 105%;
++      ascent-override: 93%;
++      descent-override: 22%;
++      line-gap-override: 0%;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --font-body: 'CustomBody', 'Inter', 'CustomBodyFallback', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      --font-heading: 'CustomHeading', 'Playfair Display', 'CustomHeadingFallback', Georgia, serif;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -20,14 +63,20 @@
+       padding: 0;
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: var(--font-body);
++      font-size-adjust: 0.52;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    h1, h2, h3, .logo {
++      font-family: var(--font-heading);
++      font-size-adjust: 0.5;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

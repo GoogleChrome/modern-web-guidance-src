@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -95,8 +95,32 @@
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 350px;
++    }
++
++    .debug-panel {
++      content-visibility: hidden;
++      contain-intrinsic-size: auto 300px;
++      background: #1e293b;
++      color: #f8fafc;
++      border-radius: 1rem;
++      padding: 1.5rem;
++      margin-bottom: 2rem;
++      border: 1px solid #334155;
++      font-family: monospace;
++    }
++
++    .debug-panel.visible,
++    .debug-panel.open,
++    .debug-panel.show,
++    .debug-panel.active {
++      content-visibility: visible;
++    }
++
+     .nested-layer {
+       position: absolute;
+       inset: 0;
+       pointer-events: none;
+@@ -205,9 +229,9 @@
+     </filter>
+   </svg>
+ 
+   <div class="controls">
+-
++    <button id="toggle-debug" class="toggle-btn off">Toggle Debug Panel</button>
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+@@ -217,22 +241,32 @@
+   <div class="feed" id="feed">
+     <div class="info-text">
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
++    <div class="debug-panel" id="debug-panel">
++      <h3>Debug Panel</h3>
++      <p>Total Cards: 500 | Rendering Strategy: <code>content-visibility: auto</code></p>
++      <div class="sub-expensive-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 10px;">
++        <div class="expensive-element" style="height: 30px; margin-top: 0; filter: url(#expensiveFilter) blur(0.5px);"></div>
++        <div class="expensive-element" style="height: 30px; margin-top: 0; filter: url(#expensiveFilter) blur(0.5px);"></div>
++        <div class="expensive-element" style="height: 30px; margin-top: 0; filter: url(#expensiveFilter) blur(0.5px);"></div>
++        <div class="expensive-element" style="height: 30px; margin-top: 0; filter: url(#expensiveFilter) blur(0.5px);"></div>
++      </div>
++    </div>
+   </div>
+ 
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
++    const toggleDebugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
+ 
+-
+-
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -288,8 +322,11 @@
+       for (let i = 0; i < cardCount; i++) {
+         fragment.appendChild(createCard(i));
+       }
+       feed.appendChild(fragment);
++      if (debugPanel) {
++        feed.appendChild(debugPanel);
++      }
+ 
+       measureRender(startTime);
+     }
+ 
+@@ -298,9 +335,12 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
+-
++    toggleDebugBtn.addEventListener('click', () => {
++      const isVisible = debugPanel.classList.toggle('visible');
++      toggleDebugBtn.classList.toggle('off', !isVisible);
++    });
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

@@ -1,0 +1,314 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..1fcfc03 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -20,7 +20,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+     <div class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                <div class="flex items-center gap-2">
++                    <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                    <span class="pick-badge">Editor's pick</span>
++                </div>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+                     <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+@@ -52,24 +55,26 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++    <article class="teaser group">
++        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-media">
+             <Image 
+                 src={image} 
+                 alt={article.data.title} 
+                 width={400}
+                 height={225}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+             />
+         </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++        <div class="teaser-body">
++            <div class="flex items-center gap-2">
++                <span class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</span>
++                <span class="pick-badge">Editor's pick</span>
++            </div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 class="teaser-title font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p class="teaser-summary text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..4d65418 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -23,8 +23,15 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
++    <button
++      onClick={handleClick}
++      className="bookmark-button"
++      aria-label="Save to reading list"
++      aria-pressed={isBookmarked}
++    >
+       <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++      {/* Only shown when the surrounding surface asks for a labelled button */}
++      <span className="bookmark-label" aria-hidden="true">{isBookmarked ? 'Saved' : 'Save'}</span>
+     </button>
+   );
+ }
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..62e26f6 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -32,12 +32,15 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <div class="surface-featured shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
++                <div class="flex items-center gap-2 mb-2">
++                    <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm hover:underline">
++                        {capitalizedCategory}
++                    </a>
++                    <span class="pick-badge">Editor's pick</span>
++                </div>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+                     <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+                         {topArticle.data.title}
+@@ -46,11 +49,14 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                 <p class="text-gray-700 mb-4 text-base lg:text-lg">
+                     {topArticle.data.summary}
+                 </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
++                <div class="flex justify-between items-center text-gray-500 text-sm">
++                    <span class="flex items-center">
++                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
++                        </svg>
++                        <span>{topArticle.data.readingTime} Min Read</span>
++                    </span>
++                    <BookmarkButton client:visible slug={topArticle.id} initialIsBookmarked={readingList.includes(topArticle.id)} />
+                 </div>
+             </div>
+             <div class="w-full order-first lg:order-last">
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..bcee8e0 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -116,7 +116,8 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section class="surface-compact max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++        <h2 class="text-xl font-bold mb-4">Related articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..e7b2542 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main class="surface-featured max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..f990a4c 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,165 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/*
++ * Semantic surface contexts.
++ * Layout regions declare what kind of surface they are; components decide
++ * on their own how to present themselves there via container style queries.
++ * Neither side names the other, so both can grow independently.
++ */
++.surface-featured {
++  --surface: featured;
++}
++
++.surface-compact {
++  --surface: compact;
++}
++
++@layer components {
++  /* Editor's pick badge: only revealed on featured surfaces */
++  .pick-badge {
++    display: none;
++    padding-block: 0.125rem;
++    padding-inline: 0.5rem;
++    border-radius: var(--radius-sm);
++    background: var(--color-amber-800);
++    color: var(--color-white);
++    font-size: var(--text-xs);
++    font-weight: 600;
++    letter-spacing: 0.05em;
++    text-transform: uppercase;
++  }
++
++  /* Article teaser card */
++  .teaser {
++    display: flex;
++    flex-direction: column;
++    gap: 0.75rem;
++    block-size: 100%;
++
++    & .teaser-media img {
++      inline-size: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      border-radius: var(--radius-md);
++    }
++
++    & .teaser-body {
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++    }
++
++    & .teaser-title {
++      font-size: var(--text-lg);
++      line-height: var(--text-lg--line-height);
++
++      @media (width >= 48rem) {
++        font-size: var(--text-xl);
++        line-height: var(--text-xl--line-height);
++      }
++    }
++  }
++
++  /* Bookmark button: icon-only by default */
++  .bookmark-button {
++    display: inline-flex;
++    align-items: center;
++    gap: 0.375rem;
++    padding: 0.25rem;
++    border-radius: 9999px;
++    cursor: pointer;
++  }
++
++  .bookmark-label {
++    display: none;
++  }
++
++  /* Selector-based fallback for browsers without container style queries */
++  :where(.surface-featured) .pick-badge {
++    display: inline-block;
++  }
++
++  :where(.surface-featured) .bookmark-button {
++    padding-inline: 0.75rem;
++    border: 1px solid currentColor;
++    color: var(--color-amber-800);
++    font-size: var(--text-sm);
++    font-weight: 600;
++
++    &:hover {
++      background: var(--color-amber-50);
++    }
++
++    & .bookmark-label {
++      display: inline;
++    }
++  }
++
++  :where(.surface-compact) .teaser {
++    display: grid;
++    grid-template-columns: 6rem 1fr;
++    align-items: start;
++    gap: 1rem;
++
++    & .teaser-media img {
++      aspect-ratio: 1;
++    }
++
++    & .teaser-title {
++      font-size: var(--text-base);
++      line-height: var(--text-base--line-height);
++    }
++
++    & .teaser-summary {
++      display: none;
++    }
++  }
++
++  /* Progressive enhancement: style queries override when supported */
++  @container style(--surface: featured) {
++    .pick-badge {
++      display: inline-block;
++    }
++
++    .bookmark-button {
++      padding-inline: 0.75rem;
++      border: 1px solid currentColor;
++      color: var(--color-amber-800);
++      font-size: var(--text-sm);
++      font-weight: 600;
++
++      &:hover {
++        background: var(--color-amber-50);
++      }
++    }
++
++    .bookmark-label {
++      display: inline;
++    }
++  }
++
++  @container style(--surface: compact) {
++    .teaser {
++      display: grid;
++      grid-template-columns: 6rem 1fr;
++      align-items: start;
++      gap: 1rem;
++
++      & .teaser-media img {
++        aspect-ratio: 1;
++      }
++
++      & .teaser-title {
++        font-size: var(--text-base);
++        line-height: var(--text-base--line-height);
++      }
++
++      & .teaser-summary {
++        display: none;
++      }
++    }
++  }
++}

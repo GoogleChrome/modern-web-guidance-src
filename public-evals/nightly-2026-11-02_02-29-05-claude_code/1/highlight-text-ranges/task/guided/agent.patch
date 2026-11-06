@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,44 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .search-box {
++      max-width: 400px;
++      margin: 20px auto 0;
++    }
++
++    .search-box label {
++      display: block;
++      margin-bottom: 5px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .search-box input {
++      width: 100%;
++      padding: 10px 14px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .search-box input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++      border-color: var(--primary);
++    }
++
++    ::highlight(menu-search) {
++      background-color: gold;
++      color: black;
++    }
++
++    /* Fallback for browsers without the CSS Custom Highlight API */
++    mark.menu-search {
++      background-color: gold;
++      color: black;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,9 +212,13 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="search-box">
++        <label for="search-input">Search the menu</label>
++        <input type="search" id="search-input" placeholder="e.g. latte" autocomplete="off">
++      </div>
++      <div class="grid" id="menu-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -206,7 +246,82 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const input = document.getElementById("search-input");
++      const grid = document.getElementById("menu-grid");
++      const supportsHighlights = "highlights" in CSS;
++
++      function getTextNodes() {
++        const walker = document.createTreeWalker(grid, NodeFilter.SHOW_TEXT);
++        const nodes = [];
++        for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
++        return nodes;
++      }
++
++      // Menu content is static, so the text nodes can be collected once.
++      const textNodes = supportsHighlights ? getTextNodes() : null;
++
++      function findMatches(text, term) {
++        const positions = [];
++        const lower = text.toLowerCase();
++        let pos = lower.indexOf(term);
++        while (pos !== -1) {
++          positions.push(pos);
++          pos = lower.indexOf(term, pos + term.length);
++        }
++        return positions;
++      }
++
++      function highlightWithApi(term) {
++        CSS.highlights.delete("menu-search");
++        if (!term) return;
++        const ranges = [];
++        for (const node of textNodes) {
++          for (const pos of findMatches(node.textContent, term)) {
++            const range = new Range();
++            range.setStart(node, pos);
++            range.setEnd(node, pos + term.length);
++            ranges.push(range);
++          }
++        }
++        if (ranges.length) CSS.highlights.set("menu-search", new Highlight(...ranges));
++      }
++
++      function highlightWithMarks(term) {
++        for (const mark of grid.querySelectorAll("mark.menu-search")) {
++          const parent = mark.parentNode;
++          mark.replaceWith(...mark.childNodes);
++          parent.normalize();
++        }
++        if (!term) return;
++        for (const node of getTextNodes()) {
++          const text = node.textContent;
++          const positions = findMatches(text, term);
++          if (!positions.length) continue;
++          const frag = document.createDocumentFragment();
++          let last = 0;
++          for (const pos of positions) {
++            frag.append(text.slice(last, pos));
++            const mark = document.createElement("mark");
++            mark.className = "menu-search";
++            mark.textContent = text.slice(pos, pos + term.length);
++            frag.append(mark);
++            last = pos + term.length;
++          }
++          frag.append(text.slice(last));
++          node.replaceWith(frag);
++        }
++      }
++
++      input.addEventListener("input", () => {
++        const term = input.value.trim().toLowerCase();
++        (supportsHighlights ? highlightWithApi : highlightWithMarks)(term);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

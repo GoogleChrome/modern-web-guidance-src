@@ -1,0 +1,314 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,129 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shopping Cart */
++    .cart {
++      margin-top: 50px;
++    }
++
++    .cart h2 {
++      text-align: center;
++    }
++
++    .cart-hint {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #795548;
++      margin-bottom: 20px;
++    }
++
++    .cart-empty {
++      text-align: center;
++      padding: 20px;
++      color: #795548;
++    }
++
++    .SwipeableList {
++      list-style: none;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .SwipeableList-item {
++      margin-bottom: 12px;
++      overflow: hidden;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .SwipeableList-item:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .SwipeableList-item.is-collapsing {
++      transition: height 0.3s ease, margin-bottom 0.3s ease, opacity 0.3s ease;
++      margin-bottom: 0;
++      opacity: 0;
++    }
++
++    .SwipeableList-track {
++      position: relative;
++      background: var(--secondary);
++      transition: background-color 0.2s ease;
++    }
++
++    .SwipeableList-track::before {
++      content: 'Remove';
++      position: absolute;
++      top: 50%;
++      transform: translateY(-50%);
++      right: 20px;
++      color: white;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      font-size: 0.85rem;
++    }
++
++    .SwipeableList-track[data-direction="right"]::before {
++      right: auto;
++      left: 20px;
++    }
++
++    .SwipeableList-item.is-past-threshold .SwipeableList-track {
++      background: #d32f2f;
++    }
++
++    .SwipeableList-content {
++      position: relative;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++      padding: 16px 20px;
++      background: white;
++      touch-action: pan-y;
++      user-select: none;
++      -webkit-user-select: none;
++      cursor: grab;
++      will-change: transform;
++    }
++
++    .SwipeableList-content.is-animating {
++      transition: transform 0.25s ease;
++    }
++
++    .SwipeableList-item.is-dragging .SwipeableList-content {
++      cursor: grabbing;
++    }
++
++    .SwipeableList-content h3 {
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .SwipeableList-content p {
++      font-size: 0.85rem;
++      color: #795548;
++    }
++
++    .SwipeableList-price {
++      font-weight: bold;
++      color: var(--primary);
++      white-space: nowrap;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .SwipeableList-item.is-collapsing,
++      .SwipeableList-content.is-animating,
++      .SwipeableList-track {
++        transition-duration: 0.01ms;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +315,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="cart" aria-labelledby="cart-heading">
++      <h2 id="cart-heading">Your Cart</h2>
++      <p class="cart-hint">Swipe an item left or right to remove it (or focus it and press Delete).</p>
++      <ul class="SwipeableList">
++        <li class="SwipeableList-item" tabindex="0" aria-label="Maple Oat Latte, $5.75">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">
++              <div>
++                <h3>Maple Oat Latte</h3>
++                <p>Grande &middot; Oat milk</p>
++              </div>
++              <span class="SwipeableList-price">$5.75</span>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item" tabindex="0" aria-label="Dark Roast Espresso, $3.25">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">
++              <div>
++                <h3>Dark Roast Espresso</h3>
++                <p>Double shot</p>
++              </div>
++              <span class="SwipeableList-price">$3.25</span>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item" tabindex="0" aria-label="Cold Brew, $4.50">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">
++              <div>
++                <h3>Cold Brew</h3>
++                <p>Venti &middot; Over ice</p>
++              </div>
++              <span class="SwipeableList-price">$4.50</span>
++            </div>
++          </div>
++        </li>
++      </ul>
++      <p class="cart-empty" hidden>Your cart is empty.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +368,130 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Fraction of the item's width a swipe must pass to trigger removal
++      var THRESHOLD = 0.4;
++      // Pixels of movement before deciding whether a gesture is horizontal
++      var DRAG_SLOP = 8;
++
++      var list = document.querySelector('.SwipeableList');
++      var emptyMessage = document.querySelector('.cart-empty');
++      if (!list) return;
++
++      function updateEmptyState() {
++        emptyMessage.hidden = list.querySelector('.SwipeableList-item') !== null;
++      }
++
++      function collapse(item) {
++        if (item.classList.contains('is-collapsing')) return;
++        // Pin the current height so the transition has a start value
++        item.style.height = item.offsetHeight + 'px';
++        item.offsetHeight; // force reflow
++        item.classList.add('is-collapsing');
++        item.style.height = '0px';
++
++        var done = false;
++        function finish() {
++          if (done) return;
++          done = true;
++          var next = item.nextElementSibling || item.previousElementSibling;
++          item.remove();
++          updateEmptyState();
++          if (next) next.focus();
++        }
++        item.addEventListener('transitionend', function (e) {
++          if (e.target === item && e.propertyName === 'height') finish();
++        });
++        setTimeout(finish, 500); // fallback if transitionend never fires
++      }
++
++      function removeWithSwipe(item, content, direction) {
++        var track = item.querySelector('.SwipeableList-track');
++        track.dataset.direction = direction;
++        item.classList.add('is-past-threshold');
++        content.classList.add('is-animating');
++        content.style.transform = 'translateX(' + (direction === 'left' ? '-' : '') + '100%)';
++        setTimeout(function () { collapse(item); }, 250);
++      }
++
++      list.querySelectorAll('.SwipeableList-item').forEach(function (item) {
++        var track = item.querySelector('.SwipeableList-track');
++        var content = item.querySelector('.SwipeableList-content');
++        var startX = 0, startY = 0, dx = 0;
++        var pointerId = null;
++        var dragging = false;
++
++        function reset() {
++          pointerId = null;
++          dragging = false;
++          item.classList.remove('is-dragging');
++        }
++
++        content.addEventListener('pointerdown', function (e) {
++          if (pointerId !== null || item.classList.contains('is-collapsing')) return;
++          if (e.pointerType === 'mouse' && e.button !== 0) return;
++          pointerId = e.pointerId;
++          startX = e.clientX;
++          startY = e.clientY;
++          dx = 0;
++          content.classList.remove('is-animating');
++        });
++
++        content.addEventListener('pointermove', function (e) {
++          if (e.pointerId !== pointerId) return;
++          var moveX = e.clientX - startX;
++          var moveY = e.clientY - startY;
++
++          if (!dragging) {
++            if (Math.abs(moveX) < DRAG_SLOP && Math.abs(moveY) < DRAG_SLOP) return;
++            if (Math.abs(moveY) > Math.abs(moveX)) {
++              // Vertical gesture: let the page scroll
++              reset();
++              return;
++            }
++            dragging = true;
++            item.classList.add('is-dragging');
++            content.setPointerCapture(e.pointerId);
++          }
++
++          dx = moveX;
++          content.style.transform = 'translateX(' + dx + 'px)';
++          track.dataset.direction = dx < 0 ? 'left' : 'right';
++          item.classList.toggle('is-past-threshold', Math.abs(dx) > item.offsetWidth * THRESHOLD);
++        });
++
++        function endDrag(e) {
++          if (e.pointerId !== pointerId) return;
++          var wasDragging = dragging;
++          reset();
++          if (!wasDragging) return;
++
++          if (e.type !== 'pointercancel' && Math.abs(dx) > item.offsetWidth * THRESHOLD) {
++            removeWithSwipe(item, content, dx < 0 ? 'left' : 'right');
++          } else {
++            // Snap back
++            item.classList.remove('is-past-threshold');
++            content.classList.add('is-animating');
++            content.style.transform = '';
++          }
++        }
++
++        content.addEventListener('pointerup', endDrag);
++        content.addEventListener('pointercancel', endDrag);
++
++        item.addEventListener('keydown', function (e) {
++          if (e.target !== item) return;
++          if (e.key === 'Delete' || e.key === 'Backspace') {
++            e.preventDefault();
++            removeWithSwipe(item, content, 'left');
++          }
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

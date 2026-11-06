@@ -1,0 +1,34 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,29 @@
++# Accessibility and security review
++
++The original site was a static page with no forms or backend. The implementation remains static: registration is explicitly a preview and never creates an account.
++
++## Changes
++
++- Added a skip link, named navigation and announcement landmarks, one main landmark, logical headings, and descriptive links. Replaced nonexistent routes with working page sections and dialogs.
++- Removed the GET logout link. Any future logout must use a server-side authenticated POST with CSRF protection.
++- Added a responsive, three-step form using native inputs, labels, fieldsets, legends, autocomplete tokens, required states, and a single `aria-current` progress indicator.
++- Inactive steps are hidden and disabled. Changing steps focuses their legend. Errors have a focused summary, links to invalid fields, `aria-invalid`, and associated descriptions. Back/edit actions preserve entries.
++- Added accessible password visibility controls, optional birthday selection with date validation, and separate, unchecked marketing consent. Review never reveals the password. Terms acceptance is required.
++- Policies open in native modal dialogs with Escape support and restored trigger focus. Motion respects the user's reduced-motion preference; controls have visible focus styles.
++- Added a restrictive Content Security Policy: local scripts and styles only, allowlisted stock images, no connections or form submissions, no objects or base URL changes. Added a no-referrer policy.
++- User-entered text is rendered with `textContent`, never HTML. The form uses no network calls, cookies, persistent storage, analytics, or payment collection. Completion resets fields and removes personal review data.
++- Replaced placeholder email actions with a truthful contact-information dialog. Unsplash image requests are disclosed in the privacy notice.
++
++## Automated verification
++
++Run `pnpm test`. Eleven tests cover markup references, labels, validation, focus, step navigation, passwords, birthdays, safe rendering, consent, clearing data, revalidation, modal focus restoration, accessibility, and text color contrast.
++
++Axe runs against all three steps and completion in jsdom. Layout-dependent color contrast is disabled in axe; solid text/background palette pairs are tested separately against WCAG AA 4.5:1. This does not certify full WCAG conformance or verify contrast over images, layout, zoom, native dialog behavior, or assistive technology behavior.
++
++JavaScript syntax, HTTP delivery of the HTML/CSS/JS, and the four stock image URLs were also checked. No browser was opened or used for manual verification, as requested.
++
++## Before real enrollment
++
++A backend was not provided. Actual membership requires an authenticated HTTPS API, server-side validation and authorization, securely hashed passwords, duplicate-account protections, rate limiting, and CSRF defenses where cookie authentication is used. Configure CSP for the API and set deployment headers (including `frame-ancestors` via an HTTP CSP header, HSTS, and `X-Content-Type-Options`). Client-side checks are usability checks, not a security boundary.
++
++Publish the operator's actual privacy policy and program rules, connect consent recording and account lifecycle handling, and replace preview benefit/contact copy before accepting registrations. Do not activate account creation solely by removing the preview notices.

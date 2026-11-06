@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,105 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase-section {
++      margin-bottom: 40px;
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      margin-top: 20px;
++      align-items: start;
++    }
++
++    /**
++     * Standard block layout container with outer corner radii and padding.
++     * Keeps base level 1 fallback clipping roughly at the inner padding box.
++     */
++    .nested-curve-parent {
++      background: white;
++      padding: 16px;
++      border-radius: 24px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* Level 1 Fallback: clips child roughly at the padding box */
++      overflow: hidden;
++    }
++
++    .nested-curve-parent img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .nested-curve-footer {
++      background: var(--primary);
++      color: #fff;
++      padding: 14px 18px;
++      text-align: center;
++      font-weight: 600;
++    }
++
++    @supports (overflow-clip-margin: content-box) {
++      .nested-curve-parent {
++        /* MANDATORY: overflow: clip is required on non-replaced elements */
++        overflow: clip;
++        /* Automatically curves clipping edge to match inner content-box radius */
++        overflow-clip-margin: content-box;
++      }
++    }
++
++    /**
++     * Standard block layout container clipping inner content.
++     * Base fallback uses overflow: hidden, which abruptly slices child element shadows.
++     */
++    .safety-zone-parent {
++      background: white;
++      padding: 24px;
++      border-radius: 16px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* Level 1 Fallback: clips overflowing content but truncates child shadows */
++      overflow: hidden;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .safety-zone-parent .promo-overflow-text {
++      white-space: nowrap;
++      margin-bottom: 20px;
++      color: var(--text);
++    }
++
++    /* Child button element positioned inside with an expanded glowing shadow */
++    .demo-glowing-btn {
++      display: block;
++      width: 100%;
++      padding: 12px 20px;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      font-size: 1rem;
++      border: none;
++      border-radius: 8px;
++      cursor: pointer;
++      box-shadow: 0 8px 15px rgba(255, 171, 64, 0.75);
++    }
++
++    @supports (overflow-clip-margin: 15px) {
++      .safety-zone-parent {
++        overflow: clip;
++        /* Establishes a visible safety zone allowing child element shadows to render safely outside */
++        overflow-clip-margin: 15px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +271,24 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase-section">
++      <h2 style="text-align: center;">Featured Showcase &amp; Promos</h2>
++      <div class="showcase-grid">
++        <div class="nested-curve-parent">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80" alt="Artisanal Single-Origin Pour Over">
++          <div class="nested-curve-footer">Single-Origin Ethiopian Yirgacheffe Roast</div>
++        </div>
++
++        <div class="safety-zone-parent">
++          <h3>Exclusive Roast Club Promo</h3>
++          <p class="promo-overflow-text">Join our monthly subscription for early access to micro-lot single-origin releases, free express shipping, and complimentary tasting notes.</p>
++          <button type="button" class="demo-glowing-btn">Claim 25% Off First Bag</button>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

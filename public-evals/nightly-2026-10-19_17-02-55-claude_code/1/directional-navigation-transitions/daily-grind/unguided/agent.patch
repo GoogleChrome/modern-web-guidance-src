@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+index 66c9173..72b3e92 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,64 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal carousel */
++    .carousel-viewport {
++      max-width: 500px;
++      margin: 20px auto 0;
++      overflow: hidden;
++      padding: 5px;
++    }
++
++    .carousel-viewport .card[hidden] {
++      display: none;
++    }
++
++    .card.from-right {
++      animation: slide-in-right 0.4s ease-out;
++    }
++
++    .card.from-left {
++      animation: slide-in-left 0.4s ease-out;
++    }
++
++    @keyframes slide-in-right {
++      from { transform: translateX(100%); opacity: 0; }
++      to { transform: translateX(0); opacity: 1; }
++    }
++
++    @keyframes slide-in-left {
++      from { transform: translateX(-100%); opacity: 0; }
++      to { transform: translateX(0); opacity: 1; }
++    }
++
++    .carousel-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 15px;
++      margin-top: 10px;
++    }
++
++    .carousel-controls .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .carousel-status {
++      min-width: 3.5em;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card.from-right,
++      .card.from-left {
++        animation: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,7 +235,7 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="carousel-viewport" id="seasonal-carousel" aria-roledescription="carousel" aria-label="Seasonal Favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -194,6 +252,11 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="carousel-controls">
++        <button type="button" class="btn" id="seasonal-prev">Previous</button>
++        <span class="carousel-status" id="seasonal-status" aria-live="polite"></span>
++        <button type="button" class="btn" id="seasonal-next">Next</button>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +270,35 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    (function () {
++      var cards = document.querySelectorAll('#seasonal-carousel .card');
++      var status = document.getElementById('seasonal-status');
++      var current = 0;
++
++      function show(index, direction) {
++        current = (index + cards.length) % cards.length;
++        cards.forEach(function (card, i) {
++          card.hidden = i !== current;
++          card.classList.remove('from-left', 'from-right');
++        });
++        if (direction) {
++          cards[current].classList.add(direction === 'next' ? 'from-right' : 'from-left');
++        }
++        status.textContent = (current + 1) + ' / ' + cards.length;
++      }
++
++      document.getElementById('seasonal-next').addEventListener('click', function () {
++        show(current + 1, 'next');
++      });
++      document.getElementById('seasonal-prev').addEventListener('click', function () {
++        show(current - 1, 'prev');
++      });
++
++      show(0);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

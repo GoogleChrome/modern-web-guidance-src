@@ -1,0 +1,2920 @@
+diff --git a/css/styles.css b/css/styles.css
+new file mode 100644
+index 0000000..f1ddaad
+--- /dev/null
++++ b/css/styles.css
+@@ -0,0 +1,700 @@
++:root {
++  --primary: #4e342e;
++  --primary-hover: #3e2723;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --accent-hover: #ff9100;
++  --text: #3e2723;
++  --text-muted: #6d4c41;
++  --light: #fafafa;
++  --card-bg: #ffffff;
++  --border: #e0d7d2;
++  --success: #2e7d32;
++  --badge-bg: #f3e5f5;
++  --badge-text: #4a148c;
++  --radius: 8px;
++  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* WebMCP Visual Feedback Pseudo-Classes */
++form:tool-form-active {
++  outline: 3px dashed var(--accent);
++  background-color: rgba(255, 171, 64, 0.08) !important;
++  transition: all 0.2s ease;
++}
++
++button:tool-submit-active {
++  outline: 3px dashed #e65100;
++  animation: toolPulse 1.8s infinite;
++}
++
++@keyframes toolPulse {
++  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(230, 81, 0, 0.6); }
++  50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(230, 81, 0, 0); }
++  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(230, 81, 0, 0); }
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 0.8rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
++}
++
++.logo-group {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++}
++
++.logo {
++  font-size: 1.4rem;
++  font-weight: 800;
++  letter-spacing: 1.5px;
++  color: #fff;
++  text-decoration: none;
++}
++
++.webmcp-indicator {
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  background: rgba(255, 171, 64, 0.2);
++  color: var(--accent);
++  border: 1px solid var(--accent);
++  padding: 3px 8px;
++  border-radius: 12px;
++  font-size: 0.75rem;
++  font-weight: 600;
++  letter-spacing: 0.5px;
++}
++
++.webmcp-indicator .dot {
++  width: 7px;
++  height: 7px;
++  border-radius: 50%;
++  background-color: #00e676;
++  box-shadow: 0 0 6px #00e676;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++  align-items: center;
++  gap: 16px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.95rem;
++  transition: color 0.2s;
++  cursor: pointer;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.cart-btn {
++  background: var(--accent);
++  color: #212121;
++  font-weight: bold;
++  border: none;
++  padding: 6px 14px;
++  border-radius: 20px;
++  cursor: pointer;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  transition: background 0.2s;
++}
++
++.cart-btn:hover {
++  background: var(--accent-hover);
++}
++
++.cart-badge {
++  background: #212121;
++  color: #fff;
++  border-radius: 10px;
++  padding: 1px 7px;
++  font-size: 0.8rem;
++}
++
++/* Agent Activity Monitor Bar */
++.agent-banner {
++  background: #3e2723;
++  color: #fff;
++  font-size: 0.85rem;
++  padding: 8px 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  border-bottom: 2px solid var(--accent);
++}
++
++.agent-status-text {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++
++.agent-pill {
++  background: #4caf50;
++  color: white;
++  padding: 2px 8px;
++  border-radius: 10px;
++  font-size: 0.7rem;
++  font-weight: bold;
++  text-transform: uppercase;
++}
++
++.activity-feed {
++  font-family: monospace;
++  color: var(--accent);
++}
++
++/* Hero Section */
++.hero {
++  height: 48vh;
++  min-height: 320px;
++  background: linear-gradient(rgba(30, 20, 15, 0.65), rgba(30, 20, 15, 0.75)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 2.8rem;
++  margin-bottom: 0.5rem;
++  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
++}
++
++.hero p {
++  font-size: 1.2rem;
++  max-width: 600px;
++  margin-bottom: 1.5rem;
++  color: #eceff1;
++}
++
++.btn-primary {
++  background: var(--accent);
++  color: #212121;
++  padding: 12px 28px;
++  text-decoration: none;
++  border-radius: 6px;
++  font-weight: 700;
++  font-size: 1rem;
++  border: none;
++  cursor: pointer;
++  transition: all 0.2s ease;
++  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
++}
++
++.btn-primary:hover {
++  background: var(--accent-hover);
++  transform: translateY(-2px);
++}
++
++.btn-secondary {
++  background: var(--primary);
++  color: white;
++  padding: 8px 18px;
++  border: none;
++  border-radius: 6px;
++  font-weight: 600;
++  cursor: pointer;
++  transition: background 0.2s;
++}
++
++.btn-secondary:hover {
++  background: var(--primary-hover);
++}
++
++.btn-outline {
++  background: transparent;
++  color: var(--primary);
++  border: 1px solid var(--primary);
++  padding: 6px 14px;
++  border-radius: 6px;
++  cursor: pointer;
++}
++
++.btn-outline:hover {
++  background: var(--secondary);
++}
++
++/* Main Container & Sections */
++.container {
++  max-width: 1180px;
++  margin: 30px auto;
++  padding: 0 20px;
++}
++
++.section-header {
++  text-align: center;
++  margin-bottom: 24px;
++}
++
++.section-header h2 {
++  font-size: 2rem;
++  color: var(--primary);
++  margin-bottom: 6px;
++}
++
++.section-header p {
++  color: var(--text-muted);
++}
++
++/* Tool Form Component (WebMCP Declarative Forms) */
++.tool-form {
++  background: white;
++  border: 1px solid var(--border);
++  padding: 18px 22px;
++  border-radius: var(--radius);
++  margin-bottom: 25px;
++  box-shadow: var(--shadow);
++}
++
++.tool-form-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 14px;
++}
++
++.tool-form-title {
++  font-size: 1rem;
++  font-weight: 700;
++  color: var(--primary);
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++
++.tool-form-badge {
++  font-size: 0.75rem;
++  background: #ede7f6;
++  color: #512da8;
++  padding: 2px 8px;
++  border-radius: 4px;
++  font-family: monospace;
++}
++
++.form-grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++  gap: 14px;
++  align-items: end;
++}
++
++.form-group {
++  display: flex;
++  flex-direction: column;
++  gap: 4px;
++}
++
++.form-group label {
++  font-size: 0.85rem;
++  font-weight: 600;
++  color: var(--text);
++}
++
++.form-control {
++  padding: 8px 12px;
++  border: 1px solid var(--border);
++  border-radius: 5px;
++  font-size: 0.95rem;
++  background: #fff;
++  color: var(--text);
++}
++
++.form-control:focus {
++  outline: 2px solid var(--accent);
++  border-color: var(--accent);
++}
++
++/* Menu Grid */
++.menu-grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
++  gap: 24px;
++  margin-top: 15px;
++}
++
++.menu-card {
++  background: var(--card-bg);
++  border-radius: var(--radius);
++  overflow: hidden;
++  box-shadow: var(--shadow);
++  border: 1px solid var(--border);
++  display: flex;
++  flex-direction: column;
++  transition: transform 0.2s, box-shadow 0.2s;
++}
++
++.menu-card:hover {
++  transform: translateY(-4px);
++  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
++}
++
++.card-image-wrapper {
++  height: 180px;
++  overflow: hidden;
++  position: relative;
++}
++
++.card-image {
++  width: 100%;
++  height: 100%;
++  object-fit: cover;
++  transition: transform 0.3s;
++}
++
++.menu-card:hover .card-image {
++  transform: scale(1.05);
++}
++
++.card-badge {
++  position: absolute;
++  top: 10px;
++  right: 10px;
++  background: rgba(78, 52, 46, 0.85);
++  color: #fff;
++  font-size: 0.75rem;
++  font-weight: 600;
++  padding: 3px 8px;
++  border-radius: 12px;
++  text-transform: capitalize;
++}
++
++.card-body {
++  padding: 18px;
++  display: flex;
++  flex-direction: column;
++  flex-grow: 1;
++}
++
++.card-title-row {
++  display: flex;
++  justify-content: space-between;
++  align-items: baseline;
++  margin-bottom: 8px;
++}
++
++.card-title {
++  font-size: 1.15rem;
++  color: var(--primary);
++  font-weight: 700;
++}
++
++.card-price {
++  font-size: 1.15rem;
++  font-weight: 800;
++  color: #2e7d32;
++}
++
++.card-description {
++  font-size: 0.9rem;
++  color: var(--text-muted);
++  margin-bottom: 14px;
++  flex-grow: 1;
++}
++
++.card-meta {
++  font-size: 0.8rem;
++  color: #78909c;
++  margin-bottom: 14px;
++}
++
++.customization-row {
++  display: flex;
++  gap: 8px;
++  margin-bottom: 12px;
++}
++
++.customization-row select {
++  flex: 1;
++  padding: 6px 8px;
++  font-size: 0.85rem;
++  border: 1px solid var(--border);
++  border-radius: 4px;
++}
++
++/* Shopping Cart Drawer / Modal */
++.cart-drawer-overlay {
++  position: fixed;
++  top: 0;
++  left: 0;
++  right: 0;
++  bottom: 0;
++  background: rgba(0, 0, 0, 0.5);
++  z-index: 2000;
++  display: none;
++}
++
++.cart-drawer-overlay.active {
++  display: flex;
++  justify-content: flex-end;
++}
++
++.cart-drawer {
++  background: white;
++  width: 100%;
++  max-width: 440px;
++  height: 100%;
++  display: flex;
++  flex-direction: column;
++  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.2);
++  animation: slideIn 0.25s ease-out;
++}
++
++@keyframes slideIn {
++  from { transform: translateX(100%); }
++  to { transform: translateX(0); }
++}
++
++.drawer-header {
++  padding: 20px;
++  background: var(--primary);
++  color: white;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++}
++
++.drawer-header h3 {
++  font-size: 1.3rem;
++}
++
++.close-btn {
++  background: none;
++  border: none;
++  color: white;
++  font-size: 1.5rem;
++  cursor: pointer;
++}
++
++.drawer-body {
++  padding: 20px;
++  flex-grow: 1;
++  overflow-y: auto;
++}
++
++.cart-empty {
++  text-align: center;
++  padding: 40px 10px;
++  color: var(--text-muted);
++}
++
++.cart-item {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  padding: 12px 0;
++  border-bottom: 1px solid var(--border);
++}
++
++.cart-item-info h4 {
++  font-size: 0.95rem;
++  color: var(--primary);
++}
++
++.cart-item-opts {
++  font-size: 0.8rem;
++  color: var(--text-muted);
++}
++
++.cart-item-actions {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++
++.qty-btn {
++  width: 26px;
++  height: 26px;
++  border-radius: 4px;
++  border: 1px solid var(--border);
++  background: #f5f5f5;
++  cursor: pointer;
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  font-weight: bold;
++}
++
++.cart-item-price {
++  font-weight: 700;
++  min-width: 60px;
++  text-align: right;
++}
++
++.drawer-footer {
++  padding: 20px;
++  background: #fdfaf8;
++  border-top: 1px solid var(--border);
++}
++
++.summary-row {
++  display: flex;
++  justify-content: space-between;
++  font-size: 0.9rem;
++  margin-bottom: 6px;
++}
++
++.summary-row.total {
++  font-size: 1.15rem;
++  font-weight: 800;
++  color: var(--primary);
++  border-top: 1px dashed var(--border);
++  padding-top: 8px;
++  margin-top: 8px;
++}
++
++.promo-form {
++  display: flex;
++  gap: 8px;
++  margin: 12px 0;
++}
++
++.promo-form input {
++  flex: 1;
++  padding: 6px 10px;
++  border: 1px solid var(--border);
++  border-radius: 4px;
++}
++
++/* Order Confirmation Modal */
++.order-alert {
++  background: #e8f5e9;
++  border-left: 4px solid #2e7d32;
++  padding: 14px 18px;
++  border-radius: 4px;
++  margin-bottom: 20px;
++  display: none;
++}
++
++.order-alert.show {
++  display: block;
++}
++
++/* Locations & Rewards Section */
++.info-grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.info-card {
++  background: white;
++  border: 1px solid var(--border);
++  border-radius: var(--radius);
++  padding: 20px;
++  box-shadow: var(--shadow);
++}
++
++.info-card h3 {
++  color: var(--primary);
++  margin-bottom: 8px;
++}
++
++.amenity-pills {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++  margin-top: 10px;
++}
++
++.amenity-pill {
++  background: #efebe9;
++  color: #4e342e;
++  font-size: 0.75rem;
++  padding: 3px 8px;
++  border-radius: 12px;
++}
++
++/* Loyalty Card */
++.loyalty-card {
++  background: linear-gradient(135deg, #4e342e, #2d1810);
++  color: white;
++  padding: 24px;
++  border-radius: 12px;
++  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
++  margin-bottom: 20px;
++}
++
++.loyalty-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 16px;
++}
++
++.loyalty-tier {
++  background: var(--accent);
++  color: #212121;
++  font-size: 0.8rem;
++  font-weight: 800;
++  padding: 3px 10px;
++  border-radius: 12px;
++}
++
++.points-display {
++  font-size: 2.4rem;
++  font-weight: 800;
++  color: var(--accent);
++}
++
++/* Footer */
++footer {
++  background: var(--primary);
++  color: #d7ccc8;
++  text-align: center;
++  padding: 40px 20px 30px;
++  margin-top: 60px;
++}
++
++.footer-links {
++  margin-bottom: 16px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: #fff;
++  text-decoration: none;
++  font-size: 0.9rem;
++}
++
++.footer-links a:hover {
++  color: var(--accent);
++}
+diff --git a/index.html b/index.html
+index 66c9173..238bdd8 100644
+--- a/index.html
++++ b/index.html
+@@ -4,209 +4,318 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <title>The Daily Grind | Artisanal Coffee & AI-Enabled WebMCP Store</title>
++  <link rel="stylesheet" href="css/styles.css">
+ </head>
+ 
+ <body>
+ 
++  <!-- Navigation Bar -->
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo-group">
++      <a href="#" class="logo">THE DAILY GRIND</a>
++      <span class="webmcp-indicator" title="WebMCP Tool Registry Active">
++        <span class="dot"></span> WebMCP Enabled
++      </span>
++    </div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#contact">Contact</a></li>
++      <li>
++        <button id="nav-cart-btn" class="cart-btn" aria-label="Open Shopping Cart">
++          🛒 Cart <span id="cart-badge-count" class="cart-badge">0</span>
++        </button>
++      </li>
+     </ul>
+   </nav>
+ 
++  <!-- Agent Activity Monitor Bar -->
++  <aside class="agent-banner" aria-label="Agent Activity Feed">
++    <div class="agent-status-text">
++      <span class="agent-pill">WebMCP</span>
++      <span id="agent-status-label">Initializing tools...</span>
++    </div>
++    <div id="agent-activity-feed" class="activity-feed">Ready for agent interaction</div>
++  </aside>
++
++  <!-- Hero Section -->
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, delivered fresh to your cup. Now fully agentic with WebMCP tool integration.</p>
++    <a href="#menu" class="btn-primary">Browse Full Menu</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++
++    <!-- Order Confirmation Alert -->
++    <div id="order-confirmation-alert" class="order-alert" role="status"></div>
++
++    <!-- Section: Menu -->
++    <section id="menu">
++      <div class="section-header">
++        <h2>Handcrafted Menu</h2>
++        <p>Explore our organic coffees, cold brews, artisanal teas, and fresh viennoiserie.</p>
++      </div>
++
++      <!-- Declarative WebMCP Form: Search & Filter Menu -->
++      <form id="search-menu-form" class="tool-form"
++            toolname="search-menu"
++            tooldescription="Search and filter coffee drinks, teas, and bakery items by keyword, category, or maximum price."
++            toolautosubmit>
++        <div class="tool-form-header">
++          <div class="tool-form-title">
++            <span>🔍 Filter & Search Menu</span>
++          </div>
++          <span class="tool-form-badge">Declarative Tool: search-menu</span>
++        </div>
++
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="menu-search-input">Keyword / Flavor</label>
++            <input type="text" id="menu-search-input" name="query" class="form-control"
++                   placeholder="e.g. oat, cold brew, caramel"
++                   toolparamdescription="Search keyword to match item names or ingredients, e.g. oat, vanilla, iced">
++          </div>
++
++          <div class="form-group">
++            <label for="menu-category-select">Category</label>
++            <select id="menu-category-select" name="category" class="form-control"
++                    toolparamdescription="Filter by menu category: all, espresso, latte, cold-brew, tea, or bakery">
++              <option value="all">All Items</option>
++              <option value="latte">Lattes</option>
++              <option value="espresso">Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++              <option value="tea">Artisan Tea</option>
++              <option value="bakery">Bakery & Pastries</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="menu-maxprice-input">Max Price ($)</label>
++            <input type="number" id="menu-maxprice-input" name="maxPrice" step="0.5" min="1" class="form-control"
++                   placeholder="e.g. 5.50"
++                   toolparamdescription="Maximum price filter in USD, e.g. 5.50">
++          </div>
++
++          <button type="submit" class="btn-secondary" style="padding: 9px 16px;">Apply Filters</button>
++        </div>
++      </form>
++
++      <!-- Menu Grid Cards -->
++      <div id="menu-grid" class="menu-grid" aria-live="polite"></div>
++    </section>
++
++    <!-- Section: Store Locations -->
++    <section id="locations" style="margin-top: 60px;">
++      <div class="section-header">
++        <h2>Our Roasteries & Cafes</h2>
++        <p>Visit us in person for an artisanal cup, cupping sessions, or fast drive-thru pickup.</p>
++      </div>
++
++      <!-- Declarative WebMCP Form: Search Locations -->
++      <form id="search-locations-form" class="tool-form"
++            toolname="search-locations"
++            tooldescription="Search coffee shop locations by neighborhood, address, or amenities like Wi-Fi or drive-thru."
++            toolautosubmit>
++        <div class="tool-form-header">
++          <div class="tool-form-title">
++            <span>📍 Find a Location</span>
++          </div>
++          <span class="tool-form-badge">Declarative Tool: search-locations</span>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++
++        <div class="form-grid">
++          <div class="form-group" style="grid-column: 1 / -2;">
++            <label for="location-query-input">Neighborhood or Amenity</label>
++            <input type="text" id="location-query-input" name="query" class="form-control"
++                   placeholder="e.g. downtown, wifi, patio, drive-thru"
++                   toolparamdescription="Neighborhood or amenity, e.g. downtown, wifi, patio, drive-thru">
++          </div>
++          <button type="submit" class="btn-secondary" style="padding: 9px 16px;">Search Locations</button>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </form>
++
++      <div id="locations-container" class="info-grid"></div>
++    </section>
++
++    <!-- Section: Rewards & Loyalty -->
++    <section id="rewards" style="margin-top: 60px;">
++      <div class="section-header">
++        <h2>Grind Club Loyalty Rewards</h2>
++        <p>Earn 2 points for every $1 spent. Redeem for free drinks, baked goods, and merch.</p>
++      </div>
++
++      <div class="loyalty-card">
++        <div class="loyalty-header">
++          <div>
++            <h3 id="rewards-member-name" style="font-size: 1.4rem;">Alex Morgan</h3>
++            <span style="opacity: 0.8; font-size: 0.9rem;">Member ID: DG-9842</span>
++          </div>
++          <span id="rewards-tier-badge" class="loyalty-tier">Gold Bean</span>
++        </div>
++        <div class="points-display">
++          <span id="rewards-points-count">240</span> <span style="font-size: 1rem; color: #fff;">Points Available</span>
+         </div>
++        <p style="margin-top: 10px; font-size: 0.9rem; opacity: 0.9;">
++          🎁 200 pts: Free Handcrafted Beverage (Code: <code>FREEDRINK</code>) | 50 pts: 10% Off (Code: <code>WELCOME10</code>)
++        </p>
+       </div>
+     </section>
++
++    <!-- Section: Contact & Feedback -->
++    <section id="contact" style="margin-top: 60px;">
++      <div class="section-header">
++        <h2>Get in Touch</h2>
++        <p>Questions, wholesale inquiries, or barista compliments? We would love to hear from you.</p>
++      </div>
++
++      <!-- Declarative WebMCP Form: Send Feedback -->
++      <form id="send-feedback-form" class="tool-form"
++            toolname="send-feedback"
++            tooldescription="Send customer feedback, comments, or inquiries to The Daily Grind management."
++            toolautosubmit>
++        <div class="tool-form-header">
++          <div class="tool-form-title">
++            <span>💬 Send Feedback</span>
++          </div>
++          <span class="tool-form-badge">Declarative Tool: send-feedback</span>
++        </div>
++
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="feedback-name">Your Name</label>
++            <input type="text" id="feedback-name" name="senderName" class="form-control" required
++                   toolparamdescription="Customer's full name">
++          </div>
++          <div class="form-group">
++            <label for="feedback-email">Email Address</label>
++            <input type="email" id="feedback-email" name="senderEmail" class="form-control" required
++                   toolparamdescription="Customer's email address">
++          </div>
++          <div class="form-group" style="grid-column: 1 / -1;">
++            <label for="feedback-msg">Your Message</label>
++            <textarea id="feedback-msg" name="feedbackMessage" rows="3" class="form-control" required
++                      toolparamdescription="Customer feedback, question, or compliment"></textarea>
++          </div>
++          <button type="submit" class="btn-primary" style="grid-column: 1 / -1; justify-self: start;">Submit Feedback</button>
++        </div>
++        <div id="feedback-status" style="margin-top: 12px; color: #2e7d32; font-weight: 600; display: none;"></div>
++      </form>
++    </section>
++
+   </main>
+ 
++  <!-- Shopping Cart & Checkout Drawer -->
++  <div id="cart-drawer-overlay" class="cart-drawer-overlay" role="dialog" aria-modal="true" aria-label="Shopping Cart">
++    <div class="cart-drawer">
++      <div class="drawer-header">
++        <h3>Your Coffee Order</h3>
++        <button id="close-drawer-btn" class="close-btn" aria-label="Close Cart">&times;</button>
++      </div>
++
++      <div class="drawer-body">
++        <div id="cart-items-list"></div>
++
++        <!-- Declarative WebMCP Form: Redeem Promo Code -->
++        <form id="redeem-reward-form" class="tool-form promo-form" style="margin-top: 20px; padding: 12px;"
++              toolname="redeem-reward"
++              tooldescription="Redeem a loyalty reward voucher or discount promo code to apply to the cart."
++              toolautosubmit>
++          <input type="text" name="promoCode" placeholder="Promo code (e.g. WELCOME10)" required
++                 toolparamdescription="Promo code or reward code, e.g. WELCOME10, FREEDRINK, ROASTER20">
++          <button type="submit" class="btn-outline">Apply</button>
++        </form>
++        <div id="promo-feedback" style="font-size: 0.85rem; margin-top: -6px; margin-bottom: 12px;"></div>
++
++        <!-- Declarative WebMCP Form: Checkout Order -->
++        <!-- NOTE: toolautosubmit is intentionally omitted for consequential financial transactions -->
++        <form id="checkout-order-form" class="tool-form" style="margin-top: 15px;"
++              toolname="checkout-order"
++              tooldescription="Finalize and submit the customer's shopping cart order for store pickup.">
++          <div class="tool-form-header">
++            <div class="tool-form-title">
++              <span>💳 Checkout Details</span>
++            </div>
++            <span class="tool-form-badge" title="High-impact transaction">Manual Confirm</span>
++          </div>
++
++          <div class="form-group" style="margin-bottom: 10px;">
++            <label for="checkout-name">Pickup Name *</label>
++            <input type="text" id="checkout-name" name="customerName" class="form-control" required
++                   placeholder="Alex Morgan"
++                   toolparamdescription="Full name for order pickup">
++          </div>
++
++          <div class="form-group" style="margin-bottom: 10px;">
++            <label for="checkout-location">Pickup Location *</label>
++            <select id="checkout-location" name="locationId" class="form-control" required
++                    toolparamdescription="Store pickup location ID: downtown, arts-district, or uptown">
++              <option value="downtown">Downtown Roastery & Flagship</option>
++              <option value="arts-district">Arts District Espresso Lounge</option>
++              <option value="uptown">Uptown Drive-Thru & Cafe</option>
++            </select>
++          </div>
++
++          <div class="form-group" style="margin-bottom: 10px;">
++            <label for="checkout-time">Pickup Timing</label>
++            <select id="checkout-time" name="pickupTime" class="form-control"
++                    toolparamdescription="Pickup schedule: asap, in-15-mins, in-30-mins, or in-1-hour">
++              <option value="asap">ASAP (~10-15 mins)</option>
++              <option value="in-15-mins">In 15 minutes</option>
++              <option value="in-30-mins">In 30 minutes</option>
++              <option value="in-1-hour">In 1 hour</option>
++            </select>
++          </div>
++
++          <div class="form-group" style="margin-bottom: 14px;">
++            <label for="checkout-notes">Special Instructions</label>
++            <input type="text" id="checkout-notes" name="specialInstructions" class="form-control"
++                   placeholder="e.g. Extra hot, leave room for cream"
++                   toolparamdescription="Any special prep instructions or dietary requests">
++          </div>
++
++          <button type="submit" class="btn-primary" style="width: 100%;">Confirm & Place Order</button>
++        </form>
++      </div>
++
++      <div class="drawer-footer">
++        <div class="summary-row">
++          <span>Subtotal:</span>
++          <span id="cart-raw-subtotal">$0.00</span>
++        </div>
++        <div class="summary-row" style="color: #2e7d32;">
++          <span>Discount:</span>
++          <span id="cart-discount">$0.00</span>
++        </div>
++        <div class="summary-row">
++          <span>Estimated Tax (8.5%):</span>
++          <span id="cart-tax">$0.00</span>
++        </div>
++        <div class="summary-row total">
++          <span>Total:</span>
++          <span id="cart-total">$0.00</span>
++        </div>
++        <button id="clear-cart-btn" class="btn-outline" style="width: 100%; margin-top: 10px;">Clear Cart</button>
++      </div>
++    </div>
++  </div>
++
++  <!-- Footer -->
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#menu">Our Menu</a> |
++      <a href="#locations">Store Locations</a> |
++      <a href="#rewards">Rewards Club</a> |
++      <a href="#contact">Contact Us</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved. Powered by WebMCP.</p>
+   </footer>
+ 
++  <!-- Scripts -->
++  <script type="module" src="js/webmcp-polyfill.js"></script>
++  <script type="module" src="js/app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/js/app.js b/js/app.js
+new file mode 100644
+index 0000000..bacc00d
+--- /dev/null
++++ b/js/app.js
+@@ -0,0 +1,427 @@
++import { store } from "./store.js";
++import { registerWebMCPTools } from "./webmcp-tools.js";
++
++// Global AbortController for managing WebMCP tool lifecycle
++const appLifecycleController = new AbortController();
++
++// Target helper for backward-compatible lifecycle event handling
++const targetFor = (type, listener, options) =>
++  (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++    .addEventListener(type, listener, options);
++
++// Initialize application on DOM ready
++document.addEventListener("DOMContentLoaded", async () => {
++  initUI();
++  initDeclarativeForms();
++  initWebMCPLifecycleEvents();
++
++  // Register Imperative WebMCP tools with lifecycle unregistration signal
++  try {
++    const registered = await registerWebMCPTools(appLifecycleController.signal);
++    updateAgentBanner(`Ready (${registered.length} tools active)`);
++  } catch (err) {
++    console.error("[WebMCP] Registration failed:", err);
++    updateAgentBanner("Error initializing WebMCP");
++  }
++});
++
++/**
++ * Sets up listeners for WebMCP lifecycle events (`toolactivated`, `toolcancel`, `toolchange`).
++ */
++function initWebMCPLifecycleEvents() {
++  targetFor("toolactivated", (evt) => {
++    const toolName = evt.toolName || evt.detail?.toolName || "unknown-tool";
++    console.info(`[WebMCP Event] Tool '${toolName}' activated.`);
++    logAgentActivity(`⚡ Tool '${toolName}' activated`);
++  });
++
++  targetFor("toolcancel", (evt) => {
++    const toolName = evt.toolName || evt.detail?.toolName || "unknown-tool";
++    console.warn(`[WebMCP Event] Tool '${toolName}' canceled.`);
++    logAgentActivity(`⛔ Tool '${toolName}' canceled`);
++  });
++
++  if (document.modelContext && typeof document.modelContext.addEventListener === "function") {
++    document.modelContext.addEventListener("toolchange", async () => {
++      if (document.modelContext.getTools) {
++        const tools = await document.modelContext.getTools();
++        console.info(`[WebMCP Event] Active tools changed: ${tools.map(t => t.name).join(", ")}`);
++        updateAgentBanner(`Active (${tools.length} tools)`);
++      }
++    });
++  }
++}
++
++/**
++ * Initializes Declarative WebMCP `<form>` submissions with `event.agentInvoked` and `event.respondWith()`.
++ */
++function initDeclarativeForms() {
++  // 1. Menu Search & Filter Form
++  const searchMenuForm = document.getElementById("search-menu-form");
++  if (searchMenuForm) {
++    searchMenuForm.addEventListener("submit", (event) => {
++      event.preventDefault();
++      const formData = new FormData(searchMenuForm);
++      const query = (formData.get("query") || "").toString();
++      const category = (formData.get("category") || "all").toString();
++      const maxPriceVal = formData.get("maxPrice");
++      const maxPrice = maxPriceVal ? parseFloat(maxPriceVal.toString()) : null;
++
++      const results = store.getMenuItems({ category, maxPrice, query });
++      renderMenu(results);
++
++      logAgentActivity(`Form 'search-menu' submitted -> ${results.length} item(s) found`);
++
++      if (event.agentInvoked && typeof event.respondWith === "function") {
++        event.respondWith(Promise.resolve(JSON.stringify({
++          count: results.length,
++          items: results.map(i => ({ id: i.id, name: i.name, price: i.price, category: i.category }))
++        })));
++      }
++    });
++  }
++
++  // 2. Locations Search Form
++  const searchLocationsForm = document.getElementById("search-locations-form");
++  if (searchLocationsForm) {
++    searchLocationsForm.addEventListener("submit", (event) => {
++      event.preventDefault();
++      const formData = new FormData(searchLocationsForm);
++      const query = (formData.get("query") || "").toString();
++
++      const results = store.getLocations(query);
++      renderLocations(results);
++
++      logAgentActivity(`Form 'search-locations' submitted -> ${results.length} location(s) found`);
++
++      if (event.agentInvoked && typeof event.respondWith === "function") {
++        event.respondWith(Promise.resolve(JSON.stringify({
++          count: results.length,
++          locations: results
++        })));
++      }
++    });
++  }
++
++  // 3. Redeem Reward / Promo Code Form
++  const promoForm = document.getElementById("redeem-reward-form");
++  if (promoForm) {
++    promoForm.addEventListener("submit", (event) => {
++      event.preventDefault();
++      const formData = new FormData(promoForm);
++      const promoCode = (formData.get("promoCode") || "").toString().trim();
++
++      const result = store.applyPromoCode(promoCode);
++      const feedbackEl = document.getElementById("promo-feedback");
++
++      if (result.error) {
++        if (feedbackEl) {
++          feedbackEl.textContent = result.error;
++          feedbackEl.style.color = "#c62828";
++        }
++        if (event.agentInvoked && typeof event.respondWith === "function") {
++          event.respondWith(Promise.resolve(JSON.stringify(result)));
++        }
++        return;
++      }
++
++      if (feedbackEl) {
++        feedbackEl.textContent = result.message;
++        feedbackEl.style.color = "#2e7d32";
++      }
++      promoForm.reset();
++      logAgentActivity(`Applied promo: ${promoCode}`);
++
++      if (event.agentInvoked && typeof event.respondWith === "function") {
++        event.respondWith(Promise.resolve(JSON.stringify(result)));
++      }
++    });
++  }
++
++  // 4. Checkout Order Form (Transactional - Omits toolautosubmit)
++  const checkoutForm = document.getElementById("checkout-order-form");
++  if (checkoutForm) {
++    checkoutForm.addEventListener("submit", (event) => {
++      event.preventDefault();
++      const formData = new FormData(checkoutForm);
++      const customerName = (formData.get("customerName") || "").toString();
++      const locationId = (formData.get("locationId") || "").toString();
++      const pickupTime = (formData.get("pickupTime") || "asap").toString();
++      const specialInstructions = (formData.get("specialInstructions") || "").toString();
++
++      const validationErrors = [];
++      if (!customerName.trim()) validationErrors.push("Customer name is required");
++      if (!locationId.trim()) validationErrors.push("Pickup location is required");
++      if (store.cart.length === 0) validationErrors.push("Shopping cart is empty");
++
++      if (validationErrors.length > 0) {
++        const errorMsg = "Validation failed: " + validationErrors.join(", ");
++        alert(errorMsg);
++        if (event.agentInvoked && typeof event.respondWith === "function") {
++          event.respondWith(Promise.resolve(JSON.stringify({ error: errorMsg })));
++        }
++        return;
++      }
++
++      const result = store.placeOrder({
++        customerName,
++        locationId,
++        pickupTime,
++        notes: specialInstructions
++      });
++
++      if (result.success) {
++        showOrderConfirmation(result);
++        checkoutForm.reset();
++        logAgentActivity(`Order placed: ${result.order.orderNumber}`);
++      }
++
++      if (event.agentInvoked && typeof event.respondWith === "function") {
++        event.respondWith(Promise.resolve(JSON.stringify(result)));
++      }
++    });
++  }
++
++  // 5. Customer Feedback Form
++  const feedbackForm = document.getElementById("send-feedback-form");
++  if (feedbackForm) {
++    feedbackForm.addEventListener("submit", (event) => {
++      event.preventDefault();
++      const formData = new FormData(feedbackForm);
++      const senderName = (formData.get("senderName") || "").toString();
++      const senderEmail = (formData.get("senderEmail") || "").toString();
++      const feedbackMessage = (formData.get("feedbackMessage") || "").toString();
++
++      const res = {
++        success: true,
++        message: `Thank you ${senderName}! Your feedback has been received.`
++      };
++
++      const feedbackStatus = document.getElementById("feedback-status");
++      if (feedbackStatus) {
++        feedbackStatus.textContent = res.message;
++        feedbackStatus.style.display = "block";
++        feedbackForm.reset();
++      }
++
++      logAgentActivity(`Feedback submitted by ${senderName}`);
++
++      if (event.agentInvoked && typeof event.respondWith === "function") {
++        event.respondWith(Promise.resolve(JSON.stringify(res)));
++      }
++    });
++  }
++}
++
++/**
++ * Initializes DOM elements, navigation events, and reactive store subscriptions.
++ */
++function initUI() {
++  // Render Initial Data
++  renderMenu(store.menu);
++  renderLocations(store.locations);
++  renderRewards(store.rewards);
++  updateCartUI(store.getCartSummary());
++
++  // Store subscription for live reactive UI updates
++  store.subscribe((state) => {
++    updateCartUI(state.getCartSummary());
++    renderRewards(state.rewards);
++  });
++
++  // Cart Drawer open/close
++  const cartBtn = document.getElementById("nav-cart-btn");
++  const drawerOverlay = document.getElementById("cart-drawer-overlay");
++  const closeDrawerBtn = document.getElementById("close-drawer-btn");
++
++  if (cartBtn && drawerOverlay) {
++    cartBtn.addEventListener("click", () => drawerOverlay.classList.add("active"));
++  }
++  if (closeDrawerBtn && drawerOverlay) {
++    closeDrawerBtn.addEventListener("click", () => drawerOverlay.classList.remove("active"));
++  }
++  if (drawerOverlay) {
++    drawerOverlay.addEventListener("click", (e) => {
++      if (e.target === drawerOverlay) drawerOverlay.classList.remove("active");
++    });
++  }
++
++  // Clear Cart Button
++  const clearCartBtn = document.getElementById("clear-cart-btn");
++  if (clearCartBtn) {
++    clearCartBtn.addEventListener("click", () => store.clearCart());
++  }
++}
++
++/**
++ * Renders menu item cards.
++ */
++function renderMenu(items) {
++  const grid = document.getElementById("menu-grid");
++  if (!grid) return;
++
++  if (items.length === 0) {
++    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
++      No menu items matched your search criteria. Try adjusting your filters.
++    </div>`;
++    return;
++  }
++
++  grid.innerHTML = items.map(item => `
++    <article class="menu-card" data-item-id="${item.id}">
++      <div class="card-image-wrapper">
++        <img class="card-image" src="${item.image}" alt="${item.name}" loading="lazy" />
++        <span class="card-badge">${item.category}</span>
++      </div>
++      <div class="card-body">
++        <div class="card-title-row">
++          <h3 class="card-title">${item.name}</h3>
++          <span class="card-price">$${item.price.toFixed(2)}</span>
++        </div>
++        <p class="card-description">${item.description}</p>
++        <div class="card-meta">
++          <span>${item.calories} kcal</span>
++          ${item.allergens.length ? ` • Allergens: ${item.allergens.join(", ")}` : ""}
++        </div>
++        <div class="customization-row">
++          <select class="size-select" aria-label="Select size for ${item.name}">
++            <option value="regular">Regular</option>
++            <option value="large">Large (+$0.75)</option>
++          </select>
++          <select class="milk-select" aria-label="Select milk for ${item.name}">
++            <option value="whole">Whole Milk</option>
++            <option value="oat">Oat Milk</option>
++            <option value="almond">Almond Milk</option>
++            <option value="skim">Skim Milk</option>
++            <option value="none">No Milk</option>
++          </select>
++        </div>
++        <button class="btn-primary add-btn" data-id="${item.id}">Add to Order</button>
++      </div>
++    </article>
++  `).join("");
++
++  // Attach click listeners to Add buttons
++  grid.querySelectorAll(".add-btn").forEach(btn => {
++    btn.addEventListener("click", () => {
++      const itemId = btn.getAttribute("data-id");
++      const card = btn.closest(".menu-card");
++      const size = card.querySelector(".size-select").value;
++      const milk = card.querySelector(".milk-select").value;
++      store.addToCart({ itemId, size, milk, quantity: 1 });
++      logAgentActivity(`Added '${itemId}' (${size}, ${milk}) to cart`);
++    });
++  });
++}
++
++/**
++ * Updates cart drawer UI and navigation badge.
++ */
++function updateCartUI(summary) {
++  const badge = document.getElementById("cart-badge-count");
++  if (badge) {
++    badge.textContent = summary.itemCount;
++  }
++
++  const listEl = document.getElementById("cart-items-list");
++  if (!listEl) return;
++
++  if (summary.items.length === 0) {
++    listEl.innerHTML = `<div class="cart-empty">Your shopping cart is currently empty.<br/>Browse our menu to add some handcrafted coffee!</div>`;
++  } else {
++    listEl.innerHTML = summary.items.map(item => `
++      <div class="cart-item">
++        <div class="cart-item-info">
++          <h4>${item.name}</h4>
++          <div class="cart-item-opts">Size: ${item.size} | Milk: ${item.milk} ${item.notes ? `| Note: ${item.notes}` : ""}</div>
++        </div>
++        <div class="cart-item-actions">
++          <button class="qty-btn" onclick="window.dailyGrindUpdateQty(${item.index}, ${item.quantity - 1})">-</button>
++          <span style="font-weight: 600; min-width: 20px; text-align: center;">${item.quantity}</span>
++          <button class="qty-btn" onclick="window.dailyGrindUpdateQty(${item.index}, ${item.quantity + 1})">+</button>
++          <span class="cart-item-price">$${item.lineTotal.toFixed(2)}</span>
++          <button class="qty-btn" style="color: #c62828;" onclick="window.dailyGrindRemoveItem(${item.index})" title="Remove item">&times;</button>
++        </div>
++      </div>
++    `).join("");
++  }
++
++  document.getElementById("cart-raw-subtotal").textContent = `$${summary.rawSubtotal.toFixed(2)}`;
++  document.getElementById("cart-discount").textContent = summary.discount > 0 ? `-$${summary.discount.toFixed(2)}` : "$0.00";
++  document.getElementById("cart-tax").textContent = `$${summary.tax.toFixed(2)}`;
++  document.getElementById("cart-total").textContent = `$${summary.total.toFixed(2)}`;
++}
++
++// Global helpers for inline cart click actions
++window.dailyGrindUpdateQty = (idx, qty) => store.updateQuantity(idx, qty);
++window.dailyGrindRemoveItem = (idx) => store.removeFromCart(idx);
++
++/**
++ * Renders locations list cards.
++ */
++function renderLocations(locations) {
++  const container = document.getElementById("locations-container");
++  if (!container) return;
++
++  if (locations.length === 0) {
++    container.innerHTML = `<p style="color: var(--text-muted);">No locations found matching your search.</p>`;
++    return;
++  }
++
++  container.innerHTML = locations.map(loc => `
++    <div class="info-card">
++      <h3>${loc.name}</h3>
++      <p><strong>Address:</strong> ${loc.address}</p>
++      <p><strong>Phone:</strong> ${loc.phone}</p>
++      <p><strong>Hours:</strong> ${loc.hours}</p>
++      <div class="amenity-pills">
++        ${loc.amenities.map(a => `<span class="amenity-pill">${a}</span>`).join("")}
++      </div>
++    </div>
++  `).join("");
++}
++
++/**
++ * Renders rewards account profile.
++ */
++function renderRewards(rewards) {
++  const pointsEl = document.getElementById("rewards-points-count");
++  const tierEl = document.getElementById("rewards-tier-badge");
++  const memberEl = document.getElementById("rewards-member-name");
++
++  if (pointsEl) pointsEl.textContent = rewards.points;
++  if (tierEl) tierEl.textContent = rewards.tier;
++  if (memberEl) memberEl.textContent = rewards.memberName;
++}
++
++/**
++ * Shows order confirmation banner.
++ */
++function showOrderConfirmation(result) {
++  const alertEl = document.getElementById("order-confirmation-alert");
++  if (!alertEl) return;
++
++  alertEl.innerHTML = `
++    <h3 style="color: #2e7d32; margin-bottom: 6px;">🎉 Order Confirmed: ${result.order.orderNumber}</h3>
++    <p>Thank you, <strong>${result.order.customerName}</strong>! Your order will be ready for pickup in approximately <strong>${result.order.estimatedReadyMinutes} minutes</strong> at <strong>${result.order.location.name}</strong>.</p>
++    <p style="margin-top: 6px; font-size: 0.9rem;">You earned <strong>+${result.earnedPoints} points</strong>! New balance: ${result.newPointsBalance} pts.</p>
++  `;
++  alertEl.classList.add("show");
++  alertEl.scrollIntoView({ behavior: "smooth" });
++
++  const drawerOverlay = document.getElementById("cart-drawer-overlay");
++  if (drawerOverlay) drawerOverlay.classList.remove("active");
++}
++
++function updateAgentBanner(status) {
++  const el = document.getElementById("agent-status-label");
++  if (el) el.textContent = status;
++}
++
++function logAgentActivity(msg) {
++  const feed = document.getElementById("agent-activity-feed");
++  if (feed) {
++    const timestamp = new Date().toLocaleTimeString();
++    feed.textContent = `[${timestamp}] ${msg}`;
++  }
++}
+diff --git a/js/data.js b/js/data.js
+new file mode 100644
+index 0000000..4c047c1
+--- /dev/null
++++ b/js/data.js
+@@ -0,0 +1,150 @@
++/**
++ * Menu, locations, and rewards data for The Daily Grind.
++ */
++export const MENU_ITEMS = [
++  {
++    id: "maple-oat-latte",
++    name: "Maple Oat Latte",
++    category: "latte",
++    price: 5.75,
++    description: "Creamy steamed oat milk infused with pure Vermont maple syrup and double espresso.",
++    image: "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80",
++    calories: 220,
++    allergens: ["oat"],
++    customizations: {
++      sizes: ["regular", "large"],
++      milkOptions: ["oat", "whole", "almond", "skim"]
++    }
++  },
++  {
++    id: "dark-roast-espresso",
++    name: "Dark Roast Espresso",
++    category: "espresso",
++    price: 3.50,
++    description: "Bold, smoky double shot pulled with single-origin Sumatra beans with rich crema.",
++    image: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80",
++    calories: 5,
++    allergens: [],
++    customizations: {
++      sizes: ["regular"],
++      milkOptions: ["none", "splash-oat", "splash-whole"]
++    }
++  },
++  {
++    id: "cold-brew",
++    name: "Nitro Cold Brew",
++    category: "cold-brew",
++    price: 4.75,
++    description: "Steeped slowly for 18 hours in cold filtered water, nitrogen-infused for a silky cascade.",
++    image: "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80",
++    calories: 10,
++    allergens: [],
++    customizations: {
++      sizes: ["regular", "large"],
++      milkOptions: ["none", "oat", "whole", "sweet-cream"]
++    }
++  },
++  {
++    id: "cappuccino",
++    name: "Artisan Cappuccino",
++    category: "espresso",
++    price: 4.50,
++    description: "Equal parts espresso, steamed whole milk, and microfoam dusted with cocoa powder.",
++    image: "https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80",
++    calories: 140,
++    allergens: ["dairy"],
++    customizations: {
++      sizes: ["regular", "large"],
++      milkOptions: ["whole", "oat", "almond", "skim"]
++    }
++  },
++  {
++    id: "matcha-latte",
++    name: "Ceremonial Matcha Latte",
++    category: "tea",
++    price: 5.50,
++    description: "Stone-ground ceremonial Uji matcha whisked with honey and steamed milk of your choice.",
++    image: "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80",
++    calories: 180,
++    allergens: [],
++    customizations: {
++      sizes: ["regular", "large"],
++      milkOptions: ["oat", "whole", "almond", "skim"]
++    }
++  },
++  {
++    id: "almond-croissant",
++    name: "Butter Almond Croissant",
++    category: "bakery",
++    price: 4.25,
++    description: "Flaky all-butter viennoiserie filled with fragrant frangipane almond cream.",
++    image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80",
++    calories: 360,
++    allergens: ["dairy", "wheat", "tree nuts"],
++    customizations: {
++      sizes: ["regular"],
++      milkOptions: ["none"]
++    }
++  },
++  {
++    id: "blueberry-scone",
++    name: "Wild Blueberry Scone",
++    category: "bakery",
++    price: 3.95,
++    description: "Freshly baked crumbly scone packed with organic Maine blueberries and lemon zest glaze.",
++    image: "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=600&q=80",
++    calories: 320,
++    allergens: ["dairy", "wheat"],
++    customizations: {
++      sizes: ["regular"],
++      milkOptions: ["none"]
++    }
++  },
++  {
++    id: "earl-grey-lavender",
++    name: "Earl Grey Lavender Fog",
++    category: "tea",
++    price: 4.85,
++    description: "Bergamot black tea with French culinary lavender blossoms, vanilla syrup, and steamed oat milk.",
++    image: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80",
++    calories: 160,
++    allergens: ["oat"],
++    customizations: {
++      sizes: ["regular", "large"],
++      milkOptions: ["oat", "whole", "almond", "skim"]
++    }
++  }
++];
++
++export const STORE_LOCATIONS = [
++  {
++    id: "downtown",
++    name: "Downtown Roastery & Flagship",
++    address: "101 Artisan Way, Downtown",
++    phone: "(555) 234-5678",
++    hours: "Mon-Fri: 6:30 AM - 7:00 PM | Sat-Sun: 7:30 AM - 6:00 PM",
++    amenities: ["Free High-Speed Wi-Fi", "Outdoor Heated Patio", "Cupping Lab", "Wheelchair Accessible"]
++  },
++  {
++    id: "arts-district",
++    name: "Arts District Espresso Lounge",
++    address: "450 Canvas Blvd, Arts District",
++    phone: "(555) 876-5432",
++    hours: "Daily: 7:00 AM - 8:00 PM",
++    amenities: ["Free Wi-Fi", "Art Gallery", "Pour-over Bar", "Live Acoustic Nights"]
++  },
++  {
++    id: "uptown",
++    name: "Uptown Drive-Thru & Cafe",
++    address: "880 North Highland Ave, Uptown",
++    phone: "(555) 345-6789",
++    hours: "Daily: 6:00 AM - 9:00 PM",
++    amenities: ["Express Drive-Thru", "Mobile Order Pickup Counter", "Outdoor Seating"]
++  }
++];
++
++export const PROMO_CODES = {
++  "WELCOME10": { discountPercent: 10, description: "10% off your entire order" },
++  "FREEDRINK": { discountFixed: 5.00, description: "$5.00 off order (Free Drink voucher)" },
++  "ROASTER20": { discountPercent: 20, description: "20% off barista appreciation discount" }
++};
+diff --git a/js/store.js b/js/store.js
+new file mode 100644
+index 0000000..220616b
+--- /dev/null
++++ b/js/store.js
+@@ -0,0 +1,291 @@
++import { MENU_ITEMS, STORE_LOCATIONS, PROMO_CODES } from "./data.js";
++
++class AppStore {
++  constructor() {
++    this.menu = [...MENU_ITEMS];
++    this.locations = [...STORE_LOCATIONS];
++    this.cart = [];
++    this.appliedPromo = null;
++    this.orders = [];
++    this.rewards = {
++      memberId: "DG-9842",
++      memberName: "Alex Morgan",
++      points: 240,
++      tier: "Gold Bean",
++      availablePerks: [
++        { code: "FREEDRINK", costPoints: 200, name: "Free Handcrafted Beverage ($5 value)" },
++        { code: "WELCOME10", costPoints: 50, name: "10% Off Entire Order" }
++      ]
++    };
++    this.listeners = new Set();
++  }
++
++  subscribe(listener) {
++    this.listeners.add(listener);
++    return () => this.listeners.delete(listener);
++  }
++
++  notify() {
++    for (const listener of this.listeners) {
++      try {
++        listener(this);
++      } catch (err) {
++        console.error("Error in store listener:", err);
++      }
++    }
++  }
++
++  getMenuItems({ category = "all", maxPrice = null, query = "" } = {}) {
++    return this.menu.filter(item => {
++      if (category && category !== "all" && item.category !== category) {
++        return false;
++      }
++      if (typeof maxPrice === "number" && !isNaN(maxPrice) && item.price > maxPrice) {
++        return false;
++      }
++      if (query && query.trim() !== "") {
++        const q = query.trim().toLowerCase();
++        const matchesName = item.name.toLowerCase().includes(q);
++        const matchesDesc = item.description.toLowerCase().includes(q);
++        const matchesCategory = item.category.toLowerCase().includes(q);
++        if (!matchesName && !matchesDesc && !matchesCategory) {
++          return false;
++        }
++      }
++      return true;
++    });
++  }
++
++  getItemById(itemId) {
++    if (!itemId) return null;
++    const cleanId = String(itemId).trim().toLowerCase();
++    return this.menu.find(item => item.id.toLowerCase() === cleanId) || null;
++  }
++
++  getLocations(query = "") {
++    if (!query || query.trim() === "") {
++      return this.locations;
++    }
++    const q = query.trim().toLowerCase();
++    return this.locations.filter(loc =>
++      loc.name.toLowerCase().includes(q) ||
++      loc.address.toLowerCase().includes(q) ||
++      loc.amenities.some(a => a.toLowerCase().includes(q))
++    );
++  }
++
++  addToCart({ itemId, quantity = 1, size = "regular", milk = "whole", notes = "" }) {
++    const item = this.getItemById(itemId);
++    if (!item) {
++      return { error: `Menu item '${itemId}' does not exist.` };
++    }
++
++    const qty = parseInt(quantity, 10);
++    if (isNaN(qty) || qty < 1) {
++      return { error: `Invalid quantity '${quantity}'. Must be an integer >= 1.` };
++    }
++
++    let unitPrice = item.price;
++    if (size === "large") {
++      unitPrice += 0.75;
++    }
++
++    // Check if an identical line item exists
++    const existingIndex = this.cart.findIndex(entry =>
++      entry.itemId === item.id && entry.size === size && entry.milk === milk && entry.notes === notes
++    );
++
++    if (existingIndex >= 0) {
++      this.cart[existingIndex].quantity += qty;
++    } else {
++      this.cart.push({
++        id: `cart-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
++        itemId: item.id,
++        name: item.name,
++        unitPrice,
++        size,
++        milk,
++        notes: notes || "",
++        quantity: qty
++      });
++    }
++
++    this.notify();
++    return {
++      success: true,
++      message: `Added ${qty}x ${item.name} (${size}) to cart.`,
++      cart: this.getCartSummary()
++    };
++  }
++
++  removeFromCart(index) {
++    const idx = parseInt(index, 10);
++    if (isNaN(idx) || idx < 0 || idx >= this.cart.length) {
++      return {
++        error: `Invalid cart index '${index}'. Current cart has ${this.cart.length} item(s).`,
++        cartLength: this.cart.length
++      };
++    }
++    const removed = this.cart.splice(idx, 1)[0];
++    this.notify();
++    return {
++      success: true,
++      message: `Removed ${removed.name} from cart.`,
++      cart: this.getCartSummary()
++    };
++  }
++
++  updateQuantity(index, newQty) {
++    const idx = parseInt(index, 10);
++    if (isNaN(idx) || idx < 0 || idx >= this.cart.length) {
++      return { error: `Invalid cart index '${index}'.` };
++    }
++    const qty = parseInt(newQty, 10);
++    if (isNaN(qty) || qty < 1) {
++      return this.removeFromCart(index);
++    }
++    this.cart[idx].quantity = qty;
++    this.notify();
++    return { success: true, cart: this.getCartSummary() };
++  }
++
++  clearCart() {
++    this.cart = [];
++    this.appliedPromo = null;
++    this.notify();
++    return { success: true, message: "Cart has been cleared." };
++  }
++
++  applyPromoCode(code) {
++    if (!code || typeof code !== "string") {
++      return { error: "Please provide a promo code." };
++    }
++    const cleanCode = code.trim().toUpperCase();
++    const promo = PROMO_CODES[cleanCode];
++    if (!promo) {
++      return {
++        error: `Promo code '${code}' is invalid or expired.`,
++        validExamples: Object.keys(PROMO_CODES)
++      };
++    }
++    this.appliedPromo = { code: cleanCode, ...promo };
++    this.notify();
++    return {
++      success: true,
++      message: `Promo code ${cleanCode} applied: ${promo.description}.`,
++      cart: this.getCartSummary()
++    };
++  }
++
++  getCartSummary() {
++    const items = this.cart.map((entry, index) => ({
++      index,
++      id: entry.id,
++      itemId: entry.itemId,
++      name: entry.name,
++      size: entry.size,
++      milk: entry.milk,
++      notes: entry.notes,
++      quantity: entry.quantity,
++      unitPrice: entry.unitPrice,
++      lineTotal: parseFloat((entry.unitPrice * entry.quantity).toFixed(2))
++    }));
++
++    const rawSubtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
++
++    let discount = 0;
++    if (this.appliedPromo) {
++      if (this.appliedPromo.discountPercent) {
++        discount = rawSubtotal * (this.appliedPromo.discountPercent / 100);
++      } else if (this.appliedPromo.discountFixed) {
++        discount = Math.min(rawSubtotal, this.appliedPromo.discountFixed);
++      }
++    }
++
++    const subtotal = Math.max(0, rawSubtotal - discount);
++    const tax = parseFloat((subtotal * 0.085).toFixed(2));
++    const total = parseFloat((subtotal + tax).toFixed(2));
++
++    return {
++      itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
++      items,
++      rawSubtotal: parseFloat(rawSubtotal.toFixed(2)),
++      discount: parseFloat(discount.toFixed(2)),
++      appliedPromo: this.appliedPromo ? this.appliedPromo.code : null,
++      subtotal: parseFloat(subtotal.toFixed(2)),
++      tax,
++      total
++    };
++  }
++
++  placeOrder({ customerName, locationId, pickupTime = "asap", notes = "" }) {
++    if (!customerName || String(customerName).trim() === "") {
++      return { error: "Missing required parameter 'customerName'." };
++    }
++    if (!locationId || String(locationId).trim() === "") {
++      return {
++        error: "Missing required parameter 'locationId'.",
++        availableLocations: this.locations.map(l => ({ id: l.id, name: l.name }))
++      };
++    }
++
++    const location = this.locations.find(l => l.id === String(locationId).trim().toLowerCase());
++    if (!location) {
++      return {
++        error: `Location '${locationId}' not recognized.`,
++        availableLocations: this.locations.map(l => ({ id: l.id, name: l.name }))
++      };
++    }
++
++    if (this.cart.length === 0) {
++      return { error: "Cannot place order: Shopping cart is empty." };
++    }
++
++    const cartSummary = this.getCartSummary();
++    const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
++    const newOrder = {
++      orderNumber,
++      customerName: String(customerName).trim(),
++      location: { id: location.id, name: location.name, address: location.address },
++      pickupTime,
++      notes: notes || "",
++      items: [...cartSummary.items],
++      total: cartSummary.total,
++      placedAt: new Date().toISOString(),
++      estimatedReadyMinutes: pickupTime === "asap" ? 12 : pickupTime === "in-15-mins" ? 15 : 30
++    };
++
++    this.orders.unshift(newOrder);
++
++    // Add reward points: 2 points per dollar spent
++    const earnedPoints = Math.round(cartSummary.total * 2);
++    this.rewards.points += earnedPoints;
++
++    // Clear cart after successful order
++    this.cart = [];
++    this.appliedPromo = null;
++
++    this.notify();
++
++    return {
++      success: true,
++      order: newOrder,
++      earnedPoints,
++      newPointsBalance: this.rewards.points,
++      message: `Order ${orderNumber} successfully placed! Estimated pickup in ${newOrder.estimatedReadyMinutes} minutes at ${location.name}.`
++    };
++  }
++
++  getStateSnapshot() {
++    return {
++      cart: this.getCartSummary(),
++      ordersCount: this.orders.length,
++      recentOrders: this.orders.slice(0, 3),
++      rewards: { ...this.rewards },
++      menuItemCount: this.menu.length,
++      locationsCount: this.locations.length
++    };
++  }
++}
++
++export const store = new AppStore();
+diff --git a/js/webmcp-polyfill.js b/js/webmcp-polyfill.js
+new file mode 100644
+index 0000000..6a45ccc
+--- /dev/null
++++ b/js/webmcp-polyfill.js
+@@ -0,0 +1,155 @@
++/**
++ * Lightweight WebMCP polyfill implementing the W3C Web Model Context Protocol specification
++ * for environments without native document.modelContext support (such as browsers without the flag,
++ * Node.js test harnesses, or non-Chromium engines).
++ */
++class ModelContextPolyfill extends EventTarget {
++  constructor() {
++    super();
++    this._tools = new Map();
++  }
++
++  /**
++   * Registers a client-side tool with WebMCP.
++   * @param {Object} toolDefinition - { name, description, inputSchema, execute, annotations }
++   * @param {Object} [options] - { signal, exposedTo }
++   */
++  async registerTool(toolDefinition, options = {}) {
++    if (!toolDefinition || typeof toolDefinition !== "object") {
++      throw new TypeError("toolDefinition must be an object");
++    }
++    if (!toolDefinition.name || typeof toolDefinition.name !== "string") {
++      throw new TypeError("toolDefinition.name is required");
++    }
++    if (typeof toolDefinition.execute !== "function") {
++      throw new TypeError("toolDefinition.execute must be a function");
++    }
++
++    const toolName = toolDefinition.name;
++    const registeredTool = {
++      name: toolName,
++      description: toolDefinition.description || "",
++      inputSchema: toolDefinition.inputSchema ? JSON.parse(JSON.stringify(toolDefinition.inputSchema)) : { type: "object", properties: {} },
++      annotations: toolDefinition.annotations ? { ...toolDefinition.annotations } : {},
++      execute: toolDefinition.execute
++    };
++
++    this._tools.set(toolName, registeredTool);
++
++    // Support unregistering via AbortSignal as specified in WebMCP
++    if (options.signal) {
++      if (options.signal.aborted) {
++        this._tools.delete(toolName);
++        this._dispatchToolChange();
++        return;
++      }
++      options.signal.addEventListener("abort", () => {
++        if (this._tools.get(toolName) === registeredTool) {
++          this._tools.delete(toolName);
++          this._dispatchToolChange();
++        }
++      }, { once: true });
++    }
++
++    this._dispatchToolChange();
++  }
++
++  /**
++   * Discovers currently registered tools.
++   */
++  async getTools(options = {}) {
++    return Array.from(this._tools.values()).map(tool => ({
++      name: tool.name,
++      description: tool.description,
++      inputSchema: JSON.parse(JSON.stringify(tool.inputSchema)),
++      annotations: { ...tool.annotations },
++      execute: tool.execute
++    }));
++  }
++
++  /**
++   * Executes a registered tool on behalf of an agent or test runner.
++   */
++  async executeTool(tool, inputObject = {}, options = {}) {
++    const toolName = typeof tool === "string" ? tool : tool?.name;
++    const targetTool = this._tools.get(toolName);
++    if (!targetTool) {
++      throw new Error(`Tool "${toolName}" is not registered.`);
++    }
++
++    let parsedInput = inputObject;
++    if (typeof inputObject === "string") {
++      try {
++        parsedInput = JSON.parse(inputObject);
++      } catch (err) {
++        throw new Error(`Failed to parse input JSON: ${err.message}`);
++      }
++    }
++
++    // Fire toolactivated lifecycle event
++    const activatedEvent = new CustomEvent("toolactivated", { detail: { toolName } });
++    activatedEvent.toolName = toolName;
++    this.dispatchEvent(activatedEvent);
++
++    const execSignal = options.signal;
++
++    if (execSignal && execSignal.aborted) {
++      const cancelEvent = new CustomEvent("toolcancel", { detail: { toolName } });
++      cancelEvent.toolName = toolName;
++      this.dispatchEvent(cancelEvent);
++      throw new DOMException("Execution was aborted", "AbortError");
++    }
++
++    let abortHandler = null;
++    const abortPromise = new Promise((_, reject) => {
++      if (execSignal) {
++        abortHandler = () => {
++          const cancelEvent = new CustomEvent("toolcancel", { detail: { toolName } });
++          cancelEvent.toolName = toolName;
++          this.dispatchEvent(cancelEvent);
++          reject(new DOMException("Execution was aborted", "AbortError"));
++        };
++        execSignal.addEventListener("abort", abortHandler, { once: true });
++      }
++    });
++
++    try {
++      const execResult = await Promise.race([
++        Promise.resolve(targetTool.execute(parsedInput, { signal: execSignal })),
++        abortPromise
++      ]);
++
++      if (typeof execResult === "object" && execResult !== null) {
++        return JSON.stringify(execResult);
++      }
++      return String(execResult ?? "");
++    } finally {
++      if (execSignal && abortHandler) {
++        execSignal.removeEventListener("abort", abortHandler);
++      }
++    }
++  }
++
++  _dispatchToolChange() {
++    const changeEvent = new CustomEvent("toolchange");
++    this.dispatchEvent(changeEvent);
++  }
++}
++
++// Polyfill window.document.modelContext if not provided by browser
++if (typeof window !== "undefined" && typeof document !== "undefined") {
++  if (!("modelContext" in document) || !document.modelContext) {
++    try {
++      Object.defineProperty(document, "modelContext", {
++        value: new ModelContextPolyfill(),
++        writable: true,
++        configurable: true
++      });
++      console.info("[WebMCP] Initialized document.modelContext polyfill.");
++    } catch (e) {
++      document.modelContext = new ModelContextPolyfill();
++    }
++  }
++}
++
++export { ModelContextPolyfill };
+diff --git a/js/webmcp-tools.js b/js/webmcp-tools.js
+new file mode 100644
+index 0000000..8eec8dc
+--- /dev/null
++++ b/js/webmcp-tools.js
+@@ -0,0 +1,422 @@
++import { store } from "./store.js";
++
++/**
++ * Registers all Imperative WebMCP tools on document.modelContext.
++ * Adheres strictly to the WebMCP Imperative API best practice guidelines.
++ *
++ * @param {AbortSignal} [signal] - Optional signal to unregister tools on unmount or page transition.
++ * @returns {Promise<Array<string>>} - Array of registered tool names.
++ */
++export async function registerWebMCPTools(signal) {
++  // Guard with feature detection as recommended by the WebMCP spec
++  if (!("modelContext" in document) || !document.modelContext) {
++    console.warn("[WebMCP] document.modelContext is not supported in this browser environment.");
++    return [];
++  }
++
++  const modelContext = document.modelContext;
++  const registeredNames = [];
++
++  const CATEGORY_ENUM = ["all", "espresso", "latte", "cold-brew", "tea", "bakery"];
++  const SIZE_ENUM = ["regular", "large"];
++  const MILK_ENUM = ["whole", "oat", "almond", "skim", "none"];
++  const LOCATION_ENUM = ["downtown", "arts-district", "uptown"];
++  const PICKUP_TIME_ENUM = ["asap", "in-15-mins", "in-30-mins", "in-1-hour"];
++
++  // Tool 1: get_menu
++  await modelContext.registerTool({
++    name: "get_menu",
++    description: "Searches and filters the coffee shop menu catalog by category, maximum price, or query keyword. Use when the user asks what coffee, drinks, or food items are available.",
++    inputSchema: {
++      type: "object",
++      properties: {
++        category: {
++          type: "string",
++          enum: CATEGORY_ENUM,
++          default: "all",
++          description: "Category of menu items to filter by."
++        },
++        maxPrice: {
++          type: "number",
++          minimum: 0,
++          description: "Maximum allowable price in dollars."
++        },
++        query: {
++          type: "string",
++          description: "Keyword matching drink name or ingredient descriptions."
++        }
++      }
++    },
++    execute({ category = "all", maxPrice, query = "" } = {}, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      if (category && !CATEGORY_ENUM.includes(category)) {
++        return {
++          error: `Invalid category '${category}'.`,
++          validCategories: CATEGORY_ENUM
++        };
++      }
++      const items = store.getMenuItems({ category, maxPrice, query });
++      return {
++        count: items.length,
++        items: items.map(item => ({
++          id: item.id,
++          name: item.name,
++          category: item.category,
++          price: item.price,
++          description: item.description,
++          calories: item.calories,
++          allergens: item.allergens
++        }))
++      };
++    },
++    annotations: {
++      readOnlyHint: true,
++      untrustedContentHint: false
++    }
++  }, { signal });
++  registeredNames.push("get_menu");
++
++  // Tool 2: get_item_details
++  await modelContext.registerTool({
++    name: "get_item_details",
++    description: "Retrieves complete specifications, ingredients, allergens, calories, and customization options for a specific menu item. Use when the user asks questions about a specific beverage or food item.",
++    inputSchema: {
++      type: "object",
++      properties: {
++        itemId: {
++          type: "string",
++          description: "Unique menu item identifier (e.g. maple-oat-latte, dark-roast-espresso)."
++        }
++      },
++      required: ["itemId"]
++    },
++    execute({ itemId } = {}, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      if (!itemId || typeof itemId !== "string") {
++        return {
++          error: "Missing required parameter 'itemId'.",
++          availableItemIds: store.menu.map(i => i.id)
++        };
++      }
++      const item = store.getItemById(itemId);
++      if (!item) {
++        return {
++          error: `Menu item '${itemId}' was not found.`,
++          availableItemIds: store.menu.map(i => i.id)
++        };
++      }
++      return item;
++    },
++    annotations: {
++      readOnlyHint: true,
++      untrustedContentHint: false
++    }
++  }, { signal });
++  registeredNames.push("get_item_details");
++
++  // Tool 3: add_to_cart
++  await modelContext.registerTool({
++    name: "add_to_cart",
++    description: "Adds a beverage or bakery item to the customer's current shopping cart with custom preparation options. Use when the customer wants to add an item to their order.",
++    inputSchema: {
++      type: "object",
++      properties: {
++        itemId: {
++          type: "string",
++          description: "Unique menu item identifier (e.g. maple-oat-latte, cold-brew)."
++        },
++        quantity: {
++          type: "integer",
++          minimum: 1,
++          default: 1,
++          description: "Number of units to add to the cart."
++        },
++        size: {
++          type: "string",
++          enum: SIZE_ENUM,
++          default: "regular",
++          description: "Cup size selection."
++        },
++        milk: {
++          type: "string",
++          enum: MILK_ENUM,
++          default: "whole",
++          description: "Milk or milk-alternative choice."
++        },
++        notes: {
++          type: "string",
++          description: "Special barista instructions or dietary preferences."
++        }
++      },
++      required: ["itemId"]
++    },
++    execute({ itemId, quantity = 1, size = "regular", milk = "whole", notes = "" } = {}, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      if (!itemId || typeof itemId !== "string") {
++        return {
++          error: "Missing required parameter 'itemId'.",
++          availableItemIds: store.menu.map(i => i.id)
++        };
++      }
++      if (!SIZE_ENUM.includes(size)) {
++        return { error: `Invalid size '${size}'.`, validSizes: SIZE_ENUM };
++      }
++      if (!MILK_ENUM.includes(milk)) {
++        return { error: `Invalid milk option '${milk}'.`, validMilkOptions: MILK_ENUM };
++      }
++      const qty = parseInt(quantity, 10);
++      if (isNaN(qty) || qty < 1) {
++        return { error: `Quantity must be an integer >= 1. Received: ${quantity}` };
++      }
++
++      return store.addToCart({ itemId, quantity: qty, size, milk, notes });
++    },
++    annotations: {
++      readOnlyHint: false,
++      consequentialHint: false,
++      untrustedContentHint: false
++    }
++  }, { signal });
++  registeredNames.push("add_to_cart");
++
++  // Tool 4: get_cart
++  await modelContext.registerTool({
++    name: "get_cart",
++    description: "Retrieves the current shopping cart contents, line item customizations, subtotal, discount, tax, and total. Use when the user asks what is in their cart or wants to review before ordering.",
++    inputSchema: {
++      type: "object",
++      properties: {}
++    },
++    execute(_, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      return store.getCartSummary();
++    },
++    annotations: {
++      readOnlyHint: true,
++      untrustedContentHint: false
++    }
++  }, { signal });
++  registeredNames.push("get_cart");
++
++  // Tool 5: remove_from_cart
++  await modelContext.registerTool({
++    name: "remove_from_cart",
++    description: "Removes an item line from the current shopping cart by index. Use when the user wants to remove an item from their cart.",
++    inputSchema: {
++      type: "object",
++      properties: {
++        index: {
++          type: "integer",
++          minimum: 0,
++          description: "Zero-based index of the item line in the cart to remove."
++        }
++      },
++      required: ["index"]
++    },
++    execute({ index } = {}, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      const idx = parseInt(index, 10);
++      if (isNaN(idx) || idx < 0) {
++        return { error: `Invalid index '${index}'. Must be a non-negative integer.` };
++      }
++      return store.removeFromCart(idx);
++    },
++    annotations: {
++      readOnlyHint: false,
++      consequentialHint: false
++    }
++  }, { signal });
++  registeredNames.push("remove_from_cart");
++
++  // Tool 6: clear_cart
++  await modelContext.registerTool({
++    name: "clear_cart",
++    description: "Empties all items and resets discounts from the current shopping cart. Use when the user asks to empty or clear their cart.",
++    inputSchema: {
++      type: "object",
++      properties: {}
++    },
++    execute(_, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      return store.clearCart();
++    },
++    annotations: {
++      readOnlyHint: false,
++      consequentialHint: false
++    }
++  }, { signal });
++  registeredNames.push("clear_cart");
++
++  // Tool 7: apply_promo_code
++  await modelContext.registerTool({
++    name: "apply_promo_code",
++    description: "Applies a promotional discount code or loyalty voucher to the shopping cart. Use when the user provides a coupon code or wants to use a promotion.",
++    inputSchema: {
++      type: "object",
++      properties: {
++        promoCode: {
++          type: "string",
++          description: "Promotional or voucher code to apply."
++        }
++      },
++      required: ["promoCode"]
++    },
++    execute({ promoCode } = {}, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      return store.applyPromoCode(promoCode);
++    },
++    annotations: {
++      readOnlyHint: false,
++      consequentialHint: false
++    }
++  }, { signal });
++  registeredNames.push("apply_promo_code");
++
++  // Tool 8: place_order (consequential tool!)
++  await modelContext.registerTool({
++    name: "place_order",
++    description: "Finalizes the shopping cart, submits the order for store pickup, and returns an order confirmation receipt with estimated ready time. Use only after the user has reviewed their cart and explicitly confirmed they want to place the order.",
++    inputSchema: {
++      type: "object",
++      properties: {
++        customerName: {
++          type: "string",
++          description: "Full name for order pickup."
++        },
++        locationId: {
++          type: "string",
++          enum: LOCATION_ENUM,
++          description: "Identifier of the store location for pickup."
++        },
++        pickupTime: {
++          type: "string",
++          enum: PICKUP_TIME_ENUM,
++          default: "asap",
++          description: "Timing for pickup preparation."
++        },
++        notes: {
++          type: "string",
++          description: "Special instructions for the barista or kitchen."
++        }
++      },
++      required: ["customerName", "locationId"]
++    },
++    execute({ customerName, locationId, pickupTime = "asap", notes = "" } = {}, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      if (!customerName || typeof customerName !== "string" || customerName.trim() === "") {
++        return { error: "Missing required parameter 'customerName'." };
++      }
++      if (!locationId || !LOCATION_ENUM.includes(locationId)) {
++        return {
++          error: `Invalid or missing 'locationId'.`,
++          validLocationIds: LOCATION_ENUM
++        };
++      }
++      if (pickupTime && !PICKUP_TIME_ENUM.includes(pickupTime)) {
++        return {
++          error: `Invalid 'pickupTime' '${pickupTime}'.`,
++          validPickupTimes: PICKUP_TIME_ENUM
++        };
++      }
++
++      return store.placeOrder({ customerName, locationId, pickupTime, notes });
++    },
++    annotations: {
++      readOnlyHint: false,
++      consequentialHint: true, // Marked consequential for transactional order placement
++      untrustedContentHint: false
++    }
++  }, { signal });
++  registeredNames.push("place_order");
++
++  // Tool 9: get_locations
++  await modelContext.registerTool({
++    name: "get_locations",
++    description: "Retrieves coffee shop store locations, physical addresses, opening hours, phone numbers, and amenities. Use when the user asks for store locations, hours, or features like Wi-Fi or drive-thru.",
++    inputSchema: {
++      type: "object",
++      properties: {
++        query: {
++          type: "string",
++          description: "Search keyword matching neighborhood, street name, or amenities."
++        }
++      }
++    },
++    execute({ query = "" } = {}, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      const locations = store.getLocations(query);
++      return {
++        count: locations.length,
++        locations
++      };
++    },
++    annotations: {
++      readOnlyHint: true,
++      untrustedContentHint: false
++    }
++  }, { signal });
++  registeredNames.push("get_locations");
++
++  // Tool 10: get_reward_points
++  await modelContext.registerTool({
++    name: "get_reward_points",
++    description: "Retrieves the user's loyalty account profile, current reward points balance, member tier, and available redemption perks. Use when the user asks about their reward points or perks.",
++    inputSchema: {
++      type: "object",
++      properties: {}
++    },
++    execute(_, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      return store.rewards;
++    },
++    annotations: {
++      readOnlyHint: true,
++      untrustedContentHint: false
++    }
++  }, { signal });
++  registeredNames.push("get_reward_points");
++
++  // Tool 11: dump_app_state (Developer/debugging tool)
++  await modelContext.registerTool({
++    name: "dump_app_state",
++    description: "Returns a snapshot of the internal application store for debugging. Use for developer tooling to inspect cart, store state, and user session.",
++    inputSchema: {
++      type: "object",
++      properties: {}
++    },
++    execute(_, { signal: execSignal } = {}) {
++      if (execSignal?.aborted) {
++        throw new DOMException("Execution was aborted", "AbortError");
++      }
++      return store.getStateSnapshot();
++    },
++    annotations: {
++      readOnlyHint: true,
++      debugging: true // Developer tooling as introduced in Chrome 156+
++    }
++  }, { signal });
++  registeredNames.push("dump_app_state");
++
++  console.info(`[WebMCP] Successfully registered ${registeredNames.length} imperative tools: ${registeredNames.join(", ")}`);
++  return registeredNames;
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..ca77498 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,10 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test test/webmcp.test.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/test/webmcp.test.js b/test/webmcp.test.js
+new file mode 100644
+index 0000000..aecfe88
+--- /dev/null
++++ b/test/webmcp.test.js
+@@ -0,0 +1,217 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import { ModelContextPolyfill } from "../js/webmcp-polyfill.js";
++import { registerWebMCPTools } from "../js/webmcp-tools.js";
++import { store } from "../js/store.js";
++
++// Setup mock DOM environment for Node.js
++function setupEnvironment() {
++  const polyfill = new ModelContextPolyfill();
++  globalThis.document = {
++    modelContext: polyfill
++  };
++  globalThis.window = {
++    document: globalThis.document
++  };
++  return polyfill;
++}
++
++test("WebMCP Imperative Tool Registration", async (t) => {
++  setupEnvironment();
++  const lifecycleController = new AbortController();
++
++  const registeredNames = await registerWebMCPTools(lifecycleController.signal);
++
++  assert.equal(registeredNames.length, 11);
++  assert.ok(registeredNames.includes("get_menu"));
++  assert.ok(registeredNames.includes("get_item_details"));
++  assert.ok(registeredNames.includes("add_to_cart"));
++  assert.ok(registeredNames.includes("get_cart"));
++  assert.ok(registeredNames.includes("remove_from_cart"));
++  assert.ok(registeredNames.includes("clear_cart"));
++  assert.ok(registeredNames.includes("apply_promo_code"));
++  assert.ok(registeredNames.includes("place_order"));
++  assert.ok(registeredNames.includes("get_locations"));
++  assert.ok(registeredNames.includes("get_reward_points"));
++  assert.ok(registeredNames.includes("dump_app_state"));
++
++  const tools = await document.modelContext.getTools();
++  assert.equal(tools.length, 11);
++});
++
++test("Tool Annotations Compliance", async (t) => {
++  setupEnvironment();
++  await registerWebMCPTools();
++  const tools = await document.modelContext.getTools();
++
++  const getMenuTool = tools.find(t => t.name === "get_menu");
++  assert.equal(getMenuTool.annotations.readOnlyHint, true, "get_menu should be marked readOnlyHint: true");
++
++  const placeOrderTool = tools.find(t => t.name === "place_order");
++  assert.equal(placeOrderTool.annotations.readOnlyHint, false, "place_order mutates state");
++  assert.equal(placeOrderTool.annotations.consequentialHint, true, "place_order should be marked consequentialHint: true");
++
++  const dumpStateTool = tools.find(t => t.name === "dump_app_state");
++  assert.equal(dumpStateTool.annotations.debugging, true, "dump_app_state should be marked debugging: true");
++  assert.equal(dumpStateTool.annotations.readOnlyHint, true, "dump_app_state is read-only");
++});
++
++test("Tool Execution: get_menu filtering", async (t) => {
++  setupEnvironment();
++  await registerWebMCPTools();
++
++  // Test full menu
++  const fullResultRaw = await document.modelContext.executeTool("get_menu", {});
++  const fullResult = JSON.parse(fullResultRaw);
++  assert.ok(fullResult.count >= 8);
++
++  // Test category filtering
++  const latteResultRaw = await document.modelContext.executeTool("get_menu", { category: "latte" });
++  const latteResult = JSON.parse(latteResultRaw);
++  assert.ok(latteResult.items.length >= 1);
++  assert.ok(latteResult.items.every(i => i.category === "latte"));
++
++  // Test price filtering
++  const cheapResultRaw = await document.modelContext.executeTool("get_menu", { maxPrice: 4.00 });
++  const cheapResult = JSON.parse(cheapResultRaw);
++  assert.ok(cheapResult.items.every(i => i.price <= 4.00));
++
++  // Test invalid category error handling (structured error, not throwing)
++  const invalidResultRaw = await document.modelContext.executeTool("get_menu", { category: "non-existent" });
++  const invalidResult = JSON.parse(invalidResultRaw);
++  assert.ok(invalidResult.error);
++  assert.ok(Array.isArray(invalidResult.validCategories));
++});
++
++test("Tool Execution: get_item_details structured errors", async (t) => {
++  setupEnvironment();
++  await registerWebMCPTools();
++
++  // Valid item
++  const validRaw = await document.modelContext.executeTool("get_item_details", { itemId: "maple-oat-latte" });
++  const valid = JSON.parse(validRaw);
++  assert.equal(valid.name, "Maple Oat Latte");
++  assert.equal(valid.price, 5.75);
++
++  // Invalid item returns structured error payload for agent recovery
++  const invalidRaw = await document.modelContext.executeTool("get_item_details", { itemId: "unknown-drink" });
++  const invalid = JSON.parse(invalidRaw);
++  assert.ok(invalid.error, "Should return structured error");
++  assert.ok(Array.isArray(invalid.availableItemIds));
++});
++
++test("Tool Execution: Shopping Cart Flow & Checkout", async (t) => {
++  setupEnvironment();
++  await registerWebMCPTools();
++  store.clearCart();
++
++  // Add item
++  const addRaw = await document.modelContext.executeTool("add_to_cart", {
++    itemId: "maple-oat-latte",
++    quantity: 2,
++    size: "large",
++    milk: "oat"
++  });
++  const addRes = JSON.parse(addRaw);
++  assert.equal(addRes.success, true);
++
++  // Get cart
++  const cartRaw = await document.modelContext.executeTool("get_cart", {});
++  const cart = JSON.parse(cartRaw);
++  assert.equal(cart.itemCount, 2);
++  // Maple Oat Latte ($5.75) + Large ($0.75) = $6.50 * 2 = $13.00
++  assert.equal(cart.rawSubtotal, 13.00);
++
++  // Apply Promo Code
++  const promoRaw = await document.modelContext.executeTool("apply_promo_code", { promoCode: "WELCOME10" });
++  const promoRes = JSON.parse(promoRaw);
++  assert.equal(promoRes.success, true);
++  assert.equal(promoRes.cart.discount, 1.30); // 10% of 13.00
++
++  // Place Order (Consequential action)
++  const orderRaw = await document.modelContext.executeTool("place_order", {
++    customerName: "Sam Taylor",
++    locationId: "downtown",
++    pickupTime: "asap"
++  });
++  const orderRes = JSON.parse(orderRaw);
++  assert.equal(orderRes.success, true);
++  assert.ok(orderRes.order.orderNumber.startsWith("ORD-"));
++  assert.equal(orderRes.order.customerName, "Sam Taylor");
++
++  // Verify cart cleared after order
++  const emptyCartRaw = await document.modelContext.executeTool("get_cart", {});
++  const emptyCart = JSON.parse(emptyCartRaw);
++  assert.equal(emptyCart.itemCount, 0);
++});
++
++test("Tool Execution: Lifecycle unregistration via AbortController signal", async (t) => {
++  setupEnvironment();
++  const controller = new AbortController();
++  await registerWebMCPTools(controller.signal);
++
++  let tools = await document.modelContext.getTools();
++  assert.equal(tools.length, 11);
++
++  // Abort signal
++  controller.abort();
++
++  tools = await document.modelContext.getTools();
++  assert.equal(tools.length, 0, "All tools should be unregistered upon aborting the registration signal");
++});
++
++test("Tool Execution: Per-execution cancellation signal", async (t) => {
++  setupEnvironment();
++  await registerWebMCPTools();
++
++  const execController = new AbortController();
++  execController.abort(); // already aborted
++
++  await assert.rejects(
++    async () => {
++      await document.modelContext.executeTool("get_menu", {}, { signal: execController.signal });
++    },
++    { name: "AbortError" }
++  );
++});
++
++test("Tool Execution: dump_app_state debugging tool", async (t) => {
++  setupEnvironment();
++  await registerWebMCPTools();
++
++  const stateRaw = await document.modelContext.executeTool("dump_app_state", {});
++  const state = JSON.parse(stateRaw);
++  assert.ok(typeof state.cart === "object");
++  assert.ok(typeof state.rewards === "object");
++  assert.ok(typeof state.menuItemCount === "number");
++});
++
++test("Declarative Forms: Agent invocation and respondWith handling", async (t) => {
++  setupEnvironment();
++
++  // Test declarative search form submission simulation
++  let respondedData = null;
++  const mockSubmitEvent = {
++    agentInvoked: true,
++    preventDefault() {},
++    respondWith(promise) {
++      respondedData = promise;
++    }
++  };
++
++  // Simulate search menu handler
++  const items = store.getMenuItems({ category: "espresso" });
++  if (mockSubmitEvent.agentInvoked) {
++    mockSubmitEvent.respondWith(Promise.resolve(JSON.stringify({
++      count: items.length,
++      items: items.map(i => ({ id: i.id, name: i.name }))
++    })));
++  }
++
++  assert.ok(respondedData instanceof Promise, "Agent invocation must use respondWith with a Promise");
++  const resultStr = await respondedData;
++  const parsed = JSON.parse(resultStr);
++  assert.ok(parsed.count >= 1);
++  assert.ok(parsed.items.some(i => i.id === "dark-roast-espresso"));
++});
++

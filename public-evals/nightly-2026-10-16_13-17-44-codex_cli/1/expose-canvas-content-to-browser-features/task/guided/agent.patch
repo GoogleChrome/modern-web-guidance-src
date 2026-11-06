@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,81 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .customizer {
++      margin-top: 56px;
++      padding: 32px 16px 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 16px;
++      background: #f5eee7;
++      text-align: center;
++    }
++
++    .customizer > p { margin: 8px auto 0; max-width: 480px; }
++
++    .coffee-stage {
++      position: relative;
++      max-width: 620px;
++      margin: 16px auto 0;
++      padding: 110px 0 100px;
++      isolation: isolate;
++    }
++
++    #canvas {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++    }
++
++    .coffee-ui {
++      position: relative;
++      width: 64%;
++      margin-inline: auto;
++      color: var(--text);
++      text-align: left;
++      font-size: 1rem;
++    }
++
++    .coffee-ui h3 { text-align: center; font-size: 1.25rem; }
++    .coffee-ui .cup-caption { text-align: center; margin: 0 0 18px; }
++    .coffee-ui label { display: block; font-weight: 600; margin-top: 12px; }
++
++    .coffee-ui input, .coffee-ui select {
++      display: block;
++      width: 100%;
++      min-height: 44px;
++      margin-top: 4px;
++      padding: 10px;
++      border: 1px solid #9c8579;
++      border-radius: 6px;
++      color: var(--text);
++      background: white;
++      font: inherit;
++    }
++
++    .coffee-ui button {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      font-weight: 600;
++    }
++
++    .coffee-ui :is(input, select, button):focus-visible {
++      outline: 3px solid #81500b;
++      outline-offset: 3px;
++    }
++
++    .coffee-ui output { display: block; margin-top: 16px; font-size: 0.9rem; }
++    .customizer-note { font-size: 0.85rem; }
++
++    @media (max-width: 480px) {
++      .customizer { padding-inline: 8px; }
++      .coffee-ui { font-size: 0.95rem; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +267,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="customizer" aria-labelledby="customizer-title">
++      <h2 id="customizer-title">Your Coffee, Your Way</h2>
++      <p>A little more you in every cup. Personalize your latte and save your favorite combination.</p>
++      <div class="coffee-stage" id="coffee-stage">
++        <canvas id="canvas" content="drawable" aria-hidden="true"></canvas>
++        <!-- This single real form is moved inside the canvas only when the
++             browser supports drawable HTML. It also works without JavaScript. -->
++        <form class="coffee-ui" id="coffee-form" drawable aria-labelledby="cup-title">
++          <h3 id="cup-title">Made for you</h3>
++          <p class="cup-caption">One lovely latte.</p>
++          <label for="coffee-name">Name on your cup</label>
++          <input id="coffee-name" name="name" autocomplete="given-name" placeholder="Your first name" maxlength="40">
++          <label for="coffee-milk">Milk</label>
++          <select id="coffee-milk" name="milk">
++            <option value="whole">Whole milk</option>
++            <option value="oat">Oat milk</option>
++            <option value="almond">Almond milk</option>
++            <option value="soy">Soy milk</option>
++          </select>
++          <label for="coffee-syrup">Syrup</label>
++          <select id="coffee-syrup" name="syrup">
++            <option value="none">No syrup</option>
++            <option value="vanilla">Vanilla</option>
++            <option value="caramel">Caramel</option>
++            <option value="maple">Maple</option>
++          </select>
++          <button class="btn" type="submit">Save my coffee</button>
++          <output id="coffee-summary" for="coffee-name coffee-milk coffee-syrup" aria-live="polite" aria-atomic="true"></output>
++        </form>
++      </div>
++      <p class="customizer-note">Make it yours here. Place your order when you’re ready.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +311,9 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="coffee-customizer.js" defer></script>
++
+ </body>
+ 
+ </html>

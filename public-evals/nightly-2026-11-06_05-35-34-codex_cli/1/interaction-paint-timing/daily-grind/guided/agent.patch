@@ -1,0 +1,403 @@
+diff --git a/PERFORMANCE.md b/PERFORMANCE.md
+new file mode 100644
+index 0000000..321fb9a
+--- /dev/null
++++ b/PERFORMANCE.md
+@@ -0,0 +1,47 @@
++# Homepage paint monitoring
++
++`performance-monitor.js` observes browser-reported contentful paints caused by
++navigation links, Order Now, and Seasonal Favorites cards (including their View
++Details links). It does not intercept clicks or change navigation behavior.
++
++Read the latest 100 reports with `window.dailyGrindPerformance.getReports()` or
++subscribe before interacting:
++
++```js
++window.addEventListener('daily-grind:performance', ({ detail }) => {
++  // Forward detail to your analytics integration here.
++});
++```
++
++No analytics requests are sent by this implementation. Reports contain stable
++control identifiers and labels, not DOM elements. Soft-navigation URLs are reduced
++to their pathname to omit query strings and fragments.
++
++- `interaction-paint`: `control`, `label`, `interactionId`, `startTime`, and
++  `duration` in milliseconds from interaction start to contentful presentation.
++  Each `phase: 'candidate'` report represents a progressively larger contentful
++  paint caused by that interaction, including asynchronous updates. It is not an
++  assertion that all network work or animations have finished.
++- `soft-navigation`: browser-detected client-side view switches, including
++  `path`, `navigationId`, `interactionId`, `fcpDuration`, `lcpDuration`, and
++  `lcpSize`. Durations are milliseconds relative to the initiating interaction,
++  not document load. `lcpDuration` is null when no candidate is available. A
++  `phase: 'final'` report is emitted on the next soft navigation, tab hide, or
++  pagehide, after draining pending observer records. Paints before URL changes
++  are seeded from `getLargestInteractionContentfulPaint()`; subsequent paints
++  are matched using `interactionId`.
++
++These APIs are experimental and not available in every browser. Check
++`window.dailyGrindPerformance.support`; unsupported observers are skipped. Click
++attribution additionally requires Event Timing; the browser may omit fast events
++below its minimum 16 ms threshold. An interaction without an attributed contentful
++paint produces no interaction report. No guessed timing fallback is emitted.
++
++The current homepage uses full-document navigation. This script measures visual
++updates in this document, and automatically observes soft navigations if
++client-side routing is introduced. It cannot measure destination-page painting
++after a full-document navigation or updates in another tab. Changing only a URL
++does not count as completing a visual update.
++
++Run `npm test` for the isolated observer and lifecycle tests. These tests use
++mocked browser APIs; they do not establish real browser support or paint accuracy.
+diff --git a/index.html b/index.html
+index 66c9173..42f172e 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script defer src="/performance-monitor.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -157,7 +158,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-performance="navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,24 +172,24 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-performance="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-performance="seasonal-maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance="seasonal-dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance="seasonal-cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/package.json b/package.json
+index 2bd4d77..a2a2adc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test tests/*.test.cjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/performance-monitor.js b/performance-monitor.js
+new file mode 100644
+index 0000000..fa60774
+--- /dev/null
++++ b/performance-monitor.js
+@@ -0,0 +1,157 @@
++(() => {
++  'use strict';
++
++  const supported = globalThis.PerformanceObserver?.supportedEntryTypes ?? [];
++  const support = Object.freeze({
++    interactionPaint: supported.includes('interaction-contentful-paint'),
++    softNavigation: supported.includes('soft-navigation'),
++    eventTiming: supported.includes('event'),
++  });
++  const limit = 100;
++  const reports = [];
++  const clicks = new Map();
++  const interactions = new Map();
++  const paints = new Map();
++  let activeNavigation = null;
++  let navigationPaint = null;
++
++  function remember(map, key, value) {
++    map.set(key, value);
++    if (map.size > limit) map.delete(map.keys().next().value);
++  }
++
++  function report(detail) {
++    const snapshot = Object.freeze({ ...detail });
++    reports.push(snapshot);
++    if (reports.length > limit) reports.shift();
++    window.dispatchEvent(new CustomEvent('daily-grind:performance', { detail: snapshot }));
++  }
++
++  // Local, bounded reporting only. A telemetry consumer can listen to the event.
++  window.dailyGrindPerformance = Object.freeze({
++    support,
++    getReports: () => reports.slice(),
++  });
++
++  function describe(target) {
++    if (!(target instanceof Element)) return null;
++    const control = target.closest('[data-performance]');
++    if (!control) return null;
++    return {
++      control: control.dataset.performance,
++      label: (target.closest('a') ?? control.querySelector('h3') ?? control)
++        .textContent.trim().slice(0, 80),
++    };
++  }
++
++  // Capture metadata before a client-side handler can replace the clicked DOM.
++  // Event Timing supplies the browser's interactionId; timestamps join the click.
++  if (support.interactionPaint && support.eventTiming) {
++    document.addEventListener('click', (event) => {
++      const metadata = describe(event.target);
++      if (metadata) remember(clicks, event.timeStamp, metadata);
++    }, { capture: true, passive: true });
++  }
++
++  function reportInteraction(entry, metadata) {
++    report({
++      type: 'interaction-paint',
++      ...metadata,
++      interactionId: entry.interactionId,
++      startTime: entry.startTime,
++      duration: entry.duration,
++      // Successive entries are larger contentful paint candidates, not a
++      // guarantee that all asynchronous work or animations have finished.
++      phase: 'candidate',
++    });
++  }
++
++  function handleEvents(entries) {
++    for (const entry of entries) {
++      if (entry.name !== 'click' || !entry.interactionId) continue;
++      const metadata = clicks.get(entry.startTime) ?? describe(entry.target);
++      if (!metadata) continue;
++      clicks.delete(entry.startTime);
++      remember(interactions, entry.interactionId, metadata);
++      // Observer delivery order is not guaranteed.
++      const paint = paints.get(entry.interactionId);
++      if (paint) reportInteraction(paint, metadata);
++    }
++  }
++
++  function handlePaints(entries) {
++    for (const entry of entries) {
++      remember(paints, entry.interactionId, entry);
++      const metadata = interactions.get(entry.interactionId);
++      if (metadata) reportInteraction(entry, metadata);
++      if (activeNavigation?.interactionId === entry.interactionId &&
++          (!navigationPaint || entry.largestContentfulPaint.size >=
++            navigationPaint.largestContentfulPaint.size)) {
++        navigationPaint = entry;
++      }
++    }
++  }
++
++  function finalizeNavigation() {
++    if (!activeNavigation) return;
++    report({
++      type: 'soft-navigation',
++      // Omit query strings and fragments from telemetry.
++      path: new URL(activeNavigation.name, location.href).pathname,
++      navigationId: activeNavigation.navigationId,
++      interactionId: activeNavigation.interactionId,
++      fcpDuration: activeNavigation.duration,
++      lcpDuration: navigationPaint?.duration ?? null,
++      lcpSize: navigationPaint?.largestContentfulPaint.size ?? null,
++      phase: 'final',
++    });
++    activeNavigation = null;
++    navigationPaint = null;
++  }
++
++  function handleNavigations(entries) {
++    for (const entry of entries) {
++      finalizeNavigation();
++      activeNavigation = entry;
++      // Include content painted BEFORE the URL changed. navigationId cannot
++      // correlate these paints; the initiating interactionId can.
++      navigationPaint = entry.getLargestInteractionContentfulPaint();
++      const pending = paints.get(entry.interactionId);
++      if (pending && (!navigationPaint || pending.largestContentfulPaint.size >=
++          navigationPaint.largestContentfulPaint.size)) navigationPaint = pending;
++    }
++  }
++
++  function observe(type, handler, options = {}) {
++    if (!supported.includes(type)) return null;
++    const observer = new PerformanceObserver(list => handler(list.getEntries()));
++    observer.observe({ type, buffered: true, ...options });
++    return { observer, handler };
++  }
++
++  const observers = [];
++  if (support.interactionPaint) {
++    // Minimum Event Timing threshold; fast events may still be omitted by the
++    // browser. Never invent a paint latency when attribution is unavailable.
++    observers.push(observe('event', handleEvents, { durationThreshold: 16 }));
++    observers.push(observe('interaction-contentful-paint', handlePaints));
++    if (support.softNavigation) {
++      observers.push(observe('soft-navigation', handleNavigations));
++    }
++  }
++
++  function flush() {
++    for (const subscription of observers) {
++      if (subscription) subscription.handler(subscription.observer.takeRecords());
++    }
++    finalizeNavigation();
++    clicks.clear();
++    interactions.clear();
++    paints.clear();
++  }
++
++  document.addEventListener('visibilitychange', () => {
++    if (document.visibilityState === 'hidden') flush();
++  });
++  window.addEventListener('pagehide', flush);
++})();
+diff --git a/tests/performance-monitor.test.cjs b/tests/performance-monitor.test.cjs
+new file mode 100644
+index 0000000..f237d92
+--- /dev/null
++++ b/tests/performance-monitor.test.cjs
+@@ -0,0 +1,119 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const source = readFileSync(require.resolve('../performance-monitor.js'), 'utf8');
++function setup(types = ['event', 'interaction-contentful-paint', 'soft-navigation']) {
++  const observers = new Map();
++  const documentListeners = new Map();
++  const windowListeners = new Map();
++  const emitted = [];
++  class Element {
++    constructor(control = 'navigation', label = 'Menu') {
++      this.dataset = { performance: control };
++      this.textContent = label;
++    }
++    closest() { return this; }
++    querySelector() { return null; }
++  }
++  class PerformanceObserver {
++    static supportedEntryTypes = types;
++    constructor(callback) { this.callback = callback; this.pending = []; }
++    observe(options) { this.options = options; observers.set(options.type, this); }
++    takeRecords() { return this.pending.splice(0); }
++  }
++  const document = {
++    visibilityState: 'visible',
++    addEventListener: (name, callback) => documentListeners.set(name, callback),
++  };
++  const window = {
++    addEventListener: (name, callback) => windowListeners.set(name, callback),
++    dispatchEvent: event => emitted.push(event.detail),
++  };
++  vm.runInNewContext(source, {
++    window, document, Element, PerformanceObserver, URL,
++    location: { href: 'https://daily-grind.example/' },
++    CustomEvent: class { constructor(name, options) { Object.assign(this, options); } },
++  });
++  const deliver = (type, ...entries) => observers.get(type).callback({ getEntries: () => entries });
++  const click = (id, control = 'navigation') => {
++    const target = new Element(control);
++    documentListeners.get('click')({ target, timeStamp: id });
++    return { name: 'click', startTime: id, interactionId: id, target: null };
++  };
++  const paint = (id, duration = 50, size = 100) => ({
++    interactionId: id, startTime: id, duration, navigationId: 'old',
++    largestContentfulPaint: { size },
++  });
++  const nav = (id, seed = null) => ({
++    name: 'https://daily-grind.example/menu?private=value#item',
++    interactionId: id, navigationId: id, duration: 20,
++    getLargestInteractionContentfulPaint: () => seed,
++  });
++  const hide = () => {
++    document.visibilityState = 'hidden';
++    documentListeners.get('visibilitychange')();
++  };
++  return { observers, deliver, click, paint, nav, hide, window, emitted, windowListeners };
++}
++
++test('unsupported browsers do not register unsupported observers', () => {
++  const app = setup([]);
++  assert.equal(app.observers.size, 0);
++  assert.equal(app.window.dailyGrindPerformance.support.interactionPaint, false);
++  app.hide();
++  assert.equal(app.emitted.length, 0);
++});
++
++test('attributes each homepage control even when paints arrive before Event Timing', () => {
++  const app = setup();
++  for (const [index, control] of ['navigation', 'order-now', 'seasonal-maple-oat-latte',
++    'seasonal-dark-roast-espresso', 'seasonal-cold-brew'].entries()) {
++    const id = index + 1;
++    const event = app.click(id, control);
++    app.deliver('interaction-contentful-paint', app.paint(id, 75));
++    app.deliver('event', event);
++    assert.equal(app.emitted.at(-1).control, control);
++    assert.equal(app.emitted.at(-1).duration, 75);
++  }
++  for (const observer of app.observers.values()) assert.equal(observer.options.buffered, true);
++  app.deliver('interaction-contentful-paint', app.paint(99));
++  assert.equal(app.emitted.length, 5);
++});
++
++test('soft navigation seeds early LCP and matches later paints by interactionId', () => {
++  const app = setup();
++  app.deliver('soft-navigation', app.nav(1, app.paint(1, 45)));
++  app.deliver('interaction-contentful-paint', app.paint(2, 900, 1000), app.paint(1, 70, 200));
++  app.deliver('soft-navigation', app.nav(3, app.paint(3, 30)));
++  assert.equal(app.emitted[0].lcpDuration, 70);
++  assert.equal(app.emitted[0].path, '/menu');
++  app.hide();
++  assert.equal(app.emitted[1].lcpDuration, 30);
++  app.windowListeners.get('pagehide')();
++  assert.equal(app.emitted.length, 2);
++});
++
++test('drains queued entries on hide and continues monitoring after page restoration', () => {
++  const app = setup();
++  app.observers.get('interaction-contentful-paint').pending.push(app.paint(1, 80, 200));
++  app.observers.get('soft-navigation').pending.push(app.nav(1));
++  app.hide();
++  assert.equal(app.emitted[0].lcpDuration, 80);
++  app.deliver('soft-navigation', app.nav(2));
++  app.hide();
++  assert.equal(app.emitted[1].lcpDuration, null);
++});
++
++test('report history is bounded and returned snapshots cannot mutate it', () => {
++  const app = setup();
++  app.deliver('event', app.click(1));
++  for (let i = 0; i < 110; i++) app.deliver('interaction-contentful-paint', app.paint(1, i));
++  const reports = app.window.dailyGrindPerformance.getReports();
++  assert.equal(reports.length, 100);
++  assert.equal(reports[0].duration, 10);
++  assert.equal(Object.isFrozen(reports[0]), true);
++  reports.pop();
++  assert.equal(app.window.dailyGrindPerformance.getReports().length, 100);
++});

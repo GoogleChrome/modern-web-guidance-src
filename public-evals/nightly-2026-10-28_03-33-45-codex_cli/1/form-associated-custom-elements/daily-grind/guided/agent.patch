@@ -1,0 +1,263 @@
+diff --git a/index.html b/index.html
+index 66c9173..51da58b 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,45 @@
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      margin-top: 60px;
++      padding: clamp(24px, 5vw, 48px);
++      background: #f3eeea;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      display: grid;
++      grid-template-columns: 1fr 1.3fr;
++      gap: 40px;
++      align-items: start;
++    }
++
++    .eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
++    .feedback h2 { font-size: 2rem; line-height: 1.2; margin: 12px 0 16px; }
++    .feedback-intro p:last-child { color: #6b5750; }
++    .feedback form > fieldset { border: 0; padding: 0; min-width: 0; }
++    .feedback form > fieldset > legend { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
++    .form-field { display: block; margin-bottom: 22px; }
++    .form-field > span { display: block; font-size: .95rem; font-weight: 600; margin-bottom: 6px; }
++    .feedback select, .feedback textarea {
++      width: 100%; padding: 12px; border: 1px solid #ad9a91; border-radius: 5px;
++      background: white; color: var(--text); font: inherit;
++    }
++    .feedback textarea { resize: vertical; min-height: 100px; }
++    .feedback :is(select, textarea, button):focus-visible { outline: 3px solid #9b6027; outline-offset: 3px; }
++    star-rating { margin-bottom: 22px; }
++    .form-actions { display: flex; flex-wrap: wrap; gap: 12px; }
++    .feedback button { font: inherit; cursor: pointer; border: 1px solid var(--primary); margin: 0; }
++    .feedback button[type="reset"] { color: var(--primary); background: transparent; }
++    .feedback button:disabled { opacity: .5; cursor: not-allowed; }
++    .form-note { font-size: .8rem; color: #6b5750; margin-top: 14px; }
++    #feedback-status:not(:empty) { margin-top: 16px; padding: 12px; background: white; border-left: 3px solid var(--primary); }
++    @media (max-width: 700px) {
++      .feedback { grid-template-columns: 1fr; gap: 24px; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +234,51 @@
+         </div>
+       </div>
+     </section>
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <div class="feedback-intro">
++        <p class="eyebrow">Your cup. Your say.</p>
++        <h2 id="feedback-heading">How was your<br>daily grind?</h2>
++        <p>From the first sip to the last drop, we'd love to hear what you think. Help us make your next cup even better.</p>
++      </div>
++      <form id="coffee-feedback">
++        <fieldset>
++          <legend>A little coffee feedback</legend>
++          <label class="form-field">
++            <span>What did you sip? (required)</span>
++            <select name="coffee" required>
++              <option value="">Choose your coffee</option>
++              <option>Maple Oat Latte</option>
++              <option>Dark Roast Espresso</option>
++              <option>Cold Brew</option>
++              <option>Something else</option>
++            </select>
++          </label>
++          <star-rating name="rating" required>
++            <label class="form-field" data-rating-fallback>
++              <span>How was your coffee? (required)</span>
++              <select name="rating" required>
++                <option value="">Choose your rating</option>
++                <option value="1">1 star</option>
++                <option value="2">2 stars</option>
++                <option value="3">3 stars</option>
++                <option value="4">4 stars</option>
++                <option value="5">5 stars</option>
++              </select>
++            </label>
++          </star-rating>
++          <label class="form-field">
++            <span>Anything else? (optional)</span>
++            <textarea name="comments" maxlength="1000" rows="3" placeholder="Tell us what made your cup special…"></textarea>
++          </label>
++          <div class="form-actions">
++            <button class="btn" id="feedback-submit" type="submit">Submit feedback</button>
++            <button class="btn" type="reset">Start fresh</button>
++          </div>
++          <p class="form-note">Demo form · Feedback is not sent or stored.</p>
++        </fieldset>
++        <p id="feedback-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +291,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./star-rating.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/star-rating.js b/star-rating.js
+new file mode 100644
+index 0000000..b2b7709
+--- /dev/null
++++ b/star-rating.js
+@@ -0,0 +1,147 @@
++/** A single-value, form-associated rating control. */
++class StarRating extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['value', 'required'];
++
++  #internals;
++  #value = '';
++  #dirty = false;
++  #disabled = false;
++  #radios;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.innerHTML = `
++      <style>
++        :host { display: block; }
++        fieldset { margin: 0; padding: 0; border: 0; }
++        legend { padding: 0; font-weight: 600; font-size: .95rem; }
++        .stars { display: flex; gap: .35rem; margin: .5rem 0; width: fit-content; }
++        label { position: relative; cursor: pointer; border-radius: 6px; }
++        input { position: absolute; width: 1px; height: 1px; opacity: 0; }
++        span { display: grid; place-items: center; width: 48px; height: 48px;
++          border: 1px solid #d7ccc8; border-radius: 6px; font-size: 2.1rem;
++          line-height: 1; color: #79645a; background: #fff; }
++        label[data-filled] span { color: #70421a; background: #fff0d7; border-color: #c09253; }
++        input:focus-visible + span { outline: 3px solid #4e342e; outline-offset: 3px; }
++        label:hover span { border-color: #4e342e; }
++        input:disabled + span { opacity: .45; cursor: not-allowed; }
++        p { margin: .25rem 0 0; font-size: .85rem; color: #6b5750; }
++        :host([data-show-error]:invalid) .stars { outline: 2px solid #a02f25; outline-offset: 4px; border-radius: 6px; }
++      </style>
++      <fieldset aria-describedby="rating-help">
++        <legend>How was your coffee?<span id="required-label"></span></legend>
++        <div class="stars">
++          ${Array.from({ length: 5 }, (_, index) => {
++            const value = index + 1;
++            return `<label><input type="radio" name="stars" value="${value}" aria-label="${value} ${value === 1 ? 'star' : 'stars'}"><span aria-hidden="true">☆</span></label>`;
++          }).join('')}
++        </div>
++        <p id="rating-help">Choose 1–5 stars. Use arrow keys to change your rating.</p>
++        <p id="selection" aria-live="polite">No rating selected</p>
++      </fieldset>`;
++    this.#radios = [...root.querySelectorAll('input')];
++    // Emit the custom control's events after synchronizing its form value.
++    root.addEventListener('input', event => event.stopPropagation());
++    root.addEventListener('change', event => {
++      event.stopPropagation();
++      if (this.#disabled || !this.#radios.includes(event.target)) return;
++      this.value = event.target.value;
++      this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++      this.dispatchEvent(new Event('change', { bubbles: true }));
++    });
++    this.addEventListener('invalid', () => this.setAttribute('data-show-error', ''));
++  }
++
++  connectedCallback() {
++    // The native select keeps the form usable before upgrade or without FACE.
++    this.querySelector('[data-rating-fallback]')?.remove();
++    this.#sync();
++  }
++
++  attributeChangedCallback(name) {
++    if (name === 'value' && !this.#dirty) this.#value = this.#normalize(this.defaultValue);
++    this.#sync();
++  }
++
++  #normalize(value) { return /^[1-5]$/.test(String(value)) ? String(value) : ''; }
++
++  #sync() {
++    this.#internals.setFormValue(this.#value, this.#value);
++    for (const radio of this.#radios) {
++      radio.checked = radio.value === this.#value;
++      radio.disabled = this.#disabled;
++      const filled = Number(radio.value) <= Number(this.#value);
++      radio.parentElement.toggleAttribute('data-filled', filled);
++      radio.nextElementSibling.textContent = filled ? '★' : '☆';
++    }
++    this.shadowRoot.querySelector('#required-label').textContent = this.required ? ' (required)' : '';
++    this.shadowRoot.querySelector('#selection').textContent = this.#value
++      ? `${this.#value} out of 5 stars` : 'No rating selected';
++    this.#internals.setValidity(
++      this.required && !this.#value ? { valueMissing: true } : {},
++      this.required && !this.#value ? 'Please choose a coffee rating.' : '',
++      this.#radios[0],
++    );
++    if (this.#value) this.removeAttribute('data-show-error');
++  }
++
++  get value() { return this.#value; }
++  set value(value) {
++    this.#dirty = true;
++    this.#value = this.#normalize(value);
++    this.#sync();
++  }
++  get defaultValue() { return this.getAttribute('value') ?? ''; }
++  set defaultValue(value) { this.setAttribute('value', value); }
++  get required() { return this.hasAttribute('required'); }
++  set required(value) { this.toggleAttribute('required', Boolean(value)); }
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(value) { this.toggleAttribute('disabled', Boolean(value)); }
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(value) { this.setAttribute('name', value); }
++  get form() { return this.#internals.form; }
++  get type() { return this.localName; }
++  get validity() { return this.#internals.validity; }
++  get validationMessage() { return this.#internals.validationMessage; }
++  get willValidate() { return this.#internals.willValidate; }
++  get labels() { return this.#internals.labels; }
++  checkValidity() { return this.#internals.checkValidity(); }
++  reportValidity() { return this.#internals.reportValidity(); }
++  focus(options) { (this.#radios.find(radio => radio.checked) ?? this.#radios[0]).focus(options); }
++
++  formResetCallback() {
++    this.#dirty = false;
++    this.#value = this.#normalize(this.defaultValue);
++    this.removeAttribute('data-show-error');
++    this.#sync();
++  }
++
++  formDisabledCallback(disabled) {
++    // Never reflect inherited fieldset state onto the host's disabled attribute.
++    this.#disabled = disabled;
++    this.#sync();
++  }
++
++  formStateRestoreCallback(state) {
++    this.value = typeof state === 'string' ? state : '';
++  }
++}
++
++if ('attachInternals' in HTMLElement.prototype &&
++    'ElementInternals' in window && 'setFormValue' in ElementInternals.prototype) {
++  customElements.define('star-rating', StarRating);
++}
++
++const form = document.querySelector('#coffee-feedback');
++const status = document.querySelector('#feedback-status');
++form.addEventListener('submit', event => {
++  event.preventDefault();
++  const data = new FormData(form);
++  // The rating is included by ElementInternals, without a proxy input.
++  status.textContent = `Thank you! You rated your ${data.get('coffee')} ${data.get('rating')} out of 5 stars. This demo does not send or store feedback.`;
++});
++form.addEventListener('reset', () => { status.textContent = ''; });
++form.addEventListener('input', () => { status.textContent = ''; });

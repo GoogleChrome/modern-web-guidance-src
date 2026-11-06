@@ -1,0 +1,55 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,51 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
++
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: auto;
++      scrollbar-gutter: stable;
+     }
+ 
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-thumb: #000000;
++        --scrollbar-track: #ffffff;
++      }
++    }
++
++    /* Let the user's system palette control forced-colors scrollbars. */
++    @media (forced-colors: active) {
++      :root {
++        scrollbar-color: auto;
++      }
++    }
++
++    /* Older WebKit browsers need explicit scrollbar dimensions. */
++    @supports not (scrollbar-color: auto) {
++      @media (forced-colors: none) {
++        :root::-webkit-scrollbar {
++          width: 16px;
++          height: 16px;
++        }
++
++        :root::-webkit-scrollbar-thumb {
++          background-color: var(--scrollbar-thumb);
++          border: 2px solid var(--scrollbar-track);
++          border-radius: 8px;
++        }
++
++        :root::-webkit-scrollbar-track,
++        :root::-webkit-scrollbar-corner {
++          background-color: var(--scrollbar-track);
++        }
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;

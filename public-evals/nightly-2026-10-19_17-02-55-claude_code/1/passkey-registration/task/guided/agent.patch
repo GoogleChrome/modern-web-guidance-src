@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,8 +194,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="passkey-promo card">
++      <h2>Sign in faster with a passkey</h2>
++      <p>Skip the password next time. Use your fingerprint, face, or screen lock instead.</p>
++      <button type="button" class="btn" data-testid="register-button" id="register-button">Create passkey</button>
++      <p id="passkey-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +213,113 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const button = document.getElementById('register-button');
++      const status = document.getElementById('passkey-status');
++
++      const setStatus = (message) => { status.textContent = message; };
++
++      async function postJSON(url, body) {
++        return fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(body),
++        });
++      }
++
++      // Tell the passkey provider to drop a credential the server did not accept.
++      async function signalOrphan(rpId, credentialId) {
++        if (!window.PublicKeyCredential?.signalUnknownCredential) return;
++        try {
++          await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId });
++        } catch (err) {
++          console.warn('signalUnknownCredential failed:', err);
++        }
++      }
++
++      async function registerPasskey() {
++        button.disabled = true;
++        setStatus('');
++        try {
++          // 1. Fetch creation options (challenge is generated and stored server-side).
++          let optionsJSON;
++          try {
++            const res = await postJSON('/api/register/options', { promotion: true });
++            if (!res.ok) throw new Error(`Options request failed: ${res.status}`);
++            optionsJSON = await res.json();
++          } catch (err) {
++            console.error(err);
++            setStatus('Could not start passkey creation. Please try again.');
++            return;
++          }
++
++          // 2. Create the credential with the native WebAuthn API.
++          let credential;
++          try {
++            const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++            credential = await navigator.credentials.create({ publicKey });
++          } catch (err) {
++            if (err.name === 'InvalidStateError') {
++              setStatus('A passkey already exists for this account.');
++            } else if (err.name === 'NotAllowedError') {
++              setStatus('Passkey creation was cancelled or timed out.');
++            } else if (err.name === 'AbortError') {
++              setStatus('Passkey creation was aborted.');
++            } else if (err.name === 'SecurityError') {
++              console.error('Secure context or RP ID mismatch:', err);
++              setStatus('Passkeys are not available on this site configuration.');
++            } else {
++              console.error(err);
++              setStatus('Could not create a passkey.');
++            }
++            return; // Don't signal for ordinary WebAuthn failures/cancellations.
++          }
++
++          // 3. Send the attestation to the server for verification.
++          const encoded = credential.toJSON();
++          const rpId = optionsJSON.rp?.id ?? location.hostname;
++          try {
++            const res = await postJSON('/api/register/verify', encoded);
++            if (!res.ok) {
++              await signalOrphan(rpId, encoded.id);
++              setStatus('Passkey verification failed. Please try again.');
++              return;
++            }
++            setStatus('Passkey created successfully.');
++          } catch (err) {
++            console.error('Server verification network failure:', err);
++            await signalOrphan(rpId, encoded.id);
++            setStatus('Network error while verifying your passkey.');
++          }
++        } finally {
++          button.disabled = false;
++        }
++      }
++
++      async function init() {
++        const supported = window.isSecureContext &&
++          window.PublicKeyCredential &&
++          PublicKeyCredential.parseCreationOptionsFromJSON;
++        let capable = !!supported;
++        if (capable && PublicKeyCredential.getClientCapabilities) {
++          const caps = await PublicKeyCredential.getClientCapabilities();
++          capable = !!(caps.passkeyPlatformAuthenticator && caps.conditionalGet);
++        }
++        if (!capable) {
++          button.disabled = true;
++          setStatus('Passkeys are not supported on this device or browser.');
++          return;
++        }
++        button.addEventListener('click', registerPasskey);
++      }
++
++      init();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

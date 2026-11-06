@@ -1,0 +1,1301 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..9934840 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,5 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++.data/
+diff --git a/README.md b/README.md
+index 4479b53..fbf9585 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,46 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Passkeys and account settings
++
++Sign in at `/devtools-times/signin`, create an account at `/devtools-times/signup`,
++and manage your account at `/devtools-times/account/settings`. Account creation
++uses the existing password service, then offers optional passkey enrollment.
++Password sign-in remains available for recovery. Passwords are verified by the
++existing service and are never stored in this application.
++
++The same-origin `/api/auth/*` endpoints use server-side Astro sessions and
++SimpleWebAuthn to verify registration and authentication. Challenges are bound
++to the browser session, expire after five minutes, and are consumed once.
++Reauthentication only accepts the signed-in account's passkeys and requires
++user verification. Sensitive account changes require verification within the
++last five minutes; removing a passkey always prompts for verification in the UI.
++
++Deployment configuration:
++
++- Serve over HTTPS (or localhost for development). Set `AUTH_ORIGIN` to the
++  exact public origin, such as `https://news.example.com`, without a path. The
++  hostname becomes the passkey RP ID. If omitted, the request origin is used for
++  local and preview deployments. Passkeys are tied to that hostname.
++- Set `AUTH_STORE_PATH` to a writable, persistent file path. The default is
++  `.data/auth.json`, excluded from Git. It stores user IDs, credential public
++  keys, counters, labels, timestamps, and pending challenges; never private keys.
++- This sample file store serializes operations in **one Node process**. Before
++  deploying multiple workers or replicas, replace `authTransaction` with a
++  shared transactional database and configure a shared Astro session driver.
++  Preserve both credential data and sessions across application restarts.
++- The Node adapter supplies filesystem session storage by default. Use a
++  persistent session driver for your hosting environment; the session cookie
++  is HttpOnly, SameSite=Lax, and Secure in production.
++
++The client uses native WebAuthn APIs with `webauthn-polyfills`, conditional
++autofill, and feature-detected password-manager signals. Known provider names
++and icons are a small local snapshot from the
++[passkey-authenticator-aaguids registry](https://github.com/passkeydeveloper/passkey-authenticator-aaguids).
++Unknown or withheld AAGUIDs use a generic key icon and label. Provider metadata
++is used only for display.
++
++Validation: `pnpm run build` compiles the server and client without starting a
++server. Live password-service responses and authenticator prompts require an
++HTTPS deployment and are not exercised by the build.
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..56896e7 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -17,6 +17,10 @@ export default defineConfig({
+     mode: "standalone",
+   }),
+   output: "server",
++  session: {
++    ttl: 60 * 60 * 24,
++    cookie: { sameSite: 'lax', path: '/devtools-times/' },
++  },
+ 
+   image: {
+     service: {
+@@ -44,4 +48,4 @@ export default defineConfig({
+       }
+     ]
+   }
+-});
+\ No newline at end of file
++});
+diff --git a/package.json b/package.json
+index 820c637..727421e 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,7 @@
+     "@astrojs/node": "^11.1.8",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -20,7 +21,8 @@
+     "react": "^19.3.1",
+     "react-dom": "^19.3.1",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "webauthn-polyfills": "^0.1.7"
+   },
+   "devDependencies": {
+     "@tailwindcss/typography": "^0.5.20"
+diff --git a/src/components/AccountSettings.tsx b/src/components/AccountSettings.tsx
+new file mode 100644
+index 0000000..2860d1b
+--- /dev/null
++++ b/src/components/AccountSettings.tsx
+@@ -0,0 +1,141 @@
++import { useEffect, useRef, useState } from 'react';
++import { ArrowRightStartOnRectangleIcon, CheckCircleIcon, KeyIcon, PlusIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
++import { ApiError, authRequest, passkeyCapabilities, passkeyError, registerPasskey, syncPasskeys, type AccountData } from '../lib/passkeys';
++import providers from '../lib/passkey-providers.json';
++import ReauthenticationDialog from './ReauthenticationDialog';
++
++type PendingAction = { title: string; description: string; run: () => Promise<void> };
++const providerMap = providers as Record<string, { name: string; icon?: string }>;
++const date = (value: number) => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(value);
++
++export default function AccountSettings() {
++  const [data, setData] = useState<AccountData | null>(null);
++  const [error, setError] = useState('');
++  const [notice, setNotice] = useState('');
++  const [busy, setBusy] = useState(false);
++  const [capabilities, setCapabilities] = useState({ supported: false, create: false, conditional: false });
++  const [displayName, setDisplayName] = useState('');
++  const [editing, setEditing] = useState<string | null>(null);
++  const [keyName, setKeyName] = useState('');
++  const [pending, setPending] = useState<PendingAction | null>(null);
++  const [removeId, setRemoveId] = useState<string | null>(null);
++  const removeDialog = useRef<HTMLDialogElement>(null);
++  const request = useRef<AbortController | null>(null);
++
++  async function refresh() {
++    const next = await authRequest<AccountData>('session');
++    setData(next);
++    await syncPasskeys(next);
++    return next;
++  }
++
++  useEffect(() => {
++    let active = true;
++    void authRequest<AccountData>('session').then(next => {
++      if (!active) return;
++      setData(next); setDisplayName(next.user?.displayName || '');
++      void syncPasskeys(next);
++    }).catch(error => { if (active) setError(passkeyError(error)); });
++    void passkeyCapabilities().then(next => { if (active) setCapabilities(next); }).catch(() => {});
++    return () => { active = false; request.current?.abort(); };
++  }, []);
++  useEffect(() => { if (removeId) removeDialog.current?.showModal(); }, [removeId]);
++
++  async function perform(run: () => Promise<void>) {
++    setBusy(true); setError(''); setNotice('');
++    try { await run(); }
++    catch (error) {
++      if (error instanceof ApiError && error.code === 'REAUTH_REQUIRED') {
++        setPending({ title: 'Verify it’s you', description: 'For your security, verify your identity before changing your account.', run });
++      } else if (error instanceof ApiError && error.status === 401) {
++        window.location.assign(`${import.meta.env.BASE_URL}signin`);
++      } else setError(passkeyError(error));
++    } finally { setBusy(false); }
++  }
++
++  async function addPasskey() {
++    request.current = new AbortController();
++    await registerPasskey(false, request.current.signal);
++    await refresh(); setNotice('Your new passkey is ready. You can rename it below.');
++  }
++
++  async function renamePasskey(id: string) {
++    const next = await authRequest<AccountData>('passkeys/rename', { id, name: keyName });
++    setData(next); setEditing(null); setNotice('Passkey name updated.');
++  }
++
++  async function saveProfile() {
++    const next = await authRequest<AccountData>('profile', { displayName });
++    setData(next); setDisplayName(next.user!.displayName);
++    await syncPasskeys(next, true); setNotice('Your account details have been saved.');
++  }
++
++  function confirmRemove() {
++    const id = removeId!;
++    removeDialog.current?.close();
++    setRemoveId(null);
++    setPending({
++      title: 'Verify to remove this passkey',
++      description: 'Confirm your identity to remove this sign-in method from your account. Your password will still work.',
++      run: async () => {
++        const next = await authRequest<AccountData>('passkeys/delete', { id });
++        setData(next); await syncPasskeys(next);
++        setNotice('Passkey removed. You can also delete its saved copy from your password manager.');
++      },
++    });
++  }
++
++  if (!data) return <div className="settings-shell"><h1 className="settings-title">Account settings</h1>{error ? <><p className="account-notice account-error" role="alert">{error}</p><button className="account-button account-button-secondary" onClick={() => window.location.reload()}>Try again</button></> : <p role="status">Loading your account…</p>}</div>;
++  if (!data.user) return <section className="auth-card"><p className="account-eyebrow">Your account</p><h1 className="auth-title">A place of your own.</h1><p className="auth-description">Sign in to manage your account and passkeys.</p><a className="account-button account-button-primary w-full" href={`${import.meta.env.BASE_URL}signin`}>Sign in</a><p className="auth-bottom">New to the Times? <a href={`${import.meta.env.BASE_URL}signup`}>Create an account</a></p></section>;
++
++  return <div className="settings-shell">
++    <div className="settings-heading"><div><p className="account-eyebrow">The DevTools Times / Your account</p><h1 className="settings-title">Account settings</h1><p className="text-gray-600 mt-2">Your details. Your security. All in one place.</p></div><button className="account-button account-button-quiet" disabled={busy} onClick={() => void perform(async () => { await authRequest('logout', {}); window.location.assign(import.meta.env.BASE_URL); })}><ArrowRightStartOnRectangleIcon className="size-4" aria-hidden="true" />Sign out</button></div>
++    <div aria-live="polite">{notice && <p className="account-notice account-success"><CheckCircleIcon className="size-5 shrink-0" aria-hidden="true" />{notice}</p>}</div>
++    {error && <p className="account-notice account-error" role="alert">{error}</p>}
++    <div className="settings-grid">
++      <nav aria-label="Account settings" className="settings-nav"><a href="#profile">Account details</a><a href="#passkeys">Passkeys <span>{data.passkeys.length}</span></a><a href="#security">Security</a></nav>
++      <div className="settings-content">
++        <section className="settings-section" id="profile" aria-labelledby="profile-title">
++          <div className="settings-section-heading"><div><h2 id="profile-title">Account details</h2><p>The personal side of your Times account.</p></div></div>
++          <form className="account-form" onSubmit={e => { e.preventDefault(); void perform(saveProfile); }}>
++            <div><label htmlFor="account-username">Username</label><input id="account-username" autoComplete="username" value={data.user.username} readOnly /><p className="input-help">Your username identifies your account and cannot be changed.</p></div>
++            <div><label htmlFor="display-name">Display name</label><input id="display-name" name="displayName" autoComplete="nickname" maxLength={80} required value={displayName} onChange={e => setDisplayName(e.target.value)} disabled={busy} /></div>
++            <div><button className="account-button account-button-secondary" disabled={busy || displayName.trim() === data.user.displayName}>Save changes</button></div>
++          </form>
++        </section>
++        <section className="settings-section" id="passkeys" aria-labelledby="passkeys-title">
++          <div className="settings-section-heading"><div><div className="flex items-center gap-2"><h2 id="passkeys-title">Passkeys</h2><span className="account-badge">Recommended</span></div><p>A simpler, safer way to sign in.</p></div><KeyIcon className="size-7 shrink-0 text-gray-500" aria-hidden="true" /></div>
++          <p className="settings-copy">Skip the password. Use your fingerprint, face, or device PIN to securely sign in with a passkey saved in your password manager. You can also use a security key.</p>
++          {data.passkeys.length === 0 ? <div className="passkey-empty"><KeyIcon className="size-8 mx-auto mb-3 text-gray-500" aria-hidden="true" /><h3>No passkeys yet</h3><p>Add your first passkey and make your next sign-in easier.</p></div> : <ul className="passkey-list">{data.passkeys.map(key => {
++            const provider = providerMap[key.aaguid];
++            return <li className="passkey-row" key={key.id}>
++              <div className="provider-icon">{provider?.icon ? <img src={provider.icon} alt="" width={24} height={24} /> : <KeyIcon className="size-6" aria-hidden="true" />}</div>
++              <div className="passkey-details">
++                {editing === key.id ? <form className="account-form passkey-rename" onSubmit={e => { e.preventDefault(); void perform(() => renamePasskey(key.id)); }}>
++                  <label htmlFor={`name-${key.id}`}>Passkey name</label><input id={`name-${key.id}`} value={keyName} onChange={e => setKeyName(e.target.value)} maxLength={60} required autoFocus disabled={busy} />
++                  <div className="flex gap-2"><button className="account-button account-button-secondary" disabled={busy}>Save name</button><button className="account-button account-button-quiet" type="button" onClick={() => setEditing(null)} disabled={busy}>Cancel</button></div>
++                </form> : <><h3>{key.name}</h3><p>{provider?.name || 'Unknown passkey provider'} · {key.backedUp ? 'Synced' : key.deviceType === 'multiDevice' ? 'Sync-capable' : 'Device-bound'}</p><p>Added <time dateTime={new Date(key.registeredAt).toISOString()}>{date(key.registeredAt)}</time> <span aria-hidden="true">·</span> {key.lastUsedAt ? <>Last used <time dateTime={new Date(key.lastUsedAt).toISOString()}>{date(key.lastUsedAt)}</time></> : 'Not used yet'}</p></>}
++              </div>
++              {editing !== key.id && <div className="passkey-actions"><button type="button" onClick={() => { setEditing(key.id); setKeyName(key.name); }} disabled={busy} aria-label={`Rename ${key.name}`}>Rename</button><button type="button" className="account-danger-text" onClick={() => setRemoveId(key.id)} disabled={busy} aria-label={`Remove ${key.name}`}>Remove</button></div>}
++            </li>;
++          })}</ul>}
++          <button className="account-button account-button-primary" disabled={busy || !capabilities.create} onClick={() => void perform(addPasskey)}><PlusIcon className="size-4" aria-hidden="true" />{busy ? 'Please wait…' : 'Add a passkey'}</button>
++          {!capabilities.create && <p className="input-help">Passkey creation isn’t available in this browser or on this device. Your password still works.</p>}
++          <p className="input-help mt-3">Your biometric information never leaves your device.</p>
++        </section>
++        <section className="settings-section" id="security" aria-labelledby="security-title">
++          <div className="settings-section-heading"><div><h2 id="security-title">Identity verification</h2><p>An extra check for important account changes.</p></div><ShieldCheckIcon className="size-7 text-gray-500" aria-hidden="true" /></div>
++          <p className="settings-copy">We’ll ask you to verify your identity before sensitive changes. You can use a passkey or your current password.</p>
++          <button type="button" className="account-button account-button-secondary" disabled={busy} onClick={() => setPending({ title: 'Verify your identity', description: `Confirm it’s you, ${data.user!.displayName}. Verification is valid for five minutes.`, run: async () => { await refresh(); setNotice('Identity verified. You can make account changes for the next five minutes.'); } })}>Verify identity</button>
++        </section>
++        <details className="passkey-faq"><summary>What if I lose access to my passkey?</summary><p>You can always sign in with your username and password. We recommend adding another passkey on a second device or in another password manager. Remove a lost device’s passkey from this page.</p></details>
++      </div>
++    </div>
++    <dialog ref={removeDialog} className="account-dialog" aria-labelledby="remove-title" aria-describedby="remove-description" onClose={() => setRemoveId(null)}>
++      <KeyIcon className="size-8 mb-4" aria-hidden="true" /><h2 id="remove-title">Remove this passkey?</h2>
++      <p id="remove-description" className="auth-description">“{data.passkeys.find(p => p.id === removeId)?.name}” will no longer sign you in. {data.passkeys.length === 1 ? 'This is your last passkey. You can still use your password.' : 'Your other passkeys and password will still work.'} We’ll verify your identity first.</p>
++      <form method="dialog" className="flex flex-wrap justify-end gap-3"><button className="account-button account-button-secondary" autoFocus>Keep passkey</button><button type="button" className="account-button account-button-danger" onClick={confirmRemove}>Continue to verification</button></form>
++    </dialog>
++    {pending && <ReauthenticationDialog title={pending.title} description={pending.description} username={data.user.username} canUsePasskey={capabilities.supported && data.passkeys.length > 0} onDismiss={() => setPending(null)} onVerified={() => { const action = pending.run; setPending(null); void perform(action); }} />}
++  </div>;
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..748d5d6 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -10,6 +10,7 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
++const signedIn = Boolean(await Astro.session?.get('auth'));
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+@@ -25,6 +26,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        {signedIn ? <a href={`${baseUrl}account/settings`} class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700">Your account</a> : <>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+@@ -39,6 +41,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         >
+           Sign in
+         </a>
++        </>}
+       </div>
+     </div>
+   </div>
+diff --git a/src/components/ReauthenticationDialog.tsx b/src/components/ReauthenticationDialog.tsx
+new file mode 100644
+index 0000000..d562486
+--- /dev/null
++++ b/src/components/ReauthenticationDialog.tsx
+@@ -0,0 +1,49 @@
++import { useEffect, useRef, useState } from 'react';
++import { KeyIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
++import { authenticatePasskey, authRequest, passkeyError } from '../lib/passkeys';
++
++export default function ReauthenticationDialog({ title, description, username, canUsePasskey, onVerified, onDismiss }: {
++  title: string; description: string; username: string; canUsePasskey: boolean;
++  onVerified: () => void; onDismiss: () => void;
++}) {
++  const dialog = useRef<HTMLDialogElement>(null);
++  const request = useRef<AbortController | null>(null);
++  const [password, setPassword] = useState('');
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  useEffect(() => {
++    const element = dialog.current!;
++    element.showModal();
++    return () => { request.current?.abort(); element.close(); };
++  }, []);
++
++  async function verify(method: 'passkey' | 'password') {
++    setBusy(true); setError('');
++    const controller = new AbortController();
++    request.current = controller;
++    try {
++      if (method === 'passkey') await authenticatePasskey('reauthentication', false, controller.signal);
++      else await authRequest('password/reauthenticate', { password }, controller.signal);
++      if (!controller.signal.aborted) { setPassword(''); onVerified(); }
++    } catch (error) {
++      if (!controller.signal.aborted) { setError(passkeyError(error)); setBusy(false); }
++    }
++  }
++
++  return <dialog ref={dialog} className="account-dialog" aria-labelledby="verify-title" aria-describedby="verify-description" onClose={onDismiss}>
++    <ShieldCheckIcon className="size-9 mb-4" aria-hidden="true" />
++    <h2 id="verify-title">{title}</h2>
++    <p id="verify-description" className="auth-description">{description}</p>
++    {error && <p className="account-notice account-error" role="alert">{error}</p>}
++    {canUsePasskey && <>
++      <button type="button" className="account-button account-button-primary w-full" disabled={busy} onClick={() => void verify('passkey')}><KeyIcon className="size-5" aria-hidden="true" />{busy ? 'Verifying…' : 'Verify with a passkey'}</button>
++      <div className="auth-divider"><span>or use your password</span></div>
++    </>}
++    <form className="account-form" onSubmit={e => { e.preventDefault(); void verify('password'); }} aria-busy={busy}>
++      <input type="hidden" name="username" autoComplete="username" value={username} />
++      <div><label htmlFor="reauth-password">Current password</label><input type="password" id="reauth-password" name="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required disabled={busy} /></div>
++      <button className="account-button account-button-secondary w-full" type="submit" disabled={busy}>{busy ? 'Verifying…' : 'Verify with password'}</button>
++    </form>
++    <form method="dialog" className="mt-3"><button type="submit" className="account-button account-button-quiet w-full" autoFocus>Cancel</button></form>
++  </dialog>;
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..9ba0ee8 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,99 +1,86 @@
+-import React, { useState } from 'react';
++import { useEffect, useRef, useState } from 'react';
++import { KeyIcon } from '@heroicons/react/24/outline';
++import { accountUrl, authenticatePasskey, authRequest, passkeyCapabilities, passkeyError } from '../lib/passkeys';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState('');
++  const [loading, setLoading] = useState<'password' | 'passkey' | null>(null);
++  const [supported, setSupported] = useState<boolean | null>(null);
++  const controller = useRef<AbortController | null>(null);
++  const busy = useRef(false);
++  const conditionalAvailable = useRef(false);
++  const startAutofill = useRef<() => void>(() => {});
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
++  useEffect(() => {
++    let active = true;
++    startAutofill.current = () => {
++      if (busy.current || !conditionalAvailable.current) return;
++      controller.current?.abort();
++      const next = new AbortController();
++      controller.current = next;
++      void authenticatePasskey('authentication', true, next.signal)
++        .then(() => { if (active && !next.signal.aborted) window.location.assign(accountUrl); })
++        .catch(error => {
++          if (active && !next.signal.aborted && !(error instanceof DOMException && ['NotAllowedError', 'AbortError'].includes(error.name))) setError(passkeyError(error));
++        });
++    };
++    void passkeyCapabilities().then(capabilities => {
++      if (!active) return;
++      setSupported(capabilities.supported);
++      conditionalAvailable.current = capabilities.conditional;
++      if (capabilities.conditional) startAutofill.current();
++      else startAutofill.current = () => {};
++    }).catch(() => { if (active) setSupported(false); });
++    return () => { active = false; controller.current?.abort(); };
++  }, []);
+ 
++  async function signIn(method: 'password' | 'passkey') {
++    if (busy.current) return;
++    busy.current = true;
++    controller.current?.abort();
++    const next = new AbortController();
++    controller.current = next;
++    setLoading(method);
++    setError('');
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
++      if (method === 'passkey') await authenticatePasskey('authentication', false, next.signal);
++      else await authRequest('login', { username, password }, next.signal);
++      window.location.assign(accountUrl);
++    } catch (error) {
++      setError(passkeyError(error));
++      setLoading(null);
++      busy.current = false;
++      startAutofill.current();
+     }
+-  };
++  }
+ 
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
++    <section className="auth-card" aria-labelledby="signin-title">
++      <p className="account-eyebrow">Your daily perspective</p>
++      <h1 id="signin-title" className="auth-title">Welcome back.</h1>
++      <p className="auth-description">Sign in to make the Times yours.</p>
++      {error && <p className="account-notice account-error" role="alert">{error}</p>}
++      <button className="account-button account-button-primary w-full" type="button" disabled={supported !== true || !!loading} onClick={() => void signIn('passkey')}>
++        <KeyIcon className="size-5" aria-hidden="true" />
++        {loading === 'passkey' ? 'Waiting for your passkey…' : 'Sign in with a passkey'}
++      </button>
++      <p className="auth-helper">{supported === false ? 'Passkeys aren’t available in this browser. You can still sign in with your password.' : 'Use your fingerprint, face, or device PIN. No password needed.'}</p>
++      <div className="auth-divider"><span>or use your password</span></div>
++      <form onSubmit={e => { e.preventDefault(); void signIn('password'); }} className="account-form" aria-busy={!!loading}>
+         <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
++          <label htmlFor="username">Username</label>
++          <input id="username" name="username" autoComplete="username webauthn" autoCapitalize="none" spellCheck={false} autoFocus required maxLength={128} value={username} onChange={e => setUsername(e.target.value)} disabled={!!loading} />
+         </div>
+-        
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
++          <label htmlFor="password">Password</label>
++          <input type="password" id="password" name="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={!!loading} />
+         </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
++        <button type="submit" className="account-button account-button-secondary w-full" disabled={!!loading} data-skip-tracking="true">{loading === 'password' ? 'Signing in…' : 'Sign in with password'}</button>
+       </form>
+-    </div>
++      <p className="auth-bottom">New to the Times? <a href={`${import.meta.env.BASE_URL}signup`}>Create an account</a></p>
++      <p className="auth-footnote">Your passkey stays in your password manager. Your fingerprint and face are never shared with us.</p>
++    </section>
+   );
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..3a8febb 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,72 @@
+-import React, { useState } from 'react';
++import { useEffect, useRef, useState } from 'react';
++import { CheckCircleIcon, KeyIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
++import { accountUrl, authRequest, passkeyCapabilities, passkeyError, registerPasskey } from '../lib/passkeys';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
++  const [error, setError] = useState('');
++  const [created, setCreated] = useState(false);
+   const [loading, setLoading] = useState(false);
++  const [supported, setSupported] = useState(false);
++  const controller = useRef<AbortController | null>(null);
++  const heading = useRef<HTMLHeadingElement>(null);
++  useEffect(() => {
++    let active = true;
++    void passkeyCapabilities().then(c => { if (active) setSupported(c.create); }).catch(() => {});
++    return () => { active = false; controller.current?.abort(); };
++  }, []);
++  useEffect(() => { if (created) heading.current?.focus(); }, [created]);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
++  async function submit(passkey = false) {
++    setError(''); setLoading(true);
++    controller.current = new AbortController();
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++      if (passkey) {
++        await registerPasskey(true, controller.current.signal);
++        window.location.assign(accountUrl);
+       } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
++        await authRequest('register', { username, password }, controller.current.signal);
++        setPassword(''); setCreated(true);
+       }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
++    } catch (error) { setError(passkeyError(error)); }
++    finally { setLoading(false); }
++  }
+ 
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
++    <section className="auth-card" aria-labelledby="signup-title">
++      <p className="account-eyebrow">A little more perspective</p>
++      <h1 id="signup-title" className="auth-title" ref={heading} tabIndex={-1}>{created ? 'Make your next visit easier.' : 'Join the Times.'}</h1>
++      <p className="auth-description">{created ? 'Your account is ready. Add a passkey for a faster, safer way to sign in.' : 'A world of stories. A place to save your favorites.'}</p>
++      {error && <p className="account-notice account-error" role="alert">{error}</p>}
++      {created ? <>
++        <p className="account-notice account-success" role="status"><CheckCircleIcon className="size-5 shrink-0" aria-hidden="true" /> Account created for {username}.</p>
++        <div className="passkey-explainer">
++          <KeyIcon className="size-9 mb-4" aria-hidden="true" />
++          <h2>One less password to remember.</h2>
++          <p>Use your fingerprint, face, or device PIN to sign in. Your passkey is securely saved in your password manager.</p>
+         </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
+-    </div>
++        <button className="account-button account-button-primary w-full" disabled={!supported || loading} onClick={() => void submit(true)}><KeyIcon className="size-5" aria-hidden="true" />{loading ? 'Creating your passkey…' : 'Create a passkey'}</button>
++        {!supported && <p className="auth-helper">Passkey creation isn’t available on this device. You can add one later in account settings.</p>}
++        <a className="account-button account-button-quiet w-full mt-3" href={accountUrl}>Continue {supported ? 'without a passkey' : 'to your account'}</a>
++        <p className="auth-footnote">You can still use your password whenever you need it.</p>
++      </> : <>
++        <div className="signup-passkey-note"><ShieldCheckIcon className="size-6 shrink-0" aria-hidden="true" /><p>Start with a password. Add a passkey in the next step for secure, password-free sign-ins.</p></div>
++        <form onSubmit={e => { e.preventDefault(); void submit(); }} className="account-form" aria-busy={loading}>
++          <div>
++            <label htmlFor="username">Username</label>
++            <input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={128} required value={username} onChange={e => setUsername(e.target.value)} disabled={loading} />
++          </div>
++          <div>
++            <label htmlFor="password">Password</label>
++            <input type="password" id="password" name="password" autoComplete="new-password" minLength={8} pattern="(?=.*[0-9]).{8,}" aria-describedby="password-help" required value={password} onChange={e => setPassword(e.target.value)} disabled={loading} />
++            <p id="password-help" className="input-help">At least 8 characters, including a number.</p>
++          </div>
++          <button type="submit" className="account-button account-button-primary w-full" disabled={loading} data-skip-tracking="true">{loading ? 'Creating your account…' : 'Create account'}</button>
++        </form>
++        <p className="auth-bottom">Already a reader? <a href={`${import.meta.env.BASE_URL}signin`}>Sign in</a></p>
++        <p className="auth-footnote">By creating an account, you agree to our <a href={`${import.meta.env.BASE_URL}legal/terms`}>Terms</a> and <a href={`${import.meta.env.BASE_URL}legal/privacy`}>Privacy Policy</a>.</p>
++      </>}
++    </section>
+   );
+ }
+diff --git a/src/lib/auth-store.ts b/src/lib/auth-store.ts
+new file mode 100644
+index 0000000..9ab7d8b
+--- /dev/null
++++ b/src/lib/auth-store.ts
+@@ -0,0 +1,68 @@
++import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
++import { dirname, resolve } from 'node:path';
++import { randomUUID } from 'node:crypto';
++
++export interface Account {
++  id: string;
++  username: string;
++  displayName: string;
++}
++
++export interface Passkey {
++  id: string;
++  userId: string;
++  publicKey: string;
++  counter: number;
++  transports?: string[];
++  name: string;
++  aaguid: string;
++  deviceType: string;
++  backedUp: boolean;
++  registeredAt: number;
++  lastUsedAt?: number;
++}
++
++export interface Ceremony {
++  challenge: string;
++  sessionId: string;
++  kind: 'registration' | 'authentication' | 'reauthentication';
++  userId?: string;
++  expires: number;
++  requireUserVerification: boolean;
++}
++
++interface AuthStore {
++  users: Account[];
++  passkeys: Passkey[];
++  ceremonies: Record<string, Ceremony>;
++}
++
++// Single-process sample storage. Keep this file on a persistent volume, or replace
++// this transaction with a shared transactional database before scaling out.
++let queue: Promise<unknown> = Promise.resolve();
++export function authTransaction<T>(run: (store: AuthStore) => Promise<T>): Promise<T> {
++  const result = queue.then(async () => {
++    const file = resolve(process.env.AUTH_STORE_PATH || '.data/auth.json');
++    let store: AuthStore;
++    try {
++      store = JSON.parse(await readFile(file, 'utf8'));
++    } catch (error) {
++      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
++      store = { users: [], passkeys: [], ceremonies: {} };
++    }
++    for (const [id, ceremony] of Object.entries(store.ceremonies)) {
++      if (ceremony.expires < Date.now()) delete store.ceremonies[id];
++    }
++    // Persist consumed challenges even when verification fails.
++    try {
++      return await run(store);
++    } finally {
++      await mkdir(dirname(file), { recursive: true, mode: 0o700 });
++      const temporary = `${file}.${randomUUID()}.tmp`;
++      await writeFile(temporary, JSON.stringify(store), { mode: 0o600 });
++      await rename(temporary, file);
++    }
++  });
++  queue = result.catch(() => {});
++  return result;
++}
+diff --git a/src/lib/passkey-providers.json b/src/lib/passkey-providers.json
+new file mode 100644
+index 0000000..cf5f723
+--- /dev/null
++++ b/src/lib/passkey-providers.json
+@@ -0,0 +1,30 @@
++{
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "531126d6-e717-415c-9320-3d9aa6981239": {
++    "name": "Dashlane",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0yNTcuNDc0IDM1OS4yMDlDMjU3LjQ3NCAzNTYuMTg5IDI1NC40NTQgMzUzLjE2OSAyNTAuMjE1IDM1MS45NTlMMTk5LjQxMSAzMzMuMjMxQzE5MC44OTUgMzI5LjYwMSAxODEuMjY0IDMzMy44MzEgMTgxLjI2NCAzMzkuODlWNDc1Ljc3OUMxODEuMjY0IDQ3OC44MDkgMTg0LjI4MyA0ODIuNDM4IDE4Ny4zMDMgNDgzLjY0OEwyMzkuMzI2IDUwMi4zNzZDMjQ3LjE5NSA1MDUuMzk2IDI1Ny40NzQgNTAxLjE2NiAyNTcuNDc0IDQ5NC41MDhWMzU5LjIwOVoiIGZpbGw9IiMwOTM2M0YiLz4KPHBhdGggZD0iTTM1Mi43MzYgMzIxLjEwM0MzNTIuNzM2IDMxOC4wODQgMzQ5LjcxNyAzMTUuMDY0IDM0NS40NzcgMzEzLjg1NEwyOTQuNjc0IDI5NS4xMjZDMjg2LjE1NyAyOTEuNDk2IDI3Ni41MjYgMjk1LjcyNiAyNzYuNTI2IDMwMS43ODVWNDM3LjY3NEMyNzYuNTI2IDQ0MC43MDQgMjc5LjU0NiA0NDQuMzMzIDI4Mi41NjYgNDQ1LjU0M0wzMzQuNTg5IDQ2NC4yNzFDMzQyLjQ1OCA0NjcuMjkxIDM1Mi43MzYgNDYzLjA2MSAzNTIuNzM2IDQ1Ni40MDNWMzIxLjEwM1oiIGZpbGw9IiMwOTM2M0YiLz4KPHBhdGggZD0iTTI1Ny40NzQgMzUuMzIxMUMyNTcuNDc0IDMyLjMwMTMgMjU0LjQ1NCAyOS4yODE1IDI1MC4yMTUgMjguMDcxN0wxOTkuNDExIDkuMzQzNDNDMTkwLjg5NSA1LjcxMzk5IDE4MS4yNjQgOS45NDM1OCAxODEuMjY0IDE2LjAwMjJWMTUxLjg5MkMxODEuMjY0IDE1NC45MjEgMTg0LjI4MyAxNTguNTUxIDE4Ny4zMDMgMTU5Ljc2TDIzOS4zMjYgMTc4LjQ4OUMyNDcuMTk1IDE4MS41MDggMjU3LjQ3NCAxNzcuMjc5IDI1Ny40NzQgMTcwLjYyVjM1LjMyMTFaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik0zNTIuNzM2IDkyLjQ3NzdDMzUyLjczNiA4OS40NTc5IDM0OS43MTcgODYuNDM4MiAzNDUuNDc3IDg1LjIyODNMMjk0LjY3NCA2Ni41QzI4Ni4xNTcgNjIuODcwNiAyNzYuNTI2IDY3LjEwMDIgMjc2LjUyNiA3My4xNTg4VjIwOS4wNDhDMjc2LjUyNiAyMTIuMDc4IDI3OS41NDYgMjE1LjcwNyAyODIuNTY2IDIxNi45MTdMMzM0LjU4OSAyMzUuNjQ1QzM0Mi40NTggMjM4LjY2NSAzNTIuNzM2IDIzNC40MzYgMzUyLjczNiAyMjcuNzc3VjkyLjQ3NzdaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik00NDggMTY4LjY4N0M0NDggMTY1LjY2NyA0NDQuOTggMTYyLjY0NyA0NDAuNzQxIDE2MS40MzdMMzg5LjkzNyAxNDIuNzA5QzM4MS40MjEgMTM5LjA3OSAzNzEuNzkgMTQzLjMwOSAzNzEuNzkgMTQ5LjM2OFYzNjEuNDY2QzM3MS43OSAzNjQuNDk1IDM3NC44MSAzNjguMTI1IDM3Ny44MjkgMzY5LjMzNUw0MjkuODUyIDM4OC4wNjNDNDM3LjcyMSAzOTEuMDgzIDQ0OCAzODYuODUzIDQ0OCAzODAuMTk0VjE2OC42ODdaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik0xNjIuMjEgMzUuMzMwNkMxNjIuMjEgMzIuMzEwOCAxNTkuMTkgMjkuMjgxNSAxNTQuOTUxIDI4LjA3MTdMMTA0LjE0OCA5LjM0MzQzQzk1LjY3ODcgNS43MTM5OSA4NiA5Ljk0MzU4IDg2IDE2LjAwMjJWNDc1Ljc4OUM4NiA0NzguODA4IDg5LjAxOTggNDgyLjQzOCA5Mi4wNDkyIDQ4My42NDhMMTQ0LjA2MyA1MDIuMzc2QzE1MS45MzEgNTA1LjM5NiAxNjIuMjEgNTAxLjE2NiAxNjIuMjEgNDk0LjUwN1YzNS4zMzA2WiIgZmlsbD0iIzA5MzYzRiIvPgo8L3N2Zz4K"
++  },
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4="
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    "name": "1Password",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjExNiAxMjAuNDE3QzIzOS4xMTYgNTQuNDE5MyAxODUuNjEzIDAuOTE2NTA0IDExOS42MTYgMC45MTY1MDRDNTMuNjE5IDAuOTE2NTA0IDAuMTE2MjExIDU0LjQxOTMgMC4xMTYyMTEgMTIwLjQxN0MwLjExNjIxMSAxODYuNDE3IDUzLjYxOSAyMzkuOTE3IDExOS42MTYgMjM5LjkxN0MxODUuNjEzIDIzOS45MTcgMjM5LjExNiAxODYuNDE3IDIzOS4xMTYgMTIwLjQxN1pNOTcuODY1OCA1NC4wMjc2Qzk2LjkyNjMgNTUuODcxNCA5Ni45MjYzIDU4LjI4NTEgOTYuOTI2MyA2My4xMTI2VjkwLjQ3MjlDOTYuOTI2MyA5MS42Nzg4IDk2LjkyNjMgOTIuMjgxNyA5Ny4wNzg1IDkyLjgzOTJDOTcuMjEzNCA5My4zMzMxIDk3LjQzNTIgOTMuNzk5IDk3LjczMzUgOTQuMjE1Qzk4LjA3MDIgOTQuNjg0NyA5OC41MzgxIDk1LjA2NDggOTkuNDc0MSA5NS44MjUxTDEwNi4zOTUgMTAxLjQ0N0MxMDcuNTIzIDEwMi4zNjQgMTA4LjA4NyAxMDIuODIyIDEwOC4yOTIgMTAzLjM3NEMxMDguNDcxIDEwMy44NTcgMTA4LjQ3MSAxMDQuMzkgMTA4LjI5MiAxMDQuODczQzEwOC4wODcgMTA1LjQyNSAxMDcuNTIzIDEwNS44ODMgMTA2LjM5NSAxMDYuOEw5OS40NzQxIDExMi40MjJDOTguNTM4MiAxMTMuMTgyIDk4LjA3MDIgMTEzLjU2MiA5Ny43MzM1IDExNC4wMzJDOTcuNDM1MiAxMTQuNDQ4IDk3LjIxMzQgMTE0LjkxNCA5Ny4wNzg1IDExNS40MDhDOTYuOTI2MyAxMTUuOTY1IDk2LjkyNjMgMTE2LjU2OCA5Ni45MjYzIDExNy43NzRWMTc3LjcxOUM5Ni45MjYzIDE4Mi41NDcgOTYuOTI2MyAxODQuOTYxIDk3Ljg2NTggMTg2LjgwNUM5OC42OTIyIDE4OC40MjYgMTAwLjAxMSAxODkuNzQ1IDEwMS42MzMgMTkwLjU3MUMxMDMuNDc3IDE5MS41MTEgMTA1Ljg5IDE5MS41MTEgMTEwLjcxOCAxOTEuNTExSDEyOC41MTVDMTMzLjM0MiAxOTEuNTExIDEzNS43NTYgMTkxLjUxMSAxMzcuNiAxOTAuNTcxQzEzOS4yMjEgMTg5Ljc0NSAxNDAuNTQgMTg4LjQyNiAxNDEuMzY3IDE4Ni44MDVDMTQyLjMwNiAxODQuOTYxIDE0Mi4zMDYgMTgyLjU0NyAxNDIuMzA2IDE3Ny43MTlWMTUwLjM1OUMxNDIuMzA2IDE0OS4xNTMgMTQyLjMwNiAxNDguNTUgMTQyLjE1NCAxNDcuOTkzQzE0Mi4wMTkgMTQ3LjQ5OSAxNDEuNzk3IDE0Ny4wMzMgMTQxLjQ5OSAxNDYuNjE3QzE0MS4xNjIgMTQ2LjE0NyAxNDAuNjk0IDE0NS43NjcgMTM5Ljc1OCAxNDUuMDA3TDEzMi44MzcgMTM5LjM4NUMxMzEuNzA5IDEzOC40NjggMTMxLjE0NSAxMzguMDEgMTMwLjk0IDEzNy40NTlDMTMwLjc2MSAxMzYuOTc1IDEzMC43NjEgMTM2LjQ0MyAxMzAuOTQgMTM1Ljk1OUMxMzEuMTQ1IDEzNS40MDcgMTMxLjcwOSAxMzQuOTQ5IDEzMi44MzcgMTM0LjAzM0wxMzkuNzU4IDEyOC40MUMxNDAuNjk0IDEyNy42NSAxNDEuMTYyIDEyNy4yNyAxNDEuNDk5IDEyNi44QzE0MS43OTcgMTI2LjM4NCAxNDIuMDE5IDEyNS45MTggMTQyLjE1NCAxMjUuNDI0QzE0Mi4zMDYgMTI0Ljg2NyAxNDIuMzA2IDEyNC4yNjQgMTQyLjMwNiAxMjMuMDU4VjYzLjExMjZDMTQyLjMwNiA1OC4yODUxIDE0Mi4zMDYgNTUuODcxNCAxNDEuMzY3IDU0LjAyNzZDMTQwLjU0IDUyLjQwNTcgMTM5LjIyMSA1MS4wODcgMTM3LjYgNTAuMjYwNkMxMzUuNzU2IDQ5LjMyMTEgMTMzLjM0MiA0OS4zMjExIDEyOC41MTUgNDkuMzIxMUgxMTAuNzE4QzEwNS44OSA0OS4zMjExIDEwMy40NzcgNDkuMzIxMSAxMDEuNjMzIDUwLjI2MDZDMTAwLjAxMSA1MS4wODcgOTguNjkyMiA1Mi40MDU3IDk3Ljg2NTggNTQuMDI3NloiIGZpbGw9IiMxQTI4NUYiLz4KPC9zdmc+Cg=="
++  },
++  "d548826e-79b4-db40-a3d8-11116f7e8349": {
++    "name": "Bitwarden",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF82OF82MSkiPgo8cGF0aCBkPSJNMzAwIDI1My4xMjVDMzAwIDI3OS4wMjMgMjc5LjAyMyAzMDAgMjUzLjEyNSAzMDBINDYuODc1QzIwLjk3NjYgMzAwIDAgMjc5LjAyMyAwIDI1My4xMjVWNDYuODc1QzAgMjAuOTc2NiAyMC45NzY2IDAgNDYuODc1IDBIMjUzLjEyNUMyNzkuMDIzIDAgMzAwIDIwLjk3NjYgMzAwIDQ2Ljg3NVYyNTMuMTI1WiIgZmlsbD0iIzE3NUREQyIvPgo8cGF0aCBkPSJNMjQzLjEwNSAzNy42NzU4QzI0MS4yMDEgMzUuNzcxNSAyMzguOTQ1IDM0LjgzNCAyMzYuMzY3IDM0LjgzNEg2My42MzI4QzYxLjAyNTQgMzQuODM0IDU4Ljc5ODggMzUuNzcxNSA1Ni44OTQ1IDM3LjY3NThDNTQuOTkwMiAzOS41ODAxIDU0LjA1MjcgNDEuODM1OSA1NC4wNTI3IDQ0LjQxNDFWMTU5LjU4QzU0LjA1MjcgMTY4LjE2NCA1NS43MjI3IDE3Ni42ODkgNTkuMDYyNSAxODUuMTU2QzYyLjQwMjMgMTkzLjU5NCA2Ni41NjI1IDIwMS4wOTQgNzEuNTEzNyAyMDcuNjU2Qzc2LjQ2NDggMjE0LjE4OSA4Mi4zNTM1IDIyMC41NzYgODkuMjA5IDIyNi43ODdDOTYuMDY0NSAyMzIuOTk4IDEwMi4zOTMgMjM4LjEyNSAxMDguMTY0IDI0Mi4yMjdDMTEzLjk2NSAyNDYuMzI4IDEyMCAyNTAuMTk1IDEyNi4yOTkgMjUzLjg1N0MxMzIuNTk4IDI1Ny41MiAxMzcuMDggMjU5Ljk4IDEzOS43MTcgMjYxLjI3QzE0Mi4zNTQgMjYyLjU1OSAxNDQuNDkyIDI2My41ODQgMTQ2LjA3NCAyNjQuMjU4QzE0Ny4yNzUgMjY0Ljg0NCAxNDguNTY0IDI2NS4xNjYgMTQ5Ljk3MSAyNjUuMTY2QzE1MS4zNzcgMjY1LjE2NiAxNTIuNjY2IDI2NC44NzMgMTUzLjg2NyAyNjQuMjU4QzE1NS40NzkgMjYzLjU1NSAxNTcuNTg4IDI2Mi41NTkgMTYwLjI1NCAyNjEuMjdDMTYyLjg5MSAyNTkuOTggMTY3LjM3MyAyNTcuNDkgMTczLjY3MiAyNTMuODU3QzE3OS45NzEgMjUwLjE5NSAxODYuMDA2IDI0Ni4zMjggMTkxLjgwNyAyNDIuMjI3QzE5Ny42MDcgMjM4LjEyNSAyMDMuOTM2IDIzMi45NjkgMjEwLjc5MSAyMjYuNzg3QzIxNy42NDYgMjIwLjU3NiAyMjMuNTM1IDIxNC4yMTkgMjI4LjQ4NiAyMDcuNjU2QzIzMy40MzggMjAxLjA5NCAyMzcuNTY4IDE5My42MjMgMjQwLjkzOCAxODUuMTU2QzI0NC4yNzcgMTc2LjcxOSAyNDUuOTQ3IDE2OC4xOTMgMjQ1Ljk0NyAxNTkuNThWNDQuNDQzNEMyNDUuOTc3IDQxLjgzNTkgMjQ1LjAxIDM5LjU4MDEgMjQzLjEwNSAzNy42NzU4Wk0yMjAuODQgMTYwLjY2NEMyMjAuODQgMjAyLjM1NCAxNTAgMjM4LjI3MSAxNTAgMjM4LjI3MVY1OS41MDJIMjIwLjg0QzIyMC44NCA1OS41MDIgMjIwLjg0IDExOC45NzUgMjIwLjg0IDE2MC42NjRaIiBmaWxsPSJ3aGl0ZSIvPgo8L2c+CjxkZWZzPgo8Y2xpcFBhdGggaWQ9ImNsaXAwXzY4XzYxIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IndoaXRlIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg=="
++  }
++}
+\ No newline at end of file
+diff --git a/src/lib/passkeys.ts b/src/lib/passkeys.ts
+new file mode 100644
+index 0000000..6aef9fe
+--- /dev/null
++++ b/src/lib/passkeys.ts
+@@ -0,0 +1,111 @@
++import type { PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
++
++export interface AccountData {
++  user: { id: string; username: string; displayName: string } | null;
++  rpId: string;
++  verifiedUntil: number;
++  passkeys: Array<{
++    id: string; name: string; aaguid: string; deviceType: string; backedUp: boolean;
++    registeredAt: number; lastUsedAt?: number;
++  }>;
++}
++
++type WebAuthnAPI = typeof PublicKeyCredential & {
++  getClientCapabilities(): Promise<Record<string, boolean>>;
++  parseCreationOptionsFromJSON(options: PublicKeyCredentialCreationOptionsJSON): PublicKeyCredentialCreationOptions;
++  parseRequestOptionsFromJSON(options: PublicKeyCredentialRequestOptionsJSON): PublicKeyCredentialRequestOptions;
++  signalUnknownCredential?: (options: { rpId: string; credentialId: string }) => Promise<void>;
++  signalAllAcceptedCredentials?: (options: { rpId: string; userId: string; allAcceptedCredentialIds: string[] }) => Promise<void>;
++  signalCurrentUserDetails?: (options: { rpId: string; userId: string; name: string; displayName: string }) => Promise<void>;
++};
++const webauthn = () => PublicKeyCredential as WebAuthnAPI;
++export const accountUrl = `${import.meta.env.BASE_URL}account/settings`;
++export class ApiError extends Error {
++  constructor(message: string, public status: number, public code?: string) { super(message); }
++}
++
++export async function authRequest<T = Record<string, unknown>>(action: string, body?: unknown, signal?: AbortSignal): Promise<T> {
++  const response = await fetch(`${import.meta.env.BASE_URL}api/auth/${action}`, {
++    method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin',
++    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
++    body: body === undefined ? undefined : JSON.stringify(body), signal,
++  });
++  const data = await response.json();
++  if (!response.ok) throw new ApiError(data.error || 'Please try again.', response.status, data.code);
++  return data;
++}
++
++export async function passkeyCapabilities() {
++  if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) {
++    return { supported: false, create: false, conditional: false };
++  }
++  // This module is also rendered on the server; load browser polyfills only here.
++  await import('webauthn-polyfills');
++  try {
++    const capabilities = await webauthn().getClientCapabilities();
++    return { supported: true, create: !!capabilities.passkeyPlatformAuthenticator && !!capabilities.conditionalGet, conditional: !!capabilities.conditionalGet };
++  } catch {
++    return { supported: true, create: false, conditional: false };
++  }
++}
++
++export function passkeyError(error: unknown): string {
++  if (error instanceof DOMException) {
++    if (error.name === 'NotAllowedError') return 'The passkey request was cancelled or timed out. You can try again or use your password.';
++    if (error.name === 'InvalidStateError') return 'A passkey already exists in this password manager. Try a different provider or security key.';
++    if (error.name === 'AbortError') return 'The passkey request was cancelled. Please try again.';
++    if (error.name === 'SecurityError') return 'Passkeys require a secure connection on this site. Please use your password for now.';
++    if (error.name === 'NotSupportedError') return 'This device cannot create this passkey. Please try another device or use your password.';
++  }
++  return error instanceof ApiError ? error.message : 'We could not complete the request. Check your connection and try again.';
++}
++
++type Options<T> = { options: T; ceremonyId: string; rpId: string };
++type JsonCredential = PublicKeyCredential & { toJSON(): { id: string } };
++async function signalUnknown(rpId: string, credentialId: string) {
++  try { await webauthn().signalUnknownCredential?.({ rpId, credentialId }); } catch { /* Optional password-manager sync. */ }
++}
++
++export async function registerPasskey(promotion = false, signal?: AbortSignal) {
++  const { options, ceremonyId, rpId } = await authRequest<Options<PublicKeyCredentialCreationOptionsJSON>>('registration/options', { promotion }, signal);
++  const credential = await navigator.credentials.create({
++    publicKey: webauthn().parseCreationOptionsFromJSON(options), signal,
++  }) as JsonCredential | null;
++  if (!credential) throw new DOMException('No passkey created.', 'NotAllowedError');
++  const encoded = credential.toJSON();
++  try {
++    await authRequest('registration/verify', { ceremonyId, credential: encoded }, signal);
++  } catch (error) {
++    // A transport failure may have happened after a successful server commit.
++    // Only signal when the server explicitly rejected the registration.
++    if (error instanceof ApiError && error.status !== 409) await signalUnknown(rpId, encoded.id);
++    throw error;
++  }
++}
++
++export async function authenticatePasskey(kind: 'authentication' | 'reauthentication' = 'authentication', conditional = false, signal?: AbortSignal) {
++  const { options, ceremonyId, rpId } = await authRequest<Options<PublicKeyCredentialRequestOptionsJSON>>(`${kind}/options`, {}, signal);
++  const credential = await navigator.credentials.get({
++    publicKey: webauthn().parseRequestOptionsFromJSON(options),
++    ...(conditional ? { mediation: 'conditional' as const } : {}), signal,
++  }) as JsonCredential | null;
++  if (!credential) throw new DOMException('No passkey selected.', 'NotAllowedError');
++  const encoded = credential.toJSON();
++  try {
++    return await authRequest(`${kind}/verify`, { ceremonyId, credential: encoded }, signal);
++  } catch (error) {
++    if (kind === 'authentication' && error instanceof ApiError && error.status === 404) await signalUnknown(rpId, encoded.id);
++    throw error;
++  }
++}
++
++export async function syncPasskeys(data: AccountData, profile = false) {
++  if (!data.user || !window.PublicKeyCredential) return;
++  try {
++    if (profile) {
++      await webauthn().signalCurrentUserDetails?.({ rpId: data.rpId, userId: data.user.id, name: data.user.username, displayName: data.user.displayName });
++    } else {
++      await webauthn().signalAllAcceptedCredentials?.({ rpId: data.rpId, userId: data.user.id, allAcceptedCredentialIds: data.passkeys.map(p => p.id) });
++    }
++  } catch { /* Unsupported or unavailable manager: account changes still succeeded. */ }
++}
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..1abd9ea 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  if (await context.session?.get('auth')) response.headers.set('Cache-Control', 'no-store');
++  return response;
+ });
+diff --git a/src/pages/account/settings.astro b/src/pages/account/settings.astro
+new file mode 100644
+index 0000000..3a2f713
+--- /dev/null
++++ b/src/pages/account/settings.astro
+@@ -0,0 +1,9 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import AccountSettings from '../../components/AccountSettings';
++Astro.response.headers.set('Cache-Control', 'no-store');
++---
++
++<Layout title="Account Settings | The DevTools Times">
++  <div class="account-page"><AccountSettings client:load /></div>
++</Layout>
+diff --git a/src/pages/api/auth/[...action].ts b/src/pages/api/auth/[...action].ts
+new file mode 100644
+index 0000000..7ab36e9
+--- /dev/null
++++ b/src/pages/api/auth/[...action].ts
+@@ -0,0 +1,228 @@
++import type { APIRoute } from 'astro';
++import { randomBytes, randomUUID } from 'node:crypto';
++import {
++  generateRegistrationOptions, verifyRegistrationResponse,
++  generateAuthenticationOptions, verifyAuthenticationResponse,
++  type AuthenticationResponseJSON, type RegistrationResponseJSON,
++} from '@simplewebauthn/server';
++import { authTransaction, type Account, type Ceremony } from '../../../lib/auth-store';
++
++const PASSWORD_API = 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api';
++const FIVE_MINUTES = 5 * 60 * 1000;
++class AuthError extends Error {
++  constructor(message: string, public status = 400, public code?: string) { super(message); }
++}
++const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
++  status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
++});
++
++async function passwordRequest(action: 'login' | 'register', username: string, password: string) {
++  let response: Response;
++  try {
++    response = await fetch(`${PASSWORD_API}/${action}`, {
++      method: 'POST', headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username, password }), signal: AbortSignal.timeout(15000),
++    });
++  } catch {
++    throw new AuthError('The password service is unavailable. Please try again.', 503);
++  }
++  if (!response.ok) throw new AuthError(action === 'login'
++    ? 'The username or password is incorrect. Please try again.'
++    : 'Could not create your account. Try a different username and a password with at least 8 characters and a number.', 400);
++}
++
++export const ALL: APIRoute = async ({ request, params, session, url }) => {
++  try {
++    if (!session) throw new AuthError('Account sessions are unavailable.', 503);
++    const action = params.action;
++    const origin = process.env.AUTH_ORIGIN || url.origin;
++    const rpId = new URL(origin).hostname;
++    if (request.method !== 'GET' && request.headers.get('Origin') !== origin) {
++      throw new AuthError('This request must come from this site.', 403);
++    }
++    const methods: Record<string, string> = {
++      session: 'GET', login: 'POST', register: 'POST', logout: 'POST',
++      'password/reauthenticate': 'POST', 'registration/options': 'POST',
++      'registration/verify': 'POST', 'authentication/options': 'POST',
++      'authentication/verify': 'POST', 'reauthentication/options': 'POST',
++      'reauthentication/verify': 'POST', passkeys: 'GET',
++      'passkeys/rename': 'POST', 'passkeys/delete': 'POST', profile: 'POST',
++    };
++    if (!action || !methods[action]) throw new AuthError('Not found.', 404);
++    if (methods[action] !== request.method) throw new AuthError('Method not allowed.', 405);
++    let body: Record<string, any> = {};
++    if (request.method !== 'GET') {
++      if (!request.headers.get('Content-Type')?.includes('application/json')) throw new AuthError('Expected JSON.', 415);
++      const raw = await request.text();
++      if (raw.length > 65536) throw new AuthError('Request too large.', 413);
++      try { body = JSON.parse(raw); } catch { throw new AuthError('Invalid request.'); }
++      if (!body || typeof body !== 'object' || Array.isArray(body)) throw new AuthError('Invalid request.');
++    }
++    return await authTransaction(async store => {
++      const auth = await session.get<{ userId: string; verifiedAt: number }>('auth');
++      const user = store.users.find(u => u.id === auth?.userId);
++      const requireUser = () => {
++        if (!user) throw new AuthError('Please sign in to continue.', 401);
++        return user;
++      };
++      const requireRecent = () => {
++        requireUser();
++        if (!auth || Date.now() - auth.verifiedAt > FIVE_MINUTES) {
++          throw new AuthError('Verify your identity to continue.', 403, 'REAUTH_REQUIRED');
++        }
++      };
++      const establish = async (account: Account) => {
++        await session.regenerate();
++        session.set('auth', { userId: account.id, verifiedAt: Date.now() });
++      };
++      const saveCeremony = (kind: Ceremony['kind'], challenge: string, userId?: string) => {
++        const id = randomUUID();
++        // Replace an older prompt of the same kind in this browser session.
++        for (const [key, entry] of Object.entries(store.ceremonies)) {
++          if (entry.sessionId === session.sessionID && entry.kind === kind) delete store.ceremonies[key];
++        }
++        if (!session.sessionID) session.set('passkeyFlow', true);
++        store.ceremonies[id] = { kind, challenge, sessionId: session.sessionID!, userId,
++          expires: Date.now() + FIVE_MINUTES, requireUserVerification: true };
++        return id;
++      };
++      const consumeCeremony = (kind: Ceremony['kind']) => {
++        const entry = store.ceremonies[body.ceremonyId];
++        if (!entry || entry.kind !== kind || entry.sessionId !== session.sessionID || entry.expires < Date.now()) {
++          throw new AuthError('This passkey request expired. Please try again.', 400);
++        }
++        delete store.ceremonies[body.ceremonyId];
++        return entry;
++      };
++      const accountData = () => ({
++        user: user ? { ...user } : null, rpId,
++        verifiedUntil: auth ? auth.verifiedAt + FIVE_MINUTES : 0,
++        passkeys: user ? store.passkeys.filter(p => p.userId === user.id).map(({ publicKey, counter, userId, ...p }) => p) : [],
++      });
++      if (action === 'session') return json(accountData());
++      if (action === 'logout') { session.destroy(); return json({ ok: true }); }
++      if (action === 'login' || action === 'register') {
++        const { username, password } = body;
++        if (typeof username !== 'string' || !username.trim() || username.length > 128 || typeof password !== 'string' || !password || password.length > 1024) {
++          throw new AuthError('Enter your username and password.');
++        }
++        if (action === 'register') {
++          if (password.length < 8 || !/\d/.test(password)) throw new AuthError('Use at least 8 characters and a number.');
++          await passwordRequest('register', username.trim(), password);
++        }
++        // Establish local identity only after the existing password service verifies it.
++        try {
++          await passwordRequest('login', username.trim(), password);
++        } catch (error) {
++          if (action === 'register') throw new AuthError('Your account was created, but we could not sign you in. Use the Sign in link below to continue.', 503);
++          throw error;
++        }
++        let account = store.users.find(u => u.username === username.trim());
++        if (!account) {
++          account = { id: randomBytes(32).toString('base64url'), username: username.trim(), displayName: username.trim() };
++          store.users.push(account);
++        }
++        await establish(account);
++        return json({ user: account });
++      }
++      if (action === 'password/reauthenticate') {
++        const account = requireUser();
++        if (typeof body.password !== 'string' || !body.password || body.password.length > 1024) throw new AuthError('Enter your password.');
++        await passwordRequest('login', account.username, body.password);
++        session.set('auth', { userId: account.id, verifiedAt: Date.now() });
++        return json({ ok: true });
++      }
++      if (action === 'registration/options') {
++        const account = requireUser();
++        requireRecent();
++        const options = await generateRegistrationOptions({
++          rpName: 'The DevTools Times', rpID: rpId,
++          userID: new Uint8Array(Buffer.from(account.id, 'base64url')),
++          userName: account.username, userDisplayName: account.displayName,
++          attestationType: 'none',
++          excludeCredentials: store.passkeys.filter(p => p.userId === account.id).map(p => ({ id: p.id, transports: p.transports })),
++          authenticatorSelection: {
++            residentKey: 'required', requireResidentKey: true, userVerification: 'required',
++            ...(body.promotion === true ? { authenticatorAttachment: 'platform' as const } : {}),
++          },
++        });
++        return json({ options, ceremonyId: saveCeremony('registration', options.challenge, account.id), rpId });
++      }
++      if (action === 'registration/verify') {
++        const account = requireUser();
++        const ceremony = consumeCeremony('registration');
++        if (ceremony.userId !== account.id) throw new AuthError('Account mismatch.', 403);
++        const result = await verifyRegistrationResponse({
++          response: body.credential as RegistrationResponseJSON, expectedChallenge: ceremony.challenge,
++          expectedOrigin: origin, expectedRPID: rpId, requireUserVerification: ceremony.requireUserVerification,
++        }).catch(() => { throw new AuthError('Could not verify this passkey. Please try again.'); });
++        if (!result.verified) throw new AuthError('Could not verify this passkey.');
++        const info = result.registrationInfo;
++        if (store.passkeys.some(p => p.id === info.credential.id)) throw new AuthError('This passkey is already registered.', 409);
++        store.passkeys.push({
++          id: info.credential.id, userId: account.id,
++          publicKey: Buffer.from(info.credential.publicKey).toString('base64url'),
++          counter: info.credential.counter, transports: info.credential.transports,
++          name: 'My passkey', aaguid: info.aaguid, deviceType: info.credentialDeviceType,
++          backedUp: info.credentialBackedUp, registeredAt: Date.now(),
++        });
++        return json({ ok: true });
++      }
++      if (action === 'authentication/options' || action === 'reauthentication/options') {
++        const reauth = action.startsWith('reauthentication');
++        const account = reauth ? requireUser() : undefined;
++        const keys = store.passkeys.filter(p => p.userId === account?.id);
++        if (reauth && !keys.length) throw new AuthError('No passkeys yet. Verify with your password instead.');
++        const options = await generateAuthenticationOptions({
++          rpID: rpId, userVerification: 'required',
++          allowCredentials: reauth ? keys.map(p => ({ id: p.id, transports: p.transports })) : [],
++        });
++        return json({ options, ceremonyId: saveCeremony(reauth ? 'reauthentication' : 'authentication', options.challenge, account?.id), rpId });
++      }
++      if (action === 'authentication/verify' || action === 'reauthentication/verify') {
++        const reauth = action.startsWith('reauthentication');
++        if (reauth) requireUser();
++        const ceremony = consumeCeremony(reauth ? 'reauthentication' : 'authentication');
++        const credential = body.credential as AuthenticationResponseJSON;
++        const key = store.passkeys.find(p => p.id === credential?.id);
++        if (!key) throw new AuthError('This passkey is no longer registered. Try another passkey or your password.', 404);
++        if (reauth && (key.userId !== user!.id || ceremony.userId !== user!.id)) throw new AuthError('Use a passkey for your current account.', 403);
++        if (credential.response.userHandle && credential.response.userHandle !== key.userId) throw new AuthError('Passkey account mismatch.', 403);
++        const account = store.users.find(u => u.id === key.userId);
++        if (!account) throw new AuthError('Account unavailable.', 401);
++        const result = await verifyAuthenticationResponse({
++          response: credential, expectedChallenge: ceremony.challenge, expectedOrigin: origin, expectedRPID: rpId,
++          credential: { id: key.id, publicKey: new Uint8Array(Buffer.from(key.publicKey, 'base64url')), counter: key.counter, transports: key.transports },
++          requireUserVerification: ceremony.requireUserVerification,
++        }).catch(() => { throw new AuthError('Could not verify this passkey. Please try again.'); });
++        if (!result.verified) throw new AuthError('Could not verify this passkey.', 401);
++        key.counter = result.authenticationInfo.newCounter;
++        key.backedUp = result.authenticationInfo.credentialBackedUp;
++        key.lastUsedAt = Date.now();
++        await establish(account);
++        return json({ user: account });
++      }
++      requireUser();
++      if (action === 'passkeys') return json(accountData());
++      requireRecent();
++      if (action === 'profile') {
++        if (typeof body.displayName !== 'string' || !body.displayName.trim() || body.displayName.trim().length > 80) throw new AuthError('Use a display name between 1 and 80 characters.');
++        user!.displayName = body.displayName.trim();
++        return json(accountData());
++      }
++      const key = store.passkeys.find(p => p.id === body.id && p.userId === user!.id);
++      if (!key) throw new AuthError('Passkey not found.', 404);
++      if (action === 'passkeys/rename') {
++        if (typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 60) throw new AuthError('Use a passkey name between 1 and 60 characters.');
++        key.name = body.name.trim();
++      } else if (action === 'passkeys/delete') {
++        store.passkeys = store.passkeys.filter(p => p.id !== key.id);
++      }
++      return json(accountData());
++    });
++  } catch (error) {
++    if (error instanceof AuthError) return json({ error: error.message, code: error.code }, error.status);
++    console.error('Account request failed:', error instanceof Error ? error.message : 'Unknown error');
++    return json({ error: 'We could not complete this request. Please try again.' }, 500);
++  }
++};
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..788e0d8 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -1,10 +1,11 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
++Astro.response.headers.set('Cache-Control', 'no-store');
+ ---
+ 
+ <Layout title="Sign In | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div class="account-page">
+     <SignInForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..4344cee 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -1,10 +1,11 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
++Astro.response.headers.set('Cache-Control', 'no-store');
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div class="account-page">
+     <SignUpForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..eb5679b 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,93 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.account-page { padding: 56px 20px 80px; background: #fafaf8; min-height: 65vh; color: #202020; }
++.auth-card { width: 100%; max-width: 440px; margin: 0 auto; padding: 36px; background: white; border: 1px solid #deded9; border-top: 3px solid #242424; }
++.account-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #666; margin-bottom: 14px; }
++.auth-title, .settings-title { font-family: Georgia, 'Times New Roman', serif; font-weight: 600; letter-spacing: -.035em; line-height: 1.12; }
++.auth-title { font-size: 34px; }
++.auth-description { font-size: 14px; line-height: 1.7; color: #666; margin: 12px 0 26px; }
++.account-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 17px; border: 1px solid transparent; border-radius: 3px; font-size: 13px; font-weight: 600; line-height: 1.5; cursor: pointer; text-align: center; transition: background-color .15s; }
++.account-button-primary { background: #242424; color: white; }
++.account-button-primary:hover { background: #404040; }
++.account-button-secondary { border-color: #bcbcb8; background: white; color: #292929; }
++.account-button-secondary:hover, .account-button-quiet:hover { background: #f3f3ef; }
++.account-button-quiet { color: #555; }
++.account-button-danger { background: #a3312b; color: white; }
++.account-button-danger:hover { background: #84251f; }
++.account-button:disabled, .passkey-actions button:disabled { opacity: .5; cursor: not-allowed; }
++.account-page :is(button, a, input, summary):focus-visible, .account-dialog :is(button, input):focus-visible { outline: 2px solid #315c82; outline-offset: 3px; }
++.auth-helper, .auth-footnote { text-align: center; font-size: 11px; line-height: 1.7; color: #767672; margin-top: 10px; }
++.auth-footnote { border-top: 1px solid #e7e7e2; padding-top: 20px; margin-top: 26px; }
++.auth-footnote a { text-decoration: underline; text-underline-offset: 2px; }
++.auth-divider { display: flex; align-items: center; gap: 14px; margin: 25px 0; color: #777; font-size: 11px; }
++.auth-divider::before, .auth-divider::after { content: ''; height: 1px; background: #e4e4df; flex: 1; }
++.account-form { display: grid; gap: 18px; }
++.account-form label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 7px; }
++.account-form input:not([type=hidden]) { width: 100%; min-height: 44px; border: 1px solid #bfbfba; border-radius: 3px; padding: 10px 12px; font-size: 14px; background: white; color: #242424; }
++.account-form input:read-only { background: #f7f7f4; color: #6a6a66; }
++.input-help { font-size: 11px; color: #70706b; line-height: 1.7; margin-top: 6px; }
++.auth-bottom { text-align: center; color: #666; font-size: 12px; margin-top: 24px; }
++.auth-bottom a { color: #222; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
++.account-notice { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.6; padding: 13px 15px; border: 1px solid; margin-bottom: 22px; border-radius: 3px; overflow-wrap: anywhere; }
++.account-error { background: #fff5f3; border-color: #e8c6c2; color: #9c322b; }
++.account-success { background: #f1f7f1; border-color: #cddfce; color: #34603c; }
++.signup-passkey-note { display: flex; gap: 12px; font-size: 12px; line-height: 1.65; padding: 16px; background: #f4f5ef; margin-bottom: 24px; color: #53584a; }
++.passkey-explainer { background: #f6f6f2; padding: 22px; margin-bottom: 24px; }
++.passkey-explainer h2 { font-family: Georgia, serif; font-size: 20px; margin-bottom: 8px; }
++.passkey-explainer p { font-size: 12px; line-height: 1.8; color: #666; }
++.settings-shell { max-width: 1000px; margin: 0 auto; }
++.settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 30px; border-bottom: 2px solid #292929; margin-bottom: 32px; }
++.settings-title { font-size: 42px; }
++.settings-heading > div > p:last-child { font-size: 13px; }
++.settings-grid { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 42px; }
++.settings-nav { display: flex; flex-direction: column; align-self: start; gap: 2px; }
++.settings-nav a { display: flex; align-items: center; gap: 10px; padding: 12px 14px; font-size: 12px; color: #555; border-left: 2px solid transparent; }
++.settings-nav a:hover, .settings-nav a:focus-visible { background: #efefeb; color: #222; border-left-color: #333; }
++.settings-nav span { font-size: 10px; padding: 1px 6px; border: 1px solid #ccc; border-radius: 8px; }
++.settings-content { min-width: 0; }
++.settings-section { background: white; border: 1px solid #deded9; padding: 28px; margin-bottom: 22px; scroll-margin-top: 24px; }
++.settings-section-heading { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
++.settings-section h2 { font-family: Georgia, serif; font-size: 24px; font-weight: 500; }
++.settings-section-heading p { font-size: 12px; color: #777; margin-top: 6px; }
++.settings-section .account-form { max-width: 440px; }
++.settings-copy { font-size: 13px; color: #666; line-height: 1.8; margin: -4px 0 22px; }
++.account-badge { font-size: 9px; font-weight: 600; color: #4d6148; background: #edf2e8; padding: 4px 7px; border-radius: 3px; }
++.passkey-empty { text-align: center; padding: 28px 18px; border: 1px dashed #d3d3cc; background: #fafaf7; margin-bottom: 24px; }
++.passkey-empty h3 { font-size: 14px; font-weight: 600; }
++.passkey-empty p { font-size: 12px; color: #777; margin-top: 6px; }
++.passkey-list { margin-bottom: 24px; border-top: 1px solid #e8e8e3; }
++.passkey-row { display: flex; align-items: flex-start; gap: 13px; padding: 22px 0; border-bottom: 1px solid #e8e8e3; }
++.provider-icon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid #e4e4df; border-radius: 7px; background: #fafaf8; }
++.passkey-details { flex: 1; min-width: 0; overflow-wrap: anywhere; }
++.passkey-details h3 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
++.passkey-details p { font-size: 11px; color: #777; line-height: 1.8; }
++.passkey-actions { display: flex; flex-direction: column; align-items: flex-end; }
++.passkey-actions button { font-size: 11px; padding: 4px 0 4px 10px; cursor: pointer; min-height: 28px; text-underline-offset: 3px; }
++.passkey-actions button:hover { text-decoration: underline; }
++.account-danger-text { color: #a3312b; }
++.passkey-rename { gap: 8px; }
++.passkey-faq { font-size: 12px; padding: 4px 0; color: #555; }
++.passkey-faq summary { cursor: pointer; font-weight: 600; padding: 10px 0; }
++.passkey-faq p { line-height: 1.8; padding: 4px 0 16px; }
++.account-dialog { width: min(440px, calc(100% - 32px)); max-height: calc(100dvh - 40px); overflow-y: auto; margin: auto; padding: 30px; border: 1px solid #d6d6d0; border-top: 3px solid #242424; border-radius: 3px; background: white; color: #242424; box-shadow: 0 20px 70px #0002; }
++.account-dialog h2 { font-family: Georgia, serif; font-size: 27px; line-height: 1.2; }
++.account-dialog:modal { overscroll-behavior: contain; }
++.account-dialog::backdrop { background: #16161688; overflow: hidden; overscroll-behavior: contain; }
++@media (max-width: 640px) {
++  .account-page { padding: 30px 16px 50px; }
++  .auth-card { padding: 28px 24px; }
++  .auth-title { font-size: 31px; }
++  .settings-title { font-size: 34px; }
++  .settings-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
++  .settings-heading { align-items: flex-start; margin-bottom: 16px; gap: 12px; }
++  .settings-heading .account-button { padding-inline: 6px; white-space: nowrap; }
++  .settings-nav { flex-direction: row; flex-wrap: wrap; border-bottom: 1px solid #ddd; }
++  .settings-nav a { border-left: 0; padding: 10px 12px; }
++  .settings-section { padding: 22px 18px; }
++  .settings-section h2 { font-size: 22px; }
++  .settings-section-heading { gap: 12px; }
++  .account-badge { font-size: 8px; }
++}

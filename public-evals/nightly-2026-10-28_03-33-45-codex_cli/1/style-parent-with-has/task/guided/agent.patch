@@ -1,0 +1,165 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,92 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact form */
++    .contact {
++      max-width: 640px;
++      margin: 60px auto 40px;
++    }
++
++    .contact h2,
++    .contact > p {
++      text-align: center;
++    }
++
++    .contact-form {
++      display: grid;
++      gap: 16px;
++      margin-top: 24px;
++    }
++
++    .contact-field {
++      padding: 16px;
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .contact-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .contact-field input,
++    .contact-field textarea {
++      display: block;
++      width: 100%;
++      padding: 10px;
++      border: 1px solid #a1887f;
++      border-radius: 4px;
++      color: var(--text);
++      background: var(--light);
++      font: inherit;
++    }
++
++    .contact-field textarea {
++      min-height: 140px;
++      resize: vertical;
++    }
++
++    .contact-form :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .contact-hint,
++    .contact-error {
++      font-size: 0.875rem;
++    }
++
++    .contact-hint {
++      display: block;
++      margin-bottom: 6px;
++    }
++
++    .contact-error {
++      display: none;
++      margin-top: 8px;
++      color: #b3261e;
++    }
++
++    .contact-field:has(:user-invalid) {
++      border-color: #b3261e;
++    }
++
++    .contact-field:has(:user-invalid) .contact-error {
++      display: block;
++    }
++
++    .contact-form .btn {
++      justify-self: start;
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +278,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="contact" aria-labelledby="contact-heading">
++      <h2 id="contact-heading">Contact Us</h2>
++      <p>Have a question? We'd love to hear from you. All fields are required.</p>
++      <form class="contact-form" id="contact-form">
++        <div class="contact-field">
++          <label for="contact-name">Name</label>
++          <input type="text" id="contact-name" name="name" autocomplete="name" required
++            aria-describedby="contact-name-error">
++          <p class="contact-error" id="contact-name-error">Please enter your name.</p>
++        </div>
++        <div class="contact-field">
++          <label for="contact-email">Email</label>
++          <span class="contact-hint" id="contact-email-hint">For example, you@example.com</span>
++          <input type="email" id="contact-email" name="email" autocomplete="email" required
++            aria-describedby="contact-email-hint contact-email-error">
++          <p class="contact-error" id="contact-email-error">Please enter a valid email address.</p>
++        </div>
++        <div class="contact-field">
++          <label for="contact-message">Message</label>
++          <textarea id="contact-message" name="message" rows="5" required
++            aria-describedby="contact-message-error"></textarea>
++          <p class="contact-error" id="contact-message-error">Please enter a message.</p>
++        </div>
++        <button type="submit" class="btn">Send Message</button>
++        <p id="contact-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +317,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const contactForm = document.getElementById('contact-form');
++
++    // CSS controls error presentation; keep assistive technology in sync.
++    const syncContactValidity = (event) => {
++      const field = event.target;
++      if (!field.matches('input, textarea')) return;
++      requestAnimationFrame(() => {
++        if (field.matches(':user-invalid')) {
++          field.setAttribute('aria-invalid', 'true');
++        } else {
++          field.removeAttribute('aria-invalid');
++        }
++      });
++    };
++
++    contactForm.addEventListener('focusout', syncContactValidity);
++    contactForm.addEventListener('input', syncContactValidity);
++    contactForm.addEventListener('invalid', syncContactValidity, true);
++    contactForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      document.getElementById('contact-status').textContent =
++        'Message delivery is not connected yet. Your message has not been sent.';
++    });
++  </script>
+ </body>
+ 
+ </html>

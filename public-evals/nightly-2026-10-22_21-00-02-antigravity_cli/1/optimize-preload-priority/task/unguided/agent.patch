@@ -1,0 +1,109 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,105 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Video Landing Page</title>
++
++  <!-- Preload the LCP video poster image with high priority -->
++  <link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++
++  <!-- Preload only the critical brand font for the header (crossorigin required for fonts) -->
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++
++  <style>
++    @font-face {
++      font-family: 'BrandFont';
++      src: url('brand-font.woff2') format('woff2');
++      font-weight: 700;
++      font-style: normal;
++      font-display: swap;
++    }
++
++    /* Secondary font is not preloaded to avoid competing with LCP resources */
++    @font-face {
++      font-family: 'SecondaryFont';
++      src: url('secondary-font.woff2') format('woff2');
++      font-weight: 400;
++      font-style: normal;
++      font-display: optional;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'SecondaryFont', system-ui, -apple-system, sans-serif;
++      background-color: #0f172a;
++      color: #f8fafc;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      min-height: 100vh;
++      padding: 1.5rem;
++      text-align: center;
++    }
++
++    header {
++      margin-bottom: 1.5rem;
++    }
++
++    h1 {
++      font-family: 'BrandFont', system-ui, -apple-system, sans-serif;
++      font-size: clamp(2rem, 4vw, 3.5rem);
++      line-height: 1.1;
++      margin-bottom: 0.5rem;
++    }
++
++    p {
++      color: #94a3b8;
++      font-size: 1rem;
++    }
++
++    .video-wrapper {
++      width: 100%;
++      max-width: 960px;
++      aspect-ratio: 16 / 9;
++      background-color: #1e293b;
++      border-radius: 0.5rem;
++      overflow: hidden;
++    }
++
++    video {
++      width: 100%;
++      height: 100%;
++      display: block;
++      object-fit: cover;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1>Next-Gen Video</h1>
++    <p>Experience instant playback with zero layout shift.</p>
++  </header>
++
++  <main class="video-wrapper">
++    <!-- preload="none" prevents video data from competing with poster.jpg for bandwidth -->
++    <video
++      poster="poster.jpg"
++      preload="none"
++      width="1280"
++      height="720"
++      controls
++      playsinline
++    >
++      <source src="video.mp4" type="video/mp4">
++      Your browser does not support HTML5 video.
++    </video>
++  </main>
++</body>
++</html>

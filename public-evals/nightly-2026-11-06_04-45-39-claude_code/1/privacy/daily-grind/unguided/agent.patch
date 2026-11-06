@@ -1,0 +1,1124 @@
+diff --git a/.well-known/gpc.json b/.well-known/gpc.json
+new file mode 100644
+index 0000000..0d00f2a
+--- /dev/null
++++ b/.well-known/gpc.json
+@@ -0,0 +1,4 @@
++{
++  "gpc": true,
++  "lastUpdate": "2026-11-06"
++}
+diff --git a/PRIVACY.md b/PRIVACY.md
+new file mode 100644
+index 0000000..6fd8abb
+--- /dev/null
++++ b/PRIVACY.md
+@@ -0,0 +1,96 @@
++# Privacy by Design — The Daily Grind website
++
++This document records how the site minimizes, protects and discloses personal
++data, and the results of the third-party audit. Update it whenever a new
++integration, form, cookie or storage key is added.
++
++## 1. Data inventory (this page)
++
++| Data | Where | Purpose | Retention |
++|---|---|---|---|
++| `dg:privacy-notice-dismissed` = `"1"` | `localStorage` (browser only) | Don't show the privacy notice again | Until the visitor clears site data |
++| IP address, user agent, URL | In memory for the duration of the HTTP request | Serving the page | **Not logged** by `server.mjs` |
++
++No cookies are set by client-side code. No analytics, advertising, session
++replay, fingerprinting or social widgets are used. The privacy script makes no
++network requests.
++
++Session cookies for `/account`, `/rewards` and `/order-online` belong to the
++backend and are out of scope here. They should be `Secure; HttpOnly;
++SameSite=Lax` (or `Strict`), use the `__Host-` prefix, and contain only an
++opaque session ID.
++
++## 2. Third-party audit — 2026-11-06
++
++| Origin | Was used for | Data exposed | Action |
++|---|---|---|---|
++| `images.unsplash.com` | Hero background image | Visitor IP, user agent, Referer (page URL) on every page view | **Removed.** The image is now self-hosted at `assets/img/hero-coffee.jpg` (Unsplash License, photo `1495474472287-4d71bcdd2085`). |
++
++**Current third parties: none.** All resources are same-origin, and the CSP
++(`default-src 'none'`, `'self'` only) enforces that in the browser.
++
++`npm run audit:privacy` (`scripts/privacy-audit.mjs`) re-runs this audit
++automatically and fails if:
++- a non-allowlisted third-party origin is referenced
++- inline scripts, styles or event handlers appear
++- known tracker, analytics or fingerprinting APIs are used
++- client JS writes cookies
++- logout is done through a GET link
++- the `<meta>` CSP drifts from `security-headers.mjs`
++- `_headers` is stale
++
++To add a third party, add it to `THIRD_PARTY_ALLOWLIST` with its purpose, what
++it receives and a review date. Then widen the CSP in `security-headers.mjs` and
++`index.html`, gate loading behind `DailyGrindPrivacy.mayLoadOptional()`, and
++update this file and the public privacy policy.
++
++## 3. Client-side controls (`assets/js/privacy.js`)
++
++- **Global Privacy Control / Do Not Track** are honored. `mayLoadOptional()`
++  returns `false` when either signal is set, and the footer confirms the signal
++  is honored. `/.well-known/gpc.json` declares GPC support.
++- **Tracking parameter stripping:** `utm_*`, `fbclid`, `gclid`, `msclkid` and
++  similar parameters are removed from the address bar with
++  `history.replaceState`. This keeps them out of bookmarks, shared links and
++  onward Referers.
++- **Storage allowlist:** any `dg:`-prefixed storage key that isn't on the
++  allowlist is deleted on load.
++- **Outbound link hardening:** external links get `rel="noopener noreferrer"`
++  and `referrerpolicy="no-referrer"`.
++- **Notice, not a consent wall:** there is nothing optional to consent to, so
++  the notice is informational only.
++
++## 4. Markup
++
++- No inline scripts or styles, so the CSP doesn't need `'unsafe-inline'`.
++- `<meta>` CSP and `<meta name="referrer">` act as fallbacks when the host
++  can't send headers.
++- Logout is a `POST` form. Prefetchers, crawlers and cross-site
++  `<img src="/logout">` can no longer end a session.
++- `robots.txt` keeps account and checkout paths out of search indexes.
++
++## 5. HTTP headers (`security-headers.mjs`)
++
++`server.mjs` (used by `npm start`) sends these headers, and `npm run build`
++writes the same set to `_headers` for Netlify or Cloudflare Pages:
++
++| Header | Value / effect |
++|---|---|
++| Content-Security-Policy | `default-src 'none'`; only same-origin script/style/img/font/connect; `frame-ancestors 'none'`; `form-action 'self'`; `base-uri 'none'` |
++| Strict-Transport-Security | 2 years, includeSubDomains. Add `preload` only after confirming every subdomain serves HTTPS. |
++| Referrer-Policy | `strict-origin-when-cross-origin` (other sites see only the origin) |
++| Permissions-Policy | Denies camera, mic, geolocation, payment, sensors, USB and similar features, plus the Topics, Protected Audience, Attribution Reporting and Shared Storage ad APIs |
++| X-Content-Type-Options | `nosniff` |
++| X-Frame-Options | `DENY` (legacy clickjacking defense) |
++| COOP / CORP / COEP | `same-origin` / `same-origin` / `require-corp` |
++| Cache-Control | HTML: `no-cache, private` (never kept by shared caches); assets: 1 day |
++| X-DNS-Prefetch-Control | `off` |
++
++`server.mjs` also serves only an allowlist of public paths: `index.html`,
++`assets/`, `robots.txt` and `/.well-known/gpc.json`. Source files,
++`package.json` and dotfiles are never exposed. Only `GET`/`HEAD` are accepted,
++and nothing is logged per request.
++
++If the store locator later needs geolocation, change it to
++`geolocation=(self)` on that page only, and request it only after the user
++clicks.
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..28c49d9
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,25 @@
++# GENERATED by scripts/build-headers.mjs from security-headers.mjs — do not edit by hand.
++
++/*
++  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
++  Strict-Transport-Security: max-age=63072000; includeSubDomains
++  Referrer-Policy: strict-origin-when-cross-origin
++  Permissions-Policy: accelerometer=(), ambient-light-sensor=(), attribution-reporting=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), gamepad=(), geolocation=(), gyroscope=(), hid=(), identity-credentials-get=(), idle-detection=(), interest-cohort=(), join-ad-interest-group=(), local-fonts=(), magnetometer=(), microphone=(), midi=(), otp-credentials=(), payment=(), private-aggregation=(), publickey-credentials-get=(), run-ad-auction=(), screen-wake-lock=(), serial=(), shared-storage=(), shared-storage-select-url=(), usb=(), window-management=(), xr-spatial-tracking=()
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: DENY
++  Cross-Origin-Opener-Policy: same-origin
++  Cross-Origin-Resource-Policy: same-origin
++  Cross-Origin-Embedder-Policy: require-corp
++  Origin-Agent-Cluster: ?1
++  X-DNS-Prefetch-Control: off
++  X-Permitted-Cross-Domain-Policies: none
++
++/
++  Cache-Control: no-cache, private
++
++/index.html
++  Cache-Control: no-cache, private
++
++/assets/*
++  Cache-Control: public, max-age=86400
++
+diff --git a/assets/css/styles.css b/assets/css/styles.css
+new file mode 100644
+index 0000000..ea9033a
+--- /dev/null
++++ b/assets/css/styles.css
+@@ -0,0 +1,223 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('../img/hero-coffee.jpg');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++/* Logout is a POST form (not a GET link) so prefetchers, crawlers and
++   cross-site <img> tags cannot end a session. Styled to match nav links. */
++.logout-form {
++  display: inline;
++}
++
++.logout-link {
++  background: none;
++  color: white;
++  font: inherit;
++  font-size: 0.9rem;
++  cursor: pointer;
++  transition: color 0.3s;
++}
++
++.logout-link:hover,
++.logout-link:focus-visible {
++  color: var(--accent);
++}
++
++.section-title {
++  text-align: center;
++}
++
++.visually-hidden {
++  position: absolute;
++  width: 1px;
++  height: 1px;
++  overflow: hidden;
++  clip: rect(0 0 0 0);
++  white-space: nowrap;
++}
++
++/* Privacy notice — shown once, stores only a local "seen" flag. */
++.privacy-notice {
++  position: fixed;
++  left: 1rem;
++  right: 1rem;
++  bottom: 1rem;
++  max-width: 640px;
++  margin: 0 auto;
++  background: white;
++  color: var(--text);
++  padding: 1rem 1.25rem;
++  border-radius: 8px;
++  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
++  z-index: 1100;
++  font-size: 0.9rem;
++}
++
++.privacy-notice[hidden] {
++  display: none;
++}
++
++.privacy-notice p {
++  margin-bottom: 0.75rem;
++}
++
++.privacy-notice a {
++  color: var(--primary);
++}
++
++.privacy-notice button {
++  background: var(--primary);
++  color: white;
++  border: 0;
++  padding: 8px 16px;
++  border-radius: 5px;
++  font: inherit;
++  cursor: pointer;
++}
++
++.gpc-status {
++  font-size: 0.8rem;
++  margin-top: 0.5rem;
++}
+diff --git a/assets/img/hero-coffee.jpg b/assets/img/hero-coffee.jpg
+new file mode 100644
+index 0000000..c69793b
+Binary files /dev/null and b/assets/img/hero-coffee.jpg differ
+diff --git a/assets/js/privacy.js b/assets/js/privacy.js
+new file mode 100644
+index 0000000..6ecd07e
+--- /dev/null
++++ b/assets/js/privacy.js
+@@ -0,0 +1,160 @@
++/*
++ * The Daily Grind — client-side privacy controls.
++ *
++ * Principles:
++ *  - Data minimization: no cookies, no analytics, no fingerprinting, no
++ *    network requests. The only thing stored is a single localStorage flag
++ *    recording that the privacy notice was dismissed (no ID, no timestamp).
++ *  - Respect browser signals: Global Privacy Control and Do Not Track are
++ *    treated as an opt-out of any future optional processing.
++ *  - Strip tracking identifiers from the URL so they aren't bookmarked,
++ *    shared onward, or leaked via Referer to the next site.
++ *  - Harden outbound links so third parties don't get window.opener or
++ *    a full Referer.
++ */
++(function () {
++  'use strict';
++
++  var STORAGE_PREFIX = 'dg:';
++  var NOTICE_KEY = STORAGE_PREFIX + 'privacy-notice-dismissed';
++  // Only keys on this list may live in localStorage/sessionStorage. Anything
++  // else under our prefix is purged on load so stale data doesn't linger.
++  var ALLOWED_STORAGE_KEYS = [NOTICE_KEY];
++
++  // Query parameters that exist only to track people across sites.
++  var TRACKING_PARAMS = [
++    'fbclid', 'gclid', 'gclsrc', 'dclid', 'gbraid', 'wbraid', 'msclkid',
++    'mc_cid', 'mc_eid', 'yclid', 'igshid', 'twclid', 'ttclid', 'li_fat_id',
++    '_ga', '_gl', '_hsenc', '_hsmi', 'mkt_tok', 'oly_anon_id', 'oly_enc_id',
++    'vero_id', 'wickedid', 'rb_clickid', 's_cid', 'srsltid'
++  ];
++  var TRACKING_PREFIXES = ['utm_', 'pk_', 'mtm_', 'hsa_'];
++
++  function safeStorage(kind) {
++    // Storage access throws in some privacy modes; treat as unavailable.
++    try {
++      var s = window[kind];
++      var probe = STORAGE_PREFIX + 'probe';
++      s.setItem(probe, '1');
++      s.removeItem(probe);
++      return s;
++    } catch (e) {
++      return null;
++    }
++  }
++
++  var local = safeStorage('localStorage');
++  var session = safeStorage('sessionStorage');
++
++  /** True when the visitor has asked not to be tracked or have data sold/shared. */
++  function hasOptedOut() {
++    var nav = window.navigator || {};
++    if (nav.globalPrivacyControl === true) return true;
++    var dnt = nav.doNotTrack || window.doNotTrack || nav.msDoNotTrack;
++    return dnt === '1' || dnt === 'yes';
++  }
++
++  function purgeUnapprovedStorage(store) {
++    if (!store) return;
++    var stale = [];
++    for (var i = 0; i < store.length; i++) {
++      var key = store.key(i);
++      if (key && key.indexOf(STORAGE_PREFIX) === 0 && ALLOWED_STORAGE_KEYS.indexOf(key) === -1) {
++        stale.push(key);
++      }
++    }
++    stale.forEach(function (k) { store.removeItem(k); });
++  }
++
++  function isTrackingParam(name) {
++    var n = name.toLowerCase();
++    if (TRACKING_PARAMS.indexOf(n) !== -1) return true;
++    for (var i = 0; i < TRACKING_PREFIXES.length; i++) {
++      if (n.indexOf(TRACKING_PREFIXES[i]) === 0) return true;
++    }
++    return false;
++  }
++
++  function stripTrackingParams() {
++    if (!window.URL || !window.history || !history.replaceState) return;
++    var url = new URL(window.location.href);
++    var names = [];
++    url.searchParams.forEach(function (_, name) {
++      if (isTrackingParam(name)) names.push(name);
++    });
++    if (!names.length) return;
++    names.forEach(function (n) { url.searchParams.delete(n); });
++    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
++  }
++
++  function hardenOutboundLinks(root) {
++    var links = (root || document).querySelectorAll('a[href]');
++    for (var i = 0; i < links.length; i++) {
++      var a = links[i];
++      var url;
++      try {
++        url = new URL(a.getAttribute('href'), window.location.href);
++      } catch (e) {
++        continue;
++      }
++      if (url.protocol !== 'http:' && url.protocol !== 'https:') continue;
++      if (url.origin === window.location.origin) continue;
++      var rel = (a.getAttribute('rel') || '').split(/\s+/).filter(Boolean);
++      ['noopener', 'noreferrer'].forEach(function (r) {
++        if (rel.indexOf(r) === -1) rel.push(r);
++      });
++      a.setAttribute('rel', rel.join(' '));
++      a.setAttribute('referrerpolicy', 'no-referrer');
++    }
++  }
++
++  function setupNotice() {
++    var notice = document.getElementById('privacy-notice');
++    var button = document.getElementById('privacy-notice-dismiss');
++    if (!notice || !button) return;
++    if (local && local.getItem(NOTICE_KEY) === '1') return;
++    notice.hidden = false;
++    button.addEventListener('click', function () {
++      notice.hidden = true;
++      if (local) local.setItem(NOTICE_KEY, '1');
++    });
++  }
++
++  function showSignalStatus() {
++    var el = document.getElementById('gpc-status');
++    if (!el || !hasOptedOut()) return;
++    el.textContent = 'Your browser’s privacy signal (Global Privacy Control / Do Not Track) is honored on this site.';
++    el.hidden = false;
++  }
++
++  /**
++   * Gate for any future optional third-party feature (maps, chat, analytics).
++   * Nothing calls this today; it exists so new integrations have to go
++   * through an explicit opt-out check instead of loading unconditionally.
++   * Returns false whenever the visitor has signalled an opt-out.
++   */
++  function mayLoadOptional() {
++    return !hasOptedOut();
++  }
++
++  stripTrackingParams();
++  purgeUnapprovedStorage(local);
++  purgeUnapprovedStorage(session);
++
++  function onReady() {
++    hardenOutboundLinks(document);
++    setupNotice();
++    showSignalStatus();
++  }
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', onReady);
++  } else {
++    onReady();
++  }
++
++  window.DailyGrindPrivacy = Object.freeze({
++    hasOptedOut: hasOptedOut,
++    mayLoadOptional: mayLoadOptional
++  });
++})();
+diff --git a/index.html b/index.html
+index 66c9173..3af450b 100644
+--- a/index.html
++++ b/index.html
+@@ -4,167 +4,39 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!--
++    Privacy by design: this page loads no third-party resources. Everything
++    (CSS, JS, images) is same-origin, so visitors' IP addresses, user agents
++    and referrers are never disclosed to outside parties. The CSP below is a
++    fallback for hosts that cannot send HTTP headers; the authoritative
++    policy is sent by server.mjs / _headers. See PRIVACY.md.
++  -->
++  <meta http-equiv="Content-Security-Policy"
++    content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; form-action 'self'; base-uri 'none'">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <meta name="format-detection" content="telephone=no, email=no, address=no">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="description" content="Ethically sourced, locally roasted coffee from The Daily Grind.">
++  <link rel="stylesheet" href="/assets/css/styles.css">
++  <script src="/assets/js/privacy.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <!-- POST, not GET: a state-changing action must not be triggerable by
++             link prefetching or a cross-site <img src="/logout">. -->
++        <form class="logout-form" action="/logout" method="post">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -175,23 +47,23 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
+         </div>
+       </div>
+     </section>
+@@ -205,8 +77,19 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p class="gpc-status" id="gpc-status" hidden></p>
+   </footer>
+ 
++  <!-- Informational notice only: the site sets no tracking cookies and runs
++       no analytics, so there is nothing to consent to. Hidden until JS has
++       confirmed the visitor hasn't dismissed it. -->
++  <aside class="privacy-notice" id="privacy-notice" aria-labelledby="privacy-notice-title" hidden>
++    <h2 id="privacy-notice-title" class="visually-hidden">Privacy notice</h2>
++    <p>We don't use tracking cookies, analytics or ads, and this page loads nothing from third parties.
++      Read our <a href="/privacy-policy">privacy policy</a>.</p>
++    <button type="button" id="privacy-notice-dismiss">Got it</button>
++  </aside>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..4feb059 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,11 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "build": "node scripts/build-headers.mjs",
++    "audit:privacy": "node scripts/build-headers.mjs && node scripts/privacy-audit.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/robots.txt b/robots.txt
+new file mode 100644
+index 0000000..6f17fac
+--- /dev/null
++++ b/robots.txt
+@@ -0,0 +1,4 @@
++User-agent: *
++Disallow: /account
++Disallow: /logout
++Disallow: /order-online
+diff --git a/scripts/build-headers.mjs b/scripts/build-headers.mjs
+new file mode 100644
+index 0000000..a637f36
+--- /dev/null
++++ b/scripts/build-headers.mjs
+@@ -0,0 +1,24 @@
++// Generates `_headers` (Netlify / Cloudflare Pages) from security-headers.mjs.
++import { writeFileSync } from 'node:fs';
++import { fileURLToPath } from 'node:url';
++import { SECURITY_HEADERS, HTML_CACHE_CONTROL, ASSET_CACHE_CONTROL } from '../security-headers.mjs';
++
++export function renderHeadersFile() {
++  const block = (path, headers) =>
++    [path, ...Object.entries(headers).map(([k, v]) => `  ${k}: ${v}`)].join('\n');
++  // Paths must not overlap on Cache-Control: hosts merge duplicate headers.
++  return [
++    '# GENERATED by scripts/build-headers.mjs from security-headers.mjs — do not edit by hand.',
++    block('/*', SECURITY_HEADERS),
++    block('/', { 'Cache-Control': HTML_CACHE_CONTROL }),
++    block('/index.html', { 'Cache-Control': HTML_CACHE_CONTROL }),
++    block('/assets/*', { 'Cache-Control': ASSET_CACHE_CONTROL }),
++    '',
++  ].join('\n\n');
++}
++
++if (process.argv[1] === fileURLToPath(import.meta.url)) {
++  const out = new URL('../_headers', import.meta.url);
++  writeFileSync(out, renderHeadersFile());
++  console.log('Wrote _headers');
++}
+diff --git a/scripts/privacy-audit.mjs b/scripts/privacy-audit.mjs
+new file mode 100644
+index 0000000..5e721ea
+--- /dev/null
++++ b/scripts/privacy-audit.mjs
+@@ -0,0 +1,123 @@
++#!/usr/bin/env node
++// Privacy & third-party audit for The Daily Grind. No dependencies.
++//
++// Fails (exit 1) if any public file:
++//   - references a third-party origin not on THIRD_PARTY_ALLOWLIST
++//   - contains inline <script>, inline event handlers, or style="" attributes
++//     (these would force 'unsafe-inline' into the CSP)
++//   - uses known tracking/analytics/fingerprinting APIs or vendors
++//   - writes cookies from client-side JS
++// and also checks that the <meta> CSP fallback matches security-headers.mjs
++// and that `_headers` is up to date.
++//
++// Run: npm run audit:privacy
++
++import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
++import { join, relative, extname } from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { serializeCsp } from '../security-headers.mjs';
++import { renderHeadersFile } from './build-headers.mjs';
++
++const ROOT = fileURLToPath(new URL('..', import.meta.url));
++
++// Every third party the site talks to must be listed here with a reason,
++// a data-processing review date, and what data it receives. Currently none.
++// Example entry:
++//   'https://example-maps.com': { purpose: 'store locator map', receives: 'IP, UA', reviewed: '2026-11-06' },
++const THIRD_PARTY_ALLOWLIST = {};
++
++// Origins that may appear in comments/docs as text but are never fetched.
++const IGNORED_URL_PREFIXES = ['http://www.w3.org/', 'https://www.w3.org/', 'http://localhost', 'https://localhost'];
++
++const PUBLIC_PATHS = ['index.html', 'assets', 'robots.txt', '.well-known'];
++const SCANNED_EXT = new Set(['.html', '.css', '.js', '.json', '.txt', '.svg']);
++
++const TRACKER_PATTERNS = [
++  [/google-analytics\.com|googletagmanager\.com|gtag\(|\bga\(\s*['"]/i, 'Google Analytics / Tag Manager'],
++  [/connect\.facebook\.net|\bfbq\(/i, 'Meta Pixel'],
++  [/hotjar|fullstory|mouseflow|clarity\.ms|logrocket|smartlook/i, 'Session replay'],
++  [/doubleclick|adservice|googlesyndication|criteo|taboola|outbrain/i, 'Ad network'],
++  [/segment\.(com|io)|mixpanel|amplitude|heap(analytics)?\.|matomo|plausible/i, 'Analytics SDK'],
++  [/fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net/i, 'Third-party web fonts (leak IP)'],
++  [/\.toDataURL\(|getImageData\(|\bAudioContext\b|getChannelData/i, 'Possible canvas/audio fingerprinting'],
++  [/navigator\.(plugins|hardwareConcurrency|deviceMemory|getBattery)/i, 'Fingerprinting surface'],
++  [/navigator\.sendBeacon|new\s+Image\(\)\.src\s*=/i, 'Beacon-style tracking'],
++];
++
++function walk(p) {
++  const full = join(ROOT, p);
++  if (!existsSync(full)) return [];
++  const st = statSync(full);
++  if (st.isFile()) return [full];
++  return readdirSync(full).flatMap((name) => walk(join(p, name)));
++}
++
++const problems = [];
++const report = (file, msg) => problems.push(`${relative(ROOT, file)}: ${msg}`);
++const thirdParties = new Map();
++
++const files = PUBLIC_PATHS.flatMap(walk).filter((f) => SCANNED_EXT.has(extname(f).toLowerCase()));
++
++for (const file of files) {
++  const text = readFileSync(file, 'utf8');
++  const ext = extname(file).toLowerCase();
++
++  for (const m of text.matchAll(/(?:https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?/gi)) {
++    const raw = m[0].startsWith('//') ? `https:${m[0]}` : m[0];
++    if (IGNORED_URL_PREFIXES.some((p) => raw.startsWith(p))) continue;
++    const origin = new URL(raw).origin;
++    if (!thirdParties.has(origin)) thirdParties.set(origin, new Set());
++    thirdParties.get(origin).add(relative(ROOT, file));
++    if (!THIRD_PARTY_ALLOWLIST[origin]) report(file, `unapproved third-party origin ${origin}`);
++  }
++
++  for (const [re, label] of TRACKER_PATTERNS) {
++    if (re.test(text)) report(file, `matches tracker pattern: ${label}`);
++  }
++
++  if (ext === '.html') {
++    for (const m of text.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
++      if (!/\bsrc\s*=/.test(m[1]) || m[2].trim()) report(file, 'inline <script> (requires unsafe-inline)');
++    }
++    if (/<style\b/i.test(text)) report(file, 'inline <style> block (requires unsafe-inline)');
++    if (/\sstyle\s*=/i.test(text)) report(file, 'style="" attribute (requires unsafe-inline)');
++    if (/\son[a-z]+\s*=/i.test(text)) report(file, 'inline event handler attribute');
++    if (/href\s*=\s*["']\s*javascript:/i.test(text)) report(file, 'javascript: URL');
++    if (/<a\b[^>]*href=["'][^"']*\/logout/i.test(text)) report(file, 'logout via GET link — use a POST form');
++    for (const m of text.matchAll(/<input\b[^>]*>/gi)) {
++      const tag = m[0];
++      if (/type=["']?(email|tel|password|text)/i.test(tag) && !/autocomplete=/i.test(tag)) {
++        report(file, `input without explicit autocomplete attribute: ${tag}`);
++      }
++    }
++
++    const meta = text.match(/<meta\s+http-equiv=["']Content-Security-Policy["']\s+content="([^"]+)"/i);
++    const expected = serializeCsp(undefined, { forMeta: true });
++    if (!meta) report(file, 'missing <meta> CSP fallback');
++    else if (meta[1].replace(/\s+/g, ' ').trim() !== expected) {
++      report(file, `<meta> CSP out of sync with security-headers.mjs\n    expected: ${expected}\n    found:    ${meta[1]}`);
++    }
++    if (!/<meta\s+name=["']referrer["']/i.test(text)) report(file, 'missing <meta name="referrer">');
++  }
++
++  if (ext === '.js' && /document\.cookie\s*=/.test(text)) report(file, 'client-side cookie write');
++}
++
++const headersPath = join(ROOT, '_headers');
++if (!existsSync(headersPath) || readFileSync(headersPath, 'utf8') !== renderHeadersFile()) {
++  problems.push('_headers: out of date — run `npm run build`');
++}
++
++console.log(`Scanned ${files.length} public files.`);
++console.log('Third-party origins referenced:', thirdParties.size ? '' : 'none');
++for (const [origin, where] of thirdParties) {
++  const entry = THIRD_PARTY_ALLOWLIST[origin];
++  console.log(`  ${origin} ${entry ? `(approved: ${entry.purpose})` : '(NOT APPROVED)'} — ${[...where].join(', ')}`);
++}
++
++if (problems.length) {
++  console.error(`\nPrivacy audit FAILED with ${problems.length} problem(s):`);
++  for (const p of problems) console.error(`  - ${p}`);
++  process.exit(1);
++}
++console.log('\nPrivacy audit passed.');
+diff --git a/security-headers.mjs b/security-headers.mjs
+new file mode 100644
+index 0000000..372fee5
+--- /dev/null
++++ b/security-headers.mjs
+@@ -0,0 +1,60 @@
++// Single source of truth for HTTP security & privacy headers.
++// Used by server.mjs at runtime and by scripts/build-headers.mjs to generate
++// `_headers` (Netlify / Cloudflare Pages format) for static hosting.
++// Keep the CSP in sync with the <meta http-equiv> fallback in index.html —
++// `npm run audit:privacy` checks this.
++
++export const CSP_DIRECTIVES = {
++  'default-src': ["'none'"],
++  'script-src': ["'self'"],
++  'style-src': ["'self'"],
++  'img-src': ["'self'"],
++  'font-src': ["'self'"],
++  'connect-src': ["'self'"],
++  'manifest-src': ["'self'"],
++  'form-action': ["'self'"],
++  'frame-ancestors': ["'none'"], // header-only; ignored in <meta>
++  'base-uri': ["'none'"],
++};
++
++export function serializeCsp(directives = CSP_DIRECTIVES, { forMeta = false } = {}) {
++  return Object.entries(directives)
++    // frame-ancestors, report-uri and sandbox are not allowed in <meta> CSP.
++    .filter(([name]) => !forMeta || !['frame-ancestors', 'report-uri', 'sandbox'].includes(name))
++    .map(([name, values]) => [name, ...values].join(' '))
++    .join('; ');
++}
++
++// Deny every powerful feature this site does not use, plus ad-tech APIs
++// (Topics, FLEDGE/Protected Audience, Attribution Reporting) that would
++// otherwise let the browser build an interest profile from visits here.
++const DENIED_FEATURES = [
++  'accelerometer', 'ambient-light-sensor', 'attribution-reporting', 'autoplay',
++  'bluetooth', 'browsing-topics', 'camera', 'display-capture',
++  'encrypted-media', 'gamepad', 'geolocation', 'gyroscope', 'hid',
++  'identity-credentials-get', 'idle-detection', 'interest-cohort',
++  'join-ad-interest-group', 'local-fonts', 'magnetometer', 'microphone',
++  'midi', 'otp-credentials', 'payment', 'private-aggregation',
++  'publickey-credentials-get', 'run-ad-auction', 'screen-wake-lock',
++  'serial', 'shared-storage', 'shared-storage-select-url', 'usb',
++  'window-management', 'xr-spatial-tracking',
++];
++
++export const SECURITY_HEADERS = {
++  'Content-Security-Policy': serializeCsp(),
++  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': DENIED_FEATURES.map((f) => `${f}=()`).join(', '),
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Cross-Origin-Embedder-Policy': 'require-corp',
++  'Origin-Agent-Cluster': '?1',
++  'X-DNS-Prefetch-Control': 'off',
++  'X-Permitted-Cross-Domain-Policies': 'none',
++};
++
++// HTML may be personalised (e.g. logged-in nav) — never let shared caches keep it.
++export const HTML_CACHE_CONTROL = 'no-cache, private';
++export const ASSET_CACHE_CONTROL = 'public, max-age=86400';
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..e60fb83
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,81 @@
++// Minimal static server for The Daily Grind that sends the security and
++// privacy headers defined in security-headers.mjs. No dependencies.
++//
++// Data minimization: no access logs are written, so visitor IP addresses,
++// user agents and URLs are never persisted. Only an allowlist of public
++// paths is served — source files, package metadata and dotfiles are not.
++
++import { createServer } from 'node:http';
++import { readFile, stat } from 'node:fs/promises';
++import { extname, join, normalize, sep } from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { SECURITY_HEADERS, HTML_CACHE_CONTROL, ASSET_CACHE_CONTROL } from './security-headers.mjs';
++
++const ROOT = fileURLToPath(new URL('.', import.meta.url));
++const PORT = Number(process.env.PORT) || 11222;
++
++const PUBLIC_FILES = new Set(['/index.html', '/robots.txt', '/.well-known/gpc.json']);
++const PUBLIC_DIRS = ['/assets/'];
++
++const MIME = {
++  '.html': 'text/html; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.js': 'text/javascript; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.txt': 'text/plain; charset=utf-8',
++  '.jpg': 'image/jpeg',
++  '.jpeg': 'image/jpeg',
++  '.png': 'image/png',
++  '.webp': 'image/webp',
++  '.svg': 'image/svg+xml',
++  '.ico': 'image/x-icon',
++};
++
++function resolvePublic(urlPath) {
++  let p;
++  try {
++    p = decodeURIComponent(urlPath);
++  } catch {
++    return null;
++  }
++  if (p.includes('\0')) return null;
++  if (p === '/') p = '/index.html';
++  p = normalize(p).split(sep).join('/');
++  if (!PUBLIC_FILES.has(p) && !PUBLIC_DIRS.some((d) => p.startsWith(d))) return null;
++  // Reject hidden path segments inside public dirs (e.g. /assets/.env).
++  if (PUBLIC_DIRS.some((d) => p.startsWith(d)) && p.split('/').some((seg) => seg.startsWith('.'))) return null;
++  const full = join(ROOT, p);
++  if (!full.startsWith(ROOT)) return null;
++  return full;
++}
++
++function send(res, status, body, headers = {}) {
++  res.writeHead(status, { ...SECURITY_HEADERS, ...headers });
++  res.end(body);
++}
++
++const server = createServer(async (req, res) => {
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    return send(res, 405, 'Method Not Allowed', { Allow: 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' });
++  }
++  const { pathname } = new URL(req.url, 'http://localhost');
++  const file = resolvePublic(pathname);
++  if (!file) return send(res, 404, 'Not Found', { 'Content-Type': 'text/plain; charset=utf-8' });
++  try {
++    const info = await stat(file);
++    if (!info.isFile()) throw new Error('not a file');
++    const body = await readFile(file);
++    const ext = extname(file).toLowerCase();
++    send(res, 200, req.method === 'HEAD' ? undefined : body, {
++      'Content-Type': MIME[ext] || 'application/octet-stream',
++      'Content-Length': body.length,
++      'Cache-Control': ext === '.html' ? HTML_CACHE_CONTROL : ASSET_CACHE_CONTROL,
++    });
++  } catch {
++    send(res, 404, 'Not Found', { 'Content-Type': 'text/plain; charset=utf-8' });
++  }
++});
++
++server.listen(PORT, () => {
++  console.log(`The Daily Grind listening on port ${PORT}`);
++});

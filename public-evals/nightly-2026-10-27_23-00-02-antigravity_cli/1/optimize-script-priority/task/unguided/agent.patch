@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,67 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Dashboard</title>
++  <style>
++    body {
++      font-family: system-ui, -apple-system, sans-serif;
++      margin: 2rem;
++      color: #111827;
++      background-color: #f9fafb;
++    }
++    main {
++      max-width: 800px;
++      margin: 0 auto;
++    }
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 1rem;
++      margin-top: 1.5rem;
++    }
++    .card {
++      background: #ffffff;
++      border: 1px solid #e5e7eb;
++      border-radius: 0.5rem;
++      padding: 1.25rem;
++    }
++    .card h2 {
++      font-size: 0.875rem;
++      color: #6b7280;
++      margin: 0 0 0.5rem 0;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++    }
++    .card p {
++      font-size: 1.5rem;
++      font-weight: 600;
++      margin: 0;
++    }
++  </style>
++  <script src="/js/app.js" async></script>
++  <script src="/js/legacy-widgets.js" defer></script>
++  <script src="/js/tracker.js" defer></script>
++</head>
++<body>
++  <main>
++    <h1>Dashboard</h1>
++    <p id="app-status">System operational</p>
++    <div class="grid">
++      <section class="card">
++        <h2>Active Users</h2>
++        <p>1,284</p>
++      </section>
++      <section class="card">
++        <h2>Uptime</h2>
++        <p>99.98%</p>
++      </section>
++      <section class="card">
++        <h2>Widgets</h2>
++        <p id="legacy-widget">Ready</p>
++      </section>
++    </div>
++  </main>
++</body>
++</html>

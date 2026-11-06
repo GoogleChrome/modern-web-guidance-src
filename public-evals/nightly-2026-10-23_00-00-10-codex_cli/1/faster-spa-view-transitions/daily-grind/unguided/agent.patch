@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+index 66c9173..c89fbb0 100644
+--- a/index.html
++++ b/index.html
+@@ -164,10 +164,11 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-native-navigation>Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="view">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -206,6 +207,9 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  </div>
++
++  <script type="module" src="/navigation.js"></script>
+ 
+ </body>
+ 
+diff --git a/navigation.js b/navigation.js
+new file mode 100644
+index 0000000..0c5c1f3
+--- /dev/null
++++ b/navigation.js
+@@ -0,0 +1,73 @@
++// Cache actual view nodes so input values, listeners, and structural state survive.
++const views = new Map();
++const routeKey = (url) => url.pathname + url.search;
++let currentKey = routeKey(new URL(location.href));
++let pendingNavigation;
++
++views.set(currentKey, {
++  element: document.querySelector('#view'),
++  title: document.title,
++  scroll: [window.scrollX, window.scrollY],
++});
++
++async function navigate(url, { fromHistory = false } = {}) {
++  pendingNavigation?.abort();
++  const controller = new AbortController();
++  pendingNavigation = controller;
++  const key = routeKey(url);
++
++  try {
++    let view = views.get(key);
++    if (!view) {
++      const response = await fetch(url.href, { signal: controller.signal });
++      if (!response.ok || response.redirected ||
++          !response.headers.get('content-type')?.includes('text/html')) {
++        throw new Error('This destination requires normal navigation.');
++      }
++      const page = new DOMParser().parseFromString(await response.text(), 'text/html');
++      const element = page.querySelector('#view');
++      if (!element) throw new Error('Destination has no SPA view.');
++      view = { element, title: page.title, scroll: [0, 0] };
++    }
++    if (controller.signal.aborted) return;
++
++    const previous = views.get(currentKey);
++    previous.scroll = [window.scrollX, window.scrollY];
++    if (!fromHistory) history.pushState(null, '', url.href);
++    previous.element.replaceWith(view.element);
++    views.set(key, view);
++    currentKey = key;
++    document.title = view.title;
++    if (url.hash) {
++      const target = document.getElementById(decodeURIComponent(url.hash.slice(1)));
++      if (target) target.scrollIntoView();
++      else window.scrollTo(...view.scroll);
++    } else {
++      window.scrollTo(...view.scroll);
++    }
++  } catch (error) {
++    if (controller.signal.aborted) return;
++    location.assign(url.href);
++  }
++}
++
++document.addEventListener('click', (event) => {
++  if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
++      event.ctrlKey || event.shiftKey || event.altKey) return;
++  const link = event.target.closest('a[href]');
++  if (!link || link.hasAttribute('download') ||
++      link.hasAttribute('data-native-navigation') ||
++      (link.target && link.target !== '_self')) return;
++  const url = new URL(link.href);
++  if (url.origin !== location.origin || routeKey(url) === currentKey) return;
++  event.preventDefault();
++  navigate(url);
++});
++
++window.addEventListener('popstate', () => {
++  const url = new URL(location.href);
++  if (routeKey(url) !== currentKey) navigate(url, { fromHistory: true });
++  else pendingNavigation?.abort();
++});
++
++history.scrollRestoration = 'manual';
+diff --git a/tests/navigation.test.cjs b/tests/navigation.test.cjs
+new file mode 100644
+index 0000000..b9e30ac
+--- /dev/null
++++ b/tests/navigation.test.cjs
+@@ -0,0 +1,96 @@
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { test } = require('node:test');
++const vm = require('node:vm');
++
++function setup(fetchPage) {
++  const handlers = {};
++  const home = { value: 'retained input', replaceWith(next) { mounted = next; } };
++  let mounted = home;
++  const location = {
++    href: 'https://coffee.example/',
++    origin: 'https://coffee.example',
++    assign(url) { this.assigned = url; },
++  };
++  const document = {
++    title: 'Home',
++    querySelector: () => mounted,
++    getElementById: () => null,
++    addEventListener: (name, handler) => { handlers[name] = handler; },
++  };
++  const window = {
++    scrollX: 0, scrollY: 120,
++    scrollTo(x, y) { this.scrollX = x; this.scrollY = y; },
++    addEventListener: (name, handler) => { handlers[name] = handler; },
++  };
++  const history = {
++    pushState(_state, _title, url) { location.href = url; },
++  };
++  let requests = 0;
++  const context = vm.createContext({
++    URL, AbortController, location, document, window, history,
++    fetch: async (...args) => { requests++; return fetchPage(...args); },
++    DOMParser: class { parseFromString(page) { return page; } },
++  });
++  vm.runInContext(readFileSync(require.resolve('../navigation.js'), 'utf8'), context);
++  return {
++    home, location, window, document, handlers,
++    mounted: () => mounted,
++    requests: () => requests,
++    navigate: (path, options = {}) => {
++      context.destination = new URL(path, location.origin);
++      context.options = options;
++      return vm.runInContext('navigate(destination, options)', context);
++    },
++  };
++}
++
++function response(element) {
++  return {
++    ok: true, redirected: false,
++    headers: { get: () => 'text/html; charset=utf-8' },
++    text: async () => ({ title: 'Menu', querySelector: () => element }),
++  };
++}
++
++test('revisiting a view restores the same nodes and scroll without fetching', async () => {
++  const menu = { replaceWith(next) { app.home.replaceWith(next); } };
++  const app = setup(async () => response(menu));
++  await app.navigate('/menu');
++  assert.equal(app.mounted(), menu);
++  app.window.scrollY = 350;
++  await app.navigate('/');
++  assert.equal(app.mounted(), app.home);
++  assert.equal(app.home.value, 'retained input');
++  assert.equal(app.window.scrollY, 120);
++  await app.navigate('/menu');
++  assert.equal(app.mounted(), menu);
++  assert.equal(app.window.scrollY, 350);
++  assert.equal(app.requests(), 1);
++  assert.equal(app.document.title, 'Menu');
++  app.location.href = 'https://coffee.example/';
++  app.handlers.popstate();
++  assert.equal(app.mounted(), app.home);
++  assert.equal(app.location.href, 'https://coffee.example/');
++});
++
++test('failed page loads fall back to browser navigation', async () => {
++  const app = setup(async () => ({ ok: false }));
++  await app.navigate('/missing');
++  assert.equal(app.location.assigned, 'https://coffee.example/missing');
++  assert.equal(app.mounted(), app.home);
++});
++
++test('a late response cannot replace a newer navigation', async () => {
++  let resolveSlow;
++  const menu = { replaceWith() {} };
++  const app = setup((url) => url.endsWith('/slow')
++    ? new Promise((resolve) => { resolveSlow = resolve; })
++    : Promise.resolve(response(menu)));
++  const slow = app.navigate('/slow');
++  await app.navigate('/menu');
++  resolveSlow(response({}));
++  await slow;
++  assert.equal(app.mounted(), menu);
++  assert.equal(app.location.href, 'https://coffee.example/menu');
++});

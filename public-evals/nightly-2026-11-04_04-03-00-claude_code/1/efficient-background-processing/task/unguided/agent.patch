@@ -1,0 +1,360 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,78 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Roasting Simulator Widget */
++    #roasting-widget {
++      max-width: 1100px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++      height: 400px;
++      /* Skip rendering while off-screen; reserve the 400px placeholder height */
++      content-visibility: auto;
++      contain-intrinsic-size: auto 400px;
++    }
++
++    .roast-inner {
++      position: relative;
++      height: 100%;
++      border-radius: 8px;
++      overflow: hidden;
++      background: #1b0f0a;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      height: 100%;
++    }
++
++    .roast-hud {
++      position: absolute;
++      top: 16px;
++      left: 16px;
++      right: 16px;
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      color: white;
++      pointer-events: none;
++    }
++
++    .roast-hud h2 {
++      font-size: 1.25rem;
++      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
++    }
++
++    .roast-readout {
++      background: rgba(0, 0, 0, 0.55);
++      border: 1px solid var(--accent);
++      border-radius: 6px;
++      padding: 8px 14px;
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .roast-readout .label {
++      display: block;
++      font-size: 0.7rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      opacity: 0.8;
++    }
++
++    #roast-temp-value {
++      font-size: 1.6rem;
++      font-weight: bold;
++      color: var(--accent);
++    }
++
++    #roast-stage {
++      display: block;
++      font-size: 0.8rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +266,22 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-labelledby="roast-title">
++    <div class="roast-inner">
++      <canvas id="roast-canvas" aria-hidden="true"></canvas>
++      <div class="roast-hud">
++        <h2 id="roast-title">Live Roast Simulator</h2>
++        <div class="roast-readout" role="status" aria-live="off">
++          <span class="label">Bean Temp</span>
++          <span id="roast-temp-value">--</span><span>&deg;F</span>
++          <span id="roast-stage">Charging</span>
++        </div>
++      </div>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +290,254 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var widget = document.getElementById('roasting-widget');
++      var canvas = document.getElementById('roast-canvas');
++      var tempEl = document.getElementById('roast-temp-value');
++      var stageEl = document.getElementById('roast-stage');
++      if (!widget || !canvas || !tempEl || !canvas.getContext) return;
++
++      var ctx = canvas.getContext('2d');
++
++      // ---------- Simulation state ----------
++      var CHARGE_TEMP = 200, DROP_TEMP = 440, TEMP_INTERVAL_MS = 500;
++      var temp = CHARGE_TEMP;
++      var beans = [];
++      var BEAN_COUNT = 70;
++      var width = 0, height = 0, dpr = 1;
++      var lastTime = 0, drumAngle = 0;
++
++      function stageFor(t) {
++        if (t < 300) return 'Drying';
++        if (t < 385) return 'Maillard';
++        if (t < 400) return 'First Crack';
++        if (t < 425) return 'Development';
++        return 'Dropping';
++      }
++
++      // Green (raw) -> yellow -> cinnamon -> dark brown, driven by temperature
++      function beanColor(t) {
++        var p = Math.max(0, Math.min(1, (t - CHARGE_TEMP) / (DROP_TEMP - CHARGE_TEMP)));
++        var stops = [[140, 160, 90], [200, 175, 90], [165, 105, 55], [90, 52, 30], [55, 32, 20]];
++        var seg = p * (stops.length - 1);
++        var i = Math.min(stops.length - 2, Math.floor(seg));
++        var f = seg - i, a = stops[i], b = stops[i + 1];
++        return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * f) + ',' +
++          Math.round(a[1] + (b[1] - a[1]) * f) + ',' +
++          Math.round(a[2] + (b[2] - a[2]) * f) + ')';
++      }
++
++      function resize() {
++        var rect = canvas.getBoundingClientRect();
++        dpr = Math.min(window.devicePixelRatio || 1, 2);
++        width = Math.max(1, rect.width);
++        height = Math.max(1, rect.height);
++        canvas.width = Math.round(width * dpr);
++        canvas.height = Math.round(height * dpr);
++        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
++      }
++
++      function initBeans() {
++        beans = [];
++        for (var i = 0; i < BEAN_COUNT; i++) {
++          beans.push({
++            a: Math.random() * Math.PI * 2,   // angular position in drum
++            r: 0.35 + Math.random() * 0.6,     // radial position (fraction of drum radius)
++            rot: Math.random() * Math.PI * 2,
++            spin: (Math.random() - 0.5) * 4,
++            size: 7 + Math.random() * 4,
++            speed: 0.6 + Math.random() * 0.8
++          });
++        }
++      }
++
++      function drawBean(x, y, size, rot, color) {
++        ctx.save();
++        ctx.translate(x, y);
++        ctx.rotate(rot);
++        ctx.fillStyle = color;
++        ctx.beginPath();
++        ctx.ellipse(0, 0, size, size * 0.68, 0, 0, Math.PI * 2);
++        ctx.fill();
++        // Center crease
++        ctx.strokeStyle = 'rgba(0,0,0,0.45)';
++        ctx.lineWidth = 1.4;
++        ctx.beginPath();
++        ctx.moveTo(-size * 0.75, 0);
++        ctx.quadraticCurveTo(0, size * 0.25, size * 0.75, 0);
++        ctx.stroke();
++        ctx.restore();
++      }
++
++      function draw(dt) {
++        var cx = width / 2, cy = height / 2 + 20;
++        var R = Math.min(width, height) * 0.38;
++        var heat = (temp - CHARGE_TEMP) / (DROP_TEMP - CHARGE_TEMP);
++
++        ctx.clearRect(0, 0, width, height);
++
++        // Burner glow
++        var g = ctx.createRadialGradient(cx, cy + R, R * 0.1, cx, cy + R, R * 1.6);
++        g.addColorStop(0, 'rgba(255,' + Math.round(120 - heat * 60) + ',30,' + (0.25 + heat * 0.35) + ')');
++        g.addColorStop(1, 'rgba(0,0,0,0)');
++        ctx.fillStyle = g;
++        ctx.fillRect(0, 0, width, height);
++
++        // Drum
++        drumAngle += dt * 1.2;
++        ctx.strokeStyle = '#6d5a50';
++        ctx.lineWidth = 6;
++        ctx.beginPath();
++        ctx.arc(cx, cy, R, 0, Math.PI * 2);
++        ctx.stroke();
++        ctx.strokeStyle = 'rgba(160,140,130,0.35)';
++        ctx.lineWidth = 2;
++        for (var v = 0; v < 6; v++) {
++          var va = drumAngle + v * Math.PI / 3;
++          ctx.beginPath();
++          ctx.moveTo(cx + Math.cos(va) * R * 0.15, cy + Math.sin(va) * R * 0.15);
++          ctx.lineTo(cx + Math.cos(va) * R * 0.95, cy + Math.sin(va) * R * 0.95);
++          ctx.stroke();
++        }
++
++        // Beans tumbling: carried up the drum wall then falling back down
++        var color = beanColor(temp);
++        for (var i = 0; i < beans.length; i++) {
++          var b = beans[i];
++          b.a += dt * 1.2 * b.speed;
++          b.rot += dt * b.spin;
++          var a = b.a % (Math.PI * 2);
++          // Concentrate beans in the lower half where they'd pile up
++          var tumble = Math.PI * 0.5 + Math.sin(a) * Math.PI * 0.55;
++          var rr = R * 0.9 * b.r;
++          drawBean(cx + Math.cos(tumble) * rr, cy + Math.sin(tumble) * rr, b.size, b.rot, color);
++        }
++
++        // Smoke wisps after first crack
++        if (temp > 385) {
++          var smoke = Math.min(0.35, (temp - 385) / 150);
++          var t = performance.now() / 1000;
++          for (var s = 0; s < 4; s++) {
++            var sy = (cy - R) - ((t * 30 + s * 40) % 120);
++            ctx.fillStyle = 'rgba(200,200,200,' + (smoke * (1 - ((cy - R) - sy) / 120)) + ')';
++            ctx.beginPath();
++            ctx.arc(cx + Math.sin(t + s) * 20, sy, 14 + s * 3, 0, Math.PI * 2);
++            ctx.fill();
++          }
++        }
++      }
++
++      // ---------- Animation loop + temperature interval ----------
++      var rafId = null, intervalId = null, running = false;
++      var raf = window.requestAnimationFrame || function (cb) {
++        return window.setTimeout(function () { cb(Date.now()); }, 1000 / 60);
++      };
++      var caf = window.cancelAnimationFrame || window.clearTimeout;
++
++      function frame(now) {
++        if (!running) return;
++        var dt = lastTime ? Math.min(0.05, (now - lastTime) / 1000) : 0;
++        lastTime = now;
++        draw(dt);
++        rafId = raf(frame);
++      }
++
++      function tickTemp() {
++        // Rate of rise slows as the roast progresses, with a little sensor noise
++        var ror = 2 + (DROP_TEMP - temp) * 0.03;
++        temp += ror * (TEMP_INTERVAL_MS / 1000) * 2 + (Math.random() - 0.5) * 0.8;
++        if (temp >= DROP_TEMP) temp = CHARGE_TEMP; // drop & start a new batch
++        tempEl.textContent = temp.toFixed(1);
++        stageEl.textContent = stageFor(temp);
++      }
++
++      function start() {
++        if (running) return;
++        running = true;
++        lastTime = 0;
++        resize(); // canvas may have been measured while its subtree was skipped
++        tickTemp();
++        intervalId = window.setInterval(tickTemp, TEMP_INTERVAL_MS);
++        rafId = raf(frame);
++      }
++
++      function stop() {
++        if (!running) return;
++        running = false;
++        if (rafId !== null) { caf(rafId); rafId = null; }
++        if (intervalId !== null) { window.clearInterval(intervalId); intervalId = null; }
++      }
++
++      // ---------- Visibility management ----------
++      var inView = false;
++
++      function update() {
++        if (inView && !document.hidden) start(); else stop();
++      }
++
++      function setInView(v) {
++        if (v === inView) return;
++        inView = v;
++        update();
++      }
++
++      function isInViewport() {
++        var r = widget.getBoundingClientRect();
++        var vh = window.innerHeight || document.documentElement.clientHeight;
++        var vw = window.innerWidth || document.documentElement.clientWidth;
++        return r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw;
++      }
++
++      function throttle(fn, wait) {
++        var pending = false;
++        return function () {
++          if (pending) return;
++          pending = true;
++          window.setTimeout(function () { pending = false; fn(); }, wait);
++        };
++      }
++
++      if ('oncontentvisibilityautostatechange' in widget) {
++        // 1) Native rendering state signal: fires when the browser starts/stops
++        //    rendering this content-visibility:auto element.
++        widget.addEventListener('contentvisibilityautostatechange', function (e) {
++          setInView(!e.skipped);
++        });
++      } else if ('IntersectionObserver' in window) {
++        // 2) Fallback: IntersectionObserver
++        new IntersectionObserver(function (entries) {
++          setInView(entries[entries.length - 1].isIntersecting);
++        }, { threshold: 0 }).observe(widget);
++      } else {
++        // 3) Legacy fallback: throttled scroll/resize geometry checks
++        var check = throttle(function () { setInView(isInViewport()); }, 150);
++        window.addEventListener('scroll', check, { passive: true });
++        window.addEventListener('resize', check);
++        window.addEventListener('orientationchange', check);
++      }
++
++      // Also pause when the tab is hidden (rAF throttles, but intervals don't)
++      document.addEventListener('visibilitychange', update);
++
++      var onResize = throttle(function () {
++        resize();
++        if (!running) draw(0);
++      }, 150);
++      window.addEventListener('resize', onResize);
++
++      resize();
++      initBeans();
++      tempEl.textContent = temp.toFixed(1);
++      draw(0);
++      // Establish the initial state synchronously; observers refine it afterwards
++      setInView(isInViewport());
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

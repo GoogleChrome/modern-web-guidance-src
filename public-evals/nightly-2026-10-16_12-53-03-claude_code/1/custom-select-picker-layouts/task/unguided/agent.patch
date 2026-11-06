@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,101 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast picker (customizable select) */
++    .roast-picker {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 6px;
++      margin-top: 1.25rem;
++      font-size: 0.9rem;
++    }
++
++    .roast-picker select,
++    .roast-picker select::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-picker select {
++      min-width: 200px;
++      padding: 10px 14px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .roast-picker select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .roast-picker select::picker(select) {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++      width: max-content;
++      padding: 12px;
++      margin-top: 6px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
++    }
++
++    .roast-picker option {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 6px;
++      width: 96px;
++      padding: 12px 8px;
++      border: 2px solid transparent;
++      border-radius: 8px;
++      color: var(--text);
++      text-align: center;
++      cursor: pointer;
++    }
++
++    .roast-picker option::checkmark {
++      display: none;
++    }
++
++    .roast-picker option:hover,
++    .roast-picker option:focus-visible {
++      background: var(--light);
++      border-color: var(--secondary);
++    }
++
++    .roast-picker option:checked {
++      border-color: var(--accent);
++      background: #fff3e0;
++    }
++
++    .roast-swatch {
++      width: 40px;
++      height: 40px;
++      border-radius: 50%;
++      box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.35);
++    }
++
++    .roast-swatch.light { background: #c8a27a; }
++    .roast-swatch.medium { background: #8d5b3b; }
++    .roast-swatch.dark { background: #3e2216; }
++
++    .roast-name {
++      font-weight: 600;
++    }
++
++    /* Collapsed button shows just the label, not the swatch */
++    .roast-picker selectedcontent .roast-swatch {
++      display: none;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +263,26 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker">
++      <label for="roast">Choose your roast</label>
++      <select id="roast" name="roast">
++        <button type="button"><selectedcontent></selectedcontent></button>
++        <option value="light">
++          <span class="roast-swatch light"></span>
++          <span class="roast-name">Light</span>
++        </option>
++        <option value="medium" selected>
++          <span class="roast-swatch medium"></span>
++          <span class="roast-name">Medium</span>
++        </option>
++        <option value="dark">
++          <span class="roast-swatch dark"></span>
++          <span class="roast-name">Dark</span>
++        </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

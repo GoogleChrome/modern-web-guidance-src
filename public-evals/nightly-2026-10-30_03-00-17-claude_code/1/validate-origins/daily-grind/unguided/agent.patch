@@ -1,0 +1,285 @@
+diff --git a/index.html b/index.html
+index 66c9173..d5aded3 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,34 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .order-status {
++      display: none;
++      background: var(--accent);
++      color: var(--text);
++      text-align: center;
++      padding: 10px 20px;
++      font-weight: bold;
++    }
++
++    .order-status.visible {
++      display: block;
++    }
++
++    .widget-section {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .widget-frame {
++      width: 100%;
++      max-width: 500px;
++      height: 160px;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++      background: white;
++    }
+   </style>
+ </head>
+ 
+@@ -168,6 +196,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="order-status" class="order-status" role="status" aria-live="polite"></div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -195,6 +225,11 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="widget-section">
++      <h2>Your Rewards</h2>
++      <div id="rewards-widget"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,11 +237,223 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="https://www.instagram.com/">Instagram</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // Registrable domain of the site; any host equal to it or a subdomain of it is same-site.
++      var SITE_DOMAIN = 'thedailygrind.com';
++      // Only this exact origin may send ordering messages to this window.
++      var TRUSTED_ORDER_ORIGINS = ['https://order.thedailygrind.com'];
++      var SAFE_LINK_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:'];
++
++      function parseUrl(value, base) {
++        if (typeof value !== 'string' || value.length === 0 || value.length > 2048) return null;
++        try {
++          return new URL(value, base || window.location.href);
++        } catch (e) {
++          return null;
++        }
++      }
++
++      function isSiteHost(hostname) {
++        // URL#hostname is already lowercased, punycoded and stripped of credentials/port,
++        // so comparing on a dot boundary avoids "evilthedailygrind.com" style bypasses.
++        return hostname === SITE_DOMAIN || hostname.endsWith('.' + SITE_DOMAIN);
++      }
++
++      function isSameSite(url) {
++        if (!url) return false;
++        if (url.origin === window.location.origin) return true;
++        return url.protocol === 'https:' && isSiteHost(url.hostname);
++      }
++
++      // Returns a safe absolute URL for same-site navigation, or null.
++      function validateRedirect(value) {
++        var url = parseUrl(value);
++        if (!url || (url.protocol !== 'https:' && url.protocol !== 'http:')) return null;
++        if (url.username || url.password) return null;
++        return isSameSite(url) ? url.href : null;
++      }
++
++      function safeRedirect(value) {
++        var target = validateRedirect(value);
++        if (target) {
++          window.location.assign(target);
++        } else {
++          console.warn('Blocked redirect to untrusted URL:', value);
++        }
++      }
++
++      function isTrustedOrderOrigin(origin) {
++        return TRUSTED_ORDER_ORIGINS.indexOf(origin) !== -1;
++      }
++
++      // --- Links -----------------------------------------------------------
++
++      function secureLink(anchor) {
++        var raw = anchor.getAttribute('href');
++        if (raw === null || raw.charAt(0) === '#') return;
++        var url = parseUrl(raw);
++        if (!url || SAFE_LINK_PROTOCOLS.indexOf(url.protocol) === -1) {
++          // e.g. javascript:, data:, or unparsable hrefs
++          anchor.removeAttribute('href');
++          anchor.setAttribute('aria-disabled', 'true');
++          return;
++        }
++        if ((url.protocol === 'http:' || url.protocol === 'https:') && !isSameSite(url)) {
++          anchor.setAttribute('target', '_blank');
++          anchor.setAttribute('rel', 'noopener noreferrer');
++        }
++      }
++
++      function secureAllLinks(root) {
++        var anchors = root.querySelectorAll('a[href]');
++        for (var i = 0; i < anchors.length; i++) secureLink(anchors[i]);
++      }
++
++      // Re-check at click time in case an href was changed after load.
++      document.addEventListener('click', function (event) {
++        var anchor = event.target.closest && event.target.closest('a[href]');
++        if (!anchor) return;
++        secureLink(anchor);
++        if (!anchor.hasAttribute('href')) event.preventDefault();
++      }, true);
++
++      // --- Order status banner --------------------------------------------
++
++      function showOrderStatus(text) {
++        var banner = document.getElementById('order-status');
++        banner.textContent = text;
++        banner.classList.add('visible');
++      }
++
++      function handleOrderMessage(data) {
++        if (data.type !== 'grind:order-status') return;
++        var ORDER_STATUS_TEXT = {
++          received: 'Your order has been received.',
++          preparing: 'Your order is being prepared.',
++          ready: 'Your order is ready for pickup!'
++        };
++        if (Object.prototype.hasOwnProperty.call(ORDER_STATUS_TEXT, data.status)) {
++          showOrderStatus(ORDER_STATUS_TEXT[data.status]);
++        }
++        if (typeof data.redirect === 'string') safeRedirect(data.redirect);
++      }
++
++      // --- Sandboxed rewards widget ---------------------------------------
++
++      var WIDGET_SRCDOC = [
++        '<!DOCTYPE html><html><head><style>',
++        'body{font-family:"Segoe UI",sans-serif;margin:0;padding:20px;text-align:center;color:#3e2723}',
++        'button{background:#4e342e;color:#fff;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin-top:10px}',
++        '</style></head><body>',
++        '<p><strong>You are 2 stamps away from a free drink!</strong></p>',
++        '<button id="go" type="button">View Rewards</button>',
++        '<script>',
++        '(function(){',
++        'var nonce=null;',
++        'function send(msg){msg.nonce=nonce;parent.postMessage(msg,"*");}',
++        'addEventListener("message",function(e){',
++        '  if(e.source!==parent||nonce!==null)return;',
++        '  var d=e.data;',
++        '  if(!d||d.type!=="grind:widget-init"||typeof d.nonce!=="string")return;',
++        '  nonce=d.nonce;',
++        '  send({type:"grind:widget-ready"});',
++        '  send({type:"grind:widget-resize",height:document.documentElement.scrollHeight});',
++        '});',
++        'document.getElementById("go").addEventListener("click",function(){',
++        '  if(nonce!==null)send({type:"grind:widget-navigate",url:"/rewards"});',
++        '});',
++        '})();',
++        '<\/script></body></html>'
++      ].join('');
++
++      var widgetFrame = null;
++      var widgetNonce = null;
++      // The widget's WindowProxy, pinned once its handshake succeeds.
++      var pinnedWidgetSource = null;
++
++      function generateNonce() {
++        var bytes = new Uint8Array(16);
++        crypto.getRandomValues(bytes);
++        return Array.prototype.map.call(bytes, function (b) {
++          return ('0' + b.toString(16)).slice(-2);
++        }).join('');
++      }
++
++      function mountWidget() {
++        var container = document.getElementById('rewards-widget');
++        widgetFrame = document.createElement('iframe');
++        widgetFrame.className = 'widget-frame';
++        widgetFrame.title = 'Rewards widget';
++        // No allow-same-origin: the widget runs in an opaque ("null") origin.
++        widgetFrame.setAttribute('sandbox', 'allow-scripts');
++        widgetFrame.addEventListener('load', function () {
++          // Every (re)load starts a fresh handshake; the previous pin is dropped.
++          pinnedWidgetSource = null;
++          widgetNonce = generateNonce();
++          // Opaque origins cannot be targeted by name, so "*" is required; the
++          // message is delivered only to this frame's window.
++          widgetFrame.contentWindow.postMessage({ type: 'grind:widget-init', nonce: widgetNonce }, '*');
++        });
++        widgetFrame.srcdoc = WIDGET_SRCDOC;
++        container.appendChild(widgetFrame);
++      }
++
++      function handleWidgetMessage(event) {
++        var data = event.data;
++        // Sandboxed frames all share the origin "null", so origin alone cannot tell
++        // them apart; identity is established by the window object plus the nonce.
++        if (event.origin !== 'null' || !widgetFrame || widgetNonce === null) return false;
++        if (data.nonce !== widgetNonce) return false;
++
++        if (pinnedWidgetSource === null) {
++          if (data.type !== 'grind:widget-ready') return false;
++          if (event.source !== widgetFrame.contentWindow) return false;
++          pinnedWidgetSource = event.source;
++          return true;
++        }
++
++        if (event.source !== pinnedWidgetSource) return false;
++
++        if (data.type === 'grind:widget-resize') {
++          var height = Number(data.height);
++          if (isFinite(height) && height > 0) {
++            widgetFrame.style.height = Math.min(Math.ceil(height), 600) + 'px';
++          }
++        } else if (data.type === 'grind:widget-navigate') {
++          safeRedirect(data.url);
++        }
++        return true;
++      }
++
++      // --- Message dispatch -----------------------------------------------
++
++      window.addEventListener('message', function (event) {
++        var data = event.data;
++        if (!data || typeof data !== 'object' || typeof data.type !== 'string') return;
++
++        if (isTrustedOrderOrigin(event.origin)) {
++          handleOrderMessage(data);
++          return;
++        }
++        if (handleWidgetMessage(event)) return;
++
++        console.warn('Rejected message from untrusted sender:', event.origin);
++      });
++
++      secureAllLinks(document);
++      mountWidget();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

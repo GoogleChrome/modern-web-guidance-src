@@ -1,0 +1,615 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..0e55076 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -29,7 +29,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+     return (
+         <div onMouseLeave={handleMouseLeave}>
+             <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++                <nav aria-label="Primary" className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
+                         return (
+                             <div 
+@@ -42,7 +42,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                                     className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
+                                 >
+                                     <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                     </svg>
+                                 </a>
+diff --git a/src/components/ScrollspyNav.astro b/src/components/ScrollspyNav.astro
+new file mode 100644
+index 0000000..4e40692
+--- /dev/null
++++ b/src/components/ScrollspyNav.astro
+@@ -0,0 +1,87 @@
++---
++export interface SectionLink {
++  id: string;
++  label: string;
++}
++
++export interface Props {
++  sections: SectionLink[];
++  ariaLabel?: string;
++}
++
++const { sections, ariaLabel = "Page sections" } = Astro.props;
++---
++
++{sections.length > 0 && (
++  <nav
++    aria-label={ariaLabel}
++    data-scrollspy
++    class="scrollspy-nav sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 shadow-xs"
++  >
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center gap-3 overflow-x-auto py-2">
++      <span class="text-xs font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap select-none">
++        Sections
++      </span>
++      <ul class="flex items-center gap-2 sm:gap-4 text-sm font-medium m-0 p-0 list-none">
++        {sections.map((section) => (
++          <li>
++            <a
++              href={`#${section.id}`}
++              class="scrollspy-link inline-flex items-center min-h-8 px-3 py-1 rounded-t text-gray-700 hover:text-gray-900 border-b-2 border-transparent transition-colors whitespace-nowrap"
++            >
++              {section.label}
++            </a>
++          </li>
++        ))}
++      </ul>
++    </div>
++  </nav>
++)}
++
++<script>
++  const initScrollspy = () => {
++    const navs = document.querySelectorAll<HTMLElement>('nav[data-scrollspy]');
++    if (!navs.length) return;
++
++    const supportsScrollTargetGroup = CSS.supports('scroll-target-group: auto');
++
++    if (supportsScrollTargetGroup) {
++      const syncAriaCurrent = () => {
++        navs.forEach((nav) => {
++          const currentLink = nav.querySelector('a:target-current');
++          nav.querySelectorAll('a').forEach((link) => {
++            link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++          });
++        });
++      };
++
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      const navLinks = document.querySelectorAll<HTMLAnchorElement>('nav[data-scrollspy] a');
++      const sections = document.querySelectorAll<HTMLElement>('main section[id]');
++
++      const observer = new IntersectionObserver(
++        (entries) => {
++          entries.forEach((entry) => {
++            if (entry.isIntersecting) {
++              const id = entry.target.getAttribute('id');
++              if (!id) return;
++              navLinks.forEach((link) => {
++                const isActive = link.getAttribute('href') === `#${id}`;
++                link.classList.toggle('target-current', isActive);
++                link.setAttribute('aria-current', String(isActive));
++              });
++            }
++          });
++        },
++        { rootMargin: '-50% 0px -50% 0px', threshold: 0 }
++      );
++
++      sections.forEach((section) => observer.observe(section));
++    }
++  };
++
++  initScrollspy();
++  document.addEventListener('astro:page-load', initScrollspy);
++</script>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..dcf4cc9 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -3,13 +3,15 @@ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
++const sectionId = id ?? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..3b4dbb1 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -6,11 +6,13 @@ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
++const sectionId = id ?? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +28,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..9cf0990 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -1,16 +1,19 @@
+ ---
+ import Layout from './Layout.astro';
++import ScrollspyNav, { type SectionLink } from '../components/ScrollspyNav.astro';
+ 
+ export interface Props {
+ 	title: string;
++	sections?: SectionLink[];
+ }
+ 
+-const { title } = Astro.props;
++const { title, sections = [] } = Astro.props;
+ ---
+ <Layout title={title}>
++    <ScrollspyNav sections={sections} ariaLabel="Table of contents" />
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+-        <div class="prose max-w-none">
++        <div class="prose max-w-none space-y-12">
+             <slot />
+         </div>
+     </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..ebc38c8 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import ScrollspyNav from '../../components/ScrollspyNav.astro';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -33,90 +34,99 @@ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
++const articleSections = [
++  { id: 'overview', label: 'Overview' },
++  { id: 'story', label: 'Story' },
++  { id: 'related-articles', label: 'Related Articles' },
++];
+ ---
+ 
+ <Layout title={article.data.title}>
++    <ScrollspyNav sections={articleSections} ariaLabel="Article sections" />
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+-        </div>
+-
+-        <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+-            {article.data.title}
+-        </h1>
+-        
+-        <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
+-            {article.data.summary}
+-        </p>
+-
+-        <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
+-        </div>
++        <section id="overview" class="scroll-mt-16">
++            <!-- Breadcrumbs/Category -->
++            <div class="text-base text-gray-600 font-semibold mb-2">
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++            </div>
+ 
+-        <!-- Main Article Image -->
+-        <figure class="mb-5">
+-            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+-            {article.data.prompt_comment ? (
+-                <img 
+-                    src={article.data.image}
+-                    alt={article.data.title}
+-                    width="1200"
+-                    height="675"
+-                    class="w-full h-auto"
+-                    crossorigin="use-credentials"
+-                />
+-            ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
+-                    width={1200}
+-                    height={675}
+-                    format="webp"
+-                    class="w-full h-auto"
+-                />
+-            )}
+-            {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
+-                    {article.data.image_caption}
+-                </figcaption>
+-            )}
+-        </figure>
+-
+-        <!-- Share Buttons & Comments -->
+-        <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+-            <!-- Social Share Icons (Placeholders) -->
+-            <div class="flex space-x-3 items-center">
+-                <span class="text-sm font-semibold text-gray-800">Share:</span>
+-                <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+-                </a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+-                </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++            <!-- Headline -->
++            <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++                {article.data.title}
++            </h1>
++            
++            <!-- Sub-headline / Lead Paragraph -->
++            <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++                {article.data.summary}
++            </p>
++
++            <!-- Author / Date -->
++            <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
++                By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
+             </div>
+ 
+-        </div>
++            <!-- Main Article Image -->
++            <figure class="mb-5">
++                {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
++                {article.data.prompt_comment ? (
++                    <img 
++                        src={article.data.image}
++                        alt={article.data.title}
++                        width="1200"
++                        height="675"
++                        class="w-full h-auto"
++                        crossorigin="use-credentials"
++                    />
++                ) : (
++                    <Image 
++                        src={articleImage} 
++                        alt={article.data.title} 
++                        width={1200}
++                        height={675}
++                        format="webp"
++                        class="w-full h-auto"
++                    />
++                )}
++                {article.data.image_caption && (
++                    <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                        {article.data.image_caption}
++                    </figcaption>
++                )}
++            </figure>
++
++            <!-- Share Buttons & Comments -->
++            <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
++                <!-- Social Share Icons (Placeholders) -->
++                <div class="flex space-x-3 items-center">
++                    <span class="text-sm font-semibold text-gray-800">Share:</span>
++                    <a href="#" aria-label="Share on Facebook" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
++                    <a href="#" aria-label="Share on X" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
++                    <a href="#" aria-label="Copy share link" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
++                        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
++                    </a>
++                    <a href="#" aria-label="Share via email" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
++                        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
++                    </a>
++                    <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                </div>
++
++            </div>
++        </section>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <section id="story" class="prose max-w-none scroll-mt-16 min-h-[40vh]">
+             <Content />
+-        </div>
++        </section>
+ 
+         <!-- ADVERTISEMENT -->
+-        <section class="p-4 md:p-6 text-center">
++        <div class="p-4 md:p-6 text-center">
+             <Ad client:load />
+-        </section>
++        </div>
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section id="related-articles" class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8 scroll-mt-16 min-h-[40vh]">
++        <h2 class="text-2xl font-bold text-gray-900 mb-6">Related Articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..7322100 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import ScrollspyNav from '../components/ScrollspyNav.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -35,50 +36,61 @@ politicsArticles[2] = {
+     slug: 'public-transit-overhaul',
+     render: async () => '' as unknown as RenderResult,
+   };
++const pageSections = [
++    { id: 'featured', label: 'Featured' },
++    { id: 'top-news', label: 'Top News' },
++    { id: 'world', label: 'World' },
++    { id: 'politics', label: 'Politics' },
++];
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++    <ScrollspyNav sections={pageSections} ariaLabel="Page sections" />
++
++    <!-- Featured & Top Stories Section -->
++    <section id="featured" class="scroll-mt-14">
++        <!-- Top Stories Bar -->
++        <div class="bg-white border-b border-gray-300">
++            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                    {topStories.map(article => (
++                        <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h2 class="text-base font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h2>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
+             </div>
+         </div>
+-    </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++        <!-- Main Content Area -->
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++            <ArticleTeaser article={topArticle} large={true} />
++        </div>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
++        <div class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </div>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <div class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </div>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <div class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </div>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..5f0d0e7 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -1,17 +1,29 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
++
++const sections = [
++    { id: 'overview', label: '1. Data Protection Overview' },
++    { id: 'general-information', label: '2. General Information' },
++    { id: 'data-recording', label: '3. Data Recording' },
++];
+ ---
+-<LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
++<LegalLayout title="Privacy Policy" sections={sections}>
++    <section id="overview" class="scroll-mt-16 min-h-[40vh]">
++        <h2>1. An overview of data protection</h2>
++        <p><strong>General information</strong></p>
++        <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
++    </section>
+     
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
++    <section id="general-information" class="scroll-mt-16 min-h-[40vh]">
++        <h2>2. General information and mandatory information</h2>
++        <p><strong>Data protection</strong></p>
++        <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
++        <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
++    </section>
+     
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <section id="data-recording" class="scroll-mt-16 min-h-[40vh]">
++        <h2>3. Recording of data on our website</h2>
++        <p><strong>Cookies</strong></p>
++        <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    </section>
+ </LegalLayout>
+diff --git a/src/pages/legal/terms.astro b/src/pages/legal/terms.astro
+index de69dc0..7c05027 100644
+--- a/src/pages/legal/terms.astro
++++ b/src/pages/legal/terms.astro
+@@ -1,20 +1,32 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
++
++const sections = [
++    { id: 'terms', label: '1. Terms' },
++    { id: 'use-license', label: '2. Use License' },
++    { id: 'disclaimer', label: '3. Disclaimer' },
++];
+ ---
+-<LegalLayout title="Terms of Service">
+-    <h2>1. Terms</h2>
+-    <p>By accessing the website at The DevTools Times, you are agreeing to be bound by these terms of service, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws. If you do not agree with any of these terms, you are prohibited from using or accessing this site. The materials contained in this website are protected by applicable copyright and trademark law.</p>
++<LegalLayout title="Terms of Service" sections={sections}>
++    <section id="terms" class="scroll-mt-16 min-h-[40vh]">
++        <h2>1. Terms</h2>
++        <p>By accessing the website at The DevTools Times, you are agreeing to be bound by these terms of service, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws. If you do not agree with any of these terms, you are prohibited from using or accessing this site. The materials contained in this website are protected by applicable copyright and trademark law.</p>
++    </section>
+     
+-    <h2>2. Use License</h2>
+-    <p>Permission is granted to temporarily download one copy of the materials (information or software) on The DevTools Times' website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
+-    <ul>
+-        <li>modify or copy the materials;</li>
+-        <li>use the materials for any commercial purpose, or for any public display (commercial or non-commercial);</li>
+-        <li>attempt to decompile or reverse engineer any software contained on The DevTools Times' website;</li>
+-        <li>remove any copyright or other proprietary notations from the materials; or</li>
+-        <li>transfer the materials to another person or "mirror" the materials on any other server.</li>
+-    </ul>
++    <section id="use-license" class="scroll-mt-16 min-h-[40vh]">
++        <h2>2. Use License</h2>
++        <p>Permission is granted to temporarily download one copy of the materials (information or software) on The DevTools Times' website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
++        <ul>
++            <li>modify or copy the materials;</li>
++            <li>use the materials for any commercial purpose, or for any public display (commercial or non-commercial);</li>
++            <li>attempt to decompile or reverse engineer any software contained on The DevTools Times' website;</li>
++            <li>remove any copyright or other proprietary notations from the materials; or</li>
++            <li>transfer the materials to another person or "mirror" the materials on any other server.</li>
++        </ul>
++    </section>
+     
+-    <h2>3. Disclaimer</h2>
+-    <p>The materials on The DevTools Times' website are provided on an 'as is' basis. The DevTools Times makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
++    <section id="disclaimer" class="scroll-mt-16 min-h-[40vh]">
++        <h2>3. Disclaimer</h2>
++        <p>The materials on The DevTools Times' website are provided on an 'as is' basis. The DevTools Times makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
++    </section>
+ </LegalLayout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d38bb7a 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,40 @@
+ @import "tailwindcss";
+ 
++:root {
++  --accent: #b45309;
++}
++
++html {
++  scroll-behavior: smooth;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  html {
++    scroll-behavior: auto;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* MANDATORY: The container of markers must have scroll-target-group: auto */
++nav.scrollspy-nav {
++  scroll-target-group: auto;
++}
++
++/* Fallback style if :target-current is not supported.
++   Use :is() to combine the native pseudo-class with a fallback class for older browsers. */
++nav.scrollspy-nav a:is(:target-current, .target-current) {
++  color: var(--accent, #b45309);
++  border-bottom-color: var(--accent, #b45309);
++  background-color: #fffbeb;
++  font-weight: 700;
++}
++
++nav.scrollspy-nav a:focus-visible {
++  outline: 2px solid var(--accent, #b45309);
++  outline-offset: 2px;
++}

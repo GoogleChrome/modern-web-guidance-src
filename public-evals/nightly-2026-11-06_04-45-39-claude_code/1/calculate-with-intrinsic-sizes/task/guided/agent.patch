@@ -1,0 +1,203 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,13 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Site-wide opt-in: lets simple toggles transition to and from intrinsic
++         keywords such as `block-size: auto` (progressive enhancement; unsupported
++         browsers just jump to the final size). */
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -151,8 +156,128 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /*
++      NOTE: Transitioning directly between two different intrinsic sizing keywords
++      (e.g. `min-content` -> `max-content`, or `auto` -> `fit-content`) is NOT
++      supported, even with `interpolate-size: allow-keywords` or `calc-size()`.
++      One end of the transition must be a fixed length or percentage (e.g. `0` -> `auto`).
++    */
++
++    /* Promo badge */
++    .card {
++      position: relative;
++    }
++
++    .promo-badge {
++      display: block;
++      margin-inline: auto;
++      margin-block-end: 10px;
++      padding-block: 4px;
++      padding-inline: 12px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      text-align: center;
++      white-space: nowrap;
++      border-radius: 999px;
++      /* Fallback for browsers without calc-size() */
++      inline-size: max-content;
++      min-inline-size: 100px;
++      max-inline-size: 100%;
++      /* 1.2x the max-content size, clamped between 100px and 100% of the parent */
++      inline-size: calc-size(max-content, clamp(100px, size * 1.2, 100%));
++    }
++
++    /* Our Sourcing accordion */
++    .accordion {
++      margin-block-start: 40px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #accordion-toggle {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      inline-size: 100%;
++      padding-block: 18px;
++      padding-inline: 20px;
++      background: var(--primary);
++      color: white;
++      border: none;
++      font: inherit;
++      font-size: 1.15rem;
++      font-weight: bold;
++      text-align: start;
++      cursor: pointer;
++    }
++
++    #accordion-toggle:hover {
++      background: #3e2723;
++    }
++
++    #accordion-toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .accordion-icon {
++      transition: rotate 0.3s ease;
++    }
++
++    #accordion-toggle[aria-expanded="true"] .accordion-icon {
++      rotate: 180deg;
++    }
++
++    .accordion-content {
++      overflow: hidden;
++      block-size: 0;
++      opacity: 0;
++      /* Hide collapsed content from assistive tech and the tab order */
++      visibility: hidden;
++      transition: block-size 0.4s ease, opacity 0.4s ease, visibility 0.4s;
++    }
++
++    .accordion-content.is-open {
++      /* Fallback for browsers without calc-size() */
++      block-size: auto;
++      /* Natural height plus 2rem of breathing room */
++      block-size: calc-size(auto, size + 2rem);
++      opacity: 1;
++      visibility: visible;
++    }
++
++    .accordion-inner {
++      padding-block-start: 20px;
++      padding-inline: 20px;
++    }
++
++    .accordion-inner h3 {
++      color: var(--primary);
++      margin-block-end: 6px;
++    }
++
++    .accordion-inner p + h3 {
++      margin-block-start: 16px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      /* Skip the size animation; use a quick, subtle fade instead */
++      .accordion-content {
++        transition: opacity 0.2s ease, visibility 0.2s;
++      }
++
++      .accordion-icon {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -178,8 +303,9 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="promo-badge">Staff Pick</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -194,8 +320,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="accordion">
++      <h2>
++        <button type="button" id="accordion-toggle" aria-expanded="false" aria-controls="sourcing-content">
++          <span>Our Sourcing</span>
++          <span class="accordion-icon" aria-hidden="true">&#9662;</span>
++        </button>
++      </h2>
++      <div class="accordion-content" id="sourcing-content" role="region" aria-labelledby="accordion-toggle">
++        <div class="accordion-inner">
++          <h3>Where do your beans come from?</h3>
++          <p>We partner directly with small farms and cooperatives in Ethiopia, Colombia, Guatemala, and Sumatra, building long-term relationships with growers.</p>
++          <h3>Are your coffees ethically sourced?</h3>
++          <p>Yes. We pay well above Fair Trade minimums and visit our partner farms regularly to ensure fair wages and safe working conditions.</p>
++          <h3>How fresh is your roast?</h3>
++          <p>Every batch is roasted locally in small lots and served within two weeks of roasting for peak flavor.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +351,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const accordionToggle = document.getElementById('accordion-toggle');
++    const accordionContent = document.getElementById('sourcing-content');
++
++    accordionToggle.addEventListener('click', () => {
++      const isExpanded = accordionToggle.getAttribute('aria-expanded') === 'true';
++      accordionToggle.setAttribute('aria-expanded', String(!isExpanded));
++      accordionContent.classList.toggle('is-open', !isExpanded);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

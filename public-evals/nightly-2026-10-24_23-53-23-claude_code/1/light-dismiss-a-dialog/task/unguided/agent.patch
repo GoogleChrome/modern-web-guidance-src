@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,28 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    #logout-dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 0;
++    }
++
++    #logout-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    #logout-dialog .dialog-body {
++      padding: 24px;
++    }
++
++    #logout-dialog .dialog-actions {
++      display: flex;
++      gap: 10px;
++      justify-content: flex-end;
++      margin-top: 16px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,12 +183,22 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog">
++    <div class="dialog-body">
++      <p>Are you sure?</p>
++      <div class="dialog-actions">
++        <button type="button" id="logout-cancel">Cancel</button>
++        <a href="/logout" class="btn">Logout</a>
++      </div>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +236,19 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const logoutDialog = document.getElementById('logout-dialog');
++    document.querySelector('.test-dialog-trigger').addEventListener('click', (e) => {
++      e.preventDefault();
++      logoutDialog.showModal();
++    });
++    document.getElementById('logout-cancel').addEventListener('click', () => logoutDialog.close());
++    // Clicks on the backdrop land on the dialog element itself (content is inside .dialog-body)
++    logoutDialog.addEventListener('click', (e) => {
++      if (e.target === logoutDialog) logoutDialog.close();
++    });
++  </script>
+ </body>
+ 
+ </html>

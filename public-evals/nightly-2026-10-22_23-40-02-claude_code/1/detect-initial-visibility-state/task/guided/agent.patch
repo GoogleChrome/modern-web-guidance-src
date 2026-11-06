@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,62 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Detects whether the page was initially loaded in a background tab and
++    // when it was first backgrounded (ms, relative to navigation start).
++    (function () {
++      function log(initiallyBackgrounded, backgroundTime, source) {
++        console.log({
++          initiallyBackgrounded: initiallyBackgrounded,
++          backgroundTime: backgroundTime,
++          detectionSource: source
++        });
++      }
++
++      // Preferred: Performance timeline records every visibility change with an
++      // exact timestamp, regardless of when this script runs (Chrome/Edge 115+).
++      if ('VisibilityStateEntry' in window) {
++        var report = function () {
++          var entries = performance.getEntriesByType('visibility-state');
++          var firstHidden = entries.find(function (e) { return e.name === 'hidden'; });
++          log(
++            entries.length > 0 && entries[0].name === 'hidden',
++            firstHidden ? firstHidden.startTime : null,
++            'VisibilityStateEntry'
++          );
++          return !!firstHidden;
++        };
++        // If not hidden yet, log again the first time the tab is backgrounded.
++        if (!report()) {
++          document.addEventListener('visibilitychange', function onChange() {
++            if (document.visibilityState !== 'hidden') return;
++            document.removeEventListener('visibilitychange', onChange);
++            report();
++          });
++        }
++        return;
++      }
++
++      // ⚠️ LEGACY FALLBACK ACTIVE (Firefox/Safari): POTENTIALLY UNRELIABLE ⚠️
++      // document.visibilityState is only read when this script executes. If the
++      // page opened in the background and the user foregrounded it before this
++      // script ran, it reads 'visible' and the initial hidden state is missed.
++      // Times are approximations: 0 if hidden at execution, otherwise
++      // performance.now() when the visibilitychange event fired (not exact).
++      console.warn('[background-detection] VisibilityStateEntry unsupported: using unreliable document.visibilityState fallback.');
++      var FALLBACK = 'document.visibilityState (UNRELIABLE FALLBACK)';
++      var hiddenAtRun = document.visibilityState === 'hidden';
++      log(hiddenAtRun, hiddenAtRun ? 0 : null, FALLBACK);
++      if (!hiddenAtRun) {
++        document.addEventListener('visibilitychange', function onChange() {
++          if (document.visibilityState !== 'hidden') return;
++          document.removeEventListener('visibilitychange', onChange);
++          log(false, performance.now(), FALLBACK);
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

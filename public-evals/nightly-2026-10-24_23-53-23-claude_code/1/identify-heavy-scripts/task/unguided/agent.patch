@@ -1,0 +1,80 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,76 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!-- Script performance profiler: keep this first so it observes every other script.
++       Open the console and run `scriptReport()` (or add ?perf to the URL for an auto-report on load). -->
++  <script>
++    (function () {
++      var SLOW_LOAD_MS = 200;   // network+download time considered slow
++      var SLOW_EXEC_MS = 50;    // main-thread time considered slow
++      var loads = [];           // external script network timings
++      var frames = {};          // per-script main-thread cost, from Long Animation Frames
++      var longTasks = 0;
++
++      function observe(type, cb, opts) {
++        try {
++          new PerformanceObserver(function (list) { list.getEntries().forEach(cb); })
++            .observe(Object.assign({ type: type, buffered: true }, opts));
++        } catch (e) { /* entry type unsupported in this browser */ }
++      }
++
++      // Network cost of each external script (any origin, including third parties)
++      observe('resource', function (e) {
++        if (e.initiatorType !== 'script') return;
++        loads.push({
++          script: e.name,
++          loadMs: Math.round(e.duration),
++          sizeKB: e.transferSize ? Math.round(e.transferSize / 1024) : 'n/a (cross-origin or cached)',
++          thirdParty: new URL(e.name, location.href).origin !== location.origin
++        });
++      });
++
++      // Main-thread cost, attributed to the script that blocked it (Chromium)
++      observe('long-animation-frame', function (frame) {
++        frame.scripts.forEach(function (s) {
++          var key = s.sourceURL || '(inline script)';
++          var f = frames[key] || (frames[key] = { script: key, totalMs: 0, count: 0, worst: '' });
++          f.totalMs += s.duration;
++          f.count++;
++          if (!f.worst || s.duration > f.worstMs) { f.worstMs = s.duration; f.worst = s.invoker || s.sourceFunctionName || ''; }
++        });
++      });
++
++      observe('longtask', function () { longTasks++; });
++
++      window.scriptReport = function () {
++        var slowLoads = loads.filter(function (l) { return l.loadMs >= SLOW_LOAD_MS; })
++          .sort(function (a, b) { return b.loadMs - a.loadMs; });
++        var slowExec = Object.keys(frames).map(function (k) {
++          var f = frames[k];
++          return { script: f.script, totalMs: Math.round(f.totalMs), count: f.count, worstCaller: f.worst };
++        }).filter(function (f) { return f.totalMs >= SLOW_EXEC_MS; })
++          .sort(function (a, b) { return b.totalMs - a.totalMs; });
++
++        console.group('%cScript performance report', 'font-weight:bold');
++        console.log('Long tasks (>50ms) on main thread: ' + longTasks);
++        console.log('All external scripts, slowest first:');
++        console.table(loads.slice().sort(function (a, b) { return b.loadMs - a.loadMs; }));
++        console.log('Slow to download (>= ' + SLOW_LOAD_MS + 'ms):');
++        console.table(slowLoads);
++        console.log('Blocking the main thread (>= ' + SLOW_EXEC_MS + 'ms total):');
++        console.table(slowExec);
++        console.groupEnd();
++        return { loads: loads, slowLoads: slowLoads, slowExec: slowExec, longTasks: longTasks };
++      };
++
++      if (/[?&]perf\b/.test(location.search)) {
++        window.addEventListener('load', function () { setTimeout(window.scriptReport, 1000); });
++      }
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

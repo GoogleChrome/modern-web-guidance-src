@@ -1,0 +1,46 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -204,9 +204,42 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p>Your card on file expires in <time id="card-expiry-remaining">…</time>.</p>
+   </footer>
+ 
++  <script type="module">
++    // Card expiry is month/year only; cards are valid through the last day of that month.
++    const CARD_EXPIRY = '2027-12';
++
++    async function loadTemporal() {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/@js-temporal/polyfill');
++        globalThis.Temporal = module.Temporal;
++      }
++    }
++
++    function showCardExpiry() {
++      const el = document.getElementById('card-expiry-remaining');
++
++      // Pure calendar-date math (PlainDate): no millisecond arithmetic, so leap years
++      // (including Feb 29, 2028 falling right after expiry) and DST can't skew the result.
++      const today = Temporal.Now.plainDateISO();
++      const lastValidDay = Temporal.PlainYearMonth.from(CARD_EXPIRY).toPlainDate({ day: 31 });
++      // The card stops working at the start of the day after the last valid day.
++      const expiresOn = lastValidDay.add({ days: 1 });
++
++      const remaining = today.until(expiresOn, { largestUnit: 'month' });
++      el.dateTime = remaining.toString();
++      el.textContent = remaining.sign > 0
++        ? remaining.toLocaleString(undefined, { style: 'long' })
++        : '0 days (expired)';
++    }
++
++    await loadTemporal();
++    showCardExpiry();
++  </script>
++
+ </body>
+ 
+ </html>

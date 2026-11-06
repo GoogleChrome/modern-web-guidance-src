@@ -1,0 +1,310 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,153 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites Two-Column Layout */
++    .seasonal-title {
++      text-align: center;
++      font-size: 2rem;
++      margin-bottom: 24px;
++      color: var(--primary);
++    }
++
++    .seasonal-layout {
++      display: grid;
++      grid-template-columns: 260px 1fr;
++      gap: 28px;
++      align-items: start;
++      margin-top: 20px;
++    }
++
++    @media (max-width: 768px) {
++      .seasonal-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Left Sidebar Table of Contents */
++    nav.toc-sidebar {
++      background: white;
++      color: var(--text);
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      display: block;
++      position: sticky;
++      top: 90px;
++      z-index: 10;
++      scroll-target-group: auto;
++    }
++
++    .toc-heading {
++      font-size: 0.85rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #6d4c41;
++      margin-bottom: 12px;
++      padding-bottom: 8px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    nav.toc-sidebar ul {
++      display: flex;
++      flex-direction: column;
++      list-style: none;
++      gap: 8px;
++    }
++
++    nav.toc-sidebar ul li {
++      margin-left: 0;
++    }
++
++    nav.toc-sidebar a {
++      display: block;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.95rem;
++      padding: 10px 14px;
++      border-radius: 6px;
++      border-left: 4px solid transparent;
++      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
++    }
++
++    nav.toc-sidebar a:hover {
++      background-color: #f5f0ee;
++      color: var(--primary);
++    }
++
++    nav.toc-sidebar a:is(:target-current, .\:target-current, .active, [aria-current="location"], [aria-current="true"]) {
++      background-color: #efebe9;
++      color: var(--primary);
++      border-left-color: var(--accent);
++      font-weight: bold;
++    }
++
++    /* Right Scroll-Snapping Panel */
++    .seasonal-panel {
++      height: 460px;
++      overflow-y: auto;
++      scroll-snap-type: y mandatory;
++      scroll-behavior: smooth;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      padding: 0 28px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .seasonal-panel {
++        scroll-behavior: auto;
++      }
++    }
++
++    .drink-section {
++      min-height: 460px;
++      padding: 32px 0;
++      border-bottom: 1px solid var(--secondary);
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    .drink-section:last-child {
++      border-bottom: none;
++    }
++
++    .drink-section h3,
++    .drink-section header {
++      scroll-snap-align: start;
++      scroll-margin-top: 24px;
++    }
++
++    .drink-section h3 {
++      font-size: 1.6rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .drink-meta {
++      display: inline-block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: #6d4c41;
++      background: #efebe9;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 16px;
++      align-self: flex-start;
++    }
++
++    .drink-section p {
++      margin-bottom: 14px;
++      color: var(--text);
++      max-width: 65ch;
++    }
++
++    .drink-section .btn {
++      align-self: flex-start;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,26 +319,45 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-favorites-heading">
++      <h2 id="seasonal-favorites-heading" class="seasonal-title">Seasonal Favorites</h2>
++      <div class="seasonal-layout">
++        <nav class="toc-sidebar" aria-label="Seasonal favorites table of contents">
++          <div class="toc-heading">Drinks Menu</div>
++          <ul>
++            <li><a href="#maple-oat-latte" class="active" aria-current="location">Maple Oat Latte</a></li>
++            <li><a href="#dark-roast-espresso">Dark Roast Espresso</a></li>
++            <li><a href="#cold-brew">Cold Brew</a></li>
++          </ul>
++        </nav>
++
++        <div class="seasonal-panel" id="seasonal-panel" tabindex="0" aria-label="Seasonal drink details">
++          <article class="drink-section" id="maple-oat-latte-section">
++            <h3 id="maple-oat-latte">Maple Oat Latte</h3>
++            <span class="drink-meta">Autumn Harvest &bull; 12 oz / 16 oz</span>
++            <p>Creamy baristas' oat milk steamed to velvety perfection with a generous swirl of pure Grade-A dark Vermont maple syrup and our signature double-shot espresso.</p>
++            <p>Finished with a light dusting of organic Ceylon cinnamon and nutmeg for a comforting, aromatic warmth in every sip.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </article>
++
++          <article class="drink-section" id="dark-roast-espresso-section">
++            <h3 id="dark-roast-espresso">Dark Roast Espresso</h3>
++            <span class="drink-meta">Signature Roast &bull; Single / Double</span>
++            <p>Bold, smokey, and full-bodied, perfect for a crisp morning boost. Roasted in small batches from high-altitude Sumatran and Colombian beans.</p>
++            <p>Expect rich notes of dark bittersweet chocolate, toasted walnut, and a lingering caramelized crema finish.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </article>
++
++          <article class="drink-section" id="cold-brew-section">
++            <h3 id="cold-brew">Cold Brew</h3>
++            <span class="drink-meta">Slow Steeped &bull; 16 oz / 20 oz</span>
++            <p>Coarsely ground single-origin Ethiopian beans steeped in filtered cold water for 18 hours for maximum smoothness and naturally low acidity.</p>
++            <p>Served over crystal-clear artisan ice with bright, refreshing hints of sweet molasses and cocoa nibs.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
+   </main>
+ 
+@@ -206,7 +370,89 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const panel = document.getElementById('seasonal-panel');
++      const tocLinks = document.querySelectorAll('.toc-sidebar a');
++      const headers = panel ? panel.querySelectorAll('.drink-section h3') : [];
++
++      if (!panel || !tocLinks.length || !headers.length) return;
++
++      function resolveTargetId(el) {
++        if (!el) return null;
++        if (el.matches && el.matches('.drink-section h3') && el.id) {
++          return el.id;
++        }
++        const heading = el.querySelector ? el.querySelector('h3[id]') : null;
++        if (heading) return heading.id;
++        return el.id ? el.id.replace(/-section$/, '') : null;
++      }
++
++      function setActiveLink(targetId) {
++        if (!targetId) return;
++        tocLinks.forEach((link) => {
++          const href = link.getAttribute('href');
++          const isMatch = href === `#${targetId}` || href === `#${targetId}-section`;
++          link.classList.toggle('active', isMatch);
++          link.classList.toggle(':target-current', isMatch);
++          if (isMatch) {
++            link.setAttribute('aria-current', 'location');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      // 1. Native Scroll Snap Event (scrollsnapchange)
++      panel.addEventListener('scrollsnapchange', (event) => {
++        const snappedTarget = event.snapTargetBlock;
++        const targetId = resolveTargetId(snappedTarget);
++        if (targetId) {
++          setActiveLink(targetId);
++        }
++      });
++
++      // 2. Fallback for browsers without scrollsnapchange support
++      if (!('onscrollsnapchange' in HTMLElement.prototype)) {
++        const observer = new IntersectionObserver(
++          () => {
++            const panelRect = panel.getBoundingClientRect();
++            const topEntry = [...headers].reduce((currentTop, header) => {
++              const { bottom } = header.getBoundingClientRect();
++              if (bottom < panelRect.top) return currentTop;
++              if (!currentTop) return header;
++              return bottom < currentTop.getBoundingClientRect().bottom
++                ? header
++                : currentTop;
++            }, undefined);
++            if (topEntry) {
++              setActiveLink(topEntry.id);
++            }
++          },
++          { root: panel, threshold: 0.9 }
++        );
++
++        headers.forEach((header) => observer.observe(header));
++      }
++
++      // 3. Smooth scroll panel when clicking any TOC link
++      tocLinks.forEach((link) => {
++        link.addEventListener('click', (event) => {
++          const href = link.getAttribute('href');
++          if (!href || !href.startsWith('#')) return;
++          const targetId = href.slice(1);
++          const targetEl = document.getElementById(targetId);
++          if (targetEl && panel.contains(targetEl)) {
++            event.preventDefault();
++            setActiveLink( resolveTargetId(targetEl) || targetId );
++            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
++            history.replaceState(null, '', href);
++          }
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

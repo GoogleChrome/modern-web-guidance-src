@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+index 66c9173..f5147cf 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,10 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Decorative icon tokens (embedded SVG, recolored via mask + currentColor) */
++      --icon-coffee: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3Cpath d='M6 2v2M10 2v2M14 2v2'/%3E%3C/svg%3E");
++      --icon-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E");
+     }
+ 
+     * {
+@@ -115,11 +119,53 @@
+       text-align: center;
+     }
+ 
++    /* Section title: decorative sparkle glyphs on either side plus an accent underline.
++       The glyphs are text, so the `/ ""` alt argument hides them from screen readers. */
++    .section-title {
++      text-align: center;
++      color: var(--primary);
++      text-decoration: underline;
++      text-decoration-color: var(--accent);
++      text-decoration-thickness: 2px;
++      text-underline-offset: 0.35em;
++    }
++
++    .section-title::before,
++    .section-title::after {
++      /* Fallback for browsers without the `/` alt syntax (glyph still renders there) */
++      content: "\2726";
++      content: "\2726" / "";
++      color: var(--accent);
++      font-size: 0.6em;
++      vertical-align: 0.25em;
++      margin-inline: 0.75em;
++      pointer-events: none;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Drink heading icon: an empty-string pseudo-element carrying a masked SVG.
++       Empty `content` exposes nothing to assistive technology; the heading text
++       in the DOM remains the only thing announced. */
++    .card h3::before {
++      content: "";
++      display: inline-block;
++      width: 1em;
++      height: 1em;
++      background-color: var(--accent);
++      mask: var(--icon-coffee) no-repeat center / contain;
++      /* Center on the cap height, nudged slightly up for optical balance */
++      vertical-align: calc(0.5cap - 0.5em - 0.02em);
++      margin-inline-end: 0.4em;
++      flex: none;
++      pointer-events: none;
++      /* Keep the masked fill visible in forced-colors (high contrast) mode */
++      forced-color-adjust: none;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,6 +181,34 @@
+       background: #3e2723;
+     }
+ 
++    /* Button trailing arrow: decorative, follows the button's text color.
++       The link text ("Order Now", "View Details") already names the control. */
++    .btn::after {
++      content: "";
++      display: inline-block;
++      width: 1em;
++      height: 1em;
++      background-color: currentColor;
++      mask: var(--icon-arrow-right) no-repeat center / contain;
++      vertical-align: calc(0.5cap - 0.5em - 0.02em);
++      margin-inline-start: 0.4em;
++      flex: none;
++      pointer-events: none;
++      forced-color-adjust: none;
++
++      /* Static by default; the hover nudge only runs for users who allow motion */
++      @media (prefers-reduced-motion: no-preference) {
++        transition: translate 0.2s ease-out;
++      }
++    }
++
++    .btn:hover::after,
++    .btn:focus-visible::after {
++      @media (prefers-reduced-motion: no-preference) {
++        translate: 0.2em 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,7 +250,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

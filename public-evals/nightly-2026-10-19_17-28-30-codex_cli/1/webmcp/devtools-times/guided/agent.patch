@@ -1,0 +1,744 @@
+diff --git a/README.md b/README.md
+index 4479b53..aaacab1 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,31 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## WebMCP tools
++
++The application registers browser-native tools through `document.modelContext` on
++all pages using the shared layout. Use a WebMCP-capable browser in a secure context
++(HTTPS or localhost); browsers without the API continue to use the regular UI.
++WebMCP is evolving, so use a browser exposing the current `document.modelContext`
++API described in the [WebMCP imperative API documentation](https://developer.chrome.com/docs/ai/webmcp/imperative-api).
++
++| Tool | Input | Behavior |
++| --- | --- | --- |
++| `search_articles` | `{ "query": "coffee", "limit": 10 }` | Searches titles and summaries; returns matching metadata, article links and total count. Limit is optional, defaults to 10, and accepts 1–50. |
++| `get_reading_list` | `{}` | Returns articles saved in the current browser session. |
++| `set_article_bookmark` | `{ "slug": "coffee-alchemy", "bookmarked": true }` | Saves the article; use `false` to remove it. Repeated requests preserve the requested state. |
++
++Search and reading-list reads carry `readOnlyHint`. Bookmark updates use the same
++session API and client notifications as the UI, so open reading lists and bookmark
++buttons update immediately. The reading-list endpoint still accepts legacy
++`{ "slug": "..." }` toggle requests, and also supports the explicit `bookmarked`
++boolean used by tools and UI controls. No cross-origin tool exposure is enabled.
++
++Tools validate inputs at runtime and return `{ error: "..." }` for recoverable
++failures. Execution cancellation is passed to network requests. Registration uses
++an `AbortSignal` and is renewed after Astro page transitions; leaving a page also
++cancels its in-flight tool requests. A cancelled write may already have reached
++the server; reading the list again reconciles its state.
++
++Run `pnpm test` for automated tool tests and `pnpm build` for a production build.
+diff --git a/package.json b/package.json
+index 2e1f2e8..b1121b3 100644
+--- a/package.json
++++ b/package.json
+@@ -7,7 +7,8 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "test": "tsx --test tests/*.test.ts"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.7",
+@@ -23,7 +24,10 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "tsx": "^4.23.15",
++    "typescript": "^7.0.2",
++    "webmcp-types": "^0.1.10"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..7f22387 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,5 +1,7 @@
+ 
+ import React, { useState, useEffect } from 'react';
++import { flushSync } from 'react-dom';
++import { getReadingList, setBookmark, READING_LIST_CHANGED } from '../lib/news-client';
+ import { BookmarkIcon } from '@heroicons/react/24/outline'
+ 
+ interface Props {
+@@ -10,20 +12,37 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  const [isSaving, setIsSaving] = useState(false);
++  const [error, setError] = useState('');
++
++  useEffect(() => {
++    const controller = new AbortController();
++    const update = (event: Event) => {
++      controller.abort();
++      flushSync(() => setIsBookmarked((event as CustomEvent<string[]>).detail.includes(slug)));
++    };
++    window.addEventListener(READING_LIST_CHANGED, update);
++    void getReadingList(controller.signal).then(list => setIsBookmarked(list.includes(slug))).catch(() => {});
++    return () => {
++      controller.abort();
++      window.removeEventListener(READING_LIST_CHANGED, update);
++    };
++  }, [slug]);
++
+   const handleClick = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    const data = await response.json();
+-    setIsBookmarked(data.readingList.includes(slug));
++    setIsSaving(true);
++    setError('');
++    try {
++      await setBookmark(slug, !isBookmarked);
++    } catch {
++      setError('Could not update bookmark. Please retry.');
++    } finally {
++      setIsSaving(false);
++    }
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
++    <button onClick={handleClick} disabled={isSaving} aria-pressed={isBookmarked} aria-label={error || (isBookmarked ? 'Remove bookmark' : 'Save article')} title={error || undefined} className="p-1">
+       <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+     </button>
+   );
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..19cae38 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,7 @@
+ 
+ import React, { useState, useEffect } from 'react';
++import { flushSync } from 'react-dom';
++import { getReadingList, setBookmark, READING_LIST_CHANGED } from '../lib/news-client';
+ 
+ interface Article {
+   slug: string;
+@@ -16,14 +18,19 @@ interface Props {
+ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const [readingList, setReadingList] = useState<string[]>([]);
+ 
+-  const fetchReadingList = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+-    const data = await response.json();
+-    setReadingList(data.readingList);
+-  };
++  const [error, setError] = useState('');
+ 
+   useEffect(() => {
+-    fetchReadingList();
++    const controller = new AbortController();
++    const update = (event: Event) => {
++      // A completed mutation takes precedence over the initial request.
++      controller.abort();
++      flushSync(() => setReadingList((event as CustomEvent<string[]>).detail));
++    };
++    window.addEventListener(READING_LIST_CHANGED, update);
++    void getReadingList(controller.signal).then(setReadingList).catch(() => {
++      if (!controller.signal.aborted) setError('Could not load your reading list.');
++    });
+ 
+     const handleKeyDown = (event: KeyboardEvent) => {
+       if (event.key === 'Escape') {
+@@ -33,19 +40,19 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     window.addEventListener('keydown', handleKeyDown);
+ 
+     return () => {
++      controller.abort();
++      window.removeEventListener(READING_LIST_CHANGED, update);
+       window.removeEventListener('keydown', handleKeyDown);
+     };
+   }, [onClose]);
+ 
+   const handleRemove = async (slug: string) => {
+-    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    fetchReadingList();
++    setError('');
++    try {
++      await setBookmark(slug, false);
++    } catch {
++      setError('Could not remove the article. Please retry.');
++    }
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+@@ -59,6 +66,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+           </svg>
+         </button>
+         <div className="p-4">
++          <p role="status">{error}</p>
+           <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..5c0b876 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,6 +1,7 @@
+ 
+ import React, { useState } from 'react';
+ import SearchFlyout from './SearchFlyout';
++import { getArticles } from '../lib/news-client';
+ 
+ interface Article {
+     slug: string;
+@@ -13,12 +14,16 @@ export default function SearchButton() {
+     const [articles, setArticles] = useState<Article[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
+ 
++    const [error, setError] = useState('');
++
+     const openSearch = async () => {
+         try {
+-            setArticles([]);
++            setIsLoading(true);
++            setError('');
++            setArticles(await getArticles());
+             setIsFlyoutOpen(true);
+         } catch (error) {
+-            console.error('Failed to fetch articles:', error);
++            setError('Could not load articles. Please retry.');
+         } finally {
+             setIsLoading(false);
+         }
+@@ -34,6 +39,7 @@ export default function SearchButton() {
+                 className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+                 onClick={openSearch}
+                 disabled={isLoading}
++                aria-label="Search articles"
+             >
+                 {isLoading ? (
+                     <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+@@ -43,7 +49,8 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            <span role="status">{error}</span>
++            {isFlyoutOpen && <SearchFlyout articles={articles} onClose={closeSearch} />}
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..81ff586 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,6 @@
+ 
+ import React, { useState, useMemo, useEffect } from 'react';
++import { searchArticles } from '../lib/news-client';
+ 
+ interface Article {
+     slug: string;
+@@ -30,32 +31,18 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         };
+         window.addEventListener('keydown', handleKeyDown);
+         
+-        // Bug: Redundant fetch for suggestions
+-        const fetchSuggestions = async () => {
+-            try {
+-                const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-                const data = await response.json();
+-                setSuggestions(getShuffledItems(data, 3));
+-            } catch (error) {
+-                console.error('Failed to fetch suggestions:', error);
+-            }
+-        };
+-
+-        fetchSuggestions();
++        setSuggestions(getShuffledItems(articles, 3));
+ 
+         return () => {
+             window.removeEventListener('keydown', handleKeyDown);
+         };
+-    }, [onClose]);
++    }, [onClose, articles]);
+ 
+     const filteredArticles = useMemo(() => {
+         if (!searchTerm) {
+             return [];
+         }
+-        return articles.filter(article =>
+-            article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+-            article.summary.toLowerCase().includes(searchTerm.toLowerCase())
+-        );
++        return searchArticles(articles, searchTerm);
+     }, [articles, searchTerm]);
+ 
+     return (
+diff --git a/src/components/WebMCP.astro b/src/components/WebMCP.astro
+new file mode 100644
+index 0000000..52a7ac2
+--- /dev/null
++++ b/src/components/WebMCP.astro
+@@ -0,0 +1,25 @@
++<script>
++  import { registerNewsTools } from '../lib/webmcp';
++
++  let controller: AbortController | undefined;
++  function cleanup() {
++    controller?.abort();
++    controller = undefined;
++  }
++  function register() {
++    cleanup();
++    const next = new AbortController();
++    controller = next;
++    void registerNewsTools(next.signal).catch(error => {
++      next.abort();
++      console.warn('News tools could not be registered.', error);
++    });
++  }
++
++  document.addEventListener('astro:before-swap', cleanup);
++  document.addEventListener('astro:page-load', register);
++  window.addEventListener('pagehide', cleanup);
++  window.addEventListener('pageshow', event => {
++    if (event.persisted) register();
++  });
++</script>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..2692629 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -1,4 +1,5 @@
+ ---
++import WebMCP from "../components/WebMCP.astro";
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+@@ -35,6 +36,7 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <WebMCP />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/lib/news-client.ts b/src/lib/news-client.ts
+new file mode 100644
+index 0000000..3a42317
+--- /dev/null
++++ b/src/lib/news-client.ts
+@@ -0,0 +1,44 @@
++export interface Article {
++  slug: string;
++  title: string;
++  summary: string;
++  image?: string;
++}
++
++const baseUrl = (import.meta.env?.BASE_URL ?? '/');
++export const READING_LIST_CHANGED = 'news:reading-list-changed';
++
++async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
++  const response = await fetch(`${baseUrl}api/${path}`, options);
++  if (!response.ok) throw new Error(`Request failed (${response.status}). Please retry.`);
++  return response.json();
++}
++
++export function getArticles(signal?: AbortSignal): Promise<Article[]> {
++  return request('articles.json', { signal });
++}
++
++export function searchArticles(articles: Article[], query: string): Article[] {
++  const term = query.trim().toLowerCase();
++  return articles.filter(article =>
++    article.title.toLowerCase().includes(term) || article.summary.toLowerCase().includes(term)
++  );
++}
++
++export async function getReadingList(signal?: AbortSignal): Promise<string[]> {
++  const data = await request<{ readingList: string[] }>('reading-list.json', { signal });
++  return data.readingList;
++}
++
++export async function setBookmark(slug: string, bookmarked: boolean, signal?: AbortSignal): Promise<string[]> {
++  const data = await request<{ readingList: string[] }>('reading-list.json', {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ slug, bookmarked }),
++    signal,
++  });
++  signal?.throwIfAborted();
++  // Synchronous notification lets React consumers commit before a tool completes.
++  window.dispatchEvent(new CustomEvent(READING_LIST_CHANGED, { detail: data.readingList }));
++  return data.readingList;
++}
+diff --git a/src/lib/webmcp.ts b/src/lib/webmcp.ts
+new file mode 100644
+index 0000000..61e0757
+--- /dev/null
++++ b/src/lib/webmcp.ts
+@@ -0,0 +1,127 @@
++import { getArticles, getReadingList, setBookmark, searchArticles } from './news-client';
++
++// The browser describes schemas to agents but does not validate execution inputs.
++function objectInput(input: unknown): Record<string, unknown> {
++  if (!input || typeof input !== 'object' || Array.isArray(input)) {
++    throw new Error('Provide an object matching the tool input schema.');
++  }
++  return input as Record<string, unknown>;
++}
++
++function onlyKeys(input: Record<string, unknown>, keys: string[]) {
++  if (Object.keys(input).some(key => !keys.includes(key))) {
++    throw new Error(`Supported parameters: ${keys.join(', ') || 'none'}.`);
++  }
++}
++
++async function safely(signal: AbortSignal, action: () => Promise<unknown>) {
++  try {
++    signal.throwIfAborted();
++    return await action();
++  } catch (error) {
++    if (signal.aborted) throw error;
++    return { error: error instanceof Error ? error.message : 'The action failed. Please retry.' };
++  }
++}
++
++export function createNewsTools(): WebMCP.ModelContextTool[] {
++  return [
++    {
++      name: 'search_articles',
++      description: 'Search news article titles and summaries. Returns matching articles and links for reading them.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          query: { type: 'string', description: 'Words to find in article titles or summaries.', minLength: 1, maxLength: 200 },
++          limit: { type: 'integer', description: 'Maximum number of articles to return.', minimum: 1, maximum: 50, default: 10 },
++        },
++        required: ['query'],
++        additionalProperties: false,
++      },
++      execute(input, { signal }) {
++        return safely(signal, async () => {
++          const args = objectInput(input);
++          onlyKeys(args, ['query', 'limit']);
++          const limit = args.limit ?? 10;
++          if (typeof args.query !== 'string' || !args.query.trim() || args.query.length > 200) {
++            return { error: 'Provide a non-empty query of at most 200 characters.' };
++          }
++          if (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1 || limit > 50) {
++            return { error: 'Provide an integer limit between 1 and 50.' };
++          }
++          const matches = searchArticles(await getArticles(signal), args.query);
++          return {
++            total: matches.length,
++            articles: matches.slice(0, limit).map(article => ({
++              ...article,
++              url: `${(import.meta.env?.BASE_URL ?? '/')}articles/${encodeURIComponent(article.slug)}`,
++            })),
++          };
++        });
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: 'get_reading_list',
++      description: 'Get the current session’s saved news articles.',
++      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
++      execute(input, { signal }) {
++        return safely(signal, async () => {
++          onlyKeys(objectInput(input), []);
++          const [articles, slugs] = await Promise.all([getArticles(signal), getReadingList(signal)]);
++          return { articles: articles.filter(article => slugs.includes(article.slug)) };
++        });
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: 'set_article_bookmark',
++      description: 'Save an article to the current session’s reading list or remove it. Repeating the same request preserves the desired state.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          slug: { type: 'string', description: 'Article identifier returned by article search.', minLength: 1 },
++          bookmarked: { type: 'boolean', description: 'Whether the article should be saved in the reading list.' },
++        },
++        required: ['slug', 'bookmarked'],
++        additionalProperties: false,
++      },
++      execute(input, { signal }) {
++        return safely(signal, async () => {
++          const args = objectInput(input);
++          onlyKeys(args, ['slug', 'bookmarked']);
++          if (typeof args.slug !== 'string' || !args.slug.trim() || typeof args.bookmarked !== 'boolean') {
++            return { error: 'Provide an article slug and a boolean bookmarked value.' };
++          }
++          const articles = await getArticles(signal);
++          if (!articles.some(article => article.slug === args.slug)) return { error: 'Article not found. Search for an article first.' };
++          const readingList = await setBookmark(args.slug, args.bookmarked, signal);
++          return { slug: args.slug, bookmarked: readingList.includes(args.slug), readingList };
++        });
++      },
++      annotations: { readOnlyHint: false },
++    },
++  ];
++}
++
++export async function registerNewsTools(signal: AbortSignal): Promise<void> {
++  const context = document.modelContext;
++  if (!window.isSecureContext || !context?.registerTool) return;
++
++  try {
++    for (const tool of createNewsTools()) {
++      signal.throwIfAborted();
++      // Combine execution and registration lifetimes to cancel requests on navigation.
++      const execute = tool.execute;
++      await context.registerTool({
++        ...tool,
++        execute: (input, options) => execute(input, {
++          ...options,
++          signal: AbortSignal.any([signal, options.signal]),
++        }),
++      }, { signal });
++    }
++  } catch (error) {
++    if (!signal.aborted) throw error;
++  }
++}
+diff --git a/src/pages/api/reading-list.json.ts b/src/pages/api/reading-list.json.ts
+index 3084fe3..5b9f14a 100644
+--- a/src/pages/api/reading-list.json.ts
++++ b/src/pages/api/reading-list.json.ts
+@@ -1,31 +1,39 @@
+-
+ import type { APIRoute } from 'astro';
++import { getEntry } from 'astro:content';
++
++const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
++  status,
++  headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
++});
+ 
+ export const POST: APIRoute = async ({ request, session }) => {
+-  const { slug } = await request.json();
+-  if (!slug) {
+-    return new Response(JSON.stringify({ error: 'Slug is required' }), { status: 400 });
++  let input;
++  try {
++    input = await request.json();
++  } catch {
++    return json({ error: 'Provide a JSON object.' }, 400);
+   }
+-
+-  let readingList = await session?.get('readingList') || [];
+-
+-  if (readingList.includes(slug)) {
+-    readingList = readingList.filter((item: string) => item !== slug);
+-  } else {
+-    readingList.push(slug);
++  if (!input || typeof input !== 'object' || Array.isArray(input)) {
++    return json({ error: 'Provide a JSON object.' }, 400);
+   }
+-
+-  await session?.set('readingList', readingList);
+-
+-  return new Response(JSON.stringify({ readingList }), {
+-    headers: { 'Content-Type': 'application/json' },
+-  });
++  const { slug, bookmarked } = input;
++  if (typeof slug !== 'string' || !slug.trim()) return json({ error: 'Slug is required.' }, 400);
++  if (bookmarked !== undefined && typeof bookmarked !== 'boolean') {
++    return json({ error: 'Bookmarked must be a boolean.' }, 400);
++  }
++  if (!await getEntry('articles', slug)) return json({ error: 'Article not found.' }, 404);
++  if (!session) return json({ error: 'Session storage is unavailable.' }, 503);
++
++  let readingList: string[] = await session.get('readingList') || [];
++  // Preserve legacy toggle requests while accepting idempotent desired-state updates.
++  const shouldBookmark = bookmarked ?? !readingList.includes(slug);
++  readingList = readingList.filter(item => item !== slug);
++  if (shouldBookmark) readingList.push(slug);
++  await session.set('readingList', readingList);
++  return json({ readingList });
+ };
+ 
+ export const GET: APIRoute = async ({ session }) => {
+   const readingList = await session?.get('readingList') || [];
+-
+-  return new Response(JSON.stringify({ readingList }), {
+-    headers: { 'Content-Type': 'application/json' },
+-  });
++  return json({ readingList });
+ };
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..3a8cee7 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -32,7 +32,7 @@ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3)
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.slug);
++const isBookmarked = readingList.includes(article.id);
+ ---
+ 
+ <Layout title={article.data.title}>
+@@ -99,7 +99,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
+         </div>
+diff --git a/tests/webmcp.test.ts b/tests/webmcp.test.ts
+new file mode 100644
+index 0000000..3bb345c
+--- /dev/null
++++ b/tests/webmcp.test.ts
+@@ -0,0 +1,110 @@
++import assert from 'node:assert/strict';
++import { afterEach, test } from 'node:test';
++import { createNewsTools, registerNewsTools } from '../src/lib/webmcp';
++
++const originalFetch = globalThis.fetch;
++afterEach(() => {
++  globalThis.fetch = originalFetch;
++  Reflect.deleteProperty(globalThis, 'window');
++  Reflect.deleteProperty(globalThis, 'document');
++});
++
++const articles = [
++  { slug: 'coffee', title: 'Coffee Alchemy', summary: 'A morning ritual' },
++  { slug: 'ballet', title: 'Swan Lake', summary: 'Modern ballet' },
++];
++const options = () => ({ signal: new AbortController().signal });
++const tool = (name: string) => createNewsTools().find(tool => tool.name === name)!;
++
++function mockAPI() {
++  let readingList: string[] = [];
++  let writes = 0;
++  const events: string[][] = [];
++  Object.defineProperty(globalThis, 'window', { configurable: true, value: {
++    isSecureContext: true,
++    dispatchEvent: (event: CustomEvent<string[]>) => { events.push(event.detail); return true; },
++  } });
++  globalThis.fetch = async (url, init) => {
++    init?.signal?.throwIfAborted();
++    if (String(url).endsWith('articles.json')) return Response.json(articles);
++    if (init?.method === 'POST') {
++      writes++;
++      const { slug, bookmarked } = JSON.parse(String(init.body));
++      readingList = readingList.filter(item => item !== slug);
++      if (bookmarked) readingList.push(slug);
++    }
++    return Response.json({ readingList });
++  };
++  return { events, get writes() { return writes; } };
++}
++
++test('search matches summaries without case sensitivity and applies the default limit', async () => {
++  mockAPI();
++  const result = await tool('search_articles').execute({ query: '  BALLET ' }, options());
++  assert.deepEqual(result, { total: 1, articles: [{ ...articles[1], url: '/articles/ballet' }] });
++});
++
++test('invalid inputs return useful errors without making requests', async () => {
++  globalThis.fetch = async () => { throw new Error('Unexpected request'); };
++  for (const input of [{ query: '' }, { query: 'coffee', limit: 1.5 }, { query: 'coffee', extra: true }]) {
++    assert.ok('error' in (await tool('search_articles').execute(input, options()) as object));
++  }
++  assert.ok('error' in (await tool('set_article_bookmark').execute({ slug: 'coffee', bookmarked: 'true' }, options()) as object));
++});
++
++test('saving, retrying and removing bookmarks returns session state and notifies the UI', async () => {
++  const api = mockAPI();
++  const bookmark = tool('set_article_bookmark');
++  await bookmark.execute({ slug: 'coffee', bookmarked: true }, options());
++  await bookmark.execute({ slug: 'coffee', bookmarked: true }, options());
++  assert.deepEqual(await tool('get_reading_list').execute({}, options()), { articles: [articles[0]] });
++  await bookmark.execute({ slug: 'coffee', bookmarked: false }, options());
++  assert.deepEqual(await tool('get_reading_list').execute({}, options()), { articles: [] });
++  assert.deepEqual(api.events, [['coffee'], ['coffee'], []]);
++  assert.equal(api.writes, 3);
++  const missing = await bookmark.execute({ slug: 'missing', bookmarked: true }, options());
++  assert.ok('error' in (missing as object));
++  assert.equal(api.writes, 3);
++});
++
++test('HTTP and network failures are readable and cancellations reject', async () => {
++  globalThis.fetch = async () => new Response('', { status: 503 });
++  assert.match((await tool('search_articles').execute({ query: 'coffee' }, options()) as { error: string }).error, /503/);
++  globalThis.fetch = async () => { throw new Error('Network unavailable'); };
++  assert.deepEqual(await tool('get_reading_list').execute({}, options()), { error: 'Network unavailable' });
++  const controller = new AbortController();
++  controller.abort();
++  await assert.rejects(() => Promise.resolve(tool('search_articles').execute({ query: 'coffee' }, { signal: controller.signal })), { name: 'AbortError' });
++});
++
++test('unsupported browsers do not register tools', async () => {
++  Object.defineProperty(globalThis, 'document', { configurable: true, value: {} });
++  Object.defineProperty(globalThis, 'window', { configurable: true, value: { isSecureContext: true } });
++  await registerNewsTools(new AbortController().signal);
++});
++
++test('registration cleanup removes tools and cancels in-flight requests', async () => {
++  const registered = new Map<string, WebMCP.ModelContextTool>();
++  Object.defineProperty(globalThis, 'window', { configurable: true, value: { isSecureContext: true } });
++  Object.defineProperty(globalThis, 'document', { configurable: true, value: { modelContext: {
++    registerTool: async (definition: WebMCP.ModelContextTool, { signal }: { signal: AbortSignal }) => {
++      assert.equal(registered.has(definition.name), false);
++      registered.set(definition.name, definition);
++      signal.addEventListener('abort', () => registered.delete(definition.name), { once: true });
++    },
++  } } });
++  globalThis.fetch = async (_url, init) => new Promise((_resolve, reject) => {
++    init!.signal!.addEventListener('abort', () => reject(init!.signal!.reason), { once: true });
++  });
++  const controller = new AbortController();
++  await registerNewsTools(controller.signal);
++  assert.equal(registered.size, 3);
++  const pending = registered.get('search_articles')!.execute({ query: 'coffee' }, options());
++  controller.abort();
++  await assert.rejects(() => Promise.resolve(pending), { name: 'AbortError' });
++  assert.equal(registered.size, 0);
++  const next = new AbortController();
++  await registerNewsTools(next.signal);
++  assert.equal(registered.size, 3);
++  next.abort();
++});
+diff --git a/tsconfig.json b/tsconfig.json
+index 69c1600..b2197dd 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -9,6 +9,9 @@
+   ],
+   "compilerOptions": {
+     "jsx": "react-jsx",
+-    "jsxImportSource": "react"
++    "jsxImportSource": "react",
++    "types": [
++      "webmcp-types"
++    ]
+   }
+-}
+\ No newline at end of file
++}

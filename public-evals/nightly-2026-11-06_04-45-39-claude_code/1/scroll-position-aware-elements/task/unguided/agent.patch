@@ -1,0 +1,263 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,14 +151,151 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scroll container */
++    html,
++    body {
++      height: 100%;
++    }
++
++    body {
++      overflow: hidden;
++    }
++
++    .scroller {
++      position: relative;
++      height: 100%;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      scroll-behavior: smooth;
++    }
++
++    /* Invisible marker: while any part of it is in view, we're "near the top" */
++    .scroll-sentinel {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 1px;
++      height: 300px;
++      pointer-events: none;
++      visibility: hidden;
++    }
++
++    /* Zero-height sticky dock pins the button to the scroller's bottom edge
++       without taking up layout space or relying on position: fixed. */
++    .back-to-top-dock {
++      position: sticky;
++      bottom: 0;
++      height: 0;
++      z-index: 1001;
++    }
++
++    .back-to-top {
++      position: absolute;
++      right: 24px;
++      bottom: 24px;
++      width: 48px;
++      height: 48px;
++      display: grid;
++      place-items: center;
++      border: none;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      cursor: pointer;
++
++      /* Hidden state: visibility removes it from tab order & a11y tree */
++      opacity: 0;
++      transform: translateY(16px) scale(0.9);
++      visibility: hidden;
++      pointer-events: none;
++      transition:
++        opacity 0.3s ease,
++        transform 0.3s ease,
++        background-color 0.2s ease,
++        visibility 0s linear 0.3s; /* flip to hidden only after fade-out */
++    }
++
++    .back-to-top.is-visible {
++      opacity: 1;
++      transform: none;
++      visibility: visible;
++      pointer-events: auto;
++      transition:
++        opacity 0.3s ease,
++        transform 0.3s ease,
++        background-color 0.2s ease,
++        visibility 0s linear 0s;
++    }
++
++    .back-to-top:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .back-to-top svg {
++      width: 22px;
++      height: 22px;
++    }
++
++    .scroll-top-target:focus {
++      outline: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++
++      .back-to-top,
++      .back-to-top.is-visible {
++        transform: none;
++        transition-duration: 0s;
++        transition-delay: 0s;
++      }
++    }
++
++    /* Extra content */
++    .story {
++      margin-top: 60px;
++    }
++
++    .story h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .story-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 30px;
++      align-items: center;
++      margin-bottom: 40px;
++    }
++
++    .story-row img {
++      width: 100%;
++      height: 260px;
++      object-fit: cover;
++      border-radius: 8px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <div class="scroller" id="scroller">
++  <span class="scroll-sentinel" aria-hidden="true"></span>
++
++  <nav class="scroll-top-target" tabindex="-1">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -194,8 +331,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story">
++      <h2>From Farm to Cup</h2>
++      <div class="story-row">
++        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80" alt="Freshly roasted coffee beans" loading="lazy">
++        <div>
++          <h3>Sourced with Care</h3>
++          <p>We partner directly with small farms in Ethiopia, Colombia, and Guatemala, paying well above fair-trade
++            prices so growers can invest in their land and communities.</p>
++        </div>
++      </div>
++      <div class="story-row">
++        <div>
++          <h3>Roasted in Small Batches</h3>
++          <p>Every batch is roasted by hand in our neighborhood roastery, profiled to highlight each bean's natural
++            sweetness and character.</p>
++        </div>
++        <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=80" alt="Barista pouring coffee" loading="lazy">
++      </div>
++      <div class="story-row">
++        <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80" alt="Cozy coffee shop interior" loading="lazy">
++        <div>
++          <h3>Brewed for You</h3>
++          <p>Our baristas train for weeks to dial in every shot. Stop by, pull up a chair, and stay a while.</p>
++          <a href="/locations" class="btn">Find a Location</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +371,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div class="back-to-top-dock">
++    <button type="button" class="back-to-top" aria-label="Back to top" title="Back to top">
++      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
++        stroke-linejoin="round" aria-hidden="true" focusable="false">
++        <path d="M12 19V5M5 12l7-7 7 7" />
++      </svg>
++    </button>
++  </div>
++  </div>
++
++  <script>
++    (() => {
++      const scroller = document.getElementById('scroller');
++      const button = scroller?.querySelector('.back-to-top');
++      const sentinel = scroller?.querySelector('.scroll-sentinel');
++      const topTarget = scroller?.querySelector('.scroll-top-target');
++      if (!scroller || !button || !sentinel) return;
++
++      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++      const setVisible = (visible) => {
++        button.classList.toggle('is-visible', visible);
++        // inert guarantees no focus/click while hidden, even mid-transition.
++        button.inert = !visible;
++        button.setAttribute('aria-hidden', String(!visible));
++
++        // If the button is about to hide while focused, move focus somewhere
++        // sensible so keyboard users aren't stranded on an invisible element.
++        if (!visible && document.activeElement === button && topTarget) {
++          topTarget.focus({ preventScroll: true });
++        }
++      };
++
++      setVisible(false);
++
++      if ('IntersectionObserver' in window) {
++        // Fires only when the sentinel crosses the threshold — no per-frame scroll work.
++        const observer = new IntersectionObserver(
++          ([entry]) => setVisible(!entry.isIntersecting),
++          { root: scroller, threshold: 0 }
++        );
++        observer.observe(sentinel);
++      } else {
++        // Fallback: passive, rAF-throttled scroll listener.
++        let ticking = false;
++        scroller.addEventListener('scroll', () => {
++          if (ticking) return;
++          ticking = true;
++          requestAnimationFrame(() => {
++            setVisible(scroller.scrollTop > sentinel.offsetHeight);
++            ticking = false;
++          });
++        }, { passive: true });
++      }
++
++      button.addEventListener('click', () => {
++        scroller.scrollTo({ top: 0, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
++        if (topTarget) topTarget.focus({ preventScroll: true });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

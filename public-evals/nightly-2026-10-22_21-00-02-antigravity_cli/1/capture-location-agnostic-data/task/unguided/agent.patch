@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,54 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Preferences Section */
++    .preferences-section {
++      margin-top: 50px;
++    }
++
++    .form-group {
++      margin: 15px 0;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .form-group input[type="time"],
++    .form-group input[type="date"] {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .saved-display {
++      margin-top: 15px;
++      padding: 10px;
++      background: #f5f0ee;
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      font-size: 0.95rem;
++      text-align: left;
++    }
++
++    .tz-badge {
++      display: inline-block;
++      margin-top: 8px;
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +240,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences-section" id="coffee-preferences">
++      <h2 style="text-align: center;">Your Coffee Schedule &amp; Milestones</h2>
++      <p style="text-align: center; margin-top: 5px;">Location-agnostic settings that stay locked to your chosen wall-clock time and calendar date wherever you travel.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Daily Pickup Reminder Time</h3>
++          <p>Set your daily coffee pickup reminder. Stored as wall-clock time (`PlainTime`) so it never shifts across time zones.</p>
++          <div class="form-group">
++            <label for="pickup-reminder-time">Daily Pickup Reminder Time</label>
++            <input type="time" id="pickup-reminder-time" name="pickupReminderTime" value="08:00">
++          </div>
++          <button type="button" class="btn" id="save-pickup-time">Save Reminder Time</button>
++          <div class="saved-display" id="pickup-time-status" aria-live="polite">
++            <strong>Current Reminder:</strong> <span id="pickup-time-display">08:00 (8:00 AM)</span>
++            <br><span class="tz-badge">Location-agnostic wall-clock time (no UTC conversion)</span>
++          </div>
++        </div>
++
++        <div class="card">
++          <h3>Coffee Anniversary Date</h3>
++          <p>Celebrate the day you started your journey with The Daily Grind. Stored as a calendar date (`PlainDate`) with no time-zone offset.</p>
++          <div class="form-group">
++            <label for="coffee-anniversary-date">Coffee Anniversary Date</label>
++            <input type="date" id="coffee-anniversary-date" name="coffeeAnniversaryDate" value="2024-10-22">
++          </div>
++          <button type="button" class="btn" id="save-anniversary-date">Save Anniversary Date</button>
++          <div class="saved-display" id="anniversary-date-status" aria-live="polite">
++            <strong>Anniversary Date:</strong> <span id="anniversary-date-display">October 22, 2024 (2024-10-22)</span>
++            <br><span class="tz-badge">Location-agnostic calendar date (no time zone shift)</span>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +286,159 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const PICKUP_TIME_STORAGE_KEY = 'dailyGrind_pickupReminderTime';
++      const ANNIVERSARY_DATE_STORAGE_KEY = 'dailyGrind_coffeeAnniversaryDate';
++
++      const MONTHS = [
++        'January', 'February', 'March', 'April', 'May', 'June',
++        'July', 'August', 'September', 'October', 'November', 'December'
++      ];
++
++      /**
++       * Parses a wall-clock time string "HH:MM" (or "HH:MM:SS") directly as integers
++       * without constructing a Date object or applying any timezone offset.
++       */
++      function parsePlainTime(timeStr) {
++        if (!timeStr || typeof timeStr !== 'string') return null;
++        const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(timeStr.trim());
++        if (!match) return null;
++        const hour = Number(match[1]);
++        const minute = Number(match[2]);
++        if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
++        const canonical = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
++        return { hour, minute, canonical };
++      }
++
++      /**
++       * Formats a location-agnostic wall-clock time without using Date or timezone conversions.
++       */
++      function formatPlainTime(timeStr) {
++        const parsed = parsePlainTime(timeStr);
++        if (!parsed) return '';
++        const { hour, minute, canonical } = parsed;
++        const period = hour >= 12 ? 'PM' : 'AM';
++        const hour12 = hour % 12 === 0 ? 12 : hour % 12;
++        const minutePadded = String(minute).padStart(2, '0');
++        return `${canonical} (${hour12}:${minutePadded} ${period})`;
++      }
++
++      /**
++       * Parses a calendar date string "YYYY-MM-DD" directly as integers
++       * without constructing a Date object (avoiding UTC-to-local midnight shifts).
++       */
++      function parsePlainDate(dateStr) {
++        if (!dateStr || typeof dateStr !== 'string') return null;
++        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
++        if (!match) return null;
++        const year = Number(match[1]);
++        const month = Number(match[2]);
++        const day = Number(match[3]);
++        if (month < 1 || month > 12 || day < 1 || day > 31) return null;
++        const canonical = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
++        return { year, month, day, canonical };
++      }
++
++      /**
++       * Formats a location-agnostic calendar date without using Date or timezone conversions.
++       */
++      function formatPlainDate(dateStr) {
++        const parsed = parsePlainDate(dateStr);
++        if (!parsed) return '';
++        const { year, month, day, canonical } = parsed;
++        const monthName = MONTHS[month - 1];
++        return `${monthName} ${day}, ${year} (${canonical})`;
++      }
++
++      const timeInput = document.getElementById('pickup-reminder-time');
++      const timeDisplay = document.getElementById('pickup-time-display');
++      const saveTimeBtn = document.getElementById('save-pickup-time');
++
++      const dateInput = document.getElementById('coffee-anniversary-date');
++      const dateDisplay = document.getElementById('anniversary-date-display');
++      const saveDateBtn = document.getElementById('save-anniversary-date');
++
++      function updatePickupTime(rawVal, persist) {
++        const parsed = parsePlainTime(rawVal);
++        if (!parsed) return;
++        timeInput.value = parsed.canonical;
++        timeDisplay.textContent = formatPlainTime(parsed.canonical);
++        if (persist) {
++          try {
++            localStorage.setItem(PICKUP_TIME_STORAGE_KEY, parsed.canonical);
++          } catch (e) {
++            // Ignore storage errors in restricted environments
++          }
++        }
++      }
++
++      function updateAnniversaryDate(rawVal, persist) {
++        const parsed = parsePlainDate(rawVal);
++        if (!parsed) return;
++        dateInput.value = parsed.canonical;
++        dateDisplay.textContent = formatPlainDate(parsed.canonical);
++        if (persist) {
++          try {
++            localStorage.setItem(ANNIVERSARY_DATE_STORAGE_KEY, parsed.canonical);
++          } catch (e) {
++            // Ignore storage errors in restricted environments
++          }
++        }
++      }
++
++      // Initialize from localStorage if available, keeping exact wall-clock/calendar strings
++      try {
++        const savedTime = localStorage.getItem(PICKUP_TIME_STORAGE_KEY);
++        if (savedTime && parsePlainTime(savedTime)) {
++          updatePickupTime(savedTime, false);
++        } else {
++          updatePickupTime(timeInput.value, true);
++        }
++
++        const savedDate = localStorage.getItem(ANNIVERSARY_DATE_STORAGE_KEY);
++        if (savedDate && parsePlainDate(savedDate)) {
++          updateAnniversaryDate(savedDate, false);
++        } else {
++          updateAnniversaryDate(dateInput.value, true);
++        }
++      } catch (e) {
++        updatePickupTime(timeInput.value, false);
++        updateAnniversaryDate(dateInput.value, false);
++      }
++
++      timeInput.addEventListener('change', function (e) {
++        updatePickupTime(e.target.value, true);
++      });
++      timeInput.addEventListener('input', function (e) {
++        updatePickupTime(e.target.value, true);
++      });
++      saveTimeBtn.addEventListener('click', function () {
++        updatePickupTime(timeInput.value, true);
++      });
++
++      dateInput.addEventListener('change', function (e) {
++        updateAnniversaryDate(e.target.value, true);
++      });
++      dateInput.addEventListener('input', function (e) {
++        updateAnniversaryDate(e.target.value, true);
++      });
++      saveDateBtn.addEventListener('click', function () {
++        updateAnniversaryDate(dateInput.value, true);
++      });
++
++      // Expose helper functions for programmatic access / verification if needed
++      window.dailyGrindTimeUtils = {
++        parsePlainTime,
++        formatPlainTime,
++        parsePlainDate,
++        formatPlainDate,
++        updatePickupTime,
++        updateAnniversaryDate
++      };
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,51 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,15 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="importmap">
++    {
++      "imports": {
++        "web-vitals/attribution": "/node_modules/web-vitals/dist/web-vitals.attribution.js"
++      }
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -206,7 +213,31 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { onINP } from 'web-vitals/attribution';
++
++    onINP((metric) => {
++      navigator.sendBeacon(
++        '/analytics',
++        JSON.stringify({
++          name: 'INP',
++          value: metric.value,
++          inputDelay: metric.attribution.inputDelay,
++          presentationDelay: metric.attribution.presentationDelay,
++          processingDuration: metric.attribution.processingDuration,
++          interactionTarget: metric.attribution.interactionTarget,
++          invokerType: metric.attribution.longestScript?.entry?.invokerType,
++          sourceURL: metric.attribution.longestScript?.entry?.sourceURL,
++          sourceFunctionName: metric.attribution.longestScript?.entry?.sourceFunctionName,
++          sourceCharPosition: metric.attribution.longestScript?.entry?.sourceCharPosition,
++          subpart: metric.attribution.longestScript?.subpart,
++          intersectingDuration: metric.attribution.longestScript?.intersectingDuration
++        })
++      );
++    });
++  </script>
++
+ </body>
+ 
+ </html>

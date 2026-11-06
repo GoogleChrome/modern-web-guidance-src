@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+index 66c9173..725182d 100644
+--- a/index.html
++++ b/index.html
+@@ -100,11 +100,14 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    /* Seasonal favorites carousel */
++    .carousel {
++      max-width: 420px;
++      margin: 20px auto 0;
++    }
++
++    .carousel-viewport {
++      overflow: hidden;
+     }
+ 
+     .card {
+@@ -115,6 +118,80 @@
+       text-align: center;
+     }
+ 
++    .card[hidden] {
++      display: none;
++    }
++
++    .card.slide-from-right {
++      animation: slide-from-right 0.4s ease-out;
++    }
++
++    .card.slide-from-left {
++      animation: slide-from-left 0.4s ease-out;
++    }
++
++    @keyframes slide-from-right {
++      from {
++        transform: translateX(100%);
++        opacity: 0;
++      }
++
++      to {
++        transform: translateX(0);
++        opacity: 1;
++      }
++    }
++
++    @keyframes slide-from-left {
++      from {
++        transform: translateX(-100%);
++        opacity: 0;
++      }
++
++      to {
++        transform: translateX(0);
++        opacity: 1;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .card.slide-from-right,
++      .card.slide-from-left {
++        animation: none;
++      }
++    }
++
++    .carousel-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 15px;
++      margin-top: 15px;
++    }
++
++    .carousel-btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 16px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .carousel-btn:hover,
++    .carousel-btn:focus-visible {
++      background: #3e2723;
++    }
++
++    .carousel-status {
++      font-size: 0.9rem;
++      min-width: 3.5em;
++      text-align: center;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -177,26 +254,72 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="carousel" id="seasonal-carousel" aria-roledescription="carousel" aria-label="Seasonal favorites">
++        <div class="carousel-viewport" aria-live="polite">
++          <div class="card" role="group" aria-roledescription="slide" aria-label="1 of 3">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card" role="group" aria-roledescription="slide" aria-label="2 of 3" hidden>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card" role="group" aria-roledescription="slide" aria-label="3 of 3" hidden>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-controls">
++          <button type="button" class="carousel-btn" data-dir="-1" aria-controls="seasonal-carousel">Previous</button>
++          <span class="carousel-status" aria-hidden="true">1 / 3</span>
++          <button type="button" class="carousel-btn" data-dir="1" aria-controls="seasonal-carousel">Next</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <script>
++    (function () {
++      var carousel = document.getElementById('seasonal-carousel');
++      var slides = carousel.querySelectorAll('.card');
++      var status = carousel.querySelector('.carousel-status');
++      var buttons = carousel.querySelectorAll('.carousel-btn');
++      var current = 0;
++
++      function show(nextIndex, direction) {
++        var outgoing = slides[current];
++        var incoming = slides[nextIndex];
++
++        outgoing.hidden = true;
++        incoming.classList.remove('slide-from-right', 'slide-from-left');
++        incoming.hidden = false;
++        // Force a reflow so the animation restarts even if the same class is re-applied.
++        void incoming.offsetWidth;
++        incoming.classList.add(direction > 0 ? 'slide-from-right' : 'slide-from-left');
++
++        current = nextIndex;
++        status.textContent = (current + 1) + ' / ' + slides.length;
++      }
++
++      Array.prototype.forEach.call(buttons, function (button) {
++        button.addEventListener('click', function () {
++          var direction = Number(button.getAttribute('data-dir'));
++          var nextIndex = (current + direction + slides.length) % slides.length;
++          show(nextIndex, direction);
++        });
++      });
++
++      Array.prototype.forEach.call(slides, function (slide) {
++        slide.addEventListener('animationend', function () {
++          slide.classList.remove('slide-from-right', 'slide-from-left');
++        });
++      });
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

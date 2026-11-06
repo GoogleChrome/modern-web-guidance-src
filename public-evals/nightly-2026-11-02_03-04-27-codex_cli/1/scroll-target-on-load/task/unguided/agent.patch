@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>document.documentElement.classList.add('js');</script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -119,8 +120,74 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .media-section {
++      margin-top: 40px;
++    }
++
++    .media-section > p {
++      margin: 8px 0 20px;
++    }
++
++    .media-scroll {
++      height: 440px;
++      overflow-y: auto;
++      scroll-behavior: auto;
++      overflow-anchor: none;
++      padding: 20px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: #f3efed;
++    }
++
++    .js .media-scroll:not([data-ready]) {
++      visibility: hidden;
++    }
++
++    .media-card {
++      display: flex;
++      align-items: center;
++      gap: 24px;
++      padding: 16px;
++      background: white;
++      border-radius: 8px;
++    }
++
++    .media-card + .media-card {
++      margin-top: 20px;
++    }
++
++    .media-card img {
++      display: block;
++      width: 240px;
++      height: 180px;
++      flex-shrink: 0;
++      object-fit: cover;
++      border-radius: 5px;
++    }
++
++    .media-card h3 {
++      margin-bottom: 8px;
++    }
++
++    .media-card.target {
++      box-shadow: inset 0 0 0 2px var(--accent);
++    }
++
++    @media (max-width: 600px) {
++      .media-card {
++        flex-direction: column;
++        align-items: stretch;
++        gap: 16px;
++      }
++
++      .media-card img {
++        width: 100%;
++        height: 180px;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -194,8 +261,45 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="media-section" aria-labelledby="coffee-stories">
++      <h2 id="coffee-stories">A Little More to Savor</h2>
++      <p>Five moments from our coffee world. Scroll to explore.</p>
++      <div class="media-scroll" tabindex="0" role="region" aria-label="Coffee stories">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="Roasted coffee beans">
++          <div><h3>It Starts with the Bean</h3><p>Discover the rich aromas and careful sourcing behind every roast.</p></div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="A freshly prepared cup of espresso">
++          <div><h3>The Perfect Shot</h3><p>A small cup, a deep flavor, and a moment to pause.</p></div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="Coffee topped with delicate latte art">
++          <div><h3>A Little Everyday Art</h3><p>Silky milk meets freshly pulled espresso, finished with a personal touch.</p></div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="Fresh coffee being brewed by hand">
++          <div><h3>Take It Slow</h3><p>Enjoy the simple ritual of a carefully brewed cup.</p></div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="A welcoming neighborhood coffee shop">
++          <div><h3>Your Neighborhood Moment</h3><p>Find a cozy corner, catch up with a friend, and stay awhile.</p></div>
++        </article>
++      </div>
++      <script>
++        // Run during parsing, before the gallery can paint at its initial position.
++        // Reserved image dimensions keep this offset stable as photos load.
++        {
++          const gallery = document.querySelector('.media-scroll');
++          const target = gallery.querySelector('.target');
++          gallery.scrollTop = target.getBoundingClientRect().top
++            - gallery.getBoundingClientRect().top - gallery.clientTop - 20;
++          gallery.setAttribute('data-ready', '');
++        }
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

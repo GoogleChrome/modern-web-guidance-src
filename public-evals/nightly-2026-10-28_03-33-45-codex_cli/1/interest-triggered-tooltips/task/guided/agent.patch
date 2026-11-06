@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,64 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn[interestfor] {
++      --interest-delay-start: 0.2s;
++      --interest-delay-end: 0.15s;
++      interest-delay-start: var(--interest-delay-start);
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    .btn[interestfor]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .details-hint {
++      margin-inline-start: 0.35em;
++      color: var(--accent);
++    }
++
++    .details-tooltip {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      width: min(230px, calc(100vw - 24px));
++      padding: 12px 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: var(--light);
++      color: var(--text);
++      box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
++      font-size: 0.875rem;
++      text-align: start;
++    }
++
++    .details-tooltip strong,
++    .details-tooltip small {
++      display: block;
++    }
++
++    [interestfor="maple-details"] { anchor-name: --maple-details; }
++    [interestfor="espresso-details"] { anchor-name: --espresso-details; }
++    [interestfor="cold-brew-details"] { anchor-name: --cold-brew-details; }
++    #maple-details { position-anchor: --maple-details; }
++    #espresso-details { position-anchor: --espresso-details; }
++    #cold-brew-details { position-anchor: --cold-brew-details; }
++
++    @supports (position-area: right) {
++      .details-tooltip {
++        position-area: right;
++        margin: 8px;
++        position-try-fallbacks: flip-inline, --details-below;
++      }
++    }
++
++    @position-try --details-below {
++      position-area: bottom;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +236,34 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="maple-details">View Details<span class="details-hint" aria-hidden="true">ⓘ</span></a>
++          <div id="maple-details" class="details-tooltip" popover="hint">
++            <strong>Maple Oat Latte</strong>
++            <p>About 180 calories · 12 fl oz</p>
++            <small>Oat milk &amp; maple syrup. Estimated; varies with customization.</small>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="espresso-details">View Details<span class="details-hint" aria-hidden="true">ⓘ</span></a>
++          <div id="espresso-details" class="details-tooltip" popover="hint">
++            <strong>Dark Roast Espresso</strong>
++            <p>About 5 calories · 2 fl oz</p>
++            <small>Served black, with no added sugar. Estimated; extras change nutrition.</small>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-details">View Details<span class="details-hint" aria-hidden="true">ⓘ</span></a>
++          <div id="cold-brew-details" class="details-tooltip" popover="hint">
++            <strong>Cold Brew</strong>
++            <p>About 5 calories · 12 fl oz</p>
++            <small>Steeped for 18 hours; served black. Estimated; milk &amp; sweeteners add calories.</small>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +277,55 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load compatibility support only in browsers missing the native APIs.
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!("interestForElement" in HTMLButtonElement.prototype)) {
++      await import("https://unpkg.com/interestfor@latest");
++    }
++
++    const tooltips = document.querySelectorAll(".details-tooltip");
++    const isOpen = tooltip => tooltip.matches(":is(:popover-open, .\\:popover-open)");
++
++    // Also dismiss hint popovers in browsers that only implement auto/manual.
++    document.addEventListener("keydown", event => {
++      if (event.key === "Escape") {
++        tooltips.forEach(tooltip => {
++          if (isOpen(tooltip)) tooltip.hidePopover();
++        });
++      }
++    });
++
++    if (!CSS.supports("position-area", "right")) {
++      const positionTooltip = tooltip => {
++        if (!isOpen(tooltip)) return;
++        const trigger = document.querySelector(`[interestfor="${tooltip.id}"]`);
++        const button = trigger.getBoundingClientRect();
++        const { width, height } = tooltip.getBoundingClientRect();
++        const gap = 8;
++        const edge = 12;
++        let left = button.right + gap;
++        let top = button.top + (button.height - height) / 2;
++        if (left + width > innerWidth - edge) {
++          left = button.left - width - gap;
++          if (left < edge) {
++            left = button.left + (button.width - width) / 2;
++            top = button.bottom + gap;
++            if (top + height > innerHeight - edge) top = button.top - height - gap;
++          }
++        }
++        tooltip.style.left = `${Math.max(edge, Math.min(left, innerWidth - width - edge))}px`;
++        tooltip.style.top = `${Math.max(edge, Math.min(top, innerHeight - height - edge))}px`;
++      };
++      tooltips.forEach(tooltip => tooltip.addEventListener("toggle", () => positionTooltip(tooltip)));
++      const reposition = () => tooltips.forEach(positionTooltip);
++      window.addEventListener("resize", reposition);
++      document.addEventListener("scroll", reposition, true);
++    }
++  </script>
+ </body>
+ 
+ </html>

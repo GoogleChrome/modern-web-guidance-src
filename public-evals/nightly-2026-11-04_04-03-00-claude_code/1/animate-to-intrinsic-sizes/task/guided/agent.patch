@@ -1,0 +1,181 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,157 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Opt in to animating to/from intrinsic sizes (auto) */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    /* Promo alert (no-JS dismiss via checkbox state + :has()) */
++    #promo-alert {
++      background: var(--accent);
++      color: var(--text);
++      block-size: auto;
++      overflow: clip;
++      /* visibility flips to hidden only at the end of the transition,
++         removing the collapsed alert from focus order and the a11y tree */
++      transition: block-size 0.4s ease-in-out, opacity 0.4s ease, visibility 0.4s;
++    }
++
++    #promo-alert:has(#alert-dismiss:checked) {
++      block-size: 0;
++      opacity: 0;
++      visibility: hidden;
++    }
++
++    .promo-alert-inner {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 1rem;
++      padding: 0.6rem 5%;
++      font-size: 0.95rem;
++    }
++
++    .promo-alert-inner a {
++      color: inherit;
++      font-weight: bold;
++    }
++
++    #alert-dismiss {
++      appearance: none;
++      flex: none;
++      display: grid;
++      place-items: center;
++      inline-size: 2rem;
++      block-size: 2rem;
++      margin-inline-start: auto;
++      border-radius: 50%;
++      cursor: pointer;
++      /* Close (X) icon; inputs can't render ::before in all browsers */
++      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' stroke='%233e2723' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 4l8 8M12 4l-8 8'/%3E%3C/svg%3E") center / 0.9rem no-repeat;
++    }
++
++    #alert-dismiss:hover {
++      background-color: rgba(0, 0, 0, 0.1);
++    }
++
++    #alert-dismiss:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* FAQ accordion */
++    .faq {
++      max-width: 750px;
++      margin: 60px auto 0;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      padding: 1rem 1.25rem;
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: "+" / "";
++      font-size: 1.4rem;
++      line-height: 1;
++      transition: rotate 0.3s ease;
++    }
++
++    .faq details[open] #faq-trigger::after {
++      rotate: 45deg;
++    }
++
++    #faq-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++      border-radius: 8px;
++    }
++
++    /* Animate the details' content slot between 0 and its natural height */
++    .faq details::details-content {
++      block-size: 0;
++      overflow: clip;
++      transition: block-size 0.35s ease, content-visibility 0.35s;
++      /* Separate declaration so older browsers keep the transition shorthand */
++      transition-behavior: allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-content {
++      padding: 0 1.25rem 1.25rem;
++    }
++
++    #faq-content p + p {
++      margin-top: 0.75rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      .faq details::details-content,
++      #faq-trigger::after {
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <aside id="promo-alert" aria-label="Promotion">
++    <div class="promo-alert-inner">
++      <p>&#9749; Free pastry with any latte this week &mdash; <a href="/rewards">join Rewards</a> to claim it.</p>
++      <input type="checkbox" id="alert-dismiss" aria-label="Dismiss promotion" title="Dismiss">
++    </div>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +338,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details>
++        <summary id="faq-trigger">Where do you source your beans?</summary>
++        <div id="faq-content">
++          <p>We buy directly from small farms and cooperatives in Ethiopia, Colombia, and Guatemala, paying well above Fair Trade minimums.</p>
++          <p>Every batch is roasted in-house within a week of hitting our shelves, so it always arrives fresh.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

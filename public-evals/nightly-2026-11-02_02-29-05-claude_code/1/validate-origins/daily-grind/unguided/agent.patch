@@ -1,0 +1,243 @@
+diff --git a/index.html b/index.html
+index 66c9173..f809759 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,41 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Order status + widget */
++    .order-status {
++      display: none;
++      max-width: 1100px;
++      margin: 20px auto 0;
++      padding: 12px 20px;
++      background: #fff3e0;
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .order-status.visible {
++      display: block;
++    }
++
++    .widget-section {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .widget-frame {
++      width: 100%;
++      max-width: 420px;
++      height: 180px;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 15px;
++      background: white;
++    }
++
++    #widget-points {
++      font-weight: bold;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+@@ -171,9 +206,11 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="https://order.dailygrind.coffee/start" class="btn" id="order-now">Order Now</a>
+   </header>
+ 
++  <div class="order-status" id="order-status" role="status" aria-live="polite"></div>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -195,6 +232,173 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="widget-section">
++      <h2>Grind Rewards</h2>
++      <p>Points this visit: <span id="widget-points">&mdash;</span></p>
++      <!-- Sandboxed without allow-same-origin: the widget runs in an opaque ("null") origin. -->
++      <iframe class="widget-frame" id="rewards-widget" title="Rewards widget" sandbox="allow-scripts" srcdoc="
++<!DOCTYPE html><html><head><style>
++body{font-family:'Segoe UI',sans-serif;margin:0;padding:16px;color:#3e2723;text-align:center}
++button{background:#4e342e;color:#fff;border:0;padding:8px 16px;border-radius:5px;cursor:pointer}
++</style></head><body>
++<p>Tap to collect a bean for today&amp;#39;s check-in.</p>
++<button id='collect'>Collect bean</button>
++<script>
++  var points = 0;
++  parent.postMessage({ type: 'widget:init', version: 1 }, '*');
++  document.getElementById('collect').addEventListener('click', function () {
++    points += 1;
++    parent.postMessage({ type: 'widget:points', points: points }, '*');
++  });
++</script>
++  <script>
++    (function () {
++      'use strict';
++
++      // Exact origin of the ordering app allowed to message this page.
++      var ORDER_ORIGIN = 'https://order.dailygrind.coffee';
++      // Registrable domain that counts as "same site" for redirects.
++      var SITE_DOMAIN = 'dailygrind.coffee';
++      // External hosts we are willing to link out to.
++      var EXTERNAL_LINK_HOSTS = ['www.instagram.com', 'instagram.com'];
++
++      // Parse with the URL API rather than splitting strings, so inputs like
++      // "//evil.com", "/\\evil.com", "https://dailygrind.coffee@evil.com" or
++      // "https://dailygrind.coffee.evil.com" are resolved the way a browser would.
++      function parseUrl(value, base) {
++        if (typeof value !== 'string' || value === '') return null;
++        try {
++          return new URL(value, base || window.location.href);
++        } catch (e) {
++          return null;
++        }
++      }
++
++      function isHostOnSite(hostname) {
++        var host = hostname.toLowerCase().replace(/\.$/, '');
++        return host === SITE_DOMAIN || host.slice(-(SITE_DOMAIN.length + 1)) === '.' + SITE_DOMAIN;
++      }
++
++      function isTrustedOrderOrigin(origin) {
++        // event.origin is already serialized; compare it exactly — no prefix/substring matching.
++        return typeof origin === 'string' && origin === ORDER_ORIGIN;
++      }
++
++      // Returns a safe absolute URL for a same-site redirect, or null.
++      function validateRedirect(value) {
++        var url = parseUrl(value);
++        if (!url) return null;
++        if (url.username || url.password) return null;
++        if (url.origin === window.location.origin) return url.href;
++        if (url.protocol !== 'https:') return null;
++        return isHostOnSite(url.hostname) ? url.href : null;
++      }
++
++      function validateExternalLink(value) {
++        var url = parseUrl(value);
++        if (!url) return null;
++        if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
++        if (url.username || url.password) return null;
++        var host = url.hostname.toLowerCase();
++        if (isHostOnSite(host) || url.origin === window.location.origin) return url.href;
++        return EXTERNAL_LINK_HOSTS.indexOf(host) !== -1 ? url.href : null;
++      }
++
++      function showStatus(text) {
++        var el = document.getElementById('order-status');
++        el.textContent = text;
++        el.classList.add('visible');
++      }
++
++      // --- External links -------------------------------------------------
++      Array.prototype.forEach.call(document.querySelectorAll('a[data-external]'), function (link) {
++        var safe = validateExternalLink(link.getAttribute('href'));
++        if (!safe) {
++          link.removeAttribute('href');
++          link.setAttribute('aria-disabled', 'true');
++          return;
++        }
++        link.href = safe;
++        link.target = '_blank';
++        link.rel = 'noopener noreferrer';
++      });
++
++      // --- ?next= redirect after sign-in ------------------------------------
++      var params = new URLSearchParams(window.location.search);
++      if (params.has('next')) {
++        var next = validateRedirect(params.get('next'));
++        if (next && next !== window.location.href) {
++          window.location.assign(next);
++          return;
++        }
++      }
++
++      // --- Ordering popup ---------------------------------------------------
++      var orderWindow = null;
++      document.getElementById('order-now').addEventListener('click', function (event) {
++        var target = parseUrl(this.getAttribute('href'));
++        if (!target || target.origin !== ORDER_ORIGIN) return;
++        event.preventDefault();
++        orderWindow = window.open(target.href, 'daily-grind-order', 'width=480,height=720');
++        if (!orderWindow) window.location.assign(target.href);
++      });
++
++      function handleOrderMessage(event) {
++        if (orderWindow && event.source !== orderWindow) return;
++        var data = event.data;
++        if (!data || typeof data !== 'object') return;
++
++        if (data.type === 'order:status' && typeof data.status === 'string') {
++          showStatus('Order update: ' + data.status.slice(0, 200));
++        } else if (data.type === 'order:complete') {
++          var orderId = typeof data.orderId === 'string' ? data.orderId.slice(0, 64) : '';
++          showStatus('Thanks! Your order ' + orderId + ' is being brewed.');
++          var dest = validateRedirect(data.redirect);
++          if (dest) window.location.assign(dest);
++        }
++      }
++
++      // --- Sandboxed rewards widget ------------------------------------------
++      // The widget runs with an opaque origin, so event.origin is "null" for it
++      // and for every other sandboxed frame. We can't distinguish them by origin;
++      // instead we pin the WindowProxy that sent a valid init and require every
++      // later message to come from exactly that window.
++      var widgetFrame = document.getElementById('rewards-widget');
++      var pinnedWidget = null;
++
++      function handleWidgetMessage(event) {
++        var data = event.data;
++        if (!data || typeof data !== 'object') return;
++
++        if (!pinnedWidget) {
++          if (data.type !== 'widget:init') return;
++          if (event.source !== widgetFrame.contentWindow) return;
++          pinnedWidget = event.source;
++          pinnedWidget.postMessage({ type: 'widget:ready' }, '*');
++          return;
++        }
++
++        if (event.source !== pinnedWidget) return;
++
++        if (data.type === 'widget:points' && Number.isInteger(data.points) && data.points >= 0) {
++          document.getElementById('widget-points').textContent = String(Math.min(data.points, 9999));
++        }
++      }
++
++      window.addEventListener('message', function (event) {
++        if (isTrustedOrderOrigin(event.origin)) {
++          handleOrderMessage(event);
++        } else if (event.origin === 'null') {
++          handleWidgetMessage(event);
++        }
++        // Everything else is ignored.
++      });
++    })();
++  </script>
++
++</body></html>"></iframe>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,7 +406,8 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="https://www.instagram.com/thedailygrind" data-external>Instagram</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>

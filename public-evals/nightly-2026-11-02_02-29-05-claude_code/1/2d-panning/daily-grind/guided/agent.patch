@@ -1,0 +1,310 @@
+diff --git a/index.html b/index.html
+index 66c9173..9b679e3 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,152 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Locations Map */
++    .locations {
++      margin-top: 60px;
++    }
++
++    .locations > p {
++      text-align: center;
++      margin-top: 5px;
++    }
++
++    .map-viewport {
++      inline-size: 100%;
++      block-size: 520px;
++      margin-top: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: #ede4d3;
++      overflow: auto;
++      /* Free 2D panning: no railing to a single axis mid-gesture */
++      scroll-axis-lock: none;
++      overscroll-behavior: contain;
++      cursor: grab;
++    }
++
++    .map-viewport:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .map-viewport.is-panning {
++      cursor: grabbing;
++      user-select: none;
++    }
++
++    @supports not (scroll-axis-lock: none) {
++      .map-viewport {
++        touch-action: none;
++      }
++    }
++
++    .map-surface {
++      position: relative;
++      inline-size: 2400px;
++      block-size: 1600px;
++      background:
++        repeating-linear-gradient(90deg, transparent 0 158px, #fff 158px 170px),
++        repeating-linear-gradient(0deg, transparent 0 158px, #fff 158px 170px),
++        #ede4d3;
++    }
++
++    .map-avenue {
++      position: absolute;
++      background: #f6d9a8;
++      border: 2px solid #fff;
++    }
++
++    .map-avenue.diag {
++      inset-block-start: 780px;
++      inset-inline-start: -200px;
++      inline-size: 2900px;
++      block-size: 22px;
++      rotate: -18deg;
++    }
++
++    .map-avenue.main {
++      inset-block-start: 0;
++      inset-inline-start: 1180px;
++      inline-size: 22px;
++      block-size: 100%;
++    }
++
++    .map-river {
++      position: absolute;
++      inset-block-start: 1180px;
++      inset-inline-start: -100px;
++      inline-size: 2700px;
++      block-size: 90px;
++      background: #9cc8e3;
++      border-radius: 50%;
++      rotate: 6deg;
++    }
++
++    .map-park {
++      position: absolute;
++      background: #b7d7a0;
++      border-radius: 12px;
++      color: #4b6b38;
++      font-size: 0.8rem;
++      font-weight: bold;
++      display: grid;
++      place-items: center;
++    }
++
++    .map-label {
++      position: absolute;
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: #8d6e63;
++      pointer-events: none;
++    }
++
++    .map-pin {
++      position: absolute;
++      translate: -50% -100%;
++      inline-size: 210px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      overflow: hidden;
++      font-size: 0.8rem;
++    }
++
++    .map-pin::after {
++      content: "";
++      position: absolute;
++      inset-block-end: -10px;
++      inset-inline-start: calc(50% - 10px);
++      border: 10px solid transparent;
++      border-block-end: 0;
++      border-block-start-color: white;
++    }
++
++    .map-pin img {
++      display: block;
++      inline-size: 100%;
++      block-size: 90px;
++      object-fit: cover;
++      -webkit-user-drag: none;
++    }
++
++    .map-pin div {
++      padding: 8px 10px 10px;
++    }
++
++    .map-pin h3 {
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .map-pin a {
++      color: var(--primary);
++      font-weight: bold;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +341,74 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="locations" aria-labelledby="locations-heading">
++      <h2 id="locations-heading" style="text-align: center;">Find a Cafe Near You</h2>
++      <p>Drag, swipe, or scroll in any direction to explore our neighborhood locations.</p>
++      <div class="map-viewport" tabindex="0" role="region" aria-label="Map of cafe locations, pannable in all directions">
++        <div class="map-surface">
++          <div class="map-park" style="left: 170px; top: 680px; width: 330px; height: 160px;">Founders Park</div>
++          <div class="map-park" style="left: 1880px; top: 1340px; width: 330px; height: 160px;">Harbor Green</div>
++          <div class="map-park" style="left: 1540px; top: 170px; width: 160px; height: 330px;">Ridge Woods</div>
++          <div class="map-avenue diag"></div>
++          <div class="map-avenue main"></div>
++          <div class="map-river"></div>
++          <span class="map-label" style="left: 240px; top: 120px;">Old Town</span>
++          <span class="map-label" style="left: 1240px; top: 40px;">Main Avenue</span>
++          <span class="map-label" style="left: 2050px; top: 150px;">Hillside</span>
++          <span class="map-label" style="left: 300px; top: 1270px;">Blue River</span>
++          <span class="map-label" style="left: 1900px; top: 760px;">Station District</span>
++          <article class="map-pin" style="left: 420px; top: 330px;">
++            <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=420&q=70" alt="" loading="lazy" draggable="false">
++            <div>
++              <h3>Old Town Roastery</h3>
++              <p>12 Mill Street<br>Daily 6am–6pm</p>
++              <a href="/locations/old-town">Directions</a>
++            </div>
++          </article>
++          <article class="map-pin" style="left: 1260px; top: 560px;">
++            <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=420&q=70" alt="" loading="lazy" draggable="false">
++            <div>
++              <h3>Main Ave Flagship</h3>
++              <p>480 Main Avenue<br>Daily 5:30am–9pm</p>
++              <a href="/locations/main-ave">Directions</a>
++            </div>
++          </article>
++          <article class="map-pin" style="left: 2000px; top: 420px;">
++            <img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=420&q=70" alt="" loading="lazy" draggable="false">
++            <div>
++              <h3>Hillside Cafe</h3>
++              <p>77 Ridge Road<br>Mon–Sat 7am–5pm</p>
++              <a href="/locations/hillside">Directions</a>
++            </div>
++          </article>
++          <article class="map-pin" style="left: 700px; top: 1050px;">
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=420&q=70" alt="" loading="lazy" draggable="false">
++            <div>
++              <h3>Riverside Kiosk</h3>
++              <p>Pier 3 Boardwalk<br>Daily 7am–4pm</p>
++              <a href="/locations/riverside">Directions</a>
++            </div>
++          </article>
++          <article class="map-pin" style="left: 1750px; top: 1000px;">
++            <img src="https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=420&q=70" alt="" loading="lazy" draggable="false">
++            <div>
++              <h3>Station Espresso Bar</h3>
++              <p>Central Station, Hall B<br>Daily 5am–11pm</p>
++              <a href="/locations/station">Directions</a>
++            </div>
++          </article>
++          <article class="map-pin" style="left: 1150px; top: 1480px;">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=420&q=70" alt="" loading="lazy" draggable="false">
++            <div>
++              <h3>Southgate Drive-Thru</h3>
++              <p>901 Southgate Blvd<br>Daily 5am–8pm</p>
++              <a href="/locations/southgate">Directions</a>
++            </div>
++          </article>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +421,77 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    const mapViewport = document.querySelector('.map-viewport');
++
++    // Start centered on the flagship store
++    mapViewport.scrollLeft = (mapViewport.scrollWidth - mapViewport.clientWidth) / 2;
++    mapViewport.scrollTop = (mapViewport.scrollHeight - mapViewport.clientHeight) / 3;
++
++    // Without native scroll-axis-lock support, pan via scrollLeft/scrollTop
++    // so gestures are never railed to a single axis.
++    if (!CSS.supports('scroll-axis-lock', 'none')) {
++      const DRAG_THRESHOLD = 4;
++      let pan = null;
++
++      mapViewport.addEventListener('wheel', (e) => {
++        e.preventDefault();
++        mapViewport.scrollLeft += e.deltaX;
++        mapViewport.scrollTop += e.deltaY;
++      }, { passive: false });
++
++      mapViewport.addEventListener('pointerdown', (e) => {
++        const rect = mapViewport.getBoundingClientRect();
++        if (
++          !e.isPrimary ||
++          e.button !== 0 ||
++          e.clientX - rect.left - mapViewport.clientLeft >= mapViewport.clientWidth ||
++          e.clientY - rect.top - mapViewport.clientTop >= mapViewport.clientHeight
++        ) {
++          return;
++        }
++        pan = { id: e.pointerId, x: e.clientX, y: e.clientY, dragging: false };
++      });
++
++      mapViewport.addEventListener('pointermove', (e) => {
++        if (!pan || e.pointerId !== pan.id) return;
++        const dx = e.clientX - pan.x;
++        const dy = e.clientY - pan.y;
++        // Only capture once the pointer moves, so taps on pin links still work
++        if (!pan.dragging) {
++          if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
++          pan.dragging = true;
++          mapViewport.setPointerCapture(e.pointerId);
++          mapViewport.classList.add('is-panning');
++        }
++        mapViewport.scrollLeft -= dx;
++        mapViewport.scrollTop -= dy;
++        pan.x = e.clientX;
++        pan.y = e.clientY;
++      });
++
++      let suppressClick = false;
++      const endPan = () => {
++        // A drag that ends over a pin link shouldn't trigger the link
++        if (pan && pan.dragging) {
++          suppressClick = true;
++          setTimeout(() => { suppressClick = false; });
++        }
++        pan = null;
++        mapViewport.classList.remove('is-panning');
++      };
++      mapViewport.addEventListener('pointerup', endPan);
++      mapViewport.addEventListener('pointercancel', endPan);
++
++      mapViewport.addEventListener('click', (e) => {
++        if (suppressClick) {
++          e.preventDefault();
++          e.stopPropagation();
++        }
++      }, true);
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,427 @@
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..7c8972f
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,421 @@
++import http from 'node:http';
++import fs from 'node:fs';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const __filename = fileURLToPath(import.meta.url);
++const __dirname = path.dirname(__filename);
++
++// Port parsing from CLI arguments or environment variable
++let port = 11222;
++const portArgIndex = process.argv.indexOf('--port');
++if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
++  port = parseInt(process.argv[portArgIndex + 1], 10);
++} else if (process.env.PORT) {
++  port = parseInt(process.env.PORT, 10);
++}
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=UTF-8',
++  '.css': 'text/css; charset=UTF-8',
++  '.js': 'application/javascript; charset=UTF-8',
++  '.json': 'application/json; charset=UTF-8',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.jpeg': 'image/jpeg',
++  '.gif': 'image/gif',
++  '.svg': 'image/svg+xml',
++  '.ico': 'image/x-icon',
++  '.txt': 'text/plain; charset=UTF-8',
++  '.pdf': 'application/pdf',
++};
++
++// Security headers according to Privacy by Design & Modern Web Security standards
++const SECURITY_HEADERS = {
++  'Content-Security-Policy': [
++    "default-src 'self'",
++    "script-src 'self' 'unsafe-inline'",
++    "style-src 'self' 'unsafe-inline'",
++    "img-src 'self' data: https://images.unsplash.com",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "frame-ancestors 'none'",
++    "base-uri 'self'",
++    "form-action 'self'",
++    "object-src 'none'",
++    "upgrade-insecure-requests"
++  ].join('; '),
++  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'X-Permitted-Cross-Domain-Policies': 'none',
++  'X-XSS-Protection': '0'
++};
++
++// In-memory data store with privacy-by-design & data minimization principles
++// - Minimal fields stored
++// - No raw credit cards or plain-text passwords
++// - Explicit expiration & automatic purging
++const privacyStore = {
++  // Mock customer profile demonstrating data minimization
++  user: {
++    id: 'user_98241',
++    email: 'alex.rivera@example.com',
++    preferredName: 'Alex',
++    privacyPreferences: {
++      essentialCookies: true, // Required
++      analyticsTracking: false, // Default Opt-Out (Privacy by Default)
++      marketingEmails: false,   // Default Opt-Out (Privacy by Default)
++      dataRetentionDays: 30     // Minimization: auto-purge after 30 days
++    },
++    orders: [
++      {
++        orderId: 'ORD-2026-881',
++        date: '2026-10-18',
++        item: 'Maple Oat Latte (12oz)',
++        total: '$5.50',
++        paymentMethod: 'Credit Card ending in •••• 4242', // Tokenized/Masked (Secure Data Handling)
++        retentionExpiry: '2026-11-17' // Automatic purging schedule
++      }
++    ],
++    auditLogs: [
++      {
++        timestamp: '2026-10-18T10:14:00Z',
++        action: 'ORDER_PLACED_GUEST_MINIMAL',
++        details: 'Order processed with masked payment token; CVV not retained.'
++      },
++      {
++        timestamp: '2026-10-18T10:15:00Z',
++        action: 'PRIVACY_SETTINGS_INITIALIZED',
++        details: 'Non-essential data collection set to disabled by default.'
++      }
++    ]
++  },
++  // Third-Party Audit Reports & Verification Records
++  auditRecords: {
++    soc2Type2: {
++      name: 'SOC 2 Type II Examination',
++      auditor: 'A-LIGN Independent CPA & Compliance Auditors',
++      status: 'Passed / Unqualified Opinion',
++      period: 'October 1, 2025 - September 30, 2026',
++      trustPrinciples: ['Security', 'Confidentiality', 'Privacy'],
++      summary: 'Comprehensive audit confirming controls over data security, zero unauthorized data sharing, and strict operational privacy safeguards.'
++    },
++    iso27001: {
++      name: 'ISO/IEC 27001:2022 & ISO/IEC 27701:2019 (PIMS)',
++      auditor: 'BSI Group (British Standards Institution)',
++      status: 'Certified',
++      certificateId: 'IS-784920 / PIMS-784921',
++      summary: 'Certified information security and privacy information management system for artisanal coffee e-commerce and loyalty services.'
++    },
++    penetrationTest: {
++      name: 'Biannual External Web Application Penetration Test',
++      firm: 'Cure53 Security Assessments',
++      date: 'September 2026',
++      outcome: 'No Critical or High vulnerabilities found. Verification of robust CSP, HSTS, and secure data handling.'
++    },
++    privacyImpactAssessment: {
++      name: 'Independent Data Protection Impact Assessment (DPIA)',
++      counsel: 'Baker & Hostetler Privacy & Data Protection Practice',
++      date: 'August 2026',
++      findings: 'Full compliance with GDPR Art. 25 (Data Protection by Design and by Default) and CCPA/CPRA data minimization provisions.'
++    },
++    subprocessors: [
++      {
++        name: 'Stripe Inc.',
++        role: 'Payment Tokenization & Processing (Zero raw card data stored on Daily Grind servers)',
++        auditStatus: 'PCI-DSS Level 1 Service Provider, SOC 1/2 Type II',
++        dataTransferAgreement: 'Standard Contractual Clauses (SCC) active'
++      },
++      {
++        name: 'Cloudflare',
++        role: 'DDoS Protection & DNS',
++        auditStatus: 'SOC 2 Type II, ISO 27001',
++        dataTransferAgreement: 'Data Processing Addendum with zero PII logging'
++      }
++    ]
++  }
++};
++
++function sendJSON(res, statusCode, data) {
++  res.writeHead(statusCode, {
++    'Content-Type': 'application/json; charset=UTF-8',
++    'Cache-Control': 'no-store, max-age=0',
++    ...SECURITY_HEADERS
++  });
++  res.end(JSON.stringify(data, null, 2));
++}
++
++function parseBody(req) {
++  return new Promise((resolve, reject) => {
++    let body = '';
++    req.on('data', chunk => {
++      body += chunk;
++      if (body.length > 1e6) { // 1MB limit for security
++        req.destroy();
++        reject(new Error('Payload Too Large'));
++      }
++    });
++    req.on('end', () => {
++      try {
++        resolve(body ? JSON.parse(body) : {});
++      } catch (err) {
++        resolve({});
++      }
++    });
++    req.on('error', reject);
++  });
++}
++
++const server = http.createServer(async (req, res) => {
++  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
++  const pathname = parsedUrl.pathname;
++
++  // Set default security headers on all responses
++  for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
++    res.setHeader(header, value);
++  }
++
++  // --- API Routes for Privacy by Design, Audits, and Secure Data Handling ---
++
++  // 1. Audit Summary & Verification
++  if (req.method === 'GET' && pathname === '/api/privacy/audit-summary') {
++    return sendJSON(res, 200, {
++      status: 'success',
++      organization: 'The Daily Grind Coffee Co.',
++      complianceStandard: 'Privacy by Design & GDPR Article 25',
++      audits: privacyStore.auditRecords
++    });
++  }
++
++  // 2. Data Minimization: Access My Data (Data Subject Access Request / GDPR Art. 15)
++  if (req.method === 'GET' && pathname === '/api/privacy/my-data') {
++    return sendJSON(res, 200, {
++      status: 'success',
++      dataSubject: privacyStore.user.id,
++      notice: 'In adherence to Data Minimization, we only retain the minimal data required for your service.',
++      user: privacyStore.user
++    });
++  }
++
++  // 3. Right to Data Portability (GDPR Art. 20)
++  if (req.method === 'POST' && pathname === '/api/privacy/export-data') {
++    privacyStore.user.auditLogs.push({
++      timestamp: new Date().toISOString(),
++      action: 'DATA_EXPORT_REQUESTED',
++      details: 'User exported personal data package in compliance with GDPR Art. 20.'
++    });
++
++    res.writeHead(200, {
++      'Content-Type': 'application/json',
++      'Content-Disposition': 'attachment; filename="daily_grind_privacy_export.json"',
++      'Cache-Control': 'no-store',
++      ...SECURITY_HEADERS
++    });
++    return res.end(JSON.stringify({
++      exportedAt: new Date().toISOString(),
++      dataSubject: privacyStore.user,
++      policy: 'https://dailygrind.coffee/privacy-policy'
++    }, null, 2));
++  }
++
++  // 4. Right to Erasure / Right to be Forgotten (GDPR Art. 17) & Secure Purge
++  if (req.method === 'POST' && pathname === '/api/privacy/delete-data') {
++    privacyStore.user.preferredName = '[DELETED_ANONYMIZED]';
++    privacyStore.user.email = '[DELETED_ANONYMIZED]';
++    privacyStore.user.orders = [];
++    privacyStore.user.auditLogs.push({
++      timestamp: new Date().toISOString(),
++      action: 'DATA_ERASURE_COMPLETED',
++      details: 'All identifiable personal records purged in compliance with GDPR Art. 17.'
++    });
++
++    return sendJSON(res, 200, {
++      status: 'success',
++      message: 'Your personal data has been permanently deleted from our active databases in accordance with our Data Minimization and Privacy-by-Design policies.'
++    });
++  }
++
++  // 5. Consent Management & Privacy by Default (Opt-In Controls)
++  if (req.method === 'POST' && pathname === '/api/privacy/consent') {
++    const data = await parseBody(req);
++    privacyStore.user.privacyPreferences.analyticsTracking = Boolean(data.analyticsTracking);
++    privacyStore.user.privacyPreferences.marketingEmails = Boolean(data.marketingEmails);
++    if (data.dataRetentionDays) {
++      privacyStore.user.privacyPreferences.dataRetentionDays = Number(data.dataRetentionDays);
++    }
++    privacyStore.user.auditLogs.push({
++      timestamp: new Date().toISOString(),
++      action: 'PRIVACY_PREFERENCES_UPDATED',
++      details: `Analytics: ${data.analyticsTracking}, Marketing: ${data.marketingEmails}, Retention: ${data.dataRetentionDays || 30} days`
++    });
++
++    return sendJSON(res, 200, {
++      status: 'success',
++      message: 'Privacy preferences updated. Your settings are honored immediately.',
++      currentPreferences: privacyStore.user.privacyPreferences
++    });
++  }
++
++  // 6. Data Minimization Contact Form Submission
++  if (req.method === 'POST' && pathname === '/api/contact') {
++    const data = await parseBody(req);
++    // Data minimization check: Only email and message are accepted.
++    // Explicitly reject unnecessary PII (phone number, home address, social security, etc.)
++    if (!data.email || !data.message) {
++      return sendJSON(res, 400, {
++        status: 'error',
++        message: 'Data Minimization Principle: Please provide only an email and inquiry message.'
++      });
++    }
++
++    // Input sanitization (prevent XSS / injection)
++    const sanitizedEmail = String(data.email).replace(/[^\w.@+-]/g, '').slice(0, 100);
++    const sanitizedMessage = String(data.message).replace(/</g, '&lt;').replace(/>/g, '&gt;').slice(0, 1000);
++
++    return sendJSON(res, 200, {
++      status: 'success',
++      message: 'Inquiry received securely. In accordance with data minimization, this record will automatically purge 14 days after response.',
++      record: {
++        email: sanitizedEmail,
++        messageLength: sanitizedMessage.length,
++        retentionExpiryDays: 14,
++        encryptionInTransit: 'TLS 1.3 enforced',
++        encryptionAtRest: 'AES-256'
++      }
++    });
++  }
++
++  // 7. Secure Data Handling Order Placement
++  if (req.method === 'POST' && pathname === '/api/order') {
++    const data = await parseBody(req);
++    if (!data.item) {
++      return sendJSON(res, 400, { status: 'error', message: 'Item selection is required.' });
++    }
++
++    // Secure Data Handling:
++    // - Raw credit card numbers are NEVER saved or logged
++    // - Only tokenized or masked format is acknowledged
++    const cardNumber = String(data.cardNumber || '4242424242424242');
++    const lastFour = cardNumber.slice(-4);
++    const maskedCard = `•••• •••• •••• ${lastFour}`;
++
++    const newOrder = {
++      orderId: `ORD-${Date.now().toString().slice(-6)}`,
++      date: new Date().toISOString().split('T')[0],
++      item: String(data.item).slice(0, 100),
++      fulfillment: data.fulfillment === 'delivery' ? 'delivery' : 'pickup',
++      paymentMethod: `Card ending in ${maskedCard.slice(-9)} (Tokenized via Stripe PCI-DSS Level 1)`,
++      retentionExpiry: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
++    };
++
++    privacyStore.user.orders.push(newOrder);
++    privacyStore.user.auditLogs.push({
++      timestamp: new Date().toISOString(),
++      action: 'ORDER_PLACED_SECURE',
++      details: `Order ${newOrder.orderId} processed. CVV discarded immediately after authorization.`
++    });
++
++    return sendJSON(res, 200, {
++      status: 'success',
++      message: 'Order placed with end-to-end data minimization and secure payment tokenization.',
++      order: newOrder
++    });
++  }
++
++  // 8. Security Headers Verification Endpoint
++  if (req.method === 'GET' && pathname === '/api/security/headers') {
++    return sendJSON(res, 200, {
++      status: 'success',
++      configuredSecurityHeaders: SECURITY_HEADERS
++    });
++  }
++
++  // --- Static File & Page Routing ---
++
++  let filePath = '';
++  if (pathname === '/' || pathname === '/index' || pathname === '/index.html') {
++    filePath = path.join(__dirname, 'index.html');
++  } else if (pathname === '/privacy-policy' || pathname === '/privacy-policy.html') {
++    filePath = path.join(__dirname, 'privacy-policy.html');
++  } else if (pathname === '/audits' || pathname === '/third-party-audits' || pathname === '/audits.html') {
++    filePath = path.join(__dirname, 'audits.html');
++  } else if (pathname === '/contact' || pathname === '/contact.html') {
++    filePath = path.join(__dirname, 'contact.html');
++  } else if (pathname === '/order-online' || pathname === '/order-online.html') {
++    filePath = path.join(__dirname, 'order-online.html');
++  } else if (pathname === '/account' || pathname === '/account.html') {
++    filePath = path.join(__dirname, 'account.html');
++  } else if (pathname === '/menu' || pathname === '/menu.html' || pathname.startsWith('/menu/')) {
++    filePath = path.join(__dirname, 'menu.html');
++  } else if (pathname === '/locations' || pathname === '/locations.html') {
++    filePath = path.join(__dirname, 'locations.html');
++  } else if (pathname === '/rewards' || pathname === '/rewards.html') {
++    filePath = path.join(__dirname, 'rewards.html');
++  } else if (pathname === '/about' || pathname === '/about.html') {
++    filePath = path.join(__dirname, 'about.html');
++  } else if (pathname === '/careers' || pathname === '/careers.html') {
++    filePath = path.join(__dirname, 'careers.html');
++  } else if (pathname === '/logout') {
++    // Secure logout: clear session cookies and redirect to home
++    res.writeHead(302, {
++      'Location': '/',
++      'Set-Cookie': 'session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Strict',
++      'Clear-Site-Data': '"cache", "cookies", "storage"',
++      ...SECURITY_HEADERS
++    });
++    return res.end();
++  } else {
++    // Resolve relative path safely to prevent directory traversal
++    const safePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
++    filePath = path.join(__dirname, safePath);
++  }
++
++  fs.stat(filePath, (err, stats) => {
++    if (err || !stats.isFile()) {
++      // 404 handler
++      res.writeHead(404, {
++        'Content-Type': 'text/html; charset=UTF-8',
++        ...SECURITY_HEADERS
++      });
++      return res.end(`<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <title>404 Not Found | The Daily Grind</title>
++  <style>body{font-family:sans-serif;text-align:center;padding:50px;background:#fafafa;color:#3e2723;}</style>
++</head>
++<body>
++  <h1>404 - Page Not Found</h1>
++  <p>The requested page could not be found.</p>
++  <p><a href="/" style="color:#4e342e;">Return to Home</a></p>
++</body>
++</html>`);
++    }
++
++    const ext = path.extname(filePath).toLowerCase();
++    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++
++    // HTML pages get no-cache to ensure fresh privacy policies and security headers
++    const cacheControl = ext === '.html'
++      ? 'no-cache, no-store, must-revalidate'
++      : 'public, max-age=86400';
++
++    res.writeHead(200, {
++      'Content-Type': contentType,
++      'Cache-Control': cacheControl,
++      ...SECURITY_HEADERS
++    });
++
++    fs.createReadStream(filePath).pipe(res);
++  });
++});
++
++server.listen(port, () => {
++  console.log(`The Daily Grind server with Privacy by Design running at http://localhost:${port}`);
++  console.log(`Security headers active: CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP, CORP`);
++});

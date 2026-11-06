@@ -1,0 +1,544 @@
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..79cfe4f
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,308 @@
++const CARD_STYLES = `
++  :host {
++    display: block;
++    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    color: var(--text, #3e2723);
++  }
++  .card {
++    background: white;
++    border-radius: 8px;
++    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    overflow: hidden;
++    display: flex;
++    flex-direction: column;
++    height: 100%;
++    transition: transform 0.2s ease, box-shadow 0.2s ease;
++  }
++  .card:hover {
++    transform: translateY(-2px);
++    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
++  }
++  .card-image {
++    width: 100%;
++    height: 180px;
++    object-fit: cover;
++    display: block;
++    background: #efebe9;
++  }
++  .card-body {
++    padding: 20px;
++    text-align: center;
++    display: flex;
++    flex-direction: column;
++    flex: 1;
++  }
++  .card-header {
++    display: flex;
++    justify-content: space-between;
++    align-items: baseline;
++    gap: 8px;
++    margin-bottom: 10px;
++  }
++  h3 {
++    margin: 0;
++    color: var(--primary, #4e342e);
++    font-size: 1.2rem;
++    text-align: left;
++  }
++  .price {
++    font-weight: 700;
++    color: var(--primary, #4e342e);
++    background: var(--secondary, #d7ccc8);
++    padding: 2px 8px;
++    border-radius: 999px;
++    font-size: 0.9rem;
++    white-space: nowrap;
++  }
++  .description {
++    margin: 0 0 15px;
++    font-size: 0.95rem;
++    text-align: left;
++    color: #5d4037;
++    flex: 1;
++  }
++  .details {
++    text-align: left;
++    font-size: 0.85rem;
++    background: #fafafa;
++    border-left: 3px solid var(--accent, #ffab40);
++    padding: 10px 12px;
++    margin-bottom: 15px;
++    border-radius: 0 4px 4px 0;
++  }
++  .details[hidden] {
++    display: none;
++  }
++  .actions {
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: 10px;
++    margin-top: auto;
++    padding-top: 10px;
++    border-top: 1px solid #eee;
++  }
++  .btn-toggle {
++    background: transparent;
++    border: 1px solid var(--primary, #4e342e);
++    color: var(--primary, #4e342e);
++    padding: 8px 12px;
++    border-radius: 5px;
++    cursor: pointer;
++    font-size: 0.85rem;
++    font-weight: 600;
++    transition: background 0.2s, color 0.2s;
++  }
++  .btn-toggle:hover {
++    background: #efebe9;
++  }
++  .counter {
++    display: inline-flex;
++    align-items: center;
++    gap: 8px;
++    background: var(--primary, #4e342e);
++    color: white;
++    padding: 4px 8px;
++    border-radius: 5px;
++  }
++  .counter button {
++    background: rgba(255, 255, 255, 0.15);
++    color: white;
++    border: none;
++    width: 26px;
++    height: 26px;
++    border-radius: 4px;
++    cursor: pointer;
++    font-size: 1rem;
++    line-height: 1;
++    display: inline-flex;
++    align-items: center;
++    justify-content: center;
++    transition: background 0.2s;
++  }
++  .counter button:hover:not(:disabled) {
++    background: rgba(255, 255, 255, 0.3);
++  }
++  .counter button:disabled {
++    opacity: 0.4;
++    cursor: not-allowed;
++  }
++  .qty {
++    min-width: 1.5ch;
++    text-align: center;
++    font-weight: 600;
++    font-size: 0.9rem;
++  }
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static get observedAttributes() {
++    return ['quantity', 'expanded'];
++  }
++
++  constructor() {
++    super();
++    this._hydrated = false;
++    this._onIncrement = this._onIncrement.bind(this);
++    this._onDecrement = this._onDecrement.bind(this);
++    this._onToggleDetails = this._onToggleDetails.bind(this);
++  }
++
++  connectedCallback() {
++    // If no Declarative Shadow DOM is present (e.g. client-created element),
++    // construct the shadow root once. Otherwise, hydrate the existing SSR shadow root in place.
++    if (!this.shadowRoot) {
++      this._renderClientShadowRoot();
++    }
++
++    if (!this._hydrated) {
++      this._hydrateInPlace();
++    }
++  }
++
++  disconnectedCallback() {
++    if (this._incBtn) this._incBtn.removeEventListener('click', this._onIncrement);
++    if (this._decBtn) this._decBtn.removeEventListener('click', this._onDecrement);
++    if (this._toggleBtn) this._toggleBtn.removeEventListener('click', this._onToggleDetails);
++    this._hydrated = false;
++  }
++
++  /**
++   * Hydrates the existing Declarative Shadow DOM nodes in place without
++   * replacing innerHTML or recreating elements.
++   */
++  _hydrateInPlace() {
++    const root = this.shadowRoot;
++    this._incBtn = root.querySelector('[data-action="increment"]');
++    this._decBtn = root.querySelector('[data-action="decrement"]');
++    this._qtyEl = root.querySelector('[data-role="quantity"]');
++    this._toggleBtn = root.querySelector('[data-action="toggle-details"]');
++    this._detailsEl = root.querySelector('[data-role="details"]');
++
++    if (this._incBtn) this._incBtn.addEventListener('click', this._onIncrement);
++    if (this._decBtn) this._decBtn.addEventListener('click', this._onDecrement);
++    if (this._toggleBtn) this._toggleBtn.addEventListener('click', this._onToggleDetails);
++
++    this._syncStateToDOM();
++    this._hydrated = true;
++    this.setAttribute(' data-hydrated'.trim(), 'true');
++  }
++
++  _renderClientShadowRoot() {
++    const shadow = this.attachShadow({ mode: 'open' });
++    const title = this.getAttribute('name') || 'House Coffee';
++    const price = this.getAttribute('price') || '$4.50';
++    const image = this.getAttribute('image') || '';
++    const quantity = this.quantity;
++    const expanded = this.expanded;
++
++    shadow.innerHTML = `
++      <style>${CARD_STYLES}</style>
++      <article class="card" part="card">
++        <img class="card-image" src="${image}" alt="${title}" loading="lazy">
++        <div class="card-body">
++          <div class="card-header">
++            <h3><slot name="title">${title}</slot></h3>
++            <span class="price"><slot name="price">${price}</slot></span>
++          </div>
++          <div class="description">
++            <slot name="description"></slot>
++          </div>
++          <div class="details" data-role="details" ${expanded ? '' : 'hidden'}>
++            <slot name="details"></slot>
++          </div>
++          <div class="actions">
++            <button type="button" class="btn-toggle" data-action="toggle-details" aria-expanded="${expanded}">
++              ${expanded ? 'Hide Details' : 'View Details'}
++            </button>
++            <div class="counter" role="group" aria-label="Order quantity">
++              <button type="button" data-action="decrement" aria-label="Decrease quantity" ${quantity <= 0 ? 'disabled' : ''}>−</button>
++              <span class="qty" data-role="quantity" aria-live="polite">${quantity}</span>
++              <button type="button" data-action="increment" aria-label="Increase quantity">+</button>
++            </div>
++          </div>
++        </div>
++      </article>
++    `;
++  }
++
++  get quantity() {
++    const val = parseInt(this.getAttribute('quantity') || '0', 10);
++    return Number.isNaN(val) || val < 0 ? 0 : val;
++  }
++
++  set quantity(val) {
++    const next = Math.max(0, Number(val) || 0);
++    this.setAttribute('quantity', String(next));
++  }
++
++  get expanded() {
++    return this.hasAttribute('expanded');
++  }
++
++  set expanded(val) {
++    if (val) {
++      this.setAttribute('expanded', '');
++    } else {
++      this.removeAttribute('expanded');
++    }
++  }
++
++  attributeChangedCallback() {
++    if (this._hydrated) {
++      this._syncStateToDOM();
++    }
++  }
++
++  _syncStateToDOM() {
++    const qty = this.quantity;
++    const isExpanded = this.expanded;
++
++    if (this._qtyEl && this._qtyEl.textContent !== String(qty)) {
++      this._qtyEl.textContent = String(qty);
++    }
++    if (this._decBtn) {
++      this._decBtn.disabled = qty <= 0;
++    }
++    if (this._detailsEl) {
++      this._detailsEl.hidden = !isExpanded;
++    }
++    if (this._toggleBtn) {
++      this._toggleBtn.setAttribute('aria-expanded', String(isExpanded));
++      this._toggleBtn.textContent = isExpanded ? 'Hide Details' : 'View Details';
++    }
++  }
++
++  _onIncrement() {
++    this.quantity += 1;
++    this._emitChange();
++  }
++
++  _onDecrement() {
++    if (this.quantity > 0) {
++      this.quantity -= 1;
++      this._emitChange();
++    }
++  }
++
++  _onToggleDetails() {
++    this.expanded = !this.expanded;
++  }
++
++  _emitChange() {
++    this.dispatchEvent(
++      new CustomEvent('quantity-change', {
++        bubbles: true,
++        composed: true,
++        detail: {
++          name: this.getAttribute('name'),
++          quantity: this.quantity,
++        },
++      })
++    );
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..b0b0c08 100644
+--- a/index.html
++++ b/index.html
+@@ -102,22 +102,14 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    /* Ensure custom elements layout properly before & after JS registration */
++    coffee-card {
++      display: block;
+     }
+ 
+     .btn {
+@@ -178,25 +170,182 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <!-- Server-rendered custom element 1: Maple Oat Latte -->
++        <coffee-card name="Maple Oat Latte" price="$5.75" quantity="0" image="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80">
++          <template shadowrootmode="open">
++            <style>
++              :host { display: block; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: var(--text, #3e2723); }
++              .card { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); overflow: hidden; display: flex; flex-direction: column; height: 100%; transition: transform 0.2s ease, box-shadow 0.2s ease; }
++              .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14); }
++              .card-image { width: 100%; height: 180px; object-fit: cover; display: block; background: #efebe9; }
++              .card-body { padding: 20px; text-align: center; display: flex; flex-direction: column; flex: 1; }
++              .card-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
++              h3 { margin: 0; color: var(--primary, #4e342e); font-size: 1.2rem; text-align: left; }
++              .price { font-weight: 700; color: var(--primary, #4e342e); background: var(--secondary, #d7ccc8); padding: 2px 8px; border-radius: 999px; font-size: 0.9rem; white-space: nowrap; }
++              .description { margin: 0 0 15px; font-size: 0.95rem; text-align: left; color: #5d4037; flex: 1; }
++              .details { text-align: left; font-size: 0.85rem; background: #fafafa; border-left: 3px solid var(--accent, #ffab40); padding: 10px 12px; margin-bottom: 15px; border-radius: 0 4px 4px 0; }
++              .details[hidden] { display: none; }
++              .actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 10px; border-top: 1px solid #eee; }
++              .btn-toggle { background: transparent; border: 1px solid var(--primary, #4e342e); color: var(--primary, #4e342e); padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s, color 0.2s; }
++              .btn-toggle:hover { background: #efebe9; }
++              .counter { display: inline-flex; align-items: center; gap: 8px; background: var(--primary, #4e342e); color: white; padding: 4px 8px; border-radius: 5px; }
++              .counter button { background: rgba(255, 255, 255, 0.15); color: white; border: none; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s; }
++              .counter button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.3); }
++              .counter button:disabled { opacity: 0.4; cursor: not-allowed; }
++              .qty { min-width: 1.5ch; text-align: center; font-weight: 600; font-size: 0.9rem; }
++            </style>
++            <article class="card" part="card">
++              <img class="card-image" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80" alt="Maple Oat Latte" loading="lazy">
++              <div class="card-body">
++                <div class="card-header">
++                  <h3><slot name="title">Maple Oat Latte</slot></h3>
++                  <span class="price"><slot name="price">$5.75</slot></span>
++                </div>
++                <div class="description">
++                  <slot name="description"></slot>
++                </div>
++                <div class="details" data-role="details" hidden>
++                  <slot name="details"></slot>
++                </div>
++                <div class="actions">
++                  <button type="button" class="btn-toggle" data-action="toggle-details" aria-expanded="false">View Details</button>
++                  <div class="counter" role="group" aria-label="Order quantity">
++                    <button type="button" data-action="decrement" aria-label="Decrease quantity" disabled>−</button>
++                    <span class="qty" data-role="quantity" aria-live="polite">0</span>
++                    <button type="button" data-action="increment" aria-label="Increase quantity">+</button>
++                  </div>
++                </div>
++              </div>
++            </article>
++          </template>
++          <span slot="title">Maple Oat Latte</span>
++          <span slot="price">$5.75</span>
++          <p slot="description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div slot="details">
++            <strong>Tasting Notes:</strong> Toasted pecan, warm maple, velvety oat finish.<br>
++            <strong>Origin:</strong> Single-origin Ethiopian &amp; Colombian espresso blend.
++          </div>
++        </coffee-card>
++
++        <!-- Server-rendered custom element 2: Dark Roast Espresso -->
++        <coffee-card name="Dark Roast Espresso" price="$3.50" quantity="0" image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80">
++          <template shadowrootmode="open">
++            <style>
++              :host { display: block; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: var(--text, #3e2723); }
++              .card { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); overflow: hidden; display: flex; flex-direction: column; height: 100%; transition: transform 0.2s ease, box-shadow 0.2s ease; }
++              .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14); }
++              .card-image { width: 100%; height: 180px; object-fit: cover; display: block; background: #efebe9; }
++              .card-body { padding: 20px; text-align: center; display: flex; flex-direction: column; flex: 1; }
++              .card-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
++              h3 { margin: 0; color: var(--primary, #4e342e); font-size: 1.2rem; text-align: left; }
++              .price { font-weight: 700; color: var(--primary, #4e342e); background: var(--secondary, #d7ccc8); padding: 2px 8px; border-radius: 999px; font-size: 0.9rem; white-space: nowrap; }
++              .description { margin: 0 0 15px; font-size: 0.95rem; text-align: left; color: #5d4037; flex: 1; }
++              .details { text-align: left; font-size: 0.85rem; background: #fafafa; border-left: 3px solid var(--accent, #ffab40); padding: 10px 12px; margin-bottom: 15px; border-radius: 0 4px 4px 0; }
++              .details[hidden] { display: none; }
++              .actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 10px; border-top: 1px solid #eee; }
++              .btn-toggle { background: transparent; border: 1px solid var(--primary, #4e342e); color: var(--primary, #4e342e); padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s, color 0.2s; }
++              .btn-toggle:hover { background: #efebe9; }
++              .counter { display: inline-flex; align-items: center; gap: 8px; background: var(--primary, #4e342e); color: white; padding: 4px 8px; border-radius: 5px; }
++              .counter button { background: rgba(255, 255, 255, 0.15); color: white; border: none; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s; }
++              .counter button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.3); }
++              .counter button:disabled { opacity: 0.4; cursor: not-allowed; }
++              .qty { min-width: 1.5ch; text-align: center; font-weight: 600; font-size: 0.9rem; }
++            </style>
++            <article class="card" part="card">
++              <img class="card-image" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80" alt="Dark Roast Espresso" loading="lazy">
++              <div class="card-body">
++                <div class="card-header">
++                  <h3><slot name="title">Dark Roast Espresso</slot></h3>
++                  <span class="price"><slot name="price">$3.50</slot></span>
++                </div>
++                <div class="description">
++                  <slot name="description"></slot>
++                </div>
++                <div class="details" data-role="details" hidden>
++                  <slot name="details"></slot>
++                </div>
++                <div class="actions">
++                  <button type="button" class="btn-toggle" data-action="toggle-details" aria-expanded="false">View Details</button>
++                  <div class="counter" role="group" aria-label="Order quantity">
++                    <button type="button" data-action="decrement" aria-label="Decrease quantity" disabled>−</button>
++                    <span class="qty" data-role="quantity" aria-live="polite">0</span>
++                    <button type="button" data-action="increment" aria-label="Increase quantity">+</button>
++                  </div>
++                </div>
++              </div>
++            </article>
++          </template>
++          <span slot="title">Dark Roast Espresso</span>
++          <span slot="price">$3.50</span>
++          <p slot="description">Bold, smokey, and perfect for a morning boost.</p>
++          <div slot="details">
++            <strong>Tasting Notes:</strong> Dark cacao, caramelized sugar, full-bodied crema.<br>
++            <strong>Origin:</strong> Sumatra Mandheling &amp; Brazil Santos dark roast.
++          </div>
++        </coffee-card>
++
++        <!-- Server-rendered custom element 3: Cold Brew -->
++        <coffee-card name="Cold Brew" price="$4.75" quantity="0" image="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80">
++          <template shadowrootmode="open">
++            <style>
++              :host { display: block; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: var(--text, #3e2723); }
++              .card { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); overflow: hidden; display: flex; flex-direction: column; height: 100%; transition: transform 0.2s ease, box-shadow 0.2s ease; }
++              .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14); }
++              .card-image { width: 100%; height: 180px; object-fit: cover; display: block; background: #efebe9; }
++              .card-body { padding: 20px; text-align: center; display: flex; flex-direction: column; flex: 1; }
++              .card-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
++              h3 { margin: 0; color: var(--primary, #4e342e); font-size: 1.2rem; text-align: left; }
++              .price { font-weight: 700; color: var(--primary, #4e342e); background: var(--secondary, #d7ccc8); padding: 2px 8px; border-radius: 999px; font-size: 0.9rem; white-space: nowrap; }
++              .description { margin: 0 0 15px; font-size: 0.95rem; text-align: left; color: #5d4037; flex: 1; }
++              .details { text-align: left; font-size: 0.85rem; background: #fafafa; border-left: 3px solid var(--accent, #ffab40); padding: 10px 12px; margin-bottom: 15px; border-radius: 0 4px 4px 0; }
++              .details[hidden] { display: none; }
++              .actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 10px; border-top: 1px solid #eee; }
++              .btn-toggle { background: transparent; border: 1px solid var(--primary, #4e342e); color: var(--primary, #4e342e); padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.2s, color 0.2s; }
++              .btn-toggle:hover { background: #efebe9; }
++              .counter { display: inline-flex; align-items: center; gap: 8px; background: var(--primary, #4e342e); color: white; padding: 4px 8px; border-radius: 5px; }
++              .counter button { background: rgba(255, 255, 255, 0.15); color: white; border: none; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s; }
++              .counter button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.3); }
++              .counter button:disabled { opacity: 0.4; cursor: not-allowed; }
++              .qty { min-width: 1.5ch; text-align: center; font-weight: 600; font-size: 0.9rem; }
++            </style>
++            <article class="card" part="card">
++              <img class="card-image" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80" alt="Cold Brew" loading="lazy">
++              <div class="card-body">
++                <div class="card-header">
++                  <h3><slot name="title">Cold Brew</slot></h3>
++                  <span class="price"><slot name="price">$4.75</slot></span>
++                </div>
++                <div class="description">
++                  <slot name="description"></slot>
++                </div>
++                <div class="details" data-role="details" hidden>
++                  <slot name="details"></slot>
++                </div>
++                <div class="actions">
++                  <button type="button" class="btn-toggle" data-action="toggle-details" aria-expanded="false">View Details</button>
++                  <div class="counter" role="group" aria-label="Order quantity">
++                    <button type="button" data-action="decrement" aria-label="Decrease quantity" disabled>−</button>
++                    <span class="qty" data-role="quantity" aria-live="polite">0</span>
++                    <button type="button" data-action="increment" aria-label="Increase quantity">+</button>
++                  </div>
++                </div>
++              </div>
++            </article>
++          </template>
++          <span slot="title">Cold Brew</span>
++          <span slot="price">$4.75</span>
++          <p slot="description">Steeped for 18 hours for maximum smoothness.</p>
++          <div slot="details">
++            <strong>Tasting Notes:</strong> Sweet chocolate, low acidity, silky finish.<br>
++            <strong>Origin:</strong> Guatemala Antigua coarse-ground cold extraction.
++          </div>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+ 
++  <script type="module" src="./coffee-card.js"></script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

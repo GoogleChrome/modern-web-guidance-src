@@ -1,0 +1,1543 @@
+diff --git a/db.js b/db.js
+new file mode 100644
+index 0000000..f203907
+--- /dev/null
++++ b/db.js
+@@ -0,0 +1,118 @@
++const fs = require('fs');
++const path = require('path');
++
++const DB_FILE = path.join(__dirname, 'data', 'db.json');
++
++class Database {
++  constructor() {
++    this.data = {
++      users: {} // userId -> user object
++    };
++    this.init();
++  }
++
++  init() {
++    const dir = path.dirname(DB_FILE);
++    if (!fs.existsSync(dir)) {
++      fs.mkdirSync(dir, { recursive: true });
++    }
++    if (fs.existsSync(DB_FILE)) {
++      try {
++        const raw = fs.readFileSync(DB_FILE, 'utf8');
++        this.data = JSON.parse(raw);
++        if (!this.data.users) this.data.users = {};
++      } catch (err) {
++        console.error('Error reading db file, initializing empty db:', err);
++        this.data = { users: {} };
++      }
++    } else {
++      this.save();
++    }
++  }
++
++  save() {
++    try {
++      fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf8');
++    } catch (err) {
++      console.error('Error saving db:', err);
++    }
++  }
++
++  getAllUsers() {
++    return Object.values(this.data.users);
++  }
++
++  getUserById(id) {
++    return this.data.users[id] || null;
++  }
++
++  getUserByUsername(username) {
++    if (!username) return null;
++    const lower = username.trim().toLowerCase();
++    for (const user of Object.values(this.data.users)) {
++      if (user.username.toLowerCase() === lower) {
++        return user;
++      }
++    }
++    return null;
++  }
++
++  getUserByCredentialId(credentialId) {
++    for (const user of Object.values(this.data.users)) {
++      if (user.credentials && user.credentials.some(c => c.id === credentialId)) {
++        return user;
++      }
++    }
++    return null;
++  }
++
++  createUser({ username, displayName, id }) {
++    const userId = id || `usr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
++    const user = {
++      id: userId,
++      username: username.trim(),
++      displayName: (displayName && displayName.trim()) || username.trim(),
++      createdAt: new Date().toISOString(),
++      credentials: []
++    };
++    this.data.users[userId] = user;
++    this.save();
++    return user;
++  }
++
++  addCredential(userId, credential) {
++    const user = this.getUserById(userId);
++    if (!user) throw new Error('User not found');
++    if (!user.credentials) user.credentials = [];
++    user.credentials.push(credential);
++    this.save();
++    return credential;
++  }
++
++  updateCredential(userId, credentialId, updates) {
++    const user = this.getUserById(userId);
++    if (!user) throw new Error('User not found');
++    const cred = user.credentials.find(c => c.id === credentialId);
++    if (!cred) throw new Error('Credential not found');
++    Object.assign(cred, updates);
++    this.save();
++    return cred;
++  }
++
++  deleteCredential(userId, credentialId) {
++    const user = this.getUserById(userId);
++    if (!user) throw new Error('User not found');
++    const index = user.credentials.findIndex(c => c.id === credentialId);
++    if (index === -1) throw new Error('Credential not found');
++    user.credentials.splice(index, 1);
++    this.save();
++    return true;
++  }
++
++  getCredentials(userId) {
++    const user = this.getUserById(userId);
++    return user ? (user.credentials || []) : [];
++  }
++}
++
++module.exports = new Database();
+diff --git a/package.json b/package.json
+index 2bd4d77..950a302 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,16 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "test": "node test/passkey.test.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
++    "express": "^5.3.0",
++    "express-session": "^1.19.0"
+   }
+ }
+diff --git a/public/css/styles.css b/public/css/styles.css
+new file mode 100644
+index 0000000..805872f
+--- /dev/null
++++ b/public/css/styles.css
+@@ -0,0 +1,433 @@
++:root {
++  --primary: #4e342e;
++  --primary-dark: #3e2723;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --accent-hover: #ff9100;
++  --text: #3e2723;
++  --light: #fafafa;
++  --white: #ffffff;
++  --border: #e0e0e0;
++  --success: #2e7d32;
++  --success-bg: #e8f5e9;
++  --danger: #c62828;
++  --danger-bg: #ffebee;
++  --warning: #ef6c00;
++  --warning-bg: #fff3e0;
++  --info: #0277bd;
++  --info-bg: #e1f5fe;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++  min-height: 100vh;
++  display: flex;
++  flex-direction: column;
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++.logo a {
++  color: white;
++  text-decoration: none;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++  align-items: center;
++  gap: 15px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.95rem;
++  transition: color 0.3s;
++  padding: 6px 10px;
++  border-radius: 4px;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.nav-btn {
++  background: var(--accent);
++  color: var(--primary-dark) !important;
++  font-weight: 600;
++  padding: 6px 14px;
++  border-radius: 4px;
++}
++
++.nav-btn:hover {
++  background: var(--accent-hover);
++  color: var(--primary-dark) !important;
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++  color: var(--accent);
++}
++
++.logout-link:hover {
++  background: var(--accent);
++  color: var(--primary-dark) !important;
++}
++
++.nav-user {
++  font-weight: 500;
++  color: var(--secondary);
++  font-size: 0.9rem;
++}
++
++/* Hero Section */
++.hero {
++  min-height: 48vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 40px 20px;
++}
++
++.hero h1 {
++  font-size: 2.8rem;
++  margin-bottom: 0.8rem;
++}
++
++.hero p {
++  font-size: 1.2rem;
++  max-width: 650px;
++  margin-bottom: 1.5rem;
++  opacity: 0.95;
++}
++
++.hero-actions {
++  display: flex;
++  gap: 15px;
++  flex-wrap: wrap;
++  justify-content: center;
++}
++
++/* Layout & Containers */
++.container {
++  max-width: 1000px;
++  margin: 30px auto;
++  padding: 0 20px;
++  flex: 1;
++}
++
++.card {
++  background: white;
++  padding: 25px;
++  border-radius: 8px;
++  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++  margin-bottom: 25px;
++}
++
++.card h2, .card h3 {
++  color: var(--primary);
++  margin-bottom: 15px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++/* Forms & Inputs */
++.form-group {
++  margin-bottom: 18px;
++  text-align: left;
++}
++
++.form-group label {
++  display: block;
++  font-weight: 600;
++  margin-bottom: 6px;
++  font-size: 0.95rem;
++  color: var(--primary);
++}
++
++.form-control {
++  width: 100%;
++  padding: 10px 14px;
++  font-size: 1rem;
++  border: 1px solid var(--border);
++  border-radius: 5px;
++  transition: border-color 0.2s;
++  outline: none;
++}
++
++.form-control:focus {
++  border-color: var(--accent);
++  box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++}
++
++.form-help {
++  font-size: 0.82rem;
++  color: #666;
++  margin-top: 4px;
++}
++
++/* Buttons */
++.btn {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 8px;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  font-size: 0.95rem;
++  font-weight: 600;
++  text-decoration: none;
++  border: none;
++  border-radius: 5px;
++  cursor: pointer;
++  transition: background 0.2s, transform 0.1s;
++}
++
++.btn:hover {
++  background: var(--primary-dark);
++}
++
++.btn:active {
++  transform: translateY(1px);
++}
++
++.btn-primary {
++  background: var(--primary);
++  color: white;
++}
++
++.btn-accent {
++  background: var(--accent);
++  color: var(--primary-dark);
++}
++
++.btn-accent:hover {
++  background: var(--accent-hover);
++}
++
++.btn-danger {
++  background: var(--danger);
++  color: white;
++}
++
++.btn-danger:hover {
++  background: #b71c1c;
++}
++
++.btn-sm {
++  padding: 5px 12px;
++  font-size: 0.85rem;
++}
++
++.btn-outline {
++  background: transparent;
++  border: 1px solid var(--primary);
++  color: var(--primary);
++}
++
++.btn-outline:hover {
++  background: var(--primary);
++  color: white;
++}
++
++.btn-full {
++  width: 100%;
++}
++
++/* Alerts & Notices */
++.alert {
++  padding: 12px 16px;
++  border-radius: 6px;
++  margin-bottom: 20px;
++  font-size: 0.95rem;
++  display: none;
++}
++
++.alert-info {
++  background-color: var(--info-bg);
++  color: var(--info);
++  border: 1px solid #b3e5fc;
++}
++
++.alert-success {
++  background-color: var(--success-bg);
++  color: var(--success);
++  border: 1px solid #c8e6c9;
++}
++
++.alert-danger {
++  background-color: var(--danger-bg);
++  color: var(--danger);
++  border: 1px solid #ffcdd2;
++}
++
++.alert-warning {
++  background-color: var(--warning-bg);
++  color: var(--warning);
++  border: 1px solid #ffe0b2;
++}
++
++/* Passkeys List / Table */
++.passkeys-table {
++  width: 100%;
++  border-collapse: collapse;
++  margin-top: 15px;
++}
++
++.passkeys-table th,
++.passkeys-table td {
++  padding: 12px 14px;
++  text-align: left;
++  border-bottom: 1px solid var(--border);
++}
++
++.passkeys-table th {
++  background: #f5f5f5;
++  color: var(--primary);
++  font-weight: 600;
++  font-size: 0.9rem;
++}
++
++.passkeys-table tr:hover {
++  background: #fdfbf7;
++}
++
++.passkey-icon {
++  display: inline-block;
++  margin-right: 6px;
++}
++
++.passkey-id {
++  font-family: monospace;
++  font-size: 0.8rem;
++  color: #777;
++}
++
++.badge {
++  display: inline-block;
++  padding: 3px 8px;
++  border-radius: 12px;
++  font-size: 0.75rem;
++  font-weight: 600;
++  text-transform: uppercase;
++}
++
++.badge-success {
++  background: var(--success-bg);
++  color: var(--success);
++}
++
++.badge-warning {
++  background: var(--warning-bg);
++  color: var(--warning);
++}
++
++.badge-secondary {
++  background: #eeeeee;
++  color: #616161;
++}
++
++/* Reauthentication Box */
++.reauth-box {
++  background: #fff8e1;
++  border: 1px solid #ffe082;
++  border-radius: 8px;
++  padding: 20px;
++  margin-top: 20px;
++}
++
++.reauth-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 12px;
++  flex-wrap: wrap;
++  gap: 10px;
++}
++
++.sensitive-data-panel {
++  background: #f1f8e9;
++  border: 1px dashed var(--success);
++  border-radius: 6px;
++  padding: 15px;
++  margin-top: 15px;
++}
++
++/* Passkey Management Actions */
++.passkey-actions {
++  display: flex;
++  gap: 8px;
++  align-items: center;
++}
++
++.rename-input-wrap {
++  display: none;
++  gap: 6px;
++  align-items: center;
++}
++
++/* Footer */
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 30px 20px;
++  margin-top: auto;
++}
++
++.footer-links {
++  margin-bottom: 15px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.88rem;
++}
++
++.footer-links a:hover {
++  text-decoration: underline;
++}
+diff --git a/public/js/passkeys.js b/public/js/passkeys.js
+new file mode 100644
+index 0000000..3ac162b
+--- /dev/null
++++ b/public/js/passkeys.js
+@@ -0,0 +1,305 @@
++/**
++ * The Daily Grind - Passkey Client Library
++ * Handles Registration, Authentication, Management, and Reauthentication
++ */
++
++const PasskeyApp = {
++  // Check WebAuthn support
++  isSupported() {
++    return window.SimpleWebAuthnBrowser && window.SimpleWebAuthnBrowser.browserSupportsWebAuthn();
++  },
++
++  // Show status / alert message
++  showMessage(elemId, message, type = 'info') {
++    const elem = document.getElementById(elemId);
++    if (!elem) return;
++    elem.textContent = message;
++    elem.className = `alert alert-${type}`;
++    elem.style.display = 'block';
++  },
++
++  clearMessage(elemId) {
++    const elem = document.getElementById(elemId);
++    if (!elem) return;
++    elem.textContent = '';
++    elem.style.display = 'none';
++  },
++
++  // ----------------------------------------------------
++  // 1. REGISTRATION
++  // ----------------------------------------------------
++  async register({ username, displayName, passkeyName }) {
++    if (!this.isSupported()) {
++      throw new Error('WebAuthn / Passkeys are not supported in this browser.');
++    }
++
++    // Step 1: Request registration options from server
++    const optionsRes = await fetch('/api/auth/register-options', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username, displayName }),
++    });
++
++    if (!optionsRes.ok) {
++      const err = await optionsRes.json().catch(() => ({}));
++      throw new Error(err.error || 'Failed to get registration options');
++    }
++
++    const options = await optionsRes.json();
++
++    // Step 2: Invoke authenticator via SimpleWebAuthnBrowser
++    let attResp;
++    try {
++      attResp = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: options });
++    } catch (err) {
++      if (err.name === 'InvalidStateError') {
++        throw new Error('A passkey for this device is already registered.');
++      }
++      throw err;
++    }
++
++    // Step 3: Send verification back to server
++    const verifyRes = await fetch('/api/auth/register-verify', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ response: attResp, passkeyName }),
++    });
++
++    if (!verifyRes.ok) {
++      const err = await verifyRes.json().catch(() => ({}));
++      throw new Error(err.error || 'Registration verification failed');
++    }
++
++    return await verifyRes.json();
++  },
++
++  // ----------------------------------------------------
++  // 2. AUTHENTICATION
++  // ----------------------------------------------------
++  async login({ username } = {}) {
++    if (!this.isSupported()) {
++      throw new Error('WebAuthn / Passkeys are not supported in this browser.');
++    }
++
++    // Step 1: Request authentication options from server
++    const optionsRes = await fetch('/api/auth/login-options', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username: username || undefined }),
++    });
++
++    if (!optionsRes.ok) {
++      const err = await optionsRes.json().catch(() => ({}));
++      throw new Error(err.error || 'Failed to get login options');
++    }
++
++    const options = await optionsRes.json();
++
++    // Step 2: Invoke authenticator via SimpleWebAuthnBrowser
++    const asseResp = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: options });
++
++    // Step 3: Send verification back to server
++    const verifyRes = await fetch('/api/auth/login-verify', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ response: asseResp }),
++    });
++
++    if (!verifyRes.ok) {
++      const err = await verifyRes.json().catch(() => ({}));
++      throw new Error(err.error || 'Login verification failed');
++    }
++
++    return await verifyRes.json();
++  },
++
++  // Conditional UI / Autofill Login
++  async initAutofill(onSuccess, onError) {
++    if (!this.isSupported()) return;
++    try {
++      const available = await SimpleWebAuthnBrowser.browserSupportsWebAuthnAutofill();
++      if (!available) return;
++
++      const optionsRes = await fetch('/api/auth/login-options', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({}),
++      });
++      if (!optionsRes.ok) return;
++      const options = await optionsRes.json();
++
++      const asseResp = await SimpleWebAuthnBrowser.startAuthentication({
++        optionsJSON: options,
++        useBrowserAutofill: true,
++      });
++
++      const verifyRes = await fetch('/api/auth/login-verify', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ response: asseResp }),
++      });
++
++      if (verifyRes.ok) {
++        const data = await verifyRes.json();
++        if (onSuccess) onSuccess(data);
++      } else {
++        const err = await verifyRes.json().catch(() => ({}));
++        if (onError) onError(new Error(err.error || 'Autofill login failed'));
++      }
++    } catch (err) {
++      // Don't report abort errors from autofill
++      if (err.name !== 'AbortError' && onError) {
++        console.debug('Passkey autofill not completed:', err.message);
++      }
++    }
++  },
++
++  // ----------------------------------------------------
++  // 3. MANAGEMENT
++  // ----------------------------------------------------
++  async listPasskeys() {
++    const res = await fetch('/api/passkeys');
++    if (!res.ok) {
++      const err = await res.json().catch(() => ({}));
++      throw new Error(err.error || 'Failed to fetch passkeys');
++    }
++    const data = await res.json();
++    return data.passkeys || [];
++  },
++
++  async addPasskey({ passkeyName } = {}) {
++    if (!this.isSupported()) {
++      throw new Error('WebAuthn / Passkeys are not supported in this browser.');
++    }
++
++    const optionsRes = await fetch('/api/passkeys/add-options', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++    });
++
++    if (!optionsRes.ok) {
++      const err = await optionsRes.json().catch(() => ({}));
++      throw new Error(err.error || 'Failed to get registration options');
++    }
++
++    const options = await optionsRes.json();
++    const attResp = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: options });
++
++    const verifyRes = await fetch('/api/passkeys/add-verify', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ response: attResp, passkeyName }),
++    });
++
++    if (!verifyRes.ok) {
++      const err = await verifyRes.json().catch(() => ({}));
++      throw new Error(err.error || 'Failed to add passkey');
++    }
++
++    return await verifyRes.json();
++  },
++
++  async renamePasskey(id, name) {
++    const res = await fetch(`/api/passkeys/${encodeURIComponent(id)}`, {
++      method: 'PATCH',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ name }),
++    });
++
++    if (!res.ok) {
++      const err = await res.json().catch(() => ({}));
++      throw new Error(err.error || 'Failed to rename passkey');
++    }
++
++    return await res.json();
++  },
++
++  async deletePasskey(id) {
++    const res = await fetch(`/api/passkeys/${encodeURIComponent(id)}`, {
++      method: 'DELETE',
++    });
++
++    if (!res.ok) {
++      const err = await res.json().catch(() => ({}));
++      throw new Error(err.error || 'Failed to delete passkey');
++    }
++
++    return await res.json();
++  },
++
++  // ----------------------------------------------------
++  // 4. REAUTHENTICATION
++  // ----------------------------------------------------
++  async reauthenticate() {
++    if (!this.isSupported()) {
++      throw new Error('WebAuthn / Passkeys are not supported in this browser.');
++    }
++
++    const optionsRes = await fetch('/api/auth/reauth-options', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++    });
++
++    if (!optionsRes.ok) {
++      const err = await optionsRes.json().catch(() => ({}));
++      throw new Error(err.error || 'Failed to get reauthentication options');
++    }
++
++    const options = await optionsRes.json();
++    const asseResp = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: options });
++
++    const verifyRes = await fetch('/api/auth/reauth-verify', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ response: asseResp }),
++    });
++
++    if (!verifyRes.ok) {
++      const err = await verifyRes.json().catch(() => ({}));
++      throw new Error(err.error || 'Reauthentication failed');
++    }
++
++    return await verifyRes.json();
++  },
++
++  async getReauthStatus() {
++    const res = await fetch('/api/auth/reauth-status');
++    if (!res.ok) return { isReauthenticated: false };
++    return await res.json();
++  },
++
++  async fetchSensitiveData() {
++    let res = await fetch('/api/account/sensitive-data');
++    if (res.status === 403) {
++      const body = await res.json().catch(() => ({}));
++      if (body.requiresReauth) {
++        // Trigger passkey reauthentication
++        await this.reauthenticate();
++        // Retry fetching sensitive data after successful reauthentication
++        res = await fetch('/api/account/sensitive-data');
++      }
++    }
++
++    if (!res.ok) {
++      const err = await res.json().catch(() => ({}));
++      throw new Error(err.error || 'Failed to retrieve sensitive data');
++    }
++
++    return await res.json();
++  },
++
++  // Auth Status check for Nav / Header
++  async checkAuthStatus() {
++    const res = await fetch('/api/auth/me');
++    if (!res.ok) return { loggedIn: false };
++    return await res.json();
++  },
++
++  async logout() {
++    await fetch('/api/auth/logout', { method: 'POST' });
++    window.location.href = '/';
++  }
++};
++
++// Global export
++window.PasskeyApp = PasskeyApp;
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..45e06f2
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,641 @@
++const express = require('express');
++const session = require('express-session');
++const path = require('path');
++const {
++  generateRegistrationOptions,
++  verifyRegistrationResponse,
++  generateAuthenticationOptions,
++  verifyAuthenticationResponse,
++} = require('@simplewebauthn/server');
++const { isoBase64URL, isoUint8Array } = require('@simplewebauthn/server/helpers');
++const db = require('./db');
++
++const app = express();
++const PORT = parseInt(process.env.PORT, 10) || 11222;
++const RP_NAME = 'The Daily Grind Coffee Co.';
++const REAUTH_TTL_MS = 10 * 60 * 1000; // 10 minutes
++
++// Middleware
++app.use(express.json());
++app.use(express.urlencoded({ extended: true }));
++app.use(session({
++  secret: 'daily-grind-artisan-passkey-secret-2026',
++  resave: false,
++  saveUninitialized: false,
++  cookie: {
++    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
++    httpOnly: true,
++    sameSite: 'lax',
++    secure: false, // allow http in dev/test
++  }
++}));
++
++// Serve SimpleWebAuthn browser bundle
++app.use('/vendor/simplewebauthn', express.static(path.join(__dirname, 'node_modules/@simplewebauthn/browser/dist/bundle')));
++// Serve static assets from public
++app.use(express.static(path.join(__dirname, 'public')));
++
++// Helper functions for WebAuthn RP and Origins
++function getRpID(req) {
++  const host = req.hostname;
++  if (!host || host === 'localhost' || host === '127.0.0.1') {
++    return 'localhost';
++  }
++  return host;
++}
++
++function getExpectedRPIDs(req) {
++  const host = req.hostname;
++  const set = new Set(['localhost', '127.0.0.1', host]);
++  return Array.from(set).filter(Boolean);
++}
++
++function getExpectedOrigins(req) {
++  const origins = new Set();
++  if (req.headers.origin) {
++    origins.add(req.headers.origin);
++  }
++  const host = req.get('host') || `localhost:${PORT}`;
++  const proto = req.protocol || 'http';
++  origins.add(`${proto}://${host}`);
++  origins.add(`http://${host}`);
++  origins.add(`https://${host}`);
++  origins.add(`http://localhost:${PORT}`);
++  origins.add(`http://127.0.0.1:${PORT}`);
++  origins.add('http://localhost:11222');
++  origins.add('http://127.0.0.1:11222');
++  return Array.from(origins);
++}
++
++function isReauthenticated(req) {
++  if (!req.session || !req.session.reauthenticatedAt) return false;
++  return (Date.now() - req.session.reauthenticatedAt) < REAUTH_TTL_MS;
++}
++
++// Authentication middleware
++function requireAuth(req, res, next) {
++  if (!req.session || !req.session.userId) {
++    if (req.xhr || req.headers.accept?.includes('application/json')) {
++      return res.status(401).json({ error: 'Authentication required' });
++    }
++    return res.redirect('/login');
++  }
++  const user = db.getUserById(req.session.userId);
++  if (!user) {
++    req.session.destroy();
++    return res.status(401).json({ error: 'User not found' });
++  }
++  req.user = user;
++  next();
++}
++
++// ==========================================
++// API Routes: Registration
++// ==========================================
++const handleRegisterOptions = async (req, res) => {
++  try {
++    const { username, displayName } = req.body;
++    if (!username || typeof username !== 'string' || !username.trim()) {
++      return res.status(400).json({ error: 'Username is required' });
++    }
++
++    const trimmedUsername = username.trim();
++    let user = db.getUserByUsername(trimmedUsername);
++    if (!user) {
++      user = db.createUser({
++        username: trimmedUsername,
++        displayName: (displayName && displayName.trim()) || trimmedUsername,
++      });
++    }
++
++    const existingCreds = user.credentials || [];
++    const options = await generateRegistrationOptions({
++      rpName: RP_NAME,
++      rpID: getRpID(req),
++      userID: isoUint8Array.fromUTF8String(user.id),
++      userName: user.username,
++      userDisplayName: user.displayName || user.username,
++      attestationType: 'none',
++      excludeCredentials: existingCreds.map(c => ({
++        id: c.id,
++        transports: c.transports,
++      })),
++      authenticatorSelection: {
++        residentKey: 'preferred',
++        userVerification: 'preferred',
++      },
++      supportedAlgorithmIDs: [-7, -257, -8],
++    });
++
++    req.session.registeringUserId = user.id;
++    req.session.currentChallenge = options.challenge;
++
++    res.json(options);
++  } catch (err) {
++    console.error('Error generating registration options:', err);
++    res.status(500).json({ error: err.message || 'Failed to generate registration options' });
++  }
++};
++
++const handleRegisterVerify = async (req, res) => {
++  try {
++    const { response, passkeyName } = req.body;
++    const userId = req.session.registeringUserId || req.session.userId;
++    const expectedChallenge = req.session.currentChallenge;
++
++    if (!userId) {
++      return res.status(400).json({ error: 'No active registration session found' });
++    }
++    if (!expectedChallenge) {
++      return res.status(400).json({ error: 'Challenge expired or missing' });
++    }
++
++    const user = db.getUserById(userId);
++    if (!user) {
++      return res.status(404).json({ error: 'User not found' });
++    }
++
++    const verification = await verifyRegistrationResponse({
++      response,
++      expectedChallenge,
++      expectedOrigin: getExpectedOrigins(req),
++      expectedRPID: getExpectedRPIDs(req),
++      requireUserVerification: false,
++    });
++
++    if (verification.verified && verification.registrationInfo) {
++      const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
++      const passkeyCount = (user.credentials || []).length + 1;
++      const label = (passkeyName && passkeyName.trim()) || `Passkey ${passkeyCount}`;
++
++      const savedCred = {
++        id: credential.id,
++        publicKey: isoBase64URL.fromBuffer(credential.publicKey),
++        counter: credential.counter,
++        transports: credential.transports || response.response?.transports || [],
++        deviceType: credentialDeviceType || 'singleDevice',
++        backedUp: Boolean(credentialBackedUp),
++        name: label,
++        createdAt: new Date().toISOString(),
++        lastUsedAt: new Date().toISOString(),
++      };
++
++      db.addCredential(user.id, savedCred);
++
++      // Log the user in
++      req.session.userId = user.id;
++      req.session.reauthenticatedAt = Date.now();
++      delete req.session.currentChallenge;
++      delete req.session.registeringUserId;
++
++      return res.json({
++        verified: true,
++        user: {
++          id: user.id,
++          username: user.username,
++          displayName: user.displayName,
++        },
++        credential: {
++          id: savedCred.id,
++          name: savedCred.name,
++          createdAt: savedCred.createdAt,
++        }
++      });
++    }
++
++    res.status(400).json({ verified: false, error: 'Registration verification failed' });
++  } catch (err) {
++    console.error('Error verifying registration:', err);
++    res.status(500).json({ error: err.message || 'Registration verification failed' });
++  }
++};
++
++app.post(['/api/auth/register-options', '/auth/register-options', '/api/passkeys/register-options'], handleRegisterOptions);
++app.post(['/api/auth/register-verify', '/auth/register-verify', '/api/passkeys/register-verify'], handleRegisterVerify);
++
++// ==========================================
++// API Routes: Authentication
++// ==========================================
++const handleLoginOptions = async (req, res) => {
++  try {
++    const { username } = req.body;
++    let allowCredentials = undefined;
++
++    if (username && typeof username === 'string' && username.trim()) {
++      const user = db.getUserByUsername(username.trim());
++      if (user && user.credentials && user.credentials.length > 0) {
++        allowCredentials = user.credentials.map(c => ({
++          id: c.id,
++          transports: c.transports,
++        }));
++      }
++    }
++
++    const options = await generateAuthenticationOptions({
++      rpID: getRpID(req),
++      allowCredentials,
++      userVerification: 'preferred',
++    });
++
++    req.session.currentChallenge = options.challenge;
++    res.json(options);
++  } catch (err) {
++    console.error('Error generating login options:', err);
++    res.status(500).json({ error: err.message || 'Failed to generate login options' });
++  }
++};
++
++const handleLoginVerify = async (req, res) => {
++  try {
++    const { response } = req.body;
++    const expectedChallenge = req.session.currentChallenge;
++
++    if (!response || !response.id) {
++      return res.status(400).json({ error: 'Invalid authentication response' });
++    }
++    if (!expectedChallenge) {
++      return res.status(400).json({ error: 'Challenge expired or missing' });
++    }
++
++    const user = db.getUserByCredentialId(response.id);
++    if (!user) {
++      return res.status(400).json({ verified: false, error: 'No user associated with this passkey' });
++    }
++
++    const cred = user.credentials.find(c => c.id === response.id);
++    if (!cred) {
++      return res.status(400).json({ verified: false, error: 'Passkey not found on user account' });
++    }
++
++    const verification = await verifyAuthenticationResponse({
++      response,
++      expectedChallenge,
++      expectedOrigin: getExpectedOrigins(req),
++      expectedRPID: getExpectedRPIDs(req),
++      credential: {
++        id: cred.id,
++        publicKey: isoBase64URL.toBuffer(cred.publicKey),
++        counter: cred.counter,
++        transports: cred.transports,
++      },
++      requireUserVerification: false,
++    });
++
++    if (verification.verified) {
++      db.updateCredential(user.id, cred.id, {
++        counter: verification.authenticationInfo.newCounter,
++        lastUsedAt: new Date().toISOString(),
++      });
++
++      req.session.userId = user.id;
++      req.session.reauthenticatedAt = Date.now();
++      delete req.session.currentChallenge;
++
++      return res.json({
++        verified: true,
++        user: {
++          id: user.id,
++          username: user.username,
++          displayName: user.displayName,
++        }
++      });
++    }
++
++    res.status(400).json({ verified: false, error: 'Authentication verification failed' });
++  } catch (err) {
++    console.error('Error verifying authentication:', err);
++    res.status(500).json({ error: err.message || 'Authentication verification failed' });
++  }
++};
++
++app.post(['/api/auth/login-options', '/auth/login-options', '/api/passkeys/login-options'], handleLoginOptions);
++app.post(['/api/auth/login-verify', '/auth/login-verify', '/api/passkeys/login-verify'], handleLoginVerify);
++
++// ==========================================
++// API Routes: Passkey Management
++// ==========================================
++
++// List user's passkeys
++app.get(['/api/passkeys', '/api/auth/passkeys'], requireAuth, (req, res) => {
++  const credentials = (req.user.credentials || []).map(c => ({
++    id: c.id,
++    name: c.name,
++    createdAt: c.createdAt,
++    lastUsedAt: c.lastUsedAt,
++    deviceType: c.deviceType,
++    backedUp: c.backedUp,
++    transports: c.transports || [],
++  }));
++  res.json({ passkeys: credentials });
++});
++
++// Add another passkey: generate registration options
++app.post(['/api/passkeys/add-options', '/api/passkeys/register-new-options'], requireAuth, async (req, res) => {
++  try {
++    const user = req.user;
++    const existingCreds = user.credentials || [];
++    const options = await generateRegistrationOptions({
++      rpName: RP_NAME,
++      rpID: getRpID(req),
++      userID: isoUint8Array.fromUTF8String(user.id),
++      userName: user.username,
++      userDisplayName: user.displayName || user.username,
++      attestationType: 'none',
++      excludeCredentials: existingCreds.map(c => ({
++        id: c.id,
++        transports: c.transports,
++      })),
++      authenticatorSelection: {
++        residentKey: 'preferred',
++        userVerification: 'preferred',
++      },
++      supportedAlgorithmIDs: [-7, -257, -8],
++    });
++
++    req.session.registeringUserId = user.id;
++    req.session.currentChallenge = options.challenge;
++
++    res.json(options);
++  } catch (err) {
++    console.error('Error generating add passkey options:', err);
++    res.status(500).json({ error: err.message || 'Failed to generate options' });
++  }
++});
++
++// Add another passkey: verify and register
++app.post(['/api/passkeys/add-verify', '/api/passkeys/register-new-verify'], requireAuth, async (req, res) => {
++  try {
++    const { response, passkeyName } = req.body;
++    const user = req.user;
++    const expectedChallenge = req.session.currentChallenge;
++
++    if (!expectedChallenge) {
++      return res.status(400).json({ error: 'Challenge expired or missing' });
++    }
++
++    const verification = await verifyRegistrationResponse({
++      response,
++      expectedChallenge,
++      expectedOrigin: getExpectedOrigins(req),
++      expectedRPID: getExpectedRPIDs(req),
++      requireUserVerification: false,
++    });
++
++    if (verification.verified && verification.registrationInfo) {
++      const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
++      const count = (user.credentials || []).length + 1;
++      const label = (passkeyName && passkeyName.trim()) || `Passkey ${count}`;
++
++      const savedCred = {
++        id: credential.id,
++        publicKey: isoBase64URL.fromBuffer(credential.publicKey),
++        counter: credential.counter,
++        transports: credential.transports || response.response?.transports || [],
++        deviceType: credentialDeviceType || 'singleDevice',
++        backedUp: Boolean(credentialBackedUp),
++        name: label,
++        createdAt: new Date().toISOString(),
++        lastUsedAt: new Date().toISOString(),
++      };
++
++      db.addCredential(user.id, savedCred);
++      delete req.session.currentChallenge;
++
++      return res.json({
++        verified: true,
++        credential: savedCred
++      });
++    }
++
++    res.status(400).json({ verified: false, error: 'Registration verification failed' });
++  } catch (err) {
++    console.error('Error verifying added passkey:', err);
++    res.status(500).json({ error: err.message || 'Failed to add passkey' });
++  }
++});
++
++// Rename passkey
++app.all(['/api/passkeys/:id', '/api/auth/passkeys/:id'], requireAuth, (req, res) => {
++  const method = req.method.toUpperCase();
++  const credentialId = req.params.id;
++
++  if (method === 'PATCH' || method === 'PUT') {
++    const { name } = req.body;
++    if (!name || typeof name !== 'string' || !name.trim()) {
++      return res.status(400).json({ error: 'Passkey name cannot be empty' });
++    }
++
++    try {
++      const updated = db.updateCredential(req.user.id, credentialId, {
++        name: name.trim()
++      });
++      return res.json({ success: true, credential: updated });
++    } catch (err) {
++      return res.status(404).json({ error: err.message || 'Passkey not found' });
++    }
++  }
++
++  if (method === 'DELETE') {
++    try {
++      db.deleteCredential(req.user.id, credentialId);
++      return res.json({ success: true, message: 'Passkey deleted successfully' });
++    } catch (err) {
++      return res.status(404).json({ error: err.message || 'Passkey not found' });
++    }
++  }
++
++  res.status(405).json({ error: 'Method not allowed' });
++});
++
++// ==========================================
++// API Routes: Reauthentication (Sudo Mode)
++// ==========================================
++
++// Reauthentication status
++app.get(['/api/auth/reauth-status', '/api/reauth/status'], requireAuth, (req, res) => {
++  const reauthed = isReauthenticated(req);
++  const remainingMs = reauthed ? Math.max(0, REAUTH_TTL_MS - (Date.now() - req.session.reauthenticatedAt)) : 0;
++  res.json({
++    isReauthenticated: reauthed,
++    remainingSeconds: Math.floor(remainingMs / 1000),
++    lastReauthenticatedAt: req.session.reauthenticatedAt ? new Date(req.session.reauthenticatedAt).toISOString() : null,
++  });
++});
++
++// Reauthentication options
++app.all(['/api/auth/reauth-options', '/auth/reauth-options', '/api/reauth/options'], requireAuth, async (req, res) => {
++  try {
++    const user = req.user;
++    if (!user.credentials || user.credentials.length === 0) {
++      return res.status(400).json({ error: 'No passkeys registered on this account' });
++    }
++
++    const options = await generateAuthenticationOptions({
++      rpID: getRpID(req),
++      allowCredentials: user.credentials.map(c => ({
++        id: c.id,
++        transports: c.transports,
++      })),
++      userVerification: 'preferred',
++    });
++
++    req.session.reauthChallenge = options.challenge;
++    res.json(options);
++  } catch (err) {
++    console.error('Error generating reauth options:', err);
++    res.status(500).json({ error: err.message || 'Failed to generate reauth options' });
++  }
++});
++
++// Reauthentication verify
++app.post(['/api/auth/reauth-verify', '/auth/reauth-verify', '/api/reauth/verify'], requireAuth, async (req, res) => {
++  try {
++    const { response } = req.body;
++    const expectedChallenge = req.session.reauthChallenge;
++    const user = req.user;
++
++    if (!response || !response.id) {
++      return res.status(400).json({ error: 'Invalid reauthentication response' });
++    }
++    if (!expectedChallenge) {
++      return res.status(400).json({ error: 'Reauthentication challenge expired or missing' });
++    }
++
++    const cred = user.credentials.find(c => c.id === response.id);
++    if (!cred) {
++      return res.status(400).json({ verified: false, error: 'Passkey does not belong to the current user' });
++    }
++
++    const verification = await verifyAuthenticationResponse({
++      response,
++      expectedChallenge,
++      expectedOrigin: getExpectedOrigins(req),
++      expectedRPID: getExpectedRPIDs(req),
++      credential: {
++        id: cred.id,
++        publicKey: isoBase64URL.toBuffer(cred.publicKey),
++        counter: cred.counter,
++        transports: cred.transports,
++      },
++      requireUserVerification: false,
++    });
++
++    if (verification.verified) {
++      db.updateCredential(user.id, cred.id, {
++        counter: verification.authenticationInfo.newCounter,
++        lastUsedAt: new Date().toISOString(),
++      });
++
++      req.session.reauthenticatedAt = Date.now();
++      delete req.session.reauthChallenge;
++
++      return res.json({
++        verified: true,
++        reauthenticated: true,
++        expiresAt: new Date(Date.now() + REAUTH_TTL_MS).toISOString(),
++      });
++    }
++
++    res.status(400).json({ verified: false, error: 'Reauthentication failed' });
++  } catch (err) {
++    console.error('Error verifying reauthentication:', err);
++    res.status(500).json({ error: err.message || 'Reauthentication verification failed' });
++  }
++});
++
++// Sensitive action requiring reauthentication
++app.get(['/api/account/sensitive-data', '/api/sensitive-data'], requireAuth, (req, res) => {
++  if (!isReauthenticated(req)) {
++    return res.status(403).json({
++      requiresReauth: true,
++      error: 'Reauthentication required to access sensitive account data'
++    });
++  }
++
++  res.json({
++    success: true,
++    secretData: 'COFFEE-VIP-GOLD-Formula-42-X',
++    membershipPin: '9482',
++    accountStatus: 'Elite Roaster Reserve',
++    reauthValidUntil: new Date(req.session.reauthenticatedAt + REAUTH_TTL_MS).toISOString()
++  });
++});
++
++// ==========================================
++// Session & User Info API
++// ==========================================
++app.get(['/api/auth/me', '/api/auth/status', '/api/user'], (req, res) => {
++  if (!req.session || !req.session.userId) {
++    return res.json({ loggedIn: false });
++  }
++  const user = db.getUserById(req.session.userId);
++  if (!user) {
++    return res.json({ loggedIn: false });
++  }
++  res.json({
++    loggedIn: true,
++    user: {
++      id: user.id,
++      username: user.username,
++      displayName: user.displayName,
++      createdAt: user.createdAt,
++      passkeysCount: (user.credentials || []).length,
++    },
++    isReauthenticated: isReauthenticated(req),
++    lastReauthenticatedAt: req.session.reauthenticatedAt || null,
++  });
++});
++
++// Logout
++app.all(['/logout', '/api/auth/logout'], (req, res) => {
++  req.session.destroy(() => {
++    if (req.xhr || req.headers.accept?.includes('application/json')) {
++      return res.json({ success: true, message: 'Logged out successfully' });
++    }
++    res.redirect('/');
++  });
++});
++
++// ==========================================
++// HTML Page Serving
++// ==========================================
++app.get('/', (req, res) => {
++  res.sendFile(path.join(__dirname, 'public', 'index.html'));
++});
++
++app.get('/login', (req, res) => {
++  res.sendFile(path.join(__dirname, 'public', 'login.html'));
++});
++
++app.get('/register', (req, res) => {
++  res.sendFile(path.join(__dirname, 'public', 'register.html'));
++});
++
++app.get('/account', (req, res) => {
++  res.sendFile(path.join(__dirname, 'public', 'account.html'));
++});
++
++app.get('/reauth', (req, res) => {
++  res.sendFile(path.join(__dirname, 'public', 'reauth.html'));
++});
++
++app.get('/menu', (req, res) => {
++  res.sendFile(path.join(__dirname, 'public', 'menu.html'));
++});
++
++app.get('/locations', (req, res) => {
++  res.sendFile(path.join(__dirname, 'public', 'locations.html'));
++});
++
++app.get('/rewards', (req, res) => {
++  res.sendFile(path.join(__dirname, 'public', 'rewards.html'));
++});
++
++// Start Server
++if (require.main === module) {
++  app.listen(PORT, '0.0.0.0', () => {
++    console.log(`The Daily Grind Passkey server running at http://localhost:${PORT}`);
++  });
++}
++
++module.exports = app;

@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+index 66c9173..404ac50 100644
+--- a/index.html
++++ b/index.html
+@@ -120,21 +120,73 @@
+       color: var(--primary);
+     }
+ 
++    /* Decorative glyphs live in aria-hidden spans; labels stay in the HTML. */
++    .decorative-icon {
++      display: inline-grid;
++      place-items: center;
++      flex: none;
++      line-height: 1;
++      pointer-events: none;
++    }
++
++    .decorative-icon::before {
++      /* aria-hidden keeps this fallback silent without CSS alt-text support. */
++      content: var(--icon);
++      content: var(--icon) / "";
++    }
++
++    .maple-icon { --icon: "🍁"; }
++    .coffee-icon { --icon: "☕"; }
++    .cold-icon { --icon: "❄"; }
++    .arrow-icon { --icon: "→"; }
++
++    .seasonal .card h3 .decorative-icon {
++      display: grid;
++      inline-size: 2.5rem;
++      block-size: 2.5rem;
++      margin-inline: auto;
++      margin-block-end: 0.5rem;
++      border: 1px solid var(--secondary);
++      border-radius: 50%;
++      background: #fff8ee;
++      font-size: 1.35rem;
++    }
++
++    .seasonal .card h3::after {
++      content: "";
++      display: block;
++      inline-size: 2.5rem;
++      block-size: 3px;
++      margin-block-start: 0.6rem;
++      margin-inline: auto;
++      border-radius: 2px;
++      background: var(--accent);
++    }
++
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.6em;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
++      box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:is(:hover, :focus-visible) {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,27 +223,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn"><span class="decorative-icon coffee-icon" aria-hidden="true"></span>Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3><span class="decorative-icon maple-icon" aria-hidden="true"></span>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details<span class="decorative-icon arrow-icon" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3><span class="decorative-icon coffee-icon" aria-hidden="true"></span>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details<span class="decorative-icon arrow-icon" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3><span class="decorative-icon cold-icon" aria-hidden="true"></span>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="decorative-icon arrow-icon" aria-hidden="true"></span></a>
+         </div>
+       </div>
+     </section>

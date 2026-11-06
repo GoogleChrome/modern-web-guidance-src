@@ -1,0 +1,240 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,96 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Allow .btn to be used on native <button> elements */
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    /* Coffee details dialogs */
++    .coffee-dialog {
++      width: min(92vw, 520px);
++      padding: 0;
++      border: none;
++      border-radius: 12px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
++      /* Clip the image to the rounded corners and scroll long content inside the dialog */
++      overflow: auto;
++    }
++
++    .coffee-dialog:modal {
++      /* Stop scroll gestures inside the dialog from chaining to the page */
++      overscroll-behavior: contain;
++      max-height: 90dvh;
++    }
++
++    .coffee-dialog::backdrop {
++      background: rgba(62, 39, 35, 0.6);
++      /* ::backdrop is not a scroll container by default, so force containment */
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .coffee-dialog img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++    }
++
++    .coffee-dialog-body {
++      padding: 24px;
++    }
++
++    .coffee-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .coffee-dialog p {
++      margin-bottom: 12px;
++    }
++
++    .coffee-dialog dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 6px 16px;
++      margin: 16px 0;
++      font-size: 0.95rem;
++    }
++
++    .coffee-dialog dt {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .coffee-dialog-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: flex-end;
++    }
++
++    .coffee-dialog-actions .btn {
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +268,108 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-maple-oat-latte"
++            aria-label="View details for Maple Oat Latte">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-dark-roast-espresso"
++            aria-label="View details for Dark Roast Espresso">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-cold-brew"
++            aria-label="View details for Cold Brew">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <!--
++    Coffee details dialogs.
++    Opened as modals (command="show-modal"), so the browser provides focus containment,
++    an inert page, focus return to the invoker, and dismissal via platform close requests
++    (Esc on desktop, back gesture / button on mobile). No role, aria-modal, or Esc handler needed.
++  -->
++  <dialog id="dialog-maple-oat-latte" class="coffee-dialog" aria-labelledby="dialog-maple-oat-latte-title">
++    <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80"
++      alt="A latte in a white cup with leaf-shaped latte art on a wooden table" width="800" height="450" loading="lazy">
++    <div class="coffee-dialog-body">
++      <h2 id="dialog-maple-oat-latte-title">Maple Oat Latte</h2>
++      <p>Our autumn signature. Double shot of medium roast espresso, steamed oat milk, and a drizzle of
++        Grade A Vermont maple syrup, finished with a dusting of cinnamon.</p>
++      <dl>
++        <dt>Size</dt>
++        <dd>12 oz / 16 oz</dd>
++        <dt>Price</dt>
++        <dd>$5.25 / $5.95</dd>
++        <dt>Dairy</dt>
++        <dd>Dairy-free by default</dd>
++        <dt>Available</dt>
++        <dd>September through November</dd>
++      </dl>
++      <div class="coffee-dialog-actions">
++        <button type="button" class="btn btn-secondary" command="close" commandfor="dialog-maple-oat-latte"
++          autofocus>Close</button>
++        <a href="/menu/seasonal" class="btn">See Seasonal Menu</a>
++      </div>
++    </div>
++  </dialog>
++
++  <dialog id="dialog-dark-roast-espresso" class="coffee-dialog" aria-labelledby="dialog-dark-roast-espresso-title">
++    <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++      alt="A freshly pulled espresso shot in a small cup with thick crema" width="800" height="450" loading="lazy">
++    <div class="coffee-dialog-body">
++      <h2 id="dialog-dark-roast-espresso-title">Dark Roast Espresso</h2>
++      <p>A bold blend of Sumatran and Brazilian beans roasted dark for notes of dark chocolate, toasted
++        walnut, and a smoky finish. Pulled as a ristretto for maximum body.</p>
++      <dl>
++        <dt>Size</dt>
++        <dd>Single / Double</dd>
++        <dt>Price</dt>
++        <dd>$2.75 / $3.50</dd>
++        <dt>Roast</dt>
++        <dd>Dark</dd>
++        <dt>Origin</dt>
++        <dd>Sumatra &amp; Brazil</dd>
++      </dl>
++      <div class="coffee-dialog-actions">
++        <button type="button" class="btn btn-secondary" command="close" commandfor="dialog-dark-roast-espresso"
++          autofocus>Close</button>
++        <a href="/menu/espresso" class="btn">See Espresso Menu</a>
++      </div>
++    </div>
++  </dialog>
++
++  <dialog id="dialog-cold-brew" class="coffee-dialog" aria-labelledby="dialog-cold-brew-title">
++    <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++      alt="A tall glass of cold brew coffee over ice" width="800" height="450" loading="lazy">
++    <div class="coffee-dialog-body">
++      <h2 id="dialog-cold-brew-title">Cold Brew</h2>
++      <p>Coarse-ground Colombian beans steeped in cold filtered water for 18 hours, then double
++        filtered. Naturally sweet, low in acidity, and served over ice.</p>
++      <dl>
++        <dt>Size</dt>
++        <dd>16 oz / 24 oz</dd>
++        <dt>Price</dt>
++        <dd>$4.50 / $5.50</dd>
++        <dt>Caffeine</dt>
++        <dd>About 200 mg per 16 oz</dd>
++        <dt>Origin</dt>
++        <dd>Colombia</dd>
++      </dl>
++      <div class="coffee-dialog-actions">
++        <button type="button" class="btn btn-secondary" command="close" commandfor="dialog-cold-brew"
++          autofocus>Close</button>
++        <a href="/menu/cold-brew" class="btn">See Cold Brew Menu</a>
++      </div>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +378,27 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without the Invoker Commands API (command / commandfor).
++    // Feature-detect on HTMLButtonElement.prototype; browsers with native support ignore this.
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      document.addEventListener('click', function (event) {
++        var button = event.target.closest('button[commandfor][command]');
++        if (!button) return;
++        var target = document.getElementById(button.getAttribute('commandfor'));
++        if (!(target instanceof HTMLDialogElement)) return;
++        var command = button.getAttribute('command');
++        if (command === 'show-modal' && !target.open) {
++          // showModal() is required so Esc / back-gesture close requests work.
++          target.showModal();
++        } else if (command === 'close' && target.open) {
++          target.close();
++        }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

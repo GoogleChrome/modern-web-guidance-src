@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+index 66c9173..8cbeb5b 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,27 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Signed documents */
++    .signing { margin-top: 60px; }
++    .signing > p { text-align: center; max-width: 700px; margin: 10px auto 0; }
++    .signing form, .verify-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
++    .field { display: flex; flex-direction: column; margin-bottom: 12px; text-align: left; }
++    .field label { font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
++    .field input, .field select, .field textarea {
++      font: inherit; padding: 8px; border: 1px solid var(--secondary); border-radius: 4px;
++    }
++    .field textarea { font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; min-height: 9rem; }
++    button.btn { border: 0; cursor: pointer; font: inherit; margin-top: 5px; }
++    .btn.secondary { background: var(--secondary); color: var(--text); }
++    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
++    .sign-output { margin-top: 12px; }
++    .sign-output textarea { width: 100%; }
++    .status { margin-top: 12px; padding: 10px; border-radius: 4px; background: #eee; }
++    .status[data-state="valid"] { background: #e8f5e9; color: #1b5e20; }
++    .status[data-state="invalid"] { background: #ffebee; color: #b71c1c; }
++    .status:empty { display: none; }
++    .meta { font-size: 0.8rem; margin-top: 6px; word-break: break-all; }
+   </style>
+ </head>
+ 
+@@ -195,6 +216,54 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="signing" id="signing" aria-labelledby="signing-title">
++      <h2 id="signing-title" style="text-align: center;">Signed Receipts &amp; Gift Vouchers</h2>
++      <p>Sign a receipt or voucher with a key that lives only in this browser, then paste any signed document to check
++        that it is authentic and unaltered.</p>
++      <div class="grid">
++        <form id="sign-form">
++          <h3>Issue a document</h3>
++          <div class="field">
++            <label for="doc-kind">Type</label>
++            <select id="doc-kind" name="kind">
++              <option value="receipt">Order receipt</option>
++              <option value="voucher">Gift voucher</option>
++            </select>
++          </div>
++          <div class="field">
++            <label for="doc-desc">Items / message</label>
++            <input id="doc-desc" name="description" required maxlength="200" value="1 Maple Oat Latte">
++          </div>
++          <div class="field">
++            <label for="doc-amount">Amount (USD)</label>
++            <input id="doc-amount" name="amount" type="number" min="0.01" step="0.01" required value="5.50" inputmode="decimal">
++          </div>
++          <button class="btn" type="submit">Sign document</button>
++          <div class="sign-output" id="sign-output" hidden>
++            <div class="field">
++              <label for="signed-doc">Signed document</label>
++              <textarea id="signed-doc" readonly></textarea>
++            </div>
++            <div class="btn-row">
++              <button class="btn secondary" type="button" id="copy-doc">Copy</button>
++              <button class="btn secondary" type="button" id="load-doc">Load into verifier</button>
++            </div>
++          </div>
++          <p class="meta" id="key-info"></p>
++        </form>
++
++        <div class="verify-box">
++          <h3>Verify a document</h3>
++          <div class="field">
++            <label for="verify-input">Paste signed document</label>
++            <textarea id="verify-input" spellcheck="false"></textarea>
++          </div>
++          <button class="btn" type="button" id="verify-btn">Verify</button>
++          <div class="status" id="verify-status" role="status"></div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +276,173 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const DB_NAME = 'daily-grind-signing';
++    const KEY_ID = 'issuer';
++    const CONTEXT_PREFIX = 'daily-grind/v1/';
++    const KINDS = ['receipt', 'voucher'];
++    const ML_DSA = { 1312: 'ML-DSA-44', 1952: 'ML-DSA-65', 2592: 'ML-DSA-87' };
++    const enc = new TextEncoder();
++
++    const $ = (id) => document.getElementById(id);
++    const toB64 = (b) => btoa(String.fromCharCode(...new Uint8Array(b)));
++    const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
++
++    const supportsPQ = () =>
++      typeof globalThis.SubtleCrypto?.supports === 'function' && SubtleCrypto.supports('sign', 'ML-DSA-65');
++
++    // Classical Ed25519 has no context parameter, so frame the payload with a length-prefixed context.
++    function frame(payload, context) {
++      const out = new Uint8Array(1 + context.length + payload.length);
++      out[0] = context.length;
++      out.set(context, 1);
++      out.set(payload, 1 + context.length);
++      return out;
++    }
++
++    // --- Key storage: non-extractable keys persisted in IndexedDB (private key bytes never exposed to script) ---
++    const openDb = () => new Promise((resolve, reject) => {
++      const req = indexedDB.open(DB_NAME, 1);
++      req.onupgradeneeded = () => req.result.createObjectStore('keys');
++      req.onsuccess = () => resolve(req.result);
++      req.onerror = () => reject(req.error);
++    });
++    async function dbOp(mode, fn) {
++      const db = await openDb();
++      return new Promise((resolve, reject) => {
++        const req = fn(db.transaction('keys', mode).objectStore('keys'));
++        req.onsuccess = () => resolve(req.result);
++        req.onerror = () => reject(req.error);
++      });
++    }
++
++    async function createIssuer() {
++      const suite = supportsPQ() ? 'ML-DSA-65' : 'Ed25519';
++      const keyPair = await crypto.subtle.generateKey(suite, false, ['sign', 'verify']);
++      const publicKey = new Uint8Array(
++        await crypto.subtle.exportKey(suite === 'Ed25519' ? 'raw' : 'raw-public', keyPair.publicKey));
++      const record = { suite, keyPair, publicKey };
++      try { await dbOp('readwrite', (s) => s.put(record, KEY_ID)); } catch { /* session-only key */ }
++      return record;
++    }
++
++    let issuerPromise;
++    function getIssuer() {
++      issuerPromise ??= (async () => {
++        let record;
++        try { record = await dbOp('readonly', (s) => s.get(KEY_ID)); } catch { /* IndexedDB unavailable */ }
++        return record ?? createIssuer();
++      })();
++      return issuerPromise;
++    }
++
++    async function fingerprint(publicKey) {
++      const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', publicKey));
++      return [...hash.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join(':');
++    }
++
++    // --- Sign / verify ---
++    async function signDocument(kind, fields) {
++      const { suite, keyPair, publicKey } = await getIssuer();
++      const payload = JSON.stringify({
++        kind,
++        id: crypto.randomUUID(),
++        issuedAt: new Date().toISOString(),
++        issuer: 'The Daily Grind',
++        ...fields,
++      });
++      const context = enc.encode(CONTEXT_PREFIX + kind);
++      const data = enc.encode(payload);
++      const signature = suite === 'Ed25519'
++        ? await crypto.subtle.sign('Ed25519', keyPair.privateKey, frame(data, context))
++        : await crypto.subtle.sign({ name: suite, context }, keyPair.privateKey, data);
++      // The signed bytes are the exact payload string, so no canonicalisation is needed.
++      return { v: 1, suite, payload, publicKey: toB64(publicKey), signature: toB64(signature) };
++    }
++
++    async function verifyDocument(doc) {
++      const publicKeyBytes = fromB64(doc.publicKey);
++      const mlName = ML_DSA[publicKeyBytes.length];
++      const suite = mlName ?? 'Ed25519';
++      if (doc.suite !== suite) throw new Error('Algorithm does not match the public key.');
++      const parsed = JSON.parse(doc.payload);
++      if (!KINDS.includes(parsed.kind)) throw new Error('Unknown document type.');
++      const context = enc.encode(CONTEXT_PREFIX + parsed.kind);
++      const data = enc.encode(doc.payload);
++      const signature = fromB64(doc.signature);
++      const key = await crypto.subtle.importKey(
++        mlName ? 'raw-public' : 'raw', publicKeyBytes, suite, true, ['verify']);
++      const valid = mlName
++        ? await crypto.subtle.verify({ name: suite, context }, key, signature, data)
++        : await crypto.subtle.verify('Ed25519', key, signature, frame(data, context));
++      return { valid, parsed, suite, publicKeyBytes };
++    }
++
++    // --- UI ---
++    const status = $('verify-status');
++    const setStatus = (state, text, meta) => {
++      status.dataset.state = state;
++      status.textContent = text;
++      if (meta) {
++        const p = document.createElement('p');
++        p.className = 'meta';
++        p.textContent = meta;
++        status.append(p);
++      }
++    };
++
++    const supportsEd25519 = () => crypto.subtle.generateKey('Ed25519', false, ['sign']).then(() => true, () => false);
++    const unsupported = !crypto?.subtle || !(supportsPQ() || await supportsEd25519());
++    if (unsupported) {
++      $('sign-form').querySelector('button[type="submit"]').disabled = true;
++      $('verify-btn').disabled = true;
++      setStatus('invalid', 'This browser does not support Ed25519 or ML-DSA signatures.');
++    }
++
++    getIssuer().then(async (i) => {
++      $('key-info').textContent = `Signing with ${i.suite}. Key fingerprint ${await fingerprint(i.publicKey)}`;
++    }).catch(() => {});
++
++    $('sign-form').addEventListener('submit', async (e) => {
++      e.preventDefault();
++      const f = new FormData(e.currentTarget);
++      const amount = Number(f.get('amount'));
++      if (!(amount > 0)) return;
++      const doc = await signDocument(f.get('kind'), {
++        description: String(f.get('description')).trim(),
++        amount: amount.toFixed(2),
++        currency: 'USD',
++      });
++      $('signed-doc').value = JSON.stringify(doc, null, 2);
++      $('sign-output').hidden = false;
++    });
++
++    $('copy-doc').addEventListener('click', () => navigator.clipboard?.writeText($('signed-doc').value));
++    $('load-doc').addEventListener('click', () => {
++      $('verify-input').value = $('signed-doc').value;
++      $('verify-btn').click();
++    });
++
++    $('verify-btn').addEventListener('click', async () => {
++      try {
++        const doc = JSON.parse($('verify-input').value);
++        const { valid, parsed, suite, publicKeyBytes } = await verifyDocument(doc);
++        if (!valid) {
++          setStatus('invalid', 'Invalid: the signature does not match. The document was altered or forged.');
++          return;
++        }
++        const fp = await fingerprint(publicKeyBytes);
++        const own = await getIssuer();
++        const mine = toB64(own.publicKey) === doc.publicKey;
++        setStatus('valid',
++          `Authentic ${parsed.kind}: ${parsed.description}, $${parsed.amount} ${parsed.currency}, issued ${parsed.issuedAt}.`,
++          `${suite} signature verified. Signer key ${fp}${mine ? ' (this browser’s key)' : ' (a different key; confirm it belongs to The Daily Grind)'}. ID ${parsed.id}`);
++      } catch {
++        setStatus('invalid', 'Invalid: this is not a well-formed signed document.');
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

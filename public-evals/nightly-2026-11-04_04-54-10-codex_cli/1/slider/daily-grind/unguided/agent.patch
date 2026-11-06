@@ -1,0 +1,224 @@
+diff --git a/index.html b/index.html
+index 66c9173..09731de 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,162 @@
+       padding: 0 20px;
+     }
+ 
++    .brew-panel {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 48px;
++      align-items: center;
++      margin-bottom: 48px;
++      padding: 32px 36px;
++      border: 1px solid #e5d9ce;
++      border-radius: 16px;
++      background: #f5efe7;
++    }
++
++    .brew-eyebrow {
++      margin-bottom: 6px;
++      color: #79533e;
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++    }
++
++    .brew-panel h2 {
++      margin-bottom: 8px;
++      font-family: Georgia, serif;
++      font-size: 1.9rem;
++      line-height: 1.2;
++    }
++
++    .brew-description {
++      color: #745e53;
++      font-size: 0.9rem;
++    }
++
++    .strength-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      margin-bottom: 10px;
++    }
++
++    .strength-heading label {
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .strength-heading output {
++      padding: 4px 12px;
++      border: 1px solid #dfc7ac;
++      border-radius: 20px;
++      background: #eee0cc;
++      font-size: 0.75rem;
++      font-weight: 700;
++    }
++
++    .strength-slider {
++      --progress: 50%;
++      appearance: none;
++      -webkit-appearance: none;
++      display: block;
++      width: 100%;
++      height: 44px;
++      margin: 0;
++      border-radius: 8px;
++      background: transparent;
++      cursor: pointer;
++      accent-color: var(--primary);
++    }
++
++    .strength-slider::-webkit-slider-runnable-track {
++      height: 8px;
++      border-radius: 8px;
++      background: linear-gradient(to right, var(--primary) 0%, #a7764c var(--progress), #dfd3c5 var(--progress), #dfd3c5 100%);
++      box-shadow: inset 0 1px 2px #4e342e14;
++    }
++
++    .strength-slider::-moz-range-track {
++      height: 8px;
++      border-radius: 8px;
++      background: #dfd3c5;
++      box-shadow: inset 0 1px 2px #4e342e14;
++    }
++
++    .strength-slider::-moz-range-progress {
++      height: 8px;
++      border-radius: 8px;
++      background: linear-gradient(to right, var(--primary), #a7764c);
++    }
++
++    .strength-slider::-webkit-slider-thumb {
++      appearance: none;
++      -webkit-appearance: none;
++      width: 26px;
++      height: 26px;
++      margin-top: -9px;
++      border: 6px solid var(--primary);
++      border-radius: 50%;
++      background: #fff9ee;
++      box-shadow: 0 2px 5px #4e342e33;
++      transition: box-shadow 0.15s;
++    }
++
++    .strength-slider::-moz-range-thumb {
++      box-sizing: border-box;
++      width: 26px;
++      height: 26px;
++      border: 6px solid var(--primary);
++      border-radius: 50%;
++      background: #fff9ee;
++      box-shadow: 0 2px 5px #4e342e33;
++      transition: box-shadow 0.15s;
++    }
++
++    .strength-slider:hover::-webkit-slider-thumb,
++    .strength-slider:active::-webkit-slider-thumb {
++      box-shadow: 0 0 0 5px #a7764c26;
++    }
++
++    .strength-slider:hover::-moz-range-thumb,
++    .strength-slider:active::-moz-range-thumb {
++      box-shadow: 0 0 0 5px #a7764c26;
++    }
++
++    .strength-slider:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 5px;
++    }
++
++    .strength-scale {
++      display: flex;
++      justify-content: space-between;
++      color: #745e53;
++      font-size: 0.7rem;
++    }
++
++    .strength-note {
++      margin-top: 14px;
++      color: #745e53;
++      font-size: 0.8rem;
++    }
++
++    @media (max-width: 640px) {
++      .brew-panel {
++        grid-template-columns: 1fr;
++        gap: 24px;
++        padding: 26px 24px;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .strength-slider {
++        appearance: auto;
++        -webkit-appearance: auto;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -175,6 +331,22 @@
+   </header>
+ 
+   <main class="container">
++    <section class="brew-panel" aria-labelledby="brew-title">
++      <div>
++        <p class="brew-eyebrow">Your coffee, your way</p>
++        <h2 id="brew-title">Find your daily strength.</h2>
++        <p class="brew-description">From easy mornings to a little extra kick.<br>Find the brew that feels like you.</p>
++      </div>
++      <div>
++        <div class="strength-heading">
++          <label for="brew-strength">Brew strength</label>
++          <output id="strength-value" for="brew-strength" aria-live="off">Balanced · 3/5</output>
++        </div>
++        <input class="strength-slider" id="brew-strength" name="brew-strength" type="range" min="1" max="5" step="1" value="3" aria-valuetext="Balanced, 3 of 5" aria-describedby="strength-note">
++        <div class="strength-scale" aria-hidden="true"><span>01 / MILD</span><span>05 / BOLD</span></div>
++        <p class="strength-note" id="strength-note">A smooth, rounded cup with just the right kick.</p>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +379,33 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const strengthSlider = document.getElementById('brew-strength');
++    const strengthValue = document.getElementById('strength-value');
++    const strengthNote = document.getElementById('strength-note');
++    const strengths = [
++      { name: 'Mild', note: 'Light and mellow. A gentle start to your day.' },
++      { name: 'Smooth', note: 'Soft and easygoing, with a little more depth.' },
++      { name: 'Balanced', note: 'A smooth, rounded cup with just the right kick.' },
++      { name: 'Rich', note: 'Full-bodied and rich, for a more intense cup.' },
++      { name: 'Bold', note: 'Deep and robust. For those who like a little extra kick.' }
++    ];
++
++    function updateStrength() {
++      const value = Number(strengthSlider.value);
++      const strength = strengths[value - 1];
++      const progress = (value - Number(strengthSlider.min)) /
++        (Number(strengthSlider.max) - Number(strengthSlider.min)) * 100;
++      strengthSlider.style.setProperty('--progress', `${progress}%`);
++      strengthSlider.setAttribute('aria-valuetext', `${strength.name}, ${value} of 5`);
++      strengthValue.value = `${strength.name} · ${value}/5`;
++      strengthNote.textContent = strength.note;
++    }
++
++    strengthSlider.addEventListener('input', updateStrength);
++    updateStrength();
++  </script>
++
+ </body>
+ 
+ </html>

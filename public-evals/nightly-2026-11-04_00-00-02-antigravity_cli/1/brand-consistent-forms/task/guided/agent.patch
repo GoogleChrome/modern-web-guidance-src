@@ -1,0 +1,569 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,16 +3,66 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      --surface-light: #ffffff;
++      --surface-dark: #2c1e1a;
++      --bg-light: #fafafa;
++      --bg-dark: #1c1311;
++      --text-light: #3e2723;
++      --text-dark: #f5ebe6;
++      --border-light: #8d6e63;
++      --border-dark: #a1887f;
++
++      /* Define browser UI accent color for each mode (dark brown in light mode, orange accent in dark mode) */
++      --brand-accent-light: var(--primary);
++      --brand-accent-dark: var(--accent);
++      --brand-color: var(--brand-accent-light);
++      --checkmark-color: #ffffff;
++
++      --bg-color: var(--bg-light);
++      --surface-color: var(--surface-light);
++      --text-color: var(--text-light);
++      --border-color: var(--border-light);
++      --heading-color: var(--primary);
++      --track-bg: #d7ccc8;
++
++      /* Fallback for browsers without light-dark() support */
++      @media (prefers-color-scheme: dark) {
++        --brand-color: var(--brand-accent-dark);
++        --checkmark-color: #3e2723;
++        --bg-color: var(--bg-dark);
++        --surface-color: var(--surface-dark);
++        --text-color: var(--text-dark);
++        --border-color: var(--border-dark);
++        --heading-color: var(--accent);
++        --track-bg: #5d4037;
++      }
++
++      /* Modern light-dark() support */
++      @supports (color: light-dark(white, black)) {
++        --brand-color: light-dark(var(--brand-accent-light), var(--brand-accent-dark));
++        --checkmark-color: light-dark(#ffffff, #3e2723);
++        --bg-color: light-dark(var(--bg-light), var(--bg-dark));
++        --surface-color: light-dark(var(--surface-light), var(--surface-dark));
++        --text-color: light-dark(var(--text-light), var(--text-dark));
++        --border-color: light-dark(var(--border-light), var(--border-dark));
++        --heading-color: light-dark(var(--primary), var(--accent));
++        --track-bg: light-dark(#d7ccc8, #5d4037);
++      }
++
++      color-scheme: light dark;
++      accent-color: var(--brand-color);
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -22,10 +72,11 @@
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      color: var(--text-color);
++      background-color: var(--bg-color);
++      accent-color: var(--brand-color);
+     }
+ 
+     /* Navigation */
+     nav {
+@@ -107,18 +158,19 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface-color);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+       text-align: center;
++      border: 1px solid var(--border-color);
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading-color);
+     }
+ 
+     .btn {
+       display: inline-block;
+@@ -127,29 +179,332 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, color 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      min-height: 48px;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    @media (prefers-color-scheme: dark) {
++      .btn {
++        background: var(--accent);
++        color: #3e2723;
++      }
++
++      .btn:hover {
++        background: #ff9100;
++      }
++    }
++
++    :where(a:any-link, button, input, progress):focus-visible {
++      outline: 3px solid var(--brand-color);
++      outline-offset: 2px;
++    }
++
++    /* Personalized Subscription Section */
++    .subscription-section {
++      margin-top: 50px;
++      background: var(--surface-color);
++      padding: 32px;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      border: 1px solid var(--border-color);
++      max-width: 700px;
++      margin-inline: auto;
++    }
++
++    .subscription-section h2 {
++      text-align: center;
++      color: var(--heading-color);
++      margin-bottom: 8px;
++    }
++
++    .subscription-subtitle {
++      text-align: center;
++      margin-bottom: 28px;
++      opacity: 0.9;
++    }
++
++    .subscription-form {
++      display: flex;
++      flex-direction: column;
++      gap: 24px;
++      accent-color: var(--brand-color);
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .form-group fieldset {
++      border: 1px solid var(--border-color);
++      border-radius: 8px;
++      padding: 16px;
++    }
++
++    .form-group legend {
++      font-weight: 600;
++      padding: 0 8px;
++      color: var(--heading-color);
++    }
++
++    .form-label {
++      font-weight: 600;
++      color: var(--heading-color);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .radio-group {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      margin-top: 8px;
++    }
++
++    .choice-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      cursor: pointer;
++      min-height: 28px;
++      font-size: 1rem;
++    }
++
++    .choice-label input[type="checkbox"],
++    .choice-label input[type="radio"] {
++      width: 1.25rem;
++      height: 1.25rem;
++      cursor: pointer;
++      accent-color: var(--brand-color);
++    }
++
++    .range-wrapper {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .subscription-form input[type="range"] {
++      width: 100%;
++      cursor: pointer;
++      accent-color: var(--brand-color);
++    }
++
++    .roast-scale {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.875rem;
++      opacity: 0.85;
++    }
++
++    .progress-wrapper {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .subscription-form progress {
++      width: 100%;
++      height: 14px;
++      accent-color: var(--brand-color);
++    }
++
++    /* Fallback for older browsers without accent-color */
++    @supports not (accent-color: var(--brand-color)) {
++      /* Visually hide the native input using the canonical accessible recipe */
++      form input[type="checkbox"].visually-hidden,
++      form input[type="radio"].visually-hidden {
++        position: absolute !important;
++        clip-path: inset(50%) !important;
++        overflow: hidden !important;
++        width: 1px !important;
++        height: 1px !important;
++        margin: -1px !important;
++        padding: 0 !important;
++        border: 0 !important;
++        white-space: nowrap !important;
++      }
++
++      /* Style the wrapper label */
++      .choice-label {
++        position: relative;
++        padding-left: 2rem;
++        cursor: pointer;
++        display: inline-flex;
++        align-items: center;
++      }
++
++      /* Custom box for checkbox and circle for radio */
++      input[type="checkbox"] + span::before,
++      input[type="radio"] + span::before {
++        content: "";
++        position: absolute;
++        left: 0;
++        top: 50%;
++        transform: translateY(-50%);
++        width: 1.2rem;
++        height: 1.2rem;
++        border: 2px solid var(--border-color, #8d6e63);
++        background: var(--surface-color, white);
++        box-sizing: border-box;
++        transition: all 0.2s ease;
++      }
++
++      input[type="checkbox"] + span::before {
++        border-radius: 4px;
++      }
++
++      input[type="radio"] + span::before {
++        border-radius: 50%;
++      }
++
++      /* Ensure custom checkbox and radio show focus for keyboard users */
++      input[type="checkbox"]:focus-visible + span::before,
++      input[type="radio"]:focus-visible + span::before {
++        outline: 2px solid var(--brand-color, #4e342e);
++        outline-offset: 2px;
++      }
++
++      /* Checked State */
++      input[type="checkbox"]:checked + span::before,
++      input[type="radio"]:checked + span::before {
++        background-color: var(--brand-color, #4e342e);
++        border-color: var(--brand-color, #4e342e);
++      }
++
++      /* Checkmark (Unicode) */
++      input[type="checkbox"]:checked + span::after {
++        content: "✓";
++        position: absolute;
++        left: 0.25rem;
++        top: 50%;
++        transform: translateY(-50%);
++        color: var(--checkmark-color, white);
++        font-weight: bold;
++        font-size: 0.9rem;
++      }
++
++      /* Radio inner dot */
++      input[type="radio"]:checked + span::after {
++        content: "";
++        position: absolute;
++        left: 0.35rem;
++        top: 50%;
++        transform: translateY(-50%);
++        width: 0.5rem;
++        height: 0.5rem;
++        border-radius: 50%;
++        background-color: var(--checkmark-color, white);
++      }
++
++      /* Fallback for Range Slider */
++      input[type="range"] {
++        -webkit-appearance: none;
++        appearance: none;
++        background: transparent;
++      }
++
++      /* Webkit (Chrome, Safari, Edge) */
++      input[type="range"]::-webkit-slider-runnable-track {
++        width: 100%;
++        height: 8px;
++        background: linear-gradient(to right, var(--brand-color, #4e342e) var(--progress, 50%), var(--track-bg, #d7ccc8) var(--progress, 50%));
++        border-radius: 4px;
++      }
++
++      input[type="range"]::-webkit-slider-thumb {
++        -webkit-appearance: none;
++        appearance: none;
++        height: 16px;
++        width: 16px;
++        border-radius: 50%;
++        background: var(--brand-color, #4e342e);
++        cursor: pointer;
++        margin-top: -4px; /* Center vertically */
++      }
++
++      /* Firefox */
++      input[type="range"]::-moz-range-track {
++        width: 100%;
++        height: 8px;
++        background: var(--track-bg, #d7ccc8);
++        border-radius: 4px;
++      }
++
++      input[type="range"]::-moz-range-thumb {
++        height: 16px;
++        width: 16px;
++        border-radius: 50%;
++        background: var(--brand-color, #4e342e);
++        cursor: pointer;
++      }
++
++      /* Firefox specific progress bar */
++      input[type="range"]::-moz-range-progress {
++        background-color: var(--brand-color, #4e342e);
++        height: 8px;
++        border-radius: 4px;
++      }
++
++      /* Fallback for Progress Bar */
++      progress {
++        -webkit-appearance: none;
++        -moz-appearance: none;
++        appearance: none;
++        border: none;
++        background: var(--track-bg, #d7ccc8);
++        height: 8px;
++        border-radius: 4px;
++      }
++
++      progress::-webkit-progress-bar {
++        background-color: var(--track-bg, #d7ccc8);
++        border-radius: 4px;
++      }
++
++      progress::-webkit-progress-value {
++        background-color: var(--brand-color, #4e342e);
++        border-radius: 4px;
++      }
++
++      progress::-moz-progress-bar {
++        background-color: var(--brand-color, #4e342e);
++        border-radius: 4px;
++      }
++    }
++
+     footer {
+-      background: var(--secondary);
++      background: light-dark(var(--secondary), #241815);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    @media (prefers-color-scheme: dark) {
++      footer {
++        background: #241815;
++      }
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--text-color);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
+@@ -194,8 +549,69 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="subscription-section">
++      <h2>Personalized Coffee Subscription</h2>
++      <p class="subscription-subtitle">Tailor your artisan roast delivery to match your daily ritual.</p>
++
++      <form action="/subscribe" method="POST" class="subscription-form" id="subscription-form">
++        <!-- Delivery Frequency (Radio Buttons) -->
++        <div class="form-group">
++          <fieldset>
++            <legend>Preferred Delivery Frequency</legend>
++            <div class="radio-group">
++              <label for="freq-weekly" class="choice-label">
++                <input type="radio" id="freq-weekly" name="delivery_frequency" value="weekly" class="visually-hidden" checked>
++                <span>Weekly (Fresh batch every 7 days)</span>
++              </label>
++              <label for="freq-biweekly" class="choice-label">
++                <input type="radio" id="freq-biweekly" name="delivery_frequency" value="biweekly" class="visually-hidden">
++                <span>Bi-Weekly (Every 2 weeks)</span>
++              </label>
++              <label for="freq-monthly" class="choice-label">
++                <input type="radio" id="freq-monthly" name="delivery_frequency" value="monthly" class="visually-hidden">
++                <span>Monthly (Once a month)</span>
++              </label>
++            </div>
++          </fieldset>
++        </div>
++
++        <!-- Roast Preference Level (Range Slider) -->
++        <div class="form-group range-wrapper">
++          <label for="roast-level" class="form-label">
++            <span>Roast Preference Level</span>
++            <output for="roast-level" id="roast-level-output">Medium Roast (50%)</output>
++          </label>
++          <input type="range" id="roast-level" name="roast_level" min="0" max="100" value="50" style="--progress: 50%;" aria-describedby="roast-scale-desc">
++          <div id="roast-scale-desc" class="roast-scale">
++            <span>Light &amp; Bright</span>
++            <span>Medium Balanced</span>
++            <span>Dark &amp; Bold</span>
++          </div>
++        </div>
++
++        <!-- Email Updates (Checkbox) -->
++        <div class="form-group">
++          <label for="email-updates" class="choice-label">
++            <input type="checkbox" id="email-updates" name="email_updates" value="yes" class="visually-hidden" checked>
++            <span>Receive tasting notes, roast alerts, and exclusive subscriber emails</span>
++          </label>
++        </div>
++
++        <!-- Subscription Setup Completion Status (Progress Bar) -->
++        <div class="form-group progress-wrapper">
++          <label for="setup-progress" class="form-label">
++            <span>Subscription Setup Completion</span>
++            <span id="setup-progress-text" aria-live="polite">100%</span>
++          </label>
++          <progress id="setup-progress" max="100" value="100">100%</progress>
++        </div>
++
++        <button type="submit" class="btn">Complete Subscription Setup</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +622,55 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.getElementById('subscription-form');
++    const roastSlider = document.getElementById('roast-level');
++    const roastOutput = document.getElementById('roast-level-output');
++    const emailCheckbox = document.getElementById('email-updates');
++    const progressEl = document.getElementById('setup-progress');
++    const progressText = document.getElementById('setup-progress-text');
++
++    function getRoastName(val) {
++      const num = Number(val);
++      if (num < 34) return `Light Roast (${num}%)`;
++      if (num < 67) return `Medium Roast (${num}%)`;
++      return `Dark Roast (${num}%)`;
++    }
++
++    function updateProgress() {
++      let completedSteps = 0;
++      const totalSteps = 3;
++
++      const selectedFreq = form.querySelector('input[name="delivery_frequency"]:checked');
++      if (selectedFreq) completedSteps += 1;
++      if (roastSlider.value !== '') completedSteps += 1;
++      if (emailCheckbox.checked) completedSteps += 1;
++
++      const pct = Math.round((completedSteps / totalSteps) * 100);
++      progressEl.value = pct;
++      progressEl.textContent = `${pct}%`;
++      progressText.textContent = `${pct}%`;
++    }
++
++    roastSlider.addEventListener('input', (e) => {
++      const val = e.target.value;
++      roastOutput.textContent = getRoastName(val);
++      if (!CSS.supports('accent-color', '#4e342e')) {
++        e.target.style.setProperty('--progress', `${val}%`);
++      }
++      updateProgress();
++    });
++
++    form.addEventListener('change', updateProgress);
++
++    form.addEventListener('submit', (e) => {
++      e.preventDefault();
++      progressEl.value = 100;
++      progressEl.textContent = '100%';
++      progressText.textContent = '100% — Subscription Saved!';
++    });
++  </script>
+ </body>
+ 
+ </html>

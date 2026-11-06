@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,39 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .menu-search {
++      margin-top: 20px;
++    }
++
++    .menu-search label {
++      display: block;
++      margin-bottom: 6px;
++    }
++
++    #search-input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    #search-input:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .card mark.search-highlight {
++      background-color: #ffd700;
++      color: var(--text);
++      font: inherit;
++      padding: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,9 +207,13 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="menu-search">
++        <label for="search-input">Search seasonal favorites</label>
++        <input type="search" id="search-input" placeholder="Type to highlight matching menu text" aria-controls="seasonal-menu">
++      </div>
++      <div class="grid" id="seasonal-menu">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -206,7 +241,51 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const searchInput = document.getElementById('search-input');
++    const menuCards = document.querySelectorAll('#seasonal-menu .card');
++
++    searchInput.addEventListener('input', () => {
++      // Restore text before searching so highlights never accumulate.
++      menuCards.forEach((card) => {
++        card.querySelectorAll('mark.search-highlight').forEach((mark) => {
++          mark.replaceWith(document.createTextNode(mark.textContent));
++        });
++        card.normalize();
++      });
++
++      const query = searchInput.value;
++      if (!query) return;
++
++      const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
++
++      menuCards.forEach((card) => {
++        const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
++        const textNodes = [];
++        while (walker.nextNode()) textNodes.push(walker.currentNode);
++
++        textNodes.forEach((node) => {
++          const matches = [...node.textContent.matchAll(pattern)];
++          if (!matches.length) return;
++
++          const fragment = document.createDocumentFragment();
++          let offset = 0;
++          matches.forEach((match) => {
++            fragment.append(node.textContent.slice(offset, match.index));
++            const mark = document.createElement('mark');
++            mark.className = 'search-highlight';
++            mark.textContent = match[0];
++            fragment.append(mark);
++            offset = match.index + match[0].length;
++          });
++          fragment.append(node.textContent.slice(offset));
++          node.replaceWith(fragment);
++        });
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

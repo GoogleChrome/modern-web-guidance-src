@@ -1,0 +1,194 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,97 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++      display: block;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin-top: 8px;
++    }
++
++    /* Product Carousel */
++    .carousel-section {
++      margin-top: 60px;
++    }
++
++    .carousel-heading {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .carousel-subtitle {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--text);
++    }
++
++    .scroller {
++      display: flex;
++      gap: 24px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      padding-block: 40px;
++      padding-inline: max(20px, calc(50% - 140px));
++      list-style: none;
++      scroll-behavior: smooth;
++      touch-action: pan-y pinch-zoom;
++    }
++
++    .scroller:focus-visible,
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .scroller > * {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    @keyframes scale-card {
++      0% {
++        scale: 0.75;
++      }
++      50% {
++        scale: 1;
++      }
++      100% {
++        scale: 0.75;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        .scroller > * {
++          animation: scale-card auto linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++      .scroller > * {
++        animation: none !important;
++        scale: 1 !important;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -175,27 +264,88 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="carousel-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Maple Oat Latte</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Dark Roast Espresso</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Cold Brew</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section" aria-labelledby="carousel-heading">
++      <h2 id="carousel-heading" class="carousel-heading">Featured Coffee &amp; Gear</h2>
++      <p class="carousel-subtitle">Scroll horizontally to explore our artisanal selection.</p>
++      <ul class="scroller" role="list" tabindex="0" aria-labelledby="carousel-heading">
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of Ethiopian Yirgacheffe whole bean coffee" width="280" height="180" loading="lazy">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Bright floral notes with a clean citrus finish.</p>
++            <p class="price">$19.00</p>
++          </div>
++          <a href="/products/ethiopian-yirgacheffe" class="btn">Shop Ethiopian Yirgacheffe</a>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Freshly brewed Colombian Supremo coffee in a ceramic mug" width="280" height="180" loading="lazy">
++            <h3>Colombian Supremo</h3>
++            <p>Rich caramel sweetness balanced with nutty undertones.</p>
++            <p class="price">$17.50</p>
++          </div>
++          <a href="/products/colombian-supremo" class="btn">Shop Colombian Supremo</a>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Glass pour-over coffee maker with wooden collar" width="280" height="180" loading="lazy">
++            <h3>Artisan Pour-Over Kit</h3>
++            <p>Borosilicate glass carafe for a crisp, clean extraction.</p>
++            <p class="price">$42.00</p>
++          </div>
++          <a href="/products/pour-over-kit" class="btn">Shop Pour-Over Kit</a>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Sumatra Mandheling dark roast coffee beans" width="280" height="180" loading="lazy">
++            <h3>Sumatra Mandheling</h3>
++            <p>Full-bodied dark roast with earthy chocolate depth.</p>
++            <p class="price">$18.50</p>
++          </div>
++          <a href="/products/sumatra-mandheling" class="btn">Shop Sumatra Mandheling</a>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Matte black gooseneck kettle on a wooden counter" width="280" height="180" loading="lazy">
++            <h3>Precision Gooseneck Kettle</h3>
++            <p>Steady pour control for the ultimate home barista.</p>
++            <p class="price">$65.00</p>
++          </div>
++          <a href="/products/gooseneck-kettle" class="btn">Shop Gooseneck Kettle</a>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Iced nitro cold brew coffee with cascading foam" width="280" height="180" loading="lazy">
++            <h3>House Blend Cold Brew</h3>
++            <p>Ready-to-drink concentrate steeped for 18 hours.</p>
++            <p class="price">$24.00</p>
++          </div>
++          <a href="/products/cold-brew-concentrate" class="btn">Shop Cold Brew Concentrate</a>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

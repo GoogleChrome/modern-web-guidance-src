@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,108 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling: text sections in #tracked drive the reveal of #animated
++       sections via named view timelines (CSS only, compositor-friendly props). */
++    .story {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      margin-top: 60px;
++      /* Hoist timelines to a shared ancestor so #animated can use them */
++      timeline-scope: --step-1, --step-2, --step-3, --step-4;
++    }
++
++    .story-title {
++      grid-column: 1 / -1;
++      text-align: center;
++    }
++
++    #tracked section {
++      min-height: 90vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 10px;
++    }
++
++    #tracked section:nth-child(1) { view-timeline: --step-1 block; }
++    #tracked section:nth-child(2) { view-timeline: --step-2 block; }
++    #tracked section:nth-child(3) { view-timeline: --step-3 block; }
++    #tracked section:nth-child(4) { view-timeline: --step-4 block; }
++
++    #animated {
++      position: sticky;
++      top: 90px;
++      height: calc(100vh - 130px);
++      max-height: 560px;
++      align-self: start;
++      display: grid;
++      margin-block: 5vh;
++    }
++
++    #animated section {
++      grid-area: 1 / 1;
++      border-radius: 12px;
++      background-size: cover;
++      background-position: center;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
++      display: flex;
++      align-items: flex-end;
++      padding: 24px;
++      color: white;
++      font-size: 1.4rem;
++      font-weight: bold;
++      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
++    }
++
++    #animated section:nth-child(1) { background-image: linear-gradient(transparent 50%, rgba(0, 0, 0, .6)), url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=70'); }
++    #animated section:nth-child(2) { background-image: linear-gradient(transparent 50%, rgba(0, 0, 0, .6)), url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&q=70'); }
++    #animated section:nth-child(3) { background-image: linear-gradient(transparent 50%, rgba(0, 0, 0, .6)), url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=70'); }
++    #animated section:nth-child(4) { background-image: linear-gradient(transparent 50%, rgba(0, 0, 0, .6)), url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=70'); }
++
++    @keyframes reveal {
++      0%, 30% { opacity: 0; transform: translateY(40px) scale(0.96); }
++      45%, 55% { opacity: 1; transform: none; }
++      70%, 100% { opacity: 0; transform: translateY(-40px) scale(0.96); }
++    }
++
++    @supports (animation-timeline: view()) {
++      #animated section {
++        opacity: 0;
++        animation: reveal linear both;
++        animation-range: cover;
++        will-change: opacity, transform;
++      }
++
++      #animated section:nth-child(1) { animation-timeline: --step-1; }
++      #animated section:nth-child(2) { animation-timeline: --step-2; }
++      #animated section:nth-child(3) { animation-timeline: --step-3; }
++      #animated section:nth-child(4) { animation-timeline: --step-4; }
++    }
++
++    /* No scroll-driven animation support or reduced motion: plain stacked layout */
++    @media (prefers-reduced-motion: reduce) {
++      #animated section { animation: none !important; }
++    }
++
++    @supports not (animation-timeline: view()) {
++      #animated { position: static; height: auto; max-height: none; gap: 20px; }
++      #animated section { grid-area: auto; min-height: 220px; }
++    }
++
++    @media (max-width: 720px) {
++      .story { grid-template-columns: 1fr; }
++      #animated { order: -1; top: 70px; height: 35vh; margin-block: 0; z-index: 1; }
++      #tracked section { min-height: 60vh; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +294,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story">
++      <h2 class="story-title">From Bean to Cup</h2>
++      <div id="tracked">
++        <section>
++          <h3>1. Sourced with Care</h3>
++          <p>We partner directly with small farms, paying fair prices for the best beans.</p>
++        </section>
++        <section>
++          <h3>2. Roasted Locally</h3>
++          <p>Small batches, roasted every morning to bring out the character of each origin.</p>
++        </section>
++        <section>
++          <h3>3. Brewed to Order</h3>
++          <p>Every cup is crafted by a trained barista, never rushed, never reheated.</p>
++        </section>
++        <section>
++          <h3>4. Delivered to You</h3>
++          <p>Enjoy it in our cafés or have it at your door while it's still warm.</p>
++        </section>
++      </div>
++      <div id="animated" aria-hidden="true">
++        <section>Ethically sourced beans</section>
++        <section>Fresh small-batch roast</section>
++        <section>Brewed to order</section>
++        <section>Straight to your cup</section>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

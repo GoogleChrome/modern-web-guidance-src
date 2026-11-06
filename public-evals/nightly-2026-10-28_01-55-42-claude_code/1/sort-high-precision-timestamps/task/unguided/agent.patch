@@ -1,0 +1,253 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,112 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Event Timeline */
++    .timeline-card {
++      text-align: left;
++      margin-top: 20px;
++    }
++
++    .timeline-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .timeline-toolbar .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .timeline-toolbar .btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .timeline-status {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .timeline-status.error {
++      color: #b71c1c;
++    }
++
++    .timeline-stats {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
++      gap: 12px;
++      margin: 20px 0;
++    }
++
++    .stat {
++      background: var(--light);
++      border-radius: 6px;
++      padding: 12px;
++    }
++
++    .stat dt {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #6d4c41;
++    }
++
++    .stat dd {
++      font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
++      font-size: 0.95rem;
++      color: var(--primary);
++    }
++
++    .table-wrap {
++      overflow-x: auto;
++    }
++
++    .timeline-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++    }
++
++    .timeline-table th,
++    .timeline-table td {
++      padding: 8px 10px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: left;
++      white-space: nowrap;
++    }
++
++    .timeline-table th {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .timeline-table .mono {
++      font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
++    }
++
++    .timeline-table .num {
++      text-align: right;
++    }
++
++    .timeline-table .sub-ms {
++      color: #e65100;
++      font-weight: 600;
++    }
++
++    .timeline-table .moved {
++      color: #6d4c41;
++      font-size: 0.75rem;
++    }
++
++    .hidden {
++      display: none;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +298,50 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section id="event-timeline" aria-labelledby="timeline-heading">
++      <h2 id="timeline-heading" style="text-align: center; margin-top: 40px;">Order Event Timeline</h2>
++      <div class="card timeline-card">
++        <p>
++          Our backend services (POS, payments, inventory, barista queue) each report order events with
++          nanosecond UTC timestamps, and they rarely arrive in order. Load a batch to sort it
++          chronologically and measure the gap between consecutive events down to the nanosecond.
++        </p>
++        <div class="timeline-toolbar">
++          <button id="load-events-btn" class="btn" type="button">Load &amp; Sort Order Events</button>
++          <span id="timeline-status" class="timeline-status" role="status" aria-live="polite"></span>
++        </div>
++
++        <div id="timeline-results" class="hidden">
++          <dl class="timeline-stats">
++            <div class="stat"><dt>Events</dt><dd id="stat-count"></dd></div>
++            <div class="stat"><dt>Total span</dt><dd id="stat-span"></dd></div>
++            <div class="stat"><dt>Shortest gap</dt><dd id="stat-min"></dd></div>
++            <div class="stat"><dt>Longest gap</dt><dd id="stat-max"></dd></div>
++            <div class="stat"><dt>Mean gap</dt><dd id="stat-mean"></dd></div>
++            <div class="stat"><dt>Sub-millisecond gaps</dt><dd id="stat-subms"></dd></div>
++          </dl>
++          <div class="table-wrap">
++            <table class="timeline-table">
++              <thead>
++                <tr>
++                  <th scope="col">#</th>
++                  <th scope="col">Received as</th>
++                  <th scope="col">Event</th>
++                  <th scope="col">Order</th>
++                  <th scope="col">Service</th>
++                  <th scope="col">UTC timestamp (ns)</th>
++                  <th scope="col" class="num">Since previous</th>
++                  <th scope="col" class="num">Δ nanoseconds</th>
++                </tr>
++              </thead>
++              <tbody id="timeline-body"></tbody>
++            </table>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +352,85 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { analyzeEvents, formatNanoTimestamp, formatDuration } from './js/order-events.js';
++
++    const button = document.getElementById('load-events-btn');
++    const status = document.getElementById('timeline-status');
++    const results = document.getElementById('timeline-results');
++    const tbody = document.getElementById('timeline-body');
++    const NS_PER_MS = 1_000_000n;
++
++    const setStatus = (message, isError = false) => {
++      status.textContent = message;
++      status.classList.toggle('error', isError);
++    };
++
++    const cell = (text, className) => {
++      const td = document.createElement('td');
++      td.textContent = text;
++      if (className) td.className = className;
++      return td;
++    };
++
++    const render = ({ sorted, intervals, stats }) => {
++      document.getElementById('stat-count').textContent = String(stats.count);
++      document.getElementById('stat-span').textContent = formatDuration(stats.spanNs);
++      document.getElementById('stat-min').textContent =
++        stats.minIntervalNs === null ? 'n/a' : formatDuration(stats.minIntervalNs);
++      document.getElementById('stat-max').textContent =
++        stats.maxIntervalNs === null ? 'n/a' : formatDuration(stats.maxIntervalNs);
++      document.getElementById('stat-mean').textContent =
++        stats.meanIntervalNs === null ? 'n/a' : formatDuration(stats.meanIntervalNs);
++      document.getElementById('stat-subms').textContent =
++        `${stats.subMillisecondIntervals} of ${intervals.length}`;
++
++      tbody.replaceChildren();
++      sorted.forEach((event, index) => {
++        const tr = document.createElement('tr');
++        const interval = index === 0 ? null : intervals[index - 1];
++        const subMs = interval !== null && interval.deltaNs < NS_PER_MS;
++        const movedBy = event.receivedIndex - index;
++        const receivedLabel =
++          movedBy === 0 ? `#${event.receivedIndex + 1}` : `#${event.receivedIndex + 1} (${movedBy > 0 ? '+' : ''}${movedBy})`;
++
++        tr.append(
++          cell(String(index + 1)),
++          cell(receivedLabel, movedBy === 0 ? '' : 'moved'),
++          cell(event.type),
++          cell(event.orderId),
++          cell(event.service),
++          cell(formatNanoTimestamp(event.ns), 'mono'),
++          cell(interval === null ? '—' : formatDuration(interval.deltaNs), `num mono${subMs ? ' sub-ms' : ''}`),
++          cell(interval === null ? '—' : interval.deltaNs.toLocaleString('en-US'), `num mono${subMs ? ' sub-ms' : ''}`),
++        );
++        tbody.append(tr);
++      });
++      results.classList.remove('hidden');
++    };
++
++    button.addEventListener('click', async () => {
++      button.disabled = true;
++      setStatus('Loading events…');
++      try {
++        const response = await fetch('./data/order-events.json', { cache: 'no-store' });
++        if (!response.ok) throw new Error(`HTTP ${response.status} while fetching events`);
++        const payload = await response.json();
++        const received = payload.events.map((event, receivedIndex) => ({ ...event, receivedIndex }));
++        const analysis = analyzeEvents(received);
++        render(analysis);
++        const reordered = analysis.sorted.filter((e, i) => e.receivedIndex !== i).length;
++        setStatus(`Sorted ${analysis.stats.count} events; ${reordered} arrived out of order.`);
++      } catch (error) {
++        console.error(error);
++        setStatus(`Could not load events: ${error.message}`, true);
++      } finally {
++        button.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

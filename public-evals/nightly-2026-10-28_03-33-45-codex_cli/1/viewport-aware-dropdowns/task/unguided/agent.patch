@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,82 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #trigger-btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 5px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: transparent;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    #trigger-btn::after {
++      content: '▾';
++      color: var(--accent);
++    }
++
++    #trigger-btn[aria-expanded="true"]::after {
++      content: '▴';
++    }
++
++    #action-panel {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      width: 220px;
++      max-width: calc(100dvw - 16px);
++      max-height: calc(100dvh - 16px);
++      overflow: auto;
++      padding: 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 24px rgb(62 39 35 / 20%);
++    }
++
++    #action-panel button {
++      display: block;
++      width: 100%;
++      padding: 10px 12px;
++      border: 0;
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      font: inherit;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    #action-panel button:hover {
++      background: #f5efeb;
++    }
++
++    #trigger-btn:focus-visible,
++    #action-panel button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    @media (max-width: 760px) {
++      nav,
++      nav ul {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,8 +237,17 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button id="trigger-btn" type="button" popovertarget="action-panel"
++          aria-controls="action-panel" aria-expanded="false">Options</button>
++        <div id="action-panel" popover="auto" aria-label="Options">
++          <button type="button" data-href="/menu/seasonal">Seasonal offers</button>
++          <button type="button" data-href="/account/settings">Account settings</button>
++          <button type="button" data-href="/contact">Support</button>
++        </div>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -206,7 +289,65 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const trigger = document.getElementById('trigger-btn');
++    const panel = document.getElementById('action-panel');
++
++    function positionPanel() {
++      if (!panel.matches(':popover-open')) return;
++
++      // Popovers render in the top layer; fixed coordinates are relative to
++      // the viewport, independent of navigation overflow and stacking contexts.
++      const viewport = window.visualViewport;
++      const edge = 8;
++      const minX = (viewport?.offsetLeft ?? 0) + edge;
++      const minY = (viewport?.offsetTop ?? 0) + edge;
++      const maxX = minX + (viewport?.width ?? window.innerWidth) - edge * 2;
++      const maxY = minY + (viewport?.height ?? window.innerHeight) - edge * 2;
++
++      panel.style.maxWidth = `${Math.max(0, maxX - minX)}px`;
++      panel.style.maxHeight = `${Math.max(0, maxY - minY)}px`;
++
++      const anchor = trigger.getBoundingClientRect();
++      const { width, height } = panel.getBoundingClientRect();
++      let left = anchor.left;
++      let top = anchor.bottom;
++
++      // Prefer below, left aligned; flip each axis independently on collision.
++      if (left + width > maxX) left = anchor.right - width;
++      if (top + height > maxY) top = anchor.top - height;
++
++      // If neither side fits, keep the entire scrollable panel in the viewport.
++      panel.style.left = `${Math.max(minX, Math.min(left, maxX - width))}px`;
++      panel.style.top = `${Math.max(minY, Math.min(top, maxY - height))}px`;
++    }
++
++    panel.addEventListener('beforetoggle', (event) => {
++      trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
++      if (event.newState === 'open') {
++        // Runs after the popover becomes measurable, before the next paint.
++        requestAnimationFrame(positionPanel);
++      }
++    });
++
++    panel.addEventListener('click', (event) => {
++      const action = event.target.closest('button[data-href]');
++      if (!action) return;
++      panel.hidePopover();
++      window.location.assign(action.dataset.href);
++    });
++
++    window.addEventListener('resize', positionPanel);
++    document.addEventListener('scroll', positionPanel, true);
++    window.visualViewport?.addEventListener('resize', positionPanel);
++    window.visualViewport?.addEventListener('scroll', positionPanel);
++    const positionObserver = new ResizeObserver(positionPanel);
++    positionObserver.observe(trigger);
++    positionObserver.observe(panel);
++    positionObserver.observe(document.querySelector('nav'));
++  </script>
++
+ </body>
+ 
+ </html>

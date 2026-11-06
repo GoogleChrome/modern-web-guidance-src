@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+index 66c9173..c137ac3 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,47 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating draggable widget */
++    .floating-promo {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      width: 220px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
++      overflow: hidden;
++      touch-action: none;
++    }
++
++    .floating-promo-handle {
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      padding: 6px 12px;
++      cursor: grab;
++      user-select: none;
++    }
++
++    .floating-promo.dragging {
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
++    }
++
++    .floating-promo.dragging .floating-promo-handle {
++      cursor: grabbing;
++    }
++
++    .floating-promo-body {
++      padding: 12px;
++      font-size: 0.9rem;
++    }
++
++    .floating-promo-body .btn {
++      margin-top: 8px;
++      padding: 6px 14px;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +248,61 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating-promo" id="floating-promo">
++    <div class="floating-promo-handle">⠿ Drag me</div>
++    <div class="floating-promo-body">
++      Free pastry with any large drink today!
++      <a href="/rewards" class="btn">Claim</a>
++    </div>
++  </aside>
++
++  <script>
++    (function () {
++      var box = document.getElementById('floating-promo');
++      var handle = box.querySelector('.floating-promo-handle');
++      var offsetX = 0, offsetY = 0;
++
++      function clamp(v, min, max) {
++        return Math.min(Math.max(v, min), Math.max(min, max));
++      }
++
++      function moveTo(left, top) {
++        box.style.left = clamp(left, 0, window.innerWidth - box.offsetWidth) + 'px';
++        box.style.top = clamp(top, 0, window.innerHeight - box.offsetHeight) + 'px';
++      }
++
++      handle.addEventListener('pointerdown', function (e) {
++        var rect = box.getBoundingClientRect();
++        offsetX = e.clientX - rect.left;
++        offsetY = e.clientY - rect.top;
++        // Switch from right/bottom anchoring to left/top so dragging is simple
++        box.style.right = 'auto';
++        box.style.bottom = 'auto';
++        moveTo(rect.left, rect.top);
++        box.classList.add('dragging');
++        handle.setPointerCapture(e.pointerId);
++        e.preventDefault();
++      });
++
++      handle.addEventListener('pointermove', function (e) {
++        if (!handle.hasPointerCapture(e.pointerId)) return;
++        moveTo(e.clientX - offsetX, e.clientY - offsetY);
++      });
++
++      function endDrag(e) {
++        box.classList.remove('dragging');
++        if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
++      }
++      handle.addEventListener('pointerup', endDrag);
++      handle.addEventListener('pointercancel', endDrag);
++
++      // Keep the widget on screen when the window shrinks
++      window.addEventListener('resize', function () {
++        if (box.style.left) moveTo(box.offsetLeft, box.offsetTop);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

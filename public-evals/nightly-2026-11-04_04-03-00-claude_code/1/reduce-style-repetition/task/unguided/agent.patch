@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,38 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    /* ------------------------------------------------------------------
++       Reusable CSS custom functions (CSS Functions & Mixins spec).
++       Each usage below is preceded by a plain-CSS fallback declaration so
++       browsers without @function support still render correctly. Unknown
++       dashed functions are invalid at parse time, so the fallback wins.
++       NOTE: call sites must not pass var() as arguments, or unsupported
++       browsers would treat the declaration as invalid-at-computed-time and
++       discard the fallback. Defaults below reference the theme variables.
++       ------------------------------------------------------------------ */
++
++    /* Linear gradient generator: angle + start/end colors. */
++    @function --brew-gradient(--angle <angle>: 135deg,
++                              --from <color>: var(--primary),
++                              --to <color>: var(--accent)) {
++      result: linear-gradient(var(--angle), var(--from), var(--to));
++    }
++
++    /* N equal-width columns; minmax(0, 1fr) prevents content blowout. */
++    @function --equal-columns(--count <integer>: 1) {
++      result: repeat(var(--count), minmax(0, 1fr));
++    }
++
++    /* Single column on small screens, N equal columns on wider ones. */
++    @function --responsive-columns(--wide <integer>: 2) {
++      result: --equal-columns(1);
++      @media (min-width: 768px) {
++        result: --equal-columns(var(--wide));
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,11 +53,27 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
++      min-height: 100vh;
+       background-color: var(--light);
++      background-attachment: fixed;
++      /* fallback */
++      background-image: linear-gradient(160deg, #fafafa, #d7ccc8);
++      background-image: --brew-gradient(160deg, #fafafa, #d7ccc8);
+     }
+ 
++    h2 {
++      color: white;
++      padding: 0.5rem 1.25rem;
++      border-radius: 8px;
++      letter-spacing: 0.5px;
++      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
++      /* fallback */
++      background-image: linear-gradient(135deg, #4e342e, #ffab40);
++      background-image: --brew-gradient();
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -106,8 +152,23 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    /* Main section: 1 column (~400px) -> 2 equal columns (~1000px) */
++    main .grid {
++      /* fallback */
++      grid-template-columns: 1fr;
++      grid-template-columns: --responsive-columns(2);
++    }
++
++    @supports not (grid-template-columns: --equal-columns(1)) {
++      @media (min-width: 768px) {
++        main .grid {
++          grid-template-columns: repeat(2, minmax(0, 1fr));
++        }
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;

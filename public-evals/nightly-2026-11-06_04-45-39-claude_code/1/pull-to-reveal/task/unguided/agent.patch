@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,80 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Pull-down Search Bar */
++    :root {
++      --search-h: 64px;
++    }
++
++    body {
++      /* Guarantee enough scroll room to tuck the search bar away on short pages */
++      min-height: calc(100vh + var(--search-h));
++    }
++
++    .search-bar {
++      height: var(--search-h);
++      background: var(--secondary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 0 5%;
++    }
++
++    .search-bar form {
++      display: flex;
++      width: 100%;
++      max-width: 640px;
++      background: white;
++      border-radius: 999px;
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
++      overflow: hidden;
++    }
++
++    .search-bar input {
++      flex: 1;
++      min-width: 0;
++      border: none;
++      padding: 10px 18px;
++      font: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: transparent;
++    }
++
++    .search-bar input:focus {
++      outline: none;
++    }
++
++    .search-bar form:focus-within {
++      box-shadow: 0 0 0 2px var(--accent);
++    }
++
++    .search-bar button {
++      border: none;
++      background: var(--primary);
++      color: white;
++      padding: 0 20px;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .search-bar button:hover {
++      background: #3e2723;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +228,16 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar" id="search-bar">
++    <form action="/search" method="get" role="search">
++      <label for="site-search" class="visually-hidden">Search The Daily Grind</label>
++      <input type="search" id="site-search" name="q" placeholder="Search drinks, locations, rewards…" autocomplete="off">
++      <button type="submit">Search</button>
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +286,75 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var bar = document.getElementById('search-bar');
++      var input = document.getElementById('site-search');
++      var barHeight = function () { return bar.offsetHeight; };
++
++      // Start with the search bar tucked above the viewport (scrolled to the nav),
++      // unless the URL targets a specific anchor.
++      if (!location.hash) {
++        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++        window.scrollTo(0, barHeight());
++      }
++
++      // Snap: once scrolling stops partway through the search bar, settle it
++      // fully open or fully closed depending on the last scroll direction.
++      var lastY = window.scrollY;
++      var direction = 0; // -1 = up, 1 = down
++      var touching = false;
++      var timer = null;
++
++      function snap() {
++        if (touching) return;
++        var h = barHeight();
++        var y = window.scrollY;
++        if (y <= 0 || y >= h) return;
++        var target;
++        if (direction < 0) target = 0;
++        else if (direction > 0) target = h;
++        else target = y < h / 2 ? 0 : h;
++        window.scrollTo({ top: target, behavior: 'smooth' });
++      }
++
++      window.addEventListener('scroll', function () {
++        var y = window.scrollY;
++        if (y !== lastY) direction = y < lastY ? -1 : 1;
++        lastY = y;
++        if (!('onscrollend' in window)) {
++          clearTimeout(timer);
++          timer = setTimeout(snap, 150);
++        }
++      }, { passive: true });
++
++      if ('onscrollend' in window) window.addEventListener('scrollend', snap);
++
++      window.addEventListener('touchstart', function () { touching = true; }, { passive: true });
++      window.addEventListener('touchend', function () {
++        touching = false;
++        clearTimeout(timer);
++        timer = setTimeout(snap, 150);
++      }, { passive: true });
++
++      // Reveal the search bar when its input gets focus (e.g. via Tab).
++      input.addEventListener('focus', function () {
++        window.scrollTo({ top: 0, behavior: 'smooth' });
++      });
++
++      // Press "/" anywhere to pull down the search bar and focus it.
++      document.addEventListener('keydown', function (e) {
++        var t = e.target;
++        if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
++        if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
++        e.preventDefault();
++        input.focus({ preventScroll: true });
++        window.scrollTo({ top: 0, behavior: 'smooth' });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

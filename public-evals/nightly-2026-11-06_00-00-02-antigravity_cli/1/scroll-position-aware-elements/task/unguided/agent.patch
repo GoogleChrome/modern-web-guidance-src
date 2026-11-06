@@ -1,0 +1,424 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -7,8 +7,9 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
+@@ -19,15 +20,39 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html,
+     body {
++      height: 100%;
++      overflow: hidden;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scroll container with named CSS Scroll Timeline */
++    .scroller {
++      height: 100vh;
++      overflow-y: auto;
++      overflow-x: hidden;
++      scroll-behavior: smooth;
++      position: relative;
++      scroll-timeline-name: --scroller;
++      scroll-timeline-axis: block;
++    }
++
++    /* Non-visual top sentinel for IntersectionObserver accessibility state */
++    .scroll-sentinel {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 1px;
++      pointer-events: none;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -74,8 +99,9 @@
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
++      min-height: 380px;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -99,8 +125,26 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-block {
++      margin-bottom: 56px;
++    }
++
++    .section-title {
++      text-align: center;
++      margin-bottom: 12px;
++      color: var(--primary);
++      font-size: 1.85rem;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      max-width: 680px;
++      margin: 0 auto 24px;
++      color: #5d4037;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -108,9 +152,9 @@
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+@@ -131,9 +175,9 @@
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
+     }
+ 
+     footer {
+       background: var(--secondary);
+@@ -151,62 +195,269 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scroll-Position-Aware Floating Back to Top Button */
++    @keyframes reveal-back-to-top {
++      0% {
++        opacity: 0;
++        visibility: hidden;
++        pointer-events: none;
++        transform: translateY(16px) scale(0.9);
++      }
++      1% {
++        visibility: visible;
++        pointer-events: auto;
++      }
++      100% {
++        opacity: 1;
++        visibility: visible;
++        pointer-events: auto;
++        transform: translateY(0) scale(1);
++      }
++    }
++
++    .back-to-top {
++      position: fixed;
++      bottom: 2rem;
++      right: 2rem;
++      z-index: 1100;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++      padding: 0.75rem 1.15rem;
++      border: 2px solid var(--accent);
++      border-radius: 999px;
++      background-color: var(--primary);
++      color: #ffffff;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 6px 18px rgba(62, 39, 35, 0.28);
++      /* Start hidden at the top of the container */
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transform: translateY(16px) scale(0.9);
++      transition:
++        background-color 0.2s ease,
++        color 0.2s ease,
++        box-shadow 0.2s ease,
++        border-color 0.2s ease;
++      /* CSS Scroll-Driven Animation bound to .scroller */
++      animation-name: reveal-back-to-top;
++      animation-fill-mode: both;
++      animation-timing-function: linear;
++      animation-timeline: --scroller;
++      animation-range: 0px 150px;
++    }
++
++    .back-to-top.is-visible,
++    .back-to-top.visible {
++      opacity: 1;
++      visibility: visible;
++      pointer-events: auto;
++      transform: translateY(0) scale(1);
++    }
++
++    @supports not (animation-timeline: scroll()) {
++      .back-to-top {
++        transition:
++          opacity 0.3s ease,
++          transform 0.3s ease,
++          visibility 0.3s ease,
++          background-color 0.2s ease,
++          color 0.2s ease,
++          box-shadow 0.2s ease;
++      }
++    }
++
++    .back-to-top:hover {
++      background-color: var(--primary-dark);
++      box-shadow: 0 8px 22px rgba(62, 39, 35, 0.38);
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .back-to-top svg {
++      width: 18px;
++      height: 18px;
++      stroke: currentColor;
++      stroke-width: 2.5;
++      fill: none;
++      flex-shrink: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroller" id="scroller">
++    <div id="top" class="scroll-sentinel" aria-hidden="true"></div>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <nav>
++      <div class="logo">THE DAILY GRIND</div>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <main class="container">
++      <section class="section-block">
++        <h2 class="section-title">Seasonal Favorites</h2>
++        <p class="section-subtitle">Handcrafted signature drinks brewed with small-batch roasted beans and local ingredients.</p>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </section>
++
++      <section class="section-block">
++        <h2 class="section-title">Single-Origin Roasts</h2>
++        <p class="section-subtitle">Explore our rotating curation of direct-trade beans roasted fresh every morning.</p>
++        <div class="grid">
++          <div class="card">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Bright floral aroma with notes of bergamot, jasmine, and ripe peach.</p>
++            <a href="/menu/ethiopian" class="btn">Explore Roast</a>
++          </div>
++          <div class="card">
++            <h3>Colombian Huila</h3>
++            <p>Balanced medium roast featuring caramel sweetness and crisp citrus finish.</p>
++            <a href="/menu/colombian" class="btn">Explore Roast</a>
++          </div>
++          <div class="card">
++            <h3>Sumatra Mandheling</h3>
++            <p>Full-bodied earthy profile with rich dark chocolate and cedar undertones.</p>
++            <a href="/menu/sumatra" class="btn">Explore Roast</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </section>
++
++      <section class="section-block">
++        <h2 class="section-title">Bakery &amp; Pairings</h2>
++        <p class="section-subtitle">Baked from scratch each morning to pair with your favorite pour-over or espresso.</p>
++        <div class="grid">
++          <div class="card">
++            <h3>Cardamom Morning Bun</h3>
++            <p>Flaky laminated pastry tossed in freshly ground cardamom and orange zest sugar.</p>
++            <a href="/menu/bakery" class="btn">Order Pastry</a>
++          </div>
++          <div class="card">
++            <h3>Almond Croissant</h3>
++            <p>Twice-baked butter croissant filled with house-made toasted almond frangipane.</p>
++            <a href="/menu/bakery" class="btn">Order Pastry</a>
++          </div>
++          <div class="card">
++            <h3>Rosemary Sea Salt Focaccia</h3>
++            <p>Crisp olive oil crust with airy crumb, fresh rosemary, and flaky sea salt.</p>
++            <a href="/menu/bakery" class="btn">Order Pastry</a>
++          </div>
+         </div>
++      </section>
++    </main>
++
++    <footer>
++      <div class="footer-links">
++        <a href="/about">Our Story</a> |
++        <a href="/careers">Join the Team</a> |
++        <a href="/contact">Contact Us</a> |
++        <a href="/privacy-policy">Privacy</a>
+       </div>
+-    </section>
+-  </main>
++      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    </footer>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++    <button
++      type="button"
++      class="back-to-top"
++      id="back-to-top"
++      aria-label="Back to top"
++      title="Back to top"
++      inert
++      aria-hidden="true"
++      tabindex="-1"
++    >
++      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
++        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M5 12l7-7 7 7" />
++      </svg>
++      <span>Back to top</span>
++    </button>
++  </div>
+ 
++  <script>
++    (function () {
++      const scroller = document.querySelector('.scroller');
++      const sentinel = document.querySelector('.scroll-sentinel');
++      const backToTopBtn = document.querySelector('.back-to-top');
++
++      if (!scroller || !backToTopBtn) return;
++
++      function setButtonVisibility(isVisible) {
++        if (isVisible) {
++          backToTopBtn.classList.add('is-visible', 'visible');
++          backToTopBtn.inert = false;
++          backToTopBtn.removeAttribute('inert');
++          backToTopBtn.setAttribute('aria-hidden', 'false');
++          backToTopBtn.removeAttribute('tabindex');
++        } else {
++          if (document.activeElement === backToTopBtn) {
++            backToTopBtn.blur();
++          }
++          backToTopBtn.classList.remove('is-visible', 'visible');
++          backToTopBtn.inert = true;
++          backToTopBtn.setAttribute('inert', '');
++          backToTopBtn.setAttribute('aria-hidden', 'true');
++          backToTopBtn.setAttribute('tabindex', '-1');
++        }
++      }
++
++      if ('IntersectionObserver' in window && sentinel) {
++        const observer = new IntersectionObserver(
++          (entries) => {
++            for (const entry of entries) {
++              setButtonVisibility(!entry.isIntersecting);
++            }
++          },
++          {
++            root: scroller,
++            threshold: 0,
++          }
++        );
++        observer.observe(sentinel);
++      }
++
++      backToTopBtn.addEventListener('click', () => {
++        scroller.scrollTo({ top: 0, behavior: 'smooth' });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

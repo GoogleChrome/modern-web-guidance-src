@@ -1,0 +1,542 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..7db60b8 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -20,8 +20,8 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+     <div class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest" data-translate>{capitalizedCategory}</a>
++                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow" data-translate>
+                     <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+@@ -64,8 +64,8 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
++            <div class="text-amber-800 text-sm font-brand tracking-widest" data-translate>{capitalizedCategory}</div>
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col" data-translate>
+                 <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..ca589a3 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -3,6 +3,7 @@ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
++import TranslateButton from "./TranslateButton.tsx";
+ 
+ const articles = await getCollection("articles");
+ const reports = await getCollection("reports");
+@@ -60,6 +61,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right Section: Stock -->
+       <div class="text-xs font-semibold text-right">
++        <TranslateButton client:load transition:persist="translate-control" />
+       </div>
+     </div>
+   </div>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..54a9e81 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -34,7 +34,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     <!-- Top Section: Large Article -->
+     <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+-            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
++            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first" data-translate>
+                 <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                     {capitalizedCategory}
+                 </a>
+@@ -73,7 +73,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                             <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+-                    <div class="p-4 sm:p-6 flex flex-col flex-grow">
++                    <div class="p-4 sm:p-6 flex flex-col flex-grow" data-translate>
+                         <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                             {capitalizedBottomCategory}
+                         </a>
+diff --git a/src/components/TranslateButton.tsx b/src/components/TranslateButton.tsx
+new file mode 100644
+index 0000000..a87ba66
+--- /dev/null
++++ b/src/components/TranslateButton.tsx
+@@ -0,0 +1,395 @@
++import React, { useEffect, useRef, useState } from 'react';
++import { LanguageIcon } from '@heroicons/react/24/outline';
++
++// Minimal typings for the built-in AI Translator and Language Detector APIs.
++type Availability = 'unavailable' | 'downloadable' | 'downloading' | 'available';
++
++interface CreateMonitor extends EventTarget {}
++
++interface TranslatorInstance {
++  translate(input: string, options?: { signal?: AbortSignal }): Promise<string>;
++  destroy(): void;
++}
++
++interface LanguageDetectorInstance {
++  detect(input: string): Promise<{ detectedLanguage: string; confidence: number }[]>;
++}
++
++interface TranslatorOptions {
++  sourceLanguage: string;
++  targetLanguage: string;
++}
++
++declare global {
++  // eslint-disable-next-line no-var
++  var Translator: {
++    availability(options: TranslatorOptions): Promise<Availability>;
++    create(options: TranslatorOptions & {
++      monitor?: (m: CreateMonitor) => void;
++      signal?: AbortSignal;
++    }): Promise<TranslatorInstance>;
++  };
++  // eslint-disable-next-line no-var
++  var LanguageDetector: {
++    availability(): Promise<Availability>;
++    create(options?: { monitor?: (m: CreateMonitor) => void }): Promise<LanguageDetectorInstance>;
++  };
++}
++
++// Languages supported by Chrome's Translator API.
++const LANGUAGES = [
++  'ar', 'bg', 'bn', 'cs', 'da', 'de', 'el', 'en', 'es', 'fi', 'fr', 'hi', 'hr',
++  'hu', 'id', 'it', 'he', 'ja', 'kn', 'ko', 'lt', 'mr', 'nl', 'no', 'pl', 'pt',
++  'ro', 'ru', 'sk', 'sl', 'sv', 'ta', 'te', 'th', 'tr', 'uk', 'vi', 'zh', 'zh-Hant',
++];
++const RTL_LANGUAGES = new Set(['ar', 'he']);
++const STORAGE_KEY = 'devtools-times:translate-target';
++
++// Content opts in to translation with a `data-translate` attribute.
++const ROOT_SELECTOR = '[data-translate]';
++const SKIPPED_TAGS = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'NOSCRIPT', 'TEXTAREA']);
++
++const englishNames = new Intl.DisplayNames(['en'], { type: 'language' });
++function languageLabel(code: string) {
++  const english = englishNames.of(code) ?? code;
++  const native = new Intl.DisplayNames([code], { type: 'language' }).of(code);
++  return native && native !== english ? `${english} (${native})` : english;
++}
++
++// Base language subtag, except for script variants the API distinguishes.
++function normalizeLanguage(lang: string) {
++  if (/^zh-(Hant|TW|HK|MO)/i.test(lang)) return 'zh-Hant';
++  return lang.split('-')[0].toLowerCase();
++}
++
++function pageLanguage() {
++  return normalizeLanguage(document.documentElement.lang || 'en');
++}
++
++function defaultTarget() {
++  const stored = localStorage.getItem(STORAGE_KEY);
++  if (stored && LANGUAGES.includes(stored)) return stored;
++  const source = pageLanguage();
++  const preferred = navigator.languages
++    .map(normalizeLanguage)
++    .find((lang) => lang !== source && LANGUAGES.includes(lang));
++  return preferred ?? (source === 'es' ? 'en' : 'es');
++}
++
++function collectTextNodes(root: Element) {
++  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
++    acceptNode(node) {
++      if (!node.nodeValue?.trim()) return NodeFilter.FILTER_REJECT;
++      for (let el = node.parentElement; el && el !== root.parentElement; el = el.parentElement) {
++        if (SKIPPED_TAGS.has(el.tagName) || el.getAttribute('translate') === 'no') {
++          return NodeFilter.FILTER_REJECT;
++        }
++      }
++      return NodeFilter.FILTER_ACCEPT;
++    },
++  });
++  const nodes: Text[] = [];
++  while (walker.nextNode()) nodes.push(walker.currentNode as Text);
++  return nodes;
++}
++
++type Status =
++  | { kind: 'idle' }
++  | { kind: 'unsupported' }
++  | { kind: 'downloading'; progress: number }
++  | { kind: 'translating'; done: number; total: number }
++  | { kind: 'translated'; language: string }
++  | { kind: 'error'; message: string };
++
++interface TranslatedRoot {
++  root: HTMLElement;
++  lang: string | null;
++  dir: string | null;
++  texts: Map<Text, string>;
++}
++
++export default function TranslateButton() {
++  const [supported, setSupported] = useState<boolean | null>(null);
++  const [target, setTarget] = useState('es');
++  const [availability, setAvailability] = useState<Availability | null>(null);
++  const [status, setStatus] = useState<Status>({ kind: 'idle' });
++  const [activeLanguage, setActiveLanguage] = useState<string | null>(null);
++
++  const translators = useRef(new Map<string, TranslatorInstance>());
++  const detector = useRef<LanguageDetectorInstance | null>(null);
++  const translated = useRef<TranslatedRoot[]>([]);
++  const abort = useRef<AbortController | null>(null);
++  const activeLanguageRef = useRef<string | null>(null);
++  activeLanguageRef.current = activeLanguage;
++
++  useEffect(() => {
++    const isSupported = 'Translator' in self;
++    setSupported(isSupported);
++    setTarget(defaultTarget());
++    if (!isSupported) setStatus({ kind: 'unsupported' });
++    return () => {
++      abort.current?.abort();
++      translators.current.forEach((t) => t.destroy());
++    };
++  }, []);
++
++  // Hint whether translating to the selected language needs a download first.
++  useEffect(() => {
++    if (!supported) return;
++    const source = pageLanguage();
++    if (source === target) return setAvailability('available');
++    let cancelled = false;
++    Translator.availability({ sourceLanguage: source, targetLanguage: target })
++      .then((result) => !cancelled && setAvailability(result))
++      .catch(() => !cancelled && setAvailability('unavailable'));
++    return () => { cancelled = true; };
++  }, [supported, target]);
++
++  // The control persists across client-side navigations; re-apply an active
++  // translation to the newly swapped-in page. Models are already created, so
++  // no user gesture is needed.
++  useEffect(() => {
++    const onPageLoad = () => {
++      translated.current = [];
++      const language = activeLanguageRef.current;
++      if (language) translatePage(language, false);
++    };
++    document.addEventListener('astro:page-load', onPageLoad);
++    return () => document.removeEventListener('astro:page-load', onPageLoad);
++  }, []);
++
++  async function detectLanguage(root: HTMLElement, fallback: string) {
++    const text = (root.textContent ?? '').trim().slice(0, 1000);
++    if (!detector.current || text.length < 40) return fallback;
++    const [best] = await detector.current.detect(text);
++    if (!best || best.detectedLanguage === 'und' || best.confidence < 0.6) return fallback;
++    return normalizeLanguage(best.detectedLanguage);
++  }
++
++  async function getTranslator(sourceLanguage: string, targetLanguage: string, signal: AbortSignal) {
++    const key = `${sourceLanguage}>${targetLanguage}`;
++    const cached = translators.current.get(key);
++    if (cached) return cached;
++
++    const options = { sourceLanguage, targetLanguage };
++    const pairAvailability = await Translator.availability(options);
++    if (pairAvailability === 'unavailable') return null;
++
++    const translator = await Translator.create({
++      ...options,
++      signal,
++      monitor(m) {
++        m.addEventListener('downloadprogress', (e) => {
++          setStatus({ kind: 'downloading', progress: (e as ProgressEvent).loaded });
++        });
++      },
++    });
++    translators.current.set(key, translator);
++    return translator;
++  }
++
++  function restoreOriginals() {
++    for (const { root, lang, dir, texts } of translated.current) {
++      texts.forEach((original, node) => { node.nodeValue = original; });
++      lang === null ? root.removeAttribute('lang') : root.setAttribute('lang', lang);
++      dir === null ? root.removeAttribute('dir') : root.setAttribute('dir', dir);
++    }
++    translated.current = [];
++  }
++
++  async function translatePage(targetLanguage: string, fromGesture: boolean) {
++    abort.current?.abort();
++    const controller = new AbortController();
++    abort.current = controller;
++    const { signal } = controller;
++
++    // Always translate from the original text, never from a previous translation.
++    restoreOriginals();
++
++    try {
++      // Create the detector and all translators up front, while the click's
++      // user activation is still valid for any model downloads.
++      if (fromGesture && !detector.current && 'LanguageDetector' in self) {
++        const detectorAvailability = await LanguageDetector.availability();
++        if (detectorAvailability !== 'unavailable') {
++          detector.current = await LanguageDetector.create({
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                setStatus({ kind: 'downloading', progress: (e as ProgressEvent).loaded });
++              });
++            },
++          });
++        }
++      }
++
++      const roots = [...document.querySelectorAll<HTMLElement>(ROOT_SELECTOR)];
++      const jobs: { root: HTMLElement; translator: TranslatorInstance; nodes: Text[] }[] = [];
++      const unsupportedSources = new Set<string>();
++
++      for (const root of roots) {
++        const fallback = normalizeLanguage(root.closest('[lang]')?.getAttribute('lang') ?? pageLanguage());
++        const source = await detectLanguage(root, fallback);
++        if (source === targetLanguage) continue;
++        const translator = await getTranslator(source, targetLanguage, signal);
++        if (!translator) {
++          unsupportedSources.add(source);
++          continue;
++        }
++        jobs.push({ root, translator, nodes: collectTextNodes(root) });
++      }
++
++      if (jobs.length === 0) {
++        setActiveLanguage(null);
++        setStatus(unsupportedSources.size
++          ? { kind: 'error', message: `Translation to ${englishNames.of(targetLanguage)} isn't available on this device.` }
++          : { kind: 'idle' });
++        return;
++      }
++
++      const total = jobs.reduce((sum, job) => sum + job.nodes.length, 0);
++      let done = 0;
++      setStatus({ kind: 'translating', done, total });
++
++      for (const { root, translator, nodes } of jobs) {
++        const entry: TranslatedRoot = {
++          root,
++          lang: root.getAttribute('lang'),
++          dir: root.getAttribute('dir'),
++          texts: new Map(),
++        };
++        translated.current.push(entry);
++        root.setAttribute('lang', targetLanguage);
++        root.setAttribute('dir', RTL_LANGUAGES.has(targetLanguage) ? 'rtl' : 'ltr');
++
++        for (const node of nodes) {
++          const original = node.nodeValue ?? '';
++          // Keep surrounding whitespace so inline markup stays spaced correctly.
++          const [, leading, text, trailing] = original.match(/^(\s*)([\s\S]*?)(\s*)$/)!;
++          const result = await translator.translate(text, { signal });
++          if (signal.aborted) return;
++          entry.texts.set(node, original);
++          node.nodeValue = leading + result + trailing;
++          setStatus({ kind: 'translating', done: ++done, total });
++        }
++      }
++
++      setActiveLanguage(targetLanguage);
++      setStatus({ kind: 'translated', language: targetLanguage });
++    } catch (error) {
++      if (signal.aborted) return;
++      const message = error instanceof DOMException && error.name === 'NotAllowedError'
++        ? 'Click “Translate” again to download the language pack.'
++        : 'Something went wrong while translating. Please try again.';
++      console.error(error);
++      restoreOriginals();
++      setActiveLanguage(null);
++      setStatus({ kind: 'error', message });
++    }
++  }
++
++  function handleTranslate() {
++    localStorage.setItem(STORAGE_KEY, target);
++    translatePage(target, true);
++  }
++
++  function handleShowOriginal() {
++    abort.current?.abort();
++    restoreOriginals();
++    setActiveLanguage(null);
++    setStatus({ kind: 'idle' });
++  }
++
++  const busy = status.kind === 'downloading' || status.kind === 'translating';
++
++  let message = '';
++  switch (status.kind) {
++    case 'unsupported':
++      message = 'On-device translation isn’t supported in this browser. Try a recent desktop version of Chrome or Edge.';
++      break;
++    case 'downloading':
++      message = `Downloading language model… ${Math.round(status.progress * 100)}%`;
++      break;
++    case 'translating':
++      message = `Translating… ${status.done} of ${status.total}`;
++      break;
++    case 'translated':
++      message = `Translated to ${englishNames.of(status.language)} on your device.`;
++      break;
++    case 'error':
++      message = status.message;
++      break;
++    case 'idle':
++      if (availability === 'unavailable') message = 'This language isn’t available on your device.';
++      else if (availability === 'downloadable' || availability === 'downloading') {
++        message = 'A language pack will be downloaded once. After that, translation works offline.';
++      }
++  }
++
++  return (
++    <>
++      <button
++        type="button"
++        popoverTarget="translate-panel"
++        className="inline-flex items-center gap-1 p-1 text-gray-700 hover:text-amber-500"
++        aria-label={activeLanguage ? `Translate (currently ${englishNames.of(activeLanguage)})` : 'Translate'}
++      >
++        <LanguageIcon className={`h-5 w-5 ${activeLanguage ? 'text-amber-500' : ''}`} aria-hidden="true" />
++        <span className="hidden sm:inline">{activeLanguage ? activeLanguage.toUpperCase() : 'Translate'}</span>
++      </button>
++
++      <div
++        id="translate-panel"
++        popover="auto"
++        translate="no"
++        aria-labelledby="translate-panel-title"
++        className="fixed inset-auto top-16 right-4 m-0 w-72 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left text-sm font-normal text-gray-800 shadow-lg"
++      >
++        <h2 id="translate-panel-title" className="mb-1 font-semibold">Translate articles</h2>
++        <p className="mb-3 text-xs text-gray-500">
++          Runs entirely in your browser — the text never leaves your device.
++        </p>
++
++        <label htmlFor="translate-target" className="mb-1 block text-xs font-semibold">
++          Translate to
++        </label>
++        <select
++          id="translate-target"
++          value={target}
++          disabled={!supported || busy}
++          onChange={(e) => setTarget(e.target.value)}
++          className="mb-3 w-full rounded border border-gray-300 bg-white px-2 py-1.5"
++        >
++          {LANGUAGES.map((code) => (
++            <option key={code} value={code}>{languageLabel(code)}</option>
++          ))}
++        </select>
++
++        <div className="flex gap-2">
++          <button
++            type="button"
++            onClick={handleTranslate}
++            disabled={!supported || busy || availability === 'unavailable' || target === activeLanguage}
++            className="flex-1 rounded bg-gray-800 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
++          >
++            Translate
++          </button>
++          <button
++            type="button"
++            onClick={handleShowOriginal}
++            disabled={!activeLanguage && !busy}
++            className="flex-1 rounded bg-gray-200 px-3 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
++          >
++            {busy ? 'Cancel' : 'Show original'}
++          </button>
++        </div>
++
++        {status.kind === 'downloading' && (
++          <progress className="mt-3 w-full" value={status.progress} max={1} />
++        )}
++        <p role="status" className={`mt-3 text-xs ${status.kind === 'error' || status.kind === 'unsupported' ? 'text-red-700' : 'text-gray-600'}`}>
++          {message}
++        </p>
++      </div>
++    </>
++  );
++}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..cca2427 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -38,17 +38,17 @@ const isBookmarked = readingList.includes(article.slug);
+ <Layout title={article.data.title}>
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
++        <div class="text-base text-gray-600 font-semibold mb-2" data-translate>
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight" data-translate>
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p class="text-lg md:text-xl text-gray-700 font-light mb-5" data-translate>
+             {article.data.summary}
+         </p>
+ 
+@@ -80,7 +80,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 />
+             )}
+             {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                <figcaption class="text-xs text-gray-500 mt-2 px-2" data-translate>
+                     {article.data.image_caption}
+                 </figcaption>
+             )}
+@@ -105,7 +105,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div class="prose max-w-none" data-translate>
+             <Content />
+         </div>
+ 
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..373dfc9 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -76,10 +76,10 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             format="webp"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors" data-translate>
+                             {featuredArticle.data.title}
+                         </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
++                        <p class="text-base md:text-lg text-gray-700" data-translate>
+                             {featuredArticle.data.summary}
+                         </p>
+                     </a>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..492442f 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -45,7 +45,7 @@ politicsArticles[2] = {
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer" data-translate>{article.data.title}</h3>
+                         </a>
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                     </div>

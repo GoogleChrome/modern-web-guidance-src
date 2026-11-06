@@ -1,0 +1,40 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,36 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Load data</title>
++  </head>
++  <body>
++    <button type="button" id="load" aria-live="polite">Load data</button>
++    <script>
++      const button = document.querySelector('#load');
++
++      button.addEventListener('click', () => {
++        button.disabled = true;
++        button.textContent = 'Loading…';
++
++        // Start critical work immediately; never wait for analytics.
++        fetch('/api/data', { priority: 'high' })
++          .then(response => {
++            if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
++            return response.text();
++          })
++          .then(() => { button.textContent = 'Data loaded'; })
++          .catch(() => { button.textContent = 'Failed — try again'; })
++          .finally(() => { button.disabled = false; });
++
++        fetch('/api/analytics', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ click: 1 }),
++          priority: 'low'
++        }).catch(() => {});
++      });
++    </script>
++  </body>
++</html>

@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,116 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Shipping Address Form */
++    .shipping {
++      max-width: 760px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++    }
++
++    .shipping-card {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .shipping h2 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .shipping-intro {
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    .shipping fieldset {
++      border: none;
++      margin-bottom: 20px;
++    }
++
++    .shipping legend {
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 10px;
++      font-size: 1.05rem;
++    }
++
++    .form-grid {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 15px;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-field.full {
++      grid-column: 1 / -1;
++    }
++
++    .form-field label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .form-field .optional {
++      font-weight: normal;
++      color: #6d4c41;
++    }
++
++    .form-field input,
++    .form-field select,
++    .form-field textarea {
++      font: inherit;
++      padding: 10px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .form-field input:focus,
++    .form-field select:focus,
++    .form-field textarea:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++      border-color: var(--primary);
++    }
++
++    .form-field input:user-invalid,
++    .form-field select:user-invalid {
++      border-color: #c62828;
++    }
++
++    .shipping button[type="submit"] {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    .form-status {
++      margin-top: 15px;
++      font-weight: 600;
++      color: #2e7d32;
++    }
++
++    @media (max-width: 600px) {
++      .form-grid {
++        grid-template-columns: 1fr;
++      }
++
++      .shipping-card {
++        padding: 20px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +304,89 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="shipping" id="shipping" aria-labelledby="shipping-heading">
++    <div class="shipping-card">
++      <h2 id="shipping-heading">Get Beans Delivered</h2>
++      <p class="shipping-intro">Tell us where to send your freshly roasted coffee beans. Your browser can fill in your saved details automatically.</p>
++
++      <form id="shipping-form" action="/shipping-address" method="post" autocomplete="on">
++        <fieldset>
++          <legend>Recipient</legend>
++          <div class="form-grid">
++            <div class="form-field full">
++              <label for="ship-name">Full name</label>
++              <input type="text" id="ship-name" name="name" autocomplete="shipping name" required>
++            </div>
++            <div class="form-field full">
++              <label for="ship-organization">Company <span class="optional">(optional)</span></label>
++              <input type="text" id="ship-organization" name="organization" autocomplete="shipping organization">
++            </div>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Shipping address</legend>
++          <div class="form-grid">
++            <div class="form-field full">
++              <label for="ship-address1">Street address</label>
++              <input type="text" id="ship-address1" name="address-line1" autocomplete="shipping address-line1" required>
++            </div>
++            <div class="form-field full">
++              <label for="ship-address2">Apartment, suite, etc. <span class="optional">(optional)</span></label>
++              <input type="text" id="ship-address2" name="address-line2" autocomplete="shipping address-line2">
++            </div>
++            <div class="form-field">
++              <label for="ship-city">City</label>
++              <input type="text" id="ship-city" name="city" autocomplete="shipping address-level2" required>
++            </div>
++            <div class="form-field">
++              <label for="ship-state">State / Province</label>
++              <input type="text" id="ship-state" name="state" autocomplete="shipping address-level1" required>
++            </div>
++            <div class="form-field">
++              <label for="ship-postal">Postal code</label>
++              <input type="text" id="ship-postal" name="postal-code" autocomplete="shipping postal-code" inputmode="text" autocapitalize="characters" spellcheck="false" required>
++            </div>
++            <div class="form-field">
++              <label for="ship-country">Country</label>
++              <select id="ship-country" name="country" autocomplete="shipping country" required>
++                <option value="US" selected>United States</option>
++                <option value="CA">Canada</option>
++                <option value="GB">United Kingdom</option>
++                <option value="AU">Australia</option>
++                <option value="NZ">New Zealand</option>
++                <option value="IE">Ireland</option>
++              </select>
++            </div>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Contact details</legend>
++          <div class="form-grid">
++            <div class="form-field">
++              <label for="ship-email">Email</label>
++              <input type="email" id="ship-email" name="email" autocomplete="shipping email" spellcheck="false" required>
++            </div>
++            <div class="form-field">
++              <label for="ship-tel">Phone</label>
++              <input type="tel" id="ship-tel" name="tel" autocomplete="shipping tel" required>
++            </div>
++            <div class="form-field full">
++              <label for="ship-notes">Delivery instructions <span class="optional">(optional)</span></label>
++              <textarea id="ship-notes" name="delivery-instructions" rows="3" autocomplete="off" placeholder="e.g. Leave at the side door"></textarea>
++            </div>
++          </div>
++        </fieldset>
++
++        <button type="submit" class="btn">Save Shipping Address</button>
++        <p class="form-status" id="shipping-status" role="status" aria-live="polite"></p>
++      </form>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +395,20 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.getElementById('shipping-form').addEventListener('submit', function (event) {
++      event.preventDefault();
++      if (!this.checkValidity()) {
++        this.reportValidity();
++        return;
++      }
++      var name = this.elements.name.value.trim();
++      document.getElementById('shipping-status').textContent =
++        'Thanks' + (name ? ', ' + name : '') + '! Your beans will be shipped to this address.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

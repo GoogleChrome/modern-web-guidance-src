@@ -1,0 +1,339 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,208 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Bean Selector */
++    .bean-selector {
++      margin-top: 60px;
++    }
++
++    .bean-selector > header {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .bean-selector > header p {
++      color: #6d4c41;
++    }
++
++    .bean-toolbar {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin: 25px 0 10px;
++    }
++
++    .bean-toolbar h3 {
++      color: var(--primary);
++    }
++
++    .bean-count {
++      display: inline-block;
++      min-width: 1.8em;
++      padding: 0 8px;
++      margin-left: 6px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.85rem;
++      text-align: center;
++    }
++
++    .bean-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .btn-ghost {
++      background: transparent;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      padding: 6px 14px;
++      border-radius: 5px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .btn-ghost:hover:not(:disabled) {
++      background: var(--primary);
++      color: white;
++    }
++
++    .btn-ghost:disabled {
++      opacity: 0.4;
++      cursor: default;
++    }
++
++    .bean-list {
++      list-style: none;
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
++      gap: 16px;
++      min-height: 120px;
++      padding: 16px;
++      border-radius: 10px;
++    }
++
++    .bean-list--selected {
++      background: #efebe9;
++      border: 2px dashed var(--secondary);
++    }
++
++    .bean-empty {
++      grid-column: 1 / -1;
++      align-self: center;
++      text-align: center;
++      color: #8d6e63;
++      font-style: italic;
++    }
++
++    .bean-empty:not(:only-child) {
++      display: none;
++    }
++
++    .bean-card {
++      /* Every card shares one transition class, so a single set of
++         ::view-transition-* rules animates the whole group at once. */
++      view-transition-class: bean-card;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .bean-card img {
++      width: 100%;
++      height: 120px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .bean-card .bean-body {
++      padding: 12px 14px 14px;
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      flex: 1;
++    }
++
++    .bean-card h4 {
++      color: var(--primary);
++      font-size: 1rem;
++    }
++
++    .bean-meta {
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
++    .bean-notes {
++      font-size: 0.85rem;
++      flex: 1;
++    }
++
++    .bean-toggle {
++      margin-top: 8px;
++      align-self: flex-start;
++      border: none;
++      border-radius: 5px;
++      padding: 6px 14px;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++      transition: background 0.2s;
++    }
++
++    .bean-toggle:hover {
++      background: #3e2723;
++    }
++
++    .bean-list--selected .bean-toggle {
++      background: transparent;
++      color: #b71c1c;
++      border: 1px solid #e57373;
++    }
++
++    .bean-list--selected .bean-toggle:hover {
++      background: #ffebee;
++    }
++
++    /* Shared view-transition logic for every bean card */
++    ::view-transition-group(*.bean-card) {
++      animation-duration: 450ms;
++      animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
++    }
++
++    ::view-transition-old(*.bean-card),
++    ::view-transition-new(*.bean-card) {
++      height: 100%;
++      object-fit: cover;
++    }
++
++    /* Card entering the DOM / leaving the DOM (no counterpart snapshot) */
++    ::view-transition-new(*.bean-card):only-child {
++      animation: bean-pop-in 350ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
++    }
++
++    ::view-transition-old(*.bean-card):only-child {
++      animation: bean-pop-out 250ms ease-in both;
++    }
++
++    @keyframes bean-pop-in {
++      from { opacity: 0; transform: scale(0.85); }
++    }
++
++    @keyframes bean-pop-out {
++      to { opacity: 0; transform: scale(0.85); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*.bean-card),
++      ::view-transition-old(*.bean-card),
++      ::view-transition-new(*.bean-card) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +394,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="bean-selector" aria-labelledby="bean-selector-title">
++      <header>
++        <h2 id="bean-selector-title">Build Your Bean Box</h2>
++        <p>Pick the single-origin beans you'd like in your next delivery.</p>
++      </header>
++
++      <div class="bean-toolbar">
++        <h3>Your Selection <span class="bean-count" id="bean-count" aria-live="polite">0</span></h3>
++        <div class="bean-actions">
++          <button type="button" class="btn-ghost" id="bean-add-all">Add all</button>
++          <button type="button" class="btn-ghost" id="bean-clear">Clear</button>
++        </div>
++      </div>
++      <ul class="bean-list bean-list--selected" id="bean-selected" aria-label="Selected beans">
++        <li class="bean-empty">Your box is empty — add some beans below.</li>
++      </ul>
++
++      <div class="bean-toolbar">
++        <h3>Available Beans</h3>
++      </div>
++      <ul class="bean-list" id="bean-available" aria-label="Available beans">
++        <li class="bean-empty">You've added every bean we roast!</li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +431,92 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const img = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=400&q=70`;
++      const BEANS = [
++        { id: 'ethiopia', name: 'Ethiopia Yirgacheffe', roast: 'Light', origin: 'Ethiopia', notes: 'Jasmine, bergamot and bright lemon.', img: img('1559056199-641a0ac8b55e') },
++        { id: 'colombia', name: 'Colombia Huila', roast: 'Medium', origin: 'Colombia', notes: 'Caramel sweetness with red apple.', img: img('1447933601403-0c6688de566e') },
++        { id: 'sumatra', name: 'Sumatra Mandheling', roast: 'Dark', origin: 'Indonesia', notes: 'Earthy, cedar, dark chocolate.', img: img('1511920170033-f8396924c348') },
++        { id: 'guatemala', name: 'Guatemala Antigua', roast: 'Medium', origin: 'Guatemala', notes: 'Cocoa, toffee and soft spice.', img: img('1514432324607-a09d9b4aefdd') },
++        { id: 'kenya', name: 'Kenya AA', roast: 'Light', origin: 'Kenya', notes: 'Blackcurrant, grapefruit, winey finish.', img: img('1509042239860-f550ce710b93') },
++        { id: 'brazil', name: 'Brazil Santos', roast: 'Medium-Dark', origin: 'Brazil', notes: 'Nutty, low acidity, milk chocolate.', img: img('1497935586351-b67a49e012bf') },
++        { id: 'costa-rica', name: 'Costa Rica Tarrazú', roast: 'Medium', origin: 'Costa Rica', notes: 'Honey, citrus and clean body.', img: img('1501339847302-ac426a4a7cbb') },
++        { id: 'house-espresso', name: 'House Espresso Blend', roast: 'Dark', origin: 'Blend', notes: 'Syrupy, smoky, bittersweet.', img: img('1442512595331-e89e73853f31') },
++      ];
++
++      const selectedList = document.getElementById('bean-selected');
++      const availableList = document.getElementById('bean-available');
++      const countEl = document.getElementById('bean-count');
++      const addAllBtn = document.getElementById('bean-add-all');
++      const clearBtn = document.getElementById('bean-clear');
++
++      const selected = new Set(['colombia', 'house-espresso']);
++      const cards = new Map();
++
++      function createCard(bean) {
++        const li = document.createElement('li');
++        li.className = 'bean-card';
++        li.dataset.id = bean.id;
++        // Unique name per card so it is tracked individually; the shared
++        // `view-transition-class: bean-card` (in CSS) gives all of them the same animation.
++        li.style.viewTransitionName = `bean-${bean.id}`;
++        li.innerHTML = `
++          <img src="${bean.img}" alt="${bean.name} coffee" loading="lazy" width="400" height="120">
++          <div class="bean-body">
++            <h4>${bean.name}</h4>
++            <span class="bean-meta">${bean.origin} · ${bean.roast} roast</span>
++            <p class="bean-notes">${bean.notes}</p>
++            <button type="button" class="bean-toggle"></button>
++          </div>`;
++        return li;
++      }
++
++      function render() {
++        // Reuse the same DOM nodes and move them between lists in catalog order.
++        for (const bean of BEANS) {
++          const card = cards.get(bean.id);
++          const isSelected = selected.has(bean.id);
++          const btn = card.querySelector('.bean-toggle');
++          btn.textContent = isSelected ? 'Remove' : 'Add to box';
++          btn.setAttribute('aria-label', `${isSelected ? 'Remove' : 'Add'} ${bean.name}`);
++          (isSelected ? selectedList : availableList).appendChild(card);
++        }
++        countEl.textContent = selected.size;
++        addAllBtn.disabled = selected.size === BEANS.length;
++        clearBtn.disabled = selected.size === 0;
++      }
++
++      // One shared entry point: every change runs inside a single view transition,
++      // so all affected cards animate to their new positions simultaneously.
++      function update(mutate) {
++        const apply = () => { mutate(); render(); };
++        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++        if (!document.startViewTransition || reduceMotion) {
++          apply();
++          return;
++        }
++        document.startViewTransition(apply);
++      }
++
++      for (const bean of BEANS) cards.set(bean.id, createCard(bean));
++
++      document.querySelector('.bean-selector').addEventListener('click', (e) => {
++        const toggle = e.target.closest('.bean-toggle');
++        if (toggle) {
++          const id = toggle.closest('.bean-card').dataset.id;
++          update(() => (selected.has(id) ? selected.delete(id) : selected.add(id)));
++          return;
++        }
++        if (e.target === addAllBtn) update(() => BEANS.forEach((b) => selected.add(b.id)));
++        if (e.target === clearBtn) update(() => selected.clear());
++      });
++
++      render();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

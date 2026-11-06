@@ -1,0 +1,99 @@
+diff --git a/index.html b/index.html
+index 66c9173..753ff41 100644
+--- a/index.html
++++ b/index.html
+@@ -62,10 +62,17 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current] {
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current] {
++      text-decoration: underline;
++      text-underline-offset: 6px;
++      text-decoration-thickness: 2px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -175,7 +182,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="menu" data-nav="/menu">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -207,6 +214,66 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigation = document.querySelector('nav');
++    const links = [...navigation.querySelectorAll('a:not(.logout-link)')];
++    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
++    const pageLink = links.find((link) => {
++      const path = new URL(link.href).pathname;
++      return currentPath === path || currentPath.startsWith(`${path}/`);
++    });
++
++    function highlightLink(activeLink, current = 'page') {
++      links.forEach((link) => {
++        if (link === activeLink) {
++          link.setAttribute('aria-current', current);
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++    }
++
++    highlightLink(pageLink);
++
++    // On the landing page, follow content visible below the sticky navigation.
++    if (currentPath === '/' || currentPath === '/index.html') {
++      const sections = [...document.querySelectorAll('section[data-nav]')];
++      let scheduled = false;
++
++      function updateVisibleSection() {
++        scheduled = false;
++        const contentTop = navigation.getBoundingClientRect().bottom;
++        let activeSection;
++        let largestVisibleHeight = 0;
++
++        sections.forEach((section) => {
++          const bounds = section.getBoundingClientRect();
++          const visibleHeight = Math.max(0,
++            Math.min(bounds.bottom, window.innerHeight) - Math.max(bounds.top, contentTop));
++          if (visibleHeight > largestVisibleHeight) {
++            largestVisibleHeight = visibleHeight;
++            activeSection = section;
++          }
++        });
++
++        const activeLink = activeSection && links.find((link) =>
++          new URL(link.href).pathname === activeSection.dataset.nav);
++        highlightLink(activeLink, 'location');
++      }
++
++      function scheduleUpdate() {
++        if (!scheduled) {
++          scheduled = true;
++          requestAnimationFrame(updateVisibleSection);
++        }
++      }
++
++      window.addEventListener('scroll', scheduleUpdate, { passive: true });
++      window.addEventListener('resize', scheduleUpdate);
++      window.addEventListener('pageshow', scheduleUpdate);
++      updateVisibleSection();
++    }
++  </script>
+ </body>
+ 
+ </html>

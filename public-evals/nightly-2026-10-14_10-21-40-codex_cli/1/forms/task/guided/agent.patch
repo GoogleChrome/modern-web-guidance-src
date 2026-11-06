@@ -1,0 +1,41 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,36 @@
++# Page and registration audit
++
++The original static page had no forms or registration service. The new registration is explicitly a preview: it never creates an account, transmits entries, or persists personal data. Completion clears form values and review output. The preview notice appears before final confirmation and on completion.
++
++## Accessibility changes
++
++- Added a focusable main landmark and skip link; placed the announcement inside the header.
++- Preserved a single h1 and sequential headings, named navigation, meaningful link names, and decorative image alternatives.
++- Replaced repeated ambiguous product link names and removed the GET-based logout link.
++- Added explicit input labels, appropriate autocomplete, linked hints and errors, native fieldsets, and required constraints.
++- Added current-step semantics, focus on step headings, a focused error summary with links, and disabled hidden panels so inactive inputs cannot receive focus.
++- Provided native password visibility, an opt-in marketing checkbox, editable review details, explicit terms consent, and accessible native policy disclosures.
++- Added visible focus outlines, responsive layouts, scalable touch targets, reduced motion, and forced-colors support.
++- Kept explicit list roles where CSS removes list markers for Safari, and explicit label associations even on nested controls, per accessibility guidance. The HTML validator disables only the corresponding conflicting redundant-role/for rules (plus generic native-element preferences).
++
++## Security changes
++
++- Removed logout through GET; the static page does not claim a signed-in state or mutate a session.
++- All user-controlled review text is inserted with textContent. Passwords are never copied into the review.
++- No localStorage, sessionStorage, cookies, analytics, API calls, or logging of form data.
++- Local scripts, styles, and stock images avoid third-party runtime dependencies.
++- Restrictive meta CSP blocks connections, form submission, plugins, base URL changes, and external executable content. The initial submit control is disabled without JavaScript.
++- Passwords accept 15–128 characters, allow spaces and pasting, and support browser password managers. No unnecessary confirmation or composition rules.
++- Collects only month/day for an optional birthday and validates actual calendar limits, including February 29.
++
++## Validation
++
++Run `pnpm test`. Node/jsdom tests cover missing/invalid input, Unicode names, calendar dates, password visibility, step focus and navigation, required consent, review escaping, earlier-step revalidation, completion clearing, and restarting. axe-core checks all three steps; HTML validation checks the page.
++
++No browser was used. jsdom cannot validate rendered contrast, visual reflow, or actual assistive-technology behavior; axe color-contrast is disabled for that reason. Automated checks do not establish complete WCAG conformance.
++
++## Production integration boundary
++
++No registration endpoint exists in this repository. Before changing the preview to live registration, implement and verify server-side validation, approved program terms and privacy disclosures, TLS, password hashing, rate limiting, email verification, secure session handling, and CSRF protection as appropriate. Supply CSP as an HTTP header with `frame-ancestors 'none'`, plus appropriate security headers; frame-ancestors cannot be enforced through meta CSP. Remove the preview-only `connect-src 'none'` and `form-action 'none'` restrictions only for the approved same-origin service. Report success only after that service confirms account creation.
++
++Stock photography: Unsplash image IDs 1495474472287-4d71bcdd2085, 1541167760496-1628856ab772, 1510707577719-ae7c14805e3a, and 1517701604599-bb29b565090c, downloaded to assets.

@@ -1,0 +1,503 @@
+diff --git a/coffee-box.js b/coffee-box.js
+new file mode 100644
+--- a/coffee-box.js
++++ b/coffee-box.js
+@@ -0,0 +1,498 @@
++/*
++ * Spinning 3D coffee box with a live HTML form on its front face.
++ *
++ * Rendering: raw WebGL (no dependencies).
++ *
++ * Interactivity: the real <form> element is kept in the DOM and given a CSS
++ * matrix3d() transform computed from the same projection * view * model matrices
++ * used by WebGL. Because hit-testing follows CSS transforms, every input and
++ * button stays clickable exactly where it is drawn, every frame, as the box turns.
++ *
++ *  - Native mode (HTML-in-Canvas API: <canvas layoutsubtree> + texElementImage2D):
++ *    the form is a canvas child, rasterised into the front-face texture by the
++ *    browser, and the CSS transform is only used for hit-testing/accessibility.
++ *  - Fallback mode (all other browsers): the form is moved into an overlay layer
++ *    above the canvas and the browser paints it with the projected transform,
++ *    so it appears glued to the WebGL face.
++ */
++(function () {
++  'use strict';
++
++  const stage = document.getElementById('box-stage');
++  const canvas = document.getElementById('box-canvas');
++  const overlay = document.getElementById('box-overlay');
++  const form = document.getElementById('box-form');
++  if (!stage || !canvas || !form) return;
++
++  const gl = canvas.getContext('webgl', { antialias: true, alpha: true, premultipliedAlpha: false });
++  if (!gl) {
++    // No WebGL: just show the form as a normal flat element.
++    overlay.appendChild(form);
++    form.style.position = 'relative';
++    form.style.margin = '60px auto';
++    form.style.background = '#f3e5d0';
++    form.style.borderRadius = '8px';
++    return;
++  }
++
++  const nativeHtmlInCanvas =
++    typeof gl.texElementImage2D === 'function' && 'layoutSubtree' in canvas;
++  if (!nativeHtmlInCanvas) {
++    canvas.removeAttribute('layoutsubtree');
++    overlay.appendChild(form);
++  }
++
++  // ---------------------------------------------------------------------------
++  // Box geometry (world units). Front face aspect matches the form's CSS size.
++  // ---------------------------------------------------------------------------
++  const FORM_W = 320;
++  const FORM_H = 400;
++  const BOX_H = 2.0;
++  const BOX_W = BOX_H * (FORM_W / FORM_H); // 1.6
++  const BOX_D = 1.1;
++
++  // ---------------------------------------------------------------------------
++  // Minimal column-major mat4 helpers
++  // ---------------------------------------------------------------------------
++  const mat4 = {
++    identity() {
++      return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
++    },
++    multiply(a, b) {
++      const o = new Float32Array(16);
++      for (let c = 0; c < 4; c++) {
++        for (let r = 0; r < 4; r++) {
++          o[c * 4 + r] =
++            a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
++        }
++      }
++      return o;
++    },
++    perspective(fovy, aspect, near, far) {
++      const f = 1 / Math.tan(fovy / 2);
++      const nf = 1 / (near - far);
++      return new Float32Array([
++        f / aspect, 0, 0, 0,
++        0, f, 0, 0,
++        0, 0, (far + near) * nf, -1,
++        0, 0, 2 * far * near * nf, 0,
++      ]);
++    },
++    lookAt(eye, target, up) {
++      let zx = eye[0] - target[0], zy = eye[1] - target[1], zz = eye[2] - target[2];
++      let l = Math.hypot(zx, zy, zz); zx /= l; zy /= l; zz /= l;
++      let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
++      l = Math.hypot(xx, xy, xz); xx /= l; xy /= l; xz /= l;
++      const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
++      return new Float32Array([
++        xx, yx, zx, 0,
++        xy, yy, zy, 0,
++        xz, yz, zz, 0,
++        -(xx * eye[0] + xy * eye[1] + xz * eye[2]),
++        -(yx * eye[0] + yy * eye[1] + yz * eye[2]),
++        -(zx * eye[0] + zy * eye[1] + zz * eye[2]),
++        1,
++      ]);
++    },
++    rotateX(a) {
++      const c = Math.cos(a), s = Math.sin(a);
++      return new Float32Array([1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1]);
++    },
++    rotateY(a) {
++      const c = Math.cos(a), s = Math.sin(a);
++      return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]);
++    },
++    translate(x, y, z) {
++      const m = mat4.identity();
++      m[12] = x; m[13] = y; m[14] = z;
++      return m;
++    },
++  };
++
++  // ---------------------------------------------------------------------------
++  // Shaders
++  // ---------------------------------------------------------------------------
++  const VS = `
++    attribute vec3 aPos;
++    attribute vec3 aNormal;
++    attribute vec2 aUV;
++    uniform mat4 uProj, uView, uModel;
++    varying vec3 vNormal;
++    varying vec2 vUV;
++    void main() {
++      vNormal = mat3(uModel) * aNormal;
++      vUV = aUV;
++      gl_Position = uProj * uView * uModel * vec4(aPos, 1.0);
++    }`;
++  const FS = `
++    precision mediump float;
++    uniform sampler2D uTex;
++    uniform vec3 uBase;
++    varying vec3 vNormal;
++    varying vec2 vUV;
++    void main() {
++      vec3 n = normalize(vNormal);
++      vec3 L = normalize(vec3(0.4, 0.7, 0.9));
++      float diff = max(dot(n, L), 0.0);
++      float light = 0.55 + 0.5 * diff;
++      vec4 t = texture2D(uTex, vUV);
++      // Subtle paper grain + darkened edges for a cardboard look.
++      vec2 e = min(vUV, 1.0 - vUV);
++      float edge = smoothstep(0.0, 0.04, min(e.x, e.y));
++      vec3 base = uBase * (0.88 + 0.12 * edge);
++      vec3 col = mix(base, t.rgb, t.a);
++      gl_FragColor = vec4(col * light, 1.0);
++    }`;
++
++  function compile(type, src) {
++    const s = gl.createShader(type);
++    gl.shaderSource(s, src);
++    gl.compileShader(s);
++    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
++    return s;
++  }
++  const prog = gl.createProgram();
++  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
++  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
++  gl.linkProgram(prog);
++  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
++  gl.useProgram(prog);
++
++  const loc = {
++    aPos: gl.getAttribLocation(prog, 'aPos'),
++    aNormal: gl.getAttribLocation(prog, 'aNormal'),
++    aUV: gl.getAttribLocation(prog, 'aUV'),
++    uProj: gl.getUniformLocation(prog, 'uProj'),
++    uView: gl.getUniformLocation(prog, 'uView'),
++    uModel: gl.getUniformLocation(prog, 'uModel'),
++    uTex: gl.getUniformLocation(prog, 'uTex'),
++    uBase: gl.getUniformLocation(prog, 'uBase'),
++  };
++
++  // ---------------------------------------------------------------------------
++  // Geometry: 6 faces, each 4 verts / 6 indices, drawn separately so each
++  // face can have its own texture.
++  // ---------------------------------------------------------------------------
++  const hw = BOX_W / 2, hh = BOX_H / 2, hd = BOX_D / 2;
++  // Each face: [normal, corner BL, BR, TR, TL] (as seen from outside).
++  const faces = {
++    front:  { n: [0, 0, 1],  v: [[-hw, -hh, hd], [hw, -hh, hd], [hw, hh, hd], [-hw, hh, hd]] },
++    back:   { n: [0, 0, -1], v: [[hw, -hh, -hd], [-hw, -hh, -hd], [-hw, hh, -hd], [hw, hh, -hd]] },
++    right:  { n: [1, 0, 0],  v: [[hw, -hh, hd], [hw, -hh, -hd], [hw, hh, -hd], [hw, hh, hd]] },
++    left:   { n: [-1, 0, 0], v: [[-hw, -hh, -hd], [-hw, -hh, hd], [-hw, hh, hd], [-hw, hh, -hd]] },
++    top:    { n: [0, 1, 0],  v: [[-hw, hh, hd], [hw, hh, hd], [hw, hh, -hd], [-hw, hh, -hd]] },
++    bottom: { n: [0, -1, 0], v: [[-hw, -hh, -hd], [hw, -hh, -hd], [hw, -hh, hd], [-hw, -hh, hd]] },
++  };
++  const faceOrder = ['front', 'back', 'right', 'left', 'top', 'bottom'];
++  const pos = [], nrm = [], uv = [], idx = [];
++  const UVS = [[0, 1], [1, 1], [1, 0], [0, 0]]; // texture row 0 = top of image
++  faceOrder.forEach((name, i) => {
++    const f = faces[name];
++    f.offset = i * 6 * 2; // byte offset into index buffer (Uint16)
++    f.v.forEach((p, k) => {
++      pos.push(...p);
++      nrm.push(...f.n);
++      uv.push(...UVS[k]);
++    });
++    const b = i * 4;
++    idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
++  });
++
++  function buffer(target, data) {
++    const buf = gl.createBuffer();
++    gl.bindBuffer(target, buf);
++    gl.bufferData(target, data, gl.STATIC_DRAW);
++    return buf;
++  }
++  function attrib(location, data, size) {
++    if (location < 0) return;
++    buffer(gl.ARRAY_BUFFER, new Float32Array(data));
++    gl.enableVertexAttribArray(location);
++    gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
++  }
++  attrib(loc.aPos, pos, 3);
++  attrib(loc.aNormal, nrm, 3);
++  attrib(loc.aUV, uv, 2);
++  buffer(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx));
++
++  // ---------------------------------------------------------------------------
++  // Textures for the printed panels (drawn with 2D canvas)
++  // ---------------------------------------------------------------------------
++  const KRAFT = [0.85, 0.72, 0.55];
++  const BROWN = '#4e342e';
++
++  function makeTexture(source) {
++    const tex = gl.createTexture();
++    gl.bindTexture(gl.TEXTURE_2D, tex);
++    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
++    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
++    setTexParams();
++    return tex;
++  }
++  function setTexParams() {
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++  }
++  function panel(w, h, draw) {
++    const c = document.createElement('canvas');
++    c.width = w; c.height = h;
++    const ctx = c.getContext('2d');
++    draw(ctx, w, h);
++    return makeTexture(c);
++  }
++
++  function drawBean(ctx, x, y, r, rot) {
++    ctx.save();
++    ctx.translate(x, y);
++    ctx.rotate(rot);
++    ctx.fillStyle = BROWN;
++    ctx.beginPath();
++    ctx.ellipse(0, 0, r * 0.7, r, 0, 0, Math.PI * 2);
++    ctx.fill();
++    ctx.strokeStyle = '#d7b98e';
++    ctx.lineWidth = r * 0.12;
++    ctx.beginPath();
++    ctx.moveTo(0, -r * 0.85);
++    ctx.bezierCurveTo(r * 0.35, -r * 0.3, -r * 0.35, r * 0.3, 0, r * 0.85);
++    ctx.stroke();
++    ctx.restore();
++  }
++
++  const textures = {
++    // Front: blank in fallback mode (the projected DOM form sits on top),
++    // replaced with the live form texture in native mode.
++    front: panel(2, 2, () => {}),
++    back: panel(512, 640, (ctx, w, h) => {
++      ctx.fillStyle = BROWN;
++      ctx.fillRect(0, 0, w, 110);
++      ctx.fillRect(0, h - 70, w, 70);
++      ctx.fillStyle = '#fff';
++      ctx.font = 'bold 44px Segoe UI, sans-serif';
++      ctx.textAlign = 'center';
++      ctx.fillText('THE DAILY GRIND', w / 2, 72);
++      drawBean(ctx, w / 2, 290, 110, 0.4);
++      ctx.fillStyle = BROWN;
++      ctx.font = 'italic 34px Georgia, serif';
++      ctx.fillText('Ethically sourced.', w / 2, 470);
++      ctx.fillText('Locally roasted.', w / 2, 515);
++      ctx.fillStyle = '#fff';
++      ctx.font = '24px Segoe UI, sans-serif';
++      ctx.fillText('NET WT 12 OZ (340 g)', w / 2, h - 26);
++    }),
++    right: panel(352, 640, (ctx, w, h) => {
++      ctx.fillStyle = BROWN;
++      ctx.textAlign = 'center';
++      ctx.font = 'bold 30px Segoe UI, sans-serif';
++      ctx.fillText('TASTING NOTES', w / 2, 70);
++      ctx.font = '26px Segoe UI, sans-serif';
++      ['Dark chocolate', 'Toasted almond', 'Brown sugar', 'Citrus zest'].forEach((t, i) =>
++        ctx.fillText(t, w / 2, 140 + i * 50));
++      for (let i = 0; i < 3; i++) drawBean(ctx, w / 2 - 80 + i * 80, 470, 32, i * 0.7);
++      ctx.font = '20px Segoe UI, sans-serif';
++      ctx.fillText('ROASTED FRESH WEEKLY', w / 2, h - 50);
++    }),
++    left: panel(352, 640, (ctx, w, h) => {
++      ctx.save();
++      ctx.translate(w / 2, h / 2);
++      ctx.rotate(-Math.PI / 2);
++      ctx.fillStyle = BROWN;
++      ctx.textAlign = 'center';
++      ctx.font = 'bold 56px Segoe UI, sans-serif';
++      ctx.fillText('DAILY GRIND', 0, -20);
++      ctx.font = 'italic 30px Georgia, serif';
++      ctx.fillText('Wake up your senses', 0, 40);
++      ctx.restore();
++    }),
++    top: panel(256, 176, (ctx, w, h) => {
++      ctx.strokeStyle = 'rgba(78,52,46,0.5)';
++      ctx.setLineDash([10, 8]);
++      ctx.lineWidth = 3;
++      ctx.beginPath();
++      ctx.moveTo(0, h / 2);
++      ctx.lineTo(w, h / 2);
++      ctx.stroke();
++      ctx.setLineDash([]);
++      ctx.fillStyle = BROWN;
++      ctx.font = 'bold 18px Segoe UI, sans-serif';
++      ctx.textAlign = 'center';
++      ctx.fillText('OPEN HERE', w / 2, h / 2 - 12);
++    }),
++    bottom: panel(2, 2, () => {}),
++  };
++
++  // Native HTML-in-canvas: rasterise the live form into the front texture.
++  let formDirty = nativeHtmlInCanvas;
++  function uploadFormTexture() {
++    if (!nativeHtmlInCanvas) return;
++    try {
++      gl.bindTexture(gl.TEXTURE_2D, textures.front);
++      gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, form);
++      setTexParams();
++      formDirty = false;
++    } catch (err) {
++      // Leave the previous texture in place; we'll try again on the next paint.
++    }
++  }
++  if (nativeHtmlInCanvas) {
++    canvas.addEventListener('paint', () => { formDirty = true; });
++    ['input', 'change', 'focusin', 'focusout', 'reset'].forEach((type) =>
++      form.addEventListener(type, () => {
++        formDirty = true;
++        if (typeof canvas.requestPaint === 'function') canvas.requestPaint();
++      }));
++  }
++
++  // ---------------------------------------------------------------------------
++  // Sizing
++  // ---------------------------------------------------------------------------
++  let cssW = 1, cssH = 1;
++  function resize() {
++    const r = stage.getBoundingClientRect();
++    cssW = Math.max(1, r.width);
++    cssH = Math.max(1, r.height);
++    const dpr = Math.min(window.devicePixelRatio || 1, 2);
++    canvas.width = Math.round(cssW * dpr);
++    canvas.height = Math.round(cssH * dpr);
++    gl.viewport(0, 0, canvas.width, canvas.height);
++  }
++  if ('ResizeObserver' in window) new ResizeObserver(resize).observe(stage);
++  else window.addEventListener('resize', resize);
++  resize();
++
++  // ---------------------------------------------------------------------------
++  // Animation state: spin continuously, but ease to face-forward and hold while
++  // the user is interacting with the form.
++  // ---------------------------------------------------------------------------
++  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++  const SPIN_SPEED = 0.5; // rad/s
++  let angle = reduceMotion ? 0 : -0.6;
++  let hovering = false;
++  let focused = false;
++
++  form.addEventListener('pointerenter', () => { hovering = true; });
++  form.addEventListener('pointerleave', () => { hovering = false; });
++  form.addEventListener('focusin', () => { focused = true; });
++  form.addEventListener('focusout', () => {
++    // Wait a tick so moving focus between fields doesn't restart the spin.
++    setTimeout(() => { focused = form.contains(document.activeElement); }, 0);
++  });
++
++  // Form behaviour (demo only, nothing is sent anywhere).
++  const status = form.querySelector('.form-status');
++  form.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const data = new FormData(form);
++    const name = String(data.get('name') || '').trim();
++    const email = String(data.get('email') || '').trim();
++    if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
++      status.style.color = '#c62828';
++      status.textContent = 'Please enter your name and a valid email.';
++      return;
++    }
++    status.style.color = '#2e7d32';
++    status.textContent = `Thanks, ${name}! Your ${data.get('roast')} roast is on its way.`;
++  });
++  form.addEventListener('reset', () => { status.textContent = ''; });
++
++  // ---------------------------------------------------------------------------
++  // Projection of the form onto the front face (CSS matrix3d)
++  // ---------------------------------------------------------------------------
++  // Maps form-local CSS pixels (x right, y down, z=0) to box model space on the
++  // front face (slightly in front to avoid any z ambiguity).
++  const formToFace = new Float32Array([
++    BOX_W / FORM_W, 0, 0, 0,
++    0, -BOX_H / FORM_H, 0, 0,
++    0, 0, 1, 0,
++    -hw, hh, hd + 0.001, 1,
++  ]);
++
++  function cssMatrix(m) {
++    // Normalise so m[15] === 1 for better numeric stability in the browser.
++    const s = m[15] !== 0 ? 1 / m[15] : 1;
++    let out = 'matrix3d(';
++    for (let i = 0; i < 16; i++) out += (m[i] * s).toFixed(6) + (i < 15 ? ',' : ')');
++    return out;
++  }
++
++  // ---------------------------------------------------------------------------
++  // Render loop
++  // ---------------------------------------------------------------------------
++  gl.enable(gl.DEPTH_TEST);
++  gl.enable(gl.CULL_FACE);
++  gl.cullFace(gl.BACK);
++  gl.clearColor(0, 0, 0, 0);
++  gl.uniform1i(loc.uTex, 0);
++  gl.activeTexture(gl.TEXTURE0);
++
++  const eye = [0, 0.45, 4.6];
++  let last = performance.now();
++  let formVisible = true;
++
++  function frame(now) {
++    const dt = Math.min(0.05, (now - last) / 1000);
++    last = now;
++    const t = now / 1000;
++
++    if (hovering || focused || reduceMotion) {
++      // Ease toward the nearest front-facing angle.
++      const target = Math.round(angle / (Math.PI * 2)) * Math.PI * 2;
++      angle += (target - angle) * Math.min(1, dt * 6);
++    } else {
++      angle += SPIN_SPEED * dt;
++    }
++
++    const proj = mat4.perspective((35 * Math.PI) / 180, cssW / cssH, 0.1, 50);
++    const view = mat4.lookAt(eye, [0, 0, 0], [0, 1, 0]);
++    const bob = reduceMotion ? 0 : Math.sin(t * 1.3) * 0.05;
++    const tilt = reduceMotion ? 0.05 : 0.05 + Math.sin(t * 0.7) * 0.04;
++    const model = mat4.multiply(
++      mat4.translate(0, bob, 0),
++      mat4.multiply(mat4.rotateX(tilt), mat4.rotateY(angle)),
++    );
++
++    if (formDirty) uploadFormTexture();
++
++    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++    gl.uniformMatrix4fv(loc.uProj, false, proj);
++    gl.uniformMatrix4fv(loc.uView, false, view);
++    gl.uniformMatrix4fv(loc.uModel, false, model);
++    gl.uniform3fv(loc.uBase, KRAFT);
++    for (const name of faceOrder) {
++      gl.bindTexture(gl.TEXTURE_2D, textures[name]);
++      gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, faces[name].offset);
++    }
++
++    // --- Keep the DOM form aligned with the front face -----------------------
++    // Front-face normal in world space and vector from face centre to the eye.
++    const nx = model[8], ny = model[9], nz = model[10];
++    const cx = model[8] * hd + model[12], cy = model[9] * hd + model[13], cz = model[10] * hd + model[14];
++    const facing = nx * (eye[0] - cx) + ny * (eye[1] - cy) + nz * (eye[2] - cz);
++    const visible = facing > 0.02;
++
++    if (visible) {
++      // clip -> CSS pixels relative to the stage (y flipped, w preserved so the
++      // browser performs the perspective divide).
++      const toScreen = new Float32Array([
++        cssW / 2, 0, 0, 0,
++        0, -cssH / 2, 0, 0,
++        0, 0, 1, 0,
++        cssW / 2, cssH / 2, 0, 1,
++      ]);
++      const mvp = mat4.multiply(proj, mat4.multiply(view, model));
++      const m = mat4.multiply(toScreen, mat4.multiply(mvp, formToFace));
++      form.style.transform = cssMatrix(m);
++    }
++    if (visible !== formVisible) {
++      formVisible = visible;
++      // Hidden faces can't be clicked, but stay focusable so keyboard users can
++      // still Tab in; focusing swings the box back around (see focusin above).
++      form.classList.toggle('is-hidden', !visible);
++    }
++
++    requestAnimationFrame(frame);
++  }
++
++  requestAnimationFrame(frame);
++})();

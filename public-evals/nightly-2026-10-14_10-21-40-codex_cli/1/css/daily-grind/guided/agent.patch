@@ -1,0 +1,457 @@
+diff --git a/STYLING.md b/STYLING.md
+new file mode 100644
+index 0000000..fb6ad6e
+--- /dev/null
++++ b/STYLING.md
+@@ -0,0 +1,25 @@
++# Daily Grind styling
++
++`index.html` loads `styles.css` directly; no CSS build step or runtime is required.
++
++The layer order is `tokens → reset → base → layout → components → utilities`.
++Keep all author rules in a layer: unlayered rules outrank normal layered rules.
++Use the utility layer for intentional overrides instead of `!important` or longer
++selectors.
++
++Shared custom properties live in `:root`. Palette primitives feed semantic colors;
++spacing, typography, radii, motion, and layout values are named tokens. Keep values
++used by only one component (such as the hero image or button variants) local to
++that component. Change semantic tokens to restyle the site consistently.
++
++Reset and base selectors use `:where()` for zero specificity. Reset only the element
++types owned by the page, rather than every element with `*`. Components use class
++roots and shallow native nesting; direct-child selectors keep rules from matching
++unrelated nested components. Use `:where()` for child types and interaction states
++so these filters do not increase specificity. This site does not need `@scope`
++proximity rules: explicit component boundaries suffice without a scope fallback.
++
++Use logical spacing and sizing properties. Navigation wraps and the grid minimum
++shrinks to its available width on small screens. The hero uses minimum height so
++content can grow with text zoom. Preserve keyboard focus indicators and respect
++reduced-motion preferences when adding interactions.
+diff --git a/index.html b/index.html
+index 66c9173..062858a 100644
+--- a/index.html
++++ b/index.html
+@@ -5,159 +5,12 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="styles.css">
+ </head>
+ 
+-<body>
++<body class="daily-grind">
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,7 +29,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -197,7 +50,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..ec3260c
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,235 @@
++/* Declare precedence once; utilities can override components without specificity wars. */
++@layer tokens, reset, base, layout, components, utilities;
++
++@layer tokens {
++  :root {
++    /* Palette primitives and semantic aliases retain the existing brand. */
++    --color-brown-900: #3e2723;
++    --color-brown-800: #4e342e;
++    --color-brown-100: #d7ccc8;
++    --color-orange-400: #ffab40;
++    --color-white: #fff;
++    --color-gray-50: #fafafa;
++
++    --color-brand: var(--color-brown-800);
++    --color-accent: var(--color-orange-400);
++    --color-text: var(--color-brown-900);
++    --color-on-brand: var(--color-white);
++    --color-page: var(--color-gray-50);
++    --color-surface: var(--color-white);
++    --color-footer: var(--color-brown-100);
++    --color-action-hover: var(--color-brown-900);
++
++    --font-body: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    --font-size-small: 0.85rem;
++    --font-size-nav: 0.9rem;
++    --font-size-logo: 1.5rem;
++    --font-size-hero: 3rem;
++    --line-height-body: 1.6;
++    --letter-spacing-logo: 1px;
++
++    --space-1: 0.3125rem;
++    --space-2: 0.625rem;
++    --space-3: 0.75rem;
++    --space-4: 0.9375rem;
++    --space-5: 1rem;
++    --space-6: 1.25rem;
++    --space-7: 2.5rem;
++
++    --radius-small: 0.25rem;
++    --radius-button: 0.3125rem;
++    --radius-card: 0.5rem;
++    --shadow-card: 0 2px 5px rgb(0 0 0 / 10%);
++    --border-width: 1px;
++    --duration-interaction: 0.3s;
++    --content-max-width: 68.75rem;
++    --card-min-width: 15.625rem;
++    --page-gutter: var(--space-6);
++    --nav-gutter: 5%;
++    --hero-height: 60vh;
++    --layer-sticky: 1000;
++  }
++}
++
++@layer reset {
++  /* Only reset elements owned by this page; no universal reset leaks into widgets. */
++  :where(.daily-grind, .daily-grind :is(nav, header, main, section, footer, div, ul, li, h1, h2, h3, p, a)) {
++    box-sizing: border-box;
++    margin: 0;
++    padding: 0;
++  }
++}
++
++@layer base {
++  :where(.daily-grind) {
++    font-family: var(--font-body);
++    line-height: var(--line-height-body);
++    color: var(--color-text);
++    background-color: var(--color-page);
++  }
++
++  :where(.daily-grind a:focus-visible) {
++    outline: 2px solid currentColor;
++    outline-offset: 4px;
++  }
++}
++
++@layer layout {
++  .container {
++    max-inline-size: var(--content-max-width);
++    margin-block: var(--space-7);
++    margin-inline: auto;
++    padding-inline: var(--page-gutter);
++  }
++
++  .grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--card-min-width)), 1fr));
++    gap: var(--space-6);
++    margin-block-start: var(--space-6);
++  }
++}
++
++@layer components {
++  .site-nav {
++    display: flex;
++    flex-wrap: wrap;
++    justify-content: space-between;
++    align-items: center;
++    gap: var(--space-5) var(--space-6);
++    position: sticky;
++    inset-block-start: 0;
++    z-index: var(--layer-sticky);
++    padding-block: var(--space-5);
++    padding-inline: var(--nav-gutter);
++    background: var(--color-brand);
++    color: var(--color-on-brand);
++
++    & > .logo {
++      font-size: var(--font-size-logo);
++      font-weight: bold;
++      letter-spacing: var(--letter-spacing-logo);
++    }
++
++    & > ul {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: var(--space-2) var(--space-6);
++      padding-inline-start: var(--space-6);
++      list-style: none;
++    }
++
++    & > ul > li > a {
++      color: inherit;
++      text-decoration: none;
++      font-size: var(--font-size-nav);
++      transition: color var(--duration-interaction);
++
++      &:where(:hover, :focus-visible) {
++        color: var(--color-accent);
++      }
++
++      &.logout-link {
++        display: inline-block;
++        border: var(--border-width) solid var(--color-accent);
++        padding-block: var(--space-1);
++        padding-inline: var(--space-3);
++        border-radius: var(--radius-small);
++      }
++    }
++
++    @media (width <= 40rem) {
++      & > ul {
++        padding-inline-start: 0;
++      }
++    }
++  }
++
++  .hero {
++    /* Component-local tokens keep media and overlay out of the shared palette. */
++    --hero-overlay: rgb(0 0 0 / 50%);
++    --hero-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++
++    min-block-size: var(--hero-height);
++    background: linear-gradient(var(--hero-overlay), var(--hero-overlay)), var(--hero-image);
++    background-size: cover;
++    background-position: center;
++    display: flex;
++    flex-direction: column;
++    justify-content: center;
++    align-items: center;
++    color: var(--color-on-brand);
++    text-align: center;
++    padding-block: var(--space-6);
++    padding-inline: var(--page-gutter);
++
++    & > :where(h1) {
++      font-size: var(--font-size-hero);
++      margin-block-end: var(--space-5);
++    }
++  }
++
++  .card {
++    background: var(--color-surface);
++    padding: var(--space-6);
++    border-radius: var(--radius-card);
++    box-shadow: var(--shadow-card);
++    text-align: center;
++
++    & > :where(h3) {
++      margin-block-end: var(--space-2);
++      color: var(--color-brand);
++    }
++  }
++
++  .btn {
++    --button-background: var(--color-brand);
++    --button-background-hover: var(--color-action-hover);
++
++    display: inline-block;
++    background: var(--button-background);
++    color: var(--color-on-brand);
++    padding-block: var(--space-2);
++    padding-inline: var(--space-6);
++    text-decoration: none;
++    border-radius: var(--radius-button);
++    margin-block-start: var(--space-4);
++    transition: background-color var(--duration-interaction);
++
++    &:where(:hover, :focus-visible) {
++      background: var(--button-background-hover);
++    }
++  }
++
++  .site-footer {
++    background: var(--color-footer);
++    text-align: center;
++    padding-block: var(--space-7);
++    padding-inline: var(--page-gutter);
++    margin-block-start: var(--space-7);
++
++    & > .footer-links {
++      margin-block-end: var(--space-6);
++
++      & > a {
++        margin-inline: var(--space-2);
++        color: inherit;
++        text-decoration: none;
++        font-size: var(--font-size-small);
++      }
++    }
++  }
++
++  @media (prefers-reduced-motion: reduce) {
++    :where(.site-nav > ul > li > a, .btn) {
++      transition: none;
++    }
++  }
++}
++
++@layer utilities {
++  .text-center {
++    text-align: center;
++  }
++}

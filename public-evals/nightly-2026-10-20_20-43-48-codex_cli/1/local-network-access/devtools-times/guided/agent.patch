@@ -1,0 +1,44 @@
+diff --git a/README.md b/README.md
+index 4479b53..6acd41b 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,21 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Local network access
++
++Responses explicitly allow this application's origin to request local network and
++loopback access through `Permissions-Policy`. The browser still requires the
++user's permission; this header does not grant access automatically or delegate it
++to cross-origin frames.
++
++Serve the deployed application over HTTPS. Local services must allow the app's
++origin through standard CORS headers when the app reads cross-origin responses.
++For HTTP endpoints, client requests should set `targetAddressSpace: 'local'` for
++LAN devices or `targetAddressSpace: 'loopback'` for services on the user's machine.
++Initiate the first request from a user action, handle denied permissions and
++connection failures, and avoid querying the legacy `local-network-access`
++permission name.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..8b6d50d 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Allow this origin to request LAN and loopback access, subject to user consent.
++  // Keep the combined directive for browsers predating the granular policies.
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network=(self), loopback-network=(self), local-network-access=(self)',
++  );
++  return response;
+ });

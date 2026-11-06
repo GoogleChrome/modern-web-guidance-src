@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,61 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++  <!-- Core Web Vitals monitoring -->
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5/dist/web-vitals.js';
++
++    const ENDPOINT = '/path/to/analytics/endpoint';
++    const queue = new Map(); // metric.id -> latest payload (dedupes updates)
++
++    function addToQueue(metric) {
++      queue.set(metric.id, {
++        name: metric.name,
++        value: metric.value,
++        delta: metric.delta,
++        rating: metric.rating,
++        id: metric.id,
++        navigationType: metric.navigationType,
++        page: location.pathname,
++      });
++    }
++
++    function flushQueue() {
++      if (queue.size === 0) return;
++      const body = JSON.stringify([...queue.values()]);
++      queue.clear();
++      // sendBeacon survives page hide/close; fall back to keepalive fetch.
++      const sent = navigator.sendBeacon && navigator.sendBeacon(
++        ENDPOINT, new Blob([body], { type: 'application/json' })
++      );
++      if (!sent) {
++        fetch(ENDPOINT, {
++          method: 'POST',
++          body,
++          headers: { 'Content-Type': 'application/json' },
++          keepalive: true,
++        }).catch(() => {});
++      }
++    }
++
++    // Register metric callbacks first so web-vitals' own visibilitychange
++    // handlers run (and finalize values) before our flush listener below.
++    onCLS(addToQueue);
++    onINP(addToQueue);
++    onLCP(addToQueue);
++
++    // Flush when the page is hidden (tab close, navigation, app switch,
++    // mobile backgrounding). Avoids `unload`/`beforeunload`, which break
++    // bfcache. `pagehide` covers older Safari, which doesn't always fire
++    // visibilitychange on unload. If the page is restored from bfcache or
++    // becomes visible again, web-vitals keeps reporting and later updates
++    // are queued and flushed on the next hide.
++    document.addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flushQueue();
++    });
++    window.addEventListener('pagehide', flushQueue);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

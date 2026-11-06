@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+index 66c9173..258304a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,81 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal carousel */
++    .carousel-viewport {
++      max-width: 400px;
++      margin: 20px auto 0;
++    }
++
++    .is-enhanced .carousel-viewport {
++      view-transition-name: seasonal-item;
++    }
++
++    .carousel:not(.is-enhanced) .carousel-viewport {
++      max-width: none;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++    }
++
++    .carousel-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 20px;
++    }
++
++    .carousel-controls .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .carousel-controls[hidden] {
++      display: none;
++    }
++
++    @keyframes slide-to-left { to { transform: translateX(-100%); opacity: 0; } }
++    @keyframes slide-from-right { from { transform: translateX(100%); opacity: 0; } }
++    @keyframes slide-to-right { to { transform: translateX(100%); opacity: 0; } }
++    @keyframes slide-from-left { from { transform: translateX(-100%); opacity: 0; } }
++
++    /* Only the carousel animates; the rest of the page stays still */
++    ::view-transition-group(seasonal-item) {
++      animation-duration: 0.4s;
++      animation-timing-function: ease-in-out;
++      overflow: clip;
++    }
++
++    ::view-transition-old(seasonal-item),
++    ::view-transition-new(seasonal-item) {
++      animation: 0.4s ease-in-out both;
++    }
++
++    html:active-view-transition-type(forward)::view-transition-old(seasonal-item) {
++      animation-name: slide-to-left;
++    }
++
++    html:active-view-transition-type(forward)::view-transition-new(seasonal-item) {
++      animation-name: slide-from-right;
++    }
++
++    html:active-view-transition-type(backward)::view-transition-old(seasonal-item) {
++      animation-name: slide-to-right;
++    }
++
++    html:active-view-transition-type(backward)::view-transition-new(seasonal-item) {
++      animation-name: slide-from-left;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(seasonal-item),
++      ::view-transition-old(seasonal-item),
++      ::view-transition-new(seasonal-item) {
++        animation: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -177,7 +252,8 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="carousel" id="seasonal" role="group" aria-roledescription="carousel" aria-label="Seasonal Favorites">
++        <div class="carousel-viewport" aria-live="polite">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -193,7 +269,49 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        </div>
++        <div class="carousel-controls" hidden>
++          <button type="button" class="btn" data-dir="backward">Previous</button>
++          <span class="carousel-status"></span>
++          <button type="button" class="btn" data-dir="forward">Next</button>
++        </div>
+       </div>
++      <script>
++        (() => {
++          const root = document.getElementById('seasonal');
++          const viewport = root.querySelector('.carousel-viewport');
++          const cards = [...viewport.children];
++          const controls = root.querySelector('.carousel-controls');
++          const status = root.querySelector('.carousel-status');
++          const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++          let index = 0;
++
++          function show(i) {
++            cards.forEach((card, n) => { card.hidden = n !== i; });
++            status.textContent = `${i + 1} of ${cards.length}`;
++          }
++
++          function go(direction) {
++            const step = direction === 'forward' ? 1 : -1;
++            const next = (index + step + cards.length) % cards.length;
++            const update = () => { index = next; show(next); };
++            if (!document.startViewTransition || reducedMotion.matches) {
++              update();
++              return;
++            }
++            document.startViewTransition({ update, types: [direction] });
++          }
++
++          controls.addEventListener('click', (e) => {
++            const button = e.target.closest('button[data-dir]');
++            if (button) go(button.dataset.dir);
++          });
++
++          root.classList.add('is-enhanced');
++          controls.hidden = false;
++          show(index);
++        })();
++      </script>
+     </section>
+   </main>
+ 

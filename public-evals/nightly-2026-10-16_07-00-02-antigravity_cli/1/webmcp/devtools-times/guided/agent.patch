@@ -1,0 +1,1069 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..8375309 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -34,6 +34,11 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
++    <script is:inline define:vars={{ baseUrl }}>
++      window.__DEVTOOLS_BASE_URL__ = baseUrl;
++    </script>
++    <script src="../webmcp/init.ts"></script>
++
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+diff --git a/src/webmcp/init.ts b/src/webmcp/init.ts
+new file mode 100644
+index 0000000..59347b9
+--- /dev/null
++++ b/src/webmcp/init.ts
+@@ -0,0 +1,49 @@
++/**
++ * WebMCP Initialization Script
++ * Installs polyfill, registers tools, and manages lifecycle transitions.
++ */
++
++import { installWebMCPPolyfill } from './polyfill';
++import { registerAppTools } from './tools';
++
++let currentNavigationController: AbortController | null = null;
++
++export function initWebMCP(): void {
++  if (typeof window === 'undefined') return;
++
++  const context = installWebMCPPolyfill();
++
++  const registerCurrentTools = () => {
++    // Abort previous page lifecycle tools to prevent leaks/collisions
++    if (currentNavigationController) {
++      currentNavigationController.abort();
++    }
++
++    currentNavigationController = new AbortController();
++    registerAppTools(context, currentNavigationController.signal);
++  };
++
++  // Initial registration
++  registerCurrentTools();
++
++  // Astro page lifecycle hooks
++  document.addEventListener('astro:before-swap', () => {
++    if (currentNavigationController) {
++      currentNavigationController.abort();
++      currentNavigationController = null;
++    }
++  });
++
++  document.addEventListener('astro:page-load', () => {
++    registerCurrentTools();
++  });
++}
++
++// Auto-initialize when loaded in browser
++if (typeof window !== 'undefined') {
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', () => initWebMCP(), { once: true });
++  } else {
++    initWebMCP();
++  }
++}
+diff --git a/src/webmcp/polyfill.ts b/src/webmcp/polyfill.ts
+new file mode 100644
+index 0000000..da9848d
+--- /dev/null
++++ b/src/webmcp/polyfill.ts
+@@ -0,0 +1,428 @@
++/**
++ * WebMCP Polyfill Implementation
++ * Conforms to the W3C Web Model Context Protocol specification & DevTools agent guidelines.
++ */
++
++import type {
++  ModelContext,
++  ModelContextTool,
++  RegisteredTool,
++  ModelContextRegisterToolOptions,
++  ModelContextGetToolsOptions,
++  ModelContextExecuteToolOptions,
++  ToolActivatedEventDetail,
++  ToolCancelEventDetail,
++  AgentSubmitEvent,
++} from './types';
++
++interface StoredTool {
++  tool: ModelContextTool;
++  cleanup?: () => void;
++}
++
++export class ModelContextImpl extends EventTarget implements ModelContext {
++  private registeredTools: Map<string, StoredTool> = new Map();
++
++  registerTool(
++    tool: ModelContextTool,
++    options?: ModelContextRegisterToolOptions
++  ): void {
++    if (!tool || typeof tool.name !== 'string' || tool.name.trim() === '') {
++      throw new TypeError('Invalid tool definition: "name" must be a non-empty string.');
++    }
++
++    const name = tool.name.trim();
++
++    // Clean up previous registration for same name if present
++    const existing = this.registeredTools.get(name);
++    if (existing?.cleanup) {
++      existing.cleanup();
++    }
++
++    if (options?.signal?.aborted) {
++      return;
++    }
++
++    let cleanup: (() => void) | undefined;
++
++    if (options?.signal) {
++      const abortHandler = () => {
++        this.registeredTools.delete(name);
++        this.dispatchEvent(new Event('toolchange'));
++      };
++      options.signal.addEventListener('abort', abortHandler, { once: true });
++      cleanup = () => {
++        options.signal?.removeEventListener('abort', abortHandler);
++      };
++    }
++
++    this.registeredTools.set(name, { tool, cleanup });
++    this.dispatchEvent(new Event('toolchange'));
++  }
++
++  async getTools(options?: ModelContextGetToolsOptions): Promise<RegisteredTool[]> {
++    if (options?.signal?.aborted) {
++      throw new DOMException('The operation was aborted.', 'AbortError');
++    }
++
++    const toolMap = new Map<string, RegisteredTool>();
++
++    // 1. Imperative tools
++    for (const [name, stored] of this.registeredTools.entries()) {
++      toolMap.set(name, {
++        name: stored.tool.name,
++        title: stored.tool.title,
++        description: stored.tool.description,
++        inputSchema: stored.tool.inputSchema
++          ? JSON.parse(JSON.stringify(stored.tool.inputSchema))
++          : { type: 'object', properties: {} },
++        annotations: stored.tool.annotations ? { ...stored.tool.annotations } : undefined,
++      });
++    }
++
++    // 2. Declarative forms (if DOM is available)
++    if (typeof document !== 'undefined') {
++      const declarativeTools = this.discoverDeclarativeForms();
++      for (const decTool of declarativeTools) {
++        // Imperative registration takes precedence over declarative form with identical name
++        if (!toolMap.has(decTool.name)) {
++          toolMap.set(decTool.name, {
++            name: decTool.name,
++            title: decTool.title,
++            description: decTool.description,
++            inputSchema: decTool.inputSchema,
++            annotations: decTool.annotations,
++          });
++        }
++      }
++    }
++
++    // Return alphabetically sorted list
++    const tools = Array.from(toolMap.values()).sort((a, b) =>
++      a.name.localeCompare(b.name)
++    );
++
++    return Object.freeze(tools);
++  }
++
++  async executeTool(
++    toolOrName: string | RegisteredTool,
++    input: Record<string, unknown> = {},
++    options?: ModelContextExecuteToolOptions
++  ): Promise<unknown> {
++    const toolName = typeof toolOrName === 'string' ? toolOrName : toolOrName.name;
++
++    if (options?.signal?.aborted) {
++      this.dispatchCancelEvent(toolName);
++      throw new DOMException('The operation was aborted.', 'AbortError');
++    }
++
++    this.dispatchActivatedEvent(toolName);
++
++    // Watch for abort during execution
++    let abortListener: (() => void) | undefined;
++    if (options?.signal) {
++      abortListener = () => {
++        this.dispatchCancelEvent(toolName);
++      };
++      options.signal.addEventListener('abort', abortListener, { once: true });
++    }
++
++    try {
++      // 1. Check imperative tools
++      const stored = this.registeredTools.get(toolName);
++      if (stored?.tool) {
++        if (typeof stored.tool.execute === 'function') {
++          const result = await stored.tool.execute(input, { signal: options?.signal });
++          return result;
++        }
++        return { status: 'success', message: `Tool ${toolName} executed.` };
++      }
++
++      // 2. Check declarative forms
++      if (typeof document !== 'undefined') {
++        const form = document.querySelector<HTMLFormElement>(
++          `form[toolname="${CSS.escape(toolName)}"]`
++        );
++        if (form) {
++          return await this.executeDeclarativeForm(form, input, options?.signal);
++        }
++      }
++
++      throw new DOMException(`Tool "${toolName}" not found.`, 'NotFoundError');
++    } finally {
++      if (abortListener && options?.signal) {
++        options.signal.removeEventListener('abort', abortListener);
++      }
++    }
++  }
++
++  private dispatchActivatedEvent(toolName: string): void {
++    const event = new CustomEvent<ToolActivatedEventDetail>('toolactivated', {
++      detail: { toolName },
++      bubbles: true,
++      cancelable: false,
++    });
++    this.dispatchEvent(event);
++    if (typeof window !== 'undefined') {
++      window.dispatchEvent(
++        new CustomEvent<ToolActivatedEventDetail>('toolactivated', {
++          detail: { toolName },
++        })
++      );
++    }
++  }
++
++  private dispatchCancelEvent(toolName: string): void {
++    const event = new CustomEvent<ToolCancelEventDetail>('toolcancel', {
++      detail: { toolName },
++      bubbles: true,
++      cancelable: false,
++    });
++    this.dispatchEvent(event);
++    if (typeof window !== 'undefined') {
++      window.dispatchEvent(
++        new CustomEvent<ToolCancelEventDetail>('toolcancel', {
++          detail: { toolName },
++        })
++      );
++    }
++  }
++
++  /**
++   * Scans document for forms annotated with WebMCP attributes
++   */
++  private discoverDeclarativeForms(): RegisteredTool[] {
++    if (typeof document === 'undefined') return [];
++
++    const forms = Array.from(document.querySelectorAll<HTMLFormElement>('form[toolname]'));
++    const tools: RegisteredTool[] = [];
++
++    for (const form of forms) {
++      const toolname = form.getAttribute('toolname');
++      if (!toolname) continue;
++
++      const description = form.getAttribute('tooldescription') || undefined;
++      const title = form.getAttribute('tooltitle') || toolname;
++      const inputSchema = this.synthesizeFormSchema(form);
++
++      tools.push({
++        name: toolname,
++        title,
++        description,
++        inputSchema,
++        annotations: {
++          declarative: true,
++          autoSubmit: form.hasAttribute('toolautosubmit'),
++        },
++      });
++    }
++
++    return tools;
++  }
++
++  /**
++   * Synthesizes JSON Schema from HTML form elements
++   */
++  synthesizeFormSchema(form: HTMLFormElement): Record<string, unknown> {
++    const properties: Record<string, unknown> = {};
++    const required: string[] = [];
++
++    const elements = Array.from(form.elements) as (
++      | HTMLInputElement
++      | HTMLSelectElement
++      | HTMLTextAreaElement
++      | HTMLButtonElement
++    )[];
++
++    for (const element of elements) {
++      const name = element.name;
++      if (!name) continue;
++
++      // Skip buttons and submit inputs
++      const tagName = element.tagName.toLowerCase();
++      const type = (element as HTMLInputElement).type?.toLowerCase();
++      if (
++        tagName === 'button' ||
++        type === 'submit' ||
++        type === 'reset' ||
++        type === 'button' ||
++        type === 'image'
++      ) {
++        continue;
++      }
++
++      // Determine property description:
++      // 1. toolparamdescription
++      // 2. associated <label> textContent
++      // 3. aria-description / aria-label / placeholder
++      let paramDesc: string | undefined = element.getAttribute('toolparamdescription') || undefined;
++
++      if (!paramDesc && element.id) {
++        const label = form.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(element.id)}"]`);
++        if (label) {
++          paramDesc = label.textContent?.trim();
++        }
++      }
++
++      if (!paramDesc && element.labels && element.labels.length > 0) {
++        paramDesc = element.labels[0].textContent?.trim();
++      }
++
++      if (!paramDesc) {
++        paramDesc =
++          element.getAttribute('aria-description') ||
++          element.getAttribute('aria-label') ||
++          (element as HTMLInputElement).placeholder ||
++          undefined;
++      }
++
++      // Determine property type & constraints
++      let propType = 'string';
++      const propDef: Record<string, unknown> = {};
++
++      if (type === 'number' || type === 'range') {
++        propType = 'number';
++        const min = (element as HTMLInputElement).min;
++        const max = (element as HTMLInputElement).max;
++        if (min !== '') propDef.minimum = Number(min);
++        if (max !== '') propDef.maximum = Number(max);
++      } else if (type === 'checkbox') {
++        propType = 'boolean';
++      } else if (tagName === 'select') {
++        const select = element as HTMLSelectElement;
++        const options = Array.from(select.options).map((opt) => opt.value);
++        if (options.length > 0) {
++          propDef.enum = options;
++        }
++      }
++
++      propDef.type = propType;
++      if (paramDesc) {
++        propDef.description = paramDesc;
++      }
++
++      properties[name] = propDef;
++
++      if (element.required || element.hasAttribute('required')) {
++        if (!required.includes(name)) {
++          required.push(name);
++        }
++      }
++    }
++
++    return {
++      type: 'object',
++      properties,
++      ...(required.length > 0 ? { required } : {}),
++    };
++  }
++
++  /**
++   * Executes interaction with a declarative HTML form
++   */
++  private async executeDeclarativeForm(
++    form: HTMLFormElement,
++    input: Record<string, unknown>,
++    signal?: AbortSignal
++  ): Promise<unknown> {
++    if (signal?.aborted) {
++      throw new DOMException('The operation was aborted.', 'AbortError');
++    }
++
++    // Apply visual feedback classes
++    form.classList.add('tool-form-active');
++    const submitBtn = form.querySelector<HTMLButtonElement>(
++      'button[type="submit"], input[type="submit"]'
++    );
++    if (submitBtn) {
++      submitBtn.classList.add('tool-submit-active');
++    }
++
++    try {
++      // Populate fields
++      for (const [key, value] of Object.entries(input)) {
++        const field = form.elements.namedItem(key) as
++          | HTMLInputElement
++          | HTMLSelectElement
++          | HTMLTextAreaElement
++          | RadioNodeList
++          | null;
++
++        if (!field) continue;
++
++        if ('value' in field && typeof (field as HTMLInputElement).value !== 'undefined') {
++          const inputEl = field as HTMLInputElement;
++          if (inputEl.type === 'checkbox') {
++            inputEl.checked = Boolean(value);
++          } else {
++            inputEl.value = String(value ?? '');
++          }
++          inputEl.dispatchEvent(new Event('input', { bubbles: true }));
++          inputEl.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++      }
++
++      let responsePromise: Promise<unknown> | null = null;
++
++      // Construct SubmitEvent with agentInvoked and respondWith
++      const submitEvent = new CustomEvent('submit', {
++        bubbles: true,
++        cancelable: true,
++      }) as AgentSubmitEvent;
++
++      submitEvent.agentInvoked = true;
++      submitEvent.respondWith = (promise: Promise<unknown>) => {
++        responsePromise = promise;
++      };
++
++      const defaultNotPrevented = form.dispatchEvent(submitEvent);
++
++      if (responsePromise) {
++        return await responsePromise;
++      }
++
++      if (defaultNotPrevented && typeof form.requestSubmit === 'function') {
++        // Fallback standard submit if event wasn't prevented
++        form.requestSubmit();
++      }
++
++      return {
++        status: 'submitted',
++        tool: form.getAttribute('toolname'),
++        input,
++      };
++    } finally {
++      form.classList.remove('tool-form-active');
++      if (submitBtn) {
++        submitBtn.classList.remove('tool-submit-active');
++      }
++    }
++  }
++}
++
++/**
++ * Initializes and binds the ModelContext polyfill to document and navigator
++ */
++export function installWebMCPPolyfill(): ModelContext {
++  if (typeof document === 'undefined') {
++    return new ModelContextImpl();
++  }
++
++  let context = document.modelContext;
++
++  if (!context) {
++    context = new ModelContextImpl();
++    document.modelContext = context;
++
++    if (typeof navigator !== 'undefined' && !navigator.modelContext) {
++      (navigator as any).modelContext = context;
++    }
++
++    if (typeof window !== 'undefined') {
++      (window as any).ModelContext = ModelContextImpl;
++    }
++  }
++
++  return context;
++}
+diff --git a/src/webmcp/tools.ts b/src/webmcp/tools.ts
+new file mode 100644
+index 0000000..76b476f
+--- /dev/null
++++ b/src/webmcp/tools.ts
+@@ -0,0 +1,439 @@
++/**
++ * Application Tools for The DevTools Times
++ * Registered to document.modelContext to expose client-side functionality to AI agents.
++ */
++
++import type { ModelContext, ModelContextTool } from './types';
++
++interface ArticleItem {
++  slug: string;
++  title: string;
++  summary: string;
++  image?: string;
++  category?: string;
++}
++
++let cachedArticles: ArticleItem[] | null = null;
++
++function getBaseUrl(): string {
++  if (typeof window !== 'undefined' && (window as any).__DEVTOOLS_BASE_URL__) {
++    return (window as any).__DEVTOOLS_BASE_URL__;
++  }
++  return import.meta.env.BASE_URL || '/';
++}
++
++async function fetchArticles(): Promise<ArticleItem[]> {
++  if (cachedArticles && cachedArticles.length > 0) {
++    return cachedArticles;
++  }
++
++  const base = getBaseUrl();
++  const url = `${base.replace(/\/$/, '')}/api/articles.json`;
++
++  try {
++    const res = await fetch(url);
++    if (!res.ok) {
++      throw new Error(`Failed to fetch articles: ${res.statusText}`);
++    }
++    const data = await res.json();
++    cachedArticles = data;
++    return data;
++  } catch (err) {
++    console.error('Error fetching articles in WebMCP tool:', err);
++    return [];
++  }
++}
++
++/**
++ * Creates the list of application tools
++ */
++export function createAppTools(): ModelContextTool[] {
++  const searchArticlesTool: ModelContextTool = {
++    name: 'search_articles',
++    title: 'Search Articles',
++    description: 'Search published articles by keyword or phrase. Returns title, slug, summary, and image for matching articles.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        query: {
++          type: 'string',
++          description: 'Search query or keywords to filter articles by title and summary',
++        },
++      },
++      required: ['query'],
++    },
++    execute: async ({ query }: { query: string }) => {
++      const q = String(query || '').trim().toLowerCase();
++      if (!q) {
++        return { count: 0, results: [] };
++      }
++
++      const articles = await fetchArticles();
++      const results = articles.filter(
++        (a) =>
++          a.title.toLowerCase().includes(q) ||
++          a.summary.toLowerCase().includes(q)
++      );
++
++      return {
++        query,
++        count: results.length,
++        results: results.map((r) => ({
++          slug: r.slug,
++          title: r.title,
++          summary: r.summary,
++          image: r.image,
++          url: `${getBaseUrl().replace(/\/$/, '')}/articles/${r.slug}`,
++        })),
++      };
++    },
++    annotations: {
++      readOnlyHint: true,
++    },
++  };
++
++  const getArticleTool: ModelContextTool = {
++    name: 'get_article',
++    title: 'Get Article Details',
++    description: 'Get details and content summary for a specific article by its slug identifier.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        slug: {
++          type: 'string',
++          description: 'The unique slug of the article (e.g. "future-of-web-dev")',
++        },
++      },
++      required: ['slug'],
++    },
++    execute: async ({ slug }: { slug: string }) => {
++      const trimmedSlug = String(slug || '').trim();
++      const articles = await fetchArticles();
++      const article = articles.find((a) => a.slug === trimmedSlug);
++
++      if (!article) {
++        throw new Error(`Article with slug "${slug}" not found.`);
++      }
++
++      return {
++        ...article,
++        url: `${getBaseUrl().replace(/\/$/, '')}/articles/${article.slug}`,
++      };
++    },
++    annotations: {
++      readOnlyHint: true,
++    },
++  };
++
++  const listCategoriesTool: ModelContextTool = {
++    name: 'list_categories',
++    title: 'List Article Categories',
++    description: 'List all available article categories on The DevTools Times.',
++    inputSchema: {
++      type: 'object',
++      properties: {},
++    },
++    execute: async () => {
++      const defaultCategories = [
++        'Culture',
++        'Economy',
++        'Labor',
++        'Media',
++        'National',
++        'Pets',
++        'Politics',
++        'Urban Development',
++        'lifestyle',
++        'news',
++        'science',
++        'sports',
++      ];
++      return {
++        categories: defaultCategories,
++      };
++    },
++    annotations: {
++      readOnlyHint: true,
++    },
++  };
++
++  const getArticlesByCategoryTool: ModelContextTool = {
++    name: 'get_articles_by_category',
++    title: 'Get Articles by Category',
++    description: 'Fetch all articles belonging to a specific category.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        category: {
++          type: 'string',
++          description: 'The category name or slug to filter articles by',
++        },
++      },
++      required: ['category'],
++    },
++    execute: async ({ category }: { category: string }) => {
++      const targetCat = String(category || '').trim().toLowerCase();
++      const articles = await fetchArticles();
++      const matched = articles.filter(
++        (a) => (a.category || '').toLowerCase() === targetCat
++      );
++
++      return {
++        category,
++        count: matched.length,
++        articles: matched,
++      };
++    },
++    annotations: {
++      readOnlyHint: true,
++    },
++  };
++
++  const getReadingListTool: ModelContextTool = {
++    name: 'get_reading_list',
++    title: 'Get Reading List',
++    description: 'Retrieve the current user\'s saved reading list (bookmarked article slugs).',
++    inputSchema: {
++      type: 'object',
++      properties: {},
++    },
++    execute: async () => {
++      const base = getBaseUrl();
++      const res = await fetch(`${base.replace(/\/$/, '')}/api/reading-list.json`);
++      if (!res.ok) {
++        throw new Error(`Failed to retrieve reading list: ${res.statusText}`);
++      }
++      const data = await res.json();
++      return {
++        readingList: data.readingList || [],
++      };
++    },
++    annotations: {
++      readOnlyHint: true,
++    },
++  };
++
++  const addToReadingListTool: ModelContextTool = {
++    name: 'add_to_reading_list',
++    title: 'Add to Reading List',
++    description: 'Add an article to the user\'s reading list by slug. Updates the UI bookmark state immediately.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        slug: {
++          type: 'string',
++          description: 'The slug of the article to bookmark',
++        },
++      },
++      required: ['slug'],
++    },
++    execute: async ({ slug }: { slug: string }) => {
++      const trimmedSlug = String(slug || '').trim();
++      const base = getBaseUrl();
++
++      // Check current reading list
++      const getRes = await fetch(`${base.replace(/\/$/, '')}/api/reading-list.json`);
++      const getData = await getRes.json();
++      let currentList: string[] = getData.readingList || [];
++
++      // Only toggle if not already present
++      if (!currentList.includes(trimmedSlug)) {
++        const postRes = await fetch(`${base.replace(/\/$/, '')}/api/reading-list.json`, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ slug: trimmedSlug }),
++        });
++        const postData = await postRes.json();
++        currentList = postData.readingList || [];
++      }
++
++      // Dispatch UI update event so bookmark button and flyouts update immediately
++      if (typeof window !== 'undefined') {
++        window.dispatchEvent(
++          new CustomEvent('readinglistchange', {
++            detail: { slug: trimmedSlug, action: 'add', readingList: currentList },
++          })
++        );
++      }
++
++      return {
++        success: true,
++        slug: trimmedSlug,
++        readingList: currentList,
++      };
++    },
++  };
++
++  const removeFromReadingListTool: ModelContextTool = {
++    name: 'remove_from_reading_list',
++    title: 'Remove from Reading List',
++    description: 'Remove an article from the user\'s reading list by slug. Updates the UI bookmark state immediately.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        slug: {
++          type: 'string',
++          description: 'The slug of the article to remove',
++        },
++      },
++      required: ['slug'],
++    },
++    execute: async ({ slug }: { slug: string }) => {
++      const trimmedSlug = String(slug || '').trim();
++      const base = getBaseUrl();
++
++      // Check current reading list
++      const getRes = await fetch(`${base.replace(/\/$/, '')}/api/reading-list.json`);
++      const getData = await getRes.json();
++      let currentList: string[] = getData.readingList || [];
++
++      // If present, post to toggle it off
++      if (currentList.includes(trimmedSlug)) {
++        const postRes = await fetch(`${base.replace(/\/$/, '')}/api/reading-list.json`, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ slug: trimmedSlug }),
++        });
++        const postData = await postRes.json();
++        currentList = postData.readingList || [];
++      }
++
++      // Dispatch UI update event
++      if (typeof window !== 'undefined') {
++        window.dispatchEvent(
++          new CustomEvent('readinglistchange', {
++            detail: { slug: trimmedSlug, action: 'remove', readingList: currentList },
++          })
++        );
++      }
++
++      return {
++        success: true,
++        slug: trimmedSlug,
++        readingList: currentList,
++      };
++    },
++  };
++
++  const getArticlePopularityTool: ModelContextTool = {
++    name: 'get_article_popularity',
++    title: 'Get Article Popularity',
++    description: 'Fetch view count and trending statistics for an article by its ID or slug.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        id: {
++          type: 'string',
++          description: 'The article identifier or slug',
++        },
++      },
++      required: ['id'],
++    },
++    execute: async ({ id }: { id: string }) => {
++      const base = getBaseUrl();
++      const res = await fetch(
++        `${base.replace(/\/$/, '')}/api/article-popularity?id=${encodeURIComponent(id)}`
++      );
++      if (!res.ok) {
++        throw new Error(`Failed to fetch article popularity: ${res.statusText}`);
++      }
++      return await res.json();
++    },
++    annotations: {
++      readOnlyHint: true,
++    },
++  };
++
++  const openUiDialogTool: ModelContextTool = {
++    name: 'open_ui_dialog',
++    title: 'Open or Close UI Dialog',
++    description: 'Open or close an interactive UI flyout dialog (search or reading_list).',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        dialog: {
++          type: 'string',
++          enum: ['search', 'reading_list'],
++          description: 'Which dialog to toggle: "search" or "reading_list"',
++        },
++        open: {
++          type: 'boolean',
++          description: 'true to open the dialog, false to close it',
++        },
++      },
++      required: ['dialog', 'open'],
++    },
++    execute: async ({ dialog, open }: { dialog: 'search' | 'reading_list'; open: boolean }) => {
++      if (typeof window !== 'undefined') {
++        window.dispatchEvent(
++          new CustomEvent('devtools:dialog', {
++            detail: { dialog, open: Boolean(open) },
++          })
++        );
++      }
++      return {
++        status: 'success',
++        dialog,
++        open: Boolean(open),
++      };
++    },
++  };
++
++  const navigateToTool: ModelContextTool = {
++    name: 'navigate_to',
++    title: 'Navigate to Page',
++    description: 'Navigate the page to a specific path within The DevTools Times.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        path: {
++          type: 'string',
++          description: 'Target route path (e.g. "/", "/category/science", "/signin", "/signup")',
++        },
++      },
++      required: ['path'],
++    },
++    execute: async ({ path }: { path: string }) => {
++      const cleanPath = String(path || '/');
++      const base = getBaseUrl().replace(/\/$/, '');
++      const fullUrl = cleanPath.startsWith('http')
++        ? cleanPath
++        : `${base}${cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`}`;
++
++      if (typeof window !== 'undefined') {
++        window.location.assign(fullUrl);
++      }
++
++      return {
++        status: 'navigating',
++        url: fullUrl,
++      };
++    },
++  };
++
++  return [
++    searchArticlesTool,
++    getArticleTool,
++    listCategoriesTool,
++    getArticlesByCategoryTool,
++    getReadingListTool,
++    addToReadingListTool,
++    removeFromReadingListTool,
++    getArticlePopularityTool,
++    openUiDialogTool,
++    navigateToTool,
++  ];
++}
++
++/**
++ * Registers all application tools to a ModelContext instance with an AbortSignal.
++ */
++export function registerAppTools(
++  context: ModelContext,
++  signal?: AbortSignal
++): void {
++  const tools = createAppTools();
++  for (const tool of tools) {
++    context.registerTool(tool, { signal });
++  }
++}
+diff --git a/src/webmcp/types.ts b/src/webmcp/types.ts
+new file mode 100644
+index 0000000..33109f1
+--- /dev/null
++++ b/src/webmcp/types.ts
+@@ -0,0 +1,113 @@
++/**
++ * WebMCP (Web Model Context Protocol) Type Definitions
++ * Based on the W3C Draft Community Group Specification (webmachinelearning/webmcp)
++ */
++
++export interface ToolAnnotations {
++  readOnlyHint?: boolean;
++  [key: string]: unknown;
++}
++
++export interface ModelContextTool {
++  name: string;
++  title?: string;
++  description?: string;
++  inputSchema?: Record<string, unknown>;
++  execute?: (input: any, client?: any) => Promise<any> | any;
++  annotations?: ToolAnnotations;
++}
++
++export interface RegisteredTool {
++  name: string;
++  title?: string;
++  description?: string;
++  inputSchema?: Record<string, unknown>;
++  annotations?: ToolAnnotations;
++}
++
++export interface ModelContextRegisterToolOptions {
++  signal?: AbortSignal;
++}
++
++export interface ModelContextGetToolsOptions {
++  signal?: AbortSignal;
++}
++
++export interface ModelContextExecuteToolOptions {
++  signal?: AbortSignal;
++}
++
++export interface ToolActivatedEventDetail {
++  toolName: string;
++}
++
++export interface ToolCancelEventDetail {
++  toolName: string;
++}
++
++export interface ModelContextEventMap {
++  toolchange: Event;
++  toolactivated: CustomEvent<ToolActivatedEventDetail>;
++  toolcancel: CustomEvent<ToolCancelEventDetail>;
++}
++
++export interface ModelContext extends EventTarget {
++  registerTool(
++    tool: ModelContextTool,
++    options?: ModelContextRegisterToolOptions
++  ): void;
++
++  getTools(
++    options?: ModelContextGetToolsOptions
++  ): Promise<RegisteredTool[]>;
++
++  executeTool(
++    tool: string | RegisteredTool,
++    input?: Record<string, unknown>,
++    options?: ModelContextExecuteToolOptions
++  ): Promise<unknown>;
++
++  addEventListener<K extends keyof ModelContextEventMap>(
++    type: K,
++    listener: (this: ModelContext, ev: ModelContextEventMap[K]) => any,
++    options?: boolean | AddEventListenerOptions
++  ): void;
++  addEventListener(
++    type: string,
++    listener: EventListenerOrEventListenerObject,
++    options?: boolean | AddEventListenerOptions
++  ): void;
++
++  removeEventListener<K extends keyof ModelContextEventMap>(
++    type: K,
++    listener: (this: ModelContext, ev: ModelContextEventMap[K]) => any,
++    options?: boolean | EventListenerOptions
++  ): void;
++  removeEventListener(
++    type: string,
++    listener: EventListenerOrEventListenerObject,
++    options?: boolean | EventListenerOptions
++  ): void;
++}
++
++export interface AgentSubmitEvent extends SubmitEvent {
++  agentInvoked?: boolean;
++  respondWith?: (promise: Promise<unknown>) => void;
++}
++
++declare global {
++  interface Document {
++    modelContext?: ModelContext;
++  }
++
++  interface Navigator {
++    modelContext?: ModelContext;
++  }
++
++  interface Window {
++    ModelContext?: {
++      new (): ModelContext;
++      prototype: ModelContext;
++    };
++  }
++}

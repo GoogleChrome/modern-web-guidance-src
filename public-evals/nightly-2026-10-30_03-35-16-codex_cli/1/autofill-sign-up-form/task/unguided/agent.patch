@@ -1,0 +1,181 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,96 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .signup {
++      margin-top: 48px;
++      padding: 32px;
++      background: var(--secondary);
++      border-radius: 8px;
++      scroll-margin-top: 100px;
++    }
++
++    .signup h2,
++    .signup > p {
++      text-align: center;
++    }
++
++    .signup-form {
++      max-width: 460px;
++      margin: 24px auto 0;
++    }
++
++    .form-field {
++      margin-bottom: 16px;
++    }
++
++    .form-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .form-field input {
++      width: 100%;
++      padding: 12px;
++      border: 1px solid #806963;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .form-field small {
++      display: block;
++      margin-top: 4px;
++    }
++
++    a:focus-visible,
++    button:focus-visible,
++    input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    nav a:focus-visible {
++      outline-color: var(--accent);
++    }
++
++    .signup-form .btn {
++      width: 100%;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signup-note,
++    .signup-status {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    @media (max-width: 640px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .signup {
++        padding: 24px 20px;
++        scroll-margin-top: 160px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,8 +251,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><a href="#signup">Sign Up</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -194,8 +283,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="signup" class="signup" aria-labelledby="signup-heading">
++      <h2 id="signup-heading">Join The Daily Grind</h2>
++      <p>A little more coffee. A little more community.</p>
++      <form id="signup-form" class="signup-form" aria-describedby="signup-note">
++        <div class="form-field">
++          <label for="signup-name">Full name</label>
++          <input id="signup-name" name="name" type="text" autocomplete="name" required maxlength="100">
++        </div>
++        <div class="form-field">
++          <label for="signup-email">Email address</label>
++          <input id="signup-email" name="email" type="email" autocomplete="email" required maxlength="254">
++        </div>
++        <div class="form-field">
++          <label for="signup-password">Password</label>
++          <input id="signup-password" name="password" type="password" autocomplete="new-password" required minlength="8" aria-describedby="password-help">
++          <small id="password-help">Use at least 8 characters.</small>
++        </div>
++        <div class="form-field">
++          <label for="signup-confirm-password">Confirm password</label>
++          <input id="signup-confirm-password" name="confirm-password" type="password" autocomplete="new-password" required minlength="8">
++        </div>
++        <button class="btn" type="submit">Sign Up</button>
++        <p id="signup-note" class="signup-note">Registration is coming soon. This form does not send or save your information.</p>
++        <p id="signup-status" class="signup-status" role="status"></p>
++      </form>
++      <noscript><p>JavaScript is required to preview this form. Registration is not yet available.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +323,33 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const signupForm = document.getElementById('signup-form');
++    const password = document.getElementById('signup-password');
++    const confirmation = document.getElementById('signup-confirm-password');
++    const signupStatus = document.getElementById('signup-status');
++
++    function validatePasswords() {
++      confirmation.setCustomValidity(
++        confirmation.value === password.value ? '' : 'Passwords must match.'
++      );
++    }
++
++    signupForm.addEventListener('input', () => {
++      validatePasswords();
++      signupStatus.textContent = '';
++    });
++
++    signupForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      validatePasswords();
++      if (!signupForm.reportValidity()) return;
++      signupStatus.textContent = 'Registration is not available yet. Your information has not been sent or saved.';
++      password.value = '';
++      confirmation.value = '';
++    });
++  </script>
+ </body>
+ 
+ </html>

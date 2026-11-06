@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,69 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      /* Snap the pull-down search bar into view, but leave the rest of the page free-scrolling */
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Pull-down search bar (sits above the nav, hidden on load) */
++    .search-bar {
++      background: var(--text);
++      padding: 0.75rem 5%;
++      scroll-snap-align: start;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    .search-bar form {
++      display: flex;
++      gap: 8px;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .search-bar input {
++      flex: 1;
++      padding: 10px 14px;
++      font-size: 1rem;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .search-bar input:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .search-bar button {
++      padding: 10px 18px;
++      font-size: 0.9rem;
++      border: none;
++      border-radius: 4px;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      cursor: pointer;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -37,8 +91,11 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      /* Start the page scrolled to the nav so the search bar is tucked away until you pull down */
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -156,8 +213,16 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar">
++    <form action="/search" method="get" role="search">
++      <label for="site-search" class="visually-hidden">Search</label>
++      <input type="search" id="site-search" name="q" placeholder="Search drinks, locations, rewards…" autocomplete="off">
++      <button type="submit">Search</button>
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>

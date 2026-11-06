@@ -1,0 +1,454 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      height: 50vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -99,43 +99,201 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    #list-heading {
++      text-align: center;
++      margin-bottom: 24px;
++      font-size: 2rem;
++      color: var(--primary);
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
++    .card.thumbnail {
+       background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      text-align: left;
++      overflow: hidden;
++      cursor: pointer;
++      display: flex;
++      flex-direction: column;
++      transition: box-shadow 0.2s ease, transform 0.2s ease;
++    }
++
++    .card.thumbnail:hover {
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
++    }
++
++    .thumbnail-img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .card-body {
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      flex: 1;
+     }
+ 
+-    .card h3 {
++    #list-page .title {
++      width: fit-content;
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.35rem;
+     }
+ 
++    .card-body p {
++      flex: 1;
++      margin-bottom: 16px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      cursor: pointer;
+       transition: background 0.3s;
++      min-block-size: 24px;
++      min-inline-size: 24px;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* SPA View Switching */
++    #detail-page {
++      display: none;
++    }
++
++    body.detail #list-page {
++      display: none;
++    }
++
++    body.detail #detail-page {
++      display: block;
++    }
++
++    /* Detail View Styling */
++    .detail-header {
++      margin-bottom: 20px;
++    }
++
++    .detail-card {
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #hero {
++      width: 100%;
++      height: 400px;
++      background-color: var(--secondary);
++      background-size: cover;
++      background-position: center;
++      overflow: hidden;
++    }
++
++    #hero img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .detail-content {
++      padding: 32px;
++    }
++
++    #detail-page #title {
++      width: fit-content;
++      font-size: 2.25rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .detail-meta {
++      display: flex;
++      gap: 16px;
++      margin-bottom: 20px;
++      font-weight: 600;
++      color: #6d4c41;
++    }
++
++    .detail-description {
++      font-size: 1.1rem;
++      margin-bottom: 20px;
++    }
++
++    /* View Transitions Configuration */
++    #hero {
++      view-transition-name: hero;
++    }
++
++    .thumbnail.selected {
++      view-transition-name: hero;
++    }
++
++    #detail-page #title {
++      view-transition-name: title;
++    }
++
++    .thumbnail.selected .title {
++      view-transition-name: title;
++    }
++
++    ::view-transition-old(hero),
++    ::view-transition-new(hero) {
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    ::view-transition-old(title),
++    ::view-transition-new(title) {
++      height: 100%;
++    }
++
++    /* Focus Indicators */
++    :where(a:any-link, button, .thumbnail, [tabindex="-1"]):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++
++      *,
++      *::before,
++      *::after {
++        transition-duration: 0s !important;
++        animation-duration: 0s !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,9 +314,9 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -174,27 +332,94 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- List View -->
++    <section id="list-page">
++      <h2 id="list-heading" tabindex="-1">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <article class="card thumbnail" tabindex="0" role="button" aria-label="View details for Maple Oat Latte"
++          data-id="maple-oat-latte"
++          data-title="Maple Oat Latte"
++          data-summary="Creamy oat milk with a hint of Vermont maple syrup."
++          data-description="Crafted with our signature espresso roast, velvety steamed oat milk, and pure Grade-A Vermont maple syrup, finished with a light dusting of cinnamon."
++          data-price="$5.75"
++          data-calories="210 kcal"
++          data-image="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=900&q=80"
++          data-alt="A warm cup of Maple Oat Latte with latte art on a wooden table">
++          <img class="thumbnail-img"
++            src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=900&q=80"
++            alt="A warm cup of Maple Oat Latte with latte art on a wooden table">
++          <div class="card-body">
++            <h2 class="title">Maple Oat Latte</h2>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <span class="btn">View Details</span>
++          </div>
++        </article>
++
++        <article class="card thumbnail" tabindex="0" role="button" aria-label="View details for Dark Roast Espresso"
++          data-id="dark-roast-espresso"
++          data-title="Dark Roast Espresso"
++          data-summary="Bold, smokey, and perfect for a morning boost."
++          data-description="Full-bodied single-origin beans roasted to a deep mahogany finish. Notes of dark bittersweet chocolate, toasted walnut, and a rich, lingering crema."
++          data-price="$3.50"
++          data-calories="10 kcal"
++          data-image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=900&q=80"
++          data-alt="A rich shot of Dark Roast Espresso in a ceramic demitasse cup">
++          <img class="thumbnail-img"
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=900&q=80"
++            alt="A rich shot of Dark Roast Espresso in a ceramic demitasse cup">
++          <div class="card-body">
++            <h2 class="title">Dark Roast Espresso</h2>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <span class="btn">View Details</span>
++          </div>
++        </article>
++
++        <article class="card thumbnail" tabindex="0" role="button" aria-label="View details for Cold Brew"
++          data-id="cold-brew"
++          data-title="Cold Brew"
++          data-summary="Steeped for 18 hours for maximum smoothness."
++          data-description="Coarsely ground Ethiopian and Colombian beans slow-steeped in cool filtered water for 18 hours, yielding an ultra-smooth, low-acid coffee served over crystal ice."
++          data-price="$4.75"
++          data-calories="15 kcal"
++          data-image="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=900&q=80"
++          data-alt="Chilled glass of Cold Brew coffee with ice">
++          <img class="thumbnail-img"
++            src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=900&q=80"
++            alt="Chilled glass of Cold Brew coffee with ice">
++          <div class="card-body">
++            <h2 class="title">Cold Brew</h2>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <span class="btn">View Details</span>
++          </div>
++        </article>
++      </div>
++    </section>
++
++    <!-- Detail View -->
++    <section id="detail-page" aria-live="polite">
++      <div class="detail-header">
++        <button type="button" id="back-button" class="btn">&larr; Back to Seasonal Favorites</button>
++      </div>
++      <article class="detail-card">
++        <div id="hero">
++          <img id="hero-img"
++            src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=900&q=80"
++            alt="A warm cup of Maple Oat Latte with latte art on a wooden table">
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="detail-content">
++          <h2 id="title" tabindex="-1">Maple Oat Latte</h2>
++          <div class="detail-meta">
++            <span id="detail-price">$5.75</span>
++            <span>&bull;</span>
++            <span id="detail-calories">210 kcal</span>
++          </div>
++          <p id="detail-description" class="detail-description">
++            Crafted with our signature espresso roast, velvety steamed oat milk, and pure Grade-A Vermont maple syrup, finished with a light dusting of cinnamon.
++          </p>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      </article>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +431,107 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const thumbnails = document.querySelectorAll('.thumbnail');
++    const backButton = document.getElementById('back-button');
++    const hero = document.getElementById('hero');
++    const heroImg = document.getElementById('hero-img');
++    const detailTitle = document.getElementById('title');
++    const detailPrice = document.getElementById('detail-price');
++    const detailCalories = document.getElementById('detail-calories');
++    const detailDescription = document.getElementById('detail-description');
++    const listHeading = document.getElementById('list-heading');
++
++    function populateDetail(card) {
++      const { title, description, price, calories, image, alt } = card.dataset;
++      detailTitle.textContent = title;
++      detailDescription.textContent = description;
++      detailPrice.textContent = price;
++      detailCalories.textContent = calories;
++      if (image) {
++        heroImg.src = image;
++        heroImg.alt = alt || title;
++        hero.style.backgroundImage = `url('${image}')`;
++      }
++      const bgColor = getComputedStyle(card).backgroundColor;
++      hero.style.backgroundColor = bgColor;
++      document.title = `${title} | The Daily Grind`;
++    }
++
++    function goFromListToDetail(e) {
++      const card = e.currentTarget;
++
++      // Ensure no stale selected classes exist before starting a new transition
++      document.querySelectorAll('.selected').forEach((el) => {
++        el.classList.remove('selected');
++      });
++
++      card.classList.add('selected');
++      populateDetail(card);
++
++      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++      // Trigger the transition, checking for support and motion preference
++      if (!document.startViewTransition || prefersReducedMotion) {
++        document.body.classList.add('detail');
++        detailTitle?.focus();
++        return;
++      }
++
++      const transition = document.startViewTransition(() => {
++        document.body.classList.add('detail');
++      });
++
++      transition.finished.finally(() => {
++        detailTitle?.focus();
++      });
++    }
++
++    function goFromDetailToList() {
++      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++      if (!document.startViewTransition || prefersReducedMotion) {
++        document.body.classList.remove('detail');
++        document.title = 'The Daily Grind | Artisanal Coffee';
++        listHeading?.focus();
++        document.querySelectorAll('.selected').forEach((element) => {
++          element.classList.remove('selected');
++        });
++        return;
++      }
++
++      const transition = document.startViewTransition(() => {
++        document.body.classList.remove('detail');
++        document.title = 'The Daily Grind | Artisanal Coffee';
++      });
++
++      transition.finished.finally(() => {
++        listHeading?.focus();
++        document.querySelectorAll('.selected').forEach((element) => {
++          element.classList.remove('selected');
++        });
++      });
++    }
++
++    thumbnails.forEach((card) => {
++      card.addEventListener('click', goFromListToDetail);
++      card.addEventListener('keydown', (e) => {
++        if (e.key === 'Enter') {
++          goFromListToDetail(e);
++        } else if (e.key === ' ') {
++          e.preventDefault();
++        }
++      });
++      card.addEventListener('keyup', (e) => {
++        if (e.key === ' ') {
++          goFromListToDetail(e);
++        }
++      });
++    });
++
++    backButton.addEventListener('click', goFromDetailToList);
++  </script>
+ </body>
+ 
+ </html>

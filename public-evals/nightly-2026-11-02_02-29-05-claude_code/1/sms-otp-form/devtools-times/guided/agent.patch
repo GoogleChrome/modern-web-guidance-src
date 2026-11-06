@@ -1,0 +1,600 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..b3e6b24 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,17 @@
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    OTPCredential?: unknown;
++  }
++
++  // WebOTP API (not yet in lib.dom.d.ts)
++  interface OTPCredential extends Credential {
++    readonly code: string;
++  }
++
++  interface CredentialRequestOptions {
++    otp?: { transport: ('sms')[] };
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..66b81f7 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,25 +1,98 @@
+-import React, { useState } from 'react';
++import React, { useCallback, useEffect, useRef, useState } from 'react';
++import { normalizePhone } from '../lib/phone';
++
++type Step = 'details' | 'verify';
++
++const OTP_LENGTH = 6;
++
++const inputClassName =
++  'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 aria-[invalid=true]:border-red-500';
++const primaryButtonClassName =
++  'w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-75 disabled:cursor-not-allowed';
++const secondaryButtonClassName =
++  'text-sm font-medium text-gray-700 underline underline-offset-2 hover:text-gray-900 disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed';
++
++async function postJson(url: string, body: unknown) {
++  const response = await fetch(url, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify(body),
++  });
++  const data = await response.json().catch(() => ({}));
++  return { ok: response.ok, data };
++}
+ 
+ export default function SignUpForm() {
++  const [step, setStep] = useState<Step>('details');
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [phone, setPhone] = useState('');
++  const [code, setCode] = useState('');
++  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
++  const [sentTo, setSentTo] = useState<string | null>(null);
++  const [resendIn, setResendIn] = useState(0);
++  // Bumped on every successful send so the WebOTP listener restarts for the new SMS.
++  const [smsRequestId, setSmsRequestId] = useState(0);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
++  const otpFormRef = useRef<HTMLFormElement>(null);
++  const otpInputRef = useRef<HTMLInputElement>(null);
++  const otpAbortRef = useRef<AbortController | null>(null);
++
++  const stopSmsOtpListener = useCallback(() => {
++    otpAbortRef.current?.abort();
++    otpAbortRef.current = null;
++  }, []);
++
++  // Listen for the SMS via WebOTP while the verification step is active. Browsers
++  // without WebOTP fall back to autocomplete="one-time-code" or manual entry.
++  useEffect(() => {
++    if (step !== 'verify' || !('OTPCredential' in window)) return;
++
++    stopSmsOtpListener();
++    const ac = new AbortController();
++    otpAbortRef.current = ac;
++
++    navigator.credentials
++      .get({ otp: { transport: ['sms'] }, signal: ac.signal })
++      .then((credential) => {
++        const otp = credential as OTPCredential | null;
++        if (!otp || ac.signal.aborted) return;
++        setCode(otp.code);
++        if (otpInputRef.current) otpInputRef.current.value = otp.code;
++        // requestSubmit (not submit) so the React submit handler and validation run.
++        otpFormRef.current?.requestSubmit();
++      })
++      .catch((err) => {
++        if (err?.name !== 'AbortError') console.error('WebOTP verification error:', err);
++      });
++
++    return () => {
++      ac.abort();
++      if (otpAbortRef.current === ac) otpAbortRef.current = null;
++    };
++  }, [step, smsRequestId, stopSmsOtpListener]);
++
++  useEffect(() => {
++    if (step === 'verify') otpInputRef.current?.focus();
++  }, [step]);
++
++  useEffect(() => {
++    if (resendIn <= 0) return;
++    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
++    return () => clearTimeout(timer);
++  }, [resendIn]);
+ 
++  const register = async (phoneNumber: string) => {
+     try {
+       const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({ username, password, phone: phoneNumber }),
+       });
+ 
+       const data = await response.json();
+@@ -28,10 +101,50 @@ export default function SignUpForm() {
+         // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+         // For now, we display a generic error message including the code.
+         setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        // Let the user fix their details; the phone number stays verified.
++        setStep('details');
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
++        setStep('details');
+         setUsername('');
+         setPassword('');
++        setPhone('');
++        setCode('');
++        setVerifiedPhone(null);
++        setSentTo(null);
++      }
++    } catch (err) {
++      setError('An unexpected error occurred. Please try again later.');
++    }
++  };
++
++  const sendCode = async () => {
++    const { ok, data } = await postJson(`${import.meta.env.BASE_URL}api/sms/send`, { phone });
++    if (!ok) {
++      setError(data.error || 'We could not send a verification code. Please try again.');
++      if (data.retryAfter) setResendIn(data.retryAfter);
++      return false;
++    }
++    setSentTo(data.phone);
++    setCode('');
++    setResendIn(data.resendIn ?? 30);
++    setSmsRequestId((id) => id + 1);
++    return true;
++  };
++
++  const handleDetailsSubmit = async (e: React.FormEvent) => {
++    e.preventDefault();
++    setError(null);
++    setSuccess(null);
++    setLoading(true);
++
++    try {
++      const normalized = normalizePhone(phone);
++      if (verifiedPhone && normalized === verifiedPhone) {
++        await register(verifiedPhone);
++      } else if (await sendCode()) {
++        setVerifiedPhone(null);
++        setStep('verify');
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -40,65 +153,196 @@ export default function SignUpForm() {
+     }
+   };
+ 
++  const handleVerifySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
++    e.preventDefault();
++    // Abort any in-flight WebOTP request when the code is submitted manually.
++    stopSmsOtpListener();
++    setError(null);
++    setLoading(true);
++
++    try {
++      const submitted = new FormData(e.currentTarget).get('otp')?.toString() ?? code;
++      const { ok, data } = await postJson(`${import.meta.env.BASE_URL}api/sms/verify`, { code: submitted });
++      if (!ok) {
++        setError(data.error || 'We could not verify that code. Please try again.');
++        otpInputRef.current?.select();
++        return;
++      }
++      setVerifiedPhone(data.phone);
++      await register(data.phone);
++    } catch (err) {
++      setError('An unexpected error occurred. Please try again later.');
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  const handleResend = async () => {
++    setError(null);
++    setLoading(true);
++    try {
++      await sendCode();
++      otpInputRef.current?.focus();
++    } catch (err) {
++      setError('An unexpected error occurred. Please try again later.');
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  const handleChangePhone = () => {
++    stopSmsOtpListener();
++    setError(null);
++    setStep('details');
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
++      <h2 className="text-2xl font-bold mb-2 text-center text-gray-800">
++        {step === 'details' ? 'Sign Up' : 'Verify your phone'}
++      </h2>
++      <p className="text-sm text-gray-500 mb-6 text-center">
++        Step {step === 'details' ? 1 : 2} of 2
++      </p>
++
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div id="signup-error" className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+         <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
++      {step === 'details' ? (
++        <form onSubmit={handleDetailsSubmit} method="post" className="space-y-4">
++          <div>
++            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
++              Username
++            </label>
++            <input
++              type="text"
++              id="username"
++              name="username"
++              value={username}
++              onChange={(e) => setUsername(e.target.value)}
++              autoComplete="username"
++              autoCapitalize="none"
++              autoCorrect="off"
++              spellCheck={false}
++              enterKeyHint="next"
++              required
++              className={inputClassName}
++            />
++          </div>
++
++          <div>
++            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
++              Password
++            </label>
++            <p id="password-hint" className="text-xs text-gray-500 mb-1">
++              Must be at least 8 characters and contain a number.
++            </p>
++            <input
++              type="password"
++              id="new-password"
++              name="new-password"
++              value={password}
++              onChange={(e) => setPassword(e.target.value)}
++              autoComplete="new-password"
++              pattern="(?=.*\d).{8,}"
++              minLength={8}
++              aria-describedby="password-hint"
++              enterKeyHint="next"
++              required
++              className={inputClassName}
++            />
++          </div>
+ 
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
++          <div>
++            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
++              Mobile phone number
++            </label>
++            <p id="phone-hint" className="text-xs text-gray-500 mb-1">
++              Include your country code, e.g. +1 555 010 0000. We'll text you a {OTP_LENGTH}-digit code.
++            </p>
++            <input
++              type="tel"
++              id="phone"
++              name="phone"
++              value={phone}
++              onChange={(e) => setPhone(e.target.value)}
++              autoComplete="tel"
++              pattern="\s*\+[\d\s\(\)\.\-]{8,20}"
++              aria-describedby="phone-hint"
++              enterKeyHint="send"
++              required
++              className={inputClassName}
++            />
++            {verifiedPhone && normalizePhone(phone) === verifiedPhone && (
++              <p className="text-xs text-green-700 mt-1">This number is verified.</p>
++            )}
++          </div>
++
++          <button type="submit" disabled={loading} data-skip-tracking="true" className={primaryButtonClassName}>
++            {loading
++              ? 'Please wait...'
++              : verifiedPhone && normalizePhone(phone) === verifiedPhone
++                ? 'Create account'
++                : 'Send verification code'}
++          </button>
++        </form>
++      ) : (
++        <form ref={otpFormRef} onSubmit={handleVerifySubmit} method="post" className="space-y-4">
++          <div>
++            <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
++              Verification code
++            </label>
++            {/* Hint sits above the input so autofill suggestions and the keyboard don't cover it. */}
++            <p id="otp-hint" className="text-xs text-gray-500 mb-1" aria-live="polite">
++              Enter the {OTP_LENGTH}-digit code we texted to {sentTo}.
++            </p>
++            <input
++              ref={otpInputRef}
++              type="text"
++              id="otp"
++              name="otp"
++              value={code}
++              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, OTP_LENGTH))}
++              inputMode="numeric"
++              autoComplete="one-time-code"
++              pattern={`\\d{${OTP_LENGTH}}`}
++              maxLength={OTP_LENGTH}
++              aria-describedby={error ? 'otp-hint signup-error' : 'otp-hint'}
++              aria-invalid={error ? true : undefined}
++              enterKeyHint="done"
++              required
++              className={`${inputClassName} font-mono text-xl tracking-[0.35em] min-h-12`}
++            />
++          </div>
++
++          <button type="submit" disabled={loading} data-skip-tracking="true" className={primaryButtonClassName}>
++            {loading ? 'Verifying...' : 'Verify and create account'}
++          </button>
++
++          <div className="flex items-center justify-between">
++            <button type="button" onClick={handleChangePhone} disabled={loading} className={secondaryButtonClassName}>
++              Change phone number
++            </button>
++            <button
++              type="button"
++              onClick={handleResend}
++              disabled={loading || resendIn > 0}
++              className={secondaryButtonClassName}
++            >
++              {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
++            </button>
++          </div>
++        </form>
++      )}
+     </div>
+   );
+ }
+diff --git a/src/lib/phone.ts b/src/lib/phone.ts
+new file mode 100644
+index 0000000..56ccecc
+--- /dev/null
++++ b/src/lib/phone.ts
+@@ -0,0 +1,7 @@
++// Shared by the client and server, so it must not import Node built-ins.
++// Accepts common human formatting ("+1 (555) 010-0000") and returns E.164, or null.
++export function normalizePhone(input: unknown): string | null {
++  if (typeof input !== 'string') return null;
++  const stripped = input.replace(/[\s().-]/g, '');
++  return /^\+[1-9]\d{7,14}$/.test(stripped) ? stripped : null;
++}
+diff --git a/src/lib/sms-otp.ts b/src/lib/sms-otp.ts
+new file mode 100644
+index 0000000..72deb6c
+--- /dev/null
++++ b/src/lib/sms-otp.ts
+@@ -0,0 +1,49 @@
++import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
++
++export { normalizePhone } from './phone';
++
++export const OTP_LENGTH = 6;
++export const OTP_TTL_MS = 5 * 60 * 1000;
++export const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
++export const OTP_MAX_ATTEMPTS = 5;
++
++export interface PendingOtp {
++  phone: string;
++  codeHash: string;
++  expiresAt: number;
++  sentAt: number;
++  attempts: number;
++}
++
++export function generateOtp(): string {
++  return randomInt(0, 10 ** OTP_LENGTH).toString().padStart(OTP_LENGTH, '0');
++}
++
++export function hashOtp(code: string): string {
++  return createHash('sha256').update(code).digest('hex');
++}
++
++export function otpMatches(code: string, codeHash: string): boolean {
++  const a = Buffer.from(hashOtp(code), 'hex');
++  const b = Buffer.from(codeHash, 'hex');
++  return a.length === b.length && timingSafeEqual(a, b);
++}
++
++// The last line must be "@<host> #<code>" so WebOTP and iOS/macOS one-time-code
++// autofill can bind the code to this origin.
++export function composeOtpMessage(code: string, host: string): string {
++  return `Your DevTools Times verification code is ${code}.\n\n@${host} #${code}`;
++}
++
++export async function sendSms(to: string, body: string): Promise<void> {
++  // TODO: Wire up an SMS provider (e.g. Twilio, Vonage). Until then, log the
++  // message so the flow can be exercised in development.
++  console.info(`[sms] to=${to}\n${body}`);
++}
++
++export function json(body: unknown, status = 200): Response {
++  return new Response(JSON.stringify(body), {
++    status,
++    headers: { 'Content-Type': 'application/json' },
++  });
++}
+diff --git a/src/pages/api/sms/send.ts b/src/pages/api/sms/send.ts
+new file mode 100644
+index 0000000..5dfd0a2
+--- /dev/null
++++ b/src/pages/api/sms/send.ts
+@@ -0,0 +1,51 @@
++import type { APIRoute } from 'astro';
++import {
++  OTP_RESEND_COOLDOWN_MS,
++  OTP_TTL_MS,
++  composeOtpMessage,
++  generateOtp,
++  hashOtp,
++  json,
++  normalizePhone,
++  sendSms,
++  type PendingOtp,
++} from '../../../lib/sms-otp';
++
++export const POST: APIRoute = async ({ request, session, url }) => {
++  if (!session) {
++    return json({ error: 'Sessions are not available.' }, 500);
++  }
++
++  const { phone: rawPhone } = await request.json().catch(() => ({}));
++  const phone = normalizePhone(rawPhone);
++  if (!phone) {
++    return json({ error: 'Enter a valid phone number including the country code, e.g. +1 555 010 0000.' }, 400);
++  }
++
++  const now = Date.now();
++  const pending = (await session.get('pendingOtp')) as PendingOtp | undefined;
++  if (pending && pending.phone === phone && now - pending.sentAt < OTP_RESEND_COOLDOWN_MS) {
++    const retryAfter = Math.ceil((OTP_RESEND_COOLDOWN_MS - (now - pending.sentAt)) / 1000);
++    return json({ error: `Please wait ${retryAfter} seconds before requesting a new code.`, retryAfter }, 429);
++  }
++
++  const code = generateOtp();
++  const next: PendingOtp = {
++    phone,
++    codeHash: hashOtp(code),
++    expiresAt: now + OTP_TTL_MS,
++    sentAt: now,
++    attempts: 0,
++  };
++  session.set('pendingOtp', next);
++  session.delete('verifiedPhone');
++
++  try {
++    await sendSms(phone, composeOtpMessage(code, url.hostname));
++  } catch {
++    session.delete('pendingOtp');
++    return json({ error: 'We could not send a text message to that number. Please try again.' }, 502);
++  }
++
++  return json({ phone, expiresIn: OTP_TTL_MS / 1000, resendIn: OTP_RESEND_COOLDOWN_MS / 1000 });
++};
+diff --git a/src/pages/api/sms/verify.ts b/src/pages/api/sms/verify.ts
+new file mode 100644
+index 0000000..6d77400
+--- /dev/null
++++ b/src/pages/api/sms/verify.ts
+@@ -0,0 +1,41 @@
++import type { APIRoute } from 'astro';
++import { OTP_LENGTH, OTP_MAX_ATTEMPTS, json, otpMatches, type PendingOtp } from '../../../lib/sms-otp';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  if (!session) {
++    return json({ error: 'Sessions are not available.' }, 500);
++  }
++
++  const { code } = await request.json().catch(() => ({}));
++  if (typeof code !== 'string' || !new RegExp(`^\\d{${OTP_LENGTH}}$`).test(code)) {
++    return json({ error: `Enter the ${OTP_LENGTH}-digit code from the text message.` }, 400);
++  }
++
++  const pending = (await session.get('pendingOtp')) as PendingOtp | undefined;
++  if (!pending) {
++    return json({ error: 'No verification code is pending. Request a new code.' }, 400);
++  }
++  if (Date.now() > pending.expiresAt) {
++    session.delete('pendingOtp');
++    return json({ error: 'That code has expired. Request a new code.' }, 410);
++  }
++  if (pending.attempts >= OTP_MAX_ATTEMPTS) {
++    session.delete('pendingOtp');
++    return json({ error: 'Too many incorrect attempts. Request a new code.' }, 429);
++  }
++
++  if (!otpMatches(code, pending.codeHash)) {
++    const attempts = pending.attempts + 1;
++    session.set('pendingOtp', { ...pending, attempts });
++    const remaining = OTP_MAX_ATTEMPTS - attempts;
++    return json({
++      error: remaining > 0
++        ? `That code is incorrect. ${remaining} attempt${remaining === 1 ? '' : 's'} left.`
++        : 'Too many incorrect attempts. Request a new code.',
++    }, 400);
++  }
++
++  session.delete('pendingOtp');
++  session.set('verifiedPhone', pending.phone);
++  return json({ phone: pending.phone, verified: true });
++};

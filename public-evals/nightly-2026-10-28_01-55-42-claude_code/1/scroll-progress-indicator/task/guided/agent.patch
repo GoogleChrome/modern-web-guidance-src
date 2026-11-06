@@ -1,0 +1,89 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,36 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scroll progress indicator */
++    #scroll-progress {
++      position: fixed;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 4px;
++      background: var(--accent);
++      transform-origin: 0 50%;
++      transform: scaleX(0);
++      z-index: 1001; /* above the sticky nav */
++      pointer-events: none;
++    }
++
++    /* Native scroll-driven animation (Chrome 115+, Edge 115+, Safari 26+).
++       Browsers without support fall back to the scroll listener below. */
++    @supports (animation-timeline: scroll()) {
++      @keyframes grow-progress {
++        from { transform: scaleX(0); }
++        to { transform: scaleX(1); }
++      }
++
++      #scroll-progress {
++        animation: grow-progress auto linear;
++        animation-timeline: scroll(root block);
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +184,10 @@
+ </head>
+ 
+ <body>
+ 
++  <div id="scroll-progress" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +236,37 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-driven animations (e.g. Firefox).
++    if (!(window.CSS && CSS.supports('animation-timeline', 'scroll()'))) {
++      (function () {
++        var bar = document.getElementById('scroll-progress');
++        if (!bar) return;
++        var ticking = false;
++
++        function update() {
++          ticking = false;
++          var doc = document.documentElement;
++          var scrollable = doc.scrollHeight - window.innerHeight;
++          var ratio = scrollable > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollable)) : 0;
++          bar.style.transform = 'scaleX(' + ratio + ')';
++        }
++
++        function schedule() {
++          if (!ticking) {
++            ticking = true;
++            requestAnimationFrame(update);
++          }
++        }
++
++        window.addEventListener('scroll', schedule, { passive: true });
++        window.addEventListener('resize', schedule, { passive: true });
++        update();
++      })();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

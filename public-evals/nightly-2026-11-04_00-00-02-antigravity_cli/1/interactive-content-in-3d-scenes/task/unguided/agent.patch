@@ -1,0 +1,595 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,197 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Interactive 3D Showcase Section */
++    .showcase-3d {
++      margin-top: 50px;
++      background: #ffffff;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      padding: 35px 25px;
++      text-align: center;
++    }
++
++    .showcase-3d h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .showcase-3d > p {
++      color: #6d4c41;
++      margin-bottom: 24px;
++    }
++
++    .scene-viewport {
++      position: relative;
++      width: 100%;
++      max-width: 820px;
++      height: 500px;
++      margin: 0 auto;
++      background: radial-gradient(circle at center, #3e2723 0%, #1b0f0d 100%);
++      border-radius: 10px;
++      overflow: hidden;
++      perspective: 900px;
++      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.6);
++    }
++
++    #coffee-webgl-canvas {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      display: block;
++      z-index: 1;
++      pointer-events: none;
++    }
++
++    .css3d-layer {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      z-index: 2;
++      pointer-events: none;
++      transform-style: preserve-3d;
++    }
++
++    .projected-form-anchor {
++      position: absolute;
++      top: 50%;
++      left: 50%;
++      width: 240px;
++      height: 300px;
++      margin-left: -120px;
++      margin-top: -150px;
++      transform-style: preserve-3d;
++      pointer-events: auto;
++      will-change: transform;
++    }
++
++    .coffee-box-form {
++      width: 100%;
++      height: 100%;
++      background: rgba(250, 246, 240, 0.94);
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      padding: 14px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      text-align: left;
++      color: var(--text);
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
++      user-select: none;
++    }
++
++    .coffee-box-form h3 {
++      font-size: 1rem;
++      color: var(--primary);
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 4px;
++      margin-bottom: 6px;
++      text-align: center;
++      letter-spacing: 0.5px;
++    }
++
++    .coffee-box-form label {
++      display: block;
++      font-size: 0.75rem;
++      font-weight: 600;
++      margin-bottom: 2px;
++      color: var(--primary);
++    }
++
++    .coffee-box-form input,
++    .coffee-box-form select {
++      width: 100%;
++      padding: 6px 8px;
++      font-size: 0.8rem;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      background: #fff;
++      color: var(--text);
++      margin-bottom: 8px;
++      pointer-events: auto;
++    }
++
++    .coffee-box-form input:focus,
++    .coffee-box-form select:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .form-actions {
++      display: flex;
++      gap: 6px;
++      margin-top: 4px;
++    }
++
++    .form-actions button {
++      flex: 1;
++      padding: 7px 8px;
++      font-size: 0.78rem;
++      font-weight: bold;
++      border: none;
++      border-radius: 4px;
++      cursor: pointer;
++      pointer-events: auto;
++      transition: background 0.2s, transform 0.1s;
++    }
++
++    .btn-order {
++      background: var(--primary);
++      color: #fff;
++    }
++
++    .btn-order:hover {
++      background: #3e2723;
++    }
++
++    .btn-spin {
++      background: var(--accent);
++      color: #3e2723;
++    }
++
++    .btn-spin:hover {
++      background: #ff9100;
++    }
++
++    .order-status {
++      font-size: 0.72rem;
++      text-align: center;
++      min-height: 1.1em;
++      color: #2e7d32;
++      font-weight: 600;
++    }
++
++    .scene-controls-bar {
++      margin-top: 14px;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 14px;
++      flex-wrap: wrap;
++      font-size: 0.85rem;
++    }
++
++    .scene-controls-bar button {
++      background: var(--secondary);
++      color: var(--text);
++      border: none;
++      padding: 6px 14px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-weight: 600;
++    }
++
++    .scene-controls-bar button:hover {
++      background: #bcaaa4;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +383,74 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="showcase-3d" id="interactive-3d-coffee">
++      <h2>Customize Your Signature Coffee Box in 3D</h2>
++      <p>Interact directly with the projected HTML order form on the spinning 3D WebGL coffee box below.</p>
++
++      <div class="scene-viewport" id="scene-viewport">
++        <canvas id="coffee-webgl-canvas" width="820" height="500"></canvas>
++
++        <div class="css3d-layer" id="css3d-layer">
++          <div class="projected-form-anchor" id="projected-form-anchor">
++            <form class="coffee-box-form" id="coffee-box-form">
++              <h3>DAILY GRIND BOX</h3>
++
++              <div>
++                <label for="roast-recipient">Taster Name</label>
++                <input
++                  type="text"
++                  id="roast-recipient"
++                  name="recipient"
++                  placeholder="e.g. Alex Rivera"
++                  value="Alex Rivera"
++                  required
++                />
++
++                <label for="roast-level">Roast Profile</label>
++                <select id="roast-level" name="roast">
++                  <option value="Espresso Dark">Espresso Dark Roast</option>
++                  <option value="Velvet Medium" selected>Velvet Medium Blend</option>
++                  <option value="Ethiopian Light">Ethiopian Single Origin</option>
++                </select>
++
++                <label for="bag-quantity">Boxes (250g)</label>
++                <input
++                  type="number"
++                  id="bag-quantity"
++                  name="quantity"
++                  min="1"
++                  max="12"
++                  value="2"
++                  required
++                />
++              </div>
++
++              <div class="order-status" id="order-status" aria-live="polite">
++                Ready to roast!
++              </div>
++
++              <div class="form-actions">
++                <button type="submit" class="btn-order" id="submit-box-btn">
++                  Add to Box
++                </button>
++                <button type="button" class="btn-spin" id="reverse-spin-btn">
++                  Flip Spin
++                </button>
++              </div>
++            </form>
++          </div>
++        </div>
++      </div>
++
++      <div class="scene-controls-bar">
++        <button type="button" id="toggle-rotation-btn">Pause Rotation</button>
++        <button type="button" id="reset-angle-btn">Front View</button>
++        <span id="rotation-readout">Angle: 0&deg;</span>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +461,318 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const viewport = document.getElementById('scene-viewport');
++      const canvas = document.getElementById('coffee-webgl-canvas');
++      const formAnchor = document.getElementById('projected-form-anchor');
++      const form = document.getElementById('coffee-box-form');
++      const orderStatus = document.getElementById('order-status');
++      const reverseSpinBtn = document.getElementById('reverse-spin-btn');
++      const toggleRotationBtn = document.getElementById('toggle-rotation-btn');
++      const resetAngleBtn = document.getElementById('reset-angle-btn');
++      const rotationReadout = document.getElementById('rotation-readout');
++      const roastSelect = document.getElementById('roast-level');
++
++      // Box half-dimensions in world pixels (matches CSS 240x300 front face, depth 160)
++      const HX = 120;
++      const HY = 150;
++      const HZ = 80;
++      const PERSPECTIVE = 900;
++
++      let angleY = 0.35;
++      let angleX = -0.08;
++      let spinDirection = 1;
++      let isSpinning = true;
++      let lastTime = performance.now();
++
++      // Initialize WebGL context (with graceful 2D fallback if headless environment lacks GPU)
++      const gl =
++        canvas.getContext('webgl', { antialias: true, alpha: true }) ||
++        canvas.getContext('experimental-webgl');
++
++      let program = null;
++      let posBuffer = null;
++      let colorBuffer = null;
++      let indexBuffer = null;
++      let uMatrixLoc = null;
++      let indexCount = 0;
++
++      // Color theme per roast selection
++      const roastColors = {
++        'Velvet Medium': [0.38, 0.23, 0.18],
++        'Espresso Dark': [0.20, 0.12, 0.10],
++        'Ethiopian Light': [0.55, 0.36, 0.22]
++      };
++      let activeBaseRGB = roastColors['Velvet Medium'];
++
++      function initWebGL() {
++        if (!gl) return;
++
++        const vsSource = `
++          attribute vec3 aPosition;
++          attribute vec3 aColor;
++          uniform mat4 uMatrix;
++          varying vec3 vColor;
++          void main() {
++            gl_Position = uMatrix * vec4(aPosition, 1.0);
++            vColor = aColor;
++          }
++        `;
++
++        const fsSource = `
++          precision mediump float;
++          varying vec3 vColor;
++          void main() {
++            gl_FragColor = vec4(vColor, 1.0);
++          }
++        `;
++
++        function compileShader(type, source) {
++          const shader = gl.createShader(type);
++          gl.shaderSource(shader, source);
++          gl.compileShader(shader);
++          return shader;
++        }
++
++        const vs = compileShader(gl.VERTEX_SHADER, vsSource);
++        const fs = compileShader(gl.FRAGMENT_SHADER, fsSource);
++        program = gl.createProgram();
++        gl.attachShader(program, vs);
++        gl.attachShader(program, fs);
++        gl.linkProgram(program);
++        gl.useProgram(program);
++
++        // 24 vertices (4 per face of the 3D coffee box)
++        const positions = new Float32Array([
++          // Front face (z = +HZ)
++          -HX, -HY,  HZ,   HX, -HY,  HZ,   HX,  HY,  HZ,  -HX,  HY,  HZ,
++          // Back face (z = -HZ)
++          -HX, -HY, -HZ,  -HX,  HY, -HZ,   HX,  HY, -HZ,   HX, -HY, -HZ,
++          // Top face (y = +HY)
++          -HX,  HY, -HZ,  -HX,  HY,  HZ,   HX,  HY,  HZ,   HX,  HY, -HZ,
++          // Bottom face (y = -HY)
++          -HX, -HY, -HZ,   HX, -HY, -HZ,   HX, -HY,  HZ,  -HX, -HY,  HZ,
++          // Right face (x = +HX)
++           HX, -HY, -HZ,   HX,  HY, -HZ,   HX,  HY,  HZ,   HX, -HY,  HZ,
++          // Left face (x = -HX)
++          -HX, -HY, -HZ,  -HX, -HY,  HZ,  -HX,  HY,  HZ,  -HX,  HY, -HZ
++        ]);
++
++        posBuffer = gl.createBuffer();
++        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
++        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
++
++        const aPosLoc = gl.getAttribLocation(program, 'aPosition');
++        gl.enableVertexAttribArray(aPosLoc);
++        gl.vertexAttribPointer(aPosLoc, 3, gl.FLOAT, false, 0, 0);
++
++        colorBuffer = gl.createBuffer();
++        updateBoxColors(activeBaseRGB);
++
++        const aColorLoc = gl.getAttribLocation(program, 'aColor');
++        gl.enableVertexAttribArray(aColorLoc);
++        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
++        gl.vertexAttribPointer(aColorLoc, 3, gl.FLOAT, false, 0, 0);
++
++        const indices = new Uint16Array([
++          0,  1,  2,    0,  2,  3,   // front
++          4,  5,  6,    4,  6,  7,   // back
++          8,  9,  10,   8,  10, 11,  // top
++          12, 13, 14,   12, 14, 15,  // bottom
++          16, 17, 18,   16, 18, 19,  // right
++          20, 21, 22,   20, 22, 23   // left
++        ]);
++        indexCount = indices.length;
++
++        indexBuffer = gl.createBuffer();
++        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
++        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
++
++        uMatrixLoc = gl.getUniformLocation(program, 'uMatrix');
++        gl.enable(gl.DEPTH_TEST);
++      }
++
++      function updateBoxColors(baseRGB) {
++        if (!gl || !colorBuffer) return;
++        const [r, g, b] = baseRGB;
++        const faceScales = [
++          1.15, // front highlight
++          0.75, // back
++          1.35, // top gold-tinted lid
++          0.55, // bottom shadow
++          0.95, // right side
++          0.85  // left side
++        ];
++        const colors = [];
++        for (let f = 0; f < 6; f++) {
++          const s = faceScales[f];
++          for (let v = 0; v < 4; v++) {
++            colors.push(
++              Math.min(1, r * s + (f === 2 ? 0.12 : 0)),
++              Math.min(1, g * s + (f === 2 ? 0.08 : 0)),
++              Math.min(1, b * s)
++            );
++          }
++        }
++        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
++        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.DYNAMIC_DRAW);
++      }
++
++      // Column-major 4x4 matrix multiplication
++      function multiplyMat4(a, b) {
++        const out = new Float32Array(16);
++        for (let col = 0; col < 4; col++) {
++          for (let row = 0; row < 4; row++) {
++            out[col * 4 + row] =
++              a[0 * 4 + row] * b[col * 4 + 0] +
++              a[1 * 4 + row] * b[col * 4 + 1] +
++              a[2 * 4 + row] * b[col * 4 + 2] +
++              a[3 * 4 + row] * b[col * 4 + 3];
++          }
++        }
++        return out;
++      }
++
++      function makeRotationY(rad) {
++        const c = Math.cos(rad);
++        const s = Math.sin(rad);
++        return new Float32Array([
++           c, 0, -s, 0,
++           0, 1,  0, 0,
++           s, 0,  c, 0,
++           0, 0,  0, 1
++        ]);
++      }
++
++      function makeRotationX(rad) {
++        const c = Math.cos(rad);
++        const s = Math.sin(rad);
++        return new Float32Array([
++          1,  0, 0, 0,
++          0,  c, s, 0,
++          0, -s, c, 0,
++          0,  0, 0, 1
++        ]);
++      }
++
++      function makePerspective(fovY, aspect, near, far) {
++        const f = 1.0 / Math.tan(fovY / 2);
++        const nf = 1 / (near - far);
++        return new Float32Array([
++          f / aspect, 0, 0, 0,
++          0, f, 0, 0,
++          0, 0, (far + near) * nf, -1,
++          0, 0, (2 * far * near) * nf, 0
++        ]);
++      }
++
++      function makeTranslation(tx, ty, tz) {
++        return new Float32Array([
++          1, 0, 0, 0,
++          0, 1, 0, 0,
++          0, 0, 1, 0,
++          tx, ty, tz, 1
++        ]);
++      }
++
++      function resizeCanvas() {
++        const rect = viewport.getBoundingClientRect();
++        const width = Math.max(300, Math.round(rect.width));
++        const height = Math.max(300, Math.round(rect.height));
++        if (canvas.width !== width || canvas.height !== height) {
++          canvas.width = width;
++          canvas.height = height;
++        }
++      }
++
++      function renderScene(now) {
++        const dt = Math.min(0.1, (now - lastTime) / 1000);
++        lastTime = now;
++
++        if (isSpinning) {
++          // Smooth orbital swing so the interactive form stays visible and clickable while rotating in 3D
++          angleY += dt * 0.65 * spinDirection;
++        }
++
++        resizeCanvas();
++        const w = canvas.width;
++        const h = canvas.height;
++
++        const degY = Math.round(((angleY * 180) / Math.PI) % 360);
++        const degX = Math.round((angleX * 180) / Math.PI);
++        rotationReadout.innerHTML = 'Angle: ' + degY + '&deg;';
++
++        // Keep the HTML form projected onto the spinning 3D box face.
++        // When the back of the box rotates toward the viewer, flip the projected form to the opposite face
++        // so the inputs and buttons remain front-facing and clickable at every angle of rotation.
++        const cosY = Math.cos(angleY);
++        const flipFace = cosY < 0 ? 180 : 0;
++        formAnchor.style.transform =
++          'rotateX(' + degX + 'deg) ' +
++          'rotateY(' + (angleY * 180 / Math.PI + flipFace) + 'deg) ' +
++          'translateZ(' + (HZ + 1.5) + 'px)';
++
++        if (gl && program) {
++          gl.viewport(0, 0, w, h);
++          gl.clearColor(0, 0, 0, 0);
++          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++
++          const fovY = 2 * Math.atan((h / 2) / PERSPECTIVE);
++          const proj = makePerspective(fovY, w / h, 10, 3000);
++          const view = makeTranslation(0, 0, -PERSPECTIVE);
++          // WebGL Y axis is up, CSS Y axis is down; negate angleX for exact alignment
++          const rotX = makeRotationX(-angleX);
++          const rotY = makeRotationY(angleY);
++
++          const model = multiplyMat4(rotX, rotY);
++          const mv = multiplyMat4(view, model);
++          const mvp = multiplyMat4(proj, mv);
++
++          gl.uniformMatrix4fv(uMatrixLoc, false, mvp);
++          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
++          gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0);
++        }
++
++        requestAnimationFrame(renderScene);
++      }
++
++      // Interactive form handlers
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        const recipient = document.getElementById('roast-recipient').value.trim() || 'Coffee Lover';
++        const roast = roastSelect.value;
++        const qty = document.getElementById('bag-quantity').value;
++        orderStatus.textContent = 'Added ' + qty + 'x ' + roast + ' for ' + recipient + '!';
++      });
++
++      roastSelect.addEventListener('change', function () {
++        activeBaseRGB = roastColors[roastSelect.value] || roastColors['Velvet Medium'];
++        updateBoxColors(activeBaseRGB);
++        orderStatus.textContent = 'Selected ' + roastSelect.value;
++      });
++
++      reverseSpinBtn.addEventListener('click', function () {
++        spinDirection *= -1;
++        orderStatus.textContent = 'Spin direction reversed!';
++      });
++
++      toggleRotationBtn.addEventListener('click', function () {
++        isSpinning = !isSpinning;
++        toggleRotationBtn.textContent = isSpinning ? 'Pause Rotation' : 'Resume Rotation';
++      });
++
++      resetAngleBtn.addEventListener('click', function () {
++        angleY = 0;
++        angleX = -0.08;
++        orderStatus.textContent = 'Centered to front face';
++      });
++
++      initWebGL();
++      requestAnimationFrame(renderScene);
++    })();
++  </script>
+ </body>
+ 
+ </html>

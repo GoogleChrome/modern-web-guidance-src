@@ -1,0 +1,279 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,145 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .ops {
++      margin-top: 60px;
++    }
++
++    .ops-intro {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++    }
++
++    .ops-controls button {
++      font: inherit;
++      color: white;
++      border: 0;
++      border-radius: 5px;
++      padding: 10px 18px;
++      cursor: pointer;
++      background: var(--primary);
++    }
++
++    .ops-controls button:hover {
++      filter: brightness(1.2);
++    }
++
++    .ops-controls button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .ops-controls .urgent {
++      background: #b71c1c;
++    }
++
++    .ops-controls .standard {
++      background: #1565c0;
++    }
++
++    .ops-controls .background {
++      background: #546e7a;
++    }
++
++    .ops-controls .batch {
++      background: var(--text);
++    }
++
++    .ops-status {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 20px;
++      justify-content: center;
++      align-items: center;
++      margin: 20px 0;
++      font-size: 0.9rem;
++    }
++
++    .spinner {
++      display: inline-block;
++      width: 14px;
++      height: 14px;
++      border: 3px solid var(--secondary);
++      border-top-color: var(--primary);
++      border-radius: 50%;
++      vertical-align: middle;
++      margin-right: 6px;
++      animation: spin 1s linear infinite;
++    }
++
++    @keyframes spin {
++      to {
++        transform: rotate(360deg);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .spinner {
++        animation: none;
++      }
++    }
++
++    .ops-list {
++      list-style: none;
++      display: grid;
++      gap: 8px;
++    }
++
++    .op {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 10px 14px;
++      border-left: 6px solid var(--secondary);
++    }
++
++    .op[data-priority="user-blocking"] {
++      border-left-color: #b71c1c;
++    }
++
++    .op[data-priority="user-visible"] {
++      border-left-color: #1565c0;
++    }
++
++    .op[data-priority="background"] {
++      border-left-color: #546e7a;
++    }
++
++    .op-head {
++      display: flex;
++      justify-content: space-between;
++      gap: 10px;
++      font-size: 0.9rem;
++    }
++
++    .op progress {
++      width: 100%;
++      height: 8px;
++      margin-top: 6px;
++    }
++
++    .ops-log {
++      margin-top: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 14px 14px 14px 36px;
++      max-height: 200px;
++      overflow-y: auto;
++      font-family: ui-monospace, monospace;
++      font-size: 0.8rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +331,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ops" aria-labelledby="ops-title">
++      <h2 id="ops-title" class="ops-intro">Operations Queue Simulator</h2>
++      <p class="ops-intro">Each task does heavy work in small slices scheduled by priority, so urgent checkouts jump ahead and the page stays responsive.</p>
++      <div class="ops-controls">
++        <button type="button" class="urgent" data-run="checkout">Run urgent checkout</button>
++        <button type="button" class="standard" data-run="menu">Run menu update</button>
++        <button type="button" class="background" data-run="telemetry">Run telemetry logging</button>
++        <button type="button" class="batch" data-run="batch">Run mixed batch</button>
++      </div>
++      <div class="ops-status">
++        <span><span class="spinner" aria-hidden="true"></span>UI heartbeat: <output id="ops-beat">0</output> frames</span>
++        <span>Pending tasks: <output id="ops-pending">0</output></span>
++      </div>
++      <ul class="ops-list" id="ops-list"></ul>
++      <ol class="ops-log" id="ops-log" aria-label="Execution log" aria-live="polite"></ol>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +360,103 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const TYPES = {
++        checkout: { label: 'Urgent checkout', priority: 'user-blocking', slices: 12 },
++        menu: { label: 'Menu update', priority: 'user-visible', slices: 20 },
++        telemetry: { label: 'Telemetry logging', priority: 'background', slices: 30 }
++      };
++      const SLICE_MS = 20;
++      const list = document.getElementById('ops-list');
++      const log = document.getElementById('ops-log');
++      const pendingOut = document.getElementById('ops-pending');
++      const beatOut = document.getElementById('ops-beat');
++      let pending = 0;
++      let counter = 0;
++
++      // Scheduler API is not in Safari: load the polyfill only when needed.
++      const schedulerReady = ('scheduler' in window && 'postTask' in window.scheduler)
++        ? Promise.resolve()
++        : new Promise((resolve) => {
++          const script = document.createElement('script');
++          script.src = 'https://unpkg.com/scheduler-polyfill';
++          script.onload = script.onerror = resolve;
++          document.head.appendChild(script);
++        });
++
++      // Plain macrotask fallback if the polyfill could not load (offline).
++      const post = (fn, priority) => window.scheduler?.postTask
++        ? scheduler.postTask(fn, { priority })
++        : new Promise((resolve) => setTimeout(resolve)).then(fn);
++
++      const t0 = performance.now();
++      const addLog = (text) => {
++        const li = document.createElement('li');
++        li.textContent = `[${Math.round(performance.now() - t0)}ms] ${text}`;
++        log.append(li);
++        log.scrollTop = log.scrollHeight;
++      };
++
++      const busyWait = (ms) => {
++        const end = performance.now() + ms;
++        while (performance.now() < end);
++      };
++
++      async function runTask(type) {
++        const { label, priority, slices } = TYPES[type];
++        const id = ++counter;
++        const li = document.createElement('li');
++        li.className = 'op';
++        li.dataset.priority = priority;
++        li.innerHTML = '<div class="op-head"><strong></strong><span>queued</span></div><progress max="1" value="0"></progress>';
++        const [name, state] = li.querySelectorAll('strong, span');
++        name.textContent = `#${id} ${label} (${priority})`;
++        const bar = li.querySelector('progress');
++        list.prepend(li);
++        pendingOut.textContent = ++pending;
++        await schedulerReady;
++
++        for (let i = 0; i < slices; i++) {
++          // Each slice is its own prioritized task, so higher-priority work can interleave.
++          await post(() => {
++            if (i === 0) {
++              state.textContent = 'running';
++              addLog(`start  #${id} ${label}`);
++            }
++            busyWait(SLICE_MS);
++            bar.value = (i + 1) / slices;
++          }, priority);
++        }
++        state.textContent = 'done';
++        addLog(`finish #${id} ${label}`);
++        pendingOut.textContent = --pending;
++      }
++
++      document.querySelector('.ops-controls').addEventListener('click', (event) => {
++        const run = event.target.closest('button')?.dataset.run;
++        if (!run) return;
++        if (run === 'batch') {
++          // Submitted in mixed order; the scheduler runs them by priority.
++          const mix = ['telemetry', 'menu', 'checkout', 'telemetry', 'checkout', 'menu'];
++          addLog('batch submitted: ' + mix.join(', '));
++          mix.forEach(runTask);
++        } else {
++          runTask(run);
++        }
++      });
++
++      // Heartbeat proves the main thread keeps painting frames while tasks run.
++      let frames = 0;
++      const tick = () => {
++        beatOut.textContent = ++frames;
++        requestAnimationFrame(tick);
++      };
++      requestAnimationFrame(tick);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

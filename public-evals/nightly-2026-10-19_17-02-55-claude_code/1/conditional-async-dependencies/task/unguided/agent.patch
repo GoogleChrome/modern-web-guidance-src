@@ -1,0 +1,183 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -65,8 +65,100 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    .rewards-btn {
++      background: none;
++      border: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .rewards-btn:hover,
++    .rewards-btn[aria-expanded="true"] {
++      color: var(--accent);
++    }
++
++    .rewards-btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Rewards popover */
++    #rewards-popover {
++      position: fixed;
++      inset: 64px 5% auto auto;
++      margin: 0;
++      padding: 0;
++      width: min(340px, calc(100vw - 10%));
++      border: none;
++      border-radius: 8px;
++      overflow: hidden;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++    }
++
++    .rewards-header {
++      background: var(--primary);
++      color: white;
++      padding: 16px 20px;
++    }
++
++    .rewards-header h3 {
++      font-size: 1.1rem;
++      margin-bottom: 4px;
++    }
++
++    .rewards-points {
++      font-size: 0.9rem;
++    }
++
++    .rewards-points strong {
++      color: var(--accent);
++      font-size: 1.4rem;
++    }
++
++    .rewards-body {
++      padding: 16px 20px 20px;
++    }
++
++    .tier {
++      padding: 10px 0;
++      border-bottom: 1px solid var(--secondary);
++      font-size: 0.85rem;
++    }
++
++    .tier h4 {
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .tier.current h4::after {
++      content: "Current";
++      margin-left: 8px;
++      padding: 1px 8px;
++      border-radius: 10px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.7rem;
++      font-weight: normal;
++    }
++
++    .tier ul {
++      display: block;
++      margin: 4px 0 0 18px;
++    }
++
++    .rewards-body .btn {
++      display: block;
++      text-align: center;
++      margin-top: 16px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -161,14 +253,49 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <button type="button" class="rewards-btn" popovertarget="rewards-popover" aria-haspopup="dialog"
++          aria-expanded="false" aria-controls="rewards-popover">Rewards</button>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="rewards-popover" popover role="dialog" aria-labelledby="rewards-title">
++    <div class="rewards-header">
++      <h3 id="rewards-title">Grind Rewards</h3>
++      <p class="rewards-points"><strong>240</strong> points &middot; 60 to Gold</p>
++    </div>
++    <div class="rewards-body">
++      <div class="tier current">
++        <h4>Silver</h4>
++        <ul>
++          <li>1 point per $1 spent</li>
++          <li>Free birthday drink</li>
++        </ul>
++      </div>
++      <div class="tier">
++        <h4>Gold &mdash; 300 pts</h4>
++        <ul>
++          <li>1.5 points per $1 spent</li>
++          <li>Free size upgrades</li>
++        </ul>
++      </div>
++      <div class="tier">
++        <h4>Reserve &mdash; 750 pts</h4>
++        <ul>
++          <li>2 points per $1 spent</li>
++          <li>Free monthly bag of beans</li>
++          <li>Early access to seasonal drinks</li>
++        </ul>
++      </div>
++      <a href="/rewards" class="btn">View Full Rewards</a>
++    </div>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +333,27 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var pop = document.getElementById('rewards-popover');
++      var btn = document.querySelector('[popovertarget="rewards-popover"]');
++
++      // Keep aria-expanded in sync with popover state.
++      pop.addEventListener('toggle', function (e) {
++        btn.setAttribute('aria-expanded', e.newState === 'open');
++      });
++
++      // Load the polyfill only in browsers lacking native Popover support,
++      // and without blocking page load.
++      if (!HTMLElement.prototype.hasOwnProperty('popover')) {
++        var s = document.createElement('script');
++        s.src = 'https://cdn.jsdelivr.net/npm/@oddbird/popover-polyfill@0.5.2/dist/popover.min.js';
++        s.async = true;
++        document.head.appendChild(s);
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

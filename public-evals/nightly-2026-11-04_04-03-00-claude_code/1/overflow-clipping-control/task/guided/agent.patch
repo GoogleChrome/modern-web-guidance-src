@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,116 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 40px;
++      align-items: start;
++      margin-bottom: 60px;
++    }
++
++    .showcase h2 {
++      grid-column: 1 / -1;
++      text-align: center;
++    }
++
++    /* Card wrapper: children are clipped at the inner content box, so their
++       corners follow the concentric inner curve automatically. */
++    .nested-curve-parent {
++      --outer-radius: 28px;
++      --card-padding: 14px;
++      background: var(--primary);
++      padding: var(--card-padding);
++      border-radius: var(--outer-radius);
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
++      /* Fallback: clips at the padding box */
++      overflow: hidden;
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .nested-curve-footer {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 16px 20px;
++    }
++
++    .nested-curve-footer h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    @supports (overflow-clip-margin: content-box) {
++      .nested-curve-parent {
++        /* overflow: clip is required for overflow-clip-margin to apply */
++        overflow: clip;
++        overflow-clip-margin: content-box;
++      }
++    }
++
++    @supports not (overflow-clip-margin: content-box) {
++      /* Fallback only: approximate the concentric inner curves by hand */
++      .nested-curve-parent > :first-child {
++        border-radius: calc(var(--outer-radius) - var(--card-padding)) calc(var(--outer-radius) - var(--card-padding)) 0 0;
++      }
++
++      .nested-curve-parent > :last-child {
++        border-radius: 0 0 calc(var(--outer-radius) - var(--card-padding)) calc(var(--outer-radius) - var(--card-padding));
++      }
++    }
++
++    /* Promos block: clips overflowing text but leaves a 15px safety zone
++       so the button's glow can bleed past the edge. */
++    .safety-zone-parent {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: 24px;
++      height: 340px;
++      /* Fallback: clips overflowing text (and, unavoidably, the glow) */
++      overflow: hidden;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .promo-glow-btn {
++      display: block;
++      width: 100%;
++      margin: 20px 0;
++      padding: 14px 20px;
++      font: inherit;
++      font-weight: bold;
++      color: var(--text);
++      background: var(--accent);
++      border: none;
++      border-radius: 8px;
++      cursor: pointer;
++      box-shadow: 0 0 24px 6px rgba(255, 171, 64, 0.75);
++    }
++
++    .promo-fine-print {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    @supports (overflow-clip-margin: 15px) {
++      .safety-zone-parent {
++        overflow: clip;
++        overflow-clip-margin: 15px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +282,34 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase" aria-labelledby="showcase-heading">
++      <h2 id="showcase-heading">This Week at The Daily Grind</h2>
++
++      <article class="nested-curve-parent">
++        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++          alt="A cup of coffee on a wooden table" loading="lazy">
++        <div class="nested-curve-footer">
++          <h3>Roaster's Pick: Ethiopia Yirgacheffe</h3>
++          <p>Bright, floral, and citrusy — single origin, roasted this morning.</p>
++        </div>
++      </article>
++
++      <div class="safety-zone-parent">
++        <h3>Happy Hour Promos</h3>
++        <p>Half-price handcrafted drinks every weekday from 2–4pm. Bring a friend and earn double rewards points.</p>
++        <button type="button" class="promo-glow-btn">Claim Offer</button>
++        <p class="promo-fine-print">
++          Offer valid at participating locations only. Limit one discounted beverage per customer per visit.
++          Cannot be combined with other offers, coupons, or rewards redemptions. Discount applies to handcrafted
++          beverages of any size; excludes bottled drinks, packaged coffee, and food items. Rewards members must
++          scan their app at checkout to earn double points. Prices and participation may vary. The Daily Grind
++          reserves the right to modify or end this promotion at any time without notice.
++        </p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

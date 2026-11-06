@@ -1,0 +1,337 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,208 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Hero secondary button */
++    .btn-outline {
++      background: transparent;
++      border: 2px solid var(--accent);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++      margin-left: 10px;
++    }
++
++    .btn-outline:hover {
++      background: rgba(255, 171, 64, 0.2);
++    }
++
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++    }
++
++    /* Logout confirmation modal */
++    .modal {
++      border: none;
++      border-radius: 12px;
++      padding: 0;
++      width: min(90vw, 420px);
++      margin: auto;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
++    }
++
++    .modal[open] {
++      animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
++    }
++
++    .modal[open]::backdrop {
++      background: rgba(30, 20, 15, 0.55);
++      animation: backdrop-in 0.3s ease both;
++    }
++
++    .modal.is-closing {
++      animation: modal-out 0.22s cubic-bezier(0.4, 0, 1, 1) both;
++    }
++
++    .modal.is-closing::backdrop {
++      animation: backdrop-out 0.22s ease both;
++    }
++
++    .modal-body {
++      padding: 28px 28px 24px;
++      position: relative;
++    }
++
++    .modal h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      font-size: 1.4rem;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 24px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .icon-close {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      width: 32px;
++      height: 32px;
++      border: none;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--text);
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .icon-close:hover {
++      background: rgba(0, 0, 0, 0.08);
++    }
++
++    @keyframes modal-in {
++      from { opacity: 0; transform: translateY(16px) scale(0.95); }
++      to { opacity: 1; transform: translateY(0) scale(1); }
++    }
++
++    @keyframes modal-out {
++      from { opacity: 1; transform: translateY(0) scale(1); }
++      to { opacity: 0; transform: translateY(8px) scale(0.97); }
++    }
++
++    @keyframes backdrop-in {
++      from { opacity: 0; }
++      to { opacity: 1; }
++    }
++
++    @keyframes backdrop-out {
++      from { opacity: 1; }
++      to { opacity: 0; }
++    }
++
++    /* Floating info overlay */
++    .info-overlay {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      display: flex;
++      align-items: flex-start;
++      gap: 12px;
++      max-width: min(90vw, 360px);
++      padding: 16px 16px 16px 18px;
++      background: var(--primary);
++      color: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 10px;
++      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
++      opacity: 0;
++      transform: translateY(20px) scale(0.96);
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.4, 0, 1, 1), visibility 0s linear 0.22s;
++    }
++
++    .info-overlay.is-visible {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++      visibility: visible;
++      pointer-events: auto;
++      transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s;
++    }
++
++    .info-overlay .info-icon {
++      flex-shrink: 0;
++      width: 24px;
++      height: 24px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: bold;
++      display: grid;
++      place-items: center;
++      font-size: 0.9rem;
++    }
++
++    .info-overlay p {
++      flex: 1;
++      margin-top: 1px;
++    }
++
++    .info-overlay .icon-close {
++      position: static;
++      color: white;
++      width: 28px;
++      height: 28px;
++      margin: -4px -4px 0 0;
++    }
++
++    .info-overlay .icon-close:hover {
++      background: rgba(255, 255, 255, 0.15);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .modal[open],
++      .modal[open]::backdrop,
++      .modal.is-closing,
++      .modal.is-closing::backdrop {
++        animation-duration: 0.01ms;
++      }
++
++      .info-overlay,
++      .info-overlay.is-visible {
++        transition-duration: 0.01ms;
++        transform: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +363,19 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn" aria-haspopup="dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <button type="button" id="foobar" class="btn btn-outline" aria-controls="info-overlay">Ordering Status</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +409,102 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog class="modal" id="logout-dialog" aria-labelledby="logout-dialog-title" aria-describedby="logout-dialog-desc">
++    <div class="modal-body">
++      <button type="button" class="icon-close" id="close-dialog-btn" aria-label="Close">&times;</button>
++      <h2 id="logout-dialog-title">Log out?</h2>
++      <p id="logout-dialog-desc">Are you sure you want to log out of your Daily Grind account?</p>
++      <div class="modal-actions">
++        <button type="button" class="btn btn-secondary" data-dismiss-dialog>Cancel</button>
++        <a href="/logout" class="btn">Log Out</a>
++      </div>
++    </div>
++  </dialog>
++
++  <div class="info-overlay" id="info-overlay" role="status" aria-live="polite" aria-hidden="true">
++    <span class="info-icon" aria-hidden="true">i</span>
++    <p>online ordering is currently offline</p>
++    <button type="button" class="icon-close" id="info-overlay-close" aria-label="Dismiss">&times;</button>
++  </div>
++
++  <script>
++    (function () {
++      // ----- Logout confirmation modal -----
++      var dialog = document.getElementById('logout-dialog');
++      var openBtn = document.getElementById('open-dialog-btn');
++      var closeBtn = document.getElementById('close-dialog-btn');
++      var cancelBtn = dialog.querySelector('[data-dismiss-dialog]');
++
++      function closeDialog() {
++        if (!dialog.open || dialog.classList.contains('is-closing')) return;
++        dialog.classList.add('is-closing');
++        var done = false;
++        function finish() {
++          if (done) return;
++          done = true;
++          dialog.classList.remove('is-closing');
++          dialog.close();
++        }
++        dialog.addEventListener('animationend', function handler(e) {
++          if (e.target !== dialog) return;
++          dialog.removeEventListener('animationend', handler);
++          finish();
++        });
++        setTimeout(finish, 400); // fallback if animations are disabled
++      }
++
++      openBtn.addEventListener('click', function (e) {
++        e.preventDefault();
++        if (typeof dialog.showModal !== 'function') {
++          if (window.confirm('Are you sure you want to log out?')) window.location.href = openBtn.href;
++          return;
++        }
++        dialog.classList.remove('is-closing');
++        if (!dialog.open) dialog.showModal();
++      });
++
++      closeBtn.addEventListener('click', closeDialog);
++      cancelBtn.addEventListener('click', closeDialog);
++
++      // Animate Escape-key dismissal instead of closing instantly
++      dialog.addEventListener('cancel', function (e) {
++        e.preventDefault();
++        closeDialog();
++      });
++
++      // Close when clicking the backdrop
++      dialog.addEventListener('click', function (e) {
++        if (e.target === dialog) closeDialog();
++      });
++
++      // ----- Floating info overlay -----
++      var overlay = document.getElementById('info-overlay');
++      var overlayTrigger = document.getElementById('foobar');
++      var overlayClose = document.getElementById('info-overlay-close');
++
++      function showOverlay() {
++        overlay.classList.add('is-visible');
++        overlay.setAttribute('aria-hidden', 'false');
++        overlayTrigger.setAttribute('aria-expanded', 'true');
++      }
++
++      function hideOverlay() {
++        overlay.classList.remove('is-visible');
++        overlay.setAttribute('aria-hidden', 'true');
++        overlayTrigger.setAttribute('aria-expanded', 'false');
++      }
++
++      overlayTrigger.setAttribute('aria-expanded', 'false');
++      overlayTrigger.addEventListener('click', showOverlay);
++      overlayClose.addEventListener('click', hideOverlay);
++
++      document.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape' && overlay.classList.contains('is-visible') && !dialog.open) hideOverlay();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

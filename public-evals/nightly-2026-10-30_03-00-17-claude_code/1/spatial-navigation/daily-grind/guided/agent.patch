@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+index 66c9173..f03bee0 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,17 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .grid-hint {
++      text-align: center;
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,8 +187,9 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <p id="seasonal-hint" class="grid-hint" hidden>Use the arrow keys to move between items.</p>
++      <div class="grid" data-spatial-nav role="group" aria-labelledby="seasonal-heading" aria-describedby="seasonal-hint">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -193,6 +205,21 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <h3>Pumpkin Chai</h3>
++          <p>Spiced black tea with steamed milk and real pumpkin.</p>
++          <a href="/menu/pumpkin-chai" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Honey Lavender Cortado</h3>
++          <p>Equal parts espresso and milk, lightly floral and sweet.</p>
++          <a href="/menu/cortado" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Single-Origin Pour Over</h3>
++          <p>A rotating Ethiopian roast, brewed by hand to order.</p>
++          <a href="/menu/pour-over" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +234,112 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Arrow-key spatial navigation for composite widgets marked [data-spatial-nav].
++    // Targets are chosen from live layout geometry, so it follows the visual
++    // arrangement whether the grid shows one, two or three columns.
++    (() => {
++      const ITEM_SELECTOR = 'a[href], button:not([disabled])';
++      const TOLERANCE = 1;
++      const FALLBACK_WEIGHT = 2;
++      const DIRECTIONS = {
++        ArrowUp: 'up',
++        ArrowDown: 'down',
++        ArrowLeft: 'left',
++        ArrowRight: 'right',
++      };
++
++      const getItems = (container) =>
++        [...container.querySelectorAll(ITEM_SELECTOR)].filter((el) => el.checkVisibility());
++
++      const setActive = (container, item) => {
++        for (const el of container.querySelectorAll(ITEM_SELECTOR)) {
++          el.tabIndex = el === item ? 0 : -1;
++        }
++      };
++
++      // Gap along the navigation axis (negative if not in that direction),
++      // perpendicular overlap, and perpendicular centre offset.
++      const measure = (from, to, direction) => {
++        const vertical = direction === 'up' || direction === 'down';
++        const gap = {
++          up: from.top - to.bottom,
++          down: to.top - from.bottom,
++          left: from.left - to.right,
++          right: to.left - from.right,
++        }[direction];
++        const overlaps = vertical
++          ? to.left < from.right && to.right > from.left
++          : to.top < from.bottom && to.bottom > from.top;
++        const offset = vertical
++          ? Math.abs((to.left + to.right) / 2 - (from.left + from.right) / 2)
++          : Math.abs((to.top + to.bottom) / 2 - (from.top + from.bottom) / 2);
++        return { gap: Math.max(gap, 0), inDirection: gap >= -TOLERANCE, overlaps, offset };
++      };
++
++      const findTarget = (current, items, direction) => {
++        const from = current.getBoundingClientRect();
++        const candidates = items
++          .filter((el) => el !== current)
++          .map((el) => ({ el, ...measure(from, el.getBoundingClientRect(), direction) }))
++          .filter((c) => c.inDirection);
++
++        const aligned = candidates.filter((c) => c.overlaps);
++        if (aligned.length) {
++          aligned.sort((a, b) => a.gap - b.gap || a.offset - b.offset);
++          return aligned[0].el;
++        }
++
++        let best = null;
++        let bestScore = Infinity;
++        for (const c of candidates) {
++          const score = c.gap + FALLBACK_WEIGHT * c.offset;
++          if (score < bestScore) {
++            bestScore = score;
++            best = c.el;
++          }
++        }
++        return best;
++      };
++
++      for (const container of document.querySelectorAll('[data-spatial-nav]')) {
++        const items = getItems(container);
++        if (!items.length) continue;
++        setActive(container, items[0]);
++
++        const hint = document.getElementById(container.getAttribute('aria-describedby'));
++        if (hint) hint.hidden = false;
++
++        // Keep the single tab stop in sync with focus from clicks or Tab.
++        container.addEventListener('focusin', (e) => {
++          if (e.target.matches(ITEM_SELECTOR)) setActive(container, e.target);
++        });
++
++        container.addEventListener('keydown', (e) => {
++          const direction = DIRECTIONS[e.key];
++          if (!direction || e.defaultPrevented) return;
++          if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++
++          const target = e.composedPath()[0];
++          if (!(target instanceof Element)) return;
++          if (target.matches(':read-write, select, input[type="range"], [role="slider"]')) return;
++
++          const items = getItems(container);
++          if (!items.includes(target)) return;
++
++          const next = findTarget(target, items, direction);
++          // No item in that direction: let the browser scroll natively.
++          if (!next) return;
++
++          e.preventDefault();
++          setActive(container, next);
++          next.focus();
++          next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

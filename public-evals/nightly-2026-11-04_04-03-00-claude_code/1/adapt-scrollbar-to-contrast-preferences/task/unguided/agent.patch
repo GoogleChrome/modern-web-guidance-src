@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,84 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollbars
++       Thumb (--primary) on track (--secondary) is about 7.4:1, well above
++       the 3:1 WCAG minimum for non-text UI. Width stays "auto" because thin
++       scrollbars are harder to see and harder to grab. */
++    :root {
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-thumb-hover: #3e2723;
++      --scrollbar-track: var(--secondary);
++    }
++
++    html {
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: auto;
++    }
++
++    /* WebKit fallback for browsers without scrollbar-color (e.g. Safari).
++       Newer Chromium ignores ::-webkit-scrollbar once scrollbar-color is
++       set, so these rules only apply where they're needed. */
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 14px;
++        height: 14px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border: 3px solid var(--scrollbar-track);
++        border-radius: 7px;
++      }
++
++      ::-webkit-scrollbar-thumb:hover {
++        background: var(--scrollbar-thumb-hover);
++      }
++
++      ::-webkit-scrollbar-corner {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    /* The user asked their OS/browser for more contrast: use pure black on white. */
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-thumb: #000;
++        --scrollbar-thumb-hover: #000;
++        --scrollbar-track: #fff;
++      }
++
++      @supports not (scrollbar-color: auto) {
++        ::-webkit-scrollbar {
++          width: 18px;
++          height: 18px;
++        }
++
++        ::-webkit-scrollbar-track {
++          box-shadow: inset 0 0 0 1px #000;
++        }
++
++        ::-webkit-scrollbar-thumb {
++          border-width: 2px;
++          border-radius: 0;
++        }
++      }
++    }
++
++    /* Forced colors (e.g. Windows High Contrast): hand control back to the
++       system so the user's chosen palette is respected. */
++    @media (forced-colors: active) {
++      html {
++        scrollbar-color: auto;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>

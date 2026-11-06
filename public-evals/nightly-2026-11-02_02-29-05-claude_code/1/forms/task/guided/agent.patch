@@ -1,0 +1,464 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,293 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Rewards registration */
++    .rewards {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
++      gap: 2rem;
++      align-items: start;
++    }
++
++    .rewards-intro img {
++      display: block;
++      inline-size: 100%;
++      block-size: auto;
++      max-block-size: 320px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-block-end: 1rem;
++    }
++
++    .rewards-intro h2 {
++      color: var(--primary);
++    }
++
++    .perks {
++      padding-inline-start: 1.25rem;
++      margin-block-start: 0.5rem;
++    }
++
++    .rewards-panel {
++      background: white;
++      padding: 1.5rem;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .progress ol {
++      display: flex;
++      gap: 0.5rem;
++      list-style: none;
++      counter-reset: step;
++      margin-block-end: 1.5rem;
++    }
++
++    .progress li {
++      flex: 1;
++      counter-increment: step;
++      font-size: 0.875rem;
++      padding-block-start: 0.5rem;
++      border-block-start: 4px solid var(--secondary);
++      color: #5d4037;
++    }
++
++    .progress li::before {
++      content: counter(step) ". ";
++    }
++
++    .progress li[data-state="done"] {
++      border-color: var(--primary);
++    }
++
++    .progress li[data-state="done"]::after {
++      content: " ✓";
++    }
++
++    .progress li[aria-current="step"] {
++      border-color: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++    }
++
++    .step {
++      border: 0;
++      min-inline-size: 0;
++    }
++
++    .step + .step {
++      margin-block-start: 2rem;
++    }
++
++    .step > legend {
++      font-size: 1.25rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-block-end: 1rem;
++    }
++
++    .step-title:focus {
++      outline: none;
++    }
++
++    .step-title:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .form-note {
++      font-size: 0.875rem;
++      margin-block-end: 1rem;
++    }
++
++    .field {
++      margin-block-end: 1.5rem;
++    }
++
++    .field > label,
++    .choice-group > legend {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.25rem;
++    }
++
++    .required-mark,
++    .optional-mark {
++      font-weight: 400;
++      font-size: 0.875rem;
++      color: #5d4037;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.875rem;
++      color: #5d4037;
++      margin-block-end: 0.25rem;
++    }
++
++    .field input:not([type="radio"], [type="checkbox"]),
++    .field select {
++      display: block;
++      inline-size: 100%;
++      min-block-size: 48px;
++      padding: 0.75rem;
++      font: inherit;
++      font-size: 1rem;
++      color: inherit;
++      background: white;
++      border: 1px solid #8d6e63;
++      border-radius: 6px;
++    }
++
++    .rewards input:focus-visible,
++    .rewards select:focus-visible,
++    .rewards button:focus-visible,
++    .rewards a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .field :user-invalid:not([type="radio"], [type="checkbox"]) {
++      border-color: #b3261e;
++      border-width: 2px;
++      background-color: #fdecea;
++    }
++
++    .field input:user-valid:not([type="radio"], [type="checkbox"]),
++    .field select:user-valid {
++      border-color: #2e7d32;
++    }
++
++    .error-msg {
++      display: none;
++      color: #b3261e;
++      font-size: 0.875rem;
++      margin-block-start: 0.25rem;
++    }
++
++    .error-msg::before {
++      content: "⚠ ";
++    }
++
++    .field:has(:user-invalid) .error-msg {
++      display: block;
++    }
++
++    .password-wrap {
++      display: flex;
++      gap: 0.5rem;
++    }
++
++    .password-wrap input {
++      flex: 1;
++    }
++
++    .choice-group {
++      border: 0;
++      min-inline-size: 0;
++    }
++
++    .choice {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      min-block-size: 48px;
++      cursor: pointer;
++    }
++
++    .choice input {
++      inline-size: 1.25rem;
++      block-size: 1.25rem;
++      flex-shrink: 0;
++      accent-color: var(--primary);
++    }
++
++    .choice a {
++      color: var(--primary);
++    }
++
++    .form-status:empty {
++      display: none;
++    }
++
++    .form-status {
++      color: #b3261e;
++      background: #fdecea;
++      border-inline-start: 4px solid #b3261e;
++      padding: 0.75rem 1rem;
++      margin-block-end: 1rem;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem;
++      justify-content: flex-end;
++    }
++
++    .btn-primary,
++    .btn-secondary,
++    .toggle-password {
++      min-block-size: 48px;
++      padding: 0.75rem 1.25rem;
++      font: inherit;
++      font-weight: 600;
++      border-radius: 6px;
++      cursor: pointer;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--primary);
++    }
++
++    .btn-primary:hover {
++      background: var(--text);
++    }
++
++    .btn-primary:disabled {
++      opacity: 0.7;
++      cursor: progress;
++    }
++
++    .btn-secondary,
++    .toggle-password {
++      background: white;
++      color: var(--primary);
++      border: 2px solid var(--primary);
++    }
++
++    .btn-secondary {
++      margin-inline-end: auto;
++    }
++
++    .rewards-success h3 {
++      color: var(--primary);
++      font-size: 1.5rem;
++      margin-block-end: 0.5rem;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    [hidden] {
++      display: none !important;
++    }
+   </style>
++  <script src="/rewards-form.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+@@ -196,8 +480,166 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="container rewards" aria-labelledby="rewards-heading">
++    <div class="rewards-intro">
++      <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=70"
++        alt="" width="800" height="1000" loading="lazy" decoding="async">
++      <div>
++        <h2 id="rewards-heading">Join Daily Grind Rewards</h2>
++        <p>Earn a star with every purchase and turn your coffee habit into free drinks.</p>
++        <ul class="perks">
++          <li>A free drink when you join</li>
++          <li>A birthday treat on us</li>
++          <li>Early access to seasonal menus</li>
++        </ul>
++      </div>
++    </div>
++
++    <div class="rewards-panel">
++      <nav class="progress" aria-label="Registration progress" hidden>
++        <ol>
++          <li aria-current="step">Account</li>
++          <li>Your details</li>
++          <li>Preferences</li>
++        </ol>
++      </nav>
++
++      <form id="rewards-form" action="/rewards/register" method="POST">
++        <!-- The server must render a per-session CSRF token here and verify it on submit. -->
++        <input type="hidden" name="csrf_token" value="{{csrf_token}}">
++
++        <!-- Honeypot: hidden from people and assistive tech; bots that fill it get rejected server-side. -->
++        <div class="visually-hidden" aria-hidden="true">
++          <label for="rewards-website">Leave this field empty</label>
++          <input type="text" id="rewards-website" name="website" tabindex="-1" autocomplete="off">
++        </div>
++
++        <p class="form-note">Fields marked <span class="required-mark">(required)</span> must be filled in.</p>
++
++        <fieldset class="step" data-step data-next="Continue to your details">
++          <legend><span class="step-title" tabindex="-1">Step 1 of 3: Create your account</span></legend>
++
++          <div class="field">
++            <label for="rewards-name">Full name <span class="required-mark">(required)</span></label>
++            <input type="text" id="rewards-name" name="name" autocomplete="name" required maxlength="100"
++              pattern="[\p{L}\p{M}'’ .\-]+" enterkeyhint="next" aria-errormessage="rewards-name-error">
++            <p id="rewards-name-error" class="error-msg">Enter your name using letters, spaces, hyphens or apostrophes.</p>
++          </div>
++
++          <div class="field">
++            <label for="rewards-email">Email <span class="required-mark">(required)</span></label>
++            <span id="rewards-email-hint" class="hint">We'll send a link to confirm it. Format: you@example.com</span>
++            <input type="email" id="rewards-email" name="email" autocomplete="username" required maxlength="254"
++              spellcheck="false" enterkeyhint="next" aria-describedby="rewards-email-hint"
++              aria-errormessage="rewards-email-error">
++            <p id="rewards-email-error" class="error-msg">Enter a valid email address, like you@example.com.</p>
++          </div>
++
++          <div class="field">
++            <label for="rewards-password">Password <span class="required-mark">(required)</span></label>
++            <span id="rewards-password-hint" class="hint">At least 8 characters, including a number.</span>
++            <div class="password-wrap">
++              <input type="password" id="rewards-password" name="password" autocomplete="new-password" required
++                minlength="8" maxlength="128" pattern="(?=.*\d).{8,}" enterkeyhint="next"
++                aria-describedby="rewards-password-hint" aria-errormessage="rewards-password-error">
++              <button type="button" class="toggle-password" aria-pressed="false" aria-controls="rewards-password"
++                aria-describedby="rewards-toggle-warning" hidden>Show</button>
++            </div>
++            <span id="rewards-toggle-warning" class="visually-hidden">This will display your password on screen.</span>
++            <p id="rewards-password-error" class="error-msg">Use at least 8 characters, including a number.</p>
++          </div>
++        </fieldset>
++
++        <fieldset class="step" data-step data-next="Continue to preferences">
++          <legend><span class="step-title" tabindex="-1">Step 2 of 3: Your details</span></legend>
++
++          <div class="field">
++            <label for="rewards-phone">Mobile number <span class="optional-mark">(optional)</span></label>
++            <span id="rewards-phone-hint" class="hint">Only used for order-ready texts if you opt in.</span>
++            <input type="tel" id="rewards-phone" name="phone" autocomplete="tel" maxlength="20"
++              pattern="[+\d\s\(\)\-]{7,20}" enterkeyhint="next" aria-describedby="rewards-phone-hint"
++              aria-errormessage="rewards-phone-error">
++            <p id="rewards-phone-error" class="error-msg">Enter a phone number using digits, spaces, +, ( ) or -.</p>
++          </div>
++
++          <div class="field">
++            <label for="rewards-birthday">Birthday <span class="optional-mark">(optional)</span></label>
++            <span id="rewards-birthday-hint" class="hint">So we can send you a birthday treat.</span>
++            <input type="date" id="rewards-birthday" name="birthday" autocomplete="bday" min="1900-01-01"
++              enterkeyhint="next" aria-describedby="rewards-birthday-hint" aria-errormessage="rewards-birthday-error">
++            <p id="rewards-birthday-error" class="error-msg">Enter a date in the past.</p>
++          </div>
++
++          <div class="field">
++            <label for="rewards-postal">ZIP or postal code <span class="optional-mark">(optional)</span></label>
++            <span id="rewards-postal-hint" class="hint">Helps us suggest your nearest café.</span>
++            <input type="text" id="rewards-postal" name="postal_code" autocomplete="postal-code" maxlength="12"
++              autocapitalize="characters" spellcheck="false" enterkeyhint="next"
++              aria-describedby="rewards-postal-hint">
++          </div>
++
++          <div class="field">
++            <label for="rewards-store">Home café <span class="required-mark">(required)</span></label>
++            <select id="rewards-store" name="home_store" autocomplete="off" required
++              aria-errormessage="rewards-store-error">
++              <option value="">Choose a café</option>
++              <option value="downtown">Downtown – Main Street</option>
++              <option value="riverside">Riverside – Harbor Walk</option>
++              <option value="uptown">Uptown – Oak Avenue</option>
++              <option value="university">University District – College Row</option>
++              <option value="westside">Westside – Market Square</option>
++              <option value="airport">Airport – Terminal B</option>
++            </select>
++            <p id="rewards-store-error" class="error-msg">Choose your home café.</p>
++          </div>
++        </fieldset>
++
++        <fieldset class="step" data-step data-next="Join Daily Grind Rewards">
++          <legend><span class="step-title" tabindex="-1">Step 3 of 3: Preferences</span></legend>
++
++          <fieldset class="field choice-group" aria-describedby="rewards-drink-hint">
++            <legend>Favorite drink <span class="optional-mark">(optional)</span></legend>
++            <span id="rewards-drink-hint" class="hint">We'll tailor offers to what you love.</span>
++            <label class="choice"><input type="radio" name="favorite_drink" value="espresso"> Espresso drinks</label>
++            <label class="choice"><input type="radio" name="favorite_drink" value="latte"> Lattes &amp; cappuccinos</label>
++            <label class="choice"><input type="radio" name="favorite_drink" value="cold-brew"> Cold brew &amp; iced</label>
++            <label class="choice"><input type="radio" name="favorite_drink" value="tea"> Tea &amp; non-coffee</label>
++          </fieldset>
++
++          <fieldset class="field choice-group">
++            <legend>Send me offers by <span class="optional-mark">(optional)</span></legend>
++            <label class="choice"><input type="checkbox" name="contact_email" value="yes"> Email</label>
++            <label class="choice"><input type="checkbox" name="contact_sms" value="yes"> Text message</label>
++          </fieldset>
++
++          <div class="field">
++            <label class="choice">
++              <input type="checkbox" id="rewards-terms" name="accept_terms" value="yes" required
++                aria-errormessage="rewards-terms-error">
++              <span>I agree to the <a href="/rewards/terms">Rewards terms</a> and
++                <a href="/privacy-policy">Privacy policy</a> <span class="required-mark">(required)</span></span>
++            </label>
++            <p id="rewards-terms-error" class="error-msg">You need to accept the terms to join.</p>
++          </div>
++        </fieldset>
++
++        <p id="rewards-status" class="form-status" role="alert"></p>
++
++        <div class="form-actions">
++          <button type="button" class="btn-secondary" data-back hidden>Back</button>
++          <button type="submit" class="btn-primary" data-submit>Join Daily Grind Rewards</button>
++        </div>
++      </form>
++
++      <div id="rewards-success" class="rewards-success" hidden>
++        <h3 tabindex="-1">You're in!</h3>
++        <p>Check your inbox to confirm your email address and claim your free drink.</p>
++      </div>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

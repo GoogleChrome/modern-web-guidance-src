@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+index 66c9173..0e7f9e3 100644
+--- a/index.html
++++ b/index.html
+@@ -118,6 +118,48 @@
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.4em;
++    }
++
++    .card h3::before {
++      content: "☕";
++      content: "☕" / "";
++      alt: "";
++      -webkit-alt: "";
++      font-size: 0.9em;
++    }
++
++    .card h3::after {
++      content: "✦";
++      content: "✦" / "";
++      alt: "";
++      -webkit-alt: "";
++      color: var(--accent);
++      font-size: 0.8em;
++    }
++
++    .card:nth-child(1) h3::before {
++      content: "🍁";
++      content: "🍁" / "";
++      alt: "";
++      -webkit-alt: "";
++    }
++
++    .card:nth-child(2) h3::before {
++      content: "☕";
++      content: "☕" / "";
++      alt: "";
++      -webkit-alt: "";
++    }
++
++    .card:nth-child(3) h3::before {
++      content: "🧊";
++      content: "🧊" / "";
++      alt: "";
++      -webkit-alt: "";
+     }
+ 
+     .btn {
+@@ -131,10 +173,32 @@
+       transition: background 0.3s;
+     }
+ 
++    .btn::after {
++      content: " →";
++      content: " →" / "";
++      alt: "";
++      -webkit-alt: "";
++      display: inline-block;
++      margin-left: 0.35em;
++      transition: transform 0.2s ease;
++    }
++
++    .hero .btn::before {
++      content: "☕ ";
++      content: "☕ " / "";
++      alt: "";
++      -webkit-alt: "";
++      margin-right: 0.25em;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:hover::after {
++      transform: translateX(3px);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;

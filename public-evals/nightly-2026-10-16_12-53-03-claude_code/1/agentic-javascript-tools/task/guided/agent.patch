@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,94 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const MENU_ITEMS = [
++      {
++        name: "Maple Oat Latte",
++        category: "Seasonal",
++        description: "Creamy oat milk with a hint of Vermont maple syrup.",
++        servedHot: true,
++        servedIced: true,
++        allergens: ["oat"],
++        vegan: true,
++        url: "/menu/seasonal",
++      },
++      {
++        name: "Dark Roast Espresso",
++        category: "Espresso",
++        description: "Bold, smokey, and perfect for a morning boost.",
++        servedHot: true,
++        servedIced: false,
++        allergens: [],
++        vegan: true,
++        url: "/menu/espresso",
++      },
++      {
++        name: "Cold Brew",
++        category: "Cold Drinks",
++        description: "Steeped for 18 hours for maximum smoothness.",
++        servedHot: false,
++        servedIced: true,
++        allergens: [],
++        vegan: true,
++        url: "/menu/cold-brew",
++      },
++    ];
++
++    const normalize = (value) => value.trim().toLowerCase().replace(/\s+/g, " ");
++
++    let menuToolController;
++
++    function registerMenuTool() {
++      if (!("modelContext" in document) || menuToolController) return;
++
++      menuToolController = new AbortController();
++      document.modelContext.registerTool({
++        name: "get_menu_item_details",
++        description: "Looks up a menu item at The Daily Grind by name and returns its details. Use when the user asks what a drink is, what is in it, or whether it suits their dietary needs.",
++        inputSchema: {
++          type: "object",
++          properties: {
++            itemName: {
++              type: "string",
++              description: "Name of the menu item, such as \"Maple Oat Latte\". Case-insensitive.",
++            },
++          },
++          required: ["itemName"],
++        },
++        execute({ itemName } = {}) {
++          const availableItems = MENU_ITEMS.map((item) => item.name);
++          if (typeof itemName !== "string" || !itemName.trim()) {
++            return { error: "Pass the name of a menu item as itemName.", availableItems };
++          }
++          const wanted = normalize(itemName);
++          const item = MENU_ITEMS.find((entry) => normalize(entry.name) === wanted);
++          if (!item) {
++            return { error: `Menu item "${itemName}" not found.`, availableItems };
++          }
++          return item;
++        },
++        annotations: { readOnlyHint: true },
++      }, { signal: menuToolController.signal }).catch((err) => {
++        console.error("Failed to register menu tool", err);
++        menuToolController = undefined;
++      });
++    }
++
++    function unregisterMenuTool() {
++      menuToolController?.abort();
++      menuToolController = undefined;
++    }
++
++    registerMenuTool();
++    // Unregister when the page is unloaded or enters the back/forward cache,
++    // and re-register if it is restored from the cache.
++    addEventListener("pagehide", unregisterMenuTool);
++    addEventListener("pageshow", (event) => {
++      if (event.persisted) registerMenuTool();
++    });
++  </script>
+ </body>
+ 
+ </html>

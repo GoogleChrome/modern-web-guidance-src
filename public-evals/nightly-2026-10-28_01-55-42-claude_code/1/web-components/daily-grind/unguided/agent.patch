@@ -1,0 +1,1903 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/components/README.md b/components/README.md
+new file mode 100644
+index 0000000..b0f869f
+--- /dev/null
++++ b/components/README.md
+@@ -0,0 +1,96 @@
++# Daily Grind components
++
++Dependency-free Web Components used by the Daily Grind site. Each element
++attaches an open shadow root, so its CSS cannot leak out and page CSS cannot
++accidentally restyle it. Theming goes through the custom properties in
++`tokens.css`; targeted overrides go through the exposed `::part()` names.
++
++```html
++<link rel="stylesheet" href="/components/tokens.css">
++<script type="module" src="/components/index.js"></script>
++```
++
++| Element | Purpose |
++| --- | --- |
++| `<dg-site-nav>` | Sticky primary nav with an accessible mobile disclosure menu |
++| `<dg-hero>` | Photo banner with overlay; becomes a region named by its heading |
++| `<dg-card-grid>` | Labelled section with a responsive auto-fit grid |
++| `<dg-coffee-card>` | Product card: image, badge, title, copy, price, call to action |
++| `<dg-button>` | Brand button rendering a real `<a>` or `<button>` |
++| `<dg-site-footer>` | Footer nav plus copyright line |
++
++## `<dg-site-nav>`
++
++```html
++<dg-site-nav brand="The Daily Grind" brand-href="/">
++  <a href="/menu" aria-current="page">Menu</a>
++  <a href="/logout" data-variant="outline">Logout</a>
++</dg-site-nav>
++```
++
++- Attributes: `brand`, `brand-href` (default `/`), `label` (nav landmark name, default `Primary`), `open` (reflected state).
++- Children: plain `<a>` elements. The component assigns each a slot and renders it inside a `<ul>`.
++- Behaviour: below `48em` the links collapse behind a toggle button with `aria-expanded` and `aria-controls`. Escape closes the menu and returns focus to the toggle. Clicking outside or activating a link also closes it. Resizing to desktop resets the state.
++- Events: `dg-nav-toggle` with `detail.open`.
++- Parts: `nav`, `brand`, `toggle`, `menu`.
++
++## `<dg-hero>`
++
++```html
++<dg-hero image="https://…" overlay="0.5" height="60vh">
++  <h1 slot="heading">Wake Up Your Senses</h1>
++  <p>Ethically sourced, locally roasted.</p>
++  <dg-button slot="actions" href="/order-online">Order Now</dg-button>
++</dg-hero>
++```
++
++- Attributes: `image`, `overlay` (0 to 1), `height` (CSS length).
++- The host receives `role="region"` and `aria-labelledby` pointing at the slotted heading, unless you set `role` yourself.
++- Parts: `hero`, `content`, `heading`, `text`, `actions`.
++
++## `<dg-card-grid>`
++
++- Attributes: `heading`, `heading-level` (1 to 6, default 2), `label` (used when there is no visible heading), `min-column` (default `250px`).
++- Parts: `section`, `heading`, `grid`.
++
++## `<dg-coffee-card>`
++
++```html
++<dg-coffee-card href="/menu/seasonal" badge="Seasonal" price="$5.50"
++  image="https://…" image-alt="Latte with leaf art">
++  <span slot="title">Maple Oat Latte</span>
++  <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++</dg-coffee-card>
++```
++
++- Attributes: `href`, `cta-label` (default `View Details`), `image`, `image-alt`, `badge`, `price`, `name` (fallback title), `heading-level` (default 3).
++- The call to action is named "View Details, Maple Oat Latte" via `aria-labelledby`, so repeated links stay distinguishable for screen-reader users.
++- Images are lazy-loaded. Omit `image-alt` for decorative photos.
++- Parts: `card`, `media`, `body`, `badge`, `title`, `description`, `price`, `cta`.
++
++## `<dg-button>`
++
++- Attributes: `href`, `target`, `rel`, `download`, `type`, `disabled`, `variant="outline"`, `block`.
++- Renders an `<a>` when `href` is present, otherwise a `<button>`. It is form-associated, so `type="submit"` submits the surrounding form.
++- Parts: `button`.
++
++## `<dg-site-footer>`
++
++- Attributes: `company`, `year` (defaults to the current year), `notice` (default `All rights reserved.`), `label` (default `Footer`).
++- Children: plain `<a>` elements for the footer nav; any other content goes after the copyright line.
++- Parts: `footer`, `links`, `copyright`.
++
++## Theming
++
++Override any token on `:root` or on a single element:
++
++```css
++dg-coffee-card.featured { --dg-primary: #8d6e63; }
++dg-site-nav::part(nav) { padding-inline: 2rem; }
++```
++
++## Tests
++
++`npm test` runs a jsdom smoke test in `tests/components.test.mjs` that loads
++`index.html`, upgrades the elements and checks the rendered shadow trees and
++ARIA wiring.
+diff --git a/components/dg-button.js b/components/dg-button.js
+new file mode 100644
+index 0000000..5353b59
+--- /dev/null
++++ b/components/dg-button.js
+@@ -0,0 +1,118 @@
++import { adoptStyles, baseStyles, buttonStyles, define } from './shared.js';
++
++const hostStyles = `
++  :host {
++    display: inline-block;
++  }
++  :host([block]) {
++    display: block;
++  }
++  :host([block]) .btn {
++    width: 100%;
++  }
++`;
++
++/**
++ * <dg-button>
++ *
++ * A brand button that renders a real <a> when `href` is set and a real
++ * <button> otherwise, so native keyboard and screen-reader behaviour is
++ * preserved. Form-associated: a `type="submit"` button submits the form it
++ * is placed in even though the control lives in the shadow tree.
++ *
++ * Attributes: href, target, rel, download, type (button|submit|reset),
++ *             disabled, variant (solid|outline), block
++ * Slots:      default — the label
++ * Parts:      button
++ */
++class DgButton extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['href', 'target', 'rel', 'download', 'type', 'disabled', 'variant'];
++
++  #control = null;
++  #internals = null;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    adoptStyles(root, baseStyles, buttonStyles, hostStyles);
++    if (typeof this.attachInternals === 'function') {
++      try {
++        this.#internals = this.attachInternals();
++      } catch {
++        this.#internals = null;
++      }
++    }
++    this.addEventListener('click', this.#onClick);
++  }
++
++  connectedCallback() {
++    this.#render();
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue !== newValue) this.#render();
++  }
++
++  get disabled() {
++    return this.hasAttribute('disabled');
++  }
++
++  set disabled(value) {
++    this.toggleAttribute('disabled', Boolean(value));
++  }
++
++  #onClick = (event) => {
++    if (this.disabled) {
++      event.preventDefault();
++      event.stopImmediatePropagation();
++      return;
++    }
++    if (this.#control?.localName !== 'button') return;
++    const form = this.#internals?.form;
++    if (!form) return;
++    const type = this.getAttribute('type') || 'button';
++    if (type === 'submit') form.requestSubmit();
++    else if (type === 'reset') form.reset();
++  };
++
++  #render() {
++    const href = this.getAttribute('href');
++    const isLink = href !== null && !this.disabled;
++    const tag = isLink ? 'a' : 'button';
++
++    if (!this.#control || this.#control.localName !== tag) {
++      this.#control?.remove();
++      const control = document.createElement(tag);
++      control.className = 'btn';
++      control.setAttribute('part', 'button');
++      control.append(document.createElement('slot'));
++      this.shadowRoot.append(control);
++      this.#control = control;
++    }
++
++    const control = this.#control;
++    control.classList.toggle('outline', this.getAttribute('variant') === 'outline');
++
++    if (isLink) {
++      control.setAttribute('href', href);
++      for (const attr of ['target', 'download']) {
++        const value = this.getAttribute(attr);
++        if (value === null) control.removeAttribute(attr);
++        else control.setAttribute(attr, value);
++      }
++      const rel = this.getAttribute('rel') ?? (this.getAttribute('target') === '_blank' ? 'noopener' : null);
++      if (rel === null) control.removeAttribute('rel');
++      else control.setAttribute('rel', rel);
++    } else {
++      control.type = this.getAttribute('type') || 'button';
++      control.disabled = this.disabled;
++      if (this.disabled) control.setAttribute('aria-disabled', 'true');
++      else control.removeAttribute('aria-disabled');
++    }
++  }
++}
++
++define('dg-button', DgButton);
++
++export { DgButton };
+diff --git a/components/dg-card-grid.js b/components/dg-card-grid.js
+new file mode 100644
+index 0000000..f1561cd
+--- /dev/null
++++ b/components/dg-card-grid.js
+@@ -0,0 +1,105 @@
++import { adoptStyles, baseStyles, define, headingTag } from './shared.js';
++
++const styles = `
++  :host {
++    display: block;
++  }
++  .heading {
++    margin: 0 0 1.25rem;
++    color: var(--dg-text, #3e2723);
++    font-size: 1.5rem;
++    text-align: center;
++  }
++  .heading[hidden] {
++    display: none;
++  }
++  .grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(min(var(--_min, 250px), 100%), 1fr));
++    gap: var(--dg-gap, 20px);
++  }
++`;
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <section class="section" part="section">
++    <h2 class="heading" id="heading" part="heading" hidden></h2>
++    <div class="grid" part="grid"><slot></slot></div>
++  </section>
++`;
++
++const LENGTH_PATTERN = /^\d+(\.\d+)?(px|rem|em|ch|vw|%)$/;
++
++/**
++ * <dg-card-grid>
++ *
++ * A labelled section that lays its children out in a responsive grid.
++ *
++ * Attributes: heading (section title, also labels the region),
++ *             heading-level (1-6, default 2),
++ *             label (aria-label used when there is no visible heading),
++ *             min-column (CSS length for the minimum column width, default 250px)
++ * Slots:      default — the cards
++ * Parts:      section, heading, grid
++ */
++class DgCardGrid extends HTMLElement {
++  static observedAttributes = ['heading', 'heading-level', 'label', 'min-column'];
++
++  #els;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    adoptStyles(root, baseStyles, styles);
++    root.append(template.content.cloneNode(true));
++    this.#els = {
++      section: root.querySelector('.section'),
++      heading: root.querySelector('.heading'),
++      grid: root.querySelector('.grid'),
++    };
++  }
++
++  connectedCallback() {
++    this.#update();
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue !== newValue) this.#update();
++  }
++
++  #update() {
++    const els = this.#els;
++
++    const tag = headingTag(this.getAttribute('heading-level'), 2);
++    if (els.heading.localName !== tag) {
++      const heading = document.createElement(tag);
++      heading.className = 'heading';
++      heading.id = 'heading';
++      heading.setAttribute('part', 'heading');
++      els.heading.replaceWith(heading);
++      els.heading = heading;
++    }
++
++    const text = this.getAttribute('heading');
++    els.heading.textContent = text ?? '';
++    els.heading.hidden = !text;
++
++    const label = this.getAttribute('label');
++    if (text) {
++      els.section.setAttribute('aria-labelledby', 'heading');
++      els.section.removeAttribute('aria-label');
++    } else {
++      els.section.removeAttribute('aria-labelledby');
++      if (label) els.section.setAttribute('aria-label', label);
++      else els.section.removeAttribute('aria-label');
++    }
++
++    const min = this.getAttribute('min-column');
++    if (min && LENGTH_PATTERN.test(min)) els.grid.style.setProperty('--_min', min);
++    else els.grid.style.removeProperty('--_min');
++  }
++}
++
++define('dg-card-grid', DgCardGrid);
++
++export { DgCardGrid };
+diff --git a/components/dg-coffee-card.js b/components/dg-coffee-card.js
+new file mode 100644
+index 0000000..1503b43
+--- /dev/null
++++ b/components/dg-coffee-card.js
+@@ -0,0 +1,193 @@
++import { adoptStyles, baseStyles, buttonStyles, define, headingTag } from './shared.js';
++
++const styles = `
++  :host {
++    display: block;
++  }
++  .card {
++    display: flex;
++    flex-direction: column;
++    height: 100%;
++    overflow: hidden;
++    border-radius: var(--dg-radius, 8px);
++    background: var(--dg-surface, #fff);
++    color: var(--dg-text, #3e2723);
++    box-shadow: var(--dg-shadow, 0 2px 5px rgba(0, 0, 0, 0.1));
++    text-align: center;
++    transition: transform 0.3s, box-shadow 0.3s;
++  }
++  :host(:hover) .card,
++  :host(:focus-within) .card {
++    transform: translateY(-2px);
++    box-shadow: var(--dg-shadow-raised, 0 6px 16px rgba(0, 0, 0, 0.15));
++  }
++  .media {
++    display: none;
++    aspect-ratio: 16 / 10;
++    overflow: hidden;
++    background: var(--dg-secondary, #d7ccc8);
++  }
++  .media.has-image {
++    display: block;
++  }
++  .media img {
++    display: block;
++    width: 100%;
++    height: 100%;
++    object-fit: cover;
++  }
++  .body {
++    display: flex;
++    flex: 1;
++    flex-direction: column;
++    gap: 0.625rem;
++    padding: 1.25rem;
++  }
++  .badge {
++    display: none;
++    align-self: center;
++    padding: 0.2em 0.75em;
++    border-radius: 999px;
++    background: var(--dg-accent, #ffab40);
++    color: var(--dg-text, #3e2723);
++    font-size: 0.75rem;
++    font-weight: 700;
++    letter-spacing: 0.05em;
++    text-transform: uppercase;
++  }
++  .badge.show {
++    display: inline-block;
++  }
++  .title {
++    margin: 0;
++    color: var(--dg-primary, #4e342e);
++    font-size: 1.17rem;
++    line-height: 1.3;
++  }
++  .description {
++    flex: 1;
++    margin: 0;
++  }
++  .price {
++    display: none;
++    margin: 0;
++    color: var(--dg-primary, #4e342e);
++    font-weight: 700;
++  }
++  .price.show {
++    display: block;
++  }
++  .cta {
++    display: none;
++    align-self: center;
++    margin-top: 0.25rem;
++  }
++  .cta.show {
++    display: inline-flex;
++  }
++`;
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <article class="card" part="card" aria-labelledby="title">
++    <div class="media" part="media">
++      <img alt="" loading="lazy" decoding="async">
++    </div>
++    <div class="body" part="body">
++      <span class="badge" part="badge"></span>
++      <h3 class="title" id="title" part="title"><slot name="title"></slot></h3>
++      <div class="description" part="description"><slot></slot></div>
++      <p class="price" part="price"><span class="visually-hidden">Price: </span><span class="price-value"></span></p>
++      <a class="btn cta" part="cta" aria-labelledby="cta-text title"><span id="cta-text"></span></a>
++    </div>
++  </article>
++`;
++
++/**
++ * <dg-coffee-card>
++ *
++ * A product card for a drink. Content lives in the light DOM so it stays
++ * indexable and readable without JavaScript; presentation is encapsulated.
++ *
++ * Attributes: href, cta-label (default "View Details"), image, image-alt,
++ *             badge, price, name (fallback title when no slot is given),
++ *             heading-level (1-6, default 3)
++ * Slots:      title — the drink name; default — the description
++ * Parts:      card, media, body, badge, title, description, price, cta
++ */
++class DgCoffeeCard extends HTMLElement {
++  static observedAttributes = ['href', 'cta-label', 'image', 'image-alt', 'badge', 'price', 'name', 'heading-level'];
++
++  #els;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    adoptStyles(root, baseStyles, buttonStyles, styles);
++    root.append(template.content.cloneNode(true));
++    this.#els = {
++      media: root.querySelector('.media'),
++      img: root.querySelector('img'),
++      badge: root.querySelector('.badge'),
++      heading: root.querySelector('.title'),
++      price: root.querySelector('.price'),
++      priceValue: root.querySelector('.price-value'),
++      cta: root.querySelector('.cta'),
++      ctaText: root.querySelector('#cta-text'),
++    };
++  }
++
++  connectedCallback() {
++    this.#update();
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue !== newValue) this.#update();
++  }
++
++  #update() {
++    const els = this.#els;
++
++    // Heading level follows the surrounding document outline.
++    const tag = headingTag(this.getAttribute('heading-level'), 3);
++    if (els.heading.localName !== tag) {
++      const heading = document.createElement(tag);
++      heading.className = 'title';
++      heading.id = 'title';
++      heading.setAttribute('part', 'title');
++      heading.append(...els.heading.childNodes);
++      els.heading.replaceWith(heading);
++      els.heading = heading;
++    }
++    // Slot fallback content shows the `name` attribute when nothing is slotted.
++    els.heading.querySelector('slot').textContent = this.getAttribute('name') ?? '';
++
++    const image = this.getAttribute('image');
++    els.media.classList.toggle('has-image', Boolean(image));
++    if (image) {
++      els.img.setAttribute('src', image);
++      els.img.setAttribute('alt', this.getAttribute('image-alt') ?? '');
++    } else {
++      els.img.removeAttribute('src');
++      els.img.setAttribute('alt', '');
++    }
++
++    const badge = this.getAttribute('badge');
++    els.badge.textContent = badge ?? '';
++    els.badge.classList.toggle('show', Boolean(badge));
++
++    const price = this.getAttribute('price');
++    els.priceValue.textContent = price ?? '';
++    els.price.classList.toggle('show', Boolean(price));
++
++    const href = this.getAttribute('href');
++    els.cta.classList.toggle('show', Boolean(href));
++    if (href) els.cta.setAttribute('href', href);
++    else els.cta.removeAttribute('href');
++    els.ctaText.textContent = this.getAttribute('cta-label') || 'View Details';
++  }
++}
++
++define('dg-coffee-card', DgCoffeeCard);
++
++export { DgCoffeeCard };
+diff --git a/components/dg-hero.js b/components/dg-hero.js
+new file mode 100644
+index 0000000..8b5be66
+--- /dev/null
++++ b/components/dg-hero.js
+@@ -0,0 +1,149 @@
++import { adoptStyles, baseStyles, cssUrl, define, nextId } from './shared.js';
++
++const styles = `
++  :host {
++    display: block;
++  }
++  .hero {
++    display: flex;
++    flex-direction: column;
++    align-items: center;
++    justify-content: center;
++    min-height: var(--_height, 60vh);
++    padding: 3rem 1.25rem;
++    background-color: var(--dg-primary, #4e342e);
++    background-image:
++      linear-gradient(rgba(0, 0, 0, var(--_overlay, 0.5)), rgba(0, 0, 0, var(--_overlay, 0.5))),
++      var(--_image, none);
++    background-position: center;
++    background-size: cover;
++    color: #fff;
++    text-align: center;
++  }
++  .content {
++    display: flex;
++    flex-direction: column;
++    align-items: center;
++    max-width: 60ch;
++  }
++  .heading {
++    margin-bottom: 1rem;
++  }
++  ::slotted(h1),
++  ::slotted(h2) {
++    font-size: clamp(2rem, 5vw, 3rem);
++    line-height: 1.15;
++  }
++  ::slotted(p) {
++    font-size: 1.125rem;
++  }
++  .actions {
++    display: flex;
++    flex-wrap: wrap;
++    justify-content: center;
++    gap: 1rem;
++    margin-top: 1.5rem;
++  }
++  .actions[hidden] {
++    display: none;
++  }
++  /* Focus rings need to read against the dark photo. */
++  ::slotted(*) {
++    --dg-focus: #fff;
++  }
++  ::slotted(a:focus-visible) {
++    outline: 3px solid #fff;
++    outline-offset: 2px;
++  }
++`;
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <div class="hero" part="hero">
++    <div class="content" part="content">
++      <div class="heading" part="heading"><slot name="heading"></slot></div>
++      <div class="text" part="text"><slot></slot></div>
++      <div class="actions" part="actions" hidden><slot name="actions"></slot></div>
++    </div>
++  </div>
++`;
++
++const NUMBER_PATTERN = /^(0|1|0?\.\d+)$/;
++const LENGTH_PATTERN = /^\d+(\.\d+)?(px|rem|em|vh|svh|dvh|lvh|vw|%)$/;
++
++/**
++ * <dg-hero>
++ *
++ * A full-width banner with a background photo and a dark overlay for
++ * contrast. The host becomes a named region labelled by the slotted heading.
++ *
++ * Attributes: image (URL), overlay (0-1, default 0.5), height (CSS length, default 60vh)
++ * Slots:      heading — an <h1>/<h2>; default — supporting copy;
++ *             actions — calls to action such as <dg-button>
++ * Parts:      hero, content, heading, text, actions
++ */
++class DgHero extends HTMLElement {
++  static observedAttributes = ['image', 'overlay', 'height'];
++
++  #hero;
++  #actions;
++  #observer = null;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    adoptStyles(root, baseStyles, styles);
++    root.append(template.content.cloneNode(true));
++    this.#hero = root.querySelector('.hero');
++    this.#actions = root.querySelector('.actions');
++  }
++
++  connectedCallback() {
++    this.#update();
++    this.#syncLightDom();
++    if (typeof MutationObserver === 'function') {
++      this.#observer = new MutationObserver(() => this.#syncLightDom());
++      this.#observer.observe(this, { childList: true, attributes: true, attributeFilter: ['slot', 'id'], subtree: true });
++    }
++  }
++
++  disconnectedCallback() {
++    this.#observer?.disconnect();
++    this.#observer = null;
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue !== newValue) this.#update();
++  }
++
++  #update() {
++    const image = this.getAttribute('image');
++    if (image) this.#hero.style.setProperty('--_image', cssUrl(image));
++    else this.#hero.style.removeProperty('--_image');
++
++    const overlay = this.getAttribute('overlay');
++    if (overlay && NUMBER_PATTERN.test(overlay)) this.#hero.style.setProperty('--_overlay', overlay);
++    else this.#hero.style.removeProperty('--_overlay');
++
++    const height = this.getAttribute('height');
++    if (height && LENGTH_PATTERN.test(height)) this.#hero.style.setProperty('--_height', height);
++    else this.#hero.style.removeProperty('--_height');
++  }
++
++  /** Name the region after the slotted heading and hide empty action rows. */
++  #syncLightDom() {
++    const heading = this.querySelector(':scope > [slot="heading"]');
++    if (heading) {
++      if (!heading.id) heading.id = nextId('dg-hero-heading');
++      if (!this.hasAttribute('role')) this.setAttribute('role', 'region');
++      this.setAttribute('aria-labelledby', heading.id);
++    } else {
++      this.removeAttribute('aria-labelledby');
++    }
++    this.#actions.hidden = !this.querySelector(':scope > [slot="actions"]');
++  }
++}
++
++define('dg-hero', DgHero);
++
++export { DgHero };
+diff --git a/components/dg-site-footer.js b/components/dg-site-footer.js
+new file mode 100644
+index 0000000..8bd7103
+--- /dev/null
++++ b/components/dg-site-footer.js
+@@ -0,0 +1,137 @@
++import { adoptStyles, assignLinkSlots, baseStyles, define, renderLinkList } from './shared.js';
++
++const styles = `
++  :host {
++    display: block;
++  }
++  .footer {
++    padding: 40px 20px;
++    background: var(--dg-secondary, #d7ccc8);
++    color: var(--dg-text, #3e2723);
++    text-align: center;
++  }
++  .links[hidden] {
++    display: none;
++  }
++  .list {
++    display: flex;
++    flex-wrap: wrap;
++    align-items: center;
++    justify-content: center;
++    margin: 0 0 20px;
++    padding: 0;
++    list-style: none;
++  }
++  .list li {
++    display: flex;
++    align-items: center;
++  }
++  /* Visual-only separators; a border never reaches the accessibility tree. */
++  .list li + li::before {
++    content: "";
++    display: inline-block;
++    height: 1em;
++    margin: 0 10px;
++    border-left: 1px solid currentColor;
++    opacity: 0.6;
++  }
++  ::slotted(a) {
++    display: inline-block;
++    padding: 0.5rem 0.25rem;
++    color: inherit !important;
++    font-size: 0.85rem;
++    text-decoration: none !important;
++  }
++  ::slotted(a:hover),
++  ::slotted(a:focus-visible) {
++    text-decoration: underline !important;
++    text-underline-offset: 0.2em;
++  }
++  ::slotted(a:focus-visible) {
++    outline: 3px solid var(--dg-focus, #4e342e);
++    outline-offset: 2px;
++  }
++  .copyright {
++    margin: 0;
++  }
++`;
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <footer class="footer" part="footer">
++    <nav class="links" part="links" hidden>
++      <ul class="list"></ul>
++    </nav>
++    <p class="copyright" part="copyright">&copy; <span class="year"></span> <span class="company"></span> <span class="notice"></span></p>
++    <slot></slot>
++  </footer>
++`;
++
++/**
++ * <dg-site-footer>
++ *
++ * Site footer with a secondary navigation and a copyright line.
++ *
++ * Attributes: company (default "The Daily Grind"), year (default: current year),
++ *             notice (default "All rights reserved."), label (footer nav name, default "Footer")
++ * Slots:      direct <a> children — footer links; default — any extra content
++ * Parts:      footer, links, copyright
++ */
++class DgSiteFooter extends HTMLElement {
++  static observedAttributes = ['company', 'year', 'notice', 'label'];
++
++  #els;
++  #observer = null;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    adoptStyles(root, baseStyles, styles);
++    root.append(template.content.cloneNode(true));
++    this.#els = {
++      nav: root.querySelector('.links'),
++      list: root.querySelector('.list'),
++      year: root.querySelector('.year'),
++      company: root.querySelector('.company'),
++      notice: root.querySelector('.notice'),
++    };
++  }
++
++  connectedCallback() {
++    this.#update();
++    this.#renderLinks();
++    if (typeof MutationObserver === 'function') {
++      this.#observer = new MutationObserver(() => this.#renderLinks());
++      this.#observer.observe(this, { childList: true });
++    }
++  }
++
++  disconnectedCallback() {
++    this.#observer?.disconnect();
++    this.#observer = null;
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue !== newValue) this.#update();
++  }
++
++  #update() {
++    const { nav, year, company, notice } = this.#els;
++    year.textContent = this.getAttribute('year') ?? String(new Date().getFullYear());
++    // End the company name with a full stop unless it already carries punctuation ("… Co.").
++    const name = this.getAttribute('company') ?? 'The Daily Grind';
++    company.textContent = /[.!?]$/.test(name) ? name : `${name}.`;
++    notice.textContent = this.getAttribute('notice') ?? 'All rights reserved.';
++    nav.setAttribute('aria-label', this.getAttribute('label') ?? 'Footer');
++  }
++
++  #renderLinks() {
++    const links = assignLinkSlots(this, 'footer-link');
++    renderLinkList(this.#els.list, links, 'footer-link');
++    this.#els.nav.hidden = links.length === 0;
++  }
++}
++
++define('dg-site-footer', DgSiteFooter);
++
++export { DgSiteFooter };
+diff --git a/components/dg-site-nav.js b/components/dg-site-nav.js
+new file mode 100644
+index 0000000..71b7387
+--- /dev/null
++++ b/components/dg-site-nav.js
+@@ -0,0 +1,260 @@
++import { adoptStyles, assignLinkSlots, baseStyles, define, renderLinkList } from './shared.js';
++
++const styles = `
++  :host {
++    display: block;
++    position: sticky;
++    top: 0;
++    z-index: var(--dg-nav-z, 1000);
++  }
++  .nav {
++    display: flex;
++    flex-wrap: wrap;
++    align-items: center;
++    justify-content: space-between;
++    gap: 0.5rem 1.25rem;
++    padding: 1rem 5%;
++    background: var(--dg-primary, #4e342e);
++    color: var(--dg-on-primary, #fff);
++  }
++  :focus-visible,
++  ::slotted(a:focus-visible) {
++    outline: 3px solid var(--dg-accent, #ffab40);
++    outline-offset: 2px;
++  }
++  .brand {
++    color: inherit;
++    font-size: 1.5rem;
++    font-weight: 700;
++    letter-spacing: 1px;
++    text-decoration: none;
++    text-transform: uppercase;
++  }
++  .toggle {
++    display: none;
++    align-items: center;
++    justify-content: center;
++    min-width: 44px;
++    min-height: 44px;
++    padding: 0.5rem;
++    border: 2px solid transparent;
++    border-radius: 4px;
++    background: none;
++    color: inherit;
++    cursor: pointer;
++  }
++  .toggle:hover {
++    border-color: var(--dg-accent, #ffab40);
++  }
++  .icon {
++    width: 24px;
++    height: 24px;
++    fill: none;
++    stroke: currentColor;
++    stroke-width: 2;
++    stroke-linecap: round;
++  }
++  .icon-close {
++    display: none;
++  }
++  :host([open]) .icon-open {
++    display: none;
++  }
++  :host([open]) .icon-close {
++    display: block;
++  }
++  .menu {
++    display: flex;
++    align-items: center;
++    gap: 20px;
++    margin: 0;
++    padding: 0;
++    list-style: none;
++  }
++  ::slotted(a) {
++    display: inline-block;
++    padding: 0.25rem 0;
++    color: inherit !important;
++    font-size: 0.9rem;
++    text-decoration: none !important;
++    transition: color 0.3s;
++  }
++  ::slotted(a:hover),
++  ::slotted(a:focus-visible) {
++    color: var(--dg-accent, #ffab40) !important;
++  }
++  ::slotted(a[aria-current="page"]) {
++    text-decoration: underline !important;
++    text-underline-offset: 0.3em;
++  }
++  ::slotted(a[data-variant="outline"]) {
++    padding: 5px 12px;
++    border: 1px solid var(--dg-accent, #ffab40);
++    border-radius: 4px;
++  }
++  @media (max-width: 47.99em) {
++    .toggle {
++      display: inline-flex;
++    }
++    .menu {
++      display: none;
++      flex-basis: 100%;
++      flex-direction: column;
++      align-items: stretch;
++      gap: 0;
++      margin-top: 0.5rem;
++      padding-top: 0.5rem;
++      border-top: 1px solid rgba(255, 255, 255, 0.2);
++    }
++    :host([open]) .menu {
++      display: flex;
++    }
++    ::slotted(a) {
++      display: block;
++      padding: 0.75rem 0;
++      font-size: 1rem;
++    }
++    ::slotted(a[data-variant="outline"]) {
++      margin-top: 0.5rem;
++      text-align: center;
++    }
++  }
++`;
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <nav class="nav" part="nav">
++    <a class="brand" part="brand" href="/"></a>
++    <button class="toggle" part="toggle" type="button" aria-expanded="false" aria-controls="menu">
++      <span class="visually-hidden">Menu</span>
++      <svg class="icon icon-open" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
++      <svg class="icon icon-close" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
++    </button>
++    <ul class="menu" id="menu" part="menu"></ul>
++  </nav>
++`;
++
++const DESKTOP_QUERY = '(min-width: 48em)';
++
++/**
++ * <dg-site-nav>
++ *
++ * Sticky primary navigation. Authors pass plain <a> children; the component
++ * wraps them in a list and, below 48em, collapses them behind a disclosure
++ * button (aria-expanded / aria-controls, Escape to close, click-outside to
++ * close, focus returned to the toggle).
++ *
++ * Attributes: brand, brand-href (default "/"), label (nav name, default "Primary"),
++ *             open (reflects the disclosure state)
++ * Slots:      direct <a> children — nav links. Use aria-current="page" on the
++ *             current link and data-variant="outline" for an outlined link.
++ * Parts:      nav, brand, toggle, menu
++ * Events:     dg-nav-toggle { detail: { open } }
++ */
++class DgSiteNav extends HTMLElement {
++  static observedAttributes = ['brand', 'brand-href', 'label', 'open'];
++
++  #els;
++  #observer = null;
++  #mediaQuery = null;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    adoptStyles(root, baseStyles, styles);
++    root.append(template.content.cloneNode(true));
++    this.#els = {
++      nav: root.querySelector('.nav'),
++      brand: root.querySelector('.brand'),
++      toggle: root.querySelector('.toggle'),
++      menu: root.querySelector('.menu'),
++    };
++    this.#els.toggle.addEventListener('click', () => {
++      this.open = !this.open;
++    });
++  }
++
++  connectedCallback() {
++    this.#update();
++    this.#renderLinks();
++
++    if (typeof MutationObserver === 'function') {
++      this.#observer = new MutationObserver(() => this.#renderLinks());
++      this.#observer.observe(this, { childList: true });
++    }
++    if (typeof matchMedia === 'function') {
++      this.#mediaQuery = matchMedia(DESKTOP_QUERY);
++      this.#mediaQuery.addEventListener('change', this.#onMediaChange);
++    }
++    this.addEventListener('keydown', this.#onKeydown);
++    this.addEventListener('click', this.#onLinkClick);
++    document.addEventListener('click', this.#onDocumentClick);
++  }
++
++  disconnectedCallback() {
++    this.#observer?.disconnect();
++    this.#observer = null;
++    this.#mediaQuery?.removeEventListener('change', this.#onMediaChange);
++    this.#mediaQuery = null;
++    this.removeEventListener('keydown', this.#onKeydown);
++    this.removeEventListener('click', this.#onLinkClick);
++    document.removeEventListener('click', this.#onDocumentClick);
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue === newValue) return;
++    if (name === 'open') {
++      const open = newValue !== null;
++      this.#els.toggle.setAttribute('aria-expanded', String(open));
++      this.dispatchEvent(new CustomEvent('dg-nav-toggle', { bubbles: true, composed: true, detail: { open } }));
++      return;
++    }
++    this.#update();
++  }
++
++  /** Whether the collapsed menu is currently expanded. */
++  get open() {
++    return this.hasAttribute('open');
++  }
++
++  set open(value) {
++    this.toggleAttribute('open', Boolean(value));
++  }
++
++  #onKeydown = (event) => {
++    if (event.key === 'Escape' && this.open) {
++      event.preventDefault();
++      this.open = false;
++      this.#els.toggle.focus();
++    }
++  };
++
++  #onLinkClick = (event) => {
++    // Activating a slotted link (e.g. an in-page anchor) should dismiss the menu.
++    if (this.open && event.target instanceof Element && event.target.closest('a')) this.open = false;
++  };
++
++  #onDocumentClick = (event) => {
++    if (this.open && !event.composedPath().includes(this)) this.open = false;
++  };
++
++  #onMediaChange = (event) => {
++    if (event.matches) this.open = false;
++  };
++
++  #update() {
++    const { nav, brand } = this.#els;
++    brand.textContent = this.getAttribute('brand') ?? '';
++    brand.setAttribute('href', this.getAttribute('brand-href') ?? '/');
++    nav.setAttribute('aria-label', this.getAttribute('label') ?? 'Primary');
++  }
++
++  #renderLinks() {
++    const links = assignLinkSlots(this, 'link');
++    renderLinkList(this.#els.menu, links, 'link');
++  }
++}
++
++define('dg-site-nav', DgSiteNav);
++
++export { DgSiteNav };
+diff --git a/components/index.js b/components/index.js
+new file mode 100644
+index 0000000..a752d59
+--- /dev/null
++++ b/components/index.js
+@@ -0,0 +1,10 @@
++/**
++ * Daily Grind component library entry point.
++ * Importing this module registers every custom element.
++ */
++export { DgButton } from './dg-button.js';
++export { DgCoffeeCard } from './dg-coffee-card.js';
++export { DgCardGrid } from './dg-card-grid.js';
++export { DgHero } from './dg-hero.js';
++export { DgSiteNav } from './dg-site-nav.js';
++export { DgSiteFooter } from './dg-site-footer.js';
+diff --git a/components/shared.js b/components/shared.js
+new file mode 100644
+index 0000000..dd7dd67
+--- /dev/null
++++ b/components/shared.js
+@@ -0,0 +1,166 @@
++/**
++ * Shared helpers and style fragments for the Daily Grind web components.
++ *
++ * Every component attaches an open shadow root and adopts `baseStyles`
++ * so that focus rings, reduced-motion handling and the visually-hidden
++ * utility behave identically across the library.
++ */
++
++const sheetCache = new Map();
++const supportsAdoptedSheets =
++  typeof CSSStyleSheet !== 'undefined' &&
++  'replaceSync' in CSSStyleSheet.prototype &&
++  typeof ShadowRoot !== 'undefined' &&
++  'adoptedStyleSheets' in ShadowRoot.prototype;
++
++/**
++ * Attach one or more CSS strings to a shadow root. Uses constructable
++ * stylesheets (shared across instances) when available and falls back to
++ * inline <style> elements otherwise.
++ */
++export function adoptStyles(root, ...cssTexts) {
++  if (supportsAdoptedSheets) {
++    root.adoptedStyleSheets = cssTexts.map((css) => {
++      let sheet = sheetCache.get(css);
++      if (!sheet) {
++        sheet = new CSSStyleSheet();
++        sheet.replaceSync(css);
++        sheetCache.set(css, sheet);
++      }
++      return sheet;
++    });
++    return;
++  }
++  for (const css of cssTexts) {
++    const style = document.createElement('style');
++    style.textContent = css;
++    root.append(style);
++  }
++}
++
++/** Register a custom element once, tolerating repeated module evaluation. */
++export function define(name, ctor) {
++  if (!customElements.get(name)) customElements.define(name, ctor);
++}
++
++let uid = 0;
++/** Generate a document-unique id with the given prefix. */
++export function nextId(prefix) {
++  uid += 1;
++  return `${prefix}-${uid}`;
++}
++
++/** Clamp a heading-level attribute to h1..h6, falling back when invalid. */
++export function headingTag(value, fallback) {
++  const level = Number.parseInt(value, 10);
++  const ok = Number.isInteger(level) && level >= 1 && level <= 6;
++  return `h${ok ? level : fallback}`;
++}
++
++/** Quote a URL for use inside a CSS url() function. */
++export function cssUrl(url) {
++  return `url("${String(url).replace(/["\\\n]/g, encodeURIComponent)}")`;
++}
++
++/**
++ * Give each direct light-DOM link a unique slot name so the component can
++ * place it inside its own list markup while the author keeps plain <a>s.
++ * Returns the matched elements in document order.
++ */
++export function assignLinkSlots(host, prefix = 'link') {
++  const links = [...host.children].filter((el) => el.matches('a, button'));
++  links.forEach((el, index) => {
++    const name = `${prefix}-${index}`;
++    if (el.slot !== name) el.slot = name;
++  });
++  return links;
++}
++
++/** Build a <ul> of <li><slot name=…></slot></li> for the given links. */
++export function renderLinkList(listEl, links, prefix = 'link') {
++  const items = links.map((_, index) => {
++    const li = document.createElement('li');
++    const slot = document.createElement('slot');
++    slot.name = `${prefix}-${index}`;
++    li.append(slot);
++    return li;
++  });
++  listEl.replaceChildren(...items);
++}
++
++export const baseStyles = `
++  :host {
++    box-sizing: border-box;
++  }
++  :host([hidden]) {
++    display: none !important;
++  }
++  *, *::before, *::after {
++    box-sizing: inherit;
++  }
++  .visually-hidden {
++    position: absolute;
++    width: 1px;
++    height: 1px;
++    padding: 0;
++    margin: -1px;
++    overflow: hidden;
++    clip: rect(0 0 0 0);
++    clip-path: inset(50%);
++    white-space: nowrap;
++    border: 0;
++  }
++  :focus-visible {
++    outline: 3px solid var(--dg-focus, #4e342e);
++    outline-offset: 2px;
++  }
++  @media (prefers-reduced-motion: reduce) {
++    *, *::before, *::after {
++      transition-duration: 0.01ms !important;
++      animation-duration: 0.01ms !important;
++    }
++  }
++`;
++
++export const buttonStyles = `
++  .btn {
++    display: inline-flex;
++    align-items: center;
++    justify-content: center;
++    gap: 0.5em;
++    min-height: 44px;
++    padding: 0.625rem 1.25rem;
++    border: 2px solid transparent;
++    border-radius: var(--dg-radius-sm, 5px);
++    background: var(--dg-primary, #4e342e);
++    color: var(--dg-on-primary, #fff);
++    font: inherit;
++    font-weight: 600;
++    line-height: 1.2;
++    text-decoration: none;
++    cursor: pointer;
++    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
++  }
++  .btn:hover {
++    background: var(--dg-primary-dark, #3e2723);
++  }
++  .btn.outline {
++    background: transparent;
++    color: inherit;
++    border-color: var(--dg-accent, #ffab40);
++  }
++  .btn.outline:hover {
++    background: var(--dg-accent, #ffab40);
++    color: var(--dg-text, #3e2723);
++  }
++  .btn:disabled,
++  .btn[aria-disabled="true"] {
++    opacity: 0.6;
++    cursor: not-allowed;
++  }
++  @media (forced-colors: active) {
++    .btn {
++      border-color: ButtonText;
++    }
++  }
++`;
+diff --git a/components/tokens.css b/components/tokens.css
+new file mode 100644
+index 0000000..d0b998d
+--- /dev/null
++++ b/components/tokens.css
+@@ -0,0 +1,23 @@
++/*
++ * Daily Grind design tokens.
++ * Custom properties inherit through shadow roots, so these are the single
++ * theming surface for every dg-* component. Each component ships fallbacks
++ * matching these values, so the file is optional but recommended.
++ */
++:root {
++  --dg-primary: #4e342e;
++  --dg-primary-dark: #3e2723;
++  --dg-secondary: #d7ccc8;
++  --dg-accent: #ffab40;
++  --dg-text: #3e2723;
++  --dg-light: #fafafa;
++  --dg-surface: #ffffff;
++  --dg-on-primary: #ffffff;
++  --dg-focus: #4e342e;
++  --dg-radius: 8px;
++  --dg-radius-sm: 5px;
++  --dg-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  --dg-shadow-raised: 0 6px 16px rgba(0, 0, 0, 0.15);
++  --dg-gap: 20px;
++  --dg-nav-z: 1000;
++}
+diff --git a/index.html b/index.html
+index 66c9173..4be614c 100644
+--- a/index.html
++++ b/index.html
+@@ -5,15 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="./components/tokens.css">
++  <script type="module" src="./components/index.js"></script>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+     * {
+       box-sizing: border-box;
+       margin: 0;
+@@ -23,189 +17,105 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
++      color: var(--dg-text);
++      background-color: var(--dg-light);
++    }
++
++    /* Keep layout stable while the component modules load. */
++    dg-site-nav:not(:defined),
++    dg-hero:not(:defined),
++    dg-card-grid:not(:defined),
++    dg-coffee-card:not(:defined),
++    dg-site-footer:not(:defined) {
++      display: block;
++    }
++
++    .skip-link {
++      position: absolute;
++      top: -100%;
++      left: 1rem;
++      z-index: 2000;
++      padding: 0.5rem 1rem;
++      background: var(--dg-accent);
++      color: var(--dg-text);
++      border-radius: 0 0 var(--dg-radius-sm) var(--dg-radius-sm);
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
++      font-weight: 600;
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++    .skip-link:focus {
++      top: 0;
+     }
+ 
+-    /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
++    main:focus {
++      outline: none;
+     }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
++    dg-site-footer {
+       margin-top: 40px;
+     }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++  <a class="skip-link" href="#main">Skip to main content</a>
++
++  <dg-site-nav brand="The Daily Grind" brand-href="/">
++    <a href="/menu">Menu</a>
++    <a href="/locations">Locations</a>
++    <a href="/rewards">Rewards</a>
++    <a href="/account">My Account</a>
++    <a href="/logout" data-variant="outline">Logout</a>
++  </dg-site-nav>
++
++  <dg-hero image="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80">
++    <h1 slot="heading">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
++    <dg-button slot="actions" href="/order-online">Order Now</dg-button>
++  </dg-hero>
++
++  <main id="main" class="container" tabindex="-1">
++    <dg-card-grid heading="Seasonal Favorites">
++      <dg-coffee-card
++        href="/menu/seasonal"
++        badge="Seasonal"
++        image="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++        image-alt="A barista pouring steamed milk into a latte, forming a leaf pattern">
++        <span slot="title">Maple Oat Latte</span>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      </dg-coffee-card>
++
++      <dg-coffee-card
++        href="/menu/espresso"
++        image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++        image-alt="A freshly pulled shot of espresso in a white cup, seen from above">
++        <span slot="title">Dark Roast Espresso</span>
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++      </dg-coffee-card>
++
++      <dg-coffee-card
++        href="/menu/cold-brew"
++        image="https://images.unsplash.com/photo-1559496417-e7f25cb247f3?auto=format&fit=crop&w=600&q=80"
++        image-alt="A glass of iced coffee in dappled sunlight">
++        <span slot="title">Cold Brew</span>
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++      </dg-coffee-card>
++    </dg-card-grid>
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  <dg-site-footer company="The Daily Grind Coffee Co." year="2026">
++    <a href="/about">Our Story</a>
++    <a href="/careers">Join the Team</a>
++    <a href="/contact">Contact Us</a>
++    <a href="/privacy-policy">Privacy</a>
++  </dg-site-footer>
+ 
+ </body>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..ca3f292 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,13 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test \"tests/**/*.test.mjs\""
++  },
++  "devDependencies": {
++    "jsdom": "^26.1.0"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/tests/components.test.mjs b/tests/components.test.mjs
+new file mode 100644
+index 0000000..b86b41e
+--- /dev/null
++++ b/tests/components.test.mjs
+@@ -0,0 +1,266 @@
++import { before, describe, test } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import { JSDOM, VirtualConsole } from 'jsdom';
++
++let window;
++let document;
++
++before(async () => {
++  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
++  const virtualConsole = new VirtualConsole();
++  virtualConsole.on('jsdomError', (error) => {
++    // jsdom's CSS parser does not understand some modern CSS; that is not a failure.
++    if (!/Could not parse CSS stylesheet/.test(error.message)) console.error(error);
++  });
++  const dom = new JSDOM(html, { url: 'http://localhost/', pretendToBeVisual: true, virtualConsole });
++  window = dom.window;
++  document = window.document;
++
++  for (const key of ['window', 'document', 'customElements', 'HTMLElement', 'Element', 'Node', 'ShadowRoot',
++    'CSSStyleSheet', 'MutationObserver', 'CustomEvent', 'Event', 'KeyboardEvent', 'MouseEvent']) {
++    globalThis[key] = window[key];
++  }
++  await import('../components/index.js');
++});
++
++describe('registration', () => {
++  test('every element on the homepage is upgraded with a shadow root', () => {
++    for (const name of ['dg-site-nav', 'dg-hero', 'dg-card-grid', 'dg-coffee-card', 'dg-button', 'dg-site-footer']) {
++      assert.ok(window.customElements.get(name), `${name} is defined`);
++      for (const el of document.querySelectorAll(name)) {
++        assert.ok(el.shadowRoot, `${name} has a shadow root`);
++      }
++    }
++  });
++});
++
++describe('dg-site-nav', () => {
++  test('renders the brand, a labelled nav landmark and the slotted links as a list', () => {
++    const nav = document.querySelector('dg-site-nav');
++    const root = nav.shadowRoot;
++    assert.equal(root.querySelector('nav').getAttribute('aria-label'), 'Primary');
++    assert.equal(root.querySelector('.brand').textContent, 'The Daily Grind');
++    const items = root.querySelectorAll('ul > li');
++    assert.equal(items.length, 5);
++    const assigned = [...items].map((li) => li.querySelector('slot').assignedElements()[0]);
++    assert.deepEqual(assigned.map((a) => a.textContent), ['Menu', 'Locations', 'Rewards', 'My Account', 'Logout']);
++  });
++
++  test('toggle button manages aria-expanded, Escape closes and restores focus', () => {
++    const nav = document.querySelector('dg-site-nav');
++    const toggle = nav.shadowRoot.querySelector('.toggle');
++    assert.equal(toggle.getAttribute('aria-expanded'), 'false');
++    assert.equal(toggle.getAttribute('aria-controls'), 'menu');
++    assert.ok(nav.shadowRoot.getElementById('menu'));
++
++    const events = [];
++    nav.addEventListener('dg-nav-toggle', (e) => events.push(e.detail.open));
++
++    toggle.click();
++    assert.equal(nav.open, true);
++    assert.equal(toggle.getAttribute('aria-expanded'), 'true');
++
++    nav.querySelector('a').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
++    assert.equal(nav.open, false);
++    assert.equal(toggle.getAttribute('aria-expanded'), 'false');
++    assert.equal(nav.shadowRoot.activeElement, toggle);
++    assert.deepEqual(events, [true, false]);
++  });
++
++  test('clicking outside closes the menu', () => {
++    const nav = document.querySelector('dg-site-nav');
++    nav.open = true;
++    document.body.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
++    assert.equal(nav.open, false);
++  });
++
++  test('re-slots links added later', () => {
++    const nav = document.createElement('dg-site-nav');
++    document.body.append(nav);
++    const link = document.createElement('a');
++    link.href = '/new';
++    link.textContent = 'New';
++    nav.append(link);
++    return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
++      assert.equal(nav.shadowRoot.querySelectorAll('li').length, 1);
++      assert.equal(link.slot, 'link-0');
++      nav.remove();
++    });
++  });
++});
++
++describe('dg-hero', () => {
++  test('is a region labelled by its slotted heading and shows the actions row', () => {
++    const hero = document.querySelector('dg-hero');
++    const heading = hero.querySelector('[slot="heading"]');
++    assert.equal(hero.getAttribute('role'), 'region');
++    assert.ok(heading.id);
++    assert.equal(hero.getAttribute('aria-labelledby'), heading.id);
++    assert.equal(hero.shadowRoot.querySelector('.actions').hidden, false);
++    assert.match(hero.shadowRoot.querySelector('.hero').style.getPropertyValue('--_image'), /^url\("https:\/\/images\.unsplash\.com/);
++  });
++
++  test('rejects unsafe overlay and height values', () => {
++    const hero = document.createElement('dg-hero');
++    hero.setAttribute('overlay', '0.3');
++    hero.setAttribute('height', '50vh');
++    document.body.append(hero);
++    const inner = hero.shadowRoot.querySelector('.hero');
++    assert.equal(inner.style.getPropertyValue('--_overlay'), '0.3');
++    assert.equal(inner.style.getPropertyValue('--_height'), '50vh');
++    hero.setAttribute('overlay', 'red; background: url(x)');
++    hero.setAttribute('height', 'calc(1px)');
++    assert.equal(inner.style.getPropertyValue('--_overlay'), '');
++    assert.equal(inner.style.getPropertyValue('--_height'), '');
++    hero.remove();
++  });
++});
++
++describe('dg-card-grid', () => {
++  test('renders a section labelled by its heading', () => {
++    const grid = document.querySelector('dg-card-grid');
++    const section = grid.shadowRoot.querySelector('section');
++    const heading = grid.shadowRoot.querySelector('#heading');
++    assert.equal(heading.localName, 'h2');
++    assert.equal(heading.textContent, 'Seasonal Favorites');
++    assert.equal(heading.hidden, false);
++    assert.equal(section.getAttribute('aria-labelledby'), 'heading');
++  });
++
++  test('falls back to aria-label without a heading and honours heading-level', () => {
++    const grid = document.createElement('dg-card-grid');
++    grid.setAttribute('label', 'Drinks');
++    grid.setAttribute('heading-level', '4');
++    document.body.append(grid);
++    const section = grid.shadowRoot.querySelector('section');
++    assert.equal(section.getAttribute('aria-label'), 'Drinks');
++    assert.equal(section.hasAttribute('aria-labelledby'), false);
++    grid.setAttribute('heading', 'More');
++    assert.equal(grid.shadowRoot.querySelector('#heading').localName, 'h4');
++    assert.equal(section.getAttribute('aria-labelledby'), 'heading');
++    assert.equal(section.hasAttribute('aria-label'), false);
++    grid.remove();
++  });
++});
++
++describe('dg-coffee-card', () => {
++  test('renders an article with an h3 title, image and a descriptive call to action', () => {
++    const card = document.querySelector('dg-coffee-card');
++    const root = card.shadowRoot;
++    const article = root.querySelector('article');
++    assert.equal(article.getAttribute('aria-labelledby'), 'title');
++
++    const title = root.querySelector('#title');
++    assert.equal(title.localName, 'h3');
++    assert.equal(title.querySelector('slot').assignedElements()[0].textContent, 'Maple Oat Latte');
++
++    const img = root.querySelector('img');
++    assert.match(img.getAttribute('src'), /^https:\/\/images\.unsplash\.com/);
++    assert.match(img.getAttribute('alt'), /latte/i);
++    assert.equal(img.getAttribute('loading'), 'lazy');
++
++    const cta = root.querySelector('.cta');
++    assert.equal(cta.getAttribute('href'), '/menu/seasonal');
++    assert.equal(cta.getAttribute('aria-labelledby'), 'cta-text title');
++    assert.equal(root.querySelector('#cta-text').textContent, 'View Details');
++    assert.equal(root.querySelector('.badge').textContent, 'Seasonal');
++    assert.ok(root.querySelector('.badge').classList.contains('show'));
++    assert.equal(root.querySelector('.price').classList.contains('show'), false);
++  });
++
++  test('reflects attribute changes and heading level', () => {
++    const card = document.createElement('dg-coffee-card');
++    card.setAttribute('name', 'House Blend');
++    card.setAttribute('heading-level', '4');
++    card.setAttribute('price', '$3.00');
++    document.body.append(card);
++    const root = card.shadowRoot;
++    assert.equal(root.querySelector('#title').localName, 'h4');
++    assert.equal(root.querySelector('#title slot').textContent, 'House Blend');
++    assert.equal(root.querySelector('.price-value').textContent, '$3.00');
++    assert.equal(root.querySelector('.cta').classList.contains('show'), false);
++    assert.equal(root.querySelector('.media').classList.contains('has-image'), false);
++
++    card.setAttribute('href', '/menu/house');
++    card.setAttribute('cta-label', 'Order');
++    assert.equal(root.querySelector('.cta').getAttribute('href'), '/menu/house');
++    assert.equal(root.querySelector('#cta-text').textContent, 'Order');
++    card.remove();
++  });
++});
++
++describe('dg-button', () => {
++  test('renders a link when href is set', () => {
++    const button = document.querySelector('dg-button');
++    const control = button.shadowRoot.querySelector('.btn');
++    assert.equal(control.localName, 'a');
++    assert.equal(control.getAttribute('href'), '/order-online');
++    assert.equal(control.getAttribute('part'), 'button');
++  });
++
++  test('renders a native button otherwise and respects disabled/variant', () => {
++    const button = document.createElement('dg-button');
++    button.textContent = 'Add to order';
++    document.body.append(button);
++    let control = button.shadowRoot.querySelector('.btn');
++    assert.equal(control.localName, 'button');
++    assert.equal(control.type, 'button');
++
++    button.setAttribute('variant', 'outline');
++    button.disabled = true;
++    control = button.shadowRoot.querySelector('.btn');
++    assert.ok(control.classList.contains('outline'));
++    assert.equal(control.disabled, true);
++    assert.equal(control.getAttribute('aria-disabled'), 'true');
++
++    button.setAttribute('href', '/x');
++    assert.equal(button.shadowRoot.querySelector('.btn').localName, 'button', 'disabled links stay non-navigable');
++    button.disabled = false;
++    control = button.shadowRoot.querySelector('.btn');
++    assert.equal(control.localName, 'a');
++    assert.equal(control.getAttribute('href'), '/x');
++    button.remove();
++  });
++
++  test('adds rel=noopener for target=_blank links', () => {
++    const button = document.createElement('dg-button');
++    button.setAttribute('href', 'https://example.com');
++    button.setAttribute('target', '_blank');
++    document.body.append(button);
++    assert.equal(button.shadowRoot.querySelector('a').getAttribute('rel'), 'noopener');
++    button.remove();
++  });
++});
++
++describe('dg-site-footer', () => {
++  test('renders the footer nav list and copyright', () => {
++    const footer = document.querySelector('dg-site-footer');
++    const root = footer.shadowRoot;
++    assert.equal(root.querySelector('nav').getAttribute('aria-label'), 'Footer');
++    assert.equal(root.querySelector('nav').hidden, false);
++    assert.equal(root.querySelectorAll('li').length, 4);
++    assert.equal(root.querySelector('.year').textContent, '2026');
++    assert.equal(root.querySelector('.company').textContent, 'The Daily Grind Coffee Co.');
++    assert.equal(root.querySelector('.copyright').textContent.trim(), '© 2026 The Daily Grind Coffee Co. All rights reserved.');
++  });
++
++  test('hides the nav when there are no links and defaults the year', () => {
++    const footer = document.createElement('dg-site-footer');
++    document.body.append(footer);
++    assert.equal(footer.shadowRoot.querySelector('nav').hidden, true);
++    assert.equal(footer.shadowRoot.querySelector('.year').textContent, String(new Date().getFullYear()));
++    assert.equal(footer.shadowRoot.querySelector('.company').textContent, 'The Daily Grind.');
++    footer.remove();
++  });
++
++  test('supports a custom notice', () => {
++    const footer = document.createElement('dg-site-footer');
++    footer.setAttribute('company', 'Acme');
++    footer.setAttribute('year', '2030');
++    footer.setAttribute('notice', 'Some rights reserved.');
++    document.body.append(footer);
++    assert.equal(footer.shadowRoot.querySelector('.copyright').textContent.trim(), '© 2030 Acme. Some rights reserved.');
++    footer.remove();
++  });
++});

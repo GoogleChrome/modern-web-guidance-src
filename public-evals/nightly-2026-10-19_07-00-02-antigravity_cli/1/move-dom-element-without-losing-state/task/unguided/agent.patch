@@ -1,0 +1,361 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,14 +145,120 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
++    /* Video Section & Theater Mode */
++    .roasting-section {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 40px;
++    }
++
++    .roasting-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .roasting-title h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .roasting-title p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .theater-btn {
++      cursor: pointer;
++      font-weight: 600;
++      border: 2px solid var(--accent);
++      background: var(--primary);
++      color: white;
++      transition: all 0.3s ease;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      margin-top: 0;
++    }
++
++    .theater-btn:hover {
++      background: #3e2723;
++      border-color: #ffd54f;
++    }
++
++    .video-container {
++      position: relative;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      background: #000;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
++    }
++
++    .video-container iframe {
++      width: 100%;
++      height: 100%;
++      border: 0;
++      display: block;
++    }
++
++    /* Hero Section in Theater Mode */
++    .hero.theater-mode,
++    .hero:has(iframe) {
++      height: auto;
++      min-height: 80vh;
++      padding: 40px 20px 50px;
++      transition: min-height 0.3s ease;
++    }
++
++    .hero iframe {
++      width: 100%;
++      max-width: 960px;
++      aspect-ratio: 16 / 9;
++      height: auto;
++      min-height: 360px;
++      border: 0;
++      border-radius: 12px;
++      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.7);
++      margin-top: 25px;
++      z-index: 10;
++    }
++
++    body.theater-active #theater-mode-btn {
++      position: fixed;
++      top: 75px;
++      right: 20px;
++      z-index: 1001;
++      background: var(--accent);
+       color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++      border-color: var(--primary);
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+     }
++
++    body.theater-active #roast-video-container {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      background: #efebe9;
++      border: 2px dashed var(--secondary);
++      aspect-ratio: auto;
++      min-height: 100px;
++    }
++
++    body.theater-active #roast-video-container::after {
++      content: '☕ Video playing in Theater Mode (Hero section above)';
++      color: var(--primary);
++      font-style: italic;
++      font-size: 0.95rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +280,37 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <!-- Roasting Video Section -->
++    <section class="roasting-section" id="roasting-section">
++      <div class="roasting-header">
++        <div class="roasting-title">
++          <h2>Artisanal Roasting Process</h2>
++          <p>Experience the craft and science behind every small batch of our freshly roasted beans.</p>
++        </div>
++        <button
++          type="button"
++          id="theater-mode-btn"
++          class="btn theater-btn"
++          aria-pressed="false"
++          aria-label="Toggle Theater Mode">
++          Theater Mode
++        </button>
++      </div>
++      <div class="video-container" id="roast-video-container">
++        <iframe
++          id="coffee-roasting-video"
++          src="https://www.youtube.com/embed/N6BJVM5tvnw?enablejsapi=1&playsinline=1"
++          title="Coffee Roasting Process Video"
++          frameborder="0"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin"
++          allowfullscreen>
++        </iframe>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +341,194 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="https://www.youtube.com/iframe_api"></script>
++  <script>
++    (function () {
++      const theaterBtn = document.getElementById('theater-mode-btn');
++      const iframe = document.getElementById('coffee-roasting-video');
++      const heroSection = document.querySelector('.hero');
++      const originalContainer = iframe ? iframe.parentElement : null;
++      const originalNextSibling = iframe ? iframe.nextSibling : null;
++
++      if (!theaterBtn || !iframe || !heroSection || !originalContainer) {
++        return;
++      }
++
++      let isTheaterMode = false;
++      let currentPlaybackTime = 0;
++      let isVideoPlaying = false;
++      let ytPlayer = null;
++
++      // Track playback time and state via YouTube postMessage API
++      window.addEventListener('message', function (event) {
++        try {
++          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
++          if (!data) return;
++
++          if (data.event === 'infoDelivery' && data.info) {
++            if (typeof data.info.currentTime === 'number') {
++              currentPlaybackTime = data.info.currentTime;
++            }
++            if (typeof data.info.playerState === 'number') {
++              isVideoPlaying = (data.info.playerState === 1);
++            }
++          } else if (data.event === 'onStateChange') {
++            isVideoPlaying = (data.info === 1);
++          }
++        } catch (e) {}
++      });
++
++      // Track time periodically while playing
++      setInterval(function () {
++        if (isVideoPlaying) {
++          currentPlaybackTime += 0.5;
++        }
++      }, 500);
++
++      // YouTube IFrame API Ready Callback
++      window.onYouTubeIframeAPIReady = function () {
++        try {
++          ytPlayer = new YT.Player('coffee-roasting-video', {
++            events: {
++              'onStateChange': function (event) {
++                isVideoPlaying = (event.data === YT.PlayerState.PLAYING);
++              }
++            }
++          });
++        } catch (e) {}
++      };
++
++      // Helper to query latest playback state from player if available
++      function getLatestPlaybackState() {
++        let time = currentPlaybackTime;
++        let playing = isVideoPlaying;
++
++        if (ytPlayer) {
++          try {
++            if (typeof ytPlayer.getCurrentTime === 'function') {
++              const t = ytPlayer.getCurrentTime();
++              if (typeof t === 'number' && !isNaN(t) && t > 0) {
++                time = t;
++              }
++            }
++            if (typeof ytPlayer.getPlayerState === 'function') {
++              playing = (ytPlayer.getPlayerState() === 1);
++            }
++          } catch (e) {}
++        }
++        return { time, playing };
++      }
++
++      // Reparent function using moveBefore when supported, with fallback for older browsers
++      function reparentIframe(node, newParent, refNode) {
++        // Feature check: DOM moveBefore API preserves iframe context without reload or losing state
++        if (typeof newParent.moveBefore === 'function') {
++          try {
++            // Note: moveBefore requires 2 arguments (use null to append at end)
++            newParent.moveBefore(node, refNode || null);
++            return;
++          } catch (err) {
++            console.warn('moveBefore failed, applying fallback:', err);
++          }
++        }
++
++        // Fallback for older browsers:
++        // Older browsers reload the iframe upon insertion.
++        // We preserve playback state across the reload by saving the current time and playing state.
++        const { time, playing } = getLatestPlaybackState();
++        const savedTime = Math.floor(time);
++        const wasPlaying = playing;
++
++        // Perform DOM relocation
++        if (refNode && refNode.parentNode === newParent) {
++          newParent.insertBefore(node, refNode);
++        } else {
++          newParent.appendChild(node);
++        }
++
++        // Restore playback state after the reload
++        if (savedTime > 0 || wasPlaying) {
++          // 1. Update src query parameters
++          try {
++            const url = new URL(node.src);
++            if (savedTime > 0) {
++              url.searchParams.set('start', savedTime);
++            }
++            if (wasPlaying) {
++              url.searchParams.set('autoplay', '1');
++            }
++            node.src = url.toString();
++          } catch (e) {}
++
++          // 2. Send postMessage seek/play commands upon reload
++          const restore = function () {
++            try {
++              if (savedTime > 0) {
++                node.contentWindow && node.contentWindow.postMessage(JSON.stringify({
++                  event: 'command',
++                  func: 'seekTo',
++                  args: [savedTime, true]
++                }), '*');
++              }
++              if (wasPlaying) {
++                node.contentWindow && node.contentWindow.postMessage(JSON.stringify({
++                  event: 'command',
++                  func: 'playVideo',
++                  args: []
++                }), '*');
++              }
++            } catch (e) {}
++          };
++
++          node.addEventListener('load', restore, { once: true });
++          setTimeout(restore, 1000);
++        }
++      }
++
++      function toggleTheaterMode() {
++        isTheaterMode = !isTheaterMode;
++
++        if (isTheaterMode) {
++          // Reparent into hero section
++          reparentIframe(iframe, heroSection, null);
++          document.body.classList.add('theater-active');
++          heroSection.classList.add('theater-mode');
++          theaterBtn.textContent = 'Exit Theater Mode';
++          theaterBtn.setAttribute('aria-pressed', 'true');
++        } else {
++          // Reparent back into original container in main
++          const refNode = (originalNextSibling && originalNextSibling.parentNode === originalContainer)
++            ? originalNextSibling
++            : null;
++          reparentIframe(iframe, originalContainer, refNode);
++          document.body.classList.remove('theater-active');
++          heroSection.classList.remove('theater-mode');
++          theaterBtn.textContent = 'Theater Mode';
++          theaterBtn.setAttribute('aria-pressed', 'false');
++        }
++      }
++
++      theaterBtn.addEventListener('click', toggleTheaterMode);
++
++      // Escape key shortcut
++      document.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape' && isTheaterMode) {
++          toggleTheaterMode();
++        }
++      });
++
++      // Expose for testing if needed
++      window.__theaterMode = {
++        toggle: toggleTheaterMode,
++        reparent: reparentIframe,
++        isTheaterMode: function () { return isTheaterMode; },
++        iframe: iframe,
++        hero: heroSection,
++        originalContainer: originalContainer
++      };
++    })();
++  </script>
+ </body>
+ 
+ </html>

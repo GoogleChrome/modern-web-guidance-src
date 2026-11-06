@@ -1,0 +1,451 @@
+diff --git a/account/account.css b/account/account.css
+new file mode 100644
+index 0000000..3a801af
+--- /dev/null
++++ b/account/account.css
+@@ -0,0 +1,114 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++  --danger: #b3261e;
++}
++
++* { box-sizing: border-box; margin: 0; padding: 0; }
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++.logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
++nav ul { display: flex; list-style: none; }
++nav ul li { margin-left: 20px; }
++nav a { color: white; text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
++nav a:hover, nav a[aria-current="page"] { color: var(--accent); }
++.logout-link { border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px; }
++
++.container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
++.container > h1 { margin-bottom: 1rem; color: var(--primary); }
++
++.panel {
++  background: white;
++  padding: 24px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++}
++.panel-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: flex-start;
++  gap: 16px;
++  flex-wrap: wrap;
++  margin-bottom: 16px;
++}
++.panel h2 { color: var(--primary); }
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  border: 1px solid var(--primary);
++  padding: 8px 16px;
++  font: inherit;
++  font-size: 0.9rem;
++  border-radius: 5px;
++  cursor: pointer;
++  transition: background 0.3s;
++}
++.btn:hover { background: #3e2723; }
++.btn.secondary { background: transparent; color: var(--primary); }
++.btn.secondary:hover { background: var(--secondary); }
++.btn.danger { background: var(--danger); border-color: var(--danger); }
++.btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
++.btn[hidden] { display: none; }
++
++.status { min-height: 1.5em; font-size: 0.9rem; }
++.status.error { color: var(--danger); }
++
++.passkey-list { list-style: none; display: grid; gap: 12px; }
++.passkey {
++  display: flex;
++  align-items: center;
++  gap: 16px;
++  flex-wrap: wrap;
++  padding: 16px;
++  border: 1px solid var(--secondary);
++  border-radius: 8px;
++}
++.passkey img, .passkey svg { width: 40px; height: 40px; flex: none; }
++.passkey-info { flex: 1 1 200px; min-width: 0; }
++.passkey-name { font-weight: 600; overflow-wrap: anywhere; }
++.passkey-meta { font-size: 0.85rem; opacity: 0.8; }
++.passkey-actions { display: flex; gap: 8px; }
++.empty { padding: 24px; text-align: center; background: var(--light); border-radius: 8px; }
++
++dialog {
++  margin: auto;
++  border: 0;
++  border-radius: 8px;
++  padding: 24px;
++  width: min(420px, calc(100% - 32px));
++  color: var(--text);
++  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++}
++dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
++dialog h2 { margin-bottom: 12px; color: var(--primary); }
++dialog label { display: block; font-size: 0.9rem; margin-bottom: 4px; }
++dialog input {
++  width: 100%;
++  padding: 8px 10px;
++  font: inherit;
++  border: 1px solid var(--primary);
++  border-radius: 5px;
++}
++.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+diff --git a/account/api.js b/account/api.js
+new file mode 100644
+index 0000000..8b99660
+--- /dev/null
++++ b/account/api.js
+@@ -0,0 +1,54 @@
++// Stand-in for the server's credential endpoints (GET/PUT/DELETE /api/credential...).
++// Persists to localStorage so the UI works on this static site. Swap each function
++// for a fetch() to the real backend; the shapes match StoredPasskeyCredential.
++const KEY = 'daily-grind:passkeys';
++const DAY = 86_400_000;
++
++function seed() {
++  const now = Date.now();
++  return [
++    {
++      id: 'c2VlZC1pY2xvdWQ', aaguid: 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd',
++      name: 'iCloud Keychain', registeredAt: now - 120 * DAY, lastUsedAt: now - 2 * DAY,
++    },
++    {
++      id: 'c2VlZC1nb29nbGU', aaguid: 'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4',
++      name: 'Google Password Manager', registeredAt: now - 30 * DAY, lastUsedAt: null,
++    },
++  ];
++}
++
++function read() {
++  const raw = localStorage.getItem(KEY);
++  if (raw) return JSON.parse(raw);
++  const list = seed();
++  write(list);
++  return list;
++}
++const write = (list) => localStorage.setItem(KEY, JSON.stringify(list));
++
++export const user = { id: 'M2YPl-KGnA8', name: 'coffee.lover@example.com', displayName: 'Coffee Lover' };
++
++export async function listCredentials() {
++  return read().sort((a, b) => a.registeredAt - b.registeredAt);
++}
++
++export async function renameCredential(id, name) {
++  const list = read();
++  const cred = list.find((c) => c.id === id);
++  if (!cred) throw new Error('Credential not found.');
++  cred.name = name;
++  write(list);
++}
++
++export async function deleteCredential(id) {
++  const list = read();
++  if (!list.some((c) => c.id === id)) throw new Error('Credential not found.');
++  write(list.filter((c) => c.id !== id));
++}
++
++export async function addCredential(cred) {
++  const list = read();
++  list.push(cred);
++  write(list);
++}
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..07b8ca5
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,76 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <link rel="stylesheet" href="/account/account.css">
++</head>
++
++<body>
++
++  <nav>
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <main class="container">
++    <h1>My Account</h1>
++
++    <section class="panel" aria-labelledby="passkeys-heading">
++      <div class="panel-header">
++        <div>
++          <h2 id="passkeys-heading">Passkeys</h2>
++          <p>Passkeys let you sign in with your fingerprint, face, or screen lock instead of a password.</p>
++        </div>
++        <button type="button" id="create-passkey" class="btn" hidden>Create passkey</button>
++      </div>
++
++      <p id="status" role="status" class="status"></p>
++      <ul id="passkey-list" class="passkey-list"></ul>
++      <p id="empty-state" class="empty" hidden>No passkeys found. Create one to sign in faster next time.</p>
++    </section>
++  </main>
++
++  <dialog id="rename-dialog" closedby="any" aria-labelledby="rename-title">
++    <form method="dialog" id="rename-form">
++      <h2 id="rename-title">Rename passkey</h2>
++      <label for="rename-input">Name</label>
++      <input id="rename-input" name="name" required maxlength="60" autocomplete="off">
++      <div class="dialog-actions">
++        <button type="button" class="btn secondary" commandfor="rename-dialog" command="close">Cancel</button>
++        <button type="submit" class="btn">Save</button>
++      </div>
++    </form>
++  </dialog>
++
++  <dialog id="delete-dialog" closedby="any" aria-labelledby="delete-title">
++    <h2 id="delete-title">Delete passkey?</h2>
++    <p>You won't be able to sign in with <strong id="delete-name"></strong> anymore. This can't be undone.</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn secondary" commandfor="delete-dialog" command="close">Cancel</button>
++      <button type="button" class="btn danger" id="delete-confirm">Delete</button>
++    </div>
++  </dialog>
++
++  <script type="module">
++    // Invoker commands (commandfor/command) polyfill, only where unsupported.
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      await import('https://esm.run/invokers-polyfill');
++    }
++    // Needed for getClientCapabilities / signal methods fallbacks.
++    if (window.PublicKeyCredential && !PublicKeyCredential.parseRequestOptionsFromJSON) {
++      await import('https://unpkg.com/webauthn-polyfills').catch(() => { });
++    }
++    await import('/account/passkeys.js');
++  </script>
++</body>
++
++</html>
+diff --git a/account/passkeys.js b/account/passkeys.js
+new file mode 100644
+index 0000000..2ddeb22
+--- /dev/null
++++ b/account/passkeys.js
+@@ -0,0 +1,183 @@
++import * as api from '/account/api.js';
++
++const rpId = location.hostname;
++
++// Subset of https://github.com/passkeydeveloper/passkey-authenticator-aaguids
++// (name only); AAGUIDs are UX hints, never used for security decisions.
++const PROVIDERS = {
++  'fbfc3007-154e-4ecc-8c0b-6e020557d7bd': 'iCloud Keychain',
++  'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': 'Google Password Manager',
++  'bfc748bb-3429-4faa-b9f9-7cfa9f3b76d0': '1Password',
++  'adce0002-35bc-c60a-648b-0b25f1f05503': 'Chrome on Mac',
++  '08987058-cadc-4b81-b6e1-30de50dcbe96': 'Windows Hello',
++};
++const ZERO_AAGUID = '00000000-0000-0000-0000-000000000000';
++
++const $ = (id) => document.getElementById(id);
++const list = $('passkey-list');
++const status = $('status');
++const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
++
++const ICON = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="4"/><path d="M11 12l9 9M16 17l2-2M14 15l2-2"/></svg>`;
++
++function setStatus(msg, isError = false) {
++  status.textContent = msg;
++  status.classList.toggle('error', isError);
++}
++
++const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)))
++  .replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
++
++async function signalAccepted(creds) {
++  if (!window.PublicKeyCredential?.signalAllAcceptedCredentials) return;
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({
++      rpId,
++      userId: api.user.id,
++      allAcceptedCredentialIds: creds.map((c) => c.id),
++    });
++  } catch (e) {
++    console.error('signalAllAcceptedCredentials failed:', e);
++  }
++}
++
++function render(creds) {
++  list.replaceChildren(...creds.map((c) => {
++    const li = document.createElement('li');
++    li.className = 'passkey';
++    li.dataset.id = c.id;
++
++    const icon = document.createElement('span');
++    icon.innerHTML = ICON;
++
++    const info = document.createElement('div');
++    info.className = 'passkey-info';
++    const name = document.createElement('div');
++    name.className = 'passkey-name';
++    name.textContent = c.name;
++    const meta = document.createElement('div');
++    meta.className = 'passkey-meta';
++    const created = `Created ${dateFormat.format(c.registeredAt)}`;
++    const used = c.lastUsedAt ? `Last used ${dateFormat.format(c.lastUsedAt)}` : 'Never used';
++    meta.textContent = `${created} · ${used}`;
++    info.append(name, meta);
++
++    const actions = document.createElement('div');
++    actions.className = 'passkey-actions';
++    const rename = document.createElement('button');
++    rename.type = 'button';
++    rename.className = 'btn secondary';
++    rename.textContent = 'Rename';
++    rename.setAttribute('aria-label', `Rename ${c.name}`);
++    rename.addEventListener('click', () => openRename(c));
++    const del = document.createElement('button');
++    del.type = 'button';
++    del.className = 'btn secondary';
++    del.textContent = 'Delete';
++    del.setAttribute('aria-label', `Delete ${c.name}`);
++    del.addEventListener('click', () => openDelete(c));
++    actions.append(rename, del);
++
++    li.append(icon, info, actions);
++    return li;
++  }));
++  $('empty-state').hidden = creds.length > 0;
++}
++
++async function refresh() {
++  const creds = await api.listCredentials();
++  render(creds);
++  return creds;
++}
++
++// Rename (server-side label only; no Signal API call)
++let renaming;
++function openRename(c) {
++  renaming = c;
++  $('rename-input').value = c.name;
++  $('rename-dialog').showModal();
++  $('rename-input').select();
++}
++$('rename-form').addEventListener('submit', async () => {
++  const name = $('rename-input').value.trim();
++  if (!name || !renaming) return;
++  try {
++    await api.renameCredential(renaming.id, name);
++    await refresh();
++    setStatus('Passkey renamed.');
++  } catch (e) {
++    setStatus(e.message, true);
++  }
++});
++
++// Delete, then sync remaining IDs with the password manager
++let deleting;
++function openDelete(c) {
++  deleting = c;
++  $('delete-name').textContent = c.name;
++  $('delete-dialog').showModal();
++}
++$('delete-confirm').addEventListener('click', async () => {
++  $('delete-dialog').close();
++  if (!deleting) return;
++  try {
++    await api.deleteCredential(deleting.id);
++    await signalAccepted(await refresh());
++    setStatus('Passkey deleted.');
++  } catch (e) {
++    setStatus(e.message, true);
++  }
++});
++
++// Create passkey, shown only when a platform authenticator is available
++async function setupCreate() {
++  if (!window.PublicKeyCredential) return;
++  try {
++    const caps = await PublicKeyCredential.getClientCapabilities?.();
++    if (!caps?.userVerifyingPlatformAuthenticator && !caps?.passkeyPlatformAuthenticator) return;
++  } catch { return; }
++  $('create-passkey').hidden = false;
++  $('create-passkey').addEventListener('click', createPasskey);
++}
++
++async function createPasskey() {
++  try {
++    // Challenge is generated locally here; a real server must issue and verify it.
++    const cred = await navigator.credentials.create({
++      publicKey: {
++        rp: { id: rpId, name: 'The Daily Grind' },
++        user: {
++          id: Uint8Array.from(atob(api.user.id.replaceAll('-', '+').replaceAll('_', '/') + '='), (ch) => ch.charCodeAt(0)),
++          name: api.user.name,
++          displayName: api.user.displayName,
++        },
++        challenge: crypto.getRandomValues(new Uint8Array(32)),
++        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
++        excludeCredentials: (await api.listCredentials()).map((c) => ({
++          type: 'public-key',
++          id: Uint8Array.from(atob(c.id.replaceAll('-', '+').replaceAll('_', '/')), (ch) => ch.charCodeAt(0)),
++        })),
++        authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
++      },
++    });
++    await api.addCredential({
++      id: b64url(cred.rawId),
++      aaguid: ZERO_AAGUID,
++      name: 'New passkey',
++      registeredAt: Date.now(),
++      lastUsedAt: null,
++    });
++    await signalAccepted(await refresh());
++    setStatus('Passkey created.');
++  } catch (e) {
++    if (e.name !== 'NotAllowedError' && e.name !== 'InvalidStateError') setStatus(e.message, true);
++    else if (e.name === 'InvalidStateError') setStatus('This device already has a passkey for your account.', true);
++  }
++}
++
++// Name credentials by provider when registered (kept for use in registration flow)
++export const providerName = (aaguid) =>
++  aaguid === ZERO_AAGUID ? 'Unknown passkey provider' : PROVIDERS[aaguid] ?? 'Unknown passkey provider';
++
++signalAccepted(await refresh());
++setupCreate();

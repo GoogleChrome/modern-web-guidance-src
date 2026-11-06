@@ -1,0 +1,181 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,52 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Search Box */
++    .search-container {
++      max-width: 500px;
++      margin: 20px auto 10px;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .search-container label {
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    #search-input {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem 1rem;
++      min-height: 48px;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      color: var(--text);
++      background-color: white;
++      transition: border-color 0.2s;
++    }
++
++    #search-input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++      border-color: var(--primary);
++    }
++
++    ::highlight(search-results) {
++      background-color: gold;
++      color: black;
++    }
++
++    mark.search-highlight {
++      background-color: gold;
++      color: black;
++      padding: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,9 +220,21 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="search-container">
++        <label for="search-input">Search Seasonal Menu</label>
++        <input
++          type="search"
++          id="search-input"
++          name="search"
++          placeholder="Search menu items (e.g., oat, espresso)..."
++          autocorrect="off"
++          autocapitalize="off"
++          spellcheck="false"
++        >
++      </div>
++      <div class="grid" id="menu-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -206,7 +262,101 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const searchInput = document.getElementById('search-input');
++    const menuGrid = document.getElementById('menu-grid');
++    const cards = menuGrid.querySelectorAll('.card');
++
++    // Cache text nodes inside the menu cards using TreeWalker
++    const cachedTextNodes = [];
++    cards.forEach((card) => {
++      const treeWalker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
++      let currentNode = treeWalker.nextNode();
++      while (currentNode) {
++        if (currentNode.textContent.trim().length > 0) {
++          cachedTextNodes.push(currentNode);
++        }
++        currentNode = treeWalker.nextNode();
++      }
++    });
++
++    function clearFallbackMarks() {
++      const marks = menuGrid.querySelectorAll('mark.search-highlight');
++      marks.forEach((mark) => {
++        const parent = mark.parentNode;
++        mark.replaceWith(document.createTextNode(mark.textContent));
++        parent.normalize();
++      });
++    }
++
++    searchInput.addEventListener('input', () => {
++      const query = searchInput.value.trim().toLowerCase();
++
++      if (CSS.highlights) {
++        // Clear previous highlights before registering new ones
++        CSS.highlights.clear();
++
++        if (!query) return;
++
++        const matchingRanges = [];
++        for (const textNode of cachedTextNodes) {
++          const text = textNode.textContent.toLowerCase();
++          let startPos = 0;
++          while (startPos < text.length) {
++            const index = text.indexOf(query, startPos);
++            if (index === -1) break;
++
++            const range = new Range();
++            range.setStart(textNode, index);
++            range.setEnd(textNode, index + query.length);
++            matchingRanges.push(range);
++
++            startPos = index + query.length;
++          }
++        }
++
++        if (matchingRanges.length > 0) {
++          const searchHighlight = new Highlight(...matchingRanges);
++          CSS.highlights.set('search-results', searchHighlight);
++        }
++      } else {
++        // Fallback for browsers without CSS Custom Highlight API support
++        clearFallbackMarks();
++
++        if (!query) return;
++
++        cards.forEach((card) => {
++          const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
++          const nodes = [];
++          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
++            if (n.textContent.trim().length > 0) nodes.push(n);
++          }
++
++          for (const textNode of nodes) {
++            const text = textNode.textContent;
++            let pos = text.toLowerCase().indexOf(query);
++            if (pos === -1) continue;
++
++            const frag = document.createDocumentFragment();
++            let last = 0;
++            while (pos !== -1) {
++              frag.append(text.slice(last, pos));
++              const mark = document.createElement('mark');
++              mark.className = 'search-highlight';
++              mark.textContent = text.slice(pos, pos + query.length);
++              frag.append(mark);
++              last = pos + query.length;
++              pos = text.toLowerCase().indexOf(query, last);
++            }
++            frag.append(text.slice(last));
++            textNode.replaceWith(frag);
++          }
++        });
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

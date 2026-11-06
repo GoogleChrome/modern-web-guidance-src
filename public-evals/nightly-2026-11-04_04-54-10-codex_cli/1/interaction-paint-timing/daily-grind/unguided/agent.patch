@@ -1,0 +1,340 @@
+diff --git a/PERFORMANCE.md b/PERFORMANCE.md
+new file mode 100644
+index 0000000..f4143ba
+--- /dev/null
++++ b/PERFORMANCE.md
+@@ -0,0 +1,37 @@
++The homepage automatically measures clicks on navigation links, Order Now, and
++Seasonal Favorites cards (including their View Details links). Delegation also
++covers cards inserted later, without changing link behavior.
++
++Read the latest 100 samples with `window.dailyGrindPerformance.getSamples()` or
++subscribe to `window.addEventListener('daily-grind:performance', ({ detail }) => …)`.
++Samples contain `kind`, a stable `label`, a unique `id`, `startTime`, `duration`
++(milliseconds), and `method`. A User Timing measure is also delivered to any
++PerformanceObserver observing `measure` entries; entries are immediately cleared
++to avoid accumulating browser performance records. No data is sent off-device.
++
++This static page has no client-side router or view switches. When adding one,
++wrap its actual render operation:
++
++```js
++await window.dailyGrindPerformance.measureViewSwitch('menu', async () => {
++  const menu = await loadMenu();
++  renderMenu(menu);
++  // If the renderer commits asynchronously, await its commit here too.
++});
++```
++
++Each measurement ends in a task scheduled from requestAnimationFrame, allowing
++the visual update to paint first. This is an **after-paint estimate**, not an
++exact compositor timestamp or the INP metric. The technique follows the
++[web.dev rendering guidance](https://web.dev/articles/optimize-inp).
++Click durations include input delay when a usable event timestamp is available.
++View-switch durations include the callback's asynchronous work. These timings
++cover the next paint after the update, not the completion of subsequent CSS
++animations or images loading after the callback resolves.
++
++Regular links still perform full-document navigation. A click sample measures
++only the current document's response; it cannot measure the destination page's
++paint. Pending measurements are discarded when the document hides or leaves,
++and failed view switches produce no success sample. For destination-page load
++timing, instrument those pages separately. Async view switches should use the
++helper above rather than treating their click sample as render completion.
+diff --git a/index.html b/index.html
+index 66c9173..c22db46 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/performance-monitor.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -157,7 +158,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-performance-group="navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,24 +172,24 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-performance-label="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-performance-label="seasonal-maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance-label="seasonal-dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance-label="seasonal-cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/package.json b/package.json
+index 2bd4d77..a2a2adc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test tests/*.test.cjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/performance-monitor.js b/performance-monitor.js
+new file mode 100644
+index 0000000..27e1325
+--- /dev/null
++++ b/performance-monitor.js
+@@ -0,0 +1,104 @@
++(() => {
++  'use strict';
++
++  const samples = [];
++  const pending = new Set();
++  let sequence = 0;
++
++  function start(kind, label, startTime = performance.now()) {
++    if (document.visibilityState !== 'visible') return null;
++    const measurement = { kind, label, startTime, frame: null, timer: null };
++    pending.add(measurement);
++    return measurement;
++  }
++
++  function cancel(measurement) {
++    if (!measurement) return;
++    cancelAnimationFrame(measurement.frame);
++    clearTimeout(measurement.timer);
++    pending.delete(measurement);
++  }
++
++  function finishAfterPaint(measurement) {
++    if (!pending.has(measurement)) return;
++    // rAF runs BEFORE paint. A task queued from it gives the browser an
++    // opportunity to paint before recording the end of this measurement.
++    measurement.frame = requestAnimationFrame(() => {
++      measurement.timer = setTimeout(() => {
++        if (!pending.has(measurement)) return;
++        if (document.visibilityState !== 'visible') {
++          cancel(measurement);
++          return;
++        }
++        const endTime = performance.now();
++        const sample = Object.freeze({
++          id: ++sequence,
++          kind: measurement.kind,
++          label: measurement.label,
++          startTime: measurement.startTime,
++          duration: endTime - measurement.startTime,
++          method: 'after-paint-estimate',
++        });
++        cancel(measurement);
++        // Keep both the local log and the User Timing buffer bounded.
++        const name = `daily-grind:${sample.kind}:${sample.label}`;
++        try {
++          performance.measure(name, { start: sample.startTime, end: endTime });
++        } catch {
++          // Older browsers may not support the User Timing options overload.
++        }
++        samples.push(sample);
++        if (samples.length > 100) samples.shift();
++        performance.clearMeasures(name);
++        window.dispatchEvent(new CustomEvent('daily-grind:performance', {
++          detail: sample,
++        }));
++      }, 0);
++    });
++  }
++
++  document.addEventListener('click', (event) => {
++    const target = event.target instanceof Element ? event.target : null;
++    if (!target) return;
++    const labeled = target.closest('[data-performance-label]');
++    const navLink = target.closest('[data-performance-group="navigation"] a');
++    if (!labeled && !navLink) return;
++    // Event timestamps include input delay, unlike starting the clock inside
++    // this handler. Some older engines use epoch-based event timestamps.
++    const now = performance.now();
++    const timestamp = event.timeStamp > now
++      ? event.timeStamp - performance.timeOrigin : event.timeStamp;
++    const startTime = Number.isFinite(timestamp) && timestamp > 0 && timestamp <= now
++      ? timestamp : now;
++    const label = labeled?.dataset.performanceLabel
++      || `navigation-${navLink.getAttribute('href').split('/').filter(Boolean).join('-') || 'home'}`;
++    finishAfterPaint(start('click', label, startTime));
++  }, { capture: true, passive: true });
++
++  // Hide/unload time must not be misreported as rendering latency. This also
++  // cancels pending work before a page enters the back/forward cache.
++  function cancelPending() {
++    for (const measurement of pending) cancel(measurement);
++  }
++  document.addEventListener('visibilitychange', () => {
++    if (document.visibilityState !== 'visible') cancelPending();
++  });
++  window.addEventListener('pagehide', cancelPending);
++
++  window.dailyGrindPerformance = Object.freeze({
++    getSamples: () => samples.slice(),
++    // The callback must resolve after the view's DOM updates are committed.
++    // Returning its result preserves the caller's normal view-switch flow.
++    async measureViewSwitch(label, updateView) {
++      const measurement = start('view-switch', String(label));
++      try {
++        const result = await updateView();
++        finishAfterPaint(measurement);
++        return result;
++      } catch (error) {
++        cancel(measurement);
++        throw error;
++      }
++    },
++  });
++})();
+diff --git a/tests/performance-monitor.test.cjs b/tests/performance-monitor.test.cjs
+new file mode 100644
+index 0000000..537be2e
+--- /dev/null
++++ b/tests/performance-monitor.test.cjs
+@@ -0,0 +1,119 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const source = readFileSync(require('node:path').join(__dirname, '../performance-monitor.js'), 'utf8');
++
++function setup() {
++  let now = 100;
++  let id = 0;
++  const frames = new Map();
++  const timers = new Map();
++  const events = [];
++  const listeners = {};
++  class Element {
++    constructor(label, href) {
++      this.dataset = label ? { performanceLabel: label } : {};
++      this.href = href;
++    }
++    closest(selector) {
++      return selector.includes('label') ? (this.dataset.performanceLabel ? this : null)
++        : (this.href ? this : null);
++    }
++    getAttribute() { return this.href; }
++  }
++  const document = {
++    visibilityState: 'visible',
++    addEventListener: (name, fn) => { listeners[name] = fn; },
++  };
++  const window = {
++    addEventListener: (name, fn) => { listeners[name] = fn; },
++    dispatchEvent: (event) => events.push(event.detail),
++  };
++  vm.runInNewContext(source, {
++    document, window, Element,
++    performance: { now: () => now, timeOrigin: 1000000, measure() {}, clearMeasures() {} },
++    requestAnimationFrame: (fn) => { frames.set(++id, fn); return id; },
++    cancelAnimationFrame: (key) => frames.delete(key),
++    setTimeout: (fn) => { timers.set(++id, fn); return id; },
++    clearTimeout: (key) => timers.delete(key),
++    CustomEvent: class { constructor(name, { detail }) { this.detail = detail; } },
++  });
++  return {
++    document, listeners, events, Element, api: window.dailyGrindPerformance,
++    frame() {
++      now += 16;
++      const callbacks = [...frames.values()];
++      frames.clear();
++      callbacks.forEach((fn) => fn());
++    },
++    tasks() {
++      now += 1;
++      const callbacks = [...timers.values()];
++      timers.clear();
++      callbacks.forEach((fn) => fn());
++    },
++  };
++}
++
++test('all click targets finish only in the task after the frame, including input delay', () => {
++  const env = setup();
++  for (const target of [new env.Element(null, '/menu'), new env.Element('order-now'),
++    new env.Element('seasonal-maple-oat-latte')]) {
++    env.listeners.click({ target, timeStamp: 90 });
++  }
++  assert.equal(env.events.length, 0);
++  env.frame();
++  assert.equal(env.events.length, 0);
++  env.tasks();
++  assert.deepEqual(env.events.map((sample) => sample.label),
++    ['navigation-menu', 'order-now', 'seasonal-maple-oat-latte']);
++  assert.ok(env.events.every((sample) => sample.duration === 27));
++});
++
++test('async view switches wait for the render callback and preserve its result', async () => {
++  const env = setup();
++  let commit;
++  const result = env.api.measureViewSwitch('menu', () => new Promise((resolve) => { commit = resolve; }));
++  env.frame();
++  env.tasks();
++  assert.equal(env.events.length, 0);
++  commit('rendered');
++  assert.equal(await result, 'rendered');
++  env.frame();
++  env.tasks();
++  assert.equal(env.events[0].kind, 'view-switch');
++  assert.equal(env.events[0].duration, 34);
++});
++
++test('failed updates and hidden or unloaded documents do not report successful paints', async () => {
++  const env = setup();
++  await assert.rejects(env.api.measureViewSwitch('error', () => { throw Error('render failed'); }));
++  env.listeners.click({ target: new env.Element('order-now'), timeStamp: 90 });
++  env.frame();
++  env.document.visibilityState = 'hidden';
++  env.listeners.visibilitychange();
++  env.tasks();
++  env.document.visibilityState = 'visible';
++  env.listeners.click({ target: new env.Element('order-now'), timeStamp: 90 });
++  env.listeners.pagehide();
++  env.frame();
++  env.tasks();
++  assert.equal(env.events.length, 0);
++});
++
++test('sample retention is bounded and snapshots cannot mutate the internal log', () => {
++  const env = setup();
++  for (let i = 0; i < 105; i++) {
++    env.listeners.click({ target: new env.Element('order-now'), timeStamp: 90 });
++  }
++  env.frame();
++  env.tasks();
++  const snapshot = env.api.getSamples();
++  assert.equal(snapshot.length, 100);
++  assert.equal(snapshot[0].id, 6);
++  snapshot.pop();
++  assert.equal(env.api.getSamples().length, 100);
++  assert.ok(Object.isFrozen(snapshot[0]));
++});

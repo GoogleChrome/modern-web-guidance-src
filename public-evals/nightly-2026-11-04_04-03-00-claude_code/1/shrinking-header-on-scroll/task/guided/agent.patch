@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,26 +27,70 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
++    /* Nav is fixed (out of flow) so shrinking it never changes the
++       document's scroll length; body padding reserves its full height. */
++    html {
++      scroll-padding-top: 80px;
++    }
++
++    body {
++      padding-top: 80px;
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: 80px;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      transform-origin: left center;
+     }
+ 
++    /* Modern browsers: shrink linked directly to the root scroll position */
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      @media (prefers-reduced-motion: no-preference) {
++        nav {
++          animation: nav-shrink auto linear both;
++          animation-timeline: scroll(block root);
++          animation-range: 0px 120px;
++        }
++
++        nav .logo {
++          animation: logo-shrink auto linear both;
++          animation-timeline: scroll(block root);
++          animation-range: 0px 120px;
++        }
++      }
++    }
++
++    @keyframes nav-shrink {
++      to {
++        height: 52px;
++        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
++      }
++    }
++
++    @keyframes logo-shrink {
++      to {
++        transform: scale(0.8);
++      }
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+@@ -206,7 +250,63 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-driven animations (Firefox,
++    // older Safari/Chrome, legacy browsers). Written in ES5 so it runs on
++    // old engines too; mirrors the CSS keyframes above.
++    (function () {
++      var supportsSDA = window.CSS && CSS.supports &&
++        CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)');
++      if (supportsSDA) return;
++
++      var reduceMotion = window.matchMedia &&
++        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      if (reduceMotion) return;
++
++      var nav = document.querySelector('nav');
++      var logo = nav && nav.querySelector('.logo');
++      if (!nav || !logo) return;
++
++      var START_HEIGHT = 80;
++      var END_HEIGHT = 52;
++      var END_SCALE = 0.8;
++      var SCROLL_DISTANCE = 120;
++      var ticking = false;
++      var raf = window.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); };
++
++      function update() {
++        ticking = false;
++        var y = window.pageYOffset || document.documentElement.scrollTop || 0;
++        var p = Math.max(0, Math.min(1, y / SCROLL_DISTANCE));
++        var scale = 1 - (1 - END_SCALE) * p;
++
++        nav.style.height = (START_HEIGHT - (START_HEIGHT - END_HEIGHT) * p) + 'px';
++        nav.style.boxShadow = '0 2px 10px rgba(0, 0, 0, ' + (0.35 * p).toFixed(3) + ')';
++        logo.style.webkitTransform = 'scale(' + scale + ')';
++        logo.style.transform = 'scale(' + scale + ')';
++      }
++
++      function onScroll() {
++        if (!ticking) {
++          ticking = true;
++          raf(update);
++        }
++      }
++
++      var passive = false;
++      try {
++        window.addEventListener('test', null, Object.defineProperty({}, 'passive', {
++          get: function () { passive = { passive: true }; }
++        }));
++      } catch (e) {}
++
++      window.addEventListener('scroll', onScroll, passive);
++      window.addEventListener('resize', onScroll, passive);
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

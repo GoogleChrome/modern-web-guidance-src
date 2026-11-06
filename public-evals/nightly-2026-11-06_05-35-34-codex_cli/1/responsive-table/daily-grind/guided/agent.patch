@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+index 66c9173..bca8d05 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,75 @@
+       color: var(--primary);
+     }
+ 
++    .drink-table-wrapper {
++      max-inline-size: 100%;
++      overflow: auto;
++      margin-block-start: 2rem;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .drink-table-wrapper:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .drink-table {
++      inline-size: 100%;
++      min-inline-size: 56rem;
++      border-collapse: separate;
++      border-spacing: 0;
++      background: white;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .drink-table caption {
++      padding: 1rem;
++      text-align: start;
++      font-size: 1.125rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .drink-table th,
++    .drink-table td {
++      padding: 0.75rem 1rem;
++      border-block-end: 1px solid var(--secondary);
++      text-align: end;
++    }
++
++    .drink-table thead th {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 2;
++      background: var(--primary);
++      color: white;
++    }
++
++    .drink-table tr > :first-child {
++      position: sticky;
++      inset-inline-start: 0;
++      inline-size: 10rem;
++      text-align: start;
++    }
++
++    .drink-table thead th:first-child {
++      z-index: 3;
++    }
++
++    .drink-table tbody th {
++      z-index: 1;
++      background: #f4efec;
++    }
++
++    .drink-table tbody tr:last-child > * {
++      border-block-end: 0;
++    }
++
++    .drink-table-note {
++      margin-block-start: 0.75rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -194,6 +263,61 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="drink-table-wrapper" role="region" aria-labelledby="drink-table-caption"
++        aria-describedby="drink-table-scroll" tabindex="0">
++        <table class="drink-table" aria-describedby="drink-table-note">
++          <caption id="drink-table-caption">Nutrition &amp; pricing per serving</caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Serving size</th>
++              <th scope="col">Calories (kcal)</th>
++              <th scope="col">Fat (g)</th>
++              <th scope="col">Carbs (g)</th>
++              <th scope="col">Sugars (g)</th>
++              <th scope="col">Protein (g)</th>
++              <th scope="col">Price (USD)</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>12 fl oz</td>
++              <td>240</td>
++              <td>7</td>
++              <td>38</td>
++              <td>22</td>
++              <td>3</td>
++              <td>$5.50</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>2 fl oz (double shot)</td>
++              <td>10</td>
++              <td>0</td>
++              <td>2</td>
++              <td>0</td>
++              <td>0</td>
++              <td>$3.00</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>12 fl oz</td>
++              <td>5</td>
++              <td>0</td>
++              <td>0</td>
++              <td>0</td>
++              <td>0</td>
++              <td>$4.25</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++      <p class="drink-table-note" id="drink-table-scroll">On narrow screens, scroll horizontally to compare all columns.
++        Keyboard users can focus the table region and use the left and right arrow keys.</p>
++      <p class="drink-table-note" id="drink-table-note">Illustrative nutrition estimates and sample prices in US dollars,
++        before tax. Values are per serving as listed: latte with oat milk and maple syrup; espresso and cold brew served
++        black, without added milk or sugar. Actual values and prices may vary.</p>
+     </section>
+   </main>
+ 

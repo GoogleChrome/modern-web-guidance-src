@@ -1,0 +1,40 @@
+diff --git a/DIAGNOSTICS.md b/DIAGNOSTICS.md
+new file mode 100644
+--- a/DIAGNOSTICS.md
++++ b/DIAGNOSTICS.md
+@@ -0,0 +1,35 @@
++# Script performance diagnostics
++
++Open any page with `?scriptDiagnostics=1` (or append `&scriptDiagnostics=1`
++to an existing query). Open the developer console to see a table one second
++after load. After using menus, scrolling, or other interactions, run
++`scriptDiagnostics.report()` for updated results. Run `scriptDiagnostics.stop()`
++to flush and disconnect observers. Reload without the parameter to disable.
++
++The current page has no application or third-party scripts. The profiler itself
++may appear in the resource table. Put future scripts after the diagnostics tag
++in the head so collection starts early. Keep this file available at
++`/script-diagnostics.js` when deploying the static site.
++
++- `slowFrameScriptMs`, `slowFrameCalls`, and `maxCallMs` identify script work
++  observed in long animation frames. Sort order prioritizes that duration, then
++  the slowest load. `forcedLayoutMs` highlights expensive synchronous layout.
++- `requests`, `totalLoadMs`, and `maxLoadMs` describe script resource fetches,
++  not execution. Overlapping loads must not be added to estimate page delay.
++- `observedTransferBytes` is the reported transfer size; zero may mean cache
++  use or restricted cross-origin information, rather than an empty script.
++- `frameBlockingMs` is blocking time across entire slow frames. It is not
++  assigned to individual scripts. `unattributedFrames` counts frames without
++  script attribution; rendering and browser work can also cause delays.
++
++Execution attribution requires the [Long Animation Frames API](https://developer.chrome.com/docs/web-platform/long-animation-frames).
++It does not measure every execution, short script contributions may be omitted,
++and cross-origin or inline source information may be unavailable. Use these
++results to find candidates for investigation, not as proof of causality.
++Unsupported browsers still report available script resource timings via
++[Resource Timing](https://developer.mozilla.org/en-US/docs/Web/API/PerformanceResourceTiming).
++Resource buffers can omit older loads. Collection is local, stores no history,
++strips URL query strings and fragments, merges sources with the same origin and
++path, and retains at most 200 sources (`dropped` counts omitted observations).
++No requests are made to an analytics service. The diagnostics file is fetched on
++every visit but returns immediately unless explicitly enabled.

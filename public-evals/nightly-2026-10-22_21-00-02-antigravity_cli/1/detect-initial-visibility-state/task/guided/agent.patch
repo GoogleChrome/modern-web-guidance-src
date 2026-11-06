@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Accurately determines initial visibility state and background timestamp (in ms)
++     * using the Performance API's VisibilityStateEntry records.
++     */
++    function getVisibilityInfo() {
++      const entries = performance.getEntriesByType('visibility-state');
++
++      if (entries.length > 0) {
++        const firstEntry = entries[0];
++
++        // If the first performance entry for visibility is 'hidden',
++        // the page was initially loaded in a background tab.
++        const initiallyBackgrounded = firstEntry.name === 'hidden';
++
++        // Find the precise, high-resolution timestamp (in milliseconds) of when
++        // the page was first backgrounded.
++        let timeBackgrounded = null;
++        for (const entry of entries) {
++          if (entry.name === 'hidden') {
++            // entry.startTime provides the exact internal browser timestamp
++            // of the visibility change, which is required for precision.
++            timeBackgrounded = entry.startTime;
++            break;
++          }
++        }
++
++        return {
++          initiallyBackgrounded,
++          timeBackgrounded,
++          isFallback: false
++        };
++      }
++
++      return {
++        initiallyBackgrounded: false,
++        timeBackgrounded: null,
++        isFallback: false
++      };
++    }
++
++    /**
++     * WARNING: Legacy fallback implementation using document.visibilityState.
++     * This fallback approach is highly inaccurate and potentially unreliable,
++     * especially if scripts load and execute asynchronously. A page opened in a
++     * background tab could be foregrounded by the user before this script finishes
++     * downloading and executing, causing document.visibilityState to synchronously
++     * read as 'visible' and completely miss the initial hidden state.
++     * Furthermore, performance.now() only records when the event listener fired,
++     * lacking the internal timeline precision of VisibilityStateEntry.startTime.
++     */
++    function getFallbackVisibilityInfo() {
++      // Check the state at script execution time (prone to race conditions for async scripts).
++      let initiallyBackgrounded = document.visibilityState === 'hidden';
++
++      // If hidden at execution time, approximate that it was hidden from load (0 ms).
++      let timeBackgrounded = initiallyBackgrounded ? 0 : null;
++
++      // Listen for future visibility changes to capture if the tab is backgrounded later.
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden' && timeBackgrounded === null) {
++          timeBackgrounded = performance.now();
++        }
++      });
++
++      return {
++        get initiallyBackgrounded() {
++          return initiallyBackgrounded;
++        },
++        get timeBackgrounded() {
++          return timeBackgrounded;
++        },
++        isFallback: true,
++        unreliable: true
++      };
++    }
++
++    let visibilityInfo;
++    if ('VisibilityStateEntry' in window) {
++      visibilityInfo = getVisibilityInfo();
++    } else {
++      // Flag that fallback detection is active and potentially unreliable
++      console.warn(
++        'VisibilityStateEntry is unsupported: using fallback document.visibilityState detection (potentially unreliable for async scripts).'
++      );
++      visibilityInfo = getFallbackVisibilityInfo();
++    }
++
++    console.log(visibilityInfo);
++  </script>
++
+ </body>
+ 
+ </html>

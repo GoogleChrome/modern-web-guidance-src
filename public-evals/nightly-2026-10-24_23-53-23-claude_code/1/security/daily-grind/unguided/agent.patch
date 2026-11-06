@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+index 66c9173..02d18e6 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,10 @@
+       background: #3e2723;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,7 +180,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/server.js b/server.js
+index 52c2fd5..dab3f57 100644
+--- a/server.js
++++ b/server.js
+@@ -1,16 +1,83 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
++// Set CSP_REPORT_ONLY=1 to trial a policy change without enforcing it.
++const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY === '1';
++
++// The page has no scripts and no inline style attributes; its single <style>
++// block is allowed by hash instead of 'unsafe-inline'.
++function styleHashes(html) {
++  return [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(
++    (m) => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`
++  );
++}
++
++function buildCsp(html) {
++  return [
++    "default-src 'none'",
++    "script-src 'none'",
++    `style-src ${styleHashes(html).join(' ')}`,
++    "img-src 'self' https://images.unsplash.com",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "form-action 'self'",
++    "base-uri 'none'",
++    "object-src 'none'",
++    "frame-ancestors 'none'",
++    'upgrade-insecure-requests',
++    'report-uri /csp-report',
++  ].join('; ');
++}
++
++const SECURITY_HEADERS = {
++  'X-Content-Type-Options': 'nosniff',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'X-Frame-Options': 'DENY',
++};
++
+ const server = http.createServer((req, res) => {
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
+ 
++  if (pathname === '/csp-report') {
++    if (req.method !== 'POST') {
++      res.writeHead(405, { Allow: 'POST', ...SECURITY_HEADERS });
++      res.end();
++      return;
++    }
++    let size = 0;
++    const chunks = [];
++    req.on('data', (c) => {
++      size += c.length;
++      if (size <= 8192) chunks.push(c);
++    });
++    req.on('end', () => {
++      if (size <= 8192) {
++        // Log as a JSON string so report content cannot forge log lines.
++        console.warn('CSP report:', JSON.stringify(Buffer.concat(chunks).toString('utf8')));
++      }
++      res.writeHead(204, SECURITY_HEADERS);
++      res.end();
++    });
++    return;
++  }
++
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, {
++      'Content-Type': 'text/html; charset=utf-8',
++      'Cache-Control': 'no-store',
++      'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
++      ...SECURITY_HEADERS,
++    });
+     res.end('Logged out');
+     return;
+   }
+@@ -18,11 +85,15 @@ const server = http.createServer((req, res) => {
+   const filePath = path.join(WORK_DIR, 'index.html');
+   fs.readFile(filePath, (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, SECURITY_HEADERS);
+       res.end('Server error');
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, {
++      'Content-Type': 'text/html; charset=utf-8',
++      [CSP_REPORT_ONLY ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy']: buildCsp(data.toString('utf8')),
++      ...SECURITY_HEADERS,
++    });
+     res.end(data);
+   });
+ });

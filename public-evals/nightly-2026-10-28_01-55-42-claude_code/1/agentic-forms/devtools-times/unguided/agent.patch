@@ -1,0 +1,442 @@
+diff --git a/README.md b/README.md
+index 4479b53..1e7bad0 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,16 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## AI agent tools (WebMCP)
++
++The sign-in and sign-up forms are also exposed to AI agents through the
++[WebMCP](https://developer.chrome.com/docs/ai/webmcp) imperative API. When the
++browser supports `document.modelContext`, visiting `/signin` registers a
++`sign_in` tool and visiting `/signup` registers a `sign_up` tool. Each tool
++takes `username` and `password`, performs the same request as the form, mirrors
++the input in the visible form, and returns the same status message the user
++would see. Tools are unregistered when the form leaves the page.
++
++To try it locally, enable `chrome://flags/#enable-webmcp-testing` in Chrome and
++inspect the registered tools from DevTools.
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..413ea13 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,52 @@
++/**
++ * WebMCP (https://github.com/webmachinelearning/webmcp) type declarations.
++ *
++ * Chrome exposes the imperative API on `document.modelContext`; earlier
++ * previews used `navigator.modelContext`. Both are declared as optional so
++ * the app feature-detects instead of assuming support.
++ */
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  interface ModelContextToolAnnotations {
++    readOnlyHint?: boolean;
++    consequentialHint?: boolean;
++    untrustedContentHint?: boolean;
++    debugging?: boolean;
++  }
++
++  interface ModelContextToolExecuteOptions {
++    signal?: AbortSignal;
++  }
++
++  interface ModelContextTool<Args = Record<string, unknown>> {
++    name: string;
++    description: string;
++    inputSchema: Record<string, unknown>;
++    annotations?: ModelContextToolAnnotations;
++    execute: (args: Args, options?: ModelContextToolExecuteOptions) => unknown | Promise<unknown>;
++  }
++
++  interface ModelContextRegisterToolOptions {
++    signal?: AbortSignal;
++    exposedTo?: string[];
++  }
++
++  interface ModelContext {
++    registerTool(tool: ModelContextTool<any>, options?: ModelContextRegisterToolOptions): void | Promise<void>;
++    /** Present in earlier WebMCP previews that pre-date AbortSignal-based removal. */
++    unregisterTool?(name: string): void;
++  }
++
++  interface Document {
++    modelContext?: ModelContext;
++  }
++
++  interface Navigator {
++    modelContext?: ModelContext;
++  }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..aa3484d 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,11 @@
+-import React, { useState } from 'react';
++import React, { useCallback, useEffect, useState } from 'react';
++import { signIn } from '../utils/auth';
++import { registerWebMCPTool } from '../utils/webmcp';
++
++interface SignInArgs {
++  username: string;
++  password: string;
++}
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -7,38 +14,71 @@ export default function SignInForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  // Shared by the form's submit handler and the WebMCP tool so an agent
++  // invoking the tool produces exactly the same request and UI feedback as a
++  // user clicking "Sign In".
++  const submit = useCallback(async (nextUsername: string, nextPassword: string) => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+ 
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
++    const result = await signIn(nextUsername, nextPassword);
+ 
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
++    if (result.ok) {
++      setSuccess(result.message);
++    } else {
++      setError(result.message);
+     }
++    setLoading(false);
++
++    return result;
++  }, []);
++
++  const handleSubmit = async (e: React.FormEvent) => {
++    e.preventDefault();
++    await submit(username, password);
+   };
+ 
++  // Expose the form to AI agents via WebMCP. The cleanup returned by
++  // registerWebMCPTool unregisters the tool when the form unmounts.
++  useEffect(
++    () =>
++      registerWebMCPTool<SignInArgs>({
++        name: 'sign_in',
++        description:
++          'Sign in to The DevTools Times with an existing account. ' +
++          'Returns a message describing whether the login succeeded or why it failed.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            username: {
++              type: 'string',
++              description: 'The username of the existing account.',
++            },
++            password: {
++              type: 'string',
++              description: 'The password for the account.',
++            },
++          },
++          required: ['username', 'password'],
++        },
++        annotations: {
++          readOnlyHint: false,
++          consequentialHint: false,
++          untrustedContentHint: false,
++        },
++        execute: async ({ username: nextUsername, password: nextPassword }) => {
++          // Mirror the agent's input in the visible form so the user can see
++          // what was submitted on their behalf.
++          setUsername(nextUsername);
++          setPassword(nextPassword);
++          const result = await submit(nextUsername, nextPassword);
++          return result.message;
++        },
++      }),
++    [submit],
++  );
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..a2d329f 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,11 @@
+-import React, { useState } from 'react';
++import React, { useCallback, useEffect, useState } from 'react';
++import { signUp } from '../utils/auth';
++import { registerWebMCPTool } from '../utils/webmcp';
++
++interface SignUpArgs {
++  username: string;
++  password: string;
++}
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -7,39 +14,75 @@ export default function SignUpForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  // Shared by the form's submit handler and the WebMCP tool so an agent
++  // invoking the tool produces exactly the same request and UI feedback as a
++  // user clicking "Sign Up".
++  const submit = useCallback(async (nextUsername: string, nextPassword: string) => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+ 
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
++    const result = await signUp(nextUsername, nextPassword);
+ 
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
++    if (result.ok) {
++      setSuccess(result.message);
++      setUsername('');
++      setPassword('');
++    } else {
++      setError(result.message);
+     }
++    setLoading(false);
++
++    return result;
++  }, []);
++
++  const handleSubmit = async (e: React.FormEvent) => {
++    e.preventDefault();
++    await submit(username, password);
+   };
+ 
++  // Expose the form to AI agents via WebMCP. The cleanup returned by
++  // registerWebMCPTool unregisters the tool when the form unmounts.
++  useEffect(
++    () =>
++      registerWebMCPTool<SignUpArgs>({
++        name: 'sign_up',
++        description:
++          'Create a new account on The DevTools Times. ' +
++          'Returns a message describing whether registration succeeded or why it failed.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            username: {
++              type: 'string',
++              description: 'The username for the new account.',
++            },
++            password: {
++              type: 'string',
++              minLength: 8,
++              description: 'The password for the new account. Must be at least 8 characters and contain a number.',
++            },
++          },
++          required: ['username', 'password'],
++        },
++        annotations: {
++          readOnlyHint: false,
++          // Creates a persistent account, so agents should confirm with the user first.
++          consequentialHint: true,
++          untrustedContentHint: false,
++        },
++        execute: async ({ username: nextUsername, password: nextPassword }) => {
++          // Mirror the agent's input in the visible form so the user can see
++          // what was submitted on their behalf.
++          setUsername(nextUsername);
++          setPassword(nextPassword);
++          const result = await submit(nextUsername, nextPassword);
++          return result.message;
++        },
++      }),
++    [submit],
++  );
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+diff --git a/src/utils/auth.ts b/src/utils/auth.ts
+new file mode 100644
+index 0000000..5c360a3
+--- /dev/null
++++ b/src/utils/auth.ts
+@@ -0,0 +1,57 @@
++/**
++ * Client-side auth requests shared by the sign-in / sign-up forms and the
++ * WebMCP tools that expose them to AI agents.
++ */
++
++const AUTH_API_BASE = 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api';
++
++export interface AuthResult {
++  ok: boolean;
++  /** Human-readable outcome, suitable for both the UI banner and a tool response. */
++  message: string;
++}
++
++async function postCredentials(
++  path: '/login' | '/register',
++  username: string,
++  password: string,
++  failurePrefix: string,
++  successMessage: string,
++): Promise<AuthResult> {
++  try {
++    const response = await fetch(`${AUTH_API_BASE}${path}`, {
++      method: 'POST',
++      headers: {
++        'Content-Type': 'application/json',
++      },
++      body: JSON.stringify({ username, password }),
++    });
++
++    const data = await response.json();
++
++    if (!response.ok) {
++      // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, APP_ERR_2001, APP_ERR_2002, ...) properly.
++      // For now, we return a generic error message including the code.
++      return { ok: false, message: `${failurePrefix}: ${data.error || 'Unknown error'}` };
++    }
++
++    return { ok: true, message: successMessage };
++  } catch (err) {
++    return { ok: false, message: 'An unexpected error occurred. Please try again later.' };
++  }
++}
++
++export function signIn(username: string, password: string): Promise<AuthResult> {
++  // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++  return postCredentials('/login', username, password, 'Login failed', 'Login successful!');
++}
++
++export function signUp(username: string, password: string): Promise<AuthResult> {
++  return postCredentials(
++    '/register',
++    username,
++    password,
++    'Registration failed',
++    'User registered successfully! You can now sign in.',
++  );
++}
+diff --git a/src/utils/webmcp.ts b/src/utils/webmcp.ts
+new file mode 100644
+index 0000000..c27bb7e
+--- /dev/null
++++ b/src/utils/webmcp.ts
+@@ -0,0 +1,62 @@
++/**
++ * Thin wrapper around the WebMCP imperative API so React islands can expose
++ * their functionality as tools to AI agents.
++ *
++ * Usage inside a component:
++ *
++ *   useEffect(() => registerWebMCPTool({ name, description, inputSchema, execute }), [deps]);
++ *
++ * The returned cleanup unregisters the tool, which keeps the browser's tool
++ * list in sync with what is actually mounted (including across view
++ * transitions driven by Astro's ClientRouter).
++ */
++
++export type WebMCPTool<Args = Record<string, unknown>> = ModelContextTool<Args>;
++
++export function getModelContext(): ModelContext | undefined {
++  if (typeof document !== 'undefined' && document.modelContext) {
++    return document.modelContext;
++  }
++  if (typeof navigator !== 'undefined' && navigator.modelContext) {
++    return navigator.modelContext;
++  }
++  return undefined;
++}
++
++export function isWebMCPSupported(): boolean {
++  return getModelContext() !== undefined;
++}
++
++/**
++ * Registers a tool with the browser's model context. Returns a cleanup
++ * function that unregisters it. A no-op when the browser lacks WebMCP, so
++ * callers never need to feature-detect themselves.
++ */
++export function registerWebMCPTool<Args>(tool: WebMCPTool<Args>): () => void {
++  const modelContext = getModelContext();
++  if (!modelContext) {
++    return () => {};
++  }
++
++  const controller = new AbortController();
++
++  try {
++    Promise.resolve(modelContext.registerTool(tool, { signal: controller.signal })).catch((error) => {
++      console.warn(`WebMCP: failed to register tool "${tool.name}"`, error);
++    });
++  } catch (error) {
++    console.warn(`WebMCP: failed to register tool "${tool.name}"`, error);
++    return () => {};
++  }
++
++  return () => {
++    // Current Chrome removes the tool when the signal aborts; older previews
++    // expose unregisterTool(name) instead. Do both, ignoring "not found".
++    controller.abort();
++    try {
++      modelContext.unregisterTool?.(tool.name);
++    } catch {
++      /* already removed via the signal */
++    }
++  };
++}

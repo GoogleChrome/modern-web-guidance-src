@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,63 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      background: white;
++    }
++
++    .newsletter button {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter-error,
++    .newsletter-success {
++      font-size: 0.85rem;
++      margin-top: 8px;
++      min-height: 1.4em;
++    }
++
++    .newsletter-error {
++      color: #b71c1c;
++    }
++
++    /* Error styling only applies once the user has left the field */
++    .newsletter input.touched:invalid {
++      border-color: #b71c1c;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +252,17 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" novalidate>
++      <h3>Join our newsletter</h3>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com"
++          aria-label="Email address" aria-describedby="newsletter-msg" required>
++        <button type="submit">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-msg" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +270,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('newsletter-form');
++      var input = document.getElementById('newsletter-email');
++      var msg = document.getElementById('newsletter-msg');
++
++      function validate() {
++        var v = input.validity;
++        var text = '';
++        if (v.valueMissing) text = 'Please enter your email address.';
++        else if (v.typeMismatch || v.patternMismatch) text = 'Please enter a valid email address.';
++        msg.className = 'newsletter-error';
++        msg.textContent = text;
++        input.setAttribute('aria-invalid', text ? 'true' : 'false');
++        return !text;
++      }
++
++      // Don't validate while typing; wait until the user leaves the field.
++      input.addEventListener('blur', function () {
++        // Stay quiet if they tabbed through without typing anything.
++        if (!input.value && !input.classList.contains('touched')) return;
++        input.classList.add('touched');
++        validate();
++      });
++
++      // Once an error is showing, clear it as soon as the value becomes valid.
++      input.addEventListener('input', function () {
++        if (input.classList.contains('touched') && input.checkValidity()) validate();
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        input.classList.add('touched');
++        if (!validate()) return;
++        // TODO: send input.value to the newsletter backend
++        form.reset();
++        input.classList.remove('touched');
++        msg.className = 'newsletter-success';
++        msg.textContent = 'Thanks for subscribing!';
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

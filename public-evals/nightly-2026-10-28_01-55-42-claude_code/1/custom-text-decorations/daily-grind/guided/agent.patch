@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+index 66c9173..2609c27 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,34 @@
+       color: var(--accent);
+     }
+ 
++    /* Decorative text lines
++       Native text-decoration draws the line along the text, follows the font metrics, and
++       skips ink around descenders (text-decoration-skip-ink defaults to auto, so it is not
++       declared on the thin lines). Reveal animations trim one end of the line with
++       text-decoration-inset and transition it back; browsers without inset support simply
++       keep a full, static line. */
++
++    /* Nav links: underline that draws in from the start on hover and keyboard focus. */
++    nav a:not(.logout-link) {
++      text-decoration: underline solid var(--accent) max(1px, 0.12em);
++      /* Vertical offset: sit the line clear of descenders in small nav text. */
++      text-underline-offset: 0.35em;
++      /* Horizontal end insets: nudge both ends in so the line reads as a hand-set rule. */
++      text-decoration-inset: 0.1em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav a:not(.logout-link) {
++        /* Trim the end by the full inline size so the line starts at zero length. */
++        text-decoration-inset: 0.1em 100%;
++        transition: color 0.3s, text-decoration-inset 0.25s ease-out;
++      }
++
++      nav a:not(.logout-link):is(:hover, :focus-visible) {
++        text-decoration-inset: 0.1em 0.1em;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -118,6 +146,72 @@
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      /* Card titles: a short, thick accent bar centered under the title. The line is thick
++         and purely decorative, so it is drawn straight through rather than skipping ink. */
++      text-decoration: underline solid var(--accent) max(2px, 0.18em);
++      text-decoration-skip-ink: none;
++      text-underline-offset: 0.3em;
++      /* Large matching start and end insets shorten the line to a centered accent bar. */
++      text-decoration-inset: 30%;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .card h3 {
++        /* Start fully trimmed from both ends (zero length at the center) and grow outward. */
++        text-decoration-inset: 50%;
++        transition: text-decoration-inset 0.35s ease-out;
++      }
++
++      .card:is(:hover, :focus-within) h3 {
++        text-decoration-inset: 30%;
++      }
++    }
++
++    /* Section heading: a hand-drawn squiggle that draws on when the page loads. */
++    .section-title {
++      position: relative;
++      width: fit-content;
++      margin-inline: auto;
++      padding-block-end: 0.45em; /* Room for the line below the text */
++      --squiggle-thickness: max(2px, 0.1em);
++    }
++
++    .section-title::after {
++      content: "";
++      position: absolute;
++      inset: auto 0.1em 0 0.1em; /* Small horizontal end insets */
++      pointer-events: none;
++      /* Fallback: a straight accent rule for browsers without border-shape. */
++      border-block-end: var(--squiggle-thickness) solid var(--accent);
++    }
++
++    @supports (border-shape: circle(50%)) {
++      .section-title::after {
++        block-size: 0.4em;
++        border: var(--squiggle-thickness) solid var(--accent);
++        /* A single shape strokes along its path, using the border width as the stroke. */
++        border-shape: shape(from 0% 50%,
++          curve to 20% 50% with 5% 0% / 15% 100%,
++          smooth to 40% 50% with 35% 100%,
++          smooth to 60% 50% with 55% 100%,
++          smooth to 80% 50% with 75% 100%,
++          smooth to 100% 50% with 95% 100%);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .section-title::after {
++        /* Clip the line away from the right edge, then draw it on. The negative block
++           insets keep the stroke from being cut off vertically. */
++        clip-path: inset(-1em 100% -1em 0);
++        animation: draw-line 0.8s ease-out 0.3s forwards;
++      }
++
++      @keyframes draw-line {
++        to {
++          clip-path: inset(-1em 0 -1em 0);
++        }
++      }
+     }
+ 
+     .btn {
+@@ -149,8 +243,32 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
++      /* Footer links: a soft dotted underline that firms up to a solid line on hover.
++         Dotted lines need a little more room than solid ones, so the offset is raised. */
++      text-decoration: underline dotted color-mix(in srgb, currentColor 50%, transparent) max(1px, 0.08em);
++      text-underline-offset: 0.25em;
++      transition: text-decoration-color 0.2s, text-decoration-thickness 0.2s;
++    }
++
++    .footer-links a:is(:hover, :focus-visible) {
++      text-decoration-style: solid;
++      text-decoration-color: var(--primary);
++      text-decoration-thickness: max(1px, 0.12em);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .footer-links a {
++        /* Trim the start by the full inline size so the line reveals from the end. */
++        text-decoration-inset: 100% 0;
++        transition: text-decoration-color 0.2s, text-decoration-thickness 0.2s,
++          text-decoration-inset 0.25s ease-out;
++      }
++
++      .footer-links a:is(:hover, :focus-visible) {
++        /* Push both ends slightly outward so the line slightly overshoots the word. */
++        text-decoration-inset: -0.1em;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +294,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

@@ -1,0 +1,2773 @@
+diff --git a/index.html b/index.html
+index 66c9173..cdec183 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,28 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Artisanal Coffee & Passkey Security</title>
++  <script src="/vendor/simplewebauthn/index.umd.min.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
+       --accent: #ffab40;
++      --accent-hover: #ff9100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --white: #ffffff;
++      --success: #2e7d32;
++      --success-bg: #e8f5e9;
++      --danger: #c62828;
++      --danger-bg: #ffebee;
++      --warning: #ef6c00;
++      --warning-bg: #fff3e0;
++      --border: #e0d6d2;
++      --shadow: 0 4px 16px rgba(62, 39, 35, 0.08);
+     }
+ 
+     * {
+@@ -25,6 +39,9 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     /* Navigation */
+@@ -38,44 +55,75 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: 1.4rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      cursor: pointer;
++      color: white;
++      text-decoration: none;
++      display: flex;
++      align-items: center;
++      gap: 8px;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      align-items: center;
++      gap: 20px;
++      flex-wrap: wrap;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.92rem;
++      transition: color 0.25s, background 0.25s;
++      cursor: pointer;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .nav-pill {
+       border: 1px solid var(--accent);
++      padding: 6px 14px;
++      border-radius: 6px;
++      font-weight: 600;
++    }
++
++    .nav-pill.filled {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .nav-pill.filled:hover {
++      background: var(--accent-hover);
++      color: var(--primary-dark);
++    }
++
++    .user-chip {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: rgba(255, 255, 255, 0.12);
+       padding: 5px 12px;
+-      border-radius: 4px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      color: #fff;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 52vh;
++      min-height: 340px;
++      background: linear-gradient(rgba(35, 20, 15, 0.6), rgba(35, 20, 15, 0.6)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -89,61 +137,420 @@
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.8rem;
++      margin-bottom: 0.75rem;
+     }
+ 
+-    /* Content Sections */
++    .hero p {
++      font-size: 1.15rem;
++      max-width: 600px;
++      opacity: 0.95;
++    }
++
++    .hero-actions {
++      display: flex;
++      gap: 12px;
++      margin-top: 20px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    /* Layout & Containers */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
++      max-width: 1120px;
++      width: 100%;
++      margin: 36px auto;
+       padding: 0 20px;
++      flex: 1;
++    }
++
++    .view-section {
++      display: none;
++      animation: fadeIn 0.2s ease-in-out;
++    }
++
++    .view-section.active {
++      display: block;
++    }
++
++    @keyframes fadeIn {
++      from {
++        opacity: 0;
++        transform: translateY(4px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--white);
++      padding: 24px;
++      border-radius: 12px;
++      box-shadow: var(--shadow);
++      border: 1px solid var(--border);
++    }
++
++    .card.center {
+       text-align: center;
+     }
+ 
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 14px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Buttons */
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 8px;
++      border: none;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .btn:hover:not(:disabled) {
++      background: var(--primary-dark);
++      transform: translateY(-1px);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover:not(:disabled) {
++      background: var(--accent-hover);
++      color: var(--primary-dark);
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1.5px solid var(--primary);
++    }
++
++    .btn-outline:hover:not(:disabled) {
++      background: var(--secondary-light);
++    }
++
++    .btn-danger {
++      background: var(--danger);
++      color: white;
++    }
++
++    .btn-danger:hover:not(:disabled) {
++      background: #b71c1c;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.85rem;
++      border-radius: 6px;
++    }
++
++    .btn-block {
++      width: 100%;
++    }
++
++    /* Auth & Passkey Layout */
++    .auth-wrapper {
++      max-width: 500px;
++      margin: 10px auto 40px;
++    }
++
++    .tabs {
++      display: flex;
++      background: var(--secondary-light);
++      padding: 5px;
++      border-radius: 10px;
++      margin-bottom: 24px;
++    }
++
++    .tab-btn {
++      flex: 1;
++      padding: 10px;
++      border: none;
++      background: transparent;
++      font-weight: 600;
++      color: var(--text-muted);
++      border-radius: 8px;
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .tab-btn.active {
++      background: var(--white);
++      color: var(--primary-dark);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++    }
++
++    .form-group {
++      margin-bottom: 16px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.88rem;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 11px 14px;
++      border: 1.5px solid var(--border);
++      border-radius: 8px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: #fff;
++      transition: border-color 0.2s;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--primary);
++    }
++
++    .divider {
++      display: flex;
++      align-items: center;
++      text-align: center;
++      margin: 20px 0;
++      color: var(--text-muted);
++      font-size: 0.85rem;
++    }
++
++    .divider::before,
++    .divider::after {
++      content: '';
++      flex: 1;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .divider:not(:empty)::before {
++      margin-right: 12px;
++    }
++
++    .divider:not(:empty)::after {
++      margin-left: 12px;
++    }
++
++    /* Account & Passkey Management Grid */
++    .account-layout {
++      display: grid;
++      grid-template-columns: 1fr 1.35fr;
++      gap: 28px;
++      align-items: start;
++    }
++
++    @media (max-width: 860px) {
++      .account-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .section-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 16px;
++      padding-bottom: 12px;
++      border-bottom: 1px solid var(--border);
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 5px;
++      padding: 4px 10px;
++      border-radius: 99px;
++      font-size: 0.78rem;
++      font-weight: 600;
++    }
++
++    .badge-success {
++      background: var(--success-bg);
++      color: var(--success);
++    }
++
++    .badge-warning {
++      background: var(--warning-bg);
++      color: var(--warning);
++    }
++
++    .badge-neutral {
++      background: var(--secondary-light);
++      color: var(--primary-dark);
++    }
++
++    /* Passkey Item Card */
++    .passkey-list {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      margin-top: 12px;
++    }
++
++    .passkey-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 16px;
++      border: 1.5px solid var(--border);
++      border-radius: 10px;
++      background: #fdfcfb;
++      gap: 14px;
++      flex-wrap: wrap;
++    }
++
++    .passkey-item-info {
++      display: flex;
++      align-items: flex-start;
++      gap: 12px;
++      flex: 1;
++      min-width: 220px;
++    }
++
++    .passkey-icon {
++      width: 42px;
++      height: 42px;
++      border-radius: 10px;
++      background: var(--secondary-light);
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1.3rem;
++      flex-shrink: 0;
++    }
++
++    .passkey-meta {
++      font-size: 0.82rem;
++      color: var(--text-muted);
++      margin-top: 4px;
++    }
++
++    .passkey-actions {
++      display: flex;
++      gap: 8px;
++      align-items: center;
++    }
++
++    /* Status & Alerts */
++    .alert {
++      padding: 12px 16px;
++      border-radius: 8px;
++      margin-bottom: 18px;
++      font-size: 0.92rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++    }
++
++    .alert-success {
++      background: var(--success-bg);
++      color: var(--success);
++      border: 1px solid #a5d6a7;
++    }
++
++    .alert-error {
++      background: var(--danger-bg);
++      color: var(--danger);
++      border: 1px solid #ef9a9a;
++    }
++
++    .alert-info {
++      background: var(--warning-bg);
++      color: var(--primary-dark);
++      border: 1px solid #ffe0b2;
++    }
++
++    /* Reauthentication Modal */
++    .modal-backdrop {
++      position: fixed;
++      inset: 0;
++      background: rgba(30, 18, 14, 0.65);
++      display: none;
++      align-items: center;
++      justify-content: center;
++      z-index: 2000;
++      padding: 20px;
++    }
++
++    .modal-backdrop.open {
++      display: flex;
++    }
++
++    .modal-card {
++      background: var(--white);
++      max-width: 460px;
++      width: 100%;
++      border-radius: 14px;
++      padding: 28px;
++      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
++      border: 1px solid var(--border);
++    }
++
++    .modal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 12px;
++    }
++
++    .close-btn {
++      background: none;
++      border: none;
++      font-size: 1.4rem;
++      cursor: pointer;
++      color: var(--text-muted);
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 36px 20px;
++      margin-top: auto;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 14px;
+     }
+ 
+     .footer-links a {
+@@ -151,62 +558,1243 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      cursor: pointer;
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Navigation -->
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="/" class="logo" data-nav="home">
++      <span>☕</span> THE DAILY GRIND
++    </a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-nav="menu">Menu</a></li>
++      <li><a href="/locations" data-nav="locations">Locations</a></li>
++      <li><a href="/rewards" data-nav="rewards">Rewards</a></li>
++      <li><a href="/account" data-nav="account" id="nav-account-link">My Account</a></li>
++      <li id="nav-user-badge" style="display: none;">
++        <span class="user-chip" id="nav-user-name"></span>
++      </li>
++      <li id="nav-auth-item">
++        <a href="/login" data-nav="auth" class="nav-pill filled" id="nav-login-link">Sign In / Passkey</a>
++      </li>
++      <li id="nav-logout-item" style="display: none;">
++        <a href="/logout" id="nav-logout-link" class="nav-pill">Logout</a>
++      </li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <!-- Global Notification Banner -->
++  <div class="container" id="global-alert-container" style="margin-bottom: 0; display: none;"></div>
++
++  <!-- VIEW 1: HOME -->
++  <div id="view-home" class="view-section active">
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted artisanal coffee — now with seamless 1-tap Passkey sign-in and biometric security.</p>
++      <div class="hero-actions">
++        <a href="/menu" data-nav="menu" class="btn btn-accent">Order Online</a>
++        <a href="/account" data-nav="account" class="btn" id="hero-passkey-cta">🔑 Manage Passkeys</a>
++      </div>
++    </header>
++
++    <main class="container">
++      <section>
++        <h2 style="text-align: center; margin-bottom: 8px;">Seasonal Favorites</h2>
++        <p style="text-align: center; color: var(--text-muted);">Handcrafted daily by our master roasters.</p>
++        <div class="grid">
++          <div class="card center">
++            <img class="card-img" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of pure Vermont maple syrup and double espresso.</p>
++            <button class="btn" style="margin-top: 15px;" onclick="navigateTo('menu')">Order — $5.75</button>
++          </div>
++          <div class="card center">
++            <img class="card-img" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey single-origin beans, pulled for a rich crema and morning boost.</p>
++            <button class="btn" style="margin-top: 15px;" onclick="navigateTo('menu')">Order — $3.95</button>
++          </div>
++          <div class="card center">
++            <img class="card-img" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++            <h3>18-Hour Cold Brew</h3>
++            <p>Steeped slow for 18 hours in filtered cold water for maximum velvet smoothness.</p>
++            <button class="btn" style="margin-top: 15px;" onclick="navigateTo('menu')">Order — $4.85</button>
++          </div>
++        </div>
++      </section>
++    </main>
++  </div>
++
++  <!-- VIEW 2: AUTHENTICATION & REGISTRATION (Passkey + Password) -->
++  <div id="view-auth" class="view-section">
++    <main class="container">
++      <div class="auth-wrapper">
++        <div class="card">
++          <div style="text-align: center; margin-bottom: 20px;">
++            <span style="font-size: 2.2rem;">☕🔑</span>
++            <h2 style="color: var(--primary); margin-top: 4px;">The Daily Grind Access</h2>
++            <p style="font-size: 0.9rem; color: var(--text-muted);">
++              Sign in or create an account with a phishing-resistant Passkey
++            </p>
++          </div>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="tabs" role="tablist">
++            <button type="button" class="tab-btn active" id="tab-signin-btn" onclick="switchAuthTab('signin')">Sign In</button>
++            <button type="button" class="tab-btn" id="tab-register-btn" onclick="switchAuthTab('register')">Create Account</button>
++          </div>
++
++          <div id="auth-feedback" style="display: none;"></div>
++
++          <!-- SIGN IN PANEL -->
++          <div id="panel-signin">
++            <button type="button" id="btn-passkey-login" class="btn btn-accent btn-block" style="padding: 13px; font-size: 1rem;" onclick="handlePasskeyLogin()">
++              🔑 Sign in with a Passkey
++            </button>
++            <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 8px;">
++              Uses Face ID, Touch ID, Windows Hello, or your security key.
++            </p>
++
++            <div class="divider">or sign in with email</div>
++
++            <form id="form-login" onsubmit="handlePasswordLogin(event)">
++              <div class="form-group">
++                <label for="login-username">Email Address</label>
++                <input
++                  type="email"
++                  id="login-username"
++                  name="username"
++                  class="form-control"
++                  placeholder="alex@dailygrind.coffee"
++                  autocomplete="username webauthn"
++                  required
++                >
++              </div>
++              <div class="form-group">
++                <label for="login-password">Password <span style="font-weight: normal; color: var(--text-muted);">(optional for passkey login)</span></label>
++                <input
++                  type="password"
++                  id="login-password"
++                  name="password"
++                  class="form-control"
++                  placeholder="••••••••"
++                  autocomplete="current-password"
++                >
++              </div>
++              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
++                <button type="submit" class="btn btn-block" id="btn-password-login">
++                  Sign In with Password
++                </button>
++                <button type="button" class="btn btn-outline btn-block" onclick="handlePasskeyLogin(document.getElementById('login-username').value)">
++                  Sign In with Passkey for this Email
++                </button>
++              </div>
++            </form>
++
++            <div style="margin-top: 18px; padding: 12px; background: var(--secondary-light); border-radius: 8px; font-size: 0.82rem;">
++              <strong>Demo Account:</strong> <code>alex@dailygrind.coffee</code> / Password: <code>coffee123</code>
++            </div>
++          </div>
++
++          <!-- REGISTER PANEL -->
++          <div id="panel-register" style="display: none;">
++            <form id="form-register" onsubmit="handlePasskeyRegistrationNewUser(event)">
++              <div class="form-group">
++                <label for="reg-display-name">Full Name</label>
++                <input
++                  type="text"
++                  id="reg-display-name"
++                  name="displayName"
++                  class="form-control"
++                  placeholder="Jordan Taylor"
++                  autocomplete="name"
++                  required
++                >
++              </div>
++              <div class="form-group">
++                <label for="reg-username">Email Address</label>
++                <input
++                  type="email"
++                  id="reg-username"
++                  name="username"
++                  class="form-control"
++                  placeholder="jordan@dailygrind.coffee"
++                  autocomplete="username"
++                  required
++                >
++              </div>
++              <div class="form-group">
++                <label for="reg-passkey-name">Passkey Label <span style="font-weight: normal; color: var(--text-muted);">(optional)</span></label>
++                <input
++                  type="text"
++                  id="reg-passkey-name"
++                  name="passkeyName"
++                  class="form-control"
++                  placeholder="e.g., MacBook Touch ID, Pixel 9"
++                >
++              </div>
++              <div class="form-group">
++                <label for="reg-drink">Favorite Coffee Order</label>
++                <select id="reg-drink" class="form-control">
++                  <option value="Maple Oat Latte">Maple Oat Latte</option>
++                  <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++                  <option value="18-Hour Cold Brew">18-Hour Cold Brew</option>
++                  <option value="Honey Cinnamon Cortado">Honey Cinnamon Cortado</option>
++                </select>
++              </div>
++
++              <button type="submit" id="btn-passkey-register-new" class="btn btn-accent btn-block" style="padding: 13px; font-size: 1rem;">
++                🔑 Register Account with Passkey (+500 Pts)
++              </button>
++            </form>
++
++            <div class="divider">or register with a password</div>
++
++            <div class="form-group">
++              <label for="reg-password">Create Password</label>
++              <input
++                type="password"
++                id="reg-password"
++                class="form-control"
++                placeholder="At least 4 characters"
++                autocomplete="new-password"
++              >
++            </div>
++            <button type="button" class="btn btn-outline btn-block" onclick="handlePasswordRegistration()">
++              Create Account with Password
++            </button>
++          </div>
++        </div>
++      </div>
++    </main>
++  </div>
++
++  <!-- VIEW 3: MY ACCOUNT, PASSKEY MANAGEMENT & REAUTHENTICATION -->
++  <div id="view-account" class="view-section">
++    <main class="container">
++      <div class="section-header">
++        <div>
++          <h1 style="color: var(--primary);">My Account & Passkey Security</h1>
++          <p style="color: var(--text-muted); font-size: 0.95rem;">
++            Manage your passkeys, step-up reauthentication status, profile, and coffee wallet.
++          </p>
++        </div>
++        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
++          <span id="reauth-status-badge" class="badge badge-warning">🔒 Sensitive Actions Locked</span>
++          <button type="button" class="btn btn-sm btn-outline" id="btn-trigger-reauth" onclick="openReauthModal()">
++            🔑 Reauthenticate Now
++          </button>
++          <button type="button" class="btn btn-sm btn-outline" id="btn-lock-reauth" style="display: none;" onclick="lockReauthSession()">
++            🔒 Lock Session
++          </button>
++        </div>
++      </div>
++
++      <div id="account-feedback" style="display: none;"></div>
++
++      <div class="account-layout">
++        <!-- Left Column: Profile, Wallet & Sensitive Operations -->
++        <div style="display: flex; flex-direction: column; gap: 24px;">
++          <!-- Profile & Sensitive Settings Card -->
++          <div class="card">
++            <div class="section-header">
++              <h3 style="margin: 0;">Account Profile & Billing</h3>
++              <span class="badge badge-neutral" id="account-tier-badge">Gold Roaster</span>
++            </div>
++            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
++              Updating your email address, payment method, or profile details requires recent Passkey Reauthentication.
++            </p>
++            <form id="form-profile" onsubmit="handleUpdateProfile(event)">
++              <div class="form-group">
++                <label for="prof-display-name">Display Name</label>
++                <input type="text" id="prof-display-name" class="form-control" required>
++              </div>
++              <div class="form-group">
++                <label for="prof-username">Email Address (Sensitive)</label>
++                <input type="email" id="prof-username" class="form-control" required>
++              </div>
++              <div class="form-group">
++                <label for="prof-phone">Phone Number</label>
++                <input type="text" id="prof-phone" class="form-control" placeholder="(555) 234-5678">
++              </div>
++              <div class="form-group">
++                <label for="prof-drink">Default Quick-Order Drink</label>
++                <select id="prof-drink" class="form-control">
++                  <option value="Maple Oat Latte">Maple Oat Latte</option>
++                  <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++                  <option value="18-Hour Cold Brew">18-Hour Cold Brew</option>
++                  <option value="Honey Cinnamon Cortado">Honey Cinnamon Cortado</option>
++                </select>
++              </div>
++              <div class="form-group">
++                <label for="prof-payment">Saved Payment Method (Sensitive)</label>
++                <input type="text" id="prof-payment" class="form-control" placeholder="Visa ending in 4242">
++              </div>
++              <button type="submit" class="btn btn-block" id="btn-save-profile">
++                🛡️ Save Profile Changes
++              </button>
++            </form>
++          </div>
++
++          <!-- Coffee Wallet Card (Step-Up Reauth Protected) -->
++          <div class="card">
++            <div class="section-header">
++              <h3 style="margin: 0;">Daily Grind Wallet & Rewards</h3>
++              <strong style="font-size: 1.25rem; color: var(--primary);" id="wallet-balance-display">$0.00</strong>
++            </div>
++            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 14px;">
++              Rewards Points: <strong id="rewards-points-display">0</strong> pts. Reloading funds from your saved card is protected by Passkey Reauthentication.
++            </p>
++            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
++              <button type="button" class="btn btn-sm btn-accent" onclick="handleWalletReload(15)">
++                + Reload $15
++              </button>
++              <button type="button" class="btn btn-sm btn-accent" onclick="handleWalletReload(25)">
++                + Reload $25
++              </button>
++              <button type="button" class="btn btn-sm btn-accent" onclick="handleWalletReload(50)">
++                + Reload $50
++              </button>
++            </div>
++          </div>
++
++          <!-- Danger Zone -->
++          <div class="card" style="border-color: #ffcdd2;">
++            <h3 style="color: var(--danger);">Danger Zone</h3>
++            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
++              Permanently deleting your Daily Grind account requires step-up Passkey Reauthentication.
++            </p>
++            <button type="button" class="btn btn-danger btn-sm" id="btn-delete-account" onclick="handleDeleteAccount()">
++              Delete My Account
++            </button>
++          </div>
++        </div>
++
++        <!-- Right Column: Passkey Management -->
++        <div style="display: flex; flex-direction: column; gap: 24px;">
++          <div class="card">
++            <div class="section-header">
++              <div>
++                <h3 style="margin: 0;">🔑 Passkey Management</h3>
++                <p style="font-size: 0.84rem; color: var(--text-muted); margin-top: 2px;">
++                  Register authenticators, rename credentials, or revoke old passkeys.
++                </p>
++              </div>
++              <span class="badge badge-success" id="passkey-count-badge">0 Passkeys</span>
++            </div>
++
++            <!-- Add New Passkey Form -->
++            <div style="background: var(--secondary-light); padding: 16px; border-radius: 10px; margin-bottom: 18px;">
++              <label for="new-passkey-name" style="display: block; font-size: 0.86rem; font-weight: 600; margin-bottom: 8px;">
++                Register a New Passkey to Your Account
++              </label>
++              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
++                <input
++                  type="text"
++                  id="new-passkey-name"
++                  class="form-control"
++                  style="flex: 1; min-width: 180px;"
++                  placeholder="Passkey nickname (e.g., Work Laptop, iPhone 17)"
++                >
++                <button type="button" class="btn btn-accent" id="btn-add-passkey" onclick="handleAddPasskeyToAccount()">
++                  + Add Passkey
++                </button>
++              </div>
++            </div>
++
++            <!-- Registered Passkeys List -->
++            <div id="passkeys-list-container" class="passkey-list">
++              <!-- Populated by JS -->
++            </div>
++          </div>
++
++          <!-- Step-Up Reauthentication Info Card -->
++          <div class="card">
++            <h3>🛡️ About Passkey Step-Up Reauthentication</h3>
++            <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 6px;">
++              Even when you are already signed in, sensitive actions—such as removing a passkey, changing your email or payment method, reloading funds, or deleting your account—verify that you are physically present using a fresh WebAuthn assertion (<code>userVerification: "required"</code>).
++            </p>
++            <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
++              <button type="button" class="btn btn-sm" onclick="openReauthModal()">
++                Verify Identity with Passkey Now
++              </button>
++            </div>
++          </div>
++        </div>
++      </div>
++    </main>
++  </div>
++
++  <!-- VIEW 4: MENU / LOCATIONS / REWARDS -->
++  <div id="view-menu" class="view-section">
++    <main class="container">
++      <h1 style="text-align: center; color: var(--primary);">Artisanal Coffee Menu</h1>
++      <p style="text-align: center; color: var(--text-muted); margin-bottom: 24px;">
++        Roasted in small batches every morning.
++      </p>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <img class="card-img" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++          <h3>Maple Oat Latte — $5.75</h3>
++          <p>Velvety steamed oat milk infused with organic Vermont Grade-A maple syrup.</p>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <img class="card-img" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++          <h3>Dark Roast Espresso — $3.95</h3>
++          <p>Notes of dark cacao, toasted walnut, and smoky caramel finish.</p>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <img class="card-img" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++          <h3>18-Hour Cold Brew — $4.85</h3>
++          <p>Low-acidity, chocolatey cold extraction served over artisan ice.</p>
++        </div>
++        <div class="card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80" alt="Honey Cinnamon Cortado">
++          <h3>Honey Cinnamon Cortado — $4.65</h3>
++          <p>Equal parts rich espresso and warmtextured milk dusted with Ceylon cinnamon.</p>
+         </div>
+       </div>
+-    </section>
+-  </main>
++    </main>
++  </div>
++
++  <!-- STEP-UP REAUTHENTICATION MODAL -->
++  <div class="modal-backdrop" id="reauth-modal" role="dialog" aria-modal="true" aria-labelledby="reauth-modal-title">
++    <div class="modal-card">
++      <div class="modal-header">
++        <h3 id="reauth-modal-title" style="color: var(--primary);">🔐 Confirm Your Identity</h3>
++        <button type="button" class="close-btn" onclick="closeReauthModal()" aria-label="Close">&times;</button>
++      </div>
++      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;" id="reauth-modal-desc">
++        For your security, please reauthenticate with your passkey before completing this sensitive action.
++      </p>
++
++      <div id="reauth-modal-error" class="alert alert-error" style="display: none;"></div>
++
++      <button type="button" class="btn btn-accent btn-block" id="btn-modal-passkey-reauth" style="padding: 12px;" onclick="executePasskeyReauth()">
++        🔑 Verify with Passkey
++      </button>
++
++      <div id="reauth-password-fallback-section" style="margin-top: 18px;">
++        <div class="divider">or confirm with password</div>
++        <form onsubmit="executePasswordReauth(event)">
++          <div class="form-group">
++            <label for="reauth-password-input">Account Password</label>
++            <input type="password" id="reauth-password-input" class="form-control" placeholder="Enter your password">
++          </div>
++          <button type="submit" class="btn btn-outline btn-block btn-sm">
++            Confirm Password
++          </button>
++        </form>
++      </div>
++    </div>
++  </div>
++
++  <!-- RENAME PASSKEY MODAL -->
++  <div class="modal-backdrop" id="rename-modal" role="dialog" aria-modal="true" aria-labelledby="rename-modal-title">
++    <div class="modal-card">
++      <div class="modal-header">
++        <h3 id="rename-modal-title" style="color: var(--primary);">✏️ Rename Passkey</h3>
++        <button type="button" class="close-btn" onclick="closeRenameModal()" aria-label="Close">&times;</button>
++      </div>
++      <form onsubmit="submitRenamePasskey(event)">
++        <input type="hidden" id="rename-passkey-id">
++        <div class="form-group">
++          <label for="rename-passkey-input">Passkey Name</label>
++          <input type="text" id="rename-passkey-input" class="form-control" required>
++        </div>
++        <div style="display: flex; gap: 10px; justify-content: flex-end;">
++          <button type="button" class="btn btn-outline btn-sm" onclick="closeRenameModal()">Cancel</button>
++          <button type="submit" class="btn btn-sm" id="btn-confirm-rename">Save Name</button>
++        </div>
++      </form>
++    </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/" data-nav="home">Home</a> |
++      <a href="/menu" data-nav="menu">Menu</a> |
++      <a href="/account" data-nav="account">Passkey Security</a> |
++      <a href="/login" data-nav="auth">Sign In</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Application State
++    let currentUser = null;
++    let pendingSensitiveAction = null;
++    let conditionalAbortController = null;
++
++    const {
++      startRegistration,
++      startAuthentication,
++      browserSupportsWebAuthn,
++      browserSupportsWebAuthnAutofill,
++    } = window.SimpleWebAuthnBrowser || {};
++
++    // Alert Helpers
++    function showAlert(containerId, message, type = 'info') {
++      const el = document.getElementById(containerId);
++      if (!el) return;
++      const alertClass =
++        type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
++      el.style.display = 'block';
++      el.innerHTML = `
++        <div class="alert ${alertClass}">
++          <span>${escapeHtml(message)}</span>
++          <button type="button" class="close-btn" style="font-size:1.1rem;" onclick="document.getElementById('${containerId}').style.display='none'">&times;</button>
++        </div>
++      `;
++    }
++
++    function escapeHtml(str) {
++      return String(str || '')
++        .replace(/&/g, '&amp;')
++        .replace(/</g, '&lt;')
++        .replace(/>/g, '&gt;')
++        .replace(/"/g, '&quot;');
++    }
++
++    function formatDate(iso) {
++      if (!iso) return 'Never';
++      try {
++        return new Date(iso).toLocaleString(undefined, {
++          month: 'short',
++          day: 'numeric',
++          year: 'numeric',
++          hour: '2-digit',
++          minute: '2-digit',
++        });
++      } catch {
++        return iso;
++      }
++    }
++
++    // Router / View Switching
++    function navigateTo(view, pushState = true) {
++      if (view === 'account' && !currentUser) {
++        view = 'auth';
++        showAlert('auth-feedback', 'Please sign in with your passkey or password to access My Account.', 'info');
++      }
++
++      document.querySelectorAll('.view-section').forEach((sec) => sec.classList.remove('active'));
++      const target = document.getElementById(`view-${view}`) || document.getElementById('view-home');
++      target.classList.add('active');
++
++      if (pushState) {
++        const pathMap = {
++          home: '/',
++          auth: '/login',
++          account: '/account',
++          menu: '/menu',
++          locations: '/menu',
++          rewards: '/account',
++        };
++        const url = pathMap[view] || '/';
++        if (window.location.pathname !== url) {
++          window.history.pushState({ view }, '', url);
++        }
++      }
++
++      if (view === 'auth' && !currentUser) {
++        initConditionalPasskeyAutofill();
++      }
++    }
++
++    function switchAuthTab(tab) {
++      const isSignIn = tab === 'signin';
++      document.getElementById('tab-signin-btn').classList.toggle('active', isSignIn);
++      document.getElementById('tab-register-btn').classList.toggle('active', !isSignIn);
++      document.getElementById('panel-signin').style.display = isSignIn ? 'block' : 'none';
++      document.getElementById('panel-register').style.display = isSignIn ? 'none' : 'block';
++      document.getElementById('auth-feedback').style.display = 'none';
++    }
++
++    // Fetch current session & update UI
++    async function refreshSession() {
++      try {
++        const res = await fetch('/api/auth/me');
++        const data = await res.json();
++        currentUser = data.authenticated ? data.user : null;
++        renderNavAndAccount();
++        return currentUser;
++      } catch (err) {
++        console.error('Failed to fetch session:', err);
++        return null;
++      }
++    }
++
++    function renderNavAndAccount() {
++      const authItem = document.getElementById('nav-auth-item');
++      const logoutItem = document.getElementById('nav-logout-item');
++      const userBadge = document.getElementById('nav-user-badge');
++      const userNameEl = document.getElementById('nav-user-name');
++
++      if (currentUser) {
++        authItem.style.display = 'none';
++        logoutItem.style.display = 'block';
++        userBadge.style.display = 'block';
++        userNameEl.textContent = `☕ ${currentUser.displayName}`;
++        renderAccountDashboard();
++      } else {
++        authItem.style.display = 'block';
++        logoutItem.style.display = 'none';
++        userBadge.style.display = 'none';
++      }
++    }
++
++    function renderAccountDashboard() {
++      if (!currentUser) return;
++
++      // Populate profile form
++      document.getElementById('prof-display-name').value = currentUser.displayName || '';
++      document.getElementById('prof-username').value = currentUser.username || '';
++      document.getElementById('prof-phone').value = currentUser.phone || '';
++      document.getElementById('prof-drink').value = currentUser.favoriteDrink || 'Maple Oat Latte';
++      document.getElementById('prof-payment').value = currentUser.paymentMethod || '';
++      document.getElementById('account-tier-badge').textContent = currentUser.tier || 'Gold Roaster';
++      document.getElementById('wallet-balance-display').textContent = `$${Number(currentUser.walletBalance || 0).toFixed(2)}`;
++      document.getElementById('rewards-points-display').textContent = currentUser.rewardsPoints || 0;
++
++      // Reauth status badge
++      const reauthBadge = document.getElementById('reauth-status-badge');
++      const lockBtn = document.getElementById('btn-lock-reauth');
++      if (currentUser.isReauthenticated) {
++        reauthBadge.className = 'badge badge-success';
++        reauthBadge.textContent = '🔓 Reauthenticated (Step-Up Active)';
++        lockBtn.style.display = 'inline-flex';
++      } else {
++        reauthBadge.className = 'badge badge-warning';
++        reauthBadge.textContent = '🔒 Sensitive Actions Require Reauth';
++        lockBtn.style.display = 'none';
++      }
++
++      // Passkey list
++      const passkeys = currentUser.passkeys || [];
++      document.getElementById('passkey-count-badge').textContent = `${passkeys.length} Passkey${passkeys.length === 1 ? '' : 's'}`;
++      const listContainer = document.getElementById('passkeys-list-container');
++
++      if (passkeys.length === 0) {
++        listContainer.innerHTML = `
++          <div style="text-align: center; padding: 24px; border: 1.5px dashed var(--border); border-radius: 10px; color: var(--text-muted);">
++            <p style="font-weight: 600; color: var(--primary);">No passkeys registered yet</p>
++            <p style="font-size: 0.86rem; margin-top: 4px;">Add a passkey above to enable instant passwordless login and step-up verification.</p>
++          </div>
++        `;
++      } else {
++        listContainer.innerHTML = passkeys
++          .map((pk) => {
++            const syncBadge = pk.backedUp
++              ? '<span class="badge badge-success" title="Synced across devices">☁️ Synced</span>'
++              : '<span class="badge badge-neutral" title="Device-bound passkey">📱 Device-Bound</span>';
++            const transportsText =
++              pk.transports && pk.transports.length ? pk.transports.join(', ') : 'internal';
++            return `
++              <div class="passkey-item" data-passkey-id="${escapeHtml(pk.id)}">
++                <div class="passkey-item-info">
++                  <div class="passkey-icon">🔑</div>
++                  <div>
++                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
++                      <strong class="passkey-name-label" style="font-size: 0.98rem;">${escapeHtml(pk.name)}</strong>
++                      ${syncBadge}
++                    </div>
++                    <div class="passkey-meta">
++                      Created: ${escapeHtml(formatDate(pk.createdAt))} &bull; Last used: ${escapeHtml(formatDate(pk.lastUsedAt))}
++                    </div>
++                    <div class="passkey-meta">
++                      Credential ID: <code>${escapeHtml(pk.id.slice(0, 16))}...</code> &bull; Transports: ${escapeHtml(transportsText)} &bull; Sign count: ${pk.counter || 0}
++                    </div>
++                  </div>
++                </div>
++                <div class="passkey-actions">
++                  <button type="button" class="btn btn-sm btn-outline" onclick="openRenameModal('${escapeHtml(pk.id)}', '${escapeHtml(pk.name.replace(/'/g, "\\'"))}')">
++                    Rename
++                  </button>
++                  <button type="button" class="btn btn-sm btn-danger" onclick="handleDeletePasskey('${escapeHtml(pk.id)}', '${escapeHtml(pk.name.replace(/'/g, "\\'"))}')">
++                    Delete
++                  </button>
++                </div>
++              </div>
++            `;
++          })
++          .join('');
++      }
++    }
++
++    // ========================================================================
++    // 1. PASSKEY REGISTRATION FLOWS
++    // ========================================================================
++
++    // 1A: Register a brand-new user account with a Passkey (Passwordless)
++    async function handlePasskeyRegistrationNewUser(event) {
++      if (event) event.preventDefault();
++      const displayName = document.getElementById('reg-display-name').value.trim();
++      const username = document.getElementById('reg-username').value.trim();
++      const passkeyName = document.getElementById('reg-passkey-name').value.trim();
++      const favoriteDrink = document.getElementById('reg-drink').value;
++
++      if (!username) {
++        showAlert('auth-feedback', 'Please enter your email address.', 'error');
++        return;
++      }
++
++      try {
++        const optRes = await fetch('/api/passkeys/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            username,
++            displayName,
++            passkeyName,
++            favoriteDrink,
++            forceNewAccount: true,
++          }),
++        });
++        const optionsJSON = await optRes.json();
++        if (!optRes.ok) {
++          throw new Error(optionsJSON.error || 'Could not start passkey registration.');
++        }
++
++        const attResp = await startRegistration({ optionsJSON });
++
++        const verifyRes = await fetch('/api/passkeys/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            credential: attResp,
++            passkeyName,
++          }),
++        });
++        const verifyData = await verifyRes.json();
++        if (!verifyRes.ok || !verifyData.verified) {
++          throw new Error(verifyData.error || 'Passkey registration verification failed.');
++        }
++
++        currentUser = verifyData.user;
++        renderNavAndAccount();
++        navigateTo('account');
++        showAlert(
++          'account-feedback',
++          `Welcome to The Daily Grind, ${currentUser.displayName}! Your passkey "${verifyData.passkey.name}" is registered and active.`,
++          'success'
++        );
++      } catch (err) {
++        console.error('Passkey registration error:', err);
++        showAlert('auth-feedback', err.message || 'Passkey registration was cancelled or failed.', 'error');
++      }
++    }
++
++    // 1B: Add a new Passkey to an existing logged-in account
++    async function handleAddPasskeyToAccount() {
++      const nameInput = document.getElementById('new-passkey-name');
++      const passkeyName = nameInput ? nameInput.value.trim() : '';
++
++      try {
++        const optRes = await fetch('/api/passkeys/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ passkeyName }),
++        });
++        const optionsJSON = await optRes.json();
++        if (!optRes.ok) {
++          throw new Error(optionsJSON.error || 'Failed to get registration options.');
++        }
++
++        const attResp = await startRegistration({ optionsJSON });
++
++        const verifyRes = await fetch('/api/passkeys/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            credential: attResp,
++            passkeyName,
++          }),
++        });
++        const verifyData = await verifyRes.json();
++        if (!verifyRes.ok || !verifyData.verified) {
++          throw new Error(verifyData.error || 'Passkey verification failed.');
++        }
++
++        if (nameInput) nameInput.value = '';
++        currentUser = verifyData.user;
++        renderNavAndAccount();
++        showAlert(
++          'account-feedback',
++          `Passkey "${verifyData.passkey.name}" added to your account!`,
++          'success'
++        );
++      } catch (err) {
++        console.error('Add passkey error:', err);
++        showAlert('account-feedback', err.message || 'Could not register passkey.', 'error');
++      }
++    }
++
++    // ========================================================================
++    // 2. PASSKEY AUTHENTICATION FLOWS (Modal + Conditional UI Autofill)
++    // ========================================================================
++
++    async function handlePasskeyLogin(username = '') {
++      try {
++        const optRes = await fetch('/api/passkeys/login/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ username: username ? username.trim() : '' }),
++        });
++        const optionsJSON = await optRes.json();
++        if (!optRes.ok) {
++          throw new Error(optionsJSON.error || 'Could not initiate passkey sign-in.');
++        }
++
++        const asseResp = await startAuthentication({ optionsJSON });
++
++        const verifyRes = await fetch('/api/passkeys/login/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ credential: asseResp }),
++        });
++        const verifyData = await verifyRes.json();
++        if (!verifyRes.ok || !verifyData.verified) {
++          throw new Error(verifyData.error || 'Passkey sign-in verification failed.');
++        }
++
++        currentUser = verifyData.user;
++        renderNavAndAccount();
++        navigateTo('account');
++        showAlert(
++          'account-feedback',
++          `Signed in with passkey "${verifyData.passkeyUsed.name}"!`,
++          'success'
++        );
++      } catch (err) {
++        console.error('Passkey login error:', err);
++        showAlert('auth-feedback', err.message || 'Passkey sign-in was cancelled or failed.', 'error');
++      }
++    }
++
++    // Conditional UI (Browser Autofill) initialization
++    async function initConditionalPasskeyAutofill() {
++      try {
++        if (!browserSupportsWebAuthnAutofill) return;
++        const supported = await browserSupportsWebAuthnAutofill();
++        if (!supported) return;
++
++        const optRes = await fetch('/api/passkeys/login/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({}),
++        });
++        if (!optRes.ok) return;
++        const optionsJSON = await optRes.json();
++
++        const asseResp = await startAuthentication({
++          optionsJSON,
++          useBrowserAutofill: true,
++        });
++
++        const verifyRes = await fetch('/api/passkeys/login/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ credential: asseResp }),
++        });
++        const verifyData = await verifyRes.json();
++        if (verifyRes.ok && verifyData.verified) {
++          currentUser = verifyData.user;
++          renderNavAndAccount();
++          navigateTo('account');
++          showAlert(
++            'account-feedback',
++            `Signed in via Passkey Autofill ("${verifyData.passkeyUsed.name}")!`,
++            'success'
++          );
++        }
++      } catch (err) {
++        // Ignore AbortError when switching away or starting manual ceremony
++      }
++    }
++
++    // ========================================================================
++    // 3. PASSKEY MANAGEMENT (Rename & Delete with Reauthentication)
++    // ========================================================================
++
++    function openRenameModal(id, currentName) {
++      document.getElementById('rename-passkey-id').value = id;
++      document.getElementById('rename-passkey-input').value = currentName;
++      document.getElementById('rename-modal').classList.add('open');
++      document.getElementById('rename-passkey-input').focus();
++    }
++
++    function closeRenameModal() {
++      document.getElementById('rename-modal').classList.remove('open');
++    }
++
++    async function submitRenamePasskey(event) {
++      event.preventDefault();
++      const id = document.getElementById('rename-passkey-id').value;
++      const name = document.getElementById('rename-passkey-input').value.trim();
++      if (!name) return;
++
++      try {
++        const res = await fetch(`/api/passkeys/${encodeURIComponent(id)}`, {
++          method: 'PATCH',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ name }),
++        });
++        const data = await res.json();
++        if (!res.ok) {
++          throw new Error(data.error || 'Could not rename passkey.');
++        }
++        currentUser = data.user;
++        closeRenameModal();
++        renderNavAndAccount();
++        showAlert('account-feedback', `Passkey renamed to "${name}".`, 'success');
++      } catch (err) {
++        showAlert('account-feedback', err.message, 'error');
++      }
++    }
++
++    async function handleDeletePasskey(id, name) {
++      const performDelete = async () => {
++        const res = await fetch(`/api/passkeys/${encodeURIComponent(id)}`, {
++          method: 'DELETE',
++        });
++        const data = await res.json();
++        if (res.status === 403 && data.code === 'REAUTH_REQUIRED') {
++          openReauthModal(
++            `Please verify your identity with a passkey to delete "${name}".`,
++            performDelete
++          );
++          return;
++        }
++        if (!res.ok) {
++          showAlert('account-feedback', data.error || 'Could not delete passkey.', 'error');
++          return;
++        }
++        currentUser = data.user;
++        renderNavAndAccount();
++        showAlert('account-feedback', `Passkey "${name}" has been removed.`, 'success');
++      };
++
++      await performDelete();
++    }
++
++    // ========================================================================
++    // 4. PASSKEY REAUTHENTICATION (Step-Up Verification & Sensitive Actions)
++    // ========================================================================
++
++    function openReauthModal(customMessage, onSuccessCallback = null) {
++      pendingSensitiveAction = onSuccessCallback;
++      const descEl = document.getElementById('reauth-modal-desc');
++      descEl.textContent =
++        customMessage ||
++        'For your security, please reauthenticate with your passkey before performing sensitive account actions.';
++
++      const errEl = document.getElementById('reauth-modal-error');
++      errEl.style.display = 'none';
++
++      const hasPasskeys = currentUser && currentUser.passkeys && currentUser.passkeys.length > 0;
++      document.getElementById('btn-modal-passkey-reauth').style.display = hasPasskeys ? 'inline-flex' : 'none';
++      document.getElementById('reauth-password-fallback-section').style.display =
++        currentUser && currentUser.hasPassword ? 'block' : 'none';
++
++      document.getElementById('reauth-modal').classList.add('open');
++    }
++
++    function closeReauthModal() {
++      document.getElementById('reauth-modal').classList.remove('open');
++      pendingSensitiveAction = null;
++    }
++
++    async function executePasskeyReauth() {
++      const errEl = document.getElementById('reauth-modal-error');
++      errEl.style.display = 'none';
++
++      try {
++        const optRes = await fetch('/api/passkeys/reauth/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++        });
++        const optionsJSON = await optRes.json();
++        if (!optRes.ok) {
++          throw new Error(optionsJSON.error || 'Failed to start passkey reauthentication.');
++        }
++
++        const asseResp = await startAuthentication({ optionsJSON });
++
++        const verifyRes = await fetch('/api/passkeys/reauth/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ credential: asseResp }),
++        });
++        const verifyData = await verifyRes.json();
++        if (!verifyRes.ok || !verifyData.verified) {
++          throw new Error(verifyData.error || 'Passkey reauthentication failed.');
++        }
++
++        currentUser = verifyData.user;
++        renderNavAndAccount();
++
++        const callback = pendingSensitiveAction;
++        closeReauthModal();
++        showAlert(
++          'account-feedback',
++          `Identity verified with passkey "${verifyData.passkeyUsed.name}"! Sensitive actions unlocked for 5 minutes.`,
++          'success'
++        );
++
++        if (typeof callback === 'function') {
++          await callback();
++        }
++      } catch (err) {
++        console.error('Reauth error:', err);
++        errEl.textContent = err.message || 'Passkey verification failed.';
++        errEl.style.display = 'block';
++      }
++    }
++
++    async function executePasswordReauth(event) {
++      event.preventDefault();
++      const errEl = document.getElementById('reauth-modal-error');
++      errEl.style.display = 'none';
++      const password = document.getElementById('reauth-password-input').value;
++
++      try {
++        const res = await fetch('/api/auth/reauth-password', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ password }),
++        });
++        const data = await res.json();
++        if (!res.ok) {
++          throw new Error(data.error || 'Password verification failed.');
++        }
++
++        document.getElementById('reauth-password-input').value = '';
++        currentUser = data.user;
++        renderNavAndAccount();
++
++        const callback = pendingSensitiveAction;
++        closeReauthModal();
++        showAlert('account-feedback', 'Identity verified! Sensitive actions unlocked for 5 minutes.', 'success');
++
++        if (typeof callback === 'function') {
++          await callback();
++        }
++      } catch (err) {
++        errEl.textContent = err.message;
++        errEl.style.display = 'block';
++      }
++    }
++
++    async function lockReauthSession() {
++      const res = await fetch('/api/auth/lock-reauth', { method: 'POST' });
++      const data = await res.json();
++      if (res.ok) {
++        currentUser = data.user;
++        renderNavAndAccount();
++        showAlert('account-feedback', 'Step-up reauthentication locked. Sensitive actions now require verification.', 'info');
++      }
++    }
++
++    // Sensitive Action 1: Update Profile / Email / Payment Method
++    async function handleUpdateProfile(event) {
++      if (event) event.preventDefault();
++      const payload = {
++        displayName: document.getElementById('prof-display-name').value.trim(),
++        username: document.getElementById('prof-username').value.trim(),
++        phone: document.getElementById('prof-phone').value.trim(),
++        favoriteDrink: document.getElementById('prof-drink').value,
++        paymentMethod: document.getElementById('prof-payment').value.trim(),
++      };
++
++      const performUpdate = async () => {
++        const res = await fetch('/api/account/profile', {
++          method: 'PUT',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(payload),
++        });
++        const data = await res.json();
++        if (res.status === 403 && data.code === 'REAUTH_REQUIRED') {
++          openReauthModal(
++            'Updating your account email, billing card, or profile requires Passkey Reauthentication.',
++            performUpdate
++          );
++          return;
++        }
++        if (!res.ok) {
++          showAlert('account-feedback', data.error || 'Failed to update profile.', 'error');
++          return;
++        }
++        currentUser = data.user;
++        renderNavAndAccount();
++        showAlert('account-feedback', data.message || 'Profile updated!', 'success');
++      };
++
++      await performUpdate();
++    }
++
++    // Sensitive Action 2: Reload Wallet
++    async function handleWalletReload(amount) {
++      const performReload = async () => {
++        const res = await fetch('/api/account/wallet/reload', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ amount }),
++        });
++        const data = await res.json();
++        if (res.status === 403 && data.code === 'REAUTH_REQUIRED') {
++          openReauthModal(
++            `Please verify with your passkey to charge $${amount.toFixed(2)} to your saved payment method.`,
++            performReload
++          );
++          return;
++        }
++        if (!res.ok) {
++          showAlert('account-feedback', data.error || 'Reload failed.', 'error');
++          return;
++        }
++        currentUser = data.user;
++        renderNavAndAccount();
++        showAlert('account-feedback', data.message, 'success');
++      };
++
++      await performReload();
++    }
++
++    // Sensitive Action 3: Delete Account
++    async function handleDeleteAccount() {
++      const performAccountDelete = async () => {
++        const res = await fetch('/api/account', { method: 'DELETE' });
++        const data = await res.json();
++        if (res.status === 403 && data.code === 'REAUTH_REQUIRED') {
++          openReauthModal(
++            'Please verify with your passkey to permanently delete your Daily Grind account.',
++            performAccountDelete
++          );
++          return;
++        }
++        if (!res.ok) {
++          showAlert('account-feedback', data.error || 'Could not delete account.', 'error');
++          return;
++        }
++        currentUser = null;
++        renderNavAndAccount();
++        navigateTo('home');
++        showAlert('global-alert-container', 'Your account has been deleted.', 'info');
++      };
++
++      await performAccountDelete();
++    }
++
++    // ========================================================================
++    // PASSWORD FALLBACK HANDLERS
++    // ========================================================================
++
++    async function handlePasswordLogin(event) {
++      event.preventDefault();
++      const username = document.getElementById('login-username').value.trim();
++      const password = document.getElementById('login-password').value;
++
++      if (!password) {
++        return handlePasskeyLogin(username);
++      }
++
++      try {
++        const res = await fetch('/api/auth/login', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ username, password }),
++        });
++        const data = await res.json();
++        if (!res.ok) {
++          throw new Error(data.error || 'Sign in failed.');
++        }
++        currentUser = data.user;
++        renderNavAndAccount();
++        navigateTo('account');
++        showAlert('account-feedback', `Welcome back, ${currentUser.displayName}!`, 'success');
++      } catch (err) {
++        showAlert('auth-feedback', err.message, 'error');
++      }
++    }
++
++    async function handlePasswordRegistration() {
++      const displayName = document.getElementById('reg-display-name').value.trim();
++      const username = document.getElementById('reg-username').value.trim();
++      const favoriteDrink = document.getElementById('reg-drink').value;
++      const password = document.getElementById('reg-password').value;
++
++      if (!username || !password) {
++        showAlert('auth-feedback', 'Please enter your email and a password.', 'error');
++        return;
++      }
++
++      try {
++        const res = await fetch('/api/auth/register', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ username, displayName, password, favoriteDrink }),
++        });
++        const data = await res.json();
++        if (!res.ok) {
++          throw new Error(data.error || 'Registration failed.');
++        }
++        currentUser = data.user;
++        renderNavAndAccount();
++        navigateTo('account');
++        showAlert('account-feedback', data.message, 'success');
++      } catch (err) {
++        showAlert('auth-feedback', err.message, 'error');
++      }
++    }
++
++    // Navigation & Event Listeners
++    document.addEventListener('DOMContentLoaded', async () => {
++      document.querySelectorAll('[data-nav]').forEach((link) => {
++        link.addEventListener('click', (e) => {
++          e.preventDefault();
++          const targetView = link.getAttribute('data-nav');
++          navigateTo(targetView);
++        });
++      });
++
++      const logoutLink = document.getElementById('nav-logout-link');
++      if (logoutLink) {
++        logoutLink.addEventListener('click', async (e) => {
++          e.preventDefault();
++          await fetch('/api/auth/logout', { method: 'POST' });
++          currentUser = null;
++          renderNavAndAccount();
++          navigateTo('home');
++        });
++      }
++
++      await refreshSession();
++
++      // Route based on initial URL path
++      const path = window.location.pathname;
++      if (path === '/account' || path === '/rewards') {
++        navigateTo('account', false);
++      } else if (path === '/login' || path === '/register') {
++        navigateTo('auth', false);
++      } else if (path.startsWith('/menu') || path === '/locations' || path === '/order-online') {
++        navigateTo('menu', false);
++      } else {
++        navigateTo('home', false);
++      }
++    });
++
++    window.addEventListener('popstate', () => {
++      const path = window.location.pathname;
++      if (path === '/account') navigateTo('account', false);
++      else if (path === '/login') navigateTo('auth', false);
++      else if (path.startsWith('/menu')) navigateTo('menu', false);
++      else navigateTo('home', false);
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..a0ae36a 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,16 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
++    "cookie-parser": "^1.4.7",
++    "express": "^5.3.0",
++    "express-session": "^1.19.0"
+   }
+ }
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..67a5f29
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,899 @@
++const express = require('express');
++const session = require('express-session');
++const cookieParser = require('cookie-parser');
++const crypto = require('crypto');
++const fs = require('fs');
++const path = require('path');
++const {
++  generateRegistrationOptions,
++  verifyRegistrationResponse,
++  generateAuthenticationOptions,
++  verifyAuthenticationResponse,
++} = require('@simplewebauthn/server');
++
++const app = express();
++const PORT = process.env.PORT || 11222;
++const RP_NAME = 'The Daily Grind Coffee Co.';
++
++// Middleware
++app.use(express.json());
++app.use(express.urlencoded({ extended: true }));
++app.use(cookieParser());
++app.use(
++  session({
++    secret: process.env.SESSION_SECRET || 'daily-grind-passkey-secret-2026',
++    resave: false,
++    saveUninitialized: true,
++    cookie: {
++      httpOnly: true,
++      sameSite: 'lax',
++      maxAge: 24 * 60 * 60 * 1000, // 24 hours
++    },
++  })
++);
++
++// Serve @simplewebauthn/browser UMD bundle
++app.use(
++  '/vendor/simplewebauthn',
++  express.static(path.join(__dirname, 'node_modules/@simplewebauthn/browser/dist/bundle'))
++);
++
++// Database Persistence Helper
++const DB_FILE = path.join(__dirname, 'data.json');
++
++function hashPassword(password) {
++  return crypto.createHash('sha256').update(password + '_daily_grind_salt').digest('hex');
++}
++
++function getInitialData() {
++  const defaultUserId = crypto.randomBytes(16).toString('base64url');
++  return {
++    users: [
++      {
++        id: defaultUserId,
++        username: 'alex@dailygrind.coffee',
++        displayName: 'Alex Rivera',
++        passwordHash: hashPassword('coffee123'),
++        phone: '(555) 234-5678',
++        favoriteDrink: 'Maple Oat Latte',
++        rewardsPoints: 1450,
++        tier: 'Gold Roaster',
++        walletBalance: 28.50,
++        paymentMethod: 'Visa ending in 4242',
++        autoReload: true,
++        createdAt: '2025-11-15T08:30:00.000Z',
++        passkeys: [],
++      },
++    ],
++  };
++}
++
++function loadDB() {
++  try {
++    if (fs.existsSync(DB_FILE)) {
++      const raw = fs.readFileSync(DB_FILE, 'utf8');
++      const parsed = JSON.parse(raw);
++      if (parsed && Array.isArray(parsed.users)) {
++        return parsed;
++      }
++    }
++  } catch (err) {
++    console.error('Error loading DB, initializing default data:', err);
++  }
++  const initial = getInitialData();
++  saveDB(initial);
++  return initial;
++}
++
++function saveDB(data) {
++  try {
++    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
++  } catch (err) {
++    console.error('Error saving DB:', err);
++  }
++}
++
++const db = loadDB();
++
++// Helper to get RP_ID and expected Origin dynamically from request
++function getRPConfig(req) {
++  const hostHeader = req.get('x-forwarded-host') || req.get('host') || `localhost:${PORT}`;
++  const hostname = hostHeader.split(':')[0];
++  const rpID = process.env.RP_ID || hostname || 'localhost';
++  const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
++  const origin = process.env.ORIGIN || req.get('origin') || `${proto}://${hostHeader}`;
++  const expectedOrigins = [
++    origin,
++    `http://${hostHeader}`,
++    `https://${hostHeader}`,
++    `http://localhost:${PORT}`,
++    `http://127.0.0.1:${PORT}`,
++  ];
++  return { rpID, expectedOrigins: [...new Set(expectedOrigins)] };
++}
++
++function sanitizeUser(user, req) {
++  if (!user) return null;
++  const reauthAt = req?.session?.lastReauthenticatedAt || 0;
++  const reauthValidUntil = reauthAt + 5 * 60 * 1000; // 5 minutes window
++  const isReauthenticated = Date.now() < reauthValidUntil;
++
++  return {
++    id: user.id,
++    username: user.username,
++    displayName: user.displayName,
++    phone: user.phone || '',
++    favoriteDrink: user.favoriteDrink || 'Maple Oat Latte',
++    rewardsPoints: user.rewardsPoints ?? 250,
++    tier: user.tier || 'Bean Sprout',
++    walletBalance: user.walletBalance ?? 15.0,
++    paymentMethod: user.paymentMethod || 'Visa ending in 4242',
++    autoReload: Boolean(user.autoReload),
++    hasPassword: Boolean(user.passwordHash),
++    createdAt: user.createdAt,
++    isReauthenticated,
++    reauthExpiresAt: isReauthenticated ? reauthValidUntil : null,
++    passkeys: (user.passkeys || []).map((pk) => ({
++      id: pk.id,
++      name: pk.name,
++      deviceType: pk.deviceType || 'multiDevice',
++      backedUp: Boolean(pk.backedUp),
++      transports: pk.transports || [],
++      createdAt: pk.createdAt,
++      lastUsedAt: pk.lastUsedAt,
++      counter: pk.counter || 0,
++      aaguid: pk.aaguid || '00000000-0000-0000-0000-000000000000',
++    })),
++  };
++}
++
++function getCurrentUser(req) {
++  if (!req.session || !req.session.userId) return null;
++  return db.users.find((u) => u.id === req.session.userId) || null;
++}
++
++function requireAuth(req, res, next) {
++  const user = getCurrentUser(req);
++  if (!user) {
++    return res.status(401).json({ error: 'Authentication required' });
++  }
++  req.user = user;
++  next();
++}
++
++function requireReauth(req, res, next) {
++  const user = getCurrentUser(req);
++  if (!user) {
++    return res.status(401).json({ error: 'Authentication required' });
++  }
++  const reauthAt = req.session.lastReauthenticatedAt || 0;
++  const isFresh = Date.now() - reauthAt < 5 * 60 * 1000; // 5 minutes
++  if (!isFresh) {
++    return res.status(403).json({
++      error: 'Reauthentication required to perform this sensitive action.',
++      code: 'REAUTH_REQUIRED',
++      hasPasskeys: (user.passkeys || []).length > 0,
++    });
++  }
++  req.user = user;
++  next();
++}
++
++function detectPasskeyFriendlyName(req, customName) {
++  if (customName && customName.trim()) return customName.trim();
++  const ua = req.get('user-agent') || '';
++  if (ua.includes('Macintosh') || ua.includes('Mac OS X')) return 'iCloud Keychain / Mac Passkey';
++  if (ua.includes('iPhone') || ua.includes('iPad')) return 'iPhone / iPad Passkey';
++  if (ua.includes('Windows')) return 'Windows Hello Passkey';
++  if (ua.includes('Android')) return 'Google Password Manager (Android)';
++  if (ua.includes('Linux')) return 'Chrome / Linux Passkey';
++  return `Passkey (${new Date().toLocaleDateString()})`;
++}
++
++// ============================================================================
++// AUTHENTICATION & SESSION ROUTES
++// ============================================================================
++
++app.get('/api/auth/me', (req, res) => {
++  const user = getCurrentUser(req);
++  const { rpID } = getRPConfig(req);
++  if (!user) {
++    return res.json({ authenticated: false, user: null, rpID });
++  }
++  return res.json({
++    authenticated: true,
++    user: sanitizeUser(user, req),
++    rpID,
++    authMethod: req.session.authMethod || 'password',
++  });
++});
++
++// Traditional Password Registration
++app.post('/api/auth/register', (req, res) => {
++  const { username, displayName, password, favoriteDrink } = req.body;
++  if (!username || ! username.trim()) {
++    return res.status(400).json({ error: 'Email or username is required.' });
++  }
++  const normalizedUsername = username.trim().toLowerCase();
++  const existing = db.users.find((u) => u.username.toLowerCase() === normalizedUsername);
++  if (existing) {
++    return res.status(409).json({ error: 'An account with this email already exists.' });
++  }
++  if (!password || password.length < 4) {
++    return res.status(400).json({ error: 'Password must be at least 4 characters.' });
++  }
++
++  const newUser = {
++    id: crypto.randomBytes(16).toString('base64url'),
++    username: normalizedUsername,
++    displayName: (displayName || normalizedUsername.split('@')[0]).trim(),
++    passwordHash: hashPassword(password),
++    phone: '',
++    favoriteDrink: favoriteDrink || 'Maple Oat Latte',
++    rewardsPoints: 300,
++    tier: 'Gold Roaster',
++    walletBalance: 15.0,
++    paymentMethod: 'Visa ending in 4242',
++    autoReload: false,
++    createdAt: new Date().toISOString(),
++    passkeys: [],
++  };
++
++  db.users.push(newUser);
++  saveDB(db);
++
++  req.session.userId = newUser.id;
++  req.session.authMethod = 'password';
++  req.session.lastReauthenticatedAt = Date.now();
++
++  res.status(201).json({
++    authenticated: true,
++    user: sanitizeUser(newUser, req),
++    message: 'Account created! Register a passkey now for faster, safer sign-ins.',
++  });
++});
++
++// Traditional Password Login
++app.post('/api/auth/login', (req, res) => {
++  const { username, password } = req.body;
++  if (!username || !password) {
++    return res.status(400).json({ error: 'Email and password are required.' });
++  }
++  const normalizedUsername = username.trim().toLowerCase();
++  const user = db.users.find((u) => u.username.toLowerCase() === normalizedUsername);
++  if (!user) {
++    return res.status(401).json({ error: 'Invalid email or password.' });
++  }
++  if (!user.passwordHash) {
++    return res.status(401).json({
++      error: 'This account uses passwordless Passkey sign-in. Please sign in with your passkey.',
++    });
++  }
++  if (user.passwordHash !== hashPassword(password)) {
++    return res.status(401).json({ error: 'Invalid email or password.' });
++  }
++
++  req.session.userId = user.id;
++  req.session.authMethod = 'password';
++  req.session.lastReauthenticatedAt = Date.now();
++
++  res.json({
++    authenticated: true,
++    user: sanitizeUser(user, req),
++  });
++});
++
++// Logout
++app.post('/api/auth/logout', (req, res) => {
++  req.session.destroy(() => {
++    res.clearCookie('connect.sid');
++    res.json({ authenticated: false });
++  });
++});
++
++app.get('/logout', (req, res) => {
++  req.session.destroy(() => {
++    res.clearCookie('connect.sid');
++    res.redirect('/?logged_out=1');
++  });
++});
++
++// ============================================================================
++// 1. PASSKEY REGISTRATION (Both Passkey-First New Account & Logged-In Enrollment)
++// ============================================================================
++
++app.post('/api/passkeys/register/options', async (req, res) => {
++  try {
++    const { rpID } = getRPConfig(req);
++    const currentUser = getCurrentUser(req);
++
++    // Case A: Adding a passkey to an already logged-in user's account
++    if (currentUser && !req.body.forceNewAccount) {
++      const excludeCredentials = (currentUser.passkeys || []).map((pk) => ({
++        id: pk.id,
++        transports: pk.transports || [],
++      }));
++
++      const options = await generateRegistrationOptions({
++        rpName: RP_NAME,
++        rpID,
++        userID: Buffer.from(currentUser.id, 'base64url'),
++        userName: currentUser.username,
++        userDisplayName: currentUser.displayName || currentUser.username,
++        attestationType: 'none',
++        excludeCredentials,
++        authenticatorSelection: {
++          residentKey: 'preferred',
++          userVerification: 'preferred',
++          authenticatorAttachment: req.body.authenticatorAttachment || undefined,
++        },
++      });
++
++      req.session.registrationChallenge = options.challenge;
++      req.session.registrationContext = {
++        mode: 'existing_user',
++        userId: currentUser.id,
++        passkeyName: req.body.passkeyName || '',
++      };
++
++      return res.json(options);
++    }
++
++    // Case B: Registering a brand-new account directly with a passkey (Passkey-First Registration)
++    const { username, displayName, favoriteDrink } = req.body;
++    if (!username || !username.trim()) {
++      return res.status(400).json({ error: 'Email or username is required to register a passkey.' });
++    }
++
++    const normalizedUsername = username.trim().toLowerCase();
++    const existing = db.users.find((u) => u.username.toLowerCase() === normalizedUsername);
++    if (existing) {
++      return res.status(409).json({
++        error: 'An account with this email already exists. Please sign in instead.',
++      });
++    }
++
++    const pendingUserId = crypto.randomBytes(16).toString('base64url');
++    const cleanDisplayName = (displayName || normalizedUsername.split('@')[0]).trim();
++
++    const options = await generateRegistrationOptions({
++      rpName: RP_NAME,
++      rpID,
++      userID: Buffer.from(pendingUserId, 'base64url'),
++      userName: normalizedUsername,
++      userDisplayName: cleanDisplayName,
++      attestationType: 'none',
++      excludeCredentials: [],
++      authenticatorSelection: {
++        residentKey: 'preferred',
++        userVerification: 'preferred',
++      },
++    });
++
++    req.session.registrationChallenge = options.challenge;
++    req.session.registrationContext = {
++      mode: 'new_user',
++      pendingUser: {
++        id: pendingUserId,
++        username: normalizedUsername,
++        displayName: cleanDisplayName,
++        favoriteDrink: favoriteDrink || 'Maple Oat Latte',
++      },
++      passkeyName: req.body.passkeyName || '',
++    };
++
++    return res.json(options);
++  } catch (err) {
++    console.error('Error generating registration options:', err);
++    return res.status(500).json({ error: err.message || 'Failed to generate registration options' });
++  }
++});
++
++app.post('/api/passkeys/register/verify', async (req, res) => {
++  try {
++    const { credential, passkeyName } = req.body;
++    const expectedChallenge = req.session.registrationChallenge;
++    const regContext = req.session.registrationContext;
++
++    if (!expectedChallenge || !regContext) {
++      return res.status(400).json({ error: 'No active registration challenge found in session.' });
++    }
++
++    const { rpID, expectedOrigins } = getRPConfig(req);
++
++    const verification = await verifyRegistrationResponse({
++      response: credential,
++      expectedChallenge,
++      expectedOrigin: expectedOrigins,
++      expectedRPID: rpID,
++      requireUserVerification: false,
++    });
++
++    if (!verification.verified || !verification.registrationInfo) {
++      return res.status(400).json({ error: 'Passkey registration verification failed.' });
++    }
++
++    const {
++      credential: verifiedCred,
++      credentialDeviceType,
++      credentialBackedUp,
++      aaguid,
++    } = verification.registrationInfo;
++
++    const now = new Date().toISOString();
++    const chosenName = detectPasskeyFriendlyName(
++      req,
++      passkeyName || regContext.passkeyName
++    );
++
++    const newPasskeyRecord = {
++      id: verifiedCred.id,
++      publicKey: Buffer.from(verifiedCred.publicKey).toString('base64url'),
++      counter: verifiedCred.counter,
++      transports: verifiedCred.transports || credential.response?.transports || ['internal', 'hybrid'],
++      deviceType: credentialDeviceType || 'multiDevice',
++      backedUp: Boolean(credentialBackedUp),
++      aaguid: aaguid || '00000000-0000-0000-0000-000000000000',
++      name: chosenName,
++      createdAt: now,
++      lastUsedAt: now,
++    };
++
++    let targetUser;
++    if (regContext.mode === 'new_user') {
++      const { pendingUser } = regContext;
++      // Check again for race condition
++      const existing = db.users.find((u) => u.username.toLowerCase() === pendingUser.username);
++      if (existing) {
++        return res.status(409).json({ error: 'Account already exists.' });
++      }
++      targetUser = {
++        id: pendingUser.id,
++        username: pendingUser.username,
++        displayName: pendingUser.displayName,
++        passwordHash: null, // Passwordless passkey-first account
++        phone: '',
++        favoriteDrink: pendingUser.favoriteDrink || 'Maple Oat Latte',
++        rewardsPoints: 500, // Bonus points for passkey registration!
++        tier: 'Gold Roaster',
++        walletBalance: 20.0,
++        paymentMethod: 'Visa ending in 4242',
++        autoReload: true,
++        createdAt: now,
++        passkeys: [newPasskeyRecord],
++      };
++      db.users.push(targetUser);
++    } else {
++      targetUser = db.users.find((u) => u.id === regContext.userId);
++      if (!targetUser) {
++        return res.status(404).json({ error: 'User account not found.' });
++      }
++      // Prevent duplicate credential ID
++      if (!targetUser.passkeys.some((pk) => pk.id === newPasskeyRecord.id)) {
++        targetUser.passkeys.push(newPasskeyRecord);
++      }
++    }
++
++    saveDB(db);
++
++    // Clear challenge and sign user in / mark reauthenticated
++    delete req.session.registrationChallenge;
++    delete req.session.registrationContext;
++    req.session.userId = targetUser.id;
++    req.session.authMethod = 'passkey';
++    req.session.lastReauthenticatedAt = Date.now();
++
++    return res.json({
++      verified: true,
++      passkey: {
++        id: newPasskeyRecord.id,
++        name: newPasskeyRecord.name,
++        deviceType: newPasskeyRecord.deviceType,
++        backedUp: newPasskeyRecord.backedUp,
++        transports: newPasskeyRecord.transports,
++        createdAt: newPasskeyRecord.createdAt,
++        lastUsedAt: newPasskeyRecord.lastUsedAt,
++      },
++      user: sanitizeUser(targetUser, req),
++    });
++  } catch (err) {
++    console.error('Error verifying passkey registration:', err);
++    return res.status(400).json({ error: err.message || 'Passkey verification failed' });
++  }
++});
++
++// ============================================================================
++// 2. PASSKEY AUTHENTICATION (Discoverable / Conditional UI & Username-Targeted)
++// ============================================================================
++
++app.post('/api/passkeys/login/options', async (req, res) => {
++  try {
++    const { rpID } = getRPConfig(req);
++    const { username } = req.body || {};
++
++    let allowCredentials = undefined;
++    let targetUserId = null;
++
++    if (username && username.trim()) {
++      const normalized = username.trim().toLowerCase();
++      const user = db.users.find((u) => u.username.toLowerCase() === normalized);
++      if (!user || !user.passkeys || user.passkeys.length === 0) {
++        return res.status(404).json({
++          error: 'No passkeys found for that account. Try signing in with password or registering a passkey.',
++        });
++      }
++      targetUserId = user.id;
++      allowCredentials = user.passkeys.map((pk) => ({
++        id: pk.id,
++        transports: pk.transports || [],
++      }));
++    }
++
++    const options = await generateAuthenticationOptions({
++      rpID,
++      allowCredentials,
++      userVerification: 'preferred',
++    });
++
++    req.session.authenticationChallenge = options.challenge;
++    req.session.authenticationTargetUserId = targetUserId;
++
++    return res.json(options);
++  } catch (err) {
++    console.error('Error generating authentication options:', err);
++    return res.status(500).json({ error: err.message || 'Failed to generate login options' });
++  }
++});
++
++app.post('/api/passkeys/login/verify', async (req, res) => {
++  try {
++    const { credential } = req.body;
++    const expectedChallenge = req.session.authenticationChallenge;
++
++    if (!expectedChallenge) {
++      return res.status(400).json({ error: 'No active login challenge found. Please try again.' });
++    }
++
++    if (!credential || !credential.id) {
++      return res.status(400).json({ error: 'Invalid credential payload.' });
++    }
++
++    // Locate user and passkey by credential.id (and optional userHandle)
++    let matchedUser = null;
++    let matchedPasskey = null;
++
++    for (const user of db.users) {
++      const pk = (user.passkeys || []).find((p) => p.id === credential.id);
++      if (pk) {
++        matchedUser = user;
++        matchedPasskey = pk;
++        break;
++      }
++    }
++
++    if (!matchedUser || !matchedPasskey) {
++      return res.status(404).json({
++        error: 'This passkey is not recognized by The Daily Grind. It may have been removed.',
++        unknownCredentialId: credential.id,
++      });
++    }
++
++    const { rpID, expectedOrigins } = getRPConfig(req);
++
++    const verification = await verifyAuthenticationResponse({
++      response: credential,
++      expectedChallenge,
++      expectedOrigin: expectedOrigins,
++      expectedRPID: rpID,
++      credential: {
++        id: matchedPasskey.id,
++        publicKey: new Uint8Array(Buffer.from(matchedPasskey.publicKey, 'base64url')),
++        counter: matchedPasskey.counter || 0,
++        transports: matchedPasskey.transports || [],
++      },
++      requireUserVerification: false,
++    });
++
++    if (!verification.verified) {
++      return res.status(401).json({ error: 'Passkey assertion could not be verified.' });
++    }
++
++    // Update counter & lastUsedAt
++    matchedPasskey.counter = verification.authenticationInfo.newCounter;
++    matchedPasskey.lastUsedAt = new Date().toISOString();
++    matchedPasskey.backedUp = verification.authenticationInfo.credentialBackedUp ?? matchedPasskey.backedUp;
++    saveDB(db);
++
++    delete req.session.authenticationChallenge;
++    delete req.session.authenticationTargetUserId;
++
++    req.session.userId = matchedUser.id;
++    req.session.authMethod = 'passkey';
++    req.session.lastReauthenticatedAt = Date.now();
++
++    return res.json({
++      verified: true,
++      passkeyUsed: {
++        id: matchedPasskey.id,
++        name: matchedPasskey.name,
++      },
++      user: sanitizeUser(matchedUser, req),
++    });
++  } catch (err) {
++    console.error('Error verifying authentication:', err);
++    return res.status(400).json({ error: err.message || 'Passkey sign-in failed' });
++  }
++});
++
++// ============================================================================
++// 3. PASSKEY REAUTHENTICATION (Step-Up Verification for Sensitive Actions)
++// ============================================================================
++
++app.post('/api/passkeys/reauth/options', requireAuth, async (req, res) => {
++  try {
++    const user = req.user;
++    if (!user.passkeys || user.passkeys.length === 0) {
++      return res.status(400).json({
++        error: 'You do not have any registered passkeys for reauthentication.',
++      });
++    }
++
++    const { rpID } = getRPConfig(req);
++    const allowCredentials = user.passkeys.map((pk) => ({
++      id: pk.id,
++      transports: pk.transports || [],
++    }));
++
++    const options = await generateAuthenticationOptions({
++      rpID,
++      allowCredentials,
++      userVerification: 'required',
++    });
++
++    req.session.reauthChallenge = options.challenge;
++    return res.json(options);
++  } catch (err) {
++    console.error('Error generating reauth options:', err);
++    return res.status(500).json({ error: err.message || 'Failed to generate reauth options' });
++  }
++});
++
++app.post('/api/passkeys/reauth/verify', requireAuth, async (req, res) => {
++  try {
++    const user = req.user;
++    const { credential } = req.body;
++    const expectedChallenge = req.session.reauthChallenge;
++
++    if (!expectedChallenge) {
++      return res.status(400).json({ error: 'No active reauthentication challenge found.' });
++    }
++
++    const matchedPasskey = (user.passkeys || []).find((p) => p.id === credential?.id);
++    if (!matchedPasskey) {
++      return res.status(403).json({
++        error: 'The passkey used does not belong to your account.',
++      });
++    }
++
++    const { rpID, expectedOrigins } = getRPConfig(req);
++
++    const verification = await verifyAuthenticationResponse({
++      response: credential,
++      expectedChallenge,
++      expectedOrigin: expectedOrigins,
++      expectedRPID: rpID,
++      credential: {
++        id: matchedPasskey.id,
++        publicKey: new Uint8Array(Buffer.from(matchedPasskey.publicKey, 'base64url')),
++        counter: matchedPasskey.counter || 0,
++        transports: matchedPasskey.transports || [],
++      },
++      requireUserVerification: false,
++    });
++
++    if (!verification.verified) {
++      return res.status(401).json({ error: 'Passkey reauthentication failed.' });
++    }
++
++    matchedPasskey.counter = verification.authenticationInfo.newCounter;
++    matchedPasskey.lastUsedAt = new Date().toISOString();
++    saveDB(db);
++
++    delete req.session.reauthChallenge;
++    req.session.lastReauthenticatedAt = Date.now();
++
++    return res.json({
++      verified: true,
++      reauthenticatedAt: req.session.lastReauthenticatedAt,
++      reauthExpiresAt: req.session.lastReauthenticatedAt + 5 * 60 * 1000,
++      passkeyUsed: {
++        id: matchedPasskey.id,
++        name: matchedPasskey.name,
++      },
++      user: sanitizeUser(user, req),
++    });
++  } catch (err) {
++    console.error('Error verifying reauth:', err);
++    return res.status(400).json({ error: err.message || 'Passkey reauthentication failed' });
++  }
++});
++
++// Fallback Password Reauthentication (in case user hasn't enrolled a passkey yet or chooses password fallback)
++app.post('/api/auth/reauth-password', requireAuth, (req, res) => {
++  const user = req.user;
++  const { password } = req.body;
++  if (!user.passwordHash) {
++    return res.status(400).json({ error: 'No password set on this account. Use your passkey.' });
++  }
++  if (!password || user.passwordHash !== hashPassword(password)) {
++    return res.status(401).json({ error: 'Incorrect password.' });
++  }
++  req.session.lastReauthenticatedAt = Date.now();
++  return res.json({
++    verified: true,
++    reauthenticatedAt: req.session.lastReauthenticatedAt,
++    reauthExpiresAt: req.session.lastReauthenticatedAt + 5 * 60 * 1000,
++    user: sanitizeUser(user, req),
++  });
++});
++
++// Force expire reauthentication window (useful for testing/locking sensitive settings immediately)
++app.post('/api/auth/lock-reauth', requireAuth, (req, res) => {
++  req.session.lastReauthenticatedAt = 0;
++  return res.json({
++    locked: true,
++    user: sanitizeUser(req.user, req),
++  });
++});
++
++// ============================================================================
++// 4. PASSKEY MANAGEMENT (List, Rename, Delete with Reauthentication Protection)
++// ============================================================================
++
++app.get('/api/passkeys', requireAuth, (req, res) => {
++  const sanitized = sanitizeUser(req.user, req);
++  res.json({ passkeys: sanitized.passkeys });
++});
++
++// Rename a passkey
++app.patch('/api/passkeys/:id', requireAuth, (req, res) => {
++  const { id } = req.params;
++  const { name } = req.body;
++  if (!name || !name.trim()) {
++    return res.status(400).json({ error: 'Passkey name cannot be empty.' });
++  }
++  const passkey = (req.user.passkeys || []).find((pk) => pk.id === id);
++  if (!passkey) {
++    return res.status(404).json({ error: 'Passkey not found.' });
++  }
++  passkey.name = name.trim();
++  saveDB(db);
++  return res.json({
++    passkey,
++    user: sanitizeUser(req.user, req),
++  });
++});
++
++// Delete a passkey (Requires recent reauthentication!)
++app.delete('/api/passkeys/:id', requireReauth, (req, res) => {
++  const { id } = req.params;
++  const idx = (req.user.passkeys || []).findIndex((pk) => pk.id === id);
++  if (idx === -1) {
++    return res.status(404).json({ error: 'Passkey not found.' });
++  }
++
++  // Prevent locking out a passwordless user if it's their only passkey
++  if (!req.user.passwordHash && req.user.passkeys.length <= 1) {
++    return res.status(400).json({
++      error: 'Cannot delete your only passkey on a passwordless account. Add another passkey or set a password first.',
++    });
++  }
++
++  const [removed] = req.user.passkeys.splice(idx, 1);
++  saveDB(db);
++
++  return res.json({
++    deletedId: removed.id,
++    user: sanitizeUser(req.user, req),
++  });
++});
++
++// ============================================================================
++// SENSITIVE ACCOUNT OPERATIONS (Protected by Reauthentication)
++// ============================================================================
++
++// Update profile (sensitive fields like email/username or payment method require reauthentication)
++app.put('/api/account/profile', requireReauth, (req, res) => {
++  const { displayName, username, phone, favoriteDrink, paymentMethod, autoReload } = req.body;
++  const user = req.user;
++
++  if (username && username.trim().toLowerCase() !== user.username.toLowerCase()) {
++    const normalized = username.trim().toLowerCase();
++    const conflict = db.users.find((u) => u.id !== user.id && u.username.toLowerCase() === normalized);
++    if (conflict) {
++      return res.status(409).json({ error: 'That email address is already in use.' });
++    }
++    user.username = normalized;
++  }
++
++  if (displayName !== undefined && displayName.trim()) {
++    user.displayName = displayName.trim();
++  }
++  if (phone !== undefined) {
++    user.phone = phone.trim();
++  }
++  if (favoriteDrink !== undefined) {
++    user.favoriteDrink = favoriteDrink;
++  }
++  if (paymentMethod !== undefined && paymentMethod.trim()) {
++    user.paymentMethod = paymentMethod.trim();
++  }
++  if (autoReload !== undefined) {
++    user.autoReload = Boolean(autoReload);
++  }
++
++  saveDB(db);
++  return res.json({
++    message: 'Account settings updated securely.',
++    user: sanitizeUser(user, req),
++  });
++});
++
++// Reload Coffee Wallet or Redeem High-Value Rewards (Requires Reauthentication)
++app.post('/api/account/wallet/reload', requireReauth, (req, res) => {
++  const amount = Number(req.body.amount);
++  if (!amount || amount <= 0 || amount > 500) {
++    return res.status(400).json({ error: 'Please provide a valid reload amount between $1 and $500.' });
++  }
++  req.user.walletBalance = Number(((req.user.walletBalance || 0) + amount).toFixed(2));
++  req.user.rewardsPoints = (req.user.rewardsPoints || 0) + Math.round(amount * 10);
++  saveDB(db);
++
++  return res.json({
++    message: `Added $${amount.toFixed(2)} to your Daily Grind Wallet (+${Math.round(amount * 10)} Rewards Points)!`,
++    user: sanitizeUser(req.user, req),
++  });
++});
++
++// Change or set password (Requires Reauthentication)
++app.post('/api/account/password', requireReauth, (req, res) => {
++  const { newPassword } = req.body;
++  if (!newPassword || newPassword.length < 4) {
++    return res.status(400).json({ error: 'Password must be at least 4 characters.' });
++  }
++  req.user.passwordHash = hashPassword(newPassword);
++  saveDB(db);
++  return res.json({
++    message: 'Account password updated.',
++    user: sanitizeUser(req.user, req),
++  });
++});
++
++// Delete account (Requires Reauthentication)
++app.delete('/api/account', requireReauth, (req, res) => {
++  const userId = req.user.id;
++  const idx = db.users.findIndex((u) => u.id === userId);
++  if (idx !== -1) {
++    db.users.splice(idx, 1);
++    saveDB(db);
++  }
++  req.session.destroy(() => {
++    res.clearCookie('connect.sid');
++    res.json({ deleted: true, message: 'Your account has been permanently deleted.' });
++  });
++});
++
++// Static assets & SPA fallback
++app.use(express.static(__dirname));
++
++app.get('/{*splat}', (req, res) => {
++  res.sendFile(path.join(__dirname, 'index.html'));
++});
++
++if (require.main === module) {
++  app.listen(PORT, () => {
++    console.log(`The Daily Grind server listening on http://localhost:${PORT}`);
++  });
++}
++
++module.exports = { app, db };

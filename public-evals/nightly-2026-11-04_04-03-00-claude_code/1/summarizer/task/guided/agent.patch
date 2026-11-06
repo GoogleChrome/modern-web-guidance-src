@@ -1,0 +1,258 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,94 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      max-width: 1100px;
++      margin: 60px auto 0;
++      padding: 0 20px;
++    }
++
++    .journal-inner {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .journal-image {
++      display: block;
++      width: 100%;
++      height: 260px;
++      object-fit: cover;
++    }
++
++    .journal-body {
++      padding: 32px clamp(20px, 5vw, 56px) 40px;
++    }
++
++    .journal-header {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px 20px;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 20px;
++    }
++
++    .journal h2 {
++      color: var(--primary);
++    }
++
++    .journal-meta {
++      font-size: 0.85rem;
++      color: #795548;
++    }
++
++    .journal-text p {
++      margin-bottom: 1em;
++      max-width: 70ch;
++    }
++
++    .summarize-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 12px;
++      margin: 24px 0 8px;
++    }
++
++    .summarize-controls .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .summarize-controls .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .summary-status {
++      font-size: 0.9rem;
++      color: #795548;
++    }
++
++    .summary {
++      background: #fff8e1;
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      padding: 16px 20px 16px 40px;
++      margin-top: 12px;
++      max-width: 70ch;
++    }
++
++    .summary li + li {
++      margin-top: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +282,61 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="journal" aria-labelledby="journal-title">
++    <article class="journal-inner">
++      <img class="journal-image"
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=80"
++        alt="Freshly roasted coffee beans" loading="lazy" width="1350" height="260">
++      <div class="journal-body">
++        <div class="journal-header">
++          <h2 id="journal-title">Roaster's Journal</h2>
++          <p class="journal-meta">From the roastery floor &middot; Notes on how we source our beans</p>
++        </div>
++
++        <div class="journal-text" id="journal-text">
++          <p>Every bag of coffee that leaves our roastery starts with a relationship, not a catalog. Long before a single
++            bean hits our drum roaster, our sourcing team has spent months talking with growers, cooperatives, and
++            importers about the harvest ahead. We travel to origin at least twice a year&mdash;to the highlands of
++            Huila in Colombia, the washing stations of Yirgacheffe in Ethiopia, and the volcanic slopes of Antigua in
++            Guatemala&mdash;because there is no substitute for standing on a farm and seeing how the coffee is grown,
++            picked, and processed.</p>
++
++          <p>We buy almost exclusively through direct trade. That means we negotiate prices with producers face to face,
++            and we commit to paying well above the commodity market rate&mdash;typically 40 to 80 percent more than the
++            Fair Trade minimum. Those premiums are not charity; they are an investment in quality. When farmers are paid
++            fairly, they can afford to pick only ripe cherries, replant aging trees, and experiment with new processing
++            methods. The result is a better cup for you and a more stable livelihood for them.</p>
++
++          <p>Quality control begins at origin. Before we commit to a lot, we cup dozens of pre-shipment samples side by
++            side, scoring each on aroma, acidity, body, sweetness, and finish. Only coffees that score 85 points or higher
++            on the Specialty Coffee Association scale make it onto our menu. Once a lot is approved, we track it all the
++            way to our door, and we cup it again on arrival to make sure nothing changed in transit. Green coffee is a
++            living agricultural product, and humidity, heat, and time can all dull its character.</p>
++
++          <p>Sustainability is woven into every decision. We prioritize farms that grow under shade canopy, which
++            protects biodiversity and keeps soil healthy, and we support partners transitioning to organic practices
++            even before they can afford formal certification. Many of our producers have invested in water-saving
++            eco-pulpers and composting programs that turn coffee pulp back into fertilizer. We ship green coffee in
++            reusable jute and GrainPro bags, and we offset the carbon footprint of every container we import.</p>
++
++          <p>Finally, we roast in small batches of no more than twelve kilograms, adjusting each profile to bring out
++            what makes a particular coffee special&mdash;the jasmine and bergamot of a washed Ethiopian, the chocolate
++            and red apple of a Colombian, the brown sugar depth of a Guatemalan. We roast four days a week so that the
++            beans in your cup are never more than a week past their roast date. Sourcing well is slow, careful work, but
++            we believe you can taste the difference in every sip.</p>
++        </div>
++
++        <div class="summarize-controls">
++          <button type="button" class="btn" id="summarize-btn">Summarize</button>
++          <span class="summary-status" id="summary-status" role="status" aria-live="polite"></span>
++        </div>
++        <ul class="summary" id="summary" hidden></ul>
++      </div>
++    </article>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +345,97 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const button = document.getElementById('summarize-btn');
++      const status = document.getElementById('summary-status');
++      const list = document.getElementById('summary');
++      const sourceText = document.getElementById('journal-text').innerText.trim();
++
++      // Same options object must be passed to availability() and create().
++      const options = {
++        sharedContext: "A coffee roaster's journal entry about how they source their beans.",
++        type: 'key-points',
++        format: 'markdown',
++        length: 'short',
++        expectedInputLanguages: ['en'],
++        outputLanguage: 'en',
++      };
++
++      let summarizerPromise = null;
++
++      const unsupported = (message) => {
++        button.disabled = true;
++        status.textContent = message;
++      };
++
++      // Turn markdown bullet output into list items (via textContent, never innerHTML).
++      const renderBullets = (markdown) => {
++        const items = markdown
++          .split('\n')
++          .map((line) => line.replace(/^\s*(?:[-*\u2022]|\d+\.)\s+/, '').replace(/\*\*(.+?)\*\*/g, '$1').trim())
++          .filter(Boolean);
++        list.replaceChildren(...items.map((text) => {
++          const li = document.createElement('li');
++          li.textContent = text;
++          return li;
++        }));
++        list.hidden = items.length === 0;
++      };
++
++      const getSummarizer = () => {
++        summarizerPromise ??= Summarizer.create({
++          ...options,
++          monitor(m) {
++            m.addEventListener('downloadprogress', (e) => {
++              status.textContent = `Downloading on-device AI model… ${Math.round((e.loaded / (e.total || 1)) * 100)}%`;
++            });
++          },
++        }).catch((err) => {
++          summarizerPromise = null; // allow retry
++          throw err;
++        });
++        return summarizerPromise;
++      };
++
++      if (!('Summarizer' in self)) {
++        unsupported('On-device summarization isn\u2019t supported in this browser.');
++        return;
++      }
++
++      Summarizer.availability(options).then((availability) => {
++        if (availability === 'unavailable') {
++          unsupported('On-device summarization isn\u2019t available on this device.');
++        } else if (availability !== 'available') {
++          status.textContent = 'The first summary will download a small on-device AI model.';
++        }
++      }).catch(() => unsupported('On-device summarization isn\u2019t available right now.'));
++
++      button.addEventListener('click', async () => {
++        button.disabled = true;
++        status.textContent = 'Preparing summarizer…';
++        try {
++          // create() is called inside the click handler so the user gesture can start a model download.
++          const summarizer = await getSummarizer();
++          status.textContent = 'Summarizing…';
++          let output = '';
++          for await (const chunk of summarizer.summarizeStreaming(sourceText)) {
++            output += chunk;
++            renderBullets(output);
++          }
++          status.textContent = 'Summary generated on your device.';
++          button.textContent = 'Summarize again';
++        } catch (err) {
++          console.error(err);
++          status.textContent = 'Sorry, we couldn\u2019t summarize this right now.';
++        } finally {
++          button.disabled = false;
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

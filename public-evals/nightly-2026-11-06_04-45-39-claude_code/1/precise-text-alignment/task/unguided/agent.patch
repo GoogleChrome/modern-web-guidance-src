@@ -1,0 +1,15 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -115,8 +115,11 @@
+       text-align: center;
+     }
+ 
+     .card h3 {
++      /* Trim the heading's extra leading down to cap height / baseline so the
++         20px card padding reads as true visual space above the title. */
++      text-box: trim-both cap alphabetic;
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 

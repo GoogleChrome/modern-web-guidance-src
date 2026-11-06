@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+index 66c9173..b3a30ab 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,60 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .coffee-companion {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 1001;
++      width: min(280px, calc(100vw - 32px));
++      max-height: 100dvh;
++      overflow: auto;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 8px 30px rgba(62, 39, 35, 0.2);
++    }
++
++    .drag-handle {
++      width: 100%;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding: 12px 18px;
++      border: 0;
++      border-bottom: 1px solid var(--secondary);
++      background: #f3eeeb;
++      color: var(--primary);
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .drag-handle[hidden] {
++      display: none;
++    }
++
++    .drag-handle.dragging {
++      cursor: grabbing;
++    }
++
++    .drag-handle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .companion-content {
++      padding: 18px;
++    }
++
++    .companion-content p {
++      margin-top: 6px;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +261,88 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="coffee-companion" aria-labelledby="companion-title">
++    <button class="drag-handle" type="button" hidden
++      aria-label="Move coffee card. Drag or use arrow keys.">
++      <span>Drag to move</span>
++      <span aria-hidden="true">⠿</span>
++    </button>
++    <div class="companion-content">
++      <h3 id="companion-title">Time for a coffee break?</h3>
++      <p>Your next favorite cup is waiting.</p>
++      <a class="btn" href="/menu">Explore the menu</a>
++    </div>
++  </aside>
++
++  <script>
++    const companion = document.querySelector('.coffee-companion');
++    const handle = companion.querySelector('.drag-handle');
++    let drag = null;
++
++    function moveTo(left, top) {
++      const maxLeft = Math.max(0, window.innerWidth - companion.offsetWidth);
++      const maxTop = Math.max(0, window.innerHeight - companion.offsetHeight);
++      companion.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++      companion.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++      companion.style.right = 'auto';
++      companion.style.bottom = 'auto';
++    }
++
++    function keepInView() {
++      const rect = companion.getBoundingClientRect();
++      moveTo(rect.left, rect.top);
++    }
++
++    handle.addEventListener('pointerdown', (event) => {
++      if (event.button !== 0 || !event.isPrimary || drag) return;
++      const rect = companion.getBoundingClientRect();
++      drag = {
++        pointerId: event.pointerId,
++        offsetX: event.clientX - rect.left,
++        offsetY: event.clientY - rect.top,
++      };
++      handle.setPointerCapture(event.pointerId);
++      handle.classList.add('dragging');
++    });
++
++    handle.addEventListener('pointermove', (event) => {
++      if (!drag || event.pointerId !== drag.pointerId) return;
++      moveTo(event.clientX - drag.offsetX, event.clientY - drag.offsetY);
++    });
++
++    function finishDrag(event) {
++      if (!drag || event.pointerId !== drag.pointerId) return;
++      drag = null;
++      handle.classList.remove('dragging');
++      if (handle.hasPointerCapture(event.pointerId)) {
++        handle.releasePointerCapture(event.pointerId);
++      }
++    }
++
++    handle.addEventListener('pointerup', finishDrag);
++    handle.addEventListener('pointercancel', finishDrag);
++    handle.addEventListener('lostpointercapture', finishDrag);
++
++    handle.addEventListener('keydown', (event) => {
++      const directions = {
++        ArrowLeft: [-15, 0],
++        ArrowRight: [15, 0],
++        ArrowUp: [0, -15],
++        ArrowDown: [0, 15],
++      };
++      const direction = directions[event.key];
++      if (!direction) return;
++      event.preventDefault();
++      const rect = companion.getBoundingClientRect();
++      moveTo(rect.left + direction[0], rect.top + direction[1]);
++    });
++
++    handle.hidden = false;
++    keepInView();
++    window.addEventListener('resize', keepInView);
++    new ResizeObserver(keepInView).observe(companion);
++  </script>
++
+ </body>
+ 
+ </html>

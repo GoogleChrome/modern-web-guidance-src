@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+index 66c9173..d701d93 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,48 @@
+       background: #3e2723;
+     }
+ 
++    /* Preferences */
++    .preferences {
++      max-width: 600px;
++      margin: 40px auto 0;
++    }
++
++    .pref-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      text-align: left;
++    }
++
++    .pref-row label {
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .pref-row p {
++      font-size: 0.9rem;
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--primary);
++      margin: 0;
++      cursor: pointer;
++      flex-shrink: 0;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .pref-status {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +237,20 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences" aria-labelledby="prefs-heading">
++      <h2 id="prefs-heading" style="text-align: center;">Preferences</h2>
++      <div class="card">
++        <div class="pref-row">
++          <div>
++            <label for="pref-offers">Seasonal offers by email</label>
++            <p id="pref-offers-desc">Get notified when new seasonal drinks and rewards arrive.</p>
++          </div>
++          <input id="pref-offers" type="checkbox" switch aria-describedby="pref-offers-desc">
++        </div>
++        <p class="pref-status" id="pref-offers-status" aria-live="polite"></p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +263,31 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Native switch is Safari-only for now; polyfill elsewhere.
++    if (!('switch' in HTMLInputElement.prototype)) {
++      import('https://esm.sh/input-switch-polyfill');
++    }
++
++    const KEY = 'pref:seasonalOffers';
++    const toggle = document.getElementById('pref-offers');
++    const status = document.getElementById('pref-offers-status');
++
++    const render = () => {
++      status.textContent = toggle.checked
++        ? 'Seasonal offers are on.'
++        : 'Seasonal offers are off.';
++    };
++
++    toggle.checked = localStorage.getItem(KEY) === 'true';
++    render();
++
++    toggle.addEventListener('change', () => {
++      localStorage.setItem(KEY, String(toggle.checked));
++      render();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

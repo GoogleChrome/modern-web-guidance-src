@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+index 66c9173..652937a 100644
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,156 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition: opacity 0.25s ease;
++    }
++
++    .footer-links a:hover {
++      opacity: 0.6;
++    }
++
++    /* Motion (transform/opacity only for smooth, GPU-friendly animation) */
++    :root {
++      --ease: cubic-bezier(0.22, 1, 0.36, 1);
++    }
++
++    @keyframes fade-up {
++      from {
++        opacity: 0;
++        transform: translateY(24px);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @keyframes slide-down {
++      from {
++        opacity: 0;
++        transform: translateY(-100%);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    nav {
++      animation: slide-down 0.6s var(--ease) both;
++    }
++
++    nav a:not(.logout-link) {
++      position: relative;
++    }
++
++    nav a:not(.logout-link)::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: -3px;
++      height: 2px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: left;
++      transition: transform 0.3s var(--ease);
++    }
++
++    nav a:not(.logout-link):hover::after,
++    nav a:not(.logout-link):focus-visible::after {
++      transform: scaleX(1);
++    }
++
++    .logout-link {
++      transition: color 0.3s, background-color 0.3s;
++    }
++
++    .logout-link:hover {
++      background-color: rgba(255, 171, 64, 0.15);
++    }
++
++    .hero>* {
++      animation: fade-up 0.8s var(--ease) both;
++    }
++
++    .hero>:nth-child(1) {
++      animation-delay: 0.15s;
++    }
++
++    .hero>:nth-child(2) {
++      animation-delay: 0.3s;
++    }
++
++    .hero>:nth-child(3) {
++      animation-delay: 0.45s;
++    }
++
++    .card {
++      transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
++    }
++
++    .card:hover {
++      transform: translateY(-6px);
++      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
++    }
++
++    .btn {
++      transition: background 0.3s, transform 0.2s var(--ease);
++    }
++
++    .btn:hover {
++      transform: translateY(-2px);
++    }
++
++    .btn:active {
++      transform: translateY(0) scale(0.97);
++    }
++
++    /* Scroll reveal (only active when JS is running, so content never stays hidden) */
++    .js .reveal {
++      opacity: 0;
++      transform: translateY(28px);
++      transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
++      transition-delay: var(--delay, 0s);
++    }
++
++    .js .reveal.in-view {
++      opacity: 1;
++      transform: none;
++    }
++
++    /* Keep hover lift snappy once a card has revealed */
++    .js .card.reveal.in-view:hover {
++      transform: translateY(-6px);
++      transition-delay: 0s;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      *,
++      *::before,
++      *::after {
++        animation: none !important;
++        transition-duration: 0.01ms !important;
++        transition-delay: 0s !important;
++      }
++
++      .js .reveal {
++        opacity: 1;
++        transform: none;
++      }
++
++      .card:hover,
++      .btn:hover {
++        transform: none;
++      }
+     }
+   </style>
++  <script>
++    document.documentElement.classList.add('js');
++  </script>
+ </head>
+ 
+ <body>
+@@ -207,6 +355,30 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var items = document.querySelectorAll('main h2, .card, footer');
++      items.forEach(function (el) { el.classList.add('reveal'); });
++      document.querySelectorAll('.grid .card').forEach(function (el, i) {
++        el.style.setProperty('--delay', (i * 0.12) + 's');
++      });
++
++      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      if (reduce || !('IntersectionObserver' in window)) {
++        items.forEach(function (el) { el.classList.add('in-view'); });
++        return;
++      }
++
++      var io = new IntersectionObserver(function (entries) {
++        entries.forEach(function (entry) {
++          if (!entry.isIntersecting) return;
++          entry.target.classList.add('in-view');
++          io.unobserve(entry.target);
++        });
++      }, { threshold: 0.15 });
++      items.forEach(function (el) { io.observe(el); });
++    })();
++  </script>
+ </body>
+ 
+ </html>

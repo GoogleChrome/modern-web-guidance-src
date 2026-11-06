@@ -1,0 +1,171 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,148 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo alert: dismissed via a popover-state flag, no JS.
++       The grid row animates 1fr -> 0fr so the alert collapses to zero height. */
++    #promo-alert {
++      display: grid;
++      grid-template-rows: 1fr;
++      background: var(--accent);
++      color: var(--text);
++      transition: grid-template-rows 0.4s ease, visibility 0s linear 0s;
++    }
++
++    #promo-alert .alert-inner {
++      overflow: hidden;
++      min-height: 0;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 15px;
++      padding: 0 5%;
++    }
++
++    #promo-alert p {
++      padding: 10px 0;
++      font-size: 0.9rem;
++      transition: padding 0.4s ease;
++    }
++
++    #alert-dismiss {
++      background: none;
++      border: none;
++      color: inherit;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      padding: 4px 8px;
++    }
++
++    /* Invisible state flag toggled by #alert-dismiss (popovertarget) */
++    #alert-dismissed {
++      position: absolute;
++      width: 0;
++      height: 0;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      overflow: hidden;
++      clip-path: inset(50%);
++    }
++
++    body:has(#alert-dismissed:popover-open) #promo-alert {
++      grid-template-rows: 0fr;
++      visibility: hidden;
++      /* keep visible during the collapse, then hide from tab order/AT */
++      transition: grid-template-rows 0.4s ease, visibility 0s linear 0.4s;
++    }
++
++    body:has(#alert-dismissed:popover-open) #promo-alert p {
++      padding: 0;
++    }
++
++    /* FAQ accordion: <details> animated via ::details-content */
++    .faq {
++      max-width: 700px;
++      margin: 60px auto 0;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      interpolate-size: allow-keywords;
++    }
++
++    #faq-trigger {
++      cursor: pointer;
++      padding: 15px 20px;
++      font-weight: 600;
++      color: var(--primary);
++      list-style: none;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: '+';
++      font-size: 1.4rem;
++      transition: transform 0.3s ease;
++    }
++
++    details[open] #faq-trigger::after {
++      transform: rotate(45deg);
++    }
++
++    .faq details::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 0.35s ease, content-visibility 0.35s allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-content {
++      padding: 0 20px 15px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      #promo-alert,
++      #promo-alert p,
++      #faq-trigger::after,
++      .faq details::details-content {
++        transition-duration: 0s !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotion">
++    <div class="alert-inner">
++      <p>☕ Free pastry with any large drink this week!</p>
++      <button id="alert-dismiss" type="button" popovertarget="alert-dismissed" popovertargetaction="show"
++        aria-label="Dismiss promotion">&times;</button>
++    </div>
++  </div>
++  <div id="alert-dismissed" popover="manual" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +329,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq">
++      <h2>FAQ</h2>
++      <details name="faq">
++        <summary id="faq-trigger">Do you offer dairy-free options?</summary>
++        <div id="faq-content">
++          <p>Yes! We offer oat, almond, and soy milk at no extra charge, and every seasonal latte can be made dairy-free.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

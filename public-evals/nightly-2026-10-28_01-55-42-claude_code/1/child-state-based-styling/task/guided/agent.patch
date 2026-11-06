@@ -1,0 +1,120 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -107,20 +107,79 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      /* Default (hot) state, expressed as custom properties so the
++         iced state only needs to override the tokens */
++      --card-bg: white;
++      --card-border: transparent;
++      --card-heading: var(--primary);
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --card-btn-bg: var(--primary);
++      --card-btn-hover: #3e2723;
++
++      background: var(--card-bg);
++      border: 2px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+     }
+ 
++    /* Iced state: the card restyles itself when its own checkbox is checked */
++    .card:has(.iced-toggle:checked) {
++      --card-bg: #e8f4fb;
++      --card-border: #90caf9;
++      --card-heading: #1565c0;
++      --card-shadow: 0 4px 14px rgba(21, 101, 192, 0.25);
++      --card-btn-bg: #1565c0;
++      --card-btn-hover: #0d47a1;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++      transition: color 0.3s;
+     }
+ 
++    .card h3::after {
++      content: " \2744";
++      /* Snowflake only appears in the iced state */
++      display: none;
++    }
++
++    .card:has(.iced-toggle:checked) h3::after {
++      display: inline;
++    }
++
++    .card .btn {
++      background: var(--card-btn-bg);
++    }
++
++    .card .btn:hover {
++      background: var(--card-btn-hover);
++    }
++
++    .iced-option {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      min-block-size: 44px;
++      margin-top: 10px;
++      font-size: 0.9rem;
++      cursor: pointer;
++      user-select: none;
++    }
++
++    .iced-toggle {
++      accent-color: #1565c0;
++      inline-size: 1.15em;
++      aspect-ratio: 1;
++      margin: 0;
++      cursor: pointer;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,18 +239,33 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label class="iced-option">
++            <input type="checkbox" class="iced-toggle" name="iced-maple-oat-latte">
++            Make it iced
++          </label>
++          <br>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label class="iced-option">
++            <input type="checkbox" class="iced-toggle" name="iced-dark-roast-espresso">
++            Make it iced
++          </label>
++          <br>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label class="iced-option">
++            <input type="checkbox" class="iced-toggle" name="iced-cold-brew">
++            Make it iced
++          </label>
++          <br>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>

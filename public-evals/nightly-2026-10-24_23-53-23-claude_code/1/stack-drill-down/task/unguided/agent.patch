@@ -1,0 +1,328 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,122 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Navigation stack */
++    html,
++    body {
++      height: 100%;
++      overflow: hidden;
++      overscroll-behavior: none;
++    }
++
++    .screen {
++      position: fixed;
++      inset: 0;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      background: var(--light);
++    }
++
++    .detail {
++      z-index: 2000;
++      box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
++      transform: translateX(100%);
++      transition: transform 0.3s ease;
++      touch-action: pan-y;
++    }
++
++    .detail.open {
++      transform: translateX(0);
++    }
++
++    .detail.dragging {
++      transition: none;
++    }
++
++    #screen-home {
++      transition: transform 0.3s ease, filter 0.3s ease;
++    }
++
++    #screen-home.covered {
++      transform: translateX(-25%);
++      filter: brightness(0.7);
++    }
++
++    .detail-bar {
++      position: sticky;
++      top: 0;
++      z-index: 1;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      background: var(--primary);
++      color: white;
++      padding: 0.75rem 5%;
++    }
++
++    .back-btn {
++      background: none;
++      border: 1px solid var(--accent);
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      padding: 5px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    .back-btn:hover,
++    .back-btn:focus-visible {
++      color: var(--accent);
++    }
++
++    .detail-hero {
++      height: 35vh;
++      min-height: 200px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 6rem;
++      background: linear-gradient(135deg, var(--primary), #8d6e63);
++    }
++
++    .detail-body {
++      max-width: 700px;
++      margin: 0 auto;
++      padding: 30px 20px 60px;
++    }
++
++    .detail-body h1 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .detail-body .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 1rem;
++    }
++
++    .detail-body ul {
++      margin: 1rem 0 0 1.2rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .detail,
++      #screen-home {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="screen" id="screen-home">
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -180,19 +289,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/menu/maple-oat-latte" class="btn" data-route>View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/menu/dark-roast-espresso" class="btn" data-route>View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/menu/cold-brew" class="btn" data-route>View Details</a>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -205,8 +314,178 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  </div>
+ 
++  <div id="stack"></div>
++
++  <script>
++    // Hierarchical drill-down stack synced with browser history.
++    // Routes live in the hash (#/menu/<slug>) so deep links work on any static host.
++    const ITEMS = {
++      'maple-oat-latte': {
++        icon: '🍁', name: 'Maple Oat Latte', price: '$5.75',
++        blurb: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        notes: ['Double shot of house espresso', 'Steamed barista oat milk', 'Vermont grade A maple syrup', 'Dusting of cinnamon']
++      },
++      'dark-roast-espresso': {
++        icon: '☕', name: 'Dark Roast Espresso', price: '$3.50',
++        blurb: 'Bold, smokey, and perfect for a morning boost.',
++        notes: ['Single-origin dark roast', 'Notes of cocoa and toasted oak', 'Pulled as a double by default', 'Available as a pound of beans']
++      },
++      'cold-brew': {
++        icon: '🧊', name: 'Cold Brew', price: '$4.75',
++        blurb: 'Steeped for 18 hours for maximum smoothness.',
++        notes: ['Coarse-ground medium roast', 'Steeped 18 hours, filtered twice', 'Served over ice, no bitterness', 'Add vanilla sweet cream on request']
++      }
++    };
++
++    const home = document.getElementById('screen-home');
++    const stack = document.getElementById('stack');
++    let current = null; // slug currently shown, or null for home
++    let skipAnim = false;
++    let lastTrigger = null;
++
++    const slugFromHash = () => {
++      const m = location.hash.match(/^#\/menu\/([\w-]+)\/?$/);
++      return m && ITEMS[m[1]] ? m[1] : null;
++    };
++
++    function buildDetail(slug) {
++      const it = ITEMS[slug];
++      const el = document.createElement('section');
++      el.className = 'screen detail';
++      el.setAttribute('role', 'dialog');
++      el.setAttribute('aria-modal', 'true');
++      el.setAttribute('aria-label', it.name);
++      el.innerHTML =
++        '<div class="detail-bar"><button type="button" class="back-btn">← Back</button>' +
++        '<span class="logo">THE DAILY GRIND</span></div>' +
++        '<div class="detail-hero" aria-hidden="true">' + it.icon + '</div>' +
++        '<div class="detail-body"><h1></h1><p class="price"></p><p class="blurb"></p><ul></ul>' +
++        '<a href="/order-online" class="btn">Order Now</a></div>';
++      el.querySelector('h1').textContent = it.name;
++      el.querySelector('.price').textContent = it.price;
++      el.querySelector('.blurb').textContent = it.blurb;
++      el.querySelector('ul').append(...it.notes.map(n => {
++        const li = document.createElement('li');
++        li.textContent = n;
++        return li;
++      }));
++      el.querySelector('.back-btn').addEventListener('click', goBack);
++      attachSwipe(el);
++      return el;
++    }
++
++    function closeDetail(el, animate) {
++      el.classList.remove('open', 'dragging');
++      el.style.transform = '';
++      if (!animate) { el.remove(); return; }
++      el.addEventListener('transitionend', () => el.remove(), { once: true });
++      setTimeout(() => el.remove(), 400);
++    }
++
++    function render() {
++      const slug = slugFromHash();
++      if (slug === current) return;
++      const animate = !skipAnim;
++      skipAnim = false;
++      stack.querySelectorAll('.detail').forEach(el => closeDetail(el, animate));
++      current = slug;
++      home.classList.toggle('covered', !!slug);
++      if (slug) {
++        const el = buildDetail(slug);
++        stack.appendChild(el);
++        home.inert = true;
++        document.title = ITEMS[slug].name + ' | The Daily Grind';
++        if (animate) {
++          el.getBoundingClientRect(); // commit start position before transitioning
++        } else {
++          el.style.transition = 'none';
++        }
++        el.classList.add('open');
++        el.querySelector('.back-btn').focus({ preventScroll: true });
++      } else {
++        home.inert = false;
++        document.title = 'The Daily Grind | Artisanal Coffee';
++        if (lastTrigger && document.contains(lastTrigger)) lastTrigger.focus({ preventScroll: true });
++      }
++    }
++
++    // Back = real history pop when we pushed the entry; otherwise (deep link) replace with home.
++    function goBack() {
++      if (history.state && history.state.stack) {
++        history.back();
++      } else {
++        history.replaceState(null, '', location.pathname + location.search);
++        render();
++      }
++    }
++
++    // Edge-swipe to go back, following the finger.
++    function attachSwipe(el) {
++      let startX = 0, startY = 0, dx = 0, t0 = 0, active = false, decided = false;
++      el.addEventListener('touchstart', e => {
++        const t = e.touches[0];
++        active = t.clientX <= 32;
++        decided = false;
++        startX = t.clientX; startY = t.clientY; dx = 0; t0 = Date.now();
++      }, { passive: true });
++      el.addEventListener('touchmove', e => {
++        if (!active) return;
++        const t = e.touches[0];
++        dx = t.clientX - startX;
++        if (!decided) {
++          if (Math.abs(t.clientY - startY) > Math.abs(dx) && Math.abs(t.clientY - startY) > 8) { active = false; return; }
++          if (Math.abs(dx) > 8) { decided = true; el.classList.add('dragging'); }
++        }
++        if (!decided) return;
++        e.preventDefault();
++        dx = Math.max(0, dx);
++        el.style.transform = 'translateX(' + dx + 'px)';
++      }, { passive: false });
++      const end = () => {
++        if (!active || !decided) { active = false; return; }
++        active = false;
++        el.classList.remove('dragging');
++        const fast = dx / Math.max(1, Date.now() - t0) > 0.5;
++        if (dx > el.offsetWidth * 0.35 || (fast && dx > 40)) {
++          el.style.transform = 'translateX(100%)';
++          skipAnim = false;
++          goBack();
++        } else {
++          el.style.transform = '';
++        }
++      };
++      el.addEventListener('touchend', end);
++      el.addEventListener('touchcancel', end);
++    }
++
++    // Drill in: push a history entry, then render.
++    document.addEventListener('click', e => {
++      const a = e.target.closest('a[data-route]');
++      if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
++      e.preventDefault();
++      lastTrigger = a;
++      history.pushState({ stack: true }, '', a.getAttribute('href'));
++      render();
++    });
++
++    document.addEventListener('keydown', e => {
++      if (e.key === 'Escape' && current) goBack();
++    });
++
++    // Browser back/forward and manual hash edits.
++    window.addEventListener('popstate', render);
++    window.addEventListener('hashchange', render);
++
++    // Deep link on load: show the detail immediately, no slide animation.
++    skipAnim = true;
++    render();
++    skipAnim = false;
++    const first = stack.querySelector('.detail');
++    if (first) requestAnimationFrame(() => requestAnimationFrame(() => { first.style.transition = ''; }));
++  </script>
+ </body>
+ 
+ </html>

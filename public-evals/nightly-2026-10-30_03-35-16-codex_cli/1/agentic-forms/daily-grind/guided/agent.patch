@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+index 66c9173..18b4e40 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,54 @@
+       background: #3e2723;
+     }
+ 
++    .finder {
++      margin-bottom: 48px;
++      padding: clamp(20px, 4vw, 40px);
++      background: #f1e9e3;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      scroll-margin-top: 100px;
++    }
++
++    .finder h2 { font-size: 1.8rem; }
++    .finder-intro { margin: 8px 0 24px; }
++    .finder-fields {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
++      gap: 20px;
++    }
++    .finder label { display: block; font-weight: 600; margin-bottom: 6px; }
++    .finder select {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++    .finder button { border: 0; font: inherit; cursor: pointer; min-height: 48px; }
++    :focus-visible { outline: 3px solid #985300; outline-offset: 4px; }
++    .finder form:tool-form-active { outline: 3px dashed #985300; outline-offset: 8px; }
++    .finder-status { margin-top: 16px; font-weight: 600; }
++    .finder-result {
++      margin-top: 16px;
++      padding: 24px;
++      border-left: 4px solid #985300;
++      border-radius: 5px;
++      background: white;
++    }
++    .finder-result h3 { font-size: 1.4rem; }
++    .finder-result p { margin-top: 8px; }
++    .finder-result a { color: var(--primary); font-weight: 600; }
++    @media (max-width: 650px) {
++      nav { position: static; flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -172,9 +220,47 @@
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <a href="#coffee-finder" class="btn">Find Your Coffee</a>
+   </header>
+ 
+   <main class="container">
++    <section id="coffee-finder" class="finder" aria-labelledby="finder-heading">
++      <h2 id="finder-heading">Find your next favorite</h2>
++      <p class="finder-intro" id="finder-help">Tell us what you're craving. We'll find the closest match among our seasonal favorites, prioritizing flavor.</p>
++      <form id="coffee-finder-form" toolname="find-coffee"
++        tooldescription="Recommend a Daily Grind seasonal coffee based on the user's preferences. Use when the user wants help choosing a drink."
++        toolautosubmit aria-describedby="finder-help">
++        <div class="finder-fields">
++          <div>
++            <label for="coffee-flavor">What flavors do you enjoy?</label>
++            <select id="coffee-flavor" name="flavor" required>
++              <option value="">Choose a flavor</option>
++              <option value="any">Open to suggestions</option>
++              <option value="sweet">Sweet &amp; creamy</option>
++              <option value="bold">Bold &amp; smoky</option>
++              <option value="smooth">Smooth &amp; mellow</option>
++            </select>
++          </div>
++          <div>
++            <label for="coffee-temperature">How do you like your coffee?</label>
++            <select id="coffee-temperature" name="temperature" required>
++              <option value="any">Hot or cold — surprise me</option>
++              <option value="hot">Hot</option>
++              <option value="iced">Iced</option>
++            </select>
++          </div>
++        </div>
++        <button type="submit" class="btn">Find My Coffee</button>
++      </form>
++      <noscript><p>Enable JavaScript to use the coffee finder, or explore our seasonal favorites below.</p></noscript>
++      <p id="finder-status" class="finder-status" role="status" aria-live="polite" aria-atomic="true"></p>
++      <article id="finder-result" class="finder-result" aria-labelledby="result-name" hidden>
++        <h3 id="result-name"></h3>
++        <p id="result-description"></p>
++        <p id="result-match"></p>
++        <p><a id="result-link" href="/menu">Explore this coffee</a></p>
++      </article>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +293,65 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const coffees = [
++      { name: 'Maple Oat Latte', flavor: 'sweet', temperature: 'hot',
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.', url: '/menu/seasonal' },
++      { name: 'Dark Roast Espresso', flavor: 'bold', temperature: 'hot',
++        description: 'Bold, smoky, and perfect for a morning boost.', url: '/menu/espresso' },
++      { name: 'Cold Brew', flavor: 'smooth', temperature: 'iced',
++        description: 'Steeped for 18 hours for maximum smoothness.', url: '/menu/cold-brew' }
++    ];
++    const finderForm = document.getElementById('coffee-finder-form');
++    const finderStatus = document.getElementById('finder-status');
++    const finderResult = document.getElementById('finder-result');
++
++    finderForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const data = new FormData(finderForm);
++      const flavor = data.get('flavor');
++      const temperature = data.get('temperature');
++      const reply = (result) => {
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          event.respondWith(Promise.resolve(JSON.stringify(result)));
++        }
++      };
++
++      if (!finderForm.checkValidity() || !['any', 'sweet', 'bold', 'smooth'].includes(flavor) ||
++          !['any', 'hot', 'iced'].includes(temperature)) {
++        finderResult.hidden = true;
++        finderStatus.textContent = 'Please choose a flavor and a valid temperature preference.';
++        finderForm.reportValidity();
++        reply({ error: 'Choose a listed flavor and temperature preference, then try again.' });
++        return;
++      }
++
++      // Flavor is the primary preference; temperature breaks ties.
++      const score = (coffee) => (flavor === 'any' || coffee.flavor === flavor ? 2 : 0) +
++        (temperature === 'any' || coffee.temperature === temperature ? 1 : 0);
++      const coffee = [...coffees].sort((a, b) => score(b) - score(a))[0];
++      const temperatureMatches = temperature === 'any' || temperature === coffee.temperature;
++      const explanation = temperatureMatches
++        ? 'A match for your flavor and temperature preferences.'
++        : `A match for your flavor preference. This featured drink is served ${coffee.temperature === 'hot' ? 'hot' : 'iced'}, so it doesn't match your temperature preference.`;
++
++      document.getElementById('result-name').textContent = coffee.name;
++      document.getElementById('result-description').textContent = coffee.description;
++      document.getElementById('result-match').textContent = explanation;
++      document.getElementById('result-link').href = coffee.url;
++      finderResult.hidden = false;
++      finderStatus.textContent = `Your coffee match: ${coffee.name}. ${explanation}`;
++      reply({
++        recommendation: coffee.name,
++        description: coffee.description,
++        served: coffee.temperature,
++        preferences: { flavor, temperature },
++        temperatureMatches,
++        explanation,
++        menuUrl: new URL(coffee.url, window.location.href).href
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,94 @@
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..de61272 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -20,6 +20,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+     });
+     const data = await response.json();
+     setIsBookmarked(data.readingList.includes(slug));
++    window.dispatchEvent(new Event('reading-list-change'));
+   };
+ 
+   return (
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..24340d9 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -45,6 +45,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+       },
+       body: JSON.stringify({ slug }),
+     });
++    window.dispatchEvent(new Event('reading-list-change'));
+     fetchReadingList();
+   };
+ 
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..ce19b18 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,7 +48,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="view-root" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..89eab1e
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,41 @@
++// Keeps the DOM of recently visited views so that navigating back to them
++// restores the existing structure instead of swapping in freshly fetched markup.
++const MAX_ENTRIES = 8;
++const MAX_AGE_MS = 5 * 60 * 1000;
++// Views whose markup depends on session state or form input.
++const UNCACHEABLE = /\/(signin|signup)\/?$/;
++
++const cache = new Map<string, { root: Node; savedAt: number }>();
++
++const key = (url: URL) => url.pathname + url.search;
++const getRoot = (doc: Document) => doc.getElementById("view-root");
++
++// Cached markup can embed server state (e.g. bookmarks), so drop it on change.
++window.addEventListener("reading-list-change", () => cache.clear());
++
++document.addEventListener("astro:before-preparation", (event) => {
++  if (event.formData) cache.clear();
++});
++
++document.addEventListener("astro:before-swap", (event) => {
++  const { from, to, newDocument } = event;
++
++  const current = getRoot(document);
++  if (current && !UNCACHEABLE.test(from.pathname)) {
++    const k = key(from);
++    cache.delete(k);
++    cache.set(k, { root: current.cloneNode(true), savedAt: Date.now() });
++    while (cache.size > MAX_ENTRIES) {
++      cache.delete(cache.keys().next().value!);
++    }
++  }
++
++  const entry = cache.get(key(to));
++  const target = getRoot(newDocument);
++  if (!entry || !target) return;
++  if (Date.now() - entry.savedAt > MAX_AGE_MS) {
++    cache.delete(key(to));
++    return;
++  }
++  target.replaceChildren(...Array.from((entry.root as Element).cloneNode(true).childNodes));
++});

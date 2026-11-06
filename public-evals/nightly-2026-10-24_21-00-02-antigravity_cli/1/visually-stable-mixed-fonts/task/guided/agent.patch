@@ -1,0 +1,38 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Visually Stable Mixed Fonts &amp; Independent Theme Proportions</title>
++  <link rel="stylesheet" href="styles.css">
++</head>
++<body>
++  <header class="site-header">
++    <h1>Typography &amp; Visual Stability</h1>
++    <p class="subtitle">Normalizing x-height across mixed font families and independent themes with <code>font-size-adjust</code>.</p>
++  </header>
++
++  <main class="content-layout">
++    <article class="card">
++      <h2>Automatic Mixed-Font Normalization</h2>
++      <p id="mixed-fonts-container">
++        When rendering body copy in a proportional typeface alongside inline code snippets such as <code>font-size-adjust: from-font</code>, <code>const aspect = 0.52;</code>, or <code>document.getElementById("mixed-fonts-container")</code>, differences in lowercase x-height can make monospace text appear disproportionately large or small. Applying <code>from-font</code> on the parent container automatically extracts the primary font's x-height aspect ratio and scales nested inline <code>&lt;code&gt;</code> elements to match visually.
++      </p>
++    </article>
++
++    <article class="card">
++      <h2>Independent Theme Aspect-Ratio Lock</h2>
++      <div id="independent-theme-container" class="theme alternate">
++        <h3>Editorial Serif Theme</h3>
++        <p>
++          This separate theme container uses a classical serif font stack (<code>Times New Roman</code> / <code>Times</code>) that is not nested inside the primary sans-serif text block. By applying an explicit numeric aspect-ratio override (<code>font-size-adjust: 0.51</code>), its lowercase letter height is locked to the exact visual proportions of the primary design system regardless of which font family is active.
++        </p>
++      </div>
++    </article>
++  </main>
++</body>
++</html>

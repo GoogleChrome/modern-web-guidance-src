@@ -1,0 +1,240 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,93 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee order customizer */
++    .customizer {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .cup-stage {
++      position: relative;
++      width: 400px;
++      height: 440px;
++      margin: 20px auto 0;
++    }
++
++    #canvas {
++      display: block;
++      width: 400px;
++      height: 440px;
++    }
++
++    /* Same box in CSS pixels whether drawn into the canvas or overlaid as a fallback */
++    .cup-form {
++      width: 200px;
++      height: 270px;
++      padding: 4px;
++      text-align: left;
++      font-size: 0.85rem;
++      line-height: 1.3;
++      color: var(--text);
++    }
++
++    .cup-stage > .cup-form {
++      position: absolute;
++      left: 100px;
++      top: 120px;
++    }
++
++    .cup-form h3 {
++      font-size: 1rem;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .cup-form label,
++    .cup-form legend {
++      display: block;
++      font-weight: 600;
++    }
++
++    .cup-form input[type="text"] {
++      width: 100%;
++      padding: 4px 6px;
++      margin-bottom: 8px;
++      font: inherit;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++    }
++
++    .cup-form fieldset {
++      border: 0;
++      margin-bottom: 6px;
++    }
++
++    .cup-form fieldset label {
++      display: inline-block;
++      margin-right: 8px;
++      font-weight: normal;
++    }
++
++    .cup-form button {
++      margin-top: 4px;
++      padding: 6px 14px;
++      font: inherit;
++      color: white;
++      background: var(--primary);
++      border: 0;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    .cup-form output {
++      display: block;
++      margin-top: 6px;
++      font-style: italic;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +279,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-title">
++      <h2 id="customizer-title">Customize Your Cup</h2>
++      <div class="cup-stage" id="cup-stage">
++        <canvas id="canvas" content="drawable" width="400" height="440">
++          <form id="cup-form" class="cup-form" drawable>
++            <h3>Your Cup</h3>
++            <label for="cup-name">Name on the cup</label>
++            <input type="text" id="cup-name" name="name" maxlength="20" autocomplete="given-name" placeholder="e.g. Sam">
++            <fieldset>
++              <legend>Milk</legend>
++              <label><input type="radio" name="milk" value="Whole" checked> Whole</label>
++              <label><input type="radio" name="milk" value="Oat"> Oat</label>
++              <label><input type="radio" name="milk" value="Almond"> Almond</label>
++            </fieldset>
++            <fieldset>
++              <legend>Syrup</legend>
++              <label><input type="checkbox" name="syrup" value="Vanilla"> Vanilla</label>
++              <label><input type="checkbox" name="syrup" value="Maple"> Maple</label>
++              <label><input type="checkbox" name="syrup" value="Caramel"> Caramel</label>
++            </fieldset>
++            <button type="button" id="cup-add">Add to order</button>
++            <output id="cup-summary" for="cup-name" aria-live="polite"></output>
++          </form>
++        </canvas>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +318,105 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
+-</body>
++  <script>
++    const canvas = document.getElementById('canvas');
++    const stage = document.getElementById('cup-stage');
++    const form = document.getElementById('cup-form');
++    const summary = document.getElementById('cup-summary');
++    const ctx = canvas.getContext('2d');
++    const FORM_X = 100;
++    const FORM_Y = 120;
++    const nativeHtmlInCanvas = 'content' in HTMLCanvasElement.prototype;
+ 
++    function updateSummary(confirmed) {
++      const data = new FormData(form);
++      const name = (data.get('name') || '').trim();
++      const syrups = data.getAll('syrup');
++      const text = `${data.get('milk')} milk` + (syrups.length ? `, ${syrups.join(' + ')} syrup` : ', no syrup');
++      summary.textContent = confirmed ? `Added for ${name || 'you'}: ${text}` : '';
++    }
++
++    form.addEventListener('submit', (e) => e.preventDefault());
++    document.getElementById('cup-add').addEventListener('click', () => updateSummary(true));
++    form.addEventListener('input', () => updateSummary(false));
++
++    // Decorative cup, in CSS pixel coordinates (the context is pre-scaled to device pixels)
++    function drawCup() {
++      ctx.reset();
++      ctx.scale(canvas.width / canvas.clientWidth, canvas.height / canvas.clientHeight);
++
++      // Steam
++      ctx.strokeStyle = '#d7ccc8';
++      ctx.lineWidth = 5;
++      ctx.lineCap = 'round';
++      for (const x of [140, 190, 240]) {
++        ctx.beginPath();
++        ctx.moveTo(x, 55);
++        ctx.bezierCurveTo(x - 14, 40, x + 14, 25, x, 8);
++        ctx.stroke();
++      }
++
++      // Handle
++      ctx.strokeStyle = '#4e342e';
++      ctx.lineWidth = 14;
++      ctx.beginPath();
++      ctx.ellipse(335, 210, 45, 60, 0, -Math.PI / 2, Math.PI / 2);
++      ctx.stroke();
++
++      // Body
++      ctx.beginPath();
++      ctx.moveTo(40, 100);
++      ctx.lineTo(360, 100);
++      ctx.lineTo(320, 420);
++      ctx.lineTo(80, 420);
++      ctx.closePath();
++      ctx.fillStyle = '#fafafa';
++      ctx.fill();
++      ctx.lineWidth = 6;
++      ctx.strokeStyle = '#4e342e';
++      ctx.lineJoin = 'round';
++      ctx.stroke();
++
++      // Sleeve band
++      ctx.fillStyle = '#d7ccc8';
++      ctx.fillRect(46, 108, 308, 8);
++
++      // Lid
++      ctx.fillStyle = '#4e342e';
++      ctx.beginPath();
++      ctx.roundRect(28, 78, 344, 26, 8);
++      ctx.fill();
++    }
++
++    function draw() {
++      drawCup();
++      if (nativeHtmlInCanvas) {
++        // Browser keeps hit-testing, a11y bounds and find-in-page aligned with the drawn pixels
++        ctx.drawElementImage(form, FORM_X, FORM_Y, form.offsetWidth, form.offsetHeight);
++      }
++    }
++
++    if (nativeHtmlInCanvas) {
++      canvas.onpaint = draw;
++    } else {
++      // Fallback: the same form, overlaid at the same CSS-pixel position (see .cup-stage > .cup-form)
++      stage.appendChild(form);
++      form.removeAttribute('drawable');
++    }
++
++    // Keep the backing store at device-pixel size so nothing is blurry on HiDPI screens
++    const observer = new ResizeObserver(([entry]) => {
++      const dpc = entry.devicePixelContentBoxSize;
++      canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * devicePixelRatio);
++      canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * devicePixelRatio);
++      if (nativeHtmlInCanvas) canvas.requestPaint();
++      else draw();
++    });
++    const supportsDevicePixelBox = typeof ResizeObserverEntry !== 'undefined' &&
++      'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++    observer.observe(canvas, supportsDevicePixelBox ? { box: 'device-pixel-content-box' } : {});
++  </script>
++
++</body>
+ </html>

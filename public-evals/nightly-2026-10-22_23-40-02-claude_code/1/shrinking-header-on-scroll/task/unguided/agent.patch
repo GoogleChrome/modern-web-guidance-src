@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,22 +27,46 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
++    /* --nav-progress: 0 (top of page) -> 1 (fully condensed) */
++    @property --nav-progress {
++      syntax: '<number>';
++      inherits: true;
++      initial-value: 0;
++    }
++
+     nav {
++      --nav-progress: 0;
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: calc(1rem - 0.5rem * var(--nav-progress)) 5%;
++      box-shadow: 0 calc(4px * var(--nav-progress)) calc(12px * var(--nav-progress)) rgba(0, 0, 0, calc(0.3 * var(--nav-progress)));
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
++    /* Modern browsers: progress is bound directly to scroll position */
++    @keyframes condense-nav {
++      to {
++        --nav-progress: 1;
++      }
++    }
++
++    @supports (animation-timeline: scroll()) {
++      nav {
++        animation: condense-nav linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0 120px;
++      }
++    }
++
+     .logo {
+-      font-size: 1.5rem;
++      font-size: calc(1.5rem - 0.35rem * var(--nav-progress));
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+@@ -57,9 +81,9 @@
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
++      font-size: calc(0.9rem - 0.05rem * var(--nav-progress));
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+@@ -167,8 +191,30 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <script>
++    // Fallback for browsers without CSS scroll-driven animations:
++    // drive the same --nav-progress variable from the scroll position.
++    (function () {
++      if (window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()')) return;
++      var nav = document.querySelector('nav');
++      var range = 120, ticking = false;
++      function update() {
++        var y = window.pageYOffset || document.documentElement.scrollTop || 0;
++        nav.style.setProperty('--nav-progress', Math.min(Math.max(y / range, 0), 1));
++        ticking = false;
++      }
++      function onScroll() {
++        if (ticking) return;
++        ticking = true;
++        (window.requestAnimationFrame || function (f) { return setTimeout(f, 16); })(update);
++      }
++      window.addEventListener('scroll', onScroll, { passive: true });
++      update();
++    })();
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

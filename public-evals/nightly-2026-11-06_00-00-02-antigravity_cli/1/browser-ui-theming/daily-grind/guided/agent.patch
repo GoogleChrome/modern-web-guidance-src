@@ -1,0 +1,554 @@
+diff --git a/index.html b/index.html
+index 66c9173..12a0011 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,48 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --error: #c62828;
++      --success: #2e7d32;
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
++      color-scheme: light dark;
++      accent-color: var(--primary);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --primary: #8d6e63;
++        --secondary: #3e2723;
++        --accent: #ffab40;
++        --text: #efebe9;
++        --light: #1e1411;
++        --scrollbar-thumb: var(--accent);
++        --scrollbar-track: var(--secondary);
++        accent-color: var(--accent);
++      }
++    }
++
++    ::selection {
++      background-color: var(--accent);
++      color: #3e2723;
++    }
++
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 10px;
++        height: 10px;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 5px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
+     }
+ 
+     * {
+@@ -126,15 +168,375 @@
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      font-size: 1rem;
++      font-family: inherit;
++      cursor: pointer;
+       transition: background 0.3s;
++      user-select: none;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Customization Section */
++    .order-section {
++      margin-top: 50px;
++      background: white;
++      color: #3e2723;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    @media (prefers-color-scheme: dark) {
++      .card,
++      .order-section {
++        background: #2b1d19;
++        color: var(--text);
++      }
++    }
++
++    .order-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .order-subtitle {
++      text-align: center;
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
++    .order-form {
++      max-width: 640px;
++      margin: 0 auto;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group > label,
++    .form-group legend {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.4rem;
++      color: var(--primary);
++    }
++
++    fieldset.form-group {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 12px 16px;
++    }
++
++    fieldset.form-group legend {
++      padding: 0 6px;
++      margin-block-end: 0;
++    }
++
++    .choice-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-top: 6px;
++    }
++
++    .choice-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 8px 14px;
++      min-height: 48px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      cursor: pointer;
++      font-weight: 500;
++      transition: background-color 0.2s, border-color 0.2s;
++    }
++
++    .choice-label:has(:checked) {
++      background-color: var(--secondary);
++      border-color: var(--primary);
++    }
++
++    input[type="text"],
++    input[type="time"],
++    textarea,
++    .brand-select {
++      width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      color: inherit;
++      background-color: var(--light);
++      border: 1.5px solid var(--secondary);
++      border-radius: 6px;
++      padding: 0.75rem;
++      min-height: 48px;
++    }
++
++    textarea {
++      field-sizing: content;
++      min-height: 84px;
++      max-height: 180px;
++      resize: vertical;
++      overflow-y: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++    }
++
++    input::placeholder,
++    textarea::placeholder {
++      color: #8d6e63;
++      opacity: 0.85;
++    }
++
++    input:placeholder-shown,
++    textarea:placeholder-shown {
++      border-style: dashed;
++    }
++
++    input:focus-visible,
++    textarea:focus-visible,
++    select:focus-visible,
++    button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* User interaction validity styling (excluding range sliders) */
++    input:not(input[type="range"]):user-invalid,
++    textarea:user-invalid,
++    select:user-invalid {
++      border-color: var(--error);
++    }
++
++    input:not(input[type="range"]):user-valid,
++    textarea:user-valid,
++    select:user-valid {
++      border-color: var(--primary);
++    }
++
++    /* Customizable Native Select & Picker */
++    .brand-select,
++    .brand-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .brand-select {
++      cursor: pointer;
++    }
++
++    .brand-select::picker(select) {
++      background-color: var(--light);
++      color: var(--text);
++      border: 1.5px solid var(--primary);
++      border-radius: 6px;
++      padding: 0.4rem;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++    }
++
++    .brand-select::picker-icon {
++      color: var(--primary);
++    }
++
++    .brand-select option {
++      padding: 0.5rem 0.75rem;
++      border-radius: 4px;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .brand-select option:hover,
++    .brand-select option:focus-visible {
++      background-color: var(--secondary);
++    }
++
++    .brand-select option::checkmark {
++      color: var(--primary);
++    }
++
++    /* Range & Progress Controls */
++    .range-row {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .range-row input[type="range"] {
++      flex: 1;
++      cursor: pointer;
++    }
++
++    .range-output {
++      min-width: 70px;
++      font-weight: 600;
++      text-align: right;
++      color: var(--primary);
++    }
++
++    .roast-meter {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      margin-top: 6px;
++    }
++
++    .roast-meter progress {
++      flex: 1;
++      height: 12px;
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.85rem;
++      margin-top: 4px;
++      opacity: 0.85;
++    }
++
++    /* Fallback for older browsers without accent-color support */
++    @supports not (accent-color: var(--primary)) {
++      .order-form input[type="checkbox"].visually-hidden,
++      .order-form input[type="radio"].visually-hidden {
++        position: absolute !important;
++        clip-path: inset(50%) !important;
++        overflow: hidden !important;
++        width: 1px !important;
++        height: 1px !important;
++        margin: -1px !important;
++        padding: 0 !important;
++        border: 0 !important;
++        white-space: nowrap !important;
++      }
++
++      .choice-label {
++        position: relative;
++        padding-left: 2.25rem;
++      }
++
++      .order-form input[type="checkbox"] + span::before,
++      .order-form input[type="radio"] + span::before {
++        content: "";
++        position: absolute;
++        left: 0.65rem;
++        top: 50%;
++        transform: translateY(-50%);
++        width: 1.15rem;
++        height: 1.15rem;
++        border: 2px solid var(--secondary);
++        background: var(--light);
++        box-sizing: border-box;
++      }
++
++      .order-form input[type="checkbox"] + span::before {
++        border-radius: 4px;
++      }
++
++      .order-form input[type="radio"] + span::before {
++        border-radius: 50%;
++      }
++
++      .order-form input[type="checkbox"]:focus-visible + span::before,
++      .order-form input[type="radio"]:focus-visible + span::before {
++        outline: 2px solid var(--accent);
++        outline-offset: 2px;
++      }
++
++      .order-form input[type="checkbox"]:checked + span::before,
++      .order-form input[type="radio"]:checked + span::before {
++        background-color: var(--primary);
++        border-color: var(--primary);
++      }
++
++      .order-form input[type="checkbox"]:checked + span::after {
++        content: "✓";
++        position: absolute;
++        left: 0.85rem;
++        top: 50%;
++        transform: translateY(-50%);
++        color: white;
++        font-weight: bold;
++        font-size: 0.85rem;
++      }
++
++      .order-form input[type="range"] {
++        -webkit-appearance: none;
++        appearance: none;
++        background: transparent;
++      }
++
++      .order-form input[type="range"]::-webkit-slider-runnable-track {
++        width: 100%;
++        height: 8px;
++        background: linear-gradient(to right, var(--primary) var(--progress, 50%), var(--secondary) var(--progress, 50%));
++        border-radius: 4px;
++      }
++
++      .order-form input[type="range"]::-webkit-slider-thumb {
++        -webkit-appearance: none;
++        appearance: none;
++        height: 16px;
++        width: 16px;
++        border-radius: 50%;
++        background: var(--primary);
++        cursor: pointer;
++        margin-top: -4px;
++      }
++
++      .order-form input[type="range"]::-moz-range-track {
++        width: 100%;
++        height: 8px;
++        background: var(--secondary);
++        border-radius: 4px;
++      }
++
++      .order-form input[type="range"]::-moz-range-thumb {
++        height: 16px;
++        width: 16px;
++        border-radius: 50%;
++        background: var(--primary);
++        cursor: pointer;
++      }
++
++      .order-form input[type="range"]::-moz-range-progress {
++        background-color: var(--primary);
++        height: 8px;
++        border-radius: 4px;
++      }
++
++      .order-form progress {
++        -webkit-appearance: none;
++        -moz-appearance: none;
++        appearance: none;
++        border: none;
++        background: var(--secondary);
++        height: 10px;
++        border-radius: 4px;
++      }
++
++      .order-form progress::-webkit-progress-bar {
++        background-color: var(--secondary);
++        border-radius: 4px;
++      }
++
++      .order-form progress::-webkit-progress-value {
++        background-color: var(--primary);
++        border-radius: 4px;
++      }
++
++      .order-form progress::-moz-progress-bar {
++        background-color: var(--primary);
++        border-radius: 4px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +597,103 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="order-section" id="customize-order" aria-labelledby="customize-heading">
++      <h2 id="customize-heading">Customize Your Cup</h2>
++      <p class="order-subtitle">Craft your ideal artisanal brew for quick bar pickup.</p>
++
++      <form class="order-form" action="/order-online" method="POST">
++        <div class="form-group">
++          <label for="customer-name">Name for Cup</label>
++          <input type="text" id="customer-name" name="customer_name" autocomplete="name" placeholder="e.g., Alex Rivera" required maxlength="60" aria-describedby="name-hint">
++          <span id="name-hint" class="field-hint">Required so our baristas can call out your order.</span>
++        </div>
++
++        <div class="form-group">
++          <label for="drink-base">Signature Drink Base</label>
++          <select class="brand-select" id="drink-base" name="drink_base" required>
++            <button type="button">
++              <selectedcontent></selectedcontent>
++            </button>
++            <option value="maple-oat-latte" selected>Maple Oat Latte ($5.75)</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso ($3.50)</option>
++            <option value="cold-brew">18-Hour Cold Brew ($4.75)</option>
++            <option value="honey-cinnamon-cortado">Honey Cinnamon Cortado ($4.95)</option>
++            <option value="vanilla-bean-flat-white">Vanilla Bean Flat White ($5.25)</option>
++            <option value="single-origin-pour-over">Single-Origin Pour Over ($5.50)</option>
++          </select>
++        </div>
++
++        <fieldset class="form-group">
++          <legend>Cup Size</legend>
++          <div class="choice-group">
++            <label class="choice-label" for="size-small">
++              <input type="radio" id="size-small" name="cup_size" value="small" class="visually-hidden">
++              <span>Small (8 oz)</span>
++            </label>
++            <label class="choice-label" for="size-medium">
++              <input type="radio" id="size-medium" name="cup_size" value="medium" class="visually-hidden" checked>
++              <span>Medium (12 oz)</span>
++            </label>
++            <label class="choice-label" for="size-large">
++              <input type="radio" id="size-large" name="cup_size" value="large" class="visually-hidden">
++              <span>Large (16 oz)</span>
++            </label>
++          </div>
++        </fieldset>
++
++        <fieldset class="form-group">
++          <legend>Milk &amp; Artisanal Add-ins</legend>
++          <div class="choice-group">
++            <label class="choice-label" for="addon-oat">
++              <input type="checkbox" id="addon-oat" name="addons" value="oat-milk" class="visually-hidden" checked>
++              <span>Barista Oat Milk</span>
++            </label>
++            <label class="choice-label" for="addon-shot">
++              <input type="checkbox" id="addon-shot" name="addons" value="extra-shot" class="visually-hidden">
++              <span>Extra Espresso Shot (+$1.25)</span>
++            </label>
++            <label class="choice-label" for="addon-maple">
++              <input type="checkbox" id="addon-maple" name="addons" value="maple-drizzle" class="visually-hidden">
++              <span>Vermont Maple Drizzle (+$0.75)</span>
++            </label>
++            <label class="choice-label" for="addon-cinnamon">
++              <input type="checkbox" id="addon-cinnamon" name="addons" value="cinnamon-dust" class="visually-hidden">
++              <span>Ceylon Cinnamon Dust</span>
++            </label>
++          </div>
++        </fieldset>
++
++        <div class="form-group">
++          <label for="sweetness-level">Sweetness Level</label>
++          <div class="range-row">
++            <input type="range" id="sweetness-level" name="sweetness_level" min="0" max="100" step="25" value="50">
++            <output for="sweetness-level" id="sweetness-output" class="range-output">50%</output>
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="roast-intensity">Current Roast Profile Intensity</label>
++          <div class="roast-meter">
++            <progress id="roast-intensity" max="100" value="75">75%</progress>
++            <span class="range-output" id="roast-label">75% Bold</span>
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="pickup-time">Preferred Pickup Time</label>
++          <input type="time" id="pickup-time" name="pickup_time" min="06:30" max="19:30" value="08:30" required aria-describedby="time-hint">
++          <span id="time-hint" class="field-hint">Roastery pickup hours: 6:30 AM – 7:30 PM daily.</span>
++        </div>
++
++        <div class="form-group">
++          <label for="barista-notes">Special Instructions for Barista</label>
++          <textarea id="barista-notes" name="barista_notes" rows="3" maxlength="250" placeholder="Extra hot, light foam, or allergy notes..."></textarea>
++        </div>
++
++        <button type="submit" class="btn">Place Custom Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +706,20 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const sweetnessSlider = document.getElementById('sweetness-level');
++    const sweetnessOutput = document.getElementById('sweetness-output');
++    if (sweetnessSlider && sweetnessOutput) {
++      sweetnessSlider.addEventListener('input', (e) => {
++        const val = e.target.value;
++        sweetnessOutput.textContent = `${val}%`;
++        if (!CSS.supports('accent-color', '#4e342e')) {
++          e.target.style.setProperty('--progress', `${val}%`);
++        }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

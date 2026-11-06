@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,60 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#f6f7f2">
++  <meta name="description" content="Meet Forma. A simpler way to turn your next big idea into your next best experience. Explore an interactive A/B testing demo.">
++  <title>Forma — Make room for better.</title>
++  <!-- This guard is inline so it takes effect before the first paint. -->
++  <style>[data-experiment-pending] { visibility: hidden !important; } [hidden] { display: none !important; }</style>
++  <link rel="stylesheet" href="styles.css">
++  <script src="app.js" defer></script>
++</head>
++<body>
++  <header class="site-header wrap">
++    <a href="#" class="brand" aria-label="Forma home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>forma<span class="brand-period">®</span></a>
++    <nav class="desktop-nav" aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#possibilities">Why Forma</a><a href="#playground">Playground <span class="tiny-arrow">↗</span></a></nav>
++    <button class="button header-cta" data-open-demo>Let’s experiment <span>↗</span></button>
++  </header>
++
++  <main>
++    <section class="hero wrap" aria-labelledby="hero-title">
++      <div class="hero-copy" id="experiment-root" data-experiment-pending aria-busy="true">
++        <div class="eyebrow"><span class="status-dot"></span> LESS GUESSWORK. MORE GOOD IDEAS.</div>
++        <h1 id="hero-title" data-experiment-heading>Good ideas<br>deserve a<br><em>fair test.</em></h1>
++        <p class="hero-description" data-experiment-description>Turn “what if” into what works. Meet the simpler way to test, learn, and create experiences your customers love.</p>
++        <div class="hero-actions"><button class="button button-primary" data-open-demo data-experiment-cta>Start experimenting <span>↗</span></button><a class="text-link" href="#how-it-works"><span class="play-icon">▶</span> See how it works</a></div>
++        <div class="hero-note"><span>✓ No credit card</span><span>✓ Your first aha, in minutes</span></div>
++      </div>
++      <div class="hero-copy fallback-copy" id="experiment-fallback" hidden>
++        <div class="eyebrow"><span class="status-dot"></span> A LITTLE CURIOSITY GOES A LONG WAY.</div>
++        <h1>Make room<br>for something<br><em>better.</em></h1>
++        <p class="hero-description">Explore a hands-on experiment and see how a small change can open up a new possibility.</p>
++        <div class="hero-actions"><button class="button button-primary" data-open-demo>Explore the demo <span>↗</span></button><a class="text-link" href="#how-it-works">See how it works <span>↗</span></a></div>
++        <div class="hero-note">An interactive introduction to A/B testing.</div>
++      </div>
++
++      <div class="experiment-scene" id="playground" aria-label="Illustrative A/B test dashboard">
++        <div class="scene-grid"></div>
++        <div class="scene-caption"><span class="small-spark">✳</span> A SMALL CHANGE. A BIG POSSIBILITY.</div>
++        <div class="floating-label"><span class="status-dot"></span> A little curiosity, a lot of clarity.</div>
++        <div class="test-card variant-a"><div class="variant-label"><span class="variant-letter">A</span> The original <span class="mini-dots">···</span></div><div class="mini-site"><span class="mini-logo">attune<span>®</span></span><span class="mini-menu">☰</span><div class="mini-art art-a"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="orb orb-three"></div></div><p>A little more<br>in your element.</p><span class="mini-subtitle">Everyday essentials. Naturally different.</span><span class="mini-button">Discover the collection ↗</span></div><div class="variant-stats"><span>Conversion rate</span><strong>3.24<span>%</span></strong></div></div>
++        <div class="test-card variant-b"><div class="variant-label"><span class="variant-letter">B</span> A new possibility <span class="mini-dots">···</span></div><div class="mini-site"><span class="mini-logo">attune<span>®</span></span><span class="mini-menu">☰</span><div class="mini-art art-b"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="orb orb-three"></div><span class="art-spark">✳</span></div><p>Find your<br>everyday good.</p><span class="mini-subtitle">Good for you. A little better for the planet.</span><span class="mini-button">Find your favorites ↗</span></div><div class="variant-stats"><span>Conversion rate</span><strong>4.18<span>%</span> <small>↗ 29%</small></strong></div></div>
++        <div class="result-pill"><span class="result-icon">↗</span><div><strong>Well, hello there, better.</strong><span>Variant B is looking promising.</span></div><span class="result-spark">✧</span></div>
++        <span class="scene-footnote">A little preview of what’s possible. Illustrative data.</span>
++        <span class="decorative-asterisk" aria-hidden="true">✳</span>
++      </div>
++    </section>
++
++    <section class="principles wrap" id="possibilities" aria-label="Why Forma"><p>Big possibilities.<br><span>Refreshingly simple.</span></p><div><span class="principle-icon">⌘</span><span>Made for curious teams</span></div><div><span class="principle-icon">◴</span><span>Less setup. More discovery.</span></div><div><span class="principle-icon">↗</span><span>Small changes. Real learning.</span></div></section>
++
++    <section class="how-section wrap" id="how-it-works"><div class="section-heading"><div><span class="eyebrow">FROM “WHAT IF” TO “THAT’S IT.”</span><h2>A better way to find better.</h2></div><p>You bring the idea.<br>Let your audience show you the way.</p></div><div class="steps"><article><span class="step-number">01 /</span><h3>Follow your curiosity.</h3><p>A headline, a button, a whole new direction. Start with something you’d love to learn.</p></article><article><span class="step-number">02 /</span><h3>Give both ideas a chance.</h3><p>Share different versions with different visitors. Let the experience do the talking.</p></article><article><span class="step-number">03 /</span><h3>Make your next move.</h3><p>Find the signals in the results, take what you learn, and keep making things better.</p></article></div></section>
++    <section class="closing wrap"><div><span class="eyebrow">YOUR NEXT GOOD IDEA STARTS HERE.</span><h2>What if you tried it?</h2></div><button class="button button-primary" data-open-demo>Let’s find out <span>↗</span></button></section>
++  </main>
++  <footer class="wrap"><a href="#" class="footer-brand">forma<span>®</span></a><span>A little experiment. A better tomorrow.</span><span>© 2026 Forma · Interactive concept</span></footer>
++
++  <dialog id="demo-dialog" aria-labelledby="demo-title"><button class="dialog-close" aria-label="Close demo">×</button><span class="eyebrow"><span class="status-dot"></span> YOUR EXPERIMENT STARTS HERE</span><h2 id="demo-title">Try a little “what if.”</h2><p>Change a headline, choose a version, and preview your first experiment. This demo stays in your browser.</p><form id="demo-form"><label for="experiment-name">Experiment name</label><input id="experiment-name" name="name" placeholder="My next good idea" maxlength="80" required><label for="headline">Your new headline</label><input id="headline" name="headline" placeholder="Find your everyday good." maxlength="120" required><fieldset><legend>Preview a version</legend><label class="radio-choice"><input type="radio" name="variant" value="A" checked> A · Original</label><label class="radio-choice"><input type="radio" name="variant" value="B"> B · Your idea</label></fieldset><button class="button button-primary" type="submit">Preview experiment <span>↗</span></button></form><div id="demo-result" hidden aria-live="polite"></div></dialog>
++  <noscript><style>[data-experiment-pending]{display:none!important}#experiment-fallback[hidden]{display:block!important}</style></noscript>
++</body>
++</html>

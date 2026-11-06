@@ -1,0 +1,181 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 4.5rem;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -37,8 +38,9 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      height: var(--nav-height);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -134,8 +136,42 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky section headers */
++    .section {
++      /* Padding changes in the stuck state must not trigger scroll anchoring jitter */
++      overflow-anchor: none;
++      margin-bottom: 40px;
++    }
++
++    .sticky-container {
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      text-align: center;
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 1.5rem 1rem;
++      border-radius: 8px;
++      transition: background-color 0.3s, box-shadow 0.3s, padding 0.3s;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: #0056b3;
++        color: white;
++        padding: 0.4rem 1rem;
++        border-radius: 0 0 8px 8px;
++        box-shadow: 0 4px 8px rgb(0 0 0 / 0.3);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,10 +210,12 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -192,10 +230,99 @@
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <h3>Pumpkin Spice Latte</h3>
++          <p>Autumn in a cup, with real pumpkin purée.</p>
++          <a href="/menu/pumpkin" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cinnamon Cortado</h3>
++          <p>Equal parts espresso and steamed milk, dusted with cinnamon.</p>
++          <a href="/menu/cortado" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Chai Latte</h3>
++          <p>Slow-simmered spices with creamy steamed milk.</p>
++          <a href="/menu/chai" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
++    <section class="section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Fresh From the Bakery</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden, and baked every morning.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Muffin</h3>
++          <p>Packed with local wild blueberries.</p>
++          <a href="/menu/muffin" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Biscotti</h3>
++          <p>Twice-baked and perfect for dunking.</p>
++          <a href="/menu/biscotti" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cinnamon Roll</h3>
++          <p>Warm, gooey, and topped with cream cheese icing.</p>
++          <a href="/menu/cinnamon-roll" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Lemon Loaf</h3>
++          <p>Bright, tangy, and finished with a sweet glaze.</p>
++          <a href="/menu/lemon-loaf" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Banana Bread</h3>
++          <p>Moist and rich, made with ripe bananas.</p>
++          <a href="/menu/banana-bread" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++    <section class="section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Beans to Take Home</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Floral and citrusy with a tea-like body.</p>
++          <a href="/shop/ethiopia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombia Huila</h3>
++          <p>Caramel sweetness with notes of red apple.</p>
++          <a href="/shop/colombia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>House Blend</h3>
++          <p>Our balanced everyday roast, chocolatey and smooth.</p>
++          <a href="/shop/house-blend" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy, full-bodied, and low in acidity.</p>
++          <a href="/shop/sumatra" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Guatemala Antigua</h3>
++          <p>Cocoa and spice with a bright finish.</p>
++          <a href="/shop/guatemala" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Decaf Swiss Water</h3>
++          <p>All of the flavor, none of the jitters.</p>
++          <a href="/shop/decaf" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

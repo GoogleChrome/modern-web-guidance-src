@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="simulation.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -151,8 +152,55 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .simulation { margin-top: 56px; padding: 32px; background: #f1ebe5; border: 1px solid #e2d6ca; border-radius: 12px; }
++    .eyebrow { color: #795548; font-size: .75rem; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
++    .simulation h2 { font-size: 1.9rem; line-height: 1.25; margin: 8px 0; }
++    .simulation-intro { max-width: 650px; color: #6d5950; }
++    .simulation-layout { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr); gap: 28px; margin-top: 28px; }
++    .simulation fieldset { border: 0; display: grid; gap: 16px; }
++    .simulation label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 5px; }
++    .simulation select { width: 100%; padding: 11px; border: 1px solid #c6b6a8; border-radius: 5px; background: #fffdf9; color: var(--text); font: inherit; }
++    .simulation button { font: inherit; cursor: pointer; border: 0; }
++    .simulation .btn { width: 100%; margin-top: 20px; }
++    .simulation .cancel { width: 100%; margin-top: 8px; padding: 8px; border: 1px solid #b29c8c; border-radius: 5px; background: transparent; color: var(--primary); }
++    .simulation button:disabled { opacity: .55; cursor: default; }
++    .simulation :focus-visible { outline: 3px solid #b86c16; outline-offset: 3px; }
++    .simulation [hidden] { display: none; }
++    .simulation-note { font-size: .78rem; color: #766257; margin-top: 12px; }
++    .simulation-output { padding: 24px; background: #fffdf9; border-radius: 8px; border: 1px solid #e5dbd1; }
++    .output-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
++    .output-heading h3 { font-size: 1rem; }
++    .status-badge { font-size: .7rem; background: #eee8e1; color: #665347; padding: 4px 9px; border-radius: 20px; white-space: nowrap; }
++    .status-badge[data-state="complete"] { background: #e4eddf; color: #3f6037; }
++    .simulation progress { width: 100%; height: 8px; accent-color: #86603e; display: block; margin: 20px 0 8px; border: 0; border-radius: 10px; overflow: hidden; background: #eee8e1; }
++    .simulation progress::-webkit-progress-bar { background: #eee8e1; }
++    .simulation progress::-webkit-progress-value { background: #86603e; border-radius: 10px; }
++    .simulation progress::-moz-progress-bar { background: #86603e; }
++    .progress-detail { display: flex; justify-content: space-between; font-size: .75rem; color: #766257; gap: 10px; }
++    .empty-result { padding: 34px 15px; text-align: center; }
++    .empty-icon { font-size: 2rem; color: #9a795d; }
++    .empty-result h4 { margin: 8px 0; font-size: 1.05rem; }
++    .empty-result p { color: #766257; font-size: .85rem; max-width: 290px; margin: auto; }
++    .blend { border-top: 1px solid #e9e0d7; padding-top: 16px; margin-top: 16px; }
++    .blend-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
++    .blend-heading h4 { font-size: .95rem; }
++    .blend-score { color: #74603f; font-weight: 700; font-size: .85rem; white-space: nowrap; }
++    .blend-recipe { font-size: .78rem; color: #766257; margin: 5px 0 10px; }
++    .flavor-row { display: grid; grid-template-columns: 70px 1fr 30px; align-items: center; gap: 12px; font-size: .75rem; margin-top: 5px; }
++    .flavor-row meter { width: 100%; height: 10px; }
++    .flavor-row meter::-webkit-meter-optimum-value { background: #a17c58; }
++    .flavor-row meter::-moz-meter-bar { background: #a17c58; }
++    @media (max-width: 700px) {
++      .simulation { padding: 22px 18px; }
++      .simulation-layout { grid-template-columns: 1fr; gap: 22px; }
++      .simulation-output { padding: 18px; }
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 10px 15px; }
++      nav ul li { margin-left: 0; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +242,65 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="simulation" aria-labelledby="simulation-title">
++      <p class="eyebrow">The Daily Grind · Blend Lab</p>
++      <h2 id="simulation-title">Find your perfect balance.</h2>
++      <p class="simulation-intro">Explore thousands of coffee blends and discover a flavor profile made for your palate. A little curiosity, a better cup.</p>
++      <div class="simulation-layout">
++        <form id="simulation-form">
++          <fieldset id="simulation-settings">
++            <legend class="eyebrow">Make it yours</legend>
++            <div>
++              <label for="flavor-target">Your flavor preference</label>
++              <select id="flavor-target" name="target">
++                <option value="balanced">Balanced &amp; smooth</option>
++                <option value="bright">Bright &amp; fruity</option>
++                <option value="bold">Bold &amp; chocolatey</option>
++              </select>
++            </div>
++            <div>
++              <label for="roast-level">Roast level</label>
++              <select id="roast-level" name="roast">
++                <option value="light">Light roast</option>
++                <option value="medium" selected>Medium roast</option>
++                <option value="dark">Dark roast</option>
++              </select>
++            </div>
++            <div>
++              <label for="batch-size">Recipes to explore</label>
++              <select id="batch-size" name="batch">
++                <option value="10000">10,000 blends · Quick taste</option>
++                <option value="100000" selected>100,000 blends · Deep dive</option>
++                <option value="500000">500,000 blends · Full exploration</option>
++                <option value="1000000">1,000,000 blends · The whole bean</option>
++              </select>
++            </div>
++          </fieldset>
++          <button class="btn" id="run-simulation" type="submit">Explore flavor profiles <span aria-hidden="true">↗</span></button>
++          <button class="cancel" id="cancel-simulation" type="button" hidden>Stop simulation</button>
++          <p class="simulation-note">Illustrative estimates using Ethiopian, Colombian, and Brazilian beans. Actual tasting notes will vary.</p>
++          <noscript><p>Enable JavaScript to explore flavor profiles.</p></noscript>
++        </form>
++        <div class="simulation-output">
++          <div class="output-heading">
++            <h3>Your blend discoveries</h3>
++            <span class="status-badge" id="simulation-badge">Ready to explore</span>
++          </div>
++          <progress id="simulation-progress" max="100000" value="0" aria-label="Recipes processed"></progress>
++          <div class="progress-detail"><span id="simulation-count">0 / 100,000 blends</span><span id="simulation-time">0.0s elapsed</span></div>
++          <p id="simulation-status" role="status" class="simulation-note">Choose your preferences, then start exploring.</p>
++          <div id="simulation-results">
++            <div class="empty-result">
++              <div class="empty-icon" aria-hidden="true">♧</div>
++              <h4>A world of flavor awaits.</h4>
++              <p>Your top three blends will appear here, with a breakdown of sweetness, acidity, and body.</p>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

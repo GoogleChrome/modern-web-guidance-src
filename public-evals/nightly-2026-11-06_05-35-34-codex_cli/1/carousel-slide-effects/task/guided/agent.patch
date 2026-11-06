@@ -1,0 +1,308 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -6,13 +6,13 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --primary: #293f35;
++      --secondary: #e9e5dc;
++      --accent: #dcc19a;
++      --text: #333b34;
++      --light: #f8f7f2;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -21,8 +21,9 @@
+     }
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      -webkit-font-smoothing: antialiased;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+@@ -73,9 +74,10 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 350px;
++      height: 43vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -88,39 +90,158 @@
+       padding: 0 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-weight: 400;
++      font-size: clamp(2.5rem, 5vw, 4.5rem);
+       margin-bottom: 1rem;
+     }
+ 
+-    /* Content Sections */
++    /* A native scroll rail remains usable without animation support. */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      margin: 56px auto 32px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    .section-heading {
++      padding: 0 6%;
++      display: flex;
++      justify-content: space-between;
++      align-items: end;
++      gap: 24px;
+     }
+ 
++    .eyebrow {
++      color: #6d7466;
++      text-transform: uppercase;
++      letter-spacing: 0.18em;
++      font-size: 0.68rem;
++      font-weight: 600;
++      margin-bottom: 8px;
++    }
++
++    .section-heading h2 {
++      font: 400 clamp(2rem, 4vw, 2.8rem)/1.2 Georgia, serif;
++    }
++
++    .collection-link {
++      color: var(--primary);
++      text-underline-offset: 6px;
++      font-size: 0.85rem;
++      white-space: nowrap;
++    }
++
++    .carousel-help {
++      margin: 14px 6% 0;
++      color: #62685e;
++      font-size: 0.8rem;
++    }
++
++    .scroller {
++      --card-width: clamp(260px, 28vw, 350px);
++      display: flex;
++      gap: 12px;
++      overflow-x: auto;
++      overscroll-behavior-inline: contain;
++      scroll-snap-type: x mandatory;
++      /* End space lets the first and last products reach the exact center. */
++      padding: 28px max(24px, calc((100% - var(--card-width)) / 2)) 36px;
++      list-style: none;
++      scrollbar-width: thin;
++      scrollbar-color: #879180 #e6e7de;
++    }
++
++    .scroller > li {
++      flex: 0 0 var(--card-width);
++      min-width: 0;
++      scroll-snap-align: center;
++    }
++
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      height: 100%;
++      background: #fff;
++      border: 1px solid #e3e5dc;
++      border-radius: 10px;
++      overflow: hidden;
+     }
+ 
++    .product-image {
++      position: relative;
++      background: #e9e5dc;
++      aspect-ratio: 1.3;
++    }
++
++    .product-image img {
++      width: 100%;
++      height: 100%;
++      display: block;
++      object-fit: cover;
++    }
++
++    .product-badge {
++      position: absolute;
++      top: 16px;
++      left: 16px;
++      background: #f8f7f2;
++      color: var(--primary);
++      border-radius: 3px;
++      padding: 4px 9px;
++      font-size: 0.62rem;
++      letter-spacing: 0.1em;
++      text-transform: uppercase;
++    }
++
++    .card-content { padding: 22px; }
++
++    .product-title {
++      display: flex;
++      align-items: baseline;
++      justify-content: space-between;
++      gap: 12px;
++      margin-bottom: 9px;
++    }
++
+     .card h3 {
+-      margin-bottom: 10px;
++      font: 400 1.3rem/1.3 Georgia, serif;
+       color: var(--primary);
+     }
+ 
++    .price { font-size: 0.85rem; white-space: nowrap; }
++    .card p { color: #646b60; font-size: 0.85rem; min-height: 2.8em; }
++    .card .btn { font-size: 0.8rem; width: 100%; text-align: center; }
++
++    :focus-visible {
++      outline: 3px solid #9b632a;
++      outline-offset: 5px;
++    }
++
++    .scroller:focus-visible { outline-offset: -4px; }
++
++    @keyframes center-card {
++      0%, 100% { scale: 0.84; }
++      50% { scale: 1; }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        .scroller > li {
++          animation: center-card auto linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
++    @media (max-width: 640px) {
++      nav { flex-wrap: wrap; gap: 12px; padding-block: 16px; }
++      .logo { font-size: 1.1rem; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      nav a { font-size: 0.75rem; }
++      .section-heading { align-items: start; flex-direction: column; gap: 16px; }
++      .container { margin-top: 36px; }
++      .hero { min-height: 320px; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -174,27 +295,71 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="favorites-heading">
++      <div class="section-heading">
++        <div>
++          <p class="eyebrow">Roasted with care. Made for you.</p>
++          <h2 id="favorites-heading">Seasonal Favorites</h2>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <a href="/menu" class="collection-link">Explore the full menu <span aria-hidden="true">↗</span></a>
+       </div>
++      <p class="carousel-help" id="carousel-help">Find your daily ritual. Swipe to explore, or focus the collection and use the arrow keys.</p>
++      <ul class="scroller" tabindex="0" aria-labelledby="favorites-heading" aria-describedby="carousel-help">
++        <li>
++          <article class="card">
++            <div class="product-image">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="A glass of iced latte with swirls of milk" width="700" height="538" loading="lazy">
++              <span class="product-badge">Seasonal favorite</span>
++            </div>
++            <div class="card-content">
++              <div class="product-title"><h3>Maple Oat Latte</h3><span class="price">$6.50</span></div>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn" aria-label="View Maple Oat Latte details">View Details <span aria-hidden="true">↗</span></a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="card">
++            <div class="product-image">
++              <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="Freshly pulled espresso in a ceramic cup" width="700" height="538" loading="lazy">
++              <span class="product-badge">The classic</span>
++            </div>
++            <div class="card-content">
++              <div class="product-title"><h3>Dark Roast Espresso</h3><span class="price">$3.50</span></div>
++              <p>Bold, smoky, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn" aria-label="View Dark Roast Espresso details">View Details <span aria-hidden="true">↗</span></a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="card">
++            <div class="product-image">
++              <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="Cold coffee served over ice" width="700" height="538" loading="lazy">
++              <span class="product-badge">Slow &amp; smooth</span>
++            </div>
++            <div class="card-content">
++              <div class="product-title"><h3>Cold Brew</h3><span class="price">$5.00</span></div>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn" aria-label="View Cold Brew details">View Details <span aria-hidden="true">↗</span></a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="card">
++            <div class="product-image">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="A warm latte finished with delicate latte art" width="700" height="538" loading="lazy">
++              <span class="product-badge">A little comfort</span>
++            </div>
++            <div class="card-content">
++              <div class="product-title"><h3>Vanilla Latte</h3><span class="price">$5.50</span></div>
++              <p>Rich espresso, silky steamed milk, and real vanilla.</p>
++              <a href="/menu/seasonal" class="btn" aria-label="View Vanilla Latte details">View Details <span aria-hidden="true">↗</span></a>
++            </div>
++          </article>
++        </li>
++      </ul>
+     </section>
+   </main>
+ 
+   <footer>

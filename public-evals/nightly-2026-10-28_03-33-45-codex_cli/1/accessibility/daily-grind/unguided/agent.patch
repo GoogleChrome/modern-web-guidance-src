@@ -1,0 +1,262 @@
+diff --git a/index.html b/index.html
+index 66c9173..09b1c0d 100644
+--- a/index.html
++++ b/index.html
+@@ -27,17 +27,50 @@
+       background-color: var(--light);
+     }
+ 
++    a:focus-visible,
++    [tabindex="-1"]:focus {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++      box-shadow: 0 0 0 3px white;
++    }
++
++    .skip-link {
++      position: absolute;
++      top: 0.5rem;
++      left: 0.5rem;
++      z-index: 1001;
++      padding: 0.75rem 1rem;
++      background: white;
++      color: var(--text);
++      transform: translateY(-200%);
++    }
++
++    .skip-link:focus {
++      transform: translateY(0);
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     /* Navigation */
+-    nav {
++    .primary-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      flex-wrap: wrap;
++      gap: 1rem;
+     }
+ 
+     .logo {
+@@ -46,27 +79,29 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .primary-nav ul {
+       display: flex;
+       list-style: none;
++      flex-wrap: wrap;
++      gap: 0.25rem 1.25rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
++    .primary-nav a {
++      display: inline-flex;
++      align-items: center;
++      min-height: 44px;
++      padding: 0.5rem 0;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .primary-nav a:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .primary-nav .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -74,8 +109,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,11 +120,11 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 6vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
+@@ -102,9 +137,10 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+       gap: 20px;
+       margin-top: 20px;
++      list-style: none;
+     }
+ 
+     .card {
+@@ -142,68 +178,89 @@
+       margin-top: 40px;
+     }
+ 
+-    .footer-links {
++    .footer-links ul {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.5rem 1.25rem;
++      list-style: none;
+       margin-bottom: 20px;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      display: inline-flex;
++      align-items: center;
++      min-height: 44px;
++      padding: 0.5rem 0;
+       color: var(--text);
+-      text-decoration: none;
++      text-decoration: underline;
++      text-underline-offset: 0.2em;
+       font-size: 0.85rem;
+     }
++
++    @media (prefers-reduced-motion: reduce) {
++      *, *::before, *::after {
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <a href="#main-content" class="skip-link">Skip to main content</a>
++
++  <header>
++    <nav class="primary-nav" aria-label="Primary">
++      <div class="logo">THE DAILY GRIND</div>
++      <ul role="list">
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </nav>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++  <main id="main-content" tabindex="-1">
++    <section class="hero" aria-labelledby="hero-heading">
++      <h1 id="hero-heading">Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </section>
++
++    <section class="container" aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <ul class="grid" role="list">
++        <li class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> for Maple Oat Latte</span></a>
++        </li>
++        <li class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> for Dark Roast Espresso</span></a>
++        </li>
++        <li class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> for Cold Brew</span></a>
++        </li>
++      </ul>
+     </section>
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++    <nav class="footer-links" aria-label="Footer">
++      <ul role="list">
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy Policy</a></li>
++      </ul>
++    </nav>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 

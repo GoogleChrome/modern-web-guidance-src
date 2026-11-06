@@ -1,0 +1,189 @@
+diff --git a/index.html b/index.html
+index 66c9173..bb06e55 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,48 @@
+       color: var(--accent);
+     }
+ 
++    .nav-right {
++      display: flex;
++      align-items: center;
++      gap: 20px;
++    }
++
++    .lang-picker {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.85rem;
++    }
++
++    .lang-picker select {
++      font: inherit;
++      padding: 4px 8px;
++      border-radius: 4px;
++      border: 1px solid var(--accent);
++      background: var(--primary);
++      color: white;
++    }
++
++    .lang-picker select:disabled {
++      opacity: 0.5;
++    }
++
++    #translate-status {
++      position: fixed;
++      bottom: 16px;
++      left: 50%;
++      transform: translateX(-50%);
++      background: var(--primary);
++      color: white;
++      padding: 8px 16px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++    }
++
++    #translate-status:empty {
++      display: none;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -159,6 +201,7 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
++    <div class="nav-right">
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -166,7 +209,27 @@
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
++    <div class="lang-picker" translate="no">
++      <label for="lang-select">🌐 Language</label>
++      <select id="lang-select">
++        <option value="en" selected>English</option>
++        <option value="es">Español</option>
++        <option value="fr">Français</option>
++        <option value="de">Deutsch</option>
++        <option value="it">Italiano</option>
++        <option value="pt">Português</option>
++        <option value="nl">Nederlands</option>
++        <option value="ja">日本語</option>
++        <option value="ko">한국어</option>
++        <option value="zh">中文</option>
++        <option value="ru">Русский</option>
++        <option value="ar">العربية</option>
++        <option value="hi">हिन्दी</option>
++      </select>
++    </div>
++    </div>
+   </nav>
++  <div id="translate-status" role="status" aria-live="polite" translate="no"></div>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -207,6 +270,99 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const SOURCE = 'en';
++      const select = document.getElementById('lang-select');
++      const status = document.getElementById('translate-status');
++      const originals = new Map(); // text node -> original text
++      const originalTitle = document.title;
++      const RTL = new Set(['ar', 'he']);
++
++      if (!('Translator' in self)) {
++        select.disabled = true;
++        select.title = 'Client-side translation is currently unsupported in this browser';
++        status.textContent = 'Client-side translation is currently unsupported in this browser.';
++        setTimeout(() => (status.textContent = ''), 6000);
++        return;
++      }
++
++      function textNodes() {
++        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
++          acceptNode(n) {
++            if (!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
++            const el = n.parentElement;
++            if (!el || el.closest('script, style, [translate="no"]')) return NodeFilter.FILTER_REJECT;
++            return NodeFilter.FILTER_ACCEPT;
++          },
++        });
++        const nodes = [];
++        while (walker.nextNode()) nodes.push(walker.currentNode);
++        return nodes;
++      }
++
++      function setLang(lang) {
++        document.documentElement.lang = lang;
++        document.documentElement.dir = RTL.has(lang) ? 'rtl' : 'ltr';
++      }
++
++      function restore() {
++        for (const [node, text] of originals) node.nodeValue = text;
++        originals.clear();
++        document.title = originalTitle;
++        setLang(SOURCE);
++      }
++
++      let current = 0;
++      select.addEventListener('change', async () => {
++        const token = ++current;
++        const target = select.value;
++        if (target === SOURCE) {
++          restore();
++          status.textContent = '';
++          return;
++        }
++
++        const options = { sourceLanguage: SOURCE, targetLanguage: target };
++        try {
++          const availability = await Translator.availability(options);
++          if (availability === 'unavailable') {
++            status.textContent = 'This language is not available on your device.';
++            select.value = document.documentElement.lang;
++            return;
++          }
++          status.textContent = 'Preparing translation…';
++          const translator = await Translator.create({
++            ...options,
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                status.textContent = `Downloading language pack… ${Math.round(e.loaded * 100)}%`;
++              });
++            },
++          });
++
++          status.textContent = 'Translating…';
++          // Always translate from the original English text.
++          if (originals.size) for (const [n, t] of originals) n.nodeValue = t;
++          const nodes = originals.size ? [...originals.keys()] : textNodes();
++          const results = await Promise.all(nodes.map((n) => translator.translate(originals.get(n) ?? n.nodeValue)));
++          if (token !== current) return; // superseded by a newer selection
++          nodes.forEach((n, i) => {
++            if (!originals.has(n)) originals.set(n, n.nodeValue);
++            n.nodeValue = results[i];
++          });
++          document.title = await translator.translate(originalTitle);
++          setLang(target);
++          status.textContent = '';
++          translator.destroy?.();
++        } catch (err) {
++          console.error(err);
++          status.textContent = 'Translation failed. Please try again.';
++          select.value = document.documentElement.lang;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

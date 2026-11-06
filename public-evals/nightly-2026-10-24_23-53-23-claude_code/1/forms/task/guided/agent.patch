@@ -1,0 +1,597 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,8 +3,10 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy" content="base-uri 'none'; object-src 'none'; form-action 'self'">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -151,8 +153,280 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Rewards registration */
++    .rewards {
++      background: white;
++      border-top: 4px solid var(--accent);
++      margin-top: 40px;
++      padding: 48px 20px;
++    }
++
++    .rewards-inner {
++      max-width: 640px;
++      margin: 0 auto;
++    }
++
++    .rewards h2 {
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .rewards-intro {
++      text-align: center;
++      margin: 8px 0 24px;
++    }
++
++    .progress {
++      display: flex;
++      gap: 8px;
++      list-style: none;
++      margin-bottom: 24px;
++    }
++
++    .progress li {
++      flex: 1;
++      border-top: 4px solid var(--secondary);
++      padding-top: 6px;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    .progress li[aria-current="step"] {
++      border-top-color: var(--primary);
++      color: var(--primary);
++      font-weight: 700;
++    }
++
++    .progress li.done {
++      border-top-color: var(--primary);
++    }
++
++    .step {
++      border: 0;
++      min-width: 0;
++    }
++
++    .js .step[hidden] {
++      display: none;
++    }
++
++    .step h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++      font-size: 1.25rem;
++    }
++
++    .step h3:focus {
++      outline: none;
++    }
++
++    .step-note {
++      font-size: 0.9rem;
++      margin-bottom: 16px;
++    }
++
++    .field {
++      margin-bottom: 18px;
++    }
++
++    .field label,
++    .field .label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 2px;
++    }
++
++    .optional {
++      font-weight: 400;
++      color: #5d4037;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-bottom: 4px;
++    }
++
++    .field input:not([type="checkbox"]),
++    .field select {
++      width: 100%;
++      font: inherit;
++      padding: 10px 12px;
++      min-height: 44px;
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .password-wrap {
++      display: flex;
++      gap: 8px;
++    }
++
++    .password-wrap input {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .toggle-pw {
++      font: inherit;
++      min-height: 44px;
++      padding: 0 14px;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .check {
++      display: flex;
++      gap: 10px;
++      align-items: flex-start;
++    }
++
++    .check input {
++      width: 1.4rem;
++      height: 1.4rem;
++      margin-top: 2px;
++      flex: none;
++      accent-color: var(--primary);
++    }
++
++    .check label {
++      font-weight: 400;
++      margin: 0;
++    }
++
++    .field input[aria-invalid="true"],
++    .field select[aria-invalid="true"],
++    .field input:user-invalid {
++      border-color: #b71c1c;
++      background: #fdecea;
++    }
++
++    .field input:user-valid:not(:placeholder-shown) {
++      border-color: #2e7d32;
++    }
++
++    .error-msg {
++      display: none;
++      color: #b71c1c;
++      font-size: 0.875rem;
++      margin-top: 4px;
++    }
++
++    .error-msg:not(:empty) {
++      display: block;
++    }
++
++    .error-msg:not(:empty)::before {
++      content: "\26A0\FE0E ";
++    }
++
++    .summary {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px;
++      margin-bottom: 18px;
++    }
++
++    .summary div {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 4px 12px;
++      padding: 4px 0;
++    }
++
++    .summary dt {
++      font-weight: 600;
++      min-width: 9rem;
++    }
++
++    .summary dd {
++      overflow-wrap: anywhere;
++    }
++
++    .form-actions {
++      display: flex;
++      gap: 12px;
++      justify-content: space-between;
++      margin-top: 8px;
++    }
++
++    .form-actions button {
++      font: inherit;
++      font-weight: 600;
++      min-height: 44px;
++      padding: 0 24px;
++      border-radius: 5px;
++      border: 2px solid var(--primary);
++      cursor: pointer;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++      margin-left: auto;
++    }
++
++    .btn-primary:hover {
++      background: #3e2723;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++    }
++
++    .form-actions button[disabled] {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .rewards :focus-visible {
++      outline: 3px solid #1a73e8;
++      outline-offset: 2px;
++    }
++
++    .form-status {
++      margin-bottom: 16px;
++      color: #b71c1c;
++      font-weight: 600;
++    }
++
++    .hp {
++      position: absolute;
++      left: -10000px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .step:not([hidden]) {
++        animation: step-in 0.25s ease-out;
++      }
++    }
++
++    @keyframes step-in {
++      from {
++        opacity: 0;
++        transform: translateY(6px);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +470,135 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="rewards" aria-labelledby="rewards-title">
++    <div class="rewards-inner">
++      <h2 id="rewards-title">Join Daily Grind Rewards</h2>
++      <p class="rewards-intro">Earn a star with every cup and get a free drink on your birthday. It takes about a minute.</p>
++
++      <form id="rewards-form" method="post" action="/rewards/register" autocomplete="on" novalidate>
++        <!-- The server should render a per-session anti-CSRF token here and re-validate every field on its side. -->
++        <input type="hidden" name="csrf_token" value="">
++        <!-- Honeypot for simple bots; hidden from people and assistive tech. -->
++        <div class="hp" aria-hidden="true">
++          <label for="website">Leave this field empty</label>
++          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
++        </div>
++
++        <ol class="progress" aria-label="Registration progress">
++          <li data-step-label>1. Account</li>
++          <li data-step-label>2. Preferences</li>
++          <li data-step-label>3. Review</li>
++        </ol>
++        <p class="visually-hidden" role="status" id="step-status"></p>
++        <p class="form-status" id="form-status" role="alert" tabindex="-1"></p>
++
++        <fieldset class="step" data-step>
++          <legend class="visually-hidden">Step 1 of 3: Create your account</legend>
++          <h3 tabindex="-1">Create your account</h3>
++          <p class="step-note">Fields marked * are required.</p>
++
++          <div class="field">
++            <label for="name">Full name *</label>
++            <input type="text" id="name" name="name" autocomplete="name" required maxlength="100"
++              spellcheck="false" enterkeyhint="next" aria-describedby="name-error">
++            <div class="error-msg" id="name-error"></div>
++          </div>
++
++          <div class="field">
++            <label for="email">Email address *</label>
++            <span class="hint" id="email-hint">We'll send your confirmation here. Example: you@example.com</span>
++            <input type="email" id="email" name="email" autocomplete="username email" required maxlength="254"
++              spellcheck="false" enterkeyhint="next" aria-describedby="email-hint email-error">
++            <div class="error-msg" id="email-error"></div>
++          </div>
++
++          <div class="field">
++            <label for="password">Password *</label>
++            <span class="hint" id="password-hint">At least 10 characters. A passphrase or your browser's suggested password works well.</span>
++            <div class="password-wrap">
++              <input type="password" id="password" name="password" autocomplete="new-password" required
++                minlength="10" maxlength="128" enterkeyhint="next" aria-describedby="password-hint password-error">
++              <button type="button" class="toggle-pw" aria-controls="password" aria-pressed="false">Show<span class="visually-hidden"> password</span></button>
++            </div>
++            <div class="error-msg" id="password-error"></div>
++          </div>
++        </fieldset>
++
++        <fieldset class="step" data-step hidden>
++          <legend class="visually-hidden">Step 2 of 3: Your preferences</legend>
++          <h3 tabindex="-1">Tell us what you like</h3>
++          <p class="step-note">Everything here is optional except your home store.</p>
++
++          <div class="field">
++            <label for="store">Home store *</label>
++            <select id="store" name="store" required aria-describedby="store-error">
++              <option value="">Choose a store</option>
++              <option value="downtown">Downtown</option>
++              <option value="riverside">Riverside</option>
++              <option value="university">University District</option>
++              <option value="airport">Airport</option>
++            </select>
++            <div class="error-msg" id="store-error"></div>
++          </div>
++
++          <div class="field">
++            <label for="drink">Favorite drink <span class="optional">(optional)</span></label>
++            <select id="drink" name="drink" autocomplete="off">
++              <option value="">No favorite yet</option>
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++            </select>
++          </div>
++
++          <div class="field">
++            <label for="phone">Mobile number <span class="optional">(optional)</span></label>
++            <span class="hint" id="phone-hint">For order-ready text messages only.</span>
++            <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="20"
++              pattern="[+]?[0-9 ()\-.]{7,20}" enterkeyhint="next" aria-describedby="phone-hint phone-error">
++            <div class="error-msg" id="phone-error"></div>
++          </div>
++
++          <div class="field">
++            <label for="bday">Birthday <span class="optional">(optional)</span></label>
++            <span class="hint" id="bday-hint">Used for your birthday treat. We never show it to anyone.</span>
++            <input type="date" id="bday" name="bday" autocomplete="bday" aria-describedby="bday-hint bday-error">
++            <div class="error-msg" id="bday-error"></div>
++          </div>
++
++          <div class="field check">
++            <input type="checkbox" id="offers" name="offers" value="yes">
++            <label for="offers">Send me occasional offers and seasonal menu news by email.</label>
++          </div>
++        </fieldset>
++
++        <fieldset class="step" data-step hidden>
++          <legend class="visually-hidden">Step 3 of 3: Review and join</legend>
++          <h3 tabindex="-1">Review and join</h3>
++          <p class="step-note">Check your details, then create your account.</p>
++
++          <dl class="summary" id="summary"></dl>
++
++          <div class="field">
++            <div class="check">
++              <input type="checkbox" id="terms" name="terms" value="yes" required aria-describedby="terms-error">
++              <label for="terms">I agree to the <a href="/rewards/terms">Rewards Terms</a> and have read the <a href="/privacy-policy">Privacy Policy</a>. *</label>
++            </div>
++            <div class="error-msg" id="terms-error"></div>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <button type="button" class="btn-secondary" id="back" hidden>Back</button>
++          <button type="button" class="btn-primary" id="next">Next: Preferences</button>
++          <button type="submit" class="btn-primary" id="submit" hidden>Create rewards account</button>
++        </div>
++      </form>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +607,165 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('rewards-form');
++      const steps = [...form.querySelectorAll('[data-step]')];
++      const labels = [...form.querySelectorAll('[data-step-label]')];
++      const back = document.getElementById('back');
++      const next = document.getElementById('next');
++      const submit = document.getElementById('submit');
++      const status = document.getElementById('step-status');
++      const formStatus = document.getElementById('form-status');
++      const summary = document.getElementById('summary');
++      const nextText = ['Next: Preferences', 'Next: Review', ''];
++      let current = 0;
++
++      document.documentElement.classList.add('js');
++
++      const errorFor = (field) => document.getElementById(`${field.id}-error`);
++
++      function validateField(field) {
++        const message = field.validity.valid ? '' : friendlyMessage(field);
++        const box = errorFor(field);
++        if (box) box.textContent = message;
++        if (message) field.setAttribute('aria-invalid', 'true');
++        else field.removeAttribute('aria-invalid');
++        return !message;
++      }
++
++      function friendlyMessage(field) {
++        const v = field.validity;
++        const label = (form.querySelector(`label[for="${field.id}"]`)?.firstChild?.textContent || 'This field').replace(/\s*\*$/, '').trim();
++        if (v.valueMissing) return field.type === 'checkbox' ? 'Please tick the box to continue.' : `${label} is required.`;
++        if (v.typeMismatch) return 'Enter a valid email address, like you@example.com.';
++        if (v.tooShort) return `Use at least ${field.minLength} characters (you have ${field.value.length}).`;
++        if (v.patternMismatch) return 'Enter a valid phone number, for example +1 555 123 4567.';
++        return field.validationMessage;
++      }
++
++      function validateStep(index) {
++        const fields = [...steps[index].querySelectorAll('input, select')].filter((f) => f.willValidate);
++        const invalid = fields.filter((f) => !validateField(f));
++        if (invalid.length) {
++          formStatus.textContent = `Please fix ${invalid.length} ${invalid.length === 1 ? 'field' : 'fields'} before continuing.`;
++          invalid[0].focus();
++          return false;
++        }
++        formStatus.textContent = '';
++        return true;
++      }
++
++      function render() {
++        steps.forEach((step, i) => { step.hidden = i !== current; });
++        labels.forEach((li, i) => {
++          if (i === current) li.setAttribute('aria-current', 'step');
++          else li.removeAttribute('aria-current');
++          li.classList.toggle('done', i < current);
++        });
++        back.hidden = current === 0;
++        next.hidden = current === steps.length - 1;
++        submit.hidden = current !== steps.length - 1;
++        next.textContent = nextText[current];
++        status.textContent = `Step ${current + 1} of ${steps.length}`;
++        if (current === steps.length - 1) buildSummary();
++      }
++
++      function go(index) {
++        current = index;
++        render();
++        const heading = steps[current].querySelector('h3');
++        heading.focus();
++        heading.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
++      }
++
++      function buildSummary() {
++        const data = new FormData(form);
++        const storeText = form.store.selectedOptions[0]?.textContent;
++        const drinkText = form.drink.selectedOptions[0]?.value ? form.drink.selectedOptions[0].textContent : '';
++        const rows = [
++          ['Name', data.get('name')],
++          ['Email', data.get('email')],
++          ['Password', '•'.repeat(8) + ' (hidden)'],
++          ['Home store', storeText],
++          ['Favorite drink', drinkText],
++          ['Mobile number', data.get('phone')],
++          ['Birthday', data.get('bday')],
++          ['Offers by email', data.get('offers') ? 'Yes' : 'No'],
++        ];
++        summary.replaceChildren();
++        for (const [term, value] of rows) {
++          const row = document.createElement('div');
++          const dt = document.createElement('dt');
++          const dd = document.createElement('dd');
++          dt.textContent = term;
++          dd.textContent = value || 'Not provided';
++          row.append(dt, dd);
++          summary.append(row);
++        }
++      }
++
++      next.addEventListener('click', () => {
++        if (validateStep(current)) go(current + 1);
++      });
++      back.addEventListener('click', () => go(current - 1));
++
++      // Enter in a text field advances the step instead of submitting early.
++      form.addEventListener('keydown', (e) => {
++        if (e.key === 'Enter' && e.target.matches('input:not([type="checkbox"])') && current < steps.length - 1) {
++          e.preventDefault();
++          next.click();
++        }
++      });
++
++      // Validate a field once the user leaves it; clear errors as soon as they are fixed.
++      form.addEventListener('focusout', (e) => {
++        if (e.target.matches('input, select') && e.target.willValidate && (e.target.value || e.target.dataset.touched)) {
++          e.target.dataset.touched = '1';
++          validateField(e.target);
++        }
++      });
++      form.addEventListener('input', (e) => {
++        if (e.target.dataset.touched || e.target.getAttribute('aria-invalid')) validateField(e.target);
++      });
++
++      const toggle = form.querySelector('.toggle-pw');
++      toggle.addEventListener('click', () => {
++        const show = form.password.type === 'password';
++        form.password.type = show ? 'text' : 'password';
++        toggle.setAttribute('aria-pressed', String(show));
++        toggle.firstChild.textContent = show ? 'Hide' : 'Show';
++      });
++
++      form.addEventListener('submit', (e) => {
++        // Re-check every step so a skipped or tampered step can't slip through.
++        for (let i = 0; i < steps.length; i++) {
++          if (!validateStep(i)) {
++            e.preventDefault();
++            if (i !== current) { current = i; render(); steps[i].querySelector('input, select').focus(); }
++            return;
++          }
++        }
++        if (form.bday.value && form.bday.valueAsDate > new Date()) {
++          e.preventDefault();
++          current = 1; render();
++          document.getElementById('bday-error').textContent = 'Birthday can’t be in the future.';
++          form.bday.setAttribute('aria-invalid', 'true');
++          form.bday.focus();
++          return;
++        }
++        submit.disabled = true; // prevent double submission
++        submit.textContent = 'Creating account…';
++      });
++
++      // Restore the button if the page is restored from the back/forward cache.
++      addEventListener('pageshow', () => { submit.disabled = false; submit.textContent = 'Create rewards account'; });
++
++      render();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

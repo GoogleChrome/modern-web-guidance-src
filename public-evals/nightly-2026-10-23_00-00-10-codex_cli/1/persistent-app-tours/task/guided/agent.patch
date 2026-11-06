@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,50 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #feature {
++      anchor-name: --rewards;
++    }
++
++    #tour-step {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      width: min(300px, calc(100vw - 24px));
++      padding: 20px;
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
++      z-index: 1001;
++    }
++
++    #tour-step[hidden] {
++      display: none;
++    }
++
++    #tour-step h2 {
++      font-size: 1.15rem;
++      margin-bottom: 8px;
++    }
++
++    #tour-step .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    @supports (anchor-name: --rewards) and (top: anchor(bottom)) {
++      #tour-step {
++        position-anchor: --rewards;
++        top: calc(anchor(bottom) + 14px);
++        left: clamp(12px, calc(anchor(right) - 300px), max(12px, calc(100vw - 312px)));
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +203,20 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature" aria-describedby="tour-message">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title" hidden>
++    <h2 id="tour-title">Make every cup count</h2>
++    <p id="tour-message">Earn points with every purchase and turn your daily coffee into rewards.</p>
++    <button type="button" class="btn" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +254,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const rewardsLink = document.getElementById('feature');
++    const tourStep = document.getElementById('tour-step');
++    const closeTour = tourStep.querySelector('button');
++    const hasPopover = 'popover' in HTMLElement.prototype;
++    const hasAnchoring = CSS.supports('anchor-name: --rewards') && CSS.supports('top: anchor(bottom)');
++    let tourOpen = true;
++
++    // Manual popovers stay open on outside clicks and Escape.
++    tourStep.hidden = false;
++    if (hasPopover) tourStep.showPopover();
++
++    // Follow scrolling, resizing, and layout shifts in browsers without CSS anchors.
++    if (!hasAnchoring) {
++      const trackRewards = () => {
++        if (!tourOpen) return;
++        const target = rewardsLink.getBoundingClientRect();
++        const width = tourStep.getBoundingClientRect().width;
++        tourStep.style.top = `${target.bottom + 14}px`;
++        tourStep.style.left = `${Math.max(12, Math.min(target.right - width, document.documentElement.clientWidth - width - 12))}px`;
++        requestAnimationFrame(trackRewards);
++      };
++      trackRewards();
++    }
++
++    closeTour.focus({ preventScroll: true });
++
++    const preventTourNavigation = (event) => {
++      if (tourOpen) event.preventDefault();
++    };
++    rewardsLink.addEventListener('click', preventTourNavigation);
++    rewardsLink.addEventListener('auxclick', preventTourNavigation);
++
++    closeTour.addEventListener('click', () => {
++      tourOpen = false;
++      if (!hasPopover) tourStep.hidden = true;
++      rewardsLink.removeAttribute('aria-describedby');
++      rewardsLink.focus({ preventScroll: true });
++    });
++  </script>
+ </body>
+ 
+ </html>

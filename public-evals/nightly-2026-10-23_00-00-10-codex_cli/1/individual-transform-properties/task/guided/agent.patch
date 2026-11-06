@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,67 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .seasonal-promo {
++      display: grid;
++      place-items: center;
++      min-height: 160px;
++    }
++
++    .target {
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      width: 104px;
++      height: 104px;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      text-align: center;
++      text-decoration: none;
++      font-size: 0.8rem;
++      font-weight: 700;
++      line-height: 1.4;
++      box-shadow: 0 4px 10px rgb(78 52 46 / 18%);
++      /* Independent properties keep motion and hover scaling from competing.
++         Identity values establish a stable stacking context before hover. */
++      translate: 0 0;
++      rotate: 0deg;
++      scale: 1;
++      animation: promo-spin 12s linear infinite,
++        promo-slide 3s ease-in-out infinite alternate;
++      transition: scale 250ms ease;
++    }
++
++    .target:hover,
++    .target:focus-visible {
++      scale: 1.12;
++    }
++
++    .target:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 5px;
++    }
++
++    @keyframes promo-spin {
++      to { rotate: 360deg; }
++    }
++
++    @keyframes promo-slide {
++      from { translate: -24px 0; }
++      to { translate: 24px 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .target {
++        animation: none;
++        transition: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,8 +235,14 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="seasonal-promo">
++        <a href="/menu/seasonal" class="target" aria-label="Explore our featured seasonal favorites">
++          <span>FEATURED</span>
++          <span>Seasonal pick</span>
++        </a>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

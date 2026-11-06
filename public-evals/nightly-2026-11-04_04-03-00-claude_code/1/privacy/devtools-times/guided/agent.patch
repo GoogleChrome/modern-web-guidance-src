@@ -1,0 +1,488 @@
+diff --git a/src/assets/fonts/grenze-500-latin-ext.woff2 b/src/assets/fonts/grenze-500-latin-ext.woff2
+new file mode 100644
+index 0000000..7a18f1d
+Binary files /dev/null and b/src/assets/fonts/grenze-500-latin-ext.woff2 differ
+diff --git a/src/assets/fonts/grenze-500-latin.woff2 b/src/assets/fonts/grenze-500-latin.woff2
+new file mode 100644
+index 0000000..37fde00
+Binary files /dev/null and b/src/assets/fonts/grenze-500-latin.woff2 differ
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..eb76b6d 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -98,7 +98,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a href=`${baseUrl}legal/privacy#your-choices` class="hover:underline">Your Privacy Choices</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..5ef5c1f 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,5 +1,7 @@
+ import React, { useState } from 'react';
+ 
++const PRIVACY_POLICY_URL = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}legal/privacy#accounts`;
++
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+@@ -19,6 +21,9 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Send only what is needed to authenticate: no device, location or
++        // tracking identifiers. Cookies are never sent to the auth service.
++        credentials: 'omit',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -30,7 +35,11 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        // Don't keep the password in memory longer than needed. If a session
++        // token is introduced, have the server set it as a Secure; HttpOnly;
++        // SameSite=Lax cookie. Never put tokens in localStorage, where every
++        // script on the page (including third parties) can read them.
++        setPassword('');
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -42,20 +51,21 @@ export default function SignInForm() {
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
++
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+         <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      {/* method="post" keeps credentials out of the URL (history, logs, Referer) if the form is submitted before hydration. */}
++      <form method="post" onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,20 +73,29 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            enterKeyHint="next"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
++          <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+           </label>
+           <input
+             type="password"
+-            id="password"
++            id="current-password"
++            name="current-password"
++            autoComplete="current-password"
++            enterKeyHint="done"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -87,12 +106,21 @@ export default function SignInForm() {
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
++
++        <p className="text-xs text-gray-500">
++          Your username and password are sent over an encrypted connection to our sign-in service and used
++          only to sign you in. Ads and analytics are not loaded on this page.{' '}
++          <a href={PRIVACY_POLICY_URL} className="underline hover:text-gray-700">
++            How we handle account data
++          </a>
++        </p>
+       </form>
+     </div>
+   );
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..4782c30 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,5 +1,7 @@
+ import React, { useState } from 'react';
+ 
++const PRIVACY_POLICY_URL = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}legal/privacy#accounts`;
++
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+@@ -19,6 +21,9 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Data minimization: an account needs only a username and password.
++        // Cookies are never sent to the registration service.
++        credentials: 'omit',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -43,20 +48,21 @@ export default function SignUpForm() {
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
++
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+         <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      {/* method="post" keeps credentials out of the URL (history, logs, Referer) if the form is submitted before hydration. */}
++      <form method="post" onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,27 +70,46 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            enterKeyHint="next"
++            aria-describedby="username-help"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="username-help" className="text-xs text-gray-500 mt-1">
++            This is the only identifier we ask for: no email, real name or phone number. It doesn&rsquo;t
++            need to reveal who you are.
++          </p>
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
++          <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+           </label>
+           <input
+             type="password"
+-            id="password"
++            id="new-password"
++            name="new-password"
++            autoComplete="new-password"
++            enterKeyHint="done"
++            minLength={8}
++            pattern="(?=.*\d).{8,}"
++            title="At least 8 characters, including a number."
++            aria-describedby="password-help"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="password-help" className="text-xs text-gray-500 mt-1">
++            Must be at least 8 characters and contain a number. Let your browser or password manager
++            suggest a strong, unique one.
+           </p>
+         </div>
+ 
+@@ -98,6 +123,14 @@ export default function SignUpForm() {
+         >
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
++
++        <p className="text-xs text-gray-500">
++          We use your username and password only to create and secure your account. They are never shared
++          with advertisers or analytics providers, and neither runs on this page.{' '}
++          <a href={PRIVACY_POLICY_URL} className="underline hover:text-gray-700">
++            How we handle account data
++          </a>
++        </p>
+       </form>
+     </div>
+   );
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..12573b5 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,37 +8,60 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  /**
++   * Set on pages that handle credentials or other sensitive input (sign-in,
++   * sign-up, account pages). Third-party analytics and ad slots are not
++   * loaded there, so no vendor script runs alongside password fields.
++   */
++  sensitive?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, sensitive = false } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <!-- Baseline referrer policy (also sent as an HTTP header by the middleware). -->
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    {
++      /*
++       * Third-party analytics: records the tag and text of clicked links and
++       * buttons (elements with data-skip-tracking are excluded). It is not
++       * loaded on sensitive pages and gets no Referer header, so the vendor
++       * cannot see which article or URL the reader is on. No SRI hash because
++       * the vendor updates this file in place and does not serve CORS headers.
++       */
++      !sensitive && (
++        <script
++          is:inline
++          defer
++          src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"
++          referrerpolicy="no-referrer"
++        ></script>
++      )
++    }
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    {
++      /*
++       * Sensitive pages opt out of client-side routing. Without the router
++       * Astro performs a full page load when navigating there, so scripts
++       * started on earlier pages (e.g. the analytics click listener) do not
++       * persist into the sign-in/sign-up document.
++       */
++      !sensitive && <ClientRouter />
++    }
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      {!sensitive && <AdSlotFireplace client:load />}
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..d5c144b 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,6 +1,34 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++/**
++ * Privacy-preserving response headers applied to every server-rendered
++ * response.
++ *
++ * - Referrer-Policy: cross-origin requests only receive our origin, never the
++ *   path or query string of the article a reader is viewing.
++ * - Permissions-Policy: The DevTools Times uses no powerful browser features,
++ *   so they are disabled for this document and every embedded frame/script.
++ *   `browsing-topics=()` also opts our pages out of interest-based ad topics.
++ */
++const PRIVACY_HEADERS: Record<string, string> = {
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': [
++    'accelerometer=()',
++    'browsing-topics=()',
++    'camera=()',
++    'display-capture=()',
++    'geolocation=()',
++    'gyroscope=()',
++    'magnetometer=()',
++    'microphone=()',
++    'midi=()',
++    'payment=()',
++    'serial=()',
++    'usb=()',
++  ].join(', '),
++  'X-Content-Type-Options': 'nosniff',
++};
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+@@ -9,5 +37,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++
++  for (const [name, value] of Object.entries(PRIVACY_HEADERS)) {
++    try {
++      response.headers.set(name, value);
++    } catch {
++      // Some responses (e.g. Response.redirect()) have immutable headers.
++    }
++  }
++
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..3f94c8d 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -1,5 +1,6 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
++const baseUrl = import.meta.env.BASE_URL;
+ ---
+ <LegalLayout title="Privacy Policy">
+     <h2>1. An overview of data protection</h2>
+@@ -14,4 +15,31 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     <h2>3. Recording of data on our website</h2>
+     <p><strong>Cookies</strong></p>
+     <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++
++    <h2 id="accounts">4. Accounts: what we collect at sign-up and sign-in</h2>
++    <p>To create an account we ask for only two things: a <strong>username</strong> and a <strong>password</strong>. We do not ask for your email address, real name, phone number, date of birth or location, and your username does not need to identify you.</p>
++    <ul>
++        <li><strong>Purpose:</strong> your username and password are used only to create your account and sign you in. They are not used for advertising, profiling or analytics.</li>
++        <li><strong>Where it goes:</strong> the form sends them over an encrypted (HTTPS) connection to our authentication service. No cookies or device identifiers are sent with them.</li>
++        <li><strong>Third parties:</strong> analytics and advertising scripts are not loaded on the sign-in and sign-up pages, so they cannot observe what you type there.</li>
++        <li><strong>Autofill:</strong> the forms are labelled so your browser or password manager can save and fill your credentials. We do not store them in your browser ourselves.</li>
++    </ul>
++
++    <h2 id="third-parties">5. Third-party services on this website</h2>
++    <ul>
++        <li><strong>Analytics:</strong> on article and section pages, a small analytics script records the type and visible text of links and buttons you click, plus a timestamp. It does not receive the address of the page you are reading, and it is never loaded on account pages.</li>
++        <li><strong>Advertising:</strong> ad slots are reserved on content pages only and are never shown on account pages.</li>
++        <li><strong>Fonts:</strong> all fonts are served from our own servers, so viewing a page does not contact a font provider.</li>
++    </ul>
++
++    <h2 id="browser-protections">6. Browser-level protections</h2>
++    <p>Our pages instruct your browser to limit what is shared on your behalf:</p>
++    <ul>
++        <li>When you follow a link or a page loads a resource from another website, that website learns only that you came from our domain, not which article you were reading.</li>
++        <li>Camera, microphone, location, motion sensors, payment and similar device features are disabled on every page and for any embedded content.</li>
++        <li>Our pages opt out of browser-based interest topics used for ad targeting.</li>
++    </ul>
++
++    <h2 id="your-choices">7. Your choices</h2>
++    <p>You can read the news on this website without an account. Your browser's settings let you clear cookies and site data or block third-party scripts at any time. For questions about your account data, or to have it corrected or deleted, please contact us using the details in our <a href={`${baseUrl}legal/imprint`}>Imprint</a>.</p>
+ </LegalLayout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..26e8951 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" sensitive>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..1920fe4 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" sensitive>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..8e5ac6a 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,5 +1,27 @@
+ @import "tailwindcss";
+ 
++/*
++ * Self-hosted brand font (SIL Open Font License). Serving it first-party
++ * avoids sending every reader's IP address and page context to a font CDN.
++ */
++@font-face {
++  font-family: "Grenze";
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src: url("../assets/fonts/grenze-500-latin-ext.woff2") format("woff2");
++  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
++}
++
++@font-face {
++  font-family: "Grenze";
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src: url("../assets/fonts/grenze-500-latin.woff2") format("woff2");
++  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;

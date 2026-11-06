@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+index 66c9173..3399c5a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,140 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ==========================================================
++       Progressive enhancements
++       Each block is gated behind @supports at-rule(...), so it only
++       applies in browsers that support both the at-rule() feature query
++       and the at-rule being used. Other browsers skip the whole block
++       and keep the base styles above.
++       ========================================================== */
++
++    /* Navigation: styles scoped with @scope, plus a frosted-glass bar */
++    @supports at-rule(@scope) {
++      @scope (nav) {
++        :scope {
++          background: color-mix(in srgb, var(--primary) 85%, transparent);
++          backdrop-filter: blur(10px) saturate(140%);
++          -webkit-backdrop-filter: blur(10px) saturate(140%);
++          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
++        }
++
++        a:not(.logout-link) {
++          position: relative;
++          padding-block: 4px;
++        }
++
++        a:not(.logout-link)::after {
++          content: "";
++          position: absolute;
++          left: 0;
++          right: 0;
++          bottom: 0;
++          height: 2px;
++          background: var(--accent);
++          transform: scaleX(0);
++          transform-origin: left;
++          transition: transform 0.3s ease;
++        }
++
++        a:not(.logout-link):hover::after,
++        a:not(.logout-link):focus-visible::after {
++          transform: scaleX(1);
++        }
++
++        .logout-link {
++          transition: background-color 0.3s, color 0.3s;
++        }
++
++        .logout-link:hover,
++        .logout-link:focus-visible {
++          background: var(--accent);
++          color: var(--primary);
++        }
++      }
++    }
++
++    /* Hero: a typed, animatable gradient overlay via @property */
++    @supports at-rule(@property) {
++      @property --hero-glow {
++        syntax: "<percentage>";
++        inherits: false;
++        initial-value: 30%;
++      }
++
++      .hero {
++        background:
++          radial-gradient(circle at 50% var(--hero-glow), rgba(255, 171, 64, 0.25), transparent 60%),
++          linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.45)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        animation: hero-glow 8s ease-in-out infinite alternate;
++      }
++
++      .hero h1 {
++        font-size: clamp(2rem, 6vw, 3.5rem);
++        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
++      }
++
++      @keyframes hero-glow {
++        from { --hero-glow: 20%; }
++        to { --hero-glow: 80%; }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        .hero {
++          animation: none;
++        }
++      }
++    }
++
++    /* Seasonal favorite cards: layout adapts to each card's own width */
++    @supports at-rule(@container) {
++      .grid .card {
++        container: seasonal-card / inline-size;
++        transition: transform 0.25s ease, box-shadow 0.25s ease;
++      }
++
++      .grid .card:hover,
++      .grid .card:focus-within {
++        transform: translateY(-4px);
++        box-shadow: 0 8px 20px rgba(78, 52, 46, 0.18);
++      }
++
++      @container seasonal-card (min-width: 320px) {
++        .card h3 {
++          font-size: 1.35rem;
++        }
++
++        .card p {
++          max-width: 32ch;
++          margin-inline: auto;
++        }
++      }
++
++      @container seasonal-card (max-width: 260px) {
++        .card h3 {
++          font-size: 1.05rem;
++        }
++
++        .card .btn {
++          display: block;
++        }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        .grid .card {
++          transition: none;
++        }
++
++        .grid .card:hover,
++        .grid .card:focus-within {
++          transform: none;
++        }
++      }
++    }
+   </style>
+ </head>
+ 

@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,101 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    .newsletter-section {
++      max-width: 500px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter-section h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      font-size: 1.25rem;
++    }
++
++    .newsletter-section p {
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    .newsletter-form {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .newsletter-label {
++      align-self: flex-start;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .newsletter-field-group {
++      display: flex;
++      flex-wrap: wrap;
++      width: 100%;
++      gap: 10px;
++      align-items: flex-start;
++    }
++
++    .newsletter-input {
++      flex: 1 1 240px;
++      padding: 10px 12px;
++      font-size: 0.95rem;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      background-color: #ffffff;
++      color: var(--text);
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .newsletter-input:focus {
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.25);
++    }
++
++    .newsletter-input:user-invalid,
++    .newsletter-input[aria-invalid="true"],
++    .newsletter-input.is-invalid {
++      border-color: #8b0000;
++    }
++
++    .newsletter-input:user-invalid:focus,
++    .newsletter-input[aria-invalid="true"]:focus,
++    .newsletter-input.is-invalid:focus {
++      box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.25);
++    }
++
++    .newsletter-btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
++      padding: 10px 20px;
++      line-height: normal;
++    }
++
++    .error-message {
++      display: none;
++      flex-basis: 100%;
++      width: 100%;
++      color: #8b0000;
++      font-size: 0.85rem;
++      font-weight: 600;
++      text-align: left;
++      margin: 2px 0 0;
++    }
++
++    .newsletter-input:user-invalid ~ .error-message,
++    .newsletter-input[aria-invalid="true"] ~ .error-message,
++    .error-message.visible {
++      display: block;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -197,8 +290,31 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <div class="newsletter-section">
++      <h3>Subscribe to Our Newsletter</h3>
++      <p>Get seasonal menu updates, brewing tips, and exclusive rewards delivered to your inbox.</p>
++      <form id="newsletter-form" class="newsletter-form" aria-label="Newsletter signup">
++        <label for="newsletter-email" class="newsletter-label">Email Address</label>
++        <div class="newsletter-field-group">
++          <input
++            type="email"
++            id="newsletter-email"
++            name="email"
++            class="newsletter-input"
++            placeholder="Enter your email address"
++            required
++            aria-required="true"
++            aria-invalid="false"
++            aria-describedby="newsletter-error"
++            aria-errormessage="newsletter-error"
++          >
++          <button type="submit" class="btn newsletter-btn">Subscribe</button>
++          <p id="newsletter-error" class="error-message" role="alert" aria-live="polite" aria-atomic="true"></p>
++        </div>
++      </form>
++    </div>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +322,80 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('newsletter-form');
++      const emailInput = document.getElementById('newsletter-email');
++      const errorMessage = document.getElementById('newsletter-error');
++      const ERROR_TEXT = 'Please enter a valid email address.';
++
++      function matchesUserInvalid(input) {
++        try {
++          return input.matches(':user-invalid');
++        } catch (e) {
++          return false;
++        }
++      }
++
++      function showError() {
++        emailInput.setAttribute('aria-invalid', 'true');
++        emailInput.classList.add('is-invalid');
++        errorMessage.classList.add('visible');
++        if (errorMessage.textContent !== ERROR_TEXT) {
++          errorMessage.textContent = ERROR_TEXT;
++        }
++      }
++
++      function clearError() {
++        emailInput.setAttribute('aria-invalid', 'false');
++        emailInput.classList.remove('is-invalid');
++        errorMessage.classList.remove('visible');
++        if (errorMessage.textContent !== '') {
++          errorMessage.textContent = '';
++        }
++      }
++
++      emailInput.addEventListener('blur', function () {
++        if (!emailInput.validity.valid) {
++          showError();
++        } else {
++          clearError();
++        }
++      });
++
++      emailInput.addEventListener('change', function () {
++        if (!emailInput.validity.valid) {
++          showError();
++        } else {
++          clearError();
++        }
++      });
++
++      emailInput.addEventListener('invalid', function (e) {
++        e.preventDefault();
++        showError();
++      });
++
++      emailInput.addEventListener('input', function () {
++        if (emailInput.validity.valid) {
++          clearError();
++        } else if (matchesUserInvalid(emailInput) || emailInput.getAttribute('aria-invalid') === 'true') {
++          showError();
++        }
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        if (!emailInput.checkValidity()) {
++          showError();
++        } else {
++          clearError();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

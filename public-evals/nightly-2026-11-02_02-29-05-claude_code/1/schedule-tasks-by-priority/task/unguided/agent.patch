@@ -1,0 +1,475 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,192 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .ops-sim {
++      margin-top: 50px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 25px;
++    }
++
++    .ops-sim h2 {
++      text-align: center;
++      margin-bottom: 5px;
++    }
++
++    .ops-sim .ops-intro {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++    }
++
++    .ops-controls button {
++      font: inherit;
++      font-size: 0.9rem;
++      border: none;
++      border-radius: 5px;
++      padding: 10px 16px;
++      cursor: pointer;
++      color: white;
++      background: var(--primary);
++      transition: filter 0.2s, transform 0.1s;
++    }
++
++    .ops-controls button:hover {
++      filter: brightness(1.15);
++    }
++
++    .ops-controls button:active {
++      transform: scale(0.97);
++    }
++
++    .ops-controls button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .ops-controls .ops-urgent { background: #c62828; }
++    .ops-controls .ops-standard { background: #1565c0; }
++    .ops-controls .ops-background { background: #616161; }
++    .ops-controls .ops-batch { background: var(--primary); }
++    .ops-controls .ops-clear {
++      background: transparent;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++    }
++
++    .ops-health {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 20px;
++      justify-content: center;
++      align-items: center;
++      margin: 20px 0;
++      font-size: 0.85rem;
++    }
++
++    .ops-heartbeat {
++      width: 160px;
++      height: 10px;
++      background: var(--secondary);
++      border-radius: 5px;
++      position: relative;
++      overflow: hidden;
++    }
++
++    .ops-heartbeat span {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 30px;
++      height: 100%;
++      background: var(--accent);
++      border-radius: 5px;
++    }
++
++    .ops-stat strong {
++      font-variant-numeric: tabular-nums;
++    }
++
++    .ops-panels {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 20px;
++    }
++
++    .ops-panel h3 {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .ops-list {
++      list-style: none;
++      min-height: 120px;
++      max-height: 280px;
++      overflow-y: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 8px;
++      font-size: 0.85rem;
++    }
++
++    .ops-list li {
++      padding: 6px 8px;
++      border-radius: 4px;
++      margin-bottom: 6px;
++      background: #f5f0ee;
++    }
++
++    .ops-list li:last-child {
++      margin-bottom: 0;
++    }
++
++    .ops-list .ops-empty {
++      background: none;
++      color: #8d6e63;
++      font-style: italic;
++      text-align: center;
++    }
++
++    .ops-row {
++      display: flex;
++      justify-content: space-between;
++      gap: 8px;
++      align-items: center;
++    }
++
++    .ops-badge {
++      display: inline-block;
++      font-size: 0.7rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: white;
++      padding: 1px 6px;
++      border-radius: 3px;
++      margin-right: 6px;
++    }
++
++    .ops-badge.urgent { background: #c62828; }
++    .ops-badge.standard { background: #1565c0; }
++    .ops-badge.background { background: #616161; }
++
++    .ops-progress {
++      height: 5px;
++      background: var(--secondary);
++      border-radius: 3px;
++      margin-top: 5px;
++      overflow: hidden;
++    }
++
++    .ops-progress div {
++      height: 100%;
++      width: 0;
++      background: var(--accent);
++    }
++
++    .ops-meta {
++      color: #8d6e63;
++      font-size: 0.75rem;
++      white-space: nowrap;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .ops-controls button { transition: none; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +378,44 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="ops-sim" id="ops-sim" aria-labelledby="ops-title">
++      <h2 id="ops-title">Operations Queue Simulator</h2>
++      <p class="ops-intro">
++        Long-running jobs are split into small slices and scheduled by priority.
++        Urgent work jumps ahead of anything already queued, and the page keeps
++        responding between slices.
++      </p>
++
++      <div class="ops-controls">
++        <button type="button" class="ops-urgent" data-ops-kind="urgent">Run Urgent Checkout</button>
++        <button type="button" class="ops-standard" data-ops-kind="standard">Run Menu Update</button>
++        <button type="button" class="ops-background" data-ops-kind="background">Log Telemetry</button>
++        <button type="button" class="ops-batch" id="ops-batch">Run Mixed Batch</button>
++        <button type="button" class="ops-clear" id="ops-clear">Clear Log</button>
++      </div>
++
++      <div class="ops-health" aria-live="off">
++        <div class="ops-heartbeat" title="Keeps moving smoothly while the UI is responsive">
++          <span id="ops-heartbeat-dot"></span>
++        </div>
++        <div class="ops-stat">Longest frame gap: <strong id="ops-frame-gap">0 ms</strong></div>
++        <div class="ops-stat">Queued: <strong id="ops-queued-count">0</strong></div>
++        <div class="ops-stat">Completed: <strong id="ops-done-count">0</strong></div>
++      </div>
++
++      <div class="ops-panels">
++        <div class="ops-panel">
++          <h3>Queue</h3>
++          <ul class="ops-list" id="ops-queue"></ul>
++        </div>
++        <div class="ops-panel">
++          <h3>Completion Log</h3>
++          <ul class="ops-list" id="ops-log" aria-live="polite"></ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +426,233 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Lower rank runs first.
++      const PRIORITIES = {
++        urgent: { rank: 0, label: 'Urgent' },
++        standard: { rank: 1, label: 'Standard' },
++        background: { rank: 2, label: 'Background' }
++      };
++
++      const TASK_TYPES = {
++        urgent: { name: 'Checkout', slices: 8, sliceMs: 6 },
++        standard: { name: 'Menu update', slices: 20, sliceMs: 8 },
++        background: { name: 'Telemetry log', slices: 60, sliceMs: 10 }
++      };
++
++      // Max time spent on task work before handing control back to the browser.
++      const FRAME_BUDGET_MS = 12;
++
++      const queueEl = document.getElementById('ops-queue');
++      const logEl = document.getElementById('ops-log');
++      const queuedCountEl = document.getElementById('ops-queued-count');
++      const doneCountEl = document.getElementById('ops-done-count');
++      const frameGapEl = document.getElementById('ops-frame-gap');
++      const heartbeatDot = document.getElementById('ops-heartbeat-dot');
++
++      const queue = [];
++      const counters = { urgent: 0, standard: 0, background: 0 };
++      let nextId = 1;
++      let doneCount = 0;
++      let pumping = false;
++
++      // Yield to the event loop so input, rendering and newly queued urgent
++      // tasks get a chance to run. Prefers the native Scheduler API.
++      const yieldToMain = (function () {
++        if (window.scheduler && typeof window.scheduler.yield === 'function') {
++          return function () { return window.scheduler.yield(); };
++        }
++        if (typeof MessageChannel === 'function') {
++          const channel = new MessageChannel();
++          const pending = [];
++          channel.port1.onmessage = function () { pending.shift()(); };
++          return function () {
++            return new Promise(function (resolve) {
++              pending.push(resolve);
++              channel.port2.postMessage(null);
++            });
++          };
++        }
++        return function () {
++          return new Promise(function (resolve) { setTimeout(resolve, 0); });
++        };
++      })();
++
++      // Simulates CPU-bound work by blocking the thread for `ms`.
++      function busyWork(ms) {
++        const end = performance.now() + ms;
++        while (performance.now() < end) { /* spin */ }
++      }
++
++      function enqueue(kind) {
++        const type = TASK_TYPES[kind];
++        counters[kind] += 1;
++        const task = {
++          id: nextId++,
++          kind: kind,
++          rank: PRIORITIES[kind].rank,
++          name: type.name + ' #' + counters[kind],
++          totalSlices: type.slices,
++          sliceMs: type.sliceMs,
++          done: 0,
++          queuedAt: performance.now(),
++          startedAt: null,
++          el: null
++        };
++        queue.push(task);
++        renderQueueItem(task);
++        sortQueue();
++        updateCounts();
++        pump();
++        return task;
++      }
++
++      // Stable sort: by priority, then FIFO within the same priority.
++      function sortQueue() {
++        queue.sort(function (a, b) { return a.rank - b.rank || a.id - b.id; });
++        queue.forEach(function (task) { queueEl.appendChild(task.el); });
++        syncEmptyState(queueEl, queue.length, 'Queue is idle');
++      }
++
++      async function pump() {
++        if (pumping) return;
++        pumping = true;
++        try {
++          while (queue.length) {
++            const sliceStart = performance.now();
++            // Work through slices until the frame budget is spent, always
++            // re-picking the highest priority task so urgent work preempts.
++            while (queue.length && performance.now() - sliceStart < FRAME_BUDGET_MS) {
++              const task = queue[0];
++              if (task.startedAt === null) task.startedAt = performance.now();
++              busyWork(task.sliceMs);
++              task.done += 1;
++              if (task.done >= task.totalSlices) {
++                queue.shift();
++                complete(task);
++              }
++            }
++            renderProgress();
++            await yieldToMain();
++          }
++        } finally {
++          pumping = false;
++          updateCounts();
++        }
++      }
++
++      function complete(task) {
++        doneCount += 1;
++        const finishedAt = performance.now();
++        task.el.remove();
++        updateCounts();
++        syncEmptyState(queueEl, queue.length, 'Queue is idle');
++
++        const li = document.createElement('li');
++        li.innerHTML =
++          '<div class="ops-row"><span>' +
++          '<span class="ops-badge ' + task.kind + '"></span><span class="ops-name"></span>' +
++          '</span><span class="ops-meta"></span></div>';
++        li.querySelector('.ops-badge').textContent = PRIORITIES[task.kind].label;
++        li.querySelector('.ops-name').textContent = task.name;
++        li.querySelector('.ops-meta').textContent =
++          'waited ' + Math.round(task.startedAt - task.queuedAt) + ' ms · ran ' +
++          Math.round(finishedAt - task.startedAt) + ' ms';
++        logEl.appendChild(li);
++        syncEmptyState(logEl, logEl.querySelectorAll('li:not(.ops-empty)').length, 'No tasks completed yet');
++        logEl.scrollTop = logEl.scrollHeight;
++      }
++
++      function renderQueueItem(task) {
++        const li = document.createElement('li');
++        li.innerHTML =
++          '<div class="ops-row"><span>' +
++          '<span class="ops-badge ' + task.kind + '"></span><span class="ops-name"></span>' +
++          '</span><span class="ops-meta"></span></div>' +
++          '<div class="ops-progress"><div></div></div>';
++        li.querySelector('.ops-badge').textContent = PRIORITIES[task.kind].label;
++        li.querySelector('.ops-name').textContent = task.name;
++        task.el = li;
++        updateItemProgress(task);
++      }
++
++      function updateItemProgress(task) {
++        const pct = Math.round((task.done / task.totalSlices) * 100);
++        task.el.querySelector('.ops-progress div').style.width = pct + '%';
++        task.el.querySelector('.ops-meta').textContent =
++          task.done === 0 ? 'waiting' : pct + '%';
++      }
++
++      function renderProgress() {
++        queue.forEach(updateItemProgress);
++      }
++
++      function updateCounts() {
++        queuedCountEl.textContent = queue.length;
++        doneCountEl.textContent = doneCount;
++      }
++
++      function syncEmptyState(listEl, count, message) {
++        const empty = listEl.querySelector('.ops-empty');
++        if (count === 0 && !empty) {
++          const li = document.createElement('li');
++          li.className = 'ops-empty';
++          li.textContent = message;
++          listEl.appendChild(li);
++        } else if (count > 0 && empty) {
++          empty.remove();
++        }
++      }
++
++      // Mixed batch, submitted out of order on purpose: the scheduler runs
++      // it urgent → standard → background regardless of submission order.
++      function runBatch() {
++        ['background', 'standard', 'urgent', 'background', 'standard', 'urgent', 'background']
++          .forEach(enqueue);
++      }
++
++      document.querySelectorAll('[data-ops-kind]').forEach(function (btn) {
++        btn.addEventListener('click', function () { enqueue(btn.dataset.opsKind); });
++      });
++      document.getElementById('ops-batch').addEventListener('click', runBatch);
++      document.getElementById('ops-clear').addEventListener('click', function () {
++        logEl.innerHTML = '';
++        doneCount = 0;
++        longestGap = 0;
++        frameGapEl.textContent = '0 ms';
++        updateCounts();
++        syncEmptyState(logEl, 0, 'No tasks completed yet');
++      });
++
++      // Responsiveness monitor: a rAF-driven heartbeat and longest frame gap.
++      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      let lastFrame = performance.now();
++      let longestGap = 0;
++      let pos = 0;
++      function heartbeat(now) {
++        const gap = now - lastFrame;
++        lastFrame = now;
++        if (gap > longestGap) {
++          longestGap = gap;
++          frameGapEl.textContent = Math.round(gap) + ' ms';
++        }
++        if (!reduceMotion) {
++          pos = (pos + gap * 0.12) % 160;
++          heartbeatDot.style.transform = 'translateX(' + (pos - 30) + 'px)';
++        }
++        requestAnimationFrame(heartbeat);
++      }
++      requestAnimationFrame(heartbeat);
++      // Ignore the gap caused by the tab being hidden.
++      document.addEventListener('visibilitychange', function () { lastFrame = performance.now(); });
++
++      syncEmptyState(queueEl, 0, 'Queue is idle');
++      syncEmptyState(logEl, 0, 'No tasks completed yet');
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,163 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,90 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log Section */
++    .feedback-section {
++      margin-block-start: 48px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-block-end: 20px;
++      color: var(--primary);
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: #ffab40;
++      --scrollbar-track: #4e342e;
++
++      max-height: 280px;
++      overflow-y: auto;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-gutter: stable;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    @media (prefers-contrast: more) {
++      .feedback-log {
++        --scrollbar-thumb: #000000;
++        --scrollbar-track: #ffffff;
++      }
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++        height: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .feedback-item {
++      padding-block-end: 16px;
++      margin: 0;
++    }
++
++    .feedback-item:not(:last-child) {
++      border-block-end: 1px solid var(--secondary);
++    }
++
++    .feedback-item blockquote {
++      font-style: italic;
++      color: var(--text);
++      margin-block-end: 8px;
++    }
++
++    .feedback-item figcaption {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .feedback-rating {
++      color: var(--accent);
++      letter-spacing: 1px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +276,68 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Customer Feedback Log</h2>
++      <div class="feedback-log">
++        <figure class="feedback-item">
++          <blockquote>
++            <p>"The Maple Oat Latte is hands-down the best seasonal drink in town. Just the right touch of sweetness without overpowering the espresso!"</p>
++          </blockquote>
++          <figcaption>
++            <span>&mdash; Elena R., Regular Patron</span>
++            <span class="feedback-rating"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span> 5/5</span>
++          </figcaption>
++        </figure>
++        <figure class="feedback-item">
++          <blockquote>
++            <p>"I stop by every morning before work for the Dark Roast Espresso. Rich crema, smoky aroma, and consistently pulled shots every single time."</p>
++          </blockquote>
++          <figcaption>
++            <span>&mdash; Marcus T., Local Commuter</span>
++            <span class="feedback-rating"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span> 5/5</span>
++          </figcaption>
++        </figure>
++        <figure class="feedback-item">
++          <blockquote>
++            <p>"Their 18-hour Cold Brew is dangerously smooth. Zero bitterness and keeps me energized through afternoon design sprints."</p>
++          </blockquote>
++          <figcaption>
++            <span>&mdash; Priya K., Product Designer</span>
++            <span class="feedback-rating"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span> 5/5</span>
++          </figcaption>
++        </figure>
++        <figure class="feedback-item">
++          <blockquote>
++            <p>"Love knowing that the beans are ethically sourced and roasted right here in the neighborhood. You can really taste the freshness."</p>
++          </blockquote>
++          <figcaption>
++            <span>&mdash; David L., Coffee Enthusiast</span>
++            <span class="feedback-rating"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span> 5/5</span>
++          </figcaption>
++        </figure>
++        <figure class="feedback-item">
++          <blockquote>
++            <p>"Cozy atmosphere, friendly baristas who remember your order, and pastries that pair wonderfully with a pour-over."</p>
++          </blockquote>
++          <figcaption>
++            <span>&mdash; Hannah W., Remote Worker</span>
++            <span class="feedback-rating"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9734;</span> 4/5</span>
++          </figcaption>
++        </figure>
++        <figure class="feedback-item">
++          <blockquote>
++            <p>"Ordered a bag of whole-bean Ethiopian roast for my home setup and it brewed the brightest, most floral cup I've had all year."</p>
++          </blockquote>
++          <figcaption>
++            <span>&mdash; Liam O., Home Barista</span>
++            <span class="feedback-rating"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span> 5/5</span>
++          </figcaption>
++        </figure>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

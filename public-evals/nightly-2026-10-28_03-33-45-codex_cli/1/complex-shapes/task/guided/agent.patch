@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,22 +73,52 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+       height: 60vh;
++      min-height: 28rem;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 20px;
+     }
+ 
++    /* Decoration stays out of flow, even if the mask cannot render. */
++    .shaped-element {
++      --splash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 720 420'%3E%3Cpath fill='white' d='M75 153C36 118 82 70 152 85C202 96 211 29 285 47C340 61 365 20 420 47C469 71 516 32 550 77C575 110 636 83 644 131C651 166 705 182 668 224C637 258 688 301 625 321C571 338 562 384 503 365C452 348 425 407 368 380C317 356 285 399 238 370C198 345 158 373 132 332C112 300 51 324 55 276C60 237 12 210 48 184C62 175 91 168 75 153Z'/%3E%3Cg fill='white'%3E%3Cellipse cx='44' cy='118' rx='15' ry='9' transform='rotate(28 44 118)'/%3E%3Cellipse cx='675' cy='306' rx='13' ry='8' transform='rotate(-30 675 306)'/%3E%3Ccircle cx='593' cy='47' r='8'/%3E%3Ccircle cx='112' cy='368' r='7'/%3E%3C/g%3E%3C/svg%3E");
++      position: absolute;
++      width: min(94%, 45rem);
++      aspect-ratio: 12 / 7;
++      /* Soft organic fallback when CSS masking is unsupported. */
++      border-radius: 43% 57% 54% 46% / 48% 39% 61% 52%;
++      background: radial-gradient(ellipse at 70% 25%, #805035, var(--primary) 70%);
++      pointer-events: none;
++      -webkit-mask-image: var(--splash-mask);
++      -webkit-mask-size: contain;
++      -webkit-mask-position: center;
++      -webkit-mask-repeat: no-repeat;
++      mask-image: var(--splash-mask);
++      mask-size: contain;
++      mask-position: center;
++      mask-repeat: no-repeat;
++    }
++
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +198,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

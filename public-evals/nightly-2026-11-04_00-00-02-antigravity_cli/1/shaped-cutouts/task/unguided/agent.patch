@@ -1,0 +1,188 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,123 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured Barista Section & Shaped Avatar */
++    .barista-section {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      margin: 60px 0;
++      padding: 30px;
++      background: #fff;
++      border-radius: 12px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
++    }
++
++    .shaped-avatar {
++      width: 240px;
++      height: 240px;
++      object-fit: cover;
++      display: block;
++      -webkit-clip-path: url(#paint-splat-clip);
++      clip-path: url(#paint-splat-clip);
++    }
++
++    .barista-info {
++      flex: 1;
++      min-width: 260px;
++    }
++
++    .barista-info h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .barista-role {
++      color: var(--accent);
++      font-weight: bold;
++      text-transform: uppercase;
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      margin-bottom: 12px;
++    }
++
++    /* Loyalty Banner - Unified Card with Unmasked Body & Masked Accent */
++    .loyalty-section {
++      margin: 60px 0;
++    }
++
++    .unified-card {
++      display: flex;
++      align-items: stretch;
++      filter: drop-shadow(0 10px 24px rgba(62, 39, 35, 0.18));
++      max-width: 900px;
++      margin: 0 auto;
++    }
++
++    .card-body {
++      flex: 1;
++      background: #ffffff;
++      padding: 36px 40px;
++      border-radius: 16px 0 0 16px;
++    }
++
++    .card-body h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .card-accent {
++      flex: 0 0 120px;
++      width: 120px;
++      min-height: 160px;
++      background: #ffffff;
++      margin-left: -1px;
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 200' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L85,0 C95,0 100,10 92,25 C60,70 60,130 92,175 C100,190 95,200 85,200 L0,200 Z' fill='black'/%3E%3C/svg%3E");
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 200' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L85,0 C95,0 100,10 92,25 C60,70 60,130 92,175 C100,190 95,200 85,200 L0,200 Z' fill='black'/%3E%3C/svg%3E");
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    /* Promo Section - Gradient Masked Card */
++    .promo-section {
++      margin: 60px 0;
++      display: flex;
++      justify-content: center;
++    }
++
++    .gradient-masked-card {
++      background: linear-gradient(135deg, var(--primary), #3e2723);
++      color: white;
++      padding: 52px 36px 36px;
++      border-radius: 16px;
++      text-align: center;
++      max-width: 520px;
++      width: 100%;
++      -webkit-mask-image: radial-gradient(circle 30px at 50% 0, transparent 30px, black 30.5px);
++      mask-image: radial-gradient(circle 30px at 50% 0, transparent 30px, black 30.5px);
++    }
++
++    .gradient-masked-card h2 {
++      color: var(--accent);
++      margin-bottom: 10px;
++    }
++
++    .gradient-masked-card .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++    }
++
++    .gradient-masked-card .btn:hover {
++      background: #ffa000;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +271,16 @@
+ </head>
+ 
+ <body>
+ 
++  <svg width="0" height="0" aria-hidden="true" style="position: absolute; width: 0; height: 0; overflow: hidden;">
++    <defs>
++      <clipPath id="paint-splat-clip" clipPathUnits="objectBoundingBox">
++        <path d="M 0.50,0.04 C 0.62,0.02 0.68,0.14 0.78,0.11 C 0.90,0.07 0.96,0.20 0.91,0.32 C 0.86,0.42 0.98,0.50 0.95,0.62 C 0.92,0.75 0.80,0.74 0.76,0.85 C 0.71,0.96 0.58,0.92 0.48,0.96 C 0.37,1.00 0.30,0.88 0.20,0.89 C 0.08,0.90 0.04,0.76 0.11,0.65 C 0.17,0.55 0.02,0.46 0.06,0.34 C 0.10,0.21 0.23,0.24 0.29,0.14 C 0.35,0.03 0.41,0.06 0.50,0.04 Z" />
++      </clipPath>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +317,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-section">
++      <img
++        class="shaped-avatar"
++        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80"
++        alt="Featured Barista Marco Rivera"
++        width="240"
++        height="240"
++      >
++      <div class="barista-info">
++        <div class="barista-role">Featured Barista</div>
++        <h2>Meet Marco Rivera</h2>
++        <p>With over eight years of specialty coffee crafting experience, Marco leads our seasonal espresso roast development and signature latte art workshops every Saturday morning.</p>
++        <a href="/about" class="btn">Read Marco's Story</a>
++      </div>
++    </section>
++
++    <section class="loyalty-section">
++      <div class="unified-card">
++        <div class="card-body">
++          <h2>Daily Grind Loyalty Rewards</h2>
++          <p>Earn golden coffee beans on every handcrafted drink and artisanal pastry. Collect 10 beans and enjoy your next signature beverage on the house, plus exclusive early access to single-origin micro-lots.</p>
++          <a href="/rewards" class="btn">Join Rewards</a>
++        </div>
++        <div class="card-accent"></div>
++      </div>
++    </section>
++
++    <section class="promo-section">
++      <div class="gradient-masked-card">
++        <h2>Morning Happy Hour</h2>
++        <p>Get 25% off any pastry when paired with a handcrafted espresso or cold brew between 7 AM and 9 AM on weekdays. Use code <strong>EARLYBEAN</strong> at checkout.</p>
++        <a href="/order-online" class="btn">Claim Offer</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

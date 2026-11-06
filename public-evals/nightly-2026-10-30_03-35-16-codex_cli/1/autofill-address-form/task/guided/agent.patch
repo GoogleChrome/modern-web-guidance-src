@@ -1,0 +1,189 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,90 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .shipping {
++      max-width: 680px;
++      margin: 48px auto 0;
++      padding: clamp(20px, 4vw, 36px);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .shipping h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .shipping fieldset {
++      min-width: 0;
++      border: 0;
++      margin-top: 24px;
++    }
++
++    .shipping legend {
++      font-size: 1.1rem;
++      font-weight: 600;
++      margin-bottom: 12px;
++    }
++
++    .shipping-field {
++      margin-bottom: 18px;
++    }
++
++    .shipping label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .shipping input,
++    .shipping textarea {
++      display: block;
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid #8d7870;
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++      font: inherit;
++      font-size: 1rem;
++      scroll-margin-top: 100px;
++    }
++
++    .shipping textarea {
++      resize: vertical;
++    }
++
++    .shipping .btn {
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .shipping [hidden] {
++      display: none;
++    }
++
++    .shipping :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .shipping-review:not(:empty) {
++      margin-top: 20px;
++      padding: 16px;
++      border-inline-start: 4px solid var(--primary);
++      background: #f4efec;
++      white-space: pre-line;
++      overflow-wrap: anywhere;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +276,59 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping" id="shipping" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Fresh beans, delivered to your door</h2>
++      <p>Add your shipping address for coffee bean delivery. Use your browser’s saved details to fill it in faster.</p>
++      <p id="shipping-help">All fields are required unless marked optional.</p>
++
++      <form id="shipping-form" action="#shipping" method="post" autocomplete="on" aria-describedby="shipping-help">
++        <fieldset>
++          <legend>Shipping address</legend>
++          <div class="shipping-field">
++            <label for="shipping-name">Recipient full name</label>
++            <input type="text" id="shipping-name" name="name" autocomplete="shipping name" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-street">Street address</label>
++            <textarea id="shipping-street" name="street-address" rows="3" autocomplete="shipping street-address" aria-describedby="shipping-street-help" required></textarea>
++            <small id="shipping-street-help">Include your apartment, suite, or building number, if applicable.</small>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-city">City / town</label>
++            <input type="text" id="shipping-city" name="city" autocomplete="shipping address-level2" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-region">State / province / region (optional)</label>
++            <input type="text" id="shipping-region" name="region" autocomplete="shipping address-level1">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-postal">ZIP / postal code (optional)</label>
++            <input type="text" id="shipping-postal" name="postal-code" autocomplete="shipping postal-code" autocorrect="off" spellcheck="false">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-country">Country</label>
++            <input type="text" id="shipping-country" name="country" autocomplete="shipping country-name" required>
++          </div>
++        </fieldset>
++        <fieldset>
++          <legend>Delivery contact</legend>
++          <div class="shipping-field">
++            <label for="shipping-email">Email address</label>
++            <input type="email" id="shipping-email" name="email" autocomplete="shipping email" autocapitalize="off" autocorrect="off" spellcheck="false" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-phone">Phone number (optional)</label>
++            <input type="tel" id="shipping-phone" name="phone" autocomplete="shipping tel">
++          </div>
++        </fieldset>
++        <button class="btn" type="submit" id="shipping-submit" hidden>Review shipping address</button>
++        <noscript><p>Enable JavaScript to review your shipping details. This form does not place an order.</p></noscript>
++        <p class="shipping-review" id="shipping-review" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +339,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const shippingForm = document.getElementById('shipping-form');
++    const shippingReview = document.getElementById('shipping-review');
++    document.getElementById('shipping-submit').hidden = false;
++
++    shippingForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const details = new FormData(shippingForm);
++      shippingReview.textContent = [
++        'Please review your delivery details:',
++        details.get('name'),
++        details.get('street-address'),
++        [details.get('city'), details.get('region'), details.get('postal-code')].filter(Boolean).join(', '),
++        details.get('country'),
++        details.get('email'),
++        details.get('phone'),
++        'No order has been placed. Your details have not been saved or sent.'
++      ].filter(Boolean).join('\n');
++    });
++
++    shippingForm.addEventListener('input', () => {
++      shippingReview.textContent = '';
++    });
++    shippingForm.addEventListener('change', () => {
++      shippingReview.textContent = '';
++    });
++  </script>
+ </body>
+ 
+ </html>

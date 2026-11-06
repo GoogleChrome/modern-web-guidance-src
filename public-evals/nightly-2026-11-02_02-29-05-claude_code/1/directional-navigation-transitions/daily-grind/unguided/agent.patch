@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+index 66c9173..4d7f86b 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,97 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites carousel */
++    .carousel {
++      max-width: 480px;
++      margin: 20px auto 0;
++    }
++
++    .carousel-viewport {
++      overflow: hidden;
++      border-radius: 8px;
++    }
++
++    .carousel-viewport:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .carousel-slide[hidden] {
++      display: none;
++    }
++
++    .carousel-slide.slide-in-next {
++      animation: slide-in-from-right 0.4s ease-out;
++    }
++
++    .carousel-slide.slide-in-prev {
++      animation: slide-in-from-left 0.4s ease-out;
++    }
++
++    @keyframes slide-in-from-right {
++      from {
++        transform: translateX(100%);
++        opacity: 0;
++      }
++
++      to {
++        transform: translateX(0);
++        opacity: 1;
++      }
++    }
++
++    @keyframes slide-in-from-left {
++      from {
++        transform: translateX(-100%);
++        opacity: 0;
++      }
++
++      to {
++        transform: translateX(0);
++        opacity: 1;
++      }
++    }
++
++    .carousel-controls {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: 15px;
++    }
++
++    .carousel-controls button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .carousel-controls button:hover {
++      background: #3e2723;
++    }
++
++    .carousel-controls button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .carousel-status {
++      font-size: 0.9rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .carousel-slide.slide-in-next,
++      .carousel-slide.slide-in-prev {
++        animation: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,21 +268,28 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      <div class="carousel" aria-roledescription="carousel" aria-label="Seasonal Favorites">
++        <div class="carousel-viewport" tabindex="0" aria-label="Use the left and right arrow keys to browse">
++          <div class="card carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card carousel-slide" role="group" aria-roledescription="slide" aria-label="2 of 3" hidden>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card carousel-slide" role="group" aria-roledescription="slide" aria-label="3 of 3" hidden>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-controls">
++          <button type="button" class="carousel-prev" aria-label="Previous item">&larr; Previous</button>
++          <span class="carousel-status" aria-live="polite" aria-atomic="true">1 / 3</span>
++          <button type="button" class="carousel-next" aria-label="Next item">Next &rarr;</button>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +305,55 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var carousel = document.querySelector('.carousel');
++      var viewport = carousel.querySelector('.carousel-viewport');
++      var slides = carousel.querySelectorAll('.carousel-slide');
++      var status = carousel.querySelector('.carousel-status');
++      var current = 0;
++
++      function show(index, direction) {
++        var next = (index + slides.length) % slides.length;
++        if (next === current) return;
++
++        slides[current].hidden = true;
++        slides[current].classList.remove('slide-in-next', 'slide-in-prev');
++
++        var slide = slides[next];
++        slide.classList.remove('slide-in-next', 'slide-in-prev');
++        slide.hidden = false;
++        void slide.offsetWidth; // restart the animation on rapid clicks
++        slide.classList.add(direction === 'next' ? 'slide-in-next' : 'slide-in-prev');
++
++        current = next;
++        status.textContent = (current + 1) + ' / ' + slides.length;
++      }
++
++      slides.forEach(function (slide) {
++        slide.addEventListener('animationend', function () {
++          slide.classList.remove('slide-in-next', 'slide-in-prev');
++        });
++      });
++
++      carousel.querySelector('.carousel-next').addEventListener('click', function () {
++        show(current + 1, 'next');
++      });
++      carousel.querySelector('.carousel-prev').addEventListener('click', function () {
++        show(current - 1, 'prev');
++      });
++      viewport.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowRight') {
++          e.preventDefault();
++          show(current + 1, 'next');
++        } else if (e.key === 'ArrowLeft') {
++          e.preventDefault();
++          show(current - 1, 'prev');
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

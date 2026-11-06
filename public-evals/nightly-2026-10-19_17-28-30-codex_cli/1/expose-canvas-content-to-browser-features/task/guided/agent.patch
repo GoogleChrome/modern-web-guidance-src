@@ -1,0 +1,58 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="coffee-customizer.css">
++  <script src="coffee-customizer.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +196,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="customizer" aria-labelledby="customizer-title">
++      <p class="customizer-eyebrow">A LITTLE MORE YOU</p>
++      <h2 id="customizer-title">Your cup. Your way.</h2>
++      <p id="customizer-description">Start with a latte, then make it your own.</p>
++      <div class="cup-stage">
++        <canvas id="canvas" content="drawable"></canvas>
++        <!-- Keep one real form. JS moves it into the canvas only when supported. -->
++        <form id="coffee-form" class="coffee-form" drawable aria-label="Customize your latte"
++          aria-describedby="customizer-description">
++          <p class="cup-heading">Made for you</p>
++          <label for="coffee-name">Name on your cup</label>
++          <input id="coffee-name" name="name" type="text" autocomplete="given-name"
++            maxlength="60" placeholder="Your name" required>
++          <label for="coffee-milk">Choose your milk</label>
++          <select id="coffee-milk" name="milk">
++            <option value="whole">Whole milk</option>
++            <option value="oat">Oat milk</option>
++            <option value="almond">Almond milk</option>
++            <option value="soy">Soy milk</option>
++          </select>
++          <fieldset>
++            <legend>A splash of syrup</legend>
++            <div class="syrup-options">
++              <label><input type="radio" name="syrup" value="none" checked> None</label>
++              <label><input type="radio" name="syrup" value="vanilla"> Vanilla</label>
++              <label><input type="radio" name="syrup" value="caramel"> Caramel</label>
++              <label><input type="radio" name="syrup" value="maple"> Maple</label>
++            </div>
++          </fieldset>
++          <button class="btn" type="submit">Create my coffee</button>
++          <p class="coffee-status" id="coffee-status" role="status" aria-live="polite" aria-atomic="true"></p>
++        </form>
++      </div>
++      <p class="customizer-note">A cup as individual as your morning.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

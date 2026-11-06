@@ -1,0 +1,37 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,33 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<title>Brand — Watch the Film</title>
++<meta name="description" content="Watch our short film.">
++
++<!-- LCP element: fetch the poster first, at highest priority -->
++<link rel="preload" href="poster.jpg" as="image" type="image/jpeg" fetchpriority="high">
++<!-- Critical header font: preload (crossorigin is required for fonts, even same-origin) -->
++<link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++<!-- secondary-font.woff2 is intentionally NOT preloaded so it never competes with the LCP image -->
++
++<!-- Inlined critical CSS: no render-blocking stylesheet request -->
++<style>
++@font-face{font-family:Brand;src:url(brand-font.woff2) format("woff2");font-weight:700;font-display:swap}
++@font-face{font-family:Secondary;src:url(secondary-font.woff2) format("woff2");font-weight:400;font-display:optional}
++*{box-sizing:border-box;margin:0}
++html{background:#000;color:#fff}
++body{font:16px/1.5 Secondary,system-ui,sans-serif;max-width:960px;margin:0 auto;padding:24px 16px}
++h1{font:700 clamp(2rem,6vw,3.5rem)/1.1 Brand,system-ui,sans-serif;margin-bottom:16px}
++video{display:block;width:100%;height:auto;aspect-ratio:1280/853;background:#111;object-fit:cover}
++p{margin-top:16px;color:#bbb}
++a{color:#fff}
++</style>
++</head>
++<body>
++<h1>See it in motion</h1>
++<video src="video.mp4" poster="poster.jpg" width="1280" height="853" controls playsinline preload="none"></video>
++<p>A two-minute film. <a href="#signup">Get early access</a></p>
++</body>
++</html>

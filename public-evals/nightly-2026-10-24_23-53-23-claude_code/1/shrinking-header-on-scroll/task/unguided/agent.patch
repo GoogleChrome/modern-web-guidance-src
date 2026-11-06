@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -24,29 +24,56 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      /* Reserve the full-size nav height; the nav is fixed so shrinking it never shifts content */
++      padding-top: 4.4rem;
+     }
+ 
+-    /* Navigation */
++    /* Navigation
++       --shrink goes 0 -> 1 over the first 120px of scroll. It is driven by JS in the
++       fallback path (see script) and by a scroll-linked animation where supported. */
+     nav {
++      --shrink: 0;
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: calc(1rem - 0.5rem * var(--shrink)) 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, calc(0.3 * var(--shrink)));
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: calc(1.5rem - 0.35rem * var(--shrink));
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
++    /* Modern browsers: smooth, compositor-friendly, tied directly to scroll position */
++    @supports (animation-timeline: scroll()) {
++      @property --shrink {
++        syntax: '<number>';
++        inherits: true;
++        initial-value: 0;
++      }
++
++      @keyframes nav-shrink {
++        to { --shrink: 1; }
++      }
++
++      nav {
++        animation: nav-shrink linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0 120px;
++      }
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+@@ -206,7 +233,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Fallback for browsers without scroll-driven animations: map scroll position
++    // to the same --shrink variable the CSS animation would drive.
++    if (!(window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()'))) {
++      var nav = document.querySelector('nav');
++      var range = 120;
++      var ticking = false;
++      var update = function () {
++        var y = window.pageYOffset || document.documentElement.scrollTop || 0;
++        nav.style.setProperty('--shrink', Math.min(Math.max(y / range, 0), 1));
++        ticking = false;
++      };
++      window.addEventListener('scroll', function () {
++        if (!ticking) {
++          ticking = true;
++          (window.requestAnimationFrame || setTimeout)(update);
++        }
++      }, { passive: true });
++      update();
++    }
++  </script>
+ </body>
+ 
+ </html>

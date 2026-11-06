@@ -1,0 +1,824 @@
+{
+  "builderVersion": "0122cfe76fa3",
+  "forbiddenTokensVersion": 0,
+  "suites": {
+    "nightly-2026-11-06_05-35-34-codex_cli": {
+      "generation": "1793946717984695",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-11-06_04-45-39-claude_code": {
+      "generation": "1793942690409120",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5-5"
+    },
+    "nightly-2026-11-06_00-00-02-antigravity_cli": {
+      "generation": "1793939711938811",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-4-argon"
+    },
+    "nightly-2026-11-04_04-54-10-codex_cli": {
+      "generation": "1793771273854943",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-11-04_04-03-00-claude_code": {
+      "generation": "1793767396827766",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5-5"
+    },
+    "nightly-2026-11-04_00-00-02-antigravity_cli": {
+      "generation": "1793764356883590",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-4-argon"
+    },
+    "nightly-2026-11-02_03-04-27-codex_cli": {
+      "generation": "1793591766347891",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-11-02_02-29-05-claude_code": {
+      "generation": "1793588660674136",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5-5"
+    },
+    "nightly-2026-10-31_23-00-02-antigravity_cli": {
+      "generation": "1793499412378336",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-4-argon"
+    },
+    "nightly-2026-10-30_03-35-16-codex_cli": {
+      "generation": "1793334329336337",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-10-30_03-00-17-claude_code": {
+      "generation": "1793331301238215",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5-5"
+    },
+    "nightly-2026-10-29_23-00-02-antigravity_cli": {
+      "generation": "1793329203321387",
+      "excludeGuides": [],
+      "skipped": {
+        "code": "leak"
+      }
+    },
+    "nightly-2026-10-28_03-33-45-codex_cli": {
+      "generation": "1793161102640041",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-10-28_01-55-42-claude_code": {
+      "generation": "1793158412348928",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-fable-5-1"
+    },
+    "nightly-2026-10-27_23-00-02-antigravity_cli": {
+      "generation": "1793152477175259",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-4-argon"
+    },
+    "nightly-2026-10-24_23-53-23-claude_code": {
+      "generation": "1792886875983085",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5-5"
+    },
+    "nightly-2026-10-24_21-00-02-antigravity_cli": {
+      "generation": "1792885987994479",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-4-argon"
+    },
+    "nightly-2026-10-23_00-00-10-codex_cli": {
+      "generation": "1792715896262839",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-10-22_23-40-02-claude_code": {
+      "generation": "1792713600192992",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5-5"
+    },
+    "nightly-2026-10-22_21-00-02-antigravity_cli": {
+      "generation": "1792712387681687",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-4-argon"
+    },
+    "nightly-2026-10-20_20-43-48-codex_cli": {
+      "generation": "1792531509538483",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-10-20_20-25-55-claude_code": {
+      "generation": "1792529021805066",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5-5"
+    },
+    "nightly-2026-10-20_18-18-02-antigravity_cli": {
+      "generation": "1792527948036118",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-4-argon"
+    },
+    "nightly-2026-10-19_17-28-30-codex_cli": {
+      "generation": "1792433073271507",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-10-19_17-02-55-claude_code": {
+      "generation": "1792430904461844",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5-5"
+    },
+    "nightly-2026-10-19_07-00-02-antigravity_cli": {
+      "generation": "1792429369917882",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-3.8-flash"
+    },
+    "nightly-2026-10-16_13-17-44-codex_cli": {
+      "generation": "1792159095418321",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-10-16_12-53-03-claude_code": {
+      "generation": "1792156658471078",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5-5"
+    },
+    "nightly-2026-10-16_07-00-02-antigravity_cli": {
+      "generation": "1792155171306619",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-3.8-flash"
+    },
+    "nightly-2026-10-14_10-21-40-codex_cli": {
+      "generation": "1791976760345108",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol"
+    },
+    "nightly-2026-10-14_10-05-13-claude_code": {
+      "generation": "1791973287450035",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5-5",
+      "deferred": true
+    },
+    "nightly-2026-10-14_07-00-02-antigravity_cli": {
+      "generation": "1791972297143487",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-3.8-flash",
+      "deferred": true
+    },
+    "nightly-2026-10-09_11-27-57-codex_cli": {
+      "generation": "1791548851464930",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol",
+      "deferred": true
+    },
+    "nightly-2026-10-09_11-12-49-claude_code": {
+      "generation": "1791545270173403",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5-5",
+      "deferred": true
+    },
+    "nightly-2026-10-09_07-00-02-antigravity_cli": {
+      "generation": "1791544355267225",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-3.8-flash",
+      "deferred": true
+    },
+    "nightly-2026-10-07_09-54-42-codex_cli": {
+      "generation": "1791369261770054",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol",
+      "deferred": true
+    },
+    "nightly-2026-10-07_09-39-32-claude_code": {
+      "generation": "1791366875925948",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5-5",
+      "deferred": true
+    },
+    "nightly-2026-10-07_07-00-02-antigravity_cli": {
+      "generation": "1791365957883436",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-3.8-flash",
+      "deferred": true
+    },
+    "nightly-2026-10-06_20-33-29-claude_code": {
+      "generation": "1791321043458898",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5-5",
+      "deferred": true
+    },
+    "nightly-2026-10-06_18-44-16-codex_cli": {
+      "generation": "1791314505407656",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6.1-sol",
+      "deferred": true
+    },
+    "nightly-2026-10-06_14-41-34-antigravity_cli": {
+      "generation": "1791309682269309",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-3.8-flash",
+      "deferred": true
+    },
+    "nightly-2026-10-02_10-27-28-claude_code": {
+      "generation": "1790940110122967",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-10-02_07-00-02-antigravity_cli": {
+      "generation": "1790936836073723",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-3.8-flash",
+      "deferred": true
+    },
+    "nightly-2026-10-01_03-07-13-antigravity_cli": {
+      "generation": "1790834459427259",
+      "excludeGuides": [],
+      "agent": "antigravity_cli",
+      "model": "gemini-3.8-flash",
+      "deferred": true
+    },
+    "nightly-2026-09-30_19-20-32-codex_cli": {
+      "generation": "1790798393301313",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6-astra",
+      "deferred": true
+    },
+    "nightly-2026-09-30_18-33-02-claude_code": {
+      "generation": "1790796025107860",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-25_18-10-13-claude_code": {
+      "generation": "1790363543816791",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-23_18-11-00-claude_code": {
+      "generation": "1790189782480504",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-21_18-31-39-codex_cli": {
+      "generation": "1790017402061483",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6-astra",
+      "deferred": true
+    },
+    "nightly-2026-09-21_17-45-07-claude_code": {
+      "generation": "1790015486298891",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-18_18-17-24-codex_cli": {
+      "generation": "1789757428925609",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-6-astra",
+      "deferred": true
+    },
+    "nightly-2026-09-18_17-44-38-claude_code": {
+      "generation": "1789755438290065",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-16_18-16-42-claude_code": {
+      "generation": "1789664516247268",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-14_18-17-44-claude_code": {
+      "generation": "1789411911145235",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-11_18-23-19-codex_cli": {
+      "generation": "1789152773694478",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-09-11_17-46-01-claude_code": {
+      "generation": "1789150988479200",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-09_18-42-45-codex_cli": {
+      "generation": "1788984284363566",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-09-09_18-04-33-claude_code": {
+      "generation": "1788979356725198",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-07_19-25-06-codex_cli": {
+      "generation": "1788892041277574",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-09-07_18-50-08-claude_code": {
+      "generation": "1788809095113115",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-04_17-58-47-codex_cli": {
+      "generation": "1788892034754028",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-09-04_17-24-43-claude_code": {
+      "generation": "1788544719077709",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-09-02_18-44-28-codex_cli": {
+      "generation": "1788378076182105",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-09-02_17-29-12-claude_code": {
+      "generation": "1788374659268448",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5",
+      "deferred": true
+    },
+    "nightly-2026-08-31_18-32-04-codex_cli": {
+      "generation": "1788203858207583",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-08-31_17-24-40-claude_code": {
+      "generation": "1788201117845931",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5",
+      "deferred": true
+    },
+    "nightly-2026-08-28_18-40-58-codex_cli": {
+      "generation": "1787944118315765",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-08-28_17-34-12-claude_code": {
+      "generation": "1787942450864126",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5",
+      "deferred": true
+    },
+    "nightly-2026-08-26_18-49-21-codex_cli": {
+      "generation": "1787771876318397",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-08-26_17-39-13-claude_code": {
+      "generation": "1787770153114401",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5",
+      "deferred": true
+    },
+    "nightly-2026-08-24_18-16-54-claude_code": {
+      "generation": "1787599816674104",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5",
+      "deferred": true
+    },
+    "nightly-2026-08-21_18-50-58-codex_cli": {
+      "generation": "1787339977274159",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-08-21_17-41-45-claude_code": {
+      "generation": "1787338248764791",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5",
+      "deferred": true
+    },
+    "nightly-2026-08-17_18-50-02-codex_cli": {
+      "generation": "1786994294779801",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-08-17_17-34-11-claude_code": {
+      "generation": "1786992595446083",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5",
+      "deferred": true
+    },
+    "nightly-2026-08-14_18-55-35-codex_cli": {
+      "generation": "1786735392195549",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.6-sol",
+      "deferred": true
+    },
+    "nightly-2026-08-14_17-29-59-claude_code": {
+      "generation": "1786733731127785",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-5",
+      "deferred": true
+    },
+    "nightly-2026-08-10_18-08-49-codex_cli": {
+      "generation": "1786387087686199",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-08-10_17-18-03-claude_code": {
+      "generation": "1786385324175560",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-08-07_17-43-47-codex_cli": {
+      "generation": "1786126266286735",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-08-07_17-14-41-claude_code": {
+      "generation": "1786124619664224",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-08-06_02-54-46-claude_code": {
+      "generation": "1785987564883156",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-08-06_00-02-43-codex_cli": {
+      "generation": "1785983626983329",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-08-03_18-02-27-codex_cli": {
+      "generation": "1785781881116755",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-08-03_17-20-07-claude_code": {
+      "generation": "1785780143220017",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-07-31_17-59-29-codex_cli": {
+      "generation": "1785522465531498",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-07-31_17-17-40-claude_code": {
+      "generation": "1785520765863955",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-07-29_17-59-13-codex_cli": {
+      "generation": "1785349654071201",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-07-29_17-14-25-claude_code": {
+      "generation": "1785347951058886",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-07-27_17-52-05-codex_cli": {
+      "generation": "1785176383673489",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-07-27_17-21-46-claude_code": {
+      "generation": "1785174722924500",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-07-22_17-57-35-codex_cli": {
+      "generation": "1784745011369921",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-07-22_17-16-53-claude_code": {
+      "generation": "1784743052849745",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-07-13_17-48-46-codex_cli": {
+      "generation": "1783966510992424",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-07-13_17-13-14-claude_code": {
+      "generation": "1783964924178797",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-07-10_17-13-34-claude_code": {
+      "generation": "1783706346743278",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-07-08_17-44-34-codex_cli": {
+      "generation": "1783534308734049",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-07-08_17-13-48-claude_code": {
+      "generation": "1783532671401622",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-07-06_17-47-00-codex_cli": {
+      "generation": "1783361723197428",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-07-06_17-14-05-claude_code": {
+      "generation": "1783360017700045",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-07-03_17-40-24-codex_cli": {
+      "generation": "1783102170254124",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-07-03_17-09-43-claude_code": {
+      "generation": "1783100421811578",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-07-01_17-22-16-claude_code": {
+      "generation": "1782928418815197",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-sonnet-5",
+      "deferred": true
+    },
+    "nightly-2026-06-29_17-44-09-codex_cli": {
+      "generation": "1782756940892583",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-06-29_17-14-38-claude_code": {
+      "generation": "1782755048345023",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-06-26_17-43-13-codex_cli": {
+      "generation": "1782497384141425",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-06-26_17-13-39-claude_code": {
+      "generation": "1782495792047183",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-06-24_17-19-13-claude_code": {
+      "generation": "1782323417558963",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-06-22_17-51-40-codex_cli": {
+      "generation": "1782152455178563",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-06-22_17-19-41-claude_code": {
+      "generation": "1782150698213753",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-06-19_18-04-04-codex_cli": {
+      "generation": "1781893887279183",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-06-19_17-29-53-claude_code": {
+      "generation": "1781892242275457",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-06-17_18-01-52-codex_cli": {
+      "generation": "1781721073122249",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-06-17_17-28-34-claude_code": {
+      "generation": "1781719309972282",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-06-15_18-01-08-codex_cli": {
+      "generation": "1781548259901389",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-06-15_17-28-12-claude_code": {
+      "generation": "1781546466847502",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-06-12_17-48-48-claude_code": {
+      "generation": "1781288543273695",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-8",
+      "deferred": true
+    },
+    "nightly-2026-06-10_18-16-53-codex_cli": {
+      "generation": "1781117180651353",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-06-10_17-41-23-claude_code": {
+      "generation": "1781115411254253",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-7",
+      "deferred": true
+    },
+    "nightly-2026-06-08_18-12-45-codex_cli": {
+      "generation": "1780944216184274",
+      "excludeGuides": [],
+      "agent": "codex_cli",
+      "model": "gpt-5.5",
+      "deferred": true
+    },
+    "nightly-2026-06-08_17-39-06-claude_code": {
+      "generation": "1780942363225240",
+      "excludeGuides": [],
+      "agent": "claude_code",
+      "model": "claude-opus-4-7",
+      "deferred": true
+    }
+  }
+}

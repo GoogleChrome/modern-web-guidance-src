@@ -1,0 +1,553 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/AUTHENTICATION.md b/AUTHENTICATION.md
+new file mode 100644
+index 0000000..4469df8
+--- /dev/null
++++ b/AUTHENTICATION.md
+@@ -0,0 +1,49 @@
++# Homepage authentication integration
++
++`index.html` uses the bundled `src/auth.js` client. Run `pnpm install` and
++`pnpm build` after changing that source. The committed `auth.bundle.js` lets the
++homepage run on the existing static host without starting another server.
++
++This repository contains no account database or authentication service. Real
++sign-in requires these same-origin HTTPS endpoints; the client does not simulate
++successful authentication or save credentials in browser storage.
++
++| Endpoint | Request | Successful response |
++| --- | --- | --- |
++| `GET /api/login/session` | Existing session cookie | JSON `{ "authenticated": true }` or `{ "authenticated": false }` |
++| `POST /api/login/options` | JSON `{}` | WebAuthn request options as JSON, with a Base64URL challenge, configured `rpId`, `userVerification: "preferred"`, and omitted or empty `allowCredentials` |
++| `POST /api/login/verify` | Assertion serialized with `credential.toJSON()` | Establish session cookie; JSON `{ "authenticated": true }` |
++| `POST /api/login/password` | JSON `{ "username": "…", "password": "…" }` | Verify password, establish session cookie; JSON `{ "authenticated": true }` |
++| `POST /api/logout` | JSON `{}` | Invalidate session cookie; successful HTTP status |
++
++Generate cryptographically random, single-use, session-bound challenges on the
++server. They must remain valid for at least the client's 60-second options cache
++plus the credential interaction. Persist expected user verification server-side.
++Use a vetted WebAuthn server library to validate the challenge, origin, RP ID,
++signature, and verification requirements against registered credentials. Only
++return HTTP 404 from the assertion verification endpoint when the credential is
++actually unknown; that response triggers optional password-manager synchronization.
++Return other failures as non-2xx statuses. Never redirect these API requests to a
++login page. Use `Cache-Control: no-store` on all authentication responses.
++
++Protect state-changing endpoints against CSRF by validating the same-origin
++`Origin` header and rejecting cross-origin and non-JSON requests. Set secure,
++HttpOnly, SameSite session cookies and rotate sessions after login. Rate-limit
++credential attempts and return generic password errors. The Rewards, Account,
++and Order destinations must enforce authentication on the server independently
++of the homepage's UI state.
++
++Quick sign-in is initiated only by an ordinary link click, after checking
++`capabilities.immediateGet`; it requests both saved passwords and passkeys with
++`uiMode: 'immediate'`, without an AbortSignal or credential allowlist. Options
++and capabilities are preloaded so the credential request can run within the
++click's transient activation. If options are unavailable or stale, the browser
++is unsupported, no local account exists, or the chooser is dismissed, the inline
++form opens without navigating. An expired challenge or verification failure
++also keeps the customer on the page. Modified clicks retain native link behavior.
++
++The form supports password autofill, conditional passkey autofill, an explicit
++passkey button that permits phone/security-key options, and Keep browsing. A
++pending conditional request is aborted before another credential request or
++password submission. Successful sign-in updates the current page, then resumes
++the selected Rewards, My Account, or Order Now destination if there was one.
+diff --git a/auth.bundle.js b/auth.bundle.js
+new file mode 100644
+index 0000000..4782b1a
+--- /dev/null
++++ b/auth.bundle.js
+@@ -0,0 +1 @@
++(()=>{var ni=Object.create;var De=Object.defineProperty;var ai=Object.getOwnPropertyDescriptor;var si=Object.getOwnPropertyNames;var li=Object.getPrototypeOf,ci=Object.prototype.hasOwnProperty;var di=(e,r)=>()=>{try{return r||e((r={exports:{}}).exports,r),r.exports}catch(s){throw r=0,s}};var ui=(e,r,s,c)=>{if(r&&typeof r=="object"||typeof r=="function")for(let w of si(r))!ci.call(e,w)&&w!==s&&De(e,w,{get:()=>r[w],enumerable:!(c=ai(r,w))||c.enumerable});return e};var bi=(e,r,s)=>(s=e!=null?ni(li(e)):{},ui(r||!e||!e.__esModule?De(s,"default",{value:e,enumerable:!0}):s,e));var Ve=di((Y,se)=>{(function(e,r){"use strict";var s="1.0.41",c="",w="?",g="function",k="undefined",U="object",R="string",M="major",t="model",n="name",i="type",o="vendor",a="version",A="architecture",K="console",d="mobile",u="tablet",y="smarttv",S="wearable",D="embedded",we=500,Q="Amazon",L="Apple",Pe="ASUS",Te="BlackBerry",ee="Browser",ie="Chrome",ei="Edge",te="Firefox",re="Google",Ne="Honor",_e="Huawei",ii="Lenovo",oe="LG",pe="Microsoft",me="Motorola",fe="Nvidia",qe="OnePlus",V="Opera",he="OPPO",F="Samsung",Re="Sharp",G="Sony",ge="Xiaomi",ye="Zebra",je="Facebook",Ue="Chromium OS",Me="Mac OS",Le=" Browser",ti=function(p,m){var b={};for(var h in p)m[h]&&m[h].length%2===0?b[h]=m[h].concat(p[h]):b[h]=p[h];return b},ne=function(p){for(var m={},b=0;b<p.length;b++)m[p[b].toUpperCase()]=p[b];return m},Be=function(p,m){return typeof p===R?J(m).indexOf(J(p))!==-1:!1},J=function(p){return p.toLowerCase()},ri=function(p){return typeof p===R?p.replace(/[^\d\.]/g,c).split(".")[0]:r},ve=function(p,m){if(typeof p===R)return p=p.replace(/^\s\s*/,c),typeof m===k?p:p.substring(0,we)},W=function(p,m){for(var b=0,h,N,E,f,l,P;b<m.length&&!l;){var xe=m[b],Ke=m[b+1];for(h=N=0;h<xe.length&&!l&&xe[h];)if(l=xe[h++].exec(p),l)for(E=0;E<Ke.length;E++)P=l[++N],f=Ke[E],typeof f===U&&f.length>0?f.length===2?typeof f[1]==g?this[f[0]]=f[1].call(this,P):this[f[0]]=f[1]:f.length===3?typeof f[1]===g&&!(f[1].exec&&f[1].test)?this[f[0]]=P?f[1].call(this,P,f[2]):r:this[f[0]]=P?P.replace(f[1],f[2]):r:f.length===4&&(this[f[0]]=P?f[3].call(this,P.replace(f[1],f[2])):r):this[f]=P||r;b+=2}},H=function(p,m){for(var b in m)if(typeof m[b]===U&&m[b].length>0){for(var h=0;h<m[b].length;h++)if(Be(m[b][h],p))return b===w?r:b}else if(Be(m[b],p))return b===w?r:b;return m.hasOwnProperty("*")?m["*"]:p},oi={"1.0":"/8","1.2":"/1","1.3":"/3","2.0":"/412","2.0.2":"/416","2.0.3":"/417","2.0.4":"/419","?":"/"},ze={ME:"4.90","NT 3.11":"NT3.51","NT 4.0":"NT4.0",2e3:"NT 5.0",XP:["NT 5.1","NT 5.2"],Vista:"NT 6.0",7:"NT 6.1",8:"NT 6.2","8.1":"NT 6.3",10:["NT 6.4","NT 10.0"],RT:"ARM"},Ie={browser:[[/\b(?:crmo|crios)\/([\w\.]+)/i],[a,[n,"Chrome"]],[/edg(?:e|ios|a)?\/([\w\.]+)/i],[a,[n,"Edge"]],[/(opera mini)\/([-\w\.]+)/i,/(opera [mobiletab]{3,6})\b.+version\/([-\w\.]+)/i,/(opera)(?:.+version\/|[\/ ]+)([\w\.]+)/i],[n,a],[/opios[\/ ]+([\w\.]+)/i],[a,[n,V+" Mini"]],[/\bop(?:rg)?x\/([\w\.]+)/i],[a,[n,V+" GX"]],[/\bopr\/([\w\.]+)/i],[a,[n,V]],[/\bb[ai]*d(?:uhd|[ub]*[aekoprswx]{5,6})[\/ ]?([\w\.]+)/i],[a,[n,"Baidu"]],[/\b(?:mxbrowser|mxios|myie2)\/?([-\w\.]*)\b/i],[a,[n,"Maxthon"]],[/(kindle)\/([\w\.]+)/i,/(lunascape|maxthon|netfront|jasmine|blazer|sleipnir)[\/ ]?([\w\.]*)/i,/(avant|iemobile|slim(?:browser|boat|jet))[\/ ]?([\d\.]*)/i,/(?:ms|\()(ie) ([\w\.]+)/i,/(flock|rockmelt|midori|epiphany|silk|skyfire|ovibrowser|bolt|iron|vivaldi|iridium|phantomjs|bowser|qupzilla|falkon|rekonq|puffin|brave|whale(?!.+naver)|qqbrowserlite|duckduckgo|klar|helio|(?=comodo_)?dragon)\/([-\w\.]+)/i,/(heytap|ovi|115)browser\/([\d\.]+)/i,/(weibo)__([\d\.]+)/i],[n,a],[/quark(?:pc)?\/([-\w\.]+)/i],[a,[n,"Quark"]],[/\bddg\/([\w\.]+)/i],[a,[n,"DuckDuckGo"]],[/(?:\buc? ?browser|(?:juc.+)ucweb)[\/ ]?([\w\.]+)/i],[a,[n,"UC"+ee]],[/microm.+\bqbcore\/([\w\.]+)/i,/\bqbcore\/([\w\.]+).+microm/i,/micromessenger\/([\w\.]+)/i],[a,[n,"WeChat"]],[/konqueror\/([\w\.]+)/i],[a,[n,"Konqueror"]],[/trident.+rv[: ]([\w\.]{1,9})\b.+like gecko/i],[a,[n,"IE"]],[/ya(?:search)?browser\/([\w\.]+)/i],[a,[n,"Yandex"]],[/slbrowser\/([\w\.]+)/i],[a,[n,"Smart Lenovo "+ee]],[/(avast|avg)\/([\w\.]+)/i],[[n,/(.+)/,"$1 Secure "+ee],a],[/\bfocus\/([\w\.]+)/i],[a,[n,te+" Focus"]],[/\bopt\/([\w\.]+)/i],[a,[n,V+" Touch"]],[/coc_coc\w+\/([\w\.]+)/i],[a,[n,"Coc Coc"]],[/dolfin\/([\w\.]+)/i],[a,[n,"Dolphin"]],[/coast\/([\w\.]+)/i],[a,[n,V+" Coast"]],[/miuibrowser\/([\w\.]+)/i],[a,[n,"MIUI"+Le]],[/fxios\/([\w\.-]+)/i],[a,[n,te]],[/\bqihoobrowser\/?([\w\.]*)/i],[a,[n,"360"]],[/\b(qq)\/([\w\.]+)/i],[[n,/(.+)/,"$1Browser"],a],[/(oculus|sailfish|huawei|vivo|pico)browser\/([\w\.]+)/i],[[n,/(.+)/,"$1"+Le],a],[/samsungbrowser\/([\w\.]+)/i],[a,[n,F+" Internet"]],[/metasr[\/ ]?([\d\.]+)/i],[a,[n,"Sogou Explorer"]],[/(sogou)mo\w+\/([\d\.]+)/i],[[n,"Sogou Mobile"],a],[/(electron)\/([\w\.]+) safari/i,/(tesla)(?: qtcarbrowser|\/(20\d\d\.[-\w\.]+))/i,/m?(qqbrowser|2345(?=browser|chrome|explorer))\w*[\/ ]?v?([\w\.]+)/i],[n,a],[/(lbbrowser|rekonq)/i,/\[(linkedin)app\]/i],[n],[/ome\/([\w\.]+) \w* ?(iron) saf/i,/ome\/([\w\.]+).+qihu (360)[es]e/i],[a,n],[/((?:fban\/fbios|fb_iab\/fb4a)(?!.+fbav)|;fbav\/([\w\.]+);)/i],[[n,je],a],[/(Klarna)\/([\w\.]+)/i,/(kakao(?:talk|story))[\/ ]([\w\.]+)/i,/(naver)\(.*?(\d+\.[\w\.]+).*\)/i,/(daum)apps[\/ ]([\w\.]+)/i,/safari (line)\/([\w\.]+)/i,/\b(line)\/([\w\.]+)\/iab/i,/(alipay)client\/([\w\.]+)/i,/(twitter)(?:and| f.+e\/([\w\.]+))/i,/(chromium|instagram|snapchat)[\/ ]([-\w\.]+)/i],[n,a],[/\bgsa\/([\w\.]+) .*safari\//i],[a,[n,"GSA"]],[/musical_ly(?:.+app_?version\/|_)([\w\.]+)/i],[a,[n,"TikTok"]],[/headlesschrome(?:\/([\w\.]+)| )/i],[a,[n,ie+" Headless"]],[/ wv\).+(chrome)\/([\w\.]+)/i],[[n,ie+" WebView"],a],[/droid.+ version\/([\w\.]+)\b.+(?:mobile safari|safari)/i],[a,[n,"Android "+ee]],[/(chrome|omniweb|arora|[tizenoka]{5} ?browser)\/v?([\w\.]+)/i],[n,a],[/version\/([\w\.\,]+) .*mobile\/\w+ (safari)/i],[a,[n,"Mobile Safari"]],[/version\/([\w(\.|\,)]+) .*(mobile ?safari|safari)/i],[a,n],[/webkit.+?(mobile ?safari|safari)(\/[\w\.]+)/i],[n,[a,H,oi]],[/(webkit|khtml)\/([\w\.]+)/i],[n,a],[/(navigator|netscape\d?)\/([-\w\.]+)/i],[[n,"Netscape"],a],[/(wolvic|librewolf)\/([\w\.]+)/i],[n,a],[/mobile vr; rv:([\w\.]+)\).+firefox/i],[a,[n,te+" Reality"]],[/ekiohf.+(flow)\/([\w\.]+)/i,/(swiftfox)/i,/(icedragon|iceweasel|camino|chimera|fennec|maemo browser|minimo|conkeror)[\/ ]?([\w\.\+]+)/i,/(seamonkey|k-meleon|icecat|iceape|firebird|phoenix|palemoon|basilisk|waterfox)\/([-\w\.]+)$/i,/(firefox)\/([\w\.]+)/i,/(mozilla)\/([\w\.]+) .+rv\:.+gecko\/\d+/i,/(amaya|dillo|doris|icab|ladybird|lynx|mosaic|netsurf|obigo|polaris|w3m|(?:go|ice|up)[\. ]?browser)[-\/ ]?v?([\w\.]+)/i,/\b(links) \(([\w\.]+)/i],[n,[a,/_/g,"."]],[/(cobalt)\/([\w\.]+)/i],[n,[a,/master.|lts./,""]]],cpu:[[/\b((amd|x|x86[-_]?|wow|win)64)\b/i],[[A,"amd64"]],[/(ia32(?=;))/i,/\b((i[346]|x)86)(pc)?\b/i],[[A,"ia32"]],[/\b(aarch64|arm(v?[89]e?l?|_?64))\b/i],[[A,"arm64"]],[/\b(arm(v[67])?ht?n?[fl]p?)\b/i],[[A,"armhf"]],[/( (ce|mobile); ppc;|\/[\w\.]+arm\b)/i],[[A,"arm"]],[/((ppc|powerpc)(64)?)( mac|;|\))/i],[[A,/ower/,c,J]],[/ sun4\w[;\)]/i],[[A,"sparc"]],[/\b(avr32|ia64(?=;)|68k(?=\))|\barm(?=v([1-7]|[5-7]1)l?|;|eabi)|(irix|mips|sparc)(64)?\b|pa-risc)/i],[[A,J]]],device:[[/\b(sch-i[89]0\d|shw-m380s|sm-[ptx]\w{2,4}|gt-[pn]\d{2,4}|sgh-t8[56]9|nexus 10)/i],[t,[o,F],[i,u]],[/\b((?:s[cgp]h|gt|sm)-(?![lr])\w+|sc[g-]?[\d]+a?|galaxy nexus)/i,/samsung[- ]((?!sm-[lr])[-\w]+)/i,/sec-(sgh\w+)/i],[t,[o,F],[i,d]],[/(?:\/|\()(ip(?:hone|od)[\w, ]*)(?:\/|;)/i],[t,[o,L],[i,d]],[/\((ipad);[-\w\),; ]+apple/i,/applecoremedia\/[\w\.]+ \((ipad)/i,/\b(ipad)\d\d?,\d\d?[;\]].+ios/i],[t,[o,L],[i,u]],[/(macintosh);/i],[t,[o,L]],[/\b(sh-?[altvz]?\d\d[a-ekm]?)/i],[t,[o,Re],[i,d]],[/\b((?:brt|eln|hey2?|gdi|jdn)-a?[lnw]09|(?:ag[rm]3?|jdn2|kob2)-a?[lw]0[09]hn)(?: bui|\)|;)/i],[t,[o,Ne],[i,u]],[/honor([-\w ]+)[;\)]/i],[t,[o,Ne],[i,d]],[/\b((?:ag[rs][2356]?k?|bah[234]?|bg[2o]|bt[kv]|cmr|cpn|db[ry]2?|jdn2|got|kob2?k?|mon|pce|scm|sht?|[tw]gr|vrd)-[ad]?[lw][0125][09]b?|605hw|bg2-u03|(?:gem|fdr|m2|ple|t1)-[7a]0[1-4][lu]|t1-a2[13][lw]|mediapad[\w\. ]*(?= bui|\)))\b(?!.+d\/s)/i],[t,[o,_e],[i,u]],[/(?:huawei)([-\w ]+)[;\)]/i,/\b(nexus 6p|\w{2,4}e?-[atu]?[ln][\dx][012359c][adn]?)\b(?!.+d\/s)/i],[t,[o,_e],[i,d]],[/oid[^\)]+; (2[\dbc]{4}(182|283|rp\w{2})[cgl]|m2105k81a?c)(?: bui|\))/i,/\b((?:red)?mi[-_ ]?pad[\w- ]*)(?: bui|\))/i],[[t,/_/g," "],[o,ge],[i,u]],[/\b(poco[\w ]+|m2\d{3}j\d\d[a-z]{2})(?: bui|\))/i,/\b; (\w+) build\/hm\1/i,/\b(hm[-_ ]?note?[_ ]?(?:\d\w)?) bui/i,/\b(redmi[\-_ ]?(?:note|k)?[\w_ ]+)(?: bui|\))/i,/oid[^\)]+; (m?[12][0-389][01]\w{3,6}[c-y])( bui|; wv|\))/i,/\b(mi[-_ ]?(?:a\d|one|one[_ ]plus|note lte|max|cc)?[_ ]?(?:\d?\w?)[_ ]?(?:plus|se|lite|pro)?)(?: bui|\))/i,/ ([\w ]+) miui\/v?\d/i],[[t,/_/g," "],[o,ge],[i,d]],[/; (\w+) bui.+ oppo/i,/\b(cph[12]\d{3}|p(?:af|c[al]|d\w|e[ar])[mt]\d0|x9007|a101op)\b/i],[t,[o,he],[i,d]],[/\b(opd2(\d{3}a?))(?: bui|\))/i],[t,[o,H,{OnePlus:["304","403","203"],"*":he}],[i,u]],[/vivo (\w+)(?: bui|\))/i,/\b(v[12]\d{3}\w?[at])(?: bui|;)/i],[t,[o,"Vivo"],[i,d]],[/\b(rmx[1-3]\d{3})(?: bui|;|\))/i],[t,[o,"Realme"],[i,d]],[/\b(milestone|droid(?:[2-4x]| (?:bionic|x2|pro|razr))?:?( 4g)?)\b[\w ]+build\//i,/\bmot(?:orola)?[- ](\w*)/i,/((?:moto(?! 360)[\w\(\) ]+|xt\d{3,4}|nexus 6)(?= bui|\)))/i],[t,[o,me],[i,d]],[/\b(mz60\d|xoom[2 ]{0,2}) build\//i],[t,[o,me],[i,u]],[/((?=lg)?[vl]k\-?\d{3}) bui| 3\.[-\w; ]{10}lg?-([06cv9]{3,4})/i],[t,[o,oe],[i,u]],[/(lm(?:-?f100[nv]?|-[\w\.]+)(?= bui|\))|nexus [45])/i,/\blg[-e;\/ ]+((?!browser|netcast|android tv|watch)\w+)/i,/\blg-?([\d\w]+) bui/i],[t,[o,oe],[i,d]],[/(ideatab[-\w ]+|602lv|d-42a|a101lv|a2109a|a3500-hv|s[56]000|pb-6505[my]|tb-?x?\d{3,4}(?:f[cu]|xu|[av])|yt\d?-[jx]?\d+[lfmx])( bui|;|\)|\/)/i,/lenovo ?(b[68]0[08]0-?[hf]?|tab(?:[\w- ]+?)|tb[\w-]{6,7})( bui|;|\)|\/)/i],[t,[o,ii],[i,u]],[/(nokia) (t[12][01])/i],[o,t,[i,u]],[/(?:maemo|nokia).*(n900|lumia \d+|rm-\d+)/i,/nokia[-_ ]?(([-\w\. ]*))/i],[[t,/_/g," "],[i,d],[o,"Nokia"]],[/(pixel (c|tablet))\b/i],[t,[o,re],[i,u]],[/droid.+; (pixel[\daxl ]{0,6})(?: bui|\))/i],[t,[o,re],[i,d]],[/droid.+; (a?\d[0-2]{2}so|[c-g]\d{4}|so[-gl]\w+|xq-a\w[4-7][12])(?= bui|\).+chrome\/(?![1-6]{0,1}\d\.))/i],[t,[o,G],[i,d]],[/sony tablet [ps]/i,/\b(?:sony)?sgp\w+(?: bui|\))/i],[[t,"Xperia Tablet"],[o,G],[i,u]],[/ (kb2005|in20[12]5|be20[12][59])\b/i,/(?:one)?(?:plus)? (a\d0\d\d)(?: b|\))/i],[t,[o,qe],[i,d]],[/(alexa)webm/i,/(kf[a-z]{2}wi|aeo(?!bc)\w\w)( bui|\))/i,/(kf[a-z]+)( bui|\)).+silk\//i],[t,[o,Q],[i,u]],[/((?:sd|kf)[0349hijorstuw]+)( bui|\)).+silk\//i],[[t,/(.+)/g,"Fire Phone $1"],[o,Q],[i,d]],[/(playbook);[-\w\),; ]+(rim)/i],[t,o,[i,u]],[/\b((?:bb[a-f]|st[hv])100-\d)/i,/\(bb10; (\w+)/i],[t,[o,Te],[i,d]],[/(?:\b|asus_)(transfo[prime ]{4,10} \w+|eeepc|slider \w+|nexus 7|padfone|p00[cj])/i],[t,[o,Pe],[i,u]],[/ (z[bes]6[027][012][km][ls]|zenfone \d\w?)\b/i],[t,[o,Pe],[i,d]],[/(nexus 9)/i],[t,[o,"HTC"],[i,u]],[/(htc)[-;_ ]{1,2}([\w ]+(?=\)| bui)|\w+)/i,/(zte)[- ]([\w ]+?)(?: bui|\/|\))/i,/(alcatel|geeksphone|nexian|panasonic(?!(?:;|\.))|sony(?!-bra))[-_ ]?([-\w]*)/i],[o,[t,/_/g," "],[i,d]],[/droid [\w\.]+; ((?:8[14]9[16]|9(?:0(?:48|60|8[01])|1(?:3[27]|66)|2(?:6[69]|9[56])|466))[gqswx])\w*(\)| bui)/i],[t,[o,"TCL"],[i,u]],[/(itel) ((\w+))/i],[[o,J],t,[i,H,{tablet:["p10001l","w7001"],"*":"mobile"}]],[/droid.+; ([ab][1-7]-?[0178a]\d\d?)/i],[t,[o,"Acer"],[i,u]],[/droid.+; (m[1-5] note) bui/i,/\bmz-([-\w]{2,})/i],[t,[o,"Meizu"],[i,d]],[/; ((?:power )?armor(?:[\w ]{0,8}))(?: bui|\))/i],[t,[o,"Ulefone"],[i,d]],[/; (energy ?\w+)(?: bui|\))/i,/; energizer ([\w ]+)(?: bui|\))/i],[t,[o,"Energizer"],[i,d]],[/; cat (b35);/i,/; (b15q?|s22 flip|s48c|s62 pro)(?: bui|\))/i],[t,[o,"Cat"],[i,d]],[/((?:new )?andromax[\w- ]+)(?: bui|\))/i],[t,[o,"Smartfren"],[i,d]],[/droid.+; (a(?:015|06[35]|142p?))/i],[t,[o,"Nothing"],[i,d]],[/; (x67 5g|tikeasy \w+|ac[1789]\d\w+)( b|\))/i,/archos ?(5|gamepad2?|([\w ]*[t1789]|hello) ?\d+[\w ]*)( b|\))/i],[t,[o,"Archos"],[i,u]],[/archos ([\w ]+)( b|\))/i,/; (ac[3-6]\d\w{2,8})( b|\))/i],[t,[o,"Archos"],[i,d]],[/(imo) (tab \w+)/i,/(infinix) (x1101b?)/i],[o,t,[i,u]],[/(blackberry|benq|palm(?=\-)|sonyericsson|acer|asus(?! zenw)|dell|jolla|meizu|motorola|polytron|infinix|tecno|micromax|advan)[-_ ]?([-\w]*)/i,/; (hmd|imo) ([\w ]+?)(?: bui|\))/i,/(hp) ([\w ]+\w)/i,/(microsoft); (lumia[\w ]+)/i,/(lenovo)[-_ ]?([-\w ]+?)(?: bui|\)|\/)/i,/(oppo) ?([\w ]+) bui/i],[o,t,[i,d]],[/(kobo)\s(ereader|touch)/i,/(hp).+(touchpad(?!.+tablet)|tablet)/i,/(kindle)\/([\w\.]+)/i,/(nook)[\w ]+build\/(\w+)/i,/(dell) (strea[kpr\d ]*[\dko])/i,/(le[- ]+pan)[- ]+(\w{1,9}) bui/i,/(trinity)[- ]*(t\d{3}) bui/i,/(gigaset)[- ]+(q\w{1,9}) bui/i,/(vodafone) ([\w ]+)(?:\)| bui)/i],[o,t,[i,u]],[/(surface duo)/i],[t,[o,pe],[i,u]],[/droid [\d\.]+; (fp\du?)(?: b|\))/i],[t,[o,"Fairphone"],[i,d]],[/(u304aa)/i],[t,[o,"AT&T"],[i,d]],[/\bsie-(\w*)/i],[t,[o,"Siemens"],[i,d]],[/\b(rct\w+) b/i],[t,[o,"RCA"],[i,u]],[/\b(venue[\d ]{2,7}) b/i],[t,[o,"Dell"],[i,u]],[/\b(q(?:mv|ta)\w+) b/i],[t,[o,"Verizon"],[i,u]],[/\b(?:barnes[& ]+noble |bn[rt])([\w\+ ]*) b/i],[t,[o,"Barnes & Noble"],[i,u]],[/\b(tm\d{3}\w+) b/i],[t,[o,"NuVision"],[i,u]],[/\b(k88) b/i],[t,[o,"ZTE"],[i,u]],[/\b(nx\d{3}j) b/i],[t,[o,"ZTE"],[i,d]],[/\b(gen\d{3}) b.+49h/i],[t,[o,"Swiss"],[i,d]],[/\b(zur\d{3}) b/i],[t,[o,"Swiss"],[i,u]],[/\b((zeki)?tb.*\b) b/i],[t,[o,"Zeki"],[i,u]],[/\b([yr]\d{2}) b/i,/\b(dragon[- ]+touch |dt)(\w{5}) b/i],[[o,"Dragon Touch"],t,[i,u]],[/\b(ns-?\w{0,9}) b/i],[t,[o,"Insignia"],[i,u]],[/\b((nxa|next)-?\w{0,9}) b/i],[t,[o,"NextBook"],[i,u]],[/\b(xtreme\_)?(v(1[045]|2[015]|[3469]0|7[05])) b/i],[[o,"Voice"],t,[i,d]],[/\b(lvtel\-)?(v1[12]) b/i],[[o,"LvTel"],t,[i,d]],[/\b(ph-1) /i],[t,[o,"Essential"],[i,d]],[/\b(v(100md|700na|7011|917g).*\b) b/i],[t,[o,"Envizen"],[i,u]],[/\b(trio[-\w\. ]+) b/i],[t,[o,"MachSpeed"],[i,u]],[/\btu_(1491) b/i],[t,[o,"Rotor"],[i,u]],[/((?:tegranote|shield t(?!.+d tv))[\w- ]*?)(?: b|\))/i],[t,[o,fe],[i,u]],[/(sprint) (\w+)/i],[o,t,[i,d]],[/(kin\.[onetw]{3})/i],[[t,/\./g," "],[o,pe],[i,d]],[/droid.+; (cc6666?|et5[16]|mc[239][23]x?|vc8[03]x?)\)/i],[t,[o,ye],[i,u]],[/droid.+; (ec30|ps20|tc[2-8]\d[kx])\)/i],[t,[o,ye],[i,d]],[/smart-tv.+(samsung)/i],[o,[i,y]],[/hbbtv.+maple;(\d+)/i],[[t,/^/,"SmartTV"],[o,F],[i,y]],[/(nux; netcast.+smarttv|lg (netcast\.tv-201\d|android tv))/i],[[o,oe],[i,y]],[/(apple) ?tv/i],[o,[t,L+" TV"],[i,y]],[/crkey/i],[[t,ie+"cast"],[o,re],[i,y]],[/droid.+aft(\w+)( bui|\))/i],[t,[o,Q],[i,y]],[/(shield \w+ tv)/i],[t,[o,fe],[i,y]],[/\(dtv[\);].+(aquos)/i,/(aquos-tv[\w ]+)\)/i],[t,[o,Re],[i,y]],[/(bravia[\w ]+)( bui|\))/i],[t,[o,G],[i,y]],[/(mi(tv|box)-?\w+) bui/i],[t,[o,ge],[i,y]],[/Hbbtv.*(technisat) (.*);/i],[o,t,[i,y]],[/\b(roku)[\dx]*[\)\/]((?:dvp-)?[\d\.]*)/i,/hbbtv\/\d+\.\d+\.\d+ +\([\w\+ ]*; *([\w\d][^;]*);([^;]*)/i],[[o,ve],[t,ve],[i,y]],[/droid.+; ([\w- ]+) (?:android tv|smart[- ]?tv)/i],[t,[i,y]],[/\b(android tv|smart[- ]?tv|opera tv|tv; rv:)\b/i],[[i,y]],[/(ouya)/i,/(nintendo) ([wids3utch]+)/i],[o,t,[i,K]],[/droid.+; (shield)( bui|\))/i],[t,[o,fe],[i,K]],[/(playstation \w+)/i],[t,[o,G],[i,K]],[/\b(xbox(?: one)?(?!; xbox))[\); ]/i],[t,[o,pe],[i,K]],[/\b(sm-[lr]\d\d[0156][fnuw]?s?|gear live)\b/i],[t,[o,F],[i,S]],[/((pebble))app/i,/(asus|google|lg|oppo) ((pixel |zen)?watch[\w ]*)( bui|\))/i],[o,t,[i,S]],[/(ow(?:19|20)?we?[1-3]{1,3})/i],[t,[o,he],[i,S]],[/(watch)(?: ?os[,\/]|\d,\d\/)[\d\.]+/i],[t,[o,L],[i,S]],[/(opwwe\d{3})/i],[t,[o,qe],[i,S]],[/(moto 360)/i],[t,[o,me],[i,S]],[/(smartwatch 3)/i],[t,[o,G],[i,S]],[/(g watch r)/i],[t,[o,oe],[i,S]],[/droid.+; (wt63?0{2,3})\)/i],[t,[o,ye],[i,S]],[/droid.+; (glass) \d/i],[t,[o,re],[i,S]],[/(pico) (4|neo3(?: link|pro)?)/i],[o,t,[i,S]],[/; (quest( \d| pro)?)/i],[t,[o,je],[i,S]],[/(tesla)(?: qtcarbrowser|\/[-\w\.]+)/i],[o,[i,D]],[/(aeobc)\b/i],[t,[o,Q],[i,D]],[/(homepod).+mac os/i],[t,[o,L],[i,D]],[/windows iot/i],[[i,D]],[/droid .+?; ([^;]+?)(?: bui|; wv\)|\) applew).+? mobile safari/i],[t,[i,d]],[/droid .+?; ([^;]+?)(?: bui|\) applew).+?(?! mobile) safari/i],[t,[i,u]],[/\b((tablet|tab)[;\/]|focus\/\d(?!.+mobile))/i],[[i,u]],[/(phone|mobile(?:[;\/]| [ \w\/\.]*safari)|pda(?=.+windows ce))/i],[[i,d]],[/droid .+?; ([\w\. -]+)( bui|\))/i],[t,[o,"Generic"]]],engine:[[/windows.+ edge\/([\w\.]+)/i],[a,[n,ei+"HTML"]],[/(arkweb)\/([\w\.]+)/i],[n,a],[/webkit\/537\.36.+chrome\/(?!27)([\w\.]+)/i],[a,[n,"Blink"]],[/(presto)\/([\w\.]+)/i,/(webkit|trident|netfront|netsurf|amaya|lynx|w3m|goanna|servo)\/([\w\.]+)/i,/ekioh(flow)\/([\w\.]+)/i,/(khtml|tasman|links)[\/ ]\(?([\w\.]+)/i,/(icab)[\/ ]([23]\.[\d\.]+)/i,/\b(libweb)/i],[n,a],[/ladybird\//i],[[n,"LibWeb"]],[/rv\:([\w\.]{1,9})\b.+(gecko)/i],[a,n]],os:[[/microsoft (windows) (vista|xp)/i],[n,a],[/(windows (?:phone(?: os)?|mobile|iot))[\/ ]?([\d\.\w ]*)/i],[n,[a,H,ze]],[/windows nt 6\.2; (arm)/i,/windows[\/ ]([ntce\d\. ]+\w)(?!.+xbox)/i,/(?:win(?=3|9|n)|win 9x )([nt\d\.]+)/i],[[a,H,ze],[n,"Windows"]],[/[adehimnop]{4,7}\b(?:.*os ([\w]+) like mac|; opera)/i,/(?:ios;fbsv\/|iphone.+ios[\/ ])([\d\.]+)/i,/cfnetwork\/.+darwin/i],[[a,/_/g,"."],[n,"iOS"]],[/(mac os x) ?([\w\. ]*)/i,/(macintosh|mac_powerpc\b)(?!.+haiku)/i],[[n,Me],[a,/_/g,"."]],[/droid ([\w\.]+)\b.+(android[- ]x86|harmonyos)/i],[a,n],[/(ubuntu) ([\w\.]+) like android/i],[[n,/(.+)/,"$1 Touch"],a],[/(android|bada|blackberry|kaios|maemo|meego|openharmony|qnx|rim tablet os|sailfish|series40|symbian|tizen|webos)\w*[-\/; ]?([\d\.]*)/i],[n,a],[/\(bb(10);/i],[a,[n,Te]],[/(?:symbian ?os|symbos|s60(?=;)|series ?60)[-\/ ]?([\w\.]*)/i],[a,[n,"Symbian"]],[/mozilla\/[\d\.]+ \((?:mobile|tablet|tv|mobile; [\w ]+); rv:.+ gecko\/([\w\.]+)/i],[a,[n,te+" OS"]],[/web0s;.+rt(tv)/i,/\b(?:hp)?wos(?:browser)?\/([\w\.]+)/i],[a,[n,"webOS"]],[/watch(?: ?os[,\/]|\d,\d\/)([\d\.]+)/i],[a,[n,"watchOS"]],[/crkey\/([\d\.]+)/i],[a,[n,ie+"cast"]],[/(cros) [\w]+(?:\)| ([\w\.]+)\b)/i],[[n,Ue],a],[/panasonic;(viera)/i,/(netrange)mmh/i,/(nettv)\/(\d+\.[\w\.]+)/i,/(nintendo|playstation) ([wids345portablevuch]+)/i,/(xbox); +xbox ([^\);]+)/i,/\b(joli|palm)\b ?(?:os)?\/?([\w\.]*)/i,/(mint)[\/\(\) ]?(\w*)/i,/(mageia|vectorlinux)[; ]/i,/([kxln]?ubuntu|debian|suse|opensuse|gentoo|arch(?= linux)|slackware|fedora|mandriva|centos|pclinuxos|red ?hat|zenwalk|linpus|raspbian|plan 9|minix|risc os|contiki|deepin|manjaro|elementary os|sabayon|linspire)(?: gnu\/linux)?(?: enterprise)?(?:[- ]linux)?(?:-gnu)?[-\/ ]?(?!chrom|package)([-\w\.]*)/i,/(hurd|linux)(?: arm\w*| x86\w*| ?)([\w\.]*)/i,/(gnu) ?([\w\.]*)/i,/\b([-frentopcghs]{0,5}bsd|dragonfly)[\/ ]?(?!amd|[ix346]{1,2}86)([\w\.]*)/i,/(haiku) (\w+)/i],[n,a],[/(sunos) ?([\w\.\d]*)/i],[[n,"Solaris"],a],[/((?:open)?solaris)[-\/ ]?([\w\.]*)/i,/(aix) ((\d)(?=\.|\)| )[\w\.])*/i,/\b(beos|os\/2|amigaos|morphos|openvms|fuchsia|hp-ux|serenityos)/i,/(unix) ?([\w\.]*)/i],[n,a]]},O=function(p,m){if(typeof p===U&&(m=p,p=r),!(this instanceof O))return new O(p,m).getResult();var b=typeof e!==k&&e.navigator?e.navigator:r,h=p||(b&&b.userAgent?b.userAgent:c),N=b&&b.userAgentData?b.userAgentData:r,E=m?ti(Ie,m):Ie,f=b&&b.userAgent==h;return this.getBrowser=function(){var l={};return l[n]=r,l[a]=r,W.call(l,h,E.browser),l[M]=ri(l[a]),f&&b&&b.brave&&typeof b.brave.isBrave==g&&(l[n]="Brave"),l},this.getCPU=function(){var l={};return l[A]=r,W.call(l,h,E.cpu),l},this.getDevice=function(){var l={};return l[o]=r,l[t]=r,l[i]=r,W.call(l,h,E.device),f&&!l[i]&&N&&N.mobile&&(l[i]=d),f&&l[t]=="Macintosh"&&b&&typeof b.standalone!==k&&b.maxTouchPoints&&b.maxTouchPoints>2&&(l[t]="iPad",l[i]=u),l},this.getEngine=function(){var l={};return l[n]=r,l[a]=r,W.call(l,h,E.engine),l},this.getOS=function(){var l={};return l[n]=r,l[a]=r,W.call(l,h,E.os),f&&!l[n]&&N&&N.platform&&N.platform!="Unknown"&&(l[n]=N.platform.replace(/chrome os/i,Ue).replace(/macos/i,Me)),l},this.getResult=function(){return{ua:this.getUA(),browser:this.getBrowser(),engine:this.getEngine(),os:this.getOS(),device:this.getDevice(),cpu:this.getCPU()}},this.getUA=function(){return h},this.setUA=function(l){return h=typeof l===R&&l.length>we?ve(l,we):l,this},this.setUA(h),this};O.VERSION=s,O.BROWSER=ne([n,a,M]),O.CPU=ne([A]),O.DEVICE=ne([t,o,i,K,d,y,u,S,D]),O.ENGINE=O.OS=ne([n,a]),typeof Y!==k?(typeof se!==k&&se.exports&&(Y=se.exports=O),Y.UAParser=O):typeof define===g&&define.amd?define(function(){return O}):typeof e!==k&&(e.UAParser=O);var B=typeof e!==k&&(e.jQuery||e.Zepto);if(B&&!B.ua){var ae=new O;B.ua=ae.getResult(),B.ua.get=function(){return ae.getUA()},B.ua.set=function(p){ae.setUA(p);var m=ae.getResult();for(var b in m)B.ua[b]=m[b]}}})(typeof window=="object"?window:Y)});var v=class{static encode(r){return globalThis.btoa(String.fromCharCode(...new Uint8Array(r))).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_")}static decode(r){let s=r.replace(/-/g,"+").replace(/_/g,"/"),c=globalThis.atob(s),w=new Uint8Array(c.length);for(let g=0;g<c.length;g++)w[g]=c.charCodeAt(g);return w.buffer}};function wi(e){return!(typeof e!="object"||e?.authenticatorData===void 0||typeof e?.authenticatorData!="object")}function pi(e){return!(typeof e!="object"||e?.attestationObject===void 0||typeof e?.attestationObject!="object")}function mi(e){let r={...e.user,id:v.decode(e.user.id)},s=v.decode(e.challenge),c=e.excludeCredentials?.map(g=>({...g,id:v.decode(g.id),transports:g.transports}))??[];return{...e,user:r,challenge:s,excludeCredentials:c}}function fi(e){let r=v.decode(e.challenge),s=e.allowCredentials?.map(w=>({...w,id:v.decode(w.id),transports:w.transports}))??[];return{...e,allowCredentials:s,challenge:r}}function hi(){try{let e=this.id,r=v.encode(this.rawId),s=this.authenticatorAttachment,c={},w=this.type;if(wi(this.response))return{id:e,rawId:r,response:{authenticatorData:v.encode(this.response.authenticatorData),clientDataJSON:v.encode(this.response.clientDataJSON),signature:v.encode(this.response.signature),userHandle:this.response.userHandle?v.encode(this.response.userHandle):void 0},authenticatorAttachment:s,clientExtensionResults:c,type:w};if(pi(this.response))return{id:e,rawId:r,response:{clientDataJSON:v.encode(this.response.clientDataJSON),attestationObject:v.encode(this.response.attestationObject),transports:this.response?.getTransports()||[]},authenticatorAttachment:s,clientExtensionResults:c,type:w};throw new Error("Unexpected object.")}catch(e){throw console.error(e),e}}globalThis.PublicKeyCredential&&(PublicKeyCredential.parseCreationOptionsFromJSON||Object.defineProperty(PublicKeyCredential,"parseCreationOptionsFromJSON",{value:mi}),PublicKeyCredential.parseRequestOptionsFromJSON||Object.defineProperty(PublicKeyCredential,"parseRequestOptionsFromJSON",{value:fi}),PublicKeyCredential.prototype.toJSON||Object.defineProperty(PublicKeyCredential.prototype,"toJSON",{value:hi}));var Ye=bi(Ve(),1);var gi=/^[v^~<>=]*?(\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+))?(?:-([\da-z\-]+(?:\.[\da-z\-]+)*))?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?)?)?$/i,ke=e=>{if(typeof e!="string")throw new TypeError("Invalid argument expected string");let r=e.match(gi);if(!r)throw new Error(`Invalid argument not valid semver ('${e}' received)`);return r.shift(),r},Fe=e=>e==="*"||e==="x"||e==="X",Ge=e=>{let r=parseInt(e,10);return isNaN(r)?e:r},yi=(e,r)=>typeof e!=typeof r?[String(e),String(r)]:[e,r],vi=(e,r)=>{if(Fe(e)||Fe(r))return 0;let[s,c]=yi(Ge(e),Ge(r));return s>c?1:s<c?-1:0},Se=(e,r)=>{for(let s=0;s<Math.max(e.length,r.length);s++){let c=vi(e[s]||"0",r[s]||"0");if(c!==0)return c}return 0};var Je=(e,r)=>{let s=ke(e),c=ke(r),w=s.pop(),g=c.pop(),k=Se(s,c);return k!==0?k:w&&g?Se(w.split("."),g.split(".")):w||g?w?-1:1:0};var _=(e,r,s)=>{xi(s);let c=Je(e,r);return He[s].includes(c)},He={">":[1],">=":[0,1],"=":[0],"<=":[-1,0],"<":[-1],"!=":[-1,1]},We=Object.keys(He),xi=e=>{if(typeof e!="string")throw new TypeError(`Invalid operator type, expected string but got ${typeof e}`);if(We.indexOf(e)===-1)throw new Error(`Invalid operator, expected one of ${We.join("|")}`)};var le=class{constructor(r){Object.defineProperty(this,"iOS174To183",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"safari174To183",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"iOS18OrLater",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"desktopBlink128OrLater",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"desktopBlink135OrLater",{enumerable:!0,configurable:!0,writable:!0,value:void 0});let{browser:s,engine:c,os:w}=(0,Ye.UAParser)(r);if(!s?.version||!s?.name)throw new Error("Browser version not found.");if(!c?.version||!c?.name)throw new Error("Engine version not found.");if(!w?.version||!w?.name)throw new Error("OS version not found.");this.iOS174To183=w.name==="iOS"&&_(w.version,"17.4",">=")&&_(w.version,"18.4","<"),this.safari174To183=w.name==="Mac OS"&&s.name==="Safari"&&_(s.version,"17.4",">=")&&_(s.version,"18.4","<"),this.iOS18OrLater=w.name==="iOS"&&_(w.version,"18",">="),this.desktopBlink128OrLater=c.name==="Blink"&&["Mac OS","Windows","Linux","Chrome OS"].includes(w.name)&&_(c.version,"128",">="),this.desktopBlink135OrLater=c.name==="Blink"&&["macOS","Windows","Linux","Chrome OS"].includes(w.name)&&_(c.version,"135",">=")}};function ki(e){let r=PublicKeyCredential?.getClientCapabilities;return async function(){let s=!1,c=!1,w,g,k=!1,U=!1,R=!1,M=!1,t=!1;if((e.safari174To183||e.iOS174To183)&&r){let n=await r();s=n?.conditionalCreate,c=n?.conditionalMediation,w=n?.hybridTransport,g=n?.passkeyPlatformAuthenticator,k=n?.relatedOrigins,U=n?.signalAllAcceptedCredentials,R=n?.signalCurrentUserDetails,M=n?.signalUnknownCredential,t=n?.userVerifyingPlatformAuthenticator}else PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable&&(t=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()),PublicKeyCredential?.isConditionalMediationAvailable&&(c=await PublicKeyCredential.isConditionalMediationAvailable()),PublicKeyCredential?.signalAllAcceptedCredentials&&(U=!0),PublicKeyCredential?.signalCurrentUserDetails&&(R=!0),PublicKeyCredential?.signalUnknownCredential&&(M=!0),s=e.desktopBlink135OrLater||e.iOS18OrLater,k=e.desktopBlink128OrLater||e.iOS18OrLater;return Promise.resolve({conditionalCreate:s,conditionalGet:c,hybridTransport:w,passkeyPlatformAuthenticator:g,relatedOrigins:k,signalAllAcceptedCredentials:U,signalCurrentUserDetails:R,signalUnknownCredential:M,userVerifyingPlatformAuthenticator:t})}}function Si(e=""){if(!globalThis.PublicKeyCredential)return;let r;try{r=new le(e)}catch{console.info("expected exception for the test.");return}let s=ki(r);(!PublicKeyCredential.getClientCapabilities||r.safari174To183||r.iOS174To183)&&Object.defineProperty(PublicKeyCredential,"getClientCapabilities",{value:s})}Si();var x=document.querySelector("#signin-form"),C=document.querySelector("#signin-status"),Xe=document.querySelector("#passkey-signin"),z=document.querySelector("#password"),de=!1,j=!1,X=null,Ze=null,ce={},q=null,Ce=0,$=null,Oe=null;async function Z(e,r){return fetch(e,{method:"POST",credentials:"same-origin",cache:"no-store",redirect:"error",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(r??{})})}async function ue(){if(q&&Date.now()-Ce<6e4)return q;if($)return $;$=Oi();try{return await $}finally{$=null}}async function Oi(){let e=await Z("/api/login/options");if(!e.ok)throw new Error("Sign-in is temporarily unavailable. Please try again later.");let r=await e.json();if(r.allowCredentials?.length)throw new Error("Unable to start sign-in. Please try again later.");return q=PublicKeyCredential.parseRequestOptionsFromJSON(r),Ce=Date.now(),q}function I(){Oe?.abort(),Oe=null}function T(e){j=e,x.setAttribute("aria-busy",String(e)),x.querySelectorAll("button").forEach(r=>{r.disabled=e})}function Ae(e){de=e,document.querySelector("#header-signin").hidden=e,document.querySelector("#signin-trigger").hidden=e,document.querySelector("#logout-item").hidden=!e,document.querySelector("#signin-heading").textContent=e?"Welcome back. You\u2019re signed in.":"Welcome back to your daily ritual",document.querySelector("#signin-description").textContent=e?"Your rewards, account, and next order are ready when you are.":"Sign in with a saved passkey or password for your rewards and your next order."}function Qe(){if(I(),q=null,Ae(!0),x.reset(),x.hidden=!0,z.type="password",document.querySelector("#toggle-password").textContent="Show password",document.querySelector("#toggle-password").setAttribute("aria-pressed","false"),C.textContent="You\u2019re signed in. Enjoy your daily grind!",X)window.location.assign(X);else{let e=document.querySelector("#signin-heading");e.tabIndex=-1,e.focus({preventScroll:!0})}X=null}async function Ee(e,r){if(!e)throw new DOMException("No saved credential selected","NotAllowedError");q=null;let s;if(e.type==="public-key"){let c=e.toJSON();s=await Z("/api/login/verify",c),s.status===404&&PublicKeyCredential.signalUnknownCredential&&await PublicKeyCredential.signalUnknownCredential({rpId:r.rpId||location.hostname,credentialId:c.id}).catch(()=>{})}else if(e.type==="password")s=await Z("/api/login/password",{username:e.id,password:e.password});else throw new Error("Please sign in with your email and password.");if(!s.ok)throw new Error("We couldn\u2019t sign you in. Try your email and password or another passkey.");if((await s.json()).authenticated!==!0)throw new Error("Sign-in could not be confirmed. Please try again.");Qe()}async function be(){if(!ce.conditionalGet||de||j||x.hidden)return;I();let e=new AbortController;Oe=e;try{let r=await ue();if(e.signal.aborted||x.hidden||j)return;let s=await navigator.credentials.get({publicKey:r,mediation:"conditional",signal:e.signal});if(e.signal.aborted||j)return;T(!0);try{await Ee(s,r)}finally{T(!1)}}catch(r){!["AbortError","NotAllowedError"].includes(r.name)&&!e.signal.aborted&&(C.textContent="Saved passkeys are unavailable right now. You can still try your email and password.")}}function $e(e=""){x.hidden=!1,C.textContent=e,document.querySelector("#username").focus({preventScroll:!0}),x.scrollIntoView({block:"nearest",behavior:"instant"}),be()}document.querySelectorAll("[data-auth]").forEach(e=>{e.addEventListener("click",async r=>{if(!(r.button!==0||r.metaKey||r.ctrlKey||r.shiftKey||r.altKey)&&!de&&(r.preventDefault(),!j)){if(Ze=e,X=e.hash==="#signin"?null:e.getAttribute("href"),I(),!ce.immediateGet||!q||Date.now()-Ce>6e4){$e();return}T(!0),C.textContent="Choose a saved account to sign in.";try{let s=q,c=await navigator.credentials.get({publicKey:s,password:!0,uiMode:"immediate"});await Ee(c,s)}catch(s){$e(s.name==="NotAllowedError"?"Choose another sign-in method below, or keep browsing.":"We couldn\u2019t complete quick sign-in. Try another method below.")}finally{T(!1),x.hidden||be()}}})});x.addEventListener("submit",async e=>{if(e.preventDefault(),!j){I(),T(!0),C.textContent="Signing you in\u2026";try{let r=await Z(x.getAttribute("action"),{username:x.elements.username.value,password:z.value});if(!r.ok)throw new Error("We couldn\u2019t sign you in. Check your details and try again.");if((await r.json()).authenticated!==!0)throw new Error("Sign-in could not be confirmed. Please try again.");Qe()}catch(r){C.textContent=r instanceof TypeError?"Unable to reach sign-in. Please try again.":r.message}finally{T(!1)}}});Xe.addEventListener("click",async()=>{if(!j){I(),T(!0),C.textContent="Choose a passkey to sign in.";try{let e=await ue(),r=await navigator.credentials.get({publicKey:e});await Ee(r,e)}catch(e){C.textContent=e.name==="NotAllowedError"?"Passkey sign-in was cancelled. Try again or use your password.":"Passkey sign-in is unavailable right now. Try your email and password."}finally{T(!1),x.hidden||be()}}});document.querySelector("#toggle-password").addEventListener("click",e=>{let r=z.type==="password";z.type=r?"text":"password",e.currentTarget.textContent=r?"Hide password":"Show password",e.currentTarget.setAttribute("aria-pressed",String(r))});document.querySelector("#cancel-signin").addEventListener("click",()=>{I(),X=null,x.hidden=!0,C.textContent="",z.value="",z.type="password",document.querySelector("#toggle-password").textContent="Show password",document.querySelector("#toggle-password").setAttribute("aria-pressed","false"),Ze?.focus({preventScroll:!0})});document.querySelector("#logout").addEventListener("click",async e=>{if(j)return;let r=e.currentTarget;r.disabled=!0,T(!0);try{if(!(await Z("/api/logout")).ok)throw new Error;Ae(!1),q=null,C.textContent="You\u2019re signed out.",document.querySelector("#header-signin").focus(),window.PublicKeyCredential&&navigator.credentials&&ue().catch(()=>{})}catch{C.textContent="Unable to sign out. Please try again."}finally{r.disabled=!1,T(!1)}});async function Ci(){try{let e=await fetch("/api/login/session",{credentials:"same-origin",cache:"no-store",redirect:"error",headers:{Accept:"application/json"}});e.ok&&(await e.json()).authenticated===!0&&Ae(!0)}catch{}if(!(!window.isSecureContext||!window.PublicKeyCredential||!navigator.credentials||de)){Xe.hidden=!1;try{ce=await PublicKeyCredential.getClientCapabilities()}catch{ce={}}try{await ue()}catch{}x.hidden||be()}}Ci();})();
+diff --git a/index.html b/index.html
+index 66c9173..5e33b73 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,34 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    [hidden] { display: none !important; }
++    button, input { font: inherit; }
++    button { cursor: pointer; }
++    button:disabled { cursor: wait; opacity: 0.65; }
++    :focus-visible { outline: 3px solid #a65400; outline-offset: 4px; }
++    .signin-panel {
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 24px;
++      margin-bottom: 40px;
++    }
++    .signin-intro { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
++    .signin-intro .btn { margin-top: 0; flex-shrink: 0; }
++    #signin-form { max-width: 440px; margin-top: 20px; }
++    #signin-form label { display: block; margin-top: 16px; margin-bottom: 4px; font-weight: 600; }
++    #signin-form input { width: 100%; min-height: 48px; padding: 10px; border: 1px solid #8d7871; border-radius: 4px; }
++    .signin-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
++    .signin-actions .btn { margin: 0; border: 0; min-height: 48px; }
++    .text-button { background: none; border: 0; color: var(--primary); text-decoration: underline; min-height: 48px; padding: 8px; }
++    #signin-status { margin-top: 12px; }
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .signin-intro { align-items: flex-start; flex-direction: column; }
++    }
+   </style>
+ </head>
+ 
+@@ -162,19 +190,44 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-auth>Rewards</a></li>
++      <li><a href="/account" data-auth>My Account</a></li>
++      <li><a href="#signin" id="header-signin" data-auth>Sign in</a></li>
++      <li hidden id="logout-item"><button type="button" id="logout" class="text-button" style="color: white;">Logout</button></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-auth>Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section id="signin" class="signin-panel" aria-labelledby="signin-heading">
++      <div class="signin-intro">
++        <div>
++          <h2 id="signin-heading">Welcome back to your daily ritual</h2>
++          <p id="signin-description">Sign in with a saved passkey or password for your rewards and your next order.</p>
++        </div>
++        <a href="#signin" class="btn" id="signin-trigger" data-auth>Sign in here</a>
++      </div>
++      <form id="signin-form" action="/api/login/password" method="post" hidden aria-describedby="signin-status">
++        <p>Use your saved details or enter your email and password. You’ll stay right here while we sign you in.</p>
++        <label for="username">Email (required)</label>
++        <input id="username" name="username" type="email" autocomplete="username webauthn" autocorrect="off" autocapitalize="off" spellcheck="false" required>
++        <label for="password">Password (required)</label>
++        <input id="password" name="password" type="password" autocomplete="current-password" required>
++        <button type="button" id="toggle-password" class="text-button" aria-pressed="false">Show password</button>
++        <div class="signin-actions">
++          <button type="submit" class="btn">Sign in</button>
++          <button type="button" id="passkey-signin" class="text-button" hidden>Use a passkey</button>
++          <button type="button" id="cancel-signin" class="text-button">Keep browsing</button>
++        </div>
++      </form>
++      <p id="signin-status" role="status" aria-live="polite" aria-atomic="true"></p>
++      <noscript>JavaScript is needed for sign-in on this page. You can still browse our menu and locations.</noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +260,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="auth.bundle.js" defer></script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..1354d45 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,17 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "esbuild src/auth.js --bundle --minify --outfile=auth.bundle.js --target=es2020",
++    "test": "node --test tests/auth.test.cjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "webauthn-polyfills": "^0.1.7"
++  },
++  "devDependencies": {
++    "esbuild": "^0.28.2"
+   }
+ }
+diff --git a/src/auth.js b/src/auth.js
+new file mode 100644
+index 0000000..a72ccec
+--- /dev/null
++++ b/src/auth.js
+@@ -0,0 +1,258 @@
++import 'webauthn-polyfills';
++
++// API contract: see AUTHENTICATION.md. Only a verified server session signs a user in.
++const form = document.querySelector('#signin-form');
++const status = document.querySelector('#signin-status');
++const passkeyButton = document.querySelector('#passkey-signin');
++const password = document.querySelector('#password');
++let signedIn = false;
++let busy = false;
++let destination = null;
++let opener = null;
++let capabilities = {};
++let cachedOptions = null;
++let optionsTime = 0;
++let optionsPromise = null;
++let conditionalController = null;
++
++async function post(path, body) {
++  return fetch(path, {
++    method: 'POST', credentials: 'same-origin', cache: 'no-store', redirect: 'error',
++    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++    body: JSON.stringify(body ?? {}),
++  });
++}
++
++async function getOptions() {
++  if (cachedOptions && Date.now() - optionsTime < 60000) return cachedOptions;
++  if (optionsPromise) return optionsPromise;
++  optionsPromise = fetchOptions();
++  try { return await optionsPromise; }
++  finally { optionsPromise = null; }
++}
++
++async function fetchOptions() {
++  const response = await post('/api/login/options');
++  if (!response.ok) throw new Error('Sign-in is temporarily unavailable. Please try again later.');
++  const options = await response.json();
++  // Quick sign-in uses discoverable credentials, never an account-specific allowlist.
++  if (options.allowCredentials?.length) throw new Error('Unable to start sign-in. Please try again later.');
++  cachedOptions = PublicKeyCredential.parseRequestOptionsFromJSON(options);
++  optionsTime = Date.now();
++  return cachedOptions;
++}
++
++function stopConditional() {
++  conditionalController?.abort();
++  conditionalController = null;
++}
++
++function setBusy(value) {
++  busy = value;
++  form.setAttribute('aria-busy', String(value));
++  form.querySelectorAll('button').forEach(button => { button.disabled = value; });
++}
++
++function updateSession(value) {
++  signedIn = value;
++  document.querySelector('#header-signin').hidden = value;
++  document.querySelector('#signin-trigger').hidden = value;
++  document.querySelector('#logout-item').hidden = !value;
++  document.querySelector('#signin-heading').textContent = value ? 'Welcome back. You’re signed in.' : 'Welcome back to your daily ritual';
++  document.querySelector('#signin-description').textContent = value
++    ? 'Your rewards, account, and next order are ready when you are.'
++    : 'Sign in with a saved passkey or password for your rewards and your next order.';
++}
++
++function completeSignIn() {
++  stopConditional();
++  cachedOptions = null;
++  updateSession(true);
++  form.reset();
++  form.hidden = true;
++  password.type = 'password';
++  document.querySelector('#toggle-password').textContent = 'Show password';
++  document.querySelector('#toggle-password').setAttribute('aria-pressed', 'false');
++  status.textContent = 'You’re signed in. Enjoy your daily grind!';
++  if (destination) window.location.assign(destination);
++  else {
++    const heading = document.querySelector('#signin-heading');
++    heading.tabIndex = -1;
++    heading.focus({ preventScroll: true });
++  }
++  destination = null;
++}
++
++async function verify(credential, publicKey) {
++  if (!credential) throw new DOMException('No saved credential selected', 'NotAllowedError');
++  cachedOptions = null;
++  let response;
++  if (credential.type === 'public-key') {
++    const encoded = credential.toJSON();
++    response = await post('/api/login/verify', encoded);
++    if (response.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++      // Synchronization is optional and must not mask the verification error.
++      await PublicKeyCredential.signalUnknownCredential({
++        rpId: publicKey.rpId || location.hostname, credentialId: encoded.id,
++      }).catch(() => {});
++    }
++  } else if (credential.type === 'password') {
++    response = await post('/api/login/password', { username: credential.id, password: credential.password });
++  } else throw new Error('Please sign in with your email and password.');
++  if (!response.ok) throw new Error('We couldn’t sign you in. Try your email and password or another passkey.');
++  if ((await response.json()).authenticated !== true) throw new Error('Sign-in could not be confirmed. Please try again.');
++  completeSignIn();
++}
++
++async function startConditional() {
++  if (!capabilities.conditionalGet || signedIn || busy || form.hidden) return;
++  stopConditional();
++  const controller = new AbortController();
++  conditionalController = controller;
++  try {
++    const publicKey = await getOptions();
++    if (controller.signal.aborted || form.hidden || busy) return;
++    const credential = await navigator.credentials.get({
++      publicKey, mediation: 'conditional', signal: controller.signal,
++    });
++    if (controller.signal.aborted || busy) return;
++    setBusy(true);
++    try { await verify(credential, publicKey); }
++    finally { setBusy(false); }
++  } catch (error) {
++    if (!['AbortError', 'NotAllowedError'].includes(error.name) && !controller.signal.aborted) {
++      status.textContent = 'Saved passkeys are unavailable right now. You can still try your email and password.';
++    }
++  }
++}
++
++function showForm(message = '') {
++  form.hidden = false;
++  status.textContent = message;
++  document.querySelector('#username').focus({ preventScroll: true });
++  form.scrollIntoView({ block: 'nearest', behavior: 'instant' });
++  void startConditional();
++}
++
++document.querySelectorAll('[data-auth]').forEach(link => {
++  link.addEventListener('click', async event => {
++    // Preserve normal new-tab, download, and modified-click link behavior.
++    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++    if (signedIn) return;
++    event.preventDefault();
++    if (busy) return;
++    opener = link;
++    destination = link.hash === '#signin' ? null : link.getAttribute('href');
++    stopConditional();
++    // Preload support/options while browsing, so no network wait loses click activation.
++    if (!capabilities.immediateGet || !cachedOptions || Date.now() - optionsTime > 60000) {
++      showForm();
++      return;
++    }
++    setBusy(true);
++    status.textContent = 'Choose a saved account to sign in.';
++    try {
++      const publicKey = cachedOptions;
++      const credential = await navigator.credentials.get({
++        publicKey, password: true, uiMode: 'immediate',
++        // Immediate UI forbids an AbortSignal and a nonempty allowCredentials list.
++      });
++      await verify(credential, publicKey);
++    } catch (error) {
++      showForm(error.name === 'NotAllowedError' ? 'Choose another sign-in method below, or keep browsing.'
++        : 'We couldn’t complete quick sign-in. Try another method below.');
++    } finally {
++      setBusy(false);
++      if (!form.hidden) void startConditional();
++    }
++  });
++});
++
++form.addEventListener('submit', async event => {
++  event.preventDefault();
++  if (busy) return;
++  stopConditional();
++  setBusy(true);
++  status.textContent = 'Signing you in…';
++  try {
++    const response = await post(form.getAttribute('action'), {
++      username: form.elements.username.value, password: password.value,
++    });
++    if (!response.ok) throw new Error('We couldn’t sign you in. Check your details and try again.');
++    if ((await response.json()).authenticated !== true) throw new Error('Sign-in could not be confirmed. Please try again.');
++    completeSignIn();
++  } catch (error) {
++    status.textContent = error instanceof TypeError ? 'Unable to reach sign-in. Please try again.' : error.message;
++  } finally { setBusy(false); }
++});
++
++passkeyButton.addEventListener('click', async () => {
++  if (busy) return;
++  stopConditional();
++  setBusy(true);
++  status.textContent = 'Choose a passkey to sign in.';
++  try {
++    const publicKey = await getOptions();
++    // Explicit fallback permits phone/QR/security-key options; never use immediate here.
++    const credential = await navigator.credentials.get({ publicKey });
++    await verify(credential, publicKey);
++  } catch (error) {
++    status.textContent = error.name === 'NotAllowedError'
++      ? 'Passkey sign-in was cancelled. Try again or use your password.'
++      : 'Passkey sign-in is unavailable right now. Try your email and password.';
++  } finally {
++    setBusy(false);
++    if (!form.hidden) void startConditional();
++  }
++});
++
++document.querySelector('#toggle-password').addEventListener('click', event => {
++  const visible = password.type === 'password';
++  password.type = visible ? 'text' : 'password';
++  event.currentTarget.textContent = visible ? 'Hide password' : 'Show password';
++  event.currentTarget.setAttribute('aria-pressed', String(visible));
++});
++
++document.querySelector('#cancel-signin').addEventListener('click', () => {
++  stopConditional();
++  destination = null;
++  form.hidden = true;
++  status.textContent = '';
++  password.value = '';
++  password.type = 'password';
++  document.querySelector('#toggle-password').textContent = 'Show password';
++  document.querySelector('#toggle-password').setAttribute('aria-pressed', 'false');
++  opener?.focus({ preventScroll: true });
++});
++
++document.querySelector('#logout').addEventListener('click', async event => {
++  if (busy) return;
++  const button = event.currentTarget;
++  button.disabled = true;
++  setBusy(true);
++  try {
++    const response = await post('/api/logout');
++    if (!response.ok) throw new Error();
++    updateSession(false);
++    cachedOptions = null;
++    status.textContent = 'You’re signed out.';
++    document.querySelector('#header-signin').focus();
++    if (window.PublicKeyCredential && navigator.credentials) void getOptions().catch(() => {});
++  } catch { status.textContent = 'Unable to sign out. Please try again.'; }
++  finally { button.disabled = false; setBusy(false); }
++});
++
++async function initialize() {
++  // Session restoration is advisory for UI only; destinations enforce sessions server-side.
++  try {
++    const response = await fetch('/api/login/session', { credentials: 'same-origin', cache: 'no-store', redirect: 'error', headers: { Accept: 'application/json' } });
++    if (response.ok && (await response.json()).authenticated === true) updateSession(true);
++  } catch { /* Browsing and the inline form remain available. */ }
++  if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials || signedIn) return;
++  passkeyButton.hidden = false;
++  try { capabilities = await PublicKeyCredential.getClientCapabilities(); }
++  catch { capabilities = {}; }
++  try { await getOptions(); } catch { /* Inline password sign-in remains available. */ }
++  if (!form.hidden) void startConditional();
++}
++void initialize();
+diff --git a/tests/auth.test.cjs b/tests/auth.test.cjs
+new file mode 100644
+index 0000000..7f3917e
+--- /dev/null
++++ b/tests/auth.test.cjs
+@@ -0,0 +1,95 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const vm = require('node:vm');
++const source = fs.readFileSync(require('node:path').join(__dirname, '../src/auth.js'), 'utf8').replace("import 'webauthn-polyfills';", '');
++const flush = () => new Promise(resolve => setImmediate(resolve));
++function setup({ immediate = true, credential, verification = true, conditional = false } = {}) {
++  const elements = new Map();
++  const requests = [], gets = [], navigations = [];
++  function element(id) {
++    if (!elements.has(id)) elements.set(id, {
++      hidden: ['#signin-form', '#logout-item'].includes(id), value: '', type: 'password',
++      handlers: {}, attrs: {}, textContent: '', hash: '',
++      addEventListener(type, fn) { this.handlers[type] = fn; },
++      setAttribute(key, value) { this.attrs[key] = value; },
++      getAttribute(key) { return key === 'action' ? '/api/login/password' : this.attrs[key]; },
++      focus() {}, scrollIntoView() {}, reset() {}, querySelectorAll() { return []; },
++    });
++    return elements.get(id);
++  }
++  const rewards = element('rewards'); rewards.attrs.href = '/rewards';
++  const signin = element('#header-signin'); signin.hash = '#signin';
++  const form = element('#signin-form');
++  form.elements = { username: element('#username') };
++  const PK = { getClientCapabilities: async () => ({ immediateGet: immediate, conditionalGet: conditional }), parseRequestOptionsFromJSON: x => x };
++  const navigator = { credentials: { get(options) {
++    gets.push(options);
++    if (options.mediation === 'conditional') return new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('', 'AbortError'))));
++    return typeof credential === 'function' ? credential() : Promise.resolve(credential);
++  } } };
++  const location = { hostname: 'coffee.example', assign: path => navigations.push(path) };
++  const context = vm.createContext({
++    document: { querySelector: element, querySelectorAll: () => [rewards, signin] },
++    navigator, PublicKeyCredential: PK, window: { isSecureContext: true, PublicKeyCredential: PK, location },
++    location, AbortController, DOMException, Date,
++    fetch: async (path, options) => {
++      requests.push({ path, options });
++      return { ok: true, status: 200, json: async () => path.endsWith('/options')
++        ? { challenge: 'server-challenge', rpId: 'coffee.example' }
++        : { authenticated: path.endsWith('/session') ? false : verification } };
++    },
++  });
++  vm.runInContext(source, context);
++  const click = async (target, extra = {}) => {
++    const event = { button: 0, currentTarget: target, preventDefault() { this.prevented = true; }, ...extra };
++    await target.handlers.click(event); return event;
++  };
++  return { elements, element, rewards, signin, form, requests, gets, navigations, click, context };
++}
++test('quick sign-in requests both credential types and resumes the intended destination', async () => {
++  const app = setup({ credential: { type: 'password', id: 'returning@example.com', password: 'saved' } });
++  await flush(); await app.click(app.rewards);
++  assert.equal(app.gets.length, 1);
++  assert.equal(app.gets[0].uiMode, 'immediate');
++  assert.equal(app.gets[0].password, true);
++  assert.equal('signal' in app.gets[0], false);
++  assert.equal(app.gets[0].publicKey.allowCredentials?.length || 0, 0);
++  assert.deepEqual(app.navigations, ['/rewards']);
++  const request = app.requests.find(x => x.path.endsWith('/password'));
++  assert.deepEqual(JSON.parse(request.options.body), { username: 'returning@example.com', password: 'saved' });
++});
++test('unsupported immediate UI opens the form without prompting or navigating', async () => {
++  const app = setup({ immediate: false }); await flush(); await app.click(app.rewards);
++  assert.equal(app.form.hidden, false); assert.equal(app.gets.length, 0); assert.deepEqual(app.navigations, []);
++});
++test('cancelled chooser keeps the destination for successful inline password sign-in', async () => {
++  const app = setup({ credential: () => Promise.reject(new DOMException('', 'NotAllowedError')) });
++  await flush(); await app.click(app.rewards); assert.equal(app.form.hidden, false);
++  app.form.elements.username.value = 'returning@example.com'; app.element('#password').value = 'secret';
++  await app.form.handlers.submit({ preventDefault() {} });
++  assert.deepEqual(app.navigations, ['/rewards']);
++});
++test('unverified API response does not sign in or navigate', async () => {
++  const app = setup({ credential: { type: 'password', id: 'x', password: 'x' }, verification: false });
++  await flush(); await app.click(app.rewards);
++  assert.equal(app.form.hidden, false); assert.equal(app.element('#logout-item').hidden, true);
++  assert.deepEqual(app.navigations, []);
++});
++test('a passkey assertion is serialized and verified before completing sign-in in place', async () => {
++  const app = setup({ credential: { type: 'public-key', toJSON: () => ({ id: 'encoded-id', response: {} }) } });
++  await flush(); await app.click(app.signin);
++  assert.deepEqual(app.navigations, []); assert.equal(app.element('#logout-item').hidden, false);
++  assert.equal(JSON.parse(app.requests.find(x => x.path.endsWith('/verify')).options.body).id, 'encoded-id');
++});
++test('modified link clicks preserve browser behavior', async () => {
++  const app = setup(); await flush(); const event = await app.click(app.rewards, { ctrlKey: true });
++  assert.equal(event.prevented, undefined); assert.equal(app.gets.length, 0);
++});
++test('Keep browsing clears pending navigation and aborts conditional autofill', async () => {
++  const app = setup({ immediate: false, conditional: true }); await flush(); await app.click(app.rewards); await flush();
++  const conditionalRequest = app.gets.find(x => x.mediation === 'conditional'); assert.ok(conditionalRequest);
++  await app.click(app.element('#cancel-signin'));
++  assert.equal(conditionalRequest.signal.aborted, true); assert.equal(app.form.hidden, true);
++  assert.equal(vm.runInContext('destination', app.context), null); assert.deepEqual(app.navigations, []);
++});

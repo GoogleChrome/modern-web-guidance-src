@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,77 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .journal {
++      margin-top: 56px;
++      padding: clamp(24px, 5vw, 48px);
++      border-top: 4px solid var(--primary);
++      border-radius: 0 0 8px 8px;
++      background: #f2ece7;
++    }
++
++    .journal-kicker {
++      color: #705348;
++      font-size: 0.8rem;
++      font-weight: 600;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .journal h2 {
++      margin: 8px 0 12px;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2rem, 4vw, 2.75rem);
++      line-height: 1.2;
++    }
++
++    .journal-copy {
++      max-width: 72ch;
++    }
++
++    .journal-copy p + p {
++      margin-top: 18px;
++    }
++
++    .journal button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .journal button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .journal button:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .journal-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .journal-summary {
++      margin-top: 24px;
++      padding: 24px;
++      border-left: 3px solid var(--primary);
++      background: white;
++      border-radius: 0 6px 6px 0;
++    }
++
++    .journal-summary ul {
++      padding-left: 22px;
++      margin-top: 12px;
++    }
++
++    .journal-summary li + li {
++      margin-top: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +263,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="journal" aria-labelledby="journal-title">
++      <p class="journal-kicker">From origin to your morning ritual</p>
++      <h2 id="journal-title">Roaster's Journal</h2>
++      <article class="journal-copy" id="journal-text" aria-label="Our bean sourcing process">
++        <p>A good cup of coffee begins long before the roaster warms up. It begins with a place: the soil beneath a coffee tree, the shade above it, and the people who tend it through the seasons. At The Daily Grind, our sourcing process starts with listening. We look for producers and cooperatives who can tell us how their coffee is grown, harvested, and processed, because understanding that journey helps us choose beans with both character and a clear story.</p>
++        <p>We approach each harvest as something new. Rainfall, temperature, and the timing of picking can change a coffee from one year to the next, so a familiar origin never means an automatic purchase. We taste samples side by side, looking for sweetness, balance, and a clean finish. A bright, fruit-forward lot might become a seasonal filter coffee, while a rounder coffee with cocoa notes could form the foundation of our espresso. We choose for flavor and suitability, rather than a fashionable name on a bag.</p>
++        <p>Good sourcing also means asking questions beyond the tasting table. We ask our sourcing partners about the farms behind a lot, how prices are agreed, and how payments reach producers. We favor relationships that make room for honest conversations about the cost of growing quality coffee. A label alone cannot answer every question, and we would rather keep asking than treat responsible sourcing as a box to tick. Our aim is to build lasting partnerships that value the skill and work behind each harvest.</p>
++        <p>Processing is another part of the story we pay close attention to. Washed coffees can reveal a crisp, delicate profile, while naturally processed coffees often bring fuller fruit flavors. Neither method is a shortcut to quality: careful sorting, controlled drying, and thoughtful storage all matter. We also ask about water use, soil care, and shade management, recognizing that farms face different climates and resources. Those details help us understand a coffee in context instead of assuming one approach works everywhere.</p>
++        <p>Once a lot is selected, our attention turns to keeping its character intact. We consider harvest timing, transit, and storage before developing a roast profile in small batches. We taste, adjust, and taste again, aiming to bring out what made us choose that coffee in the first place. The final step is sharing it with you, along with the origin and tasting notes that make the cup easier to explore. Every bag is a small connection between the hands that grew it, the people who roasted it, and your daily ritual.</p>
++      </article>
++      <button class="btn" id="summarize-journal" type="button" aria-controls="journal-summary"
++        aria-describedby="journal-status" disabled>Summarize</button>
++      <p class="journal-status" id="journal-status" role="status">Checking browser summarization support…</p>
++      <noscript><p>Enable JavaScript to use your browser's native AI summarizer.</p></noscript>
++      <div class="journal-summary" id="journal-summary" role="region" aria-labelledby="summary-title" hidden>
++        <h3 id="summary-title">Our sourcing, in a few points</h3>
++        <ul id="journal-summary-points"></ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +295,86 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const button = document.getElementById('summarize-journal');
++    const status = document.getElementById('journal-status');
++    const summary = document.getElementById('journal-summary');
++    const points = document.getElementById('journal-summary-points');
++    const article = document.getElementById('journal-text');
++    const options = {
++      type: 'key-points',
++      format: 'plain-text',
++      length: 'short',
++      expectedInputLanguages: ['en'],
++      outputLanguage: 'en',
++      monitor(monitor) {
++        monitor.addEventListener('downloadprogress', (event) => {
++          const progress = Math.round(event.loaded * 100);
++          status.textContent = progress < 100
++            ? `Downloading the browser's AI model: ${progress}%…`
++            : 'Model ready. Preparing your summary…';
++        });
++      }
++    };
++
++    async function checkSupport() {
++      if (!window.isSecureContext || !('Summarizer' in self)) {
++        status.textContent = 'Native AI summaries are unavailable in this browser. Try a supported desktop browser on HTTPS; you can still read the full journal above.';
++        return;
++      }
++
++      try {
++        const availability = await Summarizer.availability(options);
++        if (availability === 'unavailable') {
++          status.textContent = 'Your browser cannot run native AI summaries on this device. The full journal is available above.';
++          return;
++        }
++        button.disabled = false;
++        status.textContent = availability === 'available'
++          ? 'Get a short AI summary, generated on your device.'
++          : 'Your browser needs to download its AI model first. Select Summarize to begin; this may take a few minutes.';
++      } catch {
++        status.textContent = 'Could not check native AI support. Reload the page to try again, or read the full journal above.';
++      }
++    }
++
++    button.addEventListener('click', async () => {
++      button.disabled = true;
++      button.textContent = 'Summarizing…';
++      summary.setAttribute('aria-busy', 'true');
++      status.textContent = 'Preparing your browser’s AI model…';
++      let summarizer;
++
++      try {
++        // Create directly from the click to preserve activation for model downloads.
++        summarizer = await Summarizer.create(options);
++        status.textContent = 'Summarizing the journal on your device…';
++        const text = await summarizer.summarize(article.innerText);
++        const bullets = text.split(/\r?\n/)
++          .map((line) => line.replace(/^\s*(?:[-*•‣–—]|\d+[.)])\s+/, '').trim())
++          .filter(Boolean);
++        if (!bullets.length) throw new Error('Empty summary');
++
++        points.replaceChildren(...bullets.map((text) => {
++          const item = document.createElement('li');
++          item.textContent = text;
++          return item;
++        }));
++        summary.hidden = false;
++        status.textContent = 'Your AI summary is ready below. Read the full journal for all the details.';
++      } catch {
++        status.textContent = 'The browser could not finish the summary. Please try again; if a model download was interrupted, check your connection.';
++      } finally {
++        summarizer?.destroy();
++        summary.setAttribute('aria-busy', 'false');
++        button.disabled = false;
++        button.textContent = 'Summarize';
++      }
++    });
++
++    checkSupport();
++  </script>
+ </body>
+ 
+ </html>

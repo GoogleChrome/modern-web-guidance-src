@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,106 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Rewards popover */
++    .rewards-trigger {
++      anchor-name: --rewards-anchor;
++      background: none;
++      border: 0;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .rewards-trigger:hover,
++    .rewards-trigger[aria-expanded="true"] {
++      color: var(--accent);
++    }
++
++    .rewards-card {
++      position-anchor: --rewards-anchor;
++      /* Explicit anchor() insets (not position-area) so the anchor polyfill works too */
++      inset: auto;
++      top: anchor(bottom);
++      right: anchor(right);
++      margin: 12px 0 0;
++      position-try-fallbacks: flip-inline;
++      width: min(320px, calc(100vw - 2rem));
++      padding: 0;
++      border: 0;
++      border-radius: 8px;
++      overflow: hidden;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++      text-align: left;
++    }
++
++    .rewards-card img {
++      display: block;
++      width: 100%;
++      height: 120px;
++      object-fit: cover;
++    }
++
++    .rewards-card-body {
++      padding: 16px 20px 20px;
++    }
++
++    .rewards-card h2 {
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
++    .rewards-points {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++      line-height: 1.2;
++    }
++
++    .rewards-card meter {
++      width: 100%;
++      height: 10px;
++      margin: 8px 0 4px;
++    }
++
++    .rewards-card-body > small {
++      display: block;
++      color: #6d4c41;
++    }
++
++    .rewards-card ul {
++      display: block;
++      list-style: none;
++      margin: 12px 0 0;
++      font-size: 0.85rem;
++    }
++
++    .rewards-card li {
++      margin: 0;
++    }
++
++    .rewards-card li::before {
++      content: "\2615\FE0E  ";
++    }
++
++    .rewards-card .btn {
++      display: block;
++      text-align: center;
++      color: white;
++      font-size: 0.9rem;
++    }
++
++    .rewards-card .btn:hover {
++      color: white;
++    }
+   </style>
++  <script type="module" src="/js/main.js"></script>
+ </head>
+ 
+ <body>
+ 
+@@ -161,9 +258,28 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <button type="button" id="rewards-trigger" class="rewards-trigger" commandfor="rewards-card"
++          command="toggle-popover" aria-expanded="false">Rewards</button>
++        <div id="rewards-card" class="rewards-card" popover aria-labelledby="rewards-title">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++            alt="" width="320" height="120" loading="lazy">
++          <div class="rewards-card-body">
++            <h2 id="rewards-title">Grind Rewards</h2>
++            <p class="rewards-points"><span data-points>&ndash;</span> <small>points</small></p>
++            <meter min="0" aria-label="Progress to next reward"></meter>
++            <small><span data-remaining>&ndash;</span> points to your next reward: <span data-next-reward></span></small>
++            <ul>
++              <li>Free drink on your birthday</li>
++              <li>Double points on Mondays</li>
++              <li>Free refills on brewed coffee</li>
++            </ul>
++            <a href="/rewards" class="btn">View All Rewards</a>
++          </div>
++        </div>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>

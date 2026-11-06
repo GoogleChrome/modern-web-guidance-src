@@ -1,0 +1,362 @@
+diff --git a/index.html b/index.html
+index 66c9173..8c04672 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,154 @@
+       background: #3e2723;
+     }
+ 
++    /* Quick Order */
++    .quick-order {
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: grid;
++      grid-template-columns: minmax(220px, 2fr) 3fr;
++      overflow: hidden;
++    }
++
++    .quick-order-image {
++      background: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80') center / cover;
++      min-height: 240px;
++    }
++
++    .quick-order form {
++      padding: 30px;
++    }
++
++    .quick-order h2 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .quick-order .subtitle {
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 15px;
++      margin-bottom: 15px;
++    }
++
++    .field label,
++    .field legend {
++      display: block;
++      font-weight: 600;
++      font-size: 0.85rem;
++      margin-bottom: 5px;
++    }
++
++    .field input[type="text"],
++    .field input[type="number"],
++    .field select,
++    .field textarea {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      color: inherit;
++      background: white;
++    }
++
++    .field input:focus,
++    .field select:focus,
++    .field textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    fieldset.field {
++      border: none;
++    }
++
++    .size-options {
++      display: flex;
++      gap: 8px;
++    }
++
++    .size-options label {
++      flex: 1;
++      text-align: center;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 6px 0;
++      position: relative;
++      cursor: pointer;
++      font-weight: normal;
++      margin: 0;
++    }
++
++    .size-options input {
++      position: absolute;
++      opacity: 0;
++    }
++
++    .size-options label:has(input:checked) {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++    }
++
++    .size-options label:has(input:focus-visible) {
++      outline: 2px solid var(--accent);
++    }
++
++    .order-summary {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 10px;
++    }
++
++    .order-total {
++      font-size: 1.2rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .quick-order button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .order-confirmation {
++      margin-top: 20px;
++      padding: 15px;
++      border-left: 4px solid var(--accent);
++      background: #fff8e1;
++      border-radius: 4px;
++    }
++
++    /* Highlight the form while an AI agent is filling or submitting it */
++    form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      outline-offset: -6px;
++    }
++
++    button:tool-submit-active {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    @media (max-width: 700px) {
++      .quick-order {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +319,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#quick-order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +343,107 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="quick-order" id="quick-order" aria-labelledby="quick-order-title">
++      <div class="quick-order-image" role="img" aria-label="Latte with latte art on a wooden table"></div>
++      <form id="quick-order-form"
++        toolname="place_coffee_order"
++        tooldescription="Place a pickup order for a drink at The Daily Grind. Choose a drink, size, milk, extra espresso shots, pickup location and time, and the name for the order. Returns an order confirmation with an order number and total price."
++        novalidate>
++        <h2 id="quick-order-title">Quick Order</h2>
++        <p class="subtitle">Skip the line &mdash; order ahead and pick up at your favorite shop.</p>
++
++        <div class="form-row">
++          <div class="field">
++            <label for="drink">Drink</label>
++            <select id="drink" name="drink" required
++              toolparamdescription="The drink to order. One of: maple-oat-latte, dark-roast-espresso, cold-brew, cappuccino, flat-white, chai-latte.">
++              <option value="maple-oat-latte" data-price="5.25">Maple Oat Latte &mdash; $5.25</option>
++              <option value="dark-roast-espresso" data-price="3.25">Dark Roast Espresso &mdash; $3.25</option>
++              <option value="cold-brew" data-price="4.50">Cold Brew &mdash; $4.50</option>
++              <option value="cappuccino" data-price="4.25">Cappuccino &mdash; $4.25</option>
++              <option value="flat-white" data-price="4.50">Flat White &mdash; $4.50</option>
++              <option value="chai-latte" data-price="4.75">Chai Latte &mdash; $4.75</option>
++            </select>
++          </div>
++
++          <fieldset class="field">
++            <legend>Size</legend>
++            <div class="size-options">
++              <label><input type="radio" name="size" value="small" required
++                  toolparamdescription="Cup size: small (12oz), medium (16oz, +$0.50) or large (20oz, +$1.00)."><span>Small</span></label>
++              <label><input type="radio" name="size" value="medium" checked><span>Medium</span></label>
++              <label><input type="radio" name="size" value="large"><span>Large</span></label>
++            </div>
++          </fieldset>
++        </div>
++
++        <div class="form-row">
++          <div class="field">
++            <label for="milk">Milk</label>
++            <select id="milk" name="milk"
++              toolparamdescription="Milk choice. One of: whole, skim, oat, almond, none. Oat and almond add $0.75.">
++              <option value="whole">Whole</option>
++              <option value="skim">Skim</option>
++              <option value="oat">Oat (+$0.75)</option>
++              <option value="almond">Almond (+$0.75)</option>
++              <option value="none">No milk</option>
++            </select>
++          </div>
++
++          <div class="field">
++            <label for="extra-shots">Extra espresso shots</label>
++            <input type="number" id="extra-shots" name="extra_shots" min="0" max="4" step="1" value="0"
++              toolparamdescription="Number of extra espresso shots to add, from 0 to 4. Each adds $0.80.">
++          </div>
++        </div>
++
++        <div class="form-row">
++          <div class="field">
++            <label for="location">Pickup location</label>
++            <select id="location" name="location" required
++              toolparamdescription="Store to pick the order up from. One of: downtown, riverside, university.">
++              <option value="downtown">Downtown &mdash; 120 Main St</option>
++              <option value="riverside">Riverside &mdash; 48 Water Ave</option>
++              <option value="university">University &mdash; 9 College Rd</option>
++            </select>
++          </div>
++
++          <div class="field">
++            <label for="pickup-time">Pickup time</label>
++            <select id="pickup-time" name="pickup_time" required
++              toolparamdescription="When the order should be ready. One of: asap, 15min, 30min, 60min.">
++              <option value="asap">As soon as possible</option>
++              <option value="15min">In 15 minutes</option>
++              <option value="30min">In 30 minutes</option>
++              <option value="60min">In 1 hour</option>
++            </select>
++          </div>
++        </div>
++
++        <div class="form-row">
++          <div class="field">
++            <label for="customer-name">Name for the order</label>
++            <input type="text" id="customer-name" name="customer_name" required maxlength="40" autocomplete="given-name"
++              placeholder="e.g. Alex"
++              toolparamdescription="The customer's name, called out when the order is ready.">
++          </div>
++
++          <div class="field">
++            <label for="notes">Special instructions <small>(optional)</small></label>
++            <textarea id="notes" name="notes" rows="1" maxlength="200" placeholder="e.g. extra hot, light ice"
++              toolparamdescription="Optional special instructions for the barista, such as 'extra hot' or 'light ice'."></textarea>
++          </div>
++        </div>
++
++        <div class="order-summary">
++          <span class="order-total">Total: <output id="order-total" name="total" for="drink milk extra-shots">$5.75</output></span>
++          <button type="submit" class="btn">Place Order</button>
++        </div>
++
++        <div id="order-confirmation" class="order-confirmation" role="status" aria-live="polite" hidden></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +456,85 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('quick-order-form');
++      const totalEl = document.getElementById('order-total');
++      const confirmation = document.getElementById('order-confirmation');
++
++      const SIZE_UPCHARGE = { small: 0, medium: 0.5, large: 1 };
++      const MILK_UPCHARGE = { oat: 0.75, almond: 0.75 };
++      const SHOT_PRICE = 0.8;
++      const PICKUP_LABELS = { asap: 'as soon as possible', '15min': 'in 15 minutes', '30min': 'in 30 minutes', '60min': 'in 1 hour' };
++
++      function calculateTotal() {
++        const drink = form.elements.drink.selectedOptions[0];
++        const shots = Math.min(4, Math.max(0, parseInt(form.elements.extra_shots.value, 10) || 0));
++        return parseFloat(drink.dataset.price) +
++          (SIZE_UPCHARGE[form.elements.size.value] || 0) +
++          (MILK_UPCHARGE[form.elements.milk.value] || 0) +
++          shots * SHOT_PRICE;
++      }
++
++      function updateTotal() {
++        totalEl.value = '$' + calculateTotal().toFixed(2);
++      }
++
++      function validate() {
++        const name = form.elements.customer_name;
++        name.value = name.value.trim();
++        const shots = form.elements.extra_shots;
++        if (!form.elements.size.value) return 'Please choose a size.';
++        if (!name.value) return 'Please enter a name for the order.';
++        if (!shots.checkValidity()) return 'Extra espresso shots must be a whole number from 0 to 4.';
++        return null;
++      }
++
++      form.addEventListener('input', updateTotal);
++      form.addEventListener('change', updateTotal);
++      form.addEventListener('reset', () => setTimeout(updateTotal));
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        updateTotal();
++
++        const error = validate();
++        let message;
++        if (error) {
++          message = error;
++          confirmation.textContent = error;
++          confirmation.hidden = false;
++          if (!event.agentInvoked) form.reportValidity();
++        } else {
++          const drinkLabel = form.elements.drink.selectedOptions[0].textContent.split(' \u2014 ')[0];
++          const locationLabel = form.elements.location.selectedOptions[0].textContent.split(' \u2014 ')[0];
++          const orderNumber = 'DG-' + Math.floor(1000 + Math.random() * 9000);
++          const pickup = PICKUP_LABELS[form.elements.pickup_time.value];
++          const name = form.elements.customer_name.value;
++          const total = totalEl.value;
++
++          message = `Order ${orderNumber} confirmed for ${name}: ${form.elements.size.value} ${drinkLabel}, ` +
++            `ready ${pickup} at our ${locationLabel} shop. Total ${total}.`;
++
++          confirmation.replaceChildren();
++          const heading = document.createElement('strong');
++          heading.textContent = `Thanks, ${name}! Order ${orderNumber} is in.`;
++          const details = document.createElement('p');
++          details.textContent = `Your ${form.elements.size.value} ${drinkLabel} will be ready ${pickup} at our ${locationLabel} shop. Total: ${total}.`;
++          confirmation.append(heading, details);
++          confirmation.hidden = false;
++        }
++
++        // When an AI agent submitted the form via its declarative tool, return the result to the agent.
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          event.respondWith(Promise.resolve(error ? { error: message } : { message }));
++        }
++      });
++
++      updateTotal();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

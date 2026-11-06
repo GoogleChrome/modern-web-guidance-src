@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,87 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .reviews {
++      margin-top: 48px;
++    }
++
++    .reviews h2,
++    .reviews-intro {
++      text-align: center;
++    }
++
++    .reviews-intro {
++      margin: 6px 0 20px;
++    }
++
++    .reviews-wrapper {
++      position: relative;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .reviews-scroll {
++      height: 320px;
++      overflow-y: auto;
++      border-radius: inherit;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .reviews-scroll:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .reviews-list {
++      list-style: none;
++      padding: 0 24px;
++    }
++
++    .review {
++      padding: 22px 0;
++    }
++
++    .review + .review {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .review-stars {
++      color: #925600;
++      letter-spacing: 2px;
++    }
++
++    .review blockquote {
++      margin: 8px 0;
++    }
++
++    .review-author {
++      font-weight: 600;
++    }
++
++    .indicator-top,
++    .indicator-bottom {
++      position: absolute;
++      left: 0;
++      right: 16px;
++      height: 48px;
++      z-index: 1;
++      pointer-events: none;
++    }
++
++    .indicator-top {
++      top: 0;
++      background: linear-gradient(to bottom, white, rgba(255, 255, 255, 0));
++    }
++
++    .indicator-bottom {
++      bottom: 0;
++      background: linear-gradient(to top, white, rgba(255, 255, 255, 0));
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +273,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="reviews" aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading">Customer Reviews</h2>
++      <p class="reviews-intro">A few words from our coffee community.</p>
++      <div class="reviews-wrapper">
++        <div class="indicator-top" aria-hidden="true" hidden></div>
++        <div class="reviews-scroll" tabindex="0" role="region" aria-labelledby="reviews-heading">
++          <ul class="reviews-list">
++            <li class="review">
++              <p class="review-stars" aria-label="5 out of 5 stars">★★★★★</p>
++              <blockquote>“The maple oat latte is my new fall favorite. Just the right amount of sweetness, and always made with care.”</blockquote>
++              <p class="review-author">Sarah M.</p>
++            </li>
++            <li class="review">
++              <p class="review-stars" aria-label="5 out of 5 stars">★★★★★</p>
++              <blockquote>“Smooth cold brew and a friendly welcome every time. This has become my go-to stop before work.”</blockquote>
++              <p class="review-author">James R.</p>
++            </li>
++            <li class="review">
++              <p class="review-stars" aria-label="5 out of 5 stars">★★★★★</p>
++              <blockquote>“You can really taste the care in their espresso. Rich, bold, and lovely alongside a fresh pastry.”</blockquote>
++              <p class="review-author">Priya K.</p>
++            </li>
++            <li class="review">
++              <p class="review-stars" aria-label="4 out of 5 stars">★★★★☆</p>
++              <blockquote>“A cozy spot to catch up with a friend. The baristas helped me pick a roast I now brew at home.”</blockquote>
++              <p class="review-author">Alex T.</p>
++            </li>
++            <li class="review">
++              <p class="review-stars" aria-label="5 out of 5 stars">★★★★★</p>
++              <blockquote>“Great coffee, kind people, and a little moment of calm in a busy day. I always look forward to coming back.”</blockquote>
++              <p class="review-author">Emma L.</p>
++            </li>
++          </ul>
++        </div>
++        <div class="indicator-bottom" aria-hidden="true" hidden></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +323,27 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const reviewsScroll = document.querySelector('.reviews-scroll');
++    const indicatorTop = document.querySelector('.indicator-top');
++    const indicatorBottom = document.querySelector('.indicator-bottom');
++
++    function updateReviewIndicators() {
++      const { scrollTop, scrollHeight, clientHeight } = reviewsScroll;
++      indicatorTop.hidden = scrollTop <= 0;
++      indicatorBottom.hidden = scrollTop + clientHeight >= scrollHeight - 1;
++    }
++
++    reviewsScroll.addEventListener('scroll', updateReviewIndicators, { passive: true });
++    window.addEventListener('resize', updateReviewIndicators);
++
++    const reviewsResizeObserver = new ResizeObserver(updateReviewIndicators);
++    reviewsResizeObserver.observe(reviewsScroll);
++    reviewsResizeObserver.observe(document.querySelector('.reviews-list'));
++    updateReviewIndicators();
++  </script>
++
+ </body>
+ 
+ </html>

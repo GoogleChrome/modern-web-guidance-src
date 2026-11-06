@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,126 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function detectBackgroundTabLoad() {
++      /**
++       * Accurately detects whether the page was initially loaded in a background tab
++       * and records the exact timestamp (in milliseconds) of when it was backgrounded.
++       *
++       * Primary Method: Performance Timeline `visibility-state` entries (`VisibilityStateEntry`).
++       * The browser buffers visibility transitions starting from navigation start (startTime: 0),
++       * allowing even async or deferred scripts to accurately inspect whether the tab started
++       * in the `hidden` state or when it first transitioned to `hidden`.
++       *
++       * Legacy Fallback: `document.visibilityState` + `visibilitychange` event listener.
++       * WARNING: Legacy fallback queries (`document.visibilityState === 'hidden'`) are
++       * highly inaccurate and unreliable for async/deferred scripts because they only
++       * inspect the visibility state at the exact moment the script executes, missing
++       * earlier visibility transitions and failing to capture the true historical timestamp.
++       */
++      const supportsVisibilityStateEntries =
++        typeof window.PerformanceObserver !== 'undefined' &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.includes('visibility-state');
++
++      const visibilityEntries =
++        typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function'
++          ? performance.getEntriesByType('visibility-state')
++          : [];
++
++      if (supportsVisibilityStateEntries || visibilityEntries.length > 0) {
++        const initialEntry = visibilityEntries[0];
++        const firstHiddenEntry = visibilityEntries.find((entry) => entry.name === 'hidden');
++
++        const initiallyLoadedInBackground = initialEntry
++          ? initialEntry.name === 'hidden' && initialEntry.startTime === 0
++          : false;
++        const isBackgrounded = Boolean(firstHiddenEntry);
++        const backgroundTime = firstHiddenEntry ? firstHiddenEntry.startTime : null;
++
++        const detectionResult = {
++          backgroundStatus: isBackgrounded,
++          initiallyLoadedInBackground,
++          backgroundTime,
++          detectionMethod: 'visibility-state-entry',
++          isFallbackActive: false,
++          unreliableForAsyncScripts: false,
++        };
++
++        console.log('Background Tab Detection:', detectionResult);
++
++        // Observe future visibility state transitions if the page has not been backgrounded yet
++        if (!firstHiddenEntry && supportsVisibilityStateEntries) {
++          const observer = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              if (entry.name === 'hidden') {
++                console.log('Background Tab Detection:', {
++                  backgroundStatus: true,
++                  initiallyLoadedInBackground: entry.startTime === 0,
++                  backgroundTime: entry.startTime,
++                  detectionMethod: 'visibility-state-entry',
++                  isFallbackActive: false,
++                  unreliableForAsyncScripts: false,
++                });
++                observer.disconnect();
++                break;
++              }
++            }
++          });
++          observer.observe({ type: 'visibility-state', buffered: true });
++        }
++      } else {
++        // ============================================================================
++        // LEGACY FALLBACK DETECTION (POTENTIALLY UNRELIABLE FOR ASYNC SCRIPTS)
++        // ============================================================================
++        // WARNING: `document.visibilityState` only reports the state at the moment this
++        // script executes. If this script is loaded asynchronously or deferred:
++        // 1. A tab opened in the background and focused before script execution will
++        //    falsely report `visible`.
++        // 2. A tab opened in the foreground and backgrounded before script execution
++        //    will not have an accurate historical timestamp of when it was hidden.
++        const isCurrentlyHidden = document.visibilityState === 'hidden' || Boolean(document.hidden);
++        const fallbackTimestamp = isCurrentlyHidden ? performance.now() : null;
++
++        const fallbackResult = {
++          backgroundStatus: isCurrentlyHidden,
++          initiallyLoadedInBackground: isCurrentlyHidden,
++          backgroundTime: fallbackTimestamp,
++          detectionMethod: 'legacy-document-visibility-fallback',
++          isFallbackActive: true,
++          unreliableForAsyncScripts: true,
++          warning:
++            'Legacy fallback detection active: querying document.visibilityState is unreliable for async scripts and cannot guarantee accurate initial load state or exact historical background timestamps.',
++        };
++
++        console.warn('Background Tab Detection (Fallback - Unreliable for Async Scripts):', fallbackResult);
++        console.log('Background Tab Detection:', fallbackResult);
++
++        if (!isCurrentlyHidden) {
++          document.addEventListener(
++            'visibilitychange',
++            (event) => {
++              if (document.visibilityState === 'hidden' || document.hidden) {
++                const updatedFallbackResult = {
++                  backgroundStatus: true,
++                  initiallyLoadedInBackground: false,
++                  backgroundTime: event.timeStamp,
++                  detectionMethod: 'legacy-document-visibility-fallback',
++                  isFallbackActive: true,
++                  unreliableForAsyncScripts: true,
++                  warning:
++                    'Legacy fallback detection active: initial visibility prior to script execution could not be verified.',
++                };
++                console.log('Background Tab Detection:', updatedFallbackResult);
++              }
++            },
++            { once: true }
++          );
++        }
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

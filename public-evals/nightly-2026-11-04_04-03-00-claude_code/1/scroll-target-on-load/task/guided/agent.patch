@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,59 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Media Feed (vertical scroll container) */
++    .media-feed {
++      position: relative; /* makes card offsetTop relative to the feed for the JS fallback */
++      height: 420px;
++      max-width: 640px;
++      margin: 20px auto 0;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      scroll-behavior: auto; /* never animate the initial positioning */
++      scroll-snap-type: y proximity;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 20px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-card {
++      flex: none;
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scroll-snap-align: center;
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9; /* reserve space before load so the target position never shifts */
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .media-card figcaption {
++      padding: 12px 16px;
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      font-size: 1.1rem;
++    }
++
++    .media-card.target {
++      scroll-initial-target: nearest;
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +245,62 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">From the Cafe</h2>
++      <div class="media-feed" tabindex="0" role="region" aria-label="Cafe photo feed">
++        <figure class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&h=450&q=80" alt="Morning Pour" width="800" height="450" loading="lazy" decoding="async">
++          <figcaption>
++            <h3>Morning Pour</h3>
++            <p>Freshly brewed espresso to start the day.</p>
++          </figcaption>
++        </figure>
++        <figure class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&h=450&q=80" alt="Roasted to Order" width="800" height="450" loading="lazy" decoding="async">
++          <figcaption>
++            <h3>Roasted to Order</h3>
++            <p>Small-batch beans roasted every morning.</p>
++          </figcaption>
++        </figure>
++        <figure class="media-card target">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&h=450&q=80" alt="Latte Art Friday" width="800" height="450" loading="eager" fetchpriority="high" decoding="async">
++          <figcaption>
++            <h3>Latte Art Friday</h3>
++            <p>Our baristas show off their best pours.</p>
++          </figcaption>
++        </figure>
++        <figure class="media-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&h=450&q=80" alt="Slow Sundays" width="800" height="450" loading="lazy" decoding="async">
++          <figcaption>
++            <h3>Slow Sundays</h3>
++            <p>Pull up a chair and stay a while.</p>
++          </figcaption>
++        </figure>
++        <figure class="media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&h=450&q=80" alt="Our Cafe" width="800" height="450" loading="lazy" decoding="async">
++          <figcaption>
++            <h3>Our Cafe</h3>
++            <p>Warm light, good music, better coffee.</p>
++          </figcaption>
++        </figure>
++      </div>
++      <script>
++        // Fallback for browsers without `scroll-initial-target` (Firefox, Safari).
++        // Runs synchronously right after the feed is parsed, before first paint,
++        // so there's no visible jump. Sets scrollTop directly (instead of
++        // scrollIntoView) so the page itself never scrolls.
++        (() => {
++          if (CSS.supports("scroll-initial-target", "nearest")) return;
++          const feed = document.currentScript.previousElementSibling;
++          const target = feed.querySelector(".target");
++          if (!target) return;
++          feed.scrollTop = target.offsetTop - (feed.clientHeight - target.offsetHeight) / 2;
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

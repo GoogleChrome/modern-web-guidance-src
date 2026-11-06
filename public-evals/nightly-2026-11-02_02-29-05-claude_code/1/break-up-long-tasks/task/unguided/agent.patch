@@ -1,0 +1,469 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,169 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Flavor Profile Simulator */
++    .simulator {
++      margin-top: 60px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .simulator h2 {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .sim-intro {
++      text-align: center;
++      max-width: 640px;
++      margin: 8px auto 24px;
++      font-size: 0.95rem;
++    }
++
++    .sim-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .sim-controls label {
++      font-weight: 600;
++    }
++
++    .sim-controls select {
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++    }
++
++    .sim-controls .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .sim-controls .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover:not(:disabled) {
++      background: #bcaaa4;
++    }
++
++    .sim-progress {
++      margin: 24px 0 8px;
++    }
++
++    .sim-progress progress {
++      width: 100%;
++      height: 14px;
++      accent-color: var(--accent);
++    }
++
++    .sim-status {
++      font-size: 0.9rem;
++      text-align: center;
++      min-height: 1.6em;
++    }
++
++    .sim-stats {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
++      gap: 12px;
++      margin: 20px 0;
++    }
++
++    .sim-stat {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px;
++      text-align: center;
++    }
++
++    .sim-stat span {
++      display: block;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .sim-stat strong {
++      font-size: 1.25rem;
++      color: var(--primary);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .sim-results[hidden] {
++      display: none;
++    }
++
++    .sim-results h3 {
++      color: var(--primary);
++      margin: 20px 0 10px;
++    }
++
++    .profile-row {
++      display: grid;
++      grid-template-columns: 100px 1fr 40px;
++      align-items: center;
++      gap: 10px;
++      margin-bottom: 8px;
++      font-size: 0.9rem;
++    }
++
++    .profile-track {
++      background: var(--secondary);
++      border-radius: 4px;
++      height: 12px;
++      overflow: hidden;
++    }
++
++    .profile-fill {
++      background: var(--primary);
++      height: 100%;
++      width: 0;
++      transition: width 0.4s;
++    }
++
++    .profile-row output {
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .top-blends {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.9rem;
++    }
++
++    .top-blends th,
++    .top-blends td {
++      text-align: left;
++      padding: 8px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .top-blends td:last-child,
++    .top-blends th:last-child {
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +355,54 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="simulator" id="flavor-simulator" aria-labelledby="sim-heading">
++      <h2 id="sim-heading">Flavor Profile Lab</h2>
++      <p class="sim-intro">
++        Our roasters simulate thousands of experimental blends to find the next house favorite.
++        Run the lab yourself: each blend mixes origins, roast level, and brew method, then scores the cup.
++        The work runs in small slices so the page stays responsive the whole time.
++      </p>
++
++      <div class="sim-controls">
++        <label for="sim-count">Blends to simulate</label>
++        <select id="sim-count">
++          <option value="10000">10,000</option>
++          <option value="50000" selected>50,000</option>
++          <option value="100000">100,000</option>
++          <option value="250000">250,000</option>
++        </select>
++        <button type="button" class="btn" id="sim-run">Run Simulation</button>
++        <button type="button" class="btn btn-secondary" id="sim-cancel" disabled>Cancel</button>
++      </div>
++
++      <div class="sim-progress">
++        <progress id="sim-progress" max="1" value="0" aria-label="Simulation progress"></progress>
++      </div>
++      <p class="sim-status" id="sim-status" role="status" aria-live="polite">Ready to brew.</p>
++
++      <div class="sim-stats">
++        <div class="sim-stat"><span>Blends processed</span><strong id="stat-processed">0</strong></div>
++        <div class="sim-stat"><span>Yields to main thread</span><strong id="stat-yields">0</strong></div>
++        <div class="sim-stat"><span>Longest slice</span><strong id="stat-longest">0 ms</strong></div>
++        <div class="sim-stat"><span>Elapsed</span><strong id="stat-elapsed">0.0 s</strong></div>
++      </div>
++
++      <div class="sim-results" id="sim-results" hidden>
++        <h3>Average Flavor Profile</h3>
++        <div id="sim-profile"></div>
++
++        <h3>Top 5 Blends</h3>
++        <table class="top-blends">
++          <thead>
++            <tr><th>Blend</th><th>Roast</th><th>Brew</th><th>Score</th></tr>
++          </thead>
++          <tbody id="sim-top"></tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +413,240 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const ATTRS = ['acidity', 'body', 'sweetness', 'bitterness', 'aroma'];
++
++      const ORIGINS = [
++        { name: 'Ethiopia Yirgacheffe', p: [8.5, 4.0, 7.0, 3.0, 9.0] },
++        { name: 'Colombia Huila', p: [6.5, 6.0, 7.0, 4.0, 7.0] },
++        { name: 'Sumatra Mandheling', p: [3.0, 9.0, 5.0, 6.5, 6.0] },
++        { name: 'Kenya AA', p: [9.0, 5.5, 6.0, 4.0, 8.0] },
++        { name: 'Guatemala Antigua', p: [6.0, 7.0, 6.5, 5.0, 7.5] },
++        { name: 'Brazil Santos', p: [4.0, 7.0, 7.5, 4.5, 5.5] },
++        { name: 'Costa Rica Tarrazu', p: [7.5, 5.5, 6.5, 3.5, 7.0] },
++        { name: 'Vietnam Robusta', p: [2.5, 8.5, 3.0, 8.5, 4.5] }
++      ];
++
++      // Multipliers applied to [acidity, body, sweetness, bitterness, aroma]
++      const ROASTS = [
++        { name: 'Light', m: [1.25, 0.85, 1.0, 0.75, 1.15] },
++        { name: 'Medium', m: [1.0, 1.0, 1.1, 1.0, 1.0] },
++        { name: 'Dark', m: [0.7, 1.2, 0.85, 1.4, 0.9] }
++      ];
++
++      const BREWS = [
++        { name: 'Pour Over', steps: 120, rate: 0.045 },
++        { name: 'Espresso', steps: 40, rate: 0.12 },
++        { name: 'French Press', steps: 160, rate: 0.03 },
++        { name: 'Cold Brew', steps: 240, rate: 0.012 }
++      ];
++
++      // Small seeded PRNG (mulberry32) so a given batch is reproducible
++      function mulberry32(seed) {
++        return () => {
++          seed |= 0;
++          seed = (seed + 0x6d2b79f5) | 0;
++          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
++          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
++          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++        };
++      }
++
++      function createBlend(rand) {
++        const count = 2 + Math.floor(rand() * 3);
++        const parts = [];
++        let total = 0;
++        for (let i = 0; i < count; i++) {
++          const weight = 0.2 + rand();
++          parts.push({ origin: ORIGINS[Math.floor(rand() * ORIGINS.length)], weight });
++          total += weight;
++        }
++        parts.forEach(part => { part.weight /= total; });
++        return {
++          parts,
++          roast: ROASTS[Math.floor(rand() * ROASTS.length)],
++          brew: BREWS[Math.floor(rand() * BREWS.length)]
++        };
++      }
++
++      // Simulates extraction over time; each soluble compound dissolves at its own rate.
++      function simulateBlend(blend) {
++        const base = [0, 0, 0, 0, 0];
++        for (const { origin, weight } of blend.parts) {
++          for (let a = 0; a < 5; a++) base[a] += origin.p[a] * weight;
++        }
++        for (let a = 0; a < 5; a++) base[a] *= blend.roast.m[a];
++
++        const extracted = [0, 0, 0, 0, 0];
++        const { steps, rate } = blend.brew;
++        // Acids extract first, bitter compounds last
++        const solubility = [1.4, 0.9, 1.1, 0.6, 1.2];
++        for (let s = 0; s < steps; s++) {
++          for (let a = 0; a < 5; a++) {
++            const remaining = base[a] - extracted[a];
++            extracted[a] += remaining * rate * solubility[a];
++          }
++        }
++
++        const profile = extracted.map(v => Math.min(10, v));
++        const mean = profile.reduce((sum, v) => sum + v, 0) / 5;
++        const variance = profile.reduce((sum, v) => sum + (v - mean) ** 2, 0) / 5;
++        // Reward rich, balanced cups; penalize harsh bitterness
++        const score = mean * 12 - Math.sqrt(variance) * 6 - Math.max(0, profile[3] - 6) * 4;
++        return { profile, score: Math.max(0, Math.min(100, score)) };
++      }
++
++      function blendName(blend) {
++        return blend.parts
++          .slice()
++          .sort((x, y) => y.weight - x.weight)
++          .map(({ origin, weight }) => `${Math.round(weight * 100)}% ${origin.name}`)
++          .join(', ');
++      }
++
++      // Hand control back to the browser so it can handle input and paint.
++      function yieldToMain() {
++        if (globalThis.scheduler && typeof scheduler.yield === 'function') {
++          return scheduler.yield();
++        }
++        return new Promise(resolve => setTimeout(resolve, 0));
++      }
++
++      // Keep each slice well under the 50ms long-task threshold
++      const SLICE_BUDGET_MS = 8;
++
++      const els = {
++        count: document.getElementById('sim-count'),
++        run: document.getElementById('sim-run'),
++        cancel: document.getElementById('sim-cancel'),
++        progress: document.getElementById('sim-progress'),
++        status: document.getElementById('sim-status'),
++        processed: document.getElementById('stat-processed'),
++        yields: document.getElementById('stat-yields'),
++        longest: document.getElementById('stat-longest'),
++        elapsed: document.getElementById('stat-elapsed'),
++        results: document.getElementById('sim-results'),
++        profile: document.getElementById('sim-profile'),
++        top: document.getElementById('sim-top')
++      };
++
++      const fmt = new Intl.NumberFormat();
++      let currentRun = null;
++
++      function updateStats(state, total) {
++        els.progress.value = state.processed / total;
++        els.processed.textContent = fmt.format(state.processed);
++        els.yields.textContent = fmt.format(state.yields);
++        els.longest.textContent = `${state.longest.toFixed(1)} ms`;
++        els.elapsed.textContent = `${((performance.now() - state.startedAt) / 1000).toFixed(1)} s`;
++      }
++
++      function insertTop(top, entry, limit) {
++        if (top.length === limit && entry.score <= top[limit - 1].score) return;
++        let i = top.length;
++        while (i > 0 && top[i - 1].score < entry.score) i--;
++        top.splice(i, 0, entry);
++        if (top.length > limit) top.pop();
++      }
++
++      function renderResults(state) {
++        els.profile.replaceChildren(...ATTRS.map((attr, a) => {
++          const avg = state.totals[a] / state.processed;
++          const row = document.createElement('div');
++          row.className = 'profile-row';
++          row.innerHTML = `
++            <span></span>
++            <div class="profile-track"><div class="profile-fill"></div></div>
++            <output></output>`;
++          row.querySelector('span').textContent = attr[0].toUpperCase() + attr.slice(1);
++          row.querySelector('output').textContent = avg.toFixed(1);
++          requestAnimationFrame(() => {
++            row.querySelector('.profile-fill').style.width = `${avg * 10}%`;
++          });
++          return row;
++        }));
++
++        els.top.replaceChildren(...state.top.map(({ blend, score }) => {
++          const tr = document.createElement('tr');
++          [blendName(blend), blend.roast.name, blend.brew.name, score.toFixed(1)].forEach(text => {
++            const td = document.createElement('td');
++            td.textContent = text;
++            tr.appendChild(td);
++          });
++          return tr;
++        }));
++
++        els.results.hidden = false;
++      }
++
++      async function runSimulation(total) {
++        const run = { cancelled: false };
++        currentRun = run;
++
++        const rand = mulberry32(total);
++        const state = {
++          processed: 0,
++          yields: 0,
++          longest: 0,
++          startedAt: performance.now(),
++          totals: [0, 0, 0, 0, 0],
++          top: []
++        };
++
++        els.run.disabled = true;
++        els.count.disabled = true;
++        els.cancel.disabled = false;
++        els.results.hidden = true;
++        els.status.textContent = `Simulating ${fmt.format(total)} blends…`;
++
++        while (state.processed < total) {
++          const sliceStart = performance.now();
++          // Process blends until this slice's time budget is spent
++          do {
++            const blend = createBlend(rand);
++            const { profile, score } = simulateBlend(blend);
++            for (let a = 0; a < 5; a++) state.totals[a] += profile[a];
++            insertTop(state.top, { blend, score }, 5);
++            state.processed++;
++          } while (state.processed < total && performance.now() - sliceStart < SLICE_BUDGET_MS);
++
++          state.longest = Math.max(state.longest, performance.now() - sliceStart);
++          updateStats(state, total);
++
++          if (state.processed < total) {
++            await yieldToMain();
++            state.yields++;
++            if (run.cancelled) break;
++          }
++        }
++
++        if (currentRun === run) currentRun = null;
++        els.run.disabled = false;
++        els.count.disabled = false;
++        els.cancel.disabled = true;
++        updateStats(state, total);
++
++        if (run.cancelled) {
++          els.status.textContent = `Cancelled after ${fmt.format(state.processed)} blends.`;
++        } else {
++          els.status.textContent = `Done! Simulated ${fmt.format(total)} blends in ${state.yields + 1} slices.`;
++        }
++        if (state.processed > 0) renderResults(state);
++      }
++
++      els.run.addEventListener('click', () => {
++        if (currentRun) return;
++        runSimulation(Number(els.count.value));
++      });
++
++      els.cancel.addEventListener('click', () => {
++        if (currentRun) currentRun.cancelled = true;
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

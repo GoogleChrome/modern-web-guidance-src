@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,81 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Accurately determines initial visibility state history using the VisibilityStateEntry Performance API.
++     */
++    function getVisibilityInfo() {
++      const entries = performance.getEntriesByType('visibility-state');
++
++      if (entries.length > 0) {
++        const firstEntry = entries[0];
++        const initiallyBackgrounded = firstEntry.name === 'hidden';
++
++        let timeBackgrounded = null;
++        for (const entry of entries) {
++          if (entry.name === 'hidden') {
++            timeBackgrounded = entry.startTime;
++            break;
++          }
++        }
++
++        const result = {
++          initiallyBackgrounded,
++          backgrounded: initiallyBackgrounded,
++          timeBackgrounded,
++          timestamp: firstEntry.startTime,
++          note: null
++        };
++        console.log(result);
++        return result;
++      }
++
++      return getFallbackVisibilityInfo();
++    }
++
++    /**
++     * Fallback implementation using document.visibilityState.
++     * Note: This approach is prone to race conditions if the script loads asynchronously.
++     */
++    function getFallbackVisibilityInfo() {
++      let initiallyBackgrounded = document.visibilityState === 'hidden';
++      let timeBackgrounded = initiallyBackgrounded ? 0 : null;
++      const timestamp = initiallyBackgrounded ? 0 : performance.now();
++      const fallbackNote =
++        'Fallback to document.visibilityState is unreliable for async scripts because the user may foreground a backgrounded tab before the script finishes loading and executing, causing document.visibilityState to read as "visible" and missing the initial hidden state (and lacking the internal timestamp precision of the Performance API).';
++
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden' && timeBackgrounded === null) {
++          timeBackgrounded = performance.now();
++        }
++      });
++
++      const result = {
++        get initiallyBackgrounded() {
++          return initiallyBackgrounded;
++        },
++        get backgrounded() {
++          return initiallyBackgrounded;
++        },
++        get timeBackgrounded() {
++          return timeBackgrounded;
++        },
++        timestamp,
++        note: fallbackNote
++      };
++      console.log(result);
++      return result;
++    }
++
++    if ('VisibilityStateEntry' in window) {
++      getVisibilityInfo();
++    } else {
++      getFallbackVisibilityInfo();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

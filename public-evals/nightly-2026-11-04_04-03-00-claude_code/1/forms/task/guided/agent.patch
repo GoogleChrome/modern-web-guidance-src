@@ -1,0 +1,738 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,471 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Rewards registration ---------- */
++    html {
++      /* Keep focused fields clear of the sticky nav */
++      scroll-padding-top: 6rem;
++    }
++
++    [hidden] {
++      display: none !important;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    .rewards {
++      --error: #b3261e;
++      --error-bg: #fdecea;
++      --success: #1e6b2f;
++      --border: #8d6e63;
++      --hint: #5d4037;
++      --focus: #1a4fd6;
++      background: #efebe9;
++      padding: 3rem 1.25rem;
++    }
++
++    .rewards-inner {
++      max-width: 1100px;
++      margin-inline: auto;
++      display: grid;
++      gap: 2.5rem;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
++      align-items: start;
++    }
++
++    .rewards-intro img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-block-end: 1.5rem;
++    }
++
++    .rewards-intro h2 {
++      color: var(--primary);
++      font-size: 2rem;
++      line-height: 1.2;
++      margin-block-end: 0.75rem;
++    }
++
++    .perks {
++      margin-block-start: 1rem;
++      padding-inline-start: 1.25rem;
++    }
++
++    .perks li {
++      margin-block-end: 0.4rem;
++    }
++
++    .rewards-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
++      padding: clamp(1.25rem, 4vw, 2rem);
++    }
++
++    /* Progress indicator */
++    .stepper ol {
++      list-style: none;
++      display: flex;
++      gap: 0.5rem;
++      margin-block-end: 1.5rem;
++      counter-reset: step;
++    }
++
++    .stepper li {
++      flex: 1;
++      counter-increment: step;
++      font-size: 0.85rem;
++      line-height: 1.3;
++      color: var(--hint);
++      padding-block-start: 0.6rem;
++      border-block-start: 4px solid #d7ccc8;
++    }
++
++    .stepper li::before {
++      content: counter(step) ". ";
++      font-weight: 700;
++    }
++
++    .stepper li.is-complete {
++      border-color: var(--success);
++    }
++
++    .stepper li.is-complete::before {
++      content: "✓ " / "";
++      color: var(--success);
++    }
++
++    .stepper li[aria-current="step"] {
++      border-color: var(--primary);
++      color: var(--text);
++      font-weight: 700;
++    }
++
++    /* Form */
++    .rewards-form fieldset {
++      border: 0;
++      min-width: 0;
++    }
++
++    .rewards-form .step + .step {
++      margin-block-start: 2rem;
++    }
++
++    .rewards-form.is-enhanced .step + .step {
++      margin-block-start: 0;
++    }
++
++    .rewards-form legend {
++      font-size: 1.35rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-block-end: 1rem;
++      padding: 0;
++    }
++
++    .step-label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--hint);
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++    }
++
++    .required-note {
++      font-size: 0.9rem;
++      color: var(--hint);
++      margin-block-end: 1.25rem;
++    }
++
++    .field {
++      margin-block-end: 1.5rem;
++    }
++
++    .field>label,
++    .label-row label,
++    .choice-group legend {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.25rem;
++    }
++
++    .choice-group legend {
++      font-size: 1rem;
++      color: var(--text);
++      margin-block-end: 0.5rem;
++    }
++
++    .label-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++    }
++
++    .req,
++    .opt {
++      font-weight: 400;
++      font-size: 0.85rem;
++      color: var(--hint);
++    }
++
++    .req {
++      color: var(--error);
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.875rem;
++      color: var(--hint);
++      margin-block-end: 0.4rem;
++    }
++
++    .rewards-form :is(input:not([type="checkbox"], [type="radio"]), select, textarea) {
++      display: block;
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      line-height: 1.4;
++      color: var(--text);
++      background: white;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 2px solid var(--border);
++      border-radius: 6px;
++    }
++
++    .rewards-form textarea {
++      resize: vertical;
++      min-height: 6rem;
++    }
++
++    .rewards-form :is(input, select, textarea, button, a):focus-visible,
++    .rewards-success h3:focus-visible,
++    .error-summary:focus-visible {
++      outline: 3px solid var(--focus);
++      outline-offset: 2px;
++    }
++
++    .review h3:focus,
++    .rewards-success h3:focus,
++    .error-summary:focus {
++      outline-offset: 4px;
++    }
++
++    .rewards-form :is(input, select, textarea):user-invalid,
++    .rewards-form [aria-invalid="true"] {
++      border-color: var(--error);
++      background-color: var(--error-bg);
++    }
++
++    .rewards-form :is(input:not([type="checkbox"], [type="radio"]), textarea):user-valid:not([aria-invalid="true"]) {
++      border-color: var(--success);
++    }
++
++    .field-error {
++      color: var(--error);
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-block-start: 0.35rem;
++    }
++
++    .field-error:empty {
++      display: none;
++    }
++
++    .field-error::before {
++      content: "⚠ " / "";
++    }
++
++    .row-2 {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
++      gap: 0 1rem;
++    }
++
++    .choice {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      min-height: 48px;
++    }
++
++    .choice input {
++      width: 1.25rem;
++      height: 1.25rem;
++      flex-shrink: 0;
++      accent-color: var(--primary);
++    }
++
++    .choice label {
++      flex: 1;
++      padding-block: 0.6rem;
++    }
++
++    .choice-top {
++      align-items: flex-start;
++    }
++
++    .choice-top input {
++      margin-block-start: 0.8rem;
++    }
++
++    .toggle-password {
++      font: inherit;
++      font-size: 0.875rem;
++      font-weight: 600;
++      color: var(--primary);
++      background: none;
++      border: 0;
++      text-decoration: underline;
++      cursor: pointer;
++      min-height: 44px;
++      padding-inline: 0.25rem;
++    }
++
++    .toggle-password[aria-pressed="true"] {
++      text-decoration-style: double;
++    }
++
++    .rewards-form a {
++      color: var(--primary);
++    }
++
++    /* Error summary */
++    .error-summary {
++      border: 3px solid var(--error);
++      border-radius: 6px;
++      background: var(--error-bg);
++      padding: 1rem 1.25rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .error-summary h3 {
++      font-size: 1.05rem;
++      color: var(--error);
++      margin-block-end: 0.5rem;
++    }
++
++    .error-summary ul {
++      padding-inline-start: 1.25rem;
++    }
++
++    .error-summary a {
++      color: var(--error);
++      font-weight: 600;
++    }
++
++    /* Review */
++    .review h3 {
++      font-size: 1.1rem;
++      margin-block-end: 0.75rem;
++    }
++
++    .review-group {
++      border: 1px solid #d7ccc8;
++      border-radius: 6px;
++      padding: 0.75rem 1rem;
++      margin-block-end: 1rem;
++    }
++
++    .review-group-head {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++    }
++
++    .review-group h4 {
++      color: var(--primary);
++    }
++
++    .review-group dl {
++      display: grid;
++      grid-template-columns: minmax(7rem, auto) 1fr;
++      gap: 0.25rem 1rem;
++      margin-block-start: 0.5rem;
++    }
++
++    .review-group dt {
++      font-weight: 600;
++    }
++
++    .review-group dd {
++      overflow-wrap: anywhere;
++      white-space: pre-line;
++    }
++
++    .review-empty {
++      color: var(--hint);
++      font-style: italic;
++    }
++
++    /* Buttons */
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem;
++      justify-content: space-between;
++      margin-block-start: 1.5rem;
++    }
++
++    .form-btn {
++      font: inherit;
++      font-weight: 600;
++      min-height: 48px;
++      padding: 0.75rem 1.5rem;
++      border-radius: 6px;
++      border: 2px solid var(--primary);
++      cursor: pointer;
++    }
++
++    .form-btn.primary {
++      background: var(--primary);
++      color: white;
++      margin-inline-start: auto;
++    }
++
++    .form-btn.primary:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .form-btn.secondary {
++      background: white;
++      color: var(--primary);
++    }
++
++    .form-btn:disabled {
++      opacity: 0.7;
++      cursor: progress;
++    }
++
++    .form-btn.edit {
++      min-height: 44px;
++      padding: 0.4rem 0.9rem;
++      font-size: 0.9rem;
++    }
++
++    .form-alert {
++      margin-block-start: 1rem;
++      padding: 0.75rem 1rem;
++      border-inline-start: 4px solid var(--error);
++      background: var(--error-bg);
++      color: var(--error);
++      font-weight: 600;
++    }
++
++    .form-alert:empty {
++      padding: 0;
++      border: 0;
++      margin: 0;
++    }
++
++    /* Honeypot: off-screen for humans, still present for bots */
++    .hp {
++      position: absolute;
++      left: -10000px;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++    }
++
++    .rewards-success h3 {
++      color: var(--success);
++      font-size: 1.5rem;
++      margin-block-end: 0.75rem;
++    }
++
++    .rewards-success h3::before {
++      content: "✓ " / "";
++    }
++
++    .rewards-success p+p {
++      margin-block-start: 0.75rem;
++    }
++
++    @media (pointer: coarse) {
++      .rewards-form :is(input:not([type="checkbox"], [type="radio"]), select) {
++        min-height: 52px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +659,253 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="rewards" id="join-rewards" aria-labelledby="rewards-title">
++    <div class="rewards-inner">
++      <div class="rewards-intro">
++        <img
++          src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++          alt="" width="800" height="600" loading="lazy" decoding="async">
++        <h2 id="rewards-title">Join Daily Grind Rewards</h2>
++        <p>Earn stars on every cup and turn your daily ritual into free drinks. Signing up takes about two minutes.</p>
++        <ul class="perks">
++          <li>A free drink when you join</li>
++          <li>1 star for every $1 spent, with a free drink every 100 stars</li>
++          <li>A birthday treat on us</li>
++          <li>Early access to seasonal favorites</li>
++        </ul>
++      </div>
++
++      <div class="rewards-panel">
++        <nav class="stepper" aria-label="Registration progress" hidden>
++          <ol>
++            <li data-step-indicator>Account<span class="visually-hidden step-state"></span></li>
++            <li data-step-indicator>Contact<span class="visually-hidden step-state"></span></li>
++            <li data-step-indicator>Preferences<span class="visually-hidden step-state"></span></li>
++            <li data-step-indicator>Review<span class="visually-hidden step-state"></span></li>
++          </ol>
++        </nav>
++
++        <!-- Works without JavaScript as a normal POST; rewards-form.js enhances it into steps. -->
++        <form id="rewards-form" class="rewards-form" action="/rewards/register" method="post"
++          aria-labelledby="rewards-title">
++          <!-- Must be replaced server-side with a per-session, cryptographically random token. -->
++          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
++
++          <p class="required-note">Fields marked <span class="req">(required)</span> must be filled in. Everything
++            else is optional.</p>
++
++          <div class="error-summary" id="rf-error-summary" tabindex="-1" aria-labelledby="rf-error-summary-title"
++            role="group" hidden>
++            <h3 id="rf-error-summary-title">There is a problem</h3>
++            <ul></ul>
++          </div>
++
++          <!-- Step 1 -->
++          <fieldset class="step" data-title="Account">
++            <legend><span class="step-label">Step 1 of 4</span> Create your account</legend>
++
++            <div class="field">
++              <label for="rf-name">Full name <span class="req">(required)</span></label>
++              <input type="text" id="rf-name" name="name" autocomplete="name" maxlength="100" required
++                enterkeyhint="next" aria-describedby="rf-name-error" data-msg-missing="Enter your full name.">
++              <p class="field-error" id="rf-name-error"></p>
++            </div>
++
++            <div class="field">
++              <label for="rf-email">Email <span class="req">(required)</span></label>
++              <span class="hint" id="rf-email-hint">You'll use this to sign in. Format: name@example.com</span>
++              <input type="email" id="rf-email" name="email" autocomplete="username" maxlength="254" required
++                spellcheck="false" autocapitalize="off" autocorrect="off" enterkeyhint="next"
++                aria-describedby="rf-email-hint rf-email-error" data-msg-missing="Enter your email address."
++                data-msg-type="Enter an email address in the format name@example.com.">
++              <p class="field-error" id="rf-email-error"></p>
++            </div>
++
++            <div class="field">
++              <div class="label-row">
++                <label for="rf-password">Password <span class="req">(required)</span></label>
++                <button type="button" class="toggle-password" aria-controls="rf-password" aria-pressed="false"
++                  aria-describedby="rf-password-toggle-warning" hidden>Show password</button>
++              </div>
++              <span class="visually-hidden" id="rf-password-toggle-warning">Warning: this will display your password
++                on the screen.</span>
++              <span class="hint" id="rf-password-hint">At least 8 characters, including a letter and a number. A
++                password suggested by your browser works great.</span>
++              <input type="password" id="rf-password" name="password" autocomplete="new-password" minlength="8"
++                maxlength="128" pattern="(?=.*\p{L})(?=.*\d).{8,}" required enterkeyhint="next"
++                aria-describedby="rf-password-hint rf-password-error" data-msg-missing="Create a password."
++                data-msg-short="Your password needs at least 8 characters."
++                data-msg-pattern="Your password needs at least one letter and one number.">
++              <p class="field-error" id="rf-password-error"></p>
++            </div>
++          </fieldset>
++
++          <!-- Step 2 -->
++          <fieldset class="step" data-title="Contact">
++            <legend><span class="step-label">Step 2 of 4</span> Contact details</legend>
++
++            <div class="field">
++              <label for="rf-phone">Mobile number <span class="opt">(optional)</span></label>
++              <span class="hint" id="rf-phone-hint">For order-ready texts. Include your country code if you're
++                outside the US.</span>
++              <input type="tel" id="rf-phone" name="phone" autocomplete="tel" maxlength="20"
++                pattern="[\d\s\(\)+.\-]{7,20}" enterkeyhint="next" aria-describedby="rf-phone-hint rf-phone-error"
++                data-msg-pattern="Enter a phone number using digits, spaces, and + ( ) - only.">
++              <p class="field-error" id="rf-phone-error"></p>
++            </div>
++
++            <div class="field">
++              <label for="rf-birthday">Birthday <span class="opt">(optional)</span></label>
++              <span class="hint" id="rf-birthday-hint">We'll send you a free treat on your birthday.</span>
++              <input type="date" id="rf-birthday" name="birthday" autocomplete="bday" min="1900-01-01"
++                enterkeyhint="next" aria-describedby="rf-birthday-hint rf-birthday-error"
++                data-msg-range="Enter a birthday between 1900 and today.">
++              <p class="field-error" id="rf-birthday-error"></p>
++            </div>
++
++            <div class="field">
++              <label for="rf-address">Street address <span class="opt">(optional)</span></label>
++              <span class="hint" id="rf-address-hint">Only needed if you'd like a physical rewards card mailed to
++                you.</span>
++              <textarea id="rf-address" name="street_address" autocomplete="street-address" rows="3"
++                maxlength="300" aria-describedby="rf-address-hint rf-address-error"></textarea>
++              <p class="field-error" id="rf-address-error"></p>
++            </div>
++
++            <div class="row-2">
++              <div class="field">
++                <label for="rf-city">City <span class="opt">(optional)</span></label>
++                <input type="text" id="rf-city" name="city" autocomplete="address-level2" maxlength="100"
++                  enterkeyhint="next" aria-describedby="rf-city-error">
++                <p class="field-error" id="rf-city-error"></p>
++              </div>
++              <div class="field">
++                <label for="rf-region">State / province <span class="opt">(optional)</span></label>
++                <input type="text" id="rf-region" name="region" autocomplete="address-level1" maxlength="100"
++                  enterkeyhint="next" aria-describedby="rf-region-error">
++                <p class="field-error" id="rf-region-error"></p>
++              </div>
++            </div>
++
++            <div class="field">
++              <label for="rf-postal">ZIP or postal code <span class="opt">(optional)</span></label>
++              <input type="text" id="rf-postal" name="postal_code" autocomplete="postal-code" maxlength="20"
++                autocapitalize="characters" spellcheck="false" enterkeyhint="next" aria-describedby="rf-postal-error">
++              <p class="field-error" id="rf-postal-error"></p>
++            </div>
++          </fieldset>
++
++          <!-- Step 3 -->
++          <fieldset class="step" data-title="Preferences">
++            <legend><span class="step-label">Step 3 of 4</span> Your coffee preferences</legend>
++
++            <fieldset class="field choice-group">
++              <legend>Your go-to order <span class="opt">(optional)</span></legend>
++              <div class="choice">
++                <input type="radio" id="rf-drink-espresso" name="favorite_drink" value="espresso">
++                <label for="rf-drink-espresso">Espresso &amp; americanos</label>
++              </div>
++              <div class="choice">
++                <input type="radio" id="rf-drink-latte" name="favorite_drink" value="latte">
++                <label for="rf-drink-latte">Lattes &amp; cappuccinos</label>
++              </div>
++              <div class="choice">
++                <input type="radio" id="rf-drink-cold" name="favorite_drink" value="cold_brew">
++                <label for="rf-drink-cold">Cold brew &amp; iced coffee</label>
++              </div>
++              <div class="choice">
++                <input type="radio" id="rf-drink-tea" name="favorite_drink" value="tea">
++                <label for="rf-drink-tea">Tea &amp; chai</label>
++              </div>
++              <div class="choice">
++                <input type="radio" id="rf-drink-varies" name="favorite_drink" value="varies">
++                <label for="rf-drink-varies">Something different every day</label>
++              </div>
++            </fieldset>
++
++            <div class="field">
++              <label for="rf-store">Home store <span class="opt">(optional)</span></label>
++              <span class="hint" id="rf-store-hint">We'll show you offers and events from this location.</span>
++              <select id="rf-store" name="home_store" autocomplete="off" aria-describedby="rf-store-hint">
++                <option value="">No preference</option>
++                <option value="downtown">Downtown – Main St</option>
++                <option value="riverside">Riverside – Water St</option>
++                <option value="university">University District</option>
++                <option value="old-town">Old Town Square</option>
++                <option value="westgate">Westgate Mall</option>
++                <option value="harbor">Harbor Point</option>
++                <option value="northside">Northside – Elm Ave</option>
++                <option value="airport">Airport Terminal B</option>
++              </select>
++            </div>
++          </fieldset>
++
++          <!-- Step 4 -->
++          <fieldset class="step" data-title="Review">
++            <legend><span class="step-label">Step 4 of 4</span> Review &amp; join</legend>
++
++            <div class="review" hidden>
++              <h3 tabindex="-1" data-step-focus>Check your details</h3>
++              <div data-review-body></div>
++            </div>
++
++            <div class="field">
++              <div class="choice">
++                <input type="checkbox" id="rf-email-optin" name="email_offers" value="yes">
++                <label for="rf-email-optin">Email me offers and new menu news</label>
++              </div>
++              <div class="choice">
++                <input type="checkbox" id="rf-sms-optin" name="sms_offers" value="yes"
++                  aria-describedby="rf-sms-optin-error">
++                <label for="rf-sms-optin">Text me offers (requires a mobile number)</label>
++              </div>
++              <p class="field-error" id="rf-sms-optin-error"></p>
++            </div>
++
++            <div class="field">
++              <div class="choice choice-top">
++                <input type="checkbox" id="rf-terms" name="accept_terms" value="yes" required
++                  aria-describedby="rf-terms-error"
++                  data-msg-missing="Agree to the Rewards Terms and Privacy Policy to join.">
++                <label for="rf-terms">I agree to the
++                  <a href="/rewards/terms" target="_blank" rel="noopener">Rewards Terms<span
++                      class="visually-hidden"> (opens in a new tab)</span></a> and
++                  <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy<span
++                      class="visually-hidden"> (opens in a new tab)</span></a>
++                  <span class="req">(required)</span></label>
++              </div>
++              <p class="field-error" id="rf-terms-error"></p>
++            </div>
++          </fieldset>
++
++          <!-- Honeypot: humans never see or fill this; the server rejects submissions where it has a value. -->
++          <div class="hp" aria-hidden="true">
++            <label for="rf-website">Leave this field empty</label>
++            <input type="text" id="rf-website" name="website" tabindex="-1" autocomplete="off">
++          </div>
++
++          <div class="form-actions">
++            <button type="button" class="form-btn secondary" id="rf-back" hidden>Back</button>
++            <button type="submit" class="form-btn primary" id="rf-next">Join Daily Grind Rewards</button>
++          </div>
++
++          <p class="visually-hidden" role="status" id="rf-status"></p>
++          <p class="form-alert" role="alert" id="rf-alert"></p>
++        </form>
++
++        <div class="rewards-success" id="rf-success" hidden>
++          <h3 tabindex="-1">Welcome to Daily Grind Rewards!</h3>
++          <p>Thanks for joining, <span data-success-name></span>. Your free welcome drink is waiting in your
++            account.</p>
++          <p>We've sent a confirmation link to <strong data-success-email></strong>. Please confirm your email to
++            start earning stars.</p>
++        </div>
++      </div>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +914,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="rewards-form.js"></script>
+ </body>
+ 
+ </html>

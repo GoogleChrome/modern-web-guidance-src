@@ -1,0 +1,265 @@
+diff --git a/index.html b/index.html
+index 66c9173..f7713f0 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,17 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --font-xs: clamp(0.8125rem, 0.78rem + 0.15vw, 0.875rem);
++      --font-sm: clamp(0.9rem, 0.86rem + 0.2vw, 1rem);
++      --font-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
++      --font-md: clamp(1.125rem, 1.05rem + 0.35vw, 1.25rem);
++      --font-lg: clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem);
++      --font-xl: clamp(1.75rem, 1.45rem + 1.5vw, 2.5rem);
++      --font-hero: clamp(2.25rem, 1.65rem + 3vw, 3.75rem);
++      --leading-tight: 1.2;
++      --leading-snug: 1.3;
++      --leading-normal: 1.6;
++      --leading-relaxed: 1.65;
+     }
+ 
+     * {
+@@ -20,11 +31,32 @@
+       padding: 0;
+     }
+ 
++    html {
++      font-size: 100%;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
++      font-size: var(--font-base);
++      line-height: var(--leading-normal);
+       color: var(--text);
+       background-color: var(--light);
++      -webkit-font-smoothing: antialiased;
++      text-rendering: optimizeLegibility;
++    }
++
++    h1,
++    h2,
++    h3 {
++      line-height: var(--leading-tight);
++      text-wrap: balance;
++      overflow-wrap: break-word;
++    }
++
++    p {
++      line-height: var(--leading-relaxed);
++      text-wrap: pretty;
++      overflow-wrap: break-word;
+     }
+ 
+     /* Navigation */
+@@ -35,30 +67,37 @@
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: wrap;
++      gap: 0.75rem 1.5rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++      font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.625rem);
++      font-weight: 700;
++      line-height: var(--leading-tight);
++      letter-spacing: 0.06em;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem 1.25rem;
+       list-style: none;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-left: 0;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
++      font-size: var(--font-sm);
++      line-height: 1.4;
+       transition: color 0.3s;
+     }
+ 
+@@ -68,13 +107,13 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      padding: 0.35rem 0.75rem;
++      border-radius: 0.25rem;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,49 +124,88 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 1.25rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: var(--font-hero);
++      line-height: 1.15;
++      letter-spacing: -0.02em;
++      max-width: 18ch;
+       margin-bottom: 1rem;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: var(--font-md);
++      line-height: var(--leading-normal);
++      max-width: 48ch;
++      margin-inline: auto;
++      text-wrap: balance;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-width: 68.75rem;
++      margin: 2.5rem auto;
++      padding: 0 1.25rem;
++    }
++
++    .section-title {
++      font-size: var(--font-xl);
++      line-height: var(--leading-tight);
++      letter-spacing: -0.015em;
++      text-align: center;
++      margin-bottom: 1.5rem;
++      text-wrap: balance;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(15.625rem, 1fr));
++      gap: 1.25rem;
++      margin-top: 1.25rem;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
++      padding: 1.5rem 1.25rem;
++      border-radius: 0.5rem;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: var(--font-lg);
++      line-height: var(--leading-snug);
++      margin-bottom: 0.625rem;
+       color: var(--primary);
++      max-width: 22ch;
++      text-wrap: balance;
++    }
++
++    .card p {
++      font-size: var(--font-base);
++      line-height: var(--leading-relaxed);
++      max-width: 34ch;
++      margin-inline: auto;
++      text-wrap: balance;
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      font-size: var(--font-sm);
++      font-weight: 600;
++      line-height: 1.4;
++      padding: 0.625rem 1.25rem;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
++      border-radius: 0.3125rem;
++      margin-top: 1rem;
+       transition: background 0.3s;
+     }
+ 
+@@ -138,19 +216,31 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 2.5rem 1.25rem;
++      margin-top: 2.5rem;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 1.25rem;
++      font-size: var(--font-sm);
++      line-height: var(--leading-normal);
++      text-wrap: balance;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin: 0 0.625rem;
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: var(--font-sm);
++      line-height: var(--leading-normal);
++    }
++
++    footer p {
++      font-size: var(--font-xs);
++      line-height: var(--leading-normal);
++      max-width: 60ch;
++      margin-inline: auto;
++      text-wrap: balance;
+     }
+   </style>
+ </head>
+@@ -176,7 +266,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

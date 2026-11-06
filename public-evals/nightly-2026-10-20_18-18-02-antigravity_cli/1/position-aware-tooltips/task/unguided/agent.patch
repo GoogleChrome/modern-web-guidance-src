@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,118 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Card Actions & Anchored Popover Tooltip */
++    .card-actions {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    #anchor {
++      anchor-name: --info-anchor;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font-weight: bold;
++      font-family: Georgia, serif;
++      font-style: italic;
++      font-size: 1rem;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    #anchor:hover,
++    #anchor:focus-visible {
++      background: var(--primary);
++      color: white;
++      outline: none;
++    }
++
++    #maple-tooltip {
++      position: fixed;
++      inset: auto;
++      position-anchor: --info-anchor;
++      position-area: top;
++      position-try-fallbacks: flip-block, bottom;
++      container-type: anchored;
++      border: none;
++      background: var(--primary);
++      color: var(--light);
++      padding: 0;
++      margin: 0 0 10px 0;
++      border-radius: 12px 12px 4px 4px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      overflow: visible;
++    }
++
++    .tooltip-body {
++      position: relative;
++      background: var(--primary);
++      color: var(--light);
++      padding: 10px 14px;
++      font-size: 0.85rem;
++      max-width: 240px;
++      text-align: center;
++      border-radius: 12px 12px 4px 4px;
++      margin: 0;
++    }
++
++    #maple-tooltip::after,
++    .tooltip-body::after {
++      content: "";
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      transform: translateX(-50%);
++      border-width: 7px;
++      border-style: solid;
++      border-color: var(--primary) transparent transparent transparent;
++    }
++
++    @container anchored(fallback: flip-block) {
++      #maple-tooltip,
++      .tooltip-body {
++        margin: 10px 0 0 0;
++        border-radius: 4px 4px 12px 12px;
++      }
++
++      #maple-tooltip::after,
++      .tooltip-body::after {
++        top: auto;
++        bottom: 100%;
++        border-color: transparent transparent var(--primary) transparent;
++      }
++    }
++
++    @container anchored(fallback: bottom) {
++      #maple-tooltip,
++      .tooltip-body {
++        margin: 10px 0 0 0;
++        border-radius: 4px 4px 12px 12px;
++      }
++
++      #maple-tooltip::after,
++      .tooltip-body::after {
++        top: auto;
++        bottom: 100%;
++        border-color: transparent transparent var(--primary) transparent;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,9 +290,17 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button id="anchor" type="button" popovertarget="maple-tooltip" aria-describedby="maple-tooltip" aria-label="More information about Maple Oat Latte">i</button>
++          </div>
++          <div id="maple-tooltip" popover role="tooltip">
++            <div class="tooltip-body">
++              Made with organic Grade A dark amber maple syrup and steamed barista-blend oat milk. Dairy-free &amp; vegan!
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

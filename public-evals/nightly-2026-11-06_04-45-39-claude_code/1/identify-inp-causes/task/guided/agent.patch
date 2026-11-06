@@ -1,0 +1,27 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,23 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Field INP monitoring: reports are POSTed to this endpoint -->
++  <meta name="rum-endpoint" content="/analytics">
++  <script type="importmap">
++    {
++      "imports": {
++        "web-vitals/attribution": "https://cdn.jsdelivr.net/npm/web-vitals@6.2.3/dist/web-vitals.attribution.js"
++      },
++      "integrity": {
++        "https://cdn.jsdelivr.net/npm/web-vitals@6.2.3/dist/web-vitals.attribution.js": "sha384-88gXWkVWRcxonwsh4Bbe0I44A/ivxDK0msdvrqhU9jK+lmyD5F6Or6YJay6omqFo"
++      }
++    }
++  </script>
++  <!-- Module scripts are deferred, so this never blocks rendering; web-vitals
++       uses buffered observers and still captures early interactions. -->
++  <script type="module" src="/inp-monitor.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

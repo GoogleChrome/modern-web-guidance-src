@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+index 66c9173..aa959bc 100644
+--- a/index.html
++++ b/index.html
+@@ -57,7 +57,6 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -66,6 +65,116 @@
+       color: var(--accent);
+     }
+ 
++    /* Decorative text lines. Defaults sit in :where() so later overrides win. */
++    :where(nav ul a) {
++      text-decoration: underline solid currentColor max(1px, 0.1em);
++      text-underline-offset: 0.3em;
++    }
++
++    :where(nav ul a:focus-visible) {
++      color: var(--accent);
++    }
++
++    /* Logout keeps its bordered pill look; its line sits a little closer. */
++    :where(.logout-link) {
++      text-underline-offset: 0.18em;
++    }
++
++    :where(.footer-links a) {
++      text-decoration: underline dotted color-mix(in srgb, currentColor, transparent 50%) max(1px, 0.1em);
++      /* Dotted lines need a little more room than solid ones */
++      text-underline-offset: 0.3em;
++      text-decoration-inset: 0.3em;
++    }
++
++    :where(.footer-links a:is(:hover, :focus-visible)) {
++      text-decoration-style: solid;
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.14em);
++      text-decoration-inset: -0.2em;
++    }
++
++    /* Card titles are not links: an accent-colored, end-trimmed line keeps them from reading as one. */
++    :where(.card h3) {
++      text-decoration: underline solid var(--accent) max(2px, 0.12em);
++      text-underline-offset: 0.12em;
++      text-decoration-inset: 0.15em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      /* Nav: the line draws in from the start edge on hover and focus. */
++      nav ul a {
++        text-decoration-inset: 0 100%;
++        transition: color 0.3s, text-decoration-inset 0.25s ease-out;
++      }
++
++      nav ul a:is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
++
++      .footer-links a {
++        transition: text-decoration-inset 0.25s ease-out, text-decoration-color 0.25s;
++      }
++
++      /* Card titles: the line grows out from the center when the card is hovered or focused. */
++      .card h3 {
++        text-decoration-inset: 50%;
++        transition: text-decoration-inset 0.35s ease-out;
++      }
++
++      .card:is(:hover, :focus-within) h3 {
++        text-decoration-inset: 0.15em;
++      }
++    }
++
++    /* Section heading: a custom squiggle drawn on page load */
++    .section-title {
++      position: relative;
++      width: fit-content;
++      margin-inline: auto;
++      padding-block-end: 0.4em;
++      text-align: center;
++    }
++
++    .section-title::after {
++      content: "";
++      position: absolute;
++      /* Horizontal end insets pull the line in slightly from the text edges */
++      inset: auto 0.25em 0 0.25em;
++      pointer-events: none;
++      /* Fallback: a straight line */
++      border-block-end: max(2px, 0.08em) solid var(--accent);
++    }
++
++    @supports (border-shape: circle(50%)) {
++      .section-title::after {
++        block-size: 0.4em;
++        border: max(2px, 0.08em) solid var(--accent);
++        border-shape: shape(from 0% 50%,
++            curve to 20% 50% with 5% 0% / 15% 100%,
++            smooth to 40% 50% with 35% 100%,
++            smooth to 60% 50% with 55% 100%,
++            smooth to 80% 50% with 75% 100%,
++            smooth to 100% 50% with 95% 100%);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .section-title::after {
++        animation: draw-line 0.9s ease-out 0.3s both;
++      }
++    }
++
++    @keyframes draw-line {
++      from {
++        clip-path: inset(-1em 100% -1em 0);
++      }
++
++      to {
++        clip-path: inset(-1em 0 -1em 0);
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -149,7 +258,6 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
+@@ -176,7 +284,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

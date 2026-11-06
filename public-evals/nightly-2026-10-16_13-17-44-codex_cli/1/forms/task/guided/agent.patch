@@ -1,0 +1,55 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,50 @@
++# The Daily Grind
++
++A responsive coffee landing page with a three-step rewards registration demonstration.
++
++## Run
++
++```sh
++pnpm install
++pnpm start
++```
++
++## Automated verification
++
++```sh
++pnpm exec playwright install chromium
++pnpm test
++```
++
++The headless Playwright suite checks the complete registration flow, linked errors and focus, optional preferences, invalid birthdays, explicit consent, back navigation, password visibility, safe rendering of user input, data clearing, disabled JavaScript, keyboard access, dialog dismissal, and widths from 320px to 1440px. Axe checks WCAG A/AA rules through 2.2 at each registration step, errors, completion, and dialogs. Automated results do not establish full accessibility conformance. No manual browser verification was performed.
++
++## Accessibility and security audit
++
++The original page had no data-entry forms. The changes address its structure as well as the new form:
++
++- Added a keyboard skip link, logical headings, named navigation landmarks, visible focus indicators, and reduced-motion and forced-colors support.
++- Replaced ambiguous repeated detail links with specifically named product controls and native dialogs. Dialogs support Escape and restore focus to their trigger.
++- Removed the GET-based logout link from this unauthenticated page. A live authenticated service must implement logout using a CSRF-protected POST endpoint.
++- Added persistent labels, autocomplete tokens, associated hints and errors, a focused error summary, progress state, and focus on step headings. Hidden steps are disabled and excluded from navigation.
++- Kept optional birthday data to month/day, with real calendar validation including February 29. Marketing is separate from the required agreement and starts unchecked.
++- Allowed password managers and paste; passwords support 15–128 characters without arbitrary composition rules. Passwords are never included in the review.
++- Rendered all entered text with DOM text APIs, not HTML insertion. No form values enter URLs, logs, cookies, or local/session storage.
++- Added a restrictive CSP that blocks network connections, form submission, inline scripts, plugins, and base URL changes. Scripts, styles, and stock images are local assets. No third-party scripts or analytics run.
++- Disabled form entry and submission until JavaScript initializes. The static demo clears personal values on completion and page exit.
++
++## Registration service boundary
++
++This repository only has a static site; it contains no account or enrollment service. The UI explicitly identifies the flow as a demo. Completion does **not** create an account or send data. Do not remove those disclosures until a real service is connected.
++
++For live enrollment, implement HTTPS, server-side validation, email ownership verification, password hashing using a suitable password KDF, breached-password screening, abuse/rate controls, CSRF protection, and secure session cookies. Replace the illustrative terms and privacy notice with the actual program policies. Update `connect-src` and `form-action` narrowly for the service. Serve CSP as an HTTP header and add `frame-ancestors`, HSTS, and `X-Content-Type-Options: nosniff` at the hosting layer; these cannot all be enforced from this static HTML document.
++
++## Photography
++
++Stock photographs are downloaded from Unsplash and served locally:
++
++- Hero: https://images.unsplash.com/photo-1442512595331-e89e73853f31
++- Latte: image ID `photo-1461023058943-07fcbe16d735`
++- Espresso: image ID `photo-1510707577719-ae7c14805e3a`
++- Cold brew: image ID `photo-1517701604599-bb29b565090c`
++
++Source images use `https://images.unsplash.com/<image-id>`. No AI-generated imagery is used.

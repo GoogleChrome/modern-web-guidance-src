@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,82 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5?module';
++
++    // Minimal fetchLater() polyfill: sends on visibilitychange via fetch keepalive / sendBeacon.
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if ('keepalive' in Request.prototype || init.method !== 'POST' || init.headers) {
++            fetch(url, Object.assign({}, init, { keepalive: true }));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    const COLLECT_ENDPOINT = '/collect';
++
++    // Latest report per metric, so one request carries every Core Web Vital.
++    const metrics = new Map();
++    let controller = null;
++
++    function queueBeacon() {
++      controller?.abort();
++      controller = new AbortController();
++
++      try {
++        fetchLater(COLLECT_ENDPOINT, {
++          method: 'POST',
++          headers: { 'content-type': 'application/json' },
++          body: JSON.stringify({
++            url: location.href,
++            metrics: [...metrics.values()],
++          }),
++          signal: controller.signal,
++        });
++      } catch {
++        // Quota exceeded or unsupported; drop the data.
++      }
++    }
++
++    function report({ name, value, rating, delta, id, navigationType }) {
++      metrics.set(name, { name, value, rating, delta, id, navigationType });
++      queueBeacon();
++    }
++
++    onLCP(report);
++    onINP(report);
++    onCLS(report);
++  </script>
++
+ </body>
+ 
+ </html>

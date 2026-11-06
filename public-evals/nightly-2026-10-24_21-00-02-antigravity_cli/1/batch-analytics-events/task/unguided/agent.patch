@@ -1,0 +1,125 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,121 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const ANALYTICS_ENDPOINT = '/api/analytics';
++      const DEBOUNCE_DELAY_MS = 1000;
++      const MAX_BATCH_SIZE = 25;
++
++      const eventQueue = [];
++      let flushTimer = null;
++
++      function flushEvents(useBeacon = false) {
++        if (flushTimer !== null) {
++          clearTimeout(flushTimer);
++          flushTimer = null;
++        }
++
++        if (eventQueue.length === 0) {
++          return;
++        }
++
++        const batch = eventQueue.splice(0, eventQueue.length);
++        const payload = JSON.stringify({
++          events: batch,
++          sentAt: new Date().toISOString()
++        });
++
++        if (useBeacon && navigator.sendBeacon) {
++          const blob = new Blob([payload], { type: 'application/json' });
++          navigator.sendBeacon(ANALYTICS_ENDPOINT, blob);
++          return;
++        }
++
++        fetch(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json'
++          },
++          body: payload,
++          keepalive: true
++        }).catch(() => {
++          // Silently ignore telemetry transport errors
++        });
++      }
++
++      function scheduleFlush() {
++        if (eventQueue.length >= MAX_BATCH_SIZE) {
++          flushEvents(false);
++          return;
++        }
++
++        if (flushTimer !== null) {
++          clearTimeout(flushTimer);
++        }
++
++        flushTimer = setTimeout(() => {
++          flushEvents(false);
++        }, DEBOUNCE_DELAY_MS);
++      }
++
++      function recordEvent(type, details = {}) {
++        eventQueue.push({
++          type,
++          timestamp: new Date().toISOString(),
++          url: window.location.pathname,
++          ...details
++        });
++        scheduleFlush();
++      }
++
++      // Record initial page view
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', () => {
++          recordEvent('pageview', {
++            title: document.title,
++            referrer: document.referrer || null
++          });
++        });
++      } else {
++        recordEvent('pageview', {
++          title: document.title,
++          referrer: document.referrer || null
++        });
++      }
++
++      // Record user click interactions
++      document.addEventListener('click', (event) => {
++        const target = event.target.closest('a, button, [role="button"]') || event.target;
++        const tag = target.tagName ? target.tagName.toLowerCase() : 'unknown';
++        const text = (target.innerText || target.textContent || '').trim().slice(0, 100);
++        const href = target.getAttribute ? target.getAttribute('href') : null;
++
++        recordEvent('click', {
++          tag,
++          id: target.id || null,
++          className: typeof target.className === 'string' ? target.className || null : null,
++          text: text || null,
++          href: href || null,
++          x: event.clientX,
++          y: event.clientY
++        });
++      }, { passive: true });
++
++      // Flush remaining queued events when the page is hidden or unloaded
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden') {
++          flushEvents(true);
++        }
++      });
++
++      window.addEventListener('pagehide', () => {
++        flushEvents(true);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

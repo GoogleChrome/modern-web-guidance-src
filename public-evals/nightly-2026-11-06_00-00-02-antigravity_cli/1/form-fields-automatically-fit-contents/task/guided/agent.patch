@@ -1,0 +1,244 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,149 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Form Section */
++    .form-section {
++      margin-top: 60px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-section h2 {
++      margin-bottom: 16px;
++      color: var(--primary);
++    }
++
++    .order-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 24px;
++    }
++
++    .order-fieldset legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 8px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      padding: 10px 0;
++      margin-top: -10px;
++    }
++
++    .hint {
++      font-size: 0.875rem;
++      color: #5d4037;
++      margin-block-start: 0.25rem;
++    }
++
++    input[type="text"],
++    textarea,
++    select {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1px solid #999;
++      border-radius: 4px;
++      padding: 0.75rem;
++      min-height: 48px;
++      align-self: flex-start;
++    }
++
++    @media (pointer: coarse) {
++      input[type="text"],
++      select {
++        min-height: 52px;
++      }
++    }
++
++    input[type="text"]:focus-visible,
++    textarea:focus-visible,
++    select:focus-visible,
++    button[type="submit"]:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* Applies horizontal auto-sizing to inputs */
++    input[type="text"] {
++      field-sizing: content;
++      width: auto;
++      min-inline-size: 15ch;
++      max-inline-size: 50ch;
++    }
++
++    /* Applies vertical auto-sizing to textareas while keeping horizontal width stable */
++    textarea {
++      field-sizing: content;
++      height: auto;
++      width: 50ch;
++      max-inline-size: 100%;
++      min-block-size: 3lh;
++      max-block-size: 10lh;
++    }
++
++    /* Sizes the select element to fit the active option only */
++    select {
++      field-sizing: content;
++      width: auto;
++      max-inline-size: 50ch;
++    }
++
++    /* Fallback for browsers where field-sizing: content is not supported */
++    @supports not (field-sizing: content) {
++      .growable-textarea {
++        display: grid;
++        width: 50ch;
++        max-inline-size: 100%;
++      }
++
++      .growable-textarea::after,
++      .growable-textarea > textarea {
++        grid-area: 1 / 1 / 2 / 2;
++        font: inherit;
++        padding: 0.75rem;
++        border: 1px solid #999;
++        border-radius: 4px;
++        width: 100%;
++        min-block-size: 3lh;
++        max-block-size: 10lh;
++      }
++
++      .growable-textarea::after {
++        content: attr(data-replicated-value) " ";
++        white-space: pre-wrap;
++        visibility: hidden;
++      }
++
++      .growable-textarea > textarea {
++        resize: none;
++        overflow: hidden;
++      }
++    }
++
++    button[type="submit"] {
++      border: none;
++      font: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++      min-height: 48px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +335,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="form-section" aria-labelledby="custom-order-heading">
++      <h2 id="custom-order-heading">Custom Order &amp; Tasting Notes</h2>
++      <form action="/order-custom" method="POST" id="custom-order-form">
++        <fieldset class="order-fieldset">
++          <legend>Order Preferences</legend>
++
++          <div class="form-group">
++            <label for="customer-name">Full Name (Required)</label>
++            <input
++              type="text"
++              id="customer-name"
++              name="customer_name"
++              autocomplete="name"
++              enterkeyhint="next"
++              aria-describedby="name-help"
++              placeholder="e.g., Alex Morgan"
++              required
++            >
++            <span id="name-help" class="hint">Sizes automatically as you type your name.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="drink-choice">Select Your Beverage (Required)</label>
++            <select id="drink-choice" name="drink_choice" aria-describedby="drink-help" required>
++              <option value="espresso">Espresso</option>
++              <option value="americano">Caffè Americano</option>
++              <option value="cortado">Double Shot Cortado</option>
++              <option value="cold-brew">18-Hour Steeped Cold Brew</option>
++              <option value="maple-latte">Seasonal Vermont Maple Oat Milk Latte</option>
++              <option value="pour-over">Single-Origin Ethiopian Yirgacheffe Pour-Over</option>
++            </select>
++            <span id="drink-help" class="hint">Dropdown width adjusts dynamically to fit the selected drink.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="special-instructions">Special Instructions &amp; Notes</label>
++            <div class="growable-textarea" data-replicated-value="">
++              <textarea
++                id="special-instructions"
++                name="special_instructions"
++                aria-describedby="notes-help"
++                placeholder="Add any milk preferences, sweetness levels, or pickup instructions..."
++              ></textarea>
++            </div>
++            <span id="notes-help" class="hint">Expands vertically to fit multiple lines of notes without extra whitespace.</span>
++          </div>
++
++          <button type="submit" class="btn">Place Custom Order</button>
++        </fieldset>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +399,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('field-sizing', 'content')) {
++      document.querySelectorAll('.growable-textarea > textarea').forEach(textarea => {
++        textarea.addEventListener('input', () => {
++          textarea.parentNode.dataset.replicatedValue = textarea.value;
++        });
++      });
++    }
++
++    const customOrderForm = document.getElementById('custom-order-form');
++    if (customOrderForm) {
++      customOrderForm.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const submitBtn = customOrderForm.querySelector('button[type="submit"]');
++        if (submitBtn) {
++          submitBtn.disabled = true;
++          submitBtn.textContent = 'Order Placed!';
++        }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,120 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,50 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical media scroller */
++    .media-scroller {
++      position: relative; /* makes card offsetTop relative to the scroller */
++      height: 420px;
++      max-width: 640px;
++      margin: 20px auto 0;
++      padding: 16px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      scroll-behavior: auto; /* never animate the initial positioning */
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-card {
++      flex: none;
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 640 / 400; /* reserve space so layout is stable before images load */
++      object-fit: cover;
++      background: #efebe9;
++    }
++
++    .media-card .media-body {
++      padding: 12px 16px;
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +236,65 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">From the Roastery</h2>
++      <div class="media-scroller" id="media-scroller" tabindex="0" aria-label="Roastery gallery">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=640&h=400&q=80"
++            width="640" height="400" alt="Cup of black coffee on a wooden table" loading="lazy" decoding="async">
++          <div class="media-body">
++            <h3>Morning Ritual</h3>
++            <p>A simple cup, done right.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&h=400&q=80"
++            width="640" height="400" alt="Iced coffee in a glass" loading="lazy" decoding="async">
++          <div class="media-body">
++            <h3>Over Ice</h3>
++            <p>Our cold brew, poured over hand-cut ice.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=640&h=400&q=80"
++            width="640" height="400" alt="Latte art in a ceramic cup" fetchpriority="high" decoding="async">
++          <div class="media-body">
++            <h3>Latte Art</h3>
++            <p>Our baristas pour every rosetta by hand.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=640&h=400&q=80"
++            width="640" height="400" alt="Coffee being brewed" loading="lazy" decoding="async">
++          <div class="media-body">
++            <h3>Slow Brew</h3>
++            <p>Patience in every pour-over.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=640&h=400&q=80"
++            width="640" height="400" alt="Roasted coffee beans" loading="lazy" decoding="async">
++          <div class="media-body">
++            <h3>Fresh Roasted</h3>
++            <p>Small batches, roasted every week.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        // Runs synchronously while parsing, before first paint, so the 3rd card is
++        // already in view with no visible jump. Card sizes come from the images'
++        // fixed dimensions, so the offset is correct before images load.
++        (function () {
++          var scroller = document.getElementById('media-scroller');
++          var target = scroller.querySelector('.target');
++          var padding = parseFloat(getComputedStyle(scroller).paddingTop) || 0;
++          scroller.scrollTop = target.offsetTop - padding;
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

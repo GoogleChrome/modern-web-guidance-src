@@ -1,0 +1,48 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..5e40470 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,42 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  if (context.request.method === 'OPTIONS') {
++    const headers = new Headers();
++    const origin = context.request.headers.get('Origin') || '*';
++    headers.set('Access-Control-Allow-Origin', origin);
++    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
++    headers.set(
++      'Access-Control-Allow-Headers',
++      context.request.headers.get('Access-Control-Request-Headers') || 'Content-Type, Authorization'
++    );
++    headers.set('Access-Control-Allow-Private-Network', 'true');
++    headers.set(
++      'Permissions-Policy',
++      'local-network=*, loopback-network=*, local-network-access=*'
++    );
++    return new Response(null, { status: 204, headers });
++  }
++
++  const response = await next();
++  const headers = new Headers(response.headers);
++  headers.set(
++    'Permissions-Policy',
++    'local-network=*, loopback-network=*, local-network-access=*'
++  );
++  headers.set('Access-Control-Allow-Private-Network', 'true');
++
++  if (context.request.headers.get('Access-Control-Request-Private-Network') === 'true') {
++    const origin = context.request.headers.get('Origin') || '*';
++    if (!headers.has('Access-Control-Allow-Origin')) {
++      headers.set('Access-Control-Allow-Origin', origin);
++    }
++  }
++
++  return new Response(response.body, {
++    status: response.status,
++    statusText: response.statusText,
++    headers,
++  });
+ });

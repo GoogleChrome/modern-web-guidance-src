@@ -1,0 +1,179 @@
+diff --git a/src/components/DiagnosticsConnections.tsx b/src/components/DiagnosticsConnections.tsx
+new file mode 100644
+index 0000000..486705b
+--- /dev/null
++++ b/src/components/DiagnosticsConnections.tsx
+@@ -0,0 +1,146 @@
++import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
++
++type AddressSpace = 'local' | 'loopback';
++type NetworkPermission = 'local-network' | 'loopback-network';
++type ConnectionResult = { kind: 'idle' | 'checking' | 'success' | 'error'; message: string };
++
++function validateEndpoint(value: string, space: AddressSpace): URL {
++  let url: URL;
++  try {
++    url = new URL(value);
++  } catch {
++    throw new Error('Enter a complete endpoint URL, including http:// or https:// and the status path.');
++  }
++  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) {
++    throw new Error('Use an HTTP or HTTPS URL without credentials or a fragment.');
++  }
++  const host = url.hostname;
++  const parts = host.split('.').map(Number);
++  const ipv4 = parts.length === 4 && parts.every(part => Number.isInteger(part) && part >= 0 && part <= 255);
++  const loopback = host === 'localhost' || host.endsWith('.localhost') || host === '[::1]' || (ipv4 && parts[0] === 127);
++  const lan = (ipv4 && (parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168))) || host.endsWith('.local');
++  if (space === 'loopback' ? !loopback : !lan) {
++    throw new Error(space === 'local'
++      ? 'Use a private LAN IPv4 address (10.x.x.x, 172.16–31.x.x, 192.168.x.x) or a .local hostname.'
++      : 'Use 127.0.0.1, another 127.x.x.x address, localhost, or [::1] for the companion CLI.');
++  }
++  return url;
++}
++
++function ConnectionCard({ space, title, initialUrl, description }: {
++  space: AddressSpace; title: string; initialUrl: string; description: string;
++}) {
++  const id = useId();
++  const permissionName: NetworkPermission = space === 'local' ? 'local-network' : 'loopback-network';
++  const permissionLabel = space === 'local' ? 'Local network' : 'Loopback network';
++  const [endpoint, setEndpoint] = useState(initialUrl);
++  const [permission, setPermission] = useState<PermissionState | 'unknown'>('unknown');
++  const [result, setResult] = useState<ConnectionResult>({ kind: 'idle', message: 'Ready when you are. No connection attempted.' });
++  const controller = useRef<AbortController | null>(null);
++
++  useEffect(() => {
++    let disposed = false;
++    let status: PermissionStatus | undefined;
++    const update = () => { if (!disposed && status) setPermission(status.state); };
++    // Unsupported permission names are normal in browsers without granular LNA support.
++    async function checkPermission() {
++      try {
++        if (!navigator.permissions?.query) return;
++        const value = await navigator.permissions.query({ name: permissionName as PermissionName });
++        if (disposed) return;
++        status = value;
++        update();
++        status.addEventListener('change', update);
++      } catch {
++        // Keep explicit-click connections available when querying is unsupported.
++      }
++    }
++    void checkPermission();
++    return () => {
++      disposed = true;
++      status?.removeEventListener('change', update);
++      controller.current?.abort();
++    };
++  }, [permissionName]);
++
++  async function connect(event: FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    if (controller.current) return;
++    let timeout: ReturnType<typeof setTimeout> | undefined;
++    let timedOut = false;
++    try {
++      const url = validateEndpoint(endpoint.trim(), space);
++      if (!window.isSecureContext) throw new Error('Open The DevTools Times over HTTPS to connect to local devices.');
++      if (permission === 'denied') throw new Error(`Allow ${permissionLabel} in your browser’s site settings, then try again.`);
++      const attempt = new AbortController();
++      controller.current = attempt;
++      setResult({ kind: 'checking', message: 'Waiting for the endpoint. Allow browser access if prompted.' });
++      timeout = setTimeout(() => { timedOut = true; attempt.abort(); }, 20000);
++      const started = performance.now();
++      // Keep requests in the reader's browser. Declaring the address space also
++      // allows supported browsers to handle HTTP endpoints from an HTTPS page.
++      const options: RequestInit & { targetAddressSpace: AddressSpace } = {
++        method: 'GET', mode: 'cors', credentials: 'omit', cache: 'no-store',
++        redirect: 'error', targetAddressSpace: space, signal: attempt.signal,
++      };
++      const response = await fetch(url.href, options);
++      if (!response.ok) throw new Error(`Endpoint replied with HTTP ${response.status}. Check the status URL and service configuration.`);
++      setResult({ kind: 'success', message: `Endpoint reached · HTTP ${response.status} · ${Math.round(performance.now() - started)} ms. Last check: ${new Date().toLocaleTimeString()}.` });
++      void response.body?.cancel().catch(() => {});
++    } catch (error) {
++      const message = timedOut ? 'Connection timed out after 20 seconds. Check the endpoint and browser permission, then retry.'
++        : error instanceof DOMException && error.name === 'AbortError' ? 'Connection check canceled.'
++        : error instanceof TypeError ? `Could not reach the endpoint. Check the URL, ${space === 'local' ? 'device power and shared Wi-Fi' : 'running CLI and port'}, browser site permissions, and service CORS settings. Your browser may not support HTTP local connections; try a trusted HTTPS endpoint or a browser with Local Network Access support.`
++        : error instanceof Error ? error.message : 'Connection failed. Check the endpoint and retry.';
++      setResult({ kind: 'error', message });
++    } finally {
++      clearTimeout(timeout);
++      controller.current = null;
++    }
++  }
++
++  const checking = result.kind === 'checking';
++  return (
++    <div className="border border-gray-300 rounded-md p-5 bg-white">
++      <div className="flex items-start justify-between gap-3 mb-2">
++        <h3 className="font-bold text-lg text-gray-900">{title}</h3>
++        <span className="text-xs uppercase tracking-wide text-gray-500 border border-gray-200 rounded px-2 py-1">{space === 'local' ? 'LAN' : 'Loopback'}</span>
++      </div>
++      <p id={`${id}-description`} className="text-sm text-gray-600 mb-4">{description}</p>
++      <form onSubmit={connect} aria-describedby={`${id}-description`}>
++        <label htmlFor={`${id}-url`} className="block text-sm font-semibold mb-1">Status endpoint URL</label>
++        <input id={`${id}-url`} type="url" required value={endpoint} disabled={checking}
++          onChange={event => { setEndpoint(event.target.value); setResult({ kind: 'idle', message: 'Endpoint changed. Connect to check it.' }); }}
++          spellCheck={false} autoCapitalize="none" autoCorrect="off" autoComplete="off"
++          className="w-full min-w-0 border border-gray-400 rounded px-3 py-2 text-sm font-mono focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:opacity-60" />
++        <p className="text-xs text-gray-600 mt-2">{permissionLabel} permission: {permission === 'unknown' ? 'checked by your browser when connecting' : permission === 'prompt' ? 'ask when connecting' : permission}.</p>
++        {permission === 'denied' && <p className="text-sm text-red-800 mt-2">Open browser site settings and allow {permissionLabel} access, then retry.</p>}
++        <div className="flex gap-3 mt-4">
++          <button type="submit" disabled={checking} className="bg-gray-900 text-white rounded px-4 py-2 text-sm font-semibold hover:bg-gray-700 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">{checking ? 'Connecting…' : result.kind === 'success' ? 'Check again' : 'Connect'}</button>
++          {checking && <button type="button" onClick={() => controller.current?.abort()} className="rounded px-3 py-2 text-sm underline focus-visible:outline-2 focus-visible:outline-amber-600">Cancel</button>}
++        </div>
++      </form>
++      <p role="status" aria-live="polite" aria-atomic="true" className={`mt-4 text-sm ${result.kind === 'error' ? 'text-red-800' : result.kind === 'success' ? 'text-green-800' : 'text-gray-600'}`}>{result.message}</p>
++    </div>
++  );
++}
++
++export default function DiagnosticsConnections() {
++  return (
++    <section aria-labelledby="diagnostics-heading" className="my-8 border-y-2 border-gray-900 bg-gray-50 p-4 md:p-6">
++      <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Developer workbench</p>
++      <h2 id="diagnostics-heading" className="font-brand text-3xl text-gray-900">Diagnostics connections</h2>
++      <p className="text-sm text-gray-700 mt-2 max-w-3xl">Check your hardware test device and companion CLI directly from this browser. Each Connect button sends one GET request to the URL you choose and may ask for browser permission. No local requests run on page load.</p>
++      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
++        <ConnectionCard space="local" title="Hardware test device" initialUrl="http://192.168.1.100:8080/status" description="Connect to a test device on the same private Wi-Fi LAN as this computer." />
++        <ConnectionCard space="loopback" title="Local companion CLI" initialUrl="http://127.0.0.1:45678/health" description="Connect to the companion service running on this computer’s loopback interface." />
++      </div>
++      <details className="mt-4 text-sm text-gray-700">
++        <summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-amber-600">Endpoint setup & troubleshooting</summary>
++        <p className="mt-2">The example URLs are placeholders. Start your device or CLI’s HTTP service and enter its actual port and status path. A successful check means the endpoint returned HTTP 2xx; it does not open a persistent session.</p>
++        <p className="mt-2">Serve this site over HTTPS. The device or CLI must allow this site’s origin with an Access-Control-Allow-Origin response header. Requests send no cookies or credentials and do not follow redirects. The browser contacts the endpoint directly; The DevTools Times server does not relay requests.</p>
++        <p className="mt-2">If access is blocked, check Local network or Loopback network in your browser’s site settings. Browser support varies; if HTTP is blocked, use an endpoint with a trusted HTTPS certificate or a browser that supports Local Network Access.</p>
++      </details>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..80d6acd 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,7 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import DiagnosticsConnections from '../components/DiagnosticsConnections';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -57,6 +58,7 @@ politicsArticles[2] = {
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
++        <DiagnosticsConnections client:load />
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+@@ -81,4 +83,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

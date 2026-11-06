@@ -1,0 +1,597 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..1eae0cf
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++dist/
++node_modules/
+diff --git a/PRIVACY.md b/PRIVACY.md
+new file mode 100644
+index 0000000..efb1e85
+--- /dev/null
++++ b/PRIVACY.md
+@@ -0,0 +1,43 @@
++# Privacy architecture and third-party audit
++
++Scope: the static Daily Grind website in this repository. This is a technical audit, not a claim about an external account, ordering service, or hosting provider. No browser or live deployment audit was performed.
++
++## Data inventory
++
++| Surface | Finding and protection |
++| --- | --- |
++| HTML | No forms or personal data fields; no user identifiers in markup or URLs. Privacy notice is accessible from the home page. |
++| Client scripts | None. Do not add tracking, fingerprinting, storage, permission prompts, or SDKs. CSP blocks script execution, workers, frames, forms, and programmatic connections. |
++| Browser storage | No cookies, localStorage, sessionStorage, IndexedDB, service workers, or application caches. Ordinary HTTP caching of public assets remains possible. |
++| Styles and fonts | Local stylesheet and system fonts; no font CDN, remote CSS imports, inline styles, or remote requests. |
++| Images | The original remote Unsplash background disclosed visitor connection information on page load. The same stock photo is now hosted at assets/coffee.jpg. Original stock image endpoint: https://images.unsplash.com/photo-1495474472287-4d71bcdd2085. No runtime Unsplash request. |
++| Third-party integrations | No analytics, ads, tag managers, social SDKs, embedded content, or runtime packages. No external API requests. |
++| Hosting | Provider necessarily receives connection metadata. Hosting logs, retention, TLS, and infrastructure access remain deployment responsibilities. The app adds no logging or reporting endpoint. |
++| Existing navigation | Menu, locations, rewards, account, logout, ordering, and contact routes have no implementations in this repository. These changes do not add accounts or pretend to terminate server sessions. |
++
++## Deployment
++
++Run `npm run build` (Node.js 22.16+). It runs static privacy checks and copies an explicit public-file allowlist into `dist/`. Deploy **only dist/**. No server is needed for the build.
++
++- `_headers` is included for static hosts supporting that convention (e.g. Netlify or Cloudflare Pages).
++- `vercel.json` sets the same headers and build output for Vercel.
++- Other hosts must configure these response headers at their HTTP server or CDN. The existing statikk start command is a convenience server, not a verified production header implementation.
++- Both HTML documents have an early CSP meta fallback and no-referrer meta policy. Meta CSP cannot enforce frame-ancestors; Permissions-Policy, HSTS, nosniff, COOP, and CORP also require real response headers. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors.
++- Serve production over HTTPS and redirect HTTP at the host. HSTS starts at 300 seconds; increase after confirming HTTPS. Do not enable includeSubDomains or preload without checking all subdomains.
++- CSP is enforced immediately because every resource in this small static site was inventoried. No scripts need nonces or hashes: script-src is none. There is no CSP reporting endpoint, avoiding collection of page URLs and code samples without a real, scrubbed reporting service.
++- Apply the policy only to this static deployment. Reassess script, connection, form, and browser-feature requirements before combining it with an ordering or payment application.
++
++## Ongoing audit and secure handling requirements
++
++`npm run check:privacy` statically checks the current markup, CSS, local resources, script-free policy, and agreement between deployment header configurations. This catches common regressions in this fixed static format; it is not a general HTML security scanner or verification of deployed response headers. Run it on every change, and repeat the inventory before adding any dependency or integration and at least quarterly. A real deployed-header/network audit remains necessary after hosting is chosen; it was not performed as part of this change.
++
++Before adding personal-data features:
++
++- Request only fields required for the immediate purpose; prefer guest ordering. Explain purpose and retention next to each field. Define deletion dates before collecting data; never repurpose security data for marketing.
++- Keep tokens and PII out of URLs, browser storage, HTML datasets, logs, and exception reports. Do not add client-side encryption with keys shipped in the same app as a substitute for safe storage.
++- Authenticate and authorize on the backend; validate input there. Use TLS, least privilege, encryption at rest, and rate limits for sensitive endpoints. Suppress request bodies, cookies, query strings, and authorization values in logs; minimize/redact IP information and set a short documented retention period at the host.
++- Session cookies must use Secure, HttpOnly, SameSite=Lax, Path=/ and preferably a __Host- name with no Domain. Protect state-changing requests against CSRF. On logout, invalidate the session on the server and return Cache-Control: no-store and Clear-Site-Data: "cookies", "storage", "cache" on that endpoint only. Do not add a global Clear-Site-Data header.
++- Provide access, correction, and deletion controls alongside any future account feature. Sensitive responses must be private/no-store; do not put account data into public static builds or caches.
++- Audit each vendor's actual data flows, purpose, retention, onward sharing, and removal mechanism. Prefer self-hosting and click-to-load facades with local thumbnails. Necessary immutable external code requires integrity hashes and anonymous CORS; review any CSP changes explicitly. Optional collection must remain off until meaningful consent and stop after withdrawal.
++
++No hosting retention duration, data-rights contact, or backend capability is invented by this implementation; establish those facts before expanding the public privacy notice.
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..7f942ea
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,9 @@
++/*
++  Content-Security-Policy: default-src 'none'; script-src 'none'; script-src-attr 'none'; style-src 'self'; style-src-attr 'none'; img-src 'self'; font-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'; manifest-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'; frame-ancestors 'none'
++  Referrer-Policy: no-referrer
++  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), browsing-topics=()
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: DENY
++  Cross-Origin-Opener-Policy: same-origin-allow-popups
++  Cross-Origin-Resource-Policy: same-origin
++  Strict-Transport-Security: max-age=300
+diff --git a/assets/coffee.jpg b/assets/coffee.jpg
+new file mode 100644
+index 0000000..694c858
+Binary files /dev/null and b/assets/coffee.jpg differ
+diff --git a/assets/styles.css b/assets/styles.css
+new file mode 100644
+index 0000000..831a646
+--- /dev/null
++++ b/assets/styles.css
+@@ -0,0 +1,151 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('/assets/coffee.jpg');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.section-title { text-align: center; }
++.privacy-copy { max-width: 760px; }
++.privacy-copy h2 { margin-top: 1.5rem; }
++.privacy-copy p { margin-top: 0.75rem; }
+diff --git a/index.html b/index.html
+index 66c9173..1fe2171 100644
+--- a/index.html
++++ b/index.html
+@@ -3,156 +3,11 @@
+ 
+ <head>
+   <meta charset="UTF-8">
++  <meta name="referrer" content="no-referrer">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; script-src-attr 'none'; style-src 'self'; style-src-attr 'none'; img-src 'self'; font-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'; manifest-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/assets/styles.css">
+ </head>
+ 
+ <body>
+@@ -176,7 +31,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -202,8 +57,9 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy/">Privacy</a>
+     </div>
++    <p>No analytics or tracking cookies. <a href="/privacy-policy/">How we protect your privacy</a>.</p>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..fa73296 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,9 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "check:privacy": "node scripts/check-privacy.mjs",
++    "build": "npm run check:privacy && node scripts/build.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/privacy-policy/index.html b/privacy-policy/index.html
+new file mode 100644
+index 0000000..f82c16f
+--- /dev/null
++++ b/privacy-policy/index.html
+@@ -0,0 +1,31 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="referrer" content="no-referrer">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; script-src-attr 'none'; style-src 'self'; style-src-attr 'none'; img-src 'self'; font-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'; manifest-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Privacy | The Daily Grind</title>
++  <link rel="stylesheet" href="/assets/styles.css">
++</head>
++<body>
++  <nav aria-label="Main navigation">
++    <a class="logo" href="/">THE DAILY GRIND</a>
++    <a href="/">Back to home</a>
++  </nav>
++  <main class="container privacy-copy">
++    <h1>Your privacy at The Daily Grind</h1>
++    <p>This notice describes this static website. Browsing does not require an account or personal details.</p>
++    <h2>Only what is needed to show the page</h2>
++    <p>This website has no data collection forms, analytics, advertising trackers, fingerprinting, or client-side scripts. It does not set cookies or write personal information to browser storage. Your browser may cache public images and styles to load pages faster.</p>
++    <h2>No automatic requests to third parties</h2>
++    <p>Images and styles are served from this website. The coffee photograph is a locally hosted copy from Unsplash, so viewing it does not send a request to Unsplash. No external fonts, embedded media, or social SDKs load on these pages.</p>
++    <h2>Hosting and connection information</h2>
++    <p>To deliver a page, our hosting provider receives connection information such as your IP address, the requested URL, and browser request headers. Hosting logs and their retention depend on the deployment provider; this website does not add its own analytics or logging. Avoid putting personal details or secrets in URLs.</p>
++    <h2>Cookies, choices, and other services</h2>
++    <p>There are no optional trackers to accept or reject. Privacy protections apply to every visitor by default. You can remove cached site files in your browser settings.</p>
++    <p>Account, rewards, ordering, and contact services are not implemented in this static website. If those services are added, their data collection, retention, and access or deletion controls must be explained before personal information is requested.</p>
++  </main>
++  <footer><a href="/">Return to The Daily Grind</a></footer>
++</body>
++</html>
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..e12f748
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,10 @@
++// Publish only public assets; never expose source tooling or audit documentation.
++import { cp, mkdir, rm } from 'node:fs/promises';
++const root = new URL('../', import.meta.url);
++const output = new URL('dist/', root);
++await rm(output, { recursive: true, force: true });
++await mkdir(output, { recursive: true });
++for (const path of ['index.html', 'privacy-policy', 'assets', '_headers']) {
++  await cp(new URL(path, root), new URL(path, output), { recursive: true });
++}
++console.log('Static site built in dist/');
+diff --git a/scripts/check-privacy.mjs b/scripts/check-privacy.mjs
+new file mode 100644
+index 0000000..fcb9f3a
+--- /dev/null
++++ b/scripts/check-privacy.mjs
+@@ -0,0 +1,57 @@
++// Static regression checks only: no browser, network, or server entrypoints.
++import assert from 'node:assert/strict';
++import { readFile, readdir, stat } from 'node:fs/promises';
++import { resolve, extname } from 'node:path';
++
++const root = resolve(import.meta.dirname, '..');
++const read = (path) => readFile(resolve(root, path), 'utf8');
++const vercel = JSON.parse(await read('vercel.json'));
++const headers = Object.fromEntries(vercel.headers[0].headers.map(({ key, value }) => [key, value]));
++const expectedHeaders = '/*\n' + Object.entries(headers).map(([key, value]) => `  ${key}: ${value}\n`).join('');
++assert.equal(await read('_headers'), expectedHeaders, 'Deployment header configurations must agree');
++const csp = headers['Content-Security-Policy'];
++for (const rule of ["default-src 'none'", "script-src 'none'", "connect-src 'none'", "style-src 'self'", "img-src 'self'", "form-action 'none'", "base-uri 'none'", "frame-ancestors 'none'", "require-trusted-types-for 'script'"]) {
++  assert(csp.split('; ').includes(rule), `Missing CSP rule: ${rule}`);
++}
++assert(!/unsafe-inline|unsafe-eval|https:|\*/.test(csp), 'CSP must not allow broad sources or inline execution');
++assert.equal(headers['Referrer-Policy'], 'no-referrer');
++assert.equal(headers['X-Content-Type-Options'], 'nosniff');
++assert.equal(headers['X-Frame-Options'], 'DENY');
++for (const feature of ['camera', 'microphone', 'geolocation', 'payment', 'browsing-topics']) {
++  assert(headers['Permissions-Policy'].split(', ').includes(`${feature}=()`), `Disable unused ${feature}`);
++}
++
++async function checkAsset(url) {
++  assert(url.startsWith('/') && !url.startsWith('//'), `Only same-origin asset paths allowed: ${url}`);
++  assert(!/[?#]/.test(url), 'Assets must not contain query identifiers');
++  const path = resolve(root, '.' + url);
++  assert(path.startsWith(root + '/'), 'Asset must stay within the site');
++  assert((await stat(path)).isFile(), `Missing local asset: ${url}`);
++}
++
++async function checkMarkup(path) {
++  const html = await read(path);
++  assert(!/<\s*(script|iframe|object|embed|form|input|textarea|select|base|style)\b/i.test(html), `${path}: unexpected executable, embedded, inline-style, or collecting markup`);
++  for (const tag of html.matchAll(/<[a-z][^>]*>/gi)) {
++    assert(!/\s(?:on[a-z]+|style|ping|srcdoc)\s*=/i.test(tag[0]), `${path}: unsafe inline attribute`);
++    assert(!/javascript:|data:|https?:\/\/|\/\//i.test(tag[0]), `${path}: unexpected remote resource or active URL`);
++    for (const attr of tag[0].matchAll(/\b(?:src|href)="([^"]+)"/g)) {
++      if (/\bsrc=/.test(attr[0]) || /^<link\b/i.test(tag[0])) await checkAsset(attr[1]);
++    }
++  }
++  const meta = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html);
++  assert.equal(meta?.[1], csp.replace("; frame-ancestors 'none'", ''), `${path}: fallback CSP differs from HTTP policy`);
++  assert(html.includes('<meta name="referrer" content="no-referrer">'));
++  assert(html.indexOf('http-equiv="Content-Security-Policy"') < html.indexOf('<link'), 'Fallback policy must precede resources');
++}
++await checkMarkup('index.html');
++await checkMarkup('privacy-policy/index.html');
++assert((await read('index.html')).includes('href="/privacy-policy/"'), 'Privacy notice must be discoverable');
++const css = await read('assets/styles.css');
++assert(!/@import|https?:|\/\/|data:/i.test(css), 'Styles must not contact third parties');
++for (const match of css.matchAll(/url\(['"]?([^'"\)]+)['"]?\)/g)) await checkAsset(match[1]);
++const assets = await readdir(resolve(root, 'assets'));
++assert(assets.every((name) => ['.css', '.jpg'].includes(extname(name))), 'Review new asset types for tracking or script execution');
++const pkg = JSON.parse(await read('package.json'));
++assert.equal(Object.keys(pkg.dependencies ?? {}).length, 0, 'Audit new runtime dependencies before accepting them');
++console.log('Privacy checks passed: local assets, no collection or scripts, strict CSP, and matching deployment headers.');
+diff --git a/vercel.json b/vercel.json
+new file mode 100644
+index 0000000..99f2086
+--- /dev/null
++++ b/vercel.json
+@@ -0,0 +1,43 @@
++{
++  "buildCommand": "npm run build",
++  "outputDirectory": "dist",
++  "headers": [
++    {
++      "source": "/(.*)",
++      "headers": [
++        {
++          "key": "Content-Security-Policy",
++          "value": "default-src 'none'; script-src 'none'; script-src-attr 'none'; style-src 'self'; style-src-attr 'none'; img-src 'self'; font-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'; manifest-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'; frame-ancestors 'none'"
++        },
++        {
++          "key": "Referrer-Policy",
++          "value": "no-referrer"
++        },
++        {
++          "key": "Permissions-Policy",
++          "value": "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), browsing-topics=()"
++        },
++        {
++          "key": "X-Content-Type-Options",
++          "value": "nosniff"
++        },
++        {
++          "key": "X-Frame-Options",
++          "value": "DENY"
++        },
++        {
++          "key": "Cross-Origin-Opener-Policy",
++          "value": "same-origin-allow-popups"
++        },
++        {
++          "key": "Cross-Origin-Resource-Policy",
++          "value": "same-origin"
++        },
++        {
++          "key": "Strict-Transport-Security",
++          "value": "max-age=300"
++        }
++      ]
++    }
++  ]
++}

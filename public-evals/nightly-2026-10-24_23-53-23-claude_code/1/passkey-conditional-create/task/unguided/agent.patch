@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,47 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-in */
++    .signin {
++      max-width: 360px;
++      margin: 0 auto 40px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      text-align: center;
++      margin-bottom: 16px;
++      color: var(--primary);
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.9rem;
++      margin-bottom: 12px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 8px 10px;
++      margin-top: 4px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .signin button {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 8px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -175,8 +214,23 @@
+   </header>
+ 
+   <main class="container">
+     <section>
++      <form class="signin" id="signin-form">
++        <h2>Sign In</h2>
++        <label>Email
++          <input type="text" name="username" autocomplete="username webauthn" required>
++        </label>
++        <label>Password
++          <input type="password" name="password" autocomplete="current-password" required>
++        </label>
++        <button type="submit" class="btn" data-testid="signin-button">Sign In</button>
++      </form>
++    </section>
++  </main>
++
++  <main class="container">
++    <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -206,7 +260,101 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Decode base64url to an ArrayBuffer.
++    function b64urlToBuffer(value) {
++      const b64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
++      return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer;
++    }
++
++    function parseCreationOptions(json) {
++      if (PublicKeyCredential.parseCreationOptionsFromJSON) {
++        return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++      }
++      return {
++        ...json,
++        challenge: b64urlToBuffer(json.challenge),
++        user: { ...json.user, id: b64urlToBuffer(json.user.id) },
++        excludeCredentials: (json.excludeCredentials || []).map((c) => ({ ...c, id: b64urlToBuffer(c.id) })),
++      };
++    }
++
++    function bufferToB64url(buf) {
++      let str = '';
++      new Uint8Array(buf).forEach((b) => { str += String.fromCharCode(b); });
++      return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    function credentialToJSON(cred) {
++      if (cred.toJSON) return cred.toJSON();
++      const r = cred.response;
++      return {
++        id: cred.id,
++        rawId: bufferToB64url(cred.rawId),
++        type: cred.type,
++        authenticatorAttachment: cred.authenticatorAttachment,
++        clientExtensionResults: cred.getClientExtensionResults(),
++        response: {
++          clientDataJSON: bufferToB64url(r.clientDataJSON),
++          attestationObject: bufferToB64url(r.attestationObject),
++          transports: r.getTransports ? r.getTransports() : [],
++        },
++      };
++    }
++
++    // Silently create a passkey after a password sign-in. Never surfaces UI or errors.
++    async function promotePasskey() {
++      try {
++        if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) return;
++        const caps = await PublicKeyCredential.getClientCapabilities();
++        if (!caps || !caps.conditionalCreate) return;
++
++        const optRes = await fetch('/api/register/options', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++        });
++        if (!optRes.ok) return;
++
++        const credential = await navigator.credentials.create({
++          publicKey: parseCreationOptions(await optRes.json()),
++          mediation: 'conditional',
++        });
++        if (!credential) return;
++
++        await fetch('/api/register/verify', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(credentialToJSON(credential)),
++        });
++      } catch (e) {
++        // Intentionally silent: passkey promotion is best-effort.
++      }
++    }
++
++    document.getElementById('signin-form').addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const form = event.currentTarget;
++      try {
++        const res = await fetch('/api/signin', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            username: form.elements.username.value,
++            password: form.elements.password.value,
++          }),
++        });
++        if (!res.ok) return;
++      } catch (e) {
++        return;
++      }
++      promotePasskey(); // fire and forget, in the background
++    });
++  </script>
++
+ </body>
+ 
+ </html>

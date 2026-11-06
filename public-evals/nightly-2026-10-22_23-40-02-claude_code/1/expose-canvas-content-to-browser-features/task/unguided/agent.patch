@@ -1,0 +1,298 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,110 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee Order Customizer */
++    .customizer {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .customizer-intro {
++      margin-bottom: 20px;
++    }
++
++    /* Logical (CSS px) size is fixed so the drawn cup and the HTML layer stay aligned;
++       the backing store is scaled by devicePixelRatio in script. */
++    #canvas {
++      display: block;
++      margin: 0 auto;
++      width: 340px;
++      height: 460px;
++    }
++
++    /* Real DOM children of the canvas (HTML-in-Canvas). Laid out at 0,0 and moved
++       onto the cup by the transform returned from drawElementImage(). */
++    #order-form {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 230px;
++      font-size: 0.85rem;
++      line-height: 1.3;
++      text-align: left;
++      color: var(--text);
++    }
++
++    #order-form label,
++    #order-form legend {
++      font-weight: 600;
++    }
++
++    #order-form input[type="text"],
++    #order-form select {
++      display: block;
++      width: 100%;
++      margin: 3px 0 10px;
++      padding: 5px 8px;
++      font: inherit;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      background: white;
++      color: var(--text);
++    }
++
++    #order-form fieldset {
++      border: 0;
++      margin: 0 0 10px;
++    }
++
++    #order-form fieldset label {
++      display: inline-block;
++      margin-right: 10px;
++      font-weight: 400;
++    }
++
++    #order-form button {
++      width: 100%;
++      padding: 8px;
++      font: inherit;
++      font-weight: 600;
++      color: white;
++      background: var(--primary);
++      border: 0;
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    #order-form button:hover {
++      background: #3e2723;
++    }
++
++    #order-form :focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #order-status {
++      margin-top: 8px;
++      min-height: 2.6em;
++      font-weight: 600;
++    }
++
++    /* Used when the browser lacks HTML-in-Canvas: show the form as plain HTML. */
++    .customizer.no-html-in-canvas #canvas {
++      display: none;
++    }
++
++    .customizer.no-html-in-canvas #order-form {
++      position: static;
++      margin: 0 auto;
++      padding: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +296,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="customizer" id="customizer">
++      <h2>Build Your Cup</h2>
++      <p class="customizer-intro">Pick your milk and syrup, and watch your coffee change color.</p>
++      <canvas id="canvas" layoutsubtree width="340" height="460">
++        <form id="order-form" aria-labelledby="order-heading">
++          <p id="order-heading" style="font-weight:700;margin-bottom:8px;">Customize your coffee</p>
++          <label for="order-name">Name for the cup</label>
++          <input type="text" id="order-name" name="name" autocomplete="given-name" placeholder="e.g. Sam">
++
++          <fieldset>
++            <legend>Milk</legend>
++            <label><input type="radio" name="milk" value="whole" checked> Whole</label>
++            <label><input type="radio" name="milk" value="oat"> Oat</label>
++            <label><input type="radio" name="milk" value="almond"> Almond</label>
++            <label><input type="radio" name="milk" value="none"> None</label>
++          </fieldset>
++
++          <label for="order-syrup">Syrup</label>
++          <select id="order-syrup" name="syrup">
++            <option value="none">No syrup</option>
++            <option value="maple">Maple</option>
++            <option value="vanilla">Vanilla</option>
++            <option value="caramel">Caramel</option>
++          </select>
++
++          <button type="submit">Add to order</button>
++          <p id="order-status" role="status" aria-live="polite"></p>
++        </form>
++      </canvas>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +338,144 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const canvas = document.getElementById('canvas');
++      const form = document.getElementById('order-form');
++      const status = document.getElementById('order-status');
++      const section = document.getElementById('customizer');
++      const ctx = canvas.getContext('2d');
++
++      // Logical (CSS px) drawing space and where the form sits on the cup.
++      const W = 340, H = 460;
++      const FORM_X = 55, FORM_Y = 118;
++
++      const LIQUID = { none: '#3e2723', maple: '#8d4e1c', vanilla: '#a9825a', caramel: '#b9722b' };
++      const MILK_TINT = { whole: 0.25, oat: 0.2, almond: 0.15, none: 0 };
++
++      const submit = (e) => {
++        e.preventDefault();
++        const data = new FormData(form);
++        const name = (data.get('name') || '').toString().trim() || 'Guest';
++        const syrup = data.get('syrup') === 'none' ? 'no syrup' : data.get('syrup') + ' syrup';
++        const milk = data.get('milk') === 'none' ? 'no milk' : data.get('milk') + ' milk';
++        status.textContent = 'Added for ' + name + ': ' + milk + ', ' + syrup + '.';
++        requestDraw();
++      };
++      form.addEventListener('submit', submit);
++      form.addEventListener('change', () => requestDraw());
++
++      const supported = typeof ctx.drawElementImage === 'function';
++      if (!supported) {
++        // Canvas children are not rendered here, so show the same form as normal HTML.
++        section.classList.add('no-html-in-canvas');
++        canvas.after(form);
++        return;
++      }
++
++      function requestDraw() {
++        canvas.requestPaint();
++      }
++
++      function drawCup() {
++        const data = new FormData(form);
++        const liquid = LIQUID[data.get('syrup')] || LIQUID.none;
++        const milk = MILK_TINT[data.get('milk')] || 0;
++
++        // Saucer
++        ctx.fillStyle = '#d7ccc8';
++        ctx.beginPath();
++        ctx.ellipse(170, 424, 150, 22, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.fillStyle = '#bcaaa4';
++        ctx.beginPath();
++        ctx.ellipse(170, 420, 110, 14, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        // Handle
++        ctx.strokeStyle = '#fafafa';
++        ctx.lineWidth = 16;
++        ctx.beginPath();
++        ctx.arc(318, 220, 52, -Math.PI / 2, Math.PI / 2);
++        ctx.stroke();
++        ctx.strokeStyle = '#bcaaa4';
++        ctx.lineWidth = 2;
++        ctx.beginPath();
++        ctx.arc(318, 220, 60, -Math.PI / 2, Math.PI / 2);
++        ctx.stroke();
++
++        // Cup body
++        ctx.fillStyle = '#fafafa';
++        ctx.strokeStyle = '#bcaaa4';
++        ctx.lineWidth = 2;
++        ctx.beginPath();
++        ctx.moveTo(20, 70);
++        ctx.lineTo(320, 70);
++        ctx.lineTo(300, 370);
++        ctx.quadraticCurveTo(295, 415, 250, 415);
++        ctx.lineTo(90, 415);
++        ctx.quadraticCurveTo(45, 415, 40, 370);
++        ctx.closePath();
++        ctx.fill();
++        ctx.stroke();
++
++        // Coffee surface (color follows syrup choice, lightened by milk)
++        ctx.fillStyle = liquid;
++        ctx.beginPath();
++        ctx.ellipse(170, 70, 150, 20, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.fillStyle = 'rgba(255, 248, 235, ' + milk + ')';
++        ctx.fill();
++        ctx.stroke();
++
++        // Steam
++        ctx.strokeStyle = 'rgba(78, 52, 46, 0.35)';
++        ctx.lineWidth = 4;
++        ctx.lineCap = 'round';
++        for (const x of [130, 170, 210]) {
++          ctx.beginPath();
++          ctx.moveTo(x, 40);
++          ctx.bezierCurveTo(x - 14, 28, x + 14, 16, x, 4);
++          ctx.stroke();
++        }
++        ctx.lineCap = 'butt';
++      }
++
++      function paint() {
++        ctx.reset();
++        const dpr = canvas.width / W;
++        ctx.scale(dpr, dpr);
++        drawCup();
++        // Draw the live HTML form onto the cup, then sync its DOM position/hit-testing
++        // with where it was drawn so clicks, focus rings and a11y bounds line up.
++        const transform = ctx.drawElementImage(form, FORM_X, FORM_Y);
++        form.style.transform = transform.toString();
++      }
++
++      // Keep the backing store at physical-pixel resolution (handles DPR and zoom changes).
++      function resize(entry) {
++        const box = entry && entry.devicePixelContentBoxSize && entry.devicePixelContentBoxSize[0];
++        const w = box ? box.inlineSize : Math.round(W * window.devicePixelRatio);
++        const h = box ? box.blockSize : Math.round(H * window.devicePixelRatio);
++        if (canvas.width !== w || canvas.height !== h) {
++          canvas.width = w;
++          canvas.height = h;
++        }
++        requestDraw();
++      }
++
++      canvas.onpaint = paint;
++      const observer = new ResizeObserver((entries) => resize(entries[0]));
++      try {
++        observer.observe(canvas, { box: 'device-pixel-content-box' });
++      } catch (e) {
++        observer.observe(canvas);
++      }
++      resize();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

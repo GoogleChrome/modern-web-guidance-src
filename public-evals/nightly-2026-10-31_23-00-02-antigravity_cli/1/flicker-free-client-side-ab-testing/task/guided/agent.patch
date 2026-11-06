@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,257 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>PulseFlow — Modern Product Analytics</title>
++  <link rel="preconnect" href="https://cdn.example.com">
++
++  <!--
++    Load the experimentation script in <head> with both `async` and `blocking="render"`.
++    - `async`: Prevents parser-blocking so the browser builds the DOM in parallel.
++    - `blocking="render"`: Holds first paint until the script executes, ensuring
++      experiment variants are applied before the user sees original content.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++  ></script>
++
++  <script>
++    // Apply the anti-flicker fallback only in browsers that do not support blocking="render".
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      document.documentElement.classList.add('ab-loading');
++
++      setTimeout(() => {
++        document.documentElement.classList.remove('ab-loading');
++      }, 4000);
++    }
++
++    // Callback for the experiment SDK to reveal the page once the variant is applied.
++    function onExperimentReady() {
++      document.documentElement.classList.remove('ab-loading');
++    }
++    window.onExperimentReady = onExperimentReady;
++  </script>
++
++  <style>
++    /* Fallback opacity hide when blocking="render" is unsupported */
++    .ab-loading {
++      opacity: 0 !important;
++    }
++
++    :root {
++      --bg-primary: #0f172a;
++      --bg-secondary: #1e293b;
++      --text-primary: #f8fafc;
++      --text-muted: #94a3b8;
++      --accent: #3b82f6;
++      --accent-hover: #2563eb;
++      --accent-contrast: #ffffff;
++      --surface-border: rgba(255, 255, 255, 0.1);
++    }
++
++    /* Variant B overrides keyed to a data attribute on <html> or <body> */
++    [data-variant="b"] {
++      --accent: #10b981;
++      --accent-hover: #059669;
++    }
++
++    *,
++    *::before,
++    *::after {
++      box-sizing: border-box;
++    }
++
++    body {
++      margin: 0;
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
++      background-color: var(--bg-primary);
++      color: var(--text-primary);
++      line-height: 1.6;
++    }
++
++    header {
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 1.5rem 2rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      border-bottom: 1px solid var(--surface-border);
++    }
++
++    .brand {
++      font-size: 1.25rem;
++      font-weight: 700;
++      color: var(--text-primary);
++      text-decoration: none;
++      letter-spacing: -0.02em;
++    }
++
++    nav ul {
++      list-style: none;
++      margin: 0;
++      padding: 0;
++      display: flex;
++      gap: 2rem;
++    }
++
++    nav a {
++      color: var(--text-muted);
++      text-decoration: none;
++      font-size: 0.95rem;
++      transition: color 0.15s ease;
++    }
++
++    nav a:hover,
++    nav a:focus-visible {
++      color: var(--text-primary);
++    }
++
++    .hero {
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 5rem 2rem;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 4rem;
++      align-items: center;
++    }
++
++    .hero-content {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 1.5rem;
++    }
++
++    .hero-badge {
++      display: inline-block;
++      padding: 0.35rem 0.85rem;
++      border-radius: 9999px;
++      background-color: var(--bg-secondary);
++      border: 1px solid var(--surface-border);
++      color: var(--accent);
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    h1 {
++      margin: 0;
++      font-size: clamp(2.25rem, 4vw + 1rem, 3.5rem);
++      line-height: 1.15;
++      letter-spacing: -0.03em;
++    }
++
++    .hero-subtitle {
++      margin: 0;
++      font-size: 1.125rem;
++      color: var(--text-muted);
++      max-width: 54ch;
++    }
++
++    .hero-actions {
++      display: flex;
++      align-items: center;
++      gap: 1rem;
++      margin-top: 0.5rem;
++    }
++
++    .cta-button {
++      appearance: none;
++      border: none;
++      border-radius: 0.5rem;
++      background-color: var(--accent);
++      color: var(--accent-contrast);
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 0.875rem 1.75rem;
++      cursor: pointer;
++      transition: background-color 0.15s ease, transform 0.15s ease;
++    }
++
++    .cta-button:hover {
++      background-color: var(--accent-hover);
++    }
++
++    .cta-button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .hero-media {
++      margin: 0;
++      border-radius: 0.75rem;
++      overflow: hidden;
++      border: 1px solid var(--surface-border);
++      background-color: var(--bg-secondary);
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
++    }
++
++    .hero-media img {
++      display: block;
++      width: 100%;
++      height: auto;
++      object-fit: cover;
++    }
++
++    @media (max-width: 768px) {
++      .hero {
++        grid-template-columns: 1fr;
++        padding: 3rem 1.5rem;
++        gap: 2.5rem;
++      }
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <a href="/" class="brand">PulseFlow</a>
++    <nav aria-label="Primary">
++      <ul>
++        <li><a href="#features">Features</a></li>
++        <li><a href="#Docs">Docs</a></li>
++        <li><a href="#pricing">Pricing</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" id="hero">
++      <div class="hero-content">
++        <span class="hero-badge" id="hero-badge">Real-Time Experimentation</span>
++        <h1 id="hero-heading">Turn product insights into measurable growth</h1>
++        <p class="hero-subtitle" id="hero-subtitle">
++          Deploy high-velocity experiments, measure user conversion across every funnel stage, and ship winning product variants with confidence.
++        </p>
++        <div class="hero-actions">
++          <button type="button" class="cta-button" id="hero-cta">
++            Start Free Trial
++          </button>
++        </div>
++      </div>
++
++      <figure class="hero-media">
++        <img
++          src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
++          alt="Analytics dashboard showing conversion trends and real-time metrics"
++          width="1200"
++          height="800"
++          fetchpriority="high"
++        >
++      </figure>
++    </section>
++  </main>
++
++  <script type="module">
++    const ctaButton = document.getElementById('hero-cta');
++    if (ctaButton) {
++      ctaButton.addEventListener('click', () => {
++        ctaButton.textContent = 'Trial Activated!';
++      });
++    }
++  </script>
++</body>
++</html>

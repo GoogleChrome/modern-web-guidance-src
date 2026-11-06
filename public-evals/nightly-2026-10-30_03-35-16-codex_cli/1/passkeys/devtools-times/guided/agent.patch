@@ -1,0 +1,3257 @@
+diff --git a/.gcloudignore b/.gcloudignore
+index 8da1201..efc28d9 100644
+--- a/.gcloudignore
++++ b/.gcloudignore
+@@ -4,4 +4,7 @@
+ Dockerfile
+ node_modules
+ dist
+-.astro
+\ No newline at end of file
++.astro
++.data
++.env
++.env.production
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..186651c 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,6 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++# Local authentication data
++.data/
+diff --git a/README.md b/README.md
+index 4479b53..dae321a 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,49 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Passkeys and account settings
++
++Sign in with a password or a passkey at `/devtools-times/signin`. New readers
++create an account at `/devtools-times/signup` and can then register a passkey.
++Signed-in readers can add, rename, or remove passkeys and edit their display name
++at `/devtools-times/account`. The password service remains the existing Times CDN
++API; passwords and its access tokens are never stored by this app.
++
++Passkeys use native WebAuthn browser APIs with JSON/capability polyfills and
++[SimpleWebAuthn server verification](https://simplewebauthn.dev/docs/packages/server).
++Authentication supports discoverable credentials and conditional autofill.
++Registration requires discoverable credentials; the signup promotion requests a
++platform authenticator, while settings also permits external security keys.
++
++Challenges expire after five minutes, are bound to the browser session and
++operation, and are consumed once. Account sessions expire after 24 hours. Sensitive
++changes require verification within the last five minutes; passkey reauthentication
++requires user verification and only permits the signed-in account's credentials.
++A password fallback is available. Credential signals keep supported password
++managers in sync; a signaling failure does not fail an already completed change.
++
++Configure the following environment variables for your deployment:
++
++| Variable | Default | Purpose |
++| --- | --- | --- |
++| `PASSKEY_ORIGIN` | Astro `site` origin; localhost uses the request origin | Exact HTTPS public origin, including a nonstandard port if used. |
++| `PASSKEY_RP_ID` | Configured origin's hostname | Stable passkey domain, without protocol, port, or path. |
++| `AUTH_STORE_PATH` | `.data/auth.json` | Persistent writable path for account records, public keys, counters, metadata, and pending challenges. |
++
++Use HTTPS in production. Keep the RP ID stable: existing passkeys are tied to it.
++The default file store serializes transactions and atomically replaces the data
++file. It supports one Node process with persistent disk. For replicated or
++ephemeral deployments, replace it with a shared transactional database and configure
++Astro's session driver to use shared durable storage. Preserve both stores across
++releases; back up account and credential records. The default Astro Node adapter
++stores sessions under `.astro/sessions`.
++
++Provider names and icons are a local snapshot of the community-maintained
++[passkey AAGUID registry](https://github.com/passkeydeveloper/passkey-authenticator-aaguids).
++They are display hints only and are never used for access decisions. Unknown
++providers use a generic key icon. Provider logos belong to their respective owners.
++
++Validation: `pnpm run build` builds without starting the application. `pnpm exec
++astro check` performs static type checking; the repository currently also has
++unrelated existing errors in article images, content IDs, and the flyout menu.
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..7a65bd4 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -17,6 +17,10 @@ export default defineConfig({
+     mode: "standalone",
+   }),
+   output: "server",
++  session: {
++    ttl: 60 * 60 * 24,
++    cookie: { sameSite: "lax", path: "/" },
++  },
+ 
+   image: {
+     service: {
+diff --git a/package.json b/package.json
+index 820c637..eb7c189 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,7 @@
+     "@astrojs/node": "^11.1.8",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -20,10 +21,14 @@
+     "react": "^19.3.1",
+     "react-dom": "^19.3.1",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "webauthn-polyfills": "^0.1.7"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@astrojs/check": "^0.9.12",
++    "@tailwindcss/typography": "^0.5.20",
++    "@types/node": "^26.6.6",
++    "typescript": "^6.0.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/public/passkey-providers/01dfe7938d6afead.png b/public/passkey-providers/01dfe7938d6afead.png
+new file mode 100644
+index 0000000..1dd8182
+Binary files /dev/null and b/public/passkey-providers/01dfe7938d6afead.png differ
+diff --git a/public/passkey-providers/0c7714df461788b5.png b/public/passkey-providers/0c7714df461788b5.png
+new file mode 100644
+index 0000000..80fd970
+Binary files /dev/null and b/public/passkey-providers/0c7714df461788b5.png differ
+diff --git a/public/passkey-providers/0d318c94a9ab6d12.png b/public/passkey-providers/0d318c94a9ab6d12.png
+new file mode 100644
+index 0000000..133098a
+Binary files /dev/null and b/public/passkey-providers/0d318c94a9ab6d12.png differ
+diff --git a/public/passkey-providers/0fb7f036c1bf836e.png b/public/passkey-providers/0fb7f036c1bf836e.png
+new file mode 100644
+index 0000000..4d8dc8f
+Binary files /dev/null and b/public/passkey-providers/0fb7f036c1bf836e.png differ
+diff --git a/public/passkey-providers/11a1fa1eceb5c9c5.png b/public/passkey-providers/11a1fa1eceb5c9c5.png
+new file mode 100644
+index 0000000..a8b2aec
+Binary files /dev/null and b/public/passkey-providers/11a1fa1eceb5c9c5.png differ
+diff --git a/public/passkey-providers/1543b4a558686c70.png b/public/passkey-providers/1543b4a558686c70.png
+new file mode 100644
+index 0000000..d934d91
+Binary files /dev/null and b/public/passkey-providers/1543b4a558686c70.png differ
+diff --git a/public/passkey-providers/160f42c982d4ec5d.png b/public/passkey-providers/160f42c982d4ec5d.png
+new file mode 100644
+index 0000000..e9ca8f2
+Binary files /dev/null and b/public/passkey-providers/160f42c982d4ec5d.png differ
+diff --git a/public/passkey-providers/18540bb4a1acdf65.png b/public/passkey-providers/18540bb4a1acdf65.png
+new file mode 100644
+index 0000000..2b5f482
+Binary files /dev/null and b/public/passkey-providers/18540bb4a1acdf65.png differ
+diff --git a/public/passkey-providers/18b765ab0a1b4674.png b/public/passkey-providers/18b765ab0a1b4674.png
+new file mode 100644
+index 0000000..2a2385d
+Binary files /dev/null and b/public/passkey-providers/18b765ab0a1b4674.png differ
+diff --git a/public/passkey-providers/1b537154a3a4e578.png b/public/passkey-providers/1b537154a3a4e578.png
+new file mode 100644
+index 0000000..f3a9b18
+Binary files /dev/null and b/public/passkey-providers/1b537154a3a4e578.png differ
+diff --git a/public/passkey-providers/1d563457b3fe6cea.png b/public/passkey-providers/1d563457b3fe6cea.png
+new file mode 100644
+index 0000000..8e49f89
+Binary files /dev/null and b/public/passkey-providers/1d563457b3fe6cea.png differ
+diff --git a/public/passkey-providers/20bc1c6e17da92ec.png b/public/passkey-providers/20bc1c6e17da92ec.png
+new file mode 100644
+index 0000000..da6aaa1
+Binary files /dev/null and b/public/passkey-providers/20bc1c6e17da92ec.png differ
+diff --git a/public/passkey-providers/20dc638d976adbc0.png b/public/passkey-providers/20dc638d976adbc0.png
+new file mode 100644
+index 0000000..07c8c1d
+Binary files /dev/null and b/public/passkey-providers/20dc638d976adbc0.png differ
+diff --git a/public/passkey-providers/23137c6fd24113ad.png b/public/passkey-providers/23137c6fd24113ad.png
+new file mode 100644
+index 0000000..729e072
+Binary files /dev/null and b/public/passkey-providers/23137c6fd24113ad.png differ
+diff --git a/public/passkey-providers/243adddcdb2a1dc5.png b/public/passkey-providers/243adddcdb2a1dc5.png
+new file mode 100644
+index 0000000..2effb9c
+Binary files /dev/null and b/public/passkey-providers/243adddcdb2a1dc5.png differ
+diff --git a/public/passkey-providers/2464173b2fe7b0df.png b/public/passkey-providers/2464173b2fe7b0df.png
+new file mode 100644
+index 0000000..13666ed
+Binary files /dev/null and b/public/passkey-providers/2464173b2fe7b0df.png differ
+diff --git a/public/passkey-providers/271f6ea90ead8004.png b/public/passkey-providers/271f6ea90ead8004.png
+new file mode 100644
+index 0000000..01ac45d
+Binary files /dev/null and b/public/passkey-providers/271f6ea90ead8004.png differ
+diff --git a/public/passkey-providers/2dd599aebf32da09.png b/public/passkey-providers/2dd599aebf32da09.png
+new file mode 100644
+index 0000000..f7510ba
+Binary files /dev/null and b/public/passkey-providers/2dd599aebf32da09.png differ
+diff --git a/public/passkey-providers/2f313de71e7e5783.png b/public/passkey-providers/2f313de71e7e5783.png
+new file mode 100644
+index 0000000..01eb9d7
+Binary files /dev/null and b/public/passkey-providers/2f313de71e7e5783.png differ
+diff --git a/public/passkey-providers/3116c84518849fb4.png b/public/passkey-providers/3116c84518849fb4.png
+new file mode 100644
+index 0000000..0f2b10a
+Binary files /dev/null and b/public/passkey-providers/3116c84518849fb4.png differ
+diff --git a/public/passkey-providers/31e28e7644152081.png b/public/passkey-providers/31e28e7644152081.png
+new file mode 100644
+index 0000000..9de4b8b
+Binary files /dev/null and b/public/passkey-providers/31e28e7644152081.png differ
+diff --git a/public/passkey-providers/320389a799f9b8a7.png b/public/passkey-providers/320389a799f9b8a7.png
+new file mode 100644
+index 0000000..352c8fa
+Binary files /dev/null and b/public/passkey-providers/320389a799f9b8a7.png differ
+diff --git a/public/passkey-providers/3591102cd56f0ae5.png b/public/passkey-providers/3591102cd56f0ae5.png
+new file mode 100644
+index 0000000..5488c47
+Binary files /dev/null and b/public/passkey-providers/3591102cd56f0ae5.png differ
+diff --git a/public/passkey-providers/36fd49bc8326b050.png b/public/passkey-providers/36fd49bc8326b050.png
+new file mode 100644
+index 0000000..c6a43fd
+Binary files /dev/null and b/public/passkey-providers/36fd49bc8326b050.png differ
+diff --git a/public/passkey-providers/384a778c8de6cc20.png b/public/passkey-providers/384a778c8de6cc20.png
+new file mode 100644
+index 0000000..cb3c34a
+Binary files /dev/null and b/public/passkey-providers/384a778c8de6cc20.png differ
+diff --git a/public/passkey-providers/41e58bac4f167ae4.png b/public/passkey-providers/41e58bac4f167ae4.png
+new file mode 100644
+index 0000000..27da03b
+Binary files /dev/null and b/public/passkey-providers/41e58bac4f167ae4.png differ
+diff --git a/public/passkey-providers/429ebb21997a4358.png b/public/passkey-providers/429ebb21997a4358.png
+new file mode 100644
+index 0000000..4d7417e
+Binary files /dev/null and b/public/passkey-providers/429ebb21997a4358.png differ
+diff --git a/public/passkey-providers/4405f4f0029211e2.png b/public/passkey-providers/4405f4f0029211e2.png
+new file mode 100644
+index 0000000..d8dad41
+Binary files /dev/null and b/public/passkey-providers/4405f4f0029211e2.png differ
+diff --git a/public/passkey-providers/44aedb0528264b78.png b/public/passkey-providers/44aedb0528264b78.png
+new file mode 100644
+index 0000000..b986ab2
+Binary files /dev/null and b/public/passkey-providers/44aedb0528264b78.png differ
+diff --git a/public/passkey-providers/463f45ab259bdaab.png b/public/passkey-providers/463f45ab259bdaab.png
+new file mode 100644
+index 0000000..9a077c0
+Binary files /dev/null and b/public/passkey-providers/463f45ab259bdaab.png differ
+diff --git a/public/passkey-providers/479b1cb4330035cb.png b/public/passkey-providers/479b1cb4330035cb.png
+new file mode 100644
+index 0000000..719ad41
+Binary files /dev/null and b/public/passkey-providers/479b1cb4330035cb.png differ
+diff --git a/public/passkey-providers/4874fd4e1f9e9d6d.png b/public/passkey-providers/4874fd4e1f9e9d6d.png
+new file mode 100644
+index 0000000..717e0a7
+Binary files /dev/null and b/public/passkey-providers/4874fd4e1f9e9d6d.png differ
+diff --git a/public/passkey-providers/4bcc5ff0cabf64fe.png b/public/passkey-providers/4bcc5ff0cabf64fe.png
+new file mode 100644
+index 0000000..d1c1b3a
+Binary files /dev/null and b/public/passkey-providers/4bcc5ff0cabf64fe.png differ
+diff --git a/public/passkey-providers/4bd00edb014eabc6.png b/public/passkey-providers/4bd00edb014eabc6.png
+new file mode 100644
+index 0000000..74b0675
+Binary files /dev/null and b/public/passkey-providers/4bd00edb014eabc6.png differ
+diff --git a/public/passkey-providers/534d123a3220e907.png b/public/passkey-providers/534d123a3220e907.png
+new file mode 100644
+index 0000000..4367905
+Binary files /dev/null and b/public/passkey-providers/534d123a3220e907.png differ
+diff --git a/public/passkey-providers/53914ee54622b228.png b/public/passkey-providers/53914ee54622b228.png
+new file mode 100644
+index 0000000..9f21404
+Binary files /dev/null and b/public/passkey-providers/53914ee54622b228.png differ
+diff --git a/public/passkey-providers/560be735932d782e.png b/public/passkey-providers/560be735932d782e.png
+new file mode 100644
+index 0000000..6e80053
+Binary files /dev/null and b/public/passkey-providers/560be735932d782e.png differ
+diff --git a/public/passkey-providers/5714b84f0553a002.png b/public/passkey-providers/5714b84f0553a002.png
+new file mode 100644
+index 0000000..cf96176
+Binary files /dev/null and b/public/passkey-providers/5714b84f0553a002.png differ
+diff --git a/public/passkey-providers/5ebae50bb3674694.png b/public/passkey-providers/5ebae50bb3674694.png
+new file mode 100644
+index 0000000..017c4c8
+Binary files /dev/null and b/public/passkey-providers/5ebae50bb3674694.png differ
+diff --git a/public/passkey-providers/5ee09cfa6b6e10ad.png b/public/passkey-providers/5ee09cfa6b6e10ad.png
+new file mode 100644
+index 0000000..1c34cc7
+Binary files /dev/null and b/public/passkey-providers/5ee09cfa6b6e10ad.png differ
+diff --git a/public/passkey-providers/5f17fd250b5d740d.png b/public/passkey-providers/5f17fd250b5d740d.png
+new file mode 100644
+index 0000000..22223df
+Binary files /dev/null and b/public/passkey-providers/5f17fd250b5d740d.png differ
+diff --git a/public/passkey-providers/677e54623af04d6e.png b/public/passkey-providers/677e54623af04d6e.png
+new file mode 100644
+index 0000000..c12293c
+Binary files /dev/null and b/public/passkey-providers/677e54623af04d6e.png differ
+diff --git a/public/passkey-providers/69418ef150ee78d0.png b/public/passkey-providers/69418ef150ee78d0.png
+new file mode 100644
+index 0000000..56fa198
+Binary files /dev/null and b/public/passkey-providers/69418ef150ee78d0.png differ
+diff --git a/public/passkey-providers/6d75ef711d6d5a3c.png b/public/passkey-providers/6d75ef711d6d5a3c.png
+new file mode 100644
+index 0000000..ae854f0
+Binary files /dev/null and b/public/passkey-providers/6d75ef711d6d5a3c.png differ
+diff --git a/public/passkey-providers/70c31bf1a6c1037a.png b/public/passkey-providers/70c31bf1a6c1037a.png
+new file mode 100644
+index 0000000..8c24418
+Binary files /dev/null and b/public/passkey-providers/70c31bf1a6c1037a.png differ
+diff --git a/public/passkey-providers/718e8fff1f6cea32.png b/public/passkey-providers/718e8fff1f6cea32.png
+new file mode 100644
+index 0000000..0f8ffa0
+Binary files /dev/null and b/public/passkey-providers/718e8fff1f6cea32.png differ
+diff --git a/public/passkey-providers/7239df6feb140300.png b/public/passkey-providers/7239df6feb140300.png
+new file mode 100644
+index 0000000..8572250
+Binary files /dev/null and b/public/passkey-providers/7239df6feb140300.png differ
+diff --git a/public/passkey-providers/742efd756b441c50.png b/public/passkey-providers/742efd756b441c50.png
+new file mode 100644
+index 0000000..7853293
+Binary files /dev/null and b/public/passkey-providers/742efd756b441c50.png differ
+diff --git a/public/passkey-providers/7725ef8eadb65cef.png b/public/passkey-providers/7725ef8eadb65cef.png
+new file mode 100644
+index 0000000..4f3f0df
+Binary files /dev/null and b/public/passkey-providers/7725ef8eadb65cef.png differ
+diff --git a/public/passkey-providers/789590493cc0c059.png b/public/passkey-providers/789590493cc0c059.png
+new file mode 100644
+index 0000000..4d763d1
+Binary files /dev/null and b/public/passkey-providers/789590493cc0c059.png differ
+diff --git a/public/passkey-providers/8499e05f0762d54d.png b/public/passkey-providers/8499e05f0762d54d.png
+new file mode 100644
+index 0000000..bcb9a5c
+Binary files /dev/null and b/public/passkey-providers/8499e05f0762d54d.png differ
+diff --git a/public/passkey-providers/873ee57ec4ce6c59.png b/public/passkey-providers/873ee57ec4ce6c59.png
+new file mode 100644
+index 0000000..c424a76
+Binary files /dev/null and b/public/passkey-providers/873ee57ec4ce6c59.png differ
+diff --git a/public/passkey-providers/88ec90d8d8770ddd.png b/public/passkey-providers/88ec90d8d8770ddd.png
+new file mode 100644
+index 0000000..e8999b2
+Binary files /dev/null and b/public/passkey-providers/88ec90d8d8770ddd.png differ
+diff --git a/public/passkey-providers/89db93d6c545eac2.png b/public/passkey-providers/89db93d6c545eac2.png
+new file mode 100644
+index 0000000..ddc8ef8
+Binary files /dev/null and b/public/passkey-providers/89db93d6c545eac2.png differ
+diff --git a/public/passkey-providers/8dc1e668d30005c0.png b/public/passkey-providers/8dc1e668d30005c0.png
+new file mode 100644
+index 0000000..875a1c6
+Binary files /dev/null and b/public/passkey-providers/8dc1e668d30005c0.png differ
+diff --git a/public/passkey-providers/8e5e4121abc1fe5b.png b/public/passkey-providers/8e5e4121abc1fe5b.png
+new file mode 100644
+index 0000000..c9eae1b
+Binary files /dev/null and b/public/passkey-providers/8e5e4121abc1fe5b.png differ
+diff --git a/public/passkey-providers/91a4191a0d33f6a6.png b/public/passkey-providers/91a4191a0d33f6a6.png
+new file mode 100644
+index 0000000..6801a47
+Binary files /dev/null and b/public/passkey-providers/91a4191a0d33f6a6.png differ
+diff --git a/public/passkey-providers/933884f86b964ec9.png b/public/passkey-providers/933884f86b964ec9.png
+new file mode 100644
+index 0000000..31d00e3
+Binary files /dev/null and b/public/passkey-providers/933884f86b964ec9.png differ
+diff --git a/public/passkey-providers/9451826a080af898.png b/public/passkey-providers/9451826a080af898.png
+new file mode 100644
+index 0000000..f94573c
+Binary files /dev/null and b/public/passkey-providers/9451826a080af898.png differ
+diff --git a/public/passkey-providers/96f4f92a36311535.png b/public/passkey-providers/96f4f92a36311535.png
+new file mode 100644
+index 0000000..bfd6f75
+Binary files /dev/null and b/public/passkey-providers/96f4f92a36311535.png differ
+diff --git a/public/passkey-providers/9711b5ef13bd9351.png b/public/passkey-providers/9711b5ef13bd9351.png
+new file mode 100644
+index 0000000..b9aae55
+Binary files /dev/null and b/public/passkey-providers/9711b5ef13bd9351.png differ
+diff --git a/public/passkey-providers/9a3c8a259e86b7c9.png b/public/passkey-providers/9a3c8a259e86b7c9.png
+new file mode 100644
+index 0000000..f630703
+Binary files /dev/null and b/public/passkey-providers/9a3c8a259e86b7c9.png differ
+diff --git a/public/passkey-providers/a1f2ca75da08d8bb.png b/public/passkey-providers/a1f2ca75da08d8bb.png
+new file mode 100644
+index 0000000..d22d32f
+Binary files /dev/null and b/public/passkey-providers/a1f2ca75da08d8bb.png differ
+diff --git a/public/passkey-providers/a465c10804d4e083.png b/public/passkey-providers/a465c10804d4e083.png
+new file mode 100644
+index 0000000..7931c8b
+Binary files /dev/null and b/public/passkey-providers/a465c10804d4e083.png differ
+diff --git a/public/passkey-providers/a98e79e812b540bf.png b/public/passkey-providers/a98e79e812b540bf.png
+new file mode 100644
+index 0000000..115b979
+Binary files /dev/null and b/public/passkey-providers/a98e79e812b540bf.png differ
+diff --git a/public/passkey-providers/a9e10478916ce20a.png b/public/passkey-providers/a9e10478916ce20a.png
+new file mode 100644
+index 0000000..fd13fc2
+Binary files /dev/null and b/public/passkey-providers/a9e10478916ce20a.png differ
+diff --git a/public/passkey-providers/b0f574aec02cb856.png b/public/passkey-providers/b0f574aec02cb856.png
+new file mode 100644
+index 0000000..3c557f2
+Binary files /dev/null and b/public/passkey-providers/b0f574aec02cb856.png differ
+diff --git a/public/passkey-providers/b96a944ec6ec03f2.png b/public/passkey-providers/b96a944ec6ec03f2.png
+new file mode 100644
+index 0000000..3a8d1ea
+Binary files /dev/null and b/public/passkey-providers/b96a944ec6ec03f2.png differ
+diff --git a/public/passkey-providers/b9819758fa8c74a7.png b/public/passkey-providers/b9819758fa8c74a7.png
+new file mode 100644
+index 0000000..8367c4e
+Binary files /dev/null and b/public/passkey-providers/b9819758fa8c74a7.png differ
+diff --git a/public/passkey-providers/bbfcd2715307a8ed.png b/public/passkey-providers/bbfcd2715307a8ed.png
+new file mode 100644
+index 0000000..d220a9c
+Binary files /dev/null and b/public/passkey-providers/bbfcd2715307a8ed.png differ
+diff --git a/public/passkey-providers/bdd0bddae1b1249e.png b/public/passkey-providers/bdd0bddae1b1249e.png
+new file mode 100644
+index 0000000..b24d4d1
+Binary files /dev/null and b/public/passkey-providers/bdd0bddae1b1249e.png differ
+diff --git a/public/passkey-providers/c023adcd82ccedf7.png b/public/passkey-providers/c023adcd82ccedf7.png
+new file mode 100644
+index 0000000..3e27e38
+Binary files /dev/null and b/public/passkey-providers/c023adcd82ccedf7.png differ
+diff --git a/public/passkey-providers/c1bff469b2c12547.png b/public/passkey-providers/c1bff469b2c12547.png
+new file mode 100644
+index 0000000..763a54a
+Binary files /dev/null and b/public/passkey-providers/c1bff469b2c12547.png differ
+diff --git a/public/passkey-providers/c3062d9958512bde.png b/public/passkey-providers/c3062d9958512bde.png
+new file mode 100644
+index 0000000..ef6b3c4
+Binary files /dev/null and b/public/passkey-providers/c3062d9958512bde.png differ
+diff --git a/public/passkey-providers/c35187645d72870c.png b/public/passkey-providers/c35187645d72870c.png
+new file mode 100644
+index 0000000..45d900c
+Binary files /dev/null and b/public/passkey-providers/c35187645d72870c.png differ
+diff --git a/public/passkey-providers/c66be2095511c6a8.png b/public/passkey-providers/c66be2095511c6a8.png
+new file mode 100644
+index 0000000..502983c
+Binary files /dev/null and b/public/passkey-providers/c66be2095511c6a8.png differ
+diff --git a/public/passkey-providers/c84a928e2b9c8c69.png b/public/passkey-providers/c84a928e2b9c8c69.png
+new file mode 100644
+index 0000000..f823a42
+Binary files /dev/null and b/public/passkey-providers/c84a928e2b9c8c69.png differ
+diff --git a/public/passkey-providers/ca5c705da8f308cd.png b/public/passkey-providers/ca5c705da8f308cd.png
+new file mode 100644
+index 0000000..a6df031
+Binary files /dev/null and b/public/passkey-providers/ca5c705da8f308cd.png differ
+diff --git a/public/passkey-providers/cb0bdb7cf194595a.png b/public/passkey-providers/cb0bdb7cf194595a.png
+new file mode 100644
+index 0000000..db5ddd7
+Binary files /dev/null and b/public/passkey-providers/cb0bdb7cf194595a.png differ
+diff --git a/public/passkey-providers/cb9f9b1fdf717b28.png b/public/passkey-providers/cb9f9b1fdf717b28.png
+new file mode 100644
+index 0000000..01189df
+Binary files /dev/null and b/public/passkey-providers/cb9f9b1fdf717b28.png differ
+diff --git a/public/passkey-providers/cdad6a9881a4b11d.png b/public/passkey-providers/cdad6a9881a4b11d.png
+new file mode 100644
+index 0000000..1abafe4
+Binary files /dev/null and b/public/passkey-providers/cdad6a9881a4b11d.png differ
+diff --git a/public/passkey-providers/d10e3e7b19d8c78c.png b/public/passkey-providers/d10e3e7b19d8c78c.png
+new file mode 100644
+index 0000000..d527f74
+Binary files /dev/null and b/public/passkey-providers/d10e3e7b19d8c78c.png differ
+diff --git a/public/passkey-providers/d49e613bccc74389.png b/public/passkey-providers/d49e613bccc74389.png
+new file mode 100644
+index 0000000..711639a
+Binary files /dev/null and b/public/passkey-providers/d49e613bccc74389.png differ
+diff --git a/public/passkey-providers/d53cabb2b24214c6.png b/public/passkey-providers/d53cabb2b24214c6.png
+new file mode 100644
+index 0000000..2f68799
+Binary files /dev/null and b/public/passkey-providers/d53cabb2b24214c6.png differ
+diff --git a/public/passkey-providers/d8cb73a0ef3abd34.png b/public/passkey-providers/d8cb73a0ef3abd34.png
+new file mode 100644
+index 0000000..99362a7
+Binary files /dev/null and b/public/passkey-providers/d8cb73a0ef3abd34.png differ
+diff --git a/public/passkey-providers/da0c81c38c7d47c5.png b/public/passkey-providers/da0c81c38c7d47c5.png
+new file mode 100644
+index 0000000..ac23d8e
+Binary files /dev/null and b/public/passkey-providers/da0c81c38c7d47c5.png differ
+diff --git a/public/passkey-providers/de9d507cfe666363.png b/public/passkey-providers/de9d507cfe666363.png
+new file mode 100644
+index 0000000..65bbff0
+Binary files /dev/null and b/public/passkey-providers/de9d507cfe666363.png differ
+diff --git a/public/passkey-providers/e17f28ad154f40e9.png b/public/passkey-providers/e17f28ad154f40e9.png
+new file mode 100644
+index 0000000..f09ffa6
+Binary files /dev/null and b/public/passkey-providers/e17f28ad154f40e9.png differ
+diff --git a/public/passkey-providers/e18ffc6a012f945b.png b/public/passkey-providers/e18ffc6a012f945b.png
+new file mode 100644
+index 0000000..dd5a5b6
+Binary files /dev/null and b/public/passkey-providers/e18ffc6a012f945b.png differ
+diff --git a/public/passkey-providers/e4415d08f4cbc733.png b/public/passkey-providers/e4415d08f4cbc733.png
+new file mode 100644
+index 0000000..5a405a3
+Binary files /dev/null and b/public/passkey-providers/e4415d08f4cbc733.png differ
+diff --git a/public/passkey-providers/eaa1ede459a85aa0.png b/public/passkey-providers/eaa1ede459a85aa0.png
+new file mode 100644
+index 0000000..7b1c861
+Binary files /dev/null and b/public/passkey-providers/eaa1ede459a85aa0.png differ
+diff --git a/public/passkey-providers/eaec55dd6200c922.png b/public/passkey-providers/eaec55dd6200c922.png
+new file mode 100644
+index 0000000..dca9bb1
+Binary files /dev/null and b/public/passkey-providers/eaec55dd6200c922.png differ
+diff --git a/public/passkey-providers/eaf093599ce184a6.png b/public/passkey-providers/eaf093599ce184a6.png
+new file mode 100644
+index 0000000..a2604ff
+Binary files /dev/null and b/public/passkey-providers/eaf093599ce184a6.png differ
+diff --git a/public/passkey-providers/eb4fd11236a9a244.png b/public/passkey-providers/eb4fd11236a9a244.png
+new file mode 100644
+index 0000000..02d90d6
+Binary files /dev/null and b/public/passkey-providers/eb4fd11236a9a244.png differ
+diff --git a/public/passkey-providers/ebdc57764109cb42.png b/public/passkey-providers/ebdc57764109cb42.png
+new file mode 100644
+index 0000000..444bab5
+Binary files /dev/null and b/public/passkey-providers/ebdc57764109cb42.png differ
+diff --git a/public/passkey-providers/eca592acd5de9c51.png b/public/passkey-providers/eca592acd5de9c51.png
+new file mode 100644
+index 0000000..a6e4697
+Binary files /dev/null and b/public/passkey-providers/eca592acd5de9c51.png differ
+diff --git a/public/passkey-providers/f191d74146977d70.png b/public/passkey-providers/f191d74146977d70.png
+new file mode 100644
+index 0000000..f32ce48
+Binary files /dev/null and b/public/passkey-providers/f191d74146977d70.png differ
+diff --git a/public/passkey-providers/f28ff56a67179c73.png b/public/passkey-providers/f28ff56a67179c73.png
+new file mode 100644
+index 0000000..c511d33
+Binary files /dev/null and b/public/passkey-providers/f28ff56a67179c73.png differ
+diff --git a/public/passkey-providers/f56f5050b9c4bf2d.png b/public/passkey-providers/f56f5050b9c4bf2d.png
+new file mode 100644
+index 0000000..d425076
+Binary files /dev/null and b/public/passkey-providers/f56f5050b9c4bf2d.png differ
+diff --git a/public/passkey-providers/f728c95410d1e532.png b/public/passkey-providers/f728c95410d1e532.png
+new file mode 100644
+index 0000000..ce46584
+Binary files /dev/null and b/public/passkey-providers/f728c95410d1e532.png differ
+diff --git a/public/passkey-providers/f763ba0f346f6a48.png b/public/passkey-providers/f763ba0f346f6a48.png
+new file mode 100644
+index 0000000..119ec6c
+Binary files /dev/null and b/public/passkey-providers/f763ba0f346f6a48.png differ
+diff --git a/public/passkey-providers/f7c2733a4fa3aebe.png b/public/passkey-providers/f7c2733a4fa3aebe.png
+new file mode 100644
+index 0000000..f5e09a7
+Binary files /dev/null and b/public/passkey-providers/f7c2733a4fa3aebe.png differ
+diff --git a/public/passkey-providers/fbde5354529edb10.png b/public/passkey-providers/fbde5354529edb10.png
+new file mode 100644
+index 0000000..daf9931
+Binary files /dev/null and b/public/passkey-providers/fbde5354529edb10.png differ
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..29fa158 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,4 +1,5 @@
+ ---
++import { currentUser } from "../lib/server/auth";
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
+@@ -9,6 +10,7 @@ const reports = await getCollection("reports");
+ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
++const user = await currentUser(Astro);
+ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+@@ -25,6 +27,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        {user ? <a href={`${baseUrl}account`} data-skip-tracking="true" class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700">My account</a> : <>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+@@ -39,6 +42,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         >
+           Sign in
+         </a>
++        </>}
+       </div>
+     </div>
+   </div>
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..470c636 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,99 +1,69 @@
+-import React, { useState } from 'react';
++import { useEffect, useRef, useState, type SubmitEvent } from 'react';
++import { authenticatePasskey, authApi, passkeyCapabilities, passkeyError, type PasskeyCapabilities } from '../lib/passkeys';
++import { AuthShell, KeyIcon, Notice } from './account/AuthUI';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+   const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
++  const [busy, setBusy] = useState<'password' | 'passkey' | null>(null);
++  const [capabilities, setCapabilities] = useState<PasskeyCapabilities | null>(null);
++  const operation = useRef<AbortController | null>(null);
++  const autofill = useRef<Promise<void> | null>(null);
++  const mounted = useRef(false);
++  const goToAccount = () => window.location.assign(`${import.meta.env.BASE_URL}account`);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
++  async function startAutofill(caps: PasskeyCapabilities) {
++    if (!caps.conditional || !mounted.current) return;
++    const controller = new AbortController();
++    operation.current = controller;
++    autofill.current = authenticatePasskey(false, true, controller.signal).then(() => {
++      if (!controller.signal.aborted && mounted.current) goToAccount();
++    }).catch(err => {
++      if (!controller.signal.aborted && !(err instanceof DOMException && ['NotAllowedError', 'AbortError'].includes(err.name)) && mounted.current) setError(passkeyError(err));
++    });
++  }
++  useEffect(() => {
++    mounted.current = true;
++    void passkeyCapabilities().then(caps => {
++      if (mounted.current) { setCapabilities(caps); void startAutofill(caps); }
++    });
++    return () => { mounted.current = false; operation.current?.abort(); };
++  }, []);
+ 
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
++  async function stopAutofill() {
++    operation.current?.abort();
++    await autofill.current;
++    autofill.current = null;
++  }
++  async function submitPassword(event: SubmitEvent) {
++    event.preventDefault();
++    setBusy('password'); setError(null);
++    await stopAutofill();
++    try { await authApi('login', { username, password }); goToAccount(); }
++    catch (err) { setError(passkeyError(err)); setBusy(null); if (capabilities) void startAutofill(capabilities); }
++  }
++  async function submitPasskey() {
++    setBusy('passkey'); setError(null);
++    await stopAutofill();
++    const controller = new AbortController(); operation.current = controller;
++    try { await authenticatePasskey(false, false, controller.signal); goToAccount(); }
++    catch (err) {
++      if (!mounted.current) return;
++      setError(passkeyError(err)); setBusy(null);
++      if (capabilities) void startAutofill(capabilities);
+     }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
+-      </form>
+-    </div>
+-  );
++  }
++  return <AuthShell title="Welcome back." description="Your next great read is waiting.">
++    <Notice error={error} />
++    <button type="button" className="auth-button auth-primary" onClick={submitPasskey} disabled={!!busy || !capabilities?.supported} data-skip-tracking="true"><KeyIcon />{busy === 'passkey' ? 'Waiting for your passkey…' : 'Sign in with a passkey'}</button>
++    <p className="auth-help">{capabilities && !capabilities.supported ? 'Passkeys aren’t available in this browser. Sign in with your password below.' : 'Use your fingerprint, face, or device screen lock. No password needed.'}</p>
++    <div className="auth-divider"><span>or use your password</span></div>
++    <form onSubmit={submitPassword} className="auth-form" aria-busy={!!busy}>
++      <div><label htmlFor="signin-username">Username</label><input id="signin-username" name="username" autoComplete="username webauthn" autoCapitalize="none" spellCheck={false} value={username} onChange={e => setUsername(e.target.value)} required disabled={!!busy} autoFocus /></div>
++      <div><label htmlFor="signin-password">Password</label><input id="signin-password" name="password" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required disabled={!!busy} /></div>
++      <button className="auth-button auth-secondary" type="submit" disabled={!!busy} data-skip-tracking="true">{busy === 'password' ? 'Signing in…' : 'Sign in with password'}</button>
++    </form>
++    <p className="auth-switch">New to The DevTools Times? <a href={`${import.meta.env.BASE_URL}signup`}>Create an account</a></p>
++  </AuthShell>;
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..3be801f 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,47 @@
+-import React, { useState } from 'react';
++import { useEffect, useRef, useState, type SubmitEvent } from 'react';
++import { authApi, passkeyCapabilities, passkeyError, registerPasskey, type PasskeyCapabilities } from '../lib/passkeys';
++import { AuthShell, KeyIcon, Notice } from './account/AuthUI';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+   const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
++  const [busy, setBusy] = useState(false);
++  const [created, setCreated] = useState(false);
++  const [capabilities, setCapabilities] = useState<PasskeyCapabilities | null>(null);
++  const controller = useRef<AbortController | null>(null);
++  const heading = useRef<HTMLHeadingElement>(null);
++  useEffect(() => { let active = true; void passkeyCapabilities().then(caps => { if (active) setCapabilities(caps); }); return () => { active = false; controller.current?.abort(); }; }, []);
++  useEffect(() => { if (created) heading.current?.focus(); }, [created]);
++  async function submit(event: SubmitEvent) {
++    event.preventDefault(); setError(null); setBusy(true);
++    try { await authApi('signup', { username, password }); setPassword(''); setCreated(true); }
++    catch (err) { setError(passkeyError(err)); }
++    finally { setBusy(false); }
++  }
++  async function createPasskey() {
++    setBusy(true); setError(null);
++    controller.current = new AbortController();
++    try { await registerPasskey(true, controller.current.signal); window.location.assign(`${import.meta.env.BASE_URL}account?passkey=created`); }
++    catch (err) { setError(passkeyError(err)); setBusy(false); }
++  }
++  return <AuthShell title={created ? 'Make it a little easier.' : 'A fresh perspective starts here.'} description={created ? 'Your account is ready. Set up a simpler, safer way to sign in.' : 'Create your free DevTools Times account.'}>
++    <Notice error={error} />
++    {created ? <div className="auth-promotion">
++      <div className="auth-key-badge"><KeyIcon /></div><h2 ref={heading} tabIndex={-1}>Add a passkey</h2>
++      <p>Sign in with your fingerprint, face, or device screen lock. Your biometric information stays on your device.</p>
++      <button className="auth-button auth-primary" onClick={createPasskey} disabled={busy || !capabilities?.create} data-skip-tracking="true"><KeyIcon />{busy ? 'Creating your passkey…' : 'Create a passkey'}</button>
++      {capabilities && !capabilities.create && <p className="auth-help">Passkey creation isn’t available here. You can add one later in account settings on a supported device.</p>}
++      <a className="auth-skip" href={`${import.meta.env.BASE_URL}account`}>Continue {busy ? 'to account settings' : 'without a passkey'} →</a>
++      <p className="auth-help">Your password is always available as a backup.</p>
++    </div> : <>
++      <form onSubmit={submit} className="auth-form" aria-busy={busy}>
++        <div><label htmlFor="signup-username">Username</label><input id="signup-username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={e => setUsername(e.target.value)} required maxLength={80} disabled={busy} /></div>
++        <div><label htmlFor="signup-password">Password</label><input id="signup-password" name="password" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} pattern="(?=.*[0-9]).{8,}" aria-describedby="password-help" disabled={busy} /><p id="password-help" className="auth-help">At least 8 characters, including a number.</p></div>
++        <button type="submit" className="auth-button auth-primary" disabled={busy} data-skip-tracking="true">{busy ? 'Creating your account…' : 'Create account'}<span aria-hidden="true">→</span></button>
+       </form>
+-    </div>
+-  );
++      <div className="auth-signup-note"><KeyIcon /><p>One less password to remember.<br /><span>You can add a passkey after creating your account.</span></p></div>
++      <p className="auth-switch">Already a reader? <a href={`${import.meta.env.BASE_URL}signin`}>Sign in</a></p>
++    </>}
++  </AuthShell>;
+ }
+diff --git a/src/components/account/AccountSettings.tsx b/src/components/account/AccountSettings.tsx
+new file mode 100644
+index 0000000..66ac0dc
+--- /dev/null
++++ b/src/components/account/AccountSettings.tsx
+@@ -0,0 +1,149 @@
++import { useEffect, useId, useRef, useState, type SubmitEvent, type ReactNode } from 'react';
++import type { AccountData, PasskeySummary } from '../../lib/auth-types';
++import { ApiError, authApi, authenticatePasskey, passkeyCapabilities, passkeyError, registerPasskey, syncPasskeys, syncUserDetails, type PasskeyCapabilities } from '../../lib/passkeys';
++import { KeyIcon, Notice } from './AuthUI';
++
++function Modal({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
++  const dialog = useRef<HTMLDialogElement>(null);
++  const titleId = useId();
++  useEffect(() => {
++    if (open && !dialog.current?.open) dialog.current?.showModal();
++    if (!open && dialog.current?.open) dialog.current.close();
++  }, [open]);
++  useEffect(() => () => { dialog.current?.close(); }, []);
++  return <dialog ref={dialog} className="account-dialog" aria-labelledby={titleId} onClose={() => { if (open) onClose(); }}>
++    <h2 id={titleId}>{title}</h2>{children}
++  </dialog>;
++}
++
++export default function AccountSettings() {
++  const [data, setData] = useState<AccountData | null>(null);
++  const [capabilities, setCapabilities] = useState<PasskeyCapabilities | null>(null);
++  const [error, setError] = useState<string | null>(null);
++  const [success, setSuccess] = useState<string | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [busy, setBusy] = useState(false);
++  const [displayName, setDisplayName] = useState('');
++  const [edit, setEdit] = useState<{ kind: 'rename' | 'delete'; passkey: PasskeySummary } | null>(null);
++  const [nickname, setNickname] = useState('');
++  const [verifyOpen, setVerifyOpen] = useState(false);
++  const [verifyPassword, setVerifyPassword] = useState('');
++  const [verifyError, setVerifyError] = useState<string | null>(null);
++  const pending = useRef<(() => Promise<AccountData>) | null>(null);
++  const pendingMessage = useRef('');
++  const controller = useRef<AbortController | null>(null);
++  const mounted = useRef(false);
++
++  async function load() {
++    setLoading(true); setError(null);
++    try {
++      const result = await authApi<AccountData>('account', undefined, 'GET');
++      if (!mounted.current) return;
++      setData(result); setDisplayName(result.user.displayName);
++      await syncPasskeys(result);
++    } catch (err) { if (mounted.current) setError(passkeyError(err)); }
++    finally { if (mounted.current) setLoading(false); }
++  }
++  useEffect(() => {
++    mounted.current = true;
++    void load();
++    void passkeyCapabilities().then(caps => { if (mounted.current) setCapabilities(caps); });
++    if (new URLSearchParams(window.location.search).get('passkey') === 'created') setSuccess('Your passkey is ready. Welcome to your account.');
++    return () => { mounted.current = false; controller.current?.abort(); };
++  }, []);
++
++  async function perform(action: () => Promise<AccountData>, message: string, force = false) {
++    setError(null); setSuccess(null);
++    if (!force && data && data.verifiedUntil <= Date.now()) {
++      pending.current = action; pendingMessage.current = message; setVerifyError(null); setVerifyOpen(true); return;
++    }
++    setBusy(true);
++    try {
++      const updated = await action();
++      if (!mounted.current) return;
++      setData(updated); setSuccess(message);
++    } catch (err) {
++      if (err instanceof ApiError && err.code === 'REAUTH_REQUIRED') {
++        pending.current = action; pendingMessage.current = message; setVerifyError(null); setVerifyOpen(true);
++      } else setError(passkeyError(err));
++    } finally { if (mounted.current) setBusy(false); }
++  }
++  function cancelVerification() {
++    controller.current?.abort(); pending.current = null;
++    setVerifyOpen(false); setVerifyPassword(''); setVerifyError(null);
++  }
++  async function verify(usePasskey: boolean, event?: SubmitEvent) {
++    event?.preventDefault(); setVerifyError(null); setBusy(true);
++    const operation = new AbortController(); controller.current = operation;
++    try {
++      if (usePasskey) await authenticatePasskey(true, false, operation.signal);
++      else await authApi('password/reauthenticate', { password: verifyPassword }, 'POST', operation.signal);
++      if (!mounted.current || operation.signal.aborted) return;
++      const next = pending.current; const message = pendingMessage.current;
++      pending.current = null; setVerifyOpen(false); setVerifyPassword('');
++      setData(old => old ? { ...old, verifiedUntil: Date.now() + 5 * 60_000 } : old);
++      if (next) await perform(next, message, true);
++      else setSuccess('Identity verified. You can make account changes for the next 5 minutes.');
++    } catch (err) { if (!operation.signal.aborted) setVerifyError(passkeyError(err)); }
++    finally { if (mounted.current) setBusy(false); }
++  }
++  async function saveEdit(event: SubmitEvent) {
++    event.preventDefault();
++    if (!edit) return;
++    const selection = edit; const name = nickname.trim();
++    setEdit(null);
++    await perform(async () => {
++      const updated = await authApi<AccountData>('passkeys', { id: selection.passkey.id, name }, selection.kind === 'delete' ? 'DELETE' : 'PATCH');
++      if (selection.kind === 'delete') await syncPasskeys(updated);
++      return updated;
++    }, selection.kind === 'delete' ? 'Passkey removed. You can still sign in with your password.' : 'Passkey renamed.');
++  }
++  async function signOut() {
++    setBusy(true); setError(null);
++    try { await authApi('logout'); window.location.assign(`${import.meta.env.BASE_URL}signin`); }
++    catch (err) { setError(passkeyError(err)); setBusy(false); }
++  }
++  function addPasskey() {
++    void perform(async () => {
++      controller.current = new AbortController();
++      const updated = await registerPasskey(false, controller.current.signal);
++      await syncPasskeys(updated); return updated;
++    }, 'Your new passkey is ready to use.');
++  }
++
++  return <div className="account-layout">
++    <div className="account-heading"><div className="auth-kicker">THE DEVTOOLS TIMES · YOUR ACCOUNT</div><h1>Account settings</h1><p>A few details. A more personal reading experience.</p></div>
++    <div className="account-columns">
++      <aside className="account-sidebar"><div className="account-avatar" aria-hidden="true">{data?.user.displayName.slice(0, 1).toUpperCase() || 'T'}</div><strong>{data?.user.displayName || 'Your account'}</strong><span>DevTools Times reader</span><nav aria-label="Account"><a href="#security" aria-current="location"><KeyIcon />Sign-in & security</a><a href="#profile">Account details <span aria-hidden="true">↗</span></a></nav><button type="button" onClick={signOut} disabled={busy} className="account-signout" data-skip-tracking="true">Sign out <span aria-hidden="true">→</span></button><a href={import.meta.env.BASE_URL} className="account-back">← Back to the news</a></aside>
++      <div className="account-content"><Notice error={error} success={success} />
++        {loading ? <div className="account-panel" role="status">Loading your account…</div> : !data ? <div className="account-panel"><p>We couldn’t load your account.</p><button className="auth-button auth-secondary" onClick={load}>Try again</button><a className="auth-skip" href={`${import.meta.env.BASE_URL}signin`}>Sign in again</a></div> : <>
++          <section className="account-panel" id="security"><div className="account-section-heading"><div><div className="auth-kicker">A SAFER WAY IN</div><h2>Passkeys</h2></div><span className="account-tag">{data.passkeys.length ? 'Enabled' : 'Recommended'}</span></div>
++            <p className="account-intro">Your news. Only a touch away. Sign in with your fingerprint, face, or device screen lock instead of a password.</p>
++            {data.passkeys.length ? <ul className="passkey-list" role="list">{data.passkeys.map(passkey => <li key={passkey.id} className="passkey-row">
++              <div className="passkey-icon">{passkey.providerIcon ? <img src={`${import.meta.env.BASE_URL}passkey-providers/${passkey.providerIcon}`} width="28" height="28" alt="" /> : <KeyIcon />}</div>
++              <div className="passkey-info"><h3>{passkey.name}</h3><p>{passkey.provider}{passkey.backedUp ? ' · Synced' : ''}</p><p>Added <time dateTime={new Date(passkey.registeredAt).toISOString()}>{new Date(passkey.registeredAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time><span className="passkey-date-separator"> · </span>{passkey.lastUsedAt ? <>Last used <time dateTime={new Date(passkey.lastUsedAt).toISOString()}>{new Date(passkey.lastUsedAt).toLocaleDateString()}</time></> : 'Not used yet'}</p></div>
++              <div className="passkey-actions"><button type="button" disabled={busy} onClick={() => { setNickname(passkey.name); setEdit({ kind: 'rename', passkey }); }} aria-label={`Rename ${passkey.name}`}>Rename</button><button type="button" disabled={busy} className="account-danger-link" onClick={() => setEdit({ kind: 'delete', passkey })} aria-label={`Remove ${passkey.name}`}>Remove</button></div>
++            </li>)}</ul> : <div className="passkey-empty"><div className="auth-key-badge"><KeyIcon /></div><h3>No passkeys yet</h3><p>Create your first passkey for a faster, more secure sign-in.</p></div>}
++            <button type="button" className="auth-button auth-primary account-add" onClick={addPasskey} disabled={busy || !capabilities?.create} data-skip-tracking="true"><span aria-hidden="true">＋</span>{busy ? 'Please wait…' : 'Add a passkey'}</button>
++            {capabilities && !capabilities.create ? <p className="auth-help">Passkey creation isn’t available in this browser. Use a supported browser on a secure connection. Your password will still work.</p> : <p className="auth-help">Use this device, another device, or a security key.</p>}
++            <div className="account-security-note"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z" /><path d="m8 12 3 3 5-6" /></svg><p><strong>Built around your privacy.</strong> Your fingerprint or face never leaves your device. Passkeys help protect your account from phishing.</p></div>
++          </section>
++          <section className="account-panel" id="profile"><div className="account-section-heading"><h2>Account details</h2></div><form className="auth-form" onSubmit={event => {
++            event.preventDefault(); const name = displayName;
++            void perform(async () => { const updated = await authApi<AccountData>('profile', { displayName: name }, 'PATCH'); await syncUserDetails(updated); return updated; }, 'Your account details have been saved.');
++          }}><div><label htmlFor="account-username">Username</label><input id="account-username" name="username" autoComplete="username" value={data.user.username} readOnly /><p className="auth-help">Your username identifies your account and can’t be changed.</p></div><div><label htmlFor="account-display-name">Display name</label><input id="account-display-name" name="displayName" autoComplete="nickname" value={displayName} onChange={event => setDisplayName(event.target.value)} maxLength={80} required disabled={busy} /></div><button className="auth-button auth-secondary account-fit" disabled={busy || !displayName.trim() || displayName.trim() === data.user.displayName}>Save changes</button></form></section>
++          <section className="account-panel account-verification"><div><h2>Verify your identity</h2><p>For your security, we’ll ask you to verify before making sensitive changes.</p></div><button className="auth-button auth-secondary account-fit" type="button" disabled={busy} onClick={() => { pending.current = null; setVerifyError(null); setVerifyOpen(true); }}>Verify identity</button></section>
++          <p className="account-bottom-note">Need another way in? Your password is always available as a backup.</p>
++        </>}
++      </div>
++    </div>
++    <Modal open={!!edit} title={edit?.kind === 'delete' ? 'Remove this passkey?' : 'Rename your passkey'} onClose={() => setEdit(null)}>
++      {edit && <form onSubmit={saveEdit} className="auth-form"><p>{edit.kind === 'delete' ? `“${edit.passkey.name}” will no longer work for signing in. Your password and other passkeys will still work. You can also remove it from your device’s password manager.` : 'Choose a name that helps you recognize this passkey.'}</p>{edit.kind === 'rename' && <div><label htmlFor="passkey-nickname">Passkey name</label><input id="passkey-nickname" value={nickname} onChange={event => setNickname(event.target.value)} maxLength={80} required autoFocus /></div>}<div className="dialog-actions"><button className="auth-button auth-secondary" type="button" autoFocus={edit.kind === 'delete'} onClick={() => setEdit(null)}>Cancel</button><button className={`auth-button ${edit.kind === 'delete' ? 'auth-danger' : 'auth-primary'}`} disabled={busy || (edit.kind === 'rename' && !nickname.trim())}>{edit.kind === 'delete' ? 'Remove passkey' : 'Save name'}</button></div></form>}
++    </Modal>
++    <Modal open={verifyOpen} title="Let’s make sure it’s you." onClose={cancelVerification}>
++      <p className="account-intro">Verify your identity to continue with your account changes.</p><Notice error={verifyError} />
++      {!!data?.passkeys.length && capabilities?.supported && <><button type="button" className="auth-button auth-primary" disabled={busy} onClick={() => void verify(true)} autoFocus data-skip-tracking="true"><KeyIcon />{busy ? 'Verifying…' : 'Verify with a passkey'}</button><div className="auth-divider"><span>or use your password</span></div></>}
++      <form onSubmit={event => void verify(false, event)} className="auth-form"><input name="username" autoComplete="username" value={data?.user.username || ''} readOnly hidden /><div><label htmlFor="verify-password">Password</label><input id="verify-password" type="password" name="password" autoComplete="current-password" required value={verifyPassword} onChange={event => setVerifyPassword(event.target.value)} disabled={busy} autoFocus={!data?.passkeys.length || !capabilities?.supported} /></div><button className="auth-button auth-secondary" disabled={busy} data-skip-tracking="true">{busy ? 'Verifying…' : 'Verify with password'}</button><button className="auth-skip" type="button" onClick={() => { cancelVerification(); }}>Cancel</button></form>
++    </Modal>
++  </div>;
++}
+diff --git a/src/components/account/AuthUI.tsx b/src/components/account/AuthUI.tsx
+new file mode 100644
+index 0000000..44eeaf2
+--- /dev/null
++++ b/src/components/account/AuthUI.tsx
+@@ -0,0 +1,11 @@
++import type { ReactNode } from 'react';
++
++export function KeyIcon({ className = '' }: { className?: string }) {
++  return <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="8" cy="8" r="4.5" /><path strokeLinecap="round" strokeLinejoin="round" d="m11.5 11.5 8 8m-3-3 2-2m-5-1 2-2" /></svg>;
++}
++export function Notice({ error, success }: { error?: string | null; success?: string | null }) {
++  return <>{error && <div className="auth-notice auth-error" role="alert">{error}</div>}{success && <div className="auth-notice auth-success" role="status">{success}</div>}</>;
++}
++export function AuthShell({ title, description, children }: { title: string; description: string; children: ReactNode }) {
++  return <div className="auth-shell"><div className="auth-kicker">YOUR DAILY CONNECTION</div><h1>{title}</h1><p className="auth-description">{description}</p><div className="auth-card">{children}</div><p className="auth-footer-note">Independent journalism. A world of perspective.</p></div>;
++}
+diff --git a/src/env.d.ts b/src/env.d.ts
+new file mode 100644
+index 0000000..e210ec9
+--- /dev/null
++++ b/src/env.d.ts
+@@ -0,0 +1,9 @@
++/// <reference types="astro/client" />
++declare namespace App {
++  interface SessionData {
++    authUserId: string;
++    authExpiresAt: number;
++    verifiedAt: number;
++    authBinding: string;
++  }
++}
+diff --git a/src/lib/auth-types.ts b/src/lib/auth-types.ts
+new file mode 100644
+index 0000000..2b4b2fa
+--- /dev/null
++++ b/src/lib/auth-types.ts
+@@ -0,0 +1,22 @@
++export interface AccountUser {
++  id: string;
++  username: string;
++  displayName: string;
++}
++
++export interface PasskeySummary {
++  id: string;
++  name: string;
++  provider: string;
++  providerIcon?: string;
++  registeredAt: number;
++  lastUsedAt?: number;
++  backedUp: boolean;
++}
++
++export interface AccountData {
++  user: AccountUser;
++  passkeys: PasskeySummary[];
++  rpId: string;
++  verifiedUntil: number;
++}
+diff --git a/src/lib/passkeys.ts b/src/lib/passkeys.ts
+new file mode 100644
+index 0000000..3193408
+--- /dev/null
++++ b/src/lib/passkeys.ts
+@@ -0,0 +1,90 @@
++import type { AccountData, AccountUser } from './auth-types';
++import type { PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
++
++const apiBase = `${import.meta.env.BASE_URL}api/auth/`;
++export class ApiError extends Error {
++  constructor(message: string, public status: number, public code?: string) { super(message); }
++}
++export async function authApi<T>(path: string, body?: unknown, method = 'POST', signal?: AbortSignal): Promise<T> {
++  const response = await fetch(`${apiBase}${path}`, {
++    method, credentials: 'same-origin', cache: 'no-store', signal,
++    headers: { 'Content-Type': 'application/json' },
++    ...(method !== 'GET' ? { body: JSON.stringify(body ?? {}) } : {}),
++  });
++  const data = await response.json();
++  if (!response.ok) throw new ApiError(data.error || 'The request failed. Please try again.', response.status, data.code);
++  return data;
++}
++
++type ModernCredential = PublicKeyCredential & { toJSON(): { id: string } };
++type ModernWebAuthn = typeof PublicKeyCredential & {
++  getClientCapabilities(): Promise<Record<string, boolean>>;
++  parseCreationOptionsFromJSON(options: PublicKeyCredentialCreationOptionsJSON): PublicKeyCredentialCreationOptions;
++  parseRequestOptionsFromJSON(options: PublicKeyCredentialRequestOptionsJSON): PublicKeyCredentialRequestOptions;
++  signalUnknownCredential?: (options: { rpId: string; credentialId: string }) => Promise<void>;
++  signalAllAcceptedCredentials?: (options: { rpId: string; userId: string; allAcceptedCredentialIds: string[] }) => Promise<void>;
++  signalCurrentUserDetails?: (options: { rpId: string; userId: string; name: string; displayName: string }) => Promise<void>;
++};
++const webauthn = () => PublicKeyCredential as ModernWebAuthn;
++export interface PasskeyCapabilities { supported: boolean; create: boolean; conditional: boolean }
++export async function passkeyCapabilities(): Promise<PasskeyCapabilities> {
++  const unavailable = { supported: false, create: false, conditional: false };
++  if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) return unavailable;
++  try {
++    await import('webauthn-polyfills');
++    const capabilities = await webauthn().getClientCapabilities();
++    return { supported: true, create: !!(capabilities.passkeyPlatformAuthenticator ?? capabilities.userVerifyingPlatformAuthenticator) && !!capabilities.conditionalGet,
++      conditional: !!capabilities.conditionalGet };
++  } catch { return unavailable; }
++}
++export function passkeyError(error: unknown): string {
++  if (error instanceof DOMException) {
++    if (error.name === 'NotAllowedError') return 'The passkey request was canceled or timed out. You can try again or use your password.';
++    if (error.name === 'InvalidStateError') return 'A passkey already exists in this password manager. Use another device or provider to add a different one.';
++    if (error.name === 'AbortError') return 'The passkey request was canceled. Please try again.';
++    if (error.name === 'SecurityError') return 'Passkeys are unavailable on this address. Use the secure website or sign in with your password.';
++  }
++  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
++}
++const bestEffort = async (signal: () => Promise<void> | undefined) => { try { await signal(); } catch { /* Password-manager sync must not interrupt a completed action. */ } };
++
++export async function registerPasskey(promotion = false, signal?: AbortSignal): Promise<AccountData> {
++  const options = await authApi<PublicKeyCredentialCreationOptionsJSON>('passkeys/register/options', { promotion }, 'POST', signal);
++  const credential = await navigator.credentials.create({ publicKey: webauthn().parseCreationOptionsFromJSON(options), signal }) as ModernCredential | null;
++  if (!credential) throw new Error('No passkey was created. Please try again.');
++  const encoded = credential.toJSON();
++  try {
++    return await authApi<AccountData>('passkeys/register/verify', { credential: encoded, challenge: options.challenge }, 'POST', signal);
++  } catch (error) {
++    await bestEffort(() => webauthn().signalUnknownCredential?.({ rpId: options.rp.id!, credentialId: encoded.id }));
++    throw error;
++  }
++}
++export async function authenticatePasskey(reauthenticate = false, conditional = false, signal?: AbortSignal) {
++  const flow = reauthenticate ? 'reauthenticate' : 'authenticate';
++  const options = await authApi<PublicKeyCredentialRequestOptionsJSON>(`passkeys/${flow}/options`, {}, 'POST', signal);
++  const credential = await navigator.credentials.get({
++    publicKey: webauthn().parseRequestOptionsFromJSON(options), signal,
++    ...(conditional ? { mediation: 'conditional' as CredentialMediationRequirement } : {}),
++  }) as ModernCredential | null;
++  if (!credential) throw new Error('No passkey was selected. Please try again.');
++  const encoded = credential.toJSON();
++  try {
++    return await authApi<{ user: AccountUser }>(`passkeys/${flow}/verify`, { credential: encoded, challenge: options.challenge }, 'POST', signal);
++  } catch (error) {
++    if (!reauthenticate && error instanceof ApiError && error.code === 'UNKNOWN_CREDENTIAL' && error.status === 404) {
++      await bestEffort(() => webauthn().signalUnknownCredential?.({ rpId: options.rpId!, credentialId: encoded.id }));
++    }
++    throw error;
++  }
++}
++export async function syncPasskeys(data: AccountData) {
++  if (!window.PublicKeyCredential) return;
++  await bestEffort(() => webauthn().signalAllAcceptedCredentials?.({ rpId: data.rpId, userId: data.user.id,
++    allAcceptedCredentialIds: data.passkeys.map(p => p.id) }));
++}
++export async function syncUserDetails(data: AccountData) {
++  if (!window.PublicKeyCredential) return;
++  await bestEffort(() => webauthn().signalCurrentUserDetails?.({ rpId: data.rpId, userId: data.user.id,
++    name: data.user.username, displayName: data.user.displayName }));
++}
+diff --git a/src/lib/server/auth-store.ts b/src/lib/server/auth-store.ts
+new file mode 100644
+index 0000000..fdee9eb
+--- /dev/null
++++ b/src/lib/server/auth-store.ts
+@@ -0,0 +1,59 @@
++import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
++import { dirname, resolve } from 'node:path';
++import { randomUUID } from 'node:crypto';
++import type { AccountUser } from '../auth-types';
++import type { WebAuthnCredential } from '@simplewebauthn/server';
++
++export interface StoredPasskey {
++  id: string;
++  userId: string;
++  publicKey: string;
++  counter: number;
++  transports: WebAuthnCredential['transports'];
++  aaguid: string;
++  name: string;
++  deviceType: string;
++  backedUp: boolean;
++  registeredAt: number;
++  lastUsedAt?: number;
++}
++export interface Challenge {
++  challenge: string;
++  binding?: string;
++  purpose: 'register' | 'authenticate' | 'reauthenticate';
++  userId?: string;
++  rpId: string;
++  origin: string;
++  expiresAt: number;
++  requireUserVerification: boolean;
++}
++interface AuthStore {
++  users: AccountUser[];
++  passkeys: StoredPasskey[];
++  challenges: Challenge[];
++}
++
++// A durable single-process store for this sample app. Use a shared transactional
++// database (and shared session storage) when deploying multiple instances.
++const storePath = resolve(process.env.AUTH_STORE_PATH || '.data/auth.json');
++let queue: Promise<unknown> = Promise.resolve();
++export function authTransaction<T>(operation: (store: AuthStore) => T | Promise<T>): Promise<T> {
++  const next = queue.then(async () => {
++    let store: AuthStore;
++    try {
++      store = JSON.parse(await readFile(storePath, 'utf8'));
++    } catch (error) {
++      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
++      store = { users: [], passkeys: [], challenges: [] };
++    }
++    store.challenges = store.challenges.filter(c => c.expiresAt > Date.now());
++    const result = await operation(store);
++    await mkdir(dirname(storePath), { recursive: true, mode: 0o700 });
++    const temporary = `${storePath}.${randomUUID()}.tmp`;
++    await writeFile(temporary, JSON.stringify(store), { mode: 0o600 });
++    await rename(temporary, storePath);
++    return result;
++  });
++  queue = next.catch(() => {});
++  return next;
++}
+diff --git a/src/lib/server/auth.ts b/src/lib/server/auth.ts
+new file mode 100644
+index 0000000..52b2472
+--- /dev/null
++++ b/src/lib/server/auth.ts
+@@ -0,0 +1,99 @@
++import type { APIContext } from 'astro';
++import { randomBytes } from 'node:crypto';
++import { authTransaction, type Challenge } from './auth-store';
++import type { AccountUser } from '../auth-types';
++
++export class AuthError extends Error {
++  constructor(message: string, public status = 400, public code?: string) { super(message); }
++}
++export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
++  status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
++});
++export function relyingParty(request: Request) {
++  const configured = process.env.PASSKEY_ORIGIN || import.meta.env.SITE;
++  const requestUrl = new URL(request.url);
++  const local = ['localhost', '127.0.0.1', '[::1]'].includes(requestUrl.hostname);
++  const origin = new URL(local && !process.env.PASSKEY_ORIGIN ? requestUrl.origin : configured).origin;
++  return { origin, rpId: process.env.PASSKEY_RP_ID || new URL(origin).hostname };
++}
++export function sameOrigin(request: Request) {
++  const { origin } = relyingParty(request);
++  if (request.headers.get('Origin') !== origin) throw new AuthError('This request must come from The DevTools Times.', 403);
++  if (!request.headers.get('Content-Type')?.startsWith('application/json')) throw new AuthError('Expected a JSON request.', 415);
++}
++export async function currentUser(context: Pick<APIContext, 'session'>) {
++  const id = await context.session?.get('authUserId');
++  if (typeof id !== 'string') return undefined;
++  const expiresAt = await context.session?.get('authExpiresAt');
++  if (typeof expiresAt !== 'number' || expiresAt < Date.now()) return undefined;
++  return authTransaction(store => store.users.find(u => u.id === id));
++}
++export async function requireUser(context: APIContext) {
++  const user = await currentUser(context);
++  if (!user) throw new AuthError('Please sign in to continue.', 401);
++  return user;
++}
++export async function requireRecent(context: APIContext) {
++  const verifiedAt = await context.session?.get('verifiedAt');
++  if (typeof verifiedAt !== 'number' || Date.now() - verifiedAt > 5 * 60_000) {
++    throw new AuthError('Verify your identity to make this change.', 403, 'REAUTH_REQUIRED');
++  }
++}
++export async function signIn(context: APIContext, user: AccountUser, userVerified = true) {
++  if (!context.session) throw new AuthError('Sessions are unavailable.', 503);
++  await context.session.regenerate();
++  context.session.set('authBinding', randomBytes(32).toString('base64url'));
++  context.session.set('authUserId', user.id);
++  context.session.set('authExpiresAt', Date.now() + 24 * 60 * 60_000);
++  context.session.set('verifiedAt', userVerified ? Date.now() : 0);
++}
++export async function rememberUser(username: string) {
++  return authTransaction(store => {
++    let user = store.users.find(u => u.username === username);
++    if (!user) {
++      user = { id: randomBytes(32).toString('base64url'), username, displayName: username };
++      store.users.push(user);
++    }
++    return user;
++  });
++}
++export async function passwordRequest(action: 'login' | 'register', username: string, password: string) {
++  let response: Response;
++  try {
++    response = await fetch(`https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/${action}`, {
++      method: 'POST', headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username, password }), signal: AbortSignal.timeout(15_000),
++    });
++  } catch { throw new AuthError('The sign-in service is unavailable. Please try again.', 503); }
++  if (!response.ok) {
++    throw new AuthError(action === 'login' ? 'The username or password is incorrect.' : 'Could not create your account. Try another username and a password with at least 8 characters and a number.', 400);
++  }
++}
++export async function saveChallenge(context: APIContext, challenge: Challenge) {
++  if (!context.session) throw new AuthError('Sessions are unavailable.', 503);
++  let binding = await context.session.get('authBinding');
++  if (!binding) {
++    binding = randomBytes(32).toString('base64url');
++    context.session.set('authBinding', binding);
++  }
++  await authTransaction(store => {
++    // Bound storage per session, while allowing requests from multiple tabs.
++    const pending = store.challenges.filter(c => c.binding === binding);
++    if (pending.length >= 10) {
++      const oldest = pending[0];
++      store.challenges = store.challenges.filter(c => c !== oldest);
++    }
++    store.challenges.push({ ...challenge, binding });
++  });
++}
++export async function takeChallenge(context: APIContext, purpose: Challenge['purpose'], value: unknown) {
++  const binding = await context.session?.get('authBinding');
++  const challenge = await authTransaction(store => {
++    const index = typeof value === 'string' && binding
++      ? store.challenges.findIndex(c => c.challenge === value && c.binding === binding && c.purpose === purpose)
++      : -1;
++    return index === -1 ? undefined : store.challenges.splice(index, 1)[0];
++  });
++  if (!challenge || challenge.expiresAt < Date.now()) throw new AuthError('This request expired. Please try again.');
++  return challenge;
++}
+diff --git a/src/lib/server/passkey-providers.json b/src/lib/server/passkey-providers.json
+new file mode 100644
+index 0000000..50cbe48
+--- /dev/null
++++ b/src/lib/server/passkey-providers.json
+@@ -0,0 +1,1516 @@
++{
++  "fcb1bcb4-f370-078c-6993-bc24d0ae3fbe": {
++    "name": "Ledger Nano X FIDO2 Authenticator",
++    "icon_light": "873ee57ec4ce6c59.png"
++  },
++  "6e8d1eae-8d40-4c25-bcf8-4633959afc71": {
++    "name": "Veridium iOS SDK",
++    "icon_light": "eaf093599ce184a6.png"
++  },
++  "e8b7f4a2-c3d5-e6f7-890a-b1c2d3e4f567": {
++    "name": "Sherlocked"
++  },
++  "51787637-8ab8-460c-9302-de0b853d4ffb": {
++    "name": "SpearID FIDO2 Standard",
++    "icon_light": "d53cabb2b24214c6.png"
++  },
++  "9eb7eabc-9db5-49a1-b6c3-555a802093f4": {
++    "name": "YubiKey 5 Series with NFC KVZR57"
++  },
++  "4d41190c-7beb-4a84-8018-adf265a6352d": {
++    "name": "Thales IDPrime FIDO Bio",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "2772ce93-eb4b-4090-8b73-330f48477d73": {
++    "name": "Security Key NFC by Yubico - Enterprise Edition Preview",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "6dae43be-af9c-417b-8b9f-1b611168ec60": {
++    "name": "Dapple Authenticator from Dapple Security Inc.",
++    "icon_light": "160f42c982d4ec5d.png"
++  },
++  "5626bed4-e756-430b-a7ff-ca78c8b12738": {
++    "name": "VALMIDO PRO FIDO",
++    "icon_light": "789590493cc0c059.png"
++  },
++  "260e3021-482d-442d-838c-7edfbe153b7e": {
++    "name": "Feitian ePass FIDO2-NFC Plus Authenticator",
++    "icon_light": "560be735932d782e.png"
++  },
++  "95e4d58c-056e-4a65-866d-f5a69659e880": {
++    "name": "TruU Windows Authenticator",
++    "icon_light": "23137c6fd24113ad.png"
++  },
++  "90636e1f-ef82-43bf-bdcf-5255f139d12f": {
++    "name": "YubiKey Bio Series - Multi-protocol Edition",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "9c835346-796b-4c27-8898-d6032f515cc5": {
++    "name": "Cryptnox FIDO2",
++    "icon_light": "ca5c705da8f308cd.png"
++  },
++  "c3f47802-de73-4dfc-ba22-671fe3304f90": {
++    "name": "eToken Fusion NFC PIV Enterprise",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "0d9b2e56-566b-c393-2940-f821b7f15d6d": {
++    "name": "Excelsecu eSecu FIDO2 Pro Security Key",
++    "icon_light": "91a4191a0d33f6a6.png"
++  },
++  "2bff89f2-323a-48fc-b7c8-9ff7fe87c07e": {
++    "name": "Feitian BioPass FIDO2 Pro (Enterprise Profile)",
++    "icon_light": "560be735932d782e.png"
++  },
++  "c5ef55ff-ad9a-4b9f-b580-adebafe026d0": {
++    "name": "YubiKey 5 Series with Lightning",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "2194b428-9397-4046-8f39-007a1605a482": {
++    "name": "IDPrime 931 Fido",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "39a5647e-1853-446c-a1f6-a79bae9f5bc7": {
++    "name": "IDmelon"
++  },
++  "664d9f67-84a2-412a-9ff7-b4f7d8ee6d05": {
++    "name": "OpenSK authenticator",
++    "icon_light": "479b1cb4330035cb.png"
++  },
++  "3789da91-f943-46bc-95c3-50ea2012f03a": {
++    "name": "NEOWAVE Winkeo FIDO2",
++    "icon_light": "36fd49bc8326b050.png"
++  },
++  "fa2b99dc-9e39-4257-8f92-4a30d23c4118": {
++    "name": "YubiKey 5 Series with NFC",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "341e4da9-3c2e-8103-5a9f-aad887135200": {
++    "name": "Ledger Nano S FIDO2 Authenticator",
++    "icon_light": "873ee57ec4ce6c59.png"
++  },
++  "69700f79-d1fb-472e-bd9b-a3a3b9a9eda0": {
++    "name": "Pone Biometrics OFFPAD Authenticator",
++    "icon_light": "5714b84f0553a002.png"
++  },
++  "8da0e4dc-164b-454e-972e-88f362b23d59": {
++    "name": "CardOS FIDO2 Token",
++    "icon_light": "11a1fa1eceb5c9c5.png"
++  },
++  "89b19028-256b-4025-8872-255358d950e4": {
++    "name": "Sentry Enterprises CTAP2 Authenticator",
++    "icon_light": "534d123a3220e907.png"
++  },
++  "4e768f2c-5fab-48b3-b300-220eb487752b": {
++    "name": "Hideez Key 4 FIDO2 SDK",
++    "icon_light": "69418ef150ee78d0.png"
++  },
++  "47ab2fb4-66ac-4184-9ae1-86be814012d5": {
++    "name": "Security Key NFC by Yubico - Enterprise Edition",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "931327dd-c89b-406c-a81e-ed7058ef36c6": {
++    "name": "Swissbit iShield Key FIDO2",
++    "icon_light": "da0c81c38c7d47c5.png"
++  },
++  "f8d5c4e9-e539-4c06-8662-ec2a4155a555": {
++    "name": "StarSign Key Fob",
++    "icon_light": "c023adcd82ccedf7.png"
++  },
++  "b7d3f68e-88a6-471e-9ecf-2df26d041ede": {
++    "name": "Security Key NFC by Yubico"
++  },
++  "8d1b1fcb-3c76-49a9-9129-5515b346aa02": {
++    "name": "IDEMIA ID-ONE Card",
++    "icon_light": "ebdc57764109cb42.png"
++  },
++  "30b5035e-d297-4ff7-020b-addc96ba6a98": {
++    "name": "OneSpan DIGIPASS FX7",
++    "icon_light": "4874fd4e1f9e9d6d.png"
++  },
++  "454e5346-4944-4ffd-6c93-8e9267193e9a": {
++    "name": "Ensurity ThinC",
++    "icon_light": "cb9f9b1fdf717b28.png"
++  },
++  "e1a96183-5016-4f24-b55b-e3ae23614cc6": {
++    "name": "ATKey.Pro CTAP2.0",
++    "icon_light": "1d563457b3fe6cea.png"
++  },
++  "9ff4cc65-6154-4fff-ba09-9e2af7882ad2": {
++    "name": "Security Key NFC by Yubico - Enterprise Edition (Enterprise Profile)",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "4599062e-6926-4fe7-9566-9e8fb1aedaa0": {
++    "name": "YubiKey 5 Series (Enterprise Profile)"
++  },
++  "9d3df6ba-282f-11ed-a261-0242ac120002": {
++    "name": "Arculus FIDO2/U2F Key Card",
++    "icon_light": "320389a799f9b8a7.png"
++  },
++  "fbefdf68-fe86-0106-213e-4d5fa24cbe2e": {
++    "name": "Excelsecu eSecu FIDO2 NFC Security Key",
++    "icon_light": "91a4191a0d33f6a6.png"
++  },
++  "62e54e98-c209-4df3-b692-de71bb6a8528": {
++    "name": "YubiKey 5 FIPS Series with NFC Preview",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "ab32f0c6-2239-afbb-c470-d2ef4e254db7": {
++    "name": "TOKEN2 FIDO2 Security Key",
++    "icon_light": "7725ef8eadb65cef.png"
++  },
++  "ce6bf97f-9f69-4ba7-9032-97adc6ca5cf1": {
++    "name": "YubiKey 5 FIPS Series with NFC (RC Preview)",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "ad08c78a-4e41-49b9-86a2-ac15b06899e2": {
++    "name": "YubiKey Bio Series - FIDO Edition (Enterprise Profile)"
++  },
++  "930b0c03-ef46-4ac4-935c-538dccd1fcdb": {
++    "name": "Chipwon Clife Key",
++    "icon_light": "b96a944ec6ec03f2.png"
++  },
++  "7787a482-13e8-4784-8a06-c7ed49a7aaf4": {
++    "name": "Swissbit iShield Key 2",
++    "icon_light": "da0c81c38c7d47c5.png"
++  },
++  "72c6b72d-8512-4c66-8359-9d3d10d9222f": {
++    "name": "Security Key NFC by Yubico - Enterprise Edition (Enterprise Profile)"
++  },
++  "99ed6c29-4573-4847-816d-78ad8f1c75ef": {
++    "name": "VeroCard FIDO2 Authenticator",
++    "icon_light": "b0f574aec02cb856.png"
++  },
++  "973446ca-e21c-9a9b-99f5-9b985a67af0f": {
++    "name": "ACS FIDO Authenticator Card",
++    "icon_light": "d49e613bccc74389.png"
++  },
++  "238ab2f5-b57f-4917-b3c6-3d3c6c0c350f": {
++    "name": "FEITIAN FT-JCOS BioCard",
++    "icon_light": "560be735932d782e.png"
++  },
++  "74820b05-a6c9-40f9-8fb0-9f86aca93998": {
++    "name": "SafeNet eToken Fusion",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "1105e4ed-af1d-02ff-ffff-ffffffffffff": {
++    "name": "Egomet FIDO2 Authenticator for Android",
++    "icon_light": "9a3c8a259e86b7c9.png"
++  },
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Windows Hello"
++  },
++  "a4e9fc6d-4cbe-4758-b8ba-37598bb5bbaa": {
++    "name": "Security Key NFC by Yubico",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "8caf7e7b-6c8b-46a9-b36b-5d04740d7463": {
++    "name": "cryptovision ePasslet Suite FIDO Authenticator",
++    "icon_light": "44aedb0528264b78.png"
++  },
++  "0acf3011-bc60-f375-fb53-6f05f43154e0": {
++    "name": "Nymi FIDO2 Authenticator",
++    "icon_light": "cdad6a9881a4b11d.png"
++  },
++  "d91c5288-0ef0-49b7-b8ae-21ca0aa6b3f3": {
++    "name": "KEY-ID FIDO2 Authenticator",
++    "icon_light": "53914ee54622b228.png"
++  },
++  "8eec9bf9-486c-46da-9a67-1fbb4f66b9ed": {
++    "name": "HID Crescendo 4000 FIPS",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "4c50ff10-1057-4fc6-b8ed-43a529530c3c": {
++    "name": "ImproveID Authenticator",
++    "icon_light": "ebdc57764109cb42.png"
++  },
++  "c611b55c-77b2-4527-8082-590e931b2f08": {
++    "name": "GoTrust Idem Key ",
++    "icon_light": "5ee09cfa6b6e10ad.png"
++  },
++  "ee041bce-25e5-4cdb-8f86-897fd6418464": {
++    "name": "Feitian ePass FIDO2-NFC Authenticator",
++    "icon_light": "560be735932d782e.png"
++  },
++  "2588ae83-5a3b-4536-b8de-5e540200d191": {
++    "name": "Dapple Authenticator from Dapple Security Inc.",
++    "icon_light": "160f42c982d4ec5d.png"
++  },
++  "4b89f401-464e-4745-a520-486ddfc5d80e": {
++    "name": "IIST FIDO2 Authenticator",
++    "icon_light": "a98e79e812b540bf.png"
++  },
++  "2cd2f727-f6ca-44da-8f48-5c2e5da000a2": {
++    "name": "Nitrokey 3 AM",
++    "icon_light": "3591102cd56f0ae5.png"
++  },
++  "10c70715-2a9a-4de1-b0aa-3cff6d496d39": {
++    "name": "eToken Fusion NFC FIPS",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "efb96b10-a9ee-4b6c-a4a9-d32125ccd4a4": {
++    "name": "Safenet eToken FIDO",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "24083bcb-3034-4867-99de-a3b52e1d426a": {
++    "name": "Enterprise Security Key Series with NFC (Consumer Profile)"
++  },
++  "4b3f8944-d4f2-4d21-bb19-764a986ec160": {
++    "name": "KeyXentic FIDO2 Secp256R1 FIDO2 CTAP2 Authenticator",
++    "icon_light": "c35187645d72870c.png"
++  },
++  "4c0cf95d-2f40-43b5-ba42-4c83a11c04ba": {
++    "name": "Feitian BioPass FIDO2 Pro Authenticator",
++    "icon_light": "560be735932d782e.png"
++  },
++  "5343502d-5343-5343-6172-644649444f32": {
++    "name": "ESS Smart Card Inc. Authenticator",
++    "icon_light": "0c7714df461788b5.png"
++  },
++  "69e7c36f-f2f6-9e0d-07a6-bcc243262e6b": {
++    "name": "OneKey FIDO2 Authenticator",
++    "icon_light": "70c31bf1a6c1037a.png"
++  },
++  "524de2de-982f-49b4-a769-2b5e3b73ad79": {
++    "name": "YubiKey 5 Series (Enterprise Profile)"
++  },
++  "09591fc6-9811-48f7-8f57-b9f23df6413f": {
++    "name": "Pone Biometrics OFFPAD Authenticator",
++    "icon_light": "5714b84f0553a002.png"
++  },
++  "912435d9-4a88-42f3-972d-1244b0d51420": {
++    "name": "SI0X FIDO CL WRIST v1.0",
++    "icon_light": "c023adcd82ccedf7.png"
++  },
++  "7e3f3d30-3557-4442-bdae-139312178b39": {
++    "name": "RSA DS100",
++    "icon_light": "e17f28ad154f40e9.png"
++  },
++  "73bb0cd4-e502-49b8-9c6f-b59445bf720b": {
++    "name": "YubiKey 5 FIPS Series",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "39589099-9a75-49fc-afaa-801ca211c62a": {
++    "name": "Feitian ePass FIDO-NFC (Enterprise Profile) (CTAP2.1, CTAP2.0, U2F)",
++    "icon_light": "560be735932d782e.png"
++  },
++  "dc5e949d-f939-43b3-9877-a85c7186b753": {
++    "name": "YubiKey Bio Multi-protocol Edition (Enterprise Profile)"
++  },
++  "149a2021-8ef6-4133-96b8-81f8d5b7f1f5": {
++    "name": "Security Key by Yubico with NFC",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "5df66f62-5b47-43d3-aa1d-a6e31c8dbeb5": {
++    "name": "Securitag Assembly Group FIDO Authenticator NFC",
++    "icon_light": "2f313de71e7e5783.png"
++  },
++  "9a272558-5cfa-4424-be37-65509677b77d": {
++    "name": "SECORA ID Key S USB by Infineon Consumer Edition",
++    "icon_light": "742efd756b441c50.png"
++  },
++  "09619fbf-d75e-4a62-be1d-fe4d240864ae": {
++    "name": "VeriMark(TM) Guard 2.1 Fingerprint Security Key",
++    "icon_light": "eaa1ede459a85aa0.png"
++  },
++  "55fd881f-40ba-4eaf-8435-42c5fed08b76": {
++    "name": "SECORA ID V2 by Infineon Consumer Edition",
++    "icon_light": "742efd756b441c50.png"
++  },
++  "50cbf15a-238c-4457-8f16-812c43bf3c49": {
++    "name": "Ensurity AUTH TouchPro",
++    "icon_light": "9711b5ef13bd9351.png"
++  },
++  "ee7fa1e0-9539-432f-bd43-9c2fc6d4f311": {
++    "name": "VeriMark NFC+ USB-C Security Key",
++    "icon_light": "41e58bac4f167ae4.png"
++  },
++  "b90e7dc1-316e-4fee-a25a-56a666a670fe": {
++    "name": "YubiKey 5 Series with Lightning (Enterprise Profile)",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "6d4aa745-dad5-40c4-b9b4-6a252fcee70f": {
++    "name": "GoTrust Cyber Key",
++    "icon_light": "5ee09cfa6b6e10ad.png"
++  },
++  "175cd298-83d2-4a26-b637-313c07a6434e": {
++    "name": "Chunghwa Telecom FIDO2 Smart Card Authenticator",
++    "icon_light": "31e28e7644152081.png"
++  },
++  "34744913-4f57-4e6e-a527-e9ec3c4b94e6": {
++    "name": "YubiKey Bio Series - Multi-protocol Edition"
++  },
++  "5ea308b2-7ac7-48b9-ac09-7e2da9015f8c": {
++    "name": "Veridium Android SDK",
++    "icon_light": "eaf093599ce184a6.png"
++  },
++  "3b1adb99-0dfe-46fd-90b8-7f7614a4de2a": {
++    "name": "GoTrust Idem Key",
++    "icon_light": "5ee09cfa6b6e10ad.png"
++  },
++  "46544d5d-8f5d-4db4-89ac-ea8977073fff": {
++    "name": "Foongtone FIDO Authenticator",
++    "icon_light": "f56f5050b9c4bf2d.png"
++  },
++  "0a357157-9b18-4c8a-920e-d156e972b2f8": {
++    "name": "YubiKey 5 Series (Consumer Profile)"
++  },
++  "998f358b-2dd2-4cbe-a43a-e8107438dfb3": {
++    "name": "OnlyKey Secp256R1 FIDO2 CTAP2 Authenticator",
++    "icon_light": "d10e3e7b19d8c78c.png"
++  },
++  "30b5035e-d297-4ff2-010b-addc96ba6a98": {
++    "name": "OneSpan DIGIPASS FX2-A",
++    "icon_light": "1543b4a558686c70.png"
++  },
++  "817cdab8-0d51-4de1-a821-e25b88519cf3": {
++    "name": "Swissbit iShield Key 2 FIPS",
++    "icon_light": "da0c81c38c7d47c5.png"
++  },
++  "61250591-b2bc-4456-b719-0b17be90bb30": {
++    "name": "eWBM eFPA FIDO2 Authenticator",
++    "icon_light": "b9819758fa8c74a7.png"
++  },
++  "8c39ee86-7f9a-4a95-9ba3-f6b097e5c2ee": {
++    "name": "YubiKey Bio Series - FIDO Edition (Enterprise Profile)",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "f8a011f3-8c0a-4d15-8006-17111f9edc7d": {
++    "name": "Security Key by Yubico",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "8976631b-d4a0-427f-5773-0ec71c9e0279": {
++    "name": "Solo Tap Secp256R1 FIDO2 CTAP2 Authenticator",
++    "icon_light": "a9e10478916ce20a.png"
++  },
++  "7dab85a5-d16d-4eaf-a7ef-4c1385b151c5": {
++    "name": "YubiKey 5 Series with NFC (Consumer Profile) KVZR57-2"
++  },
++  "516d3969-5a57-5651-5958-4e7a49434167": {
++    "name": "SmartDisplayer BobeePass FIDO2 Authenticator",
++    "icon_light": "e18ffc6a012f945b.png"
++  },
++  "8681a073-5f50-4d52-bce4-e21658d207b3": {
++    "name": "RSA Authenticator 4 for iOS",
++    "icon_light": "e17f28ad154f40e9.png"
++  },
++  "30b5035e-d297-4ff7-030b-addc96ba6a98": {
++    "name": "OneSpan DIGIPASS FX7-C",
++    "icon_light": "4874fd4e1f9e9d6d.png"
++  },
++  "e41b42a3-60ac-4afb-8757-a98f2d7f6c9f": {
++    "name": "Deepnet SafeKey/Classic (FP)",
++    "icon_light": "89db93d6c545eac2.png"
++  },
++  "c89e6a38-6c00-5426-5aa5-c9cbf48f0382": {
++    "name": "ACS FIDO Authenticator NFC",
++    "icon_light": "d49e613bccc74389.png"
++  },
++  "11544c3c-3693-40ba-9dbb-3b8d2b977988": {
++    "name": "Thales PAY GFCX20.1 authenticator",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "eb7ef748-cbe0-4b40-b8f6-07bd2d592d35": {
++    "name": "YubiKey 5 CCN Series with NFC (Consumer Profile)"
++  },
++  "a02167b9-ae71-4ac7-9a07-06432ebb6f1c": {
++    "name": "YubiKey 5 Series with Lightning",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "82b0a720-127a-4788-b56d-d1d4b2d82eac": {
++    "name": "ID-One Key",
++    "icon_light": "384a778c8de6cc20.png"
++  },
++  "6169eb16-f87a-42d8-978d-e1ac0c3f319f": {
++    "name": "GoTrust Idem Card",
++    "icon_light": "5ee09cfa6b6e10ad.png"
++  },
++  "2c0df832-92de-4be1-8412-88a8f074df4a": {
++    "name": "Feitian FIDO Smart Card",
++    "icon_light": "560be735932d782e.png"
++  },
++  "59f85fe7-faa5-4c92-9f52-697b9d4d5473": {
++    "name": "RSA Authenticator 4 for Android",
++    "icon_light": "e17f28ad154f40e9.png"
++  },
++  "22682ee5-4f0e-4c19-be3e-797d5770ebfe": {
++    "name": "Precision InnaIT Key FIDO 2 Level 2 certified",
++    "icon_light": "271f6ea90ead8004.png"
++  },
++  "0fbb74b5-f1ac-4f14-a0f1-ec39b5edfdae": {
++    "name": "Thales PAY GFCX19 authenticator",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "79f3c8ba-9e35-484b-8f47-53a5a0f5c630": {
++    "name": "YubiKey 5 FIPS Series with NFC (Enterprise Profile)"
++  },
++  "6e34341a-88c7-483d-b777-a425c355be93": {
++    "name": "WebComm OETHenticator",
++    "icon_light": "bdd0bddae1b1249e.png"
++  },
++  "7a53c643-9dec-4219-b3a4-f9d24aca4e12": {
++    "name": "G+D StarKey FIDO2-NFC",
++    "icon_light": "c023adcd82ccedf7.png"
++  },
++  "19bca99b-7c09-44fe-a969-8cba45764542": {
++    "name": "HID Crescendo Key V3 FIPS",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "def8ab1a-9f91-44f1-a103-088d8dc7d681": {
++    "name": "IDEMIA SOLVO Fly 80 R3 FIDO Card e",
++    "icon_light": "384a778c8de6cc20.png"
++  },
++  "9955a1cd-564c-d388-ad68-9878a27be9f1": {
++    "name": "StarSign Chase FIDO Card",
++    "icon_light": "c023adcd82ccedf7.png"
++  },
++  "9dd8d593-2213-438a-97f8-d6b813d51c27": {
++    "name": "YubiKey Bio Fido Edition (Consumer Profile)"
++  },
++  "970c8d9c-19d2-46af-aa32-3f448db49e35": {
++    "name": "WinMagic FIDO Eazy - TPM",
++    "icon_light": "20dc638d976adbc0.png"
++  },
++  "c5703116-972b-4851-a3e7-ae1259843399": {
++    "name": "NEOWAVE Badgeo FIDO2",
++    "icon_light": "36fd49bc8326b050.png"
++  },
++  "c80dbd9a-533f-4a17-b941-1a2f1c7cedff": {
++    "name": "HID Crescendo C3000",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "0b8b05a4-ebd4-4b0b-8f5f-33d7b6e606ab": {
++    "name": "HID Crescendo 4000",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "5b0e46ba-db02-44ac-b979-ca9b84f5e335": {
++    "name": "YubiKey 5 FIPS Series with Lightning Preview",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "12755c32-8ad1-46eb-881c-e0b38d848b09": {
++    "name": "Feitian ePass FIDO Authenticator (CTAP2.1, CTAP2.0, U2F)",
++    "icon_light": "560be735932d782e.png"
++  },
++  "2a55aee6-27cb-42c0-bc6e-04efe999e88a": {
++    "name": "HID Crescendo 4000",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "820d89ed-d65a-409e-85cb-f73f0578f82a": {
++    "name": "IDmelon Authenticator",
++    "icon_light": "eaec55dd6200c922.png"
++  },
++  "019614a3-2703-7e35-a453-285fd06c5d24": {
++    "name": "ATLKey Authenticator",
++    "icon_light": "96f4f92a36311535.png"
++  },
++  "3124e301-f14e-4e38-876d-fbeeb090e7bf": {
++    "name": "YubiKey 5 Series with Lightning Preview",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "b6ede29c-3772-412c-8a78-539c1f4c62d2": {
++    "name": "Feitian BioPass FIDO2 Plus Authenticator",
++    "icon_light": "560be735932d782e.png"
++  },
++  "ed042a3a-4b22-4455-bb69-a267b652ae7e": {
++    "name": "Security Key NFC by Yubico - Enterprise Edition"
++  },
++  "b2c1a50b-dad8-4dc7-ba4d-0ce9597904bc": {
++    "name": "YubiKey 5 Series with NFC - Enhanced PIN (Enterprise Profile)"
++  },
++  "85203421-48f9-4355-9bc8-8a53846e5083": {
++    "name": "YubiKey 5 FIPS Series with Lightning",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "fcc0118f-cd45-435b-8da1-9782b2da0715": {
++    "name": "YubiKey 5 FIPS Series with NFC"
++  },
++  "d821a7d4-e97c-4cb6-bd82-4237731fd4be": {
++    "name": "Hyper FIDO Bio Security Key",
++    "icon_light": "463f45ab259bdaab.png"
++  },
++  "9876631b-d4a0-427f-5773-0ec71c9e0279": {
++    "name": "Somu Secp256R1 FIDO2 CTAP2 Authenticator",
++    "icon_light": "a9e10478916ce20a.png"
++  },
++  "522a3f91-5f5d-480d-be37-6cecfad5a27b": {
++    "name": "Precision InnaIT Key FIDO 2 Level 2 certified",
++    "icon_light": "271f6ea90ead8004.png"
++  },
++  "f56f58b3-d711-4afc-ba7d-6ac05f88cb19": {
++    "name": "WinMagic FIDO Eazy - Phone",
++    "icon_light": "20dc638d976adbc0.png"
++  },
++  "6ec5cff2-a0f9-4169-945b-f33b563f7b99": {
++    "name": "YubiKey Bio Series - Multi-protocol Edition (Enterprise Profile)"
++  },
++  "882adaf5-3aa9-4708-8e7d-3957103775b4": {
++    "name": "T-Shield TrustSec FIDO2 Bio and client PIN version",
++    "icon_light": "e4415d08f4cbc733.png"
++  },
++  "49a15c1c-3f63-3f51-23a7-b9e00096edd1": {
++    "name": "IDEX CTAP2.1 Biometrics",
++    "icon_light": "c3062d9958512bde.png"
++  },
++  "f4c63eff-d26c-4248-801c-3736c7eaa93a": {
++    "name": "FIDO KeyPass S3",
++    "icon_light": "c66be2095511c6a8.png"
++  },
++  "d384db22-4d50-ebde-2eac-5765cf1e2a44": {
++    "name": "Excelsecu eSecu FIDO2 Fingerprint Security Key",
++    "icon_light": "91a4191a0d33f6a6.png"
++  },
++  "0db01cd6-5618-455b-bb46-1ec203d3213e": {
++    "name": "GoldKey Security Token",
++    "icon_light": "4bd00edb014eabc6.png"
++  },
++  "b93fd961-f2e6-462f-b122-82002247de78": {
++    "name": "Android Authenticator",
++    "icon_light": "bbfcd2715307a8ed.png"
++  },
++  "aa79f476-ea00-417e-9628-1e8365123922": {
++    "name": "HID Crescendo 4000 FIDO",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "1e906e14-77af-46bc-ae9f-fe6ef18257e4": {
++    "name": "VeridiumID Passkey iOS SDK",
++    "icon_light": "eaf093599ce184a6.png"
++  },
++  "2fc0579f-8113-47ea-b116-bb5a8db9202a": {
++    "name": "YubiKey 5 Series with NFC",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "31c3f7ff-bf15-4327-83ec-9336abcbcd34": {
++    "name": "WinMagic FIDO Eazy - Software",
++    "icon_light": "20dc638d976adbc0.png"
++  },
++  "cb4f796c-a20a-af9e-d639-213c1ec247f3": {
++    "name": "ACS PocketKey+ Bio",
++    "icon_light": "d49e613bccc74389.png"
++  },
++  "686de81e-fff2-41c1-bb83-2723aaf3e913": {
++    "name": "IIST SASE USB KEY 1",
++    "icon_light": "a98e79e812b540bf.png"
++  },
++  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": {
++    "name": "Windows Hello"
++  },
++  "18852056-063b-4042-9814-7d0d383081f9": {
++    "name": "SECORA ID Key S USB by Infineon Enterprise Edition",
++    "icon_light": "742efd756b441c50.png"
++  },
++  "d8522d9f-575b-4866-88a9-ba99fa02f35b": {
++    "name": "YubiKey Bio Series - FIDO Edition",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "050dd0bc-ff20-4265-8d5d-305c4b215192": {
++    "name": "eToken Fusion FIPS",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "50a45b0c-80e7-f944-bf29-f552bfa2e048": {
++    "name": "ACS FIDO Authenticator",
++    "icon_light": "d49e613bccc74389.png"
++  },
++  "f7c558a0-f465-11e8-b568-0800200c9a66": {
++    "name": "KONAI Secp256R1 FIDO2 Conformance Testing CTAP2 Authenticator",
++    "icon_light": "7239df6feb140300.png"
++  },
++  "3f59672f-20aa-4afe-b6f4-7e5e916b6d98": {
++    "name": "Arculus FIDO 2.1 Key Card [P71]",
++    "icon_light": "320389a799f9b8a7.png"
++  },
++  "42b4fb4a-2866-43b2-9bf7-6c6669c2e5d3": {
++    "name": "Google Titan Security Key v2",
++    "icon_light": "8dc1e668d30005c0.png"
++  },
++  "361a3082-0278-4583-a16f-72a527f973e4": {
++    "name": "eWBM eFA500 FIDO2 Authenticator",
++    "icon_light": "b9819758fa8c74a7.png"
++  },
++  "2ffd6452-01da-471f-821b-ea4bf6c8676a": {
++    "name": "IDPrime 941 Fido",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "9806a2c8-c0da-478e-b4ca-620005d34182": {
++    "name": "YubiKey Bio Multi-protocol Edition (Consumer Profile) 1VDJSN-2"
++  },
++  "03012cb7-4fb2-42e7-9e8d-a81f10e2a5e9": {
++    "name": "YubiKey 5 Series with Lightning (Consumer Profile)"
++  },
++  "30b5035e-d297-4ff7-b00b-addc96ba6a98": {
++    "name": "OneSpan DIGIPASS FX7",
++    "icon_light": "4874fd4e1f9e9d6d.png"
++  },
++  "0f083f18-4105-43a8-ad69-24e812e38141": {
++    "name": "Security Key Series with NFC (Consumer Profile)"
++  },
++  "5eaff75a-dd43-451f-af9f-87c9eeae293e": {
++    "name": "Swissbit iShield Key 2 FIPS Enterprise",
++    "icon_light": "da0c81c38c7d47c5.png"
++  },
++  "b415094c-49d3-4c8b-b3fe-7d0ad28a6bc4": {
++    "name": "ZTPass SmartAuth",
++    "icon_light": "677e54623af04d6e.png"
++  },
++  "692db549-7ae5-44d5-a1e5-dd20a493b723": {
++    "name": "HID Crescendo Key",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "0ebd9f2c-f685-441c-8c3e-a02a234a840a": {
++    "name": "YubiKey 5 Series with NFC Enhanced PIN (Consumer Profile)"
++  },
++  "23315ad0-6aca-4ba1-952e-f044f1e36976": {
++    "name": "Clife Key 2 NFC",
++    "icon_light": "b96a944ec6ec03f2.png"
++  },
++  "1d1b4e33-76a1-47fb-97a0-14b10d0933f1": {
++    "name": "Cryptnox FIDO2.1",
++    "icon_light": "ca5c705da8f308cd.png"
++  },
++  "bbf4b6a7-679d-f6fc-c4f2-8ac0ddf9015a": {
++    "name": "Excelsecu eSecu FIDO2 PRO Security Key",
++    "icon_light": "91a4191a0d33f6a6.png"
++  },
++  "3e22415d-7fdf-4ea4-8a0c-dd60c4249b9d": {
++    "name": "Feitian iePass FIDO Authenticator",
++    "icon_light": "560be735932d782e.png"
++  },
++  "ab7d1767-3fa0-4388-b6c4-feef7a844809": {
++    "name": "Enterprise Security Key Series with NFC (Enterprise Profile)"
++  },
++  "f4ce5fc0-57d3-46f5-a736-efb7d5bc63b5": {
++    "name": "YubiKey 5 Series with NFC (Consumer Profile)"
++  },
++  "23786452-f02d-4344-87ed-aaf703726881": {
++    "name": "SafeNet eToken Fusion CC",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "5e264d9d-28ef-4d34-95b4-5941e7a4faa8": {
++    "name": "Ideem ZSM FIDO2 Authenticator",
++    "icon_light": "0d318c94a9ab6d12.png"
++  },
++  "d2fbd093-ee62-488d-9dad-1e36389f8826": {
++    "name": "YubiKey 5 FIPS Series (RC Preview)",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "234cd403-35a2-4cc2-8015-77ea280c77f5": {
++    "name": "Feitian ePass FIDO2-NFC Series (CTAP2.1, CTAP2.0, U2F)",
++    "icon_light": "560be735932d782e.png"
++  },
++  "6999180d-630c-442d-b8f7-424b90a43fae": {
++    "name": "Hyper FIDO Pro (CTAP2.1, CTAP2.0, U2F)",
++    "icon_light": "718e8fff1f6cea32.png"
++  },
++  "662ef48a-95e2-4aaa-a6c1-5b9c40375824": {
++    "name": "YubiKey 5 Series with NFC - Enhanced PIN"
++  },
++  "aeb6569c-f8fb-4950-ac60-24ca2bbe2e52": {
++    "name": "HID Crescendo C2300",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "87dbc5a1-4c94-4dc8-8a47-97d800fd1f3c": {
++    "name": "eWBM eFA320 FIDO2 Authenticator",
++    "icon_light": "b9819758fa8c74a7.png"
++  },
++  "58276709-bb4b-4bb3-baf1-60eea99282a7": {
++    "name": "YubiKey Bio Series - Multi-protocol Edition 1VDJSN"
++  },
++  "7d2afadd-bf6b-44a2-a66b-e831fceb8eff": {
++    "name": "Taglio CTAP2.1 EP",
++    "icon_light": "429ebb21997a4358.png"
++  },
++  "30b5035e-d297-4ff1-020b-addc96ba6a98": {
++    "name": "OneSpan DIGIPASS FX1-C",
++    "icon_light": "933884f86b964ec9.png"
++  },
++  "04a8fcf2-19c1-457b-911e-69219f17583f": {
++    "name": "Thales PAY GFCX13 authenticator",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "20ac7a17-c814-4833-93fe-539f0d5e3389": {
++    "name": "YubiKey 5 Series (Enterprise Profile)",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "9012593f-43e4-4461-a97a-d92777b55d74": {
++    "name": "VinCSS FIDO2 Fingerprint",
++    "icon_light": "4405f4f0029211e2.png"
++  },
++  "d7781e5d-e353-46aa-afe2-3ca49f13332a": {
++    "name": "YubiKey 5 Series with NFC"
++  },
++  "9f0d8150-baa5-4c00-9299-ad62c8bb4e87": {
++    "name": "GoTrust Idem Card",
++    "icon_light": "5ee09cfa6b6e10ad.png"
++  },
++  "244eb29e-e090-4e49-81fe-1f20f8d3b8f4": {
++    "name": "CanoKey Canary",
++    "icon_light": "c84a928e2b9c8c69.png"
++  },
++  "12ded745-4bed-47d4-abaa-e713f51d6393": {
++    "name": "Feitian AllinOne FIDO2 Authenticator",
++    "icon_light": "560be735932d782e.png"
++  },
++  "88bbd2f0-342a-42e7-9729-dd158be5407a": {
++    "name": "Precision InnaIT Key FIDO 2 Level 2 certified",
++    "icon_light": "f7c2733a4fa3aebe.png"
++  },
++  "1d8cac46-47a1-3386-af50-e88ae46fe802": {
++    "name": "Ledger Flex FIDO2 Authenticator",
++    "icon_light": "873ee57ec4ce6c59.png"
++  },
++  "dd86a2da-86a0-4cbe-b462-4bd31f57bc6f": {
++    "name": "YubiKey Bio Series - FIDO Edition",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "773c30d9-5919-4e96-a4f5-db65e95cf890": {
++    "name": "GSTAG OAK FIDO2 Authenticator",
++    "icon_light": "5ebae50bb3674694.png"
++  },
++  "34f5766d-1536-4a24-9033-0e294e510fb0": {
++    "name": "YubiKey 5 Series with NFC Preview",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "83c47309-aabb-4108-8470-8be838b573cb": {
++    "name": "YubiKey Bio Series - FIDO Edition (Enterprise Profile)"
++  },
++  "c1288a5c-d66b-495c-a68f-4e81f9ec5b53": {
++    "name": "Deepnet SafeKey/Classic (FP) XF",
++    "icon_light": "89db93d6c545eac2.png"
++  },
++  "4e2ddbc2-2687-4709-8551-cb66c9776bfe": {
++    "name": "SECORA ID V2 FIDO2.1 L1",
++    "icon_light": "f28ff56a67179c73.png"
++  },
++  "be727034-574a-f799-5c76-0929e0430973": {
++    "name": "Crayonic KeyVault K1 (USB-NFC-BLE FIDO2 Authenticator)",
++    "icon_light": "2dd599aebf32da09.png"
++  },
++  "092277e5-8437-46b5-b911-ea64b294acb7": {
++    "name": "Taglio CTAP2.1 CS",
++    "icon_light": "429ebb21997a4358.png"
++  },
++  "ca87cb70-4c1b-4579-a8e8-4efdd7c007e0": {
++    "name": "FIDO Alliance TruU Sample FIDO2 Authenticator",
++    "icon_light": "f191d74146977d70.png"
++  },
++  "23195a52-62d9-40fa-8ee5-23b173f4fb52": {
++    "name": "Hyper FIDO Pro NFC",
++    "icon_light": "718e8fff1f6cea32.png"
++  },
++  "ba0a9266-40d8-4048-9786-d710b5474752": {
++    "name": "YubiKey Bio Multi-protocol Edition (Consumer Profile)"
++  },
++  "3e9db280-256a-4e17-b08e-19d79e9be166": {
++    "name": "SECORA ID V2 by Infineon Pay Edition",
++    "icon_light": "742efd756b441c50.png"
++  },
++  "a7fc3f84-86a3-4da4-a3d7-eb6485a066d8": {
++    "name": "NEOWAVE Badgeo FIDO2 (CTAP 2.1)",
++    "icon_light": "36fd49bc8326b050.png"
++  },
++  "8791f7dc-418b-4510-bbf5-3baf30715324": {
++    "name": "Virtual FIDO2 authenticator for Linux-based systems",
++    "icon_light": "8499e05f0762d54d.png"
++  },
++  "1f8e43df-71ff-e11d-bea3-c4ee7003b232": {
++    "name": "Thetis Pro FIDO2 Key",
++    "icon_light": "de9d507cfe666363.png"
++  },
++  "3ec9c8d3-a5a7-415b-a7b5-f1d606368d3f": {
++    "name": "YubiKey 5 CCN Series with NFC (Enterprise Profile)"
++  },
++  "9e66c661-e428-452a-a8fb-51f7ed088acf": {
++    "name": "YubiKey 5 FIPS Series with Lightning (RC Preview)",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "58b44d0b-0a7c-f33a-fd48-f7153c871352": {
++    "name": "Ledger Nano S Plus FIDO2 Authenticator",
++    "icon_light": "873ee57ec4ce6c59.png"
++  },
++  "9a3f2abd-a73d-439c-9ee7-1b53a857eaa7": {
++    "name": "YubiKey 5 Series with NFC Enhanced PIN (Enterprise Profile)"
++  },
++  "454e5346-4944-4ffd-6c93-8e9267193e9b": {
++    "name": "Ensurity AUTH BioPro",
++    "icon_light": "18540bb4a1acdf65.png"
++  },
++  "41e39911-c669-4811-b860-c6ad0b411b96": {
++    "name": "YubiKey 5 Series with NFC (Enterprise Profile)"
++  },
++  "146e77ef-11eb-4423-b847-ce77864e9411": {
++    "name": "eToken Fusion NFC PIV",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "c1bee13f-f347-4f53-9cd4-e8a2f98ee008": {
++    "name": "ZTPass SmartAuth FIPS",
++    "icon_light": "677e54623af04d6e.png"
++  },
++  "13ac47cf-1d78-4fd5-9060-aedaabacf826": {
++    "name": "HID Crescendo Key V3 - Enterprise Edition",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "e77e3c64-05e3-428b-8824-0cbeb04b829d": {
++    "name": "Security Key NFC by Yubico",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "33d6d7d0-279f-4ef3-96b3-2d3282f4bde6": {
++    "name": "Thales eToken Fusion BIO Enterprise",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "8d4378b0-725d-4432-b3c2-01fcdaf46286": {
++    "name": "VeridiumID Passkey Android SDK",
++    "icon_light": "eaf093599ce184a6.png"
++  },
++  "7409272d-1ff9-4e10-9fc9-ac0019c124fd": {
++    "name": "YubiKey Bio Series - FIDO Edition"
++  },
++  "bb66c294-de08-47e4-b7aa-d12c2cd3fb20": {
++    "name": "Mettlesemi Vishwaas Hawk Authenticator using FIDO2",
++    "icon_light": "eb4fd11236a9a244.png"
++  },
++  "c4ddaf11-3032-4e77-b3b9-3a340369b9ad": {
++    "name": "HID Crescendo Fusion",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "add92433-0d69-4026-8166-29b25bce64e9": {
++    "name": "YubiKey Bio Fido Edition (Enterprise Profile)"
++  },
++  "7d1351a6-e097-4852-b8bf-c9ac5c9ce4a3": {
++    "name": "YubiKey Bio Series - Multi-protocol Edition",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "07a9f89c-6407-4594-9d56-621d5f1e358b": {
++    "name": "NXP Semiconductros FIDO2 Conformance Testing CTAP2 Authenticator",
++    "icon_light": "3116c84518849fb4.png"
++  },
++  "d61d3b87-3e7c-4aea-9c50-441c371903ad": {
++    "name": "KeyVault Secp256R1 FIDO2 CTAP2 Authenticator",
++    "icon_light": "6d75ef711d6d5a3c.png"
++  },
++  "c62100de-759b-4bf8-b22b-63b3e3a80401": {
++    "name": "Token Ring 3 FIDO2 Authenticator",
++    "icon_light": "cb0bdb7cf194595a.png"
++  },
++  "5ca1ab1e-1337-fa57-f1d0-a117e71ca702": {
++    "name": "Allthenticator iOS App: roaming BLE FIDO2 Allthenticator for Windows, Mac, Linux, and Allthenticate door readers",
++    "icon_light": "f763ba0f346f6a48.png"
++  },
++  "b92c3f9a-c014-4056-887f-140a2501163b": {
++    "name": "Security Key by Yubico",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "54d9fee8-e621-4291-8b18-7157b99c5bec": {
++    "name": "HID Crescendo Enabled",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "72a2b5b1-95a5-4df9-a881-4192aff4f72e": {
++    "name": "GoTrust Idem Key mini",
++    "icon_light": "5ee09cfa6b6e10ad.png"
++  },
++  "a25342c0-3cdc-4414-8e46-f4807fca511c": {
++    "name": "YubiKey 5 Series with NFC",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "3a662962-c6d4-4023-bebb-98ae92e78e20": {
++    "name": "YubiKey 5 FIPS Series with Lightning (Enterprise Profile)"
++  },
++  "20f0be98-9af9-986a-4b42-8eca4acb28e4": {
++    "name": "Excelsecu eSecu FIDO2 Fingerprint Security Key",
++    "icon_light": "91a4191a0d33f6a6.png"
++  },
++  "ca4cff1b-5a81-4404-8194-59aabcf1660b": {
++    "name": "IDPrime 3930 FIDO",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "ab32f0c6-2239-afbb-c470-d2ef4e254db6": {
++    "name": "TEST (DUMMY RECORD)",
++    "icon_light": "7725ef8eadb65cef.png"
++  },
++  "760eda36-00aa-4d29-855b-4012a182cdeb": {
++    "name": "Security Key NFC by Yubico Preview",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": {
++    "name": "Windows Hello"
++  },
++  "b12eac35-586c-4809-a4b1-d81af6c305cf": {
++    "name": "Deepnet SafeKey/Classic (NFC)",
++    "icon_light": "89db93d6c545eac2.png"
++  },
++  "30b5035e-d297-4fc1-b00b-addc96ba6a97": {
++    "name": "OneSpan FIDO Touch",
++    "icon_light": "243adddcdb2a1dc5.png"
++  },
++  "560a780c-b6ae-4f03-b110-082f856425b4": {
++    "name": "KQC QuKey Bio FIDO2 Authenticator",
++    "icon_light": "a465c10804d4e083.png"
++  },
++  "1ac71f64-468d-4fe0-bef1-0e5f2f551f18": {
++    "name": "YubiKey 5 Series with NFC (Enterprise Profile)",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "6d44ba9b-f6ec-2e49-b930-0c8fe920cb73": {
++    "name": "Security Key by Yubico with NFC",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "b68c4b8d-65cb-42ae-b4f6-8606dfba3c22": {
++    "name": "IDEMIA SOLVO Fly 80 R3 FIDO Card for j",
++    "icon_light": "1b537154a3a4e578.png"
++  },
++  "6832d205-75f2-44c7-a864-e868c796d06e": {
++    "name": "Precision InnaIT Key FIDO 2 Level 2 certified",
++    "icon_light": "271f6ea90ead8004.png"
++  },
++  "9eb85bb6-9625-4a72-815d-0487830ccab2": {
++    "name": "Ensurity AUTH BioPro Desktop",
++    "icon_light": "5f17fd250b5d740d.png"
++  },
++  "30b5035e-d297-4ff7-010b-addc96ba6a98": {
++    "name": "OneSpan DIGIPASS FX7-B",
++    "icon_light": "4874fd4e1f9e9d6d.png"
++  },
++  "5ca1ab1e-fa57-1337-f1d0-a117371ca702": {
++    "name": "Allthenticator Android App: roaming BLE FIDO2 Allthenticator for Windows, Mac, Linux, and Allthenticate door readers",
++    "icon_light": "f763ba0f346f6a48.png"
++  },
++  "eabb46cc-e241-80bf-ae9e-96fa6d2975cf": {
++    "name": "TOKEN2 PIN Plus Security Key Series ",
++    "icon_light": "7725ef8eadb65cef.png"
++  },
++  "53414d53-554e-4700-0000-000000000000": {
++    "name": "Samsung Pass"
++  },
++  "b2647539-a130-4aee-8c34-9e4b52339123": {
++    "name": "ZTPass SmartAuth",
++    "icon_light": "677e54623af04d6e.png"
++  },
++  "e416201b-afeb-41ca-a03d-2281c28322aa": {
++    "name": "ATKey.Pro CTAP2.1",
++    "icon_light": "1d563457b3fe6cea.png"
++  },
++  "905b4cb4-ed6f-4da9-92fc-45e0d4e9b5c7": {
++    "name": "YubiKey 5 FIPS Series (Enterprise Profile)"
++  },
++  "dee49ee1-11cb-47b6-bed0-8e995e67a0fb": {
++    "name": "SECORA Connect SLS21 D1 FIDO 2.1 v1.0 by Infineon - Consumer Edition",
++    "icon_light": "f28ff56a67179c73.png"
++  },
++  "cfcb13a2-244f-4b36-9077-82b79d6a7de7": {
++    "name": "USB/NFC Passcode Authenticator"
++  },
++  "76692dc1-c56a-48d9-8e7d-31b5ced430ac": {
++    "name": "VeriMark NFC+ USB-A Security Key",
++    "icon_light": "41e58bac4f167ae4.png"
++  },
++  "91ad6b93-264b-4987-8737-3a690cad6917": {
++    "name": "Token Ring FIDO2 Authenticator"
++  },
++  "a02140b7-0cbd-42e1-a9b5-a39da2545114": {
++    "name": "Feitian BioPass FIDO2 Plus (Enterprise Profile)",
++    "icon_light": "560be735932d782e.png"
++  },
++  "5753362b-4e6b-6345-7b2f-255438404c75": {
++    "name": "WiSECURE Blentity FIDO2 Authenticator",
++    "icon_light": "ebdc57764109cb42.png"
++  },
++  "9f77e279-a6e2-4d58-b700-31e5943c6a98": {
++    "name": "Hyper FIDO Pro",
++    "icon_light": "463f45ab259bdaab.png"
++  },
++  "b9f6b7b6-f929-4189-bca9-dd951240c132": {
++    "name": "Deepnet SafeKey/Classic (USB)",
++    "icon_light": "89db93d6c545eac2.png"
++  },
++  "cc45f64e-52a2-451b-831a-4edd8022a202": {
++    "name": "ToothPic Passkey Provider"
++  },
++  "0bb43545-fd2c-4185-87dd-feb0b2916ace": {
++    "name": "Security Key NFC by Yubico - Enterprise Edition",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "73402251-f2a8-4f03-873e-3cb6db604b03": {
++    "name": "uTrust FIDO2 Security Key",
++    "icon_light": "a1f2ca75da08d8bb.png"
++  },
++  "c1f9a0bc-1dd2-404a-b27f-8e29047a43fd": {
++    "name": "YubiKey 5 FIPS Series with NFC",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "70e7c36f-f2f6-9e0d-07a6-bcc243262e6b": {
++    "name": "OneKey FIDO2 Bluetooth Authenticator",
++    "icon_light": "70c31bf1a6c1037a.png"
++  },
++  "4fc84f16-2545-4e53-b8fc-7bf4d7282a10": {
++    "name": "YubiKey 5 CCN Series with NFC (Enterprise Profile)"
++  },
++  "6ab56fad-881f-4a43-acb2-0be065924522": {
++    "name": "YubiKey 5 Series with NFC (Enterprise Profile)"
++  },
++  "504d7149-4e4c-3841-4555-55445a677357": {
++    "name": "WiSECURE AuthTron USB FIDO2 Authenticator",
++    "icon_light": "ebdc57764109cb42.png"
++  },
++  "2c2aeed8-8174-4159-814b-486e92a261d0": {
++    "name": "NEOWAVE WINKEO V2.0",
++    "icon_light": "36fd49bc8326b050.png"
++  },
++  "f2145e86-211e-4931-b874-e22bba7d01cc": {
++    "name": "ID-One Key",
++    "icon_light": "384a778c8de6cc20.png"
++  },
++  "53334693-4b3f-4198-8857-53772de2ab65": {
++    "name": "Precision InnaIT Key FIDO 2 Level 2 certified",
++    "icon_light": "271f6ea90ead8004.png"
++  },
++  "a3975549-b191-fd67-b8fb-017e2917fdb3": {
++    "name": "Excelsecu eSecu FIDO2 NFC Security Key",
++    "icon_light": "91a4191a0d33f6a6.png"
++  },
++  "19083c3d-8383-4b18-bc03-8f1c9ab2fd1b": {
++    "name": "YubiKey 5 Series",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "da1fa263-8b25-42b6-a820-c0036f21ba7f": {
++    "name": "ATKey.Card NFC",
++    "icon_light": "88ec90d8d8770ddd.png"
++  },
++  "6002f033-3c07-ce3e-d0f7-0ffe5ed42543": {
++    "name": "Excelsecu eSecu FIDO2 Fingerprint Key",
++    "icon_light": "91a4191a0d33f6a6.png"
++  },
++  "5fdb81b8-53f0-4967-a881-f5ec26fe4d18": {
++    "name": "VinCSS FIDO2 Authenticator",
++    "icon_light": "4405f4f0029211e2.png"
++  },
++  "78ba3993-d784-4f44-8d6e-cc0a8ad5230e": {
++    "name": "Feitian ePass FIDO-NFC(CTAP2.1, CTAP2.0, U2F)",
++    "icon_light": "560be735932d782e.png"
++  },
++  "57f7de54-c807-4eab-b1c6-1c9be7984e92": {
++    "name": "YubiKey 5 FIPS Series"
++  },
++  "bb405265-40cf-4115-93e5-a332c1968d8c": {
++    "name": "ID-One Card",
++    "icon_light": "384a778c8de6cc20.png"
++  },
++  "2d3bec26-15ee-4f5d-88b2-53622490270b": {
++    "name": "HID Crescendo Key V2",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "489ff376-b48d-6640-bb69-782a860ca795": {
++    "name": "Mettlesemi Vishwaas Eagle Authenticator using FIDO2",
++    "icon_light": "eb4fd11236a9a244.png"
++  },
++  "3b24bf49-1d45-4484-a917-13175df0867b": {
++    "name": "YubiKey 5 Series with Lightning (Enterprise Profile)"
++  },
++  "30b5035e-d297-4ff1-010b-addc96ba6a98": {
++    "name": "OneSpan DIGIPASS FX1a",
++    "icon_light": "9451826a080af898.png"
++  },
++  "cb69481e-8ff7-4039-93ec-0a2729a154a8": {
++    "name": "YubiKey 5 Series",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "0076631b-d4a0-427f-5773-0ec71c9e0279": {
++    "name": "HYPR FIDO2 Authenticator",
++    "icon_light": "0fb7f036c1bf836e.png"
++  },
++  "d716019a-9f4e-4041-9750-17c78f8ae81a": {
++    "name": "eToken Fusion BIO",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "57235694-51a5-4a4d-a81a-f42185df6502": {
++    "name": "SHALO AUTH",
++    "icon_light": "01dfe7938d6afead.png"
++  },
++  "24673149-6c86-42e7-98d9-433fb5b73296": {
++    "name": "YubiKey 5 Series with Lightning"
++  },
++  "357f2718-434f-4124-8a58-7e28c5e4a2fc": {
++    "name": "Deepnet SafeKey/Classic (NFC)",
++    "icon_light": "89db93d6c545eac2.png"
++  },
++  "42df17de-06ba-4177-a2bb-6701be1380d6": {
++    "name": "Feitian BioPass FIDO2 Plus Authenticator",
++    "icon_light": "560be735932d782e.png"
++  },
++  "d7a423ad-3e19-4492-9200-78137dccc136": {
++    "name": "VivoKey Apex FIDO2",
++    "icon_light": "18b765ab0a1b4674.png"
++  },
++  "b3315166-f36c-b05f-fea8-66a3dfdad171": {
++    "name": "Ledger Nano Gen5 FIDO2 Authenticator",
++    "icon_light": "873ee57ec4ce6c59.png"
++  },
++  "ba76a271-6eb6-4171-874d-b6428dbe3437": {
++    "name": "ATKey.ProS",
++    "icon_light": "1d563457b3fe6cea.png"
++  },
++  "97e6a830-c952-4740-95fc-7c78dc97ce47": {
++    "name": "YubiKey Bio Series - Multi-protocol Edition (Enterprise Profile)",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "f573f209-b7fb-b261-671a-d7cf624cc812": {
++    "name": "Excelsecu eSecu FIDO2 PRO+ Security Key",
++    "icon_light": "91a4191a0d33f6a6.png"
++  },
++  "005b20e1-f146-4b87-8f3a-36848ff60ea6": {
++    "name": "SECORA ID V2 by Infineon Pay Edition M",
++    "icon_light": "742efd756b441c50.png"
++  },
++  "6e24d385-004a-16a0-7bfe-efd963845b34": {
++    "name": "Ledger Stax FIDO2 Authenticator",
++    "icon_light": "873ee57ec4ce6c59.png"
++  },
++  "ee882879-721c-4913-9775-3dfcce97072a": {
++    "name": "YubiKey 5 Series",
++    "icon_light": "4bcc5ff0cabf64fe.png"
++  },
++  "8876631b-d4a0-427f-5773-0ec71c9e0279": {
++    "name": "Solo Secp256R1 FIDO2 CTAP2 Authenticator",
++    "icon_light": "a9e10478916ce20a.png"
++  },
++  "fec067a1-f1d0-4c5e-b4c0-cc3237475461": {
++    "name": "KX701 SmartToken FIDO",
++    "icon_light": "c35187645d72870c.png"
++  },
++  "30b5035e-d297-4ff1-b00b-addc96ba6a98": {
++    "name": "OneSpan DIGIPASS FX1 BIO",
++    "icon_light": "9451826a080af898.png"
++  },
++  "b267239b-954f-4041-a01b-ee4f33c145b6": {
++    "name": "authenton1 - CTAP2.1",
++    "icon_light": "d8cb73a0ef3abd34.png"
++  },
++  "b50d5e0a-7f81-4959-9b12-f45407407503": {
++    "name": "IDPrime 3940 FIDO",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "8c97a730-3f7b-41a6-87d6-1e9b62bda6f0": {
++    "name": "FT-JCOS FIDO Fingerprint Card",
++    "icon_light": "560be735932d782e.png"
++  },
++  "99bf4610-ec26-4252-b31f-7380ccd59db5": {
++    "name": "ZTPass SmartAuth",
++    "icon_light": "ebdc57764109cb42.png"
++  },
++  "a1f52be5-dfab-4364-b51c-2bd496b14a56": {
++    "name": "OCTATCO EzFinger2 FIDO2 AUTHENTICATOR",
++    "icon_light": "8e5e4121abc1fe5b.png"
++  },
++  "c3479970-e58a-4f70-836f-853bf42fb063": {
++    "name": "YubiKey 5 Series with Lightning (Enterprise Profile)"
++  },
++  "0f00cc22-4640-41e7-9585-384ec73ffe9b": {
++    "name": "Taglio CTAP2.1 BIO",
++    "icon_light": "429ebb21997a4358.png"
++  },
++  "ff4dac45-ede8-4ec2-aced-cf66103f4335": {
++    "name": "YubiKey 5 Series"
++  },
++  "ba86dc56-635f-4141-aef6-00227b1b9af6": {
++    "name": "TruU Windows Authenticator",
++    "icon_light": "23137c6fd24113ad.png"
++  },
++  "3e078ffd-4c54-4586-8baa-a77da113aec5": {
++    "name": "Hideez Key 3 FIDO2",
++    "icon_light": "69418ef150ee78d0.png"
++  },
++  "fc5ca237-69a0-4f3c-afe4-1ebc66def6df": {
++    "name": "Clife Key 2",
++    "icon_light": "b96a944ec6ec03f2.png"
++  },
++  "ec31b4cc-2acc-4b8e-9c01-bade00ccbe26": {
++    "name": "KeyXentic FIDO2 Secp256R1 FIDO2 CTAP2 Authenticator",
++    "icon_light": "c35187645d72870c.png"
++  },
++  "531126d6-e717-415c-9320-3d9aa6981239": {
++    "name": "Dashlane"
++  },
++  "5d629218-d3a5-11ed-afa1-0242ac120002": {
++    "name": "Swissbit iShield Key Pro",
++    "icon_light": "da0c81c38c7d47c5.png"
++  },
++  "bb878d7b-cf54-4784-b390-357030497043": {
++    "name": "TruU FIDO2 Authenticator",
++    "icon_light": "23137c6fd24113ad.png"
++  },
++  "6f706c75-7366-6964-6f2d-70732d303031": {
++    "name": "OPPO FIDO2 Authenticator",
++    "icon_light": "eca592acd5de9c51.png"
++  },
++  "d41f5a69-b817-4144-a13c-9ebd6d9254d6": {
++    "name": "ATKey.Card CTAP2.0",
++    "icon_light": "2464173b2fe7b0df.png"
++  },
++  "e86addcd-7711-47e5-b42a-c18257b0bf61": {
++    "name": "IDCore 3121 Fido",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "39502df1-646d-4e31-81a1-2ef68b324678": {
++    "name": "USB GoldKey Security Token",
++    "icon_light": "4bd00edb014eabc6.png"
++  },
++  "8108bdcd-8483-46b3-b3ce-359f8190325e": {
++    "name": "SECORA ID V2 by Infineon Enterprise Edition",
++    "icon_light": "742efd756b441c50.png"
++  },
++  "b113a455-cfb6-4c17-8cba-cd952feb7d48": {
++    "name": "eToken FIDO NFC",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "e50e32f3-02ec-4afb-bdac-7205d12629df": {
++    "name": "IDEMIA FIDO Card",
++    "icon_light": "384a778c8de6cc20.png"
++  },
++  "95442b2e-f15e-4def-b270-efb106facb4e": {
++    "name": "eWBM eFA310 FIDO2 Authenticator",
++    "icon_light": "b9819758fa8c74a7.png"
++  },
++  "dda9aa35-aaf1-4d3c-b6db-7902fd7dbbbf": {
++    "name": "IDEMIA SOLVO Fly 80 R3 FIDO Card c",
++    "icon_light": "384a778c8de6cc20.png"
++  },
++  "cdbdaea2-c415-5073-50f7-c04e968640b6": {
++    "name": "Excelsecu eSecu FIDO2 Security Key",
++    "icon_light": "91a4191a0d33f6a6.png"
++  },
++  "3aa78eb1-ddd8-46a8-a821-8f8ec57a7bd5": {
++    "name": "YubiKey 5 CCN Series with NFC"
++  },
++  "bc2fe499-0d8e-4ffe-96f3-94a82840cf8c": {
++    "name": "OCTATCO EzQuant FIDO2 AUTHENTICATOR",
++    "icon_light": "8e5e4121abc1fe5b.png"
++  },
++  "eb3b131e-59dc-536a-d176-cb7306da10f5": {
++    "name": "ellipticSecure MIRkey USB Authenticator",
++    "icon_light": "fbde5354529edb10.png"
++  },
++  "3fd410dc-8ab7-4b86-a1cb-c7174620b2dc": {
++    "name": "IDEMIA SOLVO Fly 80 R1 FIDO Card Draft",
++    "icon_light": "384a778c8de6cc20.png"
++  },
++  "c09b3399-4a3d-306c-7bdc-967fef47241f": {
++    "name": "Giesecke+Devrient StarSign FIDO Card 2.1",
++    "icon_light": "c023adcd82ccedf7.png"
++  },
++  "a6c5f5d8-2ad0-48b6-8257-e502c8970931": {
++    "name": "eToken FIDO NFC Enterprise",
++    "icon_light": "20bc1c6e17da92ec.png"
++  },
++  "e400ef8c-711d-4692-af46-7f2cf7da23ad": {
++    "name": "Swissbit iShield Key 2 Enterprise",
++    "icon_light": "da0c81c38c7d47c5.png"
++  },
++  "87c13177-85d6-40ac-8c61-fe7ab3de9dfb": {
++    "name": "HID Crescendo Key V3",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "1c086528-58d5-f211-823c-356786e36140": {
++    "name": "Atos CardOS FIDO2",
++    "icon_light": "f728c95410d1e532.png"
++  },
++  "77010bd7-212a-4fc9-b236-d2ca5e9d4084": {
++    "name": "Feitian BioPass FIDO2 Authenticator",
++    "icon_light": "560be735932d782e.png"
++  },
++  "3b3faa7b-2c56-4489-bcd3-53b83ee75768": {
++    "name": "SECORA Connect SLS21 D1 FIDO 2.1 v1.0 by Infineon - Enterprise Edition",
++    "icon_light": "f28ff56a67179c73.png"
++  },
++  "d94a29d9-52dd-4247-9c2d-8b818b610389": {
++    "name": "VeriMark Guard Fingerprint Key",
++    "icon_light": "eaa1ede459a85aa0.png"
++  },
++  "7b96457d-e3cd-432b-9ceb-c9fdd7ef7432": {
++    "name": "YubiKey 5 FIPS Series with Lightning"
++  },
++  "7991798a-a7f3-487f-98c0-3faf7a458a04": {
++    "name": "HID Crescendo Key V3",
++    "icon_light": "c1bff469b2c12547.png"
++  },
++  "833b721a-ff5f-4d00-bb2e-bdda3ec01e29": {
++    "name": "Feitian ePass FIDO2 Authenticator",
++    "icon_light": "560be735932d782e.png"
++  },
++  "c89674e3-a765-4b07-888a-7c086fbdf04b": {
++    "name": "StarSign FIDO Card",
++    "icon_light": "c023adcd82ccedf7.png"
++  },
++  "7c30bcef-f035-4e21-9175-5c985b4b239c": {
++    "name": "TeamPass"
++  },
++  "6d6f6e69-6361-4d33-a001-706173736b79": {
++    "name": "Monica Pass"
++  },
++  "a11a5faa-9f32-4b8c-8c5d-2f7d13e8c942": {
++    "name": "AliasVault"
++  },
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager"
++  },
++  "adce0002-35bc-c60a-648b-0b25f1f05503": {
++    "name": "Chrome on Mac"
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    "name": "iCloud Keychain (Managed)"
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    "name": "1Password"
++  },
++  "b84e4048-15dc-4dd0-8640-f4f60813c8af": {
++    "name": "NordPass"
++  },
++  "0ea242b4-43c4-4a1b-8b17-dd6d0b6baec6": {
++    "name": "Keeper"
++  },
++  "891494da-2c90-4d31-a9cd-4eab0aed1309": {
++    "name": "S\u00e9same"
++  },
++  "f3809540-7f14-49c1-a8b3-8f813b225541": {
++    "name": "Enpass"
++  },
++  "b5397666-4885-aa6b-cebf-e52262a439a2": {
++    "name": "Chromium Browser"
++  },
++  "771b48fd-d3d4-4f74-9232-fc157ab0507a": {
++    "name": "Edge on Mac"
++  },
++  "d548826e-79b4-db40-a3d8-11116f7e8349": {
++    "name": "Bitwarden"
++  },
++  "fbfc3007-154e-4ecc-8c0b-6e020557d7bd": {
++    "name": "Apple Passwords"
++  },
++  "66a0ccb3-bd6a-191f-ee06-e375c50b9846": {
++    "name": "Thales Bio iOS SDK"
++  },
++  "8836336a-f590-0921-301d-46427531eee6": {
++    "name": "Thales Bio Android SDK"
++  },
++  "cd69adb5-3c7a-deb9-3177-6800ea6cb72a": {
++    "name": "Thales PIN Android SDK"
++  },
++  "17290f1e-c212-34d0-1423-365d729f09d9": {
++    "name": "Thales PIN iOS SDK"
++  },
++  "50726f74-6f6e-5061-7373-50726f746f6e": {
++    "name": "Proton Pass"
++  },
++  "fdb141b2-5d84-443e-8a35-4698c205a502": {
++    "name": "KeePassXC"
++  },
++  "eaecdef2-1c31-5634-8639-f1cbd9c00a08": {
++    "name": "KeePassDX"
++  },
++  "9addb28c-b46f-4402-808f-019651441ff3": {
++    "name": "KeePassPasskey"
++  },
++  "bfc748bb-3429-4faa-b9f9-7cfa9f3b76d0": {
++    "name": "iPasswords"
++  },
++  "b35a26b2-8f6e-4697-ab1d-d44db4da28c6": {
++    "name": "Zoho Vault"
++  },
++  "b78a0a55-6ef8-d246-a042-ba0f6d55050c": {
++    "name": "LastPass"
++  },
++  "de503f9c-21a4-4f76-b4b7-558eb55c6f89": {
++    "name": "Devolutions"
++  },
++  "22248c4c-7a12-46e2-9a41-44291b373a4d": {
++    "name": "LogMeOnce"
++  },
++  "a10c6dd9-465e-4226-8198-c7c44b91c555": {
++    "name": "Kaspersky Password Manager"
++  },
++  "d350af52-0351-4ba2-acd3-dfeeadc3f764": {
++    "name": "pwSafe"
++  },
++  "d3452668-01fd-4c12-926c-83a4204853aa": {
++    "name": "Microsoft Password Manager"
++  },
++  "6d212b28-a2c1-4638-b375-5932070f62e9": {
++    "name": "initial"
++  },
++  "d49b2120-b865-4191-8cea-be84a52b0485": {
++    "name": "Heimlane Vault"
++  },
++  "93fea28e-9b08-41d0-b663-20c36b008e70": {
++    "name": "Share Credentials"
++  },
++  "d9be9d39-e6a6-4c28-a581-32b044d986e4": {
++    "name": "Sticky Password Manager"
++  },
++  "70617373-7761-6c6c-6669-646f32303236": {
++    "name": "Passwall"
++  },
++  "c9cadfc9-89a9-489e-a25a-c7e86a4d5f15": {
++    "name": "Burp Suite Navigation Recorder"
++  },
++  "fa37f553-f9b6-4adb-ac53-8bbb57ebdf0d": {
++    "name": "Norton Password Manager"
++  },
++  "a4a2d88e-9796-4356-9164-e2a5a8bd019c": {
++    "name": "Avast Password Manager"
++  },
++  "e7db2bd3-f2fe-4d71-ad78-7e7aa166cfd1": {
++    "name": "Avira Password Manager"
++  },
++  "6bb49926-160a-4306-a100-4eb39ba6ac45": {
++    "name": "AVG Password Manager"
++  },
++  "da583154-ce16-4cdf-9fe6-1dba788c0998": {
++    "name": "Hey Be Safe"
++  },
++  "d2717a32-9851-48a8-9961-b264c97a411a": {
++    "name": "Fenko Vault"
++  },
++  "65c97700-f5ef-4d5c-8a42-f30e45ac94b7": {
++    "name": "Royal Vault"
++  },
++  "5ca471bb-a56d-46ad-a496-67e70e9ed9fb": {
++    "name": "Parcel"
++  },
++  "45e3057e-b2f9-48ed-912f-9b901e153b16": {
++    "name": "Uniqkey"
++  },
++  "87f5ec51-f721-4feb-9fe4-be18c4971894": {
++    "name": "PassCard"
++  },
++  "477b05cd-7f78-4fe7-b629-27247f296138": {
++    "name": "WALLIX Vault"
++  },
++  "53e7a7a5-e75f-4d3d-9483-12fc779cdf23": {
++    "name": "Password Depot"
++  },
++  "cb6f6666-38ea-4873-9161-ff456a82d316": {
++    "name": "iPass Secure Auth"
++  },
++  "9c1f2b6e-4d3a-4f7c-8b21-5e6a7d8c9f01": {
++    "name": "Idira"
++  },
++  "9f8a3b2c-1d4e-4f6a-8b0c-2e1d3c4b5a69": {
++    "name": "U2 Secured"
++  },
++  "69840def-9dcf-4632-bf87-6ac2e451b4f5": {
++    "name": "Keyholm"
++  },
++  "35d5ea15-ab24-4416-bdd1-f204c9bce1b6": {
++    "name": "CyberFOX Password Manager"
++  },
++  "f1d0badc-0def-4f1d-8bad-c0def1d0badc": {
++    "name": "fidont"
++  },
++  "c4ed941c-86d3-4532-a6a9-bc42b80d5c38": {
++    "name": "Authn8"
++  },
++  "441f5bad-a8ec-4572-8094-ee73a1c7cec7": {
++    "name": "Fobb Security"
++  },
++  "16a5a15d-7244-4563-856d-a5167d8b9783": {
++    "name": "Pleasant Password Server"
++  },
++  "7c596f1a-3e42-4b8d-9a0f-5d2ce1b84493": {
++    "name": "Cyclop Passkey"
++  }
++}
+diff --git a/src/pages/account.astro b/src/pages/account.astro
+new file mode 100644
+index 0000000..c911f57
+--- /dev/null
++++ b/src/pages/account.astro
+@@ -0,0 +1,12 @@
++---
++import Layout from '../layouts/Layout.astro';
++import AccountSettings from '../components/account/AccountSettings';
++import { currentUser } from '../lib/server/auth';
++
++Astro.response.headers.set('Cache-Control', 'no-store');
++const user = await currentUser(Astro);
++if (!user) return Astro.redirect(`${import.meta.env.BASE_URL}signin`);
++---
++<Layout title="Account settings | The DevTools Times">
++  <AccountSettings client:load />
++</Layout>
+diff --git a/src/pages/api/auth/[...action].ts b/src/pages/api/auth/[...action].ts
+new file mode 100644
+index 0000000..638a4ba
+--- /dev/null
++++ b/src/pages/api/auth/[...action].ts
+@@ -0,0 +1,177 @@
++import type { APIRoute, APIContext } from 'astro';
++import {
++  generateRegistrationOptions, verifyRegistrationResponse,
++  generateAuthenticationOptions, verifyAuthenticationResponse,
++  type RegistrationResponseJSON, type AuthenticationResponseJSON,
++} from '@simplewebauthn/server';
++import { authTransaction } from '../../../lib/server/auth-store';
++import { AuthError, json, relyingParty, sameOrigin, requireUser, requireRecent,
++  signIn, rememberUser, passwordRequest, saveChallenge, takeChallenge } from '../../../lib/server/auth';
++import providers from '../../../lib/server/passkey-providers.json';
++
++const providerRegistry = providers as Record<string, { name: string; icon_light?: string }>;
++const nameValue = (value: unknown, label: string) => {
++  if (typeof value !== 'string' || !value.trim() || value.trim().length > 80) {
++    throw new AuthError(`${label} must contain 1–80 characters.`);
++  }
++  return value.trim();
++};
++
++async function account(context: APIContext) {
++  const user = await requireUser(context);
++  const passkeys = await authTransaction(store => store.passkeys.filter(p => p.userId === user.id).map(p => {
++    // Provider metadata is a display hint only; it is never an authorization input.
++    const provider = p.aaguid === '00000000-0000-0000-0000-000000000000' ? undefined : providerRegistry[p.aaguid];
++    return { id: p.id, name: p.name, provider: provider?.name || 'Unknown passkey provider',
++      providerIcon: provider?.icon_light, registeredAt: p.registeredAt, lastUsedAt: p.lastUsedAt, backedUp: p.backedUp };
++  }));
++  const verifiedAt = await context.session?.get('verifiedAt');
++  return { user, passkeys, rpId: relyingParty(context.request).rpId,
++    verifiedUntil: typeof verifiedAt === 'number' ? verifiedAt + 5 * 60_000 : 0 };
++}
++
++const handle: APIRoute = async context => {
++  try {
++    const { request, params, session } = context;
++    const action = params.action || '';
++    if (request.method === 'GET') {
++      if (action === 'account') return json(await account(context));
++      throw new AuthError('Endpoint not found.', 404);
++    }
++    sameOrigin(request);
++    const body = await request.json();
++    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new AuthError('Invalid request.');
++    const { origin, rpId } = relyingParty(request);
++
++    if (request.method === 'POST' && ['login', 'signup', 'password/reauthenticate'].includes(action)) {
++      const reauth = action === 'password/reauthenticate';
++      const user = reauth ? await requireUser(context) : undefined;
++      const username = user?.username || nameValue(body.username, 'Username');
++      if (typeof body.password !== 'string' || !body.password || body.password.length > 1024) throw new AuthError('Enter your password.');
++      await passwordRequest(action === 'signup' ? 'register' : 'login', username, body.password);
++      if (reauth) {
++        session!.set('verifiedAt', Date.now());
++        return json({ verified: true });
++      }
++      const accountUser = await rememberUser(username);
++      await signIn(context, accountUser);
++      return json({ user: accountUser });
++    }
++    if (request.method === 'POST' && action === 'logout') {
++      session?.destroy();
++      return json({ success: true });
++    }
++
++    if (request.method === 'POST' && action === 'passkeys/register/options') {
++      const user = await requireUser(context);
++      await requireRecent(context);
++      const passkeys = await authTransaction(store => store.passkeys.filter(p => p.userId === user.id));
++      const options = await generateRegistrationOptions({
++        rpID: rpId, rpName: 'The DevTools Times', userID: Buffer.from(user.id, 'base64url'),
++        userName: user.username, userDisplayName: user.displayName, attestationType: 'none',
++        excludeCredentials: passkeys.map(p => ({ id: p.id, transports: p.transports })),
++        authenticatorSelection: { residentKey: 'required', requireResidentKey: true, userVerification: 'preferred',
++          ...(body.promotion === true ? { authenticatorAttachment: 'platform' as const } : {}) },
++      });
++      await saveChallenge(context, { challenge: options.challenge, purpose: 'register', userId: user.id,
++        rpId, origin, expiresAt: Date.now() + 5 * 60_000, requireUserVerification: false });
++      return json(options);
++    }
++    if (request.method === 'POST' && action === 'passkeys/register/verify') {
++      const user = await requireUser(context);
++      await requireRecent(context);
++      const challenge = await takeChallenge(context, 'register', body.challenge);
++      if (challenge.userId !== user.id) throw new AuthError('This registration belongs to another account.', 403);
++      let verification;
++      try {
++        verification = await verifyRegistrationResponse({ response: body.credential as RegistrationResponseJSON,
++          expectedChallenge: challenge.challenge, expectedOrigin: challenge.origin, expectedRPID: challenge.rpId,
++          requireUserVerification: challenge.requireUserVerification, requireUserPresence: true });
++      } catch { throw new AuthError('The passkey could not be verified. Please try again.'); }
++      if (!verification.verified) throw new AuthError('The passkey could not be verified.');
++      const info = verification.registrationInfo;
++      await authTransaction(store => {
++        if (store.passkeys.some(p => p.id === info.credential.id)) throw new AuthError('This passkey is already registered.', 409);
++        store.passkeys.push({ id: info.credential.id, userId: user.id,
++          publicKey: Buffer.from(info.credential.publicKey).toString('base64url'), counter: info.credential.counter,
++          transports: info.credential.transports, aaguid: info.aaguid,
++          name: body.name ? nameValue(body.name, 'Passkey name') : (providerRegistry[info.aaguid]?.name || 'My passkey'),
++          deviceType: info.credentialDeviceType, backedUp: info.credentialBackedUp, registeredAt: Date.now() });
++      });
++      return json(await account(context));
++    }
++
++    if (request.method === 'POST' && ['passkeys/authenticate/options', 'passkeys/reauthenticate/options'].includes(action)) {
++      const reauth = action.includes('/reauthenticate/');
++      const user = reauth ? await requireUser(context) : undefined;
++      const passkeys = user ? await authTransaction(store => store.passkeys.filter(p => p.userId === user.id)) : [];
++      if (reauth && !passkeys.length) throw new AuthError('No passkeys are registered. Verify with your password instead.');
++      const options = await generateAuthenticationOptions({ rpID: rpId,
++        allowCredentials: reauth ? passkeys.map(p => ({ id: p.id, transports: p.transports })) : [],
++        userVerification: reauth ? 'required' : 'preferred' });
++      await saveChallenge(context, { challenge: options.challenge, purpose: reauth ? 'reauthenticate' : 'authenticate',
++        userId: user?.id, rpId, origin, expiresAt: Date.now() + 5 * 60_000, requireUserVerification: reauth });
++      return json(options);
++    }
++    if (request.method === 'POST' && ['passkeys/authenticate/verify', 'passkeys/reauthenticate/verify'].includes(action)) {
++      const reauth = action.includes('/reauthenticate/');
++      const active = reauth ? await requireUser(context) : undefined;
++      const challenge = await takeChallenge(context, reauth ? 'reauthenticate' : 'authenticate', body.challenge);
++      if (reauth && challenge.userId !== active!.id) throw new AuthError('Please verify the signed-in account.', 403);
++      const credential = body.credential as AuthenticationResponseJSON;
++      const result = await authTransaction(async store => {
++        const stored = store.passkeys.find(p => p.id === credential?.id);
++        if (!stored) throw new AuthError('This passkey is no longer registered. Sign in with your password.', 404, 'UNKNOWN_CREDENTIAL');
++        if (reauth && stored.userId !== active!.id) throw new AuthError('Use a passkey for the signed-in account.', 403);
++        const owner = store.users.find(u => u.id === stored.userId);
++        if (!owner) throw new AuthError('Account not found.', 404);
++        if (credential.response.userHandle && credential.response.userHandle !== owner.id) throw new AuthError('The passkey account does not match.', 403);
++        let verification;
++        try {
++          verification = await verifyAuthenticationResponse({ response: credential,
++            expectedChallenge: challenge.challenge, expectedOrigin: challenge.origin, expectedRPID: challenge.rpId,
++            requireUserVerification: challenge.requireUserVerification,
++            credential: { id: stored.id, publicKey: Buffer.from(stored.publicKey, 'base64url'),
++              counter: stored.counter, transports: stored.transports } });
++        } catch { throw new AuthError('The passkey could not be verified. Please try again.', 400); }
++        if (!verification.verified) throw new AuthError('The passkey could not be verified.');
++        stored.counter = verification.authenticationInfo.newCounter;
++        stored.backedUp = verification.authenticationInfo.credentialBackedUp;
++        stored.lastUsedAt = Date.now();
++        return { user: owner, userVerified: verification.authenticationInfo.userVerified };
++      });
++      if (reauth) session!.set('verifiedAt', Date.now());
++      else await signIn(context, result.user, result.userVerified);
++      return json({ user: result.user, verified: true });
++    }
++
++    if (action === 'profile' && request.method === 'PATCH') {
++      const user = await requireUser(context);
++      await requireRecent(context);
++      const displayName = nameValue(body.displayName, 'Display name');
++      await authTransaction(store => { store.users.find(u => u.id === user.id)!.displayName = displayName; });
++      return json(await account(context));
++    }
++    if (action === 'passkeys' && ['PATCH', 'DELETE'].includes(request.method)) {
++      const user = await requireUser(context);
++      await requireRecent(context);
++      await authTransaction(store => {
++        const index = store.passkeys.findIndex(p => p.id === body.id && p.userId === user.id);
++        if (index < 0) throw new AuthError('Passkey not found.', 404);
++        if (request.method === 'DELETE') store.passkeys.splice(index, 1);
++        else store.passkeys[index].name = nameValue(body.name, 'Passkey name');
++      });
++      return json(await account(context));
++    }
++    throw new AuthError('Endpoint not found.', 404);
++  } catch (error) {
++    if (error instanceof AuthError) return json({ error: error.message, code: error.code }, error.status);
++    if (error instanceof SyntaxError) return json({ error: 'Invalid request.' }, 400);
++    console.error('Authentication request failed:', error);
++    return json({ error: 'Something went wrong. Please try again.' }, 500);
++  }
++};
++export const GET = handle;
++export const POST = handle;
++export const PATCH = handle;
++export const DELETE = handle;
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..d3a345f 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -1,6 +1,9 @@
+ ---
++import { currentUser } from '../lib/server/auth';
+ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
++Astro.response.headers.set('Cache-Control', 'no-store');
++if (await currentUser(Astro)) return Astro.redirect(`${import.meta.env.BASE_URL}account`);
+ ---
+ 
+ <Layout title="Sign In | The DevTools Times">
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..4deb405 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -1,6 +1,9 @@
+ ---
++import { currentUser } from '../lib/server/auth';
+ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
++Astro.response.headers.set('Cache-Control', 'no-store');
++if (await currentUser(Astro)) return Astro.redirect(`${import.meta.env.BASE_URL}account`);
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..cc3a926 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,134 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Account and authentication screens share the newspaper's quiet, editorial palette. */
++.auth-shell, .account-layout { color: #202521; font-family: Arial, Helvetica, sans-serif; }
++.auth-shell { max-width: 448px; margin: 12px auto 32px; text-align: center; }
++.auth-kicker { font-size: 10px; line-height: 1.5; letter-spacing: .16em; font-weight: 700; color: #6a716b; }
++.auth-shell h1 { margin: 12px -16px 10px; font: 500 clamp(30px, 5vw, 38px)/1.16 Georgia, 'Times New Roman', serif; letter-spacing: -.035em; text-wrap: balance; }
++.auth-description { font-size: 14px; line-height: 1.6; color: #626863; margin-bottom: 28px; }
++.auth-card { padding: 30px; text-align: left; border: 1px solid #dedfd9; border-top: 3px solid #26392e; background: white; box-shadow: 0 4px 20px #1f302509; }
++.auth-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 45px; padding: 11px 16px; border: 1px solid transparent; border-radius: 4px; font-size: 13px; font-weight: 600; line-height: 1.4; cursor: pointer; }
++.auth-primary { color: #fff; background: #243c30; border-color: #243c30; }
++.auth-primary:hover:enabled { background: #172c21; }
++.auth-secondary { color: #2b342e; background: #fff; border-color: #cdd1ca; }
++.auth-secondary:hover:enabled { background: #f4f5f1; border-color: #929e93; }
++.auth-danger { color: #fff; background: #a42f29; }
++.auth-danger:hover:enabled { background: #84251f; }
++.auth-button:disabled { opacity: .5; cursor: not-allowed; }
++.auth-shell :is(a, button, input):focus-visible, .account-layout :is(a, button, input):focus-visible { outline: 2px solid #7f642c; outline-offset: 3px; }
++.auth-help { font-size: 11px; line-height: 1.65; color: #646e5c; margin: 10px 0 0; }
++.auth-card > .auth-help { text-align: center; padding: 0 7px; }
++.auth-divider { display: flex; align-items: center; gap: 12px; margin: 25px 0; font-size: 11px; color: #646e5c; }
++.auth-divider::before, .auth-divider::after { content: ''; height: 1px; background: #e4e6df; flex: 1; }
++.auth-form { display: grid; gap: 19px; }
++.auth-form label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
++.auth-form input:not([hidden]) { display: block; width: 100%; min-width: 0; padding: 11px 12px; font-size: 14px; line-height: 1.5; border: 1px solid #cdd1ca; border-radius: 4px; background: #fff; color: #202521; }
++.auth-form input[readonly] { background: #f6f7f3; color: #727870; }
++.auth-switch { margin-top: 26px; border-top: 1px solid #e6e7e1; padding-top: 22px; text-align: center; color: #646e5c; font-size: 12px; line-height: 1.7; }
++.auth-switch a { color: #253f2e; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
++.auth-footer-note { margin-top: 24px; color: #646e5c; font: italic 12px Georgia, serif; }
++.auth-notice { padding: 12px 14px; border: 1px solid; border-radius: 4px; margin-bottom: 20px; font-size: 12px; line-height: 1.65; text-align: left; }
++.auth-error { background: #fff5f2; border-color: #efcec5; color: #963e29; }
++.auth-success { background: #f0f6ef; border-color: #cadcc7; color: #315c33; }
++.auth-promotion { text-align: center; }
++.auth-key-badge { width: 54px; height: 54px; display: grid; place-items: center; background: #edf2e9; color: #476147; border: 1px solid #e0e7da; border-radius: 50%; margin: 0 auto 17px; }
++.auth-promotion h2 { font: 500 27px/1.3 Georgia, serif; margin-bottom: 10px; }
++.auth-promotion > p { font-size: 13px; line-height: 1.8; color: #6d736c; margin-bottom: 24px; }
++.auth-skip { display: block; width: 100%; padding: 12px; text-align: center; font-size: 12px; color: #4b5a4b; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
++.auth-signup-note { display: flex; align-items: center; gap: 13px; padding: 17px; margin-top: 23px; background: #f6f7f2; color: #53614f; border-radius: 3px; }
++.auth-signup-note svg { flex-shrink: 0; }
++.auth-signup-note p { font-size: 11px; font-weight: 600; line-height: 1.7; }
++.auth-signup-note span { font-weight: 400; color: #646e5c; }
++.account-layout { padding: 45px 48px 55px; max-width: 1050px; margin: auto; }
++.account-heading { border-bottom: 1px solid #d9ded5; padding-bottom: 27px; margin-bottom: 32px; }
++.account-heading h1 { font: 500 38px/1.25 Georgia, serif; letter-spacing: -.025em; margin: 9px 0; }
++.account-heading > p { font-size: 13px; line-height: 1.7; color: #646e5c; }
++.account-columns { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 38px; }
++.account-sidebar { display: flex; align-items: flex-start; flex-direction: column; font-size: 13px; }
++.account-avatar { width: 46px; height: 46px; display: grid; place-items: center; background: #eaeedf; color: #4b6141; font: 26px Georgia, serif; border-radius: 50%; margin-bottom: 13px; }
++.account-sidebar > strong { font-size: 14px; overflow-wrap: anywhere; }
++.account-sidebar > span { font-size: 11px; color: #646e5c; margin-top: 5px; }
++.account-sidebar nav { margin-top: 27px; width: 100%; border-bottom: 1px solid #e5e7e0; padding-bottom: 20px; }
++.account-sidebar nav a { display: flex; align-items: center; gap: 8px; padding: 12px 10px; margin-bottom: 4px; font-size: 12px; color: #68735f; }
++.account-sidebar nav a[aria-current] { background: #f0f3e9; color: #34482f; border-left: 2px solid #4f683d; border-radius: 0 3px 3px 0; font-weight: 600; }
++.account-sidebar nav svg { width: 17px; height: 17px; }
++.account-sidebar nav a > span { margin-left: auto; }
++.account-signout { display: flex; justify-content: space-between; width: 100%; padding: 18px 10px; font-size: 12px; color: #606b58; cursor: pointer; }
++.account-signout:hover, .account-back:hover { text-decoration: underline; }
++.account-back { font-size: 11px; color: #646e5c; margin: 30px 0 0 10px; }
++.account-panel { border: 1px solid #dde1d6; padding: 26px; border-radius: 5px; margin-bottom: 20px; scroll-margin-top: 20px; }
++.account-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
++.account-panel h2 { font: 500 24px/1.4 Georgia, serif; letter-spacing: -.02em; }
++.account-section-heading .auth-kicker { font-size: 9px; margin-bottom: 4px; color: #646e5c; }
++.account-tag { background: #f1f3e9; color: #667b4a; border: 1px solid #e3e8d5; font-size: 9px; padding: 5px 9px; border-radius: 20px; font-weight: 600; letter-spacing: .02em; }
++.account-intro { font-size: 12px; color: #737d69; line-height: 1.8; margin-bottom: 23px; max-width: 440px; }
++.passkey-list { margin-bottom: 21px; }
++.passkey-row { display: flex; align-items: flex-start; gap: 13px; padding: 20px 0; border-top: 1px solid #e8ebe3; }
++.passkey-row:last-child { border-bottom: 1px solid #e8ebe3; }
++.passkey-icon { flex: 0 0 40px; height: 40px; display: grid; place-items: center; border: 1px solid #e1e5db; background: #f8f9f5; border-radius: 7px; color: #748368; }
++.passkey-icon img { object-fit: contain; }
++.passkey-info { min-width: 0; flex: 1; }
++.passkey-info h3 { font-size: 12px; font-weight: 600; overflow-wrap: anywhere; margin-bottom: 5px; }
++.passkey-info p { font-size: 10px; line-height: 1.8; color: #646e5c; }
++.passkey-actions { display: flex; gap: 12px; padding-top: 2px; }
++.passkey-actions button { font-size: 10px; color: #617451; cursor: pointer; min-height: 24px; }
++.passkey-actions button:hover { text-decoration: underline; }
++.passkey-actions .account-danger-link { color: #a06553; }
++.passkey-actions button:disabled { opacity: .5; cursor: not-allowed; }
++.passkey-empty { border: 1px dashed #dce2d2; background: #fafbf7; padding: 28px 15px; text-align: center; margin: 23px 0; border-radius: 4px; }
++.passkey-empty .auth-key-badge { width: 44px; height: 44px; margin-bottom: 12px; }
++.passkey-empty h3 { font-size: 13px; font-weight: 600; margin-bottom: 7px; }
++.passkey-empty p { font-size: 11px; color: #646e5c; line-height: 1.8; }
++.account-add, .account-fit { width: auto; min-width: 135px; font-size: 11px; min-height: 39px; padding: 9px 14px; }
++.account-security-note { display: flex; gap: 11px; align-items: flex-start; background: #f6f7f1; padding: 14px; border-radius: 3px; margin-top: 23px; }
++.account-security-note svg { flex-shrink: 0; color: #8a9876; }
++.account-security-note p { font-size: 10px; line-height: 1.8; color: #646e5c; }
++.account-security-note strong { font-weight: 600; color: #5c6e4c; }
++.account-panel .auth-form { gap: 17px; }
++.account-panel .auth-form input:not([hidden]) { font-size: 12px; padding: 9px 12px; }
++.account-panel .auth-form label { font-size: 11px; }
++.account-panel .auth-help { font-size: 10px; }
++.account-verification { display: flex; align-items: center; gap: 24px; justify-content: space-between; }
++.account-verification h2 { font-size: 19px; }
++.account-verification p { font-size: 11px; color: #646e5c; line-height: 1.8; margin-top: 7px; }
++.account-verification button { flex-shrink: 0; }
++.account-bottom-note { color: #646e5c; font-size: 10px; line-height: 1.7; text-align: center; padding: 3px 15px; }
++.account-dialog { margin: auto; width: min(430px, calc(100% - 32px)); max-height: calc(100% - 48px); overflow-y: auto; padding: 28px; border: 1px solid #d5dcce; border-radius: 7px; background: white; color: #253326; box-shadow: 0 20px 80px #15201633; }
++.account-dialog h2 { font: 500 27px/1.3 Georgia, serif; margin-bottom: 15px; }
++.account-dialog p { font-size: 12px; line-height: 1.8; color: #646e5c; }
++.account-dialog .auth-divider { margin: 20px 0; }
++.account-dialog:modal { overscroll-behavior: contain; }
++.account-dialog::backdrop { background: #18221bb3; overflow: hidden; overscroll-behavior: contain; }
++.dialog-actions { display: flex; gap: 10px; margin-top: 6px; }
++@media (max-width: 800px) {
++  .account-layout { padding: 30px 24px 40px; }
++  .account-columns { grid-template-columns: 155px minmax(0, 1fr); gap: 24px; }
++  .account-panel { padding: 20px; }
++  .passkey-row { flex-wrap: wrap; }
++  .passkey-actions { width: 100%; padding-left: 53px; }
++  .account-verification { align-items: flex-start; flex-direction: column; gap: 16px; }
++}
++@media (max-width: 600px) {
++  .auth-card { padding: 24px; }
++  .auth-shell { margin-top: 0; }
++  .account-layout { padding: 27px 18px 35px; }
++  .account-heading h1 { font-size: 32px; }
++  .account-heading { margin-bottom: 22px; }
++  .account-columns { grid-template-columns: minmax(0, 1fr); gap: 22px; }
++  .account-sidebar { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
++  .account-avatar { grid-row: 1 / 3; width: 36px; height: 36px; font-size: 22px; margin: 0; }
++  .account-sidebar > strong { font-size: 12px; }
++  .account-sidebar > span { grid-column: 2; grid-row: 2; margin-top: 4px; font-size: 10px; }
++  .account-sidebar nav, .account-back { display: none; }
++  .account-signout { grid-column: 3; grid-row: 1 / 3; gap: 12px; padding: 10px 0 10px 10px; }
++  .account-panel { padding: 20px 17px; }
++  .account-section-heading { align-items: flex-start; }
++  .account-tag { margin-top: 4px; }
++  .account-add { width: 100%; }
++  .passkey-date-separator { display: block; font-size: 0; }
++  .passkey-actions { gap: 22px; }
++  .account-dialog { padding: 24px; }
++}
++@media (pointer: coarse) { .passkey-actions button, .auth-skip { min-height: 44px; } }

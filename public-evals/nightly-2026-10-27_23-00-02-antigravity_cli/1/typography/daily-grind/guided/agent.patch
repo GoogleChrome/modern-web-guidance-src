@@ -1,0 +1,247 @@
+diff --git a/index.html b/index.html
+index 66c9173..402e324 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="text-scale" content="scale">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -22,9 +23,33 @@
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
++      font-size: 1rem;
++      line-height: 1.5;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-wrap: break-word;
++    }
++
++    h1,
++    h2,
++    h3,
++    h4,
++    h5,
++    h6 {
++      line-height: 1.2;
++      text-wrap: balance;
++    }
++
++    p,
++    blockquote,
++    li {
++      line-height: 1.6;
++      text-wrap: pretty;
++    }
++
++    p {
++      max-width: 65ch;
++      margin-inline: auto;
+     }
+ 
+     /* Navigation */
+@@ -33,6 +58,8 @@
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -41,24 +68,30 @@
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+       font-weight: bold;
+-      letter-spacing: 1px;
++      letter-spacing: 0.0625em;
++      line-height: 1.2;
++      text-wrap: balance;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 1.25rem;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      line-height: 1.4;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
++      font-size: clamp(0.9rem, 0.85rem + 0.25vw, 1.05rem);
++      line-height: 1.4;
+       transition: color 0.3s;
+     }
+ 
+@@ -68,13 +101,13 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      padding: 0.35rem 0.75rem;
++      border-radius: 0.25rem;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,49 +118,88 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 1.25rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 1.25rem + 3vw, 3.5rem);
++      line-height: 1.15;
+       margin-bottom: 1rem;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
++      line-height: 1.6;
++      max-width: 60ch;
++      text-wrap: pretty;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-width: 68.75rem;
++      margin: 2.5rem auto;
++      padding: 0 1.25rem;
++    }
++
++    .container h2 {
++      font-size: clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem);
++      line-height: 1.2;
++      text-align: center;
++      text-wrap: balance;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.625rem), 1fr));
++      gap: 1.25rem;
++      margin-top: 1.25rem;
+     }
+ 
+     .card {
++      container-type: inline-size;
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
++      padding: 1.5rem;
++      border-radius: 0.5rem;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: clamp(1.125rem, 0.95rem + 0.75vw, 1.5rem);
++      line-height: 1.25;
++      margin-bottom: 0.625rem;
+       color: var(--primary);
++      text-wrap: balance;
++    }
++
++    .card p {
++      font-size: clamp(0.95rem, 0.9rem + 0.25vw, 1.05rem);
++      line-height: 1.6;
++      max-width: 45ch;
++      text-wrap: pretty;
++    }
++
++    @supports (font-size: 1cqi) {
++      .card h3 {
++        font-size: clamp(1.125rem, 0.85rem + 2.5cqi, 1.5rem);
++      }
++
++      .card p {
++        font-size: clamp(0.95rem, 0.85rem + 1cqi, 1.05rem);
++      }
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      font-size: clamp(0.95rem, 0.9rem + 0.25vw, 1.05rem);
++      line-height: 1.4;
++      padding: 0.625rem 1.25rem;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
++      border-radius: 0.3125rem;
++      margin-top: 1rem;
+       transition: background 0.3s;
+     }
+ 
+@@ -138,19 +210,30 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 2.5rem 1.25rem;
++      margin-top: 2.5rem;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      font-size: clamp(0.875rem, 0.8rem + 0.25vw, 1rem);
++      line-height: 1.5;
++      margin-bottom: 1.25rem;
++      text-wrap: balance;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin: 0 0.625rem;
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: clamp(0.875rem, 0.8rem + 0.25vw, 1rem);
++      line-height: 1.5;
++    }
++
++    footer p {
++      font-size: clamp(0.875rem, 0.8rem + 0.25vw, 1rem);
++      line-height: 1.6;
++      max-width: 65ch;
++      text-wrap: pretty;
+     }
+   </style>
+ </head>

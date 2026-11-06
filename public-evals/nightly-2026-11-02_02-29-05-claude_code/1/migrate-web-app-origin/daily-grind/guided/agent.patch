@@ -1,0 +1,183 @@
+diff --git a/icons/icon-maskable.svg b/icons/icon-maskable.svg
+new file mode 100644
+index 0000000..e9f4f45
+--- /dev/null
++++ b/icons/icon-maskable.svg
+@@ -0,0 +1,8 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" fill="#4e342e"/>
++  <g transform="translate(76.8 76.8) scale(0.7)">
++    <path d="M136 200h208v96a88 88 0 0 1-88 88h-32a88 88 0 0 1-88-88z" fill="#d7ccc8"/>
++    <path d="M344 224h24a40 40 0 0 1 0 80h-28" fill="none" stroke="#d7ccc8" stroke-width="24"/>
++    <path d="M200 112c-16 24 16 40 0 64M256 112c-16 24 16 40 0 64M312 112c-16 24 16 40 0 64" fill="none" stroke="#ffab40" stroke-width="16" stroke-linecap="round"/>
++  </g>
++</svg>
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..0993b69
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1,6 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <path d="M136 200h208v96a88 88 0 0 1-88 88h-32a88 88 0 0 1-88-88z" fill="#d7ccc8"/>
++  <path d="M344 224h24a40 40 0 0 1 0 80h-28" fill="none" stroke="#d7ccc8" stroke-width="24"/>
++  <path d="M200 112c-16 24 16 40 0 64M256 112c-16 24 16 40 0 64M312 112c-16 24 16 40 0 64" fill="none" stroke="#ffab40" stroke-width="16" stroke-linecap="round"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..095c661 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#4e342e">
++  <link rel="manifest" href="/manifest.webmanifest">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/legacy-origin/.well-known/web-app-origin-association b/legacy-origin/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..8bfa5bd
+--- /dev/null
++++ b/legacy-origin/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.example.com": {
++    "allow_migration": true
++  }
++}
+diff --git a/legacy-origin/README.md b/legacy-origin/README.md
+new file mode 100644
+index 0000000..e385f43
+--- /dev/null
++++ b/legacy-origin/README.md
+@@ -0,0 +1,27 @@
++# Old origin files (`https://dailygrind.example.com`)
++
++The Daily Grind installed web app is moving from `https://dailygrind.example.com`
++to `https://app.dailygrind.example.com`. The repo root is the new app; the files
++in this directory must be deployed to the **old** origin.
++
++| File | Served at | Purpose |
++| --- | --- | --- |
++| `.well-known/web-app-origin-association` | `https://dailygrind.example.com/.well-known/web-app-origin-association` | Authorizes the new origin to take over the installation. Serve as `application/json`. |
++| `manifest.webmanifest` | `https://dailygrind.example.com/manifest.webmanifest` | Replaces the old manifest; `migrate_to` prompts existing installs to migrate without visiting the new site first. Keep `id` identical to the old manifest's (`/`). Copy `/icons/` from the repo root alongside it. |
++| `move-notice.js` | `https://dailygrind.example.com/move-notice.js` | Banner for browsers that can't migrate automatically. |
++
++How it works (Chrome/Edge 149+):
++
++1. The new manifest (`/manifest.webmanifest` at the repo root) lists the old app's
++   id in `migrate_from`.
++2. The old origin confirms it with the `.well-known` file above.
++3. The browser offers to update the installed app. Its shortcuts, taskbar/dock pins,
++   and home screen icon now open the new origin, and the old installation is removed.
++
++To make the migration mandatory, add `"behavior": "force"` to the `migrate_from`
++entry in the new manifest. Users then have to update or remove the app.
++
++The two origins must stay same-site (same registrable domain, `example.com` here).
++Only the installation moves. Cookies, `localStorage`, IndexedDB, and permissions such
++as notifications stay with the old origin, so migrate those separately (for example
++server-side, keyed to the signed-in account) and ask for permissions again on the new origin.
+diff --git a/legacy-origin/manifest.webmanifest b/legacy-origin/manifest.webmanifest
+new file mode 100644
+index 0000000..75accea
+--- /dev/null
++++ b/legacy-origin/manifest.webmanifest
+@@ -0,0 +1,23 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "/icons/icon.svg",
++      "sizes": "any",
++      "type": "image/svg+xml"
++    }
++  ],
++  "migrate_to": [
++    {
++      "id": "https://app.dailygrind.example.com/",
++      "install_url": "https://app.dailygrind.example.com/"
++    }
++  ]
++}
+diff --git a/legacy-origin/move-notice.js b/legacy-origin/move-notice.js
+new file mode 100644
+index 0000000..8fc4c8f
+--- /dev/null
++++ b/legacy-origin/move-notice.js
+@@ -0,0 +1,28 @@
++// Fallback for browsers without Web App Origin Migration (Firefox, Safari,
++// older Chromium): tell users of the old installed app where it moved.
++// Include on every page of the old origin with <script src="/move-notice.js" defer></script>.
++(() => {
++  const NEW_ORIGIN = 'https://app.dailygrind.example.com';
++  const target = new URL(location.pathname + location.search + location.hash, NEW_ORIGIN);
++
++  const banner = document.createElement('aside');
++  banner.setAttribute('role', 'status');
++  banner.style.cssText =
++    'position:sticky;top:0;z-index:1001;padding:12px 5%;background:#ffab40;color:#3e2723;' +
++    'font:0.95rem/1.4 system-ui,sans-serif;text-align:center';
++
++  const installed = matchMedia('(display-mode: standalone)').matches;
++  banner.append(
++    installed
++      ? 'The Daily Grind app has moved. Install it from our new address, then remove this copy. '
++      : 'The Daily Grind has moved to a new address. '
++  );
++
++  const link = document.createElement('a');
++  link.href = target.href;
++  link.textContent = installed ? 'Open the new app' : 'Go to the new site';
++  link.style.cssText = 'color:inherit;font-weight:bold';
++  banner.append(link);
++
++  document.body.prepend(banner);
++})();
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..25e2593
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,30 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "/icons/icon.svg",
++      "sizes": "any",
++      "type": "image/svg+xml",
++      "purpose": "any"
++    },
++    {
++      "src": "/icons/icon-maskable.svg",
++      "sizes": "any",
++      "type": "image/svg+xml",
++      "purpose": "maskable"
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://dailygrind.example.com/"
++    }
++  ]
++}

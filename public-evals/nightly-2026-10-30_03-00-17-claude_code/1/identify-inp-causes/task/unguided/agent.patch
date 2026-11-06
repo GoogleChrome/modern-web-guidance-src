@@ -1,0 +1,15 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,11 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <!-- INP attribution: logs slow interactions and their causes to the console.
++       Add data-report-url="/your-endpoint" to also beacon reports to a server. -->
++  <script src="/js/inp-attribution.js" defer></script>
+ </head>
+ 
+ <body>
+ 

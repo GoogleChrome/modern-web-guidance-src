@@ -1,0 +1,148 @@
+diff --git a/src/main.js b/src/main.js
+new file mode 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -0,0 +1,143 @@
++import * as THREE from 'three';
++import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
++
++const stage = document.querySelector('#scene');
++const form = document.querySelector('#form-template').content.firstElementChild.cloneNode(true);
++const quantity = form.querySelector('#quantity');
++const price = form.querySelector('#price');
++let bag = null;
++const updatePrice = () => {
++  const count = Math.max(1, Math.min(9, Number(quantity.value) || 1));
++  quantity.value = count;
++  price.textContent = `$${count * 16}`;
++};
++form.querySelector('#decrease').addEventListener('click', () => { quantity.value = Number(quantity.value) - 1; updatePrice(); });
++form.querySelector('#increase').addEventListener('click', () => { quantity.value = Number(quantity.value) + 1; updatePrice(); });
++quantity.addEventListener('change', updatePrice);
++const dialog = document.querySelector('#bag-dialog');
++const renderBag = () => {
++  const details = document.querySelector('#bag-details');
++  details.replaceChildren();
++  if (!bag) { details.textContent = 'Your bag is waiting for a fresh start.'; return; }
++  const title = document.createElement('strong');
++  title.textContent = `The Daily Blend · ${bag.quantity} ${bag.quantity === 1 ? 'bag' : 'bags'}`;
++  const description = document.createElement('p');
++  description.textContent = `${bag.grind} · Every ${bag.frequency} ${bag.frequency === '1' ? 'week' : 'weeks'} · $${bag.quantity * 16} per delivery. Free shipping.`;
++  const note = document.createElement('small');
++  note.textContent = 'Your selection is saved in this session. No payment has been taken.';
++  details.append(title, description, note);
++};
++form.addEventListener('submit', event => {
++  event.preventDefault();
++  updatePrice();
++  bag = { quantity: Number(quantity.value), grind: form.elements.grind.value, frequency: form.elements.frequency.value };
++  document.querySelector('#bag-count').textContent = bag.quantity;
++  form.querySelector('#form-status').textContent = 'ADDED TO YOUR BAG. GOOD MORNINGS AHEAD.';
++  renderBag();
++  dialog.showModal();
++});
++document.querySelector('#bag-button').addEventListener('click', () => { renderBag(); dialog.showModal(); });
++document.querySelectorAll('.close-dialog').forEach(button => button.addEventListener('click', () => dialog.close()));
++dialog.addEventListener('click', event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close(); } });
++
++let yaw = -.38;
++let paused = matchMedia('(prefers-reduced-motion: reduce)').matches;
++let hovering = false;
++let focused = false;
++let dragging = false;
++let dragX = 0;
++const rotationButton = document.querySelector('#rotation-toggle');
++function updateRotationButton() {
++  rotationButton.setAttribute('aria-label', paused ? 'Resume box rotation' : 'Pause box rotation');
++  rotationButton.setAttribute('aria-pressed', String(paused));
++  document.querySelector('#rotation-icon').textContent = paused ? '▷' : 'Ⅱ';
++}
++updateRotationButton();
++rotationButton.addEventListener('click', () => { paused = !paused; updateRotationButton(); });
++form.addEventListener('pointerenter', () => hovering = true);
++form.addEventListener('pointerleave', () => hovering = false);
++form.addEventListener('focusin', () => focused = true);
++form.addEventListener('focusout', () => { requestAnimationFrame(() => focused = form.contains(document.activeElement)); });
++function resetView() { yaw = -.38; }
++document.querySelector('#reset-view').addEventListener('click', resetView);
++for (const id of ['customize-link', 'explore-link']) document.querySelector(`#${id}`).addEventListener('click', event => {
++  event.preventDefault(); resetView(); paused = true; updateRotationButton();
++  stage.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' });
++  form.querySelector('select').focus({ preventScroll: true });
++});
++
++function labelTexture(side = false) {
++  const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 1024;
++  const ctx = canvas.getContext('2d');
++  ctx.fillStyle = '#ef623e'; ctx.fillRect(0, 0, 512, 1024);
++  ctx.fillStyle = '#28382b';
++  ctx.save(); ctx.translate(270, 850); ctx.rotate(-Math.PI / 2);
++  ctx.font = 'bold 105px sans-serif'; ctx.fillText(side ? 'GOOD COFFEE.' : 'THE DAILY GRIND.', 0, 0);
++  ctx.font = '20px sans-serif'; ctx.fillText('FRESHLY ROASTED. NEVER BORING.', 0, 68); ctx.restore();
++  ctx.font = 'bold 24px sans-serif'; ctx.fillText('250g / 8.8oz', 50, 960);
++  ctx.strokeStyle = '#28382b'; ctx.lineWidth = 2; ctx.strokeRect(35, 35, 442, 954);
++  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
++  return texture;
++}
++try {
++  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
++  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
++  renderer.domElement.className = 'webgl-layer';
++  renderer.domElement.setAttribute('aria-hidden', 'true');
++  renderer.setClearColor(0x000000, 0);
++  stage.append(renderer.domElement);
++  const htmlRenderer = new CSS3DRenderer(); htmlRenderer.domElement.className = 'html-layer'; stage.append(htmlRenderer.domElement);
++  const scene = new THREE.Scene();
++  const htmlScene = new THREE.Scene();
++  const camera = new THREE.PerspectiveCamera(36, 1, .1, 100);
++  camera.position.set(0, .15, 8.5);
++  camera.lookAt(0, 0, 0);
++  scene.add(new THREE.AmbientLight(0xffffff, 2.1));
++  const light = new THREE.DirectionalLight(0xfff6df, 3); light.position.set(-3, 5, 6); scene.add(light);
++  const coffee = new THREE.Group(); scene.add(coffee);
++  const geometry = new THREE.BoxGeometry(2.56, 4.16, 1.12);
++  const side = new THREE.MeshStandardMaterial({ map: labelTexture(true), roughness: .9 });
++  const back = new THREE.MeshStandardMaterial({ map: labelTexture(), roughness: .9 });
++  const cream = new THREE.MeshStandardMaterial({ color: '#efe8d2', roughness: 1 });
++  const orange = new THREE.MeshStandardMaterial({ color: '#ee623e', roughness: 1 });
++  const box = new THREE.Mesh(geometry, [side, side, orange, cream, cream, back]); coffee.add(box);
++  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry), new THREE.LineBasicMaterial({ color: '#615b44', transparent: true, opacity: .25 })); coffee.add(edges);
++  const seam = new THREE.Mesh(new THREE.BoxGeometry(2.54, .014, .015), new THREE.MeshStandardMaterial({ color: '#c55235' }));
++  seam.position.set(0, 2.086, 0); coffee.add(seam);
++  const htmlBox = new THREE.Group(); htmlScene.add(htmlBox);
++  const formObject = new CSS3DObject(form); formObject.scale.setScalar(.008); formObject.position.z = .566; htmlBox.add(formObject);
++  const resize = () => {
++    const width = stage.clientWidth; const height = stage.clientHeight;
++    renderer.setSize(width, height); htmlRenderer.setSize(width, height);
++    camera.aspect = width / height;
++    camera.position.z = width < 380 ? 10.4 : 8.5;
++    camera.updateProjectionMatrix();
++  };
++  new ResizeObserver(resize).observe(stage); resize();
++  stage.addEventListener('pointerdown', event => {
++    if (event.target.closest('form, button, input, select') || (event.pointerType === 'mouse' && event.button !== 0)) return;
++    dragging = true; dragX = event.clientX; stage.setPointerCapture(event.pointerId);
++  });
++  stage.addEventListener('pointermove', event => { if (!dragging) return; yaw += (event.clientX - dragX) * .009; dragX = event.clientX; });
++  const endDrag = () => dragging = false;
++  stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
++  let previous = performance.now();
++  renderer.setAnimationLoop(now => {
++    const dt = Math.min((now - previous) / 1000, .05); previous = now;
++    if (!paused && !hovering && !focused && !dragging && !document.hidden && !dialog.open) yaw += dt * .13;
++    coffee.rotation.set(-.065, yaw, -.045);
++    htmlBox.rotation.copy(coffee.rotation);
++    coffee.position.y = .03; htmlBox.position.copy(coffee.position);
++    // CSS and WebGL share the exact camera and world transforms. The form remains native DOM.
++    const facingFront = Math.cos(yaw) > 0;
++    form.inert = !facingFront;
++    form.style.visibility = facingFront ? 'visible' : 'hidden';
++    renderer.render(scene, camera); htmlRenderer.render(htmlScene, camera);
++  });
++} catch (error) {
++  stage.querySelectorAll('.webgl-layer, .html-layer').forEach(layer => layer.remove());
++  const fallback = document.querySelector('#scene-fallback'); fallback.hidden = false; fallback.className = 'fallback-active'; fallback.append(form);
++  document.querySelector('.drag-hint').textContent = 'Your daily coffee, made your way';
++  rotationButton.disabled = true; document.querySelector('#reset-view').disabled = true;
++  console.warn('WebGL unavailable; showing accessible coffee form.', error);
++}

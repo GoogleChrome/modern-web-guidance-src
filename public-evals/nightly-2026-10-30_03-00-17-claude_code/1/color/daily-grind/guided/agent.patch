@@ -1,0 +1,335 @@
+diff --git a/index.html b/index.html
+index 66c9173..13572f0 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,117 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <meta name="theme-color" content="#4e342e" media="(prefers-color-scheme: light)">
++  <meta name="theme-color" content="#2a1d19" media="(prefers-color-scheme: dark)">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      /* Raw palette, built around the coffee-brown brand color #4e342e */
++      --bg-light: #faf6f3;
++      --bg-dark: #1b1311;
++      --surface-light: #ffffff;
++      --surface-dark: #2a1f1b;
++      --border-light: #e4d9d4;
++      --border-dark: #44332d;
++      --text-light: #3e2723;
++      --text-dark: #efe6e1;
++      --text-muted-light: #6d4c41;
++      --text-muted-dark: #c4b2a9;
++      --heading-light: #4e342e;
++      --heading-dark: #e3c6b3;
++      --nav-bg-light: #4e342e;
++      --nav-bg-dark: #2a1d19;
++      --nav-border-light: #4e342e;
++      --nav-border-dark: #44332d;
++      --btn-bg-light: #4e342e;
++      --btn-bg-dark: #d9b99b;
++      --btn-bg-hover-light: #3e2723;
++      --btn-bg-hover-dark: #ead1ba;
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #2b1d18;
++      --footer-bg-light: #efe7e3;
++      --footer-bg-dark: #140e0c;
++      --badge-new-bg-light: #ffe0b2;
++      --badge-new-bg-dark: #5a3a12;
++      --badge-new-text-light: #7a3e00;
++      --badge-new-text-dark: #ffd59e;
++      --badge-soldout-bg-light: #ece6e3;
++      --badge-soldout-bg-dark: #3a2f2b;
++      --badge-soldout-text-light: #5d4037;
++      --badge-soldout-text-dark: #d7ccc8;
++      --shadow-light: rgba(62, 39, 35, 0.12);
++      --shadow-dark: rgba(0, 0, 0, 0.45);
++
++      /* Same in both schemes: sits on dark nav/hero backgrounds */
++      --accent: #ffb74d;
++      --accent-text: #2b1a12;
++
++      /* Semantic tokens (light by default) */
++      --bg: var(--bg-light);
++      --surface: var(--surface-light);
++      --border: var(--border-light);
++      --text: var(--text-light);
++      --text-muted: var(--text-muted-light);
++      --heading: var(--heading-light);
++      --nav-bg: var(--nav-bg-light);
++      --nav-border: var(--nav-border-light);
++      --btn-bg: var(--btn-bg-light);
++      --btn-bg-hover: var(--btn-bg-hover-light);
++      --btn-text: var(--btn-text-light);
++      --footer-bg: var(--footer-bg-light);
++      --badge-new-bg: var(--badge-new-bg-light);
++      --badge-new-text: var(--badge-new-text-light);
++      --badge-soldout-bg: var(--badge-soldout-bg-light);
++      --badge-soldout-text: var(--badge-soldout-text-light);
++      --shadow: var(--shadow-light);
++
++      color-scheme: light dark;
++    }
++
++    /* Fallback for browsers without light-dark() */
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --bg: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --border: var(--border-dark);
++        --text: var(--text-dark);
++        --text-muted: var(--text-muted-dark);
++        --heading: var(--heading-dark);
++        --nav-bg: var(--nav-bg-dark);
++        --nav-border: var(--nav-border-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-bg-hover: var(--btn-bg-hover-dark);
++        --btn-text: var(--btn-text-dark);
++        --footer-bg: var(--footer-bg-dark);
++        --badge-new-bg: var(--badge-new-bg-dark);
++        --badge-new-text: var(--badge-new-text-dark);
++        --badge-soldout-bg: var(--badge-soldout-bg-dark);
++        --badge-soldout-text: var(--badge-soldout-text-dark);
++        --shadow: var(--shadow-dark);
++      }
++    }
++
++    @supports (color: light-dark(white, black)) {
++      :root {
++        --bg: light-dark(var(--bg-light), var(--bg-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --border: light-dark(var(--border-light), var(--border-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --text-muted: light-dark(var(--text-muted-light), var(--text-muted-dark));
++        --heading: light-dark(var(--heading-light), var(--heading-dark));
++        --nav-bg: light-dark(var(--nav-bg-light), var(--nav-bg-dark));
++        --nav-border: light-dark(var(--nav-border-light), var(--nav-border-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-bg-hover: light-dark(var(--btn-bg-hover-light), var(--btn-bg-hover-dark));
++        --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++        --footer-bg: light-dark(var(--footer-bg-light), var(--footer-bg-dark));
++        --badge-new-bg: light-dark(var(--badge-new-bg-light), var(--badge-new-bg-dark));
++        --badge-new-text: light-dark(var(--badge-new-text-light), var(--badge-new-text-dark));
++        --badge-soldout-bg: light-dark(var(--badge-soldout-bg-light), var(--badge-soldout-bg-dark));
++        --badge-soldout-text: light-dark(var(--badge-soldout-text-light), var(--badge-soldout-text-dark));
++        --shadow: light-dark(var(--shadow-light), var(--shadow-dark));
++      }
+     }
+ 
+     * {
+@@ -24,13 +127,19 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
++    }
++
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      border-bottom: 1px solid var(--nav-border);
++      color: #fff;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,7 +165,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: #f5ede9;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -72,18 +181,19 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    /* Hero Section: always a dark photo overlay, so colors are fixed */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(rgba(27, 19, 17, 0.55), rgba(27, 19, 17, 0.7)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: #2a1d19;
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #fff;
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -93,6 +203,10 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero p {
++      color: #f5ede9;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -100,6 +214,11 @@
+       padding: 0 20px;
+     }
+ 
++    .container h2 {
++      text-align: center;
++      color: var(--heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,35 +227,82 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 6px var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
++    }
++
++    .card p {
++      color: var(--text-muted);
++    }
++
++    /* Status badges */
++    .badge {
++      display: inline-block;
++      margin-bottom: 10px;
++      padding: 2px 10px;
++      border: 1px solid transparent; /* visible in forced colors mode */
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++    }
++
++    .badge-new {
++      background: var(--badge-new-bg);
++      color: var(--badge-new-text);
++    }
++
++    .badge-soldout {
++      background: var(--badge-soldout-bg);
++      color: var(--badge-soldout-text);
++      border-color: var(--border);
++    }
++
++    .card.is-soldout {
++      border-style: dashed;
++      box-shadow: none;
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
++      border: 1px solid transparent; /* visible in forced colors mode */
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      font-weight: 600;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--accent-text);
++    }
++
++    .btn-accent:hover {
++      background: #ffc977;
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      border-top: 1px solid var(--border);
++      color: var(--text-muted);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -152,6 +318,11 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      color: var(--heading);
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+@@ -171,14 +342,15 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-accent">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="badge badge-new">New</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -188,7 +360,8 @@
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card is-soldout">
++          <span class="badge badge-soldout">Sold out</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

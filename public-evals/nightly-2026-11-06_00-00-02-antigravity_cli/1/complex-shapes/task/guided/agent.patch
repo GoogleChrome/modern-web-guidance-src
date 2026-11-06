@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,27 +73,67 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+-      flex-direction: column;
++      flex-wrap: wrap;
+       justify-content: center;
+       align-items: center;
++      gap: 2.5rem;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 5%;
+     }
+ 
++    .hero-content {
++      flex: 1 1 320px;
++      max-width: 540px;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative Organic Shaped Block */
++    .shaped-element {
++      width: 280px;
++      height: 280px;
++      flex: 0 0 auto;
++      background-color: var(--accent);
++      background-image: linear-gradient(135deg, rgba(78, 52, 46, 0.35), rgba(255, 171, 64, 0.25)),
++        url('https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80');
++      background-size: cover;
++      background-position: center;
++      border-radius: 24px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
++
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: url(#coffee-splash-mask);
++      -webkit-mask-size: cover;
++      -webkit-mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++
++      /* Standard property for modern browsers */
++      mask-image: url(#coffee-splash-mask);
++      mask-size: cover;
++      mask-repeat: no-repeat;
++      mask-position: center;
++    }
++
++    /* Fallback for browsers that do not support masking */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        /* Use a simple rounded rectangle as fallback */
++        clip-path: inset(5% round 15px);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,12 +207,40 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <!-- Organic Coffee Splash & Brush Stroke SVG Mask Definition -->
++  <svg width="0" height="0" aria-hidden="true" style="position: absolute; pointer-events: none;">
++    <defs>
++      <!-- objectBoundingBox scales mask coordinates (0 to 1) with the element's size -->
++      <mask id="coffee-splash-mask" maskContentUnits="objectBoundingBox">
++        <!-- Main organic fluid coffee splash / brush stroke body (white = fully opaque) -->
++        <path
++          d="M 0.52,0.06 C 0.74,0.04 0.92,0.18 0.94,0.40 C 0.96,0.62 0.84,0.86 0.62,0.93 C 0.40,0.99 0.14,0.88 0.08,0.66 C 0.02,0.44 0.14,0.18 0.34,0.10 C 0.40,0.07 0.46,0.06 0.52,0.06 Z"
++          fill="white"
++        />
++        <!-- Secondary overlapping organic swirl for brush-stroke texture (gray = semi-transparent edge) -->
++        <path
++          d="M 0.25,0.04 C 0.55,-0.02 0.88,0.08 0.96,0.34 C 1.02,0.58 0.88,0.92 0.58,0.97 C 0.28,1.02 0.03,0.82 0.03,0.52 C 0.03,0.24 0.12,0.08 0.25,0.04 Z"
++          fill="gray"
++        />
++        <!-- Artisanal coffee splash droplets -->
++        <circle cx="0.14" cy="0.14" r="0.055" fill="white" />
++        <circle cx="0.88" cy="0.13" r="0.04" fill="white" />
++        <circle cx="0.91" cy="0.84" r="0.05" fill="white" />
++        <circle cx="0.12" cy="0.86" r="0.035" fill="gray" />
++        <circle cx="0.82" cy="0.06" r="0.025" fill="gray" />
++      </mask>
++    </defs>
++  </svg>
++
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <div class="shaped-element" role="img" aria-label="Artisanal latte art in a ceramic cup"></div>
+   </header>
+ 
+   <main class="container">
+     <section>

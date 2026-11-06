@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,71 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!-- Background tab detection: did this page start loading in a hidden/background tab? -->
++  <script>
++    (function () {
++      'use strict';
++
++      var script = document.currentScript;
++      // Older checks look at document.visibilityState when the script runs.
++      // For async/deferred or late-injected scripts, the state may already have
++      // changed by then, so that answer can be wrong.
++      var runsLate = !script || script.async || script.defer || document.readyState !== 'loading';
++
++      function report(backgrounded, note) {
++        var result = {
++          backgrounded: backgrounded,
++          timestamp: Date.now()
++        };
++        if (note) result.note = note;
++        console.log('[DailyGrind] Background tab check:', result);
++      }
++
++      // Preferred: the Performance Timeline records 'visibility-state' entries,
++      // with the first one (startTime 0) being the state when navigation began.
++      // This is accurate no matter when the script runs.
++      var supported = window.PerformanceObserver &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.indexOf('visibility-state') !== -1;
++
++      if (supported) {
++        var entries = performance.getEntriesByType('visibility-state');
++        if (entries.length) {
++          report(entries[0].name === 'hidden');
++          return;
++        }
++        // Entries may not be buffered yet; fall back to a buffered observer.
++        try {
++          var observer = new PerformanceObserver(function (list) {
++            var first = list.getEntries()[0];
++            if (first) {
++              observer.disconnect();
++              report(first.name === 'hidden');
++            }
++          });
++          observer.observe({ type: 'visibility-state', buffered: true });
++          return;
++        } catch (e) {
++          // Fall through to the older check.
++        }
++      }
++
++      // Fallback for browsers without 'visibility-state' entries.
++      var hidden = document.visibilityState
++        ? document.visibilityState === 'hidden'
++        : !!document.hidden;
++
++      report(
++        hidden,
++        runsLate
++          ? 'Fallback check used: document.visibilityState was read after initial load began (async/deferred script), so the result may not reflect whether the tab opened in the background.'
++          : 'Fallback check used: document.visibilityState (Performance Timeline visibility-state entries not supported).'
++      );
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

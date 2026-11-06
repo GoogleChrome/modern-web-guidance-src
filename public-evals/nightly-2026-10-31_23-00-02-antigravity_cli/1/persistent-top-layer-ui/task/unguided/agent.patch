@@ -1,0 +1,561 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,223 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Trigger & Dock */
++    .feedback-trigger-btn {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      padding: 12px 20px;
++      border-radius: 999px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
++      z-index: 950;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      transition: transform 0.2s, background 0.2s;
++    }
++
++    .feedback-trigger-btn:hover {
++      background: #3e2723;
++      transform: translateY(-2px);
++    }
++
++    .feedback-dock {
++      border: 2px dashed var(--secondary);
++      border-radius: 10px;
++      padding: 16px;
++      margin-top: 28px;
++      background: rgba(255, 255, 255, 0.65);
++      transition: border-color 0.2s, background 0.2s;
++    }
++
++    .feedback-dock.active-parent {
++      border-color: var(--accent);
++      background: #fff8f0;
++    }
++
++    .feedback-dock-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      color: #6d4c41;
++      font-weight: 700;
++      margin-bottom: 6px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    /* Persistent Feedback Overlay Dialog */
++    dialog.feedback-modal {
++      border: none;
++      border-radius: 12px;
++      padding: 0;
++      width: min(440px, 92vw);
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 36px rgba(62, 39, 35, 0.28);
++      margin: auto;
++      overflow: hidden;
++    }
++
++    dialog.feedback-modal[open] {
++      display: flex;
++      flex-direction: column;
++    }
++
++    /* Support non-top-layer open mode or floating docked positioning */
++    dialog.feedback-modal:not(:modal)[open] {
++      position: fixed;
++      bottom: 84px;
++      right: 24px;
++      margin: 0;
++      z-index: 1050;
++      border: 2px solid var(--primary);
++    }
++
++    dialog.feedback-modal::backdrop {
++      background: rgba(30, 18, 15, 0.5);
++      backdrop-filter: blur(2px);
++    }
++
++    .feedback-header {
++      background: var(--primary);
++      color: white;
++      padding: 14px 18px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .feedback-header h3 {
++      font-size: 1.05rem;
++      margin: 0;
++      color: white;
++    }
++
++    .feedback-badge {
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.72rem;
++      font-weight: 700;
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
++    .feedback-body {
++      padding: 18px;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .feedback-status-bar {
++      font-size: 0.8rem;
++      background: #f5f0ee;
++      padding: 8px 12px;
++      border-radius: 6px;
++      border-left: 3px solid var(--accent);
++      display: flex;
++      flex-direction: column;
++      gap: 2px;
++    }
++
++    .feedback-field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      text-align: left;
++    }
++
++    .feedback-field label {
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .feedback-field input,
++    .feedback-field select,
++    .feedback-field textarea {
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .feedback-field input:focus,
++    .feedback-field select:focus,
++    .feedback-field textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .feedback-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      padding: 12px 18px;
++      background: #fafafa;
++      border-top: 1px solid #eee;
++    }
++
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--text);
++      border: 1px solid #bcaaa4;
++      padding: 8px 12px;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 14px;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-primary:hover {
++      background: #3e2723;
++    }
++
++    .btn-icon {
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      border-radius: 4px;
++      padding: 2px 8px;
++      cursor: pointer;
++      font-size: 0.85rem;
++    }
++
++    .btn-icon:hover {
++      background: rgba(255, 255, 255, 0.15);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,11 +409,91 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section aria-label="Feedback DOM Host Containers">
++      <div id="feedback-host-main" class="feedback-dock active-parent" data-host-name="Main Content Host (#feedback-host-main)">
++        <div class="feedback-dock-label">
++          <span>DOM Host A: Main Content Container</span>
++          <span id="host-main-indicator">Active Parent</span>
++        </div>
++        <p style="font-size: 0.85rem;">Initial parent container for the persistent feedback overlay modal.</p>
++
++        <dialog id="feedback-dialog" class="feedback-modal" aria-labelledby="feedback-modal-title">
++          <div class="feedback-header">
++            <div>
++              <h3 id="feedback-modal-title">Share Your Coffee Feedback</h3>
++            </div>
++            <div style="display: flex; align-items: center; gap: 8px;">
++              <span id="feedback-api-badge" class="feedback-badge">Ready</span>
++              <button type="button" id="close-feedback-btn" class="btn-icon" aria-label="Close feedback modal">&times;</button>
++            </div>
++          </div>
++
++          <form id="feedback-form" class="feedback-body" novalidate>
++            <div class="feedback-status-bar" aria-live="polite">
++              <div><strong>Current DOM Parent:</strong> <span id="feedback-current-parent">#feedback-host-main</span></div>
++              <div><strong>Last Move Method:</strong> <span id="feedback-move-method">None (Initial Mount)</span></div>
++              <div><strong>Move Count:</strong> <span id="feedback-move-count">0</span></div>
++            </div>
++
++            <div class="feedback-field">
++              <label for="feedback-drink">Favorite Drink</label>
++              <select id="feedback-drink" name="drink">
++                <option value="maple-oat-latte">Maple Oat Latte</option>
++                <option value="dark-roast-espresso">Dark Roast Espresso</option>
++                <option value="cold-brew">Cold Brew</option>
++              </select>
++            </div>
++
++            <div class="feedback-field">
++              <label for="feedback-rating">Experience Rating (1-5)</label>
++              <input type="number" id="feedback-rating" name="rating" min="1" max="5" value="5">
++            </div>
++
++            <div class="feedback-field">
++              <label for="feedback-comment">Your Notes (persists across DOM moves)</label>
++              <textarea id="feedback-comment" name="comment" rows="3" placeholder="Type here and click Move Modal to test state & focus preservation..."></textarea>
++            </div>
++
++            <div id="feedback-submit-msg" style="display: none; font-size: 0.85rem; color: #2e7d32; font-weight: 600;">
++              Thank you! Your feedback has been saved.
++            </div>
++          </form>
++
++          <div class="feedback-actions">
++            <button type="button" id="move-feedback-btn" class="btn-secondary">
++              Move Modal to Next Container
++            </button>
++            <div style="display: flex; gap: 8px;">
++              <button type="submit" form="feedback-form" id="submit-feedback-btn" class="btn-primary">
++                Send Feedback
++              </button>
++            </div>
++          </div>
++        </dialog>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
++    <div class="container" style="margin: 0 auto 24px auto;">
++      <div id="feedback-host-footer" class="feedback-dock" data-host-name="Footer Host (#feedback-host-footer)">
++        <div class="feedback-dock-label">
++          <span>DOM Host B: Footer Container</span>
++          <span id="host-footer-indicator">Standby</span>
++        </div>
++        <p style="font-size: 0.85rem;">Secondary parent container for testing <code>moveBefore()</code> reparenting.</p>
++      </div>
++    </div>
++    <div id="feedback-host-overlay" class="feedback-dock" data-host-name="Root Overlay Host (#feedback-host-overlay)" style="max-width: 1060px; margin: 0 auto 24px auto;">
++      <div class="feedback-dock-label">
++        <span>DOM Host C: Root Overlay Container</span>
++        <span id="host-overlay-indicator">Standby</span>
++      </div>
++      <p style="font-size: 0.85rem;">Tertiary parent container for testing cyclic DOM relocation.</p>
++    </div>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +501,241 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" id="open-feedback-btn" class="feedback-trigger-btn" aria-haspopup="dialog" aria-controls="feedback-dialog">
++    <span>&#9749; Feedback Overlay</span>
++  </button>
++
++  <script>
++    (function () {
++      const dialog = document.getElementById('feedback-dialog');
++      const openBtn = document.getElementById('open-feedback-btn');
++      const closeBtn = document.getElementById('close-feedback-btn');
++      const moveBtn = document.getElementById('move-feedback-btn');
++      const feedbackForm = document.getElementById('feedback-form');
++      const commentInput = document.getElementById('feedback-comment');
++      const parentStatusEl = document.getElementById('feedback-current-parent');
++      const methodStatusEl = document.getElementById('feedback-move-method');
++      const moveCountEl = document.getElementById('feedback-move-count');
++      const apiBadgeEl = document.getElementById('feedback-api-badge');
++      const submitMsgEl = document.getElementById('feedback-submit-msg');
++
++      const hosts = [
++        document.getElementById('feedback-host-main'),
++        document.getElementById('feedback-host-footer'),
++        document.getElementById('feedback-host-overlay')
++      ];
++
++      let moveCount = 0;
++      let lastOpenMode = 'modal'; // 'modal' | 'non-modal' | 'popover'
++
++      function isDialogOpen(el) {
++        if (!el) return false;
++        if (el.open) return true;
++        try {
++          if (el.matches(':popover-open') || el.matches(':modal')) return true;
++        } catch (_) {}
++        return false;
++      }
++
++      function detectOpenMode(el) {
++        try {
++          if (el.matches(':modal')) return 'modal';
++        } catch (_) {}
++        try {
++          if (el.matches(':popover-open')) return 'popover';
++        } catch (_) {}
++        if (el.open) return 'non-modal';
++        return lastOpenMode;
++      }
++
++      function openFeedbackModal(preferredMode = 'modal', restoreFocusEl = null) {
++        lastOpenMode = preferredMode;
++        if (!isDialogOpen(dialog)) {
++          try {
++            if (preferredMode === 'popover' && typeof dialog.showPopover === 'function') {
++              dialog.showPopover();
++            } else if (preferredMode === 'non-modal' && typeof dialog.show === 'function') {
++              dialog.show();
++            } else if (typeof dialog.showModal === 'function') {
++              dialog.showModal();
++            } else if (typeof dialog.show === 'function') {
++              dialog.show();
++            } else {
++              dialog.setAttribute('open', '');
++            }
++          } catch (_) {
++            // If dialog had a popover or state conflict, fall back to show() / open attribute
++            try {
++              dialog.removeAttribute('popover');
++              if (typeof dialog.showModal === 'function') {
++                dialog.showModal();
++              } else {
++                dialog.setAttribute('open', '');
++              }
++            } catch (_err) {
++              dialog.setAttribute('open', '');
++            }
++          }
++        }
++
++        const targetFocus = restoreFocusEl && dialog.contains(restoreFocusEl)
++          ? restoreFocusEl
++          : commentInput;
++        if (targetFocus && typeof targetFocus.focus === 'function') {
++          targetFocus.focus({ preventScroll: true });
++        }
++      }
++
++      function closeFeedbackModal() {
++        try {
++          if (dialog.matches && dialog.matches(':popover-open') && typeof dialog.hidePopover === 'function') {
++            dialog.hidePopover();
++          }
++        } catch (_) {}
++        if (typeof dialog.close === 'function' && dialog.open) {
++          dialog.close();
++        } else {
++          dialog.removeAttribute('open');
++        }
++      }
++
++      function updateHostUI(activeHost, methodLabel) {
++        hosts.forEach((host) => {
++          const isCurrent = host === activeHost;
++          host.classList.toggle('active-parent', isCurrent);
++          const indicator = host.querySelector('[id$="-indicator"]');
++          if (indicator) {
++            indicator.textContent = isCurrent ? 'Active Parent' : 'Standby';
++          }
++        });
++        parentStatusEl.textContent = `#${activeHost.id}`;
++        if (methodLabel) {
++          methodStatusEl.textContent = methodLabel;
++        }
++        moveCountEl.textContent = String(moveCount);
++      }
++
++      /**
++       * Relocates the open feedback dialog to targetContainer using the native
++       * state-preserving `moveBefore` API when supported, or falls back to
++       * standard DOM insertion + manual modal state and focus restoration.
++       */
++      function relocateFeedbackModal(targetContainer, referenceNode = null) {
++        if (!targetContainer || dialog.parentElement === targetContainer) {
++          return { moved: false, usedMoveBefore: false };
++        }
++
++        const wasOpen = isDialogOpen(dialog);
++        const activeMode = detectOpenMode(dialog);
++
++        // Snapshot form and focus/selection state in case fallback or focus restore is needed
++        const prevActive = document.activeElement;
++        const hadFocusInside = dialog.contains(prevActive);
++        const focusTarget = hadFocusInside ? prevActive : moveBtn;
++        let selectionSnapshot = null;
++        if (
++          focusTarget &&
++          (focusTarget.tagName === 'TEXTAREA' || focusTarget.tagName === 'INPUT') &&
++          typeof focusTarget.selectionStart === 'number'
++        ) {
++          try {
++            selectionSnapshot = {
++              start: focusTarget.selectionStart,
++              end: focusTarget.selectionEnd,
++              direction: focusTarget.selectionDirection
++            };
++          } catch (_) {}
++        }
++
++        const formSnapshot = {
++          drink: document.getElementById('feedback-drink').value,
++          rating: document.getElementById('feedback-rating').value,
++          comment: commentInput.value,
++          scrollTop: dialog.scrollTop
++        };
++
++        let usedMoveBefore = false;
++
++        if (typeof targetContainer.moveBefore === 'function') {
++          try {
++            targetContainer.moveBefore(dialog, referenceNode);
++            usedMoveBefore = true;
++          } catch (_) {
++            usedMoveBefore = false;
++          }
++        }
++
++        if (!usedMoveBefore) {
++          // Fallback for browsers without native moveBefore support
++          targetContainer.insertBefore(dialog, referenceNode);
++        }
++
++        // Restore form values if any browser reset occurred
++        document.getElementById('feedback-drink').value = formSnapshot.drink;
++        document.getElementById('feedback-rating').value = formSnapshot.rating;
++        commentInput.value = formSnapshot.comment;
++
++        // Ensure the modal remains open after reparenting (fallback re-opens it)
++        if (wasOpen && !isDialogOpen(dialog)) {
++          openFeedbackModal(activeMode, focusTarget);
++        }
++
++        dialog.scrollTop = formSnapshot.scrollTop;
++
++        // Ensure focus and text selection remain active inside the modal
++        if (focusTarget && typeof focusTarget.focus === 'function') {
++          if (document.activeElement !== focusTarget) {
++            focusTarget.focus({ preventScroll: true });
++          }
++          if (selectionSnapshot && typeof focusTarget.setSelectionRange === 'function') {
++            try {
++              focusTarget.setSelectionRange(
++                selectionSnapshot.start,
++                selectionSnapshot.end,
++                selectionSnapshot.direction || 'none'
++              );
++            } catch (_) {}
++          }
++        }
++
++        moveCount += 1;
++        const methodDesc = usedMoveBefore
++          ? 'Element.prototype.moveBefore (State-Preserving)'
++          : 'insertBefore + Manual Re-open & State Restore (Fallback)';
++        apiBadgeEl.textContent = usedMoveBefore ? 'moveBefore API' : 'Fallback Mode';
++        updateHostUI(targetContainer, methodDesc);
++
++        return { moved: true, usedMoveBefore };
++      }
++
++      moveBtn.addEventListener('click', () => {
++        const currentParent = dialog.parentElement;
++        const currentIndex = hosts.indexOf(currentParent);
++        const nextHost = hosts[(currentIndex + 1) % hosts.length];
++        relocateFeedbackModal(nextHost, null);
++      });
++
++      openBtn.addEventListener('click', () => {
++        openFeedbackModal('modal', commentInput);
++      });
++
++      closeBtn.addEventListener('click', () => {
++        closeFeedbackModal();
++      });
++
++      feedbackForm.addEventListener('submit', (e) => {
++        e.preventDefault();
++        submitMsgEl.style.display = 'block';
++      });
++
++      // Expose helper for programmatic testing if needed
++      window.relocateFeedbackModal = relocateFeedbackModal;
++
++      // Open the persistent feedback overlay modal on initial load
++      openFeedbackModal('modal', commentInput);
++    })();
++  </script>
+ </body>
+ 
+ </html>

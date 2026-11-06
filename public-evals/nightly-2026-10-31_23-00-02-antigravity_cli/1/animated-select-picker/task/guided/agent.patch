@@ -1,0 +1,165 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -92,8 +93,128 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Store Select Picker */
++    .store-picker-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 0.4rem;
++      margin-top: 1.25rem;
++      margin-bottom: 0.5rem;
++      width: 100%;
++      max-width: 300px;
++      text-align: left;
++    }
++
++    .store-picker-group label {
++      font-size: 0.95rem;
++      font-weight: 600;
++      color: var(--light);
++      letter-spacing: 0.3px;
++    }
++
++    .store-select,
++    .store-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .store-select {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      min-height: 48px;
++      padding: 0.75rem 1rem;
++      font-size: 1rem;
++      font-family: inherit;
++      background-color: var(--light);
++      color: var(--text);
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      cursor: pointer;
++      transition: border-color 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .store-select:hover {
++      border-color: var(--accent);
++    }
++
++    .store-select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++      border-color: var(--accent);
++    }
++
++    .store-select::picker-icon {
++      color: var(--primary);
++      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
++    }
++
++    .store-select:open::picker-icon {
++      transform: rotate(180deg);
++    }
++
++    .store-select::picker(select) {
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.25);
++      padding: 0.5rem;
++      margin-top: 0.25rem;
++      width: anchor-size(width);
++      overflow: hidden;
++      transition:
++        display 0.4s allow-discrete,
++        overlay 0.4s allow-discrete,
++        opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
++        height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
++      opacity: 0;
++      height: 0;
++    }
++
++    .store-select:open::picker(select) {
++      opacity: 1;
++      height: auto;
++    }
++
++    @starting-style {
++      .store-select:open::picker(select) {
++        opacity: 0;
++        height: 0;
++      }
++    }
++
++    .store-select option {
++      padding: 0.625rem 0.75rem;
++      border-radius: 6px;
++      color: var(--text);
++      cursor: pointer;
++      transition: background-color 0.15s ease;
++    }
++
++    .store-select option:hover {
++      background-color: #f5f0ee;
++    }
++
++    .store-select option::checkmark {
++      color: var(--primary);
++    }
++
++    .store-select option:checked {
++      font-weight: 700;
++      background-color: var(--secondary);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .store-select::picker(select),
++      .store-select::picker-icon {
++        transition: none !important;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +291,22 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="store-picker-group">
++      <label for="store-select">Choose your store</label>
++      <select id="store-select" class="store-select" name="store">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="downtown" selected>Downtown Flagship</option>
++        <option value="westside">Westside Roastery</option>
++        <option value="riverside">Riverside Cafe</option>
++        <option value="uptown">Uptown Espresso Bar</option>
++        <option value="harborview">Harborview Market</option>
++        <option value="university">University District</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

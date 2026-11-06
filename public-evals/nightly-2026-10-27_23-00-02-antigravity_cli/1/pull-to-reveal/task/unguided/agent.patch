@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,63 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 120vh;
+     }
+ 
++    /* Search Bar */
++    .search-bar {
++      background: var(--text);
++      padding: 0.85rem 5%;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 0.5rem;
++      scroll-snap-align: start;
++    }
++
++    .search-bar input[type="search"] {
++      width: 100%;
++      max-width: 500px;
++      padding: 0.5rem 1rem;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 0.95rem;
++      background-color: var(--light);
++      color: var(--text);
++      outline: none;
++    }
++
++    .search-bar input[type="search"]:focus {
++      border-color: var(--accent);
++    }
++
++    .search-bar button {
++      padding: 0.5rem 1.2rem;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 4px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: opacity 0.2s;
++    }
++
++    .search-bar button:hover {
++      opacity: 0.9;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -37,8 +85,10 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -156,8 +206,13 @@
+ </head>
+ 
+ <body>
+ 
++  <form class="search-bar" role="search" action="/search" method="get">
++    <input type="search" name="q" placeholder="Search coffees, pastries, locations..." aria-label="Search">
++    <button type="submit">Search</button>
++  </form>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>

@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,80 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options Dropdown Menu & Top Layer Popover */
++    #trigger-btn {
++      anchor-name: --trigger-btn;
++      background: transparent;
++      border: none;
++      color: white;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 0;
++      transition: color 0.3s;
++    }
++
++    #trigger-btn:hover {
++      color: var(--accent);
++    }
++
++    @position-try --flip-block {
++      position-area: top span-right;
++    }
++
++    @position-try --flip-inline {
++      position-area: bottom span-left;
++    }
++
++    @position-try --flip-both {
++      position-area: top span-left;
++    }
++
++    #action-panel {
++      position-anchor: --trigger-btn;
++      inset-area: bottom span-right;
++      position-area: bottom span-right;
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline, --flip-block, --flip-inline, --flip-both;
++      margin: 0;
++      padding: 8px;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      min-width: 160px;
++    }
++
++    #action-panel:not(:popover-open) {
++      display: none;
++    }
++
++    .action-btn {
++      background: transparent;
++      border: none;
++      border-radius: 4px;
++      padding: 8px 12px;
++      text-align: left;
++      font-family: inherit;
++      font-size: 0.88rem;
++      color: var(--text);
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .action-btn:hover {
++      background: var(--secondary);
++      color: var(--primary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,8 +235,21 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button type="button" id="trigger-btn" popovertarget="action-panel">
++          Options
++          <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++            <polyline points="6 9 12 15 18 9"></polyline>
++          </svg>
++        </button>
++        <div id="action-panel" popover>
++          <button type="button" class="action-btn">Seasonal Offers</button>
++          <button type="button" class="action-btn">Account Settings</button>
++          <button type="button" class="action-btn">Support</button>
++        </div>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 

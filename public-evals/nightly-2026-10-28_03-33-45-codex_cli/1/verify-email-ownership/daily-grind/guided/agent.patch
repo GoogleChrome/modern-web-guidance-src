@@ -1,0 +1,493 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..9f77d70
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,3 @@
++node_modules/
++data/
++.env
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..8ccbd04
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,20 @@
++# Daily Grind rewards
++
++Node.js 24+ serves the homepage and `POST /api/verify-email`. Install dependencies with `pnpm install`. `pnpm build` performs source/markup checks without importing the server or opening a listening port.
++
++Deployment requires:
++
++- `PUBLIC_ORIGIN`: exact public HTTPS origin, without a path. This controls the expected Origin and token audience; configure it explicitly behind a reverse proxy.
++- `EMAIL_VERIFICATION_ORIGIN_TRIAL`: a valid Chrome Email Verification origin-trial token registered for that origin. The server sends it on the homepage and form responses. Obtain it through https://developer.chrome.com/docs/identity/email-verification/verifier.
++- `DATA_DIR`: a persistent, writable volume for `rewards.sqlite` (default `./data`). Restrict access and back it up. The included SQLite deployment is for one service instance; distributed deployments need a shared transactional store for challenges and members.
++- `NODE_ENV=production` enforces HTTPS configuration. Terminate TLS at the hosting proxy. `PORT` defaults to 11222.
++
++The configured start command is `pnpm start`. No server was started during implementation.
++
++Each rendered form receives a fresh 256-bit nonce stored server-side under an opaque HttpOnly, SameSite cookie (Secure over HTTPS). Pages use `Cache-Control: no-store`. A POST atomically consumes its nonce before parsing the proof. Expired challenges are removed on page render. Multiple tabs retain independent challenge cookies only until another page render; an overwritten or consumed challenge produces a fresh retry form.
++
++The server validates DNS issuer delegation, HTTPS discovery, public network destinations, issuer keys and signature, expiry/freshness, email equality, browser key signature, audience, nonce and SD-JWT binding hash using `@sd-jwt/core` and `jose`. Network calls have time/size limits and no redirects. Verified accounts are persisted with a unique case-insensitive email key and terms version; duplicate submissions do not create another account. This creates rewards membership records, not a general sign-in/session system.
++
++Unsupported browsers, missing provider sessions, absent tokens, and invalid proofs receive an explanatory retry form. Per the requested email-free flow, no OTP or magic link fallback is sent and no unverified account is created. Actual verification requires a participating provider, supported browser, HTTPS and a valid trial token. There is no reliable generic JavaScript capability check for the hidden autocomplete extension; an empty token is handled by the server.
++
++The homepage keeps the existing menu, café, story, order and policy links; their destination pages are outside this change. Replace those destinations with your live pages, including the Rewards Terms, before launch. Photos are hosted by Unsplash.
+diff --git a/index.html b/index.html
+index 66c9173..6b7a1e1 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,55 @@
+-<!DOCTYPE html>
++<!doctype html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#243c31">
++  <title>The Daily Grind — Good coffee. Better company.</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="/styles.css">
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <div class="announcement">A little daily ritual. A lot to look forward to. <a href="#rewards">Meet Daily Grind Rewards <span aria-hidden="true">↗</span></a></div>
++  <header class="site-header">
++    <a href="/" class="brand" aria-label="The Daily Grind home"><span class="brand-mark" aria-hidden="true">☕</span><span>THE DAILY GRIND<small>COFFEE & COMMUNITY</small></span></a>
++    <nav aria-label="Main navigation"><a href="#favorites">Our coffee</a><a href="/locations">Find your grind</a><a href="/about">Our story</a><a href="#rewards" class="nav-active">Rewards</a></nav>
++    <a class="header-cta" href="/order-online">Order ahead <span aria-hidden="true">↗</span></a>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main>
++    <section class="hero" aria-labelledby="hero-title">
++      <div class="hero-copy"><p class="eyebrow"><span></span> YOUR NEIGHBORHOOD, WELL BREWED.</p><h1 id="hero-title">Good coffee.<br>Better <em>company.</em></h1><p class="hero-description">Thoughtfully sourced. Locally roasted. Made for the moments that make your day.</p><a class="button" href="/order-online">Find your next favorite <span aria-hidden="true">↗</span></a><div class="hero-note"><span aria-hidden="true">✳</span> A fresh start, in every cup.</div></div>
++      <div class="hero-photo"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1400&q=85" alt="Freshly brewed coffee in a ceramic cup, ready for a slow morning" fetchpriority="high"><div class="photo-caption">Small batches.<br><em>Big on the good stuff.</em><span>EST. 2014 · ROASTED WITH PURPOSE</span></div><div class="round-stamp" aria-hidden="true">LOCALLY<br><b>✳</b><br>ROASTED</div></div>
++    </section>
++    <div class="values-strip"><span><b aria-hidden="true">✳</b> Thoughtfully sourced</span><span><b aria-hidden="true">◉</b> Roasted close to home</span><span><b aria-hidden="true">♡</b> Always made with care</span><span><b aria-hidden="true">♧</b> A little more rewarding</span></div>
++    <section class="rewards section-wrap" id="rewards" aria-labelledby="rewards-title">
++      <div class="rewards-copy"><p class="eyebrow">YOUR DAILY RITUAL. EXTRA PERKS.</p><h2 id="rewards-title">Good taste.<br><em>Great rewards.</em></h2><p>Your usual just got a little more special. Join the Daily Grind community and make every coffee count.</p><ul class="perks"><li><span aria-hidden="true">☕</span><div><h3>Every sip adds up</h3><p>Earn points on the things you already love.</p></div></li><li><span aria-hidden="true">♧</span><div><h3>A little birthday love</h3><p>Celebrate your day with something on us.</p></div></li><li><span aria-hidden="true">✧</span><div><h3>First in the know</h3><p>Seasonal drops, member treats, and more.</p></div></li></ul><div class="member-note"><span class="member-icon" aria-hidden="true">♡</span> A good place to be a regular.</div></div>
++      <div class="signup-card">
++        <div class="card-top"><span class="mini-label">DAILY GRIND REWARDS</span><span class="free-badge">FREE TO JOIN</span></div>
++        <!-- SIGNUP_CONTENT_START -->
++        <h3>Your next cup comes with perks.</h3><p class="card-description">A few details, and you’re part of the community.</p>
++        <form action="/api/verify-email" method="post">
++          <div class="form-message" role="status" tabindex="-1"><!-- FORM_MESSAGE --></div>
++          <label for="name">First name</label><input id="name" name="name" autocomplete="given-name" placeholder="How should we call you?" maxlength="80" required>
++          <label for="email">Email address</label><input type="email" id="email" name="email" autocomplete="email" placeholder="you@example.com" maxlength="254" aria-describedby="verification-note" required>
++          <input type="hidden" name="token" autocomplete="email-verification-token" nonce="<!-- VERIFICATION_NONCE -->">
++          <div class="verification-note" id="verification-note"><span class="shield" aria-hidden="true">✓</span><div><strong>Your email, verified in a moment.</strong><p>Your browser can securely confirm it’s you. No codes to copy. No verification emails.</p></div></div>
++          <label class="checkbox-label"><input type="checkbox" name="terms" value="accepted" required><span>I agree to the <a href="/rewards-terms">Rewards Terms</a> and <a href="/privacy-policy">Privacy Policy</a>.</span></label>
++          <button type="submit" class="button signup-button">Join the Daily Grind <span aria-hidden="true">↗</span></button>
++          <p class="compatibility">Requires a supported browser and email provider. Sign in to your email provider in this browser before joining.</p>
++        </form>
++        <p class="card-bottom"><span aria-hidden="true">♡</span> Good coffee. Good perks. No membership fees.</p>
++        <!-- SIGNUP_CONTENT_END -->
+       </div>
+     </section>
++    <section class="favorites section-wrap" id="favorites" aria-labelledby="favorites-title"><div class="section-heading"><div><p class="eyebrow">FAMILIAR FAVORITES. FRESH PERSPECTIVES.</p><h2 id="favorites-title">Find your kind of <em>daily.</em></h2></div><a href="/menu">Explore the menu <span aria-hidden="true">↗</span></a></div><div class="coffee-grid">
++      <a class="coffee-card" href="/menu/seasonal"><div class="coffee-image"><img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=650&q=80" alt="Iced latte with creamy swirls of milk" loading="lazy"><span>THE SEASONAL SIP</span></div><h3>Maple Oat Latte <span aria-hidden="true">↗</span></h3><p>A little maple. A whole lot of cozy.</p></a>
++      <a class="coffee-card" href="/menu/espresso"><div class="coffee-image"><img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=650&q=80" alt="Rich espresso served in a ceramic cup" loading="lazy"><span>THE EVERYDAY CLASSIC</span></div><h3>Dark Roast Espresso <span aria-hidden="true">↗</span></h3><p>Small cup. Bold beginnings.</p></a>
++      <a class="coffee-card" href="/menu/cold-brew"><div class="coffee-image"><img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=650&q=80" alt="Cold coffee served over ice" loading="lazy"><span>THE SLOW BREW</span></div><h3>Signature Cold Brew <span aria-hidden="true">↗</span></h3><p>Steeped slowly. Gone all too quickly.</p></a>
++    </div></section>
++    <section class="closing"><span aria-hidden="true">✳</span><h2>A good day starts with <em>a good grind.</em></h2><a href="/locations">Find your neighborhood café <span aria-hidden="true">↗</span></a></section>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <footer><a class="footer-brand" href="/">THE DAILY GRIND<small>COFFEE & COMMUNITY</small></a><p>Thoughtfully brewed. Happily shared.</p><div><a href="/about">Our story</a><a href="/contact">Get in touch</a><a href="/privacy-policy">Privacy</a><span>© 2026 The Daily Grind</span></div></footer>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..5310649 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,17 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "build": "node scripts/build.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@sd-jwt/core": "^0.23.2",
++    "jose": "^6.2.13"
++  },
++  "engines": {
++    "node": ">=24"
+   }
+ }
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..83e201d
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,8 @@
++import { execFileSync } from 'node:child_process';
++import { readFileSync } from 'node:fs';
++for (const file of ['server.mjs','server/verify-email.mjs']) execFileSync(process.execPath, ['--check',file], {stdio:'inherit'});
++const html = readFileSync('index.html','utf8');
++for (const required of ['autocomplete="email"','autocomplete="email-verification-token"','<!-- VERIFICATION_NONCE -->','action="/api/verify-email"','<!-- FORM_MESSAGE -->']) {
++  if (!html.includes(required)) throw new Error(`Missing verification markup: ${required}`);
++}
++console.log('Build checks passed. Server files were syntax-checked without importing or starting them.');
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..96ca082
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,57 @@
++import { createServer } from 'node:http';
++import { readFileSync, mkdirSync } from 'node:fs';
++import { randomBytes, randomUUID } from 'node:crypto';
++import { DatabaseSync } from 'node:sqlite';
++import { verifyEmailToken } from './server/verify-email.mjs';
++
++const port = Number(process.env.PORT || 11222);
++const origin = new URL(process.env.PUBLIC_ORIGIN || `http://localhost:${port}`).origin;
++if (process.env.NODE_ENV === 'production' && !origin.startsWith('https://')) throw new Error('Set PUBLIC_ORIGIN to your public HTTPS origin');
++const template = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
++const styles = readFileSync(new URL('./styles.css', import.meta.url));
++const dataDir = process.env.DATA_DIR || './data';
++mkdirSync(dataDir, {recursive:true, mode:0o700});
++const db = new DatabaseSync(`${dataDir}/rewards.sqlite`);
++db.exec(`PRAGMA journal_mode=WAL;
++  CREATE TABLE IF NOT EXISTS challenges (id TEXT PRIMARY KEY, nonce TEXT NOT NULL, expires INTEGER NOT NULL);
++  CREATE TABLE IF NOT EXISTS members (id TEXT PRIMARY KEY, email TEXT NOT NULL, email_key TEXT NOT NULL UNIQUE, first_name TEXT NOT NULL, joined_at TEXT NOT NULL, terms_version TEXT NOT NULL, email_verified INTEGER NOT NULL CHECK(email_verified=1));`);
++const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
++function page(response, {message='',status=200,name='',email='',success=false} = {}) {
++  db.prepare('DELETE FROM challenges WHERE expires < ?').run(Date.now());
++  const id = randomBytes(32).toString('base64url');
++  const nonce = randomBytes(32).toString('base64url');
++  db.prepare('INSERT INTO challenges VALUES (?, ?, ?)').run(id,nonce,Date.now()+600000);
++  let html = template.replace('<!-- VERIFICATION_NONCE -->',nonce).replace('<!-- FORM_MESSAGE -->',escape(message));
++  if (success) html = html.replace(/<!-- SIGNUP_CONTENT_START -->[\s\S]*<!-- SIGNUP_CONTENT_END -->/, `<div class="success-panel" role="status"><span aria-hidden="true">✓</span><h3>Welcome to the Daily Grind, ${escape(name)}.</h3><p>Your email is verified and your rewards account is ready. We’re glad you’re here.</p><a class="button" href="/order-online">Find your next cup ↗</a></div>`);
++  else html = html.replace('id="name" name="name"', `id="name" name="name" value="${escape(name)}"`).replace('id="email" name="email"', `id="email" name="email" value="${escape(email)}"`);
++  response.writeHead(status, {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','Set-Cookie':`dg_signup=${id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=600${origin.startsWith('https:')?'; Secure':''}`, ...(process.env.EMAIL_VERIFICATION_ORIGIN_TRIAL ? {'Origin-Trial':process.env.EMAIL_VERIFICATION_ORIGIN_TRIAL} : {})});
++  response.end(html);
++}
++const consume = db.prepare('DELETE FROM challenges WHERE id = ? RETURNING nonce, expires');
++createServer(async (request,response) => {
++  try {
++    const path = new URL(request.url,origin).pathname;
++    if (request.method === 'GET' && path === '/') return page(response);
++    if (request.method === 'GET' && path === '/styles.css') { response.writeHead(200,{'Content-Type':'text/css; charset=utf-8'}); response.end(styles); return; }
++    if (path !== '/api/verify-email') { response.writeHead(404,{'Content-Type':'text/plain'}); response.end('Page not found'); return; }
++    if (request.method !== 'POST') { response.writeHead(405,{'Allow':'POST'}); response.end('Method not allowed'); return; }
++    if (request.headers.origin !== origin) { response.writeHead(403); response.end('Please submit the form from the Daily Grind homepage.'); return; }
++    const session = request.headers.cookie?.split(';').map(s=>s.trim()).find(s=>s.startsWith('dg_signup='))?.slice(10) || '';
++    // DELETE RETURNING consumes the challenge atomically, even if validation fails.
++    const challenge = consume.get(session);
++    if (!challenge || challenge.expires < Date.now()) return page(response,{status:409,message:'This form has expired or was already submitted. Please try again using this fresh form.'});
++    if (request.headers['content-type']?.split(';')[0] !== 'application/x-www-form-urlencoded') return page(response,{status:415,message:'Please use the registration form to join.'});
++    let body = '';
++    for await (const chunk of request) { body += chunk.toString(); if (Buffer.byteLength(body) > 32768) { response.writeHead(413); response.end('Form too large'); return; } }
++    const form = new URLSearchParams(body);
++    const name = (form.get('name') || '').trim();
++    const email = (form.get('email') || '').trim();
++    const token = (form.get('token') || '').trim();
++    if (!name || name.length > 80 || email.length > 254 || !/^[^\s@]+@[a-z\d](?:[a-z\d.-]*[a-z\d])?\.[a-z]{2,}$/i.test(email) || form.get('terms') !== 'accepted') return page(response,{status:400,name,email,message:'Please enter your first name, a valid email address, and accept the terms.'});
++    if (!token) return page(response,{status:422,name,email,message:'Your browser didn’t provide email ownership proof. Sign in to your email provider in a supported browser, then select or re-enter your email and try again. No account was created and no email was sent.'});
++    try { await verifyEmailToken({rawToken:token,email,nonce:challenge.nonce,audience:origin}); }
++    catch { return page(response,{status:422,name,email,message:'We couldn’t confirm your email ownership. Please re-enter your email and try again. If your provider or browser doesn’t support verification, registration is currently unavailable. No email was sent.'}); }
++    db.prepare('INSERT INTO members VALUES (?, ?, ?, ?, ?, ?, 1) ON CONFLICT(email_key) DO NOTHING').run(randomUUID(),email,email.toLowerCase(),name,new Date().toISOString(),'2026-10-28');
++    return page(response,{success:true,name});
++  } catch { if (!response.headersSent) page(response,{status:500,message:'We couldn’t finish your registration. Please try again in a moment.'}); else response.end(); }
++}).listen(port);
+diff --git a/server/verify-email.mjs b/server/verify-email.mjs
+new file mode 100644
+index 0000000..cfdf002
+--- /dev/null
++++ b/server/verify-email.mjs
+@@ -0,0 +1,83 @@
++import { createHash } from 'node:crypto';
++import { lookup, resolveTxt } from 'node:dns/promises';
++import { BlockList, isIP } from 'node:net';
++import https from 'node:https';
++import { decodeSdJwtSync, SDJwtInstance } from '@sd-jwt/core';
++import { createLocalJWKSet, importJWK, jwtVerify } from 'jose';
++
++const algorithms = ['Ed25519', 'EdDSA', 'ES256'];
++const hasher = (data, alg) => {
++  if (!['sha-256', 'sha-384', 'sha-512'].includes(alg)) throw new Error('Unsupported hash');
++  return createHash(alg.replace('-', '')).update(data).digest();
++};
++const blocked = new BlockList();
++for (const [address, prefix] of [['0.0.0.0',8],['10.0.0.0',8],['100.64.0.0',10],['127.0.0.0',8],['169.254.0.0',16],['172.16.0.0',12],['192.168.0.0',16],['192.0.0.0',24],['198.18.0.0',15],['224.0.0.0',3]]) blocked.addSubnet(address,prefix,'ipv4');
++for (const [address, prefix] of [['::',96],['::ffff:0:0',96],['fc00::',7],['fe80::',10],['ff00::',8],['2001:db8::',32]]) blocked.addSubnet(address,prefix,'ipv6');
++
++// Resolve and pin a public IP for each request; never follow issuer redirects.
++async function publicJson(value) {
++  const url = new URL(value);
++  if (url.protocol !== 'https:' || url.port || url.username || url.password || isIP(url.hostname)) throw new Error('Invalid issuer URL');
++  const addresses = await lookup(url.hostname, { all: true });
++  if (!addresses.length || addresses.some(({address,family}) => blocked.check(address, family === 6 ? 'ipv6' : 'ipv4'))) throw new Error('Private issuer address');
++  const chosen = addresses[0];
++  return new Promise((resolve, reject) => {
++    const request = https.get(url, { lookup: (_host, options, cb) => options.all ? cb(null, [chosen]) : cb(null, chosen.address, chosen.family), headers: { accept: 'application/json' } }, response => {
++      if (response.statusCode !== 200) { response.resume(); reject(new Error('Issuer unavailable')); return; }
++      let size = 0;
++      const chunks = [];
++      response.on('data', chunk => {
++        size += chunk.length;
++        if (size > 65536) request.destroy(new Error('Issuer response too large'));
++        else chunks.push(chunk);
++      });
++      response.on('error', reject);
++      response.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString())); } catch (error) { reject(error); } });
++    });
++    request.setTimeout(5000, () => request.destroy(new Error('Issuer timeout')));
++    request.on('error', reject);
++  });
++}
++
++export async function verifyEmailToken({ rawToken, email, nonce, audience }) {
++  if (!nonce || !rawToken || rawToken.length > 24000) throw new Error('Missing proof');
++  const decoded = decodeSdJwtSync(rawToken, hasher);
++  const payload = decoded.jwt.payload;
++  if (!decoded.kbJwt || typeof payload.iss !== 'string') throw new Error('Missing key binding');
++  const issuer = new URL(payload.iss);
++  if (issuer.protocol !== 'https:' || issuer.origin !== payload.iss || issuer.port || issuer.username || issuer.password) throw new Error('Invalid issuer');
++  const records = await resolveTxt(`_email-verification.${email.split('@')[1].toLowerCase()}`);
++  if (!records.some(parts => `https://${parts.join('').replace(/^iss=/, '').trim()}` === payload.iss && parts.join('').startsWith('iss='))) throw new Error('Issuer not delegated');
++  const metadata = await publicJson(`${payload.iss}/.well-known/email-verification`);
++  if (metadata.issuer !== payload.iss || typeof metadata.jwks_uri !== 'string') throw new Error('Invalid discovery metadata');
++  const jwks = await publicJson(metadata.jwks_uri);
++  if (!Array.isArray(jwks.keys) || jwks.keys.length > 50) throw new Error('Invalid key set');
++  const issuerKeys = createLocalJWKSet(jwks);
++  const evtOptions = { issuer: payload.iss, algorithms, typ: 'ev+sd-jwt', requiredClaims: ['iat','exp','iss','cnf'], maxTokenAge: '5m', clockTolerance: 60 };
++  const verifier = new SDJwtInstance({
++    hasher,
++    verifier: async (data, signature) => {
++      const compact = `${data}.${signature}`;
++      try { await jwtVerify(compact, issuerKeys, evtOptions); }
++      catch (error) {
++        if (error.code !== 'ERR_JWKS_MULTIPLE_MATCHING_KEYS') throw error;
++        let matched = false;
++        for await (const key of error) {
++          try { await jwtVerify(compact, key, evtOptions); matched = true; break; } catch {}
++        }
++        if (!matched) throw error;
++      }
++      return true;
++    },
++    kbVerifier: async (data, signature) => {
++      const key = payload.cnf?.jwk;
++      const alg = decoded.kbJwt.header.alg;
++      const normalize = value => value === 'Ed25519' ? 'EdDSA' : value;
++      if (!key || key.d || key.k || !algorithms.includes(alg) || !algorithms.includes(key.alg) || normalize(alg) !== normalize(key.alg)) throw new Error('Invalid holder key');
++      await jwtVerify(`${data}.${signature}`, await importJWK(key, alg), { algorithms:[alg], typ:'kb+jwt', audience, maxTokenAge:'5m', clockTolerance:60 });
++      return true;
++    }
++  });
++  const verified = await verifier.verify(rawToken, { requiredClaimKeys:['email','email_verified'], keyBindingNonce:nonce, expectedKeyBindingAudience:audience, keyBindingMaxAgeSeconds:300, skewSeconds:60 });
++  if (verified.payload.email_verified !== true || typeof verified.payload.email !== 'string' || verified.payload.email.toLowerCase() !== email.toLowerCase()) throw new Error('Email mismatch');
++}
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..c6d592d
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1 @@
++:root{--green:#243e32;--ink:#293d32;--cream:#f8f7f2;--muted:#697168;--line:#dce0d5;--yellow:#ebd998}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:35px}body{margin:0;background:var(--cream);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.6}a{color:inherit;text-underline-offset:4px}button,input{font:inherit}a,button,input{ -webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #b47c38;outline-offset:4px}.announcement{background:var(--green);color:#fff;text-align:center;font-size:11px;letter-spacing:.2px;padding:10px 16px}.announcement a{margin-left:10px;color:#e9d99f}.announcement a span{margin-left:6px}.site-header{max-width:1440px;margin:auto;display:flex;align-items:center;justify-content:space-between;padding:25px 5%;gap:28px}.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;font-size:18px;letter-spacing:1px;line-height:1.3}.brand-mark{font-size:28px;filter:grayscale(1)}.brand small,.footer-brand small{display:block;font-size:8px;letter-spacing:3.5px;font-weight:500;margin-top:5px}.site-header nav{display:flex;gap:32px}.site-header nav a{font-size:12px;text-decoration:none}.site-header nav .nav-active{border-bottom:1px solid;padding-bottom:3px}.header-cta{border:1px solid #bbc3b5;padding:10px 18px;border-radius:4px;font-size:12px;text-decoration:none}.header-cta span{padding-left:20px}.hero{max-width:1440px;margin:10px auto 0;display:grid;grid-template-columns:1fr 1fr;min-height:520px}.hero-copy{padding:55px 8% 40px 10%}.eyebrow{font-size:10px;font-weight:650;letter-spacing:1.8px;display:flex;align-items:center;gap:8px}.eyebrow>span{width:6px;height:6px;border-radius:50%;background:var(--green)}h1,h2,.photo-caption{font-family:'Playfair Display',Georgia,serif;line-height:1.13;font-weight:500}h1{font-size:clamp(45px,5.1vw,74px);letter-spacing:-2.7px;margin:24px 0}h1 em,h2 em{font-weight:500;color:#697953}.hero-description{max-width:340px;color:#647064;font-size:14px;line-height:1.9}.button{display:inline-flex;justify-content:space-between;align-items:center;gap:32px;background:var(--green);border:1px solid var(--green);border-radius:4px;color:white;text-decoration:none;padding:14px 22px;font-weight:500;font-size:12px;cursor:pointer;transition:background .2s}.button:hover{background:#3b5542}.hero .button{margin-top:16px}.hero-note{display:flex;align-items:center;gap:10px;color:#75806f;font-size:11px;margin-top:34px}.hero-note>span{font-size:24px;color:#657a50}.hero-photo{position:relative;min-width:0;margin-right:6%;border-radius:5px;overflow:hidden;background:#483d2e}.hero-photo>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.hero-photo:after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 38%,#141d16a3)}.photo-caption{position:absolute;bottom:35px;left:35px;color:white;z-index:1;font-size:29px}.photo-caption em{font-size:27px}.photo-caption>span{display:block;font-family:'DM Sans',sans-serif;font-size:8px;letter-spacing:2px;margin-top:20px}.round-stamp{position:absolute;z-index:1;right:24px;top:24px;border:1px solid #f2ebd299;background:#e8e9d8e6;border-radius:50%;width:88px;height:88px;font-size:8px;text-align:center;line-height:1.1;padding-top:15px;letter-spacing:1.6px;transform:rotate(12deg)}.round-stamp b{font-size:27px;line-height:1.3}.values-strip{display:flex;justify-content:space-evenly;gap:24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:44px auto 0;padding:21px 5%;font-size:11px;max-width:1440px}.values-strip span{display:flex;align-items:center;gap:12px}.values-strip b{font-size:19px;font-weight:400}.section-wrap{max-width:1180px;margin:auto;padding:75px 35px}.rewards{display:grid;grid-template-columns:1fr 1fr;gap:85px;align-items:center;scroll-margin-top:20px}.rewards-copy h2{font-size:53px;letter-spacing:-1.5px;margin:22px 0}.rewards-copy>p:not(.eyebrow){font-size:13px;color:var(--muted);max-width:360px;line-height:1.9}.perks{padding:0;margin:28px 0;list-style:none;display:grid;gap:21px}.perks li{display:flex;gap:17px;align-items:center}.perks li>span{width:39px;height:39px;background:#eeeee3;border-radius:50%;display:grid;place-items:center;font-size:21px}.perks h3{font-size:13px;font-weight:600;margin:0}.perks p{font-size:11px;color:var(--muted);margin:3px 0 0}.member-note{font-size:11px;color:#737b6b;display:flex;align-items:center;gap:10px}.member-icon{font-size:22px}.signup-card{background:white;border:1px solid #e0e4da;border-radius:9px;padding:30px 33px;box-shadow:0 10px 35px #314a3210}.card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:23px}.mini-label{font-size:9px;letter-spacing:1.6px;font-weight:650}.free-badge{font-size:8px;letter-spacing:.6px;border-radius:3px;background:#eef0e5;padding:4px 7px;font-weight:600}.signup-card h3{font-family:'Playfair Display',Georgia,serif;font-size:24px;line-height:1.3;font-weight:500;margin:0 0 7px;letter-spacing:-.5px}.card-description{font-size:11px;color:var(--muted);margin:0 0 23px}form>label:not(.checkbox-label){display:block;font-size:11px;font-weight:600;margin:17px 0 7px}form>input:not([type=hidden]){width:100%;padding:12px 13px;border:1px solid #d9ded5;border-radius:4px;color:var(--ink);font-size:12px;background:#fff;min-height:44px}input::placeholder{color:#92988d}.verification-note{display:flex;gap:11px;background:#f1f4ec;padding:12px;border-radius:4px;margin:17px 0}.shield{border:1px solid #718a5d;border-radius:4px 4px 8px 8px;height:20px;min-width:17px;text-align:center;font-size:12px;color:#5f7952}.verification-note strong{font-size:10px;font-weight:600}.verification-note p{font-size:10px;line-height:1.7;color:#69735f;margin:3px 0 0}.checkbox-label{display:flex;align-items:flex-start;gap:9px;font-size:10px;color:#6b7367;line-height:1.8;margin:19px 0}.checkbox-label input{accent-color:var(--green);width:14px;height:14px;flex-shrink:0;margin:3px 0}.checkbox-label a{color:var(--ink)}.signup-button{width:100%}.compatibility{font-size:9px;color:#777f71;text-align:center;margin:12px 3px 18px;line-height:1.6}.card-bottom{border-top:1px solid #e5e8e0;padding-top:17px;margin:0;text-align:center;font-size:10px;color:#6c7663}.card-bottom span{margin-right:6px;font-size:15px}.form-message:empty{display:none}.form-message:not(:empty){border:1px solid #dbbd8a;background:#fff8e9;border-radius:4px;padding:12px;font-size:12px;margin-bottom:15px}.success-panel{padding:25px 0 35px}.success-panel>span{display:grid;place-items:center;background:#edf2e7;border-radius:50%;width:55px;height:55px;font-size:25px;margin-bottom:22px}.success-panel p{font-size:13px;color:var(--muted)}.favorites{border-top:1px solid var(--line);padding-top:45px;padding-bottom:65px}.section-heading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:28px}.section-heading h2{font-size:34px;letter-spacing:-1px;margin:12px 0 0}.section-heading>a{font-size:11px;text-decoration:none;border-bottom:1px solid #839078;padding-bottom:4px;white-space:nowrap}.section-heading>a span{margin-left:18px}.coffee-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}.coffee-card{text-decoration:none}.coffee-image{height:235px;border-radius:5px;overflow:hidden;position:relative;background:#e7e2d8}.coffee-image img{width:100%;height:100%;object-fit:cover;transition:transform .3s}.coffee-card:hover img{transform:scale(1.04)}.coffee-image>span{position:absolute;top:14px;left:14px;background:#fbf9f0ef;border-radius:2px;padding:5px 8px;font-size:8px;letter-spacing:1px}.coffee-card h3{font-size:14px;font-weight:550;display:flex;justify-content:space-between;margin:15px 0 3px}.coffee-card p{font-size:11px;color:var(--muted);margin:0}.closing{background:#ecefe4;text-align:center;padding:35px 20px}.closing>span{font-size:28px;color:#6d8058}.closing h2{font-size:28px;margin:10px 0 17px}.closing>a{font-size:11px}footer{max-width:1440px;margin:auto;padding:35px 5%;display:flex;align-items:center;justify-content:space-between;gap:25px}.footer-brand{font-size:13px;font-weight:650;letter-spacing:1px;text-decoration:none;line-height:1.2}.footer-brand small{font-size:6px;letter-spacing:2.7px}footer>p{font-family:'Playfair Display',serif;font-style:italic;font-size:13px;color:#6e7966}footer>div{display:flex;gap:20px;flex-wrap:wrap;font-size:9px;color:#697363}footer>div a{text-decoration:none}@media(min-width:1450px){.hero{min-height:560px}}@media(max-width:900px){.site-header nav{gap:17px}.brand{font-size:14px}.hero-copy{padding:35px 8%}.hero{min-height:460px}.rewards{gap:35px;padding:55px 30px}.signup-card{padding:25px}.rewards-copy h2{font-size:47px}.coffee-image{height:200px}footer>p{display:none}footer>div{gap:14px}}@media(max-width:650px){.announcement{font-size:9px}.announcement a{display:inline-block;margin-left:4px}.site-header{padding:21px 6%;flex-wrap:wrap;gap:19px}.brand{font-size:14px}.brand-mark{font-size:25px}.site-header nav{order:3;justify-content:space-between;width:100%;gap:12px}.site-header nav a{font-size:11px}.header-cta{padding:8px 11px;font-size:10px}.header-cta span{padding-left:12px}.hero{grid-template-columns:1fr;margin-top:0}.hero-copy{padding:30px 7% 35px}h1{font-size:55px}.hero-description{max-width:310px}.hero-note{margin-top:22px}.hero-photo{height:350px;margin:0 6%;border-radius:5px}.photo-caption{left:25px;bottom:25px}.values-strip{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;padding:18px 7%;gap:13px;font-size:9px}.values-strip span{gap:8px}.rewards{grid-template-columns:1fr;gap:30px;padding:40px 6%}.rewards-copy h2{font-size:46px;margin:15px 0}.rewards-copy>p:not(.eyebrow){max-width:100%}.perks{gap:17px;margin:25px 0}.member-note{margin-top:20px}.signup-card{padding:25px 22px}.favorites{padding:35px 6% 40px}.section-heading{align-items:start;flex-direction:column;gap:14px}.section-heading h2{font-size:30px}.eyebrow{font-size:8px;letter-spacing:1.4px}.coffee-grid{grid-template-columns:1fr;gap:27px}.coffee-image{height:265px}.coffee-card h3{font-size:16px}.coffee-card p{font-size:12px}.closing h2{font-size:26px}.closing{padding:30px 8%}footer{align-items:start;flex-direction:column;padding:28px 6%;gap:20px}footer>div{gap:20px}footer>div span{width:100%}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}

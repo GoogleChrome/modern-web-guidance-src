@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+index 66c9173..abf3594 100644
+--- a/index.html
++++ b/index.html
+@@ -74,8 +74,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,12 +85,45 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      container-type: inline-size;
++      width: clamp(260px, 42vw, 460px);
++      max-width: 100%;
++      margin: 0 auto 1.25rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 6px;
++      font-weight: 900;
++      text-transform: uppercase;
++      line-height: 0.88;
++      letter-spacing: 0;
++      word-spacing: 0;
++      text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
++    }
++
++    .hero-line {
++      display: block;
++      width: fit-content;
++      white-space: nowrap;
++      line-height: 0.88;
++      letter-spacing: 0;
++      word-spacing: 0;
++    }
++
++    .hero-line:nth-child(1) {
++      font-size: 20.5cqi;
++    }
++
++    .hero-line:nth-child(2) {
++      font-size: 34.5cqi;
++    }
++
++    .hero-line:nth-child(3) {
++      font-size: 25cqi;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +202,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 aria-label="Wake Up Your Senses">
++      <span class="hero-line">Wake Up</span>
++      <span class="hero-line">Your</span>
++      <span class="hero-line">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +244,50 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const lockup = document.querySelector('.hero h1');
++      if (!lockup) return;
++      const lines = Array.from(lockup.querySelectorAll('.hero-line'));
++
++      function fitLines() {
++        const targetWidth = lockup.getBoundingClientRect().width;
++        if (!targetWidth) return;
++
++        lines.forEach((line) => {
++          const baseSize = 100;
++          line.style.fontSize = baseSize + 'px';
++          const measuredWidth = line.getBoundingClientRect().width;
++          if (measuredWidth > 0) {
++            let fittedSize = (baseSize * targetWidth) / measuredWidth;
++            line.style.fontSize = fittedSize + 'px';
++            const refinedWidth = line.getBoundingClientRect().width;
++            if (refinedWidth > 0 && Math.abs(refinedWidth - targetWidth) > 0.05) {
++              fittedSize = (fittedSize * targetWidth) / refinedWidth;
++              line.style.fontSize = fittedSize + 'px';
++            }
++          }
++        });
++      }
++
++      fitLines();
++      let lastWidth = lockup.getBoundingClientRect().width;
++      window.addEventListener('resize', fitLines);
++      if ('ResizeObserver' in window) {
++        new ResizeObserver(() => {
++          const currentWidth = lockup.getBoundingClientRect().width;
++          if (Math.abs(currentWidth - lastWidth) > 0.5) {
++            lastWidth = currentWidth;
++            fitLines();
++          }
++        }).observe(lockup);
++      }
++      if (document.fonts && document.fonts.ready) {
++        document.fonts.ready.then(fitLines);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

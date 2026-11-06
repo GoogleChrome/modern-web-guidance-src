@@ -1,0 +1,480 @@
+diff --git a/index.html b/index.html
+index 66c9173..2aba6c9 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,274 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#f7f7f0">
++  <meta name="description" content="Good coffee. A better everyday. Discover thoughtfully sourced coffee and your next favorite daily ritual at The Daily Grind.">
++  <title>The Daily Grind — A little good, every day.</title>
++  <link rel="preconnect" href="https://images.unsplash.com">
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    :root { --paper:#f7f7f0; --ink:#253b2d; --green:#37583b; --muted:#75796e; --line:#dddfd3; --orange:#c46b41; }
++    * { box-sizing:border-box; }
++    html { scroll-behavior:smooth; scroll-padding-top:35px; }
++    body { margin:0; background:var(--paper); color:var(--ink); font-family:'DM Sans',sans-serif; -webkit-font-smoothing:antialiased; }
++    button,a,input { -webkit-tap-highlight-color:transparent; }
++    button { font:inherit; cursor:pointer; }
++    button,a { touch-action:manipulation; }
++    a { color:inherit; text-decoration:none; }
++    button:focus-visible,a:focus-visible,input:focus-visible { outline:3px solid #be7949; outline-offset:5px; }
++    button { color:inherit; }
++    svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; vertical-align:middle; }
++    .shell { max-width:1280px; margin:auto; padding:0 64px; }
++    .topbar { height:100px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); gap:30px; }
++    .brand { display:flex; align-items:center; gap:11px; }
++    .brand-flower { width:43px; height:43px; fill:var(--green); stroke:none; }
++    .wordmark { font-family:'Manrope',sans-serif; font-weight:800; font-size:19px; letter-spacing:-.8px; line-height:1.05; }
++    .nav-links { display:flex; gap:31px; align-items:center; font-size:13px; }
++    .nav-links a { position:relative; padding:10px 0; }
++    .nav-links a.active::after { content:''; position:absolute; bottom:1px; left:calc(50% - 2px); width:4px; height:4px; border-radius:50%; background:var(--green); }
++    .nav-links a:hover { color:var(--orange); }
++    .bag-button { display:flex; align-items:center; justify-content:center; gap:9px; border:1px solid #bcc3b4; background:none; border-radius:7px; padding:10px 15px; font-size:12px; }
++    .bag-count { display:grid; place-items:center; background:var(--green); color:white; min-width:19px; height:19px; border-radius:50%; font-size:10px; }
++    .hero { display:grid; grid-template-columns:1fr 1fr; gap:65px; align-items:center; padding-top:51px; padding-bottom:49px; }
++    .eyebrow { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; display:flex; align-items:center; gap:9px; }
++    .eyebrow::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--orange); }
++    h1 { font-family:'Manrope',sans-serif; font-weight:500; font-size:clamp(39px,4.25vw,57px); letter-spacing:-2.9px; line-height:1.12; margin:22px 0 21px; }
++    h1 em { font-family:Georgia,serif; font-weight:400; color:var(--green); }
++    .hero-description { color:#74786b; font-size:13px; line-height:1.85; max-width:330px; }
++    .primary { display:inline-flex; align-items:center; justify-content:center; gap:32px; background:var(--green); color:white; border:1px solid var(--green); border-radius:5px; padding:14px 20px; font-size:12px; font-weight:500; transition:background .2s; }
++    .primary:hover { background:#253e29; }
++    .hero .primary { margin-top:17px; }
++    .hero-note { display:flex; gap:7px; align-items:center; margin-top:25px; color:#7c8072; font-size:10px; }
++    .hero-note svg { width:14px; height:14px; }
++    .hero-visual { position:relative; height:371px; }
++    .hero-image { width:100%; height:100%; object-fit:cover; object-position:center 56%; border-radius:150px 150px 8px 8px; }
++    .image-caption { position:absolute; left:18px; bottom:18px; color:#fff; font-size:10px; letter-spacing:.6px; display:flex; align-items:center; gap:7px; text-shadow:0 1px 5px #000; }
++    .image-caption::before { content:''; width:5px; height:5px; border-radius:50%; background:#e9c792; }
++    .roundel { position:absolute; top:11px; right:-24px; width:93px; height:93px; background:#ece9d8; border:1px solid #d8d5c3; outline:6px solid var(--paper); border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; transform:rotate(13deg); gap:4px; }
++    .roundel span { font-size:8px; text-transform:uppercase; letter-spacing:1.3px; }
++    .roundel svg { width:32px; height:32px; }
++    .values { display:flex; justify-content:center; gap:65px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:18px 0; }
++    .value { display:flex; align-items:center; gap:10px; font-size:10px; color:#5b6557; }
++    .value svg { width:17px; height:17px; }
++    #menu { padding-top:42px; scroll-margin-top:15px; }
++    .section-heading { display:flex; justify-content:space-between; align-items:end; gap:24px; }
++    .section-heading h2 { font-family:'Manrope',sans-serif; font-weight:500; font-size:30px; letter-spacing:-1.2px; margin:0 0 8px; }
++    .section-heading p { color:var(--muted); font-size:12px; margin:0; }
++    .season-note { color:#7c806f; font-size:10px; display:flex; align-items:center; gap:7px; padding-bottom:3px; }
++    .season-note svg { color:var(--orange); width:16px; height:16px; }
++    .filters { display:flex; gap:7px; margin:25px 0 23px; }
++    .filter { background:transparent; border:1px solid var(--line); padding:8px 17px; border-radius:24px; font-size:11px; transition:background .2s,color .2s; }
++    .filter[aria-pressed="true"] { background:var(--green); border-color:var(--green); color:white; }
++    .filter:hover { border-color:var(--green); }
++    .product-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:21px; align-items:start; }
++    .product { background:#fffefa; border:1px solid #e0e2d6; border-radius:9px; overflow:clip; view-transition-scope:all; }
++    .product[hidden] { display:none; }
++    .product-photo { position:relative; height:231px; background:#e9e4d9; }
++    .product-photo img { display:block; width:100%; height:100%; object-fit:cover; }
++    .product:nth-child(1) .product-photo img { object-position:center 52%; }
++    .product:nth-child(2) .product-photo img { object-position:center 55%; }
++    .tag { position:absolute; top:13px; left:13px; border-radius:4px; padding:6px 9px; background:#faf9ed; font-size:9px; color:#4e5b40; }
++    .tag.seasonal { background:#f1ddbf; color:#7b512f; }
++    .favorite { position:absolute; right:12px; top:12px; display:grid; place-items:center; width:29px; height:29px; background:#fffef6e8; border:0; border-radius:50%; }
++    .favorite svg { width:15px; height:15px; }
++    .favorite[aria-pressed="true"] svg { fill:#a85e42; stroke:#a85e42; }
++    .product-body { padding:18px 18px 15px; }
++    .product-title { display:flex; align-items:center; justify-content:space-between; gap:8px; }
++    .product-title h3 { font-family:'Manrope',sans-serif; font-size:15px; font-weight:650; letter-spacing:-.4px; margin:0; }
++    .price { font-size:12px; font-weight:500; }
++    .description { font-size:10px; line-height:1.8; color:var(--muted); margin:8px 0 14px; min-height:36px; }
++    .product-bottom { display:flex; justify-content:space-between; align-items:center; gap:10px; border-top:1px solid #e9e9df; padding-top:12px; }
++    .detail-toggle { padding:4px 0; border:0; background:none; color:#7b7e70; font-size:10px; display:flex; gap:5px; align-items:center; }
++    .detail-toggle svg { width:12px; height:12px; transition:transform .2s; }
++    .detail-toggle[aria-expanded="true"] svg { transform:rotate(180deg); }
++    .add-button { display:flex; align-items:center; gap:15px; background:none; border:1px solid #bcc8b1; border-radius:4px; padding:7px 10px; font-size:10px; transition:background .2s; }
++    .add-button:hover { background:#e9eedf; }
++    .add-button svg { width:12px; height:12px; }
++    .options { border-top:1px solid var(--line); padding-top:14px; margin-top:14px; }
++    .options[hidden] { display:none; }
++    .options label { display:block; font-size:10px; color:var(--muted); margin-bottom:9px; }
++    .sizes { display:flex; gap:7px; }
++    .size { border:1px solid var(--line); background:none; padding:7px 10px; border-radius:4px; font-size:10px; }
++    .size[aria-pressed="true"] { background:#edf0e4; border-color:var(--green); }
++    .milk-label { display:flex!important; gap:7px; align-items:center; margin:13px 0 0!important; }
++    input { accent-color:var(--green); }
++    .menu-footer { text-align:center; margin:24px 0 37px; font-size:10px; color:#878b7b; }
++    .menu-footer span { padding:0 8px; color:#c4c8b9; }
++    .story { display:flex; align-items:center; justify-content:space-between; gap:28px; padding:28px 33px; background:#eceee3; border-radius:7px; margin-bottom:37px; }
++    .story-main { display:flex; gap:20px; align-items:center; }
++    .story-main > svg { width:39px; height:39px; flex-shrink:0; color:#68805a; }
++    .story h2 { font-family:'Manrope',sans-serif; font-size:17px; font-weight:600; letter-spacing:-.5px; margin:0 0 7px; }
++    .story p { color:#7a806f; font-size:11px; margin:0; line-height:1.8; }
++    .story-link { white-space:nowrap; font-size:11px; border-bottom:1px solid #9ca78f; padding-bottom:4px; display:flex; gap:18px; align-items:center; }
++    footer { padding:24px 0 27px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:20px; color:#8a8d7e; font-size:9px; }
++    footer .footer-brand { color:#68735d; font-weight:600; font-size:11px; }
++    footer .footer-right { display:flex; gap:20px; }
++    .bag-panel { position:fixed; z-index:20; right:24px; top:86px; width:min(365px,calc(100vw - 32px)); padding:23px; background:#fffefa; border:1px solid var(--line); box-shadow:0 16px 60px #253b2d24; border-radius:10px; view-transition-scope:all; }
++    .bag-panel[hidden] { display:none; }
++    .bag-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
++    .bag-heading h2 { margin:0; font-size:20px; font-weight:500; }
++    .close { border:0; background:none; padding:5px; }
++    .bag-items { min-height:50px; max-height:45vh; overflow:auto; }
++    .empty { font-size:13px; color:var(--muted); line-height:1.8; }
++    .bag-item { display:flex; justify-content:space-between; gap:12px; font-size:12px; border-bottom:1px solid var(--line); padding:14px 0; }
++    .bag-item small { display:block; color:var(--muted); margin-top:5px; }
++    .quantity { display:flex; gap:10px; align-items:center; }
++    .quantity button { padding:3px 7px; background:var(--paper); border:1px solid var(--line); border-radius:3px; }
++    .bag-total { display:flex; justify-content:space-between; font-size:14px; margin:20px 0; }
++    .checkout { width:100%; }
++    .checkout:disabled { opacity:.5; cursor:default; }
++    .status { position:fixed; bottom:24px; left:50%; translate:-50% 0; z-index:30; background:var(--green); color:white; box-shadow:0 5px 20px #253b2d20; border-radius:6px; padding:13px 22px; font-size:12px; pointer-events:none; }
++    .status:empty { display:none; }
++    ::view-transition-group(*) { animation-duration:380ms; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
++    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*) { animation:none!important; } .detail-toggle svg { transition:none; } }
++    @media(min-width:1440px) { .shell { max-width:1370px; } .hero { gap:100px; padding-top:60px; padding-bottom:60px; } .hero-visual { height:420px; } h1 { font-size:64px; } .product-photo { height:260px; } }
++    @media(max-width:900px) { .shell { padding:0 32px; } .hero { gap:32px; } .hero-visual { height:330px; } h1 { font-size:43px; } .nav-links { gap:20px; } .values { gap:35px; } .product-grid { gap:14px; } .product-photo { height:190px; } .product-body { padding:14px; } .product-title h3 { font-size:13px; } .roundel { right:-13px; } }
++    @media(max-width:650px) { .shell { padding:0 22px; } .topbar { height:83px; gap:12px; } .wordmark { font-size:16px; } .brand-flower { width:34px; height:34px; } .nav-links { display:none; } .bag-button { padding:9px 10px; } .hero { grid-template-columns:1fr; padding-top:35px; gap:30px; padding-bottom:32px; } h1 { font-size:49px; letter-spacing:-2.5px; max-width:360px; } .hero-description { max-width:330px; } .hero-visual { height:340px; margin:0 8px; } .hero-note { margin-top:19px; } .roundel { right:-14px; } .values { gap:0; justify-content:space-between; padding:16px 0; } .value { font-size:8px; gap:5px; } .value svg { width:14px; } #menu { padding-top:30px; } .section-heading h2 { font-size:28px; } .season-note { display:none; } .product-grid { grid-template-columns:1fr; gap:20px; } .product-photo { height:285px; } .product-title h3 { font-size:17px; } .description { font-size:12px; min-height:0; } .product-body { padding:19px; } .price { font-size:14px; } .add-button,.detail-toggle { font-size:12px; } .filters { gap:6px; } .filter { font-size:10px; padding:8px 13px; } .story { padding:24px; flex-direction:column; align-items:start; gap:20px; } .story-main { gap:15px; } .story-link { margin-left:54px; } footer { flex-wrap:wrap; line-height:1.8; } footer .footer-right { gap:15px; } .bag-panel { right:16px; top:73px; } }
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <svg style="display:none" xmlns="http://www.w3.org/2000/svg"><symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol><symbol id="leaf" viewBox="0 0 24 24"><path d="M20 3C8 2 2 9 6 16s16 3 14-13Z"/><path d="m4 21 11-12M9 16l-1-5m5 1 4 1"/></symbol><symbol id="cup" viewBox="0 0 24 24"><path d="M4 8h13v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8Zm13 1h2a3 3 0 0 1 0 6h-2M7 3v2m4-3v3m4-2v2"/></symbol><symbol id="heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></symbol><symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="bag" viewBox="0 0 24 24"><path d="M5 7h14l1 14H4L5 7Zm3 0V5a4 4 0 0 1 8 0v2"/></symbol></svg>
++  <div class="shell">
++    <header class="topbar">
++      <a class="brand" href="#" aria-label="The Daily Grind home"><svg class="brand-flower" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 14C8-5 6 17 17 20-7 22 9 40 19 30c-8 24 17 24 13 7 22 9 20-15 5-14C56 8 32 0 28 15Z"/><circle cx="25" cy="24" r="5" fill="#f7f7f0"/></svg><span class="wordmark">the daily<br>grind.</span></a>
++      <nav class="nav-links" aria-label="Main navigation"><a class="active" href="#menu">Our menu</a><a href="#story">Our story</a><a href="#visit">Find your daily grind</a></nav>
++      <button class="bag-button" id="bag-toggle" aria-expanded="false" aria-controls="bag-panel"><svg aria-hidden="true"><use href="#bag"/></svg> Your bag <span class="bag-count" id="bag-count">0</span></button>
++    </header>
++    <main>
++      <section class="hero" aria-labelledby="hero-heading">
++        <div class="hero-copy"><div class="eyebrow">A little good, every day</div><h1 id="hero-heading">Your daily ritual,<br>made a little<br><em>better.</em></h1><p class="hero-description">Good coffee. Thoughtfully sourced. Locally roasted.<br>A small moment to make the day your own.</p><a class="primary" href="#menu">Find your favorite <svg aria-hidden="true"><use href="#arrow"/></svg></a><div class="hero-note"><svg aria-hidden="true"><use href="#heart"/></svg> Made with care. Served with a little love.</div></div>
++        <div class="hero-visual"><img class="hero-image" src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1000&q=85" alt="Freshly brewed coffee and a slow morning at the coffee bar" fetchpriority="high" width="650" height="600"><div class="roundel"><span>Good coffee</span><svg aria-hidden="true"><use href="#cup"/></svg><span>Good days</span></div><span class="image-caption">YOUR DAILY DOSE OF SOMETHING GOOD.</span></div>
++      </section>
++      <div class="values"><div class="value"><svg aria-hidden="true"><use href="#leaf"/></svg>Thoughtfully sourced</div><div class="value"><svg aria-hidden="true"><use href="#cup"/></svg>Roasted close to home</div><div class="value"><svg aria-hidden="true"><use href="#heart"/></svg>Always made with care</div></div>
++      <section id="menu" aria-labelledby="menu-heading"><div class="section-heading"><div><h2 id="menu-heading">Meet your next favorite.</h2><p>Familiar comforts. A few happy discoveries. All made for you.</p></div><div class="season-note"><svg aria-hidden="true"><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/><circle cx="12" cy="12" r="4"/></svg>A little something for every mood</div></div>
++        <div class="filters" role="group" aria-label="Filter drinks"><button class="filter" data-filter="all" aria-pressed="true">All favorites</button><button class="filter" data-filter="coffee" aria-pressed="false">Coffee classics</button><button class="filter" data-filter="seasonal" aria-pressed="false">Seasonal sips</button><button class="filter" data-filter="cold" aria-pressed="false">Over ice</button></div>
++        <div class="product-grid" id="products"></div>
++        <p class="menu-footer">Good things take a little time. Every cup is made to order.<span>✦</span>Oat milk? Always an option.</p>
++      </section>
++      <section class="story" id="story" aria-labelledby="story-heading"><div class="story-main"><svg aria-hidden="true"><use href="#leaf"/></svg><div><h2 id="story-heading">A better cup. A little more care.</h2><p>From the farms we work with to the neighborhood we call home,<br>we believe good coffee should do a little good, too.</p></div></div><a class="story-link" href="#visit">Come say hello <svg aria-hidden="true"><use href="#arrow"/></svg></a></section>
++    </main>
++    <footer id="visit"><span class="footer-brand">Your neighborhood. Your daily grind.</span><span>Find us at 42 Maple Street · Open daily, 7am–5pm</span><div class="footer-right"><span>© 2026 The Daily Grind</span><a href="mailto:hello@thedailygrind.example">Get in touch ↗</a></div></footer>
++  </div>
++  <aside class="bag-panel" id="bag-panel" aria-labelledby="bag-heading" hidden><div class="bag-heading"><h2 id="bag-heading">Your daily favorites</h2><button class="close" id="bag-close" aria-label="Close your bag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><div id="bag-content"></div></aside>
++  <div class="status" role="status" aria-live="polite" id="status"></div>
++  <script>
++    const drinks = [
++      { id:'maple', name:'Maple Oat Latte', price:5.50, category:'seasonal', tag:'A seasonal little joy', description:'Velvety espresso, creamy oat milk, and a little<br>touch of real maple. Like a hug in a cup.', image:'photo-1461023058943-07fcbe16d735', alt:'Creamy iced oat latte in a tall glass', position:'center 55%' },
++      { id:'espresso', name:'The Daily Espresso', price:3.50, category:'coffee', tag:'The everyday essential', description:'Rich, balanced, and beautifully simple.<br>Our signature roast, in its purest form.', image:'photo-1510707577719-ae7c14805e3a', alt:'Rich espresso served in a ceramic cup', position:'center 53%' },
++      { id:'cold', name:'Slow Sunday Cold Brew', price:4.75, category:'cold', tag:'Smooth from the first sip', description:'Slow-steeped for 18 hours. Naturally sweet.<br>Proof that some things are worth the wait.', image:'photo-1517701604599-bb29b565090c', alt:'Cold brew coffee over ice in a glass', position:'center 50%' }
++    ];
++    const money = value => '$' + value.toFixed(2);
++    const cart = new Map();
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++    // Each element owns its transition. A document transition would block other scopes.
++    function updateScope(scope, update) {
++      if (!('startViewTransition' in Element.prototype) || reducedMotion.matches || scope.hidden) { update(); return; }
++      const transition = scope.startViewTransition(update);
++      transition.ready.catch(() => {}); // Rapid interactions can skip the previous snapshot.
++    }
++    const products = document.querySelector('#products');
++    drinks.forEach(drink => {
++      const card = document.createElement('article');
++      card.className = 'product'; card.dataset.category = drink.category; card.dataset.id = drink.id;
++      card.innerHTML = `<div class="product-photo"><img src="https://images.unsplash.com/${drink.image}?auto=format&fit=crop&w=700&q=85" alt="${drink.alt}" width="500" height="400" style="object-position:${drink.position}" loading="lazy"><span class="tag ${drink.category === 'seasonal' ? 'seasonal' : ''}">${drink.tag}</span><button class="favorite" aria-label="Save ${drink.name}" aria-pressed="false"><svg aria-hidden="true"><use href="#heart"/></svg></button></div><div class="product-body"><div class="product-title"><h3>${drink.name}</h3><span class="price">${money(drink.price)}</span></div><p class="description">${drink.description}</p><div class="product-bottom"><button class="detail-toggle" aria-expanded="false" aria-controls="options-${drink.id}">Make it yours <svg aria-hidden="true"><use href="#chevron"/></svg></button><button class="add-button" aria-label="Add ${drink.name} to bag">Add to bag <svg aria-hidden="true"><use href="#plus"/></svg></button></div><div class="options" id="options-${drink.id}" hidden><label>YOUR PERFECT SIZE</label><div class="sizes" role="group" aria-label="Size for ${drink.name}"><button class="size" data-size="Regular" aria-pressed="true">Regular</button><button class="size" data-size="Large" aria-pressed="false">Large +$1</button></div><label class="milk-label"><input type="checkbox" ${drink.id === 'maple' ? 'checked' : ''}> Make it with oat milk · on us</label></div></div>`;
++      products.append(card);
++      card.querySelector('.favorite').addEventListener('click', event => {
++        const button = event.currentTarget;
++        const saved = button.getAttribute('aria-pressed') !== 'true';
++        button.setAttribute('aria-pressed', saved);
++        button.setAttribute('aria-label', `${saved ? 'Unsave' : 'Save'} ${drink.name}`);
++        notify(`${drink.name} ${saved ? 'saved to' : 'removed from'} your favorites.`);
++      });
++      card.querySelector('.detail-toggle').addEventListener('click', event => {
++        const button = event.currentTarget;
++        updateScope(card, () => {
++          const expanded = button.getAttribute('aria-expanded') !== 'true';
++          button.setAttribute('aria-expanded', expanded);
++          card.querySelector('.options').hidden = !expanded;
++        });
++      });
++      card.querySelectorAll('.size').forEach(button => button.addEventListener('click', () => updateScope(card, () => {
++        card.querySelectorAll('.size').forEach(size => size.setAttribute('aria-pressed', size === button));
++        card.querySelector('.price').textContent = money(drink.price + (button.dataset.size === 'Large' ? 1 : 0));
++      })));
++      card.querySelector('.add-button').addEventListener('click', () => {
++        const size = card.querySelector('.size[aria-pressed="true"]').dataset.size;
++        const oat = card.querySelector('input').checked;
++        const key = `${drink.id}-${size}-${oat}`;
++        const existing = cart.get(key);
++        cart.set(key, { key, name:drink.name, size, oat, price:drink.price + (size === 'Large' ? 1 : 0), quantity:(existing?.quantity || 0) + 1 });
++        refreshBag();
++        notify(`${drink.name} added. A little good is on its way.`);
++      });
++    });
++    document.querySelectorAll('.filter').forEach(button => button.addEventListener('click', () => {
++      document.querySelectorAll('.filter').forEach(filter => filter.setAttribute('aria-pressed', filter === button));
++      // Preserve each card's DOM and local selections as filters change.
++      products.querySelectorAll('.product').forEach(card => updateScope(card, () => {
++        card.hidden = button.dataset.filter !== 'all' && card.dataset.category !== button.dataset.filter;
++      }));
++    }));
++    const bagPanel = document.querySelector('#bag-panel');
++    const bagToggle = document.querySelector('#bag-toggle');
++    function setBag(open, restoreFocus = true) {
++      bagPanel.hidden = !open; bagToggle.setAttribute('aria-expanded', open);
++      if (open) document.querySelector('#bag-close').focus(); else if (restoreFocus) bagToggle.focus();
++    }
++    bagToggle.addEventListener('click', () => setBag(bagPanel.hidden));
++    document.querySelector('#bag-close').addEventListener('click', () => setBag(false));
++    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !bagPanel.hidden) setBag(false); });
++    document.addEventListener('click', event => { if (!bagPanel.hidden && !bagPanel.contains(event.target) && !bagToggle.contains(event.target) && !event.target.closest('.add-button')) setBag(false, false); });
++    function refreshBag(focusKey, focusAction) {
++      const totalQuantity = [...cart.values()].reduce((sum, item) => sum + item.quantity, 0);
++      document.querySelector('#bag-count').textContent = totalQuantity;
++      updateScope(bagPanel, () => {
++        const content = document.querySelector('#bag-content');
++        content.replaceChildren();
++        const items = document.createElement('div'); items.className = 'bag-items';
++        if (!cart.size) { const empty = document.createElement('p'); empty.className = 'empty'; empty.textContent = 'A good day starts with a good cup. Find your favorite and make it yours.'; items.append(empty); }
++        for (const item of cart.values()) {
++          const row = document.createElement('div'); row.className = 'bag-item';
++          const info = document.createElement('div'); info.textContent = item.name;
++          const detail = document.createElement('small'); detail.textContent = `${item.size} · ${item.oat ? 'Oat milk' : 'Classic'} · ${money(item.price)}`; info.append(detail);
++          const quantity = document.createElement('div'); quantity.className = 'quantity';
++          for (const action of ['minus','count','plus']) {
++            const control = document.createElement(action === 'count' ? 'span' : 'button');
++            control.textContent = action === 'count' ? item.quantity : action === 'minus' ? '−' : '+';
++            if (action !== 'count') {
++              control.dataset.key = item.key; control.dataset.action = action;
++              control.setAttribute('aria-label', `${action === 'minus' ? 'Remove one' : 'Add one'} ${item.name}`);
++              control.addEventListener('click', () => {
++                item.quantity += action === 'minus' ? -1 : 1;
++                if (!item.quantity) cart.delete(item.key);
++                refreshBag(item.key, action);
++              });
++            }
++            quantity.append(control);
++          }
++          row.append(info,quantity); items.append(row);
++        }
++        const total = document.createElement('div'); total.className = 'bag-total';
++        const totalLabel = document.createElement('span'); totalLabel.textContent = 'Your total';
++        const amount = document.createElement('strong'); amount.textContent = money([...cart.values()].reduce((sum,item) => sum + item.price * item.quantity,0)); total.append(totalLabel,amount);
++        const checkout = document.createElement('button'); checkout.className = 'primary checkout'; checkout.disabled = !cart.size; checkout.textContent = 'Place pickup order →';
++        checkout.addEventListener('click', () => {
++          cart.clear(); refreshBag(); setBag(false);
++          notify('Your demo order is in! Your coffee will be ready in 10–15 minutes.');
++        });
++        content.append(items,total,checkout);
++        if (focusKey) {
++          const next = [...content.querySelectorAll('[data-key]')].find(button => button.dataset.key === focusKey && button.dataset.action === focusAction);
++          (next || content.querySelector('[data-key]') || document.querySelector('#bag-close')).focus();
++        }
++      });
++    }
++    let notificationTimer;
++    function notify(message) { clearTimeout(notificationTimer); document.querySelector('#status').textContent = message; notificationTimer = setTimeout(() => { document.querySelector('#status').textContent = ''; },4500); }
++    refreshBag();
++  </script>
+ </body>
+-
+ </html>

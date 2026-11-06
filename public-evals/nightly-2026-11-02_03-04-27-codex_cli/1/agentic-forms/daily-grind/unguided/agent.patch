@@ -1,0 +1,199 @@
+diff --git a/coffee-finder.js b/coffee-finder.js
+new file mode 100644
+index 0000000..a3f8565
+--- /dev/null
++++ b/coffee-finder.js
+@@ -0,0 +1,82 @@
++(() => {
++  'use strict';
++
++  const coffees = [
++    {
++      name: 'Maple Oat Latte', temperature: 'hot', flavor: 'sweet',
++      description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++      url: '/menu/seasonal',
++    },
++    {
++      name: 'Dark Roast Espresso', temperature: 'hot', flavor: 'bold',
++      description: 'Bold, smokey, and perfect for a morning boost.',
++      url: '/menu/espresso',
++    },
++    {
++      name: 'Cold Brew', temperature: 'cold', flavor: 'smooth',
++      description: 'Steeped for 18 hours for maximum smoothness.',
++      url: '/menu/cold-brew',
++    },
++  ];
++
++  const form = document.getElementById('coffee-finder-form');
++  const recommendation = document.getElementById('coffee-recommendation');
++
++  function findCoffee() {
++    const data = new FormData(form);
++    const temperature = data.get('temperature');
++    const flavor = data.get('flavor');
++
++    // Validate again for programmatic submissions that bypass native validation.
++    if (!['hot', 'cold', 'either'].includes(temperature) ||
++        !['bold', 'smooth', 'sweet', 'any'].includes(flavor)) {
++      return { status: 'error', message: 'Choose a valid temperature and flavor.' };
++    }
++
++    const temperatureMatches = (coffee) => temperature === 'either' || coffee.temperature === temperature;
++    const flavorMatches = (coffee) => flavor === 'any' || coffee.flavor === flavor;
++    // Honor serving temperature first, then choose the closest flavor.
++    const score = (coffee) => Number(temperatureMatches(coffee)) * 2 + Number(flavorMatches(coffee));
++    const coffee = coffees.reduce((best, candidate) => score(candidate) > score(best) ? candidate : best);
++    const exactMatch = temperatureMatches(coffee) && flavorMatches(coffee);
++    const message = exactMatch
++      ? 'Your coffee match'
++      : `Closest match: no ${temperature} seasonal favorite has a ${flavor} profile. Try this ${coffee.flavor} favorite instead.`;
++
++    document.getElementById('coffee-match').textContent = message;
++    document.getElementById('coffee-name').textContent = coffee.name;
++    document.getElementById('coffee-description').textContent = coffee.description;
++    document.getElementById('coffee-preferences').textContent =
++      `Your preferences: ${temperature === 'either' ? 'any temperature' : temperature} · ${flavor === 'any' ? 'any flavor' : flavor}. Served ${coffee.temperature}.`;
++    const details = document.getElementById('coffee-details');
++    details.href = coffee.url;
++    details.textContent = `Explore ${coffee.name}`;
++    recommendation.hidden = false;
++
++    return {
++      status: 'success', preferences: { temperature, flavor },
++      exactMatch, recommendation: { ...coffee }, message,
++    };
++  }
++
++  form.addEventListener('submit', (event) => {
++    event.preventDefault();
++    const result = findCoffee();
++    if (result.status === 'error') {
++      recommendation.hidden = true;
++      form.reportValidity();
++    }
++    // Declarative WebMCP agents receive the same result displayed to visitors.
++    if (event.agentInvoked && typeof event.respondWith === 'function') {
++      event.respondWith(Promise.resolve(result));
++    }
++  });
++
++  function clearRecommendation() {
++    recommendation.hidden = true;
++  }
++
++  form.addEventListener('input', clearRecommendation);
++  form.addEventListener('change', clearRecommendation);
++  form.addEventListener('reset', clearRecommendation);
++})();
+diff --git a/index.html b/index.html
+index 66c9173..636174f 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="coffee-finder.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -135,6 +136,46 @@
+       background: #3e2723;
+     }
+ 
++    .coffee-finder {
++      margin-bottom: 40px;
++      padding: clamp(20px, 4vw, 36px);
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #fff8f0;
++    }
++
++    .coffee-finder h2 { color: var(--primary); }
++    .coffee-finder > p { margin: 8px 0 20px; }
++    .finder-fields {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 20px;
++    }
++    .finder-field label { display: block; font-weight: 600; margin-bottom: 6px; }
++    .finder-field select {
++      width: 100%;
++      padding: 12px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++    .finder-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
++    .finder-actions button { margin: 0; font: inherit; cursor: pointer; border: 1px solid var(--primary); }
++    .finder-actions .reset { background: transparent; color: var(--primary); }
++    :where(a, button, select):focus-visible { outline: 3px solid #a95400; outline-offset: 4px; }
++    .finder-result:not([hidden]) { margin-top: 24px; border-top: 1px solid var(--secondary); padding-top: 20px; }
++    .finder-result h3 { margin: 4px 0; }
++    .finder-result .match { font-weight: 600; }
++    .finder-result .preferences { font-size: 0.9rem; margin-top: 8px; }
++    @media (max-width: 600px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .finder-fields { grid-template-columns: 1fr; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +216,51 @@
+   </header>
+ 
+   <main class="container">
++    <section id="coffee-finder" class="coffee-finder" aria-labelledby="finder-heading">
++      <h2 id="finder-heading">Find your next favorite</h2>
++      <p id="finder-description">Tell us what you're craving. We'll match you with one of our seasonal favorites.</p>
++      <form id="coffee-finder-form" toolname="find_coffee"
++        tooldescription="Recommend a Daily Grind seasonal coffee by temperature and flavor preference. Returns the closest available match and explains any unmatched preferences. This only recommends a drink; it does not place an order."
++        toolautosubmit aria-describedby="finder-description">
++        <div class="finder-fields">
++          <div class="finder-field">
++            <label for="coffee-temperature">Hot or cold?</label>
++            <select id="coffee-temperature" name="temperature" required
++              toolparamdescription="Preferred serving temperature: hot, cold, or either for no preference.">
++              <option value="" selected disabled>Choose a temperature</option>
++              <option value="hot">Hot</option>
++              <option value="cold">Cold</option>
++              <option value="either">Either works</option>
++            </select>
++          </div>
++          <div class="finder-field">
++            <label for="coffee-flavor">What's your flavor?</label>
++            <select id="coffee-flavor" name="flavor" required
++              toolparamdescription="Preferred flavor profile: bold, smooth, sweet, or any for no preference.">
++              <option value="" selected disabled>Choose a flavor</option>
++              <option value="bold">Bold &amp; roasty</option>
++              <option value="smooth">Smooth &amp; mellow</option>
++              <option value="sweet">Sweet &amp; creamy</option>
++              <option value="any">Surprise me</option>
++            </select>
++          </div>
++        </div>
++        <div class="finder-actions">
++          <button type="submit" class="btn">Find my coffee</button>
++          <button type="reset" class="btn reset">Start over</button>
++        </div>
++      </form>
++      <noscript><p>Enable JavaScript to use the coffee finder, or explore the seasonal favorites below.</p></noscript>
++      <div id="coffee-result" role="status" aria-live="polite" aria-atomic="true">
++        <div id="coffee-recommendation" class="finder-result" hidden>
++          <p id="coffee-match" class="match"></p>
++          <h3 id="coffee-name"></h3>
++          <p id="coffee-description"></p>
++          <p id="coffee-preferences" class="preferences"></p>
++          <a id="coffee-details" class="btn">View drink details</a>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

@@ -1,0 +1,96 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,64 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact-form {
++      max-width: 600px;
++      margin: 40px auto 0;
++    }
++
++    .contact-form h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .field {
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      padding: 10px 14px;
++      margin-bottom: 16px;
++    }
++
++    .field label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .field input,
++    .field textarea {
++      width: 100%;
++      border: none;
++      outline: none;
++      background: transparent;
++      font: inherit;
++      color: var(--text);
++    }
++
++    .field textarea {
++      resize: vertical;
++      min-height: 120px;
++    }
++
++    .field:focus-within {
++      border-color: var(--accent);
++    }
++
++    /* :user-invalid only matches after the user has interacted with the input */
++    .field:has(:user-invalid) {
++      border-color: #d32f2f;
++    }
++
++    .contact-form button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +250,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="contact-form">
++      <h2>Get in Touch</h2>
++      <form action="/contact" method="post">
++        <div class="field">
++          <label for="name">Name</label>
++          <input type="text" id="name" name="name" required>
++        </div>
++        <div class="field">
++          <label for="email">Email</label>
++          <input type="email" id="email" name="email" required>
++        </div>
++        <div class="field">
++          <label for="message">Message</label>
++          <textarea id="message" name="message" required></textarea>
++        </div>
++        <button type="submit" class="btn">Send Message</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

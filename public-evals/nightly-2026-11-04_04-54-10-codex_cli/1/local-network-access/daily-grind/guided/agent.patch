@@ -1,0 +1,253 @@
+diff --git a/equipment.css b/equipment.css
+new file mode 100644
+index 0000000..21ab417
+--- /dev/null
++++ b/equipment.css
+@@ -0,0 +1,40 @@
++.equipment { --ink: #293e34; --muted: #626a61; color: var(--ink); background: #f3f2e9; border: 1px solid #e3e3d6; border-radius: 16px; padding: 36px; margin-bottom: 48px; scroll-margin-top: 100px; }
++.equipment-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
++.eyebrow, .device-kicker { font-size: .68rem; font-weight: 700; letter-spacing: .14em; }
++.eyebrow { color: #66705b; margin-bottom: 8px; }
++.equipment h2 { font-family: Georgia, serif; font-size: clamp(1.7rem, 3vw, 2.15rem); font-weight: 400; line-height: 1.2; }
++.local-label { white-space: nowrap; font-size: .73rem; color: #58634f; }
++.local-label span { margin-right: 5px; font-size: 1.1rem; }
++.equipment-intro { max-width: 610px; color: var(--muted); font-size: .9rem; margin: 14px 0 27px; }
++.equipment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
++.device-card { background: #fffefa; padding: 25px; border: 1px solid #dcded3; border-radius: 10px; min-width: 0; }
++.device-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 23px; }
++.device-icon { display: grid; place-items: center; background: #eef0e6; border-radius: 10px; width: 46px; height: 46px; }
++.device-icon svg { width: 26px; height: 26px; }
++.device-status { font-size: .7rem; border: 1px solid #e3e4dc; background: #f6f6f0; border-radius: 20px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px; }
++.device-status::before { content: ''; width: 6px; height: 6px; background: #8c9285; border-radius: 50%; }
++.device-status[data-state="connected"] { color: #285838; background: #edf5e9; }
++.device-status[data-state="connected"]::before { background: #41794b; }
++.device-status[data-state="error"] { color: #8a382e; background: #fff0e9; }
++.device-status[data-state="error"]::before { background: #b65137; }
++.device-status[data-state="connecting"]::before { background: #b28c30; }
++.device-kicker { color: #7c806e; margin-bottom: 5px; font-size: .62rem; }
++.device-card h3 { font-family: Georgia, serif; font-weight: 400; font-size: 1.5rem; }
++.device-description { color: var(--muted); font-size: .83rem; margin: 10px 0 22px; min-height: 3.2em; }
++.device-card label { display: block; font-size: .76rem; font-weight: 600; margin-bottom: 7px; }
++.device-card input { width: 100%; min-width: 0; border: 1px solid #cfd3c5; background: #fff; color: #374439; padding: 12px; border-radius: 6px; font-family: ui-monospace, monospace; font-size: .77rem; }
++.input-hint { font-size: .7rem; color: var(--muted); margin: 7px 0 19px; }
++.connect-button { width: 100%; display: flex; align-items: center; justify-content: space-between; border: 1px solid #304a37; background: #304a37; color: #fff; padding: 12px 15px; border-radius: 6px; font: 600 .83rem 'Segoe UI', sans-serif; cursor: pointer; }
++.connect-button:hover { background: #233b29; }
++.connect-button:disabled { opacity: .6; cursor: default; }
++.disconnect-button { border: 0; background: transparent; color: var(--ink); text-decoration: underline; cursor: pointer; padding: 10px 0; font: inherit; font-size: .8rem; }
++.equipment :focus-visible { outline: 3px solid #ad762c; outline-offset: 4px; }
++.connection-feedback { font-size: .75rem; color: var(--muted); margin-top: 13px; min-height: 3.2em; overflow-wrap: anywhere; }
++.permission-note { font-size: .65rem; color: var(--muted); margin-top: 10px; }
++.equipment-footnote { display: flex; gap: 9px; font-size: .75rem; color: var(--muted); margin: 20px 0; }
++.connection-help { border-top: 1px solid #d9ddcf; padding-top: 17px; font-size: .8rem; }
++.connection-help summary { cursor: pointer; font-weight: 600; }
++.connection-help p { margin-top: 12px; color: var(--muted); }
++.connection-notice { color: #853c25; background: #fff1de; padding: 12px; border-radius: 6px; font-size: .85rem; margin-bottom: 18px; }
++.equipment [hidden] { display: none; }
++@media (max-width: 760px) { .equipment { padding: 23px; } .equipment-heading { align-items: flex-start; flex-direction: column; gap: 12px; } .equipment-grid { grid-template-columns: 1fr; } nav { flex-wrap: wrap; gap: 12px; } nav ul { flex-wrap: wrap; gap: 10px 15px; } nav ul li { margin-left: 0; } .hero h1 { font-size: 2.4rem; } }
+diff --git a/equipment.js b/equipment.js
+new file mode 100644
+index 0000000..29730fe
+--- /dev/null
++++ b/equipment.js
+@@ -0,0 +1,132 @@
++(() => {
++  'use strict';
++
++  const secure = window.isSecureContext;
++  document.querySelector('#secure-context-note').hidden = secure;
++
++  // Separate permissions protect the LAN brewer and the on-device companion.
++  document.querySelectorAll('[data-device]').forEach((form) => {
++    const isBrewer = form.dataset.device === 'brewer';
++    const permissionName = isBrewer ? 'local-network' : 'loopback-network';
++    const input = form.elements.endpoint;
++    const connect = form.querySelector('.connect-button');
++    const disconnect = form.querySelector('.disconnect-button');
++    const badge = form.querySelector('.device-status');
++    const feedback = form.querySelector('.connection-feedback');
++    const permissionLabel = form.querySelector('.permission-note span');
++    let permissionStatus;
++    let controller;
++    let state = 'idle';
++
++    function render(next, message) {
++      state = next;
++      badge.dataset.state = next;
++      badge.textContent = { idle: 'Not connected', connecting: 'Connecting…', connected: 'Connected', error: 'Connection issue' }[next];
++      feedback.textContent = message;
++      input.disabled = next === 'connecting' || next === 'connected';
++      connect.disabled = !secure || next === 'connecting' || next === 'connected';
++      disconnect.hidden = next !== 'connecting' && next !== 'connected';
++      disconnect.textContent = next === 'connecting' ? 'Cancel connection' : 'Disconnect';
++      form.setAttribute('aria-busy', String(next === 'connecting'));
++    }
++
++    function blockedMessage() {
++      return `Access is blocked. Open this site’s browser settings, allow ${isBrewer ? 'Local network' : 'Loopback network'} access, then connect again.`;
++    }
++
++    async function checkPermission() {
++      try {
++        if (!permissionStatus) {
++          permissionStatus = await navigator.permissions.query({ name: permissionName });
++          permissionStatus.addEventListener('change', () => {
++            permissionLabel.textContent = permissionStatus.state;
++            if (permissionStatus.state === 'denied') {
++              controller?.abort();
++              controller = undefined;
++              render('error', blockedMessage());
++            } else if (state === 'error') {
++              render('idle', 'Permission updated. Press Connect to try again.');
++            }
++          });
++        }
++        permissionLabel.textContent = permissionStatus.state;
++        return permissionStatus.state;
++      } catch {
++        // Unsupported permission descriptors must not prevent a user-initiated try.
++        permissionLabel.textContent = 'Managed by your browser';
++        return 'prompt';
++      }
++    }
++
++    function endpoint() {
++      const url = new URL(input.value.trim());
++      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) {
++        throw new Error('Use an HTTP or HTTPS status URL without a username, password, or fragment.');
++      }
++      const host = url.hostname.toLowerCase();
++      const parts = host.split('.').map(Number);
++      const ipv4 = parts.length === 4 && parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255);
++      const loopback = (ipv4 && parts[0] === 127) || host === 'localhost' || host.endsWith('.localhost') || host === '[::1]';
++      const local = (ipv4 && (parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168) || (parts[0] === 169 && parts[1] === 254))) || host.endsWith('.local');
++      if (isBrewer ? !local : !loopback) {
++        throw new Error(isBrewer ? 'Enter a private LAN IPv4 address (such as 192.168.1.100) or a .local hostname.' : 'Enter a loopback address: 127.0.0.1, localhost, or [::1], with your helper’s port and health path.');
++      }
++      return url.href;
++    }
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      if (!secure || state === 'connecting' || state === 'connected') return;
++      let url;
++      try { url = endpoint(); } catch (error) {
++        render('error', error.message);
++        input.focus();
++        return;
++      }
++      const attempt = new AbortController();
++      controller = attempt;
++      render('connecting', 'Waiting for your browser and equipment. Allow network access if prompted.');
++      let timer;
++      let timedOut = false;
++      try {
++        const permission = await checkPermission();
++        if (attempt.signal.aborted) return;
++        if (permission === 'denied') {
++          render('error', blockedMessage());
++          return;
++        }
++        timer = setTimeout(() => { timedOut = true; attempt.abort(); }, 20000);
++        const response = await fetch(url, {
++          method: 'GET', mode: 'cors', credentials: 'omit', cache: 'no-store',
++          redirect: 'error', targetAddressSpace: isBrewer ? 'local' : 'loopback',
++          signal: attempt.signal,
++        });
++        if (!response.ok) throw new Error(`Equipment returned HTTP ${response.status}. Check the status endpoint and try again.`);
++        // A readable successful response verifies reachability; no brewing command is sent.
++        await response.body?.cancel();
++        if (controller !== attempt) return;
++        render('connected', `Status endpoint reached at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Connection checked; no live monitoring.`);
++      } catch (error) {
++        if (controller !== attempt) return;
++        const permission = await checkPermission();
++        if (controller !== attempt) return;
++        const advice = isBrewer ? 'Check the brewer’s power, address, and shop Wi-Fi.' : 'Start the helper on this computer and check its port.';
++        render('error', permission === 'denied' ? blockedMessage() : timedOut ? `Connection timed out. ${advice} Allow browser network access, then retry.` : error instanceof TypeError ? `Couldn’t reach the endpoint. ${advice} Check browser network permissions and the service’s CORS settings. Your browser may require a trusted HTTPS endpoint.` : error.message);
++      } finally {
++        clearTimeout(timer);
++        if (controller === attempt) controller = undefined;
++      }
++    });
++
++    disconnect.addEventListener('click', () => {
++      controller?.abort();
++      controller = undefined;
++      render('idle', 'Disconnected. Press Connect whenever you’re ready.');
++    });
++
++    connect.disabled = !secure;
++    checkPermission().then((permission) => {
++      if (permission === 'denied' && state === 'idle') render('error', blockedMessage());
++    });
++  });
++})();
+diff --git a/index.html b/index.html
+index 66c9173..8bb3a66 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,8 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <link rel="stylesheet" href="/equipment.css">
++  <script src="/equipment.js" defer></script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -163,6 +165,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#equipment">Equipment</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,6 +178,47 @@
+   </header>
+ 
+   <main class="container">
++    <section class="equipment" id="equipment" aria-labelledby="equipment-title">
++      <div class="equipment-heading">
++        <div><p class="eyebrow">A BETTER BREW, CONNECTED</p><h2 id="equipment-title">Your coffee. Your connection.</h2></div>
++        <span class="local-label"><span aria-hidden="true">◎</span> Direct from your browser</span>
++      </div>
++      <p class="equipment-intro">At the counter or at home, bring your brewing setup a little closer. Choose a device to get connected.</p>
++      <p id="secure-context-note" class="connection-notice" hidden>Connections need a secure page. Open this homepage over HTTPS, then try again.</p>
++      <div class="equipment-grid">
++        <form class="device-card" data-device="brewer" aria-labelledby="brewer-title">
++          <div class="device-top"><span class="device-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8h12v7a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V8Z"/><path d="M17 9h1a3 3 0 0 1 0 6h-1M8 2v3m4-3v3m4-3v3M3 22h18"/></svg></span><span class="device-status" data-state="idle">Not connected</span></div>
++          <p class="device-kicker">IN THE SHOP</p><h3 id="brewer-title">Wi-Fi coffee brewer</h3>
++          <p class="device-description">Connect to a brewer on the shop’s private network. Join the same Wi-Fi before you begin.</p>
++          <label for="brewer-url">Brewer status URL</label>
++          <input id="brewer-url" name="endpoint" type="url" value="http://192.168.1.100/api/status" required spellcheck="false" autocomplete="off" aria-describedby="brewer-hint">
++          <p class="input-hint" id="brewer-hint">Use your brewer’s private IP and status endpoint.</p>
++          <button class="connect-button" type="submit">Connect brewer <span aria-hidden="true">→</span></button>
++          <button class="disconnect-button" type="button" hidden>Cancel</button>
++          <p class="connection-feedback" role="status" aria-live="polite">Ready when you are. Your browser may ask for local network access.</p>
++          <p class="permission-note">Network permission: <span>Checking…</span></p>
++        </form>
++        <form class="device-card" data-device="helper" aria-labelledby="helper-title">
++          <div class="device-top"><span class="device-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8m-4-5v5M7 8l3 2-3 2m6 0h4"/></svg></span><span class="device-status" data-state="idle">Not connected</span></div>
++          <p class="device-kicker">ON YOUR COMPUTER</p><h3 id="helper-title">Desktop brewing helper</h3>
++          <p class="device-description">Link your companion app to this browser. Start the brewing helper on this same computer first.</p>
++          <label for="helper-url">Helper health URL</label>
++          <input id="helper-url" name="endpoint" type="url" value="http://127.0.0.1:45678/health" required spellcheck="false" autocomplete="off" aria-describedby="helper-hint">
++          <p class="input-hint" id="helper-hint">Use the port and health endpoint shown in your helper.</p>
++          <button class="connect-button" type="submit">Connect helper <span aria-hidden="true">→</span></button>
++          <button class="disconnect-button" type="button" hidden>Cancel</button>
++          <p class="connection-feedback" role="status" aria-live="polite">Ready when you are. Your browser may ask for loopback network access.</p>
++          <p class="permission-note">Network permission: <span>Checking…</span></p>
++        </form>
++      </div>
++      <div class="equipment-footnote"><span aria-hidden="true">↳</span><p>Your equipment, on your terms. We only contact the address you choose when you press Connect.</p></div>
++      <details class="connection-help"><summary>Need a hand connecting?</summary>
++        <div><p><strong>Allow access.</strong> If access is blocked, open this site’s browser settings and allow Local network for the brewer or Loopback network for the helper, then reconnect. Browser support varies; try an up-to-date Chrome or Edge if a connection is blocked.</p>
++        <p><strong>Check the setup.</strong> Keep the brewer powered on and on the same Wi-Fi. The desktop helper must be running on the computer where you opened this page; 127.0.0.1 always means this device.</p>
++        <p><strong>For equipment administrators.</strong> The example URLs are editable. Supply a read-only status or health endpoint that returns a successful HTTP response. Each service must allow this homepage’s origin through standard CORS. HTTPS is required for the homepage; browsers without support for HTTP local connections may also require a trusted HTTPS device endpoint. This panel checks reachability and does not start a brew or maintain a live connection.</p></div>
++      </details>
++      <noscript><p class="connection-notice">Enable JavaScript to connect to your brewing equipment.</p></noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

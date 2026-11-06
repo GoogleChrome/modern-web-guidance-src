@@ -1,0 +1,386 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,98 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* 3D Coffee Box */
++    .box-section {
++      margin-bottom: 40px;
++      text-align: center;
++    }
++
++    .box-stage {
++      margin-top: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 20px;
++    }
++
++    #coffee-box {
++      width: 100%;
++      max-width: 720px;
++      height: 480px;
++      border-radius: 8px;
++      background: radial-gradient(circle at 50% 40%, #efebe9, var(--secondary));
++    }
++
++    #reserve-form {
++      width: 300px;
++      height: 290px;
++      padding: 18px 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      text-align: left;
++      background: #fff8e1;
++      border: 3px solid var(--primary);
++      border-radius: 10px;
++      font: inherit;
++    }
++
++    #reserve-form h3 {
++      color: var(--primary);
++      font-size: 1.1rem;
++    }
++
++    #reserve-form label {
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    #reserve-form input {
++      width: 100%;
++      padding: 6px 8px;
++      font: inherit;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      background: white;
++    }
++
++    #reserve-form .actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    #reserve-form button {
++      flex: 1;
++      padding: 8px 10px;
++      font: inherit;
++      color: white;
++      background: var(--primary);
++      border: 0;
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    #reserve-form button[type="reset"] {
++      color: var(--primary);
++      background: var(--secondary);
++    }
++
++    #reserve-form button:hover {
++      background: #3e2723;
++    }
++
++    #reserve-form button[type="reset"]:hover {
++      background: var(--accent);
++    }
++
++    #reserve-status {
++      min-height: 1.4em;
++      font-size: 0.85rem;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +264,28 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="box-section">
++      <h2>Reserve Your Coffee Box</h2>
++      <p>Grab a bag of this month's roast. The form below lives on the box itself.</p>
++      <div class="box-stage" id="box-stage">
++        <canvas id="coffee-box" content="drawable" aria-label="Spinning coffee box with a reservation form">
++          <form id="reserve-form" drawable>
++            <h3>Reserve a Bag</h3>
++            <label for="reserve-name">Name</label>
++            <input id="reserve-name" name="name" type="text" autocomplete="name" required>
++            <label for="reserve-email">Email</label>
++            <input id="reserve-email" name="email" type="email" autocomplete="email" required>
++            <div class="actions">
++              <button type="submit">Reserve</button>
++              <button type="reset">Clear</button>
++            </div>
++            <output id="reserve-status" role="status"></output>
++          </form>
++        </canvas>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +316,254 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('coffee-box');
++      const form = document.getElementById('reserve-form');
++      const status = document.getElementById('reserve-status');
++
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        status.textContent = `Thanks ${form.elements.name.value}, your bag is reserved!`;
++      });
++      form.addEventListener('reset', () => { status.textContent = ''; });
++
++      const gl = canvas.getContext('webgl2');
++      if (!gl) return;
++
++      const supported = 'content' in HTMLCanvasElement.prototype;
++      if (!supported) {
++        // Fallback: show the form as plain HTML beside the canvas.
++        form.removeAttribute('drawable');
++        document.getElementById('box-stage').append(form);
++      }
++
++      // --- Minimal matrix helpers (column-major, like WebGL expects) ---
++      const mul = (a, b) => {
++        const o = new Float32Array(16);
++        for (let c = 0; c < 4; c++)
++          for (let r = 0; r < 4; r++)
++            for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
++        return o;
++      };
++      const perspective = (fov, aspect, n, f) => {
++        const t = 1 / Math.tan(fov / 2);
++        return new Float32Array([t / aspect, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]);
++      };
++      const translate = (x, y, z) => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1]);
++      const scale = (x, y, z) => new Float32Array([x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1]);
++      const rotateY = (a) => {
++        const c = Math.cos(a), s = Math.sin(a);
++        return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]);
++      };
++
++      function program(vs, fs) {
++        const p = gl.createProgram();
++        for (const [type, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
++          const sh = gl.createShader(type);
++          gl.shaderSource(sh, src);
++          gl.compileShader(sh);
++          gl.attachShader(p, sh);
++        }
++        gl.linkProgram(p);
++        return p;
++      }
++
++      const boxProg = program(`#version 300 es
++        in vec3 aPos; in vec3 aNormal;
++        uniform mat4 uMvp; uniform mat4 uRot;
++        out float vLight;
++        void main() {
++          vec3 n = mat3(uRot) * aNormal;
++          vLight = 0.45 + 0.55 * max(dot(n, normalize(vec3(0.4, 0.8, 0.6))), 0.0);
++          gl_Position = uMvp * vec4(aPos, 1.0);
++        }`, `#version 300 es
++        precision mediump float;
++        in float vLight; out vec4 o;
++        void main() { o = vec4(vec3(0.62, 0.45, 0.33) * vLight, 1.0); }`);
++
++      const quadProg = program(`#version 300 es
++        in vec2 aPos;
++        uniform mat4 uMvp;
++        out vec2 vUv;
++        void main() {
++          vUv = vec2(aPos.x + 0.5, 0.5 - aPos.y);
++          gl_Position = uMvp * vec4(aPos, 0.0, 1.0);
++        }`, `#version 300 es
++        precision mediump float;
++        in vec2 vUv; uniform sampler2D uTex; out vec4 o;
++        void main() { o = texture(uTex, vUv); }`);
++
++      // Box geometry: half extents, 6 faces with flat normals.
++      const HX = 1.3, HY = 1.25, HZ = 0.7;
++      const faces = [
++        [[0, 0, 1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]],
++        [[0, 0, -1], [1, -1, -1], [-1, -1, -1], [-1, 1, -1], [1, 1, -1]],
++        [[1, 0, 0], [1, -1, 1], [1, -1, -1], [1, 1, -1], [1, 1, 1]],
++        [[-1, 0, 0], [-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1]],
++        [[0, 1, 0], [-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]],
++        [[0, -1, 0], [-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]],
++      ];
++      const verts = [], idx = [];
++      faces.forEach(([n, ...c], i) => {
++        c.forEach(([x, y, z]) => verts.push(x * HX, y * HY, z * HZ, ...n));
++        idx.push(i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3);
++      });
++
++      const boxVao = gl.createVertexArray();
++      gl.bindVertexArray(boxVao);
++      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
++      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
++      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
++      for (const [name, off] of [['aPos', 0], ['aNormal', 12]]) {
++        const loc = gl.getAttribLocation(boxProg, name);
++        gl.enableVertexAttribArray(loc);
++        gl.vertexAttribPointer(loc, 3, gl.FLOAT, false, 24, off);
++      }
++
++      // Unit quad (-0.5..0.5) that carries the HTML texture.
++      const quadVao = gl.createVertexArray();
++      gl.bindVertexArray(quadVao);
++      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-.5, -.5, .5, -.5, .5, .5, -.5, -.5, .5, .5, -.5, .5]), gl.STATIC_DRAW);
++      const quadLoc = gl.getAttribLocation(quadProg, 'aPos');
++      gl.enableVertexAttribArray(quadLoc);
++      gl.vertexAttribPointer(quadLoc, 2, gl.FLOAT, false, 0, 0);
++
++      // --- HTML-in-Canvas helpers ---
++      const texture = gl.createTexture();
++      const textureState = { width: 0, height: 0 };
++
++      function getElementImageSize(element) {
++        let image;
++        try {
++          image = canvas.captureElementImage(element);
++        } catch (err) {
++          canvas.requestPaint(); // No paint record yet: retry on the next paint event.
++          return null;
++        }
++        const width = Math.ceil(image.width);
++        const height = Math.ceil(image.height);
++        image.close();
++        return width > 0 && height > 0 ? { width, height } : null;
++      }
++
++      function uploadElement(element) {
++        const size = getElementImageSize(element);
++        if (!size) return false;
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        if (textureState.width !== size.width || textureState.height !== size.height) {
++          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, size.width, size.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
++          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++          textureState.width = size.width;
++          textureState.height = size.height;
++        }
++        gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, element, size);
++        return true;
++      }
++
++      function computeCanvasTransform(element, mvp) {
++        const w = element.offsetWidth;
++        const h = element.offsetHeight;
++        const toGLModel = new DOMMatrix().scale(1 / w, -1 / h, 1 / h).translate(-w / 2, -h / 2);
++        const viewport = new DOMMatrix()
++          .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
++          .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
++        return viewport.multiply(new DOMMatrix(Array.from(mvp))).multiply(toGLModel);
++      }
++
++      // Keep the canvas backing store at device-pixel resolution.
++      const observer = new ResizeObserver(([entry]) => {
++        const dpc = entry.devicePixelContentBoxSize;
++        canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * devicePixelRatio);
++        canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * devicePixelRatio);
++        if (supported) canvas.requestPaint();
++      });
++      const hasDevicePixelBox = typeof ResizeObserverEntry !== 'undefined' &&
++        'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++      observer.observe(canvas, hasDevicePixelBox ? { box: 'device-pixel-content-box' } : {});
++
++      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++      const angleAt = (t) => reducedMotion.matches ? Math.sin(t / 1500) * 0.5 : t / 1800;
++
++      let formVisible = false;
++
++      function draw(t) {
++        const angle = angleAt(t);
++        const aspect = canvas.width / canvas.height;
++        const viewProj = mul(perspective(Math.PI / 6, aspect, 0.1, 50), translate(0, 0, -8));
++        const rot = rotateY(angle);
++
++        gl.viewport(0, 0, canvas.width, canvas.height);
++        gl.clearColor(0, 0, 0, 0);
++        gl.enable(gl.DEPTH_TEST);
++        gl.enable(gl.CULL_FACE);
++        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++
++        gl.useProgram(boxProg);
++        gl.bindVertexArray(boxVao);
++        gl.uniformMatrix4fv(gl.getUniformLocation(boxProg, 'uMvp'), false, mul(viewProj, rot));
++        gl.uniformMatrix4fv(gl.getUniformLocation(boxProg, 'uRot'), false, rot);
++        gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
++
++        // The form sits on the front face; only show it while that face points at the camera.
++        const facing = Math.cos(angle) > 0.1;
++        if (!supported) return;
++        if (!facing) {
++          if (formVisible) canvas.clearElementGeometry(form);
++          formVisible = false;
++          return;
++        }
++
++        const qw = 2.2;
++        const qh = qw * form.offsetHeight / form.offsetWidth;
++        const model = mul(rot, mul(translate(0, 0, HZ + 0.005), scale(qw, qh, 1)));
++        const mvp = mul(viewProj, model);
++
++        gl.useProgram(quadProg);
++        gl.bindVertexArray(quadVao);
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        gl.uniformMatrix4fv(gl.getUniformLocation(quadProg, 'uMvp'), false, mvp);
++        gl.enable(gl.BLEND);
++        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
++        gl.drawArrays(gl.TRIANGLES, 0, 6);
++        gl.disable(gl.BLEND);
++
++        // Move the real DOM form to sit exactly over its rendered pixels so it stays clickable.
++        canvas.updateElementGeometry(form, { canvasTransform: computeCanvasTransform(form, mvp) });
++        formVisible = true;
++      }
++
++      if (supported) {
++        let uploaded = false;
++        canvas.onpaint = (event) => {
++          if (!uploaded || event.changedElements?.length) {
++            try {
++              uploaded = uploadElement(form);
++            } catch (err) {
++              console.error('texElementSubImage2D copy failed:', err);
++            }
++          }
++          draw(performance.now());
++        };
++        const loop = () => {
++          canvas.requestPaint();
++          requestAnimationFrame(loop);
++        };
++        requestAnimationFrame(loop);
++      } else {
++        const loop = (t) => {
++          draw(t);
++          requestAnimationFrame(loop);
++        };
++        requestAnimationFrame(loop);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,434 @@
+diff --git a/STYLING.md b/STYLING.md
+new file mode 100644
+index 0000000..eeea7a0
+--- /dev/null
++++ b/STYLING.md
+@@ -0,0 +1,27 @@
++# Styling Daily Grind
++
++`index.html` loads `styles.css` directly; no CSS build step is required.
++
++The cascade order is declared once: `tokens`, `base`, `layout`, then
++`components`. Keep new rules inside the appropriate layer: unlayered rules
++would override all of these layers.
++
++- `tokens` defines literal palette/scale values and semantic aliases on `:root`.
++  Change semantic aliases to update the brand; use component properties such as
++  `--button-background` for local variants.
++- `base` provides page defaults and targeted, zero-specificity normalization.
++  Avoid universal resets that would affect future embedded components.
++- `layout` owns the content width and responsive grid.
++- `components` owns navigation, hero, cards, buttons, and footer. Use a class
++  as the component boundary and native nesting for related rules. Keep
++  descendant filters in `:where()` so markup structure adds no specificity.
++
++Scoping uses ordinary component classes rather than depending on `@scope`:
++there are currently no nested theme boundaries needing proximity resolution.
++Native CSS nesting and cascade layers require modern browsers. Keep token
++declarations at the top level and avoid inline presentation, IDs, `!important`,
++and deep selector chains. Prefer logical spacing and sizing properties so
++layouts also adapt to right-to-left text.
++
++Reuse the existing stock hero photograph. No runtime JavaScript or additional
++dependencies are needed for styling.
+diff --git a/index.html b/index.html
+index 66c9173..9be66a1 100644
+--- a/index.html
++++ b/index.html
+@@ -5,159 +5,12 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="styles.css">
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,7 +29,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -197,7 +50,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..50a75b0
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,211 @@
++/* Later layers take precedence without increasing selector specificity. */
++@layer tokens, base, layout, components;
++
++@layer tokens {
++  :root {
++    /* Palette and scales: literal values live here. */
++    --color-brown-900: #3e2723;
++    --color-brown-800: #4e342e;
++    --color-brown-100: #d7ccc8;
++    --color-amber-400: #ffab40;
++    --color-white: #fff;
++    --color-gray-50: #fafafa;
++    --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    --text-small: 0.85rem;
++    --text-nav: 0.9rem;
++    --text-logo: 1.5rem;
++    --text-hero: 3rem;
++    --leading-body: 1.6;
++    --space-1: 0.3125rem;
++    --space-2: 0.625rem;
++    --space-3: 0.75rem;
++    --space-4: 0.9375rem;
++    --space-5: 1rem;
++    --space-6: 1.25rem;
++    --space-7: 2.5rem;
++    --radius-small: 0.25rem;
++    --radius-button: 0.3125rem;
++    --radius-card: 0.5rem;
++
++    /* Semantic tokens: change the brand without editing components. */
++    --color-brand: var(--color-brown-800);
++    --color-accent: var(--color-amber-400);
++    --color-text: var(--color-brown-900);
++    --color-text-inverse: var(--color-white);
++    --color-page: var(--color-gray-50);
++    --color-surface: var(--color-white);
++    --color-surface-muted: var(--color-brown-100);
++    --color-action-hover: var(--color-brown-900);
++    --font-body: var(--font-sans);
++    --shadow-card: 0 2px 5px rgb(0 0 0 / 10%);
++    --content-max: 68.75rem;
++    --page-gutter: var(--space-6);
++    --layer-sticky: 10;
++    --duration-interaction: 0.3s;
++    --hero-overlay: linear-gradient(rgb(0 0 0 / 50%), rgb(0 0 0 / 50%));
++    --hero-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  }
++}
++
++@layer base {
++  /* Target only the elements used by this page, at zero specificity. */
++  :where(body, nav, header, main, section, footer, div, ul, li, h1, h2, h3, p, a) {
++    box-sizing: border-box;
++    margin: 0;
++    padding: 0;
++  }
++
++  body {
++    font-family: var(--font-body);
++    line-height: var(--leading-body);
++    color: var(--color-text);
++    background-color: var(--color-page);
++  }
++
++  :where(a:focus-visible) {
++    outline: 2px solid currentColor;
++    outline-offset: var(--space-1);
++  }
++}
++
++@layer layout {
++  .container {
++    max-inline-size: var(--content-max);
++    margin-block: var(--space-7);
++    margin-inline: auto;
++    padding-inline: var(--page-gutter);
++  }
++
++  .grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.625rem), 1fr));
++    gap: var(--space-6);
++    margin-block-start: var(--space-6);
++  }
++}
++
++@layer components {
++  /* Component roots carry specificity; structural filters do not. */
++  .site-nav {
++    display: flex;
++    flex-wrap: wrap;
++    justify-content: space-between;
++    align-items: center;
++    gap: var(--space-5) var(--space-6);
++    position: sticky;
++    inset-block-start: 0;
++    z-index: var(--layer-sticky);
++    padding-block: var(--space-5);
++    padding-inline: 5%;
++    color: var(--color-text-inverse);
++    background: var(--color-brand);
++
++    & :where(.logo) {
++      font-size: var(--text-logo);
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    & :where(ul) {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: var(--space-5) var(--space-6);
++      list-style: none;
++    }
++
++    & :where(a) {
++      color: inherit;
++      text-decoration: none;
++      font-size: var(--text-nav);
++      transition: color var(--duration-interaction);
++
++      &:where(:hover) {
++        color: var(--color-accent);
++      }
++    }
++
++    & :where(.logout-link) {
++      border: 1px solid var(--color-accent);
++      padding-block: var(--space-1);
++      padding-inline: var(--space-3);
++      border-radius: var(--radius-small);
++    }
++  }
++
++  .hero {
++    display: flex;
++    flex-direction: column;
++    justify-content: center;
++    align-items: center;
++    min-block-size: 60vh;
++    padding-inline: var(--page-gutter);
++    color: var(--color-text-inverse);
++    background-image: var(--hero-overlay), var(--hero-image);
++    background-size: cover;
++    background-position: center;
++    text-align: center;
++
++    & :where(h1) {
++      font-size: var(--text-hero);
++      margin-block-end: var(--space-5);
++    }
++  }
++
++  .section-title {
++    text-align: center;
++  }
++
++  .card {
++    padding: var(--space-6);
++    background: var(--color-surface);
++    border-radius: var(--radius-card);
++    box-shadow: var(--shadow-card);
++    text-align: center;
++
++    & :where(h3) {
++      margin-block-end: var(--space-2);
++      color: var(--color-brand);
++    }
++  }
++
++  .btn {
++    /* Local tokens allow variants to customize shared button behavior. */
++    --button-background: var(--color-brand);
++    --button-background-hover: var(--color-action-hover);
++
++    display: inline-block;
++    padding-block: var(--space-2);
++    padding-inline: var(--space-6);
++    margin-block-start: var(--space-4);
++    color: var(--color-text-inverse);
++    background: var(--button-background);
++    text-decoration: none;
++    border-radius: var(--radius-button);
++    transition: background-color var(--duration-interaction);
++
++    &:where(:hover) {
++      background: var(--button-background-hover);
++    }
++  }
++
++  .site-footer {
++    padding-block: var(--space-7);
++    padding-inline: var(--page-gutter);
++    margin-block-start: var(--space-7);
++    background: var(--color-surface-muted);
++    text-align: center;
++
++    & :where(.footer-links) {
++      margin-block-end: var(--space-6);
++
++      & :where(a) {
++        display: inline-block;
++        margin-inline: var(--space-2);
++        color: inherit;
++        text-decoration: none;
++        font-size: var(--text-small);
++      }
++    }
++  }
++}

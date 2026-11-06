@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,57 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-up Form */
++    .signup {
++      max-width: 480px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .signup h2 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .signup form {
++      margin-top: 20px;
++      text-align: left;
++    }
++
++    .signup label {
++      display: block;
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
++    .signup input {
++      width: 100%;
++      padding: 10px;
++      margin-bottom: 15px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .signup input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    .signup .btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +243,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="signup" id="signup">
++      <h2>Join The Daily Grind</h2>
++      <p>Create an account to earn rewards and order ahead.</p>
++      <form action="/signup" method="post">
++        <label for="signup-name">Full name</label>
++        <input type="text" id="signup-name" name="name" autocomplete="name" required>
++
++        <label for="signup-email">Email</label>
++        <input type="email" id="signup-email" name="email" autocomplete="email" required>
++
++        <label for="signup-password">Password</label>
++        <input type="password" id="signup-password" name="password" autocomplete="new-password" minlength="8" required>
++
++        <button type="submit" class="btn">Sign Up</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

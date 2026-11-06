@@ -1,0 +1,1081 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..632b4d0
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.coffee/": {
++    "allow_migration": true
++  }
++}
+diff --git a/MIGRATION.md b/MIGRATION.md
+new file mode 100644
+index 0000000..261ac17
+--- /dev/null
++++ b/MIGRATION.md
+@@ -0,0 +1,57 @@
++# Moving the installed app to a new origin
++
++The origins are set in `migration.config.json`:
++
++| | Origin |
++|---|---|
++| Legacy (currently installed) | `https://dailygrind.example` |
++| New | `https://app.dailygrind.coffee` |
++
++After changing anything there, run `npm run build:migration`. It regenerates
++`manifest.webmanifest`, `manifest-legacy.webmanifest`,
++`.well-known/web-app-origin-association` and `js/origins.js`.
++
++## What moves, and how
++
++**The installation and OS shortcuts** (Start menu/dock entries, taskbar pins,
++jump-list/long-press shortcuts) move through the browser's web app migration:
++
++- The legacy origin serves `manifest-legacy.webmanifest`, which includes
++  `migrate_to` → the new app id and install URL.
++- The new origin serves `manifest.webmanifest`, which includes `migrate_from`
++  → the legacy app id. `behavior` is `"suggest"`; set it to `"force"` in the
++  config if you want the switch to happen without a prompt.
++- The legacy origin serves `/.well-known/web-app-origin-association`,
++  confirming the new app may take over the installation.
++- Both manifests use the same `id` path, name, icons and an identical
++  `shortcuts` list with the same relative URLs. Shortcuts the browser
++  recreates therefore open the same screens as before.
++
++**User configuration** (stored under `dg-prefs` in localStorage) can't follow
++an origin change, so `js/migration.js` hands it over itself. The data travels
++in the URL fragment, which is never sent to a server:
++
++- *Push*: a browser tab on the legacy origin redirects to the same path on the
++  new origin, carrying the user's preferences.
++- *Installed legacy app*: it does **not** redirect on its own. It stays put so
++  the browser can read `migrate_to` and run its own migration (that is the
++  step that keeps OS shortcuts). A banner offers to move right away.
++- *Pull*: when the migrated app first starts on the new origin with no
++  preferences, it makes one round trip to the legacy origin
++  (`?dg-export=<nonce>`) and comes back with them. This runs once.
++- Incoming data is checked against an allowlist and its timestamp is capped at
++  the current time. A payload the app didn't ask for can only fill an empty
++  profile; it never replaces existing settings. Return paths have to be
++  relative to the new origin, so the exporter can't be used as an open redirect.
++
++## Deployment notes
++
++- Deploy the same build to both origins. `js/origins.js` detects the legacy
++  origin and points the `<link rel="manifest">` at the legacy manifest. If
++  your host supports it, also rewrite `/manifest.webmanifest` →
++  `/manifest-legacy.webmanifest` on the legacy host so non-JS fetchers get it too.
++- The host must serve dot-directories so that
++  `/.well-known/web-app-origin-association` is reachable, with
++  `Content-Type: application/json`.
++- Keep the legacy origin up until users have migrated. After that, set
++  `LEGACY_BRIDGE_ACTIVE = false` in `js/migration.js`.
+diff --git a/icons/icon-192.png b/icons/icon-192.png
+new file mode 100644
+index 0000000..0300312
+Binary files /dev/null and b/icons/icon-192.png differ
+diff --git a/icons/icon-512.png b/icons/icon-512.png
+new file mode 100644
+index 0000000..7cf4831
+Binary files /dev/null and b/icons/icon-512.png differ
+diff --git a/icons/icon-maskable-512.png b/icons/icon-maskable-512.png
+new file mode 100644
+index 0000000..6de8496
+Binary files /dev/null and b/icons/icon-maskable-512.png differ
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..db9cdca
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1,7 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <path d="M136 200h208v92a104 104 0 0 1-208 0z" fill="#fafafa"/>
++  <path d="M344 220h22a42 42 0 0 1 0 84h-26" fill="none" stroke="#fafafa" stroke-width="22"/>
++  <path d="M196 120c-14 20 14 34 0 56M240 110c-14 22 14 38 0 66M284 120c-14 20 14 34 0 56" fill="none" stroke="#ffab40" stroke-width="14" stroke-linecap="round"/>
++  <rect x="120" y="392" width="272" height="20" rx="10" fill="#ffab40"/>
++</svg>
+diff --git a/icons/shortcut-locations.png b/icons/shortcut-locations.png
+new file mode 100644
+index 0000000..e4b370a
+Binary files /dev/null and b/icons/shortcut-locations.png differ
+diff --git a/icons/shortcut-menu.png b/icons/shortcut-menu.png
+new file mode 100644
+index 0000000..c885f4a
+Binary files /dev/null and b/icons/shortcut-menu.png differ
+diff --git a/icons/shortcut-order.png b/icons/shortcut-order.png
+new file mode 100644
+index 0000000..0ae1377
+Binary files /dev/null and b/icons/shortcut-order.png differ
+diff --git a/icons/shortcut-rewards.png b/icons/shortcut-rewards.png
+new file mode 100644
+index 0000000..d7ae43c
+Binary files /dev/null and b/icons/shortcut-rewards.png differ
+diff --git a/index.html b/index.html
+index 66c9173..be5eca3 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,15 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#4e342e">
++  <meta name="description" content="Ethically sourced, locally roasted coffee. Order ahead, track rewards and find a location.">
++  <link rel="manifest" href="/manifest.webmanifest">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
++  <link rel="apple-touch-icon" href="/icons/icon-192.png">
++  <!-- Must run synchronously right after the manifest link: swaps in the
++       legacy manifest (with migrate_to) when served from the old origin. -->
++  <script src="/js/origins.js"></script>
++  <script type="module" src="/js/app.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -12,6 +21,23 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++    }
++
++    :root[data-theme="dark"] {
++      --secondary: #3e2723;
++      --text: #efebe9;
++      --light: #1b1412;
++      --surface: #2a201d;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root:not([data-theme]) {
++        --secondary: #3e2723;
++        --text: #efebe9;
++        --light: #1b1412;
++        --surface: #2a201d;
++      }
+     }
+ 
+     * {
+@@ -108,7 +134,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -152,11 +178,124 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .linklike {
++      background: none;
++      border: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      padding: 0;
++    }
++
++    .linklike:hover {
++      color: var(--accent);
++    }
++
++    .greeting {
++      margin-top: 1rem;
++      font-weight: 600;
++      color: var(--accent);
++    }
++
++    .moved-banner {
++      background: var(--accent);
++      color: #3e2723;
++      padding: 0.75rem 5%;
++      display: flex;
++      gap: 1rem;
++      justify-content: center;
++      align-items: center;
++      flex-wrap: wrap;
++      text-align: center;
++    }
++
++    .moved-banner .btn {
++      margin-top: 0;
++    }
++
++    dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      width: min(420px, 92vw);
++      background: var(--surface);
++      color: var(--text);
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog h2 {
++      margin-bottom: 1rem;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      margin-bottom: 12px;
++      font-size: 0.9rem;
++    }
++
++    .field.inline {
++      flex-direction: row;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .field input[type="text"],
++    .field select {
++      margin-top: 4px;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++    }
++
++    .btn.secondary {
++      background: transparent;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++    }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .toast {
++      position: fixed;
++      bottom: 20px;
++      left: 50%;
++      transform: translateX(-50%);
++      background: var(--primary);
++      color: white;
++      padding: 10px 18px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      z-index: 2000;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="moved-banner" class="moved-banner" role="status" hidden>
++    <span>The Daily Grind app has a new home. Your preferences and shortcuts come with you.</span>
++    <button id="move-now" type="button" class="btn">Open the new app</button>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -164,6 +303,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><button id="open-prefs" type="button" class="linklike">Preferences</button></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,6 +311,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <p id="greeting" class="greeting" hidden></p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+@@ -207,6 +348,58 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="prefs-dialog" aria-labelledby="prefs-title">
++    <form id="prefs-form">
++      <h2 id="prefs-title">Preferences</h2>
++      <label class="field">Display name
++        <input type="text" name="displayName" maxlength="40" autocomplete="nickname">
++      </label>
++      <label class="field">Home store
++        <select name="homeStore" id="pref-store">
++          <option value="">No preference</option>
++          <option value="downtown">Downtown</option>
++          <option value="riverside">Riverside</option>
++          <option value="uptown">Uptown</option>
++          <option value="airport">Airport Terminal B</option>
++        </select>
++      </label>
++      <label class="field">Milk
++        <select name="milk">
++          <option value="whole">Whole</option>
++          <option value="skim">Skim</option>
++          <option value="oat">Oat</option>
++          <option value="almond">Almond</option>
++          <option value="soy">Soy</option>
++          <option value="none">None (black)</option>
++        </select>
++      </label>
++      <label class="field">Default size
++        <select name="size">
++          <option value="small">Small</option>
++          <option value="medium">Medium</option>
++          <option value="large">Large</option>
++        </select>
++      </label>
++      <label class="field">Theme
++        <select name="theme">
++          <option value="system">Match system</option>
++          <option value="light">Light</option>
++          <option value="dark">Dark</option>
++        </select>
++      </label>
++      <label class="field inline">
++        <input type="checkbox" name="orderReadyNotifications">
++        Notify me when my order is ready
++      </label>
++      <div class="dialog-actions">
++        <button type="button" id="cancel-prefs" class="btn secondary">Cancel</button>
++        <button type="submit" class="btn">Save</button>
++      </div>
++    </form>
++  </dialog>
++
++  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
++
+ </body>
+ 
+ </html>
+diff --git a/js/app.js b/js/app.js
+new file mode 100644
+index 0000000..f376e4c
+--- /dev/null
++++ b/js/app.js
+@@ -0,0 +1,78 @@
++import { runMigration } from './migration.js';
++import { loadPrefs, savePrefs, OPTIONS } from './prefs.js';
++
++const migration = runMigration();
++
++function applyPrefs(p) {
++  const root = document.documentElement;
++  if (p.theme === 'system') root.removeAttribute('data-theme');
++  else root.setAttribute('data-theme', p.theme);
++
++  const greeting = document.getElementById('greeting');
++  const store = OPTIONS.homeStore.includes(p.homeStore) && p.homeStore
++    ? document.querySelector(`#pref-store option[value="${p.homeStore}"]`)?.textContent
++    : '';
++  greeting.textContent = p.displayName
++    ? `Welcome back, ${p.displayName}!${store ? ` Your usual ${p.size} ${p.milk === 'none' ? 'black' : p.milk + ' milk'} coffee at ${store}?` : ''}`
++    : '';
++  greeting.hidden = !p.displayName;
++}
++
++function toast(msg) {
++  const el = document.getElementById('toast');
++  el.textContent = msg;
++  el.hidden = false;
++  clearTimeout(toast.t);
++  toast.t = setTimeout(() => { el.hidden = true; }, 4000);
++}
++
++function initPrefsDialog() {
++  const dialog = document.getElementById('prefs-dialog');
++  const form = document.getElementById('prefs-form');
++  const fields = {
++    displayName: form.elements.displayName,
++    homeStore: form.elements.homeStore,
++    milk: form.elements.milk,
++    size: form.elements.size,
++    theme: form.elements.theme,
++    orderReadyNotifications: form.elements.orderReadyNotifications,
++  };
++
++  document.getElementById('open-prefs').addEventListener('click', () => {
++    const p = loadPrefs();
++    for (const [k, el] of Object.entries(fields)) {
++      if (el.type === 'checkbox') el.checked = p[k];
++      else el.value = p[k];
++    }
++    dialog.showModal();
++  });
++
++  document.getElementById('cancel-prefs').addEventListener('click', () => dialog.close());
++
++  form.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const next = {};
++    for (const [k, el] of Object.entries(fields)) next[k] = el.type === 'checkbox' ? el.checked : el.value;
++    applyPrefs(savePrefs(next));
++    dialog.close();
++    toast('Preferences saved');
++  });
++}
++
++function initMovedBanner() {
++  if (!migration.showMovedBanner) return;
++  const banner = document.getElementById('moved-banner');
++  banner.hidden = false;
++  document.getElementById('move-now').addEventListener('click', migration.moveNow);
++}
++
++if (!migration.redirecting) {
++  initPrefsDialog();
++  initMovedBanner();
++  applyPrefs(loadPrefs());
++  if (migration.imported) toast('Your preferences were carried over to the new app.');
++
++  if ('serviceWorker' in navigator) {
++    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
++  }
++}
+diff --git a/js/migration.js b/js/migration.js
+new file mode 100644
+index 0000000..80141a1
+--- /dev/null
++++ b/js/migration.js
+@@ -0,0 +1,162 @@
++// Origin migration for the installed web app.
++//
++// Two separate things have to move when the app changes origin:
++//
++// 1. The installation itself (window, OS shortcuts / jump-list entries, dock
++//    and taskbar pins). That is done by the browser, driven by `migrate_to`
++//    in manifest-legacy.webmanifest, `migrate_from` in manifest.webmanifest,
++//    and /.well-known/web-app-origin-association on the legacy origin.
++//    Shortcut names/URLs are identical in both manifests so the recreated OS
++//    shortcuts keep pointing at the same screens.
++//
++// 2. User configuration. localStorage is origin-scoped and never migrates, so
++//    we hand it over with top-level navigations carrying the data in the URL
++//    *fragment* (never sent to any server). Iframe/postMessage bridges are
++//    avoided on purpose: third-party storage partitioning would hand the
++//    iframe an empty, partitioned localStorage.
++//
++//    a) Push:  legacy page -> NEW_ORIGIN/<same path>#dg-import=<payload>
++//    b) Pull:  a freshly migrated app on the new origin with no prefs makes
++//              one round trip: NEW -> LEGACY/?dg-export=<nonce>&dg-return=<path>
++//              -> NEW/<path>#dg-import=<payload>&dg-nonce=<nonce>
++import { loadPrefs, hasStoredPrefs, savePrefs, sanitize } from './prefs.js';
++
++const { legacyOrigin: LEGACY_ORIGIN, newOrigin: NEW_ORIGIN, isLegacy } = window.DG_ORIGINS;
++
++const CHECKED_KEY = 'dg-migration-checked';
++const NONCE_KEY = 'dg-export-nonce';
++// Flip to false once the legacy origin is retired so the pull round trip is
++// never attempted against a dead host.
++const LEGACY_BRIDGE_ACTIVE = true;
++
++export const isStandalone = () =>
++  matchMedia('(display-mode: standalone)').matches ||
++  matchMedia('(display-mode: window-controls-overlay)').matches ||
++  navigator.standalone === true;
++
++// ---- encoding -------------------------------------------------------------
++function encode(obj) {
++  const bytes = new TextEncoder().encode(JSON.stringify(obj));
++  let bin = '';
++  for (const b of bytes) bin += String.fromCharCode(b);
++  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++}
++
++function decode(str) {
++  if (typeof str !== 'string' || str.length > 4096) return null;
++  try {
++    const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
++    const bin = atob(b64 + '==='.slice((b64.length + 3) % 4));
++    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
++  } catch {
++    return null;
++  }
++}
++
++// Only same-site relative paths are accepted as return targets; this keeps
++// the legacy exporter from becoming an open redirect.
++function safePath(p) {
++  if (typeof p !== 'string' || !p.startsWith('/') || p.startsWith('//') || p.includes('\\')) return '/';
++  try {
++    const u = new URL(p, NEW_ORIGIN);
++    return u.origin === NEW_ORIGIN ? u.pathname + u.search : '/';
++  } catch {
++    return '/';
++  }
++}
++
++function currentPath() {
++  const params = new URLSearchParams(location.search);
++  params.delete('dg-export');
++  params.delete('dg-return');
++  const qs = params.toString();
++  return location.pathname + (qs ? '?' + qs : '');
++}
++
++function handoffUrl(path, extra = {}) {
++  const frag = new URLSearchParams({ 'dg-import': encode(loadPrefs()), ...extra });
++  return NEW_ORIGIN + safePath(path) + '#' + frag.toString();
++}
++
++// ---- legacy origin --------------------------------------------------------
++function runLegacy() {
++  const params = new URLSearchParams(location.search);
++  const exportNonce = params.get('dg-export');
++
++  // (b) Pull request from the new origin: answer immediately.
++  if (exportNonce !== null) {
++    const nonce = /^[A-Za-z0-9_-]{8,64}$/.test(exportNonce) ? exportNonce : '';
++    location.replace(handoffUrl(params.get('dg-return') || '/', nonce ? { 'dg-nonce': nonce } : {}));
++    return { redirecting: true };
++  }
++
++  // Installed legacy app: stay put long enough for the browser to read the
++  // legacy manifest (migrate_to) and offer its native migration, which is
++  // what preserves the OS-level shortcuts. Offer a manual path too.
++  if (isStandalone()) return { redirecting: false, showMovedBanner: true, moveNow: () => location.replace(handoffUrl(currentPath())) };
++
++  // (a) Regular browser tab: just move the user, carrying their settings.
++  location.replace(handoffUrl(currentPath()));
++  return { redirecting: true };
++}
++
++// ---- new origin -----------------------------------------------------------
++function importFromFragment() {
++  if (!location.hash.includes('dg-import=')) return null;
++  const frag = new URLSearchParams(location.hash.slice(1));
++  const payload = frag.get('dg-import');
++  const nonce = frag.get('dg-nonce');
++  frag.delete('dg-import');
++  frag.delete('dg-nonce');
++  // Strip the payload from the address bar / history right away.
++  const rest = frag.toString();
++  history.replaceState(history.state, '', location.pathname + location.search + (rest ? '#' + rest : ''));
++
++  let expected = null;
++  try { expected = sessionStorage.getItem(NONCE_KEY); sessionStorage.removeItem(NONCE_KEY); } catch {}
++  const requested = Boolean(nonce && expected && nonce === expected);
++
++  const incoming = sanitize(decode(payload));
++  try { localStorage.setItem(CHECKED_KEY, '1'); } catch {}
++  if (!incoming) return { imported: false };
++
++  // Unsolicited payloads (anyone can craft a link) may only seed an empty
++  // profile; they never overwrite settings the user already has here. A
++  // payload we asked for ourselves may replace older local settings.
++  const local = loadPrefs();
++  const shouldImport = !hasStoredPrefs() || (requested && incoming.updatedAt > local.updatedAt);
++  if (shouldImport) savePrefs(incoming, { touch: false });
++  return { imported: shouldImport };
++}
++
++function maybePullFromLegacy() {
++  if (!LEGACY_BRIDGE_ACTIVE || !isStandalone() || hasStoredPrefs()) return false;
++  try {
++    if (localStorage.getItem(CHECKED_KEY)) return false;
++    // Mark before leaving so an unreachable legacy origin can't cause a loop.
++    localStorage.setItem(CHECKED_KEY, '1');
++    const nonce = crypto.randomUUID().replace(/-/g, '');
++    sessionStorage.setItem(NONCE_KEY, nonce);
++    const url = new URL('/', LEGACY_ORIGIN);
++    url.searchParams.set('dg-export', nonce);
++    url.searchParams.set('dg-return', currentPath());
++    location.replace(url.href);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++function runNew() {
++  const result = importFromFragment();
++  if (result) return { redirecting: false, imported: result.imported };
++  return { redirecting: maybePullFromLegacy(), imported: false };
++}
++
++export function runMigration() {
++  // Any origin that is neither (e.g. localhost during development) behaves
++  // like the new origin but never contacts the legacy one.
++  if (isLegacy) return runLegacy();
++  if (location.origin !== NEW_ORIGIN) return { redirecting: false, imported: Boolean(importFromFragment()?.imported) };
++  return runNew();
++}
+diff --git a/js/origins.js b/js/origins.js
+new file mode 100644
+index 0000000..5a49108
+--- /dev/null
++++ b/js/origins.js
+@@ -0,0 +1,8 @@
++// GENERATED by scripts/build-migration.mjs from migration.config.json. Do not edit.
++(function () {
++  var cfg = { legacyOrigin: "https://dailygrind.example", newOrigin: "https://app.dailygrind.coffee" };
++  cfg.isLegacy = location.origin === cfg.legacyOrigin;
++  window.DG_ORIGINS = Object.freeze(cfg);
++  var link = document.querySelector('link[rel="manifest"]');
++  if (link && cfg.isLegacy) link.setAttribute('href', '/manifest-legacy.webmanifest');
++})();
+diff --git a/js/prefs.js b/js/prefs.js
+new file mode 100644
+index 0000000..e7dcbe3
+--- /dev/null
++++ b/js/prefs.js
+@@ -0,0 +1,60 @@
++// User configuration, persisted per-origin in localStorage.
++// Storage does NOT follow an app across origins, so js/migration.js carries
++// this object from the legacy origin to the new one.
++export const PREFS_KEY = 'dg-prefs';
++export const PREFS_VERSION = 1;
++
++export const OPTIONS = Object.freeze({
++  milk: ['whole', 'skim', 'oat', 'almond', 'soy', 'none'],
++  size: ['small', 'medium', 'large'],
++  theme: ['system', 'light', 'dark'],
++  homeStore: ['', 'downtown', 'riverside', 'uptown', 'airport'],
++});
++
++export const DEFAULTS = Object.freeze({
++  v: PREFS_VERSION,
++  updatedAt: 0,
++  displayName: '',
++  homeStore: '',
++  milk: 'whole',
++  size: 'medium',
++  theme: 'system',
++  orderReadyNotifications: false,
++});
++
++// Whitelist + type-check every field. Used for both local reads and anything
++// arriving from another origin, so malformed or hostile input can't inject
++// unexpected keys/values.
++export function sanitize(raw) {
++  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
++  const out = { ...DEFAULTS };
++  if (typeof raw.displayName === 'string') out.displayName = raw.displayName.slice(0, 40).trim();
++  for (const key of Object.keys(OPTIONS)) {
++    if (OPTIONS[key].includes(raw[key])) out[key] = raw[key];
++  }
++  if (typeof raw.orderReadyNotifications === 'boolean') out.orderReadyNotifications = raw.orderReadyNotifications;
++  const t = Number(raw.updatedAt);
++  // Clamp to "now" so a forged future timestamp can't win every merge.
++  out.updatedAt = Number.isFinite(t) && t > 0 ? Math.min(t, Date.now()) : 0;
++  return out;
++}
++
++export function hasStoredPrefs() {
++  try { return localStorage.getItem(PREFS_KEY) !== null; } catch { return false; }
++}
++
++export function loadPrefs() {
++  try {
++    const raw = localStorage.getItem(PREFS_KEY);
++    return (raw && sanitize(JSON.parse(raw))) || { ...DEFAULTS };
++  } catch {
++    return { ...DEFAULTS };
++  }
++}
++
++export function savePrefs(prefs, { touch = true } = {}) {
++  const clean = sanitize(prefs) || { ...DEFAULTS };
++  if (touch) clean.updatedAt = Date.now();
++  try { localStorage.setItem(PREFS_KEY, JSON.stringify(clean)); } catch { /* storage unavailable */ }
++  return clean;
++}
+diff --git a/manifest-legacy.webmanifest b/manifest-legacy.webmanifest
+new file mode 100644
+index 0000000..490ba12
+--- /dev/null
++++ b/manifest-legacy.webmanifest
+@@ -0,0 +1,89 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted coffee. Order ahead, track rewards and find a location.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "theme_color": "#4e342e",
++  "background_color": "#fafafa",
++  "icons": [
++    {
++      "src": "/icons/icon-192.png",
++      "sizes": "192x192",
++      "type": "image/png",
++      "purpose": "any"
++    },
++    {
++      "src": "/icons/icon-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "any"
++    },
++    {
++      "src": "/icons/icon-maskable-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "maskable"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Now",
++      "short_name": "Order",
++      "description": "Start a new order",
++      "url": "/order-online",
++      "icons": [
++        {
++          "src": "/icons/shortcut-order.png",
++          "sizes": "96x96",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Menu",
++      "short_name": "Menu",
++      "description": "Browse the full menu",
++      "url": "/menu",
++      "icons": [
++        {
++          "src": "/icons/shortcut-menu.png",
++          "sizes": "96x96",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Rewards",
++      "short_name": "Rewards",
++      "description": "Check your rewards balance",
++      "url": "/rewards",
++      "icons": [
++        {
++          "src": "/icons/shortcut-rewards.png",
++          "sizes": "96x96",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Locations",
++      "short_name": "Stores",
++      "description": "Find a store near you",
++      "url": "/locations",
++      "icons": [
++        {
++          "src": "/icons/shortcut-locations.png",
++          "sizes": "96x96",
++          "type": "image/png"
++        }
++      ]
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.coffee/",
++    "install_url": "https://app.dailygrind.coffee/"
++  }
++}
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..6efd1c6
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,91 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted coffee. Order ahead, track rewards and find a location.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "theme_color": "#4e342e",
++  "background_color": "#fafafa",
++  "icons": [
++    {
++      "src": "/icons/icon-192.png",
++      "sizes": "192x192",
++      "type": "image/png",
++      "purpose": "any"
++    },
++    {
++      "src": "/icons/icon-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "any"
++    },
++    {
++      "src": "/icons/icon-maskable-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "maskable"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Now",
++      "short_name": "Order",
++      "description": "Start a new order",
++      "url": "/order-online",
++      "icons": [
++        {
++          "src": "/icons/shortcut-order.png",
++          "sizes": "96x96",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Menu",
++      "short_name": "Menu",
++      "description": "Browse the full menu",
++      "url": "/menu",
++      "icons": [
++        {
++          "src": "/icons/shortcut-menu.png",
++          "sizes": "96x96",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Rewards",
++      "short_name": "Rewards",
++      "description": "Check your rewards balance",
++      "url": "/rewards",
++      "icons": [
++        {
++          "src": "/icons/shortcut-rewards.png",
++          "sizes": "96x96",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Locations",
++      "short_name": "Stores",
++      "description": "Find a store near you",
++      "url": "/locations",
++      "icons": [
++        {
++          "src": "/icons/shortcut-locations.png",
++          "sizes": "96x96",
++          "type": "image/png"
++        }
++      ]
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://dailygrind.example/",
++      "behavior": "suggest"
++    }
++  ]
++}
+diff --git a/migration.config.json b/migration.config.json
+new file mode 100644
+index 0000000..7a4e106
+--- /dev/null
++++ b/migration.config.json
+@@ -0,0 +1,17 @@
++{
++  "legacyOrigin": "https://dailygrind.example",
++  "newOrigin": "https://app.dailygrind.coffee",
++  "appId": "/",
++  "migrationBehavior": "suggest",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted coffee. Order ahead, track rewards and find a location.",
++  "theme_color": "#4e342e",
++  "background_color": "#fafafa",
++  "shortcuts": [
++    { "name": "Order Now", "short_name": "Order", "description": "Start a new order", "url": "/order-online", "icon": "icons/shortcut-order.png" },
++    { "name": "Menu", "short_name": "Menu", "description": "Browse the full menu", "url": "/menu", "icon": "icons/shortcut-menu.png" },
++    { "name": "Rewards", "short_name": "Rewards", "description": "Check your rewards balance", "url": "/rewards", "icon": "icons/shortcut-rewards.png" },
++    { "name": "Locations", "short_name": "Stores", "description": "Find a store near you", "url": "/locations", "icon": "icons/shortcut-locations.png" }
++  ]
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..74f35fa 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build:migration": "node scripts/build-migration.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/scripts/build-migration.mjs b/scripts/build-migration.mjs
+new file mode 100644
+index 0000000..282fa64
+--- /dev/null
++++ b/scripts/build-migration.mjs
+@@ -0,0 +1,94 @@
++#!/usr/bin/env node
++// Generates every origin-dependent artifact from migration.config.json so the
++// legacy and new origins can never drift apart:
++//   manifest.webmanifest                       -> served by the NEW origin
++//   manifest-legacy.webmanifest                -> served by the LEGACY origin
++//   .well-known/web-app-origin-association     -> served by the LEGACY origin
++//   js/origins.js                              -> runtime config for both
++import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
++import { dirname, resolve } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
++const cfg = JSON.parse(readFileSync(resolve(root, 'migration.config.json'), 'utf8'));
++
++for (const key of ['legacyOrigin', 'newOrigin']) {
++  const u = new URL(cfg[key]);
++  if (u.origin !== cfg[key]) throw new Error(`${key} must be a bare origin, got ${cfg[key]}`);
++}
++if (cfg.legacyOrigin === cfg.newOrigin) throw new Error('legacyOrigin and newOrigin must differ');
++
++const legacyId = new URL(cfg.appId, cfg.legacyOrigin).href;
++const newId = new URL(cfg.appId, cfg.newOrigin).href;
++
++const icons = [
++  { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
++  { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
++  { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
++];
++
++// Shortcut URLs are kept identical (relative paths) on both origins so the
++// OS-level shortcuts recreated by the browser during migration land on the
++// same screens they always did.
++const shortcuts = cfg.shortcuts.map((s) => ({
++  name: s.name,
++  short_name: s.short_name,
++  description: s.description,
++  url: s.url,
++  icons: [{ src: '/' + s.icon, sizes: '96x96', type: 'image/png' }],
++}));
++
++const base = {
++  id: cfg.appId,
++  name: cfg.name,
++  short_name: cfg.short_name,
++  description: cfg.description,
++  start_url: '/',
++  scope: '/',
++  display: 'standalone',
++  theme_color: cfg.theme_color,
++  background_color: cfg.background_color,
++  icons,
++  shortcuts,
++};
++
++const newManifest = {
++  ...base,
++  // Claims the previously installed app so the browser can migrate it
++  // (keeping OS shortcuts, dock/taskbar pins, permissions where supported).
++  migrate_from: [{ id: legacyId, behavior: cfg.migrationBehavior }],
++};
++
++const legacyManifest = {
++  ...base,
++  // Points the installed legacy app at its replacement.
++  migrate_to: { id: newId, install_url: new URL('/', cfg.newOrigin).href },
++};
++
++// Hosted on the legacy origin: the legacy origin vouches that the new app is
++// allowed to take over its installation.
++const association = { [newId]: { allow_migration: true } };
++
++// Classic (non-module) script loaded synchronously in <head> so the correct
++// manifest is linked before the browser looks for it.
++const originsJs = `// GENERATED by scripts/build-migration.mjs from migration.config.json. Do not edit.
++(function () {
++  var cfg = { legacyOrigin: ${JSON.stringify(cfg.legacyOrigin)}, newOrigin: ${JSON.stringify(cfg.newOrigin)} };
++  cfg.isLegacy = location.origin === cfg.legacyOrigin;
++  window.DG_ORIGINS = Object.freeze(cfg);
++  var link = document.querySelector('link[rel="manifest"]');
++  if (link && cfg.isLegacy) link.setAttribute('href', '/manifest-legacy.webmanifest');
++})();
++`;
++
++const write = (rel, content) => {
++  const p = resolve(root, rel);
++  mkdirSync(dirname(p), { recursive: true });
++  writeFileSync(p, typeof content === 'string' ? content : JSON.stringify(content, null, 2) + '\n');
++  console.log('wrote', rel);
++};
++
++write('manifest.webmanifest', newManifest);
++write('manifest-legacy.webmanifest', legacyManifest);
++write('.well-known/web-app-origin-association', association);
++write('js/origins.js', originsJs);
+diff --git a/sw.js b/sw.js
+new file mode 100644
+index 0000000..93abd5c
+--- /dev/null
++++ b/sw.js
+@@ -0,0 +1,46 @@
++// Minimal service worker: makes the app installable/offline-capable without
++// ever pinning a stale page. All requests are network-first (cache is an offline fallback) so that changes to
++// the migration logic (and the legacy -> new redirect) always take effect.
++const CACHE = 'dg-v2';
++const PRECACHE = [
++  '/',
++  '/js/origins.js',
++  '/js/app.js',
++  '/js/prefs.js',
++  '/js/migration.js',
++  '/icons/icon-192.png',
++  '/icons/icon-512.png',
++];
++
++self.addEventListener('install', (event) => {
++  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
++});
++
++self.addEventListener('activate', (event) => {
++  event.waitUntil(
++    caches.keys()
++      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
++      .then(() => self.clients.claim()),
++  );
++});
++
++self.addEventListener('fetch', (event) => {
++  const req = event.request;
++  const url = new URL(req.url);
++  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
++  // Manifests and the association file must always be fresh for the browser's
++  // migration checks.
++  if (url.pathname.endsWith('.webmanifest') || url.pathname.startsWith('/.well-known/')) return;
++
++  event.respondWith(
++    fetch(req)
++      .then((res) => {
++        if (res.ok && req.mode !== 'navigate') {
++          const copy = res.clone();
++          caches.open(CACHE).then((c) => c.put(req, copy));
++        }
++        return res;
++      })
++      .catch(() => caches.match(req).then((hit) => hit || (req.mode === 'navigate' ? caches.match('/') : Response.error()))),
++  );
++});

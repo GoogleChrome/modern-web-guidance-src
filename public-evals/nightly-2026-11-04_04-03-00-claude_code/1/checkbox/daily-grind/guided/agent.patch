@@ -1,0 +1,307 @@
+diff --git a/index.html b/index.html
+index 66c9173..02df700 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,200 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Drink customization checkboxes */
++    :root {
++      --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
++      --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
++    }
++
++    .card {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .customize {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      margin-top: 15px;
++      text-align: start;
++    }
++
++    .customize fieldset {
++      border: 1px dashed var(--secondary);
++      border-radius: 8px;
++      padding: 8px 12px 10px;
++    }
++
++    .customize legend {
++      padding: 0 6px;
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--primary);
++    }
++
++    .option {
++      display: flex;
++      align-items: center;
++      gap: 0.65rem;
++      min-block-size: 44px;
++      padding: 0 8px;
++      margin-inline: -8px;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background-color 0.2s ease;
++    }
++
++    .option:hover {
++      background-color: #f5efec;
++    }
++
++    .option:has(:checked) {
++      background-color: #fff3e0;
++    }
++
++    .option-icon {
++      flex: none;
++      inline-size: 1.25rem;
++      block-size: 1.25rem;
++      color: #8d6e63;
++      transition: color 0.2s ease, rotate 0.3s ease;
++    }
++
++    .option:has(:checked) .option-icon {
++      color: var(--primary);
++    }
++
++    .option-name {
++      flex: 1;
++      font-size: 0.95rem;
++    }
++
++    .option-price {
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: #8d6e63;
++    }
++
++    .checkbox-custom {
++      --checkbox-size: 1.3em;
++      --checkbox-icon-size: 0.75em;
++
++      appearance: none;
++      flex: none;
++      display: inline-grid;
++      place-content: center;
++      inline-size: var(--checkbox-size);
++      aspect-ratio: 1;
++      margin: 0;
++      border: 2px solid var(--primary);
++      border-radius: 6px;
++      background-color: white;
++      color: white;
++      cursor: pointer;
++    }
++
++    .checkbox-custom::before {
++      content: "";
++      inline-size: var(--checkbox-icon-size);
++      aspect-ratio: 1;
++      background-color: currentColor;
++      mask: var(--checkbox-icon) no-repeat center / contain;
++      scale: 0;
++    }
++
++    .checkbox-custom:checked {
++      --checkbox-icon: var(--icon-check);
++      background-color: var(--primary);
++    }
++
++    .checkbox-custom:indeterminate {
++      --checkbox-icon: var(--icon-dash);
++      background-color: var(--primary);
++    }
++
++    .checkbox-custom:is(:checked, :indeterminate)::before {
++      scale: 1;
++    }
++
++    .checkbox-custom:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .checkbox-custom:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    .option:has(:disabled) {
++      cursor: not-allowed;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .checkbox-custom {
++        transition: background-color 0.2s ease, border-color 0.2s ease, scale 0.15s ease;
++      }
++
++      .checkbox-custom:active {
++        scale: 0.88;
++      }
++
++      /* Springy "pop" in, quick shrink out */
++      .checkbox-custom::before {
++        transition: scale 0.12s ease-in;
++      }
++
++      .checkbox-custom:is(:checked, :indeterminate)::before {
++        transition: scale 0.3s cubic-bezier(0.34, 1.8, 0.64, 1);
++      }
++
++      .option:has(:checked) .option-icon {
++        rotate: -12deg;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .checkbox-custom {
++        border-color: CanvasText;
++      }
++
++      .checkbox-custom::before {
++        background-color: CanvasText;
++      }
++    }
++
++    .card .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .card-actions {
++      margin-top: auto;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0 10px;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      box-shadow: inset 0 0 0 2px var(--primary);
++    }
++
++    .btn-outline:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+@@ -181,17 +375,98 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <form class="customize" action="/order-online" method="POST">
++            <input type="hidden" name="drink" value="maple-oat-latte">
++            <fieldset>
++              <legend>Customize your Maple Oat Latte</legend>
++              <label class="option">
++                <input type="checkbox" class="checkbox-custom" name="extras" value="extra-shot">
++                <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="6.5" ry="9" transform="rotate(35 12 12)"/><path d="M8 18c3-2 2-6 4-8s5-2 4-6"/></svg>
++                <span class="option-name">Extra espresso shot</span>
++                <span class="option-price">+$0.75</span>
++              </label>
++              <label class="option">
++                <input type="checkbox" class="checkbox-custom" name="extras" value="extra-maple">
++                <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>
++                <span class="option-name">Extra maple drizzle</span>
++                <span class="option-price">+$0.50</span>
++              </label>
++              <label class="option">
++                <input type="checkbox" class="checkbox-custom" name="extras" value="oat-foam">
++                <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 17 9a4.5 4.5 0 0 1 0 9z"/></svg>
++                <span class="option-name">Oat milk cold foam</span>
++                <span class="option-price">+$0.95</span>
++              </label>
++            </fieldset>
++            <div class="card-actions">
++              <button type="submit" class="btn">Add to Order</button>
++              <a href="/menu/seasonal" class="btn btn-outline">View Details</a>
++            </div>
++          </form>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <form class="customize" action="/order-online" method="POST">
++            <input type="hidden" name="drink" value="dark-roast-espresso">
++            <fieldset>
++              <legend>Customize your Dark Roast Espresso</legend>
++              <label class="option">
++                <input type="checkbox" class="checkbox-custom" name="extras" value="double-shot">
++                <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="6.5" ry="9" transform="rotate(35 12 12)"/><path d="M8 18c3-2 2-6 4-8s5-2 4-6"/></svg>
++                <span class="option-name">Make it a double</span>
++                <span class="option-price">+$0.95</span>
++              </label>
++              <label class="option">
++                <input type="checkbox" class="checkbox-custom" name="extras" value="splash-oat">
++                <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19C5 10 10 5 20 4c0 10-5 15-14 15"/><path d="M5 19l8-8"/></svg>
++                <span class="option-name">Splash of oat milk</span>
++                <span class="option-price">+$0.40</span>
++              </label>
++              <label class="option">
++                <input type="checkbox" class="checkbox-custom" name="extras" value="large-cup">
++                <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 3v3M12 3v3"/></svg>
++                <span class="option-name">Served in a large cup</span>
++                <span class="option-price">Free</span>
++              </label>
++            </fieldset>
++            <div class="card-actions">
++              <button type="submit" class="btn">Add to Order</button>
++              <a href="/menu/espresso" class="btn btn-outline">View Details</a>
++            </div>
++          </form>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <form class="customize" action="/order-online" method="POST">
++            <input type="hidden" name="drink" value="cold-brew">
++            <fieldset>
++              <legend>Customize your Cold Brew</legend>
++              <label class="option">
++                <input type="checkbox" class="checkbox-custom" name="extras" value="vanilla-cream">
++                <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 17 9a4.5 4.5 0 0 1 0 9z"/></svg>
++                <span class="option-name">Vanilla sweet cream</span>
++                <span class="option-price">+$0.95</span>
++              </label>
++              <label class="option">
++                <input type="checkbox" class="checkbox-custom" name="extras" value="maple-syrup">
++                <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>
++                <span class="option-name">Vermont maple syrup</span>
++                <span class="option-price">+$0.50</span>
++              </label>
++              <label class="option">
++                <input type="checkbox" class="checkbox-custom" name="extras" value="light-ice">
++                <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5 12 6l2.5-1.5M9.5 19.5 12 18l2.5 1.5"/></svg>
++                <span class="option-name">Light ice</span>
++                <span class="option-price">Free</span>
++              </label>
++            </fieldset>
++            <div class="card-actions">
++              <button type="submit" class="btn">Add to Order</button>
++              <a href="/menu/cold-brew" class="btn btn-outline">View Details</a>
++            </div>
++          </form>
+         </div>
+       </div>
+     </section>

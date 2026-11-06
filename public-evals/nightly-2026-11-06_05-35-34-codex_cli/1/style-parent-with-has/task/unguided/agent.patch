@@ -1,0 +1,101 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,68 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .contact {
++      max-width: 600px;
++      margin-top: 40px;
++    }
++
++    .contact h2,
++    .contact > p {
++      text-align: center;
++    }
++
++    .contact form {
++      margin-top: 20px;
++    }
++
++    .contact-field {
++      margin-bottom: 16px;
++      padding: 12px 16px;
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .contact-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .contact-field input,
++    .contact-field textarea {
++      display: block;
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .contact-field textarea {
++      resize: vertical;
++    }
++
++    .contact-field :is(input, textarea):focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .contact-field:has(:user-invalid) {
++      border-color: #b91c1c;
++    }
++
++    .contact button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +254,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="contact container" aria-labelledby="contact-heading">
++      <h2 id="contact-heading">Contact Us</h2>
++      <p>We'd love to hear from you. All fields are required.</p>
++      <form onsubmit="event.preventDefault()">
++        <div class="contact-field">
++          <label for="contact-name">Name</label>
++          <input id="contact-name" name="name" type="text" autocomplete="name" required>
++        </div>
++        <div class="contact-field">
++          <label for="contact-email">Email</label>
++          <input id="contact-email" name="email" type="email" autocomplete="email" required>
++        </div>
++        <div class="contact-field">
++          <label for="contact-message">Message</label>
++          <textarea id="contact-message" name="message" rows="5" required></textarea>
++        </div>
++        <button class="btn" type="submit">Send Message</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,68 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,64 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="description" content="Forme — considered furniture and everyday objects for a home that feels like you. Explore a slower way of living.">
++  <meta name="theme-color" content="#f6f4ee">
++  <title>FORME — Make room for living.</title>
++  <script>document.documentElement.classList.add('experiments-pending');</script>
++  <style>
++    /* This rule is in the head, before any experiment content can paint. */
++    .experiments-pending [data-experiment-root] { visibility: hidden; }
++  </style>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="styles.css">
++  <script src="experiment.js" defer></script>
++</head>
++<body>
++  <a class="skip-link" href="#main">Skip to content</a>
++  <div class="announcement">A little less ordinary. A little more you. <span>Discover the collection <span aria-hidden="true">↗</span></span></div>
++  <header class="site-header">
++    <a class="wordmark" href="./" aria-label="Forme home">forme<span>®</span></a>
++    <nav aria-label="Main navigation"><a href="#collection">The collection</a><a href="#philosophy">Our philosophy</a><a href="#journal">The slow journal <span>↗</span></a></nav>
++    <a class="header-cta" href="#collection">Find your forme <span aria-hidden="true">↗</span></a>
++  </header>
++  <main id="main">
++    <section class="hero" aria-label="Make room for living">
++      <div class="hero-copy">
++        <p class="eyebrow"><span class="small-line"></span> CONSIDERED OBJECTS. EVERYDAY LIVING.</p>
++        <div class="experiment-slot">
++          <div data-experiment-root>
++            <h1 data-experiment-heading>Make room<br>for <em>living.</em></h1>
++            <p class="hero-description" data-experiment-description>Good design isn’t just something you look at.<br class="desktop-break"> It’s something you come home to.</p>
++            <a class="button" href="#collection" data-experiment-cta>Explore the collection <span aria-hidden="true">↗</span></a>
++          </div>
++        </div>
++        <div class="hero-footnote"><span class="sparkle" aria-hidden="true">✳</span><p>Thoughtfully chosen.<br>Made for the way you live.</p><span class="edition">THE EVERYDAY EDIT<br>VOL. 01 / 2026</span></div>
++      </div>
++      <div class="hero-visual">
++        <img src="assets/living-room.jpg" alt="A sunlit living room with a soft cream sofa, natural wood furniture and green plants" fetchpriority="high" width="2000" height="1333">
++        <div class="image-topline"><span>A HOME, AT YOUR PACE.</span><span>01 — 03</span></div>
++        <div class="image-caption"><div><span class="caption-label">THE ART OF FEELING AT HOME</span><p>Less, but better.</p></div><a href="#philosophy" aria-label="Explore our philosophy">↗</a></div>
++        <div class="image-pagination" aria-label="Featured image 1 of 3"><span></span><i></i><i></i></div>
++      </div>
++    </section>
++    <div class="principles" aria-label="Our design principles"><span>Objects with intention</span><i>✳</i><span>Natural by nature</span><i>✳</i><span>A slower kind of living</span><i>✳</i><span>Made to feel like you</span></div>
++    <section class="collection section-wrap" id="collection">
++      <div class="section-heading"><div><p class="eyebrow">THE EVERYDAY EDIT</p><h2>A few good things.<br>A whole different feeling.</h2></div><p>Quiet shapes. Honest materials. Pieces that find<br class="desktop-break"> their place in your home, and stay.</p></div>
++      <div class="collection-grid">
++        <a class="collection-card" href="#living"><div class="card-image living"><img src="assets/living-room.jpg" alt="An inviting, considered living space" loading="lazy"><span class="card-tag">01 / SETTLE IN</span><span class="round-arrow">↗</span></div><div class="card-title"><h3>The living edit</h3><span>Room to unwind</span></div></a>
++        <a class="collection-card" href="#details"><div class="card-image details"><div class="vase vase-one"></div><div class="vase vase-two"></div><div class="still-life-label">FORM & FEELING</div><span class="card-tag">02 / THE LITTLE THINGS</span><span class="round-arrow">↗</span></div><div class="card-title"><h3>Everyday objects</h3><span>Small things, considered</span></div></a>
++        <a class="collection-card" href="#philosophy"><div class="card-image texture"><div class="fabric-fold"></div><span class="card-tag">03 / SOFTEN THE EVERYDAY</span><span class="round-arrow">↗</span></div><div class="card-title"><h3>A softer touch</h3><span>Comfort comes naturally</span></div></a>
++      </div>
++      <div class="collection-note" id="living"><span>THE LIVING EDIT</span><p>Start with a comfortable place to land. Add warm wood, a little greenery, and space for the everyday.</p></div>
++    </section>
++    <section class="philosophy section-wrap" id="philosophy"><p class="eyebrow">THE FORME PHILOSOPHY</p><h2>A home is never finished.<br>It grows with <em>you.</em></h2><p id="details">We’re drawn to the simple things. A familiar texture. A favourite corner. Objects that make an ordinary day feel a little more considered. This is our space to explore them.</p><a class="text-link" href="#journal">A little inspiration for your everyday <span>↗</span></a></section>
++    <section class="journal section-wrap" id="journal"><div><p class="eyebrow">THE SLOW JOURNAL / NOTE 001</p><h2>The space between things.</h2></div><p>A thoughtful room starts with a pause. Leave a shelf a little empty, move a chair toward the light, and give the pieces you love room to breathe.</p></section>
++  </main>
++  <footer class="section-wrap"><a class="wordmark" href="./">forme<span>®</span></a><p>A little more room for living.</p><span>© 2026 Forme. A concept collection.</span></footer>
++  <template id="hero-fallback"><div class="fallback-copy"><h1>Make room<br>for <em>living.</em></h1><p class="hero-description">Good design isn’t just something you look at.<br class="desktop-break"> It’s something you come home to.</p><a class="button" href="#collection">Explore the collection <span aria-hidden="true">↗</span></a></div></template>
++</body>
++</html>

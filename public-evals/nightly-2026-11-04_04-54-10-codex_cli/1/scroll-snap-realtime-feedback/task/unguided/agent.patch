@@ -1,0 +1,233 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,8 +99,95 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    /* Cafe photo gallery */
++    .cafe-gallery {
++      margin-bottom: 48px;
++      text-align: center;
++    }
++
++    .cafe-gallery > p {
++      margin: 6px 0 20px;
++    }
++
++    #gallery {
++      display: flex;
++      gap: 16px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      border-radius: 12px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .gallery-item {
++      position: relative;
++      flex: 0 0 100%;
++      scroll-snap-align: start;
++      overflow: hidden;
++      border-radius: 12px;
++      background: var(--secondary);
++    }
++
++    .gallery-item > img {
++      display: block;
++      width: 100%;
++      height: clamp(240px, 40vw, 440px);
++      object-fit: cover;
++    }
++
++    .gallery-caption {
++      position: absolute;
++      inset: auto 0 0;
++      padding: 36px 24px 20px;
++      color: white;
++      text-align: left;
++      font-size: 1.2rem;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
++    }
++
++    .gallery-thumbnails {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .thumbnail {
++      width: 88px;
++      height: 64px;
++      padding: 3px;
++      border: 3px solid transparent;
++      border-radius: 8px;
++      background: transparent;
++      cursor: pointer;
++    }
++
++    .thumbnail img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      border-radius: 3px;
++    }
++
++    .thumbnail.active {
++      border-color: var(--primary);
++    }
++
++    .thumbnail.pending {
++      border-color: var(--accent);
++      background: var(--accent);
++      box-shadow: 0 0 0 2px var(--light), 0 0 0 4px var(--accent);
++    }
++
++    .thumbnail:focus-visible,
++    #gallery:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 5px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -174,8 +261,37 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="cafe-gallery" aria-labelledby="gallery-heading" aria-roledescription="carousel">
++      <h2 id="gallery-heading">Find Your Daily Moment</h2>
++      <p>A cozy corner, a carefully crafted cup, and a little time for yourself.</p>
++      <div id="gallery" tabindex="0" role="region" aria-label="Cafe photos. Swipe or use the arrow keys to explore.">
++        <div class="gallery-item" id="gallery-item-1" role="group" aria-roledescription="slide" aria-label="1 of 3: Stay a little longer">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&amp;fit=crop&amp;w=1400&amp;q=80" alt="Warm cafe interior with inviting tables and chairs" width="1400" height="700">
++          <p class="gallery-caption">Stay a little longer.</p>
++        </div>
++        <div class="gallery-item" id="gallery-item-2" role="group" aria-roledescription="slide" aria-label="2 of 3: Crafted with care">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=1400&amp;q=80" alt="Freshly prepared coffee with delicate latte art" width="1400" height="700" loading="lazy">
++          <p class="gallery-caption">Crafted with care, every day.</p>
++        </div>
++        <div class="gallery-item" id="gallery-item-3" role="group" aria-roledescription="slide" aria-label="3 of 3: Your morning ritual">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1400&amp;q=80" alt="Coffee and brewing essentials ready for a slow morning" width="1400" height="700" loading="lazy">
++          <p class="gallery-caption">Make room for your morning ritual.</p>
++        </div>
++      </div>
++      <div class="gallery-thumbnails" role="group" aria-label="Choose a cafe photo">
++        <button type="button" class="thumbnail active" aria-label="Show photo 1: Stay a little longer" aria-controls="gallery-item-1" aria-current="true">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&amp;fit=crop&amp;w=160&amp;h=100&amp;q=70" alt="" width="80" height="50">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Show photo 2: Crafted with care" aria-controls="gallery-item-2">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=160&amp;h=100&amp;q=70" alt="" width="80" height="50">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Show photo 3: Your morning ritual" aria-controls="gallery-item-3">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=160&amp;h=100&amp;q=70" alt="" width="80" height="50">
++        </button>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +322,95 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const gallery = document.getElementById('gallery');
++      const items = [...gallery.querySelectorAll('.gallery-item')];
++      const thumbnails = [...document.querySelectorAll('.gallery-thumbnails .thumbnail')];
++      const supportsSnapChanging = 'onscrollsnapchanging' in gallery;
++      const supportsScrollEnd = 'onscrollend' in gallery;
++      let settleTimer;
++      let pointerDown = false;
++
++      // Compare actual positions so gaps and responsive slide widths are included.
++      const nearestIndex = () => {
++        const start = gallery.getBoundingClientRect().left;
++        return items.reduce((closest, item, index) =>
++          Math.abs(item.getBoundingClientRect().left - start) <
++          Math.abs(items[closest].getBoundingClientRect().left - start) ? index : closest, 0);
++      };
++
++      const markPending = (index) => {
++        thumbnails.forEach((thumbnail, i) => thumbnail.classList.toggle('pending', i === index));
++      };
++
++      const commitSelection = () => {
++        clearTimeout(settleTimer);
++        const index = nearestIndex();
++        thumbnails.forEach((thumbnail, i) => {
++          thumbnail.classList.remove('pending');
++          thumbnail.classList.toggle('active', i === index);
++          if (i === index) thumbnail.setAttribute('aria-current', 'true');
++          else thumbnail.removeAttribute('aria-current');
++        });
++      };
++
++      // This event exposes the browser's intended snap target before scrolling ends.
++      gallery.addEventListener('scrollsnapchanging', (event) => {
++        const index = items.indexOf(event.snapTargetInline);
++        if (index !== -1) markPending(index);
++      });
++
++      const scheduleCommit = () => {
++        clearTimeout(settleTimer);
++        settleTimer = setTimeout(() => {
++          if (!pointerDown) commitSelection();
++        }, 180);
++      };
++
++      gallery.addEventListener('scroll', () => {
++        if (!supportsSnapChanging) markPending(nearestIndex());
++        if (!supportsScrollEnd) scheduleCommit();
++      }, { passive: true });
++      gallery.addEventListener('scrollend', commitSelection);
++      gallery.addEventListener('pointerdown', () => { pointerDown = true; }, { passive: true });
++      const releasePointer = () => {
++        if (!pointerDown) return;
++        pointerDown = false;
++        if (!supportsScrollEnd) scheduleCommit();
++      };
++      window.addEventListener('pointerup', releasePointer, { passive: true });
++      window.addEventListener('pointercancel', releasePointer, { passive: true });
++
++      const showItem = (index) => {
++        const offset = items[index].getBoundingClientRect().left - gallery.getBoundingClientRect().left;
++        if (Math.abs(offset) < 1) {
++          commitSelection();
++          return;
++        }
++        markPending(index);
++        gallery.scrollTo({
++          left: gallery.scrollLeft + offset,
++          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
++        });
++      };
++
++      thumbnails.forEach((thumbnail, index) => {
++        thumbnail.addEventListener('click', () => showItem(index));
++      });
++      gallery.addEventListener('keydown', (event) => {
++        let index = nearestIndex();
++        if (event.key === 'ArrowRight') index = Math.min(index + 1, items.length - 1);
++        else if (event.key === 'ArrowLeft') index = Math.max(index - 1, 0);
++        else if (event.key === 'Home') index = 0;
++        else if (event.key === 'End') index = items.length - 1;
++        else return;
++        event.preventDefault();
++        showItem(index);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

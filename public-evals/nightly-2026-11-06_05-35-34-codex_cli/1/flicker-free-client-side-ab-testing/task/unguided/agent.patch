@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,119 @@
++<!DOCTYPE html>
++<html lang="en" class="experiment-pending">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <meta name="theme-color" content="#f4f2eb" />
++  <meta name="description" content="Thoughtfully designed workspaces for independent minds. Find your focus, your community, and your next big idea at Gather." />
++  <title>Gather — Space for what’s next.</title>
++  <style>
++    /* Present in the initial HTML, before the experiment can run or paint. */
++    .experiment-pending [data-experiment] { visibility: hidden !important; }
++  </style>
++  <script>
++    (() => {
++      let settled = false;
++      let timer;
++      const reveal = (state) => {
++        document.documentElement.dataset.experimentState = state;
++        document.documentElement.classList.remove('experiment-pending');
++      };
++      // SDK integration: dispatch `experiment:applied` only after DOM writes finish,
++      // or call window.gatherExperimentApplied() at the same completion boundary.
++      window.gatherExperimentApplied = () => {
++        if (settled) return;
++        settled = true;
++        clearTimeout(timer);
++        reveal('applied');
++      };
++      document.addEventListener('experiment:applied', window.gatherExperimentApplied);
++      window.gatherExperimentFallback = () => {
++        if (settled) return;
++        settled = true;
++        clearTimeout(timer);
++        const target = document.querySelector('[data-experiment]');
++        const fallback = document.getElementById('hero-fallback');
++        // Replace the hidden experiment subtree, so its original content is never
++        // exposed on failure or timeout. Late completion events are ignored.
++        if (target && fallback) target.replaceWith(fallback.content.cloneNode(true));
++        reveal('fallback');
++      };
++      document.addEventListener('DOMContentLoaded', () => {
++        timer = setTimeout(window.gatherExperimentFallback, 1800);
++        const sdk = document.createElement('script');
++        sdk.src = 'https://cdn.example.com/experiment-sdk.js';
++        sdk.async = true;
++        sdk.onerror = window.gatherExperimentFallback;
++        // A load event alone is not evidence that asynchronous variant DOM work
++        // is complete. The SDK must use the explicit completion hook above.
++        document.head.appendChild(sdk);
++      });
++    })();
++  </script>
++  <noscript><style>.experiment-pending [data-experiment]{visibility:visible!important}</style></noscript>
++  <link rel="preconnect" href="https://fonts.googleapis.com" />
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet" />
++  <style>
++    :root{--ink:#272c23;--paper:#f4f2eb;--orange:#fa613d;--muted:#71746a;--line:#d9dbd1}
++    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button,input,select{font:inherit}button,a{-webkit-tap-highlight-color:transparent}button{cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--orange);outline-offset:5px}.shell{max-width:1600px;margin:auto;padding:0 5.2%}
++    header{height:105px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.logo{font-family:'Manrope',sans-serif;font-weight:800;letter-spacing:-2.3px;font-size:37px;display:flex;align-items:center;gap:10px}.logo-mark{width:29px;height:32px;display:grid;grid-template-columns:repeat(2,1fr);gap:3px;transform:rotate(-12deg)}.logo-mark i{background:var(--ink);border-radius:6px 1px 6px 1px}.logo-mark i:nth-child(2),.logo-mark i:nth-child(3){border-radius:1px 6px 1px 6px}nav{display:flex;gap:34px;align-items:center;font-size:13px;font-weight:500}.nav-cta{border:1px solid #aeb2a5;border-radius:5px;padding:13px 19px;display:flex;gap:25px;align-items:center}.nav-cta:hover{background:#e9e9df}.arrow{font-size:21px;line-height:1}.hero{padding-top:36px;display:grid;grid-template-columns:1fr 1.06fr;min-height:654px;padding-bottom:38px;gap:26px}.hero-copy{padding:38px 0 0;display:flex;flex-direction:column;align-items:flex-start}.eyebrow{display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:1.9px;font-weight:650}.dot{width:7px;height:7px;display:inline-block;border-radius:50%;background:var(--orange)}h1{font-family:'Manrope',sans-serif;font-weight:500;letter-spacing:-4px;font-size:clamp(53px,5.2vw,79px);line-height:1.075;margin:28px 0 24px}h1 em{font-style:normal;color:#778168}.hero-description{font-size:15px;line-height:1.8;max-width:330px;color:#707369;margin:0 0 29px}.primary{background:var(--orange);border:0;border-radius:4px;padding:17px 20px;display:inline-flex;align-items:center;justify-content:space-between;gap:36px;font-size:13px;font-weight:550;transition:background .2s,transform .2s}.primary:hover{background:#ec5130;transform:translateY(-2px)}.social-proof{margin-top:auto;padding-top:36px;display:flex;align-items:center;gap:12px}.avatars{display:flex;padding-left:0}.avatars img{height:31px;width:31px;object-fit:cover;border:2px solid var(--paper);border-radius:50%;margin-left:-8px}.avatars img:first-child{margin-left:0}.proof-text{font-size:10px;line-height:1.7;color:#74776d}.stars{color:var(--ink);font-size:10px;letter-spacing:1px}.proof-text strong{color:var(--ink);font-weight:600}.hero-photo{position:relative;min-height:555px;border-radius:7px;overflow:hidden;background:#c8c4b6}.hero-photo>img{width:100%;height:100%;position:absolute;object-fit:cover;object-position:49% center}.photo-label{position:absolute;top:20px;left:20px;background:#f4f2ebe8;backdrop-filter:blur(8px);border-radius:3px;padding:9px 12px;display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:1px;font-weight:600}.photo-label .dot{background:#778168;width:5px;height:5px}.photo-caption{position:absolute;bottom:20px;left:20px;right:20px;padding:17px 18px;background:#f4f2ebf2;backdrop-filter:blur(10px);border-radius:4px;display:flex;align-items:center;justify-content:space-between}.photo-caption strong{font-size:13px;font-weight:550}.photo-caption p{font-size:10px;color:#727568;margin:5px 0 0}.round-arrow{border:1px solid #b9bcaf;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:19px}.photo-caption:hover .round-arrow{background:var(--orange);border-color:var(--orange)}
++    .benefits{border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:25px 0;margin-bottom:0}.benefit{display:flex;align-items:center;justify-content:center;gap:12px;font-size:12px;border-right:1px solid var(--line)}.benefit:first-child{justify-content:flex-start}.benefit:last-child{border:0;justify-content:flex-end}.benefit svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:1.25}.intro{padding-top:72px;padding-bottom:70px;display:grid;grid-template-columns:1fr 1.06fr;gap:26px}.section-kicker{font-size:10px;letter-spacing:1.7px;display:flex;gap:11px;align-items:center;padding-top:9px}.intro h2{font-family:'Manrope',sans-serif;font-size:38px;line-height:1.25;letter-spacing:-1.7px;font-weight:500;margin:0 0 18px}.intro p{font-size:14px;color:var(--muted);line-height:1.8;max-width:420px}.space-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;padding-bottom:65px}.space-card img{width:100%;height:255px;object-fit:cover;border-radius:5px}.space-card h3{font-size:17px;font-weight:500;margin:17px 0 7px}.space-card p{color:var(--muted);font-size:12px;margin:0;line-height:1.6}.card-title{display:flex;align-items:center;justify-content:space-between}.booking{padding:42px;background:#e7e9de;border-radius:6px;margin-bottom:50px;display:flex;align-items:center;justify-content:space-between;gap:25px}.booking h2{font-family:Manrope,sans-serif;font-size:30px;font-weight:500;letter-spacing:-1px;margin:0 0 8px}.booking p{font-size:13px;color:var(--muted);margin:0}footer{padding:25px 0;display:flex;justify-content:space-between;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}dialog{border:0;border-radius:8px;padding:35px;background:var(--paper);color:var(--ink);max-width:450px;width:calc(100% - 35px)}dialog::backdrop{background:#272c2380;backdrop-filter:blur(4px)}dialog h2{font-family:Manrope,sans-serif;font-weight:500;font-size:30px;letter-spacing:-1px;margin:0 0 10px}dialog p{font-size:13px;color:var(--muted);line-height:1.6}dialog label{display:block;font-size:12px;margin:18px 0 7px}dialog input,dialog select{width:100%;padding:12px;border:1px solid #bec3b4;border-radius:4px;background:transparent}dialog .primary{width:100%;margin-top:22px}.close{position:absolute;right:15px;top:12px;border:0;background:none;font-size:24px;color:var(--muted)}
++    @media(min-width:1450px){.hero{min-height:740px}.hero-photo{min-height:630px}.hero-copy{padding-top:55px}}
++    @media(max-width:900px){.shell{padding:0 5%}header{height:85px}nav{gap:20px}nav>a:not(.nav-cta){display:none}.hero{gap:20px;min-height:590px}.hero-photo{min-height:510px}h1{font-size:54px;letter-spacing:-3px}.hero-description{font-size:14px}.benefit{font-size:10px;gap:7px}.intro h2{font-size:31px}.space-card img{height:200px}}
++    @media(max-width:620px){header{height:80px}.logo{font-size:31px}.logo-mark{width:25px;height:27px}.nav-cta{font-size:11px;gap:16px;padding:11px 13px}.hero{grid-template-columns:1fr;padding-top:10px;gap:30px;padding-bottom:28px}.hero-copy{padding-top:28px}h1{font-size:58px;margin-top:23px;letter-spacing:-3.6px}.hero-description{max-width:310px}.social-proof{padding-top:27px}.hero-photo{min-height:430px}.benefits{grid-template-columns:1fr 1fr;gap:23px 0;padding:25px 0}.benefit,.benefit:first-child,.benefit:last-child{justify-content:flex-start;font-size:11px}.benefit:nth-child(even){border:0;padding-left:20px}.intro{grid-template-columns:1fr;padding-top:43px;padding-bottom:25px;gap:23px}.intro h2{font-size:34px}.space-grid{grid-template-columns:1fr;gap:30px;padding-bottom:38px}.space-card img{height:300px}.booking{padding:27px;align-items:flex-start;flex-direction:column}.booking h2{font-size:27px}footer{gap:20px;font-size:10px}}
++    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.primary{transition:none}}
++  </style>
++</head>
++<body>
++<div class="shell">
++  <header>
++    <a href="#" class="logo" aria-label="Gather home"><span class="logo-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>gather</a>
++    <nav aria-label="Main navigation"><a href="#spaces">Our spaces</a><a href="#about">Why Gather</a><a href="#community">The community</a><button class="nav-cta" data-book style="background:transparent;color:inherit">Book a visit <span class="arrow">↗</span></button></nav>
++  </header>
++  <main>
++    <section class="hero" aria-label="A workspace that works for you">
++      <div class="hero-copy" data-experiment>
++        <div class="eyebrow"><span class="dot"></span> GOOD SPACE. GREAT POSSIBILITIES.</div>
++        <h1>Room for your<br>next <em>big idea.</em></h1>
++        <p class="hero-description">Thoughtfully designed workspaces. A community that inspires. Find your place at Gather.</p>
++        <a class="primary" href="#spaces">Find your space <span class="arrow">↗</span></a>
++        <div class="social-proof"><div class="avatars"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=70&h=70&fit=crop&crop=faces" alt="" /><img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=70&h=70&fit=crop&crop=faces" alt="" /><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=70&h=70&fit=crop&crop=faces" alt="" /><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=70&h=70&fit=crop&crop=faces" alt="" /></div><div class="proof-text"><div class="stars" aria-label="5 out of 5 stars">★★★★★</div>A little more inspired. <strong>1,200+ members.</strong></div></div>
++      </div>
++      <div class="hero-photo"><img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=85" alt="Sunlit workspace with communal tables, warm wood furniture, and green plants" fetchpriority="high" /><div class="photo-label"><span class="dot"></span> MAKE YOURSELF AT WORK.</div><a class="photo-caption" href="#spaces"><div><strong>Your next chapter starts here.</strong><p>Spaces made for people, not just work.</p></div><span class="round-arrow" aria-hidden="true">↗</span></a></div>
++    </section>
++    <div class="benefits" aria-label="Membership benefits">
++      <div class="benefit"><svg viewBox="0 0 24 24"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0M9 15a4 4 0 0 1 6 0"/><circle cx="12" cy="18" r=".8"/></svg>Fast Wi-Fi. Clear minds.</div>
++      <div class="benefit"><svg viewBox="0 0 24 24"><path d="M4 8h12v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM16 9h2a3 3 0 0 1 0 6h-2M7 2v3M11 2v3M3 22h16"/></svg>Great coffee. Always.</div>
++      <div class="benefit"><svg viewBox="0 0 24 24"><path d="M12 21V10M12 14C4 15 3 10 3 5c6 0 9 2 9 9ZM12 11c0-6 3-8 9-8 0 6-3 9-9 8Z"/></svg>Room to grow.</div>
++      <div class="benefit"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-4a6 6 0 0 1 12 0v4M16 4a3 3 0 0 1 0 6M18 13a5 5 0 0 1 3 5v3"/></svg>Good people. Real connections.</div>
++    </div>
++    <section class="intro" id="about"><div class="section-kicker"><span class="dot"></span> A LITTLE SPACE GOES A LONG WAY</div><div><h2>More than a desk.<br>A place to belong.</h2><p>For the independent thinkers, the growing teams, and the big-idea people. We make room for the way you work.</p></div></section>
++    <section class="space-grid" id="spaces" aria-label="Find your workspace">
++      <a href="#visit" class="space-card" data-book><img loading="lazy" src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=800&q=80" alt="Open shared workspace filled with natural light" /><div class="card-title"><h3>A spot to call yours</h3><span>↗</span></div><p>Flexible desks. Fresh perspectives. Drop in and settle in.</p></a>
++      <a href="#visit" class="space-card" data-book><img loading="lazy" src="https://images.unsplash.com/photo-1497366858526-0766cadbe8fa?auto=format&fit=crop&w=800&q=80" alt="Comfortable private office with warm interior details" /><div class="card-title"><h3>Space for your team</h3><span>↗</span></div><p>Your own private office, with everything taken care of.</p></a>
++      <a href="#visit" class="space-card" data-book><img loading="lazy" src="https://images.unsplash.com/photo-1497366412874-3415097a27e7?auto=format&fit=crop&w=800&q=80" alt="Spacious meeting room ready for collaboration" /><div class="card-title"><h3>Bring ideas together</h3><span>↗</span></div><p>Meeting rooms for conversations that move things forward.</p></a>
++    </section>
++    <section class="booking" id="community"><div><h2>Good things happen together.</h2><p>Come for the space. Stay for the people. Your first coffee’s on us.</p></div><button class="primary" data-book>Come say hello <span class="arrow">↗</span></button></section>
++  </main>
++  <footer><span>© 2026 Gather. Space for what’s next.</span><span>Thoughtfully made for your working day.</span></footer>
++</div>
++<template id="hero-fallback">
++  <div class="hero-copy" data-experiment-fallback>
++    <div class="eyebrow"><span class="dot"></span> GOOD SPACE. GREAT POSSIBILITIES.</div>
++    <h1>A better place<br>to do your<br><em>best work.</em></h1>
++    <p class="hero-description">Thoughtfully designed workspaces. A community that inspires. Find your place at Gather.</p>
++    <a class="primary" href="#spaces">Find your space <span class="arrow">↗</span></a>
++    <div class="social-proof"><div class="avatars"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=70&h=70&fit=crop&crop=faces" alt="" /><img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=70&h=70&fit=crop&crop=faces" alt="" /><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=70&h=70&fit=crop&crop=faces" alt="" /><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=70&h=70&fit=crop&crop=faces" alt="" /></div><div class="proof-text"><div class="stars" aria-label="5 out of 5 stars">★★★★★</div>A little more inspired. <strong>1,200+ members.</strong></div></div>
++  </div>
++</template>
++<dialog id="visit"><button class="close" aria-label="Close dialog">×</button><form id="visit-form"><h2>Meet your next workspace.</h2><p>Leave your details to prepare a visit request. We’d love to show you around.</p><label for="name">Your name</label><input id="name" name="name" autocomplete="name" required /><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" required /><label for="interest">What are you looking for?</label><select id="interest" name="interest"><option>A flexible desk</option><option>A private office</option><option>A meeting room</option></select><button class="primary" type="submit">Prepare my request <span class="arrow">↗</span></button><p id="form-status" role="status"></p></form></dialog>
++<script>
++  const dialog = document.getElementById('visit');
++  document.querySelectorAll('[data-book]').forEach(button => button.addEventListener('click', event => {event.preventDefault(); dialog.showModal();}));
++  dialog.querySelector('.close').addEventListener('click', () => dialog.close());
++  dialog.addEventListener('click', event => {if(event.target === dialog && (event.clientX < dialog.getBoundingClientRect().left || event.clientX > dialog.getBoundingClientRect().right || event.clientY < dialog.getBoundingClientRect().top || event.clientY > dialog.getBoundingClientRect().bottom)) dialog.close();});
++  document.getElementById('visit-form').addEventListener('submit', event => {event.preventDefault(); document.getElementById('form-status').textContent = 'Your visit request is ready. Online booking is coming soon; no details have been sent.';});
++</script>
++</body>
++</html>

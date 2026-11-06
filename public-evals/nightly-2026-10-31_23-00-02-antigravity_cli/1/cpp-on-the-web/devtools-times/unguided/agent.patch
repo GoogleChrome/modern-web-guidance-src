@@ -1,0 +1,608 @@
+diff --git a/package.json b/package.json
+index 820c637..4300769 100644
+--- a/package.json
++++ b/package.json
+@@ -5,6 +5,7 @@
+   "scripts": {
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
++    "build:wasm": "em++ -O3 src/wasm/smallpt.cpp -o public/smallpt.js -s WASM=1 -s MODULARIZE=1 -s EXPORT_NAME=createSmallptModule -s EXPORTED_FUNCTIONS='[\"_render_smallpt\",\"_init_progressive_render\",\"_step_progressive_render\",\"_randomize_sphere_colors\",\"_set_sphere_color\",\"_reset_scene_colors\",\"_get_sphere_color_r\",\"_get_sphere_color_g\",\"_get_sphere_color_b\",\"_malloc\",\"_free\"]' -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"HEAPU8\"]' -s ALLOW_MEMORY_GROWTH=1 -s ENVIRONMENT='web,worker'",
+     "build": "astro build",
+     "preview": "astro preview",
+     "astro": "astro"
+diff --git a/public/smallpt.js b/public/smallpt.js
+new file mode 100644
+index 0000000..1da1627
+--- /dev/null
++++ b/public/smallpt.js
+@@ -0,0 +1,2 @@
++var createSmallptModule=(()=>{var _scriptName=globalThis.document?.currentScript?.src;return async function(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var programArgs=[];var thisProgram="./this.program";if(ENVIRONMENT_IS_WORKER){_scriptName=self.location.href}var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){if(Module["preRun"]){if(typeof Module["preRun"]=="function")Module["preRun"]=[Module["preRun"]];while(Module["preRun"].length){addOnPreRun(Module["preRun"].shift())}}callRuntimeCallbacks(onPreRuns)}function initRuntime(){runtimeInitialized=true;wasmExports["c"]()}function postRun(){if(Module["postRun"]){if(typeof Module["postRun"]=="function")Module["postRun"]=[Module["postRun"]];while(Module["postRun"].length){addOnPostRun(Module["postRun"].shift())}}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){return locateFile("smallpt.wasm")}function getBinarySync(file){if(file==wasmBinaryFile&&wasmBinary){return new Uint8Array(wasmBinary)}if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();if(Module["instantiateWasm"]){return new Promise((resolve,reject)=>{Module["instantiateWasm"](info,(inst,mod)=>{resolve(receiveInstance(inst,mod))})})}wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0){callbacks.shift()(Module)}};var onPostRuns=[];var addOnPostRun=cb=>onPostRuns.push(cb);var onPreRuns=[];var addOnPreRun=cb=>onPreRuns.push(cb);var noExitRuntime=true;var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};var getCFunc=ident=>{var func=Module["_"+ident];return func};var writeArrayToMemory=(array,buffer)=>{HEAP8.set(array,buffer)};var lengthBytesUTF8=str=>{var len=0;for(var i=0;i<str.length;++i){var c=str.charCodeAt(i);if(c<=127){len++}else if(c<=2047){len+=2}else if(c>=55296&&c<=57343){len+=4;++i}else{len+=3}}return len};var stringToUTF8Array=(str,heap,outIdx,maxBytesToWrite)=>{if(!(maxBytesToWrite>0))return 0;var startIdx=outIdx;var endIdx=outIdx+maxBytesToWrite-1;for(var i=0;i<str.length;++i){var u=str.codePointAt(i);if(u<=127){if(outIdx>=endIdx)break;heap[outIdx++]=u}else if(u<=2047){if(outIdx+1>=endIdx)break;heap[outIdx++]=192|u>>6;heap[outIdx++]=128|u&63}else if(u<=65535){if(outIdx+2>=endIdx)break;heap[outIdx++]=224|u>>12;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63}else{if(outIdx+3>=endIdx)break;heap[outIdx++]=240|u>>18;heap[outIdx++]=128|u>>12&63;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63;i++}}heap[outIdx]=0;return outIdx-startIdx};var stringToUTF8=(str,outPtr,maxBytesToWrite)=>stringToUTF8Array(str,HEAPU8,outPtr,maxBytesToWrite);var stackAlloc=sz=>__emscripten_stack_alloc(sz);var stringToUTF8OnStack=str=>{var size=lengthBytesUTF8(str)+1;var ret=stackAlloc(size);stringToUTF8(str,ret,size);return ret};var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):"";var ccall=(ident,returnType,argTypes,args,opts)=>{var toC={string:str=>{var ret=0;if(str!==null&&str!==undefined&&str!==0){ret=stringToUTF8OnStack(str)}return ret},array:arr=>{var ret=stackAlloc(arr.length);writeArrayToMemory(arr,ret);return ret}};function convertReturnValue(ret){if(returnType==="string"){return UTF8ToString(ret)}if(returnType==="boolean")return Boolean(ret);return ret}var func=getCFunc(ident);var cArgs=[];var stack=0;if(args){for(var i=0;i<args.length;i++){var converter=toC[argTypes[i]];if(converter){if(stack===0)stack=stackSave();cArgs[i]=converter(args[i])}else{cArgs[i]=args[i]}}}var ret=func(...cArgs);function onDone(ret){if(stack!==0)stackRestore(stack);return convertReturnValue(ret)}ret=onDone(ret);return ret};var cwrap=(ident,returnType,argTypes,opts)=>{var numericArgs=!argTypes||argTypes.every(type=>type==="number"||type==="boolean");var numericRet=returnType!=="string";if(numericRet&&numericArgs&&!opts){return getCFunc(ident)}return(...args)=>ccall(ident,returnType,argTypes,args,opts)};{if(Module["noExitRuntime"])noExitRuntime=Module["noExitRuntime"];if(Module["print"])out=Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["wasmBinary"])wasmBinary=Module["wasmBinary"];if(Module["arguments"])programArgs=Module["arguments"];if(Module["thisProgram"])thisProgram=Module["thisProgram"];if(Module["preInit"]){if(typeof Module["preInit"]=="function")Module["preInit"]=[Module["preInit"]];while(Module["preInit"].length>0){Module["preInit"].shift()()}}}Module["ccall"]=ccall;Module["cwrap"]=cwrap;var _reset_scene_colors,_set_sphere_color,_randomize_sphere_colors,_get_sphere_color_r,_get_sphere_color_g,_get_sphere_color_b,_init_progressive_render,_free,_malloc,_step_progressive_render,_render_smallpt,__emscripten_stack_restore,__emscripten_stack_alloc,_emscripten_stack_get_current,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_reset_scene_colors=Module["_reset_scene_colors"]=wasmExports["d"];_set_sphere_color=Module["_set_sphere_color"]=wasmExports["e"];_randomize_sphere_colors=Module["_randomize_sphere_colors"]=wasmExports["f"];_get_sphere_color_r=Module["_get_sphere_color_r"]=wasmExports["g"];_get_sphere_color_g=Module["_get_sphere_color_g"]=wasmExports["h"];_get_sphere_color_b=Module["_get_sphere_color_b"]=wasmExports["i"];_init_progressive_render=Module["_init_progressive_render"]=wasmExports["j"];_free=Module["_free"]=wasmExports["k"];_malloc=Module["_malloc"]=wasmExports["l"];_step_progressive_render=Module["_step_progressive_render"]=wasmExports["m"];_render_smallpt=Module["_render_smallpt"]=wasmExports["n"];__emscripten_stack_restore=wasmExports["o"];__emscripten_stack_alloc=wasmExports["p"];_emscripten_stack_get_current=wasmExports["q"];memory=wasmMemory=wasmExports["b"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={a:_emscripten_resize_heap};async function run(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}})();if(typeof exports==="object"&&typeof module==="object"){module.exports=createSmallptModule;module.exports.default=createSmallptModule}else if(typeof define==="function"&&define["amd"])define([],()=>createSmallptModule);
+diff --git a/public/smallpt.wasm b/public/smallpt.wasm
+new file mode 100755
+index 0000000..175cfb5
+Binary files /dev/null and b/public/smallpt.wasm differ
+diff --git a/src/components/SmallptViewer.tsx b/src/components/SmallptViewer.tsx
+new file mode 100644
+index 0000000..c1bcb64
+--- /dev/null
++++ b/src/components/SmallptViewer.tsx
+@@ -0,0 +1,329 @@
++import React, { useEffect, useRef, useState, useCallback } from 'react';
++
++interface SphereColorInfo {
++  name: string;
++  index: number;
++  material: string;
++  rgb: [number, number, number];
++}
++
++declare global {
++  interface Window {
++    createSmallptModule?: (options?: Record<string, unknown>) => Promise<any>;
++  }
++}
++
++const SPHERE_METADATA: { index: number; name: string; material: string }[] = [
++  { index: 0, name: 'Left Wall', material: 'Diffuse' },
++  { index: 1, name: 'Right Wall', material: 'Diffuse' },
++  { index: 2, name: 'Back Wall', material: 'Diffuse' },
++  { index: 4, name: 'Floor', material: 'Diffuse' },
++  { index: 5, name: 'Ceiling', material: 'Diffuse' },
++  { index: 6, name: 'Left Sphere', material: 'Mirror (SPEC)' },
++  { index: 7, name: 'Right Sphere', material: 'Glass (REFR)' },
++];
++
++const WIDTH = 320;
++const HEIGHT = 240;
++const TARGET_PASSES = 6; // 6 passes * 4 subpixels = 24 spp total progressive
++
++export const SmallptViewer: React.FC<{ baseUrl?: string }> = ({ baseUrl = '/devtools-times/' }) => {
++  const canvasRef = useRef<HTMLCanvasElement | null>(null);
++  const wasmModuleRef = useRef<any>(null);
++  const animFrameRef = useRef<number | null>(null);
++  const renderJobIdRef = useRef<number>(0);
++
++  const [status, setStatus] = useState<'loading' | 'rendering' | 'ready' | 'error'>('loading');
++  const [errorMessage, setErrorMessage] = useState<string | null>(null);
++  const [currentSpp, setCurrentSpp] = useState<number>(0);
++  const [renderTimeMs, setRenderTimeMs] = useState<number>(0);
++  const [sphereColors, setSphereColors] = useState<SphereColorInfo[]>([]);
++  const [renderCount, setRenderCount] = useState<number>(0);
++
++  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
++
++  const readSphereColorsFromWasm = useCallback((mod: any): SphereColorInfo[] => {
++    return SPHERE_METADATA.map((meta) => {
++      const r = Math.round(Math.pow(Math.max(0, Math.min(1, mod._get_sphere_color_r(meta.index))), 1 / 2.2) * 255);
++      const g = Math.round(Math.pow(Math.max(0, Math.min(1, mod._get_sphere_color_g(meta.index))), 1 / 2.2) * 255);
++      const b = Math.round(Math.pow(Math.max(0, Math.min(1, mod._get_sphere_color_b(meta.index))), 1 / 2.2) * 255);
++      return {
++        ...meta,
++        rgb: [r, g, b],
++      };
++    });
++  }, []);
++
++  const runProgressiveRender = useCallback(
++    (mod: any, randomize: boolean) => {
++      if (animFrameRef.current !== null) {
++        cancelAnimationFrame(animFrameRef.current);
++        animFrameRef.current = null;
++      }
++
++      const jobId = ++renderJobIdRef.current;
++
++      if (randomize) {
++        const seed = Math.floor(Math.random() * 0x7fffffff) + Date.now();
++        mod._randomize_sphere_colors(seed >>> 0);
++      }
++
++      setSphereColors(readSphereColorsFromWasm(mod));
++      mod._init_progressive_render(WIDTH, HEIGHT);
++
++      setStatus('rendering');
++      setCurrentSpp(0);
++      const startTime = performance.now();
++      let pass = 0;
++
++      const step = () => {
++        if (renderJobIdRef.current !== jobId) return;
++
++        const passSeed = (jobId * 1000 + pass + 1) >>> 0;
++        const ptr = mod._step_progressive_render(1, passSeed);
++        pass++;
++
++        const canvas = canvasRef.current;
++        if (canvas) {
++          const ctx = canvas.getContext('2d');
++          if (ctx) {
++            const byteLength = WIDTH * HEIGHT * 4;
++            const pixels = new Uint8ClampedArray(mod.HEAPU8.buffer, ptr, byteLength);
++            const imageData = ctx.createImageData(WIDTH, HEIGHT);
++            imageData.data.set(pixels);
++            ctx.putImageData(imageData, 0, 0);
++          }
++        }
++
++        const elapsed = Math.round(performance.now() - startTime);
++        setCurrentSpp(pass * 4);
++        setRenderTimeMs(elapsed);
++
++        if (pass < TARGET_PASSES) {
++          animFrameRef.current = requestAnimationFrame(step);
++        } else {
++          setStatus('ready');
++          setRenderCount((c) => c + 1);
++          animFrameRef.current = null;
++        }
++      };
++
++      // Run first pass immediately so output appears right away on the canvas
++      step();
++    },
++    [readSphereColorsFromWasm]
++  );
++
++  useEffect(() => {
++    let cancelled = false;
++
++    async function loadWasm() {
++      try {
++        setStatus('loading');
++        if (!window.createSmallptModule) {
++          await new Promise<void>((resolve, reject) => {
++            const existingScript = document.querySelector('script[data-smallpt-wasm="true"]') as HTMLScriptElement | null;
++            if (existingScript && window.createSmallptModule) {
++              resolve();
++              return;
++            }
++            const script = document.createElement('script');
++            script.src = `${normalizedBase}smallpt.js`;
++            script.async = true;
++            script.dataset.smallptWasm = 'true';
++            script.onload = () => resolve();
++            script.onerror = () => reject(new Error(`Failed to load ${normalizedBase}smallpt.js`));
++            document.head.appendChild(script);
++          });
++        }
++
++        if (cancelled) return;
++        if (!window.createSmallptModule) {
++          throw new Error('createSmallptModule global not found after loading script');
++        }
++
++        const mod = await window.createSmallptModule({
++          locateFile: (path: string) => `${normalizedBase}${path}`,
++        });
++
++        if (cancelled) return;
++        wasmModuleRef.current = mod;
++        runProgressiveRender(mod, false);
++      } catch (err: any) {
++        if (!cancelled) {
++          console.error('Error initializing smallpt WebAssembly:', err);
++          setErrorMessage(err?.message || 'Failed to initialize WebAssembly path tracer.');
++          setStatus('error');
++        }
++      }
++    }
++
++    loadWasm();
++
++    return () => {
++      cancelled = true;
++      if (animFrameRef.current !== null) {
++        cancelAnimationFrame(animFrameRef.current);
++      }
++    };
++  }, [normalizedBase, runProgressiveRender]);
++
++  const handleRandomizeColors = () => {
++    if (!wasmModuleRef.current) return;
++    runProgressiveRender(wasmModuleRef.current, true);
++  };
++
++  const handleResetColors = () => {
++    if (!wasmModuleRef.current) return;
++    wasmModuleRef.current._reset_scene_colors();
++    runProgressiveRender(wasmModuleRef.current, false);
++  };
++
++  return (
++    <section
++      id="smallpt-wasm-section"
++      className="bg-white border border-gray-200 shadow-sm rounded-lg p-6 md:p-8 my-6"
++    >
++      <div className="flex flex-col lg:flex-row gap-8 items-start">
++        {/* Left column: Canvas output */}
++        <div className="w-full lg:w-1/2 flex flex-col items-center">
++          <div className="relative w-full max-w-[480px] aspect-[4/3] bg-gray-950 rounded-md overflow-hidden border border-gray-800 shadow-inner flex items-center justify-center">
++            <canvas
++              ref={canvasRef}
++              id="smallpt-canvas"
++              width={WIDTH}
++              height={HEIGHT}
++              className="w-full h-full object-contain"
++              style={{ imageRendering: 'auto' }}
++            />
++            {status === 'loading' && (
++              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950/80 text-white text-sm">
++                <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mb-2" />
++                <span>Compiling &amp; initializing smallpt.wasm...</span>
++              </div>
++            )}
++            {status === 'error' && (
++              <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/90 text-red-200 p-4 text-center text-sm">
++                <p className="font-semibold mb-1">WebAssembly Error</p>
++                <p>{errorMessage}</p>
++              </div>
++            )}
++          </div>
++
++          <div className="w-full max-w-[480px] flex flex-wrap justify-between items-center mt-3 text-xs text-gray-600 font-mono">
++            <span>
++              Resolution: {WIDTH}&times;{HEIGHT} ({currentSpp} SPP)
++            </span>
++            <span>
++              Status:{' '}
++              <strong
++                className={
++                  status === 'ready'
++                    ? 'text-emerald-700'
++                    : status === 'rendering'
++                    ? 'text-amber-600'
++                    : 'text-gray-700'
++                }
++              >
++                {status === 'rendering'
++                  ? `Tracing rays (${currentSpp}/${TARGET_PASSES * 4} SPP)...`
++                  : status === 'ready'
++                  ? `Completed in ${renderTimeMs} ms`
++                  : status}
++              </strong>
++            </span>
++          </div>
++        </div>
++
++        {/* Right column: Controls and Scene Info */}
++        <div className="w-full lg:w-1/2 flex flex-col justify-between">
++          <div>
++            <div className="text-amber-800 text-xs font-brand tracking-widest uppercase mb-1">
++              Interactive WebAssembly Graphics Lab
++            </div>
++            <h2 className="text-2xl md:text-3xl font-brand text-gray-900 leading-tight">
++              smallpt: Global Illumination Path Tracer in WebAssembly
++            </h2>
++            <p className="mt-3 text-gray-700 text-sm md:text-base leading-relaxed">
++              Kevin Beason&apos;s 99-line C++ Monte Carlo path tracer (<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">smallpt.cpp</code>) compiled directly to WebAssembly with Emscripten. Featuring full global illumination, soft shadows, specular reflection, and dielectric glass refraction—running client-side in your browser.
++            </p>
++          </div>
++
++          {/* Action buttons */}
++          <div className="mt-6 flex flex-wrap items-center gap-3">
++            <button
++              type="button"
++              id="randomize-spheres-btn"
++              onClick={handleRandomizeColors}
++              disabled={status === 'loading'}
++              className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 disabled:bg-gray-300 text-gray-950 font-semibold px-5 py-2.5 rounded-md shadow-sm transition-colors cursor-pointer text-sm flex items-center gap-2"
++            >
++              <svg
++                xmlns="http://www.w3.org/2000/svg"
++                fill="none"
++                viewBox="0 0 24 24"
++                strokeWidth={2}
++                stroke="currentColor"
++                className="w-4 h-4"
++              >
++                <path
++                  strokeLinecap="round"
++                  strokeLinejoin="round"
++                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
++                />
++              </svg>
++              Run Again with Randomized Sphere Colors
++            </button>
++
++            <button
++              type="button"
++              id="reset-spheres-btn"
++              onClick={handleResetColors}
++              disabled={status === 'loading'}
++              className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-4 py-2.5 rounded-md border border-gray-300 transition-colors cursor-pointer text-sm"
++            >
++              Reset Classic Cornell Box
++            </button>
++          </div>
++
++          {/* Active Sphere Palette */}
++          {sphereColors.length > 0 && (
++            <div className="mt-6 pt-5 border-t border-gray-200">
++              <div className="flex items-center justify-between mb-2.5">
++                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
++                  Current Scene Sphere Colors
++                </h3>
++                <span className="text-xs text-gray-400" data-render-count={renderCount}>
++                  9 Spheres (Cornell Box + Mirror &amp; Glass)
++                </span>
++              </div>
++              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
++                {sphereColors.map((sphere) => {
++                  const [r, g, b] = sphere.rgb;
++                  const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
++                  return (
++                    <div
++                      key={sphere.index}
++                      className="flex items-center gap-2 p-1.5 rounded border border-gray-200 bg-gray-50 text-xs"
++                    >
++                      <span
++                        className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0 shadow-xs"
++                        style={{ backgroundColor: `rgb(${r}, ${g}, ${b})` }}
++                      />
++                      <div className="truncate">
++                        <div className="font-medium text-gray-800 truncate">{sphere.name}</div>
++                        <div className="text-[10px] text-gray-500 font-mono">{hex}</div>
++                      </div>
++                    </div>
++                  );
++                })}
++              </div>
++            </div>
++          )}
++        </div>
++      </div>
++    </section>
++  );
++};
++
++export default SmallptViewer;
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..4cf9914 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SmallptViewer from '../components/SmallptViewer';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -56,6 +57,7 @@ politicsArticles[2] = {
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <SmallptViewer client:load baseUrl={import.meta.env.BASE_URL} />
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/pages/index.html.astro b/src/pages/index.html.astro
+new file mode 100644
+index 0000000..d3473d3
+--- /dev/null
++++ b/src/pages/index.html.astro
+@@ -0,0 +1,4 @@
++---
++import Layout from './index.astro';
++---
++<Layout />
+diff --git a/src/wasm/smallpt.cpp b/src/wasm/smallpt.cpp
+new file mode 100644
+index 0000000..084a91e
+--- /dev/null
++++ b/src/wasm/smallpt.cpp
+@@ -0,0 +1,213 @@
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++#include <stdint.h>
++#include <emscripten/emscripten.h>
++
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if no hit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) { if (erand48(Xi)<p) f=f*(1/p); else return obj.e; } //R.R.
++  if (depth > 100) return obj.e; // Guard against stack overflow in WASM
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++static uint8_t* img_buf = NULL;
++static Vec* accum_buf = NULL;
++static int cur_w = 0;
++static int cur_h = 0;
++static int cur_passes = 0;
++
++extern "C" {
++
++EMSCRIPTEN_KEEPALIVE
++void reset_scene_colors() {
++  spheres[0].c = Vec(.75, .25, .25);
++  spheres[1].c = Vec(.25, .25, .75);
++  spheres[2].c = Vec(.75, .75, .75);
++  spheres[3].c = Vec(0, 0, 0);
++  spheres[4].c = Vec(.75, .75, .75);
++  spheres[5].c = Vec(.75, .75, .75);
++  spheres[6].c = Vec(1, 1, 1) * .999;
++  spheres[7].c = Vec(1, 1, 1) * .999;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void set_sphere_color(int index, double r, double g, double b) {
++  if (index >= 0 && index < 8) {
++    spheres[index].c = Vec(clamp(r), clamp(g), clamp(b));
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++void randomize_sphere_colors(unsigned int seed) {
++  srand(seed);
++  auto rand_col = []() {
++    return 0.15 + 0.75 * ((double)rand() / (double)RAND_MAX);
++  };
++  spheres[0].c = Vec(rand_col(), rand_col(), rand_col()); // Left wall
++  spheres[1].c = Vec(rand_col(), rand_col(), rand_col()); // Right wall
++  spheres[2].c = Vec(rand_col(), rand_col(), rand_col()); // Back wall
++  spheres[4].c = Vec(rand_col(), rand_col(), rand_col()); // Bottom floor
++  spheres[5].c = Vec(rand_col(), rand_col(), rand_col()); // Top ceiling
++  spheres[6].c = Vec(0.45 + 0.549 * ((double)rand() / RAND_MAX),
++                     0.45 + 0.549 * ((double)rand() / RAND_MAX),
++                     0.45 + 0.549 * ((double)rand() / RAND_MAX)); // Mirror sphere tint
++  spheres[7].c = Vec(0.55 + 0.449 * ((double)rand() / RAND_MAX),
++                     0.55 + 0.449 * ((double)rand() / RAND_MAX),
++                     0.55 + 0.449 * ((double)rand() / RAND_MAX)); // Glass sphere tint
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_r(int index) { return (index >= 0 && index < 9) ? spheres[index].c.x : 0; }
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_g(int index) { return (index >= 0 && index < 9) ? spheres[index].c.y : 0; }
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_b(int index) { return (index >= 0 && index < 9) ? spheres[index].c.z : 0; }
++
++EMSCRIPTEN_KEEPALIVE
++void init_progressive_render(int w, int h) {
++  if (w <= 0) w = 256;
++  if (h <= 0) h = 192;
++  if (img_buf == NULL || cur_w != w || cur_h != h) {
++    if (img_buf) free(img_buf);
++    if (accum_buf) free(accum_buf);
++    img_buf = (uint8_t*)malloc(w * h * 4);
++    accum_buf = (Vec*)malloc(sizeof(Vec) * w * h);
++    cur_w = w;
++    cur_h = h;
++  }
++  for (int i = 0; i < w * h; i++) {
++    accum_buf[i] = Vec();
++  }
++  cur_passes = 0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* step_progressive_render(int samps_per_subpixel, unsigned int pass_seed) {
++  if (!img_buf || !accum_buf) {
++    init_progressive_render(256, 192);
++  }
++  int w = cur_w;
++  int h = cur_h;
++  if (samps_per_subpixel <= 0) samps_per_subpixel = 1;
++
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r;
++
++  for (int y=0; y<h; y++){
++    unsigned short Xi[3] = {
++      (unsigned short)((pass_seed * 131 + y * 17) & 0xFFFF),
++      (unsigned short)((pass_seed * 977 + y * y) & 0xFFFF),
++      (unsigned short)((y * y * y + pass_seed * 31337) & 0xFFFF)
++    };
++    for (unsigned short x=0; x<w; x++) {
++      int i = (h - y - 1) * w + x;
++      Vec pixel_sample = Vec();
++      for (int sy=0; sy<2; sy++) {
++        for (int sx=0; sx<2; sx++, r=Vec()){
++          for (int s=0; s<samps_per_subpixel; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps_per_subpixel);
++          }
++          pixel_sample = pixel_sample + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++      }
++      accum_buf[i] = accum_buf[i] + pixel_sample;
++    }
++  }
++  cur_passes++;
++  double inv_passes = 1.0 / (double)cur_passes;
++  for (int i = 0; i < w * h; i++) {
++    img_buf[i * 4 + 0] = (uint8_t)toInt(accum_buf[i].x * inv_passes);
++    img_buf[i * 4 + 1] = (uint8_t)toInt(accum_buf[i].y * inv_passes);
++    img_buf[i * 4 + 2] = (uint8_t)toInt(accum_buf[i].z * inv_passes);
++    img_buf[i * 4 + 3] = 255;
++  }
++  return img_buf;
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* render_smallpt(int w, int h, int samps) {
++  init_progressive_render(w, h);
++  return step_progressive_render(samps, 0);
++}
++
++}

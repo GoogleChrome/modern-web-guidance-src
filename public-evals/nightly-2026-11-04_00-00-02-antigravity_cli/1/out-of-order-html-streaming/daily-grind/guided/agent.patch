@@ -1,0 +1,597 @@
+diff --git a/index.html b/index.html
+index 66c9173..dc1a44b 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,15 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="importmap">
++    {
++      "imports": {
++        "template-for-polyfill": "https://esm.sh/template-for-polyfill",
++        "html-setters-polyfill": "https://esm.sh/html-setters-polyfill",
++        "dompurify": "https://esm.sh/dompurify"
++      }
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -100,6 +109,15 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 10px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -113,6 +131,19 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      min-height: 340px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card-img {
++      width: 100%;
++      aspect-ratio: 16 / 10;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++      background-color: var(--secondary);
+     }
+ 
+     .card h3 {
+@@ -120,6 +151,45 @@
+       color: var(--primary);
+     }
+ 
++    /* Skeleton loading states with reserved dimensions to prevent CLS */
++    @keyframes pulse {
++      0%, 100% { opacity: 0.55; }
++      50% { opacity: 0.9; }
++    }
++
++    .skeleton-card {
++      animation: pulse 1.5s ease-in-out infinite;
++    }
++
++    .skeleton-img {
++      width: 100%;
++      aspect-ratio: 16 / 10;
++      background: var(--secondary);
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .skeleton-line {
++      height: 16px;
++      background: var(--secondary);
++      border-radius: 4px;
++      margin: 8px auto;
++      width: 80%;
++    }
++
++    .skeleton-line.title {
++      height: 22px;
++      width: 60%;
++    }
++
++    .skeleton-btn {
++      height: 40px;
++      width: 130px;
++      background: var(--secondary);
++      border-radius: 5px;
++      margin: 15px auto 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -128,6 +198,9 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
+       transition: background 0.3s;
+     }
+ 
+@@ -135,6 +208,84 @@
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      margin-top: 0;
++      background: var(--text);
++    }
++
++    /* Reviews & CMS Promo Layout */
++    .seasonal-secondary {
++      display: grid;
++      grid-template-columns: 2fr 1fr;
++      gap: 24px;
++      margin-top: 40px;
++    }
++
++    @media (max-width: 768px) {
++      .seasonal-secondary {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .reviews-panel,
++    .promo-panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .review-item {
++      border-bottom: 1px solid var(--secondary);
++      padding: 12px 0;
++    }
++
++    .review-item:last-child {
++      border-bottom: none;
++    }
++
++    .review-form {
++      margin-top: 16px;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .review-form textarea {
++      width: 100%;
++      min-height: 80px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-family: inherit;
++    }
++
++    .review-preview {
++      font-size: 0.9rem;
++      background: var(--light);
++      padding: 10px;
++      border-radius: 4px;
++      border: 1px dashed var(--secondary);
++      min-height: 44px;
++    }
++
++    .promo-panel {
++      background: linear-gradient(135deg, #4e342e, #3e2723);
++      color: white;
++      min-height: 220px;
++    }
++
++    .promo-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      margin-bottom: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,24 +326,63 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <button type="button" id="refresh-menu-btn" class="btn btn-secondary">
++          Refresh Seasonal Menu
++        </button>
++      </div>
++
++      <!-- Declarative Out-of-Order HTML Streaming placeholders with stable dimensions -->
++      <div class="grid" id="seasonal-grid" aria-live="polite">
++        <?start name="seasonal-cards">
++          <div class="card skeleton-card" aria-busy="true" aria-label="Loading seasonal drink">
++            <div class="skeleton-img"></div>
++            <div class="skeleton-line title"></div>
++            <div class="skeleton-line"></div>
++            <div class="skeleton-btn"></div>
++          </div>
++          <div class="card skeleton-card" aria-busy="true" aria-label="Loading seasonal drink">
++            <div class="skeleton-img"></div>
++            <div class="skeleton-line title"></div>
++            <div class="skeleton-line"></div>
++            <div class="skeleton-btn"></div>
++          </div>
++          <div class="card skeleton-card" aria-busy="true" aria-label="Loading seasonal drink">
++            <div class="skeleton-img"></div>
++            <div class="skeleton-line title"></div>
++            <div class="skeleton-line"></div>
++            <div class="skeleton-btn"></div>
++          </div>
++        <?end>
++      </div>
++
++      <div class="seasonal-secondary">
++        <!-- Customer-submitted reviews (untrusted HTML sanitized via Sanitizer API) -->
++        <div class="reviews-panel" aria-labelledby="reviews-heading">
++          <h3 id="reviews-heading">Customer Reviews</h3>
++          <div id="reviews-list" aria-live="polite">
++            <?marker name="initial-reviews">
++          </div>
++
++          <form id="review-form" class="review-form">
++            <label for="review-input">Add your review (basic formatting like &lt;b&gt;, &lt;i&gt;, &lt;em&gt;, &lt;strong&gt; allowed):</label>
++            <textarea id="review-input" name="review" placeholder="Loved the <strong>Maple Oat Latte</strong>!"></textarea>
++            <div>
++              <small>Live Sanitized Preview:</small>
++              <div id="review-preview" class="review-preview"></div>
++            </div>
++            <button type="submit" class="btn">Submit Review</button>
++          </form>
+         </div>
++
++        <!-- Trusted CMS Promo Block with its own embedded widget script -->
++        <aside id="cms-promo-container" class="promo-panel" aria-live="polite">
++          <?start name="cms-promo">
++            <p>Loading seasonal promotion...</p>
++          <?end>
++        </aside>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +397,318 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Out-of-order streamed templates arriving later in the same HTML document -->
++  <template for="seasonal-cards">
++    <?start name="seasonal-cards">
++      <div class="card" data-card-id="maple-oat-latte">
++        <div>
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++            alt="Maple Oat Latte"
++            loading="lazy"
++          >
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        </div>
++        <a href="/menu/seasonal" class="btn">View Details</a>
++      </div>
++      <div class="card" data-card-id="dark-roast-espresso">
++        <div>
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++            alt="Dark Roast Espresso"
++            loading="lazy"
++          >
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++        </div>
++        <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++      <div class="card" data-card-id="cold-brew">
++        <div>
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++            alt="Cold Brew"
++            loading="lazy"
++          >
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++        </div>
++        <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>
++    <?end>
++  </template>
++
++  <template for="initial-reviews">
++    <div class="review-item">
++      <p><strong>Maya R.</strong>: The <em>Maple Oat Latte</em> tastes like autumn in a cup!</p>
++    </div>
++    <div class="review-item">
++      <p><strong>Liam K.</strong>: Smooth <b>18-hour Cold Brew</b> with zero bitterness.</p>
++    </div>
++  </template>
++
++  <script type="module">
++    // Load polyfills for Out-of-Order HTML Streaming and HTML Setters when not natively supported
++    async function ensureStreamingPolyfills() {
++      const tasks = [];
++      if (!('for' in HTMLTemplateElement.prototype)) {
++        tasks.push(import('template-for-polyfill').catch(() => null));
++      }
++      if (!('streamHTML' in Element.prototype) || !('setHTMLUnsafe' in Element.prototype)) {
++        tasks.push(import('html-setters-polyfill').catch(() => null));
++      }
++      if (tasks.length > 0) {
++        await Promise.all(tasks);
++      }
++    }
++
++    let domPurifyPromise;
++    function loadDOMPurify() {
++      domPurifyPromise ??= import('dompurify').then((mod) => mod.default ?? mod);
++      return domPurifyPromise;
++    }
++
++    // Strict allowlist for untrusted customer-submitted reviews
++    const REVIEW_ELEMENTS = ['p', 'b', 'i', 'strong', 'em', 'span', 'div'];
++    const REVIEW_ATTRIBUTES = ['class'];
++
++    /**
++     * Safely sanitizes and sets untrusted customer review HTML using the native
++     * Sanitizer API (`Element.prototype.setHTML`), falling back to DOMPurify.
++     */
++    export async function safeSetReviewHTML(el, html) {
++      if ('setHTML' in Element.prototype) {
++        const sanitizer =
++          typeof Sanitizer !== 'undefined'
++            ? new Sanitizer({ elements: REVIEW_ELEMENTS, attributes: REVIEW_ATTRIBUTES })
++            : { elements: REVIEW_ELEMENTS, attributes: REVIEW_ATTRIBUTES };
++        el.setHTML(html, { sanitizer });
++      } else {
++        const DOMPurify = await loadDOMPurify();
++        el.innerHTML = DOMPurify.sanitize(html, {
++          ALLOWED_TAGS: [...REVIEW_ELEMENTS, '#text'],
++          ALLOWED_ATTR: REVIEW_ATTRIBUTES,
++          ALLOW_ARIA_ATTR: false,
++          ALLOW_DATA_ATTR: false,
++          KEEP_CONTENT: false
++        });
++      }
++    }
++
++    /**
++     * Safely parses untrusted HTML into a Document for live previewing without
++     * serializing back to innerHTML (avoiding mutation XSS).
++     */
++    export async function updateReviewPreview(previewEl, rawHTML) {
++      if ('parseHTML' in Document) {
++        const doc = Document.parseHTML(rawHTML, {
++          sanitizer: { elements: REVIEW_ELEMENTS, attributes: REVIEW_ATTRIBUTES }
++        });
++        previewEl.replaceChildren(...doc.body.childNodes);
++      } else {
++        await safeSetReviewHTML(previewEl, rawHTML);
++      }
++    }
++
++    const FALLBACK_REFRESHED_MENU_HTML = `
++      <div class="card" data-card-id="spiced-chai-latte">
++        <div>
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80"
++            alt="Spiced Chai Oat Latte"
++            loading="lazy"
++          >
++          <h3>Spiced Chai Oat Latte</h3>
++          <p>House-steeped masala chai blended with velvety steamed oat milk.</p>
++        </div>
++        <a href="/menu/chai" class="btn">View Details</a>
++      </div>
++      <div class="card" data-card-id="honey-cinnamon-cortado">
++        <div>
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++            alt="Honey Cinnamon Cortado"
++            loading="lazy"
++          >
++          <h3>Honey Cinnamon Cortado</h3>
++          <p>Equal parts rich espresso and warm milk kissed with wildflower honey.</p>
++        </div>
++        <a href="/menu/cortado" class="btn">View Details</a>
++      </div>
++      <div class="card" data-card-id="nitro-vanilla-cold-brew">
++        <div>
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++            alt="Nitro Vanilla Cold Brew"
++            loading="lazy"
++          >
++          <h3>Nitro Vanilla Cold Brew</h3>
++          <p>Cascading nitrogen-infused cold brew with Madagascar vanilla bean.</p>
++        </div>
++        <a href="/menu/nitro" class="btn">View Details</a>
++      </div>
++    `;
++
++    /**
++     * Streams fresh seasonal menu HTML from the server directly into #seasonal-grid
++     * using imperative HTML streaming (`streamHTML()`), preserving focus if active.
++     */
++    export async function refreshSeasonalCards(endpoint = '/api/menu/seasonal') {
++      const grid = document.getElementById('seasonal-grid');
++      if (!grid) return;
++
++      // Preserve focus across out-of-order/streamed replacement
++      const activeEl = document.activeElement;
++      const hadFocusInsideGrid = activeEl && grid.contains(activeEl);
++      const activeCardId = activeEl?.closest('[data-card-id]')?.getAttribute('data-card-id');
++
++      try {
++        const response = await fetch(endpoint);
++        if (!response.ok) {
++          throw new Error(`Menu fetch returned ${response.status}`);
++        }
++
++        if ('streamHTML' in grid) {
++          if ('textStream' in response && typeof response.textStream === 'function') {
++            await response.textStream().pipeTo(grid.streamHTML());
++          } else if (response.body) {
++            await response.body
++              .pipeThrough(new TextDecoderStream())
++              .pipeTo(grid.streamHTML());
++          }
++        } else if ('setHTML' in grid) {
++          const html = await response.text();
++          grid.setHTML(html);
++        } else {
++          const html = await response.text();
++          const DOMPurify = await loadDOMPurify();
++          grid.innerHTML = DOMPurify.sanitize(html);
++        }
++      } catch {
++        // Fallback stream when running against a static file server without /api/menu/seasonal
++        if ('streamHTML' in grid) {
++          const stream = new ReadableStream({
++            start(controller) {
++              controller.enqueue(FALLBACK_REFRESHED_MENU_HTML);
++              controller.close();
++            }
++          });
++          await stream.pipeTo(grid.streamHTML());
++        } else if ('setHTML' in grid) {
++          grid.setHTML(FALLBACK_REFRESHED_MENU_HTML);
++        } else {
++          const DOMPurify = await loadDOMPurify();
++          grid.innerHTML = DOMPurify.sanitize(FALLBACK_REFRESHED_MENU_HTML);
++        }
++      }
++
++      if (hadFocusInsideGrid) {
++        const target =
++          (activeCardId && grid.querySelector(`[data-card-id="${activeCardId}"] a, [data-card-id="${activeCardId}"] button`)) ||
++          grid.querySelector('a, button');
++        target?.focus();
++      }
++    }
++
++    // Trusted first-party CMS promo block containing an embedded widget script
++    const TRUSTED_CMS_PROMO_HTML = `
++      <div>
++        <span class="promo-badge">CMS LIVE OFFER</span>
++        <h3>Double Bean Rewards Week</h3>
++        <p>Order any Seasonal Favorite before Friday and earn 2x loyalty beans.</p>
++        <div id="cms-promo-widget" data-reward-multiplier="2" style="margin-top: 12px; font-weight: bold; color: var(--accent);">
++          Initializing reward widget...
++        </div>
++        <script>
++          (() => {
++            const widget = document.getElementById('cms-promo-widget');
++            if (widget) {
++              const multiplier = widget.getAttribute('data-reward-multiplier') || '2';
++              widget.textContent = 'Active Perk: ' + multiplier + 'x Bonus Beans applied at checkout!';
++            }
++          })();
++        <\/script>
++      </div>
++    `;
++
++    /**
++     * Renders or streams the trusted CMS promo block with `{ runScripts: true }`
++     * so its embedded widget script executes upon insertion.
++     */
++    export async function renderCmsPromoBlock(cmsHTML = TRUSTED_CMS_PROMO_HTML, endpoint = null) {
++      const promoContainer = document.getElementById('cms-promo-container');
++      if (!promoContainer) return;
++
++      if (endpoint) {
++        try {
++          const response = await fetch(endpoint);
++          if (response.ok && 'streamHTMLUnsafe' in promoContainer) {
++            if ('textStream' in response && typeof response.textStream === 'function') {
++              await response.textStream().pipeTo(promoContainer.streamHTMLUnsafe({ runScripts: true }));
++              return;
++            } else if (response.body) {
++              await response.body
++                .pipeThrough(new TextDecoderStream())
++                .pipeTo(promoContainer.streamHTMLUnsafe({ runScripts: true }));
++              return;
++            }
++          }
++        } catch {
++          // Fall through to static trusted CMS HTML
++        }
++      }
++
++      if ('setHTMLUnsafe' in promoContainer) {
++        promoContainer.setHTMLUnsafe(cmsHTML, { runScripts: true });
++      }
++    }
++
++    // Initialize interactive handlers
++    await ensureStreamingPolyfills();
++    await renderCmsPromoBlock();
++
++    const refreshBtn = document.getElementById('refresh-menu-btn');
++    refreshBtn?.addEventListener('click', () => {
++      refreshSeasonalCards('/api/menu/seasonal');
++    });
++
++    // Also listen for custom 'menu-change' events dispatched when the server menu changes
++    window.addEventListener('menu-change', (event) => {
++      const endpoint = event.detail?.endpoint || '/api/menu/seasonal';
++      refreshSeasonalCards(endpoint);
++    });
++
++    // Customer review live preview and submission using Sanitizer API
++    const reviewForm = document.getElementById('review-form');
++    const reviewInput = document.getElementById('review-input');
++    const reviewPreview = document.getElementById('review-preview');
++    const reviewsList = document.getElementById('reviews-list');
++
++    reviewInput?.addEventListener('input', () => {
++      updateReviewPreview(reviewPreview, reviewInput.value);
++    });
++
++    reviewForm?.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const rawReview = reviewInput?.value.trim();
++      if (!rawReview || !reviewsList) return;
++
++      const reviewItem = document.createElement('div');
++      reviewItem.className = 'review-item';
++      await safeSetReviewHTML(reviewItem, `<p>${rawReview}</p>`);
++      reviewsList.appendChild(reviewItem);
++
++      reviewInput.value = '';
++      reviewPreview.replaceChildren();
++    });
++  </script>
+ </body>
+ 
+ </html>

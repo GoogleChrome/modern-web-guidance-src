@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,10 +194,110 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Event Deadline Tracker</h2>
++      <div class="card" style="max-width: 600px; margin: 20px auto; text-align: left;">
++        <h3>Annual Coffee Tasting Championship</h3>
++        <p>Registration deadline tracking with stabilized reactive state powered by the Temporal API.</p>
++        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 6px;">
++          <p style="margin-bottom: 8px;"><strong>Event Deadline:</strong> <span id="temporal-value">2026-11-01</span></p>
++          <p style="margin-bottom: 8px;"><strong>Reference Changed:</strong> <span id="temporal-ref-changed">No</span></p>
++          <p style="margin-bottom: 8px;"><strong>Re-render Count:</strong> <span id="temporal-render-count">0</span></p>
++        </div>
++        <button id="extend-temporal-btn" class="btn" style="border: none; cursor: pointer; font-family: inherit; font-size: 1rem;">Extend Deadline</button>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    // Feature detection and polyfill fallback for Temporal API
++    async function ensureTemporal() {
++      if (typeof Temporal === 'undefined') {
++        try {
++          const module = await import("https://esm.sh/@js-temporal/polyfill");
++          globalThis.Temporal = module.Temporal;
++          Date.prototype.toTemporalInstant = module.toTemporalInstant;
++        } catch (err) {
++          console.warn('Temporal polyfill failed to load, falling back to minimal implementation', err);
++          if (typeof globalThis.Temporal === 'undefined') {
++            globalThis.Temporal = {
++              PlainDate: class PlainDate {
++                constructor(year, month, day) {
++                  this.year = year;
++                  this.month = month;
++                  this.day = day;
++                }
++                static from(str) {
++                  const [y, m, d] = str.split('-').map(Number);
++                  return new PlainDate(y, m, d);
++                }
++                add({ days = 0, months = 0, years = 0 } = {}) {
++                  const dt = new Date(this.year, this.month - 1, this.day + days);
++                  return new PlainDate(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
++                }
++                toString() {
++                  const m = String(this.month).padStart(2, '0');
++                  const d = String(this.day).padStart(2, '0');
++                  return `${this.year}-${m}-${d}`;
++                }
++              }
++            };
++          }
++        }
++      }
++    }
++
++    async function initTracker() {
++      await ensureTemporal();
++
++      const valueEl = document.getElementById('temporal-value');
++      const refChangedEl = document.getElementById('temporal-ref-changed');
++      const renderCountEl = document.getElementById('temporal-render-count');
++      const extendBtn = document.getElementById('extend-temporal-btn');
++
++      let reRenderCount = 0;
++      let state = {
++        deadline: Temporal.PlainDate.from('2026-11-01')
++      };
++
++      valueEl.textContent = state.deadline.toString();
++
++      function updateState(nextDate) {
++        const prevDate = state.deadline;
++        const hasRefChanged = prevDate !== nextDate;
++
++        state = {
++          ...state,
++          deadline: nextDate
++        };
++
++        if (hasRefChanged) {
++          refChangedEl.textContent = 'Yes';
++          console.log('Yes');
++          reRenderCount++;
++          renderCountEl.textContent = String(reRenderCount);
++          valueEl.textContent = state.deadline.toString();
++        } else {
++          refChangedEl.textContent = 'No';
++        }
++      }
++
++      extendBtn.addEventListener('click', () => {
++        const nextDate = state.deadline.add({ days: 1 });
++        updateState(nextDate);
++      });
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initTracker);
++    } else {
++      initTracker();
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

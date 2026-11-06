@@ -1,0 +1,236 @@
+diff --git a/index.html b/index.html
+index 66c9173..d5ccd04 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,156 @@
+       background: #3e2723;
+     }
+ 
++    /* Loyalty Rewards */
++    .rewards {
++      margin-top: 60px;
++    }
++
++    .rewards h2 {
++      text-align: center;
++    }
++
++    .rewards-card {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      margin-top: 20px;
++      padding: 30px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--accent);
++    }
++
++    @property --value {
++      syntax: '<number>';
++      inherits: true;
++      initial-value: 0;
++    }
++
++    @property --max {
++      syntax: '<number>';
++      inherits: true;
++      initial-value: 100;
++    }
++
++    .progress-ring-wrapper {
++      position: relative;
++      display: grid;
++      place-items: center;
++      flex-shrink: 0;
++    }
++
++    progress.progress-ring {
++      --size: 200px;
++      --thickness: 18px;
++      --track-color: var(--secondary);
++      --fill-color: var(--accent);
++      --value: attr(value type(<number>), 0);
++      --max: attr(max type(<number>), 100);
++      appearance: none;
++      display: block;
++      width: var(--size);
++      height: var(--size);
++      color: var(--fill-color);
++      border-radius: 50%;
++      background: conic-gradient(var(--fill-color) calc(var(--value) / var(--max) * 100%),
++          var(--track-color) 0);
++      background-clip: border-area;
++      background-origin: border-box;
++      border: var(--thickness) solid transparent;
++      transition: --value 0s ease-in-out;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition-duration: 0.6s;
++      }
++
++      @supports not (background-clip: border-area) {
++        background-clip: border-box;
++        border: 0;
++        mask-image: radial-gradient(transparent calc(50% - var(--thickness)),
++            black calc(50% - var(--thickness) + 0.5px));
++      }
++    }
++
++    /* Hide native progress bar UI */
++    progress.progress-ring::-webkit-progress-bar,
++    progress.progress-ring::-webkit-progress-value {
++      display: none;
++      background: none;
++    }
++
++    progress.progress-ring::-moz-progress-bar {
++      background: none;
++    }
++
++    /* Reward earned: switch the ring to the deep roast brand color */
++    progress.progress-ring.is-complete {
++      --fill-color: var(--primary);
++    }
++
++    .progress-ring-content {
++      position: absolute;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      text-align: center;
++      line-height: 1.2;
++      color: var(--primary);
++    }
++
++    .ring-count {
++      font-size: 2.5rem;
++      font-weight: bold;
++    }
++
++    .ring-count small {
++      font-size: 1.1rem;
++      font-weight: normal;
++      color: var(--text);
++    }
++
++    .ring-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--text);
++    }
++
++    .rewards-details {
++      max-width: 380px;
++    }
++
++    .rewards-details h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .rewards-details p + p {
++      margin-top: 8px;
++    }
++
++    .rewards-remaining strong {
++      color: var(--primary);
++    }
++
++    .rewards-btn-row .btn {
++      margin-right: 10px;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--accent);
++    }
++
++    .btn-outline:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +345,31 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Grind Rewards</h2>
++      <div class="rewards-card">
++        <div class="progress-ring-wrapper">
++          <progress id="loyalty-progress" class="progress-ring" value="7" max="10"
++            aria-label="Stamps collected toward your next free drink"></progress>
++          <div class="progress-ring-content" aria-hidden="true">
++            <span class="ring-count"><span id="loyalty-count">7</span><small>/<span id="loyalty-max">10</span></small></span>
++            <span class="ring-label">Stamps</span>
++          </div>
++        </div>
++        <div class="rewards-details">
++          <h3>Your Next Free Drink</h3>
++          <p>Earn one stamp with every handcrafted drink. Collect 10 stamps and your next cup is on us.</p>
++          <p class="rewards-remaining" id="loyalty-remaining" aria-live="polite">
++            Only <strong>3 more drinks</strong> until your free drink!
++          </p>
++          <div class="rewards-btn-row">
++            <a href="/order-online" class="btn">Earn a Stamp</a>
++            <a href="/rewards" class="btn btn-outline">View Rewards</a>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +382,42 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keeps the loyalty ring, center text, and summary in sync with the <progress> value.
++    (() => {
++      const progress = document.getElementById('loyalty-progress');
++      const count = document.getElementById('loyalty-count');
++      const maxEl = document.getElementById('loyalty-max');
++      const remaining = document.getElementById('loyalty-remaining');
++      const supportsAttr = CSS.supports('width: attr(value type(<number>))');
++
++      const sync = () => {
++        const value = Number(progress.getAttribute('value')) || 0;
++        const max = Number(progress.getAttribute('max')) || 1;
++        const left = Math.max(max - value, 0);
++
++        // Fallback for browsers without typed attr(): mirror attributes into CSS.
++        if (!supportsAttr) {
++          progress.style.setProperty('--value', value);
++          progress.style.setProperty('--max', max);
++        }
++
++        progress.classList.toggle('is-complete', left === 0);
++        count.textContent = Math.min(value, max);
++        maxEl.textContent = max;
++        remaining.innerHTML = left === 0
++          ? '<strong>You\'ve earned a free drink!</strong> Redeem it on your next order.'
++          : `Only <strong>${left} more drink${left === 1 ? '' : 's'}</strong> until your free drink!`;
++      };
++
++      sync();
++      new MutationObserver(sync).observe(progress, {
++        attributes: true,
++        attributeFilter: ['value', 'max'],
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

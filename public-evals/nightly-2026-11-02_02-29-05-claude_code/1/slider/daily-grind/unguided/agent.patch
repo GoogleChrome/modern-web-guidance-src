@@ -1,0 +1,238 @@
+diff --git a/index.html b/index.html
+index 66c9173..e90ba75 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,173 @@
+       background: #3e2723;
+     }
+ 
++    /* Brew Strength Slider */
++    .brew-strength {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 600px;
++      margin: 40px auto 0;
++    }
++
++    .brew-strength h2 {
++      text-align: center;
++      margin-bottom: 5px;
++    }
++
++    .brew-strength .intro {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .strength-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 12px;
++    }
++
++    .strength-header label {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .strength-header output {
++      font-weight: bold;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 2px 12px;
++      border-radius: 999px;
++      font-size: 0.9rem;
++    }
++
++    .strength-slider {
++      --track-height: 10px;
++      --thumb-size: 26px;
++      --track-bg: var(--secondary);
++      --fill-bg: linear-gradient(90deg, #a1887f, var(--primary));
++      --fill: 0.5; /* 0–1, kept in sync with the value by script */
++      -webkit-appearance: none;
++      appearance: none;
++      display: block;
++      width: 100%;
++      height: var(--thumb-size);
++      margin: 0;
++      background: transparent;
++      cursor: pointer;
++    }
++
++    .strength-slider:focus {
++      outline: none;
++    }
++
++    /* Track: WebKit/Blink paints the fill as part of the track background,
++       ending at the thumb's center */
++    .strength-slider::-webkit-slider-runnable-track {
++      height: var(--track-height);
++      border-radius: 999px;
++      background:
++        var(--fill-bg) 0 0 / calc(var(--thumb-size) / 2 + (100% - var(--thumb-size)) * var(--fill)) 100% no-repeat,
++        var(--track-bg);
++      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
++    }
++
++    /* Track and fill: Firefox */
++    .strength-slider::-moz-range-track {
++      height: var(--track-height);
++      border-radius: 999px;
++      background: var(--track-bg);
++      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
++    }
++
++    .strength-slider::-moz-range-progress {
++      height: var(--track-height);
++      border-radius: 999px;
++      background: var(--fill-bg);
++    }
++
++    /* Thumb */
++    .strength-slider::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: var(--thumb-size);
++      height: var(--thumb-size);
++      margin-top: calc((var(--track-height) - var(--thumb-size)) / 2);
++      border-radius: 50%;
++      background: white;
++      border: 4px solid var(--primary);
++      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    .strength-slider::-moz-range-thumb {
++      width: var(--thumb-size);
++      height: var(--thumb-size);
++      box-sizing: border-box;
++      border-radius: 50%;
++      background: white;
++      border: 4px solid var(--primary);
++      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    .strength-slider:hover::-webkit-slider-thumb,
++    .strength-slider:active::-webkit-slider-thumb {
++      transform: scale(1.1);
++    }
++
++    .strength-slider:hover::-moz-range-thumb,
++    .strength-slider:active::-moz-range-thumb {
++      transform: scale(1.1);
++    }
++
++    /* Focus: visible ring for keyboard users only */
++    .strength-slider:focus-visible::-webkit-slider-thumb {
++      box-shadow: 0 0 0 3px white, 0 0 0 6px var(--accent);
++    }
++
++    .strength-slider:focus-visible::-moz-range-thumb {
++      box-shadow: 0 0 0 3px white, 0 0 0 6px var(--accent);
++    }
++
++    .strength-slider:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    .strength-scale {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 8px;
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .strength-description {
++      margin-top: 20px;
++      text-align: center;
++      min-height: 1.6em;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .strength-slider::-webkit-slider-thumb {
++        transition: none;
++      }
++
++      .strength-slider::-moz-range-thumb {
++        transition: none;
++      }
++    }
++
++    /* Windows High Contrast: fall back to the system slider */
++    @media (forced-colors: active) {
++      .strength-slider {
++        -webkit-appearance: auto;
++        appearance: auto;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +362,23 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="brew-strength" aria-labelledby="brew-strength-title">
++      <h2 id="brew-strength-title">Find Your Brew Strength</h2>
++      <p class="intro">Slide to tell our baristas how bold you like your cup.</p>
++      <div class="strength-header">
++        <label for="brew-strength">Brew strength</label>
++        <output id="brew-strength-output" for="brew-strength">Medium</output>
++      </div>
++      <input type="range" id="brew-strength" class="strength-slider" name="brew-strength"
++        min="1" max="5" step="1" value="3" aria-valuetext="Medium"
++        aria-describedby="brew-strength-description">
++      <div class="strength-scale" aria-hidden="true">
++        <span>Mild</span>
++        <span>Bold</span>
++      </div>
++      <p id="brew-strength-description" class="strength-description">Balanced and smooth — our house favorite.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +391,35 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var slider = document.getElementById('brew-strength');
++      var output = document.getElementById('brew-strength-output');
++      var description = document.getElementById('brew-strength-description');
++      var levels = {
++        1: ['Extra Mild', 'Light and delicate with bright, fruity notes.'],
++        2: ['Mild', 'Gentle body with a hint of sweetness.'],
++        3: ['Medium', 'Balanced and smooth — our house favorite.'],
++        4: ['Strong', 'Rich and full-bodied with deep cocoa tones.'],
++        5: ['Extra Bold', 'Intense, smokey, and built for early mornings.']
++      };
++
++      function update() {
++        var min = Number(slider.min);
++        var max = Number(slider.max);
++        var value = Number(slider.value);
++        var level = levels[value];
++        slider.style.setProperty('--fill', (value - min) / (max - min));
++        slider.setAttribute('aria-valuetext', level[0]);
++        output.textContent = level[0];
++        description.textContent = level[1];
++      }
++
++      slider.addEventListener('input', update);
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

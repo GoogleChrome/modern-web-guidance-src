@@ -1,0 +1,181 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,115 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured Barista Section */
++    .barista-spotlight {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 32px;
++      background: white;
++      padding: 32px;
++      border-radius: 12px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++    }
++
++    .shaped-avatar {
++      width: 200px;
++      height: 200px;
++      object-fit: cover;
++      flex-shrink: 0;
++      -webkit-mask-image: url(#splat-mask);
++      mask-image: url(#splat-mask);
++    }
++
++    .barista-info {
++      flex: 1;
++      min-width: 240px;
++    }
++
++    .barista-info h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .barista-role {
++      font-weight: 600;
++      color: #6d4c41;
++      margin-bottom: 12px;
++    }
++
++    /* Promotions & Loyalty Layout */
++    .perks-section {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
++      align-items: stretch;
++      margin-top: 40px;
++    }
++
++    /* Unified Loyalty Banner Card */
++    .unified-card {
++      display: flex;
++      width: 100%;
++      filter: drop-shadow(0 10px 18px rgba(62, 39, 35, 0.22));
++    }
++
++    .card-body {
++      flex: 1;
++      background-color: var(--primary);
++      color: var(--light);
++      padding: 28px 24px;
++      border-top-left-radius: 16px;
++      border-bottom-left-radius: 16px;
++    }
++
++    .card-body h3 {
++      color: var(--accent);
++      margin-bottom: 10px;
++      font-size: 1.35rem;
++    }
++
++    .card-accent {
++      width: 60px;
++      flex-shrink: 0;
++      background-color: var(--primary);
++      border-top-right-radius: 16px;
++      border-bottom-right-radius: 16px;
++      -webkit-mask-image: url(#card-accent-mask);
++      mask-image: url(#card-accent-mask);
++    }
++
++    /* Gradient-Masked Promo Card */
++    .gradient-masked-card {
++      background: linear-gradient(135deg, #6d4c41, var(--primary));
++      color: white;
++      padding: 40px 24px 24px 24px;
++      border-radius: 16px;
++      text-align: center;
++      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
++      mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--accent);
++      margin-bottom: 10px;
++      font-size: 1.35rem;
++    }
++
++    .promo-code {
++      display: inline-block;
++      margin-top: 14px;
++      padding: 6px 16px;
++      background: rgba(255, 255, 255, 0.15);
++      border: 1px dashed var(--accent);
++      border-radius: 6px;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +263,23 @@
+ </head>
+ 
+ <body>
+ 
++  <!-- Hidden SVG masks for custom shaped cutouts -->
++  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
++    <defs>
++      <!-- Paint splat mask for .shaped-avatar -->
++      <mask id="splat-mask" maskContentUnits="objectBoundingBox">
++        <path d="M 0.5 0.05 C 0.58 0.05, 0.58 0.21, 0.67 0.18 C 0.76 0.15, 0.79 0.08, 0.85 0.15 C 0.91 0.22, 0.83 0.32, 0.89 0.38 C 0.95 0.44, 1.03 0.45, 0.99 0.55 C 0.95 0.65, 0.82 0.62, 0.8 0.72 C 0.78 0.82, 0.89 0.92, 0.8 0.97 C 0.71 1.02, 0.64 0.88, 0.55 0.93 C 0.46 0.98, 0.44 1.06, 0.35 1.01 C 0.26 0.96, 0.31 0.81, 0.22 0.79 C 0.13 0.77, 0.01 0.88, 0.01 0.77 C 0.01 0.66, 0.16 0.62, 0.14 0.52 C 0.12 0.42, -0.02 0.39, 0.03 0.29 C 0.08 0.19, 0.23 0.27, 0.29 0.19 C 0.35 0.11, 0.3 0.01, 0.4 0.01 C 0.5 0.01, 0.42 0.05, 0.5 0.05 Z" fill="white" />
++      </mask>
++      <!-- Concave side curve cutout mask for .card-accent -->
++      <mask id="card-accent-mask" maskContentUnits="objectBoundingBox">
++        <rect width="1" height="1" fill="white" />
++        <path d="M 1.1,0 C 0.4,0.1 0.4,0.9 1.1,1 L 1.1,0 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +316,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-spotlight" aria-labelledby="featured-barista-heading">
++      <img
++        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80"
++        alt="Featured Barista Mateo Rivera"
++        class="shaped-avatar"
++      >
++      <div class="barista-info">
++        <h2 id="featured-barista-heading">Featured Barista: Mateo Rivera</h2>
++        <p class="barista-role">Lead Roaster &amp; Latte Art Champion</p>
++        <p>With over eight years behind the espresso bar, Mateo specializes in single-origin pour-overs and crafting our signature seasonal maple oat reduction.</p>
++      </div>
++    </section>
++
++    <section class="perks-section" aria-label="Rewards and Promotions">
++      <div class="unified-card">
++        <div class="card-body">
++          <h3>Daily Grind Loyalty Club</h3>
++          <p>Earn beans with every cup! Collect 10 stamps to unlock a complimentary handcrafted beverage and early access to micro-lot roasts.</p>
++        </div>
++        <div class="card-accent" aria-hidden="true"></div>
++      </div>
++
++      <div class="gradient-masked-card">
++        <h3>Morning Brew Pass</h3>
++        <p>Take 20% off any artisanal pastry when paired with a freshly brewed espresso or cold brew before 10 AM.</p>
++        <span class="promo-code">MORNING20</span>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

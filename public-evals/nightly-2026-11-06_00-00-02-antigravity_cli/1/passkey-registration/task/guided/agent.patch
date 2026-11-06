@@ -1,0 +1,199 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,39 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .passkey-promo {
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      margin-bottom: 40px;
++      border-left: 4px solid var(--accent);
++    }
++
++    .passkey-promo h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .passkey-status {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +205,15 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="passkey-promo" aria-labelledby="passkey-promo-heading">
++      <h2 id="passkey-promo-heading">Sign in faster with a passkey</h2>
++      <p>Skip passwords and protect your account with secure, phishing-resistant sign-in.</p>
++      <button type="button" class="btn" data-testid="register-button">Create passkey</button>
++      <p id="passkey-status" class="passkey-status" role="status" aria-live="polite"></p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +244,139 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "https://esm.sh/webauthn-polyfills@0.1.7"
++      }
++    }
++  </script>
++  <script type="module">
++    import 'webauthn-polyfills';
++
++    const registerButton = document.querySelector('[data-testid="register-button"]');
++    const statusMessage = document.getElementById('passkey-status');
++
++    function setStatus(text) {
++      if (statusMessage) {
++        statusMessage.textContent = text;
++      }
++    }
++
++    async function checkPasskeySupport() {
++      if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
++        if (registerButton) registerButton.disabled = true;
++        return false;
++      }
++
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (!capabilities.passkeyPlatformAuthenticator || !capabilities.conditionalGet) {
++          if (registerButton) registerButton.disabled = true;
++          return false;
++        }
++        return true;
++      } catch (err) {
++        console.error('Error checking passkey capabilities:', err);
++        if (registerButton) registerButton.disabled = true;
++        return false;
++      }
++    }
++
++    async function registerPasskey(isPromotion = true) {
++      if (!window.PublicKeyCredential) {
++        if (registerButton) registerButton.disabled = true;
++        return;
++      }
++
++      const capabilities = await PublicKeyCredential.getClientCapabilities();
++      if (!capabilities.passkeyPlatformAuthenticator || !capabilities.conditionalGet) {
++        if (registerButton) registerButton.disabled = true;
++        return;
++      }
++
++      const optionsResponse = await fetch('/api/register/options', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ promotion: isPromotion }),
++      });
++
++      if (!optionsResponse.ok) {
++        setStatus('Unable to start passkey registration.');
++        return;
++      }
++
++      const creationOptionsJSON = await optionsResponse.json();
++      const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
++
++      let credential;
++      try {
++        credential = await navigator.credentials.create({ publicKey });
++      } catch (err) {
++        if (err.name === 'InvalidStateError') {
++          console.log('A passkey already exists for this account.');
++          setStatus('A passkey already exists for this account.');
++          alert('A passkey already exists for this account.');
++        } else if (err.name === 'SecurityError') {
++          console.error('Configuration RP ID or Secure Context error.');
++          setStatus('Configuration RP ID or Secure Context error.');
++          alert('Configuration RP ID or Secure Context error.');
++        } else if (err.name === 'NotAllowedError') {
++          console.log('User cancelled the passkey dialog.');
++          setStatus('Passkey registration was cancelled.');
++        } else if (err.name === 'AbortError') {
++          console.log('The creation operation has been aborted.');
++          setStatus('Passkey registration was aborted.');
++        }
++        return;
++      }
++
++      if (!credential) {
++        return;
++      }
++
++      // Server Verification phase (Segregated Try/Catch)
++      const encodedResponse = credential.toJSON();
++      try {
++        const response = await fetch('/api/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(encodedResponse),
++        });
++
++        if (!response.ok) {
++          setStatus('Passkey verification failed.');
++          if (PublicKeyCredential.signalUnknownCredential) {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: publicKey.rp.id,
++              credentialId: encodedResponse.id,
++            });
++          }
++          return;
++        }
++
++        setStatus('Passkey created successfully.');
++      } catch (serverErr) {
++        console.error('Server verification network failure:', serverErr);
++        setStatus('Passkey verification failed due to a network error.');
++        if (PublicKeyCredential.signalUnknownCredential) {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: publicKey.rp.id,
++            credentialId: encodedResponse.id,
++          });
++        }
++      }
++    }
++
++    checkPasskeySupport();
++
++    if (registerButton) {
++      registerButton.addEventListener('click', () => {
++        registerPasskey(true);
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

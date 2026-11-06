@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,35 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Load data</title>
++  </head>
++  <body>
++    <button type="button" id="load">Load data</button>
++    <pre id="result" role="status"></pre>
++    <script>
++      const result = document.getElementById('result');
++
++      document.getElementById('load').addEventListener('click', () => {
++        result.textContent = 'Loading…';
++
++        fetch('/api/data', { priority: 'high' })
++          .then(response => {
++            if (!response.ok) throw new Error('Unable to load data.');
++            return response.json();
++          })
++          .then(data => { result.textContent = JSON.stringify(data, null, 2); })
++          .catch(() => { result.textContent = 'Unable to load data.'; });
++
++        fetch('/api/analytics', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ click: 1 }),
++          priority: 'low',
++          keepalive: true
++        }).catch(() => {});
++      });
++    </script>
++  </body>
++</html>

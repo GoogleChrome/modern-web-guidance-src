@@ -1,0 +1,81 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,37 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scroll Progress Indicator */
++    .scroll-progress {
++      position: fixed;
++      top: 0;
++      left: 0;
++      width: var(--scroll-progress, 0%);
++      height: 4px;
++      background-color: var(--accent);
++      transform-origin: left center;
++      z-index: 1001;
++      pointer-events: none;
++    }
++
++    @keyframes scroll-progress {
++      from {
++        width: 0%;
++      }
++      to {
++        width: 100%;
++      }
++    }
++
++    @supports (animation-timeline: scroll()) {
++      .scroll-progress {
++        animation: scroll-progress linear;
++        animation-timeline: scroll(root);
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +185,10 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="scroll-progress" id="scroll-progress" role="progressbar" aria-label="Scroll progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +237,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const progressBar = document.getElementById('scroll-progress');
++      if (!progressBar) return;
++
++      function updateScrollProgress() {
++        const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
++        const scrollableHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
++        const progress = scrollableHeight > 0 ? Math.min(100, Math.max(0, (scrollTop / scrollableHeight) * 100)) : 0;
++
++        progressBar.style.setProperty('--scroll-progress', progress + '%');
++        progressBar.style.width = progress + '%';
++        progressBar.setAttribute('aria-valuenow', String(Math.round(progress)));
++      }
++
++      window.addEventListener('scroll', updateScrollProgress, { passive: true });
++      window.addEventListener('resize', updateScrollProgress, { passive: true });
++      updateScrollProgress();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

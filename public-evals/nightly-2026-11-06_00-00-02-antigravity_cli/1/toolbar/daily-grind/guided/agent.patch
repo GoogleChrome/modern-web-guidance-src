@@ -1,0 +1,669 @@
+diff --git a/index.html b/index.html
+index 66c9173..a19df0d 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,100 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Icon design tokens */
++      --icon-style-size: 1.15em;
++      --icon-style-spacing: 0.35em;
++      --icon-grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='7' height='7' rx='1'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1'/%3E%3Crect x='14' y='14' width='7' height='7' rx='1'/%3E%3Crect x='3' y='14' width='7' height='7' rx='1'/%3E%3C/svg%3E");
++      --icon-list: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='8' y1='6' x2='21' y2='6'/%3E%3Cline x1='8' y1='12' x2='21' y2='12'/%3E%3Cline x1='8' y1='18' x2='21' y2='18'/%3E%3Cline x1='3' y1='6' x2='3.01' y2='6'/%3E%3Cline x1='3' y1='12' x2='3.01' y2='12'/%3E%3Cline x1='3' y1='18' x2='3.01' y2='18'/%3E%3C/svg%3E");
++      --icon-details: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E");
++      --icon-filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3'/%3E%3C/svg%3E");
++      --icon-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='13' height='13' rx='2' ry='2'/%3E%3Cpath d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/%3E%3C/svg%3E");
++      --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
++    }
++
++    @property --icon-start {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --icon-end {
++      syntax: "*";
++      inherits: false;
++    }
++
++    .icon:empty {
++      --icon-start: var(--icon);
++    }
++
++    @container style(--icon-start) {
++      ::before {
++        --icon-start: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-start) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::before {
++        margin-inline-end: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    /* Fallback for browsers without Container Style Queries */
++    :where(.icon-start, .icon:empty)::before {
++      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
++      display: inline-block;
++      width: var(--icon-style-size, 1em);
++      height: var(--icon-style-size, 1em);
++      background-color: var(--icon-style-color, currentColor);
++      mask: var(--icon-start) no-repeat center / contain;
++      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++      flex: none;
++      pointer-events: none;
++      forced-color-adjust: none;
++    }
++
++    :where(.icon-start)::before {
++      --icon-start: inherit;
++    }
++
++    :where(.icon:empty)::before {
++      --icon-start: var(--icon);
++    }
++
++    :where(.icon-start:not(.icon, :empty))::before {
++      margin-inline-end: var(--icon-style-spacing, 0.3em);
++    }
++
++    /* Safari rendering workarounds for CSS icons */
++    @keyframes webkit-301609 {}
++
++    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
++      @property --icon-start {
++        syntax: "*";
++        inherits: true;
++      }
++
++      @layer webkit-301609-fix {
++        ::before, ::after {
++          animation: webkit-301609 0s;
++        }
++      }
++
++      @layer webkit-325900-fix {
++        @container style(--icon-start) {
++          * {
++            --icon-start: initial;
++          }
++        }
++      }
+     }
+ 
+     * {
+@@ -100,6 +194,229 @@
+       padding: 0 20px;
+     }
+ 
++    .favorites-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      margin-block-end: 1rem;
++    }
++
++    .favorites-header h2 {
++      margin: 0;
++    }
++
++    /* Toolbar */
++    #favorites-actions {
++      display: inline-flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.25rem;
++      background: white;
++      padding: 0.35rem;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
++    }
++
++    #favorites-actions [role="group"] {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.25rem;
++    }
++
++    #favorites-actions [role="separator"] {
++      align-self: stretch;
++      margin-block: 0.2rem;
++      margin-inline: 0.25rem;
++      border-inline-start: 1px solid var(--secondary);
++    }
++
++    #favorites-actions button {
++      appearance: none;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-inline-size: 2.25rem;
++      min-block-size: 2.25rem;
++      padding: 0.4rem;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      background: transparent;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    @media (pointer: coarse) {
++      #favorites-actions button {
++        min-inline-size: 2.75rem;
++        min-block-size: 2.75rem;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      #favorites-actions button {
++        transition: background-color 0.15s ease, color 0.15s ease;
++      }
++    }
++
++    @media (hover: hover) {
++      #favorites-actions button:hover:not([aria-disabled="true"], [aria-pressed="true"]) {
++        background-color: #f5f0ee;
++      }
++    }
++
++    #favorites-actions button:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* Style toggled state from the ARIA attribute with background alone */
++    #favorites-actions button[aria-pressed="true"] {
++      background-color: var(--primary);
++      color: white;
++    }
++
++    #favorites-actions button[aria-disabled="true"] {
++      opacity: 0.45;
++      cursor: not-allowed;
++    }
++
++    @media (forced-colors: active) {
++      #favorites-actions button {
++        color: ButtonText;
++      }
++      #favorites-actions button[aria-pressed="true"] {
++        background-color: Highlight;
++        color: HighlightText;
++      }
++    }
++
++    /* Toolbar Button Icon mappings */
++    .btn-view-grid {
++      --icon: var(--icon-grid);
++    }
++
++    .btn-view-list {
++      --icon: var(--icon-list);
++    }
++
++    .btn-toggle-details {
++      --icon: var(--icon-details);
++    }
++
++    .btn-toggle-filters {
++      --icon: var(--icon-filter);
++    }
++
++    .copy-button {
++      --icon: var(--icon-copy);
++    }
++
++    .copy-button[data-copied] {
++      --icon: var(--icon-check);
++    }
++
++    /* Copy status bubble & live region */
++    .toolbar-feedback-wrap {
++      display: flex;
++      align-items: center;
++      justify-content: flex-end;
++      min-block-size: 1.5rem;
++      margin-block-end: 0.5rem;
++    }
++
++    .copy-status {
++      display: inline-block;
++      padding: 0.2rem 0.6rem;
++      font-size: 0.8rem;
++      font-weight: 600;
++      border-radius: 4px;
++      border: 1px solid var(--primary);
++      background: var(--primary);
++      color: white;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .copy-status:not(:empty) {
++      opacity: 1;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .copy-status {
++        transition: opacity 0.15s ease;
++      }
++    }
++
++    /* Interest invoker tooltips */
++    [interestfor] {
++      interest-delay: 0.2s 0.1s;
++    }
++
++    :root:has(:interest-source) [interestfor] {
++      interest-delay-start: 0s;
++    }
++
++    [popover="hint"] {
++      inset: auto;
++      position-area: block-end;
++      position-try-fallbacks: flip-block;
++      margin-block-start: 0.35rem;
++      padding: 0.25rem 0.5rem;
++      font-size: 0.75rem;
++      border-radius: 4px;
++      border: 1px solid var(--primary);
++      background: var(--text);
++      color: white;
++    }
++
++    /* Filter chips bar */
++    .favorites-filters {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.75rem 1rem;
++      margin-block-end: 1rem;
++      background: white;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++    }
++
++    .favorites-filters[hidden] {
++      display: none;
++    }
++
++    .favorites-filters-label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-inline-end: 0.25rem;
++    }
++
++    .filter-chip {
++      appearance: none;
++      padding: 0.3rem 0.75rem;
++      font-size: 0.85rem;
++      border-radius: 999px;
++      border: 1px solid var(--secondary);
++      background: var(--light);
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .filter-chip:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .filter-chip[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -107,6 +424,31 @@
+       margin-top: 20px;
+     }
+ 
++    .grid[data-view="list"] {
++      grid-template-columns: 1fr;
++    }
++
++    .grid[data-view="list"] .card {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      text-align: start;
++    }
++
++    .grid[data-view="list"] .card h3 {
++      margin-bottom: 0.25rem;
++    }
++
++    .grid[data-view="list"] .card .btn {
++      margin-top: 0;
++    }
++
++    .grid[data-details="hidden"] .card .drink-details {
++      display: none;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -115,11 +457,25 @@
+       text-align: center;
+     }
+ 
++    .card[hidden] {
++      display: none;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .drink-meta {
++      display: inline-block;
++      margin-block-start: 0.35rem;
++      padding: 0.15rem 0.5rem;
++      font-size: 0.75rem;
++      border-radius: 4px;
++      background: #efebe9;
++      color: var(--primary);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -176,21 +532,66 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <div class="favorites-header">
++        <h2>Seasonal Favorites</h2>
++        <div id="favorites-actions" role="toolbar" focusgroup="toolbar wrap" aria-label="Seasonal favorites actions" aria-controls="favorites-list">
++          <div role="group" aria-label="View layout">
++            <button type="button" class="icon btn-view-grid" data-view-mode="grid" aria-pressed="true" aria-label="Grid view" title="Grid view"></button>
++            <button type="button" class="icon btn-view-list" data-view-mode="list" aria-pressed="false" aria-label="List view" title="List view"></button>
++          </div>
++          <span role="separator" aria-orientation="vertical"></span>
++          <div role="group" aria-label="Display options">
++            <button type="button" class="icon btn-toggle-details" id="toggle-details-btn" aria-pressed="true" aria-label="Drink details" title="Drink details"></button>
++            <button type="button" class="icon btn-toggle-filters" id="toggle-filters-btn" aria-pressed="false" aria-label="Drink filters" title="Drink filters"></button>
++          </div>
++          <span role="separator" aria-orientation="vertical"></span>
++          <div role="group" aria-label="List actions">
++            <button type="button" class="icon copy-button" command="--copy" commandfor="favorites-list" aria-label="Copy featured drinks list" title="Copy featured drinks list"></button>
++          </div>
++        </div>
++      </div>
++
++      <div class="toolbar-feedback-wrap">
++        <p id="favorites-status" class="copy-status" role="status"></p>
++      </div>
++
++      <div id="favorites-filters" class="favorites-filters" role="group" aria-label="Filter drinks by category" hidden>
++        <span class="favorites-filters-label">Category:</span>
++        <button type="button" class="filter-chip" data-filter="all" aria-pressed="true">All Drinks</button>
++        <button type="button" class="filter-chip" data-filter="hot" aria-pressed="false">Hot Espresso &amp; Lattes</button>
++        <button type="button" class="filter-chip" data-filter="cold" aria-pressed="false">Cold Brews</button>
++        <button type="button" class="filter-chip" data-filter="oat" aria-pressed="false">Dairy-Free</button>
++      </div>
++
++      <div id="favorites-list" class="grid" data-view="grid" data-details="visible">
++        <div class="card" data-categories="hot oat">
++          <div class="card-info">
++            <h3>Maple Oat Latte</h3>
++            <div class="drink-details">
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <span class="drink-meta">Hot &bull; Oat Milk &bull; 180 cal</span>
++            </div>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++        <div class="card" data-categories="hot">
++          <div class="card-info">
++            <h3>Dark Roast Espresso</h3>
++            <div class="drink-details">
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <span class="drink-meta">Hot &bull; Single Origin &bull; 15 cal</span>
++            </div>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++        <div class="card" data-categories="cold oat">
++          <div class="card-info">
++            <h3>Cold Brew</h3>
++            <div class="drink-details">
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <span class="drink-meta">Iced &bull; Dairy-Free &bull; 10 cal</span>
++            </div>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+@@ -207,6 +608,197 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const bar = document.getElementById('favorites-actions');
++      const list = document.getElementById('favorites-list');
++      const filtersBar = document.getElementById('favorites-filters');
++      const status = document.getElementById('favorites-status');
++      const items = Array.from(bar.querySelectorAll('button'));
++
++      // 1. Roving tabindex fallback when native focusgroup is unsupported
++      if (!('focusGroup' in HTMLElement.prototype)) {
++        items.forEach((b, i) => (b.tabIndex = i ? -1 : 0));
++        bar.addEventListener('focusin', ({ target }) => {
++          if (items.includes(target)) {
++            items.forEach((b) => (b.tabIndex = b === target ? 0 : -1));
++          }
++        });
++        bar.addEventListener('keydown', (event) => {
++          const idx = items.indexOf(event.target);
++          if (idx === -1) return;
++          const vertical = bar.getAttribute('aria-orientation') === 'vertical';
++          const rtl = getComputedStyle(bar).direction === 'rtl';
++          const steps = vertical
++            ? { ArrowDown: 1, ArrowUp: -1 }
++            : { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 };
++          let nextIdx = -1;
++          if (event.key in steps) {
++            nextIdx = (idx + steps[event.key] + items.length) % items.length;
++          } else if (event.key === 'Home') {
++            nextIdx = 0;
++          } else if (event.key === 'End') {
++            nextIdx = items.length - 1;
++          }
++          if (nextIdx !== -1) {
++            event.preventDefault();
++            items[nextIdx].focus();
++          }
++        });
++      }
++
++      // 2. Upgrade baseline title tooltips to interest invokers with popover="hint" where supported
++      if ('interestForElement' in HTMLButtonElement.prototype && CSS.supports('position-area', 'block-end')) {
++        document.querySelectorAll('[role="toolbar"] button[title]').forEach((b, i) => {
++          const tip = Object.assign(document.createElement('div'), { id: `tip-${i}`, textContent: b.title });
++          tip.popover = 'hint';
++          b.setAttribute('interestfor', tip.id);
++          b.removeAttribute('title');
++          document.body.append(tip);
++        });
++      }
++
++      // 3. Toolbar view switching & toggles
++      const viewButtons = Array.from(bar.querySelectorAll('[data-view-mode]'));
++      const toggleDetailsBtn = document.getElementById('toggle-details-btn');
++      const toggleFiltersBtn = document.getElementById('toggle-filters-btn');
++
++      bar.addEventListener('click', (event) => {
++        const btn = event.target.closest('button');
++        if (!btn || btn.getAttribute('aria-disabled') === 'true') return;
++
++        // Mutually exclusive view mode group (Grid vs List)
++        if (btn.hasAttribute('data-view-mode')) {
++          const mode = btn.getAttribute('data-view-mode');
++          viewButtons.forEach((vb) => {
++            vb.setAttribute('aria-pressed', String(vb === btn));
++          });
++          list.setAttribute('data-view', mode);
++          return;
++        }
++
++        // Toggle drink details on/off
++        if (btn === toggleDetailsBtn) {
++          const nextPressed = btn.getAttribute('aria-pressed') !== 'true';
++          btn.setAttribute('aria-pressed', String(nextPressed));
++          list.setAttribute('data-details', nextPressed ? 'visible' : 'hidden');
++          return;
++        }
++
++        // Toggle drink filters on/off
++        if (btn === toggleFiltersBtn) {
++          const nextPressed = btn.getAttribute('aria-pressed') !== 'true';
++          btn.setAttribute('aria-pressed', String(nextPressed));
++          filtersBar.hidden = !nextPressed;
++          if (!nextPressed) {
++            applyFilter('all');
++          }
++          return;
++        }
++      });
++
++      // Filter chips interaction
++      const filterChips = Array.from(filtersBar.querySelectorAll('.filter-chip'));
++      const cards = Array.from(list.querySelectorAll('.card'));
++
++      function applyFilter(category) {
++        filterChips.forEach((chip) => {
++          chip.setAttribute('aria-pressed', String(chip.getAttribute('data-filter') === category));
++        });
++        cards.forEach((card) => {
++          const categories = (card.getAttribute('data-categories') || '').split(/\s+/);
++          card.hidden = category !== 'all' && !categories.includes(category);
++        });
++      }
++
++      filtersBar.addEventListener('click', (event) => {
++        const chip = event.target.closest('.filter-chip');
++        if (!chip) return;
++        applyFilter(chip.getAttribute('data-filter'));
++      });
++
++      // 4. Copy featured drinks list via Invoker Commands + Async Clipboard API
++      const timers = new WeakMap();
++      let lastMessage = '';
++
++      function legacyCopy(text) {
++        const field = Object.assign(document.createElement('textarea'), { value: text });
++        field.setAttribute('readonly', '');
++        field.style.cssText = 'position:fixed;inset-block-start:0;opacity:0';
++        document.body.append(field);
++        field.select();
++        try {
++          return document.execCommand('copy');
++        } finally {
++          field.remove();
++        }
++      }
++
++      function report(button, ok) {
++        clearTimeout(timers.get(button));
++        button.removeAttribute('data-copied');
++        button.removeAttribute('data-failed');
++        let message = ok ? 'Copied' : 'Copy failed';
++        if (message === lastMessage) message += '\u00A0';
++        lastMessage = message;
++        status.textContent = '';
++        void button.offsetWidth;
++        button.setAttribute(ok ? 'data-copied' : 'data-failed', '');
++        requestAnimationFrame(() => (status.textContent = message));
++        timers.set(
++          button,
++          setTimeout(() => {
++            button.removeAttribute('data-copied');
++            button.removeAttribute('data-failed');
++            status.textContent = '';
++          }, 2000)
++        );
++      }
++
++      async function copy(button, target, command = '--copy') {
++        const visibleCards = Array.from(target.querySelectorAll('.card:not([hidden])'));
++        const text = visibleCards.length
++          ? visibleCards
++              .map((card) => {
++                const title = card.querySelector('h3')?.innerText.trim() || '';
++                const detailsEl = card.querySelector('.drink-details');
++                const includeDetails = target.getAttribute('data-details') !== 'hidden' && detailsEl;
++                const desc = includeDetails ? detailsEl.innerText.replace(/\s+/g, ' ').trim() : '';
++                return desc ? `${title} - ${desc}` : title;
++              })
++              .join('\n')
++          : target.innerText.trim();
++        if (!text) return;
++        try {
++          try {
++            await navigator.clipboard.writeText(text);
++          } catch {
++            if (!legacyCopy(text)) throw new Error('Copy failed');
++          }
++          report(button, true);
++        } catch {
++          report(button, false);
++        }
++      }
++
++      if ('CommandEvent' in window) {
++        document.addEventListener(
++          'command',
++          (event) => {
++            if (event.command.startsWith('--copy')) copy(event.source, event.target, event.command);
++          },
++          true
++        );
++      } else {
++        document.addEventListener('click', (event) => {
++          const button = event.target.closest('button[command^="--copy"]');
++          if (!button || button.getAttribute('aria-disabled') === 'true') return;
++          const target = document.getElementById(button.getAttribute('commandfor'));
++          if (target) copy(button, target, button.getAttribute('command'));
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

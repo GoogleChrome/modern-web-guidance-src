@@ -1,0 +1,584 @@
+diff --git a/index.html b/index.html
+index 66c9173..31b7ef8 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,178 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Signed receipts & vouchers */
++    .signing {
++      margin-top: 60px;
++    }
++
++    .signing>h2,
++    .signing>.lede {
++      text-align: center;
++    }
++
++    .signing .lede {
++      max-width: 60ch;
++      margin: 0 auto;
++    }
++
++    .signing .grid {
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
++      align-items: start;
++    }
++
++    .signing .card {
++      text-align: start;
++    }
++
++    .key-status {
++      text-align: center;
++      font-size: 0.85rem;
++      margin-top: 10px;
++      word-break: break-all;
++    }
++
++    .signing fieldset {
++      border: 0;
++      margin-block-end: 1rem;
++    }
++
++    .signing legend,
++    .signing label {
++      font-weight: 600;
++    }
++
++    .signing .choices {
++      display: flex;
++      gap: 1.5rem;
++    }
++
++    .signing .choices label {
++      font-weight: normal;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.4rem;
++      min-height: 48px;
++    }
++
++    .signing input[type="radio"] {
++      accent-color: var(--primary);
++      width: 1.1rem;
++      height: 1.1rem;
++    }
++
++    .form-group {
++      margin-block-end: 1rem;
++    }
++
++    .form-group label {
++      display: block;
++      margin-block-end: 0.25rem;
++    }
++
++    .signing input[type="text"],
++    .signing textarea {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .signing textarea.token {
++      font-family: ui-monospace, Consolas, monospace;
++      font-size: 0.8rem;
++      min-height: 8rem;
++      word-break: break-all;
++    }
++
++    .signing input:user-invalid,
++    .signing textarea:user-invalid {
++      border-color: #c62828;
++      border-width: 2px;
++    }
++
++    .signing :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    .signing button {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++      min-height: 48px;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 2px solid var(--primary) !important;
++      padding: 8px 18px;
++      border-radius: 5px;
++      margin-top: 15px;
++    }
++
++    .signed-output[hidden],
++    .verify-result:empty {
++      display: none;
++    }
++
++    .signed-output {
++      margin-top: 20px;
++      padding-top: 20px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .verify-result {
++      display: block;
++      margin-top: 20px;
++      padding: 15px;
++      border-radius: 5px;
++      border-inline-start: 6px solid;
++    }
++
++    .verify-result.valid {
++      background: #e8f5e9;
++      border-color: #2e7d32;
++    }
++
++    .verify-result.invalid {
++      background: #ffebee;
++      border-color: #c62828;
++    }
++
++    .verify-result.warning {
++      background: #fff8e1;
++      border-color: #f57f17;
++    }
++
++    .verify-result dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.25rem 1rem;
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .verify-result dt {
++      font-weight: 600;
++    }
++
++    .verify-result dd {
++      word-break: break-word;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +367,73 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="signing" aria-labelledby="signing-heading">
++      <h2 id="signing-heading">Verified Receipts &amp; Gift Vouchers</h2>
++      <p class="lede">Every receipt and gift voucher we issue carries a digital signature. A signature proves the
++        document came from The Daily Grind and hasn't been altered since. Your browser makes and checks the
++        signatures itself, using post-quantum keys where it supports them.</p>
++      <p class="key-status" id="key-status" aria-live="polite">Preparing signing key…</p>
++
++      <div class="grid">
++        <div class="card">
++          <h3>Issue a signed document</h3>
++          <form id="sign-form" action="/receipts/issue" method="POST">
++            <fieldset>
++              <legend>Document type</legend>
++              <div class="choices">
++                <label><input type="radio" name="type" value="receipt" checked> Order receipt</label>
++                <label><input type="radio" name="type" value="voucher"> Gift voucher</label>
++              </div>
++            </fieldset>
++
++            <div class="form-group">
++              <label for="sign-name" id="sign-name-label">Customer name</label>
++              <input type="text" id="sign-name" name="name" autocomplete="name" maxlength="100" required>
++            </div>
++
++            <div class="form-group">
++              <label for="sign-details" id="sign-details-label">Items ordered</label>
++              <textarea id="sign-details" name="details" maxlength="300" rows="3" required
++                aria-describedby="sign-details-hint"></textarea>
++              <span class="hint" id="sign-details-hint">For example: 1× Maple Oat Latte, 1× Cold Brew</span>
++            </div>
++
++            <div class="form-group">
++              <label for="sign-amount">Amount (USD)</label>
++              <input type="text" id="sign-amount" name="amount" inputmode="decimal" autocomplete="off"
++                pattern="\d{1,4}(\.\d{1,2})?" required aria-describedby="sign-amount-hint">
++              <span class="hint" id="sign-amount-hint">Up to 9999.99, for example 12.50</span>
++            </div>
++
++            <button type="submit" class="btn">Sign document</button>
++          </form>
++
++          <div class="signed-output" id="signed-output" hidden>
++            <label for="signed-token">Signed document code</label>
++            <textarea id="signed-token" class="token" readonly aria-describedby="signed-summary"></textarea>
++            <span class="hint" id="signed-summary"></span>
++            <button type="button" class="btn-secondary" id="copy-token">Copy code</button>
++            <button type="button" class="btn-secondary" id="send-to-verify">Check it in the verifier</button>
++          </div>
++        </div>
++
++        <div class="card">
++          <h3>Verify a receipt or voucher</h3>
++          <form id="verify-form" action="/receipts/verify" method="POST">
++            <div class="form-group">
++              <label for="verify-token">Signed document code</label>
++              <textarea id="verify-token" name="token" class="token" required autocomplete="off" autocorrect="off"
++                autocapitalize="off" spellcheck="false" aria-describedby="verify-hint"></textarea>
++              <span class="hint" id="verify-hint">Paste the code from a Daily Grind receipt or gift voucher (it starts with
++                DG1.)</span>
++            </div>
++            <button type="submit" class="btn">Verify signature</button>
++          </form>
++          <output class="verify-result" id="verify-result" for="verify-token" aria-live="polite"></output>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +446,326 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Signed receipts & gift vouchers.
++    // Prefers post-quantum ML-DSA-65; falls back to Ed25519, then ECDSA P-256.
++    const TOKEN_PREFIX = 'DG1';
++    const VOUCHER_VALIDITY_DAYS = 365;
++    const DB_NAME = 'daily-grind-signing';
++    const STORE = 'keys';
++    const KEY_ID = 'store-signing-key';
++
++    const SUITES = {
++      'ML-DSA-65': {
++        generate: 'ML-DSA-65',
++        publicFormat: 'raw-public',
++        label: 'ML-DSA-65 (post-quantum, FIPS 204)',
++      },
++      Ed25519: {
++        generate: 'Ed25519',
++        sign: 'Ed25519',
++        publicFormat: 'raw',
++        label: 'Ed25519 (classical)',
++      },
++      'ECDSA-P256': {
++        generate: { name: 'ECDSA', namedCurve: 'P-256' },
++        sign: { name: 'ECDSA', hash: 'SHA-256' },
++        publicFormat: 'raw',
++        label: 'ECDSA P-256 / SHA-256 (classical)',
++      },
++    };
++
++    const encoder = new TextEncoder();
++    const decoder = new TextDecoder();
++    const $ = (id) => document.getElementById(id);
++
++    // --- Encoding helpers ---------------------------------------------------
++    function toBase64Url(bytes) {
++      let binary = '';
++      for (const b of bytes) binary += String.fromCharCode(b);
++      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    function fromBase64Url(text) {
++      if (!/^[A-Za-z0-9_-]+$/.test(text)) throw new Error('Invalid base64url');
++      const b64 = text.replace(/-/g, '+').replace(/_/g, '/');
++      const binary = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
++      return Uint8Array.from(binary, (c) => c.charCodeAt(0));
++    }
++
++    const contextFor = (type) => encoder.encode(`daily-grind/${type}/v1`);
++
++    // --- Key management -----------------------------------------------------
++    function supportsPostQuantumSignatures() {
++      return (
++        typeof globalThis.SubtleCrypto?.supports === 'function' &&
++        SubtleCrypto.supports('sign', 'ML-DSA-65') &&
++        SubtleCrypto.supports('generateKey', 'ML-DSA-65')
++      );
++    }
++
++    async function generateSigningKeyPair() {
++      const candidates = supportsPostQuantumSignatures()
++        ? ['ML-DSA-65', 'Ed25519', 'ECDSA-P256']
++        : ['Ed25519', 'ECDSA-P256'];
++      for (const suite of candidates) {
++        try {
++          // Private key is non-extractable; it can sign but never leave the browser.
++          const keyPair = await crypto.subtle.generateKey(SUITES[suite].generate, false, ['sign', 'verify']);
++          return { suite, ...keyPair };
++        } catch {
++          // Try the next suite.
++        }
++      }
++      throw new Error('This browser supports none of ML-DSA-65, Ed25519 or ECDSA P-256.');
++    }
++
++    function openDb() {
++      return new Promise((resolve, reject) => {
++        const req = indexedDB.open(DB_NAME, 1);
++        req.onupgradeneeded = () => req.result.createObjectStore(STORE);
++        req.onsuccess = () => resolve(req.result);
++        req.onerror = () => reject(req.error);
++      });
++    }
++
++    function idb(mode, op) {
++      return openDb().then((db) => new Promise((resolve, reject) => {
++        const req = op(db.transaction(STORE, mode).objectStore(STORE));
++        req.onsuccess = () => resolve(req.result);
++        req.onerror = () => reject(req.error);
++      }).finally(() => db.close()));
++    }
++
++    async function fingerprint(suite, publicKey) {
++      const raw = await crypto.subtle.exportKey(SUITES[suite].publicFormat, publicKey);
++      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', raw));
++      return toBase64Url(digest.slice(0, 12));
++    }
++
++    // CryptoKeys are structured-cloneable, so the non-extractable key pair
++    // persists in IndexedDB without its private bytes ever being exposed.
++    async function loadOrCreateStoreKey() {
++      let record = null;
++      try {
++        record = await idb('readonly', (s) => s.get(KEY_ID));
++      } catch {
++        // IndexedDB unavailable (e.g. private mode); use a session-only key.
++      }
++      if (!record || !SUITES[record.suite]) {
++        record = await generateSigningKeyPair();
++        try {
++          await idb('readwrite', (s) => s.put(record, KEY_ID));
++        } catch {
++          // Keep the in-memory key.
++        }
++      }
++      return { ...record, kid: await fingerprint(record.suite, record.publicKey) };
++    }
++
++    // --- Sign / verify ------------------------------------------------------
++    // Classical algorithms ignore `context`, so frame it into the message instead.
++    function frameFallbackInput(payloadBytes, contextBytes) {
++      if (contextBytes.byteLength > 255) {
++        throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++      }
++      const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
++      framed[0] = contextBytes.byteLength;
++      framed.set(contextBytes, 1);
++      framed.set(payloadBytes, 1 + contextBytes.byteLength);
++      return framed;
++    }
++
++    async function signPayload(key, payloadBytes, contextBytes) {
++      const sig = key.suite.startsWith('ML-DSA')
++        ? await crypto.subtle.sign({ name: key.suite, context: contextBytes }, key.privateKey, payloadBytes)
++        : await crypto.subtle.sign(SUITES[key.suite].sign, key.privateKey, frameFallbackInput(payloadBytes, contextBytes));
++      return new Uint8Array(sig);
++    }
++
++    function verifyPayload(key, signatureBytes, payloadBytes, contextBytes) {
++      return key.suite.startsWith('ML-DSA')
++        ? crypto.subtle.verify({ name: key.suite, context: contextBytes }, key.publicKey, signatureBytes, payloadBytes)
++        : crypto.subtle.verify(SUITES[key.suite].sign, key.publicKey, signatureBytes, frameFallbackInput(payloadBytes, contextBytes));
++    }
++
++    async function issueDocument(key, { type, name, details, amount }) {
++      const issuedAt = new Date();
++      const payload = {
++        v: 1,
++        type,
++        id: crypto.randomUUID(),
++        name,
++        details,
++        amount: Number(amount).toFixed(2),
++        currency: 'USD',
++        issuedAt: issuedAt.toISOString(),
++        alg: key.suite,
++        kid: key.kid,
++      };
++      if (type === 'voucher') {
++        payload.expiresAt = new Date(issuedAt.getTime() + VOUCHER_VALIDITY_DAYS * 864e5).toISOString();
++      }
++      // Sign the exact serialized bytes so no JSON canonicalization is needed.
++      const payloadBytes = encoder.encode(JSON.stringify(payload));
++      const signature = await signPayload(key, payloadBytes, contextFor(type));
++      return { payload, token: `${TOKEN_PREFIX}.${toBase64Url(payloadBytes)}.${toBase64Url(signature)}` };
++    }
++
++    async function verifyDocument(key, token) {
++      const parts = token.replace(/\s+/g, '').split('.');
++      if (parts.length !== 3 || parts[0] !== TOKEN_PREFIX) {
++        return { status: 'invalid', message: 'This isn’t a Daily Grind document code.' };
++      }
++
++      let payloadBytes, signature, payload;
++      try {
++        payloadBytes = fromBase64Url(parts[1]);
++        signature = fromBase64Url(parts[2]);
++        payload = JSON.parse(decoder.decode(payloadBytes));
++      } catch {
++        return { status: 'invalid', message: 'The code is damaged or incomplete.' };
++      }
++
++      if (payload?.v !== 1 || !['receipt', 'voucher'].includes(payload.type)) {
++        return { status: 'invalid', message: 'Unsupported document format.' };
++      }
++      // Only trust our own key. A key embedded in the code would let anyone forge a document.
++      if (payload.kid !== key.kid || payload.alg !== key.suite) {
++        return { status: 'invalid', message: 'Not signed with The Daily Grind’s signing key.' };
++      }
++
++      let valid = false;
++      try {
++        valid = await verifyPayload(key, signature, payloadBytes, contextFor(payload.type));
++      } catch {
++        valid = false;
++      }
++      if (!valid) {
++        return { status: 'invalid', message: 'Signature check failed. This document has been altered or forged.' };
++      }
++
++      if (payload.type === 'voucher' && Date.parse(payload.expiresAt) < Date.now()) {
++        return { status: 'warning', message: 'Genuine voucher, but it has expired.', payload };
++      }
++      const label = payload.type === 'voucher' ? 'gift voucher' : 'receipt';
++      return { status: 'valid', message: `Genuine ${label}. The signature is valid and the contents are unaltered.`, payload };
++    }
++
++    // --- UI -----------------------------------------------------------------
++    const dateFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
++    const money = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' });
++
++    function renderResult({ status, message, payload }) {
++      const out = $('verify-result');
++      out.className = `verify-result ${status}`;
++      const heading = document.createElement('strong');
++      heading.textContent = `${status === 'valid' ? '✔' : status === 'warning' ? '⚠' : '✘'} ${message}`;
++      out.replaceChildren(heading);
++      if (!payload) return;
++
++      const isVoucher = payload.type === 'voucher';
++      const rows = [
++        ['Document', isVoucher ? 'Gift voucher' : 'Order receipt'],
++        ['ID', payload.id],
++        [isVoucher ? 'Recipient' : 'Customer', payload.name],
++        [isVoucher ? 'Message' : 'Items', payload.details],
++        ['Amount', money.format(Number(payload.amount))],
++        ['Issued', dateFmt.format(new Date(payload.issuedAt))],
++      ];
++      if (isVoucher) rows.push(['Expires', dateFmt.format(new Date(payload.expiresAt))]);
++      rows.push(['Algorithm', SUITES[payload.alg].label]);
++
++      const dl = document.createElement('dl');
++      for (const [term, value] of rows) {
++        const dt = document.createElement('dt');
++        const dd = document.createElement('dd');
++        dt.textContent = term;
++        dd.textContent = value;
++        dl.append(dt, dd);
++      }
++      out.append(dl);
++    }
++
++    function syncTypeLabels() {
++      const isVoucher = $('sign-form').elements.type.value === 'voucher';
++      $('sign-name-label').textContent = isVoucher ? 'Recipient name' : 'Customer name';
++      $('sign-details-label').textContent = isVoucher ? 'Gift message' : 'Items ordered';
++      $('sign-details-hint').textContent = isVoucher
++        ? `For example: Happy birthday! Valid for ${VOUCHER_VALIDITY_DAYS} days.`
++        : 'For example: 1× Maple Oat Latte, 1× Cold Brew';
++    }
++
++    async function init() {
++      const status = $('key-status');
++      const signForm = $('sign-form');
++      const verifyForm = $('verify-form');
++      const submitButtons = [signForm, verifyForm].map((f) => f.querySelector('[type="submit"]'));
++
++      if (!globalThis.isSecureContext || !crypto?.subtle) {
++        status.textContent = 'You need a secure (HTTPS) connection to sign or verify documents.';
++        submitButtons.forEach((b) => (b.disabled = true));
++        return;
++      }
++
++      let key;
++      try {
++        key = await loadOrCreateStoreKey();
++      } catch (err) {
++        status.textContent = `Signing isn’t available: ${err.message}`;
++        submitButtons.forEach((b) => (b.disabled = true));
++        return;
++      }
++      status.textContent = `Signing key: ${SUITES[key.suite].label}. Key fingerprint: ${key.kid}`;
++
++      signForm.addEventListener('change', (e) => {
++        if (e.target.name === 'type') syncTypeLabels();
++      });
++
++      signForm.addEventListener('submit', async (e) => {
++        e.preventDefault();
++        const data = Object.fromEntries(new FormData(signForm));
++        const { payload, token } = await issueDocument(key, {
++          type: data.type,
++          name: data.name.trim(),
++          details: data.details.trim(),
++          amount: data.amount,
++        });
++        $('signed-token').value = token;
++        $('signed-summary').textContent =
++          `${payload.type === 'voucher' ? 'Gift voucher' : 'Receipt'} ${payload.id} signed with ${SUITES[payload.alg].label}. Signed code size: ${token.length} characters.`;
++        $('signed-output').hidden = false;
++        $('signed-token').focus();
++      });
++
++      $('copy-token').addEventListener('click', async (e) => {
++        try {
++          await navigator.clipboard.writeText($('signed-token').value);
++          e.target.textContent = 'Copied!';
++        } catch {
++          $('signed-token').select();
++          e.target.textContent = 'Press Ctrl+C to copy';
++        }
++        setTimeout(() => (e.target.textContent = 'Copy code'), 2000);
++      });
++
++      $('send-to-verify').addEventListener('click', () => {
++        $('verify-token').value = $('signed-token').value;
++        $('verify-result').replaceChildren();
++        $('verify-token').focus();
++      });
++
++      verifyForm.addEventListener('submit', async (e) => {
++        e.preventDefault();
++        renderResult(await verifyDocument(key, $('verify-token').value));
++      });
++
++      $('verify-token').addEventListener('input', () => $('verify-result').replaceChildren());
++    }
++
++    init();
++  </script>
++
+ </body>
+ 
+ </html>

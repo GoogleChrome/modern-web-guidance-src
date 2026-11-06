@@ -1,0 +1,1833 @@
+diff --git a/package.json b/package.json
+index bfffcf0..36d5d6e 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,7 @@
+     "@astrojs/node": "^11.1.9",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@oddbird/popover-polyfill": "^0.7.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..9add01d 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -1,12 +1,13 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+-import { getArticleImage } from '../utils/images';
++import { getArticleImage, responsiveProps } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
++    /** Lead story layout. The large teaser's image is treated as the page's LCP candidate. */
+     large?: boolean;
+ }
+ 
+@@ -15,57 +16,61 @@ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const articleUrl = `${import.meta.env.BASE_URL}articles/${article.id}`;
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <article class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                <a href={articleUrl} class="flex-grow">
++                    <h2 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+-                    </h1>
++                    </h2>
+                     <p class="mt-4 text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+                 </a>
+                 <div class="flex justify-between items-center mt-6 text-gray-500">
+                     <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
++                        <BookOpenIcon aria-hidden="true" className="w-5 h-5 inline-block mr-1 -mt-px" />
+                         {article.data.readingTime} Min.
+                     </span>
+                     <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                 </div>
+             </div>
+             <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
++                <a href={articleUrl}>
++                    <Image
++                        src={image}
++                        alt={article.data.title}
+                         width={800}
+                         height={533}
+                         format="webp"
++                        priority
++                        {...responsiveProps(image, [480, 720, 960, 1440], "(min-width: 1152px) 720px, (min-width: 1024px) 63vw, 100vw")}
+                         class="w-full h-auto object-cover"
+                     />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ ) : (
+     <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
++        <a href={articleUrl}>
++            <Image
++                src={image}
++                alt={article.data.title}
+                 width={400}
+                 height={225}
+                 format="webp"
++                {...responsiveProps(image, [320, 400, 640, 800], "(min-width: 1152px) 360px, (min-width: 1024px) 31vw, (min-width: 768px) 50vw, 100vw")}
+                 class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
++            <p class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</p>
++            <a href={articleUrl} class="flex flex-col">
+                 <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+@@ -73,11 +78,11 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                    <BookOpenIcon aria-hidden="true" className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+                 </span>
+                 <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..3dcdbe9 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,5 +1,4 @@
+-
+-import React, { useState, useEffect } from 'react';
++import React, { useState } from 'react';
+ import { BookmarkIcon } from '@heroicons/react/24/outline'
+ 
+ interface Props {
+@@ -23,8 +22,14 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button
++      type="button"
++      onClick={handleClick}
++      aria-label="Save to reading list"
++      aria-pressed={isBookmarked}
++      className="p-1"
++    >
++      <BookmarkIcon aria-hidden="true" className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+     </button>
+   );
+ }
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..c8cfa97 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -8,51 +8,78 @@ interface BottomNavProps {
+     multimedia: any[];
+ }
+ 
++const groupedCategories = {
++    'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
++    'Arts & Culture': ['Culture', 'Media'],
++    'Science & Tech': ['science'],
++    'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
++};
++
++type GroupName = keyof typeof groupedCategories;
++
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+-    const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const [activeCategory, setActiveCategory] = useState<GroupName | null>(null);
++    const flyoutId = useId();
++    const anchorRef = useRef<HTMLDivElement>(null);
++    const flyoutRef = useRef<HTMLDivElement>(null);
+ 
+-    const groupedCategories = {
+-        'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+-        'Arts & Culture': ['Culture', 'Media'],
+-        'Science & Tech': ['science'],
+-        'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+-    };
++    const closeFlyout = useCallback(() => setActiveCategory(null), []);
++
++    const isFlyoutOpen = () => flyoutRef.current?.matches(':is(:popover-open, .\\:popover-open)') ?? false;
++
++    // Hover opens/closes the popover imperatively; clicks go through the native popovertarget invoker.
++    useEffect(() => {
++        const flyout = flyoutRef.current;
++        if (!flyout || !('showPopover' in flyout)) return;
++        if (activeCategory && !isFlyoutOpen()) flyout.showPopover();
++        else if (!activeCategory && isFlyoutOpen()) flyout.hidePopover();
++    }, [activeCategory]);
+ 
+-    const handleMouseLeave = () => {
+-        setActiveCategory(null);
++    const handleClick = (event: React.MouseEvent<HTMLButtonElement>, groupName: GroupName) => {
++        if (isFlyoutOpen() && activeCategory !== groupName) {
++            // Flyout already open for another group: switch its content instead of toggling it closed.
++            event.preventDefault();
++        }
++        setActiveCategory(groupName);
+     };
+ 
+-    const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
++    const activeSubCategories = activeCategory ? groupedCategories[activeCategory] : [];
+     const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+     const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
+ 
+     return (
+-        <div onMouseLeave={handleMouseLeave}>
+-            <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+-                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
+-                        return (
+-                            <div 
+-                                key={groupName}
+-                                onMouseEnter={() => setActiveCategory(groupName)}
+-                                className="h-full flex items-center"
++        <div ref={anchorRef} onMouseLeave={closeFlyout}>
++            <nav aria-label="Sections" className="border-t border-b border-gray-900">
++                <ul className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++                    {(Object.keys(groupedCategories) as GroupName[]).map(groupName => (
++                        <li
++                            key={groupName}
++                            onMouseEnter={() => setActiveCategory(groupName)}
++                            className="h-full flex items-center"
++                        >
++                            <button
++                                type="button"
++                                popoverTarget={flyoutId}
++                                aria-expanded={activeCategory === groupName}
++                                aria-controls={flyoutId}
++                                onClick={event => handleClick(event, groupName)}
++                                className="flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap"
+                             >
+-                                <a 
+-                                    href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
+-                                >
+-                                    <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+-                                    </svg>
+-                                </a>
+-                            </div>
+-                        );
+-                    })}
+-                </nav>
+-            </div>
+-            <FlyoutMenu 
+-                isOpen={activeCategory !== null} 
++                                <span>{groupName}</span>
++                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
++                                </svg>
++                            </button>
++                        </li>
++                    ))}
++                </ul>
++            </nav>
++            <FlyoutMenu
++                id={flyoutId}
++                ref={flyoutRef}
++                anchorRef={anchorRef}
++                isOpen={activeCategory !== null}
++                onClose={closeFlyout}
+                 categories={activeSubCategories.filter(c => categories.includes(c))}
+                 articles={articles}
+                 reports={filteredReports}
+diff --git a/src/components/CategoryNavItem.tsx b/src/components/CategoryNavItem.tsx
+deleted file mode 100644
+index 847fef0..0000000
+--- a/src/components/CategoryNavItem.tsx
++++ /dev/null
+@@ -1,48 +0,0 @@
+-import React, { useState } from 'react';
+-
+-interface CategoryNavItemProps {
+-    groupName: string;
+-    subCategories: string[];
+-    currentPath: string;
+-}
+-
+-const CategoryNavItem: React.FC<CategoryNavItemProps> = ({ groupName, subCategories, currentPath }) => {
+-    const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+-
+-    const isActive = subCategories.some(category => currentPath.includes(`/category/${category.toLowerCase().replace(' ', '%20')}`));
+-
+-    return (
+-        <div 
+-            className="relative"
+-            onMouseEnter={() => setIsFlyoutOpen(true)}
+-            onMouseLeave={() => setIsFlyoutOpen(false)}
+-        >
+-            <a 
+-                href="#" 
+-                className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap ${isActive ? 'text-amber-400' : ''}`}
+-            >
+-                <span>{groupName}</span>
+-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+-                </svg>
+-            </a>
+-            {isFlyoutOpen && (
+-                <div className="absolute top-full left-0 bg-white border-b border-gray-300 shadow-sm z-10 mt-2 py-6 px-4">
+-                    <div className="grid grid-cols-1 gap-x-8">
+-                        <ul className="space-y-2 text-sm">
+-                            {subCategories.map(category => (
+-                                <li key={category}>
+-                                    <a href={`/category/${category.toLowerCase().replace(' ', '%20')}`} className="hover:underline capitalize">
+-                                        {category.charAt(0).toUpperCase() + category.slice(1)}
+-                                    </a>
+-                                </li>
+-                            ))}
+-                        </ul>
+-                    </div>
+-                </div>
+-            )}
+-        </div>
+-    );
+-};
+-
+-export default CategoryNavItem;
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..1700711 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,17 +1,63 @@
+-import React from 'react';
++import React, { useEffect, type RefObject } from 'react';
+ 
+ interface FlyoutMenuProps {
++  id: string;
++  ref: RefObject<HTMLDivElement | null>;
++  /** Element the flyout is positioned below. */
++  anchorRef: RefObject<HTMLElement | null>;
+   isOpen: boolean;
++  onClose: () => void;
+   categories: string[];
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
+-  if (!isOpen) {
+-    return null;
+-  }
++/**
++ * Mega menu rendered as a native `popover="auto"`: top layer, light dismiss and Esc for free.
++ */
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ id, ref, anchorRef, isOpen, onClose, ...content }) => {
++  useEffect(() => {
++    const flyout = ref.current;
++    if (!flyout) return;
++
++    const onBeforeToggle = (event: Event) => {
++      const anchor = anchorRef.current;
++      if ((event as ToggleEvent).newState !== 'open' || !anchor) return;
++      // Top-layer elements with position:absolute are laid out against the initial containing block,
++      // so document coordinates keep the flyout attached to the nav while the page scrolls.
++      const rect = anchor.getBoundingClientRect();
++      flyout.style.top = `${rect.bottom + window.scrollY}px`;
++      flyout.style.left = `${rect.left + window.scrollX}px`;
++      flyout.style.width = `${rect.width}px`;
++    };
++    const onToggle = (event: Event) => {
++      if ((event as ToggleEvent).newState === 'closed') onClose();
++    };
++
++    flyout.addEventListener('beforetoggle', onBeforeToggle);
++    flyout.addEventListener('toggle', onToggle);
++    return () => {
++      flyout.removeEventListener('beforetoggle', onBeforeToggle);
++      flyout.removeEventListener('toggle', onToggle);
++    };
++  }, [ref, anchorRef, onClose]);
++
++  return (
++    <div
++      id={id}
++      ref={ref}
++      popover="auto"
++      className="flyout-menu absolute inset-auto m-0 p-0 bg-white border-0 border-b border-gray-300 shadow-lg overflow-visible"
++    >
++      {isOpen && <FlyoutContent {...content} />}
++    </div>
++  );
++};
++
++type FlyoutContentProps = Pick<FlyoutMenuProps, 'categories' | 'articles' | 'reports' | 'multimedia'>;
++
++const FlyoutContent: React.FC<FlyoutContentProps> = ({ categories, articles, reports, multimedia }) => {
+ 
+   // Intentionally failing method to demonstrate debugging
+   const calculateTrendingScore = (article: any) => {
+@@ -26,13 +72,12 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+   }
+ 
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
+       <div className="container mx-auto px-4 py-6">
+         <div className="grid grid-cols-4 gap-x-8">
+           
+           {/* Column 1: SECTIONS */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h2>
+             <ul className="space-y-2 text-sm">
+               {categories.map(category => (
+                 <li key={category}>
+@@ -46,7 +91,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 2: TOP STORIES */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h2>
+             <ul className="space-y-2 text-sm">
+                 {topStories.map(article => (
+                     <li key={article.id}>
+@@ -58,12 +103,12 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 3: REPORTS */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
++              <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h2>
+               <ul className="space-y-4 text-sm">
+                   {reports.map(report => (
+                       <li key={report.slug}>
+                           <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`} className="flex items-start space-x-2 group/item">
+-                              <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
++                              <div aria-hidden="true" className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                                   <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
+                               </div>
+                               <div>
+@@ -81,12 +126,12 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 4: MULTIMEDIA */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
++              <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h2>
+               <ul className="space-y-4 text-sm">
+                     {multimedia.map(item => (
+                         <li key={item.slug}>
+                             <a href={`/multimedia/${item.slug}`} className="flex items-start space-x-2 group/item">
+-                                <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
++                                <div aria-hidden="true" className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                     <span className="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
+                                 </div>
+                                 <div>
+@@ -104,7 +149,6 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+         </div>
+       </div>
+-    </div>
+   );
+ };
+ 
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..8086ec5 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -7,70 +7,73 @@ const baseUrl = import.meta.env.BASE_URL;
+     <div class="border-b border-gray-300 pb-6 mb-6">
+         <a href={baseUrl}>
+             <img
+-                src=`${baseUrl}logo.svg`
+-                alt="The DevTools Times"
+-                class="h-10"
++                src={`${baseUrl}logo.svg`}
++                alt="The DevTools Times – home"
++                width="872"
++                height="102"
++                loading="lazy"
++                class="h-10 w-auto"
+             />
+         </a>
+     </div>
+ 
+     <!-- Middle section: Main navigation links -->
+-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
++    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
+         
+         <!-- Column 1: NEWS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">News</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
+-                <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
+-                <li><a href="/category/business" class="text-sm hover:underline">Business</a></li>
++                <li><a href={`${baseUrl}category/national`} class="text-sm hover:underline">National</a></li>
++                <li><a href={`${baseUrl}category/politics`} class="text-sm hover:underline">Politics</a></li>
++                <li><a href={`${baseUrl}category/business`} class="text-sm hover:underline">Business</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 2: ARTS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+-                <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
++                <li><a href={`${baseUrl}category/culture`} class="text-sm hover:underline">Culture</a></li>
++                <li><a href={`${baseUrl}category/media`} class="text-sm hover:underline">Media</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 3: LIFESTYLE -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
+-                <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
+-                <li><a href="/category/urban%20development" class="text-sm hover:underline">Urban Development</a></li>
++                <li><a href={`${baseUrl}category/lifestyle`} class="text-sm hover:underline">Lifestyle</a></li>
++                <li><a href={`${baseUrl}category/sports`} class="text-sm hover:underline">Sports</a></li>
++                <li><a href={`${baseUrl}category/urban%20development`} class="text-sm hover:underline">Urban Development</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 4: SCIENCE & TECH -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
++                <li><a href={`${baseUrl}category/science`} class="text-sm hover:underline">Science</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Empty Spacer Columns -->
+-        <div class="hidden lg:block"></div>
+-        <div class="hidden lg:block"></div>
++        <div class="hidden lg:block" aria-hidden="true"></div>
++        <div class="hidden lg:block" aria-hidden="true"></div>
+ 
+         <!-- Column 7: ACCOUNT -->
+         <div class="col-span-2 sm:col-span-1">
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h2>
+             <ul class="space-y-2 mb-4">
+                 <li>
+                     <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                         Subscribe
+                     </a>
+                 </li>
+                 <li>
+                     <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+                 </li>
+@@ -82,18 +85,18 @@ const baseUrl = import.meta.env.BASE_URL;
+             </ul>
+         </div>
+ 
+-    </div>
++    </nav>
+ 
+     <!-- Bottom section: Legal, copyright, and privacy -->
+     <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
+         <!-- Copyright and legal links -->
+         <div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
+-            <span>© 2025 The DevTools Times Company</span>
++            <small class="text-xs">© 2025 The DevTools Times Company</small>
+             <a href="#" class="hover:underline">Contact Us</a>
+             <a href="#" class="hover:underline">Work with us</a>
+-            <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+-            <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+-            <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
++            <a href={`${baseUrl}legal/privacy`} class="hover:underline">Privacy Policy</a>
++            <a href={`${baseUrl}legal/terms`} class="hover:underline">Terms of Service</a>
++            <a href={`${baseUrl}legal/imprint`} class="hover:underline">Imprint</a>
+         </div>
+         
+         <!-- Privacy settings link -->
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..c09b8d1 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -10,14 +10,16 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
+-const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
++const today = new Date();
++const todaysDate = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
++const todaysIsoDate = today.toISOString().slice(0, 10);
+ ---
+ 
+ <header class="font-inter group relative bg-white">
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+-      <!-- Left: Search Icon -->
++      <!-- Left: Search & reading list -->
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
+@@ -48,13 +50,19 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     <div class="grid grid-cols-3 items-center">
+       <!-- Left Section: Date -->
+       <div class="text-xs">
+-        <p class="font-semibold">{todaysDate}</p>
++        <p class="font-semibold"><time datetime={todaysIsoDate}>{todaysDate}</time></p>
+       </div>
+ 
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+-        <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++        <a href={baseUrl}>
++          <img
++            src={`${baseUrl}logo.svg`}
++            alt="The DevTools Times – home"
++            width="872"
++            height="102"
++            class="w-80 h-auto mx-auto"
++          />
+         </a>
+       </div>
+ 
+diff --git a/src/components/MenuButton.tsx b/src/components/MenuButton.tsx
+deleted file mode 100644
+index 4e6592b..0000000
+--- a/src/components/MenuButton.tsx
++++ /dev/null
+@@ -1,29 +0,0 @@
+-import React, { useState } from 'react';
+-import FlyoutMenu from './FlyoutMenu';
+-
+-interface Props {
+-  categories: string[];
+-}
+-
+-export default function MenuButton({ categories }: Props) {
+-  const [isOpen, setIsOpen] = useState(false);
+-
+-  const toggleMenu = () => {
+-    setIsOpen(!isOpen);
+-  };
+-
+-  const closeMenu = () => {
+-    setIsOpen(false);
+-  };
+-
+-  return (
+-    <>
+-      <button className="text-gray-700 hover:text-amber-400" onClick={toggleMenu}>
+-        <svg className="w-7 h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+-        </svg>
+-      </button>
+-      <FlyoutMenu isOpen={isOpen} onClose={closeMenu} categories={categories} />
+-    </>
+-  );
+-}
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..7f9e09b 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -1,4 +1,3 @@
+-
+ import React, { useState, useEffect } from 'react';
+ import ReadingListFlyout from './ReadingListFlyout';
+ 
+@@ -24,8 +23,15 @@ export default function ReadingListButton() {
+ 
+   return (
+     <>
+-      <button onClick={() => setIsOpen(true)} className="p-1">
++      <button
++        type="button"
++        onClick={() => setIsOpen(true)}
++        aria-haspopup="dialog"
++        aria-label="Reading list"
++        className="p-1"
++      >
+         <svg
++          aria-hidden="true"
+           xmlns="http://www.w3.org/2000/svg"
+           className="h-6 w-6 text-gray-600"
+           fill="none"
+@@ -40,7 +46,7 @@ export default function ReadingListButton() {
+           />
+         </svg>
+       </button>
+-      {isOpen && <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />}
++      <ReadingListFlyout open={isOpen} articles={articles} onClose={() => setIsOpen(false)} />
+     </>
+   );
+ }
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..35894ad 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,5 @@
+-
+-import React, { useState, useEffect } from 'react';
++import React, { useState, useEffect, useId, useRef } from 'react';
++import { useModalDialog } from '../utils/dialog';
+ 
+ interface Article {
+   slug: string;
+@@ -9,13 +9,19 @@ interface Article {
+ }
+ 
+ interface Props {
++  open: boolean;
+   articles: Article[];
+   onClose: () => void;
+ }
+ 
+-export default function ReadingListFlyout({ articles, onClose }: Props) {
++export default function ReadingListFlyout({ open, articles, onClose }: Props) {
++  const dialogRef = useRef<HTMLDialogElement>(null);
++  const titleId = useId();
+   const [readingList, setReadingList] = useState<string[]>([]);
+ 
++  // showModal() gives focus containment, an inert page, Esc/back-gesture dismissal and focus return.
++  useModalDialog(dialogRef, open);
++
+   const fetchReadingList = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+     const data = await response.json();
+@@ -23,19 +29,8 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   };
+ 
+   useEffect(() => {
+-    fetchReadingList();
+-
+-    const handleKeyDown = (event: KeyboardEvent) => {
+-      if (event.key === 'Escape') {
+-        onClose();
+-      }
+-    };
+-    window.addEventListener('keydown', handleKeyDown);
+-
+-    return () => {
+-      window.removeEventListener('keydown', handleKeyDown);
+-    };
+-  }, [onClose]);
++    if (open) fetchReadingList();
++  }, [open]);
+ 
+   const handleRemove = async (slug: string) => {
+     await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+@@ -51,37 +46,52 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
+   return (
+-    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-          </svg>
+-        </button>
+-        <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
+-        </div>
+-        <div className="p-4 max-h-[60vh] overflow-y-auto">
+-          {readingListArticles.length === 0 && (
+-            <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
+-          )}
++    <dialog
++      ref={dialogRef}
++      closedby="any"
++      aria-labelledby={titleId}
++      onClose={onClose}
++      className="mx-auto mt-[15vh] w-[calc(100%-2rem)] max-w-2xl bg-white shadow-xl backdrop:bg-white/30 backdrop:backdrop-blur-sm"
++    >
++      <div className="flex items-start justify-between gap-4 p-4">
++        <h2 id={titleId} className="text-lg font-semibold text-gray-800">Your Reading List</h2>
++        <form method="dialog">
++          <button
++            aria-label="Close reading list"
++            className="bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform"
++          >
++            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
++            </svg>
++          </button>
++        </form>
++      </div>
++      <div className="p-4 max-h-[60vh] overflow-y-auto">
++        {readingListArticles.length === 0 ? (
++          <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
++        ) : (
+           <ul className="space-y-2">
+             {readingListArticles.map(article => (
+               <li key={article.slug} className="flex items-center">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+-                  <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="group block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
++                  <h3 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h3>
+                   <p className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+-                    </svg>
++                <button
++                  type="button"
++                  onClick={() => handleRemove(article.slug)}
++                  aria-label={`Remove “${article.title}” from reading list`}
++                  className="p-2 text-gray-500 hover:text-amber-400"
++                >
++                  <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
++                  </svg>
+                 </button>
+               </li>
+             ))}
+           </ul>
+-        </div>
++        )}
+       </div>
+-    </div>
++    </dialog>
+   );
+ }
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..50fbbac 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,49 +1,23 @@
+-
+ import React, { useState } from 'react';
+ import SearchFlyout from './SearchFlyout';
+ 
+-interface Article {
+-    slug: string;
+-    title: string;
+-    summary: string;
+-}
+-
+ export default function SearchButton() {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+-    const [articles, setArticles] = useState<Article[]>([]);
+-    const [isLoading, setIsLoading] = useState(false);
+-
+-    const openSearch = async () => {
+-        try {
+-            setArticles([]);
+-            setIsFlyoutOpen(true);
+-        } catch (error) {
+-            console.error('Failed to fetch articles:', error);
+-        } finally {
+-            setIsLoading(false);
+-        }
+-    };
+-
+-    const closeSearch = () => {
+-        setIsFlyoutOpen(false);
+-    };
+ 
+     return (
+         <>
+             <button
++                type="button"
++                aria-haspopup="dialog"
++                aria-label="Search"
+                 className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+-                onClick={openSearch}
+-                disabled={isLoading}
++                onClick={() => setIsFlyoutOpen(true)}
+             >
+-                {isLoading ? (
+-                    <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+-                ) : (
+-                    <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+-                    </svg>
+-                )}
++                <svg aria-hidden="true" className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
++                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
++                </svg>
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            <SearchFlyout open={isFlyoutOpen} articles={[]} onClose={() => setIsFlyoutOpen(false)} />
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..d65077b 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,5 @@
+-
+-import React, { useState, useMemo, useEffect } from 'react';
++import React, { useState, useMemo, useEffect, useId, useRef } from 'react';
++import { useModalDialog } from '../utils/dialog';
+ 
+ interface Article {
+     slug: string;
+@@ -9,6 +9,7 @@ interface Article {
+ }
+ 
+ interface Props {
++    open: boolean;
+     articles: Article[];
+     onClose: () => void;
+ }
+@@ -18,18 +19,27 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+     return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+ };
+ 
+-export default function SearchFlyout({ articles, onClose }: Props) {
++const imageSrc = (image?: string) => {
++    if (!image) return '';
++    return /^https?:\/\//.test(image) ? image : `${import.meta.env.BASE_URL}${image.replace(/^\//, '')}`;
++};
++
++export default function SearchFlyout({ open, articles, onClose }: Props) {
++    const dialogRef = useRef<HTMLDialogElement>(null);
++    const inputRef = useRef<HTMLInputElement>(null);
++    const titleId = useId();
++    const inputId = useId();
+     const [searchTerm, setSearchTerm] = useState('');
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
+ 
++    useModalDialog(dialogRef, open);
++
+     useEffect(() => {
+-        const handleKeyDown = (event: KeyboardEvent) => {
+-            if (event.key === 'Escape') {
+-                onClose();
+-            }
+-        };
+-        window.addEventListener('keydown', handleKeyDown);
+-        
++        if (!open) return;
++        setSearchTerm('');
++        // The dialog focuses its first focusable control on open; the search field is the primary one.
++        inputRef.current?.focus();
++
+         // Bug: Redundant fetch for suggestions
+         const fetchSuggestions = async () => {
+             try {
+@@ -42,11 +52,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         };
+ 
+         fetchSuggestions();
+-
+-        return () => {
+-            window.removeEventListener('keydown', handleKeyDown);
+-        };
+-    }, [onClose]);
++    }, [open]);
+ 
+     const filteredArticles = useMemo(() => {
+         if (!searchTerm) {
+@@ -59,60 +65,88 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+     }, [articles, searchTerm]);
+ 
+     return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-                    </svg>
+-                </button>
+-                <div className="p-4">
+-                    {!searchTerm && suggestions.length > 0 && (
+-                        <div>
+-                            <h3 className="text-sm font-semibold text-gray-500 mb-3">Featured</h3>
+-                            <ul className="grid grid-cols-3 gap-4 mb-4">
+-                                {suggestions.map(article => {
+-                                    const imagePath = article.image ? article.image.replace(/^\//, '') : '';
+-                                    return (
+-                                        <li key={article.slug}>
+-                                            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+-                                                <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+-                                                <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                            </a>
+-                                        </li>
+-                                    );
+-                                })}
+-                            </ul>
+-                        </div>
+-                    )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
+-                </div>
+-                <div className="p-4 max-h-[60vh] overflow-y-auto">
+-                    {searchTerm && filteredArticles.length === 0 && (
+-                        <p className="text-gray-500 text-center py-8">No results found for "{searchTerm}".</p>
+-                    )}
+-                    {searchTerm && (
+-                        <ul className="space-y-2">
+-                            {filteredArticles.map(article => (
++        <dialog
++            ref={dialogRef}
++            closedby="any"
++            aria-labelledby={titleId}
++            onClose={onClose}
++            className="mx-auto mt-[15vh] w-[calc(100%-2rem)] max-w-2xl bg-white shadow-xl backdrop:bg-white/30 backdrop:backdrop-blur-sm"
++        >
++            <div className="flex items-start justify-between gap-4 px-4 pt-4">
++                <h2 id={titleId} className="text-lg font-semibold text-gray-800">Search articles</h2>
++                <form method="dialog">
++                    <button
++                        aria-label="Close search"
++                        className="bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform"
++                    >
++                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
++                        </svg>
++                    </button>
++                </form>
++            </div>
++            <div className="p-4">
++                <search>
++                    <form onSubmit={e => e.preventDefault()}>
++                        <label htmlFor={inputId} className="block text-sm font-semibold text-gray-500 mb-3">Search</label>
++                        <input
++                            ref={inputRef}
++                            id={inputId}
++                            name="q"
++                            type="search"
++                            enterKeyHint="search"
++                            spellCheck={false}
++                            placeholder="Search for articles..."
++                            aria-controls={`${inputId}-results`}
++                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++                            value={searchTerm}
++                            onChange={e => setSearchTerm(e.target.value)}
++                        />
++                    </form>
++                </search>
++                {!searchTerm && suggestions.length > 0 && (
++                    <section aria-labelledby={`${titleId}-featured`} className="mt-4">
++                        <h3 id={`${titleId}-featured`} className="text-sm font-semibold text-gray-500 mb-3">Featured</h3>
++                        <ul className="grid grid-cols-3 gap-4">
++                            {suggestions.map(article => (
+                                 <li key={article.slug}>
+-                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+-                                        <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                        <p className="text-sm text-gray-600">{article.summary}</p>
++                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="group block hover:bg-gray-100 p-2 rounded-md transition-colors">
++                                        {/* Decorative: the title below names the link. Revealed only after interaction, so low priority. */}
++                                        <img
++                                            src={imageSrc(article.image)}
++                                            alt=""
++                                            width={200}
++                                            height={80}
++                                            loading="lazy"
++                                            decoding="async"
++                                            fetchPriority="low"
++                                            className="w-full h-20 object-cover rounded-md mb-2"
++                                        />
++                                        <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                                     </a>
+                                 </li>
+                             ))}
+                         </ul>
+-                    )}
+-                </div>
++                    </section>
++                )}
++            </div>
++            <div id={`${inputId}-results`} aria-live="polite" className="px-4 pb-4 max-h-[60vh] overflow-y-auto">
++                {searchTerm && filteredArticles.length === 0 && (
++                    <p className="text-gray-500 text-center py-8">No results found for "{searchTerm}".</p>
++                )}
++                {searchTerm && filteredArticles.length > 0 && (
++                    <ul className="space-y-2">
++                        {filteredArticles.map(article => (
++                            <li key={article.slug}>
++                                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="group block hover:bg-gray-100 p-4 rounded-md transition-colors">
++                                    <h3 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h3>
++                                    <p className="text-sm text-gray-600">{article.summary}</p>
++                                </a>
++                            </li>
++                        ))}
++                    </ul>
++                )}
+             </div>
+-        </div>
++        </dialog>
+     );
+ }
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..08acdfc 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -3,6 +3,7 @@ import React, { useState } from 'react';
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+@@ -41,7 +42,7 @@ export default function SignInForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -50,7 +51,7 @@ export default function SignInForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+@@ -63,6 +64,12 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            enterKeyHint="next"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -74,14 +81,28 @@ export default function SignInForm() {
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+           </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
++          <div className="flex gap-2">
++            <input
++              type={showPassword ? 'text' : 'password'}
++              id="password"
++              name="password"
++              autoComplete="current-password"
++              enterKeyHint="done"
++              value={password}
++              onChange={(e) => setPassword(e.target.value)}
++              required
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++            <button
++              type="button"
++              onClick={() => setShowPassword(v => !v)}
++              aria-pressed={showPassword}
++              aria-controls="password"
++              className="px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md whitespace-nowrap hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
++            >
++              Show password
++            </button>
++          </div>
+         </div>
+ 
+         <button
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..00659ef 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -3,6 +3,7 @@ import React, { useState } from 'react';
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+@@ -42,7 +43,7 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h1>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -51,7 +52,7 @@ export default function SignUpForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+@@ -64,6 +65,12 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
++            enterKeyHint="next"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -75,15 +82,30 @@ export default function SignUpForm() {
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+           </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
++          <div className="flex gap-2">
++            <input
++              type={showPassword ? 'text' : 'password'}
++              id="password"
++              name="password"
++              autoComplete="new-password"
++              enterKeyHint="done"
++              aria-describedby="password-hint"
++              value={password}
++              onChange={(e) => setPassword(e.target.value)}
++              required
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++            <button
++              type="button"
++              onClick={() => setShowPassword(v => !v)}
++              aria-pressed={showPassword}
++              aria-controls="password"
++              className="px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md whitespace-nowrap hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
++            >
++              Show password
++            </button>
++          </div>
++          <p id="password-hint" className="text-xs text-gray-500 mt-1">
+              Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..978cf51 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -8,9 +8,10 @@ export interface Props {
+ }
+ 
+ const { title, articles } = Astro.props;
++const headingId = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-heading`;
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++<section class="p-4 md:p-6" aria-labelledby={headingId}>
++    <h2 id={headingId} class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..1c8ae33 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -1,7 +1,7 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+-import { getArticleImage } from '../utils/images';
++import { getArticleImage, responsiveProps } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+@@ -24,15 +24,16 @@ const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage
+ 
+ const readingList = await Astro.session?.get('readingList') || [];
+ 
++const headingId = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-heading`;
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++<section class="p-4 md:p-6" aria-labelledby={headingId}>
++    <h2 id={headingId} class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <article class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+                 <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+@@ -47,7 +48,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                     {topArticle.data.summary}
+                 </p>
+                 <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                     </svg>
+                     <span>{topArticle.data.readingTime} Min Read</span>
+@@ -55,11 +56,19 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             </div>
+             <div class="w-full order-first lg:order-last">
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++                    <Image
++                        width={1120}
++                        height={630}
++                        src={topArticleImage}
++                        alt={topArticle.data.title}
++                        format="webp"
++                        {...responsiveProps(topArticleImage, [400, 560, 800, 1120], "(min-width: 1152px) 560px, (min-width: 1024px) 50vw, 100vw")}
++                        class="w-full h-full object-cover aspect-video lg:aspect-auto"
++                    />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ 
+     <!-- Bottom Section: Three Smaller Articles -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+@@ -67,10 +76,18 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+             const isBookmarked = readingList.includes(article.id);
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <article class="flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                            <Image
++                                width={640}
++                                height={360}
++                                src={bottomArticleImages[index]}
++                                alt={article.data.title}
++                                format="webp"
++                                {...responsiveProps(bottomArticleImages[index], [320, 480, 640], "(min-width: 1152px) 340px, (min-width: 768px) 30vw, 100vw")}
++                                class="w-full h-auto object-cover aspect-video"
++                            />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+@@ -89,13 +106,13 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                         )}
+                         <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                             <span class="text-xs font-medium flex items-center">
+-                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                                <BookOpenIcon aria-hidden="true" className="w-4 h-4 inline-block mr-1 -mt-px" />
+                                 {article.data.readingTime} Min.
+                             </span>
+                             <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                         </div>
+                     </div>
+-                </div>
++                </article>
+             )
+         })}
+     </div>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..d90c71d 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,48 +8,69 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  description?: string;
+ }
+ 
+-const { title } = Astro.props;
++const {
++  title,
++  description = "The DevTools Times – news, analysis and features.",
++} = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
++    <meta name="description" content={description} />
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!-- Analytics is non-essential: keep it from competing with critical resources. -->
++    <script
++      is:inline
++      defer
++      fetchpriority="low"
++      src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"
++    ></script>
+ 
+-    <link rel="icon" href=`${baseUrl}/favicon.svg` />
++    <link rel="icon" href={`${baseUrl}favicon.svg`} type="image/svg+xml" />
+ 
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
++    <a
++      href="#main-content"
++      class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100000] focus:bg-white focus:px-4 focus:py-2 focus:font-semibold focus:shadow-lg focus:outline-2 focus:outline-amber-400"
++    >
++      Skip to main content
++    </a>
+     <div class="mx-auto">
+       <AdSlotFireplace client:load />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
+-          <Header />
+-        </div>
+-        <main class="bg-white relative">
++        <Header />
++        <main id="main-content" tabindex="-1" class="bg-white relative focus:outline-none">
+           <slot />
+         </main>
+       </div>
+     </div>
+     <Footer />
++
++    <script>
++      // Popover is not yet Baseline widely available: load the polyfill only where it's missing.
++      if (!("popover" in HTMLElement.prototype)) {
++        import("@oddbird/popover-polyfill");
++      }
++    </script>
+   </body>
+ </html>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..6f6d205 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+ <Layout title="Page Not Found">
+-    <div class="flex flex-col items-center justify-center text-center py-20">
++    <div lang="de" class="flex flex-col items-center justify-center text-center py-20">
+         <h1 class="text-6xl font-bold text-amber-400">404</h1>
+         <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+         <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..d1ce9c3 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -5,7 +5,7 @@ import Ad from '../../components/AdSlotBanner.tsx';
+ import { getCollection, getEntry, render } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+-import { getArticleImage } from '../../utils/images';
++import { getArticleImage, responsiveProps } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ 
+@@ -30,18 +30,18 @@ const allArticles = await getCollection('articles');
+ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
+ 
+ const articleImage = await getArticleImage(article);
+-const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={`${article.data.title} | The DevTools Times`} description={article.data.summary}>
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
++        <nav aria-label="Breadcrumb" class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+-        </div>
++        </nav>
+ 
++        <header>
+         <!-- Headline -->
+         <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+             {article.data.title}
+@@ -53,9 +53,10 @@ const isBookmarked = readingList.includes(article.slug);
+         </p>
+ 
+         <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
+-        </div>
++        <p class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
++            By <span class="font-semibold text-gray-700">{article.data.author}</span> | <time datetime={article.data.date.toISOString()}>{article.data.date.toDateString()}</time>
++        </p>
++        </header>
+ 
+         <!-- Main Article Image -->
+         <figure class="mb-5">
+@@ -66,6 +67,7 @@ const isBookmarked = readingList.includes(article.slug);
+                     alt={article.data.title}
+                     width="1200"
+                     height="675"
++                    fetchpriority="high"
+                     class="w-full h-auto"
+                     crossorigin="use-credentials"
+                 />
+@@ -76,6 +78,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     width={1200}
+                     height={675}
+                     format="webp"
++                    priority
++                    {...responsiveProps(articleImage, [480, 736, 1024, 1472], "(min-width: 768px) 736px, calc(100vw - 2rem)")}
+                     class="w-full h-auto"
+                 />
+             )}
+@@ -91,13 +95,13 @@ const isBookmarked = readingList.includes(article.slug);
+             <!-- Social Share Icons (Placeholders) -->
+             <div class="flex space-x-3 items-center">
+                 <span class="text-sm font-semibold text-gray-800">Share:</span>
+-                <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
++                <a href="#" aria-label="Share on Facebook" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg"><span aria-hidden="true">f</span></a>
++                <a href="#" aria-label="Share on X" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg"><span aria-hidden="true">X</span></a>
++                <a href="#" aria-label="Share on WhatsApp" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
++                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+                 </a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
++                <a href="#" aria-label="Share via email" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
++                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+             </div>
+@@ -109,14 +113,16 @@ const isBookmarked = readingList.includes(article.slug);
+             <Content />
+         </div>
+ 
+-        <!-- ADVERTISEMENT -->
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:load />
+-        </section>
+     </article>
+ 
++    <!-- ADVERTISEMENT -->
++    <aside aria-label="Advertisement" class="max-w-3xl mx-auto p-4 md:p-6 text-center">
++        <Ad client:load />
++    </aside>
++
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section aria-labelledby="related-heading" class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++        <h2 id="related-heading" class="text-2xl font-bold mb-6">Related articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..21e48e0 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -5,7 +5,7 @@ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+-import { getArticleImage } from '../../utils/images';
++import { getArticleImage, responsiveProps } from '../../utils/images';
+ 
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+@@ -43,16 +43,18 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+-                    src={heroImage} 
+-                    alt={`Background for ${capitalizedCategory}`} 
+-                    width={1200}
+-                    height={400}
++                    src={heroImage}
++                    alt=""
++                    width={1104}
++                    height={256}
+                     format="webp"
+                     quality={80}
++                    priority
++                    {...responsiveProps(heroImage, [640, 1104], "(min-width: 1152px) 1104px, calc(100vw - 3rem)")}
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                 />
+             )}
+-            <div class="absolute w-full h-full bg-black opacity-50 z-1"></div>
++            <div aria-hidden="true" class="absolute w-full h-full bg-black opacity-50 z-1"></div>
+             <div class="absolute w-full h-full flex items-center justify-center z-2">
+                 <div class="text-center text-white">
+                     <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
+@@ -66,19 +68,21 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section aria-labelledby="featured-heading" class="mb-8 pb-8 border-b border-gray-200">
++                    <h2 id="featured-heading" class="sr-only">Featured</h2>
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+-                            src={featuredArticleImage} 
+-                            alt={featuredArticle.data.title} 
++                            src={featuredArticleImage}
++                            alt=""
+                             width={1200}
+                             height={675}
+                             format="webp"
++                            {...responsiveProps(featuredArticleImage, [480, 800, 1104, 1600], "(min-width: 1152px) 1104px, calc(100vw - 2rem)")}
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+                             {featuredArticle.data.title}
+-                        </h2>
++                        </h3>
+                         <p class="text-base md:text-lg text-gray-700">
+                             {featuredArticle.data.summary}
+                         </p>
+@@ -88,9 +92,12 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+-                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
+-                </div>
++                <section aria-labelledby="more-heading">
++                    <h2 id="more-heading" class="sr-only">More in {capitalizedCategory}</h2>
++                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
++                        {otherArticles.map(article => <ArticleTeaser article={article} />)}
++                    </div>
++                </section>
+             ) : (
+                 <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+             )}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..1ca2ee9 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -38,47 +38,47 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <h1 class="sr-only">The DevTools Times: today's news</h1>
++
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <section aria-labelledby="top-stories-heading" class="bg-white border-b border-gray-300">
++        <h2 id="top-stories-heading" class="sr-only">Top stories</h2>
++        <ul class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 grid grid-cols-1 md:grid-cols-3 gap-6">
++            {topStories.map(article => (
++                <li class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <h3 class="font-bold text-gray-900 hover:text-amber-400">{article.data.title}</h3>
++                    </a>
++                    <time datetime={article.data.date.toISOString()} class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</time>
++                </li>
++            ))}
++        </ul>
++    </section>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <!-- Lead story -->
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <!-- "Top News" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <!-- "Politics" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..7317c78 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,13 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Stop scroll gestures over a modal dialog (or its backdrop) from scrolling the page behind it. */
++dialog:modal {
++  overscroll-behavior: contain;
++}
++dialog::backdrop {
++  overflow: hidden;
++  overscroll-behavior: contain;
++}
+diff --git a/src/utils/dialog.ts b/src/utils/dialog.ts
+new file mode 100644
+index 0000000..0cc95e2
+--- /dev/null
++++ b/src/utils/dialog.ts
+@@ -0,0 +1,38 @@
++import { useEffect, type RefObject } from 'react';
++
++/**
++ * Keeps a native <dialog> in sync with an `open` flag, opening it as a modal with showModal()
++ * (focus containment, inert page, Esc handling and focus return come from the browser).
++ *
++ * Also provides a light-dismiss fallback for browsers that lack `closedby="any"`.
++ */
++export function useModalDialog(ref: RefObject<HTMLDialogElement | null>, open: boolean) {
++    useEffect(() => {
++        const dialog = ref.current;
++        if (!dialog) return;
++        if (open && !dialog.open) dialog.showModal();
++        else if (!open && dialog.open) dialog.close();
++    }, [ref, open]);
++
++    useEffect(() => {
++        const dialog = ref.current;
++        if (!dialog || 'closedBy' in HTMLDialogElement.prototype) return;
++
++        // Test the pointer position, not event.target: the <dialog> is also the target for its
++        // own padding and the gaps between its children.
++        const isOutside = (e: PointerEvent) => {
++            const r = dialog.getBoundingClientRect();
++            return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++        };
++        let pressedOutside = false;
++        const onDown = (e: PointerEvent) => { pressedOutside = isOutside(e); };
++        // Require press and release outside so a text-selection drag ending on the backdrop doesn't dismiss.
++        const onUp = (e: PointerEvent) => { if (pressedOutside && isOutside(e)) dialog.close(); };
++        dialog.addEventListener('pointerdown', onDown);
++        dialog.addEventListener('pointerup', onUp);
++        return () => {
++            dialog.removeEventListener('pointerdown', onDown);
++            dialog.removeEventListener('pointerup', onUp);
++        };
++    }, [ref]);
++}
+diff --git a/src/utils/images.ts b/src/utils/images.ts
+index b8fe01e..c475982 100644
+--- a/src/utils/images.ts
++++ b/src/utils/images.ts
+@@ -26,3 +26,16 @@ export async function getArticleImage(article: CollectionEntry<'articles'>) {
+     const imageModule = await allImages[imageModuleKey]();
+     return imageModule.default;
+ }
++
++/**
++ * Responsive `widths`/`sizes` props for Astro's <Image>.
++ * Remote images that Astro is not allowed to optimize would get the same URL repeated in
++ * every srcset candidate, so they are only given responsive props when they are local.
++ */
++export function responsiveProps(
++    image: ImageMetadata | string,
++    widths: number[],
++    sizes: string,
++): { widths?: number[]; sizes?: string } {
++    return typeof image === 'string' ? {} : { widths, sizes };
++}

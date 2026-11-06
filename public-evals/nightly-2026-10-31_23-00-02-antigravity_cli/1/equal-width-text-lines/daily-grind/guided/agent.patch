@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+index 66c9173..66335aa 100644
+--- a/index.html
++++ b/index.html
+@@ -88,9 +88,29 @@
+       padding: 0 20px;
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++    .hero h1.lockup {
++      width: min(100%, 24rem);
++      display: flex;
++      flex-direction: column;
++      gap: 0.5rem;
++      font-size: clamp(1.25rem, 0.75rem + 2vw, 1.85rem);
++      line-height: 0.95;
++      text-transform: uppercase;
++      text-fit: grow per-line-all 300%;
++      margin-bottom: 1.25rem;
++    }
++
++    .lockup > span {
++      display: block;
++      white-space: nowrap;
++      text-box: trim-both cap alphabetic;
++    }
++
++    @supports not (text-fit: grow) {
++      .lockup > span {
++        width: fit-content;
++        font-size: min(var(--text-fit-scale, 1) * 1em, 300%);
++      }
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +189,10 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="lockup">
++      <span>Wake Up</span>
++      <span>Your Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +230,25 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('text-fit', 'grow per-line-all')) {
++      const fit = lockup => {
++        const lines = [...lockup.querySelectorAll(':scope > span')];
++        for (const line of lines) line.style.removeProperty('--text-fit-scale');
++        const scales = lines.map(line => lockup.clientWidth / line.offsetWidth);
++        lines.forEach((line, i) => line.style.setProperty('--text-fit-scale', scales[i]));
++      };
++
++      const lockups = document.querySelectorAll('.lockup');
++      for (const lockup of lockups) {
++        new ResizeObserver(() => fit(lockup)).observe(lockup);
++      }
++      document.fonts?.ready.then(() => {
++        for (const lockup of lockups) fit(lockup);
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

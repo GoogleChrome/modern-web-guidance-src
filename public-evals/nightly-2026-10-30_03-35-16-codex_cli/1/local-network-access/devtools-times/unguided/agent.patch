@@ -1,0 +1,35 @@
+diff --git a/README.md b/README.md
+index 4479b53..a432ecf 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,12 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++The application sends a `Permissions-Policy` header allowing its own origin to
++request local network and loopback access, including the legacy
++`local-network-access` directive for older browsers. Deployed pages must use HTTPS;
++users must still grant the browser's network permission, and local services must
++allow the application's origin through CORS when serving cross-origin responses.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..154edd0 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Allow this origin to request LAN and loopback access, subject to user consent.
++  // Keep the legacy directive for browsers that predate the granular permissions.
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network=(self), loopback-network=(self), local-network-access=(self)',
++  );
++  return response;
+ });

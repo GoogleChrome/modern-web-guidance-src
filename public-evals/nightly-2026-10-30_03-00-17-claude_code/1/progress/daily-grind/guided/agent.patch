@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+index 66c9173..873c989 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,95 @@
+       background: #3e2723;
+     }
+ 
++    /* Progress */
++    .progress-panel {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 20px;
++      margin-bottom: 40px;
++    }
++
++    .progress-card {
++      text-align: left;
++    }
++
++    .progress-card label {
++      display: flex;
++      justify-content: space-between;
++      gap: 10px;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .progress-card p {
++      font-size: 0.9rem;
++      margin-top: 10px;
++    }
++
++    progress {
++      /* Reset default browser styles */
++      appearance: none;
++      border: 0 solid;
++      /* Clip bar to element's border-radius */
++      overflow: clip;
++      /* Lets the fill position itself in track units (cqi) */
++      container-type: inline-size;
++      display: block;
++      inline-size: 100%;
++      block-size: 0.75rem;
++      --progress-bar-radius: 1e5px;
++      --progress-bar-indeterminate-size: 30%;
++      --progress-bar-indeterminate-animation-duration: 1.5s;
++      border-radius: var(--progress-bar-radius);
++      background: var(--progress-bar-track, var(--secondary));
++      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
++
++      @media (prefers-reduced-motion: reduce) {
++        --progress-bar-indeterminate-animation-duration: 10s;
++      }
++    }
++
++    progress:indeterminate {
++      --progress-bar-animation: var(--progress-bar-indeterminate-animation,
++          progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear);
++    }
++
++    progress:dir(rtl) {
++      --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
++    }
++
++    /* Let <progress> styling show through */
++    progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    /* Webkit, Chrome */
++    progress::-webkit-progress-value {
++      background: var(--progress-bar-fill, var(--primary));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    /* Firefox */
++    progress::-moz-progress-bar {
++      background: var(--progress-bar-fill, var(--primary));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    @keyframes progress-bar-indeterminate {
++      from, to {
++        inline-size: var(--progress-bar-indeterminate-size);
++        /* Pin to the physical left; Chromium would otherwise lay the fill out at the inline start */
++        margin-right: auto;
++      }
++      from { translate: -100%; }
++      to { translate: 100cqi; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +264,25 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel" aria-label="Your progress">
++      <div class="card progress-card">
++        <label for="rewards-progress">
++          <span>Rewards</span>
++          <span>7 of 10 stars</span>
++        </label>
++        <progress id="rewards-progress" max="10" value="7"></progress>
++        <p>3 more visits until your next free drink.</p>
++      </div>
++      <div class="card progress-card">
++        <label for="order-progress">
++          <span>Current Order</span>
++          <span>Confirming&hellip;</span>
++        </label>
++        <progress id="order-progress"></progress>
++        <p role="status">Waiting for your barista to accept the order.</p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

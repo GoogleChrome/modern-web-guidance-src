@@ -1,0 +1,301 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..e28dd39
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,23 @@
++# The Daily Grind
++
++The homepage is static HTML with a bundled client script. Seasonal Favorites are
++HTML strings in `src/homepage.mjs`. All application HTML insertion goes through
++`src/safe-html.mjs`, which uses DOMPurify with a narrow tag and attribute allowlist.
++Keep new HTML sinks behind this sanitizer and never change markup after sanitizing.
++
++The page's Content Security Policy requires Trusted Types for DOM injection sinks
++in supporting browsers and permits only DOMPurify's policy. Other browsers still
++receive sanitized markup. There is no permissive default Trusted Types policy.
++
++After changing the source or updating DOMPurify, regenerate the committed bundle:
++
++```sh
++pnpm install --frozen-lockfile
++pnpm build
++pnpm test
++```
++
++Commit `assets/homepage.js` alongside source changes so the existing static hosting
++workflow works without a build step. Keep DOMPurify updated for security fixes.
++Tests use jsdom, including a Trusted Types API stub; they do not verify native
++browser CSP enforcement or launch a browser or server.
+diff --git a/assets/homepage.js b/assets/homepage.js
+new file mode 100644
+index 0000000..94b4a33
+--- /dev/null
++++ b/assets/homepage.js
+@@ -0,0 +1,21 @@
++(()=>{function co(r,a){this.v=r,this.k=a}function rn(r,a){(a==null||a>r.length)&&(a=r.length);for(var s=0,c=Array(a);s<a;s++)c[s]=r[s];return c}function uo(r){if(Array.isArray(r))return r}function fo(r,a){var s=r==null?null:typeof Symbol<"u"&&r[Symbol.iterator]||r["@@iterator"];if(s!=null){var c,f,m,h,z=[],E=!0,F=!1;try{if(m=(s=s.call(r)).next,a===0){if(Object(s)!==s)return;E=!1}else for(;!(E=(c=m.call(s)).done)&&(z.push(c.value),z.length!==a);E=!0);}catch(D){F=!0,f=D}finally{try{if(!E&&s.return!=null&&(h=s.return(),Object(h)!==h))return}finally{if(F)throw f}}return z}}function po(){throw new TypeError(`Invalid attempt to destructure non-iterable instance.
++In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`)}function mo(r,a){return uo(r)||fo(r,a)||ho(r,a)||po()}function ho(r,a){if(r){if(typeof r=="string")return rn(r,a);var s={}.toString.call(r).slice(8,-1);return s==="Object"&&r.constructor&&(s=r.constructor.name),s==="Map"||s==="Set"?Array.from(r):s==="Arguments"||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(s)?rn(r,a):void 0}}function Ut(r){var a,s;function c(m,h){try{var z=r[m](h),E=z.value,F=E instanceof co;Promise.resolve(F?E.v:E).then(function(D){if(F){var P=m==="return"&&E.k?m:"next";if(!E.k||D.done)return c(P,D);D=r[P](D).value}f(!!z.done,D)},function(D){c("throw",D)})}catch(D){f(2,D)}}function f(m,h){m===2?a.reject(h):a.resolve({value:h,done:m}),(a=a.next)?c(a.key,a.arg):s=null}this._invoke=function(m,h){return new Promise(function(z,E){var F={key:m,arg:h,resolve:z,reject:E,next:null};s?s=s.next=F:(a=s=F,c(m,h))})},typeof r.return!="function"&&(this.return=void 0)}Ut.prototype[typeof Symbol=="function"&&Symbol.asyncIterator||"@@asyncIterator"]=function(){return this},Ut.prototype.next=function(r){return this._invoke("next",r)},Ut.prototype.throw=function(r){return this._invoke("throw",r)},Ut.prototype.return=function(r){return this._invoke("return",r)};var En=Object.entries,an=Object.setPrototypeOf,_o=Object.isFrozen,yn=Object.getPrototypeOf,Sn=Object.getOwnPropertyDescriptor,O=Object.freeze,w=Object.seal,mt=Object.create,bn=typeof Reflect<"u"&&Reflect,Se=bn.apply,be=bn.construct;O||(O=function(a){return a});w||(w=function(a){return a});Se||(Se=function(a,s){for(var c=arguments.length,f=new Array(c>2?c-2:0),m=2;m<c;m++)f[m-2]=arguments[m];return a.apply(s,f)});be||(be=function(a){for(var s=arguments.length,c=new Array(s>1?s-1:0),f=1;f<s;f++)c[f-1]=arguments[f];return new a(...c)});var Y=A(Array.prototype.forEach);Array.prototype.indexOf;var To=A(Array.prototype.lastIndexOf),sn=A(Array.prototype.pop),St=A(Array.prototype.push),go=A(Array.prototype.slice),Ao=A(Array.prototype.splice),dt=Array.isArray,me=On(Set),de=A(Set.prototype.add),bt=A(Set.prototype.has),nt=A(String.prototype.toLowerCase),he=A(String.prototype.toString),ln=A(String.prototype.match),Ot=A(String.prototype.replace),cn=A(String.prototype.indexOf),Eo=A(String.prototype.trim),yo=A(Number.prototype.toString),So=A(Boolean.prototype.toString),un=typeof BigInt>"u"?null:A(BigInt.prototype.toString),fn=typeof Symbol>"u"?null:A(Symbol.prototype.toString),C=A(Object.prototype.hasOwnProperty),Rt=A(Object.prototype.toString),R=A(RegExp.prototype.test),j=On(TypeError);function A(r){return function(a){a instanceof RegExp&&(a.lastIndex=0);for(var s=arguments.length,c=new Array(s>1?s-1:0),f=1;f<s;f++)c[f-1]=arguments[f];return Se(r,a,c)}}function On(r){return function(){for(var a=arguments.length,s=new Array(a),c=0;c<a;c++)s[c]=arguments[c];return be(r,s)}}function d(r,a){let s=arguments.length>2&&arguments[2]!==void 0?arguments[2]:nt;if(an&&an(r,null),!dt(a))return r;let c=a.length;for(;c--;){let f=a[c];if(typeof f=="string"){let m=s(f);m!==f&&(_o(a)||(a[c]=m),f=m)}r[f]=!0}return r}function bo(r){for(let a=0;a<r.length;a++)C(r,a)||(r[a]=null);return r}function M(r){let a=mt(null);for(let c of En(r)){var s=mo(c,2);let f=s[0],m=s[1];C(r,f)&&(dt(m)?a[f]=bo(m):m&&typeof m=="object"&&m.constructor===Object?a[f]=M(m):a[f]=m)}return a}function Oo(r){switch(typeof r){case"string":return r;case"number":return yo(r);case"boolean":return So(r);case"bigint":return un?un(r):"0";case"symbol":return fn?fn(r):"Symbol()";case"undefined":return Rt(r);case"function":case"object":{if(r===null)return Rt(r);let a=r,s=k(a,"toString");if(typeof s=="function"){let c=s(a);return typeof c=="string"?c:Rt(c)}return Rt(r)}default:return Rt(r)}}function k(r,a){for(;r!==null;){let c=Sn(r,a);if(c){if(c.get)return A(c.get);if(typeof c.value=="function")return A(c.value)}r=yn(r)}function s(){return null}return s}function Ro(r,a){for(;r!==null;){let s=Sn(r,a);if(s)return s.get?A(s.get):null;r=yn(r)}return null}function wo(r){try{return R(r,""),!0}catch{return!1}}var pn=O(["a","abbr","acronym","address","area","article","aside","audio","b","bdi","bdo","big","blink","blockquote","body","br","button","canvas","caption","center","cite","code","col","colgroup","content","data","datalist","dd","decorator","del","details","dfn","dialog","dir","div","dl","dt","element","em","fieldset","figcaption","figure","font","footer","form","h1","h2","h3","h4","h5","h6","head","header","hgroup","hr","html","i","img","input","ins","kbd","label","legend","li","main","map","mark","marquee","menu","menuitem","meter","nav","nobr","ol","optgroup","option","output","p","picture","pre","progress","q","rp","rt","ruby","s","samp","search","section","select","shadow","slot","small","source","spacer","span","strike","strong","style","sub","summary","sup","table","tbody","td","template","textarea","tfoot","th","thead","time","tr","track","tt","u","ul","var","video","wbr"]),_e=O(["svg","a","altglyph","altglyphdef","altglyphitem","animatecolor","animatemotion","animatetransform","circle","clippath","defs","desc","ellipse","enterkeyhint","exportparts","filter","font","g","glyph","glyphref","hkern","image","inputmode","line","lineargradient","marker","mask","metadata","mpath","part","path","pattern","polygon","polyline","radialgradient","rect","stop","style","switch","symbol","text","textpath","title","tref","tspan","view","vkern"]),Te=O(["feBlend","feColorMatrix","feComponentTransfer","feComposite","feConvolveMatrix","feDiffuseLighting","feDisplacementMap","feDistantLight","feDropShadow","feFlood","feFuncA","feFuncB","feFuncG","feFuncR","feGaussianBlur","feImage","feMerge","feMergeNode","feMorphology","feOffset","fePointLight","feSpecularLighting","feSpotLight","feTile","feTurbulence"]),Do=O(["animate","color-profile","cursor","discard","font-face","font-face-format","font-face-name","font-face-src","font-face-uri","foreignobject","hatch","hatchpath","mesh","meshgradient","meshpatch","meshrow","missing-glyph","script","set","solidcolor","unknown","use"]),ge=O(["math","menclose","merror","mfenced","mfrac","mglyph","mi","mlabeledtr","mmultiscripts","mn","mo","mover","mpadded","mphantom","mroot","mrow","ms","mspace","msqrt","mstyle","msub","msup","msubsup","mtable","mtd","mtext","mtr","munder","munderover","mprescripts"]),Lo=O(["maction","maligngroup","malignmark","mlongdiv","mscarries","mscarry","msgroup","mstack","msline","msrow","semantics","annotation","annotation-xml","mprescripts","none"]),mn=O(["#text"]),dn=O(["accept","action","align","alt","autocapitalize","autocomplete","autopictureinpicture","autoplay","background","bgcolor","border","capture","cellpadding","cellspacing","checked","cite","class","clear","color","cols","colspan","command","commandfor","controls","controlslist","coords","crossorigin","datetime","decoding","default","dir","disabled","disablepictureinpicture","disableremoteplayback","download","draggable","enctype","enterkeyhint","exportparts","face","for","headers","height","hidden","high","href","hreflang","id","inert","inputmode","integrity","ismap","kind","label","lang","list","loading","loop","low","max","maxlength","media","method","min","minlength","multiple","muted","name","nonce","noshade","novalidate","nowrap","open","optimum","part","pattern","placeholder","playsinline","popover","popovertarget","popovertargetaction","poster","preload","pubdate","radiogroup","readonly","rel","required","rev","reversed","role","rows","rowspan","spellcheck","scope","selected","shape","size","sizes","slot","span","srclang","start","src","srcset","step","style","summary","tabindex","title","translate","type","usemap","valign","value","width","wrap","xmlns"]),Ae=O(["accent-height","accumulate","additive","alignment-baseline","amplitude","ascent","attributename","attributetype","azimuth","basefrequency","baseline-shift","begin","bias","by","class","clip","clippathunits","clip-path","clip-rule","color","color-interpolation","color-interpolation-filters","color-profile","color-rendering","cx","cy","d","dx","dy","diffuseconstant","direction","display","divisor","dominant-baseline","dur","edgemode","elevation","end","exponent","fill","fill-opacity","fill-rule","filter","filterunits","flood-color","flood-opacity","font-family","font-size","font-size-adjust","font-stretch","font-style","font-variant","font-weight","fx","fy","g1","g2","glyph-name","glyphref","gradientunits","gradienttransform","height","href","id","image-rendering","in","in2","intercept","k","k1","k2","k3","k4","kerning","keypoints","keysplines","keytimes","lang","lengthadjust","letter-spacing","kernelmatrix","kernelunitlength","lighting-color","local","marker-end","marker-mid","marker-start","markerheight","markerunits","markerwidth","maskcontentunits","maskunits","max","mask","mask-type","media","method","mode","min","name","numoctaves","offset","operator","opacity","order","orient","orientation","origin","overflow","paint-order","path","pathlength","patterncontentunits","patterntransform","patternunits","pointer-events","points","preservealpha","preserveaspectratio","primitiveunits","r","rx","ry","radius","refx","refy","repeatcount","repeatdur","restart","result","rotate","scale","seed","shape-rendering","slope","specularconstant","specularexponent","spreadmethod","startoffset","stddeviation","stitchtiles","stop-color","stop-opacity","stroke-dasharray","stroke-dashoffset","stroke-linecap","stroke-linejoin","stroke-miterlimit","stroke-opacity","stroke","stroke-width","style","surfacescale","systemlanguage","tabindex","tablevalues","targetx","targety","transform","transform-origin","text-anchor","text-decoration","text-orientation","text-rendering","textlength","type","u1","u2","unicode","values","vector-effect","viewbox","visibility","version","vert-adv-y","vert-origin-x","vert-origin-y","width","word-spacing","wrap","writing-mode","xchannelselector","ychannelselector","x","x1","x2","xmlns","y","y1","y2","z","zoomandpan"]),hn=O(["accent","accentunder","align","bevelled","close","columnalign","columnlines","columnspacing","columnspan","denomalign","depth","dir","display","displaystyle","encoding","fence","frame","height","href","id","largeop","length","linethickness","lquote","lspace","mathbackground","mathcolor","mathsize","mathvariant","maxsize","minsize","movablelimits","notation","numalign","open","rowalign","rowlines","rowspacing","rowspan","rspace","rquote","scriptlevel","scriptminsize","scriptsizemultiplier","selection","separator","separators","stretchy","subscriptshift","supscriptshift","symmetric","voffset","width","xmlns"]),zt=O(["xlink:href","xml:id","xlink:title","xml:space","xmlns:xlink"]),Io=w(/{{[\w\W]*|^[\w\W]*}}/g),No=w(/<%[\w\W]*|^[\w\W]*%>/g),vo=w(/\${[\w\W]*/g),Co=w(/^data-[\-\w.\u00B7-\uFFFF]+$/),Mo=w(/^aria-[\-\w]+$/),_n=w(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i),Po=w(/^(?:\w+script|data):/i),xo=w(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g),ko=w(/^html$/i),Uo=w(/^[a-z][.\w]*(-[.\w]+)+$/i),Ee=w(/<[/\w!]/g),Tn=w(/<[/\w]/g),zo=w(/<\/no(script|embed|frames)/i),gn=w(/\/>/i),S={element:1,attribute:2,text:3,cdataSection:4,entityReference:5,entityNode:6,processingInstruction:7,comment:8,document:9,documentType:10,documentFragment:11,notation:12},Fo=O(d({},["style","script","xmp","iframe","noembed","noframes","plaintext","noscript"])),Ho=function(){return typeof window>"u"?null:window},Wo=function(a,s){if(typeof a!="object"||typeof a.createPolicy!="function")return null;let c=null,f="data-tt-policy-suffix";s&&s.hasAttribute(f)&&(c=s.getAttribute(f));let m="dompurify"+(c?"#"+c:"");try{return a.createPolicy(m,{createHTML(h){return h},createScriptURL(h){return h}})}catch{return console.warn("TrustedTypes policy "+m+" could not be created."),null}},An=function(){return{afterSanitizeAttributes:[],afterSanitizeElements:[],afterSanitizeShadowDOM:[],beforeSanitizeAttributes:[],beforeSanitizeElements:[],beforeSanitizeShadowDOM:[],uponSanitizeAttribute:[],uponSanitizeElement:[],uponSanitizeShadowNode:[]}},q=function(a,s,c,f){return C(a,s)&&dt(a[s])?d(f.base?M(f.base):{},a[s],f.transform):c},ye=function(a,s,c){let f=C(a,s)?a[s]:void 0;return f&&typeof f=="object"?M(f):c()};function Rn(){let r=arguments.length>0&&arguments[0]!==void 0?arguments[0]:Ho(),a=i=>Rn(i);if(a.version="3.4.17",a.removed=[],!r||!r.document||r.document.nodeType!==S.document||!r.Element)return a.isSupported=!1,a;let s=r.document,c=s,f=c.currentScript;r.DocumentFragment;let m=r.HTMLTemplateElement,h=r.Node,z=r.Element,E=r.NodeFilter;r.NamedNodeMap===void 0&&(r.NamedNodeMap||r.MozNamedAttrMap),r.HTMLFormElement;let F=r.DOMParser,D=r.trustedTypes,P=z.prototype,In=k(P,"cloneNode"),Ft=k(P,"remove"),Oe=k(P,"removeAttributeNode"),Nn=k(P,"nextSibling"),ht=k(P,"childNodes"),ot=k(P,"parentNode"),Ht=k(P,"shadowRoot"),Wt=k(P,"attributes"),K=h&&h.prototype?k(h.prototype,"nodeType"):null,rt=h&&h.prototype?k(h.prototype,"nodeName"):null,wt=h&&h.prototype?k(h.prototype,"ownerDocument"):null,x=function(t){return K?K(t):t.nodeType},_t=function(t){return rt?rt(t):t.nodeName},Re=Ro(P,"namespaceURI"),Gt=function(t){return Re?Re(t):t.namespaceURI};if(typeof m=="function"){let i=s.createElement("template");i.content&&i.content.ownerDocument&&(s=i.content.ownerDocument)}let I,Z="",Bt,we=!1,Tt=0,De=function(){if(Tt>0)throw j('A configured TRUSTED_TYPES_POLICY callback (createHTML or createScriptURL) must not call DOMPurify.sanitize, as that causes infinite recursion. Do not pass a policy whose callbacks wrap DOMPurify as TRUSTED_TYPES_POLICY; see the "DOMPurify and Trusted Types" section of the README.')},it=function(t){De(),Tt++;try{return I.createHTML(t)}finally{Tt--}},vn=function(t){De(),Tt++;try{return I.createScriptURL(t)}finally{Tt--}},Cn=function(){return we||(Bt=Wo(D,f),we=!0),Bt},Dt=s,Yt=Dt.implementation,Le=Dt.createNodeIterator,Mn=Dt.createDocumentFragment,Pn=Dt.getElementsByTagName,xn=c.importNode,_=An();a.isSupported=typeof En=="function"&&typeof ot=="function"&&Yt&&Yt.createHTMLDocument!==void 0;let kn=Io,Un=No,zn=vo,Fn=Co,Hn=Mo,Wn=Po,Ie=xo,Gn=Uo,Ne=_n,T=null,jt=d({},[...pn,..._e,...Te,...ge,...mn]),g=null,Vt=d({},[...dn,...Ae,...hn,...zt]),H=Object.seal(mt(null,{tagNameCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},attributeNameCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},allowCustomizedBuiltInElements:{writable:!0,configurable:!1,enumerable:!0,value:!1}})),gt=null,ve=null,V=Object.seal(mt(null,{tagCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},attributeCheck:{writable:!0,configurable:!1,enumerable:!0,value:null}})),Ce=!0,$t=!0,Me=!1,Xt=!0,B=!1,J=!0,Q=!1,qt=!1,Lt=null,It=null,Kt=!1,at=!1,Nt=!1,vt=!1,Pe=!0,xe=!1,ke="user-content-",Zt=!0,Jt=!1,tt=null,st={},et=null,Ue=d({},["annotation-xml","audio","colgroup","desc","foreignobject","head","iframe","math","mi","mn","mo","ms","mtext","noembed","noframes","noscript","plaintext","script","selectedcontent","style","svg","template","thead","title","video","xmp"]),ze=null,Fe=d({},["audio","video","img","source","image","track"]),He=null,We=d({},["alt","class","for","id","label","name","pattern","placeholder","role","summary","title","value","style","xmlns"]),Ct="http://www.w3.org/1998/Math/MathML",Mt="http://www.w3.org/2000/svg",W="http://www.w3.org/1999/xhtml",lt=W,Qt=!1,te=null,Bn=d({},[Ct,Mt,W],he),Ge=O(["mi","mo","mn","ms","mtext"]),ee=d({},Ge),Be=O(["annotation-xml"]),ne=d({},Be),Yn=d({},["title","style","font","a","script"]),At=null,jn=["application/xhtml+xml","text/html"],Vn="text/html",y=null,ct=null,$n=s.createElement("form"),Ye=function(t){return t instanceof RegExp||t instanceof Function},oe=function(){let t=arguments.length>0&&arguments[0]!==void 0?arguments[0]:{};if(ct&&ct===t)return;(!t||typeof t!="object")&&(t={}),t=M(t),At=jn.indexOf(t.PARSER_MEDIA_TYPE)===-1?Vn:t.PARSER_MEDIA_TYPE,y=At==="application/xhtml+xml"?he:nt,T=q(t,"ALLOWED_TAGS",jt,{transform:y}),g=q(t,"ALLOWED_ATTR",Vt,{transform:y}),te=q(t,"ALLOWED_NAMESPACES",Bn,{transform:he}),He=q(t,"ADD_URI_SAFE_ATTR",We,{transform:y,base:We}),ze=q(t,"ADD_DATA_URI_TAGS",Fe,{transform:y,base:Fe}),et=q(t,"FORBID_CONTENTS",Ue,{transform:y}),gt=q(t,"FORBID_TAGS",M({}),{transform:y}),ve=q(t,"FORBID_ATTR",M({}),{transform:y}),st=C(t,"USE_PROFILES")?t.USE_PROFILES&&typeof t.USE_PROFILES=="object"?M(t.USE_PROFILES):t.USE_PROFILES:!1,Ce=t.ALLOW_ARIA_ATTR!==!1,$t=t.ALLOW_DATA_ATTR!==!1,Me=t.ALLOW_UNKNOWN_PROTOCOLS||!1,Xt=t.ALLOW_SELF_CLOSE_IN_ATTR!==!1,B=t.SAFE_FOR_TEMPLATES||!1,J=t.SAFE_FOR_XML!==!1,Q=t.WHOLE_DOCUMENT||!1,at=t.RETURN_DOM||!1,Nt=t.RETURN_DOM_FRAGMENT||!1,vt=t.RETURN_TRUSTED_TYPE||!1,Kt=t.FORCE_BODY||!1,Pe=t.SANITIZE_DOM!==!1,xe=t.SANITIZE_NAMED_PROPS||!1,Zt=t.KEEP_CONTENT!==!1,Jt=t.IN_PLACE||!1,Ne=wo(t.ALLOWED_URI_REGEXP)?t.ALLOWED_URI_REGEXP:_n,lt=typeof t.NAMESPACE=="string"?t.NAMESPACE:W,ee=ye(t,"MATHML_TEXT_INTEGRATION_POINTS",()=>d({},Ge)),ne=ye(t,"HTML_INTEGRATION_POINTS",()=>d({},Be));let e=ye(t,"CUSTOM_ELEMENT_HANDLING",()=>mt(null));if(H=mt(null),C(e,"tagNameCheck")&&Ye(e.tagNameCheck)&&(H.tagNameCheck=e.tagNameCheck),C(e,"attributeNameCheck")&&Ye(e.attributeNameCheck)&&(H.attributeNameCheck=e.attributeNameCheck),C(e,"allowCustomizedBuiltInElements")&&typeof e.allowCustomizedBuiltInElements=="boolean"&&(H.allowCustomizedBuiltInElements=e.allowCustomizedBuiltInElements),w(H),B&&($t=!1),Nt&&(at=!0),st&&(T=d({},mn),g=mt(null),st.html===!0&&(d(T,pn),d(g,dn)),st.svg===!0&&(d(T,_e),d(g,Ae),d(g,zt)),st.svgFilters===!0&&(d(T,Te),d(g,Ae),d(g,zt)),st.mathMl===!0&&(d(T,ge),d(g,hn),d(g,zt))),V.tagCheck=null,V.attributeCheck=null,C(t,"ADD_TAGS")&&(typeof t.ADD_TAGS=="function"?V.tagCheck=t.ADD_TAGS:dt(t.ADD_TAGS)&&(T===jt&&(T=M(T)),d(T,t.ADD_TAGS,y))),C(t,"ADD_ATTR")&&(typeof t.ADD_ATTR=="function"?V.attributeCheck=t.ADD_ATTR:dt(t.ADD_ATTR)&&(g===Vt&&(g=M(g)),d(g,t.ADD_ATTR,y))),C(t,"ADD_FORBID_CONTENTS")&&dt(t.ADD_FORBID_CONTENTS)&&(et===Ue&&(et=M(et)),d(et,t.ADD_FORBID_CONTENTS,y)),Zt&&(T["#text"]=!0),Q&&d(T,["html","head","body"]),T.table&&(d(T,["tbody"]),delete gt.tbody),t.TRUSTED_TYPES_POLICY){if(typeof t.TRUSTED_TYPES_POLICY.createHTML!="function")throw j('TRUSTED_TYPES_POLICY configuration option must provide a "createHTML" hook.');if(typeof t.TRUSTED_TYPES_POLICY.createScriptURL!="function")throw j('TRUSTED_TYPES_POLICY configuration option must provide a "createScriptURL" hook.');let n=I;I=t.TRUSTED_TYPES_POLICY;try{Z=it("")}catch(o){throw I=n,o}}else t.TRUSTED_TYPES_POLICY===null?(I=void 0,Z=""):(I===void 0&&(I=Cn()),I&&typeof Z=="string"&&(Z=it("")));O&&O(t),ct=t},je=d({},[..._e,...Te,...Do]),Ve=d({},[...ge,...Lo]),Xn=function(t,e,n){return e.namespaceURI===W?t==="svg":e.namespaceURI===Ct?t==="svg"&&(n==="annotation-xml"||ee[n]):!!je[t]},qn=function(t,e,n){return e.namespaceURI===W?t==="math":e.namespaceURI===Mt?t==="math"&&ne[n]:!!Ve[t]},Kn=function(t,e,n){return e.namespaceURI===Mt&&!ne[n]||e.namespaceURI===Ct&&!ee[n]?!1:!Ve[t]&&(Yn[t]||!je[t])},Zn=function(t){let e=Gt(t),n=nt(_t(t)),o=ot(t),l,u;return o&&x(o)===S.element?(l={namespaceURI:Gt(o)},u=nt(_t(o))):(l={namespaceURI:lt},u="template"),te[e]?e===Mt?Xn(n,l,u):e===Ct?qn(n,l,u):e===W?Kn(n,l,u):!!(At==="application/xhtml+xml"&&te[e]):!1},$=function(t){St(a.removed,{element:t});try{ot(t).removeChild(t)}catch{if(Ft(t),!ot(t))throw j("a node selected for removal could not be detached from its tree and cannot be safely returned; refusing to sanitize in place")}},$e=function(t,e,n){try{Oe(t,e)}catch{try{t.removeAttribute(n)}catch{}}},re=function(t){ae(t);let e=ht(t);e&&Y(go(e),o=>{try{Ft(o)}catch{}});let n=x(t)===S.element?Wt(t):null;if(n)for(let o=n.length-1;o>=0;--o){let l=n[o],u=l&&l.name;typeof u=="string"&&$e(t,l,u)}},ut=function(t,e,n){if(!n)try{n=e.getAttributeNode(t)}catch{n=null}St(a.removed,{attribute:n||null,from:e});try{n?Oe(e,n):e.removeAttribute(t)}catch{try{e.removeAttribute(t)}catch{}}if(t==="is")if(at||Nt)try{$(e)}catch{}else try{e.setAttribute(t,"")}catch{}},Xe=function(t){let e=Wt(t);if(e)for(let n=e.length-1;n>=0;--n){let o=e[n],l=o&&o.name;typeof l!="string"||g[y(l)]||$e(t,o,l)}},ie=function(t,e){let n=arguments.length>2&&arguments[2]!==void 0?arguments[2]:!1,o=[t];for(;o.length>0;){let l=o.pop();if(e(l)===!1)continue;if(n&&x(l)===S.element){let p=Ht(l);X(p)&&o.push(p)}let u=ht(l);if(u)for(let p=u.length-1;p>=0;--p)o.push(u[p])}},ae=function(t){ie(t,e=>{x(e)===S.element&&Xe(e)})},se=function(t){let e=[];return ie(t,n=>{e.push(n)},!0),e},Jn=function(t,e){let n=me();Y(se(t),o=>{x(o)===S.element&&de(n,o)}),Y(e,o=>{x(o)===S.element&&!bt(n,o)&&Xe(o)})},qe=function(t,e){let n=!1;return Y(a.removed,o=>{o.element&&(n=n||o.element===t,ae(o.element))}),Jn(t,e),n},Qn=8,to=function(t,e){let n=tt,o=null,l=()=>(o||(o=me(),Y(e,u=>{de(o,u)})),o);for(let u=0;;u++){let p=se(t),b=[t],G=!1;if(Y(p,L=>{x(L)===S.documentFragment?St(b,L):!G&&!bt(n,L)&&(G=bt(l(),L))}),!G)return;if(u>=Qn)throw j("the tree kept changing during in-place sanitization; refusing to return it");Y(b,(L,N)=>{eo(L,N>0,t,l())})}},eo=function(t,e,n,o){let l=le(t),u;for(;u=l.nextNode();)!bt(o,u)||bt(tt,u)||(e&&U(_.uponSanitizeShadowNode,u,null),ue(u,n),fe(u,n),X(u.content)&&yt(u.content))},no=function(t){tt&&de(tt,t)},Ke=function(t,e){return J?t==="patchsrc"?!0:t==="for"&&e!=="label"&&e!=="output":!1},oo=function(t){J&&ie(t,e=>{let n=x(e);if(n===S.processingInstruction||n===S.comment&&R(Tn,e.data)){try{Ft(e)}catch{}return!1}if(n===S.element){let o=e,l=y(_t(e));try{o.hasAttribute&&o.hasAttribute("patchsrc")&&o.removeAttribute("patchsrc"),o.hasAttribute&&o.hasAttribute("for")&&Ke("for",l)&&o.removeAttribute("for")}catch{}}return!0})},Ze=function(t){let e=null,n=null;if(Kt)t="<remove></remove>"+t;else{let u=ln(t,/^[\r\n\t ]+/);n=u&&u[0]}At==="application/xhtml+xml"&&lt===W&&(t='<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>'+t+"</body></html>");let o=I?it(t):t;if(lt===W)try{e=new F().parseFromString(o,At)}catch{}if(!e||!e.documentElement){e=Yt.createDocument(lt,"template",null);try{e.documentElement.innerHTML=Qt?Z:o}catch{}}let l=e.body||e.documentElement;return t&&n&&l.insertBefore(s.createTextNode(n),l.childNodes[0]||null),lt===W?Pn.call(e,Q?"html":"body")[0]:Q?e.documentElement:l},le=function(t){let e=wt?wt(t):t.ownerDocument;return Le.call(e||t,t,E.SHOW_ELEMENT|E.SHOW_COMMENT|E.SHOW_TEXT|E.SHOW_PROCESSING_INSTRUCTION|E.SHOW_CDATA_SECTION,null)},Pt=function(t){return t=Ot(t,kn," "),t=Ot(t,Un," "),t=Ot(t,zn," "),t},ce=function(t){var e;Je(t);let n=(e=t.querySelectorAll)===null||e===void 0?void 0:e.call(t,"template");n&&Y(n,o=>{X(o.content)&&ce(o.content)})},Je=function(t){t.normalize();let e=wt?wt(t):t.ownerDocument,n=Le.call(e||t,t,E.SHOW_TEXT|E.SHOW_COMMENT|E.SHOW_CDATA_SECTION|E.SHOW_PROCESSING_INSTRUCTION,null),o=n.nextNode();for(;o;)o.data=Pt(o.data),o=n.nextNode()},xt=function(t){let e=rt?rt(t):null;return typeof e!="string"||y(e)!=="form"?!1:typeof t.nodeName!="string"||typeof t.textContent!="string"||typeof t.removeChild!="function"||t.attributes!==Wt(t)||typeof t.removeAttribute!="function"||typeof t.removeAttributeNode!="function"||typeof t.getAttributeNode!="function"||typeof t.setAttribute!="function"||typeof t.namespaceURI!="string"||typeof t.insertBefore!="function"||typeof t.hasChildNodes!="function"||t.nodeType!==K(t)||t.childNodes!==ht(t)},X=function(t){if(!K||typeof t!="object"||t===null)return!1;try{return K(t)===S.documentFragment}catch{return!1}},Et=function(t){if(!K||typeof t!="object"||t===null)return!1;try{return typeof K(t)=="number"}catch{return!1}};function U(i,t,e){i.length!==0&&Y(i,n=>{n.call(a,t,e,ct)})}let ro=function(t,e){return!!(J&&t.hasChildNodes()&&!Et(t.firstElementChild)&&R(Ee,t.textContent)&&R(Ee,t.innerHTML)||J&&Fo[e]&&x(t)===S.element&&Gt(t)===W&&(Et(t.firstElementChild)||typeof t.textContent=="string"&&R(Ee,t.textContent))||t.nodeType===S.processingInstruction||J&&t.nodeType===S.comment&&R(Tn,t.data))},kt=function(t,e){if(t instanceof RegExp)return R(t,e);if(t instanceof Function){for(var n=arguments.length,o=new Array(n>2?n-2:0),l=2;l<n;l++)o[l-2]=arguments[l];return!!t(e,...o)}return!1},io=function(t,e,n){if(!gt[e]&&en(e)&&kt(H.tagNameCheck,e))return!1;if(Zt&&!et[e]&&!et[nt(e)]){let o=ot(t),l=ht(t);if(l&&o){let u=l.length;for(let p=u-1;p>=0;--p){let b=t===n?In(l[p],!0):l[p];o.insertBefore(b,Nn(t))}}}return $(t),!0},Qe=function(t,e,n,o){return t.length===0?e:e===n||e===o?M(e):e},ft=function(t,e){return t===e||ot(t)!==null?!1:(Jt&&ae(t),!0)},ue=function(t,e){if(no(t),U(_.beforeSanitizeElements,t,null),ft(t,e))return!0;if(xt(t))return $(t),!0;let n=y(_t(t));if(T=Qe(_.uponSanitizeElement,T,jt,Lt),U(_.uponSanitizeElement,t,{tagName:n,allowedTags:T}),ft(t,e))return!0;if(ro(t,n))return $(t),!0;if(gt[n]||!(V.tagCheck instanceof Function&&V.tagCheck(n))&&!T[n]){let o=io(t,n,e);return o===!1&&(U(_.afterSanitizeElements,t,null),ft(t,e))?!0:o}if(x(t)===S.element&&!Zn(t)||(n==="noscript"||n==="noembed"||n==="noframes")&&R(zo,t.innerHTML))return $(t),!0;if(B&&t.nodeType===S.text){let o=Pt(t.textContent);t.textContent!==o&&(St(a.removed,{element:t.cloneNode()}),t.textContent=o)}return U(_.afterSanitizeElements,t,null),ft(t,e)},tn=function(t,e,n){if(ve[e]||Ke(e,t)||Pe&&(e==="id"||e==="name")&&(n in s||n in $n))return!1;let o=g[e]||V.attributeCheck instanceof Function&&V.attributeCheck(e,t);return $t&&R(Fn,e)||Ce&&R(Hn,e)?!0:o?He[e]||R(Ne,Ot(n,Ie,""))||(e==="src"||e==="xlink:href"||e==="href")&&t!=="script"&&cn(n,"data:")===0&&ze[t]||Me&&!R(Wn,Ot(n,Ie,""))?!0:!n:en(t)&&kt(H.tagNameCheck,t)&&kt(H.attributeNameCheck,e,t)||e==="is"&&H.allowCustomizedBuiltInElements&&kt(H.tagNameCheck,n)},ao=d({},["annotation-xml","color-profile","font-face","font-face-format","font-face-name","font-face-src","font-face-uri","missing-glyph"]),en=function(t){return!ao[nt(t)]&&R(Gn,t)},so=function(t,e,n,o){if(I&&typeof D=="object"&&typeof D.getAttributeType=="function"&&!n)switch(D.getAttributeType(t,e)){case"TrustedHTML":return it(o);case"TrustedScriptURL":return vn(o)}return o},lo=function(t,e,n,o){try{return n?t.setAttributeNS(n,e,o):t.setAttribute(e,o),xt(t)?($(t),!1):!0}catch{return ut(e,t),!1}},nn=function(t,e){return J&&R(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i,e)?!0:nt(t)==="attributename"&&ln(e,"href")!==null},fe=function(t,e){if(U(_.beforeSanitizeAttributes,t,null),ft(t,e))return;let n=t.attributes;if(!n||xt(t))return;g=Qe(_.uponSanitizeAttribute,g,Vt,It);let o={attrName:"",attrValue:"",keepAttr:!0,allowedAttributes:g,forceKeepAttr:void 0},l=n.length,u=y(t.nodeName);for(;l--;){let p=n[l],b=p.name,G=p.namespaceURI,L=p.value,N=y(b),pt=L,v=b==="value"?pt:Eo(pt),on=!1;if(o.attrName=N,o.attrValue=v,o.keepAttr=!0,o.forceKeepAttr=void 0,U(_.uponSanitizeAttribute,t,o),v=o.attrValue,xe&&(N==="id"||N==="name")&&cn(v,ke)!==0&&(ut(b,t,p),v=ke+v,on=!0),nn(b,v)){ut(b,t,p);continue}if(!o.forceKeepAttr){if(!o.keepAttr){ut(b,t,p);continue}if(!Xt&&R(gn,v)){ut(b,t,p);continue}if(B&&(v=Pt(v)),!tn(u,N,v)){ut(b,t,p);continue}v=so(u,N,G,v),v!==pt&&lo(t,b,G,v)&&on&&sn(a.removed)}}U(_.afterSanitizeAttributes,t,null),ft(t,e)},yt=function(t){let e=null,n=le(t);for(U(_.beforeSanitizeShadowDOM,t,null);e=n.nextNode();)if(U(_.uponSanitizeShadowNode,e,null),ue(e,t),fe(e,t),X(e.content)&&yt(e.content),x(e)===S.element){let o=Ht(e);X(o)&&(pe(o),yt(o))}B&&Je(t),U(_.afterSanitizeShadowDOM,t,null)},pe=function(t){let e=[{node:t,shadow:null}];for(;e.length>0;){let n=e.pop();if(n.shadow){yt(n.shadow);continue}let o=n.node,l=x(o)===S.element,u=ht(o);if(u)for(let p=u.length-1;p>=0;--p)e.push({node:u[p],shadow:null});if(l){let p=rt?rt(o):null;if(typeof p=="string"&&y(p)==="template"){let b=o.content;X(b)&&e.push({node:b,shadow:null})}}if(l){let p=Ht(o);X(p)&&e.push({node:null,shadow:p},{node:p,shadow:null})}}};return a.sanitize=function(i){let t=arguments.length>1&&arguments[1]!==void 0?arguments[1]:{},e=null,n=null,o=null,l=null;if(Qt=!i,Qt&&(i="<!-->"),typeof i!="string"&&!Et(i)&&(i=Oo(i),typeof i!="string"))throw j("dirty is not a string, aborting");if(!a.isSupported)return i;qt?(T=Lt,g=It):oe(t),(_.uponSanitizeElement.length>0||_.uponSanitizeAttribute.length>0)&&(T=M(T)),_.uponSanitizeAttribute.length>0&&(g=M(g)),a.removed=[];let u=Jt&&typeof i!="string"&&Et(i),p=[],b=tt;if(u){oo(i);let N=_t(i);if(typeof N=="string"){let pt=y(N);if(!T[pt]||gt[pt])throw re(i),j("root node is forbidden and cannot be sanitized in-place")}if(xt(i))throw re(i),j("root node is clobbered and cannot be sanitized in-place");p=se(i),tt=me()}else if(Et(i))e=Ze("<!---->"),n=e.ownerDocument.importNode(i,!0),n.nodeType===S.element&&n.nodeName==="BODY"||n.nodeName==="HTML"?e=n:e.appendChild(n),pe(e);else{if(!at&&!B&&!Q&&i.indexOf("<")===-1)return I&&vt?it(i):i;if(e=Ze(i),!e)return at?null:vt?Z:""}e&&Kt&&$(e.firstChild);let G=u?i:e;try{u&&pe(i);let N=le(G);for(;o=N.nextNode();)ue(o,G),fe(o,G),X(o.content)&&yt(o.content);u&&to(i,p)}catch(N){throw u&&(re(i),qe(i,p)),N}finally{tt=b}if(u){if(qe(i,p))throw j("a node selected for removal could not be safely returned; refusing to sanitize in place");return B&&ce(i),i}if(at){if(B&&ce(e),Nt)for(l=Mn.call(e.ownerDocument);e.firstChild;)l.appendChild(e.firstChild);else l=e;return(g.shadowroot||g.shadowrootmode)&&(l=xn.call(c,l,!0)),l}let L=Q?e.outerHTML:e.innerHTML;return Q&&T["!doctype"]&&e.ownerDocument&&e.ownerDocument.doctype&&e.ownerDocument.doctype.name&&R(ko,e.ownerDocument.doctype.name)&&(L="<!DOCTYPE "+e.ownerDocument.doctype.name+`>
++`+L),B&&(L=Pt(L)),I&&vt?it(L):L},a.setConfig=function(){let i=arguments.length>0&&arguments[0]!==void 0?arguments[0]:{};oe(i),qt=!0,Lt=T,It=g},a.clearConfig=function(){ct=null,qt=!1,Lt=null,It=null,I=Bt,Z=""},a.isValidAttribute=function(i,t,e){ct||oe({});let n=y(i),o=y(t);return typeof e=="string"&&(nn(t,e)||!Xt&&R(gn,e))?!1:tn(n,o,e)},a.addHook=function(i,t){typeof t=="function"&&C(_,i)&&St(_[i],t)},a.removeHook=function(i,t){if(C(_,i)){if(t!==void 0){let e=To(_[i],t);return e===-1?void 0:Ao(_[i],e,1)[0]}return sn(_[i])}},a.removeHooks=function(i){C(_,i)&&(_[i]=[])},a.removeAllHooks=function(){_=An()},a}var wn=Rn();function Dn(r){let a=wn(r);return(s,c)=>{s.innerHTML=a.sanitize(c,{ALLOWED_TAGS:["div","h3","p","a"],ALLOWED_ATTR:["class","href"],ALLOW_DATA_ATTR:!1,ALLOW_ARIA_ATTR:!1,RETURN_TRUSTED_TYPE:!0})}}var Go=[`<div class="card">
++    <h3>Maple Oat Latte</h3>
++    <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++    <a href="/menu/seasonal" class="btn">View Details</a>
++  </div>`,`<div class="card">
++    <h3>Dark Roast Espresso</h3>
++    <p>Bold, smokey, and perfect for a morning boost.</p>
++    <a href="/menu/espresso" class="btn">View Details</a>
++  </div>`,`<div class="card">
++    <h3>Cold Brew</h3>
++    <p>Steeped for 18 hours for maximum smoothness.</p>
++    <a href="/menu/cold-brew" class="btn">View Details</a>
++  </div>`],Bo=Dn(window),Ln=document.getElementById("seasonal-favorites");Ln&&Bo(Ln,Go.join(""));})();
++/*! Bundled license information:
++
++dompurify/dist/purify.es.mjs:
++  (*! @license DOMPurify 3.4.17 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.4.17/LICENSE *)
++  (*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE *)
++*/
+diff --git a/index.html b/index.html
+index 66c9173..1afff5a 100644
+--- a/index.html
++++ b/index.html
+@@ -3,8 +3,10 @@
+ 
+ <head>
+   <meta charset="UTF-8">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types dompurify">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/assets/homepage.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -177,23 +179,8 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <div class="grid" id="seasonal-favorites"></div>
++      <noscript><p>Enable JavaScript to see our seasonal favorites, or <a href="/menu">browse the menu</a>.</p></noscript>
+     </section>
+   </main>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..8e1a3e6 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,18 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "esbuild src/homepage.mjs --bundle --minify --outfile=assets/homepage.js",
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "dompurify": "^3.4.17"
++  },
++  "devDependencies": {
++    "esbuild": "^0.28.2",
++    "jsdom": "^31.0.0"
+   }
+ }
+diff --git a/src/homepage.mjs b/src/homepage.mjs
+new file mode 100644
+index 0000000..ee579b5
+--- /dev/null
++++ b/src/homepage.mjs
+@@ -0,0 +1,26 @@
++import { createSafeHTMLRenderer } from './safe-html.mjs';
++
++const seasonalFavorites = [
++  `<div class="card">
++    <h3>Maple Oat Latte</h3>
++    <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++    <a href="/menu/seasonal" class="btn">View Details</a>
++  </div>`,
++  `<div class="card">
++    <h3>Dark Roast Espresso</h3>
++    <p>Bold, smokey, and perfect for a morning boost.</p>
++    <a href="/menu/espresso" class="btn">View Details</a>
++  </div>`,
++  `<div class="card">
++    <h3>Cold Brew</h3>
++    <p>Steeped for 18 hours for maximum smoothness.</p>
++    <a href="/menu/cold-brew" class="btn">View Details</a>
++  </div>`,
++];
++
++const renderHTML = createSafeHTMLRenderer(window);
++const favorites = document.getElementById('seasonal-favorites');
++
++if (favorites) {
++  renderHTML(favorites, seasonalFavorites.join(''));
++}
+diff --git a/src/safe-html.mjs b/src/safe-html.mjs
+new file mode 100644
+index 0000000..52fc919
+--- /dev/null
++++ b/src/safe-html.mjs
+@@ -0,0 +1,18 @@
++import createDOMPurify from 'dompurify';
++
++// Create once per page so DOMPurify can reuse its private Trusted Types policy.
++export function createSafeHTMLRenderer(window) {
++  const purifier = createDOMPurify(window);
++
++  return (target, html) => {
++    // Keep this as the only application HTML sink. Never modify sanitized markup.
++    // TrustedHTML is returned where supported; other browsers still sanitize.
++    target.innerHTML = purifier.sanitize(html, {
++      ALLOWED_TAGS: ['div', 'h3', 'p', 'a'],
++      ALLOWED_ATTR: ['class', 'href'],
++      ALLOW_DATA_ATTR: false,
++      ALLOW_ARIA_ATTR: false,
++      RETURN_TRUSTED_TYPE: true,
++    });
++  };
++}
+diff --git a/test/homepage.test.mjs b/test/homepage.test.mjs
+new file mode 100644
+index 0000000..698b11c
+--- /dev/null
++++ b/test/homepage.test.mjs
+@@ -0,0 +1,112 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import test from 'node:test';
++import { JSDOM } from 'jsdom';
++import { createSafeHTMLRenderer } from '../src/safe-html.mjs';
++
++const page = await readFile(new URL('../index.html', import.meta.url), 'utf8');
++
++test('the shipped bundle renders the original three favorites and destinations', async () => {
++  const dom = new JSDOM(page, { runScripts: 'outside-only' });
++  try {
++    const bundle = await readFile(new URL('../assets/homepage.js', import.meta.url), 'utf8');
++    dom.window.eval(bundle);
++    const cards = [...dom.window.document.querySelectorAll('#seasonal-favorites .card')];
++    assert.deepEqual(cards.map(card => card.querySelector('h3').textContent), [
++      'Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew',
++    ]);
++    assert.deepEqual(cards.map(card => card.querySelector('a').getAttribute('href')), [
++      '/menu/seasonal', '/menu/espresso', '/menu/cold-brew',
++    ]);
++    assert.ok(cards.every(card => card.querySelector('p').textContent.length > 0));
++  } finally {
++    dom.window.close();
++  }
++});
++
++test('the HTML sink removes executable markup and preserves permitted card content', () => {
++  const dom = new JSDOM('<div id="target"></div>');
++  try {
++    const target = dom.window.document.getElementById('target');
++    const render = createSafeHTMLRenderer(dom.window);
++    render(target, `<div class="card" onclick="alert(1)" id="location" style="color:red">
++      <h3>Safe coffee</h3><p>Still here</p>
++      <script>alert(1)</script><img src=x onerror="alert(1)">
++      <svg><g onload="alert(1)"></g></svg>
++      <math><mtext><img src=x onerror="alert(1)"></mtext></math>
++      <iframe srcdoc="<script>alert(1)</script>"></iframe>
++      <form><input name="innerHTML"></form>
++      <a class="btn" href="/menu/seasonal">View Details</a>
++    </div>`);
++    assert.equal(target.querySelector('h3').textContent, 'Safe coffee');
++    assert.equal(target.querySelector('p').textContent, 'Still here');
++    assert.equal(target.querySelector('a').getAttribute('href'), '/menu/seasonal');
++    for (const element of target.querySelectorAll('*')) {
++      assert.ok(['DIV', 'H3', 'P', 'A'].includes(element.tagName));
++      assert.ok([...element.attributes].every(attr => ['class', 'href'].includes(attr.name)));
++    }
++    render(target, '<p>Replacement</p>');
++    assert.equal(target.innerHTML, '<p>Replacement</p>');
++  } finally {
++    dom.window.close();
++  }
++});
++
++test('the HTML sink strips obfuscated script URLs', () => {
++  const dom = new JSDOM('<div></div>');
++  try {
++    const target = dom.window.document.querySelector('div');
++    const render = createSafeHTMLRenderer(dom.window);
++    for (const href of ['javascript:alert(1)', 'jav&#x61;script:alert(1)', 'java&#10;script:alert(1)', 'vbscript:msgbox(1)', 'data:text/html,<script>alert(1)</script>']) {
++      render(target, `<a href="${href}">Details</a>`);
++      assert.equal(target.querySelector('a').getAttribute('href'), null, href);
++    }
++  } finally {
++    dom.window.close();
++  }
++});
++
++test('Trusted Types integration passes sanitized TrustedHTML to the sink', () => {
++  const dom = new JSDOM('<div></div>');
++  try {
++    const policies = [];
++    class TrustedHTML {
++      constructor(value) { this.value = value; }
++      toString() { return this.value; }
++    }
++    dom.window.trustedTypes = {
++      createPolicy(name, rules) {
++        policies.push(name);
++        return {
++          createHTML: value => new TrustedHTML(rules.createHTML(value)),
++          createScriptURL: value => rules.createScriptURL(value),
++        };
++      },
++    };
++    const render = createSafeHTMLRenderer(dom.window);
++    let inserted;
++    const target = { set innerHTML(value) { inserted = value; } };
++    render(target, '<p onclick="alert(1)">Coffee</p><script>alert(1)</script>');
++    assert.ok(inserted instanceof TrustedHTML);
++    assert.equal(String(inserted), '<p>Coffee</p>');
++    render(target, '<p>Again</p>');
++    assert.deepEqual(policies, ['dompurify']);
++  } finally {
++    dom.window.close();
++  }
++});
++
++test('CSP enforces Trusted Types and permits only the sanitizer policy', () => {
++  const dom = new JSDOM(page);
++  try {
++    const policy = dom.window.document.querySelector('meta[http-equiv="Content-Security-Policy"]').content;
++    const directives = policy.split(';').map(value => value.trim());
++    assert.ok(directives.includes("require-trusted-types-for 'script'"));
++    assert.ok(directives.includes('trusted-types dompurify'));
++    assert.ok(directives.includes("script-src 'self'"));
++    assert.ok(directives.includes("object-src 'none'"));
++    assert.ok(directives.includes("base-uri 'none'"));
++  } finally {
++    dom.window.close();
++  }
++});

@@ -1,0 +1,854 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..ec88722
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,24 @@
++# smallpt / light playground
++
++Kevin Beason's MIT-licensed C++ smallpt path tracer, compiled to real WebAssembly
++with Emscripten and rendered in a module Web Worker. All tracing happens locally.
++
++## Build
++Install Emscripten so `em++` is on PATH, then run `npm run build`.
++The static output is in `dist/`. No backend, cross-origin isolation, or shared
++memory is required. Serve the files over HTTP(S); module workers do not work
++from file:// URLs.
++
++The original source is retained in src/smallpt-original.cpp; src/smallpt.cpp
++retains its radiance integrator and adds progressive RGBA rendering and a
++color-setting interface. Randomize changes the mirror and glass reflectance
++colors while preserving their material models. The bundled preview was
++rendered by the same C++ adapter, at 128 samples per pixel.
++
++Each progressive pass traces four samples per pixel with the original 2×2
++subpixel camera sampling. Cancellation terminates the worker; a new worker
++loads the cached module. The UI retains the last frame until a new render's
++first full pass is ready. Resolution and quality changes apply on Re-render.
++
++Source: https://www.kevinbeason.com/smallpt/
++License: src/LICENSE.txt
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..e46f7b1
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,145 @@
++const $ = id => document.getElementById(id);
++const canvas = $('render');
++const context = canvas.getContext('2d');
++let worker;
++let hasImage = false;
++let renderNumber = 0;
++let activeSeed = 42;
++const defaultColor = '#ffffff';
++
++const preview = new Image();
++preview.src = './public/preview.png';
++preview.onload = () => {
++  if (!hasImage) {
++    context.drawImage(preview, 0, 0, canvas.width, canvas.height);
++    hasImage = true;
++  }
++};
++const rgb = hex => [1, 3, 5].map(index => Math.min(.999, parseInt(hex.slice(index, index + 2), 16) / 255));
++const quality = () => Number(document.querySelector('input[name="quality"]:checked').value);
++
++function updateOrb(inputId, orbId) {
++  const color = $(inputId).value;
++  $(orbId).style.background = color === defaultColor ? '' :
++    `radial-gradient(circle at 30% 25%, #ffffff 1%, ${color} 40%, #273428 110%)`;
++}
++function fail(message) {
++  worker?.terminate();
++  $('viewer-state').innerHTML = '<span class="status-dot"></span> Unavailable';
++  $('progress-label').textContent = 'Could not render';
++  $('status-message').textContent = message + ' Use Re-render to try again.';
++}
++function render() {
++  worker?.terminate();
++  if (!('WebAssembly' in window) || !('Worker' in window)) {
++    fail('This browser does not support the required WebAssembly and Web Worker features.');
++    return;
++  }
++  const current = ++renderNumber;
++  const width = Number($('resolution').value);
++  const height = width * 3 / 4;
++  const samples = quality();
++  $('sample-target').textContent = samples;
++  $('sample-count').textContent = '0';
++  $('elapsed').textContent = '0.0';
++  $('progress').value = 0;
++  $('progress-percent').textContent = '0%';
++  $('render-size').textContent = `${width} × ${height} px`;
++  $('viewer-state').innerHTML = '<span class="status-dot"></span> Rendering';
++  $('progress-label').textContent = 'Tracing a little light…';
++  $('status-message').textContent = 'Rendering locally. You can change colors or start a new render at any time.';
++  worker = new Worker(new URL('./public/render-worker.js', import.meta.url), { type: 'module' });
++  worker.onerror = event => { event.preventDefault(); if (current === renderNumber) fail('The rendering worker could not load.'); };
++  worker.onmessage = ({ data }) => {
++    if (current !== renderNumber) return;
++    if (data.type === 'error') { fail(data.message); return; }
++    // Keep the prior image visible until the first full pass is ready.
++    if (data.samples >= 4) {
++      if (canvas.width !== width || canvas.height !== height) {
++        canvas.width = width; canvas.height = height;
++      }
++      context.putImageData(new ImageData(new Uint8ClampedArray(data.pixels), width, height), 0, 0);
++      hasImage = true;
++    }
++    const percent = Math.floor(data.progress * 100);
++    $('progress').value = percent;
++    $('progress-percent').textContent = percent + '%';
++    $('sample-count').textContent = data.samples;
++    $('elapsed').textContent = (data.elapsed / 1000).toFixed(1);
++    if (data.complete) {
++      $('viewer-state').innerHTML = '<span class="status-dot"></span> Complete';
++      $('progress-label').textContent = 'A little light, fully rendered.';
++      $('status-message').textContent = `Render complete · ${samples} samples per pixel · Seed ${activeSeed.toString(16).toUpperCase()}. Make it different with a new palette.`;
++      worker.terminate();
++    }
++  };
++  worker.postMessage({
++    width, height, samples, seed: activeSeed,
++    colors: [rgb($('mirror-color').value), rgb($('glass-color').value)],
++  });
++}
++
++function randomColor() {
++  // Pastel-biased, bright reflectance keeps mirror and glass interiors visible.
++  const hue = Math.random() * 360;
++  const saturation = 0.3 + Math.random() * 0.4;
++  const lightness = 0.68 + Math.random() * 0.16;
++  const a = saturation * Math.min(lightness, 1 - lightness);
++  return '#' + [0, 8, 4].map(n => {
++    const k = (n + hue / 30) % 12;
++    const channel = lightness - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
++    return Math.round(channel * 255).toString(16).padStart(2, '0');
++  }).join('');
++}
++$('randomize').addEventListener('click', () => {
++  $('mirror-color').value = randomColor();
++  $('glass-color').value = randomColor();
++  updateOrb('mirror-color', 'mirror-orb');
++  updateOrb('glass-color', 'glass-orb');
++  activeSeed = crypto.getRandomValues(new Uint32Array(1))[0];
++  render();
++});
++$('rerender').addEventListener('click', render);
++for (const [input, orb] of [['mirror-color', 'mirror-orb'], ['glass-color', 'glass-orb']]) {
++  $(input).addEventListener('input', () => updateOrb(input, orb));
++  $(input).addEventListener('change', render);
++}
++document.querySelectorAll('input[name="quality"]').forEach(input => input.addEventListener('change', () => {
++  $('quality-hint').textContent = quality() + ' samples per pixel';
++  $('status-message').textContent = 'Quality updated. Choose Re-render to apply your settings.';
++}));
++$('resolution').addEventListener('change', () => {
++  $('status-message').textContent = 'Resolution updated. Choose Re-render to apply your settings.';
++});
++$('reset').addEventListener('click', () => {
++  $('resolution').value = '720';
++  document.querySelector('input[name="quality"][value="64"]').checked = true;
++  $('quality-hint').textContent = '64 samples per pixel';
++  $('mirror-color').value = $('glass-color').value = defaultColor;
++  updateOrb('mirror-color', 'mirror-orb');
++  updateOrb('glass-color', 'glass-orb');
++  activeSeed = 42;
++  render();
++});
++$('download').addEventListener('click', () => {
++  if (!hasImage) { $('status-message').textContent = 'Your image is still preparing. Try again in a moment.'; return; }
++  canvas.toBlob(blob => {
++    if (!blob) return;
++    const url = URL.createObjectURL(blob);
++    const link = document.createElement('a');
++    link.href = url; link.download = `smallpt-${activeSeed.toString(16)}.png`;
++    link.click();
++    setTimeout(() => URL.revokeObjectURL(url), 1000);
++    $('status-message').textContent = 'Your current render has been saved as a PNG.';
++  }, 'image/png');
++});
++$('fullscreen').addEventListener('click', async () => {
++  try {
++    if (document.fullscreenElement) await document.exitFullscreen();
++    else if ($('render-panel').requestFullscreen) await $('render-panel').requestFullscreen();
++    else $('status-message').textContent = 'Fullscreen is not available in this browser.';
++  } catch {
++    $('status-message').textContent = 'Fullscreen is not available. You can still save your render below.';
++  }
++});
++render();
+diff --git a/index.html b/index.html
+index 66c9173..34891e1 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,71 @@
+-<!DOCTYPE html>
++<!doctype html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#f6f7f2">
++  <meta name="description" content="A tiny C++ path tracer, running entirely in your browser with WebAssembly. Explore light, materials, and a little randomness.">
++  <title>smallpt — A little light experiment</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;450;500&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="styles.css">
++  <script type="module" src="app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++<svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
++  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></symbol>
++  <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 6h3c5 0 7 12 12 12h3M17 14l4 4-4 4M3 18h3c2 0 3.5-2 5-5M14 8c1.3-1.3 2.5-2 4-2h3M17 2l4 4-4 4"/></symbol>
++  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 10a8 8 0 1 0-1 7M20 4v6h-6"/></symbol>
++  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
++  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
++  <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16"/></symbol>
++  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 1v2m0 18v2M1 12h2m18 0h2M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/></symbol>
++  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 1v4m6-4v4M9 19v4m6-4v4M1 9h4m-4 6h4M19 9h4m-4 6h4"/><path d="M9 9h6v6H9z"/></symbol>
++</svg>
++<header class="site-header">
++  <a class="brand" href="./" aria-label="smallpt home"><span class="brand-mark"><i></i><i></i><i></i><i></i></span>smallpt<span class="brand-caption"> / light playground</span></a>
++  <nav aria-label="Main navigation"><a class="nav-active" href="#playground">Playground</a><a href="#about">About the experiment <svg><use href="#i-arrow"/></svg></a></nav>
++  <span class="engine-badge"><span class="status-dot"></span> Powered by WebAssembly</span>
++</header>
++<main>
++  <section class="intro">
++    <div><p class="eyebrow"><span></span> SMALL CODE. INFINITE POSSIBILITIES.</p><h1>A little light experiment<span>.</span></h1><p class="intro-copy">A classic path tracer. A fresh coat of color. Entirely in your browser.<br>Explore how a few spheres turn math into something beautiful.</p></div>
++    <a class="source-link" href="src/smallpt.cpp" target="_blank" rel="noopener"><svg><use href="#i-code"/></svg> Peek under the hood <svg class="small-arrow"><use href="#i-arrow"/></svg></a>
++  </section>
++
++  <section class="workspace" id="playground" aria-label="Path tracing playground">
++    <div class="render-panel" id="render-panel">
++      <div class="render-toolbar"><div class="scene-title"><span class="scene-index">01</span><span>Cornell box</span><span class="scene-tag">LIVE RENDER</span></div><div class="viewer-actions"><span class="render-state" id="viewer-state"><span class="status-dot"></span> Initializing</span><button class="icon-button" id="fullscreen" aria-label="Toggle fullscreen render" title="Toggle fullscreen"><svg><use href="#i-expand"/></svg></button></div></div>
++      <div class="canvas-wrap"><canvas id="render" width="720" height="540" aria-label="Path-traced Cornell box with a mirror sphere and a glass sphere">Your browser needs canvas support to display this render.</canvas><span class="canvas-label"><span></span> PERSPECTIVE CAMERA</span><span class="canvas-corner">smallpt / 01</span></div>
++      <div class="render-bottom">
++        <div class="progress-heading"><span id="progress-label">Preparing the light…</span><span id="progress-percent">0%</span></div>
++        <progress id="progress" value="0" max="100" aria-label="Rendering progress"></progress>
++        <div class="render-metrics"><span><i class="metric-dot"></i><b id="sample-count">0</b> / <span id="sample-target">64</span> samples</span><span><svg viewBox="0 0 20 20"><circle cx="10" cy="11" r="6.5"/><path d="M10 7v4l2 2M8 1h4"/></svg><b id="elapsed">0.0</b> s</span><span id="render-size">720 × 540 px</span></div>
+       </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+ 
++    <aside class="controls" aria-labelledby="controls-title">
++      <div class="controls-heading"><div class="controls-eyebrow">THE CONTROL ROOM</div><h2 id="controls-title">Make it your own.</h2><p>Same scene. A different perspective.</p></div>
++      <div class="setting"><label for="resolution">Resolution <span>01</span></label><div class="select-wrap"><select id="resolution"><option value="480">480 × 360 — Compact</option><option value="720" selected>720 × 540 — Standard</option><option value="960">960 × 720 — High detail</option></select><svg viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></div></div>
++      <fieldset class="quality setting"><legend>Render quality <span>02</span></legend><div class="segmented"><label><input type="radio" name="quality" value="16"><span>Quick</span></label><label><input type="radio" name="quality" value="64" checked><span>Balanced</span></label><label><input type="radio" name="quality" value="256"><span>Fine</span></label></div><p class="field-hint"><span id="quality-hint">64 samples per pixel</span><span class="hint-dot">·</span> More samples, less noise.</p></fieldset>
++      <div class="setting palette-setting"><div class="setting-label">Sphere colors <span>03</span></div><div class="palette">
++        <label class="color-field"><span class="color-orb mirror" id="mirror-orb"><input type="color" id="mirror-color" value="#ffffff" aria-label="Mirror sphere color"></span><span><strong>Mirror</strong><small>Specular</small></span><svg viewBox="0 0 16 16"><path d="m11 2 3 3-8 8-4 1 1-4z"/></svg></label>
++        <label class="color-field"><span class="color-orb glass" id="glass-orb"><input type="color" id="glass-color" value="#ffffff" aria-label="Glass sphere color"></span><span><strong>Glass</strong><small>Refractive</small></span><svg viewBox="0 0 16 16"><path d="m11 2 3 3-8 8-4 1 1-4z"/></svg></label>
++      </div><p class="field-hint">A little randomness looks good on everything.</p></div>
++      <button class="primary-button" id="randomize"><svg><use href="#i-shuffle"/></svg> Randomize & render <span>↗</span></button>
++      <div class="secondary-actions"><button id="rerender"><svg><use href="#i-refresh"/></svg> Re-render</button><button id="download"><svg><use href="#i-download"/></svg> Save image</button></div>
++      <div class="local-note"><span class="status-dot"></span><p>Made right here. On your device.<br><span>No uploads. No render farm. Just light.</span></p></div>
++      <button class="reset-button" id="reset">Reset to the original scene <span>↺</span></button>
++    </aside>
++  </section>
++  <p class="status-message" id="status-message" role="status" aria-live="polite">Loading the WebAssembly renderer.</p>
++  <section class="about-grid" id="about" aria-label="About this experiment">
++    <article><span class="about-icon"><svg><use href="#i-sun"/></svg></span><div><h3>Following the light</h3><p>Real light, simulated one bounce at a time.<br>Soft shadows, reflections, and happy accidents.</p></div></article>
++    <article><span class="about-icon"><svg><use href="#i-code"/></svg></span><div><h3>99 lines. A whole world.</h3><p>Built on Kevin Beason’s smallpt, a beautifully<br>small C++ path tracer with a big idea.</p></div></article>
++    <article><span class="about-icon"><svg><use href="#i-chip"/></svg></span><div><h3>Native speed. Browser freedom.</h3><p>Compiled to WebAssembly. Rendered locally.<br>Your browser does all the heavy lifting.</p></div></article>
++  </section>
++</main>
++<footer><span>A tiny experiment in how we see things.</span><div>Originally by <a href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noopener">Kevin Beason <svg><use href="#i-arrow"/></svg></a><span class="footer-divider">/</span><a href="src/LICENSE.txt">Open source, always.</a><span class="footer-spark">✳</span></div></footer>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d39b5e1 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,11 @@
+ {
+-  "name": "daily-grind",
++  "name": "smallpt-studio",
+   "version": "1.0.0",
++  "private": true,
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build:wasm": "bash scripts/build-wasm.sh",
++    "build": "npm run build:wasm && node scripts/build.mjs"
+   },
+-  "pnpm": {
+-    "onlyBuiltDependencies": []
+-  }
++  "type": "module"
+ }
+diff --git a/public/preview.png b/public/preview.png
+new file mode 100644
+index 0000000..fc80c0e
+Binary files /dev/null and b/public/preview.png differ
+diff --git a/public/render-worker.js b/public/render-worker.js
+new file mode 100644
+index 0000000..ae38713
+--- /dev/null
++++ b/public/render-worker.js
+@@ -0,0 +1,28 @@
++import createSmallpt from './smallpt.js';
++
++let renderer;
++self.onmessage = async ({ data }) => {
++  try {
++    renderer ||= await createSmallpt();
++    const { width, height, samples, seed, colors } = data;
++    renderer._init_scene(width, height, seed, ...colors.flat());
++    const started = performance.now();
++    for (let pass = 0; pass < samples / 4; pass++) {
++      for (let row = 0; row < height; row += 24) {
++        renderer._render_rows(row, Math.min(24, height - row));
++        const done = row + 24 >= height;
++        const buffer = renderer.HEAPU8.slice(renderer._pixels(), renderer._pixels() + width * height * 4);
++        self.postMessage({
++          type: 'frame', pixels: buffer.buffer, width, height,
++          progress: Math.min(1, (pass + Math.min(height, row + 24) / height) / (samples / 4)),
++          samples: (pass + (done ? 1 : 0)) * 4,
++          elapsed: performance.now() - started,
++          complete: done && (pass + 1) * 4 >= samples,
++        }, [buffer.buffer]);
++        await new Promise(resolve => setTimeout(resolve, 0));
++      }
++    }
++  } catch (error) {
++    self.postMessage({ type: 'error', message: error.message });
++  }
++};
+diff --git a/public/smallpt.js b/public/smallpt.js
+new file mode 100644
+index 0000000..04514d6
+--- /dev/null
++++ b/public/smallpt.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;(function(){function humanReadableVersionToPacked(str){str=str.split("-")[0];var vers=str.split(".").slice(0,3);while(vers.length<3)vers.push("00");vers=vers.map((n,i,arr)=>n.padStart(2,"0"));return vers.join("")}var packedVersionToHumanReadable=n=>[n/1e4|0,(n/100|0)%100,n%100].join(".");var TARGET_NOT_SUPPORTED=2147483647;var currentNodeVersion=typeof process!=="undefined"&&process.versions?.node?humanReadableVersionToPacked(process.versions.node):TARGET_NOT_SUPPORTED;if(currentNodeVersion<TARGET_NOT_SUPPORTED){throw new Error("not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)")}if(currentNodeVersion<2147483647){throw new Error(`This emscripten-generated code requires node v${packedVersionToHumanReadable(2147483647)} (detected v${packedVersionToHumanReadable(currentNodeVersion)})`)}var userAgent=typeof navigator!=="undefined"&&navigator.userAgent;if(!userAgent){return}var currentSafariVersion=userAgent.includes("Safari/")&&!userAgent.includes("Chrome/")&&userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)?humanReadableVersionToPacked(userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]):TARGET_NOT_SUPPORTED;if(currentSafariVersion<15e4){throw new Error(`This emscripten-generated code requires Safari v${packedVersionToHumanReadable(15e4)} (detected v${currentSafariVersion})`)}var currentFirefoxVersion=userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)?parseFloat(userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]):TARGET_NOT_SUPPORTED;if(currentFirefoxVersion<79){throw new Error(`This emscripten-generated code requires Firefox v79 (detected v${currentFirefoxVersion})`)}var currentChromeVersion=userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)?parseFloat(userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]):TARGET_NOT_SUPPORTED;if(currentChromeVersion<85){throw new Error(`This emscripten-generated code requires Chrome v85 (detected v${currentChromeVersion})`)}})();var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var ENVIRONMENT_IS_SHELL=!ENVIRONMENT_IS_WEB&&!ENVIRONMENT_IS_NODE&&!ENVIRONMENT_IS_WORKER;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_SHELL){}else if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}if(!(globalThis.window||globalThis.WorkerGlobalScope))throw new Error("not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)");{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{assert(!isFileURI(url),"readAsync does not work with file:// URLs");var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{throw new Error("environment detection error")}var out=console.log.bind(console);var err=console.error.bind(console);assert(!ENVIRONMENT_IS_WEB,"web environment detected but not enabled at build time (add `web` to `-sENVIRONMENT` to enable)");assert(!ENVIRONMENT_IS_NODE,"node environment detected but not enabled at build time (add `node` to `-sENVIRONMENT` to enable)");assert(!ENVIRONMENT_IS_SHELL,"shell environment detected but not enabled at build time (add `shell` to `-sENVIRONMENT` to enable)");var wasmBinary;if(!globalThis.WebAssembly){err("no native wasm support detected")}var ABORT=false;var EXITSTATUS;function assert(condition,text){if(!condition){abort("Assertion failed"+(text?": "+text:""))}}var isFileURI=filename=>filename.startsWith("file://");function writeStackCookie(){var max=_emscripten_stack_get_end();assert((max&3)==0);if(max==0){max+=4}HEAPU32[max>>2]=34821223;HEAPU32[max+4>>2]=2310721022;HEAPU32[0>>2]=1668509029}function checkStackCookie(){if(ABORT)return;var max=_emscripten_stack_get_end();if(max==0){max+=4}var cookie1=HEAPU32[max>>2];var cookie2=HEAPU32[max+4>>2];if(cookie1!=34821223||cookie2!=2310721022){abort(`Stack overflow! Stack cookie has been overwritten at ${ptrToString(max)}, expected hex dwords 0x89BACDFE and 0x2135467, but received ${ptrToString(cookie2)} ${ptrToString(cookie1)}`)}if(HEAPU32[0>>2]!=1668509029){abort("Runtime error: The application has corrupted its heap memory area (address zero)!")}}class EmscriptenEH extends Error{}class EmscriptenSjLj extends EmscriptenEH{}class CppException extends EmscriptenEH{constructor(excPtr){super(excPtr);this.excPtr=excPtr;const excInfo=getExceptionMessage(this);this.name=excInfo[0];this.message=excInfo[1]}}var runtimeDebug=true;(()=>{var h16=new Int16Array(1);var h8=new Int8Array(h16.buffer);h16[0]=25459;if(h8[0]!==115||h8[1]!==99)abort("Runtime error: expected the system to be little-endian! (Run with -sSUPPORT_BIG_ENDIAN to bypass)")})();function makeInvalidEarlyAccess(name){return()=>assert(false,`call to '${name}' via reference taken before Wasm module initialization`)}function ignoredModuleProp(prop){if(Object.getOwnPropertyDescriptor(Module,prop)){abort(`\`Module.${prop}\` was supplied but \`${prop}\` not included in INCOMING_MODULE_JS_API`)}}function isExportedByForceFilesystem(name){return name==="FS_createPath"||name==="FS_createDataFile"||name==="FS_createPreloadedFile"||name==="FS_preloadFile"||name==="FS_unlink"||name==="addRunDependency"||name==="FS_createLazyFile"||name==="FS_createDevice"||name==="removeRunDependency"}function missingLibrarySymbol(sym){unexportedRuntimeSymbol(sym)}function unexportedRuntimeSymbol(sym){if(!Object.getOwnPropertyDescriptor(Module,sym)){Object.defineProperty(Module,sym,{configurable:true,get(){var msg=`'${sym}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)`;if(isExportedByForceFilesystem(sym)){msg+=". Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you"}abort(msg)}})}}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}assert(globalThis.Int32Array&&globalThis.Float64Array&&Int32Array.prototype.subarray&&Int32Array.prototype.set,"JS engine does not provide full typed array support");function preRun(){}function initRuntime(){assert(!runtimeInitialized);runtimeInitialized=true;checkStackCookie();wasmExports["__wasm_call_ctors"]()}function postRun(){checkStackCookie()}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;var e=new WebAssembly.RuntimeError(what);throw e}function fsMissing(){abort("Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM")}var FS={init:fsMissing,createDataFile:fsMissing,createPreloadedFile:fsMissing,createLazyFile:fsMissing,open:fsMissing,mkdev:fsMissing,registerDevice:fsMissing,analyzePath:fsMissing,ErrnoError:fsMissing};function createExportWrapper(name,nargs){return(...args)=>{assert(runtimeInitialized,`native function \`${name}\` called before runtime initialization`);var f=wasmExports[name];assert(f,`exported native function \`${name}\` not found`);assert(args.length<=nargs,`native function \`${name}\` called with ${args.length} args but expects ${nargs}`);return f(...args)}}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);if(isFileURI(binaryFile)){err(`warning: Loading from a file URI (${binaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`)}abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={env:wasmImports,wasi_snapshot_preview1:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}var trueModule=Module;function receiveInstantiationResult(result){assert(Module===trueModule,"the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?");trueModule=null;return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;function ptrToString(ptr){assert(typeof ptr==="number",`ptrToString expects a number, got ${typeof ptr}`);ptr>>>=0;return"0x"+ptr.toString(16).padStart(8,"0")}var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var warnOnce=text=>{warnOnce.shown||={};if(!warnOnce.shown[text]){warnOnce.shown[text]=1;err(text)}};var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{if((u0&248)!=240)warnOnce(`Invalid UTF-8 leading byte ${ptrToString(u0)} encountered when deserializing a UTF-8 string in wasm memory to a JS string!`);u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>{assert(typeof ptr=="number",`UTF8ToString expects a number (got ${typeof ptr})`);return ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):""};var ___assert_fail=(condition,filename,line,func)=>abort(`Assertion failed: ${UTF8ToString(condition)}, at: `+[filename?UTF8ToString(filename):"unknown filename",line,func?UTF8ToString(func):"unknown function"]);var exceptionCaught=[];var uncaughtExceptionCount=0;var ___cxa_begin_catch=ptr=>{var info=new ExceptionInfo(ptr);if(!info.get_caught()){info.set_caught(true);uncaughtExceptionCount--}info.set_rethrown(false);exceptionCaught.push(info);return ___cxa_get_exception_ptr(ptr)};var exceptionLast=null;class ExceptionInfo{constructor(excPtr){this.excPtr=excPtr;this.ptr=excPtr-24}set_type(type){HEAPU32[this.ptr+4>>2]=type}get_type(){return HEAPU32[this.ptr+4>>2]}set_destructor(destructor){HEAPU32[this.ptr+8>>2]=destructor}get_destructor(){return HEAPU32[this.ptr+8>>2]}set_caught(caught){caught=caught?1:0;HEAP8[this.ptr+12]=caught}get_caught(){return HEAP8[this.ptr+12]!=0}set_rethrown(rethrown){rethrown=rethrown?1:0;HEAP8[this.ptr+13]=rethrown}get_rethrown(){return HEAP8[this.ptr+13]!=0}init(type,destructor){this.set_adjusted_ptr(0);this.set_type(type);this.set_destructor(destructor)}set_adjusted_ptr(adjustedPtr){HEAPU32[this.ptr+16>>2]=adjustedPtr}get_adjusted_ptr(){return HEAPU32[this.ptr+16>>2]}}var setTempRet0=val=>__emscripten_tempret_set(val);var findMatchingCatch=args=>{var thrown=exceptionLast?.excPtr;if(!thrown){setTempRet0(0);return 0}var info=new ExceptionInfo(thrown);info.set_adjusted_ptr(thrown);var thrownType=info.get_type();if(!thrownType){setTempRet0(0);return thrown}for(var caughtType of args){if(caughtType===0||caughtType===thrownType){break}var adjusted_ptr_addr=info.ptr+16;if(___cxa_can_catch(caughtType,thrownType,adjusted_ptr_addr)){setTempRet0(caughtType);return thrown}}setTempRet0(thrownType);return thrown};var ___cxa_find_matching_catch_2=()=>findMatchingCatch([]);var ___cxa_find_matching_catch_3=arg0=>findMatchingCatch([arg0]);var stackAlloc=sz=>__emscripten_stack_alloc(sz);var getExceptionMessageCommon=ptr=>{var sp=stackSave();var type_addr_addr=stackAlloc(4);var message_addr_addr=stackAlloc(4);___get_exception_message(ptr,type_addr_addr,message_addr_addr);var type_addr=HEAPU32[type_addr_addr>>2];var message_addr=HEAPU32[message_addr_addr>>2];var type=UTF8ToString(type_addr);_free(type_addr);var message;if(message_addr){message=UTF8ToString(message_addr);_free(message_addr)}stackRestore(sp);return[type,message]};var getExceptionMessage=exn=>getExceptionMessageCommon(exn.excPtr);var ___cxa_throw=(ptr,type,destructor)=>{var info=new ExceptionInfo(ptr);info.init(type,destructor);___cxa_increment_exception_refcount(ptr);exceptionLast=new CppException(ptr);uncaughtExceptionCount++;throw exceptionLast};var ___resumeException=ptr=>{if(!exceptionLast){exceptionLast=new CppException(ptr)}throw exceptionLast};var __abort_js=()=>abort("native code called abort()");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}checkStackCookie();if(e instanceof WebAssembly.RuntimeError){if(_emscripten_stack_get_current()<=0){err("Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to 1048576)")}}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;checkUnflushedContent();if(keepRuntimeAlive()&&!implicit){var msg=`program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;err(msg)}_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){err("user callback triggered after runtime exited or application aborted.  Ignoring.");return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{assert(which in timers);delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>{assert(alignment,"alignment argument is required");return Math.ceil(size/alignment)*alignment};var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`)}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;assert(requestedSize>oldSize);var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){err(`Cannot enlarge memory, requested ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}err(`Failed to grow the heap from ${oldSize} bytes to ${newSize} bytes, not enough memory!`);return false};var _fd_close=fd=>{abort("fd_close called without SYSCALLS_REQUIRE_FILESYSTEM")};var INT53_MAX=9007199254740992;var INT53_MIN=-9007199254740992;var bigintToI53Checked=num=>num<INT53_MIN||num>INT53_MAX?NaN:Number(num);function _fd_seek(fd,offset,whence,newOffset){offset=bigintToI53Checked(offset);return 70}var printCharBuffers=[null,[],[]];var printChar=(stream,curr)=>{var buffer=printCharBuffers[stream];assert(buffer);if(curr===0||curr===10){(stream===1?out:err)(UTF8ArrayToString(buffer));buffer.length=0}else{buffer.push(curr)}};var flush_NO_FILESYSTEM=()=>{_fflush(0);if(printCharBuffers[1].length)printChar(1,10);if(printCharBuffers[2].length)printChar(2,10)};var _fd_write=(fd,iov,iovcnt,pnum)=>{var num=0;for(var i=0;i<iovcnt;i++){var ptr=HEAPU32[iov>>2];var len=HEAPU32[iov+4>>2];iov+=8;for(var j=0;j<len;j++){printChar(fd,HEAPU8[ptr+j])}num+=len}HEAPU32[pnum>>2]=num;return 0};var wasmTableMirror=[];var getWasmTableEntry=funcPtr=>{var func=wasmTableMirror[funcPtr];if(!func){wasmTableMirror[funcPtr]=func=wasmTable.get(funcPtr)}assert(wasmTable.get(funcPtr)==func,"table mirror is out of date");return func};{Module["FS_createDataFile"]=FS.createDataFile;Module["FS_createPreloadedFile"]=FS.createPreloadedFile;checkIncomingModuleAPI();assert(typeof Module["memoryInitializerPrefixURL"]=="undefined","Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["pthreadMainPrefixURL"]=="undefined","Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["cdInitializerPrefixURL"]=="undefined","Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["filePackagePrefixURL"]=="undefined","Module.filePackagePrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["read"]=="undefined","Module.read option was removed");assert(typeof Module["readAsync"]=="undefined","Module.readAsync option was removed (modify readAsync in JS)");assert(typeof Module["readBinary"]=="undefined","Module.readBinary option was removed (modify readBinary in JS)");assert(typeof Module["setWindowTitle"]=="undefined","Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)");assert(typeof Module["TOTAL_MEMORY"]=="undefined","Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY");assert(typeof Module["ENVIRONMENT"]=="undefined","Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)");assert(typeof Module["STACK_SIZE"]=="undefined","STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time");assert(typeof Module["wasmMemory"]=="undefined","Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally");assert(typeof Module["INITIAL_MEMORY"]=="undefined","Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically")}var missingLibrarySymbols=["writeI53ToI64","writeI53ToI64Clamped","writeI53ToI64Signaling","writeI53ToU64Clamped","writeI53ToU64Signaling","readI53FromI64","readI53FromU64","convertI32PairToI53","convertI32PairToI53Checked","convertU32PairToI53","getTempRet0","createNamedFunction","zeroMemory","withStackSave","strError","inetPton4","inetNtop4","inetPton6","inetNtop6","readSockaddr","writeSockaddr","readEmAsmArgs","jstoi_q","getExecutableName","autoResumeAudioContext","getDynCaller","dynCall","runtimeKeepalivePush","runtimeKeepalivePop","asyncLoad","asmjsMangle","mmapAlloc","HandleAllocator","getUniqueRunDependency","addRunDependency","removeRunDependency","addOnPreRun","addOnInit","addOnPostCtor","addOnPreMain","addOnExit","addOnPostRun","STACK_SIZE","STACK_ALIGN","POINTER_SIZE","ASSERTIONS","ccall","cwrap","convertJsFunctionToWasm","getEmptyTableSlot","updateTableMap","getFunctionAddress","addFunction","removeFunction","stringToUTF8Array","stringToUTF8","lengthBytesUTF8","intArrayFromString","intArrayToString","AsciiToString","stringToAscii","UTF16ToString","stringToUTF16","lengthBytesUTF16","UTF32ToString","stringToUTF32","lengthBytesUTF32","stringToNewUTF8","stringToUTF8OnStack","writeArrayToMemory","registerKeyEventCallback","maybeCStringToJsString","findEventTarget","getBoundingClientRect","fillMouseEventData","registerMouseEventCallback","registerWheelEventCallback","registerUiEventCallback","registerFocusEventCallback","fillDeviceOrientationEventData","registerDeviceOrientationEventCallback","fillDeviceMotionEventData","registerDeviceMotionEventCallback","screenOrientation","fillOrientationChangeEventData","registerOrientationChangeEventCallback","fillFullscreenChangeEventData","registerFullscreenChangeEventCallback","JSEvents_requestFullscreen","JSEvents_resizeCanvasForFullscreen","registerRestoreOldStyle","hideEverythingExceptGivenElement","restoreHiddenElements","setLetterbox","softFullscreenResizeWebGLRenderTarget","doRequestFullscreen","fillPointerlockChangeEventData","registerPointerlockChangeEventCallback","registerPointerlockErrorEventCallback","requestPointerLock","fillVisibilityChangeEventData","registerVisibilityChangeEventCallback","registerTouchEventCallback","fillGamepadEventData","registerGamepadEventCallback","registerBeforeUnloadEventCallback","fillBatteryEventData","registerBatteryEventCallback","setCanvasElementSize","getCanvasElementSize","jsStackTrace","getCallstack","convertPCtoSourceLocation","getEnvStrings","checkWasiClock","wasiRightsToMuslOFlags","wasiOFlagsToMuslOFlags","initRandomFill","randomFill","safeSetTimeout","setImmediateWrapped","safeRequestAnimationFrame","clearImmediateWrapped","registerPostMainLoop","registerPreMainLoop","getPromise","makePromise","addPromise","idsToPromises","makePromiseCallback","incrementUncaughtExceptionCount","decrementUncaughtExceptionCount","Browser_asyncPrepareDataCounter","isLeapYear","ydayFromDate","arraySum","addDays","getSocketFromFD","getSocketAddress"];missingLibrarySymbols.forEach(missingLibrarySymbol);var unexportedSymbols=["run","out","err","callMain","abort","wasmExports","writeStackCookie","checkStackCookie","INT53_MAX","INT53_MIN","bigintToI53Checked","HEAP8","HEAP16","HEAPU16","HEAP32","HEAPU32","HEAPF32","HEAPF64","HEAP64","HEAPU64","stackSave","stackRestore","stackAlloc","setTempRet0","ptrToString","exitJS","getHeapMax","growMemory","ENV","ERRNO_CODES","DNS","Protocols","Sockets","timers","warnOnce","readEmAsmArgsArray","handleException","keepRuntimeAlive","callUserCallback","maybeExit","alignMemory","wasmTable","wasmMemory","noExitRuntime","freeTableIndexes","functionsInTableMap","setValue","getValue","PATH","PATH_FS","UTF8Decoder","UTF8ArrayToString","UTF8ToString","UTF16Decoder","JSEvents","specialHTMLTargets","findCanvasEventTarget","currentFullscreenStrategy","restoreOldWindowedStyle","UNWIND_CACHE","ExitStatus","flush_NO_FILESYSTEM","emSetImmediate","emClearImmediate_deps","emClearImmediate","promiseMap","uncaughtExceptionCount","exceptionLast","exceptionCaught","ExceptionInfo","findMatchingCatch","getExceptionMessageCommon","incrementExceptionRefcount","decrementExceptionRefcount","getExceptionMessage","Browser","requestFullscreen","requestFullScreen","setCanvasSize","getUserMedia","createContext","getPreloadedImageData__data","wget","MONTH_DAYS_REGULAR","MONTH_DAYS_LEAP","MONTH_DAYS_REGULAR_CUMULATIVE","MONTH_DAYS_LEAP_CUMULATIVE","SYSCALLS"];unexportedSymbols.forEach(unexportedRuntimeSymbol);function checkIncomingModuleAPI(){ignoredModuleProp("ENVIRONMENT");ignoredModuleProp("GL_MAX_TEXTURE_IMAGE_UNITS");ignoredModuleProp("SDL_canPlayWithWebAudio");ignoredModuleProp("SDL_numSimultaneouslyQueuedBuffers");ignoredModuleProp("INITIAL_MEMORY");ignoredModuleProp("wasmMemory");ignoredModuleProp("arguments");ignoredModuleProp("buffer");ignoredModuleProp("canvas");ignoredModuleProp("doNotCaptureKeyboard");ignoredModuleProp("dynamicLibraries");ignoredModuleProp("elementPointerLock");ignoredModuleProp("extraStackTrace");ignoredModuleProp("forcedAspectRatio");ignoredModuleProp("instantiateWasm");ignoredModuleProp("keyboardListeningElement");ignoredModuleProp("freePreloadedMediaOnUse");ignoredModuleProp("locateFile");ignoredModuleProp("mainScriptUrlOrBlob");ignoredModuleProp("mem");ignoredModuleProp("monitorRunDependencies");ignoredModuleProp("noExitRuntime");ignoredModuleProp("noInitialRun");ignoredModuleProp("onAbort");ignoredModuleProp("onExit");ignoredModuleProp("onFullScreen");ignoredModuleProp("onRuntimeInitialized");ignoredModuleProp("postMainLoop");ignoredModuleProp("postRun");ignoredModuleProp("preInit");ignoredModuleProp("preMainLoop");ignoredModuleProp("preRun");ignoredModuleProp("preinitializedWebGLContext");ignoredModuleProp("preloadPlugins");ignoredModuleProp("print");ignoredModuleProp("printErr");ignoredModuleProp("setStatus");ignoredModuleProp("statusMessage");ignoredModuleProp("stderr");ignoredModuleProp("stdin");ignoredModuleProp("stdout");ignoredModuleProp("thisProgram");ignoredModuleProp("wasm");ignoredModuleProp("wasmBinary");ignoredModuleProp("websocket");ignoredModuleProp("fetchSettings");ignoredModuleProp("logReadFiles");ignoredModuleProp("loadSplitModule");ignoredModuleProp("onMalloc");ignoredModuleProp("onRealloc");ignoredModuleProp("onFree");ignoredModuleProp("onSbrkGrow");ignoredModuleProp("onCOSCacheHit");ignoredModuleProp("onCOSCacheMiss");ignoredModuleProp("onCOSStore")}var _init_scene=Module["_init_scene"]=makeInvalidEarlyAccess("_init_scene");var _pixels=Module["_pixels"]=makeInvalidEarlyAccess("_pixels");var _render_rows=Module["_render_rows"]=makeInvalidEarlyAccess("_render_rows");var _fflush=makeInvalidEarlyAccess("_fflush");var __emscripten_timeout=makeInvalidEarlyAccess("__emscripten_timeout");var _free=makeInvalidEarlyAccess("_free");var _setThrew=makeInvalidEarlyAccess("_setThrew");var __emscripten_tempret_set=makeInvalidEarlyAccess("__emscripten_tempret_set");var _emscripten_stack_init=makeInvalidEarlyAccess("_emscripten_stack_init");var _emscripten_stack_get_free=makeInvalidEarlyAccess("_emscripten_stack_get_free");var _emscripten_stack_get_base=makeInvalidEarlyAccess("_emscripten_stack_get_base");var _emscripten_stack_get_end=makeInvalidEarlyAccess("_emscripten_stack_get_end");var __emscripten_stack_restore=makeInvalidEarlyAccess("__emscripten_stack_restore");var __emscripten_stack_alloc=makeInvalidEarlyAccess("__emscripten_stack_alloc");var _emscripten_stack_get_current=makeInvalidEarlyAccess("_emscripten_stack_get_current");var ___cxa_increment_exception_refcount=makeInvalidEarlyAccess("___cxa_increment_exception_refcount");var ___cxa_decrement_exception_refcount=makeInvalidEarlyAccess("___cxa_decrement_exception_refcount");var ___get_exception_message=makeInvalidEarlyAccess("___get_exception_message");var ___cxa_can_catch=makeInvalidEarlyAccess("___cxa_can_catch");var ___cxa_get_exception_ptr=makeInvalidEarlyAccess("___cxa_get_exception_ptr");var memory=makeInvalidEarlyAccess("memory");var __indirect_function_table=makeInvalidEarlyAccess("__indirect_function_table");var wasmMemory=makeInvalidEarlyAccess("wasmMemory");var wasmTable=makeInvalidEarlyAccess("wasmTable");function assignWasmExports(wasmExports){assert(typeof wasmExports["init_scene"]!="undefined","missing Wasm export: init_scene");assert(typeof wasmExports["pixels"]!="undefined","missing Wasm export: pixels");assert(typeof wasmExports["render_rows"]!="undefined","missing Wasm export: render_rows");assert(typeof wasmExports["fflush"]!="undefined","missing Wasm export: fflush");assert(typeof wasmExports["_emscripten_timeout"]!="undefined","missing Wasm export: _emscripten_timeout");assert(typeof wasmExports["free"]!="undefined","missing Wasm export: free");assert(typeof wasmExports["setThrew"]!="undefined","missing Wasm export: setThrew");assert(typeof wasmExports["_emscripten_tempret_set"]!="undefined","missing Wasm export: _emscripten_tempret_set");assert(typeof wasmExports["emscripten_stack_init"]!="undefined","missing Wasm export: emscripten_stack_init");assert(typeof wasmExports["emscripten_stack_get_free"]!="undefined","missing Wasm export: emscripten_stack_get_free");assert(typeof wasmExports["emscripten_stack_get_base"]!="undefined","missing Wasm export: emscripten_stack_get_base");assert(typeof wasmExports["emscripten_stack_get_end"]!="undefined","missing Wasm export: emscripten_stack_get_end");assert(typeof wasmExports["_emscripten_stack_restore"]!="undefined","missing Wasm export: _emscripten_stack_restore");assert(typeof wasmExports["_emscripten_stack_alloc"]!="undefined","missing Wasm export: _emscripten_stack_alloc");assert(typeof wasmExports["emscripten_stack_get_current"]!="undefined","missing Wasm export: emscripten_stack_get_current");assert(typeof wasmExports["__cxa_increment_exception_refcount"]!="undefined","missing Wasm export: __cxa_increment_exception_refcount");assert(typeof wasmExports["__cxa_decrement_exception_refcount"]!="undefined","missing Wasm export: __cxa_decrement_exception_refcount");assert(typeof wasmExports["__get_exception_message"]!="undefined","missing Wasm export: __get_exception_message");assert(typeof wasmExports["__cxa_can_catch"]!="undefined","missing Wasm export: __cxa_can_catch");assert(typeof wasmExports["__cxa_get_exception_ptr"]!="undefined","missing Wasm export: __cxa_get_exception_ptr");assert(typeof wasmExports["memory"]!="undefined","missing Wasm export: memory");assert(typeof wasmExports["__indirect_function_table"]!="undefined","missing Wasm export: __indirect_function_table");_init_scene=Module["_init_scene"]=createExportWrapper("init_scene",9);_pixels=Module["_pixels"]=createExportWrapper("pixels",0);_render_rows=Module["_render_rows"]=createExportWrapper("render_rows",2);_fflush=createExportWrapper("fflush",1);__emscripten_timeout=createExportWrapper("_emscripten_timeout",2);_free=createExportWrapper("free",1);_setThrew=createExportWrapper("setThrew",2);__emscripten_tempret_set=createExportWrapper("_emscripten_tempret_set",1);_emscripten_stack_init=wasmExports["emscripten_stack_init"];_emscripten_stack_get_free=wasmExports["emscripten_stack_get_free"];_emscripten_stack_get_base=wasmExports["emscripten_stack_get_base"];_emscripten_stack_get_end=wasmExports["emscripten_stack_get_end"];__emscripten_stack_restore=wasmExports["_emscripten_stack_restore"];__emscripten_stack_alloc=wasmExports["_emscripten_stack_alloc"];_emscripten_stack_get_current=wasmExports["emscripten_stack_get_current"];___cxa_increment_exception_refcount=createExportWrapper("__cxa_increment_exception_refcount",1);___cxa_decrement_exception_refcount=createExportWrapper("__cxa_decrement_exception_refcount",1);___get_exception_message=createExportWrapper("__get_exception_message",3);___cxa_can_catch=createExportWrapper("__cxa_can_catch",3);___cxa_get_exception_ptr=createExportWrapper("__cxa_get_exception_ptr",1);memory=wasmMemory=wasmExports["memory"];__indirect_function_table=wasmTable=wasmExports["__indirect_function_table"]}var wasmImports={__assert_fail:___assert_fail,__cxa_begin_catch:___cxa_begin_catch,__cxa_find_matching_catch_2:___cxa_find_matching_catch_2,__cxa_find_matching_catch_3:___cxa_find_matching_catch_3,__cxa_throw:___cxa_throw,__resumeException:___resumeException,_abort_js:__abort_js,_emscripten_runtime_keepalive_clear:__emscripten_runtime_keepalive_clear,_setitimer_js:__setitimer_js,emscripten_resize_heap:_emscripten_resize_heap,fd_close:_fd_close,fd_seek:_fd_seek,fd_write:_fd_write,invoke_ii,invoke_iii,invoke_v,invoke_vii,invoke_viii,invoke_viiii,proc_exit:_proc_exit};function invoke_viiii(index,a1,a2,a3,a4){var sp=stackSave();try{getWasmTableEntry(index)(a1,a2,a3,a4)}catch(e){stackRestore(sp);if(!(e instanceof EmscriptenEH))throw e;_setThrew(1,0)}}function invoke_ii(index,a1){var sp=stackSave();try{return getWasmTableEntry(index)(a1)}catch(e){stackRestore(sp);if(!(e instanceof EmscriptenEH))throw e;_setThrew(1,0)}}function invoke_v(index){var sp=stackSave();try{getWasmTableEntry(index)()}catch(e){stackRestore(sp);if(!(e instanceof EmscriptenEH))throw e;_setThrew(1,0)}}function invoke_vii(index,a1,a2){var sp=stackSave();try{getWasmTableEntry(index)(a1,a2)}catch(e){stackRestore(sp);if(!(e instanceof EmscriptenEH))throw e;_setThrew(1,0)}}function invoke_iii(index,a1,a2){var sp=stackSave();try{return getWasmTableEntry(index)(a1,a2)}catch(e){stackRestore(sp);if(!(e instanceof EmscriptenEH))throw e;_setThrew(1,0)}}function invoke_viii(index,a1,a2,a3){var sp=stackSave();try{getWasmTableEntry(index)(a1,a2,a3)}catch(e){stackRestore(sp);if(!(e instanceof EmscriptenEH))throw e;_setThrew(1,0)}}var calledRun;function stackCheckInit(){_emscripten_stack_init();writeStackCookie()}async function run(){assert(!calledRun);calledRun=true;stackCheckInit();preRun();if(ABORT)return;initRuntime();assert(!Module["_main"],'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');postRun();checkStackCookie()}function checkUnflushedContent(){var oldOut=out;var oldErr=err;var has=false;out=err=x=>{has=true};try{flush_NO_FILESYSTEM()}catch(e){}out=oldOut;err=oldErr;if(has){warnOnce("stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the Emscripten FAQ), or make sure to emit a newline when you printf etc.");warnOnce("(this may also be due to not including full filesystem support - try building with -sFORCE_FILESYSTEM)")}}var wasmExports;wasmExports=await createWasm();await run();for(const prop of Object.keys(Module)){if(!(prop in moduleArg)){Object.defineProperty(moduleArg,prop,{configurable:true,get(){abort(`Access to module property ('${prop}') is no longer possible via the module constructor argument; Instead, use the result of the module constructor.`)}})}}
++;return Module}export default Module;
+diff --git a/public/smallpt.wasm b/public/smallpt.wasm
+new file mode 100755
+index 0000000..f348d33
+Binary files /dev/null and b/public/smallpt.wasm differ
+diff --git a/scripts/build-wasm.sh b/scripts/build-wasm.sh
+new file mode 100644
+index 0000000..ce54cfc
+--- /dev/null
++++ b/scripts/build-wasm.sh
+@@ -0,0 +1,10 @@
++#!/usr/bin/env bash
++set -euo pipefail
++mkdir -p public
++em++ src/smallpt.cpp -O3 -flto -fexceptions --no-entry \
++  -sEXPORT_ES6=1 -sMODULARIZE=1 -sSTRICT=1 \
++  -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH=1 \
++  -sEXPORTED_FUNCTIONS='["_init_scene","_render_rows","_pixels"]' \
++  -sFILESYSTEM=0 -sASSERTIONS=1 -sSTACK_SIZE=1048576 \
++  -sEXPORTED_RUNTIME_METHODS=HEAPU8 \
++  -o public/smallpt.js
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..7faf1ce
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,18 @@
++import { mkdir, copyFile, cp, readFile } from 'node:fs/promises';
++import { execFileSync } from 'node:child_process';
++
++// Validate the emitted binary and client scripts without starting a server.
++const binary = await readFile('public/smallpt.wasm');
++const module = await WebAssembly.compile(binary);
++const exports = WebAssembly.Module.exports(module).map(item => item.name);
++for (const name of ['init_scene', 'render_rows', 'pixels']) {
++  if (!exports.includes(name)) throw new Error('Missing renderer export: ' + name);
++}
++for (const file of ['app.js', 'public/render-worker.js', 'public/smallpt.js']) {
++  execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
++}
++await mkdir('dist', { recursive: true });
++for (const name of ['index.html', 'styles.css', 'app.js']) await copyFile(name, 'dist/' + name);
++await cp('public', 'dist/public', { recursive: true });
++await cp('src', 'dist/src', { recursive: true });
++console.log('Built static site in dist/; WebAssembly compilation, renderer exports and JavaScript syntax checks passed.');
+diff --git a/src/LICENSE.txt b/src/LICENSE.txt
+new file mode 100644
+index 0000000..08255c8
+--- /dev/null
++++ b/src/LICENSE.txt
+@@ -0,0 +1,22 @@
++LICENSE
++
++Copyright (c) 2006-2008 Kevin Beason (kevin.beason@gmail.com)
++
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of this software and associated documentation files (the
++"Software"), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish,
++distribute, sublicense, and/or sell copies of the Software, and to
++permit persons to whom the Software is furnished to do so, subject to
++the following conditions:
++
++The above copyright notice and this permission notice shall be included
++in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/src/smallpt-original.cpp b/src/smallpt-original.cpp
+new file mode 100644
+index 0000000..61e2eda
+--- /dev/null
++++ b/src/smallpt-original.cpp
+@@ -0,0 +1,99 @@
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++int main(int argc, char *argv[]){
++  int w=1024, h=768, samps = argc==2 ? atoi(argv[1])/4 : 1; // # samples
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r, *c=new Vec[w*h];
++#pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
++  for (int y=0; y<h; y++){                       // Loop over image rows
++    fprintf(stderr,"\rRendering (%d spp) %5.2f%%",samps*4,100.*y/(h-1));
++    for (unsigned short x=0, Xi[3]={0,0,y*y*y}; x<w; x++)   // Loop cols
++      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++  }
++  FILE *f = fopen("image.ppm", "w");         // Write image to PPM file.
++  fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
++  for (int i=0; i<w*h; i++)
++    fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
++}
+diff --git a/src/smallpt.cpp b/src/smallpt.cpp
+new file mode 100644
+index 0000000..3654ef3
+--- /dev/null
++++ b/src/smallpt.cpp
+@@ -0,0 +1,133 @@
++// Adapted from Kevin Beason's smallpt (MIT). See LICENSE.txt.
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) { if (erand48(Xi)<p) f=f*(1/p); else return obj.e; } //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++// Browser adapter: progressive 2x2-subpixel accumulation and RGBA output.
++// The original radiance integrator, scene geometry and materials are retained.
++#include <stdint.h>
++static int width, height, pass;
++static unsigned int scene_seed;
++static Vec* accumulation = nullptr;
++static unsigned char* image = nullptr;
++
++extern "C" {
++void init_scene(int w, int h, unsigned int seed,
++                double r1, double g1, double b1,
++                double r2, double g2, double b2) {
++  delete[] accumulation; delete[] image;
++  width=w; height=h; pass=0; scene_seed=seed;
++  accumulation=new Vec[w*h*4]();
++  image=new unsigned char[w*h*4]();
++  spheres[6].c=Vec(r1,g1,b1);
++  spheres[7].c=Vec(r2,g2,b2);
++}
++unsigned char* pixels() { return image; }
++void render_rows(int first, int count) {
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
++  Vec cx=Vec(width*.5135/height), cy=(cx%cam.d).norm()*.5135;
++  for(int y=first; y<first+count && y<height; ++y) {
++    unsigned int seed=scene_seed + y*9781u + pass*6271u;
++    unsigned short Xi[3]={(unsigned short)seed,(unsigned short)(seed>>16),(unsigned short)(y*y*y+pass+1)};
++    for(int x=0;x<width;++x) {
++      int i=(height-y-1)*width+x;
++      Vec color;
++      for(int sy=0;sy<2;++sy) for(int sx=0;sx<2;++sx) {
++        double r1=2*erand48(Xi), dx=r1<1?sqrt(r1)-1:1-sqrt(2-r1);
++        double r2=2*erand48(Xi), dy=r2<1?sqrt(r2)-1:1-sqrt(2-r2);
++        Vec d=cx*(((sx+.5+dx)/2+x)/width-.5)+
++              cy*(((sy+.5+dy)/2+y)/height-.5)+cam.d;
++        int j=i*4+sy*2+sx;
++        accumulation[j]=accumulation[j]+radiance(Ray(cam.o+d*140,d.norm()),0,Xi);
++        Vec a=accumulation[j]*(1./(pass+1));
++        color=color+Vec(clamp(a.x),clamp(a.y),clamp(a.z))*.25;
++      }
++      image[i*4]=toInt(color.x); image[i*4+1]=toInt(color.y);
++      image[i*4+2]=toInt(color.z); image[i*4+3]=255;
++    }
++  }
++  if(first+count>=height) ++pass;
++}
++}
++
++#ifdef SMALLPT_PREVIEW
++int main() {
++  init_scene(720,540,42,.999,.999,.999,.999,.999,.999);
++  for(int p=0;p<32;++p) render_rows(0,540);
++  FILE* f=fopen("/tmp/smallpt-preview.ppm","wb");
++  fprintf(f,"P6\n720 540\n255\n");
++  for(int i=0;i<720*540;++i) fwrite(image+i*4,1,3,f);
++  fclose(f);
++}
++#endif
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..3946b73
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,6 @@
++:root{font-family:'DM Sans',sans-serif;color:#25332c;background:#f6f7f2;font-synthesis:none;--green:#263e30;--lime:#d4f586;--muted:#838980;--border:#e0e4da;--mono:'IBM Plex Mono',monospace}*{box-sizing:border-box}body{margin:0}button,a,input,select{-webkit-tap-highlight-color:transparent}button,input,select{font:inherit}button,a,select,input[type=color]{touch-action:manipulation}button,a,select,input:focus-visible{outline-offset:5px}button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #6d9445}button{cursor:pointer}a{color:inherit;text-decoration:none}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.icon-defs{position:absolute;width:0;height:0;overflow:hidden}.site-header{height:91px;margin:0 4.25%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);gap:24px}.brand{display:flex;align-items:center;font-size:29px;font-weight:700;letter-spacing:-1.6px;white-space:nowrap}.brand-mark{display:grid;grid-template-columns:repeat(2,9px);gap:3px;margin-right:10px;transform:rotate(-12deg)}.brand-mark i{width:9px;height:9px;border-radius:50%;background:#36583b}.brand-mark i:nth-child(2){opacity:.6}.brand-mark i:nth-child(4){opacity:.3}.brand-caption{font:11px var(--mono);letter-spacing:-.3px;color:#8b9187;margin-left:15px}.site-header nav{display:flex;gap:31px;font-size:12px;align-self:stretch;align-items:center;margin-left:auto;margin-right:36px}.site-header nav a{height:100%;display:flex;align-items:center;gap:9px;color:#7e857c;position:relative}.site-header nav a:hover{color:var(--green)}.site-header nav .nav-active{color:var(--green)}.nav-active:after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#36583b}.site-header nav svg{width:13px;height:13px}.engine-badge{display:flex;align-items:center;gap:8px;border:1px solid #dce4d5;border-radius:5px;background:#eef2e8;font:10px var(--mono);padding:9px 11px;white-space:nowrap}.status-dot{display:inline-block;width:6px;height:6px;background:#819f55;border-radius:50%;flex-shrink:0}main{max-width:1450px;padding:0 4.25%;margin:auto}.intro{display:flex;justify-content:space-between;align-items:flex-end;padding:49px 0 33px;gap:20px}.eyebrow{font:9px var(--mono);letter-spacing:1.65px;display:flex;align-items:center;gap:8px;margin:0 0 14px}.eyebrow>span{width:5px;height:5px;background:#789859;border-radius:50%}h1{font-size:clamp(33px,3.1vw,48px);letter-spacing:-2px;font-weight:500;line-height:1.15;margin:0 0 15px}h1>span{color:#83a45c}.intro-copy{font-size:13px;line-height:1.8;color:#80857c;margin:0}.source-link{display:flex;gap:9px;align-items:center;font-size:11px;margin-bottom:5px;border-bottom:1px solid #cbd1c1;padding:0 0 7px}.source-link>svg{width:16px;height:16px}.source-link .small-arrow{width:12px;height:12px;margin-left:5px}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;scroll-margin-top:20px}.render-panel{background:#1b2520;border:1px solid #28362b;border-radius:9px;overflow:hidden;display:flex;flex-direction:column;min-width:0;box-shadow:0 6px 20px #28352806}.render-toolbar{height:51px;padding:0 19px;display:flex;justify-content:space-between;align-items:center;color:#dce2d9;flex-shrink:0}.scene-title{display:flex;align-items:center;gap:11px;font-size:11px}.scene-index{color:#879285;font:10px var(--mono);border-right:1px solid #455045;padding-right:11px}.scene-tag{color:#9aab92;font:8px var(--mono);letter-spacing:.8px;background:#303b30;padding:4px 6px;border-radius:3px;margin-left:2px}.viewer-actions{display:flex;align-items:center;gap:15px}.render-state{font:9px var(--mono);display:flex;gap:6px;align-items:center;color:#a9b6a4}.render-state .status-dot{background:#c5ed89;width:5px;height:5px}.icon-button{border:0;background:transparent;color:#a7b4a6;padding:3px;display:flex}.icon-button:hover{color:white}.icon-button svg{width:15px;height:15px}.canvas-wrap{position:relative;flex:1;background:#121a14;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}canvas{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:contain;background:#111911}.canvas-label,.canvas-corner{position:absolute;bottom:15px;font:8px var(--mono);letter-spacing:.9px;color:#dbe5ca;opacity:.75;pointer-events:none;text-shadow:0 1px 5px #000}.canvas-label{left:18px;display:flex;gap:6px;align-items:center}.canvas-label>span{width:4px;height:4px;border-radius:50%;background:#dbe5ca}.canvas-corner{right:18px;letter-spacing:.4px}.render-bottom{padding:17px 19px 15px;flex-shrink:0}.progress-heading{display:flex;justify-content:space-between;font:9px var(--mono);color:#aebba9;margin-bottom:9px}.progress-heading>span:last-child{color:#d4eea4}progress{display:block;width:100%;height:3px;border:none;border-radius:2px;overflow:hidden;background:#384435;accent-color:#c9ed8c}progress::-webkit-progress-bar{background:#384435}progress::-webkit-progress-value{background:#c9ed8c}progress::-moz-progress-bar{background:#c9ed8c}.render-metrics{display:flex;align-items:center;gap:20px;color:#8e9b89;font:9px var(--mono);margin-top:13px}.render-metrics>span{display:flex;gap:5px;align-items:center}.render-metrics>span:last-child{margin-left:auto}.render-metrics b{font-weight:400;color:#c6d0c0}.metric-dot{width:4px;height:4px;background:#d4ef9c;border-radius:50%;margin-right:1px}.render-metrics svg{width:12px;height:12px}.controls{background:#fff;border:1px solid var(--border);border-radius:9px;padding:27px 24px 16px;display:flex;flex-direction:column}.controls-eyebrow{font:8px var(--mono);letter-spacing:1.5px;color:#8c9683;margin-bottom:9px}.controls h2{font-size:23px;letter-spacing:-.8px;font-weight:500;margin:0 0 8px}.controls-heading>p{font-size:11px;color:#8a8f85;margin:0 0 29px}.setting{margin-bottom:24px}.setting>label,.setting-label,legend{font-size:11px;font-weight:550;display:flex;justify-content:space-between;width:100%;padding:0;margin-bottom:10px}.setting>label>span,.setting-label>span,legend>span{font:8px var(--mono);color:#a5ada0}.select-wrap{position:relative}.select-wrap>svg{position:absolute;right:12px;top:12px;width:14px;height:14px;pointer-events:none;color:#899180}select{width:100%;appearance:none;border:1px solid #e0e5d9;border-radius:5px;background:#fcfcf9;padding:12px 30px 12px 12px;color:#515c49;font:10px var(--mono);cursor:pointer}.quality{border:none;padding:0;min-width:0}.segmented{display:flex;border:1px solid #e2e6dc;background:#f5f6f0;border-radius:5px;padding:3px;gap:2px}.segmented label{position:relative;flex:1;text-align:center;cursor:pointer}.segmented input{position:absolute;opacity:0;width:100%;height:100%;left:0;top:0;margin:0;cursor:pointer}.segmented label>span{display:block;padding:8px 3px;font-size:10px;color:#919786;border-radius:3px}.segmented input:checked+span{background:white;color:#3f5235;box-shadow:0 1px 4px #3442261a;font-weight:600}.segmented input:focus-visible+span{outline:2px solid #6d9445}.field-hint{font-size:9px;line-height:1.6;color:#969c8f;margin:9px 0 0;letter-spacing:-.15px}.hint-dot{padding:0 4px}.palette{display:grid;grid-template-columns:1fr 1fr;gap:8px}.color-field{border:1px solid #e2e6dc;border-radius:5px;display:flex;align-items:center;padding:10px 8px;gap:8px;cursor:pointer;position:relative}.color-orb{display:block;width:27px;height:27px;flex-shrink:0;border-radius:50%;box-shadow:inset -4px -4px 6px #202e2440,1px 2px 3px #00000015;background:radial-gradient(circle at 32% 28%,#fff 1%,#e9ece4 32%,#7c8a7a 68%,#d4d9ce 85%)}.color-orb.glass{background:radial-gradient(circle at 32% 27%,#fff 3%,#e5ede2 23%,#b6c4af 50%,#f5faec 71%,#92a485 95%);box-shadow:inset 0 0 0 1px #bdc7b3,inset -2px -2px 3px #fff}.color-orb input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.color-field:focus-within{outline:2px solid #6d9445;outline-offset:2px}.color-field strong{font-size:10px;display:block;font-weight:500}.color-field small{font:8px var(--mono);color:#929a89;display:block;margin-top:4px}.color-field>svg{width:10px;height:10px;margin-left:auto;color:#9ca592}.palette-setting{margin-bottom:24px}.primary-button{background:var(--lime);border:1px solid #c9e986;border-radius:5px;color:#2e4526;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;font-size:11px;font-weight:600;padding:14px 12px;transition:background .15s,transform .15s}.primary-button:hover{background:#c5ed72;transform:translateY(-1px)}.primary-button svg{width:15px;height:15px}.primary-button>span{margin-left:auto;font-size:16px}.primary-button>svg{margin-right:auto}.secondary-actions{display:flex;gap:8px;margin:9px 0 0}.secondary-actions>button{width:50%;background:white;border:1px solid #e0e5d9;border-radius:5px;padding:11px 4px;font-size:10px;color:#626d56;display:flex;align-items:center;justify-content:center;gap:7px}.secondary-actions>button:hover{background:#f4f6ef}.secondary-actions svg{width:13px;height:13px}.local-note{margin-top:auto;padding-top:23px;display:flex;gap:9px;align-items:flex-start}.local-note>.status-dot{margin-top:5px;width:5px;height:5px}.local-note p{margin:0;font-size:9px;line-height:1.8;color:#617052}.local-note p>span{color:#9ba293;font-size:8px}.reset-button{margin:21px 0 0;border:0;border-top:1px solid #edf0e6;padding:13px 0 0;display:flex;justify-content:space-between;align-items:center;color:#9a9f92;font-size:9px;background:transparent}.reset-button:hover{color:var(--green)}.reset-button>span{font-size:15px}.status-message{font:9px var(--mono);color:#87917d;min-height:13px;margin:10px 0 0}.about-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:30px;padding:37px 0 41px;scroll-margin-top:30px}.about-grid article{display:flex;gap:15px}.about-icon{width:35px;height:35px;background:#edf0e5;border:1px solid #e4e8db;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#82936e}.about-icon svg{width:17px;height:17px}.about-grid h3{font-size:11px;font-weight:550;margin:1px 0 7px}.about-grid p{font-size:10px;color:#92998a;line-height:1.8;margin:0}footer{border-top:1px solid var(--border);margin:0 4.25%;padding:22px 0 26px;display:flex;justify-content:space-between;color:#9ba18f;font:9px var(--mono);gap:16px}footer>div{display:flex;align-items:center;gap:6px}footer a{display:inline-flex;gap:4px;align-items:center;color:#78856b}footer a:hover{text-decoration:underline}footer svg{width:10px;height:10px}.footer-divider{padding:0 10px;color:#c0c7b5}.footer-spark{font-size:23px;margin-left:22px;color:#8a9c71}.render-panel:fullscreen{border-radius:0;max-width:none;display:flex;height:100vh}.render-panel:fullscreen .canvas-wrap{flex:1;overflow:hidden}.render-panel:fullscreen canvas{height:100%;width:100%;object-fit:contain}.render-panel:fullscreen .render-bottom{width:100%}
++@media(min-width:1500px){.site-header,footer{max-width:1327px;margin-left:auto;margin-right:auto}.workspace{grid-template-columns:minmax(0,1fr) 340px}.controls{padding:30px}.intro{padding-top:57px}}
++@media(max-width:1100px){.brand-caption{display:none}.site-header nav{margin-right:auto;margin-left:auto}.workspace{grid-template-columns:minmax(0,1fr) 290px;gap:18px}.controls{padding:22px 18px 15px}.controls-heading>p{margin-bottom:23px}.setting{margin-bottom:21px}.scene-tag{display:none}.about-grid{gap:15px}.about-grid article{gap:10px}.about-grid p br{display:none}.canvas-wrap{flex:1}canvas{height:100%;object-fit:contain}.render-metrics{gap:10px}}
++@media(max-width:800px){.site-header{height:75px}.site-header nav{display:none}.brand-caption{display:inline;font-size:9px}.engine-badge{font-size:8px;padding:8px}.intro{padding-top:32px;align-items:flex-start}.intro-copy{font-size:12px}.source-link{font-size:0;border:1px solid var(--border);padding:9px;border-radius:5px;gap:0;margin-top:30px}.source-link .small-arrow{display:none}.workspace{grid-template-columns:1fr}.canvas-wrap{flex:auto}canvas{height:auto}.controls{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:24px}.controls-heading{grid-column:1/-1}.controls-heading>p{margin:0}.controls h2{font-size:23px}.setting{margin:0}.palette-setting{grid-column:1/-1}.primary-button{align-self:end;height:44px}.secondary-actions{margin:0}.local-note{padding-top:0;margin:0;align-self:center}.reset-button{margin:0;padding-top:0;border:0;align-self:center}.about-grid{gap:20px;padding:30px 0}.about-grid article{flex-direction:column}.about-grid p{font-size:10px}footer{font-size:8px;align-items:center}.footer-spark{display:none}.footer-divider{padding:0 3px}}
++@media(max-width:480px){.brand{font-size:26px}.brand-caption{display:none}.engine-badge{font-size:7px}.site-header{gap:12px}h1{font-size:31px;letter-spacing:-1.3px}.intro-copy br{display:none}.intro-copy{max-width:290px;font-size:11px}.intro{gap:8px}.source-link{padding:7px;flex-shrink:0}.controls{gap:22px 14px;padding:22px 18px}.field-hint{font-size:8px}.segmented label>span{font-size:9px;padding:10px 1px}select{font-size:8px;padding-left:8px}.about-grid{grid-template-columns:1fr}.about-grid article{flex-direction:row;gap:15px}.about-grid p br{display:none}.about-grid h3{font-size:12px}.about-grid p{font-size:11px}.primary-button{font-size:10px;gap:5px;padding:12px 8px}.secondary-actions{gap:5px}.secondary-actions>button{font-size:9px;gap:4px;padding:14px 3px}.secondary-actions svg{width:11px;height:11px}.scene-title{gap:8px}.render-toolbar{padding:0 13px}.viewer-actions{gap:10px}.render-metrics{font-size:8px}.render-bottom{padding:14px}.render-state{font-size:8px}footer{flex-direction:column;align-items:flex-start;gap:12px}.local-note p{font-size:8px}.local-note p>span{font-size:7px}.reset-button{font-size:8px}}
++@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}

@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,114 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Product Landing Page</title>
++  <style>
++    body {
++      margin: 0;
++      font-family: system-ui, sans-serif;
++      line-height: 1.5;
++      color: #111;
++    }
++    header, main, footer {
++      max-width: 800px;
++      margin: 0 auto;
++      padding: 1rem;
++    }
++    nav {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      border-bottom: 1px solid #e5e7eb;
++      padding-bottom: 1rem;
++    }
++    img {
++      max-width: 100%;
++      height: auto;
++      display: block;
++      background-color: #f3f4f6;
++    }
++    .hero, .gallery {
++      margin: 2rem 0;
++    }
++    .spacer {
++      min-height: 120vh;
++      padding: 2rem 0;
++    }
++    footer {
++      border-top: 1px solid #e5e7eb;
++      padding-top: 2rem;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <nav aria-label="Main navigation">
++      <strong>Brand</strong>
++      <details>
++        <summary>Menu</summary>
++        <div class="mega-menu">
++          <p>Special Offer</p>
++          <img
++            src="mega-menu-promo.jpg"
++            alt="Special promotion offer"
++            fetchpriority="low"
++            width="300"
++            height="150"
++          >
++        </div>
++      </details>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero">
++      <h1>Flagship Product</h1>
++      <img
++        src="hero-lcp.jpg"
++        alt="Flagship product main banner"
++        fetchpriority="high"
++        width="800"
++        height="400"
++      >
++    </section>
++
++    <section class="gallery">
++      <h2>Product Gallery</h2>
++      <img
++        src="gallery-main.jpg"
++        alt="Primary product view"
++        width="400"
++        height="300"
++      >
++      <details>
++        <summary>Show alternate view</summary>
++        <img
++          src="gallery-alt.jpg"
++          alt="Alternate product view"
++          fetchpriority="low"
++          loading="lazy"
++          width="400"
++          height="300"
++        >
++      </details>
++    </section>
++
++    <section class="spacer">
++      <h2>Product Details</h2>
++      <p>Scroll down for footer information.</p>
++    </section>
++  </main>
++
++  <footer>
++    <img
++      src="footer-logo.png"
++      alt="Company footer logo"
++      loading="lazy"
++      width="120"
++      height="60"
++    >
++  </footer>
++</body>
++</html>

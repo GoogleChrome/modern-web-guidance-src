@@ -1,0 +1,315 @@
+diff --git a/index.html b/index.html
+index 66c9173..504364f 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,23 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --nav-bg: #4e342e;
++      --footer-bg: #d7ccc8;
++      --shadow: rgba(0, 0, 0, 0.1);
++    }
++
++    [data-theme="dark"],
++    body.dark-mode {
++      --primary: #271d1a;
++      --secondary: #3e2723;
++      --accent: #ffb74d;
++      --text: #f5f5f5;
++      --light: #1b120f;
++      --card-bg: #2d1f1c;
++      --nav-bg: #271d1a;
++      --footer-bg: #271d1a;
++      --shadow: rgba(0, 0, 0, 0.4);
+     }
+ 
+     * {
+@@ -25,11 +42,12 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      transition: background-color 0.3s ease, color 0.3s ease;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: var(--nav-bg);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -38,6 +56,9 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      flex-wrap: wrap;
++      gap: 15px;
++      transition: background-color 0.3s ease;
+     }
+ 
+     .logo {
+@@ -49,6 +70,8 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      flex-wrap: wrap;
+     }
+ 
+     nav ul li {
+@@ -72,6 +95,86 @@
+       border-radius: 4px;
+     }
+ 
++    /* Accessible Switch Component */
++    .theme-switch-container {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      padding: 4px 8px;
++      border-radius: 6px;
++    }
++
++    .switch-label-text {
++      color: white;
++      font-size: 0.9rem;
++      font-weight: 500;
++      cursor: pointer;
++      user-select: none;
++    }
++
++    input[type="checkbox"][switch],
++    .switch-input {
++      box-sizing: border-box;
++      appearance: none;
++      -webkit-appearance: none;
++      -moz-appearance: none;
++      position: relative;
++      width: 48px;
++      height: 26px;
++      background-color: #3e2723;
++      border: 2px solid #d7ccc8;
++      border-radius: 9999px;
++      outline: none;
++      cursor: pointer;
++      vertical-align: middle;
++      margin: 0;
++      padding: 0;
++      flex-shrink: 0;
++      transition: background-color 0.25s ease, border-color 0.25s ease;
++    }
++
++    input[type="checkbox"][switch]::before,
++    .switch-input::before {
++      content: "";
++      position: absolute;
++      top: 2px;
++      left: 2px;
++      width: 18px;
++      height: 18px;
++      border-radius: 50%;
++      background-color: #ffffff;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
++      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease;
++    }
++
++    input[type="checkbox"][switch]:checked,
++    .switch-input:checked {
++      background-color: var(--accent);
++      border-color: #ffffff;
++    }
++
++    input[type="checkbox"][switch]:checked::before,
++    .switch-input:checked::before {
++      transform: translateX(22px);
++      background-color: #3e2723;
++    }
++
++    input[type="checkbox"][switch]:focus-visible,
++    .switch-input:focus-visible {
++      outline: 2px solid #ffffff;
++      outline-offset: 2px;
++      box-shadow: 0 0 0 4px var(--accent);
++    }
++
++    .switch-status {
++      color: var(--secondary);
++      font-size: 0.85rem;
++      font-weight: 600;
++      min-width: 24px;
++      user-select: none;
++      cursor: pointer;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -108,16 +211,23 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--shadow);
+       text-align: center;
++      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      transition: color 0.3s ease;
++    }
++
++    [data-theme="dark"] .card h3,
++    body.dark-mode .card h3 {
++      color: var(--accent);
+     }
+ 
+     .btn {
+@@ -131,15 +241,26 @@
+       transition: background 0.3s;
+     }
+ 
++    [data-theme="dark"] .btn,
++    body.dark-mode .btn {
++      background: #4e342e;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    [data-theme="dark"] .btn:hover,
++    body.dark-mode .btn:hover {
++      background: #5d4037;
++    }
++
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      transition: background-color 0.3s ease, color 0.3s ease;
+     }
+ 
+     .footer-links {
+@@ -151,6 +272,21 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition: color 0.3s ease;
++    }
++
++    .footer-links a:hover {
++      color: var(--accent);
++    }
++
++    /* Reduced Motion */
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after {
++        transition-duration: 0.01ms !important;
++        animation-duration: 0.01ms !important;
++      }
+     }
+   </style>
+ </head>
+@@ -166,6 +302,20 @@
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
++    <div class="theme-switch-container">
++      <label for="theme-switch" id="theme-switch-label" class="switch-label-text">Dark Mode</label>
++      <input
++        type="checkbox"
++        switch
++        role="switch"
++        id="theme-switch"
++        class="switch-input"
++        aria-checked="false"
++        aria-labelledby="theme-switch-label"
++        aria-label="Dark Mode"
++      />
++      <span class="switch-status" id="switch-status" aria-hidden="true">Off</span>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+@@ -207,6 +357,69 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const themeSwitch = document.getElementById('theme-switch');
++      const switchStatus = document.getElementById('switch-status');
++
++      if (!themeSwitch) return;
++
++      function setTheme(isDark) {
++        themeSwitch.checked = isDark;
++        themeSwitch.setAttribute('aria-checked', isDark ? 'true' : 'false');
++        if (switchStatus) {
++          switchStatus.textContent = isDark ? 'On' : 'Off';
++        }
++        if (isDark) {
++          document.documentElement.setAttribute('data-theme', 'dark');
++          document.body.classList.add('dark-mode');
++        } else {
++          document.documentElement.removeAttribute('data-theme');
++          document.body.classList.remove('dark-mode');
++        }
++      }
++
++      // Handle change event (clicks, keyboard Space)
++      themeSwitch.addEventListener('change', function () {
++        const isDark = themeSwitch.checked;
++        setTheme(isDark);
++        try {
++          localStorage.setItem('theme', isDark ? 'dark' : 'light');
++        } catch (e) {
++          // Ignore localStorage errors
++        }
++      });
++
++      // Handle Enter key for WAI-ARIA switch keyboard interaction
++      themeSwitch.addEventListener('keydown', function (e) {
++        if (e.key === 'Enter') {
++          e.preventDefault();
++          themeSwitch.checked = !themeSwitch.checked;
++          themeSwitch.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++      });
++
++      // Also allow clicking status label to toggle
++      if (switchStatus) {
++        switchStatus.addEventListener('click', function () {
++          themeSwitch.click();
++        });
++      }
++
++      // Restore saved user preference if present
++      try {
++        const savedTheme = localStorage.getItem('theme');
++        if (savedTheme === 'dark') {
++          setTheme(true);
++        } else {
++          setTheme(false);
++        }
++      } catch (e) {
++        setTheme(false);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

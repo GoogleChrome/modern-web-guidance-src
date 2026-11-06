@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,17 +19,66 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      overflow-y: auto;
++      scroll-snap-type: y mandatory;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .search-bar {
++      scroll-snap-align: start;
++      padding: 1rem 5%;
++      background: var(--secondary);
++    }
++
++    .search-form {
++      display: flex;
++      gap: 0.75rem;
++      max-width: 1100px;
++      margin: auto;
++      align-items: center;
++    }
++
++    .search-form input {
++      flex: 1;
++      min-width: 0;
++      padding: 0.75rem 1rem;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .search-form .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .search-form :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    /* An oversized snap area lets the rest of the page scroll freely. */
++    .page-content {
++      scroll-snap-align: start;
++      min-height: 100vh;
++    }
++
+     /* Navigation */
+     nav {
++      scroll-initial-target: nearest;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -156,8 +205,16 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar">
++    <form class="search-form" role="search" action="/menu" method="get">
++      <input type="search" name="q" aria-label="Search the menu" placeholder="Search the menu…" required>
++      <button class="btn" type="submit">Search</button>
++    </form>
++  </div>
++
++  <div class="page-content">
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -205,8 +262,18 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  </div>
+ 
++  <script>
++    // Preserve fragment navigation and history restoration in fallback browsers.
++    if (!CSS.supports('scroll-initial-target', 'nearest') &&
++        !location.hash &&
++        performance.getEntriesByType('navigation')[0]?.type !== 'back_forward') {
++      document.querySelector('nav').scrollIntoView({ behavior: 'instant', block: 'start' });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

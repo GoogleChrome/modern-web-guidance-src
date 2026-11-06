@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+index 66c9173..f012bca 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,55 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Agent-facing forms */
++    .tools {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 20px;
++      margin-top: 40px;
++    }
++
++    .tools form {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .tools h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .tools label {
++      display: block;
++      font-size: 0.9rem;
++      margin-top: 10px;
++    }
++
++    .tools input,
++    .tools select {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .tools button {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    form:tool-form-active {
++      outline: 2px dashed var(--accent);
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed var(--accent);
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +244,54 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="tools">
++      <form action="/menu" method="get" toolname="search-menu" toolautosubmit
++        tooldescription="Search the coffee menu for drinks matching a keyword.">
++        <h3>Search the Menu</h3>
++        <label for="menu-q">Drink</label>
++        <input type="search" id="menu-q" name="q" required toolparamdescription="e.g., latte, cold brew">
++        <label for="menu-type">Type</label>
++        <select id="menu-type" name="type" toolparamdescription="Kind of drink to narrow the search">
++          <option value="">Any</option>
++          <option value="hot">Hot</option>
++          <option value="iced">Iced</option>
++          <option value="seasonal">Seasonal</option>
++        </select>
++        <button type="submit" class="btn">Search</button>
++      </form>
++
++      <form action="/locations" method="get" toolname="find-locations" toolautosubmit
++        tooldescription="Find Daily Grind cafés near a postal code.">
++        <h3>Find a Café</h3>
++        <label for="loc-zip">Postal code</label>
++        <input type="text" id="loc-zip" name="zip" required inputmode="numeric" autocomplete="postal-code"
++          toolparamdescription="e.g., 05401">
++        <button type="submit" class="btn">Find Locations</button>
++      </form>
++
++      <form action="/order-online" method="get" toolname="start-order"
++        tooldescription="Start an online pickup order for a drink.">
++        <h3>Order Ahead</h3>
++        <label for="order-item">Drink</label>
++        <select id="order-item" name="item" required toolparamdescription="Which drink to order">
++          <option value="maple-oat-latte">Maple Oat Latte</option>
++          <option value="dark-roast-espresso">Dark Roast Espresso</option>
++          <option value="cold-brew">Cold Brew</option>
++        </select>
++        <label for="order-qty">Quantity</label>
++        <input type="number" id="order-qty" name="qty" min="1" max="10" value="1" required>
++        <button type="submit" class="btn">Order Now</button>
++      </form>
++
++      <form action="/rewards" method="get" toolname="check-rewards" toolautosubmit
++        tooldescription="Look up a rewards member's points balance.">
++        <h3>Rewards Balance</h3>
++        <label for="rw-id">Member ID</label>
++        <input type="text" id="rw-id" name="member" required toolparamdescription="Rewards number from the member's card or account page">
++        <button type="submit" class="btn">Check Balance</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>

@@ -1,0 +1,23 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,19 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card h3::before {
++      content: url("coffee-bean.png");
++      content: image-set(
++        url("coffee-bean.png") type("image/png") 1x,
++        url("coffee-bean-2x.png") type("image/png") 2x
++      );
++      display: inline-block;
++      margin-right: 8px;
++      vertical-align: middle;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;

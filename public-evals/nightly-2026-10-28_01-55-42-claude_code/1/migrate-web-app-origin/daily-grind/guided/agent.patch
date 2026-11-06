@@ -1,0 +1,858 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..1eae0cf
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++dist/
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..b2c5a1a
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,98 @@
++# The Daily Grind — moving the installed app to a new origin
++
++One shared static app is built into two deployable sites:
++
++| Build output   | Origin (from `site.config.json`) | Role                                            |
++| -------------- | -------------------------------- | ----------------------------------------------- |
++| `dist/legacy`  | `legacyOrigin`                   | Where users installed from. Authorises the move. |
++| `dist/next`    | `nextOrigin`                     | The new home. Claims the legacy installation.    |
++
++```sh
++pnpm run build          # writes dist/legacy and dist/next
++pnpm run start:next     # serve dist/next  (PORT, default 11222)
++pnpm run start:legacy   # serve dist/legacy (LEGACY_PORT, default 11223)
++```
++
++Change origins only in `site.config.json`. The build derives every place they
++must agree: both manifests, the `.well-known` association file, and the runtime
++`config.js` each site loads.
++
++## What moves, and how
++
++### 1. The installation (OS shortcuts, taskbar / home-screen icon) — browser-native
++
++Web App Origin Migration lets the browser re-point an installed app to a new
++origin in place, keeping the OS-level shortcut and the app identity. It is a
++two-sided handshake that the build emits for you:
++
++* **New origin claims the old one.** `dist/next/manifest.webmanifest` has a
++  stable `id` and `migrate_from: [{ id: "<legacyOrigin>/" }]`.
++* **Old origin authorises the new one.**
++  `dist/legacy/.well-known/web-app-origin-association` contains
++  `{ "<nextOrigin>": { "allow_migration": true } }`.
++* **Old origin nudges existing installs.** `dist/legacy/manifest.webmanifest`
++  carries `migrate_to` so installed legacy apps are offered the move the next
++  time the browser checks the manifest, without waiting for a visit to the
++  new site.
++* Manifest `shortcuts` (Order, Menu, Rewards) are identical on both origins, so
++  the jump-list entries survive the move.
++
++Set `"forceMigration": true` in `site.config.json` to make the prompt
++mandatory (the browser then offers **Update** or **Remove**, never a silent
++delete).
++
++**Constraint:** both origins must be same-site (same registrable domain, same
++scheme). `app.dailygrind.com` → `order.dailygrind.com` is fine;
++`dailygrind.com` → `dailygrind.coffee` is refused by browsers, and the build
++fails early on obvious mismatches.
++
++**Support:** Chrome / Edge 149+. Firefox and Safari keep the old install. For
++them the legacy site shows a banner linking to the new origin (see below), and
++the user re-installs manually.
++
++### 2. User configuration — app-level handoff
++
++Storage is origin-bound and is **not** migrated by the browser. Preferences
++(`localStorage` key `dg:prefs`: pickup location, default milk, name on cup) are
++carried over by `app/migration.js`:
++
++1. On first launch at the new origin, the page embeds a hidden iframe of
++   `<legacyOrigin>/migrate-export.html`.
++2. That page reads the legacy origin's own (unpartitioned, because same-site)
++   storage and `postMessage`s the preferences with `targetOrigin` pinned to
++   `nextOrigin`, so no other embedder can receive them.
++3. The new origin accepts the message only if `event.source` is its iframe and
++   the sender is exactly same-origin with `legacyOrigin` (via the `Origin`
++   API, falling back to `URL` parsing where it is missing). The payload is
++   passed through `sanitizePrefs`, saved, the form is refreshed, and a toast
++   confirms the carry-over.
++4. The new origin acknowledges; the legacy origin records `exportedAt` and its
++   banner changes to "your preferences have already been moved".
++
++Rules: preferences already set on the new origin are never overwritten; a
++silent legacy (offline, decommissioned) is retried on up to three launches and
++then given up; an unexpected payload `version` is treated as "nothing to
++import".
++
++## Deployment order
++
++1. Deploy `dist/legacy` to the legacy origin first. It must serve
++   `/.well-known/web-app-origin-association` (ideally as `application/json`)
++   and `/migrate-export.html` before the new origin goes live.
++2. Deploy `dist/next` to the new origin.
++3. Keep the legacy origin up for as long as you want preferences to carry
++   over; the install migration itself needs the association file reachable.
++
++Recommended headers on the legacy origin for `/migrate-export.html`:
++`Content-Security-Policy: frame-ancestors <nextOrigin>` and
++`X-Robots-Tag: noindex`. Not required for safety (the message is already
++origin-pinned) but a sensible second layer.
++
++## Layout
++
++```
++app/                     shared site (index.html, app.js, prefs.js, origins.js, migration.js, icons/)
++origins/legacy/          files only the legacy origin serves (migrate-export.html)
++scripts/build.mjs        emits dist/<role> with generated config.js, manifest, .well-known
++site.config.json         the single place origins and names are defined
++```
+diff --git a/app/app.js b/app/app.js
+new file mode 100644
+index 0000000..2f89668
+--- /dev/null
++++ b/app/app.js
+@@ -0,0 +1,23 @@
++import { loadPrefs, savePrefs } from './prefs.js';
++import { initMigration } from './migration.js';
++
++const form = document.getElementById('prefs-form');
++
++function fillForm(prefs) {
++  for (const field of form.elements) {
++    if (field.name && field.name in prefs) field.value = prefs[field.name];
++  }
++}
++
++fillForm(loadPrefs());
++
++form.addEventListener('submit', (event) => {
++  event.preventDefault();
++  savePrefs(Object.fromEntries(new FormData(form)));
++  form.elements.status.value = 'Preferences saved on this device.';
++});
++
++// Reflect preferences that arrive from the legacy origin after first paint.
++document.addEventListener('dg:prefs-imported', (event) => fillForm(event.detail));
++
++initMigration();
+diff --git a/app/icons/icon-192.png b/app/icons/icon-192.png
+new file mode 100644
+index 0000000..6dacf33
+Binary files /dev/null and b/app/icons/icon-192.png differ
+diff --git a/app/icons/icon-512.png b/app/icons/icon-512.png
+new file mode 100644
+index 0000000..655b943
+Binary files /dev/null and b/app/icons/icon-512.png differ
+diff --git a/app/icons/icon-96.png b/app/icons/icon-96.png
+new file mode 100644
+index 0000000..f67b548
+Binary files /dev/null and b/app/icons/icon-96.png differ
+diff --git a/app/icons/icon-maskable-512.png b/app/icons/icon-maskable-512.png
+new file mode 100644
+index 0000000..c87de98
+Binary files /dev/null and b/app/icons/icon-maskable-512.png differ
+diff --git a/app/icons/icon.svg b/app/icons/icon.svg
+new file mode 100644
+index 0000000..a5e0c52
+--- /dev/null
++++ b/app/icons/icon.svg
+@@ -0,0 +1,10 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
++  <title>The Daily Grind</title>
++  <rect width="512" height="512" fill="#4e342e"/>
++  <rect x="190" y="84" width="20" height="88" rx="10" fill="#ffab40"/>
++  <rect x="246" y="64" width="20" height="108" rx="10" fill="#ffab40"/>
++  <rect x="302" y="84" width="20" height="88" rx="10" fill="#ffab40"/>
++  <path d="M132 204h248v116a76 76 0 0 1-76 76h-96a76 76 0 0 1-76-76z" fill="#fafafa"/>
++  <path d="M380 219a57 57 0 0 1 0 114v-26a31 31 0 0 0 0-62z" fill="#fafafa"/>
++  <rect x="108" y="412" width="296" height="26" rx="13" fill="#d7ccc8"/>
++</svg>
+diff --git a/index.html b/app/index.html
+similarity index 56%
+rename from index.html
+rename to app/index.html
+index 66c9173..0ec815d 100644
+--- a/index.html
++++ b/app/index.html
+@@ -5,6 +5,10 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#4e342e">
++  <link rel="manifest" href="/manifest.webmanifest">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
++  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -72,6 +76,28 @@
+       border-radius: 4px;
+     }
+ 
++    /* Origin move notice (legacy origin only) */
++    .move-notice {
++      background: var(--accent);
++      color: var(--text);
++      padding: 0.75rem 5%;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem 1rem;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++    }
++
++    .move-notice[hidden] {
++      display: none;
++    }
++
++    .move-notice a {
++      color: var(--text);
++      font-weight: bold;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -129,12 +155,78 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Preferences */
++    .prefs {
++      margin-top: 60px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .prefs h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .prefs form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 16px;
++      margin-top: 20px;
++      align-items: end;
++    }
++
++    .prefs label {
++      display: grid;
++      gap: 4px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .prefs select,
++    .prefs input {
++      font: inherit;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .prefs .btn {
++      margin-top: 0;
++    }
++
++    .prefs output {
++      grid-column: 1 / -1;
++      font-size: 0.9rem;
++      min-height: 1.5em;
++    }
++
++    /* Toast shown once after preferences are carried over */
++    .toast {
++      inset: auto 1rem 1rem auto;
++      margin: 0;
++      padding: 14px 18px;
++      max-width: 22rem;
++      border: 0;
++      border-left: 5px solid var(--accent);
++      border-radius: 6px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -168,6 +260,11 @@
+     </ul>
+   </nav>
+ 
++  <aside id="move-notice" class="move-notice" aria-label="App has moved" hidden>
++    <span id="move-notice-text">The Daily Grind app has a new home.</span>
++    <a id="move-notice-link" href="/">Open the new app</a>
++  </aside>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -195,6 +292,38 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="prefs" aria-labelledby="prefs-heading">
++      <h2 id="prefs-heading">Your Preferences</h2>
++      <p>Saved on this device so your usual order is one tap away.</p>
++      <form id="prefs-form" autocomplete="off">
++        <label>
++          Pickup location
++          <select name="location">
++            <option value="">Choose a café</option>
++            <option value="downtown">Downtown</option>
++            <option value="riverside">Riverside</option>
++            <option value="campus">Campus</option>
++          </select>
++        </label>
++        <label>
++          Default milk
++          <select name="milk">
++            <option value="">No preference</option>
++            <option value="whole">Whole</option>
++            <option value="oat">Oat</option>
++            <option value="almond">Almond</option>
++            <option value="none">Black, no milk</option>
++          </select>
++        </label>
++        <label>
++          Name on cup
++          <input name="cupName" type="text" maxlength="40" placeholder="e.g. Sam">
++        </label>
++        <button type="submit" class="btn">Save preferences</button>
++        <output name="status" for="prefs-form" aria-live="polite"></output>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +336,12 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div id="import-toast" class="toast" popover="manual" role="status">
++    Welcome back! Your saved preferences came with you to the new app.
++  </div>
++
++  <script type="module" src="/app.js"></script>
++
+ </body>
+ 
+ </html>
+diff --git a/app/migration.js b/app/migration.js
+new file mode 100644
+index 0000000..e054834
+--- /dev/null
++++ b/app/migration.js
+@@ -0,0 +1,161 @@
++// Carries per-device preferences from the legacy origin to the new origin.
++//
++// The browser's Web App Origin Migration (manifest `migrate_from` /
++// `migrate_to` + /.well-known/web-app-origin-association) moves the
++// *installation* — taskbar / home-screen shortcuts and the app identity.
++// It does NOT move storage, so this module does the data handoff:
++//
++//   new origin  ──(hidden iframe)──►  legacy origin /migrate-export.html
++//               ◄──── postMessage { type: 'dg:prefs', prefs } ────
++//               ───── postMessage { type: 'dg:prefs-imported' } ──►
++//
++// Both origins are same-site (shared registrable domain), so the framed
++// legacy document reads its own unpartitioned localStorage.
++
++import { config } from './config.js';
++import { hasPrefs, loadPrefs, sanitizePrefs, savePrefs, PREFS_VERSION } from './prefs.js';
++import { isSameOrigin } from './origins.js';
++
++export const EXPORT_PATH = '/migrate-export.html';
++export const MESSAGE_PREFS = 'dg:prefs';
++export const MESSAGE_IMPORTED = 'dg:prefs-imported';
++
++const STATE_KEY = 'dg:migration';
++const MAX_ATTEMPTS = 3;
++const HANDSHAKE_TIMEOUT_MS = 8000;
++const IFRAME_LINGER_MS = 1000;
++
++function readState() {
++  try {
++    const raw = localStorage.getItem(STATE_KEY);
++    const state = raw ? JSON.parse(raw) : {};
++    return state && typeof state === 'object' ? state : {};
++  } catch {
++    return {};
++  }
++}
++
++function writeState(state) {
++  try {
++    localStorage.setItem(STATE_KEY, JSON.stringify(state));
++  } catch {
++    // Non-fatal: without storage we simply retry next launch.
++  }
++}
++
++export function initMigration() {
++  if (config.role === 'legacy') {
++    showMoveNotice();
++  } else {
++    importFromLegacy();
++  }
++}
++
++/* ---------- legacy origin ---------- */
++
++function showMoveNotice() {
++  const notice = document.getElementById('move-notice');
++  const text = document.getElementById('move-notice-text');
++  const link = document.getElementById('move-notice-link');
++  if (!notice || !text || !link) return;
++
++  const target = new URL('/', config.nextOrigin);
++  link.href = target.href;
++
++  const { exportedAt } = readState();
++  text.textContent = exportedAt
++    ? `${config.appName} now lives at ${target.host}. Your preferences have already been moved there.`
++    : `${config.appName} is moving to ${target.host}. Open it once and your preferences come with you.`;
++  notice.hidden = false;
++}
++
++/** Called by the framed export page once the new origin acknowledges receipt. */
++export function markExported() {
++  writeState({ ...readState(), exportedAt: new Date().toISOString() });
++}
++
++/* ---------- new origin ---------- */
++
++async function importFromLegacy() {
++  const state = readState();
++  if (state.status === 'done') return;
++
++  const attempts = Number(state.attempts) || 0;
++  if (attempts >= MAX_ATTEMPTS) return;
++
++  // Preferences already set on this origin win; never clobber them.
++  if (hasPrefs(loadPrefs())) {
++    writeState({ status: 'done', reason: 'local-prefs-present', attempts });
++    return;
++  }
++
++  writeState({ ...state, status: 'pending', attempts: attempts + 1 });
++
++  const prefs = await fetchLegacyPrefs();
++  if (prefs === null) return; // No answer: leave pending and retry next launch.
++
++  if (hasPrefs(prefs)) {
++    savePrefs(prefs);
++    document.dispatchEvent(new CustomEvent('dg:prefs-imported', { detail: prefs }));
++    showImportToast();
++  }
++  writeState({ status: 'done', importedAt: new Date().toISOString(), attempts: attempts + 1 });
++}
++
++function fetchLegacyPrefs() {
++  return new Promise((resolve) => {
++    const iframe = document.createElement('iframe');
++    iframe.hidden = true;
++    iframe.tabIndex = -1;
++    iframe.setAttribute('aria-hidden', 'true');
++    iframe.referrerPolicy = 'strict-origin';
++
++    let settled = false;
++    let timer = 0;
++
++    const finish = (value) => {
++      if (settled) return;
++      settled = true;
++      clearTimeout(timer);
++      window.removeEventListener('message', onMessage);
++      // Keep the frame alive briefly so the acknowledgement is delivered.
++      setTimeout(() => iframe.remove(), IFRAME_LINGER_MS);
++      resolve(value);
++    };
++
++    const onMessage = (event) => {
++      if (event.source !== iframe.contentWindow) return;
++      if (!isSameOrigin(event, config.legacyOrigin)) return;
++
++      const data = event.data;
++      if (!data || data.type !== MESSAGE_PREFS) return;
++      if (data.version !== PREFS_VERSION) {
++        finish({});
++        return;
++      }
++
++      const prefs = sanitizePrefs(data.prefs);
++      event.source.postMessage({ type: MESSAGE_IMPORTED }, config.legacyOrigin);
++      finish(prefs);
++    };
++
++    window.addEventListener('message', onMessage);
++    timer = setTimeout(() => finish(null), HANDSHAKE_TIMEOUT_MS);
++
++    iframe.src = new URL(EXPORT_PATH, config.legacyOrigin).href;
++    document.body.append(iframe);
++  });
++}
++
++function showImportToast() {
++  const toast = document.getElementById('import-toast');
++  if (!toast) return;
++  if (typeof toast.showPopover === 'function') {
++    toast.showPopover();
++    setTimeout(() => toast.hidePopover(), 8000);
++  } else {
++    toast.removeAttribute('popover');
++    toast.style.position = 'fixed';
++    setTimeout(() => toast.remove(), 8000);
++  }
++}
+diff --git a/app/origins.js b/app/origins.js
+new file mode 100644
+index 0000000..086711d
+--- /dev/null
++++ b/app/origins.js
+@@ -0,0 +1,41 @@
++// Origin comparison for cross-document messages, following the Origin API
++// (Origin.from / isSameOrigin) with a URL-based fallback where it is missing.
++
++function extractOrigin(candidate) {
++  try {
++    return Origin.from(candidate);
++  } catch (err) {
++    // Synthetic MessageEvents (tests) carry only the serialized origin string.
++    if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
++      return Origin.from(candidate.origin);
++    }
++    throw err;
++  }
++}
++
++function extractUrlString(candidate) {
++  if (typeof candidate === 'string') return candidate;
++  if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
++    return candidate.origin;
++  }
++  if (candidate === globalThis) return globalThis.location?.href ?? '';
++  return candidate?.href ?? '';
++}
++
++/**
++ * True when `candidate` (a MessageEvent, URL string, or URL-bearing object)
++ * is exactly same-origin with `trustedUrl`. Opaque ("null") origins,
++ * unparsable input, and any thrown error all yield `false`.
++ */
++export function isSameOrigin(candidate, trustedUrl) {
++  try {
++    if ('Origin' in globalThis) {
++      return extractOrigin(candidate).isSameOrigin(Origin.from(trustedUrl));
++    }
++    const candidateUrl = new URL(extractUrlString(candidate));
++    const trusted = new URL(trustedUrl);
++    return candidateUrl.origin !== 'null' && candidateUrl.origin === trusted.origin;
++  } catch {
++    return false;
++  }
++}
+diff --git a/app/prefs.js b/app/prefs.js
+new file mode 100644
+index 0000000..c21f979
+--- /dev/null
++++ b/app/prefs.js
+@@ -0,0 +1,60 @@
++// Per-device user configuration. Storage is origin-bound, so this is the
++// payload that migration.js carries from the legacy origin to the new one.
++
++const STORAGE_KEY = 'dg:prefs';
++export const PREFS_VERSION = 1;
++
++const ALLOWED = {
++  location: new Set(['downtown', 'riverside', 'campus']),
++  milk: new Set(['whole', 'oat', 'almond', 'none']),
++};
++const CUP_NAME_MAX = 40;
++
++/**
++ * Reduce any untrusted object to a well-formed preferences record.
++ * Unknown keys and invalid values are dropped rather than rejected wholesale.
++ */
++export function sanitizePrefs(input) {
++  const out = {};
++  if (!input || typeof input !== 'object') return out;
++
++  for (const [key, allowed] of Object.entries(ALLOWED)) {
++    const value = input[key];
++    if (typeof value === 'string' && allowed.has(value)) out[key] = value;
++  }
++
++  if (typeof input.cupName === 'string') {
++    const name = input.cupName.trim().slice(0, CUP_NAME_MAX);
++    if (name) out.cupName = name;
++  }
++
++  return out;
++}
++
++export function hasPrefs(prefs) {
++  return Boolean(prefs) && Object.keys(prefs).length > 0;
++}
++
++export function loadPrefs() {
++  try {
++    const raw = localStorage.getItem(STORAGE_KEY);
++    return raw ? sanitizePrefs(JSON.parse(raw)) : {};
++  } catch {
++    return {};
++  }
++}
++
++export function savePrefs(prefs) {
++  const clean = sanitizePrefs(prefs);
++  try {
++    if (hasPrefs(clean)) {
++      localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
++    } else {
++      localStorage.removeItem(STORAGE_KEY);
++    }
++  } catch {
++    // Storage may be unavailable (private mode, quota). Preferences simply
++    // won't persist; the UI keeps working.
++  }
++  return clean;
++}
+diff --git a/origins/legacy/migrate-export.html b/origins/legacy/migrate-export.html
+new file mode 100644
+index 0000000..1e9ae5d
+--- /dev/null
++++ b/origins/legacy/migrate-export.html
+@@ -0,0 +1,37 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <title>Moving your preferences…</title>
++  <meta name="robots" content="noindex, nofollow">
++  <script type="module">
++    // Served only from the legacy origin. When framed by the new origin it
++    // hands over this device's preferences; any other embedder gets nothing
++    // because postMessage is pinned to config.nextOrigin.
++    import { config } from '/config.js';
++    import { loadPrefs, PREFS_VERSION } from '/prefs.js';
++    import { isSameOrigin } from '/origins.js';
++    import { markExported, MESSAGE_PREFS, MESSAGE_IMPORTED } from '/migration.js';
++
++    if (window.parent === window) {
++      // Opened directly: this page has no UI, send the user to the new app.
++      location.replace(new URL('/', config.nextOrigin).href);
++    } else {
++      window.addEventListener('message', (event) => {
++        if (event.source !== window.parent) return;
++        if (!isSameOrigin(event, config.nextOrigin)) return;
++        if (event.data?.type === MESSAGE_IMPORTED) markExported();
++      });
++
++      window.parent.postMessage(
++        { type: MESSAGE_PREFS, version: PREFS_VERSION, prefs: loadPrefs() },
++        config.nextOrigin,
++      );
++    }
++  </script>
++</head>
++
++<body></body>
++
++</html>
+diff --git a/package.json b/package.json
+index 2bd4d77..14b3bd7 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,12 @@
+ {
+   "name": "daily-grind",
+-  "version": "1.0.0",
++  "version": "2.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "node scripts/build.mjs",
++    "start": "pnpm run start:next",
++    "start:next": "cd dist/next && pnpm dlx statikk --port ${PORT:-11222}",
++    "start:legacy": "cd dist/legacy && pnpm dlx statikk --port ${LEGACY_PORT:-11223}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..580ecdd
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,134 @@
++// Builds two deployable static sites from one shared app:
++//   dist/legacy → the origin users installed from (authorises the move)
++//   dist/next   → the new origin (claims the legacy install)
++// Origins come from site.config.json so manifests, the .well-known
++// association file, and the runtime config can never drift apart.
++
++import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import path from 'node:path';
++
++const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
++const config = JSON.parse(await readFile(path.join(root, 'site.config.json'), 'utf8'));
++
++const legacyOrigin = normalizeOrigin(config.legacyOrigin, 'legacyOrigin');
++const nextOrigin = normalizeOrigin(config.nextOrigin, 'nextOrigin');
++assertSameSite(legacyOrigin, nextOrigin);
++
++const ICONS = [
++  { src: '/icons/icon.svg', sizes: 'any', type: 'image/svg+xml' },
++  { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
++  { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
++  { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
++];
++const SHORTCUT_ICON = [{ src: '/icons/icon-96.png', sizes: '96x96', type: 'image/png' }];
++
++function manifestFor(role) {
++  const manifest = {
++    name: config.appName,
++    short_name: config.shortName,
++    description: 'Ethically sourced, locally roasted, delivered to your cup.',
++    // `id` is what the browser uses to recognise this app across updates and
++    // across the origin move. Keep it stable.
++    id: '/',
++    start_url: '/',
++    scope: '/',
++    display: 'standalone',
++    background_color: '#fafafa',
++    theme_color: '#4e342e',
++    icons: ICONS,
++    // OS-level jump-list / long-press shortcuts. Identical on both origins so
++    // the migrated install keeps the same entries.
++    shortcuts: [
++      { name: 'Order Now', short_name: 'Order', url: '/order-online', icons: SHORTCUT_ICON },
++      { name: 'Menu', url: '/menu', icons: SHORTCUT_ICON },
++      { name: 'Rewards', url: '/rewards', icons: SHORTCUT_ICON },
++    ],
++  };
++
++  if (role === 'legacy') {
++    // Hint to browsers that an installed legacy app should move now, rather
++    // than waiting for the user to visit the new origin.
++    manifest.migrate_to = [{ id: `${nextOrigin}/`, install_url: `${nextOrigin}/` }];
++  } else {
++    const from = { id: `${legacyOrigin}/` };
++    if (config.forceMigration) from.behavior = 'force';
++    manifest.migrate_from = [from];
++  }
++  return manifest;
++}
++
++async function buildSite(role) {
++  const out = path.join(root, 'dist', role);
++  await rm(out, { recursive: true, force: true });
++  await mkdir(out, { recursive: true });
++
++  await cp(path.join(root, 'app'), out, { recursive: true });
++  const overlay = path.join(root, 'origins', role);
++  await cp(overlay, out, { recursive: true }).catch((err) => {
++    if (err.code !== 'ENOENT') throw err;
++  });
++
++  await writeFile(
++    path.join(out, 'config.js'),
++    `// Generated by scripts/build.mjs — edit site.config.json instead.\n` +
++      `export const config = Object.freeze(${JSON.stringify(
++        { role, appName: config.appName, legacyOrigin, nextOrigin },
++        null,
++        2,
++      )});\n`,
++  );
++
++  await writeFile(
++    path.join(out, 'manifest.webmanifest'),
++    JSON.stringify(manifestFor(role), null, 2) + '\n',
++  );
++
++  if (role === 'legacy') {
++    // The legacy origin must explicitly authorise the new origin, otherwise
++    // any same-site origin could claim the installation.
++    await mkdir(path.join(out, '.well-known'), { recursive: true });
++    await writeFile(
++      path.join(out, '.well-known', 'web-app-origin-association'),
++      JSON.stringify({ [nextOrigin]: { allow_migration: true } }, null, 2) + '\n',
++    );
++  }
++
++  console.log(`built dist/${role}  (${role === 'legacy' ? legacyOrigin : nextOrigin})`);
++}
++
++await buildSite('legacy');
++await buildSite('next');
++
++/* ---------- helpers ---------- */
++
++function normalizeOrigin(value, name) {
++  let url;
++  try {
++    url = new URL(value);
++  } catch {
++    throw new Error(`site.config.json: ${name} is not a valid URL: ${value}`);
++  }
++  if (url.origin !== value) {
++    throw new Error(`site.config.json: ${name} must be a bare origin (no path/trailing slash): got ${value}, expected ${url.origin}`);
++  }
++  if (url.protocol !== 'https:' && url.hostname !== 'localhost') {
++    throw new Error(`site.config.json: ${name} must use https (installable apps require a secure context)`);
++  }
++  return url.origin;
++}
++
++// Origin migration is only permitted between same-site origins (shared
++// registrable domain). Node has no Public Suffix List, so this is a cheap
++// guard against obvious mistakes, not a full eTLD+1 check.
++function assertSameSite(a, b) {
++  const ua = new URL(a);
++  const ub = new URL(b);
++  if (ua.hostname === 'localhost' || ub.hostname === 'localhost') return;
++  const site = (h) => h.split('.').slice(-2).join('.');
++  if (ua.protocol !== ub.protocol || site(ua.hostname) !== site(ub.hostname)) {
++    throw new Error(
++      `legacyOrigin (${a}) and nextOrigin (${b}) are not same-site; browsers refuse to migrate an install across registrable domains.`,
++    );
++  }
++}
+diff --git a/site.config.json b/site.config.json
+new file mode 100644
+index 0000000..6f4fa0a
+--- /dev/null
++++ b/site.config.json
+@@ -0,0 +1,7 @@
++{
++  "appName": "The Daily Grind",
++  "shortName": "Daily Grind",
++  "legacyOrigin": "https://app.dailygrind.com",
++  "nextOrigin": "https://order.dailygrind.com",
++  "forceMigration": false
++}

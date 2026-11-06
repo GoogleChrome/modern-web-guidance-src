@@ -1,0 +1,68 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,64 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Foreground time tracking: counts only the time this tab is visible to the user.
++    (function () {
++      var accumulatedMs = 0;   // completed visible intervals
++      var visibleSince = null; // performance.now() when the current visible interval began
++
++      function startInterval() {
++        if (visibleSince === null) {
++          visibleSince = performance.now();
++        }
++      }
++
++      function endInterval() {
++        if (visibleSince !== null) {
++          accumulatedMs += performance.now() - visibleSince;
++          visibleSince = null;
++        }
++      }
++
++      function isVisible() {
++        return document.visibilityState === 'visible';
++      }
++
++      /**
++       * Total time (in milliseconds) the page has been in the foreground since load,
++       * including the currently open visible interval, if any.
++       */
++      function getTotalForegroundTime() {
++        var openMs = visibleSince !== null ? performance.now() - visibleSince : 0;
++        return accumulatedMs + openMs;
++      }
++
++      document.addEventListener('visibilitychange', function () {
++        if (isVisible()) {
++          startInterval();
++        } else {
++          endInterval();
++        }
++      });
++
++      // pagehide/pageshow cover navigation away and back-forward cache restores,
++      // which do not always fire visibilitychange.
++      window.addEventListener('pagehide', endInterval);
++      window.addEventListener('pageshow', function () {
++        if (isVisible()) {
++          startInterval();
++        }
++      });
++
++      if (isVisible()) {
++        startInterval();
++      }
++
++      window.getTotalForegroundTime = getTotalForegroundTime;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

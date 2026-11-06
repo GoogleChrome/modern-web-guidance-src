@@ -1,0 +1,591 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,179 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Barista Order-Tracking Kanban Board */
++    .kanban-section {
++      margin-top: 50px;
++      contain: layout style;
++    }
++
++    .kanban-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 20px;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .kanban-controls {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .kanban-controls select,
++    .kanban-controls input {
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .kanban-controls .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++
++    .kanban-board {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 20px;
++      align-items: start;
++      contain: layout style;
++    }
++
++    @media (max-width: 768px) {
++      .kanban-board {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .board-column {
++      background: #efebe9;
++      border-radius: 10px;
++      padding: 16px;
++      min-height: 420px;
++      max-height: 680px;
++      display: flex;
++      flex-direction: column;
++      border: 2px solid transparent;
++      /* Layout, style, and paint containment prevents column updates from triggering global reflows */
++      contain: content;
++      content-visibility: auto;
++      contain-intrinsic-size: 320px 500px;
++      transition: border-color 0.15s ease, background-color 0.15s ease;
++    }
++
++    .board-column.drag-over {
++      border-color: var(--accent);
++      background: #e6dfd9;
++    }
++
++    .column-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 14px;
++      padding-bottom: 10px;
++      border-bottom: 2px solid var(--secondary);
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--primary);
++    }
++
++    .column-count {
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      padding: 2px 9px;
++      border-radius: 12px;
++    }
++
++    .column-cards {
++      flex: 1;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      min-height: 320px;
++      padding: 4px;
++      contain: layout style;
++    }
++
++    .board-column .card {
++      text-align: left;
++      cursor: grab;
++      user-select: none;
++      touch-action: none;
++      border-left: 5px solid var(--primary);
++      padding: 14px 16px;
++      position: relative;
++      /* Isolate card layout/paint calculations and promote to compositor layer */
++      contain: layout style paint;
++      will-change: transform;
++      transform: translate3d(0, 0, 0);
++      transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), opacity 0.15s ease;
++    }
++
++    .board-column[data-status="queued"] .card {
++      border-left-color: #8d6e63;
++    }
++
++    .board-column[data-status="brewing"] .card {
++      border-left-color: var(--accent);
++    }
++
++    .board-column[data-status="ready"] .card {
++      border-left-color: #2e7d32;
++    }
++
++    .board-column .card:hover {
++      transform: translate3d(0, -2px, 0);
++    }
++
++    .board-column .card.is-dragging {
++      opacity: 0.35;
++      cursor: grabbing;
++    }
++
++    .card-meta {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.78rem;
++      color: #6d4c41;
++      margin-bottom: 4px;
++      font-weight: 600;
++    }
++
++    .card-badge {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 1px 7px;
++      border-radius: 4px;
++      font-size: 0.72rem;
++    }
++
++    .drag-ghost {
++      position: fixed;
++      top: 0;
++      left: 0;
++      pointer-events: none;
++      z-index: 9999;
++      margin: 0;
++      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
++      will-change: transform;
++      contain: layout style paint;
++      opacity: 0.95;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +365,106 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="kanban-section" aria-label="Barista Order Tracking Board">
++      <div class="kanban-header">
++        <h2>Barista Order Queue</h2>
++        <div class="kanban-controls">
++          <select id="new-drink-select" aria-label="Select drink to add">
++            <option value="Maple Oat Latte">Maple Oat Latte</option>
++            <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++            <option value="Cold Brew">Cold Brew</option>
++            <option value="Caramel Macchiato">Caramel Macchiato</option>
++            <option value="Matcha Green Tea Latte">Matcha Green Tea Latte</option>
++          </select>
++          <input type="text" id="new-customer-input" placeholder="Customer name (optional)" aria-label="Customer name" />
++          <button type="button" id="add-order-btn" class="btn">+ Add Order</button>
++          <button type="button" id="bulk-order-btn" class="btn" style="background: #6d4c41;">+50 Rush Orders</button>
++        </div>
++      </div>
++
++      <div class="kanban-board" id="kanban-board">
++        <!-- Queued Column -->
++        <div class="board-column" id="col-queued" data-column="queued" data-status="queued">
++          <div class="column-header">
++            <span>Queued</span>
++            <span class="column-count" data-count-for="queued">3</span>
++          </div>
++          <div class="column-cards" data-list-for="queued">
++            <div class="card" draggable="true" data-order-id="101" data-status="queued">
++              <div class="card-meta">
++                <span>#101 &bull; Alex</span>
++                <span class="card-badge">12oz Hot</span>
++              </div>
++              <h3>Maple Oat Latte</h3>
++              <p>Oat milk, extra Vermont maple drizzle</p>
++            </div>
++            <div class="card" draggable="true" data-order-id="102" data-status="queued">
++              <div class="card-meta">
++                <span>#102 &bull; Sam</span>
++                <span class="card-badge">Double Shot</span>
++              </div>
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, straight up</p>
++            </div>
++            <div class="card" draggable="true" data-order-id="103" data-status="queued">
++              <div class="card-meta">
++                <span>#103 &bull; Taylor</span>
++                <span class="card-badge">16oz Iced</span>
++              </div>
++              <h3>Cold Brew</h3>
++              <p>Light ice, splash of almond milk</p>
++            </div>
++          </div>
++        </div>
++
++        <!-- Brewing Column -->
++        <div class="board-column" id="col-brewing" data-column="brewing" data-status="brewing">
++          <div class="column-header">
++            <span>Brewing</span>
++            <span class="column-count" data-count-for="brewing">2</span>
++          </div>
++          <div class="column-cards" data-list-for="brewing">
++            <div class="card" draggable="true" data-order-id="99" data-status="brewing">
++              <div class="card-meta">
++                <span>#099 &bull; Jordan</span>
++                <span class="card-badge">16oz Hot</span>
++              </div>
++              <h3>Maple Oat Latte</h3>
++              <p>Half-caf, extra foam</p>
++            </div>
++            <div class="card" draggable="true" data-order-id="100" data-status="brewing">
++              <div class="card-meta">
++                <span>#100 &bull; Morgan</span>
++                <span class="card-badge">Triple Shot</span>
++              </div>
++              <h3>Dark Roast Espresso</h3>
++              <p>Ristretto pull, warm cup</p>
++            </div>
++          </div>
++        </div>
++
++        <!-- Ready Column -->
++        <div class="board-column" id="col-ready" data-column="ready" data-status="ready">
++          <div class="column-header">
++            <span>Ready</span>
++            <span class="column-count" data-count-for="ready">1</span>
++          </div>
++          <div class="column-cards" data-list-for="ready">
++            <div class="card" draggable="true" data-order-id="98" data-status="ready">
++              <div class="card-meta">
++                <span>#098 &bull; Casey</span>
++                <span class="card-badge">20oz Iced</span>
++              </div>
++              <h3>Cold Brew</h3>
++              <p>18-hour steep, black</p>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +475,300 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const board = document.getElementById('kanban-board');
++      if (!board) return;
++
++      const columns = {
++        queued: document.getElementById('col-queued'),
++        brewing: document.getElementById('col-brewing'),
++        ready: document.getElementById('col-ready')
++      };
++
++      const cardLists = {
++        queued: columns.queued.querySelector('.column-cards'),
++        brewing: columns.brewing.querySelector('.column-cards'),
++        ready: columns.ready.querySelector('.column-cards')
++      };
++
++      const countBadges = {
++        queued: columns.queued.querySelector('.column-count'),
++        brewing: columns.brewing.querySelector('.column-count'),
++        ready: columns.ready.querySelector('.column-count')
++      };
++
++      // Cache column counts in memory to avoid reading DOM layout / children length repeatedly
++      const columnCounts = {
++        queued: cardLists.queued.children.length,
++        brewing: cardLists.brewing.children.length,
++        ready: cardLists.ready.children.length
++      };
++
++      let nextOrderId = 104;
++
++      function updateCounts(sourceStatus, targetStatus, delta) {
++        if (sourceStatus && columnCounts[sourceStatus] !== undefined) {
++          columnCounts[sourceStatus] -= delta;
++          countBadges[sourceStatus].textContent = String(columnCounts[sourceStatus]);
++        }
++        if (targetStatus && columnCounts[targetStatus] !== undefined) {
++          columnCounts[targetStatus] += delta;
++          countBadges[targetStatus].textContent = String(columnCounts[targetStatus]);
++        }
++      }
++
++      function moveCardToColumn(card, targetColumnEl) {
++        if (!card || !targetColumnEl) return;
++        const targetStatus = targetColumnEl.dataset.status || targetColumnEl.dataset.column;
++        const sourceColumnEl = card.closest('.board-column');
++        const sourceStatus = sourceColumnEl
++          ? (sourceColumnEl.dataset.status || sourceColumnEl.dataset.column)
++          : card.dataset.status;
++
++        const targetList = cardLists[targetStatus] || targetColumnEl;
++        if (card.parentElement !== targetList) {
++          card.dataset.status = targetStatus;
++          targetList.appendChild(card);
++          if (sourceStatus !== targetStatus) {
++            updateCounts(sourceStatus, targetStatus, 1);
++          }
++        }
++      }
++
++      // --- 1. Native HTML5 Drag and Drop (Event Delegation) ---
++      let draggedCard = null;
++      let activeDropColumn = null;
++
++      board.addEventListener('dragstart', function (e) {
++        const card = e.target.closest('.card');
++        if (!card) return;
++        draggedCard = card;
++        if (e.dataTransfer) {
++          e.dataTransfer.effectAllowed = 'move';
++          e.dataTransfer.setData('text/plain', card.dataset.orderId || '');
++        }
++        requestAnimationFrame(function () {
++          if (draggedCard) draggedCard.classList.add('is-dragging');
++        });
++      });
++
++      board.addEventListener('dragover', function (e) {
++        if (!draggedCard) return;
++        e.preventDefault();
++        if (e.dataTransfer) {
++          e.dataTransfer.dropEffect = 'move';
++        }
++        const col = e.target.closest('.board-column');
++        if (col !== activeDropColumn) {
++          if (activeDropColumn) activeDropColumn.classList.remove('drag-over');
++          activeDropColumn = col;
++          if (activeDropColumn) activeDropColumn.classList.add('drag-over');
++        }
++      });
++
++      board.addEventListener('dragleave', function (e) {
++        const col = e.target.closest('.board-column');
++        if (col && !col.contains(e.relatedTarget)) {
++          col.classList.remove('drag-over');
++          if (activeDropColumn === col) activeDropColumn = null;
++        }
++      });
++
++      board.addEventListener('drop', function (e) {
++        e.preventDefault();
++        const col = e.target.closest('.board-column');
++        if (activeDropColumn) {
++          activeDropColumn.classList.remove('drag-over');
++          activeDropColumn = null;
++        }
++        if (col && draggedCard) {
++          moveCardToColumn(draggedCard, col);
++        }
++        if (draggedCard) {
++          draggedCard.classList.remove('is-dragging');
++          draggedCard = null;
++        }
++      });
++
++      board.addEventListener('dragend', function () {
++        if (activeDropColumn) {
++          activeDropColumn.classList.remove('drag-over');
++          activeDropColumn = null;
++        }
++        if (draggedCard) {
++          draggedCard.classList.remove('is-dragging');
++          draggedCard = null;
++        }
++      });
++
++      // --- 2. High-Performance Composited Pointer Drag (Zero Reflows During Move) ---
++      // Caches column bounding boxes once on pointerdown and updates ghost via GPU translate3d in rAF
++      let pointerDragState = null;
++
++      board.addEventListener('pointerdown', function (e) {
++        // Only handle primary button for touch/pen or when native drag isn't triggered
++        if (e.button !== 0 || e.pointerType === 'mouse') return;
++        const card = e.target.closest('.card');
++        if (!card) return;
++
++        const rect = card.getBoundingClientRect();
++        const colRects = Object.keys(columns).map(function (key) {
++          const el = columns[key];
++          const r = el.getBoundingClientRect();
++          return { key: key, el: el, left: r.left, right: r.right, top: r.top, bottom: r.bottom };
++        });
++
++        const ghost = card.cloneNode(true);
++        ghost.classList.add('drag-ghost');
++        ghost.style.width = rect.width + 'px';
++        ghost.style.height = rect.height + 'px';
++        ghost.style.transform = 'translate3d(' + rect.left + 'px, ' + rect.top + 'px, 0) scale(1.02)';
++        document.body.appendChild(ghost);
++
++        card.classList.add('is-dragging');
++        card.setPointerCapture(e.pointerId);
++
++        pointerDragState = {
++          card: card,
++          ghost: ghost,
++          pointerId: e.pointerId,
++          offsetX: e.clientX - rect.left,
++          offsetY: e.clientY - rect.top,
++          currentX: rect.left,
++          currentY: rect.top,
++          colRects: colRects,
++          hoveredCol: null,
++          rafId: 0
++        };
++      });
++
++      board.addEventListener('pointermove', function (e) {
++        if (!pointerDragState || e.pointerId !== pointerDragState.pointerId) return;
++        pointerDragState.currentX = e.clientX - pointerDragState.offsetX;
++        pointerDragState.currentY = e.clientY - pointerDragState.offsetY;
++
++        const clientX = e.clientX;
++        const clientY = e.clientY;
++
++        if (!pointerDragState.rafId) {
++          pointerDragState.rafId = requestAnimationFrame(function () {
++            if (!pointerDragState) return;
++            pointerDragState.rafId = 0;
++            pointerDragState.ghost.style.transform =
++              'translate3d(' + pointerDragState.currentX + 'px, ' + pointerDragState.currentY + 'px, 0) scale(1.02)';
++
++            let matchedCol = null;
++            for (let i = 0; i < pointerDragState.colRects.length; i++) {
++              const c = pointerDragState.colRects[i];
++              if (clientX >= c.left && clientX <= c.right && clientY >= c.top && clientY <= c.bottom) {
++                matchedCol = c.el;
++                break;
++              }
++            }
++            if (matchedCol !== pointerDragState.hoveredCol) {
++              if (pointerDragState.hoveredCol) pointerDragState.hoveredCol.classList.remove('drag-over');
++              pointerDragState.hoveredCol = matchedCol;
++              if (pointerDragState.hoveredCol) pointerDragState.hoveredCol.classList.add('drag-over');
++            }
++          });
++        }
++      });
++
++      function finishPointerDrag(e) {
++        if (!pointerDragState || e.pointerId !== pointerDragState.pointerId) return;
++        if (pointerDragState.rafId) cancelAnimationFrame(pointerDragState.rafId);
++        if (pointerDragState.hoveredCol) {
++          pointerDragState.hoveredCol.classList.remove('drag-over');
++          moveCardToColumn(pointerDragState.card, pointerDragState.hoveredCol);
++        }
++        pointerDragState.card.classList.remove('is-dragging');
++        pointerDragState.ghost.remove();
++        pointerDragState = null;
++      }
++
++      board.addEventListener('pointerup', finishPointerDrag);
++      board.addEventListener('pointercancel', finishPointerDrag);
++
++      // --- 3. Batched Order Creation via DocumentFragment ---
++      const drinkNotes = {
++        'Maple Oat Latte': ['Oat milk, extra Vermont maple drizzle', '12oz Hot'],
++        'Dark Roast Espresso': ['Bold, smokey, double shot', 'Double Shot'],
++        'Cold Brew': ['18-hour steep, light ice', '16oz Iced'],
++        'Caramel Macchiato': ['Vanilla syrup, caramel crosshatch', '16oz Hot'],
++        'Matcha Green Tea Latte': ['Ceremonial grade matcha, oat milk', '12oz Iced']
++      };
++      const sampleCustomers = ['Alex', 'Sam', 'Taylor', 'Jordan', 'Morgan', 'Casey', 'Riley', 'Quinn', 'Avery', 'Parker'];
++
++      function createOrderCardElement(orderId, drinkName, customerName, status) {
++        const info = drinkNotes[drinkName] || ['Custom barista preparation', '12oz'];
++        const card = document.createElement('div');
++        card.className = 'card';
++        card.draggable = true;
++        card.dataset.orderId = String(orderId);
++        card.dataset.status = status;
++
++        const meta = document.createElement('div');
++        meta.className = 'card-meta';
++
++        const idSpan = document.createElement('span');
++        idSpan.textContent = '#' + orderId + ' \u2022 ' + customerName;
++
++        const badgeSpan = document.createElement('span');
++        badgeSpan.className = 'card-badge';
++        badgeSpan.textContent = info[1];
++
++        meta.appendChild(idSpan);
++        meta.appendChild(badgeSpan);
++
++        const title = document.createElement('h3');
++        title.textContent = drinkName;
++
++        const desc = document.createElement('p');
++        desc.textContent = info[0];
++
++        card.appendChild(meta);
++        card.appendChild(title);
++        card.appendChild(desc);
++        return card;
++      }
++
++      const addOrderBtn = document.getElementById('add-order-btn');
++      const bulkOrderBtn = document.getElementById('bulk-order-btn');
++      const drinkSelect = document.getElementById('new-drink-select');
++      const customerInput = document.getElementById('new-customer-input');
++
++      if (addOrderBtn) {
++        addOrderBtn.addEventListener('click', function () {
++          const drink = drinkSelect ? drinkSelect.value : 'Maple Oat Latte';
++          const customer = (customerInput && customerInput.value.trim()) ||
++            sampleCustomers[nextOrderId % sampleCustomers.length];
++          const card = createOrderCardElement(nextOrderId++, drink, customer, 'queued');
++          cardLists.queued.appendChild(card);
++          updateCounts(null, 'queued', 1);
++          if (customerInput) customerInput.value = '';
++        });
++      }
++
++      if (bulkOrderBtn) {
++        bulkOrderBtn.addEventListener('click', function () {
++          const drinks = ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew'];
++          const fragment = document.createDocumentFragment();
++          const batchSize = 50;
++          for (let i = 0; i < batchSize; i++) {
++            const drink = drinks[i % drinks.length];
++            const customer = sampleCustomers[(nextOrderId + i) % sampleCustomers.length];
++            fragment.appendChild(createOrderCardElement(nextOrderId++, drink, customer, 'queued'));
++          }
++          requestAnimationFrame(function () {
++            cardLists.queued.appendChild(fragment);
++            updateCounts(null, 'queued', batchSize);
++          });
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

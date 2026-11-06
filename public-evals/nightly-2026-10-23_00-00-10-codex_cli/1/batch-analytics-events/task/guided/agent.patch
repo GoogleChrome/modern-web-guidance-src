@@ -1,0 +1,41 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,36 @@
++# Daily Grind homepage analytics
++
++`index.html` loads `analytics.js` with `defer`. It records one `page_view` on
++initialization (and each back/forward cache restoration), plus delegated `click`
++events, including clicks on nested elements inside links and buttons. Tracking
++does not prevent or delay the default click action.
++
++Configure `ENDPOINT` in `analytics.js` for your collector. The default is
++`POST /api/analytics`; this static site does **not** implement that receiving
++endpoint. The collector must accept JSON with this shape and return a successful
++HTTP status (for example, `204`):
++
++```json
++{
++  "events": [
++    { "type": "page_view", "page": "/", "timestamp": "2026-10-23T00:00:00.000Z" },
++    { "type": "click", "tag": "a", "target": "a", "destination": "/menu", "page": "/", "timestamp": "2026-10-23T00:00:00.500Z" }
++  ]
++}
++```
++
++Click targets use `data-analytics`, then the element ID, then its tag name.
++Same-origin links also include their destination path. No element text, input
++values, query strings, or URL fragments are collected.
++
++Events coalesce until one second passes without another event, with a maximum
++wait of ten seconds during sustained interaction. Supported browsers use
++`fetchLater()` and cancel/replace the pending request as the batch grows. Other
++browsers use a timer and flush on page hiding or departure with `sendBeacon()`,
++falling back to a low-priority `fetch()` with `keepalive` if necessary. Native
++API errors also switch to this fallback.
++
++Batches flush at 50 events or before exceeding 48 KiB of UTF-8 JSON to stay below
++the shared browser deferred-request quota. Delivery is best effort: there is no
++persistent storage or automatic retry, and failures never block site interaction.
++An activated deferred request is not an acknowledgment from the collector.

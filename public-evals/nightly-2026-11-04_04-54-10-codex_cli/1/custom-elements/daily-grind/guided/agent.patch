@@ -1,0 +1,269 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..36140be
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,43 @@
++# The Daily Grind
++
++The seasonal menu uses autonomous `<coffee-card>` custom elements, registered by
++the `coffee-card.js` ES module. Each card owns an open shadow root with its markup
++and styles. Existing page theme variables (`--primary`, `--text`, and `--accent`)
++are inherited, with standalone fallbacks. The `card`, `name`, and `link` shadow
++parts allow additional styling.
++
++```html
++<coffee-card
++  name="Maple Oat Latte"
++  description="Creamy oat milk with maple syrup."
++  href="/menu/seasonal"
++  price="5.50"
++  featured>
++</coffee-card>
++```
++
++Attributes and identically named JavaScript properties reflect in both directions:
++
++| Attribute/property | Type | Behavior |
++| --- | --- | --- |
++| `name`, `description`, `href` | String | Default to `''`; assigning `null` or `undefined` removes the attribute. |
++| `price` | Number | Defaults to `0`; only displayed when the attribute is present. Invalid, negative, or non-finite values read as `0`. Assignments serialize a nonnegative finite number (or `0`); `null`/`undefined` removes the attribute. Displayed in USD. |
++| `featured` | Boolean | Presence means true, including `featured="false"`. Assign `false` or remove the attribute to turn it off. Displays a seasonal favorite label. |
++
++```js
++const card = document.querySelector('coffee-card');
++card.name = 'Maple Oat Latte';
++card.price = 5.5;                // Reflects price="5.5"
++card.featured = true;            // Adds featured=""
++card.setAttribute('price', '6'); // card.price is now 6
++card.featured = false;           // Removes featured
++```
++
++Cards render their current attributes on connection and react to subsequent
++attribute changes. Properties assigned before registration are recovered on
++upgrade. Disconnecting removes the card's click listener; reconnecting restores
++it without duplicating listeners or rebuilding the shadow tree.
++
++Activating a details link emits a bubbling, composed `coffee-select` event with
++`{ name, href, price, featured }` in `event.detail`, while preserving native link
++navigation. Only HTTP(S) destinations (including relative URLs) are enabled.
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..dfcfa50
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,145 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: block; }
++    :host([hidden]) { display: none; }
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++    article {
++      height: 100%;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      color: var(--text, #3e2723);
++    }
++    h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
++    .featured { color: var(--primary, #4e342e); font-weight: bold; }
++    .price { margin-top: 10px; }
++    a {
++      display: inline-block;
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++    a:hover { background: #3e2723; }
++    a:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 3px; }
++    [hidden] { display: none; }
++  </style>
++  <article part="card" aria-labelledby="name">
++    <p class="featured" hidden>Seasonal favorite</p>
++    <h3 id="name" part="name"></h3>
++    <p class="description"></p>
++    <p class="price" hidden></p>
++    <a part="link">View Details</a>
++  </article>
++`;
++
++/** Autonomous coffee card. Attributes are the source of truth for its public API. */
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'description', 'href', 'price', 'featured'];
++
++  #name;
++  #description;
++  #price;
++  #featured;
++  #link;
++  #connection;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.append(template.content.cloneNode(true));
++    this.#name = root.querySelector('h3');
++    this.#description = root.querySelector('.description');
++    this.#price = root.querySelector('.price');
++    this.#featured = root.querySelector('.featured');
++    this.#link = root.querySelector('a');
++  }
++
++  connectedCallback() {
++    // Recover values assigned while this tag was still an unknown HTMLElement.
++    for (const property of CoffeeCard.observedAttributes) {
++      if (Object.hasOwn(this, property)) {
++        const value = this[property];
++        delete this[property];
++        this[property] = value;
++      }
++    }
++
++    this.#render();
++    this.#connection?.abort();
++    this.#connection = new AbortController();
++    this.#link.addEventListener('click', () => {
++      this.dispatchEvent(new CustomEvent('coffee-select', {
++        bubbles: true,
++        composed: true,
++        detail: { name: this.name, href: this.href, price: this.price, featured: this.featured },
++      }));
++    }, { signal: this.#connection.signal });
++  }
++
++  disconnectedCallback() {
++    this.#connection?.abort();
++    this.#connection = undefined;
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue !== newValue && this.isConnected) this.#render();
++  }
++
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(value) { this.#reflectString('name', value); }
++
++  get description() { return this.getAttribute('description') ?? ''; }
++  set description(value) { this.#reflectString('description', value); }
++
++  get href() { return this.getAttribute('href') ?? ''; }
++  set href(value) { this.#reflectString('href', value); }
++
++  get price() {
++    const value = Number(this.getAttribute('price'));
++    return Number.isFinite(value) && value >= 0 ? value : 0;
++  }
++
++  set price(value) {
++    if (value == null) {
++      this.removeAttribute('price');
++      return;
++    }
++    const number = Number(value);
++    this.setAttribute('price', String(Number.isFinite(number) && number >= 0 ? number : 0));
++  }
++
++  get featured() { return this.hasAttribute('featured'); }
++  set featured(value) { this.toggleAttribute('featured', Boolean(value)); }
++
++  #reflectString(attribute, value) {
++    if (value == null) this.removeAttribute(attribute);
++    else this.setAttribute(attribute, String(value));
++  }
++
++  #render() {
++    this.#name.textContent = this.name;
++    this.#description.textContent = this.description;
++    this.#featured.hidden = !this.featured;
++    this.#price.hidden = !this.hasAttribute('price');
++    this.#price.textContent = `$${this.price.toFixed(2)}`;
++
++    // Keep native link behavior, but do not accept executable URL schemes.
++    let safeHref = false;
++    try {
++      safeHref = ['http:', 'https:'].includes(new URL(this.href, this.baseURI).protocol);
++    } catch {
++      // Invalid URLs render as an inert link label.
++    }
++    if (this.href && safeHref) this.#link.setAttribute('href', this.href);
++    else this.#link.removeAttribute('href');
++  }
++}
++
++customElements.define('coffee-card', CoffeeCard);
+diff --git a/index.html b/index.html
+index 66c9173..0eb77f7 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./coffee-card.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -107,19 +108,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +166,21 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card
++          name="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal">
++        </coffee-card>
++        <coffee-card
++          name="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso">
++        </coffee-card>
++        <coffee-card
++          name="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew">
++        </coffee-card>
+       </div>
+     </section>
+   </main>

@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #anchor {
++      anchor-name: --anchor;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 36px;
++      height: 36px;
++      margin-top: 15px;
++      margin-left: 8px;
++      background: var(--secondary);
++      color: var(--primary);
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      font-weight: bold;
++      font-family: Georgia, serif;
++      font-style: italic;
++      font-size: 1rem;
++      cursor: pointer;
++      vertical-align: middle;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    #anchor:hover,
++    #anchor:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    #tooltip {
++      position: fixed;
++      position-anchor: --anchor;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      inset: auto;
++      margin: 0 0 10px 0;
++      padding: 10px 14px;
++      background: var(--primary);
++      color: var(--light);
++      border: none;
++      border-radius: 8px 8px 2px 2px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      font-size: 0.85rem;
++      line-height: 1.4;
++      max-width: 240px;
++      text-align: center;
++      overflow: visible;
++    }
++
++    #tooltip::before,
++    #tooltip::after {
++      content: "";
++      position: absolute;
++      top: 100%;
++      bottom: auto;
++      left: 50%;
++      transform: translateX(-50%);
++      width: 0;
++      height: 0;
++      border: 8px solid transparent;
++      border-top-color: var(--primary);
++      border-bottom-color: transparent;
++    }
++
++    @container anchored(fallback: flip-block) {
++      #tooltip {
++        margin: 10px 0 0 0;
++        margin-top: 10px;
++        margin-bottom: 0;
++        border-radius: 2px 2px 8px 8px;
++      }
++
++      #tooltip::before,
++      #tooltip::after {
++        top: auto;
++        bottom: 100%;
++        border-top-color: transparent;
++        border-bottom-color: var(--primary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -181,8 +262,12 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button id="anchor" type="button" popovertarget="tooltip" aria-describedby="tooltip" aria-label="More information about Maple Oat Latte">i</button>
++          <div id="tooltip" popover role="tooltip">
++            Made with organic oat milk and pure Grade A Vermont maple syrup. 100% plant-based.
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

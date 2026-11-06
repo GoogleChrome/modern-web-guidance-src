@@ -1,0 +1,403 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,194 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Journal Section */
++    .journal-section {
++      margin-top: 50px;
++    }
++
++    .journal-card {
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
++      padding: 35px;
++      border-top: 5px solid var(--accent);
++    }
++
++    .journal-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .journal-kicker {
++      text-transform: uppercase;
++      font-size: 0.8rem;
++      letter-spacing: 2px;
++      font-weight: 700;
++      color: var(--accent);
++      display: block;
++      margin-bottom: 6px;
++    }
++
++    .journal-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .journal-tagline {
++      color: #6d4c41;
++      font-size: 1.05rem;
++      font-style: italic;
++    }
++
++    .journal-media {
++      width: 100%;
++      height: 340px;
++      border-radius: 8px;
++      overflow: hidden;
++      margin-bottom: 28px;
++    }
++
++    .journal-img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.4s ease;
++    }
++
++    .journal-img:hover {
++      transform: scale(1.02);
++    }
++
++    .journal-body {
++      font-size: 1.05rem;
++      line-height: 1.8;
++      color: var(--text);
++    }
++
++    .journal-body h3 {
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin-top: 22px;
++      margin-bottom: 8px;
++    }
++
++    .journal-body h3:first-child {
++      margin-top: 0;
++    }
++
++    .journal-body p {
++      margin-bottom: 16px;
++    }
++
++    .journal-controls {
++      margin-top: 30px;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 12px;
++    }
++
++    .btn-summarize {
++      cursor: pointer;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: var(--primary);
++      color: white;
++      padding: 12px 24px;
++      border-radius: 5px;
++      transition: background 0.3s, transform 0.1s;
++    }
++
++    .btn-summarize:hover:not(:disabled) {
++      background: #3e2723;
++      transform: translateY(-1px);
++    }
++
++    .btn-summarize:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .ai-status {
++      font-size: 0.9rem;
++      color: #5d4037;
++      min-height: 1.4rem;
++    }
++
++    .summary-box {
++      margin-top: 24px;
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      padding: 24px 28px;
++    }
++
++    .summary-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 16px;
++      border-bottom: 1px solid #ffe082;
++      padding-bottom: 10px;
++    }
++
++    .summary-header h3 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      margin: 0;
++    }
++
++    .badge {
++      font-size: 0.75rem;
++      font-weight: 600;
++      background: var(--accent);
++      color: #3e2723;
++      padding: 4px 10px;
++      border-radius: 12px;
++      letter-spacing: 0.5px;
++    }
++
++    .badge.fallback-badge {
++      background: #d7ccc8;
++      color: #3e2723;
++    }
++
++    .summary-list {
++      list-style-type: none;
++      padding: 0;
++      margin: 0;
++    }
++
++    .summary-list li {
++      position: relative;
++      padding-left: 28px;
++      margin-bottom: 12px;
++      line-height: 1.6;
++      color: var(--text);
++    }
++
++    .summary-list li:last-child {
++      margin-bottom: 0;
++    }
++
++    .summary-list li::before {
++      content: "☕";
++      position: absolute;
++      left: 0;
++      top: 0;
++      font-size: 0.95rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +380,204 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Roaster's Journal Section -->
++    <section class="journal-section" id="roasters-journal" aria-labelledby="journal-heading">
++      <div class="journal-card">
++        <header class="journal-header">
++          <span class="journal-kicker">Ethical Sourcing & Terroir</span>
++          <h2 id="journal-heading">Roaster's Journal</h2>
++          <p class="journal-tagline">Behind the Beans: A Closer Look at Our Direct-Trade Sourcing Journey</p>
++        </header>
++
++        <div class="journal-media">
++          <img
++            src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1200&q=80"
++            alt="Hand-selected specialty green and roasted coffee beans"
++            class="journal-img"
++            loading="lazy"
++          />
++        </div>
++
++        <article class="journal-body" id="journal-article">
++          <h3>1. High-Elevation Cultivation</h3>
++          <p>
++            Every truly memorable cup begins thousands of miles away on misty mountain slopes. At The Daily Grind, our journey doesn't start at the roasting drum—it begins at altitudes exceeding 1,700 meters across the volcanic terroirs of Huila in Colombia, the high-altitude forests of Yirgacheffe in Ethiopia, and the mineral-rich slopes of Antigua in Guatemala. In these microclimates, cool evening temperatures slow the maturation rate of the coffee cherries, allowing dense, sugar-rich cellular structures to develop that yield bright malic and citric acidities, delicate jasmine florals, and resonant cocoa finishes.
++          </p>
++
++          <h3>2. Direct-Trade Partnerships</h3>
++          <p>
++            Unlike conventional commodity trading that relies on opaque middlemen and speculative auctions, we adhere strictly to transparent, direct-trade partnerships. We collaborate directly with independent multi-generational family farms and community-led cooperatives, paying consistent price premiums that average 40% above fair-trade minimum standards. This predictable premium provides our growing partners with the capital necessary to invest in organic compost fertilization, natural shade canopy biodiversity, micro-lot isolation, clean spring water management, and dignified, living wages for seasonal field harvesters.
++          </p>
++
++          <h3>3. Selective Hand-Harvesting & Processing</h3>
++          <p>
++            During peak harvest seasons, selective harvesting is strictly enforced: our partners harvest exclusively by hand, making up to five separate passes over the same trees across several weeks to pick only ripe crimson cherries. Immediately upon harvest, the lots undergo density flotation sorting to skim out imperfect floaters. The selected cherries then undergo tailored processing methods—from clean 36-hour submerged wet fermentations that emphasize crystalline fruit clarity, to anaerobic natural macerations and slow drying on elevated African beds under canopy shades for 18 to 24 days until moisture levels reach a precise, stable 10.5%.
++          </p>
++
++          <h3>4. Quality Control, Cupping & Roasting</h3>
++          <p>
++            Before any shipment leaves origin, each lot is rigorously evaluated by licensed Q-graders through standardized SCA blind cupping protocols, water-activity testing, and defect grading. Once approved, the beans are sealed into hermetic multi-layer GrainPro barrier liners and shipped in climate-monitored containers to eliminate moisture fluctuation during their oceanic voyage. Upon delivery at our roastery, we roast each harvest in small batches on cast-iron drums, fine-tuning airflow and roast curves to honor the dedicated labor of our producers and celebrate the unique origin of every bean.
++          </p>
++        </article>
++
++        <div class="journal-controls">
++          <button id="summarize-btn" class="btn btn-summarize" type="button">
++            <span class="btn-icon">✨</span>
++            <span id="summarize-btn-label">Summarize Journal with AI</span>
++          </button>
++          <div id="ai-status" class="ai-status" role="status" aria-live="polite"></div>
++        </div>
++
++        <section id="summary-section" class="summary-box" hidden aria-labelledby="summary-heading">
++          <div class="summary-header">
++            <h3 id="summary-heading">Key Takeaways</h3>
++            <span id="ai-badge" class="badge">Browser Native AI</span>
++          </div>
++          <ul id="summary-bullets" class="summary-list"></ul>
++        </section>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      const summarizeBtn = document.getElementById('summarize-btn');
++      const summarizeBtnLabel = document.getElementById('summarize-btn-label');
++      const aiStatus = document.getElementById('ai-status');
++      const summarySection = document.getElementById('summary-section');
++      const summaryBullets = document.getElementById('summary-bullets');
++      const aiBadge = document.getElementById('ai-badge');
++      const journalArticle = document.getElementById('journal-article');
++
++      // Configuration options must be identical for Summarizer.availability() and Summarizer.create()
++      const summarizerOptions = {
++        type: 'key-points',
++        format: 'plain-text',
++        length: 'medium'
++      };
++
++      function parseBullets(text) {
++        const lines = text
++          .split(/\r?\n/)
++          .map(function (line) { return line.trim(); })
++          .filter(function (line) { return line.length > 0; });
++
++        const bullets = [];
++        for (var i = 0; i < lines.length; i++) {
++          // Strip leading bullet markers (*, -, •, 1., etc.)
++          var cleaned = lines[i].replace(/^([*•\-–—]|\d+[.)])\s*/, '').trim();
++          if (cleaned.length > 0) {
++            bullets.push(cleaned);
++          }
++        }
++
++        if (bullets.length > 0) {
++          return bullets;
++        }
++
++        // Fallback: split on sentence boundaries if model output plain prose
++        return text
++          .split(/(?<=[.!?])\s+/)
++          .map(function (s) { return s.trim(); })
++          .filter(function (s) { return s.length > 0; });
++      }
++
++      function renderBullets(bulletsList) {
++        summaryBullets.innerHTML = '';
++        for (var i = 0; i < bulletsList.length; i++) {
++          var li = document.createElement('li');
++          li.textContent = bulletsList[i];
++          summaryBullets.appendChild(li);
++        }
++        summarySection.hidden = false;
++        summarySection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++      }
++
++      var staticFallbackBullets = [
++        "Ethical sourcing above 1,700m in Colombia, Ethiopia, and Guatemala cultivates complex acidity and sugars through slow cherry maturation.",
++        "Direct-trade relationships pay 40% above fair-trade minimums to support farm soil health, shade biodiversity, and living wages.",
++        "Selective hand-harvesting and controlled processing (anaerobic & African drying beds) maintain precise 10.5% bean moisture.",
++        "Strict SCA cupping and climate-monitored shipping ensure peak freshness before small-batch roasting in cast-iron drums."
++      ];
++
++      summarizeBtn.addEventListener('click', async function () {
++        summarizeBtn.disabled = true;
++        summarizeBtnLabel.textContent = 'Summarizing...';
++        aiStatus.textContent = 'Analyzing journal text with AI...';
++
++        var textToSummarize = journalArticle.innerText;
++
++        try {
++          if ('Summarizer' in self) {
++            var availability = await Summarizer.availability(summarizerOptions);
++
++            if (availability === 'available' || availability === 'downloadable' || availability === 'downloading') {
++              if (availability === 'downloadable' || availability === 'downloading') {
++                aiStatus.textContent = 'Preparing native AI model download...';
++              }
++
++              var summarizer = await Summarizer.create({
++                ...summarizerOptions,
++                monitor: function (m) {
++                  m.addEventListener('downloadprogress', function (e) {
++                    var pct = Math.round((e.loaded / e.total) * 100);
++                    aiStatus.textContent = 'Downloading on-device AI model: ' + pct + '%...';
++                  });
++                }
++              });
++
++              aiStatus.textContent = 'Distilling key takeaways with on-device AI...';
++              var rawSummary = await summarizer.summarize(textToSummarize);
++
++              if (typeof summarizer.destroy === 'function') {
++                summarizer.destroy();
++              }
++
++              var bullets = parseBullets(rawSummary);
++              aiBadge.textContent = 'Browser Native AI';
++              aiBadge.className = 'badge';
++              renderBullets(bullets);
++              aiStatus.textContent = 'Summarized successfully using browser native AI.';
++              summarizeBtn.disabled = false;
++              summarizeBtnLabel.textContent = 'Re-Summarize Journal';
++              return;
++            } else {
++              console.warn('Summarizer availability state:', availability);
++            }
++          } else if (typeof self.ai !== 'undefined' && typeof self.ai.summarizer !== 'undefined') {
++            // Compatibility for earlier experimental window.ai
++            var summarizer = await self.ai.summarizer.create(summarizerOptions);
++            var rawSummary = await summarizer.summarize(textToSummarize);
++            if (typeof summarizer.destroy === 'function') {
++              summarizer.destroy();
++            }
++            var bullets = parseBullets(rawSummary);
++            aiBadge.textContent = 'Browser Native AI';
++            aiBadge.className = 'badge';
++            renderBullets(bullets);
++            aiStatus.textContent = 'Summarized successfully using browser native AI.';
++            summarizeBtn.disabled = false;
++            summarizeBtnLabel.textContent = 'Re-Summarize Journal';
++            return;
++          }
++        } catch (err) {
++          console.warn('Native Summarizer API error, using fallback:', err);
++        }
++
++        // Fallback for browsers without native Summarizer API support
++        aiBadge.textContent = 'Standard Summary (Native AI Unsupported)';
++        aiBadge.className = 'badge fallback-badge';
++        renderBullets(staticFallbackBullets);
++        aiStatus.textContent = 'Browser Built-in AI Summarizer API is unavailable in this browser; displayed standard key takeaways.';
++        summarizeBtn.disabled = false;
++        summarizeBtnLabel.textContent = 'Re-Summarize Journal';
++      });
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

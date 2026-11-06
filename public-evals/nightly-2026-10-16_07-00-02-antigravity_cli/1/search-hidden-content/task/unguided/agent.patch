@@ -1,0 +1,376 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,197 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Layout with Sidebar */
++    .content-layout {
++      display: flex;
++      gap: 30px;
++      align-items: flex-start;
++    }
++
++    .sidebar {
++      flex: 0 0 280px;
++    }
++
++    .main-content {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .sidebar-card {
++      margin-bottom: 20px;
++    }
++
++    /* Button element styles */
++    button.btn {
++      font-family: inherit;
++      font-size: 1rem;
++      border: none;
++      cursor: pointer;
++      width: 100%;
++      text-align: center;
++    }
++
++    button.btn:hover {
++      background: #3e2723;
++    }
++
++    button.btn:disabled {
++      background: var(--secondary);
++      color: var(--primary);
++      cursor: not-allowed;
++      opacity: 0.85;
++    }
++
++    /* Coupon Panel */
++    #coupon-panel {
++      background: #fff8e1;
++      border: 2px dashed var(--accent);
++      border-radius: 8px;
++      padding: 25px;
++      margin-bottom: 30px;
++      text-align: center;
++      box-shadow: 0 2px 8px rgba(255, 171, 64, 0.2);
++    }
++
++    #coupon-panel[hidden="until-found"] {
++      border: none;
++      padding: 0;
++      margin: 0;
++      background: transparent;
++      box-shadow: none;
++    }
++
++    #coupon-panel h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      font-size: 1.4rem;
++    }
++
++    #coupon-panel p {
++      color: var(--text);
++      font-size: 1.05rem;
++    }
++
++    .coupon-code {
++      display: inline-block;
++      background: var(--primary);
++      color: var(--accent);
++      padding: 6px 14px;
++      border-radius: 6px;
++      font-size: 1.25rem;
++      letter-spacing: 2px;
++      font-weight: bold;
++      margin: 10px 0;
++      user-select: all;
++    }
++
++    /* Wholesale & Catering Tabs */
++    .wholesale-catering-section {
++      margin-top: 50px;
++      padding-top: 20px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .wholesale-catering-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 25px;
++      font-size: 2rem;
++    }
++
++    .wholesale-tabs-container {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      border: 1px solid var(--secondary);
++    }
++
++    details.wholesale-tab {
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    details.wholesale-tab:last-child {
++      border-bottom: none;
++    }
++
++    details.wholesale-tab summary {
++      padding: 18px 24px;
++      font-size: 1.15rem;
++      font-weight: 600;
++      color: var(--primary);
++      background: #f7f3f0;
++      cursor: pointer;
++      list-style: none;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      user-select: none;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    details.wholesale-tab summary::-webkit-details-marker {
++      display: none;
++    }
++
++    details.wholesale-tab summary::after {
++      content: '+';
++      font-size: 1.4rem;
++      font-weight: bold;
++      color: var(--primary);
++      transition: transform 0.2s;
++    }
++
++    details.wholesale-tab[open] summary {
++      background: var(--primary);
++      color: white;
++    }
++
++    details.wholesale-tab[open] summary::after {
++      content: '−';
++      color: var(--accent);
++    }
++
++    details.wholesale-tab .tab-content {
++      padding: 30px 24px;
++      background: white;
++      text-align: left;
++    }
++
++    details.wholesale-tab .tab-content h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.3rem;
++    }
++
++    details.wholesale-tab .tab-content p {
++      margin-bottom: 15px;
++      color: var(--text);
++      line-height: 1.7;
++    }
++
++    details.wholesale-tab .tab-content ul {
++      margin-left: 20px;
++      margin-bottom: 20px;
++    }
++
++    details.wholesale-tab .tab-content li {
++      margin-bottom: 8px;
++      color: var(--text);
++    }
++
++    @media (max-width: 768px) {
++      .content-layout {
++        flex-direction: column;
++      }
++      .sidebar {
++        width: 100%;
++        flex: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,29 +362,79 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <main class="container content-layout">
++    <aside class="sidebar">
++      <div class="card sidebar-card">
++        <h3>Special Offers</h3>
++        <p>Unlock an exclusive discount before completing your order.</p>
++        <button type="button" id="reveal-coupon-btn" class="btn">Reveal Coupon</button>
++      </div>
++    </aside>
++
++    <div class="main-content">
++      <div id="coupon-panel" class="card coupon-panel" hidden="until-found">
++        <h3>🎉 Exclusive Discount Code</h3>
++        <p>Use code <strong class="coupon-code">DAILYGRIND20</strong> at checkout for <strong>20% off</strong> your entire order!</p>
++      </div>
++
++      <section>
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </section>
++
++      <section class="wholesale-catering-section">
++        <h2>Wholesale & Catering</h2>
++        <div class="wholesale-tabs-container">
++          <details class="wholesale-tab" name="wholesale-catering" open>
++            <summary>Wholesale</summary>
++            <div class="tab-content">
++              <h3>Wholesale Coffee Supply</h3>
++              <p>Partner with The Daily Grind for high-grade, ethically sourced coffee beans roasted fresh to order. We supply specialty cafes, restaurants, bakeries, and corporate offices with customizable volume pricing and weekly roasting schedules.</p>
++              <ul>
++                <li>Custom roast profiles and espresso blend development</li>
++                <li>Competitive volume pricing and scheduled deliveries</li>
++                <li>Commercial espresso equipment consultation</li>
++                <li>Comprehensive barista training for your staff</li>
++              </ul>
++              <a href="/contact?subject=wholesale" class="btn">Inquire for Wholesale</a>
++            </div>
++          </details>
++
++          <details class="wholesale-tab" name="wholesale-catering">
++            <summary>Catering</summary>
++            <div class="tab-content">
++              <h3>Special Event Coffee Catering</h3>
++              <p>Bring our artisanal mobile coffee bar to your next corporate event, wedding, or celebration. Handcrafted espresso drinks, cold brew, and seasonal specialties served by professional baristas.</p>
++              <ul>
++                <li>Mobile espresso bar with full barista service</li>
++                <li>Single-origin batch brew drip stations & cold brew kegs</li>
++                <li>House-made seasonal syrups, dairy, and plant-based milks</li>
++                <li>Complete setup, bar service, and teardown included</li>
++              </ul>
++              <a href="/contact?subject=catering" class="btn">Book Catering Services</a>
++            </div>
++          </details>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +445,75 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Coupon reveal logic
++      const couponBtn = document.getElementById('reveal-coupon-btn');
++      const couponPanel = document.getElementById('coupon-panel');
++
++      function revealCoupon() {
++        if (couponPanel) {
++          couponPanel.removeAttribute('hidden');
++        }
++        if (couponBtn) {
++          couponBtn.disabled = true;
++          couponBtn.textContent = 'Coupon Revealed';
++        }
++      }
++
++      if (couponBtn) {
++        couponBtn.addEventListener('click', revealCoupon);
++      }
++
++      if (couponPanel) {
++        couponPanel.addEventListener('beforematch', revealCoupon);
++      }
++
++      // Wholesale & Catering tabs logic
++      const wholesaleTabs = document.querySelectorAll('details.wholesale-tab');
++
++      wholesaleTabs.forEach(tab => {
++        // Forward direct clicks on details element to summary
++        tab.addEventListener('click', (e) => {
++          if (e.target === tab) {
++            const summary = tab.querySelector('summary');
++            if (summary) summary.click();
++          }
++        });
++
++        // Ensure mutual exclusivity even in environments without native details[name] support
++        tab.addEventListener('toggle', () => {
++          if (tab.open) {
++            const groupName = tab.getAttribute('name');
++            const selector = groupName
++              ? `details.wholesale-tab[name="${groupName}"]`
++              : 'details.wholesale-tab';
++            document.querySelectorAll(selector).forEach(other => {
++              if (other !== tab && other.open) {
++                other.removeAttribute('open');
++              }
++            });
++          }
++        });
++
++        // Handle beforematch when browser find-in-page locates text inside this tab
++        tab.addEventListener('beforematch', () => {
++          tab.setAttribute('open', '');
++          const groupName = tab.getAttribute('name');
++          const selector = groupName
++            ? `details.wholesale-tab[name="${groupName}"]`
++            : 'details.wholesale-tab';
++          document.querySelectorAll(selector).forEach(other => {
++            if (other !== tab && other.open) {
++              other.removeAttribute('open');
++            }
++          });
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

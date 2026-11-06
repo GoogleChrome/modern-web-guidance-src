@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,98 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="UTF-8">
++<meta name="viewport" content="width=device-width, initial-scale=1.0">
++<meta name="description" content="A small, interactive playground for harmonious mixed-font typography with modern CSS.">
++<title>Typeform — Font harmony playground</title>
++<style>
++@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
++:root{font-family:'DM Sans',sans-serif;color:#262831;background:#f8f9fb;font-synthesis:none}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9b8dec;outline-offset:4px}button{color:inherit}a{color:inherit;text-decoration:none}.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}.sidebar{background:#fff;border-right:1px solid #e8e9ee;padding:34px 22px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}.brand{display:flex;align-items:center;gap:10px;font-size:25px;font-weight:700;letter-spacing:-1.1px;padding:0 10px}.brand-icon{height:31px;width:31px;background:#7962d8;color:white;border-radius:9px;display:grid;place-items:center;font-family:Georgia,serif;font-size:25px;letter-spacing:-6px;padding-right:6px}.brand small{font-size:9px;letter-spacing:1px;color:#9d8acb;background:#f0ebfa;padding:4px 5px;border-radius:4px;margin-left:3px}.nav-label{font-size:10px;letter-spacing:1.6px;font-weight:650;color:#9b9ca7;margin:51px 12px 14px}.nav-item{display:flex;align-items:center;gap:12px;padding:13px 13px;font-size:13px;border-radius:7px;color:#7e818e;margin-bottom:5px}.nav-item.active{background:#eeeafa;color:#7354c6;font-weight:600}.nav-icon{font-size:17px;width:19px;text-align:center}.nav-soon{margin-left:auto;font-size:9px;color:#a8aab3;border:1px solid #eeeef2;border-radius:4px;padding:2px 4px}.sidebar-bottom{margin-top:auto;border-top:1px solid #eeeef2;padding:23px 10px 0;color:#999ba6;font-size:11px;line-height:1.8}.sidebar-bottom strong{font-size:12px;font-weight:500;color:#737582}.tiny-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#8cbd9e;margin-right:6px}main{max-width:1370px;width:100%;margin:auto;padding:0 51px 28px}.topbar{height:87px;border-bottom:1px solid #e7e8ed;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#9698a3}.crumb{display:flex;gap:12px;align-items:center}.crumb strong{font-weight:500;color:#4f515e}.docs{display:flex;gap:9px;align-items:center;font-size:12px;color:#727580}.intro{display:flex;align-items:center;justify-content:space-between;margin:36px 0 27px}.eyebrow{font-size:10px;color:#9583c7;letter-spacing:1.7px;font-weight:600;margin-bottom:10px}h1{font-size:31px;font-weight:550;letter-spacing:-1.1px;margin:0 0 9px}.intro p{font-size:13px;color:#92949f;margin:0;line-height:1.6}.css-badge{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #e4e5eb;border-radius:6px;padding:9px 11px;font-size:10px;white-space:nowrap}.css-badge span{color:#8c72cf}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:20px}.panel{background:white;border:1px solid #e4e6ed;border-radius:10px;overflow:hidden}.panel-header{display:flex;justify-content:space-between;align-items:center;padding:18px 21px;border-bottom:1px solid #eeeff3}.panel-title{font-size:12px;font-weight:600;display:flex;gap:9px;align-items:center}.panel-title svg{color:#8e91a0}.tag{font-size:9px;font-weight:500;letter-spacing:.7px;color:#999aa6}.preview-panel{padding:22px}.preview{background:#f1eef9;min-height:260px;padding:33px 29px;position:relative;border:1px solid #eae4f5;border-radius:7px;display:flex;flex-direction:column;justify-content:center}.preview-label{font-size:9px;letter-spacing:1.4px;color:#a18fbf;font-weight:600;position:absolute;top:22px;left:28px}.preview-dot{position:absolute;right:21px;top:21px;width:6px;height:6px;background:#ae98d3;border-radius:50%}#mixed-fonts-container{font-family:Arial,sans-serif;font-size:27px;line-height:1.75;font-size-adjust:from-font;margin:24px 0 16px;color:#514361;letter-spacing:-.5px}#mixed-fonts-container code{font-family:'IBM Plex Mono',monospace;font-size:1em;font-size-adjust:inherit;background:#e5ddf1;padding:2px 7px;border-radius:5px;color:#79539b;letter-spacing:-1px}.preview-foot{color:#a092b0;font-size:10px;display:flex;gap:8px;align-items:center}.preview-foot span{width:4px;height:4px;background:#b7a9c8;border-radius:50%}.preview-meta{display:flex;justify-content:space-between;align-items:center;padding-top:17px;color:#9698a3;font-size:10px}.preview-meta code{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#898392}.normalized{display:flex;align-items:center;gap:5px;color:#6e9e85}.normalized i{height:5px;width:5px;border-radius:50%;background:currentColor}.controls{padding:21px 19px}.control-label{font-size:11px;font-weight:500;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.switch{border:0;background:#8770ce;border-radius:14px;width:31px;height:18px;padding:3px;display:flex;justify-content:flex-end}.switch:after{content:'';display:block;background:white;height:12px;width:12px;border-radius:50%;box-shadow:0 1px 3px #0002}.switch[aria-checked="false"]{background:#c5c6d0;justify-content:flex-start}.control-help{font-size:10px;color:#9a9ca7;line-height:1.7;margin:0 0 21px}.divider{border:0;border-top:1px solid #eeeff3;margin:22px 0}.select-wrap label{font-size:10px;color:#8b8d99;display:block;margin:17px 0 7px}select{width:100%;border:1px solid #e5e6ec;background:#fcfcfd;border-radius:5px;padding:9px 10px;font-size:11px;color:#5d5e6b}input[type=range]{accent-color:#8871cd;width:100%;height:4px;cursor:pointer;margin:11px 0}.size-value{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:400;background:#f5f4f8;padding:4px 6px;border-radius:4px}.range-ends{display:flex;justify-content:space-between;color:#a4a5ae;font-size:9px;margin-top:5px}.controls-title{font-size:12px;font-weight:600;margin:0 0 22px}.lower{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:20px;margin-top:21px}.theme-body{padding:22px}.theme-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.theme-top p{font-size:11px;color:#9294a0;margin:0}.locked{font-size:9px;background:#f3f4f6;border-radius:4px;color:#8b8e99;padding:5px 7px}#independent-theme-container{font-family:Georgia,serif;font-size-adjust:0.5;background:#eff5f1;border:1px solid #e0ebe3;border-radius:7px;padding:23px 25px;color:#3b6350}.theme-kicker{font-family:'DM Sans',sans-serif;font-size:8px;letter-spacing:1.6px;color:#799786;margin-bottom:13px}.theme-sample{font-size:25px;margin:0 0 8px;font-weight:400;letter-spacing:-.5px}.theme-description{font-size:13px;line-height:1.7;margin:0;color:#82988a}.theme-description code{font-family:'IBM Plex Mono',monospace;font-size:1em;font-size-adjust:inherit}.theme-note{display:flex;gap:7px;color:#9a9ca7;font-size:10px;margin:16px 0 0;line-height:1.7}.info-card{padding:21px}.info-icon{width:29px;height:29px;border-radius:7px;background:#f0ebf9;display:grid;place-items:center;color:#9378cb;font-family:Georgia,serif;font-style:italic;font-size:17px;margin-bottom:15px}.info-card h3{font-size:12px;font-weight:600;margin:0 0 10px}.info-card p{font-size:11px;line-height:1.9;color:#9395a1;margin:0}.info-card code{font-size:10px;color:#8573a5;background:#f5f2fa;padding:2px 3px;border-radius:3px}.info-link{font-size:10px;display:inline-block;color:#8b70c5;margin-top:18px}.code-panel{margin-top:21px}.code-header{padding:0 20px;height:49px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eeeff3}.tabs{display:flex;height:100%;gap:25px}.tab{background:none;border:0;border-bottom:2px solid transparent;font-size:11px;padding:0 1px;color:#989aa6}.tab[aria-selected=true]{color:#8265c5;border-bottom-color:#9676d8}.copy{background:#fff;border:1px solid #e7e8ed;border-radius:5px;padding:5px 9px;font-size:10px;color:#868895;display:flex;gap:6px;align-items:center}pre{margin:0;padding:21px 24px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.9;color:#747a8e;overflow:auto;background:#fdfdfe}.selector{color:#8d68b8}.property{color:#698cab}.value{color:#b28a62}.comment{color:#b0b3be}footer{margin-top:24px;display:flex;justify-content:space-between;color:#a4a6b0;font-size:10px}footer span:last-child{letter-spacing:.3px}svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.hidden{display:none!important}@media(min-width:1500px){main{padding-top:8px}.intro{margin-top:45px}.preview{min-height:290px}}@media(max-width:1100px){main{padding:0 28px 25px}.app{grid-template-columns:195px 1fr}.workspace,.lower{grid-template-columns:minmax(0,1fr) 235px}.sidebar{padding:30px 14px}.brand{font-size:22px}#mixed-fonts-container{font-size:24px}.preview{padding:31px 22px}.preview-label{left:22px}.css-badge{display:none}}@media(max-width:850px){.app{grid-template-columns:1fr}.sidebar{height:auto;position:static;flex-direction:row;padding:18px 24px;border-bottom:1px solid #e8e9ee;border-right:0;align-items:center;justify-content:space-between}.nav-label,.sidebar-bottom,.nav-item:not(.active){display:none}.nav-item{margin:0;padding:9px 12px;font-size:11px}.sidebar nav{margin-left:auto}.brand{padding:0}.workspace,.lower{grid-template-columns:minmax(0,1fr) 240px}.intro{margin-top:28px}.topbar{height:63px}}@media(max-width:650px){main{padding:0 20px 24px}.workspace,.lower{grid-template-columns:1fr}.intro{margin-bottom:22px}h1{font-size:28px}.intro p{font-size:12px}.controls{display:grid;grid-template-columns:1fr 1fr;gap:0 22px}.controls-title{grid-column:1/-1}.controls .divider{display:none}.select-wrap label{margin-top:13px}.size-control{grid-column:1/-1;margin-top:20px}.lower{gap:17px}.info-card{display:none}.preview{min-height:245px}.preview-meta{font-size:9px;gap:8px}footer{font-size:9px;gap:14px;line-height:1.6}.theme-top p{font-size:10px}.brand{font-size:23px}pre{font-size:10px;padding:19px 17px}}
++</style>
++</head>
++<body>
++<div class="app">
++<aside class="sidebar">
++<a class="brand" href="./" aria-label="Typeform home"><span class="brand-icon">tt</span>typeform<small>LAB</small></a>
++<div class="nav-label">WORKSPACE</div>
++<nav aria-label="Workspace"><a class="nav-item active" href="#playground"><span class="nav-icon">▦</span>Playground</a><div class="nav-item"><span class="nav-icon">Aa</span>Font pairings<span class="nav-soon">SOON</span></div><div class="nav-item"><span class="nav-icon">▱</span>Collections<span class="nav-soon">SOON</span></div></nav>
++<div class="sidebar-bottom"><strong>A little harmony goes a long way.</strong><br>Made for the details.<br><br><span class="tiny-dot"></span>Powered by modern CSS</div>
++</aside>
++<main id="playground">
++<header class="topbar"><div class="crumb">Workspace <span>/</span><strong>Playground</strong></div><a class="docs" href="https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust" target="_blank" rel="noopener noreferrer">Documentation <span>↗</span></a></header>
++<section class="intro"><div><div class="eyebrow">THE TYPOGRAPHY PLAYGROUND</div><h1>Different fonts. Same rhythm.</h1><p>Bring your type together with a little help from modern CSS.</p></div><div class="css-badge"><span>✧</span> CSS, doing the heavy lifting</div></section>
++<div class="workspace">
++<section class="panel"><div class="panel-header"><div class="panel-title"><svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M2.5 7.5h15"/></svg>Live preview</div><span class="tag">MIXED FONTS</span></div><div class="preview-panel"><div class="preview"><span class="preview-label">A LITTLE TYPE EXPERIMENT</span><span class="preview-dot"></span><p id="mixed-fonts-container">Good design speaks the same language.<br>Even when it includes <code>inline code</code>.</p><div class="preview-foot">Two font families <span></span> One consistent x-height</div></div><div class="preview-meta"><code id="property-status">font-size-adjust: from-font;</code><span class="normalized" id="normalization-status"><i></i>Automatically normalized</span></div></div></section>
++<section class="panel controls" aria-label="Typography controls"><h2 class="controls-title">Fine-tune your type</h2><div><div class="control-label">Normalize font height<button class="switch" id="normalize" role="switch" aria-checked="true" aria-label="Normalize font height"></button></div><p class="control-help">Let every font find the same visual rhythm, automatically.</p></div><div class="select-wrap"><label for="body-font">Text font</label><select id="body-font"><option value="Arial, sans-serif">Arial · Sans serif</option><option value="Georgia, serif">Georgia · Serif</option><option value="Verdana, sans-serif">Verdana · Sans serif</option><option value="'DM Sans', sans-serif">DM Sans · Sans serif</option></select><label for="code-font">Code font</label><select id="code-font"><option value="'IBM Plex Mono', monospace">IBM Plex Mono · Monospace</option><option value="'Courier New', monospace">Courier New · Monospace</option><option value="monospace">System · Monospace</option></select></div><hr class="divider"><div class="size-control"><label class="control-label" for="font-size">Font size<output class="size-value" id="size-value" for="font-size">27 px</output></label><input id="font-size" type="range" min="16" max="36" value="27"><div class="range-ends"><span>16 px</span><span>36 px</span></div></div></section>
++</div>
++<div class="lower"><section class="panel"><div class="panel-header"><div class="panel-title"><svg viewBox="0 0 20 20"><rect x="3" y="3" width="11" height="11" rx="2"/><path d="M7 17h8a2 2 0 0 0 2-2V7"/></svg>Independent theme</div><span class="tag">ITS OWN RULES</span></div><div class="theme-body"><div class="theme-top"><p>A separate space. A deliberate proportion.</p><span class="locked">♧ &nbsp;Aspect value: 0.5</span></div><div id="independent-theme-container"><div class="theme-kicker">THE QUIET CORNER</div><p class="theme-sample">A different character. Perfectly balanced.</p><p class="theme-description">This theme sets its own rhythm with <code>font-size-adjust: 0.5</code>.</p></div><p class="theme-note"><span>ⓘ</span> A fixed aspect value keeps this theme’s font proportions independent.</p></div></section><aside class="panel info-card"><div class="info-icon">i</div><h3>Small property. Big difference.</h3><p><code>font-size-adjust</code> matches the perceived height of different fonts by keeping their x-height consistent.<br><br>Use <code>from-font</code> to follow your first font, or a number to set your own proportion.</p><a class="info-link" href="https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust" target="_blank" rel="noopener noreferrer">Explore the CSS property &nbsp; ↗</a></aside></div>
++<section class="panel code-panel"><div class="code-header"><div class="tabs" role="tablist" aria-label="Source language"><button class="tab" id="css-tab" role="tab" aria-selected="true" aria-controls="css-code">CSS</button><button class="tab" id="html-tab" role="tab" aria-selected="false" aria-controls="html-code" tabindex="-1">HTML</button></div><button class="copy" id="copy"><svg viewBox="0 0 20 20"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M12 7V3H3v9h4"/></svg><span>Copy code</span></button></div><pre id="css-code" role="tabpanel" aria-labelledby="css-tab" tabindex="0"></pre><pre id="html-code" class="hidden" role="tabpanel" aria-labelledby="html-tab" tabindex="0"></pre></section>
++<footer><span>Thoughtful typography, without the guesswork.</span><span>Built with native CSS &nbsp;·&nbsp; No extra libraries</span></footer>
++</main>
++</div>
++<script>
++const mixed = document.getElementById('mixed-fonts-container');
++const toggle = document.getElementById('normalize');
++const textFont = document.getElementById('body-font');
++const codeFont = document.getElementById('code-font');
++const fontSize = document.getElementById('font-size');
++const cssPanel = document.getElementById('css-code');
++const htmlPanel = document.getElementById('html-code');
++let currentTab = 'css';
++let cssSource = '';
++const htmlSource = '<p id="mixed-fonts-container">\n  Good design speaks the same language.\n  Even when it includes <code>inline code</code>.\n</p>\n\n<div id="independent-theme-container">\n  A different character. Perfectly balanced.\n</div>';
++htmlPanel.textContent = htmlSource;
++function update() {
++ const enabled = toggle.getAttribute('aria-checked') === 'true';
++ const adjust = enabled ? 'from-font' : 'none';
++ mixed.style.fontSizeAdjust = adjust;
++ mixed.style.fontFamily = textFont.value;
++ mixed.style.fontSize = fontSize.value + 'px';
++ mixed.querySelector('code').style.fontFamily = codeFont.value;
++ document.getElementById('size-value').value = fontSize.value + ' px';
++ document.getElementById('property-status').textContent = 'font-size-adjust: ' + adjust + ';';
++ const status = document.getElementById('normalization-status');
++ status.replaceChildren();
++ status.append(document.createElement('i'), enabled ? 'Automatically normalized' : 'Original font heights');
++ status.style.color = enabled ? '#6e9e85' : '#a09aa9';
++ cssSource = `#mixed-fonts-container {\n  font-family: ${textFont.value};\n  font-size: ${fontSize.value}px;\n  font-size-adjust: ${adjust};\n}\n\n#mixed-fonts-container code {\n  font-family: ${codeFont.value};\n  font-size: 1em;\n  font-size-adjust: inherit;\n}\n\n#independent-theme-container {\n  font-family: Georgia, serif;\n  font-size-adjust: 0.5;\n}`;
++ cssPanel.replaceChildren();
++ for (const line of cssSource.split('\n')) {
++  const span = document.createElement('span');
++  span.className = line.startsWith('#') ? 'selector' : line.includes(':') ? 'property' : '';
++  span.textContent = line + '\n';
++  cssPanel.append(span);
++ }
++}
++toggle.addEventListener('click', () => {toggle.setAttribute('aria-checked', toggle.getAttribute('aria-checked') !== 'true'); update();});
++textFont.addEventListener('change', update);
++codeFont.addEventListener('change', update);
++fontSize.addEventListener('input', update);
++const tabs = [...document.querySelectorAll('.tab')];
++function selectTab(tab) {
++ currentTab = tab.id === 'css-tab' ? 'css' : 'html';
++ for(const item of tabs) {const selected = item === tab;item.setAttribute('aria-selected',selected);item.tabIndex = selected ? 0 : -1;}
++ cssPanel.classList.toggle('hidden', currentTab !== 'css');
++ htmlPanel.classList.toggle('hidden', currentTab !== 'html');
++}
++for (const tab of tabs) {
++ tab.addEventListener('click', () => selectTab(tab));
++ tab.addEventListener('keydown', event => {
++  if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) {
++   event.preventDefault();
++   const next = event.key === 'Home' ? tabs[0] : event.key === 'End' ? tabs[1] : tabs.find(item => item !== tab);
++   selectTab(next); next.focus();
++  }
++ });
++}
++let copyTimer;
++document.getElementById('copy').addEventListener('click', async event => {
++ const label = event.currentTarget.querySelector('span');
++ try {await navigator.clipboard.writeText(currentTab === 'css' ? cssSource : htmlSource);label.textContent = 'Copied!';}
++ catch {label.textContent = 'Select code to copy';}
++ clearTimeout(copyTimer);copyTimer = setTimeout(() => {label.textContent = 'Copy code';}, 2200);
++});
++update();
++</script>
++</body>
++</html>

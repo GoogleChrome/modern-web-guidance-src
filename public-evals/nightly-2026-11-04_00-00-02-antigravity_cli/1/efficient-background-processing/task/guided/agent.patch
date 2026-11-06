@@ -1,0 +1,240 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,54 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roasting Simulator Widget */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    #roasting-widget h2 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .roast-telemetry {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-bottom: 16px;
++      font-size: 1.15rem;
++      font-weight: 600;
++    }
++
++    #roast-temp-value {
++      color: #d84315;
++      font-variant-numeric: tabular-nums;
++      background: #fbe9e7;
++      padding: 4px 12px;
++      border-radius: 4px;
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      max-width: 600px;
++      height: 260px;
++      margin: 0 auto;
++      background: #2b1b17;
++      border-radius: 8px;
++      border: 3px solid var(--primary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +242,17 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" class="container" aria-labelledby="roasting-widget-title">
++    <h2 id="roasting-widget-title">Live Drum Roaster Telemetry</h2>
++    <div class="roast-telemetry">
++      <span>Drum Temperature:</span>
++      <span id="roast-temp-value" aria-live="polite">195.0 °C</span>
++    </div>
++    <canvas id="roast-canvas" width="600" height="260" aria-label="Animated coffee beans tumbling inside a roasting drum"></canvas>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +261,163 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const tempValueEl = document.getElementById('roast-temp-value');
++      if (!widget || !canvas || !tempValueEl) return;
++
++      const ctx = canvas.getContext('2d');
++      let animationFrameId = null;
++      let tempIntervalId = null;
++      let isRunning = false;
++      let currentTemp = 195.0;
++
++      const beans = Array.from({ length: 28 }, (_, i) => ({
++        x: 60 + ((i * 19) % 480),
++        y: 40 + ((i * 29) % 180),
++        vx: (i % 2 === 0 ? 1 : -1) * (1.2 + (i % 5) * 0.35),
++        vy: (i % 3 === 0 ? -1 : 1) * (1.0 + (i % 4) * 0.3),
++        angle: (i * 0.45) % (Math.PI * 2),
++        spin: (i % 2 === 0 ? 1 : -1) * (0.03 + (i % 3) * 0.015),
++        rx: 10 + (i % 3) * 1.5,
++        ry: 6.5 + (i % 2) * 1.2
++      }));
++
++      function renderFrame() {
++        if (!ctx) return;
++        ctx.clearRect(0, 0, canvas.width, canvas.height);
++
++        // Subtle warm glow inside the roasting drum
++        const grad = ctx.createRadialGradient(
++          canvas.width / 2,
++          canvas.height,
++          20,
++          canvas.width / 2,
++          canvas.height / 2,
++          canvas.width / 1.5
++        );
++        grad.addColorStop(0, 'rgba(216, 67, 21, 0.28)');
++        grad.addColorStop(1, 'rgba(43, 27, 23, 0)');
++        ctx.fillStyle = grad;
++        ctx.fillRect(0, 0, canvas.width, canvas.height);
++
++        // Roast color darkens slightly with temperature
++        const roastFactor = Math.min(1, Math.max(0, (currentTemp - 185) / 40));
++        const r = Math.round(125 - roastFactor * 55);
++        const g = Math.round(78 - roastFactor * 40);
++        const b = Math.round(45 - roastFactor * 25);
++        const beanFill = `rgb(${r}, ${g}, ${b})`;
++
++        for (const bean of beans) {
++          bean.x += bean.vx;
++          bean.y += bean.vy;
++          bean.angle += bean.spin;
++
++          if (bean.x < bean.rx + 8 || bean.x > canvas.width - bean.rx - 8) {
++            bean.vx *= -1;
++          }
++          if (bean.y < bean.ry + 8 || bean.y > canvas.height - bean.ry - 8) {
++            bean.vy *= -1;
++          }
++
++          ctx.save();
++          ctx.translate(bean.x, bean.y);
++          ctx.rotate(bean.angle);
++
++          ctx.beginPath();
++          ctx.ellipse(0, 0, bean.rx, bean.ry, 0, 0, Math.PI * 2);
++          ctx.fillStyle = beanFill;
++          ctx.fill();
++          ctx.lineWidth = 1.5;
++          ctx.strokeStyle = '#24140e';
++          ctx.stroke();
++
++          // Coffee bean center crease
++          ctx.beginPath();
++          ctx.moveTo(-bean.rx * 0.7, 0);
++          ctx.quadraticCurveTo(0, bean.ry * 0.35, bean.rx * 0.7, 0);
++          ctx.strokeStyle = '#1b0f0a';
++          ctx.lineWidth = 1.2;
++          ctx.stroke();
++
++          ctx.restore();
++        }
++      }
++
++      function tickAnimation() {
++        if (!isRunning) return;
++        renderFrame();
++        animationFrameId = requestAnimationFrame(tickAnimation);
++      }
++
++      function updateTemperature() {
++        const delta = (Math.random() - 0.45) * 1.4;
++        currentTemp = Math.min(225.0, Math.max(188.0, currentTemp + delta));
++        if (currentTemp >= 224.5) {
++          currentTemp = 192.0;
++        }
++        tempValueEl.textContent = `${currentTemp.toFixed(1)} °C`;
++      }
++
++      function startSimulation() {
++        if (isRunning) return;
++        isRunning = true;
++        if (animationFrameId === null) {
++          animationFrameId = requestAnimationFrame(tickAnimation);
++        }
++        if (tempIntervalId === null) {
++          tempIntervalId = setInterval(updateTemperature, 1000);
++        }
++      }
++
++      function stopSimulation() {
++        isRunning = false;
++        if (animationFrameId !== null) {
++          cancelAnimationFrame(animationFrameId);
++          animationFrameId = null;
++        }
++        if (tempIntervalId !== null) {
++          clearInterval(tempIntervalId);
++          tempIntervalId = null;
++        }
++      }
++
++      // Draw an initial static frame
++      renderFrame();
++
++      // Check if content-visibility and contentvisibilityautostatechange are supported
++      const isSupported = 'contentVisibility' in document.documentElement.style;
++
++      widget.addEventListener('contentvisibilityautostatechange', (event) => {
++        if (event.skipped) {
++          stopSimulation();
++        } else {
++          startSimulation();
++        }
++      });
++
++      if (!isSupported && 'IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          entries.forEach((entry) => {
++            if (entry.isIntersecting) {
++              startSimulation();
++            } else {
++              stopSimulation();
++            }
++          });
++        }, {
++          rootMargin: '200px'
++        });
++
++        observer.observe(widget);
++      } else if (!isSupported) {
++        startSimulation();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

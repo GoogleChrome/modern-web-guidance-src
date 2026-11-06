@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,34 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .preferences {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .ritual-form {
++      max-width: 400px;
++      margin: 20px auto 0;
++      display: grid;
++      gap: 8px;
++      text-align: left;
++    }
++
++    .ritual-form input {
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .ritual-form .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +220,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences">
++      <h2>Your Coffee Ritual</h2>
++      <form id="ritual-form" class="card ritual-form">
++        <label for="pickup-time">Daily pickup reminder</label>
++        <input type="time" id="pickup-time" name="pickupTime" required>
++
++        <label for="coffee-anniversary">Coffee anniversary</label>
++        <input type="date" id="coffee-anniversary" name="coffeeAnniversary" required>
++
++        <button type="submit" class="btn">Save</button>
++        <p id="ritual-summary" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +246,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // The pickup time and anniversary are location-agnostic: they are stored as the plain
++    // strings the inputs produce ("HH:MM", "YYYY-MM-DD") and never converted to a Date or
++    // instant, so travelling across time zones cannot shift them.
++    (async () => {
++      const STORAGE_KEY = 'ritual';
++      const form = document.getElementById('ritual-form');
++      const summary = document.getElementById('ritual-summary');
++
++      if (typeof Temporal === 'undefined') {
++        try {
++          const module = await import('https://esm.sh/temporal-polyfill');
++          globalThis.Temporal = module.Temporal;
++        } catch {
++          // Display falls back to the raw stored strings below.
++        }
++      }
++
++      function render({ pickupTime, coffeeAnniversary }) {
++        if (!pickupTime || !coffeeAnniversary) return;
++        let time = pickupTime;
++        let date = coffeeAnniversary;
++        if (typeof Temporal !== 'undefined') {
++          time = Temporal.PlainTime.from(pickupTime).toLocaleString(undefined, { timeStyle: 'short' });
++          date = Temporal.PlainDate.from(coffeeAnniversary).toLocaleString(undefined, { dateStyle: 'long' });
++        }
++        summary.textContent = `Pickup reminder at ${time} daily. Coffee anniversary: ${date}.`;
++      }
++
++      let saved = {};
++      try {
++        saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {};
++      } catch {
++        // Ignore unavailable or corrupt storage.
++      }
++      if (saved.pickupTime) form.elements.pickupTime.value = saved.pickupTime;
++      if (saved.coffeeAnniversary) form.elements.coffeeAnniversary.value = saved.coffeeAnniversary;
++      render(saved);
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const values = {
++          pickupTime: form.elements.pickupTime.value,
++          coffeeAnniversary: form.elements.coffeeAnniversary.value,
++        };
++        try {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
++        } catch {
++          // Storage unavailable; still show the confirmation.
++        }
++        render(values);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

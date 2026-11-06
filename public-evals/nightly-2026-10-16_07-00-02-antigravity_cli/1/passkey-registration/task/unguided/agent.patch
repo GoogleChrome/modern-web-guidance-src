@@ -1,0 +1,278 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -174,8 +174,14 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card passkey-promo" style="margin-bottom: 30px;">
++      <h3>Sign in faster with Passkeys</h3>
++      <p>Passkeys are a safer and easier replacement for passwords. Use your fingerprint, face, or screen lock to sign in securely.</p>
++      <button type="button" class="btn" data-testid="register-button" id="register-button">Create Passkey</button>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +212,259 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Base64URL and WebAuthn serialization helpers / polyfills
++    function base64urlToBuffer(base64url) {
++      const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
++      const padLen = (4 - (base64.length % 4)) % 4;
++      const padded = base64 + '='.repeat(padLen);
++      const binStr = window.atob(padded);
++      const bin = new Uint8Array(binStr.length);
++      for (let i = 0; i < binStr.length; i++) {
++        bin[i] = binStr.charCodeAt(i);
++      }
++      return bin.buffer;
++    }
++
++    function bufferToBase64url(buffer) {
++      const bytes = new Uint8Array(buffer);
++      let binStr = '';
++      for (let i = 0; i < bytes.byteLength; i++) {
++        binStr += String.fromCharCode(bytes[i]);
++      }
++      return window.btoa(binStr).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
++    }
++
++    function parseCreationOptionsFromJSON(options) {
++      const user = {
++        ...options.user,
++        id: typeof options.user?.id === 'string' ? base64urlToBuffer(options.user.id) : options.user?.id,
++      };
++      const challenge = typeof options.challenge === 'string' ? base64urlToBuffer(options.challenge) : options.challenge;
++      const excludeCredentials = options.excludeCredentials?.map((cred) => ({
++        ...cred,
++        id: typeof cred.id === 'string' ? base64urlToBuffer(cred.id) : cred.id,
++        transports: cred.transports,
++      })) ?? [];
++      return {
++        ...options,
++        user,
++        challenge,
++        excludeCredentials,
++      };
++    }
++
++    function toJSON() {
++      const id = this.id;
++      const rawId = this.rawId ? bufferToBase64url(this.rawId) : this.id;
++      const authenticatorAttachment = this.authenticatorAttachment;
++      const clientExtensionResults = typeof this.getClientExtensionResults === 'function' ? this.getClientExtensionResults() : {};
++      const type = this.type;
++
++      if (this.response && 'attestationObject' in this.response) {
++        return {
++          id,
++          rawId,
++          response: {
++            clientDataJSON: bufferToBase64url(this.response.clientDataJSON),
++            attestationObject: bufferToBase64url(this.response.attestationObject),
++            transports: typeof this.response.getTransports === 'function' ? this.response.getTransports() : (this.response.transports || []),
++          },
++          authenticatorAttachment,
++          clientExtensionResults,
++          type,
++        };
++      }
++      if (this.response && 'authenticatorData' in this.response) {
++        return {
++          id,
++          rawId,
++          response: {
++            authenticatorData: bufferToBase64url(this.response.authenticatorData),
++            clientDataJSON: bufferToBase64url(this.response.clientDataJSON),
++            signature: bufferToBase64url(this.response.signature),
++            userHandle: this.response.userHandle ? bufferToBase64url(this.response.userHandle) : undefined,
++          },
++          authenticatorAttachment,
++          clientExtensionResults,
++          type,
++        };
++      }
++      return {
++        id,
++        rawId,
++        type,
++        response: this.response,
++        authenticatorAttachment,
++        clientExtensionResults,
++      };
++    }
++
++    // Register WebAuthn polyfills if not already defined natively
++    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
++      if (!PublicKeyCredential.parseCreationOptionsFromJSON) {
++        Object.defineProperty(PublicKeyCredential, 'parseCreationOptionsFromJSON', {
++          value: parseCreationOptionsFromJSON,
++          writable: true,
++          configurable: true,
++        });
++      }
++      if (!PublicKeyCredential.prototype.toJSON) {
++        Object.defineProperty(PublicKeyCredential.prototype, 'toJSON', {
++          value: toJSON,
++          writable: true,
++          configurable: true,
++        });
++      }
++    }
++
++    async function optionsFetch(options = { promotion: true }) {
++      const response = await fetch('/api/register/options', {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++        },
++        body: JSON.stringify(options),
++      });
++      if (!response.ok) {
++        throw new Error(`Options fetch failed with status: ${response.status}`);
++      }
++      return await response.json();
++    }
++
++    async function registerVerifyFetch(encodedResponse) {
++      return await fetch('/api/register/verify', {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++        },
++        body: JSON.stringify(encodedResponse),
++      });
++    }
++
++    async function gateUIOnPageLoad() {
++      const registerButton = document.querySelector('[data-testid="register-button"]');
++      if (!registerButton) return;
++
++      if (window.PublicKeyCredential && typeof PublicKeyCredential.getClientCapabilities === 'function') {
++        try {
++          const capabilities = await PublicKeyCredential.getClientCapabilities();
++          if (!capabilities.passkeyPlatformAuthenticator || !capabilities.conditionalGet) {
++            registerButton.disabled = true;
++          }
++        } catch (e) {
++          console.warn("Could not check client capabilities:", e);
++        }
++      } else if (!window.PublicKeyCredential) {
++        registerButton.disabled = true;
++      }
++    }
++
++    async function registerPasskey(isPromotion = true) {
++      const registerButton = document.querySelector('[data-testid="register-button"]');
++
++      // Verify passkey capability and conditional UI are available
++      if (window.PublicKeyCredential && typeof PublicKeyCredential.getClientCapabilities === 'function') {
++        try {
++          const capabilities = await PublicKeyCredential.getClientCapabilities();
++          if (!capabilities.passkeyPlatformAuthenticator || !capabilities.conditionalGet) {
++            if (registerButton) registerButton.disabled = true;
++            return;
++          }
++        } catch (e) {
++          console.warn("Capabilities check error:", e);
++        }
++      } else if (!window.PublicKeyCredential) {
++        if (registerButton) registerButton.disabled = true;
++        return;
++      }
++
++      const creationOptionsJSON = await optionsFetch({ promotion: isPromotion });
++      const publicKey = typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function'
++        ? PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON)
++        : parseCreationOptionsFromJSON(creationOptionsJSON);
++
++      let credential;
++      try {
++        // passkey prompt execution
++        credential = await navigator.credentials.create({ publicKey });
++      } catch (err) {
++        if (err.name === "InvalidStateError") {
++          console.log("A passkey already exists for this account.");
++          if (typeof alert === 'function') {
++            try { alert("A passkey already exists for this account."); } catch (_) {}
++          }
++        } else if (err.name === "SecurityError") {
++          console.error("Configuration RP ID or Secure Context error.");
++          if (typeof alert === 'function') {
++            try { alert("Configuration RP ID or Secure Context error."); } catch (_) {}
++          }
++        } else if (err.name === "NotAllowedError") {
++          console.log("User cancelled the passkey dialog.");
++        } else if (err.name === "AbortError") {
++          console.log("The creation operation has been aborted.");
++        } else {
++          console.error("Error creating passkey:", err);
++        }
++        return; // Safe API exit, do not signal unknown for standard WebAuthn cancels
++      }
++
++      // Server Verification phase (Segregated Try/Catch)
++      let encodedResponse = typeof credential.toJSON === 'function'
++        ? credential.toJSON()
++        : toJSON.call(credential);
++      const rpId = creationOptionsJSON.rp?.id || window.location.hostname;
++
++      try {
++        const response = await registerVerifyFetch(encodedResponse);
++        if (!response.ok) {
++          // Server verification failed to verify/authenticate the credential (orphaned)
++          if (window.PublicKeyCredential && typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId, // RP ID must match the one defined on the server
++              credentialId: encodedResponse.id, // Base64URL-encoded credential ID
++            });
++          }
++          return;
++        }
++        console.log("Passkey registered successfully!");
++      } catch (serverErr) {
++        console.error("Server verification network failure:", serverErr);
++        if (window.PublicKeyCredential && typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId, // RP ID must match the one defined on the server
++            credentialId: encodedResponse.id, // Base64URL-encoded credential ID
++          });
++        }
++      }
++    }
++
++    function setupPasskeyUI() {
++      const registerButton = document.querySelector('[data-testid="register-button"]');
++      if (registerButton) {
++        registerButton.addEventListener('click', () => registerPasskey(true));
++      }
++    }
++
++    // Attach to window for test harnesses and external access
++    window.registerPasskey = registerPasskey;
++    window.optionsFetch = optionsFetch;
++    window.registerVerifyFetch = registerVerifyFetch;
++    window.gateUIOnPageLoad = gateUIOnPageLoad;
++
++    // Run gating on page load
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', () => {
++        gateUIOnPageLoad();
++        setupPasskeyUI();
++      });
++    } else {
++      gateUIOnPageLoad();
++      setupPasskeyUI();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

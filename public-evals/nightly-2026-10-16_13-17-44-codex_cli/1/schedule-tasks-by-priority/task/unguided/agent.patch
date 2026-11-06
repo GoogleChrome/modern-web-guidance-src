@@ -1,0 +1,224 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,71 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations simulator */
++    .operations { margin-top: 64px; border: 1px solid #e4dfd8; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 8px 32px #4e342e08; }
++    .ops-heading { padding: 28px 30px 24px; background: #f5f3ee; border-bottom: 1px solid #e4dfd8; }
++    .ops-eyebrow { color: #68776b; text-transform: uppercase; font-size: 10px; letter-spacing: 2px; font-weight: 700; margin-bottom: 7px; }
++    .ops-title-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
++    .ops-heading h2 { font-size: 25px; letter-spacing: -.7px; font-weight: 650; }
++    .ops-heading p { font-size: 13px; color: #81736c; margin-top: 5px; }
++    .live-badge { display: inline-flex; align-items: center; gap: 7px; color: #426451; background: #e6ede4; border: 1px solid #d7e2d5; border-radius: 20px; padding: 5px 11px; font-size: 10px; font-weight: 700; letter-spacing: .4px; white-space: nowrap; }
++    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #62916a; }
++    .ops-body { padding: 26px 30px 28px; }
++    .ops-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #8c7e74; font-weight: 700; }
++    .task-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0 16px; }
++    button { font: inherit; cursor: pointer; }
++    button:focus-visible { outline: 3px solid #b37f49; outline-offset: 4px; }
++    .task-button { text-align: left; border: 1px solid #e8e2db; background: #fff; border-radius: 9px; padding: 16px; color: var(--text); transition: background .2s, border-color .2s, transform .2s; }
++    .task-button:hover { background: #faf8f4; border-color: #b7a596; transform: translateY(-2px); }
++    .task-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
++    .task-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; background: #f9eee7; color: #a66038; }
++    .task-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
++    .task-button:nth-child(2) .task-icon { background: #f2eee2; color: #9a8244; }
++    .task-button:nth-child(3) .task-icon { background: #eaf0ec; color: #628572; }
++    .priority-tag { font-size: 9px; text-transform: uppercase; letter-spacing: .7px; font-weight: 700; border-radius: 4px; padding: 3px 6px; }
++    .priority-0 { background: #f9ebe4; color: #ae603e; }
++    .priority-1 { background: #f4f0e3; color: #947837; }
++    .priority-2 { background: #eaf1ec; color: #567861; }
++    .task-button strong { display: block; font-size: 14px; font-weight: 600; }
++    .task-button small { display: block; color: #94877f; font-size: 11px; margin-top: 3px; }
++    .batch-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
++    .batch-button { border: 0; border-radius: 6px; background: #4e342e; color: white; padding: 10px 16px; font-size: 12px; font-weight: 600; transition: background .2s; }
++    .batch-button:hover { background: #6c4b40; }
++    .batch-row p { color: #97887c; font-size: 11px; }
++    .queue-dashboard { display: grid; grid-template-columns: 1.15fr 1fr; border: 1px solid #e8e2db; border-radius: 9px; margin-top: 26px; overflow: hidden; }
++    .queue-pane, .activity-pane { padding: 19px 20px; min-width: 0; }
++    .activity-pane { border-left: 1px solid #e8e2db; background: #fcfbf8; }
++    .pane-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 17px; }
++    .pane-heading h3 { font-size: 12px; font-weight: 600; }
++    .count-badge { font-size: 10px; background: #f0ede8; padding: 2px 7px; border-radius: 4px; color: #837367; }
++    .queue-content { height: 172px; overflow-y: auto; }
++    .empty-state { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: #b2a69a; }
++    .empty-symbol { font-size: 26px; margin-bottom: 7px; line-height: 1; }
++    .empty-state strong { color: #8b7c70; font-size: 12px; font-weight: 500; }
++    .empty-state p { font-size: 11px; margin-top: 4px; }
++    .queue-item { padding: 9px 0; border-bottom: 1px solid #f0ece6; }
++    .queue-item-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; }
++    .queue-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++    .queue-item-status { font-size: 10px; color: #8b7c70; margin-top: 4px; display: flex; justify-content: space-between; }
++    .progress-track { height: 3px; background: #eeeae3; border-radius: 3px; margin-top: 6px; overflow: hidden; }
++    .progress-fill { height: 100%; background: #8a9e83; transition: width .08s linear; }
++    .activity-list { height: 172px; overflow-y: auto; list-style: none; }
++    .activity-entry { display: flex; gap: 9px; font-size: 10px; padding: 7px 0; border-bottom: 1px solid #efebe5; color: #89796e; }
++    .activity-entry time { color: #b2a294; font-variant-numeric: tabular-nums; flex-shrink: 0; }
++    .activity-entry span { color: #65574d; }
++    .ops-footer { margin-top: 17px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 10px; color: #97887b; flex-wrap: wrap; }
++    .responsive-status { display: inline-flex; align-items: center; gap: 6px; color: #688367; }
++    .responsive-status .live-dot { animation: heartbeat 2s ease-in-out infinite; }
++    @keyframes heartbeat { 50% { opacity: .3; } }
++    @media (prefers-reduced-motion: reduce) { .responsive-status .live-dot { animation: none; } .task-button, .progress-fill { transition: none; } }
++    @media (max-width: 650px) {
++      nav { padding: 14px 5%; flex-wrap: wrap; gap: 10px; } .logo { font-size: 18px; } nav ul { flex-wrap: wrap; gap: 10px; } nav ul li { margin-left: 0; } nav a { font-size: 12px; }
++      .hero h1 { font-size: 2.3rem; } .ops-heading, .ops-body { padding: 20px; } .ops-title-row { align-items: flex-start; } .ops-heading h2 { font-size: 22px; }
++      .task-controls { grid-template-columns: 1fr; } .task-top { margin-bottom: 8px; } .queue-dashboard { grid-template-columns: 1fr; } .activity-pane { border-left: 0; border-top: 1px solid #e8e2db; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +257,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="operations" aria-labelledby="ops-title">
++      <div class="ops-heading">
++        <div class="ops-eyebrow">Behind the counter</div>
++        <div class="ops-title-row">
++          <h2 id="ops-title">Operations queue</h2>
++          <span class="live-badge"><span class="live-dot"></span> LIVE SIMULATOR</span>
++        </div>
++        <p>A little order for the daily rush. Run tasks and watch priorities at work.</p>
++      </div>
++      <div class="ops-body">
++        <div class="ops-section-label">Add to the queue</div>
++        <div class="task-controls">
++          <button class="task-button" type="button" data-task="checkout" aria-label="Run urgent checkout task">
++            <span class="task-top"><span class="task-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2l2 10h11l3-7H6M9 19h.01M17 19h.01"/><circle cx="9" cy="19" r="1"/><circle cx="17" cy="19" r="1"/></svg></span><span class="priority-tag priority-0">Urgent</span></span>
++            <strong>Process checkout <span aria-hidden="true">↗</span></strong><small>Keep the coffee line moving.</small>
++          </button>
++          <button class="task-button" type="button" data-task="menu" aria-label="Run standard menu update">
++            <span class="task-top"><span class="task-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><span class="priority-tag priority-1">Standard</span></span>
++            <strong>Update menu <span aria-hidden="true">↗</span></strong><small>Freshen up the daily offerings.</small>
++          </button>
++          <button class="task-button" type="button" data-task="telemetry" aria-label="Run background telemetry logging">
++            <span class="task-top"><span class="task-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17v-5M9 17V7M14 17v-8M19 17V4M3 21h18"/></svg></span><span class="priority-tag priority-2">Background</span></span>
++            <strong>Log telemetry <span aria-hidden="true">↗</span></strong><small>Gather insights in the background.</small>
++          </button>
++        </div>
++        <div class="batch-row"><button type="button" class="batch-button" id="run-batch"><span aria-hidden="true">≋ &nbsp;</span> Run mixed batch</button><p>6 tasks. Three priorities. Everything in its time.</p></div>
++        <div class="queue-dashboard">
++          <div class="queue-pane">
++            <div class="pane-heading"><h3>Task queue</h3><span class="count-badge" id="queue-count">0 pending</span></div>
++            <div class="queue-content" id="task-queue" aria-label="Tasks in priority order"><div class="empty-state"><div class="empty-symbol" aria-hidden="true">☷</div><strong>All quiet behind the counter</strong><p>Add a task above to get things brewing.</p></div></div>
++          </div>
++          <div class="activity-pane">
++            <div class="pane-heading"><h3>Activity log</h3><span class="count-badge" id="completed-count">0 completed</span></div>
++            <ol class="activity-list" id="activity-log" aria-label="Recent task activity"><li class="empty-state"><div class="empty-symbol" aria-hidden="true">◷</div><strong>Ready when you are</strong><p>Task activity will appear here.</p></li></ol>
++          </div>
++        </div>
++        <div class="ops-footer"><span>Priority order: urgent → standard → background</span><span class="responsive-status"><span class="live-dot"></span><span id="queue-status" role="status">UI responsive · Queue idle</span></span></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +309,99 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      const types = {
++        checkout: { name: 'Checkout', priority: 0, label: 'Urgent', slices: 35 },
++        menu: { name: 'Menu update', priority: 1, label: 'Standard', slices: 65 },
++        telemetry: { name: 'Telemetry log', priority: 2, label: 'Background', slices: 95 }
++      };
++      const queue = [];
++      let sequence = 0, completed = 0, scheduled = false, activeId = null;
++      const queueEl = document.getElementById('task-queue');
++      const logEl = document.getElementById('activity-log');
++      const statusEl = document.getElementById('queue-status');
++      function log(message) {
++        if (!logEl.querySelector('.activity-entry')) logEl.replaceChildren();
++        const entry = document.createElement('li');
++        entry.className = 'activity-entry';
++        const time = document.createElement('time');
++        time.dateTime = new Date().toISOString();
++        time.textContent = new Date().toLocaleTimeString([], { hour12: false });
++        const text = document.createElement('span');
++        text.textContent = message;
++        entry.append(time, text);
++        logEl.prepend(entry);
++        while (logEl.children.length > 60) logEl.lastElementChild.remove();
++      }
++      function render() {
++        document.getElementById('queue-count').textContent = `${queue.length} pending`;
++        document.getElementById('completed-count').textContent = `${completed} completed`;
++        if (!queue.length) {
++          queueEl.innerHTML = '<div class="empty-state"><div class="empty-symbol" aria-hidden="true">✓</div><strong>All caught up</strong><p>Every task served. Ready for the next rush.</p></div>';
++          statusEl.textContent = 'UI responsive · Queue idle';
++          return;
++        }
++        queueEl.innerHTML = queue.map((task, index) => {
++          const progress = Math.round(task.done / task.slices * 100);
++          const state = index === 0 ? 'Running' : task.done ? 'Paused for higher priority' : 'Waiting';
++          return `<div class="queue-item"><div class="queue-item-top"><span class="queue-item-name">${task.name} <span style="color:#a99b8f">#${task.id}</span></span><span class="priority-tag priority-${task.priority}">${task.label}</span></div><div class="queue-item-status"><span>${state}</span><span>${progress}%</span></div><div class="progress-track" role="progressbar" aria-label="${task.name} ${task.id}" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:${progress}%"></div></div></div>`;
++        }).join('');
++      }
++      function schedule() {
++        if (scheduled) return;
++        scheduled = true;
++        setTimeout(runSlice, 24);
++      }
++      function addTasks(keys) {
++        for (const key of keys) {
++          const task = { ...types[key], id: ++sequence, done: 0 };
++          queue.push(task);
++          log(`${task.name} #${task.id} queued · ${task.label.toLowerCase()}`);
++        }
++        // FIFO within each priority; reselect after every short slice.
++        queue.sort((a, b) => a.priority - b.priority || a.id - b.id);
++        render();
++        schedule();
++      }
++      function runSlice() {
++        scheduled = false;
++        if (!queue.length) return;
++        const task = queue[0];
++        if (activeId !== task.id) {
++          if (activeId !== null && queue.some(item => item.id === activeId)) {
++            log(`Task #${activeId} paused for ${task.label.toLowerCase()} work`);
++          }
++          log(`${task.name} #${task.id} ${task.done ? 'resumed' : 'started'}`);
++          activeId = task.id;
++          statusEl.textContent = `UI responsive · Running ${task.name.toLowerCase()}`;
++        }
++        // Simulate CPU work for at most 4ms, then release the main thread
++        // for input, rendering, and any newly queued urgent operations.
++        const deadline = performance.now() + 4;
++        while (performance.now() < deadline) Math.sqrt(Math.random() * 10000);
++        task.done++;
++        if (task.done >= task.slices) {
++          queue.shift();
++          completed++;
++          activeId = null;
++          log(`${task.name} #${task.id} completed`);
++        }
++        render();
++        if (queue.length) schedule();
++      }
++      document.querySelectorAll('[data-task]').forEach(button => {
++        button.addEventListener('click', () => addTasks([button.dataset.task]));
++      });
++      document.getElementById('run-batch').addEventListener('click', () => {
++        log('Mixed batch added · 6 tasks');
++        addTasks(['telemetry', 'menu', 'checkout', 'telemetry', 'checkout', 'menu']);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

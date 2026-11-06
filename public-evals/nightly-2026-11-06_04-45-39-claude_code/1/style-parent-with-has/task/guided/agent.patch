@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,93 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact {
++      max-width: 600px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++    }
++
++    .contact h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .contact-form {
++      display: grid;
++      gap: 16px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-field {
++      display: grid;
++      gap: 6px;
++      padding: 12px;
++      border: 2px solid transparent;
++      border-radius: 6px;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .form-field label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .form-field .required {
++      color: #c62828;
++    }
++
++    .form-field input,
++    .form-field textarea {
++      font: inherit;
++      color: inherit;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: var(--light);
++    }
++
++    .form-field textarea {
++      resize: vertical;
++      min-height: 120px;
++    }
++
++    .form-field input:focus-visible,
++    .form-field textarea:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .error-msg {
++      display: none;
++      color: #c62828;
++      font-size: 0.875rem;
++    }
++
++    /* Red border on the whole wrapper once the user has interacted with an invalid field
++       (blurred after editing, or attempted to submit). */
++    .form-field:has(:user-invalid) {
++      border-color: #c62828;
++      background-color: #fff5f5;
++    }
++
++    .form-field:has(:user-invalid) .error-msg {
++      display: block;
++    }
++
++    .contact-form .btn {
++      justify-self: start;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +281,42 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="contact" aria-labelledby="contact-heading">
++    <h2 id="contact-heading">Get in Touch</h2>
++    <form class="contact-form" action="/contact" method="post">
++      <div class="form-field">
++        <label for="contact-name">Name <span class="required" aria-hidden="true">*</span></label>
++        <input type="text" id="contact-name" name="name" autocomplete="name" required
++          aria-errormessage="contact-name-error">
++        <div id="contact-name-error" class="error-msg">
++          <span aria-hidden="true">⚠</span> Please enter your name.
++        </div>
++      </div>
++
++      <div class="form-field">
++        <label for="contact-email">Email <span class="required" aria-hidden="true">*</span></label>
++        <input type="email" id="contact-email" name="email" autocomplete="email" required
++          aria-errormessage="contact-email-error">
++        <div id="contact-email-error" class="error-msg">
++          <span aria-hidden="true">⚠</span> Please enter a valid email address.
++        </div>
++      </div>
++
++      <div class="form-field">
++        <label for="contact-message">Message <span class="required" aria-hidden="true">*</span></label>
++        <textarea id="contact-message" name="message" rows="5" required
++          aria-errormessage="contact-message-error"></textarea>
++        <div id="contact-message-error" class="error-msg">
++          <span aria-hidden="true">⚠</span> Please enter a message.
++        </div>
++      </div>
++
++      <button type="submit" class="btn">Send Message</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

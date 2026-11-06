@@ -1,0 +1,931 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..6b58ba7
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,85 @@
++const storageKey = 'daily-grind-preferences-v1';
++const form = document.querySelector('#preferences-form');
++const switches = [...form.querySelectorAll('input[switch]')];
++const defaults = Object.fromEntries(switches.map(input => [input.id, input.defaultChecked]));
++const status = document.querySelector('#announcement');
++const saveText = document.querySelector('#save-indicator span');
++let saved;
++try { saved = JSON.parse(localStorage.getItem(storageKey)); } catch { /* Storage can be unavailable in private contexts. */ }
++
++function renderPreferences() {
++  switches.forEach(input => {
++    input.nextElementSibling.textContent = input.checked ? 'On' : 'Off';
++  });
++  document.documentElement.classList.toggle('reduced-motion', document.querySelector('#reduced-motion').checked);
++}
++switches.forEach(input => {
++  if (saved && typeof saved[input.id] === 'boolean') input.checked = saved[input.id];
++  else if (input.id === 'reduced-motion') input.checked = matchMedia('(prefers-reduced-motion: reduce)').matches;
++});
++renderPreferences();
++
++function savePreferences(message) {
++  renderPreferences();
++  try {
++    localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(switches.map(input => [input.id, input.checked]))));
++    saveText.textContent = 'All changes saved';
++    status.textContent = message;
++  } catch {
++    saveText.textContent = 'Saved for this visit';
++    status.textContent = 'Preferences applied. Browser storage is unavailable, so these changes will only last for this visit.';
++  }
++}
++form.addEventListener('change', () => savePreferences('Preferences saved on this device.'));
++form.addEventListener('submit', event => event.preventDefault());
++document.querySelector('#reset-preferences').addEventListener('click', () => {
++  switches.forEach(input => { input.checked = input.id === 'reduced-motion' ? matchMedia('(prefers-reduced-motion: reduce)').matches : defaults[input.id]; });
++  savePreferences('Default preferences restored and saved.');
++});
++
++// Load the bundled, MIT-licensed fallback only where the native switch is unavailable.
++if (!('switch' in HTMLInputElement.prototype)) {
++  import('./vendor/input-switch-polyfill.js').catch(() => {
++    switches.forEach(input => input.setAttribute('role', 'switch'));
++  });
++}
++
++const viewContent = {
++  profile: ['My profile', '<h2>A familiar face.</h2><p>Your little corner of The Daily Grind.</p><div class="detail-row"><span>Name</span><strong>Jamie Davis</strong></div><div class="detail-row"><span>Member since</span><strong>2024</strong></div><p>Manage how we keep in touch in your preferences.</p>'],
++  orders: ['My orders', '<h2>Your next good cup awaits.</h2><p>You don’t have any orders yet. Pop into your local café to find a new favourite.</p><button class="primary-button" data-info="menu">Explore our menu</button>'],
++  rewards: ['Grind rewards', '<h2>Little sips. Lovely perks.</h2><p>Thanks for making us part of your daily.</p><div class="detail-row"><span>Your points</span><strong>240 points</strong></div><div class="detail-row"><span>Next reward</span><strong>Free coffee at 300 points</strong></div><p>Just 60 more points until your next cup is on us. Ask your barista to add points when you visit.</p>']
++};
++function setView(view) {
++  const isPreferences = view === 'preferences';
++  document.querySelector('#preferences-view').hidden = !isPreferences;
++  const other = document.querySelector('#other-view');
++  other.hidden = isPreferences;
++  if (!isPreferences && viewContent[view]) other.innerHTML = viewContent[view][1];
++  const title = isPreferences ? 'Preferences' : viewContent[view][0];
++  document.querySelector('#breadcrumb-current').textContent = title;
++  document.title = `${title} | The Daily Grind`;
++  document.querySelectorAll('.account-nav button').forEach(button => {
++    if (button.dataset.view === view) button.setAttribute('aria-current', 'page');
++    else button.removeAttribute('aria-current');
++  });
++}
++const info = {
++  menu: ['Find your new favourite.', '<p>Thoughtfully sourced. Freshly made.</p><div class="detail-row"><span>Maple Oat Latte</span><strong>$5.50</strong></div><div class="detail-row"><span>Dark Roast Espresso</span><strong>$3.00</strong></div><div class="detail-row"><span>Slow-Steeped Cold Brew</span><strong>$4.50</strong></div><p>Visit us in café to order. Your barista will make it just how you like it.</p>'],
++  story: ['Good coffee. Better days.', '<p>The Daily Grind began with a simple idea: a good cup of coffee can make an ordinary day feel a little brighter.</p><p>Since 2024, we’ve been bringing people together over ethically sourced beans, locally roasted coffee, and a warm welcome.</p>'],
++  locations: ['Come on in.', '<p>Our café directory is coming soon. In the meantime, stop by your local Daily Grind and say hello. We’ll have a fresh cup waiting.</p>'],
++  help: ['A little help with your daily.', '<p>Questions about your preferences? Your changes save automatically on this device. You can reset them at any time.</p><p>For coffee and reward questions, your local barista is always happy to help.</p>'],
++  privacy: ['Your preferences. Your choice.', '<p>This demo saves your preferences only in this browser, on this device. It doesn’t send your choices to a server or enrol you in email communications.</p><p>You can change any switch or reset to defaults whenever you like. Clearing your browser’s site data also removes your saved preferences.</p>']
++};
++const dialog = document.querySelector('#info-dialog');
++document.addEventListener('click', event => {
++  const viewButton = event.target.closest('[data-view]');
++  if (viewButton) setView(viewButton.dataset.view);
++  const infoButton = event.target.closest('[data-info]');
++  if (infoButton) {
++    const content = info[infoButton.dataset.info];
++    document.querySelector('#dialog-title').textContent = content[0];
++    document.querySelector('#dialog-content').innerHTML = content[1];
++    dialog.showModal();
++  }
++  if (event.target.closest('.dialog-close, .dialog-done')) dialog.close();
++});
+diff --git a/index.html b/index.html
+index 66c9173..f7ad472 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,77 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="theme-color" content="#faf9f6">
++  <title>Preferences | The Daily Grind</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="styles.css">
++  <script type="module" src="app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <a class="skip-link" href="#main">Skip to main content</a>
++  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
++    <symbol id="cup" viewBox="0 0 24 24"><path d="M4 8h13v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8Zm13 1h2a3 3 0 0 1 0 6h-2M8 3v2m5-2v2M3 22h16"/></symbol>
++    <symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></symbol>
++    <symbol id="bag" viewBox="0 0 24 24"><path d="M5 7h14l2 14H3L5 7Zm3 0V6a4 4 0 0 1 8 0v1"/></symbol>
++    <symbol id="gift" viewBox="0 0 24 24"><path d="M3 8h18v5H3zM5 13v8h14v-8M12 8v13M12 8H8a3 3 0 1 1 3-3l1 3Zm0 0h4a3 3 0 1 0-3-3l-1 3Z"/></symbol>
++    <symbol id="sliders" viewBox="0 0 24 24"><path d="M4 7h5m4 0h7M4 17h9m4 0h3"/><circle cx="11" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></symbol>
++    <symbol id="arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
++    <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></symbol>
++    <symbol id="leaf" viewBox="0 0 24 24"><path d="M20 3C7 1 1 9 6 16s15 2 14-13ZM4 21 15 10"/></symbol>
++    <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 5 2c-2 1-2 2-2 3m0 3h.01"/></symbol>
++    <symbol id="logout" viewBox="0 0 24 24"><path d="M10 4H4v16h6m-2-8h13m-4-4 4 4-4 4"/></symbol>
++    <symbol id="shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></symbol>
++  </defs></svg>
++  <header class="site-header">
++    <a href="./" class="brand" aria-label="The Daily Grind home"><span class="brand-icon"><svg><use href="#cup"/></svg></span><span>the daily grind<span class="brand-tag">GOOD COFFEE. BETTER DAYS.</span></span></a>
++    <nav class="main-nav" aria-label="Primary"><button data-info="menu">Our menu</button><button data-info="story">Our story</button><button data-info="locations">Find a café <span aria-hidden="true">↗</span></button></nav>
++    <button class="account-button" data-view="preferences"><span class="avatar">JD</span><span>Jamie Davis</span><svg class="icon"><use href="#arrow"/></svg></button>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++  <main id="main" tabindex="-1" class="page-shell">
++    <div class="breadcrumb">My account <svg class="icon"><use href="#arrow"/></svg><span id="breadcrumb-current">Preferences</span></div>
++    <div class="page-heading"><div><p class="eyebrow">MAKE YOURSELF AT HOME</p><h1>Your daily, your way.</h1><p>A few little preferences. A better coffee experience.</p></div><div class="member-badge"><svg class="icon"><use href="#cup"/></svg> A regular since 2024</div></div>
++    <div class="account-layout">
++      <aside class="sidebar">
++        <div class="profile-summary"><span class="avatar large">JD</span><div><strong>Jamie Davis</strong><span>Good mornings start here.</span></div></div>
++        <nav class="account-nav" aria-label="My account">
++          <button data-view="profile"><svg class="icon"><use href="#user"/></svg>My profile</button>
++          <button data-view="orders"><svg class="icon"><use href="#bag"/></svg>My orders</button>
++          <button data-view="rewards"><svg class="icon"><use href="#gift"/></svg>Grind rewards <span class="points">240</span></button>
++          <button data-view="preferences" aria-current="page"><svg class="icon"><use href="#sliders"/></svg>Preferences <span class="active-dot"></span></button>
++        </nav>
++        <div class="sidebar-bottom"><p>A little help with your daily?</p><button data-info="help"><svg class="icon"><use href="#help"/></svg>We're here for you <span aria-hidden="true">↗</span></button></div>
++        <div class="roasted-note"><svg class="icon"><use href="#leaf"/></svg> Thoughtfully sourced.<br>Always freshly roasted.</div>
++      </aside>
++      <div class="content">
++        <div class="coffee-banner"><div class="banner-copy"><span class="eyebrow">A CUP THAT'S ALL YOURS</span><h2>The good stuff.<br>Just how you like it.</h2><p>You're in control of what comes your way.</p></div><span class="banner-stamp">BREWED WITH CARE <span>✳</span> EVERY SINGLE DAY</span></div>
++        <div id="preferences-view" class="view">
++          <div class="section-heading"><div><h2>Preferences</h2><p>The little things that make it personal.</p></div><span class="save-indicator" id="save-indicator"><svg class="icon"><use href="#check"/></svg><span>All changes saved</span></span></div>
++          <div class="settings-grid">
++            <form class="preferences-form" id="preferences-form">
++              <section class="settings-card"><div class="card-title"><span class="section-number">01</span><h3>Keep in the loop</h3></div>
++                <div class="setting-row"><div><label for="email-updates">Email updates</label><p id="email-hint">Fresh brews, new arrivals, and stories worth sipping.</p></div><div class="switch-wrap"><input type="checkbox" switch id="email-updates" name="email-updates" aria-describedby="email-hint" checked><span class="switch-state" aria-hidden="true">On</span></div></div>
++                <div class="setting-row"><div><label for="offers">Offers & little extras</label><p id="offers-hint">A treat on your birthday. A perk just because.</p></div><div class="switch-wrap"><input type="checkbox" switch id="offers" name="offers" aria-describedby="offers-hint" checked><span class="switch-state" aria-hidden="true">On</span></div></div>
++                <div class="setting-row"><div><label for="order-updates">Order notifications</label><p id="order-hint">Know when your coffee is on its way.</p></div><div class="switch-wrap"><input type="checkbox" switch id="order-updates" name="order-updates" aria-describedby="order-hint" checked><span class="switch-state" aria-hidden="true">On</span></div></div>
++              </section>
++              <section class="settings-card"><div class="card-title"><span class="section-number">02</span><h3>Make it feel like you</h3></div>
++                <div class="setting-row"><div><label for="personalisation">Personalised recommendations</label><p id="personalisation-hint">Discover your next favourite, based on what you love.</p></div><div class="switch-wrap"><input type="checkbox" switch id="personalisation" name="personalisation" aria-describedby="personalisation-hint"><span class="switch-state" aria-hidden="true">Off</span></div></div>
++                <div class="setting-row"><div><label for="reduced-motion">Reduce motion</label><p id="motion-hint">Keep things calm with fewer animations.</p></div><div class="switch-wrap"><input type="checkbox" switch id="reduced-motion" name="reduced-motion" aria-describedby="motion-hint"><span class="switch-state" aria-hidden="true">Off</span></div></div>
++              </section>
++              <div class="form-footer"><span><svg class="icon"><use href="#shield"/></svg>Your preferences. Always your choice.</span><button type="button" id="reset-preferences">Reset to defaults</button></div>
++            </form>
++            <aside class="preferences-aside"><div class="small-joys"><span class="joy-icon"><svg class="icon"><use href="#cup"/></svg></span><p class="eyebrow">LESS NOISE. MORE JOY.</p><h3>Only the things<br>you care about.</h3><p>We like our inboxes like our coffee.<br>Thoughtful, never overwhelming.</p><div class="hand-drawn-line"></div><span>Change your mind? These settings<br>are always here for you.</span></div><div class="privacy-note"><svg class="icon"><use href="#shield"/></svg><p>Your details are in good hands.<br>We never sell your personal data.<br><button data-info="privacy">Our privacy promise <span aria-hidden="true">↗</span></button></p></div></aside>
++          </div>
+         </div>
++        <section id="other-view" class="view other-view" hidden></section>
+       </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  </main>
++  <footer class="site-footer"><a href="./" class="footer-wordmark">the daily grind<span>®</span></a><span>A good day starts with a good cup.</span><span>© 2026 The Daily Grind Coffee Co.</span></footer>
++  <div class="visually-hidden" role="status" id="announcement"></div>
++  <dialog id="info-dialog" aria-labelledby="dialog-title"><button class="dialog-close" aria-label="Close dialog">×</button><span class="eyebrow">THE DAILY GRIND</span><h2 id="dialog-title"></h2><div id="dialog-content"></div><button class="primary-button dialog-done">Got it</button></dialog>
+ </body>
+-
+ </html>
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..504ba95
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1 @@
++:root{--paper:#faf9f6;--ink:#30382c;--muted:#74766e;--olive:#536344;--line:#e7e7df;--soft:#eff1e9;--white:#fff; font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--paper);font-synthesis:none}*{box-sizing:border-box}body{margin:0}button,a,input{-webkit-tap-highlight-color:transparent}button,input{font:inherit}button,a{color:inherit}button{cursor:pointer}button{border:0;background:none}a{text-decoration:none}svg{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.svg-library{position:absolute;width:0;height:0}.icon{width:20px;height:20px;flex-shrink:0}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #9a642d;outline-offset:5px;border-radius:4px}.site-header{height:100px;border-bottom:1px solid var(--line);padding:0 5.2%;display:flex;align-items:center;justify-content:space-between;gap:28px;background:#fdfcf9}.brand{display:flex;align-items:center;gap:13px;font-family:'Manrope',sans-serif;font-size:24px;font-weight:800;letter-spacing:-1.2px}.brand-icon{display:grid;place-items:center;width:47px;height:47px;background:var(--olive);border-radius:50%;color:#fff}.brand-icon svg{height:28px;width:28px;stroke-width:1.4}.brand-tag{display:block;font:500 8px 'DM Sans',sans-serif;letter-spacing:2.2px;margin-top:4px}.main-nav{display:flex;gap:34px;margin-left:40px}.main-nav button{font-size:13px;padding:14px 0;color:#575c52}.main-nav button:hover{color:var(--olive);text-decoration:underline;text-underline-offset:6px}.main-nav button span{margin-left:5px}.account-button{display:flex;align-items:center;gap:11px;font-size:12px;font-weight:500}.account-button .icon{width:14px;height:14px;margin-left:10px}.avatar{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#e9e9dc;color:#5d624e;font-size:11px;font-weight:650}.page-shell{max-width:1360px;margin:auto;padding:31px 5.2% 53px}.breadcrumb{display:flex;align-items:center;gap:12px;font-size:11px;color:#7b7d74}.breadcrumb .icon{width:11px;height:11px}.breadcrumb span{color:var(--ink)}.page-heading{display:flex;align-items:center;justify-content:space-between;margin:32px 0 35px}.eyebrow{font-size:9px;font-weight:650;letter-spacing:2px;margin:0 0 10px;color:var(--olive)}h1,h2,h3,p{margin-top:0}h1{font:650 39px/1.2 'Manrope',sans-serif;letter-spacing:-1.7px;margin-bottom:12px}.page-heading>div>p:last-child{font-size:12px;color:var(--muted);margin:0}.member-badge{display:flex;align-items:center;gap:8px;border:1px solid #e2e4d8;border-radius:30px;padding:10px 14px;font-size:10px;color:#647054;background:#f3f4ed;margin-top:14px}.member-badge .icon{width:15px;height:15px}.account-layout{display:grid;grid-template-columns:218px minmax(0,1fr);gap:37px}.sidebar{padding-top:4px}.profile-summary{display:flex;align-items:center;gap:11px;padding-bottom:24px;margin-bottom:17px;border-bottom:1px solid var(--line)}.avatar.large{width:40px;height:40px;font-size:12px}.profile-summary strong{font-size:12px;font-weight:600;display:block;margin-bottom:5px}.profile-summary div>span{font-size:10px;color:var(--muted)}.account-nav{display:flex;flex-direction:column;gap:5px}.account-nav button{display:flex;align-items:center;text-align:left;gap:12px;padding:13px 14px;font-size:12px;border-radius:5px;color:#696e62;min-height:45px}.account-nav .icon{width:17px;height:17px}.account-nav button[aria-current]{background:#e9eddf;color:#445337;font-weight:600}.account-nav button:hover{background:#eff0e9}.points{font-size:9px;margin-left:auto;border:1px solid #e1e4d7;border-radius:4px;padding:2px 6px;color:#687351;background:#f2f3eb}.active-dot{margin-left:auto;width:5px;height:5px;background:var(--olive);border-radius:50%}.sidebar-bottom{margin-top:33px;padding:23px 10px 0;border-top:1px solid var(--line)}.sidebar-bottom p{font-size:10px;color:#85867d;margin-bottom:12px}.sidebar-bottom button{display:flex;align-items:center;gap:9px;font-size:11px;padding:0}.sidebar-bottom .icon{width:16px;height:16px}.sidebar-bottom button span{margin-left:4px}.roasted-note{font-size:10px;line-height:1.8;color:#8b8e80;margin:58px 11px 0;display:flex;align-items:center;gap:9px}.roasted-note .icon{color:#7a866a;width:23px;height:23px}.coffee-banner{height:224px;border-radius:8px;position:relative;overflow:hidden;color:#fff;background:#3a3026 url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1600&q=85') center 54%/cover}.coffee-banner:before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(23,29,18,.85),rgba(23,29,18,.37) 54%,rgba(23,29,18,.04))}.banner-copy{position:relative;padding:29px 32px}.banner-copy .eyebrow{font-size:8px;color:#e1e5d4;letter-spacing:2px}.banner-copy h2{font:500 31px/1.24 'Manrope',sans-serif;letter-spacing:-1px;margin:13px 0 14px}.banner-copy>p{font-size:10px;color:#e3e3d9;margin:0}.banner-stamp{position:absolute;right:26px;bottom:24px;font-size:7px;letter-spacing:1.5px;display:flex;align-items:center;gap:8px}.banner-stamp span{font-size:23px}.section-heading{display:flex;align-items:center;justify-content:space-between;margin:29px 0 21px;gap:10px}.section-heading h2{font:650 21px 'Manrope',sans-serif;letter-spacing:-.6px;margin-bottom:7px}.section-heading p{font-size:11px;color:var(--muted);margin:0}.save-indicator{font-size:9px;color:#6e775e;display:flex;align-items:center;gap:5px;white-space:nowrap}.save-indicator .icon{width:13px;height:13px}.settings-grid{display:grid;grid-template-columns:minmax(0,1fr) 224px;gap:22px}.settings-card{border:1px solid var(--line);border-radius:7px;background:#fff;margin-bottom:17px;padding:0 21px}.card-title{display:flex;align-items:center;gap:9px;padding:18px 0 15px;border-bottom:1px solid var(--line)}.section-number{font-size:9px;color:#89937c;background:#f2f4ed;border-radius:4px;padding:4px 5px}.card-title h3{font-size:12px;font-weight:600;margin:0}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:17px 0;border-bottom:1px solid #efefe9;min-height:80px}.setting-row:last-child{border-bottom:0}.setting-row label{font-size:11px;font-weight:550;cursor:pointer;display:inline-block;padding:3px 0}.setting-row p{font-size:9px;line-height:1.6;color:var(--muted);margin:4px 0 0;max-width:300px}.switch-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0}.switch-state{font-size:8px;color:#73796a}input[type=checkbox][switch]{accent-color:var(--olive);font-size:22px;cursor:pointer;margin:0;flex-shrink:0;min-inline-size:38px;min-block-size:24px}input[type=checkbox][switch].switch{--switch-background:#d6d8d0;--switch-thumb:#fff;top:0;width:40px;height:24px;font-size:20px;touch-action:pan-y;border-width:2px}input[type=checkbox][switch].switch:checked{border-width:2px}input[type=checkbox][switch]:focus-visible{outline:3px solid #9a642d;outline-offset:5px}.small-joys{background:#eef0e5;border-radius:7px;padding:25px 22px 23px;min-height:281px}.joy-icon{display:grid;place-items:center;border:1px solid #ced4c1;border-radius:50%;width:36px;height:36px;color:#74825e;margin-bottom:24px}.joy-icon .icon{width:19px;height:19px}.small-joys .eyebrow{font-size:7px;letter-spacing:1.4px;margin-bottom:11px}.small-joys h3{font:550 22px/1.35 'Manrope',sans-serif;letter-spacing:-.7px;margin-bottom:13px}.small-joys>p:not(.eyebrow){font-size:9px;color:#737b65;line-height:1.9;margin:0}.hand-drawn-line{width:36px;border-top:1px solid #adb69b;transform:rotate(-7deg);margin:21px 0 18px}.small-joys>span:last-child{font-size:9px;line-height:1.8;color:#7c826e}.privacy-note{display:flex;gap:9px;margin:22px 6px}.privacy-note>.icon{width:16px;height:16px;color:#8b937d;margin-top:2px}.privacy-note p{font-size:9px;line-height:1.9;color:#85887c;margin:0}.privacy-note button{padding:0;font-size:9px;text-decoration:underline;text-underline-offset:3px;margin-top:7px;color:#647252}.privacy-note button span{margin-left:3px}.form-footer{display:flex;justify-content:space-between;gap:12px;font-size:8px;color:#868a7d;padding:0 1px}.form-footer>span{display:flex;align-items:center;gap:5px}.form-footer .icon{width:12px;height:12px}.form-footer button{font-size:8px;color:#727967;text-decoration:underline;text-underline-offset:3px;padding:3px}.site-footer{margin:0 5.2%;border-top:1px solid var(--line);padding:26px 0;display:flex;justify-content:space-between;align-items:center;color:#94968b;font-size:9px;gap:20px}.footer-wordmark{font:750 15px 'Manrope',sans-serif;letter-spacing:-.7px;color:#6a715e}.footer-wordmark span{font-size:8px;vertical-align:top;margin-left:3px}.site-footer>span:nth-child(2){margin-right:auto;margin-left:16px}.visually-hidden{position:absolute;clip-path:inset(50%);overflow:hidden;width:1px;height:1px;white-space:nowrap}.skip-link{position:fixed;top:-100px;left:20px;padding:12px 20px;background:var(--white);z-index:10}.skip-link:focus{top:12px}.other-view{margin-top:28px;border:1px solid var(--line);border-radius:7px;background:#fff;padding:28px;min-height:280px}.other-view h2{font-family:Manrope,sans-serif;font-size:23px}.other-view p{font-size:13px;color:var(--muted);line-height:1.8}.detail-row{padding:15px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:15px;font-size:13px}.primary-button{background:var(--olive);color:#fff;border-radius:5px;padding:12px 21px;font-size:12px;margin-top:12px}dialog{border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);max-width:460px;width:calc(100% - 40px);padding:35px}dialog::backdrop{background:#23281e88;backdrop-filter:blur(3px)}dialog h2{font-family:Manrope,sans-serif;font-size:26px;letter-spacing:-1px;margin-top:20px}dialog p{font-size:13px;color:#68705f;line-height:1.8}.dialog-close{position:absolute;right:13px;top:10px;font-size:26px;padding:2px 10px}.reduced-motion *{scroll-behavior:auto!important;animation:none!important;transition:none!important}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}@media(forced-colors:active){input[type=checkbox][switch]{border:2px solid ButtonText!important;forced-color-adjust:auto}.account-nav button[aria-current]{outline:1px solid Highlight}.active-dot{background:Highlight}.switch-state{color:CanvasText}}@media(min-width:1450px){.site-header{padding-left:max(5.2%,calc((100vw - 1220px)/2));padding-right:max(5.2%,calc((100vw - 1220px)/2))}}@media(max-width:1100px){.account-layout{grid-template-columns:180px minmax(0,1fr);gap:25px}.settings-grid{grid-template-columns:minmax(0,1fr) 190px;gap:16px}.small-joys{padding:23px 17px}.settings-card{padding:0 17px}.main-nav{margin-left:0;gap:22px}.setting-row{gap:12px}.setting-row p{max-width:230px}.brand{font-size:21px}.page-shell{padding-left:4%;padding-right:4%}.site-header{padding:0 4%}}@media(max-width:880px){.settings-grid{grid-template-columns:1fr}.preferences-aside{display:none}.main-nav{gap:20px}.account-button>span:not(.avatar){display:none}.account-button .icon{display:none}.coffee-banner{height:215px}.banner-stamp{display:none}.member-badge{display:none}.account-layout{grid-template-columns:170px minmax(0,1fr);gap:24px}.page-heading{margin:28px 0}.setting-row p{max-width:unset}.site-footer>span:nth-child(2){display:none}.brand-tag{font-size:7px}.main-nav button{font-size:11px}}@media(max-width:600px){.site-header{height:80px;gap:14px;padding:0 6%}.brand{font-size:20px;gap:9px}.brand-icon{width:36px;height:36px}.brand-icon svg{width:23px;height:23px}.brand-tag{font-size:6px;letter-spacing:1.6px}.main-nav{display:none}.page-shell{padding:24px 6% 35px}.page-heading{margin:25px 0}.eyebrow{font-size:8px}h1{font-size:32px}.page-heading>div>p:last-child{font-size:11px}.account-layout{display:block}.profile-summary,.sidebar-bottom,.roasted-note{display:none}.account-nav{flex-direction:row;overflow-x:auto;gap:4px;margin-bottom:22px;padding:3px 0 8px}.account-nav button{padding:10px 11px;font-size:10px;white-space:nowrap;gap:7px;min-height:40px}.account-nav button .icon{width:14px;height:14px}.points,.active-dot{display:none}.coffee-banner{height:205px}.banner-copy{padding:25px}.banner-copy h2{font-size:28px}.section-heading{margin-top:25px}.section-heading h2{font-size:20px}.section-heading p{font-size:10px}.save-indicator{font-size:8px}.settings-card{padding:0 18px}.setting-row{padding:18px 0}.setting-row label{font-size:12px}.setting-row p{font-size:10px;max-width:245px}.card-title h3{font-size:13px}.form-footer{font-size:8px;flex-wrap:wrap}.site-footer{margin:0 6%;font-size:8px;gap:16px}.footer-wordmark{font-size:13px}.site-footer>span:last-child{max-width:140px;text-align:right;line-height:1.8}}
+diff --git a/vendor/LICENSE b/vendor/LICENSE
+new file mode 100644
+index 0000000..261eeb9
+--- /dev/null
++++ b/vendor/LICENSE
+@@ -0,0 +1,201 @@
++                                 Apache License
++                           Version 2.0, January 2004
++                        http://www.apache.org/licenses/
++
++   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
++
++   1. Definitions.
++
++      "License" shall mean the terms and conditions for use, reproduction,
++      and distribution as defined by Sections 1 through 9 of this document.
++
++      "Licensor" shall mean the copyright owner or entity authorized by
++      the copyright owner that is granting the License.
++
++      "Legal Entity" shall mean the union of the acting entity and all
++      other entities that control, are controlled by, or are under common
++      control with that entity. For the purposes of this definition,
++      "control" means (i) the power, direct or indirect, to cause the
++      direction or management of such entity, whether by contract or
++      otherwise, or (ii) ownership of fifty percent (50%) or more of the
++      outstanding shares, or (iii) beneficial ownership of such entity.
++
++      "You" (or "Your") shall mean an individual or Legal Entity
++      exercising permissions granted by this License.
++
++      "Source" form shall mean the preferred form for making modifications,
++      including but not limited to software source code, documentation
++      source, and configuration files.
++
++      "Object" form shall mean any form resulting from mechanical
++      transformation or translation of a Source form, including but
++      not limited to compiled object code, generated documentation,
++      and conversions to other media types.
++
++      "Work" shall mean the work of authorship, whether in Source or
++      Object form, made available under the License, as indicated by a
++      copyright notice that is included in or attached to the work
++      (an example is provided in the Appendix below).
++
++      "Derivative Works" shall mean any work, whether in Source or Object
++      form, that is based on (or derived from) the Work and for which the
++      editorial revisions, annotations, elaborations, or other modifications
++      represent, as a whole, an original work of authorship. For the purposes
++      of this License, Derivative Works shall not include works that remain
++      separable from, or merely link (or bind by name) to the interfaces of,
++      the Work and Derivative Works thereof.
++
++      "Contribution" shall mean any work of authorship, including
++      the original version of the Work and any modifications or additions
++      to that Work or Derivative Works thereof, that is intentionally
++      submitted to Licensor for inclusion in the Work by the copyright owner
++      or by an individual or Legal Entity authorized to submit on behalf of
++      the copyright owner. For the purposes of this definition, "submitted"
++      means any form of electronic, verbal, or written communication sent
++      to the Licensor or its representatives, including but not limited to
++      communication on electronic mailing lists, source code control systems,
++      and issue tracking systems that are managed by, or on behalf of, the
++      Licensor for the purpose of discussing and improving the Work, but
++      excluding communication that is conspicuously marked or otherwise
++      designated in writing by the copyright owner as "Not a Contribution."
++
++      "Contributor" shall mean Licensor and any individual or Legal Entity
++      on behalf of whom a Contribution has been received by Licensor and
++      subsequently incorporated within the Work.
++
++   2. Grant of Copyright License. Subject to the terms and conditions of
++      this License, each Contributor hereby grants to You a perpetual,
++      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
++      copyright license to reproduce, prepare Derivative Works of,
++      publicly display, publicly perform, sublicense, and distribute the
++      Work and such Derivative Works in Source or Object form.
++
++   3. Grant of Patent License. Subject to the terms and conditions of
++      this License, each Contributor hereby grants to You a perpetual,
++      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
++      (except as stated in this section) patent license to make, have made,
++      use, offer to sell, sell, import, and otherwise transfer the Work,
++      where such license applies only to those patent claims licensable
++      by such Contributor that are necessarily infringed by their
++      Contribution(s) alone or by combination of their Contribution(s)
++      with the Work to which such Contribution(s) was submitted. If You
++      institute patent litigation against any entity (including a
++      cross-claim or counterclaim in a lawsuit) alleging that the Work
++      or a Contribution incorporated within the Work constitutes direct
++      or contributory patent infringement, then any patent licenses
++      granted to You under this License for that Work shall terminate
++      as of the date such litigation is filed.
++
++   4. Redistribution. You may reproduce and distribute copies of the
++      Work or Derivative Works thereof in any medium, with or without
++      modifications, and in Source or Object form, provided that You
++      meet the following conditions:
++
++      (a) You must give any other recipients of the Work or
++          Derivative Works a copy of this License; and
++
++      (b) You must cause any modified files to carry prominent notices
++          stating that You changed the files; and
++
++      (c) You must retain, in the Source form of any Derivative Works
++          that You distribute, all copyright, patent, trademark, and
++          attribution notices from the Source form of the Work,
++          excluding those notices that do not pertain to any part of
++          the Derivative Works; and
++
++      (d) If the Work includes a "NOTICE" text file as part of its
++          distribution, then any Derivative Works that You distribute must
++          include a readable copy of the attribution notices contained
++          within such NOTICE file, excluding those notices that do not
++          pertain to any part of the Derivative Works, in at least one
++          of the following places: within a NOTICE text file distributed
++          as part of the Derivative Works; within the Source form or
++          documentation, if provided along with the Derivative Works; or,
++          within a display generated by the Derivative Works, if and
++          wherever such third-party notices normally appear. The contents
++          of the NOTICE file are for informational purposes only and
++          do not modify the License. You may add Your own attribution
++          notices within Derivative Works that You distribute, alongside
++          or as an addendum to the NOTICE text from the Work, provided
++          that such additional attribution notices cannot be construed
++          as modifying the License.
++
++      You may add Your own copyright statement to Your modifications and
++      may provide additional or different license terms and conditions
++      for use, reproduction, or distribution of Your modifications, or
++      for any such Derivative Works as a whole, provided Your use,
++      reproduction, and distribution of the Work otherwise complies with
++      the conditions stated in this License.
++
++   5. Submission of Contributions. Unless You explicitly state otherwise,
++      any Contribution intentionally submitted for inclusion in the Work
++      by You to the Licensor shall be under the terms and conditions of
++      this License, without any additional terms or conditions.
++      Notwithstanding the above, nothing herein shall supersede or modify
++      the terms of any separate license agreement you may have executed
++      with Licensor regarding such Contributions.
++
++   6. Trademarks. This License does not grant permission to use the trade
++      names, trademarks, service marks, or product names of the Licensor,
++      except as required for reasonable and customary use in describing the
++      origin of the Work and reproducing the content of the NOTICE file.
++
++   7. Disclaimer of Warranty. Unless required by applicable law or
++      agreed to in writing, Licensor provides the Work (and each
++      Contributor provides its Contributions) on an "AS IS" BASIS,
++      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
++      implied, including, without limitation, any warranties or conditions
++      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
++      PARTICULAR PURPOSE. You are solely responsible for determining the
++      appropriateness of using or redistributing the Work and assume any
++      risks associated with Your exercise of permissions under this License.
++
++   8. Limitation of Liability. In no event and under no legal theory,
++      whether in tort (including negligence), contract, or otherwise,
++      unless required by applicable law (such as deliberate and grossly
++      negligent acts) or agreed to in writing, shall any Contributor be
++      liable to You for damages, including any direct, indirect, special,
++      incidental, or consequential damages of any character arising as a
++      result of this License or out of the use or inability to use the
++      Work (including but not limited to damages for loss of goodwill,
++      work stoppage, computer failure or malfunction, or any and all
++      other commercial damages or losses), even if such Contributor
++      has been advised of the possibility of such damages.
++
++   9. Accepting Warranty or Additional Liability. While redistributing
++      the Work or Derivative Works thereof, You may choose to offer,
++      and charge a fee for, acceptance of support, warranty, indemnity,
++      or other liability obligations and/or rights consistent with this
++      License. However, in accepting such obligations, You may act only
++      on Your own behalf and on Your sole responsibility, not on behalf
++      of any other Contributor, and only if You agree to indemnify,
++      defend, and hold each Contributor harmless for any liability
++      incurred by, or claims asserted against, such Contributor by reason
++      of your accepting any such warranty or additional liability.
++
++   END OF TERMS AND CONDITIONS
++
++   APPENDIX: How to apply the Apache License to your work.
++
++      To apply the Apache License to your work, attach the following
++      boilerplate notice, with the fields enclosed by brackets "[]"
++      replaced with your own identifying information. (Don't include
++      the brackets!)  The text should be enclosed in the appropriate
++      comment syntax for the file format. We also recommend that a
++      file or class name and description of purpose be included on the
++      same "printed page" as the copyright notice for easier
++      identification within third-party archives.
++
++   Copyright [yyyy] [name of copyright owner]
++
++   Licensed under the Apache License, Version 2.0 (the "License");
++   you may not use this file except in compliance with the License.
++   You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++   Unless required by applicable law or agreed to in writing, software
++   distributed under the License is distributed on an "AS IS" BASIS,
++   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++   See the License for the specific language governing permissions and
++   limitations under the License.
+diff --git a/vendor/input-switch-polyfill.css b/vendor/input-switch-polyfill.css
+new file mode 100644
+index 0000000..990f0ad
+--- /dev/null
++++ b/vendor/input-switch-polyfill.css
+@@ -0,0 +1,124 @@
++label:has(input[switch]),
++input[switch] {
++  animation: none;
++}
++
++/* Base styles for the polyfilled switch */
++input.switch {
++  /* Default fallback color */
++  --switch-accent: #2196f3;
++  --switch-background: rgba(192, 192, 192, 1);
++  --switch-thumb: white;
++  appearance: none;
++  height: 1em;
++  width: 2em;
++  border-radius: 1em;
++  box-shadow: inset -1em 0px 0px 0px var(--switch-background);
++  background-color: var(--switch-thumb);
++  border: 1px solid var(--switch-background);
++  font-size: inherit;
++  position: relative;
++  top: 0.2em;
++  touch-action: none;
++}
++
++input.switch:is(:hover, :active, :focus) {
++  transition:
++    box-shadow 0.2s,
++    border 0.2s,
++    opacity 0.2s;
++}
++
++[dir='rtl'] input.switch {
++  transform: rotate(180deg);
++}
++
++.vertical-rl,
++.vertical-lr {
++  transform: rotate(90deg);
++}
++
++.sideways-rl {
++  transform: rotate(90deg);
++  right: 1.6em;
++}
++
++label:has(.sideways-rl) {
++  margin-block-end: 0.8em;
++}
++
++.sideways-lr {
++  transform: rotate(-90deg);
++  left: 1.4em;
++  margin-inline-start: 0.8em;
++}
++
++label:has(.sideways-lr) {
++  margin-block-start: -1.2em;
++}
++
++input.switch:checked {
++  box-shadow: inset 1em 0px 0px 0px var(--switch-accent);
++  border: 1px solid var(--switch-accent);
++}
++
++input.switch[disabled] {
++  opacity: 0.5;
++}
++
++@media (prefers-contrast: more) {
++  input.switch {
++    border: 1px solid ButtonText;
++  }
++
++  /* Shared styles for the indicator */
++  input.switch::after {
++    box-sizing: border-box;
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    width: 50%;
++    height: 100%;
++    top: 0;
++    font-size: 0.5em;
++    font-family: Arial, sans-serif;
++    line-height: 1;
++  }
++
++  /* Default (OFF) state: unchecked and not visually-on, OR visually-off */
++  input.switch:not(:checked):not(.visually-on)::after,
++  input.switch.visually-off::after {
++    content: '◯';
++    position: absolute;
++    left: 50%;
++  }
++
++  /* Checked (ON) state: checked and not visually-off, OR visually-on */
++  input.switch:checked:not(.visually-off),
++  input.switch.visually-on {
++    border-color: ButtonText;
++  }
++
++  input.switch:checked:not(.visually-off)::after,
++  input.switch.visually-on::after {
++    content: '❙';
++    position: absolute;
++    left: 0;
++    color: contrast-color(var(--switch-accent));
++  }
++}
++
++@media (forced-colors: active) {
++  input.switch {
++    forced-color-adjust: none;
++    --switch-accent: Canvas;
++    --switch-background: Canvas;
++    --switch-thumb: ButtonText;
++    border-color: ButtonText;
++  }
++
++  input.switch:checked {
++    box-shadow: inset 1em 0px 0px 0px var(--switch-accent);
++    border-color: ButtonText;
++  }
++}
+diff --git a/vendor/input-switch-polyfill.js b/vendor/input-switch-polyfill.js
+new file mode 100644
+index 0000000..8522559
+--- /dev/null
++++ b/vendor/input-switch-polyfill.js
+@@ -0,0 +1,209 @@
++(async () => {
++  // Feature Detection
++  // If the browser prototype has the 'switch' property, we trust native support.
++  if ('switch' in HTMLInputElement.prototype) {
++    return;
++  }
++
++  const contrastMediaQueryList = matchMedia('(prefers-contrast: more)');
++  let prefersContrastMore = contrastMediaQueryList.matches;
++  contrastMediaQueryList.addEventListener('change', (event) => {
++    prefersContrastMore = event.matches;
++  });
++
++  const sheetPromise = fetch(import.meta.resolve('./input-switch-polyfill.css'))
++    .then((r) => r.text())
++    .then((css) => new CSSStyleSheet().replace(css));
++
++  // Helper to upgrade a single checkbox
++  function upgradeSwitch(input) {
++    // Avoid double-processing
++    if (input.classList.contains('switch')) {
++      return;
++    }
++
++    // Apply the class that triggers our CSS
++    input.classList.add('switch');
++
++    // Set the ARIA role
++    input.setAttribute('role', 'switch');
++
++    // Handle `accent-color` and `writing-mode` support
++    // We read the computed accent-color (inherited or set explicitly)
++    // and assign it to the CSS variable --switch-accent
++    const style = getComputedStyle(input);
++    const { 'accent-color': accentColor, 'writing-mode': writingMode } = style;
++    if (writingMode) {
++      input.classList.add(writingMode);
++    }
++    if (accentColor && accentColor !== 'auto') {
++      input.style.setProperty('--switch-accent', accentColor);
++    }
++
++    // Drag support
++    input.addEventListener('pointerdown', (event) => {
++      if (input.disabled) {
++        return;
++      }
++      // Don't preventDefault here to allow native focus and click if we don't drag
++
++      const target = input;
++      target.setPointerCapture(event.pointerId);
++
++      const startX = event.clientX;
++      const startY = event.clientY;
++      const wasChecked = target.checked;
++      const style = getComputedStyle(target);
++      const fontSize = parseFloat(style.fontSize);
++
++      // Determine orientation
++      const isRtl = style.direction === 'rtl';
++      const isVertical =
++        target.classList.contains('vertical-rl') ||
++        target.classList.contains('vertical-lr') ||
++        target.classList.contains('sideways-rl');
++      const isSidewaysLr = target.classList.contains('sideways-lr');
++
++      let currentProgress = wasChecked ? 1 : 0;
++      let isDragging = false;
++
++      const handlePointerMove = (e) => {
++        if (!target.hasPointerCapture(e.pointerId)) {
++          return;
++        }
++
++        // Check for drag threshold
++        if (!isDragging) {
++          if (
++            Math.abs(e.clientX - startX) > 5 ||
++            Math.abs(e.clientY - startY) > 5
++          ) {
++            isDragging = true;
++            target.style.transition = 'none';
++          } else {
++            return; // Treat as click until moved enough
++          }
++        }
++
++        e.preventDefault(); // Prevent native scrolling/selection during drag
++
++        let delta = 0;
++        if (isVertical) {
++          delta = e.clientY - startY;
++        } else if (isSidewaysLr) {
++          delta = -(e.clientY - startY);
++        } else {
++          delta = e.clientX - startX;
++          if (isRtl) {
++            delta = -delta;
++          }
++        }
++
++        const progressChange = delta / fontSize;
++        let newProgress = (wasChecked ? 1 : 0) + progressChange;
++        newProgress = Math.max(0, Math.min(1, newProgress));
++        currentProgress = newProgress;
++
++        const offset = (2 * newProgress - 1) * fontSize;
++        const isVisuallyOn = newProgress > 0.5;
++
++        // Update styles
++        if (isVisuallyOn) {
++          target.classList.add('visually-on');
++          target.classList.remove('visually-off');
++          target.style.boxShadow = `inset ${offset}px 0px 0px 0px var(--switch-accent)`;
++          target.style.border = `1px solid ${prefersContrastMore ? 'ButtonText' : 'var(--switch-accent)'}`;
++        } else {
++          target.classList.add('visually-off');
++          target.classList.remove('visually-on');
++          target.style.boxShadow = `inset ${offset}px 0px 0px 0px var(--switch-background)`;
++          target.style.border = `1px solid ${prefersContrastMore ? 'ButtonText' : 'var(--switch-background)'}`;
++        }
++      };
++
++      const handlePointerUp = (e) => {
++        target.releasePointerCapture(e.pointerId);
++        target.removeEventListener('pointermove', handlePointerMove);
++        target.removeEventListener('pointerup', handlePointerUp);
++        target.removeEventListener('pointercancel', handlePointerUp);
++
++        target.style.transition = '';
++        target.style.boxShadow = '';
++        target.style.border = '';
++        target.classList.remove('visually-on');
++        target.classList.remove('visually-off');
++
++        if (isDragging) {
++          const finalChecked = currentProgress > 0.5;
++          if (finalChecked !== wasChecked) {
++            target.checked = finalChecked;
++            target.dispatchEvent(new Event('input', { bubbles: true }));
++            target.dispatchEvent(new Event('change', { bubbles: true }));
++          }
++
++          // Suppress the subsequent click event since we handled the drag
++          target.addEventListener(
++            'click',
++            (clickEvent) => {
++              clickEvent.preventDefault();
++              clickEvent.stopPropagation();
++            },
++            { once: true, capture: true }
++          );
++        }
++      };
++
++      target.addEventListener('pointermove', handlePointerMove);
++      target.addEventListener('pointerup', handlePointerUp);
++      target.addEventListener('pointercancel', handlePointerUp);
++    });
++  }
++
++  // Initial Run
++  async function init() {
++    const switches = document.querySelectorAll(
++      'input[type="checkbox"][switch]'
++    );
++    switches.forEach(upgradeSwitch);
++    const newSheet = await sheetPromise;
++    if (!document.adoptedStyleSheets.includes(newSheet)) {
++      document.adoptedStyleSheets = [...document.adoptedStyleSheets, newSheet];
++    }
++  }
++
++  // Observer for dynamic content (SPAs, HTMX, etc.)
++  const observer = new MutationObserver((mutations) => {
++    mutations.forEach((mutation) => {
++      if (mutation.type === 'childList') {
++        mutation.addedNodes.forEach((node) => {
++          if (node.nodeType === 1) {
++            // Element node
++            // Check the node itself
++            if (
++              node.matches &&
++              node.matches('input[type="checkbox"][switch]')
++            ) {
++              upgradeSwitch(node);
++            }
++            // Check descendants
++            const nestedSwitches = node.querySelectorAll
++              ? node.querySelectorAll('input[type="checkbox"][switch]')
++              : [];
++            nestedSwitches.forEach(upgradeSwitch);
++          }
++        });
++      }
++    });
++  });
++
++  // Start logic
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', () => {
++      init();
++      observer.observe(document.body, { childList: true, subtree: true });
++    });
++  } else {
++    init();
++    observer.observe(document.body, { childList: true, subtree: true });
++  }
++})();

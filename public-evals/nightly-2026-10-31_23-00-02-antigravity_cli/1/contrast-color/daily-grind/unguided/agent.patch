@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+index 1bacf96..60693ae 100644
+--- a/index.html
++++ b/index.html
+@@ -30,7 +30,7 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: rgb(from var(--primary) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999));
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,7 +56,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: rgb(from var(--primary) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999));
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -123,6 +123,7 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
++      color: rgb(from var(--primary) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999));
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -136,6 +137,7 @@
+ 
+     footer {
+       background: var(--secondary);
++      color: rgb(from var(--secondary) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999));
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,10 +149,23 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: rgb(from var(--secondary) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999) calc((140 - (r * 0.299 + g * 0.587 + b * 0.114)) * 99999));
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @supports (color: contrast-color(red)) {
++      nav,
++      nav a,
++      .btn {
++        color: contrast-color(var(--primary));
++      }
++
++      footer,
++      .footer-links a {
++        color: contrast-color(var(--secondary));
++      }
++    }
+   </style>
+ </head>
+ 

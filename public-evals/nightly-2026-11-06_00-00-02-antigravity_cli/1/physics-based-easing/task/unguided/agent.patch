@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,10 +112,51 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      will-change: transform;
++      transition: transform 0.6s ease;
+     }
+ 
++    .card:hover {
++      transform: translateY(-6px) scale(1.04);
++      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
++    }
++
++    .spring {
++      transition: transform 0.7s linear(
++        0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017,
++        1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%,
++        1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%,
++        0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1
++      );
++    }
++
++    .spring:hover {
++      transform: scale(1.08);
++    }
++
++    .bounce {
++      transition: transform 0.75s linear(
++        0, 0.004, 0.016, 0.035, 0.063, 0.098, 0.141 13.6%, 0.25, 0.391, 0.563, 0.765,
++        1, 0.891 40.9%, 0.848, 0.813, 0.785, 0.766, 0.754, 0.75, 0.754, 0.766, 0.785,
++        0.813, 0.848, 0.891 68.2%, 1 72.7%, 0.973, 0.953, 0.941, 0.938, 0.941, 0.953,
++        0.973, 1, 0.988, 0.984, 0.988, 1
++      );
++    }
++
++    .bounce:hover {
++      transform: translateY(-12px) scale(1.05);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card,
++      .spring,
++      .bounce {
++        transition: none;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -177,14 +218,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

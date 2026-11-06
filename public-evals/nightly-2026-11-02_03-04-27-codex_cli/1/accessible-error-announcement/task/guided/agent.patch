@@ -1,0 +1,158 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,73 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .newsletter {
++      max-width: 440px;
++      margin: 0 auto 30px;
++      text-align: start;
++    }
++
++    .newsletter p {
++      margin-bottom: 12px;
++    }
++
++    .newsletter label {
++      display: block;
++      margin-bottom: 4px;
++      font-weight: 600;
++    }
++
++    .newsletter input {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter button {
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter :is(input, button):focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .newsletter .email-error {
++      display: none;
++      margin: 6px 0 0;
++      color: #8b1a1a;
++      font-size: 0.9rem;
++    }
++
++    .newsletter input:user-invalid {
++      border-color: #8b1a1a;
++      background: #fff2f2;
++    }
++
++    .newsletter input:user-invalid + .email-error {
++      display: block;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +262,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" method="post" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Fresh from the Grind</h2>
++      <p>Sign up for coffee news, seasonal favorites, and special offers.</p>
++      <label for="newsletter-email">Email address (required)</label>
++      <input type="email" id="newsletter-email" name="email" required autocomplete="email"
++        autocapitalize="off" autocorrect="off" spellcheck="false">
++      <p class="email-error" id="newsletter-email-error">Please enter a valid email address.</p>
++      <span class="visually-hidden" id="newsletter-announcement" aria-live="polite" aria-atomic="true"></span>
++      <button class="btn" type="submit">Subscribe</button>
++      <p id="newsletter-status" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +282,60 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletterForm = document.getElementById('newsletter-form');
++    const newsletterEmail = document.getElementById('newsletter-email');
++    const newsletterError = document.getElementById('newsletter-email-error');
++    const newsletterAnnouncement = document.getElementById('newsletter-announcement');
++    const newsletterStatus = document.getElementById('newsletter-status');
++
++    const syncEmailError = () => {
++      // Use the same post-interaction state that reveals the visual error in CSS.
++      const showError = newsletterEmail.matches(':user-invalid');
++      if (showError) {
++        newsletterEmail.setAttribute('aria-invalid', 'true');
++        newsletterEmail.setAttribute('aria-describedby', newsletterError.id);
++      } else {
++        newsletterEmail.removeAttribute('aria-invalid');
++        newsletterEmail.removeAttribute('aria-describedby');
++      }
++
++      const announcement = showError ? newsletterError.textContent : '';
++      // Avoid repeating the error on every keystroke while it remains visible.
++      if (newsletterAnnouncement.textContent !== announcement) {
++        newsletterAnnouncement.textContent = announcement;
++      }
++    };
++
++    for (const eventName of ['input', 'change', 'blur', 'focus', 'invalid']) {
++      newsletterEmail.addEventListener(eventName, () => {
++        syncEmailError();
++        // Native validation can update :user-invalid after the event dispatch.
++        requestAnimationFrame(syncEmailError);
++      });
++    }
++
++    newsletterEmail.addEventListener('input', () => {
++      newsletterStatus.textContent = '';
++    });
++
++    newsletterForm.addEventListener('reset', () => {
++      newsletterEmail.removeAttribute('aria-invalid');
++      newsletterEmail.removeAttribute('aria-describedby');
++      newsletterAnnouncement.textContent = '';
++      newsletterStatus.textContent = '';
++      requestAnimationFrame(syncEmailError);
++    });
++
++    newsletterForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      syncEmailError();
++      // Connect a newsletter service here before accepting subscriptions.
++      newsletterStatus.textContent = 'Newsletter signup is not available yet. Please check back soon.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

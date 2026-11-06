@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,71 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter */
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      font: inherit;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++    }
++
++    .newsletter button {
++      padding: 10px 18px;
++      font: inherit;
++      color: white;
++      background: var(--primary);
++      border: 0;
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter-error {
++      display: none;
++      margin-top: 6px;
++      color: #b71c1c;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
++    .newsletter input:user-invalid {
++      border-color: #b71c1c;
++      background: #fff5f5;
++    }
++
++    .newsletter input:user-invalid~.newsletter-error {
++      display: block;
++    }
++
++    .newsletter-status {
++      margin-top: 8px;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +260,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" action="/newsletter" method="post">
++      <label for="newsletter-email">Join our newsletter</label>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com" autocomplete="email"
++          required aria-describedby="newsletter-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-error">Please enter a valid email address.</p>
++      <p class="newsletter-status" id="newsletter-status" role="status"></p>
++    </form>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +280,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep aria-invalid in sync with :user-invalid, so an untouched required
++    // field isn't announced as an error just because it's empty and focused.
++    (function () {
++      var form = document.getElementById('newsletter-form');
++      var input = document.getElementById('newsletter-email');
++      var status = document.getElementById('newsletter-status');
++
++      function syncAriaInvalid() {
++        var invalid;
++        try {
++          invalid = input.matches(':user-invalid');
++        } catch (e) {
++          // Browser without :user-invalid support: only flag after interaction.
++          invalid = input.dataset.touched === 'true' && !input.validity.valid;
++        }
++        input.setAttribute('aria-invalid', invalid ? 'true' : 'false');
++      }
++
++      input.setAttribute('aria-invalid', 'false');
++      input.addEventListener('blur', function () {
++        input.dataset.touched = 'true';
++        syncAriaInvalid();
++      });
++      input.addEventListener('input', syncAriaInvalid);
++      // Fired when a submit attempt fails validation; :user-invalid applies after.
++      input.addEventListener('invalid', function () {
++        input.dataset.touched = 'true';
++        requestAnimationFrame(syncAriaInvalid);
++      });
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        status.textContent = 'Thanks for subscribing!';
++        form.reset();
++        delete input.dataset.touched;
++        syncAriaInvalid();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

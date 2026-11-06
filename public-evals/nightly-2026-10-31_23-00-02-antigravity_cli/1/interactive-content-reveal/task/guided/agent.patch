@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,86 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Register the spotlight inner and outer sizes to enable interpolation */
++    @property --inner-size {
++      syntax: "<length-percentage>";
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    @property --outer-size {
++      syntax: "<length-percentage>";
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    .product-card {
++      position: relative;
++      overflow: hidden;
++      padding-bottom: 36px;
++      --mouse-x: 50%;
++      --mouse-y: 50%;
++      --inner-size: 0px;
++      --outer-size: 0px;
++      /* Only transition the size properties, NOT the position variables */
++      transition: --inner-size 0.2s ease-in-out, --outer-size 0.2s ease-in-out;
++    }
++
++    .product-card:hover {
++      --inner-size: 100px;
++      --outer-size: 120px;
++    }
++
++    .reveal-layer {
++      position: absolute;
++      inset: 0;
++      border-radius: inherit;
++      border: 2px solid var(--accent);
++      background:
++        linear-gradient(135deg, rgba(255, 171, 64, 0.16), rgba(78, 52, 46, 0.12)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80') center / cover no-repeat;
++      background-blend-mode: overlay;
++      display: flex;
++      align-items: flex-end;
++      justify-content: center;
++      padding: 8px 12px;
++      /* Only transition the size properties, NOT the position variables */
++      transition: --inner-size 0.2s ease-in-out, --outer-size 0.2s ease-in-out;
++      -webkit-mask-image: radial-gradient(
++        circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
++        black var(--inner-size, 0%),
++        transparent var(--outer-size, 0%)
++      );
++      mask-image: radial-gradient(
++        circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
++        black var(--inner-size, 0%),
++        transparent var(--outer-size, 0%)
++      );
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      pointer-events: none;
++    }
++
++    .reveal-detail {
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: var(--primary);
++      background: rgba(255, 250, 240, 0.92);
++      padding: 2px 10px;
++      border-radius: 999px;
++      border: 1px solid var(--accent);
++      white-space: nowrap;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .product-card,
++      .reveal-layer {
++        transition: none !important;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -177,22 +255,31 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="reveal-layer" aria-hidden="true">
++            <span class="reveal-detail">Notes: Grade-A Maple &bull; Toasted Oat &bull; 150 cal</span>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="reveal-layer" aria-hidden="true">
++            <span class="reveal-detail">Notes: Dark Cocoa &bull; Charred Cedar &bull; Double Shot</span>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="reveal-layer" aria-hidden="true">
++            <span class="reveal-detail">Notes: Sweet Molasses &bull; Low Acid &bull; Single Origin</span>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +293,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const productCards = document.querySelectorAll('.product-card');
++
++    productCards.forEach((card) => {
++      let rect = card.getBoundingClientRect();
++
++      const resizeObserver = new ResizeObserver(() => {
++        rect = card.getBoundingClientRect();
++      });
++      resizeObserver.observe(card);
++
++      const updatePointerPosition = (e) => {
++        rect = card.getBoundingClientRect();
++        if (!rect.width || !rect.height) return;
++
++        const x = ((e.clientX - rect.left) / rect.width) * 100;
++        const y = ((e.clientY - rect.top) / rect.height) * 100;
++
++        card.style.setProperty('--mouse-x', `${x}%`);
++        card.style.setProperty('--mouse-y', `${y}%`);
++      };
++
++      card.addEventListener('pointermove', updatePointerPosition);
++      card.addEventListener('mousemove', updatePointerPosition);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

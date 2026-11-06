@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,52 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #feature {
++      anchor-name: --rewards;
++    }
++
++    #tour-step {
++      position: fixed;
++      position-anchor: --rewards;
++      inset: auto;
++      top: anchor(bottom);
++      right: anchor(right);
++      margin: 14px 0 0;
++      width: 300px;
++      max-width: calc(100vw - 24px);
++      padding: 24px;
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 30px rgba(62, 39, 35, 0.2);
++      z-index: 1001;
++      font: inherit;
++    }
++
++    #tour-step[hidden] {
++      display: none;
++    }
++
++    #tour-step h2 {
++      font-size: 1.2rem;
++      margin-bottom: 8px;
++    }
++
++    #tour-step .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #tour-step .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +205,21 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title"
++    aria-describedby="tour-description" hidden>
++    <h2 id="tour-title">Your coffee, rewarded</h2>
++    <p id="tour-description">Earn points with every purchase and turn your daily coffee into delicious rewards.</p>
++    <button type="button" class="btn" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +257,46 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const rewardsLink = document.getElementById('feature');
++    const tourStep = document.getElementById('tour-step');
++    const closeTourButton = tourStep.querySelector('button');
++    const hasPopover = 'popover' in HTMLElement.prototype;
++    const hasAnchors = CSS.supports('anchor-name: --rewards') && CSS.supports('top: anchor(bottom)');
++    let tourOpen = true;
++    let trackingFrame;
++
++    // Keep the fallback tethered even when layout shifts without a scroll or resize.
++    function trackRewards() {
++      const target = rewardsLink.getBoundingClientRect();
++      const left = Math.max(12, Math.min(target.right - tourStep.offsetWidth,
++        document.documentElement.clientWidth - tourStep.offsetWidth - 12));
++      Object.assign(tourStep.style, {
++        top: `${target.bottom + 14}px`, left: `${left}px`, right: 'auto', margin: '0'
++      });
++      trackingFrame = requestAnimationFrame(trackRewards);
++    }
++
++    for (const eventName of ['click', 'auxclick']) {
++      rewardsLink.addEventListener(eventName, (event) => {
++        if (tourOpen) event.preventDefault();
++      });
++    }
++
++    closeTourButton.addEventListener('click', () => {
++      tourOpen = false;
++      cancelAnimationFrame(trackingFrame);
++      if (hasPopover) tourStep.hidePopover();
++      tourStep.hidden = true;
++      rewardsLink.focus({ preventScroll: true });
++    });
++
++    tourStep.hidden = false;
++    if (hasPopover) tourStep.showPopover();
++    if (!hasAnchors) trackRewards();
++    closeTourButton.focus({ preventScroll: true });
++  </script>
+ </body>
+ 
+ </html>

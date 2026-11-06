@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,41 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Fetch Priority Demo</title>
++</head>
++<body>
++  <button id="load-btn" type="button">Load Data</button>
++  <pre id="output"></pre>
++
++  <script>
++    const button = document.getElementById('load-btn');
++    const output = document.getElementById('output');
++
++    button.addEventListener('click', () => {
++      const dataPromise = fetch('/api/data', {
++        priority: 'high'
++      }).then((res) => res.json());
++
++      const analyticsPromise = fetch('/api/analytics', {
++        method: 'POST',
++        priority: 'low',
++        keepalive: true,
++        headers: {
++          'Content-Type': 'application/json'
++        },
++        body: JSON.stringify({ click: 1 })
++      });
++
++      Promise.all([dataPromise, analyticsPromise])
++        .then(([data]) => {
++          output.textContent = JSON.stringify(data, null, 2);
++        })
++        .catch((err) => {
++          console.error(err);
++        });
++    });
++  </script>
++</body>
++</html>

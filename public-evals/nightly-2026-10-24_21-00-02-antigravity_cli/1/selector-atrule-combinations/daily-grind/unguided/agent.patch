@@ -1,0 +1,266 @@
+diff --git a/index.html b/index.html
+index 66c9173..30c198c 100644
+--- a/index.html
++++ b/index.html
+@@ -27,10 +27,23 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Shared link & button resets via selector union */
++    :is(nav, .footer-links) a,
++    .btn {
++      text-decoration: none;
++    }
++
++    :is(nav, .hero, .btn) {
++      color: white;
++    }
++
++    :is(.hero, .card, footer, section > h2) {
++      text-align: center;
++    }
++
++    /* Navigation (using native CSS nesting for intersection/descendant & @media) */
+     nav {
+       background: var(--primary);
+-      color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,59 +51,73 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+-    }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++      & .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++      }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++      & ul {
++        display: flex;
++        list-style: none;
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        & li {
++          margin-left: 20px;
++        }
++      }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++      & a {
++        color: white;
++        font-size: 0.9rem;
++        transition: color 0.3s, border-color 0.3s;
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        &:is(:hover, :focus-visible) {
++          color: var(--accent);
++        }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++        &.logout-link {
++          border: 1px solid var(--accent);
++          padding: 5px 12px;
++          border-radius: 4px;
++        }
++      }
++
++      @media (width < 768px) {
++        flex-direction: column;
++        gap: 0.75rem;
++
++        & ul {
++          flex-wrap: wrap;
++          justify-content: center;
++          gap: 10px;
++
++          & li {
++            margin-left: 0;
++          }
++        }
++      }
+     }
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80') center / cover;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
+-      text-align: center;
+       padding: 0 20px;
+-    }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      & h1 {
++        font-size: 3rem;
++        margin-bottom: 1rem;
++
++        @media (width < 768px) {
++          font-size: 2.25rem;
++        }
++      }
+     }
+ 
+     /* Content Sections */
+@@ -98,6 +125,7 @@
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
++      container-type: inline-size;
+     }
+ 
+     .grid {
+@@ -112,47 +140,90 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      & h3 {
++        margin-bottom: 10px;
++        color: var(--primary);
++      }
++
++      @container (width < 600px) {
++        padding: 16px;
++      }
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
+       padding: 10px 20px;
+-      text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+-    }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++      &:is(:hover, :focus-visible) {
++        background: var(--text);
++      }
+     }
+ 
+     footer {
+       background: var(--secondary);
+-      text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+-    }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++      & .footer-links {
++        margin-bottom: 20px;
++
++        & a {
++          margin: 0 10px;
++          color: var(--text);
++          font-size: 0.85rem;
++
++          &:is(:hover, :focus-visible) {
++            color: var(--primary);
++            text-decoration: underline;
++          }
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @media (prefers-reduced-motion: reduce) {
++      :is(nav a, .btn) {
++        transition: none;
++      }
+     }
+   </style>
++  <script type="speculationrules">
++    {
++      "prerender": [
++        {
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "selector_matches": ".logout-link" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ],
++      "prefetch": [
++        {
++          "where": {
++            "and": [
++              {
++                "or": [
++                  { "selector_matches": "nav a" },
++                  { "selector_matches": ".btn" },
++                  { "selector_matches": ".footer-links a" }
++                ]
++              },
++              { "not": { "selector_matches": ".logout-link" } }
++            ]
++          },
++          "eagerness": "conservative"
++        }
++      ]
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -176,7 +247,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

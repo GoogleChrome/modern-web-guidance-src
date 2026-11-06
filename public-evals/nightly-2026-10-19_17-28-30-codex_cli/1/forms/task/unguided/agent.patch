@@ -1,0 +1,36 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,31 @@
++# Accessibility and security audit
++
++The original application is a static page with no forms, authentication service, or account routes. Registration is an explicitly labeled, in-memory demonstration. It does not create memberships.
++
++## Fixed
++
++- Replaced unavailable navigation and the state-changing GET logout link with working section navigation. No logout operation is exposed without an authenticated backend.
++- Added a skip link, named navigation landmarks, clear heading order, visible keyboard focus, responsive layouts, reduced-motion support, and forced-color fallbacks.
++- Replaced ambiguous repeated detail links with uniquely named buttons and native modal dialogs. Dialogs support Escape and restore focus to their opener.
++- Added programmatically associated labels, autocomplete, required-field instructions, independent marketing consent, and required terms acknowledgment.
++- Added an accessible step list, heading focus on step changes, linked error summary with focus, per-field errors, and error descriptions. Previous entries are retained when going back.
++- Validated required details, email format, password length and confirmation, and optional birthday combinations. Supports February 29 without collecting a birth year.
++- Added a review step that masks passwords and inserts all user content with textContent. No user HTML is interpreted.
++- Removed third-party runtime requests by downloading stock photos from Unsplash. Added descriptive image alternatives and fixed image dimensions.
++- Added a restrictive CSP, disabled form network submission, and set a referrer policy. Scripts and styles use separate local files.
++- No cookies, analytics, browser storage, or credential logging. Completion clears input values and the rendered review.
++
++## Verification
++
++Run `pnpm test`. Six automated JSDOM tests exercise errors and focus, malformed data, navigation, injection-resistant review, birthday validation, consent, clearing data, unique IDs, input labels, references, image files, and CSP. JavaScript syntax was also checked. Manual browser verification was intentionally omitted as requested. These checks do not establish full WCAG conformance or test visual rendering and screen-reader behavior.
++
++## Production integration boundary
++
++A live registration service is outside this static application. Before enabling account creation, implement HTTPS and server-side validation, securely hash passwords, verify email ownership, protect against CSRF where cookie authentication is used, rate-limit registration, and publish approved program terms and a privacy notice. Never use client validation as a security boundary. Replace the demo-only submission handler and CSP form-action/connect-src with the intended same-origin service configuration. Configure response headers at the host, including Content-Security-Policy with frame-ancestors, HSTS, and X-Content-Type-Options. Frame restrictions and HSTS cannot be enforced by this page's meta tags.
++
++## Image sources
++
++Hero: https://images.unsplash.com/photo-1442512595331-e89e73853f31
++Latte: https://images.unsplash.com/photo-1461023058943-07fcbe16d735
++Espresso: https://images.unsplash.com/photo-1510707577719-ae7c14805e3a
++Cold brew: https://images.unsplash.com/photo-1517701604599-bb29b565090c

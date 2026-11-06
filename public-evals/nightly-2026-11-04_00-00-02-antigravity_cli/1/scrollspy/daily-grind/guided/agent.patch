@@ -1,0 +1,537 @@
+diff --git a/index.html b/index.html
+index 66c9173..9ca8859 100644
+--- a/index.html
++++ b/index.html
+@@ -8,14 +8,33 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border-subtle: #efebe9;
+     }
+ 
+-    * {
+-      box-sizing: border-box;
++    @media (prefers-reduced-motion: no-preference) {
++      html {
++        scroll-behavior: smooth;
++      }
++    }
++
++    body,
++    h1,
++    h2,
++    h3,
++    p,
++    ul,
++    li,
++    dl,
++    dt,
++    dd,
++    figure {
+       margin: 0;
+       padding: 0;
+     }
+@@ -30,52 +49,68 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: var(--surface);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+-      top: 0;
++      inset-block-start: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++      scroll-target-group: auto;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: inherit;
++      text-decoration: none;
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      gap: 1.25rem;
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.95rem;
++      padding-block: 0.35rem;
++      border-block-end: 2px solid transparent;
++      transition: color 0.3s, border-color 0.3s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    /* Combine native :target-current with .target-current fallback using :is() */
++    nav a:is(:target-current, .target-current) {
++      color: var(--accent);
++      border-block-end-color: var(--accent);
++      font-weight: bold;
++    }
++
++    nav a.logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-block-size: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,71 +118,173 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--surface);
+       text-align: center;
+-      padding: 0 20px;
++      padding: 2rem 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-block-end: 1rem;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-inline-size: 1100px;
++      margin-inline: auto;
++      padding-inline: 20px;
++    }
++
++    main section {
++      min-block-size: 65vh;
++      padding-block: 4.5rem;
++      scroll-margin-block-start: 4.5rem;
++      border-block-end: 1px solid var(--border-subtle);
++    }
++
++    .section-header {
++      text-align: center;
++      margin-block-end: 2.5rem;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      max-inline-size: 600px;
++      margin-inline: auto;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 24px;
++      margin-block-start: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--surface);
++      padding: 24px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card img {
++      inline-size: 100%;
++      block-size: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-block-end: 1rem;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-block-end: 10px;
+       color: var(--primary);
+     }
+ 
++    .price-tag {
++      font-weight: bold;
++      color: var(--primary-dark);
++      font-size: 1.1rem;
++      margin-block-start: 0.75rem;
++    }
++
++    .meta-detail {
++      font-size: 0.9rem;
++      color: var(--text-muted);
++      margin-block-start: 0.5rem;
++    }
++
++    .rewards-tiers {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++      gap: 20px;
++      margin-block-start: 1.5rem;
++    }
++
++    .tier-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary-dark);
++      font-weight: bold;
++      padding: 0.25rem 0.75rem;
++      border-radius: 999px;
++      font-size: 0.85rem;
++      margin-block-end: 0.75rem;
++    }
++
++    .account-panel {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
++      background: var(--surface);
++      padding: 2rem;
++      border-radius: 8px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++    }
++
++    .account-list {
++      list-style: none;
++      margin-block-start: 0.75rem;
++    }
++
++    .account-list li {
++      padding-block: 0.5rem;
++      border-block-end: 1px solid var(--border-subtle);
++      display: flex;
++      justify-content: space-between;
++      gap: 1rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
++      color: var(--surface);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      margin-block-start: 15px;
+       transition: background 0.3s;
++      align-self: center;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-block-start: 40px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-block-end: 20px;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin-inline: 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+@@ -157,13 +294,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,27 +308,147 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" tabindex="-1">
++      <div class="section-header">
++        <h2>Seasonal Favorites &amp; Menu</h2>
++        <p>Handcrafted espresso drinks, slow-steeped cold brews, and fresh pastries baked every morning.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <div>
++            <img
++              src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++              alt="Latte art in a ceramic mug"
++              width="600"
++              height="400"
++              loading="lazy">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup and double-shot espresso.</p>
++            <p class="price-tag">$5.50</p>
++          </div>
++          <a href="/menu/seasonal" class="btn">View Details <span class="visually-hidden">for Maple Oat Latte</span></a>
++        </div>
++        <div class="card">
++          <div>
++            <img
++              src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++              alt="Fresh shot of dark roast espresso"
++              width="600"
++              height="400"
++              loading="lazy">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey single-origin beans roasted locally for a rich morning boost.</p>
++            <p class="price-tag">$3.75</p>
++          </div>
++          <a href="/menu/espresso" class="btn">View Details <span class="visually-hidden">for Dark Roast Espresso</span></a>
++        </div>
++        <div class="card">
++          <div>
++            <img
++              src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++              alt="Iced cold brew coffee being poured with milk"
++              width="600"
++              height="400"
++              loading="lazy">
++            <h3>Signature Cold Brew</h3>
++            <p>Steeped for 18 hours in small batches for maximum smoothness and low acidity.</p>
++            <p class="price-tag">$4.75</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn">View Details <span class="visually-hidden">for Signature Cold Brew</span></a>
++        </div>
++      </div>
++    </section>
++
++    <section id="locations" tabindex="-1">
++      <div class="section-header">
++        <h2>Our Locations</h2>
++        <p>Drop by one of our neighborhood cafes for free Wi-Fi, cozy seating, and freshly ground pours.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div>
++            <h3>Downtown Roastery</h3>
++            <p>412 Market Street, Suite 100</p>
++            <p class="meta-detail">Mon–Fri: 6:30 AM – 7:00 PM<br>Sat–Sun: 7:00 AM – 6:00 PM</p>
++          </div>
++          <a href="https://maps.google.com/?q=412+Market+Street" class="btn">Get Directions <span class="visually-hidden">to Downtown Roastery</span></a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Riverside Cafe</h3>
++            <p>88 Harbor View Boulevard</p>
++            <p class="meta-detail">Mon–Fri: 7:00 AM – 6:00 PM<br>Sat–Sun: 7:30 AM – 5:00 PM</p>
++          </div>
++          <a href="https://maps.google.com/?q=88+Harbor+View+Boulevard" class="btn">Get Directions <span class="visually-hidden">to Riverside Cafe</span></a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>University Commons</h3>
++            <p>205 College Avenue</p>
++            <p class="meta-detail">Daily: 6:00 AM – 9:00 PM<br>Late-night study lounge open</p>
++          </div>
++          <a href="https://maps.google.com/?q=205+College+Avenue" class="btn">Get Directions <span class="visually-hidden">to University Commons</span></a>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" tabindex="-1">
++      <div class="section-header">
++        <h2>Daily Grind Rewards</h2>
++        <p>Earn 10 Beans for every $1 spent and unlock complimentary drinks, priority mobile pickup, and seasonal tasting events.</p>
++      </div>
++      <div class="rewards-tiers">
++        <div class="card">
++          <div>
++            <span class="tier-badge">100 Beans</span>
++            <h3>Warm-Up Perks</h3>
++            <p>Redeem for a free espresso shot, dairy-free milk upgrade, or artisanal flavor syrup.</p>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div>
++            <span class="tier-badge">250 Beans</span>
++            <h3>Handcrafted Drink</h3>
++            <p>Enjoy any standard or seasonal handcrafted beverage of your choice on the house.</p>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <span class="tier-badge">500 Beans</span>
++            <h3>Roaster's Reserve</h3>
++            <p>Take home a 12oz bag of whole-bean single-origin coffee or signature merch.</p>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" tabindex="-1">
++      <div class="section-header">
++        <h2>My Account</h2>
++        <p>Manage your coffee subscriptions, saved pickup preferences, and current reward balance.</p>
++      </div>
++      <div class="account-panel">
++        <div>
++          <h3>Member Profile</h3>
++          <ul class="account-list">
++            <li><span>Member Name</span> <strong>Alex Rivera</strong></li>
++            <li><span>Rewards Balance</span> <strong>340 Beans</strong></li>
++            <li><span>Preferred Store</span> <strong>Downtown Roastery</strong></li>
++            <li><span>Default Order</span> <strong>Maple Oat Latte (16oz)</strong></li>
++          </ul>
++        </div>
++        <div>
++          <h3>Active Subscription &amp; Recent Orders</h3>
++          <ul class="account-list">
++            <li><span>Bi-Weekly Bean Delivery</span> <strong>Roaster's Choice (12oz)</strong></li>
++            <li><span>Next Shipment</span> <strong>Nov 12, 2026</strong></li>
++            <li><span>Last Cafe Visit</span> <strong>Yesterday, 8:15 AM</strong></li>
++          </ul>
++          <a href="/account/preferences" class="btn">Update Preferences</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +464,43 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const supportsScrollTargetGroup = CSS.supports('scroll-target-group: auto');
++    const navLinks = document.querySelectorAll('nav a[href^="#"]');
++
++    if (supportsScrollTargetGroup) {
++      const syncAriaCurrent = () => {
++        const currentLink = document.querySelector('nav a:target-current');
++        navLinks.forEach((link) => {
++          link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++        });
++      };
++
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      const sections = document.querySelectorAll('main section[id]');
++
++      const observer = new IntersectionObserver(
++        (entries) => {
++          entries.forEach((entry) => {
++            if (entry.isIntersecting) {
++              const id = entry.target.getAttribute('id');
++              navLinks.forEach((link) => {
++                const isActive = link.getAttribute('href') === `#${id}`;
++                link.classList.toggle('target-current', isActive);
++                link.setAttribute('aria-current', String(isActive));
++              });
++            }
++          });
++        },
++        { rootMargin: '-50% 0px -50% 0px', threshold: 0 }
++      );
++
++      sections.forEach((section) => observer.observe(section));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

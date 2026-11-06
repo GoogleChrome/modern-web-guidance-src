@@ -1,0 +1,1361 @@
+diff --git a/README.md b/README.md
+index 4479b53..974b882 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,30 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Semantic components
++
++Components under `src/components/semantic/` do not take visual props. They take an article,
++derive a semantic context from it with `getSemanticContext` in `src/utils/semantics.ts`, and
++pick their treatment from the token maps in that file. The context has four axes:
++
++| Axis        | Derived from            | Drives                                                     |
++| ----------- | ----------------------- | ---------------------------------------------------------- |
++| `desk`      | `category`              | accent colour, headline hover, section rule, hero overlay  |
++| `freshness` | `date` vs. a reference  | badge, dateline wording, headline weight, edge rule, tint  |
++| `depth`     | `readingTime`           | pips, headline scale, whether a summary or progress bar shows |
++| `tone`      | `tags` and the headline | kicker, headline typography, image aspect, byline          |
++
++Components:
++
++- `StoryCard` renders one story on a `lead`, `grid`, `row` or `compact` surface.
++- `SemanticSection` reads a list of stories, promotes a breaking one to the lead, takes on a shared
++  desk's colour, and chooses a layout from the count.
++- `DeskTag`, `FreshnessBadge`, `Dateline`, `ReadingDepth` are the atoms the card is built from.
++- `ReadingProgress` is a client component for article pages that renders nothing for quick reads,
++  a bar for standard reads, and a bar plus a minutes-left counter for long reads.
++
++Freshness is measured against a reference time. Sections default to the newest story they contain,
++so a static content corpus still exercises every state. Every rendered element carries
++`data-desk`, `data-freshness`, `data-depth` and `data-tone` attributes for styling hooks and for
++inspecting the derived context in DevTools. See `/semantics` for a living reference of all states.
+diff --git a/src/components/semantic/Dateline.astro b/src/components/semantic/Dateline.astro
+new file mode 100644
+index 0000000..c3c7658
+--- /dev/null
++++ b/src/components/semantic/Dateline.astro
+@@ -0,0 +1,33 @@
++---
++/**
++ * A <time> element whose wording follows the story's freshness:
++ * relative while it is news, a weekday while it is recent, a full date after.
++ */
++import { formatDateline, getFreshness } from '../../utils/semantics';
++
++export interface Props {
++  date: Date;
++  now?: Date | number;
++  class?: string;
++}
++
++const { date, now, class: className = '' } = Astro.props;
++const freshness = getFreshness(date, now);
++const absolute = date.toLocaleString('en-US', {
++  weekday: 'long',
++  year: 'numeric',
++  month: 'long',
++  day: 'numeric',
++  hour: 'numeric',
++  minute: '2-digit',
++  timeZone: 'UTC',
++});
++---
++<time
++  datetime={date.toISOString()}
++  title={absolute}
++  class={`text-xs text-gray-500 ${freshness === 'breaking' ? 'text-red-700 font-semibold' : ''} ${className}`}
++  data-freshness={freshness}
++>
++  {formatDateline(date, now)}
++</time>
+diff --git a/src/components/semantic/DeskTag.astro b/src/components/semantic/DeskTag.astro
+new file mode 100644
+index 0000000..67bb397
+--- /dev/null
++++ b/src/components/semantic/DeskTag.astro
+@@ -0,0 +1,35 @@
++---
++/**
++ * Category label coloured by newsroom desk. Links to the category page.
++ * Optionally shows a tone kicker ("Analysis", "Opinion") after the desk.
++ */
++import { getDesk, DESK_THEME, TONE_THEME, type Tone } from '../../utils/semantics';
++
++export interface Props {
++  category: string;
++  /** Pass the tone to show a kicker; omit to render the desk alone. */
++  tone?: Tone;
++  size?: 'sm' | 'md';
++  class?: string;
++}
++
++const { category, tone, size = 'sm', class: className = '' } = Astro.props;
++const desk = getDesk(category);
++const theme = DESK_THEME[desk];
++const toneTheme = tone ? TONE_THEME[tone] : null;
++const label = category.charAt(0).toUpperCase() + category.slice(1);
++const href = `${import.meta.env.BASE_URL}category/${category.toLowerCase()}`;
++const sizeClass = size === 'md' ? 'text-sm' : 'text-xs';
++---
++<span class={`inline-flex items-center gap-2 font-brand tracking-widest uppercase ${sizeClass} ${className}`} data-desk={desk}>
++  <a href={href} class={`inline-flex items-center gap-1.5 ${theme.text} hover:underline`}>
++    <span class={`inline-block w-1.5 h-1.5 rounded-full ${theme.fill}`} aria-hidden="true"></span>
++    {label}
++  </a>
++  {toneTheme && toneTheme.kicker && (
++    <>
++      <span class="text-gray-300" aria-hidden="true">/</span>
++      <span class={`normal-case tracking-normal ${toneTheme.kickerClass}`}>{toneTheme.kicker}</span>
++    </>
++  )}
++</span>
+diff --git a/src/components/semantic/FreshnessBadge.astro b/src/components/semantic/FreshnessBadge.astro
+new file mode 100644
+index 0000000..79155ec
+--- /dev/null
++++ b/src/components/semantic/FreshnessBadge.astro
+@@ -0,0 +1,29 @@
++---
++/**
++ * Pill that only appears when a story's age is worth remarking on.
++ * Breaking and new stories always get a badge. Archive material only gets one
++ * when `verbose` is set, which article pages use and card grids do not.
++ */
++import { getFreshness, FRESHNESS_THEME } from '../../utils/semantics';
++
++export interface Props {
++  date: Date;
++  now?: Date | number;
++  verbose?: boolean;
++  class?: string;
++}
++
++const { date, now, verbose = false, class: className = '' } = Astro.props;
++const freshness = getFreshness(date, now);
++const theme = FRESHNESS_THEME[freshness];
++const visible = freshness === 'breaking' || freshness === 'new' || (verbose && freshness === 'archive');
++---
++{visible && (
++  <span
++    class={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${theme.badge} ${className}`}
++    data-freshness={freshness}
++  >
++    {theme.dot && <span class={`inline-block w-1.5 h-1.5 rounded-full ${theme.dot}`} aria-hidden="true"></span>}
++    {theme.label}
++  </span>
++)}
+diff --git a/src/components/semantic/ReadingDepth.astro b/src/components/semantic/ReadingDepth.astro
+new file mode 100644
+index 0000000..2be006f
+--- /dev/null
++++ b/src/components/semantic/ReadingDepth.astro
+@@ -0,0 +1,36 @@
++---
++/**
++ * Reading-time indicator. Three pips fill according to depth, and a label
++ * appears only at the extremes ("Quick read", "Long read") where it changes
++ * what the reader decides to do.
++ */
++import { BookOpenIcon } from '@heroicons/react/24/outline';
++import { getDepth, getDesk, DEPTH_THEME, DESK_THEME } from '../../utils/semantics';
++
++export interface Props {
++  readingTime?: number;
++  /** Colours the pips with the desk accent. Grey when omitted. */
++  category?: string;
++  class?: string;
++}
++
++const { readingTime, category, class: className = '' } = Astro.props;
++const depth = getDepth(readingTime);
++const theme = DEPTH_THEME[depth];
++const fill = category ? DESK_THEME[getDesk(category)].fill : 'bg-gray-500';
++const minutes = readingTime ?? 3;
++---
++<span
++  class={`inline-flex items-center gap-2 text-xs font-medium text-gray-500 ${className}`}
++  data-depth={depth}
++  title={`${minutes} minute read`}
++>
++  <BookOpenIcon className="w-4 h-4 -mt-px" />
++  <span>{minutes} Min.</span>
++  <span class="inline-flex items-end gap-0.5" aria-hidden="true">
++    {[1, 2, 3].map((pip) => (
++      <span class={`inline-block w-1 rounded-sm ${pip <= theme.pips ? fill : 'bg-gray-200'}`} style={`height: ${4 + pip * 3}px`}></span>
++    ))}
++  </span>
++  {theme.label && <span class="text-gray-400">{theme.label}</span>}
++</span>
+diff --git a/src/components/semantic/ReadingProgress.tsx b/src/components/semantic/ReadingProgress.tsx
+new file mode 100644
+index 0000000..cb7b493
+--- /dev/null
++++ b/src/components/semantic/ReadingProgress.tsx
+@@ -0,0 +1,82 @@
++import { useEffect, useState } from 'react';
++import { getDepth, getDesk, DESK_THEME } from '../../utils/semantics';
++
++interface Props {
++  /** Reading time in minutes from the article frontmatter. */
++  readingTime?: number;
++  /** Category, used to colour the bar with the desk accent. */
++  category: string;
++  /** Selector for the element whose scroll extent counts as "the article". */
++  target?: string;
++}
++
++/**
++ * Sticky progress bar for article pages that decides for itself whether it is
++ * worth showing. Quick reads get nothing: a progress bar on a three-minute
++ * piece is noise. Standard reads get a thin bar. Long reads get the bar plus
++ * a "minutes left" counter so the reader can decide whether to keep going.
++ */
++export default function ReadingProgress({ readingTime, category, target = 'article' }: Props) {
++  const depth = getDepth(readingTime);
++  const [progress, setProgress] = useState(0);
++
++  useEffect(() => {
++    if (depth === 'brief') return;
++    const el = document.querySelector<HTMLElement>(target);
++    if (!el) return;
++
++    let frame = 0;
++    const update = () => {
++      frame = 0;
++      const rect = el.getBoundingClientRect();
++      const viewport = window.innerHeight;
++      const total = rect.height - viewport;
++      const read = total <= 0 ? 1 : Math.min(1, Math.max(0, -rect.top / total));
++      setProgress(read);
++    };
++    const onScroll = () => {
++      if (!frame) frame = window.requestAnimationFrame(update);
++    };
++    update();
++    window.addEventListener('scroll', onScroll, { passive: true });
++    window.addEventListener('resize', onScroll);
++    return () => {
++      window.removeEventListener('scroll', onScroll);
++      window.removeEventListener('resize', onScroll);
++      if (frame) window.cancelAnimationFrame(frame);
++    };
++  }, [depth, target]);
++
++  if (depth === 'brief') return null;
++
++  const theme = DESK_THEME[getDesk(category)];
++  const minutes = readingTime ?? 3;
++  const minutesLeft = Math.max(0, Math.ceil(minutes * (1 - progress)));
++  const percent = Math.round(progress * 100);
++
++  return (
++    <div
++      className="sticky top-0 z-40 w-full"
++      data-depth={depth}
++      role="progressbar"
++      aria-label="Reading progress"
++      aria-valuemin={0}
++      aria-valuemax={100}
++      aria-valuenow={percent}
++    >
++      <div className="h-1 w-full bg-gray-100">
++        <div
++          className={`h-full ${theme.fill} transition-[width] duration-150 ease-out`}
++          style={{ width: `${percent}%` }}
++        />
++      </div>
++      {depth === 'longform' && progress > 0.02 && progress < 0.98 && (
++        <div className="pointer-events-none flex justify-end px-4">
++          <span className={`-mt-px rounded-b px-2 py-0.5 text-[11px] font-semibold text-white ${theme.fill}`}>
++            {minutesLeft} min left
++          </span>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/semantic/SemanticSection.astro b/src/components/semantic/SemanticSection.astro
+new file mode 100644
+index 0000000..53c0ca7
+--- /dev/null
++++ b/src/components/semantic/SemanticSection.astro
+@@ -0,0 +1,104 @@
++---
++/**
++ * A section that reads its own contents before deciding how to lay them out.
++ *
++ * - A breaking story is promoted to the lead slot wherever it was in the list.
++ * - When every story comes from one desk, the heading rule takes that desk's
++ *   colour and the cards stop repeating the desk tag.
++ * - The layout follows the count: one story is a lead, two or three fill a
++ *   grid, four or more get a lead, a grid of three, and the remainder as rows.
++ * - Freshness is measured against the newest story in the section unless an
++ *   explicit `now` is supplied.
++ */
++import type { CollectionEntry } from 'astro:content';
++import { getCollectionSemantics, DESK_THEME } from '../../utils/semantics';
++import StoryCard from './StoryCard.astro';
++
++export interface Props {
++  title: string;
++  articles: CollectionEntry<'articles'>[];
++  /** Override the freshness reference; defaults to the newest story's date. */
++  now?: Date | number;
++  /** Optional link shown next to the title, e.g. the desk's category page. */
++  href?: string;
++}
++
++const { title, articles, now, href } = Astro.props;
++
++const sources = articles.map((a) => ({
++  title: a.data.title,
++  category: a.data.category,
++  date: a.data.date,
++  readingTime: a.data.readingTime,
++  tags: a.data.tags,
++}));
++const agg = getCollectionSemantics(sources, { now });
++const editionDate = now ?? agg.editionDate;
++const deskTheme = agg.sharedDesk ? DESK_THEME[agg.sharedDesk] : null;
++const hideDesk = agg.sharedDesk !== null;
++
++const ordered = [
++  articles[agg.leadIndex],
++  ...articles.filter((_, i) => i !== agg.leadIndex),
++];
++
++let lead: CollectionEntry<'articles'> | null = null;
++let grid: CollectionEntry<'articles'>[] = [];
++let rows: CollectionEntry<'articles'>[] = [];
++
++if (ordered.length === 1) {
++  lead = ordered[0];
++} else if (ordered.length <= 3) {
++  grid = ordered;
++} else {
++  lead = ordered[0];
++  grid = ordered.slice(1, 4);
++  rows = ordered.slice(4);
++}
++
++const gridCols = grid.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3';
++const ruleClass = deskTheme ? deskTheme.border : 'border-gray-900';
++const headingClass = deskTheme ? deskTheme.text : 'text-gray-900';
++---
++{articles.length > 0 && (
++  <section
++    class="p-4 md:p-6"
++    data-shared-desk={agg.sharedDesk ?? 'mixed'}
++    data-has-breaking={agg.hasBreaking ? 'true' : 'false'}
++  >
++    <div class={`flex items-baseline justify-between border-b-2 ${ruleClass} pb-2 mb-6 lg:mb-8`}>
++      <h2 class={`text-3xl font-bold ${headingClass}`}>
++        {title}
++        {agg.hasBreaking && (
++          <span class="ml-3 align-middle inline-flex items-center gap-1.5 rounded-full bg-red-700 text-white px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider">
++            <span class="inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse" aria-hidden="true"></span>
++            Live
++          </span>
++        )}
++      </h2>
++      {href && <a href={href} class={`text-sm font-semibold hover:underline ${headingClass}`}>See all</a>}
++    </div>
++
++    {lead && (
++      <div class={grid.length > 0 ? 'mb-8' : ''}>
++        <StoryCard article={lead} surface="lead" editionDate={editionDate} hideDesk={hideDesk} />
++      </div>
++    )}
++
++    {grid.length > 0 && (
++      <div class={`grid grid-cols-1 ${gridCols} gap-6 lg:gap-8`}>
++        {grid.map((article) => (
++          <StoryCard article={article} surface="grid" editionDate={editionDate} hideDesk={hideDesk} />
++        ))}
++      </div>
++    )}
++
++    {rows.length > 0 && (
++      <div class="mt-6 border-t border-gray-200 divide-y divide-gray-100">
++        {rows.map((article) => (
++          <StoryCard article={article} surface="row" editionDate={editionDate} hideDesk={hideDesk} />
++        ))}
++      </div>
++    )}
++  </section>
++)}
+diff --git a/src/components/semantic/StoryCard.astro b/src/components/semantic/StoryCard.astro
+new file mode 100644
+index 0000000..d2212ed
+--- /dev/null
++++ b/src/components/semantic/StoryCard.astro
+@@ -0,0 +1,158 @@
++---
++/**
++ * One card, many faces.
++ *
++ * `surface` says where the card sits (lead, grid, row, compact). Everything
++ * else about its appearance is derived from the article itself through the
++ * semantic model: the desk picks the accent, freshness picks the badge and
++ * edge treatment, depth decides whether the summary is worth the space, and
++ * tone picks the kicker, the headline typography and the image aspect ratio.
++ */
++import type { CollectionEntry } from 'astro:content';
++import StoryImage from './StoryImage.astro';
++import { getArticleImage } from '../../utils/images';
++import {
++  getSemanticContext,
++  semanticDataAttributes,
++  DESK_THEME,
++  FRESHNESS_THEME,
++  DEPTH_THEME,
++  TONE_THEME,
++} from '../../utils/semantics';
++import BookmarkButton from '../BookmarkButton';
++import DeskTag from './DeskTag.astro';
++import FreshnessBadge from './FreshnessBadge.astro';
++import Dateline from './Dateline.astro';
++import ReadingDepth from './ReadingDepth.astro';
++
++export type Surface = 'lead' | 'grid' | 'row' | 'compact';
++
++export interface Props {
++  article: CollectionEntry<'articles'>;
++  surface?: Surface;
++  /** Reference time for freshness. Defaults to now. */
++  editionDate?: Date | number;
++  /** Set by a section whose stories all share one desk, so cards stop repeating it. */
++  hideDesk?: boolean;
++}
++
++const { article, surface = 'grid', editionDate, hideDesk = false } = Astro.props;
++const { data } = article;
++
++const ctx = getSemanticContext(
++  { title: data.title, category: data.category, date: data.date, readingTime: data.readingTime, tags: data.tags },
++  { now: editionDate },
++);
++const desk = DESK_THEME[ctx.desk];
++const fresh = FRESHNESS_THEME[ctx.freshness];
++const depth = DEPTH_THEME[ctx.depth];
++const tone = TONE_THEME[ctx.tone];
++const attrs = semanticDataAttributes(ctx);
++
++const href = `${import.meta.env.BASE_URL}articles/${article.id}`;
++const image = surface === 'compact' ? null : await getArticleImage(article);
++const readingList = (await Astro.session?.get('readingList')) || [];
++const isBookmarked = readingList.includes(article.id);
++
++const headlineHover = `transition-colors ${desk.hover}`;
++const headlineTone = `${tone.headline} ${fresh.headline}`;
++const imageTreatment = `object-cover ${fresh.image}`;
++const showSummary = surface === 'lead' || surface === 'row' || depth.showSummary;
++const showByline = tone.showByline || surface === 'lead';
++---
++{surface === 'lead' && (
++  <article class={`group grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8 ${fresh.card}`} {...attrs} data-surface="lead">
++    <div class="lg:col-span-3 order-first">
++      <a href={href}>
++        <StoryImage src={image!} alt={data.title} width={960} height={540} class={`w-full h-auto aspect-[16/9] ${imageTreatment}`} />
++      </a>
++    </div>
++    <div class="lg:col-span-2 flex flex-col">
++      <div class="flex flex-wrap items-center gap-3 mb-3">
++        <FreshnessBadge date={data.date} now={editionDate} />
++        {!hideDesk && <DeskTag category={data.category} tone={ctx.tone} />}
++        {hideDesk && tone.kicker && <span class={`text-xs ${tone.kickerClass}`}>{tone.kicker}</span>}
++      </div>
++      <a href={href} class="flex-grow">
++        <h3 class={`text-3xl md:text-4xl leading-tight text-gray-900 ${headlineTone} ${headlineHover}`}>{data.title}</h3>
++        {showSummary && <p class="mt-4 text-lg text-gray-700">{data.summary}</p>}
++      </a>
++      {showByline && <p class="mt-4 text-sm text-gray-600">By <span class="font-semibold text-gray-800">{data.author}</span></p>}
++      <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-100">
++        <div class="flex items-center gap-4">
++          <ReadingDepth readingTime={data.readingTime} category={data.category} />
++          <Dateline date={data.date} now={editionDate} />
++        </div>
++        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++      </div>
++    </div>
++  </article>
++)}
++
++{surface === 'grid' && (
++  <article class={`group flex flex-col h-full ${fresh.card}`} {...attrs} data-surface="grid">
++    <a href={href} class="block">
++      <StoryImage src={image!} alt={data.title} width={480} height={360} class={`w-full rounded-md ${tone.aspect} ${imageTreatment}`} />
++    </a>
++    <div class="flex flex-col flex-grow mt-3">
++      <div class="flex flex-wrap items-center gap-2 mb-1">
++        <FreshnessBadge date={data.date} now={editionDate} />
++        {!hideDesk && <DeskTag category={data.category} tone={ctx.tone} />}
++        {hideDesk && tone.kicker && <span class={`text-xs ${tone.kickerClass}`}>{tone.kicker}</span>}
++      </div>
++      <a href={href} class="flex flex-col flex-grow">
++        <h3 class={`${depth.headline} leading-snug text-gray-900 ${headlineTone} ${headlineHover}`}>{data.title}</h3>
++        {showSummary && <p class="text-gray-600 mt-1 text-sm">{data.summary}</p>}
++      </a>
++      {showByline && <p class="mt-2 text-xs text-gray-500">By {data.author}</p>}
++      <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
++        <div class="flex items-center gap-3">
++          <ReadingDepth readingTime={data.readingTime} category={data.category} />
++          <Dateline date={data.date} now={editionDate} />
++        </div>
++        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++      </div>
++    </div>
++  </article>
++)}
++
++{surface === 'row' && (
++  <article class={`group flex gap-4 py-4 ${fresh.card}`} {...attrs} data-surface="row">
++    <a href={href} class="shrink-0 w-28 sm:w-40">
++      <StoryImage src={image!} alt={data.title} width={320} height={240} class={`w-full rounded ${tone.aspect} ${imageTreatment}`} />
++    </a>
++    <div class="flex flex-col min-w-0 flex-grow">
++      <div class="flex flex-wrap items-center gap-2 mb-1">
++        <FreshnessBadge date={data.date} now={editionDate} />
++        {!hideDesk && <DeskTag category={data.category} tone={ctx.tone} />}
++        {hideDesk && tone.kicker && <span class={`text-xs ${tone.kickerClass}`}>{tone.kicker}</span>}
++      </div>
++      <a href={href}>
++        <h3 class={`text-lg leading-snug text-gray-900 ${headlineTone} ${headlineHover}`}>{data.title}</h3>
++        <p class="hidden sm:block text-gray-600 mt-1 text-sm line-clamp-2">{data.summary}</p>
++      </a>
++      <div class="flex items-center gap-3 mt-auto pt-2">
++        <ReadingDepth readingTime={data.readingTime} category={data.category} />
++        <Dateline date={data.date} now={editionDate} />
++        <span class="ml-auto"><BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} /></span>
++      </div>
++    </div>
++  </article>
++)}
++
++{surface === 'compact' && (
++  <article class={`group py-3 ${fresh.card}`} {...attrs} data-surface="compact">
++    <div class="flex flex-wrap items-center gap-2 mb-1">
++      <FreshnessBadge date={data.date} now={editionDate} />
++      {!hideDesk && <DeskTag category={data.category} tone={ctx.tone} />}
++      {hideDesk && tone.kicker && <span class={`text-xs ${tone.kickerClass}`}>{tone.kicker}</span>}
++    </div>
++    <a href={href}>
++      <h3 class={`text-base leading-snug text-gray-900 ${headlineTone} ${headlineHover}`}>{data.title}</h3>
++    </a>
++    <div class="flex items-center gap-3 mt-1">
++      <ReadingDepth readingTime={data.readingTime} category={data.category} />
++      <Dateline date={data.date} now={editionDate} />
++    </div>
++  </article>
++)}
+diff --git a/src/components/semantic/StoryImage.astro b/src/components/semantic/StoryImage.astro
+new file mode 100644
+index 0000000..a6532ae
+--- /dev/null
++++ b/src/components/semantic/StoryImage.astro
+@@ -0,0 +1,22 @@
++---
++/**
++ * Thin wrapper over astro:assets Image that accepts either a local image
++ * module or a remote URL, which is what `getArticleImage` returns.
++ */
++import { Image } from 'astro:assets';
++
++export interface Props {
++  src: string | ImageMetadata;
++  alt: string;
++  width: number;
++  height: number;
++  class?: string;
++}
++
++const { src, alt, width, height, class: className = '' } = Astro.props;
++---
++{typeof src === 'string' ? (
++  <Image src={src} alt={alt} width={width} height={height} format="webp" class={className} />
++) : (
++  <Image src={src} alt={alt} width={width} height={height} format="webp" class={className} />
++)}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..82393f3 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -7,7 +7,13 @@ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+-import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import StoryCard from '../../components/semantic/StoryCard.astro';
++import DeskTag from '../../components/semantic/DeskTag.astro';
++import FreshnessBadge from '../../components/semantic/FreshnessBadge.astro';
++import Dateline from '../../components/semantic/Dateline.astro';
++import ReadingDepth from '../../components/semantic/ReadingDepth.astro';
++import ReadingProgress from '../../components/semantic/ReadingProgress.tsx';
++import { getTone } from '../../utils/semantics';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -33,13 +39,21 @@ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
++const tone = getTone({ title: article.data.title, tags: article.data.tags, readingTime: article.data.readingTime });
++// Related stories are dated against the newest of them, so freshness reads as
++// "newest in this set" rather than against the wall clock.
++const relatedEdition = new Date(Math.max(...relatedArticles.map(a => a.data.date.valueOf())));
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++    <!-- Only renders for standard and long reads; brief pieces get no bar -->
++    <ReadingProgress client:load readingTime={article.data.readingTime} category={article.data.category} target="#story" />
++
++    <article id="story" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++        <!-- Desk, tone and freshness -->
++        <div class="flex flex-wrap items-center gap-3 mb-3">
++            <DeskTag category={article.data.category} tone={tone} size="md" />
++            <FreshnessBadge date={article.data.date} verbose />
+         </div>
+ 
+         <!-- Headline -->
+@@ -52,9 +66,11 @@ const isBookmarked = readingList.includes(article.slug);
+             {article.data.summary}
+         </p>
+ 
+-        <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++        <!-- Author / Date / Depth -->
++        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
++            <span>By <span class="font-semibold text-gray-700">{article.data.author}</span></span>
++            <Dateline date={article.data.date} class="text-sm" />
++            <ReadingDepth readingTime={article.data.readingTime} category={article.data.category} class="text-sm" />
+         </div>
+ 
+         <!-- Main Article Image -->
+@@ -118,7 +134,7 @@ const isBookmarked = readingList.includes(article.slug);
+     <!-- RELATED ARTICLES SECTION -->
+     <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
+         <div class="grid md:grid-cols-3 gap-6">
+-            {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
++            {relatedArticles.map((related_article) => <StoryCard article={related_article} surface="grid" editionDate={relatedEdition} />)}
+         </div>
+     </section>
+ 
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..795999a 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -1,7 +1,8 @@
+ 
+ ---
+ import Layout from '../../layouts/Layout.astro';
+-import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import StoryCard from '../../components/semantic/StoryCard.astro';
++import { getDesk, DESK_THEME } from '../../utils/semantics';
+ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+@@ -35,12 +36,16 @@ const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForH
+ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+ 
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
++const desk = getDesk(category);
++const deskTheme = DESK_THEME[desk];
++// Freshness on this page is measured against the newest story in the category.
++const editionDate = featuredArticle ? featuredArticle.data.date : undefined;
+ ---
+ 
+ <Layout title={`Category: ${capitalizedCategory}`}>
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800" data-desk={desk}>
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -52,10 +57,11 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                 />
+             )}
+-            <div class="absolute w-full h-full bg-black opacity-50 z-1"></div>
++            <!-- Overlay colour comes from the desk the category belongs to -->
++            <div class={`absolute w-full h-full bg-gradient-to-b ${deskTheme.overlay} z-1`}></div>
+             <div class="absolute w-full h-full flex items-center justify-center z-2">
+                 <div class="text-center text-white">
+-                    <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
++                    <p class="text-lg font-semibold uppercase tracking-widest">{deskTheme.label} desk</p>
+                     <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
+                         {capitalizedCategory}
+                     </h1>
+@@ -76,7 +82,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             format="webp"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h2 class={`text-2xl md:text-3xl font-bold text-gray-900 mb-2 transition-colors ${deskTheme.hover}`}>
+                             {featuredArticle.data.title}
+                         </h2>
+                         <p class="text-base md:text-lg text-gray-700">
+@@ -89,7 +95,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+-                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
++                    {otherArticles.map(article => <StoryCard article={article} surface="grid" editionDate={editionDate} hideDesk />)}
+                 </div>
+             ) : (
+                 <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..1178bce 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -4,7 +4,7 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SemanticSection from '../components/semantic/SemanticSection.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -16,6 +16,8 @@ const topStories = articles.slice(1, 4);
+ const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+ const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+ const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++// Every sports story, for a single-desk section that takes on the desk's identity
++const sportsArticles = articles.filter(a => a.data.category.toLowerCase() === 'sports');
+ 
+ // Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+ politicsArticles[2] = {
+@@ -71,7 +73,8 @@ politicsArticles[2] = {
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <!-- Mixed-desk section: cards keep their desk tags, layout follows the count -->
++        <SemanticSection title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+@@ -79,6 +82,13 @@ politicsArticles[2] = {
+ 
+         <!-- "Politics" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- Single-desk section: heading takes the desk colour, cards drop the redundant tag -->
++        <SemanticSection title="From the Sports Desk" articles={sportsArticles} href={`${import.meta.env.BASE_URL}category/sports`} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/pages/semantics.astro b/src/pages/semantics.astro
+new file mode 100644
+index 0000000..d4d92d5
+--- /dev/null
++++ b/src/pages/semantics.astro
+@@ -0,0 +1,169 @@
++---
++/**
++ * Living reference for the semantic components. Every state is produced from
++ * real articles by moving the freshness reference point, not by passing
++ * visual flags, which is the whole point of the system.
++ */
++import Layout from '../layouts/Layout.astro';
++import { getCollection } from 'astro:content';
++import StoryCard from '../components/semantic/StoryCard.astro';
++import SemanticSection from '../components/semantic/SemanticSection.astro';
++import DeskTag from '../components/semantic/DeskTag.astro';
++import FreshnessBadge from '../components/semantic/FreshnessBadge.astro';
++import Dateline from '../components/semantic/Dateline.astro';
++import ReadingDepth from '../components/semantic/ReadingDepth.astro';
++import {
++  getSemanticContext,
++  DESK_THEME,
++  FRESHNESS_WINDOWS,
++  type Desk,
++  type Freshness,
++} from '../utils/semantics';
++
++const articles = await getCollection('articles');
++articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++
++// One representative story per desk.
++const desks = Object.keys(DESK_THEME) as Desk[];
++const byDesk = desks
++  .map((desk) => ({
++    desk,
++    article: articles.find((a) => getSemanticContext({ ...a.data }).desk === desk),
++  }))
++  .filter((entry): entry is { desk: Desk; article: (typeof articles)[number] } => Boolean(entry.article));
++
++// Offsets that place a fixed story into each freshness window.
++const HOUR = 60 * 60 * 1000;
++const freshnessOffsets: Record<Freshness, number> = {
++  breaking: 2 * HOUR,
++  new: FRESHNESS_WINDOWS.breaking + 20 * HOUR,
++  recent: FRESHNESS_WINDOWS.new + 3 * 24 * HOUR,
++  archive: FRESHNESS_WINDOWS.recent + 90 * 24 * HOUR,
++};
++const sample = articles[0];
++const freshnessStates = (Object.keys(freshnessOffsets) as Freshness[]).map((state) => ({
++  state,
++  now: sample.data.date.valueOf() + freshnessOffsets[state],
++}));
++
++const byDepth = [
++  articles.find((a) => (a.data.readingTime ?? 3) <= 3),
++  articles.find((a) => (a.data.readingTime ?? 3) >= 4 && (a.data.readingTime ?? 3) <= 6),
++  articles.find((a) => (a.data.readingTime ?? 3) >= 7),
++].filter((a): a is (typeof articles)[number] => Boolean(a));
++
++const mixed = articles.slice(0, 5);
++const science = articles.filter((a) => a.data.category.toLowerCase() === 'science');
++// A set where a slightly older story is breaking relative to the chosen "now",
++// to show the section promoting it out of order.
++const promoted = [articles[3], articles[4], articles[5], articles[6]];
++const promotedNow = articles[5].data.date.valueOf() + HOUR;
++---
++<Layout title="Semantic components">
++  <div class="max-w-6xl mx-auto px-4 md:px-6 py-10 space-y-16">
++    <header class="max-w-3xl">
++      <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Design reference</p>
++      <h1 class="text-4xl font-brand text-gray-900 mt-2">Components that read the story before they style it</h1>
++      <p class="text-lg text-gray-700 mt-4">
++        Nothing on this page was given a colour, a size or a badge. Each component derives a
++        semantic context from the article it is handed and picks its treatment from a shared token map.
++        The four axes are desk, freshness, depth and tone.
++      </p>
++    </header>
++
++    <section>
++      <h2 class="text-2xl font-bold border-b-2 border-gray-900 pb-2 mb-6">Desk</h2>
++      <p class="text-gray-600 mb-6">The category decides the accent. Six desks cover every category in the corpus.</p>
++      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
++        {byDesk.map(({ desk, article }) => (
++          <div class={`rounded-md p-4 ${DESK_THEME[desk].tint}`}>
++            <div class="mb-3 flex items-center justify-between">
++              <DeskTag category={article.data.category} />
++              <code class="text-[11px] text-gray-500">data-desk="{desk}"</code>
++            </div>
++            <StoryCard article={article} surface="compact" editionDate={article.data.date} />
++          </div>
++        ))}
++      </div>
++    </section>
++
++    <section>
++      <h2 class="text-2xl font-bold border-b-2 border-gray-900 pb-2 mb-6">Freshness</h2>
++      <p class="text-gray-600 mb-6">
++        The same story shown against four different reference times. The badge, the dateline
++        wording, the headline weight, the left rule and the image tint all follow the age.
++      </p>
++      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
++        {freshnessStates.map(({ state, now }) => (
++          <div>
++            <div class="mb-3 flex items-center justify-between">
++              <code class="text-[11px] text-gray-500">data-freshness="{state}"</code>
++              <span class="inline-flex gap-2 items-center">
++                <FreshnessBadge date={sample.data.date} now={now} verbose />
++                <Dateline date={sample.data.date} now={now} />
++              </span>
++            </div>
++            <StoryCard article={sample} surface="grid" editionDate={now} />
++          </div>
++        ))}
++      </div>
++    </section>
++
++    <section>
++      <h2 class="text-2xl font-bold border-b-2 border-gray-900 pb-2 mb-6">Depth</h2>
++      <p class="text-gray-600 mb-6">
++        Reading time sets the pips, the headline scale and whether a grid card spends space on a
++        summary. On article pages it also decides whether a progress bar is shown at all.
++      </p>
++      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++        {byDepth.map((article) => (
++          <div>
++            <div class="mb-3">
++              <ReadingDepth readingTime={article.data.readingTime} category={article.data.category} />
++            </div>
++            <StoryCard article={article} surface="grid" editionDate={article.data.date.valueOf() + 10 * 24 * HOUR} />
++          </div>
++        ))}
++      </div>
++    </section>
++
++    <section>
++      <h2 class="text-2xl font-bold border-b-2 border-gray-900 pb-2 mb-6">Surfaces</h2>
++      <p class="text-gray-600 mb-6">One component, four placements. The semantic treatment is identical across all of them.</p>
++      <div class="space-y-10">
++        <div>
++          <code class="text-[11px] text-gray-500">surface="lead"</code>
++          <div class="mt-3"><StoryCard article={articles[1]} surface="lead" editionDate={articles[1].data.date.valueOf() + HOUR} /></div>
++        </div>
++        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
++          <div>
++            <code class="text-[11px] text-gray-500">surface="row"</code>
++            <div class="mt-3 border-t border-gray-200 divide-y divide-gray-100">
++              {articles.slice(6, 9).map((a) => <StoryCard article={a} surface="row" editionDate={articles[6].data.date} />)}
++            </div>
++          </div>
++          <div>
++            <code class="text-[11px] text-gray-500">surface="compact"</code>
++            <div class="mt-3 border-t border-gray-200 divide-y divide-gray-100">
++              {articles.slice(9, 13).map((a) => <StoryCard article={a} surface="compact" editionDate={articles[9].data.date} />)}
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section class="space-y-4">
++      <h2 class="text-2xl font-bold border-b-2 border-gray-900 pb-2">Sections</h2>
++      <p class="text-gray-600">
++        A section reads its own contents. Mixed desks keep the neutral rule and per-card tags.
++        A single desk colours the rule and drops the tags. A breaking story is promoted to the lead
++        slot and the heading gets a live marker.
++      </p>
++    </section>
++    <div class="-mx-4 md:-mx-6 divide-y divide-gray-200">
++      <SemanticSection title="Mixed desks" articles={mixed} />
++      <SemanticSection title="Single desk" articles={science} href={`${import.meta.env.BASE_URL}category/science`} />
++      <SemanticSection title="Breaking story promoted" articles={promoted} now={promotedNow} />
++    </div>
++  </div>
++</Layout>
+diff --git a/src/utils/semantics.ts b/src/utils/semantics.ts
+new file mode 100644
+index 0000000..96976e3
+--- /dev/null
++++ b/src/utils/semantics.ts
+@@ -0,0 +1,418 @@
++/**
++ * Semantic context for editorial content.
++ *
++ * Components in `src/components/semantic/` do not receive visual props such as
++ * "red" or "large". They receive an article, derive a semantic context from it
++ * with `getSemanticContext`, and pick their visual treatment from the token
++ * maps below. Change the mapping here and every surface follows.
++ *
++ * Four axes are derived:
++ *
++ *   desk       what newsroom desk the story belongs to (from `category`)
++ *   freshness  how old the story is relative to the edition (from `date`)
++ *   depth      how much of the reader's time it asks for (from `readingTime`)
++ *   tone       what kind of piece it is (from `tags` and the headline)
++ */
++
++export type Desk =
++  | 'news'
++  | 'business'
++  | 'culture'
++  | 'science'
++  | 'sports'
++  | 'lifestyle';
++
++export type Freshness = 'breaking' | 'new' | 'recent' | 'archive';
++export type Depth = 'brief' | 'standard' | 'longform';
++export type Tone = 'report' | 'analysis' | 'feature' | 'opinion';
++
++/** The subset of article frontmatter the semantic model reads. */
++export interface SemanticSource {
++  title: string;
++  category: string;
++  date: Date;
++  readingTime?: number;
++  tags?: string[];
++}
++
++export interface SemanticContext {
++  desk: Desk;
++  freshness: Freshness;
++  depth: Depth;
++  tone: Tone;
++  /** Minutes between the story's date and the reference time. */
++  ageMinutes: number;
++  /** Reading time in minutes, defaulting to 3 when unknown. */
++  minutes: number;
++}
++
++export interface SemanticOptions {
++  /**
++   * Reference point for freshness. Defaults to the current time. Sections pass
++   * the date of their newest story so freshness means "new in this edition",
++   * which keeps the states meaningful for a static content corpus.
++   */
++  now?: Date | number;
++}
++
++// ---------------------------------------------------------------------------
++// Derivation
++// ---------------------------------------------------------------------------
++
++const DESK_BY_CATEGORY: Record<string, Desk> = {
++  news: 'news',
++  national: 'news',
++  politics: 'news',
++  labor: 'news',
++  world: 'news',
++  economy: 'business',
++  business: 'business',
++  markets: 'business',
++  culture: 'culture',
++  media: 'culture',
++  arts: 'culture',
++  science: 'science',
++  technology: 'science',
++  tech: 'science',
++  health: 'science',
++  sports: 'sports',
++  lifestyle: 'lifestyle',
++  pets: 'lifestyle',
++  travel: 'lifestyle',
++  food: 'lifestyle',
++  'urban development': 'lifestyle',
++  'web development': 'science',
++};
++
++export function getDesk(category: string): Desk {
++  return DESK_BY_CATEGORY[category.trim().toLowerCase()] ?? 'news';
++}
++
++const MINUTE = 60_000;
++const HOUR = 60 * MINUTE;
++const DAY = 24 * HOUR;
++
++export const FRESHNESS_WINDOWS = {
++  breaking: 6 * HOUR,
++  new: 2 * DAY,
++  recent: 14 * DAY,
++} as const;
++
++export function getFreshness(date: Date, now: Date | number = Date.now()): Freshness {
++  const age = toMillis(now) - date.valueOf();
++  if (age <= FRESHNESS_WINDOWS.breaking) return 'breaking';
++  if (age <= FRESHNESS_WINDOWS.new) return 'new';
++  if (age <= FRESHNESS_WINDOWS.recent) return 'recent';
++  return 'archive';
++}
++
++export function getDepth(readingTime?: number): Depth {
++  const minutes = readingTime ?? 3;
++  if (minutes <= 3) return 'brief';
++  if (minutes <= 6) return 'standard';
++  return 'longform';
++}
++
++const OPINION_TAGS = new Set(['opinion', 'editorial', 'column', 'letter']);
++const ANALYSIS_TAGS = new Set(['analysis', 'explainer', 'policy', 'economy']);
++const FEATURE_TAGS = new Set(['humor', 'profile', 'feature', 'interview', 'photo essay']);
++
++export function getTone(source: Pick<SemanticSource, 'title' | 'tags' | 'readingTime'>): Tone {
++  const tags = (source.tags ?? []).map((t) => t.toLowerCase());
++  if (tags.some((t) => OPINION_TAGS.has(t))) return 'opinion';
++  if (tags.some((t) => FEATURE_TAGS.has(t))) return 'feature';
++  // A headline that asks a question is the newsroom convention for analysis.
++  if (tags.some((t) => ANALYSIS_TAGS.has(t)) || /\?\s*$/.test(source.title)) return 'analysis';
++  if ((source.readingTime ?? 0) >= 5) return 'feature';
++  return 'report';
++}
++
++export function getSemanticContext(
++  source: SemanticSource,
++  options: SemanticOptions = {},
++): SemanticContext {
++  const now = options.now ?? Date.now();
++  return {
++    desk: getDesk(source.category),
++    freshness: getFreshness(source.date, now),
++    depth: getDepth(source.readingTime),
++    tone: getTone(source),
++    ageMinutes: Math.max(0, Math.round((toMillis(now) - source.date.valueOf()) / MINUTE)),
++    minutes: source.readingTime ?? 3,
++  };
++}
++
++// ---------------------------------------------------------------------------
++// Visual tokens
++//
++// Every class string below is written out in full so Tailwind can find it when
++// it scans the source tree. Never build class names by concatenation.
++// ---------------------------------------------------------------------------
++
++export interface DeskTheme {
++  label: string;
++  /** Text colour for kickers, tags and metadata. */
++  text: string;
++  /** Headline hover colour. */
++  hover: string;
++  /** Hairline and rule colour. */
++  border: string;
++  /** Soft tinted background for chips and section bands. */
++  tint: string;
++  /** Solid fill, used for progress bars and dots. */
++  fill: string;
++  /** Gradient overlay used on category hero headers. */
++  overlay: string;
++}
++
++export const DESK_THEME: Record<Desk, DeskTheme> = {
++  news: {
++    label: 'News',
++    text: 'text-red-800',
++    hover: 'group-hover:text-red-700',
++    border: 'border-red-800',
++    tint: 'bg-red-50',
++    fill: 'bg-red-700',
++    overlay: 'from-red-950/80 to-red-900/40',
++  },
++  business: {
++    label: 'Business',
++    text: 'text-emerald-800',
++    hover: 'group-hover:text-emerald-700',
++    border: 'border-emerald-800',
++    tint: 'bg-emerald-50',
++    fill: 'bg-emerald-700',
++    overlay: 'from-emerald-950/80 to-emerald-900/40',
++  },
++  culture: {
++    label: 'Culture',
++    text: 'text-fuchsia-800',
++    hover: 'group-hover:text-fuchsia-700',
++    border: 'border-fuchsia-800',
++    tint: 'bg-fuchsia-50',
++    fill: 'bg-fuchsia-700',
++    overlay: 'from-fuchsia-950/80 to-fuchsia-900/40',
++  },
++  science: {
++    label: 'Science',
++    text: 'text-sky-800',
++    hover: 'group-hover:text-sky-700',
++    border: 'border-sky-800',
++    tint: 'bg-sky-50',
++    fill: 'bg-sky-700',
++    overlay: 'from-sky-950/80 to-sky-900/40',
++  },
++  sports: {
++    label: 'Sports',
++    text: 'text-orange-800',
++    hover: 'group-hover:text-orange-700',
++    border: 'border-orange-800',
++    tint: 'bg-orange-50',
++    fill: 'bg-orange-600',
++    overlay: 'from-orange-950/80 to-orange-900/40',
++  },
++  lifestyle: {
++    label: 'Lifestyle',
++    text: 'text-teal-800',
++    hover: 'group-hover:text-teal-700',
++    border: 'border-teal-800',
++    tint: 'bg-teal-50',
++    fill: 'bg-teal-700',
++    overlay: 'from-teal-950/80 to-teal-900/40',
++  },
++};
++
++export interface FreshnessTheme {
++  label: string;
++  /** Pill styling for the badge. Empty when the state has no badge. */
++  badge: string;
++  /** Dot shown inside the badge. Empty when the state has no dot. */
++  dot: string;
++  /** Treatment applied to the story image. */
++  image: string;
++  /** Treatment applied to the headline. */
++  headline: string;
++  /** Edge accent applied to the card container. */
++  card: string;
++}
++
++export const FRESHNESS_THEME: Record<Freshness, FreshnessTheme> = {
++  breaking: {
++    label: 'Breaking',
++    badge: 'bg-red-700 text-white',
++    dot: 'bg-white animate-pulse',
++    image: '',
++    headline: 'font-bold',
++    card: 'border-l-4 border-red-700 pl-4',
++  },
++  new: {
++    label: 'New',
++    badge: 'bg-amber-100 text-amber-900 ring-1 ring-amber-300',
++    dot: 'bg-amber-500',
++    image: '',
++    headline: '',
++    card: '',
++  },
++  recent: {
++    label: '',
++    badge: '',
++    dot: '',
++    image: '',
++    headline: '',
++    card: '',
++  },
++  archive: {
++    label: 'From the archive',
++    badge: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
++    dot: '',
++    image: 'sepia-[.25] contrast-[.95]',
++    headline: 'text-gray-700',
++    card: '',
++  },
++};
++
++export interface DepthTheme {
++  label: string;
++  /** Number of filled pips out of three. */
++  pips: 1 | 2 | 3;
++  /** Whether a grid card should spend space on the summary. */
++  showSummary: boolean;
++  /** Headline scale on the grid surface. */
++  headline: string;
++}
++
++export const DEPTH_THEME: Record<Depth, DepthTheme> = {
++  brief: { label: 'Quick read', pips: 1, showSummary: false, headline: 'text-lg' },
++  standard: { label: '', pips: 2, showSummary: true, headline: 'text-lg md:text-xl' },
++  longform: { label: 'Long read', pips: 3, showSummary: true, headline: 'text-xl md:text-2xl' },
++};
++
++export interface ToneTheme {
++  /** Kicker text shown next to the desk tag. Empty for straight reports. */
++  kicker: string;
++  kickerClass: string;
++  /** Headline typography. */
++  headline: string;
++  /** Image aspect ratio on the grid surface. */
++  aspect: string;
++  /** Whether the byline is promoted on cards. */
++  showByline: boolean;
++}
++
++export const TONE_THEME: Record<Tone, ToneTheme> = {
++  report: {
++    kicker: '',
++    kickerClass: '',
++    headline: 'font-brand',
++    aspect: 'aspect-[16/9]',
++    showByline: false,
++  },
++  analysis: {
++    kicker: 'Analysis',
++    kickerClass: 'text-gray-500 italic',
++    headline: 'font-brand',
++    aspect: 'aspect-[16/9]',
++    showByline: false,
++  },
++  feature: {
++    kicker: 'Feature',
++    kickerClass: 'text-gray-500',
++    headline: 'font-brand',
++    aspect: 'aspect-[4/3]',
++    showByline: true,
++  },
++  opinion: {
++    kicker: 'Opinion',
++    kickerClass: 'text-gray-900 font-semibold',
++    headline: 'font-brand italic',
++    aspect: 'aspect-square',
++    showByline: true,
++  },
++};
++
++// ---------------------------------------------------------------------------
++// Dateline
++// ---------------------------------------------------------------------------
++
++/**
++ * Formats a story date in the register its freshness calls for:
++ * minutes or hours ago while it is breaking or new, the weekday while it is
++ * recent, and a full date once it is archive material.
++ */
++export function formatDateline(date: Date, now: Date | number = Date.now()): string {
++  const freshness = getFreshness(date, now);
++  const age = toMillis(now) - date.valueOf();
++
++  if (freshness === 'breaking') {
++    const minutes = Math.max(1, Math.round(age / MINUTE));
++    if (minutes < 60) return `${minutes} min ago`;
++    const hours = Math.round(age / HOUR);
++    return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
++  }
++  if (freshness === 'new') {
++    const hours = Math.round(age / HOUR);
++    if (hours < 24) return hours <= 1 ? '1 hour ago' : `${hours} hours ago`;
++    return 'Yesterday';
++  }
++  if (freshness === 'recent') {
++    return date.toLocaleDateString('en-US', { weekday: 'long' });
++  }
++  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
++}
++
++// ---------------------------------------------------------------------------
++// Aggregates
++// ---------------------------------------------------------------------------
++
++export interface CollectionSemantics {
++  /** The single desk shared by every story, or null when desks are mixed. */
++  sharedDesk: Desk | null;
++  /** True when at least one story is breaking. */
++  hasBreaking: boolean;
++  /** Index of the story that should lead the section. */
++  leadIndex: number;
++  /** The newest story date, used as the edition reference. */
++  editionDate: Date;
++}
++
++/**
++ * Looks across a set of stories to decide how a section should present them.
++ * A breaking story leads regardless of order. When every story comes from the
++ * same desk the section can take on that desk's identity and the cards can
++ * stop repeating it.
++ */
++export function getCollectionSemantics(
++  sources: SemanticSource[],
++  options: SemanticOptions = {},
++): CollectionSemantics {
++  if (sources.length === 0) {
++    return { sharedDesk: null, hasBreaking: false, leadIndex: 0, editionDate: new Date(0) };
++  }
++  const editionDate = new Date(Math.max(...sources.map((s) => s.date.valueOf())));
++  const now = options.now ?? editionDate;
++  const contexts = sources.map((s) => getSemanticContext(s, { now }));
++
++  const desks = new Set(contexts.map((c) => c.desk));
++  const breakingIndex = contexts.findIndex((c) => c.freshness === 'breaking');
++
++  return {
++    sharedDesk: desks.size === 1 ? contexts[0].desk : null,
++    hasBreaking: breakingIndex !== -1,
++    leadIndex: breakingIndex === -1 ? 0 : breakingIndex,
++    editionDate,
++  };
++}
++
++/** Builds the `data-*` attribute bag used for styling hooks and debugging. */
++export function semanticDataAttributes(ctx: SemanticContext) {
++  return {
++    'data-desk': ctx.desk,
++    'data-freshness': ctx.freshness,
++    'data-depth': ctx.depth,
++    'data-tone': ctx.tone,
++  };
++}
++
++function toMillis(value: Date | number): number {
++  return typeof value === 'number' ? value : value.valueOf();
++}

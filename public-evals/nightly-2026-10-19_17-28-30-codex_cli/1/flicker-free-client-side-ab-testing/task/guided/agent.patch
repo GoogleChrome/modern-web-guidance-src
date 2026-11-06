@@ -1,0 +1,18 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,13 @@
++# morrow landing page
++
++Run `pnpm start` to serve the static site.
++
++## Experiment integration
++
++`experiment.js` is a head module with `blocking="render"`. Its deferred execution ensures the page DOM exists before it inserts `https://cdn.example.com/experiment-sdk.js`, also with `async` and `blocking="render"`. The module awaits SDK execution before first paint. Browsers without native script render blocking use a feature-detected `visibility: hidden` fallback, which also prevents focus and clicks on hidden content. A network error reveals the control page once. There is deliberately no reveal timeout that could expose control content before a late variant.
++
++The supplied CDN URL is a placeholder, and no SDK API or experiment configuration was provided. With a synchronous SDK, variants must be applied during script execution. For asynchronous initialization, connect the SDK's actual readiness API to `window.experimentReady`, a promise set synchronously by the SDK/bootstrap and resolved only after all initial variant changes finish. The loader awaits this promise. Without that integration, an arbitrary SDK's later mutations cannot be guaranteed to precede first paint. Configure audience assignment and variants in the real SDK; the page exposes `#hero-title`, `#hero-cta`, and `data-experiment` targets.
++
++The CTA form is a local preview: it saves interest on this device and clearly explains that no account is created and no email is sent.
++
++The stock forest photograph is hosted locally and sourced from Unsplash. Fonts and small avatar images use external services.

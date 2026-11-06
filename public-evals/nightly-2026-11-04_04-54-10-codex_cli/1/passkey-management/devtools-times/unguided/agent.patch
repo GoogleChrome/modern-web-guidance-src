@@ -1,0 +1,2989 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..c3b0172 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,6 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++# Local credential database
++.data/
+diff --git a/README.md b/README.md
+index 4479b53..b15c4c7 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,32 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Account security
++
++Account settings are available at `/devtools-times/account/settings`, linked from
++“My account” in the header. Sign in with an existing reader username and password
++to add, rename, or remove passkeys. Password authentication uses the existing
++Times authentication service; successful authentication creates a local, rotated
++HTTP-only session. Registered passkeys can also be used on the sign-in page.
++
++Passkey registration and authentication verify WebAuthn challenges, origin,
++relying-party ID, and user verification on the server. Management endpoints scope
++every operation to the authenticated reader and relying party. Passkey labels are
++account metadata, independent of the authenticator's user display name.
++
++Use Node.js 22.13 or newer. Credentials are stored in SQLite at
++`.data/passkeys.sqlite`. Set `PASSKEY_DATABASE_PATH` to a persistent volume path
++for deployments, and retain the filesystem-backed Astro session directory.
++Multiple instances need a shared credential/session store before scaling out.
++`WEBAUTHN_ORIGIN` can specify the public HTTPS origin behind a reverse proxy;
++otherwise the request origin is used. Passkeys require HTTPS (or localhost).
++
++Supported browsers receive the complete accepted credential list after loading
++the authenticated settings page and after registration or removal. Unsupported
++browsers and failed updates show instructions to manage the saved credential in
++the device's password manager. A successful signal means the update was sent;
++the authenticator controls when it applies it.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/package.json b/package.json
+index bfffcf0..aac970f 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,9 @@
+   "name": "devtools-times",
+   "type": "module",
+   "version": "0.0.1",
++  "engines": {
++    "node": ">=22.13.0"
++  },
+   "scripts": {
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+@@ -13,6 +16,8 @@
+     "@astrojs/node": "^11.1.9",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -23,7 +28,9 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "@types/node": "^26.6.6",
++    "typescript": "^7.0.2"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/AccountSettings.tsx b/src/components/AccountSettings.tsx
+new file mode 100644
+index 0000000..bf501fc
+--- /dev/null
++++ b/src/components/AccountSettings.tsx
+@@ -0,0 +1,785 @@
++import { useEffect, useRef, useState } from "react";
++import { startRegistration } from "@simplewebauthn/browser";
++import {
++  ArrowLeftIcon,
++  ArrowRightIcon,
++  ArrowRightStartOnRectangleIcon,
++  Bars3Icon,
++  BellIcon,
++  BookmarkIcon,
++  CheckIcon,
++  CheckCircleIcon,
++  ChevronDownIcon,
++  ChevronRightIcon,
++  ComputerDesktopIcon,
++  DevicePhoneMobileIcon,
++  FingerPrintIcon,
++  GlobeAltIcon,
++  KeyIcon,
++  LockClosedIcon,
++  PencilSquareIcon,
++  PlusIcon,
++  QuestionMarkCircleIcon,
++  ShieldCheckIcon,
++  TrashIcon,
++  UserCircleIcon,
++  XMarkIcon,
++} from "@heroicons/react/24/outline";
++
++type Passkey = {
++  id: string;
++  name: string;
++  createdAt: string;
++  lastUsedAt: string | null;
++  backedUp: boolean;
++  transports: string[];
++};
++type Reader = { username: string; userId: string };
++type AccountData = { reader: Reader; rpId: string; passkeys: Passkey[] };
++type Props = { reader?: Reader; baseUrl: string };
++type SignalAPI = {
++  signalAllAcceptedCredentials?: (options: {
++    rpId: string;
++    userId: string;
++    allAcceptedCredentialIds: string[];
++  }) => Promise<void>;
++};
++const date = (value: string) =>
++  new Date(value).toLocaleDateString("en-US", {
++    month: "short",
++    day: "numeric",
++    year: "numeric",
++  });
++
++export default function AccountSettings({ reader, baseUrl }: Props) {
++  const [keys, setKeys] = useState<Passkey[]>([]);
++  const [loading, setLoading] = useState(Boolean(reader));
++  const [error, setError] = useState("");
++  const [notice, setNotice] = useState("");
++  const [sync, setSync] = useState<
++    "idle" | "pending" | "sent" | "unsupported" | "failed"
++  >("idle");
++  const [modal, setModal] = useState<{
++    type: "rename" | "remove" | "add";
++    key?: Passkey;
++  } | null>(null);
++  const [name, setName] = useState("");
++  const [busy, setBusy] = useState(false);
++  const [tab, setTab] = useState("security");
++  const [mobileMenu, setMobileMenu] = useState(false);
++  const [loadFailed, setLoadFailed] = useState(false);
++  const dialog = useRef<HTMLDialogElement>(null);
++  const trigger = useRef<HTMLElement | null>(null);
++
++  async function request(path: string, options?: RequestInit) {
++    const response = await fetch(`${baseUrl}api/${path}`, {
++      ...options,
++      headers: { "Content-Type": "application/json", ...options?.headers },
++    });
++    const data = await response.json();
++    if (!response.ok)
++      throw new Error(data.error || "Something went wrong. Please try again.");
++    return data;
++  }
++
++  async function syncAuthenticator(data: AccountData) {
++    const api = window.PublicKeyCredential as unknown as SignalAPI | undefined;
++    if (!window.isSecureContext || !api?.signalAllAcceptedCredentials) {
++      setSync("unsupported");
++      return;
++    }
++    setSync("pending");
++    try {
++      await api.signalAllAcceptedCredentials({
++        rpId: data.rpId,
++        userId: data.reader.userId,
++        allAcceptedCredentialIds: data.passkeys.map((key) => key.id),
++      });
++      setSync("sent");
++    } catch {
++      setSync("failed");
++    }
++  }
++
++  async function load() {
++    setLoading(true);
++    setError("");
++    setLoadFailed(false);
++    try {
++      const data: AccountData = await request("passkeys");
++      setKeys(data.passkeys);
++      void syncAuthenticator(data);
++    } catch (err) {
++      setError((err as Error).message);
++      setLoadFailed(true);
++    } finally {
++      setLoading(false);
++    }
++  }
++  useEffect(() => {
++    if (reader) void load();
++  }, []);
++  useEffect(() => {
++    if (modal) dialog.current?.showModal();
++    else if (dialog.current?.open) dialog.current.close();
++  }, [modal]);
++
++  function open(type: "rename" | "remove" | "add", key?: Passkey) {
++    if (!reader) {
++      window.location.href = `${baseUrl}signin`;
++      return;
++    }
++    trigger.current = document.activeElement as HTMLElement;
++    setName(key?.name || "");
++    setError("");
++    setNotice("");
++    setModal({ type, key });
++  }
++  function close() {
++    if (busy) return;
++    setModal(null);
++    setError("");
++    trigger.current?.focus();
++  }
++  async function save(event: React.FormEvent) {
++    event.preventDefault();
++    if (!modal || busy) return;
++    setBusy(true);
++    setError("");
++    try {
++      let data: AccountData;
++      if (modal.type === "add") {
++        const options = await request("passkeys/register", {
++          method: "POST",
++          body: JSON.stringify({ action: "options" }),
++        });
++        const credential = await startRegistration({ optionsJSON: options });
++        data = await request("passkeys/register", {
++          method: "POST",
++          body: JSON.stringify({ credential, name: name.trim() }),
++        });
++      } else {
++        data = await request("passkeys", {
++          method: modal.type === "remove" ? "DELETE" : "PATCH",
++          body: JSON.stringify({ id: modal.key!.id, name: name.trim() }),
++        });
++      }
++      setKeys(data.passkeys);
++      setNotice(
++        modal.type === "remove"
++          ? "Passkey removed. It can no longer be used to sign in."
++          : modal.type === "rename"
++            ? "Passkey name updated."
++            : "Your new passkey is ready to use.",
++      );
++      // Friendly key labels are local metadata, not the authenticator's account display name.
++      if (modal.type !== "rename") void syncAuthenticator(data);
++      setModal(null);
++      trigger.current?.focus();
++    } catch (err) {
++      setError(
++        (err as Error).name === "NotAllowedError"
++          ? "The request was canceled or timed out. You can try again."
++          : (err as Error).message,
++      );
++    } finally {
++      setBusy(false);
++    }
++  }
++  async function signOut() {
++    setBusy(true);
++    try {
++      await request("auth/logout", { method: "POST" });
++      window.location.href = `${baseUrl}signin`;
++    } catch (err) {
++      setError((err as Error).message);
++      setBusy(false);
++    }
++  }
++
++  const navigation = [
++    { id: "profile", label: "Personal information", icon: UserCircleIcon },
++    { id: "security", label: "Sign-in & security", icon: ShieldCheckIcon },
++    { id: "newsletters", label: "Newsletters", icon: BellIcon },
++    { id: "reading", label: "Saved articles", icon: BookmarkIcon },
++  ];
++
++  return (
++    <div className="account-app">
++      <header className="account-header">
++        <div className="masthead-row">
++          <a className="back-to-news" href={baseUrl}>
++            <ArrowLeftIcon /> <span>Back to the news</span>
++          </a>
++          <a href={baseUrl} className="account-wordmark">
++            The DevTools Times<span>INDEPENDENT MINDS. INFORMED READERS.</span>
++          </a>
++          <a className="header-account" href={`${baseUrl}account/settings`}>
++            <span className="avatar">
++              {reader ? (
++                reader.username.slice(0, 1).toUpperCase()
++              ) : (
++                <UserCircleIcon />
++              )}
++            </span>
++            <span>My account</span>
++            <ChevronDownIcon />
++          </a>
++        </div>
++        <nav className="editorial-nav" aria-label="News sections">
++          {[
++            "Latest",
++            "World",
++            "Politics",
++            "Business",
++            "Science & Tech",
++            "Culture",
++            "Lifestyle",
++            "Sports",
++          ].map((item) => (
++            <a
++              key={item}
++              href={
++                item === "Latest"
++                  ? baseUrl
++                  : `${baseUrl}category/${encodeURIComponent(item === "Science & Tech" ? "science" : item.toLowerCase())}`
++              }
++            >
++              {item}
++            </a>
++          ))}
++          <span className="nav-edition">
++            <GlobeAltIcon /> U.S. edition
++          </span>
++        </nav>
++      </header>
++
++      <div className="account-shell">
++        <div className="account-breadcrumb">
++          <a href={baseUrl}>Home</a>
++          <ChevronRightIcon />
++          <span>My account</span>
++        </div>
++        <div className="account-title-row">
++          <div>
++            <p className="eyebrow">YOUR TIMES, YOUR WAY</p>
++            <h1>
++              Account settings<span>.</span>
++            </h1>
++            <p>
++              Make yourself at home. Manage your account and how you sign in.
++            </p>
++          </div>
++          <span className="private-label">
++            <LockClosedIcon /> PRIVATE & SECURE
++          </span>
++        </div>
++
++        <div className="account-columns">
++          <aside className="account-sidebar">
++            <div className="reader-card">
++              <span className="avatar reader-avatar">
++                {reader ? (
++                  reader.username.slice(0, 1).toUpperCase()
++                ) : (
++                  <UserCircleIcon />
++                )}
++              </span>
++              <div>
++                <strong>{reader?.username || "Your reader account"}</strong>
++                <span>
++                  {reader ? "Times reader" : "A little more personal."}
++                </span>
++              </div>
++            </div>
++            <button
++              className="mobile-settings-toggle"
++              onClick={() => setMobileMenu(!mobileMenu)}
++            >
++              <Bars3Icon /> Account navigation
++              <ChevronDownIcon />
++            </button>
++            <nav
++              className={mobileMenu ? "settings-nav expanded" : "settings-nav"}
++              aria-label="Account settings"
++            >
++              {navigation.map(({ id, label, icon: Icon }) => (
++                <button
++                  key={id}
++                  onClick={() => {
++                    setTab(id);
++                    setMobileMenu(false);
++                  }}
++                  aria-current={tab === id ? "page" : undefined}
++                  className={tab === id ? "selected" : ""}
++                >
++                  <Icon />
++                  <span>{label}</span>
++                  {tab === id && <ChevronRightIcon />}
++                </button>
++              ))}
++            </nav>
++            <div className="sidebar-bottom">
++              {reader ? (
++                <button disabled={busy} onClick={signOut}>
++                  <ArrowRightStartOnRectangleIcon />
++                  Sign out
++                </button>
++              ) : (
++                <a href={`${baseUrl}signin`}>
++                  <ArrowRightStartOnRectangleIcon />
++                  Sign in to your account
++                </a>
++              )}
++            </div>
++            <div className="sidebar-help">
++              <QuestionMarkCircleIcon />
++              <p>
++                A little help?
++                <br />
++                <a href="mailto:help@devtoolstimes.com">
++                  Contact reader support <ArrowRightIcon />
++                </a>
++              </p>
++            </div>
++          </aside>
++
++          <main className="settings-content">
++            {tab === "security" ? (
++              <>
++                <div className="section-heading">
++                  <span className="section-icon">
++                    <ShieldCheckIcon />
++                  </span>
++                  <div>
++                    <h2>Sign-in & security</h2>
++                    <p>A safer, simpler way to keep your account yours.</p>
++                  </div>
++                </div>
++
++                <section className="passkey-intro" aria-label="About passkeys">
++                  <div className="intro-copy">
++                    <span className="small-label">
++                      LESS FRICTION. MORE PEACE OF MIND.
++                    </span>
++                    <h3>
++                      Your next sign-in,
++                      <br />
++                      without a password.
++                    </h3>
++                    <p>
++                      Use your fingerprint, face, or device screen lock to sign
++                      in. Passkeys keep your account protected, without another
++                      password to remember.
++                    </p>
++                    <a href="#passkey-faq">
++                      Get to know passkeys <ArrowRightIcon />
++                    </a>
++                  </div>
++                  <div className="key-art" aria-hidden="true">
++                    <div className="orbit orbit-one" />
++                    <div className="orbit orbit-two" />
++                    <span className="art-dot dot-one" />
++                    <span className="art-dot dot-two" />
++                    <div className="key-tile">
++                      <KeyIcon />
++                    </div>
++                    <div className="verified-tile">
++                      <CheckIcon />
++                    </div>
++                    <span className="art-caption">
++                      <LockClosedIcon /> Made for your eyes only.
++                    </span>
++                  </div>
++                </section>
++
++                <section
++                  className="passkeys-section"
++                  aria-labelledby="passkey-heading"
++                >
++                  <div className="passkeys-heading">
++                    <div>
++                      <div className="title-with-count">
++                        <h3 id="passkey-heading">Your passkeys</h3>
++                        <span className="count">{keys.length}</span>
++                      </div>
++                      <p>Manage the devices and keys you use to sign in.</p>
++                    </div>
++                    <button
++                      className="primary-button"
++                      onClick={() => open("add")}
++                      disabled={loading || loadFailed}
++                    >
++                      <PlusIcon />
++                      Add a passkey
++                    </button>
++                  </div>
++
++                  {notice && (
++                    <div className="success-message" role="status">
++                      <CheckCircleIcon />
++                      {notice}
++                      <button
++                        aria-label="Dismiss notification"
++                        onClick={() => setNotice("")}
++                      >
++                        <XMarkIcon />
++                      </button>
++                    </div>
++                  )}
++                  {error && !modal && (
++                    <div className="error-message" role="alert">
++                      {error}
++                      {reader && <button onClick={load}>Try again</button>}
++                    </div>
++                  )}
++                  <div className="passkey-list" aria-busy={loading}>
++                    {loading ? (
++                      <div className="empty-keys">
++                        <span className="loading-spinner" />
++                        <p>Loading your passkeys…</p>
++                      </div>
++                    ) : loadFailed ? (
++                      <div className="empty-keys">
++                        <ShieldCheckIcon />
++                        <h4>Your passkeys couldn’t be loaded</h4>
++                        <p>
++                          Try again to safely view and manage your registered
++                          keys.
++                        </p>
++                      </div>
++                    ) : keys.length ? (
++                      keys.map((key) => {
++                        const DeviceIcon =
++                          key.transports.includes("usb") ||
++                          key.transports.includes("nfc")
++                            ? KeyIcon
++                            : /phone|iphone|android/i.test(key.name)
++                              ? DevicePhoneMobileIcon
++                              : ComputerDesktopIcon;
++                        return (
++                          <article className="passkey-row" key={key.id}>
++                            <span className="device-icon">
++                              <DeviceIcon />
++                            </span>
++                            <div className="passkey-details">
++                              <div className="passkey-name">
++                                <h4>{key.name}</h4>
++                                {key.backedUp && (
++                                  <span className="synced-tag">
++                                    <CheckIcon />
++                                    Backed up
++                                  </span>
++                                )}
++                              </div>
++                              <p>
++                                Added {date(key.createdAt)}
++                                <span className="meta-dot">·</span>
++                                {key.lastUsedAt
++                                  ? `Last used ${date(key.lastUsedAt)}`
++                                  : "Not used yet"}
++                              </p>
++                            </div>
++                            <div className="passkey-actions">
++                              <button
++                                title="Rename passkey"
++                                aria-label={`Rename ${key.name}`}
++                                onClick={() => open("rename", key)}
++                              >
++                                <PencilSquareIcon />
++                                <span>Rename</span>
++                              </button>
++                              <span className="action-divider" />
++                              <button
++                                className="remove-action"
++                                title="Remove passkey"
++                                aria-label={`Remove ${key.name}`}
++                                onClick={() => open("remove", key)}
++                              >
++                                <TrashIcon />
++                                <span className="sr-only">Remove</span>
++                              </button>
++                            </div>
++                          </article>
++                        );
++                      })
++                    ) : (
++                      <div className="empty-keys">
++                        <span className="empty-key-icon">
++                          <FingerPrintIcon />
++                        </span>
++                        <div>
++                          <h4>
++                            {reader
++                              ? "A more secure sign-in starts here"
++                              : "Your keys to a more secure account"}
++                          </h4>
++                          <p>
++                            {reader
++                              ? "Add your first passkey. Your next visit will be that much easier."
++                              : "Sign in to see your registered passkeys or add your first one."}
++                          </p>
++                        </div>
++                        {!reader && (
++                          <a className="text-link" href={`${baseUrl}signin`}>
++                            Sign in <ArrowRightIcon />
++                          </a>
++                        )}
++                      </div>
++                    )}
++                    <div className="list-footnote">
++                      <LockClosedIcon />
++                      <span>
++                        Your biometric data stays on your device. We never see
++                        or store it.
++                      </span>
++                    </div>
++                  </div>
++
++                  <div className="sync-note">
++                    <span className="sync-icon">
++                      <CheckCircleIcon />
++                    </span>
++                    <div>
++                      <strong>
++                        {sync === "sent"
++                          ? "Your browser has the latest list"
++                          : "In step with your browser"}
++                      </strong>
++                      <p>
++                        {sync === "unsupported"
++                          ? "Your browser doesn’t support automatic updates. After removing a passkey here, delete it from your device’s password manager too."
++                          : sync === "failed"
++                            ? "Your account is up to date, but we couldn’t notify your browser. You can retry the update or remove old keys in your password manager."
++                            : sync === "pending"
++                              ? "Sending your current passkeys to your browser…"
++                              : "When you remove a passkey, we let supported browsers know so your authenticator can stay up to date."}
++                      </p>
++                      {sync === "failed" && (
++                        <button className="text-link" onClick={load}>
++                          Retry browser update <ArrowRightIcon />
++                        </button>
++                      )}
++                    </div>
++                    <span className="sync-badge">
++                      {sync === "sent" ? "UPDATE SENT" : "BROWSER SYNC"}
++                    </span>
++                  </div>
++                </section>
++
++                <section className="good-to-know" id="passkey-faq">
++                  <div className="good-to-know-title">
++                    <span className="small-label">GOOD TO KNOW</span>
++                    <h3>
++                      A small key.
++                      <br />A big step forward.
++                    </h3>
++                    <p>
++                      Built around your security.
++                      <br />
++                      Designed for everyday life.
++                    </p>
++                  </div>
++                  <div className="faq-list">
++                    {[
++                      [
++                        "What makes a passkey safer?",
++                        "Passkeys use a unique cryptographic key tied to this site. They can’t be guessed or reused on a phishing website, and your private key stays with your authenticator.",
++                      ],
++                      [
++                        "Can I use a passkey on another device?",
++                        "Yes. Your password manager may sync your passkeys across devices. You can also use a nearby phone or add a separate security key as a backup.",
++                      ],
++                      [
++                        "What happens when I remove a passkey?",
++                        "It immediately stops working for this account. Supported browsers are notified to update your authenticator. Other password managers may need you to delete the saved passkey manually.",
++                      ],
++                    ].map(([question, answer]) => (
++                      <details key={question}>
++                        <summary>
++                          {question}
++                          <PlusIcon />
++                        </summary>
++                        <p>{answer}</p>
++                      </details>
++                    ))}
++                  </div>
++                </section>
++
++                <div className="security-bottom">
++                  <ShieldCheckIcon />
++                  <p>Good journalism deserves a secure home. So do you.</p>
++                  <a href={`${baseUrl}legal/privacy`}>
++                    Our privacy promise <ArrowRightIcon />
++                  </a>
++                </div>
++              </>
++            ) : (
++              <>
++                <div className="section-heading">
++                  <span className="section-icon">
++                    <UserCircleIcon />
++                  </span>
++                  <div>
++                    <h2>{navigation.find((item) => item.id === tab)?.label}</h2>
++                    <p>Your reading life, all in one place.</p>
++                  </div>
++                </div>
++                <div className="other-settings">
++                  <h3>
++                    {tab === "profile"
++                      ? "Hello, reader."
++                      : tab === "reading"
++                        ? "Keep a good story close."
++                        : "Make room for a little perspective."}
++                  </h3>
++                  <p>
++                    {tab === "profile"
++                      ? reader
++                        ? `You’re signed in as ${reader.username}. You can manage your sign-in methods in Sign-in & security.`
++                        : "Sign in to access your personal account information."
++                      : tab === "reading"
++                        ? "Use the bookmark icon on any article to save it. Your saved stories are available from the reading list in the news header."
++                        : "Discover the latest reporting, thoughtful analysis, and stories that matter in our daily briefing."}
++                  </p>
++                  <a
++                    className="primary-button"
++                    href={
++                      tab === "profile" && !reader
++                        ? `${baseUrl}signin`
++                        : baseUrl
++                    }
++                  >
++                    {tab === "profile" && !reader
++                      ? "Sign in"
++                      : "Explore the news"}
++                    <ArrowRightIcon />
++                  </a>
++                </div>
++              </>
++            )}
++          </main>
++        </div>
++      </div>
++      <footer className="account-footer">
++        <a href={baseUrl} className="footer-wordmark">
++          The DevTools Times
++        </a>
++        <span>Independent journalism. A clearer perspective.</span>
++        <div>
++          <a href={`${baseUrl}legal/privacy`}>Privacy policy</a>
++          <a href={`${baseUrl}legal/terms`}>Terms of service</a>
++          <span>© {new Date().getFullYear()} The DevTools Times</span>
++        </div>
++      </footer>
++
++      <dialog
++        ref={dialog}
++        aria-label={
++          modal?.type === "remove"
++            ? "Remove passkey"
++            : modal?.type === "rename"
++              ? "Rename passkey"
++              : "Add a passkey"
++        }
++        className="passkey-dialog"
++        onCancel={(event) => {
++          event.preventDefault();
++          close();
++        }}
++        onClick={(event) => {
++          if (event.target === event.currentTarget) close();
++        }}
++      >
++        {modal && (
++          <form onSubmit={save}>
++            <button
++              className="dialog-close"
++              type="button"
++              disabled={busy}
++              aria-label="Close dialog"
++              onClick={close}
++            >
++              <XMarkIcon />
++            </button>
++            <span
++              className={`dialog-icon ${modal.type === "remove" ? "danger" : ""}`}
++            >
++              {modal.type === "remove" ? <TrashIcon /> : <KeyIcon />}
++            </span>
++            <p className="eyebrow">YOUR ACCOUNT, PROTECTED</p>
++            <h2>
++              {modal.type === "rename"
++                ? "A name you’ll recognize."
++                : modal.type === "remove"
++                  ? "Remove this passkey?"
++                  : "An easier way in."}
++            </h2>
++            <p>
++              {modal.type === "remove"
++                ? `“${modal.key?.name}” will no longer be able to sign in to your account. You can still sign in with your password${keys.length > 1 ? " or another passkey" : ""}.`
++                : modal.type === "rename"
++                  ? "Choose a friendly name to help you tell your passkeys apart. This name is only used in your account."
++                  : "Give your passkey a name. Your device will then help you finish setting it up securely."}
++            </p>
++            {modal.type !== "remove" && (
++              <label className="name-label">
++                Passkey name
++                <input
++                  autoFocus
++                  value={name}
++                  onChange={(event) => setName(event.target.value)}
++                  maxLength={64}
++                  placeholder="e.g. My MacBook"
++                  required
++                  disabled={busy}
++                />
++                <span>{name.length}/64 characters</span>
++              </label>
++            )}
++            {modal.type === "remove" && keys.length === 1 && (
++              <div className="last-key-note">
++                <ShieldCheckIcon />
++                <span>
++                  This is your last passkey. Make sure you know your password
++                  before removing it.
++                </span>
++              </div>
++            )}
++            {error && (
++              <div className="error-message" role="alert">
++                {error}
++              </div>
++            )}
++            <div className="dialog-buttons">
++              <button
++                className="secondary-button"
++                type="button"
++                disabled={busy}
++                onClick={close}
++              >
++                Cancel
++              </button>
++              <button
++                autoFocus={modal.type === "remove"}
++                className={
++                  modal.type === "remove" ? "danger-button" : "primary-button"
++                }
++                disabled={busy || (modal.type !== "remove" && !name.trim())}
++              >
++                {busy
++                  ? "Please wait…"
++                  : modal.type === "remove"
++                    ? "Remove passkey"
++                    : modal.type === "rename"
++                      ? "Save name"
++                      : "Continue"}
++                {!busy && modal.type === "add" && <ArrowRightIcon />}
++              </button>
++            </div>
++          </form>
++        )}
++      </dialog>
++    </div>
++  );
++}
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..e5a58e0 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -69,7 +69,7 @@ const baseUrl = import.meta.env.BASE_URL;
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href={`${baseUrl}account/settings`} class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..313821c 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a href={`${baseUrl}account/settings`} class="text-xs font-semibold text-gray-700 hover:underline">My account</a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..b816b42 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,5 @@
+ import React, { useState } from 'react';
++import { startAuthentication } from '@simplewebauthn/browser';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -14,7 +15,7 @@ export default function SignInForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/auth/login`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+@@ -25,12 +26,10 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        window.location.href = `${import.meta.env.BASE_URL}account/settings`;
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -39,6 +38,24 @@ export default function SignInForm() {
+     }
+   };
+ 
++  async function signInWithPasskey() {
++    setError(null);
++    setLoading(true);
++    try {
++      const endpoint = `${import.meta.env.BASE_URL}api/auth/passkey`;
++      const optionsResponse = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'options' }) });
++      const options = await optionsResponse.json();
++      if (!optionsResponse.ok) throw new Error(options.error);
++      const credential = await startAuthentication({ optionsJSON: options });
++      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential }) });
++      const data = await response.json();
++      if (!response.ok) throw new Error(data.error);
++      window.location.href = `${import.meta.env.BASE_URL}account/settings`;
++    } catch (err) {
++      setError((err as Error).name === 'NotAllowedError' ? 'Passkey sign-in was canceled. You can try again or use your password.' : (err as Error).message);
++    } finally { setLoading(false); }
++  }
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+@@ -55,6 +72,7 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
++      <button type="button" disabled={loading} onClick={signInWithPasskey} className="w-full mb-6 py-3 px-4 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 disabled:opacity-50">Sign in with a passkey</button>
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+@@ -63,6 +81,7 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +96,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/lib/passkeys.ts b/src/lib/passkeys.ts
+new file mode 100644
+index 0000000..535377a
+--- /dev/null
++++ b/src/lib/passkeys.ts
+@@ -0,0 +1,124 @@
++import { DatabaseSync } from "node:sqlite";
++import { mkdirSync } from "node:fs";
++import { dirname, resolve } from "node:path";
++import { randomBytes } from "node:crypto";
++
++export type Reader = { username: string; userId: string };
++export type StoredPasskey = {
++  id: string;
++  username: string;
++  rpId: string;
++  name: string;
++  publicKey: string;
++  counter: number;
++  transports: string;
++  backedUp: number;
++  createdAt: string;
++  lastUsedAt: string | null;
++};
++
++let database: DatabaseSync;
++function db() {
++  if (!database) {
++    const path = resolve(
++      process.env.PASSKEY_DATABASE_PATH || ".data/passkeys.sqlite",
++    );
++    mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
++    database = new DatabaseSync(path);
++    database.exec(`PRAGMA journal_mode=WAL;
++      CREATE TABLE IF NOT EXISTS readers (username TEXT PRIMARY KEY, userId TEXT UNIQUE NOT NULL);
++      CREATE TABLE IF NOT EXISTS passkeys (
++        id TEXT PRIMARY KEY, username TEXT NOT NULL, rpId TEXT NOT NULL, name TEXT NOT NULL,
++        publicKey TEXT NOT NULL, counter INTEGER NOT NULL, transports TEXT NOT NULL,
++        backedUp INTEGER NOT NULL, createdAt TEXT NOT NULL, lastUsedAt TEXT
++      );`);
++  }
++  return database;
++}
++
++export function getReader(username: string): Reader {
++  db()
++    .prepare("INSERT OR IGNORE INTO readers VALUES (?, ?)")
++    .run(username, randomBytes(32).toString("base64url"));
++  return db()
++    .prepare("SELECT * FROM readers WHERE username = ?")
++    .get(username) as Reader;
++}
++export function listPasskeys(username: string, rpId: string) {
++  return db()
++    .prepare(
++      "SELECT * FROM passkeys WHERE username = ? AND rpId = ? ORDER BY createdAt DESC",
++    )
++    .all(username, rpId) as StoredPasskey[];
++}
++export function getPasskey(id: string, rpId: string) {
++  return db()
++    .prepare("SELECT * FROM passkeys WHERE id = ? AND rpId = ?")
++    .get(id, rpId) as StoredPasskey | undefined;
++}
++export function addPasskey(key: StoredPasskey) {
++  db()
++    .prepare("INSERT INTO passkeys VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
++    .run(
++      key.id,
++      key.username,
++      key.rpId,
++      key.name,
++      key.publicKey,
++      key.counter,
++      key.transports,
++      key.backedUp,
++      key.createdAt,
++      key.lastUsedAt,
++    );
++}
++export function renamePasskey(
++  username: string,
++  rpId: string,
++  id: string,
++  name: string,
++) {
++  return db()
++    .prepare(
++      "UPDATE passkeys SET name = ? WHERE id = ? AND username = ? AND rpId = ?",
++    )
++    .run(name, id, username, rpId).changes;
++}
++export function removePasskey(username: string, rpId: string, id: string) {
++  return db()
++    .prepare("DELETE FROM passkeys WHERE id = ? AND username = ? AND rpId = ?")
++    .run(id, username, rpId).changes;
++}
++export function recordAuthentication(id: string, counter: number) {
++  db()
++    .prepare("UPDATE passkeys SET counter = ?, lastUsedAt = ? WHERE id = ?")
++    .run(counter, new Date().toISOString(), id);
++}
++export function publicPasskeys(username: string, rpId: string) {
++  return listPasskeys(username, rpId).map(
++    ({ id, name, backedUp, createdAt, lastUsedAt, transports }) => ({
++      id,
++      name,
++      backedUp: Boolean(backedUp),
++      createdAt,
++      lastUsedAt,
++      transports: JSON.parse(transports) as string[],
++    }),
++  );
++}
++export function json(data: unknown, status = 200) {
++  return new Response(JSON.stringify(data), {
++    status,
++    headers: {
++      "Content-Type": "application/json",
++      "Cache-Control": "no-store",
++    },
++  });
++}
++export function sameOrigin(request: Request) {
++  return request.headers.get("origin") === new URL(request.url).origin;
++}
++export function relyingParty(request: Request) {
++  const origin = process.env.WEBAUTHN_ORIGIN || new URL(request.url).origin;
++  return { origin, rpId: new URL(origin).hostname };
++}
+diff --git a/src/pages/account/index.astro b/src/pages/account/index.astro
+new file mode 100644
+index 0000000..2b1ff90
+--- /dev/null
++++ b/src/pages/account/index.astro
+@@ -0,0 +1,3 @@
++---
++return Astro.redirect(`${import.meta.env.BASE_URL}account/settings`);
++---
+diff --git a/src/pages/account/settings.astro b/src/pages/account/settings.astro
+new file mode 100644
+index 0000000..95e8ed8
+--- /dev/null
++++ b/src/pages/account/settings.astro
+@@ -0,0 +1,22 @@
++---
++import AccountSettings from '../../components/AccountSettings';
++import '../../styles/global.css';
++import '../../styles/account.css';
++import type { Reader } from '../../lib/passkeys';
++const reader = await Astro.session?.get('reader') as Reader | undefined;
++Astro.response.headers.set('Cache-Control', 'private, no-store');
++---
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <meta name="description" content="A safer, simpler sign-in. Manage your passkeys and account security at The DevTools Times." />
++    <title>Account settings | The DevTools Times</title>
++    <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.svg`} />
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Libre+Caslon+Display&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
++  </head>
++  <body><AccountSettings client:load reader={reader} baseUrl={import.meta.env.BASE_URL} /></body>
++</html>
+diff --git a/src/pages/api/auth/login.ts b/src/pages/api/auth/login.ts
+new file mode 100644
+index 0000000..19cc86d
+--- /dev/null
++++ b/src/pages/api/auth/login.ts
+@@ -0,0 +1,43 @@
++import type { APIRoute } from "astro";
++import { getReader, json, sameOrigin } from "../../../lib/passkeys";
++
++export const POST: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request))
++    return json({ error: "Invalid request origin." }, 403);
++  if (!session)
++    return json({ error: "Sign-in is temporarily unavailable." }, 503);
++  try {
++    const { username, password } = await request.json();
++    if (
++      typeof username !== "string" ||
++      typeof password !== "string" ||
++      !username.trim() ||
++      !password
++    ) {
++      return json({ error: "Enter your username and password." }, 400);
++    }
++    const response = await fetch(
++      "https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login",
++      {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ username, password }),
++        signal: AbortSignal.timeout(15000),
++      },
++    );
++    if (!response.ok)
++      return json(
++        { error: "Unable to sign in. Check your username and password." },
++        401,
++      );
++    const reader = getReader(username);
++    await session.regenerate();
++    await session.set("reader", reader);
++    return json({ reader });
++  } catch {
++    return json(
++      { error: "Unable to sign in right now. Please try again." },
++      503,
++    );
++  }
++};
+diff --git a/src/pages/api/auth/logout.ts b/src/pages/api/auth/logout.ts
+new file mode 100644
+index 0000000..041e2f4
+--- /dev/null
++++ b/src/pages/api/auth/logout.ts
+@@ -0,0 +1,8 @@
++import type { APIRoute } from "astro";
++import { json, sameOrigin } from "../../../lib/passkeys";
++export const POST: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request))
++    return json({ error: "Invalid request origin." }, 403);
++  await session?.destroy();
++  return json({ success: true });
++};
+diff --git a/src/pages/api/auth/passkey.ts b/src/pages/api/auth/passkey.ts
+new file mode 100644
+index 0000000..91cdc66
+--- /dev/null
++++ b/src/pages/api/auth/passkey.ts
+@@ -0,0 +1,66 @@
++import type { APIRoute } from "astro";
++import {
++  generateAuthenticationOptions,
++  verifyAuthenticationResponse,
++} from "@simplewebauthn/server";
++import {
++  getPasskey,
++  getReader,
++  json,
++  recordAuthentication,
++  relyingParty,
++  sameOrigin,
++} from "../../../lib/passkeys";
++
++export const POST: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request))
++    return json({ error: "Invalid request origin." }, 403);
++  if (!session)
++    return json({ error: "Sign-in is temporarily unavailable." }, 503);
++  const { origin, rpId } = relyingParty(request);
++  try {
++    const body = await request.json();
++    if (body.action === "options") {
++      const options = await generateAuthenticationOptions({
++        rpID: rpId,
++        userVerification: "required",
++      });
++      await session.set("authentication", {
++        challenge: options.challenge,
++        expires: Date.now() + 300000,
++      });
++      return json(options);
++    }
++    const challenge = (await session.get("authentication")) as
++      { challenge: string; expires: number } | undefined;
++    await session.delete("authentication");
++    if (!challenge || challenge.expires < Date.now())
++      return json({ error: "The request expired. Please try again." }, 400);
++    const key = getPasskey(body.credential?.id, rpId);
++    if (!key)
++      return json({ error: "This passkey is no longer registered." }, 401);
++    const result = await verifyAuthenticationResponse({
++      response: body.credential,
++      expectedChallenge: challenge.challenge,
++      expectedOrigin: origin,
++      expectedRPID: rpId,
++      credential: {
++        id: key.id,
++        publicKey: new Uint8Array(Buffer.from(key.publicKey, "base64url")),
++        counter: key.counter,
++      },
++      requireUserVerification: true,
++    });
++    if (!result.verified)
++      return json({ error: "Unable to verify this passkey." }, 401);
++    recordAuthentication(key.id, result.authenticationInfo.newCounter);
++    await session.regenerate();
++    await session.set("reader", getReader(key.username));
++    return json({ success: true });
++  } catch {
++    return json(
++      { error: "Unable to sign in with this passkey. Please try again." },
++      400,
++    );
++  }
++};
+diff --git a/src/pages/api/passkeys/index.ts b/src/pages/api/passkeys/index.ts
+new file mode 100644
+index 0000000..c2adf39
+--- /dev/null
++++ b/src/pages/api/passkeys/index.ts
+@@ -0,0 +1,70 @@
++import type { APIRoute } from "astro";
++import {
++  json,
++  publicPasskeys,
++  relyingParty,
++  renamePasskey,
++  removePasskey,
++  sameOrigin,
++  type Reader,
++} from "../../../lib/passkeys";
++
++export const GET: APIRoute = async ({ request, session }) => {
++  const reader = (await session?.get("reader")) as Reader | undefined;
++  if (!reader)
++    return json({ error: "Please sign in to manage your passkeys." }, 401);
++  const { rpId } = relyingParty(request);
++  return json({
++    reader,
++    rpId,
++    passkeys: publicPasskeys(reader.username, rpId),
++  });
++};
++
++const mutate: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request))
++    return json({ error: "Invalid request origin." }, 403);
++  const reader = (await session?.get("reader")) as Reader | undefined;
++  if (!reader)
++    return json(
++      { error: "Your session has expired. Please sign in again." },
++      401,
++    );
++  try {
++    const { id, name } = await request.json();
++    if (typeof id !== "string")
++      return json({ error: "Select a passkey." }, 400);
++    const { rpId } = relyingParty(request);
++    if (
++      request.method === "PATCH" &&
++      (typeof name !== "string" || !name.trim() || name.trim().length > 64)
++    ) {
++      return json({ error: "Use a name between 1 and 64 characters." }, 400);
++    }
++    const changed =
++      request.method === "PATCH"
++        ? renamePasskey(reader.username, rpId, id, name.trim())
++        : removePasskey(reader.username, rpId, id);
++    if (!changed)
++      return json(
++        {
++          error:
++            "This passkey no longer exists. Refresh the list and try again.",
++        },
++        404,
++      );
++    // The complete, authoritative list is returned only after the database commit.
++    return json({
++      reader,
++      rpId,
++      passkeys: publicPasskeys(reader.username, rpId),
++    });
++  } catch {
++    return json(
++      { error: "The change could not be saved. Please try again." },
++      500,
++    );
++  }
++};
++export const PATCH = mutate;
++export const DELETE = mutate;
+diff --git a/src/pages/api/passkeys/register.ts b/src/pages/api/passkeys/register.ts
+new file mode 100644
+index 0000000..98fdba2
+--- /dev/null
++++ b/src/pages/api/passkeys/register.ts
+@@ -0,0 +1,91 @@
++import type { APIRoute } from "astro";
++import {
++  generateRegistrationOptions,
++  verifyRegistrationResponse,
++} from "@simplewebauthn/server";
++import {
++  addPasskey,
++  json,
++  listPasskeys,
++  publicPasskeys,
++  relyingParty,
++  sameOrigin,
++  type Reader,
++} from "../../../lib/passkeys";
++
++export const POST: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request))
++    return json({ error: "Invalid request origin." }, 403);
++  const reader = (await session?.get("reader")) as Reader | undefined;
++  if (!reader || !session)
++    return json({ error: "Please sign in to add a passkey." }, 401);
++  const { origin, rpId } = relyingParty(request);
++  try {
++    const body = await request.json();
++    if (body.action === "options") {
++      const options = await generateRegistrationOptions({
++        rpName: "The DevTools Times",
++        rpID: rpId,
++        userName: reader.username,
++        userID: new Uint8Array(Buffer.from(reader.userId, "base64url")),
++        attestationType: "none",
++        authenticatorSelection: {
++          residentKey: "required",
++          userVerification: "required",
++        },
++        excludeCredentials: listPasskeys(reader.username, rpId).map((key) => ({
++          id: key.id,
++        })),
++      });
++      await session.set("registration", {
++        challenge: options.challenge,
++        expires: Date.now() + 300000,
++      });
++      return json(options);
++    }
++    const challenge = (await session.get("registration")) as
++      { challenge: string; expires: number } | undefined;
++    await session.delete("registration");
++    if (!challenge || challenge.expires < Date.now())
++      return json({ error: "The request expired. Please try again." }, 400);
++    if (
++      typeof body.name !== "string" ||
++      !body.name.trim() ||
++      body.name.trim().length > 64
++    ) {
++      return json({ error: "Use a name between 1 and 64 characters." }, 400);
++    }
++    const result = await verifyRegistrationResponse({
++      response: body.credential,
++      expectedChallenge: challenge.challenge,
++      expectedOrigin: origin,
++      expectedRPID: rpId,
++      requireUserVerification: true,
++    });
++    if (!result.verified)
++      return json({ error: "The passkey could not be verified." }, 400);
++    const { credential, credentialBackedUp } = result.registrationInfo;
++    addPasskey({
++      id: credential.id,
++      username: reader.username,
++      rpId,
++      name: body.name.trim(),
++      publicKey: Buffer.from(credential.publicKey).toString("base64url"),
++      counter: credential.counter,
++      transports: JSON.stringify(credential.transports || []),
++      backedUp: Number(credentialBackedUp),
++      createdAt: new Date().toISOString(),
++      lastUsedAt: null,
++    });
++    return json({
++      reader,
++      rpId,
++      passkeys: publicPasskeys(reader.username, rpId),
++    });
++  } catch {
++    return json(
++      { error: "Unable to register this passkey. Please try again." },
++      400,
++    );
++  }
++};
+diff --git a/src/styles/account.css b/src/styles/account.css
+new file mode 100644
+index 0000000..1dba492
+--- /dev/null
++++ b/src/styles/account.css
+@@ -0,0 +1,1526 @@
++.account-app {
++  --ink: #252820;
++  --muted: #777a72;
++  --line: #e4e5de;
++  --green: #344b3b;
++  --cream: #f7f6f0;
++  color: var(--ink);
++  font-family: "DM Sans", sans-serif;
++  font-size: 14px;
++  background: #fff;
++  min-height: 100vh;
++}
++.account-app * {
++  box-sizing: border-box;
++}
++.account-app button,
++.account-app a,
++.account-app summary {
++  -webkit-tap-highlight-color: transparent;
++}
++.account-app button {
++  cursor: pointer;
++}
++.account-app button:disabled {
++  cursor: wait;
++  opacity: 0.5;
++}
++.account-app a {
++  text-decoration: none;
++  color: inherit;
++}
++.account-app button,
++.account-app input {
++  font: inherit;
++}
++.account-app button {
++  transition:
++    background 0.18s,
++    color 0.18s,
++    transform 0.18s;
++}
++.account-app :focus-visible {
++  outline: 2px solid #657d51;
++  outline-offset: 5px;
++}
++.account-app svg {
++  width: 20px;
++  height: 20px;
++  stroke-width: 1.6;
++  flex-shrink: 0;
++}
++.account-app button svg,
++.account-app a svg {
++  width: 17px;
++  height: 17px;
++}
++.account-header {
++  padding: 0 4.7%;
++  border-bottom: 1px solid var(--line);
++}
++.masthead-row {
++  max-width: 1392px;
++  margin: auto;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  min-height: 116px;
++  position: relative;
++}
++.back-to-news {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++  color: #66695f !important;
++  font-size: 12px;
++}
++.back-to-news:hover {
++  color: var(--green) !important;
++}
++.account-wordmark {
++  font-family: "Playfair Display", Georgia, serif;
++  font-size: 36px;
++  letter-spacing: -1.9px;
++  line-height: 1.2;
++  font-weight: 800;
++  position: absolute;
++  left: 50%;
++  transform: translateX(-50%);
++  white-space: nowrap;
++  text-align: center;
++}
++.account-wordmark span {
++  display: block;
++  font-family: "DM Sans", sans-serif;
++  font-size: 8px;
++  font-weight: 500;
++  letter-spacing: 2.7px;
++  margin-top: 10px;
++}
++.header-account {
++  display: flex;
++  gap: 10px;
++  align-items: center;
++  font-size: 12px;
++  font-weight: 600;
++}
++.header-account > svg {
++  width: 12px !important;
++}
++.avatar {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  width: 31px;
++  height: 31px;
++  border-radius: 50%;
++  background: #edf0e8;
++  color: #556347;
++  font-size: 12px;
++}
++.editorial-nav {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  gap: 31px;
++  border-top: 1px solid #292c26;
++  max-width: 1392px;
++  margin: auto;
++  min-height: 45px;
++  font-size: 11px;
++  font-weight: 550;
++  position: relative;
++}
++.editorial-nav a:hover {
++  text-decoration: underline;
++  text-underline-offset: 5px;
++}
++.nav-edition {
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  position: absolute;
++  right: 0;
++  color: #7a7d74;
++  font-size: 10px;
++  font-weight: 400;
++}
++.nav-edition svg {
++  width: 13px;
++  height: 13px;
++}
++.account-shell {
++  max-width: 1220px;
++  margin: auto;
++  padding: 0 40px;
++}
++.account-breadcrumb {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  font-size: 10px;
++  margin: 28px 0 34px;
++  color: #8a8d84;
++}
++.account-breadcrumb svg {
++  width: 10px;
++  height: 10px;
++}
++.account-breadcrumb span {
++  color: #4d5147;
++}
++.account-title-row {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  padding-bottom: 35px;
++  border-bottom: 1px solid var(--line);
++}
++.eyebrow,
++.small-label {
++  font-size: 9px;
++  letter-spacing: 1.65px;
++  font-weight: 650;
++  color: #66705d;
++}
++.eyebrow {
++  margin: 0 0 9px;
++}
++.account-title-row h1 {
++  font-family: "Libre Caslon Display", Georgia, serif;
++  font-size: 53px;
++  line-height: 1.15;
++  letter-spacing: -1.3px;
++  font-weight: 400;
++  margin: 0 0 13px;
++}
++.account-title-row h1 span {
++  color: #829567;
++}
++.account-title-row > div > p:last-child {
++  font-size: 12px;
++  color: var(--muted);
++  margin: 0;
++}
++.private-label {
++  font-size: 8px;
++  letter-spacing: 1.4px;
++  display: flex;
++  align-items: center;
++  gap: 7px;
++  color: #7b8073;
++  padding-top: 18px;
++}
++.private-label svg {
++  width: 12px;
++  height: 12px;
++}
++.account-columns {
++  display: grid;
++  grid-template-columns: 234px minmax(0, 1fr);
++  gap: 44px;
++  padding: 34px 0 62px;
++}
++.account-sidebar {
++  border-right: 1px solid var(--line);
++  padding-right: 25px;
++}
++.reader-card {
++  display: flex;
++  align-items: center;
++  gap: 11px;
++  padding: 5px 4px 24px;
++}
++.reader-avatar {
++  width: 37px;
++  height: 37px;
++  font-size: 15px;
++  background: #eceee5;
++}
++.reader-avatar svg {
++  width: 23px;
++  height: 23px;
++}
++.reader-card strong {
++  display: block;
++  font-weight: 600;
++  font-size: 12px;
++  max-width: 147px;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++.reader-card div > span {
++  font-size: 10px;
++  color: #8b8e83;
++  display: block;
++  margin-top: 3px;
++}
++.settings-nav {
++  display: flex;
++  flex-direction: column;
++  gap: 6px;
++}
++.settings-nav button {
++  display: flex;
++  align-items: center;
++  gap: 11px;
++  text-align: left;
++  width: 100%;
++  border: 0;
++  border-radius: 4px;
++  background: transparent;
++  color: #757a6c;
++  padding: 13px 11px;
++  font-size: 11px;
++  white-space: nowrap;
++}
++.settings-nav button.selected {
++  background: #edf0e7;
++  color: #405438;
++  font-weight: 600;
++}
++.settings-nav button:hover {
++  background: #f3f4ef;
++}
++.settings-nav button svg {
++  width: 17px;
++  height: 17px;
++}
++.settings-nav button > svg:last-child:not(:first-child) {
++  margin-left: auto;
++  width: 12px;
++  height: 12px;
++}
++.sidebar-bottom {
++  border-top: 1px solid var(--line);
++  padding: 20px 10px;
++  margin-top: 22px;
++}
++.sidebar-bottom button,
++.sidebar-bottom a {
++  display: flex;
++  align-items: center;
++  gap: 11px;
++  background: none;
++  border: 0;
++  color: #767b70;
++  font-size: 11px;
++}
++.sidebar-help {
++  display: flex;
++  gap: 9px;
++  margin-top: 65px;
++  padding: 0 6px;
++  color: #85897d;
++}
++.sidebar-help > svg {
++  width: 16px;
++  height: 16px;
++  margin-top: 2px;
++}
++.sidebar-help p {
++  font-size: 11px;
++  line-height: 1.9;
++  margin: 0;
++}
++.sidebar-help a {
++  font-size: 10px;
++  color: #687958;
++  display: flex;
++  gap: 7px;
++  align-items: center;
++}
++.sidebar-help a svg {
++  width: 12px;
++  height: 12px;
++}
++.mobile-settings-toggle {
++  display: none;
++}
++.settings-content {
++  min-width: 0;
++}
++.section-heading {
++  display: flex;
++  gap: 12px;
++  align-items: center;
++  margin: 2px 0 26px;
++}
++.section-icon {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  width: 39px;
++  height: 39px;
++  border: 1px solid #e0e4d9;
++  border-radius: 50%;
++  background: #fafbf7;
++  color: #647553;
++}
++.section-icon svg {
++  width: 20px;
++  height: 20px;
++}
++.section-heading h2 {
++  font-size: 20px;
++  font-weight: 550;
++  letter-spacing: -0.55px;
++  line-height: 1.4;
++  margin: 0;
++}
++.section-heading p {
++  font-size: 11px;
++  color: var(--muted);
++  margin: 4px 0 0;
++}
++.passkey-intro {
++  display: flex;
++  min-height: 237px;
++  border: 1px solid #e6e6dc;
++  border-radius: 7px;
++  background: var(--cream);
++  overflow: hidden;
++  position: relative;
++}
++.intro-copy {
++  padding: 26px 29px;
++  z-index: 1;
++  width: 64%;
++}
++.intro-copy .small-label {
++  font-size: 7px;
++  letter-spacing: 1.1px;
++  color: #7a806c;
++}
++.intro-copy h3 {
++  font-family: "Libre Caslon Display", Georgia, serif;
++  font-size: 34px;
++  line-height: 1.04;
++  font-weight: 400;
++  letter-spacing: -0.5px;
++  margin: 11px 0 12px;
++}
++.intro-copy p {
++  font-size: 10px;
++  line-height: 1.85;
++  color: #7c7e71;
++  max-width: 325px;
++  margin: 0 0 16px;
++}
++.intro-copy a {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++  font-size: 10px;
++  font-weight: 600;
++  color: #566345;
++}
++.intro-copy a svg {
++  width: 13px;
++  height: 13px;
++}
++.key-art {
++  position: relative;
++  flex: 1;
++  min-width: 180px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  padding-bottom: 9px;
++}
++.orbit {
++  position: absolute;
++  width: 174px;
++  height: 174px;
++  border: 1px solid #dedfd0;
++  border-radius: 50%;
++  transform: rotate(-24deg) scaleX(0.85);
++}
++.orbit-two {
++  width: 227px;
++  height: 227px;
++  transform: rotate(24deg) scaleX(0.9);
++  border-color: #e9e8dd;
++}
++.key-tile {
++  position: relative;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  background: linear-gradient(140deg, #e5e8d3, #dce1c9);
++  width: 98px;
++  height: 112px;
++  border-radius: 21px;
++  transform: rotate(-13deg);
++  box-shadow:
++    0 12px 24px #5b65401a,
++    inset 0 0 0 1px #c9cfb5,
++    inset 0 0 0 6px #ffffff35;
++}
++.key-tile svg {
++  width: 54px;
++  height: 54px;
++  color: #758958;
++  stroke-width: 1.25;
++  transform: rotate(13deg);
++}
++.verified-tile {
++  position: absolute;
++  right: 27px;
++  bottom: 66px;
++  width: 36px;
++  height: 36px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  background: #fff;
++  border-radius: 50%;
++  border: 4px solid #f7f6f0;
++  color: #65824c;
++  box-shadow: 0 2px 8px #57664615;
++}
++.verified-tile svg {
++  width: 16px;
++  height: 16px;
++  stroke-width: 2.5;
++}
++.art-caption {
++  position: absolute;
++  bottom: 27px;
++  display: flex;
++  align-items: center;
++  gap: 5px;
++  font-size: 8px;
++  color: #899078;
++  white-space: nowrap;
++}
++.art-caption svg {
++  width: 10px;
++  height: 10px;
++}
++.art-dot {
++  width: 5px;
++  height: 5px;
++  border-radius: 50%;
++  background: #bac4a2;
++  position: absolute;
++}
++.dot-one {
++  top: 44px;
++  right: 33px;
++}
++.dot-two {
++  bottom: 57px;
++  left: 18px;
++  width: 4px;
++  height: 4px;
++}
++.passkeys-section {
++  margin-top: 32px;
++}
++.passkeys-heading {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 19px;
++}
++.title-with-count {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++}
++.title-with-count h3 {
++  font-size: 17px;
++  font-weight: 550;
++  letter-spacing: -0.3px;
++  margin: 0;
++}
++.count {
++  background: #f0f1eb;
++  min-width: 21px;
++  height: 20px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  border-radius: 5px;
++  font-size: 10px;
++  color: #818573;
++}
++.passkeys-heading p {
++  font-size: 10px;
++  color: var(--muted);
++  margin: 6px 0 0;
++}
++.primary-button,
++.secondary-button,
++.danger-button {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 7px;
++  border-radius: 4px;
++  border: 1px solid var(--green);
++  background: var(--green);
++  color: white !important;
++  padding: 10px 15px;
++  font-size: 10px !important;
++  font-weight: 500;
++  min-height: 36px;
++}
++.primary-button:hover {
++  background: #25392b;
++}
++.primary-button svg {
++  width: 14px !important;
++  height: 14px !important;
++}
++.passkey-list {
++  border: 1px solid var(--line);
++  border-radius: 6px;
++  overflow: hidden;
++}
++.passkey-row {
++  display: flex;
++  align-items: center;
++  gap: 14px;
++  padding: 22px 20px;
++  border-bottom: 1px solid var(--line);
++}
++.device-icon {
++  width: 39px;
++  height: 39px;
++  border-radius: 8px;
++  background: #f4f5f0;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  color: #777f6e;
++}
++.device-icon svg {
++  width: 21px;
++  height: 21px;
++}
++.passkey-details {
++  flex: 1;
++  min-width: 0;
++}
++.passkey-name {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++  flex-wrap: wrap;
++}
++.passkey-name h4 {
++  font-size: 12px;
++  font-weight: 550;
++  overflow-wrap: anywhere;
++  margin: 0;
++}
++.synced-tag {
++  display: flex;
++  align-items: center;
++  gap: 3px;
++  font-size: 7px;
++  border-radius: 3px;
++  color: #77865f;
++  background: #f0f4e8;
++  padding: 3px 5px;
++}
++.synced-tag svg {
++  width: 9px;
++  height: 9px;
++  stroke-width: 2;
++}
++.passkey-details > p {
++  font-size: 9px;
++  color: #909385;
++  margin: 7px 0 0;
++  line-height: 1.6;
++}
++.meta-dot {
++  padding: 0 7px;
++  color: #acafa3;
++}
++.passkey-actions {
++  display: flex;
++  align-items: center;
++  gap: 13px;
++  margin-left: 10px;
++}
++.passkey-actions button {
++  display: flex;
++  align-items: center;
++  gap: 5px;
++  font-size: 10px;
++  border: 0;
++  background: none;
++  padding: 4px 0;
++  color: #76816a;
++}
++.passkey-actions button:hover {
++  color: #2f442e;
++}
++.passkey-actions button svg {
++  width: 14px;
++  height: 14px;
++}
++.passkey-actions .remove-action {
++  color: #a39d91;
++}
++.passkey-actions .remove-action:hover {
++  color: #a34537;
++}
++.action-divider {
++  height: 13px;
++  width: 1px;
++  background: #e6e7df;
++}
++.list-footnote {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  gap: 7px;
++  background: #fcfcfa;
++  color: #97998f;
++  font-size: 8px;
++  padding: 13px 12px;
++}
++.list-footnote svg {
++  width: 11px;
++  height: 11px;
++}
++.empty-keys {
++  min-height: 138px;
++  padding: 28px 22px;
++  display: flex;
++  gap: 15px;
++  align-items: center;
++  justify-content: center;
++  flex-wrap: wrap;
++}
++.empty-keys > svg {
++  color: #8a967d;
++}
++.empty-key-icon {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  width: 42px;
++  height: 42px;
++  border: 1px solid #e5e8dd;
++  border-radius: 50%;
++  color: #7d8d6c;
++}
++.empty-key-icon svg {
++  width: 24px;
++  height: 24px;
++}
++.empty-keys h4 {
++  font-size: 12px;
++  font-weight: 550;
++  margin: 0 0 7px;
++}
++.empty-keys p {
++  font-size: 10px;
++  color: #8a8e80;
++  line-height: 1.6;
++  margin: 0;
++}
++.text-link {
++  font-size: 10px;
++  color: #536849 !important;
++  display: inline-flex;
++  gap: 6px;
++  align-items: center;
++  background: none;
++  border: 0;
++  padding: 0;
++}
++.text-link:hover {
++  text-decoration: underline;
++}
++.empty-keys > a {
++  margin-left: auto;
++}
++.sync-note {
++  display: flex;
++  align-items: flex-start;
++  gap: 9px;
++  padding: 18px 0 0;
++}
++.sync-icon {
++  color: #819368;
++  margin-top: 1px;
++}
++.sync-icon svg {
++  width: 15px;
++  height: 15px;
++}
++.sync-note strong {
++  font-size: 10px;
++  font-weight: 550;
++  color: #68775a;
++}
++.sync-note p {
++  font-size: 9px;
++  color: #929687;
++  line-height: 1.7;
++  max-width: 440px;
++  margin: 4px 0 0;
++}
++.sync-badge {
++  font-size: 6px;
++  letter-spacing: 0.7px;
++  color: #8e9a7a;
++  background: #f4f6ef;
++  border: 1px solid #e8ecdf;
++  border-radius: 3px;
++  padding: 4px 6px;
++  white-space: nowrap;
++  margin-left: auto;
++}
++.good-to-know {
++  margin-top: 33px;
++  padding: 25px 0;
++  border-top: 1px solid var(--line);
++  border-bottom: 1px solid var(--line);
++  display: grid;
++  grid-template-columns: 36% 1fr;
++  gap: 25px;
++}
++.good-to-know-title .small-label {
++  font-size: 7px;
++  letter-spacing: 1.5px;
++  color: #979a8c;
++}
++.good-to-know-title h3 {
++  font-family: "Libre Caslon Display", Georgia, serif;
++  font-size: 25px;
++  line-height: 1.1;
++  font-weight: 400;
++  margin: 9px 0;
++}
++.good-to-know-title p {
++  font-size: 9px;
++  color: #979a8d;
++  line-height: 1.7;
++  margin: 0;
++}
++.faq-list details {
++  border-bottom: 1px solid var(--line);
++}
++.faq-list details:last-child {
++  border: 0;
++}
++.faq-list summary {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  gap: 12px;
++  font-size: 10px;
++  font-weight: 500;
++  cursor: pointer;
++  list-style: none;
++  padding: 16px 0;
++}
++.faq-list summary::-webkit-details-marker {
++  display: none;
++}
++.faq-list summary svg {
++  width: 13px;
++  height: 13px;
++  color: #8d9381;
++}
++.faq-list details[open] summary svg {
++  transform: rotate(45deg);
++}
++.faq-list details > p {
++  font-size: 10px;
++  color: #828979;
++  line-height: 1.8;
++  margin: 0 15px 17px 0;
++}
++.security-bottom {
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  margin-top: 22px;
++  color: #a0a394;
++  font-size: 8px;
++}
++.security-bottom > svg {
++  width: 12px;
++  height: 12px;
++}
++.security-bottom p {
++  margin: 0;
++}
++.security-bottom a {
++  margin-left: auto;
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  color: #828e73;
++}
++.security-bottom a svg {
++  width: 11px;
++  height: 11px;
++}
++.account-footer {
++  max-width: 1392px;
++  margin: 0 4.7%;
++  border-top: 1px solid #404439;
++  padding: 24px 0 26px;
++  display: flex;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 16px;
++}
++.footer-wordmark {
++  font-family: "Playfair Display", Georgia, serif;
++  font-size: 19px;
++  font-weight: 800;
++  letter-spacing: -0.9px;
++}
++.account-footer > span {
++  font-size: 8px;
++  color: #949789;
++  border-left: 1px solid var(--line);
++  padding-left: 16px;
++}
++.account-footer > div {
++  display: flex;
++  gap: 17px;
++  margin-left: auto;
++  font-size: 8px;
++  color: #8d9182;
++}
++.account-footer a:hover {
++  text-decoration: underline;
++}
++.other-settings {
++  background: var(--cream);
++  border: 1px solid var(--line);
++  border-radius: 7px;
++  padding: 36px;
++  min-height: 265px;
++}
++.other-settings h3 {
++  font-family: "Libre Caslon Display", Georgia, serif;
++  font-size: 36px;
++  margin: 0 0 15px;
++}
++.other-settings p {
++  font-size: 12px;
++  line-height: 1.9;
++  color: var(--muted);
++  max-width: 460px;
++  margin: 0 0 22px;
++}
++.success-message,
++.error-message {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++  font-size: 11px;
++  padding: 13px;
++  border-radius: 4px;
++  line-height: 1.6;
++  margin: 12px 0;
++}
++.success-message {
++  color: #4e6741;
++  background: #f0f5e9;
++  border: 1px solid #dce6d2;
++}
++.success-message > svg {
++  width: 17px;
++  height: 17px;
++}
++.success-message button {
++  margin-left: auto;
++  padding: 0;
++  background: none;
++  border: 0;
++}
++.success-message button svg {
++  width: 14px;
++  height: 14px;
++}
++.error-message {
++  color: #9a4435;
++  background: #fbefec;
++}
++.error-message button {
++  margin-left: auto;
++  border: 0;
++  background: none;
++  color: inherit;
++  text-decoration: underline;
++  white-space: nowrap;
++}
++.passkey-dialog {
++  padding: 0;
++  width: 450px;
++  max-width: calc(100vw - 32px);
++  border: 1px solid var(--line);
++  border-radius: 12px;
++  color: var(--ink);
++  margin: auto;
++  box-shadow: 0 20px 90px #151d2633;
++}
++.passkey-dialog::backdrop {
++  background: #202c2559;
++  backdrop-filter: blur(3px);
++}
++.passkey-dialog form {
++  padding: 32px;
++  position: relative;
++}
++.dialog-close {
++  position: absolute;
++  right: 16px;
++  top: 16px;
++  border: 0;
++  background: none;
++  color: #8d9282;
++  padding: 4px;
++}
++.dialog-close svg {
++  width: 18px;
++  height: 18px;
++}
++.dialog-icon {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  background: #eef2e6;
++  color: #74895b;
++  border-radius: 12px;
++  width: 49px;
++  height: 49px;
++  margin: 0 0 23px;
++}
++.dialog-icon svg {
++  width: 26px;
++  height: 26px;
++}
++.dialog-icon.danger {
++  background: #f8efeb;
++  color: #b16e5d;
++}
++.passkey-dialog h2 {
++  font-family: "Libre Caslon Display", Georgia, serif;
++  font-size: 36px;
++  line-height: 1.1;
++  letter-spacing: -0.4px;
++  font-weight: 400;
++  margin: 9px 0 13px;
++}
++.passkey-dialog form > p:not(.eyebrow) {
++  font-size: 12px;
++  color: #828776;
++  line-height: 1.9;
++  margin: 0 0 23px;
++}
++.name-label {
++  display: block;
++  font-size: 11px;
++  font-weight: 550;
++  margin-top: 24px;
++}
++.name-label input {
++  display: block;
++  width: 100%;
++  border: 1px solid #d5dbcb;
++  border-radius: 4px;
++  padding: 12px;
++  margin: 9px 0 5px;
++  background: #fff;
++  color: var(--ink);
++  font-size: 13px;
++}
++.name-label > span {
++  font-size: 9px;
++  font-weight: 400;
++  color: #9b9f92;
++  display: block;
++  text-align: right;
++}
++.dialog-buttons {
++  display: flex;
++  justify-content: flex-end;
++  gap: 10px;
++  margin-top: 25px;
++}
++.secondary-button {
++  color: #7e8672 !important;
++  background: white;
++  border: 1px solid #dce0d5;
++}
++.secondary-button:hover {
++  background: #f6f7f2;
++}
++.danger-button {
++  background: #9b5141;
++  border-color: #9b5141;
++}
++.danger-button:hover {
++  background: #824033;
++}
++.last-key-note {
++  display: flex;
++  align-items: flex-start;
++  gap: 10px;
++  padding: 12px;
++  background: #f7f3e9;
++  border: 1px solid #eee5cf;
++  border-radius: 4px;
++  color: #9a8759;
++  font-size: 10px;
++  line-height: 1.7;
++}
++.last-key-note svg {
++  width: 17px;
++  height: 17px;
++}
++.loading-spinner {
++  width: 20px;
++  height: 20px;
++  border: 2px solid #dde4d3;
++  border-top-color: #698154;
++  border-radius: 50%;
++  animation: spin 0.9s linear infinite;
++}
++@keyframes spin {
++  to {
++    transform: rotate(360deg);
++  }
++}
++@media (min-width: 1440px) {
++  .account-shell {
++    max-width: 1260px;
++  }
++  .account-columns {
++    grid-template-columns: 245px minmax(0, 1fr);
++    gap: 55px;
++  }
++  .account-header {
++    padding: 0 6%;
++  }
++  .account-footer {
++    margin-right: 6%;
++    margin-left: 6%;
++  }
++  .account-title-row {
++    padding-bottom: 38px;
++  }
++  .passkey-intro {
++    min-height: 253px;
++  }
++  .intro-copy {
++    padding: 30px 32px;
++  }
++  .intro-copy h3 {
++    font-size: 38px;
++  }
++  .intro-copy p {
++    font-size: 11px;
++  }
++  .passkey-row {
++    padding: 25px 22px;
++  }
++  .account-columns {
++    padding-top: 37px;
++  }
++  .settings-content {
++    max-width: 820px;
++  }
++}
++@media (max-width: 1000px) {
++  .account-shell {
++    padding: 0 30px;
++  }
++  .account-columns {
++    grid-template-columns: 205px minmax(0, 1fr);
++    gap: 26px;
++  }
++  .account-sidebar {
++    padding-right: 16px;
++  }
++  .editorial-nav {
++    gap: 23px;
++  }
++  .nav-edition {
++    display: none;
++  }
++  .account-wordmark {
++    font-size: 30px;
++  }
++  .account-wordmark span {
++    font-size: 7px;
++  }
++  .intro-copy {
++    padding: 25px 23px;
++    width: 63%;
++  }
++  .intro-copy h3 {
++    font-size: 31px;
++  }
++  .key-art {
++    min-width: 145px;
++  }
++  .key-tile {
++    width: 85px;
++    height: 99px;
++  }
++  .orbit {
++    width: 150px;
++    height: 150px;
++  }
++  .orbit-two {
++    width: 195px;
++    height: 195px;
++  }
++  .verified-tile {
++    right: 10px;
++  }
++  .passkey-row {
++    gap: 10px;
++    padding: 21px 15px;
++  }
++  .passkey-actions {
++    gap: 10px;
++    margin-left: 0;
++  }
++  .passkey-actions button > span:not(.sr-only) {
++    display: none;
++  }
++  .account-footer > div {
++    width: 100%;
++    margin-top: 5px;
++  }
++  .good-to-know {
++    gap: 16px;
++  }
++  .sync-badge {
++    display: none;
++  }
++}
++@media (max-width: 700px) {
++  .account-header {
++    padding: 0 20px;
++  }
++  .masthead-row {
++    min-height: 95px;
++  }
++  .account-wordmark {
++    font-size: 27px;
++    left: 0;
++    transform: none;
++    text-align: left;
++    letter-spacing: -1.6px;
++  }
++  .account-wordmark span {
++    font-size: 6px;
++    letter-spacing: 1.7px;
++    margin-top: 8px;
++    text-align: center;
++  }
++  .back-to-news {
++    display: none;
++  }
++  .header-account {
++    margin-left: auto;
++  }
++  .header-account > span:not(.avatar) {
++    display: none;
++  }
++  .header-account > svg {
++    display: none;
++  }
++  .editorial-nav {
++    min-height: 40px;
++    justify-content: flex-start;
++    overflow-x: auto;
++    gap: 25px;
++    white-space: nowrap;
++    font-size: 10px;
++    scrollbar-width: none;
++  }
++  .account-shell {
++    padding: 0 20px;
++  }
++  .account-breadcrumb {
++    margin: 21px 0 28px;
++  }
++  .account-title-row h1 {
++    font-size: 44px;
++  }
++  .account-title-row > div > p:last-child {
++    font-size: 11px;
++    line-height: 1.7;
++    max-width: 290px;
++  }
++  .private-label {
++    display: none;
++  }
++  .account-title-row {
++    padding-bottom: 25px;
++  }
++  .account-columns {
++    display: block;
++    padding: 0 0 40px;
++  }
++  .account-sidebar {
++    border-right: 0;
++    padding: 0;
++    border-bottom: 1px solid var(--line);
++    margin-bottom: 25px;
++  }
++  .reader-card,
++  .sidebar-bottom,
++  .sidebar-help {
++    display: none;
++  }
++  .mobile-settings-toggle {
++    display: flex;
++    width: 100%;
++    justify-content: space-between;
++    align-items: center;
++    font-size: 11px;
++    border: 0;
++    background: none;
++    padding: 17px 0;
++    color: #68745c;
++  }
++  .mobile-settings-toggle > svg:first-child {
++    margin-right: 10px;
++  }
++  .mobile-settings-toggle > svg:last-child {
++    margin-left: auto;
++    width: 12px;
++    height: 12px;
++  }
++  .settings-nav {
++    display: none;
++    padding-bottom: 14px;
++  }
++  .settings-nav.expanded {
++    display: flex;
++  }
++  .section-heading h2 {
++    font-size: 20px;
++  }
++  .section-heading {
++    margin-bottom: 23px;
++  }
++  .passkey-intro {
++    min-height: 240px;
++  }
++  .intro-copy {
++    width: 65%;
++    padding: 23px 20px;
++  }
++  .intro-copy .small-label {
++    font-size: 6px;
++    letter-spacing: 0.7px;
++  }
++  .intro-copy h3 {
++    font-size: 30px;
++  }
++  .intro-copy p {
++    font-size: 9px;
++    line-height: 1.8;
++  }
++  .key-art {
++    min-width: 110px;
++    overflow: hidden;
++  }
++  .key-tile {
++    width: 70px;
++    height: 86px;
++    border-radius: 16px;
++  }
++  .key-tile svg {
++    width: 42px;
++    height: 42px;
++  }
++  .orbit {
++    width: 126px;
++    height: 126px;
++  }
++  .orbit-two {
++    width: 168px;
++    height: 168px;
++  }
++  .verified-tile {
++    width: 28px;
++    height: 28px;
++    right: 4px;
++    bottom: 78px;
++  }
++  .verified-tile svg {
++    width: 12px;
++    height: 12px;
++  }
++  .art-caption {
++    font-size: 6px;
++    gap: 3px;
++    bottom: 36px;
++  }
++  .art-caption svg {
++    width: 8px;
++    height: 8px;
++  }
++  .dot-one {
++    right: 13px;
++  }
++  .passkeys-section {
++    margin-top: 27px;
++  }
++  .passkeys-heading {
++    gap: 12px;
++  }
++  .title-with-count h3 {
++    font-size: 16px;
++  }
++  .passkeys-heading p {
++    font-size: 9px;
++    max-width: 190px;
++    line-height: 1.7;
++  }
++  .primary-button {
++    padding: 9px 11px;
++    font-size: 9px !important;
++    white-space: nowrap;
++  }
++  .empty-keys {
++    padding: 26px 17px;
++    gap: 10px;
++    justify-content: flex-start;
++  }
++  .empty-keys > div {
++    flex: 1;
++    min-width: 190px;
++  }
++  .empty-keys h4 {
++    font-size: 11px;
++  }
++  .empty-keys p {
++    font-size: 9px;
++  }
++  .empty-keys > a {
++    margin-left: 54px;
++  }
++  .list-footnote {
++    font-size: 7px;
++    line-height: 1.6;
++  }
++  .passkey-details > p {
++    font-size: 8px;
++  }
++  .meta-dot {
++    padding: 0 4px;
++  }
++  .device-icon {
++    width: 33px;
++    height: 33px;
++  }
++  .device-icon svg {
++    width: 18px;
++    height: 18px;
++  }
++  .passkey-name h4 {
++    font-size: 11px;
++  }
++  .passkey-actions {
++    gap: 8px;
++  }
++  .passkey-actions button svg {
++    width: 13px;
++    height: 13px;
++  }
++  .passkey-row {
++    gap: 10px;
++    padding: 20px 13px;
++  }
++  .passkey-name {
++    gap: 5px;
++  }
++  .synced-tag {
++    font-size: 6px;
++  }
++  .sync-note p {
++    font-size: 8px;
++  }
++  .good-to-know {
++    grid-template-columns: 1fr;
++    margin-top: 26px;
++    padding: 23px 0;
++    gap: 8px;
++  }
++  .good-to-know-title h3 {
++    font-size: 28px;
++  }
++  .good-to-know-title h3 br {
++    display: none;
++  }
++  .good-to-know-title p {
++    display: none;
++  }
++  .faq-list summary {
++    font-size: 10px;
++    padding: 17px 0;
++  }
++  .security-bottom {
++    font-size: 7px;
++    flex-wrap: wrap;
++    gap: 5px;
++  }
++  .security-bottom a {
++    margin-left: 17px;
++    margin-top: 5px;
++    width: 100%;
++  }
++  .account-footer {
++    margin: 0 20px;
++    padding-top: 22px;
++    gap: 10px;
++  }
++  .account-footer > span {
++    display: none;
++  }
++  .footer-wordmark {
++    font-size: 21px;
++  }
++  .account-footer > div {
++    gap: 15px;
++    flex-wrap: wrap;
++    font-size: 7px;
++  }
++  .account-footer > div > span {
++    width: 100%;
++    margin-top: 0;
++  }
++  .passkey-dialog form {
++    padding: 26px;
++  }
++  .passkey-dialog h2 {
++    font-size: 33px;
++  }
++  .other-settings {
++    padding: 25px;
++  }
++  .other-settings h3 {
++    font-size: 32px;
++  }
++}
++@media (prefers-reduced-motion: reduce) {
++  .account-app * {
++    animation: none !important;
++    transition: none !important;
++    scroll-behavior: auto !important;
++  }
++}

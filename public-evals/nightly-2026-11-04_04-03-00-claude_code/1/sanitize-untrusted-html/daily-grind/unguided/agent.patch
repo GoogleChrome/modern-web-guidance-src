@@ -1,0 +1,607 @@
+diff --git a/index.html b/index.html
+index 66c9173..addaef7 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,8 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy"
++    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -135,6 +137,180 @@
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews */
++    .reviews {
++      margin-top: 50px;
++    }
++
++    .reviews h2,
++    .reviews>p {
++      text-align: center;
++    }
++
++    .review-filters {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 8px;
++      margin: 20px 0;
++    }
++
++    .review-filters button {
++      background: white;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      padding: 6px 14px;
++      border-radius: 20px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
++
++    .review-filters button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .review-layout {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++      align-items: start;
++    }
++
++    .review-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++    }
++
++    .review {
++      background: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      padding: 14px 18px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++    }
++
++    .review-meta {
++      display: flex;
++      justify-content: space-between;
++      gap: 10px;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 6px;
++    }
++
++    .review-meta strong {
++      color: var(--primary);
++    }
++
++    .review-stars {
++      color: var(--accent);
++      letter-spacing: 1px;
++    }
++
++    .review-body p,
++    .review-body ul,
++    .review-body ol,
++    .review-body blockquote {
++      margin: 0.4em 0;
++    }
++
++    .review-body ul,
++    .review-body ol {
++      padding-left: 1.4em;
++    }
++
++    .review-body blockquote {
++      border-left: 3px solid var(--secondary);
++      padding-left: 10px;
++      color: #5d4037;
++      font-style: italic;
++    }
++
++    .review-body a {
++      color: var(--primary);
++    }
++
++    .review-body code {
++      background: #efebe9;
++      padding: 0 4px;
++      border-radius: 3px;
++    }
++
++    .review-empty {
++      text-align: center;
++      color: #8d6e63;
++      font-style: italic;
++    }
++
++    .review-form {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .review-form h3 {
++      color: var(--primary);
++    }
++
++    .review-form label {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .review-form input,
++    .review-form select,
++    .review-form textarea {
++      font: inherit;
++      font-weight: normal;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++    }
++
++    .review-form textarea {
++      min-height: 120px;
++      resize: vertical;
++      font-family: Consolas, Monaco, monospace;
++      font-size: 0.85rem;
++    }
++
++    .review-form .hint {
++      font-size: 0.78rem;
++      color: #8d6e63;
++      font-weight: normal;
++    }
++
++    .review-form .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      align-self: flex-start;
++    }
++
++    .review-preview {
++      border: 1px dashed #bcaaa4;
++      border-radius: 4px;
++      padding: 10px;
++      min-height: 50px;
++    }
++
++    .review-error {
++      color: #b71c1c;
++      font-size: 0.85rem;
++      min-height: 1.2em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +370,62 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <section class="reviews" id="reviews" aria-labelledby="reviews-heading">
++        <h2 id="reviews-heading">Customer Reviews</h2>
++        <p>Tell us what you think of our seasonal favorites.</p>
++
++        <div class="review-filters" role="group" aria-label="Filter reviews by drink">
++          <button type="button" data-filter="all" aria-pressed="true">All Drinks</button>
++          <button type="button" data-filter="maple-oat-latte" aria-pressed="false">Maple Oat Latte</button>
++          <button type="button" data-filter="dark-roast-espresso" aria-pressed="false">Dark Roast Espresso</button>
++          <button type="button" data-filter="cold-brew" aria-pressed="false">Cold Brew</button>
++        </div>
++
++        <div class="review-layout">
++          <ul class="review-list" id="review-list" aria-live="polite"></ul>
++
++          <form class="review-form" id="review-form" novalidate>
++            <h3>Write a Review</h3>
++            <label>
++              Drink
++              <select name="drink" required>
++                <option value="maple-oat-latte">Maple Oat Latte</option>
++                <option value="dark-roast-espresso">Dark Roast Espresso</option>
++                <option value="cold-brew">Cold Brew</option>
++              </select>
++            </label>
++            <label>
++              Your name
++              <input type="text" name="author" maxlength="40" required autocomplete="nickname">
++            </label>
++            <label>
++              Rating
++              <select name="rating">
++                <option value="5">★★★★★ (5)</option>
++                <option value="4">★★★★☆ (4)</option>
++                <option value="3">★★★☆☆ (3)</option>
++                <option value="2">★★☆☆☆ (2)</option>
++                <option value="1">★☆☆☆☆ (1)</option>
++              </select>
++            </label>
++            <label>
++              Review (HTML allowed)
++              <textarea name="body" maxlength="2000" required
++                placeholder="<p>The <strong>maple</strong> flavor is <em>perfect</em>!</p>"></textarea>
++              <span class="hint">Allowed: &lt;p&gt; &lt;br&gt; &lt;strong&gt; &lt;b&gt; &lt;em&gt; &lt;i&gt; &lt;u&gt; &lt;s&gt;
++                &lt;mark&gt; &lt;code&gt; &lt;blockquote&gt; &lt;ul&gt; &lt;ol&gt; &lt;li&gt; &lt;a href&gt;.
++                Everything else is removed.</span>
++            </label>
++            <div>
++              <span class="hint">Live preview (sanitized)</span>
++              <div class="review-preview review-body" id="review-preview"></div>
++            </div>
++            <p class="review-error" id="review-error" role="alert"></p>
++            <button type="submit" class="btn">Submit Review</button>
++          </form>
++        </div>
++      </section>
+     </section>
+   </main>
+ 
+@@ -207,6 +439,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="reviews.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/reviews.js b/reviews.js
+new file mode 100644
+index 0000000..ad7f025
+--- /dev/null
++++ b/reviews.js
+@@ -0,0 +1,336 @@
++/*
++ * Customer reviews for the Seasonal Favorites section.
++ *
++ * Review bodies are untrusted, user-supplied HTML. They are never assigned
++ * via innerHTML. Instead the markup is:
++ *   1. parsed into an inert context (the HTML Sanitizer API's setHTML() when
++ *      the browser supports it, otherwise DOMParser, which neither runs
++ *      scripts nor loads resources), then
++ *   2. walked node-by-node and *rebuilt* in the live document using a strict
++ *      allowlist of elements and attributes. Anything not allowed is removed.
++ *
++ * Because the output is a freshly constructed DOM tree (never re-serialized
++ * and re-parsed), mutation-XSS tricks that rely on parser round-trips do not
++ * apply. Raw HTML is stored and sanitized again every time it is rendered.
++ */
++(function () {
++  'use strict';
++
++  var DRINKS = {
++    'maple-oat-latte': 'Maple Oat Latte',
++    'dark-roast-espresso': 'Dark Roast Espresso',
++    'cold-brew': 'Cold Brew'
++  };
++
++  var STORAGE_KEY = 'dailyGrind.reviews.v1';
++  var MAX_BODY_LENGTH = 2000;
++  var MAX_AUTHOR_LENGTH = 40;
++  var MAX_DEPTH = 20;
++
++  // ---------------------------------------------------------------------------
++  // Sanitizer
++  // ---------------------------------------------------------------------------
++
++  var HTML_NS = 'http://www.w3.org/1999/xhtml';
++
++  // Elements kept (all other elements are removed).
++  var ALLOWED_TAGS = new Set([
++    'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'mark', 'code',
++    'blockquote', 'ul', 'ol', 'li', 'a', 'span'
++  ]);
++
++  // Per-element attribute allowlist. No element gets style, class, id, on*, etc.
++  var ALLOWED_ATTRS = {
++    a: new Set(['href', 'title'])
++  };
++
++  // Disallowed elements whose *content* must also be discarded (code, styles,
++  // embedded documents, foreign namespaces, form controls). Other disallowed
++  // elements (e.g. <div>, <h1>, <font>) are unwrapped: their text is kept.
++  var DROP_WITH_CONTENT = new Set([
++    'script', 'style', 'template', 'iframe', 'frame', 'frameset', 'object',
++    'embed', 'applet', 'noscript', 'noembed', 'noframes', 'xmp', 'plaintext',
++    'title', 'head', 'meta', 'link', 'base', 'svg', 'math', 'textarea',
++    'select', 'option', 'button', 'input', 'form', 'img', 'video', 'audio',
++    'source', 'track', 'picture', 'canvas', 'map', 'area', 'dialog', 'portal'
++  ]);
++
++  var SAFE_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
++
++  function sanitizeUrl(value) {
++    var trimmed = String(value).trim();
++    if (!trimmed) return null;
++    var url;
++    try {
++      url = new URL(trimmed, window.location.href);
++    } catch (e) {
++      return null;
++    }
++    return SAFE_URL_PROTOCOLS.has(url.protocol) ? url.href : null;
++  }
++
++  /** Parse untrusted markup into an inert container without executing anything. */
++  function parseInert(html) {
++    if (typeof Element.prototype.setHTML === 'function') {
++      try {
++        // Native HTML Sanitizer API: setHTML() is safe by default and always
++        // strips script-capable content. Our allowlist below narrows it further.
++        var holder = document.createElement('div');
++        holder.setHTML(html);
++        return holder;
++      } catch (e) {
++        /* fall through to DOMParser */
++      }
++    }
++    // DOMParser creates a document with no browsing context: scripts do not
++    // run, event handlers never fire, and images/resources are not fetched.
++    return new DOMParser().parseFromString(html, 'text/html').body;
++  }
++
++  /** Rebuild `source`'s children into `target` keeping only allowlisted content. */
++  function copySafeChildren(source, target, depth) {
++    if (depth > MAX_DEPTH) return;
++
++    source.childNodes.forEach(function (node) {
++      if (node.nodeType === Node.TEXT_NODE) {
++        target.appendChild(document.createTextNode(node.data));
++        return;
++      }
++      if (node.nodeType !== Node.ELEMENT_NODE) {
++        return; // comments, processing instructions, CDATA, etc.
++      }
++
++      var tag = node.localName;
++
++      // Anything outside the HTML namespace (SVG, MathML) is dropped entirely.
++      if (node.namespaceURI !== HTML_NS || DROP_WITH_CONTENT.has(tag)) {
++        return;
++      }
++
++      if (!ALLOWED_TAGS.has(tag)) {
++        // Unknown/harmless element: drop the tag, keep its safe children.
++        copySafeChildren(node, target, depth + 1);
++        return;
++      }
++
++      var clean = document.createElement(tag);
++      var allowedAttrs = ALLOWED_ATTRS[tag];
++
++      if (allowedAttrs) {
++        Array.prototype.forEach.call(node.attributes, function (attr) {
++          var name = attr.name.toLowerCase();
++          if (!allowedAttrs.has(name)) return;
++
++          if (name === 'href') {
++            var safeHref = sanitizeUrl(attr.value);
++            if (safeHref) clean.setAttribute('href', safeHref);
++          } else {
++            clean.setAttribute(name, attr.value.slice(0, 200));
++          }
++        });
++      }
++
++      if (tag === 'a') {
++        if (clean.hasAttribute('href')) {
++          clean.setAttribute('target', '_blank');
++          clean.setAttribute('rel', 'noopener noreferrer nofollow ugc');
++        }
++      }
++
++      copySafeChildren(node, clean, depth + 1);
++      target.appendChild(clean);
++    });
++  }
++
++  /** Return a DocumentFragment containing a sanitized copy of `html`. */
++  function sanitizeToFragment(html) {
++    var fragment = document.createDocumentFragment();
++    var source = parseInert(String(html).slice(0, MAX_BODY_LENGTH));
++    copySafeChildren(source, fragment, 0);
++    return fragment;
++  }
++
++  function renderSafeHtml(element, html) {
++    element.replaceChildren(sanitizeToFragment(html));
++  }
++
++  // ---------------------------------------------------------------------------
++  // Storage
++  // ---------------------------------------------------------------------------
++
++  var SEED_REVIEWS = [
++    {
++      drink: 'maple-oat-latte',
++      author: 'Priya',
++      rating: 5,
++      body: '<p>The <strong>maple</strong> is subtle and the oat milk is <em>so</em> creamy. My new fall ritual.</p>',
++      date: '2026-10-21T09:15:00Z'
++    },
++    {
++      drink: 'dark-roast-espresso',
++      author: 'Marcus',
++      rating: 4,
++      body: '<p>Bold and smoky, just as advertised.</p><ul><li>Great crema</li><li>A touch bitter on its own</li></ul>',
++      date: '2026-10-28T07:42:00Z'
++    },
++    {
++      drink: 'cold-brew',
++      author: 'Jen',
++      rating: 5,
++      body: '<blockquote>Smoothest cold brew in town.</blockquote><p>Worth every one of those 18 hours.</p>',
++      date: '2026-11-01T13:05:00Z'
++    }
++  ];
++
++  function isValidReview(r) {
++    return r && typeof r === 'object' &&
++      Object.prototype.hasOwnProperty.call(DRINKS, r.drink) &&
++      typeof r.author === 'string' &&
++      typeof r.body === 'string' &&
++      Number.isInteger(r.rating) && r.rating >= 1 && r.rating <= 5 &&
++      typeof r.date === 'string';
++  }
++
++  function loadReviews() {
++    try {
++      var raw = window.localStorage.getItem(STORAGE_KEY);
++      if (raw) {
++        var parsed = JSON.parse(raw);
++        if (Array.isArray(parsed)) return parsed.filter(isValidReview);
++      }
++    } catch (e) {
++      /* storage unavailable or corrupt: fall back to seeds */
++    }
++    return SEED_REVIEWS.slice();
++  }
++
++  function saveReviews(reviews) {
++    try {
++      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(reviews));
++    } catch (e) {
++      /* storage unavailable: reviews persist for this page view only */
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // UI
++  // ---------------------------------------------------------------------------
++
++  var list = document.getElementById('review-list');
++  var form = document.getElementById('review-form');
++  var preview = document.getElementById('review-preview');
++  var errorEl = document.getElementById('review-error');
++  var filterButtons = document.querySelectorAll('.review-filters button');
++
++  if (!list || !form) return;
++
++  var reviews = loadReviews();
++  var activeFilter = 'all';
++
++  function formatDate(iso) {
++    var d = new Date(iso);
++    return isNaN(d) ? '' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
++  }
++
++  function buildReviewItem(review) {
++    var li = document.createElement('li');
++    li.className = 'review';
++
++    var meta = document.createElement('div');
++    meta.className = 'review-meta';
++
++    var who = document.createElement('span');
++    var author = document.createElement('strong');
++    author.textContent = review.author; // plain text only
++    who.append(author, document.createTextNode(' on ' + DRINKS[review.drink]));
++
++    var right = document.createElement('span');
++    var stars = document.createElement('span');
++    stars.className = 'review-stars';
++    stars.textContent = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
++    stars.setAttribute('aria-label', review.rating + ' out of 5 stars');
++    right.append(stars, document.createTextNode(' · ' + formatDate(review.date)));
++
++    meta.append(who, right);
++
++    var body = document.createElement('div');
++    body.className = 'review-body';
++    renderSafeHtml(body, review.body);
++
++    li.append(meta, body);
++    return li;
++  }
++
++  function render() {
++    var visible = reviews
++      .filter(function (r) { return activeFilter === 'all' || r.drink === activeFilter; })
++      .sort(function (a, b) { return b.date.localeCompare(a.date); });
++
++    if (visible.length === 0) {
++      var empty = document.createElement('li');
++      empty.className = 'review-empty';
++      empty.textContent = 'No reviews yet. Be the first!';
++      list.replaceChildren(empty);
++      return;
++    }
++    list.replaceChildren.apply(list, visible.map(buildReviewItem));
++  }
++
++  filterButtons.forEach(function (btn) {
++    btn.addEventListener('click', function () {
++      activeFilter = btn.dataset.filter;
++      filterButtons.forEach(function (b) {
++        b.setAttribute('aria-pressed', String(b === btn));
++      });
++      if (activeFilter !== 'all') form.elements.drink.value = activeFilter;
++      render();
++    });
++  });
++
++  form.elements.body.addEventListener('input', function () {
++    renderSafeHtml(preview, form.elements.body.value);
++  });
++
++  form.addEventListener('submit', function (event) {
++    event.preventDefault();
++    errorEl.textContent = '';
++
++    var drink = form.elements.drink.value;
++    var author = form.elements.author.value.trim().slice(0, MAX_AUTHOR_LENGTH);
++    var rating = parseInt(form.elements.rating.value, 10);
++    var body = form.elements.body.value.slice(0, MAX_BODY_LENGTH);
++
++    if (!author) {
++      errorEl.textContent = 'Please enter your name.';
++      return;
++    }
++    // Reject reviews that are empty once unsafe content is stripped.
++    var probe = document.createElement('div');
++    probe.appendChild(sanitizeToFragment(body));
++    if (!probe.textContent.trim()) {
++      errorEl.textContent = 'Please write a review (unsafe or empty markup is removed).';
++      return;
++    }
++
++    var review = { drink: drink, author: author, rating: rating, body: body, date: new Date().toISOString() };
++    if (!isValidReview(review)) {
++      errorEl.textContent = 'Something looks off with that review. Please try again.';
++      return;
++    }
++
++    reviews.push(review);
++    saveReviews(reviews);
++
++    form.elements.author.value = '';
++    form.elements.body.value = '';
++    preview.replaceChildren();
++
++    activeFilter = drink;
++    filterButtons.forEach(function (b) {
++      b.setAttribute('aria-pressed', String(b.dataset.filter === drink));
++    });
++    render();
++  });
++
++  render();
++})();

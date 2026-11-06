@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+index 66c9173..1d56ca8 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,35 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <script>
++    try {
++      const savedScheme = localStorage.getItem('daily-grind-color-scheme');
++      if (savedScheme === 'light' || savedScheme === 'dark') {
++        document.querySelector('meta[name="color-scheme"]').content = savedScheme;
++      }
++    } catch { /* Keep the device preference when storage is unavailable. */ }
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
+       --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      --secondary: light-dark(#d7ccc8, #302622);
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --text: light-dark(#3e2723, #f2e7e1);
++      --light: light-dark(#fafafa, #1c1715);
++      --surface: light-dark(white, #2a211e);
++      --heading: light-dark(#4e342e, #edc6ab);
++      --muted: light-dark(#705d56, #c7b6ad);
++    }
++
++    :root:has(> head > meta[name="color-scheme"][content="dark"]) {
++      color-scheme: dark;
++    }
++
++    :root:has(> head > meta[name="color-scheme"][content="light"]) {
++      color-scheme: light;
+     }
+ 
+     * {
+@@ -108,7 +129,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +138,98 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
++    }
++
++    .preferences {
++      margin-top: 40px;
++      padding: 24px;
++      background: var(--surface);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .preferences h2 {
++      color: var(--heading);
++      font-size: 1.25rem;
++      margin-bottom: 16px;
++    }
++
++    .preference-row {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 20px;
++    }
++
++    .preference-row p {
++      color: var(--muted);
++      font-size: 0.9rem;
++    }
++
++    .preference-control {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex-shrink: 0;
++    }
++
++    .preference-state {
++      min-width: 2em;
++      font-size: 0.9rem;
++    }
++
++    .switch {
++      position: relative;
++      display: inline-flex;
++      align-items: center;
++      min-height: 44px;
++      cursor: pointer;
++    }
++
++    .switch input {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      margin: 0;
++      opacity: 0;
++      cursor: pointer;
++    }
++
++    .switch-track {
++      display: block;
++      width: 54px;
++      height: 30px;
++      border: 2px solid #87746b;
++      border-radius: 20px;
++      background: #87746b;
++      pointer-events: none;
++    }
++
++    .switch-track::before {
++      content: '';
++      display: block;
++      width: 22px;
++      height: 22px;
++      margin: 2px;
++      border-radius: 50%;
++      background: white;
++    }
++
++    .switch input:checked + .switch-track {
++      background: var(--primary);
++      border-color: var(--accent);
++    }
++
++    .switch input:checked + .switch-track::before {
++      transform: translateX(24px);
++      background: var(--accent);
++    }
++
++    .switch input:focus-visible + .switch-track {
++      outline: 3px solid var(--heading);
++      outline-offset: 4px;
+     }
+ 
+     .btn {
+@@ -195,6 +307,22 @@
+         </div>
+       </div>
+     </section>
++    <section class="preferences" hidden id="preferences">
++      <h2>Your Preferences</h2>
++      <div class="preference-row">
++        <div>
++          <label for="dark-mode"><strong>Dark mode</strong></label>
++          <p id="dark-mode-description">A darker look for your daily coffee break.</p>
++        </div>
++        <div class="preference-control">
++          <span class="preference-state" id="dark-mode-state" aria-hidden="true">Off</span>
++          <span class="switch">
++            <input type="checkbox" switch role="switch" id="dark-mode" aria-describedby="dark-mode-description">
++            <span class="switch-track" aria-hidden="true"></span>
++          </span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +335,42 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const schemeMeta = document.querySelector('meta[name="color-scheme"]');
++    const darkMode = document.getElementById('dark-mode');
++    const darkModeState = document.getElementById('dark-mode-state');
++    const deviceScheme = window.matchMedia('(prefers-color-scheme: dark)');
++    const storageKey = 'daily-grind-color-scheme';
++
++    function syncPreference() {
++      darkMode.checked = schemeMeta.content === 'dark' ||
++        (schemeMeta.content === 'light dark' && deviceScheme.matches);
++      darkModeState.textContent = darkMode.checked ? 'On' : 'Off';
++    }
++
++    darkMode.addEventListener('change', () => {
++      const target = darkMode.checked ? 'dark' : 'light';
++      const followsDevice = darkMode.checked === deviceScheme.matches;
++      schemeMeta.content = followsDevice ? 'light dark' : target;
++      syncPreference();
++      try {
++        if (followsDevice) localStorage.removeItem(storageKey);
++        else localStorage.setItem(storageKey, target);
++      } catch { /* The preference still applies for this visit. */ }
++    });
++
++    deviceScheme.addEventListener('change', syncPreference);
++    window.addEventListener('storage', (event) => {
++      if (event.key !== storageKey && event.key !== null) return;
++      schemeMeta.content = event.newValue === 'light' || event.newValue === 'dark'
++        ? event.newValue : 'light dark';
++      syncPreference();
++    });
++
++    syncPreference();
++    document.getElementById('preferences').hidden = false;
++  </script>
++
+ </body>
+ 
+ </html>

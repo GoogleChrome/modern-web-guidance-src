@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,71 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    button, select, textarea { font: inherit; }
++    button { cursor: pointer; }
++    button:focus-visible, select:focus-visible, textarea:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++    .feedback-launcher {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      z-index: 1001;
++      border: 1px solid #71534b;
++      border-radius: 999px;
++      background: var(--primary);
++      color: white;
++      padding: 12px 22px;
++      box-shadow: 0 4px 20px #3e272330;
++    }
++    .feedback-dialog {
++      position: fixed;
++      inset: 0 24px 0 auto;
++      margin: auto 0;
++      width: min(440px, calc(100vw - 48px));
++      max-height: calc(100dvh - 48px);
++      overflow: auto;
++      padding: 32px;
++      border: 1px solid var(--secondary);
++      border-radius: 16px;
++      background: #fffdf9;
++      color: var(--text);
++      box-shadow: 0 24px 80px #24140c40;
++      text-align: left;
++    }
++    #feedback-left .feedback-dialog { inset: 0 auto 0 24px; }
++    .feedback-dialog::backdrop {
++      background: #251b1766;
++      backdrop-filter: blur(3px);
++    }
++    .feedback-topline { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
++    .feedback-eyebrow { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
++    .feedback-close { border: 0; background: transparent; color: var(--primary); font-size: 1.6rem; line-height: 1; padding: 8px; }
++    .feedback-dialog h2 { font-size: 1.8rem; line-height: 1.2; margin: 18px 0 12px; }
++    .feedback-intro { color: #79665e; font-size: 0.9rem; margin-bottom: 24px; }
++    .feedback-dialog label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; }
++    .feedback-dialog select, .feedback-dialog textarea {
++      width: 100%;
++      border: 1px solid #d9cec6;
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++      padding: 12px;
++      margin-bottom: 20px;
++    }
++    .feedback-dialog textarea { min-height: 140px; resize: vertical; }
++    .feedback-actions { display: flex; gap: 12px; }
++    .feedback-actions button { flex: 1; margin: 0; border: 1px solid var(--primary); }
++    .feedback-actions .feedback-move { background: transparent; color: var(--primary); }
++    .feedback-position { font-size: 0.75rem; color: #79665e; margin-top: 18px; }
++    @media (max-width: 540px) {
++      .feedback-dialog { padding: 24px; }
++      .feedback-launcher { bottom: 16px; right: 16px; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +257,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <div id="feedback-right">
++      <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-intro">
++        <div class="feedback-topline">
++          <span class="feedback-eyebrow">A little feedback, a better cup</span>
++          <button class="feedback-close" type="button" aria-label="Close feedback">&times;</button>
++        </div>
++        <h2 id="feedback-title">How's your daily grind?</h2>
++        <p id="feedback-intro" class="feedback-intro">Make yourself comfortable. Your thoughts stay here while you move this window or close it.</p>
++        <label for="feedback-topic">What's on your mind?</label>
++        <select id="feedback-topic">
++          <option value="experience">My experience</option>
++          <option value="coffee">The coffee</option>
++          <option value="website">The website</option>
++          <option value="idea">An idea to share</option>
++        </select>
++        <label for="feedback-message">Your thoughts</label>
++        <textarea id="feedback-message" placeholder="What made your day? What could we do better?" autofocus></textarea>
++        <div class="feedback-actions">
++          <button class="btn feedback-move" id="feedback-move" type="button">Move to left</button>
++          <button class="btn" id="feedback-done" type="button">Done</button>
++        </div>
++        <p class="feedback-position" id="feedback-position" role="status">On the right · Draft kept for this visit</p>
++      </dialog>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -204,9 +291,76 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <div id="feedback-left"></div>
+   </footer>
+ 
++  <button class="feedback-launcher" id="feedback-open" type="button" aria-haspopup="dialog" aria-controls="feedback-dialog">Share your thoughts &nbsp;↗</button>
++
++  <script>
++    const feedbackDialog = document.getElementById('feedback-dialog');
++    const feedbackLauncher = document.getElementById('feedback-open');
++    const moveButton = document.getElementById('feedback-move');
++    const positionStatus = document.getElementById('feedback-position');
++
++    feedbackLauncher.addEventListener('click', () => {
++      if (!feedbackDialog.open) feedbackDialog.showModal();
++    });
++    function closeFeedback() {
++      feedbackDialog.close();
++      feedbackLauncher.focus({ preventScroll: true });
++    }
++    feedbackDialog.querySelector('.feedback-close').addEventListener('click', closeFeedback);
++    document.getElementById('feedback-done').addEventListener('click', closeFeedback);
++    feedbackDialog.addEventListener('cancel', (event) => {
++      event.preventDefault();
++      closeFeedback();
++    });
++
++    moveButton.addEventListener('click', () => {
++      const movingLeft = feedbackDialog.parentElement.id === 'feedback-right';
++      const destination = document.getElementById(movingLeft ? 'feedback-left' : 'feedback-right');
++      const focusedElement = document.activeElement;
++      const wasOpen = feedbackDialog.open;
++      const wasModal = feedbackDialog.matches(':modal');
++      const returnValue = feedbackDialog.returnValue;
++      const scrollTop = feedbackDialog.scrollTop;
++      const scrollLeft = feedbackDialog.scrollLeft;
++      const selection = focusedElement instanceof HTMLTextAreaElement
++        ? [focusedElement.selectionStart, focusedElement.selectionEnd, focusedElement.selectionDirection]
++        : null;
++      const fieldScroll = selection ? [focusedElement.scrollTop, focusedElement.scrollLeft] : null;
++
++      if (typeof destination.moveBefore === 'function') {
++        // Both parents are connected to the same document. The native move
++        // preserves top-layer membership, modality, focus, and field state.
++        destination.moveBefore(feedbackDialog, null);
++      } else {
++        // An ordinary DOM move can lose top-layer state while leaving `open`
++        // set. Explicitly close first so showModal reliably restores modality.
++        if (wasOpen) feedbackDialog.close();
++        destination.appendChild(feedbackDialog);
++        if (wasOpen) {
++          if (wasModal) feedbackDialog.showModal();
++          else feedbackDialog.show();
++        }
++        feedbackDialog.returnValue = returnValue;
++        if (wasOpen && feedbackDialog.contains(focusedElement)) {
++          focusedElement.focus({ preventScroll: true });
++          if (selection) {
++            focusedElement.setSelectionRange(...selection);
++            [focusedElement.scrollTop, focusedElement.scrollLeft] = fieldScroll;
++          }
++        }
++        feedbackDialog.scrollTop = scrollTop;
++        feedbackDialog.scrollLeft = scrollLeft;
++      }
++
++      moveButton.textContent = movingLeft ? 'Move to right' : 'Move to left';
++      positionStatus.textContent = `On the ${movingLeft ? 'left' : 'right'} · Draft kept for this visit`;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

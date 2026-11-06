@@ -1,0 +1,269 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..d2f4153 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -17,7 +17,7 @@ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <article class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+@@ -39,29 +39,61 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+             <div class="lg:col-span-2">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
++                    {typeof image === 'string' ? (
++                        <img 
++                            src={image} 
++                            alt={article.data.title}
++                            width="800"
++                            height="533"
++                            loading="eager"
++                            fetchpriority="high"
++                            class="w-full h-auto object-cover"
++                        />
++                    ) : (
++                        <Image 
++                            src={image} 
++                            alt={article.data.title}
++                            width={800}
++                            height={533}
++                            widths={[400, 600, 800, 1200]}
++                            sizes="(max-width: 1024px) 100vw, 66vw"
++                            format="webp"
++                            loading="eager"
++                            fetchpriority="high"
++                            class="w-full h-auto object-cover"
++                        />
++                    )}
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ ) : (
+     <article class="flex flex-col h-full group">
+         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
++            {typeof image === 'string' ? (
++                <img 
++                    src={image} 
++                    alt={article.data.title} 
++                    width="400"
++                    height="225"
++                    loading="lazy"
++                    decoding="async"
++                    class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                />
++            ) : (
++                <Image 
++                    src={image} 
++                    alt={article.data.title} 
++                    width={400}
++                    height={225}
++                    widths={[320, 400, 640]}
++                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
++                    format="webp"
++                    loading="lazy"
++                    decoding="async"
++                    class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                />
++            )}
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..56e1531 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -5,17 +5,21 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+     <!-- Top section: Logo -->
+     <div class="border-b border-gray-300 pb-6 mb-6">
+-        <a href={baseUrl}>
++        <a href={baseUrl} aria-label="The DevTools Times - Return to homepage">
+             <img
+                 src=`${baseUrl}logo.svg`
+                 alt="The DevTools Times"
+-                class="h-10"
++                width="200"
++                height="40"
++                loading="lazy"
++                decoding="async"
++                class="h-10 w-auto"
+             />
+         </a>
+     </div>
+ 
+     <!-- Middle section: Main navigation links -->
+-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
++    <nav aria-label="Footer Navigation" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
+         
+         <!-- Column 1: NEWS -->
+         <div>
+@@ -82,7 +86,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             </ul>
+         </div>
+ 
+-    </div>
++    </nav>
+ 
+     <!-- Bottom section: Legal, copyright, and privacy -->
+     <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..e307cf4 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -48,13 +48,20 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     <div class="grid grid-cols-3 items-center">
+       <!-- Left Section: Date -->
+       <div class="text-xs">
+-        <p class="font-semibold">{todaysDate}</p>
++        <time datetime={new Date().toISOString().split('T')[0]} class="font-semibold">{todaysDate}</time>
+       </div>
+ 
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+-        <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++        <a href={`${import.meta.env.BASE_URL}`} aria-label="The DevTools Times - Return to homepage">
++          <img 
++            src=`${baseUrl}logo.svg` 
++            alt="The DevTools Times" 
++            width="320" 
++            height="48" 
++            fetchpriority="high"
++            class="w-80 h-auto mx-auto" 
++          />
+         </a>
+       </div>
+ 
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..9e5cb4d 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -17,13 +17,12 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+@@ -42,10 +41,8 @@ const baseUrl = import.meta.env.BASE_URL;
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
+-          <Header />
+-        </div>
+-        <main class="bg-white relative">
++        <Header />
++        <main id="main-content" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..0aa2f9a 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -39,25 +39,26 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <aside aria-label="Top Stories" class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++            <h2 class="sr-only">Top Stories</h2>
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                    <article class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                             <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+                         </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
++                        <time datetime={article.data.date.toISOString()} class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</time>
++                    </article>
+                 ))}
+             </div>
+         </div>
+-    </div>
++    </aside>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <!-- Lead Story Area -->
++    <section aria-label="Lead Story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..a89065f 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,34 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++/* Modern Native Dialog & Backdrop Styles */
++dialog {
++  margin: auto;
++  border: none;
++  background: transparent;
++  padding: 0;
++  color: inherit;
++  max-width: 100vw;
++  max-height: 100vh;
++}
++
++dialog::backdrop {
++  background-color: rgba(0, 0, 0, 0.4);
++  backdrop-filter: blur(4px);
++}
++
++/* Modern Popover styling & polyfill compatibility */
++[popover] {
++  margin: 0;
++  padding: 0;
++  border: none;
++  background: transparent;
++  color: inherit;
++  inset: auto;
++}
++
++[popover]:is(:popover-open, .\:popover-open) {
++  display: block;
+ }
+\ No newline at end of file

@@ -1,0 +1,171 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,97 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Spectrum cards: hue is spread evenly across however many siblings exist */
++    .spectrum-card {
++      --i: sibling-index();
++      --n: sibling-count();
++      --hue: calc(360 / var(--n) * (var(--i) - 1));
++      background: linear-gradient(145deg,
++          oklch(88% 0.12 var(--hue)),
++          oklch(80% 0.14 calc(var(--hue) + 40)));
++    }
++
++    /* Shared section headings */
++    .showcase {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    /* Fan of loyalty cards: angle derives from each card's distance from the centre */
++    .fan-container {
++      --step: 14deg;
++      --card-w: 150px;
++      display: grid;
++      place-items: end center;
++      height: calc(var(--card-w) * 1.9);
++      margin-top: 30px;
++      padding-bottom: 20px;
++    }
++
++    .fan-card {
++      --i: sibling-index();
++      --n: sibling-count();
++      --offset: calc(var(--i) - (var(--n) + 1) / 2);
++      grid-area: 1 / 1;
++      width: var(--card-w);
++      aspect-ratio: 5 / 7;
++      display: grid;
++      place-content: center;
++      gap: 4px;
++      border-radius: 12px;
++      color: white;
++      font-weight: bold;
++      background: linear-gradient(160deg, var(--primary), oklch(45% 0.08 calc(50 + var(--i) * 12)));
++      border: 2px solid var(--accent);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      transform-origin: 50% 160%;
++      transform: rotate(calc(var(--offset) * var(--step)));
++      transition: transform 0.3s, translate 0.3s;
++    }
++
++    .fan-card:hover {
++      translate: 0 -20px;
++      z-index: 1;
++    }
++
++    .fan-card small {
++      font-weight: normal;
++      color: var(--accent);
++    }
++
++    /* Circle of origin badges: each orb gets an equal slice of 360deg */
++    .circle-container {
++      --radius: 150px;
++      --orb: 90px;
++      display: grid;
++      place-items: center;
++      width: calc(var(--radius) * 2 + var(--orb));
++      max-width: 100%;
++      aspect-ratio: 1;
++      margin: 30px auto 0;
++    }
++
++    .circle-orb {
++      --i: sibling-index();
++      --n: sibling-count();
++      --angle: calc(360deg / var(--n) * (var(--i) - 1));
++      grid-area: 1 / 1;
++      width: var(--orb);
++      aspect-ratio: 1;
++      display: grid;
++      place-content: center;
++      border-radius: 50%;
++      font-size: 0.8rem;
++      font-weight: bold;
++      line-height: 1.2;
++      color: var(--primary);
++      background: radial-gradient(circle at 30% 30%, white, oklch(80% 0.12 calc(var(--i) * 360 / var(--n))));
++      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
++      transform: rotate(var(--angle)) translateY(calc(var(--radius) * -1)) rotate(calc(var(--angle) * -1));
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,25 +266,47 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="showcase">
++      <h2>Loyalty Rewards</h2>
++      <div class="fan-container">
++        <div class="fan-card">Bronze<small>Every 10th free</small></div>
++        <div class="fan-card">Silver<small>Free refills</small></div>
++        <div class="fan-card">Gold<small>Early access</small></div>
++        <div class="fan-card">Platinum<small>Private tastings</small></div>
++        <div class="fan-card">Diamond<small>Roast with us</small></div>
++      </div>
++    </section>
++
++    <section class="showcase">
++      <h2>Our Coffee Origins</h2>
++      <div class="circle-container">
++        <div class="circle-orb">Ethiopia</div>
++        <div class="circle-orb">Colombia</div>
++        <div class="circle-orb">Brazil</div>
++        <div class="circle-orb">Kenya</div>
++        <div class="circle-orb">Guatemala</div>
++        <div class="circle-orb">Sumatra</div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +317,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without sibling-index()/sibling-count(): sets the same values per item.
++    if (!CSS.supports('order', 'sibling-index()')) {
++      document.querySelectorAll('.grid, .fan-container, .circle-container').forEach(group => {
++        [...group.children].forEach((el, i) => {
++          el.style.setProperty('--i', i + 1);
++          el.style.setProperty('--n', group.children.length);
++        });
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

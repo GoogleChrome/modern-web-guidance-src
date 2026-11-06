@@ -1,0 +1,396 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,9 +27,9 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    body > nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,25 +45,25 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    body > nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    body > nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    body > nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    body > nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -134,8 +134,161 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites: TOC sidebar + scroll-snapping panel */
++    .seasonal-favorites h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .seasonal-layout {
++      display: grid;
++      grid-template-columns: 220px 1fr;
++      gap: 24px;
++      align-items: start;
++    }
++
++    .toc-sidebar {
++      position: sticky;
++      top: 80px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 16px 12px;
++    }
++
++    .toc-sidebar h3 {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #8d6e63;
++      margin: 0 8px 10px;
++    }
++
++    .toc-sidebar ol {
++      list-style: none;
++    }
++
++    .toc-sidebar a {
++      display: block;
++      padding: 8px 12px;
++      margin-bottom: 4px;
++      border-left: 3px solid transparent;
++      border-radius: 0 4px 4px 0;
++      color: var(--text);
++      text-decoration: none;
++      transition: background 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .toc-sidebar a:hover {
++      background: #efebe9;
++    }
++
++    .toc-sidebar a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .toc-sidebar a.is-active,
++    .toc-sidebar a[aria-current="true"] {
++      background: var(--secondary);
++      border-left-color: var(--accent);
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .seasonal-panel {
++      height: min(70vh, 560px);
++      overflow-y: auto;
++      scroll-snap-type: y mandatory;
++      overscroll-behavior: contain;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .seasonal-panel:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .drink-section {
++      min-height: 100%;
++      padding: 24px;
++      border-bottom: 1px solid #efebe9;
++    }
++
++    .drink-section:last-child {
++      border-bottom: none;
++    }
++
++    .drink-section > header {
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++      margin-bottom: 16px;
++    }
++
++    .drink-section h3 {
++      color: var(--primary);
++      font-size: 1.5rem;
++    }
++
++    .drink-section h3:focus {
++      outline: none;
++    }
++
++    .drink-tag {
++      display: inline-block;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #8d6e63;
++    }
++
++    .drink-section img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 16px;
++    }
++
++    @media (max-width: 720px) {
++      .seasonal-layout {
++        grid-template-columns: 1fr;
++      }
++
++      .toc-sidebar {
++        position: static;
++      }
++
++      .toc-sidebar ol {
++        display: flex;
++        flex-wrap: wrap;
++        gap: 4px;
++      }
++
++      .toc-sidebar a {
++        border-left: none;
++        border-bottom: 3px solid transparent;
++        border-radius: 4px 4px 0 0;
++        margin-bottom: 0;
++      }
++
++      .toc-sidebar a.is-active,
++      .toc-sidebar a[aria-current="true"] {
++        border-bottom-color: var(--accent);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .toc-sidebar a {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,26 +327,54 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section class="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
++      <div class="seasonal-layout">
++        <nav class="toc-sidebar" aria-labelledby="toc-heading">
++          <h3 id="toc-heading">On this list</h3>
++          <ol>
++            <li><a href="#maple-oat-latte">Maple Oat Latte</a></li>
++            <li><a href="#dark-roast-espresso">Dark Roast Espresso</a></li>
++            <li><a href="#cold-brew">Cold Brew</a></li>
++          </ol>
++        </nav>
++
++        <div class="seasonal-panel" tabindex="0" role="region" aria-label="Seasonal drinks">
++          <article class="drink-section" id="maple-oat-latte" aria-labelledby="maple-oat-latte-title">
++            <header>
++              <span class="drink-tag">Fall Special</span>
++              <h3 id="maple-oat-latte-title" tabindex="-1">Maple Oat Latte</h3>
++            </header>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++              alt="Latte with foam art in a ceramic cup" loading="lazy" width="800" height="440">
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </article>
++
++          <article class="drink-section" id="dark-roast-espresso" aria-labelledby="dark-roast-espresso-title">
++            <header>
++              <span class="drink-tag">House Classic</span>
++              <h3 id="dark-roast-espresso-title" tabindex="-1">Dark Roast Espresso</h3>
++            </header>
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++              alt="Espresso shot pouring into a small cup" loading="lazy" width="800" height="440">
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </article>
++
++          <article class="drink-section" id="cold-brew" aria-labelledby="cold-brew-title">
++            <header>
++              <span class="drink-tag">Slow Steeped</span>
++              <h3 id="cold-brew-title" tabindex="-1">Cold Brew</h3>
++            </header>
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++              alt="Iced coffee in a tall glass" loading="lazy" width="800" height="440">
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
+   </main>
+ 
+@@ -206,7 +387,117 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var panel = document.querySelector('.seasonal-panel');
++      var toc = document.querySelector('.toc-sidebar');
++      if (!panel || !toc) return;
++
++      var links = Array.prototype.slice.call(toc.querySelectorAll('a[href^="#"]'));
++      var sections = links.map(function (link) {
++        return document.getElementById(link.getAttribute('href').slice(1));
++      });
++      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      var activeIndex = -1;
++      var programmaticTarget = -1;
++      var settleTimer = null;
++      var ticking = false;
++
++      function setActive(index) {
++        if (index === activeIndex || index < 0) return;
++        activeIndex = index;
++        links.forEach(function (link, i) {
++          var on = i === index;
++          link.classList.toggle('is-active', on);
++          if (on) {
++            link.setAttribute('aria-current', 'true');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      // Offset of a section's header (its snap point) within the panel's scroll area.
++      function snapOffset(section) {
++        var header = section.querySelector('header') || section;
++        return header.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop;
++      }
++
++      function computeActive() {
++        var maxScroll = panel.scrollHeight - panel.clientHeight;
++        if (panel.scrollTop >= maxScroll - 2) return sections.length - 1;
++        var threshold = panel.scrollTop + panel.clientHeight * 0.4;
++        var index = 0;
++        for (var i = 0; i < sections.length; i++) {
++          if (snapOffset(sections[i]) <= threshold) index = i;
++        }
++        return index;
++      }
++
++      function endProgrammaticScroll() {
++        programmaticTarget = -1;
++        clearTimeout(settleTimer);
++        setActive(computeActive());
++      }
++
++      panel.addEventListener('scroll', function () {
++        if (programmaticTarget !== -1) {
++          // Smooth scroll in progress: keep the clicked link highlighted, and
++          // release the lock once scrolling settles (fallback for no 'scrollend').
++          clearTimeout(settleTimer);
++          settleTimer = setTimeout(endProgrammaticScroll, 150);
++          return;
++        }
++        if (ticking) return;
++        ticking = true;
++        requestAnimationFrame(function () {
++          ticking = false;
++          setActive(computeActive());
++        });
++      }, { passive: true });
++
++      panel.addEventListener('scrollend', function () {
++        if (programmaticTarget !== -1) endProgrammaticScroll();
++        else setActive(computeActive());
++      });
++
++      function scrollToSection(index, smooth) {
++        var section = sections[index];
++        if (!section) return;
++        var top = snapOffset(section);
++        setActive(index);
++        if (Math.abs(panel.scrollTop - top) < 1) return;
++        programmaticTarget = index;
++        clearTimeout(settleTimer);
++        settleTimer = setTimeout(endProgrammaticScroll, 1000);
++        panel.scrollTo({ top: top, behavior: smooth && !reduceMotion.matches ? 'smooth' : 'auto' });
++      }
++
++      links.forEach(function (link, index) {
++        link.addEventListener('click', function (event) {
++          if (!sections[index]) return;
++          event.preventDefault();
++          scrollToSection(index, true);
++          if (history.replaceState) history.replaceState(null, '', link.getAttribute('href'));
++          // Move focus into the section for keyboard/screen-reader users without a page jump.
++          var heading = sections[index].querySelector('h3');
++          if (heading) heading.focus({ preventScroll: true });
++        });
++      });
++
++      // Initial state: honor a matching URL hash, otherwise highlight the first drink.
++      var hashIndex = sections.findIndex(function (s) {
++        return s && '#' + s.id === location.hash;
++      });
++      if (hashIndex > -1) {
++        scrollToSection(hashIndex, false);
++      } else {
++        setActive(computeActive());
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,183 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,120 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Rewards button + popover */
++    .rewards-btn {
++      background: none;
++      border: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      padding: 0;
++      transition: color 0.3s;
++    }
++
++    .rewards-btn:hover,
++    .rewards-btn[aria-expanded="true"] {
++      color: var(--accent);
++    }
++
++    .rewards-btn:focus-visible,
++    .rewards-card button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .rewards-card {
++      position: fixed;
++      inset: 70px 5% auto auto;
++      margin: 0;
++      width: min(320px, 90vw);
++      padding: 0;
++      border: none;
++      border-radius: 10px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++      overflow: hidden;
++    }
++
++    .rewards-card::backdrop {
++      background: transparent;
++    }
++
++    .rewards-card__img {
++      display: block;
++      width: 100%;
++      height: 120px;
++      object-fit: cover;
++    }
++
++    .rewards-card__body {
++      padding: 18px 20px 20px;
++    }
++
++    .rewards-card__header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 8px;
++    }
++
++    .rewards-card h2 {
++      font-size: 1.15rem;
++      color: var(--primary);
++    }
++
++    .rewards-card__close {
++      background: none;
++      border: none;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      color: var(--text);
++    }
++
++    .rewards-card__points {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .rewards-card__meter {
++      height: 8px;
++      background: var(--secondary);
++      border-radius: 4px;
++      overflow: hidden;
++      margin: 8px 0;
++    }
++
++    .rewards-card__bar {
++      height: 100%;
++      width: 0;
++      background: var(--accent);
++      transition: width 0.6s ease;
++    }
++
++    .rewards-card__perks {
++      list-style: none;
++      margin: 12px 0 0;
++      font-size: 0.9rem;
++    }
++
++    .rewards-card__perks li::before {
++      content: "\2615\00a0";
++    }
++
++    .rewards-card .btn {
++      width: 100%;
++      text-align: center;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .rewards-card__bar { transition: none; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,14 +273,43 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <button type="button" class="rewards-btn" data-rewards-trigger data-fallback-href="/rewards"
++          popovertarget="rewards-popover" aria-haspopup="dialog" aria-expanded="false"
++          aria-controls="rewards-popover">Rewards</button>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="rewards-popover" class="rewards-card" popover role="dialog" aria-labelledby="rewards-title"
++    data-points="340" data-goal="500">
++    <img class="rewards-card__img" alt="Latte art in a ceramic cup" loading="lazy"
++      src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=640&q=70">
++    <div class="rewards-card__body">
++      <div class="rewards-card__header">
++        <h2 id="rewards-title">Grind Rewards</h2>
++        <button type="button" class="rewards-card__close" data-rewards-close
++          aria-label="Close rewards">&times;</button>
++      </div>
++      <p><span class="rewards-card__points" data-rewards-points>340</span> stars</p>
++      <div class="rewards-card__meter" data-rewards-meter role="progressbar" aria-label="Progress to free drink"
++        aria-valuemin="0" aria-valuemax="500" aria-valuenow="340">
++        <div class="rewards-card__bar" data-rewards-bar></div>
++      </div>
++      <p data-rewards-remaining>160 more stars until your next free drink.</p>
++      <ul class="rewards-card__perks">
++        <li>Free birthday drink</li>
++        <li>Double stars on Tuesdays</li>
++        <li>Free refills on brewed coffee</li>
++      </ul>
++      <a href="/rewards" class="btn">View All Rewards</a>
++    </div>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +347,13 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!--
++    Module scripts are deferred and the module graph handles ordering:
++    rewards.js imports popover-support.js, which uses top-level await to load
++    the Popover polyfill only when needed. rewards.js won't run until it's done.
++  -->
++  <script type="module" src="/js/rewards.js"></script>
+ </body>
+ 
+ </html>

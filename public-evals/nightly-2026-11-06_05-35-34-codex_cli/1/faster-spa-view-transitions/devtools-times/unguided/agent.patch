@@ -1,0 +1,338 @@
+diff --git a/README.md b/README.md
+index 4479b53..86e2cbd 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,18 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++The client router keeps up to five visited views mounted, including the active
++view. Inactive views are hidden and inert; revisiting a path and query string
++reuses its DOM and component state. Hash links share the same view. Astro still
++loads each destination to update page metadata and styles, and manages history
++and scroll restoration. The least recently used view is removed when the cache
++is full. Reloading clears the cache. Sign-in and sign-up use `cacheView={false}`
++on `Layout` so their forms are discarded when leaving. Cached content remains a
++snapshot until eviction or reload; data that must stay current should refresh
++on `astro:page-load` and scope DOM queries to the visible route view.
++
++Run the DOM cache tests with `pnpm test` (Node.js 24 or later).
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/package.json b/package.json
+index bfffcf0..61f1cd6 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,7 @@
+   "type": "module",
+   "version": "0.0.1",
+   "scripts": {
++    "test": "node --test tests/*.test.mjs",
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+@@ -23,7 +24,8 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "happy-dom": "^21.0.4"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..6519360 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -35,6 +36,10 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import { installViewCache } from "../scripts/view-cache";
++      installViewCache(document);
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,9 +50,16 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
+-        </main>
++        <div data-view-cache transition:persist="route-view-cache">
++          <main
++            class="bg-white relative"
++            data-route-view
++            data-view-key={Astro.url.pathname + Astro.url.search}
++            data-cache-view={String(cacheView)}
++          >
++            <slot />
++          </main>
++        </div>
+       </div>
+     </div>
+     <Footer />
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..e87846e
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,73 @@
++import type { TransitionBeforeSwapEvent } from "astro:transitions/client";
++
++// Includes the active view. Old views are evicted in least-recently-used order.
++const MAX_VIEWS = 5;
++const VIEW = "[data-route-view]";
++const CACHE = "[data-view-cache]";
++
++export function installViewCache(doc: Document) {
++  const recency = new Map<HTMLElement, number>();
++  let clock = 0;
++
++  const beforeSwap = (event: TransitionBeforeSwapEvent) => {
++    const swap = event.swap;
++    event.swap = () => {
++      // Preparation can be superseded while Astro waits for an animation.
++      if (event.signal.aborted) return;
++
++      const cache = doc.querySelector<HTMLElement>(CACHE);
++      const incomingCache = event.newDocument.querySelector<HTMLElement>(CACHE);
++      const incoming = incomingCache?.querySelector<HTMLElement>(VIEW);
++      if (!cache || !incomingCache || !incoming) {
++        recency.clear();
++        swap();
++        return;
++      }
++
++      const key = event.to.pathname + event.to.search;
++      const views = Array.from(cache.children) as HTMLElement[];
++      const restored = incoming.dataset.cacheView === "true"
++        ? views.find((view) => view.dataset.viewKey === key && view.dataset.cacheView === "true")
++        : undefined;
++
++      // Leave a fresh view in the incoming body until Astro has processed its
++      // scripts and media. The persistent container will replace incomingCache.
++      if (restored) incoming.remove();
++      else incomingCache.before(incoming);
++
++      for (const view of views) {
++        if (view === restored) continue;
++        view.hidden = true;
++        view.inert = true;
++        for (const media of view.querySelectorAll<HTMLMediaElement>("audio, video")) {
++          media.pause();
++        }
++        if (!recency.has(view)) recency.set(view, ++clock);
++        if (view.dataset.cacheView !== "true") {
++          view.remove();
++          recency.delete(view);
++        }
++      }
++
++      swap();
++
++      const active = restored ?? doc.querySelector<HTMLElement>(VIEW + ":not([hidden])");
++      if (!active) return;
++      if (!restored) cache.append(active);
++      active.dataset.viewKey = key;
++      active.hidden = false;
++      active.inert = false;
++      recency.set(active, ++clock);
++
++      // Removal happens before astro:after-swap so evicted islands unmount.
++      while (recency.size > MAX_VIEWS) {
++        const oldest = [...recency].reduce((a, b) => a[1] < b[1] ? a : b)[0];
++        oldest.remove();
++        recency.delete(oldest);
++      }
++    };
++  };
++
++  doc.addEventListener("astro:before-swap", beforeSwap);
++  return () => doc.removeEventListener("astro:before-swap", beforeSwap);
++}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..46f1ba1 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,11 @@
+ @import "tailwindcss";
+ 
++[data-route-view][hidden] {
++  display: none !important;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
+diff --git a/tests/view-cache.test.mjs b/tests/view-cache.test.mjs
+new file mode 100644
+index 0000000..0c71080
+--- /dev/null
++++ b/tests/view-cache.test.mjs
+@@ -0,0 +1,117 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { Window } from 'happy-dom';
++import { installViewCache } from '../src/scripts/view-cache.ts';
++
++function page(doc, key, cacheable = true) {
++  doc.head.innerHTML = `<title>${key}</title>`;
++  doc.body.innerHTML = `<div data-view-cache data-astro-transition-persist="route-view-cache">
++    <main data-route-view data-view-key="${key}" data-cache-view="${cacheable}">
++      <input value="original"><button>Click</button><script type="application/json">{}</script>
++    </main>
++  </div>`;
++}
++
++function harness(t) {
++  const window = new Window({ url: 'https://example.test/devtools-times/' });
++  t.after(() => window.happyDOM.abort());
++  const doc = window.document;
++  page(doc, '/devtools-times/');
++  installViewCache(doc);
++  const active = () => doc.querySelector('[data-route-view]:not([hidden])');
++  function navigate(key, { cacheable = true, aborted = false, compatible = true } = {}) {
++    const incoming = doc.implementation.createHTMLDocument();
++    page(incoming, key, cacheable);
++    if (!compatible) incoming.body.innerHTML = '<p>Other layout</p>';
++    const event = new window.Event('astro:before-swap');
++    const controller = new AbortController();
++    if (aborted) controller.abort();
++    Object.assign(event, {
++      to: new URL(key, window.location.href),
++      newDocument: incoming,
++      signal: controller.signal,
++      // Model Astro's transition:persist transfer and fresh head/body swap.
++      swap() {
++        const cache = doc.querySelector('[data-view-cache]');
++        const target = incoming.querySelector('[data-view-cache]');
++        doc.head.replaceWith(incoming.head);
++        doc.body.replaceWith(incoming.body);
++        if (cache && target) target.replaceWith(cache);
++      },
++    });
++    doc.dispatchEvent(event);
++    event.swap();
++    doc.dispatchEvent(new window.Event('astro:after-swap'));
++    return active();
++  }
++  return { window, doc, active, navigate };
++}
++
++test('return navigation preserves node identity, input values, and listeners', (t) => {
++  const { window, doc, active, navigate } = harness(t);
++  const home = active();
++  const input = home.querySelector('input');
++  input.value = 'edited';
++  let clicks = 0;
++  home.querySelector('button').addEventListener('click', () => clicks++);
++  const article = navigate('/devtools-times/articles/example');
++  assert.equal(home.isConnected, true);
++  assert.equal(home.hidden, true);
++  assert.equal(home.inert, true);
++  assert.equal(article.hidden, false);
++  assert.equal(navigate('/devtools-times/#section'), home);
++  assert.equal(input.value, 'edited');
++  home.querySelector('button').dispatchEvent(new window.Event('click'));
++  assert.equal(clicks, 1);
++  assert.equal(home.inert, false);
++  assert.equal(doc.title, '/devtools-times/#section');
++  assert.equal(doc.querySelectorAll('[data-route-view]:not([hidden])').length, 1);
++  assert.equal(navigate('/devtools-times/articles/example'), article);
++});
++
++test('query strings select separate views while hash changes reuse a view', (t) => {
++  const { navigate } = harness(t);
++  const first = navigate('/devtools-times/?page=1');
++  const second = navigate('/devtools-times/?page=2');
++  assert.notEqual(first, second);
++  assert.equal(navigate('/devtools-times/?page=1#news'), first);
++});
++
++test('least recently used views are evicted, keeping five mounted views', (t) => {
++  const { doc, active, navigate } = harness(t);
++  const home = active();
++  const first = navigate('/devtools-times/1');
++  for (let i = 2; i <= 4; i++) navigate(`/devtools-times/${i}`);
++  navigate('/devtools-times/');
++  navigate('/devtools-times/5');
++  assert.equal(home.isConnected, true);
++  assert.equal(first.isConnected, false);
++  assert.equal(doc.querySelectorAll('[data-route-view]').length, 5);
++  assert.notEqual(navigate('/devtools-times/1'), first);
++});
++
++test('opted-out forms are removed when leaving and created afresh on return', (t) => {
++  const { navigate } = harness(t);
++  const form = navigate('/devtools-times/signin', { cacheable: false });
++  form.querySelector('input').value = 'secret';
++  navigate('/devtools-times/');
++  assert.equal(form.isConnected, false);
++  const fresh = navigate('/devtools-times/signin', { cacheable: false });
++  assert.notEqual(fresh, form);
++  assert.equal(fresh.querySelector('input').value, 'original');
++});
++
++test('aborted transitions leave the active DOM intact', (t) => {
++  const { doc, active, navigate } = harness(t);
++  const home = active();
++  assert.equal(navigate('/devtools-times/cancelled', { aborted: true }), home);
++  assert.equal(home.hidden, false);
++  assert.equal(doc.title, '/devtools-times/');
++});
++
++test('destinations with another layout use the normal swap', (t) => {
++  const { doc, navigate } = harness(t);
++  navigate('/other', { compatible: false });
++  assert.equal(doc.body.textContent, 'Other layout');
++  assert.equal(doc.querySelector('[data-view-cache]'), null);
++});

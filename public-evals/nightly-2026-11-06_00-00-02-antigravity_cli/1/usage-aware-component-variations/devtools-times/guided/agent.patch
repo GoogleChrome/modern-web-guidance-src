@@ -1,0 +1,802 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..6f11933 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -3,7 +3,7 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import { BookOpenIcon } from '@heroicons/react/24/outline';
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+@@ -15,69 +15,54 @@ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const articleUrl = `${import.meta.env.BASE_URL}articles/${article.id}`;
++const categoryUrl = `${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`;
+ ---
+-{large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                </div>
+-            </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
+-                </a>
+-            </div>
+-        </div>
+-    </div>
+-) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
++<div class={large ? 'featured h-full' : 'h-full'}>
++    <article class="article-teaser group">
++        <a href={articleUrl} class="teaser-media">
++            <Image
++                src={image}
++                alt={article.data.title}
++                width={800}
++                height={450}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                class="teaser-image"
+             />
+         </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++        <div class="teaser-body">
++            <div class="teaser-meta-row">
++                <span class="teaser-badge teaser-badge--featured">Featured Story</span>
++                <span class="teaser-badge teaser-badge--spotlight">Visual Spotlight</span>
++                <span class="teaser-badge teaser-badge--briefing">Editorial Briefing</span>
++                <span class="teaser-badge teaser-badge--related">Related Read</span>
++                <a
++                    href={categoryUrl}
++                    class="teaser-category text-amber-800 text-sm font-brand tracking-widest hover:underline"
++                >
++                    {capitalizedCategory}
++                </a>
++            </div>
++            <a href={articleUrl} class="flex flex-col flex-grow">
++                <h3 class="teaser-title group-hover:text-amber-500 transition-colors">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p class="teaser-summary">
++                    {article.data.summary}
++                </p>
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
++            <div class="teaser-footer">
++                <span class="text-xs font-medium flex items-center">
+                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+                 </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                <div class="teaser-actions">
++                    <a href={articleUrl} class="teaser-cta">
++                        Read Story
++                    </a>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++</div>
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..7f2d77b 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,6 +1,5 @@
+-
+-import React, { useState, useEffect } from 'react';
+-import { BookmarkIcon } from '@heroicons/react/24/outline'
++import React, { useState } from 'react';
++import { BookmarkIcon } from '@heroicons/react/24/outline';
+ 
+ interface Props {
+   slug: string;
+@@ -23,8 +22,19 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button
++      type="button"
++      onClick={handleClick}
++      className="bookmark-button"
++      aria-pressed={isBookmarked}
++      aria-label={isBookmarked ? 'Remove from reading list' : 'Save to reading list'}
++    >
++      <BookmarkIcon
++        className={`h-4 w-4 ${isBookmarked ? 'text-amber-400 fill-current' : 'currentColor'}`}
++      />
++      <span className="bookmark-label">
++        {isBookmarked ? 'Saved' : 'Save Story'}
++      </span>
+     </button>
+   );
+ }
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..d114346 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -1,9 +1,6 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+-import { Image } from 'astro:assets';
+-import { getArticleImage } from '../utils/images';
+-import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import ArticleTeaser from './ArticleTeaser.astro';
+ 
+ export interface Props {
+     title: string;
+@@ -18,85 +15,23 @@ if (articles.length < 4) {
+ 
+ const topArticle = articles[0];
+ const bottomArticles = articles.slice(1, 4);
+-
+-const topArticleImage = await getArticleImage(topArticle);
+-const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage));
+-
+-const readingList = await Astro.session?.get('readingList') || [];
+-
+-const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+ <section class="p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+-    <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+-            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+-                        {topArticle.data.title}
+-                    </h3>
+-                </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
+-                    {topArticle.data.summary}
+-                </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
+-                </div>
+-            </div>
+-            <div class="w-full order-first lg:order-last">
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+-                </a>
+-            </div>
+-        </div>
++    <!-- Top Section: Featured Semantic Context (--surface: featured) -->
++    <div class="featured mb-6 lg:mb-8">
++        <ArticleTeaser article={topArticle} />
+     </div>
+ 
+-    <!-- Bottom Section: Three Smaller Articles -->
++    <!-- Bottom Section: Three Contextual Articles (briefing vs spotlight) -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+-        {bottomArticles.map((article, index) => {
+-            const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+-            const isBookmarked = readingList.includes(article.id);
+-            return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
+-                    {index === 1 && (
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+-                        </a>
+-                    )}
+-                    <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                            {capitalizedBottomCategory}
+-                        </a>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
+-                                {article.data.title}
+-                            </h3>
+-                        </a>
+-                        {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
+-                                {article.data.summary}
+-                            </p>
+-                        )}
+-                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                            <span class="text-xs font-medium flex items-center">
+-                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                                {article.data.readingTime} Min.
+-                            </span>
+-                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                        </div>
+-                    </div>
+-                </div>
+-            )
+-        })}
++        {bottomArticles.map((article, index) => (
++            <div class={index === 1 ? 'spotlight h-full' : 'briefing h-full'}>
++                <ArticleTeaser article={article} />
++            </div>
++        ))}
+     </div>
+ </section>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..e3cc1a7 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -115,8 +115,8 @@ const isBookmarked = readingList.includes(article.slug);
+         </section>
+     </article>
+ 
+-    <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <!-- RELATED ARTICLES SECTION (--surface: related) -->
++    <section class="related max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..c1f6b71 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -64,25 +64,10 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         </header>
+ 
+         <div class="px-4 md:px-6">
+-            <!-- Featured Article -->
+-            {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
+-                    <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+-                        <Image 
+-                            src={featuredArticleImage} 
+-                            alt={featuredArticle.data.title} 
+-                            width={1200}
+-                            height={675}
+-                            format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+-                        />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+-                            {featuredArticle.data.title}
+-                        </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
+-                            {featuredArticle.data.summary}
+-                        </p>
+-                    </a>
++            <!-- Featured Article (--surface: featured) -->
++            {featuredArticle && (
++                <section class="featured mb-8 pb-8 border-b border-gray-200">
++                    <ArticleTeaser article={featuredArticle} />
+                 </section>
+             )}
+ 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..d2a8852 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -38,15 +38,13 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <!-- Top Stories Bar (--surface: ticker) -->
++    <div class="ticker bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
++                        <ArticleTeaser article={article} />
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                     </div>
+                 ))}
+@@ -54,9 +52,9 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
++    <!-- Main Content Area (--surface: featured) -->
++    <main class="featured max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} />
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..15332f1 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,443 @@
+ @import "tailwindcss";
+ 
++:root {
++  --brand-accent: #b45309;
++  --brand-accent-hover: #92400e;
++  --brand-accent-soft: #fef3c7;
++  --brand-highlight: #fbbf24;
++  --surface-bg-default: #ffffff;
++  --surface-bg-featured: #fffbeb;
++  --surface-bg-briefing: #f9fafb;
++  --surface-border-subtle: #f3f4f6;
++  --surface-border-strong: #fde68a;
++  --text-primary: #111827;
++  --text-secondary: #374151;
++  --text-muted: #6b7280;
++  --space-xs: 0.25rem;
++  --space-sm: 0.5rem;
++  --space-md: 1rem;
++  --space-lg: 1.5rem;
++  --space-xl: 2rem;
++  --radius-sm: 0.25rem;
++  --radius-md: 0.375rem;
++  --radius-pill: 9999px;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* ==========================================================================
++   1. Semantic Context Containers (Style Query Producers)
++   Note: Do NOT set `container-type` for style queries; they query inherited
++   custom properties on the nearest ancestor automatically.
++   ========================================================================== */
++
++.featured {
++  --surface: featured;
++}
++
++.spotlight {
++  --surface: spotlight;
++}
++
++.briefing {
++  --surface: briefing;
++}
++
++.related {
++  --surface: related;
++}
++
++.ticker {
++  --surface: ticker;
++}
++
++/* ==========================================================================
++   2. Default Component Styles (Standard Context)
++   ========================================================================== */
++
++.article-teaser {
++  display: flex;
++  flex-direction: column;
++  block-size: 100%;
++  background: var(--surface-bg-default);
++}
++
++.teaser-media {
++  display: block;
++  inline-size: 100%;
++}
++
++.teaser-image {
++  display: block;
++  inline-size: 100%;
++  block-size: auto;
++  object-fit: cover;
++  aspect-ratio: 16 / 9;
++  border-radius: var(--radius-md);
++}
++
++.teaser-body {
++  display: flex;
++  flex-direction: column;
++  flex: 1 1 auto;
++  margin-block-start: 0.75rem;
++}
++
++.teaser-meta-row {
++  display: flex;
++  flex-wrap: wrap;
++  align-items: safe center;
++  gap: var(--space-sm);
++}
++
++/* Contextual badges are hidden by default and revealed only in relevant semantic contexts */
++.teaser-badge {
++  display: none;
++  align-items: safe center;
++  padding-block: 0.125rem;
++  padding-inline: var(--space-sm);
++  border-radius: var(--radius-pill);
++  font-size: 0.75rem;
++  font-weight: 600;
++  letter-spacing: 0.04em;
++  text-transform: uppercase;
++  background: var(--brand-accent-soft);
++  color: var(--brand-accent);
++}
++
++.teaser-title {
++  font-family: "Grenze", serif;
++  font-weight: 500;
++  font-size: 1.25rem;
++  line-height: 1.25;
++  color: var(--text-primary);
++  margin-block-start: var(--space-xs);
++}
++
++.teaser-summary {
++  color: var(--text-secondary);
++  margin-block-start: var(--space-xs);
++  font-size: 1rem;
++}
++
++.teaser-footer {
++  display: flex;
++  justify-content: space-between;
++  align-items: safe center;
++  gap: var(--space-sm);
++  color: var(--text-muted);
++  margin-block-start: auto;
++  padding-block-start: var(--space-sm);
++  border-block-start: 1px solid var(--surface-border-subtle);
++}
++
++.teaser-actions {
++  display: flex;
++  align-items: safe center;
++  gap: var(--space-sm);
++  margin-inline-start: auto;
++}
++
++/* Default: Outlined informational style for CTA & Bookmark button */
++.teaser-cta {
++  display: inline-flex;
++  align-items: safe center;
++  padding-block: var(--space-xs);
++  padding-inline: 0.625rem;
++  font-size: 0.75rem;
++  font-weight: 600;
++  border-radius: var(--radius-sm);
++  background: transparent;
++  color: var(--text-secondary);
++  border: 1px solid currentColor;
++  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
++}
++
++.teaser-cta:hover {
++  color: var(--brand-accent);
++}
++
++.bookmark-button {
++  display: inline-flex;
++  align-items: safe center;
++  gap: var(--space-xs);
++  padding-block: var(--space-xs);
++  padding-inline: var(--space-sm);
++  font-size: 0.75rem;
++  font-weight: 600;
++  border-radius: var(--radius-sm);
++  background: transparent;
++  color: var(--text-muted);
++  border: 1px solid currentColor;
++  cursor: pointer;
++  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
++}
++
++.bookmark-button:hover:not(:disabled) {
++  color: var(--brand-accent);
++}
++
++.bookmark-label {
++  display: none;
++}
++
++/* ==========================================================================
++   3. Selector-Based Contextual Styles (Broad Browser Support Fallback)
++   Uses :where() to keep zero extra specificity on the context selector so
++   that @container style() rules later in source order win automatically.
++   ========================================================================== */
++
++/* Featured surface fallback */
++:where(.featured) .article-teaser {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++  gap: var(--space-xl);
++  padding: var(--space-lg);
++  background: var(--surface-bg-featured);
++  border: 1px solid var(--surface-border-strong);
++  border-radius: var(--radius-md);
++}
++
++:where(.featured) .teaser-body {
++  margin-block-start: 0;
++  justify-content: center;
++}
++
++:where(.featured) .teaser-badge--featured {
++  display: inline-flex;
++}
++
++:where(.featured) .teaser-title {
++  font-size: clamp(1.875rem, 3vw, 2.5rem);
++  line-height: 1.15;
++  margin-block-start: var(--space-sm);
++}
++
++:where(.featured) .teaser-summary {
++  font-size: 1.125rem;
++  margin-block-start: var(--space-md);
++}
++
++:where(.featured) .teaser-footer {
++  margin-block-start: var(--space-lg);
++  padding-block-start: var(--space-md);
++  border-block-start-color: var(--surface-border-strong);
++}
++
++:where(.featured) .teaser-cta,
++:where(.featured) .bookmark-button {
++  background: var(--brand-accent);
++  color: white;
++  border: none;
++}
++
++:where(.featured) .teaser-cta:hover,
++:where(.featured) .bookmark-button:hover:not(:disabled) {
++  background: var(--brand-accent-hover);
++  color: white;
++}
++
++:where(.featured) .bookmark-label {
++  display: inline;
++}
++
++/* Spotlight surface fallback (visual media focus, concise copy) */
++:where(.spotlight) .article-teaser {
++  padding: var(--space-md);
++  border: 1px solid var(--surface-border-subtle);
++  border-radius: var(--radius-md);
++}
++
++:where(.spotlight) .teaser-badge--spotlight {
++  display: inline-flex;
++}
++
++:where(.spotlight) .teaser-summary {
++  display: none;
++}
++
++:where(.spotlight) .teaser-title {
++  font-size: 1.5rem;
++}
++
++/* Briefing surface fallback (editorial text focus without thumbnail) */
++:where(.briefing) .article-teaser {
++  padding: var(--space-lg);
++  background: var(--surface-bg-briefing);
++  border: 1px solid var(--surface-border-subtle);
++  border-radius: var(--radius-md);
++}
++
++:where(.briefing) .teaser-media {
++  display: none;
++}
++
++:where(.briefing) .teaser-body {
++  margin-block-start: 0;
++}
++
++:where(.briefing) .teaser-badge--briefing {
++  display: inline-flex;
++}
++
++:where(.briefing) .teaser-title {
++  font-size: 1.5rem;
++}
++
++/* Related surface fallback */
++:where(.related) .teaser-badge--related {
++  display: inline-flex;
++}
++
++/* Ticker surface fallback (ultra-compact top bar items) */
++:where(.ticker) .teaser-media,
++:where(.ticker) .teaser-summary,
++:where(.ticker) .teaser-footer,
++:where(.ticker) .teaser-category {
++  display: none;
++}
++
++:where(.ticker) .teaser-body {
++  margin-block-start: 0;
++}
++
++:where(.ticker) .teaser-title {
++  font-family: inherit;
++  font-weight: 700;
++  font-size: 1rem;
++}
++
++/* ==========================================================================
++   4. Progressive Enhancement: CSS Container Style Queries
++   Overrides selector fallbacks when supported, decoupling components from
++   ancestor class names or DOM hierarchy.
++   ========================================================================== */
++
++@container style(--surface: featured) {
++  .article-teaser {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++    gap: var(--space-xl);
++    padding: var(--space-lg);
++    background: var(--surface-bg-featured);
++    border: 1px solid var(--surface-border-strong);
++    border-radius: var(--radius-md);
++  }
++
++  .teaser-body {
++    margin-block-start: 0;
++    justify-content: center;
++  }
++
++  .teaser-badge--featured {
++    display: inline-flex;
++  }
++
++  .teaser-title {
++    font-size: clamp(1.875rem, 3vw, 2.5rem);
++    line-height: 1.15;
++    margin-block-start: var(--space-sm);
++  }
++
++  .teaser-summary {
++    font-size: 1.125rem;
++    margin-block-start: var(--space-md);
++  }
++
++  .teaser-footer {
++    margin-block-start: var(--space-lg);
++    padding-block-start: var(--space-md);
++    border-block-start-color: var(--surface-border-strong);
++  }
++
++  .teaser-cta,
++  .bookmark-button {
++    background: var(--brand-accent);
++    color: white;
++    border: none;
++  }
++
++  .teaser-cta:hover,
++  .bookmark-button:hover:not(:disabled) {
++    background: var(--brand-accent-hover);
++    color: white;
++  }
++
++  .bookmark-label {
++    display: inline;
++  }
++}
++
++@container style(--surface: spotlight) {
++  .article-teaser {
++    padding: var(--space-md);
++    border: 1px solid var(--surface-border-subtle);
++    border-radius: var(--radius-md);
++  }
++
++  .teaser-badge--spotlight {
++    display: inline-flex;
++  }
++
++  .teaser-summary {
++    display: none;
++  }
++
++  .teaser-title {
++    font-size: 1.5rem;
++  }
++}
++
++@container style(--surface: briefing) {
++  .article-teaser {
++    padding: var(--space-lg);
++    background: var(--surface-bg-briefing);
++    border: 1px solid var(--surface-border-subtle);
++    border-radius: var(--radius-md);
++  }
++
++  .teaser-media {
++    display: none;
++  }
++
++  .teaser-body {
++    margin-block-start: 0;
++  }
++
++  .teaser-badge--briefing {
++    display: inline-flex;
++  }
++
++  .teaser-title {
++    font-size: 1.5rem;
++  }
++}
++
++@container style(--surface: related) {
++  .teaser-badge--related {
++    display: inline-flex;
++  }
++}
++
++@container style(--surface: ticker) {
++  .teaser-media,
++  .teaser-summary,
++  .teaser-footer,
++  .teaser-category {
++    display: none;
++  }
++
++  .teaser-body {
++    margin-block-start: 0;
++  }
++
++  .teaser-title {
++    font-family: inherit;
++    font-weight: 700;
++    font-size: 1rem;
++  }
++}

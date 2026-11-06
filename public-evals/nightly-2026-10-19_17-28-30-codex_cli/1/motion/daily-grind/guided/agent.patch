@@ -1,0 +1,203 @@
+diff --git a/index.html b/index.html
+index 66c9173..7701ef9 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --motion-fast: 160ms;
++      --motion-medium: 280ms;
++      --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+@@ -59,10 +62,10 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -128,10 +131,10 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
+@@ -152,6 +155,103 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Keep all content visible and interactive without animation or JavaScript. */
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 5px;
++    }
++
++    nav a,
++    .footer-links a {
++      display: inline-block;
++      position: relative;
++    }
++
++    nav a:not(.logout-link)::after,
++    .footer-links a::after {
++      content: '';
++      position: absolute;
++      inset: auto 0 -3px;
++      height: 2px;
++      background: currentColor;
++      transform: scaleX(0);
++      transform-origin: left;
++    }
++
++    nav a:hover::after,
++    nav a:focus-visible::after,
++    .footer-links a:hover::after,
++    .footer-links a:focus-visible::after {
++      transform: scaleX(1);
++    }
++
++    /* Motion is opt-in to the system preference; reduced motion stays static. */
++    @media (prefers-reduced-motion: no-preference) {
++      @keyframes enter {
++        from {
++          opacity: 0;
++          translate: 0 16px;
++        }
++        to {
++          opacity: 1;
++          translate: 0 0;
++        }
++      }
++
++      .logo,
++      nav li,
++      .hero > * {
++        animation: enter 600ms var(--motion-ease) backwards;
++      }
++
++      nav li:nth-child(2) { animation-delay: 40ms; }
++      nav li:nth-child(3) { animation-delay: 80ms; }
++      nav li:nth-child(4) { animation-delay: 120ms; }
++      nav li:nth-child(5) { animation-delay: 160ms; }
++      .hero h1 { animation-delay: 80ms; }
++      .hero p { animation-delay: 160ms; }
++      .hero .btn { animation-delay: 240ms; }
++
++      .btn,
++      .logout-link {
++        transition: transform var(--motion-fast) var(--motion-ease);
++      }
++
++      .card {
++        transition: transform var(--motion-medium) var(--motion-ease);
++      }
++
++      nav a::after,
++      .footer-links a::after {
++        transition: transform var(--motion-medium) var(--motion-ease);
++      }
++
++      .btn:focus-visible,
++      .logout-link:focus-visible {
++        transform: translateY(-2px);
++      }
++
++      .card:focus-within {
++        transform: translateY(-5px);
++      }
++
++      @media (hover: hover) and (pointer: fine) {
++        .btn:hover,
++        .logout-link:hover {
++          transform: translateY(-2px);
++        }
++
++        .card:hover {
++          transform: translateY(-5px);
++        }
++      }
++
++      .btn:active,
++      .logout-link:active {
++        transform: scale(0.97);
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +307,58 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Reveal once per visit, without scroll listeners or hidden fallback content.
++    (() => {
++      const preference = window.matchMedia('(prefers-reduced-motion: no-preference)');
++      const targets = document.querySelectorAll('main h2, .card, footer');
++      const revealed = new WeakSet();
++      const running = new Set();
++      let observer;
++
++      function syncMotion() {
++        observer?.disconnect();
++        for (const animation of running) animation.cancel();
++        running.clear();
++
++        if (!preference.matches || !('IntersectionObserver' in window) ||
++            !('animate' in Element.prototype)) return;
++
++        observer = new IntersectionObserver((entries) => {
++          for (const entry of entries) {
++            if (!entry.isIntersecting) continue;
++            const target = entry.target;
++            observer.unobserve(target);
++            if (revealed.has(target) || !preference.matches) continue;
++            revealed.add(target);
++
++            // Only stagger cards arriving together, keeping the delay bounded.
++            const cardIndex = target.matches('.card')
++              ? [...target.parentElement.children].indexOf(target) : 0;
++            const animation = target.animate([
++              { opacity: 0, translate: '0 18px' },
++              { opacity: 1, translate: '0 0' }
++            ], {
++              duration: 520,
++              delay: Math.min(cardIndex, 3) * 70,
++              easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
++              fill: 'backwards'
++            });
++            running.add(animation);
++            animation.onfinish = animation.oncancel = () => running.delete(animation);
++          }
++        }, { threshold: 0.12 });
++
++        for (const target of targets) {
++          if (!revealed.has(target)) observer.observe(target);
++        }
++      }
++
++      preference.addEventListener('change', syncMotion);
++      syncMotion();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+index 66c9173..7852e67 100644
+--- a/index.html
++++ b/index.html
+@@ -88,9 +88,29 @@
+       padding: 0 20px;
+     }
+ 
++    .hero {
++      min-height: 60vh;
++      height: auto;
++      padding: 40px 20px;
++    }
++
++    /* Poster lockup: each line is font-sized (see script) to fill the same width */
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: min(80vw, 460px);
++      margin-bottom: 1.5rem;
++      font-weight: 900;
++      text-transform: uppercase;
++      line-height: 0.9;
++    }
++
++    .hero h1 .line {
++      display: block;
++      white-space: nowrap;
++      font-size: 3rem; /* fallback before fitting */
++    }
++
++    .hero h1 .line > span {
++      display: inline-block;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +189,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 id="hero-title">
++      <span class="line"><span>Wake</span></span>
++      <span class="line"><span>Up Your</span></span>
++      <span class="line"><span>Senses</span></span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +231,28 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Size each heading line so its text exactly fills the heading's width.
++    (function () {
++      var title = document.getElementById('hero-title');
++      var lines = title.querySelectorAll('.line');
++
++      function fit() {
++        var width = title.clientWidth;
++        lines.forEach(function (line) {
++          var text = line.firstElementChild;
++          line.style.fontSize = '100px';
++          var natural = text.getBoundingClientRect().width;
++          line.style.fontSize = (100 * width / natural) + 'px';
++        });
++      }
++
++      fit();
++      window.addEventListener('resize', fit);
++      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

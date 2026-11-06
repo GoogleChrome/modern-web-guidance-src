@@ -1,0 +1,265 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,171 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Indices and counts are supplied automatically, with native CSS where available. */
++    .spectrum-card, .fan-card, .circle-orb {
++      --position: calc(var(--item-index) / max(1, var(--item-count) - 1));
++      --hue: calc(30 + var(--position) * 280);
++    }
++
++    @supports (order: sibling-index()) {
++      .spectrum-card, .fan-card, .circle-orb {
++        --item-index: calc(sibling-index() - 1);
++        --item-count: sibling-count();
++      }
++    }
++
++    .spectrum-card {
++      background: hsl(var(--hue) 65% 91%);
++      border: 1px solid hsl(var(--hue) 40% 80%);
++      padding: 28px 24px;
++    }
++
++    .collections {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
++      gap: 32px;
++      margin-top: 64px;
++    }
++
++    .collection {
++      min-width: 0;
++      padding: 32px 20px 12px;
++      border: 1px solid #e6ddd5;
++      border-radius: 20px;
++      background: #f5f0e9;
++      text-align: center;
++      overflow: hidden;
++    }
++
++    .eyebrow {
++      margin-bottom: 8px;
++      color: #806351;
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.18em;
++      text-transform: uppercase;
++    }
++
++    .collection h2 { font-size: 1.65rem; }
++    .collection > p:not(.eyebrow) { color: #806b60; font-size: 0.9rem; }
++
++    .fan-container {
++      position: relative;
++      height: 330px;
++      margin-top: 18px;
++      isolation: isolate;
++      container-type: inline-size;
++    }
++
++    .fan-card {
++      --spread: 64deg;
++      --angle: calc((var(--item-index) - (var(--item-count) - 1) / 2) * var(--spread) / max(1, var(--item-count) - 1));
++      position: absolute;
++      top: 42px;
++      left: 50%;
++      width: min(162px, 52%);
++      height: 216px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: space-between;
++      padding: 22px 12px;
++      border: 1px solid rgb(255 255 255 / 45%);
++      border-radius: 13px;
++      background: hsl(calc(23 + var(--position) * 45) 28% calc(29% + var(--position) * 25%));
++      color: #fff9e9;
++      box-shadow: 0 8px 20px #3e27232b;
++      transform-origin: 50% 135%;
++      transform: translateX(-50%) rotate(var(--angle));
++      transition: transform 250ms, box-shadow 250ms;
++    }
++
++    @container (max-width: 400px) {
++      .fan-card {
++        --spread: 32deg;
++        width: min(140px, 40%);
++        height: 190px;
++        transform-origin: 50% 110%;
++      }
++    }
++
++    .fan-card:hover {
++      z-index: 1;
++      transform: translateX(-50%) rotate(var(--angle)) translateY(-16px);
++      box-shadow: 0 14px 24px #3e27233d;
++    }
++
++    .fan-card small { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; }
++    .fan-card strong { font-family: Georgia, serif; font-size: 1.35rem; }
++    .fan-card .card-mark { font-size: 2.5rem; line-height: 1; }
++    .fan-card span:last-child { font-size: 0.65rem; letter-spacing: 0.08em; }
++
++    .circle-container {
++      position: relative;
++      width: min(100%, 360px);
++      aspect-ratio: 1;
++      margin: 8px auto 0;
++      isolation: isolate;
++    }
++
++    .circle-container::before {
++      content: "";
++      position: absolute;
++      inset: 16%;
++      border: 1px dashed #cbbdab;
++      border-radius: 50%;
++      z-index: -1;
++    }
++
++    .circle-container::after {
++      content: "SOURCED WITH CARE";
++      position: absolute;
++      inset: 36%;
++      display: grid;
++      place-items: center;
++      color: #8b7661;
++      font-size: 0.62rem;
++      letter-spacing: 0.13em;
++      line-height: 1.8;
++    }
++
++    .circle-orb {
++      --orbit-angle: calc(-90deg + var(--item-index) * 360deg / var(--item-count));
++      position: absolute;
++      left: calc(50% + cos(var(--orbit-angle)) * 34%);
++      top: calc(50% + sin(var(--orbit-angle)) * 34%);
++      transform: translate(-50%, -50%);
++      width: min(90px, calc(180% / var(--item-count)));
++      aspect-ratio: 1;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      border: 1px solid hsl(var(--hue) 20% 72%);
++      border-radius: 50%;
++      background: hsl(var(--hue) 28% 85%);
++      box-shadow: 0 4px 10px #3e272310;
++      line-height: 1.4;
++    }
++
++    .circle-orb strong { font-size: clamp(0.58rem, 2vw, 0.75rem); }
++    .circle-orb small { font-size: 0.55rem; color: #675447; }
++    .circle-orb span { font-size: 1.25rem; margin-bottom: 3px; }
++
++    @media (max-width: 600px) {
++      nav { flex-direction: column; gap: 12px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      nav a { font-size: 0.8rem; }
++      .hero h1 { font-size: 2.35rem; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .fan-card { transition: none; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,25 +340,52 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <div class="collections">
++      <section class="collection" aria-labelledby="loyalty-heading">
++        <p class="eyebrow">A little more with every pour</p>
++        <h2 id="loyalty-heading">Your daily ritual, rewarded.</h2>
++        <p>Find your place in the Daily Grind family.</p>
++        <div class="fan-container" role="list" aria-label="Loyalty membership cards">
++          <article class="fan-card" role="listitem"><small>The Daily Grind</small><span class="card-mark" aria-hidden="true">✦</span><strong>First Sip</strong><span>LOYALTY · 01</span></article>
++          <article class="fan-card" role="listitem"><small>The Daily Grind</small><span class="card-mark" aria-hidden="true">✦</span><strong>Regular</strong><span>LOYALTY · 02</span></article>
++          <article class="fan-card" role="listitem"><small>The Daily Grind</small><span class="card-mark" aria-hidden="true">✦</span><strong>House Blend</strong><span>LOYALTY · 03</span></article>
++          <article class="fan-card" role="listitem"><small>The Daily Grind</small><span class="card-mark" aria-hidden="true">✦</span><strong>Gold Roast</strong><span>LOYALTY · 04</span></article>
++          <article class="fan-card" role="listitem"><small>The Daily Grind</small><span class="card-mark" aria-hidden="true">✦</span><strong>Reserve</strong><span>LOYALTY · 05</span></article>
++        </div>
++      </section>
++      <section class="collection" aria-labelledby="origins-heading">
++        <p class="eyebrow">Rooted in good places</p>
++        <h2 id="origins-heading">A world in every cup.</h2>
++        <p>Distinct origins. One shared love of coffee.</p>
++        <div class="circle-container" role="list" aria-label="Coffee origins">
++          <div class="circle-orb" role="listitem"><span aria-hidden="true">✺</span><strong>Ethiopia</strong><small>Floral & citrus</small></div>
++          <div class="circle-orb" role="listitem"><span aria-hidden="true">✺</span><strong>Colombia</strong><small>Caramel & cocoa</small></div>
++          <div class="circle-orb" role="listitem"><span aria-hidden="true">✺</span><strong>Brazil</strong><small>Nutty & smooth</small></div>
++          <div class="circle-orb" role="listitem"><span aria-hidden="true">✺</span><strong>Guatemala</strong><small>Spice & chocolate</small></div>
++          <div class="circle-orb" role="listitem"><span aria-hidden="true">✺</span><strong>Kenya</strong><small>Berry & bright</small></div>
++          <div class="circle-orb" role="listitem"><span aria-hidden="true">✺</span><strong>Sumatra</strong><small>Earthy & rich</small></div>
++        </div>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +396,33 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep older browsers and live DOM edits in sync with the CSS formulas.
++    // Each group is counted independently; no item-specific angles or hues.
++    function updateCollections() {
++      document.querySelectorAll('.card:not(.spectrum-card)').forEach(card => {
++        card.classList.add('spectrum-card');
++      });
++      for (const selector of ['.spectrum-card', '.fan-card', '.circle-orb']) {
++        const parents = new Set([...document.querySelectorAll(selector)].map(item => item.parentElement));
++        parents.forEach(parent => {
++          const items = [...parent.children].filter(item => item.matches(selector));
++          items.forEach((item, index) => {
++            item.style.setProperty('--item-index', index);
++            item.style.setProperty('--item-count', items.length);
++          });
++        });
++      }
++    }
++    updateCollections();
++    new MutationObserver(updateCollections).observe(document.querySelector('main'), {
++      childList: true,
++      subtree: true,
++      attributes: true,
++      attributeFilter: ['class']
++    });
++  </script>
+ </body>
+ 
+ </html>

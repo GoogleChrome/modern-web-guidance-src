@@ -1,0 +1,21 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Demo</title>
++  <script type="module" src="./scripts/core-web-vitals.js"></script>
+   <style>
+     :root {
+       --primary: #2563eb;
+       --bg: #f8fafc;
+@@ -302,5 +303,5 @@
+ 
+   </script>
+ </body>
+ 
+-</html>
+\ No newline at end of file
++</html>

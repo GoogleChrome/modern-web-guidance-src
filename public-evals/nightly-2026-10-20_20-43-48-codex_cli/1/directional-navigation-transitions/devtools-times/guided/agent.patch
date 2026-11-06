@@ -1,0 +1,192 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..06f2af0
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,144 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++
++<top-stories-slider
++    class="block bg-white border-b border-gray-300"
++    role="region"
++    aria-roledescription="carousel"
++    aria-label="Top Stories"
++>
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
++        <div class="story-viewport flex-1 min-w-0" aria-live="polite" aria-atomic="true">
++            {articles.map((article, index) => (
++                <div
++                    class:list={['story-slide', { 'is-active': index === 0 }]}
++                    role="group"
++                    aria-roledescription="slide"
++                    aria-label={`${index + 1} of ${articles.length}`}
++                    aria-hidden={index !== 0}
++                    inert={index !== 0}
++                >
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                    </a>
++                    <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                </div>
++            ))}
++        </div>
++        <div class="flex items-center gap-3 shrink-0" data-controls hidden>
++            <button type="button" data-direction="previous" class="story-button">Previous</button>
++            <span class="text-xs text-gray-500 tabular-nums" data-position aria-hidden="true">1 / {articles.length}</span>
++            <button type="button" data-direction="next" class="story-button">Next</button>
++        </div>
++    </div>
++</top-stories-slider>
++
++<style>
++    .story-viewport {
++        display: grid;
++        overflow: hidden;
++        /* Leave room for the story link's keyboard focus outline. */
++        padding: 4px;
++        margin: -4px;
++    }
++
++    .story-slide {
++        grid-area: 1 / 1;
++        min-width: 0;
++        visibility: hidden;
++    }
++
++    .story-slide.is-active {
++        visibility: visible;
++    }
++
++    [data-controls][hidden] {
++        display: none;
++    }
++
++    .story-button {
++        cursor: pointer;
++        border: 1px solid var(--color-gray-300);
++        border-radius: 4px;
++        padding: 6px 12px;
++        font-size: 0.875rem;
++        font-weight: 600;
++    }
++
++    .story-button:hover {
++        background: var(--color-gray-100);
++    }
++
++    .story-button:focus-visible {
++        outline: 2px solid var(--color-gray-900);
++        outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++        [data-travel="next"] .story-slide.is-active {
++            animation: story-from-right 300ms ease-out;
++        }
++
++        [data-travel="previous"] .story-slide.is-active {
++            animation: story-from-left 300ms ease-out;
++        }
++    }
++
++    @keyframes story-from-right {
++        from { transform: translateX(100%); }
++        to { transform: translateX(0); }
++    }
++
++    @keyframes story-from-left {
++        from { transform: translateX(-100%); }
++        to { transform: translateX(0); }
++    }
++</style>
++
++<script>
++    class TopStoriesSlider extends HTMLElement {
++        private initialized = false;
++
++        connectedCallback() {
++            if (this.initialized) return;
++            this.initialized = true;
++
++            const slides = Array.from(this.querySelectorAll<HTMLElement>('.story-slide'));
++            const controls = this.querySelector<HTMLElement>('[data-controls]');
++            const position = this.querySelector<HTMLElement>('[data-position]');
++            if (slides.length < 2 || !controls || !position) return;
++
++            let current = 0;
++            controls.hidden = false;
++
++            controls.querySelectorAll<HTMLButtonElement>('button[data-direction]').forEach(button => {
++                button.addEventListener('click', () => {
++                    const direction = button.dataset.direction;
++                    const next = (current + (direction === 'next' ? 1 : -1) + slides.length) % slides.length;
++
++                    slides[current].classList.remove('is-active');
++                    slides[current].setAttribute('aria-hidden', 'true');
++                    slides[current].inert = true;
++
++                    this.dataset.travel = direction;
++                    slides[next].classList.add('is-active');
++                    slides[next].setAttribute('aria-hidden', 'false');
++                    slides[next].inert = false;
++                    current = next;
++                    position.textContent = `${current + 1} / ${slides.length}`;
++                });
++            });
++        }
++    }
++
++    if (!customElements.get('top-stories-slider')) {
++        customElements.define('top-stories-slider', TopStoriesSlider);
++    }
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f4052e2 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -38,21 +39,7 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+@@ -81,4 +68,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

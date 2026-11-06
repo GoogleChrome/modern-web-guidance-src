@@ -1,0 +1,309 @@
+diff --git a/src/components/PasskeyManager.tsx b/src/components/PasskeyManager.tsx
+new file mode 100644
+index 0000000..574b0fb
+--- /dev/null
++++ b/src/components/PasskeyManager.tsx
+@@ -0,0 +1,199 @@
++import React, { useEffect, useState } from 'react';
++import type { Passkey } from '../utils/passkeys';
++
++const api = `${import.meta.env.BASE_URL}api/passkeys`;
++
++const toBase64Url = (buffer: ArrayBuffer) =>
++  btoa(String.fromCharCode(...new Uint8Array(buffer)))
++    .replace(/\+/g, '-')
++    .replace(/\//g, '_')
++    .replace(/=+$/, '');
++
++const formatDate = (iso: string) =>
++  new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
++
++export default function PasskeyManager() {
++  const [passkeys, setPasskeys] = useState<Passkey[] | null>(null);
++  const [error, setError] = useState<string | null>(null);
++  const [busy, setBusy] = useState(false);
++  const [editingId, setEditingId] = useState<string | null>(null);
++  const [editName, setEditName] = useState('');
++
++  useEffect(() => {
++    fetch(api)
++      .then((r) => r.json())
++      .then((data) => setPasskeys(data.passkeys))
++      .catch(() => setError('Could not load your passkeys.'));
++  }, []);
++
++  const request = async (url: string, init: RequestInit) => {
++    const response = await fetch(url, {
++      headers: { 'Content-Type': 'application/json' },
++      ...init,
++    });
++    const data = await response.json();
++    if (!response.ok) throw new Error(data.error || 'Request failed');
++    return data;
++  };
++
++  const addPasskey = async () => {
++    setError(null);
++    if (!window.PublicKeyCredential) {
++      setError('This browser does not support passkeys.');
++      return;
++    }
++    setBusy(true);
++    try {
++      const userId = crypto.getRandomValues(new Uint8Array(16));
++      const credential = (await navigator.credentials.create({
++        publicKey: {
++          challenge: crypto.getRandomValues(new Uint8Array(32)),
++          rp: { name: 'The DevTools Times', id: window.location.hostname },
++          user: { id: userId, name: 'reader', displayName: 'The DevTools Times reader' },
++          pubKeyCredParams: [
++            { type: 'public-key', alg: -7 },
++            { type: 'public-key', alg: -257 },
++          ],
++          authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
++          excludeCredentials: (passkeys ?? []).map((p) => ({
++            type: 'public-key' as const,
++            id: Uint8Array.from(atob(p.id.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)),
++          })),
++        },
++      })) as PublicKeyCredential | null;
++      if (!credential) return;
++      const response = credential.response as AuthenticatorAttestationResponse;
++      const data = await request(api, {
++        method: 'POST',
++        body: JSON.stringify({
++          id: toBase64Url(credential.rawId),
++          name: `Passkey ${(passkeys?.length ?? 0) + 1}`,
++          transports: response.getTransports?.() ?? [],
++        }),
++      });
++      setPasskeys((list) => [...(list ?? []), data.passkey]);
++    } catch (err) {
++      // The user dismissing the browser prompt is not an error worth showing.
++      if (!(err instanceof DOMException && err.name === 'NotAllowedError')) {
++        setError(err instanceof Error ? err.message : 'Could not create passkey.');
++      }
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  const saveName = async (id: string) => {
++    setError(null);
++    try {
++      const data = await request(`${api}/${id}`, { method: 'PATCH', body: JSON.stringify({ name: editName }) });
++      setPasskeys((list) => list!.map((p) => (p.id === id ? data.passkey : p)));
++      setEditingId(null);
++    } catch (err) {
++      setError(err instanceof Error ? err.message : 'Could not rename passkey.');
++    }
++  };
++
++  const remove = async (passkey: Passkey) => {
++    if (!window.confirm(`Remove "${passkey.name}"? You won't be able to use it to sign in anymore.`)) return;
++    setError(null);
++    try {
++      await request(`${api}/${passkey.id}`, { method: 'DELETE' });
++      setPasskeys((list) => list!.filter((p) => p.id !== passkey.id));
++    } catch (err) {
++      setError(err instanceof Error ? err.message : 'Could not remove passkey.');
++    }
++  };
++
++  return (
++    <div className="max-w-2xl mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <div className="flex items-start justify-between gap-4 mb-2">
++        <h1 className="text-2xl font-bold text-gray-800">Passkeys</h1>
++        <button
++          type="button"
++          onClick={addPasskey}
++          disabled={busy}
++          className={`py-2 px-4 rounded-md text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 whitespace-nowrap ${
++            busy ? 'opacity-75 cursor-not-allowed' : ''
++          }`}
++        >
++          {busy ? 'Waiting…' : 'Add a passkey'}
++        </button>
++      </div>
++      <p className="text-sm text-gray-600 mb-6">
++        Passkeys let you sign in with your fingerprint, face, or screen lock instead of a password.
++      </p>
++
++      {error && (
++        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++          {error}
++        </div>
++      )}
++
++      {passkeys === null ? (
++        <p className="text-sm text-gray-500">Loading…</p>
++      ) : passkeys.length === 0 ? (
++        <p className="text-sm text-gray-500">You haven't registered any passkeys yet.</p>
++      ) : (
++        <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
++          {passkeys.map((p) => (
++            <li key={p.id} className="p-4 flex items-center justify-between gap-4">
++              <div className="min-w-0 flex-1">
++                {editingId === p.id ? (
++                  <form
++                    onSubmit={(e) => {
++                      e.preventDefault();
++                      saveName(p.id);
++                    }}
++                    className="flex gap-2"
++                  >
++                    <input
++                      aria-label="Passkey name"
++                      autoFocus
++                      value={editName}
++                      maxLength={60}
++                      onChange={(e) => setEditName(e.target.value)}
++                      className="flex-1 min-w-0 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
++                    />
++                    <button type="submit" className="text-sm font-medium text-gray-900 hover:underline">
++                      Save
++                    </button>
++                    <button
++                      type="button"
++                      onClick={() => setEditingId(null)}
++                      className="text-sm text-gray-600 hover:underline"
++                    >
++                      Cancel
++                    </button>
++                  </form>
++                ) : (
++                  <p className="font-medium text-gray-900 truncate">{p.name}</p>
++                )}
++                <p className="text-xs text-gray-500 mt-1">
++                  Added {formatDate(p.createdAt)} ·{' '}
++                  {p.lastUsedAt ? `Last used ${formatDate(p.lastUsedAt)}` : 'Never used'}
++                </p>
++              </div>
++              {editingId !== p.id && (
++                <div className="flex gap-4 text-sm">
++                  <button
++                    type="button"
++                    onClick={() => {
++                      setEditingId(p.id);
++                      setEditName(p.name);
++                    }}
++                    className="text-gray-700 hover:underline"
++                  >
++                    Rename
++                  </button>
++                  <button type="button" onClick={() => remove(p)} className="text-red-600 hover:underline">
++                    Remove
++                  </button>
++                </div>
++              )}
++            </li>
++          ))}
++        </ul>
++      )}
++    </div>
++  );
++}
+diff --git a/src/pages/account/passkeys.astro b/src/pages/account/passkeys.astro
+new file mode 100644
+index 0000000..f98a851
+--- /dev/null
++++ b/src/pages/account/passkeys.astro
+@@ -0,0 +1,10 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import PasskeyManager from '../../components/PasskeyManager';
++---
++
++<Layout title="Passkeys | The DevTools Times">
++  <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <PasskeyManager client:load />
++  </div>
++</Layout>
+diff --git a/src/pages/api/passkeys/[id].ts b/src/pages/api/passkeys/[id].ts
+new file mode 100644
+index 0000000..7cdb7c9
+--- /dev/null
++++ b/src/pages/api/passkeys/[id].ts
+@@ -0,0 +1,25 @@
++import type { APIRoute } from 'astro';
++import { json, MAX_NAME_LENGTH, type Passkey } from '../../../utils/passkeys';
++
++export const PATCH: APIRoute = async ({ params, request, session }) => {
++  const { name } = await request.json();
++  const trimmed = typeof name === 'string' ? name.trim() : '';
++  if (!trimmed || trimmed.length > MAX_NAME_LENGTH) {
++    return json({ error: `Name must be 1-${MAX_NAME_LENGTH} characters` }, 400);
++  }
++  const passkeys: Passkey[] = (await session?.get('passkeys')) || [];
++  const passkey = passkeys.find((p) => p.id === params.id);
++  if (!passkey) return json({ error: 'Passkey not found' }, 404);
++  passkey.name = trimmed;
++  await session?.set('passkeys', passkeys);
++  return json({ passkey });
++};
++
++export const DELETE: APIRoute = async ({ params, session }) => {
++  const passkeys: Passkey[] = (await session?.get('passkeys')) || [];
++  if (!passkeys.some((p) => p.id === params.id)) {
++    return json({ error: 'Passkey not found' }, 404);
++  }
++  await session?.set('passkeys', passkeys.filter((p) => p.id !== params.id));
++  return json({ ok: true });
++};
+diff --git a/src/pages/api/passkeys/index.ts b/src/pages/api/passkeys/index.ts
+new file mode 100644
+index 0000000..6bb0788
+--- /dev/null
++++ b/src/pages/api/passkeys/index.ts
+@@ -0,0 +1,29 @@
++import type { APIRoute } from 'astro';
++import { json, MAX_NAME_LENGTH, type Passkey } from '../../../utils/passkeys';
++
++export const GET: APIRoute = async ({ session }) => {
++  const passkeys: Passkey[] = (await session?.get('passkeys')) || [];
++  return json({ passkeys });
++};
++
++// Registers a passkey the browser has just created (see PasskeyManager).
++export const POST: APIRoute = async ({ request, session }) => {
++  const { id, name, transports } = await request.json();
++  if (typeof id !== 'string' || !id) {
++    return json({ error: 'Credential ID is required' }, 400);
++  }
++  const passkeys: Passkey[] = (await session?.get('passkeys')) || [];
++  if (passkeys.some((p) => p.id === id)) {
++    return json({ error: 'This passkey is already registered' }, 409);
++  }
++  const passkey: Passkey = {
++    id,
++    name: (typeof name === 'string' && name.trim().slice(0, MAX_NAME_LENGTH)) || 'Passkey',
++    createdAt: new Date().toISOString(),
++    lastUsedAt: null,
++    transports: Array.isArray(transports) ? transports.filter((t) => typeof t === 'string') : [],
++  };
++  passkeys.push(passkey);
++  await session?.set('passkeys', passkeys);
++  return json({ passkey }, 201);
++};
+diff --git a/src/utils/passkeys.ts b/src/utils/passkeys.ts
+new file mode 100644
+index 0000000..4810342
+--- /dev/null
++++ b/src/utils/passkeys.ts
+@@ -0,0 +1,16 @@
++export interface Passkey {
++  id: string; // base64url credential ID
++  name: string;
++  createdAt: string;
++  lastUsedAt: string | null;
++  transports: string[];
++}
++
++export const MAX_NAME_LENGTH = 60;
++
++export function json(body: unknown, status = 200) {
++  return new Response(JSON.stringify(body), {
++    status,
++    headers: { 'Content-Type': 'application/json' },
++  });
++}

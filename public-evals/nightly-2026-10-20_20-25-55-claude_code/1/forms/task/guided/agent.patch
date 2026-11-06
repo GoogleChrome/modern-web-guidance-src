@@ -1,0 +1,219 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+--- a/app.js
++++ b/app.js
+@@ -0,0 +1,214 @@
++(() => {
++  'use strict';
++
++  const root = document.documentElement;
++  root.classList.remove('no-js');
++  root.classList.add('js');
++
++  const form = document.getElementById('reg-form');
++  if (!form) return;
++
++  const steps = [...form.querySelectorAll('.step')];
++  const progress = document.getElementById('progress');
++  const progressItems = [...progress.children];
++  const backBtn = document.getElementById('btn-back');
++  const nextBtn = document.getElementById('btn-next');
++  const submitBtn = document.getElementById('btn-submit');
++  const summary = document.getElementById('error-summary');
++  const summaryTitle = document.getElementById('error-summary-title');
++  const summaryList = document.getElementById('error-summary-list');
++  const status = document.getElementById('step-status');
++  const review = document.getElementById('review');
++  const toggle = document.getElementById('toggle-password');
++  const password = document.getElementById('password');
++  const last = steps.length - 1;
++  let current = 0;
++
++  // Own the validation UI; without JS the native browser validation still works.
++  form.noValidate = true;
++
++  const fields = (scope) =>
++    [...scope.querySelectorAll('input, select, textarea')].filter(
++      (el) => el.name && el.type !== 'hidden' && !el.closest('.hp')
++    );
++
++  const errorEl = (el) => document.getElementById(`${el.name === 'drink' ? 'drink' : el.id}-error`);
++
++  const messageFor = (el) => {
++    const v = el.validity;
++    const label = el.dataset.label || 'This field';
++    if (v.valueMissing) {
++      if (el.type === 'checkbox') return `${label} is required to continue.`;
++      if (el.type === 'radio') return 'Please choose one option.';
++      return `${label} is required.`;
++    }
++    if (v.typeMismatch) return 'Enter a valid email address, like name@example.com.';
++    if (v.tooShort) return `${label} must be at least ${el.minLength} characters (you entered ${el.value.length}).`;
++    if (v.patternMismatch) return `${label} doesn't look right. Check the format and try again.`;
++    if (v.tooLong) return `${label} is too long.`;
++    return `${label} is not valid.`;
++  };
++
++  // Show or clear one field's error; radios share one error and invalid state.
++  const validateField = (el) => {
++    const group = el.type === 'radio' ? fields(form).filter((r) => r.name === el.name) : [el];
++    const msg = errorEl(el);
++    const ok = el.type === 'radio' ? group.some((r) => r.checked) || !el.required : el.checkValidity();
++    group.forEach((g) => (ok ? g.removeAttribute('aria-invalid') : g.setAttribute('aria-invalid', 'true')));
++    msg.textContent = ok ? '' : messageFor(el);
++    msg.classList.toggle('is-visible', !ok);
++    return ok;
++  };
++
++  const validateStep = (index) => {
++    const bad = [];
++    const seen = new Set();
++    fields(steps[index]).forEach((el) => {
++      if (el.type === 'radio') {
++        if (seen.has(el.name)) return;
++        seen.add(el.name);
++      }
++      if (!validateField(el)) bad.push(el);
++    });
++    summaryList.replaceChildren();
++    if (bad.length) {
++      summaryTitle.textContent = `Please fix ${bad.length} ${bad.length === 1 ? 'problem' : 'problems'} to continue:`;
++      bad.forEach((el) => {
++        const li = document.createElement('li');
++        const a = document.createElement('a');
++        a.href = `#${el.id}`;
++        a.textContent = errorEl(el).textContent;
++        a.addEventListener('click', (e) => {
++          e.preventDefault();
++          el.focus();
++        });
++        li.append(a);
++        summaryList.append(li);
++      });
++      summary.hidden = false;
++      bad[0].focus();
++    } else {
++      summary.hidden = true;
++    }
++    return bad.length === 0;
++  };
++
++  const text = (el) => {
++    if (el.type === 'password') return null;
++    if (el.tagName === 'SELECT') return el.selectedOptions[0].textContent;
++    return el.value.trim();
++  };
++
++  const buildReview = () => {
++    const get = (id) => document.getElementById(id);
++    const checked = (name) =>
++      [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((c) => c.nextElementSibling.textContent);
++    const rows = [
++      ['Name', text(get('name'))],
++      ['Email', text(get('email'))],
++      ['Password', 'Hidden for your security'],
++      ['Mobile number', text(get('phone')) || 'Not provided'],
++      ['ZIP or postal code', text(get('postal')) || 'Not provided'],
++      ['Favorite location', text(get('store'))],
++      ['Usual drink', checked('drink')[0] || 'Not chosen'],
++      ['Communications', checked('comms').join(', ') || 'None'],
++    ];
++    review.replaceChildren();
++    rows.forEach(([k, v]) => {
++      const dt = document.createElement('dt');
++      const dd = document.createElement('dd');
++      dt.textContent = k; // textContent only: user input never reaches innerHTML
++      dd.textContent = v;
++      review.append(dt, dd);
++    });
++  };
++
++  const show = (index, moveFocus) => {
++    current = index;
++    steps.forEach((s, i) => {
++      s.hidden = i !== index;
++      s.disabled = false;
++    });
++    progressItems.forEach((li, i) => {
++      li.classList.toggle('is-done', i < index);
++      if (i === index) li.setAttribute('aria-current', 'step');
++      else li.removeAttribute('aria-current');
++    });
++    backBtn.hidden = index === 0;
++    nextBtn.hidden = index === last;
++    submitBtn.hidden = index !== last;
++    summary.hidden = true;
++    if (index === last) buildReview();
++    const legend = steps[index].querySelector('legend');
++    status.textContent = legend.textContent;
++    if (moveFocus) {
++      legend.focus();
++      legend.scrollIntoView({ block: 'start' });
++    }
++  };
++
++  nextBtn.addEventListener('click', () => {
++    if (validateStep(current)) show(current + 1, true);
++  });
++  backBtn.addEventListener('click', () => show(current - 1, true));
++
++  // Enter inside a field advances the wizard instead of submitting early.
++  form.addEventListener('keydown', (e) => {
++    if (e.key === 'Enter' && !e.isComposing && e.target.matches('input') && current !== last) {
++      e.preventDefault();
++      nextBtn.click();
++    }
++  });
++
++  form.addEventListener('submit', (e) => {
++    // Re-validate every step; jump to the first step with a problem.
++    for (let i = 0; i <= last; i++) {
++      show(i, false);
++      if (!validateStep(i)) {
++        e.preventDefault();
++        status.textContent = steps[i].querySelector('legend').textContent;
++        return;
++      }
++    }
++    show(last, false);
++    // Honeypot filled: pretend success without sending anything.
++    if (form.elements.website.value) {
++      e.preventDefault();
++      form.replaceChildren(Object.assign(document.createElement('p'), { textContent: 'Thanks for joining!' }));
++      return;
++    }
++    submitBtn.disabled = true; // prevent double posts
++    submitBtn.textContent = 'Joining…';
++  });
++
++  // Validate on blur (after interaction); clear errors as soon as the user corrects them.
++  form.addEventListener('focusout', (e) => {
++    const el = e.target;
++    if (!el.matches?.('input, select') || el.closest('.hp') || el.type === 'password' && !el.value) return;
++    if (el.dataset.touched || el.value) {
++      el.dataset.touched = '1';
++      validateField(el);
++    }
++  });
++  form.addEventListener('input', (e) => {
++    const el = e.target;
++    if (el.getAttribute?.('aria-invalid') === 'true') validateField(el);
++  });
++  form.addEventListener('change', (e) => {
++    const el = e.target;
++    if (el.getAttribute?.('aria-invalid') === 'true') validateField(el);
++  });
++
++  // Password visibility toggle
++  toggle.hidden = false;
++  toggle.addEventListener('click', () => {
++    const showing = password.type === 'text';
++    password.type = showing ? 'password' : 'text';
++    toggle.textContent = showing ? 'Show' : 'Hide';
++    toggle.setAttribute('aria-pressed', String(!showing));
++  });
++
++  progress.hidden = false;
++  show(0, false);
++  status.textContent = '';
++})();

@@ -1,0 +1,387 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,88 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Auth Section */
++    .auth-section {
++      max-width: 480px;
++      margin: 0 auto 40px auto;
++    }
++
++    .auth-card {
++      padding: 30px;
++    }
++
++    .auth-form {
++      margin-top: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 15px;
++      text-align: left;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 5px;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .form-group input {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      outline: none;
++      transition: border-color 0.3s;
++    }
++
++    .form-group input:focus {
++      border-color: var(--accent);
++    }
++
++    .form-actions {
++      text-align: center;
++    }
++
++    .auth-btn {
++      width: 100%;
++      cursor: pointer;
++      border: none;
++      font-size: 1rem;
++    }
++
++    .auth-status:empty {
++      display: none;
++    }
++
++    .auth-status.status-success,
++    .auth-status.status-error {
++      display: block;
++      margin-top: 10px;
++      padding: 10px;
++      border-radius: 5px;
++      font-weight: 500;
++      text-align: center;
++    }
++
++    .auth-status.status-success {
++      background-color: #e8f5e9;
++      color: #2e7d32;
++      border: 1px solid #c8e6c9;
++    }
++
++    .auth-status.status-error {
++      background-color: #ffebee;
++      color: #c62828;
++      border: 1px solid #ffcdd2;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +254,45 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="auth-section">
++      <div class="card auth-card">
++        <h3>Sign In</h3>
++        <p>Sign in with your username or passkey.</p>
++        <form id="auth-form" class="auth-form" onsubmit="event.preventDefault();">
++          <div class="form-group">
++            <label for="username-field">Username</label>
++            <input
++              type="text"
++              id="username-field"
++              name="username"
++              data-testid="username-field"
++              autocomplete="username webauthn"
++              placeholder="Username"
++            />
++          </div>
++          <div class="form-actions">
++            <button
++              type="button"
++              id="auth-button"
++              data-testid="auth-button"
++              class="btn auth-btn"
++            >
++              Sign in with passkey
++            </button>
++          </div>
++          <div
++            id="auth-status"
++            data-testid="auth-status"
++            class="auth-status"
++            role="status"
++            aria-live="polite"
++          ></div>
++        </form>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +323,248 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function arrayBufferToBase64URL(buffer) {
++      if (!buffer) return null;
++      if (typeof buffer === 'string') return buffer;
++      const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
++      let binary = '';
++      for (let i = 0; i < bytes.byteLength; i++) {
++        binary += String.fromCharCode(bytes[i]);
++      }
++      return btoa(binary)
++        .replace(/\+/g, '-')
++        .replace(/\//g, '_')
++        .replace(/=+$/, '');
++    }
++
++    function serializeCredential(cred) {
++      if (!cred) return null;
++      if (typeof cred.toJSON === 'function') {
++        return cred.toJSON();
++      }
++      const res = cred.response || {};
++      return {
++        id: cred.id,
++        rawId: cred.rawId ? arrayBufferToBase64URL(cred.rawId) : cred.id,
++        type: cred.type || 'public-key',
++        response: {
++          clientDataJSON: res.clientDataJSON ? arrayBufferToBase64URL(res.clientDataJSON) : '',
++          authenticatorData: res.authenticatorData ? arrayBufferToBase64URL(res.authenticatorData) : '',
++          signature: res.signature ? arrayBufferToBase64URL(res.signature) : '',
++          userHandle: res.userHandle ? arrayBufferToBase64URL(res.userHandle) : null,
++        },
++        clientExtensionResults: typeof cred.getClientExtensionResults === 'function'
++          ? cred.getClientExtensionResults()
++          : (cred.clientExtensionResults || {}),
++        ...(cred.authenticatorAttachment ? { authenticatorAttachment: cred.authenticatorAttachment } : {})
++      };
++    }
++
++    function getCredentialRequestOptions() {
++      const challenge = new Uint8Array(32);
++      if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
++        window.crypto.getRandomValues(challenge);
++      } else {
++        for (let i = 0; i < 32; i++) {
++          challenge[i] = Math.floor(Math.random() * 256);
++        }
++      }
++      return {
++        challenge: challenge,
++        userVerification: 'preferred',
++        timeout: 60000,
++      };
++    }
++
++    let conditionalAbortController = null;
++    let isConditionalRunning = false;
++    let isExplicitRunning = false;
++    let isAuthenticated = false;
++
++    async function verifyCredential(credential) {
++      const statusEl = document.querySelector('[data-testid="auth-status"]');
++      const payload = serializeCredential(credential);
++
++      try {
++        const response = await fetch('/api/login/verify', {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          body: JSON.stringify(payload),
++        });
++
++        if (response.ok) {
++          isAuthenticated = true;
++          let message = 'Signed in successfully';
++          try {
++            const text = await response.text();
++            if (text) {
++              try {
++                const data = JSON.parse(text);
++                if (data && typeof data.message === 'string') {
++                  message = data.message;
++                } else if (data && typeof data.status === 'string' && data.status.toLowerCase().includes('success')) {
++                  message = data.status;
++                }
++              } catch (e) {
++                if (text.trim()) {
++                  message = text.trim();
++                }
++              }
++            }
++          } catch (e) {}
++
++          if (statusEl) {
++            statusEl.textContent = message;
++            statusEl.className = 'auth-status status-success';
++            statusEl.setAttribute('data-status', 'success');
++          }
++        } else {
++          let errorMsg = 'Authentication failed';
++          try {
++            const text = await response.text();
++            if (text) {
++              try {
++                const data = JSON.parse(text);
++                if (data && (data.error || data.message)) {
++                  errorMsg = data.error || data.message;
++                }
++              } catch (e) {
++                if (text.trim()) {
++                  errorMsg = text.trim();
++                }
++              }
++            }
++          } catch (e) {}
++
++          if (statusEl) {
++            statusEl.textContent = errorMsg;
++            statusEl.className = 'auth-status status-error';
++            statusEl.setAttribute('data-status', 'error');
++          }
++        }
++      } catch (err) {
++        console.error('Verification error:', err);
++        if (statusEl) {
++          statusEl.textContent = err.message || 'Verification error';
++          statusEl.className = 'auth-status status-error';
++          statusEl.setAttribute('data-status', 'error');
++        }
++      }
++    }
++
++    async function startConditionalAuth() {
++      if (isConditionalRunning || isAuthenticated || isExplicitRunning) return;
++      if (!navigator.credentials || typeof navigator.credentials.get !== 'function') return;
++
++      try {
++        if (window.PublicKeyCredential && typeof PublicKeyCredential.isConditionalMediationAvailable === 'function') {
++          const isAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
++          if (!isAvailable) return;
++        }
++
++        conditionalAbortController = new AbortController();
++        isConditionalRunning = true;
++
++        const credential = await navigator.credentials.get({
++          mediation: 'conditional',
++          signal: conditionalAbortController.signal,
++          publicKey: getCredentialRequestOptions(),
++        });
++
++        if (credential) {
++          await verifyCredential(credential);
++        }
++      } catch (err) {
++        if (err.name !== 'AbortError') {
++          console.warn('Conditional passkey notice:', err);
++        }
++      } finally {
++        isConditionalRunning = false;
++        conditionalAbortController = null;
++      }
++    }
++
++    async function handleExplicitAuth() {
++      if (isExplicitRunning || isAuthenticated) return;
++
++      if (conditionalAbortController) {
++        conditionalAbortController.abort();
++        conditionalAbortController = null;
++        isConditionalRunning = false;
++      }
++
++      if (!navigator.credentials || typeof navigator.credentials.get !== 'function') {
++        const statusEl = document.querySelector('[data-testid="auth-status"]');
++        if (statusEl) {
++          statusEl.textContent = 'Passkeys not supported in this browser';
++          statusEl.className = 'auth-status status-error';
++        }
++        return;
++      }
++
++      isExplicitRunning = true;
++      try {
++        const credential = await navigator.credentials.get({
++          publicKey: getCredentialRequestOptions(),
++        });
++
++        if (credential) {
++          await verifyCredential(credential);
++        }
++      } catch (err) {
++        if (err.name !== 'AbortError') {
++          console.error('Explicit authentication error:', err);
++          const statusEl = document.querySelector('[data-testid="auth-status"]');
++          if (statusEl) {
++            statusEl.textContent = err.message || 'Authentication failed';
++            statusEl.className = 'auth-status status-error';
++          }
++        }
++      } finally {
++        isExplicitRunning = false;
++      }
++    }
++
++    function setupPasskeyAuth() {
++      const usernameInput = document.querySelector('[data-testid="username-field"]');
++      const authButton = document.querySelector('[data-testid="auth-button"]');
++      const authForm = document.getElementById('auth-form');
++
++      if (authButton) {
++        authButton.addEventListener('click', (e) => {
++          e.preventDefault();
++          handleExplicitAuth();
++        });
++      }
++
++      if (authForm) {
++        authForm.addEventListener('submit', (e) => {
++          e.preventDefault();
++          handleExplicitAuth();
++        });
++      }
++
++      if (usernameInput) {
++        usernameInput.addEventListener('focus', () => {
++          if (!isConditionalRunning && !isAuthenticated && !isExplicitRunning) {
++            startConditionalAuth();
++          }
++        });
++      }
++
++      startConditionalAuth();
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', setupPasskeyAuth);
++    } else {
++      setupPasskeyAuth();
++    }
++  </script>
+ </body>
+ 
+ </html>

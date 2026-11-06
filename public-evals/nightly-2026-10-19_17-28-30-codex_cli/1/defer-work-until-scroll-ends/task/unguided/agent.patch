@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,57 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .coffee-beans {
++      margin-top: 40px;
++    }
++
++    .coffee-beans > h2,
++    .coffee-beans > p {
++      text-align: center;
++    }
++
++    #scroller {
++      display: flex;
++      gap: 20px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      margin-top: 20px;
++      padding: 5px 5px 20px;
++      border-radius: 8px;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    #scroller:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .origin-card {
++      flex: 0 0 min(80%, 320px);
++      scroll-snap-align: start;
++      border-top: 4px solid var(--accent);
++      padding: 28px 20px;
++    }
++
++    .origin-card .roast {
++      display: inline-block;
++      margin-bottom: 16px;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 3px 12px;
++      border-radius: 20px;
++      font-size: 0.8rem;
++    }
++
++    #status {
++      min-height: 1.6em;
++      margin-top: 8px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -194,8 +243,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="coffee-beans" aria-labelledby="coffee-origins-heading">
++      <h2 id="coffee-origins-heading">Explore Our Coffee Beans</h2>
++      <p>Five origins. A world of flavor. Scroll to find your favorite.</p>
++      <div id="scroller" tabindex="0" role="region" aria-label="Coffee origins" aria-describedby="status">
++        <article class="card origin-card" data-origin="Ethiopia">
++          <span class="roast">Light roast</span>
++          <h3>Ethiopia</h3>
++          <p>Bright and floral, with notes of blueberry, bergamot, and honey.</p>
++        </article>
++        <article class="card origin-card" data-origin="Colombia">
++          <span class="roast">Medium roast</span>
++          <h3>Colombia</h3>
++          <p>A balanced cup with caramel sweetness, red apple, and a cocoa finish.</p>
++        </article>
++        <article class="card origin-card" data-origin="Brazil">
++          <span class="roast">Medium-dark roast</span>
++          <h3>Brazil</h3>
++          <p>Smooth and full-bodied, with chocolate, toasted nuts, and soft sweetness.</p>
++        </article>
++        <article class="card origin-card" data-origin="Guatemala">
++          <span class="roast">Medium roast</span>
++          <h3>Guatemala</h3>
++          <p>Rich cocoa and orange zest, rounded out by a warm toffee finish.</p>
++        </article>
++        <article class="card origin-card" data-origin="Sumatra">
++          <span class="roast">Dark roast</span>
++          <h3>Sumatra</h3>
++          <p>Deep and earthy, with dark chocolate, cedar, and a hint of spice.</p>
++        </article>
++      </div>
++      <div id="status" role="status" aria-live="polite" aria-atomic="true">Scroll to explore coffee origins.</div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +288,57 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const scroller = document.getElementById('scroller');
++    const status = document.getElementById('status');
++    const origins = [...scroller.querySelectorAll('[data-origin]')];
++    const supportsScrollEnd = 'onscrollend' in scroller;
++    let scrolling = false;
++    let scrollTimer;
++
++    function finishScrolling() {
++      if (!scrolling) return;
++      scrolling = false;
++
++      // Read geometry only once scrolling has settled.
++      const viewport = scroller.getBoundingClientRect();
++      let mostVisible = origins[0];
++      let largestArea = -1;
++
++      for (const origin of origins) {
++        const bounds = origin.getBoundingClientRect();
++        const width = Math.max(0, Math.min(bounds.right, viewport.right) - Math.max(bounds.left, viewport.left));
++        const height = Math.max(0, Math.min(bounds.bottom, viewport.bottom) - Math.max(bounds.top, viewport.top));
++        const visibleArea = width * height;
++
++        if (visibleArea > largestArea) {
++          largestArea = visibleArea;
++          mostVisible = origin;
++        }
++      }
++
++      status.textContent = `Scroll ended. Visible: ${mostVisible.dataset.origin}`;
++    }
++
++    scroller.addEventListener('scroll', () => {
++      // A single DOM write per gesture; no layout reads in this hot path.
++      if (!scrolling) {
++        scrolling = true;
++        status.textContent = 'Scrolling…';
++      }
++
++      if (!supportsScrollEnd) {
++        clearTimeout(scrollTimer);
++        scrollTimer = setTimeout(finishScrolling, 150);
++      }
++    }, { passive: true });
++
++    if (supportsScrollEnd) {
++      scroller.addEventListener('scrollend', finishScrolling);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

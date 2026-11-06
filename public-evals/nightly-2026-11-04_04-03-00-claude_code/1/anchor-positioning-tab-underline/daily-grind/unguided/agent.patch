@@ -1,0 +1,174 @@
+diff --git a/index.html b/index.html
+index 66c9173..6bec297 100644
+--- a/index.html
++++ b/index.html
+@@ -48,7 +48,9 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+@@ -62,10 +64,39 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    /* Sliding active indicator */
++    .nav-indicator {
++      position: absolute;
++      left: 0;
++      bottom: -6px;
++      margin: 0;
++      height: 2px;
++      width: 0;
++      background: var(--accent);
++      border-radius: 2px;
++      opacity: 0;
++      pointer-events: none;
++      transform: translateX(0);
++      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        opacity 0.2s ease;
++    }
++
++    .nav-indicator.no-transition {
++      transition: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .nav-indicator {
++        transition: none;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -159,12 +190,13 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++    <ul class="nav-links">
++      <li><a href="/menu" class="nav-item">Menu</a></li>
++      <li><a href="/locations" class="nav-item">Locations</a></li>
++      <li><a href="/rewards" class="nav-item">Rewards</a></li>
++      <li><a href="/account" class="nav-item">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="nav-indicator" aria-hidden="true"></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +239,99 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var list = document.querySelector('.nav-links');
++      var indicator = list.querySelector('.nav-indicator');
++      var items = Array.prototype.slice.call(list.querySelectorAll('.nav-item'));
++      var STORAGE_KEY = 'nav-active-index';
++      var DURATION = 350;
++      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      var activeIndex = -1;
++
++      function readStored() {
++        try {
++          var v = sessionStorage.getItem(STORAGE_KEY);
++          return v === null ? -1 : parseInt(v, 10);
++        } catch (e) { return -1; }
++      }
++
++      function store(i) {
++        try { sessionStorage.setItem(STORAGE_KEY, String(i)); } catch (e) { }
++      }
++
++      // Position the underline beneath item i (optionally without animating).
++      function moveTo(i, instant) {
++        var link = items[i];
++        if (!link) return;
++        if (instant) indicator.classList.add('no-transition');
++        indicator.style.width = link.offsetWidth + 'px';
++        indicator.style.transform = 'translateX(' + link.offsetLeft + 'px)';
++        indicator.style.opacity = '1';
++        if (instant) {
++          void indicator.offsetWidth; // flush styles before re-enabling transitions
++          indicator.classList.remove('no-transition');
++        }
++      }
++
++      function setActive(i, instant) {
++        items.forEach(function (link, idx) {
++          link.classList.toggle('active', idx === i);
++          if (idx === i) link.setAttribute('aria-current', 'page');
++          else link.removeAttribute('aria-current');
++        });
++        activeIndex = i;
++        moveTo(i, instant);
++      }
++
++      // Determine the current item from the URL, falling back to the last selection.
++      var path = location.pathname.replace(/\/+$/, '');
++      var current = items.findIndex(function (link) {
++        var href = link.getAttribute('href').replace(/\/+$/, '');
++        return path === href || path.indexOf(href + '/') === 0;
++      });
++      var previous = readStored();
++      if (current === -1) current = previous;
++
++      if (current !== -1) {
++        if (previous !== -1 && previous !== current && items[previous]) {
++          // Arrived from another nav item: start there, then slide to the new one.
++          moveTo(previous, true);
++          requestAnimationFrame(function () { setActive(current, false); });
++        } else {
++          setActive(current, true);
++        }
++        store(current);
++      }
++
++      items.forEach(function (link, i) {
++        link.addEventListener('click', function (e) {
++          // Let modified clicks (new tab/window) behave normally.
++          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++          if (i === activeIndex) return;
++
++          e.preventDefault();
++          setActive(i, false);
++          store(i);
++
++          // Navigate after the slide finishes so the transition is visible.
++          var href = link.href;
++          setTimeout(function () { location.href = href; }, reduceMotion ? 0 : DURATION);
++        });
++      });
++
++      // Keep the indicator aligned when layout changes.
++      window.addEventListener('resize', function () {
++        if (activeIndex !== -1) moveTo(activeIndex, true);
++      });
++      if (document.fonts && document.fonts.ready) {
++        document.fonts.ready.then(function () {
++          if (activeIndex !== -1) moveTo(activeIndex, false);
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

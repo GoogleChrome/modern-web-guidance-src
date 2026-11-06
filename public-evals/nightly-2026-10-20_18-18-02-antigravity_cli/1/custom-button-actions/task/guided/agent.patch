@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -130,12 +130,96 @@
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover:not(:disabled) {
+       background: #3e2723;
+     }
+ 
++    /* Interactive Action Target & Controls */
++    .action-section {
++      margin-block-start: 40px;
++      text-align: center;
++      background: white;
++      padding: 30px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .action-section h2 {
++      margin-block-end: 20px;
++      color: var(--primary);
++    }
++
++    .target {
++      inline-size: 160px;
++      block-size: 160px;
++      margin: 25px auto;
++      background: var(--primary);
++      color: white;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-weight: bold;
++      border-radius: 8px;
++      transition: rotate 0.4s ease, scale 0.4s ease, border-radius 0.4s ease, background-color 0.4s ease;
++    }
++
++    .target.is-spun {
++      rotate: 180deg;
++    }
++
++    .target.is-grown {
++      scale: 1.25;
++    }
++
++    .target.is-rounded {
++      border-radius: 50%;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .target {
++        transition: none;
++      }
++    }
++
++    .controls {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-block-start: 20px;
++    }
++
++    .controls button {
++      background: var(--primary);
++      color: white;
++      border: 2px solid transparent;
++      padding: 10px 18px;
++      min-block-size: 40px;
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .controls button:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .controls button[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++      border-color: var(--primary);
++    }
++
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +278,29 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="action-section">
++      <h2>Customize Your Cup</h2>
++      <div id="action-target" class="target">
++        Daily Grind
++      </div>
++      <div class="controls">
++        <button type="button" commandfor="action-target" command="--spin" aria-pressed="false">
++          Spin
++        </button>
++        <button type="button" commandfor="action-target" command="--grow" aria-pressed="false">
++          Grow
++        </button>
++        <button type="button" commandfor="action-target" command="--round" aria-pressed="false">
++          Make Round
++        </button>
++        <button type="button" commandfor="action-target" command="--reset">
++          Reset All
++        </button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +311,81 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Conditionally load the polyfill if the Invoker Commands API is not natively supported
++    const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
++
++    if (!hasNativeSupport) {
++      (async () => {
++        try {
++          await import('https://esm.run/invokers-polyfill');
++        } catch (err) {
++          console.error('Error loading fallback:', err);
++        }
++      })();
++    }
++
++    const commandRegistry = {
++      '--spin': (target, source) => {
++        const isSpun = target.classList.toggle('is-spun');
++        source?.setAttribute('aria-pressed', String(isSpun));
++      },
++      '--grow': (target, source) => {
++        const isGrown = target.classList.toggle('is-grown');
++        source?.setAttribute('aria-pressed', String(isGrown));
++      },
++      '--round': (target, source) => {
++        const isRounded = target.classList.toggle('is-rounded');
++        source?.setAttribute('aria-pressed', String(isRounded));
++      },
++      '--reset': (target) => {
++        target.classList.remove('is-spun', 'is-grown', 'is-rounded');
++        document.querySelectorAll(`button[commandfor="${target.id}"][aria-pressed]`).forEach((btn) => {
++          btn.setAttribute('aria-pressed', 'false');
++        });
++      },
++    };
++
++    // If CommandEvent doesn't exist, provide a lightweight manual fallback in case the CDN polyfill is unreachable
++    if (!hasNativeSupport && !globalThis.CommandEvent) {
++      globalThis.CommandEvent = class CommandEvent extends Event {
++        constructor(type, { source, command, ...options } = {}) {
++          super(type, options);
++          this.source = source;
++          this.command = command;
++        }
++      };
++
++      document.addEventListener('click', (event) => {
++        if ('commandForElement' in HTMLButtonElement.prototype) return;
++        const button = event.composedPath().find((el) => el.matches?.('button[commandfor]'));
++        if (!button) return;
++
++        const target = document.getElementById(button.getAttribute('commandfor'));
++        const command = button.getAttribute('command');
++
++        if (target && command) {
++          target.dispatchEvent(new CommandEvent('command', {
++            command,
++            source: button,
++          }));
++        }
++      });
++    }
++
++    // Listen for the 'command' event directly on the target element (the native 'command' event does not bubble)
++    document.getElementById('action-target').addEventListener('command', (event) => {
++      const command = event.command;
++      const target = event.target;
++      const source = event.source;
++      const action = commandRegistry[command];
++
++      if (action) {
++        action(target, source);
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

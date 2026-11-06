@@ -1,0 +1,1300 @@
+diff --git a/.github/workflows/security.yml b/.github/workflows/security.yml
+new file mode 100644
+index 0000000..1862617
+--- /dev/null
++++ b/.github/workflows/security.yml
+@@ -0,0 +1,25 @@
++name: Security checks
++on:
++  pull_request:
++  push:
++    branches: [main]
++  schedule:
++    - cron: '0 8 * * 1'
++permissions:
++  contents: read
++jobs:
++  security:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - uses: pnpm/action-setup@v4
++        with:
++          version: 10
++      - uses: actions/setup-node@v4
++        with:
++          node-version: 24
++          cache: pnpm
++      - run: pnpm install --frozen-lockfile
++      - run: pnpm audit --audit-level=high
++      - run: pnpm build
++      - run: pnpm test:security
+diff --git a/README.md b/README.md
+index 4479b53..e199fd6 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,7 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Privacy and security
++
++See [privacy controls, deployment requirements, and third-party audit process](docs/PRIVACY-AND-AUDITS.md). Accounts and external tracking are disabled pending review. Run `pnpm build && pnpm test:security` for automated HTTP checks.
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..5c5ad0c 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -1,5 +1,5 @@
+ // @ts-check
+-import { defineConfig } from "astro/config";
++import { defineConfig, sessionDrivers } from "astro/config";
+ import react from "@astrojs/react";
+ import tailwindcss from "@tailwindcss/vite";
+ import node from "@astrojs/node";
+@@ -22,13 +22,26 @@ export default defineConfig({
+     service: {
+        entrypoint: 'astro/assets/services/sharp',
+        config: {
+-         limitInputPixels: false,
++         limitInputPixels: 40000000,
+       },
+      },
+   },
+ 
++  session: {
++    driver: sessionDrivers.fsLite({ base: ".astro/sessions" }),
++    ttl: 60 * 60 * 24,
++    cookie: {
++      name: 'devtools-reading-list',
++      httpOnly: true,
++      sameSite: 'strict',
++      secure: process.env.NODE_ENV !== 'development',
++      path: '/devtools-times/',
++      maxAge: 60 * 60 * 24,
++    },
++  },
++
+   security: {
+-    checkOrigin: false,
++    checkOrigin: true,
+     allowedDomains: [
+       {
+         hostname: 'chrome.dev',
+diff --git a/docs/PRIVACY-AND-AUDITS.md b/docs/PRIVACY-AND-AUDITS.md
+new file mode 100644
+index 0000000..f948694
+--- /dev/null
++++ b/docs/PRIVACY-AND-AUDITS.md
+@@ -0,0 +1,82 @@
++# Privacy and service review
++
++## Data inventory
++
++| Data | Purpose | Location | Retention/deletion |
++| --- | --- | --- | --- |
++| Random session ID | Find requested bookmarks | HttpOnly, Secure, SameSite=Strict cookie scoped to `/devtools-times/` | 24-hour cookie; deleted when clearing the list |
++| Up to 100 published article IDs | Reading list requested by visitor | Server session storage | Inaccessible after 24 hours from last change; deletion endpoint removes storage |
++| Username/password | None | Not collected; demo provider removed | None |
++| Analytics, search terms, advertising profiles | None | Not collected | None |
++| Connection and infrastructure logs | Deliver and operate the application | Hosting infrastructure, outside application control | Operator must configure minimization and deletion |
++
++The session contains no account profile, credential, IP address, or browsing history.
++Opening a page or an empty reading list does not create a session. Responses are
++private and not cacheable. JSON writes require a same-origin Origin header,
++validated article ID, and a bounded body. Deleting the final bookmark destroys
++the session. HTTPS is mandatory for production; Secure cookies intentionally do
++not support plain HTTP production browsing.
++
++## Production storage and retention
++
++The configured Node filesystem driver stores sessions under `.astro/sessions`
++relative to the working directory. Framework TTL prevents reads after expiry.
++The application physically purges expired files on startup and hourly, so files
++can remain for up to one additional hour. The session directory is restricted to
++the process owner (0700). A stopped application cannot perform cleanup; run
++`node scripts/purge-sessions.mjs` during shutdown/decommissioning if needed. Use
++the same working directory for the server and cleanup command. Storage must be
++encrypted and excluded from source control and backups. If a shared
++store is used, require encryption in transit and at rest, least-privilege service
++credentials, native TTL, and verified deletion. Do not log request bodies, cookies,
++credentials, or full request URLs containing personal information. Limit hosting
++access logs to operational need and set an explicit short retention period.
++
++The application cannot configure hosting encryption, logs, TLS termination, or
++backups. Deployment owners must verify these before exposing production traffic.
++Reverse proxies must preserve security headers and disable shared caching for HTML
++and API responses. Static files bypass application middleware; set equivalent
++nosniff and resource policy headers at the hosting layer.
++
++## Third-party register
++
++| Integration | Status | Review evidence |
++| --- | --- | --- |
++| Demo credential service | Removed; accounts unavailable | No independent evidence supplied |
++| Remote analytics and advertising scripts | Disabled, blocked by CSP | No independent evidence supplied |
++| Google Fonts | Removed; system fonts used | No visitor disclosure |
++| Remote image hosts | Replaced with bundled images | No visitor disclosure |
++| Hosting provider | Operator controlled; review required | Must be supplied by deployment owner |
++
++There is no completed independent third-party audit or certification. Automated
++dependency scans are useful checks and are not independent audits.
++
++## Required review before any service activation
++
++The service owner must create a dated review record including:
++
++- Service, owner, purpose, exact fields transferred, and why each field is necessary.
++- Processing locations, subprocessors, transfer terms, and applicable agreements.
++- Retention, deletion API/procedure, backup deletion, and evidence deletion was tested.
++- Encryption, access controls, breach notification, and incident response contact.
++- Independent audit report or assessment (scope, date, auditor, findings, remediation).
++- Approval owner/date, expiration within 12 months, and evidence references.
++
++Keep vendor reports and secrets out of this public repository. Record only a safe
++reference to restricted evidence. Re-review annually, on material integration or
++subprocessor changes, and after incidents. Block activation on missing evidence
++or unresolved critical/high findings. Re-enabling an integration requires a code
++review of its data flow, policy text, and the exact CSP allowlist change; there
++is deliberately no runtime switch that loads the former demo services.
++
++Commission an independent application review before production launch and at least
++annually thereafter. Scope must include credential lifecycle if accounts return,
++CSRF, XSS and CSP, session isolation/expiry/deletion, dependency findings, logging,
++storage, and vendor disclosures. Assign findings, remediate, and obtain retest
++evidence. Do not present this checklist as proof an audit happened.
++
++## Checks
++
++`pnpm build && pnpm test:security` checks production HTTP responses without a browser.
++`pnpm audit --audit-level=high` scans the locked dependency tree. CI runs both on
++changes and weekly. Triage findings and review fixes before merging.
+diff --git a/package.json b/package.json
+index 2e1f2e8..a1d26de 100644
+--- a/package.json
++++ b/package.json
+@@ -7,7 +7,8 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "test:security": "node --test scripts/security.test.mjs"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.7",
+@@ -29,6 +30,9 @@
+     "onlyBuiltDependencies": [
+       "esbuild",
+       "sharp"
+-    ]
++    ],
++    "overrides": {
++      "postcss-selector-parser": "^7.1.6"
++    }
+   }
+ }
+diff --git a/scripts/purge-sessions.mjs b/scripts/purge-sessions.mjs
+new file mode 100644
+index 0000000..614e26a
+--- /dev/null
++++ b/scripts/purge-sessions.mjs
+@@ -0,0 +1,25 @@
++import { mkdir, chmod, readdir, stat, unlink } from 'node:fs/promises';
++import { resolve, join } from 'node:path';
++import { pathToFileURL } from 'node:url';
++
++// This must match the explicit filesystem session driver in astro.config.mjs.
++export async function purgeExpiredSessions() {
++  const directory = resolve('.astro/sessions');
++  await mkdir(directory, { recursive: true, mode: 0o700 });
++  await chmod(directory, 0o700);
++  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
++  const entries = await readdir(directory, { withFileTypes: true });
++  for (const entry of entries) {
++    if (!entry.isFile()) continue;
++    const path = join(directory, entry.name);
++    try {
++      if ((await stat(path)).mtimeMs < cutoff) await unlink(path);
++    } catch (error) {
++      if (error.code !== 'ENOENT') throw error;
++    }
++  }
++}
++
++if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
++  await purgeExpiredSessions();
++}
+diff --git a/scripts/security.test.mjs b/scripts/security.test.mjs
+new file mode 100644
+index 0000000..dbb6138
+--- /dev/null
++++ b/scripts/security.test.mjs
+@@ -0,0 +1,138 @@
++import { test, before, after } from 'node:test';
++import assert from 'node:assert/strict';
++import { spawn } from 'node:child_process';
++import { mkdir, writeFile, utimes, access, stat, unlink } from 'node:fs/promises';
++import { setTimeout } from 'node:timers/promises';
++
++const origin = 'http://localhost:14327';
++const base = `${origin}/devtools-times/`;
++let server;
++let logs = '';
++const api = (path, options) => fetch(`${base}api/${path}`, options);
++const mutate = (body, extra = {}) => ({
++  method: 'POST', headers: { origin, 'content-type': 'application/json', ...extra }, body,
++});
++
++before(async () => {
++  await mkdir('.astro/sessions', { recursive: true });
++  await writeFile('.astro/sessions/retention-test-expired', 'expired');
++  const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
++  await utimes('.astro/sessions/retention-test-expired', old, old);
++  await writeFile('.astro/sessions/retention-test-current', 'current');
++  server = spawn(process.execPath, ['dist/server/entry.mjs'], {
++    env: { ...process.env, HOST: '127.0.0.1', PORT: '14327', NODE_ENV: 'production' },
++    stdio: ['ignore', 'pipe', 'pipe'],
++  });
++  server.stdout.on('data', chunk => { logs += chunk; });
++  server.stderr.on('data', chunk => { logs += chunk; });
++  for (let i = 0; i < 100; i++) {
++    try { await fetch(base); return; } catch { await setTimeout(100); }
++  }
++  throw new Error(`Server did not start: ${logs}`);
++});
++after(async () => {
++  server?.kill();
++  await unlink('.astro/sessions/retention-test-current').catch(() => {});
++});
++
++test('expired files are purged and current files remain in private storage', async () => {
++  await assert.rejects(access('.astro/sessions/retention-test-expired'));
++  await access('.astro/sessions/retention-test-current');
++  assert.equal((await stat('.astro/sessions')).mode & 0o777, 0o700);
++});
++
++test('pages load without tracking, credential collection, or unsolicited sessions', async () => {
++  for (const path of ['', 'legal/privacy', 'signin', 'signup', 'articles/silent-architects']) {
++    const response = await fetch(`${base}${path}`);
++    assert.equal(response.status, 200, `${path}: ${logs}`);
++    assert.equal(response.headers.get('set-cookie'), null);
++    assert.equal(response.headers.get('cache-control'), 'private, no-store');
++    const html = await response.text();
++    assert.doesNotMatch(html, /fonts\.google|analytics-client|ad-client|cloudfunctions\.net|document\.cookie|type="password"/);
++    for (const match of html.matchAll(/<(?:img|script)\b[^>]*\bsrc="([^"]+)"/g)) {
++      assert.ok(match[1].startsWith('/') || match[1].startsWith('data:'), match[1]);
++    }
++    if (path === 'legal/privacy') assert.match(html, /Delete my reading list/);
++  }
++});
++
++test('security policy permits only own scripts and fresh nonces', async () => {
++  const first = await fetch(base);
++  const second = await fetch(base);
++  const csp = first.headers.get('content-security-policy');
++  assert.match(csp, /script-src 'self' 'nonce-/);
++  assert.match(csp, /connect-src 'self'/);
++  assert.match(csp, /frame-ancestors 'none'/);
++  assert.match(csp, /object-src 'none'/);
++  assert.match(csp, /form-action 'self'/);
++  assert.match(csp, /script-src-attr 'none'/);
++  assert.notEqual(csp, second.headers.get('content-security-policy'));
++  const nonce = csp.match(/'nonce-([^']+)'/)[1];
++  const html = await first.text();
++  const scripts = [...html.matchAll(/<script\b([^>]*)>/g)];
++  assert.ok(scripts.length > 0);
++  for (const script of scripts) assert.ok(script[1].includes(`nonce="${nonce}"`));
++  assert.equal(first.headers.get('x-content-type-options'), 'nosniff');
++  assert.equal(first.headers.get('x-frame-options'), 'DENY');
++  assert.equal(first.headers.get('referrer-policy'), 'no-referrer');
++  assert.match(first.headers.get('permissions-policy'), /geolocation=\(\)/);
++});
++
++test('rejects cross-site changes, malformed and oversized data without creating sessions', async () => {
++  for (const options of [
++    { ...mutate('{"slug":"silent-architects"}'), headers: { 'content-type': 'application/json' } },
++    mutate('{"slug":"silent-architects"}', { origin: 'https://attacker.example' }),
++    mutate('{"slug":"silent-architects"}', { 'sec-fetch-site': 'cross-site' }),
++  ]) {
++    const response = await api('reading-list.json', options);
++    assert.equal(response.status, 403);
++    assert.equal(response.headers.get('set-cookie'), null);
++  }
++  for (const [body, expected] of [
++    ['null', 400], ['{', 400], ['[]', 400], ['{"slug":{}}', 400],
++    ['{"slug":"unknown-article"}', 400],
++    ['{"slug":"silent-architects","email":"unnecessary"}', 400],
++    ['x'.repeat(2048), 413],
++  ]) {
++    const response = await api('reading-list.json', mutate(body));
++    assert.equal(response.status, expected, body.slice(0, 60));
++    assert.equal(response.headers.get('set-cookie'), null);
++    assert.equal(response.headers.get('cache-control'), 'private, no-store');
++  }
++  const wrongType = await api('reading-list.json', mutate('{}', { 'content-type': 'text/plain' }));
++  assert.equal(wrongType.status, 415);
++});
++
++test('reading lists are isolated, bounded to identifiers, and deletable', async () => {
++  const empty = await api('reading-list.json');
++  assert.deepEqual(await empty.json(), { readingList: [] });
++  assert.equal(empty.headers.get('set-cookie'), null);
++  const saved = await api('reading-list.json', mutate('{"slug":"silent-architects"}'));
++  assert.equal(saved.status, 200);
++  assert.deepEqual(await saved.json(), { readingList: ['silent-architects'] });
++  const setCookie = saved.headers.get('set-cookie');
++  assert.match(setCookie, /HttpOnly/i);
++  assert.match(setCookie, /Secure/i);
++  assert.match(setCookie, /SameSite=Strict/i);
++  assert.match(setCookie, /Path=\/devtools-times\//i);
++  assert.match(setCookie, /Max-Age=86400/i);
++  assert.doesNotMatch(setCookie, /silent-architects/);
++  const cookie = setCookie.split(';')[0];
++  const read = await api('reading-list.json', { headers: { cookie } });
++  assert.deepEqual(await read.json(), { readingList: ['silent-architects'] });
++  const otherVisitor = await api('reading-list.json');
++  assert.deepEqual(await otherVisitor.json(), { readingList: [] });
++  const deniedDelete = await api('reading-list.json', { method: 'DELETE', headers: { cookie, origin: 'https://attacker.example' } });
++  assert.equal(deniedDelete.status, 403);
++  const deleted = await api('reading-list.json', { method: 'DELETE', headers: { cookie, origin } });
++  assert.equal(deleted.status, 200);
++  assert.match(deleted.headers.get('set-cookie'), /Max-Age=0|Expires=Thu, 01 Jan 1970/i);
++  const replay = await api('reading-list.json', { headers: { cookie } });
++  assert.deepEqual(await replay.json(), { readingList: [] });
++
++  const newList = await api('reading-list.json', mutate('{"slug":"silent-architects"}'));
++  const newCookie = newList.headers.get('set-cookie').split(';')[0];
++  const removed = await api('reading-list.json', mutate('{"slug":"silent-architects"}', { cookie: newCookie }));
++  assert.deepEqual(await removed.json(), { readingList: [] });
++  assert.match(removed.headers.get('set-cookie'), /Max-Age=0|Expires=Thu, 01 Jan 1970/i);
++});
+diff --git a/src/components/AccountUnavailable.tsx b/src/components/AccountUnavailable.tsx
+new file mode 100644
+index 0000000..0f43121
+--- /dev/null
++++ b/src/components/AccountUnavailable.tsx
+@@ -0,0 +1,12 @@
++export default function AccountUnavailable({ title }: { title: string }) {
++  return (
++    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">{title}</h2>
++      <p className="text-gray-700 mb-4" role="status">
++        Accounts are currently unavailable. You can read articles and save a reading list without an account.
++        We are not collecting usernames or passwords.
++      </p>
++      <a className="underline text-gray-800" href={`${import.meta.env.BASE_URL}legal/privacy`}>How we protect your data</a>
++    </div>
++  );
++}
+diff --git a/src/components/AdSlotBanner.tsx b/src/components/AdSlotBanner.tsx
+index a8d0f86..01416d6 100644
+--- a/src/components/AdSlotBanner.tsx
++++ b/src/components/AdSlotBanner.tsx
+@@ -1,20 +1,4 @@
+-import React, { useEffect, useRef } from 'react';
+-
+ export default function AdSlotBanner() {
+-  const adSlotRef = useRef(null);
+-
+-  useEffect(() => {
+-    if (adSlotRef.current) {
+-      window.adNetwork = window.adNetwork || [];
+-      window.adNetwork.push({
+-        type: 'adSlot',
+-        config: {
+-          adType: 'banner',
+-          slotElement: adSlotRef.current,
+-        },
+-      });
+-    }
+-  }, []);
+-
+-  return <div ref={adSlotRef} className="w-full my-4 transition-height duration-500"></div>;
++  // Remote advertising is disabled until a provider passes privacy review.
++  return <div className="w-full my-4" aria-hidden="true" />;
+ }
+diff --git a/src/components/AdSlotFireplace.tsx b/src/components/AdSlotFireplace.tsx
+index fc50012..7917ac5 100644
+--- a/src/components/AdSlotFireplace.tsx
++++ b/src/components/AdSlotFireplace.tsx
+@@ -1,34 +1,4 @@
+-import React, { useEffect, useRef } from 'react';
+-
+-function AdSlotFireplace() {
+-  const topSlotRef = useRef(null);
+-  const leftSlotRef = useRef(null);
+-  const rightSlotRef = useRef(null);
+-
+-  useEffect(() => {
+-    if (topSlotRef.current && leftSlotRef.current && rightSlotRef.current) {
+-      window.adNetwork = window.adNetwork || [];
+-      window.adNetwork.push({
+-        type: 'adSlot',
+-        config: {
+-          adType: 'fireplace',
+-          slots: {
+-            top: topSlotRef.current,
+-            left: leftSlotRef.current,
+-            right: rightSlotRef.current,
+-          },
+-        },
+-      });
+-    }
+-  }, []);
+-
+-  return (
+-    <>
+-      <div ref={topSlotRef} className="sticky top-0 h-[100px] z-10 col-span-full order-1"></div>
+-      <div ref={leftSlotRef} className="hidden xl:block fixed top-[100px] left-0 w-[200px] bottom-0 order-2"></div>
+-      <div ref={rightSlotRef} className="hidden xl:block fixed top-[100px] right-0 w-[200px] bottom-0 order-4"></div>
+-    </>
+-  );
++export default function AdSlotFireplace() {
++  // Preserve the page layout without initializing a third-party ad network.
++  return <div className="h-[100px]" aria-hidden="true" />;
+ }
+-
+-export default AdSlotFireplace;
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..1da8f26 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useState } from 'react';
+ import { BookmarkIcon } from '@heroicons/react/24/outline'
+ 
+ interface Props {
+@@ -10,21 +10,33 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  const [error, setError] = useState('');
++  const [busy, setBusy] = useState(false);
+   const handleClick = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    const data = await response.json();
+-    setIsBookmarked(data.readingList.includes(slug));
++    setBusy(true);
++    setError('');
++    try {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++        },
++        body: JSON.stringify({ slug }),
++      });
++      const data = await response.json();
++      if (!response.ok) throw new Error(data.error || 'Unable to update reading list.');
++      setIsBookmarked(data.readingList.includes(slug));
++    } catch (error) {
++      setError(error instanceof Error ? error.message : 'Unable to update reading list.');
++    } finally { setBusy(false); }
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
++    <>
++    <button onClick={handleClick} disabled={busy} aria-pressed={isBookmarked} aria-label={isBookmarked ? "Remove saved article" : "Save article"} className="p-1">
+       <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+     </button>
++    {error && <span role="alert" className="text-sm text-red-700">{error}</span>}
++    </>
+   );
+ }
+diff --git a/src/components/PrivacyControls.tsx b/src/components/PrivacyControls.tsx
+new file mode 100644
+index 0000000..8a53b0c
+--- /dev/null
++++ b/src/components/PrivacyControls.tsx
+@@ -0,0 +1,26 @@
++import { useState } from 'react';
++
++export default function PrivacyControls() {
++  const [message, setMessage] = useState('');
++  const [busy, setBusy] = useState(false);
++  async function clearData() {
++    setBusy(true);
++    try {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++        method: 'DELETE', credentials: 'same-origin', cache: 'no-store',
++      });
++      if (!response.ok) throw new Error();
++      setMessage('Your saved reading list and its session cookie have been deleted.');
++    } catch {
++      setMessage('Your data could not be deleted. Please try again.');
++    } finally { setBusy(false); }
++  }
++  return <div className="my-6 rounded-lg border border-gray-200 p-5">
++    <h2 className="text-xl font-bold mb-3">Your data, your control</h2>
++    <p className="mb-4">Delete all articles saved in this browser’s reading list and end its session.</p>
++    <button type="button" disabled={busy} onClick={clearData} className="bg-gray-900 text-white rounded px-4 py-2 disabled:opacity-50">
++      {busy ? 'Deleting…' : 'Delete my reading list'}
++    </button>
++    <p role="status" className="mt-3">{message}</p>
++  </div>;
++}
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..d88d7dd 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -14,12 +14,17 @@ interface Props {
+ }
+ 
+ export default function ReadingListFlyout({ articles, onClose }: Props) {
++  const [error, setError] = useState('');
+   const [readingList, setReadingList] = useState<string[]>([]);
+ 
+   const fetchReadingList = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+-    const data = await response.json();
+-    setReadingList(data.readingList);
++    try {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
++      if (!response.ok) throw new Error();
++      const data = await response.json();
++      setReadingList(data.readingList);
++      setError('');
++    } catch { setError('Unable to load your reading list. Please try again.'); }
+   };
+ 
+   useEffect(() => {
+@@ -38,14 +43,17 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   }, [onClose]);
+ 
+   const handleRemove = async (slug: string) => {
+-    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    fetchReadingList();
++    try {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++        },
++        body: JSON.stringify({ slug }),
++      });
++      if (!response.ok) throw new Error();
++      await fetchReadingList();
++    } catch { setError('Unable to remove this article. Please try again.'); }
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+@@ -60,6 +68,8 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+         </button>
+         <div className="p-4">
+           <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++          <a className="text-sm underline" href={`${import.meta.env.BASE_URL}legal/privacy`}>Privacy and delete all saved articles</a>
++          {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..9a3c60d 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,99 +1,4 @@
+-import React, { useState } from 'react';
+-
++import AccountUnavailable from './AccountUnavailable';
+ export default function SignInForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
+-      </form>
+-    </div>
+-  );
++  return <AccountUnavailable title="Sign In" />;
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..71afa80 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,4 @@
+-import React, { useState } from 'react';
+-
++import AccountUnavailable from './AccountUnavailable';
+ export default function SignUpForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
+-    </div>
+-  );
++  return <AccountUnavailable title="Sign Up" />;
+ }
+diff --git a/src/content/articles/coastal-pulse.md b/src/content/articles/coastal-pulse.md
+index af5e892..837bc5b 100644
+--- a/src/content/articles/coastal-pulse.md
++++ b/src/content/articles/coastal-pulse.md
+@@ -1,7 +1,7 @@
+ ---
+ title: "The Coastal Pulse: Life by the Shore"
+ summary: "Living by the seaside offers a sensory experience that shifts with the tides. It’s a lifestyle defined by the intertidal rhythm, where the day’s activities are often dictated by the water's retreat and advance."
+-image: "https://i.imgur.com/h20QPtm.jpeg"
++image: "/images/articles/open-water-swimming.jpg"
+ author: "Nature Weekly"
+ category: "lifestyle"
+ readingTime: 5
+@@ -22,16 +22,3 @@ The air at the coast is rich in negative ions, which are thought to improve oxyg
+ 
+ ### Explore
+ While the salt air can be corrosive to infrastructure, the trade-off is a front-row seat to nature’s most dynamic theater.
+-
+-<script>
+-    // Fetch current tide levels
+-    // This request will encounter a 302 Redirect
+-    fetch('/api/tide-levels')
+-        .then(response => {
+-            console.log(`Tide API status: ${response.status}`);
+-            if (response.redirected) {
+-                console.warn("Tide API was redirected to:", response.url);
+-            }
+-        })
+-        .catch(err => console.error("Error fetching tide levels:", err));
+-</script>
+diff --git a/src/content/articles/coffee-alchemy.md b/src/content/articles/coffee-alchemy.md
+index cc7e252..a6b6e35 100644
+--- a/src/content/articles/coffee-alchemy.md
++++ b/src/content/articles/coffee-alchemy.md
+@@ -1,7 +1,7 @@
+ ---
+ title: "The Global Alchemy of Coffee"
+ summary: "Coffee is more than a morning ritual; it is a complex beverage derived from the roasted seeds of the Coffea plant. Originating in the Ethiopian highlands, coffee has evolved into a global commodity that fuels modern industry and social connection."
+-image: "https://i.imgur.com/eAjAmMr.png"
++image: "/images/articles/newspaper-croissant.jpg"
+ author: "Food & Drink"
+ category: "lifestyle"
+ readingTime: 4
+@@ -19,14 +19,3 @@ The profile of a cup depends heavily on the roast profile and extraction method.
+ **Robusta:** Noted for its higher caffeine content, bitter edge, and thick "crema."
+ 
+ Whether enjoyed as a concentrated espresso or a diluted pour-over, coffee remains a masterpiece of agricultural science and chemistry.
+-
+-<script>
+-    // Attempt to brew some coffee stats
+-    fetch('/api/coffee-brew')
+-        .then(response => {
+-            if (!response.ok) {
+-                console.error(`Brewing failed: ${response.status} ${response.statusText}`);
+-            }
+-        })
+-        .catch(err => console.error("Network error while brewing:", err));
+-</script>
+diff --git a/src/content/articles/life-with-charlie.md b/src/content/articles/life-with-charlie.md
+index 220ddf1..bde4532 100644
+--- a/src/content/articles/life-with-charlie.md
++++ b/src/content/articles/life-with-charlie.md
+@@ -4,7 +4,7 @@ summary: "Charlie the Griffon looks like he woke up on the wrong side of the bed
+ author: "Staff Writer"
+ date: 2025-09-19T23:00:00
+ category: "Pets"
+-image: "https://i.imgur.com/4PBdBeg.png"
++image: "/images/articles/thailand-backyard.jpg"
+ image_caption: "Charlie contemplating his next decree."
+ tags: ["dogs", "pets", "humor", "griffons"]
+ readingTime: 3
+diff --git a/src/content/articles/silent-architects.md b/src/content/articles/silent-architects.md
+index ee5cdd8..6258ec0 100644
+--- a/src/content/articles/silent-architects.md
++++ b/src/content/articles/silent-architects.md
+@@ -1,7 +1,7 @@
+ ---
+ title: "The Silent Architects of Earth"
+ summary: "Plants are the quiet powerhouses of our planet, serving as the literal foundation for almost all life on Earth. Through the remarkable process of photosynthesis, they capture solar energy and convert it into chemical energy, releasing the oxygen we breathe as a vital byproduct."
+-image: "https://i.imgur.com/zk3aI75.png"
++image: "/images/articles/countryside-highway.jpg"
+ author: "Eco Watch"
+ category: "science"
+ readingTime: 5
+@@ -20,25 +20,3 @@ Beyond just being "oxygen factories," plants are sophisticated organisms with co
+ *   **Human Utility:** From the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry.
+ 
+ Whether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world.
+-
+-<script>
+-    // Just blindly setting a "cache" to avoid refetching data, 
+-    // but the developer accidentally set it way too large and on the wrong path scope?
+-    // Actually, let's just make it a large cookie for this specific API path to cause the 431.
+-    
+-    // Split into multiple cookies to avoid browser single-cookie size limits (usually ~4KB)
+-    // but still trigger the total header size check in the API (>4KB).
+-    const largeValue = "A".repeat(2000); 
+-    
+-    document.cookie = `plant_stats_cache_1=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_2=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_3=${largeValue}; path=/api/plant-stats`;
+-
+-    fetch('/api/plant-stats')
+-        .then(res => {
+-            if (res.status === 431) {
+-                console.error("Too much data in headers!");
+-            }
+-        })
+-        .catch(err => console.error(err));
+-</script>
+diff --git a/src/content/articles/super-bowl-lx.md b/src/content/articles/super-bowl-lx.md
+index 06c4419..ede805f 100644
+--- a/src/content/articles/super-bowl-lx.md
++++ b/src/content/articles/super-bowl-lx.md
+@@ -1,7 +1,7 @@
+ ---
+ title: "Super Bowl LX: A Historic Rematch in Santa Clara"
+ summary: "The stage is set for a high-stakes reunion. Following a grueling Conference Championship weekend, the New England Patriots and Seattle Seahawks have officially punched their tickets to Super Bowl LX on February 8, 2026."
+-image: "https://i.imgur.com/Oaxrnho.jpeg"
++image: "/images/articles/baseball-stadium-at-night.jpg"
+ author: "Sports Desk"
+ category: "sports"
+ readingTime: 4
+@@ -14,23 +14,3 @@ The stage is set for a high-stakes reunion. Following a grueling Conference Cham
+ This matchup serves as a dramatic sequel to Super Bowl XLIX. The Patriots secured their spot with a gritty 10-7 defensive masterclass against Denver, proving their "bend-but-don't-break" philosophy still reigns. Meanwhile, the Seahawks advanced after a 31-27 thriller over the Rams, powered by an explosive aerial attack.
+ 
+ Early lines favor Seattle by 2.5 points, but New England’s top-ranked scoring defense remains a formidable hurdle. For Seattle, it’s a shot at long-awaited redemption; for New England, a chance to solidify a new era of dominance. The road to the Lombardi Trophy now leads to Levi’s Stadium.
+-
+-<script>
+-    // Fetch article popularity stats tailored for this user
+-    fetch('/api/article-popularity')
+-        .then(response => {
+-            if (!response.ok) {
+-                // Silently fail, analytics is non-critical
+-                return;
+-            }
+-            return response.json();
+-        })
+-        .then(data => {
+-            if (data && data.trending) {
+-                console.log('Valid trending article');
+-            }
+-        })
+-        .catch(err => {
+-            // connection errors
+-        });
+-</script>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..87223f4 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,7 +4,7 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
++
+ 
+ export interface Props {
+   title: string;
+@@ -21,20 +21,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+-
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..8fda750 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,64 @@
+-
++import { randomBytes } from 'node:crypto';
+ import { defineMiddleware } from 'astro:middleware';
++import { purgeExpiredSessions } from '../scripts/purge-sessions.mjs';
++
++// Cleanup on startup, then hourly even if an expired session is never revisited.
++const sessionStorageReady = purgeExpiredSessions();
++const cleanupTimer = setInterval(() => {
++  purgeExpiredSessions().catch(() => console.error('Session retention cleanup failed.'));
++}, 60 * 60 * 1000);
++cleanupTimer.unref();
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
+-    }
++  await sessionStorageReady;
++  const { request, url } = context;
++  const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
++  let response: Response;
++
++  // Require an explicit same-origin request for every state-changing endpoint.
++  if (isMutation && (request.headers.get('origin') !== url.origin ||
++      request.headers.get('sec-fetch-site') === 'cross-site')) {
++    response = Response.json({ error: 'Request not allowed.' }, { status: 403 });
++  } else {
++    response = await next();
++  }
++
++  const nonce = randomBytes(18).toString('base64');
++  const headers = new Headers(response.headers);
++  headers.set('X-Content-Type-Options', 'nosniff');
++  headers.set('X-Frame-Options', 'DENY');
++  headers.set('Referrer-Policy', 'no-referrer');
++  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), browsing-topics=()');
++  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
++  headers.set('Cross-Origin-Resource-Policy', 'same-origin');
++  headers.set('Content-Security-Policy', [
++    "default-src 'self'",
++    `script-src 'self' 'nonce-${nonce}'`,
++    "script-src-attr 'none'",
++    // React and Astro use inline style attributes for island visibility/layout.
++    "style-src 'self' 'unsafe-inline'",
++    "img-src 'self' data:",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "object-src 'none'",
++    "frame-src 'none'",
++    "frame-ancestors 'none'",
++    "base-uri 'self'",
++    "form-action 'self'",
++  ].join('; '));
++  if (url.protocol === 'https:') {
++    headers.set('Strict-Transport-Security', 'max-age=31536000');
++  }
++  // HTML can contain personalized bookmark state; APIs can expose the reading list.
++  headers.set('Cache-Control', 'private, no-store');
++
++  if (headers.get('content-type')?.includes('text/html')) {
++    // Only repository-owned HTML is rendered. Authorize Astro's hydration scripts
++    // with a fresh nonce; never allow arbitrary inline JavaScript or remote scripts.
++    const html = (await response.text()).replace(/<script\b([^>]*)>/gi,
++      (_tag, attributes) => `<script nonce="${nonce}"${attributes}>`);
++    headers.delete('content-length');
++    return new Response(html, { status: response.status, statusText: response.statusText, headers });
+   }
+-  return next();
++  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+ });
+diff --git a/src/pages/api/reading-list.json.ts b/src/pages/api/reading-list.json.ts
+index 3084fe3..fd55f35 100644
+--- a/src/pages/api/reading-list.json.ts
++++ b/src/pages/api/reading-list.json.ts
+@@ -1,31 +1,66 @@
+-
+ import type { APIRoute } from 'astro';
++import { getCollection } from 'astro:content';
++
++const MAX_ITEMS = 100;
++const MAX_BODY_BYTES = 1024;
+ 
+ export const POST: APIRoute = async ({ request, session }) => {
+-  const { slug } = await request.json();
+-  if (!slug) {
+-    return new Response(JSON.stringify({ error: 'Slug is required' }), { status: 400 });
++  if (!session) return Response.json({ error: 'Reading list unavailable.' }, { status: 503 });
++  if (request.headers.get('content-type')?.split(';')[0].trim() !== 'application/json') {
++    return Response.json({ error: 'Expected JSON.' }, { status: 415 });
+   }
+ 
+-  let readingList = await session?.get('readingList') || [];
++  // Bound the streamed body too; Content-Length is optional and untrusted.
++  const reader = request.body?.getReader();
++  if (!reader) return Response.json({ error: 'Invalid request.' }, { status: 400 });
++  let body = '';
++  let size = 0;
++  const decoder = new TextDecoder();
++  while (true) {
++    const { done, value } = await reader.read();
++    if (done) break;
++    size += value.byteLength;
++    if (size > MAX_BODY_BYTES) {
++      await reader.cancel();
++      return Response.json({ error: 'Request too large.' }, { status: 413 });
++    }
++    body += decoder.decode(value, { stream: true });
++  }
++  body += decoder.decode();
+ 
++  let slug: unknown;
++  try {
++    const data = JSON.parse(body);
++    if (!data || Array.isArray(data) || Object.keys(data).some(key => key !== 'slug')) throw new Error();
++    slug = data.slug;
++  } catch {
++    return Response.json({ error: 'Invalid request.' }, { status: 400 });
++  }
++  const articles = await getCollection('articles');
++  if (typeof slug !== 'string' || !articles.some(article => article.id === slug)) {
++    return Response.json({ error: 'Unknown article.' }, { status: 400 });
++  }
++
++  let readingList: string[] = await session.get('readingList') || [];
+   if (readingList.includes(slug)) {
+-    readingList = readingList.filter((item: string) => item !== slug);
++    readingList = readingList.filter(item => item !== slug);
+   } else {
++    if (readingList.length >= MAX_ITEMS) {
++      return Response.json({ error: 'Your reading list is full (100 articles).' }, { status: 409 });
++    }
+     readingList.push(slug);
+   }
+-
+-  await session?.set('readingList', readingList);
+-
+-  return new Response(JSON.stringify({ readingList }), {
+-    headers: { 'Content-Type': 'application/json' },
+-  });
++  if (readingList.length === 0) await session.destroy();
++  else await session.set('readingList', readingList);
++  return Response.json({ readingList });
+ };
+ 
+ export const GET: APIRoute = async ({ session }) => {
+   const readingList = await session?.get('readingList') || [];
++  return Response.json({ readingList });
++};
+ 
+-  return new Response(JSON.stringify({ readingList }), {
+-    headers: { 'Content-Type': 'application/json' },
+-  });
++export const DELETE: APIRoute = async ({ session }) => {
++  await session?.destroy();
++  return Response.json({ readingList: [] });
+ };
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..2ce8301 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -32,7 +32,7 @@ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3)
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.slug);
++const isBookmarked = readingList.includes(article.id);
+ ---
+ 
+ <Layout title={article.data.title}>
+@@ -59,26 +59,14 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         <!-- Main Article Image -->
+         <figure class="mb-5">
+-            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+-            {article.data.prompt_comment ? (
+-                <img 
+-                    src={article.data.image}
+-                    alt={article.data.title}
+-                    width="1200"
+-                    height="675"
+-                    class="w-full h-auto"
+-                    crossorigin="use-credentials"
+-                />
+-            ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
+-                    width={1200}
+-                    height={675}
+-                    format="webp"
+-                    class="w-full h-auto"
+-                />
+-            )}
++            <Image
++                src={articleImage}
++                alt={article.data.title}
++                width={1200}
++                height={675}
++                format="webp"
++                class="w-full h-auto"
++            />
+             {article.data.image_caption && (
+                 <figcaption class="text-xs text-gray-500 mt-2 px-2">
+                     {article.data.image_caption}
+@@ -99,7 +87,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
+         </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..14a1d33 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -26,7 +26,7 @@ politicsArticles[2] = {
+       author: 'Chrome DevTools Team',
+       date: new Date('2025-09-16T00:00:00.000Z'),
+       category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
++      image: '/images/articles/news-reporter.jpg',
+       image_caption: '',
+       readingTime: 3
+     },
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..84aba2f 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -1,17 +1,19 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
++import PrivacyControls from '../../components/PrivacyControls';
+ ---
+ <LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+-    
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+-    
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <p>Read the news without an account, analytics, advertising trackers, or third-party fonts. Article images are served from this application.</p>
++    <h2>What we store and why</h2>
++    <p>Only when you save an article do we create a reading-list session. We store article identifiers, limited to 100 articles, on the server. An essential cookie contains a random session identifier, not your reading list. We do not build a browsing history or collect search terms.</p>
++    <p>The session expires after 24 hours. Expired server files are removed on startup and hourly while the server is running. Its cookie is restricted to this application, inaccessible to JavaScript, and sent only over HTTPS in production. Removing the last saved article also ends the session. Reading lists are specific to this browser and are not account profiles.</p>
++    <h2>Control your reading list</h2>
++    <p>You can remove individual saved articles from the reading list, or delete the entire list and its session below. You do not need to provide your name or email address.</p>
++    <PrivacyControls client:load />
++    <h2>Accounts and third-party services</h2>
++    <p>Sign-in and registration are unavailable while the account service awaits privacy and security review. This application does not collect or forward usernames or passwords. External analytics and advertising services are disabled. Following an external link takes you to a site with its own privacy practices.</p>
++    <h2>Secure handling</h2>
++    <p>We restrict requests to this application, validate saved article identifiers, prevent cross-site changes, and prevent caching of personal responses. Production hosting must use HTTPS. Hosting infrastructure necessarily processes connection information such as IP addresses to deliver pages; access logging, backup retention, and server storage are controlled by the deployment operator.</p>
++    <h2>Independent review</h2>
++    <p>No independent audit has been completed or certified for this application. Third-party services must pass a documented review of the data they receive, retention and deletion, access controls, and independent security evidence before integration. Reviews must be renewed annually and when a service changes materially.</p>
+ </LegalLayout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ce4e27d 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,7 @@
+ @import "tailwindcss";
+ 
+ .font-brand {
+-  font-family: "Grenze", serif;
++  font-family: Georgia, "Times New Roman", serif;
+   font-weight: 500;
+   font-style: normal;
+ }
+\ No newline at end of file
+diff --git a/src/utils/images.ts b/src/utils/images.ts
+index b8fe01e..778b60f 100644
+--- a/src/utils/images.ts
++++ b/src/utils/images.ts
+@@ -13,7 +13,7 @@ export async function getArticleImage(article: CollectionEntry<'articles'>) {
+     }
+ 
+     if (imagePath.startsWith('http')) {
+-        return imagePath;
++        throw new Error('Article images must be bundled locally.');
+     }
+ 
+     // Find the matching image module in the glob import

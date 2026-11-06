@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+index 66c9173..4467320 100644
+--- a/index.html
++++ b/index.html
+@@ -94,6 +94,25 @@
+     }
+ 
+     /* Content Sections */
++    #views {
++      position: relative;
++    }
++
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      pointer-events: none;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -158,9 +177,9 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a class="logo" href="#/">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -168,33 +187,37 @@
+     </ul>
+   </nav>
+ 
++  <main id="views">
++  <section class="spa-view" id="home-view" tabindex="-1" aria-label="Home" data-route="/">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++  </div>
++  </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +230,85 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const host = document.getElementById('views');
++    const home = document.getElementById('home-view');
++    const cards = [...home.querySelectorAll('.card')];
++    const products = new Map(cards.map(card => [
++      new URL(card.querySelector('a').href).hash.slice(1), card
++    ]));
++    // A fixed set of five routes bounds memory use. Each view is built only once.
++    const views = new Map([['/', home]]);
++    const pageTitle = document.title;
++    let activeView = home;
++
++    function getView(route) {
++      if (views.has(route)) return views.get(route);
++      const view = document.createElement('section');
++      view.className = 'spa-view inactive';
++      view.tabIndex = -1;
++      view.dataset.route = route;
++      view.inert = true;
++      view.setAttribute('aria-hidden', 'true');
++
++      const content = document.createElement('div');
++      content.className = 'container';
++      const heading = document.createElement('h1');
++      heading.textContent = route === '/menu'
++        ? 'Our Menu'
++        : products.get(route).querySelector('h3').textContent;
++      view.setAttribute('aria-label', heading.textContent);
++      content.append(heading);
++
++      if (route === '/menu') {
++        const grid = document.createElement('div');
++        grid.className = 'grid';
++        grid.append(...cards.map(card => card.cloneNode(true)));
++        content.append(grid);
++      } else {
++        content.append(products.get(route).querySelector('p').cloneNode(true));
++      }
++
++      const back = document.createElement('a');
++      back.className = 'btn';
++      back.href = route === '/menu' ? '#/' : '#/menu';
++      back.textContent = route === '/menu' ? 'Back to Home' : 'Back to Menu';
++      content.append(back);
++      view.append(content);
++      host.append(view);
++      views.set(route, view);
++      return view;
++    }
++
++    function navigate({ initial = false } = {}) {
++      const requested = location.hash.slice(1) || '/';
++      const route = requested === '/' || requested === '/menu' || products.has(requested)
++        ? requested : '/';
++      const nextView = getView(route);
++      if (nextView !== activeView) {
++        activeView.classList.add('inactive');
++        activeView.inert = true;
++        activeView.setAttribute('aria-hidden', 'true');
++        nextView.classList.remove('inactive');
++        nextView.inert = false;
++        nextView.removeAttribute('aria-hidden');
++        activeView = nextView;
++        // Focus after revealing the view, including during history navigation.
++        nextView.focus({ preventScroll: true });
++        window.scrollTo(0, 0);
++      } else if (!initial) {
++        nextView.focus({ preventScroll: true });
++      }
++      document.title = route === '/' ? pageTitle : `${nextView.getAttribute('aria-label')} | The Daily Grind`;
++      const menuLink = document.querySelector('nav a[href="#/menu"]');
++      if (route.startsWith('/menu')) menuLink.setAttribute('aria-current', 'page');
++      else menuLink.removeAttribute('aria-current');
++    }
++
++    window.addEventListener('hashchange', () => navigate());
++    navigate({ initial: true });
++  </script>
++
+ </body>
+ 
+ </html>

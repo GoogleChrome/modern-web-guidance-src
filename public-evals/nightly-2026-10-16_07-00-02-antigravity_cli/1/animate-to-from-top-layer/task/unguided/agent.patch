@@ -1,0 +1,551 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,341 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    button.btn, .btn {
++      font-family: inherit;
++      font-size: 1rem;
++      border: none;
++      cursor: pointer;
++    }
++
++    /* Confirmation Modal Dialog & Backdrop */
++    dialog#logout-dialog {
++      border: none;
++      border-radius: 10px;
++      padding: 0;
++      margin: auto;
++      background: white;
++      color: var(--text);
++      max-width: 440px;
++      width: 90%;
++      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
++      overflow: hidden;
++      opacity: 0;
++      transform: scale(0.92) translateY(-20px);
++      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
++                  transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
++                  overlay 0.3s ease allow-discrete,
++                  display 0.3s ease allow-discrete;
++    }
++
++    dialog#logout-dialog[open] {
++      opacity: 1;
++      transform: scale(1) translateY(0);
++      animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
++    }
++
++    @starting-style {
++      dialog#logout-dialog[open] {
++        opacity: 0;
++        transform: scale(0.92) translateY(-20px);
++      }
++    }
++
++    dialog#logout-dialog.is-closing {
++      animation: modalFadeOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
++    }
++
++    dialog#logout-dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0.55);
++      backdrop-filter: blur(3px);
++      opacity: 0;
++      transition: opacity 0.3s ease,
++                  overlay 0.3s ease allow-discrete,
++                  display 0.3s ease allow-discrete;
++    }
++
++    dialog#logout-dialog[open]::backdrop {
++      opacity: 1;
++      animation: backdropFadeIn 0.3s ease forwards;
++    }
++
++    @starting-style {
++      dialog#logout-dialog[open]::backdrop {
++        opacity: 0;
++      }
++    }
++
++    dialog#logout-dialog.is-closing::backdrop {
++      animation: backdropFadeOut 0.25s ease forwards;
++    }
++
++    @keyframes modalFadeIn {
++      from {
++        opacity: 0;
++        transform: scale(0.92) translateY(-20px);
++      }
++      to {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++      }
++    }
++
++    @keyframes modal-enter {
++      from {
++        opacity: 0;
++        transform: scale(0.92) translateY(-20px);
++      }
++      to {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++      }
++    }
++
++    @keyframes modalFadeOut {
++      from {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: scale(0.92) translateY(-20px);
++      }
++    }
++
++    @keyframes modal-exit {
++      from {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: scale(0.92) translateY(-20px);
++      }
++    }
++
++    @keyframes backdropFadeIn {
++      from {
++        opacity: 0;
++      }
++      to {
++        opacity: 1;
++      }
++    }
++
++    @keyframes backdrop-fade-in {
++      from {
++        opacity: 0;
++      }
++      to {
++        opacity: 1;
++      }
++    }
++
++    @keyframes backdropFadeOut {
++      from {
++        opacity: 1;
++      }
++      to {
++        opacity: 0;
++      }
++    }
++
++    @keyframes backdrop-fade-out {
++      from {
++        opacity: 1;
++      }
++      to {
++        opacity: 0;
++      }
++    }
++
++    .modal-container {
++      padding: 24px;
++    }
++
++    .modal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 16px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 12px;
++    }
++
++    .modal-header h3 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      margin: 0;
++    }
++
++    .modal-close-btn {
++      background: none;
++      border: none;
++      font-size: 1.6rem;
++      line-height: 1;
++      cursor: pointer;
++      color: #8d6e63;
++      padding: 4px 8px;
++      border-radius: 4px;
++      transition: color 0.2s, background-color 0.2s;
++    }
++
++    .modal-close-btn:hover {
++      color: var(--primary);
++      background-color: var(--secondary);
++    }
++
++    .modal-body {
++      margin-bottom: 24px;
++      color: var(--text);
++      font-size: 1rem;
++    }
++
++    .modal-footer {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++    }
++
++    .modal-footer .btn {
++      margin-top: 0;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .btn-danger {
++      background: #c62828;
++    }
++
++    .btn-danger:hover {
++      background: #8e0000;
++    }
++
++    /* Floating Overlay */
++    .floating-overlay {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      z-index: 9999;
++      display: none;
++      background: white;
++      color: var(--text);
++      border-left: 5px solid var(--accent);
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
++      border-radius: 8px;
++      padding: 16px 20px;
++      max-width: 420px;
++      width: calc(100% - 48px);
++      box-sizing: border-box;
++    }
++
++    .floating-overlay.is-open {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      animation: overlayFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
++    }
++
++    .floating-overlay.is-closing {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      animation: overlayFadeOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
++    }
++
++    @keyframes overlayFadeIn {
++      from {
++        opacity: 0;
++        transform: translateY(24px) scale(0.96);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++    }
++
++    @keyframes overlay-enter {
++      from {
++        opacity: 0;
++        transform: translateY(24px) scale(0.96);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++    }
++
++    @keyframes overlayFadeOut {
++      from {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(24px) scale(0.96);
++      }
++    }
++
++    @keyframes overlay-exit {
++      from {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(24px) scale(0.96);
++      }
++    }
++
++    .floating-overlay-content {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      flex: 1;
++    }
++
++    .overlay-icon {
++      font-size: 1.3rem;
++      color: var(--primary);
++      flex-shrink: 0;
++    }
++
++    .overlay-text {
++      font-size: 0.95rem;
++      font-weight: 500;
++      color: var(--text);
++    }
++
++    .overlay-dismiss-btn {
++      background: none;
++      border: none;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      color: #8d6e63;
++      padding: 4px 6px;
++      border-radius: 4px;
++      transition: color 0.2s, background-color 0.2s;
++      flex-shrink: 0;
++    }
++
++    .overlay-dismiss-btn:hover {
++      color: var(--primary);
++      background-color: var(--secondary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +496,32 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" class="modal-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-desc">
++    <div class="modal-container">
++      <div class="modal-header">
++        <h3 id="dialog-title">Confirm Logout</h3>
++        <button type="button" id="close-dialog-btn" class="modal-close-btn" aria-label="Close dialog">&times;</button>
++      </div>
++      <div class="modal-body">
++        <p id="dialog-desc">Are you sure you want to log out of your account?</p>
++      </div>
++      <div class="modal-footer">
++        <button type="button" class="btn btn-secondary modal-cancel-btn">Cancel</button>
++        <a href="/logout" class="btn btn-danger modal-confirm-btn">Log Out</a>
++      </div>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" class="btn" aria-label="Order Online">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -196,8 +545,16 @@
+       </div>
+     </section>
+   </main>
+ 
++  <aside id="floating-overlay" class="floating-overlay" role="status" aria-live="polite">
++    <div class="floating-overlay-content">
++      <span class="overlay-icon" aria-hidden="true">ℹ️</span>
++      <span class="overlay-text">online ordering is currently offline</span>
++    </div>
++    <button type="button" id="close-overlay-btn" class="overlay-dismiss-btn" aria-label="Dismiss">&times;</button>
++  </aside>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +563,153 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Confirmation Modal Elements
++      const openDialogBtn = document.getElementById('open-dialog-btn');
++      const closeDialogBtn = document.getElementById('close-dialog-btn');
++      const logoutDialog = document.getElementById('logout-dialog');
++      const cancelModalBtn = logoutDialog ? logoutDialog.querySelector('.modal-cancel-btn') : null;
++
++      let isDialogClosing = false;
++
++      function openModal() {
++        if (!logoutDialog) return;
++        if (isDialogClosing) {
++          logoutDialog.classList.remove('is-closing');
++          isDialogClosing = false;
++        }
++        if (typeof logoutDialog.showModal === 'function') {
++          if (!logoutDialog.open) {
++            logoutDialog.showModal();
++          }
++        } else {
++          logoutDialog.setAttribute('open', '');
++        }
++      }
++
++      function closeModal() {
++        if (!logoutDialog || !logoutDialog.open || isDialogClosing) return;
++        isDialogClosing = true;
++        logoutDialog.classList.add('is-closing');
++
++        const onAnimationEnd = (e) => {
++          if (e && e.target !== logoutDialog) return;
++          logoutDialog.removeEventListener('animationend', onAnimationEnd);
++          logoutDialog.classList.remove('is-closing');
++          if (typeof logoutDialog.close === 'function') {
++            logoutDialog.close();
++          } else {
++            logoutDialog.removeAttribute('open');
++          }
++          isDialogClosing = false;
++        };
++
++        logoutDialog.addEventListener('animationend', onAnimationEnd);
++
++        setTimeout(() => {
++          if (isDialogClosing) {
++            onAnimationEnd();
++          }
++        }, 300);
++      }
++
++      if (openDialogBtn) {
++        openDialogBtn.addEventListener('click', function (e) {
++          e.preventDefault();
++          openModal();
++        });
++      }
++
++      if (closeDialogBtn) {
++        closeDialogBtn.addEventListener('click', function (e) {
++          e.preventDefault();
++          closeModal();
++        });
++      }
++
++      if (cancelModalBtn) {
++        cancelModalBtn.addEventListener('click', function (e) {
++          e.preventDefault();
++          closeModal();
++        });
++      }
++
++      if (logoutDialog) {
++        logoutDialog.addEventListener('click', function (e) {
++          const rect = logoutDialog.getBoundingClientRect();
++          const isInDialog = (
++            rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
++            rect.left <= e.clientX && e.clientX <= rect.left + rect.width
++          );
++          if (!isInDialog) {
++            closeModal();
++          }
++        });
++
++        logoutDialog.addEventListener('cancel', function (e) {
++          e.preventDefault();
++          closeModal();
++        });
++      }
++
++      // Floating Overlay Elements
++      const foobarBtn = document.getElementById('foobar');
++      const overlay = document.getElementById('floating-overlay');
++      const dismissOverlayBtn = document.getElementById('close-overlay-btn');
++
++      let isOverlayClosing = false;
++
++      function showOverlay() {
++        if (!overlay) return;
++        if (isOverlayClosing) {
++          overlay.classList.remove('is-closing');
++          isOverlayClosing = false;
++        }
++        overlay.classList.remove('is-open');
++        void overlay.offsetWidth; // Force reflow to re-trigger smooth animation
++        overlay.classList.add('is-open');
++      }
++
++      function dismissOverlay() {
++        if (!overlay || !overlay.classList.contains('is-open') || isOverlayClosing) return;
++        isOverlayClosing = true;
++        overlay.classList.remove('is-open');
++        overlay.classList.add('is-closing');
++
++        const onAnimationEnd = (e) => {
++          if (e && e.target !== overlay) return;
++          overlay.removeEventListener('animationend', onEnd);
++          overlay.classList.remove('is-closing');
++          isOverlayClosing = false;
++        };
++
++        const onEnd = onAnimationEnd;
++        overlay.addEventListener('animationend', onEnd);
++
++        setTimeout(() => {
++          if (isOverlayClosing) {
++            onEnd();
++          }
++        }, 300);
++      }
++
++      if (foobarBtn) {
++        foobarBtn.addEventListener('click', function (e) {
++          e.preventDefault();
++          showOverlay();
++        });
++      }
++
++      if (dismissOverlayBtn) {
++        dismissOverlayBtn.addEventListener('click', function (e) {
++          e.preventDefault();
++          dismissOverlay();
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

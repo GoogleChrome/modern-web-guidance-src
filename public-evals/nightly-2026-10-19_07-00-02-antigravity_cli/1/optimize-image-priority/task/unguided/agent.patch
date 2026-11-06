@@ -1,0 +1,326 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,322 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Product Landing Page</title>
++  <style>
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
++      line-height: 1.6;
++      color: #333;
++      background-color: #fafafa;
++    }
++
++    header {
++      background: #fff;
++      border-bottom: 1px solid #e5e5e5;
++      padding: 1rem 2rem;
++      position: sticky;
++      top: 0;
++      z-index: 100;
++    }
++
++    nav {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      max-width: 1200px;
++      margin: 0 auto;
++    }
++
++    .nav-brand {
++      font-weight: 700;
++      font-size: 1.25rem;
++      text-decoration: none;
++      color: #111;
++    }
++
++    .nav-menu {
++      list-style: none;
++      display: flex;
++      gap: 1.5rem;
++      align-items: center;
++    }
++
++    .nav-item {
++      position: relative;
++    }
++
++    .nav-link, .nav-btn {
++      background: none;
++      border: none;
++      font-size: 1rem;
++      color: #555;
++      cursor: pointer;
++      text-decoration: none;
++    }
++
++    .nav-btn:hover, .nav-link:hover {
++      color: #000;
++    }
++
++    .mega-menu {
++      position: absolute;
++      top: 100%;
++      right: 0;
++      background: #fff;
++      border: 1px solid #ddd;
++      border-radius: 8px;
++      padding: 1.5rem;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
++      width: 340px;
++      margin-top: 0.5rem;
++    }
++
++    .mega-menu img {
++      width: 100%;
++      height: auto;
++      border-radius: 4px;
++      margin-top: 0.5rem;
++    }
++
++    main {
++      max-width: 1200px;
++      margin: 2rem auto;
++      padding: 0 2rem;
++    }
++
++    .hero-section {
++      text-align: center;
++      margin-bottom: 4rem;
++    }
++
++    .hero-section h1 {
++      font-size: 2.5rem;
++      margin-bottom: 1rem;
++      color: #111;
++    }
++
++    .hero-section p {
++      font-size: 1.2rem;
++      color: #666;
++      max-width: 600px;
++      margin: 0 auto 2rem;
++    }
++
++    .hero-image-wrapper {
++      width: 100%;
++      max-width: 800px;
++      margin: 0 auto;
++      background: #eee;
++      border-radius: 8px;
++      overflow: hidden;
++    }
++
++    .hero-image-wrapper img {
++      width: 100%;
++      height: auto;
++      display: block;
++    }
++
++    .gallery-section {
++      margin-bottom: 4rem;
++      background: #fff;
++      padding: 2rem;
++      border-radius: 8px;
++      border: 1px solid #e5e5e5;
++    }
++
++    .gallery-section h2 {
++      margin-bottom: 1.5rem;
++      font-size: 1.75rem;
++    }
++
++    .gallery-container {
++      display: flex;
++      flex-direction: column;
++      gap: 1.5rem;
++      align-items: flex-start;
++    }
++
++    .gallery-primary img {
++      width: 100%;
++      max-width: 400px;
++      height: auto;
++      border-radius: 6px;
++      background: #eee;
++      display: block;
++    }
++
++    .toggle-btn {
++      padding: 0.6rem 1.2rem;
++      font-size: 0.95rem;
++      background: #111;
++      color: #fff;
++      border: none;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    .toggle-btn:hover {
++      background: #333;
++    }
++
++    .gallery-alt {
++      margin-top: 1rem;
++    }
++
++    .gallery-alt img {
++      width: 100%;
++      max-width: 400px;
++      height: auto;
++      border-radius: 6px;
++      background: #eee;
++      display: block;
++    }
++
++    .content-spacer {
++      padding: 4rem 0;
++      margin-bottom: 60vh;
++    }
++
++    .content-spacer h2 {
++      font-size: 1.75rem;
++      margin-bottom: 1rem;
++    }
++
++    .content-spacer p {
++      margin-bottom: 1rem;
++      color: #555;
++    }
++
++    footer {
++      background: #fff;
++      border-top: 1px solid #e5e5e5;
++      padding: 4rem 2rem;
++      text-align: center;
++    }
++
++    .footer-logo-wrapper {
++      margin-bottom: 1rem;
++    }
++
++    .footer-logo-wrapper img {
++      display: inline-block;
++      width: 120px;
++      height: 60px;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <nav>
++      <a href="#" class="nav-brand">Aura Audio</a>
++      <ul class="nav-menu">
++        <li class="nav-item"><a href="#gallery" class="nav-link">Gallery</a></li>
++        <li class="nav-item"><a href="#details" class="nav-link">Details</a></li>
++        <li class="nav-item">
++          <button type="button" class="nav-btn" id="mega-menu-trigger" aria-expanded="false" aria-controls="mega-menu-dropdown">
++            Special Deals ▾
++          </button>
++          <div id="mega-menu-dropdown" class="mega-menu" hidden style="display: none;">
++            <h3>Exclusive Deal</h3>
++            <p>Save 20% on our premium audio accessories today.</p>
++            <!-- Deprioritize secondary navigation promo image revealed only after user interaction -->
++            <img src="mega-menu-promo.jpg" alt="Special Offer" fetchpriority="low" loading="lazy" width="300" height="150">
++          </div>
++        </li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero-section">
++      <h1>Aura Sound Pro</h1>
++      <p>Immerse yourself in crystal-clear studio acoustics with active noise cancellation.</p>
++      <div class="hero-image-wrapper">
++        <!-- Elevate priority for the main LCP hero image -->
++        <img src="hero-lcp.jpg" alt="Aura Sound Pro Hero Banner" fetchpriority="high" width="800" height="400">
++      </div>
++    </section>
++
++    <section id="gallery" class="gallery-section">
++      <h2>Product Gallery</h2>
++      <div class="gallery-container">
++        <!-- Standard priority for the initially visible gallery image -->
++        <div class="gallery-primary">
++          <img src="gallery.jpg" alt="Aura Sound Pro Front View" width="400" height="300">
++        </div>
++
++        <div class="gallery-toggle-wrapper">
++          <button type="button" id="toggle-gallery-btn" class="toggle-btn" aria-expanded="false" aria-controls="gallery-alt-container">
++            Toggle Alternate Angle
++          </button>
++          <div id="gallery-alt-container" class="gallery-alt" hidden style="display: none;">
++            <!-- Deprioritize initially hidden image above the fold -->
++            <img src="gallery-alt.jpg" alt="Aura Sound Pro Alternate Angle" fetchpriority="low" loading="lazy" width="400" height="300">
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section id="details" class="content-spacer">
++      <h2>Uncompromising Performance</h2>
++      <p>Engineered with custom beryllium drivers and advanced acoustic chamber geometry, Aura Sound Pro delivers balanced high fidelity across the entire frequency range.</p>
++      <p>Designed for all-day comfort with ultra-soft memory foam ear cushions and an ultra-lightweight magnesium alloy frame.</p>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-logo-wrapper">
++      <!-- Use lazy loading alone for standard below-the-fold image; do not add fetchpriority="low" -->
++      <img src="footer-logo.png" alt="Aura Audio Footer Logo" loading="lazy" width="120" height="60">
++    </div>
++    <p>&copy; 2026 Aura Audio Technologies Inc. All rights reserved.</p>
++  </footer>
++
++  <script>
++    // Toggle Mega Menu
++    const megaMenuTrigger = document.getElementById('mega-menu-trigger');
++    const megaMenuDropdown = document.getElementById('mega-menu-dropdown');
++    if (megaMenuTrigger && megaMenuDropdown) {
++      megaMenuTrigger.addEventListener('click', () => {
++        const isHidden = megaMenuDropdown.hasAttribute('hidden') || megaMenuDropdown.style.display === 'none';
++        if (isHidden) {
++          megaMenuDropdown.removeAttribute('hidden');
++          megaMenuDropdown.style.display = 'block';
++          megaMenuTrigger.setAttribute('aria-expanded', 'true');
++        } else {
++          megaMenuDropdown.setAttribute('hidden', '');
++          megaMenuDropdown.style.display = 'none';
++          megaMenuTrigger.setAttribute('aria-expanded', 'false');
++        }
++      });
++    }
++
++    // Toggle Gallery Alternate Image
++    const toggleGalleryBtn = document.getElementById('toggle-gallery-btn');
++    const galleryAltContainer = document.getElementById('gallery-alt-container');
++    if (toggleGalleryBtn && galleryAltContainer) {
++      toggleGalleryBtn.addEventListener('click', () => {
++        const isHidden = galleryAltContainer.hasAttribute('hidden') || galleryAltContainer.style.display === 'none';
++        if (isHidden) {
++          galleryAltContainer.removeAttribute('hidden');
++          galleryAltContainer.style.display = 'block';
++          toggleGalleryBtn.setAttribute('aria-expanded', 'true');
++        } else {
++          galleryAltContainer.setAttribute('hidden', '');
++          galleryAltContainer.style.display = 'none';
++          toggleGalleryBtn.setAttribute('aria-expanded', 'false');
++        }
++      });
++    }
++  </script>
++</body>
++</html>

@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,37 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roasting simulator */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      max-width: 1100px;
++      min-height: 400px;
++      margin: 40px auto;
++      padding: 20px;
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++      text-align: center;
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      max-width: 640px;
++      height: 260px;
++      margin: 15px auto;
++      background: #2a1a16;
++      border-radius: 8px;
++    }
++
++    .roast-reading {
++      font-size: 1.5rem;
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +225,15 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-labelledby="roast-title">
++    <h2 id="roast-title">Live Roasting Simulator</h2>
++    <canvas id="roast-canvas" width="640" height="260" role="img"
++      aria-label="Coffee beans tumbling in a roaster"></canvas>
++    <p class="roast-reading">Drum temperature: <span id="roast-temp-value" aria-live="off">200</span>&deg;C</p>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +242,104 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var widget = document.getElementById('roasting-widget');
++      var canvas = document.getElementById('roast-canvas');
++      var tempEl = document.getElementById('roast-temp-value');
++      var ctx = canvas.getContext('2d');
++      var W = canvas.width, H = canvas.height;
++
++      var beans = [];
++      for (var i = 0; i < 24; i++) {
++        beans.push({
++          x: Math.random() * W, y: Math.random() * H,
++          vx: (Math.random() - 0.5) * 1.6, vy: (Math.random() - 0.5) * 1.6,
++          a: Math.random() * Math.PI * 2, spin: (Math.random() - 0.5) * 0.08
++        });
++      }
++
++      var temp = 200, rafId = 0, timerId = 0;
++
++      function draw() {
++        // Beans darken from green-brown to dark roast as temperature rises
++        var t = Math.min(1, Math.max(0, (temp - 200) / 40));
++        var color = 'rgb(' + Math.round(140 - 90 * t) + ',' +
++          Math.round(100 - 70 * t) + ',' + Math.round(55 - 35 * t) + ')';
++        ctx.clearRect(0, 0, W, H);
++        beans.forEach(function (b) {
++          b.x = (b.x + b.vx + W) % W;
++          b.y = (b.y + b.vy + H) % H;
++          b.a += b.spin;
++          ctx.save();
++          ctx.translate(b.x, b.y);
++          ctx.rotate(b.a);
++          ctx.fillStyle = color;
++          ctx.beginPath();
++          ctx.ellipse(0, 0, 14, 9, 0, 0, Math.PI * 2);
++          ctx.fill();
++          ctx.strokeStyle = 'rgba(0,0,0,0.5)';
++          ctx.beginPath();
++          ctx.moveTo(-11, 0);
++          ctx.quadraticCurveTo(0, 5, 11, 0);
++          ctx.stroke();
++          ctx.restore();
++        });
++      }
++
++      function loop() {
++        draw();
++        rafId = requestAnimationFrame(loop);
++      }
++
++      function tick() {
++        // Simulated temperature drifts upward with noise, then resets
++        temp += Math.random() * 2.5 - 0.5;
++        if (temp > 240) temp = 200;
++        tempEl.textContent = temp.toFixed(1);
++      }
++
++      function start() {
++        if (rafId || timerId) return;
++        rafId = requestAnimationFrame(loop);
++        timerId = setInterval(tick, 500);
++      }
++
++      function stop() {
++        cancelAnimationFrame(rafId);
++        clearInterval(timerId);
++        rafId = timerId = 0;
++      }
++
++      // Both signals must agree before work runs
++      var inView = false;
++      function sync() {
++        if (inView && !document.hidden) start(); else stop();
++      }
++
++      draw();
++      document.addEventListener('visibilitychange', sync);
++
++      if ('contentVisibility' in document.documentElement.style) {
++        // Fires on first render check, so it also drives the initial start
++        widget.addEventListener('contentvisibilityautostatechange', function (e) {
++          inView = !e.skipped;
++          sync();
++        });
++      } else if ('IntersectionObserver' in window) {
++        new IntersectionObserver(function (entries) {
++          inView = entries[entries.length - 1].isIntersecting;
++          sync();
++        }, { rootMargin: '200px' }).observe(widget);
++      } else {
++        // No observer support at all: just run
++        inView = true;
++        sync();
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

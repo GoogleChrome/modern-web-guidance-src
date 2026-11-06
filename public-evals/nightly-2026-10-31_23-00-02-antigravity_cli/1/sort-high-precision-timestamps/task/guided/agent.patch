@@ -1,0 +1,328 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -125,17 +125,108 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .telemetry-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .telemetry-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .telemetry-header h2 {
++      color: var(--primary);
++    }
++
++    .telemetry-header .btn {
++      margin-top: 0;
++    }
++
++    .table-wrapper {
++      overflow-x: auto;
++      margin-top: 20px;
++    }
++
++    .events-table {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .events-table th,
++    .events-table td {
++      padding: 12px 15px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .events-table th {
++      background-color: var(--primary);
++      color: white;
++      font-weight: 600;
++    }
++
++    .events-table tbody tr:hover {
++      background-color: #f5f0ee;
++    }
++
++    .mono {
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.85rem;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 2px 8px;
++      border-radius: 4px;
++      background: var(--secondary);
++      color: var(--text);
++      font-weight: 600;
++      font-size: 0.8rem;
++    }
++
++    .interval-pill {
++      display: inline-block;
++      padding: 3px 10px;
++      border-radius: 12px;
++      background: #fff3e0;
++      color: #e65100;
++      font-weight: 600;
++      font-size: 0.85rem;
++    }
++
++    .empty-state {
++      text-align: center;
++      padding: 25px;
++      color: #6d4c41;
++      background: #fdfbf9;
++      border: 1px dashed var(--secondary);
++      border-radius: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +285,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="telemetry-section" aria-labelledby="order-events-heading">
++      <div class="telemetry-header">
++        <div>
++          <h2 id="order-events-heading">Distributed Order Event Trace</h2>
++          <p>Inspect high-precision UTC nanosecond timestamps collected from distributed backend coffee order services.</p>
++        </div>
++        <button type="button" id="load-order-events-btn" class="btn">Load &amp; Sort Order Events</button>
++      </div>
++
++      <div id="order-events-output" aria-live="polite">
++        <div class="empty-state">
++          Click "Load &amp; Sort Order Events" to ingest out-of-order backend order telemetry, sort chronologically with nanosecond precision, and measure consecutive event intervals.
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +313,190 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const rawOrderEvents = [
++      {
++        orderId: 'ORD-8492',
++        service: 'roastery-fulfillment-eu-1',
++        eventType: 'espresso.shot.pulled',
++        detail: 'Double Ristretto extraction completed',
++        ts: '2026-11-01T08:15:30.104892310Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'edge-gateway-us-east',
++        eventType: 'order.received',
++        detail: 'Maple Oat Latte order ingress',
++        ts: '2026-11-01T08:15:30.104110050Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'barista-queue-worker-2',
++        eventType: 'ticket.dispatched',
++        detail: 'Routed to espresso bar station #1',
++        ts: '2026-11-01T08:15:30.104500890Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'payment-ledger-core',
++        eventType: 'payment.authorized',
++        detail: 'Card token verified & captured',
++        ts: '2026-11-01T08:15:30.104110925Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'pickup-notifier-svc',
++        eventType: 'order.ready',
++        detail: 'Cup placed on mobile pickup counter',
++        ts: '2026-11-01T08:15:30.105240000Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'inventory-ledger-db',
++        eventType: 'beans.reserved',
++        detail: 'Deducted 18g House Dark Roast & oat milk',
++        ts: '2026-11-01T08:15:30.104500120Z'
++      }
++    ];
++
++    async function ensureTemporal() {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++    }
++
++    function sequenceEvents(items) {
++      return [...items].sort((a, b) => Temporal.Instant.compare(a.timestamp, b.timestamp));
++    }
++
++    function processOrderEvents(rawBatch) {
++      // 1. Parse recorded nanosecond timestamps as Temporal.Instant (preserving sub-millisecond digits)
++      const parsedEvents = rawBatch.map((evt, originalIndex) => ({
++        ...evt,
++        originalIndex: originalIndex + 1,
++        timestamp: Temporal.Instant.from(evt.ts)
++      }));
++
++      // 2. Sort chronologically using Temporal.Instant.compare()
++      const sortedEvents = sequenceEvents(parsedEvents);
++
++      // 3. Calculate intervals between consecutive events with .since() and format with .toLocaleString()
++      return sortedEvents.map((curr, idx) => {
++        if (idx === 0) {
++          return {
++            ...curr,
++            isoTimestamp: curr.timestamp.toString(),
++            localWallClock: curr.timestamp
++              .toZonedDateTimeISO(Intl.DateTimeFormat().resolvedOptions().timeZone)
++              .toPlainTime()
++              .toString({ smallestUnit: 'nanosecond' }),
++            intervalText: 'Baseline (0ns)',
++            isoDuration: 'PT0S',
++            isDuplicateTimestamp: false
++          };
++        }
++
++        const prev = sortedEvents[idx - 1];
++        const isDuplicateTimestamp = curr.timestamp.equals(prev.timestamp);
++        const gap = curr.timestamp.since(prev.timestamp);
++
++        return {
++          ...curr,
++          isoTimestamp: curr.timestamp.toString(),
++          localWallClock: curr.timestamp
++            .toZonedDateTimeISO(Intl.DateTimeFormat().resolvedOptions().timeZone)
++            .toPlainTime()
++            .toString({ smallestUnit: 'nanosecond' }),
++          intervalText: isDuplicateTimestamp
++            ? '0ns (simultaneous)'
++            : `+${gap.toLocaleString('en-US', { style: 'narrow' })}`,
++          isoDuration: gap.toString(),
++          isDuplicateTimestamp
++        };
++      });
++    }
++
++    function renderEventTrace(analyzedEvents) {
++      const output = document.getElementById('order-events-output');
++      const totalSpan = analyzedEvents[analyzedEvents.length - 1].timestamp.since(
++        analyzedEvents[0].timestamp
++      );
++
++      const rowsHtml = analyzedEvents
++        .map(
++          (evt, idx) => `
++            <tr>
++              <td><strong>#${idx + 1}</strong> <small>(was #${evt.originalIndex})</small></td>
++              <td><span class="badge">${evt.service}</span></td>
++              <td><strong>${evt.eventType}</strong><br><small>${evt.detail}</small></td>
++              <td class="mono"><time datetime="${evt.isoTimestamp}">${evt.isoTimestamp}</time></td>
++              <td>
++                <time class="interval-pill" datetime="${evt.isoDuration}">${evt.intervalText}</time>
++              </td>
++            </tr>
++          `
++        )
++        .join('');
++
++      output.innerHTML = `
++        <p style="margin-bottom: 12px;">
++          Sorted <strong>${analyzedEvents.length}</strong> events for order <strong>${analyzedEvents[0].orderId}</strong>.
++          Total end-to-end trace span: <strong class="interval-pill">${totalSpan.toLocaleString('en-US', { style: 'narrow' })}</strong>
++        </p>
++        <div class="table-wrapper">
++          <table class="events-table">
++            <thead>
++              <tr>
++                <th>Seq</th>
++                <th>Backend Service</th>
++                <th>Order Event</th>
++                <th>UTC Timestamp (Nanosecond Precision)</th>
++                <th>Interval Since Previous</th>
++              </tr>
++            </thead>
++            <tbody>
++              ${rowsHtml}
++            </tbody>
++          </table>
++        </div>
++      `;
++    }
++
++    function initializeApp() {
++      const loadBtn = document.getElementById('load-order-events-btn');
++      if (!loadBtn) return;
++
++      loadBtn.addEventListener('click', async () => {
++        loadBtn.disabled = true;
++        const originalLabel = loadBtn.textContent;
++        loadBtn.textContent = 'Processing Telemetry...';
++        try {
++          await ensureTemporal();
++          const analyzed = processOrderEvents(rawOrderEvents);
++          renderEventTrace(analyzed);
++          loadBtn.textContent = 'Reload & Sort Order Events';
++        } finally {
++          loadBtn.disabled = false;
++        }
++      });
++    }
++
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        try {
++          const module = await import('https://esm.sh/temporal-polyfill');
++          globalThis.Temporal = module.Temporal;
++          Date.prototype.toTemporalInstant = module.toTemporalInstant;
++        } catch (err) {
++          console.error('Failed to load Temporal polyfill:', err);
++        }
++      }
++      initializeApp();
++    })();
++  </script>
+ </body>
+ 
+ </html>

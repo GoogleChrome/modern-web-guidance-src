@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,57 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Mixed Fonts</title>
++  <style>
++    body {
++      font-family: system-ui, sans-serif;
++      max-width: 40rem;
++      margin: 2rem auto;
++      padding: 0 1rem;
++    }
++
++    #mixed-fonts-container {
++      font-family: Georgia, serif;
++      /* Take the x-height ratio from the primary font and apply it to nested fonts */
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "Courier New", monospace;
++    }
++
++    #independent-theme-container {
++      font-family: Times, "Times New Roman", serif;
++      /* Numeric x-height / font-size ratio, independent of the surrounding font */
++      font-size-adjust: 0.51;
++      margin-top: 2rem;
++      padding: 1rem;
++      border: 1px solid currentColor;
++    }
++
++    /* Fallback for browsers without font-size-adjust support */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code {
++        font-size: 0.9em;
++      }
++      #independent-theme-container {
++        font-size: 1.05rem;
++        line-height: 1.6;
++      }
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Regular serif text sits next to inline code like <code>const x = 42;</code> and
++    <code>document.querySelector("p")</code>, and both look the same visual height.
++  </p>
++
++  <div id="independent-theme-container">
++    This container uses an independent theme font whose proportions are locked with a numeric
++    <code>font-size-adjust</code> value.
++  </div>
++</body>
++</html>

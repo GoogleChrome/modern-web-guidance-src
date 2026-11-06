@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,100 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f5f5ed">
++  <meta name="description" content="Make room for a little green. Discover thoughtfully selected houseplants and simple guidance for a greener home with Everleaf.">
++  <title>Everleaf — A little green. A lot of good.</title>
++  <!-- Install before the body is parsed so the original experiment content cannot paint. -->
++  <style>html.experiment-pending body{visibility:hidden}html.experiment-pending .hero-copy{min-height:480px}</style>
++  <script>
++    (() => {
++      document.documentElement.classList.add('experiment-pending');
++      let finished = false;
++      let timer;
++      let domReady = document.readyState !== 'loading';
++      let requested = null;
++      // Integration contract: the SDK calls window.everleafExperimentReady() or
++      // dispatches "experiment:ready" AFTER all initial DOM changes are complete.
++      // Script load alone is deliberately not treated as experiment readiness.
++      const finish = (fallback) => {
++        if (finished) return;
++        requested = fallback;
++        if (!domReady) return;
++        finished = true;
++        clearTimeout(timer);
++        if (fallback) {
++          let variant = 'b';
++          try {
++            variant = localStorage.getItem('everleaf-variant') || (Math.random() < .5 ? 'a' : 'b');
++            localStorage.setItem('everleaf-variant', variant);
++          } catch (_) { /* Private storage still receives a valid variant. */ }
++          const copy = variant === 'a'
++            ? ['A little green.', 'A lot of good.', 'Find your plant']
++            : ['Good things', 'grow here.', 'Find your plant'];
++          document.querySelector('[data-hero-line-one]').textContent = copy[0];
++          document.querySelector('[data-hero-line-two]').textContent = copy[1];
++          document.querySelector('[data-hero-cta]').firstChild.textContent = copy[2] + ' ';
++          document.documentElement.dataset.experimentVariant = variant;
++          document.documentElement.dataset.experimentSource = 'local-fallback';
++        } else {
++          document.documentElement.dataset.experimentSource = 'sdk';
++        }
++        document.documentElement.classList.remove('experiment-pending');
++      };
++      window.everleafExperimentReady = () => finish(false);
++      window.addEventListener('experiment:ready', window.everleafExperimentReady, { once: true });
++      window.addEventListener('DOMContentLoaded', () => {
++        domReady = true;
++        if (requested !== null) finish(requested);
++      }, { once: true });
++      window.everleafExperimentFailed = () => finish(true);
++      timer = setTimeout(() => finish(true), 1800);
++    })();
++  </script>
++  <script async src="https://cdn.example.com/experiment-sdk.js" onerror="window.everleafExperimentFailed()"></script>
++  <link rel="preconnect" href="https://images.unsplash.com">
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="styles.css">
++</head>
++<body>
++  <div class="announcement">A happier home starts with a little green. <span>Let’s grow together.</span> <span aria-hidden="true">↗</span></div>
++  <header class="site-header">
++    <a class="wordmark" href="#" aria-label="Everleaf home"><svg viewBox="0 0 32 38" fill="none" aria-hidden="true"><path d="M16 35V15M16 26C3 26 2 14 3 7c10 0 15 5 13 19ZM16 19C15 7 21 3 29 2c1 10-3 17-13 17Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>everleaf<span class="wordmark-dot">®</span></a>
++    <nav aria-label="Main navigation"><a href="#collection">Our plants <span>⌄</span></a><a href="#story">Our story</a><a href="#care">Plant care</a></nav>
++    <button class="bag-button" id="bag-open" aria-label="Open shopping bag">Bag <span id="bag-count">0</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14l1 14H4L5 7Z" stroke="currentColor" stroke-width="1.5"/><path d="M9 8V5a3 3 0 0 1 6 0v3" stroke="currentColor" stroke-width="1.5"/></svg></button>
++  </header>
++  <main>
++    <section class="hero" aria-label="Welcome to Everleaf">
++      <div class="hero-copy" data-experiment>
++        <div class="eyebrow"><span class="tiny-leaf">✳</span> MAKE ROOM FOR NATURE</div>
++        <h1><span data-hero-line-one>A little green.</span><br><em data-hero-line-two>A lot of good.</em></h1>
++        <p>Bring your space to life with plants that feel like you.<br class="desktop-break"> Thoughtfully picked. Easy to love. Ready to grow.</p>
++        <a class="button primary" href="#collection" data-hero-cta>Find your plant <span aria-hidden="true">↗</span></a>
++        <div class="hero-note"><span class="note-line"></span> A little nature. An everyday kind of happy.</div>
++      </div>
++      <div class="hero-image"><img src="https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1500&q=85" alt="A sunlit collection of green houseplants in terracotta pots" fetchpriority="high"><div class="image-label"><span class="live-dot"></span> GOOD ROOTS. HAPPY HOMES.</div><div class="image-caption">Your new leaf starts here.<span>01 / 03</span></div></div>
++      <div class="hero-seal" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><path id="circle" d="M50,50m-35,0a35,35 0 1,1 70,0a35,35 0 1,1 -70,0"/></defs><text><textPath href="#circle">GROW A LITTLE HAPPINESS · EVERY DAY · </textPath></text><path d="M50 67V38m0 17c-16 0-19-11-18-18 13 0 19 6 18 18Zm0-8c-1-13 5-20 17-22 2 13-4 21-17 22Z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></div>
++    </section>
++    <div class="benefits" aria-label="Our promise"><div><span aria-hidden="true">♧</span> Grown with care</div><i></i><div><svg viewBox="0 0 26 24" fill="none" aria-hidden="true"><path d="M2 5h14v14H2zm14 5h5l3 5v4h-8M6 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm14 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="1.2"/></svg> Delivered to your door</div><i></i><div><span aria-hidden="true">☼</span> A little guidance, always</div><i></i><div><span aria-hidden="true">♡</span> Happiness, rooted in nature</div></div>
++    <section class="collection section-pad" id="collection">
++      <div class="section-top"><div><div class="eyebrow">MEET YOUR NEW ROOMMATES</div><h2>Good company. <em>Great plants.</em></h2></div><a class="text-link" href="#plant-grid">Explore the collection <span>↗</span></a></div>
++      <div class="collection-controls"><div class="filters" aria-label="Filter plants"><button class="active" data-filter="all" aria-pressed="true">All plants</button><button data-filter="easy" aria-pressed="false">Easy-going</button><button data-filter="statement" aria-pressed="false">Statement makers</button><button data-filter="small" aria-pressed="false">Small spaces</button></div><span class="collection-note">A green friend for every kind of home.</span></div>
++      <div class="plant-grid" id="plant-grid">
++        <article class="plant-card" data-category="easy statement"><div class="plant-image plant-one"><span class="product-tag">THE CROWD FAVORITE</span><img src="https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=850&q=85" alt="Lush monstera leaves" loading="lazy"><button class="add-plant" data-name="Monstera Deliciosa" data-price="38" aria-label="Add Monstera Deliciosa to bag">↗</button></div><div class="plant-info"><h3>Monstera Deliciosa</h3><span>$38</span></div><p>A big personality. A laid-back attitude.</p></article>
++        <article class="plant-card" data-category="easy small"><div class="plant-image plant-two"><span class="product-tag">LOW EFFORT, HIGH REWARD</span><img src="https://images.unsplash.com/photo-1593482892290-f54927ae2b7a?auto=format&fit=crop&w=850&q=85" alt="Sculptural green snake plant in a pot" loading="lazy"><button class="add-plant" data-name="Snake Plant" data-price="28" aria-label="Add Snake Plant to bag">↗</button></div><div class="plant-info"><h3>Snake Plant</h3><span>$28</span></div><p>Thrives on a little love (and a little neglect).</p></article>
++        <article class="plant-card" data-category="statement"><div class="plant-image plant-three"><span class="product-tag">A NATURAL SHOWSTOPPER</span><img src="https://images.unsplash.com/photo-1509423350716-97f9360b4e09?auto=format&fit=crop&w=850&q=85" alt="Beautiful leafy indoor plant beside a bright window" loading="lazy"><button class="add-plant" data-name="Fiddle Leaf Fig" data-price="54" aria-label="Add Fiddle Leaf Fig to bag">↗</button></div><div class="plant-info"><h3>Fiddle Leaf Fig</h3><span>$54</span></div><p>A little height. A whole lot of character.</p></article>
++      </div>
++    </section>
++    <section class="story section-pad" id="story"><div class="eyebrow">ROOTED IN THE EVERYDAY</div><h2>Life feels better<br>with something <em>growing.</em></h2><div><p>That quiet corner. Your sunny windowsill. The desk where ideas happen. We believe there’s a place for a plant in every home — and a little joy in watching it grow.</p><a class="text-link" href="#care">Let’s put down roots <span>↗</span></a></div></section>
++    <section class="care section-pad" id="care"><div><div class="eyebrow">YOU’VE GOT THIS. WE’VE GOT YOU.</div><h2>A little plant know-how.</h2></div><div class="care-questions"><details><summary>How do I find the right plant?<span>+</span></summary><p>Start with your light. A bright window suits a fiddle leaf fig; a snake plant is more forgiving of lower light. Try our Easy-going collection for a comfortable first step.</p></details><details><summary>How often should I water?<span>+</span></summary><p>Check the soil before watering. For most houseplants, let the top inch or two dry out, then water thoroughly and allow excess water to drain. Snake plants prefer drying out between waterings.</p></details><details><summary>Where should my plant live?<span>+</span></summary><p>Bright, indirect light is a happy starting point. Keep leaves away from hot radiators and cold drafts, and turn the pot occasionally for even growth.</p></details></div></section>
++  </main>
++  <footer><a class="wordmark" href="#">everleaf<span class="wordmark-dot">®</span></a><span>A little green goes a long way.</span><span>© <span id="year">2026</span> Everleaf. Grow happy.</span></footer>
++  <dialog id="bag-dialog"><div class="dialog-heading"><h2>Your little green bag</h2><button id="bag-close" aria-label="Close shopping bag">×</button></div><div id="bag-items"></div><p class="bag-total" id="bag-total"></p><p class="demo-note">A little preview of your greener home. This is a demo collection; purchases aren’t available yet.</p><button class="button primary" id="keep-exploring">Keep exploring <span>↗</span></button></dialog>
++  <div id="toast" role="status" aria-live="polite"></div>
++  <script src="app.js" defer></script>
++</body>
++</html>

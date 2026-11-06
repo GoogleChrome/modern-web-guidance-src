@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,56 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input {
++      flex: 1;
++      padding: 10px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter button.btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .newsletter-error {
++      display: none;
++      margin-top: 6px;
++      font-size: 0.85rem;
++      color: #b71c1c;
++      text-align: left;
++    }
++
++    /* :user-invalid only matches after the user has interacted with the field
++       (e.g. blurred it) or tried to submit, so no error shows on page load. */
++    .newsletter input:user-invalid {
++      border-color: #b71c1c;
++    }
++
++    .newsletter input:user-invalid~.newsletter-error {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +245,17 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" action="/newsletter" method="post">
++      <h3>Join our mailing list</h3>
++      <div class="newsletter-row">
++        <input type="email" name="email" id="newsletter-email" placeholder="you@example.com" aria-label="Email address"
++          aria-describedby="newsletter-error" required>
++        <button type="submit" class="btn">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-error">Please enter a valid email address.</p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |

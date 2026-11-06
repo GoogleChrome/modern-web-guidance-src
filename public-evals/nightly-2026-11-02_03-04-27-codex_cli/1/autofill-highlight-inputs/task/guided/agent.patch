@@ -1,0 +1,22 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,18 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Highlight browser-autofilled inputs, including WebKit browsers. */
++    input:is(:autofill, :-webkit-autofill) {
++      border: 2px solid #2e7d32;
++    }
++
++    input:is(:autofill, :-webkit-autofill):focus-visible {
++      outline: 3px solid var(--text);
++      outline-offset: 2px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

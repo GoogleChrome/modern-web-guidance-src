@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -45,8 +45,48 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
++    /* Shrink the nav over the first 80px of scroll */
++    @keyframes shrink-nav {
++      to {
++        padding-block: 0.4rem;
++        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    @keyframes shrink-logo {
++      to {
++        font-size: 1.15rem;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++        nav {
++          animation: shrink-nav linear both;
++          animation-timeline: scroll(root block);
++          animation-range: 0px 80px;
++        }
++
++        .logo {
++          animation: shrink-logo linear both;
++          animation-timeline: scroll(root block);
++          animation-range: 0px 80px;
++        }
++      }
++    }
++
++    /* Fallback: script sets --shrink (0 to 1) from the scroll position */
++    nav.scroll-fallback {
++      padding-block: calc(1rem - 0.6rem * var(--shrink, 0));
++      box-shadow: 0 2px 8px rgba(0, 0, 0, calc(0.3 * var(--shrink, 0)));
++    }
++
++    nav.scroll-fallback .logo {
++      font-size: calc(1.5rem - 0.35rem * var(--shrink, 0));
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+@@ -206,7 +246,31 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Fallback for browsers without scroll-driven animations
++    if (!CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)') &&
++        !matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      const nav = document.querySelector('nav');
++      const distance = 80;
++      let ticking = false;
++
++      nav.classList.add('scroll-fallback');
++
++      const update = () => {
++        ticking = false;
++        nav.style.setProperty('--shrink', Math.min(1, Math.max(0, window.scrollY / distance)));
++      };
++
++      window.addEventListener('scroll', () => {
++        if (!ticking) {
++          ticking = true;
++          requestAnimationFrame(update);
++        }
++      }, { passive: true });
++      update();
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,222 @@
+diff --git a/package.json b/package.json
+index 2e1f2e8..6adf181 100644
+--- a/package.json
++++ b/package.json
+@@ -12,6 +12,7 @@
+   "dependencies": {
+     "@astrojs/node": "^11.1.7",
+     "@astrojs/react": "^5.0.7",
++    "@fontsource/grenze": "^5.3.0",
+     "@heroicons/react": "^2.2.0",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..3f0e15d 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -19,6 +19,9 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -63,6 +66,11 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
++            maxLength={64}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +85,9 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
++            maxLength={128}
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -94,6 +105,11 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      <p className="mt-4 text-xs text-gray-500 text-center">
++        Your credentials are sent securely to our authentication service. We collect only your username and password, use them solely for your account, and never for advertising or tracking. See our{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Privacy Policy</a>.
++      </p>
+     </div>
+   );
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..81f3550 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -19,6 +19,9 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -64,6 +67,11 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
++            maxLength={64}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,6 +86,9 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
++            maxLength={128}
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -91,7 +102,6 @@ export default function SignUpForm() {
+         <button
+           type="submit"
+           disabled={loading}
+-          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+@@ -99,6 +109,11 @@ export default function SignUpForm() {
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      <p className="mt-4 text-xs text-gray-500 text-center">
++        Don't use your real name or email as a username; it is optional to share personal information. We collect only your username and password, use them solely for your account, and never for advertising or tracking. See our{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Privacy Policy</a>.
++      </p>
+     </div>
+   );
+ }
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..ea078c0 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -2,6 +2,7 @@
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
++import "@fontsource/grenze/500.css";
+ import "../styles/global.css";
+ 
+ import { ClientRouter } from "astro:transitions";
+@@ -17,20 +18,17 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
++    <!--
++      Privacy by design: no third-party scripts, fonts or trackers are loaded.
++      The Grenze font is self-hosted. The previous analytics-client.js and
++      ad-client.js third-party scripts were removed; re-introduce any such script
++      only behind explicit user consent and a matching privacy policy update.
++    -->
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..8b1afae 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,6 +1,21 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++// Everything is first-party: scripts/styles/fonts are bundled, and the only
++// cross-origin request is the auth API used by the sign-in/sign-up forms.
++// Astro's hydration and ClientRouter need inline scripts and styles.
++const CSP = [
++  "default-src 'self'",
++  "script-src 'self' 'unsafe-inline'",
++  "style-src 'self' 'unsafe-inline'",
++  "img-src 'self' data:",
++  "font-src 'self'",
++  "connect-src 'self' https://us-central1-web-devrel-apps.cloudfunctions.net",
++  "object-src 'none'",
++  "base-uri 'self'",
++  "form-action 'self'",
++  "frame-ancestors 'none'",
++].join('; ');
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+@@ -9,5 +24,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++  const headers = response.headers;
++  headers.set('Content-Security-Policy', CSP);
++  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++  headers.set('X-Content-Type-Options', 'nosniff');
++  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=(), browsing-topics=()');
++  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
++
++  // Credential pages must never be cached or leak via Referer.
++  const path = context.url.pathname.replace(/\/$/, '');
++  if (path.endsWith('/signin') || path.endsWith('/signup')) {
++    headers.set('Cache-Control', 'no-store');
++    headers.set('Referrer-Policy', 'no-referrer');
++  }
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..7889ec5 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -14,4 +14,11 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     <h2>3. Recording of data on our website</h2>
+     <p><strong>Cookies</strong></p>
+     <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++
++    <h2>4. Accounts, third parties and tracking</h2>
++    <p><strong>Accounts</strong></p>
++    <p>If you sign up, we collect only a username and password. They are sent to our authentication service solely to create and verify your account, and are not used for advertising or profiling. Please do not use your real name or email address as a username.</p>
++    <p><strong>No third-party tracking</strong></p>
++    <p>This website does not load third-party analytics, advertising scripts or externally hosted fonts. Fonts are served from our own domain, so your IP address is not shared with font providers. Our server sets security headers and a limiting Referrer-Policy so that pages you visit are not leaked to other sites.</p>
++    <p>If this ever changes, we will update this policy and ask for your consent before any non-essential script is loaded.</p>
+ </LegalLayout>

@@ -1,0 +1,65 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,25 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    .telemetry { margin-top: 40px; padding: 28px; background: #f1eae5; border: 1px solid var(--secondary); border-radius: 8px; }
++    .eyebrow { font-size: .75rem; letter-spacing: .12em; font-weight: 700; text-transform: uppercase; }
++    .telemetry h2 { margin: 4px 0 8px; }
++    .telemetry-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 18px 0; }
++    button.btn { font: inherit; cursor: pointer; border: 0; margin: 0; }
++    button.btn:disabled { opacity: .6; cursor: wait; }
++    .btn.secondary { background: white; color: var(--primary); border: 1px solid var(--secondary); }
++    button:focus-visible { outline: 3px solid #ac6510; outline-offset: 4px; }
++    .telemetry-status, .clock-note { font-size: .85rem; }
++    .clock-note { margin-top: 12px; }
++    .table-scroll { overflow-x: auto; background: white; border-radius: 5px; }
++    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .85rem; }
++    caption { text-align: left; padding: 12px 16px; font-weight: 600; }
++    th, td { padding: 10px 16px; border-top: 1px solid #eee7e2; white-space: nowrap; }
++    th { font-size: .75rem; color: #6e5148; }
++    td.timestamp, td.delta { font-family: ui-monospace, monospace; }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -194,8 +211,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="telemetry" aria-labelledby="telemetry-heading">
++      <p class="eyebrow">Coffee order telemetry</p>
++      <h2 id="telemetry-heading">Every order. In sequence.</h2>
++      <p>Simulate rapid coffee orders and trace the time between clicks, down to the nanosecond unit.</p>
++      <div class="telemetry-actions">
++        <button type="button" class="btn" id="simulate-order" disabled>Simulate coffee order</button>
++        <button type="button" class="btn secondary" id="clear-telemetry" disabled>Clear log</button>
++        <span class="telemetry-status" id="telemetry-status" role="status">Initializing clock…</span>
++      </div>
++      <div class="table-scroll" tabindex="0" role="region" aria-label="Chronological coffee order log">
++        <table>
++          <caption>Order events · earliest first · UTC</caption>
++          <thead><tr><th scope="col">Order</th><th scope="col">Operation</th><th scope="col">Timestamp (ns)</th><th scope="col">Since previous click (ns)</th></tr></thead>
++          <tbody id="telemetry-log"><tr><td colspan="4">Ready for your first coffee order.</td></tr></tbody>
++        </table>
++      </div>
++      <p class="clock-note">Local simulation · timestamps use nanosecond precision; actual clock resolution depends on your browser and device. Equal timestamps retain click order. No cross-service clock synchronization is simulated.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +241,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./telemetry.mjs"></script>
+ </body>
+ 
+ </html>

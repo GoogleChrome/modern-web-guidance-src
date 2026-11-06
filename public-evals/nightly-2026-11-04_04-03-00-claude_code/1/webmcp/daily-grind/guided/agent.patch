@@ -1,0 +1,554 @@
+diff --git a/index.html b/index.html
+index 66c9173..5fc4035 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,146 @@
+       background: #3e2723;
+     }
+ 
++    .card {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      scroll-margin-top: 100px;
++      transition: box-shadow 0.3s, transform 0.3s;
++    }
++
++    .card p {
++      flex: 1;
++    }
++
++    .card .price {
++      flex: 0;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 10px;
++    }
++
++    .card-actions {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #ff9100;
++    }
++
++    .card.is-highlighted {
++      box-shadow: 0 0 0 4px var(--accent), 0 8px 20px rgba(0, 0, 0, 0.2);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .card.is-highlighted {
++        transform: translateY(-4px);
++      }
++    }
++
++    /* Order tray */
++    .order {
++      margin-top: 50px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scroll-margin-top: 100px;
++    }
++
++    .order h2 {
++      margin-bottom: 10px;
++    }
++
++    .order-items {
++      list-style: none;
++      margin: 10px 0;
++    }
++
++    .order-items li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      padding: 8px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .order-items button {
++      background: none;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      border-radius: 4px;
++      padding: 2px 10px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
++
++    .order-total {
++      text-align: right;
++      font-weight: bold;
++      margin-bottom: 20px;
++    }
++
++    .order-form {
++      display: grid;
++      gap: 12px;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      align-items: end;
++      padding: 12px;
++      border-radius: 8px;
++    }
++
++    .order-form label {
++      display: grid;
++      gap: 4px;
++      font-size: 0.9rem;
++    }
++
++    .order-form input,
++    .order-form select {
++      font: inherit;
++      padding: 8px;
++      border: 1px solid #a1887f;
++      border-radius: 4px;
++    }
++
++    .order-form .btn {
++      margin-top: 0;
++    }
++
++    /* Highlight the form while a browser AI agent is filling it in */
++    .order-form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      background-color: rgba(255, 171, 64, 0.08);
++    }
++
++    .order-form button:tool-submit-active {
++      outline: 3px dashed var(--accent);
++      outline-offset: 2px;
++    }
++
++    .status {
++      margin-top: 12px;
++      font-weight: 600;
++      min-height: 1.6em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,26 +315,67 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card" id="drink-maple-oat-latte" data-drink-id="maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <p class="price">From $5.25</p>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" class="btn btn-secondary" data-add-drink="maple-oat-latte">Add to Order</button>
++          </div>
++        </article>
++        <article class="card" id="drink-dark-roast-espresso" data-drink-id="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <p class="price">From $3.25</p>
++          <div class="card-actions">
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <button type="button" class="btn btn-secondary" data-add-drink="dark-roast-espresso">Add to Order</button>
++          </div>
++        </article>
++        <article class="card" id="drink-cold-brew" data-drink-id="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <p class="price">From $4.50</p>
++          <div class="card-actions">
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <button type="button" class="btn btn-secondary" data-add-drink="cold-brew">Add to Order</button>
++          </div>
++        </article>
+       </div>
+     </section>
++
++    <section class="order" id="order" aria-labelledby="order-heading">
++      <h2 id="order-heading">Your Order</h2>
++      <p id="order-empty">Your order is empty. Add a seasonal favorite to get started.</p>
++      <ul class="order-items" id="order-items"></ul>
++      <p class="order-total" id="order-total" hidden></p>
++
++      <!-- Declarative WebMCP tool: an agent may fill this in, but the customer must click the button to place the order. -->
++      <form class="order-form" id="order-form"
++            toolname="place_pickup_order"
++            tooldescription="Places the drinks currently in the order for in-store pickup. Use after drinks have been added to the order and the customer is ready to check out.">
++        <label>
++          Name for pickup
++          <input type="text" name="pickupName" autocomplete="given-name" required
++                 toolparamdescription="Name the barista calls out when the order is ready, e.g. Sam.">
++        </label>
++        <label>
++          Pickup time
++          <select name="pickupTime" required>
++            <option value="asap">As soon as possible</option>
++            <option value="15">In 15 minutes</option>
++            <option value="30">In 30 minutes</option>
++            <option value="60">In 1 hour</option>
++          </select>
++        </label>
++        <button type="submit" class="btn">Place Pickup Order</button>
++      </form>
++      <p class="status" id="order-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +388,323 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // ---------- Seasonal Favorites menu data ----------
++    const SIZES = ["small", "medium", "large"];
++    const MILKS = ["whole", "skim", "oat", "almond", "none"];
++    const TEMPERATURES = ["hot", "iced"];
++    const SIZE_UPCHARGE = { small: 0, medium: 0.5, large: 1 };
++    const MAX_QUANTITY = 10;
++
++    const SEASONAL_FAVORITES = [
++      {
++        id: "maple-oat-latte",
++        name: "Maple Oat Latte",
++        description: "Creamy oat milk with a hint of Vermont maple syrup.",
++        basePrice: 5.25,
++        temperatures: ["hot", "iced"],
++        defaultMilk: "oat",
++        milkOptions: ["whole", "skim", "oat", "almond"],
++        caffeineMg: 150,
++        tags: ["seasonal", "sweet", "dairy-free by default"],
++        detailsUrl: "/menu/seasonal",
++      },
++      {
++        id: "dark-roast-espresso",
++        name: "Dark Roast Espresso",
++        description: "Bold, smokey, and perfect for a morning boost.",
++        basePrice: 3.25,
++        temperatures: ["hot"],
++        defaultMilk: "none",
++        milkOptions: ["none", "whole", "skim", "oat", "almond"],
++        caffeineMg: 130,
++        tags: ["bold", "dairy-free by default"],
++        detailsUrl: "/menu/espresso",
++      },
++      {
++        id: "cold-brew",
++        name: "Cold Brew",
++        description: "Steeped for 18 hours for maximum smoothness.",
++        basePrice: 4.5,
++        temperatures: ["iced"],
++        defaultMilk: "none",
++        milkOptions: ["none", "whole", "skim", "oat", "almond"],
++        caffeineMg: 200,
++        tags: ["smooth", "dairy-free by default"],
++        detailsUrl: "/menu/cold-brew",
++      },
++    ];
++
++    const DAIRY_FREE_MILKS = new Set(["oat", "almond", "none"]);
++    const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
++    const prefersReducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
++
++    const normalize = (value) => String(value ?? "").trim().toLowerCase().replace(/[\s_]+/g, "-");
++    const findDrink = (value) => {
++      const key = normalize(value);
++      return SEASONAL_FAVORITES.find((d) => d.id === key || normalize(d.name) === key);
++    };
++    const drinkNames = () => SEASONAL_FAVORITES.map((d) => d.name);
++    const priceFor = (drink, size) => drink.basePrice + SIZE_UPCHARGE[size];
++
++    const describeDrink = (drink) => ({
++      id: drink.id,
++      name: drink.name,
++      description: drink.description,
++      pricesBySize: Object.fromEntries(SIZES.map((size) => [size, priceFor(drink, size)])),
++      temperatures: drink.temperatures,
++      defaultMilk: drink.defaultMilk,
++      milkOptions: drink.milkOptions,
++      caffeineMg: drink.caffeineMg,
++      tags: drink.tags,
++      detailsUrl: drink.detailsUrl,
++    });
++
++    // ---------- Order state & rendering ----------
++    const order = [];
++    let nextLineId = 1;
++
++    const els = {
++      items: document.getElementById("order-items"),
++      empty: document.getElementById("order-empty"),
++      total: document.getElementById("order-total"),
++      status: document.getElementById("order-status"),
++      form: document.getElementById("order-form"),
++      section: document.getElementById("order"),
++    };
++
++    const orderTotal = () => order.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
++
++    const orderSummary = () => ({
++      items: order.map(({ lineId, name, size, temperature, milk, quantity, unitPrice }) => ({
++        lineId, drink: name, size, temperature, milk, quantity,
++        lineTotal: Number((unitPrice * quantity).toFixed(2)),
++      })),
++      itemCount: order.reduce((n, line) => n + line.quantity, 0),
++      total: Number(orderTotal().toFixed(2)),
++    });
++
++    const announce = (message) => { els.status.textContent = message; };
++
++    function renderOrder() {
++      els.items.replaceChildren(...order.map((line) => {
++        const li = document.createElement("li");
++        const label = document.createElement("span");
++        const milk = line.milk === "none" ? "" : `, ${line.milk} milk`;
++        label.textContent = `${line.quantity} × ${line.name} (${line.size}, ${line.temperature}${milk}) — ${currency.format(line.unitPrice * line.quantity)}`;
++        const remove = document.createElement("button");
++        remove.type = "button";
++        remove.textContent = "Remove";
++        remove.setAttribute("aria-label", `Remove ${line.name} from order`);
++        remove.addEventListener("click", () => {
++          removeLine(line.lineId);
++          announce(`Removed ${line.name} from your order.`);
++        });
++        li.append(label, remove);
++        return li;
++      }));
++      els.empty.hidden = order.length > 0;
++      els.total.hidden = order.length === 0;
++      els.total.textContent = `Total: ${currency.format(orderTotal())}`;
++    }
++
++    function addLine({ drink, size, temperature, milk, quantity }) {
++      const existing = order.find((l) =>
++        l.drinkId === drink.id && l.size === size && l.temperature === temperature && l.milk === milk);
++      if (existing) {
++        existing.quantity = Math.min(MAX_QUANTITY, existing.quantity + quantity);
++      } else {
++        order.push({
++          lineId: nextLineId++,
++          drinkId: drink.id,
++          name: drink.name,
++          size, temperature, milk, quantity,
++          unitPrice: priceFor(drink, size),
++        });
++      }
++      renderOrder();
++    }
++
++    function removeLine(lineId) {
++      const index = order.findIndex((l) => l.lineId === lineId);
++      if (index === -1) return false;
++      order.splice(index, 1);
++      renderOrder();
++      return true;
++    }
++
++    let highlightTimer;
++    function highlightDrink(drink) {
++      const card = document.getElementById(`drink-${drink.id}`);
++      document.querySelectorAll(".card.is-highlighted").forEach((c) => c.classList.remove("is-highlighted"));
++      card.classList.add("is-highlighted");
++      card.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "center" });
++      clearTimeout(highlightTimer);
++      highlightTimer = setTimeout(() => card.classList.remove("is-highlighted"), 4000);
++    }
++
++    // Human-facing "Add to Order" buttons use the drink defaults.
++    document.querySelectorAll("[data-add-drink]").forEach((button) => {
++      button.addEventListener("click", () => {
++        const drink = findDrink(button.dataset.addDrink);
++        addLine({ drink, size: "medium", temperature: drink.temperatures[0], milk: drink.defaultMilk, quantity: 1 });
++        announce(`Added a medium ${drink.name} to your order.`);
++      });
++    });
++
++    // Pickup order form (also exposed declaratively to agents as "place_pickup_order").
++    els.form.addEventListener("submit", (event) => {
++      event.preventDefault();
++      const respond = (message) => {
++        announce(message);
++        if (event.agentInvoked) event.respondWith(Promise.resolve(message));
++      };
++
++      if (order.length === 0) {
++        respond("Your order is empty. Add at least one drink before placing a pickup order.");
++        return;
++      }
++      const data = new FormData(els.form);
++      const pickupName = String(data.get("pickupName") ?? "").trim();
++      if (!pickupName) {
++        respond("Please provide a name for pickup.");
++        return;
++      }
++      const pickupTime = data.get("pickupTime");
++      const when = pickupTime === "asap" ? "as soon as possible" : `in ${pickupTime} minutes`;
++      const summary = orderSummary();
++      const message = `Thanks, ${pickupName}! Your order of ${summary.itemCount} drink(s) totaling ${currency.format(summary.total)} will be ready ${when}.`;
++
++      order.length = 0;
++      renderOrder();
++      els.form.reset();
++      respond(message);
++    });
++
++    renderOrder();
++
++    // ---------- WebMCP: expose imperative tools to in-browser AI agents ----------
++    if ("modelContext" in document) {
++      const tools = [
++        {
++          name: "get_seasonal_favorites",
++          description: "Lists the drinks on The Daily Grind's Seasonal Favorites menu with prices, available temperatures, milk options and caffeine content. Use to answer menu questions or before adding drinks to an order.",
++          inputSchema: {
++            type: "object",
++            properties: {
++              temperature: { type: "string", enum: TEMPERATURES, description: "Only return drinks that can be served this way." },
++              dairyFree: { type: "boolean", description: "Only return drinks that are dairy-free as served by default." },
++              query: { type: "string", description: "Free-text words to match against drink names, descriptions and tags, e.g. 'maple' or 'bold'." },
++            },
++          },
++          execute({ temperature, dairyFree, query } = {}) {
++            if (temperature !== undefined && !TEMPERATURES.includes(temperature)) {
++              return { error: `Unknown temperature "${temperature}".`, temperatures: TEMPERATURES };
++            }
++            const words = String(query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
++            const drinks = SEASONAL_FAVORITES.filter((d) => {
++              if (temperature && !d.temperatures.includes(temperature)) return false;
++              if (dairyFree === true && !DAIRY_FREE_MILKS.has(d.defaultMilk)) return false;
++              const haystack = `${d.name} ${d.description} ${d.tags.join(" ")}`.toLowerCase();
++              return words.every((w) => haystack.includes(w));
++            });
++            return { drinks: drinks.map(describeDrink), currency: "USD" };
++          },
++          annotations: { readOnlyHint: true },
++        },
++        {
++          name: "show_drink",
++          description: "Scrolls the page to a Seasonal Favorites drink and highlights its card so the customer can see it. Use when the customer asks to see or learn about a specific drink.",
++          inputSchema: {
++            type: "object",
++            properties: {
++              drink: { type: "string", description: "Drink name or id as listed on the menu, e.g. 'Cold Brew'." },
++            },
++            required: ["drink"],
++          },
++          execute({ drink: drinkInput }) {
++            const drink = findDrink(drinkInput);
++            if (!drink) return { error: `"${drinkInput}" is not on the Seasonal Favorites menu.`, availableDrinks: drinkNames() };
++            highlightDrink(drink);
++            return { shown: true, drink: describeDrink(drink) };
++          },
++          annotations: { readOnlyHint: true },
++        },
++        {
++          name: "add_drink_to_order",
++          description: "Adds a Seasonal Favorites drink to the customer's on-page order. The order is only placed when the customer submits the pickup form, so this is safe to use while building an order.",
++          inputSchema: {
++            type: "object",
++            properties: {
++              drink: { type: "string", description: "Drink name or id as listed on the menu, e.g. 'Maple Oat Latte'." },
++              size: { type: "string", enum: SIZES, default: "medium", description: "Cup size; larger sizes cost more." },
++              temperature: { type: "string", enum: TEMPERATURES, description: "How the drink is served. Defaults to the drink's first available option." },
++              milk: { type: "string", enum: MILKS, description: "Milk to add. Defaults to the drink's standard milk." },
++              quantity: { type: "integer", minimum: 1, maximum: MAX_QUANTITY, default: 1, description: "Number of identical drinks." },
++            },
++            required: ["drink"],
++          },
++          execute({ drink: drinkInput, size = "medium", temperature, milk, quantity = 1 }) {
++            const drink = findDrink(drinkInput);
++            if (!drink) return { error: `"${drinkInput}" is not on the Seasonal Favorites menu.`, availableDrinks: drinkNames() };
++            if (!SIZES.includes(size)) return { error: `Unknown size "${size}".`, sizes: SIZES };
++            const temp = temperature ?? drink.temperatures[0];
++            if (!drink.temperatures.includes(temp)) {
++              return { error: `${drink.name} cannot be served ${temp}.`, temperatures: drink.temperatures };
++            }
++            const chosenMilk = milk ?? drink.defaultMilk;
++            if (!drink.milkOptions.includes(chosenMilk)) {
++              return { error: `${drink.name} is not available with "${chosenMilk}" milk.`, milkOptions: drink.milkOptions };
++            }
++            if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
++              return { error: `Quantity must be a whole number from 1 to ${MAX_QUANTITY}.` };
++            }
++
++            addLine({ drink, size, temperature: temp, milk: chosenMilk, quantity });
++            highlightDrink(drink);
++            announce(`Added ${quantity} ${size} ${drink.name} to your order.`);
++            return { added: { drink: drink.name, size, temperature: temp, milk: chosenMilk, quantity }, order: orderSummary() };
++          },
++        },
++        {
++          name: "remove_drink_from_order",
++          description: "Removes a line from the customer's on-page order. Use when the customer changes their mind about a drink.",
++          inputSchema: {
++            type: "object",
++            properties: {
++              lineId: { type: "integer", description: "The lineId of the order line, as returned by get_current_order." },
++            },
++            required: ["lineId"],
++          },
++          execute({ lineId }) {
++            const line = order.find((l) => l.lineId === lineId);
++            if (!line) return { error: `No order line with id ${lineId}.`, order: orderSummary() };
++            removeLine(lineId);
++            announce(`Removed ${line.name} from your order.`);
++            return { removed: line.name, order: orderSummary() };
++          },
++        },
++        {
++          name: "get_current_order",
++          description: "Returns the drinks currently in the customer's on-page order along with the running total.",
++          inputSchema: { type: "object", properties: {} },
++          execute() {
++            return orderSummary();
++          },
++          annotations: { readOnlyHint: true },
++        },
++      ];
++
++      // Abort this controller to unregister every tool (e.g. if the order UI is torn down).
++      const controller = new AbortController();
++
++      for (const tool of tools) {
++        document.modelContext
++          .registerTool(tool, { signal: controller.signal })
++          .catch((err) => console.warn(`WebMCP: failed to register "${tool.name}"`, err));
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

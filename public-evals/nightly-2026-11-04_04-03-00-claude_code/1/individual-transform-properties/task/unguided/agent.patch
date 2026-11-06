@@ -1,0 +1,99 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,79 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Featured promo badge (Seasonal Favorites)
++       Each motion drives its own individual transform property, so they
++       compose instead of overriding each other:
++         - rotate    -> badge-spin animation
++         - translate -> badge-slide animation
++         - scale     -> hover transition
++       Because the hover only touches `scale`, the running animations are
++       never restarted, paused, or cut off. */
++    .promo-badge-track {
++      display: flex;
++      justify-content: center;
++      padding: 30px 0 10px;
++    }
++
++    .target {
++      /* Stacking context exists in the resting state too, so nothing
++         changes layering-wise when hover kicks in (no will-change needed). */
++      position: relative;
++      z-index: 1;
++      isolation: isolate;
++
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      width: 110px;
++      height: 110px;
++      border-radius: 50%;
++      background: radial-gradient(circle at 30% 30%, #ffc773, var(--accent) 60%, #f57c00);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      font-weight: bold;
++      text-align: center;
++      line-height: 1.1;
++      text-transform: uppercase;
++      cursor: pointer;
++      user-select: none;
++
++      rotate: 0deg;
++      translate: 0 0;
++      scale: 1;
++
++      animation:
++        badge-spin 6s linear infinite,
++        badge-slide 4s ease-in-out infinite alternate;
++      transition: scale 0.35s ease;
++    }
++
++    .target .badge-small {
++      font-size: 0.7rem;
++      letter-spacing: 1px;
++    }
++
++    .target .badge-big {
++      font-size: 1.1rem;
++    }
++
++    .target:hover {
++      scale: 1.25;
++    }
++
++    @keyframes badge-spin {
++      from { rotate: 0deg; }
++      to   { rotate: 360deg; }
++    }
++
++    @keyframes badge-slide {
++      from { translate: -120px 0; }
++      to   { translate: 120px 0; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,8 +247,15 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-badge-track">
++        <div class="target" role="img" aria-label="Featured promo: 20% off seasonal drinks">
++          <span class="badge-small">Featured</span>
++          <span class="badge-big">20% Off</span>
++          <span class="badge-small">Seasonal</span>
++        </div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

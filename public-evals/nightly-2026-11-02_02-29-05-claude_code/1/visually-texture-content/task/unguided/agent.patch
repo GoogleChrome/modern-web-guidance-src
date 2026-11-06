@@ -1,0 +1,54 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -87,8 +87,39 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    /* Weathered grunge effect: the distress texture masks the background
++       layer only, so the hero text and button stay crisp. */
++    .weathered-bg {
++      position: relative;
++      isolation: isolate;
++      background: none;
++    }
++
++    .weathered-bg::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: linear-gradient(rgba(40, 24, 16, 0.55), rgba(20, 12, 8, 0.65)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      filter: sepia(0.35) contrast(1.1);
++      -webkit-mask-image: url('grunge-texture.svg');
++      mask-image: url('grunge-texture.svg');
++      -webkit-mask-repeat: repeat;
++      mask-repeat: repeat;
++      -webkit-mask-size: 400px 400px;
++      mask-size: 400px 400px;
++      mask-mode: alpha;
++    }
++
++    .weathered-bg > * {
++      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -167,9 +198,9 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero weathered-bg">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

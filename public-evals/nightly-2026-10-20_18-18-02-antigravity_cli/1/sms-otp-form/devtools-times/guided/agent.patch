@@ -1,0 +1,820 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..b674539 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,20 @@
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    OTPCredential?: unknown;
++  }
++
++  interface OTPCredential extends Credential {
++    readonly code: string;
++  }
++
++  interface OTPCredentialRequestOptions {
++    transport?: ('sms')[];
++  }
++
++  interface CredentialRequestOptions {
++    otp?: OTPCredentialRequestOptions;
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..d94ab8e 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,39 +1,208 @@
+-import React, { useState } from 'react';
++import React, { useCallback, useEffect, useRef, useState } from 'react';
++import { flushSync } from 'react-dom';
++
++type SignUpStep = 'details' | 'verify-otp' | 'complete';
+ 
+ export default function SignUpForm() {
++  const [step, setStep] = useState<SignUpStep>('details');
+   const [username, setUsername] = useState('');
++  const [phone, setPhone] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
++  const [otp, setOtp] = useState('');
++  const [smsPreview, setSmsPreview] = useState<string | null>(null);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
++  const otpFormRef = useRef<HTMLFormElement | null>(null);
++  const otpInputRef = useRef<HTMLInputElement | null>(null);
++  const otpAbortControllerRef = useRef<AbortController | null>(null);
++
++  const baseUrl = import.meta.env.BASE_URL || '/';
++  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
++
++  const stopSmsOtpListener = useCallback(() => {
++    if (otpAbortControllerRef.current) {
++      otpAbortControllerRef.current.abort();
++      otpAbortControllerRef.current = null;
++    }
++  }, []);
++
++  const startSmsOtpListener = useCallback(async () => {
++    // Feature-detect WebOTP support in browser environment
++    if (typeof window === 'undefined' || !('OTPCredential' in window)) {
++      return;
++    }
++
++    // Cancel any previous pending WebOTP request (e.g., when re-sending an SMS code)
++    stopSmsOtpListener();
++    const ac = new AbortController();
++    otpAbortControllerRef.current = ac;
++
++    try {
++      const credential = (await navigator.credentials.get({
++        otp: { transport: ['sms'] },
++        signal: ac.signal,
++      })) as OTPCredential | null;
++
++      if (!credential || !credential.code) {
++        return;
++      }
++
++      flushSync(() => {
++        setOtp(credential.code);
++      });
++
++      if (otpInputRef.current) {
++        otpInputRef.current.value = credential.code;
++        otpInputRef.current.setCustomValidity('');
++      }
++
++      // Trigger standard form submission so submit event listeners and validation run
++      if (otpFormRef.current) {
++        otpFormRef.current.requestSubmit();
++      }
++    } catch (err: unknown) {
++      // Expected when aborted by manual submission, resend, unmount, or user dismissal
++      if (err instanceof Error && err.name === 'AbortError') {
++        return;
++      }
++      console.error('WebOTP verification error:', err);
++    }
++  }, [stopSmsOtpListener]);
++
++  useEffect(() => {
++    if (step === 'verify-otp') {
++      startSmsOtpListener();
++      otpInputRef.current?.focus();
++    } else {
++      stopSmsOtpListener();
++    }
++
++    return () => {
++      stopSmsOtpListener();
++    };
++  }, [step, startSmsOtpListener, stopSmsOtpListener]);
++
++  const requestSmsCode = async (targetPhone: string) => {
++    const response = await fetch(`${normalizedBase}api/send-otp`, {
++      method: 'POST',
++      headers: {
++        'Content-Type': 'application/json',
++      },
++      body: JSON.stringify({ phone: targetPhone }),
++    });
++
++    const data = await response.json();
++    if (!response.ok) {
++      throw new Error(data.error || 'Could not send SMS verification code.');
++    }
++
++    setSmsPreview(data.smsPreview || null);
++    return data;
++  };
++
++  const handleAccountSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
++    e.preventDefault();
++    setError(null);
++    setSuccess(null);
++    setLoading(true);
++
++    try {
++      await requestSmsCode(phone);
++      setOtp('');
++      setStep('verify-otp');
++    } catch (err: unknown) {
++      const message = err instanceof Error ? err.message : 'Unable to send verification SMS.';
++      setError(message);
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  const handleResendCode = async () => {
++    // Abort any active WebOTP listener before requesting a new SMS code
++    stopSmsOtpListener();
++    setError(null);
++    setSuccess(null);
++    setLoading(true);
++
++    try {
++      await requestSmsCode(phone);
++      setOtp('');
++      if (otpInputRef.current) {
++        otpInputRef.current.value = '';
++        otpInputRef.current.setCustomValidity('');
++        otpInputRef.current.focus();
++      }
++      setSuccess('A new 6-digit verification code has been sent via SMS.');
++      startSmsOtpListener();
++    } catch (err: unknown) {
++      const message = err instanceof Error ? err.message : 'Unable to resend verification SMS.';
++      setError(message);
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  const handleOtpSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
++    // MANDATORY: Abort any in-flight WebOTP request when the form is submitted
++    stopSmsOtpListener();
+     e.preventDefault();
+     setError(null);
+     setSuccess(null);
++
++    const formData = new FormData(e.currentTarget);
++    const submittedOtp = String(formData.get('otp') || otp).trim();
++
++    if (!/^\d{6}$/.test(submittedOtp)) {
++      setError('Please enter the 6-digit numeric code sent to your phone.');
++      otpInputRef.current?.focus();
++      return;
++    }
++
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
++      const verifyResponse = await fetch(`${normalizedBase}api/verify-otp`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({ phone, otp: submittedOtp }),
+       });
+ 
+-      const data = await response.json();
++      const verifyData = await verifyResponse.json();
++      if (!verifyResponse.ok) {
++        setError(verifyData.error || 'Invalid verification code.');
++        return;
++      }
++
++      const registerResponse = await fetch(
++        'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register',
++        {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          body: JSON.stringify({ username, password, phone }),
++        }
++      );
++
++      const registerData = await registerResponse.json();
+ 
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++      if (!registerResponse.ok) {
++        setError(`Registration failed: ${registerData.error || 'Unknown error'}`);
+       } else {
+-        setSuccess('User registered successfully! You can now sign in.');
++        setSuccess('Phone number verified and account created! You can now sign in.');
++        setStep('complete');
+         setUsername('');
+         setPassword('');
++        setPhone('');
++        setOtp('');
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
+       setLoading(false);
+@@ -41,64 +210,299 @@ export default function SignUpForm() {
+   };
+ 
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
++    <div className="max-w-md mx-auto mt-6 p-6 bg-white border border-gray-300 rounded-lg shadow-sm">
++      <nav aria-label="Sign-up progress" className="mb-6">
++        <ol className="flex items-center justify-between text-xs font-medium text-gray-600 border-b border-gray-200 pb-3">
++          <li
++            className={step === 'details' ? 'text-gray-900 font-bold' : 'text-green-700'}
++            aria-current={step === 'details' ? 'step' : undefined}
++          >
++            1. Account &amp; Phone
++          </li>
++          <li
++            className={
++              step === 'verify-otp'
++                ? 'text-gray-900 font-bold'
++                : step === 'complete'
++                  ? 'text-green-700'
++                  : 'text-gray-500'
++            }
++            aria-current={step === 'verify-otp' ? 'step' : undefined}
++          >
++            2. Verify SMS Code
++          </li>
++          <li
++            className={step === 'complete' ? 'text-green-700 font-bold' : 'text-gray-500'}
++            aria-current={step === 'complete' ? 'step' : undefined}
++          >
++            3. Complete
++          </li>
++        </ol>
++      </nav>
++
++      <h1 className="text-2xl font-bold mb-4 text-center text-gray-900">
++        {step === 'verify-otp' ? 'Verify your phone number' : 'Sign Up'}
++      </h1>
++
++      <div aria-live="polite" aria-atomic="true">
++        {error && (
++          <div
++            className="mb-4 p-3 text-sm text-red-800 bg-red-50 border border-red-300 rounded-lg flex items-start gap-2"
++            role="alert"
++          >
++            <span aria-hidden="true" className="font-bold">!</span>
++            <span>{error}</span>
++          </div>
++        )}
++
++        {success && (
++          <div
++            className="mb-4 p-3 text-sm text-green-800 bg-green-50 border border-green-300 rounded-lg flex items-start gap-2"
++            role="status"
++          >
++            <span aria-hidden="true" className="font-bold">✓</span>
++            <span>{success}</span>
++          </div>
++        )}
++      </div>
++
++      {step === 'details' && (
++        <form
++          id="signup-details-form"
++          action={`${normalizedBase}api/send-otp`}
++          method="POST"
++          onSubmit={handleAccountSubmit}
++          className="space-y-5"
++        >
++          <div>
++            <label htmlFor="username" className="block text-sm font-medium text-gray-800 mb-1">
++              Username <span className="text-red-700" aria-hidden="true">*</span>
++            </label>
++            <p id="username-hint" className="text-xs text-gray-600 mb-1.5">
++              Choose a unique identifier for your account.
++            </p>
++            <input
++              type="text"
++              id="username"
++              name="username"
++              value={username}
++              onChange={(e) => {
++                setUsername(e.target.value);
++                e.currentTarget.setCustomValidity('');
++              }}
++              autocomplete="username"
++              autoCapitalize="off"
++              autoCorrect="off"
++              spellCheck={false}
++              enterKeyHint="next"
++              aria-describedby="username-hint"
++              required
++              className="w-full px-3 py-2.5 text-base min-h-[48px] border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
++            />
++          </div>
++
++          <div>
++            <label htmlFor="phone" className="block text-sm font-medium text-gray-800 mb-1">
++              Phone number <span className="text-red-700" aria-hidden="true">*</span>
++            </label>
++            <p id="phone-hint" className="text-xs text-gray-600 mb-1.5">
++              We will text a 6-digit one-time passcode to verify this number.
++            </p>
++            <input
++              type="tel"
++              id="phone"
++              name="phone"
++              value={phone}
++              onChange={(e) => {
++                setPhone(e.target.value);
++                e.currentTarget.setCustomValidity('');
++              }}
++              inputMode="tel"
++              autoComplete="tel"
++              enterKeyHint="next"
++              pattern="^\+?[\d\s\-()]{7,20}$"
++              onInvalid={(e) => {
++                e.currentTarget.setCustomValidity(
++                  'Please enter a valid telephone number (for example, +1 555-234-5678).'
++                );
++              }}
++              aria-describedby="phone-hint"
++              required
++              className="w-full px-3 py-2.5 text-base min-h-[48px] border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
++            />
++          </div>
++
++          <div>
++            <div className="flex items-center justify-between mb-1">
++              <label htmlFor="new-password" className="block text-sm font-medium text-gray-800">
++                Password <span className="text-red-700" aria-hidden="true">*</span>
++              </label>
++              <button
++                id="toggle-password"
++                type="button"
++                aria-pressed={showPassword}
++                aria-label={showPassword ? 'Hide password' : 'Show password'}
++                aria-describedby="toggle-password-warning"
++                onClick={() => setShowPassword((prev) => !prev)}
++                className="text-xs font-medium text-blue-700 hover:text-blue-900 underline py-1 px-2 min-h-[32px]"
++              >
++                {showPassword ? 'Hide password' : 'Show password'}
++              </button>
++              <span id="toggle-password-warning" className="visually-hidden">
++                Warning: this will display your password on the screen.
++              </span>
++            </div>
++            <p id="password-constraints" className="text-xs text-gray-600 mb-1.5">
++              Must be at least 8 characters and contain a number.
++            </p>
++            <input
++              type={showPassword ? 'text' : 'password'}
++              id="new-password"
++              name="new-password"
++              value={password}
++              onChange={(e) => {
++                setPassword(e.target.value);
++                e.currentTarget.setCustomValidity('');
++              }}
++              autoComplete="new-password"
++              minLength={8}
++              pattern="^(?=.*\d).{8,}$"
++              onInvalid={(e) => {
++                e.currentTarget.setCustomValidity(
++                  'Password must be at least 8 characters long and include at least one number.'
++                );
++              }}
++              enterKeyHint="done"
++              aria-describedby="password-constraints"
++              required
++              className="w-full px-3 py-2.5 text-base min-h-[48px] border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
++            />
++          </div>
++
++          <button
++            type="submit"
++            disabled={loading}
++            data-skip-tracking="true"
++            className={`w-full min-h-[48px] py-2.5 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++              loading ? 'opacity-75 cursor-not-allowed' : ''
++            }`}
++          >
++            {loading ? 'Sending verification code...' : 'Send verification code'}
++          </button>
++        </form>
+       )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
++
++      {step === 'verify-otp' && (
++        <form
++          id="otp-form"
++          ref={otpFormRef}
++          action={`${normalizedBase}api/verify-otp`}
++          method="POST"
++          onSubmit={handleOtpSubmit}
++          className="space-y-5"
++        >
++          <input type="hidden" name="phone" value={phone} />
++
++          <div className="form-group">
++            <label htmlFor="otp-input" className="block text-sm font-medium text-gray-800 mb-1">
++              Verification code <span className="text-red-700" aria-hidden="true">*</span>
++            </label>
++            {/* Place the hint above the input so autofill popovers and mobile keyboards do not obscure it */}
++            <p id="otp-format-hint" className="field-hint text-xs text-gray-600 mb-2">
++              Enter the 6-digit code sent to <span className="font-medium text-gray-900">{phone}</span>.
++            </p>
++            {/* MANDATORY: Use a single input with type="text", inputmode="numeric", and autocomplete="one-time-code" */}
++            <input
++              ref={otpInputRef}
++              type="text"
++              id="otp-input"
++              name="otp"
++              value={otp}
++              onChange={(e) => {
++                setOtp(e.target.value);
++                e.currentTarget.setCustomValidity('');
++              }}
++              onInvalid={(e) => {
++                e.currentTarget.setCustomValidity('Please enter the 6-digit numeric verification code.');
++              }}
++              inputMode="numeric"
++              autoComplete="one-time-code"
++              autoCorrect="off"
++              autoCapitalize="off"
++              spellCheck={false}
++              enterKeyHint="done"
++              pattern="\d{6}"
++              maxLength={6}
++              aria-describedby="otp-format-hint"
++              required
++              className="w-full border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 text-gray-900"
++            />
++          </div>
++
++          <button
++            type="submit"
++            disabled={loading}
++            data-skip-tracking="true"
++            className={`w-full min-h-[48px] py-2.5 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++              loading ? 'opacity-75 cursor-not-allowed' : ''
++            }`}
++          >
++            {loading ? 'Verifying code...' : 'Verify code & create account'}
++          </button>
++
++          <div className="flex items-center justify-between pt-2 text-sm">
++            <button
++              type="button"
++              onClick={() => {
++                stopSmsOtpListener();
++                setError(null);
++                setSuccess(null);
++                setStep('details');
++              }}
++              className="text-gray-700 hover:text-gray-900 underline py-2 px-1 min-h-[48px]"
++            >
++              Change phone number
++            </button>
++
++            <button
++              type="button"
++              disabled={loading}
++              onClick={handleResendCode}
++              className="text-blue-700 hover:text-blue-900 font-medium underline py-2 px-1 min-h-[48px] disabled:opacity-50"
++            >
++              Resend code
++            </button>
++          </div>
++
++          {smsPreview && (
++            <aside
++              aria-label="Simulated SMS message preview"
++              className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700"
++            >
++              <p className="font-semibold text-gray-800 mb-1">
++                Origin-bound SMS format delivered to {phone}:
++              </p>
++              <pre className="font-mono whitespace-pre-wrap bg-white p-2 border border-gray-200 rounded text-gray-900">
++                {smsPreview}
++              </pre>
++            </aside>
++          )}
++        </form>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++      {step === 'complete' && (
++        <div className="text-center space-y-4 py-2">
++          <p className="text-sm text-gray-700">
++            Your phone number has been verified and your account is ready.
+           </p>
++          <a
++            href={`${normalizedBase}signin`}
++            className="inline-flex items-center justify-center w-full min-h-[48px] py-2.5 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
++          >
++            Continue to Sign In
++          </a>
+         </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
++      )}
+     </div>
+   );
+ }
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..55eafa1 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,4 +1,3 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
+@@ -9,5 +8,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  response.headers.set('Permissions-Policy', 'otp-credentials=(self)');
++  return response;
+ });
++
+diff --git a/src/pages/api/send-otp.ts b/src/pages/api/send-otp.ts
+new file mode 100644
+index 0000000..39c4de0
+--- /dev/null
++++ b/src/pages/api/send-otp.ts
+@@ -0,0 +1,77 @@
++import type { APIRoute } from 'astro';
++
++function extractHostname(rawHost: string): string {
++  // Strip any scheme, port, or path so @domain contains only the host domain
++  const withoutScheme = rawHost.replace(/^https?:\/\//i, '');
++  const hostOnly = withoutScheme.split('/')[0].split(':')[0].trim();
++  return hostOnly || 'localhost';
++}
++
++export function formatOriginBoundSms(domain: string, otpCode: string, embeddedOrigin?: string): string {
++  const cleanDomain = extractHostname(domain);
++  const cleanCode = otpCode.trim();
++  const lastLine = embeddedOrigin
++    ? `@${cleanDomain} #${cleanCode} @${extractHostname(embeddedOrigin)}`
++    : `@${cleanDomain} #${cleanCode}`;
++
++  return `Your verification code is ${cleanCode}.\n\n${lastLine}`;
++}
++
++export const POST: APIRoute = async ({ request, session, url }) => {
++  try {
++    const contentType = request.headers.get('content-type') || '';
++    let phone = '';
++
++    if (contentType.includes('application/json')) {
++      const body = await request.json();
++      phone = String(body.phone || '').trim();
++    } else {
++      const formData = await request.formData();
++      phone = String(formData.get('phone') || '').trim();
++    }
++
++    if (!phone) {
++      return new Response(
++        JSON.stringify({ error: 'Phone number is required.' }),
++        {
++          status: 400,
++          headers: { 'Content-Type': 'application/json' },
++        }
++      );
++    }
++
++    // Generate a 6-digit numeric OTP code (preserving leading zeros as string)
++    const otpCode = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
++    const domain = extractHostname(request.headers.get('host') || url.hostname || 'localhost');
++    const smsMessage = formatOriginBoundSms(domain, otpCode);
++
++    if (session) {
++      await session.set('pendingOtp', {
++        phone,
++        code: otpCode,
++        expiresAt: Date.now() + 10 * 60 * 1000,
++      });
++    }
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        phone,
++        domain,
++        smsPreview: smsMessage,
++      }),
++      {
++        status: 200,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  } catch {
++    return new Response(
++      JSON.stringify({ error: 'Failed to send verification code.' }),
++      {
++        status: 500,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++};
+diff --git a/src/pages/api/verify-otp.ts b/src/pages/api/verify-otp.ts
+new file mode 100644
+index 0000000..a0c5947
+--- /dev/null
++++ b/src/pages/api/verify-otp.ts
+@@ -0,0 +1,76 @@
++import type { APIRoute } from 'astro';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const contentType = request.headers.get('content-type') || '';
++    let otp = '';
++    let phone = '';
++
++    if (contentType.includes('application/json')) {
++      const body = await request.json();
++      otp = String(body.otp || '').trim();
++      phone = String(body.phone || '').trim();
++    } else {
++      const formData = await request.formData();
++      otp = String(formData.get('otp') || '').trim();
++      phone = String(formData.get('phone') || '').trim();
++    }
++
++    if (!/^\d{6}$/.test(otp)) {
++      return new Response(
++        JSON.stringify({ error: 'Please enter a valid 6-digit verification code.' }),
++        {
++          status: 400,
++          headers: { 'Content-Type': 'application/json' },
++        }
++      );
++    }
++
++    const pendingOtp = await session?.get('pendingOtp');
++
++    if (pendingOtp) {
++      if (Date.now() > pendingOtp.expiresAt) {
++        return new Response(
++          JSON.stringify({ error: 'Verification code has expired. Please request a new code.' }),
++          {
++            status: 400,
++            headers: { 'Content-Type': 'application/json' },
++          }
++        );
++      }
++
++      if (pendingOtp.code !== otp) {
++        return new Response(
++          JSON.stringify({ error: 'Invalid verification code. Please check the SMS and try again.' }),
++          {
++            status: 400,
++            headers: { 'Content-Type': 'application/json' },
++          }
++        );
++      }
++
++      await session?.set('verifiedPhone', pendingOtp.phone || phone);
++      await session?.set('pendingOtp', undefined);
++    }
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        verified: true,
++        phone: pendingOtp?.phone || phone,
++      }),
++      {
++        status: 200,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  } catch {
++    return new Response(
++      JSON.stringify({ error: 'Failed to verify one-time passcode.' }),
++      {
++        status: 500,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++};
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ea472a0 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,25 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.visually-hidden {
++  position: absolute;
++  clip-path: inset(50%);
++  overflow: hidden;
++  width: 1px;
++  height: 1px;
++  margin: -1px;
++  padding: 0;
++  border: 0;
++  white-space: nowrap;
++}
++
++#otp-input {
++  font-family: ui-monospace, monospace;
++  font-size: 1.25rem;
++  letter-spacing: 0.35em;
++  min-height: 48px;
++  padding: 0.5rem 0.75rem;
++  box-sizing: border-box;
++}

@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,8 +194,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="text-align: center; margin-top: 40px;">
++      <h2>Account Security</h2>
++      <p>Confirm it's you with your passkey before changing sensitive account details.</p>
++      <button id="reauth-btn" type="button" class="btn" data-testid="reauth-button" style="border: 0; cursor: pointer;">Verify Identity</button>
++      <p id="reauth-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +213,66 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const reauthButton = document.querySelector('[data-testid="reauth-button"]');
++    const reauthStatus = document.getElementById('reauth-status');
++    let reauthAbortController = new AbortController();
++
++    async function triggerReauth() {
++      // Abort any pending passkey request to avoid prompt collisions
++      reauthAbortController.abort();
++      reauthAbortController = new AbortController();
++      reauthButton.disabled = true;
++      reauthStatus.textContent = '';
++
++      try {
++        const optionsResponse = await fetch('/api/reauth/options', { method: 'POST' });
++        if (!optionsResponse.ok) throw new Error('Could not start verification.');
++        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(await optionsResponse.json());
++        // Require a biometric/PIN check on the authenticator
++        publicKey.userVerification = 'required';
++
++        const credential = await navigator.credentials.get({
++          publicKey,
++          signal: reauthAbortController.signal,
++        });
++        if (!credential) return;
++
++        const encodedCredential = credential.toJSON();
++        const verifyResponse = await fetch('/api/reauth/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(encodedCredential),
++        });
++
++        if (verifyResponse.ok) {
++          reauthStatus.textContent = 'Identity confirmed.';
++        } else {
++          if (verifyResponse.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: publicKey.rpId,
++              credentialId: encodedCredential.id,
++            });
++          }
++          reauthStatus.textContent = 'Verification failed. Please try again.';
++        }
++      } catch (err) {
++        reauthStatus.textContent = err.name === 'NotAllowedError'
++          ? 'Verification was cancelled.'
++          : 'Verification failed. Please try again.';
++      } finally {
++        reauthButton.disabled = false;
++      }
++    }
++
++    if (window.PublicKeyCredential && PublicKeyCredential.parseRequestOptionsFromJSON) {
++      reauthButton.addEventListener('click', triggerReauth);
++    } else {
++      reauthButton.disabled = true;
++      reauthStatus.textContent = 'Passkeys are not supported in this browser.';
++    }
++  </script>
+ </body>
+ 
+ </html>

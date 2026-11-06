@@ -1,0 +1,165 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,63 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical Media Scroll Feed */
++    .media-feed-section {
++      margin-top: 50px;
++    }
++
++    .media-feed-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    .media-scroll-container {
++      max-height: 450px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 24px;
++      padding: 20px;
++      background: var(--secondary);
++      border-radius: 12px;
++      max-width: 680px;
++      margin: 0 auto;
++      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card {
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
++      flex-shrink: 0;
++    }
++
++    .media-card.target {
++      scroll-initial-target: nearest;
++      outline: 2px solid var(--accent);
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++    }
++
++    .media-card-body {
++      padding: 16px 20px;
++    }
++
++    .media-card-body h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +249,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-feed-section">
++      <h2>Behind the Scenes</h2>
++      <div class="media-scroll-container">
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=640&h=360&q=80"
++            alt="Roasted coffee beans in a burlap sack"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-body">
++            <h3>1. Single-Origin Sourcing</h3>
++            <p>Hand-selected Arabica beans harvested from high-altitude family farms.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=640&h=360&q=80"
++            alt="Small-batch coffee roaster in operation"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-body">
++            <h3>2. Small-Batch Roasting</h3>
++            <p>Carefully roasted daily in our local roastery to unlock rich caramel notes.</p>
++          </div>
++        </article>
++
++        <article class="media-card target">
++          <img
++            src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=640&h=360&q=80"
++            alt="Barista pouring latte art into a ceramic cup"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-body">
++            <h3>3. Featured: Master Barista Craft</h3>
++            <p>Precision espresso extraction paired with silky micro-foam artistry.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&h=360&q=80"
++            alt="Pour-over coffee brewing into a glass carafe"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-body">
++            <h3>4. Slow Pour-Over Bar</h3>
++            <p>Experience delicate floral and citrus profiles brewed to order.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=640&h=360&q=80"
++            alt="Warm and inviting coffee shop interior"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-body">
++            <h3>5. Community Gathering Space</h3>
++            <p>A cozy corner designed for conversation, creativity, and connection.</p>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +331,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener("DOMContentLoaded", () => {
++      if (!CSS.supports("scroll-initial-target", "nearest")) {
++        const feedTarget = document.querySelector(".media-card.target");
++        if (feedTarget) {
++          feedTarget.scrollIntoView({ behavior: "instant", block: "center" });
++        }
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

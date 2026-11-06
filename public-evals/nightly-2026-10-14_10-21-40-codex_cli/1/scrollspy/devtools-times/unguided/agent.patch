@@ -1,0 +1,197 @@
+diff --git a/src/components/SectionNav.tsx b/src/components/SectionNav.tsx
+new file mode 100644
+index 0000000..4b1817d
+--- /dev/null
++++ b/src/components/SectionNav.tsx
+@@ -0,0 +1,75 @@
++import { useEffect, useRef, useState } from 'react';
++
++const sections = [
++    { id: 'top-stories', label: 'Top Stories' },
++    { id: 'top-news', label: 'Top News' },
++    { id: 'world', label: 'World' },
++    { id: 'politics', label: 'Politics' },
++];
++
++export default function SectionNav() {
++    const [activeSection, setActiveSection] = useState(sections[0].id);
++    const navRef = useRef<HTMLElement>(null);
++
++    useEffect(() => {
++        let frame = 0;
++
++        const updateSection = () => {
++            frame = 0;
++            const activationLine = (navRef.current?.getBoundingClientRect().bottom ?? 48) + 24;
++            const pageSections = sections
++                .map(section => document.getElementById(section.id))
++                .filter((section): section is HTMLElement => section !== null);
++            let current = pageSections[0]?.id ?? sections[0].id;
++
++            for (const section of pageSections) {
++                if (section.getBoundingClientRect().top <= activationLine) current = section.id;
++            }
++
++            // The final section may be too short to reach the activation line.
++            if (window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
++                current = pageSections.at(-1)?.id ?? current;
++            }
++            setActiveSection(current);
++        };
++
++        const scheduleUpdate = () => {
++            if (!frame) frame = window.requestAnimationFrame(updateSection);
++        };
++        const resizeObserver = new ResizeObserver(scheduleUpdate);
++        resizeObserver.observe(document.body);
++        window.addEventListener('scroll', scheduleUpdate, { passive: true });
++        window.addEventListener('resize', scheduleUpdate);
++        window.addEventListener('hashchange', scheduleUpdate);
++        updateSection();
++
++        return () => {
++            window.cancelAnimationFrame(frame);
++            resizeObserver.disconnect();
++            window.removeEventListener('scroll', scheduleUpdate);
++            window.removeEventListener('resize', scheduleUpdate);
++            window.removeEventListener('hashchange', scheduleUpdate);
++        };
++    }, []);
++
++    return (
++        <nav ref={navRef} aria-label="Page sections" className="section-nav sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
++            <div className="flex items-center justify-start sm:justify-center gap-6 overflow-x-auto px-4 sm:gap-8">
++                {sections.map(section => (
++                    <a
++                        key={section.id}
++                        href={`#${section.id}`}
++                        aria-current={activeSection === section.id ? 'location' : undefined}
++                        className={`shrink-0 border-b-2 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-amber-600 ${
++                            activeSection === section.id
++                                ? 'border-amber-500 text-amber-700'
++                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-900'
++                        }`}
++                    >
++                        {section.label}
++                    </a>
++                ))}
++            </div>
++        </nav>
++    );
++}
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..347c183 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -3,13 +3,14 @@ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} aria-label={title} class="page-section p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..8845024 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -6,11 +6,12 @@ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} aria-label={title} class="page-section p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..82ec6cf 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import SectionNav from '../components/SectionNav';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -38,6 +39,8 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav client:load />
++    <section id="top-stories" aria-label="Top Stories" class="page-section">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -59,26 +62,28 @@ politicsArticles[2] = {
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
++    </section>
++
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..3fe80e4 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,8 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.page-section {
++  scroll-margin-top: 5rem;
++}

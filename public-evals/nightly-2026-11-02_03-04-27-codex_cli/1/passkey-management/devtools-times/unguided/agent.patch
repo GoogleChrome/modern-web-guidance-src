@@ -1,0 +1,573 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..9d0e472 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,5 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++data/
+diff --git a/README.md b/README.md
+index 4479b53..a420bbb 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,35 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Account settings and passkeys
++
++Open `/devtools-times/account` from the header to manage your account. Password
++sign-in is verified by the existing Times login service; successful sign-in now
++creates a server-side session. Readers can add passkeys, rename their labels,
++remove them, and update the account display name. Passkeys created here can also
++be used from the sign-in page. All credential mutations require an authenticated
++session and a matching request origin.
++
++Requires Node.js 22.13 or newer. Account profiles and verified public credentials
++are stored in SQLite at `./data/accounts.sqlite`; set `ACCOUNT_DB_PATH` to use a
++persistent disk location. The default Astro Node session driver also uses local
++filesystem storage. Deploy with persistent storage for both, and use shared
++storage before running multiple application instances. Existing remote accounts
++are linked on their next successful password sign-in; the remote service does
++not expose a passkey inventory endpoint, so this page manages credentials
++registered by this application.
++
++Passkeys require HTTPS (or localhost). Set `WEBAUTHN_ORIGIN` to the canonical public
++origin (for example, `https://news.example.com`) when running behind a proxy;
++otherwise the request URL origin is used. Keep the origin and hostname stable
++because credentials are scoped to the hostname. Registration and authentication
++verify the challenge, origin, relying party, and user verification on the server.
++
++The page sends the complete accepted credential list to supported password
++managers on load and after removal. Account display-name updates use WebAuthn's
++`signalCurrentUserDetails`; per-key labels are local account metadata because
++WebAuthn has no signal to rename an individual credential. Unsupported or failed
++sync leaves the saved account change intact and offers manual guidance and retry.
++See the [WebAuthn Signal API documentation](https://developer.chrome.com/docs/identity/webauthn-signal-api)
++and [SimpleWebAuthn server documentation](https://simplewebauthn.dev/docs/packages/server).
+diff --git a/package.json b/package.json
+index 820c637..a8d7806 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,8 @@
+     "@astrojs/node": "^11.1.8",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -30,5 +32,8 @@
+       "esbuild",
+       "sharp"
+     ]
++  },
++  "engines": {
++    "node": ">=22.13.0"
+   }
+ }
+diff --git a/src/components/AccountSettings.tsx b/src/components/AccountSettings.tsx
+new file mode 100644
+index 0000000..3e0d565
+--- /dev/null
++++ b/src/components/AccountSettings.tsx
+@@ -0,0 +1,84 @@
++import { useEffect, useState } from 'react';
++import { startRegistration } from '@simplewebauthn/browser';
++import { KeyIcon, PencilSquareIcon, TrashIcon, ShieldCheckIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
++import { syncPasskeys, type AccountSnapshot } from '../lib/passkey-sync';
++
++const base = import.meta.env.BASE_URL;
++async function request(path = '', method = 'GET', body?: unknown) {
++  const response = await fetch(`${base}api/account${path}`, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
++  const data = await response.json();
++  if (!response.ok) throw new Error(response.status === 401 ? 'Your session has expired. Please sign in again.' : data.error || 'Unable to save changes. Please try again.');
++  return data;
++}
++export default function AccountSettings() {
++  const [data, setData] = useState<AccountSnapshot | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  const [message, setMessage] = useState('');
++  const [sync, setSync] = useState('');
++  const [displayName, setDisplayName] = useState('');
++  const [editing, setEditing] = useState<string | null>(null);
++  const [keyName, setKeyName] = useState('');
++  const [removing, setRemoving] = useState<string | null>(null);
++
++  async function load() {
++    setLoading(true); setError('');
++    try {
++      const next: AccountSnapshot = await request();
++      setData(next); setDisplayName(next.user.displayName);
++      setSync(await syncPasskeys(next, true));
++    } catch (e) { setError((e as Error).message); }
++    finally { setLoading(false); }
++  }
++  useEffect(() => { void load(); }, []);
++
++  async function change(path: string, method: string, body: unknown, success: string, details = false) {
++    setBusy(true); setError(''); setMessage('');
++    try {
++      const next: AccountSnapshot = await request(path, method, body);
++      setData(next); setDisplayName(next.user.displayName); setEditing(null); setRemoving(null);
++      setMessage(success);
++      setSync(await syncPasskeys(next, details));
++    } catch (e) { setError((e as Error).message); }
++    finally { setBusy(false); }
++  }
++  async function add() {
++    setBusy(true); setError(''); setMessage('');
++    try {
++      const optionsJSON = await request('/passkeys', 'POST', { action: 'options' });
++      const response = await startRegistration({ optionsJSON });
++      const next = await request('/passkeys', 'POST', { action: 'verify', response });
++      setData(next); setMessage('Passkey added. You can now use it to sign in.');
++      setSync(await syncPasskeys(next, true));
++    } catch (e) { setError((e as Error).name === 'NotAllowedError' ? 'Passkey setup was canceled or timed out. You can try again.' : (e as Error).message); }
++    finally { setBusy(false); }
++  }
++  if (loading) return <div className="settings-loading" role="status">Loading your account settings…</div>;
++  if (!data) return <div className="settings-gate"><ShieldCheckIcon /><h2>Make yourself at home.</h2><p>Sign in to manage your account and keep your passkeys up to date.</p>{error && <p role="alert">{error}</p>}<a className="settings-primary" href={`${base}signin`}>Sign in to your account <ArrowRightIcon /></a><button className="settings-text" onClick={load}>Try again</button></div>;
++
++  return <div className="settings-panels" aria-busy={busy}>
++    <div className="settings-account"><div><span className="settings-eyebrow">SIGNED IN AS</span><p>{data.user.username}</p></div><button className="settings-text" disabled={busy} onClick={async () => { setBusy(true); try { await request('', 'DELETE'); window.location.assign(`${base}signin`); } catch (e) { setError((e as Error).message); setBusy(false); } }}>Sign out</button></div>
++    {error && <div className="settings-alert error" role="alert">{error} <a href={`${base}signin`}>Sign in</a></div>}
++    {message && <div className="settings-alert success" role="status">{message}</div>}
++    <section className="settings-section" aria-labelledby="profile-title">
++      <span className="settings-eyebrow">YOUR PROFILE</span><h2 id="profile-title">A name to go by.</h2><p>Your display name is shared with your passkey provider to help you recognize your account.</p>
++      <form className="settings-profile-form" onSubmit={e => { e.preventDefault(); void change('', 'PATCH', { displayName: displayName.trim() }, 'Display name updated.', true); }}>
++        <div><label htmlFor="display-name">Display name</label><input id="display-name" autoComplete="nickname" value={displayName} onChange={e => setDisplayName(e.target.value)} required maxLength={64} disabled={busy} /></div>
++        <button className="settings-secondary" disabled={busy || !displayName.trim() || displayName.trim() === data.user.displayName}>Save changes</button>
++      </form>
++    </section>
++    <section className="settings-section" aria-labelledby="passkeys-title">
++      <div className="settings-section-top"><div><span className="settings-eyebrow">SIGN-IN & SECURITY</span><h2 id="passkeys-title">Your passkeys<span className="settings-count">{data.passkeys.length}</span></h2></div><button className="settings-primary" onClick={add} disabled={busy}><span aria-hidden="true">+</span> Add a passkey</button></div>
++      <p>A simpler, safer way to sign in. Manage the passkeys connected to your account.</p>
++      {data.passkeys.length === 0 ? <div className="settings-empty"><KeyIcon /><h3>No passkeys yet</h3><p>Add your first passkey to sign in with your fingerprint, face, or device screen lock.</p></div> : <ul className="settings-key-list">{data.passkeys.map(key => <li key={key.id}>
++        <div className="settings-key-row"><div className="settings-key-icon"><KeyIcon /></div><div className="settings-key-info">{editing === key.id ? <form className="settings-rename" onSubmit={e => { e.preventDefault(); void change('/passkeys', 'PATCH', { id: key.id, name: keyName.trim() }, 'Passkey name updated. This label is saved in your account.'); }}><label className="sr-only" htmlFor={`key-${key.id}`}>Passkey name</label><input id={`key-${key.id}`} autoFocus value={keyName} onChange={e => setKeyName(e.target.value)} maxLength={64} required disabled={busy} /><button className="settings-text" disabled={busy || !keyName.trim()}>Save</button><button type="button" className="settings-text" disabled={busy} onClick={() => setEditing(null)}>Cancel</button></form> : <h3>{key.name}</h3>}<p>Added {new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(key.createdAt))}</p></div>
++        <div className="settings-key-actions"><button aria-label={`Rename ${key.name}`} title="Rename passkey" disabled={busy || editing !== null} onClick={() => { setEditing(key.id); setKeyName(key.name); setRemoving(null); }}><PencilSquareIcon /></button><button aria-label={`Remove ${key.name}`} title="Remove passkey" disabled={busy} onClick={() => { setRemoving(key.id); setEditing(null); }}><TrashIcon /></button></div></div>
++        {removing === key.id && <div className="settings-confirm" role="group" aria-label={`Confirm removal of ${key.name}`}><h4>Remove “{key.name}”?</h4><p>You won’t be able to sign in with this passkey. You can still use your password{data.passkeys.length > 1 ? ' or another passkey' : ''}.</p><div><button className="settings-danger" disabled={busy} onClick={() => change('/passkeys', 'DELETE', { id: key.id }, 'Passkey removed from your account.')}>{busy ? 'Removing…' : 'Remove passkey'}</button><button className="settings-text" disabled={busy} onClick={() => setRemoving(null)}>Keep passkey</button></div></div>}
++      </li>)}</ul>}
++      <div className="settings-security-note"><ShieldCheckIcon /><p>Your biometric information stays on your device. Only you can use your passkeys.</p></div>
++      {sync && <div className="settings-sync" role="status"><p>{sync}</p><button className="settings-text" disabled={busy} onClick={async () => { setBusy(true); try { const next = await request(); setData(next); setSync(await syncPasskeys(next, true)); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }}>Retry sync</button></div>}
++    </section>
++    <p className="settings-footnote">Passkey labels help you identify devices here. Your display name is the name used by your password manager.</p>
++  </div>;
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..f7a4759 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -10,6 +10,8 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
++const auth = await Astro.session?.get('account') as { username: string; expires: number } | undefined;
++const signedIn = auth && auth.expires > Date.now();
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+@@ -25,6 +27,8 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a href={`${baseUrl}account`} class="text-gray-700 text-xs font-semibold hover:underline">Account settings</a>
++        {!signedIn && <>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+@@ -39,6 +43,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         >
+           Sign in
+         </a>
++        </>}
+       </div>
+     </div>
+   </div>
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..0d4835a 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,6 @@
+ import React, { useState } from 'react';
++import { startAuthentication } from '@simplewebauthn/browser';
++import { signalAPI } from '../lib/passkey-sync';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -14,7 +16,7 @@ export default function SignInForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/account/login`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+@@ -25,12 +27,10 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        setError(data.error || 'Unable to sign in.');
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        window.location.assign(`${import.meta.env.BASE_URL}account`);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -39,6 +39,28 @@ export default function SignInForm() {
+     }
+   };
+ 
++  const handlePasskey = async () => {
++    setLoading(true); setError(null); setSuccess(null);
++    try {
++      const endpoint = `${import.meta.env.BASE_URL}api/account/passkey-login`;
++      const optionsResponse = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'options' }) });
++      const optionsJSON = await optionsResponse.json();
++      if (!optionsResponse.ok) throw new Error(optionsJSON.error);
++      const credential = await startAuthentication({ optionsJSON });
++      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'verify', response: credential }) });
++      const data = await response.json();
++      if (!response.ok) {
++        if (response.status === 404 && data.credentialId && data.rpId) {
++          try { await signalAPI()?.signalUnknownCredential?.({ rpId: data.rpId, credentialId: data.credentialId }); } catch { /* Sign-in error remains actionable if sync fails. */ }
++        }
++        throw new Error(data.error || 'Passkey sign-in failed.');
++      }
++      window.location.assign(`${import.meta.env.BASE_URL}account`);
++    } catch (err) {
++      setError((err as Error).name === 'NotAllowedError' ? 'Passkey sign-in was canceled or timed out. Try again or use your password.' : (err as Error).message);
++    } finally { setLoading(false); }
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+@@ -63,6 +85,7 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +100,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -94,6 +118,7 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++      <button type="button" onClick={handlePasskey} disabled={loading} className="mt-4 w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 disabled:opacity-50">Sign in with a passkey</button>
+     </div>
+   );
+ }
+diff --git a/src/lib/account-api.ts b/src/lib/account-api.ts
+new file mode 100644
+index 0000000..76b3ce6
+--- /dev/null
++++ b/src/lib/account-api.ts
+@@ -0,0 +1,27 @@
++import type { APIContext } from 'astro';
++import { account, keys } from './account-store';
++
++export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
++export function origin(context: APIContext) {
++  return process.env.WEBAUTHN_ORIGIN || context.url.origin;
++}
++export function sameOrigin(context: APIContext) {
++  return context.request.headers.get('Origin') === origin(context);
++}
++export async function signedIn(context: APIContext): Promise<string | null> {
++  const auth = await context.session?.get('account') as { username: string; expires: number } | undefined;
++  return auth && auth.expires > Date.now() ? auth.username : null;
++}
++export async function signIn(context: APIContext, username: string) {
++  if (!context.session) throw new Error('Session storage is unavailable.');
++  await context.session.delete('registration');
++  await context.session.delete('authentication');
++  await context.session.regenerate();
++  await context.session?.set('account', { username, expires: Date.now() + 24 * 60 * 60 * 1000 });
++}
++export function snapshot(context: APIContext, username: string) {
++  return { user: account(username), passkeys: keys(username), rpId: new URL(origin(context)).hostname };
++}
++export function validName(value: unknown): value is string {
++  return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= 64;
++}
+diff --git a/src/lib/account-store.ts b/src/lib/account-store.ts
+new file mode 100644
+index 0000000..b3aa78d
+--- /dev/null
++++ b/src/lib/account-store.ts
+@@ -0,0 +1,48 @@
++import { DatabaseSync } from 'node:sqlite';
++import { mkdirSync } from 'node:fs';
++import { dirname } from 'node:path';
++import { randomBytes } from 'node:crypto';
++
++let database: DatabaseSync;
++function db() {
++  if (!database) {
++    const path = process.env.ACCOUNT_DB_PATH || './data/accounts.sqlite';
++    mkdirSync(dirname(path), { recursive: true });
++    database = new DatabaseSync(path);
++    database.exec(`PRAGMA journal_mode=WAL;
++      CREATE TABLE IF NOT EXISTS accounts (username TEXT PRIMARY KEY, id TEXT UNIQUE NOT NULL, displayName TEXT NOT NULL);
++      CREATE TABLE IF NOT EXISTS passkeys (id TEXT PRIMARY KEY, username TEXT NOT NULL, name TEXT NOT NULL, createdAt TEXT NOT NULL, credential TEXT NOT NULL);`);
++  }
++  return database;
++}
++export interface Account { username: string; id: string; displayName: string }
++export interface Passkey { id: string; name: string; createdAt: string }
++export function account(username: string): Account {
++  db().prepare('INSERT OR IGNORE INTO accounts VALUES (?, ?, ?)').run(username, randomBytes(32).toString('base64url'), username);
++  return db().prepare('SELECT * FROM accounts WHERE username = ?').get(username) as unknown as Account;
++}
++export function keys(username: string): Passkey[] {
++  return db().prepare('SELECT id, name, createdAt FROM passkeys WHERE username = ? ORDER BY createdAt').all(username) as unknown as Passkey[];
++}
++export function renameAccount(username: string, displayName: string) {
++  db().prepare('UPDATE accounts SET displayName = ? WHERE username = ?').run(displayName, username);
++}
++export function renameKey(username: string, id: string, name: string) {
++  return db().prepare('UPDATE passkeys SET name = ? WHERE username = ? AND id = ?').run(name, username, id).changes > 0;
++}
++export function removeKey(username: string, id: string) {
++  return db().prepare('DELETE FROM passkeys WHERE username = ? AND id = ?').run(username, id).changes > 0;
++}
++export function saveKey(username: string, credential: { id: string; publicKey: Uint8Array; counter: number; transports?: string[] }) {
++  db().prepare('INSERT INTO passkeys VALUES (?, ?, ?, ?, ?)').run(credential.id, username, 'My passkey', new Date().toISOString(), JSON.stringify({ ...credential, publicKey: Buffer.from(credential.publicKey).toString('base64url') }));
++}
++export function findKey(id: string) {
++  const row = db().prepare('SELECT username, credential FROM passkeys WHERE id = ?').get(id) as { username: string; credential: string } | undefined;
++  if (!row) return null;
++  const credential = JSON.parse(row.credential);
++  return { username: row.username, credential: { ...credential, publicKey: new Uint8Array(Buffer.from(credential.publicKey, 'base64url')) } };
++}
++export function updateCounter(id: string, counter: number) {
++  const key = findKey(id);
++  if (key) db().prepare('UPDATE passkeys SET credential = ? WHERE id = ?').run(JSON.stringify({ ...key.credential, publicKey: Buffer.from(key.credential.publicKey).toString('base64url'), counter }), id);
++}
+diff --git a/src/lib/passkey-sync.ts b/src/lib/passkey-sync.ts
+new file mode 100644
+index 0000000..3eb199e
+--- /dev/null
++++ b/src/lib/passkey-sync.ts
+@@ -0,0 +1,32 @@
++export interface AccountSnapshot {
++  user: { id: string; username: string; displayName: string };
++  passkeys: { id: string; name: string; createdAt: string }[];
++  rpId: string;
++}
++type SignalAPI = {
++  signalAllAcceptedCredentials?: (options: { rpId: string; userId: string; allAcceptedCredentialIds: string[] }) => Promise<void>;
++  signalCurrentUserDetails?: (options: { rpId: string; userId: string; name: string; displayName: string }) => Promise<void>;
++  signalUnknownCredential?: (options: { rpId: string; credentialId: string }) => Promise<void>;
++};
++export function signalAPI(): SignalAPI | undefined {
++  return typeof PublicKeyCredential === 'undefined' ? undefined : PublicKeyCredential as unknown as SignalAPI;
++}
++// Only call with a complete, authenticated server snapshot. IDs are stored as base64url.
++export async function syncPasskeys(data: AccountSnapshot, details = false): Promise<string> {
++  const api = signalAPI();
++  const tasks: Promise<void>[] = [];
++  if (api?.signalAllAcceptedCredentials) {
++    tasks.push(Promise.resolve().then(() => api.signalAllAcceptedCredentials!({ rpId: data.rpId, userId: data.user.id, allAcceptedCredentialIds: data.passkeys.map(key => key.id) })));
++  }
++  if (details && api?.signalCurrentUserDetails) {
++    tasks.push(Promise.resolve().then(() => api.signalCurrentUserDetails!({ rpId: data.rpId, userId: data.user.id, name: data.user.username, displayName: data.user.displayName })));
++  }
++  const results = await Promise.allSettled(tasks);
++  if (results.some(result => result.status === 'rejected')) {
++    return 'Your account is saved, but your password manager could not be synced. You can retry sync or update it manually.';
++  }
++  if (!api?.signalAllAcceptedCredentials || (details && !api.signalCurrentUserDetails)) {
++    return 'Your browser cannot sync all passkey changes automatically. Update names or remove old keys in your password manager too.';
++  }
++  return '';
++}
+diff --git a/src/pages/account.astro b/src/pages/account.astro
+new file mode 100644
+index 0000000..c4e42b1
+--- /dev/null
++++ b/src/pages/account.astro
+@@ -0,0 +1,12 @@
++---
++import Layout from '../layouts/Layout.astro';
++import AccountSettings from '../components/AccountSettings';
++import '../styles/account.css';
++---
++<Layout title="Account settings | The DevTools Times">
++  <div class="settings-page">
++    <nav class="settings-breadcrumb" aria-label="Breadcrumb"><a href={import.meta.env.BASE_URL}>The DevTools Times</a><span aria-hidden="true">/</span><span>Account settings</span></nav>
++    <div class="settings-heading"><span class="settings-eyebrow">THE READER’S DESK</span><h1>Account settings</h1><p>A little housekeeping for a better reading experience.</p></div>
++    <div class="settings-layout"><aside class="settings-sidebar"><span class="settings-eyebrow">YOUR ACCOUNT</span><a href="#account-security" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Account & security<span aria-hidden="true">→</span></a><div class="settings-sidebar-note"><span class="settings-eyebrow">GOOD TO KNOW</span><p>Your account, your control.<br/>Keep your sign-in details up to date for uninterrupted access.</p></div></aside><div id="account-security"><AccountSettings client:load /></div></div>
++  </div>
++</Layout>
+diff --git a/src/pages/api/account/index.ts b/src/pages/api/account/index.ts
+new file mode 100644
+index 0000000..319fc23
+--- /dev/null
++++ b/src/pages/api/account/index.ts
+@@ -0,0 +1,24 @@
++import type { APIRoute } from 'astro';
++import { json, sameOrigin, signedIn, snapshot, validName } from '../../../lib/account-api';
++import { renameAccount } from '../../../lib/account-store';
++
++export const GET: APIRoute = async (context) => {
++  const username = await signedIn(context);
++  return username ? json(snapshot(context, username)) : json({ error: 'Please sign in to manage your account.' }, 401);
++};
++export const PATCH: APIRoute = async (context) => {
++  if (!sameOrigin(context)) return json({ error: 'Invalid request origin.' }, 403);
++  const username = await signedIn(context);
++  if (!username) return json({ error: 'Please sign in again.' }, 401);
++  try {
++    const { displayName } = await context.request.json();
++    if (!validName(displayName)) return json({ error: 'Use a display name between 1 and 64 characters.' }, 400);
++    renameAccount(username, displayName.trim());
++    return json(snapshot(context, username));
++  } catch { return json({ error: 'Unable to update your display name.' }, 500); }
++};
++export const DELETE: APIRoute = async (context) => {
++  if (!sameOrigin(context)) return json({ error: 'Invalid request origin.' }, 403);
++  await context.session?.destroy();
++  return json({ success: true });
++};
+diff --git a/src/pages/api/account/login.ts b/src/pages/api/account/login.ts
+new file mode 100644
+index 0000000..82b22b1
+--- /dev/null
++++ b/src/pages/api/account/login.ts
+@@ -0,0 +1,18 @@
++import type { APIRoute } from 'astro';
++import { json, sameOrigin, signIn } from '../../../lib/account-api';
++
++export const POST: APIRoute = async (context) => {
++  if (!sameOrigin(context)) return json({ error: 'Invalid request origin.' }, 403);
++  try {
++    const { username, password } = await context.request.json();
++    if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) return json({ error: 'Username and password are required.' }, 400);
++    const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }), signal: AbortSignal.timeout(15000),
++    });
++    if (!response.ok) return json({ error: 'Unable to sign in. Check your username and password.' }, 401);
++    const data = await response.json();
++    const canonicalUsername = data.user?.username || data.username || username;
++    await signIn(context, canonicalUsername);
++    return json({ success: true });
++  } catch { return json({ error: 'Sign-in is unavailable. Please try again.' }, 503); }
++};
+diff --git a/src/pages/api/account/passkey-login.ts b/src/pages/api/account/passkey-login.ts
+new file mode 100644
+index 0000000..fa2b051
+--- /dev/null
++++ b/src/pages/api/account/passkey-login.ts
+@@ -0,0 +1,28 @@
++import type { APIRoute } from 'astro';
++import { generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
++import { json, origin, sameOrigin, signIn } from '../../../lib/account-api';
++import { findKey, updateCounter } from '../../../lib/account-store';
++
++export const POST: APIRoute = async (context) => {
++  if (!sameOrigin(context)) return json({ error: 'Invalid request origin.' }, 403);
++  try {
++    const body = await context.request.json();
++    const rpID = new URL(origin(context)).hostname;
++    if (body.action === 'options') {
++      const options = await generateAuthenticationOptions({ rpID, userVerification: 'required' });
++      await context.session?.set('authentication', { challenge: options.challenge, expires: Date.now() + 300000 });
++      return json(options);
++    }
++    if (body.action !== 'verify') return json({ error: 'Invalid action.' }, 400);
++    const pending = await context.session?.get('authentication') as { challenge: string; expires: number } | undefined;
++    await context.session?.delete('authentication');
++    if (!pending || pending.expires < Date.now()) return json({ error: 'Sign-in expired. Please try again.' }, 400);
++    const key = findKey(body.response.id);
++    if (!key) return json({ error: 'This passkey is no longer registered.', rpId: rpID, credentialId: body.response.id }, 404);
++    const result = await verifyAuthenticationResponse({ response: body.response, expectedChallenge: pending.challenge, expectedOrigin: origin(context), expectedRPID: rpID, credential: key.credential, requireUserVerification: true });
++    if (!result.verified) return json({ error: 'Unable to verify your passkey.' }, 401);
++    updateCounter(body.response.id, result.authenticationInfo.newCounter);
++    await signIn(context, key.username);
++    return json({ success: true });
++  } catch { return json({ error: 'Unable to sign in with this passkey.' }, 400); }
++};
+diff --git a/src/pages/api/account/passkeys.ts b/src/pages/api/account/passkeys.ts
+new file mode 100644
+index 0000000..e9f57bb
+--- /dev/null
++++ b/src/pages/api/account/passkeys.ts
+@@ -0,0 +1,47 @@
++import type { APIRoute } from 'astro';
++import { generateRegistrationOptions, verifyRegistrationResponse } from '@simplewebauthn/server';
++import { json, origin, sameOrigin, signedIn, snapshot, validName } from '../../../lib/account-api';
++import { account, keys, removeKey, renameKey, saveKey } from '../../../lib/account-store';
++
++export const POST: APIRoute = async (context) => {
++  if (!sameOrigin(context)) return json({ error: 'Invalid request origin.' }, 403);
++  const username = await signedIn(context);
++  if (!username) return json({ error: 'Please sign in again.' }, 401);
++  try {
++    const body = await context.request.json();
++    const rpID = new URL(origin(context)).hostname;
++    if (body.action === 'options') {
++      const user = account(username);
++      const options = await generateRegistrationOptions({
++        rpName: 'The DevTools Times', rpID, userName: username, userDisplayName: user.displayName,
++        userID: new Uint8Array(Buffer.from(user.id, 'base64url')),
++        excludeCredentials: keys(username).map(({ id }) => ({ id })),
++        authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
++      });
++      await context.session?.set('registration', { challenge: options.challenge, expires: Date.now() + 300000 });
++      return json(options);
++    }
++    if (body.action !== 'verify') return json({ error: 'Invalid action.' }, 400);
++    const pending = await context.session?.get('registration') as { challenge: string; expires: number } | undefined;
++    await context.session?.delete('registration');
++    if (!pending || pending.expires < Date.now()) return json({ error: 'Registration expired. Please try again.' }, 400);
++    const result = await verifyRegistrationResponse({ response: body.response, expectedChallenge: pending.challenge, expectedOrigin: origin(context), expectedRPID: rpID, requireUserVerification: true });
++    if (!result.verified || !result.registrationInfo) return json({ error: 'Could not verify this passkey.' }, 400);
++    saveKey(username, result.registrationInfo.credential);
++    return json(snapshot(context, username));
++  } catch { return json({ error: 'Could not register this passkey. Please try again.' }, 400); }
++};
++const mutate = (method: 'rename' | 'remove'): APIRoute => async (context) => {
++  if (!sameOrigin(context)) return json({ error: 'Invalid request origin.' }, 403);
++  const username = await signedIn(context);
++  if (!username) return json({ error: 'Please sign in again.' }, 401);
++  try {
++    const { id, name } = await context.request.json();
++    if (typeof id !== 'string' || (method === 'rename' && !validName(name))) return json({ error: 'A key and a name of 1–64 characters are required.' }, 400);
++    const changed = method === 'rename' ? renameKey(username, id, name.trim()) : removeKey(username, id);
++    if (!changed) return json({ error: 'This passkey no longer exists. Reload your account settings.' }, 404);
++    return json(snapshot(context, username));
++  } catch { return json({ error: 'Unable to update this passkey.' }, 500); }
++};
++export const PATCH = mutate('rename');
++export const DELETE = mutate('remove');
+diff --git a/src/styles/account.css b/src/styles/account.css
+new file mode 100644
+index 0000000..484f0e0
+--- /dev/null
++++ b/src/styles/account.css
+@@ -0,0 +1 @@
++.settings-page{max-width:1020px;margin:auto;padding:32px 38px 72px;color:#242822;font-family:Arial,sans-serif}.settings-breadcrumb{display:flex;gap:12px;font-size:11px;color:#74776f;margin-bottom:38px}.settings-breadcrumb a:hover{text-decoration:underline}.settings-eyebrow{font-size:10px;letter-spacing:1.6px;font-weight:700;color:#74796e}.settings-heading{padding-bottom:30px;border-bottom:1px solid #d8dbd3}.settings-heading h1{font-family:Georgia,serif;font-size:44px;letter-spacing:-1.6px;line-height:1.2;margin:10px 0 12px}.settings-heading>p{font-size:14px;color:#73766e}.settings-layout{display:grid;grid-template-columns:218px minmax(0,1fr);gap:42px;margin-top:32px}.settings-sidebar>a{display:flex;gap:10px;align-items:center;background:#f0f2eb;border-left:3px solid #5d704d;padding:14px 12px;margin-top:16px;font-size:12px;font-weight:600}.settings-sidebar>a svg{width:19px;height:19px}.settings-sidebar>a span{margin-left:auto}.settings-sidebar-note{border-top:1px solid #e0e3da;margin-top:36px;padding-top:22px}.settings-sidebar-note p{font-family:Georgia,serif;font-size:13px;line-height:1.8;color:#828579;margin-top:10px}.settings-account{display:flex;justify-content:space-between;align-items:center;padding:0 0 23px;border-bottom:1px solid #d8dbd3}.settings-account p{font-size:14px;margin-top:6px;overflow-wrap:anywhere}.settings-section{padding:28px 0;border-bottom:1px solid #d8dbd3}.settings-section h2{font-family:Georgia,serif;font-size:27px;letter-spacing:-.6px;margin:8px 0 10px}.settings-section>p{font-size:12px;line-height:1.8;color:#777c71;max-width:470px}.settings-profile-form{display:flex;gap:12px;align-items:end;margin-top:22px}.settings-profile-form>div{flex:1}.settings-profile-form label{display:block;font-size:11px;font-weight:600;margin-bottom:8px}.settings-page input{border:1px solid #cfd4c8;border-radius:3px;padding:10px 12px;width:100%;font-size:13px;background:#fff}.settings-page input:focus{outline:2px solid #5b704b;outline-offset:2px}.settings-page button{cursor:pointer;transition:background .15s}.settings-page button:disabled{opacity:.45;cursor:default}.settings-page button:focus-visible,.settings-page a:focus-visible{outline:2px solid #5b704b;outline-offset:4px}.settings-primary,.settings-secondary,.settings-danger{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:11px 16px;border-radius:3px;font-size:11px;font-weight:600;white-space:nowrap}.settings-primary{color:#fff;background:#46583a;border:1px solid #46583a}.settings-primary:hover{background:#35442b}.settings-primary svg{width:17px}.settings-secondary{border:1px solid #cfd4c8;background:#fafbf8}.settings-secondary:hover{background:#eef1e8}.settings-text{font-size:11px;text-decoration:underline;text-underline-offset:3px;color:#536344}.settings-section-top{display:flex;align-items:center;justify-content:space-between;gap:16px}.settings-count{display:inline-flex;vertical-align:middle;margin-left:11px;justify-content:center;align-items:center;border:1px solid #dfe3d6;border-radius:20px;min-width:23px;height:23px;font:11px Arial;color:#647354;letter-spacing:0}.settings-key-list{border:1px solid #dce0d5;border-radius:4px;margin-top:23px;list-style:none}.settings-key-list>li+li{border-top:1px solid #e2e5dc}.settings-key-row{display:flex;align-items:center;gap:14px;padding:20px 16px}.settings-key-icon{background:#f0f3eb;padding:10px;border-radius:50%;flex-shrink:0}.settings-key-icon svg{width:20px;height:20px;color:#5b6e4b}.settings-key-info{min-width:0;flex:1}.settings-key-info h3{font-size:13px;font-weight:600;overflow-wrap:anywhere}.settings-key-info>p{color:#85897f;font-size:10px;margin-top:6px}.settings-key-actions{display:flex;gap:14px}.settings-key-actions button{color:#7a8172;padding:3px}.settings-key-actions button:hover{color:#34482a}.settings-key-actions svg{width:17px;height:17px}.settings-security-note{display:flex;gap:9px;align-items:start;margin-top:17px;color:#7c8372}.settings-security-note svg{width:16px;height:16px;flex-shrink:0}.settings-security-note p{font-size:10px;line-height:1.7}.settings-footnote{font-size:10px;color:#8c9085;line-height:1.8;margin-top:18px}.settings-empty{text-align:center;background:#fafbf8;border:1px dashed #dce0d5;border-radius:4px;margin-top:22px;padding:28px 24px}.settings-empty>svg{width:28px;height:28px;margin:0 auto 12px;color:#6b7b5c}.settings-empty h3{font:18px Georgia,serif}.settings-empty p{font-size:12px;line-height:1.7;color:#7c8372;max-width:320px;margin:9px auto 0}.settings-alert,.settings-sync{padding:13px 15px;margin-top:16px;border-radius:3px;font-size:12px;line-height:1.7}.settings-alert.error{background:#fff2ee;color:#963f2d}.settings-alert.success{background:#eef4e8;color:#465e32}.settings-sync{background:#f7f5ed;color:#73674b}.settings-sync button{margin-top:6px}.settings-confirm{background:#fcf4f0;padding:18px;border-top:1px solid #eee0d8}.settings-confirm h4{font-size:13px;font-weight:600;overflow-wrap:anywhere}.settings-confirm p{font-size:12px;line-height:1.7;color:#7e6b61;margin:8px 0 15px}.settings-confirm>div{display:flex;gap:20px}.settings-danger{background:#993f31;color:white}.settings-rename{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.settings-rename input{min-width:100px;flex:1}.settings-loading{padding:55px 0;font-size:14px;color:#73766e}.settings-gate{padding:25px 0}.settings-gate>svg{width:32px;color:#5b704b}.settings-gate h2{font:27px Georgia,serif;margin:15px 0}.settings-gate p{font-size:13px;line-height:1.8;color:#73766e;margin:10px 0 24px}.settings-gate>.settings-text{display:block;margin-top:18px}@media(max-width:760px){.settings-page{padding:25px 22px 45px}.settings-heading h1{font-size:35px}.settings-layout{grid-template-columns:1fr;gap:25px}.settings-sidebar-note,.settings-sidebar>.settings-eyebrow{display:none}.settings-sidebar>a{margin-top:0}.settings-breadcrumb{margin-bottom:26px}.settings-profile-form{flex-wrap:wrap}.settings-profile-form>div{min-width:180px}.settings-section h2{font-size:25px}.settings-key-row{gap:10px;padding:16px 12px}.settings-section-top .settings-primary{padding:10px}.settings-key-actions{gap:7px}}

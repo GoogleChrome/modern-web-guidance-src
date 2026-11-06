@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,12 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -134,8 +138,74 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Payment Form */
++    .payment-section {
++      margin-top: 50px;
++    }
++
++    .payment-card {
++      max-width: 520px;
++      margin: 20px auto 0;
++      padding: 30px;
++      text-align: left;
++    }
++
++    .form-group {
++      margin-bottom: 1.25rem;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--text);
++      font-size: 0.95rem;
++    }
++
++    .form-group .hint {
++      display: block;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-bottom: 4px;
++    }
++
++    .form-group input {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 14px;
++      font-size: 1rem;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      color: var(--text);
++      background-color: #fff;
++      box-sizing: border-box;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-group input:focus-visible {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.35);
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 16px;
++    }
++
++    .btn-submit {
++      width: 100%;
++      border: none;
++      font-size: 1.05rem;
++      font-weight: 600;
++      cursor: pointer;
++      padding: 12px;
++      margin-top: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +240,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#payment" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +264,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="payment" class="payment-section">
++      <h2 style="text-align: center;">Payment Details</h2>
++      <div class="card payment-card">
++        <form id="payment-form" action="/checkout" method="POST">
++          <div class="form-group">
++            <label for="cc-number">Card Number</label>
++            <input id="cc-number" name="cc-number" type="text" autocomplete="cc-number"
++                   inputmode="numeric" maxlength="19" pattern="[\d ]{13,19}"
++                   placeholder="1234 5678 9012 3456" enterkeyhint="next" required>
++          </div>
++
++          <div class="form-group">
++            <label for="cc-name">Name on Card</label>
++            <input id="cc-name" name="cc-name" type="text" autocomplete="cc-name"
++                   maxlength="50" pattern="[\p{L} \-\.]+"
++                   placeholder="Jane Doe" enterkeyhint="next" required>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <span id="exp-hint" class="hint">Format: MM/YY</span>
++              <label for="cc-exp">Expiry Date</label>
++              <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp"
++                     aria-describedby="exp-hint" maxlength="5"
++                     pattern="(0[1-9]|1[0-2])\/?([0-9]{2})" placeholder="MM/YY"
++                     enterkeyhint="next" required>
++            </div>
++
++            <div class="form-group">
++              <label for="cc-csc">Security Code</label>
++              <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc"
++                     inputmode="numeric" maxlength="4" pattern="[0-9]{3,4}"
++                     placeholder="CVC" enterkeyhint="done" required>
++            </div>
++          </div>
++
++          <button type="submit" class="btn btn-submit">Pay Now</button>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

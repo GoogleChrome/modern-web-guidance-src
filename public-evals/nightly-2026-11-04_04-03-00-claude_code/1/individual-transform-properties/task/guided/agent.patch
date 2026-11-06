@@ -1,0 +1,81 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,65 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Featured promo badge (Seasonal Favorites) */
++    .promo-row {
++      display: flex;
++      justify-content: center;
++      margin-top: 20px;
++    }
++
++    .target {
++      display: grid;
++      place-items: center;
++      width: 110px;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
++      font-weight: bold;
++      font-size: 0.8rem;
++      line-height: 1.2;
++      text-align: center;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      cursor: default;
++
++      /* Identity values for every transform property that animates or
++         transitions, so the stacking context exists from the start and
++         doesn't change on hover. No will-change needed. */
++      translate: 0px;
++      rotate: 0deg;
++      scale: 1;
++
++      /* Only scale transitions; it never touches the animated properties. */
++      transition: scale 0.3s ease;
++
++      /* Spin (rotate) and slide (translate) run at the same time, each on its
++         own property, so neither overrides the other or the hover scale. */
++      @media (prefers-reduced-motion: no-preference) {
++        animation:
++          badge-spin 6s linear infinite,
++          badge-slide 3s ease-in-out infinite alternate;
++      }
++    }
++
++    .target:hover {
++      scale: 1.2;
++    }
++
++    @keyframes badge-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes badge-slide {
++      from { translate: -80px 0; }
++      to { translate: 80px 0; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,8 +233,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-row">
++        <div class="target">Featured<br>Fall Pick</div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

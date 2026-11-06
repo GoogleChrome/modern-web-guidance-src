@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,31 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin-top: 14px;
++      padding: 12px;
++      background-color: #fff8e1;
++      border: 1px solid var(--accent);
++      border-radius: 6px;
++      font-size: 0.9rem;
++      text-align: left;
++    }
++
++    .promo-timer p {
++      margin-bottom: 4px;
++    }
++
++    .promo-timer p:last-child {
++      margin-bottom: 0;
++    }
++
++    .promo-timer time {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +203,18 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-oat-promo" aria-live="polite">
++            <p class="promo-status">
++              <strong>Offer ends in:</strong>
++              <time id="maple-oat-remaining">Calculating...</time>
++            </p>
++            <p class="promo-elapsed">
++              <strong>Time since promotion started:</strong>
++              <time id="maple-oat-elapsed">Calculating...</time>
++            </p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +239,63 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    function initializePromoTimer() {
++      const remainingEl = document.getElementById('maple-oat-remaining');
++      const elapsedEl = document.getElementById('maple-oat-elapsed');
++      if (!remainingEl || !elapsedEl) return;
++
++      // Use the user's local system time zone
++      const now = Temporal.Now.zonedDateTimeISO();
++      const userTimeZone = now.timeZoneId;
++
++      // Combine separate date and time strings via Temporal methods in the user's local time zone
++      const startDateStr = '2026-02-01';
++      const startTimeStr = '00:00:00';
++      const endDateStr = '2026-03-01';
++      const endTimeStr = '00:00:00';
++
++      const promoStart = Temporal.PlainDate.from(startDateStr)
++        .toPlainDateTime(startTimeStr)
++        .toZonedDateTime(userTimeZone);
++      const promoEnd = Temporal.PlainDate.from(endDateStr)
++        .toPlainDateTime(endTimeStr)
++        .toZonedDateTime(userTimeZone);
++
++      // Calculate elapsed time since the start of the promotion and time remaining until offer ends
++      const timeElapsed = now.since(promoStart, { largestUnit: 'day', smallestUnit: 'hour' });
++      const timeRemaining = now.until(promoEnd, { largestUnit: 'day', smallestUnit: 'hour' });
++
++      if (timeElapsed.sign < 0) {
++        const untilStart = promoStart.since(now, { largestUnit: 'day', smallestUnit: 'hour' });
++        elapsedEl.textContent = `Starts in ${untilStart.toLocaleString(undefined, { style: 'long' })}`;
++        elapsedEl.setAttribute('datetime', untilStart.toString());
++      } else {
++        elapsedEl.textContent = timeElapsed.toLocaleString(undefined, { style: 'long' });
++        elapsedEl.setAttribute('datetime', timeElapsed.toString());
++      }
++
++      if (timeRemaining.sign <= 0) {
++        const zeroDuration = Temporal.Duration.from({ days: 0, hours: 0 });
++        remainingEl.textContent = `${zeroDuration.toLocaleString(undefined, { style: 'long', daysDisplay: 'always', hoursDisplay: 'always' })} (Offer ended)`;
++        remainingEl.setAttribute('datetime', zeroDuration.toString());
++      } else {
++        remainingEl.textContent = timeRemaining.toLocaleString(undefined, { style: 'long' });
++        remainingEl.setAttribute('datetime', timeRemaining.toString());
++      }
++    }
++
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++      initializePromoTimer();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

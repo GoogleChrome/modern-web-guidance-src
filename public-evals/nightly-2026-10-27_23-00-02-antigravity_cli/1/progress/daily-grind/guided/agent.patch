@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+index 66c9173..581c300 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,144 @@
+       background: #3e2723;
+     }
+ 
++    /* Progress Tracker Section */
++    .progress-section {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 40px;
++    }
++
++    .progress-section h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      font-size: 1.4rem;
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
++    }
++
++    .progress-item {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      font-weight: 600;
++      font-size: 0.95rem;
++    }
++
++    .progress-status {
++      font-size: 0.85rem;
++      font-weight: normal;
++      color: var(--primary);
++    }
++
++    .progress-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 8px;
++    }
++
++    .btn-sm {
++      background: var(--secondary);
++      color: var(--text);
++      border: 1px solid var(--primary);
++      padding: 6px 12px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      font-family: inherit;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .btn-sm:hover,
++    .btn-sm[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Styled Progress Bar */
++    progress {
++      /* Reset default browser styles */
++      appearance: none;
++      border: 0 solid;
++      /* Clip bar to element’s border-radius */
++      overflow: clip;
++      inline-size: 100%;
++      block-size: 14px;
++      --progress-bar-radius: 1e5px;
++      --progress-bar-track: var(--secondary);
++      --progress-bar-fill: var(--primary);
++      border-radius: var(--progress-bar-radius);
++      /* Apply color for custom progress track (background) */
++      background: var(--progress-bar-track, #d7ccc8);
++      /* Subtle depth on the empty part of the track */
++      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
++      /* Lets the fill position itself in track units (cqi) */
++      container-type: inline-size;
++      /* Segment length relative to the track */
++      --progress-bar-indeterminate-size: 30%;
++      --progress-bar-indeterminate-animation-duration: 1.5s;
++
++      /* Respect prefers-reduced-motion */
++      @media (prefers-reduced-motion: reduce) {
++        --progress-bar-indeterminate-animation-duration: 10s;
++      }
++    }
++
++    progress:indeterminate {
++      --progress-bar-animation: var(
++        --progress-bar-indeterminate-animation,
++        progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear
++      );
++    }
++
++    progress:dir(rtl) {
++      --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
++    }
++
++    /* Let <progress> styling show through */
++    progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    /* Webkit, Chrome */
++    progress::-webkit-progress-value {
++      background: var(--progress-bar-fill, var(--primary));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    /* Firefox */
++    progress::-moz-progress-bar {
++      background: var(--progress-bar-fill, var(--primary));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    /* Physical: left to right regardless of direction (reverse under :dir(rtl) to mirror). */
++    @keyframes progress-bar-indeterminate {
++      from, to {
++        inline-size: var(--progress-bar-indeterminate-size);
++        /* Pin to the physical left; Chromium would otherwise lay the fill out at the inline start */
++        margin-right: auto;
++      }
++      from { translate: -100%; } /* Own width: fully outside the left edge */
++      to { translate: 100cqi; }  /* Track width: fully outside the right edge */
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +313,37 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-labelledby="progress-heading">
++      <h2 id="progress-heading">Order &amp; Rewards Progress</h2>
++      <div class="progress-grid">
++        <div class="progress-item">
++          <div class="progress-header">
++            <label for="reward-progress">Free Drink Reward Progress</label>
++            <span id="reward-status" class="progress-status" role="status" aria-live="polite">75 / 100 Beans (75%)</span>
++          </div>
++          <progress id="reward-progress" max="100" value="75"></progress>
++          <div class="progress-controls" role="group" aria-label="Simulate reward progress state">
++            <button type="button" class="btn-sm" data-target="reward-progress" data-status="reward-status" data-mode="indeterminate" aria-pressed="false">Syncing (Indeterminate)</button>
++            <button type="button" class="btn-sm" data-target="reward-progress" data-status="reward-status" data-value="75" aria-pressed="true">75% Complete</button>
++            <button type="button" class="btn-sm" data-target="reward-progress" data-status="reward-status" data-value="100" aria-pressed="false">Reward Unlocked (100%)</button>
++          </div>
++        </div>
++
++        <div class="progress-item">
++          <div class="progress-header">
++            <label for="order-progress">Current Order Preparation</label>
++            <span id="order-status" class="progress-status" role="status" aria-live="polite">Assigning barista&hellip;</span>
++          </div>
++          <progress id="order-progress" max="100"></progress>
++          <div class="progress-controls" role="group" aria-label="Simulate order preparation state">
++            <button type="button" class="btn-sm" data-target="order-progress" data-status="order-status" data-mode="indeterminate" aria-pressed="true">Assigning Barista (Indeterminate)</button>
++            <button type="button" class="btn-sm" data-target="order-progress" data-status="order-status" data-value="60" aria-pressed="false">Brewing (60%)</button>
++            <button type="button" class="btn-sm" data-target="order-progress" data-status="order-status" data-value="100" aria-pressed="false">Ready for Pickup (100%)</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +376,37 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.progress-controls button').forEach((btn) => {
++      btn.addEventListener('click', () => {
++        const progressEl = document.getElementById(btn.dataset.target);
++        const statusEl = document.getElementById(btn.dataset.status);
++        const group = btn.closest('.progress-controls');
++
++        group.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', 'false'));
++        btn.setAttribute('aria-pressed', 'true');
++
++        if (btn.dataset.mode === 'indeterminate') {
++          progressEl.removeAttribute('value');
++          statusEl.textContent = btn.dataset.target === 'reward-progress'
++            ? 'Syncing reward balance…'
++            : 'Assigning barista…';
++        } else {
++          const val = Number(btn.dataset.value);
++          progressEl.value = val;
++          if (btn.dataset.target === 'reward-progress') {
++            statusEl.textContent = val >= 100
++              ? '100 / 100 Beans — Free Drink Ready!'
++              : `${val} / 100 Beans (${val}%)`;
++          } else {
++            statusEl.textContent = val >= 100
++              ? 'Order Complete — Ready for Pickup!'
++              : `Brewing your order (${val}%)`;
++          }
++        }
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

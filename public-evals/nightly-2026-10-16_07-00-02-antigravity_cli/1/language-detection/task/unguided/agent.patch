@@ -1,0 +1,357 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,140 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Section */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .feedback-intro {
++      text-align: center;
++      margin-bottom: 25px;
++      color: #6d4c41;
++    }
++
++    .feedback-card {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 700px;
++      margin: 0 auto;
++    }
++
++    .feedback-label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .feedback-textarea {
++      width: 100%;
++      padding: 12px 15px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 1rem;
++      resize: vertical;
++      min-height: 110px;
++      margin-bottom: 15px;
++      box-sizing: border-box;
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .feedback-textarea:focus {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.2);
++    }
++
++    .detect-btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      margin-top: 0;
++    }
++
++    .detect-btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .detection-status-container {
++      margin-top: 20px;
++      padding-top: 15px;
++      border-top: 1px solid #eee;
++    }
++
++    .download-progress-container {
++      margin-bottom: 15px;
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .progress-bar-track {
++      width: 100%;
++      height: 10px;
++      background-color: #e0d8d4;
++      border-radius: 5px;
++      overflow: hidden;
++    }
++
++    .progress-bar-fill {
++      height: 100%;
++      background-color: var(--accent);
++      border-radius: 5px;
++      width: 0%;
++      transition: width 0.3s ease;
++    }
++
++    .detection-result {
++      padding: 14px 18px;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      line-height: 1.6;
++    }
++
++    .detection-result.success {
++      background-color: #f1f8e9;
++      border: 1px solid #c8e6c9;
++      color: #2e7d32;
++    }
++
++    .detection-result.warning {
++      background-color: #fff8e1;
++      border: 1px solid #ffe082;
++      color: #b78103;
++    }
++
++    .detection-result.error {
++      background-color: #ffebee;
++      border: 1px solid #ffcdd2;
++      color: #c62828;
++    }
++
++    .detection-result.info {
++      background-color: #efebe9;
++      border: 1px solid #d7ccc8;
++      color: #4e342e;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +326,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Feedback Section -->
++    <section class="feedback-section">
++      <h2>Customer Feedback</h2>
++      <p class="feedback-intro">We'd love to hear your thoughts! Tell us about your experience in any language.</p>
++      <div class="feedback-card">
++        <label for="feedback-message" class="feedback-label">Your Message:</label>
++        <textarea id="feedback-message" class="feedback-textarea" rows="4" placeholder="Share your feedback or review here..."></textarea>
++        <div>
++          <button id="detect-btn" class="btn detect-btn" type="button">Detect</button>
++        </div>
++        <div id="detection-status-container" class="detection-status-container" style="display: none;">
++          <div id="download-progress-container" class="download-progress-container" style="display: none;">
++            <div class="progress-header">
++              <span>Downloading AI language model...</span>
++              <span id="download-percentage">0%</span>
++            </div>
++            <div class="progress-bar-track">
++              <div id="download-progress-fill" class="progress-bar-fill"></div>
++            </div>
++          </div>
++          <div id="detection-result" class="detection-result" role="status" aria-live="polite"></div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +363,178 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const textarea = document.getElementById('feedback-message');
++      const detectBtn = document.getElementById('detect-btn');
++      const statusContainer = document.getElementById('detection-status-container');
++      const downloadProgressContainer = document.getElementById('download-progress-container');
++      const downloadPercentage = document.getElementById('download-percentage');
++      const downloadProgressFill = document.getElementById('download-progress-fill');
++      const detectionResult = document.getElementById('detection-result');
++
++      let detectorInstance = null;
++
++      function showResult(htmlContent, type) {
++        statusContainer.style.display = 'block';
++        detectionResult.className = 'detection-result ' + type;
++        detectionResult.innerHTML = htmlContent;
++        detectionResult.style.display = 'block';
++      }
++
++      function updateProgress(percent) {
++        statusContainer.style.display = 'block';
++        downloadProgressContainer.style.display = 'block';
++        const formattedPercent = Math.min(100, Math.max(0, percent)) + '%';
++        downloadPercentage.textContent = formattedPercent;
++        downloadProgressFill.style.width = formattedPercent;
++      }
++
++      function hideProgress() {
++        downloadProgressContainer.style.display = 'none';
++      }
++
++      function getLanguageName(langCode) {
++        if (!langCode || langCode === 'und') {
++          return 'Undetermined';
++        }
++        try {
++          const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
++          return displayNames.of(langCode) || langCode;
++        } catch (e) {
++          return langCode;
++        }
++      }
++
++      async function checkAvailability() {
++        try {
++          if (typeof LanguageDetector !== 'undefined') {
++            if (typeof LanguageDetector.availability === 'function') {
++              return await LanguageDetector.availability();
++            }
++            if (typeof LanguageDetector.capabilities === 'function') {
++              const caps = await LanguageDetector.capabilities();
++              return caps?.available || caps;
++            }
++          }
++          if (typeof window.ai !== 'undefined' && window.ai.languageDetector) {
++            if (typeof window.ai.languageDetector.availability === 'function') {
++              return await window.ai.languageDetector.availability();
++            }
++            if (typeof window.ai.languageDetector.capabilities === 'function') {
++              const caps = await window.ai.languageDetector.capabilities();
++              return caps?.available || caps;
++            }
++          }
++          if (typeof window.translation !== 'undefined') {
++            if (typeof window.translation.canDetect === 'function') {
++              return await window.translation.canDetect();
++            }
++            if (typeof window.translation.availability === 'function') {
++              return await window.translation.availability();
++            }
++          }
++        } catch (err) {
++          console.error('Error checking availability:', err);
++        }
++        return 'unsupported';
++      }
++
++      async function createDetector(onProgress) {
++        const options = {};
++        if (typeof onProgress === 'function') {
++          options.monitor = function (m) {
++            m.addEventListener('downloadprogress', function (e) {
++              let percent = 0;
++              if (typeof e.total === 'number' && e.total > 0) {
++                percent = Math.round((e.loaded / e.total) * 100);
++              } else if (typeof e.loaded === 'number') {
++                percent = e.loaded <= 1 ? Math.round(e.loaded * 100) : Math.round(e.loaded);
++              }
++              onProgress(percent);
++            });
++          };
++        }
++
++        let detector = null;
++        if (typeof LanguageDetector !== 'undefined' && typeof LanguageDetector.create === 'function') {
++          detector = await LanguageDetector.create(options);
++        } else if (typeof window.ai !== 'undefined' && window.ai.languageDetector && typeof window.ai.languageDetector.create === 'function') {
++          detector = await window.ai.languageDetector.create(options);
++        } else if (typeof window.translation !== 'undefined' && typeof window.translation.createDetector === 'function') {
++          detector = await window.translation.createDetector(options);
++        } else {
++          throw new Error('Language Detection API is not supported in this browser.');
++        }
++
++        if (detector && detector.ready && typeof detector.ready.then === 'function') {
++          await detector.ready;
++        }
++
++        return detector;
++      }
++
++      detectBtn.addEventListener('click', async function () {
++        const text = textarea.value.trim();
++        if (!text) {
++          showResult('Please enter a message before detecting the language.', 'warning');
++          return;
++        }
++
++        detectBtn.disabled = true;
++        hideProgress();
++        showResult('Checking language detection availability...', 'info');
++
++        try {
++          const availability = await checkAvailability();
++
++          if (availability === 'no' || availability === 'unavailable' || availability === 'unsupported') {
++            showResult('Language detection is not available in this browser. Please use a browser supporting the built-in Language Detection API.', 'error');
++            return;
++          }
++
++          if (availability === 'after-download' || availability === 'downloadable' || availability === 'downloading') {
++            updateProgress(0);
++            showResult('Downloading language model...', 'info');
++          }
++
++          if (!detectorInstance) {
++            detectorInstance = await createDetector(function (percent) {
++              updateProgress(percent);
++            });
++          }
++
++          hideProgress();
++          showResult('Detecting language...', 'info');
++
++          const results = await detectorInstance.detect(text);
++
++          if (!results || results.length === 0) {
++            showResult('Unable to determine the language for this message.', 'warning');
++            return;
++          }
++
++          const top = results[0];
++          const langName = getLanguageName(top.detectedLanguage);
++          const confidencePercent = Math.round(top.confidence * 100);
++          const confidenceExact = (top.confidence * 100).toFixed(1);
++
++          showResult(
++            '<strong>Language:</strong> ' + langName + (top.detectedLanguage ? ' (' + top.detectedLanguage + ')' : '') + '<br>' +
++            '<strong>Confidence:</strong> ' + confidencePercent + '% (' + confidenceExact + '%)',
++            'success'
++          );
++        } catch (err) {
++          console.error('Detection error:', err);
++          detectorInstance = null;
++          showResult('An error occurred during language detection: ' + (err.message || 'Unknown error'), 'error');
++        } finally {
++          detectBtn.disabled = false;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

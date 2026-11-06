@@ -1,0 +1,405 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,126 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .ops {
++      margin-top: 50px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++    }
++
++    .ops h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .ops-intro {
++      font-size: 0.9rem;
++      margin-bottom: 16px;
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-bottom: 16px;
++    }
++
++    .ops-controls button {
++      font: inherit;
++      font-size: 0.9rem;
++      border: 0;
++      border-radius: 5px;
++      padding: 10px 16px;
++      color: white;
++      cursor: pointer;
++      background: var(--primary);
++      transition: filter 0.2s;
++    }
++
++    .ops-controls button:hover { filter: brightness(1.15); }
++    .ops-controls button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
++    .ops-controls [data-priority="user-blocking"] { background: #c62828; }
++    .ops-controls [data-priority="user-visible"] { background: #1565c0; }
++    .ops-controls [data-priority="background"] { background: #546e7a; }
++    .ops-controls .ops-batch { background: var(--primary); }
++    .ops-controls .ops-secondary { background: transparent; color: var(--text); border: 1px solid var(--secondary); }
++
++    .ops-status {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 20px;
++      font-size: 0.85rem;
++      background: #efebe9;
++      border-radius: 6px;
++      padding: 10px 14px;
++      margin-bottom: 16px;
++    }
++
++    .ops-status output { font-weight: bold; font-variant-numeric: tabular-nums; }
++
++    .ops-heartbeat {
++      display: inline-block;
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #2e7d32;
++      vertical-align: middle;
++      margin-right: 4px;
++    }
++
++    .ops-heartbeat.lagging { background: #c62828; }
++
++    .ops-columns {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 20px;
++    }
++
++    .ops-columns h3 {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .ops-list {
++      list-style: none;
++      max-height: 320px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 6px;
++      min-height: 80px;
++      font-size: 0.85rem;
++    }
++
++    .ops-list li {
++      padding: 6px 8px;
++      border-radius: 4px;
++      border-left: 4px solid var(--secondary);
++      margin-bottom: 4px;
++      background: #fafafa;
++    }
++
++    .ops-list li[data-priority="user-blocking"] { border-left-color: #c62828; }
++    .ops-list li[data-priority="user-visible"] { border-left-color: #1565c0; }
++    .ops-list li[data-priority="background"] { border-left-color: #546e7a; }
++    .ops-list li.done { opacity: 0.75; }
++    .ops-list li.aborted { text-decoration: line-through; opacity: 0.6; }
++
++    .ops-list progress {
++      display: block;
++      width: 100%;
++      height: 6px;
++      margin-top: 4px;
++    }
++
++    .ops-empty { color: #8d6e63; font-style: italic; border-left: 0 !important; background: none !important; }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +312,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ops" aria-labelledby="ops-title">
++      <h2 id="ops-title">Operations Queue Simulator</h2>
++      <p class="ops-intro">
++        Simulates CPU-heavy store operations. Each task is scheduled with a priority and yields to the
++        main thread every ~50&nbsp;ms, so the page stays responsive and urgent work jumps the queue.
++      </p>
++
++      <div class="ops-controls">
++        <button type="button" data-priority="user-blocking" data-kind="checkout">Run Urgent Checkout</button>
++        <button type="button" data-priority="user-visible" data-kind="menu">Run Menu Update</button>
++        <button type="button" data-priority="background" data-kind="telemetry">Log Background Telemetry</button>
++        <button type="button" class="ops-batch" id="ops-batch">Run Mixed Batch</button>
++        <button type="button" class="ops-secondary" id="ops-cancel">Cancel All</button>
++        <button type="button" class="ops-secondary" id="ops-clear">Clear Log</button>
++      </div>
++
++      <div class="ops-status">
++        <span><span class="ops-heartbeat" id="ops-heartbeat" aria-hidden="true"></span>UI frame time: <output id="ops-frame">0</output> ms</span>
++        <span>Queued / running: <output id="ops-pending">0</output></span>
++        <span>Completed: <output id="ops-completed">0</output></span>
++        <span>Scheduler: <output id="ops-mode">detecting…</output></span>
++      </div>
++
++      <div class="ops-columns">
++        <div>
++          <h3>Active Queue</h3>
++          <ul class="ops-list" id="ops-active" aria-live="polite">
++            <li class="ops-empty">No tasks queued.</li>
++          </ul>
++        </div>
++        <div>
++          <h3>Completion Order</h3>
++          <ol class="ops-list" id="ops-log">
++            <li class="ops-empty">Nothing has run yet.</li>
++          </ol>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +363,226 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // ---- Scheduler support -------------------------------------------------
++    // scheduler.postTask is not supported everywhere (e.g. Safari), so load the
++    // polyfill on demand to keep true priority ordering.
++    const hasPostTask = () => 'scheduler' in globalThis && 'postTask' in globalThis.scheduler;
++
++    async function ensureScheduler() {
++      if (hasPostTask()) return 'native';
++      try {
++        await new Promise((resolve, reject) => {
++          const script = document.createElement('script');
++          script.src = 'https://unpkg.com/scheduler-polyfill';
++          script.onload = resolve;
++          script.onerror = reject;
++          document.head.append(script);
++        });
++        if (hasPostTask()) return 'polyfill';
++      } catch { /* fall through to the minimal fallback */ }
++      installMinimalScheduler();
++      return 'fallback';
++    }
++
++    // Last-resort priority queue if the polyfill cannot be fetched (offline).
++    function installMinimalScheduler() {
++      const rank = { 'user-blocking': 0, 'user-visible': 1, background: 2 };
++      const queue = [];
++      let scheduled = false;
++      const pump = () => {
++        scheduled = false;
++        queue.sort((a, b) => rank[a.priority] - rank[b.priority] || a.seq - b.seq);
++        const job = queue.shift();
++        if (job) job.run();
++        if (queue.length) schedule();
++      };
++      const schedule = () => { if (!scheduled) { scheduled = true; setTimeout(pump, 0); } };
++      let seq = 0;
++      globalThis.scheduler = {
++        postTask(cb, { priority = 'user-visible', signal } = {}) {
++          return new Promise((resolve, reject) => {
++            if (signal?.aborted) return reject(signal.reason);
++            const job = {
++              priority, seq: seq++,
++              run: () => {
++                if (signal?.aborted) return reject(signal.reason);
++                try { resolve(cb()); } catch (e) { reject(e); }
++              },
++            };
++            signal?.addEventListener('abort', () => {
++              const i = queue.indexOf(job);
++              if (i !== -1) { queue.splice(i, 1); reject(signal.reason); }
++            }, { once: true });
++            queue.push(job);
++            schedule();
++          });
++        },
++      };
++    }
++
++    // Yield to the main thread; scheduler.yield() continuations keep the
++    // priority of the postTask that started them.
++    function yieldToMain() {
++      if ('scheduler' in globalThis && 'yield' in globalThis.scheduler) {
++        return scheduler.yield();
++      }
++      return new Promise((resolve) => setTimeout(resolve, 0));
++    }
++
++    // ---- Task definitions --------------------------------------------------
++    const TASKS = {
++      checkout: { label: 'Urgent checkout', priority: 'user-blocking', units: 120 },
++      menu: { label: 'Menu update', priority: 'user-visible', units: 200 },
++      telemetry: { label: 'Telemetry log', priority: 'background', units: 260 },
++    };
++    const PRIORITY_LABEL = {
++      'user-blocking': 'urgent', 'user-visible': 'standard', background: 'background',
++    };
++
++    const $ = (id) => document.getElementById(id);
++    const activeList = $('ops-active');
++    const logList = $('ops-log');
++    const pendingOut = $('ops-pending');
++    const completedOut = $('ops-completed');
++
++    let controller = new AbortController();
++    let nextId = 1;
++    let pending = 0;
++    let completed = 0;
++    const schedulerReady = ensureScheduler().then((mode) => {
++      $('ops-mode').value = { native: 'native postTask', polyfill: 'polyfill', fallback: 'setTimeout fallback' }[mode];
++    });
++
++    // Simulated CPU work: ~1 ms of busy computation per unit.
++    function burn(ms) {
++      const end = performance.now() + ms;
++      let x = 0;
++      while (performance.now() < end) x += Math.sqrt(Math.random());
++      return x;
++    }
++
++    function setEmptyState(list, text) {
++      const hasItems = [...list.children].some((li) => !li.classList.contains('ops-empty'));
++      const placeholder = list.querySelector('.ops-empty');
++      if (!hasItems && !placeholder) {
++        const li = document.createElement('li');
++        li.className = 'ops-empty';
++        li.textContent = text;
++        list.append(li);
++      } else if (hasItems && placeholder) {
++        placeholder.remove();
++      }
++    }
++
++    function updateCounters() {
++      pendingOut.value = pending;
++      completedOut.value = completed;
++      setEmptyState(activeList, 'No tasks queued.');
++      setEmptyState(logList, 'Nothing has run yet.');
++    }
++
++    async function enqueue(kind) {
++      await schedulerReady;
++      const def = TASKS[kind];
++      const id = nextId++;
++      const { signal } = controller;
++
++      const item = document.createElement('li');
++      item.dataset.priority = def.priority;
++      const text = document.createElement('span');
++      text.textContent = `#${id} ${def.label} (${PRIORITY_LABEL[def.priority]}) — queued`;
++      const bar = document.createElement('progress');
++      bar.max = def.units;
++      bar.value = 0;
++      bar.setAttribute('aria-label', `Task ${id} progress`);
++      item.append(text, bar);
++      activeList.append(item);
++      pending++;
++      updateCounters();
++
++      const queuedAt = performance.now();
++      try {
++        await scheduler.postTask(async () => {
++          const startedAt = performance.now();
++          text.textContent = `#${id} ${def.label} (${PRIORITY_LABEL[def.priority]}) — running`;
++          let deadline = performance.now() + 50;
++          for (let i = 0; i < def.units; i++) {
++            if (signal.aborted) throw signal.reason;
++            burn(1);
++            if (performance.now() >= deadline) {
++              bar.value = i + 1;
++              await yieldToMain();
++              deadline = performance.now() + 50;
++            }
++          }
++          bar.value = def.units;
++          const finishedAt = performance.now();
++          completed++;
++          const entry = document.createElement('li');
++          entry.dataset.priority = def.priority;
++          entry.className = 'done';
++          entry.textContent = `#${id} ${def.label} — waited ${Math.round(startedAt - queuedAt)} ms, ran ${Math.round(finishedAt - startedAt)} ms`;
++          logList.append(entry);
++          entry.scrollIntoView({ block: 'nearest' });
++        }, { priority: def.priority, signal });
++        item.remove();
++      } catch (err) {
++        if (signal.aborted) {
++          item.classList.add('aborted');
++          text.textContent = `#${id} ${def.label} — cancelled`;
++          setTimeout(() => { item.remove(); updateCounters(); }, 1200);
++        } else {
++          throw err;
++        }
++      } finally {
++        pending--;
++        updateCounters();
++      }
++    }
++
++    // ---- Controls ------------------------------------------------------------
++    document.querySelectorAll('.ops-controls [data-kind]').forEach((btn) => {
++      btn.addEventListener('click', () => enqueue(btn.dataset.kind));
++    });
++
++    // Deliberately enqueue in "wrong" order: the scheduler runs them by priority.
++    $('ops-batch').addEventListener('click', () => {
++      ['telemetry', 'menu', 'telemetry', 'checkout', 'menu', 'telemetry', 'checkout', 'menu']
++        .forEach((kind) => enqueue(kind));
++    });
++
++    $('ops-cancel').addEventListener('click', () => {
++      controller.abort(new DOMException('Cancelled by user', 'AbortError'));
++      controller = new AbortController();
++    });
++
++    $('ops-clear').addEventListener('click', () => {
++      logList.replaceChildren();
++      completed = 0;
++      updateCounters();
++    });
++
++    // ---- Responsiveness meter -----------------------------------------------
++    // rAF runs on the main thread, so long frames reveal blocking work.
++    const frameOut = $('ops-frame');
++    const heartbeat = $('ops-heartbeat');
++    let last = performance.now();
++    let lastPaint = 0;
++    function tick(now) {
++      const delta = now - last;
++      last = now;
++      if (now - lastPaint > 150) {
++        frameOut.value = Math.round(delta);
++        heartbeat.classList.toggle('lagging', delta > 60);
++        lastPaint = now;
++      }
++      requestAnimationFrame(tick);
++    }
++    requestAnimationFrame(tick);
++  </script>
++
+ </body>
+ 
+ </html>

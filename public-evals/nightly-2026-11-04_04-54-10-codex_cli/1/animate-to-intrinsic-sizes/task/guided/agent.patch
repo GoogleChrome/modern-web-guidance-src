@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,138 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native disclosures own their keyboard behavior and expanded state. */
++    #promo-alert,
++    .faq {
++      interpolate-size: allow-keywords;
++    }
++
++    #promo-alert {
++      position: relative;
++      background: var(--accent);
++      block-size: auto;
++      overflow: clip;
++      /* Visibility switches at the end so the banner can finish shrinking. */
++      transition: block-size 0.4s ease, opacity 0.4s ease,
++        visibility 0.4s;
++    }
++
++    #promo-alert:not([open]) {
++      block-size: 0;
++      opacity: 0;
++      visibility: hidden;
++    }
++
++    .promo-message {
++      padding: 20px calc(5% + 56px) 20px 5%;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      inset-block-start: 10px;
++      inset-inline-end: 5%;
++      display: grid;
++      place-items: center;
++      inline-size: 44px;
++      block-size: 44px;
++      border-radius: 5px;
++      font-size: 1.5rem;
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #promo-alert::details-content {
++      transition: content-visibility 0.4s;
++      transition-behavior: allow-discrete;
++    }
++
++    .faq-section {
++      margin-block-start: 40px;
++    }
++
++    .faq {
++      margin-block-start: 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      overflow: clip;
++    }
++
++    #faq-trigger {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 20px;
++      padding: 20px;
++      font-weight: 600;
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #faq-trigger::after {
++      content: '+';
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    .faq[open] > #faq-trigger::after {
++      content: '−';
++    }
++
++    #faq-trigger::-webkit-details-marker,
++    #alert-dismiss::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger:hover,
++    #alert-dismiss:hover {
++      background: var(--secondary);
++    }
++
++    #faq-trigger:focus-visible,
++    #alert-dismiss:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -4px;
++    }
++
++    /* Unsupported browsers retain the native, instant disclosure behavior. */
++    .faq::details-content {
++      block-size: 0;
++      overflow: clip;
++      transition: block-size 0.4s ease, content-visibility 0.4s;
++      transition-behavior: allow-discrete;
++    }
++
++    .faq[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-content {
++      padding: 0 20px 20px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #promo-alert::details-content,
++      .faq::details-content {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotion">
++      <span aria-hidden="true">×</span>
++    </summary>
++    <p class="promo-message"><strong>A little something seasonal.</strong> Discover our Maple Oat Latte on the seasonal menu.</p>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +319,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details class="faq">
++        <summary id="faq-trigger" aria-controls="faq-content">Where does your coffee come from?</summary>
++        <div id="faq-content">
++          <p>Our coffee is ethically sourced and locally roasted. Each cup starts with carefully selected beans and a commitment to fresh, full flavor.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

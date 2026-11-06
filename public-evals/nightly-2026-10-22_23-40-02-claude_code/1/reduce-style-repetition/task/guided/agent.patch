@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,21 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    /* Reusable gradient: any two colors, optional angle */
++    @function --gradient(--from <color>, --to <color>, --angle: 135deg) returns <image> {
++      result: linear-gradient(in oklab var(--angle), var(--from), var(--to));
++    }
++
++    /* Reusable columns: one column by default, --count equal columns on wider screens */
++    @function --columns(--count <number>: 2) returns <track-list> {
++      result: 1fr;
++      @media (min-width: 700px) {
++        result: repeat(var(--count), 1fr);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,11 +36,23 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--secondary);
++      background-image: var(--secondary);
++      background-image: --gradient(#fff3e0, #d7ccc8, 160deg);
++      background-attachment: fixed;
++      min-height: 100vh;
+     }
+ 
++    h2 {
++      color: white;
++      padding: 0.5rem 1rem;
++      border-radius: 8px;
++      background: var(--primary);
++      background: --gradient(var(--primary), #ff7043);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -101,9 +126,10 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: 1fr;
++      grid-template-columns: --columns(2);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 

@@ -1,0 +1,178 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,19 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +185,16 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card" aria-labelledby="passkey-heading">
++      <h2 id="passkey-heading">Secure your account</h2>
++      <p>Create a passkey to sign in with your device.</p>
++      <button type="button" class="btn" data-testid="register-button"
++        aria-describedby="registration-status">Create passkey</button>
++      <p id="registration-status" role="status" aria-live="polite" aria-atomic="true"></p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +225,137 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const button = document.querySelector('[data-testid="register-button"]');
++      const status = document.getElementById('registration-status');
++      let registering = false;
++
++      function decodeBase64url(value) {
++        if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+$/.test(value)) {
++          throw new TypeError('Invalid registration options.');
++        }
++        const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
++        return Uint8Array.from(binary, character => character.charCodeAt(0));
++      }
++
++      function encodeBase64url(value) {
++        const bytes = value instanceof ArrayBuffer
++          ? new Uint8Array(value)
++          : new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
++        let binary = '';
++        for (const byte of bytes) binary += String.fromCharCode(byte);
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      function creationOptions(json) {
++        if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++          return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++        }
++        const options = {
++          ...json,
++          challenge: decodeBase64url(json.challenge),
++          user: { ...json.user, id: decodeBase64url(json.user.id) },
++        };
++        if (json.excludeCredentials) {
++          options.excludeCredentials = json.excludeCredentials.map(credential => ({
++            ...credential, id: decodeBase64url(credential.id),
++          }));
++        }
++        // The native parser is required for extensions with binary inputs.
++        if (json.extensions?.prf || json.extensions?.largeBlob?.write) {
++          throw new Error('Please update your browser to create this passkey.');
++        }
++        return options;
++      }
++
++      function jsonValue(value) {
++        if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
++          return encodeBase64url(value);
++        }
++        if (Array.isArray(value)) return value.map(jsonValue);
++        if (value && typeof value === 'object') {
++          return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, jsonValue(item)]));
++        }
++        return value;
++      }
++
++      function registrationJSON(credential) {
++        if (typeof credential.toJSON === 'function') return credential.toJSON();
++        const response = credential.response;
++        const result = {
++          id: credential.id,
++          rawId: encodeBase64url(credential.rawId),
++          type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment,
++          response: {
++            clientDataJSON: encodeBase64url(response.clientDataJSON),
++            attestationObject: encodeBase64url(response.attestationObject),
++          },
++          clientExtensionResults: jsonValue(credential.getClientExtensionResults()),
++        };
++        if (typeof response.getTransports === 'function') {
++          result.response.transports = response.getTransports();
++        }
++        return result;
++      }
++
++      async function postJSON(url, body) {
++        const response = await fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          mode: 'same-origin',
++          redirect: 'error',
++          cache: 'no-store',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          body: JSON.stringify(body),
++        });
++        if (!response.ok) throw new Error('Registration request failed. Please try again.');
++        return response.json();
++      }
++
++      button.addEventListener('click', async () => {
++        if (registering) return;
++        registering = true;
++        button.disabled = true;
++        status.textContent = 'Preparing your passkey…';
++        try {
++          if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials?.create) {
++            throw new Error('Passkeys require a supported browser and a secure connection.');
++          }
++          const options = await postJSON('/api/register/options', { promotion: true });
++          status.textContent = 'Follow your device’s instructions to create a passkey.';
++          const credential = await navigator.credentials.create({
++            publicKey: creationOptions(options.publicKey ?? options),
++          });
++          if (!credential || credential.type !== 'public-key' || !credential.response?.attestationObject) {
++            throw new Error('No passkey was created. Please try again.');
++          }
++          status.textContent = 'Verifying your passkey…';
++          // The server must validate the challenge, origin, RP ID and attestation,
++          // and bind the credential to the authenticated account before confirming.
++          const result = await postJSON('/api/register/verify', registrationJSON(credential));
++          if (result?.verified !== true) {
++            throw new Error('Passkey verification failed. Please try again.');
++          }
++          status.textContent = 'Your passkey was created successfully.';
++        } catch (error) {
++          if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
++            status.textContent = 'Passkey creation was canceled or timed out. Please try again.';
++          } else if (error.name === 'InvalidStateError') {
++            status.textContent = 'A passkey already exists on this device. Try another device.';
++          } else {
++            status.textContent = error instanceof Error ? error.message : 'Unable to create a passkey. Please try again.';
++          }
++        } finally {
++          registering = false;
++          button.disabled = false;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

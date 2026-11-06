@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,151 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Visually Stable Mixed Fonts &amp; Independent Theme Typography</title>
++  <style>
++    @layer base, theme, components;
++
++    @layer base {
++      :root {
++        --font-primary: Verdana, Geneva, Tahoma, sans-serif;
++        --font-code: "Courier New", Courier, monospace;
++        --font-theme-serif: "Times New Roman", Times, Georgia, serif;
++
++        --color-bg: #f8fafc;
++        --color-surface: #ffffff;
++        --color-surface-alt: #f1f5f9;
++        --color-code-bg: #e2e8f0;
++        --color-text: #0f172a;
++        --color-text-muted: #334155;
++        --color-border: #cbd5e1;
++        --color-accent: #2563eb;
++      }
++
++      body {
++        margin: 0;
++        padding-block: 2.5rem;
++        padding-inline: 1.5rem;
++        font-family: var(--font-primary);
++        font-size: 1rem;
++        line-height: 1.6;
++        color: var(--color-text);
++        background-color: var(--color-bg);
++        text-align: start;
++        overflow-wrap: break-word;
++      }
++
++      main {
++        max-inline-size: 80ch;
++        margin-inline: auto;
++        display: grid;
++        gap: 2rem;
++      }
++
++      h1, h2 {
++        line-height: 1.25;
++        text-wrap: balance;
++        margin-block: 0 0.75rem;
++      }
++
++      h1 {
++        font-size: clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem);
++      }
++
++      h2 {
++        font-size: clamp(1.2rem, 1rem + 0.8vw, 1.5rem);
++      }
++
++      p {
++        margin-block: 0;
++        max-inline-size: 80ch;
++        text-wrap: pretty;
++      }
++    }
++
++    @layer components {
++      .card {
++        background-color: var(--color-surface);
++        border: 1px solid var(--color-border);
++        border-radius: 0.5rem;
++        padding-block: 1.5rem;
++        padding-inline: 1.75rem;
++      }
++
++      /* Automatically extract and apply the x-height aspect ratio from the primary font to child elements */
++      #mixed-fonts-container {
++        font-family: var(--font-primary);
++        font-size: 1.125rem;
++        line-height: 1.6;
++        font-size-adjust: from-font;
++      }
++
++      #mixed-fonts-container code {
++        font-family: var(--font-code);
++        background-color: var(--color-code-bg);
++        padding-block: 0.125rem;
++        padding-inline: 0.375rem;
++        border-radius: 0.25rem;
++      }
++    }
++
++    @layer theme {
++      /* Independent theme container locked to a specific numeric x-height aspect-ratio override */
++      #independent-theme-container {
++        font-family: var(--font-theme-serif);
++        font-size: 1.125rem;
++        line-height: 1.6;
++        font-size-adjust: 0.52;
++        background-color: var(--color-surface-alt);
++        border-inline-start: 4px solid var(--color-accent);
++        border-radius: 0.5rem;
++        padding-block: 1.5rem;
++        padding-inline: 1.75rem;
++        color: var(--color-text);
++      }
++    }
++
++    /* Fallback for browsers that do not support font-size-adjust */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container {
++        font-size: 1.125rem;
++        line-height: 1.65;
++      }
++
++      #mixed-fonts-container code {
++        font-size: 1.08em;
++        line-height: 1.5;
++      }
++
++      #independent-theme-container {
++        font-size: 1.25rem;
++        line-height: 1.65;
++      }
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <header>
++      <h1>Typography &amp; Visual x-Height Normalization</h1>
++    </header>
++
++    <section class="card" aria-labelledby="mixed-heading">
++      <h2 id="mixed-heading">Automatic Mixed-Font Normalization</h2>
++      <p id="mixed-fonts-container">
++        When mixing regular prose with inline code fragments like <code>font-size-adjust: from-font</code>, <code>const aspectRatio = xHeight / fontSize</code>, or <code>document.getElementById("mixed-fonts-container")</code>, the browser automatically extracts the primary font's x-height aspect ratio and scales nested monospace tokens so their lowercase glyphs align seamlessly with surrounding body copy.
++      </p>
++    </section>
++
++    <section aria-labelledby="theme-heading">
++      <h2 id="theme-heading">Independent Theme with Numeric Aspect-Ratio Override</h2>
++      <div id="independent-theme-container">
++        <p>
++          This container establishes an independent editorial theme using a serif typeface stack. Applying an explicit numeric override of <code>0.52</code> via <code>font-size-adjust</code> locks down the visual x-height proportions so the typography maintains consistent optical height and readability regardless of the parent font context.
++        </p>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

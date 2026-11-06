@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,44 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .signin-card {
++      max-width: 420px;
++      margin: 0 auto 40px;
++      text-align: left;
++    }
++
++    .signin-card label {
++      display: block;
++      margin-top: 15px;
++      font-weight: 600;
++    }
++
++    .signin-card input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .signin-card button {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      width: 100%;
++    }
++
++    .signin-card button:disabled {
++      opacity: 0.7;
++      cursor: default;
++    }
++
++    #signin-status {
++      margin-top: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +210,19 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card signin-card" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign in to your account</h2>
++      <form id="signin-form" action="/api/login" method="post">
++        <label for="username">Email or username</label>
++        <input id="username" name="username" autocomplete="username" required>
++        <label for="password">Password</label>
++        <input id="password" name="password" type="password" autocomplete="current-password" required>
++        <button type="submit" class="btn" data-testid="signin-button">Sign in</button>
++      </form>
++      <p id="signin-status" role="status" aria-live="polite"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +253,121 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebAuthn JSON represents binary values as base64url strings.
++    function decodeBase64url(value) {
++      const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
++      return Uint8Array.from(atob(padded), character => character.charCodeAt(0));
++    }
++
++    function encodeBase64url(value) {
++      return btoa(String.fromCharCode(...new Uint8Array(value)))
++        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    function parseCreationOptions(options) {
++      if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++        return PublicKeyCredential.parseCreationOptionsFromJSON(options);
++      }
++      return {
++        ...options,
++        challenge: decodeBase64url(options.challenge),
++        user: { ...options.user, id: decodeBase64url(options.user.id) },
++        ...(options.excludeCredentials && {
++          excludeCredentials: options.excludeCredentials.map(credential => ({
++            ...credential,
++            id: decodeBase64url(credential.id)
++          }))
++        })
++      };
++    }
++
++    function serializeCredential(credential) {
++      if (typeof credential.toJSON === 'function') return credential.toJSON();
++      return {
++        id: credential.id,
++        rawId: encodeBase64url(credential.rawId),
++        type: credential.type,
++        authenticatorAttachment: credential.authenticatorAttachment,
++        response: {
++          clientDataJSON: encodeBase64url(credential.response.clientDataJSON),
++          attestationObject: encodeBase64url(credential.response.attestationObject),
++          transports: credential.response.getTransports?.() || []
++        },
++        clientExtensionResults: credential.getClientExtensionResults()
++      };
++    }
++
++    async function promotePasskey() {
++      try {
++        if (!window.PublicKeyCredential ||
++            typeof PublicKeyCredential.getClientCapabilities !== 'function' ||
++            typeof navigator.credentials?.create !== 'function') return;
++
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.conditionalCreate !== true) return;
++
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          credentials: 'same-origin'
++        });
++        if (!optionsResponse.ok) return;
++
++        const options = await optionsResponse.json();
++        const credential = await navigator.credentials.create({
++          publicKey: parseCreationOptions(options.publicKey ?? options),
++          mediation: 'conditional'
++        });
++        if (!credential) return;
++
++        await fetch('/api/register/verify', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(serializeCredential(credential))
++        });
++      } catch {
++        // Automatic promotion is best effort and must never interrupt sign-in.
++      }
++    }
++
++    const signinForm = document.getElementById('signin-form');
++    const signinButton = signinForm.querySelector('[data-testid="signin-button"]');
++    const signinStatus = document.getElementById('signin-status');
++
++    signinForm.addEventListener('submit', async event => {
++      event.preventDefault();
++      if (signinButton.disabled) return;
++      signinButton.disabled = true;
++      signinStatus.textContent = 'Signing in…';
++
++      try {
++        const response = await fetch(signinForm.action, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            username: signinForm.elements.username.value,
++            password: signinForm.elements.password.value
++          })
++        });
++        if (!response.ok) throw new Error('Password sign-in failed');
++
++        // Start immediately, without delaying the successful sign-in UI.
++        void promotePasskey();
++        signinForm.reset();
++        signinForm.hidden = true;
++        signinStatus.textContent = 'You’re signed in. Welcome back!';
++      } catch {
++        signinStatus.textContent = 'Unable to sign in. Check your details and try again.';
++      } finally {
++        signinButton.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

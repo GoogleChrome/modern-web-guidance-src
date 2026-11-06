@@ -1,0 +1,349 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,28 +99,142 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
++    .grid,
++    .kanban-board {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
++      align-items: start;
+     }
+ 
++    .board-column {
++      background: #efebe9;
++      padding: 16px;
++      border-radius: 8px;
++      min-height: 420px;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      /* Apply containment boundaries to isolate layout, style, and paint work */
++      content-visibility: auto;
++      contain-intrinsic-size: auto 300px auto 800px;
++      outline: 2px dashed transparent;
++      transition: background-color 0.2s ease, outline-color 0.2s ease;
++    }
++
++    @supports not (content-visibility: auto) {
++      .board-column {
++        /* Manual fallback for containment */
++        contain: layout style paint;
++      }
++    }
++
++    .board-column.drag-over {
++      background: #e0d6d2;
++      outline-color: var(--primary);
++    }
++
++    .column-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding-bottom: 10px;
++      border-bottom: 2px solid var(--secondary);
++      color: var(--primary);
++    }
++
++    .column-header h3 {
++      font-size: 1.15rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .column-count {
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      font-weight: bold;
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
+     .card {
++      container-type: inline-size;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      text-align: left;
++      cursor: grab;
++      border-left: 4px solid var(--accent);
++      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+     }
+ 
++    .card:active {
++      cursor: grabbing;
++    }
++
++    .card.dragging {
++      opacity: 0.55;
++      transform: scale(0.98);
++    }
++
++    .card header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 8px;
++      margin-bottom: 8px;
++    }
++
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 0;
+       color: var(--primary);
++      font-size: 1.1rem;
+     }
+ 
++    .order-meta {
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: #6d4c41;
++      background: #f5f0ee;
++      padding: 2px 6px;
++      border-radius: 4px;
++      white-space: nowrap;
++    }
++
++    .card footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      margin-top: 14px;
++      background: transparent;
++      padding: 0;
++      text-align: left;
++    }
++
++    .card .btn {
++      margin-top: 0;
++      padding: 6px 12px;
++      font-size: 0.85rem;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -134,9 +248,9 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+-    footer {
++    body > footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -174,30 +288,169 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <section aria-labelledby="board-heading">
++      <h2 id="board-heading" style="text-align: center;">Barista Order Board</h2>
++      <p style="text-align: center; margin-top: 4px;">Drag and drop drink orders between columns as they move from queued to ready.</p>
++      <div id="board-status" class="sr-only" aria-live="polite"></div>
++
++      <div class="kanban-board" id="order-board">
++        <section class="board-column" id="queued" data-status="queued" aria-labelledby="col-queued-title">
++          <header class="column-header">
++            <h3 id="col-queued-title">Queued</h3>
++            <span class="column-count" data-count-for="queued">2</span>
++          </header>
++
++          <article class="card" id="order-101" draggable="true" data-order-id="101">
++            <header>
++              <h3>Maple Oat Latte</h3>
++              <span class="order-meta">#101 &bull; Grande</span>
++            </header>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <footer>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </footer>
++          </article>
++
++          <article class="card" id="order-102" draggable="true" data-order-id="102">
++            <header>
++              <h3>Dark Roast Espresso</h3>
++              <span class="order-meta">#102 &bull; Double</span>
++            </header>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <footer>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </footer>
++          </article>
++        </section>
++
++        <section class="board-column" id="brewing" data-status="brewing" aria-labelledby="col-brewing-title">
++          <header class="column-header">
++            <h3 id="col-brewing-title">Brewing</h3>
++            <span class="column-count" data-count-for="brewing">1</span>
++          </header>
++
++          <article class="card" id="order-103" draggable="true" data-order-id="103">
++            <header>
++              <h3>Cold Brew</h3>
++              <span class="order-meta">#103 &bull; Venti</span>
++            </header>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <footer>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </footer>
++          </article>
++        </section>
++
++        <section class="board-column" id="ready" data-status="ready" aria-labelledby="col-ready-title">
++          <header class="column-header">
++            <h3 id="col-ready-title">Ready</h3>
++            <span class="column-count" data-count-for="ready">1</span>
++          </header>
++
++          <article class="card" id="order-100" draggable="true" data-order-id="100">
++            <header>
++              <h3>Maple Oat Latte</h3>
++              <span class="order-meta">#100 &bull; Tall</span>
++            </header>
++            <p>Extra foam, oat milk, light maple drizzle.</p>
++            <footer>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </footer>
++          </article>
++        </section>
+       </div>
+     </section>
+   </main>
+ 
++  <script>
++    const board = document.getElementById('order-board');
++    const statusRegion = document.getElementById('board-status');
++    let draggedCardId = null;
++
++    function updateColumnCounts() {
++      const columns = board.querySelectorAll('.board-column');
++      for (const col of columns) {
++        const countBadge = col.querySelector('.column-count');
++        if (countBadge) {
++          countBadge.textContent = String(col.querySelectorAll('.card').length);
++        }
++      }
++    }
++
++    function moveItemToColumn(itemId, columnId) {
++      const item = document.getElementById(itemId);
++      const column = document.getElementById(columnId);
++      if (!item || !column) return;
++
++      // Preserve element state with atomic moveBefore when available,
++      // while CSS containment on .board-column isolates layout recalculation.
++      if ('moveBefore' in Element.prototype) {
++        column.moveBefore(item, null);
++      } else {
++        column.appendChild(item);
++      }
++
++      updateColumnCounts();
++
++      const drinkTitle = item.querySelector('h3')?.textContent ?? 'Order';
++      const columnTitle = column.querySelector('.column-header h3')?.textContent ?? columnId;
++      if (statusRegion) {
++        statusRegion.textContent = `Moved ${drinkTitle} to ${columnTitle}.`;
++      }
++    }
++
++    board.addEventListener('dragstart', (event) => {
++      const card = event.target.closest('.card');
++      if (!card) return;
++      draggedCardId = card.id;
++      card.classList.add('dragging');
++      if (event.dataTransfer) {
++        event.dataTransfer.effectAllowed = 'move';
++        event.dataTransfer.setData('text/plain', card.id);
++      }
++    });
++
++    board.addEventListener('dragend', (event) => {
++      const card = event.target.closest('.card');
++      if (card) {
++        card.classList.remove('dragging');
++      }
++      draggedCardId = null;
++      for (const col of board.querySelectorAll('.board-column.drag-over')) {
++        col.classList.remove('drag-over');
++      }
++    });
++
++    for (const column of board.querySelectorAll('.board-column')) {
++      column.addEventListener('dragover', (event) => {
++        event.preventDefault();
++        if (event.dataTransfer) {
++          event.dataTransfer.dropEffect = 'move';
++        }
++        if (!column.classList.contains('drag-over')) {
++          column.classList.add('drag-over');
++        }
++      });
++
++      column.addEventListener('dragleave', (event) => {
++        if (!column.contains(event.relatedTarget)) {
++          column.classList.remove('drag-over');
++        }
++      });
++
++      column.addEventListener('drop', (event) => {
++        event.preventDefault();
++        column.classList.remove('drag-over');
++        const itemId = event.dataTransfer?.getData('text/plain') || draggedCardId;
++        if (itemId) {
++          moveItemToColumn(itemId, column.id);
++        }
++      });
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

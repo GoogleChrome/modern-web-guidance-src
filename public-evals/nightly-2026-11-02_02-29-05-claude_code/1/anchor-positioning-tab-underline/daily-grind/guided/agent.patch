@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+index 66c9173..fcc20ce 100644
+--- a/index.html
++++ b/index.html
+@@ -51,6 +51,40 @@
+       list-style: none;
+     }
+ 
++    /* Active nav indicator: tethered to the active item and slides between items */
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active-nav;
++      inset-block-start: calc(anchor(bottom) + .1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: 3px;
++      border-radius: 2px;
++      background: var(--accent);
++      pointer-events: none;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: inset .3s ease, opacity .3s;
++      }
++
++      @supports not (position-anchor: auto) {
++        display: none;
++      }
++    }
++
++    nav ul:not(:has(li.active))::before {
++      opacity: 0;
++    }
++
++    nav ul li.active {
++      anchor-name: --active-nav;
++
++      @supports not (position-anchor: auto) {
++        box-shadow: inset 0 -3px var(--accent);
++      }
++    }
++
+     nav ul li {
+       margin-left: 20px;
+     }
+@@ -157,7 +191,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -168,6 +202,36 @@
+     </ul>
+   </nav>
+ 
++  <script>
++    (() => {
++      const items = [...document.querySelectorAll('nav li')]
++        .filter(li => !li.querySelector('.logout-link'));
++
++      const setActive = (path) => {
++        for (const li of items) {
++          const a = li.querySelector('a');
++          const active = a.getAttribute('href') === path;
++          li.classList.toggle('active', active);
++          if (active) a.setAttribute('aria-current', 'page');
++          else a.removeAttribute('aria-current');
++        }
++      };
++
++      for (const li of items) {
++        li.querySelector('a').addEventListener('click', (e) => {
++          if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++          const href = e.currentTarget.getAttribute('href');
++          e.preventDefault();
++          if (href !== location.pathname) history.pushState(null, '', href);
++          setActive(href);
++        });
++      }
++
++      addEventListener('popstate', () => setActive(location.pathname));
++      setActive(location.pathname);
++    })();
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>

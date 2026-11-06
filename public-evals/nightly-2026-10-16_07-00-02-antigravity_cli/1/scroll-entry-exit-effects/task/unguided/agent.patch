@@ -1,0 +1,41 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,10 +112,37 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      animation: card-reveal linear both;
++      animation-timeline: view();
+     }
+ 
++    @keyframes card-reveal {
++      entry 0% {
++        scale: 0.5;
++        opacity: 0;
++      }
++      entry 100% {
++        scale: 1;
++        opacity: 1;
++      }
++      exit 0% {
++        scale: 1;
++        opacity: 1;
++      }
++      exit 100% {
++        scale: 0.5;
++        opacity: 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card {
++        animation: none;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

@@ -1,0 +1,37 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,33 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<title>Brand — Watch the Film</title>
++<meta name="description" content="Watch our film.">
++
++<!-- LCP element: discoverable and fetched at highest priority before the parser reaches <video> -->
++<link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
++<!-- Critical header font: preloaded (crossorigin is required for font preloads to be reused) -->
++<link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
++<!-- secondary-font.woff2 is intentionally NOT preloaded so it never competes with the poster -->
++
++<style>
++@font-face{font-family:Brand;src:url(brand-font.woff2) format("woff2");font-display:swap}
++@font-face{font-family:Secondary;src:url(secondary-font.woff2) format("woff2");font-display:optional}
++*{box-sizing:border-box;margin:0}
++body{background:#000;color:#fff;font:16px/1.5 system-ui,sans-serif;min-height:100vh;display:grid;place-content:center;gap:1.5rem;padding:1.5rem;text-align:center}
++h1{font:700 clamp(2rem,6vw,4rem)/1.1 Brand,system-ui,sans-serif}
++video{display:block;width:min(100%,960px);aspect-ratio:16/9;height:auto;background:#111}
++a{font-family:Secondary,system-ui,sans-serif;color:#fff;justify-self:center;padding:.6rem 1.4rem;border:1px solid #fff;border-radius:2rem;text-decoration:none}
++</style>
++</head>
++<body>
++<h1>See it in motion</h1>
++<!-- preload="none": no video bytes compete with the poster/LCP; explicit size prevents layout shift -->
++<video controls playsinline preload="none" poster="poster.jpg" width="960" height="540">
++  <source src="video.mp4" type="video/mp4">
++</video>
++<a href="#">Get started</a>
++</body>
++</html>

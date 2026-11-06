@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,79 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-container {
++      max-height: 280px;
++      overflow-y: auto;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    .feedback-container::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-container::-webkit-scrollbar-track {
++      background: #4e342e;
++      border-radius: 4px;
++    }
++
++    .feedback-container::-webkit-scrollbar-thumb {
++      background-color: #ffab40;
++      border-radius: 4px;
++    }
++
++    .testimonial {
++      padding: 15px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .testimonial:first-child {
++      padding-top: 0;
++    }
++
++    .testimonial:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .testimonial-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .testimonial-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .testimonial-rating {
++      color: var(--accent);
++      letter-spacing: 2px;
++    }
++
++    .testimonial p {
++      font-style: italic;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +265,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Customer Feedback Log</h2>
++      <div class="feedback-container">
++        <div class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Sarah M.</span>
++            <span class="testimonial-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p>"The Maple Oat Latte is hands down the best autumn drink I've ever had! Not overly sweet and the espresso shines through."</p>
++        </div>
++        <div class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">James T.</span>
++            <span class="testimonial-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p>"Best cold brew in town. Zero bitterness, super smooth, and keeps me energized all morning."</p>
++        </div>
++        <div class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Elena R.</span>
++            <span class="testimonial-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p>"I love the cozy atmosphere and knowing that all the beans are ethically sourced. The Dark Roast Espresso is my daily ritual."</p>
++        </div>
++        <div class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Marcus K.</span>
++            <span class="testimonial-rating">&#9733;&#9733;&#9733;&#9733;&#9734;</span>
++          </div>
++          <p>"Great friendly baristas and top-tier roasting quality. A must-visit spot for any coffee enthusiast!"</p>
++        </div>
++        <div class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Priya D.</span>
++            <span class="testimonial-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p>"Ordered beans online and they arrived freshly roasted just two days later. My kitchen smells like heaven every morning."</p>
++        </div>
++        <div class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Lucas W.</span>
++            <span class="testimonial-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p>"Their seasonal specials never miss! You can genuinely taste the care put into every single cup."</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

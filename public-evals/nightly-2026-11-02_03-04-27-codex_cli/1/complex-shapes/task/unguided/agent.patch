@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,12 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,11 +87,54 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
+     }
+ 
++    .hero-copy {
++      position: relative;
++      z-index: 1;
++      max-width: 760px;
++    }
++
++    .shaped-element {
++      position: absolute;
++      right: -4%;
++      top: 50%;
++      width: clamp(280px, 46vw, 660px);
++      aspect-ratio: 1.2;
++      transform: translateY(-50%) rotate(-12deg);
++      pointer-events: none;
++      /* A soft organic silhouette remains when masking isn't supported. */
++      border-radius: 38% 62% 68% 32% / 57% 36% 64% 43%;
++      background:
++        radial-gradient(ellipse at 30% 25%, rgba(255, 222, 170, 0.35), transparent 65%),
++        linear-gradient(135deg, #b77b48, #70432a);
++      opacity: 0.48;
++    }
++
++    @supports (mask-image: url("")) or (-webkit-mask-image: url("")) {
++      .shaped-element {
++        /* Embedded vector: no network dependency; scales with the block. */
++        --brush-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 500'%3E%3Cpath fill='white' d='M45 237C12 205 43 159 105 147C57 103 105 67 170 88C183 30 236 39 271 72C314 18 364 38 373 84C432 49 478 77 463 120C540 103 580 149 541 189C605 222 572 264 529 280C578 329 544 370 490 357C506 416 455 448 406 420C381 481 326 474 300 433C252 482 198 457 197 416C133 447 91 415 114 370C41 378 21 331 67 299C17 289 13 255 45 237Z'/%3E%3C/svg%3E");
++        border-radius: 0;
++        -webkit-mask-image: var(--brush-mask);
++        mask-image: var(--brush-mask);
++        -webkit-mask-size: 100% 100%;
++        mask-size: 100% 100%;
++        -webkit-mask-repeat: no-repeat;
++        mask-repeat: no-repeat;
++      }
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        right: -140px;
++        opacity: 0.32;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,11 +214,14 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="shaped-element" aria-hidden="true"></div>
++    <div class="hero-copy">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>

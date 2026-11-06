@@ -1,0 +1,42 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,10 +112,38 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++
++      /* Scroll-driven reveal: grow from half size while entering the
++         viewport, shrink back while leaving. Pure CSS, opt-in only for
++         users who have not asked for reduced motion, and only in browsers
++         with full scroll-driven animation support (decorative, so other
++         browsers simply show the cards at full size). */
++      @media (prefers-reduced-motion: no-preference) {
++        @supports ((animation-timeline: view()) and (animation-range: entry)) {
++          animation:
++            card-grow auto linear backwards,
++            card-shrink auto linear forwards;
++          /* Must come after the `animation` shorthand, which resets these. */
++          animation-timeline: view(block);
++          animation-range: entry, exit;
++        }
++      }
+     }
+ 
++    @keyframes card-grow {
++      from {
++        scale: 0.5;
++      }
++    }
++
++    @keyframes card-shrink {
++      to {
++        scale: 0.5;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

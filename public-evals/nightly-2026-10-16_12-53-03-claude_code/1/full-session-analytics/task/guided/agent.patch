@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,97 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script>
++    // Minimal fetchLater() polyfill for browsers without native support.
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if (
++            'keepalive' in Request.prototype ||
++            init.method !== 'POST' ||
++            init.headers
++          ) {
++            fetch(url, Object.assign({}, init, { keepalive: true }));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++  </script>
++
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5?module';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    // Latest value of each Core Web Vital; metrics can update throughout the visit.
++    const metrics = {};
++    let fetchLaterController = null;
++
++    function queueBeacon() {
++      // Replace any pending beacon with a snapshot of the latest values.
++      fetchLaterController?.abort();
++      fetchLaterController = new AbortController();
++
++      try {
++        fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: { 'content-type': 'application/json' },
++          body: JSON.stringify({
++            page: location.href,
++            metrics: Object.values(metrics),
++          }),
++          signal: fetchLaterController.signal,
++        });
++      } catch (error) {
++        // Quota exceeded; drop the beacon.
++      }
++    }
++
++    function record({ name, value, rating, id, navigationType }) {
++      metrics[name] = { name, value, rating, id, navigationType };
++      queueBeacon();
++    }
++
++    // reportAllChanges keeps values current so the queued beacon is always up to date.
++    const options = { reportAllChanges: true };
++    onCLS(record, options);
++    onINP(record, options);
++    onLCP(record, options);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

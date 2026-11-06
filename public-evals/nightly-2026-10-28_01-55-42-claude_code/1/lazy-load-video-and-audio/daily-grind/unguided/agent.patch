@@ -1,0 +1,328 @@
+diff --git a/index.html b/index.html
+index 66c9173..f4c2420 100644
+--- a/index.html
++++ b/index.html
+@@ -74,11 +74,13 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 360px;
++      overflow: hidden;
++      /* Still image fallback shown until the video's first frame is ready
++         (and permanently if the video fails or motion is reduced). */
++      background: #2a1a16 url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80') center / cover no-repeat;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,11 +90,53 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 0;
++    }
++
++    .hero::after {
++      /* Dark overlay keeps the headline legible over moving footage. */
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.55));
++      z-index: 1;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 2;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-credit {
++      position: absolute;
++      right: 10px;
++      bottom: 6px;
++      z-index: 2;
++      font-size: 0.65rem;
++      opacity: 0.7;
++    }
++
++    .hero-credit a {
++      color: inherit;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .hero-video {
++        display: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -135,6 +179,100 @@
+       background: #3e2723;
+     }
+ 
++    /* Behind the Roast: video + podcast */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-section h2 {
++      text-align: center;
++    }
++
++    .media-section .section-intro {
++      text-align: center;
++      max-width: 640px;
++      margin: 8px auto 0;
++      color: #5d4037;
++    }
++
++    .media-grid {
++      display: grid;
++      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
++      gap: 24px;
++      margin-top: 24px;
++      align-items: start;
++    }
++
++    @media (max-width: 800px) {
++      .media-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .media-card {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .media-card .media-body {
++      padding: 20px;
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .media-meta {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      margin-bottom: 6px;
++    }
++
++    /* Fixed aspect ratio box so the layout does not shift when the
++       poster and video arrive later. */
++    .video-frame {
++      position: relative;
++      aspect-ratio: 16 / 9;
++      background: #2a1a16;
++    }
++
++    .video-frame video {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      background: #2a1a16;
++    }
++
++    .podcast-cover {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      background: #2a1a16;
++    }
++
++    .podcast-player {
++      display: block;
++      width: 100%;
++      margin-top: 14px;
++    }
++
++    .media-credit {
++      font-size: 0.7rem;
++      color: #8d6e63;
++      margin-top: 10px;
++    }
++
++    .media-credit a {
++      color: inherit;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -169,9 +307,18 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <!-- Above the fold: loads immediately. Muted + playsinline is required for autoplay on mobile. -->
++    <video class="hero-video" id="hero-video" autoplay muted loop playsinline preload="auto" aria-hidden="true" tabindex="-1"
++      poster="https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Pour_Over.ogv/1280px--Pour_Over.ogv.jpg">
++      <source src="https://upload.wikimedia.org/wikipedia/commons/transcoded/6/63/Pour_Over.ogv/Pour_Over.ogv.480p.vp9.webm"
++        type='video/webm; codecs="vp9, opus"'>
++    </video>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <small class="hero-credit">Video: <a href="https://commons.wikimedia.org/wiki/File:Pour_Over.ogv" rel="noopener" target="_blank">Lev Lazinskiy</a>, CC BY-SA 4.0</small>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +342,54 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" id="behind-the-roast" aria-labelledby="behind-the-roast-heading">
++      <h2 id="behind-the-roast-heading">Behind the Roast</h2>
++      <p class="section-intro">Watch how green beans become your morning cup, then pull up a chair for our featured coffee conversation.</p>
++
++      <div class="media-grid">
++        <!-- Roasting video. Below the fold: no src, no poster, preload="none" until the
++             lazy-media script swaps the data-* attributes in as the player nears the viewport. -->
++        <article class="media-card">
++          <div class="video-frame">
++            <video class="lazy-media" id="roasting-video" controls playsinline preload="none"
++              data-poster="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/1280px--ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.jpg"
++              aria-label="Coffee roasting over an open flame">
++              <source
++                data-src="https://upload.wikimedia.org/wikipedia/commons/transcoded/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.480p.vp9.webm"
++                type='video/webm; codecs="vp9, opus"'>
++              Your browser does not support embedded video.
++              <a href="https://upload.wikimedia.org/wikipedia/commons/transcoded/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.480p.vp9.webm">Download the roasting video</a>.
++            </video>
++          </div>
++          <div class="media-body">
++            <p class="media-meta">Watch &middot; 1 min</p>
++            <h3>Small-Batch Roasting, Start to Finish</h3>
++            <p>Every bean we serve is roasted by hand in small batches so we can taste, adjust, and stop at the exact moment the sugars caramelize. Watch the color turn from green to chestnut and listen for the first crack.</p>
++            <p class="media-credit">Video: <a href="https://commons.wikimedia.org/wiki/File:ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm" rel="noopener" target="_blank">A.Savin</a>, Free Art License</p>
++          </div>
++        </article>
++
++        <!-- Podcast audio. Cover art uses native lazy loading; the audio element gets its
++             src only when it approaches the viewport. -->
++        <article class="media-card">
++          <img class="podcast-cover" loading="lazy" decoding="async" width="1350" height="760"
++            src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=1350&q=80"
++            alt="A cup of coffee on a wooden table beside a notebook">
++          <div class="media-body">
++            <p class="media-meta">Listen &middot; 35 min</p>
++            <h3>The Daily Grind Podcast</h3>
++            <p>Featured episode: Howard Schultz on pouring your heart into your business. The former Starbucks chairman talks about growing a neighborhood coffee shop into a company with a soul.</p>
++            <audio class="lazy-media podcast-player" id="podcast-audio" controls preload="none"
++              data-src="https://upload.wikimedia.org/wikipedia/commons/transcoded/5/58/Oprah%E2%80%99s_SuperSoul_Conversations_Podcast_-_Howard_Schultz-_Pouring_Your_Heart_into_Your_Business.ogg/Oprah%E2%80%99s_SuperSoul_Conversations_Podcast_-_Howard_Schultz-_Pouring_Your_Heart_into_Your_Business.ogg.mp3"
++              aria-label="Podcast episode: Howard Schultz on pouring your heart into your business">
++              Your browser does not support embedded audio.
++            </audio>
++            <p class="media-credit">Audio: <a href="https://commons.wikimedia.org/wiki/File:Oprah%E2%80%99s_SuperSoul_Conversations_Podcast_-_Howard_Schultz-_Pouring_Your_Heart_into_Your_Business.ogg" rel="noopener" target="_blank">SuperSoul Conversations</a>, CC BY 3.0</p>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +402,73 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Below-the-fold media is authored with data-poster / data-src and preload="none",
++      // so the browser requests nothing for it on page load. When a player comes within
++      // the rootMargin of the viewport we move the data-* values onto the real
++      // attributes and let the browser fetch poster + metadata.
++      var ROOT_MARGIN = '600px 0px';
++      var lazyMedia = Array.prototype.slice.call(document.querySelectorAll('.lazy-media'));
++
++      function hydrate(el) {
++        if (el.getAttribute('data-hydrated') === 'true') { return; }
++        el.setAttribute('data-hydrated', 'true');
++
++        var poster = el.getAttribute('data-poster');
++        if (poster) {
++          el.setAttribute('poster', poster);
++          el.removeAttribute('data-poster');
++        }
++
++        var sources = el.querySelectorAll('source[data-src]');
++        Array.prototype.forEach.call(sources, function (source) {
++          source.setAttribute('src', source.getAttribute('data-src'));
++          source.removeAttribute('data-src');
++        });
++
++        var src = el.getAttribute('data-src');
++        if (src) {
++          el.setAttribute('src', src);
++          el.removeAttribute('data-src');
++        }
++
++        // Now that it is about to be seen, allow the browser to grab duration/first frame.
++        el.setAttribute('preload', 'metadata');
++        el.load();
++      }
++
++      if (lazyMedia.length) {
++        if ('IntersectionObserver' in window) {
++          var observer = new IntersectionObserver(function (entries, io) {
++            entries.forEach(function (entry) {
++              if (entry.isIntersecting || entry.intersectionRatio > 0) {
++                hydrate(entry.target);
++                io.unobserve(entry.target);
++              }
++            });
++          }, { rootMargin: ROOT_MARGIN, threshold: 0 });
++          lazyMedia.forEach(function (el) { observer.observe(el); });
++        } else {
++          // Very old browsers: load everything rather than leave players empty.
++          lazyMedia.forEach(hydrate);
++        }
++      }
++
++      // Respect reduced-motion: the CSS already hides the hero video; also stop it
++      // from downloading/playing so the still image is all the user gets.
++      var hero = document.getElementById('hero-video');
++      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
++      if (hero && reduceMotion && reduceMotion.matches) {
++        hero.removeAttribute('autoplay');
++        hero.pause();
++        hero.removeAttribute('src');
++        Array.prototype.forEach.call(hero.querySelectorAll('source'), function (s) { s.remove(); });
++        hero.load();
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

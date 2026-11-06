@@ -1,0 +1,330 @@
+diff --git a/index.html b/index.html
+index 66c9173..9c2b4c1 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,125 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#f6f5ee">
++  <title>Your perfect brew | The Daily Grind</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    :root{--paper:#f6f5ee;--ink:#292d23;--muted:#777b70;--green:#52633e;--line:#e3e5da;--soft:#eef0e7;--serif:'Libre Caslon Display',Georgia,serif}
++    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}button,a,input{-webkit-tap-highlight-color:transparent}button,a{touch-action:manipulation}button{font:inherit}a{color:inherit;text-decoration:none}button{cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid var(--green);outline-offset:5px}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
++    .shell{max-width:1232px;margin:auto;padding:0 52px}.header{height:100px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{display:flex;gap:11px;align-items:center;font-size:13px;font-weight:700;letter-spacing:1.4px}.brand-icon{width:34px;height:36px;stroke-width:1.4}.nav{display:flex;gap:34px;align-items:center;font-size:12px;color:#666b5e}.nav a{padding:10px 0}.nav a.active{color:var(--ink);position:relative}.nav a.active:after{content:'';position:absolute;width:4px;height:4px;border-radius:50%;background:var(--green);bottom:0;left:50%}.header-note{font-size:11px;display:flex;align-items:center;gap:8px;color:#737a65}.header-note svg{width:16px;height:16px}
++    main{padding-top:53px}.eyebrow{font-size:10px;font-weight:650;letter-spacing:2px;color:var(--green);display:flex;align-items:center;gap:9px}.eyebrow:before{content:'';width:19px;height:1px;background:var(--green)}.hero{display:grid;grid-template-columns:1fr 1fr;gap:76px;align-items:start}.intro h1{font-family:var(--serif);font-weight:400;font-size:72px;line-height:1.01;letter-spacing:-2.8px;margin:21px 0 19px}.intro h1 em{color:var(--green);font-weight:400}.intro-copy{max-width:370px;font-size:13px;color:#797c71;line-height:1.85;margin:0 0 27px}.photo{position:relative;height:260px;border-radius:5px;overflow:hidden;background:#4e4231}.photo img{width:100%;height:100%;object-fit:cover;object-position:center 55%;filter:brightness(.82)}.photo:after{content:'';position:absolute;inset:30% 0 0;background:linear-gradient(transparent,rgba(18,22,13,.57))}.photo-caption{position:absolute;z-index:1;bottom:23px;left:25px;right:25px;display:flex;align-items:center;gap:12px;color:white}.photo-caption svg{height:31px;width:31px;stroke-width:1}.photo-caption strong{display:block;font-weight:500;font-size:12px;margin-bottom:5px}.photo-caption span{font-size:10px;color:#e0dfd5}.photo-caption .photo-number{margin-left:auto;font-family:var(--serif);font-size:32px;opacity:.8}.photo-credit{font-size:9px;color:#93968a;margin-top:11px;display:flex;justify-content:space-between;letter-spacing:.2px}.photo-credit span:first-child{display:flex;align-items:center;gap:5px}.photo-credit svg{height:10px;width:10px}
++    .customizer{background:#fff;border:1px solid #e5e6dc;border-radius:10px;box-shadow:0 8px 25px #2d352505;margin-top:3px;overflow:hidden}.card-main{padding:31px 32px 26px}.card-eyebrow{font-size:9px;letter-spacing:1.8px;color:#8b9081;font-weight:600;display:flex;justify-content:space-between;align-items:center}.step{letter-spacing:.6px;color:#8b9081}.step i{display:inline-block;width:5px;height:5px;margin-right:5px;background:#819366;border-radius:50%}.card-title{font-family:var(--serif);font-weight:400;font-size:32px;letter-spacing:-.6px;margin:11px 0 6px}.card-description{font-size:11px;color:#92958c;margin:0 0 28px}.control{margin-bottom:25px}.control:last-of-type{margin-bottom:0}.control-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}.control label{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:550}.control label svg{width:17px;height:17px;color:#818875}.control output{font-size:10px;background:#f1f3eb;color:var(--green);border-radius:4px;min-width:64px;padding:5px 9px;text-align:center;font-weight:550;font-variant-numeric:tabular-nums}.range-labels{display:flex;justify-content:space-between;font-size:9px;color:#9b9f94;margin-top:1px}.range-labels span:nth-child(2){color:#a4a89c}
++    input[type=range]{--slider-track-size:5px;--slider-thumb-size:19px;--slider-track-color:#eaede3;--slider-fill-color:var(--green);--slider-direction:to right;--attr-min:attr(min type(<number>),0);--attr-max:attr(max type(<number>),100);--control-value:attr(value type(<number>),50);--slider-progress:calc(progress(var(--control-value),var(--attr-min),var(--attr-max))*100%);appearance:none;-webkit-appearance:none;display:block;width:100%;height:30px;margin:0;padding:0;border:0;border-radius:4px;background:transparent;cursor:pointer;accent-color:var(--green)}
++    input[type=range]:dir(rtl){--slider-direction:to left}input[type=range]::-webkit-slider-runnable-track{height:var(--slider-track-size);border:0;border-radius:99px;background:linear-gradient(var(--slider-direction),var(--slider-fill-color) var(--slider-progress),var(--slider-track-color) var(--slider-progress))}input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:var(--slider-thumb-size);height:var(--slider-thumb-size);margin-block-start:calc((var(--slider-track-size) - var(--slider-thumb-size))/2);border:4px solid white;border-radius:50%;background:var(--green);box-shadow:0 0 0 1px #dce1d3,0 2px 4px #26351b20;transition:box-shadow .15s}input[type=range]::-moz-range-track{height:var(--slider-track-size);border:0;border-radius:99px;background:var(--slider-track-color)}input[type=range]::-moz-range-progress{height:var(--slider-track-size);border-radius:99px;background:var(--slider-fill-color)}input[type=range]::-moz-range-thumb{width:11px;height:11px;border:4px solid white;border-radius:50%;background:var(--green);box-shadow:0 0 0 1px #dce1d3,0 2px 4px #26351b20}input[type=range]:hover::-webkit-slider-thumb{box-shadow:0 0 0 4px #52633e18}input[type=range]:hover::-moz-range-thumb{box-shadow:0 0 0 4px #52633e18}input[type=range]:active::-webkit-slider-thumb{background:#344427;box-shadow:0 0 0 5px #52633e20}input[type=range]:active::-moz-range-thumb{background:#344427;box-shadow:0 0 0 5px #52633e20}input[type=range]:focus-visible{outline:2px solid var(--green);outline-offset:4px}
++    @supports not (opacity:progress(1,0,100)){input[type=range]{--slider-progress:calc((var(--control-value) - var(--attr-min))/(var(--attr-max) - var(--attr-min))*100%)}}
++    .recipe{margin-top:27px;padding:17px 16px;background:#f7f8f3;border:1px solid #e9ecdf;border-radius:6px;display:flex;gap:12px;align-items:center}.recipe>svg{width:25px;height:28px;color:#778662}.recipe-label{font-size:8px;letter-spacing:1.4px;color:#949b86;font-weight:600;margin-bottom:5px}.recipe-summary{font-size:11px;color:#59634c;line-height:1.6}.save{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;background:var(--green);color:#fff;border:0;border-radius:5px;height:44px;margin-top:17px;font-size:11px;font-weight:500;transition:background .2s}.save:hover{background:#3f5030}.save svg{width:15px;height:15px}.reset{display:block;margin:13px auto 0;border:0;background:none;color:#8d9384;font-size:9px;padding:4px 10px}.reset:hover{color:var(--green)}.keyboard-note{display:flex;align-items:center;justify-content:center;gap:7px;background:#fafbf7;border-top:1px solid #eef0e7;height:37px;font-size:9px;color:#979d8e}.keyboard-note svg{width:13px;height:13px}kbd{font-family:inherit}
++    .presets{margin-top:39px;display:flex;align-items:center;gap:22px}.presets-heading{font-size:10px;color:#8b9081;white-space:nowrap}.preset-list{display:flex;gap:9px;flex-wrap:wrap}.preset{display:flex;gap:8px;align-items:center;border:1px solid #dbdfd1;border-radius:5px;background:transparent;color:#6d7560;padding:10px 14px;font-size:10px;transition:background .15s,border-color .15s}.preset svg{width:14px;height:14px}.preset:hover,.preset[aria-pressed=true]{background:#e9eddf;border-color:#aab69a;color:#475837}.preset small{font-size:8px;margin-left:3px;color:#969c8c}.benefits{margin-top:39px;padding:27px 0 28px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr 1fr;gap:40px}.benefit{display:flex;gap:12px;align-items:center}.benefit-icon{width:34px;height:34px;display:grid;place-items:center;border:1px solid #e3e6d9;border-radius:50%;color:#7f8b6c}.benefit svg{width:17px;height:17px}.benefit strong{font-size:10px;font-weight:500;display:block;margin-bottom:5px}.benefit p{font-size:9px;color:#989d90;margin:0}.footer{border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:20px 0 24px;font-size:9px;color:#92988a}.footer span:last-child{display:flex;align-items:center;gap:6px}.footer svg{width:12px;height:12px}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:14px 22px;background:var(--ink);color:white;border-radius:7px;box-shadow:0 5px 25px #0002;font-size:12px;z-index:5;text-align:center}.toast:empty{display:none}
++    @media(min-width:1450px){.shell{max-width:1320px}main{padding-top:65px}.hero{gap:100px}.photo{height:290px}.intro h1{font-size:80px}.card-main{padding:35px 36px 28px}.control{margin-bottom:29px}.presets{margin-top:45px}.benefits{margin-top:45px}}
++    @media(max-width:900px){.shell{padding:0 30px}.hero{gap:35px}.intro h1{font-size:60px}.card-main{padding:26px 23px}.header-note{display:none}.nav{gap:23px}.presets{gap:17px}.preset{padding:10px}.preset small{display:none}}
++    @media(max-width:650px){.shell{padding:0 23px}.header{height:79px}.brand{font-size:10px;letter-spacing:1px;gap:7px}.brand-icon{width:27px}.nav{gap:17px;font-size:10px}.nav a:last-child{display:none}main{padding-top:33px}.hero{grid-template-columns:1fr;gap:28px}.intro h1{font-size:64px;margin-top:18px}.intro-copy{max-width:330px}.photo{height:225px}.customizer{margin:0}.card-main{padding:27px}.presets{flex-direction:column;align-items:flex-start;gap:13px;margin-top:28px}.preset-list{width:100%;gap:6px}.preset{flex:1;justify-content:center;padding:11px 6px;font-size:9px;gap:5px}.benefits{gap:18px;margin-top:28px;padding:24px 0;grid-template-columns:1fr}.benefit{gap:12px}.benefit strong{font-size:11px}.benefit p{font-size:10px}.footer{font-size:8px;gap:15px;line-height:1.6}.footer span:last-child{white-space:nowrap}.toast{width:calc(100% - 46px)}}
++    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
++    @media(forced-colors:active){input[type=range]{appearance:auto;-webkit-appearance:auto}.save{border:1px solid ButtonText}.preset[aria-pressed=true]{outline:2px solid Highlight}}
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <svg style="display:none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
++    <symbol id="cup" viewBox="0 0 24 24"><path d="M4 9h13v6a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6zM17 10h2a3 3 0 0 1 0 6h-2M7 5c-2-2 2-2 0-4M11 5c-2-2 2-2 0-4M15 5c-2-2 2-2 0-4"/></symbol>
++    <symbol id="leaf" viewBox="0 0 24 24"><path d="M19 4C10 2 3 6 5 13c2 7 14 6 14-9ZM4 21 15 9M9 16v-5M9 16h6"/></symbol>
++    <symbol id="bean" viewBox="0 0 24 24"><path d="M17.8 4.9c3.5 2.4 3.1 7.4-.3 11.3s-8.5 5.1-11.7 2.4S3 10.8 6.5 7s8-4.5 11.3-2.1ZM17 5c-7-1-3 13-11 13"/></symbol>
++    <symbol id="temperature" viewBox="0 0 24 24"><path d="M9 14V5a3 3 0 0 1 6 0v9a5 5 0 1 1-6 0ZM12 8v9M18 6h2M18 10h2"/><circle cx="12" cy="18" r="1"/></symbol>
++    <symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></symbol>
++    <symbol id="heart" viewBox="0 0 24 24"><path d="m12 20-8-8C-2 5 7-1 12 6c5-7 14-1 8 6z"/></symbol>
++    <symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15m-5-5 5 5-5 5"/></symbol>
++    <symbol id="keyboard" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h.1M10 9h.1M14 9h.1M18 9h.1M6 12h.1M10 12h.1M14 12h.1M18 12h.1M7 16h10"/></symbol>
++  </defs></svg>
++  <div class="shell">
++    <header class="header">
++      <a class="brand" href="#" aria-label="The Daily Grind home"><svg class="brand-icon"><use href="#cup"/></svg><span>THE DAILY GRIND<span style="display:block;font-size:7px;letter-spacing:2.5px;font-weight:450;margin-top:4px">GOOD COFFEE. EVERY DAY.</span></span></a>
++      <nav class="nav" aria-label="Main navigation"><a href="#coffee">The coffee</a><a href="#brew" class="active">Your perfect brew</a><a href="#story">Our philosophy</a></nav>
++      <span class="header-note"><svg><use href="#leaf"/></svg> Thoughtfully sourced. Personally brewed.</span>
++    </header>
++    <main>
++      <div class="hero">
++        <section class="intro" id="coffee">
++          <div class="eyebrow">A LITTLE RITUAL. ALL YOURS.</div>
++          <h1>Good mornings.<br><em>Made your way.</em></h1>
++          <p class="intro-copy">Some like it bold. Some like to take it slow.<br>Find your sweet spot and make a little everyday<br class="desktop-break"> magic, one cup at a time.</p>
++          <div class="photo"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1100&q=85" alt="Freshly brewed coffee in a ceramic cup on a rustic café table" fetchpriority="high"><div class="photo-caption"><svg><use href="#bean"/></svg><div><strong>Better beans. Better beginnings.</strong><span>100% specialty arabica · Roasted in small batches</span></div><span class="photo-number">01 /</span></div></div>
++          <div class="photo-credit"><span><svg><use href="#leaf"/></svg> FROM THE FARM TO YOUR FAVORITE CUP</span><span>EST. 2016</span></div>
++        </section>
++        <section class="customizer" id="brew" aria-labelledby="brew-title">
++          <div class="card-main">
++            <div class="card-eyebrow">THE BREW STUDIO <span class="step"><i></i> A CUP THAT'S YOU</span></div>
++            <h2 class="card-title" id="brew-title">Find your perfect brew.</h2>
++            <p class="card-description">A few small adjustments. Your kind of coffee.</p>
++            <form id="brew-form">
++              <div class="control"><div class="control-heading"><label for="strength"><svg aria-hidden="true"><use href="#bean"/></svg>Brew strength</label><output for="strength" id="strength-output">Balanced</output></div><input id="strength" name="strength" type="range" min="1" max="5" step="1" value="3" aria-describedby="strength-hint"><div class="range-labels" id="strength-hint"><span>Light & mellow</span><span>Just right</span><span>Bold & intense</span></div></div>
++              <div class="control"><div class="control-heading"><label for="size"><svg aria-hidden="true"><use href="#cup"/></svg>Cup size</label><output for="size" id="size-output">250 ml</output></div><input id="size" name="size" type="range" min="150" max="450" step="50" value="250" aria-describedby="size-hint"><div class="range-labels" id="size-hint"><span>A little moment</span><span>A little longer</span></div></div>
++              <div class="control"><div class="control-heading"><label for="temperature"><svg aria-hidden="true"><use href="#temperature"/></svg>Temperature</label><output for="temperature" id="temperature-output">85°C</output></div><input id="temperature" name="temperature" type="range" min="65" max="95" step="1" value="85" aria-describedby="temperature-hint"><div class="range-labels" id="temperature-hint"><span>Warm & cozy</span><span>Piping hot</span></div></div>
++              <div class="recipe"><svg aria-hidden="true"><use href="#cup"/></svg><div><div class="recipe-label">YOUR DAILY MOMENT</div><div class="recipe-summary" id="recipe-summary">A balanced brew, 250 ml of happiness, at 85°C.</div></div></div>
++              <button type="submit" class="save">Save my perfect brew <svg aria-hidden="true"><use href="#arrow"/></svg></button>
++              <button class="reset" type="reset">Back to the house blend</button>
++            </form>
++          </div>
++          <div class="keyboard-note"><svg aria-hidden="true"><use href="#keyboard"/></svg> A little tip: use your <kbd>←</kbd> <kbd>→</kbd> keys to fine-tune.</div>
++        </section>
+       </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++      <section class="presets" aria-label="Brew presets"><span class="presets-heading">Not sure where to start?</span><div class="preset-list"><button type="button" class="preset" data-preset="morning" aria-pressed="false"><svg aria-hidden="true"><use href="#sun"/></svg> The morning ritual <small>Balanced & bright</small></button><button type="button" class="preset" data-preset="bold" aria-pressed="false"><svg aria-hidden="true"><use href="#bean"/></svg> The bold move <small>Strong & spirited</small></button><button type="button" class="preset" data-preset="slow" aria-pressed="false"><svg aria-hidden="true"><use href="#cup"/></svg> The slow Sunday <small>Easy & mellow</small></button></div></section>
++      <section class="benefits" id="story" aria-label="Our philosophy"><div class="benefit"><div class="benefit-icon"><svg><use href="#leaf"/></svg></div><div><strong>Good from the ground up</strong><p>Ethically sourced. Always traceable.</p></div></div><div class="benefit"><div class="benefit-icon"><svg><use href="#bean"/></svg></div><div><strong>Small batches. Big care.</strong><p>Roasted fresh for a fuller kind of flavor.</p></div></div><div class="benefit"><div class="benefit-icon"><svg><use href="#heart"/></svg></div><div><strong>A ritual, not a routine</strong><p>Because your everyday deserves better.</p></div></div></section>
++    </main>
++    <footer class="footer"><span>© 2026 The Daily Grind. All good things start with coffee.</span><span>Made for your daily moment <svg aria-hidden="true"><use href="#cup"/></svg></span></footer>
++  </div>
++  <div class="toast" role="status" aria-live="polite" id="status"></div>
++  <script>
++    const form = document.getElementById('brew-form');
++    const sliders = [...form.querySelectorAll('input[type="range"]')];
++    const strengthNames = ['Light', 'Mellow', 'Balanced', 'Strong', 'Bold'];
++    const presets = { morning: [3, 250, 85], bold: [5, 150, 92], slow: [2, 350, 75] };
++    const presetButtons = [...document.querySelectorAll('[data-preset]')];
++    const status = document.getElementById('status');
++    let toastTimer;
++    function syncBrew() {
++      sliders.forEach(slider => {
++        slider.style.setProperty('--attr-min', slider.min || 0);
++        slider.style.setProperty('--attr-max', slider.max || 100);
++        slider.style.setProperty('--control-value', slider.value);
++        const value = slider.id === 'strength' ? strengthNames[Number(slider.value) - 1] : slider.id === 'size' ? `${slider.value} ml` : `${slider.value}°C`;
++        document.getElementById(`${slider.id}-output`).value = value;
++        slider.setAttribute('aria-valuetext', slider.id === 'size' ? `${slider.value} milliliters` : slider.id === 'temperature' ? `${slider.value} degrees Celsius` : value);
++      });
++      const [strength, size, temperature] = sliders.map(slider => Number(slider.value));
++      document.getElementById('recipe-summary').textContent = `A ${strengthNames[strength - 1].toLowerCase()} brew, ${size} ml of happiness, at ${temperature}°C.`;
++      presetButtons.forEach(button => button.setAttribute('aria-pressed', String(presets[button.dataset.preset].every((value, index) => value === Number(sliders[index].value)))));
++    }
++    sliders.forEach(slider => slider.addEventListener('input', syncBrew));
++    presetButtons.forEach(button => button.addEventListener('click', () => {
++      presets[button.dataset.preset].forEach((value, index) => { sliders[index].value = value; });
++      syncBrew();
++    }));
++    form.addEventListener('reset', () => { requestAnimationFrame(syncBrew); });
++    form.addEventListener('submit', event => {
++      event.preventDefault();
++      try {
++        localStorage.setItem('daily-grind-brew', JSON.stringify(sliders.map(slider => Number(slider.value))));
++        status.textContent = 'Your perfect brew is saved. Here’s to good mornings.';
++      } catch {
++        status.textContent = 'Your brew is ready. Saving is unavailable in this browser.';
++      }
++      clearTimeout(toastTimer);
++      toastTimer = setTimeout(() => { status.textContent = ''; }, 4500);
++    });
++    try {
++      const saved = JSON.parse(localStorage.getItem('daily-grind-brew'));
++      if (Array.isArray(saved) && saved.length === sliders.length && saved.every((value, index) => Number.isFinite(value) && value >= Number(sliders[index].min) && value <= Number(sliders[index].max) && (value - Number(sliders[index].min)) % Number(sliders[index].step) === 0)) {
++        sliders.forEach((slider, index) => { slider.value = saved[index]; });
++      }
++    } catch { /* Keep the house blend when browser storage is unavailable. */ }
++    syncBrew();
++  </script>
+ </body>
+-
+ </html>

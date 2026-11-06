@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,61 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://cdn.jsdelivr.net/npm/web-vitals@5/dist/web-vitals.js';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    // Latest value per metric; CLS/INP/LCP keep updating until the page is hidden.
++    const queue = new Map();
++
++    function addToQueue(metric) {
++      queue.set(metric.name, {
++        name: metric.name,
++        value: metric.value,
++        rating: metric.rating,
++        delta: metric.delta,
++        id: metric.id,
++        navigationType: metric.navigationType
++      });
++    }
++
++    function flushQueue() {
++      if (!queue.size) return;
++
++      const body = JSON.stringify({
++        page: location.href,
++        metrics: Array.from(queue.values())
++      });
++
++      // sendBeacon queues the request so it survives unload; fall back to keepalive fetch.
++      const sent = navigator.sendBeacon &&
++        navigator.sendBeacon(ANALYTICS_ENDPOINT, new Blob([body], { type: 'application/json' }));
++      if (!sent) {
++        fetch(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          body,
++          headers: { 'Content-Type': 'application/json' },
++          keepalive: true
++        }).catch(() => { });
++      }
++
++      queue.clear();
++    }
++
++    onCLS(addToQueue);
++    onINP(addToQueue);
++    onLCP(addToQueue);
++
++    // visibilitychange (hidden) is the reliable end-of-session signal, including on mobile
++    // and in the bfcache; pagehide is a fallback for browsers that skip it.
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flushQueue();
++    });
++    addEventListener('pagehide', flushQueue);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

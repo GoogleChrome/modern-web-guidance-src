@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,27 +26,114 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Navigation
++       The nav is fixed (not sticky) so that shrinking it never changes the
++       document flow — this keeps the scroll-linked effect jitter-free.
++       The body reserves the nav's full (expanded) height instead. */
++    :root {
++      --nav-h-max: 4.5rem;   /* 72px expanded  */
++      --nav-h-min: 3rem;     /* 48px compact   */
++      --nav-shrink-distance: 200px; /* scroll distance over which it shrinks */
++    }
++
++    html {
++      scroll-padding-top: 4.5rem;
++      scroll-padding-top: var(--nav-h-max);
++    }
++
++    body {
++      padding-top: 72px;
++      padding-top: var(--nav-h-max);
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: 72px;
++      height: var(--nav-h-max);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 12px rgba(0, 0, 0, 0);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      line-height: 1.2;
++      white-space: nowrap;
++      transform-origin: left center;
+     }
+ 
++    /* --- Tier 1: modern browsers — native CSS scroll-driven animations --- */
++    @keyframes nav-shrink {
++      to {
++        height: var(--nav-h-min);
++        background-color: rgba(78, 52, 46, 0.94);
++        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    @keyframes logo-shrink {
++      to {
++        transform: scale(0.8);
++      }
++    }
++
++    @supports (animation-timeline: scroll()) {
++      nav {
++        animation: nav-shrink linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0 var(--nav-shrink-distance);
++      }
++
++      .logo {
++        animation: logo-shrink linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0 var(--nav-shrink-distance);
++      }
++    }
++
++    /* --- Tier 2: older browsers with CSS variables — JS writes the scroll
++           progress (0 → 1) into --nav-progress on every animation frame --- */
++    .nav-fallback-vars nav {
++      height: calc(var(--nav-h-max) - (var(--nav-h-max) - var(--nav-h-min)) * var(--nav-progress, 0));
++      background-color: rgba(78, 52, 46, calc(1 - 0.06 * var(--nav-progress, 0)));
++      box-shadow: 0 2px 12px rgba(0, 0, 0, calc(0.3 * var(--nav-progress, 0)));
++    }
++
++    .nav-fallback-vars .logo {
++      transform: scale(calc(1 - 0.2 * var(--nav-progress, 0)));
++    }
++
++    /* --- Tier 3: legacy browsers without CSS variables (e.g. IE11) —
++           JS toggles a class, and a CSS transition provides a smooth shrink --- */
++    .nav-fallback-class nav {
++      transition: height 0.3s ease, box-shadow 0.3s ease;
++    }
++
++    .nav-fallback-class .logo {
++      transition: transform 0.3s ease;
++    }
++
++    .nav-fallback-class nav.is-compact {
++      height: 48px;
++      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
++    }
++
++    .nav-fallback-class nav.is-compact .logo {
++      transform: scale(0.8);
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+@@ -206,7 +293,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /* Fallback for browsers lacking CSS scroll-driven animations. */
++    (function () {
++      var supports = window.CSS && CSS.supports;
++      if (supports && CSS.supports('animation-timeline: scroll()')) return; // native CSS handles it
++
++      var root = document.documentElement;
++      var nav = document.querySelector('nav');
++      if (!nav) return;
++
++      var useVars = !!(supports && CSS.supports('--nav-progress', '0'));
++      var distance = 200; // keep in sync with --nav-shrink-distance
++      var ticking = false;
++      var lastValue = -1;
++
++      root.className += useVars ? ' nav-fallback-vars' : ' nav-fallback-class';
++
++      function scrollTop() {
++        return window.pageYOffset || root.scrollTop || document.body.scrollTop || 0;
++      }
++
++      function update() {
++        ticking = false;
++        var y = scrollTop();
++        if (useVars) {
++          var p = Math.min(Math.max(y / distance, 0), 1);
++          p = Math.round(p * 1000) / 1000;
++          if (p !== lastValue) {
++            lastValue = p;
++            nav.style.setProperty('--nav-progress', p);
++          }
++        } else {
++          var compact = y > distance / 2 ? 1 : 0;
++          if (compact !== lastValue) {
++            lastValue = compact;
++            nav.className = compact ? 'is-compact' : '';
++          }
++        }
++      }
++
++      function onScroll() {
++        if (ticking) return;
++        ticking = true;
++        (window.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); })(update);
++      }
++
++      window.addEventListener('scroll', onScroll, supportsPassive() ? { passive: true } : false);
++      window.addEventListener('resize', onScroll, false);
++      update();
++
++      function supportsPassive() {
++        var result = false;
++        try {
++          window.addEventListener('test', null, Object.defineProperty({}, 'passive', {
++            get: function () { result = true; return true; }
++          }));
++        } catch (e) { }
++        return result;
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

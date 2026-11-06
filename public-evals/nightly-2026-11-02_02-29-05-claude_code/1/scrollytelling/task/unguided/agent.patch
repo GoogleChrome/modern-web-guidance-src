@@ -1,0 +1,229 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,167 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Scrollytelling (pure CSS: scroll-driven animations + timeline-scope) */
++    .story {
++      margin-top: 80px;
++    }
++
++    .story > h2 {
++      text-align: center;
++    }
++
++    .scrolly {
++      /* Hoist the named view timelines so the #animated branch can see them */
++      timeline-scope: --step-1, --step-2, --step-3, --step-4;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      margin-top: 20px;
++    }
++
++    #tracked section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      padding: 40px 0;
++    }
++
++    #tracked section:nth-child(1) { view-timeline-name: --step-1; }
++    #tracked section:nth-child(2) { view-timeline-name: --step-2; }
++    #tracked section:nth-child(3) { view-timeline-name: --step-3; }
++    #tracked section:nth-child(4) { view-timeline-name: --step-4; }
++
++    #tracked .step-label {
++      color: var(--accent);
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      font-size: 1.8rem;
++      margin-bottom: 10px;
++    }
++
++    #animated {
++      display: grid;
++      gap: 20px;
++      align-content: start;
++    }
++
++    #animated section {
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++      aspect-ratio: 4 / 3;
++      background: var(--secondary);
++    }
++
++    #animated img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    @supports (timeline-scope: --a) and (animation-timeline: view()) {
++      #animated {
++        position: sticky;
++        top: calc(20vh + 30px); /* vertically centred below the sticky nav */
++        height: 60vh;
++        display: block;
++      }
++
++      #animated section {
++        position: absolute;
++        inset: 0;
++        aspect-ratio: auto;
++        opacity: 0;
++        /* Only opacity/transform: compositor-friendly, no layout or paint */
++        will-change: opacity, transform;
++        animation: reveal linear both;
++        animation-range: cover 0% cover 100%;
++      }
++
++      #animated section:nth-child(1) { animation-timeline: --step-1; }
++      #animated section:nth-child(2) { animation-timeline: --step-2; }
++      #animated section:nth-child(3) { animation-timeline: --step-3; }
++      #animated section:nth-child(4) { animation-timeline: --step-4; }
++
++      @keyframes reveal {
++        0%, 20% {
++          opacity: 0;
++          transform: translateY(40px) scale(0.95);
++        }
++        40%, 60% {
++          opacity: 1;
++          transform: none;
++        }
++        80%, 100% {
++          opacity: 0;
++          transform: translateY(-40px) scale(0.95);
++        }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        @keyframes reveal {
++          0%, 25% { opacity: 0; }
++          40%, 60% { opacity: 1; }
++          75%, 100% { opacity: 0; }
++        }
++      }
++    }
++
++    @media (max-width: 760px) {
++      .scrolly {
++        grid-template-columns: 1fr;
++        gap: 0;
++      }
++
++      #animated {
++        grid-row: 1;
++      }
++
++      #tracked {
++        grid-row: 2;
++      }
++
++      @supports (timeline-scope: --a) and (animation-timeline: view()) {
++        #animated {
++          top: 70px;
++          height: 35vh;
++          z-index: 1;
++        }
++
++        #tracked {
++          /* Let the text flow up beneath the sticky media panel */
++          margin-top: -35vh;
++        }
++
++        #tracked section {
++          min-height: 90vh;
++          justify-content: flex-end;
++          padding-bottom: 15vh;
++        }
++
++        #tracked section > * {
++          position: relative;
++          z-index: 2;
++        }
++
++        #tracked section div {
++          background: rgba(250, 250, 250, 0.95);
++          padding: 20px;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +353,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="story">
++      <h2>From Farm to Cup</h2>
++      <div class="scrolly">
++        <div id="tracked">
++          <section>
++            <div>
++              <p class="step-label">Step 1</p>
++              <h3>Sourced with Care</h3>
++              <p>We partner directly with small farms in Ethiopia, Colombia, and Guatemala, paying above fair-trade prices for hand-picked cherries.</p>
++            </div>
++          </section>
++          <section>
++            <div>
++              <p class="step-label">Step 2</p>
++              <h3>Roasted Locally</h3>
++              <p>Every batch is small-batch roasted in our neighborhood roastery, profiled to bring out each origin&rsquo;s unique character.</p>
++            </div>
++          </section>
++          <section>
++            <div>
++              <p class="step-label">Step 3</p>
++              <h3>Brewed by Hand</h3>
++              <p>Our baristas dial in every grind and pour, whether it&rsquo;s a slow pour-over or a precise shot of espresso.</p>
++            </div>
++          </section>
++          <section>
++            <div>
++              <p class="step-label">Step 4</p>
++              <h3>Served Fresh</h3>
++              <p>The result lands in your cup minutes after brewing &mdash; warm, aromatic, and ready to wake up your senses.</p>
++            </div>
++          </section>
++        </div>
++        <div id="animated">
++          <section>
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80" alt="Freshly harvested coffee beans" loading="lazy">
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=80" alt="Roasted coffee beans and brewing equipment" loading="lazy">
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80" alt="Barista brewing a cup of coffee" loading="lazy">
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80" alt="A freshly served cup of coffee" loading="lazy">
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

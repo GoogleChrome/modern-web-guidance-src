@@ -1,0 +1,1822 @@
+diff --git a/index.html b/index.html
+index 66c9173..e62e9b5 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,15 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --success: #2e7d32;
++      --warning: #ef6c00;
++      --danger: #c62828;
+     }
+ 
+     * {
+@@ -25,6 +30,9 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     /* Navigation */
+@@ -38,17 +46,23 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      cursor: pointer;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      flex-wrap: wrap;
+     }
+ 
+     nav ul li {
+@@ -59,11 +73,14 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.2s, border-color 0.2s;
++      padding-bottom: 3px;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active-nav {
+       color: var(--accent);
++      border-bottom: 2px solid var(--accent);
+     }
+ 
+     .logout-link {
+@@ -72,10 +89,32 @@
+       border-radius: 4px;
+     }
+ 
++    .logout-link.active-nav {
++      background: rgba(255, 171, 64, 0.15);
++    }
++
++    .cart-pill {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 700;
++      padding: 4px 11px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      border: none;
++      cursor: pointer;
++      margin-left: 16px;
++      transition: transform 0.15s;
++    }
++
++    .cart-pill:hover {
++      transform: scale(1.04);
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 52vh;
++      min-height: 300px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -86,38 +125,93 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      transition: background-image 0.3s ease;
++    }
++
++    .hero.hero-compact {
++      height: 30vh;
++      min-height: 200px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.8rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .hero p {
++      font-size: 1.1rem;
++      max-width: 640px;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
++      width: 100%;
+       margin: 40px auto;
+       padding: 0 20px;
++      flex: 1;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .section-header p {
++      color: #6d4c41;
++      margin-top: 6px;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 22px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      overflow: hidden;
++    }
++
++    .card-img {
++      width: calc(100% + 40px);
++      margin: -20px -20px 15px -20px;
++      height: 180px;
++      object-fit: cover;
++      background: #efebe9;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .card-meta {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin: 8px 0;
++      font-weight: 600;
++    }
++
++    .badge {
++      display: inline-block;
++      background: #efebe9;
+       color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 99px;
+     }
+ 
+     .btn {
+@@ -128,11 +222,128 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.2s, transform 0.1s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.92rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 700;
++    }
++
++    .btn-accent:hover {
++      background: #ffa000;
++    }
++
++    /* Interactive Filter Controls */
++    .filter-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++      margin: 20px 0 28px;
++    }
++
++    .filter-btn {
++      padding: 8px 16px;
++      border-radius: 999px;
++      border: 1px solid var(--secondary);
++      background: white;
++      color: var(--text);
++      cursor: pointer;
++      font-size: 0.9rem;
++      font-weight: 500;
++      transition: all 0.2s;
++    }
++
++    .filter-btn.active,
++    .filter-btn:hover {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    /* Product Detail Layout */
++    .detail-layout {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 32px;
++      background: white;
++      padding: 28px;
++      border-radius: 12px;
++      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
++      align-items: start;
++    }
++
++    .detail-img {
++      width: 100%;
++      height: 340px;
++      object-fit: cover;
++      border-radius: 8px;
++      background: #efebe9;
++    }
++
++    .option-group {
++      margin: 16px 0;
++    }
++
++    .option-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++    }
++
++    .option-pills {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .option-pill {
++      padding: 7px 14px;
++      border: 1px solid var(--secondary);
++      background: var(--light);
++      border-radius: 6px;
++      cursor: pointer;
++      font-size: 0.85rem;
++    }
++
++    .option-pill.selected {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    /* Banner Notification / Cart Drawer */
++    .order-banner {
++      background: #fff8e1;
++      border: 1px solid var(--accent);
++      border-radius: 8px;
++      padding: 14px 18px;
++      margin-bottom: 24px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
+     }
+ 
+     footer {
+@@ -152,46 +363,220 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
++
++    /* Telemetry HUD Overlay (Excluded from Contentful DOM Mutation Tracking) */
++    #perf-hud {
++      position: fixed;
++      bottom: 16px;
++      right: 16px;
++      width: 430px;
++      max-width: calc(100vw - 32px);
++      background: rgba(24, 20, 19, 0.96);
++      color: #f5f5f5;
++      border: 1px solid rgba(255, 171, 64, 0.45);
++      border-radius: 10px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 12px;
++      z-index: 9999;
++      overflow: hidden;
++      backdrop-filter: blur(8px);
++    }
++
++    #perf-hud.minimized .perf-hud-body {
++      display: none;
++    }
++
++    .perf-hud-header {
++      background: rgba(78, 52, 46, 0.9);
++      padding: 9px 12px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
++      cursor: pointer;
++      user-select: none;
++    }
++
++    .perf-hud-title {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: 700;
++      color: var(--accent);
++      font-size: 12.5px;
++    }
++
++    .perf-pulse {
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: #4caf50;
++      box-shadow: 0 0 6px #4caf50;
++    }
++
++    .perf-hud-actions {
++      display: flex;
++      gap: 6px;
++    }
++
++    .perf-hud-btn {
++      background: rgba(255, 255, 255, 0.12);
++      color: #fff;
++      border: 1px solid rgba(255, 255, 255, 0.2);
++      border-radius: 4px;
++      padding: 2px 7px;
++      font-size: 11px;
++      cursor: pointer;
++      font-family: inherit;
++    }
++
++    .perf-hud-btn:hover {
++      background: rgba(255, 171, 64, 0.3);
++    }
++
++    .perf-hud-body {
++      padding: 10px 12px;
++    }
++
++    .perf-stats-grid {
++      display: grid;
++      grid-template-columns: repeat(4, 1fr);
++      gap: 6px;
++      margin-bottom: 10px;
++    }
++
++    .perf-stat-box {
++      background: rgba(255, 255, 255, 0.06);
++      padding: 6px 8px;
++      border-radius: 6px;
++      text-align: center;
++    }
++
++    .perf-stat-label {
++      font-size: 10px;
++      color: #bdbdbd;
++      text-transform: uppercase;
++      display: block;
++    }
++
++    .perf-stat-val {
++      font-size: 13.5px;
++      font-weight: 700;
++      color: #fff;
++      margin-top: 2px;
++      display: block;
++    }
++
++    .perf-log-list {
++      max-height: 195px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .perf-log-item {
++      background: rgba(255, 255, 255, 0.05);
++      border-left: 3px solid #4caf50;
++      border-radius: 4px;
++      padding: 6px 8px;
++    }
++
++    .perf-log-item.rating-needs-improvement {
++      border-left-color: #ff9800;
++    }
++
++    .perf-log-item.rating-poor {
++      border-left-color: #f44336;
++    }
++
++    .perf-log-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-weight: 600;
++      margin-bottom: 3px;
++    }
++
++    .perf-type-tag {
++      font-size: 9.5px;
++      padding: 1px 5px;
++      border-radius: 3px;
++      text-transform: uppercase;
++      margin-right: 5px;
++    }
++
++    .perf-type-nav {
++      background: rgba(33, 150, 243, 0.25);
++      color: #90caf9;
++    }
++
++    .perf-type-int {
++      background: rgba(156, 39, 176, 0.25);
++      color: #ce93d8;
++    }
++
++    .perf-log-sub {
++      color: #b0bec5;
++      font-size: 10.5px;
++      display: flex;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 4px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav id="app-nav">
++    <a href="/" class="logo" data-nav-link>THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-nav-link>Menu</a></li>
++      <li><a href="/locations" data-nav-link>Locations</a></li>
++      <li><a href="/rewards" data-nav-link>Rewards</a></li>
++      <li><a href="/account" data-nav-link>My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-nav-link>Logout</a></li>
++      <li>
++        <button type="button" id="nav-cart-btn" class="cart-pill" data-interaction="Open Order Tray">
++          Order (<span id="nav-cart-count">0</span>)
++        </button>
++      </li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++  <header class="hero" id="app-hero" elementtiming="hero-banner">
++    <h1 elementtiming="hero-title">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-nav-link>Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="app-main" aria-live="polite">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" elementtiming="featured-card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=700&q=80" alt="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-nav-link>View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" elementtiming="featured-card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=700&q=80" alt="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-nav-link>View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" elementtiming="featured-card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=700&q=80" alt="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-nav-link>View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -199,14 +584,1240 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-nav-link>Our Story</a> |
++      <a href="/careers" data-nav-link>Join the Team</a> |
++      <a href="/contact" data-nav-link>Contact Us</a> |
++      <a href="/privacy-policy" data-nav-link>Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Real-Time Contentful Render Telemetry HUD (ignored by DOM MutationObserver) -->
++  <aside id="perf-hud" data-perf-ignore="true" aria-label="Contentful Render Performance Monitor">
++    <div class="perf-hud-header" id="perf-hud-toggle">
++      <div class="perf-hud-title">
++        <span class="perf-pulse"></span>
++        <span>Contentful Render Timing</span>
++      </div>
++      <div class="perf-hud-actions">
++        <button type="button" class="perf-hud-btn" id="perf-clear-btn" title="Clear recorded timings">Clear</button>
++        <button type="button" class="perf-hud-btn" id="perf-min-btn" title="Minimize/Expand HUD">_</button>
++      </div>
++    </div>
++    <div class="perf-hud-body">
++      <div class="perf-stats-grid">
++        <div class="perf-stat-box">
++          <span class="perf-stat-label">Last Nav</span>
++          <span class="perf-stat-val" id="perf-stat-last-nav">--</span>
++        </div>
++        <div class="perf-stat-box">
++          <span class="perf-stat-label">Last Int</span>
++          <span class="perf-stat-val" id="perf-stat-last-int">--</span>
++        </div>
++        <div class="perf-stat-box">
++          <span class="perf-stat-label">P75 Paint</span>
++          <span class="perf-stat-val" id="perf-stat-p75">--</span>
++        </div>
++        <div class="perf-stat-box">
++          <span class="perf-stat-label">Events</span>
++          <span class="perf-stat-val" id="perf-stat-count">0</span>
++        </div>
++      </div>
++      <div class="perf-log-list" id="perf-log-list">
++        <div style="color:#9e9e9e;text-align:center;padding:12px 0;">
++          Click any navigation link or interactive control to measure time to contentful render.
++        </div>
++      </div>
++    </div>
++  </aside>
++
++  <script>
++    /**
++     * ============================================================================
++     * 1. CONTENTFUL RENDER TIMING MONITOR
++     * Measures the time it takes for user interactions and client-side navigations
++     * to render new contentful updates (DOM mutation + next frame paint + images)
++     * on screen.
++     * ============================================================================
++     */
++    (function initContentfulTimingSystem() {
++      const STORAGE_KEY = 'daily_grind_contentful_timings_v1';
++      const entries = [];
++      const listeners = new Set();
++      let activePendingOp = null;
++      let opCounter = 0;
++
++      // Helper: Compute percentile from numeric array
++      function percentile(values, p) {
++        if (!values.length) return 0;
++        const sorted = [...values].sort((a, b) => a - b);
++        const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
++        return Number(sorted[idx].toFixed(2));
++      }
++
++      // Helper: Determine whether a DOM node represents contentful UI outside the telemetry HUD
++      function isIgnoredNode(node) {
++        if (!node) return true;
++        const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
++        if (!el) return true;
++        return Boolean(el.closest && el.closest('[data-perf-ignore="true"]'));
++      }
++
++      function inspectContentfulMutations(mutationList) {
++        let addedElements = 0;
++        let textUpdates = 0;
++        const pendingImages = [];
++
++        for (const mutation of mutationList) {
++          if (isIgnoredNode(mutation.target)) continue;
++
++          if (mutation.type === 'childList') {
++            for (const node of mutation.addedNodes) {
++              if (isIgnoredNode(node)) continue;
++              if (node.nodeType === Node.ELEMENT_NODE) {
++                addedElements += 1 + node.querySelectorAll('*').length;
++                if ((node.textContent || '').trim().length > 0) {
++                  textUpdates += 1;
++                }
++                if (node.tagName === 'IMG') {
++                  pendingImages.push(node);
++                } else if (node.querySelectorAll) {
++                  node.querySelectorAll('img').forEach((img) => pendingImages.push(img));
++                }
++              } else if (node.nodeType === Node.TEXT_NODE && (node.textContent || '').trim().length > 0) {
++                textUpdates += 1;
++              }
++            }
++          } else if (mutation.type === 'characterData') {
++            if ((mutation.target.textContent || '').trim().length > 0) {
++              textUpdates += 1;
++            }
++          } else if (mutation.type === 'attributes') {
++            if (mutation.target.nodeType === Node.ELEMENT_NODE) {
++              addedElements += 1;
++              if (mutation.target.tagName === 'IMG' && mutation.attributeName === 'src') {
++                pendingImages.push(mutation.target);
++              }
++            }
++          }
++        }
++
++        const isContentful = addedElements > 0 || textUpdates > 0 || pendingImages.length > 0;
++        return { isContentful, addedElements, textUpdates, pendingImages };
++      }
++
++      // Wait until the browser has painted the next frame onto the screen
++      function waitForNextFramePaint(callback) {
++        requestAnimationFrame(() => {
++          const prePaintTime = performance.now();
++          // Scheduling via both rAF and macrotask captures the earliest post-paint moment
++          let settled = false;
++          const finish = () => {
++            if (settled) return;
++            settled = true;
++            callback({ prePaintTime, paintTime: performance.now() });
++          };
++          requestAnimationFrame(finish);
++          setTimeout(finish, 0);
++        });
++      }
++
++      // Wait for any newly inserted <img> elements in the contentful update to load
++      function waitForImagesToSettle(images, timeoutMs = 4000) {
++        const uniqueImgs = Array.from(new Set(images)).filter((img) => img && img.isConnected);
++        if (uniqueImgs.length === 0) {
++          return Promise.resolve({ imageCount: 0, loadedImages: 0 });
++        }
++
++        const unloaded = uniqueImgs.filter((img) => !img.complete);
++        if (unloaded.length === 0) {
++          return Promise.resolve({ imageCount: uniqueImgs.length, loadedImages: uniqueImgs.length });
++        }
++
++        return new Promise((resolve) => {
++          let remaining = unloaded.length;
++          let loadedCount = uniqueImgs.length - unloaded.length;
++          let done = false;
++
++          const timer = setTimeout(() => {
++            if (!done) {
++              done = true;
++              resolve({ imageCount: uniqueImgs.length, loadedImages: loadedCount, timedOut: true });
++            }
++          }, timeoutMs);
++
++          const onImgDone = (succeeded) => {
++            if (done) return;
++            if (succeeded) loadedCount += 1;
++            remaining -= 1;
++            if (remaining <= 0) {
++              done = true;
++              clearTimeout(timer);
++              requestAnimationFrame(() => {
++                resolve({ imageCount: uniqueImgs.length, loadedImages: loadedCount });
++              });
++            }
++          };
++
++          unloaded.forEach((img) => {
++            img.addEventListener('load', () => onImgDone(true), { once: true });
++            img.addEventListener('error', () => onImgDone(false), { once: true });
++          });
++        });
++      }
++
++      // Begin tracking an interaction or client-side navigation
++      function startOperation({ type, name, event, fromPath, toPath, targetDescriptor }) {
++        const now = performance.now();
++        const rawEventTs = event && typeof event.timeStamp === 'number' && event.timeStamp > 0
++          ? Math.min(event.timeStamp, now)
++          : now;
++
++        const op = {
++          id: `op-${++opCounter}-${Date.now()}`,
++          type, // 'client-navigation' | 'user-interaction'
++          name,
++          fromPath: fromPath || window.location.pathname,
++          toPath: toPath || window.location.pathname,
++          target: targetDescriptor || null,
++          eventType: event ? event.type : 'programmatic',
++          startTime: Number(rawEventTs.toFixed(2)),
++          processingStart: Number(now.toFixed(2)),
++          inputDelayMs: Number(Math.max(0, now - rawEventTs).toFixed(2)),
++          domMutationTime: null,
++          addedElements: 0,
++          textUpdates: 0,
++          pendingImages: [],
++          paintScheduled: false,
++          completed: false
++        };
++
++        try {
++          performance.mark(`${op.id}:start`, { startTime: op.startTime });
++        } catch (_) {}
++
++        activePendingOp = op;
++        return op;
++      }
++
++      // Finalize measurement once contentful DOM update has been painted to screen
++      function scheduleOperationPaintCompletion(op) {
++        if (!op || op.paintScheduled || op.completed) return;
++        op.paintScheduled = true;
++
++        waitForNextFramePaint(({ prePaintTime, paintTime }) => {
++          if (op.completed) return;
++          op.completed = true;
++          if (activePendingOp === op) {
++            activePendingOp = null;
++          }
++
++          const domMutationTime = op.domMutationTime || prePaintTime;
++          const domUpdateDurationMs = Number(Math.max(0, domMutationTime - op.startTime).toFixed(2));
++          const timeToContentfulPaintMs = Number(Math.max(0.1, paintTime - op.startTime).toFixed(2));
++          const framePaintCommitMs = Number(Math.max(0, paintTime - domMutationTime).toFixed(2));
++
++          const rating =
++            timeToContentfulPaintMs <= 100
++              ? 'good'
++              : timeToContentfulPaintMs <= 300
++                ? 'needs-improvement'
++                : 'poor';
++
++          const record = {
++            id: op.id,
++            timestamp: new Date().toISOString(),
++            type: op.type,
++            name: op.name,
++            eventType: op.eventType,
++            fromPath: op.fromPath,
++            toPath: op.toPath,
++            target: op.target,
++            startTime: op.startTime,
++            processingStart: op.processingStart,
++            domMutationTime: Number(domMutationTime.toFixed(2)),
++            paintTime: Number(paintTime.toFixed(2)),
++            visualCompleteTime: Number(paintTime.toFixed(2)),
++            inputDelayMs: op.inputDelayMs,
++            domUpdateDurationMs,
++            framePaintCommitMs,
++            timeToContentfulPaintMs,
++            timeToVisualCompleteMs: timeToContentfulPaintMs,
++            addedElements: op.addedElements,
++            textUpdates: op.textUpdates,
++            imageCount: op.pendingImages.length,
++            loadedImages: 0,
++            rating
++          };
++
++          // Record standard Performance API marks and measure
++          try {
++            performance.mark(`${op.id}:dom-updated`, { startTime: domMutationTime });
++            performance.mark(`${op.id}:contentful-paint`, { startTime: paintTime });
++            performance.measure(`contentful-render:${op.type}:${op.name}`, {
++              start: op.startTime,
++              end: paintTime,
++              detail: record
++            });
++          } catch (_) {}
++
++          entries.push(record);
++          persistAndNotify(record);
++
++          // If new images were added as part of the contentful update, measure visual completion
++          if (op.pendingImages.length > 0) {
++            waitForImagesToSettle(op.pendingImages).then((imgResult) => {
++              const visualCompleteTime = performance.now();
++              record.visualCompleteTime = Number(visualCompleteTime.toFixed(2));
++              record.timeToVisualCompleteMs = Number(Math.max(record.timeToContentfulPaintMs, visualCompleteTime - op.startTime).toFixed(2));
++              record.imageCount = imgResult.imageCount;
++              record.loadedImages = imgResult.loadedImages;
++              try {
++                performance.measure(`visual-complete:${op.type}:${op.name}`, {
++                  start: op.startTime,
++                  end: visualCompleteTime,
++                  detail: record
++                });
++              } catch (_) {}
++              persistAndNotify(record, true);
++            });
++          }
++        });
++      }
++
++      // Observe contentful DOM mutations across the document
++      const observer = new MutationObserver((mutationList) => {
++        const analysis = inspectContentfulMutations(mutationList);
++        if (!analysis.isContentful) return;
++
++        // If an interaction or navigation is currently pending, attach mutation info
++        if (activePendingOp && !activePendingOp.completed) {
++          if (activePendingOp.domMutationTime === null) {
++            activePendingOp.domMutationTime = performance.now();
++          }
++          activePendingOp.addedElements += analysis.addedElements;
++          activePendingOp.textUpdates += analysis.textUpdates;
++          if (analysis.pendingImages.length) {
++            activePendingOp.pendingImages.push(...analysis.pendingImages);
++          }
++          scheduleOperationPaintCompletion(activePendingOp);
++        }
++      });
++
++      observer.observe(document.body, {
++        childList: true,
++        subtree: true,
++        characterData: true,
++        attributes: true,
++        attributeFilter: ['src', 'class', 'style']
++      });
++
++      // Observe browser Event Timing API entries to enrich records with native compositor duration
++      if (typeof PerformanceObserver !== 'undefined') {
++        try {
++          const eventObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              if (entry.name !== 'click' && entry.name !== 'pointerdown' && entry.name !== 'keydown') continue;
++              // Match to a recently recorded entry by startTime proximity
++              const matched = entries.find(
++                (item) => Math.abs(item.startTime - entry.startTime) < 25 && !item.nativeEventDurationMs
++              );
++              if (matched) {
++                matched.nativeEventDurationMs = Number(entry.duration.toFixed(2));
++                matched.interactionId = entry.interactionId || 0;
++                updateHudUI();
++              }
++            }
++          });
++          eventObserver.observe({ type: 'event', buffered: true, durationThreshold: 0 });
++        } catch (_) {}
++      }
++
++      function getSummary() {
++        const navEntries = entries.filter((e) => e.type === 'client-navigation');
++        const intEntries = entries.filter((e) => e.type === 'user-interaction');
++        const allPaintTimes = entries.map((e) => e.timeToContentfulPaintMs);
++        const navPaintTimes = navEntries.map((e) => e.timeToContentfulPaintMs);
++        const intPaintTimes = intEntries.map((e) => e.timeToContentfulPaintMs);
++
++        const avg = (arr) =>
++          arr.length ? Number((arr.reduce((sum, v) => sum + v, 0) / arr.length).toFixed(2)) : 0;
++
++        return {
++          totalCount: entries.length,
++          navigationCount: navEntries.length,
++          interactionCount: intEntries.length,
++          avgContentfulPaintMs: avg(allPaintTimes),
++          p50ContentfulPaintMs: percentile(allPaintTimes, 50),
++          p75ContentfulPaintMs: percentile(allPaintTimes, 75),
++          p95ContentfulPaintMs: percentile(allPaintTimes, 95),
++          avgNavigationPaintMs: avg(navPaintTimes),
++          avgInteractionPaintMs: avg(intPaintTimes),
++          lastNavigation: navEntries[navEntries.length - 1] || null,
++          lastInteraction: intEntries[intEntries.length - 1] || null,
++          lastEntry: entries[entries.length - 1] || null
++        };
++      }
++
++      function persistAndNotify(entry, isImageUpdate = false) {
++        try {
++          sessionStorage.setItem(
++            STORAGE_KEY,
++            JSON.stringify({ summary: getSummary(), entries: entries.slice(-50) })
++          );
++        } catch (_) {}
++
++        if (!isImageUpdate) {
++          console.info(
++            `[ContentfulRenderTiming] ${entry.type === 'client-navigation' ? 'NAV' : 'INT'} "${entry.name}" -> ` +
++              `Contentful Paint: ${entry.timeToContentfulPaintMs}ms ` +
++              `(DOM update: ${entry.domUpdateDurationMs}ms, Frame commit: ${entry.framePaintCommitMs}ms, Elements: +${entry.addedElements})`,
++            entry
++          );
++        }
++
++        updateHudUI();
++        listeners.forEach((fn) => {
++          try {
++            fn(entry, getSummary());
++          } catch (_) {}
++        });
++
++        window.dispatchEvent(
++          new CustomEvent('contentful-render-measured', {
++            detail: { entry, summary: getSummary(), isImageUpdate }
++          })
++        );
++      }
++
++      // Render telemetry updates into the HUD overlay
++      function updateHudUI() {
++        const lastNavEl = document.getElementById('perf-stat-last-nav');
++        const lastIntEl = document.getElementById('perf-stat-last-int');
++        const p75El = document.getElementById('perf-stat-p75');
++        const countEl = document.getElementById('perf-stat-count');
++        const listEl = document.getElementById('perf-log-list');
++        if (!listEl) return;
++
++        const summary = getSummary();
++        lastNavEl.textContent = summary.lastNavigation
++          ? `${summary.lastNavigation.timeToContentfulPaintMs}ms`
++          : '--';
++        lastIntEl.textContent = summary.lastInteraction
++          ? `${summary.lastInteraction.timeToContentfulPaintMs}ms`
++          : '--';
++        p75El.textContent = summary.totalCount ? `${summary.p75ContentfulPaintMs}ms` : '--';
++        countEl.textContent = String(summary.totalCount);
++
++        if (entries.length === 0) {
++          listEl.innerHTML =
++            '<div style="color:#9e9e9e;text-align:center;padding:12px 0;">Click any navigation link or interactive control to measure time to contentful render.</div>';
++          return;
++        }
++
++        const recent = entries.slice(-12).reverse();
++        listEl.innerHTML = recent
++          .map((item) => {
++            const isNav = item.type === 'client-navigation';
++            const tagClass = isNav ? 'perf-type-nav' : 'perf-type-int';
++            const tagLabel = isNav ? 'NAV' : 'INT';
++            const imgInfo =
++              item.imageCount > 0
++                ? ` | Visual complete: ${item.timeToVisualCompleteMs}ms (${item.loadedImages}/${item.imageCount} img)`
++                : '';
++            return `
++              <div class="perf-log-item rating-${item.rating}">
++                <div class="perf-log-top">
++                  <span>
++                    <span class="perf-type-tag ${tagClass}">${tagLabel}</span>
++                    <span>${item.name}</span>
++                  </span>
++                  <span style="color:#ffab40;">${item.timeToContentfulPaintMs} ms</span>
++                </div>
++                <div class="perf-log-sub">
++                  <span>DOM: ${item.domUpdateDurationMs}ms | Paint: +${item.framePaintCommitMs}ms${imgInfo}</span>
++                  <span>+${item.addedElements} nodes</span>
++                </div>
++              </div>
++            `;
++          })
++          .join('');
++      }
++
++      // Wire HUD controls
++      document.getElementById('perf-clear-btn').addEventListener('click', (e) => {
++        e.stopPropagation();
++        entries.length = 0;
++        try {
++          sessionStorage.removeItem(STORAGE_KEY);
++        } catch (_) {}
++        updateHudUI();
++      });
++
++      document.getElementById('perf-hud-toggle').addEventListener('click', () => {
++        document.getElementById('perf-hud').classList.toggle('minimized');
++      });
++
++      // Expose global API for programmatic inspection and custom instrumentation
++      const publicApi = {
++        entries,
++        startOperation,
++        notifyMutationAndSchedulePaint(extraMeta = {}) {
++          if (!activePendingOp || activePendingOp.completed) return;
++          if (activePendingOp.domMutationTime === null) {
++            activePendingOp.domMutationTime = performance.now();
++          }
++          if (extraMeta.addedElements) activePendingOp.addedElements += extraMeta.addedElements;
++          if (extraMeta.pendingImages) activePendingOp.pendingImages.push(...extraMeta.pendingImages);
++          scheduleOperationPaintCompletion(activePendingOp);
++        },
++        getSummary,
++        getEntriesByType(type) {
++          return entries.filter((e) => e.type === type);
++        },
++        subscribe(fn) {
++          listeners.add(fn);
++          return () => listeners.delete(fn);
++        },
++        clear() {
++          entries.length = 0;
++          updateHudUI();
++        }
++      };
++
++      window.contentfulPerf = publicApi;
++      window.__PERF_METRICS__ = publicApi;
++    })();
++
++    /**
++     * ============================================================================
++     * 2. APPLICATION DATA & CLIENT-SIDE ROUTER / INTERACTIVE VIEWS
++     * Implements all routes and interactive controls for The Daily Grind using
++     * stock photography from Unsplash, automatically measured by contentfulPerf.
++     * ============================================================================
++     */
++    (function initDailyGrindApp() {
++      const MENU_ITEMS = [
++        {
++          id: 'maple-oat-latte',
++          slug: '/menu/seasonal',
++          name: 'Maple Oat Latte',
++          category: 'seasonal',
++          price: 5.75,
++          calories: 210,
++          badge: 'Seasonal Favorite',
++          image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=800&q=80',
++          desc: 'Creamy steamed oat milk blended with double-shot espresso and pure Vermont amber maple syrup.',
++          tastingNotes: 'Toasted pecan, warm maple, velvety espresso finish.'
++        },
++        {
++          id: 'dark-roast-espresso',
++          slug: '/menu/espresso',
++          name: 'Dark Roast Espresso',
++          category: 'espresso',
++          price: 3.95,
++          calories: 15,
++          badge: 'Signature Roast',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80',
++          desc: 'Bold, smokey, and full-bodied double pull crafted from single-origin Sumatra and Colombian beans.',
++          tastingNotes: 'Dark cocoa, charred cedar, molasses crema.'
++        },
++        {
++          id: 'nitro-cold-brew',
++          slug: '/menu/cold-brew',
++          name: 'Cold Brew Reserve',
++          category: 'cold-brew',
++          price: 4.95,
++          calories: 10,
++          badge: '18-Hour Steep',
++          image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80',
++          desc: 'Coarse-ground Ethiopian beans steeped in cold filtered water for 18 hours for zero-acidity smoothness.',
++          tastingNotes: 'Sweet stone fruit, milk chocolate, crisp finish.'
++        },
++        {
++          id: 'spiced-cardamom-cortado',
++          slug: '/menu/seasonal',
++          name: 'Cardamom Honey Cortado',
++          category: 'seasonal',
++          price: 5.25,
++          calories: 130,
++          badge: 'Limited Batch',
++          image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80',
++          desc: 'Equal parts rich espresso and silky textured milk infused with wildflower honey and freshly crushed cardamom.',
++          tastingNotes: 'Aromatic spice, floral honey, balanced roast.'
++        },
++        {
++          id: 'caramel-macchiato',
++          slug: '/menu/espresso',
++          name: 'Salted Caramel Macchiato',
++          category: 'espresso',
++          price: 5.50,
++          calories: 240,
++          badge: 'Barista Pick',
++          image: 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?auto=format&fit=crop&w=800&q=80',
++          desc: 'Freshly steamed milk with vanilla bean syrup marked with espresso and house-made sea salt caramel drizzle.',
++          tastingNotes: 'Buttery caramel, Madagascar vanilla, bold espresso.'
++        },
++        {
++          id: 'vanilla-sweet-cream-cold-brew',
++          slug: '/menu/cold-brew',
++          name: 'Vanilla Sweet Cream Cold Brew',
++          category: 'cold-brew',
++          price: 5.45,
++          calories: 110,
++          badge: 'Customer Top Pick',
++          image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80',
++          desc: 'Our signature slow-steeped cold brew topped with a float of house-made vanilla bean sweet cream.',
++          tastingNotes: 'Sweet cream cascade, smooth cold-extracted coffee.'
++        }
++      ];
++
++      const LOCATIONS = [
++        {
++          id: 'downtown',
++          name: 'Downtown Roastery & Tasting Room',
++          neighborhood: 'Arts District',
++          address: '412 Roaster Way, Suite 100',
++          hours: '6:00 AM – 8:00 PM Daily',
++          waitMins: 4,
++          image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80',
++          features: ['Live Drum Roasting', 'Pour-Over Bar', 'Patio Seating']
++        },
++        {
++          id: 'riverside',
++          name: 'Riverside Greenhouse Cafe',
++          neighborhood: 'Waterfront',
++          address: '88 Harbor Walk Blvd',
++          hours: '6:30 AM – 7:00 PM Daily',
++          waitMins: 3,
++          image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80',
++          features: ['River Views', 'Mobile Pickup Lane', 'Artisanal Bakery']
++        },
++        {
++          id: 'university',
++          name: 'University Study Lounge',
++          neighborhood: 'Campus North',
++          address: '1205 College Ave',
++          hours: '6:00 AM – 11:00 PM Daily',
++          waitMins: 6,
++          image: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=800&q=80',
++          features: ['High-Speed Fiber Wi-Fi', 'Quiet Study Booths', 'Nitro On Tap']
++        }
++      ];
++
++      const state = {
++        currentPath: window.location.pathname || '/',
++        menuCategory: 'all',
++        selectedSize: 'Medium (16oz)',
++        selectedMilk: 'Oat Milk',
++        selectedLocationId: 'downtown',
++        rewardsTier: 'gold',
++        accountTab: 'orders',
++        cart: [
++          { name: 'Maple Oat Latte', size: 'Medium (16oz)', price: 5.75 }
++        ],
++        orderTrayOpen: false
++      };
++
++      function updateCartCountBadge() {
++        const countEl = document.getElementById('nav-cart-count');
++        if (countEl) countEl.textContent = String(state.cart.length);
++      }
++
++      function renderOrderTrayBanner() {
++        if (!state.orderTrayOpen) return '';
++        const total = state.cart.reduce((sum, item) => sum + item.price, 0).toFixed(2);
++        const itemsList = state.cart.length
++          ? state.cart.map((item, idx) => `${idx + 1}. ${item.name} (${item.size}) - $${item.price.toFixed(2)}`).join(' • ')
++          : 'Your order tray is currently empty.';
++        return `
++          <div class="order-banner" data-order-tray>
++            <div>
++              <strong>Active Pickup Order (${state.cart.length} items — $${total}):</strong>
++              <div style="font-size:0.88rem;margin-top:4px;">${itemsList}</div>
++            </div>
++            <div style="display:flex;gap:8px;">
++              <a href="/order-online" class="btn btn-accent" style="margin-top:0;" data-nav-link>Checkout</a>
++              <button type="button" class="btn btn-secondary" style="margin-top:0;" data-action="clear-cart">Clear</button>
++            </div>
++          </div>
++        `;
++      }
++
++      function setHero({ title, subtitle, bgUrl, compact = true, ctaHtml = '' }) {
++        const hero = document.getElementById('app-hero');
++        if (!hero) return;
++        hero.className = compact ? 'hero hero-compact' : 'hero';
++        hero.style.backgroundImage = `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('${bgUrl}')`;
++        hero.innerHTML = `
++          <h1 elementtiming="hero-title">${title}</h1>
++          <p>${subtitle}</p>
++          ${ctaHtml}
++        `;
++      }
++
++      // Render views based on current route path
++      function renderRouteView(path) {
++        const main = document.getElementById('app-main');
++        updateCartCountBadge();
++
++        // Highlight active nav link
++        document.querySelectorAll('nav a[data-nav-link]').forEach((a) => {
++          const href = a.getAttribute('href');
++          a.classList.toggle('active-nav', href === path || (href === '/menu' && path.startsWith('/menu/')));
++        });
++
++        if (path === '/' || path === '/index.html') {
++          setHero({
++            title: 'Wake Up Your Senses',
++            subtitle: 'Ethically sourced, locally roasted, delivered to your cup.',
++            bgUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80',
++            compact: false,
++            ctaHtml: '<a href="/order-online" class="btn" data-nav-link>Order Now</a>'
++          });
++
++          const featured = MENU_ITEMS.slice(0, 3);
++          main.innerHTML = `
++            ${renderOrderTrayBanner()}
++            <section>
++              <div class="section-header">
++                <h2>Seasonal Favorites</h2>
++                <p>Handcrafted small-batch drinks roasted fresh every morning.</p>
++              </div>
++              <div class="grid">
++                ${featured
++                  .map(
++                    (item) => `
++                  <div class="card" elementtiming="featured-card">
++                    <img class="card-img" src="${item.image}" alt="${item.name}">
++                    <span class="badge">${item.badge}</span>
++                    <h3 style="margin-top:8px;">${item.name}</h3>
++                    <p>${item.desc}</p>
++                    <div class="card-meta">
++                      <span>$${item.price.toFixed(2)}</span>
++                      <span>•</span>
++                      <span>${item.calories} cal</span>
++                    </div>
++                    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
++                      <a href="${item.slug}" class="btn" data-nav-link>View Details</a>
++                      <button type="button" class="btn btn-secondary" data-action="quick-add" data-item-id="${item.id}">
++                        + Quick Add
++                      </button>
++                    </div>
++                  </div>
++                `
++                  )
++                  .join('')}
++              </div>
++            </section>
++          `;
++          return;
++        }
++
++        if (path === '/menu' || path === '/order-online') {
++          const isOrderPage = path === '/order-online';
++          setHero({
++            title: isOrderPage ? 'Order Online for Express Pickup' : 'Our Artisanal Menu',
++            subtitle: isOrderPage
++              ? 'Customize your drink and skip the line at your local Daily Grind cafe.'
++              : 'Explore our seasonal creations, single-origin espressos, and 18-hour cold brews.',
++            bgUrl: 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1350&q=80',
++            compact: true
++          });
++
++          const filteredItems =
++            state.menuCategory === 'all'
++              ? MENU_ITEMS
++              : MENU_ITEMS.filter((item) => item.category === state.menuCategory);
++
++          main.innerHTML = `
++            ${renderOrderTrayBanner()}
++            <section>
++              <div class="section-header">
++                <h2>${isOrderPage ? 'Build Your Pickup Order' : 'Crafted Beverages'}</h2>
++                <p>Filter by category or add items directly to your pickup tray.</p>
++              </div>
++
++              <div class="filter-bar" role="tablist" aria-label="Menu Categories">
++                <button type="button" class="filter-btn ${state.menuCategory === 'all' ? 'active' : ''}" data-action="filter-menu" data-category="all">All Drinks (${MENU_ITEMS.length})</button>
++                <button type="button" class="filter-btn ${state.menuCategory === 'seasonal' ? 'active' : ''}" data-action="filter-menu" data-category="seasonal">Seasonal</button>
++                <button type="button" class="filter-btn ${state.menuCategory === 'espresso' ? 'active' : ''}" data-action="filter-menu" data-category="espresso">Espresso Bar</button>
++                <button type="button" class="filter-btn ${state.menuCategory === 'cold-brew' ? 'active' : ''}" data-action="filter-menu" data-category="cold-brew">Cold Brew</button>
++              </div>
++
++              <div class="grid">
++                ${filteredItems
++                  .map(
++                    (item) => `
++                  <div class="card">
++                    <img class="card-img" src="${item.image}" alt="${item.name}">
++                    <span class="badge">${item.badge}</span>
++                    <h3 style="margin-top:8px;">${item.name}</h3>
++                    <p>${item.desc}</p>
++                    <div class="card-meta">
++                      <span>$${item.price.toFixed(2)}</span>
++                      <span>•</span>
++                      <span>${item.calories} cal</span>
++                    </div>
++                    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
++                      <a href="${item.slug}" class="btn btn-secondary" data-nav-link>Details</a>
++                      <button type="button" class="btn" data-action="quick-add" data-item-id="${item.id}">Add to Order</button>
++                    </div>
++                  </div>
++                `
++                  )
++                  .join('')}
++              </div>
++            </section>
++          `;
++          return;
++        }
++
++        if (path.startsWith('/menu/')) {
++          const item = MENU_ITEMS.find((m) => m.slug === path) || MENU_ITEMS[0];
++          const sizeMultiplier =
++            state.selectedSize.startsWith('Small') ? -0.5 : state.selectedSize.startsWith('Large') ? 0.75 : 0;
++          const finalPrice = (item.price + sizeMultiplier).toFixed(2);
++
++          setHero({
++            title: item.name,
++            subtitle: item.tastingNotes,
++            bgUrl: item.image,
++            compact: true
++          });
++
++          main.innerHTML = `
++            ${renderOrderTrayBanner()}
++            <div style="margin-bottom:18px;">
++              <a href="/menu" class="btn btn-secondary" data-nav-link>&larr; Back to Full Menu</a>
++            </div>
++            <section class="detail-layout">
++              <img class="detail-img" src="${item.image}" alt="${item.name}">
++              <div>
++                <span class="badge">${item.badge}</span>
++                <h2 style="margin:8px 0;color:var(--primary);">${item.name}</h2>
++                <p style="font-size:1.25rem;font-weight:700;color:var(--primary-dark);margin-bottom:10px;">
++                  $${finalPrice} <span style="font-size:0.9rem;font-weight:400;color:#6d4c41;">(${item.calories} kcal)</span>
++                </p>
++                <p style="margin-bottom:14px;">${item.desc}</p>
++                <p style="font-size:0.9rem;color:#5d4037;background:#efebe9;padding:10px;border-radius:6px;">
++                  <strong>Tasting Notes:</strong> ${item.tastingNotes}
++                </p>
++
++                <div class="option-group">
++                  <label>Select Cup Size</label>
++                  <div class="option-pills">
++                    ${['Small (12oz)', 'Medium (16oz)', 'Large (20oz)']
++                      .map(
++                        (sz) => `
++                      <button type="button" class="option-pill ${state.selectedSize === sz ? 'selected' : ''}" data-action="select-size" data-size="${sz}">
++                        ${sz}
++                      </button>
++                    `
++                      )
++                      .join('')}
++                  </div>
++                </div>
++
++                <div class="option-group">
++                  <label>Milk / Preparation</label>
++                  <div class="option-pills">
++                    ${['Oat Milk', 'Whole Milk', 'Almond Milk', 'Black / Unsweetened']
++                      .map(
++                        (milk) => `
++                      <button type="button" class="option-pill ${state.selectedMilk === milk ? 'selected' : ''}" data-action="select-milk" data-milk="${milk}">
++                        ${milk}
++                      </button>
++                    `
++                      )
++                      .join('')}
++                  </div>
++                </div>
++
++                <button type="button" class="btn btn-accent" data-action="quick-add" data-item-id="${item.id}">
++                  Add ${state.selectedSize} (${state.selectedMilk}) to Order — $${finalPrice}
++                </button>
++              </div>
++            </section>
++          `;
++          return;
++        }
++
++        if (path === '/locations') {
++          const selectedLoc = LOCATIONS.find((l) => l.id === state.selectedLocationId) || LOCATIONS[0];
++          setHero({
++            title: 'Visit Our Cafes & Roasteries',
++            subtitle: 'Find a neighborhood Daily Grind cafe near you with live mobile pickup wait times.',
++            bgUrl: selectedLoc.image,
++            compact: true
++          });
++
++          main.innerHTML = `
++            ${renderOrderTrayBanner()}
++            <section>
++              <div class="section-header">
++                <h2>Select Your Pickup Location</h2>
++                <p>Click a location below to view store hours, amenities, and live barista bar status.</p>
++              </div>
++              <div class="filter-bar">
++                ${LOCATIONS.map(
++                  (loc) => `
++                  <button type="button" class="filter-btn ${loc.id === selectedLoc.id ? 'active' : ''}" data-action="select-location" data-location-id="${loc.id}">
++                    ${loc.neighborhood} (~${loc.waitMins}m wait)
++                  </button>
++                `
++                ).join('')}
++              </div>
++              <div class="detail-layout">
++                <img class="detail-img" src="${selectedLoc.image}" alt="${selectedLoc.name}">
++                <div>
++                  <span class="badge">${selectedLoc.neighborhood}</span>
++                  <h2 style="margin:8px 0;">${selectedLoc.name}</h2>
++                  <p><strong>Address:</strong> ${selectedLoc.address}</p>
++                  <p><strong>Hours:</strong> ${selectedLoc.hours}</p>
++                  <p style="margin:10px 0;color:var(--success);font-weight:600;">
++                    Estimated Mobile Order Ready Time: ~${selectedLoc.waitMins} minutes
++                  </p>
++                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;">
++                    ${selectedLoc.features.map((f) => `<span class="badge">${f}</span>`).join('')}
++                  </div>
++                  <a href="/order-online" class="btn" data-nav-link>Order from ${selectedLoc.neighborhood}</a>
++                </div>
++              </div>
++            </section>
++          `;
++          return;
++        }
++
++        if (path === '/rewards') {
++          setHero({
++            title: 'Daily Grind Perks & Rewards',
++            subtitle: 'Earn 2 Beans for every $1 spent toward free handcrafted drinks and single-origin bags.',
++            bgUrl: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=80',
++            compact: true
++          });
++
++          const tiers = {
++            starter: {
++              title: 'Bean Starter (0–99 Beans)',
++              perks: 'Free birthday beverage, member-only seasonal tastings, and mobile order ahead.',
++              img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=700&q=80'
++            },
++            gold: {
++              title: 'Gold Pour (100–299 Beans)',
++              perks: 'Complimentary oat/almond milk upgrades, extra espresso shots, and double-bean Tuesdays.',
++              img: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=700&q=80'
++            },
++            reserve: {
++              title: 'Roaster Reserve (300+ Beans)',
++              perks: 'Monthly whole-bean reserve bag delivery, private cupping invites, and any handcrafted drink every 100 Beans.',
++              img: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=700&q=80'
++            }
++          };
++          const activeTier = tiers[state.rewardsTier] || tiers.gold;
++
++          main.innerHTML = `
++            ${renderOrderTrayBanner()}
++            <section>
++              <div class="section-header">
++                <h2>Your Rewards Balance: 185 Beans</h2>
++                <p>Explore membership tiers and redeem instant barista rewards.</p>
++              </div>
++              <div class="filter-bar">
++                <button type="button" class="filter-btn ${state.rewardsTier === 'starter' ? 'active' : ''}" data-action="select-tier" data-tier="starter">Bean Starter</button>
++                <button type="button" class="filter-btn ${state.rewardsTier === 'gold' ? 'active' : ''}" data-action="select-tier" data-tier="gold">Gold Pour (Current)</button>
++                <button type="button" class="filter-btn ${state.rewardsTier === 'reserve' ? 'active' : ''}" data-action="select-tier" data-tier="reserve">Roaster Reserve</button>
++              </div>
++              <div class="detail-layout">
++                <img class="detail-img" src="${activeTier.img}" alt="${activeTier.title}">
++                <div>
++                  <span class="badge">Rewards Tier Benefit</span>
++                  <h3 style="font-size:1.5rem;margin:10px 0;">${activeTier.title}</h3>
++                  <p>${activeTier.perks}</p>
++                  <div style="margin-top:18px;">
++                    <button type="button" class="btn btn-accent" data-action="redeem-reward">
++                      Redeem 100 Beans for Free Seasonal Latte
++                    </button>
++                  </div>
++                </div>
++              </div>
++            </section>
++          `;
++          return;
++        }
++
++        if (path === '/account') {
++          setHero({
++            title: 'My Daily Grind Account',
++            subtitle: 'Manage your recent orders, saved drink customizations, and coffee subscriptions.',
++            bgUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80',
++            compact: true
++          });
++
++          main.innerHTML = `
++            ${renderOrderTrayBanner()}
++            <section>
++              <div class="filter-bar">
++                <button type="button" class="filter-btn ${state.accountTab === 'orders' ? 'active' : ''}" data-action="select-account-tab" data-tab="orders">Recent Orders</button>
++                <button type="button" class="filter-btn ${state.accountTab === 'favorites' ? 'active' : ''}" data-action="select-account-tab" data-tab="favorites">Saved Custom Drinks</button>
++              </div>
++              <div class="grid">
++                ${
++                  state.accountTab === 'orders'
++                    ? `
++                  <div class="card">
++                    <span class="badge">Yesterday • Downtown Roastery</span>
++                    <h3 style="margin-top:8px;">Order #4821</h3>
++                    <p>1x Maple Oat Latte (Medium, Oat Milk)<br>1x Cold Brew Reserve</p>
++                    <button type="button" class="btn" data-action="quick-add" data-item-id="maple-oat-latte">Reorder Items</button>
++                  </div>
++                  <div class="card">
++                    <span class="badge">Oct 16 • Riverside Cafe</span>
++                    <h3 style="margin-top:8px;">Order #4790</h3>
++                    <p>2x Dark Roast Espresso (Double Pull)</p>
++                    <button type="button" class="btn" data-action="quick-add" data-item-id="dark-roast-espresso">Reorder Items</button>
++                  </div>
++                `
++                    : `
++                  <div class="card">
++                    <img class="card-img" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=700&q=80" alt="Saved Maple Oat Latte">
++                    <h3>Morning Maple Oat</h3>
++                    <p>16oz • Extra Maple Drizzle • Blonde Espresso</p>
++                    <button type="button" class="btn" data-action="quick-add" data-item-id="maple-oat-latte">Add Saved Drink</button>
++                  </div>
++                `
++                }
++              </div>
++            </section>
++          `;
++          return;
++        }
++
++        // Footer & informational routes (/about, /careers, /contact, /privacy-policy, /logout)
++        const infoPages = {
++          '/about': {
++            title: 'Our Roasting Story',
++            subtitle: 'Direct-trade partnerships with family-owned coffee farms since 2014.',
++            img: 'https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?auto=format&fit=crop&w=1000&q=80',
++            body: 'Every batch at The Daily Grind is roasted in small vintage cast-iron drum roasters to highlight the natural terroir of each harvest.'
++          },
++          '/careers': {
++            title: 'Join the Barista & Roastery Team',
++            subtitle: 'We are hiring passionate coffee craftspeople across all three cafe locations.',
++            img: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=1000&q=80',
++            body: 'Enjoy comprehensive benefits, specialty SCA barista certification training, and unlimited weekly whole-bean coffee allowances.'
++          },
++          '/contact': {
++            title: 'Contact The Daily Grind',
++            subtitle: 'Questions about wholesale beans, catering, or your recent cafe visit? Reach out anytime.',
++            img: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1000&q=80',
++            body: 'Email hello@thedailygrind.coffee or call (555) 019-2834 between 7:00 AM and 6:00 PM.'
++          },
++          '/privacy-policy': {
++            title: 'Privacy & Data Transparency',
++            subtitle: 'How we protect your account, mobile orders, and rewards activity.',
++            img: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1000&q=80',
++            body: 'We only collect data required to fulfill your coffee orders and measure anonymous client-side render performance.'
++          },
++          '/logout': {
++            title: 'You Have Been Signed Out',
++            subtitle: 'Thank you for visiting The Daily Grind. Your local pickup preferences remain saved.',
++            img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1000&q=80',
++            body: 'Ready for another cup? Sign back in or head straight to the menu to start a guest order.'
++          }
++        };
++
++        const info = infoPages[path] || infoPages['/about'];
++        setHero({
++          title: info.title,
++          subtitle: info.subtitle,
++          bgUrl: info.img,
++          compact: true
++        });
++
++        main.innerHTML = `
++          ${renderOrderTrayBanner()}
++          <section class="detail-layout">
++            <img class="detail-img" src="${info.img}" alt="${info.title}">
++            <div>
++              <h2>${info.title}</h2>
++              <p style="margin:14px 0;">${info.body}</p>
++              <a href="/menu" class="btn" data-nav-link>Explore Coffee Menu</a>
++              <a href="/" class="btn btn-secondary" data-nav-link style="margin-left:8px;">Return Home</a>
++            </div>
++          </section>
++        `;
++      }
++
++      // Client-side navigation handler instrumented with contentfulPerf
++      function navigateTo(toPath, triggerEvent = null) {
++        const fromPath = state.currentPath;
++        state.currentPath = toPath;
++
++        window.contentfulPerf.startOperation({
++          type: 'client-navigation',
++          name: `${fromPath} → ${toPath}`,
++          event: triggerEvent,
++          fromPath,
++          toPath,
++          targetDescriptor: `a[href="${toPath}"]`
++        });
++
++        try {
++          if (window.location.pathname !== toPath) {
++            window.history.pushState({ path: toPath }, '', toPath);
++          }
++        } catch (_) {}
++
++        renderRouteView(toPath);
++      }
++
++      // Intercept clicks on navigation links and interactive controls
++      document.addEventListener('click', (event) => {
++        if (event.target.closest && event.target.closest('[data-perf-ignore="true"]')) {
++          return;
++        }
++
++        // 1. Handle client-side route navigation links
++        const link = event.target.closest('a[href]');
++        if (link && link.getAttribute('href').startsWith('/')) {
++          event.preventDefault();
++          const targetPath = link.getAttribute('href');
++          navigateTo(targetPath, event);
++          return;
++        }
++
++        // 2. Handle Order Tray toggle button in nav
++        if (event.target.closest('#nav-cart-btn')) {
++          state.orderTrayOpen = !state.orderTrayOpen;
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: state.orderTrayOpen ? 'Open Order Tray' : 'Close Order Tray',
++            event,
++            targetDescriptor: '#nav-cart-btn'
++          });
++          renderRouteView(state.currentPath);
++          return;
++        }
++
++        // 3. Handle interactive view buttons ([data-action])
++        const actionBtn = event.target.closest('[data-action]');
++        if (!actionBtn) return;
++
++        const action = actionBtn.getAttribute('data-action');
++
++        if (action === 'filter-menu') {
++          const category = actionBtn.getAttribute('data-category');
++          state.menuCategory = category;
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: `Filter Menu: ${category}`,
++            event,
++            targetDescriptor: `[data-category="${category}"]`
++          });
++          renderRouteView(state.currentPath);
++        } else if (action === 'quick-add') {
++          const itemId = actionBtn.getAttribute('data-item-id');
++          const item = MENU_ITEMS.find((m) => m.id === itemId) || MENU_ITEMS[0];
++          state.cart.push({ name: item.name, size: state.selectedSize, price: item.price });
++          state.orderTrayOpen = true;
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: `Add to Order: ${item.name}`,
++            event,
++            targetDescriptor: `[data-item-id="${item.id}"]`
++          });
++          renderRouteView(state.currentPath);
++        } else if (action === 'clear-cart') {
++          state.cart = [];
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: 'Clear Order Tray',
++            event,
++            targetDescriptor: '[data-action="clear-cart"]'
++          });
++          renderRouteView(state.currentPath);
++        } else if (action === 'select-size') {
++          const size = actionBtn.getAttribute('data-size');
++          state.selectedSize = size;
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: `Select Size: ${size}`,
++            event,
++            targetDescriptor: `[data-size="${size}"]`
++          });
++          renderRouteView(state.currentPath);
++        } else if (action === 'select-milk') {
++          const milk = actionBtn.getAttribute('data-milk');
++          state.selectedMilk = milk;
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: `Select Milk: ${milk}`,
++            event,
++            targetDescriptor: `[data-milk="${milk}"]`
++          });
++          renderRouteView(state.currentPath);
++        } else if (action === 'select-location') {
++          const locId = actionBtn.getAttribute('data-location-id');
++          state.selectedLocationId = locId;
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: `Switch Cafe Location: ${locId}`,
++            event,
++            targetDescriptor: `[data-location-id="${locId}"]`
++          });
++          renderRouteView(state.currentPath);
++        } else if (action === 'select-tier') {
++          const tier = actionBtn.getAttribute('data-tier');
++          state.rewardsTier = tier;
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: `View Rewards Tier: ${tier}`,
++            event,
++            targetDescriptor: `[data-tier="${tier}"]`
++          });
++          renderRouteView(state.currentPath);
++        } else if (action === 'redeem-reward') {
++          state.cart.push({ name: 'Reward: Free Maple Oat Latte', size: 'Medium (16oz)', price: 0 });
++          state.orderTrayOpen = true;
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: 'Redeem Free Drink Reward',
++            event,
++            targetDescriptor: '[data-action="redeem-reward"]'
++          });
++          renderRouteView(state.currentPath);
++        } else if (action === 'select-account-tab') {
++          const tab = actionBtn.getAttribute('data-tab');
++          state.accountTab = tab;
++          window.contentfulPerf.startOperation({
++            type: 'user-interaction',
++            name: `Account Tab: ${tab}`,
++            event,
++            targetDescriptor: `[data-tab="${tab}"]`
++          });
++          renderRouteView(state.currentPath);
++        }
++      });
++
++      // Handle browser back/forward buttons
++      window.addEventListener('popstate', (event) => {
++        const toPath = window.location.pathname || '/';
++        const fromPath = state.currentPath;
++        state.currentPath = toPath;
++        window.contentfulPerf.startOperation({
++          type: 'client-navigation',
++          name: `Popstate: ${fromPath} → ${toPath}`,
++          event,
++          fromPath,
++          toPath
++        });
++        renderRouteView(toPath);
++      });
++
++      updateCartCountBadge();
++    })();
++  </script>
+ </body>
+ 
+ </html>

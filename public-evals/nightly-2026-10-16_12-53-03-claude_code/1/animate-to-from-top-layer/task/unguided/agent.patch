@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,139 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .btn-reset {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    /* Modal */
++    .modal-backdrop {
++      position: fixed;
++      inset: 0;
++      z-index: 2000;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 20px;
++      background: rgba(0, 0, 0, 0.55);
++      opacity: 0;
++      visibility: hidden;
++      transition: opacity 0.3s ease, visibility 0s linear 0.3s;
++    }
++
++    .modal-backdrop.is-open {
++      opacity: 1;
++      visibility: visible;
++      transition: opacity 0.3s ease, visibility 0s;
++    }
++
++    .modal {
++      position: relative;
++      width: 100%;
++      max-width: 420px;
++      background: white;
++      border-radius: 10px;
++      padding: 28px 24px 24px;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      opacity: 0;
++      transform: translateY(20px) scale(0.95);
++      transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
++    }
++
++    .modal-backdrop.is-open .modal {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    .modal h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .modal-close {
++      position: absolute;
++      top: 8px;
++      right: 12px;
++      background: none;
++      border: 0;
++      font-size: 1.6rem;
++      line-height: 1;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 12px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++    }
++
++    /* Floating info overlay */
++    .info-overlay {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1900;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      max-width: 340px;
++      padding: 14px 16px;
++      background: var(--primary);
++      color: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      opacity: 0;
++      visibility: hidden;
++      transform: translateY(24px);
++      transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.35s;
++    }
++
++    .info-overlay.is-open {
++      opacity: 1;
++      visibility: visible;
++      transform: translateY(0);
++      transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
++    }
++
++    .info-overlay button {
++      background: none;
++      border: 0;
++      color: white;
++      font-size: 1.3rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .modal-backdrop,
++      .modal,
++      .info-overlay {
++        transition-duration: 0.01ms !important;
++        transition-delay: 0s !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +294,17 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" class="btn btn-reset" aria-controls="info-overlay">Ordering Status</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +338,68 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div class="modal-backdrop" id="logout-backdrop" aria-hidden="true">
++    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="logout-title">
++      <button type="button" class="modal-close" id="close-dialog-btn" aria-label="Close">&times;</button>
++      <h2 id="logout-title">Log out?</h2>
++      <p>Are you sure you want to log out of your account?</p>
++      <div class="modal-actions">
++        <a href="/logout" class="btn">Yes, log out</a>
++      </div>
++    </div>
++  </div>
++
++  <div class="info-overlay" id="info-overlay" role="status" aria-hidden="true">
++    <span>online ordering is currently offline</span>
++    <button type="button" id="info-overlay-close" aria-label="Dismiss">&times;</button>
++  </div>
++
++  <script>
++    (function () {
++      var backdrop = document.getElementById('logout-backdrop');
++      var openBtn = document.getElementById('open-dialog-btn');
++      var closeBtn = document.getElementById('close-dialog-btn');
++      var overlay = document.getElementById('info-overlay');
++      var foobar = document.getElementById('foobar');
++      var overlayClose = document.getElementById('info-overlay-close');
++
++      function setOpen(el, open) {
++        el.classList.toggle('is-open', open);
++        el.setAttribute('aria-hidden', String(!open));
++      }
++
++      openBtn.addEventListener('click', function (e) {
++        e.preventDefault();
++        setOpen(backdrop, true);
++        closeBtn.focus();
++      });
++
++      function closeModal() {
++        setOpen(backdrop, false);
++        openBtn.focus();
++      }
++
++      closeBtn.addEventListener('click', closeModal);
++      backdrop.addEventListener('click', function (e) {
++        if (e.target === backdrop) closeModal();
++      });
++
++      foobar.addEventListener('click', function () {
++        setOpen(overlay, true);
++      });
++      overlayClose.addEventListener('click', function () {
++        setOpen(overlay, false);
++      });
++
++      document.addEventListener('keydown', function (e) {
++        if (e.key !== 'Escape') return;
++        if (backdrop.classList.contains('is-open')) closeModal();
++        else setOpen(overlay, false);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

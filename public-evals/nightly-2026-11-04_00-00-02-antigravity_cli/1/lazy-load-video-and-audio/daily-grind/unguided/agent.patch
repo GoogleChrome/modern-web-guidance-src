@@ -1,0 +1,447 @@
+diff --git a/index.html b/index.html
+index 66c9173..df293a1 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --muted: #6d4c41;
+     }
+ 
+     * {
+@@ -72,13 +74,11 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    /* Hero Section with Hero Video */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      position: relative;
++      min-height: 90vh;
++      background-color: #2b1b17;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,6 +86,31 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
++    }
++
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 0;
++      pointer-events: none;
++    }
++
++    .hero-overlay {
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(rgba(30, 18, 14, 0.62), rgba(30, 18, 14, 0.72));
++      z-index: 1;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 2;
++      max-width: 760px;
++      padding: 20px;
+     }
+ 
+     .hero h1 {
+@@ -100,18 +125,43 @@
+       padding: 0 20px;
+     }
+ 
++    .section-block {
++      padding: 70px 0;
++      min-height: 460px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 32px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .section-header p {
++      color: var(--muted);
++      max-width: 640px;
++      margin: 0 auto;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--card-bg);
++      padding: 28px 22px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
+     }
+ 
+@@ -135,6 +185,101 @@
+       background: #3e2723;
+     }
+ 
++    /* Below-the-Fold Media Section (Roasting Video & Podcast Audio) */
++    .media-section {
++      padding: 70px 0 50px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .media-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 32px;
++      margin-top: 28px;
++      align-items: stretch;
++    }
++
++    .media-card {
++      background: var(--card-bg);
++      border-radius: 12px;
++      padding: 28px;
++      box-shadow: 0 4px 14px rgba(62, 39, 35, 0.1);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .media-badge {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 12px;
++    }
++
++    .media-card h3 {
++      font-size: 1.4rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .media-card p {
++      color: var(--muted);
++      margin-bottom: 18px;
++      font-size: 0.95rem;
++    }
++
++    .video-wrapper {
++      width: 100%;
++      border-radius: 8px;
++      overflow: hidden;
++      background: #2b1b17;
++      aspect-ratio: 16 / 9;
++    }
++
++    .roasting-video {
++      width: 100%;
++      height: 100%;
++      display: block;
++      object-fit: cover;
++      background: #2b1b17;
++    }
++
++    .podcast-player-box {
++      background: #f5f0ee;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 18px;
++      margin-top: auto;
++    }
++
++    .podcast-meta {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .podcast-audio {
++      width: 100%;
++      display: block;
++    }
++
++    .media-status {
++      font-size: 0.8rem;
++      color: var(--muted);
++      margin-top: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -169,14 +314,35 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <video
++      id="hero-video"
++      class="hero-video"
++      autoplay
++      muted
++      loop
++      playsinline
++      preload="metadata"
++      poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      src="/media/hero-coffee.mp4"
++    >
++      <source src="/media/hero-coffee.mp4" type="video/mp4">
++      <source src="/media/hero-coffee.webm" type="video/webm">
++      Your browser does not support the video tag.
++    </video>
++    <div class="hero-overlay" aria-hidden="true"></div>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="section-block" id="seasonal-favorites">
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p>Handcrafted beverages celebrating the flavors of the season.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +361,91 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="section-block" id="our-craft">
++      <div class="section-header">
++        <h2>From Farm to Cup</h2>
++        <p>Every batch is traced directly to partner farms and roasted daily for peak aroma.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Direct-Trade Beans</h3>
++          <p>We partner with high-altitude growers in Colombia, Ethiopia, and Guatemala.</p>
++        </div>
++        <div class="card">
++          <h3>Small-Batch Precision</h3>
++          <p>Custom roast profiles bring out caramelized sweetness and vibrant acidity.</p>
++        </div>
++        <div class="card">
++          <h3>Freshly Ground</h3>
++          <p>Dialed in every morning by our certified baristas for balanced extraction.</p>
++        </div>
++      </div>
++    </section>
++
++    <section class="media-section" id="roasting-and-podcast" aria-labelledby="media-section-title">
++      <div class="section-header">
++        <h2 id="media-section-title">Behind the Roast &amp; The Daily Grind Podcast</h2>
++        <p>Step inside our roastery and tune in to conversations with coffee growers and master roasters.</p>
++      </div>
++
++      <div class="media-grid">
++        <!-- Below-the-fold Roasting Video -->
++        <article class="media-card" id="roasting-video-card">
++          <div>
++            <span class="media-badge">Roastery Feature</span>
++            <h3>Small-Batch Coffee Roasting</h3>
++            <p>Watch our master roasters take green single-origin beans through first crack to develop rich chocolate and toasted hazelnut notes.</p>
++          </div>
++          <div class="video-wrapper">
++            <video
++              id="roasting-video"
++              class="lazy-media roasting-video"
++              controls
++              playsinline
++              preload="none"
++              width="640"
++              height="360"
++              data-preload="metadata"
++              data-poster="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1000&q=80"
++              data-src="/media/roasting-process.mp4"
++            >
++              <source data-src="/media/roasting-process.mp4" type="video/mp4">
++              <source data-src="/media/roasting-process.webm" type="video/webm">
++              Your browser does not support the video tag.
++            </video>
++          </div>
++          <p class="media-status" id="roasting-video-status">Video assets deferred until approaching viewport.</p>
++        </article>
++
++        <!-- Below-the-fold Podcast Audio -->
++        <article class="media-card" id="podcast-audio-card">
++          <div>
++            <span class="media-badge">The Daily Grind Podcast</span>
++            <h3>Ep. 42: The Science of the Morning Pour-Over</h3>
++            <p>Head Roaster Elena Vance breaks down water temperature, bloom timing, and grind uniformity with guest agronomy specialist Mateo Silva.</p>
++          </div>
++          <div class="podcast-player-box">
++            <div class="podcast-meta">
++              <span>Episode 42 &bull; Audio Feature</span>
++              <span>05:00</span>
++            </div>
++            <audio
++              id="podcast-audio"
++              class="lazy-media podcast-audio"
++              controls
++              preload="none"
++              data-preload="metadata"
++              data-src="/media/daily-grind-podcast.mp3"
++            >
++              <source data-src="/media/daily-grind-podcast.mp3" type="audio/mpeg">
++              Your browser does not support the audio element.
++            </audio>
++          </div>
++          <p class="media-status" id="podcast-audio-status">Audio stream deferred until approaching viewport.</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +458,80 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const lazyMediaElements = Array.from(document.querySelectorAll('.lazy-media'));
++
++      function loadDeferredMedia(mediaEl) {
++        if (!mediaEl || mediaEl.dataset.loaded === 'true') {
++          return;
++        }
++        mediaEl.dataset.loaded = 'true';
++
++        if (mediaEl.dataset.poster) {
++          mediaEl.setAttribute('poster', mediaEl.dataset.poster);
++        }
++
++        const sources = mediaEl.querySelectorAll('source[data-src]');
++        sources.forEach(function (sourceEl) {
++          if (sourceEl.dataset.src) {
++            sourceEl.setAttribute('src', sourceEl.dataset.src);
++          }
++        });
++
++        if (mediaEl.dataset.src) {
++          mediaEl.setAttribute('src', mediaEl.dataset.src);
++        }
++
++        mediaEl.setAttribute('preload', mediaEl.dataset.preload || 'metadata');
++        mediaEl.load();
++        mediaEl.classList.add('is-loaded');
++
++        const statusId = mediaEl.id + '-status';
++        const statusEl = document.getElementById(statusId);
++        if (statusEl) {
++          statusEl.textContent = 'Media ready to play.';
++        }
++      }
++
++      if ('IntersectionObserver' in window) {
++        const mediaObserver = new IntersectionObserver(
++          function (entries, observer) {
++            entries.forEach(function (entry) {
++              if (entry.isIntersecting) {
++                loadDeferredMedia(entry.target);
++                observer.unobserve(entry.target);
++              }
++            });
++          },
++          {
++            root: null,
++            rootMargin: '200px 0px',
++            threshold: 0.01
++          }
++        );
++
++        lazyMediaElements.forEach(function (mediaEl) {
++          mediaObserver.observe(mediaEl);
++        });
++      } else {
++        lazyMediaElements.forEach(loadDeferredMedia);
++      }
++
++      lazyMediaElements.forEach(function (mediaEl) {
++        ['focusin', 'mouseenter', 'touchstart', 'click'].forEach(function (eventName) {
++          mediaEl.addEventListener(
++            eventName,
++            function () {
++              loadDeferredMedia(mediaEl);
++            },
++            { once: true, passive: true }
++          );
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/media/daily-grind-podcast.mp3 b/media/daily-grind-podcast.mp3
+new file mode 100644
+index 0000000..38fbe9c
+Binary files /dev/null and b/media/daily-grind-podcast.mp3 differ
+diff --git a/media/hero-coffee.mp4 b/media/hero-coffee.mp4
+new file mode 100644
+index 0000000..a939a80
+Binary files /dev/null and b/media/hero-coffee.mp4 differ
+diff --git a/media/hero-coffee.webm b/media/hero-coffee.webm
+new file mode 100644
+index 0000000..53998e8
+Binary files /dev/null and b/media/hero-coffee.webm differ
+diff --git a/media/roasting-process.mp4 b/media/roasting-process.mp4
+new file mode 100644
+index 0000000..d49618f
+Binary files /dev/null and b/media/roasting-process.mp4 differ
+diff --git a/media/roasting-process.webm b/media/roasting-process.webm
+new file mode 100644
+index 0000000..c0ed6db
+Binary files /dev/null and b/media/roasting-process.webm differ

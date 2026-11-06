@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,65 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      const entries = 'VisibilityStateEntry' in window
++        ? performance.getEntriesByType('visibility-state')
++        : [];
++
++      if (entries.length > 0) {
++        const initiallyBackgrounded = entries[0].name === 'hidden';
++        let timeBackgrounded = entries.find(entry => entry.name === 'hidden')?.startTime ?? null;
++        const logInfo = () => console.log({
++          initiallyBackgrounded,
++          // Milliseconds relative to performance.timeOrigin; 0 means hidden at load.
++          // null means the page has not been backgrounded yet.
++          timeBackgrounded,
++          fallbackDetection: false,
++        });
++        logInfo();
++
++        if (timeBackgrounded === null) {
++          const observer = new PerformanceObserver(list => {
++            const hiddenEntry = list.getEntries().find(entry => entry.name === 'hidden');
++            if (hiddenEntry) {
++              timeBackgrounded = hiddenEntry.startTime;
++              logInfo();
++              observer.disconnect();
++            }
++          });
++          observer.observe({ type: 'visibility-state', buffered: true });
++        }
++        return;
++      }
++
++      // UNRELIABLE FALLBACK: current visibility cannot reconstruct initial state
++      // when an async script executes after the user has switched tabs.
++      // Both the assumed load time (0) and future event-handler times are estimates.
++      console.warn('Visibility history unavailable: fallback detection is active and may be inaccurate, especially for async scripts. Background times are estimates.');
++      const initiallyBackgrounded = document.visibilityState === 'hidden';
++      let timeBackgrounded = initiallyBackgrounded ? 0 : null;
++      const logFallbackInfo = () => console.log({
++        initiallyBackgrounded,
++        timeBackgrounded,
++        fallbackDetection: true,
++      });
++      logFallbackInfo();
++
++      if (timeBackgrounded === null) {
++        const onVisibilityChange = () => {
++          if (document.visibilityState === 'hidden') {
++            timeBackgrounded = performance.now();
++            logFallbackInfo();
++            document.removeEventListener('visibilitychange', onVisibilityChange);
++          }
++        };
++        document.addEventListener('visibilitychange', onVisibilityChange);
++      }
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

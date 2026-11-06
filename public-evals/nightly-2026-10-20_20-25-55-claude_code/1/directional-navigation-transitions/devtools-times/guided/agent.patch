@@ -1,0 +1,84 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..81f7944 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -38,20 +38,24 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
++    <!-- Top Stories Slider -->
+     <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++        <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4" aria-roledescription="carousel" aria-label="Top stories" data-top-stories>
++            <div class="flex items-center gap-4">
++                <button type="button" data-prev aria-label="Previous story" class="shrink-0 rounded-full border border-gray-300 w-9 h-9 text-gray-900 hover:text-amber-400 hover:border-amber-400 cursor-pointer">&larr;</button>
++                <div class="flex-1 overflow-hidden" aria-live="polite" aria-atomic="true">
++                    {topStories.map((article, i) => (
++                        <div class="top-story" data-slide hidden={i !== 0} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${topStories.length}`}>
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
++                <button type="button" data-next aria-label="Next story" class="shrink-0 rounded-full border border-gray-300 w-9 h-9 text-gray-900 hover:text-amber-400 hover:border-amber-400 cursor-pointer">&rarr;</button>
+             </div>
+-        </div>
++        </section>
+     </div>
+ 
+     <!-- Main Content Area -->
+@@ -81,4 +85,40 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
++
++<style>
++    @keyframes top-story-from-right {
++        from { transform: translateX(100%); opacity: 0; }
++    }
++    @keyframes top-story-from-left {
++        from { transform: translateX(-100%); opacity: 0; }
++    }
++    @media (prefers-reduced-motion: no-preference) {
++        .top-story[data-enter="next"] {
++            animation: top-story-from-right 0.35s ease-out;
++        }
++        .top-story[data-enter="prev"] {
++            animation: top-story-from-left 0.35s ease-out;
++        }
++    }
++</style>
++
++<script>
++    document.querySelectorAll<HTMLElement>('[data-top-stories]').forEach((root) => {
++        const slides = Array.from(root.querySelectorAll<HTMLElement>('[data-slide]'));
++        let current = 0;
++
++        const show = (delta: 1 | -1) => {
++            slides[current].hidden = true;
++            slides[current].removeAttribute('data-enter');
++            current = (current + delta + slides.length) % slides.length;
++            const next = slides[current];
++            next.dataset.enter = delta === 1 ? 'next' : 'prev';
++            next.hidden = false;
++        };
++
++        root.querySelector('[data-next]')?.addEventListener('click', () => show(1));
++        root.querySelector('[data-prev]')?.addEventListener('click', () => show(-1));
++    });
++</script>

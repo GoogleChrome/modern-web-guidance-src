@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,96 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    /* Product carousel */
++    .carousel-section {
++      margin-top: 60px;
++    }
++
++    .carousel-section h2 {
++      text-align: center;
++    }
++
++    .scroller {
++      display: flex;
++      gap: 24px;
++      list-style: none;
++      overflow-x: auto;
++      overscroll-behavior-x: contain;
++      scroll-snap-type: x mandatory;
++      /* Lets the first and last cards reach the center */
++      padding: 40px calc(50% - 130px);
++      scroll-padding-inline: calc(50% - 130px);
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .scroller > li {
++      flex: 0 0 260px;
++      scroll-snap-align: center;
++    }
++
++    .scroller .card {
++      height: 100%;
++      overflow: hidden;
++      padding: 0 0 20px;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .scroller .card img {
++      width: 100%;
++      height: 170px;
++      object-fit: cover;
++      margin-bottom: 16px;
++      background: var(--secondary);
++    }
++
++    .scroller .card p,
++    .scroller .card h3 {
++      padding: 0 16px;
++    }
++
++    .scroller .card .btn {
++      align-self: center;
++      margin-top: auto;
++    }
++
++    .scroller .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Scale by position in the scrollport, no JavaScript. Without support or
++       with reduced motion, cards simply stay at full size. */
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .scroller > li {
++          animation: card-focus linear both;
++          animation-timeline: view(inline);
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
++    @keyframes card-focus {
++      0%, 100% { transform: scale(0.8); opacity: 0.6; }
++      50% { transform: scale(1.1); opacity: 1; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +282,54 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section" aria-labelledby="products-heading">
++      <h2 id="products-heading">Shop Our Favorites</h2>
++      <ul class="scroller" role="list" tabindex="0" aria-label="Products, scroll horizontally">
++        <li>
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Latte in a ceramic cup on a wooden table" loading="lazy">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> for Maple Oat Latte</span></a>
++          </article>
++        </li>
++        <li>
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Espresso being pulled into a small cup" loading="lazy">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> for Dark Roast Espresso</span></a>
++          </article>
++        </li>
++        <li>
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Iced cold brew coffee in a glass" loading="lazy">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> for Cold Brew</span></a>
++          </article>
++        </li>
++        <li>
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Roasted coffee beans in a burlap sack" loading="lazy">
++            <h3>House Blend Beans</h3>
++            <p>Our signature medium roast, whole bean, 12 oz.</p>
++            <a href="/menu/beans" class="btn">View Details<span class="visually-hidden"> for House Blend Beans</span></a>
++          </article>
++        </li>
++        <li>
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80" alt="White mug of black coffee beside a notebook" loading="lazy">
++            <h3>Drip Coffee</h3>
++            <p>Fresh-brewed single-origin, all day long.</p>
++            <a href="/menu/drip" class="btn">View Details<span class="visually-hidden"> for Drip Coffee</span></a>
++          </article>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,10 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      position: relative;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,15 +86,77 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
+     }
+ 
++    .hero h1,
++    .hero p,
++    .hero .btn {
++      position: relative;
++      z-index: 2;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative Organic Shaped Visual Block */
++    .shaped-element {
++      position: absolute;
++      right: 8%;
++      top: 50%;
++      transform: translateY(-50%);
++      width: clamp(220px, 25vw, 340px);
++      height: clamp(220px, 25vw, 340px);
++      max-width: 90vw;
++      max-height: 90%;
++      aspect-ratio: 1 / 1;
++      box-sizing: border-box;
++      z-index: 1;
++      pointer-events: none;
++
++      /* Resilient fallback if fluid vector or mask fails to load */
++      border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
++      background: radial-gradient(circle at 30% 30%, #d7ccc8 0%, #8d6e63 50%, #4e342e 100%);
++      overflow: hidden;
++
++      /* Fluid vector clip-path */
++      -webkit-clip-path: url(#coffee-splash);
++      clip-path: url(#coffee-splash);
++
++      /* Fluid vector / image mask */
++      -webkit-mask-image: url('coffee-splash.svg'), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 500'%3E%3Cpath fill='black' d='M 470 250 C 478 283, 484 327, 468 351 C 451 376, 398 375, 372 396 C 346 416, 340 467, 311 477 C 281 487, 235 462, 196 453 C 157 444, 95 447, 77 423 C 58 399, 95 342, 86 310 C 76 278, 22 257, 21 230 C 19 203, 59 181, 77 150 C 95 119, 101 52, 130 42 C 159 32, 210 89, 250 90 C 290 91, 339 36, 368 46 C 396 57, 402 119, 419 153 C 436 186, 462 217, 470 250 Z'/%3E%3C/svg%3E");
++      mask-image: url('coffee-splash.svg'), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 500'%3E%3Cpath fill='black' d='M 470 250 C 478 283, 484 327, 468 351 C 451 376, 398 375, 372 396 C 346 416, 340 467, 311 477 C 281 487, 235 462, 196 453 C 157 444, 95 447, 77 423 C 58 399, 95 342, 86 310 C 76 278, 22 257, 21 230 C 19 203, 59 181, 77 150 C 95 119, 101 52, 130 42 C 159 32, 210 89, 250 90 C 290 91, 339 36, 368 46 C 396 57, 402 119, 419 153 C 436 186, 462 217, 470 250 Z'/%3E%3C/svg%3E");
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-position: center;
++
++      filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.45));
++    }
++
++    .shaped-element img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    @media (max-width: 900px) {
++      .shaped-element {
++        right: 50%;
++        transform: translate(50%, -50%);
++        opacity: 0.25;
++        width: clamp(200px, 45vw, 280px);
++        height: clamp(200px, 45vw, 280px);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,13 +231,25 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" role="img" aria-label="Artisanal coffee craft">
++      <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80" alt="Artisanal coffee craft" />
++    </div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <!-- SVG definitions for fluid vector clipping -->
++  <svg class="shape-definitions" width="0" height="0" style="position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none;" aria-hidden="true" focusable="false">
++    <defs>
++      <clipPath id="coffee-splash" clipPathUnits="objectBoundingBox">
++        <path d="M 0.940 0.500 C 0.956 0.566, 0.968 0.654, 0.935 0.703 C 0.902 0.751, 0.796 0.749, 0.744 0.791 C 0.692 0.833, 0.680 0.935, 0.622 0.954 C 0.563 0.973, 0.469 0.924, 0.391 0.906 C 0.313 0.888, 0.190 0.894, 0.154 0.846 C 0.117 0.799, 0.190 0.684, 0.171 0.620 C 0.152 0.555, 0.045 0.513, 0.042 0.460 C 0.039 0.407, 0.117 0.363, 0.154 0.300 C 0.190 0.237, 0.202 0.104, 0.260 0.084 C 0.318 0.064, 0.421 0.179, 0.500 0.180 C 0.579 0.181, 0.679 0.072, 0.735 0.093 C 0.791 0.114, 0.804 0.237, 0.838 0.305 C 0.872 0.373, 0.924 0.434, 0.940 0.500 Z" />
++      </clipPath>
++    </defs>
++  </svg>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

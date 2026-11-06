@@ -1,0 +1,109 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,33 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promotion Timer */
++    .promo-timer {
++      margin-top: 12px;
++      padding: 10px 12px;
++      background-color: #fff8e1;
++      border: 1px solid var(--accent);
++      border-radius: 6px;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer p {
++      margin: 4px 0;
++    }
++
++    .promo-countdown {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .promo-elapsed {
++      font-size: 0.8rem;
++      color: var(--text);
++      opacity: 0.85;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,8 +205,12 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-promo-timer" aria-live="polite">
++            <p class="promo-countdown">Offer ends in: <time id="maple-countdown">--</time></p>
++            <p class="promo-elapsed">Time elapsed since start: <time id="maple-elapsed">--</time></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +235,58 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    function initializePromoTimer() {
++      const countdownEl = document.getElementById('maple-countdown');
++      const elapsedEl = document.getElementById('maple-elapsed');
++      if (!countdownEl || !elapsedEl) return;
++
++      // Get the current time in the user's local system time zone
++      const now = Temporal.Now.zonedDateTimeISO();
++      const tz = now.timeZoneId;
++
++      // Combine separate date and time strings via Temporal Plain types and bind to the user's local time zone
++      const startDateStr = '2026-01-01';
++      const startTimeStr = '00:00:00';
++      const endDateStr = '2026-03-01';
++      const endTimeStr = '00:00:00';
++
++      const start = Temporal.PlainDate.from(startDateStr).toPlainDateTime(startTimeStr).toZonedDateTime(tz);
++      const end = Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(tz);
++
++      // Calculate elapsed time since the start of the promotion and time remaining until the offer ends
++      const timeElapsed = now.since(start, { largestUnit: 'day', smallestUnit: 'hour' });
++      const timeRemaining = now.until(end, { largestUnit: 'day', smallestUnit: 'hour' });
++
++      // Format durations using Intl.DurationFormat via .toLocaleString()
++      const isExpired = timeRemaining.sign < 0;
++      if (isExpired) {
++        countdownEl.textContent = `Offer ended (${timeRemaining.abs().toLocaleString( undefined, { style: 'long' } )} ago)`;
++        countdownEl.setAttribute('datetime', timeRemaining.abs().toString());
++      } else {
++        countdownEl.textContent = timeRemaining.toLocaleString(undefined, { style: 'long' });
++        countdownEl.setAttribute('datetime', timeRemaining.toString());
++      }
++
++      if (timeElapsed.sign < 0) {
++        elapsedEl.textContent = '0 hours';
++        elapsedEl.setAttribute('datetime', 'PT0H');
++      } else {
++        elapsedEl.textContent = timeElapsed.toLocaleString(undefined, { style: 'long' });
++        elapsedEl.setAttribute('datetime', timeElapsed.toString());
++      }
++    }
++
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++      initializePromoTimer();
++    })();
++  </script>
+ </body>
+ 
+ </html>

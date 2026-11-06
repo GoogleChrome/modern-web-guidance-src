@@ -1,0 +1,182 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,88 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Newsletter */
++    .newsletter {
++      max-width: 480px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h3 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .newsletter p {
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      border: 2px solid #a1887f;
++      border-radius: 5px;
++      font: inherit;
++      background: white;
++      color: var(--text);
++      transition: border-color 0.2s;
++    }
++
++    .newsletter input[type="email"]:focus {
++      outline: none;
++      border-color: var(--primary);
++    }
++
++    .newsletter input[type="email"][aria-invalid="true"] {
++      border-color: #c62828;
++    }
++
++    .newsletter button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter-message {
++      min-height: 1.4em;
++      margin-top: 6px;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
++    .newsletter-message.error {
++      color: #c62828;
++    }
++
++    .newsletter-message.success {
++      color: #2e7d32;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +277,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" novalidate>
++      <h3>Join Our Newsletter</h3>
++      <p>Seasonal drops, roaster news, and the occasional free-coffee coupon.</p>
++      <div class="newsletter-row">
++        <label for="newsletter-email" class="sr-only">Email address</label>
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com"
++          autocomplete="email" required aria-describedby="newsletter-message">
++        <button type="submit">Subscribe</button>
++      </div>
++      <div class="newsletter-message" id="newsletter-message" aria-live="polite"></div>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +297,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('newsletter-form');
++      const input = document.getElementById('newsletter-email');
++      const message = document.getElementById('newsletter-message');
++
++      function getError() {
++        const value = input.value.trim();
++        if (!value) return 'Please enter your email address.';
++        if (input.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
++          return 'Please enter a valid email address.';
++        }
++        return '';
++      }
++
++      function setMessage(text, type) {
++        message.textContent = text;
++        message.className = 'newsletter-message' + (type ? ' ' + type : '');
++      }
++
++      function showError(text) {
++        input.setAttribute('aria-invalid', 'true');
++        setMessage(text, 'error');
++      }
++
++      function clearError() {
++        input.removeAttribute('aria-invalid');
++        setMessage('');
++      }
++
++      // Validate only once the user leaves the field (skip if they never typed anything).
++      input.addEventListener('blur', function () {
++        if (!input.value.trim()) {
++          clearError();
++          return;
++        }
++        const error = getError();
++        error ? showError(error) : clearError();
++      });
++
++      // While typing, never add an error — only clear an existing one once the value is fixed.
++      input.addEventListener('input', function () {
++        if (message.classList.contains('success')) setMessage('');
++        if (input.getAttribute('aria-invalid') === 'true' && !getError()) clearError();
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        const error = getError();
++        if (error) {
++          showError(error);
++          input.focus();
++          return;
++        }
++        // TODO: send to the newsletter provider/backend endpoint.
++        form.reset();
++        clearError();
++        setMessage("Thanks for subscribing! Check your inbox for a welcome brew.", 'success');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

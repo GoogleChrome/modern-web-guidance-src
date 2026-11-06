@@ -1,0 +1,272 @@
+diff --git a/index.html b/index.html
+index 66c9173..96aeb7c 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,115 @@
+       color: var(--primary);
+     }
+ 
++    /* Swipe-to-reveal drink cards
++       The card is a horizontal scroll-snap container: column 1 is the drink
++       content, column 2 is the hidden action panel. Swiping left snaps the
++       panel into view; nothing is executed until a button is pressed. */
++    .SwipeReveal {
++      padding: 0;
++      display: grid;
++      grid-template-columns: 100% max-content;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++      /* Chain excess scroll to the page without bouncing the action panel. */
++      overscroll-behavior: chain;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .SwipeReveal {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .SwipeReveal-content {
++      scroll-snap-align: start;
++      scroll-initial-target: nearest;
++      padding: 20px;
++      background: white;
++    }
++
++    .SwipeReveal-content:focus-visible {
++      outline: auto;
++      outline-offset: -2px;
++    }
++
++    .SwipeReveal-hint {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      margin-top: 12px;
++      font-size: 0.75rem;
++      color: #8d6e63;
++    }
++
++    .SwipeReveal-more {
++      background: none;
++      border: 1px solid var(--secondary);
++      border-radius: 999px;
++      padding: 2px 10px;
++      font: inherit;
++      font-size: 0.75rem;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .SwipeReveal-more:hover {
++      background: var(--secondary);
++    }
++
++    .SwipeReveal-panel {
++      /* Snap to `end` so every button is fully in view when revealed. */
++      scroll-snap-align: end;
++      display: flex;
++      align-items: stretch;
++      background: var(--secondary);
++    }
++
++    .SwipeReveal-panel button {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      gap: 6px;
++      min-inline-size: 84px;
++      padding: 12px;
++      border: 0;
++      border-inline-start: 1px solid rgba(78, 52, 46, 0.15);
++      background: transparent;
++      color: var(--primary);
++      font: inherit;
++      font-size: 0.8rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .SwipeReveal-panel button:hover,
++    .SwipeReveal-panel button:focus-visible {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .SwipeReveal-panel button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .SwipeReveal-panel .icon {
++      font-size: 1.4rem;
++      line-height: 1;
++    }
++
++    .SwipeReveal-status {
++      min-height: 1.5em;
++      margin-top: 16px;
++      text-align: center;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,22 +287,74 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <article class="card SwipeReveal" data-drink="Maple Oat Latte">
++          <div class="SwipeReveal-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <p class="SwipeReveal-hint">
++              <span aria-hidden="true">&#8592; Swipe for options</span>
++              <button type="button" class="SwipeReveal-more" aria-label="Show options for Maple Oat Latte">Options</button>
++            </p>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Maple Oat Latte actions">
++            <button type="button" data-action="favorite" aria-pressed="false">
++              <span class="icon" aria-hidden="true">&#9825;</span>Favorite
++            </button>
++            <button type="button" data-action="order">
++              <span class="icon" aria-hidden="true">&#9749;</span>Add to Order
++            </button>
++            <button type="button" data-action="share">
++              <span class="icon" aria-hidden="true">&#10150;</span>Share
++            </button>
++          </div>
++        </article>
++        <article class="card SwipeReveal" data-drink="Dark Roast Espresso">
++          <div class="SwipeReveal-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <p class="SwipeReveal-hint">
++              <span aria-hidden="true">&#8592; Swipe for options</span>
++              <button type="button" class="SwipeReveal-more" aria-label="Show options for Dark Roast Espresso">Options</button>
++            </p>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Dark Roast Espresso actions">
++            <button type="button" data-action="favorite" aria-pressed="false">
++              <span class="icon" aria-hidden="true">&#9825;</span>Favorite
++            </button>
++            <button type="button" data-action="order">
++              <span class="icon" aria-hidden="true">&#9749;</span>Add to Order
++            </button>
++            <button type="button" data-action="share">
++              <span class="icon" aria-hidden="true">&#10150;</span>Share
++            </button>
++          </div>
++        </article>
++        <article class="card SwipeReveal" data-drink="Cold Brew">
++          <div class="SwipeReveal-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <p class="SwipeReveal-hint">
++              <span aria-hidden="true">&#8592; Swipe for options</span>
++              <button type="button" class="SwipeReveal-more" aria-label="Show options for Cold Brew">Options</button>
++            </p>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Cold Brew actions">
++            <button type="button" data-action="favorite" aria-pressed="false">
++              <span class="icon" aria-hidden="true">&#9825;</span>Favorite
++            </button>
++            <button type="button" data-action="order">
++              <span class="icon" aria-hidden="true">&#9749;</span>Add to Order
++            </button>
++            <button type="button" data-action="share">
++              <span class="icon" aria-hidden="true">&#10150;</span>Share
++            </button>
++          </div>
++        </article>
+       </div>
++      <p class="SwipeReveal-status" role="status" aria-live="polite"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +368,61 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const status = document.querySelector('.SwipeReveal-status');
++
++      for (const card of document.querySelectorAll('.SwipeReveal')) {
++        const content = card.querySelector('.SwipeReveal-content');
++        const panel = card.querySelector('.SwipeReveal-panel');
++        const drink = card.dataset.drink;
++
++        // Keyboard: focusing the content (or anything inside it) snaps the
++        // panel closed. Pointer/touch interactions are left alone.
++        content.addEventListener('focusin', (event) => {
++          if (event.target.matches(':focus-visible')) {
++            content.scrollIntoView({ block: 'nearest', inline: 'start' });
++          }
++        });
++
++        // Mouse/keyboard affordance for users who can't swipe.
++        card.querySelector('.SwipeReveal-more').addEventListener('click', () => {
++          panel.scrollIntoView({ block: 'nearest', inline: 'end' });
++          panel.querySelector('button').focus({ preventScroll: true });
++        });
++
++        // Actions only run on an explicit button press, never on the swipe.
++        panel.addEventListener('click', (event) => {
++          const button = event.target.closest('button[data-action]');
++          if (!button) return;
++
++          let message = '';
++          switch (button.dataset.action) {
++            case 'favorite': {
++              const on = button.getAttribute('aria-pressed') !== 'true';
++              button.setAttribute('aria-pressed', String(on));
++              button.querySelector('.icon').innerHTML = on ? '&#9829;' : '&#9825;';
++              message = on ? `${drink} saved to favorites.` : `${drink} removed from favorites.`;
++              break;
++            }
++            case 'order':
++              message = `${drink} added to your order.`;
++              break;
++            case 'share':
++              message = `Share link for ${drink} copied.`;
++              if (navigator.clipboard) {
++                navigator.clipboard.writeText(location.origin + card.querySelector('.btn').getAttribute('href')).catch(() => {});
++              }
++              break;
++          }
++
++          status.textContent = message;
++          content.scrollIntoView({ block: 'nearest', inline: 'start' });
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

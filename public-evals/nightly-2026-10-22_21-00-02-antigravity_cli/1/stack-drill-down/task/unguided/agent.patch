@@ -1,0 +1,2246 @@
+diff --git a/cold-brew/index.html b/cold-brew/index.html
+new file mode 100644
+--- a/cold-brew/index.html
++++ b/cold-brew/index.html
+@@ -0,0 +1,2241 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
++  <style>
++    :root {
++      /* Legacy & Core Brand Tokens */
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++
++      /* Artisanal Roastery Extended Palette */
++      --bg-primary: #faf7f2;
++      --bg-secondary: #f3ece4;
++      --bg-elevated: #ffffff;
++      --text-primary: #2c1a14;
++      --text-secondary: #6e584f;
++      --accent-primary: #4e342e;
++      --accent-secondary: #d97724;
++      --accent-gold: #ffab40;
++      --border-warm: rgba(78, 52, 46, 0.12);
++      --scrim-bg: rgba(24, 13, 9, 0.48);
++      --shadow-card: 0 12px 32px -8px rgba(44, 26, 20, 0.08), 0 4px 12px -2px rgba(44, 26, 20, 0.04);
++      --shadow-card-hover: 0 20px 40px -10px rgba(44, 26, 20, 0.16), 0 8px 18px -4px rgba(44, 26, 20, 0.08);
++      --shadow-stack-edge: -20px 0 48px rgba(24, 13, 9, 0.32), -4px 0 12px rgba(24, 13, 9, 0.14);
++
++      /* Layout & Animation Tokens */
++      --nav-height: 64px;
++      --stack-duration: 420ms;
++      --stack-easing: cubic-bezier(0.22, 1, 0.36, 1);
++      --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
++      --font-sans: 'Plus Jakarta Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      --font-mono: 'JetBrains Mono', monospace;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    html,
++    body {
++      width: 100%;
++      height: 100%;
++      overflow: hidden;
++      font-family: var(--font-sans);
++      line-height: 1.6;
++      color: var(--text-primary);
++      background-color: #1e120e;
++      -webkit-font-smoothing: antialiased;
++    }
++
++    /* Full-Screen Application Shell */
++    .app-shell {
++      position: relative;
++      width: 100vw;
++      height: 100vh;
++      height: 100dvh;
++      display: flex;
++      flex-direction: column;
++      overflow: hidden;
++      background-color: #1e120e;
++    }
++
++    /* Persistent Top Brand Navigation */
++    nav.primary-nav {
++      background: var(--primary);
++      color: white;
++      padding: 0 5%;
++      height: var(--nav-height);
++      flex-shrink: 0;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: relative;
++      z-index: 1000;
++      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
++    }
++
++    .logo {
++      font-family: var(--font-display);
++      font-size: 1.35rem;
++      font-weight: 700;
++      letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      user-select: none;
++    }
++
++    .logo-Bean {
++      display: inline-flex;
++      width: 28px;
++      height: 28px;
++      border-radius: 50%;
++      background: rgba(255, 171, 64, 0.18);
++      border: 1px solid rgba(255, 171, 64, 0.55);
++      align-items: center;
++      justify-content: center;
++      color: var(--accent);
++      font-size: 0.95rem;
++    }
++
++    nav.primary-nav ul {
++      display: flex;
++      align-items: center;
++      list-style: none;
++    }
++
++    nav.primary-nav ul li {
++      margin-left: 20px;
++    }
++
++    nav.primary-nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      font-weight: 500;
++      transition: color 0.25s ease;
++    }
++
++    nav.primary-nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    .bag-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: rgba(255, 255, 255, 0.12);
++      padding: 5px 12px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      color: #fff;
++      border: 1px solid rgba(255, 255, 255, 0.16);
++    }
++
++    .bag-count {
++      background: var(--accent-secondary);
++      color: #fff;
++      font-family: var(--font-mono);
++      font-size: 0.75rem;
++      padding: 1px 7px;
++      border-radius: 999px;
++    }
++
++    /* Full-Screen Hierarchical Drill-Down Stack Viewport */
++    .stack-viewport {
++      position: relative;
++      flex: 1;
++      width: 100%;
++      height: calc(100vh - var(--nav-height));
++      height: calc(100dvh - var(--nav-height));
++      overflow: hidden;
++      background: #1e120e;
++      perspective: 1200px;
++    }
++
++    /* Individual Full-Screen Stack Layer */
++    .stack-view {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      overflow-y: auto;
++      overflow-x: hidden;
++      -webkit-overflow-scrolling: touch;
++      background-color: var(--bg-primary);
++      will-change: transform, opacity;
++      transition:
++        transform var(--stack-duration) var(--stack-easing),
++        opacity var(--stack-duration) var(--stack-easing),
++        visibility var(--stack-duration);
++    }
++
++    /* Level 0: Root View (Homepage) */
++    .stack-view.root-view {
++      z-index: 10;
++      transform: translate3d(0%, 0, 0) scale(1);
++      transform-origin: center center;
++      visibility: visible;
++    }
++
++    /* Receded Parallax State when Detail View is Pushed */
++    .stack-viewport[data-stack-depth="1"] .stack-view.root-view,
++    .stack-view.root-view.is-receded {
++      transform: translate3d(-25%, 0, 0) scale(0.96);
++      pointer-events: none;
++      user-select: none;
++      border-radius: 14px;
++    }
++
++    /* Scrim Overlay between Level 0 and Level 1 */
++    .stack-scrim {
++      position: absolute;
++      inset: 0;
++      z-index: 15;
++      background: var(--scrim-bg);
++      opacity: 0;
++      pointer-events: none;
++      transition: opacity var(--stack-duration) var(--stack-easing);
++      cursor: pointer;
++    }
++
++    .stack-viewport[data-stack-depth="1"] .stack-scrim,
++    .stack-scrim.is-visible {
++      opacity: 1;
++      pointer-events: auto;
++    }
++
++    /* Level 1: Detail View */
++    .stack-view.detail-view {
++      z-index: 20;
++      transform: translate3d(100%, 0, 0);
++      visibility: hidden;
++      pointer-events: none;
++      box-shadow: var(--shadow-stack-edge);
++      background-color: var(--bg-primary);
++      display: flex;
++      flex-direction: column;
++    }
++
++    .stack-viewport[data-stack-depth="1"] .stack-view.detail-view,
++    .stack-view.detail-view.is-active {
++      transform: translate3d(0%, 0, 0);
++      visibility: visible;
++      pointer-events: auto;
++    }
++
++    /* Disable CSS transitions during live 1:1 touch/pointer swipe gestures */
++    .stack-viewport.is-dragging .stack-view.root-view,
++    .stack-viewport.is-dragging .stack-view.detail-view,
++    .stack-viewport.is-dragging .stack-scrim {
++      transition: none !important;
++    }
++
++    /* Left-Edge Swipe Handle Indicator */
++    .swipe-edge-zone {
++      position: fixed;
++      top: var(--nav-height);
++      left: 0;
++      bottom: 0;
++      width: 28px;
++      z-index: 60;
++      cursor: grab;
++      display: flex;
++      align-items: center;
++      justify-content: flex-start;
++      padding-left: 6px;
++      pointer-events: none;
++    }
++
++    .stack-viewport[data-stack-depth="1"] .swipe-edge-zone {
++      pointer-events: auto;
++    }
++
++    .swipe-edge-pill {
++      width: 5px;
++      height: 56px;
++      border-radius: 999px;
++      background: rgba(78, 52, 46, 0.24);
++      transition: transform 0.2s ease, background 0.2s ease, height 0.2s ease;
++    }
++
++    .swipe-edge-zone:hover .swipe-edge-pill,
++    .stack-viewport.is-dragging .swipe-edge-pill {
++      background: var(--accent-secondary);
++      height: 76px;
++      transform: scaleX(1.3);
++    }
++
++    /* Hero Section (Root View) */
++    .hero {
++      min-height: 54vh;
++      background:
++        linear-gradient(180deg, rgba(28, 15, 10, 0.58) 0%, rgba(44, 26, 20, 0.72) 100%),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 48px 20px;
++      position: relative;
++    }
++
++    .hero-eyebrow {
++      display: inline-block;
++      font-family: var(--font-mono);
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.14em;
++      color: var(--accent);
++      background: rgba(255, 171, 64, 0.14);
++      border: 1px solid rgba(255, 171, 64, 0.35);
++      padding: 6px 14px;
++      border-radius: 999px;
++      margin-bottom: 16px;
++    }
++
++    .hero h1 {
++      font-family: var(--font-display);
++      font-size: clamp(2.25rem, 4.5vw, 3.5rem);
++      line-height: 1.12;
++      letter-spacing: -0.02em;
++      margin-bottom: 1rem;
++      max-width: 18ch;
++    }
++
++    .hero p {
++      font-size: 1.12rem;
++      color: rgba(255, 255, 255, 0.9);
++      max-width: 52ch;
++      margin-bottom: 0.5rem;
++    }
++
++    /* Main Content Container */
++    .container {
++      max-width: 1140px;
++      margin: 48px auto;
++      padding: 0 24px;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 32px;
++    }
++
++    .section-eyebrow {
++      font-family: var(--font-mono);
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.12em;
++      color: var(--accent-secondary);
++      display: block;
++      margin-bottom: 6px;
++    }
++
++    .section-header h2 {
++      font-family: var(--font-display);
++      font-size: clamp(1.75rem, 3vw, 2.35rem);
++      color: var(--text-primary);
++      letter-spacing: -0.01em;
++    }
++
++    .section-header p {
++      color: var(--text-secondary);
++      font-size: 0.98rem;
++      margin-top: 6px;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 28px;
++      margin-top: 20px;
++    }
++
++    /* Interactive Seasonal Favorites Cards */
++    .card {
++      background: var(--bg-elevated);
++      border-radius: 16px;
++      border: 1px solid var(--border-warm);
++      box-shadow: var(--shadow-card);
++      text-align: left;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      cursor: pointer;
++      transition:
++        transform 0.28s var(--stack-easing),
++        box-shadow 0.28s var(--stack-easing),
++        border-color 0.28s ease;
++      position: relative;
++    }
++
++    .card:hover,
++    .card:focus-visible {
++      transform: translateY(-5px);
++      box-shadow: var(--shadow-card-hover);
++      border-color: rgba(217, 119, 36, 0.45);
++      outline: none;
++    }
++
++    .card-media {
++      position: relative;
++      height: 210px;
++      overflow: hidden;
++      background: var(--bg-secondary);
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      transition: transform 0.55s var(--stack-easing);
++    }
++
++    .card:hover .card-media img {
++      transform: scale(1.06);
++    }
++
++    .card-price-badge {
++      position: absolute;
++      top: 14px;
++      right: 14px;
++      background: rgba(44, 26, 20, 0.88);
++      backdrop-filter: blur(6px);
++      color: #fff;
++      font-family: var(--font-mono);
++      font-size: 0.86rem;
++      font-weight: 600;
++      padding: 5px 12px;
++      border-radius: 999px;
++      border: 1px solid rgba(255, 171, 64, 0.35);
++    }
++
++    .card-season-tag {
++      position: absolute;
++      bottom: 12px;
++      left: 14px;
++      background: rgba(250, 247, 242, 0.92);
++      color: var(--primary);
++      font-family: var(--font-mono);
++      font-size: 0.72rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      padding: 4px 10px;
++      border-radius: 6px;
++    }
++
++    .card-body {
++      padding: 24px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .card h3 {
++      font-family: var(--font-display);
++      font-size: 1.38rem;
++      margin-bottom: 8px;
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .card p {
++      color: var(--text-secondary);
++      font-size: 0.96rem;
++      margin-bottom: 16px;
++      flex: 1;
++    }
++
++    .card-notes {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      margin-bottom: 18px;
++    }
++
++    .note-pill {
++      font-size: 0.76rem;
++      font-weight: 600;
++      background: var(--bg-secondary);
++      color: var(--primary);
++      padding: 4px 10px;
++      border-radius: 999px;
++    }
++
++    .card-footer {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding-top: 14px;
++      border-top: 1px solid var(--border-warm);
++    }
++
++    .card-meta {
++      font-family: var(--font-mono);
++      font-size: 0.78rem;
++      color: var(--text-secondary);
++    }
++
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 8px;
++      font-weight: 600;
++      font-size: 0.9rem;
++      border: none;
++      cursor: pointer;
++      transition: background 0.25s ease, transform 0.2s ease;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    .card .btn {
++      margin-top: 0;
++      padding: 9px 16px;
++      font-size: 0.86rem;
++    }
++
++    .btn-chevron {
++      transition: transform 0.25s ease;
++      display: inline-block;
++    }
++
++    .card:hover .btn-chevron {
++      transform: translateX(4px);
++    }
++
++    /* Detail View Header & Navigation Bar */
++    .detail-navbar {
++      position: sticky;
++      top: 0;
++      z-index: 40;
++      background: rgba(250, 247, 242, 0.92);
++      backdrop-filter: blur(12px);
++      -webkit-backdrop-filter: blur(12px);
++      border-bottom: 1px solid var(--border-warm);
++      padding: 12px 5%;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      min-height: 60px;
++    }
++
++    .back-btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: var(--bg-elevated);
++      color: var(--primary);
++      border: 1px solid rgba(78, 52, 46, 0.2);
++      padding: 8px 16px;
++      border-radius: 999px;
++      font-family: var(--font-sans);
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: all 0.2s ease;
++      box-shadow: 0 2px 6px rgba(44, 26, 20, 0.06);
++    }
++
++    .back-btn:hover {
++      background: var(--primary);
++      color: #fff;
++      border-color: var(--primary);
++      transform: translateX(-2px);
++    }
++
++    .back-btn svg {
++      width: 18px;
++      height: 18px;
++      stroke: currentColor;
++      stroke-width: 2.2;
++      fill: none;
++    }
++
++    .detail-breadcrumbs {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++      color: var(--text-secondary);
++      overflow: hidden;
++      text-overflow: ellipsis;
++      white-space: nowrap;
++    }
++
++    .detail-breadcrumbs a,
++    .detail-breadcrumbs button {
++      background: none;
++      border: none;
++      color: var(--text-secondary);
++      font-family: inherit;
++      font-size: inherit;
++      cursor: pointer;
++      text-decoration: none;
++      padding: 2px 4px;
++      border-radius: 4px;
++      transition: color 0.2s;
++    }
++
++    .detail-breadcrumbs a:hover,
++    .detail-breadcrumbs button:hover {
++      color: var(--primary);
++      text-decoration: underline;
++    }
++
++    .detail-breadcrumbs .crumb-current {
++      color: var(--text-primary);
++      font-weight: 600;
++    }
++
++    .detail-sibling-nav {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .sibling-btn {
++      background: var(--bg-elevated);
++      border: 1px solid var(--border-warm);
++      color: var(--text-primary);
++      padding: 6px 12px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .sibling-btn:hover {
++      background: var(--bg-secondary);
++      border-color: var(--primary);
++    }
++
++    /* Detail View Main Content Layout */
++    .detail-content-wrap {
++      max-width: 1140px;
++      width: 100%;
++      margin: 0 auto;
++      padding: 36px 24px 64px;
++      flex: 1;
++    }
++
++    .detail-hero-grid {
++      display: grid;
++      grid-template-columns: 1.05fr 1fr;
++      gap: 44px;
++      align-items: start;
++    }
++
++    .detail-gallery-card {
++      position: relative;
++      border-radius: 20px;
++      overflow: hidden;
++      box-shadow: 0 20px 44px -12px rgba(44, 26, 20, 0.18);
++      border: 1px solid var(--border-warm);
++      background: var(--bg-secondary);
++    }
++
++    .detail-gallery-card img {
++      width: 100%;
++      height: 440px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .detail-gallery-overlay {
++      position: absolute;
++      bottom: 0;
++      inset-inline: 0;
++      padding: 24px;
++      background: linear-gradient(transparent, rgba(28, 15, 10, 0.85));
++      color: #fff;
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-end;
++      gap: 12px;
++    }
++
++    .detail-origin-badge {
++      font-family: var(--font-mono);
++      font-size: 0.76rem;
++      text-transform: uppercase;
++      letter-spacing: 0.1em;
++      background: rgba(255, 171, 64, 0.22);
++      border: 1px solid rgba(255, 171, 64, 0.55);
++      color: #ffd180;
++      padding: 5px 12px;
++      border-radius: 999px;
++      display: inline-block;
++      margin-bottom: 6px;
++    }
++
++    .detail-roast-meter {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-family: var(--font-mono);
++      font-size: 0.78rem;
++    }
++
++    .roast-dots {
++      display: inline-flex;
++      gap: 4px;
++    }
++
++    .roast-dot {
++      width: 9px;
++      height: 9px;
++      border-radius: 50%;
++      background: rgba(255, 255, 255, 0.28);
++    }
++
++    .roast-dot.is-filled {
++      background: var(--accent);
++    }
++
++    /* Detail Product Column */
++    .detail-info-panel {
++      display: flex;
++      flex-direction: column;
++      gap: 22px;
++    }
++
++    .detail-eyebrow {
++      font-family: var(--font-mono);
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.12em;
++      color: var(--accent-secondary);
++      font-weight: 600;
++    }
++
++    .detail-title-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 16px;
++      flex-wrap: wrap;
++    }
++
++    .detail-title {
++      font-family: var(--font-display);
++      font-size: clamp(2rem, 3.5vw, 2.75rem);
++      line-height: 1.15;
++      color: var(--text-primary);
++    }
++
++    .detail-price {
++      font-family: var(--font-mono);
++      font-size: 1.65rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .detail-description {
++      font-size: 1.05rem;
++      color: var(--text-secondary);
++      line-height: 1.68;
++      max-width: 65ch;
++    }
++
++    /* Tasting Notes & Specs Grid */
++    .detail-tasting-wrap {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .tasting-chip {
++      background: var(--bg-secondary);
++      border: 1px solid rgba(78, 52, 46, 0.15);
++      color: var(--primary);
++      padding: 6px 14px;
++      border-radius: 999px;
++      font-size: 0.84rem;
++      font-weight: 600;
++    }
++
++    /* Customization Controls */
++    .customization-card {
++      background: var(--bg-elevated);
++      border: 1px solid var(--border-warm);
++      border-radius: 16px;
++      padding: 22px;
++      box-shadow: var(--shadow-card);
++      display: flex;
++      flex-direction: column;
++      gap: 18px;
++    }
++
++    .control-group-label {
++      font-size: 0.82rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      color: var(--text-secondary);
++      margin-bottom: 8px;
++      display: flex;
++      justify-content: space-between;
++    }
++
++    .size-options,
++    .milk-options {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++    }
++
++    .option-btn {
++      background: var(--bg-primary);
++      border: 1.5px solid var(--border-warm);
++      border-radius: 10px;
++      padding: 10px 12px;
++      text-align: center;
++      cursor: pointer;
++      transition: all 0.2s ease;
++      font-family: var(--font-sans);
++    }
++
++    .option-btn:hover {
++      border-color: var(--primary);
++    }
++
++    .option-btn.is-selected {
++      background: var(--primary);
++      color: #fff;
++      border-color: var(--primary);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.22);
++    }
++
++    .option-btn .opt-name {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .option-btn .opt-sub {
++      display: block;
++      font-family: var(--font-mono);
++      font-size: 0.74rem;
++      opacity: 0.8;
++      margin-top: 2px;
++    }
++
++    .order-action-row {
++      display: flex;
++      align-items: center;
++      gap: 14px;
++      margin-top: 4px;
++    }
++
++    .qty-stepper {
++      display: inline-flex;
++      align-items: center;
++      background: var(--bg-primary);
++      border: 1.5px solid var(--border-warm);
++      border-radius: 10px;
++      overflow: hidden;
++    }
++
++    .qty-btn {
++      background: none;
++      border: none;
++      width: 38px;
++      height: 44px;
++      font-size: 1.15rem;
++      font-weight: 700;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .qty-btn:hover {
++      background: var(--bg-secondary);
++    }
++
++    .qty-value {
++      font-family: var(--font-mono);
++      font-size: 0.95rem;
++      font-weight: 600;
++      min-width: 28px;
++      text-align: center;
++    }
++
++    .add-to-order-btn {
++      flex: 1;
++      height: 46px;
++      background: var(--accent-secondary);
++      color: #fff;
++      border: none;
++      border-radius: 10px;
++      font-family: var(--font-sans);
++      font-size: 0.98rem;
++      font-weight: 700;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
++      transition: background 0.2s ease, transform 0.15s ease;
++      box-shadow: 0 6px 18px rgba(217, 119, 36, 0.28);
++    }
++
++    .add-to-order-btn:hover {
++      background: #c26518;
++      transform: translateY(-1px);
++    }
++
++    /* Specs & Craft Cards Below Hero */
++    .detail-specs-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
++      gap: 20px;
++      margin-top: 40px;
++    }
++
++    .spec-box {
++      background: var(--bg-elevated);
++      border: 1px solid var(--border-warm);
++      border-radius: 14px;
++      padding: 20px;
++      box-shadow: var(--shadow-card);
++    }
++
++    .spec-box-label {
++      font-family: var(--font-mono);
++      font-size: 0.74rem;
++      text-transform: uppercase;
++      letter-spacing: 0.1em;
++      color: var(--accent-secondary);
++      margin-bottom: 6px;
++    }
++
++    .spec-box-title {
++      font-family: var(--font-display);
++      font-size: 1.12rem;
++      color: var(--text-primary);
++      margin-bottom: 6px;
++    }
++
++    .spec-box-text {
++      font-size: 0.9rem;
++      color: var(--text-secondary);
++    }
++
++    /* Swipe Hint Banner */
++    .swipe-hint-bar {
++      margin-top: 32px;
++      padding: 14px 20px;
++      background: var(--bg-secondary);
++      border: 1px dashed rgba(78, 52, 46, 0.25);
++      border-radius: 12px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 12px;
++      font-size: 0.86rem;
++      color: var(--text-secondary);
++    }
++
++    /* Toast Notification */
++    .order-toast {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      z-index: 2000;
++      background: var(--text-primary);
++      color: #fff;
++      padding: 14px 20px;
++      border-radius: 12px;
++      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
++      border-left: 4px solid var(--accent);
++      font-size: 0.9rem;
++      font-weight: 500;
++      transform: translateY(120%);
++      opacity: 0;
++      transition: transform 0.3s var(--stack-easing), opacity 0.3s ease;
++      pointer-events: none;
++    }
++
++    .order-toast.is-shown {
++      transform: translateY(0);
++      opacity: 1;
++    }
++
++    /* Footer */
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 48px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    /* Responsive Breakpoints */
++    @media (max-width: 860px) {
++      .detail-hero-grid {
++        grid-template-columns: 1fr;
++        gap: 28px;
++      }
++
++      .detail-gallery-card img {
++        height: 300px;
++      }
++
++      .detail-breadcrumbs {
++        display: none;
++      }
++
++      nav.primary-nav ul li {
++        margin-left: 12px;
++      }
++    }
++
++    @media (max-width: 600px) {
++      nav.primary-nav {
++        padding: 0 16px;
++      }
++
++      nav.primary-nav ul li:nth-child(2),
++      nav.primary-nav ul li:nth-child(3) {
++        display: none;
++      }
++    }
++  </style>
++</head>
++
++<body>
++  <div class="app-shell">
++    <!-- Persistent Top Bar -->
++    <nav class="primary-nav" aria-label="Main Navigation">
++      <a href="/" class="logo" id="brand-logo" data-nav-root="true">
++        <span class="logo-Bean" aria-hidden="true">☕</span>
++        <span>THE DAILY GRIND</span>
++      </a>
++      <ul>
++        <li><a href="/menu" data-nav-root="true">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li>
++          <span class="bag-pill" aria-live="polite">
++            Bag <span class="bag-count" id="bag-count">0</span>
++          </span>
++        </li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </nav>
++
++    <!-- Full-Screen Hierarchical Drill-Down Stack Viewport -->
++    <div
++      class="stack-viewport nav-stack drilldown-stack"
++      id="stack-viewport"
++      data-stack-depth="0"
++      role="region"
++      aria-label="Seasonal Favorites Navigation Stack"
++    >
++      <!-- LEVEL 0: Root View (Homepage) -->
++      <div
++        class="stack-view root-view is-active"
++        id="view-home"
++        data-view="home"
++        data-level="0"
++        aria-hidden="false"
++      >
++        <header class="hero">
++          <span class="hero-eyebrow">Small-Batch Craft Roastery • Est. 2014</span>
++          <h1>Wake Up Your Senses</h1>
++          <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++          <a href="#seasonal-favorites-section" class="btn" id="hero-order-btn" style="margin-top: 18px;">Order Now</a>
++        </header>
++
++        <main class="container" id="seasonal-favorites-section">
++          <section aria-labelledby="seasonal-heading">
++            <div class="section-header">
++              <span class="section-eyebrow">Limited Roastery Release</span>
++              <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++              <p>Select any seasonal craft beverage below to explore tasting notes, origins, and custom preparation.</p>
++            </div>
++
++            <div class="grid" id="seasonal-grid">
++              <!-- Card 1: Maple Oat Latte -->
++              <article
++                class="card"
++                data-item-id="seasonal"
++                data-slug="maple-oat-latte"
++                data-path="/menu/seasonal"
++                tabindex="0"
++                role="button"
++                aria-label="Maple Oat Latte - View Details"
++              >
++                <div class="card-media">
++                  <img
++                    src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=900&q=80"
++                    alt="Maple Oat Latte with silky latte art in a ceramic cup"
++                    loading="eager"
++                  >
++                  <span class="card-price-badge">$5.75</span>
++                  <span class="card-season-tag">Autumn Signature</span>
++                </div>
++                <div class="card-body">
++                  <h3>Maple Oat Latte</h3>
++                  <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                  <div class="card-notes">
++                    <span class="note-pill">Vermont Maple</span>
++                    <span class="note-pill">Toasted Oat</span>
++                    <span class="note-pill">Warm Cinnamon</span>
++                  </div>
++                  <div class="card-footer">
++                    <span class="card-meta">240 cal • 150mg caf</span>
++                    <a href="/menu/seasonal" class="btn" data-item-link="seasonal">
++                      View Details <span class="btn-chevron" aria-hidden="true">→</span>
++                    </a>
++                  </div>
++                </div>
++              </article>
++
++              <!-- Card 2: Dark Roast Espresso -->
++              <article
++                class="card"
++                data-item-id="espresso"
++                data-slug="dark-roast-espresso"
++                data-path="/menu/espresso"
++                tabindex="0"
++                role="button"
++                aria-label="Dark Roast Espresso - View Details"
++              >
++                <div class="card-media">
++                  <img
++                    src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=900&q=80"
++                    alt="Rich Dark Roast Espresso shot with thick golden-brown crema"
++                    loading="eager"
++                  >
++                  <span class="card-price-badge">$4.25</span>
++                  <span class="card-season-tag">Roaster's Reserve</span>
++                </div>
++                <div class="card-body">
++                  <h3>Dark Roast Espresso</h3>
++                  <p>Bold, smokey, and perfect for a morning boost.</p>
++                  <div class="card-notes">
++                    <span class="note-pill">85% Dark Cacao</span>
++                    <span class="note-pill">Smoked Cedar</span>
++                    <span class="note-pill">Molasses</span>
++                  </div>
++                  <div class="card-footer">
++                    <span class="card-meta">10 cal • 185mg caf</span>
++                    <a href="/menu/espresso" class="btn" data-item-link="espresso">
++                      View Details <span class="btn-chevron" aria-hidden="true">→</span>
++                    </a>
++                  </div>
++                </div>
++              </article>
++
++              <!-- Card 3: Cold Brew -->
++              <article
++                class="card"
++                data-item-id="cold-brew"
++                data-slug="cold-brew"
++                data-path="/menu/cold-brew"
++                tabindex="0"
++                role="button"
++                aria-label="Cold Brew - View Details"
++              >
++                <div class="card-media">
++                  <img
++                    src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=900&q=80"
++                    alt="Slow-steeped Cold Brew coffee poured over crystal ice cubes"
++                    loading="eager"
++                  >
++                  <span class="card-price-badge">$5.25</span>
++                  <span class="card-season-tag">18-Hr Slow Steep</span>
++                </div>
++                <div class="card-body">
++                  <h3>Cold Brew</h3>
++                  <p>Steeped for 18 hours for maximum smoothness.</p>
++                  <div class="card-notes">
++                    <span class="note-pill">Dutch Cocoa</span>
++                    <span class="note-pill">Sweet Malt</span>
++                    <span class="note-pill">Toasted Pecan</span>
++                  </div>
++                  <div class="card-footer">
++                    <span class="card-meta">20 cal • 240mg caf</span>
++                    <a href="/menu/cold-brew" class="btn" data-item-link="cold-brew">
++                      View Details <span class="btn-chevron" aria-hidden="true">→</span>
++                    </a>
++                  </div>
++                </div>
++              </article>
++            </div>
++          </section>
++        </main>
++
++        <footer>
++          <div class="footer-links">
++            <a href="/about">Our Story</a> |
++            <a href="/careers">Join the Team</a> |
++            <a href="/contact">Contact Us</a> |
++            <a href="/privacy-policy">Privacy</a>
++          </div>
++          <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++        </footer>
++      </div>
++
++      <!-- Scrim Overlay between Root and Detail Stack Views -->
++      <div
++        class="stack-scrim"
++        id="stack-scrim"
++        title="Click to return to Seasonal Favorites"
++        aria-hidden="true"
++      ></div>
++
++      <!-- Left-Edge Touch/Pointer Drag Handle -->
++      <div class="swipe-edge-zone" id="swipe-edge-zone" title="Drag right to swipe back" aria-hidden="true">
++        <div class="swipe-edge-pill"></div>
++      </div>
++
++      <!-- LEVEL 1: Detail View (Seasonal Favorite Item Drill-Down) -->
++      <section
++        class="stack-view detail-view"
++        id="view-detail"
++        data-view="detail"
++        data-level="1"
++        data-active-item=""
++        aria-hidden="true"
++        aria-labelledby="detail-title"
++      >
++        <!-- Sticky Detail Navigation Bar -->
++        <header class="detail-navbar">
++          <button
++            type="button"
++            class="back-btn"
++            id="detail-back-btn"
++            data-action="back"
++            aria-label="Back to Seasonal Favorites"
++          >
++            <svg viewBox="0 0 24 24" aria-hidden="true">
++              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
++            </svg>
++            <span>Seasonal Favorites</span>
++          </button>
++
++          <nav class="detail-breadcrumbs" aria-label="Breadcrumb">
++            <a href="/" data-action="back">Home</a>
++            <span aria-hidden="true">/</span>
++            <a href="/#seasonal-favorites-section" data-action="back">Seasonal Favorites</a>
++            <span aria-hidden="true">/</span>
++            <span class="crumb-current" id="detail-crumb-title">Maple Oat Latte</span>
++          </nav>
++
++          <div class="detail-sibling-nav" aria-label="Switch Seasonal Beverage">
++            <button type="button" class="sibling-btn" id="prev-item-btn" title="Previous Seasonal Item">
++              ← Prev
++            </button>
++            <button type="button" class="sibling-btn" id="next-item-btn" title="Next Seasonal Item">
++              Next →
++            </button>
++          </div>
++        </header>
++
++        <!-- Detail Body Content -->
++        <div class="detail-content-wrap" id="detail-content-wrap">
++          <div class="detail-hero-grid">
++            <!-- Left Column: Visual Showcase -->
++            <div class="detail-gallery-card">
++              <img
++                id="detail-image"
++                src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1200&q=80"
++                alt="Maple Oat Latte"
++              >
++              <div class="detail-gallery-overlay">
++                <div>
++                  <span class="detail-origin-badge" id="detail-origin-badge">Huila, Colombia &amp; Yirgacheffe</span>
++                  <div style="font-size: 0.9rem; opacity: 0.92;" id="detail-process">Washed &amp; Natural Blend</div>
++                </div>
++                <div class="detail-roast-meter" aria-label="Roast Level">
++                  <span id="detail-roast-label">Medium-Dark</span>
++                  <span class="roast-dots" id="detail-roast-dots"></span>
++                </div>
++              </div>
++            </div>
++
++            <!-- Right Column: Product Details & Customization -->
++            <div class="detail-info-panel">
++              <div>
++                <div class="detail-eyebrow" id="detail-subtitle">Autumn Roastery Signature • Velvety &amp; Spiced</div>
++                <div class="detail-title-row">
++                  <h1 class="detail-title" id="detail-title">Maple Oat Latte</h1>
++                  <span class="detail-price" id="detail-price">$5.75</span>
++                </div>
++              </div>
++
++              <p class="detail-description" id="detail-description">
++                Creamy barista-grade oat milk steamed to micro-foam perfection, infused with Grade-A dark amber Vermont maple syrup, pulled over a double shot of our heirloom Ethiopian &amp; Colombian espresso blend, and finished with a light dusting of toasted cinnamon bark.
++              </p>
++
++              <div>
++                <div class="control-group-label">
++                  <span>Flavor &amp; Tasting Notes</span>
++                  <span id="detail-caffeine">150mg Caffeine</span>
++                </div>
++                <div class="detail-tasting-wrap" id="detail-tasting-notes"></div>
++              </div>
++
++              <!-- Interactive Customization Panel -->
++              <div class="customization-card">
++                <div>
++                  <div class="control-group-label">
++                    <span>Select Size</span>
++                    <span id="detail-calories">240 kcal</span>
++                  </div>
++                  <div class="size-options" id="detail-size-options" role="radiogroup" aria-label="Beverage Size"></div>
++                </div>
++
++                <div>
++                  <div class="control-group-label">
++                    <span>Preparation &amp; Finish</span>
++                    <span id="detail-prep-time">Prep: 3–4 mins</span>
++                  </div>
++                  <div class="milk-options" id="detail-prep-options" role="radiogroup" aria-label="Preparation Option"></div>
++                </div>
++
++                <div class="order-action-row">
++                  <div class="qty-stepper" aria-label="Quantity">
++                    <button type="button" class="qty-btn" id="qty-minus" aria-label="Decrease quantity">−</button>
++                    <span class="qty-value" id="qty-value">1</span>
++                    <button type="button" class="qty-btn" id="qty-plus" aria-label="Increase quantity">+</button>
++                  </div>
++                  <button type="button" class="add-to-order-btn" id="add-to-order-btn">
++                    <span>Add to Order</span>
++                    <span>•</span>
++                    <span id="cta-total-price">$5.75</span>
++                  </button>
++                </div>
++              </div>
++            </div>
++          </div>
++
++          <!-- Craft & Provenance Cards -->
++          <div class="detail-specs-grid">
++            <div class="spec-box">
++              <div class="spec-box-label">Single-Origin Provenance</div>
++              <div class="spec-box-title" id="spec-origin-title">Huila &amp; Yirgacheffe</div>
++              <p class="spec-box-text" id="spec-origin-text">
++                High-altitude washed Colombian beans paired with sun-dried Ethiopian heirloom cherries.
++              </p>
++            </div>
++
++            <div class="spec-box">
++              <div class="spec-box-label">Barista Extraction Craft</div>
++              <div class="spec-box-title" id="spec-craft-title">Micro-Foam &amp; Maple Reduction</div>
++              <p class="spec-box-text" id="spec-craft-text">
++                Single-orchard Vermont maple whisked directly into a 9-bar double espresso pull before velvet oat milk integration.
++              </p>
++            </div>
++
++            <div class="spec-box">
++              <div class="spec-box-label">Bakery Pairing</div>
++              <div class="spec-box-title" id="spec-pairing-title">Cardamom Morning Bun</div>
++              <p class="spec-box-text" id="spec-pairing-text">
++                Pairs effortlessly with flaky laminated pastries, toasted pecan scones, and salted brown butter croissants.
++              </p>
++            </div>
++
++            <div class="spec-box">
++              <div class="spec-box-label">Dietary &amp; Allergens</div>
++              <div class="spec-box-title" id="spec-dietary-title">100% Plant-Based</div>
++              <p class="spec-box-text" id="spec-dietary-text">
++                Vegan • Dairy-Free • Crafted with certified gluten-free rolled oat milk and pure organic maple.
++              </p>
++            </div>
++          </div>
++
++          <!-- Swipe / Keyboard Navigation Hint -->
++          <div class="swipe-hint-bar">
++            <span>
++              <strong>Navigation Tip:</strong> Swipe right from anywhere on this screen, press <kbd>Esc</kbd>, or use the browser Back button to return to Seasonal Favorites.
++            </span>
++            <button type="button" class="back-btn" data-action="back" style="padding: 6px 14px; font-size: 0.82rem;">
++              ← Back to Seasonal Favorites
++            </button>
++          </div>
++        </div>
++      </section>
++    </div>
++
++    <!-- Order Feedback Toast -->
++    <div class="order-toast" id="order-toast" role="status" aria-live="polite"></div>
++  </div>
++
++  <script>
++    (function () {
++      'use strict';
++
++      // Catalog of Seasonal Favorites with deep-link routes & aliases
++      const SEASONAL_ITEMS = [
++        {
++          id: 'seasonal',
++          slug: 'maple-oat-latte',
++          path: '/menu/seasonal',
++          aliases: ['seasonal', 'maple-oat-latte', '/menu/seasonal', '/menu/maple-oat-latte', '/seasonal', '/maple-oat-latte'],
++          title: 'Maple Oat Latte',
++          subtitle: 'Autumn Roastery Signature • Velvety & Spiced',
++          shortDesc: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          description:
++            'Creamy barista-grade oat milk steamed to micro-foam perfection, infused with Grade-A dark amber Vermont maple syrup, pulled over a double shot of our heirloom Ethiopian & Colombian espresso blend, and finished with a light dusting of toasted cinnamon bark.',
++          image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1200&q=80',
++          origin: 'Huila, Colombia & Yirgacheffe',
++          process: 'Washed & Natural Blend • 1,850m Elevation',
++          roastLabel: 'Medium-Dark (4/5)',
++          roastDots: 4,
++          caffeine: '150mg Caffeine',
++          prepTime: 'Prep: 3–4 mins',
++          tastingNotes: ['Vermont Maple', 'Toasted Oat', 'Warm Cinnamon', 'Caramelized Brown Sugar'],
++          sizes: [
++            { label: 'Small (8 oz)', price: 5.25, calories: 190 },
++            { label: 'Medium (12 oz)', price: 5.75, calories: 240, default: true },
++            { label: 'Large (16 oz)', price: 6.25, calories: 310 }
++          ],
++          preparations: [
++            { label: 'Barista Oat Milk', sub: 'Signature', default: true },
++            { label: 'Almond Breeze', sub: 'Nutty & Light' },
++            { label: 'Iced over Crystal', sub: 'Cold Poured' }
++          ],
++          specs: {
++            originTitle: 'Huila & Yirgacheffe',
++            originText: 'High-altitude washed Colombian beans paired with sun-dried Ethiopian heirloom cherries.',
++            craftTitle: 'Micro-Foam & Maple Reduction',
++            craftText: 'Single-orchard Stowe, Vermont maple whisked directly into a 9-bar double espresso pull.',
++            pairingTitle: 'Cardamom Morning Bun',
++            pairingText: 'Complements flaky laminated pastries, toasted pecan scones, and salted brown butter croissants.',
++            dietaryTitle: '100% Plant-Based',
++            dietaryText: 'Vegan • Dairy-Free • Crafted with certified gluten-free rolled oat milk and pure organic maple.'
++          }
++        },
++        {
++          id: 'espresso',
++          slug: 'dark-roast-espresso',
++          path: '/menu/espresso',
++          aliases: ['espresso', 'dark-roast-espresso', '/menu/espresso', '/menu/dark-roast-espresso', '/espresso', '/dark-roast-espresso'],
++          title: 'Dark Roast Espresso',
++          subtitle: 'House Reserve Pull • Bold, Smokey & Unapologetic',
++          shortDesc: 'Bold, smokey, and perfect for a morning boost.',
++          description:
++            'Bold, smokey, and perfect for a morning boost. Roasted just past second crack in small cast-iron drums to unlock deep bittersweet cacao, charred cedar, and a syrupy mahogany crema that lingers on the palate.',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1200&q=80',
++          origin: 'Mandheling, Sumatra & Antigua',
++          process: 'Wet-Hulled & Washed • 1,600m Elevation',
++          roastLabel: 'Full Dark Roast (5/5)',
++          roastDots: 5,
++          caffeine: '185mg Caffeine',
++          prepTime: 'Prep: 1–2 mins',
++          tastingNotes: ['85% Dark Cacao', 'Smoked Cedar', 'Rich Molasses', 'Roasted Hazelnut'],
++          sizes: [
++            { label: 'Single (1 oz)', price: 3.50, calories: 5 },
++            { label: 'Double (2 oz)', price: 4.25, calories: 10, default: true },
++            { label: 'Quad (4 oz)', price: 5.00, calories: 15 }
++          ],
++          preparations: [
++            { label: 'Neat Demitasse', sub: 'With Sparkling Water', default: true },
++            { label: 'Ristretto Pull', sub: 'Concentrated 1:1.5' },
++            { label: 'Macchiato Mark', sub: 'Dollop of Foam' }
++          ],
++          specs: {
++            originTitle: 'Sumatra & Guatemala',
++            originText: 'Earthy wet-hulled Sumatran Mandheling balanced by volcanic-soil Guatemalan Antigua.',
++            craftTitle: '9-Bar Precision Extraction',
++            craftText: '18.5g dose extracted at 93.5°C yielding 36g in 29 seconds for syrupy body and zero bitterness.',
++            pairingTitle: 'Dark Chocolate Biscotti',
++            pairingText: 'Ideal alongside twice-baked almond biscotti, classic kouign-amann, and chilled mineral water.',
++            dietaryTitle: 'Pure & Unadulterated',
++            dietaryText: 'Vegan • Gluten-Free • Zero Sugar • High Antioxidant Roast Profile.'
++          }
++        },
++        {
++          id: 'cold-brew',
++          slug: 'cold-brew',
++          path: '/menu/cold-brew',
++          aliases: ['cold-brew', '/menu/cold-brew', '/cold-brew'],
++          title: 'Cold Brew',
++          subtitle: '18-Hour Slow Steep • Silky, Low-Acid & Refreshing',
++          shortDesc: 'Steeped for 18 hours for maximum smoothness.',
++          description:
++            'Steeped for 18 hours in filtered cold mountain water for maximum smoothness. Coarse-ground single-origin Brazilian Cerrado beans release natural chocolate-malt sweetness with 65% less acidity than traditional iced coffee.',
++          image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1200&q=80',
++          origin: 'Cerrado Mineiro, Brazil',
++          process: 'Pulped Natural (Honey Process) • 1,150m',
++          roastLabel: 'Medium-Full (4/5)',
++          roastDots: 4,
++          caffeine: '240mg Caffeine',
++          prepTime: 'Prep: 1 min (18h Steep)',
++          tastingNotes: ['Dutch Cocoa', 'Sweet Malt', 'Toasted Pecan', 'Velvety Finish'],
++          sizes: [
++            { label: 'Small (12 oz)', price: 4.75, calories: 15 },
++            { label: 'Medium (16 oz)', price: 5.25, calories: 20, default: true },
++            { label: 'Large (24 oz)', price: 5.95, calories: 25 }
++          ],
++          preparations: [
++            { label: 'Black over Ice', sub: 'Pure & Crisp', default: true },
++            { label: 'Oat Milk Splash', sub: 'Creamy Swirl' },
++            { label: 'Maple Sweet Cream', sub: 'Cold Foam Top' }
++          ],
++          specs: {
++            originTitle: 'Cerrado Mineiro, Brazil',
++            originText: 'Sun-drenched Brazilian plateau lot prized for low acidity and natural cocoa-nut sweetness.',
++            craftTitle: '18-Hour Cold Filtration',
++            craftText: 'Steeped undisturbed from 4 PM to 10 AM in triple-filtered 38°F water through fine-weave linen.',
++            pairingTitle: 'Maple Bacon Brioche',
++            pairingText: 'Balances savory morning pastries, blueberry lemon muffins, and sea salt chocolate chip cookies.',
++            dietaryTitle: 'Low-Acid Craft Brew',
++            dietaryText: 'Vegan • Gluten-Free • 65% Lower Acidity than Hot Brewed Iced Coffee.'
++          }
++        }
++      ];
++
++      // DOM References
++      const stackViewport = document.getElementById('stack-viewport');
++      const rootView = document.getElementById('view-home');
++      const detailView = document.getElementById('view-detail');
++      const stackScrim = document.getElementById('stack-scrim');
++      const swipeEdgeZone = document.getElementById('swipe-edge-zone');
++      const detailBackBtn = document.getElementById('detail-back-btn');
++      const prevItemBtn = document.getElementById('prev-item-btn');
++      const nextItemBtn = document.getElementById('next-item-btn');
++
++      // Detail Content DOM Nodes
++      const detailImage = document.getElementById('detail-image');
++      const detailOriginBadge = document.getElementById('detail-origin-badge');
++      const detailProcess = document.getElementById('detail-process');
++      const detailRoastLabel = document.getElementById('detail-roast-label');
++      const detailRoastDots = document.getElementById('detail-roast-dots');
++      const detailSubtitle = document.getElementById('detail-subtitle');
++      const detailTitle = document.getElementById('detail-title');
++      const detailCrumbTitle = document.getElementById('detail-crumb-title');
++      const detailPrice = document.getElementById('detail-price');
++      const detailDescription = document.getElementById('detail-description');
++      const detailCaffeine = document.getElementById('detail-caffeine');
++      const detailTastingNotes = document.getElementById('detail-tasting-notes');
++      const detailCalories = document.getElementById('detail-calories');
++      const detailSizeOptions = document.getElementById('detail-size-options');
++      const detailPrepTime = document.getElementById('detail-prep-time');
++      const detailPrepOptions = document.getElementById('detail-prep-options');
++      const qtyMinusBtn = document.getElementById('qty-minus');
++      const qtyPlusBtn = document.getElementById('qty-plus');
++      const qtyValueEl = document.getElementById('qty-value');
++      const addToOrderBtn = document.getElementById('add-to-order-btn');
++      const ctaTotalPrice = document.getElementById('cta-total-price');
++      const bagCountEl = document.getElementById('bag-count');
++      const orderToast = document.getElementById('order-toast');
++
++      const specOriginTitle = document.getElementById('spec-origin-title');
++      const specOriginText = document.getElementById('spec-origin-text');
++      const specCraftTitle = document.getElementById('spec-craft-title');
++      const specCraftText = document.getElementById('spec-craft-text');
++      const specPairingTitle = document.getElementById('spec-pairing-title');
++      const specPairingText = document.getElementById('spec-pairing-text');
++      const specDietaryTitle = document.getElementById('spec-dietary-title');
++      const specDietaryText = document.getElementById('spec-dietary-text');
++
++      // Navigation & Selection State
++      let currentItem = null;
++      let selectedSizeIndex = 1;
++      let selectedPrepIndex = 0;
++      let quantity = 1;
++      let bagCount = 0;
++      let savedRootScrollTop = 0;
++      let lastTriggerElement = null;
++      let sessionPushCount = 0;
++      let toastTimer = null;
++
++      /**
++       * Find a Seasonal Favorites item by id, slug, or URL path.
++       */
++      function findSeasonalItem(identifier) {
++        if (!identifier) return null;
++        const normalized = String(identifier)
++          .trim()
++          .toLowerCase()
++          .replace(/\/+$/, '')
++          .replace(/\/index\.html$/, '');
++
++        if (!normalized || normalized === '' || normalized === '/' || normalized === '/menu') {
++          return null;
++        }
++
++        for (const item of SEASONAL_ITEMS) {
++          if (
++            item.id === normalized ||
++            item.slug === normalized ||
++            item.path === normalized ||
++            item.aliases.includes(normalized)
++          ) {
++            return item;
++          }
++          // Match trailing path segment (e.g., /menu/seasonal -> seasonal)
++          const lastSegment = normalized.split('/').filter(Boolean).pop();
++          if (lastSegment && (item.id === lastSegment || item.slug === lastSegment || item.aliases.includes(lastSegment))) {
++            return item;
++          }
++        }
++        return null;
++      }
++
++      /**
++       * Inspect window.location (pathname, search params, hash) and history.state
++       * to resolve if a detail view deep-link is active.
++       */
++      function resolveItemFromLocation() {
++        // 1. Check query parameter (?item=seasonal or ?drink=maple-oat-latte)
++        const params = new URLSearchParams(window.location.search);
++        const queryItem = params.get('item') || params.get('drink') || params.get('favorite');
++        if (queryItem) {
++          const matchedQuery = findSeasonalItem(queryItem);
++          if (matchedQuery) return matchedQuery;
++        }
++
++        // 2. Check hash route (#/menu/seasonal, #seasonal, #maple-oat-latte)
++        if (window.location.hash && window.location.hash.length > 1) {
++          const cleanedHash = window.location.hash.replace(/^#/, '');
++          const matchedHash = findSeasonalItem(cleanedHash);
++          if (matchedHash) return matchedHash;
++        }
++
++        // 3. Check pathname (/menu/seasonal, /menu/espresso, /menu/cold-brew, etc.)
++        const matchedPath = findSeasonalItem(window.location.pathname);
++        if (matchedPath) return matchedPath;
++
++        // 4. Fallback to history.state if set to a detail item
++        if (window.history.state && window.history.state.view === 'detail' && window.history.state.itemId) {
++          return findSeasonalItem(window.history.state.itemId);
++        }
++
++        return null;
++      }
++
++      /**
++       * Populate the Detail View DOM with the given item's data.
++       */
++      function renderDetailView(item) {
++        currentItem = item;
++        selectedSizeIndex = item.sizes.findIndex((s) => s.default);
++        if (selectedSizeIndex === -1) selectedSizeIndex = 0;
++        selectedPrepIndex = item.preparations.findIndex((p) => p.default);
++        if (selectedPrepIndex === -1) selectedPrepIndex = 0;
++        quantity = 1;
++
++        detailView.setAttribute('data-active-item', item.id);
++        detailImage.src = item.image;
++        detailImage.alt = item.title;
++        detailOriginBadge.textContent = item.origin;
++        detailProcess.textContent = item.process;
++        detailRoastLabel.textContent = item.roastLabel;
++
++        // Render roast dots (out of 5)
++        detailRoastDots.innerHTML = '';
++        for (let i = 1; i <= 5; i++) {
++          const dot = document.createElement('span');
++          dot.className = 'roast-dot' + (i <= item.roastDots ? ' is-filled' : '');
++          detailRoastDots.appendChild(dot);
++        }
++
++        detailSubtitle.textContent = item.subtitle;
++        detailTitle.textContent = item.title;
++        detailCrumbTitle.textContent = item.title;
++        detailDescription.textContent = item.description;
++        detailCaffeine.textContent = item.caffeine;
++        detailPrepTime.textContent = item.prepTime;
++
++        // Tasting notes
++        detailTastingNotes.innerHTML = '';
++        item.tastingNotes.forEach((note) => {
++          const span = document.createElement('span');
++          span.className = 'tasting-chip';
++          span.textContent = note;
++          detailTastingNotes.appendChild(span);
++        });
++
++        // Specs
++        specOriginTitle.textContent = item.specs.originTitle;
++        specOriginText.textContent = item.specs.originText;
++        specCraftTitle.textContent = item.specs.craftTitle;
++        specCraftText.textContent = item.specs.craftText;
++        specPairingTitle.textContent = item.specs.pairingTitle;
++        specPairingText.textContent = item.specs.pairingText;
++        specDietaryTitle.textContent = item.specs.dietaryTitle;
++        specDietaryText.textContent = item.specs.dietaryText;
++
++        // Prev / Next sibling buttons
++        const currentIndex = SEASONAL_ITEMS.findIndex((entry) => entry.id === item.id);
++        const prevItem = SEASONAL_ITEMS[(currentIndex - 1 + SEASONAL_ITEMS.length) % SEASONAL_ITEMS.length];
++        const nextItem = SEASONAL_ITEMS[(currentIndex + 1) % SEASONAL_ITEMS.length];
++        prevItemBtn.setAttribute('data-sibling-id', prevItem.id);
++        prevItemBtn.textContent = '← ' + prevItem.title.split(' ')[0];
++        nextItemBtn.setAttribute('data-sibling-id', nextItem.id);
++        nextItemBtn.textContent = nextItem.title.split(' ')[0] + ' →';
++
++        renderCustomizationControls();
++      }
++
++      /**
++       * Render interactive size & preparation buttons and update calculated price.
++       */
++      function renderCustomizationControls() {
++        if (!currentItem) return;
++
++        const activeSize = currentItem.sizes[selectedSizeIndex] || currentItem.sizes[0];
++        detailPrice.textContent = '$' + activeSize.price.toFixed(2);
++        detailCalories.textContent = activeSize.calories + ' kcal';
++        qtyValueEl.textContent = String(quantity);
++        ctaTotalPrice.textContent = '$' + (activeSize.price * quantity).toFixed(2);
++
++        // Size buttons
++        detailSizeOptions.innerHTML = '';
++        currentItem.sizes.forEach((size, idx) => {
++          const btn = document.createElement('button');
++          btn.type = 'button';
++          btn.className = 'option-btn' + (idx === selectedSizeIndex ? ' is-selected' : '');
++          btn.setAttribute('role', 'radio');
++          btn.setAttribute('aria-checked', idx === selectedSizeIndex ? 'true' : 'false');
++          btn.innerHTML =
++            '<span class="opt-name">' +
++            size.label +
++            '</span><span class="opt-sub">$' +
++            size.price.toFixed(2) +
++            ' • ' +
++            size.calories +
++            ' cal</span>';
++          btn.addEventListener('click', function () {
++            selectedSizeIndex = idx;
++            renderCustomizationControls();
++          });
++          detailSizeOptions.appendChild(btn);
++        });
++
++        // Preparation buttons
++        detailPrepOptions.innerHTML = '';
++        currentItem.preparations.forEach((prep, idx) => {
++          const btn = document.createElement('button');
++          btn.type = 'button';
++          btn.className = 'option-btn' + (idx === selectedPrepIndex ? ' is-selected' : '');
++          btn.setAttribute('role', 'radio');
++          btn.setAttribute('aria-checked', idx === selectedPrepIndex ? 'true' : 'false');
++          btn.innerHTML =
++            '<span class="opt-name">' +
++            prep.label +
++            '</span><span class="opt-sub">' +
++            prep.sub +
++            '</span>';
++          btn.addEventListener('click', function () {
++            selectedPrepIndex = idx;
++            renderCustomizationControls();
++          });
++          detailPrepOptions.appendChild(btn);
++        });
++      }
++
++      /**
++       * Clear inline drag styles left over from interactive swipe gestures.
++       */
++      function clearSwipeInlineStyles() {
++        stackViewport.classList.remove('is-dragging');
++        detailView.style.transform = '';
++        rootView.style.transform = '';
++        stackScrim.style.opacity = '';
++      }
++
++      /**
++       * Push or switch to a Seasonal Favorites detail view on the navigation stack.
++       */
++      function pushDetailView(itemOrId, options) {
++        const opts = Object.assign({ updateHistory: true, replaceHistory: false, focusDetail: true }, options);
++        const item = typeof itemOrId === 'string' ? findSeasonalItem(itemOrId) : itemOrId;
++        if (!item) return;
++
++        const wasAtRoot = stackViewport.getAttribute('data-stack-depth') === '0';
++        if (wasAtRoot) {
++          savedRootScrollTop = rootView.scrollTop;
++        }
++
++        clearSwipeInlineStyles();
++        renderDetailView(item);
++
++        // Activate stack depth 1
++        stackViewport.setAttribute('data-stack-depth', '1');
++        document.body.setAttribute('data-stack-depth', '1');
++
++        rootView.classList.remove('is-active');
++        rootView.classList.add('is-receded');
++        rootView.setAttribute('aria-hidden', 'true');
++
++        detailView.classList.add('is-active');
++        detailView.setAttribute('aria-hidden', 'false');
++        detailView.scrollTop = 0;
++
++        stackScrim.classList.add('is-visible');
++        document.title = item.title + ' | The Daily Grind';
++
++        if (opts.updateHistory) {
++          const stateObj = {
++            view: 'detail',
++            stackDepth: 1,
++            itemId: item.id,
++            slug: item.slug,
++            path: item.path
++          };
++          try {
++            if (opts.replaceHistory) {
++              window.history.replaceState(stateObj, document.title, item.path);
++            } else {
++              window.history.pushState(stateObj, document.title, item.path);
++              sessionPushCount += 1;
++            }
++          } catch (err) {
++            // Fallback for file:// environments
++            window.location.hash = item.path;
++          }
++        }
++
++        if (opts.focusDetail) {
++          requestAnimationFrame(function () {
++            detailBackBtn.focus({ preventScroll: true });
++          });
++        }
++      }
++
++      /**
++       * Pop the detail view off the stack and return to the Root View (Homepage).
++       */
++      function popToRootView(options) {
++        const opts = Object.assign({ updateHistory: true, fromPopstate: false }, options);
++
++        clearSwipeInlineStyles();
++
++        stackViewport.setAttribute('data-stack-depth', '0');
++        document.body.setAttribute('data-stack-depth', '0');
++
++        detailView.classList.remove('is-active');
++        detailView.setAttribute('aria-hidden', 'true');
++
++        rootView.classList.remove('is-receded');
++        rootView.classList.add('is-active');
++        rootView.setAttribute('aria-hidden', 'false');
++
++        stackScrim.classList.remove('is-visible');
++        document.title = 'The Daily Grind | Artisanal Coffee';
++
++        // Restore root scroll position
++        rootView.scrollTop = savedRootScrollTop;
++
++        if (opts.updateHistory && !opts.fromPopstate) {
++          const homeState = { view: 'home', stackDepth: 0, path: '/' };
++          try {
++            window.history.pushState(homeState, document.title, '/');
++          } catch (err) {
++            window.location.hash = '';
++          }
++        }
++
++        if (lastTriggerElement && typeof lastTriggerElement.focus === 'function') {
++          requestAnimationFrame(function () {
++            lastTriggerElement.focus({ preventScroll: true });
++          });
++        }
++      }
++
++      /**
++       * Synchronize stack state with current URL (used on initial load and popstate/hashchange).
++       */
++      function syncStackWithLocation(isInitialLoad) {
++        const matchedItem = resolveItemFromLocation();
++        if (matchedItem) {
++          if (isInitialLoad) {
++            // Ensure current history entry has structured state metadata
++            try {
++              window.history.replaceState(
++                {
++                  view: 'detail',
++                  stackDepth: 1,
++                  itemId: matchedItem.id,
++                  slug: matchedItem.slug,
++                  path: matchedItem.path
++                },
++                matchedItem.title + ' | The Daily Grind',
++                window.location.pathname + window.location.search + window.location.hash
++              );
++            } catch (e) {
++              // ignore on file://
++            }
++          }
++          pushDetailView(matchedItem, {
++            updateHistory: false,
++            focusDetail: !isInitialLoad
++          });
++        } else {
++          if (isInitialLoad) {
++            try {
++              window.history.replaceState(
++                { view: 'home', stackDepth: 0, path: '/' },
++                'The Daily Grind | Artisanal Coffee',
++                window.location.pathname + window.location.search + window.location.hash
++              );
++            } catch (e) {
++              // ignore on file://
++            }
++          }
++          popToRootView({ updateHistory: false, fromPopstate: true });
++        }
++      }
++
++      // Bind Seasonal Favorites Cards & Links on the Root View
++      const cards = document.querySelectorAll('.card[data-item-id]');
++      cards.forEach(function (card) {
++        const itemId = card.getAttribute('data-item-id');
++
++        card.addEventListener('click', function (e) {
++          e.preventDefault();
++          lastTriggerElement = card;
++          pushDetailView(itemId, { updateHistory: true });
++        });
++
++        card.addEventListener('keydown', function (e) {
++          if (e.key === 'Enter' || e.key === ' ') {
++            e.preventDefault();
++            lastTriggerElement = card;
++            pushDetailView(itemId, { updateHistory: true });
++          }
++        });
++
++        const link = card.querySelector('a[data-item-link]');
++        if (link) {
++          link.addEventListener('click', function (e) {
++            e.preventDefault();
++            e.stopPropagation();
++            lastTriggerElement = link;
++            pushDetailView(itemId, { updateHistory: true });
++          });
++        }
++      });
++
++      // Bind all Back buttons & Breadcrumb root links
++      document.querySelectorAll('[data-action="back"]').forEach(function (el) {
++        el.addEventListener('click', function (e) {
++          e.preventDefault();
++          if (stackViewport.getAttribute('data-stack-depth') === '1') {
++            popToRootView({ updateHistory: true });
++          }
++        });
++      });
++
++      // Clicking the dimmed scrim pops back to the Root View
++      stackScrim.addEventListener('click', function () {
++        if (stackViewport.getAttribute('data-stack-depth') === '1') {
++          popToRootView({ updateHistory: true });
++        }
++      });
++
++      // Clicking the Brand Logo or "Menu" in top nav pops back if in Detail View
++      document.querySelectorAll('[data-nav-root="true"]').forEach(function (navLink) {
++        navLink.addEventListener('click', function (e) {
++          e.preventDefault();
++          if (stackViewport.getAttribute('data-stack-depth') === '1') {
++            popToRootView({ updateHistory: true });
++          } else {
++            rootView.scrollTo({ top: 0, behavior: 'smooth' });
++          }
++        });
++      });
++
++      // Hero "Order Now" scrolls smoothly to Seasonal Favorites
++      const heroOrderBtn = document.getElementById('hero-order-btn');
++      if (heroOrderBtn) {
++        heroOrderBtn.addEventListener('click', function (e) {
++          e.preventDefault();
++          const section = document.getElementById('seasonal-favorites-section');
++          if (section) {
++            section.scrollIntoView({ behavior: 'smooth' });
++          }
++        });
++      }
++
++      // Sibling Prev / Next Seasonal Item Switcher
++      prevItemBtn.addEventListener('click', function () {
++        const targetId = prevItemBtn.getAttribute('data-sibling-id');
++        if (targetId) {
++          pushDetailView(targetId, { updateHistory: true, replaceHistory: false });
++        }
++      });
++
++      nextItemBtn.addEventListener('click', function () {
++        const targetId = nextItemBtn.getAttribute('data-sibling-id');
++        if (targetId) {
++          pushDetailView(targetId, { updateHistory: true, replaceHistory: false });
++        }
++      });
++
++      // Quantity Stepper & Add to Order
++      qtyMinusBtn.addEventListener('click', function () {
++        if (quantity > 1) {
++          quantity -= 1;
++          renderCustomizationControls();
++        }
++      });
++
++      qtyPlusBtn.addEventListener('click', function () {
++        if (quantity < 12) {
++          quantity += 1;
++          renderCustomizationControls();
++        }
++      });
++
++      addToOrderBtn.addEventListener('click', function () {
++        if (!currentItem) return;
++        bagCount += quantity;
++        bagCountEl.textContent = String(bagCount);
++        const sizeLabel = currentItem.sizes[selectedSizeIndex].label;
++        orderToast.textContent = 'Added ' + quantity + '× ' + currentItem.title + ' (' + sizeLabel + ') to your bag.';
++        orderToast.classList.add('is-shown');
++        if (toastTimer) clearTimeout(toastTimer);
++        toastTimer = setTimeout(function () {
++          orderToast.classList.remove('is-shown');
++        }, 3200);
++      });
++
++      // Keyboard Navigation (Escape or Alt+ArrowLeft pops back)
++      window.addEventListener('keydown', function (e) {
++        if (stackViewport.getAttribute('data-stack-depth') !== '1') return;
++        if (e.key === 'Escape' || (e.altKey && e.key === 'ArrowLeft')) {
++          e.preventDefault();
++          popToRootView({ updateHistory: true });
++        }
++      });
++
++      // Browser History Sync (Back / Forward buttons & hash changes)
++      window.addEventListener('popstate', function () {
++        if (sessionPushCount > 0 && !resolveItemFromLocation()) {
++          sessionPushCount = Math.max(0, sessionPushCount - 1);
++        }
++        syncStackWithLocation(false);
++      });
++
++      window.addEventListener('hashchange', function () {
++        syncStackWithLocation(false);
++      });
++
++      // =========================================================================
++      // Interactive Touch & Pointer Swipe-Back Gesture Controller
++      // =========================================================================
++      let gestureState = null;
++
++      function isInteractiveTarget(target) {
++        if (!target || !target.closest) return false;
++        return Boolean(
++          target.closest('button, a, input, select, textarea, [role="radio"]')
++        );
++      }
++
++      function beginGesture(clientX, clientY, fromEdgeHandle, target) {
++        if (stackViewport.getAttribute('data-stack-depth') !== '1') return;
++        if (!fromEdgeHandle && isInteractiveTarget(target)) return;
++
++        gestureState = {
++          startX: clientX,
++          startY: clientY,
++          currentX: clientX,
++          currentY: clientY,
++          startTime: performance.now(),
++          fromEdge: fromEdgeHandle || clientX <= 48,
++          isSwiping: false,
++          aborted: false
++        };
++      }
++
++      function updateGesture(clientX, clientY, rawEvent) {
++        if (!gestureState || gestureState.aborted) return;
++
++        const dx = clientX - gestureState.startX;
++        const dy = clientY - gestureState.startY;
++        gestureState.currentX = clientX;
++        gestureState.currentY = clientY;
++
++        if (!gestureState.isSwiping) {
++          // Ignore tiny jitter movements
++          if (Math.hypot(dx, dy) < 8) return;
++
++          // Lock to horizontal right-swipe if horizontal motion dominates
++          if (dx > 0 && Math.abs(dx) > Math.abs(dy) * 1.15) {
++            gestureState.isSwiping = true;
++            stackViewport.classList.add('is-dragging');
++          } else {
++            gestureState.aborted = true;
++            return;
++          }
++        }
++
++        if (gestureState.isSwiping) {
++          if (rawEvent && rawEvent.cancelable) {
++            rawEvent.preventDefault();
++          }
++          const clampedDx = Math.max(0, dx);
++          const viewportWidth = stackViewport.clientWidth || window.innerWidth || 375;
++          const progress = Math.min(1, clampedDx / viewportWidth);
++
++          detailView.style.transform = 'translate3d(' + clampedDx + 'px, 0, 0)';
++          const rootTranslate = -25 * (1 - progress);
++          const rootScale = 0.96 + 0.04 * progress;
++          rootView.style.transform = 'translate3d(' + rootTranslate + '%, 0, 0) scale(' + rootScale + ')';
++          stackScrim.style.opacity = String(Math.max(0, 1 - progress));
++        }
++      }
++
++      function endGesture() {
++        if (!gestureState) return;
++        const state = gestureState;
++        gestureState = null;
++
++        if (!state.isSwiping) return;
++
++        const dx = Math.max(0, state.currentX - state.startX);
++        const elapsed = Math.max(1, performance.now() - state.startTime);
++        const velocity = dx / elapsed; // px per ms
++        const viewportWidth = stackViewport.clientWidth || window.innerWidth || 375;
++
++        const shouldPop =
++          dx > viewportWidth * 0.24 ||
++          dx > 95 ||
++          (dx > 36 && velocity > 0.32);
++
++        clearSwipeInlineStyles();
++
++        if (shouldPop) {
++          popToRootView({ updateHistory: true });
++        }
++      }
++
++      // Touch Events (Mobile / Touch Emulation)
++      stackViewport.addEventListener(
++        'touchstart',
++        function (e) {
++          if (!e.touches || e.touches.length !== 1) return;
++          const touch = e.touches[0];
++          const fromEdge = e.target === swipeEdgeZone || swipeEdgeZone.contains(e.target);
++          beginGesture(touch.clientX, touch.clientY, fromEdge, e.target);
++        },
++        { passive: true }
++      );
++
++      stackViewport.addEventListener(
++        'touchmove',
++        function (e) {
++          if (!e.touches || e.touches.length !== 1) return;
++          const touch = e.touches[0];
++          updateGesture(touch.clientX, touch.clientY, e);
++        },
++        { passive: false }
++      );
++
++      stackViewport.addEventListener('touchend', endGesture);
++      stackViewport.addEventListener('touchcancel', endGesture);
++
++      // Pointer / Mouse Drag Events (Desktop / Automated Pointer Swipe)
++      let isMouseDown = false;
++
++      stackViewport.addEventListener('pointerdown', function (e) {
++        if (e.pointerType === 'touch') return; // Handled by touch listeners
++        if (e.button !== 0) return;
++        const fromEdge = e.target === swipeEdgeZone || swipeEdgeZone.contains(e.target);
++        isMouseDown = true;
++        beginGesture(e.clientX, e.clientY, fromEdge, e.target);
++      });
++
++      window.addEventListener('pointermove', function (e) {
++        if (!isMouseDown || e.pointerType === 'touch') return;
++        updateGesture(e.clientX, e.clientY, e);
++      });
++
++      window.addEventListener('pointerup', function (e) {
++        if (!isMouseDown || e.pointerType === 'touch') return;
++        isMouseDown = false;
++        endGesture();
++      });
++
++      window.addEventListener('pointercancel', function () {
++        if (!isMouseDown) return;
++        isMouseDown = false;
++        endGesture();
++      });
++
++      // Fallback Mouse Events for synthetic mouse drag dispatchers that don't fire pointer events
++      stackViewport.addEventListener('mousedown', function (e) {
++        if (gestureState || e.button !== 0) return;
++        const fromEdge = e.target === swipeEdgeZone || swipeEdgeZone.contains(e.target);
++        isMouseDown = true;
++        beginGesture(e.clientX, e.clientY, fromEdge, e.target);
++      });
++
++      window.addEventListener('mousemove', function (e) {
++        if (!isMouseDown || !gestureState) return;
++        updateGesture(e.clientX, e.clientY, e);
++      });
++
++      window.addEventListener('mouseup', function () {
++        if (!isMouseDown) return;
++        isMouseDown = false;
++        endGesture();
++      });
++
++      // Boot the Navigation Stack in sync with the initial URL / Deep Link
++      syncStackWithLocation(true);
++    })();
++  </script>
++</body>
++
++</html>

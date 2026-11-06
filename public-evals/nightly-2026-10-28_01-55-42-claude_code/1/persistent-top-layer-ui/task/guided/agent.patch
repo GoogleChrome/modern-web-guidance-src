@@ -1,0 +1,381 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,14 +151,163 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Feedback launcher */
++    .feedback-launcher {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 900;
++      background: var(--accent);
++      color: var(--text);
++      border: 0;
++      border-radius: 999px;
++      padding: 12px 20px;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    .feedback-launcher:hover {
++      filter: brightness(1.05);
++    }
++
++    .feedback-thanks {
++      position: fixed;
++      right: 20px;
++      bottom: 72px;
++      z-index: 900;
++      background: var(--primary);
++      color: white;
++      padding: 8px 14px;
++      border-radius: 6px;
++      font-size: 0.85rem;
++    }
++
++    .feedback-thanks:empty {
++      display: none;
++    }
++
++    /* Feedback dialog */
++    #feedback-dialog {
++      border: 0;
++      border-radius: 10px;
++      padding: 0;
++      width: min(92vw, 440px);
++      color: var(--text);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++    }
++
++    #feedback-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    #feedback-dialog::backdrop {
++      background: rgba(62, 39, 35, 0.6);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    #feedback-dialog form {
++      padding: 24px;
++      display: grid;
++      gap: 14px;
++    }
++
++    #feedback-dialog h2 {
++      color: var(--primary);
++      font-size: 1.3rem;
++    }
++
++    #feedback-dialog label {
++      display: grid;
++      gap: 4px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    #feedback-dialog textarea,
++    #feedback-dialog select {
++      font: inherit;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      width: 100%;
++    }
++
++    #feedback-dialog textarea {
++      min-height: 110px;
++      resize: vertical;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++    }
++
++    .dialog-actions button,
++    .move-controls button {
++      font: inherit;
++      padding: 8px 14px;
++      border-radius: 6px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .dialog-actions button[value="send"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .move-controls {
++      border-top: 1px dashed var(--secondary);
++      padding-top: 14px;
++      display: grid;
++      gap: 8px;
++      font-size: 0.85rem;
++    }
++
++    .move-controls .buttons {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .move-controls button {
++      padding: 5px 10px;
++      font-size: 0.8rem;
++    }
++
++    .move-controls button[aria-pressed="true"] {
++      background: var(--secondary);
++    }
++
++    .move-status {
++      color: #6d4c41;
++    }
++
++    .move-status output {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    /* Highlight whichever region currently hosts the open dialog.
++       Only the DOM position changes; the dialog itself stays centered in the top layer. */
++    .dialog-host:has(> #feedback-dialog[open]) {
++      outline: 3px dashed var(--accent);
++      outline-offset: -3px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="dialog-host" data-host-label="Navigation bar">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -167,15 +316,15 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero dialog-host" data-host-label="Hero header">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container dialog-host" data-host-label="Main content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,11 +343,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Lives inside <main> by default; the move buttons relocate it to other regions while it stays open. -->
++    <dialog id="feedback-dialog" aria-labelledby="feedback-title">
++      <form method="dialog">
++        <h2 id="feedback-title">Share your feedback</h2>
++
++        <label>
++          What is this about?
++          <select name="topic">
++            <option value="coffee">The coffee</option>
++            <option value="service">Service</option>
++            <option value="website">This website</option>
++            <option value="other">Something else</option>
++          </select>
++        </label>
++
++        <label>
++          Your feedback
++          <textarea name="message" autofocus placeholder="Tell us what you think..."></textarea>
++        </label>
++
++        <div class="dialog-actions">
++          <button type="button" command="close" commandfor="feedback-dialog" value="cancel">Cancel</button>
++          <button type="submit" value="send">Send feedback</button>
++        </div>
++
++        <div class="move-controls">
++          <p class="move-status">
++            Dialog lives in: <output id="move-location" for="feedback-dialog">Main content</output>
++            <span id="move-method"></span>
++          </p>
++          <div class="buttons" role="group" aria-label="Move this dialog to another page region">
++            <button type="button" data-move-to="nav">Move to nav</button>
++            <button type="button" data-move-to="header.hero">Move to hero</button>
++            <button type="button" data-move-to="main" aria-pressed="true">Move to main</button>
++            <button type="button" data-move-to="footer">Move to footer</button>
++          </div>
++        </div>
++      </form>
++    </dialog>
+   </main>
+ 
+-  <footer>
++  <button type="button" class="feedback-launcher" command="show-modal" commandfor="feedback-dialog">
++    Feedback
++  </button>
++  <p class="feedback-thanks" role="status" aria-live="polite"></p>
++
++
++  <footer class="dialog-host" data-host-label="Footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +401,135 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const dialog = document.getElementById('feedback-dialog');
++    const thanks = document.querySelector('.feedback-thanks');
++    const locationOut = document.getElementById('move-location');
++    const methodOut = document.getElementById('move-method');
++    const moveButtons = [...dialog.querySelectorAll('[data-move-to]')];
++
++    // Invoker commands (command/commandfor) are Baseline newly available; this is the
++    // minimal fallback for browsers that predate them.
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      for (const button of document.querySelectorAll('button[commandfor]')) {
++        button.addEventListener('click', () => {
++          const target = document.getElementById(button.getAttribute('commandfor'));
++          const command = button.getAttribute('command');
++          if (command === 'show-modal' && !target.open) target.showModal();
++          if (command === 'close') target.close(button.value);
++        });
++      }
++    }
++
++    const supportsMoveBefore = 'moveBefore' in Element.prototype;
++    methodOut.textContent = supportsMoveBefore
++      ? '(native moveBefore)'
++      : '(fallback: re-open after move)';
++
++    /**
++     * Snapshot the bits of state a remove+insert would destroy, so the fallback can put them back.
++     */
++    function captureState() {
++      const active = document.activeElement;
++      const focusedInside = dialog.contains(active) ? active : null;
++      const selection =
++        focusedInside && 'selectionStart' in focusedInside && focusedInside.selectionStart !== null
++          ? { start: focusedInside.selectionStart, end: focusedInside.selectionEnd, dir: focusedInside.selectionDirection }
++          : null;
++      return {
++        wasModal: dialog.matches(':modal'),
++        wasOpen: dialog.open,
++        returnValue: dialog.returnValue,
++        scrollTop: dialog.scrollTop,
++        focusedInside,
++        selection,
++      };
++    }
++
++    function restoreState(state) {
++      if (state.wasOpen && !dialog.open) {
++        if (state.wasModal) dialog.showModal();
++        else dialog.show();
++      }
++      dialog.returnValue = state.returnValue;
++      dialog.scrollTop = state.scrollTop;
++      if (state.focusedInside && state.focusedInside.isConnected) {
++        // showModal() moved focus to the autofocus field; hand it back to where it was.
++        state.focusedInside.focus({ preventScroll: true });
++        if (state.selection) {
++          try {
++            state.focusedInside.setSelectionRange(state.selection.start, state.selection.end, state.selection.dir);
++          } catch { /* element type does not support selection ranges */ }
++        }
++      }
++    }
++
++    /**
++     * Relocate the open dialog into `host`, keeping it open and keeping focus where it was.
++     * Returns the strategy that was used.
++     */
++    function relocateDialog(host) {
++      if (dialog.parentNode === host && dialog === host.lastElementChild) return 'noop';
++
++      if (supportsMoveBefore) {
++        try {
++          // Atomic move: no remove/insert, so the dialog stays in the top layer,
++          // stays modal, and the focused control inside it keeps focus.
++          host.moveBefore(dialog, null);
++          return 'moveBefore';
++        } catch (error) {
++          // moveBefore can throw (e.g. HierarchyRequestError) in edge cases; degrade gracefully.
++          console.warn('moveBefore failed, using fallback', error);
++        }
++      }
++
++      // Fallback: a traditional move removes the node, which kicks it out of the top layer.
++      // Close it cleanly first so showModal() cannot throw on a half-open dialog, then restore.
++      const state = captureState();
++      if (dialog.open) dialog.close();
++      host.insertBefore(dialog, null);
++      restoreState(state);
++      return 'fallback';
++    }
++
++    function updateLocationUI(host, strategy) {
++      locationOut.textContent = host.dataset.hostLabel || host.tagName.toLowerCase();
++      for (const button of moveButtons) {
++        button.setAttribute('aria-pressed', String(host.matches(button.dataset.moveTo)));
++      }
++      if (strategy !== 'noop') {
++        methodOut.textContent = strategy === 'moveBefore'
++          ? '(moved with native moveBefore)'
++          : '(moved with fallback: re-opened and focus restored)';
++      }
++    }
++
++    for (const button of moveButtons) {
++      button.addEventListener('click', () => {
++        const host = document.querySelector(button.dataset.moveTo);
++        if (!host) return;
++        const strategy = relocateDialog(host);
++        updateLocationUI(host, strategy);
++      });
++    }
++
++    dialog.addEventListener('close', () => {
++      // The close event is dispatched asynchronously. If the dialog is already open again by the
++      // time it arrives, this was the fallback re-homing the node, not the user dismissing it.
++      if (dialog.open) return;
++      const result = dialog.returnValue;
++      dialog.returnValue = '';
++      if (result === 'send') {
++        thanks.textContent = 'Thanks for your feedback!';
++        dialog.querySelector('form').reset();
++        setTimeout(() => { thanks.textContent = ''; }, 4000);
++      }
++    });
++
++    // Small hook for debugging/testing from the console.
++    window.feedbackDialog = { relocateDialog, supportsMoveBefore };
++  </script>
+ </body>
+ 
+ </html>

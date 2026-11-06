@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,35 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Fade the teaser itself so any page background shows through. */
++    .paywall-container {
++      margin-top: 48px;
++      padding: 32px clamp(20px, 4vw, 48px) 16px;
++      border-radius: 8px;
++      background: #f1ebe8;
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++    }
++
++    .paywall-container .eyebrow {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .paywall-container h2 {
++      margin: 8px 0 12px;
++      color: var(--primary);
++    }
++
++    .paywall-container p + p {
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +221,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <p class="eyebrow">Exclusive · Members-only preview</p>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <p>A little craft behind every cup. Step inside our roastery for brewing notes, small-batch stories,
++        and the details our roasters swear by.</p>
++      <p><strong>Start with the bloom.</strong> Before your next pour-over, wet the grounds with just enough
++        hot water to saturate them. Give the coffee a moment to release its trapped gases, then pour slowly
++        and evenly to bring out its sweetness.</p>
++      <p><strong>Let flavor guide the grind.</strong> If your cup tastes sharp and thin, try a slightly finer
++        grind. If it tastes dry and bitter, go a little coarser. Keep the rest of your recipe steady so you
++        can taste what each small adjustment changes.</p>
++      <p><strong>Keep a tasting notebook.</strong> Record your beans, brew ratio, and the flavors you notice.
++        Those small observations are the beginning of your own perfect morning ritual.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

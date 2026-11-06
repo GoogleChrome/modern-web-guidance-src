@@ -1,0 +1,67 @@
+diff --git a/PERFORMANCE.md b/PERFORMANCE.md
+new file mode 100644
+--- a/PERFORMANCE.md
++++ b/PERFORMANCE.md
+@@ -0,0 +1,62 @@
++# Daily Grind – Web Performance Audit (2026-10-28)
++
++Scope: `index.html`, the only page in the repo, served by `statikk` (a static
++file server built on `serve-static` + `compression`). Audit was done by static
++analysis of the markup and by measuring the network payloads with `curl`; no
++browser or dev server was run.
++
++## Baseline findings
++
++| Area | Finding | Impact |
++| --- | --- | --- |
++| LCP | Hero photo loaded as a CSS `background-image` from `images.unsplash.com`. CSS backgrounds are invisible to the preload scanner and only requested after the CSSOM is built and layout decides the element is visible. | Hero (the LCP element) starts loading late. |
++| LCP | Third-party origin with no `preconnect`. | Extra DNS + TCP + TLS round-trips before the first image byte. |
++| LCP / bytes | One fixed 1350 px wide 3:2 JPEG for every device (158 KB as JPEG; 63 KB when the browser negotiates AVIF). | Phones download desktop-sized pixels, then `cover` crops most of them away. |
++| CLS | Fixed `height: 60vh` and system fonts, so no shift on load. `vh` on mobile does resize when the URL bar collapses. | Low, but a small shift on scroll in mobile Safari/Chrome. |
++| INP | No JavaScript at all; only two 0.3 s colour transitions. | Nothing to fix; no long tasks possible. |
++| Render blocking | CSS is inline, no external fonts or scripts. | Already good. |
++| Delivery | `statikk` gzips responses and sends `ETag`/`Last-Modified`, but exposes no option for `Cache-Control: immutable`. | Repeat visits revalidate every asset. |
++
++## Changes made
++
++1. **Hero image converted to a self-hosted `<picture>` element** with
++   `fetchpriority="high"` and `decoding="async"`. The preload scanner now
++   issues the request while parsing the `<head>`, and it is same-origin, so
++   the connection is already warm.
++2. **Art-directed, responsive sources.** Portrait crops (3:4) at 480/768/1080 px
++   for phones, 16:9 crops at 1200/1600/1920 px for tablets and desktops, each
++   in AVIF and WebP with a JPEG fallback. Crops match what `object-fit: cover`
++   displays, so almost no downloaded pixels are discarded. Quality 60 is used
++   because the photo sits under a 50 % black overlay that masks artefacts.
++3. **Placeholder background colour** on the hero so the white headline is
++   legible before the photo paints and there is no white flash.
++4. **`min-height: 60svh`** (with `60vh` fallback) so the hero does not resize
++   when mobile browser chrome collapses.
++5. **`prefers-reduced-motion`** rule disables the hover transitions for users
++   who request it.
++
++## Hero bytes, before vs. after
++
++| Device | Before | After |
++| --- | --- | --- |
++| Phone, 390 px @3x, AVIF | 63 KB (1350×900, about half of it cropped away) | 77 KB (1080×1440, ~100 % displayed) |
++| Phone, 360 px @2x, AVIF | 63 KB | 49 KB |
++| Phone, JPEG-only fallback | 158 KB | 94 KB |
++| Laptop 1440 px @2x, AVIF | 63 KB (1350 px wide, upscaled 2.1×) | 83 KB (1920 px wide) |
++| Desktop 1920 px @1x, WebP (no AVIF support) | 145 KB (1350 px, upscaled 1.4×) | 172 KB (1920 px, crisp) |
++
++Byte counts are similar or slightly higher on some devices because the old
++image was undersized for them; the win is in *when* the request starts
++(discovered from HTML, same origin, high priority) and in sharper output.
++
++## Recommended follow-ups (outside this repo)
++
++* **Caching.** When deploying behind a real CDN or web server, serve
++  `images/` with `Cache-Control: public, max-age=31536000, immutable` and
++  the HTML with a short max-age. Rename image files with a content hash if
++  they ever change.
++* **Brotli.** `compression` only emits gzip; enable Brotli at the edge for a
++  further ~15 % on the HTML.
++* **Navigation speed.** Once `/menu`, `/locations` etc. exist, add a
++  Speculation Rules `prefetch` list for the nav links so follow-on page
++  loads are near-instant.

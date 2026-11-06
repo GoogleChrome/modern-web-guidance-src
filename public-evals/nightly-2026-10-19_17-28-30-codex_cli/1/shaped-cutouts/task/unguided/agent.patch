@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,174 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* A little more character, from the people to the perks. */
++    .community {
++      margin-top: 72px;
++      padding-top: 36px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .eyebrow {
++      display: block;
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++      color: #795548;
++      margin-bottom: 10px;
++    }
++
++    .community > h2 {
++      font-size: clamp(1.8rem, 4vw, 2.4rem);
++      line-height: 1.2;
++      margin-bottom: 30px;
++    }
++
++    .community-grid {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      align-items: center;
++      gap: 36px;
++    }
++
++    .barista-profile {
++      display: flex;
++      align-items: center;
++      gap: 22px;
++      grid-column: 1 / -1;
++      padding: 12px 0 24px;
++      max-width: 740px;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: clamp(140px, 22vw, 220px);
++      height: auto;
++      aspect-ratio: 1;
++      flex-shrink: 0;
++      object-fit: cover;
++      object-position: center 35%;
++      /* The SVG viewBox and full-size mask scale with the image itself. */
++      -webkit-mask: url('assets/paint-splat.svg') center / 100% 100% no-repeat;
++      mask: url('assets/paint-splat.svg') center / 100% 100% no-repeat;
++    }
++
++    .barista-profile h3 {
++      font-size: 1.65rem;
++      margin-bottom: 8px;
++    }
++
++    .barista-profile p {
++      color: #725a51;
++      max-width: 390px;
++    }
++
++    .barista-signature {
++      display: block;
++      margin-top: 12px;
++      font-family: Georgia, serif;
++      font-style: italic;
++      color: var(--primary);
++    }
++
++    .unified-card {
++      display: flex;
++      align-self: stretch;
++      /* Filter the assembled silhouette so the shadow follows the cutout. */
++      filter: drop-shadow(0 10px 14px rgb(78 52 46 / 12%));
++    }
++
++    .card-body {
++      flex: 1;
++      min-width: 0;
++      padding: 32px 0 32px 30px;
++      background: #f0dfc7;
++      border-radius: 16px 0 0 16px;
++    }
++
++    .card-body h3,
++    .gradient-masked-card h3 {
++      font-size: 1.6rem;
++      line-height: 1.25;
++      margin-bottom: 12px;
++    }
++
++    .card-body p {
++      max-width: 260px;
++      font-size: 0.92rem;
++    }
++
++    .card-accent {
++      flex: 0 0 clamp(60px, 8vw, 110px);
++      background-color: #f0dfc7;
++      background-image: repeating-radial-gradient(ellipse at 110% 50%, transparent 0 12px, #c9a87b 13px 14px, transparent 15px 25px);
++      -webkit-mask: url('assets/loyalty-edge.svg') center / 100% 100% no-repeat;
++      mask: url('assets/loyalty-edge.svg') center / 100% 100% no-repeat;
++    }
++
++    .gradient-masked-card {
++      align-self: stretch;
++      padding: 38px 30px 30px;
++      background: #4e342e;
++      color: #fff8ee;
++      border-radius: 16px;
++      /* A transparent circle at the top center makes a semicircular notch. */
++      -webkit-mask-image: radial-gradient(circle at 50% 0, transparent 22px, #000 23px);
++      mask-image: radial-gradient(circle at 50% 0, transparent 22px, #000 23px);
++    }
++
++    .gradient-masked-card .eyebrow {
++      color: #edbf83;
++    }
++
++    .gradient-masked-card p {
++      color: #e6d6ce;
++      font-size: 0.92rem;
++      max-width: 310px;
++    }
++
++    .gradient-masked-card .btn {
++      background: #f0dfc7;
++      color: var(--primary);
++    }
++
++    .gradient-masked-card .btn:hover {
++      background: #ffcf91;
++    }
++
++    @media (max-width: 640px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .community-grid {
++        grid-template-columns: 1fr;
++        gap: 24px;
++      }
++
++      .barista-profile {
++        flex-direction: column;
++        align-items: flex-start;
++        gap: 16px;
++      }
++
++      .shaped-avatar {
++        width: 190px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +360,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="community" aria-labelledby="community-title">
++      <span class="eyebrow">Good people. Great coffee.</span>
++      <h2 id="community-title">A little more to love.</h2>
++      <div class="community-grid">
++        <article class="barista-profile" aria-labelledby="barista-name">
++          <img class="shaped-avatar"
++            src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&amp;fit=crop&amp;w=600&amp;h=600&amp;q=85"
++            alt="Alex, our featured barista, smiling for a portrait" width="600" height="600" loading="lazy">
++          <div>
++            <span class="eyebrow">Meet your barista</span>
++            <h3 id="barista-name">A good day starts with Alex.</h3>
++            <p>Our resident latte artist brings a steady hand, a warm welcome, and a soft spot for the perfect flat white.</p>
++            <span class="barista-signature">“Your usual? I've got you.”</span>
++          </div>
++        </article>
++
++        <article class="unified-card" aria-labelledby="loyalty-title">
++          <div class="card-body">
++            <span class="eyebrow">The daily regulars</span>
++            <h3 id="loyalty-title">Your daily ritual.<br>A little more rewarding.</h3>
++            <p>Turn your coffee runs into little wins. Collect points with every cup and enjoy perks on the house.</p>
++            <a href="/rewards" class="btn">Explore rewards <span aria-hidden="true">↗</span></a>
++          </div>
++          <div class="card-accent" aria-hidden="true"></div>
++        </article>
++
++        <article class="gradient-masked-card" aria-labelledby="promo-title">
++          <span class="eyebrow">Your afternoon, upgraded</span>
++          <h3 id="promo-title">Take a proper<br>coffee break.</h3>
++          <p>A freshly brewed cup. Something sweet. Discover your next favorite pairing on our seasonal menu.</p>
++          <a href="/menu/seasonal" class="btn">Find your pairing <span aria-hidden="true">↗</span></a>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

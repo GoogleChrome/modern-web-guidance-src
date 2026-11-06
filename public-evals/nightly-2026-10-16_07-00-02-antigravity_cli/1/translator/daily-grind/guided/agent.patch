@@ -1,0 +1,1907 @@
+diff --git a/index.html b/index.html
+index 66c9173..c71aeea 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --border-color: #e0d7d3;
+     }
+ 
+     * {
+@@ -27,32 +29,46 @@
+       background-color: var(--light);
+     }
+ 
++    /* Accessibility */
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.9rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: 1.4rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      white-space: nowrap;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
+     }
+ 
+     nav a {
+@@ -62,20 +78,46 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
++      outline: none;
++    }
++
++    .nav-lang-select {
++      background: rgba(255, 255, 255, 0.15);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.3);
++      padding: 4px 10px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      outline: none;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .nav-lang-select:hover,
++    .nav-lang-select:focus {
++      background: rgba(255, 255, 255, 0.25);
++      border-color: var(--accent);
++    }
++
++    .nav-lang-select option {
++      background: var(--primary);
++      color: white;
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 4px 10px;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 55vh;
++      min-height: 360px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -90,7 +132,16 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.8rem;
++      letter-spacing: -0.5px;
++      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
++    }
++
++    .hero p {
++      font-size: 1.15rem;
++      max-width: 600px;
++      margin-bottom: 1.5rem;
++      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+     }
+ 
+     /* Content Sections */
+@@ -102,44 +153,423 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 25px;
++      margin-top: 25px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      border-radius: 10px;
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
++      border: 1px solid var(--border-color);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.3rem;
++    }
++
++    .card p {
++      color: #5d4037;
++      margin-bottom: 15px;
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 10px 22px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-top: 10px;
++      font-weight: 500;
++      transition: background 0.3s, transform 0.1s;
++      cursor: pointer;
++      border: none;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:active {
++      transform: scale(0.98);
++    }
++
++    .section-title {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    /* Translator Section */
++    .translator-section {
++      background: #ffffff;
++      border-radius: 12px;
++      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
++      border: 1px solid var(--border-color);
++      padding: 32px;
++      margin-bottom: 50px;
++    }
++
++    .translator-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .badge {
++      display: inline-block;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 4px 12px;
++      border-radius: 20px;
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      margin-bottom: 10px;
++      border: 1px solid var(--secondary);
++    }
++
++    .translator-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .translator-header p {
++      color: #6d4c41;
++      max-width: 680px;
++      margin: 0 auto;
++      font-size: 1rem;
++    }
++
++    .trans-toolbar {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 12px;
++      padding-bottom: 16px;
++      border-bottom: 1px solid var(--border-color);
++      margin-bottom: 18px;
++    }
++
++    .lang-controls {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .lang-group {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .toolbar-label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .trans-select {
++      background: #faf8f7;
++      color: var(--text);
++      border: 1px solid #c7b9b4;
++      padding: 7px 12px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-weight: 500;
++      cursor: pointer;
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .trans-select:focus-visible {
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.2);
++    }
++
++    .icon-btn {
++      background: #f5f0ed;
++      border: 1px solid #d7ccc8;
++      color: var(--primary);
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      cursor: pointer;
++      font-size: 1.1rem;
++      transition: background 0.2s, transform 0.2s;
++    }
++
++    .icon-btn:hover {
++      background: var(--secondary);
++      transform: rotate(180deg);
++    }
++
++    .engine-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.8rem;
++      padding: 4px 10px;
++      border-radius: 20px;
++      font-weight: 500;
++      background: #f0f4f8;
++      color: #2b5683;
++      border: 1px solid #cfdce8;
++    }
++
++    .engine-badge.engine-ai {
++      background: #e8f5e9;
++      color: #1b5e20;
++      border-color: #c8e6c9;
++    }
++
++    .engine-indicator {
++      font-size: 0.75rem;
++    }
++
++    /* Model Progress */
++    .model-progress-container {
++      margin-bottom: 16px;
++      padding: 10px 14px;
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      border-radius: 6px;
++    }
++
++    .progress-bar-label {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++      color: #f57f17;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .progress-track {
++      background: #ffeaa7;
++      height: 8px;
++      border-radius: 4px;
++      overflow: hidden;
++    }
++
++    .progress-fill {
++      background: var(--accent);
++      height: 100%;
++      border-radius: 4px;
++      transition: width 0.3s ease;
++    }
++
++    /* Panels */
++    .trans-panels {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 20px;
++      margin-bottom: 20px;
++    }
++
++    @media (max-width: 768px) {
++      .trans-panels {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .trans-panel {
++      border: 1px solid var(--border-color);
++      border-radius: 8px;
++      padding: 16px;
++      background: #faf8f7;
++      display: flex;
++      flex-direction: column;
++      min-height: 220px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .trans-panel:focus-within {
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.1);
++    }
++
++    .trans-textarea {
++      flex: 1;
++      width: 100%;
++      border: none;
++      background: transparent;
++      outline: none;
++      font-family: inherit;
++      font-size: 1rem;
++      line-height: 1.5;
++      color: var(--text);
++      resize: vertical;
++      min-height: 130px;
++    }
++
++    .trans-textarea::placeholder {
++      color: #a1887f;
++    }
++
++    .panel-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-top: 1px solid #ede8e6;
++      padding-top: 10px;
++      margin-top: 10px;
++    }
++
++    .panel-footer-left {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
++    .detected-badge {
++      background: #ede7f6;
++      color: #512da8;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-weight: 500;
++    }
++
++    .panel-footer-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .btn-sm {
++      padding: 5px 10px;
++      font-size: 0.8rem;
++      border-radius: 4px;
++      cursor: pointer;
++      font-weight: 500;
++      transition: background 0.2s;
++    }
++
++    .btn-outline {
++      background: white;
++      border: 1px solid #c7b9b4;
++      color: var(--text);
++    }
++
++    .btn-outline:hover {
++      background: #ece3e0;
++    }
++
++    /* Quick Presets */
++    .trans-actions-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-top: 10px;
++    }
++
++    .presets-container {
++      display: flex;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px;
++      flex: 1;
++    }
++
++    .presets-label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text);
++      white-space: nowrap;
++    }
++
++    .preset-chips {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .chip-btn {
++      background: #f5f0ed;
++      border: 1px solid #d7ccc8;
++      color: var(--text);
++      border-radius: 16px;
++      padding: 4px 12px;
++      font-size: 0.8rem;
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .chip-btn:hover {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .btn-primary-action {
++      background: var(--primary);
++      color: white;
++      font-size: 1rem;
++      padding: 10px 24px;
++      border-radius: 6px;
++      font-weight: 600;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      box-shadow: 0 2px 6px rgba(78, 52, 46, 0.3);
++    }
++
++    .btn-primary-action:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .btn-primary-action:disabled {
++      opacity: 0.7;
++      cursor: not-allowed;
++    }
++
++    .btn-spinner {
++      width: 14px;
++      height: 14px;
++      border: 2px solid rgba(255, 255, 255, 0.3);
++      border-top-color: white;
++      border-radius: 50%;
++      animation: spin 0.8s linear infinite;
++      display: inline-block;
++    }
++
++    @keyframes spin {
++      to {
++        transform: rotate(360deg);
++      }
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 50px;
+     }
+ 
+     .footer-links {
+@@ -152,6 +582,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+@@ -160,38 +594,207 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-i18n="nav.menu">Menu</a></li>
++      <li><a href="/locations" data-i18n="nav.locations">Locations</a></li>
++      <li><a href="/rewards" data-i18n="nav.rewards">Rewards</a></li>
++      <li><a href="#translator-section" data-i18n="nav.translate">Translate</a></li>
++      <li class="nav-lang-item">
++        <label for="site-language" class="visually-hidden">Website Language</label>
++        <select id="site-language" class="nav-lang-select" title="Switch Website Language" aria-label="Switch Website Language">
++          <option value="en">🌐 English</option>
++          <option value="es">🌐 Español</option>
++          <option value="fr">🌐 Français</option>
++          <option value="de">🌐 Deutsch</option>
++          <option value="it">🌐 Italiano</option>
++          <option value="pt">🌐 Português</option>
++          <option value="ja">🌐 日本語</option>
++          <option value="zh">🌐 简体中文</option>
++        </select>
++      </li>
++      <li><a href="/account" data-i18n="nav.account">My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-i18n="nav.logout">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1 data-i18n="hero.title">Wake Up Your Senses</h1>
++    <p data-i18n="hero.subtitle">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn" data-i18n="hero.orderBtn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <!-- Multilingual Translation Section -->
++    <section id="translator-section" class="translator-section" aria-labelledby="trans-heading">
++      <div class="translator-header">
++        <span class="badge" data-i18n="trans.badge">AI & Multilingual</span>
++        <h2 id="trans-heading" data-i18n="trans.heading">Translate Text Between Languages</h2>
++        <p data-i18n="trans.subheading">Translate menu inquiries, coffee notes, and messages across languages using on-device AI or instant cloud fallback.</p>
++      </div>
++
++      <div class="translator-card">
++        <!-- Top Toolbar -->
++        <div class="trans-toolbar">
++          <div class="lang-controls">
++            <div class="lang-group">
++              <label for="src-lang" class="toolbar-label" data-i18n="trans.from">From:</label>
++              <select id="src-lang" class="trans-select" aria-label="Source Language">
++                <option value="auto">✨ Auto-Detect</option>
++                <option value="en" selected>English</option>
++                <option value="es">Spanish (Español)</option>
++                <option value="fr">French (Français)</option>
++                <option value="de">German (Deutsch)</option>
++                <option value="it">Italian (Italiano)</option>
++                <option value="pt">Portuguese (Português)</option>
++                <option value="ja">Japanese (日本語)</option>
++                <option value="zh">Chinese (中文)</option>
++                <option value="ko">Korean (한국어)</option>
++                <option value="ar">Arabic (العربية)</option>
++                <option value="ru">Russian (Русский)</option>
++                <option value="nl">Dutch (Nederlands)</option>
++                <option value="hi">Hindi (हिन्दी)</option>
++                <option value="tr">Turkish (Türkçe)</option>
++                <option value="vi">Vietnamese (Tiếng Việt)</option>
++                <option value="pl">Polish (Polski)</option>
++                <option value="sv">Swedish (Svenska)</option>
++                <option value="el">Greek (Ελληνικά)</option>
++                <option value="id">Indonesian (Bahasa Indonesia)</option>
++              </select>
++            </div>
++
++            <button id="swap-lang-btn" type="button" class="icon-btn" title="Swap source and target languages" aria-label="Swap source and target languages">
++              ⇄
++            </button>
++
++            <div class="lang-group">
++              <label for="tgt-lang" class="toolbar-label" data-i18n="trans.to">To:</label>
++              <select id="tgt-lang" class="trans-select" aria-label="Target Language">
++                <option value="es" selected>Spanish (Español)</option>
++                <option value="en">English</option>
++                <option value="fr">French (Français)</option>
++                <option value="de">German (Deutsch)</option>
++                <option value="it">Italian (Italiano)</option>
++                <option value="pt">Portuguese (Português)</option>
++                <option value="ja">Japanese (日本語)</option>
++                <option value="zh">Chinese (中文)</option>
++                <option value="ko">Korean (한국어)</option>
++                <option value="ar">Arabic (العربية)</option>
++                <option value="ru">Russian (Русский)</option>
++                <option value="nl">Dutch (Nederlands)</option>
++                <option value="hi">Hindi (हिन्दी)</option>
++                <option value="tr">Turkish (Türkçe)</option>
++                <option value="vi">Vietnamese (Tiếng Việt)</option>
++                <option value="pl">Polish (Polski)</option>
++                <option value="sv">Swedish (Svenska)</option>
++                <option value="el">Greek (Ελληνικά)</option>
++                <option value="id">Indonesian (Bahasa Indonesia)</option>
++              </select>
++            </div>
++          </div>
++
++          <div class="engine-badge" id="engine-status-badge" title="Active translation engine">
++            <span class="engine-indicator">●</span> <span id="engine-status-text">Detecting engine...</span>
++          </div>
++        </div>
++
++        <!-- Download progress indicator -->
++        <div id="model-progress-container" class="model-progress-container" hidden>
++          <div class="progress-bar-label">
++            <span id="model-progress-text">Downloading translation model...</span>
++            <span id="model-progress-percent">0%</span>
++          </div>
++          <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="model-progress-track">
++            <div class="progress-fill" id="model-progress-fill" style="width: 0%;"></div>
++          </div>
++        </div>
++
++        <!-- Panels -->
++        <div class="trans-panels">
++          <!-- Source panel -->
++          <div class="trans-panel source-panel">
++            <label for="source-text" class="visually-hidden">Text to translate</label>
++            <textarea id="source-text" class="trans-textarea" placeholder="Type or paste text to translate between languages..." rows="6" maxlength="5000"></textarea>
++            
++            <div class="panel-footer">
++              <div class="panel-footer-left">
++                <span id="char-count" class="char-count">0 / 5000</span>
++                <span id="detected-lang-badge" class="detected-badge" hidden></span>
++              </div>
++              <button id="clear-source-btn" type="button" class="btn-sm btn-outline" title="Clear input text">Clear</button>
++            </div>
++          </div>
++
++          <!-- Target panel -->
++          <div class="trans-panel target-panel">
++            <label for="target-text" class="visually-hidden">Translated text</label>
++            <textarea id="target-text" class="trans-textarea" placeholder="Translation will appear here..." rows="6" readonly></textarea>
++            
++            <div class="panel-footer">
++              <div class="panel-footer-left" id="target-status-msg" aria-live="polite"></div>
++              <div class="panel-footer-actions">
++                <button id="listen-btn" type="button" class="btn-sm btn-outline" title="Listen to pronunciation" aria-label="Listen to pronunciation">
++                  🔊 Listen
++                </button>
++                <button id="copy-btn" type="button" class="btn-sm btn-outline" title="Copy translation to clipboard" aria-label="Copy translation">
++                  📋 Copy
++                </button>
++              </div>
++            </div>
++          </div>
++        </div>
++
++        <!-- Action Row -->
++        <div class="trans-actions-row">
++          <div class="presets-container">
++            <span class="presets-label" data-i18n="trans.quickPhrases">Quick Phrases:</span>
++            <div class="preset-chips">
++              <button type="button" class="chip-btn" data-phrase="Can I please get an oat milk latte to go?">"Oat milk latte to go"</button>
++              <button type="button" class="chip-btn" data-phrase="Where are your single-origin beans roasted?">"Single-origin beans"</button>
++              <button type="button" class="chip-btn" data-phrase="Do you have any dairy-free or decaf options?">"Dairy-free / decaf"</button>
++              <button type="button" class="chip-btn" data-phrase="Could I get a table for two near the window, please?">"Table for two"</button>
++              <button type="button" class="chip-btn" data-phrase="This coffee tastes wonderful, thank you!">"Compliment coffee"</button>
++            </div>
++          </div>
++
++          <div class="action-buttons-group">
++            <button id="translate-btn" type="button" class="btn btn-primary-action">
++              <span class="btn-spinner" id="translate-spinner" hidden></span>
++              <span id="translate-btn-text">Translate Text</span>
++            </button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Seasonal Favorites Section -->
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title" data-i18n="seasonal.heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div>
++            <h3 data-i18n="card1.title">Maple Oat Latte</h3>
++            <p data-i18n="card1.desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
++          <div>
++            <a href="/menu/seasonal" class="btn" data-i18n="card1.btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div>
++            <h3 data-i18n="card2.title">Dark Roast Espresso</h3>
++            <p data-i18n="card2.desc">Bold, smokey, and perfect for a morning boost.</p>
++          </div>
++          <div>
++            <a href="/menu/espresso" class="btn" data-i18n="card2.btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <h3 data-i18n="card3.title">Cold Brew</h3>
++            <p data-i18n="card3.desc">Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <div>
++            <a href="/menu/cold-brew" class="btn" data-i18n="card3.btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -199,14 +802,17 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-i18n="footer.story">Our Story</a> |
++      <a href="/careers" data-i18n="footer.careers">Join the Team</a> |
++      <a href="/contact" data-i18n="footer.contact">Contact Us</a> |
++      <a href="/privacy-policy" data-i18n="footer.privacy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p data-i18n="footer.rights">&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Scripts -->
++  <script src="translations.js"></script>
++  <script src="translator.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/translations.js b/translations.js
+new file mode 100644
+index 0000000..39eaed1
+--- /dev/null
++++ b/translations.js
+@@ -0,0 +1,484 @@
++// Translations and dictionary definitions for The Daily Grind
++
++const SITE_TRANSLATIONS = {
++  en: {
++    "nav.menu": "Menu",
++    "nav.locations": "Locations",
++    "nav.rewards": "Rewards",
++    "nav.translate": "Translate",
++    "nav.account": "My Account",
++    "nav.logout": "Logout",
++    "hero.title": "Wake Up Your Senses",
++    "hero.subtitle": "Ethically sourced, locally roasted, delivered to your cup.",
++    "hero.orderBtn": "Order Now",
++    "seasonal.heading": "Seasonal Favorites",
++    "card1.title": "Maple Oat Latte",
++    "card1.desc": "Creamy oat milk with a hint of Vermont maple syrup.",
++    "card1.btn": "View Details",
++    "card2.title": "Dark Roast Espresso",
++    "card2.desc": "Bold, smokey, and perfect for a morning boost.",
++    "card2.btn": "View Details",
++    "card3.title": "Cold Brew",
++    "card3.desc": "Steeped for 18 hours for maximum smoothness.",
++    "card3.btn": "View Details",
++    "trans.badge": "AI & Multilingual",
++    "trans.heading": "Translate Text Between Languages",
++    "trans.subheading": "Translate menu inquiries, coffee notes, and messages across languages using on-device AI or instant cloud fallback.",
++    "trans.from": "From:",
++    "trans.to": "To:",
++    "trans.autoDetect": "✨ Auto-Detect",
++    "trans.placeholderSource": "Type or paste text to translate between languages...",
++    "trans.placeholderTarget": "Translation will appear here...",
++    "trans.quickPhrases": "Quick Phrases:",
++    "trans.translateBtn": "Translate Text",
++    "trans.clearBtn": "Clear",
++    "trans.copyBtn": "📋 Copy",
++    "trans.listenBtn": "🔊 Listen",
++    "footer.story": "Our Story",
++    "footer.careers": "Join the Team",
++    "footer.contact": "Contact Us",
++    "footer.privacy": "Privacy",
++    "footer.rights": "© 2026 The Daily Grind Coffee Co. All rights reserved."
++  },
++  es: {
++    "nav.menu": "Menú",
++    "nav.locations": "Ubicaciones",
++    "nav.rewards": "Recompensas",
++    "nav.translate": "Traducir",
++    "nav.account": "Mi Cuenta",
++    "nav.logout": "Cerrar sesión",
++    "hero.title": "Despierta tus Sentidos",
++    "hero.subtitle": "De origen ético, tostado localmente, servido directamente en tu taza.",
++    "hero.orderBtn": "Ordenar Ahora",
++    "seasonal.heading": "Favoritos de Temporada",
++    "card1.title": "Latte de Avena y Arce",
++    "card1.desc": "Cremosa leche de avena con un toque de jarabe de arce de Vermont.",
++    "card1.btn": "Ver Detalles",
++    "card2.title": "Espresso Tueste Oscuro",
++    "card2.desc": "Intenso, ahumado y perfecto para una inyección de energía matutina.",
++    "card2.btn": "Ver Detalles",
++    "card3.title": "Cold Brew",
++    "card3.desc": "Macerado durante 18 horas para una máxima suavidad.",
++    "card3.btn": "Ver Detalles",
++    "trans.badge": "IA y Multilingüe",
++    "trans.heading": "Traducir Texto Entre Idiomas",
++    "trans.subheading": "Traduzca consultas del menú, notas de café y mensajes entre idiomas usando IA en el dispositivo o traducción en la nube.",
++    "trans.from": "De:",
++    "trans.to": "A:",
++    "trans.autoDetect": "✨ Detección Automática",
++    "trans.placeholderSource": "Escriba o pegue texto para traducir entre idiomas...",
++    "trans.placeholderTarget": "La traducción aparecerá aquí...",
++    "trans.quickPhrases": "Frases Rápidas:",
++    "trans.translateBtn": "Traducir Texto",
++    "trans.clearBtn": "Limpiar",
++    "trans.copyBtn": "📋 Copiar",
++    "trans.listenBtn": "🔊 Escuchar",
++    "footer.story": "Nuestra Historia",
++    "footer.careers": "Únete al Equipo",
++    "footer.contact": "Contáctenos",
++    "footer.privacy": "Privacidad",
++    "footer.rights": "© 2026 The Daily Grind Coffee Co. Todos los derechos reservados."
++  },
++  fr: {
++    "nav.menu": "Menu",
++    "nav.locations": "Adresses",
++    "nav.rewards": "Fidélité",
++    "nav.translate": "Traduire",
++    "nav.account": "Mon Compte",
++    "nav.logout": "Déconnexion",
++    "hero.title": "Éveillez Vos Sens",
++    "hero.subtitle": "Éthiquement sourcé, torréfié localement, versé dans votre tasse.",
++    "hero.orderBtn": "Commander",
++    "seasonal.heading": "Coups de Cœur de Saison",
++    "card1.title": "Latte Érable & Avoine",
++    "card1.desc": "Lait d'avoine crémeux avec une touche de sirop d'érable du Vermont.",
++    "card1.btn": "Voir Détails",
++    "card2.title": "Espresso Torréfaction Brune",
++    "card2.desc": "Corsé, boisé et parfait pour bien démarrer la matinée.",
++    "card2.btn": "Voir Détails",
++    "card3.title": "Cold Brew",
++    "card3.desc": "Infusé à froid pendant 18 heures pour une douceur incomparable.",
++    "card3.btn": "Voir Détails",
++    "trans.badge": "IA & Multilingue",
++    "trans.heading": "Traduire du Texte Entre les Langues",
++    "trans.subheading": "Traduisez vos questions, notes de café et messages entre différentes langues grâce à l'IA embarquée ou au cloud.",
++    "trans.from": "De :",
++    "trans.to": "Vers :",
++    "trans.autoDetect": "✨ Détection Automatique",
++    "trans.placeholderSource": "Saisissez ou collez du texte à traduire entre les langues...",
++    "trans.placeholderTarget": "La traduction apparaîtra ici...",
++    "trans.quickPhrases": "Phrases Courantes :",
++    "trans.translateBtn": "Traduire le Texte",
++    "trans.clearBtn": "Effacer",
++    "trans.copyBtn": "📋 Copier",
++    "trans.listenBtn": "🔊 Écouter",
++    "footer.story": "Notre Histoire",
++    "footer.careers": "Rejoindre l'Équipe",
++    "footer.contact": "Nous Contacter",
++    "footer.privacy": "Confidentialité",
++    "footer.rights": "© 2026 The Daily Grind Coffee Co. Tous droits réservés."
++  },
++  de: {
++    "nav.menu": "Speisekarte",
++    "nav.locations": "Standorte",
++    "nav.rewards": "Prämien",
++    "nav.translate": "Übersetzen",
++    "nav.account": "Mein Konto",
++    "nav.logout": "Abmelden",
++    "hero.title": "Wecken Sie Ihre Sinne",
++    "hero.subtitle": "Ethisch bezogen, lokal geröstet, frisch in Ihre Tasse.",
++    "hero.orderBtn": "Jetzt Bestellen",
++    "seasonal.heading": "Saisonale Favoriten",
++    "card1.title": "Ahorn-Hafer-Latte",
++    "card1.desc": "Cremige Hafermilch mit einem Hauch Vermont-Ahornsirup.",
++    "card1.btn": "Details Anzeigen",
++    "card2.title": "Dunkler Espresso",
++    "card2.desc": "Kräftig, rauchig und ideal für den morgendlichen Energieschub.",
++    "card2.btn": "Details Anzeigen",
++    "card3.title": "Cold Brew",
++    "card3.desc": "18 Stunden lang kalt gebrüht für höchste Milde.",
++    "card3.btn": "Details Anzeigen",
++    "trans.badge": "KI & Mehrsprachig",
++    "trans.heading": "Text Zwischen Sprachen Übersetzen",
++    "trans.subheading": "Übersetzen Sie Kaffeebestellungen und Notizen zwischen verschiedenen Sprachen mit On-Device-KI.",
++    "trans.from": "Von:",
++    "trans.to": "Nach:",
++    "trans.autoDetect": "✨ Automatisch Erkennen",
++    "trans.placeholderSource": "Text eingeben, um ihn zwischen Sprachen zu übersetzen...",
++    "trans.placeholderTarget": "Die Übersetzung wird hier angezeigt...",
++    "trans.quickPhrases": "Häufige Sätze:",
++    "trans.translateBtn": "Text Übersetzen",
++    "trans.clearBtn": "Löschen",
++    "trans.copyBtn": "📋 Kopieren",
++    "trans.listenBtn": "🔊 Vorlesen",
++    "footer.story": "Über Uns",
++    "footer.careers": "Karriere",
++    "footer.contact": "Kontakt",
++    "footer.privacy": "Datenschutz",
++    "footer.rights": "© 2026 The Daily Grind Coffee Co. Alle Rechte vorbehalten."
++  },
++  it: {
++    "nav.menu": "Menu",
++    "nav.locations": "Punti Vendita",
++    "nav.rewards": "Premi",
++    "nav.translate": "Traduci",
++    "nav.account": "Mio Account",
++    "nav.logout": "Disconnetti",
++    "hero.title": "Risveglia i Tuoi Sensi",
++    "hero.subtitle": "Provenienza etica, tostato localmente, servito nella tua tazza.",
++    "hero.orderBtn": "Ordina Ora",
++    "seasonal.heading": "I Più Amati della Stagione",
++    "card1.title": "Latte d'Avena e Acero",
++    "card1.desc": "Cremoso latte d'avena con una punta di sciroppo d'acero del Vermont.",
++    "card1.btn": "Vedi Dettagli",
++    "card2.title": "Espresso Tostatura Scura",
++    "card2.desc": "Corposo, tostato e perfetto per darti la giusta carica mattutina.",
++    "card2.btn": "Vedi Dettagli",
++    "card3.title": "Cold Brew",
++    "card3.desc": "In infusione a freddo per 18 ore per una straordinaria morbidezza.",
++    "card3.btn": "Vedi Dettagli",
++    "trans.badge": "IA & Multilingue",
++    "trans.heading": "Traduci Testo Tra le Lingue",
++    "trans.subheading": "Traduci ordinazioni e messaggi tra diverse lingue con intelligenza artificiale on-device o cloud.",
++    "trans.from": "Da:",
++    "trans.to": "A:",
++    "trans.autoDetect": "✨ Rileva Automaticamente",
++    "trans.placeholderSource": "Digita o incolla il testo da tradurre...",
++    "trans.placeholderTarget": "La traduzione apparirà qui...",
++    "trans.quickPhrases": "Frasi Utili:",
++    "trans.translateBtn": "Traduci Testo",
++    "trans.clearBtn": "Cancella",
++    "trans.copyBtn": "📋 Copia",
++    "trans.listenBtn": "🔊 Ascolta",
++    "footer.story": "La Nostra Storia",
++    "footer.careers": "Lavora Con Noi",
++    "footer.contact": "Contattaci",
++    "footer.privacy": "Privacy",
++    "footer.rights": "© 2026 The Daily Grind Coffee Co. Tutti i diritti riservati."
++  },
++  pt: {
++    "nav.menu": "Cardápio",
++    "nav.locations": "Unidades",
++    "nav.rewards": "Recompensas",
++    "nav.translate": "Traduzir",
++    "nav.account": "Minha Conta",
++    "nav.logout": "Sair",
++    "hero.title": "Desperte Seus Sentidos",
++    "hero.subtitle": "Origem ética, torra local, direto na sua xícara.",
++    "hero.orderBtn": "Peça Agora",
++    "seasonal.heading": "Favoritos da Estação",
++    "card1.title": "Latte de Aveia com Bordo",
++    "card1.desc": "Leite de aveia cremoso com um toque de xarope de bordo de Vermont.",
++    "card1.btn": "Ver Detalhes",
++    "card2.title": "Espresso Torra Escura",
++    "card2.desc": "Encorpado, defumado e perfeito para o impulso matinal.",
++    "card2.btn": "Ver Detalhes",
++    "card3.title": "Cold Brew",
++    "card3.desc": "Em infusão por 18 horas para máxima suavidade.",
++    "card3.btn": "Ver Detalhes",
++    "trans.badge": "IA & Multilíngue",
++    "trans.heading": "Traduzir Texto Entre Idiomas",
++    "trans.subheading": "Traduza pedidos de café e mensagens entre idiomas com IA no dispositivo ou na nuvem.",
++    "trans.from": "De:",
++    "trans.to": "Para:",
++    "trans.autoDetect": "✨ Detecção Automática",
++    "trans.placeholderSource": "Digite ou cole o texto para traduzir...",
++    "trans.placeholderTarget": "A tradução aparecerá aqui...",
++    "trans.quickPhrases": "Frases Rápidas:",
++    "trans.translateBtn": "Traduzir Texto",
++    "trans.clearBtn": "Limpar",
++    "trans.copyBtn": "📋 Copiar",
++    "trans.listenBtn": "🔊 Ouvir",
++    "footer.story": "Nossa História",
++    "footer.careers": "Trabalhe Conosco",
++    "footer.contact": "Fale Conosco",
++    "footer.privacy": "Privacidade",
++    "footer.rights": "© 2026 The Daily Grind Coffee Co. Todos os direitos reservados."
++  },
++  ja: {
++    "nav.menu": "メニュー",
++    "nav.locations": "店舗案内",
++    "nav.rewards": "リワード",
++    "nav.translate": "翻訳",
++    "nav.account": "マイアカウント",
++    "nav.logout": "ログアウト",
++    "hero.title": "五感を目覚めさせる一杯",
++    "hero.subtitle": "倫理的に調達され、地元で焙煎された新鮮なコーヒーをお届けします。",
++    "hero.orderBtn": "今すぐ注文",
++    "seasonal.heading": "季節のおすすめメニュー",
++    "card1.title": "メープルオーツラテ",
++    "card1.desc": "バーモント産メープルシロップがほんのり香るクリーミーなオーツミルク。",
++    "card1.btn": "詳細を見る",
++    "card2.title": "ダークローストエスプレッソ",
++    "card2.desc": "深みのあるスモーキーな味わいで、朝の目覚めに最適。",
++    "card2.btn": "詳細を見る",
++    "card3.title": "コールドブリュー",
++    "card3.desc": "18時間じっくり低温抽出した、驚くほどまろやかなアイスコーヒー。",
++    "card3.btn": "詳細を見る",
++    "trans.badge": "AI＆多言語翻訳",
++    "trans.heading": "言語間でテキストを翻訳",
++    "trans.subheading": "オンデバイスAIまたは高速クラウド翻訳を利用して、コーヒーの注文やメッセージを多言語間で翻訳します。",
++    "trans.from": "翻訳元:",
++    "trans.to": "翻訳先:",
++    "trans.autoDetect": "✨ 言語を自動検出",
++    "trans.placeholderSource": "翻訳したいテキストを入力または貼り付け...",
++    "trans.placeholderTarget": "ここに翻訳結果が表示されます...",
++    "trans.quickPhrases": "よく使うフレーズ:",
++    "trans.translateBtn": "テキストを翻訳",
++    "trans.clearBtn": "クリア",
++    "trans.copyBtn": "📋 コピー",
++    "trans.listenBtn": "🔊 音声再生",
++    "footer.story": "ストーリー",
++    "footer.careers": "採用情報",
++    "footer.contact": "お問い合わせ",
++    "footer.privacy": "プライバシー",
++    "footer.rights": "© 2026 The Daily Grind Coffee Co. 無断転載を禁じます。"
++  },
++  zh: {
++    "nav.menu": "菜单",
++    "nav.locations": "门店分布",
++    "nav.rewards": "会员特权",
++    "nav.translate": "翻译",
++    "nav.account": "我的账户",
++    "nav.logout": "退出登录",
++    "hero.title": "唤醒你的感官",
++    "hero.subtitle": "道德采购，本地新鲜烘焙，为您献上纯正风味。",
++    "hero.orderBtn": "立即点餐",
++    "seasonal.heading": "当季精选",
++    "card1.title": "枫糖燕麦拿铁",
++    "card1.desc": "丝滑燕麦奶搭配佛蒙特纯正枫糖浆。",
++    "card1.btn": "查看详情",
++    "card2.title": "深度烘焙意式浓缩",
++    "card2.desc": "口感醇厚浓郁，带烟熏风味，早晨提神的极佳选择。",
++    "card2.btn": "查看详情",
++    "card3.title": "冷萃咖啡",
++    "card3.desc": "低温慢速萃取18小时，口感极致柔和顺滑。",
++    "card3.btn": "查看详情",
++    "trans.badge": "AI 多语言互译",
++    "trans.heading": "多语言文本翻译",
++    "trans.subheading": "利用端侧内置AI或高速云端引擎，在各种语言间自由翻译点单、咖啡笔记与交流语句。",
++    "trans.from": "源语言:",
++    "trans.to": "目标语言:",
++    "trans.autoDetect": "✨ 自动检测语言",
++    "trans.placeholderSource": "输入或粘贴需要翻译的文本...",
++    "trans.placeholderTarget": "翻译结果将显示在此处...",
++    "trans.quickPhrases": "常用语句:",
++    "trans.translateBtn": "翻译文本",
++    "trans.clearBtn": "清空",
++    "trans.copyBtn": "📋 复制",
++    "trans.listenBtn": "🔊 朗读",
++    "footer.story": "关于我们",
++    "footer.careers": "加入团队",
++    "footer.contact": "联系我们",
++    "footer.privacy": "隐私政策",
++    "footer.rights": "© 2026 The Daily Grind Coffee Co. 保留所有权利。"
++  }
++};
++
++// Common phrases offline dictionary mapping
++const OFFLINE_DICTIONARY = {
++  "hello": {
++    es: "Hola",
++    fr: "Bonjour",
++    de: "Hallo",
++    it: "Ciao",
++    pt: "Olá",
++    ja: "こんにちは",
++    zh: "你好",
++    en: "Hello"
++  },
++  "bonjour": {
++    en: "Hello",
++    es: "Hola",
++    de: "Hallo",
++    it: "Ciao",
++    pt: "Olá",
++    ja: "こんにちは",
++    zh: "你好",
++    fr: "Bonjour"
++  },
++  "hola": {
++    en: "Hello",
++    fr: "Bonjour",
++    de: "Hallo",
++    it: "Ciao",
++    pt: "Olá",
++    ja: "こんにちは",
++    zh: "你好",
++    es: "Hola"
++  },
++  "good morning": {
++    es: "Buenos días",
++    fr: "Bonjour",
++    de: "Guten Morgen",
++    it: "Buongiorno",
++    pt: "Bom dia",
++    ja: "おはようございます",
++    zh: "早上好",
++    en: "Good morning"
++  },
++  "thank you": {
++    es: "Gracias",
++    fr: "Merci",
++    de: "Danke",
++    it: "Grazie",
++    pt: "Obrigado",
++    ja: "ありがとうございます",
++    zh: "谢谢",
++    en: "Thank you"
++  },
++  "merci": {
++    en: "Thank you",
++    es: "Gracias",
++    de: "Danke",
++    it: "Grazie",
++    pt: "Obrigado",
++    ja: "ありがとうございます",
++    zh: "谢谢",
++    fr: "Merci"
++  },
++  "gracias": {
++    en: "Thank you",
++    fr: "Merci",
++    de: "Danke",
++    it: "Grazie",
++    pt: "Obrigado",
++    ja: "ありがとうございます",
++    zh: "谢谢",
++    es: "Gracias"
++  },
++  "can i please get an oat milk latte to go?": {
++    es: "¿Me da un latte con leche de avena para llevar, por favor?",
++    fr: "Puis-je avoir un latte au lait d'avoine à emporter, s'il vous plaît ?",
++    de: "Kann ich bitte einen Hafermilch-Latte zum Mitnehmen haben?",
++    it: "Posso avere un latte d'avena da asporto, per favore?",
++    pt: "Poderia me dar um latte com leite de aveia para viagem, por favor?",
++    ja: "オーツミルクラテを持ち帰りでいただけますか？",
++    zh: "请给我一杯燕麦奶拿铁外带，谢谢。",
++    en: "Can I please get an oat milk latte to go?"
++  },
++  "where are your single-origin beans roasted?": {
++    es: "¿Dónde tuestan sus granos de café de origen único?",
++    fr: "Où vos grains d'origine unique sont-ils torréfiés ?",
++    de: "Wo werden Ihre Single-Origin-Bohnen geröstet?",
++    it: "Dove vengono tostati i vostri chicchi monorigine?",
++    pt: "Onde seus grãos de origem única são torrados?",
++    ja: "シングルオリジンのコーヒー豆はどこで焙煎されていますか？",
++    zh: "你们的单一产地咖啡豆是在哪里烘焙的？",
++    en: "Where are your single-origin beans roasted?"
++  },
++  "do you have any dairy-free or decaf options?": {
++    es: "¿Tienen opciones sin lácteos o descafeinadas?",
++    fr: "Avez-vous des options sans produits laitiers ou décaféinées ?",
++    de: "Haben Sie milchfreie oder koffeinfreie Optionen?",
++    it: "Avete opzioni senza lattosio o decaffeinate?",
++    pt: "Você tem opções sem lactose ou descafeinadas?",
++    ja: "乳製品不使用またはカフェインレスの選択肢はありますか？",
++    zh: "请问有无乳制品或低因咖啡的选择吗？",
++    en: "Do you have any dairy-free or decaf options?"
++  },
++  "could i get a table for two near the window, please?": {
++    es: "¿Podría darme una mesa para dos cerca de la ventana, por favor?",
++    fr: "Pourrais-je avoir une table pour deux près de la fenêtre, s'il vous plaît ?",
++    de: "Könnte ich bitte einen Tisch für zwei am Fenster bekommen?",
++    it: "Potrei avere un tavolo per due vicino alla finestra, per favore?",
++    pt: "Poderia conseguir uma mesa para dois perto da janela, por favor?",
++    ja: "窓際の2人席をお願いできますか？",
++    zh: "请问可以安排靠窗的两人座位吗？",
++    en: "Could I get a table for two near the window, please?"
++  },
++  "this coffee tastes wonderful, thank you!": {
++    es: "¡Este café sabe maravilloso, muchas gracias!",
++    fr: "Ce café a un goût formidable, merci !",
++    de: "Dieser Kaffee schmeckt wunderbar, vielen Dank!",
++    it: "Questo caffè ha un sapore meraviglioso, grazie!",
++    pt: "Este café tem um sabor maravilhoso, muito obrigado!",
++    ja: "このコーヒーはとても美味しいです、ありがとう！",
++    zh: "这杯咖啡口感太棒了，非常感谢！",
++    en: "This coffee tastes wonderful, thank you!"
++  },
++  "coffee": {
++    es: "café",
++    fr: "café",
++    de: "Kaffee",
++    it: "caffè",
++    pt: "café",
++    ja: "コーヒー",
++    zh: "咖啡",
++    en: "coffee"
++  },
++  "espresso": {
++    es: "espresso",
++    fr: "espresso",
++    de: "Espresso",
++    it: "espresso",
++    pt: "espresso",
++    ja: "エスプレッソ",
++    zh: "意式浓缩",
++    en: "espresso"
++  },
++  "cold brew": {
++    es: "café frío",
++    fr: "infusion à froid",
++    de: "Cold Brew",
++    it: "cold brew",
++    pt: "café gelado",
++    ja: "コールドブリュー",
++    zh: "冷萃咖啡",
++    en: "cold brew"
++  },
++  "latte": {
++    es: "latte",
++    fr: "latte",
++    de: "Latte",
++    it: "latte macchiato",
++    pt: "latte",
++    ja: "ラテ",
++    zh: "拿铁",
++    en: "latte"
++  }
++};
++
++if (typeof module !== 'undefined' && module.exports) {
++  module.exports = { SITE_TRANSLATIONS, OFFLINE_DICTIONARY };
++}
+diff --git a/translator.js b/translator.js
+new file mode 100644
+index 0000000..db48ad4
+--- /dev/null
++++ b/translator.js
+@@ -0,0 +1,581 @@
++/**
++ * The Daily Grind - Multilingual Translation Engine
++ * 
++ * Supports:
++ * 1. On-device Built-in AI Translator API ('Translator' in self) with downloadprogress monitoring
++ * 2. On-device Built-in AI LanguageDetector API ('LanguageDetector' in self)
++ * 3. Graceful Fallback to Remote Translation API and Offline Phrasebook
++ * 4. Website content dynamic translation and localization
++ */
++
++(function () {
++  'use strict';
++
++  // Global or module export support
++  const getTranslations = () => (typeof SITE_TRANSLATIONS !== 'undefined') ? SITE_TRANSLATIONS : (window.SITE_TRANSLATIONS || {});
++  const getDictionary = () => (typeof OFFLINE_DICTIONARY !== 'undefined') ? OFFLINE_DICTIONARY : (window.OFFLINE_DICTIONARY || {});
++
++  // State
++  let activeTranslator = null;
++  let currentPair = { src: '', tgt: '' };
++  let currentSiteLang = 'en';
++
++  /**
++   * Check if Native Translator API is available in global scope
++   */
++  function hasNativeTranslator() {
++    return typeof self !== 'undefined' && 'Translator' in self;
++  }
++
++  /**
++   * Check if Native LanguageDetector API is available in global scope
++   */
++  function hasNativeLanguageDetector() {
++    return typeof self !== 'undefined' && 'LanguageDetector' in self;
++  }
++
++  /**
++   * Detect language using on-device LanguageDetector API or heuristic fallback
++   */
++  async function detectLanguage(text, onProgress) {
++    if (!text || text.trim().length === 0) return null;
++
++    if (hasNativeLanguageDetector()) {
++      try {
++        const availability = await LanguageDetector.availability();
++        if (availability !== 'unavailable') {
++          const detector = await LanguageDetector.create({
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                if (onProgress && e.total) {
++                  onProgress(Math.round((e.loaded / e.total) * 100));
++                }
++              });
++            }
++          });
++          const results = await detector.detect(text);
++          if (results && results.length > 0 && results[0].detectedLanguage) {
++            return {
++              language: results[0].detectedLanguage,
++              confidence: results[0].confidence,
++              engine: 'builtin-ai'
++            };
++          }
++        }
++      } catch (err) {
++        console.warn('LanguageDetector failed, falling back:', err);
++      }
++    }
++
++    // Heuristic detection fallback
++    return detectLanguageHeuristic(text);
++  }
++
++  /**
++   * Heuristic language detection for fallback
++   */
++  function detectLanguageHeuristic(text) {
++    const trimmed = text.trim();
++    // Japanese
++    if (/[\u3040-\u30ff]/.test(trimmed)) {
++      return { language: 'ja', confidence: 0.95, engine: 'heuristic' };
++    }
++    // Chinese
++    if (/[\u4e00-\u9fff]/.test(trimmed)) {
++      return { language: 'zh', confidence: 0.90, engine: 'heuristic' };
++    }
++    // Korean
++    if (/[\uac00-\ud7af]/.test(trimmed)) {
++      return { language: 'ko', confidence: 0.95, engine: 'heuristic' };
++    }
++    // Arabic
++    if (/[\u0600-\u06FF]/.test(trimmed)) {
++      return { language: 'ar', confidence: 0.95, engine: 'heuristic' };
++    }
++    // Russian
++    if (/[\u0400-\u04FF]/.test(trimmed)) {
++      return { language: 'ru', confidence: 0.90, engine: 'heuristic' };
++    }
++
++    const clean = " " + trimmed.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, " ") + " ";
++
++    // French
++    if (/[œçàâêîôû]/.test(trimmed) || /\b(bonjour|merci|salut|oui|non|avec|sans|pour|dans|est|mon|ma|mes|le|la|les|un|une|des|café)\b/i.test(clean)) {
++      return { language: 'fr', confidence: 0.85, engine: 'heuristic' };
++    }
++    // Spanish
++    if (/[¿¡áéíóúñ]/i.test(trimmed) || /\b(hola|gracias|buenos|días|noches|amigo|leche|para|con|sin|este|esta|el|la|los|las|de|que)\b/i.test(clean)) {
++      return { language: 'es', confidence: 0.85, engine: 'heuristic' };
++    }
++    // German
++    if (/[äöüß]/.test(trimmed) || /\b(hallo|guten|morgen|tag|danke|bitte|kaffee|milch|mit|ohne|ist|der|die|das|und|ein|eine)\b/i.test(clean)) {
++      return { language: 'de', confidence: 0.85, engine: 'heuristic' };
++    }
++    // Italian
++    if (/\b(ciao|buongiorno|grazie|caffè|latte|con|senza|il|la|gli|le|di|che|sono)\b/i.test(clean)) {
++      return { language: 'it', confidence: 0.85, engine: 'heuristic' };
++    }
++    // Portuguese
++    if (/[ãõ]/i.test(trimmed) || /\b(olá|obrigado|obrigada|café|leite|com|sem|para|do|da|dos|das)\b/i.test(clean)) {
++      return { language: 'pt', confidence: 0.85, engine: 'heuristic' };
++    }
++
++    // Default English
++    return { language: 'en', confidence: 0.70, engine: 'heuristic' };
++  }
++
++  /**
++   * Translate text using Built-in AI Translator API
++   */
++  async function translateWithBuiltInAI(text, sourceLanguage, targetLanguage, onProgress) {
++    if (!hasNativeTranslator()) {
++      throw new Error('Native Translator API is not supported in this environment.');
++    }
++
++    const options = { sourceLanguage, targetLanguage };
++    const availability = await Translator.availability(options);
++
++    if (availability === 'unavailable') {
++      throw new Error(`Native Translator unavailable for ${sourceLanguage} -> ${targetLanguage}`);
++    }
++
++    // Reuse active translator if language pair matches
++    if (!activeTranslator || currentPair.src !== sourceLanguage || currentPair.tgt !== targetLanguage) {
++      activeTranslator = await Translator.create({
++        ...options,
++        monitor(m) {
++          m.addEventListener('downloadprogress', (e) => {
++            if (onProgress) {
++              const pct = typeof e.loaded === 'number' && e.loaded <= 1
++                ? Math.round(e.loaded * 100)
++                : Math.round(((e.loaded || 0) / (e.total || 1)) * 100);
++              onProgress(pct);
++            }
++          });
++        }
++      });
++      currentPair = { src: sourceLanguage, tgt: targetLanguage };
++    }
++
++    return await activeTranslator.translate(text);
++  }
++
++  /**
++   * Translate text using Remote Free API Fallback (with timeout)
++   */
++  async function translateWithRemoteFallback(text, sourceLanguage, targetLanguage) {
++    const pair = `${sourceLanguage}|${targetLanguage}`;
++    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(pair)}`;
++
++    const controller = new AbortController();
++    const timeoutId = setTimeout(() => controller.abort(), 6000);
++
++    try {
++      const response = await fetch(url, { signal: controller.signal });
++      clearTimeout(timeoutId);
++
++      if (!response.ok) {
++        throw new Error(`HTTP error ${response.status}`);
++      }
++
++      const data = await response.json();
++      if (data && data.responseData && data.responseData.translatedText) {
++        let res = data.responseData.translatedText;
++        if (!res.startsWith('MYMEMORY WARNING')) {
++          return res;
++        }
++      }
++      throw new Error('Invalid response payload');
++    } catch (err) {
++      clearTimeout(timeoutId);
++      throw err;
++    }
++  }
++
++  /**
++   * Translate text using Offline Dictionary Fallback
++   */
++  function translateWithOfflineDictionary(text, sourceLanguage, targetLanguage) {
++    const dictionary = getDictionary();
++    const lower = text.trim().toLowerCase();
++    
++    // Exact match in phrasebook
++    if (dictionary[lower] && dictionary[lower][targetLanguage]) {
++      return dictionary[lower][targetLanguage];
++    }
++
++    // Search for phrase across all dictionary values
++    for (const phraseKey of Object.keys(dictionary)) {
++      const item = dictionary[phraseKey];
++      for (const lang of Object.keys(item)) {
++        if (item[lang].toLowerCase() === lower && item[targetLanguage]) {
++          return item[targetLanguage];
++        }
++      }
++    }
++
++    // Word by word fallback
++    const words = text.split(/(\s+|[.,!?;:])/);
++    let matchedAny = false;
++    const translatedWords = words.map(chunk => {
++      const cLower = chunk.toLowerCase();
++      if (dictionary[cLower] && dictionary[cLower][targetLanguage]) {
++        matchedAny = true;
++        return dictionary[cLower][targetLanguage];
++      }
++      return chunk;
++    });
++
++    if (matchedAny) {
++      return translatedWords.join('');
++    }
++
++    return text;
++  }
++
++  /**
++   * Unified translation orchestrator
++   */
++  async function translateText(text, sourceLanguage, targetLanguage, onProgress) {
++    if (!text || text.trim() === '') {
++      return { text: '', engine: 'none', detectedLanguage: null };
++    }
++
++    let detectedLang = null;
++    let actualSource = sourceLanguage;
++
++    // Handle Auto-Detect
++    if (sourceLanguage === 'auto') {
++      const detection = await detectLanguage(text, onProgress);
++      if (detection && detection.language) {
++        actualSource = detection.language;
++        detectedLang = detection;
++      } else {
++        actualSource = 'en';
++      }
++    }
++
++    // If source and target are the same language, no translation needed
++    if (actualSource === targetLanguage) {
++      return { text, engine: 'identity', detectedLanguage: detectedLang };
++    }
++
++    // 1. Try On-Device Built-in AI Translator
++    if (hasNativeTranslator()) {
++      try {
++        const translated = await translateWithBuiltInAI(text, actualSource, targetLanguage, onProgress);
++        return { text: translated, engine: 'builtin-ai', detectedLanguage: detectedLang };
++      } catch (nativeErr) {
++        console.info('On-device translation unavailable, proceeding to fallback:', nativeErr.message);
++      }
++    }
++
++    // 2. Try Offline phrasebook first for instant response
++    const dictionary = getDictionary();
++    const lower = text.trim().toLowerCase();
++    if (dictionary[lower] && dictionary[lower][targetLanguage]) {
++      return {
++        text: dictionary[lower][targetLanguage],
++        engine: 'offline-phrasebook',
++        detectedLanguage: detectedLang
++      };
++    }
++
++    // 3. Try Remote Translation Service
++    try {
++      const remoteText = await translateWithRemoteFallback(text, actualSource, targetLanguage);
++      return { text: remoteText, engine: 'cloud-api', detectedLanguage: detectedLang };
++    } catch (remoteErr) {
++      console.warn('Remote translation failed, using offline fallback:', remoteErr);
++    }
++
++    // 4. Offline Dictionary / Rule engine
++    const offlineText = translateWithOfflineDictionary(text, actualSource, targetLanguage);
++    return { text: offlineText, engine: 'offline-dictionary', detectedLanguage: detectedLang };
++  }
++
++  /**
++   * Update website content to the specified language
++   */
++  function applySiteLanguage(langCode) {
++    const translations = getTranslations();
++    if (!translations[langCode]) {
++      console.warn(`Language ${langCode} not found in translations.`);
++      return;
++    }
++
++    currentSiteLang = langCode;
++    const bundle = translations[langCode];
++
++    // Update all DOM elements with data-i18n
++    const elements = document.querySelectorAll('[data-i18n]');
++    elements.forEach(el => {
++      const key = el.getAttribute('data-i18n');
++      if (bundle[key]) {
++        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
++          el.placeholder = bundle[key];
++        } else {
++          el.textContent = bundle[key];
++        }
++      }
++    });
++
++    // Update placeholder attributes specifically tagged
++    const placeholderEls = document.querySelectorAll('[data-i18n-placeholder]');
++    placeholderEls.forEach(el => {
++      const key = el.getAttribute('data-i18n-placeholder');
++      if (bundle[key]) {
++        el.placeholder = bundle[key];
++      }
++    });
++
++    // Update html lang attribute
++    if (typeof document !== 'undefined' && document.documentElement) {
++      document.documentElement.lang = langCode;
++    }
++  }
++
++  /**
++   * DOM Initializer
++   */
++  function initTranslatorUI() {
++    const srcLangSelect = document.getElementById('src-lang');
++    const tgtLangSelect = document.getElementById('tgt-lang');
++    const swapBtn = document.getElementById('swap-lang-btn');
++    const sourceText = document.getElementById('source-text');
++    const targetText = document.getElementById('target-text');
++    const translateBtn = document.getElementById('translate-btn');
++    const translateBtnText = document.getElementById('translate-btn-text');
++    const translateSpinner = document.getElementById('translate-spinner');
++    const clearBtn = document.getElementById('clear-source-btn');
++    const copyBtn = document.getElementById('copy-btn');
++    const listenBtn = document.getElementById('listen-btn');
++    const charCount = document.getElementById('char-count');
++    const detectedBadge = document.getElementById('detected-lang-badge');
++    const engineBadge = document.getElementById('engine-status-badge');
++    const engineStatusText = document.getElementById('engine-status-text');
++    const progressContainer = document.getElementById('model-progress-container');
++    const progressFill = document.getElementById('model-progress-fill');
++    const progressPercent = document.getElementById('model-progress-percent');
++    const siteLangSelect = document.getElementById('site-language');
++    const targetStatusMsg = document.getElementById('target-status-msg');
++
++    // Update Engine status badge initially
++    if (engineStatusText && engineBadge) {
++      if (hasNativeTranslator()) {
++        engineStatusText.textContent = 'Built-in AI Ready';
++        engineBadge.classList.add('engine-ai');
++      } else {
++        engineStatusText.textContent = 'Multilingual Engine';
++        engineBadge.classList.add('engine-cloud');
++      }
++    }
++
++    // Site language selector
++    if (siteLangSelect) {
++      siteLangSelect.addEventListener('change', (e) => {
++        applySiteLanguage(e.target.value);
++      });
++    }
++
++    // Character counter
++    if (sourceText && charCount) {
++      sourceText.addEventListener('input', () => {
++        charCount.textContent = `${sourceText.value.length} / 5000`;
++        if (sourceText.value.length === 0) {
++          if (detectedBadge) detectedBadge.hidden = true;
++          if (targetText) targetText.value = '';
++          if (targetStatusMsg) targetStatusMsg.textContent = '';
++        }
++      });
++    }
++
++    // Clear button
++    if (clearBtn) {
++      clearBtn.addEventListener('click', () => {
++        if (sourceText) sourceText.value = '';
++        if (targetText) targetText.value = '';
++        if (charCount) charCount.textContent = '0 / 5000';
++        if (detectedBadge) detectedBadge.hidden = true;
++        if (targetStatusMsg) targetStatusMsg.textContent = '';
++        if (sourceText) sourceText.focus();
++      });
++    }
++
++    // Swap languages button
++    if (swapBtn && srcLangSelect && tgtLangSelect) {
++      swapBtn.addEventListener('click', () => {
++        const currentSrc = srcLangSelect.value;
++        const currentTgt = tgtLangSelect.value;
++
++        if (currentSrc === 'auto') {
++          srcLangSelect.value = currentTgt;
++          tgtLangSelect.value = 'en';
++        } else {
++          srcLangSelect.value = currentTgt;
++          tgtLangSelect.value = currentSrc;
++        }
++
++        // Swap texts if target text is available
++        if (targetText && targetText.value.trim().length > 0 && sourceText) {
++          const oldTarget = targetText.value;
++          sourceText.value = oldTarget;
++          targetText.value = '';
++          if (charCount) charCount.textContent = `${oldTarget.length} / 5000`;
++          performTranslation();
++        }
++      });
++    }
++
++    // Copy to clipboard
++    if (copyBtn && targetText) {
++      copyBtn.addEventListener('click', async () => {
++        if (!targetText.value) return;
++        try {
++          await navigator.clipboard.writeText(targetText.value);
++          const orig = copyBtn.innerHTML;
++          copyBtn.innerHTML = '✓ Copied!';
++          setTimeout(() => { copyBtn.innerHTML = orig; }, 2000);
++        } catch (err) {
++          console.warn('Clipboard write failed:', err);
++        }
++      });
++    }
++
++    // Listen / Speech Synthesis
++    if (listenBtn && targetText && tgtLangSelect) {
++      listenBtn.addEventListener('click', () => {
++        const textToSpeak = targetText.value.trim();
++        if (!textToSpeak || !('speechSynthesis' in window)) return;
++        
++        window.speechSynthesis.cancel();
++        const utterance = new SpeechSynthesisUtterance(textToSpeak);
++        utterance.lang = tgtLangSelect.value;
++        window.speechSynthesis.speak(utterance);
++      });
++    }
++
++    // Quick phrase chips
++    const phraseChips = document.querySelectorAll('.chip-btn');
++    phraseChips.forEach(chip => {
++      chip.addEventListener('click', () => {
++        const phrase = chip.getAttribute('data-phrase');
++        if (sourceText && phrase) {
++          sourceText.value = phrase;
++          if (charCount) charCount.textContent = `${phrase.length} / 5000`;
++          performTranslation();
++        }
++      });
++    });
++
++    // Translation execution
++    async function performTranslation() {
++      if (!sourceText || !targetText) return;
++      const text = sourceText.value.trim();
++      if (!text) {
++        targetText.value = '';
++        return;
++      }
++
++      const src = srcLangSelect.value;
++      const tgt = tgtLangSelect.value;
++
++      // Loading state
++      if (translateBtn) translateBtn.disabled = true;
++      if (translateSpinner) translateSpinner.hidden = false;
++      if (translateBtnText) translateBtnText.textContent = 'Translating...';
++      if (targetStatusMsg) targetStatusMsg.textContent = 'Translating text...';
++
++      try {
++        const result = await translateText(text, src, tgt, (progressPct) => {
++          if (progressContainer) {
++            progressContainer.hidden = false;
++            if (progressFill) progressFill.style.width = `${progressPct}%`;
++            if (progressPercent) progressPercent.textContent = `${progressPct}%`;
++          }
++        });
++
++        targetText.value = result.text;
++
++        // Hide progress if visible
++        if (progressContainer) progressContainer.hidden = true;
++
++        // Show detected language
++        if (result.detectedLanguage && detectedBadge) {
++          const langNames = {
++            en: 'English', es: 'Spanish', fr: 'French', de: 'German',
++            it: 'Italian', pt: 'Portuguese', ja: 'Japanese', zh: 'Chinese',
++            ko: 'Korean', ar: 'Arabic', ru: 'Russian', nl: 'Dutch'
++          };
++          const name = langNames[result.detectedLanguage.language] || result.detectedLanguage.language;
++          detectedBadge.textContent = `Detected: ${name}`;
++          detectedBadge.hidden = false;
++        }
++
++        // Show engine note in status
++        if (targetStatusMsg) {
++          const engineLabels = {
++            'builtin-ai': 'Translated with On-Device AI',
++            'cloud-api': 'Translated with Cloud Engine',
++            'offline-phrasebook': 'Translated via Instant Phrasebook',
++            'offline-dictionary': 'Translated via Offline Dictionary',
++            'identity': 'Same source and target language'
++          };
++          targetStatusMsg.textContent = engineLabels[result.engine] || 'Translation completed';
++        }
++      } catch (err) {
++        console.error('Translation error:', err);
++        if (targetStatusMsg) {
++          targetStatusMsg.textContent = 'Translation failed. Please try again.';
++        }
++      } finally {
++        if (translateBtn) translateBtn.disabled = false;
++        if (translateSpinner) translateSpinner.hidden = true;
++        if (translateBtnText) translateBtnText.textContent = 'Translate Text';
++      }
++    }
++
++    // Translate button click
++    if (translateBtn) {
++      translateBtn.addEventListener('click', performTranslation);
++    }
++
++    // Ctrl+Enter or Cmd+Enter to translate
++    if (sourceText) {
++      sourceText.addEventListener('keydown', (e) => {
++        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
++          e.preventDefault();
++          performTranslation();
++        }
++      });
++    }
++  }
++
++  // Initialize on DOM ready
++  if (typeof document !== 'undefined') {
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initTranslatorUI);
++    } else {
++      initTranslatorUI();
++    }
++  }
++
++  // Export functions for testing
++  if (typeof module !== 'undefined' && module.exports) {
++    module.exports = {
++      detectLanguage,
++      detectLanguageHeuristic,
++      translateText,
++      translateWithBuiltInAI,
++      translateWithRemoteFallback,
++      translateWithOfflineDictionary,
++      applySiteLanguage
++    };
++  } else if (typeof window !== 'undefined') {
++    window.DailyGrindTranslator = {
++      detectLanguage,
++      translateText,
++      applySiteLanguage
++    };
++  }
++})();

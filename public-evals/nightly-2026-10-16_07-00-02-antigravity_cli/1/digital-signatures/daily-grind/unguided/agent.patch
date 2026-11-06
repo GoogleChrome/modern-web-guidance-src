@@ -1,0 +1,4239 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..2752eb9
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++.DS_Store
+diff --git a/index.html b/index.html
+index 66c9173..09bd9d1 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,8 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Artisanal Coffee & Quantum Trust Studio</title>
++  <link rel="stylesheet" href="src/ui/styles.css">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -49,10 +50,11 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-left: 18px;
+     }
+ 
+     nav a {
+@@ -66,6 +68,21 @@
+       color: var(--accent);
+     }
+ 
++    .crypto-nav-badge {
++      background: var(--accent);
++      color: #3e2723 !important;
++      padding: 6px 14px;
++      border-radius: 4px;
++      font-weight: 700;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
++    }
++    .crypto-nav-badge:hover {
++      background: #ffa000;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -74,8 +91,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 55vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -90,7 +107,14 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.8rem;
++    }
++
++    .hero-btn-row {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      justify-content: center;
+     }
+ 
+     /* Content Sections */
+@@ -163,6 +187,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#crypto-studio" class="crypto-nav-badge">🔐 Quantum Trust Studio</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -170,10 +195,373 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, secured with post-quantum asymmetric cryptography.</p>
++    <div class="hero-btn-row">
++      <a href="/order-online" class="btn">Order Now</a>
++      <a href="#crypto-studio" class="btn" style="background: rgba(255,255,255,0.22); border: 1px solid white;">🔐 Quantum Trust Studio</a>
++    </div>
+   </header>
+ 
++  <!-- ======================================================== -->
++  <!-- CRYPTOGRAPHIC TRUST & QUANTUM VERIFICATION STUDIO        -->
++  <!-- ======================================================== -->
++  <section id="crypto-studio" class="crypto-studio-section">
++    <div class="studio-header">
++      <span class="studio-badge">NIST Post-Quantum Cryptography & Classical Standards</span>
++      <h2>Quantum Trust & Authenticity Studio</h2>
++      <p>
++        Perform client-side cryptographic signing and tamper-evident verification for messages, tokens (PQ-JWT), and digital artifacts in the browser using classical (ECDSA, Ed25519, RSA-PSS) or post-quantum asymmetric keys (NIST FIPS 204 ML-DSA, Falcon, FIPS 205 SLH-DSA) and hybrid composites.
++      </p>
++    </div>
++
++    <!-- Active Key Banner -->
++    <div id="cq-active-key-banner" class="active-key-banner">
++      <!-- Populated dynamically by app.js -->
++    </div>
++
++    <!-- Studio Navigation Tabs -->
++    <div class="crypto-tabs">
++      <button class="crypto-tab-btn active" data-tab="messages">✉️ Message Integrity</button>
++      <button class="crypto-tab-btn" data-tab="tokens">🎟️ Token Studio (PQ-JWT)</button>
++      <button class="crypto-tab-btn" data-tab="artifacts">📦 Artifact & Supply Chain</button>
++      <button class="crypto-tab-btn" data-tab="keys">🔑 Key Vault & Pairs</button>
++      <button class="crypto-tab-btn" data-tab="matrix">📊 Algorithm Comparison</button>
++      <button class="crypto-tab-btn" data-tab="tests">🚀 Automated Verification Suite</button>
++    </div>
++
++    <!-- TAB 1: MESSAGE INTEGRITY -->
++    <div id="cq-tab-messages" class="crypto-tab-panel active">
++      <div class="crypto-grid-2">
++        <!-- Sign Message Card -->
++        <div class="crypto-card">
++          <div class="crypto-card-title">
++            <span>Sign Message</span>
++            <span class="key-pill pill-pqc">Asymmetric Signing</span>
++          </div>
++          <div class="crypto-card-subtitle">Sign arbitrary plain text or structured JSON data with the active private key.</div>
++
++          <div class="presets-bar">
++            <span class="presets-label">Presets:</span>
++            <button class="preset-chip" data-msg-preset="roast">☕ Roasting Directive</button>
++            <button class="preset-chip" data-msg-preset="origin">🌿 Fair Trade Origin</button>
++            <button class="preset-chip" data-msg-preset="audit">🧾 Cash Register Audit</button>
++          </div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-msg-input">Message Payload</label>
++            <textarea id="cq-msg-input" class="form-textarea" rows="6" placeholder="Enter message to sign..."></textarea>
++          </div>
++
++          <div class="button-row">
++            <button id="cq-msg-sign-btn" class="cq-btn cq-btn-primary">✍️ Sign Message</button>
++          </div>
++
++          <div id="cq-msg-output-group" style="display: none; margin-top: 18px;">
++            <label class="form-label">Signed Verification Envelope (JSON)</label>
++            <div id="cq-msg-envelope-output" class="output-box"></div>
++            <div id="cq-msg-signed-metrics" style="font-size: 0.8rem; color: var(--cq-text-muted); margin-top: 6px;"></div>
++            <div class="button-row" style="margin-top: 10px;">
++              <button id="cq-msg-load-verify-btn" class="cq-btn cq-btn-accent cq-btn-sm">➡️ Transfer to Verifier</button>
++              <button id="cq-msg-copy-envelope-btn" class="cq-btn cq-btn-secondary cq-btn-sm">📋 Copy Envelope</button>
++            </div>
++          </div>
++        </div>
++
++        <!-- Verify Message Card -->
++        <div class="crypto-card">
++          <div class="crypto-card-title">
++            <span>Verify Message & Tamper Tester</span>
++            <span class="key-pill pill-classical">Integrity Check</span>
++          </div>
++          <div class="crypto-card-subtitle">Verify cryptographic authenticity and simulate data tampering or signature corruption.</div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-msg-verify-key">Verification Public Key</label>
++            <select id="cq-msg-verify-key" class="form-select"></select>
++          </div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-msg-verify-text">Message to Verify</label>
++            <textarea id="cq-msg-verify-text" class="form-textarea" rows="4" placeholder="Message content..."></textarea>
++          </div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-msg-verify-sig">Base64 Signature</label>
++            <textarea id="cq-msg-verify-sig" class="form-textarea" rows="2" placeholder="Base64 encoded signature string..."></textarea>
++          </div>
++
++          <div class="button-row">
++            <button id="cq-msg-verify-btn" class="cq-btn cq-btn-primary">🛡️ Verify Signature</button>
++            <button id="cq-msg-tamper-btn" class="cq-btn cq-btn-danger cq-btn-sm" title="Modifies message content to prove tamper rejection">💥 Tamper Message</button>
++            <button id="cq-msg-corrupt-btn" class="cq-btn cq-btn-danger cq-btn-sm" title="Flips bits in signature to prove rejection">⚡ Corrupt Signature</button>
++          </div>
++
++          <div id="cq-msg-verify-result" class="verification-result" style="display: none;"></div>
++        </div>
++      </div>
++    </div>
++
++    <!-- TAB 2: TOKEN STUDIO (PQ-JWT) -->
++    <div id="cq-tab-tokens" class="crypto-tab-panel">
++      <div class="crypto-grid-2">
++        <!-- Generate Token Card -->
++        <div class="crypto-card">
++          <div class="crypto-card-title">
++            <span>Issue Post-Quantum Token (PQ-JWT)</span>
++            <span class="key-pill pill-pqc">RFC 7519 / FIPS 204</span>
++          </div>
++          <div class="crypto-card-subtitle">Generate signed bearer tokens with claims (header.payload.signature) signed by post-quantum or classical asymmetric keys.</div>
++
++          <div class="presets-bar">
++            <span class="presets-label">Claims Presets:</span>
++            <button class="preset-chip" data-tok-preset="barista">☕ Shift Lead Barista</button>
++            <button class="preset-chip" data-tok-preset="manager">👔 Store Manager</button>
++            <button class="preset-chip" data-tok-preset="supply">🚚 Supply Chain Courier</button>
++          </div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-tok-payload-input">Token Payload Claims (JSON)</label>
++            <textarea id="cq-tok-payload-input" class="form-textarea" rows="7"></textarea>
++          </div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-tok-exp-select">Token Expiration Lifespan</label>
++            <select id="cq-tok-exp-select" class="form-select">
++              <option value="1h">1 Hour (Standard)</option>
++              <option value="5m">5 Minutes (Short-lived)</option>
++              <option value="24h">24 Hours (Daily Shift)</option>
++              <option value="expired">Already Expired (Test Case)</option>
++            </select>
++          </div>
++
++          <div class="button-row">
++            <button id="cq-tok-sign-btn" class="cq-btn cq-btn-primary">🔑 Issue Signed Token</button>
++          </div>
++
++          <div id="cq-tok-output-group" style="display: none; margin-top: 18px;">
++            <label class="form-label">Compact Signed Token (header.payload.sig)</label>
++            <div id="cq-tok-output" class="output-box" style="word-break: break-all; color: #ffab40;"></div>
++            <div id="cq-tok-signed-metrics" style="font-size: 0.8rem; color: var(--cq-text-muted); margin-top: 6px;"></div>
++            <div class="button-row" style="margin-top: 10px;">
++              <button id="cq-tok-load-verify-btn" class="cq-btn cq-btn-accent cq-btn-sm">🔍 Inspect & Verify Token</button>
++              <button id="cq-tok-copy-btn" class="cq-btn cq-btn-secondary cq-btn-sm">📋 Copy Token</button>
++            </div>
++          </div>
++        </div>
++
++        <!-- Token Inspector & Verifier -->
++        <div class="crypto-card">
++          <div class="crypto-card-title">
++            <span>Token Inspector & Attack Simulator</span>
++            <span class="key-pill pill-hybrid">Defense Testing</span>
++          </div>
++          <div class="crypto-card-subtitle">Decode headers, inspect claims, and simulate unauthorized privilege escalation attacks.</div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-tok-verify-key">Verification Key</label>
++            <select id="cq-tok-verify-key" class="form-select"></select>
++          </div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-tok-verify-input">Token String</label>
++            <textarea id="cq-tok-verify-input" class="form-textarea" rows="3" placeholder="Paste token (header.payload.signature)..."></textarea>
++          </div>
++
++          <div class="button-row">
++            <button id="cq-tok-inspect-btn" class="cq-btn cq-btn-primary">🔍 Inspect & Verify</button>
++            <button id="cq-tok-tamper-btn" class="cq-btn cq-btn-danger cq-btn-sm" title="Modifies token claims to role: super_admin to prove cryptographic rejection">💥 Tamper Role (Privilege Escalation)</button>
++            <button id="cq-tok-expire-btn" class="cq-btn cq-btn-danger cq-btn-sm" title="Simulates expired token verification">⏱️ Simulate Expiration</button>
++          </div>
++
++          <div id="cq-tok-inspector-view" class="token-inspector-box" style="display: none;">
++            <div class="token-part token-part-header">
++              <div class="token-part-title">Header (Algorithm & Type)</div>
++              <div id="cq-tok-header-view" class="token-json-view"></div>
++            </div>
++            <div class="token-part token-part-payload">
++              <div class="token-part-title">Payload (Identity Claims)</div>
++              <div id="cq-tok-payload-view" class="token-json-view"></div>
++            </div>
++            <div class="token-part token-part-sig">
++              <div class="token-part-title">Post-Quantum / Classical Signature Bytes</div>
++              <div id="cq-tok-sig-view" class="token-json-view" style="font-size: 0.75rem;"></div>
++            </div>
++          </div>
++
++          <div id="cq-tok-verify-result" class="verification-result" style="display: none;"></div>
++        </div>
++      </div>
++    </div>
++
++    <!-- TAB 3: ARTIFACT & SUPPLY CHAIN INTEGRITY -->
++    <div id="cq-tab-artifacts" class="crypto-tab-panel">
++      <div class="crypto-grid-2">
++        <!-- Sign Artifact Card -->
++        <div class="crypto-card">
++          <div class="crypto-card-title">
++            <span>Artifact Signer & Hasher</span>
++            <span class="key-pill pill-pqc">SHA-256 + PQC</span>
++          </div>
++          <div class="crypto-card-subtitle">Compute cryptographic digests for documents, origin certificates, recipes, or binaries and sign the attestation manifest.</div>
++
++          <div class="presets-bar">
++            <span class="presets-label">Sample Artifacts:</span>
++            <button class="preset-chip" data-art-sample="0">☕ Ethiopia Yirgacheffe Spec</button>
++            <button class="preset-chip" data-art-sample="1">🧊 Cold Brew Nitrogen Profile</button>
++            <button class="preset-chip" data-art-sample="2">💻 POS Firmware Patch</button>
++          </div>
++
++          <div id="cq-art-dropzone" class="artifact-dropzone">
++            <div class="artifact-dropzone-icon">📁</div>
++            <strong>Drag and drop any file here</strong>
++            <p style="font-size: 0.82rem; color: var(--cq-text-muted); margin-top: 4px;">or click to browse your device</p>
++            <input type="file" id="cq-art-file-input" style="display: none;">
++          </div>
++
++          <div id="cq-art-file-preview" class="artifact-file-preview" style="display: none;"></div>
++
++          <div class="form-group" style="margin-top: 12px;">
++            <label class="form-label">Computed Cryptographic Hashes</label>
++            <div id="cq-art-hashes-display" class="output-box" style="font-size: 0.78rem; max-height: 85px;">
++              Loading artifact hashes...
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-art-notes-input">Attestation Notes / Metadata</label>
++            <input type="text" id="cq-art-notes-input" class="form-input" value="Verified organic single origin harvest batch">
++          </div>
++
++          <div class="button-row">
++            <button id="cq-art-sign-btn" class="cq-btn cq-btn-primary">🔏 Sign Artifact & Generate Manifest</button>
++          </div>
++
++          <div id="cq-art-output-group" style="display: none; margin-top: 18px;">
++            <label class="form-label">Signed Artifact Manifest (JSON)</label>
++            <div id="cq-art-manifest-output" class="output-box"></div>
++            <div id="cq-art-signed-metrics" style="font-size: 0.8rem; color: var(--cq-text-muted); margin-top: 6px;"></div>
++            <div class="button-row" style="margin-top: 10px;">
++              <button id="cq-art-load-verify-btn" class="cq-btn cq-btn-accent cq-btn-sm">➡️ Transfer to Verifier</button>
++              <button id="cq-art-download-manifest-btn" class="cq-btn cq-btn-secondary cq-btn-sm">💾 Download Manifest</button>
++              <button id="cq-art-copy-manifest-btn" class="cq-btn cq-btn-secondary cq-btn-sm">📋 Copy JSON</button>
++            </div>
++          </div>
++        </div>
++
++        <!-- Verify Artifact Card -->
++        <div class="crypto-card">
++          <div class="crypto-card-title">
++            <span>Artifact Verifier & Tamper Tester</span>
++            <span class="key-pill pill-classical">Hash & Sig Check</span>
++          </div>
++          <div class="crypto-card-subtitle">Verify that the loaded file has not been altered by even 1 byte and matches the author's asymmetric signature.</div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-art-verify-key">Signer Public Key</label>
++            <select id="cq-art-verify-key" class="form-select"></select>
++          </div>
++
++          <div class="form-group">
++            <label class="form-label" for="cq-art-verify-manifest-input">Artifact Manifest JSON</label>
++            <textarea id="cq-art-verify-manifest-input" class="form-textarea" rows="8" placeholder="Paste artifact manifest JSON..."></textarea>
++          </div>
++
++          <div class="button-row">
++            <button id="cq-art-verify-btn" class="cq-btn cq-btn-primary">🛡️ Verify Artifact Integrity</button>
++            <button id="cq-art-tamper-btn" class="cq-btn cq-btn-danger cq-btn-sm" title="Corrupts 1 byte of the artifact to demonstrate cryptographic hash mismatch">💥 Tamper File Content</button>
++          </div>
++
++          <div id="cq-art-verify-result" class="verification-result" style="display: none;"></div>
++        </div>
++      </div>
++    </div>
++
++    <!-- TAB 4: KEY VAULT -->
++    <div id="cq-tab-keys" class="crypto-tab-panel">
++      <div class="crypto-card">
++        <div class="crypto-card-title">
++          <span>Browser Key Vault</span>
++          <div style="display: flex; gap: 8px;">
++            <button id="cq-generate-key-btn" class="cq-btn cq-btn-primary cq-btn-sm">➕ Generate Keypair</button>
++            <button id="cq-import-key-btn" class="cq-btn cq-btn-secondary cq-btn-sm">📥 Import Public Key</button>
++          </div>
++        </div>
++        <div class="crypto-card-subtitle">
++          Manage your local asymmetric cryptographic identities. Keys are generated client-side and saved securely in your browser's local vault.
++        </div>
++
++        <table class="key-table">
++          <thead>
++            <tr>
++              <th>Identity / Key Name</th>
++              <th>Algorithm & Security</th>
++              <th>Type</th>
++              <th>Actions</th>
++            </tr>
++          </thead>
++          <tbody id="cq-key-vault-table-body">
++            <!-- Populated dynamically -->
++          </tbody>
++        </table>
++      </div>
++    </div>
++
++    <!-- TAB 5: ALGORITHM MATRIX -->
++    <div id="cq-tab-matrix" class="crypto-tab-panel">
++      <div class="crypto-card">
++        <div class="crypto-card-title">
++          <span>Cryptographic Algorithm Comparison Matrix</span>
++          <span class="key-pill pill-hybrid">Classical vs Post-Quantum</span>
++        </div>
++        <div class="crypto-card-subtitle">
++          Detailed comparison of mathematical foundations, quantum resistance against Shor's algorithm, signature sizes, and NIST standardization tiers.
++        </div>
++
++        <div style="overflow-x: auto;">
++          <table class="matrix-table">
++            <thead>
++              <tr>
++                <th>Algorithm & Standard</th>
++                <th>Category</th>
++                <th>Security Level</th>
++                <th>Public Key</th>
++                <th>Signature</th>
++                <th>Technical Architecture & Use Case</th>
++              </tr>
++            </thead>
++            <tbody id="cq-matrix-table-body">
++              <!-- Populated dynamically -->
++            </tbody>
++          </table>
++        </div>
++      </div>
++    </div>
++
++    <!-- TAB 6: AUTOMATED TEST SUITE -->
++    <div id="cq-tab-tests" class="crypto-tab-panel">
++      <div class="crypto-card">
++        <div class="test-suite-header">
++          <div>
++            <h3 style="color: var(--cq-primary); font-size: 1.3rem;">Automated In-Browser Cryptographic Test Suite</h3>
++            <p style="color: var(--cq-text-muted); font-size: 0.9rem;">
++              Executes end-to-end verification across all Classical (ECDSA, Ed25519), Post-Quantum (ML-DSA-65, ML-DSA-44, Falcon-512), and Hybrid algorithms, including tamper rejection, bit-flip detection, and privilege escalation tests.
++            </p>
++          </div>
++          <button id="cq-run-tests-btn" class="cq-btn cq-btn-primary">🚀 Run Verification Test Suite</button>
++        </div>
++
++        <div id="cq-test-summary" style="margin-bottom: 15px; font-size: 0.95rem; color: var(--cq-text);">
++          Click "Run Verification Test Suite" to execute test vectors in real time.
++        </div>
++
++        <div id="cq-test-results-list" class="test-suite-list">
++          <!-- Populated dynamically by test-suite -->
++        </div>
++      </div>
++    </div>
++  </section>
++
++  <!-- Content Sections -->
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -197,6 +585,120 @@
+     </section>
+   </main>
+ 
++  <!-- ======================================================== -->
++  <!-- MODALS                                                   -->
++  <!-- ======================================================== -->
++
++  <!-- Generate Key Modal -->
++  <div id="cq-generate-modal" class="crypto-modal-backdrop" style="display: none;">
++    <div class="crypto-modal">
++      <div class="crypto-modal-title">
++        <span>Generate Asymmetric Keypair</span>
++        <button class="modal-close-btn">&times;</button>
++      </div>
++      <div class="form-group">
++        <label class="form-label" for="cq-gen-name-input">Keypair Friendly Label</label>
++        <input type="text" id="cq-gen-name-input" class="form-input" placeholder="e.g. Seattle Roastery ML-DSA-65">
++      </div>
++      <div class="form-group">
++        <label class="form-label" for="cq-gen-alg-select">Algorithm</label>
++        <select id="cq-gen-alg-select" class="form-select">
++          <optgroup label="Post-Quantum (NIST Standards)">
++            <option value="ML-DSA-65" selected>ML-DSA-65 (NIST FIPS 204 / Dilithium3 - Recommended)</option>
++            <option value="ML-DSA-44">ML-DSA-44 (NIST FIPS 204 Level 2 / Compact)</option>
++            <option value="ML-DSA-87">ML-DSA-87 (NIST FIPS 204 Level 5 / Maximum Security)</option>
++            <option value="Falcon-512">Falcon-512 (NIST Round 3 / Smallest Signatures)</option>
++            <option value="SLH-DSA-128s">SLH-DSA-128s (NIST FIPS 205 / Stateless Hash-Based)</option>
++          </optgroup>
++          <optgroup label="Hybrid Defense-in-Depth">
++            <option value="Hybrid-P256-MLDSA65">Hybrid Composite (ECDSA P-256 + ML-DSA-65)</option>
++          </optgroup>
++          <optgroup label="Classical Asymmetric">
++            <option value="ECDSA-P256">ECDSA (NIST P-256 / SHA-256 - ES256)</option>
++            <option value="ECDSA-P384">ECDSA (NIST P-384 / SHA-384 - ES384)</option>
++            <option value="Ed25519">Ed25519 (EdDSA / RFC 8032)</option>
++            <option value="RSA-PSS-256">RSA-PSS (2048-bit / SHA-256)</option>
++          </optgroup>
++        </select>
++      </div>
++      <div class="button-row" style="justify-content: flex-end;">
++        <button class="cq-btn cq-btn-secondary modal-cancel-btn">Cancel</button>
++        <button id="cq-gen-confirm-btn" class="cq-btn cq-btn-primary">Generate Keypair</button>
++      </div>
++    </div>
++  </div>
++
++  <!-- Import Key Modal -->
++  <div id="cq-import-modal" class="crypto-modal-backdrop" style="display: none;">
++    <div class="crypto-modal">
++      <div class="crypto-modal-title">
++        <span>Import Public Key</span>
++        <button class="modal-close-btn">&times;</button>
++      </div>
++      <div class="form-group">
++        <label class="form-label" for="cq-import-name-input">Key Label</label>
++        <input type="text" id="cq-import-name-input" class="form-input" placeholder="e.g. Partner Auditor Key">
++      </div>
++      <div class="form-group">
++        <label class="form-label" for="cq-import-alg-select">Algorithm</label>
++        <select id="cq-import-alg-select" class="form-select">
++          <option value="ML-DSA-65">ML-DSA-65 (Post-Quantum)</option>
++          <option value="ML-DSA-44">ML-DSA-44 (Post-Quantum)</option>
++          <option value="Falcon-512">Falcon-512 (Post-Quantum)</option>
++          <option value="SLH-DSA-128s">SLH-DSA-128s (Post-Quantum)</option>
++          <option value="ECDSA-P256">ECDSA P-256 (Classical)</option>
++          <option value="Ed25519">Ed25519 (Classical)</option>
++          <option value="RSA-PSS-256">RSA-PSS (Classical)</option>
++          <option value="Hybrid-P256-MLDSA65">Hybrid Composite</option>
++        </select>
++      </div>
++      <div class="form-group">
++        <label class="form-label" for="cq-import-text-input">Public Key Data (PEM, Base64, Hex, or JSON Bundle)</label>
++        <textarea id="cq-import-text-input" class="form-textarea" rows="6" placeholder="Paste PEM, Base64 or JSON bundle here..."></textarea>
++      </div>
++      <div class="button-row" style="justify-content: flex-end;">
++        <button class="cq-btn cq-btn-secondary modal-cancel-btn">Cancel</button>
++        <button id="cq-import-confirm-btn" class="cq-btn cq-btn-primary">Import Key</button>
++      </div>
++    </div>
++  </div>
++
++  <!-- Export Key Modal -->
++  <div id="cq-export-modal" class="crypto-modal-backdrop" style="display: none;">
++    <div class="crypto-modal">
++      <div class="crypto-modal-title">
++        <span>Export Key Details</span>
++        <button class="modal-close-btn">&times;</button>
++      </div>
++      <div style="margin-bottom: 15px; font-size: 0.88rem;">
++        <div style="font-weight: 700;" id="cq-export-key-name"></div>
++        <div style="color: var(--cq-text-muted);" id="cq-export-key-alg"></div>
++        <div style="font-family: var(--cq-font-mono); font-size: 0.78rem; color: var(--cq-text-muted); word-break: break-all;" id="cq-export-key-fp"></div>
++      </div>
++      <div class="form-group">
++        <label class="form-label" for="cq-export-format-select">Export Format</label>
++        <select id="cq-export-format-select" class="form-select">
++          <option value="base64">Base64</option>
++          <option value="hex">Hexadecimal</option>
++          <option value="pem">PEM Format (-----BEGIN PUBLIC KEY-----)</option>
++          <option value="bundle">Portable JSON Verification Bundle</option>
++        </select>
++      </div>
++      <div class="form-group">
++        <label class="form-label">Public Key</label>
++        <div id="cq-export-pub-output" class="output-box" style="max-height: 120px;"></div>
++      </div>
++      <div id="cq-export-priv-group" class="form-group" style="display: none;">
++        <label class="form-label" style="color: var(--cq-error);">⚠️ Secret / Private Key Material</label>
++        <div id="cq-export-priv-output" class="output-box" style="max-height: 120px; border: 1px solid var(--cq-error);"></div>
++      </div>
++      <div class="button-row" style="justify-content: flex-end;">
++        <button id="cq-copy-exported-pub-btn" class="cq-btn cq-btn-primary">📋 Copy Public Key</button>
++        <button class="cq-btn cq-btn-secondary modal-cancel-btn">Close</button>
++      </div>
++    </div>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +709,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Bundled browser script -->
++  <script src="dist/crypto-app.bundle.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..4a86ce4 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,19 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
++    "build": "vite build",
++    "test": "node test/crypto-node.test.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "@noble/ed25519": "^3.2.0",
++    "@noble/hashes": "^2.4.0",
++    "@noble/post-quantum": "^0.7.1",
++    "vite": "^8.3.4"
+   }
+ }
+diff --git a/src/crypto/algorithms.js b/src/crypto/algorithms.js
+new file mode 100644
+index 0000000..9789fc9
+--- /dev/null
++++ b/src/crypto/algorithms.js
+@@ -0,0 +1,455 @@
++// Unified Cryptographic Algorithms Module
++// Supports Classical (ECDSA, Ed25519, RSA-PSS), Post-Quantum (ML-DSA, Falcon, SLH-DSA), and Hybrid Composite
++import { ml_dsa44, ml_dsa65, ml_dsa87 } from '@noble/post-quantum/ml-dsa.js';
++import { falcon512 } from '@noble/post-quantum/falcon.js';
++import { slh_dsa_sha2_128s } from '@noble/post-quantum/slh-dsa.js';
++import * as ed from '@noble/ed25519';
++import { sha512 } from '@noble/hashes/sha2.js';
++import { bytesToBase64, base64ToBytes } from './utils.js';
++
++// Initialize ed25519 SHA-512 backend
++ed.hashes.sha512 = sha512;
++
++const subtle = (typeof globalThis !== 'undefined' && globalThis.crypto && globalThis.crypto.subtle)
++  ? globalThis.crypto.subtle
++  : null;
++
++export const ALGORITHM_REGISTRY = {
++  'ML-DSA-65': {
++    id: 'ML-DSA-65',
++    name: 'ML-DSA-65 (CRYSTALS-Dilithium)',
++    type: 'post-quantum',
++    standard: 'NIST FIPS 204',
++    securityLevel: 'NIST Level 3 (AES-192 equivalent, Quantum-Resistant)',
++    description: 'Primary NIST standard for Post-Quantum Digital Signatures based on Module Learning with Errors (M-LWE). Fast and robust against Shor’s algorithm.',
++    pubKeySize: 1952,
++    sigSize: 3309,
++    keygen: async () => {
++      const keys = ml_dsa65.keygen();
++      return {
++        publicKey: keys.publicKey,
++        secretKey: keys.secretKey,
++      };
++    },
++    sign: async (msg, secretKey) => {
++      return ml_dsa65.sign(msg, secretKey);
++    },
++    verify: async (sig, msg, publicKey) => {
++      try {
++        return ml_dsa65.verify(sig, msg, publicKey);
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++
++  'ML-DSA-44': {
++    id: 'ML-DSA-44',
++    name: 'ML-DSA-44 (Dilithium2)',
++    type: 'post-quantum',
++    standard: 'NIST FIPS 204',
++    securityLevel: 'NIST Level 2 (AES-128 equivalent, Quantum-Resistant)',
++    description: 'Compact NIST Post-Quantum signature scheme offering Level 2 security with smaller public keys and signatures.',
++    pubKeySize: 1312,
++    sigSize: 2420,
++    keygen: async () => {
++      const keys = ml_dsa44.keygen();
++      return {
++        publicKey: keys.publicKey,
++        secretKey: keys.secretKey,
++      };
++    },
++    sign: async (msg, secretKey) => {
++      return ml_dsa44.sign(msg, secretKey);
++    },
++    verify: async (sig, msg, publicKey) => {
++      try {
++        return ml_dsa44.verify(sig, msg, publicKey);
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++
++  'ML-DSA-87': {
++    id: 'ML-DSA-87',
++    name: 'ML-DSA-87 (Dilithium5)',
++    type: 'post-quantum',
++    standard: 'NIST FIPS 204',
++    securityLevel: 'NIST Level 5 (AES-256 equivalent, Maximum Quantum Resistance)',
++    description: 'Highest security tier of NIST ML-DSA standard for high-security post-quantum applications.',
++    pubKeySize: 2592,
++    sigSize: 4627,
++    keygen: async () => {
++      const keys = ml_dsa87.keygen();
++      return {
++        publicKey: keys.publicKey,
++        secretKey: keys.secretKey,
++      };
++    },
++    sign: async (msg, secretKey) => {
++      return ml_dsa87.sign(msg, secretKey);
++    },
++    verify: async (sig, msg, publicKey) => {
++      try {
++        return ml_dsa87.verify(sig, msg, publicKey);
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++
++  'Falcon-512': {
++    id: 'Falcon-512',
++    name: 'Falcon-512 (FNTRU)',
++    type: 'post-quantum',
++    standard: 'NIST Round 3 Standard',
++    securityLevel: 'NIST Level 1 (Lattice-based, highly compact)',
++    description: 'Lattice-based signature scheme over NTRU lattices with the smallest combined public key and signature sizes among PQC candidates.',
++    pubKeySize: 897,
++    sigSize: 653,
++    keygen: async () => {
++      const keys = falcon512.keygen();
++      return {
++        publicKey: keys.publicKey,
++        secretKey: keys.secretKey,
++      };
++    },
++    sign: async (msg, secretKey) => {
++      return falcon512.sign(msg, secretKey);
++    },
++    verify: async (sig, msg, publicKey) => {
++      try {
++        return falcon512.verify(sig, msg, publicKey);
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++
++  'SLH-DSA-128s': {
++    id: 'SLH-DSA-128s',
++    name: 'SLH-DSA-SHA2-128s (SPHINCS+)',
++    type: 'post-quantum',
++    standard: 'NIST FIPS 205',
++    securityLevel: 'NIST Level 1 (Stateless Hash-Based, Conservative Security)',
++    description: 'Stateless hash-based signature standard. Provides conservative security backup reliant solely on the collision resistance of cryptographic hashes, immune to lattice breaks.',
++    pubKeySize: 32,
++    sigSize: 7856,
++    keygen: async () => {
++      const keys = slh_dsa_sha2_128s.keygen();
++      return {
++        publicKey: keys.publicKey,
++        secretKey: keys.secretKey,
++      };
++    },
++    sign: async (msg, secretKey) => {
++      return slh_dsa_sha2_128s.sign(msg, secretKey);
++    },
++    verify: async (sig, msg, publicKey) => {
++      try {
++        return slh_dsa_sha2_128s.verify(sig, msg, publicKey);
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++
++  'ECDSA-P256': {
++    id: 'ECDSA-P256',
++    name: 'ECDSA (NIST P-256 / SHA-256)',
++    type: 'classical',
++    standard: 'FIPS 186-4, ANSI X9.62 (ES256)',
++    securityLevel: 'Classical 128-bit (Vulnerable to Shor’s algorithm on quantum computers)',
++    description: 'Standard Elliptic Curve Digital Signature Algorithm running natively via browser Web Crypto API. Ubiquitously used in TLS, WebAuthn, and JWTs.',
++    pubKeySize: 91, // SPKI DER size
++    sigSize: 64, // IEEE P1363 raw signature or DER
++    keygen: async () => {
++      if (!subtle) throw new Error('WebCrypto Subtle is not available in this environment');
++      const pair = await subtle.generateKey(
++        { name: 'ECDSA', namedCurve: 'P-256' },
++        true,
++        ['sign', 'verify']
++      );
++      const spki = new Uint8Array(await subtle.exportKey('spki', pair.publicKey));
++      const pkcs8 = new Uint8Array(await subtle.exportKey('pkcs8', pair.privateKey));
++      return {
++        publicKey: spki,
++        secretKey: pkcs8,
++      };
++    },
++    sign: async (msg, secretKey) => {
++      if (!subtle) throw new Error('WebCrypto Subtle is not available');
++      const cryptoKey = await subtle.importKey(
++        'pkcs8',
++        secretKey,
++        { name: 'ECDSA', namedCurve: 'P-256' },
++        false,
++        ['sign']
++      );
++      const sigBuffer = await subtle.sign(
++        { name: 'ECDSA', hash: { name: 'SHA-256' } },
++        cryptoKey,
++        msg
++      );
++      return new Uint8Array(sigBuffer);
++    },
++    verify: async (sig, msg, publicKey) => {
++      if (!subtle) throw new Error('WebCrypto Subtle is not available');
++      try {
++        const cryptoKey = await subtle.importKey(
++          'spki',
++          publicKey,
++          { name: 'ECDSA', namedCurve: 'P-256' },
++          false,
++          ['verify']
++        );
++        return await subtle.verify(
++          { name: 'ECDSA', hash: { name: 'SHA-256' } },
++          cryptoKey,
++          sig,
++          msg
++        );
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++
++  'ECDSA-P384': {
++    id: 'ECDSA-P384',
++    name: 'ECDSA (NIST P-384 / SHA-384)',
++    type: 'classical',
++    standard: 'FIPS 186-4 (ES384)',
++    securityLevel: 'Classical 192-bit (Vulnerable to quantum computers)',
++    description: 'Higher security NIST elliptic curve digital signature running via browser Web Crypto API.',
++    pubKeySize: 120,
++    sigSize: 96,
++    keygen: async () => {
++      if (!subtle) throw new Error('WebCrypto Subtle is not available');
++      const pair = await subtle.generateKey(
++        { name: 'ECDSA', namedCurve: 'P-384' },
++        true,
++        ['sign', 'verify']
++      );
++      const spki = new Uint8Array(await subtle.exportKey('spki', pair.publicKey));
++      const pkcs8 = new Uint8Array(await subtle.exportKey('pkcs8', pair.privateKey));
++      return {
++        publicKey: spki,
++        secretKey: pkcs8,
++      };
++    },
++    sign: async (msg, secretKey) => {
++      if (!subtle) throw new Error('WebCrypto Subtle is not available');
++      const cryptoKey = await subtle.importKey(
++        'pkcs8',
++        secretKey,
++        { name: 'ECDSA', namedCurve: 'P-384' },
++        false,
++        ['sign']
++      );
++      const sigBuffer = await subtle.sign(
++        { name: 'ECDSA', hash: { name: 'SHA-384' } },
++        cryptoKey,
++        msg
++      );
++      return new Uint8Array(sigBuffer);
++    },
++    verify: async (sig, msg, publicKey) => {
++      if (!subtle) throw new Error('WebCrypto Subtle is not available');
++      try {
++        const cryptoKey = await subtle.importKey(
++          'spki',
++          publicKey,
++          { name: 'ECDSA', namedCurve: 'P-384' },
++          false,
++          ['verify']
++        );
++        return await subtle.verify(
++          { name: 'ECDSA', hash: { name: 'SHA-384' } },
++          cryptoKey,
++          sig,
++          msg
++        );
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++
++  'Ed25519': {
++    id: 'Ed25519',
++    name: 'Ed25519 (EdDSA / RFC 8032)',
++    type: 'classical',
++    standard: 'RFC 8032 / FIPS 186-5',
++    securityLevel: 'Classical 128-bit (Vulnerable to quantum computers)',
++    description: 'Edwards-curve Digital Signature Algorithm offering high speed, constant-time side-channel resistance, and compact 32-byte public keys and 64-byte signatures.',
++    pubKeySize: 32,
++    sigSize: 64,
++    keygen: async () => {
++      const keys = ed.keygen();
++      return {
++        publicKey: keys.publicKey,
++        secretKey: keys.secretKey,
++      };
++    },
++    sign: async (msg, secretKey) => {
++      return ed.sign(msg, secretKey);
++    },
++    verify: async (sig, msg, publicKey) => {
++      try {
++        return ed.verify(sig, msg, publicKey);
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++
++  'RSA-PSS-256': {
++    id: 'RSA-PSS-256',
++    name: 'RSA-PSS (2048-bit / SHA-256)',
++    type: 'classical',
++    standard: 'PKCS#1 v2.2 (PS256)',
++    securityLevel: 'Classical 112-bit (Vulnerable to quantum computers)',
++    description: 'Probabilistic Signature Scheme (PSS) for RSA, offering provable security advantages over older PKCS#1 v1.5 padding.',
++    pubKeySize: 294,
++    sigSize: 256,
++    keygen: async () => {
++      if (!subtle) throw new Error('WebCrypto Subtle is not available');
++      const pair = await subtle.generateKey(
++        {
++          name: 'RSA-PSS',
++          modulusLength: 2048,
++          publicExponent: new Uint8Array([1, 0, 1]),
++          hash: 'SHA-256',
++        },
++        true,
++        ['sign', 'verify']
++      );
++      const spki = new Uint8Array(await subtle.exportKey('spki', pair.publicKey));
++      const pkcs8 = new Uint8Array(await subtle.exportKey('pkcs8', pair.privateKey));
++      return {
++        publicKey: spki,
++        secretKey: pkcs8,
++      };
++    },
++    sign: async (msg, secretKey) => {
++      if (!subtle) throw new Error('WebCrypto Subtle is not available');
++      const cryptoKey = await subtle.importKey(
++        'pkcs8',
++        secretKey,
++        { name: 'RSA-PSS', hash: 'SHA-256' },
++        false,
++        ['sign']
++      );
++      const sigBuffer = await subtle.sign(
++        { name: 'RSA-PSS', saltLength: 32 },
++        cryptoKey,
++        msg
++      );
++      return new Uint8Array(sigBuffer);
++    },
++    verify: async (sig, msg, publicKey) => {
++      if (!subtle) throw new Error('WebCrypto Subtle is not available');
++      try {
++        const cryptoKey = await subtle.importKey(
++          'spki',
++          publicKey,
++          { name: 'RSA-PSS', hash: 'SHA-256' },
++          false,
++          ['verify']
++        );
++        return await subtle.verify(
++          { name: 'RSA-PSS', saltLength: 32 },
++          cryptoKey,
++          sig,
++          msg
++        );
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++
++  'Hybrid-P256-MLDSA65': {
++    id: 'Hybrid-P256-MLDSA65',
++    name: 'Hybrid Composite (ECDSA P-256 + ML-DSA-65)',
++    type: 'hybrid',
++    standard: 'Composite Signatures (IETF Draft / NIST Transition Strategy)',
++    securityLevel: 'Combined Classical 128-bit + NIST Level 3 Post-Quantum',
++    description: 'Defense-in-depth transition strategy combining both classical ECDSA P-256 and post-quantum ML-DSA-65. Verification succeeds only if BOTH signatures are cryptographically valid.',
++    pubKeySize: 91 + 1952,
++    sigSize: 64 + 3309,
++    keygen: async () => {
++      const ecdsaKeys = await ALGORITHM_REGISTRY['ECDSA-P256'].keygen();
++      const pqKeys = await ALGORITHM_REGISTRY['ML-DSA-65'].keygen();
++
++      // Encode compound key into structured JSON format
++      const pubComposite = new TextEncoder().encode(JSON.stringify({
++        c: bytesToBase64(ecdsaKeys.publicKey),
++        pq: bytesToBase64(pqKeys.publicKey),
++      }));
++
++      const privComposite = new TextEncoder().encode(JSON.stringify({
++        c: bytesToBase64(ecdsaKeys.secretKey),
++        pq: bytesToBase64(pqKeys.secretKey),
++      }));
++
++      return {
++        publicKey: pubComposite,
++        secretKey: privComposite,
++      };
++    },
++    sign: async (msg, secretKeyBytes) => {
++      const privJson = JSON.parse(new TextDecoder().decode(secretKeyBytes));
++      const ecdsaPriv = base64ToBytes(privJson.c);
++      const pqPriv = base64ToBytes(privJson.pq);
++
++      const ecdsaSig = await ALGORITHM_REGISTRY['ECDSA-P256'].sign(msg, ecdsaPriv);
++      const pqSig = await ALGORITHM_REGISTRY['ML-DSA-65'].sign(msg, pqPriv);
++
++      const compositeSig = new TextEncoder().encode(JSON.stringify({
++        sigClassical: bytesToBase64(ecdsaSig),
++        sigPq: bytesToBase64(pqSig),
++      }));
++
++      return compositeSig;
++    },
++    verify: async (sigBytes, msg, publicKeyBytes) => {
++      try {
++        const pubJson = JSON.parse(new TextDecoder().decode(publicKeyBytes));
++        const sigJson = JSON.parse(new TextDecoder().decode(sigBytes));
++
++        const ecdsaPub = base64ToBytes(pubJson.c);
++        const pqPub = base64ToBytes(pubJson.pq);
++        const ecdsaSig = base64ToBytes(sigJson.sigClassical);
++        const pqSig = base64ToBytes(sigJson.sigPq);
++
++        const okClassical = await ALGORITHM_REGISTRY['ECDSA-P256'].verify(ecdsaSig, msg, ecdsaPub);
++        const okPq = await ALGORITHM_REGISTRY['ML-DSA-65'].verify(pqSig, msg, pqPub);
++
++        return okClassical && okPq;
++      } catch (err) {
++        return false;
++      }
++    },
++  },
++};
++
++/**
++ * Get algorithm by ID with fallback to default ML-DSA-65
++ */
++export function getAlgorithm(algorithmId) {
++  const alg = ALGORITHM_REGISTRY[algorithmId];
++  if (!alg) {
++    throw new Error(`Unsupported algorithm: ${algorithmId}`);
++  }
++  return alg;
++}
++
++/**
++ * List all available algorithms with categorized metadata
++ */
++export function listAlgorithms() {
++  return Object.values(ALGORITHM_REGISTRY);
++}
+diff --git a/src/crypto/keys.js b/src/crypto/keys.js
+new file mode 100644
+index 0000000..fafca16
+--- /dev/null
++++ b/src/crypto/keys.js
+@@ -0,0 +1,184 @@
++// Key Management, Serialization, Deserialization, and Fingerprinting
++import { getAlgorithm } from './algorithms.js';
++import {
++  bytesToBase64,
++  base64ToBytes,
++  bytesToHex,
++  hexToBytes,
++  bytesToPem,
++  pemToBytes,
++  computeFingerprint,
++  generateId,
++} from './utils.js';
++
++/**
++ * Creates a new managed keypair object for a given algorithm ID
++ */
++export async function createManagedKeyPair(algorithmId, name) {
++  const alg = getAlgorithm(algorithmId);
++  const rawPair = await alg.keygen();
++  const fingerprint = await computeFingerprint(rawPair.publicKey);
++  const id = generateId(`key_${algorithmId.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
++
++  return {
++    id,
++    name: name || `${alg.name} Key`,
++    algorithm: algorithmId,
++    category: alg.type,
++    createdAt: new Date().toISOString(),
++    fingerprint,
++    publicKeyBytes: rawPair.publicKey,
++    secretKeyBytes: rawPair.secretKey,
++    hasSecretKey: true,
++  };
++}
++
++/**
++ * Exports a key's public key in various formats
++ */
++export function exportPublicKey(keyObj, format = 'base64') {
++  const bytes = keyObj.publicKeyBytes;
++  switch (format) {
++    case 'base64':
++      return bytesToBase64(bytes);
++    case 'hex':
++      return bytesToHex(bytes);
++    case 'pem':
++      return bytesToPem(bytes, `${keyObj.algorithm} PUBLIC KEY`);
++    case 'bundle':
++      return JSON.stringify(
++        {
++          version: '1.0',
++          type: 'public-key-bundle',
++          id: keyObj.id,
++          name: keyObj.name,
++          algorithm: keyObj.algorithm,
++          category: keyObj.category,
++          fingerprint: keyObj.fingerprint,
++          publicKey: bytesToBase64(bytes),
++          createdAt: keyObj.createdAt,
++        },
++        null,
++        2
++      );
++    default:
++      throw new Error(`Unsupported export format: ${format}`);
++  }
++}
++
++/**
++ * Exports a key's private/secret key in various formats
++ */
++export function exportSecretKey(keyObj, format = 'base64') {
++  if (!keyObj.hasSecretKey || !keyObj.secretKeyBytes) {
++    throw new Error('Key does not contain private/secret key material');
++  }
++  const bytes = keyObj.secretKeyBytes;
++  switch (format) {
++    case 'base64':
++      return bytesToBase64(bytes);
++    case 'hex':
++      return bytesToHex(bytes);
++    case 'pem':
++      return bytesToPem(bytes, `${keyObj.algorithm} PRIVATE KEY`);
++    default:
++      throw new Error(`Unsupported export format: ${format}`);
++  }
++}
++
++/**
++ * Imports a public key from various text formats (auto-detected or explicit)
++ */
++export async function importPublicKey(rawText, algorithmId, name) {
++  const text = rawText.trim();
++  let bytes = null;
++  let detectedAlg = algorithmId;
++  let detectedName = name;
++
++  // Check if it's a JSON verification bundle
++  if (text.startsWith('{') && text.endsWith('}')) {
++    try {
++      const parsed = JSON.parse(text);
++      if (parsed.publicKey) {
++        bytes = base64ToBytes(parsed.publicKey);
++        detectedAlg = parsed.algorithm || detectedAlg;
++        detectedName = detectedName || parsed.name || `${detectedAlg} Imported Key`;
++      }
++    } catch (e) {
++      // not a json bundle, continue
++    }
++  }
++
++  // Check if PEM
++  if (!bytes && text.includes('-----BEGIN')) {
++    bytes = pemToBytes(text);
++  }
++
++  // Check if Hex
++  if (!bytes && /^[0-9a-fA-F]+$/.test(text) && text.length % 2 === 0) {
++    bytes = hexToBytes(text);
++  }
++
++  // Fallback to Base64
++  if (!bytes) {
++    try {
++      bytes = base64ToBytes(text);
++    } catch (err) {
++      throw new Error('Could not parse public key data. Provide valid Base64, Hex, PEM, or JSON bundle.');
++    }
++  }
++
++  if (!detectedAlg) {
++    throw new Error('Algorithm must be specified when importing raw public key data.');
++  }
++
++  const alg = getAlgorithm(detectedAlg);
++  const fingerprint = await computeFingerprint(bytes);
++  const id = generateId(`imp_${detectedAlg.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
++
++  return {
++    id,
++    name: detectedName || `${alg.name} (Public Only)`,
++    algorithm: detectedAlg,
++    category: alg.type,
++    createdAt: new Date().toISOString(),
++    fingerprint,
++    publicKeyBytes: bytes,
++    secretKeyBytes: null,
++    hasSecretKey: false,
++  };
++}
++
++/**
++ * Serialize managed key to persistent storage format (JSON-safe)
++ */
++export function serializeManagedKey(keyObj) {
++  return {
++    id: keyObj.id,
++    name: keyObj.name,
++    algorithm: keyObj.algorithm,
++    category: keyObj.category,
++    createdAt: keyObj.createdAt,
++    fingerprint: keyObj.fingerprint,
++    publicKeyBase64: bytesToBase64(keyObj.publicKeyBytes),
++    secretKeyBase64: keyObj.secretKeyBytes ? bytesToBase64(keyObj.secretKeyBytes) : null,
++    hasSecretKey: keyObj.hasSecretKey,
++  };
++}
++
++/**
++ * Deserialize managed key from persistent storage format
++ */
++export function deserializeManagedKey(stored) {
++  return {
++    id: stored.id,
++    name: stored.name,
++    algorithm: stored.algorithm,
++    category: stored.category,
++    createdAt: stored.createdAt,
++    fingerprint: stored.fingerprint,
++    publicKeyBytes: base64ToBytes(stored.publicKeyBase64),
++    secretKeyBytes: stored.secretKeyBase64 ? base64ToBytes(stored.secretKeyBase64) : null,
++    hasSecretKey: stored.hasSecretKey,
++  };
++}
+diff --git a/src/crypto/test-suite.js b/src/crypto/test-suite.js
+new file mode 100644
+index 0000000..af3c9fc
+--- /dev/null
++++ b/src/crypto/test-suite.js
+@@ -0,0 +1,182 @@
++// Automated Cryptographic Verification Test Suite
++// Executes verification test vectors across Classical, Post-Quantum, and Hybrid algorithms
++import { ALGORITHM_REGISTRY } from './algorithms.js';
++import { createManagedKeyPair } from './keys.js';
++import { signMessage, verifyMessage, tamperMessageContent, corruptSignature } from '../features/messages.js';
++import { createSignedToken, verifyToken, tamperTokenPayload } from '../features/tokens.js';
++import { signArtifact, verifyArtifact } from '../features/artifacts.js';
++
++export async function runCryptoTestSuite(onProgress = () => {}) {
++  const results = [];
++
++  function record(name, category, passed, details = '', durationMs = 0) {
++    const entry = { name, category, passed, details, durationMs: Number(durationMs.toFixed(2)) };
++    results.push(entry);
++    onProgress(entry, results);
++    return entry;
++  }
++
++  // 1. Classical Algorithm Verification (ECDSA P-256)
++  try {
++    const t0 = performance.now();
++    const key = await createManagedKeyPair('ECDSA-P256', 'Test ECDSA');
++    const msg = 'Authentic Coffee Order #1001';
++    const signed = await signMessage(msg, key);
++    const verifyRes = await verifyMessage(msg, signed.signature, key.publicKeyBytes, 'ECDSA-P256');
++    const d = performance.now() - t0;
++    record('Classical ECDSA (P-256) Sign & Verify', 'Classical', verifyRes.valid, `Sig size: ${signed.signatureBytesCount}B, time: ${d.toFixed(1)}ms`, d);
++  } catch (err) {
++    record('Classical ECDSA (P-256) Sign & Verify', 'Classical', false, err.message);
++  }
++
++  // 2. Classical Ed25519 Verification
++  try {
++    const t0 = performance.now();
++    const key = await createManagedKeyPair('Ed25519', 'Test Ed25519');
++    const msg = 'Supply Chain Shipment Dispatched';
++    const signed = await signMessage(msg, key);
++    const verifyRes = await verifyMessage(msg, signed.signature, key.publicKeyBytes, 'Ed25519');
++    const d = performance.now() - t0;
++    record('Classical Ed25519 (EdDSA) Sign & Verify', 'Classical', verifyRes.valid, `Sig size: ${signed.signatureBytesCount}B, time: ${d.toFixed(1)}ms`, d);
++  } catch (err) {
++    record('Classical Ed25519 (EdDSA) Sign & Verify', 'Classical', false, err.message);
++  }
++
++  // 3. Post-Quantum ML-DSA-65 (NIST FIPS 204)
++  try {
++    const t0 = performance.now();
++    const key = await createManagedKeyPair('ML-DSA-65', 'Test ML-DSA-65');
++    const msg = 'Post-Quantum Master Authorization Token';
++    const signed = await signMessage(msg, key);
++    const verifyRes = await verifyMessage(msg, signed.signature, key.publicKeyBytes, 'ML-DSA-65');
++    const d = performance.now() - t0;
++    record('Post-Quantum ML-DSA-65 (FIPS 204) Sign & Verify', 'Post-Quantum', verifyRes.valid, `Sig size: ${signed.signatureBytesCount}B, pubkey: ${key.publicKeyBytes.length}B`, d);
++  } catch (err) {
++    record('Post-Quantum ML-DSA-65 (FIPS 204) Sign & Verify', 'Post-Quantum', false, err.message);
++  }
++
++  // 4. Post-Quantum ML-DSA-44 (NIST FIPS 204 Level 2)
++  try {
++    const t0 = performance.now();
++    const key = await createManagedKeyPair('ML-DSA-44', 'Test ML-DSA-44');
++    const msg = 'Compact PQC Signature Test';
++    const signed = await signMessage(msg, key);
++    const verifyRes = await verifyMessage(msg, signed.signature, key.publicKeyBytes, 'ML-DSA-44');
++    const d = performance.now() - t0;
++    record('Post-Quantum ML-DSA-44 (FIPS 204) Sign & Verify', 'Post-Quantum', verifyRes.valid, `Sig size: ${signed.signatureBytesCount}B, pubkey: ${key.publicKeyBytes.length}B`, d);
++  } catch (err) {
++    record('Post-Quantum ML-DSA-44 (FIPS 204) Sign & Verify', 'Post-Quantum', false, err.message);
++  }
++
++  // 5. Post-Quantum Falcon-512
++  try {
++    const t0 = performance.now();
++    const key = await createManagedKeyPair('Falcon-512', 'Test Falcon-512');
++    const msg = 'Falcon Lattice Signature Test';
++    const signed = await signMessage(msg, key);
++    const verifyRes = await verifyMessage(msg, signed.signature, key.publicKeyBytes, 'Falcon-512');
++    const d = performance.now() - t0;
++    record('Post-Quantum Falcon-512 Sign & Verify', 'Post-Quantum', verifyRes.valid, `Sig size: ${signed.signatureBytesCount}B, pubkey: ${key.publicKeyBytes.length}B`, d);
++  } catch (err) {
++    record('Post-Quantum Falcon-512 Sign & Verify', 'Post-Quantum', false, err.message);
++  }
++
++  // 6. Hybrid Composite Signatures (ECDSA P-256 + ML-DSA-65)
++  try {
++    const t0 = performance.now();
++    const key = await createManagedKeyPair('Hybrid-P256-MLDSA65', 'Test Hybrid Composite');
++    const msg = 'Hybrid Composite Defense-In-Depth Attestation';
++    const signed = await signMessage(msg, key);
++    const verifyRes = await verifyMessage(msg, signed.signature, key.publicKeyBytes, 'Hybrid-P256-MLDSA65');
++    const d = performance.now() - t0;
++    record('Hybrid Composite (ECDSA P-256 + ML-DSA-65)', 'Hybrid', verifyRes.valid, `Dual signatures verified successfully`, d);
++  } catch (err) {
++    record('Hybrid Composite (ECDSA P-256 + ML-DSA-65)', 'Hybrid', false, err.message);
++  }
++
++  // 7. Message Tamper Detection (Altered text rejected)
++  try {
++    const key = await createManagedKeyPair('ML-DSA-65', 'Tamper Test Key');
++    const msg = 'Original Unmodified Barista Directive';
++    const signed = await signMessage(msg, key);
++    const tampered = tamperMessageContent(msg);
++    const verifyTampered = await verifyMessage(tampered, signed.signature, key.publicKeyBytes, 'ML-DSA-65');
++    record('Message Tamper Rejection (Altered Payload)', 'Integrity', !verifyTampered.valid, `Tampered message was successfully detected and rejected`);
++  } catch (err) {
++    record('Message Tamper Rejection (Altered Payload)', 'Integrity', false, err.message);
++  }
++
++  // 8. Signature Corruption Rejection (Bit-flip rejected)
++  try {
++    const key = await createManagedKeyPair('ML-DSA-65', 'Bit-flip Key');
++    const msg = 'Integrity Test with Corrupted Signature';
++    const signed = await signMessage(msg, key);
++    const badSig = corruptSignature(signed.signature);
++    const verifyBad = await verifyMessage(msg, badSig, key.publicKeyBytes, 'ML-DSA-65');
++    record('Signature Corruption Rejection (Bit Flip)', 'Authenticity', !verifyBad.valid, `Corrupted signature was rejected`);
++  } catch (err) {
++    record('Signature Corruption Rejection (Bit Flip)', 'Authenticity', false, err.message);
++  }
++
++  // 9. Post-Quantum Signed Token (PQ-JWT) Valid Case
++  try {
++    const t0 = performance.now();
++    const key = await createManagedKeyPair('ML-DSA-65', 'Token Key');
++    const tokenBundle = await createSignedToken({ role: 'barista', storeId: 'store_01' }, key);
++    const verifyRes = await verifyToken(tokenBundle.token, key.publicKeyBytes);
++    const d = performance.now() - t0;
++    record('PQ-JWT Generation & Validation (ML-DSA-65)', 'Tokens', verifyRes.valid && verifyRes.cryptoValid, `Claims verified, role=${verifyRes.payload.role}`, d);
++  } catch (err) {
++    record('PQ-JWT Generation & Validation (ML-DSA-65)', 'Tokens', false, err.message);
++  }
++
++  // 10. PQ-JWT Privilege Escalation Tamper Detection
++  try {
++    const key = await createManagedKeyPair('ML-DSA-65', 'Token Key');
++    const tokenBundle = await createSignedToken({ role: 'barista' }, key);
++    const tamperedToken = tamperTokenPayload(tokenBundle.token, { role: 'super_admin' });
++    const verifyTampered = await verifyToken(tamperedToken, key.publicKeyBytes);
++    record('PQ-JWT Privilege Escalation Tamper Rejection', 'Tokens', !verifyTampered.valid && !verifyTampered.cryptoValid, `Unauthorized payload modification was blocked`);
++  } catch (err) {
++    record('PQ-JWT Privilege Escalation Tamper Rejection', 'Tokens', false, err.message);
++  }
++
++  // 11. Artifact Integrity & Asymmetric Attestation
++  try {
++    const t0 = performance.now();
++    const key = await createManagedKeyPair('ML-DSA-65', 'Artifact Signer');
++    const artifactData = new TextEncoder().encode('Single Origin Ethiopian Yirgacheffe Batch Spec');
++    const manifest = await signArtifact(artifactData, 'ethiopia-batch.spec', key, { issuer: 'Daily Grind QC' });
++    const verifyRes = await verifyArtifact(artifactData, manifest, key.publicKeyBytes);
++    const d = performance.now() - t0;
++    record('Artifact Attestation & SHA-256 Digest Verification', 'Artifacts', verifyRes.valid, `SHA-256 matched, ML-DSA-65 signature verified`, d);
++  } catch (err) {
++    record('Artifact Attestation & SHA-256 Digest Verification', 'Artifacts', false, err.message);
++  }
++
++  // 12. Artifact Tamper Detection (1-byte file corruption)
++  try {
++    const key = await createManagedKeyPair('ML-DSA-65', 'Artifact Signer');
++    const artifactData = new TextEncoder().encode('Single Origin Ethiopian Yirgacheffe Batch Spec');
++    const manifest = await signArtifact(artifactData, 'ethiopia-batch.spec', key);
++    // Tamper artifact by 1 byte
++    const tamperedData = new TextEncoder().encode('Single Origin Ethiopian Yirgacheffe Batch Spec!');
++    const verifyTampered = await verifyArtifact(tamperedData, manifest, key.publicKeyBytes);
++    record('Artifact Tamper Rejection (1-Byte Modification)', 'Artifacts', !verifyTampered.valid && !verifyTampered.hashMatches, `Hash mismatch caught before signature check: ${verifyTampered.reason.substring(0, 50)}...`);
++  } catch (err) {
++    record('Artifact Tamper Rejection (1-Byte Modification)', 'Artifacts', false, err.message);
++  }
++
++  const passedCount = results.filter(r => r.passed).length;
++  const totalCount = results.length;
++
++  return {
++    results,
++    summary: {
++      total: totalCount,
++      passed: passedCount,
++      failed: totalCount - passedCount,
++      allPassed: passedCount === totalCount,
++    },
++  };
++}
+diff --git a/src/crypto/utils.js b/src/crypto/utils.js
+new file mode 100644
+index 0000000..4c19c47
+--- /dev/null
++++ b/src/crypto/utils.js
+@@ -0,0 +1,150 @@
++// Utility functions for encoding, decoding, hashing and formatting
++import { sha256 as nobleSha256, sha512 as nobleSha512 } from '@noble/hashes/sha2.js';
++
++/**
++ * Convert Uint8Array to standard Base64 string
++ */
++export function bytesToBase64(bytes) {
++  let binary = '';
++  const len = bytes.byteLength;
++  for (let i = 0; i < len; i++) {
++    binary += String.fromCharCode(bytes[i]);
++  }
++  return btoa(binary);
++}
++
++/**
++ * Convert standard Base64 string to Uint8Array
++ */
++export function base64ToBytes(base64) {
++  // Strip whitespace and padding if any
++  const cleaned = base64.trim().replace(/\s+/g, '');
++  const binary = atob(cleaned);
++  const bytes = new Uint8Array(binary.length);
++  for (let i = 0; i < binary.length; i++) {
++    bytes[i] = binary.charCodeAt(i);
++  }
++  return bytes;
++}
++
++/**
++ * Convert Uint8Array to URL-safe Base64 (base64url without padding)
++ */
++export function bytesToBase64Url(bytes) {
++  return bytesToBase64(bytes)
++    .replace(/\+/g, '-')
++    .replace(/\//g, '_')
++    .replace(/=+$/, '');
++}
++
++/**
++ * Convert URL-safe Base64 string to Uint8Array
++ */
++export function base64UrlToBytes(base64url) {
++  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
++  while (base64.length % 4) {
++    base64 += '=';
++  }
++  return base64ToBytes(base64);
++}
++
++/**
++ * Convert UTF-8 string to Base64URL
++ */
++export function stringToBase64Url(str) {
++  const bytes = new TextEncoder().encode(str);
++  return bytesToBase64Url(bytes);
++}
++
++/**
++ * Convert Base64URL string to UTF-8 string
++ */
++export function base64UrlToString(base64url) {
++  const bytes = base64UrlToBytes(base64url);
++  return new TextDecoder().decode(bytes);
++}
++
++/**
++ * Convert Uint8Array to Hex string
++ */
++export function bytesToHex(bytes) {
++  return Array.from(bytes)
++    .map(b => b.toString(16).padStart(2, '0'))
++    .join('');
++}
++
++/**
++ * Convert Hex string to Uint8Array
++ */
++export function hexToBytes(hex) {
++  const cleanHex = hex.trim().replace(/\s+/g, '');
++  if (cleanHex.length % 2 !== 0) {
++    throw new Error('Invalid hex string length');
++  }
++  const bytes = new Uint8Array(cleanHex.length / 2);
++  for (let i = 0; i < cleanHex.length; i += 2) {
++    bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16);
++  }
++  return bytes;
++}
++
++/**
++ * Format raw bytes as PEM string
++ */
++export function bytesToPem(bytes, label = 'PUBLIC KEY') {
++  const b64 = bytesToBase64(bytes);
++  const lines = b64.match(/.{1,64}/g) || [];
++  return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----`;
++}
++
++/**
++ * Parse PEM string to Uint8Array
++ */
++export function pemToBytes(pem) {
++  const clean = pem
++    .replace(/-----BEGIN [^-]+-----/g, '')
++    .replace(/-----END [^-]+-----/g, '')
++    .replace(/\s+/g, '');
++  return base64ToBytes(clean);
++}
++
++/**
++ * Calculate SHA-256 hash of Uint8Array or ArrayBuffer
++ */
++export async function computeSha256(data) {
++  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
++  if (typeof crypto !== 'undefined' && crypto.subtle) {
++    const digest = await crypto.subtle.digest('SHA-256', bytes);
++    return new Uint8Array(digest);
++  }
++  return nobleSha256(bytes);
++}
++
++/**
++ * Calculate SHA-512 hash of Uint8Array or ArrayBuffer
++ */
++export async function computeSha512(data) {
++  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
++  if (typeof crypto !== 'undefined' && crypto.subtle) {
++    const digest = await crypto.subtle.digest('SHA-512', bytes);
++    return new Uint8Array(digest);
++  }
++  return nobleSha512(bytes);
++}
++
++/**
++ * Calculate SHA-256 hex fingerprint of bytes
++ */
++export async function computeFingerprint(bytes) {
++  const hash = await computeSha256(bytes);
++  return bytesToHex(hash);
++}
++
++/**
++ * Generate a unique ID with prefix
++ */
++export function generateId(prefix = 'id') {
++  const rand = Math.random().toString(36).substring(2, 8);
++  const time = Date.now().toString(36).slice(-4);
++  return `${prefix}_${rand}${time}`;
++}
+diff --git a/src/crypto/vault.js b/src/crypto/vault.js
+new file mode 100644
+index 0000000..e46e127
+--- /dev/null
++++ b/src/crypto/vault.js
+@@ -0,0 +1,168 @@
++// Browser Key Vault for persistent local key storage
++import { createManagedKeyPair, serializeManagedKey, deserializeManagedKey } from './keys.js';
++
++const STORAGE_KEY = 'daily_grind_crypto_vault_v1';
++const ACTIVE_KEY_ID_STORAGE = 'daily_grind_crypto_active_key_v1';
++
++class KeyVault {
++  constructor() {
++    this.keys = new Map();
++    this.activeKeyId = null;
++    this.initialized = false;
++  }
++
++  async init() {
++    if (this.initialized) return;
++
++    // Load from localStorage if available
++    let loaded = false;
++    if (typeof localStorage !== 'undefined') {
++      try {
++        const storedJson = localStorage.getItem(STORAGE_KEY);
++        if (storedJson) {
++          const list = JSON.parse(storedJson);
++          for (const item of list) {
++            const keyObj = deserializeManagedKey(item);
++            this.keys.set(keyObj.id, keyObj);
++          }
++          loaded = this.keys.size > 0;
++          this.activeKeyId = localStorage.getItem(ACTIVE_KEY_ID_STORAGE) || null;
++        }
++      } catch (err) {
++        console.warn('Failed to load keys from localStorage:', err);
++      }
++    }
++
++    // If vault is empty, seed with initial sample keys
++    if (!loaded || this.keys.size === 0) {
++      await this.seedDefaultKeys();
++    }
++
++    // Ensure an active key is selected
++    if (!this.activeKeyId || !this.keys.has(this.activeKeyId)) {
++      const firstKey = this.keys.values().next().value;
++      if (firstKey) {
++        this.activeKeyId = firstKey.id;
++        this.saveActiveKeyId();
++      }
++    }
++
++    this.initialized = true;
++  }
++
++  async seedDefaultKeys() {
++    try {
++      // 1. Post-Quantum Primary Key (ML-DSA-65)
++      const pqKey = await createManagedKeyPair(
++        'ML-DSA-65',
++        'Daily Grind Master Authority (ML-DSA-65)'
++      );
++      this.keys.set(pqKey.id, pqKey);
++
++      // 2. Classical ECDSA P-256 Key
++      const ecdsaKey = await createManagedKeyPair(
++        'ECDSA-P256',
++        'Store POS Terminal #104 (ECDSA P-256)'
++      );
++      this.keys.set(ecdsaKey.id, ecdsaKey);
++
++      // 3. Compact High-Speed Classical (Ed25519)
++      const edKey = await createManagedKeyPair(
++        'Ed25519',
++        'Supply Chain Dispatcher (Ed25519)'
++      );
++      this.keys.set(edKey.id, edKey);
++
++      // 4. Hybrid Composite Key
++      const hybridKey = await createManagedKeyPair(
++        'Hybrid-P256-MLDSA65',
++        'Corporate Quantum-Safe Transition Gateway (Hybrid)'
++      );
++      this.keys.set(hybridKey.id, hybridKey);
++
++      this.activeKeyId = pqKey.id;
++      this.persist();
++      this.saveActiveKeyId();
++    } catch (err) {
++      console.warn('Error seeding default keys:', err);
++    }
++  }
++
++  persist() {
++    if (typeof localStorage === 'undefined') return;
++    try {
++      const list = Array.from(this.keys.values()).map(serializeManagedKey);
++      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
++    } catch (err) {
++      console.error('Failed to save keys to localStorage:', err);
++    }
++  }
++
++  saveActiveKeyId() {
++    if (typeof localStorage === 'undefined') return;
++    try {
++      if (this.activeKeyId) {
++        localStorage.setItem(ACTIVE_KEY_ID_STORAGE, this.activeKeyId);
++      } else {
++        localStorage.removeItem(ACTIVE_KEY_ID_STORAGE);
++      }
++    } catch (err) {
++      console.error('Failed to save active key ID to localStorage:', err);
++    }
++  }
++
++  getAllKeys() {
++    return Array.from(this.keys.values());
++  }
++
++  getKey(id) {
++    return this.keys.get(id) || null;
++  }
++
++  getActiveKey() {
++    if (!this.activeKeyId) return null;
++    return this.keys.get(this.activeKeyId) || null;
++  }
++
++  setActiveKey(id) {
++    if (this.keys.has(id)) {
++      this.activeKeyId = id;
++      this.saveActiveKeyId();
++      return true;
++    }
++    return false;
++  }
++
++  addKey(keyObj) {
++    this.keys.set(keyObj.id, keyObj);
++    if (!this.activeKeyId) {
++      this.activeKeyId = keyObj.id;
++      this.saveActiveKeyId();
++    }
++    this.persist();
++  }
++
++  removeKey(id) {
++    const deleted = this.keys.delete(id);
++    if (deleted) {
++      if (this.activeKeyId === id) {
++        const next = this.keys.values().next().value;
++        this.activeKeyId = next ? next.id : null;
++        this.saveActiveKeyId();
++      }
++      this.persist();
++    }
++    return deleted;
++  }
++
++  clear() {
++    this.keys.clear();
++    this.activeKeyId = null;
++    if (typeof localStorage !== 'undefined') {
++      localStorage.removeItem(STORAGE_KEY);
++      localStorage.removeItem(ACTIVE_KEY_ID_STORAGE);
++    }
++  }
++}
++
++export const vault = new KeyVault();
+diff --git a/src/features/artifacts.js b/src/features/artifacts.js
+new file mode 100644
+index 0000000..ea20be6
+--- /dev/null
++++ b/src/features/artifacts.js
+@@ -0,0 +1,216 @@
++// Digital Artifact & File Integrity Signing and Verification
++import { getAlgorithm } from '../crypto/algorithms.js';
++import {
++  computeSha256,
++  computeSha512,
++  bytesToHex,
++  bytesToBase64,
++  base64ToBytes,
++  computeFingerprint,
++} from '../crypto/utils.js';
++
++/**
++ * Computes hashes for an ArrayBuffer or Uint8Array
++ */
++export async function hashArtifactData(data) {
++  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
++  const sha256Bytes = await computeSha256(bytes);
++  const sha512Bytes = await computeSha512(bytes);
++
++  return {
++    bytesCount: bytes.byteLength,
++    sha256Hex: bytesToHex(sha256Bytes),
++    sha512Hex: bytesToHex(sha512Bytes),
++    sha256Bytes,
++    sha512Bytes,
++  };
++}
++
++/**
++ * Deterministic canonical string representation of an artifact for signing
++ */
++function createArtifactCanonicalPayload(artifactName, artifactSize, sha256Hex, metadata = {}) {
++  return JSON.stringify({
++    schema: 'daily-grind-artifact-v1',
++    name: artifactName,
++    size: artifactSize,
++    sha256: sha256Hex,
++    metadata: metadata || {},
++  });
++}
++
++/**
++ * Signs an artifact and generates an Attestation Manifest Bundle
++ */
++export async function signArtifact(fileData, artifactName, keyObj, attestationMeta = {}) {
++  if (!keyObj || !keyObj.hasSecretKey || !keyObj.secretKeyBytes) {
++    throw new Error('Valid signing key with secret key material is required');
++  }
++
++  const { bytesCount, sha256Hex, sha512Hex } = await hashArtifactData(fileData);
++
++  const metadata = {
++    issuer: attestationMeta.issuer || 'Daily Grind Certified Roastery',
++    description: attestationMeta.description || 'Authentic batch artifact',
++    timestamp: attestationMeta.timestamp || new Date().toISOString(),
++    tags: attestationMeta.tags || ['artisanal', 'pqc-secured'],
++  };
++
++  const canonicalString = createArtifactCanonicalPayload(artifactName, bytesCount, sha256Hex, metadata);
++  const canonicalBytes = new TextEncoder().encode(canonicalString);
++
++  const alg = getAlgorithm(keyObj.algorithm);
++  const t0 = performance.now();
++  const sigBytes = await alg.sign(canonicalBytes, keyObj.secretKeyBytes);
++  const durationMs = performance.now() - t0;
++
++  const manifest = {
++    version: '1.0',
++    type: 'artifact-attestation-manifest',
++    artifactName,
++    artifactSize: bytesCount,
++    hashes: {
++      sha256: sha256Hex,
++      sha512: sha512Hex,
++    },
++    metadata,
++    canonicalPayload: canonicalString,
++    signatureInfo: {
++      algorithm: keyObj.algorithm,
++      keyId: keyObj.id,
++      keyName: keyObj.name,
++      signerFingerprint: keyObj.fingerprint,
++      category: keyObj.category,
++      signature: bytesToBase64(sigBytes),
++      signatureBytesCount: sigBytes.length,
++      timestamp: metadata.timestamp,
++    },
++    metrics: {
++      signTimeMs: Number(durationMs.toFixed(2)),
++    },
++  };
++
++  return manifest;
++}
++
++/**
++ * Verifies an artifact file data against a manifest and public key
++ */
++export async function verifyArtifact(fileData, manifest, publicKeyBytes) {
++  if (!manifest || !manifest.signatureInfo) {
++    throw new Error('Invalid or missing artifact manifest');
++  }
++
++  const sigInfo = manifest.signatureInfo;
++  const alg = getAlgorithm(sigInfo.algorithm);
++
++  // 1. Check file content hash
++  const { bytesCount, sha256Hex, sha512Hex } = await hashArtifactData(fileData);
++  const hashMatches = sha256Hex === manifest.hashes.sha256;
++  const sizeMatches = bytesCount === manifest.artifactSize;
++
++  // 2. Check cryptographic signature over canonical payload
++  let sigBytes;
++  try {
++    sigBytes = base64ToBytes(sigInfo.signature);
++  } catch (e) {
++    return {
++      valid: false,
++      hashMatches,
++      sigMatches: false,
++      status: 'INVALID_SIGNATURE_FORMAT',
++      reason: 'Signature is not valid Base64',
++    };
++  }
++
++  const canonicalBytes = new TextEncoder().encode(manifest.canonicalPayload);
++  const t0 = performance.now();
++  let sigMatches = false;
++  try {
++    sigMatches = await alg.verify(sigBytes, canonicalBytes, publicKeyBytes);
++  } catch (err) {
++    sigMatches = false;
++  }
++  const durationMs = performance.now() - t0;
++
++  const keyFingerprint = await computeFingerprint(publicKeyBytes);
++  const isOverallValid = hashMatches && sizeMatches && sigMatches;
++
++  let status = 'VALID';
++  let reason = '';
++
++  if (!hashMatches) {
++    status = 'HASH_MISMATCH';
++    reason = `Data integrity violation! Calculated SHA-256 (${sha256Hex.substring(0, 16)}...) does NOT match manifest hash (${manifest.hashes.sha256.substring(0, 16)}...). File has been modified!`;
++  } else if (!sigMatches) {
++    status = 'SIGNATURE_INVALID';
++    reason = `Cryptographic signature validation failed! The manifest was altered or signed by an untrusted key.`;
++  } else {
++    reason = `Artifact is authentic and intact! Verified via ${sigInfo.algorithm} (${alg.type}). SHA-256 hash and asymmetric signature confirmed.`;
++  }
++
++  return {
++    valid: isOverallValid,
++    status,
++    reason,
++    hashMatches,
++    sizeMatches,
++    sigMatches,
++    calculatedHash: sha256Hex,
++    manifestHash: manifest.hashes.sha256,
++    artifactName: manifest.artifactName,
++    algorithm: sigInfo.algorithm,
++    category: alg.type,
++    keyFingerprint,
++    metadata: manifest.metadata,
++    durationMs: Number(durationMs.toFixed(2)),
++  };
++}
++
++/**
++ * Built-in Sample Artifacts for 1-click verification testing
++ */
++export const SAMPLE_ARTIFACTS = [
++  {
++    name: 'ethiopia-yirgacheffe-batch-2026.json',
++    mimeType: 'application/json',
++    description: 'Single-Origin Ethiopian Yirgacheffe harvest specification, Fair Trade cupping score 92.5.',
++    content: JSON.stringify(
++      {
++        batchId: 'ETH-YIRG-2026-08',
++        origin: 'Yirgacheffe, Gedeo Zone, Ethiopia',
++        altitudeMeters: 2100,
++        process: 'Washed, Sun-dried on raised beds',
++        varietal: 'Heirloom Ethiopian Arabica',
++        cuppingNotes: ['Bergamot', 'Jasmine', 'Peach', 'Meyer Lemon'],
++        scaScore: 92.5,
++        organicCertified: true,
++        fairTradeCertNo: 'FT-ETH-99214',
++        roastDate: '2026-10-15',
++      },
++      null,
++      2
++    ),
++  },
++  {
++    name: 'cold-brew-nitrogen-roast-profile.txt',
++    mimeType: 'text/plain',
++    description: 'Daily Grind Proprietary 18-hour cold brew roast temperature and steep curve profile.',
++    content: `THE DAILY GRIND - MASTER ROAST CURVE v3.4
++Bean: Sumatra Mandheling & Colombia Supremo (50/50)
++Charge Temp: 205°C
++Dry End: 4m 15s at 155°C
++First Crack: 8m 40s at 198°C
++Development Time Ratio: 16.5%
++Drop Temp: 214°C
++Water Steep Ratio: 1:8 filtered mineral water TDS 130ppm
++Steep Duration: 18 hours at 3.8°C under inert nitrogen blanket.
++Integrity Seal: Master Roaster Signed.`,
++  },
++  {
++    name: 'daily-grind-pos-firmware-patch-v2.6.bin',
++    mimeType: 'application/octet-stream',
++    description: 'Signed POS Terminal point-of-sale firmware cryptographic patch manifest.',
++    content: '010011000110111101100011011010110110010101100100204669726d776172652050617463682056322e36',
++  },
++];
+diff --git a/src/features/messages.js b/src/features/messages.js
+new file mode 100644
+index 0000000..1c85086
+--- /dev/null
++++ b/src/features/messages.js
+@@ -0,0 +1,117 @@
++// Message Signing, Verification, and Tamper Analysis
++import { getAlgorithm } from '../crypto/algorithms.js';
++import { bytesToBase64, base64ToBytes, computeFingerprint } from '../crypto/utils.js';
++
++/**
++ * Signs arbitrary text or JSON message with private key
++ */
++export async function signMessage(messageText, keyObj) {
++  if (!keyObj || !keyObj.hasSecretKey || !keyObj.secretKeyBytes) {
++    throw new Error('Valid signing key with secret key material is required');
++  }
++
++  const alg = getAlgorithm(keyObj.algorithm);
++  const msgBytes = new TextEncoder().encode(messageText);
++
++  const t0 = performance.now();
++  const sigBytes = await alg.sign(msgBytes, keyObj.secretKeyBytes);
++  const durationMs = performance.now() - t0;
++
++  return {
++    version: '1.0',
++    type: 'signed-message-envelope',
++    message: messageText,
++    signature: bytesToBase64(sigBytes),
++    algorithm: keyObj.algorithm,
++    keyId: keyObj.id,
++    keyName: keyObj.name,
++    keyFingerprint: keyObj.fingerprint,
++    category: keyObj.category,
++    timestamp: new Date().toISOString(),
++    signatureBytesCount: sigBytes.length,
++    metrics: {
++      signTimeMs: Number(durationMs.toFixed(2)),
++    },
++  };
++}
++
++/**
++ * Verifies message against signature and public key
++ */
++export async function verifyMessage(messageText, signatureBase64, publicKeyBytes, algorithmId) {
++  if (!signatureBase64 || !publicKeyBytes || !algorithmId) {
++    throw new Error('Message, signature, public key and algorithm are all required for verification');
++  }
++
++  const alg = getAlgorithm(algorithmId);
++  const msgBytes = new TextEncoder().encode(messageText);
++
++  let sigBytes;
++  try {
++    sigBytes = base64ToBytes(signatureBase64);
++  } catch (err) {
++    return {
++      valid: false,
++      algorithm: algorithmId,
++      status: 'INVALID_SIGNATURE_FORMAT',
++      reason: 'Signature is not valid Base64 encoding.',
++      durationMs: 0,
++    };
++  }
++
++  const t0 = performance.now();
++  let isValid = false;
++  try {
++    isValid = await alg.verify(sigBytes, msgBytes, publicKeyBytes);
++  } catch (err) {
++    isValid = false;
++  }
++  const durationMs = performance.now() - t0;
++  const keyFingerprint = await computeFingerprint(publicKeyBytes);
++
++  return {
++    valid: isValid,
++    algorithm: algorithmId,
++    category: alg.type,
++    keyFingerprint,
++    signatureBytesCount: sigBytes.length,
++    durationMs: Number(durationMs.toFixed(2)),
++    status: isValid ? 'VALID' : 'INVALID',
++    reason: isValid
++      ? 'Cryptographic integrity and authenticity successfully confirmed. The message has not been altered since signing.'
++      : 'Signature verification failed! The message has been tampered with, or the signature does not match the public key.',
++  };
++}
++
++/**
++ * Tamper helper: mutates message content to test tamper resistance
++ */
++export function tamperMessageContent(text) {
++  if (!text || text.length === 0) return 'Tampered Message Content!';
++  try {
++    // If it's valid JSON, alter an attribute or add tamper note
++    const obj = JSON.parse(text);
++    obj._tampered = true;
++    if (obj.amount) obj.amount = (Number(obj.amount) || 0) * 10;
++    if (obj.price) obj.price = (Number(obj.price) || 0) + 100;
++    if (obj.role) obj.role = 'tampered_admin';
++    return JSON.stringify(obj, null, 2);
++  } catch (e) {
++    // Plain text: flip case of first character or append '[TAMPERED]'
++    if (text.endsWith(' [TAMPERED]')) {
++      return text.replace(' [TAMPERED]', ' [TAMPERED_V2]');
++    }
++    return text + ' [TAMPERED]';
++  }
++}
++
++/**
++ * Corrupt helper: flips bytes in base64 signature
++ */
++export function corruptSignature(sigBase64) {
++  if (!sigBase64 || sigBase64.length < 5) return 'CorruptedSignature==';
++  const chars = sigBase64.split('');
++  // Flip character at index 4
++  chars[4] = chars[4] === 'A' ? 'B' : 'A';
++  return chars.join('');
++}
+diff --git a/src/features/tokens.js b/src/features/tokens.js
+new file mode 100644
+index 0000000..f106dca
+--- /dev/null
++++ b/src/features/tokens.js
+@@ -0,0 +1,228 @@
++// Post-Quantum & Classical Signed Token (PQ-JWT / JWS) Engine
++import { getAlgorithm } from '../crypto/algorithms.js';
++import {
++  stringToBase64Url,
++  base64UrlToString,
++  bytesToBase64Url,
++  base64UrlToBytes,
++  generateId,
++  computeFingerprint,
++} from '../crypto/utils.js';
++
++/**
++ * Creates a signed token (header.payload.signature)
++ */
++export async function createSignedToken(payloadClaims, keyObj, customHeader = {}) {
++  if (!keyObj || !keyObj.hasSecretKey || !keyObj.secretKeyBytes) {
++    throw new Error('Valid signing key with secret key material is required');
++  }
++
++  const nowSec = Math.floor(Date.now() / 1000);
++  const defaultPayload = {
++    iss: 'daily-grind-authority',
++    sub: 'barista_alex_902',
++    aud: 'daily-grind-pos-network',
++    iat: nowSec,
++    exp: nowSec + 3600, // 1 hour default
++    jti: generateId('tok'),
++    role: 'shift_lead',
++    permissions: ['orders:create', 'discounts:authorize', 'inventory:audit'],
++    storeId: 'store_seattle_flagship',
++  };
++
++  const finalPayload = { ...defaultPayload, ...payloadClaims };
++
++  const header = {
++    alg: keyObj.algorithm,
++    typ: keyObj.category === 'post-quantum' ? 'PQ-JWT' : 'JWT',
++    kid: keyObj.id,
++    pqc: keyObj.category === 'post-quantum',
++    ...customHeader,
++  };
++
++  const headerB64Url = stringToBase64Url(JSON.stringify(header));
++  const payloadB64Url = stringToBase64Url(JSON.stringify(finalPayload));
++  const signingInput = `${headerB64Url}.${payloadB64Url}`;
++  const signingInputBytes = new TextEncoder().encode(signingInput);
++
++  const alg = getAlgorithm(keyObj.algorithm);
++  const t0 = performance.now();
++  const sigBytes = await alg.sign(signingInputBytes, keyObj.secretKeyBytes);
++  const durationMs = performance.now() - t0;
++
++  const sigB64Url = bytesToBase64Url(sigBytes);
++  const tokenString = `${headerB64Url}.${payloadB64Url}.${sigB64Url}`;
++
++  return {
++    token: tokenString,
++    header,
++    payload: finalPayload,
++    signatureBytesCount: sigBytes.length,
++    algorithm: keyObj.algorithm,
++    keyId: keyObj.id,
++    metrics: {
++      signTimeMs: Number(durationMs.toFixed(2)),
++    },
++  };
++}
++
++/**
++ * Decodes a token without verifying (for inspector UI)
++ */
++export function decodeToken(tokenString) {
++  if (!tokenString || typeof tokenString !== 'string') {
++    throw new Error('Invalid token string');
++  }
++
++  const parts = tokenString.trim().split('.');
++  if (parts.length !== 3) {
++    throw new Error('Malformed token: Expected 3 parts separated by dots (header.payload.signature)');
++  }
++
++  const [headerB64, payloadB64, sigB64] = parts;
++
++  let header, payload;
++  try {
++    header = JSON.parse(base64UrlToString(headerB64));
++  } catch (err) {
++    throw new Error('Malformed token header: Invalid JSON');
++  }
++
++  try {
++    payload = JSON.parse(base64UrlToString(payloadB64));
++  } catch (err) {
++    throw new Error('Malformed token payload: Invalid JSON');
++  }
++
++  return {
++    header,
++    payload,
++    headerRaw: headerB64,
++    payloadRaw: payloadB64,
++    signatureRaw: sigB64,
++    signingInput: `${headerB64}.${payloadB64}`,
++  };
++}
++
++/**
++ * Verifies a token's cryptographic signature and time validity
++ */
++export async function verifyToken(tokenString, publicKeyBytes, algorithmIdOverride = null) {
++  let decoded;
++  try {
++    decoded = decodeToken(tokenString);
++  } catch (err) {
++    return {
++      valid: false,
++      status: 'MALFORMED',
++      reason: err.message,
++      claimsValid: false,
++      cryptoValid: false,
++    };
++  }
++
++  const algorithmId = algorithmIdOverride || decoded.header.alg;
++  if (!algorithmId) {
++    return {
++      valid: false,
++      status: 'MISSING_ALGORITHM',
++      reason: 'No algorithm specified in token header or parameter',
++      claimsValid: false,
++      cryptoValid: false,
++    };
++  }
++
++  const alg = getAlgorithm(algorithmId);
++  const signingInputBytes = new TextEncoder().encode(decoded.signingInput);
++
++  let sigBytes;
++  try {
++    sigBytes = base64UrlToBytes(decoded.signatureRaw);
++  } catch (err) {
++    return {
++      valid: false,
++      status: 'INVALID_SIGNATURE_ENCODING',
++      reason: 'Token signature is not valid Base64URL encoding',
++      claimsValid: false,
++      cryptoValid: false,
++    };
++  }
++
++  const t0 = performance.now();
++  let cryptoValid = false;
++  try {
++    cryptoValid = await alg.verify(sigBytes, signingInputBytes, publicKeyBytes);
++  } catch (err) {
++    cryptoValid = false;
++  }
++  const durationMs = performance.now() - t0;
++
++  // Validate standard claims (exp, nbf)
++  const nowSec = Math.floor(Date.now() / 1000);
++  let claimsValid = true;
++  const claimErrors = [];
++
++  if (decoded.payload.exp !== undefined) {
++    if (nowSec >= decoded.payload.exp) {
++      claimsValid = false;
++      const expiredAgo = nowSec - decoded.payload.exp;
++      claimErrors.push(`Token expired ${expiredAgo} seconds ago (exp: ${new Date(decoded.payload.exp * 1000).toISOString()})`);
++    }
++  }
++
++  if (decoded.payload.nbf !== undefined) {
++    if (nowSec < decoded.payload.nbf) {
++      claimsValid = false;
++      claimErrors.push(`Token is not valid yet (nbf: ${new Date(decoded.payload.nbf * 1000).toISOString()})`);
++    }
++  }
++
++  const isOverallValid = cryptoValid && claimsValid;
++  const keyFingerprint = await computeFingerprint(publicKeyBytes);
++
++  let reason = '';
++  let status = 'VALID';
++  if (!cryptoValid) {
++    status = 'CRYPTO_FAILED';
++    reason = 'Cryptographic signature verification failed! The token claims or header were modified, or signed with a different key.';
++  } else if (!claimsValid) {
++    status = 'CLAIMS_EXPIRED';
++    reason = `Cryptographic signature is valid, but token claims check failed: ${claimErrors.join(', ')}`;
++  } else {
++    reason = `Token is authentic and valid! Signed via ${algorithmId} (${alg.type}). Not expired.`;
++  }
++
++  return {
++    valid: isOverallValid,
++    cryptoValid,
++    claimsValid,
++    status,
++    reason,
++    algorithm: algorithmId,
++    category: alg.type,
++    keyFingerprint,
++    header: decoded.header,
++    payload: decoded.payload,
++    signatureBytesCount: sigBytes.length,
++    claimErrors,
++    durationMs: Number(durationMs.toFixed(2)),
++  };
++}
++
++/**
++ * Tamper helper for token payload
++ */
++export function tamperTokenPayload(tokenString, modifiedPayloadProperties = {}) {
++  const decoded = decodeToken(tokenString);
++  const mutatedPayload = {
++    ...decoded.payload,
++    role: 'super_admin_unauthorized',
++    permissions: ['*'],
++    discount_limit: 9999,
++    ...modifiedPayloadProperties,
++  };
++
++  const newPayloadB64 = stringToBase64Url(JSON.stringify(mutatedPayload));
++  // Keep original signature to demonstrate cryptographic failure
++  return `${decoded.headerRaw}.${newPayloadB64}.${decoded.signatureRaw}`;
++}
+diff --git a/src/index.js b/src/index.js
+new file mode 100644
+index 0000000..b69c9e5
+--- /dev/null
++++ b/src/index.js
+@@ -0,0 +1,47 @@
++// Application entry point for browser and bundler
++import { cryptoApp } from './ui/app.js';
++import * as algorithms from './crypto/algorithms.js';
++import * as utils from './crypto/utils.js';
++import * as keys from './crypto/keys.js';
++import { vault } from './crypto/vault.js';
++import * as messages from './features/messages.js';
++import * as tokens from './features/tokens.js';
++import * as artifacts from './features/artifacts.js';
++import * as testSuite from './crypto/test-suite.js';
++
++// Expose API globally for browser console scripting & testing
++if (typeof window !== 'undefined') {
++  window.DailyGrindCrypto = {
++    cryptoApp,
++    algorithms,
++    utils,
++    keys,
++    vault,
++    messages,
++    tokens,
++    artifacts,
++    testSuite,
++  };
++  window.cryptoApp = cryptoApp;
++
++  // Initialize UI once DOM is ready
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', () => {
++      cryptoApp.init();
++    });
++  } else {
++    cryptoApp.init();
++  }
++}
++
++export {
++  cryptoApp,
++  algorithms,
++  utils,
++  keys,
++  vault,
++  messages,
++  tokens,
++  artifacts,
++  testSuite,
++};
+diff --git a/src/ui/app.js b/src/ui/app.js
+new file mode 100644
+index 0000000..b12e965
+--- /dev/null
++++ b/src/ui/app.js
+@@ -0,0 +1,1052 @@
++// Main UI Controller for Quantum Trust & Cryptographic Studio
++import { ALGORITHM_REGISTRY, listAlgorithms, getAlgorithm } from '../crypto/algorithms.js';
++import { vault } from '../crypto/vault.js';
++import { createManagedKeyPair, exportPublicKey, exportSecretKey, importPublicKey } from '../crypto/keys.js';
++import { signMessage, verifyMessage, tamperMessageContent, corruptSignature } from '../features/messages.js';
++import { createSignedToken, decodeToken, verifyToken, tamperTokenPayload } from '../features/tokens.js';
++import { hashArtifactData, signArtifact, verifyArtifact, SAMPLE_ARTIFACTS } from '../features/artifacts.js';
++import { runCryptoTestSuite } from '../crypto/test-suite.js';
++import { bytesToBase64, base64ToBytes, stringToBase64Url } from '../crypto/utils.js';
++
++class CryptoApp {
++  constructor() {
++    this.currentTab = 'messages';
++    this.currentArtifactFile = null;
++    this.currentArtifactData = null;
++    this.currentArtifactManifest = null;
++  }
++
++  async init() {
++    await vault.init();
++    this.renderActiveKeyBanner();
++    this.setupTabs();
++    this.setupModals();
++    this.setupMessageHandlers();
++    this.setupTokenHandlers();
++    this.setupArtifactHandlers();
++    this.setupKeyVaultHandlers();
++    this.setupTestSuiteHandlers();
++    this.setupAlgorithmMatrix();
++
++    // Auto-populate initial sample message
++    const msgInput = document.getElementById('cq-msg-input');
++    if (msgInput && !msgInput.value) {
++      msgInput.value = JSON.stringify(
++        {
++          orderId: 'DG-ROAST-2026-904',
++          bean: 'Ethiopian Yirgacheffe Organic',
++          batchSizeKg: 120,
++          targetRoastLevel: 'Medium-Light (City+)',
++          fairTradeCertified: true,
++          timestamp: new Date().toISOString(),
++        },
++        null,
++        2
++      );
++    }
++
++    // Auto-populate sample token payload
++    const tokPayloadInput = document.getElementById('cq-tok-payload-input');
++    if (tokPayloadInput && !tokPayloadInput.value) {
++      tokPayloadInput.value = JSON.stringify(
++        {
++          sub: 'barista_elena_412',
++          role: 'shift_lead',
++          storeId: 'store_seattle_01',
++          permissions: ['orders:create', 'discounts:authorize', 'inventory:audit'],
++        },
++        null,
++        2
++      );
++    }
++
++    // Load initial sample artifact
++    this.loadSampleArtifact(0);
++  }
++
++  showToast(message) {
++    const existing = document.querySelector('.crypto-toast');
++    if (existing) existing.remove();
++
++    const toast = document.createElement('div');
++    toast.className = 'crypto-toast';
++    toast.textContent = message;
++    document.body.appendChild(toast);
++
++    setTimeout(() => {
++      toast.remove();
++    }, 2800);
++  }
++
++  renderActiveKeyBanner() {
++    const key = vault.getActiveKey();
++    const bannerContainer = document.getElementById('cq-active-key-banner');
++    if (!bannerContainer) return;
++
++    if (!key) {
++      bannerContainer.innerHTML = `
++        <div class="active-key-info">
++          <h4>Active Signing Key</h4>
++          <div class="active-key-name">No Key Selected</div>
++        </div>
++        <div class="active-key-actions">
++          <button class="cq-btn cq-btn-accent cq-btn-sm" id="cq-banner-select-key">Select / Create Key</button>
++        </div>
++      `;
++      document.getElementById('cq-banner-select-key')?.addEventListener('click', () => this.switchTab('keys'));
++      return;
++    }
++
++    const pillClass = key.category === 'post-quantum' ? 'pill-pqc' : (key.category === 'hybrid' ? 'pill-hybrid' : 'pill-classical');
++    const categoryLabel = key.category === 'post-quantum' ? 'Post-Quantum (NIST)' : (key.category === 'hybrid' ? 'Hybrid Composite' : 'Classical');
++
++    bannerContainer.innerHTML = `
++      <div class="active-key-info">
++        <h4>Active Signing & Verification Key</h4>
++        <div class="active-key-name">
++          <span>${escapeHtml(key.name)}</span>
++          <span class="key-pill ${pillClass}">${categoryLabel}</span>
++          <span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal;">[${escapeHtml(key.algorithm)}]</span>
++        </div>
++        <div class="active-key-fingerprint">
++          Fingerprint: ${key.fingerprint.substring(0, 32)}... (SHA-256)
++        </div>
++      </div>
++      <div class="active-key-actions">
++        <button class="cq-btn cq-btn-accent cq-btn-sm" id="cq-banner-change-key">Switch Key</button>
++        <button class="cq-btn cq-btn-secondary cq-btn-sm" id="cq-banner-export-key">Export Key</button>
++      </div>
++    `;
++
++    document.getElementById('cq-banner-change-key')?.addEventListener('click', () => this.switchTab('keys'));
++    document.getElementById('cq-banner-export-key')?.addEventListener('click', () => this.openExportModal(key.id));
++  }
++
++  setupTabs() {
++    const tabButtons = document.querySelectorAll('.crypto-tab-btn');
++    tabButtons.forEach(btn => {
++      btn.addEventListener('click', () => {
++        const tab = btn.dataset.tab;
++        this.switchTab(tab);
++      });
++    });
++  }
++
++  switchTab(tabName) {
++    this.currentTab = tabName;
++    document.querySelectorAll('.crypto-tab-btn').forEach(btn => {
++      btn.classList.toggle('active', btn.dataset.tab === tabName);
++    });
++    document.querySelectorAll('.crypto-tab-panel').forEach(panel => {
++      panel.classList.toggle('active', panel.id === `cq-tab-${tabName}`);
++    });
++
++    if (tabName === 'keys') {
++      this.renderKeyVaultList();
++    }
++  }
++
++  // ==========================================
++  // MESSAGE SIGNING & VERIFICATION
++  // ==========================================
++  setupMessageHandlers() {
++    const signBtn = document.getElementById('cq-msg-sign-btn');
++    const verifyBtn = document.getElementById('cq-msg-verify-btn');
++    const tamperBtn = document.getElementById('cq-msg-tamper-btn');
++    const corruptBtn = document.getElementById('cq-msg-corrupt-btn');
++    const loadToVerifyBtn = document.getElementById('cq-msg-load-verify-btn');
++    const copyEnvBtn = document.getElementById('cq-msg-copy-envelope-btn');
++
++    // Preset chips
++    document.querySelectorAll('[data-msg-preset]').forEach(chip => {
++      chip.addEventListener('click', () => {
++        const preset = chip.dataset.msgPreset;
++        const msgInput = document.getElementById('cq-msg-input');
++        if (preset === 'roast') {
++          msgInput.value = JSON.stringify({
++            orderId: 'DG-ROAST-2026-904',
++            bean: 'Ethiopian Yirgacheffe Organic',
++            batchSizeKg: 120,
++            targetRoastLevel: 'Medium-Light (City+)',
++            fairTradeCertified: true,
++            timestamp: new Date().toISOString(),
++          }, null, 2);
++        } else if (preset === 'origin') {
++          msgInput.value = `Fair Trade & Single-Origin Certificate\nOrigin: Huila, Colombia\nProducer: Cooperative Los Naranjos\nCupping Score: 88.5\nOrganic Certified: Yes\nIssued: ${new Date().toISOString()}`;
++        } else if (preset === 'audit') {
++          msgInput.value = JSON.stringify({
++            auditType: 'DAILY_CASH_AND_TILL_RECONCILIATION',
++            storeId: 'SEA-01-DOWNTOWN',
++            cashTotalUsd: 1420.50,
++            cardTotalUsd: 4892.15,
++            discrepancyUsd: 0.00,
++            auditor: 'barista_alex_902',
++          }, null, 2);
++        }
++      });
++    });
++
++    signBtn?.addEventListener('click', async () => {
++      const activeKey = vault.getActiveKey();
++      if (!activeKey) {
++        alert('Please select or create an active signing key first.');
++        return;
++      }
++      const text = document.getElementById('cq-msg-input').value;
++      if (!text) {
++        alert('Please enter a message to sign.');
++        return;
++      }
++
++      try {
++        signBtn.disabled = true;
++        signBtn.textContent = 'Signing...';
++        const envelope = await signMessage(text, activeKey);
++        this.lastMessageEnvelope = envelope;
++
++        document.getElementById('cq-msg-envelope-output').textContent = JSON.stringify(envelope, null, 2);
++        document.getElementById('cq-msg-signed-metrics').innerHTML = `
++          Signed in <strong>${envelope.metrics.signTimeMs}ms</strong> with <strong>${envelope.algorithm}</strong> (${envelope.category}). Signature: <strong>${envelope.signatureBytesCount} bytes</strong>.
++        `;
++        document.getElementById('cq-msg-output-group').style.display = 'block';
++        this.showToast('Message signed successfully!');
++      } catch (err) {
++        alert('Signing error: ' + err.message);
++      } finally {
++        signBtn.disabled = false;
++        signBtn.textContent = '✍️ Sign Message';
++      }
++    });
++
++    copyEnvBtn?.addEventListener('click', () => {
++      if (this.lastMessageEnvelope) {
++        navigator.clipboard.writeText(JSON.stringify(this.lastMessageEnvelope, null, 2));
++        this.showToast('Signed envelope copied to clipboard!');
++      }
++    });
++
++    loadToVerifyBtn?.addEventListener('click', () => {
++      if (this.lastMessageEnvelope) {
++        document.getElementById('cq-msg-verify-text').value = this.lastMessageEnvelope.message;
++        document.getElementById('cq-msg-verify-sig').value = this.lastMessageEnvelope.signature;
++        this.populateKeySelect('cq-msg-verify-key', this.lastMessageEnvelope.keyId);
++        this.showToast('Loaded into verifier!');
++        document.getElementById('cq-msg-verify-text').scrollIntoView({ behavior: 'smooth' });
++      }
++    });
++
++    verifyBtn?.addEventListener('click', async () => {
++      await this.executeMessageVerification();
++    });
++
++    tamperBtn?.addEventListener('click', async () => {
++      const textInput = document.getElementById('cq-msg-verify-text');
++      textInput.value = tamperMessageContent(textInput.value);
++      this.showToast('Message payload modified! Verifying tamper detection...');
++      await this.executeMessageVerification();
++    });
++
++    corruptBtn?.addEventListener('click', async () => {
++      const sigInput = document.getElementById('cq-msg-verify-sig');
++      sigInput.value = corruptSignature(sigInput.value);
++      this.showToast('Signature bits corrupted! Verifying rejection...');
++      await this.executeMessageVerification();
++    });
++  }
++
++  async executeMessageVerification() {
++    const text = document.getElementById('cq-msg-verify-text').value;
++    const sigB64 = document.getElementById('cq-msg-verify-sig').value.trim();
++    const keyId = document.getElementById('cq-msg-verify-key').value;
++    const key = vault.getKey(keyId);
++
++    if (!text || !sigB64) {
++      alert('Please provide both message and signature for verification.');
++      return;
++    }
++    if (!key) {
++      alert('Please select the verification key.');
++      return;
++    }
++
++    const resultBox = document.getElementById('cq-msg-verify-result');
++    resultBox.style.display = 'block';
++
++    try {
++      const result = await verifyMessage(text, sigB64, key.publicKeyBytes, key.algorithm);
++      const isPass = result.valid;
++
++      resultBox.className = `verification-result ${isPass ? 'result-valid' : 'result-invalid'}`;
++      resultBox.innerHTML = `
++        <div class="result-header">
++          <span class="result-icon">${isPass ? '✅' : '❌'}</span>
++          <div>
++            <div class="result-status-title">${isPass ? 'SIGNATURE VALID & AUTHENTIC' : 'INTEGRITY CHECK FAILED'}</div>
++            <div style="font-size: 0.82rem; opacity: 0.85;">${isPass ? 'Data integrity guaranteed — message is untampered' : 'Cryptographic mismatch detected'}</div>
++          </div>
++        </div>
++        <div class="result-reason">${escapeHtml(result.reason)}</div>
++        <div class="diagnostic-grid">
++          <div>
++            <div class="diag-item-label">Algorithm</div>
++            <div class="diag-item-value">${result.algorithm} (${result.category})</div>
++          </div>
++          <div>
++            <div class="diag-item-label">Verification Time</div>
++            <div class="diag-item-value">${result.durationMs} ms</div>
++          </div>
++          <div>
++            <div class="diag-item-label">Signature Bytes</div>
++            <div class="diag-item-value">${result.signatureBytesCount} B</div>
++          </div>
++          <div>
++            <div class="diag-item-label">Key Fingerprint</div>
++            <div class="diag-item-value">${result.keyFingerprint.substring(0, 16)}...</div>
++          </div>
++        </div>
++      `;
++    } catch (err) {
++      resultBox.className = 'verification-result result-invalid';
++      resultBox.innerHTML = `<div class="result-reason">Error: ${escapeHtml(err.message)}</div>`;
++    }
++  }
++
++  // ==========================================
++  // TOKEN (PQ-JWT) STUDIO
++  // ==========================================
++  setupTokenHandlers() {
++    const signBtn = document.getElementById('cq-tok-sign-btn');
++    const inspectBtn = document.getElementById('cq-tok-inspect-btn');
++    const tamperBtn = document.getElementById('cq-tok-tamper-btn');
++    const expireBtn = document.getElementById('cq-tok-expire-btn');
++    const copyBtn = document.getElementById('cq-tok-copy-btn');
++    const loadToVerifyBtn = document.getElementById('cq-tok-load-verify-btn');
++
++    // Token preset buttons
++    document.querySelectorAll('[data-tok-preset]').forEach(chip => {
++      chip.addEventListener('click', () => {
++        const preset = chip.dataset.tokPreset;
++        const input = document.getElementById('cq-tok-payload-input');
++        if (preset === 'barista') {
++          input.value = JSON.stringify({
++            sub: 'barista_alex_902',
++            role: 'barista',
++            storeId: 'store_seattle_flagship',
++            permissions: ['orders:create', 'discounts:apply_small'],
++          }, null, 2);
++        } else if (preset === 'manager') {
++          input.value = JSON.stringify({
++            sub: 'manager_sarah_110',
++            role: 'store_manager',
++            storeId: 'store_seattle_flagship',
++            permissions: ['orders:create', 'discounts:all', 'inventory:edit', 'reports:read', 'staff:schedule'],
++          }, null, 2);
++        } else if (preset === 'supply') {
++          input.value = JSON.stringify({
++            sub: 'courier_dispatch_88',
++            role: 'supply_chain_dispatcher',
++            originWarehouse: 'WH-PORTLAND-02',
++            shipmentBatches: ['ETH-YIRG-08', 'COL-HUILA-14'],
++            permissions: ['manifest:sign', 'customs:clear'],
++          }, null, 2);
++        }
++      });
++    });
++
++    signBtn?.addEventListener('click', async () => {
++      const activeKey = vault.getActiveKey();
++      if (!activeKey) {
++        alert('Please select or create an active key first.');
++        return;
++      }
++
++      let payloadJson;
++      try {
++        payloadJson = JSON.parse(document.getElementById('cq-tok-payload-input').value);
++      } catch (e) {
++        alert('Invalid JSON in token payload.');
++        return;
++      }
++
++      const expSelect = document.getElementById('cq-tok-exp-select').value;
++      const nowSec = Math.floor(Date.now() / 1000);
++      let expSec = nowSec + 3600;
++      if (expSelect === '5m') expSec = nowSec + 300;
++      else if (expSelect === '1h') expSec = nowSec + 3600;
++      else if (expSelect === '24h') expSec = nowSec + 86400;
++      else if (expSelect === 'expired') expSec = nowSec - 600; // expired 10 mins ago
++
++      payloadJson.exp = expSec;
++
++      try {
++        signBtn.disabled = true;
++        signBtn.textContent = 'Generating Token...';
++        const bundle = await createSignedToken(payloadJson, activeKey);
++        this.lastTokenBundle = bundle;
++
++        document.getElementById('cq-tok-output').textContent = bundle.token;
++        document.getElementById('cq-tok-signed-metrics').innerHTML = `
++          Signed in <strong>${bundle.metrics.signTimeMs}ms</strong> with <strong>${bundle.algorithm}</strong>. Token size: <strong>${bundle.token.length} chars</strong>.
++        `;
++        document.getElementById('cq-tok-output-group').style.display = 'block';
++        this.showToast('PQ-JWT Token issued!');
++      } catch (err) {
++        alert('Token generation failed: ' + err.message);
++      } finally {
++        signBtn.disabled = false;
++        signBtn.textContent = '🔑 Issue Signed Token';
++      }
++    });
++
++    copyBtn?.addEventListener('click', () => {
++      if (this.lastTokenBundle) {
++        navigator.clipboard.writeText(this.lastTokenBundle.token);
++        this.showToast('Token copied to clipboard!');
++      }
++    });
++
++    loadToVerifyBtn?.addEventListener('click', () => {
++      if (this.lastTokenBundle) {
++        document.getElementById('cq-tok-verify-input').value = this.lastTokenBundle.token;
++        this.populateKeySelect('cq-tok-verify-key', this.lastTokenBundle.keyId);
++        this.showToast('Loaded token into inspector!');
++        this.executeTokenInspection();
++      }
++    });
++
++    inspectBtn?.addEventListener('click', () => {
++      this.executeTokenInspection();
++    });
++
++    tamperBtn?.addEventListener('click', () => {
++      const input = document.getElementById('cq-tok-verify-input');
++      try {
++        input.value = tamperTokenPayload(input.value, { role: 'super_admin_escalation', permissions: ['*'] });
++        this.showToast('Privilege Escalation simulated (role changed to super_admin)! Re-verifying...');
++        this.executeTokenInspection();
++      } catch (err) {
++        alert('Tamper simulation error: ' + err.message);
++      }
++    });
++
++    expireBtn?.addEventListener('click', () => {
++      const input = document.getElementById('cq-tok-verify-input');
++      try {
++        const decoded = decodeToken(input.value);
++        decoded.payload.exp = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
++        const newPayloadB64 = stringToBase64Url(JSON.stringify(decoded.payload));
++        input.value = `${decoded.headerRaw}.${newPayloadB64}.${decoded.signatureRaw}`;
++        this.showToast('Expiration simulated in payload! Re-verifying...');
++        this.executeTokenInspection();
++      } catch (err) {
++        alert('Expire simulation error: ' + err.message);
++      }
++    });
++  }
++
++  async executeTokenInspection() {
++    const tokenStr = document.getElementById('cq-tok-verify-input').value.trim();
++    const keyId = document.getElementById('cq-tok-verify-key').value;
++    const key = vault.getKey(keyId);
++
++    if (!tokenStr) {
++      alert('Please enter a token to inspect.');
++      return;
++    }
++
++    const inspectorView = document.getElementById('cq-tok-inspector-view');
++    const resultBox = document.getElementById('cq-tok-verify-result');
++    inspectorView.style.display = 'block';
++    resultBox.style.display = 'block';
++
++    try {
++      const decoded = decodeToken(tokenStr);
++
++      // Render 3-part decoded view
++      document.getElementById('cq-tok-header-view').textContent = JSON.stringify(decoded.header, null, 2);
++      document.getElementById('cq-tok-payload-view').textContent = JSON.stringify(decoded.payload, null, 2);
++      document.getElementById('cq-tok-sig-view').textContent = decoded.signatureRaw;
++
++      if (!key) {
++        resultBox.className = 'verification-result result-invalid';
++        resultBox.innerHTML = `<div class="result-reason">Please select a verification key above to test cryptographic validity.</div>`;
++        return;
++      }
++
++      const verifyRes = await verifyToken(tokenStr, key.publicKeyBytes, key.algorithm);
++      const isPass = verifyRes.valid;
++
++      resultBox.className = `verification-result ${isPass ? 'result-valid' : 'result-invalid'}`;
++      resultBox.innerHTML = `
++        <div class="result-header">
++          <span class="result-icon">${isPass ? '✅' : '❌'}</span>
++          <div>
++            <div class="result-status-title">${isPass ? 'TOKEN VERIFIED & TRUSTED' : 'TOKEN REJECTED / INVALID'}</div>
++            <div style="font-size: 0.82rem; opacity: 0.85;">${verifyRes.cryptoValid ? 'Signature crypto-valid' : 'Signature cryptographically INVALID'} • ${verifyRes.claimsValid ? 'Claims valid' : 'Claims invalid / expired'}</div>
++          </div>
++        </div>
++        <div class="result-reason">${escapeHtml(verifyRes.reason)}</div>
++        <div class="diagnostic-grid">
++          <div>
++            <div class="diag-item-label">Algorithm</div>
++            <div class="diag-item-value">${verifyRes.algorithm || 'N/A'}</div>
++          </div>
++          <div>
++            <div class="diag-item-label">Verification Time</div>
++            <div class="diag-item-value">${verifyRes.durationMs} ms</div>
++          </div>
++          <div>
++            <div class="diag-item-label">Crypto Status</div>
++            <div class="diag-item-value">${verifyRes.cryptoValid ? 'MATCH' : 'TAMPERED / MISMATCH'}</div>
++          </div>
++          <div>
++            <div class="diag-item-label">Claims Status</div>
++            <div class="diag-item-value">${verifyRes.claimsValid ? 'VALID' : 'INVALID / EXPIRED'}</div>
++          </div>
++        </div>
++      `;
++    } catch (err) {
++      resultBox.className = 'verification-result result-invalid';
++      resultBox.innerHTML = `<div class="result-reason">Error parsing token: ${escapeHtml(err.message)}</div>`;
++    }
++  }
++
++  // ==========================================
++  // ARTIFACT SIGNING & VERIFICATION
++  // ==========================================
++  setupArtifactHandlers() {
++    const fileInput = document.getElementById('cq-art-file-input');
++    const dropzone = document.getElementById('cq-art-dropzone');
++    const signBtn = document.getElementById('cq-art-sign-btn');
++    const verifyBtn = document.getElementById('cq-art-verify-btn');
++    const tamperBtn = document.getElementById('cq-art-tamper-btn');
++    const loadToVerifyBtn = document.getElementById('cq-art-load-verify-btn');
++    const copyManifestBtn = document.getElementById('cq-art-copy-manifest-btn');
++    const downloadManifestBtn = document.getElementById('cq-art-download-manifest-btn');
++
++    // Sample artifact chips
++    document.querySelectorAll('[data-art-sample]').forEach(chip => {
++      chip.addEventListener('click', () => {
++        const idx = parseInt(chip.dataset.artSample, 10);
++        this.loadSampleArtifact(idx);
++      });
++    });
++
++    dropzone?.addEventListener('click', () => fileInput?.click());
++    dropzone?.addEventListener('dragover', (e) => {
++      e.preventDefault();
++      dropzone.classList.add('dragover');
++    });
++    dropzone?.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
++    dropzone?.addEventListener('drop', (e) => {
++      e.preventDefault();
++      dropzone.classList.remove('dragover');
++      if (e.dataTransfer.files.length > 0) {
++        this.handleUserFile(e.dataTransfer.files[0]);
++      }
++    });
++
++    fileInput?.addEventListener('change', (e) => {
++      if (e.target.files.length > 0) {
++        this.handleUserFile(e.target.files[0]);
++      }
++    });
++
++    signBtn?.addEventListener('click', async () => {
++      if (!this.currentArtifactData) {
++        alert('Please choose or load an artifact file first.');
++        return;
++      }
++      const activeKey = vault.getActiveKey();
++      if (!activeKey) {
++        alert('Please select an active signing key first.');
++        return;
++      }
++
++      try {
++        signBtn.disabled = true;
++        signBtn.textContent = 'Hashing & Signing...';
++        const notes = document.getElementById('cq-art-notes-input').value;
++        const manifest = await signArtifact(
++          this.currentArtifactData,
++          this.currentArtifactName,
++          activeKey,
++          { description: notes }
++        );
++        this.currentArtifactManifest = manifest;
++
++        document.getElementById('cq-art-manifest-output').textContent = JSON.stringify(manifest, null, 2);
++        document.getElementById('cq-art-signed-metrics').innerHTML = `
++          Signed in <strong>${manifest.metrics.signTimeMs}ms</strong> with <strong>${manifest.signatureInfo.algorithm}</strong>.
++          SHA-256 Digest: <code>${manifest.hashes.sha256.substring(0, 16)}...</code>
++        `;
++        document.getElementById('cq-art-output-group').style.display = 'block';
++        this.showToast('Artifact signed and manifest created!');
++      } catch (err) {
++        alert('Artifact signing failed: ' + err.message);
++      } finally {
++        signBtn.disabled = false;
++        signBtn.textContent = '🔏 Sign Artifact & Generate Manifest';
++      }
++    });
++
++    copyManifestBtn?.addEventListener('click', () => {
++      if (this.currentArtifactManifest) {
++        navigator.clipboard.writeText(JSON.stringify(this.currentArtifactManifest, null, 2));
++        this.showToast('Manifest copied to clipboard!');
++      }
++    });
++
++    downloadManifestBtn?.addEventListener('click', () => {
++      if (this.currentArtifactManifest) {
++        const blob = new Blob([JSON.stringify(this.currentArtifactManifest, null, 2)], { type: 'application/json' });
++        const url = URL.createObjectURL(blob);
++        const a = document.createElement('a');
++        a.href = url;
++        a.download = `${this.currentArtifactName}.artifact-manifest.json`;
++        a.click();
++        URL.revokeObjectURL(url);
++        this.showToast('Manifest downloaded!');
++      }
++    });
++
++    loadToVerifyBtn?.addEventListener('click', () => {
++      if (this.currentArtifactManifest) {
++        document.getElementById('cq-art-verify-manifest-input').value = JSON.stringify(this.currentArtifactManifest, null, 2);
++        this.populateKeySelect('cq-art-verify-key', this.currentArtifactManifest.signatureInfo.keyId);
++        this.showToast('Loaded manifest into verifier!');
++        document.getElementById('cq-art-verify-manifest-input').scrollIntoView({ behavior: 'smooth' });
++      }
++    });
++
++    verifyBtn?.addEventListener('click', async () => {
++      await this.executeArtifactVerification();
++    });
++
++    tamperBtn?.addEventListener('click', async () => {
++      if (!this.currentArtifactData) {
++        alert('No artifact data loaded to tamper.');
++        return;
++      }
++      // Mutate 1 byte of the artifact data
++      const mutated = new Uint8Array(this.currentArtifactData.length);
++      mutated.set(this.currentArtifactData);
++      mutated[0] ^= 0x01; // flip 1 bit
++      this.currentArtifactData = mutated;
++      this.showToast('Tampered 1 byte of artifact file! Re-verifying...');
++      await this.executeArtifactVerification();
++    });
++  }
++
++  loadSampleArtifact(index) {
++    const sample = SAMPLE_ARTIFACTS[index];
++    if (!sample) return;
++
++    this.currentArtifactName = sample.name;
++    this.currentArtifactData = new TextEncoder().encode(sample.content);
++
++    const preview = document.getElementById('cq-art-file-preview');
++    if (preview) {
++      preview.innerHTML = `
++        <div>
++          <strong>${escapeHtml(sample.name)}</strong>
++          <div style="font-size: 0.78rem; color: var(--cq-text-muted);">${escapeHtml(sample.description)}</div>
++        </div>
++        <span class="key-pill pill-pqc">${this.currentArtifactData.length} Bytes</span>
++      `;
++      preview.style.display = 'flex';
++    }
++
++    hashArtifactData(this.currentArtifactData).then(hashes => {
++      const hashesDisplay = document.getElementById('cq-art-hashes-display');
++      if (hashesDisplay) {
++        hashesDisplay.innerHTML = `
++          SHA-256: <code>${hashes.sha256Hex}</code><br>
++          SHA-512: <code>${hashes.sha512Hex.substring(0, 32)}...</code>
++        `;
++      }
++    });
++  }
++
++  handleUserFile(file) {
++    this.currentArtifactName = file.name;
++    const reader = new FileReader();
++    reader.onload = async (e) => {
++      this.currentArtifactData = new Uint8Array(e.target.result);
++      const preview = document.getElementById('cq-art-file-preview');
++      if (preview) {
++        preview.innerHTML = `
++          <div>
++            <strong>${escapeHtml(file.name)}</strong>
++            <div style="font-size: 0.78rem; color: var(--cq-text-muted);">${file.type || 'binary/raw'}</div>
++          </div>
++          <span class="key-pill pill-classical">${this.currentArtifactData.length} Bytes</span>
++        `;
++        preview.style.display = 'flex';
++      }
++
++      const hashes = await hashArtifactData(this.currentArtifactData);
++      const hashesDisplay = document.getElementById('cq-art-hashes-display');
++      if (hashesDisplay) {
++        hashesDisplay.innerHTML = `
++          SHA-256: <code>${hashes.sha256Hex}</code><br>
++          SHA-512: <code>${hashes.sha512Hex.substring(0, 32)}...</code>
++        `;
++      }
++      this.showToast(`Loaded ${file.name} (${this.currentArtifactData.length} bytes)`);
++    };
++    reader.readAsArrayBuffer(file);
++  }
++
++  async executeArtifactVerification() {
++    if (!this.currentArtifactData) {
++      alert('Please select or load the artifact file being verified.');
++      return;
++    }
++
++    let manifest;
++    try {
++      manifest = JSON.parse(document.getElementById('cq-art-verify-manifest-input').value);
++    } catch (e) {
++      alert('Invalid or missing manifest JSON in verification input.');
++      return;
++    }
++
++    const keyId = document.getElementById('cq-art-verify-key').value;
++    const key = vault.getKey(keyId);
++    if (!key) {
++      alert('Please select the verification key.');
++      return;
++    }
++
++    const resultBox = document.getElementById('cq-art-verify-result');
++    resultBox.style.display = 'block';
++
++    try {
++      const verifyRes = await verifyArtifact(this.currentArtifactData, manifest, key.publicKeyBytes);
++      const isPass = verifyRes.valid;
++
++      resultBox.className = `verification-result ${isPass ? 'result-valid' : 'result-invalid'}`;
++      resultBox.innerHTML = `
++        <div class="result-header">
++          <span class="result-icon">${isPass ? '🛡️' : '⚠️'}</span>
++          <div>
++            <div class="result-status-title">${isPass ? 'ARTIFACT AUTHENTIC & UNTAMPERED' : 'INTEGRITY VIOLATION DETECTED'}</div>
++            <div style="font-size: 0.82rem; opacity: 0.85;">${verifyRes.hashMatches ? 'SHA-256 Hash Matched' : 'SHA-256 Hash MISMATCH'} • ${verifyRes.sigMatches ? 'Asymmetric Signature Verified' : 'Signature REJECTED'}</div>
++          </div>
++        </div>
++        <div class="result-reason">${escapeHtml(verifyRes.reason)}</div>
++        <div class="diagnostic-grid">
++          <div>
++            <div class="diag-item-label">Calculated SHA-256</div>
++            <div class="diag-item-value">${verifyRes.calculatedHash.substring(0, 16)}...</div>
++          </div>
++          <div>
++            <div class="diag-item-label">Manifest SHA-256</div>
++            <div class="diag-item-value">${verifyRes.manifestHash.substring(0, 16)}...</div>
++          </div>
++          <div>
++            <div class="diag-item-label">Algorithm</div>
++            <div class="diag-item-value">${verifyRes.algorithm} (${verifyRes.category})</div>
++          </div>
++          <div>
++            <div class="diag-item-label">Verification Time</div>
++            <div class="diag-item-value">${verifyRes.durationMs} ms</div>
++          </div>
++        </div>
++      `;
++    } catch (err) {
++      resultBox.className = 'verification-result result-invalid';
++      resultBox.innerHTML = `<div class="result-reason">Verification error: ${escapeHtml(err.message)}</div>`;
++    }
++  }
++
++  // ==========================================
++  // KEY VAULT & MODALS
++  // ==========================================
++  setupKeyVaultHandlers() {
++    document.getElementById('cq-generate-key-btn')?.addEventListener('click', () => {
++      this.openGenerateModal();
++    });
++
++    document.getElementById('cq-import-key-btn')?.addEventListener('click', () => {
++      this.openImportModal();
++    });
++  }
++
++  renderKeyVaultList() {
++    const listContainer = document.getElementById('cq-key-vault-table-body');
++    if (!listContainer) return;
++
++    const keys = vault.getAllKeys();
++    const activeKey = vault.getActiveKey();
++
++    listContainer.innerHTML = keys.map(k => {
++      const isActive = activeKey && activeKey.id === k.id;
++      const pillClass = k.category === 'post-quantum' ? 'pill-pqc' : (k.category === 'hybrid' ? 'pill-hybrid' : 'pill-classical');
++      const categoryLabel = k.category === 'post-quantum' ? 'Post-Quantum' : (k.category === 'hybrid' ? 'Hybrid' : 'Classical');
++
++      return `
++        <tr class="${isActive ? 'active-row' : ''}">
++          <td>
++            <strong>${escapeHtml(k.name)}</strong>
++            ${isActive ? '<span style="color: var(--cq-success); font-weight: bold; margin-left: 6px;">(ACTIVE)</span>' : ''}
++            <div style="font-family: var(--cq-font-mono); font-size: 0.75rem; color: var(--cq-text-muted);">
++              ${k.fingerprint.substring(0, 24)}...
++            </div>
++          </td>
++          <td>
++            <span class="key-pill ${pillClass}">${categoryLabel}</span>
++            <div style="font-size: 0.8rem; margin-top: 2px;">${escapeHtml(k.algorithm)}</div>
++          </td>
++          <td>${k.hasSecretKey ? 'Keypair (Sign + Verify)' : 'Public Only (Verify)'}</td>
++          <td>
++            <div style="display: flex; gap: 6px;">
++              ${!isActive ? `<button class="cq-btn cq-btn-sm cq-btn-accent" onclick="window.cryptoApp.setActiveKey('${k.id}')">Select</button>` : ''}
++              <button class="cq-btn cq-btn-sm cq-btn-secondary" onclick="window.cryptoApp.openExportModal('${k.id}')">Export</button>
++              <button class="cq-btn cq-btn-sm cq-btn-outline" onclick="window.cryptoApp.deleteKey('${k.id}')" title="Delete Key">🗑️</button>
++            </div>
++          </td>
++        </tr>
++      `;
++    }).join('');
++
++    // Re-populate select boxes across app
++    this.populateKeySelect('cq-msg-verify-key');
++    this.populateKeySelect('cq-tok-verify-key');
++    this.populateKeySelect('cq-art-verify-key');
++  }
++
++  populateKeySelect(selectId, selectKeyId = null) {
++    const select = document.getElementById(selectId);
++    if (!select) return;
++
++    const keys = vault.getAllKeys();
++    const activeKey = vault.getActiveKey();
++    const targetId = selectKeyId || (activeKey ? activeKey.id : null);
++
++    select.innerHTML = keys.map(k => {
++      const selected = k.id === targetId ? 'selected' : '';
++      return `<option value="${k.id}" ${selected}>${escapeHtml(k.name)} [${k.algorithm}]</option>`;
++    }).join('');
++  }
++
++  setActiveKey(id) {
++    vault.setActiveKey(id);
++    this.renderActiveKeyBanner();
++    this.renderKeyVaultList();
++    this.showToast('Active key updated!');
++  }
++
++  deleteKey(id) {
++    if (confirm('Are you sure you want to remove this key from vault?')) {
++      vault.removeKey(id);
++      this.renderActiveKeyBanner();
++      this.renderKeyVaultList();
++      this.showToast('Key removed from vault');
++    }
++  }
++
++  openGenerateModal() {
++    const modal = document.getElementById('cq-generate-modal');
++    if (!modal) return;
++    modal.style.display = 'flex';
++  }
++
++  openImportModal() {
++    const modal = document.getElementById('cq-import-modal');
++    if (!modal) return;
++    modal.style.display = 'flex';
++  }
++
++  openExportModal(keyId) {
++    const key = vault.getKey(keyId);
++    if (!key) return;
++
++    this.exportingKey = key;
++    const modal = document.getElementById('cq-export-modal');
++    if (!modal) return;
++
++    document.getElementById('cq-export-key-name').textContent = key.name;
++    document.getElementById('cq-export-key-alg').textContent = `${key.algorithm} (${key.category})`;
++    document.getElementById('cq-export-key-fp').textContent = key.fingerprint;
++
++    this.updateExportView('base64');
++    modal.style.display = 'flex';
++  }
++
++  updateExportView(format) {
++    if (!this.exportingKey) return;
++    const pubOut = document.getElementById('cq-export-pub-output');
++    const privOut = document.getElementById('cq-export-priv-output');
++    const privGroup = document.getElementById('cq-export-priv-group');
++
++    pubOut.textContent = exportPublicKey(this.exportingKey, format);
++
++    if (this.exportingKey.hasSecretKey && format !== 'bundle') {
++      privGroup.style.display = 'block';
++      privOut.textContent = exportSecretKey(this.exportingKey, format);
++    } else {
++      privGroup.style.display = 'none';
++    }
++  }
++
++  setupModals() {
++    // Close modal handlers
++    document.querySelectorAll('.modal-close-btn, .modal-cancel-btn').forEach(btn => {
++      btn.addEventListener('click', () => {
++        document.querySelectorAll('.crypto-modal-backdrop').forEach(m => m.style.display = 'none');
++      });
++    });
++
++    // Generate Key Form
++    const genConfirmBtn = document.getElementById('cq-gen-confirm-btn');
++    genConfirmBtn?.addEventListener('click', async () => {
++      const algId = document.getElementById('cq-gen-alg-select').value;
++      const nameInput = document.getElementById('cq-gen-name-input').value.trim();
++      try {
++        genConfirmBtn.disabled = true;
++        genConfirmBtn.textContent = 'Generating Keypair...';
++        const key = await createManagedKeyPair(algId, nameInput || undefined);
++        vault.addKey(key);
++        vault.setActiveKey(key.id);
++        this.renderActiveKeyBanner();
++        this.renderKeyVaultList();
++        document.getElementById('cq-generate-modal').style.display = 'none';
++        this.showToast(`Keypair generated: ${key.name}!`);
++      } catch (err) {
++        alert('Key generation failed: ' + err.message);
++      } finally {
++        genConfirmBtn.disabled = false;
++        genConfirmBtn.textContent = 'Generate Keypair';
++      }
++    });
++
++    // Import Key Form
++    const importConfirmBtn = document.getElementById('cq-import-confirm-btn');
++    importConfirmBtn?.addEventListener('click', async () => {
++      const rawText = document.getElementById('cq-import-text-input').value.trim();
++      const algId = document.getElementById('cq-import-alg-select').value;
++      const name = document.getElementById('cq-import-name-input').value.trim();
++
++      if (!rawText) {
++        alert('Please paste the public key data to import.');
++        return;
++      }
++
++      try {
++        const key = await importPublicKey(rawText, algId, name || undefined);
++        vault.addKey(key);
++        this.renderKeyVaultList();
++        document.getElementById('cq-import-modal').style.display = 'none';
++        this.showToast(`Imported key: ${key.name}!`);
++      } catch (err) {
++        alert('Key import failed: ' + err.message);
++      }
++    });
++
++    // Export format selector
++    document.getElementById('cq-export-format-select')?.addEventListener('change', (e) => {
++      this.updateExportView(e.target.value);
++    });
++
++    // Copy exported public key
++    document.getElementById('cq-copy-exported-pub-btn')?.addEventListener('click', () => {
++      const text = document.getElementById('cq-export-pub-output').textContent;
++      navigator.clipboard.writeText(text);
++      this.showToast('Public key copied to clipboard!');
++    });
++  }
++
++  // ==========================================
++  // AUTOMATED TEST SUITE
++  // ==========================================
++  setupTestSuiteHandlers() {
++    const runBtn = document.getElementById('cq-run-tests-btn');
++    runBtn?.addEventListener('click', async () => {
++      await this.runTestSuiteUI();
++    });
++  }
++
++  async runTestSuiteUI() {
++    const runBtn = document.getElementById('cq-run-tests-btn');
++    const listContainer = document.getElementById('cq-test-results-list');
++    const summaryContainer = document.getElementById('cq-test-summary');
++
++    if (!listContainer || !runBtn) return;
++
++    listContainer.innerHTML = '';
++    summaryContainer.textContent = 'Running test suite in browser...';
++    runBtn.disabled = true;
++    runBtn.textContent = 'Running Tests...';
++
++    try {
++      const outcome = await runCryptoTestSuite((test) => {
++        const item = document.createElement('div');
++        item.className = `test-item ${test.passed ? 'test-pass' : 'test-fail'}`;
++        item.innerHTML = `
++          <div class="test-item-left">
++            <span class="${test.passed ? 'test-badge-pass' : 'test-badge-fail'}">${test.passed ? 'PASS' : 'FAIL'}</span>
++            <div>
++              <strong>${escapeHtml(test.name)}</strong>
++              <div style="font-size: 0.8rem; color: var(--cq-text-muted);">${escapeHtml(test.details || '')}</div>
++            </div>
++          </div>
++          <div style="font-size: 0.8rem; font-family: var(--cq-font-mono); color: var(--cq-text-muted);">
++            ${test.durationMs ? `${test.durationMs}ms` : ''}
++          </div>
++        `;
++        listContainer.appendChild(item);
++      });
++
++      summaryContainer.innerHTML = `
++        <strong>${outcome.summary.passed} / ${outcome.summary.total}</strong> tests passed.
++        ${outcome.summary.allPassed ? '<span style="color: var(--cq-success); margin-left: 8px;">✓ All cryptosystems operational and verified.</span>' : '<span style="color: var(--cq-error);">Some tests failed.</span>'}
++      `;
++    } catch (err) {
++      summaryContainer.textContent = 'Error running tests: ' + err.message;
++    } finally {
++      runBtn.disabled = false;
++      runBtn.textContent = '🚀 Run Verification Test Suite';
++    }
++  }
++
++  // ==========================================
++  // ALGORITHM MATRIX
++  // ==========================================
++  setupAlgorithmMatrix() {
++    const tableBody = document.getElementById('cq-matrix-table-body');
++    if (!tableBody) return;
++
++    const algs = listAlgorithms();
++    tableBody.innerHTML = algs.map(a => {
++      const pillClass = a.type === 'post-quantum' ? 'pill-pqc' : (a.type === 'hybrid' ? 'pill-hybrid' : 'pill-classical');
++      const catName = a.type === 'post-quantum' ? 'Post-Quantum' : (a.type === 'hybrid' ? 'Hybrid' : 'Classical');
++      return `
++        <tr>
++          <td>
++            <strong>${escapeHtml(a.name)}</strong>
++            <div style="font-size: 0.75rem; color: var(--cq-text-muted);">${escapeHtml(a.standard)}</div>
++          </td>
++          <td><span class="key-pill ${pillClass}">${catName}</span></td>
++          <td>${escapeHtml(a.securityLevel)}</td>
++          <td>${a.pubKeySize ? `${a.pubKeySize} B` : 'Compound'}</td>
++          <td>${a.sigSize ? `${a.sigSize} B` : 'Compound'}</td>
++          <td style="font-size: 0.82rem; line-height: 1.4;">${escapeHtml(a.description)}</td>
++        </tr>
++      `;
++    }).join('');
++  }
++}
++
++function escapeHtml(str) {
++  if (!str) return '';
++  return String(str)
++    .replace(/&/g, '&amp;')
++    .replace(/</g, '&lt;')
++    .replace(/>/g, '&gt;')
++    .replace(/"/g, '&quot;')
++    .replace(/'/g, '&#039;');
++}
++
++export const cryptoApp = new CryptoApp();
+diff --git a/src/ui/styles.css b/src/ui/styles.css
+new file mode 100644
+index 0000000..12da43f
+--- /dev/null
++++ b/src/ui/styles.css
+@@ -0,0 +1,693 @@
++/* Quantum Trust & Cryptographic Studio Styles */
++:root {
++  --cq-primary: #4e342e;
++  --cq-primary-dark: #261614;
++  --cq-secondary: #d7ccc8;
++  --cq-accent: #ffab40;
++  --cq-accent-hover: #ff9100;
++  --cq-bg: #fdfbf7;
++  --cq-card-bg: #ffffff;
++  --cq-text: #2d1e18;
++  --cq-text-muted: #6d5d57;
++  --cq-border: #e6ded9;
++  --cq-pqc: #6a1b9a;
++  --cq-pqc-bg: #f3e5f5;
++  --cq-classical: #1565c0;
++  --cq-classical-bg: #e3f2fd;
++  --cq-hybrid: #00695c;
++  --cq-hybrid-bg: #e0f2f1;
++  --cq-success: #2e7d32;
++  --cq-success-bg: #e8f5e9;
++  --cq-error: #c62828;
++  --cq-error-bg: #ffebee;
++  --cq-warning: #ef6c00;
++  --cq-warning-bg: #fff3e0;
++  --cq-radius: 10px;
++  --cq-shadow: 0 4px 14px rgba(78, 52, 46, 0.08);
++  --cq-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
++}
++
++/* Studio Section */
++.crypto-studio-section {
++  max-width: 1200px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.studio-header {
++  text-align: center;
++  margin-bottom: 25px;
++}
++
++.studio-badge {
++  display: inline-block;
++  background: var(--cq-pqc-bg);
++  color: var(--cq-pqc);
++  padding: 4px 12px;
++  border-radius: 20px;
++  font-size: 0.85rem;
++  font-weight: 600;
++  letter-spacing: 0.5px;
++  margin-bottom: 10px;
++  border: 1px solid rgba(106, 27, 154, 0.2);
++}
++
++.studio-header h2 {
++  font-size: 2.2rem;
++  color: var(--cq-primary);
++  margin-bottom: 8px;
++}
++
++.studio-header p {
++  color: var(--cq-text-muted);
++  font-size: 1.05rem;
++  max-width: 800px;
++  margin: 0 auto;
++}
++
++/* Active Key Banner */
++.active-key-banner {
++  background: linear-gradient(135deg, #3e2723 0%, #4e342e 100%);
++  color: white;
++  border-radius: var(--cq-radius);
++  padding: 18px 24px;
++  margin-bottom: 25px;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 15px;
++  box-shadow: 0 6px 18px rgba(62, 39, 35, 0.2);
++}
++
++.active-key-info h4 {
++  font-size: 0.85rem;
++  text-transform: uppercase;
++  letter-spacing: 1px;
++  color: var(--cq-accent);
++  margin-bottom: 4px;
++}
++
++.active-key-name {
++  font-size: 1.25rem;
++  font-weight: 700;
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++
++.active-key-fingerprint {
++  font-family: var(--cq-font-mono);
++  font-size: 0.8rem;
++  color: rgba(255, 255, 255, 0.75);
++  margin-top: 4px;
++}
++
++.key-pill {
++  font-size: 0.75rem;
++  font-weight: 600;
++  padding: 2px 8px;
++  border-radius: 4px;
++  text-transform: uppercase;
++}
++
++.pill-pqc { background: #ab47bc; color: white; }
++.pill-classical { background: #42a5f5; color: white; }
++.pill-hybrid { background: #26a69a; color: white; }
++
++.active-key-actions {
++  display: flex;
++  gap: 10px;
++}
++
++/* Navigation Tabs */
++.crypto-tabs {
++  display: flex;
++  gap: 8px;
++  background: #eee7e2;
++  padding: 6px;
++  border-radius: var(--cq-radius);
++  margin-bottom: 25px;
++  overflow-x: auto;
++}
++
++.crypto-tab-btn {
++  flex: 1;
++  min-width: 140px;
++  padding: 12px 16px;
++  border: none;
++  background: transparent;
++  color: var(--cq-text-muted);
++  font-size: 0.95rem;
++  font-weight: 600;
++  border-radius: 8px;
++  cursor: pointer;
++  transition: all 0.2s ease;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  gap: 8px;
++  white-space: nowrap;
++}
++
++.crypto-tab-btn:hover {
++  background: rgba(255, 255, 255, 0.5);
++  color: var(--cq-primary);
++}
++
++.crypto-tab-btn.active {
++  background: white;
++  color: var(--cq-primary);
++  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++}
++
++/* Tab Panels */
++.crypto-tab-panel {
++  display: none;
++  animation: fadeIn 0.25s ease;
++}
++
++.crypto-tab-panel.active {
++  display: block;
++}
++
++@keyframes fadeIn {
++  from { opacity: 0; transform: translateY(4px); }
++  to { opacity: 1; transform: translateY(0); }
++}
++
++/* Two-column layout */
++.crypto-grid-2 {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 25px;
++}
++
++@media (max-width: 860px) {
++  .crypto-grid-2 {
++    grid-template-columns: 1fr;
++  }
++}
++
++/* Card components */
++.crypto-card {
++  background: var(--cq-card-bg);
++  border: 1px solid var(--cq-border);
++  border-radius: var(--cq-radius);
++  padding: 24px;
++  box-shadow: var(--cq-shadow);
++  margin-bottom: 20px;
++}
++
++.crypto-card-title {
++  font-size: 1.2rem;
++  color: var(--cq-primary);
++  margin-bottom: 15px;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++}
++
++.crypto-card-subtitle {
++  font-size: 0.9rem;
++  color: var(--cq-text-muted);
++  margin-top: -10px;
++  margin-bottom: 15px;
++}
++
++/* Form controls */
++.form-group {
++  margin-bottom: 16px;
++}
++
++.form-label {
++  display: block;
++  font-size: 0.85rem;
++  font-weight: 600;
++  color: var(--cq-text);
++  margin-bottom: 6px;
++}
++
++.form-select,
++.form-input,
++.form-textarea {
++  width: 100%;
++  padding: 10px 12px;
++  border: 1px solid var(--cq-border);
++  border-radius: 6px;
++  font-size: 0.95rem;
++  color: var(--cq-text);
++  background: #faf8f6;
++  transition: border-color 0.2s;
++  box-sizing: border-box;
++}
++
++.form-textarea {
++  font-family: var(--cq-font-mono);
++  font-size: 0.85rem;
++  resize: vertical;
++  min-height: 100px;
++}
++
++.form-select:focus,
++.form-input:focus,
++.form-textarea:focus {
++  outline: none;
++  border-color: var(--cq-primary);
++  background: white;
++}
++
++/* Buttons */
++.cq-btn {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 6px;
++  padding: 10px 18px;
++  border-radius: 6px;
++  font-size: 0.9rem;
++  font-weight: 600;
++  border: none;
++  cursor: pointer;
++  transition: all 0.2s;
++}
++
++.cq-btn-primary {
++  background: var(--cq-primary);
++  color: white;
++}
++.cq-btn-primary:hover {
++  background: var(--cq-primary-dark);
++}
++
++.cq-btn-accent {
++  background: var(--cq-accent);
++  color: #3e2723;
++}
++.cq-btn-accent:hover {
++  background: var(--cq-accent-hover);
++}
++
++.cq-btn-secondary {
++  background: #e6ded9;
++  color: var(--cq-text);
++}
++.cq-btn-secondary:hover {
++  background: #d7ccc8;
++}
++
++.cq-btn-outline {
++  background: transparent;
++  border: 1px solid var(--cq-border);
++  color: var(--cq-text);
++}
++.cq-btn-outline:hover {
++  background: #f5f0ec;
++}
++
++.cq-btn-danger {
++  background: var(--cq-error);
++  color: white;
++}
++.cq-btn-danger:hover {
++  background: #b71c1c;
++}
++
++.cq-btn-sm {
++  padding: 6px 12px;
++  font-size: 0.8rem;
++}
++
++.button-row {
++  display: flex;
++  gap: 10px;
++  flex-wrap: wrap;
++  margin-top: 15px;
++}
++
++/* Presets & quick actions */
++.presets-bar {
++  display: flex;
++  gap: 8px;
++  align-items: center;
++  flex-wrap: wrap;
++  margin-bottom: 12px;
++}
++
++.presets-label {
++  font-size: 0.8rem;
++  color: var(--cq-text-muted);
++  font-weight: 600;
++}
++
++.preset-chip {
++  background: #f0eae5;
++  border: 1px solid var(--cq-border);
++  padding: 4px 10px;
++  border-radius: 14px;
++  font-size: 0.78rem;
++  cursor: pointer;
++  transition: all 0.2s;
++}
++.preset-chip:hover {
++  background: #e0d5ce;
++  border-color: #bcaaa4;
++}
++
++/* Results & Diagnostics */
++.verification-result {
++  border-radius: var(--cq-radius);
++  padding: 20px;
++  margin-top: 20px;
++  border: 1px solid transparent;
++  transition: all 0.3s ease;
++}
++
++.result-valid {
++  background: var(--cq-success-bg);
++  border-color: rgba(46, 125, 50, 0.3);
++}
++
++.result-invalid {
++  background: var(--cq-error-bg);
++  border-color: rgba(198, 40, 40, 0.3);
++}
++
++.result-header {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  margin-bottom: 10px;
++}
++
++.result-icon {
++  font-size: 1.8rem;
++}
++
++.result-status-title {
++  font-size: 1.2rem;
++  font-weight: 700;
++}
++
++.result-valid .result-status-title { color: var(--cq-success); }
++.result-invalid .result-status-title { color: var(--cq-error); }
++
++.result-reason {
++  font-size: 0.92rem;
++  color: var(--cq-text);
++  margin-bottom: 15px;
++  line-height: 1.5;
++}
++
++.diagnostic-grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++  gap: 10px;
++  background: rgba(255, 255, 255, 0.7);
++  padding: 12px;
++  border-radius: 6px;
++  font-size: 0.8rem;
++}
++
++.diag-item-label {
++  color: var(--cq-text-muted);
++  margin-bottom: 2px;
++}
++.diag-item-value {
++  font-weight: 600;
++  font-family: var(--cq-font-mono);
++  word-break: break-all;
++}
++
++/* Code & Output Blocks */
++.output-box {
++  background: #2b2523;
++  color: #f7f3ef;
++  font-family: var(--cq-font-mono);
++  font-size: 0.82rem;
++  padding: 14px;
++  border-radius: 6px;
++  overflow-x: auto;
++  max-height: 240px;
++  white-space: pre-wrap;
++  word-break: break-all;
++}
++
++/* Token 3-Part Inspector */
++.token-inspector-box {
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++  margin-top: 15px;
++}
++
++.token-part {
++  border-radius: 8px;
++  padding: 12px 16px;
++  border: 1px solid var(--cq-border);
++}
++
++.token-part-header {
++  background: #fce4ec;
++  border-color: #f8bbd0;
++}
++.token-part-payload {
++  background: #ede7f6;
++  border-color: #d1c4e9;
++}
++.token-part-sig {
++  background: #e0f2f1;
++  border-color: #b2dfdb;
++}
++
++.token-part-title {
++  font-size: 0.75rem;
++  font-weight: 700;
++  text-transform: uppercase;
++  letter-spacing: 0.5px;
++  margin-bottom: 6px;
++}
++
++.token-part-header .token-part-title { color: #ad1457; }
++.token-part-payload .token-part-title { color: #512da8; }
++.token-part-sig .token-part-title { color: #00695c; }
++
++.token-json-view {
++  font-family: var(--cq-font-mono);
++  font-size: 0.82rem;
++  white-space: pre-wrap;
++  word-break: break-all;
++}
++
++/* Artifact drop zone */
++.artifact-dropzone {
++  border: 2px dashed #bcaaa4;
++  border-radius: var(--cq-radius);
++  padding: 30px 20px;
++  text-align: center;
++  background: #fbf9f7;
++  cursor: pointer;
++  transition: all 0.2s;
++  margin-bottom: 15px;
++}
++
++.artifact-dropzone:hover,
++.artifact-dropzone.dragover {
++  border-color: var(--cq-primary);
++  background: #f5efe9;
++}
++
++.artifact-dropzone-icon {
++  font-size: 2.5rem;
++  margin-bottom: 8px;
++  color: var(--cq-primary);
++}
++
++.artifact-file-preview {
++  background: white;
++  border: 1px solid var(--cq-border);
++  border-radius: 6px;
++  padding: 10px 14px;
++  margin-top: 10px;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  font-size: 0.85rem;
++}
++
++/* Key Vault Table */
++.key-table {
++  width: 100%;
++  border-collapse: collapse;
++  font-size: 0.88rem;
++  margin-top: 10px;
++}
++
++.key-table th {
++  text-align: left;
++  padding: 10px 12px;
++  background: #f5eee8;
++  color: var(--cq-primary);
++  font-weight: 600;
++  border-bottom: 2px solid var(--cq-border);
++}
++
++.key-table td {
++  padding: 12px;
++  border-bottom: 1px solid var(--cq-border);
++  vertical-align: middle;
++}
++
++.key-table tr:hover {
++  background: #fcfaf8;
++}
++
++.key-table tr.active-row {
++  background: #fff8e1;
++}
++
++/* Test Suite Results List */
++.test-suite-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 20px;
++}
++
++.test-suite-list {
++  display: flex;
++  flex-direction: column;
++  gap: 10px;
++}
++
++.test-item {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  padding: 12px 16px;
++  border-radius: 6px;
++  border: 1px solid var(--cq-border);
++  background: white;
++  font-size: 0.9rem;
++}
++
++.test-item.test-pass {
++  border-left: 4px solid var(--cq-success);
++  background: #fbfdfb;
++}
++
++.test-item.test-fail {
++  border-left: 4px solid var(--cq-error);
++  background: #fdfbfb;
++}
++
++.test-item-left {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++}
++
++.test-badge-pass {
++  background: var(--cq-success-bg);
++  color: var(--cq-success);
++  font-weight: 700;
++  padding: 2px 8px;
++  border-radius: 4px;
++  font-size: 0.75rem;
++}
++
++.test-badge-fail {
++  background: var(--cq-error-bg);
++  color: var(--cq-error);
++  font-weight: 700;
++  padding: 2px 8px;
++  border-radius: 4px;
++  font-size: 0.75rem;
++}
++
++/* Algorithm Matrix Table */
++.matrix-table {
++  width: 100%;
++  border-collapse: collapse;
++  font-size: 0.85rem;
++  margin-top: 15px;
++}
++
++.matrix-table th {
++  background: #4e342e;
++  color: white;
++  padding: 10px;
++  text-align: left;
++}
++
++.matrix-table td {
++  padding: 10px;
++  border-bottom: 1px solid #e0d7d2;
++}
++
++.matrix-table tr:nth-child(even) {
++  background: #faf6f3;
++}
++
++/* Toast notifications */
++.crypto-toast {
++  position: fixed;
++  bottom: 25px;
++  right: 25px;
++  background: #2b2523;
++  color: white;
++  padding: 12px 20px;
++  border-radius: 6px;
++  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++  z-index: 9999;
++  font-size: 0.9rem;
++  animation: slideIn 0.3s ease;
++}
++
++@keyframes slideIn {
++  from { transform: translateY(20px); opacity: 0; }
++  to { transform: translateY(0); opacity: 1; }
++}
++
++/* Modals */
++.crypto-modal-backdrop {
++  position: fixed;
++  top: 0;
++  left: 0;
++  right: 0;
++  bottom: 0;
++  background: rgba(0, 0, 0, 0.5);
++  display: flex;
++  justify-content: center;
++  align-items: center;
++  z-index: 10000;
++  padding: 20px;
++}
++
++.crypto-modal {
++  background: white;
++  border-radius: var(--cq-radius);
++  width: 100%;
++  max-width: 600px;
++  padding: 25px;
++  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++  max-height: 90vh;
++  overflow-y: auto;
++}
++
++.crypto-modal-title {
++  font-size: 1.3rem;
++  color: var(--cq-primary);
++  margin-bottom: 15px;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++}
++
++.modal-close-btn {
++  background: transparent;
++  border: none;
++  font-size: 1.4rem;
++  cursor: pointer;
++  color: var(--cq-text-muted);
++}
+diff --git a/test/crypto-node.test.js b/test/crypto-node.test.js
+new file mode 100644
+index 0000000..379ca9e
+--- /dev/null
++++ b/test/crypto-node.test.js
+@@ -0,0 +1,30 @@
++// Node.js Test Runner for Cryptographic Verification
++import { runCryptoTestSuite } from '../src/crypto/test-suite.js';
++
++console.log('========================================================');
++console.log('  RUNNING CRYPTOGRAPHIC SIGNING & VERIFICATION SUITE');
++console.log('========================================================\n');
++
++try {
++  const result = await runCryptoTestSuite((test) => {
++    const icon = test.passed ? '✓ PASS' : '✗ FAIL';
++    console.log(`[${icon}] [${test.category}] ${test.name}`);
++    if (test.details) {
++      console.log(`       ↳ ${test.details}`);
++    }
++  });
++
++  console.log('\n--------------------------------------------------------');
++  console.log(`Summary: ${result.summary.passed} / ${result.summary.total} tests passed.`);
++  console.log('--------------------------------------------------------');
++
++  if (!result.summary.allPassed) {
++    console.error('Some tests failed!');
++    process.exit(1);
++  } else {
++    console.log('All cryptographic signing and verification tests PASSED!');
++  }
++} catch (err) {
++  console.error('Fatal test error:', err);
++  process.exit(1);
++}
+diff --git a/vite.config.js b/vite.config.js
+new file mode 100644
+index 0000000..a857542
+--- /dev/null
++++ b/vite.config.js
+@@ -0,0 +1,17 @@
++import { defineConfig } from 'vite';
++import { resolve } from 'path';
++
++export default defineConfig({
++  build: {
++    outDir: 'dist',
++    lib: {
++      entry: resolve(import.meta.dirname, 'src/index.js'),
++      name: 'DailyGrindCrypto',
++      fileName: () => 'crypto-app.bundle.js',
++      formats: ['iife'],
++    },
++    rollupOptions: {
++      // make sure to bundle everything into standalone build
++    },
++  },
++});

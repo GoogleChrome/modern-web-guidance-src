@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -54,19 +54,123 @@
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    .rewards-toggle {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    .rewards-toggle:hover {
+       color: var(--accent);
+     }
+ 
++    .rewards-toggle {
++      border: 0;
++      background: none;
++      font-family: inherit;
++      line-height: inherit;
++      cursor: pointer;
++    }
++
++    .rewards-toggle:focus-visible,
++    .rewards-close:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    #rewards-popover {
++      display: none;
++      position: fixed;
++      inset: 76px 5% auto auto;
++      width: min(360px, 90vw);
++      max-height: calc(100dvh - 96px);
++      overflow-y: auto;
++      margin: 0;
++      padding: 0;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 40px rgb(62 39 35 / 22%);
++      z-index: 1001;
++    }
++
++    #rewards-popover:popover-open {
++      display: block;
++    }
++
++    #rewards-popover.is-open {
++      display: block;
++    }
++
++    .rewards-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      padding: 18px 22px;
++      background: var(--primary);
++      color: white;
++    }
++
++    .rewards-header h2 {
++      font-size: 1.2rem;
++    }
++
++    .rewards-close {
++      border: 0;
++      background: transparent;
++      color: white;
++      font-size: 1.5rem;
++      cursor: pointer;
++      width: 32px;
++      height: 32px;
++    }
++
++    .rewards-body {
++      padding: 22px;
++    }
++
++    .rewards-points {
++      padding: 16px;
++      margin-bottom: 20px;
++      border-radius: 8px;
++      background: #f5efeb;
++      text-align: center;
++    }
++
++    .rewards-points strong {
++      display: block;
++      font-size: 2rem;
++    }
++
++    .rewards-points small {
++      display: block;
++    }
++
++    .rewards-tiers {
++      list-style: none;
++    }
++
++    .rewards-tiers li + li {
++      margin-top: 14px;
++      padding-top: 14px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .rewards-tiers h3 {
++      font-size: 1rem;
++    }
++
++    .rewards-tiers p {
++      font-size: 0.9rem;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -161,14 +265,44 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><button type="button" class="rewards-toggle" popovertarget="rewards-popover"
++          aria-controls="rewards-popover" aria-expanded="false">Rewards</button></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <section id="rewards-popover" popover="auto" aria-labelledby="rewards-title">
++    <div class="rewards-header">
++      <h2 id="rewards-title">Daily Grind Rewards</h2>
++      <button type="button" class="rewards-close" popovertarget="rewards-popover"
++        popovertargetaction="hide" aria-label="Close rewards">&times;</button>
++    </div>
++    <div class="rewards-body">
++      <div class="rewards-points">
++        <span>Your current points</span>
++        <strong>0 <span style="font-size: 1rem; font-weight: normal;">points</span></strong>
++        <small>No points recorded yet.</small>
++      </div>
++      <ul class="rewards-tiers" aria-label="Membership tiers and benefits">
++        <li>
++          <h3>Bronze &middot; 0–499 points</h3>
++          <p>Earn 1 point per $1 spent and enjoy a birthday treat.</p>
++        </li>
++        <li>
++          <h3>Silver &middot; 500–999 points</h3>
++          <p>All Bronze benefits, plus free flavor add-ons and early access to seasonal drinks.</p>
++        </li>
++        <li>
++          <h3>Gold &middot; 1,000+ points</h3>
++          <p>All Silver benefits, plus a free monthly drink and invitations to coffee tastings.</p>
++        </li>
++      </ul>
++    </div>
++  </section>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +340,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const rewardsButton = document.querySelector('.rewards-toggle');
++    const rewardsPopover = document.getElementById('rewards-popover');
++
++    if ('showPopover' in HTMLElement.prototype) {
++      rewardsPopover.addEventListener('toggle', (event) => {
++        rewardsButton.setAttribute('aria-expanded', String(event.newState === 'open'));
++      });
++    } else {
++      let fallback;
++      rewardsButton.addEventListener('click', async () => {
++        rewardsButton.disabled = true;
++        try {
++          fallback ??= import('./rewards-popover-fallback.js');
++          const { toggleRewardsPopover } = await fallback;
++          toggleRewardsPopover(rewardsPopover, rewardsButton);
++        } catch (error) {
++          fallback = undefined;
++          console.error('Unable to load rewards popover support.', error);
++        } finally {
++          rewardsButton.disabled = false;
++        }
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

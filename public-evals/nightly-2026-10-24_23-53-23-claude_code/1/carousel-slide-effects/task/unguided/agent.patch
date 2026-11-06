@@ -1,0 +1,157 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,83 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Product Carousel */
++    .scroller {
++      --card-width: min(280px, 70vw);
++      display: flex;
++      gap: 24px;
++      list-style: none;
++      overflow-x: auto;
++      padding: 40px calc(50% - var(--card-width) / 2);
++      scroll-snap-type: x mandatory;
++      scroll-padding-inline: calc(50% - var(--card-width) / 2);
++      overscroll-behavior-x: contain;
++    }
++
++    .scroller:focus-visible,
++    .scroller .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .scroller > li {
++      flex: 0 0 var(--card-width);
++      scroll-snap-align: center;
++    }
++
++    .product-card {
++      height: 100%;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++      overflow: hidden;
++      text-align: center;
++    }
++
++    .product-card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .product-card .body {
++      padding: 16px 20px 20px;
++    }
++
++    .product-card h3 {
++      color: var(--primary);
++    }
++
++    .product-card .price {
++      font-weight: bold;
++      margin-top: 4px;
++    }
++
++    @keyframes carousel-focus {
++      0%,
++      100% {
++        transform: scale(0.8);
++        opacity: 0.6;
++      }
++
++      50% {
++        transform: scale(1);
++        opacity: 1;
++      }
++    }
++
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .scroller > li {
++          animation: carousel-focus linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +269,69 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section aria-labelledby="products-heading">
++      <h2 id="products-heading" style="text-align: center; margin-top: 40px;">Shop Our Coffee</h2>
++      <ul class="scroller" role="list" tabindex="0" aria-label="Products, scroll horizontally to browse">
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="A cup of coffee on a wooden table" loading="lazy">
++            <div class="body">
++              <h3>House Blend</h3>
++              <p>Balanced and smooth with notes of cocoa.</p>
++              <p class="price">$14.00</p>
++              <a href="/shop/house-blend" class="btn">View House Blend</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Roasted coffee beans" loading="lazy">
++            <div class="body">
++              <h3>Ethiopia Single Origin</h3>
++              <p>Bright and floral with a citrus finish.</p>
++              <p class="price">$18.00</p>
++              <a href="/shop/ethiopia" class="btn">View Ethiopia Single Origin</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="A latte in a ceramic cup" loading="lazy">
++            <div class="body">
++              <h3>Velvet Latte Kit</h3>
++              <p>Everything you need for café lattes at home.</p>
++              <p class="price">$32.00</p>
++              <a href="/shop/latte-kit" class="btn">View Velvet Latte Kit</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80" alt="A white cup of black coffee on a saucer" loading="lazy">
++            <div class="body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smoky, and rich.</p>
++              <p class="price">$16.00</p>
++              <a href="/shop/espresso" class="btn">View Dark Roast Espresso</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1495774856032-8b90bbb32b32?auto=format&fit=crop&w=600&q=80" alt="Iced coffee in a glass" loading="lazy">
++            <div class="body">
++              <h3>Cold Brew Concentrate</h3>
++              <p>Steeped 18 hours for maximum smoothness.</p>
++              <p class="price">$12.00</p>
++              <a href="/shop/cold-brew" class="btn">View Cold Brew Concentrate</a>
++            </div>
++          </article>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

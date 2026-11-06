@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+index 66c9173..bacc28e 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,110 @@
+       margin-top: 20px;
+     }
+ 
++    /* Order and rewards progress */
++    .progress-section {
++      margin-bottom: 40px;
++      padding: 28px;
++      background: #f5efeb;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++    }
++
++    .progress-section > p {
++      margin-top: 4px;
++      color: #6d4c41;
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .progress-card {
++      padding: 20px;
++      background: white;
++      border-radius: 8px;
++    }
++
++    .progress-heading {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 4px 12px;
++      margin-bottom: 12px;
++    }
++
++    .progress-heading h3 {
++      font-size: 1rem;
++    }
++
++    .progress-status {
++      color: #79502b;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .progress-track {
++      display: block;
++      width: 100%;
++      height: 10px;
++      overflow: hidden;
++      border: 0;
++      border-radius: 999px;
++      background: #ede7e3;
++    }
++
++    progress.progress-track {
++      appearance: none;
++      -webkit-appearance: none;
++    }
++
++    progress.progress-track::-webkit-progress-bar {
++      background: #ede7e3;
++      border-radius: 999px;
++    }
++
++    progress.progress-track::-webkit-progress-value {
++      background: var(--primary);
++      border-radius: 999px;
++    }
++
++    progress.progress-track::-moz-progress-bar {
++      background: var(--primary);
++      border-radius: 999px;
++    }
++
++    .progress-indeterminate::before {
++      content: '';
++      display: block;
++      width: 40%;
++      height: 100%;
++      border-radius: inherit;
++      background: var(--accent);
++      animation: brewing 1.8s ease-in-out infinite alternate;
++    }
++
++    .progress-description {
++      margin-top: 10px;
++      color: #6d4c41;
++      font-size: 0.9rem;
++    }
++
++    @keyframes brewing {
++      from { transform: translateX(0); }
++      to { transform: translateX(150%); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-indeterminate::before {
++        animation: none;
++        transform: translateX(75%);
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,6 +279,32 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-labelledby="progress-title">
++      <h2 id="progress-title">Good things are brewing</h2>
++      <p>A little closer to your next cup.</p>
++      <div class="progress-grid">
++        <div class="progress-card">
++          <div class="progress-heading">
++            <h3 id="rewards-label">Your next reward</h3>
++            <span class="progress-status">3 of 5 visits · 60%</span>
++          </div>
++          <progress class="progress-track" value="3" max="5"
++            aria-labelledby="rewards-label" aria-describedby="rewards-description"
++            aria-valuetext="3 of 5 visits completed">60%</progress>
++          <p class="progress-description" id="rewards-description">Just 2 more visits until a coffee on us.</p>
++        </div>
++        <div class="progress-card">
++          <div class="progress-heading">
++            <h3 id="order-label">Your order</h3>
++            <span class="progress-status">Preparing</span>
++          </div>
++          <div class="progress-track progress-indeterminate" role="progressbar"
++            aria-labelledby="order-label" aria-describedby="order-description"
++            aria-valuetext="Preparing your order; completion time is unknown"></div>
++          <p class="progress-description" id="order-description">We're preparing your coffee. Hang tight while we work our magic.</p>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

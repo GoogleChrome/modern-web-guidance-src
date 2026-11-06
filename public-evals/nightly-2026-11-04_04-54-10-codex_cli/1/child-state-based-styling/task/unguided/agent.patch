@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,35 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .seasonal-card:has(.iced-option input:checked) {
++      background: #eaf6fb;
++      outline: 2px solid #27718a;
++      box-shadow: 0 4px 12px rgba(39, 113, 138, 0.18);
++    }
++
++    .iced-option {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      margin-top: 15px;
++      cursor: pointer;
++    }
++
++    .iced-option input {
++      width: 18px;
++      height: 18px;
++      accent-color: #27718a;
++      cursor: pointer;
++    }
++
++    .iced-option input:focus-visible {
++      outline: 2px solid #27718a;
++      outline-offset: 3px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,21 +204,33 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card seasonal-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label class="iced-option">
++            <input type="checkbox" name="maple-oat-latte-iced">
++            Make it iced
++          </label>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card seasonal-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label class="iced-option">
++            <input type="checkbox" name="dark-roast-espresso-iced">
++            Make it iced
++          </label>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card seasonal-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label class="iced-option">
++            <input type="checkbox" name="cold-brew-iced">
++            Make it iced
++          </label>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>

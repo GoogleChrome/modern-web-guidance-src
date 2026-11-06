@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,67 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .roasting-video {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .video-panel {
++      width: 100%;
++      max-width: 800px;
++      margin: 20px auto 0;
++      padding: 20px;
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++    }
++
++    .video-panel iframe {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      height: auto;
++      border: 0;
++    }
++
++    .theater-toggle {
++      background: var(--accent);
++      color: var(--text);
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .theater-toggle:hover {
++      background: #ffd180;
++    }
++
++    .theater-toggle[hidden] {
++      display: none;
++    }
++
++    .theater-toggle:focus-visible {
++      outline: 3px solid white;
++      outline-offset: 3px;
++    }
++
++    .video-panel p {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .hero.theater-active {
++      height: auto;
++      min-height: 60vh;
++      padding: 40px 20px;
++    }
++
++    .hero > .video-panel {
++      max-width: 1100px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +253,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasting-video">
++      <h2>From Green Bean to Rich Roast</h2>
++      <p>Discover how roasting brings out the flavors in every cup.</p>
++      <div id="video-home">
++        <div id="video-panel" class="video-panel">
++          <iframe id="roasting-player" width="800" height="450"
++            src="https://www.youtube.com/embed/N6BJVM5tvnw?cc_load_policy=1"
++            title="Coffee Roasting Explained by James Hoffmann"
++            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++          <button id="theater-toggle" class="btn theater-toggle" type="button"
++            aria-controls="roasting-player" aria-pressed="false" hidden>Theater mode</button>
++          <p id="video-fallback-note" hidden>Your browser may restart the video when switching theater mode.</p>
++          <p><a href="https://www.youtube.com/watch?v=N6BJVM5tvnw" style="color: inherit;">Watch Coffee Roasting Explained on YouTube</a></p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +283,36 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hero = document.querySelector('.hero');
++    const videoHome = document.getElementById('video-home');
++    const videoPanel = document.getElementById('video-panel');
++    const theaterToggle = document.getElementById('theater-toggle');
++    const supportsStatePreservingMove = typeof hero.moveBefore === 'function';
++
++    theaterToggle.hidden = false;
++    document.getElementById('video-fallback-note').hidden = supportsStatePreservingMove;
++
++    theaterToggle.addEventListener('click', () => {
++      const theaterMode = theaterToggle.getAttribute('aria-pressed') !== 'true';
++      const destination = theaterMode ? hero : videoHome;
++
++      if (supportsStatePreservingMove) {
++        // An atomic move preserves the iframe's browsing context and playback.
++        destination.moveBefore(videoPanel, null);
++      } else {
++        // Legacy DOM moves work, but cannot preserve an iframe's browsing context.
++        destination.appendChild(videoPanel);
++      }
++
++      hero.classList.toggle('theater-active', theaterMode);
++      theaterToggle.setAttribute('aria-pressed', String(theaterMode));
++      theaterToggle.focus({ preventScroll: true });
++      videoPanel.scrollIntoView({ block: 'nearest', behavior: 'instant' });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

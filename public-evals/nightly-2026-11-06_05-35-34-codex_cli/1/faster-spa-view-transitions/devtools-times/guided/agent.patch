@@ -1,0 +1,208 @@
+diff --git a/README.md b/README.md
+index 4479b53..e1eb482 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,20 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Preserved navigation views
++
++The shared layout retains up to five rendered content views during client-side
++navigation, keyed by pathname and query string. Returning to a cached route reuses
++its live DOM and React islands. Inactive views use `content-visibility: hidden`,
++are inert, and are excluded from the accessibility tree. Browsers without
++`content-visibility` support hide inactive views with `display: none`.
++
++The least recently used view is removed when the cache fills. Sign-in, sign-up,
++and error pages opt out with `<Layout cacheView={false}>`. The cache lasts for
++the current document only; a full reload clears it. Astro still fetches each
++navigation and updates the document head, but cached content keeps its previous
++state until eviction or reload.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..f8064da 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -46,10 +47,16 @@ const baseUrl = import.meta.env.BASE_URL;
+           <Header />
+         </div>
+         <main class="bg-white relative">
+-          <slot />
++          <div id="spa-view-cache" class="spa-view-cache" transition:persist="spa-view-cache" transition:animate="none"></div>
++          <div data-spa-view data-cache-view={String(cacheView)} tabindex="-1">
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </body>
+ </html>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..249d73e 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -3,7 +3,7 @@
+ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+-<Layout title="Page Not Found">
++<Layout title="Page Not Found" cacheView={false}>
+     <div class="flex flex-col items-center justify-center text-center py-20">
+         <h1 class="text-6xl font-bold text-amber-400">404</h1>
+         <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..c91faa1
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,72 @@
++import type { TransitionBeforeSwapEvent } from "astro:transitions/client";
++
++// Includes the active view. Map insertion order tracks least recent use.
++const MAX_VIEWS = 5;
++const views = new Map<string, HTMLElement>();
++const keyFor = (url: URL) => url.pathname + url.search;
++let activeView: HTMLElement | undefined;
++
++function activate(view: HTMLElement) {
++  delete view.dataset.inactive;
++  view.inert = false;
++  view.removeAttribute("aria-hidden");
++  activeView = view;
++}
++
++function remember(key: string, view: HTMLElement) {
++  views.delete(key);
++  views.set(key, view);
++  while (views.size > MAX_VIEWS) {
++    const oldest = views.keys().next().value!;
++    views.get(oldest)!.remove();
++    views.delete(oldest);
++  }
++}
++
++function initialize() {
++  const host = document.getElementById("spa-view-cache");
++  const view = document.querySelector<HTMLElement>("main > [data-spa-view]");
++  if (!host || !view) return;
++  host.append(view);
++  activate(view);
++  if (view.dataset.cacheView === "true") {
++    remember(keyFor(new URL(location.href)), view);
++  }
++}
++
++initialize();
++
++document.addEventListener("astro:before-swap", (event) => {
++  const navigation = event as TransitionBeforeSwapEvent;
++  const incoming = navigation.newDocument.querySelector<HTMLElement>("main > [data-spa-view]");
++  const incomingHost = navigation.newDocument.getElementById("spa-view-cache");
++  const host = document.getElementById("spa-view-cache");
++  if (!host || !incomingHost || !incoming) return;
++
++  const swap = navigation.swap;
++  navigation.swap = () => {
++    const key = keyFor(navigation.to);
++    const cached = incoming.dataset.cacheView === "true" ? views.get(key) : undefined;
++
++    if (activeView) {
++      // Hidden media must not continue playing in a background view.
++      activeView.querySelectorAll<HTMLMediaElement>("video, audio").forEach((media) => media.pause());
++      activeView.dataset.inactive = "";
++      activeView.inert = true;
++      activeView.setAttribute("aria-hidden", "true");
++      if (activeView.dataset.cacheView !== "true") activeView.remove();
++    }
++
++    // Drop only the newly fetched markup on a cache hit, keeping the live nodes.
++    if (cached) incoming.remove();
++    swap();
++
++    const view = cached ?? incoming;
++    // New views first pass through Astro's normal body swap (including its
++    // media/shadow-root setup); the persistent host carries cached views.
++    if (!cached) host.append(view);
++    activate(view);
++    if (view.dataset.cacheView === "true") remember(key, view);
++    view.focus({ preventScroll: true });
++  };
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..648bc5b 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,25 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.spa-view-cache {
++  position: relative;
++}
++
++[data-spa-view][data-inactive] {
++  content-visibility: hidden;
++  position: absolute;
++  top: 0;
++  left: 0;
++  width: 100%;
++  height: 0;
++  overflow: clip;
++  pointer-events: none;
++}
++
++@supports not (content-visibility: hidden) {
++  [data-spa-view][data-inactive] {
++    display: none;
++  }
++}

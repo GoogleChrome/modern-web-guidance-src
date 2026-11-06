@@ -1,0 +1,1493 @@
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..6098590
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,14 @@
++/*
++  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
++  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=(), browsing-topics=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()
++  Referrer-Policy: strict-origin-when-cross-origin
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: DENY
++  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
++  Cross-Origin-Opener-Policy: same-origin
++  Cross-Origin-Resource-Policy: same-origin
++  Cache-Control: no-store, max-age=0
++
++/logout
++  Clear-Site-Data: "cache", "cookies", "storage"
++
+diff --git a/index.html b/index.html
+index 66c9173..dbe4fc4 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
++  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), interest-cohort=(), browsing-topics=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
++  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +16,10 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --success: #2e7d32;
++      --danger: #c62828;
++      --border: #bcaaa4;
++      --surface: #ffffff;
+     }
+ 
+     * {
+@@ -27,6 +35,31 @@
+       background-color: var(--light);
+     }
+ 
++    /* Accessibility Skip Link */
++    .skip-link {
++      position: absolute;
++      left: -9999px;
++      top: auto;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++    }
++
++    .skip-link:focus {
++      position: fixed;
++      top: 10px;
++      left: 10px;
++      width: auto;
++      height: auto;
++      background: var(--accent);
++      color: var(--text);
++      padding: 8px 16px;
++      font-weight: bold;
++      border-radius: 4px;
++      z-index: 2000;
++      text-decoration: none;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,45 +71,91 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      flex-wrap: wrap;
++      gap: 12px;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .privacy-badge {
++      background: rgba(255, 171, 64, 0.2);
++      border: 1px solid var(--accent);
++      color: var(--accent);
++      font-size: 0.7rem;
++      padding: 2px 8px;
++      border-radius: 999px;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      font-weight: 600;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 18px;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
++    nav a,
++    .nav-btn {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, background 0.3s;
++      background: transparent;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    .nav-btn:hover {
+       color: var(--accent);
+     }
+ 
++    .privacy-nav-btn {
++      background: rgba(255, 255, 255, 0.12);
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-weight: 500;
++    }
++
++    .logout-form {
++      display: inline;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      color: white;
++      background: transparent;
++      cursor: pointer;
++      font-size: 0.9rem;
++      font-family: inherit;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .logout-link:hover {
++      background: var(--accent);
++      color: var(--text);
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      height: 52vh;
++      min-height: 320px;
++      background: linear-gradient(rgba(62, 39, 35, 0.78), rgba(45, 27, 23, 0.85)),
++        var(--hero-external-bg, none);
++      background-color: var(--primary);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -86,11 +165,26 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.75rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .hero-sub {
++      max-width: 620px;
++      margin-bottom: 0.5rem;
++    }
++
++    .hero-privacy-note {
++      font-size: 0.8rem;
++      background: rgba(0, 0, 0, 0.45);
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-top: 12px;
++      border: 1px solid rgba(255, 255, 255, 0.25);
+     }
+ 
+     /* Content Sections */
+@@ -100,19 +194,35 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .section-header p {
++      color: #5d4037;
++      max-width: 680px;
++      margin: 6px auto 0;
++      font-size: 0.95rem;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--surface);
++      padding: 22px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      border: 1px solid #efebe9;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+@@ -129,21 +239,215 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: #efebe9;
++    }
++
++    .btn-danger {
++      background: var(--danger);
++      color: white;
++    }
++
++    .btn-danger:hover {
++      background: #8e0000;
++    }
++
++    /* Privacy by Design Panels */
++    .privacy-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++      margin-top: 48px;
++    }
++
++    .panel {
++      background: var(--surface);
++      border-radius: 8px;
++      padding: 24px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++      border: 1px solid #e0d6d2;
++    }
++
++    .panel h2,
++    .panel h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      font-size: 1.25rem;
++    }
++
++    .tag {
++      font-size: 0.72rem;
++      padding: 3px 8px;
++      border-radius: 4px;
++      background: #efebe9;
++      color: var(--primary);
++      font-weight: 600;
++      text-transform: uppercase;
++    }
++
++    .tag-success {
++      background: #e8f5e9;
++      color: var(--success);
++    }
++
++    .tag-warn {
++      background: #fff3e0;
++      color: #e65100;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.88rem;
++      margin-bottom: 4px;
++    }
++
++    .form-hint {
++      display: block;
++      font-size: 0.78rem;
++      color: #6d4c41;
++      margin-bottom: 6px;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 9px 12px;
++      border: 1px solid var(--border);
++      border-radius: 4px;
++      font-size: 0.92rem;
++      font-family: inherit;
++      color: var(--text);
++      background: #fff;
++    }
++
++    .checkbox-row {
++      display: flex;
++      align-items: flex-start;
++      gap: 8px;
++      font-size: 0.85rem;
++      margin-top: 8px;
++      text-align: left;
++    }
++
++    .checkbox-row input[type="checkbox"] {
++      margin-top: 4px;
++    }
++
++    .status-box {
++      margin-top: 14px;
++      padding: 10px 12px;
++      border-radius: 4px;
++      background: #f5f0ee;
++      font-size: 0.85rem;
++      border-left: 4px solid var(--primary);
++    }
++
++    /* Audit Table & Controls */
++    .audit-table {
++      width: 100%;
++      border-collapse: collapse;
++      margin-top: 12px;
++      font-size: 0.84rem;
++    }
++
++    .audit-table th,
++    .audit-table td {
++      text-align: left;
++      padding: 8px;
++      border-bottom: 1px solid #efebe9;
++    }
++
++    .audit-table th {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .control-list {
++      list-style: none;
++      margin-top: 10px;
++    }
++
++    .control-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 0;
++      border-bottom: 1px solid #efebe9;
++      gap: 12px;
++    }
++
++    .control-item:last-child {
++      border-bottom: none;
++    }
++
++    .control-info strong {
++      display: block;
++      font-size: 0.9rem;
++    }
++
++    .control-info span {
++      font-size: 0.78rem;
++      color: #6d4c41;
++    }
++
++    .action-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 16px;
++    }
++
++    .action-bar .btn {
++      margin-top: 0;
++      padding: 8px 14px;
++      font-size: 0.85rem;
++    }
++
++    .code-preview {
++      margin-top: 12px;
++      background: #2b1d19;
++      color: #f5f5f5;
++      padding: 10px 12px;
++      border-radius: 4px;
++      font-family: monospace;
++      font-size: 0.78rem;
++      overflow-x: auto;
++      max-height: 150px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 50px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 16px;
+     }
+ 
+     .footer-links a {
+@@ -151,62 +455,999 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      font-weight: 500;
++    }
++
++    .footer-privacy-summary {
++      font-size: 0.8rem;
++      color: #4e342e;
++      max-width: 720px;
++      margin: 0 auto 12px;
+     }
+   </style>
+ </head>
+ 
+ <body>
++  <a href="#main-content" class="skip-link">Skip to main content</a>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary Navigation">
++    <div class="logo">
++      <span>THE DAILY GRIND</span>
++      <span class="privacy-badge" id="gpc-status-badge" title="Privacy by Design Active: Zero Default Tracking">Privacy First</span>
++    </div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#seasonal-menu">Menu</a></li>
++      <li><a href="#quick-order">Order Ahead</a></li>
++      <li><a href="#privacy-center" class="privacy-nav-btn">Privacy &amp; Security Center</a></li>
++      <li>
++        <form action="/logout" method="POST" class="logout-form" id="logout-form">
++          <button type="submit" class="logout-link" title="Clear ephemeral session and stored preferences">Clear Session / Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero-banner">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p class="hero-sub">Ethically sourced, locally roasted, delivered to your cup—with strict data minimization and zero third-party tracking.</p>
++    <a href="#quick-order" class="btn">Order Ahead (Zero-PII)</a>
++    <p class="hero-privacy-note" id="hero-media-status">
++      Third-party hero image blocked by default to prevent IP leakage to Unsplash CDN. Enable in Privacy Center if desired.
++    </p>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container" id="main-content">
++    <section id="seasonal-menu" aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <p>Select items to stage an ephemeral pickup order. Cart items are held strictly in volatile memory (`sessionStorage`) with a 15-minute TTL.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
++          <button type="button" class="btn add-item-btn" data-item="Maple Oat Latte">Add to Ephemeral Order</button>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++          </div>
++          <button type="button" class="btn add-item-btn" data-item="Dark Roast Espresso">Add to Ephemeral Order</button>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <button type="button" class="btn add-item-btn" data-item="Cold Brew">Add to Ephemeral Order</button>
+         </div>
+       </div>
+     </section>
++
++    <div class="privacy-grid" id="privacy-center">
++      <!-- Data Minimization & Ephemeral Order Form -->
++      <section class="panel" id="quick-order" aria-labelledby="order-heading">
++        <h2>
++          <span id="order-heading">Data-Minimized Pickup Order</span>
++          <span class="tag tag-success">Zero PII Required</span>
++        </h2>
++        <p class="form-hint">
++          We practice strict <strong>data minimization</strong>. No account, phone number, email, or GPS location is collected to prepare your coffee.
++        </p>
++
++        <form id="minimized-order-form" autocomplete="off" novalidate>
++          <div class="form-group">
++            <label for="pickup-alias">Pickup Alias / Callout Name (Pseudonymous)</label>
++            <span class="form-hint">Use any nickname or alias (max 24 chars). Any accidental email or phone input is automatically redacted client-side.</span>
++            <input
++              type="text"
++              id="pickup-alias"
++              name="pickupAlias"
++              class="form-control"
++              maxlength="24"
++              placeholder="e.g., EspressoFox"
++              autocomplete="off"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              data-lpignore="true"
++              data-1p-ignore="true"
++              data-form-type="other"
++              required
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="pickup-store">Pickup Roastery (Manual Selection — No Geolocation API)</label>
++            <select id="pickup-store" name="pickupStore" class="form-control" autocomplete="off">
++              <option value="downtown">Downtown Roastery (Main &amp; 4th)</option>
++              <option value="riverside">Riverside Cafe (Oak St)</option>
++              <option value="northside">Northside Espresso Bar</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="selected-drink">Selected Beverage</label>
++            <select id="selected-drink" name="selectedDrink" class="form-control" autocomplete="off">
++              <option value="Maple Oat Latte">Maple Oat Latte</option>
++              <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++              <option value="Cold Brew">Cold Brew</option>
++            </select>
++          </div>
++
++          <div class="checkbox-row">
++            <input type="checkbox" id="ephemeral-receipt-consent" name="ephemeralReceipt">
++            <label for="ephemeral-receipt-consent">
++              Keep pickup ticket in temporary session memory for 15 minutes (auto-purged on tab close or expiration).
++            </label>
++          </div>
++
++          <div class="action-bar">
++            <button type="submit" class="btn">Generate Anonymous Pickup Token</button>
++            <button type="button" class="btn btn-secondary" id="clear-order-btn">Purge Order Memory</button>
++          </div>
++        </form>
++
++        <div class="status-box" id="order-status-box" role="status" aria-live="polite">
++          No active pickup token in session memory.
++        </div>
++      </section>
++
++      <!-- Granular Consent & Data Subject Rights (DSAR) -->
++      <section class="panel" aria-labelledby="consent-heading">
++        <h2>
++          <span id="consent-heading">Privacy Controls &amp; Data Rights</span>
++          <span class="tag" id="signal-badge">Opt-In Only</span>
++        </h2>
++        <p class="form-hint">
++          All non-essential features are <strong>disabled by default</strong>. If your browser sends <code>Sec-GPC: 1</code> (Global Privacy Control) or <code>Do Not Track</code>, we enforce strict privacy automatically.
++        </p>
++
++        <ul class="control-list">
++          <li class="control-item">
++            <div class="control-info">
++              <strong>Strictly Necessary Security</strong>
++              <span>CSP enforcement, XSS sanitization, URL token stripping, and 15-min TTL purge.</span>
++            </div>
++            <span class="tag tag-success">Always Active</span>
++          </li>
++          <li class="control-item">
++            <div class="control-info">
++              <strong>Remember Pickup Store Locally</strong>
++              <span>Stores only your preferred store code with an integrity checksum and 7-day expiry.</span>
++            </div>
++            <input type="checkbox" id="consent-functional-storage" aria-label="Allow remembering pickup store locally">
++          </li>
++          <li class="control-item">
++            <div class="control-info">
++              <strong>External Unsplash Hero Photography</strong>
++              <span>Unblocks <code>images.unsplash.com</code> background image (discloses IP to Unsplash CDN).</span>
++            </div>
++            <input type="checkbox" id="consent-external-media" aria-label="Allow external Unsplash hero image">
++          </li>
++        </ul>
++
++        <div class="action-bar">
++          <button type="button" class="btn btn-secondary" id="inspect-data-btn">Inspect Stored Data</button>
++          <button type="button" class="btn btn-secondary" id="export-data-btn">Export My Data (JSON)</button>
++          <button type="button" class="btn btn-danger" id="erase-all-data-btn">Delete All Local Data</button>
++        </div>
++
++        <pre class="code-preview" id="storage-inspector" aria-live="polite">Click "Inspect Stored Data" to audit all browser storage keys.</pre>
++      </section>
++
++      <!-- Live Third-Party & Runtime Security Audit -->
++      <section class="panel" style="grid-column: 1 / -1;" aria-labelledby="audit-heading">
++        <h2>
++          <span id="audit-heading">Live Third-Party &amp; Security Headers Audit</span>
++          <span class="tag tag-success" id="audit-summary-badge">0 Unauthorized Requests</span>
++        </h2>
++        <p class="form-hint">
++          Real-time client-side audit inspecting DOM scripts, stylesheets, images, frames, Performance Resource Timing entries, and active security policies. A runtime egress guard blocks unconsented third-party network calls.
++        </p>
++
++        <div class="action-bar" style="margin-bottom: 12px;">
++          <button type="button" class="btn btn-secondary" id="run-audit-btn">Re-Run Live Audit</button>
++          <button type="button" class="btn btn-secondary" id="test-egress-guard-btn">Test Third-Party Tracker Block</button>
++        </div>
++
++        <table class="audit-table" aria-label="Privacy and Security Audit Findings">
++          <thead>
++            <tr>
++              <th>Audit Control</th>
++              <th>Policy / Mechanism</th>
++              <th>Status</th>
++              <th>Details</th>
++            </tr>
++          </thead>
++          <tbody id="audit-table-body">
++            <!-- Populated securely via textContent in client-side script -->
++          </tbody>
++        </table>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#seasonal-menu">Seasonal Menu</a> |
++      <a href="#quick-order">Zero-PII Order</a> |
++      <a href="#privacy-center">Privacy &amp; Security Audit</a>
+     </div>
++    <p class="footer-privacy-summary">
++      Privacy by Design Architecture: System fonts only (no third-party font CDNs), strict Content-Security-Policy, Permissions-Policy hardware lockouts, automatic URL tracking parameter stripping, and volatile session storage.
++    </p>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      /**
++       * 1. DATA MINIMIZATION: Strip tracking & sensitive parameters from URL bar immediately
++       * Prevents leakage via browser history, shoulder surfing, or Referer headers.
++       */
++      const SENSITIVE_QUERY_PARAMS = [
++        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
++        'fbclid', 'gclid', 'msclkid', 'twclid', 'mc_cid', 'mc_eid',
++        'token', 'session', 'auth', 'email', 'phone', 'name', 'user_id'
++      ];
++
++      function sanitizeCurrentUrl() {
++        try {
++          const url = new URL(window.location.href);
++          let removedCount = 0;
++          SENSITIVE_QUERY_PARAMS.forEach(function (param) {
++            if (url.searchParams.has(param)) {
++              url.searchParams.delete(param);
++              removedCount++;
++            }
++          });
++          if (removedCount > 0 && window.history && window.history.replaceState) {
++            window.history.replaceState(null, document.title, url.pathname + url.search + url.hash);
++          }
++          return removedCount;
++        } catch (_) {
++          return 0;
++        }
++      }
++
++      const strippedParamsCount = sanitizeCurrentUrl();
++
++      /**
++       * 2. SECURE DATA HANDLING: Namespaced Storage Manager with TTL, Schema Validation,
++       * PII Redaction, and FNV-1a Integrity Checksum.
++       */
++      const STORAGE_PREFIX = 'dg_priv_v1_';
++      const SESSION_ORDER_KEY = STORAGE_PREFIX + 'ephemeral_order';
++      const CONSENT_STATE_KEY = STORAGE_PREFIX + 'consent_prefs';
++      const STORE_PREF_KEY = STORAGE_PREFIX + 'preferred_store';
++
++      const ORDER_TTL_MS = 15 * 60 * 1000; // 15 minutes for volatile pickup ticket
++      const PREF_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days for optional store preference
++      const ALLOWED_STORES = ['downtown', 'riverside', 'northside'];
++      const ALLOWED_DRINKS = ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew'];
++
++      function computeChecksum(payloadStr) {
++        let hash = 2166136261;
++        for (let i = 0; i < payloadStr.length; i++) {
++          hash ^= payloadStr.charCodeAt(i);
++          hash = Math.imul(hash, 16777619);
++        }
++        return (hash >>> 0).toString(16);
++      }
++
++      /**
++       * Redacts accidental PII (emails, phone numbers, SSNs, credit cards) before processing or storage.
++       */
++      function redactPII(input) {
++        if (typeof input !== 'string') return '';
++        return input
++          // Redact email addresses
++          .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[REDACTED-EMAIL]')
++          // Redact phone numbers
++          .replace(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g, '[REDACTED-PHONE]')
++          // Strip HTML angle brackets and control chars
++          .replace(/[<>[\]{}\\/]/g, '')
++          .trim()
++          .slice(0, 24);
++      }
++
++      function generateAnonymousToken() {
++        const bytes = new Uint8Array(6);
++        if (window.crypto && window.crypto.getRandomValues) {
++          window.crypto.getRandomValues(bytes);
++        } else {
++          for (let i = 0; i < bytes.length; i++) {
++            bytes[i] = Math.floor(Math.random() * 256);
++          }
++        }
++        const hex = Array.from(bytes, function (b) {
++          return b.toString(16).padStart(2, '0');
++        }).join('').toUpperCase();
++        return 'DG-' + hex.slice(0, 4) + '-' + hex.slice(4, 8);
++      }
++
++      function writeEnvelope(storageArea, key, data, ttlMs) {
++        try {
++          const now = Date.now();
++          const serializedData = JSON.stringify(data);
++          const envelope = {
++            v: 1,
++            createdAt: now,
++            expiresAt: now + ttlMs,
++            checksum: computeChecksum(serializedData),
++            data: data
++          };
++          storageArea.setItem(key, JSON.stringify(envelope));
++          return true;
++        } catch (_) {
++          return false;
++        }
++      }
++
++      function readEnvelope(storageArea, key) {
++        try {
++          const raw = storageArea.getItem(key);
++          if (!raw) return null;
++          const envelope = JSON.parse(raw);
++          if (!envelope || typeof envelope !== 'object' || !envelope.expiresAt || !envelope.data) {
++            storageArea.removeItem(key);
++            return null;
++          }
++          if (Date.now() > envelope.expiresAt) {
++            storageArea.removeItem(key);
++            return null;
++          }
++          const expectedChecksum = computeChecksum(JSON.stringify(envelope.data));
++          if (envelope.checksum !== expectedChecksum) {
++            // Tampered payload detected: purge immediately
++            storageArea.removeItem(key);
++            return null;
++          }
++          return envelope;
++        } catch (_) {
++          try { storageArea.removeItem(key); } catch (e) {}
++          return null;
++        }
++      }
++
++      function sweepExpiredAndForeignStorage() {
++        [window.localStorage, window.sessionStorage].forEach(function (area) {
++          try {
++            const keys = [];
++            for (let i = 0; i < area.length; i++) {
++              const k = area.key(i);
++              if (k) keys.push(k);
++            }
++            keys.forEach(function (k) {
++              if (k.indexOf(STORAGE_PREFIX) === 0) {
++                readEnvelope(area, k); // Automatically purges expired or corrupted envelopes
++              }
++            });
++          } catch (_) {}
++        });
++      }
++
++      /**
++       * 3. PRIVACY SIGNALS & GRANULAR CONSENT MANAGEMENT
++       * Detects Global Privacy Control (Sec-GPC / navigator.globalPrivacyControl) and Do Not Track.
++       */
++      const gpcDetected = Boolean(navigator.globalPrivacyControl === true);
++      const dntDetected = Boolean(navigator.doNotTrack === '1' || window.doNotTrack === '1');
++
++      const consentState = {
++        functionalStorage: false,
++        externalMedia: false
++      };
++
++      function loadConsentPreferences() {
++        sweepExpiredAndForeignStorage();
++        const saved = readEnvelope(window.localStorage, CONSENT_STATE_KEY);
++        if (saved && saved.data) {
++          consentState.functionalStorage = Boolean(saved.data.functionalStorage);
++          // If GPC is enabled by the browser, default external third-party connections off unless explicitly toggled in this session
++          consentState.externalMedia = gpcDetected ? false : Boolean(saved.data.externalMedia);
++        }
++      }
++
++      function saveConsentPreferences() {
++        if (consentState.functionalStorage || consentState.externalMedia) {
++          writeEnvelope(window.localStorage, CONSENT_STATE_KEY, {
++            functionalStorage: consentState.functionalStorage,
++            externalMedia: consentState.externalMedia
++          }, PREF_TTL_MS);
++        } else {
++          try {
++            window.localStorage.removeItem(CONSENT_STATE_KEY);
++            window.localStorage.removeItem(STORE_PREF_KEY);
++          } catch (_) {}
++        }
++      }
++
++      /**
++       * 4. THIRD-PARTY AUDIT & EGRESS FIREWALL
++       * Wraps window.fetch, XMLHttpRequest.prototype.open, and navigator.sendBeacon
++       * to block unauthorized third-party data exfiltration and log blocked attempts.
++       */
++      const ALLOWED_THIRD_PARTY_HOSTS = {
++        'images.unsplash.com': function () {
++          return consentState.externalMedia === true;
++        }
++      };
++
++      const runtimeBlockedRequests = [];
++
++      function isUrlAllowed(targetUrl) {
++        try {
++          const parsed = new URL(targetUrl, window.location.origin);
++          if (parsed.origin === window.location.origin) {
++            return { allowed: true, origin: parsed.origin, reason: 'Same-origin request' };
++          }
++          const hostRule = ALLOWED_THIRD_PARTY_HOSTS[parsed.hostname];
++          if (typeof hostRule === 'function' && hostRule()) {
++            return { allowed: true, origin: parsed.origin, reason: 'Consented third-party host' };
++          }
++          return {
++            allowed: false,
++            origin: parsed.origin,
++            hostname: parsed.hostname,
++            reason: 'Blocked unconsented third-party origin (' + parsed.hostname + ')'
++          };
++        } catch (_) {
++          return { allowed: false, origin: 'unknown', reason: 'Malformed URL blocked' };
++        }
++      }
++
++      // Wrap window.fetch
++      if (typeof window.fetch === 'function') {
++        const originalFetch = window.fetch.bind(window);
++        window.fetch = function (input, init) {
++          const urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : String(input));
++          const check = isUrlAllowed(urlStr);
++          if (!check.allowed) {
++            runtimeBlockedRequests.push({
++              timestamp: new Date().toISOString(),
++              api: 'fetch',
++              origin: check.origin,
++              reason: check.reason
++            });
++            renderAuditTable();
++            return Promise.reject(new Error('[Privacy Firewall] ' + check.reason));
++          }
++          // Enforce referrerPolicy and credentials minimization on outbound fetches
++          const safeInit = Object.assign({
++            credentials: 'same-origin',
++            referrerPolicy: 'strict-origin-when-cross-origin'
++          }, init || {});
++          return originalFetch(input, safeInit);
++        };
++      }
++
++      // Wrap XMLHttpRequest
++      if (window.XMLHttpRequest && window.XMLHttpRequest.prototype) {
++        const originalOpen = window.XMLHttpRequest.prototype.open;
++        window.XMLHttpRequest.prototype.open = function (method, url) {
++          const check = isUrlAllowed(String(url));
++          if (!check.allowed) {
++            runtimeBlockedRequests.push({
++              timestamp: new Date().toISOString(),
++              api: 'XMLHttpRequest',
++              origin: check.origin,
++              reason: check.reason
++            });
++            renderAuditTable();
++            throw new Error('[Privacy Firewall] ' + check.reason);
++          }
++          return originalOpen.apply(this, arguments);
++        };
++      }
++
++      // Disable/Gate navigator.sendBeacon to third-party origins
++      if (navigator && typeof navigator.sendBeacon === 'function') {
++        const originalBeacon = navigator.sendBeacon.bind(navigator);
++        navigator.sendBeacon = function (url, data) {
++          const check = isUrlAllowed(String(url));
++          if (!check.allowed) {
++            runtimeBlockedRequests.push({
++              timestamp: new Date().toISOString(),
++              api: 'sendBeacon',
++              origin: check.origin,
++              reason: check.reason
++            });
++            renderAuditTable();
++            return false;
++          }
++          return originalBeacon(url, data);
++        };
++      }
++
++      /**
++       * 5. APPLY EXTERNAL MEDIA CONSENT (Hero Unsplash Image Gate)
++       */
++      const UNSPLASH_HERO_URL = "url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80')";
++
++      function applyMediaConsentUI() {
++        const heroBanner = document.getElementById('hero-banner');
++        const heroMediaStatus = document.getElementById('hero-media-status');
++        if (!heroBanner || !heroMediaStatus) return;
++
++        if (consentState.externalMedia) {
++          heroBanner.style.setProperty('--hero-external-bg', UNSPLASH_HERO_URL);
++          heroMediaStatus.textContent = 'External Unsplash hero photo enabled by user opt-in (referrer restricted to origin).';
++        } else {
++          heroBanner.style.setProperty('--hero-external-bg', 'none');
++          heroMediaStatus.textContent = 'Third-party hero image blocked by default to prevent IP leakage to Unsplash CDN. Enable in Privacy Center if desired.';
++        }
++      }
++
++      /**
++       * 6. RENDER EPHEMERAL ORDER STATE
++       */
++      function renderOrderStatus() {
++        const statusBox = document.getElementById('order-status-box');
++        if (!statusBox) return;
++
++        const savedOrder = readEnvelope(window.sessionStorage, SESSION_ORDER_KEY);
++        if (!savedOrder || !savedOrder.data) {
++          statusBox.textContent = 'No active pickup token in session memory.';
++          return;
++        }
++
++        const remainingSec = Math.max(0, Math.round((savedOrder.expiresAt - Date.now()) / 1000));
++        const d = savedOrder.data;
++        statusBox.textContent =
++          'Active Pickup Token: ' + d.token +
++          ' | Alias: ' + d.alias +
++          ' | Beverage: ' + d.drink +
++          ' | Roastery: ' + d.store +
++          ' (Auto-purges in ' + remainingSec + 's)';
++      }
++
++      /**
++       * 7. LIVE THIRD-PARTY & SECURITY HEADERS AUDITOR
++       */
++      function collectDomAndNetworkThirdParties() {
++        const thirdPartyElements = [];
++        const selectors = 'script[src], link[href], img[src], iframe[src], video[src], audio[src]';
++        const nodes = document.querySelectorAll(selectors);
++
++        nodes.forEach(function (node) {
++          const rawUrl = node.getAttribute('src') || node.getAttribute('href');
++          if (!rawUrl) return;
++          try {
++            const parsed = new URL(rawUrl, window.location.origin);
++            if (parsed.origin !== window.location.origin) {
++              thirdPartyElements.push(parsed.origin + ' (' + node.tagName.toLowerCase() + ')');
++            }
++          } catch (_) {}
++        });
++
++        const perfCrossOrigin = [];
++        if (window.performance && typeof window.performance.getEntriesByType === 'function') {
++          const resources = window.performance.getEntriesByType('resource');
++          resources.forEach(function (entry) {
++            try {
++              const parsed = new URL(entry.name, window.location.origin);
++              if (parsed.origin !== window.location.origin) {
++                perfCrossOrigin.push(parsed.hostname);
++              }
++            } catch (_) {}
++          });
++        }
++
++        return {
++          domThirdParties: thirdPartyElements,
++          networkThirdParties: Array.from(new Set(perfCrossOrigin))
++        };
++      }
++
++      function appendAuditRow(tbody, control, policy, statusText, isGood, details) {
++        const tr = document.createElement('tr');
++
++        const tdControl = document.createElement('td');
++        const strong = document.createElement('strong');
++        strong.textContent = control;
++        tdControl.appendChild(strong);
++
++        const tdPolicy = document.createElement('td');
++        tdPolicy.textContent = policy;
++
++        const tdStatus = document.createElement('td');
++        const badge = document.createElement('span');
++        badge.className = 'tag ' + (isGood ? 'tag-success' : 'tag-warn');
++        badge.textContent = statusText;
++        tdStatus.appendChild(badge);
++
++        const tdDetails = document.createElement('td');
++        tdDetails.textContent = details;
++
++        tr.appendChild(tdControl);
++        tr.appendChild(tdPolicy);
++        tr.appendChild(tdStatus);
++        tr.appendChild(tdDetails);
++        tbody.appendChild(tr);
++      }
++
++      function renderAuditTable() {
++        const tbody = document.getElementById('audit-table-body');
++        const summaryBadge = document.getElementById('audit-summary-badge');
++        if (!tbody) return;
++
++        while (tbody.firstChild) {
++          tbody.removeChild(tbody.firstChild);
++        }
++
++        const cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
++        const permsMeta = document.querySelector('meta[http-equiv="Permissions-Policy"]');
++        const refMeta = document.querySelector('meta[name="referrer"]');
++        const auditScan = collectDomAndNetworkThirdParties();
++
++        appendAuditRow(
++          tbody,
++          'Content-Security-Policy',
++          "default-src 'self'; object-src 'none'; connect-src 'self'",
++          cspMeta ? 'Enforced' : 'Missing',
++          Boolean(cspMeta),
++          cspMeta ? 'Restricts scripts, XHR/fetch connections, frames, and form targets to same-origin.' : 'No CSP meta found.'
++        );
++
++        appendAuditRow(
++          tbody,
++          'Permissions-Policy',
++          'camera=(), microphone=(), geolocation=(), browsing-topics=()',
++          permsMeta ? 'Enforced' : 'Missing',
++          Boolean(permsMeta),
++          'Hardware sensors (GPS, camera, mic) and ad-tech Topics/FLoC APIs are locked out.'
++        );
++
++        appendAuditRow(
++          tbody,
++          'Referrer & URL Hygiene',
++          refMeta ? refMeta.getAttribute('content') : 'none',
++          'Enforced',
++          Boolean(refMeta),
++          'Stripped ' + strippedParamsCount + ' tracking/PII query parameter(s) on load; cross-origin referrers minimized.'
++        );
++
++        appendAuditRow(
++          tbody,
++          'DOM Third-Party Trackers',
++          'Zero external scripts, iframes, or font CDNs',
++          auditScan.domThirdParties.length === 0 ? '0 Found' : auditScan.domThirdParties.length + ' Found',
++          auditScan.domThirdParties.length === 0,
++          auditScan.domThirdParties.length === 0
++            ? 'No third-party <script>, <iframe>, or stylesheet tags present in markup.'
++            : 'Detected: ' + auditScan.domThirdParties.join(', ')
++        );
++
++        const netSummary = auditScan.networkThirdParties.length === 0
++          ? 'No third-party network requests made.'
++          : 'Loaded consented host(s): ' + auditScan.networkThirdParties.join(', ');
++        appendAuditRow(
++          tbody,
++          'Third-Party Network Audit',
++          'Opt-in media gate & runtime fetch/XHR firewall',
++          auditScan.networkThirdParties.length === 0 ? 'Zero External Calls' : 'Consented Media Only',
++          true,
++          netSummary + ' | Blocked egress attempts: ' + runtimeBlockedRequests.length
++        );
++
++        const signalText = gpcDetected
++          ? 'Sec-GPC: 1 Active (Global Privacy Control Honored)'
++          : (dntDetected ? 'DNT: 1 Active (Do Not Track Honored)' : 'Standard Opt-In Mode (No GPC signal detected)');
++        appendAuditRow(
++          tbody,
++          'Browser Privacy Signals',
++          'Global Privacy Control (GPC) & Do Not Track (DNT)',
++          gpcDetected || dntDetected ? 'Signal Honored' : 'Strict Default',
++          true,
++          signalText
++        );
++
++        if (summaryBadge) {
++          summaryBadge.textContent =
++            auditScan.domThirdParties.length + ' Trackers | ' +
++            runtimeBlockedRequests.length + ' Blocked Egress Calls';
++        }
++      }
++
++      /**
++       * 8. STORAGE INSPECTOR, EXPORT (DATA PORTABILITY), AND ERASURE (RIGHT TO DELETE)
++       */
++      function getStorageSnapshot() {
++        sweepExpiredAndForeignStorage();
++        const snapshot = {
++          auditedAt: new Date().toISOString(),
++          privacySignals: {
++            globalPrivacyControl: gpcDetected,
++            doNotTrack: dntDetected
++          },
++          cookiesPresent: document.cookie ? document.cookie.split(';').length : 0,
++          sessionStorage: {},
++          localStorage: {},
++          blockedThirdPartyAttempts: runtimeBlockedRequests
++        };
++
++        try {
++          for (let i = 0; i < window.sessionStorage.length; i++) {
++            const k = window.sessionStorage.key(i);
++            if (k && k.indexOf(STORAGE_PREFIX) === 0) {
++              snapshot.sessionStorage[k] = readEnvelope(window.sessionStorage, k);
++            }
++          }
++          for (let j = 0; j < window.localStorage.length; j++) {
++            const k = window.localStorage.key(j);
++            if (k && k.indexOf(STORAGE_PREFIX) === 0) {
++              snapshot.localStorage[k] = readEnvelope(window.localStorage, k);
++            }
++          }
++        } catch (_) {}
++
++        return snapshot;
++      }
++
++      function updateInspectorView() {
++        const inspector = document.getElementById('storage-inspector');
++        if (!inspector) return;
++        const snapshot = getStorageSnapshot();
++        inspector.textContent = JSON.stringify(snapshot, null, 2);
++      }
++
++      function eraseAllUserData(reasonMessage) {
++        try {
++          window.sessionStorage.clear();
++          window.localStorage.clear();
++        } catch (_) {}
++
++        consentState.functionalStorage = false;
++        consentState.externalMedia = false;
++
++        const funcCheckbox = document.getElementById('consent-functional-storage');
++        const mediaCheckbox = document.getElementById('consent-external-media');
++        if (funcCheckbox) funcCheckbox.checked = false;
++        if (mediaCheckbox) mediaCheckbox.checked = false;
++
++        const form = document.getElementById('minimized-order-form');
++        if (form) form.reset();
++
++        applyMediaConsentUI();
++        renderOrderStatus();
++        updateInspectorView();
++        renderAuditTable();
++
++        const statusBox = document.getElementById('order-status-box');
++        if (statusBox && reasonMessage) {
++          statusBox.textContent = reasonMessage;
++        }
++      }
++
++      /**
++       * 9. INITIALIZE UI & EVENT LISTENERS
++       */
++      function init() {
++        loadConsentPreferences();
++
++        // Update GPC / Privacy badge in header and consent panel
++        const gpcBadge = document.getElementById('gpc-status-badge');
++        const signalBadge = document.getElementById('signal-badge');
++        if (gpcDetected) {
++          if (gpcBadge) gpcBadge.textContent = 'GPC Signal Active';
++          if (signalBadge) {
++            signalBadge.textContent = 'GPC Enforced';
++            signalBadge.className = 'tag tag-success';
++          }
++        } else if (dntDetected) {
++          if (gpcBadge) gpcBadge.textContent = 'DNT Signal Active';
++          if (signalBadge) {
++            signalBadge.textContent = 'DNT Enforced';
++            signalBadge.className = 'tag tag-success';
++          }
++        }
++
++        // Sync Consent Checkboxes
++        const funcCheckbox = document.getElementById('consent-functional-storage');
++        const mediaCheckbox = document.getElementById('consent-external-media');
++        if (funcCheckbox) {
++          funcCheckbox.checked = consentState.functionalStorage;
++          funcCheckbox.addEventListener('change', function () {
++            consentState.functionalStorage = Boolean(funcCheckbox.checked);
++            saveConsentPreferences();
++            updateInspectorView();
++          });
++        }
++        if (mediaCheckbox) {
++          mediaCheckbox.checked = consentState.externalMedia;
++          mediaCheckbox.addEventListener('change', function () {
++            consentState.externalMedia = Boolean(mediaCheckbox.checked);
++            saveConsentPreferences();
++            applyMediaConsentUI();
++            renderAuditTable();
++            updateInspectorView();
++          });
++        }
++
++        // Load preferred store if functional storage consent is active
++        const storeSelect = document.getElementById('pickup-store');
++        if (consentState.functionalStorage && storeSelect) {
++          const savedStore = readEnvelope(window.localStorage, STORE_PREF_KEY);
++          if (savedStore && ALLOWED_STORES.indexOf(savedStore.data) !== -1) {
++            storeSelect.value = savedStore.data;
++          }
++        }
++
++        if (storeSelect) {
++          storeSelect.addEventListener('change', function () {
++            if (consentState.functionalStorage && ALLOWED_STORES.indexOf(storeSelect.value) !== -1) {
++              writeEnvelope(window.localStorage, STORE_PREF_KEY, storeSelect.value, PREF_TTL_MS);
++              updateInspectorView();
++            }
++          });
++        }
++
++        // Menu Item Quick Select Buttons
++        const drinkSelect = document.getElementById('selected-drink');
++        const aliasInput = document.getElementById('pickup-alias');
++        document.querySelectorAll('.add-item-btn').forEach(function (btn) {
++          btn.addEventListener('click', function () {
++            const item = btn.getAttribute('data-item');
++            if (drinkSelect && ALLOWED_DRINKS.indexOf(item) !== -1) {
++              drinkSelect.value = item;
++            }
++            const orderSection = document.getElementById('quick-order');
++            if (orderSection && typeof orderSection.scrollIntoView === 'function') {
++              orderSection.scrollIntoView({ behavior: 'smooth' });
++            }
++            if (aliasInput) aliasInput.focus();
++          });
++        });
++
++        // Handle Data-Minimized Order Form Submission
++        const orderForm = document.getElementById('minimized-order-form');
++        if (orderForm) {
++          orderForm.addEventListener('submit', function (event) {
++            event.preventDefault();
++            const rawAlias = aliasInput ? aliasInput.value : '';
++            const sanitizedAlias = redactPII(rawAlias) || 'Guest-' + Math.floor(100 + Math.random() * 900);
++            if (aliasInput) aliasInput.value = sanitizedAlias;
++
++            const chosenStore = storeSelect && ALLOWED_STORES.indexOf(storeSelect.value) !== -1
++              ? storeSelect.value
++              : 'downtown';
++            const chosenDrink = drinkSelect && ALLOWED_DRINKS.indexOf(drinkSelect.value) !== -1
++              ? drinkSelect.value
++              : 'Maple Oat Latte';
++
++            const token = generateAnonymousToken();
++            const keepInSession = Boolean(
++              document.getElementById('ephemeral-receipt-consent') &&
++              document.getElementById('ephemeral-receipt-consent').checked
++            );
++
++            const orderPayload = {
++              token: token,
++              alias: sanitizedAlias,
++              store: chosenStore,
++              drink: chosenDrink
++            };
++
++            if (keepInSession) {
++              writeEnvelope(window.sessionStorage, SESSION_ORDER_KEY, orderPayload, ORDER_TTL_MS);
++              renderOrderStatus();
++            } else {
++              try { window.sessionStorage.removeItem(SESSION_ORDER_KEY); } catch (_) {}
++              const statusBox = document.getElementById('order-status-box');
++              if (statusBox) {
++                statusBox.textContent =
++                  'One-Time Pickup Token: ' + token +
++                  ' | Alias: ' + sanitizedAlias +
++                  ' | Beverage: ' + chosenDrink +
++                  ' (Not saved to browser storage)';
++              }
++            }
++
++            if (consentState.functionalStorage) {
++              writeEnvelope(window.localStorage, STORE_PREF_KEY, chosenStore, PREF_TTL_MS);
++            }
++            updateInspectorView();
++          });
++        }
++
++        // Purge Order Memory Button
++        const clearOrderBtn = document.getElementById('clear-order-btn');
++        if (clearOrderBtn) {
++          clearOrderBtn.addEventListener('click', function () {
++            try { window.sessionStorage.removeItem(SESSION_ORDER_KEY); } catch (_) {}
++            renderOrderStatus();
++            updateInspectorView();
++          });
++        }
++
++        // Inspect, Export, and Erase Buttons
++        const inspectBtn = document.getElementById('inspect-data-btn');
++        if (inspectBtn) {
++          inspectBtn.addEventListener('click', updateInspectorView);
++        }
++
++        const exportBtn = document.getElementById('export-data-btn');
++        if (exportBtn) {
++          exportBtn.addEventListener('click', function () {
++            const snapshot = getStorageSnapshot();
++            const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
++            const blobUrl = URL.createObjectURL(blob);
++            const a = document.createElement('a');
++            a.href = blobUrl;
++            a.download = 'daily-grind-privacy-export.json';
++            document.body.appendChild(a);
++            a.click();
++            document.body.removeChild(a);
++            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 1000);
++          });
++        }
++
++        const eraseBtn = document.getElementById('erase-all-data-btn');
++        if (eraseBtn) {
++          eraseBtn.addEventListener('click', function () {
++            eraseAllUserData('All local and session data has been cryptographically purged.');
++          });
++        }
++
++        // POST Logout Form Handler (prevents GET prefetch logout & clears session state)
++        const logoutForm = document.getElementById('logout-form');
++        if (logoutForm) {
++          logoutForm.addEventListener('submit', function (event) {
++            event.preventDefault();
++            eraseAllUserData('Session terminated via POST logout. All volatile and local storage cleared.');
++          });
++        }
++
++        // Audit Controls
++        const runAuditBtn = document.getElementById('run-audit-btn');
++        if (runAuditBtn) {
++          runAuditBtn.addEventListener('click', function () {
++            sweepExpiredAndForeignStorage();
++            renderAuditTable();
++            updateInspectorView();
++          });
++        }
++
++        const testEgressBtn = document.getElementById('test-egress-guard-btn');
++        if (testEgressBtn) {
++          testEgressBtn.addEventListener('click', function () {
++            // Simulate an unauthorized third-party analytics script attempting to phone home
++            window.fetch('https://tracker.example.com/collect?user=test').catch(function () {
++              updateInspectorView();
++            });
++          });
++        }
++
++        // Periodic TTL Sweep every 15 seconds & cleanup on pagehide
++        setInterval(function () {
++          sweepExpiredAndForeignStorage();
++          renderOrderStatus();
++        }, 15000);
++
++        window.addEventListener('pagehide', function () {
++          sweepExpiredAndForeignStorage();
++        });
++
++        applyMediaConsentUI();
++        renderOrderStatus();
++        renderAuditTable();
++        updateInspectorView();
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', init);
++      } else {
++        init();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .order-section {
++      max-width: 540px;
++      margin: 40px auto 0;
++      scroll-margin-top: 90px;
++    }
++
++    .order-section form {
++      margin-top: 20px;
++      text-align: left;
++    }
++
++    .order-section label {
++      display: block;
++      margin-bottom: 8px;
++      font-weight: 600;
++    }
++
++    .order-section select {
++      width: 100%;
++      padding: 12px;
++      border: 1px solid #8d7b75;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .order-section select:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .order-section select[aria-invalid="true"] {
++      border: 2px solid #b3261e;
++    }
++
++    .field-error {
++      margin-top: 6px;
++      color: #b3261e;
++      font-size: 0.9rem;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +218,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +242,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="order" class="card order-section" aria-labelledby="order-heading">
++      <h2 id="order-heading">Order Your Coffee</h2>
++      <p>Choose your local shop to start your order.</p>
++      <form action="/order-online" method="get">
++        <label for="local-shop">Select your local shop (required)</label>
++        <select id="local-shop" name="shop" required>
++          <option value="" disabled selected>Select your local shop</option>
++          <!-- Replace these placeholder shops with your actual locations. -->
++          <option value="downtown">Downtown</option>
++          <option value="uptown">Uptown</option>
++          <option value="riverside">Riverside</option>
++        </select>
++        <p id="local-shop-error" class="field-error" aria-live="polite" hidden>Please select your local shop.</p>
++        <button type="submit" class="btn">Start Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +271,38 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const shop = document.getElementById('local-shop');
++    const shopError = document.getElementById('local-shop-error');
++    let shopTouched = false;
++
++    function updateShopError() {
++      const showError = shopTouched && !shop.validity.valid;
++      shopError.hidden = !showError;
++      if (showError) {
++        shop.setAttribute('aria-invalid', 'true');
++        shop.setAttribute('aria-describedby', shopError.id);
++      } else {
++        shop.removeAttribute('aria-invalid');
++        shop.removeAttribute('aria-describedby');
++      }
++    }
++
++    function touchShop() {
++      shopTouched = true;
++      updateShopError();
++    }
++
++    shop.addEventListener('blur', touchShop);
++    shop.addEventListener('change', touchShop);
++    shop.addEventListener('invalid', (event) => {
++      event.preventDefault();
++      touchShop();
++      shop.focus();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

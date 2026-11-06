@@ -1,0 +1,221 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,95 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter signup */
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++      text-align: left;
++    }
++
++    .newsletter h2 {
++      font-size: 1.25rem;
++      color: var(--primary);
++      text-align: center;
++      margin-bottom: 4px;
++    }
++
++    .newsletter > p {
++      text-align: center;
++      font-size: 0.9rem;
++      margin-bottom: 14px;
++    }
++
++    .newsletter label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      font: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: white;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++    }
++
++    .newsletter input[type="email"]:focus {
++      outline: 3px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    /* The visual error state is keyed off aria-invalid so the styling and
++       the assistive-technology state can never drift apart. */
++    .newsletter input[type="email"][aria-invalid="true"] {
++      border-color: #b3261e;
++      background: #fff8f7;
++    }
++
++    .newsletter .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      font-size: 0.95rem;
++      cursor: pointer;
++    }
++
++    .form-error {
++      color: #b3261e;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 6px;
++      min-height: 1.3em;
++    }
++
++    .form-error::before {
++      content: "\26A0\FE0E  ";
++    }
++
++    .form-error:empty::before {
++      content: none;
++    }
++
++    .form-status {
++      color: var(--primary);
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-top: 6px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +284,26 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Stay Caffeinated</h2>
++      <p>Get seasonal drops, brewing tips, and member-only offers.</p>
++      <form id="newsletter-form" action="/newsletter/subscribe" method="post" novalidate>
++        <label for="newsletter-email">Email address</label>
++        <div class="newsletter-row">
++          <input type="email" id="newsletter-email" name="email" required autocomplete="email" inputmode="email"
++            placeholder="you@example.com">
++          <button type="submit" class="btn">Subscribe</button>
++        </div>
++        <!-- Live region stays in the DOM at all times and is only ever populated
++             when the visual error is shown, so the announcement and the visual
++             state are the same event. -->
++        <p id="newsletter-email-error" class="form-error" aria-live="polite" aria-atomic="true"></p>
++        <p id="newsletter-status" class="form-status" role="status"></p>
++      </form>
++    </section>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +311,94 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('newsletter-form');
++      var email = document.getElementById('newsletter-email');
++      var error = document.getElementById('newsletter-email-error');
++      var status = document.getElementById('newsletter-status');
++      var errorId = error.id;
++
++      // True once the user has blurred the field or attempted to submit.
++      // Errors are never shown (visually or to AT) before that point.
++      var interacted = false;
++
++      function messageFor(input) {
++        if (input.validity.valueMissing) {
++          return 'Please enter your email address.';
++        }
++        if (input.validity.typeMismatch) {
++          return 'Please enter a valid email address, like you@example.com.';
++        }
++        return '';
++      }
++
++      // Single source of truth: showing the visual message and flipping the
++      // accessible state happen together, so screen readers only announce an
++      // error when the message appears on screen.
++      function showError(message) {
++        if (error.textContent !== message) {
++          error.textContent = message;
++        }
++        email.setAttribute('aria-invalid', 'true');
++        email.setAttribute('aria-describedby', errorId);
++      }
++
++      function clearError() {
++        if (error.textContent !== '') {
++          error.textContent = '';
++        }
++        email.removeAttribute('aria-invalid');
++        email.removeAttribute('aria-describedby');
++      }
++
++      function sync() {
++        if (!interacted) {
++          return;
++        }
++        var message = messageFor(email);
++        if (message) {
++          showError(message);
++        } else {
++          clearError();
++        }
++      }
++
++      // First opportunity to surface an error: the user leaves the field.
++      email.addEventListener('blur', function () {
++        interacted = true;
++        sync();
++      });
++
++      // While typing: clear the error the moment the value becomes valid, and
++      // keep the message accurate if it is already visible. Before the first
++      // blur/submit this is a no-op, so no premature errors are announced.
++      email.addEventListener('input', function () {
++        if (status.textContent) {
++          status.textContent = '';
++        }
++        sync();
++      });
++
++      form.addEventListener('submit', function (event) {
++        interacted = true;
++        sync();
++        if (!email.validity.valid) {
++          event.preventDefault();
++          email.focus();
++          return;
++        }
++        // No backend in this static demo; acknowledge the subscription inline.
++        event.preventDefault();
++        status.textContent = 'Thanks! Check ' + email.value.trim() + ' to confirm your subscription.';
++        form.reset();
++        interacted = false;
++        clearError();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

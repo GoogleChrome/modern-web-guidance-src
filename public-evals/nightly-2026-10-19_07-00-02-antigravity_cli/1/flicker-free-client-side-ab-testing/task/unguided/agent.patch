@@ -1,0 +1,60 @@
+diff --git a/experiment-sdk.js b/experiment-sdk.js
+new file mode 100644
+--- a/experiment-sdk.js
++++ b/experiment-sdk.js
+@@ -0,0 +1,55 @@
++/**
++ * Experiment SDK Simulation
++ * Buckets users into control or variant and modifies the DOM to test copy & CTA changes.
++ */
++(function() {
++  function getVariant() {
++    var key = 'pulse_ab_variant';
++    var variant = null;
++    try {
++      variant = localStorage.getItem(key);
++    } catch(e) {}
++    if (!variant) {
++      variant = Math.random() < 0.5 ? 'control' : 'variant_b';
++      try {
++        localStorage.setItem(key, variant);
++      } catch(e) {}
++    }
++    return variant;
++  }
++
++  function applyExperiment() {
++    var variant = getVariant();
++    document.documentElement.setAttribute('data-ab-variant', variant);
++
++    if (variant === 'variant_b') {
++      var headline = document.querySelector('.hero-headline, #hero h1, .hero h1');
++      var cta = document.querySelector('.cta-button, #cta-button, .hero-cta');
++      var subtitle = document.querySelector('.hero-subtitle, .hero p');
++
++      if (headline) {
++        headline.innerHTML = 'Accelerate Your Growth with <span>Intelligent AI Workflows</span>';
++      }
++      if (subtitle) {
++        subtitle.textContent = 'Automate repetitive tasks, reduce cycle times by 65%, and empower your engineering team with autonomous execution.';
++      }
++      if (cta) {
++        cta.textContent = 'Claim Your Free Access Now →';
++      }
++    }
++
++    // Call standard reveal hooks once DOM modifications are complete
++    if (window.dataLayer && window.dataLayer.hide && typeof window.dataLayer.hide.end === 'function') {
++      window.dataLayer.hide.end();
++    }
++    if (window.__antiFlicker && typeof window.__antiFlicker.reveal === 'function') {
++      window.__antiFlicker.reveal();
++    }
++  }
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', applyExperiment);
++  } else {
++    applyExperiment();
++  }
++})();

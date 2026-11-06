@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,16 +11,76 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++      pointer-events: none;
++    }
++
++    /* Promo Alert */
++    #promo-alert {
++      background-color: var(--accent);
++      color: var(--text);
++      height: auto;
++      overflow: hidden;
++      opacity: 1;
++      transition: height 0.35s ease, opacity 0.35s ease;
++    }
++
++    #alert-toggle:checked + #promo-alert,
++    #promo-alert:has(#alert-toggle:checked) {
++      height: 0;
++      opacity: 0;
++    }
++
++    .promo-alert-inner {
++      padding: 0.75rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      font-size: 0.95rem;
++      font-weight: 500;
++    }
++
++    #alert-dismiss {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: rgba(62, 39, 35, 0.12);
++      color: var(--text);
++      border: 1px solid rgba(62, 39, 35, 0.25);
++      border-radius: 4px;
++      padding: 0.2rem 0.6rem;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      transition: background 0.2s ease;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(62, 39, 35, 0.22);
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+@@ -151,13 +211,113 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* FAQ Accordion Section */
++    .faq-section {
++      margin-top: 50px;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-accordion {
++      max-width: 750px;
++      margin: 0 auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      width: 100%;
++      padding: 18px 24px;
++      background: white;
++      color: var(--primary);
++      font-weight: 600;
++      font-size: 1.05rem;
++      cursor: pointer;
++      user-select: none;
++      transition: background-color 0.2s ease;
++    }
++
++    #faq-trigger:hover {
++      background-color: #f5f0ee;
++    }
++
++    .faq-icon {
++      display: inline-block;
++      font-size: 1.2rem;
++      line-height: 1;
++      transition: transform 0.35s ease;
++    }
++
++    #faq-toggle:checked ~ #faq-trigger .faq-icon {
++      transform: rotate(45deg);
++    }
++
++    #faq-content {
++      height: 0;
++      overflow: hidden;
++      opacity: 0;
++      transition: height 0.35s ease, opacity 0.35s ease;
++    }
++
++    #faq-toggle:checked ~ #faq-content,
++    .faq-accordion:has(#faq-toggle:checked) #faq-content {
++      height: auto;
++      opacity: 1;
++    }
++
++    .faq-content-inner {
++      padding: 0 24px 20px 24px;
++      border-top: 1px solid #efebe9;
++      padding-top: 16px;
++      color: var(--text);
++    }
++
++    @supports not (interpolate-size: allow-keywords) {
++      #promo-alert {
++        max-height: 120px;
++        transition: max-height 0.35s ease, opacity 0.35s ease;
++      }
++
++      #alert-toggle:checked + #promo-alert,
++      #promo-alert:has(#alert-toggle:checked) {
++        max-height: 0;
++      }
++
++      #faq-content {
++        height: auto;
++        max-height: 0;
++        transition: max-height 0.35s ease, opacity 0.35s ease;
++      }
++
++      #faq-toggle:checked ~ #faq-content,
++      .faq-accordion:has(#faq-toggle:checked) #faq-content {
++        max-height: 300px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <input type="checkbox" id="alert-toggle" class="sr-only">
++  <div id="promo-alert" role="region" aria-label="Promotional Alert">
++    <div class="promo-alert-inner">
++      <span>🍂 <strong>Seasonal Special:</strong> Enjoy 20% off your first Maple Oat Latte order with code <strong>MAPLE20</strong>!</span>
++      <label for="alert-toggle" id="alert-dismiss" role="button" tabindex="0" aria-label="Dismiss promotional alert">Dismiss &times;</label>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +354,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section">
++      <h2>Frequently Asked Questions</h2>
++      <div class="faq-accordion">
++        <input type="checkbox" id="faq-toggle" class="sr-only">
++        <label for="faq-toggle" id="faq-trigger" role="button" tabindex="0">
++          <span>How do you source and roast your coffee beans?</span>
++          <span class="faq-icon" aria-hidden="true">+</span>
++        </label>
++        <div id="faq-content">
++          <div class="faq-content-inner">
++            <p>We partner directly with sustainable, small-lot farms across Central and South America as well as East Africa. Every batch is roasted in-house daily in small quantities to ensure peak flavor and freshness in every cup.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,8 +194,14 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="card" style="margin-top: 30px; text-align: center;">
++      <h3>Account Security</h3>
++      <p style="margin-top: 10px;">Before making sensitive account changes, please re-authenticate your identity.</p>
++      <button id="reauth-btn" data-testid="reauth-button" class="btn">Confirm Identity</button>
++      <div id="reauth-status" style="margin-top: 15px;"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +212,150 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function base64URLToBuffer(base64URL) {
++      if (base64URL instanceof ArrayBuffer) return base64URL;
++      if (ArrayBuffer.isView(base64URL)) return base64URL.buffer;
++      const base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
++      const padLen = (4 - (base64.length % 4)) % 4;
++      const padded = base64.padEnd(base64.length + padLen, '=');
++      const binary = atob(padded);
++      const bytes = new Uint8Array(binary.length);
++      for (let i = 0; i < binary.length; i++) {
++        bytes[i] = binary.charCodeAt(i);
++      }
++      return bytes.buffer;
++    }
++
++    function bufferToBase64URL(buffer) {
++      if (!buffer) return null;
++      const bytes = new Uint8Array(buffer);
++      let binary = '';
++      for (let i = 0; i < bytes.byteLength; i++) {
++        binary += String.fromCharCode(bytes[i]);
++      }
++      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
++    }
++
++    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
++      if (!PublicKeyCredential.parseRequestOptionsFromJSON) {
++        PublicKeyCredential.parseRequestOptionsFromJSON = function (options) {
++          const challenge = base64URLToBuffer(options.challenge);
++          const allowCredentials = options.allowCredentials?.map((cred) => ({
++            ...cred,
++            id: typeof cred.id === 'string' ? base64URLToBuffer(cred.id) : cred.id,
++          })) ?? [];
++          return {
++            ...options,
++            allowCredentials,
++            challenge,
++          };
++        };
++      }
++      if (!PublicKeyCredential.prototype.toJSON) {
++        PublicKeyCredential.prototype.toJSON = function () {
++          return {
++            id: this.id,
++            rawId: bufferToBase64URL(this.rawId),
++            response: {
++              authenticatorData: this.response.authenticatorData ? bufferToBase64URL(this.response.authenticatorData) : undefined,
++              clientDataJSON: this.response.clientDataJSON ? bufferToBase64URL(this.response.clientDataJSON) : undefined,
++              signature: this.response.signature ? bufferToBase64URL(this.response.signature) : undefined,
++              userHandle: this.response.userHandle ? bufferToBase64URL(this.response.userHandle) : null,
++            },
++            type: this.type,
++            authenticatorAttachment: this.authenticatorAttachment,
++          };
++        };
++      }
++    }
++
++    let reauthAbortController = new AbortController();
++
++    function showTransactionSuccessUI() {
++      const statusEl = document.getElementById("reauth-status");
++      if (statusEl) {
++        statusEl.textContent = "Identity verified successfully.";
++        statusEl.style.color = "green";
++      }
++    }
++
++    function showTransactionErrorUI(msg) {
++      const statusEl = document.getElementById("reauth-status");
++      if (statusEl) {
++        statusEl.textContent = msg || "Identity verification failed.";
++        statusEl.style.color = "red";
++      }
++    }
++
++    async function triggerButtonReauth() {
++      // Abort any background suggestion flows to avoid passkey prompt collisions
++      reauthAbortController.abort();
++      reauthAbortController = new AbortController();
++
++      try {
++        const optionsResponse = await fetch("/api/reauth/options", {
++          method: "POST",
++        });
++        const optionsJSON = await optionsResponse.json();
++        const rawOptions = optionsJSON.publicKey || optionsJSON;
++        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(rawOptions);
++
++        const credential = await navigator.credentials.get({
++          publicKey,
++          signal: reauthAbortController.signal,
++        });
++
++        if (credential) {
++          const encodedCredential = typeof credential.toJSON === 'function'
++            ? credential.toJSON()
++            : {
++                id: credential.id,
++                rawId: bufferToBase64URL(credential.rawId),
++                response: {
++                  authenticatorData: bufferToBase64URL(credential.response.authenticatorData),
++                  clientDataJSON: bufferToBase64URL(credential.response.clientDataJSON),
++                  signature: bufferToBase64URL(credential.response.signature),
++                  userHandle: credential.response.userHandle ? bufferToBase64URL(credential.response.userHandle) : null,
++                },
++                type: credential.type,
++                authenticatorAttachment: credential.authenticatorAttachment,
++              };
++
++          const verifyResponse = await fetch("/api/reauth/verify", {
++            method: "POST",
++            headers: { "Content-Type": "application/json" },
++            body: JSON.stringify(encodedCredential),
++          });
++
++          if (verifyResponse.ok) {
++            showTransactionSuccessUI();
++          } else if (verifyResponse.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++            const rpId = rawOptions.rpId || window.location.hostname;
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId,
++              credentialId: encodedCredential.id,
++            });
++            showTransactionErrorUI();
++          } else {
++            showTransactionErrorUI();
++          }
++        }
++      } catch (err) {
++        if (err.name === "NotAllowedError") {
++          console.log("User cancelled reauthentication.");
++        } else {
++          console.error("Reauthentication error:", err);
++        }
++      }
++    }
++
++    const reauthButton = document.querySelector('[data-testid="reauth-button"]') || document.getElementById('reauth-btn');
++    if (reauthButton) {
++      reauthButton.addEventListener("click", triggerButtonReauth);
++    }
++  </script>
+ </body>
+ 
+ </html>

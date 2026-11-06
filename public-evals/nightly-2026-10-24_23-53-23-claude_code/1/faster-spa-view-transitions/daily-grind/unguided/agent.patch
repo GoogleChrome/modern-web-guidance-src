@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+index 66c9173..1cbb96a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,15 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .view[hidden] {
++      display: none;
++    }
++
++    .view-page h1 {
++      margin-bottom: 1rem;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+@@ -168,6 +177,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="views">
++  <div class="view" data-view="/">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -196,6 +207,8 @@
+       </div>
+     </section>
+   </main>
++  </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +220,97 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Minimal SPA router. Each visited view keeps its DOM (hidden while inactive),
++    // so returning to it is a show/hide toggle rather than a rebuild.
++    (function () {
++      var root = document.getElementById('views');
++      var views = new Map(); // path -> { el, scroll }
++      var current = null;
++
++      var TITLES = {
++        '/menu': 'Menu',
++        '/locations': 'Locations',
++        '/rewards': 'Rewards',
++        '/account': 'My Account',
++        '/logout': 'Logout',
++        '/order-online': 'Order Online',
++        '/menu/seasonal': 'Seasonal Favorites',
++        '/menu/espresso': 'Dark Roast Espresso',
++        '/menu/cold-brew': 'Cold Brew',
++        '/about': 'Our Story',
++        '/careers': 'Join the Team',
++        '/contact': 'Contact Us',
++        '/privacy-policy': 'Privacy'
++      };
++
++      var homeEl = root.querySelector('[data-view="/"]');
++      views.set('/', { el: homeEl, scroll: 0 });
++      current = '/';
++
++      function normalize(path) {
++        return path.length > 1 ? path.replace(/\/+$/, '') : path;
++      }
++
++      function build(path) {
++        var el = document.createElement('div');
++        el.className = 'view';
++        el.dataset.view = path;
++        el.hidden = true;
++        var main = document.createElement('main');
++        main.className = 'container view-page';
++        var h1 = document.createElement('h1');
++        h1.textContent = TITLES[path] || 'Page Not Found';
++        var p = document.createElement('p');
++        p.textContent = TITLES[path] ? 'Content for this page is coming soon.' : 'We couldn\u2019t find that page.';
++        var back = document.createElement('a');
++        back.href = '/';
++        back.className = 'btn';
++        back.textContent = 'Back to Home';
++        main.append(h1, p, back);
++        el.appendChild(main);
++        root.appendChild(el);
++        return { el: el, scroll: 0 };
++      }
++
++      function show(path) {
++        path = normalize(path);
++        if (path === current) return;
++        var prev = views.get(current);
++        prev.scroll = window.scrollY;
++        prev.el.hidden = true;
++
++        var next = views.get(path);
++        if (!next) {
++          next = build(path);
++          views.set(path, next);
++        }
++        next.el.hidden = false;
++        current = path;
++        document.title = (TITLES[path] ? TITLES[path] + ' | ' : '') + 'The Daily Grind | Artisanal Coffee';
++        window.scrollTo(0, next.scroll);
++      }
++
++      document.addEventListener('click', function (e) {
++        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++        var a = e.target.closest('a[href]');
++        if (!a || a.target || a.origin !== location.origin) return;
++        e.preventDefault();
++        if (normalize(a.pathname) !== current) history.pushState(null, '', a.pathname);
++        show(a.pathname);
++      });
++
++      window.addEventListener('popstate', function () {
++        show(location.pathname);
++      });
++
++      // Initial load on a deep link: render that view.
++      if (normalize(location.pathname) !== '/' && !/\/index\.html$/.test(location.pathname)) {
++        show(location.pathname);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

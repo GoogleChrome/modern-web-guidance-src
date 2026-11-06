@@ -1,0 +1,312 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,184 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* World Calendar Converter */
++    .calendar-tool {
++      margin-top: 60px;
++    }
++
++    .calendar-tool h2,
++    .calendar-tool .calendar-intro {
++      text-align: center;
++    }
++
++    .calendar-intro {
++      max-width: 700px;
++      margin: 10px auto 0;
++      color: #6d4c41;
++    }
++
++    .calendar-picker {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++      margin: 20px 0 5px;
++    }
++
++    .calendar-picker label {
++      font-weight: 600;
++    }
++
++    .calendar-picker input {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++    }
++
++    .calendar-picker input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .calendar-picker input[aria-invalid="true"] {
++      border-color: #c62828;
++    }
++
++    .calendar-engine {
++      text-align: center;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      min-height: 1.4em;
++    }
++
++    .calendar-grid {
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++    }
++
++    .calendar-card {
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .calendar-card header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .calendar-card h3 {
++      margin: 0;
++    }
++
++    .calendar-status {
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 3px 10px;
++      border-radius: 999px;
++      background: var(--secondary);
++      white-space: nowrap;
++    }
++
++    .calendar-status[data-status="past"] {
++      background: #eceff1;
++      color: #455a64;
++    }
++
++    .calendar-status[data-status="today"] {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .calendar-status[data-status="future"] {
++      background: #fff3e0;
++      color: #e65100;
++    }
++
++    .calendar-formatted {
++      font-size: 1.2rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .calendar-native {
++      font-size: 1.05rem;
++      color: #6d4c41;
++    }
++
++    .calendar-native:empty,
++    .calendar-relative:empty {
++      display: none;
++    }
++
++    .calendar-relative {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .calendar-facts {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 4px 12px;
++      font-size: 0.9rem;
++    }
++
++    .calendar-facts dt {
++      font-weight: 600;
++    }
++
++    .calendar-facts dd {
++      font-variant-numeric: tabular-nums;
++    }
++
++    .calendar-months summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .calendar-months table {
++      width: 100%;
++      border-collapse: collapse;
++      margin-top: 8px;
++      font-size: 0.85rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .calendar-months th,
++    .calendar-months td {
++      padding: 4px 6px;
++      border-bottom: 1px solid #efebe9;
++      text-align: left;
++    }
++
++    .calendar-months th:last-child,
++    .calendar-months td:last-child {
++      text-align: right;
++    }
++
++    .calendar-months tr.is-selected td {
++      background: #fff8e1;
++      font-weight: 700;
++    }
++
++    .calendar-note {
++      margin-top: 15px;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -152,8 +328,23 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <!-- Pinned Temporal polyfill, only fetched when native Temporal lacks the needed calendars.
++       Integrity hashes cover the entry module and its chunks (npm files are immutable). -->
++  <script type="importmap">
++    {
++      "imports": {
++        "temporal-polyfill": "https://cdn.jsdelivr.net/npm/temporal-polyfill@0.3.0/index.js"
++      },
++      "integrity": {
++        "https://cdn.jsdelivr.net/npm/temporal-polyfill@0.3.0/index.js": "sha256-qv0jQlSP/GUShwxVayW7ynMS39UrWDVfp4m8lSWaQlA=",
++        "https://cdn.jsdelivr.net/npm/temporal-polyfill@0.3.0/chunks/classApi.js": "sha256-XcjNIkA5pVswgHaUK1+xTELf7Xz0uVWeXRYZk2G572k=",
++        "https://cdn.jsdelivr.net/npm/temporal-polyfill@0.3.0/chunks/internal.js": "sha256-0JUR3A3hvAnJzaQjzpF43YrjwRJJB/fXG90Z+Cs+Cgo="
++      }
++    }
++  </script>
++  <script type="module" src="/js/calendar-converter.js"></script>
+ </head>
+ 
+ <body>
+ 
+@@ -194,8 +385,99 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="world-calendars" class="calendar-tool" aria-labelledby="world-calendars-title">
++      <h2 id="world-calendars-title">Celebrate Around the World</h2>
++      <p class="calendar-intro">Planning a visit for a holiday or special occasion? Pick any date to see it in the
++        Islamic, Hebrew, and Japanese calendars.</p>
++      <div class="calendar-picker">
++        <label for="calendar-date-input">Choose a date</label>
++        <input type="date" id="calendar-date-input" min="0001-01-01" max="9999-12-31" disabled>
++      </div>
++      <p class="calendar-engine" data-field="engine" role="status">Loading calendars…</p>
++      <div class="grid calendar-grid" aria-live="polite">
++        <article class="card calendar-card" data-calendar="islamic-umalqura">
++          <header>
++            <h3>Islamic (Umm al-Qura)</h3>
++            <span class="calendar-status" data-field="status">…</span>
++          </header>
++          <p class="calendar-formatted" id="islamic-date" data-field="formatted">Loading…</p>
++          <p class="calendar-native" data-field="native"></p>
++          <p class="calendar-relative" data-field="relative"></p>
++          <dl class="calendar-facts">
++            <dt>Era</dt><dd data-field="era">—</dd>
++            <dt>Year</dt><dd data-field="year">—</dd>
++            <dt>Month</dt><dd data-field="month">—</dd>
++            <dt>Month code</dt><dd><code data-field="monthCode">—</code></dd>
++            <dt>Months in year</dt><dd data-field="monthsInYear">—</dd>
++          </dl>
++          <details class="calendar-months">
++            <summary>Month breakdown</summary>
++            <table>
++              <thead>
++                <tr><th scope="col">#</th><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Days</th></tr>
++              </thead>
++              <tbody data-field="months"></tbody>
++            </table>
++          </details>
++        </article>
++        <article class="card calendar-card" data-calendar="hebrew">
++          <header>
++            <h3>Hebrew</h3>
++            <span class="calendar-status" data-field="status">…</span>
++          </header>
++          <p class="calendar-formatted" data-field="formatted">Loading…</p>
++          <p class="calendar-native" data-field="native"></p>
++          <p class="calendar-relative" data-field="relative"></p>
++          <dl class="calendar-facts">
++            <dt>Era</dt><dd data-field="era">—</dd>
++            <dt>Year</dt><dd data-field="year">—</dd>
++            <dt>Month</dt><dd data-field="month">—</dd>
++            <dt>Month code</dt><dd><code data-field="monthCode">—</code></dd>
++            <dt>Months in year</dt><dd data-field="monthsInYear">—</dd>
++          </dl>
++          <details class="calendar-months">
++            <summary>Month breakdown</summary>
++            <table>
++              <thead>
++                <tr><th scope="col">#</th><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Days</th></tr>
++              </thead>
++              <tbody data-field="months"></tbody>
++            </table>
++          </details>
++        </article>
++        <article class="card calendar-card" data-calendar="japanese">
++          <header>
++            <h3>Japanese</h3>
++            <span class="calendar-status" data-field="status">…</span>
++          </header>
++          <p class="calendar-formatted" data-field="formatted">Loading…</p>
++          <p class="calendar-native" data-field="native"></p>
++          <p class="calendar-relative" data-field="relative"></p>
++          <dl class="calendar-facts">
++            <dt>Era</dt><dd data-field="era">—</dd>
++            <dt>Year</dt><dd data-field="year">—</dd>
++            <dt>Month</dt><dd data-field="month">—</dd>
++            <dt>Month code</dt><dd><code data-field="monthCode">—</code></dd>
++            <dt>Months in year</dt><dd data-field="monthsInYear">—</dd>
++          </dl>
++          <details class="calendar-months">
++            <summary>Month breakdown</summary>
++            <table>
++              <thead>
++                <tr><th scope="col">#</th><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Days</th></tr>
++              </thead>
++              <tbody data-field="months"></tbody>
++            </table>
++          </details>
++        </article>
++      </div>
++      <p class="calendar-note">Islamic and Hebrew days traditionally begin at sunset; dates shown are for daytime
++        on the chosen civil date. Umm al-Qura is Saudi Arabia's official calendar; local observances based on
++        moon sighting may differ by a day.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

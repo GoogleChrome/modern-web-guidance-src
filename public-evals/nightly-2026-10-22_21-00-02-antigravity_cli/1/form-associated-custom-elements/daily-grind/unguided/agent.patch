@@ -1,0 +1,790 @@
+diff --git a/index.html b/index.html
+index 66c9173..07a88be 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,110 @@
+       background: #3e2723;
+     }
+ 
++    /* Order Form & Custom Control Section */
++    .order-section {
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++      margin-top: 40px;
++    }
++
++    .order-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      text-align: center;
++    }
++
++    .order-section > p {
++      text-align: center;
++      margin-bottom: 24px;
++      color: #6d4c41;
++    }
++
++    .form-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      margin-bottom: 20px;
++    }
++
++    .form-fieldset legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 8px;
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++      cursor: pointer;
++    }
++
++    .form-group input[type="text"],
++    .form-group select {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 1rem;
++      color: var(--text);
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      margin-top: 20px;
++    }
++
++    .form-actions button {
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: #8d6e63;
++      color: white;
++      padding: 10px 20px;
++      border-radius: 5px;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary) !important;
++      padding: 9px 16px;
++      border-radius: 5px;
++    }
++
++    .form-output {
++      margin-top: 20px;
++      padding: 16px;
++      border-radius: 6px;
++      background: #efebe9;
++      font-family: monospace;
++      font-size: 0.9rem;
++      white-space: pre-wrap;
++    }
++
++    roast-selector {
++      display: block;
++      margin-top: 4px;
++    }
++
++    roast-selector:invalid {
++      outline: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +299,55 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="order-section" id="custom-order">
++      <h2>Custom Roast Order</h2>
++      <p>Select your preferred roast profile using our native form-associated custom control.</p>
++
++      <form id="roast-order-form">
++        <fieldset id="order-fieldset" class="form-fieldset">
++          <legend>Bean Customization</legend>
++
++          <div class="form-group">
++            <label for="customer-name">Customer Name</label>
++            <input type="text" id="customer-name" name="customerName" value="Alex Rivera" required>
++          </div>
++
++          <div class="form-group">
++            <label id="roast-label" for="roast-control">Roast Level (1 = Light Blonde, 5 = Dark Espresso)</label>
++            <roast-selector
++              id="roast-control"
++              name="roastLevel"
++              value="3"
++              min="1"
++              max="5"
++              required
++              aria-labelledby="roast-label"
++            ></roast-selector>
++          </div>
++
++          <div class="form-group">
++            <label for="grind-type">Grind Style</label>
++            <select id="grind-type" name="grindType">
++              <option value="whole-bean">Whole Bean</option>
++              <option value="pour-over">Pour Over</option>
++              <option value="espresso">Espresso Fine</option>
++              <option value="french-press">French Press Coarse</option>
++            </select>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <button type="submit" class="btn" id="submit-btn">Place Order</button>
++          <button type="reset" class="btn-secondary" id="reset-btn">Reset Form</button>
++          <button type="button" class="btn-outline" id="toggle-disable-btn">Toggle Disabled</button>
++          <button type="button" class="btn-outline" id="clear-value-btn">Clear Roast (Test Required)</button>
++          <button type="button" class="btn-outline" id="restore-state-btn">Simulate State Restore</button>
++        </div>
++      </form>
++
++      <div id="form-output" class="form-output" aria-live="polite">Ready to submit order.</div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +360,618 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const ROAST_LEVELS = [
++      { level: '1', name: 'Light Blonde', notes: 'Bright & Citrusy' },
++      { level: '2', name: 'Cinnamon Medium-Light', notes: 'Floral & Honey' },
++      { level: '3', name: 'City Medium', notes: 'Balanced Caramel' },
++      { level: '4', name: 'Full City Dark', notes: 'Rich Bittersweet Cocoa' },
++      { level: '5', name: 'French Espresso', notes: 'Bold & Smokey' }
++    ];
++
++    class RoastSelector extends HTMLElement {
++      static formAssociated = true;
++
++      static get observedAttributes() {
++        return ['value', 'disabled', 'required', 'min', 'max', 'pattern', 'name'];
++      }
++
++      constructor() {
++        super();
++        this._internals = this.attachInternals();
++        this._shadow = this.attachShadow({ mode: 'open', delegatesFocus: true });
++
++        this._defaultValue = this.getAttribute('value') || '';
++        this._value = this._defaultValue;
++        this._dirty = false;
++        this._disabled = this.hasAttribute('disabled');
++        this._customErrorMessage = '';
++        this._associatedForm = null;
++
++        this._render();
++        this._syncFormValue();
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      /* Form-associated lifecycle callbacks */
++
++      formAssociatedCallback(form) {
++        this._associatedForm = form;
++        this.dispatchEvent(new CustomEvent('form-associated', {
++          detail: { form },
++          bubbles: false
++        }));
++      }
++
++      formDisabledCallback(disabled) {
++        this._disabled = Boolean(disabled);
++        this._setCustomState('disabled', this._disabled);
++        this._syncFormValue();
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      formResetCallback() {
++        this._dirty = false;
++        this._customErrorMessage = '';
++        this._value = this.getAttribute('value') || '';
++        this._syncFormValue();
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      formStateRestoreCallback(state, mode) {
++        this._dirty = true;
++        if (state instanceof FormData) {
++          const entry = this.name ? state.get(this.name) : Array.from(state.values())[0];
++          this._value = entry !== null && entry !== undefined ? String(entry) : '';
++        } else if (typeof state === 'string') {
++          try {
++            const parsed = JSON.parse(state);
++            if (parsed && typeof parsed === 'object' && 'value' in parsed) {
++              this._value = String(parsed.value ?? '');
++            } else {
++              this._value = state;
++            }
++          } catch {
++            this._value = state;
++          }
++        } else {
++          this._value = '';
++        }
++        this._lastRestoreMode = mode;
++        this._syncFormValue();
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      /* Standard HTMLElement lifecycle callbacks */
++
++      connectedCallback() {
++        if (!this.hasAttribute('role')) {
++          this._internals.role = 'radiogroup';
++        }
++        if (!this._dirty && this.hasAttribute('value')) {
++          this._defaultValue = this.getAttribute('value') || '';
++          this._value = this._defaultValue;
++        }
++        this._disabled = this.hasAttribute('disabled') || this._disabled;
++        this._syncFormValue();
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      attributeChangedCallback(name, oldValue, newValue) {
++        if (oldValue === newValue) return;
++
++        if (name === 'value') {
++          this._defaultValue = newValue !== null ? newValue : '';
++          if (!this._dirty) {
++            this._value = this._defaultValue;
++            this._syncFormValue();
++          }
++        } else if (name === 'disabled') {
++          this._disabled = newValue !== null;
++        }
++
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      /* Form Control Properties */
++
++      get form() {
++        return this._internals.form;
++      }
++
++      get name() {
++        return this.getAttribute('name') || '';
++      }
++
++      set name(val) {
++        if (val === null || val === undefined) {
++          this.removeAttribute('name');
++        } else {
++          this.setAttribute('name', String(val));
++        }
++      }
++
++      get type() {
++        return this.localName;
++      }
++
++      get labels() {
++        return this._internals.labels;
++      }
++
++      get defaultValue() {
++        return this.getAttribute('value') || '';
++      }
++
++      set defaultValue(val) {
++        this.setAttribute('value', val ?? '');
++      }
++
++      get value() {
++        return this._value;
++      }
++
++      set value(val) {
++        const nextVal = val === null || val === undefined ? '' : String(val);
++        this._dirty = true;
++        this._value = nextVal;
++        this._syncFormValue();
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      get disabled() {
++        return this._disabled || this.hasAttribute('disabled');
++      }
++
++      set disabled(val) {
++        const isDisabled = Boolean(val);
++        this._disabled = isDisabled;
++        if (isDisabled) {
++          this.setAttribute('disabled', '');
++        } else {
++          this.removeAttribute('disabled');
++        }
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      get required() {
++        return this.hasAttribute('required');
++      }
++
++      set required(val) {
++        if (val) {
++          this.setAttribute('required', '');
++        } else {
++          this.removeAttribute('required');
++        }
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      get min() {
++        return this.getAttribute('min') || '';
++      }
++
++      set min(val) {
++        if (val === null || val === undefined || val === '') {
++          this.removeAttribute('min');
++        } else {
++          this.setAttribute('min', String(val));
++        }
++      }
++
++      get max() {
++        return this.getAttribute('max') || '';
++      }
++
++      set max(val) {
++        if (val === null || val === undefined || val === '') {
++          this.removeAttribute('max');
++        } else {
++          this.setAttribute('max', String(val));
++        }
++      }
++
++      /* Constraint Validation API */
++
++      get validity() {
++        return this._internals.validity;
++      }
++
++      get validationMessage() {
++        return this._internals.validationMessage;
++      }
++
++      get willValidate() {
++        return this._internals.willValidate;
++      }
++
++      checkValidity() {
++        this._updateValidity();
++        return this._internals.checkValidity();
++      }
++
++      reportValidity() {
++        this._updateValidity();
++        const valid = this._internals.reportValidity();
++        this._updateUI();
++        return valid;
++      }
++
++      setCustomValidity(message) {
++        this._customErrorMessage = message ? String(message) : '';
++        this._updateValidity();
++        this._updateUI();
++      }
++
++      /* Internal helpers */
++
++      _setCustomState(stateName, active) {
++        if (!this._internals.states) return;
++        if (active) {
++          this._internals.states.add(stateName);
++        } else {
++          this._internals.states.delete(stateName);
++        }
++      }
++
++      _syncFormValue() {
++        if (this.disabled || this._value === '') {
++          this._internals.setFormValue(null, JSON.stringify({ value: this._value }));
++        } else {
++          const statePayload = JSON.stringify({
++            value: this._value,
++            roastName: this._getRoastByLevel(this._value)?.name || ''
++          });
++          this._internals.setFormValue(this._value, statePayload);
++        }
++      }
++
++      _updateValidity() {
++        const anchor = this._shadow.querySelector('.roast-option') || this._focusAnchor;
++
++        if (this.disabled) {
++          this._internals.setValidity({});
++          this._setCustomState('invalid', false);
++          this._setCustomState('valid', false);
++          return;
++        }
++
++        const flags = {};
++        let message = '';
++
++        if (this._customErrorMessage) {
++          flags.customError = true;
++          message = this._customErrorMessage;
++        }
++
++        if (this.required && (!this._value || this._value.trim() === '')) {
++          flags.valueMissing = true;
++          if (!message) {
++            message = 'Please select a roast level.';
++          }
++        }
++
++        if (this._value !== '') {
++          const numericValue = Number(this._value);
++          const minAttr = this.getAttribute('min');
++          const maxAttr = this.getAttribute('max');
++          const patternAttr = this.getAttribute('pattern');
++
++          if (Number.isNaN(numericValue)) {
++            flags.badInput = true;
++            if (!message) {
++              message = 'Roast level must be a valid number.';
++            }
++          } else {
++            if (minAttr !== null && minAttr !== '' && numericValue < Number(minAttr)) {
++              flags.rangeUnderflow = true;
++              if (!message) {
++                message = `Roast level must be at least ${minAttr}.`;
++              }
++            }
++            if (maxAttr !== null && maxAttr !== '' && numericValue > Number(maxAttr)) {
++              flags.rangeOverflow = true;
++              if (!message) {
++                message = `Roast level must be at most ${maxAttr}.`;
++              }
++            }
++          }
++
++          if (patternAttr) {
++            const regex = new RegExp(`^(?:${patternAttr})$`);
++            if (!regex.test(this._value)) {
++              flags.patternMismatch = true;
++              if (!message) {
++                message = 'Selected value does not match the required pattern.';
++              }
++            }
++          }
++        }
++
++        if (Object.keys(flags).length > 0) {
++          this._internals.setValidity(flags, message, anchor);
++          this._setCustomState('invalid', true);
++          this._setCustomState('valid', false);
++        } else {
++          this._internals.setValidity({});
++          this._setCustomState('invalid', false);
++          this._setCustomState('valid', true);
++        }
++      }
++
++      _getRoastByLevel(level) {
++        return ROAST_LEVELS.find((item) => item.level === String(level));
++      }
++
++      _selectValue(newValue, userInitiated = false) {
++        if (this.disabled) return;
++        const normalized = newValue === null || newValue === undefined ? '' : String(newValue);
++        const changed = this._value !== normalized;
++        this._dirty = true;
++        if (userInitiated && this._customErrorMessage) {
++          this._customErrorMessage = '';
++        }
++        this._value = normalized;
++        this._syncFormValue();
++        this._updateValidity();
++        this._updateUI();
++
++        if (userInitiated && changed) {
++          this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
++          this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
++        }
++      }
++
++      _handleKeyDown(event) {
++        if (this.disabled) return;
++        const levels = ROAST_LEVELS.map((r) => r.level);
++        const currentIndex = levels.indexOf(String(this._value));
++
++        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
++          event.preventDefault();
++          const nextIndex = currentIndex < 0 ? 0 : Math.min(levels.length - 1, currentIndex + 1);
++          this._selectValue(levels[nextIndex], true);
++          this._focusSelectedButton();
++        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
++          event.preventDefault();
++          const prevIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
++          this._selectValue(levels[prevIndex], true);
++          this._focusSelectedButton();
++        } else if (event.key === 'Backspace' || event.key === 'Delete') {
++          event.preventDefault();
++          this._selectValue('', true);
++        }
++      }
++
++      _focusSelectedButton() {
++        const selectedBtn = this._shadow.querySelector(`.roast-option[data-level="${this._value}"]`)
++          || this._shadow.querySelector('.roast-option');
++        if (selectedBtn) {
++          selectedBtn.focus();
++        }
++      }
++
++      _render() {
++        this._shadow.innerHTML = `
++          <style>
++            :host {
++              display: block;
++              font-family: inherit;
++            }
++            .wrapper {
++              border: 2px solid #d7ccc8;
++              border-radius: 8px;
++              padding: 12px;
++              background: #fffdfb;
++              transition: border-color 0.2s, opacity 0.2s;
++            }
++            :host(:invalid) .wrapper {
++              border-color: #c62828;
++              background: #fff8f8;
++            }
++            :host([disabled]) .wrapper,
++            .wrapper.is-disabled {
++              opacity: 0.6;
++              background: #f5f5f5;
++              cursor: not-allowed;
++            }
++            .options-grid {
++              display: grid;
++              grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
++              gap: 10px;
++            }
++            .roast-option {
++              display: flex;
++              flex-direction: column;
++              align-items: flex-start;
++              padding: 10px 12px;
++              border: 2px solid #d7ccc8;
++              border-radius: 6px;
++              background: white;
++              color: #3e2723;
++              cursor: pointer;
++              text-align: left;
++              font-family: inherit;
++              transition: all 0.15s ease;
++            }
++            .roast-option:hover:not(:disabled) {
++              border-color: #8d6e63;
++              background: #fbe9e7;
++            }
++            .roast-option:focus-visible {
++              outline: 2px solid #ffab40;
++              outline-offset: 2px;
++            }
++            .roast-option[aria-checked="true"] {
++              border-color: #4e342e;
++              background: #4e342e;
++              color: white;
++            }
++            .roast-option:disabled {
++              cursor: not-allowed;
++            }
++            .level-badge {
++              font-size: 0.75rem;
++              font-weight: 700;
++              text-transform: uppercase;
++              opacity: 0.85;
++              margin-bottom: 2px;
++            }
++            .roast-name {
++              font-size: 0.95rem;
++              font-weight: 600;
++            }
++            .roast-notes {
++              font-size: 0.78rem;
++              opacity: 0.8;
++              margin-top: 2px;
++            }
++            .status-bar {
++              display: flex;
++              justify-content: space-between;
++              align-items: center;
++              margin-top: 10px;
++              font-size: 0.85rem;
++              color: #5d4037;
++            }
++            .validation-msg {
++              color: #c62828;
++              font-weight: 600;
++            }
++          </style>
++          <div class="wrapper" part="wrapper">
++            <div class="options-grid" role="presentation">
++              ${ROAST_LEVELS.map((r) => `
++                <button
++                  type="button"
++                  class="roast-option"
++                  role="radio"
++                  data-level="${r.level}"
++                  aria-checked="false"
++                >
++                  <span class="level-badge">Level ${r.level}</span>
++                  <span class="roast-name">${r.name}</span>
++                  <span class="roast-notes">${r.notes}</span>
++                </button>
++              `).join('')}
++            </div>
++            <div class="status-bar">
++              <span class="selected-summary"></span>
++              <span class="validation-msg" aria-live="polite"></span>
++            </div>
++          </div>
++        `;
++
++        this._wrapper = this._shadow.querySelector('.wrapper');
++        this._buttons = Array.from(this._shadow.querySelectorAll('.roast-option'));
++        this._focusAnchor = this._buttons[0];
++        this._summaryEl = this._shadow.querySelector('.selected-summary');
++        this._validationEl = this._shadow.querySelector('.validation-msg');
++
++        this._buttons.forEach((btn) => {
++          btn.addEventListener('click', () => {
++            this._selectValue(btn.dataset.level, true);
++          });
++        });
++
++        this._shadow.addEventListener('keydown', (e) => this._handleKeyDown(e));
++      }
++
++      _updateUI() {
++        if (!this._wrapper) return;
++        const isDisabled = this.disabled;
++
++        this._wrapper.classList.toggle('is-disabled', isDisabled);
++        this.setAttribute('aria-disabled', String(isDisabled));
++        this.setAttribute('aria-required', String(this.required));
++        this.setAttribute('aria-invalid', String(!this.validity.valid));
++
++        this._buttons.forEach((btn, idx) => {
++          const isSelected = btn.dataset.level === String(this._value);
++          btn.disabled = isDisabled;
++          btn.setAttribute('aria-checked', String(isSelected));
++          if (isDisabled) {
++            btn.tabIndex = -1;
++          } else if (isSelected || (!this._value && idx === 0)) {
++            btn.tabIndex = 0;
++          } else {
++            btn.tabIndex = -1;
++          }
++        });
++
++        const selectedRoast = this._getRoastByLevel(this._value);
++        if (isDisabled) {
++          this._summaryEl.textContent = selectedRoast
++            ? `Selected: Level ${selectedRoast.level} (${selectedRoast.name}) [Disabled]`
++            : 'No roast selected [Disabled]';
++        } else if (selectedRoast) {
++          this._summaryEl.textContent = `Selected: Level ${selectedRoast.level} — ${selectedRoast.name}`;
++        } else if (this._value) {
++          this._summaryEl.textContent = `Selected: Level ${this._value}`;
++        } else {
++          this._summaryEl.textContent = 'No roast level selected';
++        }
++
++        this._validationEl.textContent = !this.validity.valid ? this.validationMessage : '';
++      }
++    }
++
++    if (!customElements.get('roast-selector')) {
++      customElements.define('roast-selector', RoastSelector);
++    }
++
++    /* Interactive Demo Form Wiring */
++    const form = document.getElementById('roast-order-form');
++    const fieldset = document.getElementById('order-fieldset');
++    const roastControl = document.getElementById('roast-control');
++    const output = document.getElementById('form-output');
++    const toggleDisableBtn = document.getElementById('toggle-disable-btn');
++    const clearValueBtn = document.getElementById('clear-value-btn');
++    const restoreStateBtn = document.getElementById('restore-state-btn');
++
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!form.checkValidity()) {
++        form.reportValidity();
++        output.textContent = `Validation failed: ${roastControl.validationMessage}`;
++        return;
++      }
++      const data = new FormData(form);
++      const entries = Object.fromEntries(data.entries());
++      output.textContent = `Submitted FormData: ${JSON.stringify(entries, null, 2)}`;
++    });
++
++    form.addEventListener('reset', () => {
++      requestAnimationFrame(() => {
++        output.textContent = `Form reset. Roast level restored to default (${roastControl.value}).`;
++      });
++    });
++
++    toggleDisableBtn.addEventListener('click', () => {
++      fieldset.disabled = !fieldset.disabled;
++      output.textContent = `Fieldset disabled: ${fieldset.disabled} (roastControl.disabled = ${roastControl.disabled})`;
++    });
++
++    clearValueBtn.addEventListener('click', () => {
++      roastControl.value = '';
++      roastControl.reportValidity();
++      output.textContent = `Roast cleared. Valid: ${roastControl.checkValidity()} — "${roastControl.validationMessage}"`;
++    });
++
++    restoreStateBtn.addEventListener('click', () => {
++      roastControl.formStateRestoreCallback(JSON.stringify({ value: '5' }), 'restore');
++      output.textContent = `Restored state to Level ${roastControl.value}.`;
++    });
++  </script>
+ </body>
+ 
+ </html>

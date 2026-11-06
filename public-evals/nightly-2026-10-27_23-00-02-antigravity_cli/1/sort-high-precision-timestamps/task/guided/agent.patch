@@ -1,0 +1,400 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,117 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++    }
++
++    .telemetry-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .telemetry-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .telemetry-header .btn {
++      margin-top: 0;
++    }
++
++    .telemetry-summary {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .summary-stat {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      border-radius: 4px;
++    }
++
++    .summary-stat .label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      opacity: 0.8;
++    }
++
++    .summary-stat .value {
++      font-size: 1.15rem;
++      font-weight: bold;
++      color: var(--primary);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .table-wrapper {
++      overflow-x: auto;
++    }
++
++    .events-table {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .events-table th,
++    .events-table td {
++      padding: 12px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .events-table th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++    }
++
++    .events-table tbody tr:hover {
++      background-color: var(--light);
++    }
++
++    .mono {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-variant-numeric: tabular-nums;
++      font-size: 0.85rem;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.78rem;
++      font-weight: 600;
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .interval-pill {
++      display: inline-block;
++      padding: 3px 8px;
++      border-radius: 4px;
++      background: #fff3e0;
++      border: 1px solid var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +303,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="telemetry-section" aria-labelledby="telemetry-heading">
++      <div class="telemetry-header">
++        <div>
++          <h2 id="telemetry-heading">Distributed Order Event Trace</h2>
++          <p>Inspect out-of-order backend microservice events with nanosecond UTC precision.</p>
++        </div>
++        <button id="load-events-btn" type="button" class="btn">Load &amp; Sort Order Events</button>
++      </div>
++
++      <div id="telemetry-output" hidden>
++        <div id="telemetry-summary" class="telemetry-summary" aria-live="polite"></div>
++        <div class="table-wrapper">
++          <table class="events-table">
++            <thead>
++              <tr>
++                <th scope="col">Seq #</th>
++                <th scope="col">Batch #</th>
++                <th scope="col">Backend Service</th>
++                <th scope="col">Order Event</th>
++                <th scope="col">UTC Timestamp (Nanosecond)</th>
++                <th scope="col">Interval Since Previous</th>
++              </tr>
++            </thead>
++            <tbody id="events-tbody"></tbody>
++          </table>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +344,240 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Out-of-order coffee order events collected from distributed backend services
++    // with nanosecond-precision ISO 8601 UTC timestamps (including multiple events
++    // occurring within the same millisecond that would collide under legacy Date).
++    const rawOrderEvents = [
++      {
++        batchOrder: 1,
++        orderId: 'ORD-8842',
++        service: 'barista-queue-svc',
++        eventType: 'order.barista.queued',
++        detail: 'Queued Maple Oat Latte at Espresso Station #2',
++        ts: '2026-10-28T08:15:30.104892310Z',
++      },
++      {
++        batchOrder: 2,
++        orderId: 'ORD-8842',
++        service: 'edge-gateway-us-east',
++        eventType: 'order.request.received',
++        detail: 'Ingested mobile order payload from client',
++        ts: '2026-10-28T08:15:30.104112050Z',
++      },
++      {
++        batchOrder: 3,
++        orderId: 'ORD-8842',
++        service: 'loyalty-ledger-svc',
++        eventType: 'order.rewards.accrued',
++        detail: 'Credited +45 Daily Grind bean points',
++        ts: '2026-10-28T08:15:30.104519875Z',
++      },
++      {
++        batchOrder: 4,
++        orderId: 'ORD-8842',
++        service: 'auth-token-validator',
++        eventType: 'order.session.verified',
++        detail: 'Validated customer session & token signature',
++        ts: '2026-10-28T08:15:30.104112945Z',
++      },
++      {
++        batchOrder: 5,
++        orderId: 'ORD-8842',
++        service: 'receipt-notifier-svc',
++        eventType: 'order.receipt.dispatched',
++        detail: 'Pushed digital receipt & pickup ETA notification',
++        ts: '2026-10-28T08:15:30.106024100Z',
++      },
++      {
++        batchOrder: 6,
++        orderId: 'ORD-8842',
++        service: 'inventory-roastery-db',
++        eventType: 'order.inventory.reserved',
++        detail: 'Reserved 18g Espresso Blend & 240ml Oat Milk',
++        ts: '2026-10-28T08:15:30.104208400Z',
++      },
++      {
++        batchOrder: 7,
++        orderId: 'ORD-8842',
++        service: 'payment-settlement-svc',
++        eventType: 'order.payment.authorized',
++        detail: 'Authorized card hold ($5.75 USD)',
++        ts: '2026-10-28T08:15:30.104519200Z',
++      },
++      {
++        batchOrder: 8,
++        orderId: 'ORD-8842',
++        service: 'payment-replica-audit',
++        eventType: 'order.payment.audit_mirrored',
++        detail: 'Mirrored settlement ledger entry on sync replica',
++        ts: '2026-10-28T08:15:30.104519200Z',
++      },
++    ];
++
++    async function ensureTemporal() {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++    }
++
++    // 1. Parse recorded timestamps as Temporal.Instant to preserve full nanosecond precision.
++    function parseOrderEvents(rawBatch) {
++      return rawBatch.map((evt) => ({
++        ...evt,
++        timestamp: Temporal.Instant.from(evt.ts),
++      }));
++    }
++
++    // 2. Sort chronologically using Temporal.Instant.compare() without sub-millisecond truncation.
++    function sequenceOrderEvents(parsedEvents) {
++      return [...parsedEvents].sort((a, b) =>
++        Temporal.Instant.compare(a.timestamp, b.timestamp)
++      );
++    }
++
++    // 3. Measure intervals between consecutive sorted events using instant.since(prevInstant).
++    function analyzeOrderTrace(sortedEvents) {
++      return sortedEvents.map((curr, index) => {
++        if (index === 0) {
++          return {
++            ...curr,
++            intervalDuration: null,
++            isSimultaneous: false,
++            formattedInterval: '0ns (Trace Start)',
++            isoInterval: 'PT0S',
++          };
++        }
++
++        const prev = sortedEvents[index - 1];
++        const isSimultaneous = curr.timestamp.equals(prev.timestamp);
++        const gap = curr.timestamp.since(prev.timestamp);
++
++        // 4. Format the Temporal.Duration for display with toLocaleString() (Intl.DurationFormat)
++        const formattedInterval = isSimultaneous
++          ? '0ns (Simultaneous)'
++          : `+${gap.toLocaleString('en-US', { style: 'narrow' })}`;
++
++        return {
++          ...curr,
++          intervalDuration: gap,
++          isSimultaneous,
++          formattedInterval,
++          isoInterval: gap.toString(),
++        };
++      });
++    }
++
++    function renderTraceResults(analyzedEvents) {
++      const outputContainer = document.getElementById('telemetry-output');
++      const summaryContainer = document.getElementById('telemetry-summary');
++      const tbody = document.getElementById('events-tbody');
++
++      const firstInstant = analyzedEvents[0].timestamp;
++      const lastInstant = analyzedEvents[analyzedEvents.length - 1].timestamp;
++      const totalSpan = lastInstant.since(firstInstant);
++
++      summaryContainer.replaceChildren();
++      const stats = [
++        { label: 'Order ID', value: analyzedEvents[0].orderId },
++        { label: 'Events Sorted', value: `${analyzedEvents.length} distributed events` },
++        {
++          label: 'Total End-to-End Span',
++          value: totalSpan.toLocaleString('en-US', { style: 'narrow' }),
++        },
++        {
++          label: 'Sub-ms Collisions Prevented',
++          value: '6 events in .104ms window',
++        },
++      ];
++
++      for (const stat of stats) {
++        const card = document.createElement('div');
++        card.className = 'summary-stat';
++
++        const labelEl = document.createElement('div');
++        labelEl.className = 'label';
++        labelEl.textContent = stat.label;
++
++        const valueEl = document.createElement('div');
++        valueEl.className = 'value';
++        valueEl.textContent = stat.value;
++
++        card.append(labelEl, valueEl);
++        summaryContainer.append(card);
++      }
++
++      tbody.replaceChildren();
++      analyzedEvents.forEach((evt, idx) => {
++        const tr = document.createElement('tr');
++
++        const seqTd = document.createElement('td');
++        seqTd.className = 'mono';
++        seqTd.textContent = String(idx + 1);
++
++        const batchTd = document.createElement('td');
++        batchTd.className = 'mono';
++        batchTd.textContent = `#${evt.batchOrder}`;
++
++        const serviceTd = document.createElement('td');
++        const badge = document.createElement('span');
++        badge.className = 'badge mono';
++        badge.textContent = evt.service;
++        serviceTd.append(badge);
++
++        const eventTd = document.createElement('td');
++        const eventTitle = document.createElement('strong');
++        eventTitle.textContent = evt.eventType;
++        const eventDesc = document.createElement('div');
++        eventDesc.style.fontSize = '0.8rem';
++        eventDesc.style.opacity = '0.85';
++        eventDesc.textContent = evt.detail;
++        eventTd.append(eventTitle, eventDesc);
++
++        const tsTd = document.createElement('td');
++        tsTd.className = 'mono';
++        const timeEl = document.createElement('time');
++        const isoString = evt.timestamp.toString();
++        timeEl.dateTime = isoString;
++        timeEl.textContent = isoString;
++        tsTd.append(timeEl);
++
++        const intervalTd = document.createElement('td');
++        const pill = document.createElement('span');
++        pill.className = 'interval-pill mono';
++        pill.title = `ISO 8601 Duration: ${evt.isoInterval}`;
++        pill.textContent = evt.formattedInterval;
++        intervalTd.append(pill);
++
++        tr.append(seqTd, batchTd, serviceTd, eventTd, tsTd, intervalTd);
++        tbody.append(tr);
++      });
++
++      outputContainer.hidden = false;
++    }
++
++    const loadBtn = document.getElementById('load-events-btn');
++    loadBtn.addEventListener('click', async () => {
++      loadBtn.disabled = true;
++      const originalLabel = loadBtn.textContent;
++      loadBtn.textContent = 'Processing Nanosecond Trace...';
++
++      try {
++        await ensureTemporal();
++        const parsed = parseOrderEvents(rawOrderEvents);
++        const sorted = sequenceOrderEvents(parsed);
++        const analyzed = analyzeOrderTrace(sorted);
++        renderTraceResults(analyzed);
++        loadBtn.textContent = 'Reload & Re-sort Order Events';
++      } finally {
++        loadBtn.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

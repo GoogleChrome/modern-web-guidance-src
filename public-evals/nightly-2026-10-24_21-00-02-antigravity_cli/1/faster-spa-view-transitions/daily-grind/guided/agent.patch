@@ -1,0 +1,435 @@
+diff --git a/index.html b/index.html
+index 66c9173..98f5e88 100644
+--- a/index.html
++++ b/index.html
+@@ -44,6 +44,8 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
+     }
+ 
+     nav ul {
+@@ -62,7 +64,8 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="page"] {
+       color: var(--accent);
+     }
+ 
+@@ -72,6 +75,37 @@
+       border-radius: 4px;
+     }
+ 
++    /* SPA View Containers & Caching */
++    .views-wrapper {
++      position: relative;
++      min-height: 60vh;
++    }
++
++    .spa-view:focus {
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++      content-visibility: hidden;
++
++      /* Prevent hidden views from taking up physical space in layout flow */
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      box-shadow: none;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -158,7 +192,7 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="/" class="logo">THE DAILY GRIND</a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,34 +202,134 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <div class="views-wrapper" id="spa-root">
++    <!-- Home View (/) -->
++    <div id="view-home" class="spa-view" data-route="/" tabindex="-1" aria-hidden="false">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" class="btn">Order Now</a>
++      </header>
++
++      <main class="container">
++        <section>
++          <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <div class="card">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </section>
++      </main>
++    </div>
++
++    <!-- Menu View (/menu) -->
++    <div id="view-menu" class="spa-view inactive" data-route="/menu" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <section>
++          <h2 style="text-align: center;">Our Full Menu</h2>
++          <p style="text-align: center; margin-bottom: 20px;">Crafted fresh to order using organic, single-origin beans.</p>
++          <div class="grid">
++            <div class="card">
++              <h3>Seasonal Drinks</h3>
++              <p>Maple Oat Latte, Spiced Chai, and Roasted Hazelnut Cortado.</p>
++              <a href="/menu/seasonal" class="btn">Explore Seasonal</a>
++            </div>
++            <div class="card">
++              <h3>Espresso Classics</h3>
++              <p>Cappuccino, Flat White, Americano, and Macchiato.</p>
++              <a href="/menu/espresso" class="btn">Explore Espresso</a>
++            </div>
++            <div class="card">
++              <h3>Cold &amp; Refreshing</h3>
++              <p>18-Hour Cold Brew, Nitro Draft, and Iced Matcha Latte.</p>
++              <a href="/menu/cold-brew" class="btn">Explore Cold Brew</a>
++            </div>
++          </div>
++        </section>
++      </div>
++    </div>
++
++    <!-- Locations View (/locations) -->
++    <div id="view-locations" class="spa-view inactive" data-route="/locations" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <section>
++          <h2 style="text-align: center;">Our Coffeehouses</h2>
++          <div class="grid">
++            <div class="card">
++              <h3>Downtown Roastery</h3>
++              <p>124 Main Street &bull; Open Daily 6am &ndash; 7pm</p>
++              <a href="/order-online" class="btn">Order Pickup</a>
++            </div>
++            <div class="card">
++              <h3>Riverside Cafe</h3>
++              <p>88 Riverfront Ave &bull; Open Daily 7am &ndash; 6pm</p>
++              <a href="/order-online" class="btn">Order Pickup</a>
++            </div>
++            <div class="card">
++              <h3>Art District</h3>
++              <p>410 Gallery Way &bull; Open Daily 7am &ndash; 8pm</p>
++              <a href="/order-online" class="btn">Order Pickup</a>
++            </div>
++          </div>
++        </section>
++      </div>
++    </div>
++
++    <!-- Rewards View (/rewards) -->
++    <div id="view-rewards" class="spa-view inactive" data-route="/rewards" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <section>
++          <h2 style="text-align: center;">Daily Grind Rewards</h2>
++          <div class="grid">
++            <div class="card">
++              <h3>Earn Beans</h3>
++              <p>Collect 2 Beans for every $1 spent on handcrafted drinks and whole bean coffee.</p>
++              <a href="/account" class="btn">Check Balance</a>
++            </div>
++            <div class="card">
++              <h3>Free Birthday Drink</h3>
++              <p>Celebrate your special day with any size artisanal beverage on the house.</p>
++              <a href="/order-online" class="btn">Redeem Now</a>
++            </div>
++          </div>
++        </section>
++      </div>
++    </div>
++
++    <!-- Account View (/account) -->
++    <div id="view-account" class="spa-view inactive" data-route="/account" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <section>
++          <h2 style="text-align: center;">My Account</h2>
++          <div class="grid">
++            <div class="card">
++              <h3>Member Status: Gold</h3>
++              <p>240 Beans available &bull; Usual order: Maple Oat Latte (Oat Milk, Extra Shot)</p>
++              <a href="/order-online" class="btn">Reorder Usual</a>
++            </div>
++            <div class="card">
++              <h3>Preferences</h3>
++              <p>Default pickup location: Downtown Roastery</p>
++              <a href="/locations" class="btn">Change Location</a>
++            </div>
++          </div>
++        </section>
+       </div>
+-    </section>
+-  </main>
++    </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +341,202 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const ROUTE_TO_VIEW = {
++      '/': 'view-home',
++      '/menu': 'view-menu',
++      '/locations': 'view-locations',
++      '/rewards': 'view-rewards',
++      '/account': 'view-account'
++    };
++
++    // LRU cache for dynamic secondary views to prevent unbounded memory growth
++    const MAX_DYNAMIC_VIEWS = 5;
++    const dynamicViewOrder = [];
++
++    const DYNAMIC_VIEW_CONTENT = {
++      '/order-online': {
++        title: 'Order Online',
++        description: 'Skip the line! Select your favorite handcrafted beverage for express pickup.',
++        ctaText: 'Browse Menu',
++        ctaHref: '/menu'
++      },
++      '/menu/seasonal': {
++        title: 'Maple Oat Latte',
++        description: 'Rich espresso steamed with creamy oat milk and pure Vermont Grade-A maple syrup, topped with cinnamon dust.',
++        ctaText: 'Back to Menu',
++        ctaHref: '/menu'
++      },
++      '/menu/espresso': {
++        title: 'Dark Roast Espresso',
++        description: 'Our signature house blend roasted to a deep, chocolaty finish with notes of smoked cedar and molasses.',
++        ctaText: 'Back to Menu',
++        ctaHref: '/menu'
++      },
++      '/menu/cold-brew': {
++        title: '18-Hour Cold Brew',
++        description: 'Coarse-ground Ethiopian beans steeped in cold filtered water for 18 hours for a velvety, low-acid finish.',
++        ctaText: 'Back to Menu',
++        ctaHref: '/menu'
++      },
++      '/about': {
++        title: 'Our Story',
++        description: 'Founded in 2015, The Daily Grind partners directly with small-lot farmers to roast sustainable, specialty coffee.',
++        ctaText: 'Visit a Cafe',
++        ctaHref: '/locations'
++      },
++      '/careers': {
++        title: 'Join the Team',
++        description: 'We are always looking for passionate baristas, roasters, and community builders.',
++        ctaText: 'View Locations',
++        ctaHref: '/locations'
++      },
++      '/contact': {
++        title: 'Contact Us',
++        description: 'Questions or catering inquiries? Reach us at hello@dailygrind.example or visit any of our cafes.',
++        ctaText: 'Find a Location',
++        ctaHref: '/locations'
++      },
++      '/privacy-policy': {
++        title: 'Privacy Policy',
++        description: 'We respect your privacy and only use your account details to manage your orders and Daily Grind Rewards.',
++        ctaText: 'My Account',
++        ctaHref: '/account'
++      },
++      '/logout': {
++        title: 'Signed Out',
++        description: 'You have been safely signed out of your Daily Grind account. See you tomorrow morning!',
++        ctaText: 'Return Home',
++        ctaHref: '/'
++      }
++    };
++
++    function getOrCreateViewId(path) {
++      const normalized = path.replace(/\/+$/, '') || '/';
++      if (ROUTE_TO_VIEW[normalized]) {
++        return ROUTE_TO_VIEW[normalized];
++      }
++
++      const viewId = 'view-' + normalized.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
++      let viewEl = document.getElementById(viewId);
++
++      if (!viewEl) {
++        const info = DYNAMIC_VIEW_CONTENT[normalized] || {
++          title: 'The Daily Grind',
++          description: 'Explore our artisanal coffee offerings.',
++          ctaText: 'Back Home',
++          ctaHref: '/'
++        };
++
++        viewEl = document.createElement('div');
++        viewEl.id = viewId;
++        viewEl.className = 'spa-view inactive';
++        viewEl.setAttribute('data-route', normalized);
++        viewEl.setAttribute('tabindex', '-1');
++        viewEl.setAttribute('aria-hidden', 'true');
++        viewEl.innerHTML = `
++          <div class="container">
++            <section class="card">
++              <h3>${info.title}</h3>
++              <p>${info.description}</p>
++              <a href="${info.ctaHref}" class="btn">${info.ctaText}</a>
++            </section>
++          </div>
++        `;
++        document.getElementById('spa-root').appendChild(viewEl);
++      }
++
++      // Update LRU order and evict oldest dynamic view if threshold exceeded
++      const existingIdx = dynamicViewOrder.indexOf(viewId);
++      if (existingIdx !== -1) {
++        dynamicViewOrder.splice(existingIdx, 1);
++      }
++      dynamicViewOrder.push(viewId);
++
++      while (dynamicViewOrder.length > MAX_DYNAMIC_VIEWS) {
++        const evictedId = dynamicViewOrder.shift();
++        const evictedEl = document.getElementById(evictedId);
++        if (evictedEl && evictedEl.classList.contains('inactive')) {
++          evictedEl.remove();
++        }
++      }
++
++      return viewId;
++    }
++
++    function switchToView(viewId, { manageFocus = true } = {}) {
++      const targetView = document.getElementById(viewId);
++      if (!targetView) return;
++
++      // Hide all views while preserving their structural DOM and rendering state
++      document.querySelectorAll('.spa-view').forEach(view => {
++        if (view !== targetView) {
++          view.classList.add('inactive');
++          view.setAttribute('aria-hidden', 'true');
++          view.toggleAttribute('inert', true);
++        }
++      });
++
++      // Show the target view
++      targetView.classList.remove('inactive');
++      targetView.setAttribute('aria-hidden', 'false');
++      targetView.toggleAttribute('inert', false);
++
++      // Update active nav link state
++      const activeRoute = targetView.getAttribute('data-route');
++      document.querySelectorAll('nav a').forEach(link => {
++        if (link.getAttribute('href') === activeRoute) {
++          link.setAttribute('aria-current', 'page');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++
++      // MANDATORY: Move focus to the new view to ensure a logical tab-order
++      if (manageFocus) {
++        targetView.focus({ preventScroll: true });
++      }
++    }
++
++    function navigateTo(path, { pushState = true, manageFocus = true } = {}) {
++      const viewId = getOrCreateViewId(path);
++      if (pushState && window.location.pathname !== path) {
++        window.history.pushState({ viewId, path }, '', path);
++      }
++      switchToView(viewId, { manageFocus });
++    }
++
++    document.addEventListener('click', event => {
++      const link = event.target.closest('a[href]');
++      if (!link) return;
++
++      const url = new URL(link.href, window.location.origin);
++      if (
++        url.origin === window.location.origin &&
++        !link.hasAttribute('download') &&
++        link.target !== '_blank' &&
++        !event.metaKey &&
++        !event.ctrlKey &&
++        !event.shiftKey &&
++        !event.altKey &&
++        event.button === 0
++      ) {
++        event.preventDefault();
++        navigateTo(url.pathname, { pushState: true, manageFocus: true });
++      }
++    });
++
++    window.addEventListener('popstate', event => {
++      const path = (event.state && event.state.path) || window.location.pathname;
++      navigateTo(path, { pushState: false, manageFocus: true });
++    });
++
++    // Sync initial URL on load without stealing initial focus unless non-root
++    if (window.location.pathname !== '/') {
++      navigateTo(window.location.pathname, { pushState: false, manageFocus: false });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

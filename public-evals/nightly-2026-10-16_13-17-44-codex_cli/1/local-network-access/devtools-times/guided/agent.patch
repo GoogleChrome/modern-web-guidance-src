@@ -1,0 +1,185 @@
+diff --git a/README.md b/README.md
+index 4479b53..3623397 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,12 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Local network resources
++
++Open **Local network** in the footer (`/devtools-times/local-network`) to read an HTTP(S) resource from a LAN device or a loopback service. Select the address space, enter the URL, and click **Connect and read resource**. Requests run in the user's browser, so localhost refers to their computer, not the application server.
++
++Deploy the application over HTTPS. Supporting browsers request local network or loopback permission; denied access can be restored in browser site settings. Browsers without the permission API still attempt the connection on click, subject to their network and mixed-content rules. The target service must return a standard CORS `Access-Control-Allow-Origin` header allowing the application's origin. No deprecated Private Network Access preflight headers are required.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..05f2e85 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -94,6 +94,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+             <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+             <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
++            <a href=`${baseUrl}local-network` class="hover:underline">Local network</a>
+         </div>
+         
+         <!-- Privacy settings link -->
+diff --git a/src/components/LocalNetworkAccess.tsx b/src/components/LocalNetworkAccess.tsx
+new file mode 100644
+index 0000000..6410555
+--- /dev/null
++++ b/src/components/LocalNetworkAccess.tsx
+@@ -0,0 +1,123 @@
++import { useEffect, useState, type FormEvent } from 'react';
++
++type AddressSpace = 'local' | 'loopback';
++type NetworkPermission = 'prompt' | 'granted' | 'denied';
++
++async function queryPermission(space: AddressSpace) {
++  try {
++    return await navigator.permissions?.query({
++      name: `${space}-network` as PermissionName,
++    });
++  } catch {
++    // Unsupported permission names must still allow a user-initiated attempt.
++    return undefined;
++  }
++}
++
++export default function LocalNetworkAccess() {
++  const [space, setSpace] = useState<AddressSpace>('loopback');
++  const [url, setUrl] = useState('http://localhost:8080/');
++  const [permission, setPermission] = useState<NetworkPermission>('prompt');
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState('');
++  const [result, setResult] = useState('');
++
++  useEffect(() => {
++    let active = true;
++    let status: PermissionStatus | undefined;
++    const update = () => {
++      if (active) setPermission(status?.state ?? 'prompt');
++    };
++    setPermission('prompt');
++    void queryPermission(space).then((value) => {
++      if (!active) return;
++      status = value;
++      update();
++      status?.addEventListener('change', update);
++    });
++    return () => {
++      active = false;
++      status?.removeEventListener('change', update);
++    };
++  }, [space]);
++
++  async function connect(event: FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    setError('');
++    setResult('');
++    setLoading(true);
++    try {
++      if (!window.isSecureContext) {
++        throw new Error('Open this application over HTTPS to connect to local resources.');
++      }
++      const endpoint = new URL(url);
++      if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) {
++        throw new Error('Enter an HTTP or HTTPS URL without a username or password.');
++      }
++      const status = await queryPermission(space);
++      setPermission(status?.state ?? 'prompt');
++      if (status?.state === 'denied') {
++        throw new Error('Access is blocked. Allow Local network or Loopback network in your browser’s site settings, then try again.');
++      }
++      // This option permits HTTP local resources from an HTTPS application in
++      // supporting browsers and verifies the resolved address space.
++      const options: RequestInit & { targetAddressSpace: AddressSpace } = {
++        targetAddressSpace: space,
++        mode: 'cors',
++        credentials: 'omit',
++        redirect: 'error',
++        cache: 'no-store',
++        signal: AbortSignal.timeout(30_000),
++      };
++      const response = await fetch(endpoint, options);
++      if (!response.ok) throw new Error(`The resource returned HTTP ${response.status}.`);
++      const body = await response.text();
++      setResult(`HTTP ${response.status}\n\n${body.slice(0, 20_000) || '(Empty response)'}${body.length > 20_000 ? '\n\n[Preview limited to 20,000 characters]' : ''}`);
++    } catch (cause) {
++      if (cause instanceof TypeError || (cause instanceof DOMException && cause.name === 'TimeoutError')) {
++        setError('Could not read the resource. Check the address, ensure the device or local service is running, and allow access in browser site settings. The service must allow this application’s origin through CORS. Your browser may not support HTTP local connections from HTTPS pages.');
++      } else {
++        setError(cause instanceof Error ? cause.message : 'The connection failed. Please try again.');
++      }
++    } finally {
++      setLoading(false);
++    }
++  }
++
++  return (
++    <section className="max-w-2xl mx-auto p-6 sm:p-10 space-y-6">
++      <h1 className="text-3xl font-bold">Local network access</h1>
++      <p>Read a resource from a device on your network or a service running on this computer. Your browser may ask for permission when you connect.</p>
++      <form onSubmit={connect} className="space-y-4">
++        <div>
++          <label htmlFor="network-space" className="block font-semibold mb-2">Resource location</label>
++          <select id="network-space" value={space} disabled={loading}
++            onChange={(event) => setSpace(event.target.value as AddressSpace)}
++            className="w-full border border-gray-400 rounded p-3">
++            <option value="loopback">This computer (localhost or loopback)</option>
++            <option value="local">Local network (LAN device)</option>
++          </select>
++        </div>
++        <div>
++          <label htmlFor="network-url" className="block font-semibold mb-2">Resource URL</label>
++          <input id="network-url" type="url" required value={url} disabled={loading}
++            onChange={(event) => setUrl(event.target.value)}
++            aria-describedby="network-url-help" className="w-full border border-gray-400 rounded p-3" />
++          <p id="network-url-help" className="text-sm text-gray-600 mt-2">
++            {space === 'loopback' ? 'For example: http://localhost:8080/health' : 'For example: http://192.168.1.100:8080/status or http://device.local/status'}
++          </p>
++        </div>
++        <p className="text-sm">Browser permission: <span role="status">{permission === 'prompt' ? 'Will be requested if needed' : permission}</span></p>
++        {permission === 'denied' && <p className="text-sm text-red-800">Allow Local network or Loopback network in your browser’s site settings to connect.</p>}
++        <button type="submit" disabled={loading} className="bg-gray-900 text-white rounded px-5 py-3 disabled:opacity-50">
++          {loading ? 'Connecting…' : 'Connect and read resource'}
++        </button>
++      </form>
++      {error && <p role="alert" className="bg-red-50 text-red-800 p-4 rounded">{error}</p>}
++      <div aria-live="polite" aria-busy={loading}>
++        {result && <pre className="bg-gray-100 p-4 rounded whitespace-pre-wrap break-all max-h-96 overflow-auto">{result}</pre>}
++      </div>
++      <p className="text-sm text-gray-600">Only the URL you submit is requested, directly from your browser. Use HTTPS for this application. The local service must permit cross-origin access; browser support for local network permissions varies.</p>
++    </section>
++  );
++}
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..abf6803 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  response.headers.set('Permissions-Policy', 'local-network=(self), loopback-network=(self)');
++  return response;
+ });
+diff --git a/src/pages/local-network.astro b/src/pages/local-network.astro
+new file mode 100644
+index 0000000..d18e8d8
+--- /dev/null
++++ b/src/pages/local-network.astro
+@@ -0,0 +1,8 @@
++---
++import Layout from '../layouts/Layout.astro';
++import LocalNetworkAccess from '../components/LocalNetworkAccess';
++---
++
++<Layout title="Local network access | The DevTools Times">
++  <LocalNetworkAccess client:load />
++</Layout>

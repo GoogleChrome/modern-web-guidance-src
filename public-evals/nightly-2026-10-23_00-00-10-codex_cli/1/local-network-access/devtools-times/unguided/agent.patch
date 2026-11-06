@@ -1,0 +1,17 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..ebf75c1 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Allow this origin to request LAN and loopback access, including in older browsers.
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network-access=(self), local-network=(self), loopback-network=(self)',
++  );
++  return response;
+ });

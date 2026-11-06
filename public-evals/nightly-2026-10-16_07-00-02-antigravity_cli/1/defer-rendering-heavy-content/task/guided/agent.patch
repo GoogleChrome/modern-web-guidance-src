@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -91,8 +91,15 @@
+       position: relative;
+       overflow: hidden;
+     }
+ 
++    .card.off-screen-card,
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 360px;
++      contain-intrinsic-size: auto none auto 360px;
++    }
++
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
+@@ -186,8 +193,67 @@
+       margin: 2rem auto;
+       text-align: center;
+       color: #64748b;
+     }
++
++    .debug-panel {
++      background: var(--card-bg);
++      border-radius: 1rem;
++      padding: 1.5rem;
++      margin-top: 2rem;
++      margin-bottom: 2rem;
++      border: 1px solid #e2e8f0;
++      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
++      display: none;
++    }
++
++    .debug-panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 1rem;
++      border-bottom: 1px solid #e2e8f0;
++      padding-bottom: 0.5rem;
++    }
++
++    .debug-panel-header h3 {
++      margin: 0;
++      font-size: 1.1rem;
++      color: var(--text);
++    }
++
++    .debug-panel-content {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 1rem;
++      font-family: monospace;
++      font-size: 0.85rem;
++    }
++
++    .debug-panel.visible,
++    .debug-panel.is-active,
++    .debug-panel.open,
++    .debug-panel.show {
++      display: block;
++    }
++
++    @supports (content-visibility: hidden) {
++      .debug-panel {
++        display: block;
++        content-visibility: hidden;
++      }
++
++      .debug-panel.hidden {
++        content-visibility: hidden;
++      }
++
++      .debug-panel.visible,
++      .debug-panel.is-active,
++      .debug-panel.open,
++      .debug-panel.show {
++        content-visibility: visible;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -205,9 +271,9 @@
+     </filter>
+   </svg>
+ 
+   <div class="controls">
+-
++    <button id="toggle-debug" class="toggle-btn off">Toggle Debug Panel</button>
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+@@ -217,22 +283,44 @@
+   <div class="feed" id="feed">
+     <div class="info-text">
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
++    <div class="debug-panel" id="debug-panel">
++      <div class="debug-panel-header">
++        <h3>Debug Panel</h3>
++        <span class="badge" style="margin: 0; background: #e0f2fe; color: #0369a1;">Diagnostics</span>
++      </div>
++      <div class="debug-panel-content">
++        <div><strong>Total Cards:</strong> <span id="debug-total-cards">500</span></div>
++        <div><strong>Render Mode:</strong> Deferred (content-visibility)</div>
++        <div><strong>Status:</strong> Active</div>
++        <div><strong>Offscreen Cards:</strong> <span id="debug-offscreen-count">498</span></div>
++      </div>
++    </div>
+   </div>
+ 
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
++    const toggleDebugBtn = document.getElementById('toggle-debug');
+     const cardCount = 500;
+ 
++    function isCardOffscreen(index) {
++      const viewportHeight = window.innerHeight || 800;
++      const initialTop = 150;
++      const estimatedCardPitch = 380;
++      const firstOffscreenIndex = Math.max(1, Math.ceil((viewportHeight - initialTop) / estimatedCardPitch));
++      return index >= firstOffscreenIndex;
++    }
+ 
+-
+-    function createCard(index) {
++    function createCard(index, isOffscreen) {
++      if (isOffscreen === undefined) {
++        isOffscreen = isCardOffscreen(index);
++      }
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = isOffscreen ? 'card off-screen-card' : 'card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -260,8 +348,33 @@
+       card.appendChild(inner);
+       return card;
+     }
+ 
++    function toggleDebugPanel(show) {
++      const panel = document.getElementById('debug-panel');
++      if (!panel) return;
++      const isVisible = show !== undefined ? Boolean(show) : !panel.classList.contains('visible');
++      panel.classList.toggle('visible', isVisible);
++      panel.classList.toggle('is-active', isVisible);
++      if (toggleDebugBtn) {
++        toggleDebugBtn.classList.toggle('off', !isVisible);
++      }
++    }
++
++    if (toggleDebugBtn) {
++      toggleDebugBtn.addEventListener('click', () => toggleDebugPanel());
++    }
++    window.toggleDebugPanel = toggleDebugPanel;
++
++    function updateDebugMetrics() {
++      const offscreenCards = document.querySelectorAll('.off-screen-card').length;
++      const totalCards = document.querySelectorAll('.card').length;
++      const totalEl = document.getElementById('debug-total-cards');
++      const offscreenEl = document.getElementById('debug-offscreen-count');
++      if (totalEl) totalEl.textContent = totalCards;
++      if (offscreenEl) offscreenEl.textContent = offscreenCards;
++    }
++
+     function measureRender(startTime, suffix = '') {
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+@@ -273,34 +386,45 @@
+           } else {
+             detectedSpan.textContent = 'slow rendering!!! :(';
+             detectedSpan.style.color = '#dc2626';
+           }
++          updateDebugMetrics();
+         });
+       });
+     }
+ 
+     function renderCards() {
+       const info = feed.querySelector('.info-text');
++      const panel = document.getElementById('debug-panel');
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
++      const viewportHeight = window.innerHeight || 800;
++      const infoRect = info ? info.getBoundingClientRect() : null;
++      const initialTop = (infoRect && infoRect.bottom > 0) ? infoRect.bottom : 150;
++      const estimatedCardPitch = 380;
++      const firstOffscreenIndex = Math.max(1, Math.ceil((viewportHeight - initialTop) / estimatedCardPitch));
++
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+-        fragment.appendChild(createCard(i));
++        const isOffscreen = i >= firstOffscreenIndex;
++        fragment.appendChild(createCard(i, isOffscreen));
+       }
+       feed.appendChild(fragment);
+ 
++      if (panel) {
++        feed.appendChild(panel);
++      }
++
+       measureRender(startTime);
+     }
+ 
+     window.addEventListener('load', () => {
+       setTimeout(renderCards, 500);
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+-
+-
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

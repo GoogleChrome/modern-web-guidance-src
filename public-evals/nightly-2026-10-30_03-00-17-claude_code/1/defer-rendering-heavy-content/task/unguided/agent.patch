@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -180,8 +180,44 @@
+       font-weight: bold;
+       margin-top: 1rem;
+     }
+ 
++    /* Skip layout/paint for cards outside the viewport until scrolled near */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 340px;
++    }
++
++    /* Rendering state is kept while hidden so toggling is instant */
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      box-sizing: border-box;
++      font-family: monospace;
++      font-size: 0.85rem;
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 0.5rem;
++      contain: content;
++      content-visibility: hidden;
++    }
++
++    .debug-panel.open {
++      content-visibility: visible;
++      padding: 1rem;
++    }
++
++    .debug-panel dl {
++      margin: 0;
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.25rem 1rem;
++    }
++
++    .debug-panel dd {
++      margin: 0;
++    }
++
+     .info-text {
+       max-width: 600px;
+       margin: 2rem auto;
+       text-align: center;
+@@ -207,8 +243,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn off" aria-controls="debug-panel" aria-expanded="false">Debug: Off</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +256,33 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel">
++    <dl>
++      <dt>Cards</dt><dd id="debug-count">0</dd>
++      <dt>Deferred (off-screen)</dt><dd id="debug-deferred">0</dd>
++      <dt>Last render</dt><dd id="debug-render">-</dd>
++      <dt>Viewport</dt><dd id="debug-viewport">-</dd>
++    </dl>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
++    const debugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
+     const cardCount = 500;
++    // Rough rendered card height (incl. margin), used to estimate how many fit on screen
++    const estimatedCardHeight = 340;
+ 
+ 
+ 
+-    function createCard(index) {
++    function createCard(index, offScreen) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = offScreen ? 'card off-screen-card' : 'card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +315,9 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          document.getElementById('debug-render').textContent = `${duration}ms`;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -283,14 +334,19 @@
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
++      const visibleCount = Math.ceil(window.innerHeight / estimatedCardHeight) + 1;
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+-        fragment.appendChild(createCard(i));
++        fragment.appendChild(createCard(i, i >= visibleCount));
+       }
+       feed.appendChild(fragment);
+ 
++      document.getElementById('debug-count').textContent = cardCount;
++      document.getElementById('debug-deferred').textContent = Math.max(0, cardCount - visibleCount);
++      document.getElementById('debug-viewport').textContent = `${window.innerWidth}x${window.innerHeight}`;
++
+       measureRender(startTime);
+     }
+ 
+     window.addEventListener('load', () => {
+@@ -298,9 +354,16 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    debugBtn.addEventListener('click', () => {
++      const open = debugPanel.classList.toggle('open');
++      debugBtn.textContent = open ? 'Debug: On' : 'Debug: Off';
++      debugBtn.classList.toggle('off', !open);
++      debugBtn.setAttribute('aria-expanded', open);
++    });
+ 
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

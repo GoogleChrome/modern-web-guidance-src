@@ -1,0 +1,252 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,167 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Custom Order & Feedback Form */
++    .form-section {
++      margin-top: 60px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .form-section > p {
++      margin-bottom: 24px;
++    }
++
++    .order-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 24px;
++      margin-block-end: 20px;
++    }
++
++    .order-form legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 8px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group:last-child {
++      margin-block-end: 0;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      color: var(--text);
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-block-end: 0.4rem;
++    }
++
++    .order-form input[type="text"],
++    .order-form select,
++    .order-form textarea {
++      font-family: inherit;
++      font-size: 1rem;
++      line-height: 1.5;
++      color: var(--text);
++      background-color: var(--light);
++      padding: 0.75rem;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      min-height: 48px;
++      align-self: flex-start;
++    }
++
++    @media (pointer: coarse) {
++      .order-form input[type="text"],
++      .order-form select,
++      .order-form textarea {
++        min-height: 52px;
++      }
++    }
++
++    .order-form input[type="text"]:focus-visible,
++    .order-form select:focus-visible,
++    .order-form textarea:focus-visible,
++    .order-form button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .order-form input:invalid:user-invalid,
++    .order-form select:invalid:user-invalid,
++    .order-form textarea:invalid:user-invalid {
++      border-color: #c62828;
++    }
++
++    /* Applies horizontal auto-sizing to text inputs */
++    .order-form input[type="text"] {
++      field-sizing: content;
++      width: auto;
++      min-inline-size: 15ch;
++      max-inline-size: 50ch;
++    }
++
++    /* Sizes the select element to fit the active option only */
++    .order-form select {
++      field-sizing: content;
++      width: auto;
++      max-inline-size: 50ch;
++    }
++
++    /* Applies vertical auto-sizing to textareas while keeping horizontal width stable */
++    .order-form textarea {
++      field-sizing: content;
++      height: auto;
++      width: 50ch;
++      max-inline-size: 100%;
++      min-block-size: 3lh;
++      max-block-size: 10lh;
++    }
++
++    /* Progressive enhancement fallback for browsers without field-sizing support */
++    @supports not (field-sizing: content) {
++      .growable-textarea {
++        display: grid;
++        width: 50ch;
++        max-inline-size: 100%;
++      }
++
++      .growable-textarea::after,
++      .growable-textarea > textarea {
++        grid-area: 1 / 1 / 2 / 2;
++        font: inherit;
++        line-height: 1.5;
++        padding: 0.75rem;
++        border: 1px solid #8d6e63;
++        border-radius: 5px;
++        width: 100%;
++        min-block-size: 3lh;
++        max-block-size: 10lh;
++      }
++
++      .growable-textarea::after {
++        content: attr(data-replicated-value) " ";
++        white-space: pre-wrap;
++        visibility: hidden;
++      }
++
++      .growable-textarea > textarea {
++        resize: none;
++        overflow: hidden;
++      }
++    }
++
++    .submit-btn {
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      min-height: 48px;
++      border: none;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +353,80 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="form-section" aria-labelledby="custom-order-heading">
++      <h2 id="custom-order-heading">Custom Roast &amp; Drink Request</h2>
++      <p>Tell us how you like your cup—each field automatically adjusts to fit your input without extra whitespace.</p>
++
++      <form action="/custom-order" method="POST" class="order-form">
++        <fieldset>
++          <legend>Order Preferences</legend>
++
++          <div class="form-group">
++            <label for="customer-name">Full Name (Required)</label>
++            <span id="name-hint" class="hint">Type your name to see the field expand dynamically.</span>
++            <input
++              type="text"
++              id="customer-name"
++              name="customer_name"
++              autocomplete="name"
++              aria-describedby="name-hint"
++              placeholder="Alex Rivera"
++              required
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="drink-selection">Signature Drink (Required)</label>
++            <span id="drink-hint" class="hint">Select an option to see the dropdown resize to match the active choice.</span>
++            <select
++              id="drink-selection"
++              name="drink_selection"
++              aria-describedby="drink-hint"
++              required
++            >
++              <option value="espresso">Espresso</option>
++              <option value="cortado">Cortado</option>
++              <option value="cold-brew">18-Hour Steeped Cold Brew</option>
++              <option value="maple-oat-latte">Vermont Maple Oat Milk Latte</option>
++              <option value="pour-over">Single-Origin Ethiopian Yirgacheffe Pour Over</option>
++              <option value="mocha">Artisanal Dark Chocolate Mocha with House Whipped Cream</option>
++              <option value="matcha">Ceremonial Grade Uji Matcha Tea Latte (Iced or Hot)</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="tasting-notes">Special Instructions &amp; Tasting Notes (Optional)</label>
++            <span id="notes-hint" class="hint">Add multiple lines of instructions to see the textarea grow vertically.</span>
++            <div class="growable-textarea" data-replicated-value="">
++              <textarea
++                id="tasting-notes"
++                name="tasting_notes"
++                aria-describedby="notes-hint"
++                placeholder="Extra hot, half sweet, oat milk foam..."
++              ></textarea>
++            </div>
++          </div>
++        </fieldset>
++
++        <button type="submit" class="btn submit-btn">Submit Custom Request</button>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    // Progressive enhancement fallback for browsers without field-sizing support
++    if (!CSS.supports('field-sizing', 'content')) {
++      document.querySelectorAll('.growable-textarea > textarea').forEach((textarea) => {
++        textarea.addEventListener('input', () => {
++          textarea.parentNode.dataset.replicatedValue = textarea.value;
++        });
++      });
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

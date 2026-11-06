@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+index 66c9173..8640c6d 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,122 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /*
++     * Interaction / soft-navigation render timing.
++     * For each click or keypress (and each history-based navigation) we record the
++     * time from the input's timeStamp until the next frame is painted after the
++     * first contentful DOM update (new text or image nodes). Results are logged
++     * and kept in window.__renderTimings.
++     */
++    (function () {
++      var TIMEOUT_MS = 3000;
++      var timings = (window.__renderTimings = []);
++      var pending = null;
++
++      function report(entry) {
++        timings.push(entry);
++        console.log('[render-timing] ' + entry.type + ' ' + entry.name + ': ' +
++          entry.duration.toFixed(1) + 'ms', entry);
++        window.dispatchEvent(new CustomEvent('render-timing', { detail: entry }));
++      }
++
++      function isContentful(node) {
++        if (node.nodeType === Node.TEXT_NODE) return node.textContent.trim().length > 0;
++        if (node.nodeType !== Node.ELEMENT_NODE) return false;
++        if (/^(IMG|VIDEO|CANVAS|SVG)$/i.test(node.nodeName)) return true;
++        return (node.textContent || '').trim().length > 0 || !!node.querySelector('img,video,canvas,svg');
++      }
++
++      function describe(target) {
++        if (!(target instanceof Element)) return 'unknown';
++        var el = target.closest('a,button,[role=button],input,select,textarea') || target;
++        var label = el.id ? '#' + el.id : el.nodeName.toLowerCase();
++        var text = (el.textContent || el.value || '').trim().slice(0, 30);
++        return text ? label + ' "' + text + '"' : label;
++      }
++
++      function finish(p, contentful) {
++        if (p.done) return;
++        p.done = true;
++        p.observer.disconnect();
++        clearTimeout(p.timer);
++        if (pending === p) pending = null;
++        if (!contentful) return;
++        // Wait for the frame that actually presents the update.
++        requestAnimationFrame(function () {
++          setTimeout(function () {
++            report({
++              type: p.type,
++              name: p.name,
++              url: location.href,
++              startTime: p.start,
++              duration: performance.now() - p.start
++            });
++          }, 0);
++        });
++      }
++
++      function begin(type, name, start) {
++        if (pending) finish(pending, false);
++        var p = { type: type, name: name, start: start, done: false };
++        p.observer = new MutationObserver(function (mutations) {
++          for (var i = 0; i < mutations.length; i++) {
++            var m = mutations[i];
++            if (m.type === 'characterData' && isContentful(m.target)) return finish(p, true);
++            for (var j = 0; j < m.addedNodes.length; j++) {
++              if (isContentful(m.addedNodes[j])) return finish(p, true);
++            }
++          }
++        });
++        p.observer.observe(document.documentElement, {
++          childList: true, subtree: true, characterData: true
++        });
++        p.timer = setTimeout(function () { finish(p, false); }, TIMEOUT_MS);
++        pending = p;
++        return p;
++      }
++
++      // User interactions
++      ['click', 'keydown'].forEach(function (evt) {
++        document.addEventListener(evt, function (e) {
++          if (evt === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
++          begin('interaction', evt + ' ' + describe(e.target), e.timeStamp);
++        }, { capture: true, passive: true });
++      });
++
++      // Client-side navigations (History API)
++      ['pushState', 'replaceState'].forEach(function (fn) {
++        var orig = history[fn];
++        history[fn] = function () {
++          var p = pending;
++          var start = performance.now();
++          var result = orig.apply(this, arguments);
++          if (p && !p.done && p.type === 'interaction') {
++            // Attribute the navigation to the interaction that triggered it.
++            p.type = 'soft-navigation';
++            p.name = location.pathname;
++          } else {
++            begin('soft-navigation', location.pathname, start);
++          }
++          return result;
++        };
++      });
++      window.addEventListener('popstate', function (e) {
++        begin('soft-navigation', location.pathname, e.timeStamp);
++      });
++
++      // Browser-native soft navigation entries, when supported (Chrome).
++      try {
++        new PerformanceObserver(function (list) {
++          list.getEntries().forEach(function (entry) {
++            console.log('[render-timing] native soft-navigation ' + entry.name, entry);
++          });
++        }).observe({ type: 'soft-navigation', buffered: true });
++      } catch (e) { /* unsupported */ }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,150 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    (function monitorSlowScripts() {
++      if (typeof PerformanceObserver === 'undefined') return;
++
++      const supportedTypes = PerformanceObserver.supportedEntryTypes || [];
++      const scriptStats = new Map();
++
++      function recordScriptMetric(source, duration, details) {
++        const key = source || details.invoker || 'inline-or-unknown-script';
++        const existing = scriptStats.get(key) || {
++          script: key,
++          count: 0,
++          totalDuration: 0,
++          maxDuration: 0,
++          totalForcedStyleAndLayout: 0,
++          totalBlockingDuration: 0,
++          samples: []
++        };
++
++        existing.count += 1;
++        existing.totalDuration += duration;
++        existing.maxDuration = Math.max(existing.maxDuration, duration);
++        existing.totalForcedStyleAndLayout += details.forcedStyleAndLayoutDuration || 0;
++        existing.totalBlockingDuration += details.blockingDuration || 0;
++        existing.samples.push(details);
++
++        scriptStats.set(key, existing);
++      }
++
++      // 1. Long Animation Frames API (LoAF) - identifies exact scripts causing slow frames / responsiveness
++      if (supportedTypes.includes('long-animation-frame')) {
++        const loafObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            for (const script of entry.scripts || []) {
++              const scriptInfo = {
++                type: 'long-animation-frame',
++                sourceURL: script.sourceURL,
++                sourceFunctionName: script.sourceFunctionName,
++                sourceCharPosition: script.sourceCharPosition,
++                invoker: script.invoker,
++                invokerType: script.invokerType,
++                duration: script.duration,
++                executionStart: script.executionStart,
++                forcedStyleAndLayoutDuration: script.forcedStyleAndLayoutDuration,
++                pauseDuration: script.pauseDuration,
++                windowAttribution: script.windowAttribution,
++                frameDuration: entry.duration,
++                blockingDuration: entry.blockingDuration,
++                startTime: entry.startTime
++              };
++
++              recordScriptMetric(script.sourceURL || script.invoker, script.duration, scriptInfo);
++
++              console.warn('[Slow Script Detected - LoAF]', {
++                sourceURL: script.sourceURL || '(inline/eval)',
++                functionName: script.sourceFunctionName || '(anonymous)',
++                charPosition: script.sourceCharPosition,
++                invoker: script.invoker,
++                invokerType: script.invokerType,
++                scriptDurationMs: Math.round(script.duration),
++                forcedStyleAndLayoutMs: Math.round(script.forcedStyleAndLayoutDuration),
++                frameDurationMs: Math.round(entry.duration),
++                blockingDurationMs: Math.round(entry.blockingDuration)
++              });
++            }
++          }
++        });
++
++        loafObserver.observe({ type: 'long-animation-frame', buffered: true });
++      } else if (supportedTypes.includes('longtask')) {
++        // 2. Fallback: Long Tasks API
++        const longTaskObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            const attributions = entry.attribution || [];
++            for (const attr of attributions) {
++              const source = attr.containerSrc || attr.containerName || attr.name || entry.name;
++              const taskInfo = {
++                type: 'longtask',
++                name: entry.name,
++                duration: entry.duration,
++                startTime: entry.startTime,
++                containerType: attr.containerType,
++                containerSrc: attr.containerSrc,
++                containerId: attr.containerId,
++                containerName: attr.containerName
++              };
++
++              recordScriptMetric(source, entry.duration, taskInfo);
++
++              console.warn('[Slow Task Detected - LongTask]', taskInfo);
++            }
++          }
++        });
++
++        longTaskObserver.observe({ type: 'longtask', buffered: true });
++      }
++
++      // 3. Resource Timing API - identifies slow-loading or render-blocking script resources
++      if (supportedTypes.includes('resource')) {
++        const SLOW_SCRIPT_LOAD_THRESHOLD_MS = 100;
++
++        const resourceObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            if (entry.initiatorType === 'script' || /\.m?js(\?|$)/i.test(entry.name)) {
++              const isRenderBlocking = entry.renderBlockingStatus === 'blocking';
++              if (entry.duration >= SLOW_SCRIPT_LOAD_THRESHOLD_MS || isRenderBlocking) {
++                console.warn('[Slow or Render-Blocking Script Resource]', {
++                  url: entry.name,
++                  durationMs: Math.round(entry.duration),
++                  renderBlockingStatus: entry.renderBlockingStatus,
++                  transferSize: entry.transferSize,
++                  decodedBodySize: entry.decodedBodySize,
++                  startTimeMs: Math.round(entry.startTime),
++                  responseEndMs: Math.round(entry.responseEnd)
++                });
++              }
++            }
++          }
++        });
++
++        resourceObserver.observe({ type: 'resource', buffered: true });
++      }
++
++      // Expose helper for inspecting aggregated offender scripts
++      window.getSlowScriptsReport = function getSlowScriptsReport() {
++        const report = Array.from(scriptStats.values()).sort(
++          (a, b) => b.totalDuration - a.totalDuration
++        );
++        console.table(
++          report.map(({ script, count, totalDuration, maxDuration, totalForcedStyleAndLayout, totalBlockingDuration }) => ({
++            script,
++            occurrences: count,
++            totalDurationMs: Math.round(totalDuration),
++            maxDurationMs: Math.round(maxDuration),
++            forcedReflowMs: Math.round(totalForcedStyleAndLayout),
++            blockingDurationMs: Math.round(totalBlockingDuration)
++          }))
++        );
++        return report;
++      };
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

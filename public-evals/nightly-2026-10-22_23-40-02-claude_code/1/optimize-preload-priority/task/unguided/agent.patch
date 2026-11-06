@@ -1,0 +1,44 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,40 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<title>Brand</title>
++<meta name="description" content="Watch our story.">
++
++<!-- Critical resources, highest priority first. Fonts need crossorigin even when same-origin. -->
++<link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
++<link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
++<!-- secondary-font.woff2 is intentionally NOT preloaded: it must not compete with the LCP poster and brand font. -->
++
++<style>
++@font-face{font-family:Brand;src:url(brand-font.woff2) format("woff2");font-display:swap}
++@font-face{font-family:Secondary;src:url(secondary-font.woff2) format("woff2");font-display:optional}
++*{box-sizing:border-box;margin:0}
++body{background:#000;color:#fff;font:16px/1.4 system-ui,sans-serif}
++header{position:absolute;inset:0 0 auto;padding:1rem 1.25rem;z-index:1;display:flex;justify-content:space-between;align-items:center}
++h1{font:700 1.5rem/1.2 Brand,system-ui,sans-serif}
++a{font-family:Secondary,system-ui,sans-serif;font-size:.875rem;color:#fff}
++video{display:block;width:100vw;height:100vh;height:100svh;object-fit:cover;background:#000}
++</style>
++</head>
++<body>
++<header>
++  <h1>Brand</h1>
++  <a href="#start">Contact</a>
++</header>
++<!-- preload="none": the poster is the LCP element; don't spend bandwidth on video data before it loads. -->
++<video id="start" poster="poster.jpg" width="1920" height="1080" preload="none" controls playsinline></video>
++<script>
++// Attach the source only after load so video bytes never compete with LCP resources.
++addEventListener("load",function(){
++  var v=document.getElementById("start"),s=document.createElement("source");
++  s.src="video.mp4";s.type="video/mp4";v.appendChild(s);v.load();
++});
++</script>
++</body>
++</html>

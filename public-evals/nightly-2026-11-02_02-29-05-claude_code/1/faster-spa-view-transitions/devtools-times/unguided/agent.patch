@@ -1,0 +1,176 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..dffd5dd 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..ff2f5d8
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,156 @@
++/**
++ * View cache for the ClientRouter.
++ *
++ * By default every ClientRouter navigation fetches the target page, parses it
++ * and replaces <body> with a fresh tree, throwing the old one away. This module
++ * keeps the outgoing <body> subtree alive (including hydrated React islands,
++ * form state, expanded menus, etc.) and, when the user travels back/forward
++ * through history to a view that is still cached, re-attaches that very tree
++ * instead of hitting the network and rebuilding the DOM.
++ *
++ * Opt out per page with `<body data-view-cache="off">`.
++ */
++import { swapFunctions } from "astro:transitions/client";
++import type {
++  TransitionBeforePreparationEvent,
++  TransitionBeforeSwapEvent,
++} from "astro:transitions/client";
++
++const MAX_ENTRIES = 5;
++const TRANSIENT_ROOT_ATTRS = ["data-astro-transition", "data-astro-transition-fallback"];
++
++interface CachedView {
++  body: HTMLElement;
++  // Snapshot of <html> attributes and <head> so title, meta and styles are restored too.
++  doc: Document;
++}
++
++// Map preserves insertion order, which we use for LRU eviction.
++const cache = new Map<string, CachedView>();
++// The cached view picked during preparation, consumed by the swap of the same navigation.
++let pending: { key: string; view: CachedView; doc: Document } | undefined;
++
++const keyFor = (url: URL) => url.pathname + url.search;
++
++// While a body is detached, Astro dispatches `astro:unmount` on its islands after the
++// next swap, which tears down their React roots. Swallow that event in the capture
++// phase so cached islands stay mounted until they are evicted.
++const blockUnmount = (event: Event) => event.stopImmediatePropagation();
++
++function evict(key: string) {
++  const entry = cache.get(key);
++  if (!entry) return;
++  cache.delete(key);
++  entry.body.removeEventListener("astro:unmount", blockUnmount, true);
++  for (const island of entry.body.querySelectorAll("astro-island")) {
++    island.dispatchEvent(new CustomEvent("astro:unmount"));
++  }
++}
++
++function store(key: string, view: CachedView) {
++  evict(key);
++  view.body.addEventListener("astro:unmount", blockUnmount, true);
++  cache.set(key, view);
++  while (cache.size > MAX_ENTRIES) {
++    evict(cache.keys().next().value!);
++  }
++}
++
++function snapshotDocument(): Document {
++  const doc = document.implementation.createHTMLDocument();
++  for (const { name, value } of document.documentElement.attributes) {
++    if (!TRANSIENT_ROOT_ATTRS.includes(name)) doc.documentElement.setAttribute(name, value);
++  }
++  doc.head.replaceWith(doc.importNode(document.head, true));
++  return doc;
++}
++
++function preloadStyles(doc: Document) {
++  const loads: Promise<unknown>[] = [];
++  for (const link of doc.head.querySelectorAll<HTMLLinkElement>("link[rel=stylesheet]")) {
++    const href = link.getAttribute("href");
++    if (!href || document.querySelector(`link[rel=stylesheet][href="${CSS.escape(href)}"]`)) continue;
++    const preload = document.createElement("link");
++    preload.rel = "preload";
++    preload.as = "style";
++    preload.href = href;
++    loads.push(
++      new Promise((resolve) => {
++        preload.addEventListener("load", resolve);
++        preload.addEventListener("error", resolve);
++      }),
++    );
++    document.head.append(preload);
++  }
++  return Promise.all(loads);
++}
++
++document.addEventListener("astro:before-preparation", (e) => {
++  const event = e as TransitionBeforePreparationEvent;
++  pending = undefined;
++  // Only history traversals return to a view; links and forms always get fresh content.
++  if (event.navigationType !== "traverse" || event.formData) return;
++
++  const key = keyFor(event.to);
++  const view = cache.get(key);
++  if (!view) return;
++
++  const originalLoader = event.loader;
++  event.loader = async () => {
++    // Clone the head snapshot: swapHeadElements moves nodes out of the document it gets.
++    const doc = document.implementation.createHTMLDocument();
++    for (const { name, value } of view.doc.documentElement.attributes) {
++      doc.documentElement.setAttribute(name, value);
++    }
++    doc.head.replaceWith(doc.importNode(view.doc.head, true));
++    await preloadStyles(doc);
++    if (event.signal.aborted) return;
++    // Another navigation may have touched the cache meanwhile.
++    if (cache.get(key) !== view) return originalLoader();
++    event.newDocument = doc;
++    pending = { key, view, doc };
++  };
++});
++
++document.addEventListener("astro:before-swap", (e) => {
++  const event = e as TransitionBeforeSwapEvent;
++  const outgoing = document.body;
++  const fromKey = keyFor(event.from);
++  const restore = pending && pending.doc === event.newDocument ? pending : undefined;
++  pending = undefined;
++
++  const cacheable = outgoing.dataset.viewCache !== "off";
++  const outgoingDoc = cacheable ? snapshotDocument() : undefined;
++  // Route announcements are recreated on every navigation; don't let them pile up.
++  const pruneOutgoing = () => outgoing.querySelectorAll(".astro-route-announcer").forEach((el) => el.remove());
++
++  if (restore) {
++    cache.delete(restore.key);
++    restore.view.body.removeEventListener("astro:unmount", blockUnmount, true);
++    event.swap = () => {
++      const { deselectScripts, swapRootAttributes, swapHeadElements, saveFocus, swapBodyElement } =
++        swapFunctions;
++      deselectScripts(restore.doc);
++      swapRootAttributes(restore.doc);
++      swapHeadElements(restore.doc);
++      const restoreFocus = saveFocus();
++      swapBodyElement(restore.view.body, outgoing);
++      restoreFocus();
++      if (outgoingDoc) {
++        pruneOutgoing();
++        store(fromKey, { body: outgoing, doc: outgoingDoc });
++      }
++    };
++    return;
++  }
++
++  if (!outgoingDoc) return;
++  const swap = event.swap;
++  event.swap = () => {
++    swap();
++    // If the body was not actually replaced (e.g. a custom swap), there is nothing to keep.
++    if (outgoing.isConnected) return;
++    pruneOutgoing();
++    store(fromKey, { body: outgoing, doc: outgoingDoc });
++  };
++});

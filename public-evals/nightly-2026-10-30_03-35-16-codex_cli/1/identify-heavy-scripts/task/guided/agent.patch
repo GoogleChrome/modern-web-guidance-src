@@ -1,0 +1,44 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,39 @@
++# The Daily Grind
++
++## Script performance diagnostics
++
++`index.html` loads `script-diagnostics.js` with `defer`. In browsers supporting
++the Long Animation Frames API, it observes frames longer than 50 ms, including
++buffered frames from before the monitor loaded. It accumulates script execution
++time by source URL throughout the page visit. It does not send data anywhere.
++
++Use the page normally with the developer console open. Scripts with more than
++100 ms of cumulative execution time in long frames appear automatically in a
++table, sorted with the largest contributors first. Output is batched at most
++once per second while new script entries arrive. No sample slow scripts are
++added to the site.
++
++Console commands:
++
++```js
++scriptDiagnostics.supported     // Whether this browser supports attribution
++scriptDiagnostics.report()      // Print and return scripts totaling >100 ms
++scriptDiagnostics.report(0)     // Print all attributed scripts with execution time
++scriptDiagnostics.getSummary()  // Return a snapshot without logging
++scriptDiagnostics.reset()       // Clear accumulated results before an interaction
++scriptDiagnostics.stop()        // Disconnect monitoring; keep collected results
++```
++
++`totalDuration` is cumulative execution time, `longestDuration` is the longest
++observed invocation, `count` is the number of attributed invocations, and
++`forcedLayoutDuration` is time spent in forced style/layout within those
++invocations. All durations are milliseconds. Investigate the highest totals
++first, especially third-party code and repeated expensive handlers.
++
++These timings cover script work in long animation frames, not every execution
++or script download time. Attribution may omit cross-origin scripts or use an
++empty source URL; empty URLs are grouped as inline or unattributed. A blank
++report does not prove the page is fast. The current page has no other scripts.
++Unsupported browsers leave the site working and expose `supported: false`;
++use a supporting Chrome or Edge browser to collect results. Reload to restart
++monitoring after calling `stop()`.

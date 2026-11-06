@@ -1,0 +1,111 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,55 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Media feed: vertical scroll container */
++    .media-feed {
++      max-width: 480px;
++      height: 420px;
++      margin: 20px auto 0;
++      padding: 12px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      scroll-behavior: auto; /* never animate the initial positioning */
++      scroll-snap-type: y proximity;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-card {
++      flex: none;
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scroll-snap-align: center;
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++    }
++
++    .media-card figcaption {
++      padding: 10px 14px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    /* Start the feed with the featured card in view (no JS, no animation) */
++    .media-card.target {
++      scroll-initial-target: nearest;
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +241,51 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">From the Roastery</h2>
++      <div class="media-feed" id="media-feed" tabindex="0" aria-label="Roastery photo feed">
++        <figure class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&h=600&q=80"
++            width="900" height="600" alt="Roasted coffee beans" loading="lazy">
++          <figcaption>Fresh Roasted Beans</figcaption>
++        </figure>
++        <figure class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&h=600&q=80"
++            width="900" height="600" alt="Latte with latte art" loading="lazy">
++          <figcaption>Latte Art Workshop</figcaption>
++        </figure>
++        <figure class="media-card target">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&h=600&q=80"
++            width="900" height="600" alt="Cup of coffee on a wooden table" fetchpriority="high">
++          <figcaption>Featured: Morning Pour-Over</figcaption>
++        </figure>
++        <figure class="media-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&h=600&q=80"
++            width="900" height="600" alt="Coffee cup and saucer" loading="lazy">
++          <figcaption>Slow Sunday Brews</figcaption>
++        </figure>
++        <figure class="media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&h=600&q=80"
++            width="900" height="600" alt="Cozy cafe interior" loading="lazy">
++          <figcaption>Our Flagship Cafe</figcaption>
++        </figure>
++      </div>
++      <script>
++        // Fallback for browsers without scroll-initial-target (Firefox, Safari).
++        // Runs synchronously during parsing, before first paint, so there is no
++        // visible jump. Sets scrollTop on the feed only, so the page itself
++        // isn't scrolled (unlike scrollIntoView).
++        (() => {
++          if (CSS.supports("scroll-initial-target", "nearest")) return;
++          const feed = document.getElementById("media-feed");
++          const target = feed.querySelector(".target");
++          const offset = target.getBoundingClientRect().top - feed.getBoundingClientRect().top;
++          feed.scrollTop += offset - (feed.clientHeight - target.offsetHeight) / 2;
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,64 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal live preview (driven by interestfor invokers) */
++    .seasonal-preview {
++      --preview-accent: var(--secondary);
++      margin: 30px auto 0;
++      max-width: 520px;
++      padding: 18px 22px;
++      background: white;
++      border-radius: 8px;
++      border-left: 8px solid var(--preview-accent);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      transition: border-color 0.3s, background-color 0.3s;
++    }
++
++    .seasonal-preview .preview-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #8d6e63;
++    }
++
++    .seasonal-preview .preview-name {
++      display: block;
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .seasonal-preview .preview-swatch {
++      display: inline-block;
++      width: 0.9em;
++      height: 0.9em;
++      margin-right: 0.4em;
++      vertical-align: -0.05em;
++      border-radius: 50%;
++      background: var(--preview-accent);
++    }
++
++    .seasonal-preview.is-active {
++      background: color-mix(in srgb, var(--preview-accent) 12%, white);
++    }
++
++    .seasonal-preview:not(.is-active) .preview-swatch {
++      display: none;
++    }
++
++    .seasonal-preview:not(.is-active) .preview-name {
++      font-weight: normal;
++      font-style: italic;
++      color: #8d6e63;
++    }
++
++    [interestfor] {
++      interest-delay: 150ms 100ms;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,21 +236,30 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="seasonal-preview"
++            data-drink="Maple Oat Latte" data-accent="#c46a1b" data-accent-name="Amber maple">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="seasonal-preview"
++            data-drink="Dark Roast Espresso" data-accent="#3e2723" data-accent-name="Deep roast brown">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="seasonal-preview"
++            data-drink="Cold Brew" data-accent="#1e88e5" data-accent-name="Chilled blue">View Details</a>
+         </div>
+       </div>
++      <div id="seasonal-preview" class="seasonal-preview" role="status" aria-live="polite"
++        data-default="Select a drink to preview">
++        <span class="preview-label">Live Preview</span>
++        <span class="preview-name"><span class="preview-swatch" aria-hidden="true"></span><span
++            class="preview-text">Select a drink to preview</span></span>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +271,51 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // The "View Details" links declare their preview target with the
++    // `interestfor` attribute, so the browser itself detects hover, keyboard
++    // focus and long-press and dispatches `interest` / `loseinterest` on the
++    // single #seasonal-preview element. No per-button listeners are attached.
++    (() => {
++      const preview = document.getElementById('seasonal-preview');
++      const text = preview.querySelector('.preview-text');
++      const defaultText = preview.dataset.default;
++
++      const show = (invoker) => {
++        if (!invoker || !invoker.dataset.drink) return;
++        preview.style.setProperty('--preview-accent', invoker.dataset.accent);
++        text.textContent = `${invoker.dataset.drink} \u2014 ${invoker.dataset.accentName}`;
++        preview.classList.add('is-active');
++      };
++      const reset = () => {
++        preview.style.removeProperty('--preview-accent');
++        text.textContent = defaultText;
++        preview.classList.remove('is-active');
++      };
++
++      const supportsInterest = 'interestForElement' in HTMLAnchorElement.prototype;
++      if (supportsInterest) {
++        preview.addEventListener('interest', (e) => show(e.source));
++        preview.addEventListener('loseinterest', reset);
++        return;
++      }
++
++      // Fallback for browsers without interest invokers: one delegated set of
++      // listeners on the section, still keyed off the declarative attribute.
++      const section = preview.closest('section');
++      const invokerFrom = (el) => el && el.closest && el.closest('[interestfor="seasonal-preview"]');
++      const leave = (e) => {
++        const from = invokerFrom(e.target);
++        if (from && !from.contains(e.relatedTarget)) reset();
++      };
++      section.addEventListener('pointerover', (e) => show(invokerFrom(e.target)));
++      section.addEventListener('pointerout', leave);
++      section.addEventListener('focusin', (e) => show(invokerFrom(e.target)));
++      section.addEventListener('focusout', leave);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

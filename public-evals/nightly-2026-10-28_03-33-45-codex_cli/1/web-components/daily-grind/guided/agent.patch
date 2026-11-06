@@ -1,0 +1,497 @@
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..7ad831e
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,40 @@
++import { baseStyles } from './shared.js';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    ${baseStyles}
++    :host {
++      background: var(--card-background, white);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgb(0 0 0 / 10%);
++      text-align: center;
++    }
++    article { padding: 20px; }
++    ::slotted([slot="heading"]) {
++      margin-bottom: 10px;
++      color: var(--primary, #4e342e);
++    }
++  </style>
++  <article part="card">
++    <slot name="heading"></slot>
++    <slot></slot>
++    <slot name="action"></slot>
++  </article>
++`;
++
++/**
++ * Slots: heading (use the appropriate native heading level), default (description),
++ * action (native link with a descriptive accessible name).
++ * Theme: --primary, --text, --accent, --card-background. Styling hook: ::part(card).
++ * Content stays in Light DOM, so changes need no rerender and links work without JS.
++ */
++export class CoffeeCard extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open', delegatesFocus: true })
++      .append(template.content.cloneNode(true));
++  }
++}
++
++if (!customElements.get('coffee-card')) customElements.define('coffee-card', CoffeeCard);
+diff --git a/components/coffee-hero.js b/components/coffee-hero.js
+new file mode 100644
+index 0000000..7fe4c19
+--- /dev/null
++++ b/components/coffee-hero.js
+@@ -0,0 +1,48 @@
++import { baseStyles } from './shared.js';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    ${baseStyles}
++    :host {
++      color: white;
++      background: linear-gradient(rgb(0 0 0 / 50%), rgb(0 0 0 / 50%)),
++        var(--hero-image, url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80'));
++      background-size: cover;
++      background-position: center;
++    }
++    .content {
++      min-height: 60vh;
++      padding: 32px 20px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      text-align: center;
++    }
++    ::slotted([slot="heading"]) {
++      font-size: clamp(2rem, 6vw, 3rem);
++      margin-bottom: 1rem;
++    }
++  </style>
++  <div class="content" part="content">
++    <slot name="heading"></slot>
++    <slot></slot>
++    <slot name="action"></slot>
++  </div>
++`;
++
++/**
++ * Place inside a native header or section. Slots: heading, default (description),
++ * action (native link). Theme: --primary, --accent, --hero-image (CSS url()).
++ * Styling hook: ::part(content). Long content can grow beyond the minimum height.
++ */
++export class CoffeeHero extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open', delegatesFocus: true })
++      .append(template.content.cloneNode(true));
++  }
++}
++
++if (!customElements.get('coffee-hero')) customElements.define('coffee-hero', CoffeeHero);
+diff --git a/components/coffee-navigation.js b/components/coffee-navigation.js
+new file mode 100644
+index 0000000..bb986c6
+--- /dev/null
++++ b/components/coffee-navigation.js
+@@ -0,0 +1,118 @@
++import { baseStyles } from './shared.js';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    ${baseStyles}
++    :host { background: var(--primary, #4e342e); color: white; }
++    nav {
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      flex-wrap: wrap;
++    }
++    ::slotted([slot="brand"]) {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++    #links { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; }
++    ::slotted(a) { color: white; text-decoration: none; font-size: 0.9rem; }
++    ::slotted(a:hover) { color: var(--accent, #ffab40); }
++    ::slotted([data-outlined]) {
++      border: 1px solid var(--accent, #ffab40);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++    button {
++      font: inherit;
++      color: inherit;
++      background: transparent;
++      border: 1px solid var(--accent, #ffab40);
++      padding: 8px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++    [hidden] { display: none; }
++    @media (max-width: 48rem) {
++      #links { flex-basis: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
++      ::slotted(a) { padding: 8px 12px; }
++    }
++  </style>
++  <nav aria-label="Main navigation">
++    <slot name="brand"></slot>
++    <button type="button" aria-expanded="false" aria-controls="links" hidden>Navigation</button>
++    <div id="links"><slot></slot></div>
++  </nav>
++`;
++
++/**
++ * Slots: brand (text or home link), default (direct navigation anchors).
++ * Theme: --primary, --accent. Each instance owns its disclosure and listeners.
++ */
++export class CoffeeNavigation extends HTMLElement {
++  #controller;
++  #media;
++  #button;
++  #links;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.append(template.content.cloneNode(true));
++    this.#button = root.querySelector('button');
++    this.#links = root.querySelector('#links');
++  }
++
++  connectedCallback() {
++    // Connections can repeat when a consumer moves or reinserts this element.
++    this.#controller?.abort();
++    this.#controller = new AbortController();
++    const { signal } = this.#controller;
++    this.#media = matchMedia('(max-width: 48rem)');
++    const syncLayout = () => {
++      const mobile = this.#media.matches;
++      if (mobile) {
++        this.#button.hidden = false;
++        this.#setExpanded(false);
++      }
++      else {
++        this.#links.hidden = false;
++        if (this.shadowRoot.activeElement === this.#button) {
++          this.querySelector('a')?.focus();
++        }
++        this.#button.hidden = true;
++        this.#button.setAttribute('aria-expanded', 'true');
++      }
++    };
++    this.#button.addEventListener('click', () => {
++      this.#setExpanded(this.#button.getAttribute('aria-expanded') !== 'true');
++    }, { signal });
++    this.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape' && this.#media.matches && !this.#links.hidden) {
++        this.#setExpanded(false);
++        this.#button.focus();
++        event.preventDefault();
++      }
++    }, { signal });
++    this.#media.addEventListener('change', syncLayout, { signal });
++    syncLayout();
++  }
++
++  disconnectedCallback() {
++    this.#controller?.abort();
++  }
++
++  #setExpanded(expanded) {
++    // Move focus before hiding slotted links, including a focused descendant.
++    if (!expanded && [...this.querySelectorAll('a')].some(link => link.matches(':focus-within'))) {
++      this.#button.focus();
++    }
++    this.#button.setAttribute('aria-expanded', String(expanded));
++    this.#links.hidden = !expanded;
++  }
++}
++
++if (!customElements.get('coffee-navigation')) customElements.define('coffee-navigation', CoffeeNavigation);
+diff --git a/components/index.js b/components/index.js
+new file mode 100644
+index 0000000..e333b64
+--- /dev/null
++++ b/components/index.js
+@@ -0,0 +1,3 @@
++import './coffee-card.js';
++import './coffee-hero.js';
++import './coffee-navigation.js';
+diff --git a/components/shared.js b/components/shared.js
+new file mode 100644
+index 0000000..7e6218c
+--- /dev/null
++++ b/components/shared.js
+@@ -0,0 +1,20 @@
++// Shared source, copied into each shadow template; no global component styles.
++export const baseStyles = `
++  :host { display: block; color: var(--text, #3e2723); }
++  *, ::slotted(*) { box-sizing: border-box; }
++  ::slotted(*) { margin: 0; }
++  ::slotted(a[slot="action"]) {
++    display: inline-block;
++    background: var(--primary, #4e342e);
++    color: white;
++    padding: 10px 20px;
++    border-radius: 5px;
++    margin-top: 15px;
++    text-decoration: none;
++  }
++  ::slotted(a[slot="action"]:hover) { background: #3e2723; }
++  ::slotted(a:focus-visible), button:focus-visible {
++    outline: 3px solid var(--accent, #ffab40);
++    outline-offset: 4px;
++  }
++`;
+diff --git a/index.html b/index.html
+index 66c9173..4d9c5e1 100644
+--- a/index.html
++++ b/index.html
+@@ -14,125 +14,59 @@
+       --light: #fafafa;
+     }
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    * { box-sizing: border-box; }
+ 
+     body {
++      margin: 0;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
++    coffee-navigation {
++      display: block;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    h2 { margin: 0; text-align: center; }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    /* Failed or disabled scripts must leave the content and links available. */
++    coffee-card:not(:defined), coffee-hero:not(:defined) {
++      display: block;
++      padding: 20px;
++      text-align: center;
+     }
+-
+-    .btn {
+-      display: inline-block;
++    coffee-card:not(:defined) { background: white; border-radius: 8px; }
++    coffee-navigation:not(:defined) {
++      padding: 1rem 5%;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+     }
+-
+-    .btn:hover {
+-      background: #3e2723;
++    coffee-navigation:not(:defined) a {
++      display: inline-block;
++      margin: 8px;
++      color: white;
+     }
+ 
+     footer {
+@@ -142,6 +76,8 @@
+       margin-top: 40px;
+     }
+ 
++    footer p { margin: 0; }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+@@ -153,46 +89,47 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components/index.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <coffee-navigation>
++    <div slot="brand">THE DAILY GRIND</div>
++    <a href="/menu">Menu</a>
++    <a href="/locations">Locations</a>
++    <a href="/rewards">Rewards</a>
++    <a href="/account">My Account</a>
++    <a href="/logout" data-outlined>Logout</a>
++  </coffee-navigation>
++
++  <header>
++    <coffee-hero>
++      <h1 slot="heading">Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a slot="action" href="/order-online">Order Now</a>
++    </coffee-hero>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <coffee-card>
++          <h3 slot="heading">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <a slot="action" href="/menu/seasonal" aria-label="View details for Maple Oat Latte">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <h3 slot="heading">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <a slot="action" href="/menu/espresso" aria-label="View details for Dark Roast Espresso">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <h3 slot="heading">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <a slot="action" href="/menu/cold-brew" aria-label="View details for Cold Brew">View Details</a>
++        </coffee-card>
+       </div>
+     </section>
+   </main>

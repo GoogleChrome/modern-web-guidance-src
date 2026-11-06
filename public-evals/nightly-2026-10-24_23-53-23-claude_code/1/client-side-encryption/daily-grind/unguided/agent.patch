@@ -1,0 +1,279 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..8d5279b
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++.secrets/
+diff --git a/delivery-notes-key.json b/delivery-notes-key.json
+new file mode 100644
+index 0000000..1a54cda
+--- /dev/null
++++ b/delivery-notes-key.json
+@@ -0,0 +1,6 @@
++{
++  "v": 1,
++  "keyId": "PdjeQemOms0=",
++  "x25519": "7kSpwtr4ZjzBAiaSbidf/9a9tiVXO4+qMsaP5RtTxj0=",
++  "mlkem768": "gBfK2ogZ6wYos5bOU7kVBZUC+vFK7ttsWWA4AHGZc0i3/dkMA/oncmlhFoyheTtXzdJCMFZBCNYcpmR15BgP6pGCCRAlBeuPN0GOXfFt/pmvq1RPqugNnDxExiR7QAjMYrEePXpS4WNxRbZ9goSuRXqcdbi+sPEZGwRu6TgL6CWIcqaQWFkMECY83ONp/XOKSwmkIzlKeXu6KYJs7mItVxuQDDQQf/O6EWESDtcIC4Vx2DJbNGG323C1YVa/l9APdNNopuKXwQQZYVEwUIZIZTchqIS2z7iBGpd4UausCQxk/SWx98KsfYjB5PGNYydzbMFjCikAdmVjSRpv6wQG53WDpKi66AhiDvwZvZOnDfcvKOmtnTGoSySw48sKW0giNViShtqUQEmz9YfH2+VxVeQz29ElNhII98G4guRPnSHJB7N5DmYtWeKM3vF0oJaQVgiOa8Zp08CKN0jLlYBgjvAFEzQVGNa9calF9lZVjDjIvCEWHyfMOpxfuQJDLSI0HDq/NNIKu1M5e4dKKOQBYunGMIXEj5tpV5KCDfpUNucyD/m2KNl6bIp946moQzpvK4ZogDU/84Em7zpLdcy8lwc/UOxBIEQOtihlPEFjdzdjuVDMxfBuNCZ42olVImhHM7VYA6S7TPItI6S6Toqs5gVJGhR7c2h1OxTH/Jaeauu3Viw/OSUuyaOQVdSKK2GTs4hLcRPHjPwU+6dLDfdVXuekC7ZXSejBaxo2cXcKWvUUY1sZ6vQzdxe8sGczgOp74WGob7nJcMatRtIZIDslYfNgaRSUZhnMn8A5iMYfP/qS+Fuv+OBPlhUgYuMAwLtJsrOHywkGV4ctozPGjUjLLFjEalpNOYWJNOW9PLSamwI6ajcQeTGHdJYsS0YvMbrKKUpZOSU51mcvqDCtT2WglJuWwTw2J2rJ9xwtVjKvDiV6DEFH4EEFEVuU+kB0MydQ2vh2jvuec2V+8FcS5OcnJaXKomp+oNl/kTd9jmou9Fhe3rfDtTeYJoJ2O+wYkjpb4aN+MyCqsIebRuYACOyPn9rBcbcuIbOTqFs3uWNm3kanH+kx7plgW5Nejgk4jBIKZualbPQ0+Zcxm3Ntl/lfu2eEJ0NuTMS6q4IuJ8nNbiJVyVchDQMj3tN+0bF9rNclv/a35JYIPgK9hFaeevx7OFF3T7YXd/sYszVATzkv0+Y260PHLgO3ySWWkgLQZpPHX4eRDgxwulwQdmZyTgmXRtjKAnwapxdOpMsodrUjP7U/G/XPuvN3ZFNEcwFwAE0crwE15SYRQSARJ4tHuAuO7WxpHnArzfwbW8oVbWUNvNkleXgjH9k+JwKVvltKZyG5wJpWXal2ycN6+SQ+x7iZt+WC9eZFvaEl4ifJn2Ua4RNrBVIT1yEOg5sm+/IuoxAghTNjSjMFinsIlPelYmsyy5iLmmh9JTMA5lVpwBeydoDJzTvIZWqmFxFOOAo1w8cn3vc9WhQlvcmpJbgyVjlblCEKWyUMGgcToRx2CcGcV3yENqF8KCIQ1de8bnw4lZO2cJOr5eOuKT+LvPyHmfogOD3WoyyijpRwWtr3qaDTg2k="
++}
+diff --git a/delivery-notes.js b/delivery-notes.js
+new file mode 100644
+index 0000000..77b5152
+--- /dev/null
++++ b/delivery-notes.js
+@@ -0,0 +1,105 @@
++// Client-side encrypted delivery notes.
++// Key establishment: X25519 ECDH (ephemeral) + ML-KEM-768 encapsulation, combined via HKDF-SHA256 (hybrid).
++// Payload: AES-256-GCM with the KEM transcript bound in as AAD and in the HKDF info.
++// Browsers without ML-KEM in WebCrypto can only use X25519 if the customer explicitly allows it.
++const SUITE_HYBRID = 'X25519+MLKEM768/HKDF-SHA256/AES-256-GCM';
++const SUITE_CLASSICAL = 'X25519/HKDF-SHA256/AES-256-GCM';
++const enc = new TextEncoder();
++const subtle = crypto.subtle;
++
++const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
++const unb64 = (str) => Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
++
++async function supportsMlKem() {
++  try {
++    await subtle.generateKey('ML-KEM-768', false, ['encapsulateBits', 'decapsulateBits']);
++    return typeof subtle.encapsulateBits === 'function';
++  } catch {
++    return false;
++  }
++}
++
++async function supportsX25519() {
++  try {
++    await subtle.generateKey('X25519', false, ['deriveBits']);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++async function encryptNote(plaintext, recipient, { allowClassical }) {
++  const pq = await supportsMlKem();
++  if (!(await supportsX25519())) throw new Error('This browser does not support X25519 encryption.');
++  if (!pq && !allowClassical) throw new Error('This browser lacks post-quantum support. Tick the box to allow classical-only protection.');
++
++  const eph = await subtle.generateKey('X25519', false, ['deriveBits']);
++  const epkRaw = await subtle.exportKey('raw', eph.publicKey);
++  const rcptX = await subtle.importKey('raw', unb64(recipient.x25519), 'X25519', false, []);
++  const secrets = [new Uint8Array(await subtle.deriveBits({ name: 'X25519', public: rcptX }, eph.privateKey, 256))];
++
++  let kemCt = null;
++  if (pq) {
++    const rcptPq = await subtle.importKey('raw-public', unb64(recipient.mlkem768), 'ML-KEM-768', false, ['encapsulateBits']);
++    const { sharedKey, ciphertext } = await subtle.encapsulateBits('ML-KEM-768', rcptPq);
++    secrets.push(new Uint8Array(sharedKey));
++    kemCt = b64(ciphertext);
++  }
++
++  const header = JSON.stringify({ v: 1, suite: pq ? SUITE_HYBRID : SUITE_CLASSICAL, keyId: recipient.keyId, epk: b64(epkRaw), kemCt });
++  const ikm = new Uint8Array(secrets.reduce((n, s) => n + s.length, 0));
++  let off = 0;
++  for (const s of secrets) { ikm.set(s, off); off += s.length; }
++
++  const info = new Uint8Array([...enc.encode('daily-grind/delivery-notes/v1|'), ...new Uint8Array(await subtle.digest('SHA-256', enc.encode(header)))]);
++const base = await subtle.importKey('raw', ikm, 'HKDF', false, ['deriveKey']);
++  const key = await subtle.deriveKey(
++    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: info },
++    base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
++  ikm.fill(0);
++
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const ct = await subtle.encrypt({ name: 'AES-GCM', iv, additionalData: enc.encode(header) }, key, enc.encode(plaintext));
++  return { ...JSON.parse(header), iv: b64(iv), ciphertext: b64(ct) };
++}
++
++const form = document.getElementById('dn-form');
++if (form) {
++  const status = document.getElementById('dn-status');
++  const out = document.getElementById('dn-output');
++  const result = document.getElementById('dn-result');
++  const download = document.getElementById('dn-download');
++  const classical = document.getElementById('dn-classical');
++  let recipient;
++  let blobUrl;
++
++  const keyReady = fetch('delivery-notes-key.json')
++    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
++    .then((k) => { recipient = k; });
++  Promise.all([keyReady, supportsMlKem()]).then(([, pq]) => {
++    status.textContent = pq
++      ? 'Hybrid post-quantum protection (X25519 + ML-KEM-768) is active.'
++      : 'Your browser has no ML-KEM support; only classical X25519 protection is available.';
++    classical.parentElement.hidden = pq;
++  }).catch(() => { status.textContent = 'Could not load the store encryption key; notes are unavailable.'; });
++
++  form.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    const note = form.elements.note.value.trim();
++    if (!note || !recipient) return;
++    try {
++      const envelope = await encryptNote(note, recipient, { allowClassical: classical.checked });
++      const json = JSON.stringify(envelope, null, 2);
++      out.value = json;
++      if (blobUrl) URL.revokeObjectURL(blobUrl);
++      blobUrl = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
++      download.href = blobUrl;
++      result.hidden = false;
++      form.elements.note.value = '';
++    } catch (err) {
++      status.textContent = err.message;
++    }
++  });
++
++  document.getElementById('dn-copy').addEventListener('click', () => navigator.clipboard?.writeText(out.value));
++}
+diff --git a/index.html b/index.html
+index 66c9173..af303d4 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,43 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Encrypted delivery notes */
++    .notes-panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    .notes-panel textarea {
++      width: 100%;
++      min-height: 100px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      margin: 10px 0;
++    }
++
++    .notes-panel .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-right: 8px;
++    }
++
++    .notes-status {
++      font-size: 0.85rem;
++      margin-bottom: 8px;
++    }
++
++    #dn-output {
++      font-family: monospace;
++      font-size: 0.75rem;
++      min-height: 160px;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +232,26 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="delivery-notes" style="margin-top: 40px;">
++      <h2 style="text-align: center;">Encrypted Delivery Notes</h2>
++      <div class="notes-panel">
++        <p>Gate codes, access instructions, allergies: your note is encrypted in your browser before it goes anywhere, so only The Daily Grind can read it.</p>
++        <form id="dn-form">
++          <label for="dn-note">Delivery note</label>
++          <textarea id="dn-note" name="note" required placeholder="e.g. Gate code 4821, leave with the concierge"></textarea>
++          <p class="notes-status" id="dn-status" role="status">Loading encryption key…</p>
++          <label hidden><input type="checkbox" id="dn-classical"> Allow classical-only protection on this browser</label>
++          <div><button type="submit" class="btn">Encrypt Note</button></div>
++        </form>
++        <div id="dn-result" hidden>
++          <label for="dn-output">Encrypted note (safe to share with your order)</label>
++          <textarea id="dn-output" readonly></textarea>
++          <button type="button" class="btn" id="dn-copy">Copy</button>
++          <a class="btn" id="dn-download" download="delivery-note.json">Download</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +264,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="delivery-notes.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/tools/decrypt-note.mjs b/tools/decrypt-note.mjs
+new file mode 100644
+index 0000000..7f67283
+--- /dev/null
++++ b/tools/decrypt-note.mjs
+@@ -0,0 +1,31 @@
++// Usage: node tools/decrypt-note.mjs <note.json> [private-key.json]
++import { readFile } from 'node:fs/promises';
++
++const [notePath, keyPath = '.secrets/delivery-notes-private.json'] = process.argv.slice(2);
++const s = crypto.subtle;
++const unb64 = (str) => new Uint8Array(Buffer.from(str, 'base64'));
++const enc = new TextEncoder();
++
++const note = JSON.parse(await readFile(notePath, 'utf8'));
++const priv = JSON.parse(await readFile(keyPath, 'utf8'));
++if (note.v !== 1 || note.keyId !== priv.keyId) throw new Error('Note was not encrypted to this key');
++
++const xPriv = await s.importKey('jwk', priv.x25519, 'X25519', false, ['deriveBits']);
++const epk = await s.importKey('raw', unb64(note.epk), 'X25519', false, []);
++const parts = [new Uint8Array(await s.deriveBits({ name: 'X25519', public: epk }, xPriv, 256))];
++if (note.suite.includes('MLKEM768')) {
++  const pqPriv = await s.importKey('raw-seed', unb64(priv.mlkem768Seed), 'ML-KEM-768', false, ['decapsulateBits']);
++  parts.push(new Uint8Array(await s.decapsulateBits('ML-KEM-768', pqPriv, unb64(note.kemCt))));
++}
++
++const header = JSON.stringify({ v: note.v, suite: note.suite, keyId: note.keyId, epk: note.epk, kemCt: note.kemCt ?? null });
++const ikm = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
++let off = 0;
++for (const p of parts) { ikm.set(p, off); off += p.length; }
++const info = new Uint8Array([...enc.encode('daily-grind/delivery-notes/v1|'), ...new Uint8Array(await s.digest('SHA-256', enc.encode(header)))]);
++const base = await s.importKey('raw', ikm, 'HKDF', false, ['deriveKey']);
++const key = await s.deriveKey(
++  { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: info },
++  base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
++const pt = await s.decrypt({ name: 'AES-GCM', iv: unb64(note.iv), additionalData: enc.encode(header) }, key, unb64(note.ciphertext));
++console.log(new TextDecoder().decode(pt));
+diff --git a/tools/keygen.mjs b/tools/keygen.mjs
+new file mode 100644
+index 0000000..a8c64ff
+--- /dev/null
++++ b/tools/keygen.mjs
+@@ -0,0 +1,23 @@
++// Generates the store's delivery-notes keypair (X25519 + ML-KEM-768).
++// Public half -> delivery-notes-key.json (served with the site).
++// Private half -> .secrets/delivery-notes-private.json (gitignored; keep offline).
++import { mkdir, writeFile } from 'node:fs/promises';
++
++const s = crypto.subtle;
++const b64 = (buf) => Buffer.from(buf).toString('base64');
++
++const x = await s.generateKey('X25519', true, ['deriveBits']);
++const pq = await s.generateKey('ML-KEM-768', true, ['encapsulateBits', 'decapsulateBits']);
++
++const xPub = await s.exportKey('raw', x.publicKey);
++const pqPub = await s.exportKey('raw-public', pq.publicKey);
++const keyId = b64(new Uint8Array(await s.digest('SHA-256', Buffer.concat([Buffer.from(xPub), Buffer.from(pqPub)]))).slice(0, 8));
++
++await writeFile('delivery-notes-key.json', JSON.stringify({ v: 1, keyId, x25519: b64(xPub), mlkem768: b64(pqPub) }, null, 2) + '\n');
++await mkdir('.secrets', { recursive: true });
++await writeFile('.secrets/delivery-notes-private.json', JSON.stringify({
++  v: 1, keyId,
++  x25519: await s.exportKey('jwk', x.privateKey),
++  mlkem768Seed: b64(await s.exportKey('raw-seed', pq.privateKey)),
++}, null, 2) + '\n', { mode: 0o600 });
++console.log('keyId', keyId);

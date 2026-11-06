@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,68 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5?module';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++    const queue = new Set();
++    let fetchLaterController;
++    let fetchLaterResult;
++
++    function updateQueue(metric) {
++      if (fetchLaterResult?.activated) {
++        queue.clear();
++      }
++      queue.add(metric);
++
++      if (typeof window.fetchLater === 'function') {
++        const body = JSON.stringify([...queue]);
++
++        fetchLaterController?.abort();
++        fetchLaterController = new AbortController();
++
++        try {
++          fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++            method: 'POST',
++            body,
++            signal: fetchLaterController.signal,
++          });
++        } catch (e) {
++          // Ignore QuotaExceededError or other deferred fetch errors and fall back to visibilitychange
++        }
++      }
++    }
++
++    function flushQueue() {
++      if (fetchLaterResult && !fetchLaterResult.activated) {
++        return;
++      }
++      if (queue.size > 0) {
++        const body = JSON.stringify([...queue]);
++        if (navigator.sendBeacon) {
++          navigator.sendBeacon(ANALYTICS_ENDPOINT, body);
++        } else {
++          fetch(ANALYTICS_ENDPOINT, {
++            method: 'POST',
++            body,
++            keepalive: true,
++          });
++        }
++        queue.clear();
++      }
++    }
++
++    onCLS(updateQueue, { reportAllChanges: true });
++    onINP(updateQueue, { reportAllChanges: true });
++    onLCP(updateQueue, { reportAllChanges: true });
++
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') {
++        flushQueue();
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

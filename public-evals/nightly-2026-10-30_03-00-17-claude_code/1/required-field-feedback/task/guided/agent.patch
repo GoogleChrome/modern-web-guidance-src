@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,89 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Newsletter signup */
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++      text-align: left;
++    }
++
++    .newsletter h2 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      text-align: center;
++      margin-bottom: 15px;
++    }
++
++    .newsletter label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .newsletter .required-mark {
++      color: #b3261e;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input {
++      flex: 1;
++      min-width: 0;
++      min-height: 48px;
++      padding: 0.75rem;
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: white;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    .newsletter input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .newsletter button {
++      min-height: 48px;
++      padding: 0 20px;
++      font: inherit;
++      color: white;
++      background: var(--primary);
++      border: none;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter .error-msg {
++      display: none;
++      color: #b3261e;
++      font-size: 0.875rem;
++      margin-top: 4px;
++    }
++
++    /* :user-invalid only matches after the user has interacted with the field
++       (or tried to submit), so nothing turns red on page load. */
++    .newsletter input:user-invalid {
++      border: 2px solid #b3261e;
++      background: #fce8e6;
++    }
++
++    .newsletter:has(input:user-invalid:placeholder-shown) #newsletter-email-required,
++    .newsletter:has(input:user-invalid:not(:placeholder-shown)) #newsletter-email-format {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +278,24 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" action="/subscribe" method="POST">
++      <h2>Join Our Mailing List</h2>
++      <label for="newsletter-email">Email <span class="required-mark" aria-hidden="true">*</span></label>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com"
++          autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false"
++          required aria-errormessage="newsletter-email-required">
++        <button type="submit">Subscribe</button>
++      </div>
++      <p id="newsletter-email-required" class="error-msg">
++        <span aria-hidden="true">&#9888;</span> Please enter your email address.
++      </p>
++      <p id="newsletter-email-format" class="error-msg">
++        <span aria-hidden="true">&#9888;</span> Please enter a valid email address.
++      </p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +303,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep aria-invalid in sync with the visual :user-invalid state so screen
++    // readers also only hear about the error after the user leaves the field.
++    const newsletterEmail = document.getElementById('newsletter-email');
++
++    const syncNewsletterAria = (event) => {
++      // On a submit attempt the 'invalid' event can fire before :user-invalid matches.
++      if (event.type === 'invalid' || newsletterEmail.matches(':user-invalid')) {
++        newsletterEmail.setAttribute('aria-invalid', 'true');
++        newsletterEmail.setAttribute('aria-errormessage',
++          newsletterEmail.validity.valueMissing ? 'newsletter-email-required' : 'newsletter-email-format');
++      } else {
++        newsletterEmail.removeAttribute('aria-invalid');
++      }
++    };
++
++    newsletterEmail.addEventListener('blur', syncNewsletterAria);
++    newsletterEmail.addEventListener('invalid', syncNewsletterAria);
++    newsletterEmail.addEventListener('input', (event) => {
++      if (newsletterEmail.hasAttribute('aria-invalid')) syncNewsletterAria(event);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

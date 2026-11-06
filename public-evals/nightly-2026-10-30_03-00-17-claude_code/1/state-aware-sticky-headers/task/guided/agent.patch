@@ -1,0 +1,233 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,10 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --stuck-bg: #1565c0;
++      --nav-height: 4.4rem;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -34,8 +36,9 @@
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      height: var(--nav-height);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+@@ -119,8 +122,46 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Sticky section headers */
++    .sticky-section {
++      margin-top: 60px;
++      /* Prevent scroll anchoring from fighting the padding change when stuck */
++      overflow-anchor: none;
++    }
++
++    .sticky-section p.section-intro {
++      margin: 15px 0 0;
++    }
++
++    .sticky-container {
++      position: sticky;
++      /* Stick just below the site navigation */
++      top: var(--nav-height);
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 20px 24px;
++      border-radius: 8px;
++      font-size: 1.5rem;
++      transition: background-color 0.3s, color 0.3s, box-shadow 0.3s, padding 0.3s;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: var(--stuck-bg);
++        color: white;
++        padding: 8px 24px;
++        box-shadow: 0 4px 10px rgb(0 0 0 / 0.25);
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -194,8 +235,161 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="sticky-section" aria-labelledby="espresso-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="espresso-heading">Espresso Classics</h2>
++      </div>
++      <p class="section-intro">Pulled fresh on our La Marzocco, every shot dialed in each morning.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Cortado</h3>
++          <p>Equal parts espresso and steamed milk for a balanced sip.</p>
++          <a href="/menu/cortado" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Flat White</h3>
++          <p>Velvety microfoam over a double ristretto.</p>
++          <a href="/menu/flat-white" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cappuccino</h3>
++          <p>Classic thirds of espresso, milk, and airy foam.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Americano</h3>
++          <p>Espresso lengthened with hot water for a smooth cup.</p>
++          <a href="/menu/americano" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Macchiato</h3>
++          <p>A bold shot marked with a dollop of foam.</p>
++          <a href="/menu/macchiato" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Mocha</h3>
++          <p>Espresso meets house-made dark chocolate sauce.</p>
++          <a href="/menu/mocha" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++    <section class="sticky-section" aria-labelledby="pour-over-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="pour-over-heading">Single-Origin Pour-Overs</h2>
++      </div>
++      <p class="section-intro">Hand-brewed to order so each origin's character shines.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Floral and bright with notes of bergamot and lemon.</p>
++          <a href="/menu/ethiopia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombia Huila</h3>
++          <p>Caramel sweetness with a red apple finish.</p>
++          <a href="/menu/colombia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Guatemala Antigua</h3>
++          <p>Cocoa, spice, and a gentle smoky body.</p>
++          <a href="/menu/guatemala" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Kenya Nyeri</h3>
++          <p>Juicy blackcurrant acidity with a syrupy mouthfeel.</p>
++          <a href="/menu/kenya" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy, full-bodied, and low in acidity.</p>
++          <a href="/menu/sumatra" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Costa Rica Tarrazú</h3>
++          <p>Clean and crisp with honey and citrus.</p>
++          <a href="/menu/costa-rica" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++    <section class="sticky-section" aria-labelledby="bakery-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="bakery-heading">Pastries &amp; Bites</h2>
++      </div>
++      <p class="section-intro">Baked in-house every morning to pair with your favorite brew.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden layers made with cultured butter.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Bear Claw</h3>
++          <p>Filled with almond frangipane and topped with sliced almonds.</p>
++          <a href="/menu/bear-claw" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Scone</h3>
++          <p>Tender crumb studded with wild blueberries.</p>
++          <a href="/menu/scone" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Avocado Toast</h3>
++          <p>Sourdough, smashed avocado, chili flakes, and lime.</p>
++          <a href="/menu/avocado-toast" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Breakfast Sandwich</h3>
++          <p>Egg, aged cheddar, and bacon on a brioche bun.</p>
++          <a href="/menu/breakfast-sandwich" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Banana Bread</h3>
++          <p>Moist and spiced, with a walnut crunch.</p>
++          <a href="/menu/banana-bread" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++    <section class="sticky-section" aria-labelledby="gear-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="gear-heading">Brew at Home</h2>
++      </div>
++      <p class="section-intro">Everything you need to recreate the café experience in your kitchen.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Whole Bean Bags</h3>
++          <p>Our house blends, roasted weekly in 12oz bags.</p>
++          <a href="/shop/beans" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Pour-Over Kit</h3>
++          <p>Ceramic dripper, filters, and a gooseneck kettle.</p>
++          <a href="/shop/pour-over-kit" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>French Press</h3>
++          <p>Classic 34oz press with a stainless steel frame.</p>
++          <a href="/shop/french-press" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Burr Grinder</h3>
++          <p>Consistent grinds from espresso fine to cold brew coarse.</p>
++          <a href="/shop/grinder" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Travel Tumbler</h3>
++          <p>Keeps drinks hot for 6 hours or cold for 12.</p>
++          <a href="/shop/tumbler" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Gift Cards</h3>
++          <p>Share the grind with friends, family, and coworkers.</p>
++          <a href="/shop/gift-cards" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

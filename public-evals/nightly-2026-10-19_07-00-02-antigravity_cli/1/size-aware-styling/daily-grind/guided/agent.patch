@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+index 66c9173..310b6ca 100644
+--- a/index.html
++++ b/index.html
+@@ -107,12 +107,38 @@
+       margin-top: 20px;
+     }
+ 
++    .card-container {
++      container-type: inline-size;
++      container-name: card;
++    }
++
+     .card {
++      container-type: inline-size;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      gap: 1rem;
++      overflow: hidden;
++      height: 100%;
++    }
++
++    .card-image {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .card-content {
++      padding: 0 20px 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: space-between;
++      flex-grow: 1;
+     }
+ 
+     .card h3 {
+@@ -120,6 +146,41 @@
+       color: var(--primary);
+     }
+ 
++    .card-details {
++      display: none;
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-top: 8px;
++    }
++
++    @container (min-width: 400px) {
++      .card {
++        flex-direction: row;
++        align-items: center;
++        text-align: left;
++        padding: 15px;
++      }
++
++      .card-image {
++        width: 150px;
++        height: 150px;
++        border-radius: 6px;
++        flex-shrink: 0;
++      }
++
++      .card-content {
++        padding: 0;
++        align-items: flex-start;
++        text-align: left;
++      }
++    }
++
++    @container (min-width: 600px) {
++      .card-details {
++        display: block;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,20 +239,38 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="card-image">
++            <div class="card-content">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <p class="card-details">Freshly pulled espresso balanced with lightly sweetened oat milk and pure Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="card-image">
++            <div class="card-content">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <p class="card-details">A rich double shot featuring smoky dark cacao notes and a thick, velvety crema.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="card-image">
++            <div class="card-content">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <p class="card-details">Slow-steeped in cold filtered water for eighteen hours yielding an ultra-smooth, low-acidity craft brew.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,337 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,9 +27,9 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-header {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,34 +45,153 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    button {
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .menu-button, .drawer-close {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++      min-width: 44px;
++      min-height: 44px;
++      padding: 0.5rem 0.75rem;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: transparent;
++      color: white;
++    }
++
++    .menu-button svg, .drawer-close svg {
++      width: 24px;
++      height: 24px;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    html:has(.drawer:popover-open) {
++      overflow: hidden;
++    }
++
++    .drawer {
++      --drawer-width: min(20rem, 80dvw);
++      --drawer-backdrop: 0;
++      position: fixed;
++      inset: 0;
++      margin: 0;
++      padding: 0;
++      width: 100%;
++      height: 100%;
++      max-width: none;
++      max-height: none;
++      border: 0;
++      background: transparent;
++      overflow: hidden;
++      color: white;
++    }
++
++    .drawer::backdrop {
++      background: black;
++      opacity: calc(var(--drawer-backdrop) * 0.5);
++    }
++
++    /* Two native scroll-snap stops let the browser handle swipe momentum. */
++    .drawer-scroller {
++      display: grid;
++      grid-template-columns: var(--drawer-width) 100%;
++      height: 100%;
++      overflow-x: auto;
++      overflow-y: hidden;
++      overscroll-behavior: none;
++      scrollbar-width: none;
++      scroll-snap-type: x mandatory;
++    }
++
++    .drawer-scroller::after {
++      content: '';
++      scroll-snap-align: end;
++      scroll-initial-target: nearest;
++    }
++
++    .drawer-sheet {
++      height: 100svh;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-snap-align: start;
++      background: var(--primary);
++      padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
++    }
++
++    .drawer-heading {
+       display: flex;
+-      list-style: none;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      margin-bottom: 2rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .drawer-heading h2 {
++      font-size: 1.25rem;
+     }
+ 
+-    nav a {
++    .drawer ul {
++      list-style: none;
++      display: grid;
++      gap: 0.75rem;
++    }
++
++    .drawer a {
++      display: block;
++      padding: 0.75rem;
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .drawer a:hover, .menu-button:hover, .drawer-close:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      .drawer-scroller {
++        scroll-behavior: smooth;
++      }
++    }
++
++    @supports (animation-timeline: scroll()) {
++      @property --drawer-backdrop {
++        syntax: '<number>';
++        inherits: true;
++        initial-value: 0;
++      }
++
++      .drawer {
++        timeline-scope: --drawer-fade;
++        animation: drawer-fade linear both;
++        animation-timeline: --drawer-fade;
++      }
++
++      .drawer-scroller {
++        scroll-timeline: --drawer-fade x;
++      }
++
++      @keyframes drawer-fade {
++        from { --drawer-backdrop: 1; }
++        to { --drawer-backdrop: 0; }
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -156,18 +275,18 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <div id="page-content">
++  <header class="site-header">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <button class="menu-button" id="drawer-open" type="button" aria-expanded="false" aria-controls="navigation-drawer">
++      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++        <path d="M3 6h18M3 12h18M3 18h18" />
++      </svg>
++      Menu
++    </button>
++  </header>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -205,8 +324,131 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  </div>
+ 
++  <div class="drawer" id="navigation-drawer" popover="manual" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
++    <div class="drawer-scroller">
++      <div class="drawer-sheet" tabindex="-1">
++        <div class="drawer-heading">
++          <h2 id="drawer-title">The Daily Grind</h2>
++          <button class="drawer-close" type="button" aria-label="Close menu">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++              <path d="m6 6 12 12M6 18 18 6" />
++            </svg>
++          </button>
++        </div>
++        <nav aria-label="Primary navigation">
++          <ul>
++            <li><a href="/menu">Menu</a></li>
++            <li><a href="/locations">Locations</a></li>
++            <li><a href="/rewards">Rewards</a></li>
++            <li><a href="/account">My Account</a></li>
++            <li><a href="/logout" class="logout-link">Logout</a></li>
++          </ul>
++        </nav>
++      </div>
++    </div>
++  </div>
++
++  <script type="module">
++    const drawer = document.getElementById('navigation-drawer');
++    const openButton = document.getElementById('drawer-open');
++    const page = document.getElementById('page-content');
++    const scroller = drawer.querySelector('.drawer-scroller');
++    const sheet = drawer.querySelector('.drawer-sheet');
++    const closeButton = drawer.querySelector('.drawer-close');
++    let phase = 'closed';
++    let hasShown = false;
++
++    function finishClosing() {
++      phase = 'closed';
++      drawer.hidePopover();
++      page.inert = false;
++      openButton.setAttribute('aria-expanded', 'false');
++      openButton.focus();
++    }
++
++    async function openDrawer() {
++      if (phase !== 'closed') return;
++      phase = 'opening';
++      hasShown = false;
++      drawer.showPopover();
++      page.inert = true;
++      openButton.setAttribute('aria-expanded', 'true');
++
++      // Safari and Firefox need an explicit initial jump to the closed stop.
++      if (!CSS.supports('scroll-initial-target', 'nearest')) {
++        scroller.scrollTo({ left: sheet.offsetWidth, behavior: 'instant' });
++      }
++      // Commit the closed position before beginning the opening scroll.
++      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
++      if (phase === 'opening') scroller.scrollTo({ left: 0, behavior: 'auto' });
++    }
++
++    function closeDrawer() {
++      if (phase === 'closed') return;
++      phase = 'closing';
++      if (scroller.scrollLeft >= sheet.offsetWidth - 1) {
++        finishClosing();
++      } else {
++        scroller.scrollTo({ left: sheet.offsetWidth, behavior: 'auto' });
++      }
++    }
++
++    // Observe actual visibility so native swipes and button dismissal share
++    // the same cleanup, without hiding the popover midway through a swipe.
++    const observer = new IntersectionObserver(entries => {
++      if (phase === 'closed') return;
++      const entry = entries.at(-1);
++      if (entry.intersectionRatio >= 0.001) hasShown = true;
++      if (entry.intersectionRatio < 0.001 && (hasShown || phase === 'closing')) {
++        finishClosing();
++      } else if (entry.intersectionRatio === 1 && phase === 'opening') {
++        phase = 'open';
++        closeButton.focus();
++      }
++    }, { root: scroller, threshold: [0, 0.001, 1] });
++    observer.observe(sheet);
++
++    // Keep the fade working when CSS scroll-driven animations are unavailable.
++    if (!CSS.supports('animation-timeline: scroll()')) {
++      const updateBackdrop = () => {
++        const opacity = Math.max(0, Math.min(1, 1 - scroller.scrollLeft / sheet.offsetWidth));
++        drawer.style.setProperty('--drawer-backdrop', opacity);
++      };
++      scroller.addEventListener('scroll', updateBackdrop, { passive: true });
++    }
++
++    openButton.addEventListener('click', openDrawer);
++    closeButton.addEventListener('click', closeDrawer);
++    drawer.addEventListener('click', event => {
++      if (!sheet.contains(event.target)) closeDrawer();
++    });
++
++    document.addEventListener('keydown', event => {
++      if (phase === 'closed') return;
++      if (event.key === 'Escape') {
++        event.preventDefault();
++        closeDrawer();
++      } else if (event.key === 'Tab') {
++        // A manual popover needs its own focus boundary in addition to inert.
++        const controls = [...sheet.querySelectorAll('button, a[href]')];
++        const first = controls[0];
++        const last = controls.at(-1);
++        if (phase === 'opening' || phase === 'closing') {
++          event.preventDefault();
++        } else if (event.shiftKey && (document.activeElement === first || !sheet.contains(document.activeElement))) {
++          event.preventDefault();
++          last.focus();
++        } else if (!event.shiftKey && (document.activeElement === last || !sheet.contains(document.activeElement))) {
++          event.preventDefault();
++          first.focus();
++        }
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

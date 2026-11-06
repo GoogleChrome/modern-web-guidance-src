@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,37 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scroll Progress Indicator */
++    .scroll-progress {
++      position: fixed;
++      top: 0;
++      left: 0;
++      width: 0%;
++      height: 4px;
++      background-color: var(--accent);
++      transform-origin: left;
++      z-index: 1001;
++      pointer-events: none;
++    }
++
++    @supports (animation-timeline: scroll()) {
++      .scroll-progress {
++        animation: scroll-progress linear both;
++        animation-timeline: scroll(root);
++      }
++    }
++
++    @keyframes scroll-progress {
++      from {
++        width: 0%;
++      }
++      to {
++        width: 100%;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +185,10 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="scroll-progress" id="scroll-progress" role="progressbar" aria-label="Page scroll progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +237,38 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const progressBar = document.getElementById('scroll-progress');
++      if (!progressBar) return;
++
++      function updateScrollProgress() {
++        const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
++        const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
++        const progress = scrollHeight > 0 ? Math.min(Math.max((scrollTop / scrollHeight) * 100, 0), 100) : 0;
++        progressBar.style.width = progress + '%';
++        progressBar.setAttribute('aria-valuenow', String(Math.round(progress)));
++      }
++
++      let ticking = false;
++      window.addEventListener('scroll', function () {
++        updateScrollProgress();
++        if (!ticking) {
++          window.requestAnimationFrame(function () {
++            updateScrollProgress();
++            ticking = false;
++          });
++          ticking = true;
++        }
++      }, { passive: true });
++
++      window.addEventListener('resize', updateScrollProgress, { passive: true });
++      window.addEventListener('load', updateScrollProgress, { passive: true });
++      updateScrollProgress();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

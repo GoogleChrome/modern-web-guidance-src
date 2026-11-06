@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,10 +26,54 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    html {
++      scroll-snap-type: y proximity;
++    }
++
++    /* Search bar (hidden above the fold until you pull down) */
++    .search-bar {
++      background: var(--secondary);
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: center;
++      scroll-snap-align: start;
++    }
++
++    .search-bar form {
++      display: flex;
++      width: 100%;
++      max-width: 600px;
++      gap: 8px;
++    }
++
++    .search-bar input {
++      flex: 1;
++      padding: 8px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font-size: 1rem;
++    }
++
++    .search-bar button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 16px;
++      border-radius: 4px;
++      font-size: 1rem;
++      cursor: pointer;
++    }
++
++    .search-bar button:hover {
++      background: var(--text);
++    }
++
+     /* Navigation */
+     nav {
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -156,8 +200,15 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar">
++    <form action="/search" method="get" role="search">
++      <input type="search" name="q" placeholder="Search drinks, beans, locations…" aria-label="Search">
++      <button type="submit">Search</button>
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>

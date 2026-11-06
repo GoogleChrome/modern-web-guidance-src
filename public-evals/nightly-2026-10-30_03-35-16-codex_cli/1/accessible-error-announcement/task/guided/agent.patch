@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,59 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .newsletter {
++      max-width: 28rem;
++      margin: 0 auto 2rem;
++      text-align: left;
++    }
++
++    .newsletter label {
++      display: block;
++      margin-block: 1rem 0.25rem;
++      font-weight: 600;
++    }
++
++    .newsletter input {
++      display: block;
++      width: 100%;
++      min-height: 48px;
++      padding: 0.75rem;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .newsletter input:user-invalid {
++      border-color: #9b1c1c;
++      background: #fff5f5;
++    }
++
++    .newsletter-error {
++      color: #9b1c1c;
++      font-weight: 600;
++    }
++
++    .newsletter-error:not(:empty),
++    .newsletter-status:not(:empty) {
++      margin-block-start: 0.5rem;
++    }
++
++    .newsletter button {
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter :is(input, button):focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +248,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" method="post" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Fresh from the Grind</h2>
++      <p>Sign up for coffee news, seasonal favorites, and special offers.</p>
++      <label for="newsletter-email">Email address (required)</label>
++      <input id="newsletter-email" name="email" type="email" required autocomplete="email"
++        autocapitalize="off" autocorrect="off" spellcheck="false" aria-invalid="false">
++      <p id="newsletter-error" class="newsletter-error" aria-live="polite" aria-atomic="true"></p>
++      <button class="btn" type="submit">Subscribe</button>
++      <p id="newsletter-status" class="newsletter-status" role="status"></p>
++      <noscript><p>JavaScript is required for this signup form.</p></noscript>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +268,57 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletterForm = document.getElementById('newsletter-form');
++    const newsletterEmail = document.getElementById('newsletter-email');
++    const newsletterError = document.getElementById('newsletter-error');
++    const newsletterStatus = document.getElementById('newsletter-status');
++    let validationFrame;
++
++    function syncNewsletterError() {
++      // Use the same post-interaction state as the visual field styling.
++      const showError = newsletterEmail.matches(':user-invalid');
++      const message = showError ? 'Please enter a valid email address.' : '';
++
++      newsletterEmail.setAttribute('aria-invalid', String(showError));
++      if (showError) {
++        newsletterEmail.setAttribute('aria-describedby', 'newsletter-error');
++      } else {
++        newsletterEmail.removeAttribute('aria-describedby');
++      }
++      // Keep the live region mounted and avoid repeating unchanged announcements.
++      if (newsletterError.textContent !== message) {
++        newsletterError.textContent = message;
++      }
++    }
++
++    function scheduleNewsletterValidation() {
++      // Clear immediately on correction; read again after native interaction
++      // validation has settled (including failed submissions and resets).
++      if (newsletterEmail.validity.valid) syncNewsletterError();
++      cancelAnimationFrame(validationFrame);
++      validationFrame = requestAnimationFrame(syncNewsletterError);
++    }
++
++    for (const eventName of ['input', 'change', 'blur', 'invalid']) {
++      newsletterEmail.addEventListener(eventName, scheduleNewsletterValidation);
++    }
++    newsletterEmail.addEventListener('input', () => {
++      newsletterStatus.textContent = '';
++    });
++    newsletterForm.addEventListener('reset', () => {
++      newsletterStatus.textContent = '';
++      scheduleNewsletterValidation();
++    });
++    newsletterForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      syncNewsletterError();
++      // This static site has no newsletter service configured yet.
++      newsletterStatus.textContent = 'Newsletter signup is not available yet. Please check back soon.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

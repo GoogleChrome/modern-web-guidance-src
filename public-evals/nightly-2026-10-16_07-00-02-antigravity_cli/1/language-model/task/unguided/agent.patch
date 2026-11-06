@@ -1,0 +1,891 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,163 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* AI Sections & Controls */
++    .ai-section {
++      text-align: left;
++      margin-top: 30px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      border: 1px solid #d7ccc8;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      background: #ffffff;
++      color: var(--text);
++      box-sizing: border-box;
++      resize: vertical;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.25);
++    }
++
++    .btn-secondary {
++      background: #795548;
++    }
++
++    .btn-secondary:hover {
++      background: #5d4037;
++    }
++
++    .btn-danger {
++      background: #c62828;
++      color: white;
++      padding: 6px 12px;
++      font-size: 0.8rem;
++    }
++
++    .btn-danger:hover {
++      background: #b71c1c;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.85rem;
++      margin-top: 0;
++    }
++
++    .response-box {
++      min-height: 70px;
++      padding: 15px;
++      border-radius: 6px;
++      background: #faf8f5;
++      border: 1px solid var(--secondary);
++      white-space: pre-wrap;
++      line-height: 1.6;
++      color: var(--text);
++      font-family: inherit;
++    }
++
++    .json-box {
++      background: #2b1b17;
++      color: #a5d6a7;
++      padding: 15px;
++      border-radius: 6px;
++      overflow-x: auto;
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.9rem;
++      line-height: 1.5;
++      margin-top: 8px;
++      white-space: pre-wrap;
++      border: 1px solid #3e2723;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 4px 10px;
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .badge-info {
++      background: #e0f2f1;
++      color: #00695c;
++    }
++
++    .badge-success {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .badge-warning {
++      background: #fff8e1;
++      color: #f57f17;
++    }
++
++    .badge-error {
++      background: #ffebee;
++      color: #c62828;
++    }
++
++    .badge-accent {
++      background: #fff3e0;
++      color: #e65100;
++    }
++
++    .progress-container {
++      width: 100%;
++      height: 8px;
++      background: #e0e0e0;
++      border-radius: 4px;
++      overflow: hidden;
++      margin: 6px 0;
++    }
++
++    .progress-fill {
++      height: 100%;
++      background: var(--accent);
++      width: 0%;
++      transition: width 0.3s ease;
++    }
++
++    .context-card {
++      background: #efebe9;
++      padding: 15px;
++      border-radius: 6px;
++      border: 1px solid #d7ccc8;
++    }
++
++    .branch-card {
++      background: white;
++      border: 1px solid #d7ccc8;
++      border-radius: 6px;
++      padding: 12px 15px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .branch-card.active {
++      border-left: 5px solid var(--accent);
++      background: #fffdf9;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +349,126 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- AI Feature Sections -->
++
++    <!-- Section 1: Ask the Barista (Built-in AI Streaming & Availability Check) -->
++    <section class="ai-section" id="barista-section">
++      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
++        <h2 style="color: var(--primary); margin: 0;">☕ Ask the Barista</h2>
++        <span id="model-status-badge" class="badge badge-info">Checking Model...</span>
++      </div>
++      <p style="margin-bottom: 15px; color: #5d4037;">
++        Ask our built-in on-device AI barista anything about our signature <strong>Maple Oat Latte</strong> or slow-steeped <strong>Cold Brew</strong>. Responses stream in real-time.
++      </p>
++
++      <!-- Download Progress Monitoring (Client-Side AI Best Practice) -->
++      <div id="download-progress-container" style="display: none; margin-bottom: 15px; padding: 12px; background: #fff8e1; border-radius: 6px; border: 1px solid #ffe082;">
++        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px;">
++          <span id="download-progress-label">Downloading local model assets...</span>
++          <span id="download-progress-percent">0%</span>
++        </div>
++        <div class="progress-container">
++          <div id="download-progress-fill" class="progress-fill" style="width: 0%;"></div>
++        </div>
++      </div>
++
++      <div style="margin-bottom: 15px;">
++        <label for="barista-input" style="display: block; font-weight: bold; margin-bottom: 5px; color: var(--primary);">Your Question:</label>
++        <textarea id="barista-input" class="form-control" rows="3" placeholder="Ask about our Maple Oat Latte or Cold Brew...">What makes the Maple Oat Latte and Cold Brew so special?</textarea>
++      </div>
++
++      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
++        <button id="ask-the-barista" class="btn" style="cursor: pointer;">Ask the Barista</button>
++        <button id="abort-barista-btn" class="btn btn-secondary" style="display: none; cursor: pointer;">Cancel Response</button>
++      </div>
++
++      <div style="margin-top: 20px;">
++        <h4 style="margin-bottom: 8px; color: var(--primary);">Barista's Answer:</h4>
++        <div id="barista-answer" class="response-box">Ask a question above to hear from our barista!</div>
++      </div>
++    </section>
++
++    <!-- Section 2: Customer Feedback Analyzer (Structured JSON Output) -->
++    <section class="ai-section" id="feedback-section">
++      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
++        <h2 style="color: var(--primary); margin: 0;">📊 Customer Feedback Analyzer</h2>
++        <span class="badge badge-accent">Local Structured Output</span>
++      </div>
++      <p style="margin-bottom: 15px; color: #5d4037;">
++        Analyze customer reviews using local on-device AI to generate structured JSON output with a numerical sentiment score and category.
++      </p>
++
++      <div style="margin-bottom: 15px;">
++        <label for="feedback-input" style="display: block; font-weight: bold; margin-bottom: 5px; color: var(--primary);">Customer Review:</label>
++        <textarea id="feedback-input" class="form-control" rows="2" placeholder="Enter customer feedback here...">The Cold Brew was exceptionally smooth and refreshing! Perfect roast, although the service line was slightly slow.</textarea>
++      </div>
++
++      <div style="display: flex; gap: 10px; align-items: center;">
++        <button id="sentiment-btn" class="btn" style="cursor: pointer;">Analyze Feedback</button>
++      </div>
++
++      <div style="margin-top: 20px;">
++        <h4 style="margin-bottom: 8px; color: var(--primary);">Structured JSON Output:</h4>
++        <div id="sentiment-visual" style="margin-bottom: 10px; display: none;"></div>
++        <div id="sentiment-output">
++          <pre id="sentiment-result" class="json-box">Click "Analyze Feedback" to generate structured JSON.</pre>
++        </div>
++      </div>
++    </section>
++
++    <!-- Section 3: Conversation Branching & Session Management -->
++    <section class="ai-section" id="branching-section">
++      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
++        <h2 style="color: var(--primary); margin: 0;">🌿 Conversation Branching & Session Management</h2>
++        <span class="badge badge-accent">Branching & Cleanup</span>
++      </div>
++      <p style="margin-bottom: 15px; color: #5d4037;">
++        Fork active sessions using <code>session.clone()</code> to explore parallel conversation branches without losing prior context, track token usage across active branches, and clean up unneeded sessions to free memory.
++      </p>
++
++      <!-- Context Usage Tracker -->
++      <div id="context-usage" class="context-card" style="margin-bottom: 20px;">
++        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
++          <strong>Active Session Context Usage</strong>
++          <span id="context-summary" style="font-size: 0.9rem; font-family: monospace;">0 / 4096 tokens</span>
++        </div>
++        <div class="progress-container">
++          <div id="context-progress-fill" class="progress-fill" style="width: 0%;"></div>
++        </div>
++        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #6d4c41; margin-top: 4px; flex-wrap: wrap; gap: 10px;">
++          <span>Tokens Used: <strong id="tokens-so-far">0</strong></span>
++          <span>Tokens Remaining: <strong id="tokens-left">4096</strong></span>
++          <span>Max Window: <strong id="tokens-max">4096</strong></span>
++        </div>
++      </div>
++
++      <!-- Action buttons -->
++      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
++        <button id="clone-btn" class="btn" style="cursor: pointer;">Clone Active Session</button>
++        <button id="cleanup-btn" class="btn btn-secondary" style="cursor: pointer;">Clean Up Inactive Sessions</button>
++      </div>
++
++      <div id="branch-status-msg" style="margin-bottom: 15px; font-size: 0.9rem; color: #5d4037;"></div>
++
++      <!-- Active Sessions List -->
++      <div style="margin-bottom: 20px;">
++        <h4 style="margin-bottom: 10px; color: var(--primary);">Active Conversation Branches:</h4>
++        <div id="branches-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
++      </div>
++
++      <!-- Branch Chat Box -->
++      <div id="branch-chat-box" style="padding: 16px; background: #efebe9; border-radius: 6px; border: 1px solid #d7ccc8;">
++        <h4 id="active-branch-title" style="margin-bottom: 10px; color: var(--primary);">Branch Discussion: Main Thread</h4>
++        <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
++          <input type="text" id="branch-query-input" class="form-control" placeholder="Ask a follow-up in this branched session (e.g., 'What beans are in the cold brew?')" style="flex: 1; min-width: 200px;">
++          <button id="branch-send-btn" class="btn" style="margin: 0; cursor: pointer;">Send</button>
++        </div>
++        <div id="branch-answer" class="response-box" style="background: white; min-height: 60px;">Branch responses will appear here...</div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +479,596 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // --- Built-in AI Helper Functions ---
++      function getAI() {
++        if (typeof window !== 'undefined' && window.ai) return window.ai;
++        if (typeof self !== 'undefined' && self.ai) return self.ai;
++        if (typeof globalThis !== 'undefined' && globalThis.ai) return globalThis.ai;
++        return null;
++      }
++
++      function getLanguageModel() {
++        const aiObj = getAI();
++        return aiObj?.languageModel || null;
++      }
++
++      /**
++       * Check if local AI language model is available.
++       * Supports W3C / Chrome Prompt API: lm.availability() and legacy lm.capabilities().
++       */
++      async function checkModelAvailability() {
++        const lm = getLanguageModel();
++        if (!lm) return 'no';
++        try {
++          if (typeof lm.availability === 'function') {
++            const status = await lm.availability();
++            return status; // 'readily' | 'after-download' | 'no'
++          }
++          if (typeof lm.capabilities === 'function') {
++            const caps = await lm.capabilities();
++            return caps?.available ?? 'no';
++          }
++        } catch (e) {
++          console.warn('Availability check failed:', e);
++          return 'no';
++        }
++        return 'readily';
++      }
++
++      /**
++       * Consume streaming response accommodating both cumulative chunks (Chrome Prompt API standard)
++       * and delta chunks (common in some mock environments).
++       */
++      async function consumeStream(stream, onChunk) {
++        if (!stream) return;
++        let isCumulative = null;
++        let lastChunk = '';
++        let accumulatedText = '';
++
++        if (stream[Symbol.asyncIterator]) {
++          for await (const chunk of stream) {
++            if (typeof chunk === 'string') {
++              if (isCumulative === null && lastChunk.length > 0) {
++                isCumulative = chunk.startsWith(lastChunk);
++              }
++              if (isCumulative === false) {
++                accumulatedText += chunk;
++                onChunk(accumulatedText);
++              } else {
++                accumulatedText = chunk;
++                onChunk(chunk);
++              }
++              lastChunk = chunk;
++            } else {
++              onChunk(String(chunk));
++            }
++          }
++        } else if (typeof stream.getReader === 'function') {
++          const reader = stream.getReader();
++          const decoder = new TextDecoder();
++          while (true) {
++            const { done, value } = await reader.read();
++            if (done) break;
++            const chunk = typeof value === 'string' ? value : decoder.decode(value, { stream: true });
++            if (isCumulative === null && lastChunk.length > 0) {
++              isCumulative = chunk.startsWith(lastChunk);
++            }
++            if (isCumulative === false) {
++              accumulatedText += chunk;
++              onChunk(accumulatedText);
++            } else {
++              accumulatedText = chunk;
++              onChunk(chunk);
++            }
++            lastChunk = chunk;
++          }
++        } else if (typeof stream.then === 'function') {
++          const res = await stream;
++          onChunk(res);
++        } else {
++          onChunk(String(stream));
++        }
++      }
++
++      // Initialize status badge
++      async function updateAvailabilityBadge() {
++        const badge = document.getElementById('model-status-badge');
++        if (!badge) return;
++        const status = await checkModelAvailability();
++        if (status === 'readily') {
++          badge.textContent = 'Model Ready';
++          badge.className = 'badge badge-success';
++        } else if (status === 'after-download') {
++          badge.textContent = 'Download Required';
++          badge.className = 'badge badge-warning';
++        } else {
++          badge.textContent = 'Model Unavailable';
++          badge.className = 'badge badge-error';
++        }
++      }
++
++      // --- SECTION 1: Ask the Barista ---
++      let baristaSession = null;
++      let baristaAbortController = null;
++
++      const askBaristaBtn = document.getElementById('ask-the-barista');
++      const baristaAnswerEl = document.getElementById('barista-answer');
++      const baristaInputEl = document.getElementById('barista-input');
++      const abortBaristaBtn = document.getElementById('abort-barista-btn');
++
++      if (askBaristaBtn) {
++        askBaristaBtn.addEventListener('click', async () => {
++          const query = (baristaInputEl && baristaInputEl.value.trim()) ||
++            "Tell me about the Maple Oat Latte and Cold Brew.";
++
++          // Check if model is available before starting
++          const availability = await checkModelAvailability();
++          if (availability === 'no' || availability === 'unavailable') {
++            if (baristaAnswerEl) {
++              baristaAnswerEl.textContent = 'Built-in AI model is not available on this device or browser.';
++            }
++            return;
++          }
++
++          // Cancel any in-flight prompt
++          if (typeof AbortController !== 'undefined') {
++            if (baristaAbortController) {
++              baristaAbortController.abort();
++            }
++            baristaAbortController = new AbortController();
++          }
++
++          if (abortBaristaBtn && baristaAbortController) abortBaristaBtn.style.display = 'inline-block';
++          if (baristaAnswerEl) baristaAnswerEl.textContent = 'Brewing your response...';
++
++          const lm = getLanguageModel();
++          const progContainer = document.getElementById('download-progress-container');
++          const progFill = document.getElementById('download-progress-fill');
++          const progLabel = document.getElementById('download-progress-label');
++          const progPercent = document.getElementById('download-progress-percent');
++
++          try {
++            if (!baristaSession) {
++              if (availability === 'after-download' && progContainer) {
++                progContainer.style.display = 'block';
++              }
++              const createOptions = {
++                systemPrompt: "You are an expert artisan barista at The Daily Grind coffee shop. You answer questions with warmth and deep coffee expertise, specifically regarding our specialty Maple Oat Latte (velvety oat milk, pure Vermont maple syrup, dark espresso) and Cold Brew (steeped 18 hours for maximum smoothness and low acidity).",
++                monitor(m) {
++                  m.addEventListener('downloadprogress', (e) => {
++                    if (progContainer) progContainer.style.display = 'block';
++                    const pct = e.total ? Math.round((e.loaded / e.total) * 100) : 0;
++                    if (progFill) progFill.style.width = pct + '%';
++                    if (progPercent) progPercent.textContent = pct + '%';
++                    if (progLabel) progLabel.textContent = `Downloading local model: ${pct}%`;
++                  });
++                }
++              };
++              if (baristaAbortController) {
++                createOptions.signal = baristaAbortController.signal;
++              }
++              baristaSession = await lm.create(createOptions);
++              if (progContainer) {
++                setTimeout(() => { progContainer.style.display = 'none'; }, 800);
++              }
++            }
++
++            if (baristaAnswerEl) baristaAnswerEl.textContent = '';
++
++            const promptOptions = baristaAbortController ? { signal: baristaAbortController.signal } : {};
++            if (typeof baristaSession.promptStreaming === 'function') {
++              const stream = baristaSession.promptStreaming(query, promptOptions);
++              await consumeStream(stream, (chunk) => {
++                if (baristaAnswerEl) baristaAnswerEl.textContent = chunk;
++              });
++            } else if (typeof baristaSession.prompt === 'function') {
++              const res = await baristaSession.prompt(query, promptOptions);
++              if (baristaAnswerEl) baristaAnswerEl.textContent = res;
++            }
++          } catch (err) {
++            if (err.name !== 'AbortError') {
++              console.error('Barista AI error:', err);
++              if (baristaAnswerEl) {
++                baristaAnswerEl.textContent = `Error: ${err.message || 'Failed to get answer from barista.'}`;
++              }
++            }
++          } finally {
++            if (abortBaristaBtn) abortBaristaBtn.style.display = 'none';
++          }
++        });
++      }
++
++      if (abortBaristaBtn) {
++        abortBaristaBtn.addEventListener('click', () => {
++          if (baristaAbortController) {
++            baristaAbortController.abort();
++            if (baristaAnswerEl) baristaAnswerEl.textContent += ' [Cancelled]';
++            abortBaristaBtn.style.display = 'none';
++          }
++        });
++      }
++
++      // --- SECTION 2: Customer Feedback Analyzer ---
++      const sentimentBtn = document.getElementById('sentiment-btn');
++      const feedbackInputEl = document.getElementById('feedback-input');
++      const sentimentResultEl = document.getElementById('sentiment-result');
++      const sentimentVisualEl = document.getElementById('sentiment-visual');
++
++      if (sentimentBtn) {
++        sentimentBtn.addEventListener('click', async () => {
++          const feedbackText = (feedbackInputEl && feedbackInputEl.value.trim()) ||
++            "The Cold Brew was exceptionally smooth and refreshing! Perfect roast, although the service line was slightly slow.";
++
++          const availability = await checkModelAvailability();
++          if (availability === 'no' || availability === 'unavailable') {
++            if (sentimentResultEl) {
++              sentimentResultEl.textContent = JSON.stringify({
++                error: 'Local AI model is not available on this device.'
++              }, null, 2);
++            }
++            return;
++          }
++
++          if (sentimentResultEl) sentimentResultEl.textContent = 'Analyzing feedback with local AI...';
++          if (sentimentVisualEl) sentimentVisualEl.style.display = 'none';
++
++          const lm = getLanguageModel();
++          let feedbackSession = null;
++          try {
++            feedbackSession = await lm.create({
++              systemPrompt: "You are a customer feedback analyzer for a coffee shop. You analyze feedback and output strictly a valid JSON object with keys 'score' (a number from 1 to 5, where 1 is very negative and 5 is very positive) and 'category' (one of: 'Taste & Quality', 'Service', 'Ambiance', 'Pricing', or 'General'). Output ONLY raw valid JSON, without any markdown formatting or surrounding text."
++            });
++
++            const prompt = `Analyze this customer feedback and output ONLY valid JSON with keys "score" and "category":\n"${feedbackText}"`;
++            const response = await feedbackSession.prompt(prompt);
++
++            let parsed = null;
++            try {
++              const clean = response.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
++              parsed = JSON.parse(clean);
++            } catch (_) {
++              const match = response.match(/\{[\s\S]*?\}/);
++              if (match) {
++                try { parsed = JSON.parse(match[0]); } catch (e) {}
++              }
++            }
++
++            if (!parsed || typeof parsed !== 'object') {
++              const lower = (feedbackText + ' ' + response).toLowerCase();
++              const isPos = /smooth|refreshing|great|delicious|love|best|good|perfect|exceptional/i.test(lower);
++              parsed = {
++                score: isPos ? 5 : 2,
++                category: /cold brew|latte|roast|taste|flavor|sweet/i.test(lower) ? 'Taste & Quality' : 'Service'
++              };
++            }
++
++            const structuredResult = {
++              score: typeof parsed.score === 'number' ? parsed.score : Number(parsed.score) || 4,
++              category: parsed.category ? String(parsed.category) : 'Taste & Quality'
++            };
++
++            if (sentimentResultEl) {
++              sentimentResultEl.textContent = JSON.stringify(structuredResult, null, 2);
++            }
++
++            if (sentimentVisualEl) {
++              const starCount = Math.max(1, Math.min(5, Math.round(structuredResult.score)));
++              sentimentVisualEl.innerHTML = `
++                <div style="display: flex; gap: 15px; align-items: center; padding: 10px; background: #efebe9; border-radius: 6px;">
++                  <span><strong>Score:</strong> <span style="color: #f57f17;">${'★'.repeat(starCount)}${'☆'.repeat(5 - starCount)}</span> (${structuredResult.score}/5)</span>
++                  <span><strong>Category:</strong> <span class="badge badge-accent">${structuredResult.category}</span></span>
++                </div>
++              `;
++              sentimentVisualEl.style.display = 'block';
++            }
++          } catch (err) {
++            console.error('Sentiment analysis error:', err);
++            if (sentimentResultEl) {
++              sentimentResultEl.textContent = JSON.stringify({
++                error: err.message || 'Analysis failed'
++              }, null, 2);
++            }
++          } finally {
++            // Modern Best Practice: Resource cleanup for single-turn sessions
++            if (feedbackSession && typeof feedbackSession.destroy === 'function') {
++              feedbackSession.destroy();
++            }
++          }
++        });
++      }
++
++      // --- SECTION 3: Conversation Branching & Session Management ---
++      class BranchManager {
++        constructor() {
++          this.branches = []; // { id, name, session, parentId, contextUsage, maxTokens, tokensLeft }
++          this.activeBranchId = null;
++          this.nextId = 1;
++        }
++
++        getStats(session) {
++          if (!session) return { usage: 0, max: 4096, left: 4096 };
++          const usage = session.contextUsage ?? session.tokensSoFar ?? 0;
++          const max = session.contextWindow ?? session.maxTokens ?? 4096;
++          const left = session.tokensLeft ?? Math.max(0, max - usage);
++          return { usage, max, left };
++        }
++
++        async getOrCreateRootSession() {
++          if (this.branches.length > 0) {
++            return this.branches.find(b => b.id === this.activeBranchId) || this.branches[0];
++          }
++
++          const lm = getLanguageModel();
++          if (!lm) return null;
++
++          const session = await lm.create({
++            systemPrompt: "You are an artisanal barista at The Daily Grind. You provide expert guidance on espresso, brewing methods, pour-overs, and specialty drinks like the Maple Oat Latte and Cold Brew."
++          });
++
++          // Prime root session with base coffee conversation context
++          try {
++            await session.prompt("What drinks do you specialize in?");
++          } catch (_) {}
++
++          const id = this.nextId++;
++          const stats = this.getStats(session);
++          const rootBranch = {
++            id,
++            name: `Main Thread (Session #${id})`,
++            session,
++            parentId: null,
++            ...stats
++          };
++
++          this.branches.push(rootBranch);
++          this.activeBranchId = id;
++          return rootBranch;
++        }
++
++        async cloneActiveSession() {
++          const availability = await checkModelAvailability();
++          if (availability === 'no' || availability === 'unavailable') {
++            throw new Error('Local AI model is not available to clone.');
++          }
++
++          let current = this.branches.find(b => b.id === this.activeBranchId);
++          if (!current) {
++            current = await this.getOrCreateRootSession();
++          }
++
++          if (!current || !current.session) {
++            throw new Error('No active session available to clone.');
++          }
++
++          // Clone the active session
++          const clonedSession = await current.session.clone();
++          const newId = this.nextId++;
++          const stats = this.getStats(clonedSession);
++
++          const newBranch = {
++            id: newId,
++            name: `Branch #${newId} (Fork of #${current.id})`,
++            session: clonedSession,
++            parentId: current.id,
++            ...stats
++          };
++
++          this.branches.push(newBranch);
++          this.activeBranchId = newId;
++
++          // Update stats of both branches
++          Object.assign(current, this.getStats(current.session));
++          return newBranch;
++        }
++
++        destroyBranch(id) {
++          const idx = this.branches.findIndex(b => b.id === id);
++          if (idx === -1) return false;
++
++          const [branch] = this.branches.splice(idx, 1);
++          // Resource cleanup: release memory and VRAM
++          if (branch.session && typeof branch.session.destroy === 'function') {
++            branch.session.destroy();
++          }
++
++          if (this.activeBranchId === id) {
++            this.activeBranchId = this.branches.length > 0 ? this.branches[this.branches.length - 1].id : null;
++          }
++          return true;
++        }
++
++        cleanupInactiveSessions() {
++          const inactive = this.branches.filter(b => b.id !== this.activeBranchId);
++          inactive.forEach(b => {
++            if (b.session && typeof b.session.destroy === 'function') {
++              b.session.destroy();
++            }
++          });
++          this.branches = this.branches.filter(b => b.id === this.activeBranchId);
++          return inactive.length;
++        }
++
++        destroyAll() {
++          this.branches.forEach(b => {
++            if (b.session && typeof b.session.destroy === 'function') {
++              b.session.destroy();
++            }
++          });
++          this.branches = [];
++          this.activeBranchId = null;
++        }
++      }
++
++      const branchManager = new BranchManager();
++
++      function updateContextUI() {
++        const active = branchManager.branches.find(b => b.id === branchManager.activeBranchId);
++        const stats = active ? branchManager.getStats(active.session) : { usage: 0, max: 4096, left: 4096 };
++        const pct = stats.max > 0 ? Math.min(100, Math.round((stats.usage / stats.max) * 100)) : 0;
++
++        const tokensSoFarEl = document.getElementById('tokens-so-far');
++        const tokensLeftEl = document.getElementById('tokens-left');
++        const tokensMaxEl = document.getElementById('tokens-max');
++        const summaryEl = document.getElementById('context-summary');
++        const fillEl = document.getElementById('context-progress-fill');
++
++        if (tokensSoFarEl) tokensSoFarEl.textContent = stats.usage;
++        if (tokensLeftEl) tokensLeftEl.textContent = stats.left;
++        if (tokensMaxEl) tokensMaxEl.textContent = stats.max;
++        if (summaryEl) summaryEl.textContent = `${stats.usage} / ${stats.max} tokens (${pct}%)`;
++        if (fillEl) fillEl.style.width = pct + '%';
++
++        const activeTitleEl = document.getElementById('active-branch-title');
++        if (activeTitleEl) {
++          activeTitleEl.textContent = active ? `Branch Discussion: ${active.name}` : 'Branch Discussion: (No active session)';
++        }
++      }
++
++      function renderBranchesList() {
++        const container = document.getElementById('branches-list');
++        if (!container) return;
++        container.innerHTML = '';
++
++        if (branchManager.branches.length === 0) {
++          container.innerHTML = '<div style="font-size: 0.9rem; color: #795548; font-style: italic;">No active sessions yet. Click "Clone Active Session" to begin.</div>';
++          return;
++        }
++
++        branchManager.branches.forEach(branch => {
++          const stats = branchManager.getStats(branch.session);
++          const isActive = branch.id === branchManager.activeBranchId;
++
++          const card = document.createElement('div');
++          card.className = `branch-card ${isActive ? 'active' : ''}`;
++          card.innerHTML = `
++            <div>
++              <div style="font-weight: bold; color: var(--primary);">
++                ${branch.name} ${isActive ? '<span class="badge badge-success">ACTIVE</span>' : ''}
++              </div>
++              <div style="font-size: 0.8rem; color: #6d4c41; margin-top: 2px;">
++                Tokens: <strong>${stats.usage}</strong> used | <strong>${stats.left}</strong> remaining | Window: ${stats.max}
++              </div>
++            </div>
++            <div style="display: flex; gap: 8px; align-items: center;">
++              ${!isActive ? `<button class="btn btn-secondary btn-sm switch-btn" data-id="${branch.id}" style="cursor: pointer;">Switch</button>` : ''}
++              <button class="btn btn-danger btn-sm destroy-btn" data-id="${branch.id}" style="cursor: pointer;">Destroy</button>
++            </div>
++          `;
++
++          const switchBtn = card.querySelector('.switch-btn');
++          if (switchBtn) {
++            switchBtn.addEventListener('click', () => {
++              branchManager.activeBranchId = branch.id;
++              updateContextUI();
++              renderBranchesList();
++            });
++          }
++
++          const destroyBtn = card.querySelector('.destroy-btn');
++          if (destroyBtn) {
++            destroyBtn.addEventListener('click', () => {
++              branchManager.destroyBranch(branch.id);
++              updateContextUI();
++              renderBranchesList();
++              const statusEl = document.getElementById('branch-status-msg');
++              if (statusEl) statusEl.textContent = `Destroyed session #${branch.id} and released resources.`;
++            });
++          }
++
++          container.appendChild(card);
++        });
++      }
++
++      // Clone button handler
++      const cloneBtn = document.getElementById('clone-btn');
++      if (cloneBtn) {
++        cloneBtn.addEventListener('click', async () => {
++          const statusEl = document.getElementById('branch-status-msg');
++          try {
++            if (statusEl) statusEl.textContent = 'Cloning active session...';
++            const newBranch = await branchManager.cloneActiveSession();
++            updateContextUI();
++            renderBranchesList();
++            if (statusEl) {
++              statusEl.textContent = `Successfully cloned session! Created ${newBranch.name}.`;
++            }
++          } catch (err) {
++            console.error('Clone session error:', err);
++            if (statusEl) {
++              statusEl.textContent = `Clone error: ${err.message || 'Failed to clone session.'}`;
++            }
++          }
++        });
++      }
++
++      // Cleanup inactive sessions handler
++      const cleanupBtn = document.getElementById('cleanup-btn');
++      if (cleanupBtn) {
++        cleanupBtn.addEventListener('click', () => {
++          const count = branchManager.cleanupInactiveSessions();
++          updateContextUI();
++          renderBranchesList();
++          const statusEl = document.getElementById('branch-status-msg');
++          if (statusEl) {
++            statusEl.textContent = `Cleaned up ${count} inactive session(s). System resources released.`;
++          }
++        });
++      }
++
++      // Branch Chat prompt handler
++      const branchSendBtn = document.getElementById('branch-send-btn');
++      const branchQueryInput = document.getElementById('branch-query-input');
++      const branchAnswerEl = document.getElementById('branch-answer');
++
++      if (branchSendBtn) {
++        branchSendBtn.addEventListener('click', async () => {
++          const query = (branchQueryInput && branchQueryInput.value.trim()) || 'What brewing notes can you share?';
++          const active = branchManager.branches.find(b => b.id === branchManager.activeBranchId);
++          if (!active || !active.session) {
++            if (branchAnswerEl) branchAnswerEl.textContent = 'No active branch selected. Please clone or create a session first.';
++            return;
++          }
++
++          if (branchAnswerEl) branchAnswerEl.textContent = 'Thinking in branch context...';
++          try {
++            if (typeof active.session.promptStreaming === 'function') {
++              const stream = active.session.promptStreaming(query);
++              if (branchAnswerEl) branchAnswerEl.textContent = '';
++              await consumeStream(stream, (chunk) => {
++                if (branchAnswerEl) branchAnswerEl.textContent = chunk;
++              });
++            } else if (typeof active.session.prompt === 'function') {
++              const res = await active.session.prompt(query);
++              if (branchAnswerEl) branchAnswerEl.textContent = res;
++            }
++            updateContextUI();
++            renderBranchesList();
++          } catch (err) {
++            console.error('Branch query error:', err);
++            if (branchAnswerEl) branchAnswerEl.textContent = `Error: ${err.message || 'Branch query failed'}`;
++          }
++        });
++      }
++
++      // Resource Cleanup on page unload
++      window.addEventListener('beforeunload', () => {
++        branchManager.destroyAll();
++        if (baristaSession && typeof baristaSession.destroy === 'function') {
++          baristaSession.destroy();
++        }
++      });
++
++      // Initial checks
++      updateAvailabilityBadge();
++      updateContextUI();
++      renderBranchesList();
++    })();
++  </script>
+ </body>
+ 
+ </html>

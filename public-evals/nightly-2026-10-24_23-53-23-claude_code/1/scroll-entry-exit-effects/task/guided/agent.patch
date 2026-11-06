@@ -1,0 +1,38 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,34 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Scroll-driven reveal: purely decorative, so unsupported browsers and
++       users preferring reduced motion simply get static cards. */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        @keyframes card-grow {
++          from {
++            scale: 0.5;
++          }
++        }
++
++        @keyframes card-shrink {
++          to {
++            scale: 0.5;
++          }
++        }
++
++        .card {
++          animation:
++            card-grow auto linear backwards,
++            card-shrink auto linear forwards;
++          animation-timeline: view();
++          animation-range: entry, exit;
++        }
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

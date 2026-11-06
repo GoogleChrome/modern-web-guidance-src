@@ -1,0 +1,1898 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..e0c044e
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,110 @@
++# The Daily Grind
++
++Static marketing homepage for The Daily Grind Coffee Co., served with `pnpm start`
++(statikk on port 11222).
++
++## Signed receipts & gift vouchers
++
++The homepage section **Signed Receipts & Gift Vouchers** (`#receipts`) issues and
++verifies digitally signed order receipts and gift vouchers entirely in the browser.
++No build step or dependencies are required; everything runs on the Web Crypto API.
++
++| File | Purpose |
++| --- | --- |
++| `js/dg-sign.js` | Pure signing/verification library (runs in browsers and Node). |
++| `js/dg-keystore.js` | Persists the issuer key pair in IndexedDB. |
++| `js/dg-ui.js` | Wires the homepage forms, outputs and verifier. |
++| `test/dg-sign.test.mjs` | `node --test` suite covering both algorithms. |
++
++Run the tests with `npm test` (Node 24+; ML-DSA in Node's Web Crypto is still
++flagged experimental, so the script silences that warning).
++
++### Algorithms
++
++| JWS `alg` | Primitive | JWK | When used |
++| --- | --- | --- | --- |
++| `ML-DSA-65` | FIPS 204 module-lattice signature (quantum-resistant) | `kty: "AKP"`, `pub` | Preferred, whenever the browser's `crypto.subtle` supports it |
++| `ES256` | ECDSA P-256 with SHA-256 | `kty: "EC"`, `crv: "P-256"` | Fallback on browsers without ML-DSA |
++
++Key selection is automatic: `generateIssuerKey()` tries the algorithms in the
++order above and keeps the first that works. The private key is generated
++**non-extractable**, so its bytes can never be read by page script. It is stored
++in IndexedDB as an opaque `CryptoKey` handle so it survives reloads.
++
++### Token format
++
++Documents are JWS Compact Serialization (RFC 7515):
++
++```
++base64url(header) . base64url(payload) . base64url(signature)
++```
++
++Header:
++
++```json
++{ "alg": "ML-DSA-65", "typ": "dg-receipt+jws", "kid": "<RFC 7638 JWK thumbprint>" }
++```
++
++`typ` is `dg-receipt+jws` or `dg-voucher+jws` and must agree with `payload.type`.
++
++Receipt payload (money is in integer cents):
++
++```json
++{
++  "type": "receipt",
++  "iss": "the-daily-grind",
++  "orderId": "DG-20261028-3F9A1C",
++  "store": "Main St. Roastery",
++  "currency": "USD",
++  "items": [{ "name": "Maple Oat Latte", "qty": 2, "unitPrice": 575 }],
++  "total": 1150,
++  "issuedAt": "2026-10-28T09:12:44.000Z",
++  "customer": "Alex"
++}
++```
++
++Voucher payload:
++
++```json
++{
++  "type": "voucher",
++  "iss": "the-daily-grind",
++  "code": "DG-K7PQ-2MNA-9XTB",
++  "amount": 2500,
++  "currency": "USD",
++  "issuedAt": "2026-10-28T09:12:44.000Z",
++  "expiresAt": "2027-10-28T09:12:44.000Z",
++  "recipient": "Jordan",
++  "message": "Happy birthday!"
++}
++```
++
++### Verification rules
++
++`verifyToken(token, trustedKeys)` returns `{ ok, status, reason, signatureValid, header, payload }`
++where `status` is `valid`, `expired` or `invalid`. It never throws on bad input. A
++token is accepted only if all of the following hold:
++
++1. It parses as three non-empty base64url segments with JSON header and payload.
++2. `header.kid` names one of the supplied trusted public keys. Unknown keys are
++   rejected, so only documents from The Daily Grind's key holders pass.
++3. The algorithm used for verification is the one bound to the **trusted key**,
++   and it must equal `header.alg`. A token cannot downgrade or swap algorithms
++   (`none`, `HS256`, ES256↔ML-DSA, …).
++4. `crit` is absent and `typ` is one of the two known document types.
++5. The signature verifies over the exact `header.payload` bytes received, so any
++   change to any field invalidates it.
++6. The payload matches the document schema (`iss`, order id / voucher code
++   formats, integer money, totals equal to the sum of line items, ISO dates).
++7. Vouchers whose `expiresAt` has passed report `status: "expired"` with
++   `signatureValid: true`, distinguishing a genuine-but-expired voucher from a forgery.
++
++### Sharing the public key
++
++"Copy public key" / "Download public key set" export the issuer's public JWK (plus
++any rotated-out keys as a JWK Set). Paste it into the verifier's *Trusted issuer
++public keys* box on another device to verify documents issued here. Private keys
++are refused by the importer.
++
++Rotating the key keeps the previous public keys in the trusted list so older
++receipts and vouchers continue to verify locally.
+diff --git a/index.html b/index.html
+index 66c9173..35a3b1f 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,12 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --ok: #2e7d32;
++      --ok-bg: #e8f5e9;
++      --warn: #b26a00;
++      --warn-bg: #fff8e1;
++      --bad: #c62828;
++      --bad-bg: #ffebee;
+     }
+ 
+     * {
+@@ -129,12 +135,20 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -152,6 +166,285 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Signed receipts & vouchers */
++    .signing {
++      margin-top: 60px;
++      scroll-margin-top: 80px;
++    }
++
++    .signing h2 {
++      text-align: center;
++    }
++
++    .signing .lead {
++      text-align: center;
++      max-width: 720px;
++      margin: 10px auto 0;
++      color: #5d4037;
++    }
++
++    .signing .card {
++      text-align: left;
++    }
++
++    .grid.two {
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++    }
++
++    .key-panel {
++      margin-top: 24px;
++      display: grid;
++      gap: 6px;
++      border-left: 5px solid var(--accent);
++    }
++
++    .key-panel .row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px 14px;
++      align-items: center;
++    }
++
++    .badge {
++      display: inline-block;
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 0.3px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .badge-pq {
++      background: var(--ok-bg);
++      color: var(--ok);
++    }
++
++    .badge-classical {
++      background: var(--warn-bg);
++      color: var(--warn);
++    }
++
++    code {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      font-size: 0.85em;
++      background: #f3eeec;
++      padding: 1px 6px;
++      border-radius: 4px;
++      word-break: break-all;
++    }
++
++    .muted {
++      color: #6d4c41;
++      font-size: 0.9rem;
++    }
++
++    .btn-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 10px;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 7px 14px;
++      border-radius: 5px;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-secondary:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary.danger {
++      color: var(--bad);
++      border-color: var(--bad);
++    }
++
++    .signing label {
++      display: block;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-top: 12px;
++    }
++
++    .signing input[type="text"],
++    .signing input[type="number"],
++    .signing select,
++    .signing textarea {
++      width: 100%;
++      margin-top: 4px;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font: inherit;
++      font-size: 0.95rem;
++      background: white;
++      color: var(--text);
++    }
++
++    .signing input[type="number"] {
++      width: 5.5em;
++      text-align: right;
++    }
++
++    .signing textarea {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      font-size: 0.78rem;
++      line-height: 1.4;
++      min-height: 110px;
++      resize: vertical;
++    }
++
++    .items-table {
++      width: 100%;
++      border-collapse: collapse;
++      margin-top: 8px;
++      font-size: 0.95rem;
++    }
++
++    .items-table th,
++    .items-table td {
++      padding: 6px 4px;
++      border-bottom: 1px solid #efebe9;
++      text-align: left;
++    }
++
++    .items-table .num {
++      text-align: right;
++    }
++
++    .total-line {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 10px;
++      font-size: 1.05rem;
++    }
++
++    .form-status,
++    .output-status,
++    [data-kind] {
++      font-size: 0.9rem;
++      margin-top: 6px;
++      min-height: 1em;
++    }
++
++    [data-kind="ok"] {
++      color: var(--ok);
++    }
++
++    [data-kind="warn"] {
++      color: var(--warn);
++    }
++
++    [data-kind="error"] {
++      color: var(--bad);
++    }
++
++    .output {
++      margin-top: 16px;
++      padding-top: 12px;
++      border-top: 1px dashed #bcaaa4;
++    }
++
++    .verify-card {
++      margin-top: 20px;
++    }
++
++    .verify-card details {
++      margin-top: 12px;
++    }
++
++    .verify-card summary {
++      cursor: pointer;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    #verify-result {
++      margin-top: 16px;
++      padding: 16px;
++      border-radius: 6px;
++      border: 1px solid transparent;
++    }
++
++    #verify-result[data-status="valid"] {
++      background: var(--ok-bg);
++      border-color: var(--ok);
++    }
++
++    #verify-result[data-status="expired"] {
++      background: var(--warn-bg);
++      border-color: var(--warn);
++    }
++
++    #verify-result[data-status="invalid"] {
++      background: var(--bad-bg);
++      border-color: var(--bad);
++    }
++
++    #verify-result .verdict {
++      font-size: 1.2rem;
++      font-weight: 700;
++    }
++
++    #verify-result[data-status="valid"] .verdict {
++      color: var(--ok);
++    }
++
++    #verify-result[data-status="expired"] .verdict {
++      color: var(--warn);
++    }
++
++    #verify-result[data-status="invalid"] .verdict {
++      color: var(--bad);
++    }
++
++    .details {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 4px 16px;
++      margin-top: 10px;
++    }
++
++    .details .detail {
++      display: contents;
++    }
++
++    .details dt {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .details dd {
++      overflow-wrap: anywhere;
++    }
++
++    .signer {
++      margin-top: 10px;
++    }
++
++    .how-it-works {
++      margin-top: 20px;
++      font-size: 0.9rem;
++    }
++
++    .how-it-works ul {
++      margin: 8px 0 0 20px;
++    }
+   </style>
+ </head>
+ 
+@@ -163,6 +456,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#receipts">Receipts</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +489,134 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="receipts" class="signing" aria-labelledby="receipts-heading">
++      <h2 id="receipts-heading">Signed Receipts &amp; Gift Vouchers</h2>
++      <p class="lead">
++        Every receipt and gift voucher we issue carries a digital signature. Anyone with our public key can
++        confirm a document is genuinely from The Daily Grind and has not been altered by so much as a cent.
++      </p>
++
++      <div class="card key-panel" id="key-panel">
++        <div class="row">
++          <strong>Issuer key</strong>
++          <span id="key-alg" class="badge">Preparing…</span>
++          <span id="key-pq" class="badge"></span>
++        </div>
++        <div class="row muted">
++          <span>Fingerprint <code id="key-fp">…</code></span>
++          <span>Created <span id="key-created">…</span></span>
++        </div>
++        <div class="btn-row">
++          <button type="button" class="btn-secondary" id="copy-pubkey">Copy public key</button>
++          <button type="button" class="btn-secondary" id="download-pubkey">Download public key set</button>
++          <button type="button" class="btn-secondary danger" id="rotate-key">Rotate key</button>
++        </div>
++        <p id="key-status" class="muted" role="status" aria-live="polite"></p>
++      </div>
++
++      <div class="grid two">
++        <form class="card" id="receipt-form" novalidate>
++          <h3>Sign an order receipt</h3>
++          <label for="receipt-store">Store</label>
++          <select id="receipt-store" name="store">
++            <option>Main St. Roastery</option>
++            <option>Riverside Kiosk</option>
++            <option>Online Order</option>
++          </select>
++          <label for="receipt-customer">Customer name (optional)</label>
++          <input id="receipt-customer" name="customer" type="text" maxlength="80" autocomplete="off" placeholder="e.g. Alex">
++          <table class="items-table" aria-label="Order items">
++            <thead>
++              <tr>
++                <th scope="col">Item</th>
++                <th scope="col" class="num">Price</th>
++                <th scope="col" class="num">Qty</th>
++              </tr>
++            </thead>
++            <tbody id="receipt-items"></tbody>
++          </table>
++          <div class="total-line"><span>Total</span><strong id="receipt-total">$0.00</strong></div>
++          <button type="submit" class="btn">Sign receipt</button>
++          <p class="form-status" role="alert"></p>
++          <div class="output" hidden>
++            <label for="receipt-token">Signed receipt token</label>
++            <textarea id="receipt-token" readonly spellcheck="false" aria-describedby="receipt-token-help"></textarea>
++            <p id="receipt-token-help" class="muted">Give this token to the customer. It can be verified below or on any device that holds our public key.</p>
++            <div class="btn-row">
++              <button type="button" class="btn-secondary" data-action="copy">Copy</button>
++              <button type="button" class="btn-secondary" data-action="download">Download .jws</button>
++              <button type="button" class="btn-secondary" data-action="verify">Verify</button>
++              <button type="button" class="btn-secondary danger" data-action="tamper">Tamper &amp; verify</button>
++            </div>
++            <p class="output-status" role="status" aria-live="polite"></p>
++          </div>
++        </form>
++
++        <form class="card" id="voucher-form" novalidate>
++          <h3>Issue a gift voucher</h3>
++          <label for="voucher-amount">Value</label>
++          <select id="voucher-amount" name="amount">
++            <option value="1000">$10.00</option>
++            <option value="2500" selected>$25.00</option>
++            <option value="5000">$50.00</option>
++            <option value="10000">$100.00</option>
++          </select>
++          <label for="voucher-recipient">Recipient (optional)</label>
++          <input id="voucher-recipient" name="recipient" type="text" maxlength="80" autocomplete="off" placeholder="e.g. Jordan">
++          <label for="voucher-message">Message (optional)</label>
++          <input id="voucher-message" name="message" type="text" maxlength="140" autocomplete="off" placeholder="Happy birthday!">
++          <label for="voucher-validity">Valid for</label>
++          <select id="voucher-validity" name="validity">
++            <option value="90">90 days</option>
++            <option value="180">6 months</option>
++            <option value="365" selected>1 year</option>
++          </select>
++          <button type="submit" class="btn">Issue voucher</button>
++          <p class="form-status" role="alert"></p>
++          <div class="output" hidden>
++            <label for="voucher-token">Signed voucher token</label>
++            <textarea id="voucher-token" readonly spellcheck="false" aria-describedby="voucher-token-help"></textarea>
++            <p id="voucher-token-help" class="muted">The voucher code and value are locked in by the signature; changing either invalidates it.</p>
++            <div class="btn-row">
++              <button type="button" class="btn-secondary" data-action="copy">Copy</button>
++              <button type="button" class="btn-secondary" data-action="download">Download .jws</button>
++              <button type="button" class="btn-secondary" data-action="verify">Verify</button>
++              <button type="button" class="btn-secondary danger" data-action="tamper">Tamper &amp; verify</button>
++            </div>
++            <p class="output-status" role="status" aria-live="polite"></p>
++          </div>
++        </form>
++      </div>
++
++      <div class="card verify-card" id="verify-card">
++        <h3>Verify a receipt or voucher</h3>
++        <label for="verify-token">Paste the token</label>
++        <textarea id="verify-token" spellcheck="false" placeholder="eyJhbGciOi…"></textarea>
++        <details>
++          <summary>Trusted issuer public keys (JWK Set)</summary>
++          <textarea id="verify-keys" spellcheck="false" aria-label="Trusted issuer public keys as JSON"></textarea>
++          <p class="muted">Pre-filled with this browser's issuer key (plus any rotated-out keys). To check a document issued elsewhere,
++            paste that issuer's public key here. Only public keys are accepted.</p>
++          <div class="btn-row">
++            <button type="button" class="btn-secondary" id="reset-keys">Reset to this browser's keys</button>
++          </div>
++          <p id="verify-keys-status" class="muted" role="status"></p>
++        </details>
++        <button type="button" class="btn" id="verify-btn">Verify</button>
++        <div id="verify-result" role="status" aria-live="polite" hidden></div>
++
++        <div class="how-it-works muted">
++          <strong>How it works.</strong>
++          <ul>
++            <li>A key pair is generated in your browser with the Web Crypto API. The private key is non-extractable and never leaves the device; the public key is shareable.</li>
++            <li>ML-DSA-65 (FIPS 204, quantum-resistant) is used when the browser supports it; otherwise ECDSA P-256.</li>
++            <li>Documents are JWS compact tokens (RFC 7515). The signature covers the header and the full payload, so any edit is detected.</li>
++            <li>The verifier only trusts the algorithm bound to a known public key, rejects unknown keys, and enforces voucher expiry.</li>
++          </ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +629,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="js/dg-ui.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/js/dg-keystore.js b/js/dg-keystore.js
+new file mode 100644
+index 0000000..a80e129
+--- /dev/null
++++ b/js/dg-keystore.js
+@@ -0,0 +1,82 @@
++/**
++ * Persists the issuer key pair in IndexedDB. CryptoKey objects are structured-
++ * cloneable, so the NON-extractable private key is stored as an opaque handle:
++ * it survives reloads but its raw bytes are never exposed to JavaScript.
++ */
++
++const DB_NAME = 'daily-grind-signing';
++const DB_VERSION = 1;
++const STORE = 'issuer';
++const RECORD_ID = 'current';
++const MAX_RETIRED = 10;
++
++function openDb() {
++  return new Promise((resolve, reject) => {
++    if (!globalThis.indexedDB) return reject(new Error('IndexedDB unavailable'));
++    const req = indexedDB.open(DB_NAME, DB_VERSION);
++    req.onupgradeneeded = () => {
++      if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
++    };
++    req.onsuccess = () => resolve(req.result);
++    req.onerror = () => reject(req.error ?? new Error('Failed to open IndexedDB'));
++    req.onblocked = () => reject(new Error('IndexedDB open blocked'));
++  });
++}
++
++function requestToPromise(req) {
++  return new Promise((resolve, reject) => {
++    req.onsuccess = () => resolve(req.result);
++    req.onerror = () => reject(req.error ?? new Error('IndexedDB request failed'));
++  });
++}
++
++async function withStore(mode, fn) {
++  const db = await openDb();
++  try {
++    const tx = db.transaction(STORE, mode);
++    const result = await fn(tx.objectStore(STORE));
++    await new Promise((resolve, reject) => {
++      tx.oncomplete = resolve;
++      tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
++      tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
++    });
++    return result;
++  } finally {
++    db.close();
++  }
++}
++
++/**
++ * @typedef {object} IssuerRecord
++ * @property {string} alg
++ * @property {string} kid
++ * @property {CryptoKey} privateKey
++ * @property {object} publicJwk
++ * @property {string} createdAt
++ * @property {object[]} retiredPublicKeys  previous public JWKs, newest first
++ */
++
++/** @returns {Promise<IssuerRecord|null>} */
++export async function loadIssuer() {
++  const rec = await withStore('readonly', (store) => requestToPromise(store.get(RECORD_ID)));
++  if (!rec || typeof rec !== 'object' || !rec.privateKey || !rec.publicJwk || !rec.kid || !rec.alg) return null;
++  return { retiredPublicKeys: [], ...rec };
++}
++
++/** @param {IssuerRecord} rec */
++export async function saveIssuer(rec) {
++  const toStore = {
++    alg: rec.alg,
++    kid: rec.kid,
++    privateKey: rec.privateKey,
++    publicJwk: rec.publicJwk,
++    createdAt: rec.createdAt,
++    retiredPublicKeys: (rec.retiredPublicKeys ?? []).slice(0, MAX_RETIRED),
++  };
++  await withStore('readwrite', (store) => requestToPromise(store.put(toStore, RECORD_ID)));
++  return toStore;
++}
++
++export async function clearIssuer() {
++  await withStore('readwrite', (store) => requestToPromise(store.delete(RECORD_ID)));
++}
+diff --git a/js/dg-sign.js b/js/dg-sign.js
+new file mode 100644
+index 0000000..d879f7c
+--- /dev/null
++++ b/js/dg-sign.js
+@@ -0,0 +1,463 @@
++/**
++ * The Daily Grind – receipt & voucher signing library.
++ *
++ * Pure crypto/encoding logic built only on the Web Crypto API, so it runs
++ * unchanged in browsers and in Node (for tests). No DOM, no storage here.
++ *
++ * Tokens are JWS Compact Serialization (RFC 7515):
++ *     base64url(header) "." base64url(payload) "." base64url(signature)
++ *
++ * Supported algorithms (JWS "alg" values):
++ *   - "ML-DSA-65"  FIPS 204 module-lattice signatures (quantum-resistant),
++ *                  JWK kty "AKP" per draft-ietf-cose-dilithium.
++ *   - "ES256"      ECDSA over P-256 with SHA-256 (classical fallback).
++ *
++ * The verifier only ever uses the algorithm named by the *trusted key*, never
++ * one chosen by the token, which rules out algorithm-confusion attacks.
++ */
++
++const subtle = globalThis.crypto?.subtle;
++
++export const ISSUER = 'the-daily-grind';
++export const TOKEN_TYPES = Object.freeze({
++  receipt: 'dg-receipt+jws',
++  voucher: 'dg-voucher+jws',
++});
++
++export const ALGORITHMS = Object.freeze({
++  'ML-DSA-65': Object.freeze({
++    jws: 'ML-DSA-65',
++    kty: 'AKP',
++    keyGen: { name: 'ML-DSA-65' },
++    importParams: { name: 'ML-DSA-65' },
++    signParams: { name: 'ML-DSA-65' },
++    label: 'ML-DSA-65 (FIPS 204)',
++    quantumResistant: true,
++  }),
++  ES256: Object.freeze({
++    jws: 'ES256',
++    kty: 'EC',
++    keyGen: { name: 'ECDSA', namedCurve: 'P-256' },
++    importParams: { name: 'ECDSA', namedCurve: 'P-256' },
++    signParams: { name: 'ECDSA', hash: 'SHA-256' },
++    label: 'ECDSA P-256 / SHA-256',
++    quantumResistant: false,
++  }),
++});
++
++/** Most preferred first. */
++export const PREFERRED_ALGORITHMS = Object.freeze(['ML-DSA-65', 'ES256']);
++
++const VOUCHER_CODE_RE = /^DG-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
++const CURRENCY_RE = /^[A-Z]{3}$/;
++
++// ---------------------------------------------------------------------------
++// Encoding helpers
++// ---------------------------------------------------------------------------
++
++const textEncoder = new TextEncoder();
++const textDecoder = new TextDecoder('utf-8', { fatal: true });
++const B64URL_RE = /^[A-Za-z0-9_-]*$/;
++
++export function bytesToBase64Url(bytes) {
++  let binary = '';
++  for (let i = 0; i < bytes.length; i += 0x8000) {
++    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
++  }
++  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++}
++
++export function base64UrlToBytes(str) {
++  if (typeof str !== 'string' || !B64URL_RE.test(str)) {
++    throw new Error('Invalid base64url input');
++  }
++  if (str.length % 4 === 1) throw new Error('Invalid base64url length');
++  const padded = str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (str.length % 4)) % 4);
++  const binary = atob(padded);
++  const out = new Uint8Array(binary.length);
++  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
++  return out;
++}
++
++export function utf8ToBase64Url(text) {
++  return bytesToBase64Url(textEncoder.encode(text));
++}
++
++export function base64UrlToUtf8(str) {
++  return textDecoder.decode(base64UrlToBytes(str));
++}
++
++/** Deterministic JSON: object keys sorted recursively, no whitespace. */
++export function stableStringify(value) {
++  if (value === null || typeof value !== 'object') return JSON.stringify(value);
++  if (Array.isArray(value)) return '[' + value.map(stableStringify).join(',') + ']';
++  const keys = Object.keys(value).filter((k) => value[k] !== undefined).sort();
++  return '{' + keys.map((k) => JSON.stringify(k) + ':' + stableStringify(value[k])).join(',') + '}';
++}
++
++// ---------------------------------------------------------------------------
++// Keys
++// ---------------------------------------------------------------------------
++
++/** Required JWK members for thumbprint computation (RFC 7638 §3.2 + AKP draft). */
++const THUMBPRINT_MEMBERS = {
++  EC: ['crv', 'kty', 'x', 'y'],
++  RSA: ['e', 'kty', 'n'],
++  OKP: ['crv', 'kty', 'x'],
++  AKP: ['alg', 'kty', 'pub'],
++};
++
++/** RFC 7638 JWK thumbprint, base64url(SHA-256(canonical required members)). */
++export async function jwkThumbprint(jwk) {
++  const members = THUMBPRINT_MEMBERS[jwk?.kty];
++  if (!members) throw new Error(`Unsupported key type for thumbprint: ${jwk?.kty}`);
++  const subset = {};
++  for (const m of members) {
++    if (typeof jwk[m] !== 'string' || jwk[m] === '') throw new Error(`JWK missing member "${m}"`);
++    subset[m] = jwk[m];
++  }
++  const digest = await subtle.digest('SHA-256', textEncoder.encode(stableStringify(subset)));
++  return bytesToBase64Url(new Uint8Array(digest));
++}
++
++/** Human-friendly fingerprint like "a1b2:c3d4:..." from a kid. */
++export function shortFingerprint(kid, groups = 4) {
++  const hex = Array.from(base64UrlToBytes(kid), (b) => b.toString(16).padStart(2, '0')).join('');
++  return hex.slice(0, groups * 4).match(/.{4}/g).join(':');
++}
++
++/** Which of our algorithms does this JWK belong to? Returns alg id or null. */
++export function algorithmForJwk(jwk) {
++  if (!jwk || typeof jwk !== 'object') return null;
++  if (jwk.kty === 'EC' && jwk.crv === 'P-256' && (!jwk.alg || jwk.alg === 'ES256')) return 'ES256';
++  if (jwk.kty === 'AKP' && jwk.alg === 'ML-DSA-65') return 'ML-DSA-65';
++  return null;
++}
++
++/** Is the given algorithm usable with this runtime's Web Crypto? */
++export async function isAlgorithmSupported(algId) {
++  const spec = ALGORITHMS[algId];
++  if (!spec || !subtle) return false;
++  try {
++    const pair = await subtle.generateKey(spec.keyGen, false, ['sign', 'verify']);
++    const jwk = await subtle.exportKey('jwk', pair.publicKey);
++    return algorithmForJwk(jwk) === algId;
++  } catch {
++    return false;
++  }
++}
++
++/**
++ * Generate a fresh issuer key pair. The private key is NON-extractable: it can
++ * be used to sign but its bytes can never be read out of the CryptoKey object,
++ * even by script running on the page.
++ *
++ * @param {string[]} [preference] algorithm ids to try in order.
++ * @returns {Promise<{alg:string, kid:string, privateKey:CryptoKey, publicKey:CryptoKey, publicJwk:object, createdAt:string}>}
++ */
++export async function generateIssuerKey(preference = PREFERRED_ALGORITHMS) {
++  if (!subtle) throw new Error('Web Crypto is unavailable (page must be served from a secure context).');
++  let lastError;
++  for (const algId of preference) {
++    const spec = ALGORITHMS[algId];
++    if (!spec) continue;
++    try {
++      const pair = await subtle.generateKey(spec.keyGen, false, ['sign', 'verify']);
++      const exported = await subtle.exportKey('jwk', pair.publicKey);
++      if (algorithmForJwk(exported) !== algId) throw new Error('Unexpected JWK shape from runtime');
++      const publicJwk = publicJwkOnly(exported, algId);
++      const kid = await jwkThumbprint(publicJwk);
++      publicJwk.kid = kid;
++      return {
++        alg: algId,
++        kid,
++        privateKey: pair.privateKey,
++        publicKey: pair.publicKey,
++        publicJwk,
++        createdAt: new Date().toISOString(),
++      };
++    } catch (err) {
++      lastError = err;
++    }
++  }
++  throw new Error(`No supported signature algorithm available: ${lastError?.message ?? 'unknown'}`);
++}
++
++/** Strip runtime-specific members and pin alg/use so the JWK is self-describing. */
++function publicJwkOnly(jwk, algId) {
++  const spec = ALGORITHMS[algId];
++  const out = { kty: spec.kty, alg: spec.jws, use: 'sig' };
++  for (const m of THUMBPRINT_MEMBERS[spec.kty]) if (m !== 'kty' && m !== 'alg') out[m] = jwk[m];
++  return out;
++}
++
++/** Import a public JWK for verification; returns {alg, kid, key, jwk}. */
++export async function importPublicJwk(jwk) {
++  const algId = algorithmForJwk(jwk);
++  if (!algId) throw new Error('Unsupported or malformed public key JWK');
++  if ('d' in jwk || 'priv' in jwk) throw new Error('Refusing to import a private key as a trusted public key');
++  const spec = ALGORITHMS[algId];
++  const clean = publicJwkOnly(jwk, algId);
++  const key = await subtle.importKey('jwk', clean, spec.importParams, true, ['verify']);
++  const kid = await jwkThumbprint(clean);
++  clean.kid = kid;
++  return { alg: algId, kid, key, jwk: clean };
++}
++
++/**
++ * Accepts a JWK, an array of JWKs, or a JWK Set ({keys:[...]}), either as an
++ * object or JSON text. Returns imported trusted keys.
++ */
++export async function parseTrustedKeys(input) {
++  let value = input;
++  if (typeof value === 'string') {
++    if (!value.trim()) return [];
++    value = JSON.parse(value);
++  }
++  let list;
++  if (Array.isArray(value)) list = value;
++  else if (value && Array.isArray(value.keys)) list = value.keys;
++  else if (value && typeof value === 'object') list = [value];
++  else throw new Error('Trusted keys must be a JWK, an array of JWKs, or a JWK Set');
++  return Promise.all(list.map(importPublicJwk));
++}
++
++// ---------------------------------------------------------------------------
++// Documents
++// ---------------------------------------------------------------------------
++
++const VOUCHER_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 symbols → 5 unbiased bits each
++
++export function generateVoucherCode() {
++  const bytes = crypto.getRandomValues(new Uint8Array(12));
++  const chars = Array.from(bytes, (b) => VOUCHER_ALPHABET[b & 31]);
++  return `DG-${chars.slice(0, 4).join('')}-${chars.slice(4, 8).join('')}-${chars.slice(8, 12).join('')}`;
++}
++
++export function generateOrderId(date = new Date()) {
++  const ymd = date.toISOString().slice(0, 10).replace(/-/g, '');
++  const rand = crypto.getRandomValues(new Uint8Array(3));
++  const suffix = Array.from(rand, (b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
++  return `DG-${ymd}-${suffix}`;
++}
++
++function isPositiveInt(n) {
++  return Number.isInteger(n) && n > 0;
++}
++function isNonNegativeInt(n) {
++  return Number.isInteger(n) && n >= 0;
++}
++function isIsoDate(s) {
++  return typeof s === 'string' && !Number.isNaN(Date.parse(s));
++}
++
++/**
++ * Build a receipt payload. Money is in integer minor units (cents).
++ * @param {{orderId?:string, store:string, items:{name:string, qty:number, unitPrice:number}[], currency?:string, issuedAt?:string, customer?:string}} input
++ */
++export function buildReceipt(input) {
++  const items = (input.items ?? []).map((it) => ({
++    name: String(it.name ?? '').trim(),
++    qty: Number(it.qty),
++    unitPrice: Number(it.unitPrice),
++  }));
++  const payload = {
++    type: 'receipt',
++    iss: ISSUER,
++    orderId: input.orderId ?? generateOrderId(),
++    store: String(input.store ?? '').trim(),
++    currency: input.currency ?? 'USD',
++    items,
++    total: items.reduce((sum, it) => sum + it.qty * it.unitPrice, 0),
++    issuedAt: input.issuedAt ?? new Date().toISOString(),
++  };
++  if (input.customer) payload.customer = String(input.customer).trim();
++  const problem = validateReceiptPayload(payload);
++  if (problem) throw new Error(problem);
++  return payload;
++}
++
++/**
++ * Build a gift voucher payload.
++ * @param {{code?:string, amount:number, currency?:string, recipient?:string, validDays?:number, issuedAt?:string, expiresAt?:string}} input
++ */
++export function buildVoucher(input) {
++  const issuedAt = input.issuedAt ?? new Date().toISOString();
++  const expiresAt =
++    input.expiresAt ??
++    new Date(Date.parse(issuedAt) + (input.validDays ?? 365) * 86_400_000).toISOString();
++  const payload = {
++    type: 'voucher',
++    iss: ISSUER,
++    code: input.code ?? generateVoucherCode(),
++    amount: Number(input.amount),
++    currency: input.currency ?? 'USD',
++    issuedAt,
++    expiresAt,
++  };
++  if (input.recipient) payload.recipient = String(input.recipient).trim();
++  if (input.message) payload.message = String(input.message).trim();
++  const problem = validateVoucherPayload(payload);
++  if (problem) throw new Error(problem);
++  return payload;
++}
++
++/** Returns an error string or null. */
++export function validateReceiptPayload(p) {
++  if (!p || typeof p !== 'object' || Array.isArray(p)) return 'Receipt payload is not an object';
++  if (p.type !== 'receipt') return 'Payload type is not "receipt"';
++  if (p.iss !== ISSUER) return 'Unexpected issuer';
++  if (typeof p.orderId !== 'string' || !/^[A-Z0-9-]{6,40}$/.test(p.orderId)) return 'Invalid order id';
++  if (typeof p.store !== 'string' || !p.store) return 'Missing store';
++  if (!CURRENCY_RE.test(p.currency ?? '')) return 'Invalid currency';
++  if (!Array.isArray(p.items) || p.items.length === 0) return 'Receipt has no items';
++  let sum = 0;
++  for (const it of p.items) {
++    if (!it || typeof it.name !== 'string' || !it.name) return 'Item missing name';
++    if (!isPositiveInt(it.qty)) return `Invalid quantity for "${it.name}"`;
++    if (!isNonNegativeInt(it.unitPrice)) return `Invalid price for "${it.name}"`;
++    sum += it.qty * it.unitPrice;
++  }
++  if (!isNonNegativeInt(p.total) || p.total !== sum) return 'Receipt total does not match line items';
++  if (!isIsoDate(p.issuedAt)) return 'Invalid issue date';
++  if (p.customer !== undefined && typeof p.customer !== 'string') return 'Invalid customer';
++  return null;
++}
++
++/** Returns an error string or null. */
++export function validateVoucherPayload(p) {
++  if (!p || typeof p !== 'object' || Array.isArray(p)) return 'Voucher payload is not an object';
++  if (p.type !== 'voucher') return 'Payload type is not "voucher"';
++  if (p.iss !== ISSUER) return 'Unexpected issuer';
++  if (!VOUCHER_CODE_RE.test(p.code ?? '')) return 'Invalid voucher code';
++  if (!isPositiveInt(p.amount)) return 'Voucher amount must be a positive whole number of cents';
++  if (!CURRENCY_RE.test(p.currency ?? '')) return 'Invalid currency';
++  if (!isIsoDate(p.issuedAt)) return 'Invalid issue date';
++  if (!isIsoDate(p.expiresAt)) return 'Invalid expiry date';
++  if (Date.parse(p.expiresAt) <= Date.parse(p.issuedAt)) return 'Voucher expires before it is issued';
++  if (p.recipient !== undefined && typeof p.recipient !== 'string') return 'Invalid recipient';
++  if (p.message !== undefined && typeof p.message !== 'string') return 'Invalid message';
++  return null;
++}
++
++// ---------------------------------------------------------------------------
++// Sign / verify
++// ---------------------------------------------------------------------------
++
++/**
++ * Sign a receipt or voucher payload and return a JWS compact token.
++ * @param {{alg:string, kid:string, privateKey:CryptoKey}} issuer
++ * @param {object} payload built by buildReceipt/buildVoucher
++ */
++export async function signDocument(issuer, payload) {
++  const spec = ALGORITHMS[issuer?.alg];
++  if (!spec) throw new Error(`Unknown signing algorithm: ${issuer?.alg}`);
++  const typ = TOKEN_TYPES[payload?.type];
++  if (!typ) throw new Error(`Unknown document type: ${payload?.type}`);
++  const problem = payload.type === 'receipt' ? validateReceiptPayload(payload) : validateVoucherPayload(payload);
++  if (problem) throw new Error(problem);
++
++  const header = { alg: spec.jws, typ, kid: issuer.kid };
++  const signingInput = `${utf8ToBase64Url(stableStringify(header))}.${utf8ToBase64Url(stableStringify(payload))}`;
++  const sig = await subtle.sign(spec.signParams, issuer.privateKey, textEncoder.encode(signingInput));
++  return `${signingInput}.${bytesToBase64Url(new Uint8Array(sig))}`;
++}
++
++/** Split and decode a token without verifying it. Throws on malformed input. */
++export function decodeToken(token) {
++  if (typeof token !== 'string') throw new Error('Token must be a string');
++  const parts = token.trim().split('.');
++  if (parts.length !== 3) throw new Error('Token must have exactly three dot-separated parts');
++  const [h, p, s] = parts;
++  if (!h || !p || !s) throw new Error('Token has an empty segment');
++  let header, payload;
++  try {
++    header = JSON.parse(base64UrlToUtf8(h));
++  } catch {
++    throw new Error('Token header is not valid base64url JSON');
++  }
++  try {
++    payload = JSON.parse(base64UrlToUtf8(p));
++  } catch {
++    throw new Error('Token payload is not valid base64url JSON');
++  }
++  if (!header || typeof header !== 'object' || Array.isArray(header)) throw new Error('Token header is not an object');
++  const signature = base64UrlToBytes(s);
++  return { header, payload, signature, signingInput: `${h}.${p}` };
++}
++
++/**
++ * Verify a token against a set of trusted issuer public keys.
++ *
++ * @param {string} token
++ * @param {Array<{alg:string, kid:string, key:CryptoKey}>} trustedKeys from parseTrustedKeys/importPublicJwk
++ * @param {{now?:Date}} [options]
++ * @returns {Promise<{ok:boolean, status:'valid'|'expired'|'invalid', reason:string, header?:object, payload?:object, alg?:string, kid?:string, signatureValid:boolean}>}
++ */
++export async function verifyToken(token, trustedKeys, options = {}) {
++  const now = options.now ?? new Date();
++  const fail = (reason, extra = {}) => ({ ok: false, status: 'invalid', signatureValid: false, reason, ...extra });
++
++  let decoded;
++  try {
++    decoded = decodeToken(token);
++  } catch (err) {
++    return fail(err.message);
++  }
++  const { header, payload, signature, signingInput } = decoded;
++  const context = { header, payload, alg: header.alg, kid: header.kid };
++
++  if (typeof header.alg !== 'string' || !ALGORITHMS[header.alg]) return fail(`Unsupported algorithm "${header.alg}"`, context);
++  if (header.crit !== undefined) return fail('Unsupported critical header parameters', context);
++  const docType = Object.keys(TOKEN_TYPES).find((k) => TOKEN_TYPES[k] === header.typ);
++  if (!docType) return fail(`Unknown token type "${header.typ}"`, context);
++  if (typeof header.kid !== 'string' || !header.kid) return fail('Token does not name a signing key (kid)', context);
++
++  if (!Array.isArray(trustedKeys) || trustedKeys.length === 0) return fail('No trusted issuer keys provided', context);
++  const trusted = trustedKeys.find((k) => k.kid === header.kid);
++  if (!trusted) return fail('Signed by an unknown key – not issued by The Daily Grind', context);
++  // Use the algorithm bound to the trusted key, never the one the token claims.
++  if (trusted.alg !== header.alg) return fail('Token algorithm does not match the trusted key', context);
++  const spec = ALGORITHMS[trusted.alg];
++
++  let signatureValid = false;
++  try {
++    signatureValid = await subtle.verify(spec.signParams, trusted.key, signature, textEncoder.encode(signingInput));
++  } catch {
++    signatureValid = false;
++  }
++  if (!signatureValid) return fail('Signature does not match – this document has been altered or forged', context);
++
++  if (!payload || typeof payload !== 'object' || Array.isArray(payload) || payload.type !== docType) {
++    return { ...fail('Payload type does not match token type', context), signatureValid: true };
++  }
++  const problem = docType === 'receipt' ? validateReceiptPayload(payload) : validateVoucherPayload(payload);
++  if (problem) return { ...fail(problem, context), signatureValid: true };
++
++  if (docType === 'voucher' && Date.parse(payload.expiresAt) <= now.getTime()) {
++    return {
++      ok: false,
++      status: 'expired',
++      signatureValid: true,
++      reason: `Genuine voucher, but it expired on ${new Date(payload.expiresAt).toUTCString()}`,
++      ...context,
++    };
++  }
++
++  return {
++    ok: true,
++    status: 'valid',
++    signatureValid: true,
++    reason: docType === 'receipt' ? 'Authentic receipt – signature verified' : 'Authentic voucher – signature verified',
++    ...context,
++  };
++}
++
++/** Format integer cents as a currency string (presentation helper). */
++export function formatMoney(cents, currency = 'USD', locale = 'en-US') {
++  try {
++    return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
++  } catch {
++    return `${(cents / 100).toFixed(2)} ${currency}`;
++  }
++}
+diff --git a/js/dg-ui.js b/js/dg-ui.js
+new file mode 100644
+index 0000000..2c0c31a
+--- /dev/null
++++ b/js/dg-ui.js
+@@ -0,0 +1,405 @@
++/**
++ * Homepage wiring for signed receipts & gift vouchers.
++ * All untrusted strings (token payloads, pasted keys) are rendered with
++ * textContent – never innerHTML – so a crafted token cannot inject markup.
++ */
++import {
++  ALGORITHMS,
++  generateIssuerKey,
++  parseTrustedKeys,
++  shortFingerprint,
++  buildReceipt,
++  buildVoucher,
++  signDocument,
++  verifyToken,
++  decodeToken,
++  utf8ToBase64Url,
++  formatMoney,
++} from './dg-sign.js';
++import { loadIssuer, saveIssuer } from './dg-keystore.js';
++
++const $ = (sel, root = document) => root.querySelector(sel);
++const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
++
++const state = {
++  issuer: null, // { alg, kid, privateKey, publicJwk, createdAt, retiredPublicKeys }
++  persistent: true,
++};
++
++// ---------------------------------------------------------------------------
++// Small DOM helpers
++// ---------------------------------------------------------------------------
++
++function el(tag, attrs = {}, children = []) {
++  const node = document.createElement(tag);
++  for (const [k, v] of Object.entries(attrs)) {
++    if (k === 'class') node.className = v;
++    else if (k === 'text') node.textContent = v;
++    else if (v !== undefined && v !== null && v !== false) node.setAttribute(k, v === true ? '' : v);
++  }
++  for (const child of [].concat(children)) {
++    if (child == null) continue;
++    node.append(typeof child === 'string' ? document.createTextNode(child) : child);
++  }
++  return node;
++}
++
++function setStatus(node, message, kind = 'info') {
++  node.textContent = message;
++  node.dataset.kind = kind;
++}
++
++async function copyText(text, statusNode) {
++  try {
++    await navigator.clipboard.writeText(text);
++    setStatus(statusNode, 'Copied to clipboard.', 'ok');
++  } catch {
++    setStatus(statusNode, 'Clipboard unavailable – select the text and copy it manually.', 'warn');
++  }
++}
++
++function downloadText(filename, text, mime = 'text/plain') {
++  const url = URL.createObjectURL(new Blob([text], { type: mime }));
++  const a = el('a', { href: url, download: filename });
++  document.body.append(a);
++  a.click();
++  a.remove();
++  setTimeout(() => URL.revokeObjectURL(url), 1000);
++}
++
++function formatDate(iso) {
++  const d = new Date(iso);
++  return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
++}
++
++// ---------------------------------------------------------------------------
++// Issuer key
++// ---------------------------------------------------------------------------
++
++function trustedKeySetJson() {
++  const keys = [state.issuer.publicJwk, ...(state.issuer.retiredPublicKeys ?? [])];
++  return JSON.stringify({ keys }, null, 2);
++}
++
++function renderKeyPanel() {
++  const { issuer } = state;
++  const spec = ALGORITHMS[issuer.alg];
++  $('#key-alg').textContent = spec.label;
++  const pq = $('#key-pq');
++  pq.textContent = spec.quantumResistant ? 'Quantum-resistant' : 'Classical';
++  pq.className = 'badge ' + (spec.quantumResistant ? 'badge-pq' : 'badge-classical');
++  $('#key-fp').textContent = shortFingerprint(issuer.kid, 8);
++  $('#key-fp').title = `kid: ${issuer.kid}`;
++  $('#key-created').textContent = formatDate(issuer.createdAt);
++  $('#verify-keys').value = trustedKeySetJson();
++  const note = spec.quantumResistant
++    ? 'This browser supports ML-DSA-65 (FIPS 204), so signatures are secure against both classical and quantum attackers.'
++    : 'This browser does not yet expose ML-DSA in Web Crypto, so signatures use ECDSA P-256. They will upgrade to ML-DSA-65 automatically when the browser does (rotate the key to re-check).';
++  setStatus($('#key-status'), note + (state.persistent ? '' : ' Key storage is unavailable, so this key lives only until the page is closed.'), state.persistent ? 'info' : 'warn');
++}
++
++async function ensureIssuer() {
++  let record = null;
++  try {
++    record = await loadIssuer();
++  } catch {
++    state.persistent = false;
++  }
++  if (!record) {
++    record = { ...(await generateIssuerKey()), retiredPublicKeys: [] };
++    if (state.persistent) {
++      try {
++        await saveIssuer(record);
++      } catch {
++        state.persistent = false;
++      }
++    }
++  }
++  state.issuer = record;
++  renderKeyPanel();
++}
++
++async function rotateKey() {
++  const ok = window.confirm(
++    'Rotate the issuer key?\n\nA new key pair will be generated. Documents signed with the old key will still verify here because its public key is kept in the trusted list, but anyone else verifying must be given the new public key.'
++  );
++  if (!ok) return;
++  const fresh = await generateIssuerKey();
++  const retired = [state.issuer.publicJwk, ...(state.issuer.retiredPublicKeys ?? [])].slice(0, 10);
++  const record = { ...fresh, retiredPublicKeys: retired };
++  if (state.persistent) {
++    try {
++      await saveIssuer(record);
++    } catch {
++      state.persistent = false;
++    }
++  }
++  state.issuer = record;
++  renderKeyPanel();
++  setStatus($('#key-status'), `Issuer key rotated. New fingerprint ${shortFingerprint(record.kid)}.`, 'ok');
++}
++
++// ---------------------------------------------------------------------------
++// Signing forms
++// ---------------------------------------------------------------------------
++
++const MENU = [
++  { name: 'Maple Oat Latte', unitPrice: 575 },
++  { name: 'Dark Roast Espresso', unitPrice: 350 },
++  { name: 'Cold Brew', unitPrice: 450 },
++  { name: 'Blueberry Scone', unitPrice: 325 },
++];
++
++function renderMenuRows() {
++  const tbody = $('#receipt-items');
++  tbody.replaceChildren(
++    ...MENU.map((item, i) =>
++      el('tr', {}, [
++        el('td', { text: item.name }),
++        el('td', { class: 'num', text: formatMoney(item.unitPrice) }),
++        el('td', { class: 'num' }, [
++          el('input', {
++            type: 'number',
++            min: '0',
++            max: '20',
++            step: '1',
++            value: i === 0 ? '1' : '0',
++            name: `qty-${i}`,
++            'aria-label': `Quantity of ${item.name}`,
++            'data-index': String(i),
++          }),
++        ]),
++      ])
++    )
++  );
++}
++
++function receiptItemsFromForm() {
++  return $$('#receipt-items input')
++    .map((input) => ({ ...MENU[Number(input.dataset.index)], qty: Number(input.value) }))
++    .filter((it) => it.qty > 0);
++}
++
++function updateReceiptTotal() {
++  const total = receiptItemsFromForm().reduce((s, it) => s + it.qty * it.unitPrice, 0);
++  $('#receipt-total').textContent = formatMoney(total);
++}
++
++function showOutput(form, token, filename) {
++  const out = $('.output', form);
++  out.hidden = false;
++  $('textarea', out).value = token;
++  out.dataset.filename = filename;
++  setStatus($('.output-status', out), `Signed with ${ALGORITHMS[state.issuer.alg].label}. Token length ${token.length} characters.`, 'ok');
++}
++
++async function onSignReceipt(event) {
++  event.preventDefault();
++  const form = event.currentTarget;
++  const status = $('.form-status', form);
++  try {
++    const payload = buildReceipt({
++      store: form.elements.store.value,
++      customer: form.elements.customer.value,
++      items: receiptItemsFromForm(),
++    });
++    const token = await signDocument(state.issuer, payload);
++    setStatus(status, '', 'info');
++    showOutput(form, token, `receipt-${payload.orderId}.jws`);
++  } catch (err) {
++    setStatus(status, err.message, 'error');
++  }
++}
++
++async function onIssueVoucher(event) {
++  event.preventDefault();
++  const form = event.currentTarget;
++  const status = $('.form-status', form);
++  try {
++    const payload = buildVoucher({
++      amount: Number(form.elements.amount.value),
++      recipient: form.elements.recipient.value,
++      message: form.elements.message.value,
++      validDays: Number(form.elements.validity.value),
++    });
++    const token = await signDocument(state.issuer, payload);
++    setStatus(status, '', 'info');
++    showOutput(form, token, `voucher-${payload.code}.jws`);
++  } catch (err) {
++    setStatus(status, err.message, 'error');
++  }
++}
++
++/** Produce a plausible-looking forgery of a token to demonstrate tamper detection. */
++function tamperedCopy(token) {
++  const { payload } = decodeToken(token);
++  const [h, , s] = token.trim().split('.');
++  if (payload.type === 'voucher') payload.amount = payload.amount * 10;
++  else {
++    payload.total = Math.max(0, payload.total - 100);
++    if (payload.items?.[0]) payload.items[0].unitPrice = Math.max(0, payload.items[0].unitPrice - 100);
++  }
++  return `${h}.${utf8ToBase64Url(JSON.stringify(payload))}.${s}`;
++}
++
++function onOutputAction(event) {
++  const button = event.target.closest('button[data-action]');
++  if (!button) return;
++  const out = button.closest('.output');
++  const token = $('textarea', out).value;
++  const status = $('.output-status', out);
++  switch (button.dataset.action) {
++    case 'copy':
++      copyText(token, status);
++      break;
++    case 'download':
++      downloadText(out.dataset.filename || 'document.jws', token);
++      break;
++    case 'verify':
++      $('#verify-token').value = token;
++      runVerify();
++      break;
++    case 'tamper':
++      $('#verify-token').value = tamperedCopy(token);
++      setStatus(status, 'A forged copy (with the amount changed) was sent to the verifier below.', 'warn');
++      runVerify();
++      break;
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Verification
++// ---------------------------------------------------------------------------
++
++function detailRow(label, value) {
++  return el('div', { class: 'detail' }, [el('dt', { text: label }), el('dd', { text: value })]);
++}
++
++function renderPayloadDetails(result) {
++  const { payload, alg, kid } = result;
++  const dl = el('dl', { class: 'details' });
++  if (payload.type === 'receipt') {
++    dl.append(
++      ...[
++        detailRow('Order', payload.orderId),
++        detailRow('Store', payload.store),
++        detailRow('Issued', formatDate(payload.issuedAt)),
++        payload.customer ? detailRow('Customer', payload.customer) : null,
++        detailRow('Total', formatMoney(payload.total, payload.currency)),
++      ].filter(Boolean)
++    );
++    const table = el('table', { class: 'items-table' }, [
++      el('thead', {}, el('tr', {}, [el('th', { text: 'Item' }), el('th', { class: 'num', text: 'Qty' }), el('th', { class: 'num', text: 'Price' })])),
++      el(
++        'tbody',
++        {},
++        payload.items.map((it) =>
++          el('tr', {}, [
++            el('td', { text: it.name }),
++            el('td', { class: 'num', text: String(it.qty) }),
++            el('td', { class: 'num', text: formatMoney(it.qty * it.unitPrice, payload.currency) }),
++          ])
++        )
++      ),
++    ]);
++    return [dl, table, signerRow(alg, kid)];
++  }
++  dl.append(
++    ...[
++      detailRow('Voucher code', payload.code),
++      detailRow('Value', formatMoney(payload.amount, payload.currency)),
++      payload.recipient ? detailRow('Recipient', payload.recipient) : null,
++      payload.message ? detailRow('Message', payload.message) : null,
++      detailRow('Issued', formatDate(payload.issuedAt)),
++      detailRow('Expires', formatDate(payload.expiresAt)),
++    ].filter(Boolean)
++  );
++  return [dl, signerRow(alg, kid)];
++}
++
++function signerRow(alg, kid) {
++  const spec = ALGORITHMS[alg];
++  let fp = kid;
++  try {
++    fp = shortFingerprint(kid, 8);
++  } catch {
++    /* keep raw kid */
++  }
++  return el('p', { class: 'signer muted' }, [`Signed with ${spec?.label ?? alg} · key `, el('code', { text: fp })]);
++}
++
++function renderVerifyResult(result) {
++  const box = $('#verify-result');
++  box.hidden = false;
++  box.dataset.status = result.status;
++  const icon = { valid: '✔', expired: '⏳', invalid: '✖' }[result.status];
++  const title = { valid: 'Authentic', expired: 'Authentic but expired', invalid: 'Not valid' }[result.status];
++  const children = [el('p', { class: 'verdict' }, [el('span', { class: 'icon', 'aria-hidden': 'true', text: icon }), ` ${title}`]), el('p', { class: 'reason', text: result.reason })];
++  if (result.signatureValid && result.payload) children.push(...renderPayloadDetails(result));
++  else if (result.header && typeof result.header === 'object') {
++    children.push(el('p', { class: 'muted', text: 'Untrusted content is not shown because the signature could not be verified.' }));
++  }
++  box.replaceChildren(...children);
++}
++
++async function runVerify() {
++  const token = $('#verify-token').value;
++  const box = $('#verify-result');
++  let trusted;
++  try {
++    trusted = await parseTrustedKeys($('#verify-keys').value);
++  } catch (err) {
++    renderVerifyResult({ ok: false, status: 'invalid', signatureValid: false, reason: `Trusted keys could not be read: ${err.message}` });
++    return;
++  }
++  if (!token.trim()) {
++    renderVerifyResult({ ok: false, status: 'invalid', signatureValid: false, reason: 'Paste a receipt or voucher token first.' });
++    return;
++  }
++  const result = await verifyToken(token, trusted);
++  renderVerifyResult(result);
++  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++}
++
++// ---------------------------------------------------------------------------
++// Boot
++// ---------------------------------------------------------------------------
++
++function disableSection(message) {
++  setStatus($('#key-status'), message, 'error');
++  for (const node of $$('#receipts button, #receipts input, #receipts select, #receipts textarea')) node.disabled = true;
++}
++
++async function init() {
++  renderMenuRows();
++  updateReceiptTotal();
++  $('#receipt-items').addEventListener('input', updateReceiptTotal);
++  $('#receipt-form').addEventListener('submit', onSignReceipt);
++  $('#voucher-form').addEventListener('submit', onIssueVoucher);
++  for (const out of $$('#receipts .output')) out.addEventListener('click', onOutputAction);
++  $('#verify-btn').addEventListener('click', runVerify);
++  $('#verify-token').addEventListener('keydown', (e) => {
++    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runVerify();
++  });
++  $('#rotate-key').addEventListener('click', () => rotateKey().catch((err) => setStatus($('#key-status'), err.message, 'error')));
++  $('#copy-pubkey').addEventListener('click', () => copyText(JSON.stringify(state.issuer.publicJwk, null, 2), $('#key-status')));
++  $('#download-pubkey').addEventListener('click', () =>
++    downloadText(`daily-grind-issuer-${shortFingerprint(state.issuer.kid, 2).replace(':', '')}.jwk.json`, trustedKeySetJson(), 'application/json')
++  );
++  $('#reset-keys').addEventListener('click', () => {
++    $('#verify-keys').value = trustedKeySetJson();
++    setStatus($('#verify-keys-status'), 'Reset to this browser’s issuer keys.', 'ok');
++  });
++
++  if (!globalThis.crypto?.subtle) {
++    disableSection('Web Crypto is unavailable. Open this page over HTTPS (or localhost) to sign and verify documents.');
++    return;
++  }
++  try {
++    await ensureIssuer();
++  } catch (err) {
++    disableSection(`Could not set up the issuer key: ${err.message}`);
++  }
++}
++
++init();
+diff --git a/package.json b/package.json
+index 2bd4d77..2d1a9e4 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,10 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/test/dg-sign.test.mjs b/test/dg-sign.test.mjs
+new file mode 100644
+index 0000000..3777bee
+--- /dev/null
++++ b/test/dg-sign.test.mjs
+@@ -0,0 +1,317 @@
++import { test, describe, before } from 'node:test';
++import assert from 'node:assert/strict';
++import {
++  ALGORITHMS,
++  PREFERRED_ALGORITHMS,
++  TOKEN_TYPES,
++  generateIssuerKey,
++  isAlgorithmSupported,
++  importPublicJwk,
++  parseTrustedKeys,
++  jwkThumbprint,
++  shortFingerprint,
++  buildReceipt,
++  buildVoucher,
++  generateVoucherCode,
++  generateOrderId,
++  signDocument,
++  verifyToken,
++  decodeToken,
++  stableStringify,
++  bytesToBase64Url,
++  base64UrlToBytes,
++  utf8ToBase64Url,
++} from '../js/dg-sign.js';
++
++const RECEIPT_INPUT = {
++  store: 'Main St. Roastery',
++  items: [
++    { name: 'Maple Oat Latte', qty: 2, unitPrice: 575 },
++    { name: 'Cold Brew', qty: 1, unitPrice: 450 },
++  ],
++};
++
++function swapPayload(token, mutate) {
++  const [h, p, s] = token.split('.');
++  const payload = JSON.parse(Buffer.from(p, 'base64url').toString());
++  mutate(payload);
++  return `${h}.${utf8ToBase64Url(JSON.stringify(payload))}.${s}`;
++}
++
++function swapHeader(token, mutate) {
++  const [h, p, s] = token.split('.');
++  const header = JSON.parse(Buffer.from(h, 'base64url').toString());
++  mutate(header);
++  return `${utf8ToBase64Url(JSON.stringify(header))}.${p}.${s}`;
++}
++
++describe('encoding helpers', () => {
++  test('base64url round-trips arbitrary bytes', () => {
++    const bytes = crypto.getRandomValues(new Uint8Array(1000));
++    const enc = bytesToBase64Url(bytes);
++    assert.match(enc, /^[A-Za-z0-9_-]+$/);
++    assert.deepEqual(base64UrlToBytes(enc), bytes);
++  });
++
++  test('base64url decoder rejects standard-alphabet and padded input', () => {
++    assert.throws(() => base64UrlToBytes('ab+/'));
++    assert.throws(() => base64UrlToBytes('abcd=='));
++    assert.throws(() => base64UrlToBytes('abcde'));
++  });
++
++  test('stableStringify sorts keys recursively and drops undefined', () => {
++    assert.equal(stableStringify({ b: 1, a: { d: [3, { z: 1, y: 2 }], c: undefined } }), '{"a":{"d":[3,{"y":2,"z":1}]},"b":1}');
++  });
++
++  test('RFC 7638 thumbprint known-answer vector', async () => {
++    const rsa = {
++      kty: 'RSA',
++      n: '0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw',
++      e: 'AQAB',
++      alg: 'RS256',
++      kid: '2011-04-29',
++    };
++    assert.equal(await jwkThumbprint(rsa), 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs');
++    assert.equal(shortFingerprint('NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs'), '3736:cbb1:787c:b830');
++  });
++
++  test('thumbprint ignores optional members', async () => {
++    const a = { kty: 'EC', crv: 'P-256', x: 'AQ', y: 'Ag' };
++    const b = { ...a, kid: 'foo', use: 'sig', alg: 'ES256' };
++    assert.equal(await jwkThumbprint(a), await jwkThumbprint(b));
++  });
++});
++
++describe('document builders', () => {
++  test('voucher codes use the unambiguous alphabet and are unique', () => {
++    const codes = new Set(Array.from({ length: 200 }, generateVoucherCode));
++    assert.equal(codes.size, 200);
++    for (const c of codes) assert.match(c, /^DG-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/);
++  });
++
++  test('order ids embed the date', () => {
++    assert.match(generateOrderId(new Date('2026-10-28T12:00:00Z')), /^DG-20261028-[0-9A-F]{6}$/);
++  });
++
++  test('buildReceipt totals line items in cents', () => {
++    const r = buildReceipt(RECEIPT_INPUT);
++    assert.equal(r.total, 1600);
++    assert.equal(r.type, 'receipt');
++    assert.equal(r.iss, 'the-daily-grind');
++    assert.ok(!Number.isNaN(Date.parse(r.issuedAt)));
++  });
++
++  test('buildReceipt rejects fractional / zero quantities and empty carts', () => {
++    assert.throws(() => buildReceipt({ ...RECEIPT_INPUT, items: [] }), /no items/);
++    assert.throws(() => buildReceipt({ ...RECEIPT_INPUT, items: [{ name: 'X', qty: 1.5, unitPrice: 100 }] }), /quantity/);
++    assert.throws(() => buildReceipt({ ...RECEIPT_INPUT, items: [{ name: 'X', qty: 1, unitPrice: 1.5 }] }), /price/);
++    assert.throws(() => buildReceipt({ ...RECEIPT_INPUT, store: '' }), /store/);
++  });
++
++  test('buildVoucher derives expiry from validDays and validates', () => {
++    const v = buildVoucher({ amount: 2500, validDays: 30, recipient: 'Sam', issuedAt: '2026-01-01T00:00:00.000Z' });
++    assert.equal(v.expiresAt, '2026-01-31T00:00:00.000Z');
++    assert.equal(v.recipient, 'Sam');
++    assert.throws(() => buildVoucher({ amount: 0 }), /amount/);
++    assert.throws(() => buildVoucher({ amount: 12.5 }), /amount/);
++    assert.throws(() => buildVoucher({ amount: 100, currency: 'usd' }), /currency/);
++    assert.throws(() => buildVoucher({ amount: 100, validDays: -1 }), /expires before/);
++  });
++});
++
++for (const algId of PREFERRED_ALGORITHMS) {
++  describe(`sign & verify with ${algId}`, () => {
++    let issuer, trusted, otherIssuer;
++
++    before(async () => {
++      assert.ok(await isAlgorithmSupported(algId), `${algId} should be supported by this Node runtime`);
++      issuer = await generateIssuerKey([algId]);
++      otherIssuer = await generateIssuerKey([algId]);
++      trusted = [await importPublicJwk(issuer.publicJwk)];
++    });
++
++    test('generated private key is non-extractable and public JWK is clean', async () => {
++      assert.equal(issuer.alg, algId);
++      assert.equal(issuer.privateKey.extractable, false);
++      assert.equal(issuer.publicJwk.kty, ALGORITHMS[algId].kty);
++      assert.equal(issuer.publicJwk.alg, algId);
++      assert.equal(issuer.publicJwk.use, 'sig');
++      assert.equal(issuer.publicJwk.kid, issuer.kid);
++      assert.ok(!('d' in issuer.publicJwk) && !('priv' in issuer.publicJwk));
++      assert.equal(trusted[0].kid, issuer.kid);
++    });
++
++    test('receipt round-trip verifies and yields the payload', async () => {
++      const payload = buildReceipt(RECEIPT_INPUT);
++      const token = await signDocument(issuer, payload);
++      assert.equal(token.split('.').length, 3);
++      const { header } = decodeToken(token);
++      assert.deepEqual(header, { alg: algId, typ: TOKEN_TYPES.receipt, kid: issuer.kid });
++
++      const result = await verifyToken(token, trusted);
++      assert.equal(result.ok, true, result.reason);
++      assert.equal(result.status, 'valid');
++      assert.equal(result.signatureValid, true);
++      assert.deepEqual(result.payload, payload);
++      assert.equal(result.alg, algId);
++    });
++
++    test('voucher round-trip verifies; expiry is enforced', async () => {
++      const payload = buildVoucher({ amount: 5000, validDays: 10 });
++      const token = await signDocument(issuer, payload);
++      const fresh = await verifyToken(token, trusted);
++      assert.equal(fresh.ok, true, fresh.reason);
++
++      const later = await verifyToken(token, trusted, { now: new Date(Date.now() + 11 * 86_400_000) });
++      assert.equal(later.ok, false);
++      assert.equal(later.status, 'expired');
++      assert.equal(later.signatureValid, true, 'expired voucher is still authentic');
++    });
++
++    test('signing is deterministic in structure (header/payload) and tokens from same payload verify', async () => {
++      const payload = buildReceipt({ ...RECEIPT_INPUT, orderId: 'DG-20261028-ABCDEF', issuedAt: '2026-10-28T10:00:00.000Z' });
++      const t1 = await signDocument(issuer, payload);
++      const t2 = await signDocument(issuer, payload);
++      assert.equal(t1.split('.').slice(0, 2).join('.'), t2.split('.').slice(0, 2).join('.'));
++      assert.equal((await verifyToken(t2, trusted)).ok, true);
++    });
++
++    test('tampered payload (changing the total) is rejected', async () => {
++      const token = await signDocument(issuer, buildReceipt(RECEIPT_INPUT));
++      const forged = swapPayload(token, (p) => {
++        p.items[0].unitPrice = 1;
++        p.total = 452;
++      });
++      const result = await verifyToken(forged, trusted);
++      assert.equal(result.ok, false);
++      assert.equal(result.signatureValid, false);
++      assert.match(result.reason, /altered or forged/);
++    });
++
++    test('tampered voucher amount is rejected', async () => {
++      const token = await signDocument(issuer, buildVoucher({ amount: 1000 }));
++      const forged = swapPayload(token, (p) => {
++        p.amount = 100000;
++      });
++      assert.equal((await verifyToken(forged, trusted)).ok, false);
++    });
++
++    test('a single flipped bit in the signature is rejected', async () => {
++      const token = await signDocument(issuer, buildVoucher({ amount: 1000 }));
++      const [h, p, s] = token.split('.');
++      const sig = base64UrlToBytes(s);
++      sig[sig.length >> 1] ^= 0x01;
++      const result = await verifyToken(`${h}.${p}.${bytesToBase64Url(sig)}`, trusted);
++      assert.equal(result.ok, false);
++      assert.equal(result.signatureValid, false);
++    });
++
++    test('token signed by a different key is rejected as unknown issuer', async () => {
++      const token = await signDocument(otherIssuer, buildVoucher({ amount: 1000 }));
++      const result = await verifyToken(token, trusted);
++      assert.equal(result.ok, false);
++      assert.match(result.reason, /unknown key/);
++    });
++
++    test('a token with a known kid but a signature from another key fails', async () => {
++      const token = await signDocument(otherIssuer, buildVoucher({ amount: 1000 }));
++      const relabelled = swapHeader(token, (h) => {
++        h.kid = issuer.kid;
++      });
++      const result = await verifyToken(relabelled, trusted);
++      assert.equal(result.ok, false);
++      assert.equal(result.signatureValid, false);
++    });
++
++    test('algorithm confusion: header alg swapped is rejected before verification', async () => {
++      const token = await signDocument(issuer, buildVoucher({ amount: 1000 }));
++      for (const alg of ['none', 'HS256', algId === 'ES256' ? 'ML-DSA-65' : 'ES256']) {
++        const swapped = swapHeader(token, (h) => {
++          h.alg = alg;
++        });
++        const result = await verifyToken(swapped, trusted);
++        assert.equal(result.ok, false, `alg=${alg}`);
++        assert.equal(result.signatureValid, false);
++      }
++    });
++
++    test('voucher token re-labelled as a receipt is rejected', async () => {
++      const token = await signDocument(issuer, buildVoucher({ amount: 1000 }));
++      const swapped = swapHeader(token, (h) => {
++        h.typ = TOKEN_TYPES.receipt;
++      });
++      const result = await verifyToken(swapped, trusted);
++      assert.equal(result.ok, false);
++    });
++
++    test('crit header parameter is rejected', async () => {
++      const token = await signDocument(issuer, buildVoucher({ amount: 1000 }));
++      const swapped = swapHeader(token, (h) => {
++        h.crit = ['b64'];
++      });
++      assert.equal((await verifyToken(swapped, trusted)).ok, false);
++    });
++
++    test('verifies with a public key pasted from another device (JWK, array, JWK Set as JSON text)', async () => {
++      const token = await signDocument(issuer, buildReceipt(RECEIPT_INPUT));
++      const jwkText = JSON.stringify(issuer.publicJwk);
++      for (const text of [jwkText, `[${jwkText}]`, `{"keys":[${jwkText}]}`]) {
++        const keys = await parseTrustedKeys(text);
++        assert.equal((await verifyToken(token, keys)).ok, true);
++      }
++      // Trailing whitespace / pretty printing around the token is tolerated.
++      assert.equal((await verifyToken(`  ${token}\n`, trusted)).ok, true);
++    });
++
++    test('key rotation: old tokens fail against the new key alone, pass with both', async () => {
++      const token = await signDocument(issuer, buildVoucher({ amount: 1000 }));
++      const rotated = await generateIssuerKey([algId]);
++      const onlyNew = [await importPublicJwk(rotated.publicJwk)];
++      assert.equal((await verifyToken(token, onlyNew)).ok, false);
++      assert.equal((await verifyToken(token, [...onlyNew, ...trusted])).ok, true);
++    });
++
++    test('signDocument refuses invalid payloads', async () => {
++      await assert.rejects(signDocument(issuer, { type: 'voucher', iss: 'the-daily-grind', code: 'nope', amount: 1 }), /voucher code/);
++      await assert.rejects(signDocument(issuer, { type: 'coupon' }), /Unknown document type/);
++    });
++  });
++}
++
++describe('verifier input hardening', () => {
++  let trusted;
++  before(async () => {
++    const issuer = await generateIssuerKey(['ES256']);
++    trusted = [await importPublicJwk(issuer.publicJwk)];
++  });
++
++  test('malformed tokens produce invalid results, not exceptions', async () => {
++    for (const bad of ['', 'abc', 'a.b', 'a.b.c.d', '..', '!!.!!.!!', `${utf8ToBase64Url('{}')}.${utf8ToBase64Url('{}')}.AA`, `${utf8ToBase64Url('[]')}.${utf8ToBase64Url('{}')}.AA`, 42, null]) {
++      const result = await verifyToken(bad, trusted);
++      assert.equal(result.ok, false, JSON.stringify(bad));
++      assert.equal(result.status, 'invalid');
++      assert.equal(typeof result.reason, 'string');
++    }
++  });
++
++  test('empty trusted key list never validates', async () => {
++    const issuer = await generateIssuerKey(['ES256']);
++    const token = await signDocument(issuer, buildVoucher({ amount: 100 }));
++    assert.equal((await verifyToken(token, [])).ok, false);
++    assert.equal((await verifyToken(token, undefined)).ok, false);
++  });
++
++  test('importPublicJwk refuses private keys and unknown key types', async () => {
++    const issuer = await generateIssuerKey(['ES256']);
++    await assert.rejects(importPublicJwk({ ...issuer.publicJwk, d: 'AQ' }), /private key/);
++    await assert.rejects(importPublicJwk({ kty: 'oct', k: 'AQ' }), /Unsupported/);
++    await assert.rejects(importPublicJwk({ kty: 'EC', crv: 'P-384', x: 'AQ', y: 'Ag' }), /Unsupported/);
++    await assert.rejects(importPublicJwk({ kty: 'AKP', alg: 'ML-DSA-44', pub: 'AQ' }), /Unsupported/);
++  });
++
++  test('parseTrustedKeys handles empty input and rejects garbage', async () => {
++    assert.deepEqual(await parseTrustedKeys('   '), []);
++    await assert.rejects(parseTrustedKeys('"a string"'), /must be a JWK/);
++    await assert.rejects(parseTrustedKeys('not json'));
++  });
++});

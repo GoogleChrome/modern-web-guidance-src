@@ -1,0 +1,475 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..292c212 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -15,69 +15,192 @@ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const HeadingTag = large ? 'h1' : 'h3';
+ ---
+-{large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                </div>
+-            </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
+-                </a>
+-            </div>
+-        </div>
+-    </div>
+-) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++<article class="article-card h-full group">
++    <Image 
++        src={image} 
++        alt={article.data.title} 
++        width={800}
++        height={533}
++        format="webp"
++        class="article-card-media w-full h-auto object-cover rounded-md aspect-[16/9]"
++    />
++    <header class="article-card-header mt-3">
++        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest hover:underline">{capitalizedCategory}</a>
++        <HeadingTag class="article-card-title mt-1 font-brand text-gray-800 leading-tight transition-colors">
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="card-link">
++                {article.data.title}
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-            </div>
+-        </div>
+-    </article>
+-)}
+\ No newline at end of file
++        </HeadingTag>
++    </header>
++    <p class="article-card-summary text-gray-600 mt-1 text-base flex-grow">
++        {article.data.summary}
++    </p>
++    <footer class="article-card-footer flex justify-between items-center text-gray-500 mt-2 pt-2 border-t border-gray-100">
++        <span class="article-card-meta text-xs font-medium flex items-center">
++            <BookOpenIcon className="article-card-icon w-4 h-4 inline-block mr-1 -mt-px" />
++            {article.data.readingTime} Min.
++        </span>
++        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++    </footer>
++</article>
++
++<style>
++    .article-card {
++        container: article-card / inline-size;
++        display: flex;
++        flex-direction: column;
++    }
++
++    .article-card:has(a.card-link) {
++        position: relative;
++    }
++
++    .article-card a.card-link::after {
++        content: "";
++        position: absolute;
++        inset: 0;
++    }
++
++    .article-card:has(a.card-link) :global(:is(a:not(.card-link), button, input)) {
++        position: relative;
++        z-index: 1;
++    }
++
++    .article-card a.card-link:focus-visible {
++        outline: none;
++    }
++
++    .article-card:has(a.card-link:focus-visible) {
++        outline: 2px solid var(--color-amber-400, #fbbf24);
++        outline-offset: 2px;
++        border-radius: 0.375rem;
++    }
++
++    .article-card:has(a.card-link:hover) .article-card-title {
++        color: var(--color-amber-400, #fbbf24);
++    }
++
++    /* Fluid typography bound to the card container's inline size */
++    .article-card-title {
++        font-size: clamp(1.125rem, 3.5vw, 2.25rem);
++    }
++
++    @supports (font-size: 1cqi) {
++        .article-card-title {
++            font-size: clamp(1.125rem, 3.5cqi, 2.25rem);
++        }
++    }
++
++    /* Conditionally hide summary in compact containers and reveal when space permits */
++    .article-card-summary {
++        display: none;
++    }
++
++    @container article-card (min-width: 14rem) {
++        .article-card-summary {
++            display: block;
++        }
++    }
++
++    @container article-card (min-width: 20rem) {
++        .article-card-meta {
++            font-size: 0.875rem;
++            line-height: 1.25rem;
++        }
++    }
++
++    /* Side-by-side layout in medium containers, scoped with :has(> img) so cards without media remain single-column */
++    @container article-card (min-width: 28rem) and (max-width: 41.999rem) {
++        .article-card:has(> img) {
++            display: grid;
++            grid-template-columns: 12rem 1fr;
++            grid-template-rows: auto 1fr auto;
++            column-gap: 1.25rem;
++        }
++
++        .article-card:has(> img) > .article-card-media {
++            grid-column: 1;
++            grid-row: 1 / -1;
++            height: 100%;
++        }
++
++        .article-card:has(> img) > .article-card-header {
++            grid-column: 2;
++            margin-block-start: 0;
++        }
++
++        .article-card:has(> img) > .article-card-summary,
++        .article-card:has(> img) > .article-card-footer {
++            grid-column: 2;
++        }
++    }
++
++    /* Featured multi-column layout in wide containers */
++    @container article-card (min-width: 42rem) {
++        .article-card {
++            background-color: #ffffff;
++            padding: 1.5rem;
++            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
++        }
++
++        .article-card:has(> img) {
++            display: grid;
++            grid-template-columns: 2fr 1fr;
++            grid-template-rows: auto 1fr auto;
++            column-gap: 2rem;
++        }
++
++        .article-card:has(> img) > .article-card-media {
++            grid-column: 1;
++            grid-row: 1 / -1;
++            border-radius: 0;
++            aspect-ratio: auto;
++            height: 100%;
++        }
++
++        .article-card:has(> img) > .article-card-header {
++            grid-column: 2;
++            margin-block-start: 0;
++        }
++
++        .article-card:has(> img) > .article-card-summary {
++            grid-column: 2;
++            margin-block-start: 1rem;
++            font-size: 1.125rem;
++            line-height: 1.75rem;
++            color: #374151;
++        }
++
++        .article-card:has(> img) > .article-card-footer {
++            grid-column: 2;
++            margin-block-start: 1.5rem;
++            padding-block-start: 0;
++            border-top: 0;
++        }
++
++        .article-card-title {
++            margin-block-start: 0.5rem;
++            color: #111827;
++        }
++
++        .article-card-meta {
++            font-size: 0.75rem;
++            line-height: 1rem;
++        }
++
++        .article-card :global(.article-card-icon) {
++            width: 1.25rem;
++            height: 1.25rem;
++        }
++    }
++
++    @container article-card (min-width: 56rem) {
++        .article-card {
++            padding: 2rem;
++        }
++    }
++</style>
++
++
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..20203df 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -32,34 +32,28 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+-            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
++    <article class="teaser-card shadow-sm overflow-hidden mb-6 lg:mb-8">
++        <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="teaser-card-media w-full h-full object-cover aspect-video" />
++        <header class="teaser-card-header p-4 pb-0">
++            <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 inline-block hover:underline">
++                {capitalizedCategory}
++            </a>
++            <h3 class="teaser-card-title text-3xl font-brand mb-4 leading-tight transition-colors">
++                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`} class="card-link">
++                    {topArticle.data.title}
+                 </a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+-                        {topArticle.data.title}
+-                    </h3>
+-                </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
+-                    {topArticle.data.summary}
+-                </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
+-                </div>
+-            </div>
+-            <div class="w-full order-first lg:order-last">
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+-                </a>
+-            </div>
+-        </div>
+-    </div>
++            </h3>
++        </header>
++        <p class="teaser-card-summary text-gray-700 px-4 mb-4 text-base">
++            {topArticle.data.summary}
++        </p>
++        <footer class="teaser-card-footer flex items-center text-gray-500 text-sm px-4 pb-4">
++            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
++            </svg>
++            <span>{topArticle.data.readingTime} Min Read</span>
++        </footer>
++    </article>
+ 
+     <!-- Bottom Section: Three Smaller Articles -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+@@ -67,36 +61,128 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+             const isBookmarked = readingList.includes(article.id);
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <article class="teaser-card flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+-                        </a>
++                        <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="teaser-card-media w-full h-auto object-cover aspect-video" />
+                     )}
+-                    <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
++                    <header class="teaser-card-header p-4 pb-0">
++                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 inline-block hover:underline">
+                             {capitalizedBottomCategory}
+                         </a>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                        <h3 class="teaser-card-title text-2xl font-brand mb-2 transition-colors">
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="card-link">
+                                 {article.data.title}
+-                            </h3>
+-                        </a>
+-                        {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
+-                                {article.data.summary}
+-                            </p>
+-                        )}
+-                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                            <span class="text-xs font-medium flex items-center">
+-                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                                {article.data.readingTime} Min.
+-                            </span>
+-                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                        </div>
+-                    </div>
+-                </div>
++                            </a>
++                        </h3>
++                    </header>
++                    {index !== 1 && (
++                        <p class="teaser-card-summary text-gray-700 px-4 mb-4 flex-grow">
++                            {article.data.summary}
++                        </p>
++                    )}
++                    <footer class="teaser-card-footer flex justify-between items-center text-gray-500 mt-auto mx-4 mb-4 pt-2 border-t border-gray-100">
++                        <span class="text-xs font-medium flex items-center">
++                            <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                            {article.data.readingTime} Min.
++                        </span>
++                        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    </footer>
++                </article>
+             )
+         })}
+     </div>
+ </section>
++
++<style>
++    .teaser-card {
++        container: teaser-card / inline-size;
++        display: flex;
++        flex-direction: column;
++    }
++
++    .teaser-card:has(a.card-link) {
++        position: relative;
++    }
++
++    .teaser-card a.card-link::after {
++        content: "";
++        position: absolute;
++        inset: 0;
++    }
++
++    .teaser-card:has(a.card-link) :global(:is(a:not(.card-link), button, input)) {
++        position: relative;
++        z-index: 1;
++    }
++
++    .teaser-card a.card-link:focus-visible {
++        outline: none;
++    }
++
++    .teaser-card:has(a.card-link:focus-visible) {
++        outline: 2px solid var(--color-amber-400, #fbbf24);
++        outline-offset: -2px;
++    }
++
++    .teaser-card:has(a.card-link:hover) .teaser-card-title {
++        color: var(--color-amber-400, #fbbf24);
++    }
++
++    @container teaser-card (min-width: 24rem) {
++        .teaser-card-header {
++            padding: 1.5rem 1.5rem 0;
++        }
++
++        .teaser-card-summary {
++            padding-inline: 1.5rem;
++        }
++
++        .teaser-card-footer {
++            margin-inline: 1.5rem;
++            margin-block-end: 1.5rem;
++        }
++    }
++
++    @container teaser-card (min-width: 42rem) {
++        .teaser-card:has(> img) {
++            display: grid;
++            grid-template-columns: repeat(2, 1fr);
++            grid-template-rows: 1fr auto auto 1fr;
++        }
++
++        .teaser-card:has(> img) > .teaser-card-media {
++            grid-column: 1;
++            grid-row: 1 / -1;
++            aspect-ratio: auto;
++        }
++
++        .teaser-card:has(> img) > .teaser-card-header {
++            grid-column: 2;
++            grid-row: 2;
++            padding: 2rem 2rem 0;
++        }
++
++        .teaser-card:has(> img) > .teaser-card-header .teaser-card-title {
++            font-size: 2.25rem;
++            line-height: 2.5rem;
++        }
++
++        .teaser-card:has(> img) > .teaser-card-summary {
++            grid-column: 2;
++            grid-row: 3;
++            padding-inline: 2rem;
++            font-size: 1.125rem;
++            line-height: 1.75rem;
++        }
++
++        .teaser-card:has(> img) > .teaser-card-footer {
++            grid-column: 2;
++            grid-row: 4;
++            align-self: start;
++            padding-inline: 2rem;
++            padding-block-end: 2rem;
++            margin: 0;
++        }
++    }
++</style>
++

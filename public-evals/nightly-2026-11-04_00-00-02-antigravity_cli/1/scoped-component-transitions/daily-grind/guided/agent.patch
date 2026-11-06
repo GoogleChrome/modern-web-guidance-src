@@ -1,0 +1,722 @@
+diff --git a/index.html b/index.html
+index 66c9173..3fc0d59 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,18 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>Seasonal Favorites | The Daily Grind Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #efebe9;
+     }
+ 
+     * {
+@@ -27,6 +31,37 @@
+       background-color: var(--light);
+     }
+ 
++    /* Visually hidden utility for screen readers and skip link */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    .skip-link {
++      position: fixed;
++      top: 10px;
++      left: 10px;
++      z-index: 2000;
++      background: var(--primary-dark);
++      color: #ffffff;
++      padding: 8px 16px;
++      border-radius: 4px;
++      text-decoration: none;
++      font-weight: 600;
++    }
++
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -49,6 +84,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -74,8 +110,9 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 50vh;
++      min-height: 300px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -100,39 +137,224 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      margin-bottom: 24px;
++    }
++
++    .section-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
++      align-items: start;
+     }
+ 
++    /* Outer wrapper participates in grid-level transitions while isolating inner card scope */
++    .card-wrapper {
++      view-transition-name: match-element;
++    }
++
++    /* Component root scope: isolate internal view-transition-names from outer transitions */
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      background: var(--surface);
++      padding: 24px;
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++      overflow: clip;
++      view-transition-scope: all;
++      border: 1px solid var(--border);
++    }
++
++    .card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 8px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.3rem;
++    }
++
++    /* Safe to reuse explicit view-transition-name across cards because each .card is an isolated scope */
++    .price-badge {
++      view-transition-name: card-price;
++      background: var(--secondary);
++      color: var(--primary-dark);
++      font-weight: 700;
++      padding: 2px 10px;
++      border-radius: 999px;
++      font-size: 0.9rem;
++    }
++
++    .card-description {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++    }
++
++    .card-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    /* Nested View Transition Group for scrollable/clipped list inside a card scope */
++    .card ul {
++      list-style: none;
++      max-height: 210px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      padding: 4px;
++      view-transition-name: match-element;
++      view-transition-group: contain;
++      view-transition-class: list;
++    }
++
++    ::view-transition-group-children(.list) {
++      overflow: clip;
++    }
++
++    /* Name participating child items by DOM node identity */
++    .card ul li {
++      view-transition-name: match-element;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      background: var(--light);
++      border: 1px solid var(--border);
++      padding: 8px 12px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++    }
++
++    .item-label {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: 500;
++    }
++
++    .item-cal {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++    }
++
++    .tasting-notes {
++      view-transition-name: tasting-notes;
++      background: #fff8e1;
++      border-left: 4px solid var(--accent);
++      padding: 10px 12px;
++      border-radius: 4px;
++      font-size: 0.88rem;
++      color: var(--primary-dark);
++    }
++
++    .tasting-notes[hidden] {
++      display: none;
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 8px 16px;
++      min-block-size: 36px;
++      min-inline-size: 36px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      border: none;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background-color 0.2s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--primary-dark);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .btn-remove {
++      background: transparent;
++      color: var(--primary-dark);
++      border: 1px solid var(--secondary);
++      padding: 4px 10px;
++      min-block-size: 28px;
++      min-inline-size: 28px;
++      border-radius: 4px;
++      font-size: 0.8rem;
++      cursor: pointer;
++      transition: background-color 0.2s;
++    }
++
++    .btn-remove:hover {
++      background: var(--secondary);
++    }
++
++    .card-footer {
++      margin-top: auto;
++      padding-top: 8px;
++      border-top: 1px solid var(--border);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++    }
++
++    /* Customize view transition timing */
++    ::view-transition-group(*) {
++      animation-duration: 300ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    /* MANDATORY: Respect user preference for reduced motion */
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
++    /* Top-layer popover stays unobstructed while scoped component transitions run */
++    .roast-popover {
++      margin: auto;
++      padding: 20px;
++      border: 2px solid var(--primary);
++      border-radius: 10px;
++      background: var(--surface);
++      color: var(--text);
++      max-width: 360px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+     }
+ 
+     footer {
+@@ -156,8 +378,9 @@
+ </head>
+ 
+ <body>
++  <a href="#main-heading" class="skip-link visually-hidden">Skip to main content</a>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -169,29 +392,173 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 id="main-heading" tabindex="-1">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" style="margin-top: 15px;">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <div class="section-actions">
++          <button type="button" class="btn btn-secondary" id="shuffle-cards-btn">
++            Rotate Featured Order
++          </button>
++          <button type="button" class="btn btn-secondary" id="concurrent-demo-btn">
++            Animate All Cards Concurrently
++          </button>
++          <button type="button" class="btn btn-secondary" popovertarget="roast-guide-popover">
++            Roast Guide Popover
++          </button>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++
++      <div id="roast-guide-popover" class="roast-popover" popover>
++        <h3>Artisanal Roast Guide</h3>
++        <p style="margin-top: 8px; font-size: 0.9rem;">
++          Because each drink card uses element-scoped view transitions (<code>element.startViewTransition()</code>),
++          this top-layer popover and the sticky navigation bar remain unobscured and fully interactive while cards animate.
++        </p>
++      </div>
++
++      <div class="grid" id="seasonal-grid">
++        <!-- Card 1 -->
++        <div class="card-wrapper" data-card-id="maple-oat">
++          <article class="card" id="card-maple" data-base-price="5.50" data-drink-name="Maple Oat Latte">
++            <div class="card-header">
++              <h3>Maple Oat Latte</h3>
++              <span class="price-badge" data-price-el>$6.25</span>
++            </div>
++            <p class="card-description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++
++            <div class="card-controls">
++              <button type="button" class="btn btn-secondary" data-action="reorder" aria-label="Reverse customization order for Maple Oat Latte">
++                Reverse List
++              </button>
++              <button type="button" class="btn btn-secondary" data-action="add" aria-label="Add customization to Maple Oat Latte">
++                + Add Booster
++              </button>
++              <button type="button" class="btn btn-secondary" data-action="notes" aria-expanded="false" aria-controls="notes-maple">
++                Tasting Notes
++              </button>
++            </div>
++
++            <div class="tasting-notes" id="notes-maple" hidden>
++              <strong>Notes:</strong> Toasted pecan, Grade-A dark amber maple, velvety micro-foam finish.
++            </div>
++
++            <ul role="list" aria-label="Maple Oat Latte customizations">
++              <li data-id="maple-1" data-cost="0.50">
++                <span class="item-label">Vermont Maple Drizzle <span class="item-cal">(+$0.50)</span></span>
++                <button type="button" class="btn-remove" data-action="remove" aria-label="Remove Vermont Maple Drizzle from Maple Oat Latte">Remove</button>
++              </li>
++              <li data-id="maple-2" data-cost="0.25">
++                <span class="item-label">Cinnamon Dust <span class="item-cal">(+$0.25)</span></span>
++                <button type="button" class="btn-remove" data-action="remove" aria-label="Remove Cinnamon Dust from Maple Oat Latte">Remove</button>
++              </li>
++              <li data-id="maple-3" data-cost="0.00">
++                <span class="item-label">Barista Oat Milk <span class="item-cal">(Included)</span></span>
++                <button type="button" class="btn-remove" data-action="remove" aria-label="Remove Barista Oat Milk from Maple Oat Latte">Remove</button>
++              </li>
++            </ul>
++
++            <div class="card-footer">
++              <a href="/menu/seasonal" class="btn">View Maple Oat Latte Details</a>
++            </div>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <!-- Card 2 -->
++        <div class="card-wrapper" data-card-id="dark-espresso">
++          <article class="card" id="card-espresso" data-base-price="3.75" data-drink-name="Dark Roast Espresso">
++            <div class="card-header">
++              <h3>Dark Roast Espresso</h3>
++              <span class="price-badge" data-price-el>$4.50</span>
++            </div>
++            <p class="card-description">Bold, smokey, and perfect for a morning boost.</p>
++
++            <div class="card-controls">
++              <button type="button" class="btn btn-secondary" data-action="reorder" aria-label="Reverse customization order for Dark Roast Espresso">
++                Reverse List
++              </button>
++              <button type="button" class="btn btn-secondary" data-action="add" aria-label="Add customization to Dark Roast Espresso">
++                + Add Booster
++              </button>
++              <button type="button" class="btn btn-secondary" data-action="notes" aria-expanded="false" aria-controls="notes-espresso">
++                Tasting Notes
++              </button>
++            </div>
++
++            <div class="tasting-notes" id="notes-espresso" hidden>
++              <strong>Notes:</strong> Bittersweet cacao, charred cedar, dense crema with low acidity.
++            </div>
++
++            <ul role="list" aria-label="Dark Roast Espresso customizations">
++              <li data-id="esp-1" data-cost="0.75">
++                <span class="item-label">Ristretto Pull <span class="item-cal">(+$0.75)</span></span>
++                <button type="button" class="btn-remove" data-action="remove" aria-label="Remove Ristretto Pull from Dark Roast Espresso">Remove</button>
++              </li>
++              <li data-id="esp-2" data-cost="0.00">
++                <span class="item-label">Sparkling Water Side <span class="item-cal">(Included)</span></span>
++                <button type="button" class="btn-remove" data-action="remove" aria-label="Remove Sparkling Water Side from Dark Roast Espresso">Remove</button>
++              </li>
++              <li data-id="esp-3" data-cost="0.00">
++                <span class="item-label">Demerara Sugar Cube <span class="item-cal">(Included)</span></span>
++                <button type="button" class="btn-remove" data-action="remove" aria-label="Remove Demerara Sugar Cube from Dark Roast Espresso">Remove</button>
++              </li>
++            </ul>
++
++            <div class="card-footer">
++              <a href="/menu/espresso" class="btn">View Dark Roast Espresso Details</a>
++            </div>
++          </article>
++        </div>
++
++        <!-- Card 3 -->
++        <div class="card-wrapper" data-card-id="cold-brew">
++          <article class="card" id="card-cold-brew" data-base-price="4.75" data-drink-name="Cold Brew">
++            <div class="card-header">
++              <h3>Cold Brew</h3>
++              <span class="price-badge" data-price-el>$5.75</span>
++            </div>
++            <p class="card-description">Steeped for 18 hours for maximum smoothness.</p>
++
++            <div class="card-controls">
++              <button type="button" class="btn btn-secondary" data-action="reorder" aria-label="Reverse customization order for Cold Brew">
++                Reverse List
++              </button>
++              <button type="button" class="btn btn-secondary" data-action="add" aria-label="Add customization to Cold Brew">
++                + Add Booster
++              </button>
++              <button type="button" class="btn btn-secondary" data-action="notes" aria-expanded="false" aria-controls="notes-cold-brew">
++                Tasting Notes
++              </button>
++            </div>
++
++            <div class="tasting-notes" id="notes-cold-brew" hidden>
++              <strong>Notes:</strong> Dark cherry, cold-extracted caramel sweetness, silky mouthfeel.
++            </div>
++
++            <ul role="list" aria-label="Cold Brew customizations">
++              <li data-id="cb-1" data-cost="1.00">
++                <span class="item-label">Vanilla Sweet Cream Foam <span class="item-cal">(+$1.00)</span></span>
++                <button type="button" class="btn-remove" data-action="remove" aria-label="Remove Vanilla Sweet Cream Foam from Cold Brew">Remove</button>
++              </li>
++              <li data-id="cb-2" data-cost="0.00">
++                <span class="item-label">Filtered Coffee Ice Cubes <span class="item-cal">(Included)</span></span>
++                <button type="button" class="btn-remove" data-action="remove" aria-label="Remove Filtered Coffee Ice Cubes from Cold Brew">Remove</button>
++              </li>
++              <li data-id="cb-3" data-cost="0.00">
++                <span class="item-label">Nitro Cascading Pour <span class="item-cal">(Included)</span></span>
++                <button type="button" class="btn-remove" data-action="remove" aria-label="Remove Nitro Cascading Pour from Cold Brew">Remove</button>
++              </li>
++            </ul>
++
++            <div class="card-footer">
++              <a href="/menu/cold-brew" class="btn">View Cold Brew Details</a>
++            </div>
++          </article>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +574,199 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Feature detect element-scoped view transitions specifically on Element.prototype
++    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++
++    /**
++     * Trigger a transition scoped to a single component subtree (card, list, or grid).
++     * Degrades gracefully by applying the DOM update immediately when unsupported.
++     */
++    function runScopedTransition(scopeEl, updateDOM) {
++      if (!supportsScopedTransition) {
++        updateDOM();
++        return;
++      }
++
++      const transition = scopeEl.startViewTransition(() => {
++        updateDOM();
++      });
++
++      // Catch rejection when rapid interactions skip an active transition on the same scope
++      transition.ready.catch(() => {});
++    }
++
++    /**
++     * Reorder list items by moving existing DOM nodes (required for `view-transition-name: match-element`).
++     * Scoped to `listEl` since only the list order changes, keeping controls outside `listEl` interactive.
++     */
++    function reorderItems(listEl, orderedIds) {
++      const existing = new Map(
++        Array.from(listEl.children, (li) => [li.dataset.id, li])
++      );
++
++      runScopedTransition(listEl, () => {
++        for (const id of orderedIds) {
++          const li = existing.get(id);
++          if (li) listEl.appendChild(li);
++        }
++      });
++    }
++
++    /**
++     * Recalculate and update the card's total price badge.
++     */
++    function updateCardPrice(cardEl) {
++      const basePrice = parseFloat(cardEl.dataset.basePrice || '0');
++      const items = cardEl.querySelectorAll('ul li');
++      let extras = 0;
++      for (const li of items) {
++        extras += parseFloat(li.dataset.cost || '0');
++      }
++      const priceEl = cardEl.querySelector('[data-price-el]');
++      if (priceEl) {
++        priceEl.textContent = `$${(basePrice + extras).toFixed(2)}`;
++      }
++    }
++
++    /**
++     * Remove an item while preserving exit animation, card height transition, and keyboard focus.
++     * Scoped to outer `cardEl` so the card itself transitions its geometry change.
++     */
++    function removeItem(cardEl, itemEl) {
++      const hadFocus = itemEl.contains(document.activeElement);
++      const nextFocusTarget =
++        itemEl.nextElementSibling?.querySelector('button') ??
++        itemEl.previousElementSibling?.querySelector('button') ??
++        cardEl.querySelector('button');
++
++      runScopedTransition(cardEl, () => {
++        itemEl.remove();
++        updateCardPrice(cardEl);
++        if (hadFocus) {
++          nextFocusTarget?.focus();
++        }
++      });
++    }
++
++    const boosterCatalog = [
++      { label: 'Extra Espresso Shot', cost: 1.25 },
++      { label: 'Madagascar Vanilla Bean', cost: 0.75 },
++      { label: 'Salted Caramel Cold Foam', cost: 1.00 },
++      { label: 'Organic Cacao Nibs', cost: 0.50 },
++      { label: 'Cardamom Infusion', cost: 0.65 }
++    ];
++    let boosterCounter = 1;
++
++    /**
++     * Add a customization item scoped to `cardEl` so the card smoothly expands its height.
++     */
++    function addBoosterItem(cardEl) {
++      const listEl = cardEl.querySelector('ul');
++      if (!listEl) return;
++
++      const drinkName = cardEl.dataset.drinkName || 'Drink';
++      const booster = boosterCatalog[(boosterCounter - 1) % boosterCatalog.length];
++      const itemId = `booster-${boosterCounter++}`;
++
++      const li = document.createElement('li');
++      li.dataset.id = itemId;
++      li.dataset.cost = booster.cost.toFixed(2);
++
++      const spanLabel = document.createElement('span');
++      spanLabel.className = 'item-label';
++      spanLabel.textContent = `${booster.label} `;
++
++      const spanCal = document.createElement('span');
++      spanCal.className = 'item-cal';
++      spanCal.textContent = `(+$${booster.cost.toFixed(2)})`;
++      spanLabel.appendChild(spanCal);
++
++      const removeBtn = document.createElement('button');
++      removeBtn.type = 'button';
++      removeBtn.className = 'btn-remove';
++      removeBtn.dataset.action = 'remove';
++      removeBtn.setAttribute('aria-label', `Remove ${booster.label} from ${drinkName}`);
++      removeBtn.textContent = 'Remove';
++
++      li.append(spanLabel, removeBtn);
++
++      runScopedTransition(cardEl, () => {
++        listEl.appendChild(li);
++        updateCardPrice(cardEl);
++      });
++    }
++
++    /**
++     * Toggle tasting notes inside `cardEl` using an element-scoped view transition.
++     */
++    function toggleTastingNotes(cardEl, buttonEl) {
++      const notesEl = cardEl.querySelector('.tasting-notes');
++      if (!notesEl) return;
++
++      runScopedTransition(cardEl, () => {
++        const isHidden = notesEl.hasAttribute('hidden');
++        if (isHidden) {
++          notesEl.removeAttribute('hidden');
++          buttonEl.setAttribute('aria-expanded', 'true');
++        } else {
++          notesEl.setAttribute('hidden', '');
++          buttonEl.setAttribute('aria-expanded', 'false');
++        }
++      });
++    }
++
++    // Event delegation for card-scoped interactions
++    const seasonalGrid = document.getElementById('seasonal-grid');
++
++    seasonalGrid.addEventListener('click', (event) => {
++      const button = event.target.closest('button[data-action]');
++      if (!button) return;
++
++      const cardEl = button.closest('.card');
++      if (!cardEl) return;
++
++      const action = button.dataset.action;
++
++      if (action === 'reorder') {
++        const listEl = cardEl.querySelector('ul');
++        if (!listEl) return;
++        const reversedIds = Array.from(listEl.children, (li) => li.dataset.id).reverse();
++        reorderItems(listEl, reversedIds);
++      } else if (action === 'add') {
++        addBoosterItem(cardEl);
++      } else if (action === 'remove') {
++        const itemEl = button.closest('li');
++        if (itemEl) {
++          removeItem(cardEl, itemEl);
++        }
++      } else if (action === 'notes') {
++        toggleTastingNotes(cardEl, button);
++      }
++    });
++
++    // Outer grid transition: rotates `.card-wrapper` elements while inner `.card` scopes stay isolated
++    document.getElementById('shuffle-cards-btn').addEventListener('click', () => {
++      const wrappers = Array.from(seasonalGrid.children);
++      if (wrappers.length < 2) return;
++
++      runScopedTransition(seasonalGrid, () => {
++        const first = wrappers.shift();
++        seasonalGrid.appendChild(first);
++      });
++    });
++
++    // Trigger concurrent element-scoped transitions across all cards simultaneously
++    document.getElementById('concurrent-demo-btn').addEventListener('click', () => {
++      const cards = seasonalGrid.querySelectorAll('.card');
++      cards.forEach((cardEl) => {
++        const listEl = cardEl.querySelector('ul');
++        if (!listEl) return;
++        const reversedIds = Array.from(listEl.children, (li) => li.dataset.id).reverse();
++        reorderItems(listEl, reversedIds);
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

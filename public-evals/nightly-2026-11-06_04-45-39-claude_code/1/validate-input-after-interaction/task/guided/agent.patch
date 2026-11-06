@@ -1,0 +1,163 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,96 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Newsletter signup */
++    .newsletter {
++      max-width: 460px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h2 {
++      font-size: 1.2rem;
++      color: var(--primary);
++      margin-bottom: 0.25rem;
++    }
++
++    .newsletter p {
++      font-size: 0.9rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 2px solid #a1887f;
++      border-radius: 5px;
++    }
++
++    .newsletter input[type="email"]:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .newsletter button {
++      font: inherit;
++      background: var(--primary);
++      color: white;
++      border: 0;
++      border-radius: 5px;
++      padding: 10px 18px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    .error-msg {
++      display: none;
++      color: #b3261e;
++      font-size: 0.85rem;
++      margin-top: 0.4rem;
++      text-align: left;
++    }
++
++    /* Only flag errors after the user has committed a value (blur) or tried to submit */
++    .newsletter input[type="email"]:user-invalid {
++      border-color: #b3261e;
++      background-color: #fce8e6;
++    }
++
++    .newsletter:has(input:user-invalid) .error-msg {
++      display: block;
++    }
++
++    .newsletter input[type="email"]:user-valid {
++      border-color: #2e7d32;
++    }
++
++    .newsletter-success {
++      font-weight: 600;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +285,21 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form">
++      <h2>Join our newsletter</h2>
++      <p>New roasts, seasonal drinks, and the occasional free cup.</p>
++      <label for="newsletter-email" class="visually-hidden">Email address</label>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" required autocomplete="email"
++          placeholder="you@example.com" aria-errormessage="newsletter-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <div id="newsletter-error" class="error-msg" aria-live="polite">
++        <span aria-hidden="true">⚠</span> Please enter a valid email address, like you@example.com.
++      </div>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +307,40 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('newsletter-form');
++      const email = document.getElementById('newsletter-email');
++
++      // Keep aria-invalid in sync with the visual :user-invalid state
++      const syncAria = () => {
++        if (email.matches(':user-invalid')) {
++          email.setAttribute('aria-invalid', 'true');
++        } else {
++          email.removeAttribute('aria-invalid');
++        }
++      };
++      email.addEventListener('blur', syncAria);
++      email.addEventListener('invalid', syncAria);
++      email.addEventListener('input', () => {
++        // Only clear an existing error while typing; never add one mid-typing
++        if (email.hasAttribute('aria-invalid')) syncAria();
++      });
++
++      form.addEventListener('submit', (event) => {
++        // Only fires when the email is valid; the browser blocks invalid submits
++        event.preventDefault();
++        // TODO: send to the newsletter provider/endpoint
++        const msg = document.createElement('p');
++        msg.className = 'newsletter-success';
++        msg.setAttribute('role', 'status');
++        msg.textContent = `Thanks! We'll send the good stuff to ${email.value}.`;
++        form.replaceChildren(msg);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

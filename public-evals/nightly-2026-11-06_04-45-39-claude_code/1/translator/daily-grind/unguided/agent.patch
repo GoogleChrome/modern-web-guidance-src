@@ -1,0 +1,378 @@
+diff --git a/index.html b/index.html
+index 66c9173..b7e65ae 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,66 @@
+       background: #3e2723;
+     }
+ 
++    /* Language selector */
++    .lang-bar {
++      background: var(--secondary);
++      padding: 0.6rem 5%;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem;
++      align-items: center;
++      justify-content: flex-end;
++      font-size: 0.85rem;
++    }
++
++    .lang-bar label {
++      font-weight: 600;
++    }
++
++    .lang-bar select {
++      padding: 4px 8px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .lang-status {
++      min-height: 1.2em;
++      color: var(--primary);
++      font-style: italic;
++    }
++
++    [data-translating="true"] {
++      opacity: 0.55;
++      transition: opacity 0.2s;
++    }
++
++    /* Story */
++    .story {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 30px;
++      align-items: center;
++      margin-top: 60px;
++    }
++
++    .story img {
++      width: 100%;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .story h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .story p {
++      margin-bottom: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -168,6 +228,22 @@
+     </ul>
+   </nav>
+ 
++  <div class="lang-bar" role="region" aria-label="Language">
++    <label for="lang-select">🌐 Translate</label>
++    <select id="lang-select" aria-describedby="lang-status">
++      <option value="en">English</option>
++      <option value="es">Español</option>
++      <option value="fr">Français</option>
++      <option value="de">Deutsch</option>
++      <option value="it">Italiano</option>
++      <option value="pt">Português</option>
++      <option value="ja">日本語</option>
++      <option value="ko">한국어</option>
++      <option value="zh">中文</option>
++    </select>
++    <span id="lang-status" class="lang-status" aria-live="polite"></span>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -176,30 +252,43 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 style="text-align: center;" data-i18n="seasonal-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p data-i18n="maple-desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p data-i18n="espresso-desc">Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p data-i18n="coldbrew-desc">Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story" id="our-story">
++      <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=80"
++        alt="Barista pouring coffee at The Daily Grind" loading="lazy">
++      <div>
++        <h2 data-i18n="story-title">Our Story</h2>
++        <p data-i18n="story-1">The Daily Grind began in 2012 as a single cart outside a train station, run by two friends who
++          believed a great cup of coffee could make any morning better.</p>
++        <p data-i18n="story-2">Today we partner directly with small family farms, roast every batch in our neighborhood
++          roastery, and still greet every guest like a regular.</p>
++        <p data-i18n="story-3">Thank you for being part of our community, one cup at a time.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
++      <a href="#our-story">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+@@ -207,6 +296,234 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /*
++     * On-device translation for menu descriptions and story text.
++     *
++     * Primary path: the browser's built-in Translator API (Chrome 138+), which
++     * runs translation models locally — page text never leaves the device.
++     * Fallback: bundled translations of this page's copy, so the selector still
++     * works in browsers without the API (also fully on-device).
++     */
++    (() => {
++      const SOURCE_LANG = 'en';
++      const STORAGE_KEY = 'dailyGrind.lang';
++
++      const FALLBACK = {
++        es: {
++          'seasonal-title': 'Favoritos de temporada',
++          'maple-desc': 'Cremosa leche de avena con un toque de jarabe de arce de Vermont.',
++          'espresso-desc': 'Intenso, ahumado y perfecto para empezar la mañana con energía.',
++          'coldbrew-desc': 'Infusionado durante 18 horas para una suavidad máxima.',
++          'story-title': 'Nuestra historia',
++          'story-1': 'The Daily Grind comenzó en 2012 como un pequeño carrito frente a una estación de tren, dirigido por dos amigos convencidos de que una gran taza de café podía mejorar cualquier mañana.',
++          'story-2': 'Hoy trabajamos directamente con pequeñas fincas familiares, tostamos cada lote en nuestro tostadero del barrio y seguimos recibiendo a cada cliente como si fuera de casa.',
++          'story-3': 'Gracias por formar parte de nuestra comunidad, una taza a la vez.'
++        },
++        fr: {
++          'seasonal-title': 'Nos favoris de saison',
++          'maple-desc': 'Lait d’avoine onctueux avec une touche de sirop d’érable du Vermont.',
++          'espresso-desc': 'Corsé, fumé et parfait pour un coup de fouet matinal.',
++          'coldbrew-desc': 'Infusé pendant 18 heures pour une douceur maximale.',
++          'story-title': 'Notre histoire',
++          'story-1': 'The Daily Grind a vu le jour en 2012 sous la forme d’un simple chariot devant une gare, tenu par deux amis convaincus qu’une bonne tasse de café pouvait embellir n’importe quelle matinée.',
++          'story-2': 'Aujourd’hui, nous travaillons directement avec de petites exploitations familiales, torréfions chaque lot dans notre atelier de quartier et accueillons toujours chaque client comme un habitué.',
++          'story-3': 'Merci de faire partie de notre communauté, une tasse à la fois.'
++        },
++        de: {
++          'seasonal-title': 'Saisonale Favoriten',
++          'maple-desc': 'Cremige Hafermilch mit einem Hauch Ahornsirup aus Vermont.',
++          'espresso-desc': 'Kräftig, rauchig und perfekt für einen Energieschub am Morgen.',
++          'coldbrew-desc': '18 Stunden lang angesetzt für maximale Milde.',
++          'story-title': 'Unsere Geschichte',
++          'story-1': 'The Daily Grind begann 2012 als kleiner Kaffeewagen vor einem Bahnhof, betrieben von zwei Freunden, die überzeugt waren, dass eine großartige Tasse Kaffee jeden Morgen besser macht.',
++          'story-2': 'Heute arbeiten wir direkt mit kleinen Familienbetrieben zusammen, rösten jede Charge in unserer Rösterei im Viertel und begrüßen noch immer jeden Gast wie einen Stammgast.',
++          'story-3': 'Danke, dass Sie Teil unserer Gemeinschaft sind – Tasse für Tasse.'
++        },
++        it: {
++          'seasonal-title': 'I preferiti di stagione',
++          'maple-desc': 'Cremoso latte d’avena con un tocco di sciroppo d’acero del Vermont.',
++          'espresso-desc': 'Deciso, affumicato e perfetto per la carica del mattino.',
++          'coldbrew-desc': 'In infusione per 18 ore per la massima morbidezza.',
++          'story-title': 'La nostra storia',
++          'story-1': 'The Daily Grind è nato nel 2012 come un piccolo carretto davanti a una stazione ferroviaria, gestito da due amici convinti che una buona tazza di caffè potesse migliorare qualsiasi mattina.',
++          'story-2': 'Oggi collaboriamo direttamente con piccole aziende agricole a conduzione familiare, tostiamo ogni lotto nella nostra torrefazione di quartiere e accogliamo ancora ogni ospite come un cliente abituale.',
++          'story-3': 'Grazie per far parte della nostra comunità, una tazza alla volta.'
++        },
++        pt: {
++          'seasonal-title': 'Favoritos da estação',
++          'maple-desc': 'Leite de aveia cremoso com um toque de xarope de bordo de Vermont.',
++          'espresso-desc': 'Encorpado, defumado e perfeito para dar energia pela manhã.',
++          'coldbrew-desc': 'Em infusão por 18 horas para máxima suavidade.',
++          'story-title': 'Nossa história',
++          'story-1': 'The Daily Grind começou em 2012 como um pequeno carrinho em frente a uma estação de trem, comandado por dois amigos que acreditavam que uma ótima xícara de café podia melhorar qualquer manhã.',
++          'story-2': 'Hoje trabalhamos diretamente com pequenas fazendas familiares, torramos cada lote em nossa torrefação do bairro e continuamos recebendo cada cliente como se fosse da casa.',
++          'story-3': 'Obrigado por fazer parte da nossa comunidade, uma xícara de cada vez.'
++        },
++        ja: {
++          'seasonal-title': '季節のおすすめ',
++          'maple-desc': 'クリーミーなオーツミルクに、バーモント産メープルシロップをほんのりと。',
++          'espresso-desc': '力強くスモーキー。朝のひと押しにぴったりです。',
++          'coldbrew-desc': '18時間かけて抽出し、極上のなめらかさに。',
++          'story-title': '私たちの物語',
++          'story-1': 'The Daily Grindは2012年、駅前の小さな屋台から始まりました。「おいしい一杯のコーヒーは、どんな朝もより良くできる」と信じた二人の友人によって。',
++          'story-2': '今では小さな家族経営の農園と直接取引し、地元の焙煎所ですべてのロットを焙煎しています。そして今も、すべてのお客様を常連のようにお迎えしています。',
++          'story-3': '一杯ずつ、私たちのコミュニティの一員でいてくださりありがとうございます。'
++        },
++        ko: {
++          'seasonal-title': '시즌 인기 메뉴',
++          'maple-desc': '부드러운 오트 밀크에 버몬트산 메이플 시럽을 살짝 더했습니다.',
++          'espresso-desc': '진하고 스모키한 맛, 아침의 활력을 위한 완벽한 선택.',
++          'coldbrew-desc': '18시간 동안 우려내 최고의 부드러움을 담았습니다.',
++          'story-title': '우리의 이야기',
++          'story-1': 'The Daily Grind는 2012년 기차역 앞의 작은 카트에서 시작되었습니다. 훌륭한 커피 한 잔이 어떤 아침이든 더 좋게 만들 수 있다고 믿은 두 친구가 운영했습니다.',
++          'story-2': '오늘날 우리는 작은 가족 농장과 직접 협력하고, 동네 로스터리에서 모든 원두를 직접 로스팅하며, 여전히 모든 손님을 단골처럼 맞이합니다.',
++          'story-3': '한 잔 한 잔, 저희 커뮤니티의 일원이 되어 주셔서 감사합니다.'
++        },
++        zh: {
++          'seasonal-title': '季节精选',
++          'maple-desc': '丝滑燕麦奶，点缀一丝佛蒙特枫糖浆。',
++          'espresso-desc': '浓郁烟熏风味，开启活力早晨的完美之选。',
++          'coldbrew-desc': '历经18小时冷萃，口感极致顺滑。',
++          'story-title': '我们的故事',
++          'story-1': 'The Daily Grind 始于2012年火车站外的一辆小咖啡车，由两位相信一杯好咖啡能让每个早晨更美好的朋友经营。',
++          'story-2': '如今，我们直接与小型家庭农场合作，在社区烘焙坊烘焙每一批咖啡豆，并依然像对待老朋友一样迎接每一位客人。',
++          'story-3': '感谢您成为我们社区的一员，一杯又一杯。'
++        }
++      };
++
++      const select = document.getElementById('lang-select');
++      const status = document.getElementById('lang-status');
++      const nodes = Array.from(document.querySelectorAll('[data-i18n]'));
++
++      // Normalise whitespace from the HTML source and remember the original copy.
++      const originals = new Map(nodes.map((el) => [el, el.textContent.replace(/\s+/g, ' ').trim()]));
++
++      const hasTranslatorAPI = 'Translator' in self;
++      const translators = new Map(); // target lang -> Translator instance
++      const cache = new Map();       // `${lang}|${key}` -> translated text
++      let requestId = 0;
++
++      const setStatus = (msg) => { status.textContent = msg; };
++      const langName = (code) => select.querySelector(`option[value="${code}"]`)?.textContent || code;
++
++      async function getTranslator(target) {
++        if (!hasTranslatorAPI) return null;
++        if (translators.has(target)) return translators.get(target);
++
++        const opts = { sourceLanguage: SOURCE_LANG, targetLanguage: target };
++        let availability;
++        try {
++          availability = await Translator.availability(opts);
++        } catch {
++          return null;
++        }
++        if (availability === 'unavailable') return null;
++
++        if (availability !== 'available') setStatus(`Downloading ${langName(target)} language pack…`);
++        const translator = await Translator.create({
++          ...opts,
++          monitor(m) {
++            m.addEventListener('downloadprogress', (e) => {
++              setStatus(`Downloading ${langName(target)} language pack… ${Math.round(e.loaded * 100)}%`);
++            });
++          }
++        });
++        translators.set(target, translator);
++        return translator;
++      }
++
++      function restoreOriginal() {
++        nodes.forEach((el) => { el.textContent = originals.get(el); });
++        document.documentElement.lang = SOURCE_LANG;
++      }
++
++      async function applyLanguage(target) {
++        const id = ++requestId;
++        const stale = () => id !== requestId;
++
++        if (target === SOURCE_LANG) {
++          restoreOriginal();
++          setStatus('');
++          return;
++        }
++
++        nodes.forEach((el) => { el.dataset.translating = 'true'; });
++        setStatus(`Translating to ${langName(target)}…`);
++
++        let translator = null;
++        try {
++          translator = await getTranslator(target);
++        } catch (err) {
++          // e.g. model download needs a user gesture, or the device lacks resources.
++          console.warn('On-device Translator unavailable, using bundled translations.', err);
++        }
++        if (stale()) return;
++
++        const fallback = FALLBACK[target] || {};
++        let usedFallback = !translator;
++        let missing = 0;
++
++        await Promise.all(nodes.map(async (el) => {
++          const key = el.dataset.i18n;
++          const cacheKey = `${target}|${key}`;
++          let text = cache.get(cacheKey);
++
++          if (text === undefined && translator) {
++            try {
++              text = await translator.translate(originals.get(el));
++            } catch (err) {
++              console.warn(`Translation failed for "${key}"`, err);
++            }
++          }
++          if (text === undefined && fallback[key]) {
++            text = fallback[key];
++            usedFallback = true;
++          }
++          if (text === undefined) {
++            missing++;
++            text = originals.get(el);
++          } else {
++            cache.set(cacheKey, text);
++          }
++          if (!stale()) el.textContent = text;
++        }));
++
++        if (stale()) return;
++        nodes.forEach((el) => { delete el.dataset.translating; });
++        document.documentElement.lang = missing === nodes.length ? SOURCE_LANG : target;
++
++        if (missing === nodes.length) {
++          setStatus(`${langName(target)} isn’t available on this device.`);
++        } else if (translator && !usedFallback) {
++          setStatus('Translated on your device.');
++        } else {
++          setStatus('Showing built-in translation.');
++        }
++      }
++
++      select.addEventListener('change', () => {
++        const lang = select.value;
++        try { localStorage.setItem(STORAGE_KEY, lang); } catch { /* storage disabled */ }
++        applyLanguage(lang);
++      });
++
++      // Restore the visitor's previous choice, or suggest their browser language.
++      let initial = null;
++      try { initial = localStorage.getItem(STORAGE_KEY); } catch { /* storage disabled */ }
++      if (!initial) {
++        const browserLang = (navigator.language || '').slice(0, 2).toLowerCase();
++        if (browserLang !== SOURCE_LANG && select.querySelector(`option[value="${browserLang}"]`)) {
++          initial = browserLang;
++        }
++      }
++      if (initial && initial !== SOURCE_LANG && select.querySelector(`option[value="${initial}"]`)) {
++        select.value = initial;
++        applyLanguage(initial);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

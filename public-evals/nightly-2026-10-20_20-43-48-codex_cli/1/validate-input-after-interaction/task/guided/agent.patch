@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,77 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 28px;
++      text-align: left;
++    }
++
++    .newsletter h2,
++    .newsletter > p {
++      text-align: center;
++    }
++
++    .newsletter label {
++      display: block;
++      margin-top: 14px;
++      font-weight: 600;
++    }
++
++    .newsletter-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 6px;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      width: 100%;
++      border: 1px solid #79655e;
++      border-radius: 5px;
++      padding: 10px 12px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .newsletter button {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    /* Keep errors quiet while the user is editing, even after a previous blur. */
++    .newsletter input:user-invalid:not(:focus) {
++      border-color: #9b2525;
++      background: #fff5f5;
++    }
++
++    .newsletter input[aria-invalid="true"]:not(:focus) {
++      border-color: #9b2525;
++      background: #fff5f5;
++    }
++
++    .newsletter-error {
++      color: #9b2525;
++      font-size: 0.875rem;
++      margin-top: 6px;
++    }
++
++    .newsletter-status:not(:empty) {
++      margin-top: 10px;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +266,20 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Fresh from the grind</h2>
++      <p>Sign up for coffee news and seasonal favorites.</p>
++      <label for="newsletter-email">Email address</label>
++      <div class="newsletter-controls">
++        <input type="email" id="newsletter-email" name="email" autocomplete="email"
++          placeholder="you@example.com" required aria-describedby="newsletter-error">
++        <button type="submit" class="btn">Sign up</button>
++      </div>
++      <p id="newsletter-error" class="newsletter-error" hidden>Please enter a valid email address.</p>
++      <p id="newsletter-status" class="newsletter-status" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +287,41 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletter = document.querySelector('.newsletter');
++    const email = document.querySelector('#newsletter-email');
++    const emailError = document.querySelector('#newsletter-error');
++    const signupStatus = document.querySelector('#newsletter-status');
++
++    // Handle feedback ourselves so validation never interrupts typing.
++    newsletter.noValidate = true;
++
++    function showEmailError(show) {
++      emailError.hidden = !show;
++      email.setAttribute('aria-invalid', String(show));
++    }
++
++    email.addEventListener('focus', () => showEmailError(false));
++    email.addEventListener('input', () => {
++      showEmailError(false);
++      signupStatus.textContent = '';
++    });
++    email.addEventListener('blur', () => showEmailError(!email.validity.valid));
++
++    newsletter.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!email.validity.valid) {
++        email.focus();
++        return;
++      }
++
++      showEmailError(false);
++      // Replace this message with a signup request when a service is available.
++      signupStatus.textContent = 'Online signup is coming soon. Please check back.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,78 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .scroller {
++      height: 100vh;
++      height: 100dvh;
++      overflow-y: auto;
++      container-name: page-scroll;
++      container-type: scroll-state;
++    }
++
++    .scroll-sentinel {
++      width: 0;
++      height: 0;
++      visibility: hidden;
++      pointer-events: none;
++    }
++
++    .back-to-top {
++      position: sticky;
++      bottom: 20px;
++      z-index: 1001;
++      display: block;
++      width: fit-content;
++      margin: 20px 20px 20px auto;
++      padding: 12px 18px;
++      border: 0;
++      border-radius: 5px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++      box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
++      /* Hidden controls must also be excluded from keyboard navigation. */
++      visibility: hidden;
++      opacity: 0;
++      translate: 0 20px;
++      transition: opacity 0.3s ease, translate 0.3s ease;
++    }
++
++    .back-to-top:hover {
++      background: #3e2723;
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @container page-scroll scroll-state(scrollable: top) {
++      .back-to-top {
++        visibility: visible;
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    /* IntersectionObserver supplies the same state in unsupported browsers. */
++    @supports not (container-type: scroll-state) {
++      .scroller.scrolled .back-to-top {
++        visibility: visible;
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .back-to-top {
++        transition: none;
++        translate: none;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -137,9 +207,10 @@
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      /* Leave room for the floating control above the final footer links. */
++      padding: 40px 20px 100px;
+       margin-top: 40px;
+     }
+ 
+     .footer-links {
+@@ -155,10 +226,12 @@
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroller">
++  <div class="scroll-sentinel" aria-hidden="true"></div>
+ 
+-  <nav>
++  <nav id="page-top" tabindex="-1" aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -206,7 +279,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button class="back-to-top" type="button">↑ Back to top</button>
++  </div>
++
++  <script>
++    const scroller = document.querySelector('.scroller');
++    const backToTop = scroller.querySelector('.back-to-top');
++
++    backToTop.addEventListener('click', () => {
++      // Keep keyboard focus useful when the button becomes hidden again.
++      scroller.querySelector('#page-top').focus({ preventScroll: true });
++      scroller.scrollTo({
++        top: 0,
++        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
++      });
++    });
++
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const observer = new IntersectionObserver(([entry]) => {
++        scroller.classList.toggle('scrolled', !entry.isIntersecting);
++      }, { root: scroller });
++
++      observer.observe(scroller.querySelector('.scroll-sentinel'));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

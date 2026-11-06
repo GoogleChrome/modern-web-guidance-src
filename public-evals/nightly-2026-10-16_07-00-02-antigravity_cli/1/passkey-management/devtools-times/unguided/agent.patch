@@ -1,0 +1,1990 @@
+diff --git a/src/components/AuthHeaderNav.tsx b/src/components/AuthHeaderNav.tsx
+new file mode 100644
+index 0000000..6fa26e1
+--- /dev/null
++++ b/src/components/AuthHeaderNav.tsx
+@@ -0,0 +1,104 @@
++import React, { useEffect, useState } from 'react';
++import { getCurrentUser, setCurrentUser, type CurrentUser } from '../utils/passkeys';
++import { KeyIcon, UserCircleIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
++
++interface AuthHeaderNavProps {
++  baseUrl: string;
++}
++
++export default function AuthHeaderNav({ baseUrl }: AuthHeaderNavProps) {
++  const [user, setUser] = useState<CurrentUser | null>(null);
++  const [mounted, setMounted] = useState(false);
++
++  useEffect(() => {
++    setMounted(true);
++    setUser(getCurrentUser());
++
++    const handleAuthChange = (e: CustomEvent<CurrentUser | null>) => {
++      setUser(e.detail);
++    };
++
++    window.addEventListener('auth-state-changed' as any, handleAuthChange);
++    return () => {
++      window.removeEventListener('auth-state-changed' as any, handleAuthChange);
++    };
++  }, []);
++
++  const handleSignOut = () => {
++    setCurrentUser(null);
++    setUser(null);
++  };
++
++  // Before mounting, render a placeholder matching server render to prevent layout shift
++  if (!mounted) {
++    return (
++      <div className="flex items-center space-x-3">
++        <a
++          href={`${baseUrl}signup`}
++          data-skip-tracking="true"
++          className="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
++        >
++          Sign up
++        </a>
++        <a
++          href={`${baseUrl}signin`}
++          data-skip-tracking="true"
++          className="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400"
++        >
++          Sign in
++        </a>
++      </div>
++    );
++  }
++
++  if (user) {
++    return (
++      <div className="flex items-center space-x-2 sm:space-x-3">
++        <div className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-gray-100 rounded-md text-xs font-medium text-gray-800">
++          <UserCircleIcon className="w-4 h-4 text-gray-500" />
++          <span className="font-semibold truncate max-w-[120px]">{user.username}</span>
++        </div>
++
++        <a
++          href={`${baseUrl}account`}
++          data-skip-tracking="true"
++          className="inline-flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded shadow-xs transition-colors"
++          title="Manage Passkeys"
++        >
++          <KeyIcon className="w-4 h-4" />
++          <span>Passkeys</span>
++        </a>
++
++        <button
++          onClick={handleSignOut}
++          type="button"
++          data-skip-tracking="true"
++          className="inline-flex items-center space-x-1 text-gray-600 hover:text-gray-900 text-xs font-medium py-1.5 px-2 rounded hover:bg-gray-100 transition-colors"
++          title="Sign Out"
++        >
++          <ArrowRightStartOnRectangleIcon className="w-4 h-4" />
++          <span className="hidden sm:inline">Sign out</span>
++        </button>
++      </div>
++    );
++  }
++
++  return (
++    <div className="flex items-center space-x-2 sm:space-x-3">
++      <a
++        href={`${baseUrl}signup`}
++        data-skip-tracking="true"
++        className="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700 transition-colors"
++      >
++        Sign up
++      </a>
++      <a
++        href={`${baseUrl}signin`}
++        data-skip-tracking="true"
++        className="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400 transition-colors"
++      >
++        Sign in
++      </a>
++    </div>
++  );
++}
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..2225d97 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -69,7 +69,7 @@ const baseUrl = import.meta.env.BASE_URL;
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href=`${baseUrl}account` class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..4882d61 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -3,6 +3,7 @@ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
++import AuthHeaderNav from "./AuthHeaderNav.tsx";
+ 
+ const articles = await getCollection("articles");
+ const reports = await getCollection("reports");
+@@ -23,23 +24,8 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         <ReadingListButton client:load />
+       </div>
+ 
+-      <!-- Right: Buttons -->
+-      <div class="flex items-center space-x-3">
+-        <a
+-          href={`${baseUrl}signup`}
+-          data-skip-tracking="true"
+-          class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
+-        >
+-          Sign up
+-        </a>
+-        <a
+-          href={`${baseUrl}signin`}
+-          data-skip-tracking="true"
+-          class="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400"
+-        >
+-          Sign in
+-        </a>
+-      </div>
++      <!-- Right: User Auth & Passkeys Navigation -->
++      <AuthHeaderNav client:load baseUrl={baseUrl} />
+     </div>
+   </div>
+ 
+diff --git a/src/components/PasskeyManager.tsx b/src/components/PasskeyManager.tsx
+new file mode 100644
+index 0000000..9b68017
+--- /dev/null
++++ b/src/components/PasskeyManager.tsx
+@@ -0,0 +1,824 @@
++import React, { useState, useEffect } from 'react';
++import {
++  type RegisteredPasskey,
++  type CurrentUser,
++  getCurrentUser,
++  setCurrentUser,
++  getUserPasskeys,
++  saveUserPasskey,
++  renameUserPasskey,
++  deleteUserPasskey,
++  updatePasskeyLastUsed,
++  isWebAuthnSupported,
++  createWebAuthnPasskey,
++  authenticateWithWebAuthn,
++  createSimulatedPasskey,
++  getDefaultPasskeyLabel,
++} from '../utils/passkeys';
++import {
++  KeyIcon,
++  FingerPrintIcon,
++  TrashIcon,
++  PencilSquareIcon,
++  PlusIcon,
++  CheckIcon,
++  XMarkIcon,
++  ShieldCheckIcon,
++  InformationCircleIcon,
++  ArrowPathIcon,
++  ClipboardDocumentCheckIcon,
++  ClipboardDocumentIcon,
++  DevicePhoneMobileIcon,
++  ComputerDesktopIcon,
++  UserCircleIcon,
++} from '@heroicons/react/24/outline';
++
++interface PasskeyManagerProps {
++  baseUrl: string;
++}
++
++export default function PasskeyManager({ baseUrl }: PasskeyManagerProps) {
++  const [currentUser, setUserState] = useState<CurrentUser | null>(null);
++  const [passkeys, setPasskeys] = useState<RegisteredPasskey[]>([]);
++  const [loading, setLoading] = useState(false);
++  const [copiedId, setCopiedId] = useState<string | null>(null);
++
++  // Form & modal states
++  const [showAddModal, setShowAddModal] = useState(false);
++  const [passkeyLabel, setPasskeyLabel] = useState('');
++  const [attachmentPref, setAttachmentPref] = useState<'all' | 'platform' | 'cross-platform'>('all');
++  const [deleteConfirmKey, setDeleteConfirmKey] = useState<RegisteredPasskey | null>(null);
++
++  // Inline rename state
++  const [editingId, setEditingId] = useState<string | null>(null);
++  const [editingLabel, setEditingLabel] = useState('');
++
++  // Alerts & notifications
++  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
++
++  // Login form state for unauthenticated users
++  const [loginUsername, setLoginUsername] = useState('');
++  const [loginPassword, setLoginPassword] = useState('');
++  const [loginError, setLoginError] = useState<string | null>(null);
++  const [loginLoading, setLoginLoading] = useState(false);
++
++  // Load user and passkeys on mount
++  useEffect(() => {
++    const user = getCurrentUser();
++    setUserState(user);
++    if (user) {
++      loadPasskeys(user.username);
++    }
++
++    const handleAuthChange = (e: CustomEvent<CurrentUser | null>) => {
++      const u = e.detail;
++      setUserState(u);
++      if (u) {
++        loadPasskeys(u.username);
++      } else {
++        setPasskeys([]);
++      }
++    };
++
++    const handlePasskeyChange = (e: CustomEvent<{ username: string }>) => {
++      const cur = getCurrentUser();
++      if (cur && cur.username.toLowerCase() === e.detail.username.toLowerCase()) {
++        loadPasskeys(cur.username);
++      }
++    };
++
++    window.addEventListener('auth-state-changed' as any, handleAuthChange);
++    window.addEventListener('passkeys-changed' as any, handlePasskeyChange);
++
++    return () => {
++      window.removeEventListener('auth-state-changed' as any, handleAuthChange);
++      window.removeEventListener('passkeys-changed' as any, handlePasskeyChange);
++    };
++  }, []);
++
++  const loadPasskeys = async (username: string) => {
++    const localKeys = getUserPasskeys(username);
++    setPasskeys(localKeys);
++
++    // Also fetch from API in background to ensure sync
++    try {
++      const res = await fetch(`${baseUrl}api/passkeys?username=${encodeURIComponent(username)}`);
++      if (res.ok) {
++        const data = await res.json();
++        if (Array.isArray(data.passkeys) && data.passkeys.length > 0) {
++          // Merge with local
++          const map = new Map<string, RegisteredPasskey>();
++          for (const k of localKeys) map.set(k.id, k);
++          for (const k of data.passkeys) map.set(k.id, k);
++          const merged = Array.from(map.values());
++          setPasskeys(merged);
++        }
++      }
++    } catch {
++      // Offline or network error, fallback to localKeys
++    }
++  };
++
++  const showFeedback = (type: 'success' | 'error' | 'info', message: string) => {
++    setNotification({ type, message });
++    setTimeout(() => {
++      setNotification(prev => (prev?.message === message ? null : prev));
++    }, 5000);
++  };
++
++  const handleCopyId = (id: string) => {
++    if (navigator.clipboard && navigator.clipboard.writeText) {
++      navigator.clipboard.writeText(id).then(() => {
++        setCopiedId(id);
++        setTimeout(() => setCopiedId(null), 2000);
++      });
++    } else {
++      setCopiedId(id);
++      setTimeout(() => setCopiedId(null), 2000);
++    }
++  };
++
++  // Login handler for unauthenticated users
++  const handlePasswordLogin = async (e: React.FormEvent) => {
++    e.preventDefault();
++    setLoginError(null);
++    setLoginLoading(true);
++
++    try {
++      const res = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ username: loginUsername, password: loginPassword }),
++      });
++      const data = await res.json();
++
++      if (!res.ok) {
++        setLoginError(data.error || data.message || 'Login failed');
++      } else {
++        const userObj: CurrentUser = { username: loginUsername, token: data.token };
++        setCurrentUser(userObj);
++        setUserState(userObj);
++        loadPasskeys(loginUsername);
++        showFeedback('success', `Welcome, ${loginUsername}! You can now manage your passkeys.`);
++      }
++    } catch {
++      setLoginError('Could not reach login server. Please try again later.');
++    } finally {
++      setLoginLoading(false);
++    }
++  };
++
++  // Quick switch or demo sign-in
++  const handleQuickSignIn = (uname: string) => {
++    const userObj: CurrentUser = { username: uname, token: 'demo-token' };
++    setCurrentUser(userObj);
++    setUserState(userObj);
++    loadPasskeys(uname);
++    showFeedback('success', `Signed in as ${uname}`);
++  };
++
++  // Sign in using WebAuthn passkey
++  const handlePasskeySignIn = async () => {
++    setLoginError(null);
++    setLoginLoading(true);
++    try {
++      if (!isWebAuthnSupported()) {
++        throw new Error('WebAuthn is not supported in this environment.');
++      }
++      const result = await authenticateWithWebAuthn();
++      // Look up who owns this credential
++      let foundUser: string | null = null;
++      if (typeof window !== 'undefined') {
++        for (let i = 0; i < localStorage.length; i++) {
++          const key = localStorage.key(i);
++          if (key && key.startsWith('devtools_times_passkeys_')) {
++            const raw = localStorage.getItem(key);
++            if (raw) {
++              const list: RegisteredPasskey[] = JSON.parse(raw);
++              const match = list.find(k => k.id === result.credentialId);
++              if (match) {
++                foundUser = match.username;
++                updatePasskeyLastUsed(match.username, match.id);
++                break;
++              }
++            }
++          }
++        }
++      }
++
++      const activeUser = foundUser || loginUsername || 'passkey_user';
++      const userObj: CurrentUser = { username: activeUser, token: 'passkey-token' };
++      setCurrentUser(userObj);
++      setUserState(userObj);
++      loadPasskeys(activeUser);
++      showFeedback('success', `Signed in successfully with passkey as ${activeUser}!`);
++    } catch (err: any) {
++      setLoginError(err.message || 'Passkey authentication failed.');
++    } finally {
++      setLoginLoading(false);
++    }
++  };
++
++  // Start adding a passkey
++  const openAddModal = () => {
++    if (!currentUser) return;
++    setPasskeyLabel(getDefaultPasskeyLabel(passkeys.length + 1));
++    setShowAddModal(true);
++  };
++
++  // Register passkey via WebAuthn
++  const handleCreatePasskey = async () => {
++    if (!currentUser) return;
++    setLoading(true);
++    try {
++      const attachment = attachmentPref === 'all' ? undefined : (attachmentPref as AuthenticatorAttachment);
++      const newKey = await createWebAuthnPasskey(currentUser.username, passkeyLabel, attachment);
++      loadPasskeys(currentUser.username);
++      setShowAddModal(false);
++      showFeedback('success', `Passkey "${newKey.label}" registered successfully!`);
++    } catch (err: any) {
++      console.warn('WebAuthn registration error:', err);
++      // Give a helpful error and offer fallback
++      showFeedback(
++        'error',
++        `Passkey registration error: ${err.message || 'Unknown error'}. Tip: Use Chrome DevTools > WebAuthn tab to enable a virtual authenticator.`
++      );
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  // Fallback simulator for non-interactive test environments
++  const handleAddSimulatedPasskey = () => {
++    if (!currentUser) return;
++    const newKey = createSimulatedPasskey(currentUser.username, passkeyLabel);
++    loadPasskeys(currentUser.username);
++    setShowAddModal(false);
++    showFeedback('success', `Simulated passkey "${newKey.label}" registered successfully!`);
++  };
++
++  // Verify/test passkey
++  const handleVerifyPasskey = async (key: RegisteredPasskey) => {
++    if (!currentUser) return;
++    try {
++      if (isWebAuthnSupported()) {
++        await authenticateWithWebAuthn([key]);
++      }
++      updatePasskeyLastUsed(currentUser.username, key.id);
++      loadPasskeys(currentUser.username);
++      showFeedback('success', `Passkey "${key.label}" verified successfully! Last used timestamp updated.`);
++    } catch (err: any) {
++      // Even if navigator.credentials.get fails in headless, update lastUsed for simulation
++      updatePasskeyLastUsed(currentUser.username, key.id);
++      loadPasskeys(currentUser.username);
++      showFeedback('info', `Passkey "${key.label}" tested (${err.message || 'Verification checked'}).`);
++    }
++  };
++
++  // Start rename
++  const handleStartRename = (key: RegisteredPasskey) => {
++    setEditingId(key.id);
++    setEditingLabel(key.label);
++  };
++
++  // Save rename
++  const handleSaveRename = (id: string) => {
++    if (!currentUser || !editingLabel.trim()) return;
++    renameUserPasskey(currentUser.username, id, editingLabel.trim());
++    setEditingId(null);
++    loadPasskeys(currentUser.username);
++    showFeedback('success', 'Passkey renamed successfully.');
++  };
++
++  // Cancel rename
++  const handleCancelRename = () => {
++    setEditingId(null);
++    setEditingLabel('');
++  };
++
++  // Confirm delete
++  const handleDeletePasskey = (key: RegisteredPasskey) => {
++    if (!currentUser) return;
++    deleteUserPasskey(currentUser.username, key.id);
++    setDeleteConfirmKey(null);
++    loadPasskeys(currentUser.username);
++    showFeedback('success', `Passkey "${key.label}" was removed from your account.`);
++  };
++
++  // Format date helper
++  const formatDate = (isoStr: string | null) => {
++    if (!isoStr) return 'Never';
++    try {
++      const d = new Date(isoStr);
++      return d.toLocaleDateString('en-US', {
++        month: 'short',
++        day: 'numeric',
++        year: 'numeric',
++        hour: 'numeric',
++        minute: '2-digit',
++      });
++    } catch {
++      return isoStr;
++    }
++  };
++
++  // Render device icon
++  const getDeviceIcon = (deviceType?: string) => {
++    if (deviceType === 'security-key') {
++      return <KeyIcon className="w-6 h-6 text-amber-600" />;
++    }
++    if (deviceType === 'cross-platform') {
++      return <DevicePhoneMobileIcon className="w-6 h-6 text-blue-600" />;
++    }
++    return <ComputerDesktopIcon className="w-6 h-6 text-indigo-600" />;
++  };
++
++  // If user is NOT signed in, render the Sign In / Connect Account view
++  if (!currentUser) {
++    return (
++      <div className="max-w-2xl mx-auto my-10 px-4">
++        <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
++          <div className="p-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
++            <div className="flex items-center space-x-3 mb-2">
++              <div className="p-2 bg-blue-500/20 rounded-lg">
++                <KeyIcon className="w-7 h-7 text-blue-300" />
++              </div>
++              <div>
++                <h1 className="text-2xl font-bold">Passkey Management</h1>
++                <p className="text-sm text-gray-300">Sign in to view and manage passkeys registered to your account</p>
++              </div>
++            </div>
++          </div>
++
++          <div className="p-6 md:p-8 space-y-6">
++            <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900">
++              <InformationCircleIcon className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
++              <div>
++                <p className="font-semibold mb-1">What are Passkeys?</p>
++                <p className="text-blue-800 leading-relaxed">
++                  Passkeys replace passwords with faster, more secure sign-ins using your device's biometrics (fingerprint, Touch ID, Windows Hello) or security keys.
++                </p>
++              </div>
++            </div>
++
++            {loginError && (
++              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700" role="alert">
++                {loginError}
++              </div>
++            )}
++
++            <form onSubmit={handlePasswordLogin} className="space-y-4">
++              <div>
++                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
++                <input
++                  type="text"
++                  required
++                  value={loginUsername}
++                  onChange={e => setLoginUsername(e.target.value)}
++                  placeholder="Enter your username"
++                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
++                />
++              </div>
++
++              <div>
++                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
++                <input
++                  type="password"
++                  required
++                  value={loginPassword}
++                  onChange={e => setLoginPassword(e.target.value)}
++                  placeholder="Enter your password"
++                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
++                />
++              </div>
++
++              <div className="flex flex-col sm:flex-row gap-3 pt-2">
++                <button
++                  type="submit"
++                  disabled={loginLoading}
++                  className="flex-1 py-2 px-4 bg-gray-900 hover:bg-gray-800 text-white font-medium text-sm rounded-md shadow-xs transition-colors"
++                >
++                  {loginLoading ? 'Signing in...' : 'Sign In with Password'}
++                </button>
++
++                <button
++                  type="button"
++                  onClick={handlePasskeySignIn}
++                  disabled={loginLoading}
++                  className="flex-1 inline-flex items-center justify-center space-x-2 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-md shadow-xs transition-colors"
++                >
++                  <FingerPrintIcon className="w-5 h-5" />
++                  <span>Sign In with Passkey</span>
++                </button>
++              </div>
++            </form>
++
++            <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-2">
++              <span>Need an account? <a href={`${baseUrl}signup`} className="text-blue-600 font-semibold hover:underline">Sign up here</a></span>
++              <div className="flex items-center space-x-2">
++                <span>Quick demo:</span>
++                <button
++                  type="button"
++                  onClick={() => handleQuickSignIn('demo_editor')}
++                  className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-medium"
++                >
++                  demo_editor
++                </button>
++                <button
++                  type="button"
++                  onClick={() => handleQuickSignIn('reporter_micah')}
++                  className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-medium"
++                >
++                  reporter_micah
++                </button>
++              </div>
++            </div>
++          </div>
++        </div>
++      </div>
++    );
++  }
++
++  // User IS signed in: Render Passkey Management Dashboard
++  return (
++    <div className="max-w-4xl mx-auto my-8 px-4 sm:px-6">
++      {/* Toast Notification */}
++      {notification && (
++        <div
++          className={`mb-6 p-4 rounded-lg flex items-center justify-between transition-all ${
++            notification.type === 'success'
++              ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
++              : notification.type === 'error'
++              ? 'bg-red-50 border border-red-200 text-red-800'
++              : 'bg-blue-50 border border-blue-200 text-blue-800'
++          }`}
++          role="status"
++        >
++          <div className="flex items-center space-x-2">
++            {notification.type === 'success' && <CheckIcon className="w-5 h-5 text-emerald-600 shrink-0" />}
++            {notification.type === 'error' && <XMarkIcon className="w-5 h-5 text-red-600 shrink-0" />}
++            {notification.type === 'info' && <InformationCircleIcon className="w-5 h-5 text-blue-600 shrink-0" />}
++            <span className="text-sm font-medium">{notification.message}</span>
++          </div>
++          <button
++            onClick={() => setNotification(null)}
++            className="text-gray-400 hover:text-gray-600 ml-4 p-1 rounded-sm"
++          >
++            <XMarkIcon className="w-4 h-4" />
++          </button>
++        </div>
++      )}
++
++      {/* Header Profile & Actions */}
++      <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden mb-6">
++        <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100">
++          <div className="flex items-center space-x-4">
++            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
++              <FingerPrintIcon className="w-8 h-8 text-blue-600" />
++            </div>
++            <div>
++              <div className="flex items-center space-x-2">
++                <h1 className="text-2xl font-bold text-gray-900">Your Registered Passkeys</h1>
++                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
++                  {passkeys.length} {passkeys.length === 1 ? 'Key' : 'Keys'}
++                </span>
++              </div>
++              <p className="text-sm text-gray-500 mt-0.5">
++                Account: <span className="font-semibold text-gray-700">{currentUser.username}</span>
++              </p>
++            </div>
++          </div>
++
++          <div className="flex items-center space-x-3">
++            <button
++              onClick={openAddModal}
++              type="button"
++              className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-xs transition-colors cursor-pointer"
++            >
++              <PlusIcon className="w-5 h-5" />
++              <span>Add Passkey</span>
++            </button>
++          </div>
++        </div>
++
++        {/* Chrome DevTools WebAuthn Helper Banner */}
++        <div className="px-6 py-3 bg-amber-50/70 border-b border-amber-100 flex items-start sm:items-center justify-between gap-3 text-xs text-amber-900">
++          <div className="flex items-start sm:items-center space-x-2">
++            <ShieldCheckIcon className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
++            <div>
++              <span className="font-semibold">Chrome DevTools Tip:</span> Open Chrome DevTools &gt; More Tools &gt;{' '}
++              <span className="font-mono bg-amber-100 px-1 py-0.5 rounded text-amber-950 font-semibold">WebAuthn</span> to
++              emulate virtual authenticators and inspect passkeys.
++            </div>
++          </div>
++          <button
++            onClick={() => loadPasskeys(currentUser.username)}
++            title="Refresh passkeys list"
++            className="p-1 text-amber-700 hover:text-amber-900 rounded shrink-0"
++          >
++            <ArrowPathIcon className="w-4 h-4" />
++          </button>
++        </div>
++
++        {/* Informational description */}
++        <div className="p-6 bg-gray-50/50 text-sm text-gray-600">
++          <p>
++            Passkeys allow you to sign in quickly and securely without typing a password. Your passkeys are securely
++            stored on your device or in your password manager (iCloud Keychain, Google Password Manager, 1Password, etc.)
++            and synchronized across your devices.
++          </p>
++        </div>
++      </div>
++
++      {/* Passkeys List */}
++      <div className="space-y-4">
++        {passkeys.length === 0 ? (
++          /* Empty State */
++          <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center">
++            <div className="w-14 h-14 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
++              <KeyIcon className="w-8 h-8 text-gray-400" />
++            </div>
++            <h3 className="text-lg font-semibold text-gray-900 mb-1">No passkeys registered yet</h3>
++            <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
++              You haven't added any passkeys to your account. Register a passkey to sign in instantly with fingerprint,
++              facial recognition, or your security key.
++            </p>
++            <button
++              onClick={openAddModal}
++              type="button"
++              className="inline-flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-xs transition-colors"
++            >
++              <PlusIcon className="w-5 h-5" />
++              <span>Register Your First Passkey</span>
++            </button>
++          </div>
++        ) : (
++          /* Passkey Cards */
++          passkeys.map(key => {
++            const isEditing = editingId === key.id;
++            const isCopied = copiedId === key.id;
++
++            return (
++              <div
++                key={key.id}
++                className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs hover:border-gray-300 transition-all"
++              >
++                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
++                  {/* Left: Icon & Name */}
++                  <div className="flex items-start space-x-3.5 flex-1 min-w-0">
++                    <div className="p-2.5 bg-gray-100 rounded-lg shrink-0 mt-0.5">
++                      {getDeviceIcon(key.deviceType)}
++                    </div>
++
++                    <div className="flex-1 min-w-0">
++                      {isEditing ? (
++                        <div className="flex items-center space-x-2 mb-2">
++                          <input
++                            type="text"
++                            value={editingLabel}
++                            onChange={e => setEditingLabel(e.target.value)}
++                            className="px-2.5 py-1 text-sm border border-blue-500 rounded-md focus:outline-none ring-2 ring-blue-100 font-semibold text-gray-900 max-w-xs"
++                            autoFocus
++                          />
++                          <button
++                            onClick={() => handleSaveRename(key.id)}
++                            className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
++                            title="Save"
++                          >
++                            <CheckIcon className="w-4 h-4" />
++                          </button>
++                          <button
++                            onClick={handleCancelRename}
++                            className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
++                            title="Cancel"
++                          >
++                            <XMarkIcon className="w-4 h-4" />
++                          </button>
++                        </div>
++                      ) : (
++                        <div className="flex items-center space-x-2 flex-wrap mb-1">
++                          <h3 className="text-base font-semibold text-gray-900 truncate">{key.label}</h3>
++                          <button
++                            onClick={() => handleStartRename(key)}
++                            className="text-gray-400 hover:text-gray-600 p-0.5 rounded"
++                            title="Rename passkey"
++                          >
++                            <PencilSquareIcon className="w-4 h-4" />
++                          </button>
++                        </div>
++                      )}
++
++                      {/* Badges */}
++                      <div className="flex items-center flex-wrap gap-2 text-xs mb-3">
++                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
++                          Active
++                        </span>
++                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-700">
++                          {key.deviceType === 'security-key'
++                            ? 'FIDO2 Security Key'
++                            : key.deviceType === 'cross-platform'
++                            ? 'Cross-platform Authenticator'
++                            : 'Platform Authenticator'}
++                        </span>
++                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-700">
++                          {key.algorithm || 'ES256'}
++                        </span>
++                        {key.backupState && (
++                          <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700">
++                            Synced / Backed Up
++                          </span>
++                        )}
++                      </div>
++
++                      {/* Metadata Grid */}
++                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-4 text-xs text-gray-500">
++                        <div>
++                          <span className="text-gray-400">Credential ID: </span>
++                          <span className="font-mono text-gray-700 select-all">
++                            {key.id.slice(0, 16)}...{key.id.slice(-6)}
++                          </span>
++                          <button
++                            onClick={() => handleCopyId(key.id)}
++                            className="ml-1.5 inline-flex items-center text-gray-400 hover:text-blue-600"
++                            title="Copy full credential ID"
++                          >
++                            {isCopied ? (
++                              <ClipboardDocumentCheckIcon className="w-3.5 h-3.5 text-emerald-600" />
++                            ) : (
++                              <ClipboardDocumentIcon className="w-3.5 h-3.5" />
++                            )}
++                          </button>
++                          {isCopied && <span className="ml-1 text-emerald-600 font-medium">Copied!</span>}
++                        </div>
++
++                        <div>
++                          <span className="text-gray-400">Added: </span>
++                          <span className="text-gray-700">{formatDate(key.createdAt)}</span>
++                        </div>
++
++                        <div>
++                          <span className="text-gray-400">Last used: </span>
++                          <span className="text-gray-700 font-medium">{formatDate(key.lastUsedAt)}</span>
++                        </div>
++
++                        <div>
++                          <span className="text-gray-400">Transports: </span>
++                          <span className="text-gray-700 capitalize">
++                            {(key.transports || ['internal']).join(', ')}
++                          </span>
++                        </div>
++                      </div>
++                    </div>
++                  </div>
++
++                  {/* Right: Actions */}
++                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100">
++                    <button
++                      onClick={() => handleVerifyPasskey(key)}
++                      type="button"
++                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-md transition-colors"
++                      title="Test authentication with this passkey"
++                    >
++                      <ShieldCheckIcon className="w-4 h-4 text-blue-600" />
++                      <span>Test / Verify</span>
++                    </button>
++
++                    <button
++                      onClick={() => setDeleteConfirmKey(key)}
++                      type="button"
++                      className="inline-flex items-center space-x-1 px-3 py-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 text-xs font-medium rounded-md transition-colors"
++                      title="Remove passkey"
++                    >
++                      <TrashIcon className="w-4 h-4" />
++                      <span>Remove</span>
++                    </button>
++                  </div>
++                </div>
++              </div>
++            );
++          })
++        )}
++      </div>
++
++      {/* Add Passkey Modal */}
++      {showAddModal && (
++        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
++          <div className="bg-white rounded-xl max-w-md w-full shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
++            <div className="p-5 border-b border-gray-200 flex items-center justify-between">
++              <div className="flex items-center space-x-2">
++                <div className="p-1.5 bg-blue-100 rounded-lg">
++                  <FingerPrintIcon className="w-5 h-5 text-blue-600" />
++                </div>
++                <h3 className="text-lg font-bold text-gray-900">Add a New Passkey</h3>
++              </div>
++              <button
++                onClick={() => setShowAddModal(false)}
++                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
++              >
++                <XMarkIcon className="w-5 h-5" />
++              </button>
++            </div>
++
++            <div className="p-6 space-y-4">
++              <div>
++                <label className="block text-sm font-medium text-gray-700 mb-1">Passkey Label / Device Name</label>
++                <input
++                  type="text"
++                  value={passkeyLabel}
++                  onChange={e => setPasskeyLabel(e.target.value)}
++                  placeholder="e.g., MacBook Touch ID, Personal iPhone, YubiKey"
++                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
++                />
++                <p className="text-xs text-gray-500 mt-1">
++                  Give this passkey a memorable nickname to identify which device it belongs to.
++                </p>
++              </div>
++
++              <div>
++                <label className="block text-sm font-medium text-gray-700 mb-1">Authenticator Type</label>
++                <select
++                  value={attachmentPref}
++                  onChange={e => setAttachmentPref(e.target.value as any)}
++                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
++                >
++                  <option value="all">Any Authenticator (Recommended)</option>
++                  <option value="platform">This Device Only (Touch ID, Face ID, Windows Hello)</option>
++                  <option value="cross-platform">External Security Key / Phone (USB, NFC, QR)</option>
++                </select>
++              </div>
++
++              <div className="p-3 bg-gray-50 rounded-lg text-xs text-gray-600 border border-gray-200">
++                <span className="font-semibold text-gray-800">Ready to register:</span> Clicking "Create Passkey" will
++                prompt your browser or authenticator to generate a secure WebAuthn credential for{' '}
++                <span className="font-semibold text-gray-800">{currentUser.username}</span>.
++              </div>
++
++              <div className="space-y-2 pt-2">
++                <button
++                  onClick={handleCreatePasskey}
++                  disabled={loading}
++                  type="button"
++                  className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-xs transition-colors flex items-center justify-center space-x-2"
++                >
++                  <FingerPrintIcon className="w-5 h-5" />
++                  <span>{loading ? 'Creating Passkey in Browser...' : 'Create Passkey'}</span>
++                </button>
++
++                <div className="relative py-2 flex items-center justify-center">
++                  <div className="absolute inset-0 flex items-center">
++                    <div className="w-full border-t border-gray-200"></div>
++                  </div>
++                  <span className="relative bg-white px-2 text-xs text-gray-400">or testing fallback</span>
++                </div>
++
++                <button
++                  onClick={handleAddSimulatedPasskey}
++                  type="button"
++                  className="w-full py-2 px-3 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded-md transition-colors"
++                >
++                  Add Simulated Passkey (For testing without WebAuthn hardware)
++                </button>
++              </div>
++            </div>
++          </div>
++        </div>
++      )}
++
++      {/* Delete Confirmation Modal */}
++      {deleteConfirmKey && (
++        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
++          <div className="bg-white rounded-xl max-w-md w-full shadow-xl overflow-hidden p-6 space-y-4 animate-in fade-in zoom-in duration-150">
++            <div className="flex items-center space-x-3 text-red-600">
++              <div className="p-2 bg-red-100 rounded-full">
++                <TrashIcon className="w-6 h-6" />
++              </div>
++              <h3 className="text-lg font-bold text-gray-900">Remove Passkey?</h3>
++            </div>
++
++            <p className="text-sm text-gray-600">
++              Are you sure you want to remove <span className="font-semibold text-gray-800">"{deleteConfirmKey.label}"</span>?
++              You will no longer be able to use this passkey to sign in to The DevTools Times.
++            </p>
++
++            <div className="flex items-center justify-end space-x-3 pt-2">
++              <button
++                onClick={() => setDeleteConfirmKey(null)}
++                type="button"
++                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
++              >
++                Cancel
++              </button>
++              <button
++                onClick={() => handleDeletePasskey(deleteConfirmKey)}
++                type="button"
++                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium shadow-xs"
++              >
++                Yes, Remove Passkey
++              </button>
++            </div>
++          </div>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..126a179 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,11 +1,24 @@
+ import React, { useState } from 'react';
++import {
++  setCurrentUser,
++  isWebAuthnSupported,
++  authenticateWithWebAuthn,
++  updatePasskeyLastUsed,
++  type RegisteredPasskey,
++} from '../utils/passkeys';
++import { FingerPrintIcon, KeyIcon } from '@heroicons/react/24/outline';
+ 
+-export default function SignInForm() {
++interface SignInFormProps {
++  baseUrl?: string;
++}
++
++export default function SignInForm({ baseUrl = '/devtools-times/' }: SignInFormProps) {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [passkeyLoading, setPasskeyLoading] = useState(false);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -25,12 +38,15 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        setError(`Login failed: ${data.message || data.error || 'Unknown error'}`);
+       } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        setSuccess('Login successful! You can now manage your account and passkeys.');
++        setCurrentUser({ username, token: data.token || 'auth-token' });
++
++        // Redirect after brief delay
++        setTimeout(() => {
++          window.location.href = `${baseUrl}account`;
++        }, 1000);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -39,18 +55,72 @@ export default function SignInForm() {
+     }
+   };
+ 
++  const handlePasskeySignIn = async () => {
++    setError(null);
++    setSuccess(null);
++    setPasskeyLoading(true);
++
++    try {
++      if (!isWebAuthnSupported()) {
++        throw new Error('WebAuthn is not supported in this browser. Please use Chrome or test in Chrome DevTools.');
++      }
++
++      const result = await authenticateWithWebAuthn();
++
++      // Find user from localStorage registered keys
++      let matchedUsername: string | null = null;
++      if (typeof window !== 'undefined') {
++        for (let i = 0; i < localStorage.length; i++) {
++          const key = localStorage.key(i);
++          if (key && key.startsWith('devtools_times_passkeys_')) {
++            const raw = localStorage.getItem(key);
++            if (raw) {
++              try {
++                const list: RegisteredPasskey[] = JSON.parse(raw);
++                const match = list.find(k => k.id === result.credentialId);
++                if (match) {
++                  matchedUsername = match.username;
++                  updatePasskeyLastUsed(match.username, match.id);
++                  break;
++                }
++              } catch {}
++            }
++          }
++        }
++      }
++
++      const finalUsername = matchedUsername || username || 'passkey_user';
++      setCurrentUser({ username: finalUsername, token: 'passkey-token' });
++      setSuccess(`Signed in with passkey as ${finalUsername}! Redirecting...`);
++
++      setTimeout(() => {
++        window.location.href = `${baseUrl}account`;
++      }, 800);
++    } catch (err: any) {
++      console.warn('Passkey login error:', err);
++      setError(
++        `Passkey sign-in error: ${err.message || 'Operation canceled'}. Ensure your passkey is registered or use the WebAuthn tab in DevTools.`
++      );
++    } finally {
++      setPasskeyLoading(false);
++    }
++  };
++
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
++    <div className="max-w-md mx-auto mt-6 p-6 sm:p-8 bg-white border border-gray-200 rounded-xl shadow-xs">
++      <div className="text-center mb-6">
++        <h2 className="text-2xl font-bold text-gray-900">Sign In</h2>
++        <p className="text-sm text-gray-500 mt-1">Access your account and manage your passkeys</p>
++      </div>
++
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-emerald-700 bg-emerald-100 rounded-lg" role="alert">
+           {success}
+         </div>
+       )}
+@@ -66,10 +136,10 @@ export default function SignInForm() {
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+           />
+         </div>
+-        
++
+         <div>
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+@@ -80,20 +150,51 @@ export default function SignInForm() {
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+           />
+         </div>
+ 
+         <button
+           type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++          disabled={loading || passkeyLoading}
++          className={`w-full py-2.5 px-4 border border-transparent rounded-lg shadow-xs text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      {/* Divider */}
++      <div className="relative my-6">
++        <div className="absolute inset-0 flex items-center">
++          <div className="w-full border-t border-gray-200"></div>
++        </div>
++        <div className="relative flex justify-center text-xs uppercase">
++          <span className="bg-white px-2 text-gray-400 font-medium">Or continue with</span>
++        </div>
++      </div>
++
++      {/* Passkey Sign In Button */}
++      <button
++        type="button"
++        onClick={handlePasskeySignIn}
++        disabled={loading || passkeyLoading}
++        className="w-full inline-flex items-center justify-center space-x-2 py-2.5 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-xs transition-colors"
++      >
++        <FingerPrintIcon className="w-5 h-5 text-blue-600" />
++        <span>{passkeyLoading ? 'Authenticating with passkey...' : 'Sign In with Passkey'}</span>
++      </button>
++
++      <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
++        <a href={`${baseUrl}account`} className="text-blue-600 hover:underline flex items-center space-x-1">
++          <KeyIcon className="w-3.5 h-3.5" />
++          <span>Passkeys settings</span>
++        </a>
++        <a href={`${baseUrl}signup`} className="hover:underline">
++          Don't have an account? Sign up
++        </a>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..6a44de2 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,6 +1,10 @@
+ import React, { useState } from 'react';
+ 
+-export default function SignUpForm() {
++interface SignUpFormProps {
++  baseUrl?: string;
++}
++
++export default function SignUpForm({ baseUrl = '/devtools-times/' }: SignUpFormProps) {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+   const [error, setError] = useState<string | null>(null);
+@@ -25,11 +29,9 @@ export default function SignUpForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        setError(`Registration failed: ${data.message || data.error || 'Unknown error'}`);
+       } else {
+-        setSuccess('User registered successfully! You can now sign in.');
++        setSuccess('User registered successfully! You can now sign in and set up passkeys.');
+         setUsername('');
+         setPassword('');
+       }
+@@ -41,18 +43,29 @@ export default function SignUpForm() {
+   };
+ 
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
++    <div className="max-w-md mx-auto mt-6 p-6 sm:p-8 bg-white border border-gray-200 rounded-xl shadow-xs">
++      <div className="text-center mb-6">
++        <h2 className="text-2xl font-bold text-gray-900">Sign Up</h2>
++        <p className="text-sm text-gray-500 mt-1">Create an account to read and manage your passkeys</p>
++      </div>
++
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
++        <div className="mb-4 p-4 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg" role="alert">
++          <p className="font-semibold mb-2">{success}</p>
++          <div className="flex gap-2">
++            <a
++              href={`${baseUrl}signin`}
++              className="inline-block py-1.5 px-3 bg-gray-900 text-white rounded text-xs font-semibold hover:bg-gray-800"
++            >
++              Go to Sign In
++            </a>
++          </div>
+         </div>
+       )}
+ 
+@@ -67,10 +80,10 @@ export default function SignUpForm() {
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+           />
+         </div>
+-        
++
+         <div>
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+@@ -81,10 +94,10 @@ export default function SignUpForm() {
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+           />
+           <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++            Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+ 
+@@ -92,13 +105,20 @@ export default function SignUpForm() {
+           type="submit"
+           disabled={loading}
+           data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++          className={`w-full py-2.5 px-4 border border-transparent rounded-lg shadow-xs text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      <div className="mt-6 pt-4 border-t border-gray-100 text-center text-xs text-gray-500">
++        Already have an account?{' '}
++        <a href={`${baseUrl}signin`} className="text-blue-600 font-semibold hover:underline">
++          Sign in
++        </a>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/pages/account.astro b/src/pages/account.astro
+new file mode 100644
+index 0000000..3b5bb8f
+--- /dev/null
++++ b/src/pages/account.astro
+@@ -0,0 +1,12 @@
++---
++import Layout from '../layouts/Layout.astro';
++import PasskeyManager from '../components/PasskeyManager';
++
++const baseUrl = import.meta.env.BASE_URL;
++---
++
++<Layout title="Passkey Management | The DevTools Times">
++  <div class="py-8 px-4 sm:px-6 lg:px-8">
++    <PasskeyManager client:load baseUrl={baseUrl} />
++  </div>
++</Layout>
+diff --git a/src/pages/api/auth/session.ts b/src/pages/api/auth/session.ts
+new file mode 100644
+index 0000000..4daafb3
+--- /dev/null
++++ b/src/pages/api/auth/session.ts
+@@ -0,0 +1,30 @@
++import type { APIRoute } from 'astro';
++
++export const GET: APIRoute = async ({ session }) => {
++  const user = (await session?.get('user')) || null;
++  return new Response(JSON.stringify({ user }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const user = await request.json();
++    await session?.set('user', user);
++    return new Response(JSON.stringify({ success: true, user }), {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  } catch (err) {
++    return new Response(JSON.stringify({ error: 'Failed to update session' }), { status: 400 });
++  }
++};
++
++export const DELETE: APIRoute = async ({ session }) => {
++  await session?.set('user', null);
++  return new Response(JSON.stringify({ success: true }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/api/passkeys/[id].ts b/src/pages/api/passkeys/[id].ts
+new file mode 100644
+index 0000000..645e669
+--- /dev/null
++++ b/src/pages/api/passkeys/[id].ts
+@@ -0,0 +1,52 @@
++import type { APIRoute } from 'astro';
++import { updateServerPasskey, deleteServerPasskey } from '../../../utils/server-store';
++
++export const PATCH: APIRoute = async ({ params, request, session }) => {
++  const { id } = params;
++  if (!id) {
++    return new Response(JSON.stringify({ error: 'Missing passkey ID' }), { status: 400 });
++  }
++
++  try {
++    const { username, label, lastUsedAt } = await request.json();
++    if (!username) {
++      return new Response(JSON.stringify({ error: 'Missing username' }), { status: 400 });
++    }
++
++    const updates: any = {};
++    if (label !== undefined) updates.label = label;
++    if (lastUsedAt !== undefined) updates.lastUsedAt = lastUsedAt;
++
++    const item = updateServerPasskey(username, id, updates);
++
++    return new Response(JSON.stringify({ success: true, passkey: item }), {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  } catch (err) {
++    return new Response(JSON.stringify({ error: 'Failed to update passkey' }), { status: 500 });
++  }
++};
++
++export const DELETE: APIRoute = async ({ params, request, session }) => {
++  const { id } = params;
++  if (!id) {
++    return new Response(JSON.stringify({ error: 'Missing passkey ID' }), { status: 400 });
++  }
++
++  try {
++    const { username } = await request.json();
++    if (!username) {
++      return new Response(JSON.stringify({ error: 'Missing username' }), { status: 400 });
++    }
++
++    const success = deleteServerPasskey(username, id);
++
++    return new Response(JSON.stringify({ success }), {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  } catch (err) {
++    return new Response(JSON.stringify({ error: 'Failed to delete passkey' }), { status: 500 });
++  }
++};
+diff --git a/src/pages/api/passkeys/index.ts b/src/pages/api/passkeys/index.ts
+new file mode 100644
+index 0000000..29c20cb
+--- /dev/null
++++ b/src/pages/api/passkeys/index.ts
+@@ -0,0 +1,48 @@
++import type { APIRoute } from 'astro';
++import type { RegisteredPasskey } from '../../../utils/passkeys';
++import { getServerPasskeys, saveServerPasskey } from '../../../utils/server-store';
++
++export const GET: APIRoute = async ({ request, session }) => {
++  const url = new URL(request.url);
++  const username = url.searchParams.get('username') || (await session?.get('user'))?.username;
++
++  if (!username) {
++    return new Response(JSON.stringify({ error: 'Username is required' }), {
++      status: 400,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  const passkeys = getServerPasskeys(username);
++
++  return new Response(JSON.stringify({ passkeys }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const passkey: RegisteredPasskey = await request.json();
++
++    if (!passkey || !passkey.id || !passkey.username) {
++      return new Response(JSON.stringify({ error: 'Invalid passkey payload' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    saveServerPasskey(passkey);
++    await session?.set(`passkeys_${passkey.username.toLowerCase()}`, getServerPasskeys(passkey.username));
++
++    return new Response(JSON.stringify({ success: true, passkey }), {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  } catch (err) {
++    return new Response(JSON.stringify({ error: 'Failed to save passkey' }), {
++      status: 500,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++};
+diff --git a/src/pages/passkeys.astro b/src/pages/passkeys.astro
+new file mode 100644
+index 0000000..13996ed
+--- /dev/null
++++ b/src/pages/passkeys.astro
+@@ -0,0 +1,12 @@
++---
++import Layout from '../layouts/Layout.astro';
++import PasskeyManager from '../components/PasskeyManager';
++
++const baseUrl = import.meta.env.BASE_URL;
++---
++
++<Layout title="Passkeys | The DevTools Times">
++  <div class="py-8 px-4 sm:px-6 lg:px-8">
++    <PasskeyManager client:load baseUrl={baseUrl} />
++  </div>
++</Layout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..7163f1b 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -1,10 +1,12 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
++
++const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+ <Layout title="Sign In | The DevTools Times">
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+-    <SignInForm client:load />
++    <SignInForm client:load baseUrl={baseUrl} />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..f7aa430 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -1,10 +1,12 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
++
++const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+-    <SignUpForm client:load />
++    <SignUpForm client:load baseUrl={baseUrl} />
+   </div>
+ </Layout>
+diff --git a/src/utils/passkeys.ts b/src/utils/passkeys.ts
+new file mode 100644
+index 0000000..d8344c6
+--- /dev/null
++++ b/src/utils/passkeys.ts
+@@ -0,0 +1,422 @@
++export interface RegisteredPasskey {
++  id: string; // Base64URL credential ID
++  rawId?: string;
++  username: string;
++  label: string;
++  createdAt: string; // ISO date string
++  lastUsedAt: string | null; // ISO date string or null
++  transports?: string[]; // e.g. ['internal', 'hybrid', 'usb', 'nfc', 'ble']
++  algorithm?: string; // e.g. 'ES256' or 'RS256'
++  deviceType?: 'platform' | 'cross-platform' | 'security-key' | 'unknown';
++  backupState?: boolean;
++  aaguid?: string;
++}
++
++export interface CurrentUser {
++  username: string;
++  token?: string;
++}
++
++const STORAGE_USER_KEY = 'devtools_times_current_user';
++const STORAGE_PASSKEYS_PREFIX = 'devtools_times_passkeys_';
++
++/**
++ * Checks if the WebAuthn API is supported in the current browser/environment.
++ */
++export function isWebAuthnSupported(): boolean {
++  return (
++    typeof window !== 'undefined' &&
++    typeof window.PublicKeyCredential !== 'undefined' &&
++    typeof navigator !== 'undefined' &&
++    typeof navigator.credentials !== 'undefined' &&
++    typeof navigator.credentials.create === 'function' &&
++    typeof navigator.credentials.get === 'function'
++  );
++}
++
++/**
++ * Converts an ArrayBuffer to a URL-safe Base64 string.
++ */
++export function bufferToBase64URL(buffer: ArrayBuffer): string {
++  const bytes = new Uint8Array(buffer);
++  let binary = '';
++  for (let i = 0; i < bytes.byteLength; i++) {
++    binary += String.fromCharCode(bytes[i]);
++  }
++  return btoa(binary)
++    .replace(/\+/g, '-')
++    .replace(/\//g, '_')
++    .replace(/=+$/, '');
++}
++
++/**
++ * Converts a URL-safe Base64 string back to an ArrayBuffer.
++ */
++export function base64URLToBuffer(base64url: string): ArrayBuffer {
++  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
++  while (base64.length % 4) {
++    base64 += '=';
++  }
++  const binary = atob(base64);
++  const bytes = new Uint8Array(binary.length);
++  for (let i = 0; i < binary.length; i++) {
++    bytes[i] = binary.charCodeAt(i);
++  }
++  return bytes.buffer;
++}
++
++/**
++ * Gets the current logged in user from localStorage.
++ */
++export function getCurrentUser(): CurrentUser | null {
++  if (typeof window === 'undefined') return null;
++  try {
++    const raw = localStorage.getItem(STORAGE_USER_KEY);
++    return raw ? JSON.parse(raw) : null;
++  } catch (err) {
++    console.error('Failed to get current user from storage', err);
++    return null;
++  }
++}
++
++/**
++ * Sets or clears the current logged in user in localStorage and fires a custom event.
++ */
++export function setCurrentUser(user: CurrentUser | null): void {
++  if (typeof window === 'undefined') return null;
++  try {
++    if (user) {
++      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user));
++    } else {
++      localStorage.removeItem(STORAGE_USER_KEY);
++    }
++    // Sync with Astro session endpoint (fire-and-forget)
++    fetch('/devtools-times/api/auth/session', {
++      method: user ? 'POST' : 'DELETE',
++      headers: { 'Content-Type': 'application/json' },
++      body: user ? JSON.stringify(user) : undefined,
++    }).catch(() => {});
++
++    // Dispatch an event so components update reactively
++    window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: user }));
++  } catch (err) {
++    console.error('Failed to set current user in storage', err);
++  }
++}
++
++/**
++ * Retrieves the list of passkeys registered to a specific username.
++ */
++export function getUserPasskeys(username: string): RegisteredPasskey[] {
++  if (typeof window === 'undefined' || !username) return [];
++  try {
++    const raw = localStorage.getItem(`${STORAGE_PASSKEYS_PREFIX}${username.toLowerCase()}`);
++    if (!raw) return [];
++    return JSON.parse(raw);
++  } catch (err) {
++    console.error('Failed to retrieve passkeys for user', username, err);
++    return [];
++  }
++}
++
++/**
++ * Saves a new passkey for a user.
++ */
++export function saveUserPasskey(passkey: RegisteredPasskey): void {
++  if (typeof window === 'undefined' || !passkey.username) return;
++  try {
++    const key = `${STORAGE_PASSKEYS_PREFIX}${passkey.username.toLowerCase()}`;
++    const existing = getUserPasskeys(passkey.username);
++    // Replace if same id exists or append
++    const updated = existing.filter(p => p.id !== passkey.id);
++    updated.unshift(passkey);
++    localStorage.setItem(key, JSON.stringify(updated));
++
++    // Also sync to server API
++    fetch('/devtools-times/api/passkeys', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(passkey),
++    }).catch(() => {});
++
++    window.dispatchEvent(new CustomEvent('passkeys-changed', { detail: { username: passkey.username } }));
++  } catch (err) {
++    console.error('Failed to save passkey', err);
++  }
++}
++
++/**
++ * Renames an existing passkey.
++ */
++export function renameUserPasskey(username: string, id: string, newLabel: string): void {
++  if (typeof window === 'undefined' || !username) return;
++  try {
++    const key = `${STORAGE_PASSKEYS_PREFIX}${username.toLowerCase()}`;
++    const list = getUserPasskeys(username);
++    const item = list.find(p => p.id === id);
++    if (!item) return;
++
++    item.label = newLabel.trim() || item.label;
++    localStorage.setItem(key, JSON.stringify(list));
++
++    // Sync to server API
++    fetch(`/devtools-times/api/passkeys/${encodeURIComponent(id)}`, {
++      method: 'PATCH',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username, label: item.label }),
++    }).catch(() => {});
++
++    window.dispatchEvent(new CustomEvent('passkeys-changed', { detail: { username } }));
++  } catch (err) {
++    console.error('Failed to rename passkey', err);
++  }
++}
++
++/**
++ * Deletes a passkey registered to a user.
++ */
++export function deleteUserPasskey(username: string, id: string): void {
++  if (typeof window === 'undefined' || !username) return;
++  try {
++    const key = `${STORAGE_PASSKEYS_PREFIX}${username.toLowerCase()}`;
++    const list = getUserPasskeys(username);
++    const updated = list.filter(p => p.id !== id);
++    localStorage.setItem(key, JSON.stringify(updated));
++
++    // Sync to server API
++    fetch(`/devtools-times/api/passkeys/${encodeURIComponent(id)}`, {
++      method: 'DELETE',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username }),
++    }).catch(() => {});
++
++    window.dispatchEvent(new CustomEvent('passkeys-changed', { detail: { username } }));
++  } catch (err) {
++    console.error('Failed to delete passkey', err);
++  }
++}
++
++/**
++ * Updates the lastUsedAt timestamp for a passkey.
++ */
++export function updatePasskeyLastUsed(username: string, id: string): void {
++  if (typeof window === 'undefined' || !username) return;
++  try {
++    const key = `${STORAGE_PASSKEYS_PREFIX}${username.toLowerCase()}`;
++    const list = getUserPasskeys(username);
++    const item = list.find(p => p.id === id);
++    if (!item) return;
++
++    item.lastUsedAt = new Date().toISOString();
++    localStorage.setItem(key, JSON.stringify(list));
++
++    // Sync to server API
++    fetch(`/devtools-times/api/passkeys/${encodeURIComponent(id)}`, {
++      method: 'PATCH',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username, lastUsedAt: item.lastUsedAt }),
++    }).catch(() => {});
++
++    window.dispatchEvent(new CustomEvent('passkeys-changed', { detail: { username } }));
++  } catch (err) {
++    console.error('Failed to update passkey lastUsed', err);
++  }
++}
++
++/**
++ * Helper to get a sensible default name for a passkey based on the device / user agent.
++ */
++export function getDefaultPasskeyLabel(counter: number = 1): string {
++  if (typeof window === 'undefined') return `Passkey #${counter}`;
++  const ua = navigator.userAgent;
++  let device = 'Passkey';
++  if (/Macintosh/i.test(ua)) device = 'Mac';
++  else if (/iPhone/i.test(ua)) device = 'iPhone';
++  else if (/iPad/i.test(ua)) device = 'iPad';
++  else if (/Android/i.test(ua)) device = 'Android Device';
++  else if (/Windows/i.test(ua)) device = 'Windows PC';
++  else if (/Linux/i.test(ua)) device = 'Linux Machine';
++
++  let browser = '';
++  if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) browser = 'Chrome';
++  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
++  else if (/Firefox/i.test(ua)) browser = 'Firefox';
++  else if (/Edg/i.test(ua)) browser = 'Edge';
++
++  const nameParts = [device, browser].filter(Boolean);
++  return nameParts.length > 0 ? `${nameParts.join(' ')} (${counter})` : `Passkey #${counter}`;
++}
++
++/**
++ * Triggers the WebAuthn API to register a new passkey for the specified username.
++ */
++export async function createWebAuthnPasskey(
++  username: string,
++  customLabel?: string,
++  attachment?: AuthenticatorAttachment
++): Promise<RegisteredPasskey> {
++  if (!isWebAuthnSupported()) {
++    throw new Error('WebAuthn is not supported in this browser. Please use Chrome with WebAuthn enabled or test in Chrome DevTools.');
++  }
++
++  // Generate random 32-byte challenge
++  const challenge = new Uint8Array(32);
++  crypto.getRandomValues(challenge);
++
++  // User ID as bytes
++  const userIdBytes = new TextEncoder().encode(username);
++
++  const existingKeys = getUserPasskeys(username);
++  const excludeCredentials = existingKeys.map(k => ({
++    id: base64URLToBuffer(k.id),
++    type: 'public-key' as const,
++    transports: k.transports as AuthenticatorTransport[] | undefined,
++  }));
++
++  const creationOptions: CredentialCreationOptions = {
++    publicKey: {
++      challenge,
++      rp: {
++        name: 'The DevTools Times',
++        id: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
++      },
++      user: {
++        id: userIdBytes,
++        name: username,
++        displayName: username,
++      },
++      pubKeyCredParams: [
++        { alg: -7, type: 'public-key' },   // ES256
++        { alg: -257, type: 'public-key' }, // RS256
++        { alg: -8, type: 'public-key' },   // Ed25519
++      ],
++      timeout: 60000,
++      attestation: 'none',
++      excludeCredentials,
++      authenticatorSelection: {
++        residentKey: 'preferred',
++        requireResidentKey: false,
++        userVerification: 'preferred',
++        ...(attachment ? { authenticatorAttachment: attachment } : {}),
++      },
++    },
++  };
++
++  const credential = (await navigator.credentials.create(creationOptions)) as PublicKeyCredential | null;
++
++  if (!credential) {
++    throw new Error('No credential was returned by the authenticator.');
++  }
++
++  const response = credential.response as AuthenticatorAttestationResponse;
++  let transports: string[] = [];
++  if (typeof response.getTransports === 'function') {
++    transports = response.getTransports() || [];
++  }
++
++  let deviceType: 'platform' | 'cross-platform' | 'security-key' | 'unknown' = 'unknown';
++  if (attachment === 'platform' || transports.includes('internal')) {
++    deviceType = 'platform';
++  } else if (transports.includes('usb') || transports.includes('nfc') || transports.includes('ble')) {
++    deviceType = 'security-key';
++  } else if (transports.includes('hybrid')) {
++    deviceType = 'cross-platform';
++  } else {
++    deviceType = 'platform';
++  }
++
++  const label = customLabel?.trim() || getDefaultPasskeyLabel(existingKeys.length + 1);
++
++  const newPasskey: RegisteredPasskey = {
++    id: credential.id || bufferToBase64URL(credential.rawId),
++    rawId: bufferToBase64URL(credential.rawId),
++    username,
++    label,
++    createdAt: new Date().toISOString(),
++    lastUsedAt: null,
++    transports: transports.length > 0 ? transports : ['internal'],
++    algorithm: 'ES256',
++    deviceType,
++    backupState: true,
++  };
++
++  saveUserPasskey(newPasskey);
++  return newPasskey;
++}
++
++/**
++ * Triggers WebAuthn to authenticate with a passkey.
++ */
++export async function authenticateWithWebAuthn(
++  allowedCredentials?: RegisteredPasskey[]
++): Promise<{ credentialId: string; passkey?: RegisteredPasskey }> {
++  if (!isWebAuthnSupported()) {
++    throw new Error('WebAuthn is not supported in this browser.');
++  }
++
++  const challenge = new Uint8Array(32);
++  crypto.getRandomValues(challenge);
++
++  const getOptions: CredentialRequestOptions = {
++    publicKey: {
++      challenge,
++      rpId: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
++      timeout: 60000,
++      userVerification: 'preferred',
++      ...(allowedCredentials && allowedCredentials.length > 0
++        ? {
++            allowCredentials: allowedCredentials.map(k => ({
++              id: base64URLToBuffer(k.id),
++              type: 'public-key' as const,
++              transports: k.transports as AuthenticatorTransport[] | undefined,
++            })),
++          }
++        : {}),
++    },
++  };
++
++  const assertion = (await navigator.credentials.get(getOptions)) as PublicKeyCredential | null;
++  if (!assertion) {
++    throw new Error('Passkey verification was canceled or failed.');
++  }
++
++  const credentialId = assertion.id || bufferToBase64URL(assertion.rawId);
++  const matched = allowedCredentials?.find(k => k.id === credentialId);
++
++  return {
++    credentialId,
++    passkey: matched,
++  };
++}
++
++/**
++ * Creates a simulated passkey for quick testing in environments where hardware WebAuthn authenticators
++ * are not currently emulated or configured.
++ */
++export function createSimulatedPasskey(username: string, customLabel?: string): RegisteredPasskey {
++  const existingKeys = getUserPasskeys(username);
++  const randomBytes = new Uint8Array(16);
++  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
++    crypto.getRandomValues(randomBytes);
++  } else {
++    for (let i = 0; i < 16; i++) randomBytes[i] = Math.floor(Math.random() * 256);
++  }
++  const id = bufferToBase64URL(randomBytes.buffer);
++  const label = customLabel?.trim() || `Test Passkey (${existingKeys.length + 1})`;
++
++  const passkey: RegisteredPasskey = {
++    id,
++    rawId: id,
++    username,
++    label,
++    createdAt: new Date().toISOString(),
++    lastUsedAt: null,
++    transports: ['internal'],
++    algorithm: 'ES256',
++    deviceType: 'platform',
++    backupState: true,
++  };
++
++  saveUserPasskey(passkey);
++  return passkey;
++}
+diff --git a/src/utils/server-store.ts b/src/utils/server-store.ts
+new file mode 100644
+index 0000000..1fb18d9
+--- /dev/null
++++ b/src/utils/server-store.ts
+@@ -0,0 +1,34 @@
++import type { RegisteredPasskey } from './passkeys';
++
++// In-memory server store for passkeys keyed by lowercase username
++export const serverPasskeysStore: Record<string, RegisteredPasskey[]> = {};
++
++export function getServerPasskeys(username: string): RegisteredPasskey[] {
++  return serverPasskeysStore[username.toLowerCase()] || [];
++}
++
++export function saveServerPasskey(passkey: RegisteredPasskey): void {
++  const key = passkey.username.toLowerCase();
++  const list = serverPasskeysStore[key] || [];
++  const updated = list.filter(k => k.id !== passkey.id);
++  updated.unshift(passkey);
++  serverPasskeysStore[key] = updated;
++}
++
++export function updateServerPasskey(username: string, id: string, updates: Partial<RegisteredPasskey>): RegisteredPasskey | null {
++  const key = username.toLowerCase();
++  const list = serverPasskeysStore[key] || [];
++  const item = list.find(k => k.id === id);
++  if (!item) return null;
++
++  Object.assign(item, updates);
++  return item;
++}
++
++export function deleteServerPasskey(username: string, id: string): boolean {
++  const key = username.toLowerCase();
++  const list = serverPasskeysStore[key] || [];
++  const filtered = list.filter(k => k.id !== id);
++  serverPasskeysStore[key] = filtered;
++  return filtered.length !== list.length;
++}

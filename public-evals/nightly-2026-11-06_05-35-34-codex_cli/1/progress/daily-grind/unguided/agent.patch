@@ -1,0 +1,163 @@
+diff --git a/index.html b/index.html
+index 66c9173..9bab4dd 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,117 @@
+       margin-top: 20px;
+     }
+ 
++    /* Order and reward progress */
++    .progress-section {
++      margin-bottom: 40px;
++      padding: 28px;
++      border: 1px solid #e5dcd5;
++      border-radius: 12px;
++      background: #fffaf4;
++    }
++
++    .progress-heading,
++    .progress-label {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .progress-heading {
++      margin-bottom: 22px;
++      flex-wrap: wrap;
++    }
++
++    .progress-eyebrow {
++      color: #765347;
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++      margin-bottom: 4px;
++    }
++
++    .progress-heading h2 {
++      font-size: 1.5rem;
++      line-height: 1.3;
++    }
++
++    .progress-preview {
++      border: 1px solid #e5dcd5;
++      border-radius: 20px;
++      padding: 4px 10px;
++      color: #765347;
++      font-size: 0.75rem;
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 24px;
++    }
++
++    .progress-item {
++      min-width: 0;
++      padding: 20px;
++      border-radius: 8px;
++      background: white;
++      border: 1px solid #eee5dd;
++    }
++
++    .progress-label h3 {
++      font-size: 1rem;
++    }
++
++    .progress-value {
++      color: #765347;
++      font-size: 0.85rem;
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .progress-track {
++      height: 10px;
++      margin: 14px 0 10px;
++      overflow: hidden;
++      border-radius: 10px;
++      background: #eee5dd;
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: 60%;
++      border-radius: inherit;
++      background: linear-gradient(90deg, #a65b28, var(--accent));
++    }
++
++    .progress-track--indeterminate .progress-fill {
++      width: 40%;
++      animation: brewing 1.8s ease-in-out infinite;
++    }
++
++    .progress-item p {
++      color: #765347;
++      font-size: 0.85rem;
++    }
++
++    @keyframes brewing {
++      from { transform: translateX(-100%); }
++      to { transform: translateX(350%); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-track--indeterminate .progress-fill {
++        animation: none;
++        margin-left: 30%;
++      }
++    }
++
++    @media (max-width: 600px) {
++      .progress-section { padding: 20px; }
++      .progress-grid { grid-template-columns: 1fr; gap: 16px; }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,6 +286,40 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-labelledby="progress-heading">
++      <div class="progress-heading">
++        <div>
++          <p class="progress-eyebrow">A little closer with every cup</p>
++          <h2 id="progress-heading">Good things are brewing</h2>
++        </div>
++        <span class="progress-preview">Sample progress</span>
++      </div>
++      <div class="progress-grid">
++        <div class="progress-item">
++          <div class="progress-label">
++            <h3 id="rewards-label">Your next free coffee</h3>
++            <span class="progress-value">6 / 10 cups · 60%</span>
++          </div>
++          <div class="progress-track" role="progressbar" aria-labelledby="rewards-label"
++            aria-describedby="rewards-description" aria-valuemin="0" aria-valuemax="10"
++            aria-valuenow="6" aria-valuetext="6 of 10 cups collected">
++            <div class="progress-fill"></div>
++          </div>
++          <p id="rewards-description">Just 4 more cups until your next one is on us.</p>
++        </div>
++        <div class="progress-item">
++          <div class="progress-label">
++            <h3 id="order-label">Preparing your order</h3>
++            <span class="progress-value">In progress</span>
++          </div>
++          <div class="progress-track progress-track--indeterminate" role="progressbar"
++            aria-labelledby="order-label" aria-describedby="order-description">
++            <div class="progress-fill"></div>
++          </div>
++          <p id="order-description">Your barista is on it. Sit back and savor the anticipation.</p>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

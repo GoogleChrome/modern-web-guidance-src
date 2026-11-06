@@ -1,0 +1,292 @@
+diff --git a/coffee-finder.mjs b/coffee-finder.mjs
+new file mode 100644
+index 0000000..e3d35b3
+--- /dev/null
++++ b/coffee-finder.mjs
+@@ -0,0 +1,82 @@
++const coffees = [
++  {
++    name: 'Maple Oat Latte', taste: 'creamy', temperatures: ['hot', 'iced'],
++    description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++    url: '/menu/seasonal',
++  },
++  {
++    name: 'Dark Roast Espresso', taste: 'bold', temperatures: ['hot'],
++    description: 'Bold, smokey, and perfect for a morning boost.',
++    url: '/menu/espresso',
++  },
++  {
++    name: 'Cold Brew', taste: 'smooth', temperatures: ['iced'],
++    description: 'Steeped for 18 hours for maximum smoothness.',
++    url: '/menu/cold-brew',
++  },
++];
++
++export function findCoffee({ taste, temperature }) {
++  if (!['bold', 'creamy', 'smooth'].includes(taste) ||
++      !['hot', 'iced', 'either'].includes(temperature)) {
++    throw new Error('Choose a taste and a serving temperature from the available options.');
++  }
++  const matches = coffees
++    .filter(coffee => temperature === 'either' || coffee.temperatures.includes(temperature))
++    .sort((a, b) => Number(b.taste === taste) - Number(a.taste === taste))
++    .map(coffee => ({ ...coffee, temperatures: [...coffee.temperatures], matchesTaste: coffee.taste === taste }));
++  const recommendation = matches[0];
++  const reason = recommendation.matchesTaste
++    ? 'A match for your taste and temperature preferences.'
++    : `Your preferred taste isn't available ${temperature}. Here's an alternative that matches your temperature.`;
++  return { status: 'success', preferences: { taste, temperature }, recommendation, alternatives: matches.slice(1), reason };
++}
++
++export function attachCoffeeFinder(form, output) {
++  form.addEventListener('submit', event => {
++    event.preventDefault();
++    let result;
++    if (!form.reportValidity()) {
++      result = { status: 'error', message: 'Choose a taste and serving temperature before finding a coffee.' };
++    } else {
++      try {
++        result = findCoffee(Object.fromEntries(new FormData(form)));
++      } catch (error) {
++        result = { status: 'error', message: error.message };
++      }
++    }
++    const document = output.ownerDocument;
++    output.replaceChildren();
++    output.className = 'finder-result';
++    if (result.status === 'success') {
++      const heading = document.createElement('h3');
++      heading.textContent = `Your match: ${result.recommendation.name}`;
++      const description = document.createElement('p');
++      description.textContent = result.recommendation.description;
++      const reason = document.createElement('p');
++      reason.textContent = result.reason;
++      const link = document.createElement('a');
++      link.href = result.recommendation.url;
++      link.textContent = 'Explore this coffee →';
++      output.append(heading, description, reason, link);
++      if (result.alternatives.length) {
++        const alternatives = document.createElement('p');
++        alternatives.className = 'finder-note';
++        alternatives.textContent = `Also worth a sip: ${result.alternatives.map(coffee => coffee.name).join(', ')}.`;
++        output.append(alternatives);
++      }
++    } else {
++      output.textContent = result.message;
++    }
++    // WebMCP extends SubmitEvent; ordinary browsers use the same visible flow.
++    if (event.agentInvoked && typeof event.respondWith === 'function') {
++      event.respondWith(Promise.resolve(result));
++    }
++  });
++}
++
++if (typeof document !== 'undefined') {
++  const form = document.getElementById('coffee-finder-form');
++  const output = document.getElementById('coffee-result');
++  if (form && output) attachCoffeeFinder(form, output);
++}
+diff --git a/coffee-finder.test.mjs b/coffee-finder.test.mjs
+new file mode 100644
+index 0000000..e914c61
+--- /dev/null
++++ b/coffee-finder.test.mjs
+@@ -0,0 +1,85 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import { findCoffee, attachCoffeeFinder } from './coffee-finder.mjs';
++
++test('every taste and temperature returns a compatible recommendation', () => {
++  for (const taste of ['bold', 'creamy', 'smooth']) {
++    for (const temperature of ['hot', 'iced', 'either']) {
++      const result = findCoffee({ taste, temperature });
++      assert.equal(result.status, 'success');
++      for (const coffee of [result.recommendation, ...result.alternatives]) {
++        assert.ok(temperature === 'either' || coffee.temperatures.includes(temperature));
++      }
++      if (temperature === 'either') assert.equal(result.recommendation.taste, taste);
++    }
++  }
++});
++
++test('exact matches rank first, and incompatible preferences explain the fallback', () => {
++  assert.equal(findCoffee({ taste: 'creamy', temperature: 'iced' }).recommendation.name, 'Maple Oat Latte');
++  assert.equal(findCoffee({ taste: 'bold', temperature: 'hot' }).recommendation.name, 'Dark Roast Espresso');
++  assert.equal(findCoffee({ taste: 'smooth', temperature: 'iced' }).recommendation.name, 'Cold Brew');
++  const fallback = findCoffee({ taste: 'smooth', temperature: 'hot' });
++  assert.equal(fallback.recommendation.matchesTaste, false);
++  assert.match(fallback.reason, /isn't available hot/);
++});
++
++test('missing and unexpected field values fail validation', () => {
++  for (const input of [{}, { taste: 'unknown', temperature: 'hot' }, { taste: 'bold', temperature: 'warm' }]) {
++    assert.throws(() => findCoffee(input), /Choose a taste/);
++  }
++});
++
++// Lightweight DOM doubles check submission behavior without a browser or server.
++function setup(valid = true) {
++  let submit;
++  const form = {
++    reportValidity: () => valid,
++    addEventListener: (type, handler) => { assert.equal(type, 'submit'); submit = handler; },
++  };
++  const output = {
++    children: [],
++    ownerDocument: { createElement: tag => ({ tag }) },
++    replaceChildren() { this.children = []; },
++    append(...children) { this.children.push(...children); },
++  };
++  attachCoffeeFinder(form, output);
++  return { output, submit };
++}
++
++test('agent submission updates visible results and returns the same structured recommendation', async t => {
++  t.mock.method(globalThis, 'FormData', function () {
++    return new Map([['taste', 'smooth'], ['temperature', 'iced']]);
++  });
++  const { output, submit } = setup();
++  let response;
++  let prevented = false;
++  submit({
++    preventDefault: () => { prevented = true; },
++    agentInvoked: true,
++    respondWith: promise => { response = promise; },
++  });
++  assert.ok(prevented);
++  const result = await response;
++  assert.equal(result.recommendation.name, 'Cold Brew');
++  assert.equal(output.children[0].textContent, 'Your match: Cold Brew');
++  assert.equal(output.children[3].href, '/menu/cold-brew');
++});
++
++test('invalid agent submissions return an error and ordinary submissions need no WebMCP API', async () => {
++  const { output, submit } = setup(false);
++  let response;
++  submit({ preventDefault() {}, agentInvoked: true, respondWith: promise => { response = promise; } });
++  assert.equal((await response).status, 'error');
++  assert.match(output.textContent, /Choose a taste/);
++  assert.doesNotThrow(() => submit({ preventDefault() {} }));
++});
++
++test('homepage declares an automatically submittable tool and named required parameters', async () => {
++  const html = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++  assert.match(html, /<form[^>]*toolname="find_coffee"[^>]*tooldescription="[^"]+"[^>]*toolautosubmit/s);
++  for (const name of ['taste', 'temperature']) {
++    assert.match(html, new RegExp(`<select[^>]*name="${name}"[^>]*required[^>]*toolparamdescription=`));
++  }
++});
+diff --git a/index.html b/index.html
+index 66c9173..669692a 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,40 @@
+       background: #3e2723;
+     }
+ 
++    #coffee-finder {
++      scroll-margin-top: 100px;
++      background: #f2ebe7;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: clamp(20px, 4vw, 36px);
++      margin-bottom: 40px;
++    }
++
++    .finder-intro { max-width: 650px; margin-bottom: 24px; }
++    .finder-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
++    .finder-fields label { display: block; font-weight: 600; margin-bottom: 6px; }
++    .finder-fields select {
++      width: 100%;
++      padding: 12px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 1px solid #8d7770;
++      border-radius: 5px;
++    }
++    button.btn { border: 0; font: inherit; cursor: pointer; }
++    :focus-visible { outline: 3px solid #b96300; outline-offset: 4px; }
++    .finder-result { margin-top: 24px; padding: 20px; background: white; border-radius: 8px; }
++    .finder-result h3 { margin-bottom: 8px; }
++    .finder-result a { color: var(--primary); font-weight: 600; }
++    .finder-note { font-size: 0.9rem; margin-top: 10px; }
++    @media (max-width: 600px) {
++      .finder-fields { grid-template-columns: 1fr; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,10 +205,46 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#coffee-finder" class="btn">Find Your Coffee</a>
+   </header>
+ 
+   <main class="container">
++    <section id="coffee-finder" aria-labelledby="finder-heading">
++      <div class="finder-intro">
++        <h2 id="finder-heading">A little guidance. A great cup.</h2>
++        <p>Tell us what you're craving and find your match among our seasonal favorites.</p>
++      </div>
++      <form id="coffee-finder-form" toolname="find_coffee"
++        tooldescription="Find a Daily Grind coffee from the three featured drinks by taste and serving temperature. Returns a recommendation and matching alternatives on this page. Does not place an order."
++        toolautosubmit>
++        <div class="finder-fields">
++          <div>
++            <label for="coffee-taste">What sounds good?</label>
++            <select id="coffee-taste" name="taste" required
++              toolparamdescription="Preferred coffee taste: bold espresso, creamy maple oat latte, or smooth cold brew.">
++              <option value="" selected disabled>Choose your taste</option>
++              <option value="bold">Bold &amp; intense</option>
++              <option value="creamy">Creamy &amp; gently sweet</option>
++              <option value="smooth">Smooth &amp; refreshing</option>
++            </select>
++          </div>
++          <div>
++            <label for="coffee-temperature">Hot or iced?</label>
++            <select id="coffee-temperature" name="temperature" required
++              toolparamdescription="Serving temperature: hot, iced, or either for no temperature preference.">
++              <option value="" selected disabled>Choose your temperature</option>
++              <option value="hot">Hot</option>
++              <option value="iced">Iced</option>
++              <option value="either">Either works</option>
++            </select>
++          </div>
++        </div>
++        <button class="btn" type="submit">Find my coffee &rarr;</button>
++        <p class="finder-note">Just a recommendation. Take your pick and explore the menu.</p>
++      </form>
++      <div id="coffee-result" role="status" aria-live="polite" aria-atomic="true"></div>
++      <noscript><p>Enable JavaScript to use the coffee finder, or explore our seasonal favorites below.</p></noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +277,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./coffee-finder.mjs"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..dccc5cc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test coffee-finder.test.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

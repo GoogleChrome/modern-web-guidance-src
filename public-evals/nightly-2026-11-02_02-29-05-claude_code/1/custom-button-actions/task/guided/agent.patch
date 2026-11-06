@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Command Playground */
++    .playground {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .action-stage {
++      display: grid;
++      place-items: center;
++      min-height: 260px;
++      margin: 20px 0;
++    }
++
++    .action-target {
++      width: 140px;
++      height: 140px;
++      background: var(--primary);
++      color: white;
++      display: grid;
++      place-items: center;
++      font-weight: bold;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
++      transition: rotate 0.5s ease, scale 0.5s ease, border-radius 0.5s ease;
++    }
++
++    .action-target.is-spun {
++      rotate: 180deg;
++    }
++
++    .action-target.is-grown {
++      scale: 1.5;
++    }
++
++    .action-target.is-rounded {
++      border-radius: 50%;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .action-target {
++        transition: none;
++      }
++    }
++
++    .action-buttons {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    button.btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +261,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="playground">
++      <h2>Play With Your Beans</h2>
++      <div class="action-stage">
++        <div id="action-target" class="action-target">Bean</div>
++      </div>
++      <div class="action-buttons">
++        <button type="button" class="btn" commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
++        <button type="button" class="btn" commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
++        <button type="button" class="btn" commandfor="action-target" command="--round" aria-pressed="false">Make Round</button>
++        <button type="button" class="btn" commandfor="action-target" command="--reset">Reset All</button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +286,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Load the Invoker Commands polyfill only in browsers without native support
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      (async () => {
++        try {
++          await import('https://esm.run/invokers-polyfill');
++        } catch (err) {
++          console.error('Error loading invokers polyfill:', err);
++        }
++      })();
++    }
++
++    const toggleCommands = {
++      '--spin': 'is-spun',
++      '--grow': 'is-grown',
++      '--round': 'is-rounded',
++    };
++
++    // The command event does not bubble, so listen on the target itself
++    document.getElementById('action-target').addEventListener('command', (event) => {
++      const target = event.target;
++      const className = toggleCommands[event.command];
++
++      if (className) {
++        const isOn = target.classList.toggle(className);
++        event.source?.setAttribute('aria-pressed', isOn);
++      } else if (event.command === '--reset') {
++        target.classList.remove(...Object.values(toggleCommands));
++        document.querySelectorAll(`button[commandfor="${target.id}"][aria-pressed]`).forEach((btn) => {
++          btn.setAttribute('aria-pressed', 'false');
++        });
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

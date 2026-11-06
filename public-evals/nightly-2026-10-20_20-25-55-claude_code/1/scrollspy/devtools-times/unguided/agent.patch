@@ -1,0 +1,167 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..fec12c5 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,5 +1,6 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useState } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
++import { groupedCategories } from '../utils/navGroups';
+ 
+ interface BottomNavProps {
+     categories: string[];
+@@ -11,12 +12,30 @@ interface BottomNavProps {
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
+ 
+-    const groupedCategories = {
+-        'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+-        'Arts & Culture': ['Culture', 'Media'],
+-        'Science & Tech': ['science'],
+-        'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+-    };
++    const [visibleGroup, setVisibleGroup] = useState<string | null>(null);
++
++    // Scroll-spy: highlight the nav item for whichever section crosses a band near the top of the viewport.
++    useEffect(() => {
++        const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-nav-group]'));
++        if (sections.length === 0) return;
++
++        const intersecting = new Set<HTMLElement>();
++        const observer = new IntersectionObserver(
++            (entries) => {
++                for (const entry of entries) {
++                    const el = entry.target as HTMLElement;
++                    if (entry.isIntersecting) intersecting.add(el);
++                    else intersecting.delete(el);
++                }
++                // Prefer the last (lowest in document order) section in the band; keep the previous one if none.
++                const current = sections.filter((el) => intersecting.has(el)).pop();
++                if (current) setVisibleGroup(current.dataset.navGroup ?? null);
++            },
++            { rootMargin: '-30% 0px -60% 0px' },
++        );
++        sections.forEach((el) => observer.observe(el));
++        return () => observer.disconnect();
++    }, []);
+ 
+     const handleMouseLeave = () => {
+         setActiveCategory(null);
+@@ -31,6 +50,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+             <div className="border-t border-b border-gray-900">
+                 <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                        const isVisible = groupName === visibleGroup;
+                         return (
+                             <div 
+                                 key={groupName}
+@@ -39,7 +59,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                             >
+                                 <a 
+                                     href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                    aria-current={isVisible ? 'true' : undefined}
++                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap h-full border-b-2 ${isVisible ? 'text-amber-400 border-amber-400' : 'border-transparent'}`}
+                                 >
+                                     <span>{groupName}</span>
+                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..15226a2 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -1,5 +1,6 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
++import { getDominantNavGroup } from '../utils/navGroups';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
+@@ -8,8 +9,9 @@ export interface Props {
+ }
+ 
+ const { title, articles } = Astro.props;
++const navGroup = getDominantNavGroup(articles.map((a) => a.data.category));
+ ---
+-<section class="p-4 md:p-6">
++<section class="p-4 md:p-6" data-nav-group={navGroup}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..6ef3afb 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -1,5 +1,6 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
++import { getDominantNavGroup } from '../utils/navGroups';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+@@ -25,8 +26,9 @@ const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage
+ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
++const navGroup = getDominantNavGroup(articles.map((a) => a.data.category));
+ ---
+-<section class="p-4 md:p-6">
++<section class="p-4 md:p-6" data-nav-group={navGroup}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..af10d95 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -7,6 +7,7 @@ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
++import { getNavGroup } from '../../utils/navGroups';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ 
+ export const getStaticPaths = (async () => {
+@@ -33,10 +34,11 @@ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
++const navGroup = getNavGroup(article.data.category);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12" data-nav-group={navGroup}>
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+diff --git a/src/utils/navGroups.ts b/src/utils/navGroups.ts
+new file mode 100644
+index 0000000..5fd1b59
+--- /dev/null
++++ b/src/utils/navGroups.ts
+@@ -0,0 +1,25 @@
++export const groupedCategories: Record<string, string[]> = {
++    'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
++    'Arts & Culture': ['Culture', 'Media'],
++    'Science & Tech': ['science'],
++    'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
++};
++
++/** Returns the nav group a single category belongs to, if any. */
++export function getNavGroup(category: string): string | undefined {
++    const needle = category.toLowerCase();
++    return Object.entries(groupedCategories).find(
++        ([groupName, subCategories]) =>
++            groupName.toLowerCase() === needle || subCategories.some((c) => c.toLowerCase() === needle),
++    )?.[0];
++}
++
++/** Returns the nav group that most of the given categories belong to. */
++export function getDominantNavGroup(categories: string[]): string | undefined {
++    const counts = new Map<string, number>();
++    for (const category of categories) {
++        const group = getNavGroup(category);
++        if (group) counts.set(group, (counts.get(group) ?? 0) + 1);
++    }
++    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
++}

@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,128 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Initial visibility detection.
++     *
++     * Determines whether this page was first loaded in a background tab and
++     * records the timestamp (ms since navigation start) at which it was
++     * backgrounded. Logs a single object to the console.
++     *
++     * Preferred path: VisibilityStateEntry (performance.getEntriesByType('visibility-state')).
++     *   The browser records every visibility change on the performance timeline,
++     *   so the history is accurate no matter how late this script runs.
++     *   Supported in Chromium 115+ (Chrome, Edge); not in Firefox or Safari.
++     *
++     * Fallback path: document.visibilityState + 'visibilitychange'.
++     *   !! UNRELIABLE !! Only reflects the state at the moment the script executes.
++     *   If the user opened the tab in the background and switched to it before
++     *   this script ran, the initial hidden state is missed entirely and the page
++     *   is misreported as loaded in the foreground. The fallback timestamp is also
++     *   an approximation (0 or performance.now() when the listener fires), not the
++     *   browser's internal visibility-change time.
++     */
++    (function () {
++      var LOG_PREFIX = '[Daily Grind] Initial visibility';
++
++      function logResult(result) {
++        console.log(LOG_PREFIX, result);
++      }
++
++      // --- Preferred: VisibilityStateEntry (accurate) ---------------------------
++      function detectWithPerformanceTimeline() {
++        var entries = performance.getEntriesByType('visibility-state');
++        if (entries.length === 0) {
++          return null; // API exists but no entries recorded; let caller fall back.
++        }
++
++        var initiallyBackgrounded = entries[0].name === 'hidden';
++        var backgroundTime = null;
++        for (var i = 0; i < entries.length; i++) {
++          if (entries[i].name === 'hidden') {
++            // startTime is the browser's own high-resolution timestamp of the change.
++            backgroundTime = entries[i].startTime;
++            break;
++          }
++        }
++
++        var result = {
++          initiallyBackgrounded: initiallyBackgrounded,
++          backgroundTime: backgroundTime,            // ms since navigation start, or null
++          detectionMethod: 'VisibilityStateEntry',
++          fallbackActive: false,
++          reliable: true
++        };
++        logResult(result);
++
++        // If the page has not yet been hidden, capture the precise time of the
++        // first later backgrounding from the performance timeline.
++        if (backgroundTime === null) {
++          document.addEventListener('visibilitychange', function onHidden() {
++            if (document.visibilityState !== 'hidden') return;
++            document.removeEventListener('visibilitychange', onHidden);
++            var later = performance.getEntriesByType('visibility-state');
++            for (var j = 0; j < later.length; j++) {
++              if (later[j].name === 'hidden') {
++                result.backgroundTime = later[j].startTime;
++                break;
++              }
++            }
++            logResult(result);
++          });
++        }
++
++        return result;
++      }
++
++      // --- Fallback: document.visibilityState (UNRELIABLE) ----------------------
++      function detectWithFallback() {
++        // State at script execution only. Misses an initial hidden state if the
++        // user foregrounded the tab before this script ran.
++        var initiallyBackgrounded = document.visibilityState === 'hidden';
++
++        var result = {
++          initiallyBackgrounded: initiallyBackgrounded,
++          // If hidden right now, approximate "hidden since load" as 0 ms.
++          backgroundTime: initiallyBackgrounded ? 0 : null,
++          detectionMethod: 'document.visibilityState (fallback)',
++          fallbackActive: true,
++          reliable: false,
++          warning: 'FALLBACK ACTIVE: VisibilityStateEntry unsupported in this browser. ' +
++            'initiallyBackgrounded may be a false negative and backgroundTime is approximate.'
++        };
++
++        console.warn(LOG_PREFIX + ': FALLBACK ACTIVE - result is potentially unreliable.');
++        logResult(result);
++
++        if (result.backgroundTime === null) {
++          document.addEventListener('visibilitychange', function onHidden() {
++            if (document.visibilityState !== 'hidden') return;
++            document.removeEventListener('visibilitychange', onHidden);
++            // performance.now() is when the listener fired, not when the
++            // browser actually changed visibility. Approximate only.
++            result.backgroundTime = performance.now();
++            logResult(result);
++          });
++        }
++
++        return result;
++      }
++
++      var result = null;
++      if ('VisibilityStateEntry' in window) {
++        result = detectWithPerformanceTimeline();
++      }
++      if (result === null) {
++        result = detectWithFallback();
++      }
++
++      // Expose for other scripts / analytics on the page.
++      window.__initialVisibility = result;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

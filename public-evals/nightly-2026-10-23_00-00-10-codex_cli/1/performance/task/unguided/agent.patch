@@ -1,0 +1,114 @@
+diff --git a/PERFORMANCE.md b/PERFORMANCE.md
+new file mode 100644
+--- a/PERFORMANCE.md
++++ b/PERFORMANCE.md
+@@ -0,0 +1,109 @@
++# Daily Grind performance audit
++
++## Scope and limits
++
++Audited the complete supplied application: one static HTML page, inline CSS, one
++external background photo, and the package scripts. No browser verification,
++development/preview servers, or server entrypoint imports were used. The build
++only reads, validates, and copies static files. No production URL, hosting
++configuration, performance traces, or real-user measurements were supplied.
++
++This is a source and asset audit. It does not establish measured LCP, INP, CLS,
++TTFB, or a Lighthouse score. Static byte counts below are measured; changes to
++runtime performance are expected benefits, not measured timing improvements.
++
++## Findings and changes
++
++| Area | Finding | Result |
++| --- | --- | --- |
++| LCP discovery | Hero photo referenced only in inline CSS, with default fetch priority | An HTML image exposes `src`/`srcset` to the preload scanner and uses `fetchpriority="high"` and eager loading. No redundant preload is needed. |
++| Image transfer | Every viewport used one 1350px external photo | Four local, compressed WebP candidates; the browser selects one for the viewport and device pixel ratio. |
++| Connection overhead | Hero required a connection to images.unsplash.com | Page rendering now requires only the site's own origin. |
++| Visual stability | Hero used dynamic `vh` sizing; no intrinsic image dimensions | Explicit image dimensions, reserved hero height, `svh` with `vh` fallback, and a minimum height keep the image from affecting document layout. The old CSS background already avoided image-load layout shifts. |
++| Mobile interaction | Logo and links shared an unwrapping row; fixed grid minimum could overflow | Navigation and links wrap, link height is at least 44px, heading scales, and grid tracks can shrink on narrow screens. Mobile navigation scrolls with the page so it cannot occupy a large sticky portion of the screen. |
++| INP / main thread | No scripts, handlers, frameworks, hydration, or third-party widgets | Preserved zero runtime JavaScript and native link interactions. No evidence of a JavaScript interaction bottleneck exists in the supplied page. |
++| Rendering | Small inline stylesheet, system fonts, simple cards, no repeated DOM work | Kept critical CSS inline and system fonts; avoided adding stylesheet requests, font downloads, virtualization, or animation libraries. |
++| Caching | No cache policy supplied | Added `_headers` with revalidated HTML and one-year immutable caching for content-hashed images. Requires host support, as described below. |
++| Regression prevention | No build or performance checks | Dependency-free static build checks image validity, dimensions, content hashes, resource references, priorities, and byte budgets in both source and production output. |
++
++The hero keeps the same stock photo, centered cover crop, dark overlay, and copy.
++Its responsive `sizes` accounts for the source's 3:2 aspect ratio when covering a
++tall hero, including the 320px minimum height. Portrait/high-density screens may
++select a larger candidate; the table is not a promise about mobile selection.
++
++## Measured asset sizes
++
++Decimal KB, with exact byte counts:
++
++| Resource | Bytes | Difference from original photo |
++| --- | ---: | ---: |
++| Original 1350px external photo response | 157,974 | Baseline |
++| New 640px WebP | 32,252 | 79.6% smaller |
++| New 960px WebP | 56,230 | 64.4% smaller |
++| New 1440px WebP (fallback) | 111,620 | 29.3% smaller |
++| New 1920px WebP | 186,470 | 18.0% larger, for higher-resolution displays |
++| Original HTML | 4,708 | — |
++| Updated HTML, including CSS | 5,973 | — |
++| Updated HTML compressed with gzip | 2,117 | Compression potential; not an observed HTTP response |
++| Updated HTML compressed with Brotli | 1,704 | Compression potential; not an observed HTTP response |
++| Runtime JavaScript | 0 | Unchanged |
++
++Only one image candidate is required per initial page load, not all four.
++The original photo was downloaded without an `Accept` override; its `auto=format`
++response may differ by browser or CDN negotiation. These are asset-byte comparisons,
++not end-to-end loading measurements or equal-resolution quality comparisons.
++
++## Build, checks, and deployment
++
++Run `npm run audit:performance` for source checks, or `npm run build` to validate
++source and output and produce `dist/`. Neither command installs dependencies or
++starts a server. `node scripts/audit-performance.mjs dist` checks an existing build.
++
++Budgets: HTML <=12,000 bytes, gzip HTML <=4,000 bytes, images <=40,000 / 65,000 /
++125,000 / 200,000 bytes for the four ascending widths. Checks fail for unexpected
++runtime scripts, external resources, CSS resource dependencies, missing image files,
++invalid WebP signatures/dimensions, stale image hashes, and unused assets.
++
++Publish `dist/` as the static document root. The image URLs assume deployment at
++the origin root, like the existing navigation links. `_headers` is a deployment
++configuration for hosts that support this file; it does not make the existing
++`statikk` command or an arbitrary server emit those headers. On other hosts,
++configure equivalent response policies:
++
++- `/` and `/index.html`: `Cache-Control: public, max-age=0, must-revalidate`.
++- `/assets/*`: `Cache-Control: public, max-age=31536000, immutable`.
++- Enable negotiated Brotli/gzip for HTML and an appropriate `Vary: Accept-Encoding`.
++  The build does not emit precompressed files. WebP does not need text compression.
++- Serve HTML as `text/html` and images as `image/webp`; use HTTPS and the host's CDN.
++- Deploy HTML and its referenced assets together. Retain earlier hashed assets
++  during deployments if an older page could still request them.
++
++No hosting provider was supplied, so actual cache headers, CDN behavior, response
++compression, and TTFB remain unverified. The repo also has no implementations for
++the linked menu, locations, rewards, account, logout, ordering, or footer routes.
++Those routes require the existing production service; a static build alone does
++not implement them. Navigation destinations were preserved.
++
++## Runtime follow-up
++
++After deployment, use existing real-user monitoring or available CrUX/Search
++Console data to assess the 75th percentile separately for mobile and desktop:
++LCP <=2.5s, INP <=200ms, and CLS <=0.1. Review hosting response headers and server
++logs for cache misses, slow responses, and navigation errors. Investigate actual
++slow routes and interaction traces before adding client-side optimizations.
++No telemetry was added because this repository has no collection endpoint.
++
++Guidance: [Optimize LCP](https://web.dev/articles/optimize-lcp),
++[Optimize INP](https://web.dev/articles/optimize-inp), and
++[Optimize CLS](https://web.dev/articles/optimize-cls).
++
++## Photo provenance
++
++Existing Unsplash stock photo retained:
++https://images.unsplash.com/photo-1495474472287-4d71bcdd2085
++
++Original query: `?auto=format&fit=crop&w=1350&q=80`.
++Local variants downloaded with `?fm=webp&fit=crop&w=WIDTH&q=60`, for widths
++640, 960, 1440, and 1920. Filenames contain the first 12 hex characters of each
++file's SHA-256 so future image changes produce new cache keys. No generated images
++were used.

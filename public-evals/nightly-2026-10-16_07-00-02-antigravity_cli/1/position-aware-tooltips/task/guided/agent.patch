@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,107 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Anchor Positioning & Popover Tooltip */
++    @supports (anchor-name: --my-anchor) {
++      [popover] {
++        inset: auto;
++        margin: unset;
++      }
++    }
++
++    #anchor {
++      anchor-name: --anchor;
++    }
++
++    .info-btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: var(--secondary);
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      border-radius: 50%;
++      width: 32px;
++      height: 32px;
++      margin-left: 8px;
++      font-size: 0.9rem;
++      font-weight: bold;
++      cursor: pointer;
++      vertical-align: middle;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .info-btn:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    #tooltip {
++      position: fixed;
++      position-anchor: --anchor;
++      position-area: block-start;
++      position-try-fallbacks: flip-block;
++
++      /* Enable anchored container queries */
++      container-type: anchored;
++
++      inset: auto;
++      margin: unset;
++      padding: 0;
++      border: none;
++      background: transparent;
++      color: inherit;
++      overflow: visible;
++    }
++
++    .tooltip-content {
++      position: relative;
++      background: var(--text);
++      color: white;
++      padding: 8px 14px;
++      font-size: 0.85rem;
++      border-radius: .5rem .5rem 0 0;
++      margin-block-end: 0.25rem;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
++      max-width: 220px;
++      text-align: center;
++    }
++
++    .tooltip-content::before {
++      /* Default "down" arrow for the 'top' position */
++      content: "▼";
++      position: absolute;
++      inset-block-end: 0;
++      inset-inline-start: 1rem;
++      line-height: 1;
++    }
++
++    /* Update to an "up" arrow when the 'flip-block' fallback (bottom) is active */
++    @container anchored(fallback: flip-block) {
++      .tooltip-content::before {
++        content: "▲";
++        inset-block-start: 0;
++        inset-block-end: auto;
++      }
++    }
++
++    @container anchored(fallback: flip-block) {
++      .tooltip-content {
++        border-radius: 0 0 .5rem .5rem;
++        margin-block-start: 0.25rem;
++        margin-block-end: 0;
++      }
++    }
++
++    @container anchored(fallback: flip-block) {
++      #tooltip {
++        border-radius: 0 0 .5rem .5rem;
++        margin-block-start: 0.25rem;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -181,8 +280,14 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" id="anchor" class="info-btn" popovertarget="tooltip" aria-describedby="tooltip" aria-label="More information">ℹ</button>
++          <div id="tooltip" popover role="tooltip">
++            <div class="tooltip-content">
++              Seasonal favorite: Smooth espresso with steamed oat milk and pure Vermont maple syrup.
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

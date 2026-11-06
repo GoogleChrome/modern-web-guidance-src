@@ -1,0 +1,45 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,40 @@
++# Site audit and improvements
++
++## Resolved
++
++- **Broken routes:** The original static site linked to unimplemented menu, account, logout, ordering, location, and policy endpoints. Navigation now reaches real page sections, and each drink opens a detail dialog. Ordering and account services were not present in the repository; the site no longer advertises those actions.
++- **Responsive layout:** Replaced the fixed horizontal header and oversized mobile hero with flexible navigation, fluid headings, stacked mobile sections, and responsive card layouts. Added narrow-screen and reduced-motion rules.
++- **Accessibility:** Added a skip link, named navigation landmarks, visible keyboard focus, semantic article headings, descriptive image alternatives, explicit button types, and labeled native dialogs. Native dialogs provide focus containment, Escape dismissal, and focus return; scroll locking is removed on every dismissal path.
++- **Images and loading:** Replaced the external CSS background with a discoverable, preloaded, high-priority hero image. Stock photos are local progressive JPEGs, have explicit dimensions, and total 340,405 bytes (about 333 KiB). Below-the-fold photos load lazily and decode asynchronously. No runtime font, image, or script requests go to third parties.
++- **Page metadata:** Added a description, theme color, and SVG favicon. Retained the document language and responsive viewport.
++- **Maintainability:** Separated markup, styles, and interaction code. Added pinned development dependencies and a lockfile, repeatable build and check commands, and ignored generated directories.
++- **Serving:** The start command builds and serves only `dist/`, excluding repository files and development dependencies from the served directory.
++
++## Automated validation
++
++- `pnpm check`: HTML validation, JavaScript syntax checking, local resource and anchor checks, and drink-dialog interaction tests.
++- `pnpm build`: produces a self-contained static deployment directory.
++- `pnpm audit`: no known vulnerabilities reported at the time of the audit.
++- HTTP smoke checks: page, stylesheet, JavaScript, favicon, and photographs return 200; development-only files return 404.
++
++No browser verification was performed, as requested. Responsive appearance and native browser focus behavior have not been measured in a rendered browser. There is no backend for purchases, accounts, rewards, or store information. Actual location, contact, pricing, and policy content should be supplied before adding those features. No field performance scores are claimed.
++
++## Stock photo sources
++
++Photos are downloaded from Unsplash; these are illustrative stock images rather than photographs of this business or its products.
++
++- Hero: https://images.unsplash.com/photo-1495474472287-4d71bcdd2085
++- Latte: https://images.unsplash.com/photo-1461023058943-07fcbe16d735
++- Espresso: https://images.unsplash.com/photo-1510707577719-ae7c14805e3a
++- Cold brew: https://images.unsplash.com/photo-1517701604599-bb29b565090c
++
++## Commands
++
++```sh
++pnpm install --frozen-lockfile
++pnpm check
++pnpm build
++pnpm start
++```
++
++Deploy the contents of `dist/` to a static host. The development server defaults to port 11222 and accepts `PORT` as an override.

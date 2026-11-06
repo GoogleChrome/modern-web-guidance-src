@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,37 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roasting Simulator */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      min-height: 400px;
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 20px;
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++      text-align: center;
++    }
++
++    #roasting-widget canvas {
++      display: block;
++      width: 100%;
++      max-width: 600px;
++      height: 280px;
++      margin: 15px auto;
++      background: #2b1b17;
++      border-radius: 8px;
++    }
++
++    .roast-temp {
++      font-size: 1.5rem;
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +225,100 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-label="Roasting simulator">
++    <h2>Live Roast Simulator</h2>
++    <canvas id="roast-canvas" width="600" height="280" role="img" aria-label="Coffee beans roasting in a drum"></canvas>
++    <p class="roast-temp">Temperature: <span id="roast-temp-value" aria-live="off">200</span>&deg;C</p>
++  </section>
++
++  <script>
++    (function () {
++      var widget = document.getElementById('roasting-widget');
++      var canvas = document.getElementById('roast-canvas');
++      var tempEl = document.getElementById('roast-temp-value');
++      var ctx = canvas.getContext('2d');
++      var W = canvas.width, H = canvas.height;
++      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++      var beans = [];
++      for (var i = 0; i < 28; i++) {
++        beans.push({
++          x: Math.random() * W, y: Math.random() * H,
++          vx: (Math.random() - 0.5) * 1.6, vy: (Math.random() - 0.5) * 1.6,
++          r: 9 + Math.random() * 4, a: Math.random() * Math.PI * 2,
++          spin: (Math.random() - 0.5) * 0.1
++        });
++      }
++
++      var temp = 200, rafId = 0, timerId = 0, roast = 0;
++
++      function draw() {
++        roast = Math.min(1, roast + 0.0004);
++        // green-ish tan -> dark brown as roast progresses
++        var l = 55 - roast * 38;
++        ctx.clearRect(0, 0, W, H);
++        beans.forEach(function (b) {
++          b.x += b.vx; b.y += b.vy; b.a += b.spin;
++          if (b.x < b.r || b.x > W - b.r) b.vx *= -1;
++          if (b.y < b.r || b.y > H - b.r) b.vy *= -1;
++          ctx.save();
++          ctx.translate(b.x, b.y);
++          ctx.rotate(b.a);
++          ctx.fillStyle = 'hsl(25, 55%, ' + l + '%)';
++          ctx.beginPath();
++          ctx.ellipse(0, 0, b.r, b.r * 0.7, 0, 0, Math.PI * 2);
++          ctx.fill();
++          ctx.strokeStyle = 'hsl(25, 55%, ' + (l - 15) + '%)';
++          ctx.lineWidth = 1.5;
++          ctx.beginPath();
++          ctx.moveTo(-b.r * 0.8, 0);
++          ctx.quadraticCurveTo(0, b.r * 0.3, b.r * 0.8, 0);
++          ctx.stroke();
++          ctx.restore();
++        });
++        rafId = requestAnimationFrame(draw);
++      }
++
++      function tick() {
++        temp = Math.min(230, temp + 0.5 + Math.random() * 1.5);
++        if (temp >= 230) temp = 200 + Math.random() * 3; // new batch
++        tempEl.textContent = temp.toFixed(1);
++      }
++
++      function start() {
++        if (!rafId && !reduceMotion) rafId = requestAnimationFrame(draw);
++        if (!timerId) timerId = setInterval(tick, 1000);
++      }
++
++      function stop() {
++        cancelAnimationFrame(rafId);
++        rafId = 0;
++        clearInterval(timerId);
++        timerId = 0;
++      }
++
++      function setActive(active) { active ? start() : stop(); }
++
++      if ('contentVisibility' in document.documentElement.style) {
++        // The browser reports when it skips/resumes rendering the widget.
++        widget.addEventListener('contentvisibilityautostatechange', function (e) {
++          setActive(!e.skipped);
++        });
++      } else if ('IntersectionObserver' in window) {
++        // Fallback for older browsers
++        new IntersectionObserver(function (entries) {
++          setActive(entries[entries.length - 1].isIntersecting);
++        }, { rootMargin: '200px' }).observe(widget);
++      } else {
++        start(); // no visibility signal available
++      }
++
++      if (reduceMotion) draw(), cancelAnimationFrame(rafId), rafId = 0;
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

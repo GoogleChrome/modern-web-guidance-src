@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+index 66c9173..72fa3d1 100644
+--- a/index.html
++++ b/index.html
+@@ -120,8 +120,57 @@
+       color: var(--primary);
+     }
+ 
++    .drink-heading::after {
++      content: "";
++      display: block;
++      width: 36px;
++      height: 3px;
++      margin: 12px auto 0;
++      border-radius: 3px;
++      background: var(--accent);
++    }
++
++    .drink-icon {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      width: 48px;
++      height: 48px;
++      margin: 0 auto 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 50%;
++      background: #fff8ee;
++      box-shadow: 4px 3px 0 var(--secondary);
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    /* Decorative glyphs have empty text alternatives. Their aria-hidden
++       wrappers also hide the single-value fallback in older browsers. */
++    .drink-icon--maple::before {
++      content: "🍁";
++      content: "🍁" / "";
++    }
++
++    .drink-icon--espresso::before {
++      content: "☕";
++      content: "☕" / "";
++    }
++
++    .drink-icon--cold::before {
++      content: "❄";
++      content: "❄" / "";
++    }
++
++    .drink-icon--cold {
++      background: #eef6f8;
++    }
++
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -129,12 +178,40 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .button-icon {
++      flex: none;
++      line-height: 1;
++    }
++
++    .button-icon--cup::before {
++      content: "☕";
++      content: "☕" / "";
++    }
++
++    .button-icon--arrow::before {
++      content: "→";
++      content: "→" / "";
++    }
++
++    .drink-icon,
++    .button-icon {
++      pointer-events: none;
++      user-select: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +248,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn"><span class="button-icon button-icon--cup" aria-hidden="true"></span>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +256,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="drink-heading"><span class="drink-icon drink-icon--maple" aria-hidden="true"></span>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" aria-label="View Details about Maple Oat Latte">View Details<span class="button-icon button-icon--arrow" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="drink-heading"><span class="drink-icon drink-icon--espresso" aria-hidden="true"></span>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" aria-label="View Details about Dark Roast Espresso">View Details<span class="button-icon button-icon--arrow" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="drink-heading"><span class="drink-icon drink-icon--cold" aria-hidden="true"></span>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" aria-label="View Details about Cold Brew">View Details<span class="button-icon button-icon--arrow" aria-hidden="true"></span></a>
+         </div>
+       </div>
+     </section>

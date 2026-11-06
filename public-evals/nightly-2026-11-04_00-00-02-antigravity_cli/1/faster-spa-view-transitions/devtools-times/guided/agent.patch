@@ -1,0 +1,207 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..754f298 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,9 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const normalizedPath =
++  (Astro.url.pathname.replace(/\/+$/, "") || "/") + Astro.url.search;
++const initialViewId = `spa-view-${normalizedPath.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+ ---
+ 
+ <!doctype html>
+@@ -45,11 +48,158 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main id="spa-view-container" class="bg-white relative">
++          <div
++            id={initialViewId}
++            class="spa-view"
++            data-view-path={normalizedPath}
++            data-view-title={title}
++            tabindex="-1"
++            aria-hidden="false"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++
++    <script>
++      import { swapFunctions } from "astro:transitions/client";
++
++      const MAX_CACHED_VIEWS = 5;
++      const viewCacheOrder: string[] = [];
++
++      function getViewId(url: URL | Location): string {
++        const normalizedPath =
++          (url.pathname.replace(/\/+$/, "") || "/") + url.search;
++        return `spa-view-${normalizedPath.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
++      }
++
++      function touchViewInCache(viewId: string) {
++        const existingIndex = viewCacheOrder.indexOf(viewId);
++        if (existingIndex !== -1) {
++          viewCacheOrder.splice(existingIndex, 1);
++        }
++        viewCacheOrder.push(viewId);
++
++        // Evict least-recently-used views when cache threshold is exceeded
++        while (viewCacheOrder.length > MAX_CACHED_VIEWS) {
++          const evictedViewId = viewCacheOrder.shift();
++          if (evictedViewId && evictedViewId !== viewId) {
++            document.getElementById(evictedViewId)?.remove();
++          }
++        }
++      }
++
++      function switchToView(viewId: string) {
++        // Hide all views
++        document.querySelectorAll(".spa-view").forEach((view) => {
++          view.classList.add("inactive");
++          view.setAttribute("aria-hidden", "true");
++          view.setAttribute("inert", "inert");
++        });
++
++        // Show the target view
++        const activeView = document.getElementById(viewId);
++        if (!activeView) return;
++
++        activeView.classList.remove("inactive");
++        activeView.setAttribute("aria-hidden", "false");
++        activeView.removeAttribute("inert");
++
++        // MANDATORY: Move focus to the new view to ensure a logical tab-order
++        activeView.focus();
++
++        touchViewInCache(viewId);
++      }
++
++      function syncHeadStyles(newDoc: Document) {
++        for (const el of newDoc.head.querySelectorAll(
++          'style, link[rel="stylesheet"]',
++        )) {
++          if (el instanceof HTMLLinkElement) {
++            const href = el.getAttribute("href");
++            if (
++              href &&
++              !document.head.querySelector(
++                `link[rel="stylesheet"][href="${href}"]`,
++              )
++            ) {
++              document.head.appendChild(el.cloneNode(true));
++            }
++          } else if (el instanceof HTMLStyleElement) {
++            const viteId = el.dataset.viteDevId;
++            if (viteId) {
++              if (
++                !document.head.querySelector(
++                  `style[data-vite-dev-id="${viteId}"]`,
++                )
++              ) {
++                document.head.appendChild(el.cloneNode(true));
++              }
++            } else {
++              const alreadyExists = Array.from(
++                document.head.querySelectorAll("style"),
++              ).some((s) => s.textContent === el.textContent);
++              if (!alreadyExists) {
++                document.head.appendChild(el.cloneNode(true));
++              }
++            }
++          }
++        }
++      }
++
++      // Register the initially rendered view in the LRU cache
++      const initialViewId = getViewId(window.location);
++      if (document.getElementById(initialViewId)) {
++        touchViewInCache(initialViewId);
++      }
++
++      document.addEventListener("astro:before-preparation", (event) => {
++        if (event.formData) return;
++        const targetViewId = getViewId(event.to);
++        if (document.getElementById(targetViewId)) {
++          // Target view is already cached in the DOM; skip network fetch
++          event.loader = async () => {};
++        }
++      });
++
++      document.addEventListener("astro:before-swap", (event) => {
++        const targetViewId = getViewId(event.to);
++
++        event.swap = () => {
++          const cachedView = document.getElementById(targetViewId);
++          if (cachedView) {
++            if (cachedView.dataset.viewTitle) {
++              document.title = cachedView.dataset.viewTitle;
++            }
++            switchToView(targetViewId);
++            return;
++          }
++
++          swapFunctions.deselectScripts(event.newDocument);
++          swapFunctions.swapRootAttributes(event.newDocument);
++          syncHeadStyles(event.newDocument);
++          document.title = event.newDocument.title;
++
++          const container =
++            document.getElementById("spa-view-container") ||
++            document.querySelector("main");
++          const incomingView =
++            event.newDocument.getElementById(targetViewId) ||
++            event.newDocument.querySelector(".spa-view");
++
++          if (container && incomingView) {
++            incomingView.id = targetViewId;
++            if (!incomingView.dataset.viewTitle) {
++              incomingView.dataset.viewTitle = event.newDocument.title;
++            }
++            container.appendChild(incomingView);
++            switchToView(targetViewId);
++          }
++        };
++      });
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..91c6965 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,26 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++.spa-view:focus {
++  outline: none;
++}
++
++.spa-view.inactive {
++  /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++  content-visibility: hidden;
++
++  /* Prevent hidden views from taking up physical space in layout flow */
++  position: absolute;
++  top: 0;
++  left: 0;
++  width: 100%;
++  pointer-events: none;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
+ }
+\ No newline at end of file

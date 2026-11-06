@@ -1,0 +1,221 @@
+diff --git a/index.html b/index.html
+index 66c9173..e59387f 100644
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <style nonce="{{CSP_NONCE}}">
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -75,8 +76,14 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80");
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++          "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -88,6 +95,10 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -176,7 +187,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +218,24 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script nonce="{{CSP_NONCE}}">
++    if (!window.trustedTypes) {
++      window.trustedTypes = {
++        createPolicy: (name, rules) => rules,
++      };
++    }
++
++    const escapeHtmlPolicy = window.trustedTypes.createPolicy('escape-html', {
++      createHTML(input) {
++        return String(input)
++          .replaceAll('&', '&amp;')
++          .replaceAll('<', '&lt;')
++          .replaceAll('>', '&gt;')
++          .replaceAll('"', '&quot;')
++          .replaceAll("'", '&#39;');
++      },
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/server.js b/server.js
+index 52c2fd5..b4369ff 100644
+--- a/server.js
++++ b/server.js
+@@ -1,32 +1,136 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
++const ALLOWLIST_DESTS = new Set(['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']);
++
++function generateNonce() {
++  const bytes = new Uint8Array(16);
++  crypto.getRandomValues(bytes);
++  return btoa(String.fromCharCode(...bytes));
++}
++
++function isFetchMetadataAllowed(req) {
++  const siteHeader = req.headers['sec-fetch-site'];
++  const modeHeader = req.headers['sec-fetch-mode'];
++  const destHeader = req.headers['sec-fetch-dest'];
++
++  const site = typeof siteHeader === 'string' ? siteHeader.toLowerCase() : '';
++  const mode = typeof modeHeader === 'string' ? modeHeader.toLowerCase() : '';
++  const dest = typeof destHeader === 'string' ? destHeader.toLowerCase() : '';
++
++  if (!site) return true; // Fallback for legacy browsers
++
++  if (['same-origin', 'same-site', 'none'].includes(site)) return true;
++
++  // Allow standard navigate GET requests (link clicks)
++  if (
++    site === 'cross-site' &&
++    mode === 'navigate' &&
++    req.method === 'GET' &&
++    !['object', 'embed'].includes(dest)
++  ) {
++    return true;
++  }
++
++  return false;
++}
++
++function applySecurityHeaders(req, res, nonce) {
++  const origin = `http://${req.headers.host || `localhost:${PORT}`}`;
++  const reportEndpoints = [
++    `default="${origin}/api/security-reports"`,
++    `main-endpoint="${origin}/api/security-reports"`,
++  ].join(', ');
++
++  const csp = [
++    "default-src 'self'",
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    `style-src 'self' 'nonce-${nonce}'`,
++    "img-src 'self' https://images.unsplash.com data:",
++    "connect-src 'self'",
++    "font-src 'self'",
++    "form-action 'self'",
++    "worker-src 'self'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'none'",
++    "require-trusted-types-for 'script'",
++    'trusted-types escape-html',
++    'report-to main-endpoint',
++  ].join('; ');
++
++  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++  res.setHeader('Reporting-Endpoints', reportEndpoints);
++  res.setHeader('Content-Security-Policy', csp);
++  res.setHeader('Content-Security-Policy-Report-Only', csp);
++  res.setHeader('X-Frame-Options', 'DENY');
++  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++  res.setHeader(
++    'Permissions-Policy',
++    'camera=(), geolocation=(), microphone=(), focus-without-user-activation=()',
++  );
++  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++
++  const secFetchDest = req.headers['sec-fetch-dest'];
++  if (!secFetchDest || ALLOWLIST_DESTS.has(String(secFetchDest).toLowerCase())) {
++    const connAllowlist =
++      '(response-origin "https://images.unsplash.com/*"); report-to=main-endpoint';
++    res.setHeader('Connection-Allowlist', connAllowlist);
++    res.setHeader('Connection-Allowlist-Report-Only', connAllowlist);
++  }
++}
+ 
+ const server = http.createServer((req, res) => {
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
++  const nonce = generateNonce();
++
++  applySecurityHeaders(req, res, nonce);
++
++  if (!isFetchMetadataAllowed(req)) {
++    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Forbidden');
++    return;
++  }
++
++  if (pathname === '/api/security-reports' && req.method === 'POST') {
++    res.writeHead(204);
++    res.end();
++    return;
++  }
+ 
+   if (pathname === '/logout' || pathname === '/logout/') {
++    res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
++    res.setHeader(
++      'Set-Cookie',
++      '__Host-session_id=; Max-Age=0; SameSite=Lax; HttpOnly; Secure; Path=/',
++    );
+     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+     res.end('Logged out');
+     return;
+   }
+ 
+   const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
++  fs.readFile(filePath, 'utf8', (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+       res.end('Server error');
+       return;
+     }
++    const html = data.replaceAll('{{CSP_NONCE}}', nonce);
+     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    res.end(html);
+   });
+ });
+ 
+ server.listen(PORT, () => {
+   console.log(`Server running on port ${PORT}`);
+ });
++

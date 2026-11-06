@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+index 66c9173..cc06c8f 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,121 @@
+       background: #3e2723;
+     }
+ 
++    /* Loyalty Rewards Section */
++    .rewards-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .rewards-card {
++      background: white;
++      padding: 35px 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 20px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .progress-ring-container {
++      position: relative;
++      width: 180px;
++      height: 180px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .progress-ring {
++      width: 180px;
++      height: 180px;
++      transform: rotate(-90deg);
++    }
++
++    .progress-ring-track {
++      fill: none;
++      stroke: var(--secondary);
++      stroke-width: 14;
++    }
++
++    .progress-ring-fill {
++      fill: none;
++      stroke: var(--accent);
++      stroke-width: 14;
++      stroke-linecap: round;
++      stroke-dasharray: 440;
++      stroke-dashoffset: 110;
++      transition: stroke-dashoffset 0.5s ease;
++    }
++
++    .progress-ring-center {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      padding: 20px;
++    }
++
++    .progress-count {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++      line-height: 1.1;
++    }
++
++    .progress-label {
++      font-size: 0.85rem;
++      color: var(--text);
++      margin-top: 4px;
++      font-weight: 600;
++    }
++
++    .progress-subtext {
++      font-size: 0.75rem;
++      color: var(--primary);
++      margin-top: 2px;
++    }
++
++    .rewards-info h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .rewards-info p {
++      max-width: 500px;
++      color: var(--text);
++    }
++
++    .rewards-tiers {
++      display: flex;
++      gap: 15px;
++      flex-wrap: wrap;
++      justify-content: center;
++      margin-top: 5px;
++    }
++
++    .tier-badge {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      color: var(--primary);
++      padding: 6px 14px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .tier-badge.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +310,33 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading" style="text-align: center;">Loyalty Rewards</h2>
++      <div class="rewards-card">
++        <div class="progress-ring-container" role="progressbar" aria-valuenow="6" aria-valuemin="0" aria-valuemax="8" aria-label="6 of 8 drinks toward your next free drink">
++          <svg class="progress-ring" viewBox="0 0 180 180">
++            <circle class="progress-ring-track" cx="90" cy="90" r="70"></circle>
++            <circle class="progress-ring-fill" cx="90" cy="90" r="70"></circle>
++          </svg>
++          <div class="progress-ring-center">
++            <span class="progress-count">6 / 8</span>
++            <span class="progress-label">Cups Earned</span>
++            <span class="progress-subtext">75% Complete</span>
++          </div>
++        </div>
++        <div class="rewards-info">
++          <h3>Almost at Your Next Free Drink!</h3>
++          <p>You're just <strong>2 drinks away</strong> from earning a complimentary handcrafted beverage of your choice.</p>
++        </div>
++        <div class="rewards-tiers">
++          <span class="tier-badge active">150 Bean Points</span>
++          <span class="tier-badge">Gold Roaster Status</span>
++          <span class="tier-badge">Next Reward: Free Handcrafted Drink</span>
++        </div>
++        <a href="/rewards" class="btn">Redeem &amp; View Rewards</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

@@ -1,0 +1,1307 @@
+diff --git a/index.html b/index.html
+index 66c9173..de721e7 100644
+--- a/index.html
++++ b/index.html
+@@ -5,13 +5,30 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --primary: #3b231a;
++      --primary-dark: #24140e;
++      --secondary: #e8ded5;
++      --accent: #d48c46;
++      --accent-hover: #e59d56;
++      --text: #2c1a14;
++      --text-muted: #6e5549;
++      --light: #fbf9f6;
++      --surface: #ffffff;
++      --border: rgba(59, 35, 26, 0.1);
++
++      /* Motion Tokens */
++      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
++      --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
++      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
++      --duration-fast: 180ms;
++      --duration-base: 320ms;
++      --duration-slow: 650ms;
++      --duration-hero: 900ms;
+     }
+ 
+     * {
+@@ -20,184 +37,1064 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Plus Jakarta Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-x: hidden;
++      -webkit-font-smoothing: antialiased;
++    }
++
++    h1, h2, h3, .logo-text {
++      font-family: 'Cormorant Garamond', Georgia, serif;
++    }
++
++    /* Keyframe Animations (GPU-composited transform & opacity only) */
++    @keyframes fadeSlideUp {
++      from {
++        opacity: 0;
++        transform: translate3d(0, 28px, 0);
++      }
++      to {
++        opacity: 1;
++        transform: translate3d(0, 0, 0);
++      }
++    }
++
++    @keyframes fadeScaleIn {
++      from {
++        opacity: 0;
++        transform: scale3d(0.94, 0.94, 1);
++      }
++      to {
++        opacity: 1;
++        transform: scale3d(1, 1, 1);
++      }
++    }
++
++    @keyframes heroZoom {
++      from {
++        transform: scale3d(1.08, 1.08, 1);
++      }
++      to {
++        transform: scale3d(1, 1, 1);
++      }
++    }
++
++    @keyframes steamRise {
++      0% {
++        opacity: 0;
++        transform: translate3d(0, 8px, 0) scaleX(0.95);
++      }
++      50% {
++        opacity: 0.65;
++        transform: translate3d(-2px, -6px, 0) scaleX(1.05);
++      }
++      100% {
++        opacity: 0;
++        transform: translate3d(2px, -18px, 0) scaleX(0.95);
++      }
++    }
++
++    @keyframes floatBadge {
++      0%, 100% {
++        transform: translate3d(0, 0, 0);
++      }
++      50% {
++        transform: translate3d(0, -6px, 0);
++      }
++    }
++
++    @keyframes shimmerSweep {
++      0% {
++        transform: translate3d(-100%, 0, 0) skewX(-15deg);
++      }
++      100% {
++        transform: translate3d(200%, 0, 0) skewX(-15deg);
++      }
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: rgba(36, 20, 14, 0.92);
++      backdrop-filter: blur(12px);
++      -webkit-backdrop-filter: blur(12px);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 1.1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
++      transition: transform var(--duration-base) var(--ease-out-expo),
++                  background-color var(--duration-base) var(--ease-out-quart),
++                  box-shadow var(--duration-base) var(--ease-out-quart);
++    }
++
++    nav.scrolled {
++      background: rgba(28, 15, 10, 0.98);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 1.55rem;
++      font-weight: 700;
++      letter-spacing: 1.5px;
++      color: white;
++      text-decoration: none;
++      transition: transform var(--duration-fast) var(--ease-out-expo);
++    }
++
++    .logo:hover {
++      transform: translate3d(0, -1px, 0);
++    }
++
++    .logo-icon {
++      width: 28px;
++      height: 28px;
++      color: var(--accent);
++      overflow: visible;
++    }
++
++    .steam-path {
++      animation: steamRise 3.2s ease-in-out infinite;
++      transform-origin: center bottom;
++    }
++
++    .steam-path:nth-child(2) {
++      animation-delay: 1.1s;
++    }
++
++    .steam-path:nth-child(3) {
++      animation-delay: 2.2s;
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
++      gap: 28px;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      position: relative;
+     }
+ 
+-    nav a {
+-      color: white;
++    nav a.nav-link {
++      color: rgba(255, 255, 255, 0.88);
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.92rem;
++      font-weight: 500;
++      padding: 6px 2px;
++      position: relative;
++      display: inline-block;
++      transition: color var(--duration-fast) var(--ease-out-quart),
++                  transform var(--duration-fast) var(--ease-out-quart);
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    nav a.nav-link::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      bottom: 0;
++      width: 100%;
++      height: 2px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: right center;
++      transition: transform var(--duration-base) var(--ease-out-expo);
++    }
++
++    nav a.nav-link:hover,
++    nav a.nav-link:focus-visible {
++      color: #ffffff;
++    }
++
++    nav a.nav-link:hover::after,
++    nav a.nav-link:focus-visible::after {
++      transform: scaleX(1);
++      transform-origin: left center;
++    }
++
++    .nav-actions {
++      display: flex;
++      align-items: center;
++      gap: 14px;
++    }
++
++    .cart-trigger {
++      position: relative;
++      background: rgba(255, 255, 255, 0.08);
++      border: 1px solid rgba(255, 255, 255, 0.16);
++      color: white;
++      padding: 7px 14px;
++      border-radius: 999px;
++      font-family: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      transition: transform var(--duration-fast) var(--ease-spring),
++                  background-color var(--duration-fast) var(--ease-out-quart),
++                  border-color var(--duration-fast) var(--ease-out-quart);
++    }
++
++    .cart-trigger:hover {
++      background: rgba(255, 255, 255, 0.15);
++      border-color: var(--accent);
++      transform: translate3d(0, -1px, 0);
++    }
++
++    .cart-trigger:active {
++      transform: scale3d(0.96, 0.96, 1);
++    }
++
++    .cart-badge {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-size: 0.75rem;
++      font-weight: 700;
++      min-width: 20px;
++      height: 20px;
++      border-radius: 999px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      padding: 0 6px;
++      transition: transform var(--duration-base) var(--ease-spring);
++    }
++
++    .cart-badge.bump {
++      transform: scale3d(1.35, 1.35, 1);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      color: white;
++      text-decoration: none;
++      font-size: 0.88rem;
++      font-weight: 500;
++      padding: 6px 15px;
++      border-radius: 6px;
++      position: relative;
++      overflow: hidden;
++      display: inline-block;
++      transition: transform var(--duration-fast) var(--ease-out-expo),
++                  background-color var(--duration-fast) var(--ease-out-quart),
++                  color var(--duration-fast) var(--ease-out-quart);
++    }
++
++    .logout-link:hover {
++      background: var(--accent);
++      color: var(--primary-dark);
++      transform: translate3d(0, -1px, 0);
++    }
++
++    .logout-link:active {
++      transform: translate3d(0, 0, 0) scale3d(0.97, 0.97, 1);
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      position: relative;
++      min-height: 74vh;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 80px 20px;
++      overflow: hidden;
++      isolation: isolate;
++    }
++
++    .hero-bg {
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(180deg, rgba(24, 13, 9, 0.62) 0%, rgba(36, 20, 14, 0.78) 100%),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1600&q=80');
++      background-size: cover;
++      background-position: center;
++      z-index: -1;
++      will-change: transform;
++      animation: heroZoom 1.8s var(--ease-out-expo) forwards;
++    }
++
++    .hero-content {
++      max-width: 760px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .hero-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: rgba(255, 255, 255, 0.12);
++      border: 1px solid rgba(255, 255, 255, 0.24);
++      backdrop-filter: blur(8px);
++      padding: 6px 16px;
++      border-radius: 999px;
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      color: #f8e5d0;
++      margin-bottom: 1.25rem;
++      opacity: 0;
++      animation: fadeSlideUp var(--duration-hero) var(--ease-out-expo) 80ms forwards;
++    }
++
++    .hero-pill-dot {
++      width: 7px;
++      height: 7px;
++      border-radius: 50%;
++      background: var(--accent);
++      display: inline-block;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2.8rem, 6vw, 4.5rem);
++      line-height: 1.08;
++      margin-bottom: 1.1rem;
++      letter-spacing: -0.01em;
++      opacity: 0;
++      animation: fadeSlideUp var(--duration-hero) var(--ease-out-expo) 200ms forwards;
++    }
++
++    .hero p {
++      font-size: clamp(1.05rem, 2vw, 1.25rem);
++      color: rgba(255, 255, 255, 0.88);
++      max-width: 560px;
++      margin-bottom: 2rem;
++      opacity: 0;
++      animation: fadeSlideUp var(--duration-hero) var(--ease-out-expo) 320ms forwards;
++    }
++
++    .hero-cta-group {
++      display: flex;
++      gap: 16px;
++      flex-wrap: wrap;
++      justify-content: center;
++      opacity: 0;
++      animation: fadeSlideUp var(--duration-hero) var(--ease-out-expo) 440ms forwards;
++    }
++
++    /* Buttons */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      background: var(--primary);
++      color: white;
++      padding: 12px 24px;
++      text-decoration: none;
++      border-radius: 8px;
++      font-weight: 600;
++      font-size: 0.92rem;
++      border: 1px solid transparent;
++      cursor: pointer;
++      position: relative;
++      overflow: hidden;
++      transition: transform var(--duration-base) var(--ease-out-expo),
++                  background-color var(--duration-base) var(--ease-out-quart),
++                  box-shadow var(--duration-base) var(--ease-out-quart),
++                  border-color var(--duration-base) var(--ease-out-quart);
++    }
++
++    .btn::before {
++      content: '';
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 45%;
++      height: 100%;
++      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
++      transform: translate3d(-150%, 0, 0) skewX(-15deg);
++    }
++
++    .btn:hover::before {
++      animation: shimmerSweep 650ms var(--ease-out-quart);
++    }
++
++    .btn:hover {
++      background: var(--primary-dark);
++      transform: translate3d(0, -2px, 0);
++      box-shadow: 0 8px 20px rgba(36, 20, 14, 0.22);
++    }
++
++    .btn:active {
++      transform: translate3d(0, 0, 0) scale3d(0.97, 0.97, 1);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-hover);
++      color: var(--primary-dark);
++      box-shadow: 0 10px 25px rgba(212, 140, 70, 0.35);
++    }
++
++    .btn-outline-light {
++      background: rgba(255, 255, 255, 0.08);
++      border-color: rgba(255, 255, 255, 0.35);
++      backdrop-filter: blur(6px);
++    }
++
++    .btn-outline-light:hover {
++      background: rgba(255, 255, 255, 0.18);
++      border-color: white;
++    }
++
++    .btn-arrow {
++      transition: transform var(--duration-fast) var(--ease-out-expo);
++    }
++
++    .btn:hover .btn-arrow {
++      transform: translate3d(4px, 0, 0);
++    }
++
++    /* Scroll Reveal System */
++    .reveal {
++      opacity: 0;
++      transform: translate3d(0, 28px, 0);
++      transition: opacity var(--duration-slow) var(--ease-out-expo),
++                  transform var(--duration-slow) var(--ease-out-expo);
++      transition-delay: var(--stagger-delay, 0ms);
++      will-change: opacity, transform;
++    }
++
++    .reveal.is-visible {
++      opacity: 1;
++      transform: translate3d(0, 0, 0);
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-width: 1160px;
++      margin: 64px auto;
++      padding: 0 24px;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 36px;
++    }
++
++    .section-eyebrow {
++      display: block;
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 2.5px;
++      color: var(--accent);
++      font-weight: 700;
++      margin-bottom: 8px;
++    }
++
++    .section-header h2 {
++      font-size: clamp(2rem, 3.5vw, 2.75rem);
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      max-width: 520px;
++      margin: 0 auto;
++    }
++
++    /* Interactive Filter Tabs */
++    .filter-bar {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      margin-bottom: 32px;
++      flex-wrap: wrap;
++    }
++
++    .filter-tab {
++      background: transparent;
++      border: 1px solid var(--border);
++      color: var(--text-muted);
++      padding: 8px 18px;
++      border-radius: 999px;
++      font-family: inherit;
++      font-size: 0.88rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: transform var(--duration-fast) var(--ease-out-expo),
++                  background-color var(--duration-fast) var(--ease-out-quart),
++                  color var(--duration-fast) var(--ease-out-quart),
++                  border-color var(--duration-fast) var(--ease-out-quart),
++                  box-shadow var(--duration-fast) var(--ease-out-quart);
+     }
+ 
++    .filter-tab:hover {
++      color: var(--primary);
++      border-color: var(--primary);
++      transform: translate3d(0, -1px, 0);
++    }
++
++    .filter-tab.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++      box-shadow: 0 6px 16px rgba(59, 35, 26, 0.18);
++    }
++
++    /* Menu Cards Grid */
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 28px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      background: var(--surface);
++      border-radius: 16px;
++      border: 1px solid var(--border);
++      box-shadow: 0 4px 16px rgba(44, 26, 20, 0.05);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++      position: relative;
++      transition: transform var(--duration-base) var(--ease-out-expo),
++                  box-shadow var(--duration-base) var(--ease-out-expo),
++                  border-color var(--duration-base) var(--ease-out-quart),
++                  opacity var(--duration-base) var(--ease-out-quart);
++    }
++
++    .card:hover {
++      transform: translate3d(0, -8px, 0);
++      box-shadow: 0 20px 38px rgba(44, 26, 20, 0.12);
++      border-color: rgba(212, 140, 70, 0.4);
++    }
++
++    .card.is-filtering-out {
++      opacity: 0;
++      transform: scale3d(0.94, 0.94, 1);
++      pointer-events: none;
++    }
++
++    .card.is-hidden {
++      display: none;
++    }
++
++    .card-media {
++      position: relative;
++      height: 220px;
++      overflow: hidden;
++      background: #e6dcd2;
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform var(--duration-slow) var(--ease-out-expo);
++      will-change: transform;
++    }
++
++    .card:hover .card-media img {
++      transform: scale3d(1.07, 1.07, 1);
++    }
++
++    .card-badge {
++      position: absolute;
++      top: 14px;
++      left: 14px;
++      background: rgba(36, 20, 14, 0.85);
++      backdrop-filter: blur(6px);
++      color: #f8e5d0;
++      padding: 4px 12px;
++      border-radius: 999px;
++      font-size: 0.74rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      animation: floatBadge 4s ease-in-out infinite;
++    }
++
++    .card-price {
++      position: absolute;
++      bottom: 14px;
++      right: 14px;
++      background: var(--surface);
++      color: var(--primary);
++      font-weight: 700;
++      font-size: 0.95rem;
++      padding: 5px 12px;
++      border-radius: 999px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      transition: transform var(--duration-fast) var(--ease-spring),
++                  background-color var(--duration-fast) var(--ease-out-quart),
++                  color var(--duration-fast) var(--ease-out-quart);
++    }
++
++    .card:hover .card-price {
++      background: var(--accent);
++      color: var(--primary-dark);
++      transform: scale3d(1.06, 1.06, 1);
++    }
++
++    .card-body {
++      padding: 24px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: 1.5rem;
++      margin-bottom: 8px;
+       color: var(--primary);
++      transition: color var(--duration-fast) var(--ease-out-quart);
+     }
+ 
+-    .btn {
+-      display: inline-block;
++    .card:hover h3 {
++      color: var(--accent);
++    }
++
++    .card p {
++      color: var(--text-muted);
++      font-size: 0.94rem;
++      margin-bottom: 16px;
++      flex-grow: 1;
++    }
++
++    .tasting-notes {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin-bottom: 18px;
++    }
++
++    .note-pill {
++      font-size: 0.75rem;
++      background: var(--light);
++      border: 1px solid var(--border);
++      color: var(--text-muted);
++      padding: 3px 10px;
++      border-radius: 6px;
++      transition: transform var(--duration-fast) var(--ease-out-expo),
++                  border-color var(--duration-fast) var(--ease-out-quart);
++    }
++
++    .card:hover .note-pill {
++      border-color: rgba(212, 140, 70, 0.35);
++      transform: translate3d(0, -1px, 0);
++    }
++
++    .card-actions {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++      margin-top: auto;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++      flex: 1;
++    }
++
++    .quick-add-btn {
++      background: var(--secondary);
++      color: var(--primary);
++      border: none;
++      width: 42px;
++      height: 42px;
++      border-radius: 8px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      cursor: pointer;
++      font-size: 1.2rem;
++      font-weight: 700;
++      transition: transform var(--duration-fast) var(--ease-spring),
++                  background-color var(--duration-fast) var(--ease-out-quart),
++                  color var(--duration-fast) var(--ease-out-quart);
++    }
++
++    .quick-add-btn:hover {
++      background: var(--accent);
++      color: var(--primary-dark);
++      transform: translate3d(0, -2px, 0) scale3d(1.05, 1.05, 1);
++    }
++
++    .quick-add-btn:active {
++      transform: scale3d(0.92, 0.92, 1);
++    }
++
++    /* Craft / Roasting Story Banner */
++    .story-banner {
++      margin-top: 72px;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 20px;
++      overflow: hidden;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      box-shadow: 0 20px 45px rgba(36, 20, 14, 0.16);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .story-content {
++      padding: 48px 40px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    .story-content h2 {
++      font-size: clamp(1.9rem, 3vw, 2.5rem);
++      margin-bottom: 14px;
++      color: #ffffff;
++    }
++
++    .story-content p {
++      color: rgba(255, 255, 255, 0.82);
++      margin-bottom: 24px;
+     }
+ 
++    .story-stats {
++      display: flex;
++      gap: 28px;
++      flex-wrap: wrap;
++      margin-top: 8px;
++    }
++
++    .stat-item {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .stat-value {
++      font-family: 'Cormorant Garamond', Georgia, serif;
++      font-size: 2.2rem;
++      font-weight: 700;
++      color: var(--accent);
++      line-height: 1.1;
++    }
++
++    .stat-label {
++      font-size: 0.8rem;
++      color: rgba(255, 255, 255, 0.75);
++      text-transform: uppercase;
++      letter-spacing: 1px;
++    }
++
++    .story-image {
++      position: relative;
++      min-height: 300px;
++      overflow: hidden;
++    }
++
++    .story-image img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform var(--duration-slow) var(--ease-out-expo);
++    }
++
++    .story-banner:hover .story-image img {
++      transform: scale3d(1.05, 1.05, 1);
++    }
++
++    /* Toast Notification */
++    .toast {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary-dark);
++      color: white;
++      padding: 14px 20px;
++      border-radius: 12px;
++      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.25);
++      border-left: 4px solid var(--accent);
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      font-size: 0.9rem;
++      z-index: 1200;
++      opacity: 0;
++      transform: translate3d(0, 20px, 0) scale3d(0.95, 0.95, 1);
++      pointer-events: none;
++      transition: opacity var(--duration-base) var(--ease-out-expo),
++                  transform var(--duration-base) var(--ease-spring);
++    }
++
++    .toast.is-visible {
++      opacity: 1;
++      transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 48px 20px;
++      margin-top: 72px;
++      border-top: 1px solid var(--border);
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin: 0 8px;
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: 0.9rem;
++      font-weight: 500;
++      position: relative;
++      transition: color var(--duration-fast) var(--ease-out-quart),
++                  transform var(--duration-fast) var(--ease-out-quart);
++    }
++
++    .footer-links a:hover {
++      color: var(--accent);
++      transform: translate3d(0, -1px, 0);
++    }
++
++    /* Accessibility: Respect Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        transition-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++      }
++
++      .hero-pill,
++      .hero h1,
++      .hero p,
++      .hero-cta-group,
++      .reveal {
++        opacity: 1 !important;
++        transform: none !important;
++      }
++
++      .steam-path,
++      .card-badge,
++      .hero-bg {
++        animation: none !important;
++        transform: none !important;
++      }
++    }
++
++    @media (max-width: 768px) {
++      nav {
++        flex-direction: column;
++        gap: 12px;
++      }
++      nav ul {
++        gap: 16px;
++        flex-wrap: wrap;
++        justify-content: center;
++      }
++      .story-content {
++        padding: 32px 24px;
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav id="main-nav">
++    <a href="/" class="logo" aria-label="The Daily Grind Home">
++      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++        <path class="steam-path" d="M6 2v3" />
++        <path class="steam-path" d="M10 2v3" />
++        <path class="steam-path" d="M14 2v3" />
++        <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
++        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
++      </svg>
++      <span class="logo-text">THE DAILY GRIND</span>
++    </a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="nav-link">Menu</a></li>
++      <li><a href="/locations" class="nav-link">Locations</a></li>
++      <li><a href="/rewards" class="nav-link">Rewards</a></li>
++      <li><a href="/account" class="nav-link">My Account</a></li>
++      <li class="nav-actions">
++        <button type="button" class="cart-trigger" id="cart-button" aria-label="Order bag">
++          <span>Bag</span>
++          <span class="cart-badge" id="cart-count">0</span>
++        </button>
++        <a href="/logout" class="logout-link">Logout</a>
++      </li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-bg" id="hero-bg"></div>
++    <div class="hero-content">
++      <div class="hero-pill">
++        <span class="hero-pill-dot"></span>
++        <span>Small-Batch Roastery &bull; Fresh Daily</span>
++      </div>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <div class="hero-cta-group">
++        <a href="/order-online" class="btn btn-accent">
++          <span>Order Now</span>
++          <span class="btn-arrow" aria-hidden="true">&rarr;</span>
++        </a>
++        <a href="#seasonal-favorites" class="btn btn-outline-light">Explore Menu</a>
++      </div>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section id="seasonal-favorites">
++      <div class="section-header reveal">
++        <span class="section-eyebrow">Curated Pour &amp; Pull</span>
++        <h2>Seasonal Favorites</h2>
++        <p>Handcrafted signature beverages roasted in small batches to highlight each origin's natural sweetness.</p>
++      </div>
++
++      <div class="filter-bar reveal" role="tablist" aria-label="Filter beverages">
++        <button type="button" class="filter-tab active" data-filter="all" role="tab" aria-selected="true">All Favorites</button>
++        <button type="button" class="filter-tab" data-filter="seasonal" role="tab" aria-selected="false">Seasonal</button>
++        <button type="button" class="filter-tab" data-filter="espresso" role="tab" aria-selected="false">Espresso</button>
++        <button type="button" class="filter-tab" data-filter="cold" role="tab" aria-selected="false">Cold Steeped</button>
++      </div>
++
++      <div class="grid" id="menu-grid">
++        <div class="card reveal" data-category="seasonal" style="--stagger-delay: 60ms;">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=800&q=80" alt="Maple Oat Latte with silky microfoam art" loading="lazy">
++            <span class="card-badge">Autumn Pick</span>
++            <span class="card-price">$5.75</span>
++          </div>
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <div class="tasting-notes">
++              <span class="note-pill">Vermont Maple</span>
++              <span class="note-pill">Toasted Oat</span>
++              <span class="note-pill">Velvety</span>
++            </div>
++            <div class="card-actions">
++              <a href="/menu/seasonal" class="btn">
++                <span>View Details</span>
++                <span class="btn-arrow" aria-hidden="true">&rarr;</span>
++              </a>
++              <button type="button" class="quick-add-btn" data-item="Maple Oat Latte" aria-label="Quick add Maple Oat Latte to bag">+</button>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++
++        <div class="card reveal" data-category="espresso" style="--stagger-delay: 160ms;">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80" alt="Rich Dark Roast Espresso shot in ceramic demitasse" loading="lazy">
++            <span class="card-badge">Roaster's Signature</span>
++            <span class="card-price">$3.95</span>
++          </div>
++          <div class="card-body">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <div class="tasting-notes">
++              <span class="note-pill">Dark Cacao</span>
++              <span class="note-pill">Cedar Smoke</span>
++              <span class="note-pill">Full Body</span>
++            </div>
++            <div class="card-actions">
++              <a href="/menu/espresso" class="btn">
++                <span>View Details</span>
++                <span class="btn-arrow" aria-hidden="true">&rarr;</span>
++              </a>
++              <button type="button" class="quick-add-btn" data-item="Dark Roast Espresso" aria-label="Quick add Dark Roast Espresso to bag">+</button>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <div class="card reveal" data-category="cold" style="--stagger-delay: 260ms;">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80" alt="Chilled Cold Brew coffee poured over crystal ice" loading="lazy">
++            <span class="card-badge">18-Hour Steep</span>
++            <span class="card-price">$4.85</span>
++          </div>
++          <div class="card-body">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <div class="tasting-notes">
++              <span class="note-pill">Caramel</span>
++              <span class="note-pill">Low Acidity</span>
++              <span class="note-pill">Crisp Finish</span>
++            </div>
++            <div class="card-actions">
++              <a href="/menu/cold-brew" class="btn">
++                <span>View Details</span>
++                <span class="btn-arrow" aria-hidden="true">&rarr;</span>
++              </a>
++              <button type="button" class="quick-add-btn" data-item="Cold Brew" aria-label="Quick add Cold Brew to bag">+</button>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
++
++    <section class="story-banner reveal">
++      <div class="story-content">
++        <span class="section-eyebrow">From Seed To Cup</span>
++        <h2>Crafted With Intention</h2>
++        <p>Every lot is direct-traded with partner farms across high-altitude micro-lots and roasted daily in our vintage cast-iron drum roasters.</p>
++        <div class="story-stats">
++          <div class="stat-item">
++            <span class="stat-value">100%</span>
++            <span class="stat-label">Direct Trade</span>
++          </div>
++          <div class="stat-item">
++            <span class="stat-value">18 hr</span>
++            <span class="stat-label">Cold Extraction</span>
++          </div>
++          <div class="stat-item">
++            <span class="stat-value">48 hr</span>
++            <span class="stat-label">Roast-to-Cup Peak</span>
++          </div>
++        </div>
++      </div>
++      <div class="story-image">
++        <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1000&q=80" alt="Artisanal coffee bar pour-over preparation" loading="lazy">
++      </div>
++    </section>
+   </main>
+ 
+-  <footer>
++  <div class="toast" id="toast" role="status" aria-live="polite">
++    <span id="toast-message">Added to your bag</span>
++  </div>
++
++  <footer class="reveal">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +1104,128 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const nav = document.getElementById('main-nav');
++      const heroBg = document.getElementById('hero-bg');
++      const revealElements = document.querySelectorAll('.reveal');
++
++      // 1. Scroll-triggered Entrance Animations via IntersectionObserver
++      if ('IntersectionObserver' in window && !prefersReducedMotion.matches) {
++        const revealObserver = new IntersectionObserver((entries, observer) => {
++          entries.forEach((entry) => {
++            if (entry.isIntersecting) {
++              entry.target.classList.add('is-visible');
++              observer.unobserve(entry.target);
++            }
++          });
++        }, {
++          threshold: 0.14,
++          rootMargin: '0px 0px -40px 0px'
++        });
++
++        revealElements.forEach((el) => revealObserver.observe(el));
++      } else {
++        revealElements.forEach((el) => el.classList.add('is-visible'));
++      }
++
++      // Listen for runtime changes to prefers-reduced-motion
++      prefersReducedMotion.addEventListener('change', (event) => {
++        if (event.matches) {
++          revealElements.forEach((el) => el.classList.add('is-visible'));
++          if (heroBg) heroBg.style.transform = 'none';
++        }
++      });
++
++      // 2. Smooth rAF Scroll Handler for Sticky Navbar & Subtle Hero Parallax
++      let ticking = false;
++      function updateOnScroll() {
++        const scrollY = window.scrollY;
++        if (nav) {
++          nav.classList.toggle('scrolled', scrollY > 24);
++        }
++        if (heroBg && !prefersReducedMotion.matches && scrollY < 700) {
++          heroBg.style.transform = `translate3d(0, ${scrollY * 0.18}px, 0) scale3d(1, 1, 1)`;
++        }
++        ticking = false;
++      }
++
++      window.addEventListener('scroll', () => {
++        if (!ticking) {
++          window.requestAnimationFrame(updateOnScroll);
++          ticking = true;
++        }
++      }, { passive: true });
++
++      // 3. Interactive Category Filtering with Smooth Transitions
++      const filterTabs = document.querySelectorAll('.filter-tab');
++      const cards = document.querySelectorAll('#menu-grid .card');
++
++      filterTabs.forEach((tab) => {
++        tab.addEventListener('click', () => {
++          const filter = tab.getAttribute('data-filter');
++
++          filterTabs.forEach((t) => {
++            t.classList.toggle('active', t === tab);
++            t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
++          });
++
++          const delay = prefersReducedMotion.matches ? 0 : 180;
++
++          cards.forEach((card) => {
++            const matches = filter === 'all' || card.getAttribute('data-category') === filter;
++            if (matches) {
++              card.classList.remove('is-hidden');
++              requestAnimationFrame(() => {
++                card.classList.remove('is-filtering-out');
++              });
++            } else {
++              card.classList.add('is-filtering-out');
++              setTimeout(() => {
++                if (card.classList.contains('is-filtering-out')) {
++                  card.classList.add('is-hidden');
++                }
++              }, delay);
++            }
++          });
++        });
++      });
++
++      // 4. Micro-interaction for Quick Add & Cart Badge Bounce
++      const quickAddButtons = document.querySelectorAll('.quick-add-btn');
++      const cartCountEl = document.getElementById('cart-count');
++      const toastEl = document.getElementById('toast');
++      const toastMessageEl = document.getElementById('toast-message');
++      let cartCount = 0;
++      let toastTimer = null;
++
++      quickAddButtons.forEach((btn) => {
++        btn.addEventListener('click', () => {
++          const itemName = btn.getAttribute('data-item') || 'Coffee';
++          cartCount += 1;
++          if (cartCountEl) {
++            cartCountEl.textContent = String(cartCount);
++            if (!prefersReducedMotion.matches) {
++              cartCountEl.classList.remove('bump');
++              void cartCountEl.offsetWidth;
++              cartCountEl.classList.add('bump');
++              setTimeout(() => cartCountEl.classList.remove('bump'), 320);
++            }
++          }
++
++          if (toastEl && toastMessageEl) {
++            toastMessageEl.textContent = `Added ${itemName} to your bag`;
++            toastEl.classList.add('is-visible');
++            clearTimeout(toastTimer);
++            toastTimer = setTimeout(() => {
++              toastEl.classList.remove('is-visible');
++            }, 2600);
++          }
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

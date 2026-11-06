@@ -1,0 +1,245 @@
+diff --git a/favorite-toggle.js b/favorite-toggle.js
+new file mode 100644
+index 0000000..5b068a3
+--- /dev/null
++++ b/favorite-toggle.js
+@@ -0,0 +1,200 @@
++/**
++ * <favorite-toggle> — an on/off switch for marking an item as a favorite.
++ *
++ * Attributes:
++ *   checked     Boolean. Present when the item is a favorite.
++ *   label       Accessible name, e.g. "Favorite Cold Brew". Defaults to "Favorite".
++ *   storage-key Optional. When set, the state is saved to localStorage under
++ *               this key so it survives page reloads.
++ *   disabled    Boolean. Prevents toggling.
++ *
++ * Slot: optional visible label text (defaults to "Favorite").
++ *
++ * Events:
++ *   change      Fired (bubbling) after the user toggles. Read `event.target.checked`.
++ */
++const STORAGE_PREFIX = 'daily-grind:favorite:';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      --favorite-on: #c62828;
++      --favorite-off: #bcaaa4;
++      --favorite-thumb: #fff;
++      --favorite-focus: #ffab40;
++      display: inline-flex;
++      font: inherit;
++    }
++
++    :host([hidden]) { display: none; }
++
++    button {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.6rem;
++      padding: 0.35rem 0.5rem;
++      border: 0;
++      border-radius: 999px;
++      background: none;
++      color: inherit;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    button:focus-visible {
++      outline: 3px solid var(--favorite-focus);
++      outline-offset: 2px;
++    }
++
++    :host([disabled]) button {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    .track {
++      position: relative;
++      flex: none;
++      width: 2.75rem;
++      height: 1.5rem;
++      border-radius: 999px;
++      background: var(--favorite-off);
++      transition: background-color 0.2s ease;
++    }
++
++    .thumb {
++      position: absolute;
++      top: 0.1875rem;
++      left: 0.1875rem;
++      width: 1.125rem;
++      height: 1.125rem;
++      border-radius: 50%;
++      background: var(--favorite-thumb);
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
++      display: grid;
++      place-items: center;
++      transition: transform 0.2s ease;
++    }
++
++    .thumb svg {
++      width: 0.7rem;
++      height: 0.7rem;
++      fill: none;
++      stroke: var(--favorite-off);
++      stroke-width: 2.5;
++      transition: fill 0.2s ease, stroke 0.2s ease;
++    }
++
++    :host([checked]) .track { background: var(--favorite-on); }
++    :host([checked]) .thumb { transform: translateX(1.25rem); }
++    :host([checked]) .thumb svg {
++      fill: var(--favorite-on);
++      stroke: var(--favorite-on);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .track, .thumb, .thumb svg { transition: none; }
++    }
++
++    @media (forced-colors: active) {
++      .track { border: 1px solid ButtonText; }
++      .thumb { background: ButtonText; }
++      :host([checked]) .track { background: Highlight; }
++    }
++  </style>
++  <button type="button" role="switch" part="button">
++    <span class="track" part="track" aria-hidden="true">
++      <span class="thumb" part="thumb">
++        <svg viewBox="0 0 24 24">
++          <path d="M12 21s-7.5-4.6-9.5-9.2C1 8.3 3.2 4.5 7 4.5c2.1 0 3.6 1.1 5 2.9 1.4-1.8 2.9-2.9 5-2.9 3.8 0 6 3.8 4.5 7.3C19.5 16.4 12 21 12 21z"/>
++        </svg>
++      </span>
++    </span>
++    <span part="label"><slot>Favorite</slot></span>
++  </button>
++`;
++
++class FavoriteToggle extends HTMLElement {
++  static observedAttributes = ['checked', 'label', 'disabled'];
++
++  #button;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.appendChild(template.content.cloneNode(true));
++    this.#button = root.querySelector('button');
++    this.#button.addEventListener('click', () => this.toggle());
++  }
++
++  connectedCallback() {
++    const saved = this.#readStorage();
++    if (saved !== null) this.checked = saved;
++    this.#render();
++  }
++
++  attributeChangedCallback() {
++    this.#render();
++  }
++
++  get checked() {
++    return this.hasAttribute('checked');
++  }
++
++  set checked(value) {
++    this.toggleAttribute('checked', Boolean(value));
++  }
++
++  get disabled() {
++    return this.hasAttribute('disabled');
++  }
++
++  set disabled(value) {
++    this.toggleAttribute('disabled', Boolean(value));
++  }
++
++  /** Flip the state as if the user clicked it. */
++  toggle() {
++    if (this.disabled) return;
++    this.checked = !this.checked;
++    this.#writeStorage();
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++
++  #render() {
++    this.#button.setAttribute('aria-checked', String(this.checked));
++    this.#button.setAttribute('aria-label', this.getAttribute('label') || 'Favorite');
++    this.#button.disabled = this.disabled;
++  }
++
++  #storageKey() {
++    const key = this.getAttribute('storage-key');
++    return key ? STORAGE_PREFIX + key : null;
++  }
++
++  #readStorage() {
++    const key = this.#storageKey();
++    if (!key) return null;
++    try {
++      const value = localStorage.getItem(key);
++      return value === null ? null : value === 'true';
++    } catch {
++      return null;
++    }
++  }
++
++  #writeStorage() {
++    const key = this.#storageKey();
++    if (!key) return;
++    try {
++      localStorage.setItem(key, String(this.checked));
++    } catch {
++      // Storage unavailable (private mode, quota) — state just won't persist.
++    }
++  }
++}
++
++if (!customElements.get('favorite-toggle')) {
++  customElements.define('favorite-toggle', FavoriteToggle);
++}
+diff --git a/index.html b/index.html
+index 66c9173..5aa3b90 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,14 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .card favorite-toggle {
++      display: flex;
++      justify-content: center;
++      margin-top: 10px;
++    }
+   </style>
++  <script type="module" src="/favorite-toggle.js"></script>
+ </head>
+ 
+ <body>
+@@ -181,16 +188,19 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <favorite-toggle label="Favorite Maple Oat Latte" storage-key="maple-oat-latte"></favorite-toggle>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <favorite-toggle label="Favorite Dark Roast Espresso" storage-key="dark-roast-espresso"></favorite-toggle>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <favorite-toggle label="Favorite Cold Brew" storage-key="cold-brew"></favorite-toggle>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

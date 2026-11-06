@@ -1,0 +1,19 @@
+diff --git a/REGISTRATION.md b/REGISTRATION.md
+new file mode 100644
+--- a/REGISTRATION.md
++++ b/REGISTRATION.md
+@@ -0,0 +1,14 @@
++# Rewards registration integration
++
++The static site implements the complete registration UI. It does not create accounts without a backend. Failed or unavailable requests display an error and retain entered values in memory for retry. No registration data is saved in local storage, URLs, or logs.
++
++Serve the page over HTTPS and implement these same-origin endpoints:
++
++- `GET /api/csrf`: return `application/json` with `{ "csrfToken": "session-bound token" }`. Use `Cache-Control: no-store` and a Secure, HttpOnly, SameSite session cookie.
++- `POST /api/rewards`: accept JSON containing `givenName`, `familyName`, `email`, `password`, `favorite`, `marketing`, and `terms`. Validate the session-bound `X-CSRF-Token` header and request origin. Return a successful HTTP status and `{ "success": true }` only when the account is accepted and an email activation message is queued. Return 429 for rate limiting and appropriate error statuses otherwise. Do not redirect these API requests.
++
++The backend must independently validate and limit every field: nonblank names up to 80 characters each, valid email up to 254 characters, password of 12–128 characters, accepted terms, a boolean marketing choice, and an allowed favorite drink. Treat marketing consent separately from required terms. Record consent and applicable policy versions. Hash passwords using a suitable password hashing algorithm such as Argon2id; never log passwords or raw request bodies. Apply request size limits, abuse protection, verification email controls, and generic account responses to avoid disclosing existing members. Confirm email ownership before activating rewards.
++
++Deploy with a suitable Content-Security-Policy (allow this site's scripts and styles and images.unsplash.com images), HSTS, X-Content-Type-Options: nosniff, and frame-ancestors restrictions. Existing policy, account, menu, and location links require real routes in the hosting application.
++
++Checks: `node --check registration.js`. There are no build scripts or dependencies in this static project.

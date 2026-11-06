@@ -1,0 +1,3005 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..b1211d4
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,1144 @@
++import {
++  startRegistration,
++  startAuthentication,
++  sendSignal,
++  browserSupportsWebAuthn,
++  browserSupportsWebAuthnAutofill,
++  platformAuthenticatorIsAvailable,
++  WebAuthnAbortService,
++} from '/vendor/simplewebauthn-browser/index.js';
++
++// Application State
++const state = {
++  authenticated: false,
++  user: null,
++  rpID: window.location.hostname || 'localhost',
++  activeView: 'home', // 'home' | 'account' | 'auth'
++  authTab: 'signin', // 'signin' | 'register'
++  conditionalMediationActive: false,
++  pendingReauthCallback: null,
++  pendingReauthDescription: '',
++  orders: [],
++  reauthTimerId: null,
++};
++
++// Utility: Toast Notification
++export function showToast(message, type = 'info') {
++  const container = document.getElementById('toast-container');
++  if (!container) return;
++
++  const toast = document.createElement('div');
++  toast.className = `toast toast-${type}`;
++  toast.setAttribute('role', 'status');
++  toast.innerHTML = `
++    <span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '!' : 'ℹ'}</span>
++    <span class="toast-msg">${escapeHtml(message)}</span>
++  `;
++  container.appendChild(toast);
++
++  setTimeout(() => {
++    toast.classList.add('toast-fade');
++    setTimeout(() => toast.remove(), 300);
++  }, 4200);
++}
++
++function escapeHtml(str) {
++  if (str === null || str === undefined) return '';
++  return String(str)
++    .replace(/&/g, '&amp;')
++    .replace(/</g, '&lt;')
++    .replace(/>/g, '&gt;')
++    .replace(/"/g, '&quot;')
++    .replace(/'/g, '&#039;');
++}
++
++function formatDate(isoStr) {
++  if (!isoStr) return 'Never';
++  try {
++    const d = new Date(isoStr);
++    return d.toLocaleDateString(undefined, {
++      month: 'short',
++      day: 'numeric',
++      year: 'numeric',
++      hour: '2-digit',
++      minute: '2-digit',
++    });
++  } catch {
++    return isoStr;
++  }
++}
++
++// Helper: Safely invoke WebAuthn Signal APIs (signalUnknownCredential, signalAllAcceptedCredentials, signalCurrentUserDetails)
++async function broadcastWebAuthnSignals(signalsObj) {
++  if (!signalsObj || typeof signalsObj !== 'object') return;
++  for (const key of Object.keys(signalsObj)) {
++    const signalPayload = signalsObj[key];
++    if (signalPayload && signalPayload.signalName) {
++      try {
++        await sendSignal(signalPayload);
++      } catch (err) {
++        // Signals are fire-and-forget best-effort broadcasts; ignore if browser doesn't support L3 signals
++        console.debug(`WebAuthn Signal (${signalPayload.signalName}) skipped:`, err.message || err);
++      }
++    }
++  }
++}
++
++// Fetch wrapper with JSON handling
++async function apiFetch(url, options = {}) {
++  const headers = {
++    'Content-Type': 'application/json',
++    ...(options.headers || {}),
++  };
++  const response = await fetch(url, {
++    ...options,
++    headers,
++    body: options.body ? JSON.stringify(options.body) : undefined,
++  });
++  const data = await response.json().catch(() => ({}));
++  return { ok: response.ok, status: response.status, data };
++}
++
++// --- Core WebAuthn Ceremonies ---
++
++/**
++ * 1. Passkey Registration Ceremony
++ * Supports both creating a brand new account with a passkey OR adding a passkey to a signed-in account.
++ */
++export async function registerPasskey({ username, displayName, passkeyName } = {}) {
++  if (!browserSupportsWebAuthn()) {
++    showToast('WebAuthn passkeys are not supported in this browser.', 'error');
++    return false;
++  }
++
++  try {
++    // Cancel any pending conditional UI request before starting a modal ceremony
++    WebAuthnAbortService.cancelCeremony();
++    state.conditionalMediationActive = false;
++
++    const { ok, data: optionsJSON } = await apiFetch('/api/passkeys/register/options', {
++      method: 'POST',
++      body: { username, displayName, passkeyName },
++    });
++
++    if (!ok) {
++      showToast(optionsJSON.error || 'Could not start passkey registration.', 'error');
++      return false;
++    }
++
++    const attResp = await startRegistration({ optionsJSON });
++
++    const { ok: verifyOk, data: verifyData } = await apiFetch('/api/passkeys/register/verify', {
++      method: 'POST',
++      body: {
++        response: attResp,
++        passkeyName,
++      },
++    });
++
++    if (!verifyOk || !verifyData.verified) {
++      showToast(verifyData.error || 'Passkey registration failed verification.', 'error');
++      return false;
++    }
++
++    if (verifyData.signals) {
++      await broadcastWebAuthnSignals(verifyData.signals);
++    }
++
++    state.authenticated = true;
++    state.user = verifyData.user;
++    showToast(`Passkey "${verifyData.passkey.name}" registered!`, 'success');
++    navigateTo('account');
++    return true;
++  } catch (err) {
++    if (err.name === 'NotAllowedError') {
++      showToast('Passkey creation was cancelled or timed out.', 'info');
++    } else if (err.name === 'InvalidStateError') {
++      showToast('A passkey from this authenticator is already registered for your account.', 'info');
++    } else {
++      showToast(err.message || 'Passkey registration error.', 'error');
++    }
++    return false;
++  }
++}
++
++/**
++ * 2. Passkey Authentication Ceremony (Modal or Conditional UI Autofill)
++ */
++export async function authenticateWithPasskey({ username = '', useBrowserAutofill = false } = {}) {
++  if (!browserSupportsWebAuthn()) {
++    if (!useBrowserAutofill) {
++      showToast('WebAuthn passkeys are not supported in this browser.', 'error');
++    }
++    return false;
++  }
++
++  try {
++    if (useBrowserAutofill) {
++      const autofillSupported = await browserSupportsWebAuthnAutofill();
++      if (!autofillSupported) return false;
++      if (state.conditionalMediationActive || state.authenticated) return false;
++    } else {
++      WebAuthnAbortService.cancelCeremony();
++      state.conditionalMediationActive = false;
++    }
++
++    const { ok, data: optionsJSON } = await apiFetch('/api/passkeys/authenticate/options', {
++      method: 'POST',
++      body: { username },
++    });
++
++    if (!ok) {
++      if (!useBrowserAutofill) {
++        showToast(optionsJSON.error || 'Failed to initialize passkey sign-in.', 'error');
++      }
++      return false;
++    }
++
++    if (useBrowserAutofill) {
++      state.conditionalMediationActive = true;
++    }
++
++    const asseResp = await startAuthentication({
++      optionsJSON,
++      useBrowserAutofill,
++      verifyBrowserAutofillInput: false,
++    });
++
++    state.conditionalMediationActive = false;
++
++    const { ok: verifyOk, data: verifyData } = await apiFetch('/api/passkeys/authenticate/verify', {
++      method: 'POST',
++      body: { response: asseResp },
++    });
++
++    if (verifyData?.signalUnknownCredential) {
++      await broadcastWebAuthnSignals({ unknownCredential: verifyData.signalUnknownCredential });
++    }
++
++    if (!verifyOk || !verifyData.verified) {
++      showToast(verifyData.error || 'Passkey sign-in failed verification.', 'error');
++      return false;
++    }
++
++    if (verifyData.signals) {
++      await broadcastWebAuthnSignals(verifyData.signals);
++    }
++
++    state.authenticated = true;
++    state.user = verifyData.user;
++    showToast(`Signed in as ${verifyData.user.displayName} via passkey!`, 'success');
++    navigateTo('account');
++    return true;
++  } catch (err) {
++    state.conditionalMediationActive = false;
++    if (useBrowserAutofill || err.name === 'AbortError') {
++      // Silent abort when switching views or clicking explicit modal sign-in
++      return false;
++    }
++    if (err.name === 'NotAllowedError') {
++      showToast('Passkey sign-in was cancelled or not allowed.', 'info');
++    } else {
++      showToast(err.message || 'Could not sign in with passkey.', 'error');
++    }
++    return false;
++  }
++}
++
++/**
++ * 3. Passkey Step-Up Reauthentication Ceremony
++ * Strictly verifies the currently logged-in user before executing sensitive operations.
++ */
++export async function performPasskeyReauthentication(actionName = 'sensitive-action') {
++  if (!browserSupportsWebAuthn()) {
++    showToast('WebAuthn is not supported in this browser.', 'error');
++    return false;
++  }
++
++  try {
++    WebAuthnAbortService.cancelCeremony();
++    state.conditionalMediationActive = false;
++
++    const { ok, data: optionsJSON } = await apiFetch('/api/passkeys/reauthenticate/options', {
++      method: 'POST',
++      body: { action: actionName },
++    });
++
++    if (!ok) {
++      showToast(optionsJSON.error || 'Could not start passkey reauthentication.', 'error');
++      return false;
++    }
++
++    const asseResp = await startAuthentication({ optionsJSON });
++
++    const { ok: verifyOk, data: verifyData } = await apiFetch('/api/passkeys/reauthenticate/verify', {
++      method: 'POST',
++      body: { response: asseResp },
++    });
++
++    if (verifyData?.signalUnknownCredential) {
++      await broadcastWebAuthnSignals({ unknownCredential: verifyData.signalUnknownCredential });
++    }
++
++    if (!verifyOk || !verifyData.verified) {
++      showToast(verifyData.error || 'Passkey reauthentication failed.', 'error');
++      return false;
++    }
++
++    state.user = verifyData.user;
++    showToast(`Identity re-verified with "${verifyData.passkey.name}".`, 'success');
++    closeReauthModal();
++    renderApp();
++
++    if (typeof state.pendingReauthCallback === 'function') {
++      const cb = state.pendingReauthCallback;
++      state.pendingReauthCallback = null;
++      await cb();
++    }
++    return true;
++  } catch (err) {
++    if (err.name === 'NotAllowedError') {
++      showToast('Reauthentication cancelled.', 'info');
++    } else {
++      showToast(err.message || 'Passkey reauthentication failed.', 'error');
++    }
++    return false;
++  }
++}
++
++/**
++ * Open Step-Up Reauthentication Modal when an action requires fresh verification
++ */
++export function promptReauthentication(description, onVerifiedCallback) {
++  state.pendingReauthDescription = description || 'Verify your identity with a passkey to continue.';
++  state.pendingReauthCallback = onVerifiedCallback;
++
++  const modal = document.getElementById('reauth-modal');
++  const descEl = document.getElementById('reauth-modal-description');
++  const passkeyBtn = document.getElementById('reauth-passkey-btn');
++  const noPasskeyNotice = document.getElementById('reauth-no-passkey-notice');
++
++  if (descEl) descEl.textContent = state.pendingReauthDescription;
++
++  const hasPasskeys = (state.user?.passkeys?.length || 0) > 0;
++  if (passkeyBtn) {
++    passkeyBtn.style.display = hasPasskeys ? 'inline-flex' : 'none';
++  }
++  if (noPasskeyNotice) {
++    noPasskeyNotice.style.display = hasPasskeys ? 'none' : 'block';
++  }
++
++  if (modal) {
++    modal.classList.add('open');
++    modal.setAttribute('aria-hidden', 'false');
++  }
++}
++
++export function closeReauthModal() {
++  const modal = document.getElementById('reauth-modal');
++  if (modal) {
++    modal.classList.remove('open');
++    modal.setAttribute('aria-hidden', 'true');
++  }
++}
++
++/**
++ * 4. Passkey Management Operations (Rename & Delete with Reauth Step-Up)
++ */
++export async function renamePasskey(credentialId, newName) {
++  if (!newName || !newName.trim()) {
++    showToast('Please enter a name for your passkey.', 'error');
++    return false;
++  }
++  const { ok, data } = await apiFetch(`/api/passkeys/${encodeURIComponent(credentialId)}`, {
++    method: 'PATCH',
++    body: { name: newName.trim() },
++  });
++  if (!ok) {
++    showToast(data.error || 'Could not rename passkey.', 'error');
++    return false;
++  }
++  state.user = data.user;
++  showToast(`Passkey renamed to "${data.passkey.name}".`, 'success');
++  renderApp();
++  return true;
++}
++
++export async function deletePasskey(credentialId, force = false) {
++  const url = `/api/passkeys/${encodeURIComponent(credentialId)}${force ? '?force=true' : ''}`;
++  const { ok, status, data } = await apiFetch(url, { method: 'DELETE' });
++
++  if (status === 403 && data.code === 'REAUTH_REQUIRED') {
++    promptReauthentication(
++      'Deleting a passkey requires step-up reauthentication to protect your account security.',
++      () => deletePasskey(credentialId, force)
++    );
++    return false;
++  }
++
++  if (!ok) {
++    showToast(data.error || 'Failed to delete passkey.', 'error');
++    return false;
++  }
++
++  if (data.signals) {
++    await broadcastWebAuthnSignals(data.signals);
++  }
++
++  state.user = data.user;
++  showToast('Passkey removed from your account.', 'success');
++  renderApp();
++  return true;
++}
++
++/**
++ * Sensitive Action: Update Account Profile & Payment Method (Protected by Reauthentication)
++ */
++export async function updateProfileSettings({ displayName, username, defaultPaymentMethod }) {
++  const { ok, status, data } = await apiFetch('/api/account/profile', {
++    method: 'PATCH',
++    body: { displayName, username, defaultPaymentMethod },
++  });
++
++  if (status === 403 && data.code === 'REAUTH_REQUIRED') {
++    promptReauthentication(
++      'Updating your account email, profile, or payment method requires step-up passkey reauthentication.',
++      () => updateProfileSettings({ displayName, username, defaultPaymentMethod })
++    );
++    return false;
++  }
++
++  if (!ok) {
++    showToast(data.error || 'Could not update profile.', 'error');
++    return false;
++  }
++
++  if (data.signals) {
++    await broadcastWebAuthnSignals(data.signals);
++  }
++
++  state.user = data.user;
++  showToast('Account settings updated!', 'success');
++  renderApp();
++  return true;
++}
++
++/**
++ * Sensitive Action: One-Click Express Coffee Order / Rewards Redemption (Protected by Reauthentication)
++ */
++export async function placeExpressOrder({ itemName, totalAmount, useRewards = false }) {
++  if (!state.authenticated) {
++    showToast('Please sign in with your passkey to place an order.', 'info');
++    navigateTo('auth');
++    return false;
++  }
++
++  const { ok, status, data } = await apiFetch('/api/orders/checkout', {
++    method: 'POST',
++    body: { itemName, totalAmount, useRewards },
++  });
++
++  if (status === 403 && data.code === 'REAUTH_REQUIRED') {
++    promptReauthentication(
++      `Confirm your order for ${itemName} (${useRewards ? '100 Rewards Pts' : totalAmount}) with a quick passkey check.`,
++      () => placeExpressOrder({ itemName, totalAmount, useRewards })
++    );
++    return false;
++  }
++
++  if (!ok) {
++    showToast(data.error || 'Could not complete order.', 'error');
++    return false;
++  }
++
++  state.user = data.user;
++  state.orders.unshift(data.order);
++  showToast(`${data.message} (${data.order.itemName})`, 'success');
++  renderApp();
++  return true;
++}
++
++// --- Navigation & View Rendering ---
++
++export function navigateTo(view, subTab = null) {
++  state.activeView = view;
++  if (subTab) {
++    state.authTab = subTab;
++  }
++
++  const urlMap = {
++    home: '/',
++    account: '/account',
++    auth: '/login',
++  };
++  const targetPath = urlMap[view] || '/';
++  if (window.location.pathname !== targetPath) {
++    window.history.pushState({ view }, '', targetPath);
++  }
++
++  renderApp();
++}
++
++function renderPasskeyList(passkeys) {
++  if (!passkeys || passkeys.length === 0) {
++    return `
++      <div class="empty-passkeys" id="empty-passkeys-state">
++        <div class="passkey-empty-icon">🔑</div>
++        <h4>No Passkeys Registered Yet</h4>
++        <p>Add a passkey for fast, phishing-resistant sign-in and one-tap step-up verification using Face ID, Touch ID, Windows Hello, or a security key.</p>
++      </div>
++    `;
++  }
++
++  return `
++    <div class="passkey-list" id="passkey-list" role="list">
++      ${passkeys
++        .map((pk) => {
++          const syncBadge = pk.credentialBackedUp
++            ? `<span class="badge badge-synced" title="Backed up & synced across devices">Synced</span>`
++            : `<span class="badge badge-device" title="Bound to a single device">${pk.credentialDeviceType === 'multiDevice' ? 'Multi-Device' : 'Device-Bound'}</span>`;
++
++          const transportsBadges = (pk.transports || [])
++            .map((t) => `<span class="badge badge-transport">${escapeHtml(t)}</span>`)
++            .join('');
++
++          return `
++            <div class="passkey-item" data-passkey-id="${escapeHtml(pk.id)}" role="listitem">
++              <div class="passkey-item-main">
++                <div class="passkey-icon-wrap" aria-hidden="true">🔑</div>
++                <div class="passkey-details">
++                  <div class="passkey-title-row">
++                    <strong class="passkey-name-label" data-testid="passkey-name">${escapeHtml(pk.name)}</strong>
++                    ${syncBadge}
++                    ${transportsBadges}
++                  </div>
++                  <div class="passkey-meta">
++                    <span>Provider: <strong>${escapeHtml(pk.providerName || 'Authenticator')}</strong></span>
++                    <span>•</span>
++                    <span>Created: ${escapeHtml(formatDate(pk.createdAt))}</span>
++                    <span>•</span>
++                    <span>Last used: ${escapeHtml(formatDate(pk.lastUsedAt))}</span>
++                    <span>•</span>
++                    <span>Sign count: ${Number(pk.counter || 0)}</span>
++                  </div>
++                  <div class="passkey-rename-inline" id="rename-box-${escapeHtml(pk.id)}" style="display: none;">
++                    <input
++                      type="text"
++                      class="input-field input-sm rename-passkey-input"
++                      value="${escapeHtml(pk.name)}"
++                      aria-label="New passkey name"
++                      maxlength="64"
++                    />
++                    <button type="button" class="btn btn-sm btn-save-rename" data-id="${escapeHtml(pk.id)}">Save</button>
++                    <button type="button" class="btn btn-sm btn-outline btn-cancel-rename" data-id="${escapeHtml(pk.id)}">Cancel</button>
++                  </div>
++                </div>
++              </div>
++              <div class="passkey-actions">
++                <button
++                  type="button"
++                  class="btn btn-sm btn-outline btn-rename-passkey"
++                  data-id="${escapeHtml(pk.id)}"
++                  aria-label="Rename passkey ${escapeHtml(pk.name)}"
++                >
++                  Rename
++                </button>
++                <button
++                  type="button"
++                  class="btn btn-sm btn-danger btn-delete-passkey"
++                  data-id="${escapeHtml(pk.id)}"
++                  aria-label="Delete passkey ${escapeHtml(pk.name)}"
++                >
++                  Delete
++                </button>
++              </div>
++            </div>
++          `;
++        })
++        .join('')}
++    </div>
++  `;
++}
++
++export function renderApp() {
++  // Update Navigation Bar
++  const navAuthAction = document.getElementById('nav-auth-action');
++  const navAccountLink = document.getElementById('nav-account-link');
++
++  if (navAccountLink) {
++    navAccountLink.innerHTML = state.authenticated
++      ? `My Account <span class="nav-pill">${state.user.passkeys.length} 🔑</span>`
++      : 'My Account';
++  }
++
++  if (navAuthAction) {
++    if (state.authenticated) {
++      navAuthAction.textContent = 'Logout';
++      navAuthAction.setAttribute('href', '/logout');
++      navAuthAction.dataset.action = 'logout';
++    } else {
++      navAuthAction.textContent = 'Sign In / Passkey';
++      navAuthAction.setAttribute('href', '/login');
++      navAuthAction.dataset.action = 'login';
++    }
++  }
++
++  // Toggle Sections based on activeView
++  const homeView = document.getElementById('view-home');
++  const authView = document.getElementById('view-auth');
++  const accountView = document.getElementById('view-account');
++
++  if (homeView) homeView.style.display = state.activeView === 'home' ? 'block' : 'none';
++  if (authView) authView.style.display = state.activeView === 'auth' ? 'block' : 'none';
++  if (accountView) accountView.style.display = state.activeView === 'account' ? 'block' : 'none';
++
++  // Render Auth View state
++  if (state.activeView === 'auth') {
++    const tabSignin = document.getElementById('tab-btn-signin');
++    const tabRegister = document.getElementById('tab-btn-register');
++    const panelSignin = document.getElementById('auth-panel-signin');
++    const panelRegister = document.getElementById('auth-panel-register');
++
++    if (tabSignin && tabRegister && panelSignin && panelRegister) {
++      const isSignin = state.authTab === 'signin';
++      tabSignin.classList.toggle('active', isSignin);
++      tabRegister.classList.toggle('active', !isSignin);
++      panelSignin.style.display = isSignin ? 'block' : 'none';
++      panelRegister.style.display = !isSignin ? 'block' : 'none';
++    }
++
++    // Trigger WebAuthn Conditional UI (autofill) on Sign-In view if not already running
++    if (state.authTab === 'signin' && !state.authenticated && !state.conditionalMediationActive) {
++      setTimeout(() => {
++        if (state.activeView === 'auth' && !state.authenticated) {
++          authenticateWithPasskey({ useBrowserAutofill: true });
++        }
++      }, 150);
++    }
++  }
++
++  // Render Account & Passkey Management View
++  if (state.activeView === 'account') {
++    const accountContainer = document.getElementById('account-content-area');
++    if (!accountContainer) return;
++
++    if (!state.authenticated || !state.user) {
++      accountContainer.innerHTML = `
++        <div class="card auth-prompt-card">
++          <h2>Sign In to Manage Your Account & Passkeys</h2>
++          <p>Access your Daily Grind Rewards, manage your registered passkeys, and configure step-up security.</p>
++          <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
++            <button type="button" class="btn btn-passkey" id="account-guest-passkey-btn">
++              🔑 Sign In with Passkey
++            </button>
++            <button type="button" class="btn btn-outline" id="account-guest-goto-auth">
++              Sign In or Create Account
++            </button>
++          </div>
++        </div>
++      `;
++      document.getElementById('account-guest-passkey-btn')?.addEventListener('click', () => {
++        authenticateWithPasskey({ useBrowserAutofill: false });
++      });
++      document.getElementById('account-guest-goto-auth')?.addEventListener('click', () => {
++        navigateTo('auth', 'signin');
++      });
++      return;
++    }
++
++    const user = state.user;
++    const isVerified = user.session?.isRecentlyVerified;
++    const remainingSec = user.session?.reauthExpiresAt
++      ? Math.max(0, Math.ceil((user.session.reauthExpiresAt - Date.now()) / 1000))
++      : 0;
++    const remainingMin = Math.floor(remainingSec / 60);
++    const remSecPart = String(remainingSec % 60).padStart(2, '0');
++
++    accountContainer.innerHTML = `
++      <!-- Account Overview Banner -->
++      <div class="account-header-card">
++        <div class="account-user-info">
++          <div class="avatar-circle">${escapeHtml(user.displayName.charAt(0).toUpperCase())}</div>
++          <div>
++            <h2>${escapeHtml(user.displayName)}</h2>
++            <p class="account-email">${escapeHtml(user.username)} • <span class="tier-badge">${escapeHtml(user.membershipTier)}</span></p>
++          </div>
++        </div>
++        <div class="account-stats">
++          <div class="stat-box">
++            <span class="stat-value" id="user-reward-points">${Number(user.rewardPoints)}</span>
++            <span class="stat-label">Reward Points</span>
++          </div>
++          <div class="stat-box">
++            <span class="stat-value" id="user-passkey-count">${user.passkeys.length}</span>
++            <span class="stat-label">Passkeys</span>
++          </div>
++        </div>
++      </div>
++
++      <!-- Security & Reauthentication Status Card -->
++      <div class="card section-card security-status-card" id="reauth-status-section">
++        <div class="section-header-row">
++          <div>
++            <h3>Step-Up Reauthentication Status</h3>
++            <p class="section-subtitle">
++              Sensitive operations (deleting passkeys, changing account email/payment details, or redeeming rewards) require recent verification.
++            </p>
++          </div>
++          <div class="reauth-badge-wrap">
++            ${
++              isVerified
++                ? `<span class="status-pill status-verified" id="reauth-status-badge">✓ Verified (${remainingMin}:${remSecPart} remaining)</span>`
++                : `<span class="status-pill status-locked" id="reauth-status-badge">🔒 Step-Up Verification Required</span>`
++            }
++          </div>
++        </div>
++        <div class="reauth-controls-row">
++          <button type="button" class="btn btn-passkey" id="btn-trigger-reauth">
++            🔑 Reauthenticate Now with Passkey
++          </button>
++          ${
++            isVerified
++              ? `<button type="button" class="btn btn-outline" id="btn-expire-reauth">
++                  🔒 Lock / Require Reauthentication Now
++                </button>`
++              : ''
++          }
++        </div>
++      </div>
++
++      <!-- Passkey Management Section -->
++      <div class="card section-card" id="passkey-management-section">
++        <div class="section-header-row">
++          <div>
++            <h3>Passkey Management</h3>
++            <p class="section-subtitle">
++              Register new passkeys for your devices, rename existing credentials, or revoke access.
++            </p>
++          </div>
++        </div>
++
++        <!-- Register New Passkey Form -->
++        <form id="add-passkey-form" class="add-passkey-bar">
++          <input
++            type="text"
++            id="new-passkey-label"
++            class="input-field"
++            placeholder="Passkey label (e.g., MacBook Touch ID, Work YubiKey, iPhone)"
++            aria-label="Passkey label"
++            maxlength="64"
++          />
++          <button type="submit" class="btn btn-passkey" id="btn-register-new-passkey">
++            + Register New Passkey
++          </button>
++        </form>
++
++        <!-- Registered Passkeys List -->
++        ${renderPasskeyList(user.passkeys)}
++      </div>
++
++      <!-- Protected Account Settings & Express Reauth Order Section -->
++      <div class="account-two-col">
++        <!-- Sensitive Profile & Payment Settings -->
++        <div class="card section-card">
++          <h3>Protected Account & Payment Settings</h3>
++          <p class="section-subtitle">Changes here require step-up reauthentication if your session is locked.</p>
++          <form id="protected-profile-form" class="stacked-form">
++            <div class="form-group">
++              <label for="profile-display-name">Display Name</label>
++              <input
++                type="text"
++                id="profile-display-name"
++                class="input-field"
++                value="${escapeHtml(user.displayName)}"
++                required
++              />
++            </div>
++            <div class="form-group">
++              <label for="profile-username">Account Email / Username</label>
++              <input
++                type="text"
++                id="profile-username"
++                class="input-field"
++                value="${escapeHtml(user.username)}"
++                required
++              />
++            </div>
++            <div class="form-group">
++              <label for="profile-payment">Saved Payment Method</label>
++              <input
++                type="text"
++                id="profile-payment"
++                class="input-field"
++                value="${escapeHtml(user.defaultPaymentMethod)}"
++                required
++              />
++            </div>
++            <button type="submit" class="btn" id="btn-save-protected-profile">
++              Save Protected Settings
++            </button>
++          </form>
++        </div>
++
++        <!-- Rewards Redemption & Express Reauthenticated Checkout -->
++        <div class="card section-card">
++          <h3>Daily Grind Rewards & Express Order</h3>
++          <p class="section-subtitle">Redeem your points or place a 1-tap order protected by passkey reauthentication.</p>
++          <div class="rewards-summary-box">
++            <div>
++              <strong>Available Balance:</strong> ${Number(user.rewardPoints)} pts
++            </div>
++            <small>100 pts = 1 Free Artisanal Beverage</small>
++          </div>
++          <div class="express-order-actions">
++            <button
++              type="button"
++              class="btn btn-passkey"
++              id="btn-redeem-reward-order"
++              ${user.rewardPoints < 100 ? 'disabled' : ''}
++            >
++              🎁 Redeem 100 Pts for Free Maple Oat Latte
++            </button>
++            <button
++              type="button"
++              class="btn btn-outline"
++              id="btn-express-card-order"
++            >
++              ☕ Express Order Cold Brew ($5.50 on ${escapeHtml(user.defaultPaymentMethod)})
++            </button>
++          </div>
++
++          ${
++            state.orders.length > 0
++              ? `
++                <div class="recent-orders-list" id="recent-orders-list">
++                  <h4>Recent Verified Orders</h4>
++                  ${state.orders
++                    .slice(0, 3)
++                    .map(
++                      (o) => `
++                      <div class="order-receipt-item">
++                        <strong>${escapeHtml(o.orderId)}</strong> — ${escapeHtml(o.itemName)}
++                        <span>(${escapeHtml(o.paymentUsed)})</span>
++                      </div>
++                    `
++                    )
++                    .join('')}
++                </div>
++              `
++              : ''
++          }
++        </div>
++      </div>
++    `;
++
++    bindAccountEvents();
++  }
++}
++
++function bindAccountEvents() {
++  // Add New Passkey Form
++  const addPasskeyForm = document.getElementById('add-passkey-form');
++  addPasskeyForm?.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    const labelInput = document.getElementById('new-passkey-label');
++    const passkeyName = labelInput ? labelInput.value.trim() : '';
++    const ok = await registerPasskey({ passkeyName });
++    if (ok && labelInput) labelInput.value = '';
++  });
++
++  // Reauthenticate Now button
++  document.getElementById('btn-trigger-reauth')?.addEventListener('click', () => {
++    promptReauthentication(
++      'Verify your identity using one of your registered passkeys to unlock sensitive account operations for 5 minutes.',
++      async () => {
++        const { ok, data } = await apiFetch('/api/auth/session');
++        if (ok && data.authenticated) {
++          state.user = data.user;
++          renderApp();
++        }
++      }
++    );
++  });
++
++  // Lock / Expire Reauthentication Window button
++  document.getElementById('btn-expire-reauth')?.addEventListener('click', async () => {
++    const { ok, data } = await apiFetch('/api/auth/lock-reauth', { method: 'POST' });
++    if (ok) {
++      state.user = data.user;
++      showToast('Step-up verification window locked. Sensitive actions will now prompt for reauthentication.', 'info');
++      renderApp();
++    }
++  });
++
++  // Rename Passkey buttons
++  document.querySelectorAll('.btn-rename-passkey').forEach((btn) => {
++    btn.addEventListener('click', () => {
++      const id = btn.dataset.id;
++      const box = document.getElementById(`rename-box-${id}`);
++      if (box) {
++        box.style.display = 'flex';
++        box.querySelector('input')?.focus();
++      }
++    });
++  });
++
++  document.querySelectorAll('.btn-cancel-rename').forEach((btn) => {
++    btn.addEventListener('click', () => {
++      const id = btn.dataset.id;
++      const box = document.getElementById(`rename-box-${id}`);
++      if (box) box.style.display = 'none';
++    });
++  });
++
++  document.querySelectorAll('.btn-save-rename').forEach((btn) => {
++    btn.addEventListener('click', async () => {
++      const id = btn.dataset.id;
++      const box = document.getElementById(`rename-box-${id}`);
++      const input = box?.querySelector('input');
++      if (input) {
++        await renamePasskey(id, input.value);
++      }
++    });
++  });
++
++  // Delete Passkey buttons
++  document.querySelectorAll('.btn-delete-passkey').forEach((btn) => {
++    btn.addEventListener('click', async () => {
++      const id = btn.dataset.id;
++      await deletePasskey(id);
++    });
++  });
++
++  // Protected Profile Form
++  const profileForm = document.getElementById('protected-profile-form');
++  profileForm?.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    const displayName = document.getElementById('profile-display-name')?.value || '';
++    const username = document.getElementById('profile-username')?.value || '';
++    const defaultPaymentMethod = document.getElementById('profile-payment')?.value || '';
++    await updateProfileSettings({ displayName, username, defaultPaymentMethod });
++  });
++
++  // Express Orders
++  document.getElementById('btn-redeem-reward-order')?.addEventListener('click', async () => {
++    await placeExpressOrder({
++      itemName: 'Maple Oat Latte (Reward Redemption)',
++      totalAmount: '$0.00',
++      useRewards: true,
++    });
++  });
++
++  document.getElementById('btn-express-card-order')?.addEventListener('click', async () => {
++    await placeExpressOrder({
++      itemName: '18-Hour Cold Brew',
++      totalAmount: '$5.50',
++      useRewards: false,
++    });
++  });
++}
++
++// --- Initialization & Static Event Bindings ---
++
++async function initApp() {
++  // Check browser passkey support banner
++  const supportStatusEl = document.getElementById('webauthn-capability-status');
++  if (supportStatusEl) {
++    const supported = browserSupportsWebAuthn();
++    const platformAvailable = supported ? await platformAuthenticatorIsAvailable() : false;
++    supportStatusEl.textContent = supported
++      ? platformAvailable
++        ? '✓ Passkeys & Platform Biometrics Ready'
++        : '✓ WebAuthn Passkeys Supported'
++      : '⚠ WebAuthn Not Available in this Browser';
++  }
++
++  // Load current session
++  const { ok, data } = await apiFetch('/api/auth/session');
++  if (ok && data.authenticated) {
++    state.authenticated = true;
++    state.user = data.user;
++    state.rpID = data.rpID || state.rpID;
++  }
++
++  // Route based on current URL pathname
++  const path = window.location.pathname;
++  if (path === '/account' || path === '/rewards') {
++    state.activeView = 'account';
++  } else if (path === '/login' || path === '/register') {
++    state.activeView = 'auth';
++    state.authTab = path === '/register' ? 'register' : 'signin';
++  } else {
++    state.activeView = 'home';
++  }
++
++  // Bind Top Navigation links
++  document.getElementById('nav-logo')?.addEventListener('click', (e) => {
++    e.preventDefault();
++    navigateTo('home');
++  });
++
++  document.getElementById('nav-home-link')?.addEventListener('click', (e) => {
++    e.preventDefault();
++    navigateTo('home');
++  });
++
++  document.getElementById('nav-rewards-link')?.addEventListener('click', (e) => {
++    e.preventDefault();
++    navigateTo('account');
++  });
++
++  document.getElementById('nav-account-link')?.addEventListener('click', (e) => {
++    e.preventDefault();
++    navigateTo('account');
++  });
++
++  document.getElementById('nav-auth-action')?.addEventListener('click', async (e) => {
++    e.preventDefault();
++    if (state.authenticated) {
++      WebAuthnAbortService.cancelCeremony();
++      await apiFetch('/api/auth/logout', { method: 'POST' });
++      state.authenticated = false;
++      state.user = null;
++      showToast('You have been logged out.', 'info');
++      navigateTo('auth', 'signin');
++    } else {
++      navigateTo('auth', 'signin');
++    }
++  });
++
++  // Hero & Menu order buttons
++  document.querySelectorAll('.js-order-btn').forEach((btn) => {
++    btn.addEventListener('click', async (e) => {
++      e.preventDefault();
++      const item = btn.dataset.item || 'Artisanal Coffee';
++      const price = btn.dataset.price || '$5.25';
++      if (!state.authenticated) {
++        showToast('Sign in or create a passkey to order online!', 'info');
++        navigateTo('auth', 'signin');
++        return;
++      }
++      await placeExpressOrder({ itemName: item, totalAmount: price, useRewards: false });
++    });
++  });
++
++  // Auth View Tabs
++  document.getElementById('tab-btn-signin')?.addEventListener('click', () => {
++    state.authTab = 'signin';
++    renderApp();
++  });
++
++  document.getElementById('tab-btn-register')?.addEventListener('click', () => {
++    state.authTab = 'register';
++    renderApp();
++  });
++
++  // Sign-In with Passkey Button (Modal Ceremony)
++  document.getElementById('btn-signin-passkey')?.addEventListener('click', async () => {
++    const usernameInput = document.getElementById('signin-username');
++    const username = usernameInput ? usernameInput.value.trim() : '';
++    await authenticateWithPasskey({ username, useBrowserAutofill: false });
++  });
++
++  // Fallback Password Sign-In Form
++  document.getElementById('signin-password-form')?.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    const username = document.getElementById('signin-username')?.value.trim() || '';
++    const password = document.getElementById('signin-password')?.value || '';
++    const { ok, data } = await apiFetch('/api/auth/login-password', {
++      method: 'POST',
++      body: { username, password },
++    });
++    if (!ok) {
++      showToast(data.error || 'Invalid credentials.', 'error');
++      return;
++    }
++    WebAuthnAbortService.cancelCeremony();
++    state.authenticated = true;
++    state.user = data.user;
++    showToast(`Welcome back, ${data.user.displayName}!`, 'success');
++    navigateTo('account');
++  });
++
++  // Register New Account with Passkey Form
++  document.getElementById('register-passkey-form')?.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    const username = document.getElementById('register-username')?.value.trim() || '';
++    const displayName = document.getElementById('register-display-name')?.value.trim() || '';
++    const passkeyName = document.getElementById('register-passkey-name')?.value.trim() || '';
++    if (!username) {
++      showToast('Please enter your email or username.', 'error');
++      return;
++    }
++    await registerPasskey({ username, displayName, passkeyName });
++  });
++
++  // Register with Password fallback button
++  document.getElementById('btn-register-password-fallback')?.addEventListener('click', async () => {
++    const username = document.getElementById('register-username')?.value.trim() || '';
++    const displayName = document.getElementById('register-display-name')?.value.trim() || '';
++    const password = document.getElementById('register-password')?.value || 'coffee123';
++    if (!username) {
++      showToast('Please enter an email or username first.', 'error');
++      return;
++    }
++    const { ok, data } = await apiFetch('/api/auth/signup', {
++      method: 'POST',
++      body: { username, displayName, password },
++    });
++    if (!ok) {
++      showToast(data.error || 'Could not create account.', 'error');
++      return;
++    }
++    state.authenticated = true;
++    state.user = data.user;
++    showToast('Account created! You can now register a passkey in My Account.', 'success');
++    navigateTo('account');
++  });
++
++  // Step-Up Reauthentication Modal Bindings
++  document.getElementById('reauth-passkey-btn')?.addEventListener('click', async () => {
++    await performPasskeyReauthentication('step-up-modal');
++  });
++
++  document.getElementById('reauth-password-form')?.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    const passwordInput = document.getElementById('reauth-password-input');
++    const password = passwordInput ? passwordInput.value : '';
++    const { ok, data } = await apiFetch('/api/auth/reauthenticate-password', {
++      method: 'POST',
++      body: { password },
++    });
++    if (!ok) {
++      showToast(data.error || 'Password verification failed.', 'error');
++      return;
++    }
++    if (passwordInput) passwordInput.value = '';
++    state.user = data.user;
++    showToast('Identity verified with password.', 'success');
++    closeReauthModal();
++    renderApp();
++    if (typeof state.pendingReauthCallback === 'function') {
++      const cb = state.pendingReauthCallback;
++      state.pendingReauthCallback = null;
++      await cb();
++    }
++  });
++
++  document.getElementById('reauth-cancel-btn')?.addEventListener('click', () => {
++    state.pendingReauthCallback = null;
++    closeReauthModal();
++  });
++
++  window.addEventListener('popstate', () => {
++    const p = window.location.pathname;
++    if (p === '/account' || p === '/rewards') state.activeView = 'account';
++    else if (p === '/login' || p === '/register') state.activeView = 'auth';
++    else state.activeView = 'home';
++    renderApp();
++  });
++
++  renderApp();
++}
++
++document.addEventListener('DOMContentLoaded', initApp);
+diff --git a/index.html b/index.html
+index 66c9173..6402043 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,22 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Artisanal Coffee & Passkey Security</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
++      --muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #e0d6d2;
++      --success: #2e7d32;
++      --success-bg: #e8f5e9;
++      --danger: #c62828;
++      --danger-bg: #ffebee;
+     }
+ 
+     * {
+@@ -25,6 +33,9 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     /* Navigation */
+@@ -38,17 +49,22 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      cursor: pointer;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -58,24 +74,36 @@
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.92rem;
++      transition: color 0.25s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    .nav-pill {
++      background: rgba(255, 171, 64, 0.22);
++      color: var(--accent);
++      border: 1px solid var(--accent);
++      font-size: 0.75rem;
++      padding: 2px 7px;
++      border-radius: 999px;
++      margin-left: 4px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 6px 14px;
+       border-radius: 4px;
++      font-weight: 600;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 54vh;
++      min-height: 320px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -89,29 +117,40 @@
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.8rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .hero-actions {
++      display: flex;
++      gap: 12px;
++      margin-top: 18px;
++      flex-wrap: wrap;
++      justify-content: center;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      width: 100%;
++      margin: 36px auto;
+       padding: 0 20px;
++      flex: 1;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--surface);
++      padding: 24px;
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--border);
+       text-align: center;
+     }
+ 
+@@ -120,30 +159,524 @@
+       color: var(--primary);
+     }
+ 
++    /* Buttons */
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      border: 1px solid transparent;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .btn:hover:not(:disabled) {
++      background: var(--primary-dark);
++    }
++
++    .btn:disabled {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    .btn-passkey {
++      background: #2b1d19;
++      border-color: var(--accent);
++      color: #fff;
++    }
++
++    .btn-passkey:hover:not(:disabled) {
++      background: #1a100e;
++      box-shadow: 0 3px 10px rgba(255, 171, 64, 0.28);
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-outline:hover:not(:disabled) {
++      background: #f3ecea;
++    }
++
++    .btn-danger {
++      background: var(--danger-bg);
++      color: var(--danger);
++      border: 1px solid #ef9a9a;
++    }
++
++    .btn-danger:hover:not(:disabled) {
++      background: #ffcdd2;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.84rem;
++    }
++
++    .btn-block {
++      width: 100%;
++    }
++
++    /* Forms & Inputs */
++    .form-group {
++      text-align: left;
++      margin-bottom: 16px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.88rem;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .input-field {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #c7b9b4;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: #fff;
++    }
++
++    .input-field:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .input-sm {
++      padding: 6px 10px;
++      font-size: 0.85rem;
++    }
++
++    /* Auth View */
++    .auth-wrapper {
++      max-width: 500px;
++      margin: 0 auto;
++    }
++
++    .auth-card {
++      text-align: left;
++      padding: 28px;
++    }
++
++    .auth-tabs {
++      display: flex;
++      border-bottom: 2px solid var(--border);
++      margin-bottom: 22px;
++    }
++
++    .auth-tab-btn {
++      flex: 1;
++      padding: 10px;
++      background: none;
++      border: none;
++      font-size: 0.96rem;
++      font-weight: 600;
++      color: var(--muted);
++      cursor: pointer;
++      border-bottom: 3px solid transparent;
++      margin-bottom: -2px;
++    }
++
++    .auth-tab-btn.active {
++      color: var(--primary);
++      border-bottom-color: var(--primary);
++    }
++
++    .divider {
++      display: flex;
++      align-items: center;
++      margin: 20px 0;
++      color: var(--muted);
++      font-size: 0.82rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .divider::before,
++    .divider::after {
++      content: '';
++      flex: 1;
++      height: 1px;
++      background: var(--border);
++    }
++
++    .divider span {
++      padding: 0 12px;
++    }
++
++    .capability-banner {
++      background: #f6f1ef;
++      border: 1px solid var(--border);
++      padding: 8px 12px;
++      border-radius: 6px;
++      font-size: 0.82rem;
++      color: var(--muted);
++      margin-bottom: 18px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    /* Account & Passkey Management View */
++    .account-header-card {
++      background: var(--primary);
++      color: white;
++      padding: 24px 28px;
++      border-radius: 10px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-bottom: 24px;
++    }
++
++    .account-user-info {
++      display: flex;
++      align-items: center;
++      gap: 16px;
++    }
++
++    .avatar-circle {
++      width: 54px;
++      height: 54px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-size: 1.5rem;
++      font-weight: bold;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .account-email {
++      font-size: 0.9rem;
++      color: var(--secondary);
++    }
++
++    .tier-badge {
++      background: rgba(255, 255, 255, 0.16);
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-size: 0.8rem;
++      color: #fff;
++    }
++
++    .account-stats {
++      display: flex;
++      gap: 16px;
++    }
++
++    .stat-box {
++      background: rgba(0, 0, 0, 0.22);
++      padding: 10px 18px;
++      border-radius: 8px;
++      text-align: center;
++    }
++
++    .stat-value {
++      display: block;
++      font-size: 1.4rem;
++      font-weight: bold;
++      color: var(--accent);
++    }
++
++    .stat-label {
++      font-size: 0.78rem;
++      color: var(--secondary);
++    }
++
++    .section-card {
++      text-align: left;
++      margin-bottom: 24px;
++    }
++
++    .section-header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 16px;
++    }
++
++    .section-subtitle {
++      font-size: 0.9rem;
++      color: var(--muted);
++    }
++
++    .status-pill {
++      display: inline-block;
++      padding: 5px 12px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      font-weight: 600;
++    }
++
++    .status-verified {
++      background: var(--success-bg);
++      color: var(--success);
++      border: 1px solid #a5d6a7;
++    }
++
++    .status-locked {
++      background: #fff3e0;
++      color: #e65100;
++      border: 1px solid #ffcc80;
++    }
++
++    .reauth-controls-row {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      padding-top: 8px;
++    }
++
++    .add-passkey-bar {
++      display: flex;
++      gap: 12px;
++      margin-bottom: 20px;
++      flex-wrap: wrap;
++    }
++
++    .add-passkey-bar .input-field {
++      flex: 1;
++      min-width: 220px;
++    }
++
++    .passkey-list {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .passkey-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 16px;
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      background: #fcfaf9;
++      gap: 16px;
++      flex-wrap: wrap;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .passkey-item-main {
++      display: flex;
++      align-items: flex-start;
++      gap: 14px;
++      flex: 1;
++    }
++
++    .passkey-icon-wrap {
++      font-size: 1.5rem;
++      background: #efe8e5;
++      width: 42px;
++      height: 42px;
++      border-radius: 8px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++    }
++
++    .passkey-title-row {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin-bottom: 4px;
++    }
++
++    .passkey-meta {
++      font-size: 0.82rem;
++      color: var(--muted);
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .passkey-rename-inline {
++      display: flex;
++      gap: 8px;
++      margin-top: 10px;
++      align-items: center;
++    }
++
++    .passkey-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .badge {
++      font-size: 0.72rem;
++      padding: 2px 8px;
++      border-radius: 999px;
++      font-weight: 600;
++    }
++
++    .badge-synced {
++      background: #e3f2fd;
++      color: #1565c0;
++    }
++
++    .badge-device {
++      background: #f3e5f5;
++      color: #6a1b9a;
++    }
++
++    .badge-transport {
++      background: #eee;
++      color: #555;
++      text-transform: uppercase;
++    }
++
++    .empty-passkeys {
++      text-align: center;
++      padding: 28px 16px;
++      border: 1px dashed var(--border);
++      border-radius: 8px;
++      color: var(--muted);
++    }
++
++    .passkey-empty-icon {
++      font-size: 2rem;
++      margin-bottom: 8px;
++    }
++
++    .account-two-col {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++    }
++
++    .rewards-summary-box {
++      background: #f8f3f0;
++      border: 1px solid var(--border);
++      padding: 14px;
++      border-radius: 8px;
++      margin: 14px 0;
++    }
++
++    .express-order-actions {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .recent-orders-list {
++      margin-top: 18px;
++      padding-top: 12px;
++      border-top: 1px solid var(--border);
++      font-size: 0.86rem;
++    }
++
++    .order-receipt-item {
++      padding: 6px 0;
++      border-bottom: 1px solid #f0eae8;
++    }
++
++    /* Step-Up Reauthentication Modal */
++    .modal-backdrop {
++      position: fixed;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.55);
++      display: none;
++      align-items: center;
++      justify-content: center;
++      z-index: 2000;
++      padding: 20px;
++    }
++
++    .modal-backdrop.open {
++      display: flex;
++    }
++
++    .modal-card {
++      background: white;
++      max-width: 440px;
++      width: 100%;
++      padding: 28px;
++      border-radius: 10px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++    }
++
++    .modal-card h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .modal-card p {
++      font-size: 0.92rem;
++      color: var(--muted);
++      margin-bottom: 18px;
++    }
++
++    /* Toast Notifications */
++    #toast-container {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      z-index: 3000;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      max-width: 380px;
++    }
++
++    .toast {
++      background: #2b1d19;
++      color: white;
++      padding: 12px 16px;
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.9rem;
++      transition: opacity 0.3s;
++    }
++
++    .toast-success {
++      border-left: 4px solid #66bb6a;
++    }
++
++    .toast-error {
++      border-left: 4px solid #ef5350;
++    }
++
++    .toast-info {
++      border-left: 4px solid var(--accent);
++    }
++
++    .toast-fade {
++      opacity: 0;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      padding: 36px 20px;
+       margin-top: 40px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 16px;
+     }
+ 
+     .footer-links a {
+@@ -158,45 +691,232 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="/" class="logo" id="nav-logo">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/" id="nav-home-link">Menu</a></li>
++      <li><a href="/rewards" id="nav-rewards-link">Rewards</a></li>
++      <li><a href="/account" id="nav-account-link">My Account</a></li>
++      <li><a href="/login" class="logout-link" id="nav-auth-action">Sign In / Passkey</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <!-- VIEW 1: HOME / MENU -->
++  <div id="view-home">
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup — now secured with one-tap Passkeys.</p>
++      <div class="hero-actions">
++        <a href="/order-online" class="btn js-order-btn" data-item="Barista's Signature Pour-Over" data-price="$5.50">Order Now</a>
++        <a href="/account" class="btn btn-passkey" onclick="event.preventDefault(); document.getElementById('nav-account-link').click();">
++          🔑 Manage Passkeys & Account
++        </a>
++      </div>
++    </header>
++
++    <main class="container">
++      <section>
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <button type="button" class="btn js-order-btn" data-item="Maple Oat Latte" data-price="$5.75" style="margin-top: 15px;">
++              Order ($5.75)
++            </button>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <button type="button" class="btn js-order-btn" data-item="Dark Roast Espresso" data-price="$4.25" style="margin-top: 15px;">
++              Order ($4.25)
++            </button>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <button type="button" class="btn js-order-btn" data-item="Cold Brew" data-price="$5.50" style="margin-top: 15px;">
++              Order ($5.50)
++            </button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </section>
++    </main>
++  </div>
++
++  <!-- VIEW 2: AUTHENTICATION & PASSKEY REGISTRATION -->
++  <main class="container" id="view-auth" style="display: none;">
++    <div class="auth-wrapper">
++      <div class="card auth-card">
++        <div class="capability-banner">
++          <span id="webauthn-capability-status">Checking passkey support...</span>
++          <span>FIDO2 / WebAuthn</span>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <div class="auth-tabs" role="tablist">
++          <button type="button" class="auth-tab-btn active" id="tab-btn-signin" role="tab">
++            Sign In
++          </button>
++          <button type="button" class="auth-tab-btn" id="tab-btn-register" role="tab">
++            Register with Passkey
++          </button>
++        </div>
++
++        <!-- Sign-In Panel (Passkey Primary + Conditional UI Autofill + Password Fallback) -->
++        <div id="auth-panel-signin" role="tabpanel">
++          <h2 style="margin-bottom: 6px; color: var(--primary);">Welcome Back</h2>
++          <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 18px;">
++            Sign in instantly with a passkey or use autofill in the email field below.
++          </p>
++
++          <button type="button" class="btn btn-passkey btn-block" id="btn-signin-passkey">
++            🔑 Sign In with a Passkey
++          </button>
++
++          <div class="divider"><span>or use email &amp; autofill</span></div>
++
++          <form id="signin-password-form">
++            <div class="form-group">
++              <label for="signin-username">Email or Username</label>
++              <input
++                type="text"
++                id="signin-username"
++                name="username"
++                class="input-field"
++                placeholder="alex@dailygrind.coffee"
++                autocomplete="username webauthn"
++                required
++              />
++            </div>
++            <div class="form-group">
++              <label for="signin-password">Password (for non-passkey accounts)</label>
++              <input
++                type="password"
++                id="signin-password"
++                name="password"
++                class="input-field"
++                placeholder="••••••••"
++                autocomplete="current-password webauthn"
++              />
++            </div>
++            <button type="submit" class="btn btn-outline btn-block" id="btn-signin-password">
++              Sign In with Password
++            </button>
++          </form>
++
++          <p style="font-size: 0.8rem; color: var(--muted); margin-top: 14px;">
++            Demo account: <code>alex@dailygrind.coffee</code> / <code>coffee123</code>
++          </p>
++        </div>
++
++        <!-- Register Panel (Passwordless Passkey Registration) -->
++        <div id="auth-panel-register" role="tabpanel" style="display: none;">
++          <h2 style="margin-bottom: 6px; color: var(--primary);">Create Your Passkey Account</h2>
++          <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 18px;">
++            Go passwordless with a cryptographic passkey and earn 150 bonus Daily Grind Rewards points.
++          </p>
++
++          <form id="register-passkey-form">
++            <div class="form-group">
++              <label for="register-username">Email or Username</label>
++              <input
++                type="text"
++                id="register-username"
++                name="username"
++                class="input-field"
++                placeholder="you@dailygrind.coffee"
++                autocomplete="username webauthn"
++                required
++              />
++            </div>
++            <div class="form-group">
++              <label for="register-display-name">Full Name</label>
++              <input
++                type="text"
++                id="register-display-name"
++                name="displayName"
++                class="input-field"
++                placeholder="Jamie Roast"
++                autocomplete="name"
++              />
++            </div>
++            <div class="form-group">
++              <label for="register-passkey-name">Passkey Label (Optional)</label>
++              <input
++                type="text"
++                id="register-passkey-name"
++                name="passkeyName"
++                class="input-field"
++                placeholder="e.g., Personal Laptop Touch ID"
++              />
++            </div>
++            <button type="submit" class="btn btn-passkey btn-block" id="btn-register-passkey-submit">
++              🔑 Create Account with Passkey
++            </button>
++          </form>
++
++          <div class="divider"><span>or create with password first</span></div>
++
++          <div class="form-group">
++            <label for="register-password">Optional Password</label>
++            <input
++              type="password"
++              id="register-password"
++              class="input-field"
++              placeholder="Set a password (optional)"
++              autocomplete="new-password"
++            />
++          </div>
++          <button type="button" class="btn btn-outline btn-block" id="btn-register-password-fallback">
++            Create Account with Password
++          </button>
+         </div>
+       </div>
+-    </section>
++    </div>
++  </main>
++
++  <!-- VIEW 3: MY ACCOUNT, PASSKEY MANAGEMENT & REAUTHENTICATION -->
++  <main class="container" id="view-account" style="display: none;">
++    <div id="account-content-area"></div>
+   </main>
+ 
++  <!-- STEP-UP REAUTHENTICATION MODAL -->
++  <div class="modal-backdrop" id="reauth-modal" aria-hidden="true" role="dialog" aria-labelledby="reauth-modal-title">
++    <div class="modal-card">
++      <h3 id="reauth-modal-title">🔒 Step-Up Reauthentication Required</h3>
++      <p id="reauth-modal-description">
++        For your security, please re-verify your identity with a registered passkey to complete this action.
++      </p>
++
++      <button type="button" class="btn btn-passkey btn-block" id="reauth-passkey-btn">
++        🔑 Verify with Passkey
++      </button>
++
++      <p id="reauth-no-passkey-notice" style="display: none; font-size: 0.85rem; color: var(--danger); margin-top: 8px;">
++        No passkeys registered on this account yet. Use your password below or register a passkey first.
++      </p>
++
++      <div class="divider"><span>or verify password</span></div>
++
++      <form id="reauth-password-form" style="display: flex; gap: 8px;">
++        <input
++          type="password"
++          id="reauth-password-input"
++          class="input-field input-sm"
++          placeholder="Account password"
++          aria-label="Account password"
++        />
++        <button type="submit" class="btn btn-sm btn-outline" id="reauth-password-submit">Verify</button>
++      </form>
++
++      <div style="margin-top: 18px; text-align: right;">
++        <button type="button" class="btn btn-sm btn-outline" id="reauth-cancel-btn">Cancel</button>
++      </div>
++    </div>
++  </div>
++
++  <!-- Toast Container -->
++  <div id="toast-container" aria-live="polite"></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +927,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..5dbd348 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,15 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
++  },
++  "dependencies": {
++    "@simplewebauthn/browser": "14.0.0",
++    "@simplewebauthn/server": "14.0.3",
++    "express": "5.3.0",
++    "express-session": "1.19.0"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..ce437b9
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,873 @@
++import express from 'express';
++import session from 'express-session';
++import crypto from 'crypto';
++import path from 'path';
++import { fileURLToPath } from 'url';
++import {
++  generateRegistrationOptions,
++  verifyRegistrationResponse,
++  generateAuthenticationOptions,
++  verifyAuthenticationResponse,
++} from '@simplewebauthn/server';
++import { isoBase64URL } from '@simplewebauthn/server/helpers';
++
++const __filename = fileURLToPath(import.meta.url);
++const __dirname = path.dirname(__filename);
++
++const app = express();
++const PORT = process.env.PORT || 11222;
++const RP_NAME = 'The Daily Grind';
++const REAUTH_WINDOW_MS = 5 * 60 * 1000; // 5 minutes fresh authentication window
++
++app.use(express.json());
++app.use(express.urlencoded({ extended: true }));
++
++app.use(
++  session({
++    secret: process.env.SESSION_SECRET || 'daily-grind-passkey-secret-2026',
++    resave: false,
++    saveUninitialized: true,
++    cookie: {
++      httpOnly: true,
++      sameSite: 'lax',
++      maxAge: 24 * 60 * 60 * 1000,
++    },
++  })
++);
++
++// Known AAGUID provider directory for human-friendly passkey names & metadata
++const AAGUID_DIRECTORY = {
++  'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': 'Google Password Manager',
++  'adce0002-35bc-c60a-648b-0b25f1f05503': 'Chrome on Mac',
++  'fbfc3007-154e-4ecc-8c0b-6e020557d7bd': 'iCloud Keychain',
++  'dd4ec289-e01d-41c9-bb89-70fa845d4bf2': 'iCloud Keychain (Managed)',
++  '08987058-cadc-4b81-b6e1-30de50dcbe96': 'Windows Hello',
++  '9ddd1817-af5a-4672-a2b9-3e3dd95000a9': 'Windows Hello',
++  '6028b017-b1d4-4c02-b4b3-afcdafc96bb2': 'Windows Hello',
++  'bada5566-a7aa-401f-bd96-45619a55120d': '1Password',
++  'd548826e-79b4-db40-a3d8-11116f7e8349': 'Bitwarden',
++  'f3809540-7f14-49c1-a8b3-8f813b225541': 'Dashlane',
++  '531126d6-e717-415c-9320-3d9aa6981239': 'Proton Pass',
++  '00000000-0000-0000-0000-000000000000': 'Platform / Security Key',
++};
++
++function resolveProviderName(aaguid, credentialDeviceType, credentialBackedUp) {
++  if (aaguid && AAGUID_DIRECTORY[aaguid]) {
++    return AAGUID_DIRECTORY[aaguid];
++  }
++  if (credentialDeviceType === 'multiDevice' || credentialBackedUp) {
++    return 'Synced Passkey Provider';
++  }
++  return 'Device Authenticator';
++}
++
++function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
++  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
++  return `${salt}:${hash}`;
++}
++
++function verifyPassword(password, storedHash) {
++  if (!storedHash || !storedHash.includes(':')) return false;
++  const [salt, originalHash] = storedHash.split(':');
++  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
++  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(originalHash, 'hex'));
++}
++
++// In-memory store with pre-seeded demo account
++const users = new Map();
++
++function createSeedUsers() {
++  const seedUserId = new Uint8Array(Buffer.from('user-alex-barista-001', 'utf8'));
++  const seedUser = {
++    id: isoBase64URL.fromBuffer(seedUserId),
++    userIDBytes: seedUserId,
++    username: 'alex@dailygrind.coffee',
++    displayName: 'Alex Rivera',
++    passwordHash: hashPassword('coffee123'),
++    rewardPoints: 450,
++    membershipTier: 'Gold Roast Member',
++    defaultPaymentMethod: 'Visa ending in 4242',
++    passkeys: [],
++    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
++  };
++  users.set(seedUser.id, seedUser);
++}
++
++createSeedUsers();
++
++function findUserByUsername(username) {
++  if (!username) return undefined;
++  const normalized = username.trim().toLowerCase();
++  for (const user of users.values()) {
++    if (user.username.toLowerCase() === normalized) {
++      return user;
++    }
++  }
++  return undefined;
++}
++
++function findUserByCredentialId(credentialId) {
++  for (const user of users.values()) {
++    const passkey = user.passkeys.find((pk) => pk.id === credentialId);
++    if (passkey) {
++      return { user, passkey };
++    }
++  }
++  return undefined;
++}
++
++function getRPID(req) {
++  return process.env.RP_ID || req.hostname || 'localhost';
++}
++
++function getExpectedOrigins(req) {
++  const host = req.get('host') || `localhost:${PORT}`;
++  const protocol = req.protocol || 'http';
++  const origins = new Set([
++    `${protocol}://${host}`,
++    `http://${host}`,
++    `https://${host}`,
++    `http://localhost:${PORT}`,
++    `http://127.0.0.1:${PORT}`,
++  ]);
++  if (req.get('origin')) {
++    origins.add(req.get('origin'));
++  }
++  return Array.from(origins);
++}
++
++function sanitizePasskey(pk) {
++  return {
++    id: pk.id,
++    name: pk.name,
++    aaguid: pk.aaguid,
++    providerName: pk.providerName,
++    credentialDeviceType: pk.credentialDeviceType,
++    credentialBackedUp: pk.credentialBackedUp,
++    transports: pk.transports || [],
++    createdAt: pk.createdAt,
++    lastUsedAt: pk.lastUsedAt,
++    counter: pk.counter,
++  };
++}
++
++function sanitizeUser(user, req) {
++  const lastVerifiedAt = req?.session?.lastVerifiedAt || null;
++  const authMethod = req?.session?.authMethod || null;
++  const isRecentlyVerified =
++    typeof lastVerifiedAt === 'number' && Date.now() - lastVerifiedAt < REAUTH_WINDOW_MS;
++
++  return {
++    id: user.id,
++    username: user.username,
++    displayName: user.displayName,
++    rewardPoints: user.rewardPoints,
++    membershipTier: user.membershipTier,
++    defaultPaymentMethod: user.defaultPaymentMethod,
++    createdAt: user.createdAt,
++    passkeys: user.passkeys.map(sanitizePasskey),
++    session: {
++      authMethod,
++      lastVerifiedAt,
++      isRecentlyVerified,
++      reauthExpiresAt: lastVerifiedAt ? lastVerifiedAt + REAUTH_WINDOW_MS : null,
++      rpID: getRPID(req),
++    },
++  };
++}
++
++function requireAuth(req, res, next) {
++  if (!req.session?.userId) {
++    return res.status(401).json({ error: 'Authentication required', code: 'UNAUTHENTICATED' });
++  }
++  const user = users.get(req.session.userId);
++  if (!user) {
++    req.session.destroy(() => {});
++    return res.status(401).json({ error: 'User session invalid', code: 'UNAUTHENTICATED' });
++  }
++  req.user = user;
++  next();
++}
++
++function requireFreshReauth(req, res, next) {
++  const lastVerifiedAt = req.session?.lastVerifiedAt;
++  if (!lastVerifiedAt || Date.now() - lastVerifiedAt > REAUTH_WINDOW_MS) {
++    return res.status(403).json({
++      error: 'Step-up reauthentication is required to perform this sensitive action.',
++      code: 'REAUTH_REQUIRED',
++    });
++  }
++  next();
++}
++
++// Serve @simplewebauthn/browser ESM bundle directly from node_modules
++app.use(
++  '/vendor/simplewebauthn-browser',
++  express.static(path.join(__dirname, 'node_modules/@simplewebauthn/browser/esm'))
++);
++app.use(
++  '/vendor/simplewebauthn-umd',
++  express.static(path.join(__dirname, 'node_modules/@simplewebauthn/browser/dist/bundle'))
++);
++
++// --- Auth & Session Endpoints ---
++
++app.get('/api/auth/session', (req, res) => {
++  if (!req.session?.userId) {
++    return res.json({ authenticated: false, user: null, rpID: getRPID(req) });
++  }
++  const user = users.get(req.session.userId);
++  if (!user) {
++    return res.json({ authenticated: false, user: null, rpID: getRPID(req) });
++  }
++  return res.json({
++    authenticated: true,
++    user: sanitizeUser(user, req),
++    rpID: getRPID(req),
++  });
++});
++
++// Password registration or login (for bootstrapping an account before adding a passkey, or fallback)
++app.post('/api/auth/signup', (req, res) => {
++  const { username, displayName, password } = req.body || {};
++  if (!username || typeof username !== 'string' || !username.trim()) {
++    return res.status(400).json({ error: 'Username or email is required.' });
++  }
++  const normalizedUsername = username.trim();
++  const existing = findUserByUsername(normalizedUsername);
++  if (existing) {
++    return res.status(409).json({ error: 'An account with this email/username already exists. Please sign in.' });
++  }
++
++  const userIDBytes = new Uint8Array(crypto.randomBytes(32));
++  const userId = isoBase64URL.fromBuffer(userIDBytes);
++  const newUser = {
++    id: userId,
++    userIDBytes,
++    username: normalizedUsername,
++    displayName: (displayName && displayName.trim()) || normalizedUsername.split('@')[0],
++    passwordHash: password ? hashPassword(password) : null,
++    rewardPoints: 100,
++    membershipTier: 'Fresh Bean Member',
++    defaultPaymentMethod: 'Visa ending in 4242',
++    passkeys: [],
++    createdAt: new Date().toISOString(),
++  };
++
++  users.set(userId, newUser);
++  req.session.userId = newUser.id;
++  req.session.authMethod = 'password';
++  req.session.lastVerifiedAt = Date.now();
++
++  return res.status(201).json({
++    authenticated: true,
++    user: sanitizeUser(newUser, req),
++  });
++});
++
++app.post('/api/auth/login-password', (req, res) => {
++  const { username, password } = req.body || {};
++  if (!username || !password) {
++    return res.status(400).json({ error: 'Email/username and password are required.' });
++  }
++  const user = findUserByUsername(username);
++  if (!user || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
++    return res.status(401).json({ error: 'Invalid username or password.' });
++  }
++
++  req.session.userId = user.id;
++  req.session.authMethod = 'password';
++  req.session.lastVerifiedAt = Date.now();
++
++  return res.json({
++    authenticated: true,
++    user: sanitizeUser(user, req),
++  });
++});
++
++app.post('/api/auth/logout', (req, res) => {
++  req.session.destroy(() => {
++    res.json({ authenticated: false });
++  });
++});
++
++// Expire reauthentication window on demand (useful for testing step-up reauthentication)
++app.post('/api/auth/lock-reauth', requireAuth, (req, res) => {
++  req.session.lastVerifiedAt = 0;
++  return res.json({
++    message: 'Step-up verification window locked. Sensitive actions will now require reauthentication.',
++    user: sanitizeUser(req.user, req),
++  });
++});
++
++// --- WebAuthn Passkey Registration (Signup with Passkey OR Add Passkey to Existing Account) ---
++
++app.post('/api/passkeys/register/options', async (req, res) => {
++  try {
++    const rpID = getRPID(req);
++    let targetUser = null;
++    let isNewAccount = false;
++
++    if (req.session?.userId && users.has(req.session.userId)) {
++      // Logged-in user registering an additional passkey
++      targetUser = users.get(req.session.userId);
++    } else {
++      // Unauthenticated user registering a brand new account with a passkey (or adding to username)
++      const { username, displayName } = req.body || {};
++      if (!username || typeof username !== 'string' || !username.trim()) {
++        return res.status(400).json({ error: 'Please provide an email or username to register a passkey.' });
++      }
++      const normalizedUsername = username.trim();
++      const existing = findUserByUsername(normalizedUsername);
++      if (existing && existing.passkeys.length > 0) {
++        return res.status(409).json({
++          error: 'Account already exists with registered passkeys. Please sign in first to add another passkey.',
++        });
++      }
++      if (existing) {
++        targetUser = existing;
++      } else {
++        const userIDBytes = new Uint8Array(crypto.randomBytes(32));
++        const userId = isoBase64URL.fromBuffer(userIDBytes);
++        targetUser = {
++          id: userId,
++          userIDBytes,
++          username: normalizedUsername,
++          displayName: (displayName && displayName.trim()) || normalizedUsername.split('@')[0],
++          passwordHash: null,
++          rewardPoints: 150, // Bonus 50 pts for passkey signup!
++          membershipTier: 'Passkey Pioneer',
++          defaultPaymentMethod: 'Visa ending in 4242',
++          passkeys: [],
++          createdAt: new Date().toISOString(),
++        };
++        isNewAccount = true;
++      }
++    }
++
++    const excludeCredentials = targetUser.passkeys.map((pk) => ({
++      id: pk.id,
++      transports: pk.transports,
++    }));
++
++    const options = await generateRegistrationOptions({
++      rpName: RP_NAME,
++      rpID,
++      userName: targetUser.username,
++      userID: targetUser.userIDBytes,
++      userDisplayName: targetUser.displayName,
++      attestationType: 'none',
++      excludeCredentials,
++      authenticatorSelection: {
++        residentKey: 'required',
++        userVerification: 'preferred',
++      },
++    });
++
++    req.session.registrationChallenge = {
++      challenge: options.challenge,
++      userId: targetUser.id,
++      pendingUser: isNewAccount ? targetUser : null,
++      passkeyName: req.body?.passkeyName || null,
++      createdAt: Date.now(),
++    };
++
++    return res.json(options);
++  } catch (err) {
++    console.error('Error generating registration options:', err);
++    return res.status(500).json({ error: err.message || 'Failed to generate registration options' });
++  }
++});
++
++app.post('/api/passkeys/register/verify', async (req, res) => {
++  try {
++    const regSession = req.session?.registrationChallenge;
++    if (!regSession || !regSession.challenge) {
++      return res.status(400).json({ error: 'No active registration challenge found in session.' });
++    }
++
++    const { response, passkeyName } = req.body || {};
++    if (!response) {
++      return res.status(400).json({ error: 'Missing registration response payload.' });
++    }
++
++    const rpID = getRPID(req);
++    const expectedOrigin = getExpectedOrigins(req);
++
++    const verification = await verifyRegistrationResponse({
++      response,
++      expectedChallenge: regSession.challenge,
++      expectedOrigin,
++      expectedRPID: rpID,
++      requireUserVerification: false,
++    });
++
++    if (!verification.verified || !verification.registrationInfo) {
++      return res.status(400).json({ verified: false, error: 'Passkey registration verification failed.' });
++    }
++
++    const {
++      credential,
++      credentialDeviceType,
++      credentialBackedUp,
++      aaguid,
++    } = verification.registrationInfo;
++
++    let user = users.get(regSession.userId);
++    if (!user && regSession.pendingUser) {
++      user = regSession.pendingUser;
++      users.set(user.id, user);
++    }
++
++    if (!user) {
++      return res.status(404).json({ error: 'Target user account not found.' });
++    }
++
++    const providerName = resolveProviderName(aaguid, credentialDeviceType, credentialBackedUp);
++    const customLabel =
++      (passkeyName && passkeyName.trim()) ||
++      (regSession.passkeyName && regSession.passkeyName.trim()) ||
++      `${providerName} (${user.passkeys.length + 1})`;
++
++    const newPasskey = {
++      id: credential.id,
++      publicKey: credential.publicKey,
++      counter: credential.counter,
++      transports: credential.transports || response.response?.transports || [],
++      credentialDeviceType,
++      credentialBackedUp,
++      aaguid,
++      providerName,
++      name: customLabel,
++      createdAt: new Date().toISOString(),
++      lastUsedAt: new Date().toISOString(),
++    };
++
++    user.passkeys.push(newPasskey);
++
++    // Clear challenge and sign user in with fresh verification timestamp
++    delete req.session.registrationChallenge;
++    req.session.userId = user.id;
++    req.session.authMethod = 'passkey';
++    req.session.lastVerifiedAt = Date.now();
++
++    return res.json({
++      verified: true,
++      passkey: sanitizePasskey(newPasskey),
++      user: sanitizeUser(user, req),
++      signals: {
++        allAcceptedCredentials: {
++          signalName: 'allAcceptedCredentials',
++          rpID,
++          userID: user.id,
++          allAcceptedCredentialIDs: user.passkeys.map((pk) => pk.id),
++        },
++        currentUserDetails: {
++          signalName: 'currentUserDetails',
++          rpID,
++          userID: user.id,
++          userName: user.username,
++          userDisplayName: user.displayName,
++        },
++      },
++    });
++  } catch (err) {
++    console.error('Error verifying registration:', err);
++    return res.status(400).json({ verified: false, error: err.message || 'Passkey registration failed.' });
++  }
++});
++
++// --- WebAuthn Passkey Authentication (Discoverable / Conditional UI & Username-first) ---
++
++app.post('/api/passkeys/authenticate/options', async (req, res) => {
++  try {
++    const rpID = getRPID(req);
++    const { username } = req.body || {};
++
++    let allowCredentials = undefined;
++    if (username && typeof username === 'string' && username.trim()) {
++      const user = findUserByUsername(username.trim());
++      if (user && user.passkeys.length > 0) {
++        allowCredentials = user.passkeys.map((pk) => ({
++          id: pk.id,
++          transports: pk.transports,
++        }));
++      }
++    }
++
++    const options = await generateAuthenticationOptions({
++      rpID,
++      allowCredentials,
++      userVerification: 'preferred',
++    });
++
++    req.session.authenticationChallenge = {
++      challenge: options.challenge,
++      purpose: 'authenticate',
++      createdAt: Date.now(),
++    };
++
++    return res.json(options);
++  } catch (err) {
++    console.error('Error generating authentication options:', err);
++    return res.status(500).json({ error: err.message || 'Failed to generate authentication options' });
++  }
++});
++
++app.post('/api/passkeys/authenticate/verify', async (req, res) => {
++  try {
++    const authSession = req.session?.authenticationChallenge;
++    if (!authSession || !authSession.challenge) {
++      return res.status(400).json({ error: 'No active authentication challenge found in session.' });
++    }
++
++    const { response } = req.body || {};
++    if (!response || !response.id) {
++      return res.status(400).json({ error: 'Invalid authentication response payload.' });
++    }
++
++    const rpID = getRPID(req);
++    const expectedOrigin = getExpectedOrigins(req);
++
++    const match = findUserByCredentialId(response.id);
++    if (!match) {
++      return res.status(404).json({
++        verified: false,
++        error: 'This passkey is no longer recognized by The Daily Grind.',
++        signalUnknownCredential: {
++          signalName: 'unknownCredential',
++          rpID,
++          credentialID: response.id,
++        },
++      });
++    }
++
++    const { user, passkey } = match;
++
++    // If userHandle was returned, verify it matches the owner of the credential
++    if (response.response?.userHandle && response.response.userHandle !== user.id) {
++      return res.status(400).json({
++        verified: false,
++        error: 'Credential userHandle does not match account owner.',
++      });
++    }
++
++    const verification = await verifyAuthenticationResponse({
++      response,
++      expectedChallenge: authSession.challenge,
++      expectedOrigin,
++      expectedRPID: rpID,
++      credential: {
++        id: passkey.id,
++        publicKey: passkey.publicKey,
++        counter: passkey.counter,
++        transports: passkey.transports,
++      },
++      requireUserVerification: false,
++    });
++
++    if (!verification.verified) {
++      return res.status(401).json({ verified: false, error: 'Passkey assertion could not be verified.' });
++    }
++
++    passkey.counter = verification.authenticationInfo.newCounter;
++    passkey.credentialBackedUp = verification.authenticationInfo.credentialBackedUp;
++    passkey.lastUsedAt = new Date().toISOString();
++
++    delete req.session.authenticationChallenge;
++    req.session.userId = user.id;
++    req.session.authMethod = 'passkey';
++    req.session.lastVerifiedAt = Date.now();
++
++    return res.json({
++      verified: true,
++      passkey: sanitizePasskey(passkey),
++      user: sanitizeUser(user, req),
++      signals: {
++        allAcceptedCredentials: {
++          signalName: 'allAcceptedCredentials',
++          rpID,
++          userID: user.id,
++          allAcceptedCredentialIDs: user.passkeys.map((pk) => pk.id),
++        },
++        currentUserDetails: {
++          signalName: 'currentUserDetails',
++          rpID,
++          userID: user.id,
++          userName: user.username,
++          userDisplayName: user.displayName,
++        },
++      },
++    });
++  } catch (err) {
++    console.error('Error verifying authentication:', err);
++    return res.status(400).json({ verified: false, error: err.message || 'Passkey authentication failed.' });
++  }
++});
++
++// --- WebAuthn Passkey Reauthentication (Step-Up Verification for Logged-In Users) ---
++
++app.post('/api/passkeys/reauthenticate/options', requireAuth, async (req, res) => {
++  try {
++    const rpID = getRPID(req);
++    const user = req.user;
++
++    if (user.passkeys.length === 0) {
++      return res.status(400).json({
++        error: 'You do not have any registered passkeys to reauthenticate with. Register a passkey first.',
++      });
++    }
++
++    // Restrict allowCredentials strictly to the current logged-in user's registered passkeys
++    const allowCredentials = user.passkeys.map((pk) => ({
++      id: pk.id,
++      transports: pk.transports,
++    }));
++
++    const options = await generateAuthenticationOptions({
++      rpID,
++      allowCredentials,
++      userVerification: 'required',
++    });
++
++    req.session.reauthChallenge = {
++      challenge: options.challenge,
++      userId: user.id,
++      action: req.body?.action || 'sensitive-action',
++      createdAt: Date.now(),
++    };
++
++    return res.json(options);
++  } catch (err) {
++    console.error('Error generating reauthentication options:', err);
++    return res.status(500).json({ error: err.message || 'Failed to generate reauthentication options' });
++  }
++});
++
++app.post('/api/passkeys/reauthenticate/verify', requireAuth, async (req, res) => {
++  try {
++    const reauthSession = req.session?.reauthChallenge;
++    if (!reauthSession || !reauthSession.challenge || reauthSession.userId !== req.user.id) {
++      return res.status(400).json({ error: 'No active reauthentication challenge found for this user.' });
++    }
++
++    const { response } = req.body || {};
++    if (!response || !response.id) {
++      return res.status(400).json({ error: 'Missing reauthentication assertion response.' });
++    }
++
++    const user = req.user;
++    const passkey = user.passkeys.find((pk) => pk.id === response.id);
++    const rpID = getRPID(req);
++
++    if (!passkey) {
++      return res.status(403).json({
++        verified: false,
++        error: 'The passkey used does not belong to your account.',
++        signalUnknownCredential: {
++          signalName: 'unknownCredential',
++          rpID,
++          credentialID: response.id,
++        },
++      });
++    }
++
++    const expectedOrigin = getExpectedOrigins(req);
++
++    const verification = await verifyAuthenticationResponse({
++      response,
++      expectedChallenge: reauthSession.challenge,
++      expectedOrigin,
++      expectedRPID: rpID,
++      credential: {
++        id: passkey.id,
++        publicKey: passkey.publicKey,
++        counter: passkey.counter,
++        transports: passkey.transports,
++      },
++      requireUserVerification: false,
++    });
++
++    if (!verification.verified) {
++      return res.status(401).json({ verified: false, error: 'Reauthentication verification failed.' });
++    }
++
++    passkey.counter = verification.authenticationInfo.newCounter;
++    passkey.credentialBackedUp = verification.authenticationInfo.credentialBackedUp;
++    passkey.lastUsedAt = new Date().toISOString();
++
++    const verifiedAction = reauthSession.action;
++    delete req.session.reauthChallenge;
++    req.session.lastVerifiedAt = Date.now();
++    req.session.authMethod = 'passkey';
++
++    return res.json({
++      verified: true,
++      action: verifiedAction,
++      passkey: sanitizePasskey(passkey),
++      user: sanitizeUser(user, req),
++    });
++  } catch (err) {
++    console.error('Error verifying reauthentication:', err);
++    return res.status(400).json({ verified: false, error: err.message || 'Reauthentication failed.' });
++  }
++});
++
++// Password fallback for reauthentication if user only has password or prefers password
++app.post('/api/auth/reauthenticate-password', requireAuth, (req, res) => {
++  const { password } = req.body || {};
++  if (!req.user.passwordHash) {
++    return res.status(400).json({ error: 'This account is passwordless. Please reauthenticate with your passkey.' });
++  }
++  if (!password || !verifyPassword(password, req.user.passwordHash)) {
++    return res.status(401).json({ verified: false, error: 'Incorrect password.' });
++  }
++  req.session.lastVerifiedAt = Date.now();
++  return res.json({
++    verified: true,
++    user: sanitizeUser(req.user, req),
++  });
++});
++
++// --- Passkey Management Endpoints (List, Rename, Delete) ---
++
++app.get('/api/passkeys', requireAuth, (req, res) => {
++  return res.json({
++    passkeys: req.user.passkeys.map(sanitizePasskey),
++  });
++});
++
++app.patch('/api/passkeys/:id', requireAuth, (req, res) => {
++  const { id } = req.params;
++  const { name } = req.body || {};
++  if (!name || typeof name !== 'string' || !name.trim()) {
++    return res.status(400).json({ error: 'A valid passkey name is required.' });
++  }
++
++  const passkey = req.user.passkeys.find((pk) => pk.id === id);
++  if (!passkey) {
++    return res.status(404).json({ error: 'Passkey not found.' });
++  }
++
++  passkey.name = name.trim().slice(0, 64);
++  return res.json({
++    passkey: sanitizePasskey(passkey),
++    user: sanitizeUser(req.user, req),
++  });
++});
++
++// Deleting a passkey is a sensitive security action protected by fresh reauthentication
++app.delete('/api/passkeys/:id', requireAuth, requireFreshReauth, (req, res) => {
++  const { id } = req.params;
++  const index = req.user.passkeys.findIndex((pk) => pk.id === id);
++  if (index === -1) {
++    return res.status(404).json({ error: 'Passkey not found.' });
++  }
++
++  // Prevent locking out a passwordless user if it's their only passkey unless ?force=true
++  if (req.user.passkeys.length === 1 && !req.user.passwordHash && req.query.force !== 'true') {
++    return res.status(400).json({
++      error: 'Cannot delete your only passkey on a passwordless account without setting a backup passkey first.',
++      code: 'LAST_CREDENTIAL',
++    });
++  }
++
++  const [removed] = req.user.passkeys.splice(index, 1);
++  const rpID = getRPID(req);
++
++  return res.json({
++    deletedId: removed.id,
++    user: sanitizeUser(req.user, req),
++    signals: {
++      unknownCredential: {
++        signalName: 'unknownCredential',
++        rpID,
++        credentialID: removed.id,
++      },
++      allAcceptedCredentials: {
++        signalName: 'allAcceptedCredentials',
++        rpID,
++        userID: req.user.id,
++        allAcceptedCredentialIDs: req.user.passkeys.map((pk) => pk.id),
++      },
++    },
++  });
++});
++
++// --- Sensitive Account & Order Actions (Protected by Reauthentication) ---
++
++app.patch('/api/account/profile', requireAuth, requireFreshReauth, (req, res) => {
++  const { displayName, username, defaultPaymentMethod } = req.body || {};
++  const user = req.user;
++
++  if (username && typeof username === 'string' && username.trim() !== user.username) {
++    const existing = findUserByUsername(username.trim());
++    if (existing && existing.id !== user.id) {
++      return res.status(409).json({ error: 'That email/username is already in use.' });
++    }
++    user.username = username.trim();
++  }
++
++  if (displayName && typeof displayName === 'string' && displayName.trim()) {
++    user.displayName = displayName.trim();
++  }
++
++  if (defaultPaymentMethod && typeof defaultPaymentMethod === 'string' && defaultPaymentMethod.trim()) {
++    user.defaultPaymentMethod = defaultPaymentMethod.trim();
++  }
++
++  const rpID = getRPID(req);
++
++  return res.json({
++    message: 'Account profile updated.',
++    user: sanitizeUser(user, req),
++    signals: {
++      currentUserDetails: {
++        signalName: 'currentUserDetails',
++        rpID,
++        userID: user.id,
++        userName: user.username,
++        userDisplayName: user.displayName,
++      },
++    },
++  });
++});
++
++app.post('/api/orders/checkout', requireAuth, requireFreshReauth, (req, res) => {
++  const { itemName, totalAmount, useRewards } = req.body || {};
++  const user = req.user;
++
++  if (useRewards) {
++    if (user.rewardPoints < 100) {
++      return res.status(400).json({ error: 'Not enough reward points (100 pts required).' });
++    }
++    user.rewardPoints -= 100;
++  } else {
++    user.rewardPoints += 25;
++  }
++
++  const order = {
++    orderId: `ORD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
++    itemName: itemName || 'Seasonal Specialty Coffee',
++    totalAmount: totalAmount || '$5.75',
++    paymentUsed: useRewards ? '100 Coffee Rewards Points' : user.defaultPaymentMethod,
++    timestamp: new Date().toISOString(),
++  };
++
++  return res.json({
++    message: `Order ${order.orderId} confirmed!`,
++    order,
++    user: sanitizeUser(user, req),
++  });
++});
++
++// Serve static files and SPA fallback
++app.use(express.static(__dirname));
++
++app.get('/{*splat}', (req, res) => {
++  res.sendFile(path.join(__dirname, 'index.html'));
++});
++
++app.listen(PORT, () => {
++  console.log(`The Daily Grind server listening on http://localhost:${PORT}`);
++});

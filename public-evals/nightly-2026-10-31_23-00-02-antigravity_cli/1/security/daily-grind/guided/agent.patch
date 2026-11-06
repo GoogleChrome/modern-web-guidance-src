@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+index 66c9173..0ed1731 100644
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <style nonce="__CSP_NONCE__">
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -76,7 +77,9 @@
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80");
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" cross-origin(anonymous) referrer-policy(no-referrer));
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -88,6 +91,10 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -176,7 +183,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +214,35 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script nonce="__CSP_NONCE__">
++    if (!window.trustedTypes) {
++      window.trustedTypes = {
++        createPolicy: (name, rules) => rules,
++      };
++    }
++
++    const escapeHtml = (input) =>
++      String(input)
++        .replaceAll('&', '&amp;')
++        .replaceAll('<', '&lt;')
++        .replaceAll('>', '&gt;')
++        .replaceAll('"', '&quot;')
++        .replaceAll("'", '&#39;');
++
++    const htmlPolicy = window.trustedTypes?.createPolicy('escape-html', {
++      createHTML: escapeHtml,
++    });
++
++    window.dailyGrindSecurity = {
++      htmlPolicy,
++      setSafeText(element, text) {
++        if (element) {
++          element.textContent = String(text ?? '');
++        }
++      },
++    };
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/server.js b/server.js
+index 52c2fd5..8945fbb 100644
+--- a/server.js
++++ b/server.js
+@@ -1,29 +1,107 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
++function generateNonce() {
++  const bytes = new Uint8Array(16);
++  crypto.getRandomValues(bytes);
++  return btoa(String.fromCharCode(...bytes));
++}
++
++function buildSecurityHeaders(nonce) {
++  const csp = [
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'none'",
++    "form-action 'self'",
++    "require-trusted-types-for 'script'",
++    'report-to main-endpoint',
++  ].join('; ');
++
++  return {
++    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
++    'X-Content-Type-Options': 'nosniff',
++    'X-Frame-Options': 'DENY',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy': 'camera=(), geolocation=(), microphone=(), focus-without-user-activation=()',
++    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'Reporting-Endpoints': 'default="https://reports.example/default", main-endpoint="https://reports.example/main"',
++    'Content-Security-Policy': csp,
++    'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++  };
++}
++
++function isAllowedByFetchMetadata(req) {
++  const site = req.headers['sec-fetch-site'];
++  const mode = req.headers['sec-fetch-mode'];
++  const dest = req.headers['sec-fetch-dest'];
++
++  if (!site) return true; // Fallback for legacy browsers
++
++  if (['same-origin', 'same-site', 'none'].includes(site)) return true;
++
++  // Allow standard navigate GET requests (link clicks)
++  if (
++    site === 'cross-site' &&
++    mode === 'navigate' &&
++    req.method === 'GET' &&
++    !['object', 'embed'].includes(dest)
++  ) {
++    return true;
++  }
++
++  return false;
++}
++
+ const server = http.createServer((req, res) => {
++  const nonce = generateNonce();
++  const baseHeaders = buildSecurityHeaders(nonce);
++
++  for (const [key, value] of Object.entries(baseHeaders)) {
++    res.setHeader(key, value);
++  }
++
++  if (!isAllowedByFetchMetadata(req)) {
++    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Forbidden');
++    return;
++  }
++
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
+ 
+   if (pathname === '/logout' || pathname === '/logout/') {
++    res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
++    res.setHeader(
++      'Set-Cookie',
++      '__Host-session_id=; SameSite=Lax; HttpOnly; Secure; Path=/; Max-Age=0'
++    );
+     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+     res.end('Logged out');
+     return;
+   }
+ 
++  res.setHeader(
++    'Set-Cookie',
++    `__Host-session_id=${nonce}; SameSite=Lax; HttpOnly; Secure; Path=/`
++  );
++
+   const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
++  fs.readFile(filePath, 'utf8', (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+       res.end('Server error');
+       return;
+     }
++    const renderedHtml = data.replaceAll('__CSP_NONCE__', nonce);
+     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    res.end(renderedHtml);
+   });
+ });
+ 

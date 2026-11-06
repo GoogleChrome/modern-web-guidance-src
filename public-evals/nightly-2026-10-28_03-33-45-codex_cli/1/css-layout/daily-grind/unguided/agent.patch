@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+index 7400c85..5658c04 100644
+--- a/index.html
++++ b/index.html
+@@ -29,6 +29,10 @@
+ 
+     /* Navigation */
+     nav {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 1rem 2rem;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -37,37 +41,31 @@
+       z-index: 1000;
+     }
+ 
+-    nav::after {
+-      content: "";
+-      display: table;
+-      clear: both;
+-    }
+-
+     .logo {
+-      float: left;
++      margin-inline-end: auto;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+     nav ul {
+-      float: right;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.75rem 1.25rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      display: inline-block;
+-      margin-left: 20px;
+-    }
+-
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -79,19 +77,28 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      display: grid;
++      place-items: center;
++      align-content: center;
++      gap: 1rem;
++      min-height: 60vh;
++      min-height: 60svh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       color: white;
+       text-align: center;
+-      padding: 15vh 20px 0;
++      padding: clamp(3rem, 10vw, 7rem) 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 5vw, 3rem);
++      line-height: 1.2;
++    }
++
++    .hero p {
++      max-width: 55ch;
+     }
+ 
+     /* Content Sections */
+@@ -102,43 +109,59 @@
+     }
+ 
+     .grid {
+-      margin: 20px -10px 0;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
++      gap: 20px;
++      margin-top: 20px;
+     }
+ 
+-    .grid::after {
+-      content: "";
+-      display: table;
+-      clear: both;
++    .section-title {
++      text-align: center;
+     }
+ 
+     .card {
+-      float: left;
+-      width: calc(33.333% - 20px);
+-      margin: 0 10px 20px;
++      display: grid;
++      grid-template-rows: auto 1fr auto;
++      gap: 10px;
++      min-width: 0;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow-wrap: anywhere;
++    }
++
++    /* Share content tracks within each card row, including wrapped headings. */
++    @supports (grid-template-rows: subgrid) {
++      .card {
++        grid-row: span 3;
++        grid-template-rows: subgrid;
++      }
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card .btn {
++      align-self: end;
++    }
++
+     .btn {
+       display: inline-block;
++      justify-self: center;
++      max-width: 100%;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
+@@ -164,7 +187,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -182,8 +205,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

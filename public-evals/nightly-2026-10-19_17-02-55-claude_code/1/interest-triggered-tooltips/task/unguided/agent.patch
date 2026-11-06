@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,57 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Tooltip */
++    .tip-wrap {
++      position: relative;
++      display: inline-block;
++    }
++
++    .tooltip {
++      position: absolute;
++      bottom: calc(100% - 7px);
++      left: 50%;
++      transform: translate(-50%, 4px);
++      width: 200px;
++      background: var(--primary);
++      color: white;
++      padding: 10px 12px;
++      border-radius: 6px;
++      font-size: 0.8rem;
++      line-height: 1.4;
++      text-align: left;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      opacity: 0;
++      visibility: hidden;
++      transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
++      pointer-events: none;
++      z-index: 10;
++    }
++
++    .tooltip::after {
++      content: '';
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      margin-left: -6px;
++      border: 6px solid transparent;
++      border-top-color: var(--primary);
++    }
++
++    .tooltip strong {
++      display: block;
++      color: var(--accent);
++    }
++
++    .tip-wrap:hover .tooltip,
++    .tip-wrap:focus-within .tooltip {
++      opacity: 1;
++      visibility: visible;
++      transform: translate(-50%, 0);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +229,28 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <span class="tip-wrap">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tip-seasonal">View Details</a>
++            <span class="tooltip" role="tooltip" id="tip-seasonal"><strong>16 oz · 190 cal</strong>Oat milk, espresso, maple syrup. Vegan.</span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <span class="tip-wrap">
++            <a href="/menu/espresso" class="btn" aria-describedby="tip-espresso">View Details</a>
++            <span class="tooltip" role="tooltip" id="tip-espresso"><strong>2 oz double · 5 cal</strong>Dark roast, no added sugar. Vegan.</span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="tip-wrap">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tip-cold-brew">View Details</a>
++            <span class="tooltip" role="tooltip" id="tip-cold-brew"><strong>16 oz · 5 cal</strong>18-hour steep, served over ice. Vegan.</span>
++          </span>
+         </div>
+       </div>
+     </section>
+   </main>

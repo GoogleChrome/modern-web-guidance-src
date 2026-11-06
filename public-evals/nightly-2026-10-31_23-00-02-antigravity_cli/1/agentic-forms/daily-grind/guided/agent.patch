@@ -1,0 +1,512 @@
+diff --git a/index.html b/index.html
+index 66c9173..811e544 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,181 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee Finder Form Section */
++    .finder-section {
++      background: white;
++      padding: 2rem;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      margin-block-start: 2.5rem;
++      max-width: 680px;
++      margin-inline: auto;
++    }
++
++    .finder-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++    }
++
++    .finder-subtitle {
++      text-align: center;
++      margin-block-end: 1.5rem;
++      font-size: 0.95rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group > label,
++    fieldset legend {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.4rem;
++      color: var(--primary);
++    }
++
++    fieldset {
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      padding: 1rem;
++      margin-block-end: 1.5rem;
++    }
++
++    fieldset legend {
++      padding-inline: 0.5rem;
++      margin-block-end: 0;
++    }
++
++    .radio-group,
++    .checkbox-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
++      margin-block-start: 0.5rem;
++    }
++
++    .choice-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      font-size: 1rem;
++      min-height: 48px;
++      padding-block: 0.25rem;
++      padding-inline: 0.5rem;
++      cursor: pointer;
++    }
++
++    .choice-label input {
++      accent-color: var(--primary);
++      width: 1.25rem;
++      height: 1.25rem;
++      min-height: auto;
++      padding: 0;
++    }
++
++    input[type="text"],
++    select {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background-color: white;
++      color: var(--text);
++    }
++
++    @media (pointer: coarse) {
++      input[type="text"],
++      select,
++      .choice-label,
++      button[type="submit"] {
++        min-height: 52px;
++      }
++    }
++
++    input:focus-visible,
++    select:focus-visible,
++    button:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    input:invalid:user-invalid,
++    select:invalid:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-block-start: 0.25rem;
++    }
++
++    .field-error {
++      display: block;
++      font-size: 0.85rem;
++      color: #c62828;
++      font-weight: 600;
++      margin-block-start: 0.25rem;
++    }
++
++    .field-error:empty {
++      display: none;
++    }
++
++    button[type="submit"] {
++      width: 100%;
++      font-size: 1rem;
++      font-weight: 600;
++      min-height: 48px;
++      cursor: pointer;
++      border: none;
++    }
++
++    /* WebMCP Agent Visual Feedback */
++    form:tool-form-active {
++      outline: 2px dashed #0b57d0;
++      outline-offset: 4px;
++      background-color: rgba(11, 87, 208, 0.04);
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed #c62828;
++      outline-offset: 2px;
++      animation: pulse 2s infinite;
++    }
++
++    @keyframes pulse {
++      0%, 100% { opacity: 1; }
++      50% { opacity: 0.75; }
++    }
++
++    .finder-results {
++      margin-block-start: 1.5rem;
++      padding: 1rem;
++      border-radius: 6px;
++      background: var(--light);
++      border-inline-start: 4px solid var(--primary);
++    }
++
++    .finder-results:empty {
++      display: none;
++    }
++
++    .finder-results h3 {
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++    }
++
++    .finder-results ul {
++      padding-inline-start: 1.25rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +370,110 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="finder-section" id="coffee-finder">
++      <h2>Find Your Perfect Cup</h2>
++      <p class="finder-subtitle">Search our artisanal menu by roast profile, temperature, and flavor notes.</p>
++
++      <form id="coffee-finder-form"
++            action="/menu/search"
++            method="GET"
++            toolname="find-coffee"
++            tooldescription="Search The Daily Grind menu to get personalized coffee drink recommendations based on flavor notes, roast preference, temperature, and dietary needs."
++            toolautosubmit>
++
++        <div class="form-group">
++          <label for="flavor-query">Flavor Notes or Drink Keyword (required)</label>
++          <input type="text"
++                 id="flavor-query"
++                 name="query"
++                 required
++                 minlength="2"
++                 maxlength="60"
++                 autocorrect="off"
++                 autocapitalize="off"
++                 spellcheck="false"
++                 enterkeyhint="search"
++                 aria-describedby="query-hint query-error"
++                 toolparamdescription="Flavor notes, ingredients, or drink style to match (e.g., caramel, nutty, maple oat, floral, chocolatey)">
++          <span id="query-hint" class="field-hint">Enter a flavor note, ingredient, or style (at least 2 characters).</span>
++          <span id="query-error" class="field-error" aria-live="polite"></span>
++        </div>
++
++        <fieldset toolparamdescription="Desired roast intensity affecting body, acidity, and smokiness">
++          <legend>Roast Level (required)</legend>
++          <div class="radio-group">
++            <label class="choice-label" for="roast-any">
++              <input type="radio" id="roast-any" name="roast" value="any" checked required>
++              Any Roast
++            </label>
++            <label class="choice-label" for="roast-light">
++              <input type="radio" id="roast-light" name="roast" value="light">
++              Light (Bright &amp; Fruity)
++            </label>
++            <label class="choice-label" for="roast-medium">
++              <input type="radio" id="roast-medium" name="roast" value="medium">
++              Medium (Balanced &amp; Smooth)
++            </label>
++            <label class="choice-label" for="roast-dark">
++              <input type="radio" id="roast-dark" name="roast" value="dark">
++              Dark (Bold &amp; Smokey)
++            </label>
++          </div>
++        </fieldset>
++
++        <fieldset toolparamdescription="Serving temperature preference for the beverage">
++          <legend>Serving Temperature (required)</legend>
++          <div class="radio-group">
++            <label class="choice-label" for="temp-any">
++              <input type="radio" id="temp-any" name="temperature" value="any" checked required>
++              Hot or Iced
++            </label>
++            <label class="choice-label" for="temp-hot">
++              <input type="radio" id="temp-hot" name="temperature" value="hot">
++              Hot
++            </label>
++            <label class="choice-label" for="temp-iced">
++              <input type="radio" id="temp-iced" name="temperature" value="iced">
++              Iced / Cold
++            </label>
++          </div>
++        </fieldset>
++
++        <div class="form-group">
++          <label for="milk-preference">Milk or Base Option</label>
++          <select id="milk-preference"
++                  name="milk"
++                  toolparamdescription="Preferred dairy or plant-based milk base for espresso and latte drinks">
++            <option value="any">Any / No Preference</option>
++            <option value="none">Black (No Milk)</option>
++            <option value="whole">Whole Dairy Milk</option>
++            <option value="skim">Skim Milk</option>
++            <option value="oat">Barista Oat Milk</option>
++            <option value="almond">Almond Milk</option>
++            <option value="coconut">Coconut Milk</option>
++          </select>
++        </div>
++
++        <fieldset toolparamdescription="Optional caffeine and sweetener preferences">
++          <legend>Dietary &amp; Customization Filters</legend>
++          <div class="checkbox-group">
++            <label class="choice-label" for="pref-decaf">
++              <input type="checkbox" id="pref-decaf" name="decaf" value="true">
++              Decaf Available
++            </label>
++            <label class="choice-label" for="pref-unsweetened">
++              <input type="checkbox" id="pref-unsweetened" name="unsweetened" value="true">
++              Unsweetened Only
++            </label>
++          </div>
++        </fieldset>
++
++        <button type="submit" class="btn" id="finder-submit-btn">Find Matching Coffees</button>
++      </form>
++
++      <div id="finder-results" class="finder-results" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +486,214 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const COFFEE_CATALOG = [
++      {
++        name: 'Maple Oat Latte',
++        roast: 'medium',
++        temperature: ['hot', 'iced'],
++        milk: ['oat'],
++        decafAvailable: true,
++        unsweetened: false,
++        notes: 'maple, oat, creamy, sweet, autumn, cinnamon, smooth',
++        price: '$5.50'
++      },
++      {
++        name: 'Dark Roast Espresso',
++        roast: 'dark',
++        temperature: ['hot', 'iced'],
++        milk: ['none', 'whole', 'skim', 'oat', 'almond', 'coconut'],
++        decafAvailable: true,
++        unsweetened: true,
++        notes: 'bold, smokey, dark chocolate, intense, rich, espresso',
++        price: '$3.75'
++      },
++      {
++        name: '18-Hour Artisanal Cold Brew',
++        roast: 'medium',
++        temperature: ['iced'],
++        milk: ['none', 'whole', 'skim', 'oat', 'almond', 'coconut'],
++        decafAvailable: false,
++        unsweetened: true,
++        notes: 'smooth, chocolatey, low acid, cold brew, refreshing, nutty',
++        price: '$4.75'
++      },
++      {
++        name: 'Ethiopian Yirgacheffe Pour-Over',
++        roast: 'light',
++        temperature: ['hot', 'iced'],
++        milk: ['none'],
++        decafAvailable: false,
++        unsweetened: true,
++        notes: 'floral, jasmine, citrus, bergamot, bright, fruity, tea-like',
++        price: '$5.25'
++      },
++      {
++        name: 'Honey Almond Flat White',
++        roast: 'medium',
++        temperature: ['hot', 'iced'],
++        milk: ['almond', 'whole', 'oat'],
++        decafAvailable: true,
++        unsweetened: false,
++        notes: 'honey, nutty, almond, velvety, caramel, sweet',
++        price: '$5.25'
++      },
++      {
++        name: 'Toasted Coconut Mocha',
++        roast: 'dark',
++        temperature: ['hot', 'iced'],
++        milk: ['coconut', 'whole', 'oat'],
++        decafAvailable: true,
++        unsweetened: false,
++        notes: 'coconut, chocolatey, cocoa, dark, rich, sweet, mocha',
++        price: '$5.75'
++      }
++    ];
++
++    const finderForm = document.getElementById('coffee-finder-form');
++    const queryInput = document.getElementById('flavor-query');
++    const queryError = document.getElementById('query-error');
++    const resultsContainer = document.getElementById('finder-results');
++
++    function validateFinderForm() {
++      const errors = [];
++      const queryValue = queryInput.value.trim();
++
++      if (!queryValue) {
++        const msg = 'Please enter a flavor note or keyword to search.';
++        queryInput.setCustomValidity(msg);
++        queryError.textContent = msg;
++        errors.push({ field: 'query', message: msg });
++      } else if (queryValue.length < 2) {
++        const msg = 'Flavor keyword must be at least 2 characters long.';
++        queryInput.setCustomValidity(msg);
++        queryError.textContent = msg;
++        errors.push({ field: 'query', message: msg });
++      } else {
++        queryInput.setCustomValidity('');
++        queryError.textContent = '';
++      }
++
++      return errors;
++    }
++
++    // Validate on blur to avoid premature warnings while typing, reset on input
++    queryInput.addEventListener('blur', () => {
++      validateFinderForm();
++    });
++
++    queryInput.addEventListener('input', () => {
++      queryInput.setCustomValidity('');
++      queryError.textContent = '';
++    });
++
++    function searchCoffees(formData) {
++      const query = (formData.get('query') || '').toString().trim().toLowerCase();
++      const roast = (formData.get('roast') || 'any').toString();
++      const temperature = (formData.get('temperature') || 'any').toString();
++      const milk = (formData.get('milk') || 'any').toString();
++      const decafOnly = formData.get('decaf') === 'true';
++      const unsweetenedOnly = formData.get('unsweetened') === 'true';
++
++      const matches = COFFEE_CATALOG.filter((item) => {
++        const matchesQuery =
++          !query ||
++          query === 'any' ||
++          item.name.toLowerCase().includes(query) ||
++          item.notes.toLowerCase().includes(query) ||
++          item.roast.toLowerCase().includes(query);
++        const matchesRoast = roast === 'any' || item.roast === roast;
++        const matchesTemp = temperature === 'any' || item.temperature.includes(temperature);
++        const matchesMilk = milk === 'any' || item.milk.includes(milk);
++        const matchesDecaf = !decafOnly || item.decafAvailable;
++        const matchesUnsweetened = !unsweetenedOnly || item.unsweetened;
++
++        return (
++          matchesQuery &&
++          matchesRoast &&
++          matchesTemp &&
++          matchesMilk &&
++          matchesDecaf &&
++          matchesUnsweetened
++        );
++      });
++
++      return matches;
++    }
++
++    function renderResults(matches, query) {
++      resultsContainer.replaceChildren();
++
++      const heading = document.createElement('h3');
++      if (matches.length === 0) {
++        heading.textContent = 'No exact matches found';
++        const fallbackMsg = document.createElement('p');
++        fallbackMsg.textContent = `We couldn't find a drink matching "${query}" with those exact filters. Try broadening your roast or milk preference!`;
++        resultsContainer.append(heading, fallbackMsg);
++        return `No exact matches found for "${query}" with the selected filters.`;
++      }
++
++      heading.textContent = `Recommended Drinks (${matches.length})`;
++      const list = document.createElement('ul');
++
++      const summaryLines = matches.map((drink) => {
++        const li = document.createElement('li');
++        const title = document.createElement('strong');
++        title.textContent = `${drink.name} (${drink.price})`;
++        const details = document.createElement('span');
++        details.textContent = ` — ${drink.roast} roast, notes of ${drink.notes}`;
++        li.append(title, details);
++        list.appendChild(li);
++
++        return `${drink.name} (${drink.price}): ${drink.roast} roast, notes of ${drink.notes}`;
++      });
++
++      resultsContainer.append(heading, list);
++      return `Found ${matches.length} matching coffee(s): ${summaryLines.join('; ')}`;
++    }
++
++    finderForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      const formValidationErrors = validateFinderForm();
++
++      if (formValidationErrors.length > 0) {
++        if (event.agentInvoked) {
++          const errorString =
++            'Validation failed: ' +
++            formValidationErrors
++              .map((err) => `${err.field} (${err.message})`)
++              .join(', ');
++          event.respondWith(Promise.resolve(errorString));
++        } else {
++          queryInput.focus();
++        }
++        return;
++      }
++
++      const formData = new FormData(event.target);
++      const matches = searchCoffees(formData);
++      const summaryText = renderResults(matches, formData.get('query'));
++
++      if (event.agentInvoked) {
++        event.respondWith(Promise.resolve(summaryText));
++      }
++    });
++
++    // WebMCP Lifecycle Events with backward-compatible target detection
++    const targetFor = (type, listener, options) =>
++      (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++        .addEventListener(type, listener, options);
++
++    targetFor('toolactivated', ({ toolName }) => {
++      console.log(`Tool "${toolName}" started execution.`);
++    });
++
++    targetFor('toolcancel', ({ toolName }) => {
++      console.log(`Tool "${toolName}" execution is cancelled.`);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

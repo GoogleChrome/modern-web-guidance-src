@@ -1,0 +1,151 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,80 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Form */
++    .shipping {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 640px;
++      margin: 0 auto;
++    }
++
++    .shipping h2,
++    .shipping > p {
++      text-align: center;
++    }
++
++    .shipping fieldset {
++      border: 0;
++      margin-block-start: 1.5rem;
++    }
++
++    .shipping legend {
++      font-weight: bold;
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 0 16px;
++    }
++
++    .form-group {
++      margin-block-end: 1.25rem;
++    }
++
++    .form-group label {
++      display: block;
++      margin-block-end: 0.25rem;
++      font-size: 0.9rem;
++    }
++
++    .form-group input {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .form-group input:focus-visible,
++    .shipping button:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .form-group input:user-invalid {
++      border-color: #b3261e;
++    }
++
++    .shipping button {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++      min-height: 48px;
++      width: 100%;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +268,66 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="container shipping" aria-labelledby="shipping-title">
++    <h2 id="shipping-title">Get Beans Delivered</h2>
++    <p>Tell us where to send your freshly roasted coffee beans.</p>
++    <form action="/shipping" method="POST">
++      <fieldset>
++        <legend>Recipient</legend>
++        <div class="form-group">
++          <label for="ship-name">Full name</label>
++          <input type="text" id="ship-name" name="name" autocomplete="shipping name" maxlength="100" required>
++        </div>
++        <div class="form-row">
++          <div class="form-group">
++            <label for="ship-email">Email</label>
++            <input type="email" id="ship-email" name="email" autocomplete="shipping email" autocapitalize="off" autocorrect="off" spellcheck="false" required>
++          </div>
++          <div class="form-group">
++            <label for="ship-tel">Phone (optional)</label>
++            <input type="tel" id="ship-tel" name="tel" autocomplete="shipping tel" maxlength="30">
++          </div>
++        </div>
++      </fieldset>
++
++      <fieldset>
++        <legend>Delivery address</legend>
++        <div class="form-group">
++          <label for="ship-address1">Street address</label>
++          <input type="text" id="ship-address1" name="address_line1" autocomplete="shipping address-line1" maxlength="100" required>
++        </div>
++        <div class="form-group">
++          <label for="ship-address2">Apartment, suite, etc. (optional)</label>
++          <input type="text" id="ship-address2" name="address_line2" autocomplete="shipping address-line2" maxlength="100">
++        </div>
++        <div class="form-row">
++          <div class="form-group">
++            <label for="ship-city">City</label>
++            <input type="text" id="ship-city" name="city" autocomplete="shipping address-level2" maxlength="100" required>
++          </div>
++          <div class="form-group">
++            <label for="ship-region">State / Province / Region</label>
++            <input type="text" id="ship-region" name="region" autocomplete="shipping address-level1" maxlength="100">
++          </div>
++        </div>
++        <div class="form-row">
++          <div class="form-group">
++            <label for="ship-postal">ZIP or postal code (optional)</label>
++            <input type="text" id="ship-postal" name="postal_code" autocomplete="shipping postal-code" autocapitalize="characters" maxlength="20">
++          </div>
++          <div class="form-group">
++            <label for="ship-country">Country</label>
++            <input type="text" id="ship-country" name="country" autocomplete="shipping country-name" maxlength="100" required>
++          </div>
++        </div>
++      </fieldset>
++
++      <button type="submit" class="btn">Ship My Beans</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

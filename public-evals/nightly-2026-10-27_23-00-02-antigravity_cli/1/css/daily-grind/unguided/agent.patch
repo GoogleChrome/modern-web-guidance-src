@@ -1,0 +1,400 @@
+diff --git a/index.html b/index.html
+index 66c9173..d08b48c 100644
+--- a/index.html
++++ b/index.html
+@@ -6,151 +6,266 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer tokens, reset, base, layout, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    /* ==========================================================================
++       1. Design Tokens
++       ========================================================================== */
++    @layer tokens {
++      :root {
++        /* Color Palette & Semantic Tokens */
++        --color-primary: #4e342e;
++        --color-primary-hover: #3e2723;
++        --color-secondary: #d7ccc8;
++        --color-accent: #ffab40;
++        --color-text: #3e2723;
++        --color-text-inverse: #ffffff;
++        --color-bg: #fafafa;
++        --color-surface: #ffffff;
++        --color-overlay: rgba(0, 0, 0, 0.5);
++        --color-shadow: rgba(0, 0, 0, 0.1);
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++        /* Legacy Token Aliases */
++        --primary: var(--color-primary);
++        --secondary: var(--color-secondary);
++        --accent: var(--color-accent);
++        --text: var(--color-text);
++        --light: var(--color-bg);
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        /* Typography Tokens */
++        --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        --font-size-xs: 0.85rem;
++        --font-size-sm: 0.9rem;
++        --font-size-base: 1rem;
++        --font-size-lg: 1.5rem;
++        --font-size-xl: 2rem;
++        --font-size-2xl: clamp(2.25rem, 5vw, 3rem);
++        --font-weight-normal: 400;
++        --font-weight-bold: 700;
++        --line-height-tight: 1.2;
++        --line-height-base: 1.6;
++        --letter-spacing-wide: 0.0625rem;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        /* Logical Spacing Scale */
++        --space-2xs: 0.3125rem; /* 5px */
++        --space-xs: 0.625rem;   /* 10px */
++        --space-sm: 0.75rem;    /* 12px */
++        --space-md: 0.9375rem;  /* 15px */
++        --space-base: 1rem;     /* 16px */
++        --space-lg: 1.25rem;    /* 20px */
++        --space-xl: 2.5rem;     /* 40px */
++        --space-fluid-inline: 5%;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        /* Layout & Sizing Tokens */
++        --container-max-inline: 68.75rem; /* 1100px */
++        --grid-min-col: 15.625rem;        /* 250px */
++        --hero-block-size: 60vh;
+ 
+-    nav ul li {
+-      margin-left: 20px;
++        /* Borders, Radii, Shadows & Transitions */
++        --border-thin: 1px solid;
++        --radius-sm: 0.25rem;   /* 4px */
++        --radius-md: 0.3125rem; /* 5px */
++        --radius-lg: 0.5rem;    /* 8px */
++        --shadow-card: 0 2px 5px var(--color-shadow);
++        --transition-base: 0.3s ease;
++        --z-sticky: 1000;
++      }
+     }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++    /* ==========================================================================
++       2. Reset Layer (Low Specificity via :where)
++       ========================================================================== */
++    @layer reset {
++      :where(*, *::before, *::after) {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++      :where(ul, ol) {
++        list-style: none;
++      }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      :where(a) {
++        color: inherit;
++        text-decoration: none;
++      }
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++    /* ==========================================================================
++       3. Base Layer
++       ========================================================================== */
++    @layer base {
++      body {
++        font-family: var(--font-sans);
++        font-size: var(--font-size-base);
++        line-height: var(--line-height-base);
++        color: var(--color-text);
++        background-color: var(--color-bg);
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      :where(h1, h2, h3) {
++        line-height: var(--line-height-tight);
++        font-weight: var(--font-weight-bold);
++      }
+     }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++    /* ==========================================================================
++       4. Layout Layer
++       ========================================================================== */
++    @layer layout {
++      .container {
++        max-inline-size: var(--container-max-inline);
++        margin-block: var(--space-xl);
++        margin-inline: auto;
++        padding-inline: var(--space-lg);
++      }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--grid-min-col)), 1fr));
++        gap: var(--space-lg);
++        margin-block-start: var(--space-lg);
++      }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++      /* Shared Centered Alignment Grouping */
++      :is(.hero, .card, footer, section > h2) {
++        text-align: center;
++      }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      /* Shared Inverse Foreground Grouping */
++      :is(nav, .hero, .btn) {
++        color: var(--color-text-inverse);
++      }
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++    /* ==========================================================================
++       5. Components Layer
++       ========================================================================== */
++    @layer components {
++      /* Sticky Navigation Bar */
++      nav {
++        position: sticky;
++        inset-block-start: 0;
++        z-index: var(--z-sticky);
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        gap: var(--space-lg);
++        padding-block: var(--space-base);
++        padding-inline: var(--space-fluid-inline);
++        background-color: var(--color-primary);
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++        & .logo {
++          font-size: var(--font-size-lg);
++          font-weight: var(--font-weight-bold);
++          letter-spacing: var(--letter-spacing-wide);
++        }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++        & ul {
++          display: flex;
++          align-items: center;
++          flex-wrap: wrap;
++          gap: var(--space-lg);
++        }
++
++        & a {
++          font-size: var(--font-size-sm);
++          transition: color var(--transition-base);
++
++          &:is(:hover, :focus-visible) {
++            color: var(--color-accent);
++          }
++        }
++
++        & .logout-link {
++          border: var(--border-thin) var(--color-accent);
++          padding-block: var(--space-2xs);
++          padding-inline: var(--space-sm);
++          border-radius: var(--radius-sm);
++        }
++      }
++
++      /* Hero Banner ("Wake Up Your Senses") */
++      .hero {
++        min-block-size: var(--hero-block-size);
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: center;
++        padding-block: var(--space-xl);
++        padding-inline: var(--space-lg);
++        background:
++          linear-gradient(var(--color-overlay), var(--color-overlay)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80')
++          center / cover no-repeat;
++
++        & h1 {
++          font-size: var(--font-size-2xl);
++          margin-block-end: var(--space-base);
++        }
++      }
++
++      /* Seasonal Favorites Card */
++      .card {
++        background-color: var(--color-surface);
++        padding-block: var(--space-lg);
++        padding-inline: var(--space-lg);
++        border-radius: var(--radius-lg);
++        box-shadow: var(--shadow-card);
++
++        & h3 {
++          margin-block-end: var(--space-xs);
++          color: var(--color-primary);
++        }
++      }
++
++      /* Call-to-Action Button */
++      .btn {
++        display: inline-block;
++        background-color: var(--color-primary);
++        padding-block: var(--space-xs);
++        padding-inline: var(--space-lg);
++        border-radius: var(--radius-md);
++        margin-block-start: var(--space-md);
++        transition: background-color var(--transition-base);
++
++        &:is(:hover, :focus-visible) {
++          background-color: var(--color-primary-hover);
++        }
++      }
++
++      /* Footer */
++      footer {
++        background-color: var(--color-secondary);
++        padding-block: var(--space-xl);
++        padding-inline: var(--space-lg);
++        margin-block-start: var(--space-xl);
++
++        & .footer-links {
++          margin-block-end: var(--space-lg);
++
++          & a {
++            margin-inline: var(--space-xs);
++            color: var(--color-text);
++            font-size: var(--font-size-xs);
++            transition: color var(--transition-base);
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++            &:is(:hover, :focus-visible) {
++              color: var(--color-primary);
++            }
++          }
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* ==========================================================================
++       6. Utilities Layer
++       ========================================================================== */
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +291,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

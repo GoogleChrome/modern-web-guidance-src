@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+index 66c9173..a159051 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,145 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------------------------------------------------------------
++       Decorative icons & flourishes (CSS generated content)
++       All generated content here is purely decorative: the visible
++       text (headings, button labels) already conveys the meaning, so
++       glyphs use `content: "x" / ""` (empty alt text) to stay silent
++       for screen readers. Masked SVG icons use `content: ""`, which
++       is already presentational. Each `/` declaration is preceded by
++       a single-value fallback for browsers without alt-text support.
++       --------------------------------------------------------------- */
++    :root {
++      --icon-cup: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 0 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3Cpath d='M6 2v2M10 2v2M14 2v2'/%3E%3C/svg%3E");
++      --icon-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E");
++    }
++
++    /* Section heading: ornamental rules with a bean-like diamond */
++    .section-title {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.6em;
++      text-align: center;
++      text-wrap: balance;
++    }
++
++    .section-title::before,
++    .section-title::after {
++      content: "\2726";
++      content: "\2726" / "";
++      flex: 0 1 4rem;
++      color: var(--accent);
++      font-size: 0.7em;
++      line-height: 1;
++      /* Fading rule drawn behind the glyph */
++      background:
++        linear-gradient(to var(--rule-dir, left), transparent, var(--accent)) center / 100% 2px no-repeat;
++    }
++
++    .section-title::before {
++      --rule-dir: left;
++      text-align: right;
++    }
++
++    .section-title::after {
++      --rule-dir: right;
++      text-align: left;
++    }
++
++    /* Drink headings: per-drink emoji badge + underline flourish */
++    .card h3 {
++      position: relative;
++      padding-bottom: 0.5rem;
++    }
++
++    .card h3::before {
++      content: "\2615";
++      content: "\2615" / "";
++      display: grid;
++      place-items: center;
++      width: 2.75rem;
++      height: 2.75rem;
++      margin: 0 auto 0.5rem;
++      border-radius: 50%;
++      background: var(--secondary);
++      box-shadow: 0 0 0 4px white, 0 0 0 6px var(--accent);
++      font-size: 1.4rem;
++      line-height: 1;
++    }
++
++    .card h3::after {
++      content: "";
++      position: absolute;
++      inset-inline: 35%;
++      bottom: 0;
++      height: 3px;
++      border-radius: 3px;
++      background: linear-gradient(to right, transparent, var(--accent), transparent);
++    }
++
++    /* Per-drink badge glyphs (espresso uses the default cup) */
++    .card h3.drink--maple::before {
++      content: "\1F341";
++      content: "\1F341" / "";
++    }
++
++    .card h3.drink--cold-brew::before {
++      content: "\1F9CA";
++      content: "\1F9CA" / "";
++    }
++
++    /* Buttons: masked SVG icons that follow currentColor */
++    .btn--icon {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5em;
++    }
++
++    .btn--order::before,
++    .btn--details::after {
++      content: "";
++      flex: none;
++      width: 1.1em;
++      height: 1.1em;
++      background-color: currentColor;
++      mask: var(--btn-icon) no-repeat center / contain;
++      pointer-events: none;
++      forced-color-adjust: none;
++    }
++
++    .btn--order {
++      --btn-icon: var(--icon-cup);
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++      box-shadow: 0 4px 14px rgba(255, 171, 64, 0.4);
++    }
++
++    .btn--order:hover {
++      background: #ffc370;
++    }
++
++    .btn--details {
++      --btn-icon: var(--icon-arrow);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .btn--details::after {
++        transition: translate 0.2s ease;
++      }
++
++      .btn--details:is(:hover, :focus-visible)::after {
++        translate: 0.25em 0;
++      }
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
+   </style>
+ </head>
+ 
+@@ -171,27 +310,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn--icon btn--order">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="drink--maple">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn btn--icon btn--details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="drink--espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn btn--icon btn--details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="drink--cold-brew">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn btn--icon btn--details">View Details</a>
+         </div>
+       </div>
+     </section>

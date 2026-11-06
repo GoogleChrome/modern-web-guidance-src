@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,169 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#f7f8fa">
++  <title>Typeform — Font harmony playground</title>
++  <style>
++    :root { color-scheme: light; --ink: #202828; --muted: #77807e; --line: #e4e8e6; --green: #246d54; --mint: #eaf4ee; }
++    * { box-sizing: border-box; }
++    body { margin: 0; background: #f7f8fa; color: var(--ink); font-family: Arial, Helvetica, sans-serif; font-size: .875rem; line-height: 1.5; }
++    button, input, select { font: inherit; }
++    button, select, input { accent-color: var(--green); }
++    button { cursor: pointer; }
++    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #75b79b; outline-offset: 4px; }
++    a { color: inherit; text-decoration: none; }
++    header { height: 80px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 5%; }
++    .brand { display: flex; align-items: center; gap: 11px; font-size: 1.25rem; font-weight: 700; letter-spacing: -.06em; }
++    .brand-icon { background: #203e32; color: #fff; border-radius: 9px; width: 33px; height: 33px; display: grid; place-items: center; font-family: Georgia, serif; font-size: 1.6rem; font-weight: 400; letter-spacing: -.09em; padding-right: 3px; }
++    .brand span:last-child { color: #8b9591; font-size: .65rem; letter-spacing: .08em; border-left: 1px solid var(--line); padding-left: 16px; margin-left: 8px; font-weight: 400; }
++    .header-link { color: #63706a; display: flex; align-items: center; gap: 10px; font-size: .8rem; }
++    main { max-width: 1160px; padding: 57px 32px 35px; margin: auto; }
++    .eyebrow { color: var(--green); font-size: .66rem; letter-spacing: .13em; font-weight: 700; display: flex; gap: 8px; align-items: center; }
++    .dot { width: 6px; height: 6px; border-radius: 50%; background: #43896a; display: inline-block; }
++    h1 { font-size: clamp(2rem, 1.6rem + 1.7vw, 3.1rem); font-weight: 500; letter-spacing: -.055em; line-height: 1.15; margin: 15px 0 13px; text-wrap: balance; }
++    .intro { color: var(--muted); margin: 0; font-size: .92rem; }
++    .title-row { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 37px; }
++    .tag { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 6px 10px; color: #68736d; font-size: .69rem; white-space: nowrap; }
++    .tag .dot { margin-right: 5px; }
++    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 288px; gap: 22px; align-items: start; }
++    .stack { display: grid; gap: 22px; }
++    .card { border: 1px solid var(--line); background: #fff; border-radius: 12px; overflow: hidden; }
++    .card-heading { display: flex; justify-content: space-between; align-items: center; padding: 20px 25px; border-bottom: 1px solid var(--line); gap: 12px; }
++    h2 { font-size: .88rem; font-weight: 600; margin: 0; letter-spacing: -.015em; }
++    .number { color: #9ca6a0; font-size: .7rem; margin-right: 9px; font-weight: 400; }
++    .badge { font-size: .62rem; border-radius: 4px; padding: 3px 7px; background: var(--mint); color: #3d795e; letter-spacing: .015em; }
++    .preview { padding: 33px 30px 35px; min-height: 224px; background-image: radial-gradient(#dee5df .65px, transparent .65px); background-size: 12px 12px; }
++    .preview-label { color: #929b95; font-size: .6rem; letter-spacing: .13em; margin-bottom: 22px; }
++    #mixed-fonts-container { font-family: Arial, Helvetica, sans-serif; font-size: var(--sample-size, 1.5rem); font-size-adjust: from-font; line-height: 1.85; max-width: 50ch; margin: 0; letter-spacing: -.02em; overflow-wrap: anywhere; }
++    #mixed-fonts-container code { font-family: Consolas, 'Liberation Mono', monospace; font-size: 1em; background: #e8eee9; color: #35674e; padding: 3px 6px; border-radius: 4px; letter-spacing: -.035em; }
++    #mixed-fonts-container.unadjusted { font-size-adjust: none; }
++    .sample-caption { display: flex; align-items: center; gap: 7px; font-size: .7rem; color: #79847c; margin-top: 23px; }
++    .sample-caption svg { color: #478465; }
++    .code-panel { background: #fbfcfb; border-top: 1px solid var(--line); padding: 17px 25px 19px; }
++    .code-label { display: flex; align-items: center; justify-content: space-between; color: #939a95; font-size: .62rem; letter-spacing: .09em; margin-bottom: 10px; }
++    .copy { color: #7c8780; border: 0; background: transparent; padding: 0 3px; font-size: .68rem; letter-spacing: 0; display: flex; gap: 5px; align-items: center; }
++    pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .74rem; line-height: 1.9; color: #67766d; }
++    .selector { color: #43584a; } .property { color: #7d8a80; } .value { color: #318361; }
++    .theme-preview { margin: 24px; background: #f1efe9; border: 1px solid #e5e1d8; border-radius: 7px; padding: 25px 27px; position: relative; }
++    #independent-theme-container { font-family: Georgia, 'Times New Roman', serif; font-size: var(--sample-size, 1.5rem); font-size-adjust: 0.5; line-height: 1.65; color: #4d4a40; }
++    #independent-theme-container p { margin: 0; max-width: 60ch; }
++    .theme-label { display: flex; align-items: center; justify-content: space-between; color: #918d80; font-family: Arial, sans-serif; font-size: .59rem; letter-spacing: .1em; margin-bottom: 15px; }
++    .theme-label span:last-child { color: #777368; background: #e8e5dc; padding: 3px 7px; border-radius: 4px; letter-spacing: 0; }
++    .theme-note { margin: -7px 25px 22px; font-size: .73rem; color: #7b847d; }
++    .settings { padding: 24px; }
++    .settings h2 { margin-bottom: 26px; }
++    .field-label { display: flex; justify-content: space-between; margin-bottom: 11px; color: #5a665e; font-size: .74rem; }
++    output { font-family: monospace; font-size: .7rem; color: #78827c; }
++    input[type=range] { width: 100%; height: 4px; margin: 4px 0 9px; cursor: pointer; }
++    .range-labels { display: flex; justify-content: space-between; color: #9ba39e; font-size: .6rem; }
++    .setting-group { margin-bottom: 25px; }
++    select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: #4e5b52; font-size: .76rem; }
++    .switch-row { display: flex; align-items: center; justify-content: space-between; font-size: .76rem; gap: 8px; }
++    .switch { appearance: none; width: 31px; height: 18px; background: #cbd2ce; border-radius: 12px; margin: 0; position: relative; cursor: pointer; flex: 0 0 auto; }
++    .switch:checked { background: #337c5b; }
++    .switch::after { content: ''; position: absolute; width: 12px; height: 12px; background: #fff; border-radius: 50%; left: 3px; top: 3px; transition: transform .15s; }
++    .switch:checked::after { transform: translateX(13px); }
++    .help { color: #909991; font-size: .68rem; line-height: 1.7; margin: 10px 0 0; }
++    .divider { height: 1px; background: var(--line); margin: 23px 0; }
++    .legend-title { color: #89938c; font-size: .61rem; letter-spacing: .1em; margin-bottom: 14px; }
++    .legend { display: flex; gap: 10px; align-items: center; margin-top: 12px; color: #68736b; font-size: .72rem; }
++    .swatch { border: 1px solid #dfe5e1; width: 27px; height: 27px; border-radius: 5px; display: grid; place-items: center; color: #6c7c70; font-size: .78rem; }
++    .swatch.mono { background: #eaf0eb; font-family: monospace; } .swatch.serif { background: #f1efe9; font-family: Georgia, serif; }
++    .reset { border: 1px solid var(--line); background: #fff; border-radius: 6px; width: 100%; padding: 8px; color: #66736a; font-size: .73rem; margin-top: 24px; }
++    .reset:hover { background: #f6f8f6; }
++    .note { border: 1px solid #e0e9e3; border-radius: 9px; background: #eef4ef; padding: 19px 20px; }
++    .note h3 { margin: 0 0 8px; color: #426b51; font-size: .76rem; font-weight: 600; }
++    .note p { color: #7a8d7e; font-size: .73rem; line-height: 1.8; margin: 0; }
++    .note code { color: #506e58; font-size: .7rem; }
++    footer { display: flex; justify-content: space-between; gap: 15px; border-top: 1px solid var(--line); padding-top: 22px; margin-top: 33px; color: #98a09a; font-size: .66rem; }
++    footer span:last-child { display: flex; align-items: center; gap: 6px; }
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container { line-height: 1.9; }
++      #mixed-fonts-container code { font-size: .95em; }
++    }
++    @supports not (font-size-adjust: 0.5) { #independent-theme-container { font-size: calc(var(--sample-size, 1.5rem) * 1.05); line-height: 1.7; } }
++    @media (max-width: 760px) { header { padding: 0 24px; height: 68px; } main { padding: 35px 20px; } .workspace { grid-template-columns: 1fr; } .title-row { align-items: start; } .title-row > .tag { display: none; } .brand span:last-child { display: none; } .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .settings h2, .settings .divider, .settings .legend-title, .settings .legend, .reset { grid-column: 1 / -1; } .settings h2, .setting-group, .settings .divider { margin: 0; } .settings .legend { margin: 0; } .preview { padding: 25px; } footer { flex-wrap: wrap; } }
++    @media (prefers-reduced-motion: reduce) { .switch::after { transition: none; } }
++  </style>
++</head>
++<body>
++  <header>
++    <a href="./" class="brand" aria-label="Typeform home"><span class="brand-icon" aria-hidden="true">tf</span>typeform<span>THE TYPE LAB</span></a>
++    <a class="header-link" href="https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust" target="_blank" rel="noopener noreferrer">CSS reference <span aria-hidden="true">↗</span></a>
++  </header>
++  <main>
++    <div class="title-row"><div><div class="eyebrow"><span class="dot"></span> TYPOGRAPHY PLAYGROUND</div><h1>Different fonts. Same rhythm.</h1><p class="intro">Bring your fonts into balance with a little modern CSS.</p></div><span class="tag"><span class="dot"></span> CSS font-size-adjust</span></div>
++    <div class="workspace">
++      <div class="stack">
++        <section class="card" aria-labelledby="mixed-heading">
++          <div class="card-heading"><h2 id="mixed-heading"><span class="number">01</span> Mixed font families</h2><span class="badge">Automatic</span></div>
++          <div class="preview">
++            <div class="preview-label">SANS-SERIF + MONOSPACE</div>
++            <p id="mixed-fonts-container">Good typography is a conversation.<br>Even when <code>inline code</code> joins in,<br>every word should feel at home.</p>
++            <div class="sample-caption" id="adjustment-status"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor"/><path d="m5 8 2 2 4-4" stroke="currentColor"/></svg><span>X-heights aligned automatically</span></div>
++          </div>
++          <div class="code-panel"><div class="code-label">CSS <button class="copy" data-copy="mixed" aria-label="Copy mixed font CSS">▢ <span>Copy</span></button></div><pre><code><span class="selector">#mixed-fonts-container</span> {
++  <span class="property">font-size-adjust</span>: <span class="value" id="mixed-value">from-font</span>;
++}</code></pre></div>
++        </section>
++        <section class="card" aria-labelledby="theme-heading">
++          <div class="card-heading"><h2 id="theme-heading"><span class="number">02</span> Independent theme</h2><span class="badge" style="background:#f1efe9;color:#8a8063">Explicit ratio</span></div>
++          <div class="theme-preview" id="independent-theme-container"><div class="theme-label"><span>A DIFFERENT PERSPECTIVE</span><span>Serif theme</span></div><p>A typeface of its own.<br>The same sense of proportion.</p></div>
++          <p class="theme-note">An independent theme, anchored to a fixed x-height ratio.</p>
++          <div class="code-panel"><div class="code-label">CSS <button class="copy" data-copy="theme" aria-label="Copy independent theme CSS">▢ <span>Copy</span></button></div><pre><code><span class="selector">#independent-theme-container</span> {
++  <span class="property">font-size-adjust</span>: <span class="value">0.5</span>;
++}</code></pre></div>
++        </section>
++      </div>
++      <aside class="stack" aria-label="Playground controls">
++        <div class="card settings">
++          <h2>Make it your type</h2>
++          <div class="setting-group"><label class="field-label" for="font-size">Font size <output id="size-output" for="font-size">24 px</output></label><input id="font-size" type="range" min="16" max="32" value="24"><div class="range-labels"><span>16 px</span><span>32 px</span></div></div>
++          <div class="setting-group"><label class="field-label" for="primary-font">Primary font</label><select id="primary-font"><option value="Arial, Helvetica, sans-serif">Arial · Sans-serif</option><option value="Verdana, sans-serif">Verdana · Sans-serif</option><option value="Georgia, serif">Georgia · Serif</option></select></div>
++          <div><label class="switch-row" for="normalize">Normalize font height <input type="checkbox" role="switch" id="normalize" class="switch" checked></label><p class="help">Keep mixed fonts visually consistent, whatever their natural proportions.</p></div>
++          <div class="divider"></div>
++          <div class="legend-title">IN THIS PLAYGROUND</div>
++          <div class="legend"><span class="swatch">Aa</span><span id="primary-legend">Arial <span style="color:#a0a7a2">/ Body text</span></span></div>
++          <div class="legend"><span class="swatch mono">{ }</span>Monospace <span style="color:#a0a7a2">/ Inline code</span></div>
++          <div class="legend"><span class="swatch serif">Aa</span>Georgia <span style="color:#a0a7a2">/ Theme</span></div>
++          <button class="reset" id="reset">↺ &nbsp; Reset to defaults</button>
++        </div>
++        <div class="note"><h3>Small property. Big harmony.</h3><p><code>font-size-adjust</code> uses a font’s x-height to balance its perceived size. So your text feels consistent, even when the font changes.</p></div>
++      </aside>
++    </div>
++    <footer><span>A small exploration of better type on the web.</span><span><span class="dot"></span> Native CSS. Naturally balanced.</span></footer>
++  </main>
++  <script>
++    const sample = document.querySelector('#mixed-fonts-container');
++    const slider = document.querySelector('#font-size');
++    const font = document.querySelector('#primary-font');
++    const normalize = document.querySelector('#normalize');
++    const supported = CSS.supports('font-size-adjust', 'from-font');
++    function update() {
++      document.documentElement.style.setProperty('--sample-size', `${Number(slider.value) / 16}rem`);
++      document.querySelector('#size-output').textContent = `${slider.value} px`;
++      sample.style.fontFamily = font.value;
++      sample.classList.toggle('unadjusted', !normalize.checked);
++      document.querySelector('#mixed-value').textContent = normalize.checked ? 'from-font' : 'none';
++      document.querySelector('#primary-legend').textContent = `${font.value.split(',')[0]} / Body text`;
++      document.querySelector('#adjustment-status span').textContent = !normalize.checked ? 'Natural font proportions · adjustment off' : supported ? 'X-heights aligned automatically' : 'Fallback font sizing · browser support limited';
++    }
++    slider.addEventListener('input', update);
++    font.addEventListener('change', update);
++    normalize.addEventListener('change', update);
++    document.querySelector('#reset').addEventListener('click', () => { slider.value = '24'; font.selectedIndex = 0; normalize.checked = true; update(); });
++    document.querySelectorAll('[data-copy]').forEach(button => {
++      button.addEventListener('click', async () => {
++        const theme = button.dataset.copy === 'theme';
++        const text = `#${theme ? 'independent-theme-container' : 'mixed-fonts-container'} {\n  font-size-adjust: ${theme ? '0.5' : normalize.checked ? 'from-font' : 'none'};\n}`;
++        try { await navigator.clipboard.writeText(text); button.querySelector('span').textContent = 'Copied!'; }
++        catch { button.querySelector('span').textContent = 'Copy unavailable'; }
++        setTimeout(() => { button.querySelector('span').textContent = 'Copy'; }, 2000);
++      });
++    });
++    update();
++  </script>
++</body>
++</html>

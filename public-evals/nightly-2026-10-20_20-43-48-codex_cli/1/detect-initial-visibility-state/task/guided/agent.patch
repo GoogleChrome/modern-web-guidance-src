@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,41 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      const entries = 'VisibilityStateEntry' in window
++        ? performance.getEntriesByType('visibility-state')
++        : [];
++      const initialEntry = entries.find((entry) => entry.startTime === 0);
++
++      if (initialEntry) {
++        const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++        console.log({
++          initiallyBackgrounded: initialEntry.name === 'hidden',
++          // Browser-recorded milliseconds since navigation began; null means
++          // no background entry has been recorded yet. Preserve a valid zero.
++          timeBackgrounded: firstHiddenEntry ? firstHiddenEntry.startTime : null,
++          fallbackDetection: false
++        });
++        return;
++      }
++
++      // UNRELIABLE FALLBACK: current visibility cannot recover initial state
++      // after an async script delay. This timestamp is only the observation
++      // time, not the exact time the page was backgrounded.
++      const hiddenNow = document.visibilityState === 'hidden';
++      console.warn(
++        'Visibility history unavailable: fallback detection is active and potentially unreliable, especially for async scripts. timeBackgrounded is an observation time only.'
++      );
++      console.log({
++        initiallyBackgrounded: hiddenNow,
++        timeBackgrounded: hiddenNow ? performance.now() : null,
++        fallbackDetection: true
++      });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,58 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Onboarding tour */
++    #feature {
++      anchor-name: --feature;
++    }
++
++    #tour-step {
++      position: fixed;
++      position-anchor: --feature;
++      /* anchor() insets (not position-area) so the polyfill can position it too */
++      top: anchor(--feature bottom);
++      right: anchor(--feature right);
++      left: auto;
++      bottom: auto;
++      margin: 12px 0 0;
++      width: max-content;
++      max-width: min(280px, calc(100vw - 2rem));
++      padding: 1rem 1.25rem;
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
++    }
++
++    #tour-step h2 {
++      font-size: 1rem;
++      margin-bottom: 0.25rem;
++    }
++
++    #tour-step p {
++      font-size: 0.9rem;
++      margin-bottom: 0.75rem;
++    }
++
++    #tour-step button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 4px;
++      padding: 6px 14px;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    #tour-step button:hover,
++    #tour-step button:focus-visible {
++      background: var(--text);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,14 +211,20 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title">
++    <h2 id="tour-title">New: Rewards</h2>
++    <p>Earn points with every purchase and redeem them for free drinks and treats.</p>
++    <button type="button" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +262,33 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!CSS.supports("anchor-name: --foo")) {
++      await import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++
++    const tourStep = document.getElementById("tour-step");
++    const rewardsLink = document.getElementById("feature");
++    let tourOpen = false;
++
++    tourStep.addEventListener("toggle", (event) => {
++      tourOpen = event.newState === "open";
++    });
++
++    // Keep the user on the page while the tour step is showing.
++    rewardsLink.addEventListener("click", (event) => {
++      if (tourOpen) event.preventDefault();
++    });
++
++    tourStep.showPopover();
++    tourOpen = true;
++    tourStep.querySelector("button").focus();
++  </script>
++
+ </body>
+ 
+ </html>

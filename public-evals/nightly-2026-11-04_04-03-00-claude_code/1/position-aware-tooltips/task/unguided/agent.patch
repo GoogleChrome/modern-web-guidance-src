@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,105 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Info button + anchored tooltip */
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .info-btn {
++      anchor-name: --maple-info;
++      width: 32px;
++      height: 32px;
++      border-radius: 50%;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font: italic bold 1rem/1 Georgia, serif;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .info-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* The popover itself is a transparent, anchored query container */
++    .tooltip {
++      --arrow: 8px;
++      position: fixed;
++      position-anchor: --maple-info;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      inset: auto;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      overflow: visible;
++      width: max-content;
++      max-width: 240px;
++    }
++
++    /* Default state: tooltip sits above the trigger, arrow points down */
++    .tooltip-body {
++      position: relative;
++      margin-bottom: calc(var(--arrow) + 4px);
++      padding: 10px 14px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: center;
++      border-radius: 8px 8px 8px 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    .tooltip-body::before {
++      content: "";
++      position: absolute;
++      left: 50%;
++      top: 100%;
++      translate: -50% 0;
++      border: var(--arrow) solid transparent;
++      border-top-color: var(--primary);
++      border-bottom-width: 0;
++    }
++
++    /* Flipped state: browser chose the flip-block fallback, so it's below */
++    @container anchored(fallback: flip-block) {
++      .tooltip-body {
++        margin-bottom: 0;
++        margin-top: calc(var(--arrow) + 4px);
++        border-radius: 4px 4px 12px 12px;
++      }
++
++      .tooltip-body::before {
++        top: auto;
++        bottom: 100%;
++        border-top-width: 0;
++        border-top-color: transparent;
++        border-bottom-width: var(--arrow);
++        border-bottom-color: var(--primary);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,9 +277,16 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" class="info-btn" popovertarget="maple-tooltip"
++              interestfor="maple-tooltip" aria-describedby="maple-tooltip" aria-label="More info about Maple Oat Latte">i</button>
++            <div id="maple-tooltip" class="tooltip" popover role="tooltip">
++              <div class="tooltip-body">Contains oats. Sweetened with pure Vermont maple syrup &mdash; available through November.</div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

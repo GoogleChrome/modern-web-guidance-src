@@ -1,0 +1,280 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,74 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .customizer {
++      margin-block-start: 48px;
++      padding: 32px 16px;
++      border-radius: 12px;
++      background: #f1e9e3;
++      text-align: center;
++    }
++
++    .customizer > p { margin-block: 6px 12px; }
++
++    .cup-stage {
++      position: relative;
++      max-width: 640px;
++      margin-inline: auto;
++      padding-block: 110px 95px;
++      isolation: isolate;
++    }
++
++    #canvas {
++      position: absolute;
++      inset: 0;
++      display: block;
++      width: 100%;
++      height: 100%;
++      z-index: -1;
++    }
++
++    .cup-form {
++      width: 68%;
++      margin-inline: auto;
++      text-align: start;
++      color: var(--text);
++    }
++
++    .cup-form h3 { text-align: center; margin-block-end: 16px; }
++    .cup-form > label { display: block; font-weight: 600; }
++
++    .cup-form input[type="text"] {
++      width: 100%;
++      min-height: 48px;
++      margin-block: 4px 16px;
++      padding: 10px;
++      border: 1px solid #866c60;
++      border-radius: 5px;
++      background: #fff;
++      color: var(--text);
++      font: inherit;
++      font-size: 1rem;
++    }
++
++    .cup-form fieldset { border: 0; margin-block-end: 12px; min-width: 0; }
++    .cup-form legend { font-weight: 600; }
++    .cup-options { display: flex; flex-wrap: wrap; gap: 4px 12px; }
++    .cup-options label { display: flex; align-items: center; gap: 7px; min-height: 48px; cursor: pointer; }
++    .cup-options input { width: 18px; height: 18px; accent-color: var(--primary); }
++    .cup-form .btn { border: 0; font: inherit; cursor: pointer; width: 100%; min-height: 48px; margin-block-start: 4px; }
++    .cup-form :focus-visible { outline: 3px solid #195c99; outline-offset: 3px; }
++    .cup-note { margin-block-start: 10px; font-size: 0.875rem; text-align: center; }
++    .order-status { margin-block-start: 12px; overflow-wrap: anywhere; }
++
++    @media print {
++      .cup-stage { padding: 20px; height: auto !important; }
++      #canvas { display: none; }
++      .cup-form { width: 100% !important; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +260,45 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-title">
++      <h2 id="customizer-title">Your Cup, Your Way</h2>
++      <p>A little creativity. A lot of coffee. Make this latte yours.</p>
++      <div class="cup-stage" id="cup-stage">
++        <canvas id="canvas" content="drawable"></canvas>
++        <!-- Ordinary HTML is also the no-JavaScript and unsupported-browser fallback. -->
++        <form class="cup-form" id="coffee-form" drawable action="/order-online" method="get">
++          <h3>The Daily Grind Latte</h3>
++          <label for="coffee-name">Name on your cup</label>
++          <input id="coffee-name" name="name" type="text" autocomplete="given-name" placeholder="Your name" maxlength="60">
++          <fieldset>
++            <legend>Choose your milk</legend>
++            <div class="cup-options">
++              <label for="milk-whole"><input id="milk-whole" type="radio" name="milk" value="whole" checked>Whole</label>
++              <label for="milk-oat"><input id="milk-oat" type="radio" name="milk" value="oat">Oat</label>
++              <label for="milk-almond"><input id="milk-almond" type="radio" name="milk" value="almond">Almond</label>
++            </div>
++          </fieldset>
++          <fieldset>
++            <legend>Add a syrup</legend>
++            <div class="cup-options">
++              <label for="syrup-none"><input id="syrup-none" type="radio" name="syrup" value="none" checked>None</label>
++              <label for="syrup-vanilla"><input id="syrup-vanilla" type="radio" name="syrup" value="vanilla">Vanilla</label>
++              <label for="syrup-maple"><input id="syrup-maple" type="radio" name="syrup" value="maple">Maple</label>
++            </div>
++          </fieldset>
++          <button class="btn" type="submit">Preview my coffee</button>
++          <p class="cup-note">Made to your taste. Preview only; no order is placed.</p>
++          <div class="order-status" id="order-status" role="status" aria-live="polite" aria-atomic="true" hidden>
++            <p><strong>Your latte is ready to imagine.</strong></p>
++            <p><span>Name on cup:</span> <span id="preview-name"></span></p>
++            <p><span>Milk:</span> <span id="preview-milk"></span> · <span>Syrup:</span> <span id="preview-syrup"></span></p>
++          </div>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +309,155 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('canvas');
++      const stage = document.getElementById('cup-stage');
++      const form = document.getElementById('coffee-form');
++      const context = canvas.getContext('2d');
++      let nativeHTML = Boolean(context && 'content' in HTMLCanvasElement.prototype &&
++        typeof context.drawElementImage === 'function' && typeof canvas.requestPaint === 'function');
++      let cssWidth = 0;
++      let cssHeight = 0;
++
++      // Keep a single live form: native drawable descendant or ordinary DOM overlay.
++      if (nativeHTML) {
++        canvas.append(form);
++        stage.style.paddingBlock = '0';
++      } else {
++        canvas.setAttribute('aria-hidden', 'true');
++      }
++
++      function drawCup() {
++        if (!context || !cssWidth || !cssHeight) return;
++        context.setTransform(canvas.width / cssWidth, 0, 0, canvas.height / cssHeight, 0, 0);
++        context.clearRect(0, 0, cssWidth, cssHeight);
++        const w = cssWidth;
++        const h = cssHeight;
++        // Cup geometry and the HTML use the same unscaled CSS-pixel coordinates.
++        context.fillStyle = '#d7ccc8';
++        context.beginPath();
++        context.ellipse(w / 2, h - 38, w * 0.36, 15, 0, 0, Math.PI * 2);
++        context.fill();
++        context.fillStyle = '#fffaf2';
++        context.strokeStyle = '#866c60';
++        context.lineWidth = 2;
++        context.beginPath();
++        context.moveTo(w * 0.07, 80);
++        context.lineTo(w * 0.93, 80);
++        context.lineTo(w * 0.85, h - 70);
++        context.quadraticCurveTo(w / 2, h - 42, w * 0.15, h - 70);
++        context.closePath();
++        context.fill();
++        context.stroke();
++        context.fillStyle = '#4e342e';
++        context.beginPath();
++        context.roundRect(w * 0.04, 60, w * 0.92, 24, 10);
++        context.fill();
++        context.fillStyle = '#735348';
++        context.beginPath();
++        context.roundRect(w * 0.10, 44, w * 0.80, 20, [12, 12, 0, 0]);
++        context.fill();
++      }
++
++      function useOverlay() {
++        nativeHTML = false;
++        canvas.onpaint = null;
++        stage.append(form);
++        stage.style.paddingBlock = '';
++        stage.style.height = '';
++        form.style.width = '';
++        canvas.setAttribute('aria-hidden', 'true');
++        drawCup();
++      }
++
++      function requestDraw() {
++        if (nativeHTML) canvas.requestPaint();
++        else drawCup();
++      }
++
++      if (nativeHTML) {
++        canvas.onpaint = () => {
++          drawCup();
++          try {
++            // This also synchronizes hit testing, selection, and accessible bounds.
++            context.drawElementImage(form, cssWidth * 0.16, 110);
++          } catch {
++            useOverlay();
++          }
++        };
++      }
++
++      function sizeNativeForm() {
++        if (!nativeHTML) return;
++        form.style.width = `${stage.clientWidth * 0.68}px`;
++        stage.style.height = `${Math.ceil(form.offsetHeight) + 205}px`;
++      }
++
++      function resizeCanvas(entry) {
++        cssWidth = canvas.clientWidth;
++        cssHeight = canvas.clientHeight;
++        const pixels = entry?.devicePixelContentBoxSize?.[0];
++        canvas.width = Math.max(1, pixels?.inlineSize ?? Math.round(cssWidth * window.devicePixelRatio));
++        canvas.height = Math.max(1, pixels?.blockSize ?? Math.round(cssHeight * window.devicePixelRatio));
++        requestDraw();
++      }
++
++      // Content changes (including translation and text zoom) resize the cup too.
++      const layoutObserver = new ResizeObserver(() => {
++        sizeNativeForm();
++        requestDraw();
++      });
++      layoutObserver.observe(stage);
++      layoutObserver.observe(form);
++      const pixelObserver = new ResizeObserver(([entry]) => resizeCanvas(entry));
++      const devicePixelsSupported = 'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++      pixelObserver.observe(canvas, devicePixelsSupported ? { box: 'device-pixel-content-box' } : {});
++      // Also covers DPR changes when moving between displays in fallback browsers.
++      let resolution;
++      function watchResolution() {
++        resolution?.removeEventListener('change', onResolutionChange);
++        resolution = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
++        resolution.addEventListener('change', onResolutionChange);
++      }
++      function onResolutionChange() {
++        resizeCanvas();
++        watchResolution();
++      }
++      watchResolution();
++      sizeNativeForm();
++      resizeCanvas();
++
++      // Printing uses ordinary document flow so controls remain readable on paper.
++      window.addEventListener('beforeprint', () => {
++        if (nativeHTML) stage.append(form);
++      });
++      window.addEventListener('afterprint', () => {
++        if (nativeHTML) {
++          canvas.append(form);
++          sizeNativeForm();
++          resizeCanvas();
++        }
++      });
++
++      form.addEventListener('input', () => {
++        document.getElementById('order-status').hidden = true;
++        requestDraw();
++      });
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const name = form.elements.namedItem('name').value.trim();
++        document.getElementById('preview-name').textContent = name || 'Coffee lover';
++        for (const field of ['milk', 'syrup']) {
++          const selected = form.querySelector(`input[name="${field}"]:checked`);
++          document.getElementById(`preview-${field}`).textContent = selected.labels[0].textContent.trim();
++        }
++        document.getElementById('order-status').hidden = false;
++        requestDraw();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

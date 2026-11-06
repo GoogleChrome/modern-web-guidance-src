@@ -1,0 +1,80 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,14 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+       height: 60vh;
++      min-height: 320px;
++      background-color: var(--primary);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -87,8 +92,44 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero > h1,
++    .hero > p,
++    .hero > .btn {
++      position: relative;
++      z-index: 1;
++    }
++
++    .shape-definitions {
++      position: absolute;
++      width: 0;
++      height: 0;
++      pointer-events: none;
++    }
++
++    .shaped-element {
++      position: absolute;
++      left: -3%;
++      bottom: -12%;
++      width: clamp(180px, 32vw, 440px);
++      aspect-ratio: 1.15;
++      z-index: 0;
++      pointer-events: none;
++      opacity: 0.7;
++      background:
++        radial-gradient(ellipse at 30% 35%, rgba(255, 224, 178, 0.85), transparent 60%),
++        linear-gradient(135deg, #d99b5e, #955b36);
++      /* This organic rounded silhouette also works without SVG clipping. */
++      border-radius: 44% 56% 63% 37% / 58% 38% 62% 42%;
++    }
++
++    @supports (clip-path: url('#coffee-splash')) {
++      .shaped-element {
++        clip-path: url('#coffee-splash');
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +209,16 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <svg class="shape-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
++      <defs>
++        <clipPath id="coffee-splash" clipPathUnits="objectBoundingBox">
++          <path d="M .08 .48 C .02 .35 .13 .29 .21 .28 C .28 .27 .19 .12 .29 .09 C .39 .06 .4 .2 .49 .18 C .6 .15 .63 .03 .71 .09 C .79 .14 .68 .27 .77 .3 C .87 .34 .98 .31 .96 .42 C .95 .51 .8 .49 .83 .58 C .86 .67 .94 .72 .87 .79 C .79 .87 .69 .74 .62 .8 C .56 .85 .56 .98 .45 .95 C .35 .93 .4 .79 .3 .8 C .19 .82 .12 .9 .08 .81 C .04 .72 .19 .67 .15 .6 C .13 .56 .1 .53 .08 .48 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

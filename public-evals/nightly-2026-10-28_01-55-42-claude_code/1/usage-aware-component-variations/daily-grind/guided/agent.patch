@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+index 66c9173..40ef125 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,12 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Seasonal (autumn) theme palette */
++      --seasonal-accent: #c2410c;
++      --seasonal-accent-deep: #7c2d12;
++      --seasonal-surface: #fff7ed;
++      --seasonal-surface-edge: #fed7aa;
+     }
+ 
+     * {
+@@ -107,17 +113,49 @@
+       margin-top: 20px;
+     }
+ 
++    /*
++     * Semantic section context.
++     * A section declares WHAT it is (e.g. seasonal) via a custom property;
++     * it never names the components that react to it.
++     */
++    [data-theme="seasonal"] {
++      --theme: seasonal;
++    }
++
++    /* Card: default (classic) tokens, consumed by the card and its parts */
+     .card {
+-      background: white;
++      --card-bg: white;
++      --card-edge: transparent;
++      --card-heading: var(--primary);
++      --card-btn-bg: var(--primary);
++      --card-btn-hover: #3e2723;
++      --card-badge-display: none;
++
++      background: var(--card-bg);
++      border-block-start: 4px solid var(--card-edge);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: background 0.3s, border-color 0.3s;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++    }
++
++    .card-badge {
++      display: var(--card-badge-display);
++      margin-block-end: 10px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--card-edge);
++      color: var(--card-heading);
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
+     }
+ 
+     .btn {
+@@ -131,10 +169,44 @@
+       transition: background 0.3s;
+     }
+ 
++    .card .btn {
++      background: var(--card-btn-bg);
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card .btn:hover {
++      background: var(--card-btn-hover);
++    }
++
++    /*
++     * Fallback for browsers without container style queries.
++     * :where() keeps specificity flat so the style query below wins
++     * by source order wherever it is supported.
++     */
++    :where([data-theme="seasonal"]) .card {
++      --card-bg: var(--seasonal-surface);
++      --card-edge: var(--seasonal-surface-edge);
++      --card-heading: var(--seasonal-accent-deep);
++      --card-btn-bg: var(--seasonal-accent);
++      --card-btn-hover: var(--seasonal-accent-deep);
++      --card-badge-display: inline-block;
++    }
++
++    /* Progressive enhancement: cards react to the inherited --theme token */
++    @container style(--theme: seasonal) {
++      .card {
++        --card-bg: var(--seasonal-surface);
++        --card-edge: var(--seasonal-surface-edge);
++        --card-heading: var(--seasonal-accent-deep);
++        --card-btn-bg: var(--seasonal-accent);
++        --card-btn-hover: var(--seasonal-accent-deep);
++        --card-badge-display: inline-block;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,20 +247,23 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section data-theme="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="card-badge">Limited time</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="card-badge">Limited time</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="card-badge">Limited time</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

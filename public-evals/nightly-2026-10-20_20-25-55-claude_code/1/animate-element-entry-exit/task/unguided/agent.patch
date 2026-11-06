@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Promo area */
++    .promo-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++      margin-top: 20px;
++    }
++
++    .promo-controls button {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    #domContainer .card {
++      opacity: 1;
++      transform: scale(1);
++      transition: opacity 0.4s ease, transform 0.4s ease, display 0.4s allow-discrete;
++    }
++
++    /* Entry state for newly added cards */
++    @starting-style {
++      #domContainer .card {
++        opacity: 0;
++        transform: scale(0.8);
++      }
++    }
++
++    /* Exit state: removal in progress, or toggled hidden */
++    #domContainer .card.leaving,
++    #domContainer .card[hidden] {
++      opacity: 0;
++      transform: scale(0.8);
++    }
++
++    #domContainer .card[hidden] {
++      display: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #domContainer .card {
++        transition-duration: 0.01s;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +242,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Promotions</h2>
++      <div class="promo-controls">
++        <button id="addBtn" class="btn" type="button">Add Promo</button>
++        <button id="removeBtn" class="btn" type="button">Remove Promo</button>
++        <button id="toggleBtn" class="btn" type="button">Toggle Featured Promo</button>
++      </div>
++      <div id="domContainer" class="grid">
++        <div id="toggleCard" class="card">
++          <h3>Free Pastry Friday</h3>
++          <p>Buy any large drink on Friday and get a pastry on us.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +269,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const domContainer = document.getElementById('domContainer');
++    const toggleCard = document.getElementById('toggleCard');
++    const EXIT_MS = 400;
++    let promoCount = 0;
++
++    document.getElementById('addBtn').addEventListener('click', () => {
++      promoCount++;
++      const card = document.createElement('div');
++      card.className = 'card';
++      card.innerHTML = '<h3>Promo #' + promoCount + '</h3><p>Limited-time offer on your favorite brew.</p>';
++      domContainer.appendChild(card);
++    });
++
++    document.getElementById('removeBtn').addEventListener('click', () => {
++      const active = domContainer.querySelectorAll('.card:not(.leaving)');
++      const last = active[active.length - 1];
++      if (!last) return;
++      last.classList.add('leaving');
++      setTimeout(() => last.remove(), EXIT_MS);
++    });
++
++    document.getElementById('toggleBtn').addEventListener('click', () => {
++      toggleCard.toggleAttribute('hidden');
++    });
++  </script>
++
+ </body>
+ 
+ </html>

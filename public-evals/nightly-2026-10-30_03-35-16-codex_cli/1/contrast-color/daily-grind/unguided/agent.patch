@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+index 1bacf96..ff365b9 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,15 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --on-primary: #fff;
++      --on-secondary: #000;
++    }
++
++    @supports (color: contrast-color(red)) {
++      :root {
++        --on-primary: contrast-color(var(--primary));
++        --on-secondary: contrast-color(var(--secondary));
++      }
+     }
+ 
+     * {
+@@ -30,7 +39,7 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: var(--on-primary);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +65,13 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      text-decoration: underline;
+     }
+ 
+     .logout-link {
+@@ -123,19 +131,20 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
++      color: var(--on-primary);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      text-decoration: underline;
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--on-secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,7 +156,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+@@ -206,6 +215,48 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Older browsers use the same WCAG black/white contrast choice as contrast-color().
++    if (!CSS.supports('color', 'contrast-color(red)')) {
++      const root = document.documentElement;
++      const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
++      const surfaces = [
++        [document.querySelector('nav'), '--on-primary'],
++        [document.querySelector('footer'), '--on-secondary'],
++      ];
++
++      function updateContrast() {
++        for (const [surface, property] of surfaces) {
++          context.clearRect(0, 0, 1, 1);
++          context.fillStyle = getComputedStyle(surface).backgroundColor;
++          context.fillRect(0, 0, 1, 1);
++          const channels = [...context.getImageData(0, 0, 1, 1).data].slice(0, 3);
++          const linear = channels.map(channel => {
++            const value = channel / 255;
++            return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
++          });
++          const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
++          const foreground = (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) ? '#000' : '#fff';
++          if (root.style.getPropertyValue(property) !== foreground) {
++            root.style.setProperty(property, foreground);
++          }
++        }
++      }
++
++      // Recalculate after theme variables, classes, or stylesheet contents change.
++      new MutationObserver(updateContrast).observe(root, {
++        attributes: true,
++        childList: true,
++        characterData: true,
++        subtree: true,
++      });
++      document.addEventListener('load', updateContrast, true);
++      window.addEventListener('resize', updateContrast);
++      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateContrast);
++      updateContrast();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

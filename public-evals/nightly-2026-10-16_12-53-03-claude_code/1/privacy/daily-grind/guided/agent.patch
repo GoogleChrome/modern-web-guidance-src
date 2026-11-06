@@ -1,0 +1,515 @@
+diff --git a/THIRD_PARTY_AUDIT.md b/THIRD_PARTY_AUDIT.md
+new file mode 100644
+index 0000000..edda31e
+--- /dev/null
++++ b/THIRD_PARTY_AUDIT.md
+@@ -0,0 +1,14 @@
++# Third-party audit
++
++Last reviewed: 2026-10-16
++
++| Dependency | Before | After |
++| --- | --- | --- |
++| Unsplash image CDN (hero photo) | Loaded from `images.unsplash.com`, leaking visitor IP and referrer | Self-hosted at `/assets/hero.jpg` |
++| `statikk` (via `pnpm dlx`) | Unpinned, downloaded at start, cannot set security headers | Removed; replaced by dependency-free `server.js` |
++| JS / analytics / fonts / cookies | None | None |
++
++Rules going forward:
++- The CSP is `default-src 'none'`. Any new third-party origin needs an explicit, reviewed CSP entry and an update to this file and the privacy policy.
++- Collect nothing unless a feature needs it; document it in `privacy-policy.html`.
++- Re-run `pnpm audit` / review the lockfile whenever dependencies are added.
+diff --git a/assets/hero.jpg b/assets/hero.jpg
+new file mode 100644
+index 0000000..73ff876
+Binary files /dev/null and b/assets/hero.jpg differ
+diff --git a/assets/style.css b/assets/style.css
+new file mode 100644
+index 0000000..1c069ee
+--- /dev/null
++++ b/assets/style.css
+@@ -0,0 +1,158 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('/assets/hero.jpg');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.section-title {
++  text-align: center;
++}
++
++.policy h2 {
++  margin-top: 1.5rem;
++}
++
++.policy ul {
++  margin-left: 1.5rem;
++}
+diff --git a/index.html b/index.html
+index 66c9173..aa5274b 100644
+--- a/index.html
++++ b/index.html
+@@ -4,155 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/assets/style.css">
+ </head>
+ 
+ <body>
+@@ -176,7 +30,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/privacy-policy.html b/privacy-policy.html
+new file mode 100644
+index 0000000..2783af2
+--- /dev/null
++++ b/privacy-policy.html
+@@ -0,0 +1,44 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
++  <title>Privacy Policy | The Daily Grind</title>
++  <link rel="stylesheet" href="/assets/style.css">
++</head>
++
++<body>
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <ul>
++      <li><a href="/">Home</a></li>
++    </ul>
++  </nav>
++
++  <main class="container policy">
++    <h1>Privacy Policy</h1>
++    <p>Last updated: 2026-10-16</p>
++
++    <h2>What we collect</h2>
++    <p>This website does not collect personal data. It has no forms, accounts, analytics, advertising or tracking, and it sets no cookies or local storage.</p>
++
++    <h2>Server logs</h2>
++    <p>Our server does not log IP addresses, user agents or URLs.</p>
++
++    <h2>Third parties</h2>
++    <p>All fonts, images and styles are served from our own domain. Your browser makes no requests to third-party services when you visit this site, and we send no referrer information.</p>
++    <ul>
++      <li>Hero photo: sourced from Unsplash, hosted by us under the Unsplash License.</li>
++    </ul>
++
++    <h2>Security</h2>
++    <p>We require HTTPS and apply a strict Content Security Policy and other browser protections.</p>
++
++    <h2>Changes</h2>
++    <p>Any new data collection will be added here before it starts, and will be limited to what is needed for the feature.</p>
++  </main>
++</body>
++
++</html>
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..e0b4a0b
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,87 @@
++// Minimal static server with security headers. No dependencies, no logging of
++// personal data (no IPs, user agents, or query strings are recorded).
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++
++const ROOT = __dirname;
++const PORT = Number(process.env.PORT) || 11222;
++
++// Only these are ever served; everything else (package.json, server.js, .git) is 404.
++const ROUTES = {
++  '/': 'index.html',
++  '/privacy-policy': 'privacy-policy.html',
++};
++const ASSET_DIR = path.join(ROOT, 'assets');
++
++const TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.jpg': 'image/jpeg',
++  '.txt': 'text/plain; charset=utf-8',
++};
++
++const SECURITY_HEADERS = {
++  'Content-Security-Policy': [
++    "default-src 'none'",
++    "img-src 'self'",
++    "style-src 'self'",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "base-uri 'none'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    'upgrade-insecure-requests',
++  ].join('; '),
++  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'no-referrer',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Cross-Origin-Embedder-Policy': 'require-corp',
++  'X-Permitted-Cross-Domain-Policies': 'none',
++};
++
++function resolveFile(pathname) {
++  if (ROUTES[pathname]) return path.join(ROOT, ROUTES[pathname]);
++  if (pathname.startsWith('/assets/')) {
++    const file = path.join(ROOT, pathname);
++    if (file.startsWith(ASSET_DIR + path.sep)) return file;
++  }
++  return null;
++}
++
++http
++  .createServer((req, res) => {
++    const headers = { ...SECURITY_HEADERS };
++    if (req.method !== 'GET' && req.method !== 'HEAD') {
++      res.writeHead(405, { ...headers, Allow: 'GET, HEAD' }).end();
++      return;
++    }
++
++    let pathname;
++    try {
++      pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
++    } catch {
++      res.writeHead(400, headers).end();
++      return;
++    }
++
++    const file = resolveFile(pathname);
++    fs.readFile(file || '', (err, data) => {
++      if (!file || err) {
++        res.writeHead(404, { ...headers, 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
++        return;
++      }
++      const isAsset = pathname.startsWith('/assets/');
++      res.writeHead(200, {
++        ...headers,
++        'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream',
++        'Cache-Control': isAsset ? 'public, max-age=86400' : 'no-cache',
++      });
++      res.end(req.method === 'HEAD' ? undefined : data);
++    });
++  })
++  .listen(PORT, () => console.log(`Listening on http://localhost:${PORT}`));

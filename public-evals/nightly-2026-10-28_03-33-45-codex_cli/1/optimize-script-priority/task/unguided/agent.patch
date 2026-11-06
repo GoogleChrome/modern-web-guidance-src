@@ -1,0 +1,21 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,17 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Dashboard</title>
++    <script async src="/js/app.js"></script>
++    <script src="/js/legacy-widgets.js"></script>
++    <script async src="/js/tracker.js"></script>
++  </head>
++  <body>
++    <main>
++      <h1>Dashboard</h1>
++      <p>Welcome to your dashboard.</p>
++    </main>
++  </body>
++</html>

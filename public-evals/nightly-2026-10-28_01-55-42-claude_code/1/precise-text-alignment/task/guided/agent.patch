@@ -1,0 +1,19 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -115,10 +115,15 @@
+       text-align: center;
+     }
+ 
+     .card h3 {
++      margin-top: 0;
+       margin-bottom: 10px;
+       color: var(--primary);
++      /* Trim the font's internal leading (cap height on top, baseline on bottom)
++         so the card's 20px padding visually hugs the title evenly.
++         Progressive enhancement: unsupported browsers ignore it. */
++      text-box: trim-both cap alphabetic;
+     }
+ 
+     .btn {
+       display: inline-block;

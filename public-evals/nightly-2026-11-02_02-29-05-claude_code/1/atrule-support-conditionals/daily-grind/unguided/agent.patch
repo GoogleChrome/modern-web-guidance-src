@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+index 66c9173..a74278d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,100 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /*
++     * Progressive enhancements gated on at-rule support.
++     * `@supports at-rule(@name)` only matches when the browser understands
++     * that at-rule; older browsers treat the unknown at-rule() test as false
++     * and skip the whole block, keeping the base styles above.
++     */
++
++    /* Navigation: animated accent underline driven by a registered custom property */
++    @supports at-rule(@property) {
++      @property --nav-underline {
++        syntax: '<percentage>';
++        inherits: false;
++        initial-value: 0%;
++      }
++
++      nav a:not(.logout-link) {
++        background: linear-gradient(var(--accent), var(--accent)) no-repeat left bottom / var(--nav-underline) 2px;
++        padding-bottom: 2px;
++        transition: color 0.3s, --nav-underline 0.3s ease-out;
++      }
++
++      nav a:not(.logout-link):hover,
++      nav a:not(.logout-link):focus-visible {
++        --nav-underline: 100%;
++      }
++    }
++
++    /* Hero: fade-and-rise intro for the headline, tagline, and CTA */
++    @supports at-rule(@keyframes) {
++      @keyframes hero-rise {
++        from {
++          opacity: 0;
++          transform: translateY(20px);
++        }
++
++        to {
++          opacity: 1;
++          transform: translateY(0);
++        }
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        .hero > * {
++          animation: hero-rise 0.8s ease-out both;
++        }
++
++        .hero p {
++          animation-delay: 0.15s;
++        }
++
++        .hero .btn {
++          animation-delay: 0.3s;
++        }
++      }
++    }
++
++    /* Seasonal favorite cards: adapt layout to the card's own width */
++    @supports at-rule(@container) {
++      .grid .card {
++        container: favorite-card / inline-size;
++      }
++
++      @container favorite-card (min-width: 320px) {
++        .card h3 {
++          font-size: 1.35rem;
++        }
++
++        .card p {
++          max-width: 32ch;
++          margin-inline: auto;
++        }
++      }
++    }
++
++    /* Seasonal favorite cards: lift-in transition on first render */
++    @supports at-rule(@starting-style) {
++      @media (prefers-reduced-motion: no-preference) {
++        .card {
++          transition: opacity 0.5s ease-out, transform 0.5s ease-out, box-shadow 0.3s;
++        }
++
++        @starting-style {
++          .card {
++            opacity: 0;
++            transform: translateY(12px);
++          }
++        }
++
++        .card:hover {
++          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
++        }
++      }
++    }
+   </style>
+ </head>
+ 

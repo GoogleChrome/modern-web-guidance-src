@@ -1,0 +1,157 @@
+diff --git a/index.html b/index.html
+index 66c9173..2ab5bbe 100644
+--- a/index.html
++++ b/index.html
+@@ -107,12 +107,39 @@
+       margin-top: 20px;
+     }
+ 
++    .grid {
++      list-style: none;
++    }
++
++    /* The featured drink spans the full row, giving it room to go side-by-side */
++    .grid > li:first-child {
++      grid-column: 1 / -1;
++    }
++
++    /* Each grid cell is the card's size container, so the card adapts to its
++       own available width rather than the viewport. */
++    .card-slot {
++      container: card / inline-size;
++    }
++
++    /* Default: stacked layout (narrow cards) */
+     .card {
++      height: 100%;
++      display: grid;
++      grid-template-rows: auto auto 1fr auto;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow: hidden;
++    }
++
++    .card > img {
++      width: calc(100% + 40px);
++      margin: -20px -20px 15px;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
+     }
+ 
+     .card h3 {
+@@ -120,6 +147,56 @@
+       color: var(--primary);
+     }
+ 
++    .card footer {
++      background: none;
++      padding: 0;
++      margin: 0;
++      text-align: inherit;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    /* Wide cards: media in a side column beside the text */
++    @container card (min-width: 30rem) {
++      .card:has(> img) {
++        grid-template-columns: minmax(10rem, 2fr) 3fr;
++        grid-template-rows: auto 1fr auto;
++        column-gap: 24px;
++        align-items: start;
++        text-align: start;
++      }
++
++      .card:has(> img) > img {
++        grid-column: 1;
++        grid-row: 1 / -1;
++        width: calc(100% + 20px);
++        height: calc(100% + 40px);
++        min-height: 12rem;
++        margin: -20px 0 -20px -20px;
++        aspect-ratio: auto;
++      }
++
++      .card:has(> img) > :not(img) {
++        grid-column: 2;
++      }
++
++      .card h3 {
++        font-size: 1.5rem;
++        margin-top: 10px;
++      }
++
++      .card footer .btn {
++        margin-bottom: 10px;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,23 +254,38 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <ul class="grid">
++        <li class="card-slot">
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80" alt="Milk being poured into a latte with heart-shaped foam art" width="800" height="450" loading="lazy">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <footer>
++              <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
++            </footer>
++          </article>
++        </li>
++        <li class="card-slot">
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=800&q=80" alt="A cup of espresso with golden crema on a dark table" width="800" height="450" loading="lazy">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <footer>
++              <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
++            </footer>
++          </article>
++        </li>
++        <li class="card-slot">
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80" alt="A tall glass of iced cold brew swirled with cream" width="800" height="450" loading="lazy">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <footer>
++              <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
++            </footer>
++          </article>
++        </li>
++      </ul>
+     </section>
+   </main>
+ 

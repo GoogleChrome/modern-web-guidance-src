@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,69 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .order-events {
++      margin-top: 40px;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .order-events .btn {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++    }
++
++    .order-events .btn:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
++    .event-status { margin-top: 16px; }
++
++    .event-table-wrapper {
++      overflow: auto;
++      max-block-size: 480px;
++      margin-top: 20px;
++    }
++
++    .event-table-wrapper:focus-visible,
++    .order-events .btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .event-table {
++      width: 100%;
++      border-collapse: separate;
++      border-spacing: 0;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .event-table caption { text-align: left; padding-bottom: 12px; }
++    .event-table th, .event-table td {
++      padding: 12px;
++      border-bottom: 1px solid var(--secondary);
++      vertical-align: top;
++    }
++
++    .event-table thead { position: sticky; inset-block-start: 0; z-index: 1; }
++    .event-table thead th { background: var(--secondary); }
++    .event-table tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      background: white;
++    }
++
++    .event-table time, .event-gap {
++      font-family: ui-monospace, monospace;
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +255,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="order-events">
++      <h2>Coffee Order Timeline</h2>
++      <p id="event-description">Follow a sample Maple Oat Latte order across our backend services.
++        Load an out-of-order batch to see events sorted by their recorded UTC timestamps,
++        with nanosecond precision and the exact time between each event.</p>
++      <button type="button" class="btn" id="load-events" aria-describedby="event-description"
++        aria-controls="event-results">Load sample order events</button>
++      <p class="event-status" id="event-status" role="status"></p>
++      <div id="event-results" hidden>
++        <div class="event-table-wrapper" tabindex="0" role="region" aria-labelledby="event-caption">
++          <table class="event-table">
++            <caption id="event-caption">Sample order DG-1042 · earliest to latest · all times UTC</caption>
++            <thead>
++              <tr>
++                <th scope="col">Event</th>
++                <th scope="col">Service</th>
++                <th scope="col">Recorded timestamp (UTC)</th>
++                <th scope="col">Since previous event</th>
++              </tr>
++            </thead>
++            <tbody id="event-rows"></tbody>
++          </table>
++        </div>
++        <p>Equal timestamps retain their batch order. Gaps reflect recorded service clocks.</p>
++      </div>
++      <noscript><p>Enable JavaScript to load the sample order timeline.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +294,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./order-timeline.mjs"></script>
+ </body>
+ 
+ </html>

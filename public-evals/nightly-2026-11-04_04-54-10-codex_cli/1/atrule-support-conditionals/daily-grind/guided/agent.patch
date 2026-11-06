@@ -1,0 +1,31 @@
+diff --git a/index.html b/index.html
+index 66c9173..f373437 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,26 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Keep enhancements optional: older browsers retain the base styles above. */
++    @supports at-rule(@scope) {
++      .card {
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      }
++
++      .card:hover {
++        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
++      }
++
++      .hero h1,
++      .hero p {
++        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
++      }
++
++      nav {
++        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
++      }
++    }
+   </style>
+ </head>
+ 

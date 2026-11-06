@@ -1,0 +1,125 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,52 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Interest Invokers & Live Preview Box */
++    [interestfor] {
++      --interest-delay-start: 0.2s;
++      interest-delay-start: var(--interest-delay-start);
++      --interest-delay-end: 0.1s;
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    :is(:interest-source, .interest-source) {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++      transform: translateY(-1px);
++    }
++
++    #seasonal-preview {
++      margin-top: 28px;
++      padding: 20px 24px;
++      background: white;
++      border-radius: 8px;
++      border-left: 6px solid var(--preview-accent, var(--secondary));
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
++    }
++
++    #seasonal-preview:is(:interest-target, .interest-target),
++    #seasonal-preview[data-preview] {
++      background: color-mix(in srgb, var(--preview-accent, var(--accent)) 10%, white);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++    }
++
++    .preview-status {
++      font-weight: 600;
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
++    .preview-notes {
++      font-size: 0.9rem;
++      color: var(--text);
++      margin-top: 4px;
++      opacity: 0.85;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +224,65 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="seasonal-preview" data-drink="Maple Oat Latte" data-effect="Maple Oat Latte" data-accent="#d97706" data-notes="Tasting notes: Rich Vermont maple, toasted oats, velvety espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="seasonal-preview" data-drink="Dark Roast Espresso" data-effect="Dark Roast Espresso" data-accent="#5d4037" data-notes="Tasting notes: Dark cocoa, roasted walnut, smoky finish">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="seasonal-preview" data-drink="Cold Brew" data-effect="Cold Brew" data-accent="#0284c7" data-notes="Tasting notes: Smooth caramel, low acidity, crisp chocolate finish">View Details</a>
+         </div>
+       </div>
++      <div id="seasonal-preview">
++        <p class="preview-status">Select a drink to preview</p>
++        <p class="preview-notes" hidden></p>
++      </div>
+     </section>
+   </main>
+ 
++  <script type="module">
++    const seasonalPreview = document.getElementById("seasonal-preview");
++    const previewStatus = seasonalPreview.querySelector(".preview-status");
++    const previewNotes = seasonalPreview.querySelector(".preview-notes");
++    const defaultMessage = "Select a drink to preview";
++
++    seasonalPreview.addEventListener("interest", (event) => {
++      const source = event.source;
++      if (!source) return;
++      const drink = source.dataset.drink || source.dataset.effect || "";
++      const accent = source.dataset.accent || "";
++      const notes = source.dataset.notes || "";
++
++      event.target.dataset.preview = drink;
++      if (accent) {
++        event.target.style.setProperty("--preview-accent", accent);
++      }
++      previewStatus.textContent = drink ? `Previewing: ${drink}` : defaultMessage;
++      if (notes) {
++        previewNotes.textContent = notes;
++        previewNotes.hidden = false;
++      }
++    });
++
++    seasonalPreview.addEventListener("loseinterest", (event) => {
++      delete event.target.dataset.preview;
++      event.target.style.removeProperty("--preview-accent");
++      previewStatus.textContent = defaultMessage;
++      previewNotes.textContent = "";
++      previewNotes.hidden = true;
++    });
++
++    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
++      await import("https://unpkg.com/interestfor@latest");
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

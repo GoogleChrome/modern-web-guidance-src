@@ -1,0 +1,97 @@
+diff --git a/index.html b/index.html
+index 66c9173..31d397b 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,61 @@
+       margin-top: 20px;
+     }
+ 
++    /* Section context supplies an inherited palette for every coffee card. */
++    section {
++      --card-background: #fff;
++      --card-text: var(--text);
++      --card-accent: var(--primary);
++      --card-button-text: #fff;
++      --card-border: var(--secondary);
++      --card-shadow: rgba(0, 0, 0, 0.1);
++    }
++
++    section[data-category="seasonal"] {
++      --card-background: #fff8ed;
++      --card-text: #513520;
++      --card-accent: #8b451d;
++      --card-border: #d6af77;
++    }
++
++    section[data-category="espresso"] {
++      --card-background: #f3ebe7;
++      --card-text: #382720;
++      --card-accent: #603b2b;
++      --card-border: #bea394;
++    }
++
++    section[data-category="cold-brew"] {
++      --card-background: #eef6f7;
++      --card-text: #243e45;
++      --card-accent: #22606c;
++      --card-border: #9dbec5;
++    }
++
++    /* Theme overrides follow category palettes so both contexts can combine. */
++    section[data-theme="dark"] {
++      --card-background: #2c2522;
++      --card-text: #f5ece5;
++      --card-accent: #ffbf75;
++      --card-button-text: #2c2522;
++      --card-border: #867568;
++      --card-shadow: rgba(0, 0, 0, 0.3);
++    }
++
+     .card {
+-      background: white;
++      background: var(--card-background, #fff);
++      color: var(--card-text, var(--text));
+       padding: 20px;
++      border: 1px solid var(--card-border, var(--secondary));
++      border-top: 4px solid var(--card-accent, var(--primary));
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow, rgba(0, 0, 0, 0.1));
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-accent, var(--primary));
+     }
+ 
+     .btn {
+@@ -135,6 +179,16 @@
+       background: #3e2723;
+     }
+ 
++    .card .btn {
++      background: var(--card-accent, var(--primary));
++      color: var(--card-button-text, #fff);
++    }
++
++    .card .btn:hover,
++    .card .btn:focus-visible {
++      filter: brightness(0.9);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,8 +229,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section data-category="seasonal" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

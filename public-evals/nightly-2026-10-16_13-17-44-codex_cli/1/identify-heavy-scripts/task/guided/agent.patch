@@ -1,0 +1,39 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,34 @@
++# The Daily Grind
++
++Run `npm start` to serve the site.
++
++## Script performance diagnostics
++
++`script-performance.js` observes long animation frames (frames exceeding 50 ms)
++and aggregates script execution across callbacks by source URL. In browsers
++supporting the Long Animation Frames API, the console automatically shows scripts
++with at least 100 ms of cumulative execution in slow frames, batched every five
++seconds when new frames arrive.
++
++In DevTools:
++
++```js
++scriptPerformance.getReport() // All recorded scripts, slowest total duration first
++scriptPerformance.printReport({ minDuration: 50 }) // Print a custom threshold
++scriptPerformance.supported // Whether this browser supports attribution
++scriptPerformance.disconnect() // Stop recording; keep collected results
++```
++
++Each row includes the source URL, invocation count, total execution duration,
++longest invocation, and time spent forcing style/layout. All durations are in
++milliseconds. Results accumulate for the current page visit and stay local;
++no diagnostics are sent to a server.
++
++This measures script execution within slow frames, not download time or all
++JavaScript execution. Inline or unattributed scripts share a row. Browser security
++restrictions can omit cross-origin script attribution, so an empty report does not
++prove the absence of slow scripts. Unsupported browsers skip monitoring and log
++an informational message. The initial site contains no application scripts beyond
++this monitor, so an empty report is expected until slow script activity occurs.
++
++Run `npm test` for the monitor's automated checks.

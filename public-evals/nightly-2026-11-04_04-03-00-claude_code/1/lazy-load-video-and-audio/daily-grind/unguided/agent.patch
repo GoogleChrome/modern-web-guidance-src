@@ -1,0 +1,340 @@
+diff --git a/index.html b/index.html
+index 66c9173..5591aeb 100644
+--- a/index.html
++++ b/index.html
+@@ -74,11 +74,11 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 360px;
++      overflow: hidden;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,11 +88,133 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 0;
++    }
++
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: 1;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 2;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-toggle {
++      position: absolute;
++      right: 16px;
++      bottom: 16px;
++      z-index: 2;
++      background: rgba(0, 0, 0, 0.55);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.6);
++      border-radius: 4px;
++      padding: 6px 12px;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++    }
++
++    .hero-toggle:hover,
++    .hero-toggle:focus-visible {
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
++    /* Media Sections */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-section h2 {
++      text-align: center;
++    }
++
++    .media-section .lede {
++      text-align: center;
++      max-width: 640px;
++      margin: 8px auto 24px;
++    }
++
++    .video-frame {
++      background: #1b100d;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++    }
++
++    .video-frame video {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background: #1b100d;
++    }
++
++    .podcast {
++      display: flex;
++      gap: 24px;
++      align-items: center;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .podcast img {
++      width: 160px;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      flex-shrink: 0;
++      background: var(--secondary);
++    }
++
++    .podcast-body {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .podcast-body h3 {
++      color: var(--primary);
++    }
++
++    .podcast-meta {
++      font-size: 0.85rem;
++      opacity: 0.75;
++      margin-bottom: 12px;
++    }
++
++    .podcast audio {
++      width: 100%;
++    }
++
++    @media (max-width: 600px) {
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++
++      .podcast {
++        flex-direction: column;
++        text-align: center;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -152,7 +274,19 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .media-credits {
++      margin-top: 12px;
++      font-size: 0.75rem;
++      opacity: 0.8;
++    }
++
++    .media-credits a {
++      color: inherit;
++    }
+   </style>
++  <!-- The hero poster is the LCP candidate: fetch it early. -->
++  <link rel="preload" as="image" href="/media/hero-latte-art-poster.jpg" fetchpriority="high">
+ </head>
+ 
+ <body>
+@@ -169,9 +303,17 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <!-- Above the fold: loads immediately. Decorative, so hidden from assistive tech. -->
++    <video class="hero-video" autoplay muted loop playsinline preload="auto"
++      poster="/media/hero-latte-art-poster.jpg" aria-hidden="true" tabindex="-1">
++      <source src="/media/hero-latte-art.mp4" type="video/mp4">
++    </video>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <button type="button" class="hero-toggle" aria-pressed="false" hidden>Pause video</button>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +337,54 @@
+         </div>
+       </div>
+     </section>
++
++    <!--
++      Below-the-fold media: lazy-loaded.
++      Real URLs live in data-src / data-poster so the browser fetches nothing
++      (not even the poster) until the player nears the viewport. preload="none"
++      stays until then; the script swaps in the URLs and bumps preload to
++      "metadata". Without JS, the <noscript> copies are used instead.
++    -->
++    <section class="media-section" id="roasting">
++      <h2>From Green Bean to Your Cup</h2>
++      <p class="lede">Roasting is where the flavor happens. Watch beans go from grassy green to deep brown
++        over an open flame, the tradition that inspires our small-batch roasts.</p>
++      <div class="video-frame">
++        <video class="lazy-media" controls playsinline preload="none" width="960" height="540"
++          data-poster="/media/roasting-poster.jpg" aria-label="Coffee beans being roasted over a charcoal stove">
++          <source data-src="/media/roasting.mp4" type="video/mp4">
++          Your browser does not support HTML video.
++        </video>
++        <noscript>
++          <video controls playsinline preload="none" width="960" height="540" poster="/media/roasting-poster.jpg"
++            aria-label="Coffee beans being roasted over a charcoal stove">
++            <source src="/media/roasting.mp4" type="video/mp4">
++          </video>
++        </noscript>
++      </div>
++    </section>
++
++    <section class="media-section" id="podcast">
++      <h2>The Daily Grind Podcast</h2>
++      <p class="lede">Brew a cup and listen in: conversations with our roasters, farmers, and baristas.</p>
++      <article class="podcast">
++        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=320&h=320&q=75"
++          alt="Coffee cup on a wooden table" width="160" height="160" loading="lazy" decoding="async">
++        <div class="podcast-body">
++          <h3>Episode 12: Chasing the Perfect Roast</h3>
++          <p class="podcast-meta">Head roaster interview &middot; 6 min</p>
++          <audio class="lazy-media" controls preload="none"
++            data-src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
++            aria-label="Podcast episode 12: Chasing the Perfect Roast">
++            Your browser does not support HTML audio.
++          </audio>
++          <noscript>
++            <audio controls preload="none" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
++              aria-label="Podcast episode 12: Chasing the Perfect Roast"></audio>
++          </noscript>
++        </div>
++      </article>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -205,8 +395,73 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p class="media-credits">
++      Hero video: <a href="https://commons.wikimedia.org/wiki/File:Latte_art_flower_-_01.ogv">Latte art flower</a>
++      by Anna Frodesiak (CC0). Roasting video:
++      <a href="https://commons.wikimedia.org/wiki/File:ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm">Coffee
++        roasting, Bahir Dar</a> by A.Savin
++      (<a href="https://artlibre.org/licence/lal/en/">Free Art License</a>), trimmed and re-encoded.
++    </p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Hero: honor reduced-motion and offer a pause control (WCAG 2.2.2).
++      var hero = document.querySelector('.hero-video');
++      var toggle = document.querySelector('.hero-toggle');
++      if (hero && toggle) {
++        var setPaused = function (paused) {
++          if (paused) { hero.pause(); } else { hero.play().catch(function () { }); }
++          toggle.textContent = paused ? 'Play video' : 'Pause video';
++          toggle.setAttribute('aria-pressed', String(paused));
++        };
++        toggle.hidden = false;
++        toggle.addEventListener('click', function () { setPaused(!hero.paused); });
++        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++          hero.removeAttribute('autoplay');
++          setPaused(true);
++        }
++      }
++
++      // Lazy media: attach poster + source URLs only when the player is close.
++      var lazy = document.querySelectorAll('.lazy-media');
++
++      function hydrate(el) {
++        if (el.dataset.poster) {
++          el.poster = el.dataset.poster;
++          delete el.dataset.poster;
++        }
++        if (el.dataset.src) {
++          el.src = el.dataset.src;
++          delete el.dataset.src;
++        }
++        el.querySelectorAll('source[data-src]').forEach(function (source) {
++          source.src = source.dataset.src;
++          source.removeAttribute('data-src');
++        });
++        // Fetch just enough to show duration and the first frame.
++        el.preload = 'metadata';
++        el.load();
++      }
++
++      if (!('IntersectionObserver' in window)) {
++        lazy.forEach(hydrate);
++        return;
++      }
++
++      var observer = new IntersectionObserver(function (entries) {
++        entries.forEach(function (entry) {
++          if (entry.isIntersecting) {
++            observer.unobserve(entry.target);
++            hydrate(entry.target);
++          }
++        });
++      }, { rootMargin: '300px 0px' });
++
++      lazy.forEach(function (el) { observer.observe(el); });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/media/hero-latte-art-poster.jpg b/media/hero-latte-art-poster.jpg
+new file mode 100644
+index 0000000..6bddf83
+Binary files /dev/null and b/media/hero-latte-art-poster.jpg differ
+diff --git a/media/hero-latte-art.mp4 b/media/hero-latte-art.mp4
+new file mode 100644
+index 0000000..6371637
+Binary files /dev/null and b/media/hero-latte-art.mp4 differ
+diff --git a/media/roasting-poster.jpg b/media/roasting-poster.jpg
+new file mode 100644
+index 0000000..e0274bb
+Binary files /dev/null and b/media/roasting-poster.jpg differ
+diff --git a/media/roasting.mp4 b/media/roasting.mp4
+new file mode 100644
+index 0000000..043198d
+Binary files /dev/null and b/media/roasting.mp4 differ

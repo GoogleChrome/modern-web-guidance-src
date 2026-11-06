@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,57 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Featured Promo Badge */
++    @keyframes spin {
++      from {
++        rotate: 0deg;
++      }
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes slide {
++      from {
++        translate: -30px 0;
++      }
++      to {
++        translate: 30px 0;
++      }
++    }
++
++    .target {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      width: 120px;
++      height: 120px;
++      margin: 25px auto;
++      border-radius: 50%;
++      background: linear-gradient(135deg, var(--accent) 0%, #ff8f00 100%);
++      color: var(--primary);
++      font-weight: bold;
++      font-size: 0.85rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      text-align: center;
++      box-shadow: 0 4px 15px rgba(255, 171, 64, 0.4);
++      cursor: pointer;
++      border: 3px dashed #fff;
++      position: relative;
++      z-index: 10;
++      isolation: isolate;
++      animation: spin 6s linear infinite, slide 3s ease-in-out infinite alternate;
++      scale: 1;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover {
++      scale: 1.2;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,8 +225,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="target">Featured Promo</div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

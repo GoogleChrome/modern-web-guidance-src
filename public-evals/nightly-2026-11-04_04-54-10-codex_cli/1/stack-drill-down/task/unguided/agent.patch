@@ -1,0 +1,272 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,63 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8">
++<meta name="viewport" content="width=device-width, initial-scale=1.0">
++<meta name="theme-color" content="#193d31">
++<title>The Daily Grind | A little everyday ritual</title>
++<link rel="preconnect" href="https://fonts.googleapis.com">
++<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
++<style>
++:root{--paper:#f7f6f2;--ink:#243c32;--green:#193d31;--muted:#7d8278;--line:#dedfd7;--serif:Georgia,'Times New Roman',serif}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:14px}a{color:inherit;text-decoration:none}button{font:inherit;color:inherit;cursor:pointer}button,a{-webkit-tap-highlight-color:transparent}button:focus-visible,a:focus-visible{outline:3px solid #b58a47;outline-offset:5px}button{border:0}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}.site-header{height:96px;flex-shrink:0;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 5%;gap:24px}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:43px;height:43px;border:1.5px solid var(--green);border-radius:50%;display:grid;place-items:center;transform:rotate(-14deg)}.brand-mark svg{width:26px;height:26px}.wordmark{font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.8px;line-height:1.05}.wordmark small{display:block;font-family:'DM Sans',sans-serif;font-size:8px;letter-spacing:3.2px;font-weight:500;margin-top:7px}.nav{display:flex;align-items:center;gap:34px;height:100%}.nav a{font-size:12px;position:relative;display:flex;align-items:center;height:100%;gap:5px}.nav a.active:after{content:'';position:absolute;bottom:23px;left:0;right:0;height:2px;background:var(--green)}.header-actions{display:flex;align-items:center;gap:20px}.account{display:flex;gap:8px;align-items:center;font-size:12px}.order-link{display:flex;align-items:center;gap:21px;padding:13px 18px;background:var(--green);color:white;border-radius:4px;font-size:12px}.stack-bar{height:53px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 5%;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted)}.breadcrumbs{display:flex;align-items:center;gap:12px}.breadcrumbs svg{width:13px;height:13px}.breadcrumbs a:hover{text-decoration:underline}.breadcrumbs .current{color:var(--ink)}.stack-actions{display:flex;gap:20px;align-items:center}.back-button{background:transparent;display:flex;align-items:center;gap:7px;padding:5px 0;font-size:11px}.back-button:disabled{opacity:.35;cursor:default}.view-port{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:pan-y}.view{position:absolute;inset:0;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:thin;scrollbar-color:#c6cbbf transparent;background:var(--paper);padding:32px 5% 0}.view.enter-forward{animation:forward .38s cubic-bezier(.2,.7,.2,1)}.view.enter-back{animation:back .38s cubic-bezier(.2,.7,.2,1)}@keyframes forward{from{opacity:.4;transform:translateX(45px)}to{opacity:1;transform:translateX(0)}}@keyframes back{from{opacity:.4;transform:translateX(-45px)}to{opacity:1;transform:translateX(0)}}.hero{height:340px;min-height:300px;display:grid;grid-template-columns:1fr 1fr;border-radius:6px;overflow:hidden;background:#eaece3}.hero-copy{padding:39px 42px;position:relative}.eyebrow{font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:650;display:flex;align-items:center;gap:8px}.eyebrow .dot{width:5px;height:5px;background:#8a9b73;border-radius:50%}.hero h1{font-family:var(--serif);font-size:54px;font-weight:400;line-height:1.04;letter-spacing:-2px;margin:20px 0 14px}.hero h1 em{font-weight:400;color:#6d7c5e}.hero p{color:#697267;font-size:12px;line-height:1.8;max-width:310px;margin:0 0 22px}.primary{display:inline-flex;align-items:center;justify-content:center;gap:25px;background:var(--green);color:white;border-radius:3px;padding:12px 17px;font-size:11px}.primary svg{width:16px;height:16px}.hero-image{position:relative;background:#5d5542 url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=85') center 52%/cover}.photo-label{position:absolute;bottom:19px;left:22px;display:flex;align-items:center;gap:7px;color:#fff;font-size:9px;letter-spacing:1px;text-shadow:0 1px 8px #000}.photo-label svg{width:13px;height:13px}.hero-note{position:absolute;right:18px;top:18px;width:70px;height:70px;display:flex;flex-direction:column;justify-content:center;align-items:center;border:1px solid #ffffff80;border-radius:50%;color:white;font-size:8px;letter-spacing:1px;transform:rotate(13deg);line-height:1.7}.hero-note span{font-family:var(--serif);font-size:19px;letter-spacing:0}.section-heading{display:flex;align-items:flex-end;justify-content:space-between;margin:31px 0 19px}.section-heading h2{font-family:var(--serif);font-size:28px;font-weight:400;margin:0 0 5px;letter-spacing:-.5px}.section-heading p{font-size:11px;color:var(--muted);margin:0}.text-link{font-size:11px;display:flex;align-items:center;gap:10px}.text-link svg{width:16px;height:16px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.card{display:block;min-width:0}.card-photo{height:183px;background:#e9e5dd;border-radius:5px;overflow:hidden;position:relative}.card-photo img{width:100%;height:100%;object-fit:cover;transition:transform .5s}.card:hover .card-photo img{transform:scale(1.045)}.tag{position:absolute;top:13px;left:13px;background:#f7f6f2ed;padding:6px 9px;border-radius:3px;font-size:8px;letter-spacing:.9px;text-transform:uppercase}.card-title{display:flex;align-items:center;justify-content:space-between;margin:13px 0 5px}.card-title h3{font-size:14px;font-weight:550;margin:0}.card-title .price{font-size:12px}.card p{font-size:10px;line-height:1.6;color:var(--muted);margin:0}.card-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:9px;color:#6f7d65}.card-bottom svg{width:16px;height:16px;color:var(--green)}.values{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:29px;padding:21px 0;display:flex;justify-content:space-around;gap:20px}.value{display:flex;align-items:center;gap:10px;font-size:10px}.value svg{width:19px;height:19px;color:#6f7d65}.page-footer{display:flex;justify-content:space-between;gap:20px;color:var(--muted);font-size:9px;padding:22px 0}.page-footer div{display:flex;gap:20px}.shell-footer{height:32px;flex-shrink:0;border-top:1px solid var(--line);padding:0 5%;display:flex;align-items:center;justify-content:space-between;font-size:9px;color:var(--muted);background:#f0f0ea}.status{display:flex;gap:7px;align-items:center}.status:before{content:'';width:5px;height:5px;border-radius:50%;background:#81916e}.depth{display:flex;gap:4px}.depth i{width:17px;height:3px;background:#d5d8ce;border-radius:1px}.depth i.on{background:var(--green)}.detail-layout{display:grid;grid-template-columns:1.05fr 1fr;gap:7%;padding:10px 0 25px}.detail-photo{height:510px;position:relative;border-radius:5px;overflow:hidden}.detail-photo img{width:100%;height:100%;object-fit:cover}.detail-copy{padding-top:28px}.detail-copy h1,.page-title{font-family:var(--serif);font-size:49px;font-weight:400;letter-spacing:-1.5px;line-height:1.08;margin:20px 0}.detail-copy .description{font-size:13px;line-height:1.9;color:#73796e;max-width:380px}.detail-price{font-size:23px;font-family:var(--serif);margin:23px 0}.option-label{display:flex;justify-content:space-between;font-size:11px;margin:22px 0 12px}.choice-row{display:flex;gap:8px}.choice{border:1px solid var(--line);background:transparent;padding:10px 18px;border-radius:3px;font-size:11px}.choice.selected{border-color:var(--green);background:#e8ece3}.add-order{width:100%;margin-top:26px;justify-content:space-between}.tasting{margin-top:24px;border-top:1px solid var(--line);padding-top:18px;display:flex;gap:20px;font-size:10px;color:var(--muted)}.detail-more{border-top:1px solid var(--line);padding-top:22px;margin-top:10px;display:flex;gap:35px;line-height:1.7;color:#73796e;font-size:11px}.collection-intro{display:flex;justify-content:space-between;align-items:end;margin:5px 0 30px}.collection-intro p{color:var(--muted);font-size:12px;line-height:1.8;max-width:380px}.collection-cards .card-photo{height:320px}.page-title{margin:12px 0}.count{font-size:10px;color:var(--muted)}.simple-page{max-width:800px;margin:25px auto 60px}.simple-page>p{line-height:1.9;color:#73796e}.info-panel{border:1px solid var(--line);padding:28px;margin-top:25px;border-radius:4px}.info-panel h2{font-family:var(--serif);font-size:26px;font-weight:400;margin:0 0 10px}.info-panel p{font-size:13px;line-height:1.8;color:#73796e}.toast{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);background:var(--green);color:white;padding:14px 24px;border-radius:5px;box-shadow:0 5px 20px #193d3120;z-index:5;font-size:12px}.bag-items{padding:0;list-style:none}.bag-items li{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:18px 0;gap:20px}.bag-items small{display:block;margin-top:6px;color:var(--muted)}.remove{background:transparent;text-decoration:underline;font-size:10px}.mobile-menu{display:none}
++@media(min-width:1450px){.view{padding-left:max(5%,calc((100% - 1280px)/2));padding-right:max(5%,calc((100% - 1280px)/2))}.hero{height:390px}.hero-copy{padding:47px 50px}.hero h1{font-size:64px}.card-photo{height:215px}}
++@media(max-width:1000px){.nav{gap:20px}.account{font-size:0;gap:0}.site-header{padding:0 4%}.view,.stack-bar{padding-left:4%;padding-right:4%}.hero-copy{padding:34px 28px}.hero h1{font-size:45px}.hero{height:330px}.hero p{font-size:11px}.cards{gap:16px}.detail-layout{gap:5%}.detail-copy h1{font-size:41px}.detail-photo{height:500px}}
++@media(max-width:700px){.site-header{height:76px;gap:12px}.wordmark{font-size:15px}.wordmark small{font-size:6px;letter-spacing:2.7px}.brand-mark{width:35px;height:35px}.brand{gap:8px}.nav{display:none}.header-actions{gap:14px}.order-link{padding:11px 13px;gap:10px;font-size:10px}.account{display:none}.stack-bar{height:48px}.stack-actions>span{display:none}.breadcrumbs{gap:7px;font-size:10px}.breadcrumbs svg{width:10px}.view{padding-top:19px}.hero{height:auto;grid-template-columns:1fr}.hero-copy{padding:29px}.hero h1{font-size:46px;margin-top:17px}.hero p{max-width:260px}.hero-image{height:215px;background-position:center 54%}.hero-note{width:60px;height:60px}.section-heading{margin-top:27px;align-items:center}.section-heading h2{font-size:25px}.section-heading p{font-size:10px}.text-link{font-size:10px;gap:5px}.cards{grid-template-columns:1fr;gap:25px}.card-photo{height:245px}.card-title h3{font-size:16px}.card p{font-size:12px}.card-bottom{font-size:10px}.values{display:grid;grid-template-columns:1fr;gap:18px;padding-left:10px}.page-footer{flex-direction:column;gap:14px}.shell-footer{font-size:8px}.detail-layout{grid-template-columns:1fr;gap:0;padding-top:0}.detail-photo{height:320px}.detail-copy{padding:25px 5px 0}.detail-copy h1{font-size:42px}.detail-copy .description{max-width:none}.detail-more{flex-direction:column;gap:10px}.collection-intro{display:block;margin-top:10px}.page-title{font-size:39px}.count{display:block;margin-top:18px}.collection-cards .card-photo{height:270px}.simple-page{margin:10px 0 40px}.info-panel{padding:23px}.mobile-menu{display:flex;gap:22px;font-size:11px;margin:5px 0 24px;padding-bottom:17px;border-bottom:1px solid var(--line)}.toast{width:max-content;max-width:90%;text-align:center}.back-button{font-size:10px}.choice{flex:1;padding:10px 14px}}
++@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
++</style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++<div class="app">
++<header class="site-header">
++<a class="brand" href="#/" aria-label="The Daily Grind home"><span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M5 9h12v6a5 5 0 0 1-10 0V9m10 1h1a3 3 0 0 1 0 6h-1M5 21h14M9 3v3m4-4v4"/></svg></span><span class="wordmark">THE DAILY GRIND<small>GOOD COFFEE. GOOD DAYS.</small></span></a>
++<nav class="nav" aria-label="Main navigation"><a href="#/menu" data-nav="menu">Our menu</a><a href="#/story" data-nav="story">Our story</a><a href="#/locations" data-nav="locations">Find your grind <svg viewBox="0 0 24 24" style="width:13px"><path d="M12 21s7-7 7-13a7 7 0 0 0-14 0c0 6 7 13 7 13Z"/><circle cx="12" cy="8" r="2"/></svg></a></nav>
++<div class="header-actions"><a class="account" href="#/rewards"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.5"/><path d="M5 21v-3a7 7 0 0 1 14 0v3"/></svg>Grind rewards</a><a class="order-link" href="#/order">Your order <span id="bag-count">0</span><svg viewBox="0 0 24 24" style="width:15px"><path d="m5 8-1 13h16L19 8H5Zm4 0V6a3 3 0 0 1 6 0v2"/></svg></a></div>
++</header>
++<div class="stack-bar"><nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb"></nav><div class="stack-actions"><span>A little everyday ritual.</span><button class="back-button" id="back" aria-label="Go back"><svg viewBox="0 0 24 24" style="width:14px"><path d="m12 5-7 7 7 7M5 12h15"/></svg>Back</button></div></div>
++<main class="view-port" id="viewport"></main>
++<footer class="shell-footer"><span class="status">Locally roasted. Thoughtfully made.</span><div class="depth" id="depth" aria-label="Navigation level"></div><span>MAKE YOURSELF AT HOME.</span></footer>
++</div>
++<div id="announcer" role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)"></div>
++<script>
++const icons={arrow:'<svg viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>',chevron:'<svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>',leaf:'<svg viewBox="0 0 24 24"><path d="M20 3C8 1 2 8 5 15s16 4 15-12ZM4 21 16 8"/></svg>',coffee:'<svg viewBox="0 0 24 24"><path d="M4 8h13v7a6 6 0 0 1-12 0V8m13 1h1a3 3 0 0 1 0 6h-1M4 22h15M8 2v3m5-3v3"/></svg>',heart:'<svg viewBox="0 0 24 24"><path d="m12 21-8-8C-3 5 7-1 12 6c5-7 15-1 8 7Z"/></svg>'};
++const drinks=[{id:'maple-oat-latte',name:'Maple Oat Latte',description:'Creamy oat milk. A little Vermont maple. Pure comfort.',long:'Your coziest ritual, in a cup. Our signature espresso meets silky oat milk and real Vermont maple syrup, finished with a gentle dusting of cinnamon. A little sweet, a little toasty, and made for slowing down.',price:5.50,tag:'The seasonal favorite',notes:'Maple · Toasted oats · Cinnamon',image:'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1000&q=85',position:'center 52%',type:'HOT OR ICED',ingredients:'Espresso, oat milk, Vermont maple syrup, cinnamon.'},{id:'dark-roast-espresso',name:'Dark Roast Espresso',description:'Rich, bold, and beautifully unapologetic.',long:'Small cup. Big character. A beautifully balanced double shot of our locally roasted house blend, with deep cocoa notes, a toasted finish, and a golden layer of crema. Your morning, made a little bolder.',price:3.50,tag:'For the purists',notes:'Dark chocolate · Toasted nuts · Caramel',image:'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=1000&q=85',position:'center 55%',type:'SERVED HOT',ingredients:'A double shot of our house-blend espresso.'},{id:'cold-brew',name:'Cold Brew',description:'Slow-steeped for 18 hours. Worth every minute.',long:'Good things take their time. We steep our single-origin coffee in cool, filtered water for 18 hours for a naturally sweet, exceptionally smooth brew. Poured over ice and ready to brighten your day.',price:4.75,tag:'Slow & smooth',notes:'Cocoa · Brown sugar · Smooth finish',image:'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=1000&q=85',position:'center 55%',type:'SERVED ICED',ingredients:'Slow-steeped coffee, filtered water, ice.'}];
++const viewport=document.getElementById('viewport');
++const money=n=>'$'+n.toFixed(2);
++let bag=[];try{bag=JSON.parse(sessionStorage.getItem('grind-bag')||'[]');if(!Array.isArray(bag))bag=[];bag=bag.filter(x=>drinks.some(d=>d.id===x.id)&&['Small','Regular','Large','Double','Triple'].includes(x.size)&&['Hot','Iced'].includes(x.temp));}catch{}
++let activeRoute='',currentIndex=0,toastTimer;const scrollPositions=new Map();
++function cards(){return drinks.map(d=>`<a class="card" href="#/menu/seasonal/${d.id}" aria-label="View ${d.name} details"><div class="card-photo"><img src="${d.image}" style="object-position:${d.position}" alt="${d.name}" loading="eager"><span class="tag">${d.tag}</span></div><div class="card-title"><h3>${d.name}</h3><span class="price">${money(d.price)}</span></div><p>${d.description}</p><div class="card-bottom"><span>${d.type}</span>${icons.arrow}</div></a>`).join('')}
++function footer(){return `<div class="values"><span class="value">${icons.leaf}Ethically sourced, always</span><span class="value">${icons.coffee}Roasted locally. Served with care.</span><span class="value">${icons.heart}Your neighborhood, in a cup</span></div><footer class="page-footer"><span>© 2026 The Daily Grind Coffee Co.</span><div><a href="#/story">Our story</a><a href="#/locations">Visit us</a><a href="#/contact">Get in touch</a><a href="#/privacy">Privacy</a></div></footer>`}
++function mobileNav(){return '<nav class="mobile-menu" aria-label="Explore"><a href="#/menu">Our menu</a><a href="#/story">Our story</a><a href="#/locations">Find your grind ↗</a></nav>'}
++function home(){return `${mobileNav()}<section class="hero"><div class="hero-copy"><div class="eyebrow"><span class="dot"></span>YOUR DAILY DOSE OF SOMETHING GOOD</div><h1>Good coffee.<br><em>Better everyday.</em></h1><p>Ethically sourced. Locally roasted. Made with a little extra love, just for you.</p><a href="#/menu" class="primary">Find your favorite ${icons.arrow}</a></div><div class="hero-image" role="img" aria-label="Freshly brewed artisan coffee"><div class="hero-note">FRESHLY<span>roasted</span>EVERY WEEK</div><span class="photo-label">${icons.coffee} A GOOD DAY STARTS HERE.</span></div></section><section aria-labelledby="seasonal-title"><div class="section-heading"><div><h2 id="seasonal-title">Seasonal favorites</h2><p>A few good reasons to take a coffee break.</p></div><a class="text-link" href="#/menu/seasonal">Explore the season ${icons.arrow}</a></div><div class="cards">${cards()}</div></section>${footer()}`}
++function collection(isMenu){return `${mobileNav()}<div class="collection-intro"><div><div class="eyebrow"><span class="dot"></span>${isMenu?'CRAFTED WITH CARE':'A TASTE OF THE SEASON'}</div><h1 class="page-title">${isMenu?'Find your daily ritual.':'Seasonal favorites.'}</h1><p>Familiar comforts, fresh inspiration. Thoughtfully made with the ingredients we love, for the moments you make.</p>${isMenu?'<a class="text-link" href="#/menu/seasonal">Discover our seasonal collection '+icons.arrow+'</a>':''}</div><span class="count">3 GOOD REASONS TO SLOW DOWN</span></div><div class="cards collection-cards">${cards()}</div>${footer()}`}
++function detail(d){const espresso=d.id==='dark-roast-espresso';return `<article><div class="detail-layout"><div class="detail-photo"><img src="${d.image}" style="object-position:${d.position}" alt="${d.name}"><span class="tag">${d.tag}</span></div><div class="detail-copy"><div class="eyebrow"><span class="dot"></span>SEASONAL FAVORITES</div><h1>${d.name}</h1><p class="description">${d.long}</p><div class="detail-price" id="detail-price">${money(d.price)}</div><div class="option-label" id="size-label">Make it your size</div><div class="choice-row" role="group" aria-labelledby="size-label">${(espresso?['Double','Triple']:['Small','Regular','Large']).map((s,i)=>`<button class="choice ${i===(espresso?0:1)?'selected':''}" data-size="${s}" aria-pressed="${i===(espresso?0:1)}">${s}</button>`).join('')}</div>${d.id==='maple-oat-latte'?'<div class="option-label" id="temp-label">How do you like it?</div><div class="choice-row" role="group" aria-labelledby="temp-label"><button class="choice selected" data-temp="Hot" aria-pressed="true">Hot</button><button class="choice" data-temp="Iced" aria-pressed="false">Iced</button></div>':''}<button class="primary add-order" id="add-order">Add to your order <span id="add-price">${money(d.price)} &nbsp; +</span></button><div class="tasting">${icons.coffee}<span>${d.notes}</span></div></div></div><div class="detail-more"><div><strong>The good stuff inside</strong><br>${d.ingredients}</div><div><strong>Made with care</strong><br>Prepared fresh by your neighborhood baristas.</div></div></article>${footer()}`}
++const pages={story:['ROOTED IN THE NEIGHBORHOOD','A good cup. A better community.','We believe the best part of your day can start with something simple: a thoughtfully made cup of coffee and a familiar face.','Our daily promise','We choose ethically sourced beans, roast in small batches, and make every cup with care. From your first sip to your afternoon pause, there’s a place for you here.'],locations:['COME ON OVER','Find your daily grind.','A coffee break is even better in good company. Your neighborhood table is waiting.','Your neighborhood coffee shop','Fresh coffee, a warm welcome, and a place to slow down. Get in touch for our current café locations and opening hours.'],rewards:['A LITTLE SOMETHING EXTRA','Good days add up.','Your everyday ritual deserves a little love in return.','Grind rewards','Our rewards program is brewing. In the meantime, explore your next favorite and make yourself at home.'],contact:['LET’S TALK COFFEE','We’re all ears.','Have a question about our coffee, ingredients, or visiting us? We’d love to help.','Say hello','Email <a href="mailto:hello@dailygrind.coffee" style="text-decoration:underline">hello@dailygrind.coffee</a> and our team will be in touch.'],privacy:['YOUR PRIVACY','Thoughtfully handled.','Your order stays in this browser session.','A simple approach','This demo stores your coffee selections in session storage so you can explore the menu and keep your order as you navigate. No payment information is collected. Fonts and photographs are loaded from Google Fonts and Unsplash.']};
++function simple(key){const p=pages[key];return `<section class="simple-page"><div class="eyebrow"><span class="dot"></span>${p[0]}</div><h1 class="page-title">${p[1]}</h1><p>${p[2]}</p><div class="info-panel"><h2>${p[3]}</h2><p>${p[4]}</p><a class="primary" href="#/menu">Explore the menu ${icons.arrow}</a></div></section>${footer()}`}
++function itemPrice(item){const d=drinks.find(d=>d.id===item.id);return d.price+(item.size==='Large'||item.size==='Triple'?.75:item.size==='Small'?-.5:0)}
++function order(){return `<section class="simple-page"><div class="eyebrow"><span class="dot"></span>YOUR NEXT COFFEE BREAK</div><h1 class="page-title">A little cup of good.</h1>${bag.length?`<ul class="bag-items">${bag.map((item,i)=>`<li><div>${drinks.find(d=>d.id===item.id).name}<small>${item.size} · ${item.temp}</small></div><div>${money(itemPrice(item))}<small><button class="remove" data-remove="${i}">Remove</button></small></div></li>`).join('')}</ul><div class="option-label"><strong>Total</strong><strong>${money(bag.reduce((sum,item)=>sum+itemPrice(item),0))}</strong></div><p>Your favorites are saved for this visit. Online checkout is coming soon.</p>`:'<p>Your next favorite is waiting. Explore the menu to start your order.</p>'}<a class="primary" href="#/menu">${bag.length?'Add another favorite':'Find your favorite'} ${icons.arrow}</a></section>${footer()}`}
++function getRoute(){try{return decodeURIComponent(location.hash.slice(1)||'/').replace(/\/+$/,'')||'/'}catch{return '/not-found'}}
++function routeInfo(route){if(route==='/')return {title:'Home',crumbs:[['Home','/']],level:0,html:home()};if(route==='/menu')return {title:'Our menu',crumbs:[['Home','/'],['Our menu',route]],level:1,html:collection(true)};if(route==='/menu/seasonal')return {title:'Seasonal favorites',crumbs:[['Home','/'],['Seasonal favorites',route]],level:1,html:collection(false)};const d=drinks.find(d=>route==='/menu/seasonal/'+d.id);if(d)return {title:d.name,crumbs:[['Home','/'],['Seasonal favorites','/menu/seasonal'],[d.name,route]],level:2,html:detail(d),drink:d};if(pages[route.slice(1)]){const key=route.slice(1);return {title:({story:'Our story',locations:'Find your grind',rewards:'Grind rewards',contact:'Contact',privacy:'Privacy'})[key],crumbs:[['Home','/'],[({story:'Our story',locations:'Find your grind',rewards:'Grind rewards',contact:'Contact',privacy:'Privacy'})[key],route]],level:1,html:simple(key)}}if(route==='/order')return {title:'Your order',crumbs:[['Home','/'],['Your order',route]],level:1,html:order()};return {title:'Page not found',crumbs:[['Home','/'],['Page not found',route]],level:1,html:'<section class="simple-page"><h1 class="page-title">A little off the beaten path.</h1><p>We couldn’t find that page. Your next good coffee is right this way.</p><a class="primary" href="#/">Back to home '+icons.arrow+'</a></section>'}}
++function render(direction='forward',restore=false){const old=viewport.querySelector('.view');if(old)scrollPositions.set(activeRoute,old.scrollTop);const route=getRoute(),info=routeInfo(route);activeRoute=route;document.title=info.title+' | The Daily Grind';viewport.innerHTML=`<div class="view enter-${direction}" tabindex="-1">${info.html}</div>`;const view=viewport.firstElementChild;if(restore)view.scrollTop=scrollPositions.get(route)||0;document.getElementById('breadcrumbs').innerHTML=info.crumbs.map(([label,path],i)=>i===info.crumbs.length-1?`<span class="current" aria-current="page">${label}</span>`:`<a href="#${path}">${label}</a>${icons.chevron}`).join('');document.getElementById('back').disabled=route==='/';document.getElementById('depth').innerHTML=[0,1,2].map(i=>`<i class="${i<=info.level?'on':''}"></i>`).join('');document.getElementById('depth').setAttribute('aria-label',`Navigation level ${info.level+1} of 3`);document.querySelectorAll('[data-nav]').forEach(a=>{const active=route.startsWith('/'+a.dataset.nav);a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.getElementById('bag-count').textContent=bag.length;document.getElementById('announcer').textContent=info.title;view.focus({preventScroll:true});if(info.drink)bindDetail(info.drink);view.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{bag.splice(Number(b.dataset.remove),1);saveBag();render('back',true)});}
++function saveBag(){try{sessionStorage.setItem('grind-bag',JSON.stringify(bag))}catch{}document.getElementById('bag-count').textContent=bag.length}
++function bindDetail(d){let size=d.id==='dark-roast-espresso'?'Double':'Regular',temp=d.id==='cold-brew'?'Iced':'Hot';function update(){const price=itemPrice({id:d.id,size});document.getElementById('detail-price').textContent=money(price);document.getElementById('add-price').textContent=money(price)+'  +'}document.querySelectorAll('[data-size],[data-temp]').forEach(b=>b.onclick=()=>{const key=b.dataset.size?'size':'temp';if(key==='size')size=b.dataset.size;else temp=b.dataset.temp;document.querySelectorAll(`[data-${key}]`).forEach(other=>{const selected=other===b;other.classList.toggle('selected',selected);other.setAttribute('aria-pressed',selected)});update()});document.getElementById('add-order').onclick=()=>{bag.push({id:d.id,size,temp});saveBag();document.querySelector('.toast')?.remove();clearTimeout(toastTimer);const toast=document.createElement('div');toast.className='toast';toast.setAttribute('role','status');toast.textContent=d.name+' added to your order';document.body.append(toast);toastTimer=setTimeout(()=>toast.remove(),3200)}}
++function navigate(route){if(route===activeRoute)return;currentIndex++;history.pushState({grind:true,index:currentIndex},'',location.pathname+location.search+'#'+route);render('forward')}
++function goBack(){if(activeRoute==='/')return;if(currentIndex>0){history.back();return}const crumbs=routeInfo(activeRoute).crumbs;const parent=crumbs[crumbs.length-2][1];history.replaceState({grind:true,index:0},'',location.pathname+location.search+'#'+parent);render('back',true)}
++document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#/"]');if(!a||e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();navigate(a.getAttribute('href').slice(1))});document.getElementById('back').onclick=goBack;
++history.scrollRestoration='manual';currentIndex=history.state?.grind?history.state.index:0;history.replaceState({grind:true,index:currentIndex},'',location.pathname+location.search+'#'+getRoute());
++window.addEventListener('popstate',e=>{const next=e.state?.grind?e.state.index:0;const direction=next<currentIndex?'back':'forward';currentIndex=next;render(direction,true)});window.addEventListener('hashchange',()=>{if(getRoute()!==activeRoute){currentIndex++;history.replaceState({grind:true,index:currentIndex},'');render('forward')}});
++// Rightward touch gestures anywhere in the view go back; the native edge gesture is left to the browser.
++let gesture=null;viewport.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch'||!e.isPrimary||e.clientX<28||e.target.closest('button,a,input,select,textarea'))return;gesture={x:e.clientX,y:e.clientY,time:Date.now(),id:e.pointerId};},{passive:true});viewport.addEventListener('pointerup',e=>{if(!gesture||e.pointerId!==gesture.id)return;const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y,elapsed=Date.now()-gesture.time;gesture=null;if(dx>100&&dx>Math.abs(dy)*2.5&&elapsed<700)goBack()},{passive:true});viewport.addEventListener('pointercancel',()=>gesture=null,{passive:true});
++document.addEventListener('keydown',e=>{if(e.altKey&&e.key==='ArrowLeft'&&activeRoute!=='/'){e.preventDefault();goBack()}});render();
++</script>
+ </body>
+-
+ </html>

@@ -1,0 +1,158 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -107,20 +107,82 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      --card-bg: #ffffff;
++      --card-text: var(--text);
++      --card-border: var(--secondary);
++      --card-accent: var(--primary);
++      --card-accent-hover: #3e2723;
++
++      background-color: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s;
+     }
+ 
++    .card:has(.iced-toggle:checked) {
++      --card-bg: #e8f4fd;
++      --card-text: #0b3c5d;
++      --card-border: #64b5f6;
++      --card-accent: #0277bd;
++      --card-accent-hover: #01579b;
++      box-shadow: 0 4px 12px rgba(2, 119, 189, 0.18);
++    }
++
++    @supports not selector(:has(*)) {
++      .card.is-active {
++        --card-bg: #e8f4fd;
++        --card-text: #0b3c5d;
++        --card-border: #64b5f6;
++        --card-accent: #0277bd;
++        --card-accent-hover: #01579b;
++        box-shadow: 0 4px 12px rgba(2, 119, 189, 0.18);
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-accent);
++      transition: color 0.3s;
+     }
+ 
++    .iced-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.65rem;
++      min-block-size: 44px;
++      margin-top: 10px;
++      cursor: pointer;
++      font-weight: 500;
++      user-select: none;
++    }
++
++    .iced-toggle {
++      accent-color: var(--card-accent);
++      inline-size: 1.25em;
++      aspect-ratio: 1;
++      margin: 0;
++      cursor: pointer;
++    }
++
++    .iced-toggle:focus-visible {
++      outline: 2px solid currentColor;
++      outline-offset: 2px;
++    }
++
++    .iced-toggle:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -134,8 +196,16 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card .btn {
++      background: var(--card-accent);
++    }
++
++    .card .btn:hover {
++      background: var(--card-accent-hover);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,18 +250,30 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label for="iced-maple-oat-latte" class="iced-label">
++            <input type="checkbox" id="iced-maple-oat-latte" name="iced-maple-oat-latte" class="iced-toggle">
++            Make it iced
++          </label>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label for="iced-dark-roast-espresso" class="iced-label">
++            <input type="checkbox" id="iced-dark-roast-espresso" name="iced-dark-roast-espresso" class="iced-toggle">
++            Make it iced
++          </label>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label for="iced-cold-brew" class="iced-label">
++            <input type="checkbox" id="iced-cold-brew" name="iced-cold-brew" class="iced-toggle">
++            Make it iced
++          </label>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -206,7 +288,21 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('selector(:has(*))')) {
++      const cards = document.querySelectorAll('.card');
++      cards.forEach((card) => {
++        const toggle = card.querySelector('.iced-toggle');
++        if (toggle) {
++          toggle.addEventListener('change', (e) => {
++            card.classList.toggle('is-active', e.target.checked);
++          });
++        }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

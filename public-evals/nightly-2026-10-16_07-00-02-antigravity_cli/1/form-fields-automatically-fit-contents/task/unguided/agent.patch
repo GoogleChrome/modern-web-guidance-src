@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,64 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
++    }
++
++    /* Form & Auto-Sizing Controls */
++    .form-section {
++      margin-top: 50px;
++    }
++
++    .form-card {
++      text-align: left;
++      max-width: 600px;
++      margin: 20px auto 0;
++      padding: 30px;
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    /* Automatically size form controls based on content without unnecessary whitespace */
++    input[type="text"],
++    textarea,
++    select {
++      field-sizing: content;
++      max-width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 8px 12px;
++      border: 1px solid #ccc;
++      border-radius: 4px;
++      color: var(--text);
++      background-color: #fff;
++      box-sizing: border-box;
++    }
++
++    input[type="text"]:focus,
++    textarea:focus,
++    select:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.2);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +250,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="form-section">
++      <h2 style="text-align: center;">Custom Order &amp; Feedback</h2>
++      <div class="card form-card">
++        <form id="order-form" onsubmit="event.preventDefault();">
++          <div class="form-group">
++            <label for="customer-name">Name</label>
++            <input type="text" id="customer-name" name="name" placeholder="Enter your name">
++          </div>
++
++          <div class="form-group">
++            <label for="coffee-selection">Coffee Selection</label>
++            <select id="coffee-selection" name="coffee">
++              <option value="espresso">Espresso</option>
++              <option value="latte">Maple Oat Latte</option>
++              <option value="cold-brew">Cold Brew Steeped for 18 Hours</option>
++              <option value="specialty">Single-Origin Ethiopian Yirgacheffe Pour-Over</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="special-instructions">Special Instructions</label>
++            <textarea id="special-instructions" name="instructions" placeholder="Tell us how you'd like your drink prepared..."></textarea>
++          </div>
++
++          <button type="submit" class="btn">Submit</button>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +291,66 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const isFieldSizingSupported = window.CSS && CSS.supports && CSS.supports('field-sizing', 'content');
++      if (isFieldSizingSupported) return;
++
++      const measureWidth = (text, element) => {
++        const span = document.createElement('span');
++        const style = window.getComputedStyle(element);
++        span.style.font = style.font;
++        span.style.letterSpacing = style.letterSpacing;
++        span.style.visibility = 'hidden';
++        span.style.position = 'absolute';
++        span.style.whiteSpace = 'pre';
++        span.textContent = text || '';
++        document.body.appendChild(span);
++        const width = span.getBoundingClientRect().width;
++        document.body.removeChild(span);
++        return width;
++      };
++
++      const initFallbacks = () => {
++        document.querySelectorAll('input[type="text"]').forEach(input => {
++          const resize = () => {
++            const text = input.value || input.placeholder || '';
++            const width = measureWidth(text, input);
++            input.style.width = Math.max(width + 28, 50) + 'px';
++          };
++          input.addEventListener('input', resize);
++          resize();
++        });
++
++        document.querySelectorAll('select').forEach(select => {
++          const resize = () => {
++            const opt = select.options[select.selectedIndex];
++            const text = opt ? opt.text : '';
++            const width = measureWidth(text, select);
++            select.style.width = (width + 36) + 'px';
++          };
++          select.addEventListener('change', resize);
++          resize();
++        });
++
++        document.querySelectorAll('textarea').forEach(textarea => {
++          const resize = () => {
++            textarea.style.height = 'auto';
++            textarea.style.height = textarea.scrollHeight + 'px';
++          };
++          textarea.addEventListener('input', resize);
++          resize();
++        });
++      };
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initFallbacks);
++      } else {
++        initFallbacks();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

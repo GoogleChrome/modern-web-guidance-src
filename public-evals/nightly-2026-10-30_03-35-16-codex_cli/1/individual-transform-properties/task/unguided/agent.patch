@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,51 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promo-badge {
++      display: flex;
++      justify-content: center;
++      padding: 24px 0;
++    }
++
++    .target {
++      display: grid;
++      place-content: center;
++      width: 104px;
++      height: 104px;
++      border: 2px dashed var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      font-size: 0.85rem;
++      font-weight: bold;
++      line-height: 1.3;
++      text-align: center;
++      text-transform: uppercase;
++      /* Keep a stacking context before, during, and after hover. */
++      isolation: isolate;
++      transform: scale(1);
++      transition: transform 0.3s ease;
++      animation: promo-spin 12s linear infinite,
++        promo-slide 2.5s ease-in-out infinite alternate;
++    }
++
++    .target:hover {
++      transform: scale(1.15);
++    }
++
++    /* Independent properties let both animations and hover compose. */
++    @keyframes promo-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes promo-slide {
++      from { translate: -18px 0; }
++      to { translate: 18px 0; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,8 +219,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-badge">
++        <span class="target">Featured<br>Seasonal Sip</span>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

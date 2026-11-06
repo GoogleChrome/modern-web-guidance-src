@@ -1,0 +1,398 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..2f17bdb
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,266 @@
++import React, { useState, useEffect } from 'react';
++
++export interface StoryItem {
++  id: string;
++  data?: {
++    title: string;
++    date: Date | string;
++    category?: string;
++    summary?: string;
++    image?: string;
++  };
++  title?: string;
++  date?: Date | string;
++  category?: string;
++  summary?: string;
++  image?: string;
++}
++
++export interface TopStoriesSliderProps {
++  stories: StoryItem[];
++  baseUrl?: string;
++}
++
++const isReducedMotion = (): boolean => {
++  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
++    return false;
++  }
++  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++};
++
++export const TopStoriesSlider: React.FC<TopStoriesSliderProps> = ({
++  stories = [],
++  baseUrl = '/',
++}) => {
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [slideState, setSlideState] = useState<{
++    activeIndex: number;
++    incomingIndex: number;
++    direction: 'next' | 'prev';
++  } | null>(null);
++
++  useEffect(() => {
++    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
++      return;
++    }
++    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++    const handleChange = (e: MediaQueryListEvent) => {
++      if (e.matches && slideState) {
++        setCurrentIndex(slideState.incomingIndex);
++        setSlideState(null);
++      }
++    };
++    mediaQuery.addEventListener('change', handleChange);
++    return () => mediaQuery.removeEventListener('change', handleChange);
++  }, [slideState]);
++
++  useEffect(() => {
++    if (!slideState) return;
++    const timer = setTimeout(() => {
++      setCurrentIndex(slideState.incomingIndex);
++      setSlideState(null);
++    }, 350);
++    return () => clearTimeout(timer);
++  }, [slideState]);
++
++  if (!stories || stories.length === 0) {
++    return null;
++  }
++
++  const handleNext = () => {
++    if (stories.length <= 1) return;
++
++    const current = slideState ? slideState.incomingIndex : currentIndex;
++    const next = (current + 1) % stories.length;
++
++    if (isReducedMotion()) {
++      setCurrentIndex(next);
++      setSlideState(null);
++      return;
++    }
++
++    setCurrentIndex(current);
++    setSlideState({
++      activeIndex: current,
++      incomingIndex: next,
++      direction: 'next',
++    });
++  };
++
++  const handlePrev = () => {
++    if (stories.length <= 1) return;
++
++    const current = slideState ? slideState.incomingIndex : currentIndex;
++    const prev = (current - 1 + stories.length) % stories.length;
++
++    if (isReducedMotion()) {
++      setCurrentIndex(prev);
++      setSlideState(null);
++      return;
++    }
++
++    setCurrentIndex(current);
++    setSlideState({
++      activeIndex: current,
++      incomingIndex: prev,
++      direction: 'prev',
++    });
++  };
++
++  const handleAnimationEnd = (e: React.AnimationEvent) => {
++    if (e.target !== e.currentTarget) return;
++    if (slideState) {
++      setCurrentIndex(slideState.incomingIndex);
++      setSlideState(null);
++    }
++  };
++
++  const handleKeyDown = (e: React.KeyboardEvent) => {
++    if (e.key === 'ArrowLeft') {
++      handlePrev();
++    } else if (e.key === 'ArrowRight') {
++      handleNext();
++    }
++  };
++
++  const getStoryData = (story: StoryItem) => {
++    const id = story.id;
++    const title = story.data?.title ?? story.title ?? '';
++    const rawDate = story.data?.date ?? story.date;
++    let formattedDate = '';
++    if (rawDate) {
++      if (rawDate instanceof Date) {
++        formattedDate = rawDate.toLocaleDateString();
++      } else if (typeof rawDate === 'string') {
++        const d = new Date(rawDate);
++        formattedDate = isNaN(d.getTime()) ? rawDate : d.toLocaleDateString();
++      }
++    }
++    const category = story.data?.category ?? story.category;
++    return { id, title, formattedDate, category };
++  };
++
++  const getArticleUrl = (id: string, base: string = '/') => {
++    const cleanBase = base ? (base.endsWith('/') ? base : `${base}/`) : '/';
++    return `${cleanBase}articles/${id}`;
++  };
++
++  const renderStoryContent = (story: StoryItem) => {
++    const { id, title, formattedDate } = getStoryData(story);
++    const articleUrl = getArticleUrl(id, baseUrl);
++
++    return (
++      <div className="flex flex-col sm:flex-row sm:items-center justify-center gap-1 sm:gap-4 text-center sm:text-left px-2">
++        <span className="text-xs font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded whitespace-nowrap self-center sm:self-auto">
++          Top Story
++        </span>
++        <a href={articleUrl} className="hover:text-amber-400 cursor-pointer">
++          <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer text-sm sm:text-base">
++            {title}
++          </h3>
++        </a>
++        {formattedDate && (
++          <span className="text-xs text-gray-500 whitespace-nowrap self-center sm:self-auto">
++            {formattedDate}
++          </span>
++        )}
++      </div>
++    );
++  };
++
++  return (
++    <div
++      className="bg-white border-b border-gray-300"
++      aria-label="Top Stories"
++      data-testid="top-stories-section"
++      onKeyDown={handleKeyDown}
++    >
++      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
++        <div className="flex items-center justify-between gap-4">
++          {/* Previous Button */}
++          <button
++            type="button"
++            onClick={handlePrev}
++            aria-label="Previous"
++            data-testid="previous-button"
++            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded transition-colors cursor-pointer select-none shrink-0"
++          >
++            <svg
++              xmlns="http://www.w3.org/2000/svg"
++              fill="none"
++              viewBox="0 0 24 24"
++              strokeWidth="2.5"
++              stroke="currentColor"
++              className="w-3.5 h-3.5"
++            >
++              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
++            </svg>
++            <span>Previous</span>
++          </button>
++
++          {/* Story Viewport */}
++          <div
++            className="relative flex-1 overflow-hidden min-h-[38px] flex items-center justify-center"
++            data-direction={slideState?.direction}
++            aria-live="polite"
++          >
++            {!slideState ? (
++              <div
++                key={`slide-${currentIndex}`}
++                data-testid="story-slide"
++                className="w-full flex items-center justify-center"
++              >
++                {renderStoryContent(stories[currentIndex])}
++              </div>
++            ) : (
++              <>
++                <div
++                  key={`outgoing-${slideState.activeIndex}`}
++                  data-testid="outgoing-slide"
++                  className={`w-full flex items-center justify-center motion-reduce:animate-none motion-reduce:transform-none motion-reduce:transition-none ${
++                    slideState.direction === 'next' ? 'slide-out-to-left' : 'slide-out-to-right'
++                  }`}
++                >
++                  {renderStoryContent(stories[slideState.activeIndex])}
++                </div>
++                <div
++                  key={`incoming-${slideState.incomingIndex}`}
++                  data-testid="incoming-slide"
++                  onAnimationEnd={handleAnimationEnd}
++                  className={`absolute inset-0 w-full h-full flex items-center justify-center motion-reduce:animate-none motion-reduce:transform-none motion-reduce:transition-none ${
++                    slideState.direction === 'next' ? 'slide-in-from-right' : 'slide-in-from-left'
++                  }`}
++                >
++                  {renderStoryContent(stories[slideState.incomingIndex])}
++                </div>
++              </>
++            )}
++          </div>
++
++          {/* Next Button */}
++          <button
++            type="button"
++            onClick={handleNext}
++            aria-label="Next"
++            data-testid="next-button"
++            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded transition-colors cursor-pointer select-none shrink-0"
++          >
++            <span>Next</span>
++            <svg
++              xmlns="http://www.w3.org/2000/svg"
++              fill="none"
++              viewBox="0 0 24 24"
++              strokeWidth="2.5"
++              stroke="currentColor"
++              className="w-3.5 h-3.5"
++            >
++              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
++            </svg>
++          </button>
++        </div>
++      </div>
++    </div>
++  );
++};
++
++export default TopStoriesSlider;
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..88d7b68 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -35,24 +36,23 @@ politicsArticles[2] = {
+     slug: 'public-transit-overhaul',
+     render: async () => '' as unknown as RenderResult,
+   };
++
++const serializedTopStories = topStories.map(article => ({
++    id: article.id,
++    title: article.data.title,
++    date: article.data.date.toLocaleDateString(),
++    data: {
++        title: article.data.title,
++        date: article.data.date.toLocaleDateString(),
++        category: article.data.category,
++        summary: article.data.summary,
++    }
++}));
+ ---
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider client:load stories={serializedTopStories} baseUrl={import.meta.env.BASE_URL} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d1f9a06 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,70 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++@keyframes slideInFromRight {
++  from {
++    transform: translateX(100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++@keyframes slideOutToLeft {
++  from {
++    transform: translateX(0);
++  }
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++@keyframes slideInFromLeft {
++  from {
++    transform: translateX(-100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++@keyframes slideOutToRight {
++  from {
++    transform: translateX(0);
++  }
++  to {
++    transform: translateX(100%);
++  }
++}
++
++.slide-in-from-right {
++  animation: slideInFromRight 300ms ease-in-out forwards;
++}
++
++.slide-out-to-left {
++  animation: slideOutToLeft 300ms ease-in-out forwards;
++}
++
++.slide-in-from-left {
++  animation: slideInFromLeft 300ms ease-in-out forwards;
++}
++
++.slide-out-to-right {
++  animation: slideOutToRight 300ms ease-in-out forwards;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .slide-in-from-right,
++  .slide-out-to-left,
++  .slide-in-from-left,
++  .slide-out-to-right,
++  [data-testid="story-slide"],
++  [data-testid="outgoing-slide"],
++  [data-testid="incoming-slide"] {
++    animation: none !important;
++    transition: none !important;
++    transform: none !important;
++  }
+ }
+\ No newline at end of file

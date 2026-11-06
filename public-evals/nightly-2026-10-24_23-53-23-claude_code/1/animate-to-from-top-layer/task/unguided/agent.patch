@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,150 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Confirmation dialog */
++    .dialog {
++      border: none;
++      border-radius: 10px;
++      padding: 28px;
++      max-width: 400px;
++      width: calc(100% - 40px);
++      margin: auto;
++      color: var(--text);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++    }
++
++    .dialog[open] {
++      animation: dialog-in 0.3s ease-out both;
++    }
++
++    .dialog[open]::backdrop {
++      animation: backdrop-in 0.3s ease-out both;
++    }
++
++    .dialog.closing {
++      animation: dialog-out 0.25s ease-in both;
++    }
++
++    .dialog.closing::backdrop {
++      animation: backdrop-out 0.25s ease-in both;
++    }
++
++    .dialog::backdrop {
++      background: rgba(30, 15, 10, 0.6);
++      backdrop-filter: blur(2px);
++    }
++
++    .dialog h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++      border: 1px solid var(--primary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    @keyframes dialog-in {
++      from { opacity: 0; transform: translateY(20px) scale(0.95); }
++      to { opacity: 1; transform: none; }
++    }
++
++    @keyframes dialog-out {
++      from { opacity: 1; transform: none; }
++      to { opacity: 0; transform: translateY(20px) scale(0.95); }
++    }
++
++    @keyframes backdrop-in {
++      from { opacity: 0; }
++      to { opacity: 1; }
++    }
++
++    @keyframes backdrop-out {
++      from { opacity: 1; }
++      to { opacity: 0; }
++    }
++
++    /* Floating info overlay */
++    #foobar {
++      font: inherit;
++      border: none;
++      cursor: pointer;
++    }
++
++    .overlay {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 2000;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      max-width: 340px;
++      padding: 14px 16px;
++      background: var(--primary);
++      color: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      opacity: 0;
++      visibility: hidden;
++      transform: translateY(16px);
++      transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
++    }
++
++    .overlay.visible {
++      opacity: 1;
++      visibility: visible;
++      transform: none;
++      transition-delay: 0s;
++    }
++
++    .overlay-close {
++      background: none;
++      border: none;
++      color: white;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .overlay-close:hover {
++      color: var(--accent);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .dialog[open],
++      .dialog.closing,
++      .dialog[open]::backdrop,
++      .dialog.closing::backdrop {
++        animation-duration: 0.01s;
++      }
++
++      .overlay {
++        transition-duration: 0.01s;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,18 +305,33 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" id="open-dialog-btn" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" class="btn" aria-controls="info-overlay">Ordering Status</button>
+   </header>
+ 
++  <dialog id="logout-dialog" class="dialog" aria-labelledby="logout-title">
++    <h2 id="logout-title">Log out?</h2>
++    <p>Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" id="close-dialog-btn" class="btn btn-secondary">Stay logged in</button>
++      <a href="/logout" class="btn">Log out</a>
++    </div>
++  </dialog>
++
++  <div id="info-overlay" class="overlay" role="status" aria-live="polite">
++    <span>online ordering is currently offline</span>
++    <button type="button" class="overlay-close" aria-label="Dismiss">&times;</button>
++  </div>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +363,44 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const dialog = document.getElementById('logout-dialog');
++
++    function closeDialog() {
++      if (!dialog.open || dialog.classList.contains('closing')) return;
++      dialog.classList.add('closing');
++      dialog.addEventListener('animationend', () => {
++        dialog.classList.remove('closing');
++        dialog.close();
++      }, { once: true });
++    }
++
++    document.getElementById('open-dialog-btn').addEventListener('click', (e) => {
++      e.preventDefault();
++      dialog.showModal();
++    });
++    document.getElementById('close-dialog-btn').addEventListener('click', closeDialog);
++    // Animate Escape and backdrop clicks instead of closing instantly
++    dialog.addEventListener('cancel', (e) => {
++      e.preventDefault();
++      closeDialog();
++    });
++    dialog.addEventListener('click', (e) => {
++      if (e.target === dialog) closeDialog();
++    });
++
++    const overlay = document.getElementById('info-overlay');
++    document.getElementById('foobar').addEventListener('click', () => {
++      overlay.classList.toggle('visible');
++    });
++    overlay.querySelector('.overlay-close').addEventListener('click', () => {
++      overlay.classList.remove('visible');
++    });
++    document.addEventListener('keydown', (e) => {
++      if (e.key === 'Escape') overlay.classList.remove('visible');
++    });
++  </script>
+ </body>
+ 
+ </html>

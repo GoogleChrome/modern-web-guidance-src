@@ -1,0 +1,204 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,103 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Toast Notifications (Top Layer via Popover API, pure CSS stacking) */
++    .toast {
++      --toast-offset: 0;
++      position: fixed;
++      inset: auto 24px calc(24px + (var(--toast-offset) * 72px)) auto;
++      margin: 0;
++      border: 1px solid rgba(255, 171, 64, 0.35);
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      background: var(--primary);
++      color: var(--light);
++      padding: 14px 18px;
++      min-width: 240px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.22);
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 14px;
++      pointer-events: auto;
++      opacity: 0;
++      transform: translateY(16px) scale(0.96);
++      transition:
++        bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1),
++        opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
++        transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
++        overlay 0.25s allow-discrete,
++        display 0.25s allow-discrete;
++    }
++
++    .toast::backdrop {
++      display: none;
++      pointer-events: none;
++    }
++
++    .toast:popover-open {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    .toast.toast-leaving {
++      opacity: 0;
++      transform: translateY(12px) scale(0.96);
++      pointer-events: none;
++    }
++
++    @starting-style {
++      .toast:popover-open {
++        opacity: 0;
++        transform: translateY(16px) scale(0.96);
++      }
++    }
++
++    /* Dynamic vertical stacking using pure CSS sibling selectors */
++    .toast:has(~ .toast:popover-open) { --toast-offset: 1; }
++    .toast:has(~ .toast:popover-open ~ .toast:popover-open) { --toast-offset: 2; }
++    .toast:has(~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open) { --toast-offset: 3; }
++    .toast:has(~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open) { --toast-offset: 4; }
++    .toast:has(~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open) { --toast-offset: 5; }
++    .toast:has(~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open) { --toast-offset: 6; }
++    .toast:has(~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open) { --toast-offset: 7; }
++    .toast:has(~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open) { --toast-offset: 8; }
++    .toast:has(~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open ~ .toast:popover-open) { --toast-offset: 9; }
++
++    .toast-message {
++      font-size: 0.95rem;
++      font-weight: 600;
++      letter-spacing: 0.2px;
++    }
++
++    .toast-close {
++      background: transparent;
++      border: none;
++      color: var(--secondary);
++      font-size: 1.25rem;
++      line-height: 1;
++      padding: 2px 6px;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: color 0.2s, background-color 0.2s;
++    }
++
++    .toast-close:hover {
++      color: white;
++      background-color: rgba(255, 255, 255, 0.12);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +259,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn toast-trigger">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -180,19 +269,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +295,62 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function showToast(message = 'added to cart!') {
++      const toast = document.createElement('div');
++      toast.className = 'toast';
++      toast.setAttribute('popover', 'manual');
++      toast.setAttribute('role', 'status');
++      toast.setAttribute('aria-live', 'polite');
++
++      const textSpan = document.createElement('span');
++      textSpan.className = 'toast-message';
++      textSpan.textContent = message;
++
++      const closeBtn = document.createElement('button');
++      closeBtn.type = 'button';
++      closeBtn.className = 'toast-close';
++      closeBtn.setAttribute('aria-label', 'Close notification');
++      closeBtn.innerHTML = '&times;';
++
++      let dismissed = false;
++      let autoDismissTimer = null;
++      let cleanupTimer = null;
++
++      const dismissToast = () => {
++        if (dismissed) return;
++        dismissed = true;
++        clearTimeout(autoDismissTimer);
++        clearTimeout(cleanupTimer);
++        toast.classList.add('toast-leaving');
++        if (typeof toast.hidePopover === 'function' && toast.matches(':popover-open')) {
++          toast.hidePopover();
++        }
++        cleanupTimer = setTimeout(() => {
++          toast.remove();
++        }, 250);
++      };
++
++      closeBtn.addEventListener('click', dismissToast);
++
++      toast.append(textSpan, closeBtn);
++      document.body.appendChild(toast);
++
++      if (typeof toast.showPopover === 'function') {
++        toast.showPopover();
++      }
++
++      autoDismissTimer = setTimeout(dismissToast, 3000);
++    }
++
++    document.querySelectorAll('.toast-trigger').forEach((trigger) => {
++      trigger.addEventListener('click', () => {
++        showToast('added to cart!');
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

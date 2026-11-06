@@ -1,0 +1,47 @@
+diff --git a/index.html b/index.html
+index 66c9173..afcbedc 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,42 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Optional enhancements: browsers without @layer support keep the base styles. */
++    @layer enhancements {
++      .card {
++        transition: transform 0.2s ease;
++      }
++
++      .card:focus-within {
++        transform: translateY(-4px);
++      }
++
++      @media (hover: hover) {
++        .card:hover {
++          transform: translateY(-4px);
++        }
++      }
++
++      .hero {
++        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
++      }
++
++      .hero h1 {
++        text-wrap: balance;
++      }
++
++      nav {
++        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        .card {
++          transition: none;
++          transform: none;
++        }
++      }
++    }
+   </style>
+ </head>
+ 

@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+index 66c9173..3e050c2 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,74 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /*
++     * Theme selection: the only place that decides light vs dark.
++     * Order of precedence: root attribute/class/meta override > OS preference.
++     *
++     * --when-light / --when-dark are "space toggles": the active one is
++     * `initial` (so var(--when-x, value) falls back to `value`), the inactive
++     * one is empty (so it contributes nothing). Each themed token below is
++     * written exactly once as a light/dark pair.
++     */
++    :root {
++      color-scheme: light dark;
++      --when-light: initial;
++      --when-dark: ;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --when-light: ;
++        --when-dark: initial;
++      }
++    }
++
++    :root[data-theme="dark"],
++    :root.dark,
++    :root.theme-dark,
++    :root:has(> head > meta[name="color-scheme"][content="dark"]) {
++      color-scheme: dark;
++      --when-light: ;
++      --when-dark: initial;
++    }
++
++    :root[data-theme="light"],
++    :root.light,
++    :root.theme-light,
++    :root:has(> head > meta[name="color-scheme"][content="light"]) {
++      color-scheme: light;
++      --when-light: initial;
++      --when-dark: ;
++    }
++
++    /* Themed tokens: var(--when-light, <light value>) var(--when-dark, <dark value>) */
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++
++      --page-bg: var(--when-light, #fafafa) var(--when-dark, #120d0b);
++      --page-text: var(--when-light, #3e2723) var(--when-dark, #e8ddd8);
++      --footer-bg: var(--when-light, #d7ccc8) var(--when-dark, #241a17);
++
++      --nav-bg: var(--when-light, #4e342e) var(--when-dark, #1a1210);
++      --nav-text: var(--when-light, #ffffff) var(--when-dark, #efe6e2);
++      --nav-border: var(--when-light, transparent) var(--when-dark, #3d2e28);
++      --nav-link-hover: var(--when-light, #ffab40) var(--when-dark, #ffc77a);
++
++      --hero-overlay: var(--when-light, rgba(0, 0, 0, 0.5)) var(--when-dark, rgba(10, 6, 4, 0.72));
++      --hero-text: var(--when-light, #ffffff) var(--when-dark, #f5ede9);
++
++      --card-bg: var(--when-light, #ffffff) var(--when-dark, #2a1f1b);
++      --card-text: var(--when-light, #3e2723) var(--when-dark, #e8ddd8);
++      --card-heading: var(--when-light, #4e342e) var(--when-dark, #ffcc80);
++      --card-border: var(--when-light, transparent) var(--when-dark, #3d2e28);
++      --card-shadow: var(--when-light, 0 2px 5px rgba(0, 0, 0, 0.1)) var(--when-dark, 0 2px 8px rgba(0, 0, 0, 0.5));
++
++      --btn-bg: var(--when-light, #4e342e) var(--when-dark, #ffab40);
++      --btn-text: var(--when-light, #ffffff) var(--when-dark, #2a1a12);
++      --btn-hover-bg: var(--when-light, #3e2723) var(--when-dark, #ffc77a);
+     }
+ 
+     * {
+@@ -23,14 +83,15 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      color: var(--page-text);
++      background-color: var(--page-bg);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +117,14 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-link-hover);
+     }
+ 
+     .logout-link {
+@@ -75,7 +136,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +144,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,22 +169,24 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +195,11 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -148,7 +211,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--page-text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }

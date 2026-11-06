@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,16 +11,122 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --scrollbar-width: 16px;
++      --scrollbar-track: #e6dedb;
++      --scrollbar-thumb: #3e2723;
++      --scrollbar-thumb-hover: #1b0f0d;
++      --scrollbar-thumb-active: #000000;
++      --scrollbar-border: #bcaaa4;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
++      scrollbar-width: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+     }
+ 
++    html {
++      overflow-y: scroll;
++      scrollbar-width: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    /* Prominent Custom Scrollbars (WebKit / Blink) */
++    ::-webkit-scrollbar {
++      width: var(--scrollbar-width);
++      height: var(--scrollbar-width);
++    }
++
++    ::-webkit-scrollbar-track {
++      background-color: var(--scrollbar-track);
++      border-left: 2px solid var(--scrollbar-border);
++      box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.15);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background-color: var(--scrollbar-thumb);
++      border-radius: 6px;
++      border: 2px solid var(--scrollbar-track);
++      box-shadow: inset 0 0 0 1px var(--accent);
++      min-height: 48px;
++    }
++
++    ::-webkit-scrollbar-thumb:hover {
++      background-color: var(--scrollbar-thumb-hover);
++      border-color: var(--accent);
++    }
++
++    ::-webkit-scrollbar-thumb:active {
++      background-color: var(--scrollbar-thumb-active);
++      border-color: var(--accent);
++      box-shadow: inset 0 0 0 2px var(--accent);
++    }
++
++    ::-webkit-scrollbar-corner {
++      background-color: var(--scrollbar-track);
++    }
++
++    /* High Contrast Preference Support */
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-width: 20px;
++        --scrollbar-track: #ffffff;
++        --scrollbar-thumb: #000000;
++        --scrollbar-thumb-hover: #261410;
++        --scrollbar-thumb-active: #ffab40;
++        --scrollbar-border: #000000;
++      }
++
++      ::-webkit-scrollbar-track {
++        background-color: var(--scrollbar-track);
++        border-left: 3px solid #000000;
++        box-shadow: none;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background-color: var(--scrollbar-thumb);
++        border-radius: 0;
++        border: 3px solid #ffffff;
++        outline: 2px solid #000000;
++        box-shadow: none;
++      }
++
++      ::-webkit-scrollbar-thumb:hover,
++      ::-webkit-scrollbar-thumb:active {
++        background-color: #000000;
++        border-color: var(--accent);
++        outline: 2px solid #000000;
++      }
++    }
++
++    /* Windows High Contrast / Forced Colors Support */
++    @media (forced-colors: active) {
++      * {
++        scrollbar-color: ButtonText Canvas;
++      }
++
++      ::-webkit-scrollbar-track {
++        background-color: Canvas;
++        border-left: 2px solid ButtonText;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background-color: ButtonText;
++        border: 2px solid Canvas;
++        border-radius: 0;
++      }
++
++      ::-webkit-scrollbar-thumb:hover,
++      ::-webkit-scrollbar-thumb:active {
++        background-color: Highlight;
++        border-color: Canvas;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);

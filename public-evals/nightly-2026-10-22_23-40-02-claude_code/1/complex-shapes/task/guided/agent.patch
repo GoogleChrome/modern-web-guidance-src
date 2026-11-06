@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,10 +85,52 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
+     }
+ 
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative splash: absolutely positioned so it never affects hero layout */
++    .shaped-element {
++      position: absolute;
++      right: -4%;
++      bottom: -12%;
++      width: min(38vw, 460px);
++      aspect-ratio: 1;
++      pointer-events: none;
++      /* Solid fallback colour + photo; if the mask fails this is a plain rounded block */
++      background: var(--accent) url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80') center / cover no-repeat;
++      border-radius: 24px;
++      opacity: 0.85;
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath fill='black' d='M104 8c22 2 30 22 52 28 20 6 40 18 38 44-2 22-24 28-26 48-2 22 14 42-4 58-20 18-44 4-64 8-24 4-40 34-64 22-22-12-6-40-12-60-6-18-30-26-26-48 4-22 30-20 44-34C60 58 62 34 78 18c8-8 16-11 26-10z'/%3E%3Ccircle cx='28' cy='34' r='9' fill='black'/%3E%3Ccircle cx='178' cy='176' r='6' fill='black'/%3E%3Ccircle cx='190' cy='20' r='4' fill='black'/%3E%3C/svg%3E");
++      -webkit-mask-size: contain;
++      -webkit-mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath fill='black' d='M104 8c22 2 30 22 52 28 20 6 40 18 38 44-2 22-24 28-26 48-2 22 14 42-4 58-20 18-44 4-64 8-24 4-40 34-64 22-22-12-6-40-12-60-6-18-30-26-26-48 4-22 30-20 44-34C60 58 62 34 78 18c8-8 16-11 26-10z'/%3E%3Ccircle cx='28' cy='34' r='9' fill='black'/%3E%3Ccircle cx='178' cy='176' r='6' fill='black'/%3E%3Ccircle cx='190' cy='20' r='4' fill='black'/%3E%3C/svg%3E");
++      mask-size: contain;
++      mask-repeat: no-repeat;
++      mask-position: center;
++    }
++
++    /* Browsers without mask support: simple rounded rectangle */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        clip-path: inset(5% round 15px);
++      }
++    }
++
++    @media (max-width: 700px) {
++      .shaped-element {
++        display: none;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +210,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

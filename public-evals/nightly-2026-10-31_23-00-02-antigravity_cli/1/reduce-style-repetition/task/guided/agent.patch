@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,31 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --in-oklab: ;
++      --in-oklch: ;
+     }
+ 
++    @supports (background: linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++        --in-oklch: in oklch;
++      }
++    }
++
++    @function --fancy-gradient(--start-color <color>, --end-color <color>, --angle: 98deg) returns <image> {
++      result: linear-gradient(in oklab var(--angle), var(--start-color), var(--end-color));
++    }
++
++    @function --grid-template(--count <number>) {
++      /* MANDATORY: Put default value first. */
++      result: 1fr;
++      @media (min-width: 800px) {
++        result: repeat(var(--count), 1fr);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -24,10 +45,18 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      background: linear-gradient(98deg var(--in-oklab), var(--light), var(--secondary));
++      background: --fancy-gradient(var(--light), var(--secondary));
+     }
+ 
++    h2 {
++      background-color: var(--secondary);
++      background: linear-gradient(98deg var(--in-oklab), var(--secondary), var(--accent));
++      background: --fancy-gradient(var(--secondary), var(--accent));
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,12 +128,18 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    main,
++    section,
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: 1fr;
++      grid-template-columns: --grid-template(2);
+       gap: 20px;
++    }
++
++    .grid {
+       margin-top: 20px;
+     }
+ 
+     .card {

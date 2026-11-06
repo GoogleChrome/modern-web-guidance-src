@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+index 66c9173..d7d8acc 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,146 @@
+       background: #3e2723;
+     }
+ 
++    /* Range slider */
++    .slider-field {
++      max-width: 480px;
++      margin: 20px auto 0;
++      text-align: left;
++    }
++
++    .slider-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 8px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .slider-header output {
++      font-variant-numeric: tabular-nums;
++      color: var(--text);
++    }
++
++    input[type="range"].range {
++      --track-h: 8px;
++      --thumb: 24px;
++      --fill: 0%;
++      --track-bg: var(--secondary);
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: var(--thumb);
++      background: transparent;
++      cursor: pointer;
++      display: block;
++    }
++
++    /* Track + fill (WebKit/Blink: fill drawn with a hard-stop gradient driven by --fill) */
++    input[type="range"].range::-webkit-slider-runnable-track {
++      height: var(--track-h);
++      border-radius: var(--track-h);
++      background: linear-gradient(to right, var(--primary) var(--fill), var(--track-bg) var(--fill));
++    }
++
++    input[type="range"].range::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: var(--thumb);
++      height: var(--thumb);
++      margin-top: calc((var(--track-h) - var(--thumb)) / 2);
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    /* Firefox */
++    input[type="range"].range::-moz-range-track {
++      height: var(--track-h);
++      border-radius: var(--track-h);
++      background: var(--track-bg);
++    }
++
++    input[type="range"].range::-moz-range-progress {
++      height: var(--track-h);
++      border-radius: var(--track-h);
++      background: var(--primary);
++    }
++
++    input[type="range"].range::-moz-range-thumb {
++      box-sizing: border-box;
++      width: var(--thumb);
++      height: var(--thumb);
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    /* Hover / active */
++    input[type="range"].range:hover::-webkit-slider-thumb {
++      transform: scale(1.08);
++    }
++
++    input[type="range"].range:active::-webkit-slider-thumb {
++      transform: scale(1.15);
++    }
++
++    input[type="range"].range:hover::-moz-range-thumb {
++      transform: scale(1.08);
++    }
++
++    input[type="range"].range:active::-moz-range-thumb {
++      transform: scale(1.15);
++    }
++
++    /* Focus: keyboard focus only, high-contrast ring on the thumb */
++    input[type="range"].range:focus {
++      outline: none;
++    }
++
++    input[type="range"].range:focus-visible::-webkit-slider-thumb {
++      box-shadow: 0 0 0 3px var(--light), 0 0 0 6px var(--text);
++    }
++
++    input[type="range"].range:focus-visible::-moz-range-thumb {
++      box-shadow: 0 0 0 3px var(--light), 0 0 0 6px var(--text);
++    }
++
++    /* Disabled */
++    input[type="range"].range:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    @media (forced-colors: active) {
++      input[type="range"].range::-webkit-slider-thumb {
++        background: ButtonText;
++      }
++
++      input[type="range"].range::-moz-range-thumb {
++        background: ButtonText;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      input[type="range"].range::-webkit-slider-thumb,
++      input[type="range"].range::-moz-range-thumb {
++        transition: none;
++      }
++    }
++
++    .slider-scale {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.8rem;
++      margin-top: 4px;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +335,38 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Build Your Brew</h2>
++      <div class="slider-field">
++        <div class="slider-header">
++          <label for="strength">Coffee strength</label>
++          <output id="strength-out" for="strength">3 of 5</output>
++        </div>
++        <input type="range" class="range" id="strength" name="strength" min="1" max="5" step="1" value="3"
++          aria-describedby="strength-scale">
++        <div class="slider-scale" id="strength-scale" aria-hidden="true">
++          <span>Mild</span>
++          <span>Bold</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    // Sync the visual fill (and readout); the native input handles value, keyboard and a11y.
++    document.querySelectorAll('input[type="range"].range').forEach(function (range) {
++      var out = document.getElementById(range.id + '-out');
++      function update() {
++        var min = +range.min || 0, max = +range.max || 100;
++        range.style.setProperty('--fill', ((range.value - min) / (max - min)) * 100 + '%');
++        if (out) out.textContent = range.value + ' of ' + max;
++      }
++      range.addEventListener('input', update);
++      update();
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

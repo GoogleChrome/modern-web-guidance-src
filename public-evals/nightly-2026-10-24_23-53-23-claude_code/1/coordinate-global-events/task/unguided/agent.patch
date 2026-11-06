@@ -1,0 +1,236 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,100 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Global Tasting Coordinator */
++    .tasting {
++      margin-top: 60px;
++      background: var(--primary);
++      color: var(--secondary);
++      border-radius: 8px;
++      padding: 40px 30px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
++    }
++
++    .tasting h2,
++    .tasting > p {
++      text-align: center;
++    }
++
++    .tasting h2 {
++      color: white;
++    }
++
++    .tasting > p {
++      max-width: 650px;
++      margin: 10px auto 25px;
++    }
++
++    .planner {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 20px;
++      justify-content: center;
++    }
++
++    .planner label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++      gap: 5px;
++    }
++
++    .planner input,
++    .planner select {
++      padding: 10px 12px;
++      border-radius: 5px;
++      border: 1px solid var(--secondary);
++      background: #3e2723;
++      color: white;
++      font: inherit;
++      color-scheme: dark;
++    }
++
++    .planner input:focus,
++    .planner select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    #hostWarning {
++      margin: 20px auto 0;
++      max-width: 650px;
++      padding: 12px 16px;
++      border-left: 4px solid var(--accent);
++      background: rgba(255, 171, 64, 0.12);
++      color: white;
++      border-radius: 4px;
++    }
++
++    #hostWarning[hidden] {
++      display: none;
++    }
++
++    .tz-card {
++      background: #3e2723;
++      border-radius: 8px;
++      padding: 20px;
++      text-align: center;
++      border-top: 3px solid var(--accent);
++    }
++
++    .tz-card h3 {
++      color: var(--secondary);
++      font-size: 1rem;
++    }
++
++    .tz-card .tz-time {
++      font-size: 2rem;
++      font-weight: bold;
++      color: white;
++    }
++
++    .tz-card .tz-meta {
++      font-size: 0.85rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +286,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="tasting" id="tasting">
++      <h2>Global Tasting Coordinator</h2>
++      <p>Hosting a virtual coffee tasting for friends around the world? Pick a date, time and your own timezone, and
++        we'll show what time it is for everyone in New York, London, Tokyo and UTC.</p>
++      <div class="planner">
++        <label>Date
++          <input type="date" id="dateInput">
++        </label>
++        <label>Time
++          <input type="time" id="timeInput" value="09:00">
++        </label>
++        <label>Host timezone
++          <select id="hostTzSelect">
++            <option value="America/New_York">New York (America/New_York)</option>
++            <option value="Europe/London">London (Europe/London)</option>
++            <option value="Asia/Tokyo">Tokyo (Asia/Tokyo)</option>
++            <option value="UTC">UTC</option>
++          </select>
++        </label>
++      </div>
++      <div id="hostWarning" role="status" aria-live="polite" hidden></div>
++      <div class="grid" id="grid" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +322,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Temporal is native in modern browsers; load the polyfill only where it is missing.
++    if (!globalThis.Temporal) {
++      const { Temporal } = await import('https://esm.sh/@js-temporal/polyfill');
++      globalThis.Temporal = Temporal;
++    }
++
++    const TARGETS = [
++      { label: 'New York', tz: 'America/New_York' },
++      { label: 'London', tz: 'Europe/London' },
++      { label: 'Tokyo', tz: 'Asia/Tokyo' },
++      { label: 'UTC', tz: 'UTC' }
++    ];
++
++    const dateInput = document.getElementById('dateInput');
++    const timeInput = document.getElementById('timeInput');
++    const hostTzSelect = document.getElementById('hostTzSelect');
++    const grid = document.getElementById('grid');
++    const hostWarning = document.getElementById('hostWarning');
++
++    dateInput.value = Temporal.Now.plainDateISO().toString();
++
++    const fmtTime = { hour: 'numeric', minute: '2-digit' };
++    const fmtDate = { weekday: 'short', month: 'short', day: 'numeric' };
++
++    // Returns the resolved ZonedDateTime plus a conflict description (or null).
++    // ZonedDateTime is immutable, so every step below produces a new object.
++    function resolveHost(wall, tz) {
++      try {
++        return { zdt: wall.toZonedDateTime(tz, { disambiguation: 'reject' }), conflict: null };
++      } catch (e) {
++        if (!(e instanceof RangeError)) throw e;
++      }
++      const earlier = wall.toZonedDateTime(tz, { disambiguation: 'earlier' });
++      const later = wall.toZonedDateTime(tz, { disambiguation: 'later' });
++      // Overlap: both readings keep the typed wall-clock time. Gap: neither does.
++      const isOverlap = Temporal.PlainDateTime.compare(earlier.toPlainDateTime(), wall) === 0;
++      const zdt = wall.toZonedDateTime(tz, { disambiguation: 'compatible' });
++      const clock = (z) => `${z.toLocaleString('en-US', fmtTime)} (${z.offset})`;
++      const typed = wall.toLocaleString('en-US', fmtTime);
++      if (isOverlap) {
++        return {
++          zdt,
++          conflict: `${typed} happens twice in ${tz} on this date because clocks are turned back. ` +
++            `It could mean ${clock(earlier)} or ${clock(later)}. We used the first occurrence, ${clock(zdt)}.`
++        };
++      }
++      return {
++        zdt,
++        conflict: `${typed} does not exist in ${tz} on this date because clocks skip forward. ` +
++          `We moved it to the next valid time, ${clock(zdt)}.`
++      };
++    }
++
++    function render() {
++      grid.replaceChildren();
++      hostWarning.hidden = true;
++      hostWarning.textContent = '';
++      if (!dateInput.value || !timeInput.value) return;
++
++      const wall = Temporal.PlainDateTime.from(`${dateInput.value}T${timeInput.value}`);
++      const { zdt: host, conflict } = resolveHost(wall, hostTzSelect.value);
++
++      if (conflict) {
++        hostWarning.textContent = conflict;
++        hostWarning.hidden = false;
++      }
++
++      for (const { label, tz } of TARGETS) {
++        const local = host.withTimeZone(tz);
++        const card = document.createElement('div');
++        card.className = 'tz-card';
++        card.dataset.tz = tz;
++        const h = document.createElement('h3');
++        h.textContent = label;
++        const t = document.createElement('div');
++        t.className = 'tz-time';
++        t.textContent = local.toLocaleString('en-US', fmtTime);
++        const m = document.createElement('div');
++        m.className = 'tz-meta';
++        m.textContent = `${local.toLocaleString('en-US', fmtDate)} · ${local.toLocaleString('en-US', { timeZoneName: 'short' }).split(' ').pop()}`;
++        card.append(h, t, m);
++        grid.append(card);
++      }
++    }
++
++    [dateInput, timeInput, hostTzSelect].forEach((el) => el.addEventListener('input', render));
++    hostTzSelect.addEventListener('change', render);
++    render();
++  </script>
++
+ </body>
+ 
+ </html>

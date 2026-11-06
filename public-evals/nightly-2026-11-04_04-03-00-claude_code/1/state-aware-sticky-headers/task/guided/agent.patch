@@ -1,0 +1,223 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,18 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 4.5rem;
++      --section-header-height: 4.5rem;
++      --stuck-blue: #1e4f9c;
+     }
+ 
++    html {
++      /* Keep focused/anchored content clear of the site nav + a stuck section header */
++      scroll-padding-top: calc(var(--nav-height) + var(--section-header-height));
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -34,8 +42,9 @@
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      height: var(--nav-height);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+@@ -134,8 +143,67 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky section headers */
++    .menu-section {
++      margin-top: 60px;
++      /* Direct parent of the sticky element: prevents scroll-anchoring
++         oscillation when the header's padding shrinks while stuck */
++      overflow-anchor: none;
++    }
++
++    .sticky-container {
++      position: sticky;
++      /* Stick just below the existing sticky site nav */
++      top: var(--nav-height);
++      z-index: 10;
++      /* Named container so the query never resolves against another container */
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 1.25rem 1.5rem;
++      border-radius: 8px;
++      transition: background-color 0.3s, color 0.3s, box-shadow 0.3s, padding 0.3s;
++    }
++
++    .sticky-header h2 {
++      font-size: 1.5rem;
++      line-height: 1.3;
++    }
++
++    .sticky-header p {
++      font-size: 0.9rem;
++      opacity: 0.85;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: var(--stuck-blue);
++        color: white;
++        padding: 0.5rem 1.5rem;
++        box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .sticky-header {
++        transition: none;
++      }
++    }
++
++    .section-body {
++      padding: 10px 0 20px;
++    }
++
++    .section-body > p {
++      margin: 20px 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +262,122 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="menu-section" aria-labelledby="roasts">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2 id="roasts">Our Roasts</h2>
++          <p>Small-batch beans, roasted every week in-house.</p>
++        </div>
++      </div>
++      <div class="section-body">
++        <p>Every bean we roast is traceable to the farm it came from. We buy directly from growers, pay well above fair-trade minimums, and roast in small batches so each origin can show off its character.</p>
++        <div class="grid">
++          <div class="card">
++            <h3>Ethiopia Yirgacheffe</h3>
++            <p>Floral and bright with notes of jasmine, bergamot, and lemon zest.</p>
++          </div>
++          <div class="card">
++            <h3>Colombia Huila</h3>
++            <p>Balanced and sweet, with caramel, red apple, and a silky body.</p>
++          </div>
++          <div class="card">
++            <h3>Sumatra Mandheling</h3>
++            <p>Earthy and full-bodied with cedar, dark chocolate, and low acidity.</p>
++          </div>
++          <div class="card">
++            <h3>Guatemala Antigua</h3>
++            <p>Cocoa and spice, grown in volcanic soil at high altitude.</p>
++          </div>
++          <div class="card">
++            <h3>House Blend</h3>
++            <p>Our everyday favorite: nutty, chocolatey, and endlessly drinkable.</p>
++          </div>
++          <div class="card">
++            <h3>Decaf Swiss Water</h3>
++            <p>All the flavor, none of the jitters — decaffeinated without chemicals.</p>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section class="menu-section" aria-labelledby="brewing">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2 id="brewing">Brewing Guides</h2>
++          <p>Get café-quality coffee at home.</p>
++        </div>
++      </div>
++      <div class="section-body">
++        <p>Great coffee is mostly about ratio, grind, and water temperature. Start with 1 gram of coffee for every 16 grams of water, use water just off the boil (around 93°C), and adjust from there.</p>
++        <div class="grid">
++          <div class="card">
++            <h3>Pour Over</h3>
++            <p>Medium-fine grind, slow spiral pours, about 3 minutes total. Clean and nuanced.</p>
++          </div>
++          <div class="card">
++            <h3>French Press</h3>
++            <p>Coarse grind, 4-minute steep, then press gently. Rich and full-bodied.</p>
++          </div>
++          <div class="card">
++            <h3>AeroPress</h3>
++            <p>Fine-medium grind, 1–2 minute brew. Forgiving, fast, and great for travel.</p>
++          </div>
++          <div class="card">
++            <h3>Moka Pot</h3>
++            <p>Fine grind, medium heat, pull it off the stove as soon as it gurgles.</p>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Coarse grind, 1:8 ratio, steep 18 hours in the fridge, then dilute to taste.</p>
++          </div>
++          <div class="card">
++            <h3>Espresso</h3>
++            <p>18 grams in, 36 grams out, in 25–30 seconds. Dial in the grind to hit it.</p>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section class="menu-section" aria-labelledby="cafe">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2 id="cafe">Café Life</h2>
++          <p>Events, workshops, and community at our locations.</p>
++        </div>
++      </div>
++      <div class="section-body">
++        <p>Our cafés are built to be a third place — somewhere between home and work where you can slow down. Drop by for one of our regular events, or just to say hello.</p>
++        <div class="grid">
++          <div class="card">
++            <h3>Latte Art Workshops</h3>
++            <p>Every Saturday morning. Learn to pour hearts, tulips, and rosettas.</p>
++          </div>
++          <div class="card">
++            <h3>Cupping Sessions</h3>
++            <p>Taste new arrivals side by side with our roasters on the first Friday of the month.</p>
++          </div>
++          <div class="card">
++            <h3>Open Mic Nights</h3>
++            <p>Thursday evenings at our downtown location. All performers welcome.</p>
++          </div>
++          <div class="card">
++            <h3>Book Club</h3>
++            <p>Monthly meetups with a free drip coffee for every member.</p>
++          </div>
++          <div class="card">
++            <h3>Local Art Walls</h3>
++            <p>Rotating exhibits from neighborhood artists, refreshed every season.</p>
++          </div>
++          <div class="card">
++            <h3>Rewards Members</h3>
++            <p>Earn a free drink every 10 visits and early access to limited roasts.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

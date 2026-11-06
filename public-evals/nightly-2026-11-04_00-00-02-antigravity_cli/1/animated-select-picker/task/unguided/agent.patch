@@ -1,0 +1,151 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,128 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Store Selector (Customizable Select) */
++    .store-selector {
++      margin-top: 1.25rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .store-selector label {
++      font-size: 0.95rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      color: var(--secondary);
++    }
++
++    select,
++    ::picker(select) {
++      appearance: base-select;
++    }
++
++    .store-select {
++      appearance: base-select;
++      background: rgba(255, 255, 255, 0.95);
++      color: var(--text);
++      border: 2px solid var(--accent);
++      border-radius: 6px;
++      padding: 0.65rem 1.25rem;
++      font-size: 1rem;
++      font-family: inherit;
++      font-weight: 500;
++      cursor: pointer;
++      min-width: 260px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 0.75rem;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
++    }
++
++    .store-select:hover,
++    .store-select:focus-visible {
++      background: #ffffff;
++      border-color: var(--primary);
++      outline: none;
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
++    }
++
++    .store-select::picker-icon {
++      color: var(--primary);
++      transition: rotate 0.3s ease, transform 0.3s ease;
++    }
++
++    .store-select:open::picker-icon {
++      rotate: 180deg;
++      transform: rotate(180deg);
++    }
++
++    .store-select .arrow,
++    .store-select .picker-arrow {
++      display: inline-flex;
++      transition: rotate 0.3s ease, transform 0.3s ease;
++    }
++
++    .store-select:open .arrow,
++    .store-select:open .picker-arrow {
++      rotate: 180deg;
++      transform: rotate(180deg);
++    }
++
++    ::picker(select) {
++      background: #ffffff;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 0.4rem;
++      margin-top: 0.4rem;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
++      opacity: 0;
++      transform: translateY(-6px);
++      transition: opacity 0.25s ease, transform 0.25s ease,
++        display 0.25s ease allow-discrete, overlay 0.25s ease allow-discrete;
++    }
++
++    :open::picker(select),
++    select:open::picker(select) {
++      opacity: 1;
++      transform: translateY(0);
++    }
++
++    @starting-style {
++      :open::picker(select),
++      select:open::picker(select) {
++        opacity: 0;
++        transform: translateY(-6px);
++      }
++    }
++
++    .store-select option {
++      padding: 0.6rem 0.85rem;
++      border-radius: 5px;
++      cursor: pointer;
++      color: var(--text);
++      transition: background-color 0.15s ease, color 0.15s ease;
++    }
++
++    .store-select option:hover,
++    .store-select option:focus {
++      background-color: var(--secondary);
++      color: var(--primary);
++    }
++
++    .store-select option:checked {
++      background-color: var(--primary);
++      color: #ffffff;
++      font-weight: 600;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +290,18 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="store-selector">
++      <label for="store-select">Choose your store</label>
++      <select id="store-select" class="store-select" name="store" aria-label="Choose your store">
++        <option value="" disabled selected>Choose your store...</option>
++        <option value="downtown">Downtown Roastery &mdash; 124 Main St</option>
++        <option value="westside">Westside Artisanal Cafe &mdash; 88 Oak Ave</option>
++        <option value="harbor">Harborfront Espresso Bar &mdash; 42 Pier Way</option>
++        <option value="uptown">Uptown Corner Grind &mdash; 510 Elm Blvd</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

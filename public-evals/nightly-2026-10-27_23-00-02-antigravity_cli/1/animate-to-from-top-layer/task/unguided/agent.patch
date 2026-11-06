@@ -1,0 +1,251 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,37 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -151,8 +174,139 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native Dialog Confirmation Modal & Smooth CSS Entry/Exit Animations */
++    dialog#logout-modal {
++      margin: auto;
++      padding: 2rem;
++      border: none;
++      border-radius: 12px;
++      background: white;
++      color: var(--text);
++      max-width: 420px;
++      width: 90%;
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
++      text-align: center;
++      opacity: 0;
++      transform: translateY(-20px) scale(0.95);
++      transition:
++        opacity 0.3s ease,
++        transform 0.3s ease,
++        overlay 0.3s ease allow-discrete,
++        display 0.3s ease allow-discrete;
++    }
++
++    dialog#logout-modal[open] {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    @starting-style {
++      dialog#logout-modal[open] {
++        opacity: 0;
++        transform: translateY(-20px) scale(0.95);
++      }
++    }
++
++    dialog#logout-modal::backdrop {
++      background-color: rgba(0, 0, 0, 0);
++      backdrop-filter: blur(0px);
++      transition:
++        background-color 0.3s ease,
++        backdrop-filter 0.3s ease,
++        overlay 0.3s ease allow-discrete,
++        display 0.3s ease allow-discrete;
++    }
++
++    dialog#logout-modal[open]::backdrop {
++      background-color: rgba(0, 0, 0, 0.55);
++      backdrop-filter: blur(2px);
++    }
++
++    @starting-style {
++      dialog#logout-modal[open]::backdrop {
++        background-color: rgba(0, 0, 0, 0);
++        backdrop-filter: blur(0px);
++      }
++    }
++
++    dialog#logout-modal h2 {
++      color: var(--primary);
++      margin-bottom: 0.75rem;
++      font-size: 1.5rem;
++    }
++
++    dialog#logout-modal p {
++      margin-bottom: 1.5rem;
++      color: #5d4037;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++    }
++
++    /* Dismissible Informational Popover / Floating Overlay */
++    #info-popover {
++      position: fixed;
++      inset: auto 24px 24px auto;
++      margin: 0;
++      padding: 1rem 1.25rem;
++      border: 1px solid var(--accent);
++      border-left: 5px solid var(--accent);
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
++      max-width: 360px;
++      z-index: 2000;
++      opacity: 0;
++      transform: translateY(20px) scale(0.95);
++      transition:
++        opacity 0.3s ease,
++        transform 0.3s ease,
++        overlay 0.3s ease allow-discrete,
++        display 0.3s ease allow-discrete;
++    }
++
++    #info-popover:popover-open {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    @starting-style {
++      #info-popover:popover-open {
++        opacity: 0;
++        transform: translateY(20px) scale(0.95);
++      }
++    }
++
++    .popover-dismiss-btn {
++      background: transparent;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      color: white;
++      border-radius: 4px;
++      padding: 4px 8px;
++      cursor: pointer;
++      font-size: 0.8rem;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .popover-dismiss-btn:hover {
++      background: rgba(255, 255, 255, 0.15);
++      border-color: white;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +317,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" id="open-dialog-btn" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" popovertarget="info-popover" class="btn">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +360,50 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Logout Confirmation Modal -->
++  <dialog id="logout-modal" aria-labelledby="logout-modal-title" aria-describedby="logout-modal-desc">
++    <h2 id="logout-modal-title">Confirm Logout</h2>
++    <p id="logout-modal-desc">Are you sure you want to log out of your Daily Grind account?</p>
++    <div class="modal-actions">
++      <button type="button" id="close-dialog-btn" class="btn btn-secondary">Cancel</button>
++      <a href="/logout" id="confirm-logout-btn" class="btn btn-accent">Log Out</a>
++    </div>
++  </dialog>
++
++  <!-- Dismissible Informational Floating Overlay -->
++  <div id="info-popover" popover="auto" role="status" aria-live="polite">
++    <span>online ordering is currently offline</span>
++    <button type="button" popovertarget="info-popover" popovertargetaction="hide" class="popover-dismiss-btn" aria-label="Dismiss notification">Dismiss</button>
++  </div>
++
++  <script>
++    const openDialogBtn = document.getElementById('open-dialog-btn');
++    const closeDialogBtn = document.getElementById('close-dialog-btn');
++    const logoutModal = document.getElementById('logout-modal');
++
++    if (openDialogBtn && logoutModal) {
++      openDialogBtn.addEventListener('click', (event) => {
++        event.preventDefault();
++        logoutModal.showModal();
++      });
++    }
++
++    if (closeDialogBtn && logoutModal) {
++      closeDialogBtn.addEventListener('click', () => {
++        logoutModal.close();
++      });
++    }
++
++    if (logoutModal) {
++      logoutModal.addEventListener('click', (event) => {
++        if (event.target === logoutModal) {
++          logoutModal.close();
++        }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,84 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { onCLS, onINP, onLCP } from '/node_modules/web-vitals/dist/web-vitals.js';
++
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if (
++            'keepalive' in Request.prototype ||
++            init.method !== 'POST' ||
++            init.headers
++          ) {
++            fetch(url, Object.assign({}, init, { keepalive: true }));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    const COLLECT_ENDPOINT = '/collect';
++    const metricsQueue = new Map();
++    let fetchLaterController = null;
++
++    function queueToAnalytics(metric) {
++      metricsQueue.set(metric.name, metric);
++
++      if (fetchLaterController) {
++        fetchLaterController.abort();
++      }
++      fetchLaterController = new AbortController();
++
++      try {
++        fetchLater(COLLECT_ENDPOINT, {
++          method: 'POST',
++          headers: { 'content-type': 'application/json' },
++          body: JSON.stringify(Array.from(metricsQueue.values())),
++          signal: fetchLaterController.signal,
++        });
++      } catch (error) {
++        // Handle quota or network errors if necessary.
++      }
++    }
++
++    onCLS(queueToAnalytics);
++    onINP(queueToAnalytics);
++    onLCP(queueToAnalytics);
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,239 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -28,28 +28,43 @@
+     }
+ 
+     /* Navigation */
+     nav {
++      --scroll-progress: 0;
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: calc(1rem - (var(--scroll-progress) * 0.65rem)) 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, calc(var(--scroll-progress) * 0.25));
++      transition: padding 0.15s ease-out, box-shadow 0.15s ease-out;
+     }
+ 
++    nav.scrolled {
++      --scroll-progress: 1;
++      padding: calc(1rem - (var(--scroll-progress) * 0.65rem)) 5%;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
+     .logo {
+-      font-size: 1.5rem;
++      font-size: calc(1.5rem - (var(--scroll-progress, 0) * 0.4rem));
+       font-weight: bold;
+       letter-spacing: 1px;
++      transition: font-size 0.15s ease-out;
+     }
+ 
++    nav.scrolled .logo {
++      font-size: calc(1.5rem - (var(--scroll-progress, 1) * 0.4rem));
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -58,21 +73,77 @@
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, padding 0.15s ease-out;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: calc(5px - (var(--scroll-progress, 0) * 3px)) 12px;
+       border-radius: 4px;
+     }
+ 
++    @keyframes shrink-nav {
++      from {
++        padding-top: 1rem;
++        padding-bottom: 1rem;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0);
++      }
++      to {
++        padding-top: 0.35rem;
++        padding-bottom: 0.35rem;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      }
++    }
++
++    @keyframes shrink-logo {
++      from {
++        font-size: 1.5rem;
++      }
++      to {
++        font-size: 1.1rem;
++      }
++    }
++
++    @keyframes shrink-logout {
++      from {
++        padding-top: 5px;
++        padding-bottom: 5px;
++      }
++      to {
++        padding-top: 2px;
++        padding-bottom: 2px;
++      }
++    }
++
++    @supports (animation-timeline: scroll()) {
++      nav {
++        animation: shrink-nav linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 100px;
++        transition: none;
++      }
++
++      .logo {
++        animation: shrink-logo linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 100px;
++        transition: none;
++      }
++
++      .logout-link {
++        animation: shrink-logout linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 100px;
++        transition: none;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -194,8 +265,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Our Craft &amp; Sourcing</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Single-Origin Beans</h3>
++          <p>Partnering directly with small-lot farmers in Ethiopia, Colombia, and Guatemala for traceable quality.</p>
++        </div>
++        <div class="card">
++          <h3>Small-Batch Roasting</h3>
++          <p>Roasted daily in our local roastery to highlight the distinct tasting notes of every harvest.</p>
++        </div>
++        <div class="card">
++          <h3>Sustainable Practices</h3>
++          <p>100% compostable packaging and zero-waste coffee grounds repurposed for local community gardens.</p>
++        </div>
++      </div>
++    </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Bakery &amp; Pairings</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Almond Croissant</h3>
++          <p>Flaky, butter-laminated pastry filled with house-made sweet almond frangipane.</p>
++          <a href="/menu/bakery" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cardamom Morning Bun</h3>
++          <p>Warm brioche swirled with freshly ground green cardamom and citrus zest sugar.</p>
++          <a href="/menu/bakery" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Avocado Sourdough Toast</h3>
++          <p>Naturally leavened country loaf topped with smashed avocado, pickled shallots, and chili flakes.</p>
++          <a href="/menu/food" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +316,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const nav = document.querySelector('nav');
++      if (!nav) return;
++
++      const scrollRange = 100;
++      const supportsScrollTimeline =
++        typeof window.CSS !== 'undefined' &&
++        typeof window.CSS.supports === 'function' &&
++        window.CSS.supports('animation-timeline', 'scroll()');
++
++      if (!supportsScrollTimeline) {
++        nav.setAttribute('data-scroll-fallback', 'true');
++      }
++
++      let rafId = null;
++
++      function applyScrollState() {
++        const scrollY =
++          window.scrollY ||
++          window.pageYOffset ||
++          document.documentElement.scrollTop ||
++          0;
++        const progress = Math.min(Math.max(scrollY / scrollRange, 0), 1);
++
++        if (scrollY > 20) {
++          nav.classList.add('scrolled');
++        } else {
++          nav.classList.remove('scrolled');
++        }
++
++        if (!supportsScrollTimeline || scrollY > 0) {
++          if (scrollY > 0) {
++            nav.style.setProperty('--scroll-progress', progress.toFixed(4));
++          } else {
++            nav.style.removeProperty('--scroll-progress');
++          }
++        }
++      }
++
++      function onScroll() {
++        applyScrollState();
++        if (rafId === null) {
++          rafId = window.requestAnimationFrame(function () {
++            applyScrollState();
++            rafId = null;
++          });
++        }
++      }
++
++      window.addEventListener('scroll', onScroll, { passive: true });
++      applyScrollState();
++    })();
++  </script>
+ </body>
+ 
+ </html>

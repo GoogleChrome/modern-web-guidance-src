@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -107,9 +107,9 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: #e0e0e0;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+@@ -119,8 +119,92 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Seasonal Favorites Carousel */
++    .carousel {
++      --item-width: min(280px, 75%);
++      display: flex;
++      gap: 30px;
++      margin-top: 20px;
++      overflow-x: auto;
++      overscroll-behavior-x: contain;
++      scroll-snap-type: x mandatory;
++      -webkit-overflow-scrolling: touch;
++      /* Side padding lets the first/last items reach the center; vertical
++         padding leaves room for the scaled-up card and its shadow. */
++      padding: 40px calc(50% - var(--item-width) / 2);
++    }
++
++    .carousel:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .carousel-item {
++      flex: 0 0 var(--item-width);
++      scroll-snap-align: center;
++      container-type: scroll-state;
++    }
++
++    .carousel .card {
++      height: 100%;
++      transition: transform 0.3s ease, background-color 0.3s ease,
++        box-shadow 0.3s ease, color 0.3s ease;
++    }
++
++    /* Snapped card: native scroll-state queries, with a JS class fallback */
++    .carousel-item.is-snapped .card {
++      transform: scale(1.15);
++      background-color: #007bff;
++      color: white;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
++    }
++
++    .carousel-item.is-snapped .card h3 {
++      color: white;
++    }
++
++    @container scroll-state(snapped: x) {
++      .card {
++        transform: scale(1.15);
++        background-color: #007bff;
++        color: white;
++        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
++      }
++
++      .card h3 {
++        color: white;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .carousel .card,
++      .carousel-item.is-snapped .card {
++        transition: none;
++        transform: none;
++        background-color: #e0e0e0;
++        color: var(--text);
++      }
++
++      .carousel-item.is-snapped .card h3 {
++        color: var(--primary);
++      }
++
++      @container scroll-state(snapped: x) {
++        .card {
++          transition: none;
++          transform: none;
++          background-color: #e0e0e0;
++          color: var(--text);
++        }
++
++        .card h3 {
++          color: var(--primary);
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,28 +260,69 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="carousel" role="region" aria-label="Seasonal favorites" tabindex="0">
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <script>
++    // Fallback for browsers without CSS scroll-state container queries:
++    // mark the item closest to the carousel's center as snapped.
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      document.querySelectorAll('.carousel').forEach((carousel) => {
++        const items = [...carousel.querySelectorAll('.carousel-item')];
++        let frame = null;
++
++        const update = () => {
++          frame = null;
++          const center = carousel.getBoundingClientRect().left + carousel.clientWidth / 2;
++          let closest = null;
++          let minDistance = Infinity;
++          items.forEach((item) => {
++            const rect = item.getBoundingClientRect();
++            const distance = Math.abs(rect.left + rect.width / 2 - center);
++            if (distance < minDistance) {
++              minDistance = distance;
++              closest = item;
++            }
++          });
++          items.forEach((item) => item.classList.toggle('is-snapped', item === closest));
++        };
++
++        const schedule = () => {
++          if (frame === null) frame = requestAnimationFrame(update);
++        };
++
++        carousel.addEventListener('scroll', schedule, { passive: true });
++        window.addEventListener('resize', schedule);
++        update();
++      });
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

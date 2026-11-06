@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,136 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          // Use fetch keepalive if the browser supports it or if custom fetch
++          // parameters are specified (e.g. custom headers or methods).
++          // Otherwise fall back to `navigator.sendBeacon()`.
++          if (
++            'keepalive' in Request.prototype ||
++            init.method !== 'POST' ||
++            init.headers
++          ) {
++            fetch(url, Object.assign({}, init, {keepalive: true}));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        // If the beacon was created while the page is already hidden, send data
++        // ASAP but wait until the next microtask to allow all sync code to run.
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    const ANALYTICS_ENDPOINT = '/api/analytics';
++    const BATCH_WINDOW = 10 * 1000;
++    const MAX_QUEUE_SIZE = 100;
++
++    const eventQueue = [];
++    let fetchLaterResult;
++    let fetchLaterController;
++
++    function serializeElement(element) {
++      if (!(element instanceof Element)) {
++        return null;
++      }
++      const interactive = element.closest('a, button') || element;
++      return {
++        tagName: interactive.tagName.toLowerCase(),
++        id: interactive.id || undefined,
++        className: interactive.className || undefined,
++        href: interactive.getAttribute('href') || undefined,
++        text: interactive.textContent?.trim().slice(0, 100) || undefined,
++      };
++    }
++
++    function trackEvent(eventData) {
++      // If the previously queued beacon has already been sent, or if the
++      // max queue size has been met, reset the queue.
++      if (fetchLaterResult?.activated || eventQueue.length > MAX_QUEUE_SIZE) {
++        fetchLaterController = null;
++        fetchLaterResult = null;
++        eventQueue.length = 0;
++      }
++
++      eventQueue.push({
++        ...eventData,
++        path: window.location.pathname,
++        timestamp: Date.now(),
++      });
++
++      // Abort any pending beacons before creating a new one.
++      if (fetchLaterController) {
++        fetchLaterController.abort();
++      }
++      fetchLaterController = new AbortController();
++
++      // Schedule a fetch for the events to be sent when the batch window expires.
++      // IMPORTANT: wrap the call in a try/catch to handle quota errors.
++      try {
++        fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: {'content-type': 'application/json'},
++          body: JSON.stringify(eventQueue),
++          signal: fetchLaterController.signal,
++          activateAfter: BATCH_WINDOW,
++          priority: 'low',
++        });
++      } catch (error) {
++        // Handle errors as needed.
++      }
++    }
++
++    // Track page loads.
++    if (document.readyState === 'complete') {
++      trackEvent({type: 'page_load'});
++    } else {
++      window.addEventListener('load', () => {
++        trackEvent({type: 'page_load'});
++      });
++    }
++
++    // Track click events.
++    window.addEventListener('click', (event) => {
++      trackEvent({
++        type: 'click',
++        target: serializeElement(event.target),
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

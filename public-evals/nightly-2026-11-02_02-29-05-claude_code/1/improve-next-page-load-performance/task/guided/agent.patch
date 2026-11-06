@@ -1,0 +1,33 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,29 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!-- Prefetch same-origin pages when the user shows intent (hover/pointerdown).
++       Logout (and anything marked data-no-prefetch) is excluded so it is never fetched speculatively. -->
++  <script type="speculationrules">
++    {
++      "tag": "daily-grind-prefetch",
++      "prefetch": [{
++        "where": {
++          "and": [
++            { "href_matches": "/*" },
++            { "not": { "href_matches": "/logout" } },
++            { "not": { "href_matches": "/logout/*" } },
++            { "not": { "href_matches": "/logout\\?*" } },
++            { "not": { "selector_matches": ".logout-link" } },
++            { "not": { "selector_matches": "[data-no-prefetch]" } }
++          ]
++        },
++        "eagerness": "moderate"
++      }]
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 

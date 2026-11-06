@@ -1,0 +1,24 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,20 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Autofilled form fields */
++    :is(input, select, textarea):is(:autofill, :-webkit-autofill) {
++      border: 2px solid #2e7d32;
++      /* background-color can't be overridden on autofilled fields, so tint with an inset shadow */
++      box-shadow: 0 0 0 100vmax #e8f5e9 inset;
++    }
++
++    :is(input, select, textarea):is(:autofill, :-webkit-autofill):focus-visible {
++      outline: 3px solid #000;
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+ <body>

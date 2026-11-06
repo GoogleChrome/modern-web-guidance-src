@@ -1,0 +1,65 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,61 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <script>
++    // Detects whether the page was initially loaded in a background tab.
++    // Placed in <head> so it runs as early as possible.
++    (function () {
++      var hasVisibilityStateEntries =
++        typeof PerformanceObserver !== 'undefined' &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.indexOf('visibility-state') !== -1;
++
++      var info;
++
++      if (hasVisibilityStateEntries) {
++        // ACCURATE PATH: the browser records every visibility change on the
++        // performance timeline, starting with the state at navigation start.
++        // Timestamps are ms relative to performance.timeOrigin, and are
++        // independent of when this script happens to execute.
++        var entries = performance.getEntriesByType('visibility-state');
++        var initial = entries[0];
++        var loadedHidden = !!initial && initial.name === 'hidden';
++
++        info = {
++          isBackground: loadedHidden,
++          // Time (ms since navigation start) the page was backgrounded;
++          // null if it was not loaded in the background.
++          backgroundTime: loadedHidden ? initial.startTime : null,
++          detectionMethod: 'visibility-state-timeline',
++          reliable: true
++        };
++      } else {
++        // !!! FALLBACK ACTIVE - POTENTIALLY UNRELIABLE !!!
++        // Without the timeline we can only sample document.visibilityState
++        // when this script runs. Because the script executes asynchronously
++        // relative to navigation start, the tab may have been hidden (or
++        // shown again) before this point, so both the status and the time
++        // are approximations. backgroundTime is the moment of the check,
++        // NOT the true moment the tab was backgrounded.
++        var hiddenNow = document.visibilityState === 'hidden';
++
++        info = {
++          isBackground: hiddenNow,
++          backgroundTime: hiddenNow ? performance.now() : null,
++          detectionMethod: 'document.visibilityState-fallback',
++          reliable: false
++        };
++        console.warn(
++          '[background-detection] Fallback detection is active; results may be inaccurate.'
++        );
++      }
++
++      console.log('[background-detection]', info);
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

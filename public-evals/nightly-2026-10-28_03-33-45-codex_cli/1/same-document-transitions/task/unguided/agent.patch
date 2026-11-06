@@ -1,0 +1,280 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,116 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    [hidden] { display: none !important; }
++
++    .thumbnail {
++      position: relative;
++      display: flex;
++      align-items: flex-end;
++      min-height: 290px;
++      overflow: hidden;
++      border-radius: 12px;
++      color: white;
++      text-decoration: none;
++      background: var(--primary);
++      isolation: isolate;
++    }
++
++    .thumbnail img, #hero img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      z-index: -2;
++    }
++
++    .thumbnail::before, #hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(transparent, rgba(25, 15, 10, .85));
++      z-index: -1;
++    }
++
++    .thumbnail-content { padding: 24px; }
++    .title { font-size: 1.4rem; line-height: 1.2; margin-bottom: 12px; }
++    .thumbnail .detail-link { display: inline-block; margin-top: 16px; text-decoration: underline; }
++    #list-heading { text-align: center; }
++    #hero {
++      position: relative;
++      isolation: isolate;
++      display: flex;
++      align-items: flex-end;
++      min-height: 420px;
++      aspect-ratio: 16 / 9;
++      padding: clamp(24px, 5vw, 56px);
++      overflow: hidden;
++      border-radius: 12px;
++      color: white;
++      background: var(--primary);
++      margin-top: 24px;
++    }
++    #title { font-size: clamp(1.7rem, 4vw, 3rem); line-height: 1.2; }
++    #detail-description { max-width: 65ch; margin: 24px 0; font-size: 1.15rem; }
++    .back-link { color: var(--primary); font-weight: 600; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
++    h1:focus, h2:focus { outline-offset: 8px; }
++
++    /* Each snapshot fills the changing bounds by cropping, never stretching. */
++    ::view-transition-group(coffee-card) {
++      animation-duration: 550ms;
++      animation-timing-function: cubic-bezier(.22, 1, .36, 1);
++      overflow: clip;
++    }
++    ::view-transition-old(coffee-card), ::view-transition-new(coffee-card) {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      mix-blend-mode: normal;
++      animation-duration: 550ms;
++    }
++    /* Move and crossfade text at its natural size; never scale its glyphs. */
++    ::view-transition-group(coffee-title) { animation: none; }
++    ::view-transition-old(coffee-title), ::view-transition-new(coffee-title) {
++      width: auto;
++      height: auto;
++      max-width: none;
++      mix-blend-mode: normal;
++      transform-origin: top left;
++    }
++    ::view-transition-old(coffee-title) {
++      animation: title-out 550ms cubic-bezier(.22, 1, .36, 1) both;
++    }
++    ::view-transition-new(coffee-title) {
++      animation: title-in 550ms cubic-bezier(.22, 1, .36, 1) both;
++    }
++    @keyframes title-out {
++      from { transform: translate(var(--title-x), var(--title-y)); opacity: 1; }
++      to { transform: translate(0, 0); opacity: 0; }
++    }
++    @keyframes title-in {
++      from { transform: translate(var(--title-x), var(--title-y)); opacity: 0; }
++      to { transform: translate(0, 0); opacity: 1; }
++    }
++    @media (max-width: 600px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.2rem; }
++      #hero { min-height: 360px; aspect-ratio: 3 / 4; }
++    }
++    @media (prefers-reduced-motion: reduce) {
++      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
++      ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,28 +282,45 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="list-page" aria-labelledby="list-heading">
++      <h2 id="list-heading" tabindex="-1">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <a class="thumbnail" href="#maple-oat-latte" data-coffee="maple-oat-latte">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=1400&amp;q=80" alt="A creamy latte with delicate latte art">
++          <div class="thumbnail-content">
++            <h2 class="title">Maple Oat Latte</h2>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <span class="detail-link">View Details →</span>
++          </div>
++        </a>
++        <a class="thumbnail" href="#dark-roast-espresso" data-coffee="dark-roast-espresso">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=1400&amp;q=80" alt="A rich espresso in a small cup">
++          <div class="thumbnail-content">
++            <h2 class="title">Dark Roast Espresso</h2>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <span class="detail-link">View Details →</span>
++          </div>
++        </a>
++        <a class="thumbnail" href="#cold-brew" data-coffee="cold-brew">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=1400&amp;q=80" alt="Chilled coffee served over ice">
++          <div class="thumbnail-content">
++            <h2 class="title">Cold Brew</h2>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <span class="detail-link">View Details →</span>
++          </div>
++        </a>
+       </div>
+     </section>
++    <section id="detail-page" aria-labelledby="title" hidden>
++      <a class="back-link" href="#list">← Back to seasonal favorites</a>
++      <div id="hero">
++        <img id="detail-image" alt="">
++        <h1 id="title" tabindex="-1"></h1>
++      </div>
++      <p id="detail-description"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +331,96 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const listPage = document.querySelector('#list-page');
++    const detailPage = document.querySelector('#detail-page');
++    const hero = document.querySelector('#hero');
++    const title = document.querySelector('#title');
++    const detailImage = document.querySelector('#detail-image');
++    const thumbnails = [...document.querySelectorAll('.thumbnail')];
++    const motion = matchMedia('(prefers-reduced-motion: reduce)');
++    const root = document.documentElement;
++    let selected = null;
++    let listScroll = 0;
++    let activeTransition = null;
++    let navigation = Promise.resolve();
++
++    const descriptions = {
++      'maple-oat-latte': 'Our seasonal latte pairs freshly pulled espresso with silky steamed oat milk and a touch of Vermont maple syrup. Comforting, gently sweet, and made for slow mornings.',
++      'dark-roast-espresso': 'A deeply roasted espresso with a bold, smoky character and a rich finish. Freshly ground and pulled to order for a small cup with plenty of warmth.',
++      'cold-brew': 'Slow-steeped for 18 hours, our cold brew is smooth and refreshing. Served over ice to let its mellow roasted flavor shine with every sip.'
++    };
++
++    function routeCard() {
++      return thumbnails.find(card => card.hash === location.hash) || null;
++    }
++
++    function showPage(card, moveFocus = true) {
++      if (card && !selected) listScroll = window.scrollY;
++      if (card) {
++        const image = card.querySelector('img');
++        title.textContent = card.querySelector('.title').textContent;
++        detailImage.src = image.src;
++        detailImage.alt = image.alt;
++        document.querySelector('#detail-description').textContent = descriptions[card.dataset.coffee];
++      }
++      listPage.hidden = !!card;
++      detailPage.hidden = !card;
++      selected = card;
++      document.title = card ? `${title.textContent} | The Daily Grind` : 'The Daily Grind | Artisanal Coffee';
++      if (moveFocus) {
++        window.scrollTo({ top: card ? Math.max(0, detailPage.offsetTop - 100) : listScroll, behavior: 'instant' });
++        (card ? title : document.querySelector('#list-heading')).focus({ preventScroll: true });
++      }
++    }
++
++    async function navigate() {
++      const next = routeCard();
++      if (next === selected) return;
++      if (!document.startViewTransition || motion.matches) {
++        showPage(next);
++        return;
++      }
++      const card = next || selected;
++      const cardTitle = card.querySelector('.title');
++      const sourceTitle = selected ? title : cardTitle;
++      const before = sourceTitle.getBoundingClientRect();
++      const tagged = [card, hero, cardTitle, title];
++      card.style.viewTransitionName = 'coffee-card';
++      hero.style.viewTransitionName = 'coffee-card';
++      cardTitle.style.viewTransitionName = 'coffee-title';
++      title.style.viewTransitionName = 'coffee-title';
++      try {
++        activeTransition = document.startViewTransition(() => {
++          showPage(next);
++          const after = (next ? title : cardTitle).getBoundingClientRect();
++          root.style.setProperty('--title-x', `${before.left - after.left}px`);
++          root.style.setProperty('--title-y', `${before.top - after.top}px`);
++        });
++        // A skipped/unsupported snapshot must still complete the route update.
++        await activeTransition.updateCallbackDone;
++        await activeTransition.finished;
++      } catch (error) {
++        showPage(next);
++      } finally {
++        tagged.forEach(element => element.style.removeProperty('view-transition-name'));
++        root.style.removeProperty('--title-x');
++        root.style.removeProperty('--title-y');
++        activeTransition = null;
++      }
++    }
++
++    window.addEventListener('hashchange', () => {
++      activeTransition?.skipTransition();
++      navigation = navigation.then(navigate, navigate);
++    });
++    motion.addEventListener('change', () => {
++      if (motion.matches) activeTransition?.skipTransition();
++    });
++    // Hash URLs also support reloads and opening a favorite in a new tab.
++    showPage(routeCard(), !!routeCard());
++  </script>
+ </body>
+ 
+ </html>

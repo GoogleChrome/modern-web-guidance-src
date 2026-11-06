@@ -1,0 +1,195 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,191 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <title>Northwind — Ship faster with less effort</title>
++  <meta name="description" content="Northwind helps teams plan, build, and ship products faster." />
++
++  <!-- Open the connection to the experiment CDN as early as possible to cut SDK latency. -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin />
++  <link rel="dns-prefetch" href="https://cdn.example.com" />
++
++  <!--
++    ANTI-FLICKER
++    1. This style rule must come BEFORE any rendered content. While <html> has the
++       `ab-pending` class, the page is painted invisible, so the original
++       (control) content can never flash before a variant is applied.
++    2. The inline script below adds that class synchronously, loads the SDK, and
++       removes the class as soon as the experiment is applied — or after a hard
++       timeout so a slow/blocked CDN can never leave the page blank.
++    3. Users without JavaScript never get the class, so they always see content.
++  -->
++  <style>
++    html.ab-pending body { opacity: 0 !important; }
++  </style>
++  <script>
++    (function (w, d) {
++      var root = d.documentElement;
++      var TIMEOUT_MS = 2500; // max time we will ever hide the page
++      var SDK_URL = 'https://cdn.example.com/experiment-sdk.js';
++      var revealed = false;
++
++      root.classList.add('ab-pending');
++
++      function reveal(reason) {
++        if (revealed) return;
++        revealed = true;
++        clearTimeout(failsafe);
++        // Wait one frame so DOM mutations made by the SDK are committed before paint.
++        (w.requestAnimationFrame || setTimeout)(function () {
++          root.classList.remove('ab-pending');
++          root.setAttribute('data-ab-status', reason);
++        });
++      }
++
++      // Public hook: the SDK (or experiment code) can call this once variants are applied.
++      w.abReveal = function () { reveal('applied'); };
++
++      // Failsafe: never keep the page hidden longer than TIMEOUT_MS.
++      var failsafe = setTimeout(function () { reveal('timeout'); }, TIMEOUT_MS);
++
++      function domReady(fn) {
++        if (d.readyState !== 'loading') fn();
++        else d.addEventListener('DOMContentLoaded', fn, { once: true });
++      }
++
++      // Also listen for a conventional "ready" event, if the SDK dispatches one.
++      w.addEventListener('experiment:ready', function () { reveal('applied'); });
++
++      var s = d.createElement('script');
++      s.src = SDK_URL;
++      s.async = true;
++      s.crossOrigin = 'anonymous';
++      s.onload = function () {
++        // The SDK has executed. If it exposes a ready promise, wait for it;
++        // otherwise assume its DOM changes are applied once the DOM is parsed.
++        var sdk = w.ExperimentSDK || w.experimentSDK;
++        var ready = sdk && (typeof sdk.ready === 'function' ? sdk.ready() : sdk.ready);
++        if (ready && typeof ready.then === 'function') {
++          ready.then(function () { reveal('applied'); }, function () { reveal('sdk-error'); });
++        } else {
++          domReady(function () { reveal('applied'); });
++        }
++      };
++      s.onerror = function () { reveal('load-error'); };
++      d.head.appendChild(s);
++    })(window, document);
++  </script>
++  <noscript><style>html.ab-pending body { opacity: 1 !important; }</style></noscript>
++
++  <style>
++    :root {
++      --bg: #0b1020;
++      --fg: #f5f7fb;
++      --muted: #b6bed3;
++      --accent: #5b8cff;
++      --accent-hover: #3f74ff;
++      --radius: 12px;
++    }
++    * { box-sizing: border-box; }
++    html, body { margin: 0; }
++    body {
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
++      color: var(--fg);
++      background: var(--bg);
++      line-height: 1.5;
++      -webkit-font-smoothing: antialiased;
++      transition: opacity .15s ease-out;
++    }
++    a { color: inherit; }
++
++    .nav {
++      position: absolute; inset: 0 0 auto 0; z-index: 2;
++      display: flex; align-items: center; justify-content: space-between;
++      max-width: 1200px; margin: 0 auto; padding: 1.25rem 1.5rem;
++    }
++    .logo { font-weight: 800; font-size: 1.25rem; letter-spacing: -.02em; text-decoration: none; }
++    .nav a.link { color: var(--muted); text-decoration: none; margin-left: 1.5rem; font-size: .95rem; }
++    .nav a.link:hover { color: var(--fg); }
++
++    .hero {
++      position: relative;
++      min-height: 100vh; min-height: 100svh;
++      display: grid; place-items: center;
++      padding: 7rem 1.5rem 4rem;
++      background:
++        linear-gradient(180deg, rgba(11,16,32,.55) 0%, rgba(11,16,32,.85) 70%, var(--bg) 100%),
++        url("https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=70") center / cover no-repeat;
++      text-align: center;
++    }
++    .hero-inner { max-width: 760px; }
++    .eyebrow {
++      display: inline-block; margin-bottom: 1.25rem;
++      padding: .35rem .85rem; border-radius: 999px;
++      background: rgba(91,140,255,.15); color: #cfdcff;
++      font-size: .85rem; font-weight: 600; letter-spacing: .02em;
++      border: 1px solid rgba(91,140,255,.35);
++    }
++    .hero h1 {
++      margin: 0 0 1rem;
++      font-size: clamp(2.25rem, 6vw, 4rem);
++      line-height: 1.08; letter-spacing: -.03em; font-weight: 800;
++    }
++    .hero p {
++      margin: 0 auto 2rem; max-width: 600px;
++      color: var(--muted); font-size: clamp(1.05rem, 2vw, 1.25rem);
++    }
++    .cta-group { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
++    .btn {
++      display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
++      padding: .95rem 1.75rem; border-radius: var(--radius);
++      font-size: 1.05rem; font-weight: 700; text-decoration: none;
++      border: 1px solid transparent; cursor: pointer;
++      transition: background-color .15s, transform .15s, box-shadow .15s;
++    }
++    .btn-primary {
++      background: var(--accent); color: #fff;
++      box-shadow: 0 10px 30px -10px rgba(91,140,255,.8);
++    }
++    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
++    .btn-secondary { background: rgba(255,255,255,.06); color: var(--fg); border-color: rgba(255,255,255,.2); }
++    .btn-secondary:hover { background: rgba(255,255,255,.12); }
++    .btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
++    .fineprint { margin-top: 1rem; font-size: .85rem; color: #8e97ad; }
++
++    @media (prefers-reduced-motion: reduce) {
++      body, .btn { transition: none; }
++    }
++  </style>
++</head>
++<body>
++  <header class="nav">
++    <a class="logo" href="/">Northwind</a>
++    <nav aria-label="Primary">
++      <a class="link" href="#features">Features</a>
++      <a class="link" href="#pricing">Pricing</a>
++      <a class="link" href="#login">Log in</a>
++    </nav>
++  </header>
++
++  <main>
++    <!-- data-experiment-* attributes give the SDK stable hooks for swapping variants. -->
++    <section class="hero" data-experiment="hero">
++      <div class="hero-inner">
++        <span class="eyebrow" data-experiment-slot="eyebrow">New: Workflows 2.0</span>
++        <h1 data-experiment-slot="headline">Ship your best work, faster.</h1>
++        <p data-experiment-slot="subheadline">
++          Northwind brings planning, collaboration, and delivery into one place —
++          so your team spends less time coordinating and more time building.
++        </p>
++        <div class="cta-group">
++          <a class="btn btn-primary" id="cta-primary" href="#signup"
++             data-experiment-slot="cta">Start free trial</a>
++          <a class="btn btn-secondary" href="#demo">Watch demo</a>
++        </div>
++        <p class="fineprint">No credit card required · Free for 14 days</p>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

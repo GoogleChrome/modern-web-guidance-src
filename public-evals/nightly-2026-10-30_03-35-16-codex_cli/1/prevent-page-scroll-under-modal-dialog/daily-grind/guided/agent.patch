@@ -1,0 +1,43 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..76d448a 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,18 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
+-      overflow: hidden;
+-      position: fixed;
++    dialog {
++      overflow: auto;
+     }
+ 
+-    dialog {
+-      overflow: visible;
++    dialog:modal {
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
++      /* Establish a scroll container so backdrop gestures are contained. */
++      overflow: hidden;
++      overscroll-behavior: contain;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -231,9 +232,10 @@
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      noticeDialog.showModal();
++      document.getElementById("close-notice").addEventListener("click", () => {
++        noticeDialog.close();
++      });
+     }
+   </script>
+ </body>

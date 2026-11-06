@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+index 66c9173..9b33ce1 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,70 @@
+       margin-top: 20px;
+     }
+ 
++    /* Each card sits in its own container so it adapts to its own width */
++    .card-container {
++      container-type: inline-size;
++    }
++
+     .card {
++      height: 100%;
+       background: white;
+-      padding: 20px;
++      padding: 14px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .card .btn {
++      margin-top: auto;
++    }
++
++    .card p {
++      margin-bottom: 15px;
++    }
++
++    /* Medium card: more breathing room */
++    @container (min-width: 300px) {
++      .card {
++        padding: 20px;
++      }
++
++      .card h3 {
++        font-size: 1.17rem;
++      }
++    }
++
++    /* Wide card: text on the left, action on the right */
++    @container (min-width: 480px) {
++      .card {
++        flex-direction: row;
++        justify-content: space-between;
++        gap: 24px;
++        padding: 28px;
++        text-align: left;
++      }
++
++      .card .card-body p {
++        margin-bottom: 0;
++      }
++
++      .card .btn {
++        margin-top: 0;
++        flex-shrink: 0;
++      }
++
++      .card h3 {
++        font-size: 1.3rem;
++      }
+     }
+ 
+     .btn {
+@@ -178,20 +231,32 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <div class="card-body">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            </div>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <div class="card-body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++            </div>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <div class="card-body">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++            </div>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>

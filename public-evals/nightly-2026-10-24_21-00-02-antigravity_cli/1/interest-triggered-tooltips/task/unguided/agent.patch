@@ -1,0 +1,163 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,10 +112,16 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
+     }
+ 
++    .card:hover,
++    .card:focus-within {
++      z-index: 20;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -134,8 +140,71 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Tooltip / Popover for Seasonal Favorites */
++    .tooltip-wrapper {
++      position: relative;
++      display: inline-block;
++      margin-top: 15px;
++    }
++
++    .tooltip-wrapper .btn {
++      margin-top: 0;
++    }
++
++    .tooltip-popover {
++      position: absolute;
++      left: calc(100% + 10px);
++      top: 50%;
++      transform: translateY(-50%);
++      width: 170px;
++      background: var(--text);
++      color: var(--light);
++      padding: 10px 12px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      font-size: 0.8rem;
++      line-height: 1.4;
++      text-align: left;
++      z-index: 100;
++      visibility: hidden;
++      opacity: 0;
++      pointer-events: none;
++      border: 1px solid var(--accent);
++    }
++
++    .tooltip-popover::before {
++      content: "";
++      position: absolute;
++      right: 100%;
++      top: 50%;
++      transform: translateY(-50%);
++      border-width: 6px;
++      border-style: solid;
++      border-color: transparent var(--text) transparent transparent;
++    }
++
++    .tooltip-popover strong {
++      display: block;
++      color: var(--accent);
++      font-size: 0.85rem;
++      margin-bottom: 4px;
++    }
++
++    .tooltip-popover span {
++      display: block;
++    }
++
++    .tooltip-wrapper:hover .tooltip-popover,
++    .tooltip-wrapper:focus-within .tooltip-popover,
++    .btn:hover + .tooltip-popover,
++    .btn:focus + .tooltip-popover,
++    .tooltip-popover.visible {
++      visibility: visible;
++      opacity: 1;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +249,43 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tooltip-maple">View Details</a>
++            <div id="tooltip-maple" class="tooltip tooltip-popover popover" role="tooltip">
++              <strong>Nutrition &amp; Info</strong>
++              <span>240 Calories (12 oz)</span>
++              <span>150mg Caffeine</span>
++              <span>18g Sugar &bull; Dairy-Free</span>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/espresso" class="btn" aria-describedby="tooltip-espresso">View Details</a>
++            <div id="tooltip-espresso" class="tooltip tooltip-popover popover" role="tooltip">
++              <strong>Nutrition &amp; Info</strong>
++              <span>15 Calories (Double Shot)</span>
++              <span>180mg Caffeine</span>
++              <span>0g Sugar &bull; Single Origin</span>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tooltip-coldbrew">View Details</a>
++            <div id="tooltip-coldbrew" class="tooltip tooltip-popover popover" role="tooltip">
++              <strong>Nutrition &amp; Info</strong>
++              <span>5 Calories (16 oz)</span>
++              <span>200mg Caffeine</span>
++              <span>0g Sugar &bull; 18-Hr Steeped</span>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +299,23 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.tooltip-wrapper').forEach((wrapper) => {
++      const btn = wrapper.querySelector('.btn');
++      const tooltip = wrapper.querySelector('.tooltip-popover');
++      if (!btn || !tooltip) return;
++
++      const show = () => tooltip.classList.add('visible');
++      const hide = () => tooltip.classList.remove('visible');
++
++      btn.addEventListener('mouseenter', show);
++      btn.addEventListener('mouseleave', hide);
++      btn.addEventListener('focus', show);
++      btn.addEventListener('blur', hide);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

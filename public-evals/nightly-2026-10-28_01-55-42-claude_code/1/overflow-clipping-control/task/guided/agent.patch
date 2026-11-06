@@ -1,0 +1,164 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,128 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Showcase Section */
++    .showcase {
++      margin-bottom: 60px;
++    }
++
++    .showcase h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 30px;
++      align-items: start;
++    }
++
++    /*
++     * Nested-curve card: outer radius + custom padding. Inner children are
++     * clipped exactly at the content-box edge, so the clip follows the
++     * concentric inner curve with no calc() on child radii.
++     */
++    .nested-curve-parent {
++      background: white;
++      padding: 18px;
++      border-radius: 28px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* Level 1 fallback: clips roughly at the padding box */
++      overflow: hidden;
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 10;
++      object-fit: cover;
++    }
++
++    .nested-curve-footer {
++      background: var(--primary);
++      color: white;
++      padding: 14px 18px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .nested-curve-footer strong {
++      color: var(--accent);
++    }
++
++    @supports (overflow-clip-margin: content-box) {
++      .nested-curve-parent {
++        /* overflow: clip is mandatory for overflow-clip-margin to apply */
++        overflow: clip;
++        /* Clip boundary follows the inner content-box curve automatically */
++        overflow-clip-margin: content-box;
++      }
++    }
++
++    /*
++     * Promos block: clips its own overflowing text, but gives the glowing
++     * button a 15px safety zone so its shadow bleeds past the container.
++     */
++    .safety-zone-parent {
++      background: var(--secondary);
++      border-radius: 12px;
++      padding: 24px;
++      max-height: 300px;
++      /* Level 1 fallback: clips text but also truncates the button's glow */
++      overflow: hidden;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .safety-zone-parent p {
++      margin-bottom: 12px;
++    }
++
++    .promo-tagline {
++      white-space: nowrap;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .glow-btn {
++      display: block;
++      width: 100%;
++      margin-top: 16px;
++      padding: 14px 20px;
++      border: none;
++      border-radius: 8px;
++      background: var(--accent);
++      color: var(--text);
++      font: inherit;
++      font-weight: 700;
++      cursor: pointer;
++      box-shadow: 0 0 28px 10px rgba(255, 171, 64, 0.75);
++      transition: box-shadow 0.3s, transform 0.3s;
++    }
++
++    .glow-btn:hover,
++    .glow-btn:focus-visible {
++      box-shadow: 0 0 36px 14px rgba(255, 171, 64, 0.9);
++      transform: translateY(-1px);
++    }
++
++    @supports (overflow-clip-margin: 15px) {
++      .safety-zone-parent {
++        overflow: clip;
++        /* 15px bleed zone: the glow renders outside without changing layout */
++        overflow-clip-margin: 15px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +294,31 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase" aria-labelledby="showcase-heading">
++      <h2 id="showcase-heading">Fresh This Week</h2>
++      <div class="showcase-grid">
++        <article class="nested-curve-parent">
++          <img
++            src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80"
++            alt="Latte with latte art on a wooden table" loading="lazy" width="900" height="563">
++          <div class="nested-curve-footer">
++            <span>Honey Lavender Latte</span>
++            <strong>$5.25</strong>
++          </div>
++        </article>
++
++        <div class="safety-zone-parent">
++          <h3>Member Promos</h3>
++          <p>Rewards members get double beans on every pour-over this week, plus a free pastry with any
++            pound of whole-bean coffee.</p>
++          <p class="promo-tagline">Limited time only &mdash; while our roaster keeps up with the demand for fresh single-origin beans!</p>
++          <button type="button" class="glow-btn">Claim Your Promo</button>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

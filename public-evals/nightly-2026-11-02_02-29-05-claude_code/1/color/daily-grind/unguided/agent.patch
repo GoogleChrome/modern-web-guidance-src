@@ -1,0 +1,285 @@
+diff --git a/index.html b/index.html
+index 66c9173..e9bbf6f 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,77 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <meta name="theme-color" content="#4e342e" media="(prefers-color-scheme: light)">
++  <meta name="theme-color" content="#2f211d" media="(prefers-color-scheme: dark)">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /* Light theme (default) — built around the brand coffee brown #4e342e */
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      color-scheme: light dark;
++
++      --brand: #4e342e;
++      --brand-dark: #3e2723;
+       --accent: #ffab40;
++      --accent-hover: #ffc06e;
++      --on-accent: #3e2723;
++
++      --bg: #faf7f5;
++      --surface: #ffffff;
++      --border: #e6dcd7;
+       --text: #3e2723;
+-      --light: #fafafa;
++      --text-muted: #6d4c41;
++      --heading: #4e342e;
++      --shadow: 0 2px 6px rgba(62, 39, 35, 0.12);
++
++      --nav-bg: #4e342e;
++      --nav-text: #ffffff;
++
++      --btn-bg: #4e342e;
++      --btn-bg-hover: #3e2723;
++      --btn-text: #ffffff;
++
++      --footer-bg: #efe7e3;
++      --footer-text: #3e2723;
++      --footer-link: #5d4037;
++
++      --badge-new-bg: #e3f1e4;
++      --badge-new-text: #1b5e20;
++      --badge-new-border: #a5d6a7;
++      --badge-soldout-bg: #fbe4e1;
++      --badge-soldout-text: #b3261e;
++      --badge-soldout-border: #f2b8b0;
++    }
++
++    /* Dark theme — same brown family, lifted to caramel/latte tones for contrast */
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --bg: #1a1210;
++        --surface: #2a1f1b;
++        --border: #3d2d27;
++        --text: #f3ebe7;
++        --text-muted: #c9b8b0;
++        --heading: #e6c9ad;
++        --shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
++
++        --nav-bg: #2f211d;
++        --nav-text: #f3ebe7;
++
++        --btn-bg: #c8a27c;
++        --btn-bg-hover: #dbb994;
++        --btn-text: #1f1411;
++
++        --footer-bg: #120c0a;
++        --footer-text: #d7ccc8;
++        --footer-link: #e6c9ad;
++
++        --badge-new-bg: #1e3a22;
++        --badge-new-text: #a5d6a7;
++        --badge-new-border: #2e5e34;
++        --badge-soldout-bg: #3d1d1a;
++        --badge-soldout-text: #f4a9a1;
++        --badge-soldout-border: #6b2f29;
++      }
+     }
+ 
+     * {
+@@ -24,13 +87,18 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
++    }
++
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,6 +106,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      border-bottom: 1px solid rgba(255, 171, 64, 0.25);
+     }
+ 
+     .logo {
+@@ -56,7 +125,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -75,7 +144,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(rgba(30, 18, 14, 0.55), rgba(30, 18, 14, 0.7)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +152,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #ffffff;
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -100,6 +169,11 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      color: var(--heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,22 +182,53 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
++    .card p {
++      color: var(--text-muted);
++    }
++
++    /* Status badges */
++    .badge {
++      display: inline-block;
++      margin-bottom: 8px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      border: 1px solid;
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++    }
++
++    .badge-new {
++      background: var(--badge-new-bg);
++      color: var(--badge-new-text);
++      border-color: var(--badge-new-border);
++    }
++
++    .badge-soldout {
++      background: var(--badge-soldout-bg);
++      color: var(--badge-soldout-text);
++      border-color: var(--badge-soldout-border);
++    }
++
++    /* Buttons */
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,14 +237,27 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
++    }
++
++    /* Accent button for use over the dark hero photo */
++    .btn-accent {
++      background: var(--accent);
++      color: var(--on-accent);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      border-top: 1px solid var(--border);
+     }
+ 
+     .footer-links {
+@@ -148,10 +266,14 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-link);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+@@ -171,14 +293,15 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-accent">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="badge badge-new">New</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -189,6 +312,7 @@
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="badge badge-soldout">Sold out</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

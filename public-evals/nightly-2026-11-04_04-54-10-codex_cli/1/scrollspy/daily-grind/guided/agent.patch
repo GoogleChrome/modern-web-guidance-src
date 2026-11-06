@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+index 66c9173..52b1a19 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 72px;
+     }
+ 
+     * {
+@@ -27,6 +28,10 @@
+       background-color: var(--light);
+     }
+ 
++    html {
++      scroll-padding-top: calc(var(--nav-height) + 16px);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -35,6 +40,8 @@
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: wrap;
++      gap: 12px 20px;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -48,14 +55,15 @@
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 8px 20px;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      scroll-target-group: auto;
+     }
+ 
+     nav a {
++      display: inline-block;
++      padding-block: 5px;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -66,6 +74,18 @@
+       color: var(--accent);
+     }
+ 
++    nav a:is(:target-current, .target-current) {
++      color: var(--accent);
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 6px;
++    }
++
++    nav a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -100,6 +120,20 @@
+       padding: 0 20px;
+     }
+ 
++    main section {
++      min-height: 55vh;
++      padding-block: 40px;
++    }
++
++    main section + section {
++      border-top: 1px solid var(--secondary);
++    }
++
++    main h2,
++    .section-intro {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -157,13 +191,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,8 +209,9 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" tabindex="-1">
++      <h2>Menu</h2>
++      <p class="section-intro">Seasonal favorites, roasted fresh and made your way.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +230,57 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" tabindex="-1">
++      <h2>Locations</h2>
++      <p class="section-intro">Make yourself at home at The Daily Grind.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Your Neighborhood Coffee Stop</h3>
++          <p>Drop in for a freshly pulled espresso, a slow morning, or your afternoon pick-me-up.</p>
++          <p>Contact our team for your nearest coffee shop and current opening hours.</p>
++          <a href="/contact" class="btn">Contact Us</a>
++        </div>
++        <div class="card">
++          <h3>Coffee on Your Schedule</h3>
++          <p>Taking your coffee to go? Explore online ordering for pickup options near you.</p>
++          <a href="/order-online" class="btn">Order Now</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" tabindex="-1">
++      <h2>Rewards</h2>
++      <p class="section-intro">Make your daily coffee ritual even more rewarding.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Bring Your Account Along</h3>
++          <p>Use your Daily Grind account when you order to keep your coffee visits together.</p>
++        </div>
++        <div class="card">
++          <h3>Discover Member Perks</h3>
++          <p>Check your account for available rewards, member offers, and seasonal treats.</p>
++          <a href="#account" class="btn">My Account</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" tabindex="-1">
++      <h2>My Account</h2>
++      <p class="section-intro">Everything you need for your next coffee break.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Manage Your Account</h3>
++          <p>Visit your account to review your details, past orders, and available rewards.</p>
++          <a href="/account" class="btn">Open My Account</a>
++        </div>
++        <div class="card">
++          <h3>Find Your Next Favorite</h3>
++          <p>Explore our seasonal coffees before placing your next order.</p>
++          <a href="#menu" class="btn">Explore the Menu</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +293,79 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const nav = document.querySelector('nav');
++    const links = [...nav.querySelectorAll('a[href^="#"]')];
++    const sections = links.map(link => document.querySelector(link.getAttribute('href')));
++    const nativeTracking = CSS.supports('scroll-target-group: auto') &&
++      CSS.supports('selector(:target-current)');
++
++    function setCurrent(currentLink) {
++      links.forEach(link => {
++        const active = link === currentLink;
++        link.classList.toggle('target-current', !nativeTracking && active);
++        if (active) link.setAttribute('aria-current', 'location');
++        else link.removeAttribute('aria-current');
++      });
++    }
++
++    function updateCurrent() {
++      if (nativeTracking) {
++        setCurrent(nav.querySelector('a:target-current'));
++        return;
++      }
++
++      // Pick the section with the most content visible below the sticky bar.
++      let currentLink = null;
++      let largestVisibleHeight = 0;
++      const navBottom = nav.getBoundingClientRect().bottom;
++      sections.forEach((section, index) => {
++        const bounds = section.getBoundingClientRect();
++        const visibleHeight = Math.max(0,
++          Math.min(bounds.bottom, window.innerHeight) - Math.max(bounds.top, navBottom));
++        if (visibleHeight > largestVisibleHeight) {
++          largestVisibleHeight = visibleHeight;
++          currentLink = links[index];
++        }
++      });
++      setCurrent(currentLink);
++    }
++
++    let observer;
++    function updateNavHeight() {
++      const height = nav.getBoundingClientRect().height;
++      document.documentElement.style.setProperty('--nav-height', `${height}px`);
++      if (!nativeTracking) {
++        observer?.disconnect();
++        observer = new IntersectionObserver(updateCurrent, {
++          rootMargin: `-${height}px 0px 0px 0px`,
++          threshold: Array.from({ length: 21 }, (_, index) => index / 20)
++        });
++        sections.forEach(section => observer.observe(section));
++      }
++      requestAnimationFrame(updateCurrent);
++    }
++
++    // CSS tracks the visual state natively; mirror it for assistive technology.
++    if (nativeTracking) {
++      let scheduled = false;
++      document.addEventListener('scroll', () => {
++        if (scheduled) return;
++        scheduled = true;
++        requestAnimationFrame(() => {
++          updateCurrent();
++          scheduled = false;
++        });
++      }, { passive: true });
++    }
++
++    new ResizeObserver(updateNavHeight).observe(nav);
++    window.addEventListener('resize', updateNavHeight);
++    window.addEventListener('pageshow', updateNavHeight);
++    window.addEventListener('hashchange', () => requestAnimationFrame(updateCurrent));
++    updateNavHeight();
++  </script>
++
+ </body>
+ 
+ </html>

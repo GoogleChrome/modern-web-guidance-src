@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <link rel="stylesheet" href="/calendars.css">
++  <script type="module" src="/calendars.mjs"></script>
+ </head>
+ 
+ <body>
+ 
+@@ -194,8 +196,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="calendar-section" aria-labelledby="calendar-heading">
++      <div class="calendar-intro">
++        <p class="eyebrow">A world of shared moments</p>
++        <h2 id="calendar-heading">One date. Many traditions.</h2>
++        <p>Explore the same day through three global calendars.</p>
++      </div>
++      <div class="calendar-controls">
++        <div>
++          <label for="calendar-input">Choose a date</label>
++          <input id="calendar-input" type="date" aria-describedby="calendar-help" disabled>
++        </div>
++        <div>
++          <label for="calendar-locale">Date display language</label>
++          <select id="calendar-locale" disabled>
++            <option value="auto">Browser language</option>
++            <option value="en-GB">English</option>
++            <option value="ar-SA">العربية</option>
++            <option value="he-IL">עברית</option>
++            <option value="ja-JP">日本語</option>
++          </select>
++        </div>
++        <button id="calendar-today" type="button" disabled>Use today</button>
++      </div>
++      <p id="calendar-help" class="calendar-note">Choose a Gregorian date. Today follows your device’s local time zone.</p>
++      <p id="calendar-status" role="status" aria-live="polite">Loading calendar explorer…</p>
++      <div id="calendar-results" class="calendar-grid" aria-busy="true"></div>
++      <p class="calendar-note">Month numbers show position within the year; month codes stay consistent across leap years. Japanese year is the calendar year; the formatted date includes its era. Umm al-Qura dates follow that calendar’s civil day, without a sunset adjustment.</p>
++      <noscript><p>Enable JavaScript to use the calendar explorer.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

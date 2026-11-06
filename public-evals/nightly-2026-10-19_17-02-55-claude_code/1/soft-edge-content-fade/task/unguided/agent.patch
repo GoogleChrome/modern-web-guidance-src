@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,30 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall preview: the teaser is masked so its bottom fades to true
++       transparency, letting the page background show through. */
++    .paywall-container {
++      margin-top: 60px;
++    }
++
++    .paywall-teaser {
++      -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
++      pointer-events: none;
++      user-select: none;
++    }
++
++    .paywall-teaser h3 {
++      color: var(--primary);
++      margin: 20px 0 8px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +216,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <h2 style="text-align: center;">Roaster's Secrets</h2>
++      <div class="paywall-teaser">
++        <h3>The 12-Minute Rest Rule</h3>
++        <p>Our head roaster lets every batch rest before it ever reaches a grinder, and the timing changes with the
++          origin. Here is how we decide when a roast is ready to brew, and why a few extra days can transform a bright
++          Ethiopian into something almost jammy.</p>
++        <h3>Dialing In Your Home Grinder</h3>
++        <p>Small adjustments make the biggest difference. We walk through the exact grind settings, water
++          temperatures, and ratios we use behind the bar, plus the two mistakes that quietly flatten the flavor of
++          even the best beans.</p>
++        <h3>Blending Notes From the Roastery Floor</h3>
++        <p>Every seasonal blend starts as dozens of tiny test roasts. Discover the tasting notes we chase, the
++          beans we almost used, and the recipes we keep for members only.</p>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Unlock Roaster's Secrets</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

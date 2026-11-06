@@ -1,0 +1,890 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..1ba3673 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,10 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  interface RequestInit {
++    targetAddressSpace?: 'local' | 'loopback' | 'public' | 'unknown';
++  }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/DiagnosticsWidget.tsx b/src/components/DiagnosticsWidget.tsx
+new file mode 100644
+index 0000000..28f1a87
+--- /dev/null
++++ b/src/components/DiagnosticsWidget.tsx
+@@ -0,0 +1,810 @@
++import React, { useState, useEffect, useCallback } from 'react';
++
++export type LnaPermissionState = PermissionState | 'checking' | 'unsupported';
++export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'error';
++
++export interface TargetDiagnosticsResult {
++  status: ConnectionState;
++  httpStatus?: number;
++  latencyMs?: number;
++  payload?: unknown;
++  errorMessage?: string;
++  timestamp?: string;
++  targetAddressSpace: 'local' | 'loopback';
++  permissionName: 'local-network' | 'loopback-network';
++}
++
++export interface LogEntry {
++  id: string;
++  time: string;
++  target: 'LAN Hardware' | 'Companion CLI' | 'Permissions';
++  level: 'info' | 'success' | 'warn' | 'error';
++  message: string;
++}
++
++const DEFAULT_LAN_URL = 'http://192.168.1.100:8080/diagnostics';
++const DEFAULT_CLI_URL = 'http://127.0.0.1:9229/status';
++
++export default function DiagnosticsWidget() {
++  // Endpoints
++  const [lanUrl, setLanUrl] = useState<string>(DEFAULT_LAN_URL);
++  const [cliUrl, setCliUrl] = useState<string>(DEFAULT_CLI_URL);
++
++  // Granular Local Network Access (LNA) permissions:
++  // - 'local-network' for private Wi-Fi LAN devices (e.g., 192.168.1.x)
++  // - 'loopback-network' for local machine loopback services (e.g., 127.0.0.1)
++  const [lanPermission, setLanPermission] = useState<LnaPermissionState>('checking');
++  const [loopbackPermission, setLoopbackPermission] = useState<LnaPermissionState>('checking');
++  const [isSecureContextState, setIsSecureContextState] = useState<boolean>(true);
++
++  // Connection state & telemetry results
++  const [lanResult, setLanResult] = useState<TargetDiagnosticsResult>({
++    status: 'idle',
++    targetAddressSpace: 'local',
++    permissionName: 'local-network',
++  });
++  const [cliResult, setCliResult] = useState<TargetDiagnosticsResult>({
++    status: 'idle',
++    targetAddressSpace: 'loopback',
++    permissionName: 'loopback-network',
++  });
++
++  const [logs, setLogs] = useState<LogEntry[]>([]);
++  const [showDeveloperDocs, setShowDeveloperDocs] = useState<boolean>(false);
++
++  const appendLog = useCallback(
++    (target: LogEntry['target'], level: LogEntry['level'], message: string) => {
++      const entry: LogEntry = {
++        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
++        time: new Date().toLocaleTimeString(),
++        target,
++        level,
++        message,
++      };
++      setLogs((prev) => [entry, ...prev].slice(0, 20));
++    },
++    []
++  );
++
++  // Query both granular LNA permissions ('local-network' and 'loopback-network')
++  const checkPermissions = useCallback(async () => {
++    if (typeof window === 'undefined') return;
++
++    setIsSecureContextState(Boolean(window.isSecureContext));
++
++    if (!navigator.permissions || typeof navigator.permissions.query !== 'function') {
++      setLanPermission('unsupported');
++      setLoopbackPermission('unsupported');
++      return;
++    }
++
++    // 1. Query 'local-network' permission for private Wi-Fi LAN hardware devices (192.168.1.x)
++    try {
++      const localStatus = await navigator.permissions.query({
++        name: 'local-network' as PermissionName,
++      });
++      setLanPermission(localStatus.state);
++      localStatus.onchange = () => {
++        setLanPermission(localStatus.state);
++        appendLog(
++          'Permissions',
++          localStatus.state === 'granted' ? 'success' : 'warn',
++          `Permission "local-network" changed to "${localStatus.state}".`
++        );
++      };
++    } catch {
++      // Fallback to legacy 'local-network-access' alias if granular token is not yet supported
++      try {
++        const legacyStatus = await navigator.permissions.query({
++          name: 'local-network-access' as PermissionName,
++        });
++        setLanPermission(legacyStatus.state);
++        legacyStatus.onchange = () => setLanPermission(legacyStatus.state);
++      } catch {
++        setLanPermission('unsupported');
++      }
++    }
++
++    // 2. Query 'loopback-network' permission for local machine companion CLI (127.0.0.1)
++    try {
++      const loopbackStatus = await navigator.permissions.query({
++        name: 'loopback-network' as PermissionName,
++      });
++      setLoopbackPermission(loopbackStatus.state);
++      loopbackStatus.onchange = () => {
++        setLoopbackPermission(loopbackStatus.state);
++        appendLog(
++          'Permissions',
++          loopbackStatus.state === 'granted' ? 'success' : 'warn',
++          `Permission "loopback-network" changed to "${loopbackStatus.state}".`
++        );
++      };
++    } catch {
++      try {
++        const legacyStatus = await navigator.permissions.query({
++          name: 'local-network-access' as PermissionName,
++        });
++        setLoopbackPermission(legacyStatus.state);
++        legacyStatus.onchange = () => setLoopbackPermission(legacyStatus.state);
++      } catch {
++        setLoopbackPermission('unsupported');
++      }
++    }
++  }, [appendLog]);
++
++  useEffect(() => {
++    checkPermissions();
++  }, [checkPermissions]);
++
++  // Connect to Hardware Test Device on Private Wi-Fi LAN (targetAddressSpace: 'local')
++  const connectLanHardware = async () => {
++    const endpoint = lanUrl.trim();
++    if (!endpoint) return;
++
++    if (lanPermission === 'denied') {
++      const msg =
++        'Permission "local-network" is denied. Please allow "Local Network" access in your browser site settings and retry.';
++      setLanResult({
++        status: 'error',
++        errorMessage: msg,
++        timestamp: new Date().toLocaleTimeString(),
++        targetAddressSpace: 'local',
++        permissionName: 'local-network',
++      });
++      appendLog('LAN Hardware', 'error', msg);
++      return;
++    }
++
++    setLanResult({
++      status: 'connecting',
++      targetAddressSpace: 'local',
++      permissionName: 'local-network',
++    });
++    appendLog(
++      'LAN Hardware',
++      'info',
++      `Connecting to ${endpoint} with targetAddressSpace: "local"...`
++    );
++
++    const startTime = performance.now();
++    const controller = new AbortController();
++    const timeoutId = setTimeout(() => controller.abort(), 6000);
++
++    try {
++      const response = await fetch(endpoint, {
++        method: 'GET',
++        mode: 'cors',
++        targetAddressSpace: 'local',
++        signal: controller.signal,
++        headers: {
++          Accept: 'application/json',
++        },
++      });
++      clearTimeout(timeoutId);
++      const latencyMs = Math.round(performance.now() - startTime);
++
++      let payload: unknown = null;
++      const contentType = response.headers.get('content-type') || '';
++      if (contentType.includes('application/json')) {
++        payload = await response.json();
++      } else {
++        payload = await response.text();
++      }
++
++      if (!response.ok) {
++        throw new Error(`HTTP ${response.status} ${response.statusText}`);
++      }
++
++      setLanResult({
++        status: 'connected',
++        httpStatus: response.status,
++        latencyMs,
++        payload,
++        timestamp: new Date().toLocaleTimeString(),
++        targetAddressSpace: 'local',
++        permissionName: 'local-network',
++      });
++      appendLog(
++        'LAN Hardware',
++        'success',
++        `Connected to LAN hardware device at ${endpoint} (${latencyMs}ms).`
++      );
++    } catch (err: unknown) {
++      clearTimeout(timeoutId);
++      const latencyMs = Math.round(performance.now() - startTime);
++      const rawMessage = err instanceof Error ? err.message : String(err);
++      const errorMessage =
++        err instanceof DOMException && err.name === 'AbortError'
++          ? 'Connection timed out after 6s waiting for LAN hardware test device.'
++          : `Failed to reach ${endpoint} (${rawMessage}). Ensure the device is online on your private Wi-Fi LAN, "local-network" permission is granted, and the server responds with Access-Control-Allow-Private-Network: true.`;
++
++      setLanResult({
++        status: 'error',
++        latencyMs,
++        errorMessage,
++        timestamp: new Date().toLocaleTimeString(),
++        targetAddressSpace: 'local',
++        permissionName: 'local-network',
++      });
++      appendLog('LAN Hardware', 'error', errorMessage);
++    } finally {
++      await checkPermissions();
++    }
++  };
++
++  // Connect to Local Companion CLI on 127.0.0.1 (targetAddressSpace: 'loopback')
++  const connectCompanionCli = async () => {
++    const endpoint = cliUrl.trim();
++    if (!endpoint) return;
++
++    if (loopbackPermission === 'denied') {
++      const msg =
++        'Permission "loopback-network" is denied. Please allow "Apps on device" / loopback access in your browser site settings and retry.';
++      setCliResult({
++        status: 'error',
++        errorMessage: msg,
++        timestamp: new Date().toLocaleTimeString(),
++        targetAddressSpace: 'loopback',
++        permissionName: 'loopback-network',
++      });
++      appendLog('Companion CLI', 'error', msg);
++      return;
++    }
++
++    setCliResult({
++      status: 'connecting',
++      targetAddressSpace: 'loopback',
++      permissionName: 'loopback-network',
++    });
++    appendLog(
++      'Companion CLI',
++      'info',
++      `Connecting to ${endpoint} with targetAddressSpace: "loopback"...`
++    );
++
++    const startTime = performance.now();
++    const controller = new AbortController();
++    const timeoutId = setTimeout(() => controller.abort(), 6000);
++
++    try {
++      const response = await fetch(endpoint, {
++        method: 'GET',
++        mode: 'cors',
++        targetAddressSpace: 'loopback',
++        signal: controller.signal,
++        headers: {
++          Accept: 'application/json',
++        },
++      });
++      clearTimeout(timeoutId);
++      const latencyMs = Math.round(performance.now() - startTime);
++
++      let payload: unknown = null;
++      const contentType = response.headers.get('content-type') || '';
++      if (contentType.includes('application/json')) {
++        payload = await response.json();
++      } else {
++        payload = await response.text();
++      }
++
++      if (!response.ok) {
++        throw new Error(`HTTP ${response.status} ${response.statusText}`);
++      }
++
++      setCliResult({
++        status: 'connected',
++        httpStatus: response.status,
++        latencyMs,
++        payload,
++        timestamp: new Date().toLocaleTimeString(),
++        targetAddressSpace: 'loopback',
++        permissionName: 'loopback-network',
++      });
++      appendLog(
++        'Companion CLI',
++        'success',
++        `Connected to local companion CLI at ${endpoint} (${latencyMs}ms).`
++      );
++    } catch (err: unknown) {
++      clearTimeout(timeoutId);
++      const latencyMs = Math.round(performance.now() - startTime);
++      const rawMessage = err instanceof Error ? err.message : String(err);
++      const errorMessage =
++        err instanceof DOMException && err.name === 'AbortError'
++          ? 'Connection timed out after 6s waiting for local companion CLI on 127.0.0.1.'
++          : `Failed to reach ${endpoint} (${rawMessage}). Ensure the companion CLI daemon is running on 127.0.0.1, "loopback-network" permission is granted, and CORS headers are enabled.`;
++
++      setCliResult({
++        status: 'error',
++        latencyMs,
++        errorMessage,
++        timestamp: new Date().toLocaleTimeString(),
++        targetAddressSpace: 'loopback',
++        permissionName: 'loopback-network',
++      });
++      appendLog('Companion CLI', 'error', errorMessage);
++    } finally {
++      await checkPermissions();
++    }
++  };
++
++  const connectBothTargets = async () => {
++    await Promise.all([connectLanHardware(), connectCompanionCli()]);
++  };
++
++  const renderPermissionBadge = (
++    permissionName: 'local-network' | 'loopback-network',
++    state: LnaPermissionState
++  ) => {
++    const styles: Record<LnaPermissionState, string> = {
++      granted: 'bg-emerald-100 text-emerald-800 border-emerald-300',
++      prompt: 'bg-amber-100 text-amber-800 border-amber-300',
++      denied: 'bg-red-100 text-red-800 border-red-300',
++      checking: 'bg-gray-100 text-gray-700 border-gray-300',
++      unsupported: 'bg-slate-100 text-slate-700 border-slate-300',
++    };
++
++    const labels: Record<LnaPermissionState, string> = {
++      granted: 'Granted',
++      prompt: 'Prompt on Connect',
++      denied: 'Denied',
++      checking: 'Checking...',
++      unsupported: 'Browser Default',
++    };
++
++    return (
++      <span
++        data-testid={`permission-badge-${permissionName}`}
++        className={`inline-flex items-center gap-1.5 text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full border ${styles[state]}`}
++      >
++        <span
++          className={`w-2 h-2 rounded-full ${
++            state === 'granted'
++              ? 'bg-emerald-500'
++              : state === 'prompt'
++              ? 'bg-amber-500'
++              : state === 'denied'
++              ? 'bg-red-500'
++              : 'bg-gray-400'
++          }`}
++        />
++        <span>
++          {permissionName}: {labels[state]}
++        </span>
++      </span>
++    );
++  };
++
++  const renderConnectionBadge = (status: ConnectionState) => {
++    switch (status) {
++      case 'connected':
++        return (
++          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
++            <span className="w-2 h-2 rounded-full bg-emerald-500" />
++            Connected
++          </span>
++        );
++      case 'connecting':
++        return (
++          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
++            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
++            Connecting...
++          </span>
++        );
++      case 'error':
++        return (
++          <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
++            <span className="w-2 h-2 rounded-full bg-red-500" />
++            Unreachable / Blocked
++          </span>
++        );
++      default:
++        return (
++          <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded">
++            <span className="w-2 h-2 rounded-full bg-gray-400" />
++            Standby
++          </span>
++        );
++    }
++  };
++
++  return (
++    <section
++      id="developer-diagnostics"
++      aria-label="Developer Diagnostics Connection Widget"
++      className="bg-slate-50 border-2 border-gray-900 rounded-lg shadow-sm my-6 overflow-hidden"
++    >
++      {/* Top Header Bar */}
++      <div className="bg-gray-900 text-white px-4 py-3 sm:px-6 flex flex-wrap items-center justify-between gap-3">
++        <div className="flex items-center gap-2.5">
++          <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" />
++          <div>
++            <h2 className="text-base sm:text-lg font-bold tracking-tight">
++              Developer Diagnostics Connection Widget
++            </h2>
++            <p className="text-xs text-gray-300">
++              Local Network Access (LNA) Bridge — Connect to Private Wi-Fi LAN Hardware (
++              <code className="text-amber-300">192.168.1.x</code>) &amp; Local Companion CLI (
++              <code className="text-amber-300">127.0.0.1</code>)
++            </p>
++          </div>
++        </div>
++
++        <div className="flex items-center gap-2">
++          <button
++            type="button"
++            onClick={checkPermissions}
++            className="text-xs font-semibold px-3 py-1.5 rounded bg-gray-800 text-gray-200 hover:bg-gray-700 border border-gray-700 transition cursor-pointer"
++          >
++            Refresh Permissions
++          </button>
++          <button
++            type="button"
++            onClick={connectBothTargets}
++            disabled={lanResult.status === 'connecting' || cliResult.status === 'connecting'}
++            className="text-xs font-semibold px-3.5 py-1.5 rounded bg-amber-400 text-gray-900 hover:bg-amber-300 disabled:opacity-60 transition cursor-pointer"
++          >
++            Connect Both Targets
++          </button>
++        </div>
++      </div>
++
++      {/* Secure Context Warning if not HTTPS */}
++      {!isSecureContextState && (
++        <div
++          role="alert"
++          className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 text-xs text-amber-900 flex items-center justify-between"
++        >
++          <span>
++            <strong>Secure Context Notice:</strong> Chrome Local Network Access (
++            <code>local-network</code> and <code>loopback-network</code>) requires a secure origin (
++            <code>https://</code>) in production.
++          </span>
++        </div>
++      )}
++
++      {/* Dual Connection Cards */}
++      <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
++        {/* Card 1: Hardware Test Device on Private Wi-Fi LAN (192.168.1.x) */}
++        <div
++          data-testid="lan-hardware-card"
++          className="bg-white border border-gray-200 rounded-md p-4 sm:p-5 flex flex-col justify-between shadow-xs"
++        >
++          <div>
++            <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
++              <div>
++                <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
++                  Private Wi-Fi LAN • targetAddressSpace: &apos;local&apos;
++                </span>
++                <h3 className="text-lg font-bold text-gray-900 mt-0.5">
++                  Hardware Test Device (192.168.1.x)
++                </h3>
++              </div>
++              {renderConnectionBadge(lanResult.status)}
++            </div>
++
++            <p className="text-xs text-gray-600 mb-3">
++              Connects directly from your browser to a hardware test rig or probe on your private
++              Wi-Fi LAN using the <code className="font-mono bg-gray-100 px-1 rounded">local-network</code>{' '}
++              permission and <code className="font-mono bg-gray-100 px-1 rounded">targetAddressSpace: &apos;local&apos;</code>.
++            </p>
++
++            {/* Permission Status Row */}
++            <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded px-3 py-2 mb-4">
++              <span className="text-xs font-medium text-gray-700">Browser Permission:</span>
++              {renderPermissionBadge('local-network', lanPermission)}
++            </div>
++
++            {lanPermission === 'prompt' && (
++              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
++                Clicking <strong>Connect LAN Device</strong> will prompt your browser for{' '}
++                <strong>Local Network</strong> (<code>local-network</code>) permission.
++              </p>
++            )}
++
++            {lanPermission === 'denied' && (
++              <p className="text-xs text-red-800 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
++                <strong>Permission Denied:</strong> Open browser Site Settings and set{' '}
++                <strong>Local Network</strong> (<code>local-network</code>) to Allow.
++              </p>
++            )}
++
++            {/* Endpoint Input */}
++            <div className="mb-3">
++              <label
++                htmlFor="lan-device-url"
++                className="block text-xs font-semibold text-gray-700 mb-1"
++              >
++                LAN Hardware Endpoint URL (RFC 1918 / .local)
++              </label>
++              <div className="flex gap-2">
++                <input
++                  id="lan-device-url"
++                  type="url"
++                  value={lanUrl}
++                  onChange={(e) => setLanUrl(e.target.value)}
++                  placeholder="http://192.168.1.100:8080/diagnostics"
++                  className="flex-1 text-xs font-mono px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-amber-400"
++                />
++                <button
++                  type="button"
++                  onClick={connectLanHardware}
++                  disabled={lanResult.status === 'connecting'}
++                  className="bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold px-4 py-2 rounded whitespace-nowrap disabled:opacity-50 transition cursor-pointer"
++                >
++                  {lanResult.status === 'connecting' ? 'Connecting...' : 'Connect LAN Device'}
++                </button>
++              </div>
++              <div className="flex flex-wrap items-center gap-2 mt-2">
++                <span className="text-[11px] text-gray-500">Presets:</span>
++                {[
++                  'http://192.168.1.100:8080/diagnostics',
++                  'http://192.168.1.50/api/telemetry',
++                  'http://test-rig.local:8080/status',
++                ].map((preset) => (
++                  <button
++                    key={preset}
++                    type="button"
++                    onClick={() => setLanUrl(preset)}
++                    className="text-[11px] font-mono text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded transition cursor-pointer"
++                  >
++                    {preset.replace(/^http:\/\//, '')}
++                  </button>
++                ))}
++              </div>
++            </div>
++          </div>
++
++          {/* Result Output */}
++          <div className="mt-2 pt-3 border-t border-gray-100 text-xs">
++            {lanResult.status === 'idle' && (
++              <p className="text-gray-500">
++                Ready to initiate user-gesture request with{' '}
++                <code className="font-mono">targetAddressSpace: &apos;local&apos;</code>.
++              </p>
++            )}
++            {lanResult.status === 'connected' && (
++              <div className="bg-emerald-50 border border-emerald-200 rounded p-2.5 text-emerald-900">
++                <div className="flex justify-between font-semibold mb-1">
++                  <span>HTTP {lanResult.httpStatus} OK</span>
++                  <span>{lanResult.latencyMs} ms</span>
++                </div>
++                <pre className="text-[11px] font-mono overflow-x-auto whitespace-pre-wrap">
++                  {typeof lanResult.payload === 'string'
++                    ? lanResult.payload
++                    : JSON.stringify(lanResult.payload, null, 2)}
++                </pre>
++              </div>
++            )}
++            {lanResult.status === 'error' && (
++              <div
++                role="status"
++                className="bg-red-50 border border-red-200 rounded p-2.5 text-red-800"
++              >
++                <p className="font-semibold mb-0.5">LAN Connection Diagnostics</p>
++                <p className="text-[11px] leading-relaxed">{lanResult.errorMessage}</p>
++              </div>
++            )}
++          </div>
++        </div>
++
++        {/* Card 2: Local Companion CLI on Loopback (127.0.0.1) */}
++        <div
++          data-testid="loopback-cli-card"
++          className="bg-white border border-gray-200 rounded-md p-4 sm:p-5 flex flex-col justify-between shadow-xs"
++        >
++          <div>
++            <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
++              <div>
++                <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
++                  Loopback Interface • targetAddressSpace: &apos;loopback&apos;
++                </span>
++                <h3 className="text-lg font-bold text-gray-900 mt-0.5">
++                  Local Companion CLI (127.0.0.1)
++                </h3>
++              </div>
++              {renderConnectionBadge(cliResult.status)}
++            </div>
++
++            <p className="text-xs text-gray-600 mb-3">
++              Connects to the developer companion CLI running on your own machine using the{' '}
++              <code className="font-mono bg-gray-100 px-1 rounded">loopback-network</code> permission and{' '}
++              <code className="font-mono bg-gray-100 px-1 rounded">targetAddressSpace: &apos;loopback&apos;</code>.
++            </p>
++
++            {/* Permission Status Row */}
++            <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded px-3 py-2 mb-4">
++              <span className="text-xs font-medium text-gray-700">Browser Permission:</span>
++              {renderPermissionBadge('loopback-network', loopbackPermission)}
++            </div>
++
++            {loopbackPermission === 'prompt' && (
++              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
++                Clicking <strong>Connect Local CLI</strong> will prompt your browser for{' '}
++                <strong>Apps on device / Loopback</strong> (<code>loopback-network</code>) permission.
++              </p>
++            )}
++
++            {loopbackPermission === 'denied' && (
++              <p className="text-xs text-red-800 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
++                <strong>Permission Denied:</strong> Open browser Site Settings and set{' '}
++                <strong>Apps on device</strong> (<code>loopback-network</code>) to Allow.
++              </p>
++            )}
++
++            {/* Endpoint Input */}
++            <div className="mb-3">
++              <label
++                htmlFor="cli-loopback-url"
++                className="block text-xs font-semibold text-gray-700 mb-1"
++              >
++                Companion CLI Loopback URL (127.0.0.1 / localhost)
++              </label>
++              <div className="flex gap-2">
++                <input
++                  id="cli-loopback-url"
++                  type="url"
++                  value={cliUrl}
++                  onChange={(e) => setCliUrl(e.target.value)}
++                  placeholder="http://127.0.0.1:9229/status"
++                  className="flex-1 text-xs font-mono px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-amber-400"
++                />
++                <button
++                  type="button"
++                  onClick={connectCompanionCli}
++                  disabled={cliResult.status === 'connecting'}
++                  className="bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold px-4 py-2 rounded whitespace-nowrap disabled:opacity-50 transition cursor-pointer"
++                >
++                  {cliResult.status === 'connecting' ? 'Connecting...' : 'Connect Local CLI'}
++                </button>
++              </div>
++              <div className="flex flex-wrap items-center gap-2 mt-2">
++                <span className="text-[11px] text-gray-500">Presets:</span>
++                {[
++                  'http://127.0.0.1:9229/status',
++                  'http://127.0.0.1:8080/health',
++                  'http://localhost:9229/status',
++                ].map((preset) => (
++                  <button
++                    key={preset}
++                    type="button"
++                    onClick={() => setCliUrl(preset)}
++                    className="text-[11px] font-mono text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded transition cursor-pointer"
++                  >
++                    {preset.replace(/^http:\/\//, '')}
++                  </button>
++                ))}
++              </div>
++            </div>
++          </div>
++
++          {/* Result Output */}
++          <div className="mt-2 pt-3 border-t border-gray-100 text-xs">
++            {cliResult.status === 'idle' && (
++              <p className="text-gray-500">
++                Ready to initiate user-gesture request with{' '}
++                <code className="font-mono">targetAddressSpace: &apos;loopback&apos;</code>.
++              </p>
++            )}
++            {cliResult.status === 'connected' && (
++              <div className="bg-emerald-50 border border-emerald-200 rounded p-2.5 text-emerald-900">
++                <div className="flex justify-between font-semibold mb-1">
++                  <span>HTTP {cliResult.httpStatus} OK</span>
++                  <span>{cliResult.latencyMs} ms</span>
++                </div>
++                <pre className="text-[11px] font-mono overflow-x-auto whitespace-pre-wrap">
++                  {typeof cliResult.payload === 'string'
++                    ? cliResult.payload
++                    : JSON.stringify(cliResult.payload, null, 2)}
++                </pre>
++              </div>
++            )}
++            {cliResult.status === 'error' && (
++              <div
++                role="status"
++                className="bg-red-50 border border-red-200 rounded p-2.5 text-red-800"
++              >
++                <p className="font-semibold mb-0.5">Loopback CLI Diagnostics</p>
++                <p className="text-[11px] leading-relaxed">{cliResult.errorMessage}</p>
++              </div>
++            )}
++          </div>
++        </div>
++      </div>
++
++      {/* Footer / Activity Log & LNA Configuration Guide */}
++      <div className="border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
++        <div className="flex flex-wrap items-center justify-between gap-2">
++          <div className="text-xs text-gray-600 flex flex-wrap items-center gap-3">
++            <span>
++              <strong>Permissions-Policy:</strong>{' '}
++              <code className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">
++                local-network=(self), loopback-network=(self)
++              </code>
++            </span>
++          </div>
++          <button
++            type="button"
++            onClick={() => setShowDeveloperDocs((prev) => !prev)}
++            className="text-xs font-semibold text-gray-700 hover:text-amber-600 underline cursor-pointer"
++          >
++            {showDeveloperDocs ? 'Hide LNA Configuration Guide' : 'Show LNA Configuration Guide'}
++          </button>
++        </div>
++
++        {showDeveloperDocs && (
++          <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-700">
++            <div className="bg-slate-50 p-3 rounded border border-gray-200">
++              <p className="font-bold text-gray-900 mb-1">
++                1. Browser Fetch &amp; Granular Permissions
++              </p>
++              <pre className="text-[11px] font-mono overflow-x-auto text-gray-800">{`// Query granular LNA permissions
++await navigator.permissions.query({ name: 'local-network' });
++await navigator.permissions.query({ name: 'loopback-network' });
++
++// Fetch LAN hardware device (192.168.1.x)
++await fetch('http://192.168.1.100:8080/diagnostics', {
++  targetAddressSpace: 'local'
++});
++
++// Fetch local companion CLI (127.0.0.1)
++await fetch('http://127.0.0.1:9229/status', {
++  targetAddressSpace: 'loopback'
++});`}</pre>
++            </div>
++            <div className="bg-slate-50 p-3 rounded border border-gray-200">
++              <p className="font-bold text-gray-900 mb-1">
++                2. Server CORS &amp; Permissions-Policy Headers
++              </p>
++              <pre className="text-[11px] font-mono overflow-x-auto text-gray-800">{`# Local Device / Companion CLI Response Headers:
++Access-Control-Allow-Origin: https://astro-news-pytrpecapa-uc.a.run.app
++Access-Control-Allow-Private-Network: true
++
++# Document / Iframe Delegation:
++Permissions-Policy: local-network=(self), loopback-network=(self)
++<iframe allow="local-network; loopback-network"></iframe>`}</pre>
++            </div>
++          </div>
++        )}
++
++        {logs.length > 0 && (
++          <div className="mt-3 pt-3 border-t border-gray-100">
++            <div className="flex items-center justify-between mb-1.5">
++              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
++                Diagnostics Connection Log
++              </span>
++              <button
++                type="button"
++                onClick={() => setLogs([])}
++                className="text-[11px] text-gray-500 hover:text-gray-800 cursor-pointer"
++              >
++                Clear
++              </button>
++            </div>
++            <ul className="space-y-1 max-h-28 overflow-y-auto font-mono text-[11px]">
++              {logs.map((entry) => (
++                <li key={entry.id} className="flex items-start gap-2">
++                  <span className="text-gray-400 shrink-0">[{entry.time}]</span>
++                  <span className="font-semibold text-gray-700 shrink-0">{entry.target}:</span>
++                  <span
++                    className={
++                      entry.level === 'error'
++                        ? 'text-red-700'
++                        : entry.level === 'success'
++                        ? 'text-emerald-700'
++                        : entry.level === 'warn'
++                        ? 'text-amber-700'
++                        : 'text-gray-700'
++                    }
++                  >
++                    {entry.message}
++                  </span>
++                </li>
++              ))}
++            </ul>
++          </div>
++        )}
++      </div>
++    </section>
++  );
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..eded1ef 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -58,8 +58,15 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         </a>
+       </div>
+ 
+-      <!-- Right Section: Stock -->
++      <!-- Right Section: Stock / Diagnostics Quick Link -->
+       <div class="text-xs font-semibold text-right">
++        <a
++          href={`${baseUrl}#developer-diagnostics`}
++          class="inline-flex items-center gap-1.5 text-gray-800 hover:text-amber-600 border border-gray-300 rounded px-2.5 py-1 bg-gray-50 hover:bg-amber-50 transition"
++        >
++          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
++          <span>Dev Diagnostics (LAN &amp; CLI)</span>
++        </a>
+       </div>
+     </div>
+   </div>
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..8f6e503 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network=(self), loopback-network=(self)'
++  );
++  return response;
+ });
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..34c637d 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
++import DiagnosticsWidget from '../components/DiagnosticsWidget';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
+@@ -57,6 +58,7 @@ politicsArticles[2] = {
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
++        <DiagnosticsWidget client:load />
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">

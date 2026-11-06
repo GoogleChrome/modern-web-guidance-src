@@ -1,0 +1,603 @@
+diff --git a/index.html b/index.html
+index 66c9173..52e72bf 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/styles.css">
+ </head>
+ 
+ <body>
+@@ -164,7 +17,11 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form action="/logout" method="POST" class="logout-form">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +33,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/server.js b/server.js
+index 52c2fd5..e258d7e 100644
+--- a/server.js
++++ b/server.js
+@@ -4,26 +4,238 @@ const path = require('node:path');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
++const MAX_REPORT_BODY_BYTES = 16 * 1024;
++
++function getSecurityHeaders(extraHeaders = {}) {
++  return {
++    'Reporting-Endpoints': 'csp-endpoint="/csp-report", default="/csp-report"',
++    'Report-To': JSON.stringify({
++      group: 'csp-endpoint',
++      max_age: 10886400,
++      endpoints: [{ url: '/csp-report' }],
++    }),
++    'Content-Security-Policy': [
++      "default-src 'self'",
++      "script-src 'self'",
++      "style-src 'self'",
++      "img-src 'self' https://images.unsplash.com data:",
++      "font-src 'self'",
++      "connect-src 'self'",
++      "object-src 'none'",
++      "base-uri 'self'",
++      "form-action 'self'",
++      "frame-ancestors 'none'",
++      'report-uri /csp-report',
++      'report-to csp-endpoint',
++    ].join('; '),
++    'Content-Security-Policy-Report-Only': [
++      "default-src 'self'",
++      "script-src 'self'",
++      "style-src 'self'",
++      "img-src 'self'",
++      "font-src 'self'",
++      "connect-src 'self'",
++      "object-src 'none'",
++      "base-uri 'self'",
++      "form-action 'self'",
++      "frame-ancestors 'none'",
++      "require-trusted-types-for 'script'",
++      'report-uri /csp-report',
++      'report-to csp-endpoint',
++    ].join('; '),
++    'Cross-Origin-Opener-Policy': 'same-origin; report-to="csp-endpoint"',
++    'Cross-Origin-Embedder-Policy-Report-Only': 'require-corp; report-to="csp-endpoint"',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'X-Content-Type-Options': 'nosniff',
++    'X-Frame-Options': 'DENY',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy':
++      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
++    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
++    'X-Permitted-Cross-Domain-Policies': 'none',
++    'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++    ...extraHeaders,
++  };
++}
++
++/**
++ * Resource Isolation Policy using Fetch Metadata request headers.
++ * Protects against cross-origin attacks (CSRF, XSSI, clickjacking/framing, cross-site logout).
++ */
++function isAllowedByFetchMetadata(req, pathname) {
++  const secFetchSite = req.headers['sec-fetch-site'];
++  const secFetchMode = req.headers['sec-fetch-mode'];
++  const secFetchDest = req.headers['sec-fetch-dest'];
++
++  // Allow requests from clients that do not send Fetch Metadata headers
++  if (!secFetchSite) {
++    return true;
++  }
++
++  // Allow same-origin and direct browser-initiated requests
++  if (secFetchSite === 'same-origin' || secFetchSite === 'none') {
++    return true;
++  }
++
++  // Allow simple top-level cross-site GET/HEAD navigations except to state-changing endpoints
++  const isLogout = pathname === '/logout' || pathname === '/logout/';
++  const disallowedNavigationDests = new Set(['object', 'embed', 'iframe', 'frame', 'fencedframe']);
++  if (
++    !isLogout &&
++    secFetchMode === 'navigate' &&
++    (req.method === 'GET' || req.method === 'HEAD') &&
++    !disallowedNavigationDests.has(secFetchDest)
++  ) {
++    return true;
++  }
++
++  return false;
++}
++
++/**
++ * Validates Origin header when present on state-changing requests.
++ */
++function isSameOriginRequest(req) {
++  const origin = req.headers['origin'];
++  if (!origin) {
++    return true;
++  }
++  try {
++    const originUrl = new URL(origin);
++    const expectedHost = req.headers['host'] || 'localhost';
++    return originUrl.host === expectedHost;
++  } catch {
++    return false;
++  }
++}
+ 
+ const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
++  let pathname = '/';
++  try {
++    const parsedUrl = new URL(req.url || '/', 'http://localhost');
++    pathname = parsedUrl.pathname;
++  } catch {
++    res.writeHead(400, getSecurityHeaders({ 'Content-Type': 'text/plain; charset=utf-8' }));
++    res.end('Bad Request');
++    return;
++  }
+ 
++  // Handle CSP / Security Policy Violation Reporting Endpoint
++  if (pathname === '/csp-report' || pathname === '/csp-report/') {
++    if (req.method !== 'POST') {
++      res.writeHead(
++        405,
++        getSecurityHeaders({
++          'Allow': 'POST',
++          'Content-Type': 'text/plain; charset=utf-8',
++        })
++      );
++      res.end('Method Not Allowed');
++      return;
++    }
++
++    let bodyBytes = 0;
++    let aborted = false;
++    req.on('data', (chunk) => {
++      bodyBytes += chunk.length;
++      if (bodyBytes > MAX_REPORT_BODY_BYTES && !aborted) {
++        aborted = true;
++        res.writeHead(413, getSecurityHeaders({ 'Content-Type': 'text/plain; charset=utf-8' }));
++        res.end('Payload Too Large');
++        req.destroy();
++      }
++    });
++    req.on('end', () => {
++      if (!aborted) {
++        res.writeHead(204, getSecurityHeaders());
++        res.end();
++      }
++    });
++    return;
++  }
++
++  // Enforce Fetch Metadata Resource Isolation Policy
++  if (!isAllowedByFetchMetadata(req, pathname)) {
++    res.writeHead(403, getSecurityHeaders({ 'Content-Type': 'text/plain; charset=utf-8' }));
++    res.end('Forbidden: Cross-origin request blocked by Resource Isolation Policy');
++    return;
++  }
++
++  // Handle state-changing Logout endpoint
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    if (!isSameOriginRequest(req)) {
++      res.writeHead(403, getSecurityHeaders({ 'Content-Type': 'text/plain; charset=utf-8' }));
++      res.end('Forbidden: Cross-origin logout blocked');
++      return;
++    }
++
++    if (req.method !== 'POST') {
++      res.writeHead(
++        405,
++        getSecurityHeaders({
++          'Allow': 'POST',
++          'Content-Type': 'text/plain; charset=utf-8',
++        })
++      );
++      res.end('Method Not Allowed');
++      return;
++    }
++
++    res.writeHead(
++      200,
++      getSecurityHeaders({
++        'Content-Type': 'text/html; charset=utf-8',
++        'Clear-Site-Data': '"cache", "cookies", "storage"',
++        'Cache-Control': 'no-store, no-cache, must-revalidate',
++      })
++    );
+     res.end('Logged out');
+     return;
+   }
+ 
++  // Only allow GET and HEAD for static/document routes
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    res.writeHead(
++      405,
++      getSecurityHeaders({
++        'Allow': 'GET, HEAD',
++        'Content-Type': 'text/plain; charset=utf-8',
++      })
++    );
++    res.end('Method Not Allowed');
++    return;
++  }
++
++  // Serve external stylesheet to support strict CSP without 'unsafe-inline'
++  if (pathname === '/styles.css') {
++    const cssPath = path.join(WORK_DIR, 'styles.css');
++    fs.readFile(cssPath, (err, data) => {
++      if (err) {
++        res.writeHead(500, getSecurityHeaders({ 'Content-Type': 'text/plain; charset=utf-8' }));
++        res.end('Server error');
++        return;
++      }
++      res.writeHead(
++        200,
++        getSecurityHeaders({
++          'Content-Type': 'text/css; charset=utf-8',
++          'Cache-Control': 'public, max-age=3600',
++        })
++      );
++      res.end(req.method === 'HEAD' ? undefined : data);
++    });
++    return;
++  }
++
+   const filePath = path.join(WORK_DIR, 'index.html');
+   fs.readFile(filePath, (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, getSecurityHeaders({ 'Content-Type': 'text/plain; charset=utf-8' }));
+       res.end('Server error');
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    res.writeHead(200, getSecurityHeaders({ 'Content-Type': 'text/html; charset=utf-8' }));
++    res.end(req.method === 'HEAD' ? undefined : data);
+   });
+ });
+ 
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..1290815
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,166 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  align-items: center;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-form {
++  display: inline;
++}
++
++.logout-link {
++  background: transparent;
++  color: white;
++  font-family: inherit;
++  font-size: 0.9rem;
++  cursor: pointer;
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++  text-decoration: none;
++  transition: color 0.3s;
++}
++
++.logout-link:hover {
++  color: var(--accent);
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.section-title {
++  text-align: center;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}

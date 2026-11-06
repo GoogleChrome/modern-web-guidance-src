@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+index 66c9173..9c9b10a 100644
+--- a/index.html
++++ b/index.html
+@@ -28,7 +28,7 @@
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -46,23 +46,23 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .site-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+@@ -93,6 +93,70 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Breadcrumbs */
++    .breadcrumb {
++      max-width: 1100px;
++      margin: 24px auto 0;
++      padding: 0 20px;
++      font-size: 0.9rem;
++    }
++
++    .breadcrumb > ol {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem;
++      list-style: none;
++    }
++
++    .breadcrumb > ol > li {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    /* Decorative divider: empty alt text keeps it out of the accessibility tree */
++    .breadcrumb > ol > li + li::before {
++      content: "›" / "";
++      color: #6d4c41;
++      font-size: 1.1em;
++      line-height: 1;
++    }
++
++    .breadcrumb a {
++      color: var(--primary);
++      text-decoration: underline;
++      text-underline-offset: 0.2em;
++      text-decoration-thickness: 1px;
++      border-radius: 2px;
++    }
++
++    .breadcrumb a:hover {
++      color: #000;
++      text-decoration-thickness: 2px;
++    }
++
++    .breadcrumb a:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .breadcrumb a[aria-current="page"] {
++      color: var(--text);
++      font-weight: 600;
++      text-decoration: none;
++    }
++
++    @media (forced-colors: active) {
++      .breadcrumb a[aria-current="page"] {
++        text-decoration: underline;
++      }
++    }
++
++    .breadcrumb + .container {
++      margin-top: 24px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -157,7 +221,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -174,9 +238,17 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <nav class="breadcrumb" aria-label="Breadcrumbs">
++    <ol>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="#seasonal-favorites" aria-current="page">Seasonal Favorites</a></li>
++    </ol>
++  </nav>
++
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-favorites-heading">
++      <h2 id="seasonal-favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

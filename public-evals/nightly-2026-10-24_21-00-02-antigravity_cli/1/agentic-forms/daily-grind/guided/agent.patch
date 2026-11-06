@@ -1,0 +1,1107 @@
+diff --git a/index.html b/index.html
+index 66c9173..ee41569 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,229 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Tool Form & Interactive Sections */
++    .tools-section {
++      margin-top: 50px;
++    }
++
++    .tools-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++      margin-top: 24px;
++    }
++
++    .form-card {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      text-align: left;
++      transition: outline 0.2s, background-color 0.2s;
++    }
++
++    .form-card h3 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .form-card .subtitle {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-bottom: 16px;
++    }
++
++    .form-group {
++      margin-block-end: 1.25rem;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++      padding: 6px 0;
++      margin-top: -6px;
++      color: var(--text);
++    }
++
++    .form-group input[type="text"],
++    .form-group input[type="email"],
++    .form-group input[type="tel"],
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      background-color: #fff;
++      color: var(--text);
++      font-family: inherit;
++    }
++
++    .form-group textarea {
++      min-height: 96px;
++      resize: vertical;
++    }
++
++    .form-group input:focus-visible,
++    .form-group select:focus-visible,
++    .form-group textarea:focus-visible,
++    .btn:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .form-group input:invalid:user-invalid,
++    .form-group select:invalid:user-invalid,
++    .form-group textarea:invalid:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    fieldset.form-group {
++      border: 1px solid #d7ccc8;
++      border-radius: 6px;
++      padding: 12px 16px;
++    }
++
++    fieldset.form-group legend {
++      font-weight: 600;
++      padding: 0 6px;
++      color: var(--primary);
++    }
++
++    .choice-list {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-top: 6px;
++    }
++
++    .choice-item {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      min-height: 44px;
++      cursor: pointer;
++    }
++
++    .choice-item input[type="radio"],
++    .choice-item input[type="checkbox"] {
++      width: 18px;
++      height: 18px;
++      accent-color: var(--primary);
++    }
++
++    .choice-item label {
++      display: inline;
++      font-weight: normal;
++      margin: 0;
++      padding: 8px 4px;
++      cursor: pointer;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.82rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      min-height: 48px;
++      width: 100%;
++    }
++
++    .btn-secondary {
++      background: #6d4c41;
++    }
++
++    .btn-danger {
++      background: #b71c1c;
++    }
++
++    .btn-danger:hover {
++      background: #7f0000;
++    }
++
++    .result-box {
++      margin-top: 16px;
++      padding: 12px 14px;
++      border-radius: 6px;
++      background: #efebe9;
++      border-left: 4px solid var(--primary);
++      font-size: 0.92rem;
++    }
++
++    .result-box[hidden] {
++      display: none;
++    }
++
++    .result-box.error {
++      background: #ffebee;
++      border-left-color: #c62828;
++      color: #b71c1c;
++    }
++
++    .agent-status-banner {
++      background: #e3f2fd;
++      color: #0d47a1;
++      border: 1px solid #90caf9;
++      border-radius: 6px;
++      padding: 10px 16px;
++      margin-bottom: 24px;
++      font-size: 0.9rem;
++    }
++
++    .agent-status-banner[hidden] {
++      display: none;
++    }
++
++    .cart-summary {
++      margin-top: 12px;
++      padding: 12px;
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      border-radius: 6px;
++      font-size: 0.9rem;
++    }
++
++    .cart-summary ul {
++      list-style: disc;
++      margin-left: 20px;
++      margin-top: 6px;
++    }
++
++    /* WebMCP Visual Feedback Pseudo-classes */
++    @keyframes pulse {
++      0%, 100% {
++        transform: scale(1);
++        box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4);
++      }
++      50% {
++        transform: scale(1.02);
++        box-shadow: 0 0 0 6px rgba(211, 47, 47, 0);
++      }
++    }
++
++    form:tool-form-active {
++      outline: 2px dashed #0b57d0;
++      outline-offset: 4px;
++      background-color: rgba(11, 87, 208, 0.05);
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed #d32f2f;
++      outline-offset: 2px;
++      animation: pulse 2s infinite;
++    }
+   </style>
+ </head>
+ 
+@@ -160,53 +383,859 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu-section">Menu</a></li>
++      <li><a href="#locations-section">Locations</a></li>
++      <li><a href="#rewards-section">Rewards</a></li>
++      <li><a href="#order-section">Order Online</a></li>
++      <li><a href="#contact-section">Contact</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order-section" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <div id="agent-status" class="agent-status-banner" role="status" aria-live="polite" hidden></div>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#menu-section" class="btn" data-select-drink="Maple Oat Latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#menu-section" class="btn" data-select-drink="Dark Roast Espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#menu-section" class="btn" data-select-drink="Cold Brew">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="tools-section" aria-label="Interactive Coffee Shop Services">
++      <h2 style="text-align: center;">Interactive Services &amp; Ordering</h2>
++      <div class="tools-grid">
++
++        <!-- 1. Search & Filter Menu (Read-only query -> toolautosubmit) -->
++        <div class="form-card" id="menu-section">
++          <h3>Search Menu &amp; Nutrition</h3>
++          <p class="subtitle">Browse drinks, ingredients, calories, and pricing.</p>
++          <form id="search-menu-form"
++                action="/menu"
++                method="GET"
++                toolname="search-menu"
++                tooldescription="Search and filter the coffee shop menu to retrieve matching drinks, prices, calories, and ingredients."
++                toolautosubmit>
++            <div class="form-group">
++              <label for="menu-query">Drink or Ingredient Keyword</label>
++              <input type="text"
++                     id="menu-query"
++                     name="query"
++                     autocomplete="off"
++                     autocorrect="off"
++                     autocapitalize="off"
++                     spellcheck="false"
++                     enterkeyhint="search"
++                     aria-describedby="menu-query-hint"
++                     toolparamdescription="Keyword to match drink name or flavor notes, e.g., maple, espresso, oat, cold brew">
++              <span id="menu-query-hint" class="hint">Leave blank to list all items in the selected category.</span>
++            </div>
++
++            <fieldset class="form-group" toolparamdescription="Menu category to filter drinks by">
++              <legend>Category</legend>
++              <div class="choice-list">
++                <div class="choice-item">
++                  <input type="radio" id="cat-all" name="category" value="all" checked>
++                  <label for="cat-all">All</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="cat-seasonal" name="category" value="seasonal">
++                  <label for="cat-seasonal">Seasonal</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="cat-espresso" name="category" value="espresso">
++                  <label for="cat-espresso">Espresso</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="cat-cold-brew" name="category" value="cold-brew">
++                  <label for="cat-cold-brew">Cold Brew</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="cat-tea" name="category" value="tea">
++                  <label for="cat-tea">Tea &amp; Matcha</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <fieldset class="form-group" toolparamdescription="Dietary preferences that returned menu items must satisfy">
++              <legend>Dietary Filters</legend>
++              <div class="choice-list">
++                <div class="choice-item">
++                  <input type="checkbox" id="diet-dairy-free" name="dietary" value="dairy-free">
++                  <label for="diet-dairy-free">Dairy-Free Available</label>
++                </div>
++                <div class="choice-item">
++                  <input type="checkbox" id="diet-low-sugar" name="dietary" value="low-sugar">
++                  <label for="diet-low-sugar">Low Sugar (&lt;10g)</label>
++                </div>
++                <div class="choice-item">
++                  <input type="checkbox" id="diet-decaf" name="dietary" value="decaf-option">
++                  <label for="diet-decaf">Decaf Option</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <button type="submit" class="btn">Search Menu</button>
++          </form>
++          <div id="search-menu-result" class="result-box" role="region" aria-live="polite" hidden></div>
++        </div>
++
++        <!-- 2. Add Custom Drink to Cart (Low-risk, reversible action -> toolautosubmit) -->
++        <div class="form-card" id="order-section">
++          <h3>Customize &amp; Add to Order</h3>
++          <p class="subtitle">Build your drink and add it to your active cart.</p>
++          <form id="add-to-cart-form"
++                action="/order-online/cart"
++                method="POST"
++                toolname="add-drink-to-cart"
++                tooldescription="Customize a beverage and add it to the customer's shopping cart."
++                toolautosubmit>
++            <div class="form-group">
++              <label for="cart-drink">Beverage (Required)</label>
++              <select id="cart-drink"
++                      name="drink"
++                      required
++                      toolparamdescription="The beverage from The Daily Grind menu to prepare">
++                <option value="Maple Oat Latte">Maple Oat Latte ($5.75)</option>
++                <option value="Dark Roast Espresso">Dark Roast Espresso ($3.50)</option>
++                <option value="Cold Brew">18-Hour Cold Brew ($4.75)</option>
++                <option value="Honey Lavender Cortado">Honey Lavender Cortado ($5.25)</option>
++                <option value="Vanilla Bean Latte">Vanilla Bean Latte ($5.25)</option>
++                <option value="Ceremonial Matcha Latte">Ceremonial Matcha Latte ($5.50)</option>
++                <option value="Chai Spice Latte">Chai Spice Latte ($5.00)</option>
++                <option value="House Drip Coffee">House Drip Coffee ($3.25)</option>
++              </select>
++            </div>
++
++            <fieldset class="form-group" toolparamdescription="Cup size for the beverage">
++              <legend>Cup Size</legend>
++              <div class="choice-list">
++                <div class="choice-item">
++                  <input type="radio" id="size-small" name="size" value="Small (12oz)">
++                  <label for="size-small">Small (12oz)</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="size-medium" name="size" value="Medium (16oz)" checked>
++                  <label for="size-medium">Medium (16oz)</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="size-large" name="size" value="Large (20oz)">
++                  <label for="size-large">Large (20oz) (+$0.75)</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <fieldset class="form-group" toolparamdescription="Milk or non-dairy alternative">
++              <legend>Milk Choice</legend>
++              <div class="choice-list">
++                <div class="choice-item">
++                  <input type="radio" id="milk-oat" name="milk" value="Oat Milk" checked>
++                  <label for="milk-oat">Oat</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="milk-whole" name="milk" value="Whole Milk">
++                  <label for="milk-whole">Whole</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="milk-almond" name="milk" value="Almond Milk">
++                  <label for="milk-almond">Almond</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="milk-none" name="milk" value="No Milk (Black)">
++                  <label for="milk-none">Black / None</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <div class="form-group">
++              <label for="cart-quantity">Quantity (Required)</label>
++              <input type="text"
++                     id="cart-quantity"
++                     name="quantity"
++                     value="1"
++                     required
++                     inputmode="numeric"
++                     pattern="[1-9]|10"
++                     aria-describedby="cart-quantity-hint"
++                     toolparamdescription="Number of cups to add, from 1 to 10">
++              <span id="cart-quantity-hint" class="hint">Enter a number between 1 and 10.</span>
++            </div>
++
++            <button type="submit" class="btn">Add to Cart</button>
++          </form>
++
++          <div id="cart-display" class="cart-summary" aria-live="polite">
++            <strong>Current Cart (<span id="cart-count">1</span> item):</strong>
++            <ul id="cart-items-list">
++              <li>1x Medium (16oz) Maple Oat Latte (Oat Milk) — $5.75</li>
++            </ul>
++            <p style="margin-top: 6px; font-weight: 600;">Subtotal: $<span id="cart-subtotal">5.75</span></p>
++          </div>
++          <div id="add-to-cart-result" class="result-box" role="region" aria-live="polite" hidden></div>
++        </div>
++
++        <!-- 3. Place Pickup Order / Checkout (Financial & Transactional -> NO toolautosubmit) -->
++        <div class="form-card" id="checkout-section">
++          <h3>Complete Pickup Order</h3>
++          <p class="subtitle">Finalize your cart for express café pickup. Requires confirmation before charging.</p>
++          <form id="checkout-order-form"
++                action="/order-online/checkout"
++                method="POST"
++                toolname="place-pickup-order"
++                tooldescription="Submit the customer's current coffee order for café pickup and authorize payment.">
++            <div class="form-group">
++              <label for="customer-name">Full Name (Required)</label>
++              <input type="text"
++                     id="customer-name"
++                     name="customerName"
++                     required
++                     maxlength="100"
++                     autocomplete="name"
++                     toolparamdescription="Full name for the pickup cup label, e.g., Alex Rivera">
++            </div>
++
++            <div class="form-group">
++              <label for="customer-phone">Mobile Phone for SMS Ready Alert (Required)</label>
++              <input type="tel"
++                     id="customer-phone"
++                     name="phone"
++                     required
++                     autocomplete="tel"
++                     inputmode="tel"
++                     aria-describedby="phone-hint"
++                     toolparamdescription="Phone number to receive pickup notification, e.g., 555-234-5678">
++              <span id="phone-hint" class="hint">We text you as soon as your drink hits the bar.</span>
++            </div>
++
++            <fieldset class="form-group" toolparamdescription="Café location where the customer will pick up the order">
++              <legend>Pickup Location</legend>
++              <div class="choice-list">
++                <div class="choice-item">
++                  <input type="radio" id="loc-downtown" name="pickupLocation" value="Downtown Roastery (120 Main St)" checked>
++                  <label for="loc-downtown">Downtown Roastery</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="loc-riverside" name="pickupLocation" value="Riverside Café (45 River Rd)">
++                  <label for="loc-riverside">Riverside Café</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="loc-campus" name="pickupLocation" value="University Commons (88 College Ave)">
++                  <label for="loc-campus">University Commons</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <div class="form-group">
++              <label for="promo-code">Promo or Gift Code (Optional)</label>
++              <input type="text"
++                     id="promo-code"
++                     name="promoCode"
++                     autocomplete="off"
++                     autocorrect="off"
++                     autocapitalize="off"
++                     spellcheck="false"
++                     toolparamdescription="Optional promotional discount code such as MORNING10 or BREWVIP">
++            </div>
++
++            <button type="submit" class="btn" id="checkout-submit-btn">Authorize &amp; Pay $5.75</button>
++          </form>
++          <div id="checkout-order-result" class="result-box" role="region" aria-live="polite" hidden></div>
++        </div>
++
++        <!-- 4. Find Cafe Locations (Read-only query -> toolautosubmit) -->
++        <div class="form-card" id="locations-section">
++          <h3>Find Café Locations</h3>
++          <p class="subtitle">Check store hours, seating availability, and amenities near you.</p>
++          <form id="find-locations-form"
++                action="/locations"
++                method="GET"
++                toolname="find-cafe-locations"
++                tooldescription="Find nearby Daily Grind café locations, opening hours, and available store amenities."
++                toolautosubmit>
++            <div class="form-group">
++              <label for="location-search">Neighborhood or Postal Code</label>
++              <input type="text"
++                     id="location-search"
++                     name="locationQuery"
++                     autocomplete="postal-code"
++                     autocorrect="off"
++                     autocapitalize="off"
++                     spellcheck="false"
++                     enterkeyhint="search"
++                     toolparamdescription="Neighborhood name, street, or postal code, e.g., Downtown, 05401, Riverside">
++            </div>
++
++            <fieldset class="form-group" toolparamdescription="Required café amenities to filter locations">
++              <legend>Amenities</legend>
++              <div class="choice-list">
++                <div class="choice-item">
++                  <input type="checkbox" id="amenity-wifi" name="amenities" value="wifi">
++                  <label for="amenity-wifi">High-Speed Wi-Fi</label>
++                </div>
++                <div class="choice-item">
++                  <input type="checkbox" id="amenity-patio" name="amenities" value="patio">
++                  <label for="amenity-patio">Heated Patio</label>
++                </div>
++                <div class="choice-item">
++                  <input type="checkbox" id="amenity-drive" name="amenities" value="drive-thru">
++                  <label for="amenity-drive">Drive-Thru</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <button type="submit" class="btn">Find Locations</button>
++          </form>
++          <div id="find-locations-result" class="result-box" role="region" aria-live="polite" hidden></div>
+         </div>
++
++        <!-- 5. Check Rewards Points Balance (Read-only query -> toolautosubmit) -->
++        <div class="form-card" id="rewards-section">
++          <h3>Bean Rewards Lookup</h3>
++          <p class="subtitle">Check your loyalty points balance, tier status, and redeemable perks.</p>
++          <form id="check-rewards-form"
++                action="/rewards"
++                method="GET"
++                toolname="check-rewards-balance"
++                tooldescription="Look up a member's Bean Rewards points balance, loyalty tier, and available free drink vouchers."
++                toolautosubmit>
++            <div class="form-group">
++              <label for="rewards-identifier">Member Email or Loyalty ID (Required)</label>
++              <input type="text"
++                     id="rewards-identifier"
++                     name="memberIdentifier"
++                     required
++                     autocomplete="email"
++                     autocorrect="off"
++                     autocapitalize="off"
++                     spellcheck="false"
++                     enterkeyhint="done"
++                     aria-describedby="rewards-id-hint"
++                     toolparamdescription="Registered member email address or Bean Rewards ID, e.g., alex@example.com or DG-1042">
++              <span id="rewards-id-hint" class="hint">Try <code>alex@example.com</code> or <code>DG-1042</code>.</span>
++            </div>
++
++            <button type="submit" class="btn">Check Balance</button>
++          </form>
++          <div id="check-rewards-result" class="result-box" role="region" aria-live="polite" hidden></div>
++        </div>
++
++        <!-- 6. Contact & Feedback Form (High-Impact User Communication -> NO toolautosubmit) -->
++        <div class="form-card" id="contact-section">
++          <h3>Contact &amp; Catering Inquiry</h3>
++          <p class="subtitle">Send a message to our roastery team or request event catering.</p>
++          <form id="contact-support-form"
++                action="/contact"
++                method="POST"
++                toolname="send-customer-inquiry"
++                tooldescription="Send a customer support message, wholesale inquiry, or catering request to The Daily Grind team.">
++            <div class="form-group">
++              <label for="contact-email">Your Email Address (Required)</label>
++              <input type="email"
++                     id="contact-email"
++                     name="email"
++                     required
++                     autocomplete="email"
++                     autocorrect="off"
++                     autocapitalize="off"
++                     spellcheck="false"
++                     toolparamdescription="Customer email address for our team's reply, e.g., pat@example.com">
++            </div>
++
++            <fieldset class="form-group" toolparamdescription="Topic of the inquiry">
++              <legend>Inquiry Topic</legend>
++              <div class="choice-list">
++                <div class="choice-item">
++                  <input type="radio" id="topic-catering" name="topic" value="Event Catering" checked>
++                  <label for="topic-catering">Catering</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="topic-beans" name="topic" value="Wholesale &amp; Beans">
++                  <label for="topic-beans">Wholesale</label>
++                </div>
++                <div class="choice-item">
++                  <input type="radio" id="topic-support" name="topic" value="Order Support">
++                  <label for="topic-support">Order Support</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <div class="form-group">
++              <label for="contact-message">Message Details (Required)</label>
++              <textarea id="contact-message"
++                        name="message"
++                        required
++                        minlength="10"
++                        maxlength="500"
++                        toolparamdescription="Detailed message, event date, or question for the roastery staff"></textarea>
++            </div>
++
++            <button type="submit" class="btn">Send Message</button>
++          </form>
++          <div id="contact-support-result" class="result-box" role="region" aria-live="polite" hidden></div>
++        </div>
++
+       </div>
+     </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#menu-section">Menu</a> |
++      <a href="#locations-section">Locations</a> |
++      <a href="#rewards-section">Rewards</a> |
++      <a href="#contact-section">Contact Us</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const MENU_CATALOG = [
++        {
++          name: 'Maple Oat Latte',
++          category: 'seasonal',
++          price: 5.75,
++          calories: 210,
++          sugarGrams: 14,
++          dietary: ['dairy-free', 'decaf-option'],
++          description: 'Creamy oat milk with a hint of Vermont maple syrup and double espresso.'
++        },
++        {
++          name: 'Dark Roast Espresso',
++          category: 'espresso',
++          price: 3.50,
++          calories: 15,
++          sugarGrams: 0,
++          dietary: ['dairy-free', 'low-sugar', 'decaf-option'],
++          description: 'Bold, smokey single-origin shot with rich crema.'
++        },
++        {
++          name: 'Cold Brew',
++          category: 'cold-brew',
++          price: 4.75,
++          calories: 10,
++          sugarGrams: 0,
++          dietary: ['dairy-free', 'low-sugar'],
++          description: 'Steeped for 18 hours for maximum smoothness and low acidity.'
++        },
++        {
++          name: 'Honey Lavender Cortado',
++          category: 'seasonal',
++          price: 5.25,
++          calories: 130,
++          sugarGrams: 9,
++          dietary: ['dairy-free', 'low-sugar', 'decaf-option'],
++          description: 'Equal parts espresso and steamed milk infused with culinary lavender and wildflower honey.'
++        },
++        {
++          name: 'Vanilla Bean Latte',
++          category: 'espresso',
++          price: 5.25,
++          calories: 190,
++          sugarGrams: 16,
++          dietary: ['dairy-free', 'decaf-option'],
++          description: 'Madagascar vanilla bean paste blended with velvety micro-foam.'
++        },
++        {
++          name: 'Ceremonial Matcha Latte',
++          category: 'tea',
++          price: 5.50,
++          calories: 140,
++          sugarGrams: 8,
++          dietary: ['dairy-free', 'low-sugar'],
++          description: 'Stone-ground Uji matcha whisked to order with your choice of milk.'
++        },
++        {
++          name: 'Chai Spice Latte',
++          category: 'tea',
++          price: 5.00,
++          calories: 180,
++          sugarGrams: 18,
++          dietary: ['dairy-free'],
++          description: 'House-simmered black tea with cardamom, cinnamon, ginger, and clove.'
++        },
++        {
++          name: 'House Drip Coffee',
++          category: 'espresso',
++          price: 3.25,
++          calories: 5,
++          sugarGrams: 0,
++          dietary: ['dairy-free', 'low-sugar', 'decaf-option'],
++          description: 'Freshly brewed balanced medium roast from Colombian and Ethiopian beans.'
++        }
++      ];
++
++      const CAFE_LOCATIONS = [
++        {
++          name: 'Downtown Roastery',
++          address: '120 Main St, Burlington, VT 05401',
++          neighborhood: 'downtown',
++          hours: '6:00 AM – 7:00 PM Daily',
++          amenities: ['wifi', 'patio'],
++          waitMinutes: 4
++        },
++        {
++          name: 'Riverside Café',
++          address: '45 River Rd, Winooski, VT 05404',
++          neighborhood: 'riverside',
++          hours: '6:30 AM – 6:00 PM Daily',
++          amenities: ['wifi', 'patio', 'drive-thru'],
++          waitMinutes: 3
++        },
++        {
++          name: 'University Commons',
++          address: '88 College Ave, Burlington, VT 05405',
++          neighborhood: 'campus',
++          hours: '7:00 AM – 9:00 PM Daily',
++          amenities: ['wifi'],
++          waitMinutes: 6
++        }
++      ];
++
++      const REWARDS_MEMBERS = {
++        'alex@example.com': {
++          name: 'Alex Rivera',
++          id: 'DG-1042',
++          points: 420,
++          tier: 'Gold Roaster',
++          perks: ['1 Free Handcrafted Drink', 'Free Oat Milk Upgrades']
++        },
++        'dg-1042': {
++          name: 'Alex Rivera',
++          id: 'DG-1042',
++          points: 420,
++          tier: 'Gold Roaster',
++          perks: ['1 Free Handcrafted Drink', 'Free Oat Milk Upgrades']
++        },
++        'sam@example.com': {
++          name: 'Sam Chen',
++          id: 'DG-2088',
++          points: 165,
++          tier: 'Bronze Bean',
++          perks: ['50% Off Seasonal Pastry']
++        }
++      };
++
++      const cartState = [
++        {
++          drink: 'Maple Oat Latte',
++          size: 'Medium (16oz)',
++          milk: 'Oat Milk',
++          quantity: 1,
++          unitPrice: 5.75
++        }
++      ];
++
++      function getDrinkPrice(drinkName, size) {
++        const item = MENU_CATALOG.find((entry) => entry.name === drinkName);
++        const base = item ? item.price : 5.00;
++        const sizeUpcharge = size && size.includes('Large') ? 0.75 : 0;
++        return +(base + sizeUpcharge).toFixed(2);
++      }
++
++      function getCartTotal() {
++        return cartState.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
++      }
++
++      function renderCartSummary() {
++        const countEl = document.getElementById('cart-count');
++        const listEl = document.getElementById('cart-items-list');
++        const subtotalEl = document.getElementById('cart-subtotal');
++        const checkoutBtn = document.getElementById('checkout-submit-btn');
++
++        const totalUnits = cartState.reduce((sum, item) => sum + item.quantity, 0);
++        const totalCost = getCartTotal().toFixed(2);
++
++        countEl.textContent = String(totalUnits);
++        subtotalEl.textContent = totalCost;
++        checkoutBtn.textContent = `Authorize & Pay $${totalCost}`;
++
++        listEl.replaceChildren(
++          ...cartState.map((item) => {
++            const li = document.createElement('li');
++            const lineTotal = (item.unitPrice * item.quantity).toFixed(2);
++            li.textContent = `${item.quantity}x ${item.size} ${item.drink} (${item.milk}) — $${lineTotal}`;
++            return li;
++          })
++        );
++      }
++
++      function showResult(elementId, message, isError = false) {
++        const box = document.getElementById(elementId);
++        if (!box) return;
++        box.hidden = false;
++        box.classList.toggle('error', isError);
++        box.textContent = message;
++      }
++
++      function validateFormControls(form) {
++        const errors = [];
++        const controls = Array.from(form.elements);
++        for (const control of controls) {
++          if (!control.name || control.disabled) continue;
++          if (typeof control.checkValidity === 'function' && !control.checkValidity()) {
++            errors.push({
++              field: control.name,
++              message: control.validationMessage || 'Invalid value'
++            });
++          }
++        }
++        return errors;
++      }
++
++      // Attach blur/input validation listeners per modern form best practices
++      document.querySelectorAll('form input, form select, form textarea').forEach((control) => {
++        control.addEventListener('input', () => {
++          control.setCustomValidity('');
++        });
++        control.addEventListener('blur', () => {
++          if (control.value && typeof control.checkValidity === 'function') {
++            control.checkValidity();
++          }
++        });
++      });
++
++      // Helper to wire up WebMCP declarative form submissions
++      function bindAgenticForm(formId, resultBoxId, handler) {
++        const form = document.getElementById(formId);
++        if (!form) return;
++
++        form.addEventListener('submit', (event) => {
++          event.preventDefault();
++
++          const validationErrors = validateFormControls(form);
++          if (validationErrors.length > 0) {
++            const errorString =
++              'Validation failed: ' +
++              validationErrors.map((err) => `${err.field} (${err.message})`).join(', ');
++            showResult(resultBoxId, errorString, true);
++            if (event.agentInvoked && typeof event.respondWith === 'function') {
++              event.respondWith(Promise.resolve(errorString));
++            }
++            return;
++          }
++
++          const resultPromise = Promise.resolve().then(() => {
++            const formData = new FormData(form);
++            const output = handler(formData, form);
++            showResult(resultBoxId, output.uiMessage, false);
++            return output.agentResponse;
++          });
++
++          if (event.agentInvoked && typeof event.respondWith === 'function') {
++            event.respondWith(resultPromise);
++          }
++        });
++      }
++
++      // 1. Search Menu Handler
++      bindAgenticForm('search-menu-form', 'search-menu-result', (formData) => {
++        const query = (formData.get('query') || '').toString().trim().toLowerCase();
++        const category = (formData.get('category') || 'all').toString();
++        const dietaryFilters = formData.getAll('dietary').map((d) => d.toString());
++
++        const matches = MENU_CATALOG.filter((item) => {
++          const matchesQuery =
++            !query ||
++            item.name.toLowerCase().includes(query) ||
++            item.description.toLowerCase().includes(query);
++          const matchesCategory = category === 'all' || item.category === category;
++          const matchesDiet = dietaryFilters.every((filter) => item.dietary.includes(filter));
++          return matchesQuery && matchesCategory && matchesDiet;
++        });
++
++        if (matches.length === 0) {
++          const msg = 'No menu items matched your filters. Try broadening your search.';
++          return { uiMessage: msg, agentResponse: { count: 0, items: [], message: msg } };
++        }
++
++        const summary = matches
++          .map((m) => `${m.name} ($${m.price.toFixed(2)}, ${m.calories} cal) — ${m.description}`)
++          .join(' | ');
++        const uiMessage = `Found ${matches.length} drink(s): ${summary}`;
++        return {
++          uiMessage,
++          agentResponse: {
++            count: matches.length,
++            items: matches
++          }
++        };
++      });
++
++      // 2. Add to Cart Handler
++      bindAgenticForm('add-to-cart-form', 'add-to-cart-result', (formData) => {
++        const drink = (formData.get('drink') || 'Maple Oat Latte').toString();
++        const size = (formData.get('size') || 'Medium (16oz)').toString();
++        const milk = (formData.get('milk') || 'Oat Milk').toString();
++        const quantity = Math.max(1, Math.min(10, parseInt(formData.get('quantity') || '1', 10) || 1));
++        const unitPrice = getDrinkPrice(drink, size);
++
++        cartState.push({ drink, size, milk, quantity, unitPrice });
++        renderCartSummary();
++
++        const subtotal = getCartTotal().toFixed(2);
++        const uiMessage = `Added ${quantity}x ${size} ${drink} (${milk}) to cart. New subtotal: $${subtotal}.`;
++        return {
++          uiMessage,
++          agentResponse: {
++            status: 'added',
++            addedItem: { drink, size, milk, quantity, unitPrice },
++            cartSubtotal: Number(subtotal),
++            totalItemsInCart: cartState.reduce((sum, i) => sum + i.quantity, 0)
++          }
++        };
++      });
++
++      // 3. Place Pickup Order / Checkout Handler
++      bindAgenticForm('checkout-order-form', 'checkout-order-result', (formData) => {
++        const customerName = (formData.get('customerName') || '').toString().trim();
++        const phone = (formData.get('phone') || '').toString().trim();
++        const pickupLocation = (formData.get('pickupLocation') || 'Downtown Roastery (120 Main St)').toString();
++        const promoCode = (formData.get('promoCode') || '').toString().trim().toUpperCase();
++
++        const rawTotal = getCartTotal();
++        const discount = promoCode === 'MORNING10' || promoCode === 'BREWVIP' ? +(rawTotal * 0.1).toFixed(2) : 0;
++        const finalTotal = +(rawTotal - discount).toFixed(2);
++        const orderNumber = 'DG-' + Math.floor(10000 + Math.random() * 90000);
++
++        const uiMessage = `Order ${orderNumber} confirmed for ${customerName}! Total charged: $${finalTotal.toFixed(2)}. Ready in ~6 mins at ${pickupLocation}. SMS alert queued for ${phone}.`;
++        return {
++          uiMessage,
++          agentResponse: {
++            status: 'confirmed',
++            orderNumber,
++            customerName,
++            phone,
++            pickupLocation,
++            discountApplied: discount,
++            totalCharged: finalTotal,
++            estimatedReadyMinutes: 6
++          }
++        };
++      });
++
++      // 4. Find Cafe Locations Handler
++      bindAgenticForm('find-locations-form', 'find-locations-result', (formData) => {
++        const query = (formData.get('locationQuery') || '').toString().trim().toLowerCase();
++        const requiredAmenities = formData.getAll('amenities').map((a) => a.toString());
++
++        const matches = CAFE_LOCATIONS.filter((loc) => {
++          const matchesQuery =
++            !query ||
++            loc.name.toLowerCase().includes(query) ||
++            loc.address.toLowerCase().includes(query) ||
++            loc.neighborhood.includes(query);
++          const matchesAmenities = requiredAmenities.every((am) => loc.amenities.includes(am));
++          return matchesQuery && matchesAmenities;
++        });
++
++        if (matches.length === 0) {
++          const msg = 'No café locations matched those criteria.';
++          return { uiMessage: msg, agentResponse: { count: 0, locations: [], message: msg } };
++        }
++
++        const uiMessage = matches
++          .map((loc) => `${loc.name} (${loc.address}) — Open ${loc.hours} — Est. bar wait: ${loc.waitMinutes} mins`)
++          .join(' | ');
++        return {
++          uiMessage,
++          agentResponse: {
++            count: matches.length,
++            locations: matches
++          }
++        };
++      });
++
++      // 5. Check Rewards Balance Handler
++      bindAgenticForm('check-rewards-form', 'check-rewards-result', (formData) => {
++        const identifier = (formData.get('memberIdentifier') || '').toString().trim().toLowerCase();
++        const member = REWARDS_MEMBERS[identifier] || {
++          name: 'Valued Guest',
++          id: identifier.toUpperCase(),
++          points: 120,
++          tier: 'Bronze Bean',
++          perks: ['Free Birthday Espresso Shot']
++        };
++
++        const uiMessage = `${member.name} (${member.id}): ${member.points} Bean Points — Tier: ${member.tier}. Available Perks: ${member.perks.join(', ')}.`;
++        return {
++          uiMessage,
++          agentResponse: member
++        };
++      });
++
++      // 6. Contact & Catering Inquiry Handler
++      bindAgenticForm('contact-support-form', 'contact-support-result', (formData) => {
++        const email = (formData.get('email') || '').toString().trim();
++        const topic = (formData.get('topic') || 'Event Catering').toString();
++        const message = (formData.get('message') || '').toString().trim();
++        const ticketId = 'INQ-' + Math.floor(1000 + Math.random() * 9000);
++
++        const uiMessage = `Thank you! Ticket ${ticketId} (${topic}) has been sent to our roastery team. We will reply to ${email} within 1 business day.`;
++        return {
++          uiMessage,
++          agentResponse: {
++            status: 'submitted',
++            ticketId,
++            email,
++            topic,
++            messagePreview: message.slice(0, 80)
++          }
++        };
++      });
++
++      // Quick-select seasonal drink buttons
++      document.querySelectorAll('[data-select-drink]').forEach((link) => {
++        link.addEventListener('click', () => {
++          const drinkName = link.getAttribute('data-select-drink');
++          const selectEl = document.getElementById('cart-drink');
++          if (selectEl && drinkName) {
++            selectEl.value = drinkName;
++          }
++        });
++      });
++
++      // WebMCP Lifecycle Events (Chrome 156+ dispatches on document.modelContext; older versions on window)
++      const statusBanner = document.getElementById('agent-status');
++      const targetFor = (type, listener, options) =>
++        (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++          .addEventListener(type, listener, options);
++
++      targetFor('toolactivated', ({ toolName }) => {
++        if (statusBanner) {
++          statusBanner.hidden = false;
++          statusBanner.textContent = `AI Agent is interacting with tool "${toolName}"...`;
++        }
++      });
++
++      targetFor('toolcancel', ({ toolName }) => {
++        if (statusBanner) {
++          statusBanner.hidden = false;
++          statusBanner.textContent = `AI Agent cancelled execution of tool "${toolName}".`;
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

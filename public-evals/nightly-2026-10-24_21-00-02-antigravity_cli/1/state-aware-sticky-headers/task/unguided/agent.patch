@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,59 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sticky Section Headers & Scroll-State Queries */
++    .sticky-container {
++      container-type: scroll-state;
++      container-name: sticky-section;
++      position: sticky;
++      top: 0;
++      z-index: 900;
++      margin-bottom: 20px;
++    }
++
++    .sticky-header {
++      background-color: var(--secondary);
++      color: var(--text);
++      padding: 24px 20px;
++      border-radius: 6px;
++      text-align: center;
++      font-size: 1.5rem;
++      transition: background-color 0.3s ease, padding 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
++    }
++
++    @container sticky-section scroll-state(stuck: top) {
++      .sticky-header {
++        background-color: blue;
++        color: white;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++        padding: 10px 20px;
++      }
++    }
++
++    .content-section {
++      margin-bottom: 60px;
++    }
++
++    .intro-section {
++      background: white;
++      padding: 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      margin-bottom: 60px;
++    }
++
++    .intro-section h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      text-align: center;
++    }
++
++    .intro-section p {
++      margin-bottom: 16px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,28 +225,83 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="intro-section">
++      <h2>Our Roasting Philosophy</h2>
++      <p>At The Daily Grind, every bean tells a story. We partner directly with sustainable small-lot farms across Central America, East Africa, and Southeast Asia to source the finest specialty-grade arabica coffee. Our master roasters carefully craft profiles that highlight each origin's natural sweetness, vibrant acidity, and rich body.</p>
++      <p>From the moment the green coffee arrives at our roastery to the final pour in your cup, we obsess over every detail. Whether you prefer a bright, floral pour-over or a velvety, chocolate-forward espresso, our commitment to artisanal quality ensures an unforgettable coffee experience every single day.</p>
++      <p>Scroll down to explore our curated seasonal offerings, signature espresso blends, and freshly baked artisanal pastries prepared in-house each morning.</p>
++    </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p>Creamy oat milk with a hint of Vermont maple syrup and a dusting of warm cinnamon.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p>Bold, smokey, and perfect for a morning boost with notes of dark cocoa and toasted walnut.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p>Steeped for 18 hours in filtered cold water for maximum smoothness and low acidity.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Single-Origin Pour Overs</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Delicate jasmine aroma with vibrant bergamot, Meyer lemon, and white peach notes.</p>
++          <a href="/menu/ethiopia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombia Huila</h3>
++          <p>Balanced and sweet with rich caramel, red apple acidity, and a silky milk chocolate finish.</p>
++          <a href="/menu/colombia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Guatemala Antigua</h3>
++          <p>Full-bodied cup featuring brown sugar sweetness, baking spices, and subtle citrus brightness.</p>
++          <a href="/menu/guatemala" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Artisanal Bakery &amp; Bites</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Almond Croissant</h3>
++          <p>Flaky, butter-laminated pastry filled with house-made sweet almond frangipane and toasted slivers.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cardamom Morning Bun</h3>
++          <p>Brioche dough swirled with freshly ground green cardamom, orange zest, and raw cane sugar.</p>
++          <a href="/menu/morning-bun" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Avocado Sourdough Toast</h3>
++          <p>Thick-cut country sourdough topped with smashed Haas avocado, pickled shallots, and chili flakes.</p>
++          <a href="/menu/toast" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

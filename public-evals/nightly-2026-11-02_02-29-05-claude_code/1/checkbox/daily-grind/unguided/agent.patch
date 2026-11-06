@@ -1,0 +1,364 @@
+diff --git a/index.html b/index.html
+index 66c9173..540d398 100644
+--- a/index.html
++++ b/index.html
+@@ -152,11 +152,252 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Drink Customization Checkboxes */
++    .customize {
++      border: 1px dashed var(--secondary);
++      border-radius: 8px;
++      padding: 12px 14px 14px;
++      margin-top: 15px;
++      text-align: left;
++    }
++
++    .customize legend {
++      padding: 0 6px;
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--primary);
++    }
++
++    .option {
++      position: relative;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      padding: 8px 10px;
++      margin-top: 6px;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background-color 0.25s, border-color 0.25s;
++    }
++
++    .option:hover {
++      background: #f5efec;
++    }
++
++    /* The native input stays in the accessibility tree and keeps its full
++       click/keyboard behavior; it's simply laid transparently over the row. */
++    .option input {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      margin: 0;
++      opacity: 0;
++      cursor: inherit;
++      z-index: 1;
++    }
++
++    .option-box {
++      flex: none;
++      display: grid;
++      place-items: center;
++      width: 22px;
++      height: 22px;
++      border: 2px solid var(--primary);
++      border-radius: 6px;
++      background: white;
++      transition: background-color 0.25s, border-color 0.25s, transform 0.15s;
++    }
++
++    .option-box svg {
++      width: 14px;
++      height: 14px;
++      fill: none;
++      stroke: white;
++      stroke-width: 3;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    .option-box .check {
++      stroke-dasharray: 20;
++      stroke-dashoffset: 20;
++      transition: stroke-dashoffset 0.25s ease-in;
++    }
++
++    .option-box .dash {
++      stroke-dasharray: 12;
++      stroke-dashoffset: 12;
++      transition: stroke-dashoffset 0.2s ease-in;
++    }
++
++    .option-icon {
++      flex: none;
++      width: 30px;
++      height: 30px;
++      padding: 6px;
++      border-radius: 50%;
++      background: var(--secondary);
++      fill: none;
++      stroke: var(--primary);
++      stroke-width: 1.8;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++      transition: background-color 0.25s, stroke 0.25s, transform 0.3s;
++    }
++
++    .option-text {
++      flex: 1;
++      font-size: 0.9rem;
++    }
++
++    .option-price {
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
++    /* Pressed */
++    .option input:active + .option-box {
++      transform: scale(0.88);
++    }
++
++    /* Checked */
++    .option:has(input:checked) {
++      background: #fff6ea;
++      border-color: var(--accent);
++    }
++
++    .option input:checked + .option-box {
++      background: var(--primary);
++      border-color: var(--primary);
++      animation: box-pop 0.35s ease-out;
++    }
++
++    .option input:checked + .option-box .check {
++      stroke-dashoffset: 0;
++      transition: stroke-dashoffset 0.3s 0.08s ease-out;
++    }
++
++    .option input:checked ~ .option-icon {
++      background: var(--accent);
++      stroke: var(--text);
++      transform: rotate(-12deg) scale(1.08);
++    }
++
++    /* Indeterminate (set via script) */
++    .option input:indeterminate + .option-box {
++      background: var(--primary);
++      border-color: var(--primary);
++    }
++
++    .option input:indeterminate + .option-box .dash {
++      stroke-dashoffset: 0;
++    }
++
++    /* Keyboard focus */
++    .option input:focus-visible + .option-box {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Disabled */
++    .option:has(input:disabled) {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .option:has(input:disabled):hover {
++      background: transparent;
++    }
++
++    @keyframes box-pop {
++      0% { transform: scale(0.8); }
++      60% { transform: scale(1.15); }
++      100% { transform: scale(1); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .option,
++      .option *,
++      .option-box .check,
++      .option-box .dash {
++        animation: none !important;
++        transition: none !important;
++      }
++
++      .option input:checked ~ .option-icon {
++        transform: none;
++      }
++    }
++
++    /* Windows High Contrast / forced colors: keep the custom box visible */
++    @media (forced-colors: active) {
++      .option-box {
++        border-color: CanvasText;
++      }
++
++      .option input:checked + .option-box,
++      .option input:indeterminate + .option-box {
++        background: Highlight;
++        border-color: Highlight;
++      }
++
++      .option-box svg {
++        stroke: HighlightText;
++      }
++
++      .option input:focus-visible + .option-box {
++        outline-color: Highlight;
++      }
++
++      .option-icon {
++        stroke: CanvasText;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Customization icons -->
++  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
++    <symbol id="icon-bean" viewBox="0 0 24 24">
++      <ellipse cx="12" cy="12" rx="6.5" ry="9" transform="rotate(30 12 12)" />
++      <path d="M8.5 18c3-2 4-4 3.5-6s.5-4 3.5-6" />
++    </symbol>
++    <symbol id="icon-drop" viewBox="0 0 24 24">
++      <path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z" />
++    </symbol>
++    <symbol id="icon-sparkle" viewBox="0 0 24 24">
++      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6" />
++    </symbol>
++    <symbol id="icon-cup" viewBox="0 0 24 24">
++      <path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z" />
++      <path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 3v3M12 3v3" />
++    </symbol>
++    <symbol id="icon-milk" viewBox="0 0 24 24">
++      <path d="M9 2h6v3l2 3v12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V8l2-3V2z" />
++      <path d="M7 12h10" />
++    </symbol>
++    <symbol id="icon-moon" viewBox="0 0 24 24">
++      <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
++    </symbol>
++    <symbol id="icon-foam" viewBox="0 0 24 24">
++      <path d="M6 18a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 16 8.5a4.5 4.5 0 0 1 2 9.5H6z" />
++    </symbol>
++    <symbol id="icon-ice" viewBox="0 0 24 24">
++      <path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2" />
++    </symbol>
++    <symbol id="icon-flower" viewBox="0 0 24 24">
++      <circle cx="12" cy="12" r="2.5" />
++      <path d="M12 9.5C10 6 10.5 3 12 3s2 3 0 6.5zM12 14.5c2 3.5 1.5 6.5 0 6.5s-2-3 0-6.5zM9.5 12C6 14 3 13.5 3 12s3-2 6.5 0zM14.5 12c3.5-2 6.5-1.5 6.5 0s-3 2-6.5 0z" />
++    </symbol>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -181,16 +422,106 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customize">
++            <legend>Customize your Maple Oat Latte</legend>
++            <label class="option">
++              <input type="checkbox" name="maple-oat-latte-options" value="extra-shot">
++              <span class="option-box" aria-hidden="true">
++                <svg viewBox="0 0 16 16"><path class="check" d="M3 8.5l3.5 3.5L13 4.5" /><path class="dash" d="M3 8h10" /></svg>
++              </span>
++              <svg class="option-icon" aria-hidden="true" focusable="false"><use href="#icon-bean" /></svg>
++              <span class="option-text">Extra espresso shot</span>
++              <span class="option-price">+$0.75</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" name="maple-oat-latte-options" value="maple-drizzle">
++              <span class="option-box" aria-hidden="true">
++                <svg viewBox="0 0 16 16"><path class="check" d="M3 8.5l3.5 3.5L13 4.5" /><path class="dash" d="M3 8h10" /></svg>
++              </span>
++              <svg class="option-icon" aria-hidden="true" focusable="false"><use href="#icon-drop" /></svg>
++              <span class="option-text">Extra maple drizzle</span>
++              <span class="option-price">+$0.50</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" name="maple-oat-latte-options" value="cinnamon">
++              <span class="option-box" aria-hidden="true">
++                <svg viewBox="0 0 16 16"><path class="check" d="M3 8.5l3.5 3.5L13 4.5" /><path class="dash" d="M3 8h10" /></svg>
++              </span>
++              <svg class="option-icon" aria-hidden="true" focusable="false"><use href="#icon-sparkle" /></svg>
++              <span class="option-text">Cinnamon dusting</span>
++              <span class="option-price">Free</span>
++            </label>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customize">
++            <legend>Customize your Dark Roast Espresso</legend>
++            <label class="option">
++              <input type="checkbox" name="dark-roast-espresso-options" value="double-shot">
++              <span class="option-box" aria-hidden="true">
++                <svg viewBox="0 0 16 16"><path class="check" d="M3 8.5l3.5 3.5L13 4.5" /><path class="dash" d="M3 8h10" /></svg>
++              </span>
++              <svg class="option-icon" aria-hidden="true" focusable="false"><use href="#icon-cup" /></svg>
++              <span class="option-text">Make it a double</span>
++              <span class="option-price">+$1.00</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" name="dark-roast-espresso-options" value="steamed-milk">
++              <span class="option-box" aria-hidden="true">
++                <svg viewBox="0 0 16 16"><path class="check" d="M3 8.5l3.5 3.5L13 4.5" /><path class="dash" d="M3 8h10" /></svg>
++              </span>
++              <svg class="option-icon" aria-hidden="true" focusable="false"><use href="#icon-milk" /></svg>
++              <span class="option-text">Splash of steamed milk</span>
++              <span class="option-price">Free</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" name="dark-roast-espresso-options" value="decaf">
++              <span class="option-box" aria-hidden="true">
++                <svg viewBox="0 0 16 16"><path class="check" d="M3 8.5l3.5 3.5L13 4.5" /><path class="dash" d="M3 8h10" /></svg>
++              </span>
++              <svg class="option-icon" aria-hidden="true" focusable="false"><use href="#icon-moon" /></svg>
++              <span class="option-text">Swap to decaf</span>
++              <span class="option-price">Free</span>
++            </label>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customize">
++            <legend>Customize your Cold Brew</legend>
++            <label class="option">
++              <input type="checkbox" name="cold-brew-options" value="cold-foam">
++              <span class="option-box" aria-hidden="true">
++                <svg viewBox="0 0 16 16"><path class="check" d="M3 8.5l3.5 3.5L13 4.5" /><path class="dash" d="M3 8h10" /></svg>
++              </span>
++              <svg class="option-icon" aria-hidden="true" focusable="false"><use href="#icon-foam" /></svg>
++              <span class="option-text">Sweet cream cold foam</span>
++              <span class="option-price">+$1.25</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" name="cold-brew-options" value="light-ice">
++              <span class="option-box" aria-hidden="true">
++                <svg viewBox="0 0 16 16"><path class="check" d="M3 8.5l3.5 3.5L13 4.5" /><path class="dash" d="M3 8h10" /></svg>
++              </span>
++              <svg class="option-icon" aria-hidden="true" focusable="false"><use href="#icon-ice" /></svg>
++              <span class="option-text">Light ice</span>
++              <span class="option-price">Free</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" name="cold-brew-options" value="vanilla">
++              <span class="option-box" aria-hidden="true">
++                <svg viewBox="0 0 16 16"><path class="check" d="M3 8.5l3.5 3.5L13 4.5" /><path class="dash" d="M3 8h10" /></svg>
++              </span>
++              <svg class="option-icon" aria-hidden="true" focusable="false"><use href="#icon-flower" /></svg>
++              <span class="option-text">Vanilla syrup</span>
++              <span class="option-price">+$0.50</span>
++            </label>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

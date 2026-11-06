@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,36 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall teaser */
++    .paywall-container {
++      margin-top: 60px;
++    }
++
++    .paywall-container h2 {
++      text-align: center;
++    }
++
++    /* The fade is a mask on the content itself, so it becomes truly
++       transparent and blends into whatever is behind it. */
++    .paywall-teaser {
++      margin-top: 20px;
++      max-height: 280px;
++      overflow: hidden;
++      -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
++    }
++
++    .paywall-teaser .card {
++      text-align: left;
++      margin-bottom: 20px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +222,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <h2>Roaster's Secrets</h2>
++      <div class="paywall-teaser">
++        <div class="card">
++          <h3>The 12-Minute Bloom</h3>
++          <p>Our head roaster pulls every small batch at the exact moment the second crack fades, then rests the beans
++            for precisely 48 hours. Here is how we dial in grind size, water temperature, and bloom time to
++            unlock the caramel and stone-fruit notes hiding inside each origin.</p>
++        </div>
++        <div class="card">
++          <h3>Blending the House Roast</h3>
++          <p>Three origins, two roast profiles, and one ratio we have never shared publicly. Members get the full
++            breakdown, plus tasting notes for every lot we roast this season.</p>
++        </div>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Unlock with Membership</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

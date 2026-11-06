@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+index 66c9173..dbdf36e 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,100 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebMCP: expose client-side functionality as tools to in-browser AI agents.
++    // https://webmachinelearning.github.io/webmcp/
++    (function () {
++      if (!('modelContext' in navigator)) return;
++
++      const text = (value) => ({
++        content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value) }]
++      });
++      const error = (message) => ({ ...text(message), isError: true });
++      const clean = (s) => s.replace(/\s+/g, ' ').trim();
++
++      const pageLinks = () => [...document.querySelectorAll('nav a, footer a, .hero a')].map((a) => ({
++        label: clean(a.textContent),
++        path: a.getAttribute('href'),
++        area: a.closest('nav') ? 'nav' : a.closest('footer') ? 'footer' : 'hero'
++      }));
++
++      const favorites = () => [...document.querySelectorAll('.card')].map((card) => ({
++        name: clean(card.querySelector('h3').textContent),
++        description: clean(card.querySelector('p').textContent),
++        path: card.querySelector('a').getAttribute('href')
++      }));
++
++      const tools = [
++        {
++          name: 'list_pages',
++          description: 'List the site pages reachable from the navigation, hero and footer links, with their paths.',
++          inputSchema: { type: 'object', properties: {} },
++          annotations: { readOnlyHint: true },
++          execute: async () => text(pageLinks())
++        },
++        {
++          name: 'navigate_to_page',
++          description: 'Navigate the browser to a page of the site. Use list_pages to see valid paths. ' +
++            'Note: "/logout" signs the user out.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              path: { type: 'string', description: 'Site path from list_pages, e.g. "/menu" or "/rewards".' }
++            },
++            required: ['path']
++          },
++          execute: async ({ path }) => {
++            const known = new Set(pageLinks().map((l) => l.path));
++            if (!known.has(path)) return error(`Unknown path "${path}". Valid paths: ${[...known].join(', ')}`);
++            window.location.assign(path);
++            return text(`Navigating to ${path}`);
++          }
++        },
++        {
++          name: 'list_seasonal_favorites',
++          description: 'List the seasonal favorite drinks featured on the home page.',
++          inputSchema: { type: 'object', properties: {} },
++          annotations: { readOnlyHint: true },
++          execute: async () => text(favorites())
++        },
++        {
++          name: 'view_drink_details',
++          description: 'Open the details page for a seasonal favorite drink.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              name: { type: 'string', description: 'Drink name from list_seasonal_favorites, e.g. "Cold Brew".' }
++            },
++            required: ['name']
++          },
++          execute: async ({ name }) => {
++            const drink = favorites().find((d) => d.name.toLowerCase() === String(name).toLowerCase());
++            if (!drink) return error(`No drink named "${name}". Available: ${favorites().map((d) => d.name).join(', ')}`);
++            window.location.assign(drink.path);
++            return text(`Opening details for ${drink.name}`);
++          }
++        },
++        {
++          name: 'start_online_order',
++          description: 'Go to the online ordering page ("Order Now").',
++          inputSchema: { type: 'object', properties: {} },
++          execute: async () => {
++            window.location.assign('/order-online');
++            return text('Navigating to /order-online');
++          }
++        }
++      ];
++
++      for (const tool of tools) {
++        try {
++          navigator.modelContext.registerTool(tool);
++        } catch (e) {
++          console.warn(`WebMCP: failed to register ${tool.name}`, e);
++        }
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

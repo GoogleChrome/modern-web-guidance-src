@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+index 66c9173..2da3c9a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,45 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating promo (draggable) */
++    .floating-promo {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      width: 260px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
++      z-index: 900;
++      overflow: hidden;
++    }
++
++    .floating-promo .promo-body {
++      padding: 12px 16px 16px;
++    }
++
++    .floating-promo .btn {
++      margin-top: 10px;
++    }
++
++    .promo-handle {
++      background: var(--primary);
++      color: white;
++      padding: 8px 12px;
++      font-size: 0.85rem;
++    }
++
++    .promo-handle.drag-handle {
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .promo-handle.dragging {
++      cursor: grabbing;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +246,76 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating-promo" id="promo" aria-label="Rewards promotion">
++    <div class="promo-handle" id="promo-handle">Free drink on us</div>
++    <div class="promo-body">
++      <p>Join Rewards and get a free drink on your first order.</p>
++      <a href="/rewards" class="btn">Join Now</a>
++    </div>
++  </aside>
++
++  <script>
++    (() => {
++      const draggable = document.getElementById('promo');
++      const handle = document.getElementById('promo-handle');
++      const STEP = 15;
++      let offsetX = 0;
++      let offsetY = 0;
++
++      // Enhance only once JS runs; without it the promo stays a static fixed card.
++      handle.classList.add('drag-handle');
++      handle.tabIndex = 0;
++      handle.setAttribute('aria-label', 'Free drink on us. Use arrow keys to move this panel.');
++
++      function moveTo(left, top) {
++        const maxLeft = Math.max(0, window.innerWidth - draggable.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - draggable.offsetHeight);
++        draggable.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++        draggable.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++        draggable.style.right = 'auto';
++        draggable.style.bottom = 'auto';
++      }
++
++      handle.addEventListener('pointerdown', (event) => {
++        if (event.button !== 0) return;
++        const rect = draggable.getBoundingClientRect();
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        handle.setPointerCapture(event.pointerId);
++      });
++
++      handle.addEventListener('pointermove', (event) => {
++        if (!handle.hasPointerCapture(event.pointerId)) return;
++        handle.classList.add('dragging');
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++
++      handle.addEventListener('lostpointercapture', () => {
++        handle.classList.remove('dragging');
++      });
++
++      handle.addEventListener('keydown', (event) => {
++        const delta = {
++          ArrowLeft: [-STEP, 0],
++          ArrowRight: [STEP, 0],
++          ArrowUp: [0, -STEP],
++          ArrowDown: [0, STEP],
++        }[event.key];
++        if (!delta) return;
++        event.preventDefault();
++        const rect = draggable.getBoundingClientRect();
++        moveTo(rect.left + delta[0], rect.top + delta[1]);
++      });
++
++      // Keep the element reachable after viewport resizes.
++      window.addEventListener('resize', () => {
++        if (!draggable.style.left) return;
++        const rect = draggable.getBoundingClientRect();
++        moveTo(rect.left, rect.top);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

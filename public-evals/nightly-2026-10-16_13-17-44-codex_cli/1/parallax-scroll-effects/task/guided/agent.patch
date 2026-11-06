@@ -1,0 +1,211 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,175 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* A static composition first; scroll motion is a progressive enhancement. */
++    .coffee-story {
++      position: relative;
++      isolation: isolate;
++      overflow: clip;
++      background: #241913;
++      color: #fff8ed;
++    }
++
++    .coffee-story__background {
++      position: absolute;
++      inset: -100px 0;
++      z-index: -2;
++      width: 100%;
++      height: calc(100% + 200px);
++      object-fit: cover;
++      opacity: 0.38;
++      --travel: 80px;
++    }
++
++    .coffee-story::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: linear-gradient(90deg, rgba(25, 16, 12, 0.94), rgba(25, 16, 12, 0.35));
++      pointer-events: none;
++    }
++
++    .coffee-story__inner {
++      max-width: 1100px;
++      min-height: 620px;
++      margin: 0 auto;
++      padding: 100px 20px;
++      display: grid;
++      grid-template-columns: 1.1fr 1fr;
++      align-items: center;
++      gap: clamp(32px, 6vw, 80px);
++    }
++
++    .coffee-story__eyebrow {
++      color: #ffca83;
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 0.2em;
++      text-transform: uppercase;
++      margin-bottom: 20px;
++    }
++
++    .coffee-story h2 {
++      max-width: 12ch;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2.5rem, 5vw, 4rem);
++      font-weight: 400;
++      line-height: 1.12;
++      margin-bottom: 24px;
++      text-wrap: balance;
++    }
++
++    .coffee-story__description {
++      max-width: 40ch;
++      color: #e3d6c9;
++      font-size: 1.05rem;
++    }
++
++    .coffee-story__link {
++      display: inline-flex;
++      gap: 24px;
++      align-items: center;
++      margin-top: 30px;
++      padding: 8px 0;
++      border-bottom: 1px solid #ffca83;
++      color: #ffca83;
++      text-decoration: none;
++      text-underline-offset: 5px;
++    }
++
++    .coffee-story__link:hover {
++      text-decoration: underline;
++    }
++
++    .coffee-story__link:focus-visible {
++      outline: 2px solid #ffca83;
++      outline-offset: 6px;
++    }
++
++    .coffee-story__scene {
++      position: relative;
++      width: 100%;
++      max-width: 420px;
++      justify-self: center;
++    }
++
++    .coffee-story__photo {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 5;
++      object-fit: cover;
++      border-radius: 180px 180px 8px 8px;
++      --travel: 40px;
++    }
++
++    .coffee-story__seal {
++      position: absolute;
++      right: -16px;
++      bottom: 24px;
++      display: grid;
++      place-content: center;
++      width: 116px;
++      height: 116px;
++      border: 1px solid #b88856;
++      border-radius: 50%;
++      background: #f1dfc3;
++      box-shadow: 0 0 0 7px #f1dfc3;
++      color: #4e342e;
++      text-align: center;
++      font-size: 0.65rem;
++      letter-spacing: 0.12em;
++      line-height: 1.8;
++      text-transform: uppercase;
++      --travel: -35px;
++    }
++
++    .coffee-story__seal span {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: 1.65rem;
++      letter-spacing: 0;
++      text-transform: none;
++    }
++
++    /* Check range support too: some browsers implement only part of the API.
++       The shorthand must precede timeline/range, which it otherwise resets. */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        .coffee-story {
++          view-timeline: --coffee-story block;
++        }
++
++        .coffee-story__layer {
++          animation: coffee-parallax 1s linear both;
++          animation-timeline: --coffee-story;
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
++    @keyframes coffee-parallax {
++      from { transform: translateY(calc(-1 * var(--travel))); }
++      to { transform: translateY(var(--travel)); }
++    }
++
++    @media (max-width: 640px) {
++      .coffee-story__inner {
++        grid-template-columns: 1fr;
++        padding: 64px 28px 80px;
++        gap: 64px;
++      }
++
++      .coffee-story__scene {
++        max-width: 300px;
++      }
++
++      .coffee-story__photo { --travel: 24px; }
++      .coffee-story__seal { --travel: -20px; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +340,29 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="coffee-story" aria-labelledby="coffee-story-heading">
++      <img class="coffee-story__background coffee-story__layer" src="images/coffee-beans.jpg"
++        alt="" aria-hidden="true" width="1600" height="1220" loading="lazy" decoding="async">
++      <div class="coffee-story__inner">
++        <div>
++          <p class="coffee-story__eyebrow">From bean to belonging</p>
++          <h2 id="coffee-story-heading">Good things take a little time.</h2>
++          <p class="coffee-story__description">Thoughtfully sourced. Roasted in small batches. Made with care.
++            Behind every cup is a story worth slowing down for.</p>
++          <a class="coffee-story__link" href="/about">Discover our story <span aria-hidden="true">&rarr;</span></a>
++        </div>
++        <div class="coffee-story__scene" aria-hidden="true">
++          <img class="coffee-story__photo coffee-story__layer" src="images/coffee-cup.jpg"
++            alt="" width="720" height="1080" loading="lazy" decoding="async">
++          <div class="coffee-story__seal coffee-story__layer">Small batch<span>Big heart.</span>Every day</div>
++        </div>
++      </div>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

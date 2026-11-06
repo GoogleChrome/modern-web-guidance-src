@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+index 66c9173..b8f707b 100644
+--- a/index.html
++++ b/index.html
+@@ -7,11 +7,36 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light;
++      /* Define each palette pair once; the active color-scheme selects it. */
++      --primary: light-dark(#4e342e, #e6c4ad);
++      --secondary: light-dark(#d7ccc8, #302521);
++      --accent: light-dark(#ffab40, #ffc16b);
++      --text: light-dark(#3e2723, #f0e4dc);
++      --light: light-dark(#fafafa, #191412);
++      --nav-background: light-dark(#4e342e, #261d19);
++      --nav-text: light-dark(#ffffff, #f0e4dc);
++      --hero-text: light-dark(#ffffff, #fff3e8);
++      --hero-overlay: light-dark(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
++      --card-background: light-dark(#ffffff, #2b211d);
++      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
++      --button-text: light-dark(#ffffff, #241a15);
++      --button-hover: light-dark(#3e2723, #f4d8c3);
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        color-scheme: dark;
++      }
++    }
++
++    /* Explicit root themes override the OS preference. Remove to follow the OS. */
++    :root:is([data-theme="light"], [theme="light"], .light, .theme-light) {
++      color-scheme: light;
++    }
++
++    :root:is([data-theme="dark"], [theme="dark"], .dark, .theme-dark) {
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -29,8 +54,8 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-background);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,13 +81,14 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -75,7 +101,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +109,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,10 +134,10 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-background);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
+     }
+ 
+@@ -123,7 +149,7 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
++      color: var(--button-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -131,8 +157,9 @@
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:hover,
++    .btn:focus-visible {
++      background: var(--button-hover);
+     }
+ 
+     footer {

@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,93 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-up form */
++    .signup {
++      max-width: 480px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signup h2,
++    .signup > p {
++      text-align: center;
++    }
++
++    .signup > p {
++      margin-bottom: 20px;
++    }
++
++    .field {
++      margin-bottom: 16px;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .field input {
++      width: 100%;
++      padding: 10px 12px;
++      font: inherit;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    .hint,
++    .rules-list {
++      color: #5f6368;
++      font-size: 0.85rem;
++      margin-bottom: 4px;
++    }
++
++    .rules-list {
++      padding-left: 1.2rem;
++    }
++
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 4px;
++    }
++
++    input:user-invalid {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    input:user-invalid + .error-msg {
++      display: block;
++    }
++
++    input:user-valid {
++      border-color: #188038;
++    }
++
++    .field:has(input:user-invalid) .rules-list {
++      color: #d93025;
++      font-weight: 600;
++    }
++
++    .field:has(input:user-valid) .rules-list {
++      display: none;
++    }
++
++    .signup button {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 8px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -162,8 +247,9 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#signup">Sign Up</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,8 +280,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="signup" id="signup" aria-labelledby="signup-heading">
++      <h2 id="signup-heading">Join The Daily Grind</h2>
++      <p>Create an account to earn rewards on every cup.</p>
++      <form action="/signup" method="post">
++        <div class="field">
++          <label for="name">Name</label>
++          <input type="text" id="name" name="name" autocomplete="name" required>
++          <div id="name-error" class="error-msg">Please enter your name.</div>
++        </div>
++        <div class="field">
++          <label for="email">Email</label>
++          <span id="email-hint" class="hint">Format: you@example.com</span>
++          <input type="email" id="email" name="email" autocomplete="username" spellcheck="false" required
++            aria-describedby="email-hint" aria-errormessage="email-error">
++          <div id="email-error" class="error-msg">Please enter a valid email address.</div>
++        </div>
++        <div class="field">
++          <label for="new-password">Password</label>
++          <ul id="password-rules" class="rules-list">
++            <li>At least 8 characters</li>
++            <li>One uppercase and one lowercase letter</li>
++            <li>One number</li>
++            <li>One special character</li>
++          </ul>
++          <input type="password" id="new-password" name="new-password" autocomplete="new-password" required
++            minlength="8" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}" enterkeyhint="done"
++            aria-describedby="password-rules">
++        </div>
++        <button type="submit" class="btn">Create account</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +324,21 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep aria-invalid in sync with the :user-invalid visual state
++    const syncAria = (el) => {
++      if (el.matches?.('.signup input')) {
++        el.setAttribute('aria-invalid', el.matches(':user-invalid') ? 'true' : 'false');
++      }
++    };
++    document.addEventListener('blur', (e) => syncAria(e.target), true);
++    document.addEventListener('input', (e) => {
++      if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
++    });
++    document.addEventListener('invalid', (e) => e.target.setAttribute('aria-invalid', 'true'), true);
++  </script>
++
+ </body>
+ 
+ </html>

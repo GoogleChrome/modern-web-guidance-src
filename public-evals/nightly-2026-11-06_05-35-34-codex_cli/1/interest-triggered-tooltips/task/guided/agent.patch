@@ -1,0 +1,202 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,55 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .details-tooltip {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      width: 220px;
++      max-width: calc(100vw - 24px);
++      padding: 12px 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
++      font-size: 0.875rem;
++      text-align: left;
++      z-index: 1001;
++    }
++
++    .details-tooltip strong,
++    .details-tooltip small {
++      display: block;
++    }
++
++    .details-tooltip small {
++      margin-top: 4px;
++      color: var(--secondary);
++    }
++
++    .details-trigger:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .details-trigger {
++      --interest-delay-start: 0.2s;
++      --interest-delay-end: 0.15s;
++      interest-delay-start: var(--interest-delay-start);
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    @supports (position-area: inline-end) {
++      .details-tooltip {
++        position-area: inline-end;
++        position-try-fallbacks: flip-inline, flip-block;
++        margin-inline: 8px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +227,34 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn details-trigger" interestfor="maple-details">View Details <span aria-hidden="true">ⓘ</span></a>
++          <div id="maple-details" class="details-tooltip" popover="hint">
++            <strong>Maple Oat Latte</strong>
++            12 fl oz · Approx. 180 calories
++            <small>Made with oat milk and maple syrup. Calories vary with customizations.</small>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn details-trigger" interestfor="espresso-details">View Details <span aria-hidden="true">ⓘ</span></a>
++          <div id="espresso-details" class="details-tooltip" popover="hint">
++            <strong>Dark Roast Espresso</strong>
++            2 fl oz · Approx. 5 calories
++            <small>Served black as a double shot. Milk and sweeteners add calories.</small>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn details-trigger" interestfor="cold-brew-details">View Details <span aria-hidden="true">ⓘ</span></a>
++          <div id="cold-brew-details" class="details-tooltip" popover="hint">
++            <strong>Cold Brew</strong>
++            12 fl oz · Approx. 5 calories
++            <small>Steeped for 18 hours and served unsweetened. Milk and sweeteners add calories.</small>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +268,104 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const triggers = [...document.querySelectorAll('.details-trigger')];
++    const hasPopover = 'popover' in HTMLElement.prototype;
++    const hasAnchors = CSS.supports('position-area: inline-end');
++
++    // Keep overlays beside their own links even without CSS anchor positioning.
++    function positionTooltip(trigger, tooltip) {
++      if (hasAnchors && hasPopover) return;
++      const rect = trigger.getBoundingClientRect();
++      const { width, height } = tooltip.getBoundingClientRect();
++      const gap = 8;
++      let left = rect.right + gap;
++      let top = rect.top + (rect.height - height) / 2;
++      if (left + width > document.documentElement.clientWidth - 12) {
++        left = rect.left - width - gap;
++      }
++      if (left < 12) {
++        left = Math.max(12, Math.min(rect.left, document.documentElement.clientWidth - width - 12));
++        top = rect.top - height - gap;
++        if (top < 12) top = rect.bottom + gap;
++      }
++      tooltip.style.left = `${left}px`;
++      tooltip.style.top = `${Math.max(12, Math.min(top, innerHeight - height - 12))}px`;
++    }
++
++    for (const trigger of triggers) {
++      const tooltip = document.getElementById(trigger.getAttribute('interestfor'));
++      // Explicit anchors also work when the interest invoker is polyfilled.
++      trigger.style.anchorName = `--${tooltip.id}`;
++      tooltip.style.positionAnchor = `--${tooltip.id}`;
++      tooltip.addEventListener('toggle', event => {
++        if (event.newState === 'open') positionTooltip(trigger, tooltip);
++      });
++    }
++
++    function repositionOpenTooltips() {
++      for (const trigger of triggers) {
++        const tooltip = document.getElementById(trigger.getAttribute('interestfor'));
++        if (tooltip.getClientRects().length) positionTooltip(trigger, tooltip);
++      }
++    }
++    window.addEventListener('resize', repositionOpenTooltips);
++    document.addEventListener('scroll', repositionOpenTooltips, true);
++
++    // Use native interest behavior where available; load the shim only as needed.
++    let needsFallback = !hasPopover;
++    if (!Object.hasOwn(HTMLButtonElement.prototype, 'interestForElement') && hasPopover) {
++      try {
++        await import('https://unpkg.com/interestfor@latest');
++      } catch {
++        needsFallback = true;
++      }
++    }
++
++    // Also preserve hover/focus access in older browsers or when the CDN is offline.
++    if (needsFallback) {
++      let closeActive = () => {};
++      for (const trigger of triggers) {
++        const tooltip = document.getElementById(trigger.getAttribute('interestfor'));
++        let timer;
++        tooltip.style.display = 'none';
++        tooltip.setAttribute('role', 'tooltip');
++        trigger.setAttribute('aria-describedby', tooltip.id);
++        const close = () => {
++          clearTimeout(timer);
++          if (hasPopover && tooltip.matches(':popover-open')) tooltip.hidePopover();
++          tooltip.style.display = 'none';
++        };
++        const open = () => {
++          clearTimeout(timer);
++          closeActive();
++          closeActive = close;
++          tooltip.style.display = 'block';
++          if (hasPopover) tooltip.showPopover();
++          positionTooltip(trigger, tooltip);
++        };
++        const scheduleClose = () => {
++          clearTimeout(timer);
++          timer = setTimeout(() => {
++            if (!trigger.matches(':hover, :focus') && !tooltip.matches(':hover')) close();
++          }, 150);
++        };
++        trigger.addEventListener('pointerenter', open);
++        trigger.addEventListener('focus', open);
++        trigger.addEventListener('pointerleave', scheduleClose);
++        trigger.addEventListener('blur', scheduleClose);
++        tooltip.addEventListener('pointerenter', () => clearTimeout(timer));
++        tooltip.addEventListener('pointerleave', scheduleClose);
++      }
++      document.addEventListener('keydown', event => {
++        if (event.key === 'Escape') closeActive();
++      });
++      document.addEventListener('pointerdown', event => {
++        if (!event.target.closest('.details-trigger, .details-tooltip')) closeActive();
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

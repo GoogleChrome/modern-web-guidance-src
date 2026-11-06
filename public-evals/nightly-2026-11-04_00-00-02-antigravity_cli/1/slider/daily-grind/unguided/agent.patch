@@ -1,0 +1,353 @@
+diff --git a/index.html b/index.html
+index 66c9173..507cacf 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,222 @@
+       background: #3e2723;
+     }
+ 
++    /* Brew Strength Customizer Section */
++    .brew-customizer {
++      background: white;
++      padding: 32px;
++      border-radius: 12px;
++      box-shadow: 0 4px 16px rgba(62, 39, 35, 0.08);
++      margin-bottom: 40px;
++      border: 1px solid rgba(215, 204, 200, 0.6);
++    }
++
++    .brew-customizer-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 8px;
++    }
++
++    .brew-customizer h2 {
++      color: var(--primary);
++      font-size: 1.6rem;
++    }
++
++    .brew-customizer p.subtitle {
++      color: #5d4037;
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
++    .slider-control {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .slider-label-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++    }
++
++    .slider-label {
++      font-weight: 600;
++      font-size: 1.05rem;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .brew-output {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: #efebe9;
++      color: var(--primary);
++      font-weight: 700;
++      font-size: 0.95rem;
++      padding: 6px 14px;
++      border-radius: 999px;
++      border: 1px solid var(--secondary);
++    }
++
++    .slider-track-wrapper {
++      position: relative;
++      display: flex;
++      align-items: center;
++      padding: 8px 0;
++    }
++
++    /* Custom Range Slider */
++    .brew-slider {
++      --fill-percent: 50%;
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: 12px;
++      border-radius: 999px;
++      background: linear-gradient(
++        to right,
++        var(--primary) 0%,
++        var(--accent) var(--fill-percent),
++        var(--secondary) var(--fill-percent),
++        var(--secondary) 100%
++      );
++      box-shadow: inset 0 1px 3px rgba(62, 39, 35, 0.25);
++      cursor: pointer;
++      outline: none;
++      transition: box-shadow 0.2s ease, outline 0.2s ease;
++    }
++
++    /* WebKit Track */
++    .brew-slider::-webkit-slider-runnable-track {
++      width: 100%;
++      height: 12px;
++      border-radius: 999px;
++      background: linear-gradient(
++        to right,
++        var(--primary) 0%,
++        var(--accent) var(--fill-percent),
++        var(--secondary) var(--fill-percent),
++        var(--secondary) 100%
++      );
++      box-shadow: inset 0 1px 3px rgba(62, 39, 35, 0.25);
++      border: none;
++    }
++
++    /* Firefox Track & Progress */
++    .brew-slider::-moz-range-track {
++      width: 100%;
++      height: 12px;
++      border-radius: 999px;
++      background: var(--secondary);
++      box-shadow: inset 0 1px 3px rgba(62, 39, 35, 0.25);
++      border: none;
++    }
++
++    .brew-slider::-moz-range-progress {
++      height: 12px;
++      border-radius: 999px 0 0 999px;
++      background: linear-gradient(to right, var(--primary), var(--accent));
++    }
++
++    /* WebKit Thumb */
++    .brew-slider::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: 26px;
++      height: 26px;
++      border-radius: 50%;
++      background: var(--primary);
++      border: 3px solid var(--accent);
++      box-shadow: 0 2px 6px rgba(62, 39, 35, 0.35);
++      margin-top: -7px;
++      cursor: grab;
++      transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
++    }
++
++    /* Firefox Thumb */
++    .brew-slider::-moz-range-thumb {
++      width: 26px;
++      height: 26px;
++      border-radius: 50%;
++      background: var(--primary);
++      border: 3px solid var(--accent);
++      box-shadow: 0 2px 6px rgba(62, 39, 35, 0.35);
++      cursor: grab;
++      transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
++    }
++
++    /* Hover & Active States */
++    .brew-slider:hover::-webkit-slider-thumb {
++      transform: scale(1.1);
++      background: #3e2723;
++      box-shadow: 0 3px 8px rgba(62, 39, 35, 0.45);
++    }
++
++    .brew-slider:hover::-moz-range-thumb {
++      transform: scale(1.1);
++      background: #3e2723;
++      box-shadow: 0 3px 8px rgba(62, 39, 35, 0.45);
++    }
++
++    .brew-slider:active::-webkit-slider-thumb {
++      cursor: grabbing;
++      transform: scale(1.16);
++      background: var(--accent);
++      border-color: var(--primary);
++    }
++
++    .brew-slider:active::-moz-range-thumb {
++      cursor: grabbing;
++      transform: scale(1.16);
++      background: var(--accent);
++      border-color: var(--primary);
++    }
++
++    /* Accessible Focus States */
++    .brew-slider:focus,
++    .brew-slider:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.35), inset 0 1px 3px rgba(62, 39, 35, 0.25);
++    }
++
++    .brew-slider:focus::-webkit-slider-thumb,
++    .brew-slider:focus-visible::-webkit-slider-thumb {
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.5), 0 2px 6px rgba(62, 39, 35, 0.4);
++      transform: scale(1.1);
++    }
++
++    .brew-slider:focus::-moz-range-thumb,
++    .brew-slider:focus-visible::-moz-range-thumb {
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.5), 0 2px 6px rgba(62, 39, 35, 0.4);
++      transform: scale(1.1);
++    }
++
++    .slider-scale {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      font-weight: 500;
++      user-select: none;
++    }
++
++    .brew-notes {
++      margin-top: 8px;
++      padding: 12px 16px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +391,51 @@
+   </header>
+ 
+   <main class="container">
++    <section class="brew-customizer" aria-labelledby="brew-customizer-heading">
++      <div class="brew-customizer-header">
++        <h2 id="brew-customizer-heading">Customize Your Brew Strength</h2>
++      </div>
++      <p class="subtitle">Dial in your ideal extraction intensity from delicate blonde infusion to bold dark espresso.</p>
++
++      <div class="slider-control">
++        <div class="slider-label-row">
++          <label for="brew-strength" class="slider-label">Brew Strength</label>
++          <output for="brew-strength" id="brew-strength-output" class="brew-output" aria-live="polite">50% — Medium Balance</output>
++        </div>
++
++        <div class="slider-track-wrapper">
++          <input
++            type="range"
++            id="brew-strength"
++            name="brew-strength"
++            class="brew-slider"
++            min="0"
++            max="100"
++            step="1"
++            value="50"
++            style="--fill-percent: 50%;"
++            aria-valuemin="0"
++            aria-valuemax="100"
++            aria-valuenow="50"
++            aria-valuetext="50% — Medium Balance"
++            aria-describedby="brew-strength-notes"
++          >
++        </div>
++
++        <div class="slider-scale" aria-hidden="true">
++          <span>Mild (0%)</span>
++          <span>Light (25%)</span>
++          <span>Medium (50%)</span>
++          <span>Bold (75%)</span>
++          <span>Extra Strong (100%)</span>
++        </div>
++
++        <p id="brew-strength-notes" class="brew-notes">
++          <strong>Tasting Profile:</strong> Balanced body with toasted caramel sweetness, smooth cocoa undertones, and a clean finish.
++        </p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +468,73 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const slider = document.getElementById('brew-strength');
++      const output = document.getElementById('brew-strength-output');
++      const notes = document.getElementById('brew-strength-notes');
++
++      if (!slider) return;
++
++      function getBrewProfile(percent) {
++        if (percent <= 20) {
++          return {
++            label: 'Mild Blonde',
++            description: 'Delicate floral aroma with bright citrus acidity and a silky, tea-like body.'
++          };
++        }
++        if (percent <= 40) {
++          return {
++            label: 'Smooth Light-Medium',
++            description: 'Mellow honey sweetness with hints of toasted almond and stone fruit.'
++          };
++        }
++        if (percent <= 65) {
++          return {
++            label: 'Medium Balance',
++            description: 'Balanced body with toasted caramel sweetness, smooth cocoa undertones, and a clean finish.'
++          };
++        }
++        if (percent <= 85) {
++          return {
++            label: 'Bold Dark Roast',
++            description: 'Rich, full-bodied extraction with dark chocolate depth and warm roasted spice notes.'
++          };
++        }
++        return {
++          label: 'Extra Strong Espresso',
++          description: 'Intense velvety crema, smoky molasses richness, and maximum caffeine kick.'
++        };
++      }
++
++      function updateSliderState() {
++        const min = Number(slider.min) || 0;
++        const max = Number(slider.max) || 100;
++        const val = Number(slider.value);
++        const percent = max > min ? ((val - min) / (max - min)) * 100 : 0;
++        const roundedPercent = Math.round(percent);
++
++        slider.style.setProperty('--fill-percent', `${percent}%`);
++        slider.setAttribute('aria-valuenow', String(val));
++
++        const profile = getBrewProfile(roundedPercent);
++        const valueText = `${roundedPercent}% — ${profile.label}`;
++        slider.setAttribute('aria-valuetext', valueText);
++
++        if (output) {
++          output.textContent = valueText;
++          output.value = valueText;
++        }
++        if (notes) {
++          notes.innerHTML = `<strong>Tasting Profile:</strong> ${profile.description}`;
++        }
++      }
++
++      slider.addEventListener('input', updateSliderState);
++      slider.addEventListener('change', updateSliderState);
++      updateSliderState();
++    })();
++  </script>
+ </body>
+ 
+ </html>

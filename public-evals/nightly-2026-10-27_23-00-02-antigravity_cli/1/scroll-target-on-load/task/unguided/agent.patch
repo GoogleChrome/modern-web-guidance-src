@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical Scroll Container & Media Cards */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .scroll-container {
++      position: relative;
++      max-height: 400px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 20px;
++      background: #efebe9;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      margin-top: 20px;
++    }
++
++    .media-card {
++      display: flex;
++      align-items: center;
++      gap: 20px;
++      background: white;
++      padding: 15px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      flex-shrink: 0;
++    }
++
++    .media-card.target {
++      border: 2px solid var(--accent);
++    }
++
++    .media-card img {
++      width: 240px;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      flex-shrink: 0;
++      display: block;
++    }
++
++    .media-card-content h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +242,58 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <h2 style="text-align: center;">Inside Our Roastery</h2>
++      <div class="scroll-container" id="media-scroll-container">
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=480&q=80" alt="Freshly brewed coffee cup" width="240" height="160">
++          <div class="media-card-content">
++            <h3>1. Ethical Bean Sourcing</h3>
++            <p>We partner directly with small-scale farmers across Central and South America to select the finest Arabica cherries.</p>
++          </div>
++        </div>
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=480&q=80" alt="Roasted coffee beans" width="240" height="160">
++          <div class="media-card-content">
++            <h3>2. Small-Batch Roasting</h3>
++            <p>Every batch is carefully monitored in our drum roasters to unlock rich caramel and chocolate notes.</p>
++          </div>
++        </div>
++        <div class="media-card target">
++          <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=480&q=80" alt="Barista pouring latte art" width="240" height="160">
++          <div class="media-card-content">
++            <h3>3. Precision Brewing &amp; Craft</h3>
++            <p>Our baristas dial in every espresso shot and pour signature micro-foam art to make your daily cup unforgettable.</p>
++          </div>
++        </div>
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=480&q=80" alt="Pour over coffee preparation" width="240" height="160">
++          <div class="media-card-content">
++            <h3>4. Single-Origin Pour Overs</h3>
++            <p>Experience delicate floral and fruity profiles through our hand-brewed Chemex and V60 offerings.</p>
++          </div>
++        </div>
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=480&q=80" alt="Cozy coffee shop interior" width="240" height="160">
++          <div class="media-card-content">
++            <h3>5. Community Gathering Space</h3>
++            <p>Designed for warmth and conversation, our cafes offer the perfect spot to work, relax, and connect.</p>
++          </div>
++        </div>
++      </div>
++      <script>
++        (function () {
++          const container = document.getElementById('media-scroll-container');
++          const target = container && container.querySelector('.target');
++          if (container && target) {
++            container.scrollTop = target.offsetTop - container.offsetTop;
++          }
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

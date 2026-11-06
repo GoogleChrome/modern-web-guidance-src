@@ -1,0 +1,21 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,17 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Autofilled inputs (separate rules: an unknown selector invalidates a whole list) */
++    input:-webkit-autofill {
++      border: 2px solid #2e7d32;
++    }
++
++    input:autofill {
++      border: 2px solid #2e7d32;
++    }
+   </style>
+ </head>
+ 
+ <body>

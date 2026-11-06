@@ -1,0 +1,101 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,11 +11,97 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --scrollbar-track: #d7ccc8;
++      --scrollbar-thumb: #3e2723;
++      --scrollbar-thumb-hover: #1b0f0d;
++      --scrollbar-thumb-border: #fafafa;
++      --scrollbar-width: 16px;
+     }
+ 
++    /* High-Visibility Custom Scrollbars */
++    html,
+     * {
++      scrollbar-width: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    ::-webkit-scrollbar {
++      width: var(--scrollbar-width);
++      height: var(--scrollbar-width);
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--scrollbar-track);
++      border-left: 2px solid var(--primary);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background-color: var(--scrollbar-thumb);
++      border-radius: 8px;
++      border: 3px solid var(--scrollbar-thumb-border);
++      min-height: 48px;
++    }
++
++    ::-webkit-scrollbar-thumb:hover {
++      background-color: var(--scrollbar-thumb-hover);
++      border-color: var(--accent);
++    }
++
++    ::-webkit-scrollbar-thumb:active {
++      background-color: #000000;
++      border-color: var(--accent);
++    }
++
++    ::-webkit-scrollbar-corner {
++      background: var(--scrollbar-track);
++    }
++
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-track: #ffffff;
++        --scrollbar-thumb: #000000;
++        --scrollbar-thumb-hover: #3e2723;
++        --scrollbar-thumb-border: #ffab40;
++        --scrollbar-width: 20px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++        border-left: 3px solid #000000;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        border: 3px solid var(--scrollbar-thumb-border);
++        border-radius: 4px;
++      }
++    }
++
++    @media (forced-colors: active) {
++      html,
++      * {
++        scrollbar-color: ButtonText Canvas;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: Canvas;
++        border-left: 2px solid ButtonText;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background-color: ButtonText;
++        border: 2px solid Highlight;
++      }
++
++      ::-webkit-scrollbar-thumb:hover,
++      ::-webkit-scrollbar-thumb:active {
++        background-color: Highlight;
++        border-color: ButtonText;
++      }
++    }
++
++    * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }

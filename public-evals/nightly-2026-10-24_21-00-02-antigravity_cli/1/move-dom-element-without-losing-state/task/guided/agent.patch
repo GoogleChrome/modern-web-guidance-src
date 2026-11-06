@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,59 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
++      gap: 15px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.5rem;
+     }
+ 
++    .hero iframe {
++      width: 100%;
++      max-width: 960px;
++      aspect-ratio: 16 / 9;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
++      margin-top: 20px;
++    }
++
++    /* Video Section */
++    .video-section {
++      margin-bottom: 40px;
++      text-align: center;
++    }
++
++    .video-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      max-width: 800px;
++      margin: 0 auto 15px;
++    }
++
++    main.container > iframe {
++      display: block;
++      width: 100%;
++      max-width: 800px;
++      margin: 0 auto 40px;
++      aspect-ratio: 16 / 9;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++    }
++
++    .theater-btn {
++      cursor: pointer;
++      border: none;
++      font-size: 0.95rem;
++      margin-top: 0;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,16 +210,31 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main class="container" id="main-container">
++    <div class="video-header">
++      <h2>The Art of Coffee Roasting</h2>
++      <button id="theater-mode-btn" class="btn theater-btn" type="button" aria-pressed="false">Theater Mode</button>
++    </div>
++    <iframe
++      id="roasting-video"
++      width="560"
++      height="315"
++      src="https://www.youtube.com/embed/vFcS080VYQ0"
++      title="Coffee Roasting Process Video"
++      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++      referrerpolicy="strict-origin-when-cross-origin"
++      allowfullscreen>
++    </iframe>
++
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -206,7 +264,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const theaterBtn = document.getElementById('theater-mode-btn');
++    const iframe = document.getElementById('roasting-video');
++    const hero = document.getElementById('hero');
++    const mainContainer = document.getElementById('main-container');
++    const seasonalFavorites = document.getElementById('seasonal-favorites');
++
++    let isTheaterMode = false;
++
++    theaterBtn.addEventListener('click', () => {
++      isTheaterMode = !isTheaterMode;
++      const targetParent = isTheaterMode ? hero : mainContainer;
++      const referenceNode = isTheaterMode ? null : seasonalFavorites;
++
++      if ('moveBefore' in Element.prototype) {
++        targetParent.moveBefore(iframe, referenceNode);
++      } else {
++        targetParent.insertBefore(iframe, referenceNode);
++      }
++
++      theaterBtn.setAttribute('aria-pressed', String(isTheaterMode));
++      theaterBtn.textContent = isTheaterMode ? 'Exit Theater Mode' : 'Theater Mode';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

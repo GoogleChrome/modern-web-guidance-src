@@ -1,0 +1,159 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,90 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact form: highlight the whole field after an invalid interaction. */
++    .contact {
++      max-width: 640px;
++    }
++
++    .contact h2,
++    .contact > p {
++      text-align: center;
++    }
++
++    .contact-form {
++      display: grid;
++      gap: 16px;
++      margin-top: 20px;
++    }
++
++    .contact-field {
++      padding: 16px;
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .contact-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .contact-field input,
++    .contact-field textarea {
++      display: block;
++      width: 100%;
++      padding: 10px;
++      border: 1px solid #8d6e63;
++      border-radius: 4px;
++      font: inherit;
++      color: inherit;
++      background: white;
++    }
++
++    .contact-field textarea {
++      resize: vertical;
++      min-height: 130px;
++    }
++
++    .contact-field input:focus-visible,
++    .contact-field textarea:focus-visible,
++    .contact-form button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .contact-field:has(:user-invalid) {
++      border-color: #b3261e;
++    }
++
++    .field-error {
++      display: none;
++      margin-top: 6px;
++      color: #b3261e;
++      font-size: 0.875rem;
++    }
++
++    .contact-field:has(:user-invalid) .field-error {
++      display: block;
++    }
++
++    .field-hint {
++      display: block;
++      margin-bottom: 6px;
++      font-size: 0.875rem;
++    }
++
++    .contact-form button {
++      justify-self: start;
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +278,36 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="container contact" aria-labelledby="contact-heading">
++    <h2 id="contact-heading">Contact Us</h2>
++    <p>Have a question? Leave us a message. All fields are required.</p>
++    <form class="contact-form" id="contact-form" aria-describedby="contact-status">
++      <div class="contact-field">
++        <label for="contact-name">Name</label>
++        <input id="contact-name" name="name" type="text" autocomplete="name" required
++          aria-describedby="name-error">
++        <p class="field-error" id="name-error">Please enter your name.</p>
++      </div>
++      <div class="contact-field">
++        <label for="contact-email">Email</label>
++        <span class="field-hint" id="email-hint">For example, you@example.com</span>
++        <input id="contact-email" name="email" type="email" autocomplete="email" required
++          aria-describedby="email-hint email-error">
++        <p class="field-error" id="email-error">Please enter a valid email address.</p>
++      </div>
++      <div class="contact-field">
++        <label for="contact-message">Message</label>
++        <textarea id="contact-message" name="message" rows="5" required
++          aria-describedby="message-error"></textarea>
++        <p class="field-error" id="message-error">Please enter a message.</p>
++      </div>
++      <button class="btn" type="submit">Send Message</button>
++      <p id="contact-status" role="status">Message delivery is not connected yet.</p>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +316,27 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const contactForm = document.getElementById('contact-form');
++    const syncInvalidState = (event) => {
++      const field = event.target;
++      if (!field.matches('input, textarea')) return;
++      // Defer until the browser has updated its native interaction state.
++      requestAnimationFrame(() => {
++        field.setAttribute('aria-invalid', String(field.matches(':user-invalid')));
++      });
++    };
++    ['focusout', 'input', 'invalid'].forEach((type) => {
++      contactForm.addEventListener(type, syncInvalidState, true);
++    });
++    contactForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      document.getElementById('contact-status').textContent =
++        'Your message has not been sent: message delivery is not connected yet.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

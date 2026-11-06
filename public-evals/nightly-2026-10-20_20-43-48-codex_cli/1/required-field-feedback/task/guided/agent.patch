@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,70 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .mailing-list {
++      max-width: 480px;
++      margin: 0 auto 32px;
++    }
++
++    .mailing-list p {
++      margin-bottom: 16px;
++    }
++
++    .mailing-list label {
++      display: block;
++      text-align: left;
++      margin-bottom: 6px;
++    }
++
++    .mailing-list-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .mailing-list input {
++      flex: 1 1 220px;
++      min-width: 0;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid #795548;
++      border-radius: 5px;
++      font: inherit;
++      background: white;
++      color: var(--text);
++    }
++
++    .mailing-list button {
++      margin-top: 0;
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .mailing-list :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .mailing-list input:user-invalid:not(:focus),
++    .mailing-list input[aria-invalid="true"] {
++      border: 2px solid #9b2424;
++    }
++
++    .mailing-list .email-error {
++      color: #9b2424;
++      text-align: left;
++      font-size: 0.875rem;
++      margin: 6px 0 0;
++    }
++
++    .mailing-list .signup-status {
++      margin: 12px 0 0;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +259,23 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="mailing-list" aria-labelledby="mailing-list-heading">
++      <h2 id="mailing-list-heading">Join our mailing list</h2>
++      <p>Stay in the loop with fresh roasts, seasonal favorites, and coffee news.</p>
++      <form id="mailing-list-form" method="post">
++        <label for="mailing-list-email">Email address (required)</label>
++        <div class="mailing-list-controls">
++          <input id="mailing-list-email" name="email" type="email" required
++            autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false"
++            placeholder="you@example.com" aria-describedby="mailing-list-error">
++          <button class="btn" type="submit">Subscribe</button>
++        </div>
++        <p id="mailing-list-error" class="email-error" aria-live="polite"></p>
++        <p id="mailing-list-status" class="signup-status" role="status"></p>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +283,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const mailingListForm = document.getElementById('mailing-list-form');
++    const emailInput = document.getElementById('mailing-list-email');
++    const emailError = document.getElementById('mailing-list-error');
++    const signupStatus = document.getElementById('mailing-list-status');
++
++    function showEmailError() {
++      const invalid = !emailInput.validity.valid;
++      emailInput.setAttribute('aria-invalid', String(invalid));
++      emailError.textContent = invalid
++        ? (emailInput.validity.valueMissing
++          ? 'Please enter your email address.'
++          : 'Please enter a valid email address.')
++        : '';
++    }
++
++    emailInput.addEventListener('blur', showEmailError);
++    emailInput.addEventListener('input', () => {
++      emailInput.removeAttribute('aria-invalid');
++      emailError.textContent = '';
++      signupStatus.textContent = '';
++    });
++    emailInput.addEventListener('invalid', (event) => {
++      event.preventDefault();
++      showEmailError();
++      emailInput.focus();
++    });
++
++    mailingListForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      // Connect a mailing-list service here before accepting subscriptions.
++      signupStatus.textContent = 'Online signup is not available yet. Please contact us to join our mailing list.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

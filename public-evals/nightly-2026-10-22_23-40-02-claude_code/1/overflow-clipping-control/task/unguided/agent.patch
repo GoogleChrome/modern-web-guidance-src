@@ -1,0 +1,97 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,67 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase */
++    .showcase {
++      margin-bottom: 40px;
++    }
++
++    .showcase h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    /* Clips children at the content box; the browser derives the concentric inner curve from radius - border - padding */
++    .nested-curve-parent {
++      background: white;
++      border: 6px solid var(--primary);
++      padding: 28px;
++      border-radius: 40px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: clip;
++      overflow-clip-margin: content-box;
++    }
++
++    .nested-curve-parent .showcase-media {
++      background: linear-gradient(135deg, var(--primary), var(--accent));
++      color: white;
++      padding: 40px 28px;
++    }
++
++    .nested-curve-parent .showcase-footer {
++      background: var(--secondary);
++      padding: 16px 28px;
++    }
++
++    /* Clips overflowing content, but lets the glow bleed 15px past the edge */
++    .safety-zone-parent {
++      background: var(--primary);
++      color: white;
++      text-align: center;
++      padding: 40px 20px;
++      border-radius: 12px;
++      margin-top: 40px;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++    }
++
++    .glow-btn {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      font-size: 1.1rem;
++      padding: 14px 32px;
++      border: 0;
++      border-radius: 999px;
++      cursor: pointer;
++      margin-top: 15px;
++      box-shadow: 0 0 20px 6px rgba(255, 171, 64, 0.8),
++        0 0 45px 12px rgba(255, 171, 64, 0.45);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +233,25 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase">
++      <h2>Showcase</h2>
++      <div class="nested-curve-parent">
++        <div class="showcase-media">
++          <h3>Single-Origin of the Month</h3>
++          <p>Bright, floral, and roasted in small batches every Monday.</p>
++        </div>
++        <div class="showcase-footer">Limited release &middot; while supplies last</div>
++      </div>
++
++      <div class="safety-zone-parent">
++        <h3>Today's Promos</h3>
++        <p>Buy any two seasonal drinks before noon and get a pastry on us.</p>
++        <button type="button" class="glow-btn">Claim Offer</button>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

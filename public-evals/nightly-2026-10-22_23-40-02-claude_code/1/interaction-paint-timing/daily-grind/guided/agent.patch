@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+index 66c9173..71c06e1 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,68 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Measure how long interactions and soft navigations take to paint new content.
++    // Both entry types are Chromium-only for now, so feature-detect and degrade silently.
++    (() => {
++      const supported = PerformanceObserver.supportedEntryTypes || [];
++      const hasICP = supported.includes('interaction-contentful-paint');
++      const hasSoftNav = supported.includes('soft-navigation');
++
++      // Latest (largest) contentful paint per interaction.
++      if (hasICP) {
++        new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            // duration = presentationTime - startTime (interaction start to pixels on screen)
++            console.log('[interaction paint]', {
++              interactionId: entry.interactionId,
++              duration: Math.round(entry.duration),
++              element: entry.largestContentfulPaint?.element,
++            });
++          }
++        }).observe({ type: 'interaction-contentful-paint', buffered: true });
++      }
++
++      if (hasSoftNav && hasICP) {
++        let activeNav = null;
++        let activeLcp = null;
++
++        const report = () => {
++          if (!activeNav) return;
++          console.log('[soft navigation]', {
++            url: activeNav.name,
++            fcp: Math.round(activeNav.duration),
++            lcp: activeLcp ? Math.round(activeLcp.duration) : null,
++            lcpElement: activeLcp?.largestContentfulPaint?.element ?? null,
++          });
++          activeNav = activeLcp = null;
++        };
++
++        new PerformanceObserver((list) => {
++          for (const nav of list.getEntries()) {
++            report();
++            activeNav = nav;
++            // Include paints that happened before the URL changed.
++            activeLcp = nav.getLargestInteractionContentfulPaint();
++          }
++        }).observe({ type: 'soft-navigation', buffered: true });
++
++        // Match by interactionId, not navigationId, so pre-pushState paints count
++        // and later unrelated interactions don't.
++        new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            if (activeNav && entry.interactionId === activeNav.interactionId) {
++              activeLcp = entry;
++            }
++          }
++        }).observe({ type: 'interaction-contentful-paint', buffered: true });
++
++        document.addEventListener('visibilitychange', () => {
++          if (document.visibilityState === 'hidden') report();
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

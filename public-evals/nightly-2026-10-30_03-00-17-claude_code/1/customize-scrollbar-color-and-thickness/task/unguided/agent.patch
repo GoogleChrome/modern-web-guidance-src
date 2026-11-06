@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,65 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-log {
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 15px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* Firefox */
++      scrollbar-width: thin;
++      scrollbar-color: var(--accent) var(--primary);
++    }
++
++    /* WebKit / Blink */
++    .feedback-log::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-log::-webkit-scrollbar-track {
++      background: var(--primary);
++      border-radius: 4px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb {
++      background: var(--accent);
++      border-radius: 4px;
++    }
++
++    .testimonial {
++      padding: 15px;
++      border-left: 4px solid var(--accent);
++      background: #f5f0ee;
++      border-radius: 4px;
++      margin-bottom: 15px;
++    }
++
++    .testimonial:last-child {
++      margin-bottom: 0;
++    }
++
++    .testimonial p {
++      font-style: italic;
++    }
++
++    .testimonial .author {
++      display: block;
++      margin-top: 8px;
++      font-size: 0.85rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +251,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2 style="text-align: center;">Customer Feedback</h2>
++      <div class="feedback-log" role="log" aria-label="Customer feedback log" tabindex="0">
++        <div class="testimonial">
++          <p>&ldquo;The Maple Oat Latte is my new autumn ritual. Perfectly sweet without being overwhelming.&rdquo;</p>
++          <span class="author">&mdash; Sarah M., Portland</span>
++        </div>
++        <div class="testimonial">
++          <p>&ldquo;Best cold brew in town, hands down. Smooth, rich, and never bitter.&rdquo;</p>
++          <span class="author">&mdash; James K., Seattle</span>
++        </div>
++        <div class="testimonial">
++          <p>&ldquo;The baristas remember my order every morning. It feels like a second home.&rdquo;</p>
++          <span class="author">&mdash; Priya R., Austin</span>
++        </div>
++        <div class="testimonial">
++          <p>&ldquo;Dark Roast Espresso gets me through every Monday. Bold and full of flavor.&rdquo;</p>
++          <span class="author">&mdash; Daniel T., Chicago</span>
++        </div>
++        <div class="testimonial">
++          <p>&ldquo;Love that the beans are ethically sourced. You can taste the care in every cup.&rdquo;</p>
++          <span class="author">&mdash; Elena G., Denver</span>
++        </div>
++        <div class="testimonial">
++          <p>&ldquo;Ordered online for the office and everything arrived hot and on time. Impressive!&rdquo;</p>
++          <span class="author">&mdash; Marcus L., Boston</span>
++        </div>
++        <div class="testimonial">
++          <p>&ldquo;Cozy atmosphere, great music, and the pastries pair perfectly with the coffee.&rdquo;</p>
++          <span class="author">&mdash; Hannah W., Minneapolis</span>
++        </div>
++        <div class="testimonial">
++          <p>&ldquo;The rewards program is actually generous. Free drinks add up fast!&rdquo;</p>
++          <span class="author">&mdash; Omar S., San Diego</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

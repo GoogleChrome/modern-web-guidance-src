@@ -1,0 +1,183 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Coffee bean delivery */
++    .shipping {
++      margin-block-start: 48px;
++      padding: clamp(20px, 4vw, 40px);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .shipping-intro {
++      margin-block: 8px 24px;
++    }
++
++    .shipping-form {
++      max-width: 640px;
++    }
++
++    .shipping-form fieldset {
++      min-inline-size: 0;
++      border: 0;
++      margin-block-end: 24px;
++    }
++
++    .shipping-form legend {
++      font-size: 1.1rem;
++      font-weight: 600;
++      margin-block-end: 12px;
++    }
++
++    .shipping-field + .shipping-field {
++      margin-block-start: 18px;
++    }
++
++    .shipping-field label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 6px;
++    }
++
++    .shipping-field input,
++    .shipping-field textarea {
++      display: block;
++      width: 100%;
++      min-height: 48px;
++      padding: 12px;
++      border: 1px solid #8d7770;
++      border-radius: 5px;
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: white;
++      scroll-margin-block: 100px;
++    }
++
++    .shipping-field textarea {
++      resize: vertical;
++    }
++
++    .shipping-form .btn {
++      border: 0;
++      min-height: 48px;
++      font: inherit;
++      cursor: pointer;
++      margin-block-start: 12px;
++    }
++
++    .shipping-form .btn[hidden] {
++      display: none;
++    }
++
++    .shipping-form :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .shipping-review {
++      white-space: pre-line;
++      overflow-wrap: anywhere;
++      margin-block-start: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +275,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="shipping-address" class="shipping" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Fresh beans, delivered to your door</h2>
++      <p class="shipping-intro" id="shipping-help">Enter your shipping address for coffee bean delivery, or use your browser’s saved details to autofill. All fields are required unless marked optional.</p>
++
++      <form id="shipping-form" class="shipping-form" action="#shipping-address" method="post" autocomplete="on" aria-describedby="shipping-help shipping-note">
++        <fieldset>
++          <legend>Recipient &amp; delivery address</legend>
++          <div class="shipping-field">
++            <label for="shipping-name">Recipient full name</label>
++            <input type="text" id="shipping-name" name="shipping_name" autocomplete="section-delivery shipping name" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-street">Street address (including apartment or suite)</label>
++            <textarea id="shipping-street" name="shipping_street" rows="3" autocomplete="section-delivery shipping street-address" required></textarea>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-city">City or town</label>
++            <input type="text" id="shipping-city" name="shipping_city" autocomplete="section-delivery shipping address-level2" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-region">State, province or region (optional)</label>
++            <input type="text" id="shipping-region" name="shipping_region" autocomplete="section-delivery shipping address-level1">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-postal-code">ZIP or postal code (optional)</label>
++            <input type="text" id="shipping-postal-code" name="shipping_postal_code" autocomplete="section-delivery shipping postal-code" autocapitalize="off" autocorrect="off" spellcheck="false">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-country">Country</label>
++            <input type="text" id="shipping-country" name="shipping_country" autocomplete="section-delivery shipping country-name" required>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Contact details</legend>
++          <div class="shipping-field">
++            <label for="shipping-email">Email address</label>
++            <input type="email" id="shipping-email" name="shipping_email" autocomplete="section-delivery shipping email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-phone">Phone number (optional)</label>
++            <input type="tel" id="shipping-phone" name="shipping_phone" autocomplete="section-delivery shipping tel" inputmode="tel">
++          </div>
++        </fieldset>
++
++        <p id="shipping-note">Review your details here. This does not save your address or place an order.</p>
++        <button class="btn" id="shipping-review-button" type="submit" hidden>Review shipping details</button>
++        <noscript><p>JavaScript is needed to review your details on this page.</p></noscript>
++        <p id="shipping-review" class="shipping-review" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +339,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const shippingForm = document.getElementById('shipping-form');
++    const shippingReview = document.getElementById('shipping-review');
++
++    shippingForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const details = new FormData(shippingForm);
++      shippingReview.textContent = [
++        'Review your shipping details:',
++        ...Array.from(details.values(), (value) => value.trim()).filter(Boolean),
++        'No address has been saved and no order has been placed.'
++      ].join('\n');
++    });
++
++    shippingForm.addEventListener('input', () => {
++      shippingReview.textContent = '';
++    });
++
++    document.getElementById('shipping-review-button').hidden = false;
++  </script>
++
+ </body>
+ 
+ </html>

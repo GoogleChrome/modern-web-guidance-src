@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,109 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Info trigger + anchored popover tooltip (Maple Oat Latte) */
++    .info-btn {
++      anchor-name: --maple-info;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 28px;
++      height: 28px;
++      margin: 15px 0 0 8px;
++      vertical-align: bottom;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: 700 0.85rem/1 Georgia, 'Times New Roman', serif;
++      cursor: pointer;
++      transition: background 0.3s, border-color 0.3s;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--accent);
++      border-color: var(--accent);
++    }
++
++    .info-btn:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /*
++     * The popover itself is a transparent positioning shell. It is the element
++     * that gets anchored, so it is also the query container for anchored()
++     * container queries. Its descendants (the .tooltip-body and the ::after
++     * arrow) restyle themselves depending on which position-try fallback the
++     * browser actually applied - no JavaScript involved.
++     */
++    .tooltip {
++      /* Reset the UA popover styles that would fight anchor positioning. */
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      color: inherit;
++      overflow: visible;
++      width: max-content;
++      max-width: 260px;
++
++      /* Anchor to the info button, prefer above, flip below if needed. */
++      position-anchor: --maple-info;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++    }
++
++    .tooltip-body {
++      background: var(--primary);
++      color: white;
++      padding: 10px 14px;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: left;
++      border-radius: 10px 10px 4px 4px;
++      /* Reserve room below the bubble for the downward-pointing arrow. */
++      margin: 0 0 10px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    /* Arrow: points down at the trigger when the tooltip sits above it. */
++    .tooltip::after {
++      content: "";
++      position: absolute;
++      left: 50%;
++      translate: -50%;
++      bottom: 2px;
++      width: 0;
++      height: 0;
++      border: 8px solid transparent;
++      border-bottom-width: 0;
++      border-top-color: var(--primary);
++    }
++
++    /* State query: the flip-block fallback was applied, so we are BELOW the trigger. */
++    @container anchored(fallback: flip-block) {
++      .tooltip-body {
++        border-radius: 4px 4px 10px 10px;
++        margin: 10px 0 0;
++      }
++
++      .tooltip::after {
++        bottom: auto;
++        top: 2px;
++        border-top-width: 0;
++        border-bottom-width: 8px;
++        border-top-color: transparent;
++        border-bottom-color: var(--primary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -181,8 +282,16 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" id="anchor" class="info-btn" popovertarget="maple-tip"
++            aria-describedby="maple-tip" aria-label="More about the Maple Oat Latte">i</button>
++          <div id="maple-tip" class="tooltip" popover role="tooltip">
++            <div class="tooltip-body">
++              Made with house-made maple syrup from Vermont and barista-blend oat milk.
++              Dairy-free and available hot or iced through November.
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

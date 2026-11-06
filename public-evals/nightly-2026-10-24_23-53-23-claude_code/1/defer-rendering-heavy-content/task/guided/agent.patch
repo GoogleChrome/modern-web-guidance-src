@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -91,8 +91,14 @@
+       position: relative;
+       overflow: hidden;
+     }
+ 
++    /* Only applied to cards below the initial fold */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 380px;
++    }
++
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
+@@ -180,8 +186,23 @@
+       font-weight: bold;
+       margin-top: 1rem;
+     }
+ 
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 1rem 1.5rem;
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 0.5rem;
++      font-family: monospace;
++      white-space: pre-wrap;
++    }
++
++    .debug-panel[hidden] {
++      display: none;
++    }
++
+     .info-text {
+       max-width: 600px;
+       margin: 2rem auto;
+       text-align: center;
+@@ -207,8 +228,10 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn secondary" aria-expanded="false" aria-controls="debug-panel">Debug
++      Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +242,26 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel" hidden></div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    // Cards likely visible on first paint; the rest wait until scrolled near
++    const aboveFoldCount = 3;
++    const debugPanel = document.getElementById('debug-panel');
++    const debugBtn = document.getElementById('toggle-debug');
+ 
+ 
+ 
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = index < aboveFoldCount ? 'card' : 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -296,8 +325,20 @@
+     window.addEventListener('load', () => {
+       setTimeout(renderCards, 500);
+     });
+ 
++    debugBtn.addEventListener('click', () => {
++      const open = debugPanel.hidden;
++      if (open) {
++        debugPanel.textContent =
++          `cards: ${feed.querySelectorAll('.card').length}\n` +
++          `deferred (.off-screen-card): ${feed.querySelectorAll('.off-screen-card').length}\n` +
++          `initial render: ${timerSpan.textContent}`;
++      }
++      debugPanel.hidden = !open;
++      debugBtn.setAttribute('aria-expanded', open);
++    });
++
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>

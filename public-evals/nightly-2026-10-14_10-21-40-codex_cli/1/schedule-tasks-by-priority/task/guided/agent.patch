@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,66 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .operations {
++      margin-top: 48px;
++      padding: 28px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++    }
++
++    .operations-heading, .queue-heading, .task-heading {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .eyebrow { font-size: .72rem; font-weight: 700; letter-spacing: .14em; color: #795548; }
++    .operations h2 { font-size: 1.7rem; margin: 3px 0; }
++    .operations-description { color: #725d56; font-size: .92rem; max-width: 650px; }
++    .queue-status { white-space: nowrap; font-size: .8rem; background: #edf4ec; color: #365936; padding: 6px 12px; border-radius: 20px; }
++    .queue-status::before { content: ''; display: inline-block; width: 7px; height: 7px; background: #5d8855; border-radius: 50%; margin-right: 7px; }
++    .task-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
++    .task-button { font: inherit; text-align: left; padding: 16px; border: 1px solid #e4dcd7; border-radius: 8px; background: #fcfaf8; color: var(--text); cursor: pointer; transition: background .15s, border-color .15s; }
++    .task-button:hover { background: #f4ece6; border-color: #a1887f; }
++    .task-button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .task-button strong, .task-button small { display: block; }
++    .task-button strong { font-size: .92rem; margin-top: 8px; }
++    .task-button small { font-size: .76rem; margin-top: 4px; opacity: .8; }
++    .priority { display: inline-block; font-size: .65rem; font-weight: 700; letter-spacing: .06em; padding: 2px 7px; border-radius: 4px; }
++    .urgent { color: #9b3b20; background: #fce8dd; }
++    .standard { color: #88601e; background: #fbefce; }
++    .background { color: #46614a; background: #e8f0e7; }
++    .task-button.batch { background: var(--primary); color: white; border-color: var(--primary); }
++    .task-button.batch:hover { background: #3e2723; }
++    .batch .priority { color: #ffe1b7; background: #64473d; }
++    .queue-panels { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; border-top: 1px solid #eee7e2; padding-top: 22px; }
++    .queue-heading h3 { font-size: .95rem; }
++    .queue-heading span { font-size: .75rem; color: #725d56; }
++    .task-list, .activity-list { list-style: none; margin-top: 14px; }
++    .task-list { max-height: 300px; overflow-y: auto; }
++    .empty-queue { padding: 30px 12px; text-align: center; color: #725d56; background: #fcfaf8; border: 1px dashed #e4dcd7; border-radius: 8px; font-size: .85rem; }
++    .task-row { padding: 12px 0; border-bottom: 1px solid #eee7e2; }
++    .task-heading { font-size: .82rem; }
++    .task-heading span { font-size: .72rem; color: #725d56; }
++    .task-row progress { width: 100%; height: 5px; display: block; margin-top: 8px; accent-color: #795548; }
++    .task-row progress::-webkit-progress-bar { background: #eee7e2; border-radius: 4px; }
++    .task-row progress::-webkit-progress-value { background: #795548; border-radius: 4px; }
++    .activity-list { max-height: 300px; overflow-y: auto; font-size: .8rem; }
++    .activity-list li { padding: 8px 0; border-bottom: 1px solid #eee7e2; }
++    .activity-list time { color: #725d56; font-size: .7rem; margin-right: 8px; }
++    .queue-note { font-size: .75rem; color: #725d56; margin-top: 20px; }
++    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
++    @media (max-width: 700px) {
++      .operations { padding: 20px; }
++      .task-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
++      .queue-panels { grid-template-columns: 1fr; }
++      .operations-heading { align-items: flex-start; flex-direction: column; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +252,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="operations" aria-labelledby="operations-title">
++      <div class="operations-heading">
++        <div>
++          <p class="eyebrow">BEHIND THE COUNTER</p>
++          <h2 id="operations-title">Operations queue</h2>
++        </div>
++        <span class="queue-status" id="queue-status">Ready to run</span>
++      </div>
++      <p class="operations-description">A little order in the daily rush. Run simulated shop tasks and watch the most urgent work move to the front of the queue.</p>
++      <div class="task-controls">
++        <button type="button" class="task-button" data-task="checkout">
++          <span class="priority urgent">URGENT</span>
++          <strong>Run checkout</strong><small>Process a customer order</small>
++        </button>
++        <button type="button" class="task-button" data-task="menu">
++          <span class="priority standard">STANDARD</span>
++          <strong>Update menu</strong><small>Refresh seasonal offerings</small>
++        </button>
++        <button type="button" class="task-button" data-task="telemetry">
++          <span class="priority background">BACKGROUND</span>
++          <strong>Log telemetry</strong><small>Collect shop activity</small>
++        </button>
++        <button type="button" class="task-button batch" id="run-batch">
++          <span class="priority">MIXED PRIORITIES</span>
++          <strong>Run mixed batch &rarr;</strong><small>Queue all three tasks</small>
++        </button>
++      </div>
++      <div class="queue-panels">
++        <div>
++          <div class="queue-heading"><h3>Task queue</h3><span id="queue-count">0 pending · 0 completed</span></div>
++          <ul class="task-list" id="task-list"><li class="empty-queue">The queue is quiet.<br>Choose a task to get things brewing.</li></ul>
++        </div>
++        <div>
++          <div class="queue-heading"><h3>Activity log</h3><span>Latest first</span></div>
++          <ol class="activity-list" id="activity-list"><li>Ready when you are. Run a task or try a mixed batch.</li></ol>
++        </div>
++      </div>
++      <p class="queue-note">Checkout first, menu updates next, telemetry last. Work runs in short slices so you can keep interacting with the page.</p>
++      <p class="sr-only" id="queue-announcement" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +304,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./operations.mjs"></script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,353 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,134 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback overlay */
++    .feedback-launcher {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 1001;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 999px;
++      padding: 12px 20px;
++      font: inherit;
++      font-weight: bold;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    .feedback-dock {
++      display: contents;
++    }
++
++    .feedback-dialog {
++      width: min(420px, calc(100vw - 32px));
++      margin: auto;
++      padding: 24px;
++      border: none;
++      border-radius: 10px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
++      text-align: left;
++    }
++
++    .feedback-dialog::backdrop {
++      background: rgba(30, 15, 10, 0.55);
++    }
++
++    /* Placement follows the dock the dialog currently lives in */
++    .feedback-dialog[data-dock="hero"] { margin-top: 12vh; }
++    .feedback-dialog[data-dock="menu"] { margin-block: auto; }
++    .feedback-dialog[data-dock="footer"] { margin-bottom: 4vh; }
++
++    .feedback-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .feedback-location {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 16px;
++    }
++
++    .feedback-dialog fieldset {
++      border: none;
++      margin-bottom: 12px;
++    }
++
++    .feedback-dialog legend,
++    .feedback-dialog label {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .feedback-rating {
++      display: flex;
++      gap: 12px;
++      margin-top: 6px;
++    }
++
++    .feedback-rating label {
++      font-weight: normal;
++    }
++
++    .feedback-dialog textarea {
++      width: 100%;
++      min-height: 90px;
++      margin-top: 6px;
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      resize: vertical;
++    }
++
++    .feedback-move {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin: 12px 0 16px;
++    }
++
++    .feedback-move button,
++    .feedback-actions button {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 6px 12px;
++      border-radius: 5px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .feedback-move button[aria-pressed="true"] {
++      background: var(--secondary);
++    }
++
++    .feedback-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 8px;
++    }
++
++    .feedback-actions button[type="submit"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .feedback-status {
++      min-height: 1.2em;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-top: 8px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -171,8 +297,43 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++
++    <div class="feedback-dock" data-dock="hero" data-dock-label="Hero banner">
++      <dialog class="feedback-dialog" id="feedback-dialog" aria-labelledby="feedback-title" data-dock="hero">
++        <form method="dialog" id="feedback-form">
++          <h2 id="feedback-title">Share Your Feedback</h2>
++          <p class="feedback-location">Docked in: <strong id="feedback-location">Hero banner</strong></p>
++
++          <fieldset>
++            <legend>How was your coffee?</legend>
++            <div class="feedback-rating">
++              <label><input type="radio" name="rating" value="1"> 1</label>
++              <label><input type="radio" name="rating" value="2"> 2</label>
++              <label><input type="radio" name="rating" value="3"> 3</label>
++              <label><input type="radio" name="rating" value="4"> 4</label>
++              <label><input type="radio" name="rating" value="5"> 5</label>
++            </div>
++          </fieldset>
++
++          <label for="feedback-comments">Comments</label>
++          <textarea id="feedback-comments" name="comments" placeholder="Tell us what you loved, or what we can do better."></textarea>
++
++          <div class="feedback-move" role="group" aria-label="Move feedback panel">
++            <button type="button" data-move-to="hero" aria-pressed="true">Move to hero</button>
++            <button type="button" data-move-to="menu" aria-pressed="false">Move to menu</button>
++            <button type="button" data-move-to="footer" aria-pressed="false">Move to footer</button>
++          </div>
++
++          <div class="feedback-actions">
++            <button type="submit" value="cancel" formnovalidate>Close</button>
++            <button type="submit" value="send">Send Feedback</button>
++          </div>
++          <p class="feedback-status" id="feedback-status" role="status" aria-live="polite"></p>
++        </form>
++      </dialog>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +355,9 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <div class="feedback-dock" data-dock="menu" data-dock-label="Seasonal menu"></div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -204,9 +366,160 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <div class="feedback-dock" data-dock="footer" data-dock-label="Footer"></div>
+   </footer>
+ 
++  <button type="button" class="feedback-launcher" id="feedback-launcher" aria-haspopup="dialog" aria-controls="feedback-dialog">
++    Feedback
++  </button>
++
++  <script>
++    (() => {
++      const STORAGE_KEY = 'daily-grind-feedback';
++      const dialog = document.getElementById('feedback-dialog');
++      const form = document.getElementById('feedback-form');
++      const launcher = document.getElementById('feedback-launcher');
++      const locationLabel = document.getElementById('feedback-location');
++      const status = document.getElementById('feedback-status');
++      const moveButtons = dialog.querySelectorAll('[data-move-to]');
++      const supportsMoveBefore = typeof Element.prototype.moveBefore === 'function';
++
++      // Set while the fallback path closes/re-opens the dialog so the
++      // close handler doesn't treat it as the user dismissing the panel.
++      let relocating = false;
++
++      const loadState = () => {
++        try {
++          return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
++        } catch {
++          return {};
++        }
++      };
++
++      const saveState = () => {
++        const data = new FormData(form);
++        localStorage.setItem(STORAGE_KEY, JSON.stringify({
++          open: dialog.open,
++          dock: dialog.dataset.dock,
++          rating: data.get('rating'),
++          comments: data.get('comments')
++        }));
++      };
++
++      const syncDockUi = (dock) => {
++        dialog.dataset.dock = dock.dataset.dock;
++        locationLabel.textContent = dock.dataset.dockLabel;
++        moveButtons.forEach((btn) => {
++          btn.setAttribute('aria-pressed', String(btn.dataset.moveTo === dock.dataset.dock));
++        });
++      };
++
++      // Snapshot everything a remove + insert would destroy.
++      const captureState = () => {
++        const active = dialog.contains(document.activeElement) ? document.activeElement : null;
++        const hasSelection = active && typeof active.selectionStart === 'number';
++        return {
++          open: dialog.open,
++          modal: dialog.matches(':modal'),
++          active,
++          selection: hasSelection ? [active.selectionStart, active.selectionEnd, active.selectionDirection] : null,
++          scrollTops: [...dialog.querySelectorAll('textarea'), dialog].map((el) => [el, el.scrollTop])
++        };
++      };
++
++      const restoreState = (state) => {
++        if (state.open && !dialog.open) {
++          state.modal ? dialog.showModal() : dialog.show();
++        }
++        if (state.active && state.active.isConnected) {
++          state.active.focus({ preventScroll: true });
++          if (state.selection) {
++            state.active.setSelectionRange(...state.selection);
++          }
++        }
++        state.scrollTops.forEach(([el, top]) => { el.scrollTop = top; });
++      };
++
++      const moveDialog = (dockName) => {
++        const dock = document.querySelector(`.feedback-dock[data-dock="${dockName}"]`);
++        if (!dock || dock === dialog.parentElement) return;
++
++        if (supportsMoveBefore) {
++          try {
++            // State-preserving move: dialog stays open/in the top layer and
++            // keeps focus, selection and form state.
++            dock.moveBefore(dialog, null);
++            syncDockUi(dock);
++            saveState();
++            return;
++          } catch (err) {
++            // moveBefore throws for some cross-document/disconnected cases;
++            // fall through to the manual path.
++            console.warn('moveBefore failed, using fallback', err);
++          }
++        }
++
++        const state = captureState();
++        relocating = true;
++        try {
++          if (dialog.open) dialog.close();
++          dock.insertBefore(dialog, null);
++          restoreState(state);
++        } finally {
++          relocating = false;
++        }
++        syncDockUi(dock);
++        saveState();
++      };
++
++      const openDialog = () => {
++        if (!dialog.open) dialog.showModal();
++        saveState();
++      };
++
++      launcher.addEventListener('click', openDialog);
++
++      moveButtons.forEach((btn) => {
++        btn.addEventListener('click', () => moveDialog(btn.dataset.moveTo));
++      });
++
++      form.addEventListener('input', saveState);
++
++      dialog.addEventListener('close', () => {
++        if (relocating) return;
++        if (dialog.returnValue === 'send') {
++          form.reset();
++          status.textContent = '';
++          launcher.textContent = 'Thanks! ☕';
++          setTimeout(() => { launcher.textContent = 'Feedback'; }, 3000);
++        }
++        dialog.returnValue = '';
++        saveState();
++        launcher.focus();
++      });
++
++      form.addEventListener('submit', (event) => {
++        if (event.submitter?.value === 'send' && !new FormData(form).get('rating')) {
++          event.preventDefault();
++          status.textContent = 'Please pick a rating before sending.';
++        }
++      });
++
++      // Restore persisted draft, dock and open state.
++      const saved = loadState();
++      if (saved.rating) {
++        const radio = form.querySelector(`input[name="rating"][value="${saved.rating}"]`);
++        if (radio) radio.checked = true;
++      }
++      if (saved.comments) form.elements.comments.value = saved.comments;
++      const savedDock = saved.dock && document.querySelector(`.feedback-dock[data-dock="${saved.dock}"]`);
++      if (savedDock && savedDock !== dialog.parentElement) savedDock.appendChild(dialog);
++      syncDockUi(dialog.parentElement);
++      if (saved.open) dialog.showModal();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,50 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,8 +19,46 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Scrollbars: higher-contrast thumb/track using the brand palette */
++    html {
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
++
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      /* Full width (not thin) for a larger, easier-to-see target; also forces
++         macOS to render custom colors instead of overlay scrollbars */
++      scrollbar-width: auto;
++      scrollbar-gutter: stable;
++    }
++
++    /* Users who request more contrast get stark black-on-white scrollbars */
++    @media (prefers-contrast: more) {
++      html {
++        --scrollbar-thumb: #000;
++        --scrollbar-track: #fff;
++      }
++    }
++
++    /* Legacy fallback for older WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 14px;
++        height: 14px;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border: 2px solid var(--scrollbar-track);
++        border-radius: 7px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);

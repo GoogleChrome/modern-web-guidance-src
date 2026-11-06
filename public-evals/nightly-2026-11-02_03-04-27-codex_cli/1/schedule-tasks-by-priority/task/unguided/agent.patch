@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,71 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Operations queue */
++    .operations {
++      margin-top: 56px;
++      padding: 28px;
++      background: #fff;
++      border: 1px solid #e8dfda;
++      border-radius: 12px;
++    }
++
++    .operations-heading, .queue-heading, .task-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++    }
++
++    .eyebrow { color: #81675e; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
++    .operations h2 { font-size: 1.65rem; margin: 3px 0; }
++    .operations-description { color: #78665f; font-size: 0.9rem; margin-top: 6px; max-width: 660px; }
++    .live-badge { flex-shrink: 0; background: #edf4ec; color: #44613e; border-radius: 20px; padding: 5px 11px; font-size: 0.75rem; }
++    .live-badge::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #6b8c60; margin-right: 7px; }
++    .operation-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0 16px; }
++    .operation-button { font: inherit; text-align: left; border: 1px solid #e4dcd6; border-radius: 8px; background: #fcfaf8; padding: 16px; color: var(--text); cursor: pointer; transition: background 0.2s, border-color 0.2s; }
++    .operation-button:hover { background: #f5efe9; border-color: #bca69a; }
++    .operation-button strong { display: block; font-size: 0.95rem; margin: 8px 0 2px; }
++    .operation-button small { color: #78665f; }
++    .priority { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; border-radius: 4px; padding: 3px 6px; display: inline-block; }
++    .priority-urgent { color: #a0442c; background: #fbe9df; }
++    .priority-standard { color: #846222; background: #f7efda; }
++    .priority-background { color: #5e6f68; background: #eaf0ec; }
++    .batch-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
++    .batch-button { font: inherit; font-size: 0.85rem; font-weight: 600; border: 0; margin: 0; cursor: pointer; }
++    .batch-row p { color: #78665f; font-size: 0.78rem; }
++    .operations button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .operations button:disabled { opacity: 0.45; cursor: not-allowed; }
++    .queue-stats { display: flex; gap: 24px; padding: 20px 0; margin-top: 8px; border-bottom: 1px solid #eee7e2; font-size: 0.8rem; color: #78665f; }
++    .queue-stats strong { color: var(--primary); font-size: 1.1rem; margin-right: 5px; }
++    .queue-panels { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; margin-top: 20px; }
++    .queue-heading h3 { font-size: 0.9rem; }
++    .queue-heading span { font-size: 0.72rem; color: #78665f; }
++    .task-list, .activity-list { list-style: none; max-height: 290px; overflow-y: auto; margin-top: 12px; }
++    .empty-state { padding: 28px 12px; text-align: center; color: #8c7a71; font-size: 0.83rem; background: #fcfaf8; border: 1px dashed #e6dcd5; border-radius: 6px; }
++    .task-item { padding: 12px 0; border-bottom: 1px solid #eee7e2; }
++    .task-heading { font-size: 0.8rem; }
++    .task-heading span:last-child { color: #78665f; white-space: nowrap; font-size: 0.72rem; }
++    .task-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
++    .task-meta small { color: #8c7a71; font-size: 0.7rem; }
++    .task-progress { display: block; width: 100%; height: 4px; border: 0; margin-top: 8px; appearance: none; border-radius: 4px; overflow: hidden; background: #eee7e2; }
++    .task-progress::-webkit-progress-bar { background: #eee7e2; }
++    .task-progress::-webkit-progress-value { background: #9a7b62; }
++    .task-progress::-moz-progress-bar { background: #9a7b62; }
++    .activity-list li:not(.empty-state) { font-size: 0.78rem; padding: 10px 0; border-bottom: 1px solid #eee7e2; }
++    .activity-list small { display: block; color: #8c7a71; font-size: 0.7rem; }
++    .queue-note { margin-top: 20px; font-size: 0.73rem; color: #8c7a71; }
++
++    @media (max-width: 650px) {
++      .operations { padding: 20px; }
++      .operations-heading { align-items: flex-start; flex-wrap: wrap; }
++      .operation-controls, .queue-panels { grid-template-columns: 1fr; }
++      .queue-stats { gap: 16px; flex-wrap: wrap; }
++      .operation-button { padding: 12px 16px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +257,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="operations" aria-labelledby="operations-title">
++      <div class="operations-heading">
++        <div>
++          <p class="eyebrow">Behind the counter</p>
++          <h2 id="operations-title">Operations queue</h2>
++        </div>
++        <span class="live-badge">Live simulator</span>
++      </div>
++      <p class="operations-description">A smooth service starts with the right priorities. Add tasks and watch urgent work move to the front while everything keeps flowing.</p>
++      <div class="operation-controls">
++        <button type="button" class="operation-button" data-task="urgent">
++          <span class="priority priority-urgent">01 · Urgent</span>
++          <strong>Run checkout →</strong>
++          <small>Process a customer's order</small>
++        </button>
++        <button type="button" class="operation-button" data-task="standard">
++          <span class="priority priority-standard">02 · Standard</span>
++          <strong>Update menu →</strong>
++          <small>Refresh the seasonal selection</small>
++        </button>
++        <button type="button" class="operation-button" data-task="background">
++          <span class="priority priority-background">03 · Background</span>
++          <strong>Log telemetry →</strong>
++          <small>Record service performance</small>
++        </button>
++      </div>
++      <div class="batch-row">
++        <button type="button" class="btn batch-button" id="run-batch">Run mixed batch ↗</button>
++        <p>3 tasks · checkout first, telemetry last</p>
++      </div>
++      <div class="queue-stats">
++        <span><strong id="pending-count">0</strong> pending</span>
++        <span><strong id="completed-count">0</strong> completed</span>
++        <span id="queue-status" role="status">Ready for tasks</span>
++      </div>
++      <div class="queue-panels">
++        <div>
++          <div class="queue-heading"><h3>Task queue</h3><span>Highest priority first</span></div>
++          <ol class="task-list" id="task-list"><li class="empty-state">The queue is clear. Add a task to get started.</li></ol>
++        </div>
++        <div>
++          <div class="queue-heading"><h3>Completed activity</h3><span>Latest first</span></div>
++          <ol class="activity-list" id="activity-list" aria-label="Recently completed tasks"><li class="empty-state">Completed tasks will appear here.</li></ol>
++        </div>
++      </div>
++      <p class="queue-note">Simulation only. Work runs in short slices so you can keep interacting. Higher-priority tasks interrupt lower-priority work; equal priorities run in arrival order.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +317,97 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const types = {
++        urgent: { name: 'Checkout', label: 'Urgent', rank: 0, slices: 45, priority: 'user-blocking' },
++        standard: { name: 'Menu update', label: 'Standard', rank: 1, slices: 90, priority: 'user-visible' },
++        background: { name: 'Telemetry logging', label: 'Background', rank: 2, slices: 135, priority: 'background' }
++      };
++      const queue = [];
++      const history = [];
++      const capacity = 24;
++      let nextId = 1;
++      let completed = 0;
++      let processing = false;
++      let checksum = 0;
++      const taskList = document.getElementById('task-list');
++      const activityList = document.getElementById('activity-list');
++      const buttons = document.querySelectorAll('[data-task]');
++      const batchButton = document.getElementById('run-batch');
++
++      function render() {
++        queue.sort((a, b) => types[a.type].rank - types[b.type].rank || a.id - b.id);
++        document.getElementById('pending-count').textContent = queue.length;
++        document.getElementById('completed-count').textContent = completed;
++        const status = queue.length ? `Processing ${types[queue[0].type].name.toLowerCase()}` : 'Ready for tasks';
++        const statusElement = document.getElementById('queue-status');
++        if (statusElement.textContent !== status) statusElement.textContent = status;
++        taskList.innerHTML = queue.length ? queue.map((task, index) => {
++          const type = types[task.type];
++          const percent = Math.floor(task.done / type.slices * 100);
++          return `<li class="task-item"><div class="task-heading"><strong>${type.name} #${task.id}</strong><span>${index === 0 ? 'Running' : task.done ? 'Paused' : 'Queued'} · ${percent}%</span></div><div class="task-meta"><span class="priority priority-${task.type}">${type.label}</span><small>Task ${task.id}</small></div><progress class="task-progress" max="100" value="${percent}" aria-label="${type.name} ${task.id} progress">${percent}%</progress></li>`;
++        }).join('') : '<li class="empty-state">The queue is clear. Add a task to get started.</li>';
++        buttons.forEach(button => { button.disabled = queue.length >= capacity; });
++        batchButton.disabled = queue.length > capacity - 3;
++      }
++
++      function runSlice() {
++        // Select again after each yield so newly arrived urgent work can preempt.
++        queue.sort((a, b) => types[a.type].rank - types[b.type].rank || a.id - b.id);
++        const task = queue[0];
++        if (!task) { processing = false; return; }
++        const type = types[task.type];
++        // Bound CPU work to 3ms, then return control to the browser for input/paint.
++        const deadline = performance.now() + 3;
++        do { checksum = (checksum + Math.sqrt(task.id + checksum)) % 10000; }
++        while (performance.now() < deadline);
++        task.done += 1;
++        if (task.done === type.slices) {
++          queue.shift();
++          completed += 1;
++          history.unshift({ id: task.id, name: type.name, label: type.label, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) });
++          history.splice(8);
++          activityList.innerHTML = history.map(item => `<li>✓ ${item.name} #${item.id}<small>${item.label} · Completed at ${item.time}</small></li>`).join('');
++        }
++        // Keep DOM updates bounded as well as the simulated work.
++        if (task.done % 5 === 0 || task.done === type.slices) render();
++        if (queue.length) scheduleSlice();
++        else { processing = false; render(); }
++      }
++
++      function scheduleSlice() {
++        // The timer also gives browsers without the Scheduling API a chance to paint.
++        setTimeout(() => {
++          const priority = types[queue[0].type].priority;
++          if (globalThis.scheduler && typeof globalThis.scheduler.postTask === 'function') {
++            globalThis.scheduler.postTask(runSlice, { priority }).catch(() => {
++              processing = false;
++              document.getElementById('queue-status').textContent = 'Queue interrupted. Add a task to resume.';
++            });
++          } else {
++            runSlice();
++          }
++        }, 16);
++      }
++
++      function enqueue(taskTypes) {
++        if (queue.length + taskTypes.length > capacity) return;
++        taskTypes.forEach(type => queue.push({ type, id: nextId++, done: 0 }));
++        render();
++        if (!processing) {
++          processing = true;
++          scheduleSlice();
++        }
++      }
++
++      buttons.forEach(button => button.addEventListener('click', () => enqueue([button.dataset.task])));
++      // Enqueue in reverse priority to demonstrate that scheduling determines order.
++      batchButton.addEventListener('click', () => enqueue(['background', 'standard', 'urgent']));
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,194 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -47,8 +47,11 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px 0;
+       list-style: none;
+     }
+ 
+     nav ul li {
+@@ -71,8 +74,89 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #trigger-btn {
++      anchor-name: --options-trigger;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 6px 12px;
++      background: transparent;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    #trigger-btn:hover {
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
++    #action-panel {
++      position: fixed;
++      position-anchor: --options-trigger;
++      position-area: block-end span-inline-end;
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      inset: auto;
++      margin: 8px 0;
++      width: 230px;
++      max-width: calc(100vw - 16px);
++      max-height: calc(100dvh - 16px);
++      overflow: auto;
++      padding: 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 24px rgb(62 39 35 / 20%);
++    }
++
++    #action-panel.manual-position {
++      position-area: none;
++      position-try-fallbacks: none;
++      margin: 0;
++    }
++
++    .action-item {
++      display: block;
++      width: 100%;
++      padding: 10px 12px;
++      border: 0;
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      text-align: left;
++      font: inherit;
++      cursor: pointer;
++      overflow-wrap: anywhere;
++    }
++
++    .action-item:hover {
++      background: #f5efec;
++    }
++
++    #trigger-btn:focus-visible,
++    .action-item:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,10 +247,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><button id="trigger-btn" type="button" popovertarget="action-panel">Options <span aria-hidden="true">▾</span></button></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
++    <div id="action-panel" popover="auto" role="group" aria-label="Coffee shop options">
++      <button class="action-item" type="button" data-href="/menu/seasonal">Seasonal offers</button>
++      <button class="action-item" type="button" data-href="/account">Account settings</button>
++      <button class="action-item" type="button" data-href="/contact">Support</button>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -206,7 +296,71 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Older browsers need a conditional fallback for popover invocation and dismissal.
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++
++    const trigger = document.getElementById("trigger-btn");
++    const panel = document.getElementById("action-panel");
++    const hasAnchors = CSS.supports("anchor-name: --options-trigger") &&
++      CSS.supports("position-area: block-end span-inline-end") &&
++      CSS.supports("position-try-fallbacks: flip-block");
++    const isOpen = () => panel.matches(":is(:popover-open, .\\:popover-open)");
++
++    function positionPanel() {
++      if (!isOpen()) return;
++      const gap = 8;
++      const viewport = window.visualViewport;
++      const minX = (viewport?.offsetLeft ?? 0) + gap;
++      const minY = (viewport?.offsetTop ?? 0) + gap;
++      const maxX = minX + (viewport?.width ?? window.innerWidth) - gap * 2;
++      const maxY = minY + (viewport?.height ?? window.innerHeight) - gap * 2;
++      const anchor = trigger.getBoundingClientRect();
++      panel.style.maxWidth = `${Math.max(0, maxX - minX)}px`;
++      panel.style.maxHeight = `${Math.max(0, maxY - minY)}px`;
++      const width = panel.offsetWidth;
++      const height = panel.offsetHeight;
++      const below = Math.max(0, maxY - anchor.bottom - gap);
++      const above = Math.max(0, anchor.top - gap - minY);
++      const fitsHorizontally = anchor.left + width <= maxX || anchor.right - width >= minX;
++
++      // Native CSS handles the usual four placements. Clamp when none can fit,
++      // or when anchor positioning is unavailable (including zoomed viewports).
++      const manual = !hasAnchors || !fitsHorizontally || height > Math.max(below, above) ||
++        anchor.left < minX || anchor.right > maxX || anchor.top < minY || anchor.bottom > maxY ||
++        (viewport && (viewport.scale !== 1 || viewport.offsetTop || viewport.offsetLeft));
++      panel.classList.toggle("manual-position", Boolean(manual));
++      if (!manual) {
++        panel.style.removeProperty("left");
++        panel.style.removeProperty("top");
++        return;
++      }
++
++      const placeAbove = height > below && above > below;
++      panel.style.maxHeight = `${Math.max(0, placeAbove ? above : below)}px`;
++      const left = anchor.left + width <= maxX ? anchor.left : anchor.right - width;
++      panel.style.left = `${Math.max(minX, Math.min(left, maxX - width))}px`;
++      const top = placeAbove ? anchor.top - gap - panel.offsetHeight : anchor.bottom + gap;
++      panel.style.top = `${Math.max(minY, Math.min(top, maxY - panel.offsetHeight))}px`;
++    }
++
++    panel.addEventListener("toggle", positionPanel);
++    window.addEventListener("resize", positionPanel);
++    document.addEventListener("scroll", positionPanel, { capture: true, passive: true });
++    window.visualViewport?.addEventListener("resize", positionPanel);
++    window.visualViewport?.addEventListener("scroll", positionPanel);
++    new ResizeObserver(positionPanel).observe(trigger);
++    panel.addEventListener("click", (event) => {
++      const action = event.target.closest("button[data-href]");
++      if (action) {
++        panel.hidePopover();
++        window.location.assign(action.dataset.href);
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

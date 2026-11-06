@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+index 66c9173..2efcdcc 100644
+--- a/index.html
++++ b/index.html
+@@ -48,7 +48,9 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+@@ -62,10 +64,38 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="page"] {
+       color: var(--accent);
+     }
+ 
++    /* Sliding active-item underline */
++    .nav-indicator {
++      position: absolute;
++      left: 0;
++      bottom: -6px;
++      margin: 0;
++      height: 2px;
++      width: 0;
++      border-radius: 2px;
++      background: var(--accent);
++      opacity: 0;
++      pointer-events: none;
++      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        opacity 0.2s;
++    }
++
++    .nav-indicator.no-transition {
++      transition: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .nav-indicator {
++        transition: none;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -165,6 +195,7 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="nav-indicator" aria-hidden="true"></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +238,79 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var list = document.querySelector('nav ul');
++      var indicator = list.querySelector('.nav-indicator');
++      var links = Array.prototype.slice.call(list.querySelectorAll('a:not(.logout-link)'));
++      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      var active = null;
++
++      function moveIndicator(link, animate) {
++        if (!link) {
++          indicator.style.opacity = '0';
++          return;
++        }
++        // On first appearance, snap into place instead of sliding in from the left edge
++        var snap = !animate || indicator.style.opacity !== '1';
++        indicator.classList.toggle('no-transition', snap);
++        indicator.style.width = link.offsetWidth + 'px';
++        indicator.style.transform = 'translateX(' + link.offsetLeft + 'px)';
++        indicator.style.opacity = '1';
++        if (snap) {
++          indicator.offsetWidth; // flush styles before re-enabling transitions
++          indicator.classList.remove('no-transition');
++        }
++      }
++
++      function setActive(link, animate) {
++        if (active) active.removeAttribute('aria-current');
++        active = link;
++        if (active) active.setAttribute('aria-current', 'page');
++        moveIndicator(active, animate);
++      }
++
++      // Initial state from the current URL
++      var path = window.location.pathname;
++      setActive(links.filter(function (a) {
++        var href = a.getAttribute('href');
++        return path === href || path.indexOf(href + '/') === 0;
++      })[0] || null, false);
++
++      links.forEach(function (link) {
++        link.addEventListener('click', function (e) {
++          // Let modified clicks (new tab/window) behave normally
++          if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++          if (link === active) return;
++
++          var hadActive = !!active;
++          setActive(link, true);
++
++          if (reduceMotion.matches || !hadActive) return;
++
++          // Give the underline time to slide before navigating away
++          e.preventDefault();
++          var navigated = false;
++          function go() {
++            if (navigated) return;
++            navigated = true;
++            window.location.href = link.href;
++          }
++          indicator.addEventListener('transitionend', function onEnd(ev) {
++            if (ev.propertyName !== 'transform') return;
++            indicator.removeEventListener('transitionend', onEnd);
++            go();
++          });
++          setTimeout(go, 450);
++        });
++      });
++
++      window.addEventListener('resize', function () {
++        moveIndicator(active, false);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

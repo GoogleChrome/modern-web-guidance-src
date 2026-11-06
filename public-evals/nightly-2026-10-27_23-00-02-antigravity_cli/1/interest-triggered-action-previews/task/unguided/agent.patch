@@ -1,0 +1,95 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,38 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    [interestfor] {
++      interest-delay: 0s;
++      interest-delay-start: 0s;
++      interest-delay-end: 0s;
++    }
++
++    :interest-source {
++      background: #3e2723;
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #seasonal-preview {
++      margin-top: 24px;
++      padding: 16px 20px;
++      background: white;
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      text-align: center;
++      font-weight: 600;
++      color: var(--text);
++      transition: color 0.2s, border-color 0.2s, background-color 0.2s;
++    }
++
++    #seasonal-preview:interest-target {
++      color: var(--primary);
++      border-color: var(--accent);
++      background-color: #fff8e1;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +210,49 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="seasonal-preview" data-drink="Maple Oat Latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="seasonal-preview" data-drink="Dark Roast Espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="seasonal-preview" data-drink="Cold Brew">View Details</a>
+         </div>
+       </div>
++      <div id="seasonal-preview">Select a drink to preview</div>
+     </section>
+   </main>
+ 
++  <script>
++    const seasonalPreview = document.getElementById('seasonal-preview');
++
++    seasonalPreview.addEventListener('interest', (event) => {
++      let source = event.source;
++      if (!source) {
++        try {
++          source = document.querySelector('[interestfor="seasonal-preview"]:interest-source');
++        } catch {
++          source = null;
++        }
++      }
++      const drinkName =
++        source?.dataset?.drink ||
++        source?.closest('.card')?.querySelector('h3')?.textContent?.trim() ||
++        'Maple Oat Latte';
++      seasonalPreview.textContent = drinkName;
++    });
++
++    seasonalPreview.addEventListener('loseinterest', () => {
++      seasonalPreview.textContent = 'Select a drink to preview';
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

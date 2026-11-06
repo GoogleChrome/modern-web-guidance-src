@@ -1,0 +1,199 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,128 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Picker (Customizable Select) */
++    .roast-picker-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      width: 100%;
++      max-width: 320px;
++      margin-top: 1.25rem;
++      text-align: left;
++    }
++
++    .roast-picker-label {
++      font-size: 1rem;
++      font-weight: 600;
++      color: var(--light);
++      margin-bottom: 0.4rem;
++    }
++
++    select.custom-select,
++    select.custom-select::picker(select) {
++      appearance: base-select;
++    }
++
++    select.custom-select {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 14px;
++      background-color: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      color: var(--light);
++      font-size: 1rem;
++      cursor: pointer;
++    }
++
++    select.custom-select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    select.custom-select::picker-icon {
++      color: var(--accent);
++    }
++
++    select.custom-select selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    select.custom-select selectedcontent .option-desc {
++      display: none;
++    }
++
++    select.custom-select::picker(select) {
++      background-color: #3e2723;
++      border: 1px solid var(--accent);
++      border-radius: 8px;
++      padding: 8px;
++      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
++      width: anchor-size(width);
++      color: var(--light);
++    }
++
++    select.custom-select option {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 10px;
++      border-radius: 6px;
++      color: var(--light);
++      cursor: pointer;
++    }
++
++    select.custom-select option:hover {
++      background-color: var(--primary);
++    }
++
++    select.custom-select option::before {
++      display: none;
++    }
++
++    select.custom-select option::checkmark {
++      color: #3e2723;
++    }
++
++    select.custom-select option:checked {
++      background-color: var(--accent);
++      color: #3e2723;
++    }
++
++    select.custom-select option:checked .option-title {
++      font-weight: 700;
++    }
++
++    select.custom-select option:checked .option-desc {
++      color: #4e342e;
++    }
++
++    .option-text {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .option-title {
++      font-size: 1rem;
++      font-weight: 500;
++      line-height: 1.3;
++    }
++
++    .option-desc {
++      font-size: 0.85rem;
++      color: var(--secondary);
++      line-height: 1.3;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +290,66 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker-group">
++      <label for="roast-picker" class="roast-picker-label">Choose your roast</label>
++      <select class="custom-select" name="roast" id="roast-picker">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++
++        <option value="light-roast" aria-label="Light Roast">
++          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <circle cx="12" cy="12" r="4"></circle>
++            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
++          </svg>
++          <div class="option-text">
++            <span class="option-title">Light Roast</span>
++            <span class="option-desc">Bright, floral, and citrus notes</span>
++          </div>
++        </option>
++
++        <option value="medium-roast" aria-label="Medium Roast">
++          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M17 8h1a4 4 0 1 1 0 8h-1"></path>
++            <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path>
++            <line x1="6" y1="2" x2="6" y2="4"></line>
++            <line x1="10" y1="2" x2="10" y2="4"></line>
++            <line x1="14" y1="2" x2="14" y2="4"></line>
++          </svg>
++          <div class="option-text">
++            <span class="option-title">Medium Roast</span>
++            <span class="option-desc">Balanced body with caramel sweetness</span>
++          </div>
++        </option>
++
++        <option value="dark-roast" aria-label="Dark Roast" selected>
++          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
++          </svg>
++          <div class="option-text">
++            <span class="option-title">Dark Roast</span>
++            <span class="option-desc">Bold, smokey, and perfect for a morning boost</span>
++          </div>
++        </option>
++
++        <option value="cold-brew" aria-label="Cold Brew">
++          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <line x1="2" y1="12" x2="22" y2="12"></line>
++            <line x1="12" y1="2" x2="12" y2="22"></line>
++            <path d="m20 16-4-4 4-4"></path>
++            <path d="m4 8 4 4-4 4"></path>
++            <path d="m16 4-4 4-4-4"></path>
++            <path d="m8 20 4-4 4 4"></path>
++          </svg>
++          <div class="option-text">
++            <span class="option-title">Cold Brew</span>
++            <span class="option-desc">Steeped for 18 hours for maximum smoothness</span>
++          </div>
++        </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

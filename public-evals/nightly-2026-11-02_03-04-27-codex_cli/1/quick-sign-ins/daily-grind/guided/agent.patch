@@ -1,0 +1,317 @@
+diff --git a/index.html b/index.html
+index 66c9173..e8f901c 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,47 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    button, input { font: inherit; }
++    button { cursor: pointer; }
++    button.btn { border: 0; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
++    .signin-invitation { padding: 16px 20px; text-align: center; background: var(--secondary); }
++    .signin-invitation button { margin: 0 0 0 12px; }
++    #signin-dialog {
++      margin: auto;
++      padding: 28px;
++      width: min(440px, calc(100% - 32px));
++      max-height: calc(100dvh - 32px);
++      overflow: auto;
++      border: 0;
++      border-radius: 12px;
++      color: var(--text);
++      background: var(--light);
++      box-shadow: 0 16px 60px #0005;
++    }
++    dialog:modal { overscroll-behavior: contain; }
++    dialog::backdrop { background: #23171399; overflow: hidden; overscroll-behavior: contain; }
++    .dialog-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
++    .close-button { border: 0; background: transparent; padding: 4px 8px; color: var(--text); }
++    #signin-form label { display: block; margin-top: 16px; font-weight: 600; }
++    #signin-form input:not([type="checkbox"]) {
++      display: block; width: 100%; padding: 10px; border: 1px solid #907a73; border-radius: 5px;
++    }
++    #signin-form .show-password { font-weight: normal; font-size: 0.9rem; }
++    #signin-form .btn, #passkey-signin { width: 100%; }
++    #passkey-signin { background: var(--secondary); color: var(--text); }
++    #signin-message { min-height: 1.6em; margin-top: 12px; }
++    .signin-help { margin-top: 16px; font-size: 0.9rem; }
++    .signin-help a { color: var(--primary); }
++    button:disabled { opacity: 0.6; cursor: wait; }
++    [hidden] { display: none !important; }
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++    }
+   </style>
+ </head>
+ 
+@@ -162,18 +203,25 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-signin>Rewards</a></li>
++      <li><a href="/account" data-signin>My Account</a></li>
++      <li><a href="#signin-dialog" class="logout-link" id="header-signin">Sign in</a></li>
++      <li id="logout-item" hidden><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-signin>Order Now</a>
+   </header>
+ 
++  <aside class="signin-invitation" id="signin-invitation" aria-label="Customer sign-in">
++    <span>Welcome back. Your next great cup is waiting.</span>
++    <button type="button" class="btn" id="browse-signin">Sign in here</button>
++  </aside>
++  <p id="session-status" class="container" role="status" hidden></p>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +255,234 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="signin-dialog" aria-labelledby="signin-title" aria-describedby="signin-description">
++    <div class="dialog-heading">
++      <h2 id="signin-title">Welcome back</h2>
++      <form method="dialog"><button class="close-button" aria-label="Close sign-in">&#10005;</button></form>
++    </div>
++    <p id="signin-description">Sign in with a saved passkey or password, right here.</p>
++    <form id="signin-form" action="/api/login/password" method="post">
++      <label for="signin-email">Email address</label>
++      <input id="signin-email" name="username" type="email" autocomplete="username webauthn" spellcheck="false" required autofocus>
++      <label for="signin-password">Password</label>
++      <input id="signin-password" name="password" type="password" autocomplete="current-password" required>
++      <label class="show-password"><input id="show-password" type="checkbox"> Show password</label>
++      <button class="btn" type="submit">Sign in</button>
++    </form>
++    <button class="btn" type="button" id="passkey-signin" hidden>Sign in with a passkey</button>
++    <p id="signin-message" role="status" aria-live="polite"></p>
++    <p class="signin-help">Just browsing? Close this window to keep exploring.</p>
++  </dialog>
++
++  <script type="module">
++    /* Authentication service contract (same origin, HTTPS in production):
++       GET /api/login/session -> { authenticated: boolean }
++       POST /api/login/options -> discoverable WebAuthn request options JSON.
++       The server must bind its random challenge and UV policy to the session.
++       POST /api/login/verify accepts an assertion; /api/login/password accepts
++       { username, password }. Both must verify credentials and establish a
++       secure HttpOnly session cookie before returning { authenticated: true }.
++       A 404 from verify means an unknown credential. Enforce origin/CSRF checks,
++       rate limits, and vetted WebAuthn verification on the server.
++       This static page never treats a browser credential as proof of sign-in. */
++    const dialog = document.querySelector('#signin-dialog');
++    const form = document.querySelector('#signin-form');
++    const message = document.querySelector('#signin-message');
++    const password = document.querySelector('#signin-password');
++    const passkeyButton = document.querySelector('#passkey-signin');
++    let authenticated = false;
++    let busy = false;
++    let destination = null;
++    let capabilities = {};
++    let options = null;
++    let controller = null;
++    let optionsRequest = null;
++
++    async function request(path, data) {
++      const response = await fetch(path, {
++        method: data === undefined ? 'GET' : 'POST',
++        credentials: 'same-origin', cache: 'no-store', redirect: 'error',
++        headers: { Accept: 'application/json', ...(data === undefined ? {} : { 'Content-Type': 'application/json' }) },
++        ...(data === undefined ? {} : { body: JSON.stringify(data) })
++      });
++      if (!response.ok) {
++        const error = new Error(response.status === 401 ? 'Those details could not be verified. Please try again.' :
++          'Sign-in is unavailable right now. Please try again shortly.');
++        error.status = response.status;
++        throw error;
++      }
++      return response.json();
++    }
++
++    function stopAutofill() { controller?.abort(); controller = null; }
++    function setBusy(value) {
++      busy = value;
++      form.setAttribute('aria-busy', String(value));
++      form.querySelector('button[type="submit"]').disabled = value;
++      passkeyButton.disabled = value;
++    }
++    function updateSession() {
++      document.querySelector('#signin-invitation').hidden = true;
++      document.querySelector('#header-signin').hidden = true;
++      document.querySelector('#logout-item').hidden = false;
++      const status = document.querySelector('#session-status');
++      status.hidden = false;
++      status.textContent = 'You’re signed in. Welcome back to The Daily Grind.';
++    }
++    function complete(result) {
++      if (result.authenticated !== true) throw new Error('Sign-in could not be verified. Please try again.');
++      authenticated = true;
++      stopAutofill();
++      updateSession();
++      const next = dialog.open ? destination : null;
++      dialog.close();
++      form.reset();
++      password.type = 'password';
++      if (next) window.location.assign(next);
++    }
++
++    async function prepareOptions() {
++      if (!optionsRequest) {
++        optionsRequest = request('/api/login/options', {}).then(json => {
++          // Immediate UI only permits discoverable credentials; never pass an allowlist.
++          options = PublicKeyCredential.parseRequestOptionsFromJSON({ ...json, allowCredentials: [] });
++          return options;
++        }).finally(() => { optionsRequest = null; });
++      }
++      return optionsRequest;
++    }
++
++    async function verify(credential, publicKey) {
++      if (!credential) throw new DOMException('No credential selected', 'NotAllowedError');
++      if (credential.type === 'password') {
++        return request('/api/login/password', { username: credential.id, password: credential.password });
++      }
++      if (credential.type !== 'public-key') throw new Error('Please choose another sign-in method.');
++      const assertion = credential.toJSON();
++      try {
++        return await request('/api/login/verify', assertion);
++      } catch (error) {
++        if (error.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: publicKey.rpId || location.hostname, credentialId: assertion.id
++          }).catch(() => {});
++        }
++        throw error;
++      } finally {
++        // Verification can consume the session challenge, including on failure.
++        options = null;
++      }
++    }
++
++    async function startAutofill() {
++      if (!capabilities.conditionalGet || !dialog.open || busy) return;
++      stopAutofill();
++      const current = new AbortController();
++      controller = current;
++      try {
++        const publicKey = options || await prepareOptions();
++        if (current.signal.aborted || !dialog.open || busy) return;
++        const credential = await navigator.credentials.get({ publicKey, mediation: 'conditional', signal: current.signal });
++        if (current.signal.aborted || !dialog.open) return;
++        setBusy(true);
++        try { complete(await verify(credential, publicKey)); }
++        finally { setBusy(false); }
++      } catch (error) {
++        if (!current.signal.aborted && dialog.open && !['AbortError', 'NotAllowedError'].includes(error.name)) {
++          message.textContent = error.message;
++        }
++      }
++    }
++
++    function showSignIn(next) {
++      destination = next;
++      message.textContent = '';
++      if (!dialog.open) dialog.showModal();
++      startAutofill();
++    }
++
++    function beginSignIn(event, next = null) {
++      if (event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++      if (authenticated && next) return;
++      event.preventDefault();
++      if (busy) return;
++      destination = next;
++      // Call get directly during the click, with preloaded server options, to retain
++      // transient activation. Unsupported browsers use the on-page form instead.
++      if (!capabilities.immediateGet || !options) { showSignIn(next); return; }
++      stopAutofill();
++      setBusy(true);
++      const publicKey = options;
++      const pending = navigator.credentials.get({ password: true, publicKey, uiMode: 'immediate' });
++      pending.then(async credential => {
++        const result = await verify(credential, publicKey);
++        // Preserve the link intent even though the fallback dialog wasn't opened.
++        complete(result);
++        if (next) window.location.assign(next);
++      }).catch(error => {
++        showSignIn(next);
++        if (error.name !== 'NotAllowedError') message.textContent = error.message;
++      }).finally(() => { setBusy(false); if (dialog.open) startAutofill(); });
++    }
++
++    document.querySelectorAll('[data-signin]').forEach(link => {
++      link.addEventListener('click', event => beginSignIn(event, link.href));
++    });
++    document.querySelector('#header-signin').addEventListener('click', event => beginSignIn(event));
++    document.querySelector('#browse-signin').addEventListener('click', event => beginSignIn(event));
++    document.querySelector('#show-password').addEventListener('change', event => {
++      password.type = event.target.checked ? 'text' : 'password';
++    });
++    dialog.addEventListener('close', () => {
++      stopAutofill(); destination = null; password.value = ''; password.type = 'password';
++      document.querySelector('#show-password').checked = false;
++    });
++    form.addEventListener('submit', async event => {
++      event.preventDefault();
++      if (busy) return;
++      stopAutofill(); setBusy(true); message.textContent = 'Signing in…';
++      try {
++        complete(await request('/api/login/password', { username: form.elements.username.value, password: password.value }));
++      } catch (error) { message.textContent = error.message; }
++      finally { setBusy(false); if (dialog.open) startAutofill(); }
++    });
++    passkeyButton.addEventListener('click', async () => {
++      if (busy) return;
++      stopAutofill(); setBusy(true); message.textContent = 'Choose your passkey in your browser.';
++      const current = new AbortController();
++      controller = current;
++      try {
++        const publicKey = options || await prepareOptions();
++        if (current.signal.aborted) return;
++        const credential = await navigator.credentials.get({ publicKey, signal: current.signal });
++        if (!current.signal.aborted) complete(await verify(credential, publicKey));
++      } catch (error) {
++        message.textContent = ['AbortError', 'NotAllowedError'].includes(error.name) ?
++          'No passkey selected. Try again or use your password.' : error.message;
++      } finally { setBusy(false); if (dialog.open) startAutofill(); }
++    });
++
++    async function initialize() {
++      try {
++        const session = await request('/api/login/session');
++        if (session.authenticated === true) { authenticated = true; updateSession(); return; }
++      } catch { /* A missing service must not prevent browsing or open a prompt. */ }
++      if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) return;
++      try {
++        if (!PublicKeyCredential.getClientCapabilities || !PublicKeyCredential.parseRequestOptionsFromJSON ||
++            !PublicKeyCredential.prototype.toJSON) {
++          // Pinned compatibility module; failure leaves native password autofill usable.
++          await import('https://esm.sh/webauthn-polyfills@0.1.7');
++        }
++        capabilities = await PublicKeyCredential.getClientCapabilities();
++        passkeyButton.hidden = false;
++        await prepareOptions();
++        if (dialog.open) startAutofill();
++      } catch { /* Password form remains available if passkeys cannot initialize. */ }
++    }
++    initialize();
++  </script>
++
+ </body>
+ 
+ </html>

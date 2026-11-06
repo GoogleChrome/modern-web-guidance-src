@@ -1,0 +1,229 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 70px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -99,8 +100,82 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .intro {
++      max-width: 700px;
++      padding: 32px 0 56px;
++    }
++
++    .intro p {
++      margin-top: 16px;
++    }
++
++    .content-section {
++      margin-bottom: 56px;
++      scroll-margin-top: calc(var(--nav-height) + 16px);
++    }
++
++    /* Only these content headers participate in the named state query. */
++    .sticky-container {
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: content-sticky;
++    }
++
++    .sticky-header {
++      padding: 24px 20px;
++      background: var(--secondary);
++      color: var(--primary);
++      border-radius: 8px;
++      font-size: 1.5rem;
++      line-height: 1.3;
++    }
++
++    @container content-sticky scroll-state(stuck: top) {
++      .sticky-header {
++        background: #1565c0;
++        color: white;
++        box-shadow: 0 5px 14px rgba(0, 40, 100, 0.25);
++        padding: 12px 20px;
++      }
++    }
++
++    /* Equivalent state for browsers without scroll-state queries. */
++    .sticky-container.is-stuck .sticky-header {
++      background: #1565c0;
++      color: white;
++      box-shadow: 0 5px 14px rgba(0, 40, 100, 0.25);
++      padding: 12px 20px;
++    }
++
++    .section-note {
++      max-width: 760px;
++      padding: 32px 0;
++    }
++
++    .section-note p + p {
++      margin-top: 16px;
++    }
++
++    @media (max-width: 640px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -174,10 +249,18 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <div class="intro">
++      <h2>A little time for good coffee</h2>
++      <p>From your first morning sip to a slow afternoon catch-up, find a cup that fits your day. Explore our seasonal favorites, discover your brewing ritual, and get to know the coffee behind every pour.</p>
++      <p>Take a moment, settle in, and see what’s brewing at The Daily Grind.</p>
++    </div>
++
++    <section class="content-section" aria-labelledby="seasonal-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="seasonal-heading">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -193,9 +276,62 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="section-note">
++        <p>A familiar favorite or something a little different? Our seasonal selection brings together comforting flavors and the coffees we love to brew every day.</p>
++        <p>Enjoy your drink with a freshly baked pastry, or take it along for whatever the morning has in store. Ask our baristas about milk alternatives and the day’s bakery selection.</p>
++      </div>
+     </section>
++
++    <section class="content-section" aria-labelledby="ritual-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="ritual-heading">Find Your Daily Ritual</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Slow Mornings</h3>
++          <p>Ease into the day with a smooth pour-over. Take a seat, open a book, and let each sip set the pace.</p>
++        </div>
++        <div class="card">
++          <h3>On the Move</h3>
++          <p>Your usual, ready for the road. Pick a bold espresso or a creamy latte to accompany your morning routine.</p>
++        </div>
++        <div class="card">
++          <h3>Afternoon Pause</h3>
++          <p>Make room for a catch-up over cold brew, a shared pastry, and a few minutes away from your to-do list.</p>
++        </div>
++      </div>
++      <div class="section-note">
++        <p>Great coffee makes an everyday moment feel special. Whether you prefer the clarity of filter coffee or the richness of espresso, our team can help you find your next favorite.</p>
++        <p>Brewing at home? Tell us how you make your coffee and which flavors you enjoy. We’ll help you choose beans and a grind that suit your routine.</p>
++      </div>
++    </section>
++
++    <section class="content-section" aria-labelledby="coffee-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="coffee-heading">Behind Every Cup</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Thoughtfully Sourced</h3>
++          <p>Good coffee begins long before brewing. We care about where our beans come from and the people who grow them.</p>
++        </div>
++        <div class="card">
++          <h3>Locally Roasted</h3>
++          <p>Our roasts bring out the character of each coffee, from mellow sweetness to a deep, full-bodied finish.</p>
++        </div>
++        <div class="card">
++          <h3>Made for You</h3>
++          <p>Every cup is a chance to share what we love. Find your favorite brew and make yourself at home.</p>
++        </div>
++      </div>
++      <div class="section-note">
++        <p>Curious about what’s in your cup? Ask about the current roast and its tasting notes when you visit. Exploring a new coffee can be as simple as trying your usual drink with a different bean.</p>
++        <p>Keep the ritual going at home with your favorite coffee, freshly ground for your brewer. We’re always happy to talk through a recipe and help you get started.</p>
++        <a href="/about" class="btn">Discover Our Story</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +342,48 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigation = document.querySelector('nav');
++    const stickyContainers = [...document.querySelectorAll('.sticky-container')];
++    const needsStickyFallback = !CSS.supports('container-type', 'scroll-state');
++    let navigationHeight = 0;
++    let scheduled = false;
++
++    function updateStickyHeaders() {
++      scheduled = false;
++      if (!needsStickyFallback) return;
++
++      // Read viewport coordinates: the document remains the scroll root.
++      const states = stickyContainers.map(container => {
++        const bounds = container.getBoundingClientRect();
++        return bounds.top <= navigationHeight + 0.5 &&
++          bounds.top >= navigationHeight - 0.5 && window.scrollY > 0;
++      });
++      stickyContainers.forEach((container, index) => {
++        container.classList.toggle('is-stuck', states[index]);
++      });
++    }
++
++    function scheduleStickyUpdate() {
++      if (scheduled) return;
++      scheduled = true;
++      requestAnimationFrame(updateStickyHeaders);
++    }
++
++    const navigationObserver = new ResizeObserver(() => {
++      navigationHeight = navigation.getBoundingClientRect().height;
++      document.documentElement.style.setProperty('--nav-height', `${navigationHeight}px`);
++      scheduleStickyUpdate();
++    });
++    navigationObserver.observe(navigation);
++
++    if (needsStickyFallback) {
++      window.addEventListener('scroll', scheduleStickyUpdate, { passive: true });
++      window.addEventListener('resize', scheduleStickyUpdate);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

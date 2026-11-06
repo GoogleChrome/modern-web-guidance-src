@@ -1,0 +1,425 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,110 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee Order Customizer */
++    .customizer {
++      margin-top: 60px;
++    }
++
++    .customizer>h2 {
++      text-align: center;
++    }
++
++    .customizer-intro {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .customizer-stage {
++      position: relative;
++    }
++
++    #canvas {
++      display: block;
++      width: 100%;
++      height: 420px;
++      border-radius: 12px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
++    }
++
++    /* Drawable HTML that lives inside (or, as a fallback, over) the canvas */
++    .order-panel {
++      width: 320px;
++      padding: 20px;
++      background: rgba(255, 255, 255, 0.92);
++      border-radius: 10px;
++      color: var(--text);
++      font: 15px/1.5 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    }
++
++    .order-panel h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .order-panel label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 10px;
++    }
++
++    .order-panel input,
++    .order-panel select {
++      display: block;
++      width: 100%;
++      margin-top: 4px;
++      padding: 8px 10px;
++      font: inherit;
++      color: inherit;
++      background: white;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++    }
++
++    .order-panel input:focus-visible,
++    .order-panel select:focus-visible,
++    .order-panel button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .order-summary {
++      display: block;
++      margin-top: 14px;
++      font-size: 0.9rem;
++      font-style: italic;
++    }
++
++    .order-panel button {
++      margin-top: 12px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .cup-label {
++      display: block;
++      width: 140px;
++      overflow: hidden;
++      white-space: nowrap;
++      text-overflow: ellipsis;
++      text-align: center;
++      color: white;
++      font: 700 18px/28px 'Brush Script MT', 'Segoe Script', cursive;
++    }
++
++    /* Fallback: browsers without HTML-in-Canvas get the same elements
++       positioned over the canvas at the coordinates where they'd be drawn. */
++    .customizer-stage.no-html-in-canvas>.order-panel,
++    .customizer-stage.no-html-in-canvas>.cup-label {
++      position: absolute;
++      top: 0;
++      left: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +296,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-title">
++      <h2 id="customizer-title">Customize Your Cup</h2>
++      <p class="customizer-intro">Name your cup, pick your milk and syrup, and watch it come to life.</p>
++      <div class="customizer-stage">
++        <canvas id="canvas" content="drawable">
++          <form id="order-panel" class="order-panel" drawable>
++            <h3>Build Your Order</h3>
++            <label for="cup-name">Name on cup</label>
++            <input id="cup-name" name="cupName" type="text" maxlength="18" autocomplete="given-name"
++              placeholder="Your name" value="Alex">
++            <label for="milk">Milk</label>
++            <select id="milk" name="milk">
++              <option value="none">No milk (black)</option>
++              <option value="whole" selected>Whole milk</option>
++              <option value="skim">Skim milk</option>
++              <option value="oat">Oat milk</option>
++              <option value="almond">Almond milk</option>
++            </select>
++            <label for="syrup">Syrup</label>
++            <select id="syrup" name="syrup">
++              <option value="none">No syrup</option>
++              <option value="vanilla">Vanilla</option>
++              <option value="caramel" selected>Caramel</option>
++              <option value="hazelnut">Hazelnut</option>
++              <option value="maple">Maple</option>
++            </select>
++            <output id="order-summary" class="order-summary" for="cup-name milk syrup" aria-live="polite"></output>
++            <button type="submit" class="btn">Add to Order</button>
++          </form>
++          <span id="cup-label" class="cup-label" drawable aria-hidden="true"></span>
++        </canvas>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +342,267 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('canvas');
++      const ctx = canvas.getContext('2d');
++      const stage = canvas.parentElement;
++      const panel = document.getElementById('order-panel');
++      const cupLabel = document.getElementById('cup-label');
++      const nameInput = document.getElementById('cup-name');
++      const milkSelect = document.getElementById('milk');
++      const syrupSelect = document.getElementById('syrup');
++      const summary = document.getElementById('order-summary');
++
++      const supportsHtmlInCanvas = 'content' in HTMLCanvasElement.prototype &&
++        typeof ctx.drawElementImage === 'function';
++
++      // Fallback: move the same live elements out of the canvas (where they'd be
++      // invisible fallback content) and position them over their drawn spots.
++      if (!supportsHtmlInCanvas) {
++        stage.classList.add('no-html-in-canvas');
++        stage.append(panel, cupLabel);
++      }
++
++      const MILK = {
++        none: { label: 'black', color: '#3b2216' },
++        whole: { label: 'whole milk', color: '#b9875a' },
++        skim: { label: 'skim milk', color: '#a87a50' },
++        oat: { label: 'oat milk', color: '#c49b6c' },
++        almond: { label: 'almond milk', color: '#b08458' },
++      };
++      const SYRUP = {
++        none: { label: '', color: null },
++        vanilla: { label: 'vanilla', color: '#f4e3b0' },
++        caramel: { label: 'caramel', color: '#d2802f' },
++        hazelnut: { label: 'hazelnut', color: '#7a4a24' },
++        maple: { label: 'maple', color: '#b5561b' },
++      };
++
++      const PAD = 24;
++      let layout = null;
++
++      // Compute where everything goes, in CSS pixels.
++      function computeLayout(width) {
++        const wide = width >= 640;
++        const panelWidth = Math.min(340, width - PAD * 2);
++        panel.style.width = `${panelWidth}px`;
++        const panelHeight = panel.offsetHeight;
++        const cupArea = 360;
++
++        let height, cupCx, cupTop, panelX, panelY;
++        if (wide) {
++          height = Math.max(cupArea, panelHeight + PAD * 2);
++          panelX = width - panelWidth - PAD * 2;
++          panelY = (height - panelHeight) / 2;
++          cupCx = panelX / 2;
++          cupTop = (height - 260) / 2;
++        } else {
++          height = cupArea + panelHeight + PAD;
++          panelX = (width - panelWidth) / 2;
++          panelY = cupArea;
++          cupCx = width / 2;
++          cupTop = 50;
++        }
++
++        const cup = { cx: cupCx, top: cupTop, topW: 190, bottomW: 140, h: 200 };
++        cup.sleeveY = cup.top + cup.h * 0.38;
++        cup.sleeveH = 44;
++        const labelWidth = 150;
++        cupLabel.style.width = `${labelWidth}px`;
++        const label = {
++          x: cup.cx - labelWidth / 2,
++          y: cup.sleeveY + (cup.sleeveH - cupLabel.offsetHeight) / 2,
++        };
++        return { width, height, cup, label, panel: { x: panelX, y: panelY } };
++      }
++
++      function cupHalfWidthAt(cup, y) {
++        const t = (y - cup.top) / cup.h;
++        return (cup.topW + (cup.bottomW - cup.topW) * t) / 2;
++      }
++
++      function drawScene() {
++        if (!layout) return;
++        const { width, height, cup } = layout;
++        const sx = canvas.width / width;
++        const sy = canvas.height / height;
++        const milk = MILK[milkSelect.value] ?? MILK.whole;
++        const syrup = SYRUP[syrupSelect.value] ?? SYRUP.none;
++
++        ctx.reset();
++        // Draw the illustration in CSS-pixel units, scaled to the device-pixel grid.
++        ctx.setTransform(sx, 0, 0, sy, 0, 0);
++
++        // Backdrop
++        const bg = ctx.createLinearGradient(0, 0, 0, height);
++        bg.addColorStop(0, '#efebe9');
++        bg.addColorStop(1, '#d7ccc8');
++        ctx.fillStyle = bg;
++        ctx.fillRect(0, 0, width, height);
++
++        // Table shadow
++        const bottom = cup.top + cup.h;
++        ctx.fillStyle = 'rgba(62, 39, 35, 0.18)';
++        ctx.beginPath();
++        ctx.ellipse(cup.cx, bottom + 6, cup.bottomW * 0.75, 14, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        // Steam
++        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
++        ctx.lineWidth = 4;
++        ctx.lineCap = 'round';
++        for (const dx of [-36, 0, 36]) {
++          ctx.beginPath();
++          const x = cup.cx + dx;
++          ctx.moveTo(x, cup.top - 14);
++          ctx.bezierCurveTo(x - 14, cup.top - 34, x + 14, cup.top - 48, x, cup.top - 70);
++          ctx.stroke();
++        }
++
++        // Cup body (paper to-go cup)
++        ctx.beginPath();
++        ctx.moveTo(cup.cx - cup.topW / 2, cup.top);
++        ctx.lineTo(cup.cx + cup.topW / 2, cup.top);
++        ctx.lineTo(cup.cx + cup.bottomW / 2, bottom);
++        ctx.lineTo(cup.cx - cup.bottomW / 2, bottom);
++        ctx.closePath();
++        const body = ctx.createLinearGradient(cup.cx - cup.topW / 2, 0, cup.cx + cup.topW / 2, 0);
++        body.addColorStop(0, '#e9e4df');
++        body.addColorStop(0.35, '#ffffff');
++        body.addColorStop(1, '#d6cfc8');
++        ctx.fillStyle = body;
++        ctx.fill();
++
++        // Sleeve (where the name is written)
++        const sTop = cup.sleeveY;
++        const sBot = cup.sleeveY + cup.sleeveH;
++        ctx.beginPath();
++        ctx.moveTo(cup.cx - cupHalfWidthAt(cup, sTop), sTop);
++        ctx.lineTo(cup.cx + cupHalfWidthAt(cup, sTop), sTop);
++        ctx.lineTo(cup.cx + cupHalfWidthAt(cup, sBot), sBot);
++        ctx.lineTo(cup.cx - cupHalfWidthAt(cup, sBot), sBot);
++        ctx.closePath();
++        ctx.fillStyle = '#6d4c41';
++        ctx.fill();
++
++        // Syrup stripe on the cup
++        if (syrup.color) {
++          const y = sBot + 18;
++          ctx.fillStyle = syrup.color;
++          ctx.beginPath();
++          ctx.moveTo(cup.cx - cupHalfWidthAt(cup, y), y);
++          ctx.lineTo(cup.cx + cupHalfWidthAt(cup, y), y);
++          ctx.lineTo(cup.cx + cupHalfWidthAt(cup, y + 8), y + 8);
++          ctx.lineTo(cup.cx - cupHalfWidthAt(cup, y + 8), y + 8);
++          ctx.closePath();
++          ctx.fill();
++        }
++
++        // Rim + coffee surface
++        ctx.fillStyle = '#f5f1ed';
++        ctx.beginPath();
++        ctx.ellipse(cup.cx, cup.top, cup.topW / 2 + 6, 16, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.fillStyle = milk.color;
++        ctx.beginPath();
++        ctx.ellipse(cup.cx, cup.top, cup.topW / 2 - 4, 11, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        // Milk foam swirl + syrup drizzle on top
++        if (milkSelect.value !== 'none') {
++          ctx.fillStyle = 'rgba(255, 248, 235, 0.55)';
++          ctx.beginPath();
++          ctx.ellipse(cup.cx, cup.top, cup.topW / 4, 6, 0, 0, Math.PI * 2);
++          ctx.fill();
++        }
++        if (syrup.color) {
++          ctx.strokeStyle = syrup.color;
++          ctx.lineWidth = 2.5;
++          ctx.beginPath();
++          for (let i = 0; i <= 40; i++) {
++            const t = i / 40;
++            const x = cup.cx - cup.topW * 0.36 + t * cup.topW * 0.72;
++            const y = cup.top + Math.sin(t * Math.PI * 6) * 5;
++            i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
++          }
++          ctx.stroke();
++        }
++
++        // Live HTML. drawElementImage takes canvas-grid coordinates and keeps
++        // hit testing / focus rings aligned with where the element is drawn.
++        if (supportsHtmlInCanvas) {
++          ctx.setTransform(1, 0, 0, 1, 0, 0);
++          ctx.drawElementImage(panel, layout.panel.x * sx, layout.panel.y * sy);
++          ctx.drawElementImage(cupLabel, layout.label.x * sx, layout.label.y * sy);
++        } else {
++          panel.style.translate = `${layout.panel.x}px ${layout.panel.y}px`;
++          cupLabel.style.translate = `${layout.label.x}px ${layout.label.y}px`;
++        }
++      }
++
++      function requestRender() {
++        if (supportsHtmlInCanvas) canvas.requestPaint();
++        else drawScene();
++      }
++
++      function updateText() {
++        const name = nameInput.value.trim() || 'Your name';
++        const milk = MILK[milkSelect.value] ?? MILK.whole;
++        const syrup = SYRUP[syrupSelect.value] ?? SYRUP.none;
++        cupLabel.textContent = name;
++        const drink = milkSelect.value === 'none' ? 'black coffee' : `latte with ${milk.label}`;
++        summary.value = `${name}'s ${drink}${syrup.label ? ` and ${syrup.label} syrup` : ''}.`;
++        requestRender();
++      }
++
++      if (supportsHtmlInCanvas) canvas.onpaint = drawScene;
++
++      // Keep the backing store at device-pixel resolution for crisp high-DPI output.
++      const observer = new ResizeObserver(([entry]) => {
++        const cssWidth = entry.contentRect.width;
++        if (!cssWidth) return;
++        layout = computeLayout(cssWidth);
++        if (Math.abs(entry.contentRect.height - layout.height) > 0.5) {
++          // Height changes re-trigger this observer with the final size.
++          canvas.style.height = `${layout.height}px`;
++          return;
++        }
++        const dpc = entry.devicePixelContentBoxSize;
++        canvas.width = dpc ? dpc[0].inlineSize : Math.round(cssWidth * devicePixelRatio);
++        canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * devicePixelRatio);
++        requestRender();
++      });
++      const supportsDpcBox = typeof ResizeObserverEntry !== 'undefined' &&
++        'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++      observer.observe(canvas, supportsDpcBox ? { box: 'device-pixel-content-box' } : {});
++
++      // Re-flow the canvas if the panel's own height changes (e.g. summary wraps).
++      new ResizeObserver(() => {
++        const cssWidth = canvas.clientWidth;
++        if (!cssWidth) return;
++        layout = computeLayout(cssWidth);
++        if (Math.abs(canvas.clientHeight - layout.height) > 0.5) {
++          canvas.style.height = `${layout.height}px`;
++        } else {
++          requestRender();
++        }
++      }).observe(panel);
++
++      nameInput.addEventListener('input', updateText);
++      milkSelect.addEventListener('change', updateText);
++      syrupSelect.addEventListener('change', updateText);
++      panel.addEventListener('submit', (event) => {
++        event.preventDefault();
++        updateText();
++        summary.value = `Added to your order: ${summary.value}`;
++      });
++
++      updateText();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

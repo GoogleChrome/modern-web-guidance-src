@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,83 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .newsletter {
++      max-width: 440px;
++      margin: 0 auto 28px;
++      text-align: left;
++    }
++
++    .newsletter h2 {
++      text-align: center;
++      font-size: 1.3rem;
++      margin-bottom: 12px;
++    }
++
++    .newsletter label {
++      display: block;
++      font-weight: 600;
++    }
++
++    .newsletter-hint {
++      display: block;
++      font-size: 0.85rem;
++      margin-bottom: 6px;
++    }
++
++    .newsletter-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #795f57;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .newsletter .btn {
++      margin: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .newsletter-error {
++      display: none;
++      color: #8b1e17;
++      margin-top: 6px;
++      font-size: 0.9rem;
++    }
++
++    /* Keep feedback quiet during editing, including after an earlier blur. */
++    .newsletter input:user-invalid:not(:focus) {
++      border-color: #8b1e17;
++      background: #fff3f1;
++    }
++
++    .newsletter:has(input:user-invalid:not(:focus)) .newsletter-error {
++      display: block;
++    }
++
++    .newsletter-status:not(:empty) {
++      margin-top: 8px;
++      font-size: 0.9rem;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +272,21 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" aria-labelledby="newsletter-title">
++      <h2 id="newsletter-title">Fresh news, straight to your inbox</h2>
++      <label for="newsletter-email">Email address</label>
++      <span class="newsletter-hint" id="newsletter-hint">Use an address like you@example.com.</span>
++      <div class="newsletter-controls">
++        <input type="email" id="newsletter-email" name="email" autocomplete="email"
++          placeholder="you@example.com" required aria-describedby="newsletter-hint"
++          aria-errormessage="newsletter-error">
++        <button type="submit" class="btn">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-error">Please enter a valid email address.</p>
++      <p class="newsletter-status" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +294,31 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletter = document.querySelector('.newsletter');
++    const email = newsletter.elements.email;
++    const status = newsletter.querySelector('.newsletter-status');
++
++    email.addEventListener('blur', () => {
++      email.setAttribute('aria-invalid', String(!email.validity.valid));
++    });
++
++    email.addEventListener('focus', () => {
++      email.removeAttribute('aria-invalid');
++    });
++
++    email.addEventListener('input', () => {
++      email.removeAttribute('aria-invalid');
++      status.textContent = '';
++    });
++
++    newsletter.addEventListener('submit', (event) => {
++      event.preventDefault();
++      status.textContent = 'Online newsletter signup is coming soon. Please check back shortly.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,97 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Customer Feedback Section */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-container {
++      max-height: 320px;
++      overflow-y: auto;
++      background: white;
++      border-radius: 8px;
++      padding: 20px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      --scrollbar-thumb: #ffab40;
++      --scrollbar-track: #4e342e;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      .feedback-container::-webkit-scrollbar {
++        width: 8px;
++      }
++
++      .feedback-container::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++
++      .feedback-container::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 4px;
++      }
++    }
++
++    .feedback-item {
++      display: flex;
++      gap: 16px;
++      align-items: flex-start;
++      padding-bottom: 16px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .feedback-item:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .feedback-avatar {
++      width: 48px;
++      height: 48px;
++      border-radius: 50%;
++      object-fit: cover;
++      flex-shrink: 0;
++    }
++
++    .feedback-content {
++      flex: 1;
++    }
++
++    .feedback-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 4px;
++    }
++
++    .feedback-name {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .feedback-rating {
++      color: var(--accent);
++      font-size: 0.9rem;
++    }
++
++    .feedback-text {
++      color: var(--text);
++      font-size: 0.95rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +283,74 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Customer Feedback</h2>
++      <div class="feedback-container">
++        <div class="feedback-item">
++          <img class="feedback-avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80" alt="Sarah Jenkins">
++          <div class="feedback-content">
++            <div class="feedback-header">
++              <span class="feedback-name">Sarah Jenkins</span>
++              <span class="feedback-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="feedback-text">The Maple Oat Latte is an absolute game changer! Perfect balance of sweetness and rich espresso flavor. My go-to drink every morning.</p>
++          </div>
++        </div>
++        <div class="feedback-item">
++          <img class="feedback-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" alt="David Miller">
++          <div class="feedback-content">
++            <div class="feedback-header">
++              <span class="feedback-name">David Miller</span>
++              <span class="feedback-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="feedback-text">Best cold brew in town, hands down. Smooth, low acidity, and packs the punch I need for long workdays. Plus, the staff is always welcoming.</p>
++          </div>
++        </div>
++        <div class="feedback-item">
++          <img class="feedback-avatar" src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&q=80" alt="Elena Rostova">
++          <div class="feedback-content">
++            <div class="feedback-header">
++              <span class="feedback-name">Elena Rostova</span>
++              <span class="feedback-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="feedback-text">I love the cozy atmosphere and the artisanal dark roast espresso is sublime. You can really taste the freshness and craftsmanship of the beans.</p>
++          </div>
++        </div>
++        <div class="feedback-item">
++          <img class="feedback-avatar" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" alt="Marcus Chen">
++          <div class="feedback-content">
++            <div class="feedback-header">
++              <span class="feedback-name">Marcus Chen</span>
++              <span class="feedback-rating">&#9733;&#9733;&#9733;&#9733;&#9734;</span>
++            </div>
++            <p class="feedback-text">The Daily Grind never disappoints. Their ethical sourcing and dedication to consistent roasting profiles makes every cup special.</p>
++          </div>
++        </div>
++        <div class="feedback-item">
++          <img class="feedback-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Chloe Bennett">
++          <div class="feedback-content">
++            <div class="feedback-header">
++              <span class="feedback-name">Chloe Bennett</span>
++              <span class="feedback-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="feedback-text">Ordered online and picked up within 10 minutes. Hot, fresh, and delicious. Highly recommend the seasonal specials!</p>
++          </div>
++        </div>
++        <div class="feedback-item">
++          <img class="feedback-avatar" src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=150&q=80" alt="James Wilson">
++          <div class="feedback-content">
++            <div class="feedback-header">
++              <span class="feedback-name">James Wilson</span>
++              <span class="feedback-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="feedback-text">Consistent quality every single visit. The rewards program is also great. I recommend The Daily Grind to all my friends and colleagues.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

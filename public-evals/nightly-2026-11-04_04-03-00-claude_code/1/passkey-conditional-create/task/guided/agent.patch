@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,66 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Sign-in */
++    .signin {
++      max-width: 400px;
++      margin: 40px auto;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      text-align: center;
++    }
++
++    .signin label {
++      display: block;
++      font-weight: 600;
++      margin-top: 12px;
++    }
++
++    .signin input {
++      display: block;
++      width: 100%;
++      margin-top: 4px;
++      padding: 10px;
++      font: inherit;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++    }
++
++    .signin input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .signin button.btn {
++      width: 100%;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signin button.btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .signin-status {
++      margin-top: 12px;
++      min-height: 1.6em;
++      text-align: center;
++    }
++
++    .signin-status.error {
++      color: #b71c1c;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +232,22 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign in</h2>
++      <form id="signin-form" method="post" action="/api/signin">
++        <label for="username">Email or username</label>
++        <input id="username" name="username" type="text" autocomplete="username webauthn" required>
++
++        <label for="password">Password</label>
++        <input id="password" name="password" type="password" autocomplete="current-password" required>
++
++        <button type="submit" class="btn" data-testid="signin-button">Sign in</button>
++        <p id="signin-status" class="signin-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +278,124 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "https://esm.sh/webauthn-polyfills@0.1.7"
++      }
++    }
++  </script>
++  <script type="module">
++    // Polyfills getClientCapabilities / parseCreationOptionsFromJSON / toJSON
++    // on browsers that have WebAuthn but not these newer helpers. Loaded
++    // dynamically so a CDN failure never breaks password sign-in.
++    const polyfillsReady = window.PublicKeyCredential
++      ? import('webauthn-polyfills').catch(() => {})
++      : Promise.resolve();
++
++    const form = document.getElementById('signin-form');
++    const status = document.getElementById('signin-status');
++    const button = form.querySelector('[data-testid="signin-button"]');
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      status.textContent = '';
++      status.classList.remove('error');
++      button.disabled = true;
++
++      try {
++        const data = new FormData(form);
++        const res = await fetch('/api/signin', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({
++            username: data.get('username'),
++            password: data.get('password'),
++          }),
++        });
++
++        if (!res.ok) {
++          status.textContent = 'Sign-in failed. Check your username and password.';
++          status.classList.add('error');
++          return;
++        }
++
++        status.textContent = 'Signed in. Welcome back!';
++        form.reset();
++
++        // Password sign-in succeeded: silently try to upgrade to a passkey.
++        // Fire-and-forget; never surfaces UI or errors to the user.
++        promotePasskey().catch(() => {});
++      } catch {
++        status.textContent = 'Network error. Please try again.';
++        status.classList.add('error');
++      } finally {
++        button.disabled = false;
++      }
++    });
++
++    async function signalUnknown(rpId, credentialId) {
++      if (typeof PublicKeyCredential.signalUnknownCredential !== 'function') return;
++      try {
++        await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId });
++      } catch {
++        // Ignore: signaling is a best-effort optimization.
++      }
++    }
++
++    async function promotePasskey() {
++      if (!window.PublicKeyCredential) return;
++      await polyfillsReady;
++      if (typeof PublicKeyCredential.getClientCapabilities !== 'function') return;
++
++      const capabilities = await PublicKeyCredential.getClientCapabilities();
++      if (capabilities.conditionalCreate !== true) return;
++
++      const optionsRes = await fetch('/api/register/options', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        credentials: 'same-origin',
++        body: JSON.stringify({ conditional: true }),
++      });
++      if (!optionsRes.ok) return;
++
++      const optionsJSON = await optionsRes.json();
++      const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++      const rpId = optionsJSON.rp?.id ?? location.hostname;
++
++      let credential;
++      try {
++        credential = await navigator.credentials.create({
++          publicKey,
++          mediation: 'conditional',
++        });
++      } catch (e) {
++        // InvalidStateError (already has a passkey), NotAllowedError
++        // (provider declined), AbortError — all expected; stay silent.
++        if (!['InvalidStateError', 'NotAllowedError', 'AbortError'].includes(e.name)) {
++          console.error('Unexpected conditional create error:', e);
++        }
++        return;
++      }
++      if (!credential) return;
++
++      const credentialJSON = credential.toJSON();
++      try {
++        const verifyRes = await fetch('/api/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify(credentialJSON),
++        });
++        if (!verifyRes.ok) await signalUnknown(rpId, credentialJSON.id);
++      } catch {
++        await signalUnknown(rpId, credentialJSON.id);
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

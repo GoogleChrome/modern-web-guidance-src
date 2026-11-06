@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,69 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .interactive-section {
++      text-align: center;
++      margin: 40px 0;
++      padding: 30px 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++      margin-top: 0;
++    }
++
++    button.btn[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    #action-target {
++      width: 140px;
++      height: 140px;
++      margin: 25px auto;
++      background-color: var(--primary);
++      color: white;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-weight: bold;
++      border-radius: 8px;
++      transition: rotate 0.5s ease, scale 0.5s ease, border-radius 0.5s ease, transform 0.5s ease;
++    }
++
++    #action-target.is-spun {
++      rotate: 360deg;
++      transform: rotate(360deg);
++    }
++
++    #action-target.is-grown {
++      scale: 1.25;
++    }
++
++    #action-target.is-spun.is-grown {
++      transform: rotate(360deg) scale(1.25);
++    }
++
++    #action-target.is-rounded {
++      border-radius: 50%;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +255,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="interactive-section">
++      <h2>Interactive Coffee Box</h2>
++      <div id="action-target">Coffee Target</div>
++      <div class="controls">
++        <button type="button" class="btn" commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
++        <button type="button" class="btn" commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
++        <button type="button" class="btn" commandfor="action-target" command="--round" aria-pressed="false">Make Round</button>
++        <button type="button" class="btn" commandfor="action-target" command="--reset">Reset All</button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +278,73 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const commandRegistry = {
++      '--spin': (target, source) => {
++        const isSpun = target.classList.toggle('is-spun');
++        source?.setAttribute('aria-pressed', isSpun ? 'true' : 'false');
++      },
++      '--grow': (target, source) => {
++        const isGrown = target.classList.toggle('is-grown');
++        source?.setAttribute('aria-pressed', isGrown ? 'true' : 'false');
++      },
++      '--round': (target, source) => {
++        const isRounded = target.classList.toggle('is-rounded');
++        source?.setAttribute('aria-pressed', isRounded ? 'true' : 'false');
++      },
++      '--reset': (target) => {
++        target.classList.remove('is-spun', 'is-grown', 'is-rounded');
++        document.querySelectorAll(`button[commandfor="${target.id}"]`).forEach((btn) => {
++          if (btn.getAttribute('command') !== '--reset') {
++            btn.setAttribute('aria-pressed', 'false');
++          }
++        });
++      },
++    };
++
++    const actionTarget = document.getElementById('action-target');
++    if (actionTarget) {
++      actionTarget.addEventListener('command', (event) => {
++        const command = event.command;
++        const target = event.currentTarget || event.target;
++        const source = event.source;
++        const action = commandRegistry[command];
++
++        if (action) {
++          action(target, source);
++        }
++      });
++    }
++
++    // Fallback if browser does not natively support invoker commands
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      if (!globalThis.CommandEvent) {
++        globalThis.CommandEvent = class CommandEvent extends Event {
++          constructor(type, { source, command, ...options } = {}) {
++            super(type, options);
++            this.source = source;
++            this.command = command;
++          }
++        };
++      }
++
++      document.addEventListener('click', (event) => {
++        const button = event.composedPath().find((el) => el.matches?.('button[commandfor]'));
++        if (!button) return;
++
++        const target = document.getElementById(button.getAttribute('commandfor'));
++        const command = button.getAttribute('command');
++
++        if (target && command) {
++          target.dispatchEvent(new CommandEvent('command', {
++            command,
++            source: button,
++          }));
++        }
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

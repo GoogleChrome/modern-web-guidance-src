@@ -1,0 +1,30 @@
+diff --git a/index.html b/index.html
+index 66c9173..ba3d29f 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,25 @@
+       color: var(--primary);
+     }
+ 
++    /* Apply container-based enhancements only when @container is supported.
++       Browsers without at-rule() support also keep the base styles above. */
++    @supports at-rule(@container) {
++      .container {
++        container-type: inline-size;
++        container-name: seasonal;
++      }
++
++      @container seasonal (max-width: 540px) {
++        .grid {
++          grid-template-columns: 1fr;
++        }
++
++        .card {
++          padding: 16px;
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);

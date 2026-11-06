@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,78 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Section */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: #ffab40;
++      --scrollbar-track: #4e342e;
++
++      max-height: 280px;
++      overflow-y: auto;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-gutter: stable;
++      margin-top: 20px;
++      padding: 16px;
++      background: var(--secondary);
++      border-radius: 8px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++        height: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 4px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .feedback-item {
++      background: white;
++      padding: 16px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      border-left: 4px solid var(--accent);
++    }
++
++    .feedback-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 8px;
++    }
++
++    .feedback-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .feedback-date {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .feedback-rating {
++      color: var(--accent);
++      font-size: 0.95rem;
++      margin-bottom: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +264,62 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2 style="text-align: center;">Customer Feedback Log</h2>
++      <div class="feedback-log" tabindex="0" role="region" aria-label="Customer Feedback Log">
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Elena R.</span>
++            <span class="feedback-date">Oct 26, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"The Maple Oat Latte is hands down the best autumn drink in town. Perfectly balanced sweetness without overwhelming the rich espresso notes!"</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Marcus T.</span>
++            <span class="feedback-date">Oct 24, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"Stopped by before my morning commute for the Dark Roast Espresso. Bold, velvety crema, and the baristas were super welcoming."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Priya K.</span>
++            <span class="feedback-date">Oct 21, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"That 18-hour Cold Brew is no joke—zero bitterness and so smooth I don't even need milk or sugar. My new remote work spot!"</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">David L.</span>
++            <span class="feedback-date">Oct 18, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="4 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
++          <p>"Love that they roast their beans locally. Picked up a bag of single-origin Ethiopian beans for my pour-over setup at home and it's phenomenal."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Hannah S.</span>
++            <span class="feedback-date">Oct 15, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"Cozy atmosphere, ethically sourced coffee, and fresh pastries every morning. You can really taste the care they put into every cup."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Liam O.</span>
++            <span class="feedback-date">Oct 12, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"Best cortado I've had outside of Melbourne. Consistently great extraction and latte art every single visit."</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

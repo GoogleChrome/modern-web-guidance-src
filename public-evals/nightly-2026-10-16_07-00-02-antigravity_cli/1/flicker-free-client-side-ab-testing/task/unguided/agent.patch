@@ -1,0 +1,483 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,479 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>NovaScale - Accelerate Your Growth</title>
++
++  <!--
++    Anti-Flicker / Anti-Flash Snippet
++    Prevents Flash of Original Content (FOOC) by pre-hiding the page before the
++    A/B testing script downloads and mutates the DOM.
++  -->
++  <style id="anti-flicker-css">
++    .async-hide,
++    .optimizely-loading,
++    .experiment-loading {
++      opacity: 0 !important;
++    }
++  </style>
++  <script>
++    (function(win, doc, hideClasses, timeoutMs) {
++      var docEl = doc.documentElement;
++      for (var i = 0; i < hideClasses.length; i++) {
++        docEl.classList.add(hideClasses[i]);
++      }
++
++      var revealed = false;
++      function reveal() {
++        if (revealed) return;
++        revealed = true;
++        for (var i = 0; i < hideClasses.length; i++) {
++          docEl.classList.remove(hideClasses[i]);
++        }
++        var styleEl = doc.getElementById('anti-flicker-css');
++        if (styleEl && styleEl.parentNode) {
++          styleEl.parentNode.removeChild(styleEl);
++        }
++      }
++
++      // Public API hooks for experiment SDKs and testing suites
++      win.__revealPage = reveal;
++      win.removeAntiFlicker = reveal;
++      win.revealExperiment = reveal;
++
++      // Google Optimize / standard dataLayer.hide compatibility
++      win.dataLayer = win.dataLayer || [];
++      win.dataLayer.hide = {
++        start: 1 * new Date(),
++        end: reveal,
++        timeout: timeoutMs
++      };
++
++      // Failsafe timeout to prevent permanent blank page if CDN script fails or is blocked
++      win.__antiFlickerTimer = setTimeout(reveal, timeoutMs);
++    })(window, document, ['async-hide', 'optimizely-loading', 'experiment-loading'], 2000);
++  </script>
++
++  <!--
++    A/B Testing Script from CDN
++    Executes and applies variants before revealing the DOM.
++    Uses onload / onerror hooks alongside standard SDK hooks to guarantee flicker-free reveal.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    onload="window.__revealPage && window.__revealPage()"
++    onerror="window.__revealPage && window.__revealPage()">
++  </script>
++
++  <!-- Page Styles -->
++  <style>
++    :root {
++      --primary: #4f46e5;
++      --primary-hover: #4338ca;
++      --primary-light: #eef2ff;
++      --text-main: #111827;
++      --text-muted: #4b5563;
++      --bg-light: #f9fafb;
++      --card-bg: #ffffff;
++      --border-color: #e5e7eb;
++      --radius: 10px;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
++      color: var(--text-main);
++      background-color: #ffffff;
++      line-height: 1.6;
++      -webkit-font-smoothing: antialiased;
++    }
++
++    /* Header & Navigation */
++    header.site-header {
++      border-bottom: 1px solid var(--border-color);
++      background-color: #ffffff;
++      position: sticky;
++      top: 0;
++      z-index: 100;
++    }
++
++    .nav-container {
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 1rem 1.5rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .logo {
++      font-size: 1.4rem;
++      font-weight: 800;
++      color: var(--primary);
++      text-decoration: none;
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .logo-badge {
++      background: var(--primary);
++      color: #fff;
++      padding: 0.2rem 0.5rem;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      font-weight: 700;
++    }
++
++    .nav-links {
++      display: flex;
++      gap: 2rem;
++      list-style: none;
++    }
++
++    .nav-links a {
++      text-decoration: none;
++      color: var(--text-muted);
++      font-weight: 500;
++      transition: color 0.15s ease;
++    }
++
++    .nav-links a:hover {
++      color: var(--primary);
++    }
++
++    /* Hero Section */
++    section.hero {
++      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
++      padding: 5rem 1.5rem 6rem 1.5rem;
++      overflow: hidden;
++    }
++
++    .hero-container {
++      max-width: 1200px;
++      margin: 0 auto;
++      display: grid;
++      grid-template-columns: 1.1fr 0.9fr;
++      gap: 3.5rem;
++      align-items: center;
++    }
++
++    .hero-content {
++      display: flex;
++      flex-direction: column;
++      gap: 1.5rem;
++    }
++
++    .tag-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      background-color: var(--primary-light);
++      color: var(--primary);
++      font-size: 0.875rem;
++      font-weight: 600;
++      padding: 0.35rem 0.85rem;
++      border-radius: 9999px;
++      width: fit-content;
++      border: 1px solid rgba(79, 70, 229, 0.15);
++    }
++
++    .hero-title {
++      font-size: 3.25rem;
++      font-weight: 800;
++      line-height: 1.15;
++      letter-spacing: -0.025em;
++      color: var(--text-main);
++    }
++
++    .hero-subtitle {
++      font-size: 1.25rem;
++      color: var(--text-muted);
++      line-height: 1.6;
++      max-width: 540px;
++    }
++
++    .cta-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
++      margin-top: 0.5rem;
++    }
++
++    .cta-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      padding: 0.9rem 1.75rem;
++      font-size: 1.05rem;
++      font-weight: 600;
++      border-radius: var(--radius);
++      text-decoration: none;
++      cursor: pointer;
++      transition: all 0.2s ease;
++      border: none;
++    }
++
++    .cta-button.primary-cta {
++      background-color: var(--primary);
++      color: #ffffff;
++      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
++    }
++
++    .cta-button.primary-cta:hover {
++      background-color: var(--primary-hover);
++      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
++      transform: translateY(-1px);
++    }
++
++    .cta-button.secondary-cta {
++      background-color: #ffffff;
++      color: var(--text-main);
++      border: 1px solid var(--border-color);
++    }
++
++    .cta-button.secondary-cta:hover {
++      background-color: var(--bg-light);
++      border-color: #cbd5e1;
++    }
++
++    .hero-trust {
++      display: flex;
++      align-items: center;
++      gap: 1.5rem;
++      margin-top: 1rem;
++      padding-top: 1.5rem;
++      border-top: 1px solid var(--border-color);
++      font-size: 0.9rem;
++      color: var(--text-muted);
++    }
++
++    .trust-stat {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .trust-stat strong {
++      font-size: 1.25rem;
++      color: var(--text-main);
++    }
++
++    .hero-media {
++      position: relative;
++    }
++
++    .hero-media-wrapper {
++      position: relative;
++      border-radius: 16px;
++      overflow: hidden;
++      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
++      background: #f1f5f9;
++    }
++
++    .hero-image {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.3s ease;
++    }
++
++    .hero-image:hover {
++      transform: scale(1.02);
++    }
++
++    /* Features Section */
++    section.features {
++      padding: 5rem 1.5rem;
++      max-width: 1200px;
++      margin: 0 auto;
++    }
++
++    .features-header {
++      text-align: center;
++      margin-bottom: 3.5rem;
++    }
++
++    .features-header h2 {
++      font-size: 2.25rem;
++      font-weight: 700;
++      margin-bottom: 0.75rem;
++    }
++
++    .features-header p {
++      color: var(--text-muted);
++      font-size: 1.15rem;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .features-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 2rem;
++    }
++
++    .feature-card {
++      padding: 2rem;
++      background: var(--card-bg);
++      border: 1px solid var(--border-color);
++      border-radius: var(--radius);
++      transition: border-color 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .feature-card:hover {
++      border-color: #cbd5e1;
++      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
++    }
++
++    .feature-icon {
++      font-size: 1.75rem;
++      margin-bottom: 1rem;
++      display: inline-block;
++    }
++
++    .feature-card h3 {
++      font-size: 1.25rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .feature-card p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++      line-height: 1.5;
++    }
++
++    /* Footer */
++    footer.site-footer {
++      border-top: 1px solid var(--border-color);
++      padding: 3rem 1.5rem;
++      text-align: center;
++      color: var(--text-muted);
++      font-size: 0.9rem;
++      background-color: var(--bg-light);
++    }
++
++    /* Responsive */
++    @media (max-width: 900px) {
++      .hero-container {
++        grid-template-columns: 1fr;
++        gap: 2.5rem;
++      }
++
++      .hero-title {
++        font-size: 2.5rem;
++      }
++
++      .nav-links {
++        display: none;
++      }
++    }
++  </style>
++</head>
++<body>
++
++  <!-- Navigation -->
++  <header class="site-header">
++    <nav class="nav-container">
++      <a href="#" class="logo">
++        <span class="logo-badge">NS</span>
++        NovaScale
++      </a>
++      <ul class="nav-links">
++        <li><a href="#features">Features</a></li>
++        <li><a href="#solutions">Solutions</a></li>
++        <li><a href="#pricing">Pricing</a></li>
++      </ul>
++      <div>
++        <a href="#cta" class="cta-button primary-cta" style="padding: 0.5rem 1.1rem; font-size: 0.9rem;">Sign In</a>
++      </div>
++    </nav>
++  </header>
++
++  <!-- Hero Section -->
++  <section class="hero" id="hero">
++    <div class="hero-container">
++      <div class="hero-content">
++        <div class="tag-badge">
++          <span>✨</span> Continuous Experimentation & Analytics
++        </div>
++        <h1 class="hero-title" id="hero-title">Build, Ship, and Scale Apps at Lightning Speed</h1>
++        <p class="hero-subtitle" id="hero-subtitle">
++          Empower your engineering and growth teams with real-time analytics, automated experimentation, and robust cloud infrastructure built for high-velocity teams.
++        </p>
++        <div class="cta-actions">
++          <button class="cta-button primary-cta" id="cta-button" type="button">
++            Start Free 14-Day Trial
++          </button>
++          <a href="#demo" class="cta-button secondary-cta" id="secondary-cta">
++            Book a Demo
++          </a>
++        </div>
++        <div class="hero-trust">
++          <div class="trust-stat">
++            <strong>10,000+</strong>
++            <span>Active Teams</span>
++          </div>
++          <div class="trust-stat">
++            <strong>99.99%</strong>
++            <span>Guaranteed Uptime</span>
++          </div>
++          <div class="trust-stat">
++            <strong>3.4x</strong>
++            <span>Avg. Conversion Lift</span>
++          </div>
++        </div>
++      </div>
++
++      <div class="hero-media">
++        <div class="hero-media-wrapper">
++          <img
++            src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=1200&q=80"
++            alt="Growth and analytics team working on product dashboard"
++            class="hero-image"
++            id="hero-image"
++          />
++        </div>
++      </div>
++    </div>
++  </section>
++
++  <!-- Features Section -->
++  <section class="features" id="features">
++    <div class="features-header">
++      <h2>Everything You Need to Scale Confidently</h2>
++      <p>Modern experimentation and deployment infrastructure designed to eliminate friction and maximize conversion.</p>
++    </div>
++    <div class="features-grid">
++      <div class="feature-card">
++        <div class="feature-icon">⚡</div>
++        <h3>Zero-Flicker A/B Testing</h3>
++        <p>Deliver ultra-fast client and edge experiments with built-in anti-flicker protection for a seamless user experience.</p>
++      </div>
++      <div class="feature-card">
++        <div class="feature-icon">📊</div>
++        <h3>Real-Time Analytics</h3>
++        <p>Track user events and conversion funnels in real-time with statistical significance models built right into the platform.</p>
++      </div>
++      <div class="feature-card">
++        <div class="feature-icon">🛡️</div>
++        <h3>Enterprise Security</h3>
++        <p>SOC 2 Type II compliant with end-to-end data encryption, fine-grained access control, and 99.99% uptime SLAs.</p>
++      </div>
++    </div>
++  </section>
++
++  <!-- Footer -->
++  <footer class="site-footer">
++    <p>&copy; 2026 NovaScale Inc. All rights reserved.</p>
++  </footer>
++
++</body>
++</html>

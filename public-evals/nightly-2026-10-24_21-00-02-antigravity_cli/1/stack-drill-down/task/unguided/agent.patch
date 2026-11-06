@@ -1,0 +1,1421 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -7,63 +7,139 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #795548;
+       --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
+       --accent: #ffab40;
++      --accent-dark: #ff9100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --white: #ffffff;
++      --nav-height: 64px;
++      --transition-duration: 380ms;
++      --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html,
+     body {
++      width: 100%;
++      height: 100%;
++      overflow: hidden;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      -webkit-font-smoothing: antialiased;
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* Navigation Bar */
++    nav.top-nav {
+       background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
++      color: var(--white);
++      height: var(--nav-height);
++      padding: 0 4%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
++      position: relative;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+     }
+ 
++    .nav-left {
++      display: flex;
++      align-items: center;
++      gap: 14px;
++      min-width: 0;
++    }
++
++    .nav-back-btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: rgba(255, 255, 255, 0.12);
++      color: var(--white);
++      border: 1px solid rgba(255, 171, 64, 0.5);
++      padding: 6px 12px;
++      border-radius: 6px;
++      font-size: 0.88rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, transform 0.2s, opacity 0.2s;
++    }
++
++    .nav-back-btn:hover {
++      background: rgba(255, 171, 64, 0.22);
++    }
++
++    .nav-back-btn[hidden] {
++      display: none;
++    }
++
+     .logo {
+-      font-size: 1.5rem;
++      font-size: 1.35rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: var(--white);
++      text-decoration: none;
++      cursor: pointer;
++      white-space: nowrap;
+     }
+ 
+-    nav ul {
++    .breadcrumbs {
+       display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++      color: var(--secondary);
++      margin-left: 8px;
++      overflow: hidden;
++      text-overflow: ellipsis;
++      white-space: nowrap;
++    }
++
++    .breadcrumbs a {
++      color: var(--secondary);
++      text-decoration: none;
++    }
++
++    .breadcrumbs a:hover {
++      color: var(--accent);
++    }
++
++    .breadcrumbs .crumb-current {
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    nav.top-nav ul {
++      display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+-    nav ul li {
++    nav.top-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
+-      color: white;
++    nav.top-nav ul a {
++      color: var(--white);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav.top-nav ul a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -71,71 +147,545 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Full-Screen Hierarchical Drill-Down Stack */
++    .stack-viewport {
++      position: relative;
++      width: 100vw;
++      height: calc(100vh - var(--nav-height));
++      overflow: hidden;
++      background: #2b1b17;
++      touch-action: pan-y;
++    }
++
++    .stack-screen {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      overflow-y: auto;
++      overflow-x: hidden;
++      background: var(--light);
++      will-change: transform, opacity;
++      transition: transform var(--transition-duration) var(--ease-out-expo),
++                  opacity var(--transition-duration) var(--ease-out-expo),
++                  filter var(--transition-duration) var(--ease-out-expo);
++      -webkit-overflow-scrolling: touch;
++    }
++
++    /* Root screen states */
++    .stack-screen.screen-home {
++      z-index: 10;
++      transform: translate3d(0, 0, 0) scale(1);
++      opacity: 1;
++      filter: brightness(1);
++    }
++
++    .stack-viewport.is-drilled .stack-screen.screen-home {
++      transform: translate3d(-24%, 0, 0) scale(0.96);
++      opacity: 0.65;
++      filter: brightness(0.75);
++      pointer-events: none;
++    }
++
++    /* Detail screen states */
++    .stack-screen.screen-detail {
++      z-index: 20;
++      transform: translate3d(100%, 0, 0);
++      box-shadow: -12px 0 36px rgba(0, 0, 0, 0.35);
++      pointer-events: none;
++      visibility: hidden;
++    }
++
++    .stack-viewport.is-drilled .stack-screen.screen-detail {
++      transform: translate3d(0, 0, 0);
++      pointer-events: auto;
++      visibility: visible;
++    }
++
++    /* Disable CSS transitions while actively dragging/swiping */
++    .stack-viewport.is-swiping .stack-screen {
++      transition: none !important;
++    }
++
++    /* Left-edge swipe indicator */
++    .edge-swipe-hint {
++      position: fixed;
++      left: 0;
++      top: var(--nav-height);
++      bottom: 0;
++      width: 24px;
++      z-index: 30;
++      pointer-events: none;
++      background: linear-gradient(to right, rgba(255, 171, 64, 0.28), transparent);
++      opacity: 0;
++      transition: opacity 0.2s;
++    }
++
++    .stack-viewport.is-swiping .edge-swipe-hint {
++      opacity: 1;
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 48vh;
++      background: linear-gradient(rgba(35, 20, 15, 0.58), rgba(35, 20, 15, 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--white);
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
++    .hero-badge {
++      background: rgba(255, 171, 64, 0.2);
++      border: 1px solid var(--accent);
++      color: var(--accent);
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 14px;
++      font-weight: 600;
++    }
++
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2.2rem, 4vw, 3.2rem);
++      margin-bottom: 0.75rem;
+     }
+ 
++    .hero p {
++      font-size: 1.08rem;
++      max-width: 540px;
++      opacity: 0.92;
++    }
++
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1120px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      font-size: 0.96rem;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--white);
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 4px 14px rgba(62, 39, 35, 0.08);
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.25s ease, box-shadow 0.25s ease;
++      cursor: pointer;
++      border: 1px solid rgba(78, 52, 46, 0.08);
++      text-align: left;
++    }
++
++    .card:hover,
++    .card:focus-within {
++      transform: translateY(-4px);
++      box-shadow: 0 12px 24px rgba(62, 39, 35, 0.15);
++    }
++
++    .card-image-wrap {
++      position: relative;
++      height: 200px;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card-image-wrap img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      transition: transform 0.4s ease;
++    }
++
++    .card:hover .card-image-wrap img {
++      transform: scale(1.05);
++    }
++
++    .card-tag {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      background: rgba(62, 39, 35, 0.85);
++      color: var(--accent);
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 0.4px;
++    }
++
++    .card-price {
++      position: absolute;
++      bottom: 12px;
++      right: 12px;
++      background: var(--white);
++      color: var(--primary-dark);
++      padding: 4px 10px;
++      border-radius: 6px;
++      font-weight: 700;
++      font-size: 0.9rem;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++    }
++
++    .card-body {
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 8px;
+       color: var(--primary);
++      font-size: 1.25rem;
+     }
+ 
++    .card p {
++      color: var(--text-muted);
++      font-size: 0.94rem;
++      flex: 1;
++    }
++
++    .card-meta {
++      display: flex;
++      gap: 12px;
++      margin-top: 14px;
++      font-size: 0.8rem;
++      color: var(--primary-light);
++    }
++
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
+       background: var(--primary);
+-      color: white;
++      color: var(--white);
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-top: 16px;
++      font-weight: 600;
++      font-size: 0.92rem;
++      border: none;
++      cursor: pointer;
++      transition: background 0.25s, transform 0.15s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
+     }
+ 
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-dark);
++    }
++
++    /* Detail View Styling */
++    .detail-toolbar {
++      position: sticky;
++      top: 0;
++      z-index: 15;
++      background: rgba(250, 250, 250, 0.92);
++      backdrop-filter: blur(10px);
++      border-bottom: 1px solid var(--secondary);
++      padding: 12px 24px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .detail-back-trigger {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: var(--white);
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++      padding: 8px 16px;
++      border-radius: 8px;
++      font-weight: 600;
++      font-size: 0.92rem;
++      cursor: pointer;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .detail-back-trigger:hover {
++      background: var(--secondary-light);
++      border-color: var(--primary-light);
++    }
++
++    .swipe-status-pill {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .detail-hero {
++      position: relative;
++      height: 340px;
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      align-items: flex-end;
++      color: var(--white);
++    }
++
++    .detail-hero::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(to top, rgba(30, 18, 14, 0.88) 10%, rgba(30, 18, 14, 0.2) 70%);
++    }
++
++    .detail-hero-content {
++      position: relative;
++      z-index: 2;
++      max-width: 1000px;
++      width: 100%;
++      margin: 0 auto;
++      padding: 32px 24px;
++    }
++
++    .detail-category-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 700;
++      font-size: 0.76rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 10px;
++    }
++
++    .detail-hero-title-row {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 16px;
++    }
++
++    .detail-hero h1 {
++      font-size: clamp(2rem, 3.5vw, 2.75rem);
++      line-height: 1.15;
++    }
++
++    .detail-hero-price {
++      font-size: 1.75rem;
++      font-weight: 700;
++      color: var(--accent);
++    }
++
++    .detail-content-wrap {
++      max-width: 1000px;
++      margin: 0 auto;
++      padding: 32px 24px 64px;
++      display: grid;
++      grid-template-columns: 1.4fr 1fr;
++      gap: 32px;
++    }
++
++    @media (max-width: 768px) {
++      .detail-content-wrap {
++        grid-template-columns: 1fr;
++      }
++
++      nav.top-nav ul {
++        display: none;
++      }
++    }
++
++    .detail-panel {
++      background: var(--white);
++      border-radius: 12px;
++      padding: 24px;
++      box-shadow: 0 3px 12px rgba(62, 39, 35, 0.07);
++      border: 1px solid rgba(78, 52, 46, 0.08);
++      margin-bottom: 24px;
++    }
++
++    .detail-panel h2 {
++      font-size: 1.2rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++      border-bottom: 2px solid var(--secondary-light);
++      padding-bottom: 8px;
++    }
++
++    .tasting-pills {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 12px;
++    }
++
++    .tasting-pill {
++      background: var(--secondary-light);
++      color: var(--primary-dark);
++      padding: 6px 14px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .nutrition-grid {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 12px;
++      text-align: center;
++      margin-top: 12px;
++    }
++
++    .nutrition-stat {
++      background: var(--light);
++      padding: 12px;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++    }
++
++    .nutrition-stat strong {
++      display: block;
++      font-size: 1.2rem;
++      color: var(--primary);
++    }
++
++    .nutrition-stat span {
++      font-size: 0.78rem;
++      color: var(--text-muted);
++    }
++
++    .option-group {
++      margin-bottom: 18px;
++    }
++
++    .option-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .size-selector {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++    }
++
++    .size-btn {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 10px 8px;
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--text);
++      transition: all 0.2s;
++    }
++
++    .size-btn.active {
++      background: var(--primary);
++      color: var(--white);
++      border-color: var(--primary);
++    }
++
++    .select-control {
++      width: 100%;
++      padding: 10px 12px;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      font-size: 0.92rem;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .sibling-nav {
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .sibling-link {
++      flex: 1;
++      background: var(--white);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 12px 14px;
++      text-decoration: none;
++      color: var(--primary);
++      font-size: 0.86rem;
++      font-weight: 600;
++      transition: background 0.2s, border-color 0.2s;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .sibling-link:hover {
++      background: var(--secondary-light);
++      border-color: var(--primary-light);
++    }
++
++    .sibling-link small {
++      color: var(--text-muted);
++      font-weight: 400;
++      font-size: 0.75rem;
++    }
++
++    .order-feedback {
++      margin-top: 12px;
++      padding: 10px 14px;
++      border-radius: 8px;
++      background: #e8f5e9;
++      color: #2e7d32;
++      font-size: 0.88rem;
++      font-weight: 600;
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,57 +706,661 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav class="top-nav" aria-label="Primary Navigation">
++    <div class="nav-left">
++      <button type="button" id="nav-back-btn" class="nav-back-btn" hidden aria-label="Navigate back to Seasonal Favorites">
++        &#8592; Back
++      </button>
++      <a href="/" class="logo" data-nav-home>THE DAILY GRIND</a>
++      <div class="breadcrumbs" id="nav-breadcrumbs" aria-label="Breadcrumb">
++        <span>Seasonal Favorites</span>
++      </div>
++    </div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/" data-nav-home>Menu</a></li>
++      <li><a href="#locations" data-nav-home>Locations</a></li>
++      <li><a href="#rewards" data-nav-home>Rewards</a></li>
++      <li><a href="#account" data-nav-home>My Account</a></li>
++      <li><a href="#logout" class="logout-link" data-nav-home>Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <!-- Full-Screen Hierarchical Drill-Down Navigation Stack -->
++  <div class="stack-viewport" id="stack-viewport" data-depth="0">
++    <div class="edge-swipe-hint" aria-hidden="true"></div>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <!-- Level 0: Root Homepage Screen -->
++    <section class="stack-screen screen-home" id="screen-home" aria-label="Daily Grind Homepage">
++      <header class="hero">
++        <span class="hero-badge">Autumn / Winter Harvest</span>
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="#seasonal-favorites" class="btn btn-accent" id="explore-seasonal-btn">Explore Seasonal Favorites</a>
++      </header>
++
++      <main class="container" id="seasonal-favorites">
++        <section>
++          <div class="section-header">
++            <h2>Seasonal Favorites</h2>
++            <p>Select a handcrafted beverage below to drill down into tasting notes, origin details, and custom brewing options.</p>
++          </div>
++
++          <div class="grid" role="list">
++            <article class="card" role="listitem" data-item-slug="maple-oat-latte" tabindex="0">
++              <div class="card-image-wrap">
++                <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=900&q=80" alt="Maple Oat Latte with latte art">
++                <span class="card-tag">Barista's Pick</span>
++                <span class="card-price">$5.75</span>
++              </div>
++              <div class="card-body">
++                <h3>Maple Oat Latte</h3>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                <div class="card-meta">
++                  <span>&#9749; Double Ristretto</span>
++                  <span>&#127809; Grade-A Amber Maple</span>
++                </div>
++                <a href="/menu/seasonal" data-drill-link="maple-oat-latte" class="btn">View Details &rarr;</a>
++              </div>
++            </article>
++
++            <article class="card" role="listitem" data-item-slug="dark-roast-espresso" tabindex="0">
++              <div class="card-image-wrap">
++                <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=900&q=80" alt="Dark Roast Espresso shot in ceramic demitasse">
++                <span class="card-tag">Single Origin</span>
++                <span class="card-price">$3.95</span>
++              </div>
++              <div class="card-body">
++                <h3>Dark Roast Espresso</h3>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++                <div class="card-meta">
++                  <span>&#127755; Sumatra &amp; Chiapas</span>
++                  <span>&#128293; Full City+ Roast</span>
++                </div>
++                <a href="/menu/espresso" data-drill-link="dark-roast-espresso" class="btn">View Details &rarr;</a>
++              </div>
++            </article>
++
++            <article class="card" role="listitem" data-item-slug="cold-brew" tabindex="0">
++              <div class="card-image-wrap">
++                <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=900&q=80" alt="Artisanal Cold Brew poured over crystal ice">
++                <span class="card-tag">18-Hour Steep</span>
++                <span class="card-price">$4.95</span>
++              </div>
++              <div class="card-body">
++                <h3>Cold Brew</h3>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++                <div class="card-meta">
++                  <span>&#10052; Small-Batch Filtered</span>
++                  <span>&#127851; Cocoa &amp; Molasses</span>
++                </div>
++                <a href="/menu/cold-brew" data-drill-link="cold-brew" class="btn">View Details &rarr;</a>
++              </div>
++            </article>
++          </div>
++        </section>
++      </main>
++
++      <footer>
++        <div class="footer-links">
++          <a href="#about">Our Story</a> |
++          <a href="#careers">Join the Team</a> |
++          <a href="#contact">Contact Us</a> |
++          <a href="#privacy-policy">Privacy</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++      </footer>
++    </section>
++
++    <!-- Level 1: Drill-Down Item Detail Screen -->
++    <section class="stack-screen screen-detail" id="screen-detail" aria-label="Beverage Detail View" aria-hidden="true">
++      <div class="detail-toolbar">
++        <button type="button" class="detail-back-trigger" id="detail-back-btn">
++          <span>&#8592;</span> All Seasonal Favorites
++        </button>
++        <div class="swipe-status-pill">
++          <span>&#8644; Swipe right from left edge or press Esc to go back</span>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>
++
++      <header class="detail-hero" id="detail-hero">
++        <div class="detail-hero-content">
++          <span class="detail-category-badge" id="detail-badge">Seasonal Favorite</span>
++          <div class="detail-hero-title-row">
++            <h1 id="detail-title">Maple Oat Latte</h1>
++            <span class="detail-hero-price" id="detail-price">$5.75</span>
++          </div>
++          <p id="detail-tagline">Creamy oat milk with a hint of Vermont maple syrup.</p>
+         </div>
++      </header>
++
++      <div class="detail-content-wrap">
++        <div class="detail-main-col">
++          <div class="detail-panel">
++            <h2>Artisanal Story &amp; Craft</h2>
++            <p id="detail-description"></p>
++            <div class="tasting-pills" id="detail-tasting-notes" aria-label="Tasting Notes"></div>
++          </div>
++
++          <div class="detail-panel">
++            <h2>Origin &amp; Sourcing</h2>
++            <p id="detail-origin"></p>
++            <div class="nutrition-grid" id="detail-stats"></div>
++          </div>
++
++          <div class="detail-panel">
++            <h2>Explore More Seasonal Favorites</h2>
++            <div style="display: flex; gap: 12px; flex-wrap: wrap;" id="detail-siblings"></div>
++          </div>
++        </div>
++
++        <aside class="detail-side-col">
++          <div class="detail-panel">
++            <h2>Customize Your Cup</h2>
++            <form id="customize-form">
++              <div class="option-group">
++                <label>Cup Size</label>
++                <div class="size-selector" role="radiogroup" aria-label="Cup Size">
++                  <button type="button" class="size-btn" data-size="12oz" data-price-delta="-0.50">12 oz (Small)</button>
++                  <button type="button" class="size-btn active" data-size="16oz" data-price-delta="0">16 oz (Standard)</button>
++                  <button type="button" class="size-btn" data-size="20oz" data-price-delta="0.75">20 oz (Large)</button>
++                </div>
++              </div>
++
++              <div class="option-group">
++                <label for="milk-select">Milk / Preparation</label>
++                <select id="milk-select" class="select-control">
++                  <option value="Barista Oat Milk (Default)">Barista Oat Milk (Default)</option>
++                  <option value="Organic Whole Milk">Organic Whole Milk</option>
++                  <option value="House Almond-Macadamia">House Almond-Macadamia</option>
++                  <option value="Served Black / Unaltered">Served Black / Unaltered</option>
++                </select>
++              </div>
++
++              <div class="option-group">
++                <label for="temp-select">Serving Temperature</label>
++                <select id="temp-select" class="select-control">
++                  <option value="Steamed (150°F)">Steamed (150°F)</option>
++                  <option value="Over Artisanal Ice">Over Artisanal Ice</option>
++                  <option value="Extra Hot (165°F)">Extra Hot (165°F)</option>
++                </select>
++              </div>
++
++              <button type="submit" class="btn btn-accent" style="width: 100%; font-size: 1rem; padding: 12px;">
++                Add to Order &bull; <span id="order-btn-price">$5.75</span>
++              </button>
++              <div class="order-feedback" id="order-feedback" role="status"></div>
++            </form>
++          </div>
++        </aside>
+       </div>
+     </section>
+-  </main>
++  </div>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  <script>
++    (function () {
++      const ITEMS = {
++        'maple-oat-latte': {
++          slug: 'maple-oat-latte',
++          legacyPath: '/menu/seasonal',
++          title: 'Maple Oat Latte',
++          badge: "Barista's Pick • Autumn Harvest",
++          basePrice: 5.75,
++          tagline: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1350&q=80',
++          description: 'Our signature Maple Oat Latte marries a velvety double ristretto pulled from our house heritage blend with micro-foamed barista-grade oat milk. Sweetened exclusively with wood-fired Vermont Grade-A dark amber maple syrup and finished with a light dusting of freshly grated Ceylon cinnamon.',
++          origin: 'Espresso blend sourced from cooperative farms in Huehuetenango, Guatemala and Tarrazú, Costa Rica (1,650m–1,900m elevation), paired with single-orchard Northeast Kingdom Vermont maple.',
++          tastingNotes: ['Toasted Pecan', 'Dark Amber Maple', 'Velvety Oat', 'Ceylon Cinnamon'],
++          defaultMilk: 'Barista Oat Milk (Default)',
++          defaultTemp: 'Steamed (150°F)',
++          stats: [
++            { label: 'Calories', value: '210 kcal' },
++            { label: 'Caffeine', value: '150 mg' },
++            { label: 'Roast Level', value: 'Medium-Dark' }
++          ]
++        },
++        'dark-roast-espresso': {
++          slug: 'dark-roast-espresso',
++          legacyPath: '/menu/espresso',
++          title: 'Dark Roast Espresso',
++          badge: 'Single Origin • Small Lot',
++          basePrice: 3.95,
++          tagline: 'Bold, smokey, and perfect for a morning boost.',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1350&q=80',
++          description: 'Roasted just past second crack to unlock deep caramelized sugars and bittersweet cocoa complexity. Extracted at 9 bars with a syrupy tiger-striped crema that coats the palate and lingers with notes of pipe tobacco, roasted walnut, and dark baker’s chocolate.',
++          origin: 'Wet-hulled Mandheling lots from northern Sumatra blended with high-altitude shade-grown Chiapas beans, roasted daily in our vintage cast-iron drum roaster.',
++          tastingNotes: ['Bittersweet Cocoa', 'Smoked Cedar', 'Molasses', 'Rich Crema'],
++          defaultMilk: 'Served Black / Unaltered',
++          defaultTemp: 'Steamed (150°F)',
++          stats: [
++            { label: 'Calories', value: '15 kcal' },
++            { label: 'Caffeine', value: '185 mg' },
++            { label: 'Roast Level', value: 'Full City+' }
++          ]
++        },
++        'cold-brew': {
++          slug: 'cold-brew',
++          legacyPath: '/menu/cold-brew',
++          title: 'Cold Brew',
++          badge: '18-Hour Slow Steep',
++          basePrice: 4.95,
++          tagline: 'Steeped for 18 hours for maximum smoothness.',
++          image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=1350&q=80',
++          description: 'Coarsely ground Ethiopian and Colombian beans are steeped in triple-filtered cold mountain water for 18 uninterrupted hours. This heat-free extraction eliminates 65% of bitter acids while preserving floral aromatics and a naturally sweet, chocolatey finish.',
++          origin: 'Washed Yirgacheffe (Ethiopia) and Huila (Colombia) micro-lots, cold-extracted in small 20-gallon stainless steel vessels and double-filtered through unbleached paper.',
++          tastingNotes: ['Dark Chocolate', 'Black Cherry', 'Brown Sugar', 'Silky Finish'],
++          defaultMilk: 'Served Black / Unaltered',
++          defaultTemp: 'Over Artisanal Ice',
++          stats: [
++            { label: 'Calories', value: '10 kcal' },
++            { label: 'Caffeine', value: '220 mg' },
++            { label: 'Acidity', value: 'Ultra-Low' }
++          ]
++        }
++      };
+ 
++      // Alias map for deep-link paths, query strings, or hashes
++      const ALIAS_TO_SLUG = {
++        'maple-oat-latte': 'maple-oat-latte',
++        'seasonal': 'maple-oat-latte',
++        '/menu/seasonal': 'maple-oat-latte',
++        '/menu/maple-oat-latte': 'maple-oat-latte',
++        'dark-roast-espresso': 'dark-roast-espresso',
++        'espresso': 'dark-roast-espresso',
++        '/menu/espresso': 'dark-roast-espresso',
++        '/menu/dark-roast-espresso': 'dark-roast-espresso',
++        'cold-brew': 'cold-brew',
++        '/menu/cold-brew': 'cold-brew'
++      };
++
++      const viewport = document.getElementById('stack-viewport');
++      const screenHome = document.getElementById('screen-home');
++      const screenDetail = document.getElementById('screen-detail');
++      const navBackBtn = document.getElementById('nav-back-btn');
++      const detailBackBtn = document.getElementById('detail-back-btn');
++      const navBreadcrumbs = document.getElementById('nav-breadcrumbs');
++
++      const detailHero = document.getElementById('detail-hero');
++      const detailBadge = document.getElementById('detail-badge');
++      const detailTitle = document.getElementById('detail-title');
++      const detailPrice = document.getElementById('detail-price');
++      const detailTagline = document.getElementById('detail-tagline');
++      const detailDescription = document.getElementById('detail-description');
++      const detailOrigin = document.getElementById('detail-origin');
++      const detailTastingNotes = document.getElementById('detail-tasting-notes');
++      const detailStats = document.getElementById('detail-stats');
++      const detailSiblings = document.getElementById('detail-siblings');
++      const orderBtnPrice = document.getElementById('order-btn-price');
++      const orderFeedback = document.getElementById('order-feedback');
++      const milkSelect = document.getElementById('milk-select');
++      const tempSelect = document.getElementById('temp-select');
++
++      let currentItemSlug = null;
++      let selectedSizeDelta = 0;
++      let hasInternalHistory = false;
++
++      function resolveSlugFromLocation(loc) {
++        const params = new URLSearchParams(loc.search);
++        const itemParam = params.get('item') || params.get('favorite');
++        if (itemParam && ALIAS_TO_SLUG[itemParam.toLowerCase()]) {
++          return ALIAS_TO_SLUG[itemParam.toLowerCase()];
++        }
++
++        const rawHash = (loc.hash || '').replace(/^#\/?/, '').toLowerCase();
++        if (rawHash) {
++          if (ALIAS_TO_SLUG[rawHash]) return ALIAS_TO_SLUG[rawHash];
++          if (ALIAS_TO_SLUG['/' + rawHash]) return ALIAS_TO_SLUG['/' + rawHash];
++          const hashParts = rawHash.split('/').filter(Boolean);
++          const lastHashPart = hashParts[hashParts.length - 1];
++          if (lastHashPart && ALIAS_TO_SLUG[lastHashPart]) {
++            return ALIAS_TO_SLUG[lastHashPart];
++          }
++        }
++
++        const pathClean = loc.pathname.replace(/\/+$/, '').toLowerCase();
++        if (ALIAS_TO_SLUG[pathClean]) {
++          return ALIAS_TO_SLUG[pathClean];
++        }
++        const pathParts = pathClean.split('/').filter(Boolean);
++        const lastPathPart = pathParts[pathParts.length - 1];
++        if (lastPathPart && ALIAS_TO_SLUG[lastPathPart]) {
++          return ALIAS_TO_SLUG[lastPathPart];
++        }
++
++        return null;
++      }
++
++      function buildDeepLinkUrl(slug) {
++        const url = new URL(window.location.href);
++        if (!slug) {
++          url.searchParams.delete('item');
++          url.searchParams.delete('favorite');
++          if (url.hash && resolveSlugFromLocation({ search: '', hash: url.hash, pathname: '' })) {
++            url.hash = '';
++          }
++          if (resolveSlugFromLocation({ search: '', hash: '', pathname: url.pathname })) {
++            url.pathname = '/';
++          }
++          return url.pathname + url.search + url.hash;
++        }
++        url.searchParams.set('item', slug);
++        url.hash = '#/menu/' + slug;
++        return url.pathname + url.search + url.hash;
++      }
++
++      function updateComputedPrice() {
++        if (!currentItemSlug || !ITEMS[currentItemSlug]) return;
++        const total = (ITEMS[currentItemSlug].basePrice + selectedSizeDelta).toFixed(2);
++        detailPrice.textContent = '$' + total;
++        orderBtnPrice.textContent = '$' + total;
++      }
++
++      function renderDetailContent(slug) {
++        const item = ITEMS[slug];
++        if (!item) return;
++
++        selectedSizeDelta = 0;
++        document.querySelectorAll('.size-btn').forEach(btn => {
++          btn.classList.toggle('active', btn.dataset.size === '16oz');
++        });
++        orderFeedback.style.display = 'none';
++
++        detailHero.style.backgroundImage = `url('${item.image}')`;
++        detailBadge.textContent = item.badge;
++        detailTitle.textContent = item.title;
++        detailTagline.textContent = item.tagline;
++        detailDescription.textContent = item.description;
++        detailOrigin.textContent = item.origin;
++        milkSelect.value = item.defaultMilk;
++        tempSelect.value = item.defaultTemp;
++
++        updateComputedPrice();
++
++        detailTastingNotes.innerHTML = item.tastingNotes
++          .map(note => `<span class="tasting-pill">${note}</span>`)
++          .join('');
++
++        detailStats.innerHTML = item.stats
++          .map(st => `<div class="nutrition-stat"><strong>${st.value}</strong><span>${st.label}</span></div>`)
++          .join('');
++
++        const otherItems = Object.values(ITEMS).filter(other => other.slug !== slug);
++        detailSiblings.innerHTML = otherItems
++          .map(other => `
++            <a href="${other.legacyPath}" data-drill-link="${other.slug}" class="sibling-link">
++              <small>Switch Favorite</small>
++              <span>${other.title} &rarr;</span>
++            </a>
++          `)
++          .join('');
++      }
++
++      function applyNavigationState(slug, options = {}) {
++        const targetItem = slug ? ITEMS[slug] : null;
++
++        if (targetItem) {
++          currentItemSlug = targetItem.slug;
++          renderDetailContent(targetItem.slug);
++          viewport.classList.add('is-drilled');
++          viewport.dataset.depth = '1';
++          screenHome.setAttribute('aria-hidden', 'true');
++          screenDetail.setAttribute('aria-hidden', 'false');
++          navBackBtn.hidden = false;
++          navBreadcrumbs.innerHTML = `
++            <a href="/" data-nav-home>Seasonal Favorites</a>
++            <span>/</span>
++            <span class="crumb-current">${targetItem.title}</span>
++          `;
++          document.title = `${targetItem.title} | The Daily Grind`;
++          if (!options.preserveScroll) {
++            screenDetail.scrollTop = 0;
++          }
++        } else {
++          currentItemSlug = null;
++          viewport.classList.remove('is-drilled');
++          viewport.dataset.depth = '0';
++          screenHome.setAttribute('aria-hidden', 'false');
++          screenDetail.setAttribute('aria-hidden', 'true');
++          navBackBtn.hidden = true;
++          navBreadcrumbs.innerHTML = `<span>Seasonal Favorites</span>`;
++          document.title = 'The Daily Grind | Artisanal Coffee';
++        }
++      }
++
++      function navigateToItem(slug, replace = false) {
++        if (!ITEMS[slug]) return;
++        const targetUrl = buildDeepLinkUrl(slug);
++        const statePayload = { view: 'detail', item: slug };
++
++        if (replace) {
++          history.replaceState(statePayload, '', targetUrl);
++        } else {
++          history.pushState(statePayload, '', targetUrl);
++          hasInternalHistory = true;
++        }
++        applyNavigationState(slug);
++      }
++
++      function navigateBackToHome() {
++        if (!currentItemSlug) return;
++
++        if (hasInternalHistory && history.length > 1) {
++          hasInternalHistory = false;
++          history.back();
++        } else {
++          const homeUrl = buildDeepLinkUrl(null);
++          history.pushState({ view: 'home', item: null }, '', homeUrl);
++          applyNavigationState(null);
++        }
++      }
++
++      // Event Delegation for cards, drill-down links, and home links
++      document.addEventListener('click', function (e) {
++        const drillLink = e.target.closest('[data-drill-link]');
++        if (drillLink) {
++          e.preventDefault();
++          const slug = drillLink.getAttribute('data-drill-link');
++          navigateToItem(slug);
++          return;
++        }
++
++        const card = e.target.closest('.card[data-item-slug]');
++        if (card) {
++          e.preventDefault();
++          const slug = card.getAttribute('data-item-slug');
++          navigateToItem(slug);
++          return;
++        }
++
++        const homeLink = e.target.closest('[data-nav-home]');
++        if (homeLink) {
++          if (currentItemSlug) {
++            e.preventDefault();
++            navigateBackToHome();
++          }
++        }
++      });
++
++      // Keyboard accessibility (Enter/Space on cards, Escape to pop stack)
++      document.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape' && currentItemSlug) {
++          e.preventDefault();
++          navigateBackToHome();
++          return;
++        }
++
++        if ((e.key === 'Enter' || e.key === ' ') && document.activeElement) {
++          const focusedCard = document.activeElement.closest('.card[data-item-slug]');
++          if (focusedCard && document.activeElement === focusedCard) {
++            e.preventDefault();
++            navigateToItem(focusedCard.getAttribute('data-item-slug'));
++          }
++        }
++      });
++
++      navBackBtn.addEventListener('click', navigateBackToHome);
++      detailBackBtn.addEventListener('click', navigateBackToHome);
++
++      const exploreBtn = document.getElementById('explore-seasonal-btn');
++      if (exploreBtn) {
++        exploreBtn.addEventListener('click', function (e) {
++          e.preventDefault();
++          const target = document.getElementById('seasonal-favorites');
++          if (target) {
++            target.scrollIntoView({ behavior: 'smooth' });
++          }
++        });
++      }
++
++      // Cup size selection & customize form
++      document.querySelectorAll('.size-btn').forEach(btn => {
++        btn.addEventListener('click', function () {
++          document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
++          this.classList.add('active');
++          selectedSizeDelta = parseFloat(this.dataset.priceDelta || '0');
++          updateComputedPrice();
++        });
++      });
++
++      document.getElementById('customize-form').addEventListener('submit', function (e) {
++        e.preventDefault();
++        if (!currentItemSlug) return;
++        const item = ITEMS[currentItemSlug];
++        const activeSize = document.querySelector('.size-btn.active')?.dataset.size || '16oz';
++        orderFeedback.textContent = `Added ${activeSize} ${item.title} (${milkSelect.value}, ${tempSelect.value}) to your order!`;
++        orderFeedback.style.display = 'block';
++      });
++
++      // Browser History (popstate & hashchange) sync
++      window.addEventListener('popstate', function (e) {
++        const stateSlug = e.state && e.state.item ? e.state.item : resolveSlugFromLocation(window.location);
++        applyNavigationState(stateSlug, { preserveScroll: true });
++      });
++
++      window.addEventListener('hashchange', function () {
++        const slug = resolveSlugFromLocation(window.location);
++        applyNavigationState(slug);
++      });
++
++      // Touch & Pointer Horizontal Swipe-Back Gesture Handling
++      let swipeState = {
++        active: false,
++        tracking: false,
++        startX: 0,
++        startY: 0,
++        deltaX: 0,
++        width: 1
++      };
++
++      function startSwipe(clientX, clientY) {
++        if (!currentItemSlug) return;
++        swipeState.active = true;
++        swipeState.tracking = false;
++        swipeState.startX = clientX;
++        swipeState.startY = clientY;
++        swipeState.deltaX = 0;
++        swipeState.width = viewport.clientWidth || window.innerWidth || 360;
++      }
++
++      function moveSwipe(clientX, clientY, eventObj) {
++        if (!swipeState.active || !currentItemSlug) return;
++        const dx = clientX - swipeState.startX;
++        const dy = clientY - swipeState.startY;
++
++        if (!swipeState.tracking) {
++          // Only lock onto horizontal right-swipe when horizontal movement dominates vertical
++          if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) {
++            swipeState.active = false;
++            return;
++          }
++          if (dx > 14 && Math.abs(dx) > Math.abs(dy) * 1.2) {
++            swipeState.tracking = true;
++            viewport.classList.add('is-swiping');
++          } else {
++            return;
++          }
++        }
++
++        if (eventObj && eventObj.cancelable) {
++          eventObj.preventDefault();
++        }
++
++        swipeState.deltaX = Math.max(0, dx);
++        const progress = Math.min(1, swipeState.deltaX / swipeState.width);
++
++        // Interpolate both screens smoothly during drag
++        const detailTranslatePct = progress * 100;
++        const homeTranslatePct = -24 * (1 - progress);
++        const homeScale = 0.96 + 0.04 * progress;
++        const homeOpacity = 0.65 + 0.35 * progress;
++
++        screenDetail.style.transform = `translate3d(${detailTranslatePct}%, 0, 0)`;
++        screenHome.style.transform = `translate3d(${homeTranslatePct}%, 0, 0) scale(${homeScale})`;
++        screenHome.style.opacity = String(homeOpacity);
++      }
++
++      function endSwipe() {
++        if (!swipeState.active) return;
++        const wasTracking = swipeState.tracking;
++        const ratio = swipeState.deltaX / swipeState.width;
++
++        swipeState.active = false;
++        swipeState.tracking = false;
++        viewport.classList.remove('is-swiping');
++
++        // Clear inline drag transforms so CSS transition takes over cleanly
++        screenDetail.style.transform = '';
++        screenHome.style.transform = '';
++        screenHome.style.opacity = '';
++
++        if (wasTracking && (ratio > 0.22 || swipeState.deltaX > 110)) {
++          navigateBackToHome();
++        }
++      }
++
++      // Touch events for mobile/tablet
++      viewport.addEventListener('touchstart', function (e) {
++        if (e.touches.length !== 1) return;
++        startSwipe(e.touches[0].clientX, e.touches[0].clientY);
++      }, { passive: true });
++
++      viewport.addEventListener('touchmove', function (e) {
++        if (e.touches.length !== 1) return;
++        moveSwipe(e.touches[0].clientX, e.touches[0].clientY, e);
++      }, { passive: false });
++
++      viewport.addEventListener('touchend', endSwipe);
++      viewport.addEventListener('touchcancel', endSwipe);
++
++      // Mouse/Pointer drag support for desktop swipe-back
++      viewport.addEventListener('pointerdown', function (e) {
++        if (e.pointerType === 'touch' || e.button !== 0) return;
++        if (e.target.closest('button, a, select, input, textarea')) return;
++        startSwipe(e.clientX, e.clientY);
++      });
++
++      window.addEventListener('pointermove', function (e) {
++        if (e.pointerType === 'touch' || !swipeState.active) return;
++        moveSwipe(e.clientX, e.clientY, e);
++      });
++
++      window.addEventListener('pointerup', function (e) {
++        if (e.pointerType === 'touch') return;
++        endSwipe();
++      });
++
++      // Initial Deep-Link Bootstrapping on Page Load
++      const initialSlug = resolveSlugFromLocation(window.location);
++      if (initialSlug && ITEMS[initialSlug]) {
++        history.replaceState({ view: 'detail', item: initialSlug }, '', buildDeepLinkUrl(initialSlug));
++        applyNavigationState(initialSlug);
++      } else {
++        history.replaceState({ view: 'home', item: null }, '', window.location.pathname + window.location.search + window.location.hash);
++        applyNavigationState(null);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

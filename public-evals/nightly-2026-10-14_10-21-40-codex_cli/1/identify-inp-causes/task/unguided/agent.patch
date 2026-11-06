@@ -1,0 +1,42 @@
+diff --git a/INP.md b/INP.md
+new file mode 100644
+--- a/INP.md
++++ b/INP.md
+@@ -0,0 +1,37 @@
++INP diagnostics run on every page load using the locally vendored Google
++`web-vitals` 5.1.0 attribution build. There are no analytics requests.
++
++Interact with the page and check the console for `[INP]` warnings when the page's
++INP exceeds 200 ms. Reports show the interaction target, input delay, event
++processing time, presentation delay, and overlapping script source locations
++and forced layout time when available. The largest phase suggests where to
++investigate; overlapping scripts are evidence to investigate, not proof of cause.
++
++From the console:
++
++```js
++inpDiagnostics.supported // Event Timing / interaction ID support
++inpDiagnostics.supportsLongFrames // detailed script attribution support
++inpDiagnostics.getReports() // latest 20 INP updates, JSON-safe copies
++inpDiagnostics.download() // save these reports as JSON
++```
++
++For an explicit monitoring integration, listen to the `inp-diagnostic` window
++event and read `event.detail`. No data is sent automatically. Reports omit input
++values and DOM nodes, but selectors and script URLs can contain identifying data;
++review them before forwarding reports to a service.
++
++These are updates to the page's INP candidate, not a log of every interaction.
++The library handles interaction grouping, outliers, backgrounding, and back/forward
++cache restores. The final page value may change as the session continues. Event
++durations are rounded by the browser. Browsers without Event Timing support
++produce no reports; browsers without Long Animation Frames still report timing
++phases but cannot identify scripts. Cross-origin frames and some script work
++cannot be attributed. A single local session is not a field percentile.
++
++To update the vendored dependency, update the pinned `web-vitals` version with
++pnpm, copy `node_modules/web-vitals/dist/web-vitals.attribution.js` into `vendor/`,
++and copy its `LICENSE` to `vendor/web-vitals.LICENSE`.
++
++References: https://web.dev/articles/inp and
++https://github.com/GoogleChrome/web-vitals#attribution

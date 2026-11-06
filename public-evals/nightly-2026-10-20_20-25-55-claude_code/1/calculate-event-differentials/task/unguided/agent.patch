@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,20 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .promo-timer .promo-elapsed {
++      display: block;
++      font-size: 0.8rem;
++      opacity: 0.75;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +192,12 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p class="promo-timer" id="maple-timer">
++            <strong class="promo-remaining"></strong>
++            <span class="promo-elapsed"></span>
++          </p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +222,46 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Dates use the visitor's local time zone (local-time Date constructor).
++    // Months are zero-indexed: 2 = March.
++    // PROMO_START is a placeholder; set it to the real launch date.
++    (function () {
++      var PROMO_START = new Date(2025, 8, 1, 0, 0, 0); // Sep 1, 2025 00:00 local
++      var PROMO_END = new Date(2026, 2, 1, 0, 0, 0);   // Mar 1, 2026 00:00 local
++
++      var root = document.getElementById('maple-timer');
++      var remainingEl = root.querySelector('.promo-remaining');
++      var elapsedEl = root.querySelector('.promo-elapsed');
++
++      function plural(n, unit) {
++        return n + ' ' + unit + (n === 1 ? '' : 's');
++      }
++
++      function format(ms) {
++        var totalHours = Math.floor(ms / 3600000);
++        return plural(Math.floor(totalHours / 24), 'day') + ', ' +
++               plural(totalHours % 24, 'hour');
++      }
++
++      var now = new Date();
++
++      if (now >= PROMO_END) {
++        remainingEl.textContent = 'This offer has ended.';
++      } else {
++        remainingEl.textContent = format(PROMO_END - now) + ' left';
++      }
++
++      if (now >= PROMO_START) {
++        var since = Math.min(now, PROMO_END) - PROMO_START;
++        elapsedEl.textContent = 'Started ' + format(since) + ' ago';
++      } else {
++        elapsedEl.textContent = 'Starts ' + format(PROMO_START - now) + ' from now';
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

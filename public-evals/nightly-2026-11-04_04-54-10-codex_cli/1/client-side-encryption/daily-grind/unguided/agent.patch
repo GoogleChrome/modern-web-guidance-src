@@ -1,0 +1,605 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..b884f15
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,25 @@
++# The Daily Grind
++
++Static homepage with a responsive delivery-notes workspace. The checked-in `assets/app.js` bundle runs directly from the existing static host. Rebuild after changes to `src/`:
++
++```sh
++pnpm install --frozen-lockfile
++pnpm run build
++```
++
++No application server or database is required for this demo.
++
++## Delivery notes
++
++- Standard: ephemeral X25519 key agreement.
++- Post-quantum: ML-KEM-768 encapsulation using `@noble/post-quantum`.
++- Hybrid (default): the library's X-Wing combination of ML-KEM-768 and X25519.
++- All options derive a per-note AES-256-GCM key using HKDF-SHA-256 with a fresh random 32-byte salt and domain-specific context. Every encryption uses a random 12-byte nonce and a 128-bit authentication tag.
++- The version, note ID, mode, algorithm, recipient fingerprint, timestamp, encapsulation, salt, and nonce are authenticated as additional data. Saving performs an authenticated decrypt round trip before retaining the envelope.
++- Reveal decrypts a note and can show the complete encrypted envelope. Delete removes it. User text is rendered as text, never HTML.
++
++This is explicitly a **local demonstration**, not an integrated delivery service. Encrypted envelopes and demo recipient private keys stay in memory. Nothing is sent to a courier; no notes or keys are written to browser storage. Closing or reloading the page clears the session. JavaScript string memory cannot be reliably zeroed; byte-array secrets are cleared after use where feasible. HTTPS (or localhost) and Web Crypto are required, with no plaintext fallback.
++
++A real integration must obtain authenticated recipient public keys from the delivery service, keep recipient private keys with the intended recipient, and send only the encrypted envelope to a backend. The local reveal functionality demonstrates decryption and is not a recipient access boundary.
++
++The homepage uses an Unsplash coffee photograph and Google Fonts. Crypto dependencies are bundled locally rather than loaded from a runtime CDN.
+diff --git a/assets/app.js b/assets/app.js
+new file mode 100644
+index 0000000..59a040c
+--- /dev/null
++++ b/assets/app.js
+@@ -0,0 +1,17 @@
++var He=BigInt(4294967295),tn=BigInt(32);function lr(e,t=!1){return t?{h:Number(e&He),l:Number(e>>tn&He)}:{h:Number(e>>tn&He)|0,l:Number(e&He)|0}}function nn(e,t=!1){let n=e.length,o=new Uint32Array(n),r=new Uint32Array(n);for(let s=0;s<n;s++){let{h:i,l:c}=lr(e[s],t);[o[s],r[s]]=[i,c]}return[o,r]}function pe(e){return e instanceof Uint8Array||ArrayBuffer.isView(e)&&e.constructor.name==="Uint8Array"&&"BYTES_PER_ELEMENT"in e&&e.BYTES_PER_ELEMENT===1}var $e=e=>e?`"${e}" `:"";function j(e,t=""){if(typeof e!="number")throw new TypeError($e(t)+"expected number, got "+typeof e);if(!Number.isSafeInteger(e)||e<0)throw new RangeError($e(t)+"expected integer >= 0, got "+e);return e}function sn(e,t=""){if(typeof e!="boolean")throw new TypeError($e(t)+"expected boolean, got type="+typeof e);return e}function N(e,t,n=""){if(pe(e)&&(t===void 0||e.length===t))return e;t!==void 0&&j(t,"length");let o=pe(e),r=t!==void 0?` of length ${t}`:"",s=o?`length=${e.length}`:`type=${typeof e}`,i=$e(n)+"expected Uint8Array"+r+", got "+s;throw o?new RangeError(i):new TypeError(i)}var dr=(e,t)=>{if(e===null||typeof e!="object"||Array.isArray(e))throw new TypeError((t==="object"?"":`"${t}" `)+"expected object, got type="+typeof e)},rn=(e,t)=>{dr(e,t);let n=Object.getPrototypeOf(e);if(n!==Object.prototype&&n!==null)throw new TypeError(`"${t}" expected plain object`);if(Object.hasOwn(e,"__proto__"))throw new TypeError(`"${t}.__proto__" is not allowed`)};function Bt(e,t=!0){if(e.destroyed)throw new Error("hash was destroyed");if(t&&e.finished)throw new Error("digest() was already called")}function cn(e,t){N(e,void 0,"output");let n=t.outputLen;if(!(e.length>=n))throw new RangeError('"output" expected length >= '+n)}function ke(e){return new Uint32Array(e.buffer,e.byteOffset,Math.floor(e.byteLength/4))}function vt(...e){for(let t=0;t<e.length;t++)e[t].fill(0)}var an=new Uint8Array(new Uint32Array([287454020]).buffer)[0]===68;function pr(e){return e<<24&4278190080|e<<8&16711680|e>>>8&65280|e>>>24&255}function hr(e){for(let t=0;t<e.length;t++)e[t]=pr(e[t]);return e}var Ee=an?e=>e:hr,fn=typeof Uint8Array.from([]).toHex=="function"&&typeof Uint8Array.fromHex=="function",yr=Array.from({length:256},(e,t)=>t.toString(16).padStart(2,"0"));function Ae(e){if(N(e),fn)return e.toHex();let t="";for(let n=0;n<e.length;n++)t+=yr[e[n]];return t}function on(e){return e>=48&&e<=57?e-48:e>=65&&e<=70?e-55:e>=97&&e<=102?e-87:void 0}function St(e){if(typeof e!="string")throw new TypeError("hex string expected, got "+typeof e);if(fn)try{return Uint8Array.fromHex(e)}catch(r){throw r instanceof SyntaxError?new RangeError(r.message):r}let t=e.length,n=t/2;if(t%2)throw new RangeError("hex string expected, got unpadded hex of length "+t);let o=new Uint8Array(n);for(let r=0,s=0;r<n;r++,s+=2){let i=on(e.charCodeAt(s)),c=on(e.charCodeAt(s+1));if(i===void 0||c===void 0){let a=e[s]+e[s+1];throw new RangeError('hex string expected, got non-hex character "'+a+'" at index '+s)}o[r]=i*16+c}return o}function Tt(...e){let t=0;for(let o=0;o<e.length;o++){let r=e[o];N(r),t+=r.length}let n=new Uint8Array(t);for(let o=0,r=0;o<e.length;o++){let s=e[o];n.set(s,r),r+=s.length}return n}function Ot(e,t,n="opts"){return rn(e,"defaults"),t!==void 0&&rn(t,n),Object.assign(Object.create(null),e,t)}function _t(e,t={}){if(typeof e!="function")throw new TypeError('"hashCons" expected function, got type='+typeof e);t=Ot({},t,"info");let n=(r,s)=>e(s).update(r).digest(),o=e(void 0);return n.outputLen=o.outputLen,n.blockLen=o.blockLen,n.canXOF=o.canXOF,n.create=r=>e(r),Object.assign(n,t),Object.freeze(n)}function ze(e=32){j(e,"bytesLength");let t=typeof globalThis=="object"?globalThis.crypto:null;if(typeof t?.getRandomValues!="function")throw new Error("crypto.getRandomValues must be defined");if(e>65536)throw new RangeError(`"bytesLength" expected <= 65536, got ${e}`);return t.getRandomValues(new Uint8Array(e))}var Re=e=>({oid:Uint8Array.from([6,9,96,134,72,1,101,3,4,2,e])});function Le(e,t,n=()=>{}){if(!Array.isArray(e))throw new TypeError(`"${t}" expected array, got type=${typeof e}`);for(let o=0;o<e.length;o++)n(e[o],`${t}[${o}]`);return e}var ne=(e,t,n)=>N(e,t,n),kt=j;function fe(e,t="object"){if(e===null||typeof e!="object"||Array.isArray(e))throw new TypeError(t==="object"?"expected valid options object":`"${t}" expected object, got type=${typeof e}`);return e}function $(e,t){if(typeof e!="function")throw new TypeError(`"${t}" is invalid: expected function, got ${typeof e}`);return e}var ln=Ae,At=(...e)=>Tt(...e),dn=e=>St(e),Xe=pe,Ye=e=>ze(e),Ze=BigInt(0),un=BigInt(1),gr=e=>e?`"${e}" `:"";function re(e,t=""){if(typeof e!="boolean")throw new TypeError(gr(t)+"expected boolean, got type="+typeof e);return e}function mr(e){if(typeof e=="bigint"){if(!ue(e))throw new RangeError("positive bigint expected, got "+e)}else kt(e);return e}function Ie(e,t=""){if(typeof e!="number"){let n=t&&`"${t}" `;throw new TypeError(n+"expected number, got type="+typeof e)}if(!Number.isSafeInteger(e)){let n=t&&`"${t}" `;throw new RangeError(n+"expected safe integer, got "+e)}}function pn(e){if(typeof e!="string")throw new TypeError("hex string expected, got "+typeof e);return e===""?Ze:BigInt("0x"+e)}function Be(e){return pn(Ae(e))}function oe(e){return pn(Ae(he(N(e)).reverse()))}function Ve(e,t){if(j(t),t===0)throw new Error("zero output length is invalid");e=mr(e);let n=t*2,o=e.toString(16);if(o.length>n)throw new RangeError("number is too large");return St(o.padStart(n,"0"))}function Ge(e,t){return Ve(e,t).reverse()}function he(e){return Uint8Array.from(ne(e))}function hn(e){if(typeof e!="string")throw new TypeError("ascii string expected, got "+typeof e);return Uint8Array.from(e,(t,n)=>{let o=t.charCodeAt(0);if(t.length!==1||o>127)throw new RangeError(`string contains non-ASCII character "${e[n]}" with code ${o} at position ${n}`);return o})}function ue(e){return typeof e=="bigint"&&Ze<=e}function Rt(e,t,n){return ue(e)&&ue(t)&&ue(n)&&t<=e&&e<n}function ye(e,t,n,o){if(!Rt(t,n,o))throw new RangeError("expected valid "+e+": "+n+" <= n < "+o+", got "+t)}function Lt(e){if(e<Ze)throw new Error("expected non-negative bigint, got "+e);return e===Ze?0:e.toString(2).length}var yn=e=>(Ie(e,"n"),(un<<BigInt(e))-un);function se(e,t={},n={},o="object"){fe(e,o),fe(t,"fields"),fe(n,"optFields");function r(i,c,a){let u=o==="object"?`param "${String(i)}"`:`"${o}.${String(i)}"`,l=e[i];if(!Object.hasOwn(e,i)&&(a?l!==void 0:c!=="function"))throw new TypeError(`${u} is invalid: expected own property`);if(a&&l===void 0)return;let h=typeof l;if(h!==c||l===null)throw new TypeError(`${u} is invalid: expected ${c}, got ${h}`)}let s=(i,c)=>Object.entries(i).forEach(([a,u])=>r(a,u,c));s(t,!1),s(n,!0)}var D=BigInt(0),K=BigInt(1),ge=BigInt(2),wn=BigInt(3),It=BigInt(4),bn=BigInt(5),wr=BigInt(7),xn=BigInt(8),br=BigInt(9),xr=BigInt(15),En=BigInt(16),Er=BigInt("0x10000000000000000");function I(e,t){if(t<=D)throw new Error("mod: expected positive modulus, got "+t);let n=e%t;return n>=D?n:t+n}function Br(e,t,n){if(n<=K)throw new Error("pow: expected modulus > 1, got "+n);if(typeof t!="bigint")throw new TypeError("invalid exponent: expected bigint, got "+typeof t);if(t<D)throw new Error("invalid exponent, negatives unsupported");if(t===D)return K;if(t===K)return e;let o=e%n;if(o<D&&(o+=n),t<Er){let c=K;for(;t>D;)t&K&&(c=c*o%n),o=o*o%n,t>>=K;return c}let r=[];for(;t>D;)r.push(Number(t&xr)),t>>=It;let s=new Array(16);s[0]=K,s[1]=o;for(let c=2;c<16;c++)s[c]=s[c-1]*o%n;let i=s[r[r.length-1]];for(let c=r.length-2;c>=0;c--){i=i*i%n,i=i*i%n,i=i*i%n,i=i*i%n;let a=r[c];a!==0&&(i=i*s[a]%n)}return i}function X(e,t,n){if(n<=K)throw new Error("pow2: expected modulus > 1, got "+n);if(t<D)throw new Error("pow2: expected non-negative exponent, got "+t);let o=e;for(;t-- >D;)o*=o,o%=n;return o}function gn(e,t){if(e===D)throw new Error("invert: expected non-zero number");if(t<=K)throw new Error("invert: expected modulus > 1, got "+t);let n=I(e,t),o=t,r=D,s=K;for(;n!==D;){let c=o/n,a=o-n*c,u=r-s*c;o=n,n=a,r=s,s=u}if(o!==K)throw new Error("invert: does not exist");return I(r,t)}function Kt(e,t,n){let o=e;if(!o.eql(o.sqr(t),n))throw new Error("Cannot find square root")}function Nt(e,t){if((e&K)===D)throw new Error(t+": expected odd modulus, got "+e)}function Bn(e,t){let n=e,o=(n.ORDER+K)/It,r=n.pow(t,o);return Kt(n,r,t),r}function vr(e,t){let n=e,o=(n.ORDER-bn)/xn,r=n.mul(t,ge),s=n.pow(r,o),i=n.mul(t,s),c=n.mul(n.mul(i,ge),s),a=n.mul(i,n.sub(c,n.ONE));return Kt(n,a,t),a}function Sr(e){let t=Je(e),n=vn(e),o=n(t,t.neg(t.ONE)),r=n(t,o),s=n(t,t.neg(o)),i=(e+wr)/En;return((c,a)=>{let u=c,l=u.pow(a,i),h=u.mul(l,o),E=u.mul(l,r),m=u.mul(l,s),w=u.eql(u.sqr(h),a),g=u.eql(u.sqr(E),a);l=u.cmov(l,h,w),h=u.cmov(m,E,g);let B=u.eql(u.sqr(h),a),b=u.cmov(l,h,B);return Kt(u,b,a),b})}function vn(e){if(e<wn)throw new Error("sqrt is not defined for small field");Nt(e,"tonelliShanks");let t=e-K,n=0;for(;t%ge===D;)t/=ge,n++;let o=ge,r=Je(e);for(;Ke(r,o)===1;)if(o++>1e3)throw new Error("Cannot find square root: probably non-prime P");if(n===1)return Bn;let s=r.pow(o,t),i=(t+K)/ge;return function(a,u){let l=a;if(l.is0(u))return u;if(Ke(l,u)!==1)throw new Error("Cannot find square root");let h=n,E=l.mul(l.ONE,s),m=l.pow(u,t),w=l.pow(u,i);for(;!l.eql(m,l.ONE);){if(l.is0(m))throw new Error("Cannot find square root: probably non-prime P");let g=1,B=l.sqr(m);for(;!l.eql(B,l.ONE);)if(g++,B=l.sqr(B),g===h)throw new Error("Cannot find square root");let b=K<<BigInt(h-g-1),y=l.pow(E,b);h=g,E=l.sqr(y),m=l.mul(m,E),w=l.mul(w,y)}return w}}function Tr(e){return Nt(e,"Fp.sqrt"),e%It===wn?Bn:e%xn===bn?vr:e%En===br?Sr(e):vn(e)}var Sn=(e,t)=>(I(e,t)&K)===K,Or=["create","isValid","is0","neg","inv","sqrt","sqr","eql","add","sub","mul","pow","div","addN","subN","mulN","sqrN"];function ve(e){if(fe(e,"field"),typeof e.ORDER!="bigint")throw new TypeError('param "ORDER" is invalid: expected bigint, got '+typeof e.ORDER);Ie(e.BYTES,"BYTES"),Ie(e.BITS,"BITS");for(let t of Or)$(e[t],"field."+t);if(e.BYTES<1||e.BITS<1)throw new Error("invalid field: expected BYTES/BITS > 0");if(e.ORDER<=K)throw new Error("invalid field: expected ORDER > 1, got "+e.ORDER);return e}function Qe(e,t,n=!1){ve(e),Le(t,"nums"),re(n,"passZero");let o=e,r=new Array(t.length).fill(n?o.ZERO:void 0),s=t.reduce((c,a,u)=>o.is0(a)?c:(r[u]=c,o.mul(c,a)),o.ONE),i=o.inv(s);return t.reduceRight((c,a,u)=>o.is0(a)?c:(r[u]=o.mul(c,r[u]),o.mul(c,a)),i),r}function Ke(e,t){ve(e);let n=e;Nt(n.ORDER,"FpLegendre");let o=(n.ORDER-K)/ge,r=n.pow(t,o),s=n.eql(r,n.ONE),i=n.eql(r,n.ZERO),c=n.eql(r,n.neg(n.ONE));if(!s&&!i&&!c)throw new Error("invalid Legendre symbol result");return s?1:i?0:-1}function _r(e,t){if(t!==void 0&&kt(t),e<=D)throw new Error("invalid n length: expected positive n, got "+e);if(t!==void 0&&t<1)throw new Error("invalid n length: expected positive bit length, got "+t);let n=Lt(e);if(t!==void 0&&t<n)throw new Error(`invalid n length: expected nBitLength (${t}) >= bitLen(n) (${n})`);let o=t!==void 0?t:n,r=Math.ceil(o/8);return{nBitLength:o,nByteLength:r}}var mn=new WeakMap,We=class{ORDER;BITS;BYTES;isLE;ZERO=D;ONE=K;_lengths;_mod;constructor(t,n={}){if(t<=K)throw new Error("invalid field: expected ORDER > 1, got "+t);let o;this.isLE=!1,n!=null&&typeof n=="object"&&(typeof n.BITS=="number"&&(o=n.BITS),typeof n.sqrt=="function"&&Object.defineProperty(this,"sqrt",{value:n.sqrt,enumerable:!0}),typeof n.isLE=="boolean"&&(this.isLE=n.isLE),n.allowedLengths&&(this._lengths=Object.freeze(n.allowedLengths.slice())),typeof n.modFromBytes=="boolean"&&(this._mod=n.modFromBytes));let{nBitLength:r,nByteLength:s}=_r(t,o);if(s>2048)throw new Error("invalid field: expected ORDER of <= 2048 bytes");this.ORDER=t,this.BITS=r,this.BYTES=s,Object.freeze(this)}create(t){return I(t,this.ORDER)}isValid(t){if(typeof t!="bigint")throw new TypeError("invalid field element: expected bigint, got "+typeof t);return D<=t&&t<this.ORDER}is0(t){return t===D}isValidNot0(t){return!this.is0(t)&&this.isValid(t)}isOdd(t){return(t&K)===K}neg(t){return I(-t,this.ORDER)}eql(t,n){return t===n}sqr(t){return I(t*t,this.ORDER)}add(t,n){return I(t+n,this.ORDER)}sub(t,n){return I(t-n,this.ORDER)}mul(t,n){return I(t*n,this.ORDER)}pow(t,n){return Br(t,n,this.ORDER)}div(t,n){return I(t*gn(n,this.ORDER),this.ORDER)}sqrN(t){return t*t}addN(t,n){return t+n}subN(t,n){return t-n}mulN(t,n){return t*n}inv(t){return gn(t,this.ORDER)}sqrt(t){let n=mn.get(this);return n||mn.set(this,n=Tr(this.ORDER)),n(this,t)}toBytes(t){return this.isLE?Ge(t,this.BYTES):Ve(t,this.BYTES)}fromBytes(t,n=!1){ne(t);let{_lengths:o,BYTES:r,isLE:s,ORDER:i,_mod:c}=this;if(o){if(t.length<1||!o.includes(t.length)||t.length>r)throw new Error("Field.fromBytes: expected "+o+" bytes, got "+t.length);let u=new Uint8Array(r);u.set(t,s?0:u.length-t.length),t=u}if(t.length!==r)throw new Error("Field.fromBytes: expected "+r+" bytes, got "+t.length);let a=s?oe(t):Be(t);if(c&&(a=I(a,i)),!n&&!this.isValid(a))throw new Error("invalid field element: outside of range 0..ORDER");return a}invertBatch(t){return Qe(this,t,!0)}cmov(t,n,o){return re(o,"condition"),o?n:t}};function Je(e,t={}){return Object.freeze(We.prototype),new We(e,t)}var Ft=BigInt(0),Ne=BigInt(1),kr=BigInt(4),Mt=16,Tn=128,Ar=5,On=2**31;function tt(e){let t=e;if(typeof t!="function")throw new TypeError('"Point" expected constructor, got type='+typeof e);$(t.fromAffine,"Point.fromAffine"),$(t.fromBytes,"Point.fromBytes"),$(t.fromHex,"Point.fromHex"),fe(t.BASE,"Point.BASE"),fe(t.ZERO,"Point.ZERO"),ve(t.Fp),ve(t.Fn)}function kn(e,t){tt(e),An(t,e);let n=Qe(e.Fp,t.map(o=>o.Z));return t.map((o,r)=>e.fromAffine(o.toAffine(n[r])))}function Rr(e,t,n=1){if(!Number.isSafeInteger(e)||e<n||e>t)throw new Error("invalid window size, expected ["+n+".."+t+"], got W="+e)}function Lr(e,t){let n=e*(4*t+128);if(n>On)throw new Error("invalid window size: table would need ~"+Math.ceil(n/2**20)+" MiB, max "+On/2**20+" MiB")}function Ir(e,t){if(e!==void 0){$(e,"randomBytes");try{let n=e(t);if(!Xe(n)||n.length!==t)return}catch{return}return e}}function An(e,t){Le(e,"points"),e.forEach((n,o)=>{if(!(n instanceof t))throw new Error("invalid point at index "+o)})}function Kr(e,t,n){if(!Array.isArray(e))throw new Error("array of scalars expected");e.forEach((o,r)=>{if(!(n===void 0?t.isValid(o):ue(o)&&o<n))throw new Error("invalid scalar at index "+r)})}var Rn=new WeakMap;function Ct(e){return Rn.get(e)||1}function Nr(e,t){let n=e.double(),o=[e];for(let r=1;r<t;r++)o.push(o[r-1].add(n));return o}function Mr(e,t){let n=2**t,o=n/2,r=BigInt(n-1),s=[];for(;e>Ft;){let i=0;e&Ne&&(i=Number(e&r),i>=o&&(i-=n),e-=BigInt(i)),s.push(i),e>>=Ne}return s}function Cr(e,t,n){let o=2**t,r=o/2,s=BigInt(o-1),i=BigInt(t),c=[];for(let a=0;a<n;a++){let u=Number(e&s);e>>=i,u>r&&(u-=o,e+=Ne),c.push(u)}if(e!==Ft)throw new Error("invalid wnaf");return c}function Fr(e,t,n){let o=0;for(let s of n)o=Math.max(o,s.length);let r=e;for(let s=o-1;s>=0;s--){s!==o-1&&(r=r.double());for(let i=0;i<n.length;i++){let c=n[i][s];if(c){let a=t[i][Math.abs(c)-1>>1];r=r.add(c<0?a.negate():a)}}}return r}var et=class{Point;BASE;ZERO;randomBytes;wnafPrecomputes=new WeakMap;baseCanBeBlinded;bits;constructor(t,n){tt(t),this.randomBytes=Ir(n,Mt),this.Point=t,this.BASE=t.BASE,this.ZERO=t.ZERO,this.bits=t.Fn.BITS}buildWnafTable(t,n,o){let r=Math.ceil(o/n)+1,s=2**(n-1),i=[],c=t;for(let a=0;a<r;a++){let u=c;for(let l=0;l<s;l++)i.push(u),u=u.add(c);c=i[i.length-1].double()}return{W:n,bits:o,windows:r,comp:i}}wnafCachedCT(t,n){let{W:o,windows:r,comp:s}=t,i=2**(o-1),c=Cr(n,o,r),a=this.ZERO,u=this.BASE;for(let l=0;l<r;l++){let h=c[l],E=l*i,m=Math.abs(h)-1,w=s[E];for(let B=1;B<i;B++)w=B===m?s[E+B]:w;let g=w.negate();h===0?u=u.add(s[E]):a=a.add(h<0?g:w)}return{p:a,f:u}}getWnafPrecomputes(t,n,o,r){let s=this.wnafPrecomputes.get(n),i=s?.find(c=>c.W===t&&c.bits===o);return i||(i=this.buildWnafTable(n,t,o),typeof r=="function"&&(i={...i,comp:r(i.comp)}),s||(s=[],this.wnafPrecomputes.set(n,s)),s.push(i)),i}assertPoint(t){if(!(t instanceof this.Point))throw new TypeError('"point" expected Point instance, got type='+typeof t)}validateMulInput(t,n){if(this.assertPoint(t),!Rt(n,Ne,this.Point.Fn.ORDER))throw new Error("invalid scalar")}runCT(t,n,o,r){let s=Ct(t);return s===1?this.fixedWindowCT(t,n,o):this.wnafCachedCT(this.getWnafPrecomputes(s,t,o,r),n)}mulCT(t,n,o){return this.validateMulInput(t,n),this.runCT(t,n,this.bits,o)}mulCTBlinded(t,n,o){if(this.validateMulInput(t,n),this.randomBytes===void 0)throw new Error("randomBytes is required for scalar blinding");let r=this.Point.Fn.BITS+Tn,s=this.randomBytes(Mt);if(!Xe(s)||s.length!==Mt)throw new Error("randomBytes returned invalid byte array");s[0]=s[0]&63|128;let i=n+Be(s)*this.Point.Fn.ORDER;return this.runCT(t,i,r,o)}fixedWindowCT(t,n,o){let r=Ar,s=1<<r,i=yn(r),c=new Array(s);c[0]=this.ZERO;for(let l=1;l<s;l++)c[l]=c[l-1].add(t);let a=Math.ceil(o/r),u=this.ZERO;for(let l=a-1;l>=0;l--){if(l!==a-1)for(let m=0;m<r;m++)u=u.double();let h=Number(n>>BigInt(l*r)&i),E=c[0];for(let m=1;m<s;m++)E=m===h?c[m]:E;u=u.add(E)}return{p:u,f:u}}shouldBlind(t,n){return this.randomBytes===void 0?!1:n===Ne?!0:t!==this.BASE?!1:(this.baseCanBeBlinded===void 0&&(this.baseCanBeBlinded=this.mulUnsafe(this.BASE,this.Point.Fn.ORDER).is0()),this.baseCanBeBlinded)}mulSecret(t,n,o,r){return this.shouldBlind(t,o)?this.mulCTBlinded(t,n,r):this.mulCT(t,n,r)}mulUnsafe(t,n,o){if(this.assertPoint(t),!ue(n))throw new Error("invalid scalar");let r=Ct(t);if(r===1||n>=this.Point.Fn.ORDER)return qr(this.Point,[t],[n],!0);let s=this.getWnafPrecomputes(r,t,this.bits,o);return this.wnafCachedCT(s,n).p}setWindowSize(t,n){this.assertPoint(t),Rr(n,this.bits);let o=Math.ceil((this.bits+Tn)/n)+1;Lr(o*2**(n-1),this.Point.Fp.BYTES),Rn.set(t,n),this.wnafPrecomputes.delete(t)}hasWindowSize(t){return Ct(t)!==1}};function qr(e,t,n,o=!1){if(tt(e),An(t,e),re(o,"allowOversized"),Kr(n,e.Fn,o?e.Fn.ORDER**kr:void 0),t.length!==n.length)throw new Error("arrays of points and scalars must have equal length");let r=t.map(i=>Nr(i,4)),s=n.map(i=>Mr(i,4));return Fr(e.ZERO,r,s)}function _n(e,t,n){if(t){if(t.ORDER!==e)throw new Error("Field.ORDER must match order: Fp == p, Fn == n");return ve(t),t}else return Je(e,{isLE:n})}function Ln(e,t,n={},o){if(e!=="weierstrass"&&e!=="edwards")throw new Error('expected curve type "weierstrass" or "edwards"');if(o===void 0&&(o=e==="edwards"),!t||typeof t!="object")throw new Error(`expected valid ${e} CURVE object`);se(n);for(let a of["p","n","h"]){let u=t[a];if(!(ue(u)&&u!==Ft))throw new Error(`CURVE.${a} must be positive bigint`)}let r=_n(t.p,n.Fp,o),s=_n(t.n,n.Fn,o),c=["Gx","Gy","a",e==="weierstrass"?"b":"d"];for(let a of c)if(!r.isValid(t[a]))throw new Error(`CURVE.${a} must be valid field element of CURVE.Fp`);return t=Object.freeze(Object.assign({},t)),{CURVE:t,Fp:r,Fn:s}}function qt(e,t){return function(o){let r=e(o);return{secretKey:r,publicKey:t(r)}}}var nt=BigInt(0),rt=BigInt(1),ot=BigInt(2),Dr=BigInt(4),In=BigInt(8);function jr(e,t,n,o){let r=e.sqr(n),s=e.sqr(o),i=e.add(e.mul(t.a,r),s),c=e.add(e.ONE,e.mul(t.d,e.mul(r,s)));return e.eql(i,c)}function Kn(e,t={}){se(t,{},{},"extraOpts");let n=t,o=Ln("edwards",e,n,n.FpFnLE),{Fp:r,Fn:s}=o,i=o.CURVE,{h:c}=i;if(Ke(r,i.a)!==1)throw new Error("edwards: CURVE.a must be a square in Fp for complete addition formulas");if(Ke(r,i.d)!==-1)throw new Error("edwards: CURVE.d must be a non-square in Fp for complete addition formulas");se(n,{},{uvRatio:"function",randomBytes:"function"});let a=n.randomBytes===void 0?Ye:n.randomBytes,u=ot<<BigInt(r.BYTES*8)-rt;function l(y){if(!r.isOdd)throw new Error("Field does not have .isOdd()");return r.isOdd(y)}let h=n.uvRatio===void 0?(y,f)=>{try{return{isValid:!0,value:r.sqrt(r.div(y,f))}}catch{return{isValid:!1,value:nt}}}:n.uvRatio;if(!jr(r,i,i.Gx,i.Gy))throw new Error("bad curve params: generator point");let E=r.eql(i.a,r.neg(r.ONE))?y=>r.neg(y):r.eql(i.a,r.ONE)?y=>y:y=>r.mul(i.a,y);function m(y,f,d=!1){let p=d?rt:nt;return ye("coordinate "+y,f,p,u),f}function w(y){if(!(y instanceof g))throw new Error("EdwardsPoint expected")}class g{static BASE=new g(i.Gx,i.Gy,r.ONE,r.mul(i.Gx,i.Gy));static ZERO=new g(r.ZERO,r.ONE,r.ONE,r.ZERO);static Fp=r;static Fn=s;X;Y;Z;T;constructor(f,d,p,v){this.X=m("x",f),this.Y=m("y",d),this.Z=m("z",p,!0),this.T=m("t",v),Object.freeze(this)}static CURVE(){return i}static fromAffine(f){if(f instanceof g)throw new Error("extended point not allowed");let{x:d,y:p}=f||{};return m("x",d),m("y",p),new g(d,p,r.ONE,r.mul(d,p))}static fromBytes(f,d=!1){let p=r.BYTES,{a:v,d:x}=i;f=he(ne(f,p,"point")),re(d,"zip215");let S=he(f),T=f[p-1];S[p-1]=T&-129;let _=oe(S),O=d?u:r.ORDER;ye("point.y",_,nt,O);let A=r.sqr(_),L=r.sub(A,r.ONE),C=r.sub(r.mulN(x,A),v),{isValid:Z,value:k}=h(L,C);if(!Z)throw new Error("bad point: invalid y coordinate");let F=l(k),q=(T&128)!==0;if(!d&&r.is0(k)&&q)throw new Error("bad point: x=0 and x_0=1");return q!==F&&(k=r.neg(k)),g.fromAffine({x:k,y:_})}static fromHex(f,d=!1){return g.fromBytes(dn(f),d)}get x(){return this.toAffine().x}get y(){return this.toAffine().y}precompute(f=6,d=!0){return b.setWindowSize(this,f),d||this.multiply(ot),this}assertValidity(){let f=this,{a:d,d:p}=i;if(f.is0())throw new Error("bad point: ZERO");let{X:v,Y:x,Z:S,T}=f,_=r.sqr(v),O=r.sqr(x),A=r.sqr(S),L=r.sqr(A),C=r.mul(_,d),Z=r.mul(r.add(C,O),A),k=r.add(L,r.mul(p,r.mul(_,O)));if(!r.eql(Z,k))throw new Error("bad point: equation left != right (1)");let F=r.mul(v,x),q=r.mul(S,T);if(!r.eql(F,q))throw new Error("bad point: equation left != right (2)")}equals(f){w(f);let{X:d,Y:p,Z:v}=this,{X:x,Y:S,Z:T}=f,_=r.mul(d,T),O=r.mul(x,v),A=r.mul(p,T),L=r.mul(S,v);return r.eql(_,O)&&r.eql(A,L)}is0(){return this.equals(g.ZERO)}negate(){return new g(r.neg(this.X),this.Y,this.Z,r.neg(this.T))}double(){let{X:f,Y:d,Z:p}=this,v=r.sqr(f),x=r.sqr(d),S=r.mul(r.sqr(p),ot),T=E(v),_=r.addN(f,d),O=r.sub(r.subN(r.sqr(_),v),x),A=r.addN(T,x),L=r.subN(A,S),C=r.subN(T,x),Z=r.mul(O,L),k=r.mul(A,C),F=r.mul(O,C),q=r.mul(L,A);return new g(Z,k,q,F)}add(f){w(f);let{d}=i,{X:p,Y:v,Z:x,T:S}=this,{X:T,Y:_,Z:O,T:A}=f,L=r.mul(p,T),C=r.mul(v,_),Z=r.mul(r.mulN(S,d),A),k=r.mul(x,O),F=r.sub(r.subN(r.mulN(r.addN(p,v),r.addN(T,_)),L),C),q=r.subN(k,Z),de=r.addN(k,Z),V=r.sub(C,E(L)),W=r.mul(F,q),ee=r.mul(de,V),te=r.mul(F,V),mt=r.mul(q,de);return new g(W,ee,mt,te)}subtract(f){return w(f),this.add(f.negate())}multiply(f){if(!s.isValidNot0(f))throw new RangeError("invalid scalar: expected 1 <= sc < curve.n");let{p:d,f:p}=b.mulSecret(this,f,c,B);return B([d,p])[0]}multiplyUnsafe(f){if(!s.isValid(f))throw new RangeError("invalid scalar: expected 0 <= sc < curve.n");return f===nt?g.ZERO:this.is0()||f===rt?this:b.mulUnsafe(this,f,B)}isSmallOrder(){return this.clearCofactor().is0()}isTorsionFree(){return b.mulUnsafe(this,i.n).is0()}toAffine(f){let d=this,p=f;if(p!=null&&typeof p!="bigint")throw new TypeError('"invertedZ" expected bigint, got type='+typeof p);let{X:v,Y:x,Z:S}=d,T=d.is0();p==null&&(p=T?r.create(In):r.inv(S));let _=r.mul(v,p),O=r.mul(x,p),A=r.mul(S,p);if(T)return{x:r.ZERO,y:r.ONE};if(!r.eql(A,r.ONE))throw new Error("invZ was invalid");return{x:_,y:O}}clearCofactor(){return c===rt?this:c===ot?this.double():c===Dr?this.double().double():c===In?this.double().double().double():this.multiplyUnsafe(c)}toBytes(){let{x:f,y:d}=this.toAffine(),p=r.toBytes(d);return p[p.length-1]|=l(f)?128:0,p}toHex(){return ln(this.toBytes())}toString(){return`<Point ${this.is0()?"ZERO":this.toHex()}>`}}let B=y=>kn(g,y),b=new et(g,a);return b.bits>=6&&g.BASE.precompute(6),Object.freeze(g.prototype),Object.freeze(g),g}function Me(e,t="n"){if(typeof e!="number")throw new TypeError(`wrong u32 integer "${t}": expected number, got type=${typeof e}`);if(!Number.isSafeInteger(e)||e<0||e>4294967295)throw new RangeError(`wrong u32 integer "${t}": expected 0..4294967295, got ${e}`);return e}function Mn(e){return Me(e,"x"),(e&e-1)===0&&e!==0}function Dt(e,t){if(Me(e),typeof t!="number")throw new TypeError('"bits" expected number, got type='+typeof t);if(!Number.isSafeInteger(t)||t<0||t>32)throw new Error(`expected integer 0 <= bits <= 32, got ${t}`);let n=0;for(let o=0;o<t;o++,e>>>=1)n=n<<1|e&1;return n>>>0}function Cn(e){return Me(e),31-Math.clz32(e)}function Nn(e){if(!e||typeof e!="object"||typeof e.length!="number")throw new TypeError('"values" expected array-like, got type='+typeof e);let t=e.length;if(!Mn(t))throw new Error("expected positive power-of-two length, got "+t);let n=Cn(t);for(let o=0;o<t;o++){let r=Dt(o,n);if(o<r){let s=e[o];e[o]=e[r],e[r]=s}}return e}var jt=(e,t)=>{se(t,{N:"number",roots:"object",dit:"boolean"},{invertButterflies:"boolean",skipStages:"number",brp:"boolean"},"coreOpts");let{N:n,roots:o,dit:r,invertButterflies:s=!1,skipStages:i=0,brp:c=!0}=t;Me(n,"coreOpts.N");let a=Cn(n);if(!Mn(n))throw new Error("FFT: Polynomial size should be power of two");Me(i,"coreOpts.skipStages");let u=a===0?0:a-1;if(i>u)throw new Error(`FFT: wrong skipStages: expected 0 <= skipStages <= ${u}`);if(o.length!==n)throw new Error(`FFT: wrong roots length: expected ${n}, got ${o.length}`);let l=r!==s;return h=>{if(h.length!==n)throw new Error("FFT: wrong Polynomial length");r&&c&&Nn(h);for(let E=0,m=1;E<a-i;E++){let w=r?E+1+i:a-E,g=1<<w,B=g>>1,b=n>>w;for(let y=0;y<n;y+=g)for(let f=0,d=m++;f<B;f++){let p=s?r?n-d:d:f*b,v=y+f,x=y+f+B,S=o[p],T=h[x],_=h[v];if(l){let O=e.mul(T,S);h[v]=e.add(_,O),h[x]=e.sub(_,O)}else s?(h[v]=e.add(T,_),h[x]=e.mul(e.sub(T,_),S)):(h[v]=e.add(_,T),h[x]=e.mul(e.sub(_,T),S))}}return!r&&c&&Nn(h),h}};var me=BigInt(0),Y=BigInt(1),st=BigInt(2);function Fn(e,t){return e+t-(t>>Y<<Y)}function Pr(e){let t=BigInt(6)*e;return(n,o,r)=>{let s=o+r,c=((t+r-o)*n+o)%e;return{x_2:c,x_3:s-c}}}function Ur(e){return se(e,{P:"bigint",type:"string",adjustScalarBytes:"function",powPminus2:"function"},{randomBytes:"function",scalarMultBase:"function"}),Object.freeze({...e})}function qn(e){let t=Ur(e),{P:n,type:o,adjustScalarBytes:r,powPminus2:s,randomBytes:i}=t,c=t.scalarMultBase,a=o==="x25519";if(!a&&o!=="x448")throw new Error("invalid type");let u=i===void 0?Ye:i,l=a?255:448,h=Pr(n),E=a?32:56,m=BigInt(a?9:5),w=BigInt(a?121665:39081),g=a?st**BigInt(254):st**BigInt(447),B=a?BigInt(8)*(st**BigInt(251)-Y):BigInt(4)*(st**BigInt(445)-Y),b=g+B+Y,y=k=>I(k,n),f=d(m);function d(k){return Ge(y(k),E)}function p(k){let F=he(ne(k,E,"uCoordinate"));return a&&(F[31]&=127),y(oe(F))}function v(k){return oe(r(he(ne(k,E,"scalar"))))}let x=new Set(a?[me,Y,n-Y,BigInt("325606250916557431795983626356110631294008115727848805560023387167927233504"),BigInt("39382357235489614581723060781553021112529911719440698176882885853963445705823")]:[me,Y,n-Y]);function S(k,F){let q=p(F);if(x.has(q))throw new Error("invalid private or public key received");let de=A(q,v(k));if(de===me)throw new Error("invalid private or public key received");return d(de)}function T(k){if(c===void 0)return S(k,f);let F=v(k);ye("scalar",F,g,b);let q=y(c(F));if(q===me)throw new Error("invalid private or public key received");return d(q)}let _=T,O=S;function A(k,F){ye("u",k,me,n),ye("scalar",F,g,b);let q=F,de=k,V=Y,W=me,ee=k,te=Y,mt=q^q>>Y;for(let wt=BigInt(l-1);wt>=me;wt--){let Yt=Fn(n,mt>>wt);({x_2:V,x_3:ee}=h(Yt,V,ee)),{x_2:W,x_3:te}=h(Yt,W,te);let bt=V+W,xt=y(bt*bt),Et=V-W,Vt=y(Et*Et),Gt=xt-Vt,fr=ee+te,ur=ee-te,Wt=y(ur*bt),Qt=y(fr*Et),Jt=Wt+Qt,en=Wt-Qt;ee=y(Jt*Jt),te=y(de*y(en*en)),V=y(xt*Vt),W=y(Gt*(xt+y(w*Gt)))}let Xt=Fn(n,q);({x_2:V,x_3:ee}=h(Xt,V,ee)),{x_2:W,x_3:te}=h(Xt,W,te);let ar=s(W);return y(V*ar)}let L={secretKey:E,publicKey:E,seed:E},C=k=>(k=k===void 0?u(E):k,ne(k,L.seed,"seed"),k),Z={randomSecretKey:C};return Object.freeze(L),Object.freeze(Z),Object.freeze({keygen:qt(C,_),getSharedSecret:O,getPublicKey:_,scalarMult:S,scalarMultBase:T,utils:Z,GuBytes:f.slice(),lengths:L})}var Dn=BigInt(0),Hr=BigInt(1),jn=BigInt(2),$r=BigInt(3),zr=BigInt(5),Zr=BigInt(8),it=BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"),Xr={p:it,n:BigInt("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"),h:Zr,a:BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"),d:BigInt("0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"),Gx:BigInt("0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a"),Gy:BigInt("0x6666666666666666666666666666666666666666666666666666666666666658")};function Hn(e){let t=BigInt(10),n=BigInt(20),o=BigInt(40),r=BigInt(80),s=it,c=e*e%s*e%s,a=X(c,jn,s)*c%s,u=X(a,Hr,s)*e%s,l=X(u,zr,s)*u%s,h=X(l,t,s)*l%s,E=X(h,n,s)*h%s,m=X(E,o,s)*E%s,w=X(m,r,s)*m%s,g=X(w,r,s)*m%s,B=X(g,t,s)*l%s;return{pow_p_5_8:X(B,jn,s)*e%s,b2:c}}function Yr(e){return e[0]&=248,e[31]&=127,e[31]|=64,e}var Pn=BigInt("19681161376707505956807079304988542015446066515923890162744021073123829784752");function Vr(e,t){let n=it,o=I(t*t*t,n),r=I(o*o*t,n),s=Hn(e*r).pow_p_5_8,i=I(e*o*s,n),c=I(t*i*i,n),a=i,u=I(i*Pn,n),l=c===e,h=c===I(-e,n),E=c===I(-e*Pn,n);return l&&(i=a),(h||E)&&(i=u),Sn(i,n)&&(i=I(-i,n)),{isValid:l||h,value:i}}var Un=Kn(Xr,{uvRatio:Vr});var ie=(()=>{let e=it,t=n=>{let{pow_p_5_8:o,b2:r}=Hn(n);return I(X(o,$r,e)*r,e)};return qn({P:e,type:"x25519",powPminus2:t,adjustScalarBytes:Yr,scalarMultBase:n=>{let o=I(n,Un.Fn.ORDER);if(o===Dn)return Dn;let r=Un.BASE.multiply(o);return I((r.Z+r.Y)*t(I(r.Z-r.Y,e)),e)}})})();var Gr=BigInt(0),Ce=BigInt(1),Wr=BigInt(2),Qr=BigInt(7),Jr=BigInt(256),eo=BigInt(113),Zn=[],Xn=[],Yn=[];for(let e=0,t=Ce,n=1,o=0;e<24;e++){[n,o]=[o,(2*n+3*o)%5],Zn.push(2*(5*o+n)),Xn.push((e+1)*(e+2)/2%64);let r=Gr;for(let s=0;s<7;s++)t=(t<<Ce^(t>>Qr)*eo)%Jr,t&Wr&&(r^=Ce<<(Ce<<BigInt(s))-Ce);Yn.push(r)}var Vn=nn(Yn,!0),to=Vn[0],no=Vn[1],ro=(e,t,n)=>e<<n|t>>>32-n,oo=(e,t,n)=>t<<n|e>>>32-n,so=(e,t,n)=>t<<n-32|e>>>64-n,io=(e,t,n)=>e<<n-32|t>>>64-n,$n=(e,t,n)=>n>32?so(e,t,n):ro(e,t,n),zn=(e,t,n)=>n>32?io(e,t,n):oo(e,t,n),Se=new Uint32Array(10);function co(e,t=24){if(!(e instanceof Uint32Array))throw new TypeError('"s" expected Uint32Array(50), got type='+typeof e);if(e.length!==50)throw new RangeError('"s" expected Uint32Array(50), got length='+e.length);if(j(t,"rounds"),t<1||t>24)throw new Error('"rounds" expected integer 1..24');for(let n=24-t;n<24;n++){for(let s=0;s<10;s++)Se[s]=e[s]^e[s+10]^e[s+20]^e[s+30]^e[s+40];for(let s=0;s<10;s+=2){let i=(s+8)%10,c=(s+2)%10,a=Se[c],u=Se[c+1],l=$n(a,u,1)^Se[i],h=zn(a,u,1)^Se[i+1];for(let E=0;E<50;E+=10)e[s+E]^=l,e[s+E+1]^=h}let o=e[2],r=e[3];for(let s=0;s<24;s++){let i=Xn[s],c=$n(o,r,i),a=zn(o,r,i),u=Zn[s];o=e[u],r=e[u+1],e[u]=c,e[u+1]=a}for(let s=0;s<50;s+=10){let i=e[s],c=e[s+1],a=e[s+2],u=e[s+3];e[s]^=~e[s+2]&e[s+4],e[s+1]^=~e[s+3]&e[s+5],e[s+2]^=~e[s+4]&e[s+6],e[s+3]^=~e[s+5]&e[s+7],e[s+4]^=~e[s+6]&e[s+8],e[s+5]^=~e[s+7]&e[s+9],e[s+6]^=~e[s+8]&i,e[s+7]^=~e[s+9]&c,e[s+8]^=~i&a,e[s+9]^=~c&u}e[0]^=to[n],e[1]^=no[n]}vt(Se)}var ct=class e{state;pos=0;posOut=0;finished=!1;state32;destroyed=!1;blockLen;suffix;outputLen;canXOF;enableXOF=!1;rounds;constructor(t,n,o,r=!1,s=24){if(j(t,"blockLen"),j(n,"suffix"),j(s,"rounds"),sn(r,"enableXOF"),this.blockLen=t,this.suffix=n,this.outputLen=o,this.enableXOF=r,this.canXOF=r,this.rounds=s,j(o,"outputLen"),!(0<t&&t<200))throw new Error('"blockLen" must be 1..199');this.state=new Uint8Array(200),this.state32=ke(this.state)}clone(){return this._cloneInto()}keccak(){Ee(this.state32),co(this.state32,this.rounds),Ee(this.state32),this.posOut=0,this.pos=0}update(t){Bt(this),N(t);let{blockLen:n,state:o,state32:r}=this,s=t.length,i=n%4===0&&t.byteOffset%4===0,c=n/4,a=i&&s>=n?ke(t):void 0;for(let u=0;u<s;){if(a!==void 0&&this.pos===0&&u%4===0&&s-u>=n){for(let h=0,E=u/4;h<c;h++)r[h]^=a[E+h];u+=n,this.pos=n,this.keccak();continue}let l=Math.min(n-this.pos,s-u);for(let h=0;h<l;h++)o[this.pos++]^=t[u++];this.pos===n&&this.keccak()}return this}finish(){if(this.finished)return;this.finished=!0;let{state:t,suffix:n,pos:o,blockLen:r}=this;t[o]^=n,(n&128)!==0&&o===r-1&&this.keccak(),t[r-1]^=128,this.keccak()}writeInto(t){Bt(this,!1),N(t),this.finish();let n=this.state,{blockLen:o}=this;for(let r=0,s=t.length;r<s;){this.posOut>=o&&this.keccak();let i=Math.min(o-this.posOut,s-r);t.set(n.subarray(this.posOut,this.posOut+i),r),this.posOut+=i,r+=i}return t}xofInto(t){if(!this.enableXOF)throw new Error("XOF is not enabled");return this.writeInto(t)}xof(t){return j(t),this.xofInto(new Uint8Array(t))}digestInto(t){if(cn(t,this),this.finished)throw new Error("digest() was already called");this.writeInto(t.length===this.outputLen?t:t.subarray(0,this.outputLen)),this.destroy()}digest(){let t=new Uint8Array(this.outputLen);return this.digestInto(t),t}destroy(){this.destroyed=!0,vt(this.state)}_cloneInto(t){let{blockLen:n,suffix:o,outputLen:r,rounds:s,enableXOF:i}=this;return t||=new e(n,o,r,i,s),t.blockLen=n,t.state32.set(this.state32),t.pos=this.pos,t.posOut=this.posOut,t.finished=this.finished,t.rounds=s,t.suffix=o,t.outputLen=r,t.enableXOF=i,t.canXOF=this.canXOF,t.destroyed=this.destroyed,t}},Gn=(e,t,n,o={})=>_t(()=>new ct(t,e,n),o);var at=Gn(6,136,32,Re(8));var Wn=Gn(6,72,64,Re(10));var Qn=(e,t,n,o={})=>_t((r={})=>(r=Ot({},r),new ct(t,e,r.dkLen===void 0?n:r.dkLen,!0)),o),Jn=Qn(31,168,16,Re(11)),Te=Qn(31,136,32,Re(12));var G=N;var ce=ze;function fo(e,t,n=()=>{}){if(!Array.isArray(e))throw new TypeError(`"${t}" expected array, got type=${typeof e}`);for(let o=0;o<e.length;o++)n(e[o],`${t}[${o}]`);return e}function Fe(e,t="object"){if(e===null||typeof e!="object"||Array.isArray(e))throw new TypeError(t==="object"?"expected valid options object":`"${t}" expected object, got type=${typeof e}`);return e}function we(e,t){if(e=N(e),t=N(t),e.length!==t.length)return!1;let n=0;for(let o=0;o<e.length;o++)n|=e[o]^t[o];return n===0}function Q(e){return new Uint8Array(N(e))}function be(e,...t){let n=r=>typeof r=="number"?r:r.bytesLen,o=t.reduce((r,s)=>r+n(s),0);return{bytesLen:o,encode:r=>{let s=new Uint8Array(o);for(let i=0,c=0;i<t.length;i++){let a=t[i],u=n(a),l=typeof a=="number"?r[i]:a.encode(r[i]);N(l,u,e),s.set(l,c),typeof a!="number"&&l.fill(0),c+=u}return s},decode:r=>{N(r,o,e);let s=[];for(let i of t){let c=n(i),a=r.subarray(0,c);s.push(typeof i=="number"?a:i.decode(a)),r=r.subarray(c)}return s}}}function ft(e,t){let n=e,o=t*n.bytesLen;return{bytesLen:o,encode:r=>{let s=fo(r,"u");if(s.length!==t)throw new RangeError(`vecCoder.encode: wrong length=${s.length}. Expected: ${t}`);let i=new Uint8Array(o);for(let c=0,a=0;c<s.length;c++){let u=n.encode(s[c]);i.set(u,a),u.fill(0),a+=u.length}return i},decode:r=>{N(r,o);let s=[];for(let i=0;i<r.length;i+=n.bytesLen)s.push(n.decode(r.subarray(i,i+n.bytesLen)));return s}}}function R(...e){for(let t of e)if(Array.isArray(t))for(let n of t)n.fill(0);else t.fill(0)}function ut(e){if(j(e,"bits"),e>32)throw new RangeError('"bits" expected <= 32, got '+e);return e===32?4294967295:~(-1<<e)>>>0}var er=e=>{let{newPoly:t,N:n,Q:o,F:r,ROOT_OF_UNITY:s,brvBits:i,isKyber:c}=e,a=(f,d=o)=>{let p=f%d|0;return(p>=0?p|0:d+p|0)|0},u=(f,d=o)=>{let p=a(f,d)|0;return(p>d>>1?p-d|0:p)|0};function l(){let f=t(n);for(let d=0;d<n;d++){let p=Dt(d,i),v=BigInt(s)**BigInt(p)%BigInt(o);f[d]=Number(v)|0}return f}let h=l(),E=f=>{throw new Error("not implemented")},m=c?{add:(f,d)=>{let p=f+d|0;return p>=o?p-o|0:p},sub:(f,d)=>{let p=f-d|0;return p<0?p+o|0:p},mul:(f,d)=>a((f|0)*(d|0))|0,inv:E}:{add:(f,d)=>a((f|0)+(d|0))|0,sub:(f,d)=>a((f|0)-(d|0))|0,mul:(f,d)=>a((f|0)*(d|0))|0,inv:E},w={N:n,roots:h,invertButterflies:!0,skipStages:c?1:0,brp:!1},g=jt(m,{dit:!1,...w}),B=jt(m,{dit:!0,...w}),b={encode:f=>g(f),decode:f=>{B(f);for(let d=0;d<f.length;d++)f[d]=a(r*f[d]);return f}};return{mod:a,smod:u,nttZetas:h,NTT:{encode:f=>b.encode(f),decode:f=>b.decode(f)},bitsCoder:(f,d)=>{for(let x=0,S=0;x<n;x++)S+=f,S>32&&ut(S),S%=8;let p=ut(f),v=f*(n/8);return{bytesLen:v,encode:x=>{let S=x,T=new Uint8Array(v);for(let _=0,O=0,A=0,L=0;_<S.length;_++)for(O|=(d.encode(S[_])&p)<<A,A+=f;A>=8;A-=8,O>>=8)T[L++]=O&255;return T},decode:x=>{let S=t(n);for(let T=0,_=0,O=0,A=0;T<x.length;T++)for(_|=x[T]<<O,O+=8;O>=f;O-=f,_>>=f)S[A++]=d.decode(_&p);return S}}}}},uo=e=>(t,n)=>{n||(n=e.blockLen);let o=new Uint8Array(t.length+2);o.set(t);let r=t.length,s=new Uint8Array(n),i=e.create({}),c=0,a=0;return{stats:()=>({calls:c,xofs:a}),get:(u,l)=>(o[r+0]=u,o[r+1]=l,i.destroy(),i=e.create({}).update(o),c++,()=>(a++,i.xofInto(s))),clean:()=>{i.destroy(),R(s,o)}}},tr=uo(Jn);var U=256,P=3329,lo=3303,po=17,z=er({N:U,Q:P,F:lo,ROOT_OF_UNITY:po,newPoly:e=>new Uint16Array(e),brvBits:7,isKyber:!0}),ho=Object.freeze({512:Object.freeze({N:U,Q:P,K:2,ETA1:3,ETA2:2,du:10,dv:4,RBGstrength:128}),768:Object.freeze({N:U,Q:P,K:3,ETA1:2,ETA2:2,du:10,dv:4,RBGstrength:192}),1024:Object.freeze({N:U,Q:P,K:4,ETA1:2,ETA2:2,du:11,dv:5,RBGstrength:256})}),yo=e=>{if(e>=12)return{encode:n=>n,decode:n=>n>=P?n-P:n};let t=2**(e-1);return{encode:n=>((n<<e)+P/2)/P,decode:n=>n*P+t>>>e}},go=e=>z.bitsCoder(e,e===12?{encode:t=>t,decode:t=>t>=P?t-P:t}:{encode:t=>t,decode:t=>t}),qe=e=>e===12?go(12):z.bitsCoder(e,yo(e));function xe(e,t){let n=e,o=t;for(let r=0;r<U;r++){let s=n[r]+o[r];n[r]=s>=P?s-P:s}}function mo(e,t){let n=e,o=t;for(let r=0;r<U;r++){let s=n[r]-o[r];n[r]=s<0?s+P:s}}function wo(e,t,n,o,r){let s=z.mod(z.mod(t*o)*r+e*n),i=z.mod(e*o+t*n);return{c0:s,c1:i}}function lt(e,t){let n=e,o=t;for(let r=0;r<U/2;r++){let s=z.nttZetas[64+(r>>1)];r&1&&(s=-s);let{c0:i,c1:c}=wo(n[2*r+0],n[2*r+1],o[2*r+0],o[2*r+1],s);n[2*r+0]=i,n[2*r+1]=c}return n}function Pt(e){let t=e,n=new Uint16Array(U);for(let o=0;o<U;){let r=t();if(r.length%3)throw new Error("SampleNTT: unaligned block");for(let s=0;o<U&&s+3<=r.length;s+=3){let i=(r[s+0]>>0|r[s+1]<<8)&4095,c=(r[s+1]>>4|r[s+2]<<4)&4095;i<P&&(n[o++]=i),o<U&&c<P&&(n[o++]=c)}}return n}var bo=(e,t)=>{let n=new Uint16Array(U),o=ke(e);Ee(o);let r=0;for(let s=0,i=0,c=0,a=0;s<o.length;s++){let u=o[s];for(let l=0;l<32;l++)c+=u&1,u>>=1,r+=1,r===t?(a=c,c=0):r===2*t&&(n[i++]=z.mod(a-c),c=0,r=0)}if(Ee(o),r)throw new Error(`sampleCBD: leftover bits: ${r}`);return n};function De(e,t,n,o){return bo(e(o*U/4,t,n),o)}var xo=e=>{let t=e,{K:n,PRF:o,XOF:r,HASH512:s,ETA1:i,ETA2:c,du:a,dv:u}=t,l=qe(1),h=qe(u),E=qe(a),m=be("publicKey",ft(qe(12),n),32),w=ft(qe(12),n),g=be("ciphertext",ft(E,n),h),B=be("seed",32,32),b=(y,f,d,p)=>{let v=[];for(let O=0;O<n;O++)v.push(z.NTT.encode(De(o,p,O,i)));let x=new Uint16Array(U),S=[];for(let O=0;O<n;O++){let A=De(o,p,n+O,c),L=new Uint16Array(U);for(let C=0;C<n;C++){let Z=f(O,C);xe(L,lt(Z,v[C]))}xe(A,z.NTT.decode(L)),S.push(A),xe(x,lt(y[O],v[O])),R(L)}let T=De(o,p,2*n,c);xe(T,z.NTT.decode(x));let _=l.decode(d);return xe(_,T),R(y,v,x,T),g.encode([S,_])};return{secretCoder:w,lengths:{secretKey:w.bytesLen,publicKey:m.bytesLen,cipherText:g.bytesLen},keygen:y=>{G(y,32,"seed");let f=new Uint8Array(33);f.set(y),f[32]=n;let d=s(f),[p,v]=B.decode(d),x=[],S=[];for(let O=0;O<n;O++)x.push(z.NTT.encode(De(o,v,O,i)));let T=r(p);for(let O=0;O<n;O++){let A=z.NTT.encode(De(o,v,n+O,i));for(let L=0;L<n;L++){let C=Pt(T.get(L,O));xe(A,lt(C,x[L]))}S.push(A)}T.clean();let _={publicKey:m.encode([S,p]),secretKey:w.encode(x)};return R(p,v,x,S,f,d),_},encrypt:(y,f,d)=>{let[p,v]=m.decode(y),x=r(v),S=b(p,(T,_)=>Pt(x.get(T,_)),f,d);return x.clean(),S},prepare:y=>{let[f,d]=m.decode(y),p=r(d),v=[];for(let x=0;x<n;x++)for(let S=0;S<n;S++)v.push(Pt(p.get(x,S)));return p.clean(),{encrypt:(x,S)=>b(f.map(T=>T.slice()),(T,_)=>v[T*n+_].slice(),x,S),clean:()=>R(f,v)}},decrypt:(y,f)=>{let[d,p]=g.decode(y),v=w.decode(f),x=new Uint16Array(U);for(let T=0;T<n;T++)xe(x,lt(v[T],z.NTT.encode(d[T])));mo(p,z.NTT.decode(x));let S=l.encode(p);return R(x,v,d,p),S}}};function Eo(e){let t=e,n=xo(t),{HASH256:o,HASH512:r,KDF:s}=t,{secretCoder:i,lengths:c}=n,a=be("secretKey",c.secretKey,c.publicKey,32,32),u=32,l=64,h=(m,w)=>{let g=m.subarray(0,384*t.K),B=i.encode(i.decode(Q(g))),b=we(B,g);if(R(B),!b)throw new Error(`ML-KEM.${w}: wrong publicKey modulus`)},E=Object.freeze({...c,seed:64,msg:u,msgRand:u,secretKey:a.bytesLen});return Object.freeze({info:Object.freeze({type:"ml-kem"}),lengths:E,keygen:m=>{let w=m===void 0,g=w?ce(l):m,B,b;try{G(g,l,"seed");let y=n.keygen(g.subarray(0,32)),f=y.publicKey;B=y.secretKey,b=o(f);let d=a.encode([B,f,b,g.subarray(32)]);return{publicKey:f,secretKey:d}}finally{B!==void 0&&R(B),b!==void 0&&R(b),w&&R(g)}},getPublicKey:m=>{let[w,g,B,b]=a.decode(m);return Uint8Array.from(g)},encapsulate:(m,w)=>{let g=w===void 0,B=g?ce(u):w,b;try{return G(m,c.publicKey,"publicKey"),G(B,u,"message"),h(m,"encapsulate"),b=r.create().update(B).update(o(m)).digest(),{cipherText:n.encrypt(m,B,b.subarray(32,64)),sharedSecret:b.subarray(0,32)}}finally{b!==void 0&&R(b.subarray(32)),g&&R(B)}},decapsulate:(m,w)=>{G(w,a.bytesLen,"secretKey"),G(m,c.cipherText,"cipherText");let g=a.bytesLen-96,B=g+32,b=o(w.subarray(g/2,B));if(!we(b,w.subarray(B,B+32)))throw new Error("invalid secretKey: hash check failed");let[y,f,d,p]=a.decode(w),v=n.decrypt(m,y),x=r.create().update(v).update(d).digest(),S=x.subarray(0,32),T=n.encrypt(f,v,x.subarray(32,64)),_=we(m,T),O=s.create({dkLen:32}).update(p).update(m).digest();return R(v,T,x.subarray(32),_?O:S),_?S:O},prepare:m=>{G(m,c.publicKey,"publicKey"),h(m,"prepare");let w=Q(m),g=o(w),B=n.prepare(w);return Object.freeze({publicKey:w,encapsulate:b=>{let y=b===void 0,f=y?ce(u):b,d;try{return G(f,u,"message"),d=r.create().update(f).update(g).digest(),{cipherText:B.encrypt(f,d.subarray(32,64)),sharedSecret:d.subarray(0,32)}}finally{d!==void 0&&R(d.subarray(32)),y&&R(f)}},decapsulate:(b,y)=>{G(y,a.bytesLen,"secretKey"),G(b,c.cipherText,"cipherText");let[f,d,p,v]=a.decode(y);if(!we(d,w)||!we(p,g))throw new Error("ML-KEM.decapsulate: secretKey does not match prepared publicKey");let x=n.decrypt(b,f),S=r.create().update(x).update(g).digest(),T=S.subarray(0,32),_=B.encrypt(x,S.subarray(32,64)),O=we(b,_),A=s.create({dkLen:32}).update(v).update(b).digest();return R(x,_,S.subarray(32),O?A:T),O?T:A},clean:B.clean})}})}function Bo(e,t,n){return Te.create({dkLen:e}).update(t).update(new Uint8Array([n])).digest()}var vo={HASH256:at,HASH512:Wn,KDF:Te,XOF:tr,PRF:Bo},So=e=>Eo({...vo,...e});var dt=So(ho[768]);var To=(e,t)=>{let n=Fe(e,t);return Fe(n.lengths,`${t}.lengths`),$(n.keygen,`${t}.keygen`),$(n.getPublicKey,`${t}.getPublicKey`),$(n.encapsulate,`${t}.encapsulate`),$(n.decapsulate,`${t}.decapsulate`),n};function Oo(e,t=!1){let n=Fe(e,"curve");Fe(n.lengths,"curve.lengths"),$(n.keygen,"curve.keygen"),$(n.getPublicKey,"curve.getPublicKey"),re(t,"allowZeroKey");let o=e.lengths,r=e.keygen;if(t){if(!("getSharedSecret"in e&&"sign"in e&&"verify"in e))throw new Error("allowZeroKey requires a Weierstrass curve");let i=e.Point.Fn;r=(c=ce(o.seed))=>{N(c,o.seed,"seed");let a=i.isLE?oe(c):Be(c),u=i.toBytes(i.create(a));return{secretKey:u,publicKey:e.getPublicKey(u)}}}return{lengths:{secretKey:o.secretKey,publicKey:o.publicKey,seed:o.seed},keygen:s=>r(s),getPublicKey:s=>e.getPublicKey(s)}}function _o(e,t=!1){let n=Oo(e,t);if(!e.getSharedSecret)throw new Error("wrong curve");let o=(r,s)=>{let i=e.getSharedSecret(s,r);return e.lengths.publicKeyHasPrefix?i.subarray(1):i};return{lengths:{...n.lengths,msg:n.lengths.seed,cipherText:n.lengths.publicKey},keygen:n.keygen,getPublicKey:n.getPublicKey,encapsulate(r,s=ce(e.lengths.seed)){let i=Q(s),c;try{c=n.keygen(i).secretKey;let a=o(r,c),u=e.getPublicKey(c);return{sharedSecret:a,cipherText:u}}finally{R(i),c&&R(c)}},decapsulate:o}}function Oe(e,t){let n=j(e,t);if(n===0)throw new RangeError(`"${t}" expected integer greater than 0, got 0`);return n}function je(e,t){let n=be(t,...e.map(o=>{if(typeof o.lengths[t]!="number")throw new Error("wrong length: "+t);return Oe(o.lengths[t],t)}));return Oe(n.bytesLen,t),n}function ko(e){return((t,n)=>e(t,{dkLen:n}))}function Ao(e,t,...n){let o=t,r=n,s=je(r,"seed"),i=je(r,"publicKey"),c=Oe(e===void 0?s.bytesLen:e,"realSeedLen");function a(l){N(l,c);let h=o(l,s.bytesLen),E=h.buffer===l.buffer?Q(h):h,m=[],w=[],g=[],B=[],b=!1;try{for(let y of s.decode(E))m.push(Q(y));for(let y=0;y<r.length;y++){let f=r[y].keygen(m[y]);w.push(f.secretKey),g.push(Q(f.secretKey)),B.push(f.publicKey)}return b=!0,{secretKey:g,publicKey:B}}finally{R(E,m,w),b||R(g)}}let u=l=>{let h=l===void 0?ce(c):Q(l),E;try{let{publicKey:m,secretKey:w}=a(h);try{E={secretKey:h,publicKey:i.encode(m)}}finally{R(m,w)}return E}finally{E||R(h)}};return{info:{lengths:{seed:c,publicKey:i.bytesLen,secretKey:c}},getPublicKey:l=>{let h=u(l);return R(h.secretKey),h.publicKey},keygen:u,expandDecapsulationKey:a,realSeedLen:c}}function Ro(e,t,n,o,...r){if(e!==void 0&&Oe(e,"realSeedLen"),t!==void 0&&Oe(t,"realMsgLen"),typeof n!="function")throw new TypeError('"expandSeed" expected function, got type='+typeof n);if(typeof o!="function")throw new TypeError('"combiner" expected function, got type='+typeof o);let s=o,i=r;if(i.length===0)throw new RangeError("combineKEMS requires at least one KEM");for(let w=0;w<i.length;w++)To(i[w],`kems[${w}]`);let c=Ao(e,n,...i),a=je(i,"cipherText"),u=je(i,"publicKey"),l=je(i,"msg"),h=Oe(t===void 0?l.bytesLen:t,"realMsgLen"),E=Object.freeze({...c.info.lengths,msg:h,msgRand:l.bytesLen,cipherText:a.bytesLen}),m=(w,g,B)=>{let b=s(w,g,B);try{return Q(N(b,h,"sharedSecret"))}catch(y){if(pe(b)){let f=p=>b.buffer===p.buffer&&b.byteOffset<p.byteOffset+p.byteLength&&p.byteOffset<b.byteOffset+b.byteLength;w.some(f)||g.some(f)||R(b)}throw y}};return Object.freeze({lengths:E,getPublicKey:c.getPublicKey,keygen:c.keygen,encapsulate(w,g=ce(l.bytesLen)){let B=u.decode(w),b=l.decode(g),y=[],f=[];try{for(let p=0;p<i.length;p++){let v=i[p].encapsulate(B[p],b[p]);y.push(v.sharedSecret),f.push(v.cipherText)}let d=a.encode(f);return{sharedSecret:m(B,f,y),cipherText:d}}finally{R(y,f)}},decapsulate(w,g){let B=a.decode(w),{publicKey:b,secretKey:y}=c.expandDecapsulationKey(g),f=[];try{for(let d=0;d<i.length;d++)f.push(i[d].decapsulate(B[d],y[d]));return m(b,B,f)}finally{R(y,f)}}})}var Lo=_o(ie);var nr=Ro(32,32,ko(Te),(e,t,n)=>at(At(n[0],n[1],t[1],e[1],hn("\\.//^\\"))),dt,Lo);var _e=new Map,ht=new TextEncoder,Ut={hybrid:nr,quantum:dt},yt={classical:"Standard \xB7 X25519",hybrid:"Hybrid \xB7 X25519 + ML-KEM-768",quantum:"Post-quantum \xB7 ML-KEM-768"},Pe=e=>btoa(String.fromCharCode(...e)),pt=e=>Uint8Array.from(atob(e),t=>t.charCodeAt(0));function rr(){if(!globalThis.isSecureContext||!globalThis.crypto?.subtle)throw new Error("Encryption needs a secure connection. Open this page over HTTPS or localhost.")}async function Io(e){if(!Object.hasOwn(yt,e))throw new Error("Choose a supported protection option.");if(!_e.has(e)){let t=e==="classical"?(()=>{let o=ie.utils.randomSecretKey();return{secretKey:o,publicKey:ie.getPublicKey(o)}})():Ut[e].keygen(),n=new Uint8Array(await crypto.subtle.digest("SHA-256",t.publicKey));_e.set(e,{...t,id:Pe(n)})}return _e.get(e)}async function or(e,t,n,o){try{let r=await crypto.subtle.importKey("raw",e,"HKDF",!1,["deriveKey"]);return await crypto.subtle.deriveKey({name:"HKDF",hash:"SHA-256",salt:t,info:ht.encode(`daily-grind/delivery-note/v1/${n}/AES-256-GCM`)},r,{name:"AES-GCM",length:256},!1,[o])}finally{e.fill(0)}}async function sr(e,t){if(rr(),!e.trim()||e.length>500)throw new Error("Add a note between 1 and 500 characters.");let n=await Io(t),o,r;if(t==="classical"){let l=ie.utils.randomSecretKey();try{r=ie.getPublicKey(l),o=ie.getSharedSecret(l,n.publicKey)}finally{l.fill(0)}}else{let l=Ut[t].encapsulate(n.publicKey);o=l.sharedSecret,r=l.cipherText}let s=crypto.getRandomValues(new Uint8Array(32)),i=crypto.getRandomValues(new Uint8Array(12)),c={version:1,id:crypto.randomUUID(),mode:t,algorithm:"AES-256-GCM",recipientId:n.id,createdAt:new Date().toISOString(),encapsulation:Pe(r),salt:Pe(s),iv:Pe(i)},a=await or(o,s,t,"encrypt"),u=ht.encode(e);try{let l=await crypto.subtle.encrypt({name:"AES-GCM",iv:i,additionalData:ht.encode(JSON.stringify(c)),tagLength:128},a,u);return{header:c,ciphertext:Pe(new Uint8Array(l))}}finally{u.fill(0)}}async function Ht(e){rr();let{header:t,ciphertext:n}=e,o=_e.get(t.mode);if(t.version!==1||t.algorithm!=="AES-256-GCM"||!o||t.recipientId!==o.id)throw new Error("The recipient key for this note is no longer available.");try{let r=pt(t.encapsulation),s=t.mode==="classical"?ie.getSharedSecret(o.secretKey,r):Ut[t.mode].decapsulate(r,o.secretKey),i=await or(s,pt(t.salt),t.mode,"decrypt"),c=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:pt(t.iv),additionalData:ht.encode(JSON.stringify(t)),tagLength:128},i,pt(n)));try{return new TextDecoder("utf-8",{fatal:!0}).decode(c)}finally{c.fill(0)}}catch{throw new Error("This note could not be authenticated. Its encrypted contents or details may have changed.")}}function ir(){for(let e of _e.values())e.secretKey.fill(0);_e.clear()}var cr={coffee:'<path d="M4 9h13v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path d="M17 10h2a3 3 0 0 1 0 6h-2M7 3v2m4-3v3m4-2v2M2 23h18"/>',cup:'<path d="M5 8h12v8a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5ZM17 9h2a3 3 0 0 1 0 6h-2M8 3v2m5-2v2"/>',home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-8H9v8H4a1 1 0 0 1-1-1Z"/>',bag:'<path d="M5 7h14l2 14H3ZM8 8V6a4 4 0 0 1 8 0v2"/>',gift:'<path d="M3 8h18v4H3zm2 4v9h14v-9M12 8v13"/><path d="M12 8S5 9 5 5c0-4 7-2 7 3Zm0 0s7 1 7-3c0-4-7-2-7 3Z"/>',pin:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2l-1.5 1.5V14m0 3h.01"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',note:'<path d="M14 3H5v18h14V8ZM14 3v5h5M8 12h8m-8 4h6"/>',lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/>',shield:'<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m9 12 2 2 4-4"/>',"shield-check":'<path d="m12 2 8 3v7c0 6-8 10-8 10s-8-4-8-10V5Z"/><path d="m8 12 3 3 5-6"/>',arrow:'<path d="M4 12h16m-5-5 5 5-5 5"/>',check:'<path d="m5 12 4 4L19 6"/>',"check-circle":'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',layers:'<path d="m12 3 10 5-10 5L2 8Zm-10 9 10 5 10-5M2 16l10 5 10-5"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>'},$t=e=>`<svg viewBox="0 0 24 24" aria-hidden="true">${cr[e]||cr.note}</svg>`;document.querySelectorAll("[data-icon]").forEach(e=>{e.innerHTML=$t(e.dataset.icon)});var M=e=>document.querySelector(e),Ue=M("#note-form"),ae=M("#note"),J=M("#form-status"),Ko=M("#save-button"),le=new Map,H=M("#detail-dialog"),gt=null,No={classical:"A shared secret established with X25519, secured with authenticated encryption.",hybrid:"The best of both worlds. Classic security meets post-quantum protection.",quantum:"A shared secret established with ML-KEM-768, designed for a post-quantum future."},Mo={protection:["A little extra peace of mind","<p>Every option encrypts your note using <strong>AES-256-GCM</strong>. Its authentication tag helps detect changes to the note or its metadata.</p><p><strong>Standard</strong> uses X25519 key agreement. <strong>Post-quantum</strong> uses ML-KEM-768 key encapsulation. <strong>Hybrid</strong> uses the X-Wing combination of X25519 and ML-KEM-768.</p><p>Each note gets fresh key-establishment randomness, an HKDF-SHA-256 derived encryption key, and a random 96-bit nonce.</p>"],privacy:["Private by design. Local for now.","<p>Your note is encrypted in your browser. Only ciphertext and public metadata are kept in the saved-notes list. No plaintext is stored in local storage or sent to a server.</p><p>This is a <strong>local demonstration</strong>: recipient private keys are also held in this page\u2019s memory so you can reveal your notes. Nothing is delivered to a courier. Reloading clears the notes and keys.</p><p>A live delivery service would need authenticated recipient public keys, private keys held by the recipient, secure transport, and a delivery backend.</p>"],menu:["Find your next daily ritual",'<div class="menu-item"><div><strong>Maple Oat Latte</strong><small>Creamy oat milk. A little Vermont maple.</small></div><span>Seasonal</span></div><div class="menu-item"><div><strong>Dark Roast Espresso</strong><small>Bold, smoky, and freshly pulled.</small></div><span>Classic</span></div><div class="menu-item"><div><strong>Slow-steeped Cold Brew</strong><small>Eighteen hours. Exceptionally smooth.</small></div><span>Chilled</span></div><p>Our caf\xE9 menu, made for your everyday. Online ordering isn\u2019t connected in this demo.</p>'],rewards:["Good mornings add up.","<p>Grind rewards is where your daily ritual gets a little something extra.</p><p>This homepage demo isn\u2019t connected to a rewards account, so there are no points or rewards to display yet.</p>"],locations:["Your neighborhood, freshly brewed.","<p>A familiar counter. A friendly face. Your favorite cup.</p><p>Caf\xE9 locations and opening hours haven\u2019t been connected to this demo yet.</p>"],story:["A little ritual. A better day.","<p>Since 2018, The Daily Grind has been about the little things: ethically sourced beans, thoughtful roasting, and a cup that feels like home.</p><p>From a smoky espresso to a smooth, slow-steeped cold brew, there\u2019s a daily ritual for everyone.</p>"],help:["A hand with your delivery notes","<p>Write a short delivery instruction, choose your protection, and select <strong>Encrypt & save note</strong>.</p><p>Select <strong>Reveal</strong> on a saved note to decrypt it in this browser, or use the trash icon to remove it. Your notes and keys last only until this page is reloaded.</p><p>These demo notes aren\u2019t attached to an order or sent to a delivery partner.</p>"],account:["Your daily space","<p>You\u2019re exploring a local homepage demo. The avatar is a placeholder; no customer account is connected.</p><p>Your encrypted delivery notes are available for this page session only.</p>"]};function zt(e,t,n=!0){M("#dialog-title").textContent=e,n?M("#dialog-content").innerHTML=t:M("#dialog-content").replaceChildren(t),H.open||H.showModal()}document.querySelectorAll("[data-dialog]").forEach(e=>e.addEventListener("click",()=>{gt=null,zt(...Mo[e.dataset.dialog])}));M("#close-dialog").addEventListener("click",()=>H.close());M("#dialog-done").addEventListener("click",()=>H.close());H.addEventListener("click",e=>{e.target===H&&(e.clientX<H.getBoundingClientRect().left||e.clientX>H.getBoundingClientRect().right||e.clientY<H.getBoundingClientRect().top||e.clientY>H.getBoundingClientRect().bottom)&&H.close()});H.addEventListener("close",()=>{M("#dialog-content").replaceChildren(),gt=null});M("#notes-nav").addEventListener("click",()=>{M("#delivery").scrollIntoView({behavior:"smooth"}),ae.focus({preventScroll:!0})});ae.addEventListener("input",()=>{M("#char-count").textContent=ae.value.length,J.textContent=""});Ue.querySelectorAll('[name="protection"]').forEach(e=>e.addEventListener("change",()=>{Ue.querySelectorAll(".protection-option").forEach(t=>t.classList.toggle("selected",t.querySelector("input").checked)),M("#mode-description").textContent=No[e.value],J.textContent=""}));var Co=M("#saved-notes").innerHTML;function Zt(){M("#saved-count").textContent=le.size,M("#nav-note-count").textContent=le.size;let e=M("#saved-notes");if(e.replaceChildren(),!le.size){e.innerHTML=Co;return}for(let[t,n]of[...le.entries()].reverse()){let o=document.createElement("article");o.className="saved-note",o.innerHTML=`<span class="empty-icon">${$t("lock")}</span><div class="saved-note-info"><h3>Delivery note</h3><p></p></div><time></time><div class="saved-note-actions"><button class="reveal-note">Reveal</button><button class="delete-note" aria-label="Delete delivery note">${$t("trash")}</button></div>`,o.querySelector("p").textContent=yt[n.header.mode],o.querySelector("time").dateTime=n.header.createdAt,o.querySelector("time").textContent=new Date(n.header.createdAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),o.querySelector(".reveal-note").addEventListener("click",async r=>{let s=r.currentTarget;s.disabled=!0;try{let i=await Ht(n);if(!le.has(t))return;let c=document.createElement("div"),a=document.createElement("p");a.className="revealed-note",a.textContent=i;let u=document.createElement("p");u.textContent=`${yt[n.header.mode]} \xB7 AES-256-GCM authentication verified. Revealed locally for this demo.`;let l=document.createElement("button");l.className="text-link",l.textContent="View encrypted payload \u2197",l.addEventListener("click",()=>{let h=document.createElement("pre");h.style.cssText="white-space:pre-wrap;overflow-wrap:anywhere;font-size:9px;max-height:220px;overflow:auto;background:#f1f3eb;padding:12px;border-radius:6px;",h.textContent=JSON.stringify(n,null,2),l.replaceWith(h)}),c.append(a,u,l),gt=t,zt("Your delivery note",c,!1)}catch(i){zt("We couldn\u2019t open this note",i.message,!1)}finally{s.disabled=!1}}),o.querySelector(".delete-note").addEventListener("click",()=>{le.delete(t),gt===t&&H.close(),Zt(),J.className="",J.textContent="Note deleted from this session."}),e.append(o)}}Ue.addEventListener("submit",async e=>{if(e.preventDefault(),Ko.disabled)return;let t=ae.value.trim();if(!t){ae.setCustomValidity("Add a delivery detail before encrypting your note."),ae.reportValidity(),ae.setCustomValidity("");return}let n=Ue.elements.protection.value,o=[...Ue.querySelectorAll('input, textarea, button[type="submit"]')];o.forEach(r=>{r.disabled=!0}),J.className="",J.textContent="Establishing a shared secret and encrypting your note\u2026";try{let r=await sr(t,n);if(await Ht(r)!==t)throw new Error("Encryption verification failed. Please try again.");le.set(r.header.id,r),Zt(),ae.value="",M("#char-count").textContent="0",J.textContent="Safely encrypted and saved for this session."}catch(r){J.className="error",J.textContent=r.message||"Your note could not be encrypted. Please try again."}finally{o.forEach(r=>{r.disabled=!1})}});window.addEventListener("pagehide",()=>{le.clear(),ir(),ae.value="",H.open&&H.close(),Zt(),M("#char-count").textContent="0",J.textContent=""});
++/*! Bundled license information:
++
++@noble/curves/utils.js:
++@noble/curves/abstract/modular.js:
++@noble/curves/abstract/curve.js:
++@noble/curves/abstract/edwards.js:
++@noble/curves/abstract/montgomery.js:
++@noble/curves/ed25519.js:
++  (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
++
++@noble/post-quantum/utils.js:
++@noble/post-quantum/_crystals.js:
++@noble/post-quantum/ml-kem.js:
++@noble/post-quantum/hybrid.js:
++  (*! noble-post-quantum - MIT License (c) 2024 Paul Miller (paulmillr.com) *)
++*/
+diff --git a/assets/style.css b/assets/style.css
+new file mode 100644
+index 0000000..fa4ab67
+--- /dev/null
++++ b/assets/style.css
+@@ -0,0 +1 @@
++:root{--paper:#f8f7f3;--white:#fff;--ink:#2e352f;--muted:#81847c;--line:#e8e9e1;--green:#3c5543;--orange:#d5683e;--soft-green:#eff3ea;--sidebar:228px}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:25px}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}button,input,textarea{font:inherit}button,a,input,textarea{-webkit-tap-highlight-color:transparent}button,a{touch-action:manipulation}button{cursor:pointer}a{color:inherit;text-decoration:none}button{color:inherit}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #d9905c;outline-offset:4px}svg{width:20px;height:20px;display:block;stroke:currentColor;stroke-width:1.65;fill:none;stroke-linecap:round;stroke-linejoin:round}button{border:0;background:none} .sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);background:#fdfcf9;border-right:1px solid var(--line);padding:37px 23px 22px;display:flex;flex-direction:column;z-index:10}.brand{display:flex;align-items:center;gap:12px;margin:0 9px 50px;font-family:'Manrope',sans-serif;font-size:25px;font-weight:800;letter-spacing:-1.3px;line-height:1.02}.brand-bottom{display:block}.brand-dot{color:var(--orange)}.brand-mark{width:42px;height:48px;display:grid;place-items:center;color:var(--green)}.brand-mark svg{width:42px;height:42px;stroke-width:1.5}.nav-label{font-size:9px;letter-spacing:1.65px;color:#92968d;font-weight:600;margin:0 12px 17px}.nav-link{display:flex;align-items:center;gap:12px;width:100%;height:46px;padding:0 13px;text-align:left;font-size:12px;color:#74796f;margin-bottom:6px;border-radius:7px}.nav-link svg{width:18px;height:18px}.nav-link:hover{background:#f1f1e9}.nav-link.active{color:var(--green);background:#eaf0e5;font-weight:650}.active-dot{width:5px;height:5px;background:var(--green);border-radius:50%;margin-left:auto}.nav-arrow{margin-left:auto;font-size:16px;color:#979b90}.nav-count{font-size:10px;margin-left:auto;background:#f0f0e9;padding:2px 6px;border-radius:4px}.sidebar-bottom{margin-top:auto;padding-top:40px}.small-promo{background:#f1f0e7;padding:18px 17px 14px;border-radius:9px}.little-spark{display:block;color:#acac76;font-size:29px;line-height:1}.small-promo h3{font-family:'Manrope',sans-serif;font-size:17px;font-weight:700;line-height:1.45;letter-spacing:-.4px;margin:14px 0 9px}.small-promo p{font-size:10px;line-height:1.8;color:#898b7f;margin:0}.small-promo button{font-size:10px;font-weight:600;padding:0;margin-top:19px;width:100%;display:flex;justify-content:space-between}.small-promo button span{font-size:15px}.help-link{display:flex;align-items:center;gap:9px;font-size:11px;color:#777c72;width:100%;padding:22px 9px 18px}.help-link svg{width:16px;height:16px}.help-link>span:last-child{margin-left:auto}.sidebar-copyright{font-size:9px;color:#a2a69a;padding-left:9px}.page{margin-left:var(--sidebar)}.topbar{height:79px;padding:0 43px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:#fbfaf7}.breadcrumb{color:#8e9189;font-size:11px}.breadcrumb span{color:#bdc0b5;margin:0 13px}.breadcrumb strong{color:#50584d;font-weight:500}.top-actions{display:flex;align-items:center;gap:23px}.open-status{font-size:10px;color:#727b69;display:flex;align-items:center;gap:7px}.open-status i,.session-label i{display:inline-block;background:#7e9367;width:5px;height:5px;border-radius:50%}.top-divider{width:1px;height:22px;background:var(--line)}.avatar{border-radius:50%;height:32px;width:32px;background:#e9e8db;color:#6c705a;font-size:10px;font-weight:600;border:3px solid #fff;outline:1px solid #e9e8df}main{max-width:1370px;margin:0 auto;padding:36px 43px 0}.greeting{display:flex;justify-content:space-between;align-items:center;margin-bottom:27px}.eyebrow{font-size:8px;letter-spacing:1.7px;font-weight:650;color:#8f9584}.greeting h1{font-family:'Manrope',sans-serif;letter-spacing:-1.35px;font-weight:750;font-size:31px;margin:9px 0 8px;line-height:1.3}.greeting h1>span{color:var(--orange)}.greeting p{font-size:11px;color:#85897f;margin:0}.date-pill{font-size:10px;display:flex;align-items:center;gap:8px;border:1px solid #e6e7dc;padding:9px 12px;border-radius:6px;margin-top:12px;color:#747d67;white-space:nowrap}.date-pill svg{width:15px;height:15px;color:#a69c6a}.hero{position:relative;isolation:isolate;overflow:hidden;border-radius:10px;min-height:271px;background:#362b23 url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1800&q=85') center 55%/cover;color:#fff}.hero:before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(30,31,22,.89) 0%,rgba(30,31,22,.63) 38%,rgba(29,28,21,.08) 75%);z-index:-1}.hero-content{padding:31px 35px 29px}.hero-eyebrow{font-size:8px;letter-spacing:1.6px;color:#e5e4d3;font-weight:500;display:flex;align-items:center;gap:8px}.hero-eyebrow>span{width:5px;height:5px;border-radius:50%;background:#cdb77d}.hero h2{font-family:'Manrope',sans-serif;font-size:31px;letter-spacing:-.8px;line-height:1.27;font-weight:600;margin:15px 0 11px}.hero p{color:#d5d3c8;font-size:10px;line-height:1.8;margin:0}.hero-link{display:inline-flex;align-items:center;gap:20px;font-size:10px;font-weight:500;border-bottom:1px solid #959887;padding-bottom:7px;margin-top:21px}.hero-link span{font-size:15px}.hero-stamp{position:absolute;right:35px;top:32px;width:87px;height:87px;border:1px solid #d8d2b787;border-radius:50%;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;font-size:5.5px;letter-spacing:1px;color:#e2dbc5;transform:rotate(13deg)}.hero-stamp span{font-size:31px;line-height:1}.photo-credit{position:absolute;right:25px;bottom:18px;font-size:6px;letter-spacing:1.7px;color:#fff9}.delivery-section{margin-top:31px}.section-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}.section-title{display:flex;align-items:center;gap:9px}.section-title h2{font-family:'Manrope',sans-serif;font-size:16px;font-weight:700;letter-spacing:-.4px;margin:0}.section-title svg{width:18px;height:18px;color:#707b66}.private-label{display:flex;align-items:center;gap:6px;font-size:9px;color:#8c9183}.private-label svg{width:12px;height:12px}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 274px;gap:20px;align-items:stretch}.note-card{border:1px solid var(--line);background:#fff;border-radius:9px;padding:23px 23px 0;box-shadow:0 3px 8px #26362502}.card-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:25px}.card-heading h3{font-family:'Manrope',sans-serif;font-size:17px;letter-spacing:-.5px;margin:0 0 6px;font-weight:750}.card-heading p{font-size:10px;color:#8b9084;margin:0}.badge{display:inline-flex;align-items:center;gap:4px;font-size:8px;color:#6a825e;border:1px solid #e3eadc;background:#f5f8f0;border-radius:5px;padding:5px 7px}.badge svg{width:12px;height:12px}.form-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.form-row label{font-size:10px;font-weight:600}.form-row>span{font-size:8px;color:#a0a597}.textarea-wrap{border:1px solid #dfe3d8;border-radius:6px;overflow:hidden;background:#fefefb;transition:border .2s}.textarea-wrap:focus-within{border-color:#819573;box-shadow:0 0 0 2px #edf1e7}textarea{display:block;width:100%;height:103px;resize:vertical;min-height:85px;max-height:230px;padding:13px 13px 4px;line-height:1.8;border:0;background:transparent;font-size:11px;color:#4e5947}textarea:focus-visible{outline:none}textarea::placeholder{color:#a3a89b}.textarea-footer{display:flex;align-items:center;justify-content:space-between;font-size:8px;color:#a0a695;padding:8px 12px 10px}.textarea-footer>span:first-child{display:flex;gap:5px;align-items:center}.textarea-footer svg{width:11px;height:11px}fieldset{padding:0;border:0;margin:20px 0 0;min-width:0}legend{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;padding:0;margin-bottom:10px}.info-button{font-size:8px;width:12px;height:12px;padding:0;display:grid;place-items:center;color:#8e9786;border:1px solid #a8ae9d;border-radius:50%}.protection-options{display:grid;grid-template-columns:1fr 1.42fr 1.14fr;gap:8px}.protection-option{position:relative;cursor:pointer;display:flex;align-items:center;gap:7px;padding:12px 9px;min-height:60px;border:1px solid #e4e6dd;border-radius:6px;background:#fff;transition:.15s}.protection-option:hover{border-color:#9ba78d}.protection-option.selected{border-color:#879e73;background:#f4f7ef;box-shadow:0 0 0 1px #8b9f7310}.protection-option input{position:absolute;opacity:0;width:1px;height:1px}.protection-option:has(input:focus-visible){outline:3px solid #d9905c;outline-offset:2px}.radio-circle{display:block;width:11px;height:11px;border:1px solid #cdd2c4;border-radius:50%;flex-shrink:0}.selected .radio-circle{border:3px solid #6a8157;background:white}.protection-option strong{font-size:9px;font-weight:600;display:block;white-space:nowrap}.protection-option small{display:block;font-size:7px;color:#909984;margin-top:6px;white-space:nowrap}.protection-option em{font-size:5.5px;font-style:normal;font-weight:500;vertical-align:middle;background:#e5edda;color:#748460;padding:3px 4px;border-radius:3px;margin-left:3px}.option-spark{position:absolute;right:6px;bottom:7px;font-size:17px;color:#8b9b75}.encryption-summary{display:flex;align-items:center;gap:6px;margin:11px 0 21px;color:#87927c}.encryption-summary svg{width:12px;height:12px;flex-shrink:0}.encryption-summary p{font-size:8px;margin:0;line-height:1.5}.form-bottom{padding:16px 0;border-top:1px solid #edf0e7;display:flex;align-items:center;justify-content:space-between;gap:10px}.form-bottom>span{display:flex;align-items:center;gap:5px;color:#979e8f;font-size:7px}.form-bottom>span svg{width:11px;height:11px;flex-shrink:0}.primary-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:white;border-radius:5px;padding:11px 13px;font-size:10px;white-space:nowrap;transition:background .2s}.primary-button:hover{background:#293f31}.primary-button:disabled{opacity:.55;cursor:wait}.primary-button svg{width:13px;height:13px}.primary-button>span:last-child svg{margin-left:3px}#form-status{font-size:10px;margin:0;line-height:1.6}#form-status:not(:empty){padding:0 0 14px;color:var(--green)}#form-status.error{color:#b34935}.privacy-card{position:relative;overflow:hidden;border-radius:9px;border:1px solid #e6e9dd;background:#eef1e7;padding:0 24px 20px}.privacy-art{height:132px;position:relative;display:grid;place-items:center}.art-orbit{position:absolute;border:1px solid #dce3d1;border-radius:50%;width:116px;height:116px}.orbit-two{width:156px;height:156px;border-color:#e3e8da}.shield-emblem{width:66px;height:72px;position:relative;display:grid;place-items:center;color:#748962;filter:drop-shadow(0 5px 3px #8a9d6f14);transform:rotate(-7deg)}.shield-emblem svg{width:60px;height:68px;stroke-width:1.15;fill:#e0e8d5}.art-spark{position:absolute;color:#9aa67d}.spark-one{top:30px;right:49px;font-size:21px}.spark-two{bottom:27px;left:42px;font-size:12px}.art-dot{width:5px;height:5px;background:#bbc6a4;border-radius:50%;position:absolute;right:36px;bottom:34px}.privacy-card .eyebrow{position:relative;font-size:7px;letter-spacing:1.25px;color:#8c9978}.privacy-card h3{font-family:'Manrope',sans-serif;font-size:21px;font-weight:650;letter-spacing:-.6px;line-height:1.35;margin:11px 0 11px;color:#4c5f41}.privacy-card>p{font-size:10px;line-height:1.85;color:#8c957f;margin:0}.privacy-points{display:grid;gap:11px;margin-top:18px}.privacy-points>div{display:flex;align-items:center;gap:7px;font-size:8px;color:#708164}.privacy-points svg{width:12px;height:12px;flex-shrink:0}.text-link{display:flex;align-items:center;justify-content:space-between;font-size:8px;color:#677c59;padding:15px 0 0;margin-top:17px;width:100%;border-top:1px solid #dde4d2}.text-link>span{font-size:13px}.saved-section{margin-top:28px;scroll-margin-top:25px}.saved-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.saved-header .section-title h2{font-size:14px}.saved-header .section-title>span svg{width:17px;height:17px}.saved-header h2>span{display:inline-block;font-family:'DM Sans',sans-serif;font-size:8px;font-weight:500;vertical-align:middle;background:#eceee5;color:#88917b;border-radius:4px;padding:3px 6px;margin-left:5px;letter-spacing:0}.session-label{font-size:8px;color:#9a9f91;display:flex;align-items:center;gap:6px}.session-label i{width:4px;height:4px;background:#a3ad93}.empty-state{display:flex;align-items:center;gap:14px;border:1px dashed #dcded2;border-radius:7px;padding:22px 20px;background:#fafbf6}.empty-icon{width:37px;height:39px;border:1px solid #e9ecdf;background:#f0f3e9;border-radius:7px;color:#a3ae94;display:grid;place-items:center}.empty-icon svg{width:18px;height:18px}.empty-state h3{font-size:11px;font-weight:500;margin:0 0 5px;color:#727f66}.empty-state p{font-size:9px;color:#a1a893;margin:0}.empty-line{margin-left:auto;width:66px;border-top:1px dashed #d9decf}.empty-lock{color:#b6bfaa;margin:0 7px 0 2px}.empty-lock svg{width:17px;height:17px}.session-notice{display:flex;align-items:flex-start;gap:5px;font-size:8px;color:#a2a797;margin:11px 0 0;line-height:1.65}.session-notice svg{width:10px;height:10px;flex-shrink:0;margin-top:1px}footer{margin-top:30px;border-top:1px solid #e6e8de;padding:21px 0 24px;display:flex;align-items:center;justify-content:space-between}.footer-brand{font-size:9px;color:#9a9e90}.footer-brand>span{color:var(--orange)}footer>div{display:flex;align-items:center;gap:13px;font-size:8px;color:#a5ab9b}footer button{font-size:8px;color:#8d9781;padding:0}footer button span{margin-left:4px}.saved-note{display:flex;align-items:center;gap:12px;padding:16px 18px;background:white;border:1px solid var(--line);border-radius:7px;margin-bottom:8px}.saved-note .empty-icon{flex-shrink:0}.saved-note-info{min-width:0;flex:1}.saved-note h3{margin:0 0 5px;font-size:11px;font-weight:600}.saved-note p{margin:0;font-size:9px;color:#8b9580}.saved-note-actions{display:flex;align-items:center;gap:10px}.saved-note-actions button{padding:6px;font-size:9px;color:var(--green)}.saved-note-actions .delete-note{color:#969b8d}.delete-note svg{width:15px;height:15px}.saved-note time{font-size:8px;color:#919887}.revealed-note{white-space:pre-wrap;overflow-wrap:anywhere;padding:15px;background:#f2f5ec;line-height:1.8;color:#43553a;border-radius:6px;font-size:13px}dialog{border:1px solid #dfe4d5;border-radius:14px;padding:26px;max-width:460px;width:calc(100% - 40px);color:var(--ink);box-shadow:0 20px 80px #24321f33;background:#fffefa}dialog::backdrop{background:#24302166;backdrop-filter:blur(4px)}.dialog-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}.dialog-icon{padding:9px;border-radius:8px;background:#edf2e6;color:var(--green)}.dialog-top button{font-size:27px;color:#8b9480}.dialog-top svg{width:22px;height:22px}dialog h2{font-family:'Manrope',sans-serif;font-size:23px;letter-spacing:-.6px;margin:5px 0 15px}#dialog-content{font-size:12px;line-height:1.85;color:#7e8773}#dialog-content p{margin:10px 0}#dialog-content strong{color:#4f6443}#dialog-content code{font-size:10px;overflow-wrap:anywhere}.dialog-done{margin-top:19px}.menu-item{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);gap:20px}.menu-item small{display:block;font-size:10px;color:#8e9883}.error-text{color:#ae4f3c}@media(min-width:1500px){:root{--sidebar:250px}main{padding-top:44px}.hero{min-height:320px}.hero-content{padding:40px}.hero h2{font-size:38px}.workspace{grid-template-columns:minmax(0,1fr) 310px}.privacy-card{padding-left:29px;padding-right:29px}.protection-option{padding:15px 12px}.protection-option strong{font-size:11px}.protection-option small{font-size:8px}.note-card{padding:27px 27px 0}.form-row label,legend{font-size:12px}.form-row>span{font-size:9px}.card-heading p{font-size:12px}textarea{height:124px;font-size:13px}.privacy-card>p{font-size:12px}.privacy-points>div{font-size:10px}.privacy-art{height:148px}.privacy-card h3{font-size:25px}.primary-button{font-size:12px}.form-bottom>span{font-size:9px}.encryption-summary p{font-size:10px}}@media(max-width:1150px){:root{--sidebar:200px}.sidebar{padding-left:15px;padding-right:15px}main{padding:28px 28px 0}.topbar{padding:0 28px}.workspace{grid-template-columns:minmax(0,1fr) 240px;gap:14px}.note-card{padding:20px 18px 0}.privacy-card{padding-left:19px;padding-right:19px}.protection-options{grid-template-columns:1fr 1.3fr 1.1fr;gap:5px}.protection-option{padding:11px 6px;gap:5px}.protection-option em{display:none}.form-bottom{flex-wrap:wrap;justify-content:flex-end}.form-bottom>span{margin-right:auto}.form-row>span{display:none}.hero h2{font-size:29px}}@media(max-width:950px){:root{--sidebar:180px}.brand{font-size:22px;margin-left:4px;gap:8px}.brand-mark,.brand-mark svg{width:34px}.nav-link{font-size:11px;gap:9px}.nav-label{font-size:8px;letter-spacing:1px}.workspace{grid-template-columns:minmax(0,1fr)}.privacy-card{display:none}.greeting h1{font-size:27px}.date-pill{display:none}.private-label{font-size:8px}.section-title h2{font-size:15px}.hero{min-height:260px}.form-bottom>span{font-size:8px}.protection-option strong{font-size:11px}.protection-option small{font-size:8px}.protection-option{padding:13px 10px}.protection-option em{display:inline;font-size:5px}.form-bottom{flex-wrap:nowrap}.note-card{padding:23px 23px 0}.encryption-summary p{font-size:9px}.form-row label{font-size:11px}textarea{font-size:12px}.primary-button{font-size:11px}.greeting p{line-height:1.7}.empty-line{display:none}footer{gap:15px;align-items:flex-start}footer>div{white-space:nowrap}}@media(max-width:650px){:root{--sidebar:0px}.sidebar{position:relative;width:100%;height:auto;flex-direction:row;align-items:center;justify-content:space-between;padding:15px 20px;border-right:0;border-bottom:1px solid var(--line)}.brand{font-size:19px;margin:0;gap:7px}.brand-mark,.brand-mark svg{width:31px;height:31px}.sidebar .nav-label,.sidebar-bottom{display:none}.sidebar nav{display:flex;gap:3px}.nav-link{width:36px;height:36px;overflow:hidden;font-size:0;padding:9px;margin:0;gap:0}.nav-link svg{width:18px;height:18px}.nav-link .active-dot,.nav-link .nav-arrow,.nav-count{display:none}.sidebar .nav-link:nth-child(4),.sidebar .nav-link:nth-child(5){display:none}.topbar{height:53px;padding:0 20px}.top-actions{gap:11px}.open-status{font-size:8px}.top-divider{display:none}.avatar{width:27px;height:27px;font-size:8px}.breadcrumb{font-size:9px}.breadcrumb span{margin:0 8px}main{padding:25px 20px 0}.greeting{margin-bottom:21px}.greeting h1{font-size:27px;margin-top:8px}.eyebrow{font-size:7px}.greeting p{font-size:10px;max-width:290px}.hero{min-height:254px;background-position:60% center}.hero-content{padding:26px 24px}.hero h2{font-size:26px}.hero-stamp{right:17px;top:20px;width:62px;height:62px;font-size:4px;letter-spacing:.6px;gap:2px}.hero-stamp span{font-size:23px}.hero p{font-size:9px}.hero-eyebrow{font-size:6px}.photo-credit{font-size:5px;right:17px;bottom:14px}.section-heading{align-items:flex-start;gap:8px}.private-label{font-size:0;gap:0;margin-top:3px}.private-label svg{width:15px;height:15px}.section-title h2{font-size:15px}.delivery-section{margin-top:25px}.note-card{padding:21px 17px 0}.card-heading h3{font-size:17px}.card-heading p{font-size:9px}.badge{font-size:7px}.form-row label{font-size:10px}.protection-options{grid-template-columns:1fr 1.3fr 1.1fr;gap:5px}.protection-option{padding:12px 6px;gap:5px}.protection-option strong{font-size:9px}.protection-option small{font-size:6px}.protection-option em{display:none}.option-spark{font-size:13px;bottom:4px;right:4px}.radio-circle{width:10px;height:10px}.form-bottom{flex-direction:column;align-items:stretch;gap:13px;padding:14px 0 18px}.form-bottom>span{justify-content:center;order:2;font-size:8px;margin:0}.primary-button{padding:12px;font-size:11px}.primary-button svg{width:14px;height:14px}.primary-button>span:last-child{margin-left:8px}.encryption-summary{margin-bottom:17px}.encryption-summary p{font-size:8px}.empty-state{padding:20px 14px;gap:10px}.empty-state h3{font-size:10px}.empty-state p{font-size:8px;line-height:1.7}.empty-icon{flex-shrink:0;width:33px;height:35px}.empty-lock{display:none}.session-notice{font-size:7px;line-height:1.8}.saved-header .section-title h2{font-size:13px}.session-label{font-size:7px}.saved-note{padding:13px 10px;gap:8px}.saved-note time{display:none}.saved-note-actions{gap:3px}.saved-note h3{font-size:10px}.saved-note p{font-size:8px}footer{margin-top:24px;padding-top:17px;flex-direction:column;gap:13px}.footer-brand{font-size:8px}dialog{padding:22px}dialog h2{font-size:21px}}
+diff --git a/index.html b/index.html
+index 66c9173..4b7411a 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,63 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="theme-color" content="#f8f7f3">
++  <title>The Daily Grind · Your daily, delivered.</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="/assets/style.css">
++  <script type="module" src="/assets/app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++  <aside class="sidebar">
++    <a class="brand" href="#home" aria-label="The Daily Grind home"><span class="brand-mark" data-icon="coffee"></span><span>the daily<span class="brand-bottom">grind<span class="brand-dot">.</span></span></span></a>
++    <div class="nav-label">YOUR DAILY ROUTINE</div>
++    <nav aria-label="Main navigation">
++      <a class="nav-link active" href="#home"><span data-icon="home"></span>Overview<span class="active-dot"></span></a>
++      <button class="nav-link" data-dialog="menu"><span data-icon="cup"></span>Our menu<span class="nav-arrow">↗</span></button>
++      <button class="nav-link" id="notes-nav"><span data-icon="note"></span>Delivery notes<span class="nav-count" id="nav-note-count">0</span></button>
++      <button class="nav-link" data-dialog="rewards"><span data-icon="gift"></span>Grind rewards</button>
++      <button class="nav-link" data-dialog="locations"><span data-icon="pin"></span>Find a café</button>
++    </nav>
++    <div class="sidebar-bottom">
++      <div class="small-promo"><span class="little-spark">✳</span><h3>A little ritual.<br>A better day.</h3><p>Good coffee. Good company.<br>That’s the daily grind.</p><button data-dialog="story">Meet your coffee <span>↗</span></button></div>
++      <button class="help-link" data-dialog="help"><span data-icon="help"></span>Need a hand?<span>↗</span></button>
++      <div class="sidebar-copyright">© 2026 The Daily Grind</div>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  </aside>
++  <div class="page">
++    <header class="topbar"><div class="breadcrumb">Your daily space <span>/</span> <strong>Overview</strong></div><div class="top-actions"><span class="open-status"><i></i> Freshly brewing</span><span class="top-divider"></span><button class="avatar" data-dialog="account" aria-label="Your account">JD</button></div></header>
++    <main id="home">
++      <section class="greeting"><div><div class="eyebrow">GOOD COFFEE. GREAT MORNINGS.</div><h1>Your daily, delivered<span>.</span></h1><p>A familiar cup. A thoughtful delivery. A little more peace of mind.</p></div><span class="date-pill"><span data-icon="sun"></span> Make it a good day</span></section>
++      <section class="hero" aria-label="Coffee delivered your way"><div class="hero-content"><div class="hero-eyebrow"><span></span> MADE FOR YOUR EVERYDAY</div><h2>Your coffee ritual.<br>Your kind of delivery.</h2><p>From the first sip to your doorstep,<br>we take care of the little things.</p><a href="#delivery" class="hero-link">Make yourself at home <span>↗</span></a></div><div class="hero-stamp">ROASTED WITH CARE <span>✳</span> DELIVERED WITH LOVE</div><div class="photo-credit">THE DAILY GRIND · EST. 2018</div></section>
++      <section class="delivery-section" id="delivery">
++        <div class="section-heading"><div class="section-title"><span class="section-icon" data-icon="note"></span><h2>The little delivery details</h2></div><span class="private-label"><span data-icon="lock"></span> A little personal. Always private.</span></div>
++        <div class="workspace">
++          <section class="note-card" aria-labelledby="note-heading">
++            <div class="card-heading"><div><h3 id="note-heading">Delivery notes</h3><p>A smoother handoff starts with a little note.</p></div><span class="badge"><span data-icon="shield"></span> Encrypted</span></div>
++            <form id="note-form">
++              <div class="form-row"><label for="note">What should your delivery partner know?</label><span>Only the details that matter.</span></div>
++              <div class="textarea-wrap"><textarea id="note" maxlength="500" required placeholder="The doorbell is a little shy. Please knock twice and leave my coffee by the blue door."></textarea><div class="textarea-footer"><span><span data-icon="lock"></span> Your words stay yours.</span><span><span id="char-count">0</span> / 500</span></div></div>
++              <fieldset><legend>Choose your protection <button type="button" class="info-button" data-dialog="protection" aria-label="About encryption options">i</button></legend><div class="protection-options">
++                <label class="protection-option"><input type="radio" name="protection" value="classical"><span class="radio-circle"></span><span><strong>Standard</strong><small>X25519</small></span></label>
++                <label class="protection-option selected"><input type="radio" name="protection" value="hybrid" checked><span class="radio-circle"></span><span><strong>Hybrid <em>Recommended</em></strong><small>X25519 + ML-KEM-768</small></span><span class="option-spark">✧</span></label>
++                <label class="protection-option"><input type="radio" name="protection" value="quantum"><span class="radio-circle"></span><span><strong>Post-quantum</strong><small>ML-KEM-768</small></span></label>
++              </div></fieldset>
++              <div class="encryption-summary"><span data-icon="shield"></span><p id="mode-description">The best of both worlds. Classic security meets post-quantum protection.</p></div>
++              <div class="form-bottom"><span><span data-icon="lock"></span> Encrypted right here in your browser</span><button type="submit" class="primary-button" id="save-button"><span data-icon="lock"></span>Encrypt & save note<span data-icon="arrow"></span></button></div>
++              <p id="form-status" role="status" aria-live="polite"></p>
++            </form>
++          </section>
++          <aside class="privacy-card"><div class="privacy-art"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><span class="art-spark spark-one">✧</span><span class="art-spark spark-two">✦</span><div class="shield-emblem" data-icon="shield-check"></div><span class="art-dot"></span></div><div class="eyebrow">A NOTE, NOT AN OPEN BOOK.</div><h3>Personal details.<br>Personal protection.</h3><p>Your gate code, your quiet hours, your little preferences. Keep them between you and your delivery.</p><div class="privacy-points"><div><span data-icon="check-circle"></span>Encrypted before it leaves this page</div><div><span data-icon="check-circle"></span>Protected against tampering</div><div><span data-icon="check-circle"></span>A fresh key for every note</div></div><button class="text-link" data-dialog="privacy">A closer look at your privacy <span>↗</span></button></aside>
++        </div>
++      </section>
++      <section class="saved-section" id="saved"><div class="saved-header"><div class="section-title"><span data-icon="layers"></span><h2>Your saved notes <span id="saved-count">0</span></h2></div><span class="session-label"><i></i> This session only</span></div><div id="saved-notes"><div class="empty-state"><span class="empty-icon" data-icon="note"></span><div><h3>A little note goes a long way.</h3><p>Your encrypted delivery notes will feel right at home here.</p></div><span class="empty-line"></span><span class="empty-lock" data-icon="lock"></span></div></div><p class="session-notice"><span data-icon="info"></span> Local demo: notes and recipient keys stay in memory for this session. Nothing is sent to a delivery partner. Reloading clears your notes.</p></section>
++      <footer><span class="footer-brand">A better day starts with the daily grind<span>.</span></span><div><button data-dialog="privacy">Privacy, thoughtfully</button><span>·</span><button data-dialog="help">We’re here to help <span>↗</span></button></div></footer>
++    </main>
++  </div>
++  <dialog id="detail-dialog"><div class="dialog-top"><span class="dialog-icon" data-icon="coffee"></span><button id="close-dialog" aria-label="Close dialog">×</button></div><h2 id="dialog-title"></h2><div id="dialog-content"></div><button class="primary-button dialog-done" id="dialog-done">Got it <span data-icon="check"></span></button></dialog>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..9b8e867 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,17 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "esbuild src/app.js --bundle --format=esm --target=es2022 --minify --outfile=assets/app.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@noble/curves": "^2.4.0",
++    "@noble/post-quantum": "^0.7.1"
++  },
++  "devDependencies": {
++    "esbuild": "^0.28.2"
+   }
+ }
+diff --git a/src/app.js b/src/app.js
+new file mode 100644
+index 0000000..d479081
+--- /dev/null
++++ b/src/app.js
+@@ -0,0 +1,148 @@
++import { encryptNote, decryptNote, modeNames, clearRecipients } from './crypto.js';
++
++const paths = {
++  coffee: '<path d="M4 9h13v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path d="M17 10h2a3 3 0 0 1 0 6h-2M7 3v2m4-3v3m4-2v2M2 23h18"/>',
++  cup: '<path d="M5 8h12v8a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5ZM17 9h2a3 3 0 0 1 0 6h-2M8 3v2m5-2v2"/>',
++  home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-8H9v8H4a1 1 0 0 1-1-1Z"/>',
++  bag: '<path d="M5 7h14l2 14H3ZM8 8V6a4 4 0 0 1 8 0v2"/>',
++  gift: '<path d="M3 8h18v4H3zm2 4v9h14v-9M12 8v13"/><path d="M12 8S5 9 5 5c0-4 7-2 7 3Zm0 0s7 1 7-3c0-4-7-2-7 3Z"/>',
++  pin: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
++  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2l-1.5 1.5V14m0 3h.01"/>',
++  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
++  note: '<path d="M14 3H5v18h14V8ZM14 3v5h5M8 12h8m-8 4h6"/>',
++  lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/>',
++  shield: '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m9 12 2 2 4-4"/>',
++  'shield-check': '<path d="m12 2 8 3v7c0 6-8 10-8 10s-8-4-8-10V5Z"/><path d="m8 12 3 3 5-6"/>',
++  arrow: '<path d="M4 12h16m-5-5 5 5-5 5"/>',
++  check: '<path d="m5 12 4 4L19 6"/>',
++  'check-circle': '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
++  layers: '<path d="m12 3 10 5-10 5L2 8Zm-10 9 10 5 10-5M2 16l10 5 10-5"/>',
++  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
++  trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>'
++};
++const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.note}</svg>`;
++document.querySelectorAll('[data-icon]').forEach(element => { element.innerHTML = icon(element.dataset.icon); });
++const $ = selector => document.querySelector(selector);
++const form = $('#note-form');
++const note = $('#note');
++const status = $('#form-status');
++const saveButton = $('#save-button');
++const notes = new Map();
++const dialog = $('#detail-dialog');
++let openedNoteId = null;
++const descriptions = {
++  classical: 'A shared secret established with X25519, secured with authenticated encryption.',
++  hybrid: 'The best of both worlds. Classic security meets post-quantum protection.',
++  quantum: 'A shared secret established with ML-KEM-768, designed for a post-quantum future.'
++};
++const dialogs = {
++  protection: ['A little extra peace of mind', '<p>Every option encrypts your note using <strong>AES-256-GCM</strong>. Its authentication tag helps detect changes to the note or its metadata.</p><p><strong>Standard</strong> uses X25519 key agreement. <strong>Post-quantum</strong> uses ML-KEM-768 key encapsulation. <strong>Hybrid</strong> uses the X-Wing combination of X25519 and ML-KEM-768.</p><p>Each note gets fresh key-establishment randomness, an HKDF-SHA-256 derived encryption key, and a random 96-bit nonce.</p>'],
++  privacy: ['Private by design. Local for now.', '<p>Your note is encrypted in your browser. Only ciphertext and public metadata are kept in the saved-notes list. No plaintext is stored in local storage or sent to a server.</p><p>This is a <strong>local demonstration</strong>: recipient private keys are also held in this page’s memory so you can reveal your notes. Nothing is delivered to a courier. Reloading clears the notes and keys.</p><p>A live delivery service would need authenticated recipient public keys, private keys held by the recipient, secure transport, and a delivery backend.</p>'],
++  menu: ['Find your next daily ritual', '<div class="menu-item"><div><strong>Maple Oat Latte</strong><small>Creamy oat milk. A little Vermont maple.</small></div><span>Seasonal</span></div><div class="menu-item"><div><strong>Dark Roast Espresso</strong><small>Bold, smoky, and freshly pulled.</small></div><span>Classic</span></div><div class="menu-item"><div><strong>Slow-steeped Cold Brew</strong><small>Eighteen hours. Exceptionally smooth.</small></div><span>Chilled</span></div><p>Our café menu, made for your everyday. Online ordering isn’t connected in this demo.</p>'],
++  rewards: ['Good mornings add up.', '<p>Grind rewards is where your daily ritual gets a little something extra.</p><p>This homepage demo isn’t connected to a rewards account, so there are no points or rewards to display yet.</p>'],
++  locations: ['Your neighborhood, freshly brewed.', '<p>A familiar counter. A friendly face. Your favorite cup.</p><p>Café locations and opening hours haven’t been connected to this demo yet.</p>'],
++  story: ['A little ritual. A better day.', '<p>Since 2018, The Daily Grind has been about the little things: ethically sourced beans, thoughtful roasting, and a cup that feels like home.</p><p>From a smoky espresso to a smooth, slow-steeped cold brew, there’s a daily ritual for everyone.</p>'],
++  help: ['A hand with your delivery notes', '<p>Write a short delivery instruction, choose your protection, and select <strong>Encrypt & save note</strong>.</p><p>Select <strong>Reveal</strong> on a saved note to decrypt it in this browser, or use the trash icon to remove it. Your notes and keys last only until this page is reloaded.</p><p>These demo notes aren’t attached to an order or sent to a delivery partner.</p>'],
++  account: ['Your daily space', '<p>You’re exploring a local homepage demo. The avatar is a placeholder; no customer account is connected.</p><p>Your encrypted delivery notes are available for this page session only.</p>']
++};
++function showDialog(title, content, isHtml = true) {
++  $('#dialog-title').textContent = title;
++  if (isHtml) $('#dialog-content').innerHTML = content;
++  else $('#dialog-content').replaceChildren(content);
++  if (!dialog.open) dialog.showModal();
++}
++document.querySelectorAll('[data-dialog]').forEach(button => button.addEventListener('click', () => {
++  openedNoteId = null;
++  showDialog(...dialogs[button.dataset.dialog]);
++}));
++$('#close-dialog').addEventListener('click', () => dialog.close());
++$('#dialog-done').addEventListener('click', () => dialog.close());
++dialog.addEventListener('click', event => { if (event.target === dialog && (event.clientX < dialog.getBoundingClientRect().left || event.clientX > dialog.getBoundingClientRect().right || event.clientY < dialog.getBoundingClientRect().top || event.clientY > dialog.getBoundingClientRect().bottom)) dialog.close(); });
++dialog.addEventListener('close', () => { $('#dialog-content').replaceChildren(); openedNoteId = null; });
++$('#notes-nav').addEventListener('click', () => {
++  $('#delivery').scrollIntoView({ behavior: 'smooth' });
++  note.focus({ preventScroll: true });
++});
++note.addEventListener('input', () => { $('#char-count').textContent = note.value.length; status.textContent = ''; });
++form.querySelectorAll('[name="protection"]').forEach(input => input.addEventListener('change', () => {
++  form.querySelectorAll('.protection-option').forEach(label => label.classList.toggle('selected', label.querySelector('input').checked));
++  $('#mode-description').textContent = descriptions[input.value];
++  status.textContent = '';
++}));
++const emptyMarkup = $('#saved-notes').innerHTML;
++function renderNotes() {
++  $('#saved-count').textContent = notes.size;
++  $('#nav-note-count').textContent = notes.size;
++  const list = $('#saved-notes');
++  list.replaceChildren();
++  if (!notes.size) { list.innerHTML = emptyMarkup; return; }
++  for (const [id, envelope] of [...notes.entries()].reverse()) {
++    const row = document.createElement('article');
++    row.className = 'saved-note';
++    row.innerHTML = `<span class="empty-icon">${icon('lock')}</span><div class="saved-note-info"><h3>Delivery note</h3><p></p></div><time></time><div class="saved-note-actions"><button class="reveal-note">Reveal</button><button class="delete-note" aria-label="Delete delivery note">${icon('trash')}</button></div>`;
++    row.querySelector('p').textContent = modeNames[envelope.header.mode];
++    row.querySelector('time').dateTime = envelope.header.createdAt;
++    row.querySelector('time').textContent = new Date(envelope.header.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
++    row.querySelector('.reveal-note').addEventListener('click', async event => {
++      const button = event.currentTarget;
++      button.disabled = true;
++      try {
++        const plaintext = await decryptNote(envelope);
++        if (!notes.has(id)) return;
++        const content = document.createElement('div');
++        const message = document.createElement('p');
++        message.className = 'revealed-note';
++        message.textContent = plaintext;
++        const details = document.createElement('p');
++        details.textContent = `${modeNames[envelope.header.mode]} · AES-256-GCM authentication verified. Revealed locally for this demo.`;
++        const payloadButton = document.createElement('button');
++        payloadButton.className = 'text-link';
++        payloadButton.textContent = 'View encrypted payload ↗';
++        payloadButton.addEventListener('click', () => {
++          const pre = document.createElement('pre');
++          pre.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;font-size:9px;max-height:220px;overflow:auto;background:#f1f3eb;padding:12px;border-radius:6px;';
++          pre.textContent = JSON.stringify(envelope, null, 2);
++          payloadButton.replaceWith(pre);
++        });
++        content.append(message, details, payloadButton);
++        openedNoteId = id;
++        showDialog('Your delivery note', content, false);
++      } catch (error) {
++        showDialog('We couldn’t open this note', error.message, false);
++      } finally { button.disabled = false; }
++    });
++    row.querySelector('.delete-note').addEventListener('click', () => {
++      notes.delete(id);
++      if (openedNoteId === id) dialog.close();
++      renderNotes();
++      status.className = '';
++      status.textContent = 'Note deleted from this session.';
++    });
++    list.append(row);
++  }
++}
++form.addEventListener('submit', async event => {
++  event.preventDefault();
++  if (saveButton.disabled) return;
++  const plaintext = note.value.trim();
++  if (!plaintext) { note.setCustomValidity('Add a delivery detail before encrypting your note.'); note.reportValidity(); note.setCustomValidity(''); return; }
++  const mode = form.elements.protection.value;
++  const controls = [...form.querySelectorAll('input, textarea, button[type="submit"]')];
++  controls.forEach(control => { control.disabled = true; });
++  status.className = '';
++  status.textContent = 'Establishing a shared secret and encrypting your note…';
++  try {
++    const envelope = await encryptNote(plaintext, mode);
++    // Perform an authenticated round trip before telling the customer it is saved.
++    if (await decryptNote(envelope) !== plaintext) throw new Error('Encryption verification failed. Please try again.');
++    notes.set(envelope.header.id, envelope);
++    renderNotes();
++    note.value = '';
++    $('#char-count').textContent = '0';
++    status.textContent = 'Safely encrypted and saved for this session.';
++  } catch (error) {
++    status.className = 'error';
++    status.textContent = error.message || 'Your note could not be encrypted. Please try again.';
++  } finally { controls.forEach(control => { control.disabled = false; }); }
++});
++window.addEventListener('pagehide', () => { notes.clear(); clearRecipients(); note.value = ''; if (dialog.open) dialog.close(); renderNotes(); $('#char-count').textContent = '0'; status.textContent = ''; });
+diff --git a/src/crypto.js b/src/crypto.js
+new file mode 100644
+index 0000000..d2877d7
+--- /dev/null
++++ b/src/crypto.js
+@@ -0,0 +1,84 @@
++import { x25519 } from '@noble/curves/ed25519.js';
++import { ml_kem768 } from '@noble/post-quantum/ml-kem.js';
++import { ml_kem768_x25519 } from '@noble/post-quantum/hybrid.js';
++
++// Demo recipients exist only in this page's memory. A real service must supply
++// authenticated recipient PUBLIC keys and keep the private keys off the client.
++const recipients = new Map();
++const encoder = new TextEncoder();
++const kems = { hybrid: ml_kem768_x25519, quantum: ml_kem768 };
++export const modeNames = { classical: 'Standard · X25519', hybrid: 'Hybrid · X25519 + ML-KEM-768', quantum: 'Post-quantum · ML-KEM-768' };
++const base64 = bytes => btoa(String.fromCharCode(...bytes));
++const unbase64 = value => Uint8Array.from(atob(value), char => char.charCodeAt(0));
++
++function requireCrypto() {
++  if (!globalThis.isSecureContext || !globalThis.crypto?.subtle) {
++    throw new Error('Encryption needs a secure connection. Open this page over HTTPS or localhost.');
++  }
++}
++async function getRecipient(mode) {
++  if (!Object.hasOwn(modeNames, mode)) throw new Error('Choose a supported protection option.');
++  if (!recipients.has(mode)) {
++    const keys = mode === 'classical' ? (() => {
++      const secretKey = x25519.utils.randomSecretKey();
++      return { secretKey, publicKey: x25519.getPublicKey(secretKey) };
++    })() : kems[mode].keygen();
++    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', keys.publicKey));
++    recipients.set(mode, { ...keys, id: base64(digest) });
++  }
++  return recipients.get(mode);
++}
++async function deriveKey(secret, salt, mode, usage) {
++  try {
++    const material = await crypto.subtle.importKey('raw', secret, 'HKDF', false, ['deriveKey']);
++    return await crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info: encoder.encode(`daily-grind/delivery-note/v1/${mode}/AES-256-GCM`) }, material, { name: 'AES-GCM', length: 256 }, false, [usage]);
++  } finally {
++    secret.fill(0);
++  }
++}
++export async function encryptNote(plaintext, mode) {
++  requireCrypto();
++  if (!plaintext.trim() || plaintext.length > 500) throw new Error('Add a note between 1 and 500 characters.');
++  const recipient = await getRecipient(mode);
++  let sharedSecret, encapsulation;
++  if (mode === 'classical') {
++    const ephemeral = x25519.utils.randomSecretKey();
++    try {
++      encapsulation = x25519.getPublicKey(ephemeral);
++      sharedSecret = x25519.getSharedSecret(ephemeral, recipient.publicKey);
++    } finally { ephemeral.fill(0); }
++  } else {
++    const result = kems[mode].encapsulate(recipient.publicKey);
++    sharedSecret = result.sharedSecret;
++    encapsulation = result.cipherText;
++  }
++  const salt = crypto.getRandomValues(new Uint8Array(32));
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const header = { version: 1, id: crypto.randomUUID(), mode, algorithm: 'AES-256-GCM', recipientId: recipient.id, createdAt: new Date().toISOString(), encapsulation: base64(encapsulation), salt: base64(salt), iv: base64(iv) };
++  const key = await deriveKey(sharedSecret, salt, mode, 'encrypt');
++  const bytes = encoder.encode(plaintext);
++  try {
++    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: encoder.encode(JSON.stringify(header)), tagLength: 128 }, key, bytes);
++    return { header, ciphertext: base64(new Uint8Array(ciphertext)) };
++  } finally { bytes.fill(0); }
++}
++export async function decryptNote(envelope) {
++  requireCrypto();
++  const { header, ciphertext } = envelope;
++  const recipient = recipients.get(header.mode);
++  if (header.version !== 1 || header.algorithm !== 'AES-256-GCM' || !recipient || header.recipientId !== recipient.id) throw new Error('The recipient key for this note is no longer available.');
++  try {
++    const encapsulation = unbase64(header.encapsulation);
++    const sharedSecret = header.mode === 'classical' ? x25519.getSharedSecret(recipient.secretKey, encapsulation) : kems[header.mode].decapsulate(encapsulation, recipient.secretKey);
++    const key = await deriveKey(sharedSecret, unbase64(header.salt), header.mode, 'decrypt');
++    const bytes = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unbase64(header.iv), additionalData: encoder.encode(JSON.stringify(header)), tagLength: 128 }, key, unbase64(ciphertext)));
++    try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
++    finally { bytes.fill(0); }
++  } catch {
++    throw new Error('This note could not be authenticated. Its encrypted contents or details may have changed.');
++  }
++}
++export function clearRecipients() {
++  for (const recipient of recipients.values()) recipient.secretKey.fill(0);
++  recipients.clear();
++}

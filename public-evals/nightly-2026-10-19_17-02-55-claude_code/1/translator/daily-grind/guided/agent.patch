@@ -1,0 +1,184 @@
+diff --git a/index.html b/index.html
+index 66c9173..2b31281 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,44 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Translation */
++    .translate-control {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .translate-control select,
++    .translate-control button {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 4px 8px;
++      border-radius: 4px;
++      border: 1px solid var(--accent);
++      background: var(--primary);
++      color: white;
++    }
++
++    .translate-control button {
++      cursor: pointer;
++    }
++
++    .translate-control :disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .translate-status {
++      background: var(--secondary);
++      text-align: center;
++      font-size: 0.85rem;
++      padding: 6px 20px;
++    }
++
++    .translate-status:empty {
++      display: none;
++    }
+   </style>
+ </head>
+ 
+@@ -165,8 +203,29 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form class="translate-control" id="translate-form">
++          <label for="translate-lang" class="visually-hidden" style="position:absolute;left:-9999px">Language</label>
++          <select id="translate-lang" data-no-translate>
++            <option value="en">English (original)</option>
++            <option value="es">Español</option>
++            <option value="fr">Français</option>
++            <option value="de">Deutsch</option>
++            <option value="it">Italiano</option>
++            <option value="pt">Português</option>
++            <option value="nl">Nederlands</option>
++            <option value="ja">日本語</option>
++            <option value="ko">한국어</option>
++            <option value="zh">中文</option>
++            <option value="ar">العربية</option>
++            <option value="hi">हिन्दी</option>
++          </select>
++          <button type="submit" id="translate-btn">Translate</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
++  <p class="translate-status" id="translate-status" role="status"></p>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -207,6 +266,104 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const SOURCE = 'en';
++      const form = document.getElementById('translate-form');
++      const select = document.getElementById('translate-lang');
++      const button = document.getElementById('translate-btn');
++      const status = document.getElementById('translate-status');
++      const originals = new Map(); // text node -> original text
++      const RTL = new Set(['ar', 'he']);
++
++      if (!('Translator' in self)) {
++        select.disabled = button.disabled = true;
++        status.textContent = 'Client-side translation is currently unsupported in this browser.';
++        return;
++      }
++
++      function textNodes() {
++        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
++          acceptNode(node) {
++            if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
++            const el = node.parentElement;
++            if (!el || el.closest('script, style, [data-no-translate], .translate-status')) {
++              return NodeFilter.FILTER_REJECT;
++            }
++            return NodeFilter.FILTER_ACCEPT;
++          },
++        });
++        const nodes = [];
++        while (walker.nextNode()) nodes.push(walker.currentNode);
++        return nodes;
++      }
++
++      function setLanguage(lang) {
++        document.documentElement.lang = lang;
++        document.documentElement.dir = RTL.has(lang) ? 'rtl' : 'ltr';
++      }
++
++      function restore() {
++        for (const [node, text] of originals) node.nodeValue = text;
++        originals.clear();
++        document.title = document.documentElement.dataset.title || document.title;
++        setLanguage(SOURCE);
++      }
++
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        const target = select.value;
++        restore();
++        if (target === SOURCE) {
++          status.textContent = '';
++          return;
++        }
++
++        const options = { sourceLanguage: SOURCE, targetLanguage: target };
++        select.disabled = button.disabled = true;
++        try {
++          if ((await Translator.availability(options)) === 'unavailable') {
++            status.textContent = 'This language is not available for on-device translation.';
++            return;
++          }
++          status.textContent = 'Preparing translator…';
++          const translator = await Translator.create({
++            ...options,
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                status.textContent = `Downloading language pack: ${Math.round(e.loaded * 100)}%`;
++              });
++            },
++          });
++
++          status.textContent = 'Translating…';
++          const nodes = textNodes();
++          const cache = new Map();
++          for (const node of nodes) {
++            const original = node.nodeValue;
++            const trimmed = original.trim();
++            if (!cache.has(trimmed)) cache.set(trimmed, await translator.translate(trimmed));
++            originals.set(node, original);
++            node.nodeValue = original.replace(trimmed, () => cache.get(trimmed));
++          }
++          if (!document.documentElement.dataset.title) {
++            document.documentElement.dataset.title = document.title;
++          }
++          document.title = await translator.translate(document.documentElement.dataset.title);
++          translator.destroy();
++          setLanguage(target);
++          status.textContent = '';
++        } catch (err) {
++          console.error(err);
++          restore();
++          status.textContent = 'Sorry, translation failed. Showing the original text.';
++        } finally {
++          select.disabled = button.disabled = false;
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

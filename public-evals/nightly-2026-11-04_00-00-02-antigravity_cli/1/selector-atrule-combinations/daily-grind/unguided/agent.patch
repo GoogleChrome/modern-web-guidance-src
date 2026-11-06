@@ -1,0 +1,249 @@
+diff --git a/index.html b/index.html
+index 66c9173..c5ece4d 100644
+--- a/index.html
++++ b/index.html
+@@ -6,12 +6,114 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    :root,
++    :is(:root, body):is(
++      [data-theme="light"],
++      [data-color-scheme="light"],
++      [data-mode="light"],
++      [theme="light"],
++      .light,
++      .theme-light,
++      .light-theme,
++      .light-mode
++    ),
++    :root:has(> body:is(
++      [data-theme="light"],
++      [data-color-scheme="light"],
++      [data-mode="light"],
++      [theme="light"],
++      .light,
++      .theme-light,
++      .light-theme,
++      .light-mode
++    )) {
++      color-scheme: light;
++      --theme-light: initial;
++      --theme-dark: ;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root:not(
++        [data-theme="light"],
++        [data-color-scheme="light"],
++        [data-mode="light"],
++        [theme="light"],
++        .light,
++        .theme-light,
++        .light-theme,
++        .light-mode
++      ):not(:has(> body:is(
++        [data-theme="light"],
++        [data-color-scheme="light"],
++        [data-mode="light"],
++        [theme="light"],
++        .light,
++        .theme-light,
++        .light-theme,
++        .light-mode
++      ))) {
++        color-scheme: dark;
++        --theme-light: ;
++        --theme-dark: initial;
++      }
++    }
++
++    :is(:root, body):is(
++      [data-theme="dark"],
++      [data-color-scheme="dark"],
++      [data-mode="dark"],
++      [theme="dark"],
++      .dark,
++      .theme-dark,
++      .dark-theme,
++      .dark-mode
++    ),
++    :root:has(> body:is(
++      [data-theme="dark"],
++      [data-color-scheme="dark"],
++      [data-mode="dark"],
++      [theme="dark"],
++      .dark,
++      .theme-dark,
++      .dark-theme,
++      .dark-mode
++    )) {
++      color-scheme: dark;
++      --theme-light: ;
++      --theme-dark: initial;
++    }
++
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --primary: var(--theme-light, #4e342e) var(--theme-dark, #d7995b);
++      --secondary: var(--theme-light, #d7ccc8) var(--theme-dark, #1c1311);
++      --accent: var(--theme-light, #ffab40) var(--theme-dark, #ffcc80);
++      --text: var(--theme-light, #3e2723) var(--theme-dark, #efe5e0);
++      --light: var(--theme-light, #fafafa) var(--theme-dark, #140e0c);
++
++      --nav-bg: var(--theme-light, #4e342e) var(--theme-dark, #1c1311);
++      --nav-text: var(--theme-light, #ffffff) var(--theme-dark, #f5ebe6);
++      --nav-link: var(--theme-light, #ffffff) var(--theme-dark, #eadcd5);
++      --nav-border: var(--theme-light, #5d4037) var(--theme-dark, #382824);
++      --nav-shadow: var(--theme-light, 0 2px 6px rgba(0, 0, 0, 0.12)) var(--theme-dark, 0 2px 10px rgba(0, 0, 0, 0.5));
++
++      --hero-bg: var(--theme-light, #3e2723) var(--theme-dark, #120c0a);
++      --hero-overlay-start: var(--theme-light, rgba(0, 0, 0, 0.45)) var(--theme-dark, rgba(12, 8, 6, 0.72));
++      --hero-overlay-end: var(--theme-light, rgba(62, 39, 35, 0.55)) var(--theme-dark, rgba(18, 12, 10, 0.82));
++      --hero-text: var(--theme-light, #ffffff) var(--theme-dark, #f5ebe6);
++      --hero-heading: var(--theme-light, #ffffff) var(--theme-dark, #fff3e0);
++      --hero-subtext: var(--theme-light, #f5f5f5) var(--theme-dark, #d7ccc8);
++      --hero-border: var(--theme-light, #d7ccc8) var(--theme-dark, #2e211d);
++
++      --section-heading: var(--theme-light, #3e2723) var(--theme-dark, #f5ebe6);
++      --card-bg: var(--theme-light, #ffffff) var(--theme-dark, #231916);
++      --card-text: var(--theme-light, #3e2723) var(--theme-dark, #dfd3cd);
++      --card-heading: var(--theme-light, #4e342e) var(--theme-dark, #ffcc80);
++      --card-border: var(--theme-light, #e8e0dc) var(--theme-dark, #3a2a25);
++      --card-shadow: var(--theme-light, 0 2px 5px rgba(0, 0, 0, 0.1)) var(--theme-dark, 0 4px 12px rgba(0, 0, 0, 0.45));
++
++      --btn-bg: var(--theme-light, #4e342e) var(--theme-dark, #d7995b);
++      --btn-text: var(--theme-light, #ffffff) var(--theme-dark, #1c1311);
++      --btn-hover-bg: var(--theme-light, #3e2723) var(--theme-dark, #ffab40);
+     }
+ 
+     * {
+@@ -29,8 +131,10 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
++      box-shadow: var(--nav-shadow);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -44,6 +148,7 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: var(--nav-text);
+     }
+ 
+     nav ul {
+@@ -56,7 +161,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-link);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -75,15 +180,17 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background-color: var(--hero-bg);
++      background-image: linear-gradient(var(--hero-overlay-start), var(--hero-overlay-end)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
++      border-bottom: 1px solid var(--hero-border);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -91,6 +198,11 @@
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      color: var(--hero-heading);
++    }
++
++    .hero p {
++      color: var(--hero-subtext);
+     }
+ 
+     /* Content Sections */
+@@ -100,6 +212,11 @@
+       padding: 0 20px;
+     }
+ 
++    section h2 {
++      text-align: center;
++      color: var(--section-heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,35 +225,42 @@
+     }
+ 
+     .card {
+-      background: white;
++      background-color: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++    }
++
++    .card p {
++      color: var(--card-text);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background-color: var(--btn-hover-bg);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background-color: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;

@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,67 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: calc(100vh + 100px);
+     }
+ 
++    /* Search Bar */
++    .search-bar {
++      background: var(--text);
++      padding: 0.75rem 5%;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      scroll-snap-align: start;
++    }
++
++    .search-form {
++      display: flex;
++      width: 100%;
++      max-width: 600px;
++      gap: 8px;
++    }
++
++    .search-bar input[type="search"] {
++      flex: 1;
++      padding: 8px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: var(--light);
++      outline: none;
++    }
++
++    .search-bar input[type="search"]:focus {
++      border-color: var(--accent);
++    }
++
++    .search-bar button {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 8px 16px;
++      border-radius: 4px;
++      font-weight: bold;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .search-bar button:hover {
++      background: #ff9100;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -37,8 +89,10 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -156,8 +210,15 @@
+ </head>
+ 
+ <body>
+ 
++  <div id="search-bar" class="search-bar" role="search">
++    <form class="search-form" action="/search" method="get">
++      <input type="search" id="search-input" class="search-input" name="q" placeholder="Search coffee, menu, locations..." aria-label="Search">
++      <button type="submit" class="search-btn">Search</button>
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>

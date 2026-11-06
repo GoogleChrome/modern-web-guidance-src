@@ -1,0 +1,280 @@
+diff --git a/index.html b/index.html
+index 66c9173..168b1df 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,171 @@
+       background: #3e2723;
+     }
+ 
++    /* Loyalty Rewards Section */
++    .rewards-section {
++      margin-top: 50px;
++    }
++
++    .rewards-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    .rewards-card {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--accent);
++      padding: 32px;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++    }
++
++    .progress-ring-container {
++      position: relative;
++      width: 200px;
++      height: 200px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++    }
++
++    .progress-ring {
++      width: 200px;
++      height: 200px;
++      transform: rotate(-90deg);
++    }
++
++    .progress-ring__track {
++      fill: none;
++      stroke: var(--secondary);
++      stroke-width: 14;
++    }
++
++    .progress-ring__progress {
++      fill: none;
++      stroke: var(--accent);
++      stroke-width: 14;
++      stroke-linecap: round;
++      stroke-dasharray: 502.65;
++      stroke-dashoffset: 150.8;
++      transition: stroke-dashoffset 0.5s ease;
++    }
++
++    .progress-ring-center {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      padding: 24px;
++      color: var(--text);
++    }
++
++    .progress-ring-count {
++      font-size: 2rem;
++      font-weight: bold;
++      line-height: 1.1;
++      color: var(--primary);
++    }
++
++    .progress-ring-unit {
++      font-size: 0.85rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--primary);
++      margin-top: 4px;
++    }
++
++    .progress-ring-status {
++      font-size: 0.78rem;
++      color: var(--text);
++      background: var(--secondary);
++      padding: 2px 10px;
++      border-radius: 999px;
++      margin-top: 6px;
++      font-weight: 600;
++    }
++
++    .rewards-details {
++      flex: 1;
++      min-width: 260px;
++      max-width: 520px;
++    }
++
++    .rewards-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 12px;
++      border-radius: 4px;
++      margin-bottom: 10px;
++    }
++
++    .rewards-details h3 {
++      font-size: 1.5rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .rewards-details p {
++      margin-bottom: 16px;
++      color: var(--text);
++    }
++
++    .rewards-milestones {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
++      gap: 12px;
++      margin: 16px 0;
++    }
++
++    .milestone-item {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px 12px;
++      font-size: 0.85rem;
++    }
++
++    .milestone-item strong {
++      display: block;
++      color: var(--primary);
++    }
++
++    .rewards-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +360,49 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards-section" id="loyalty-rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Daily Grind Loyalty Rewards</h2>
++      <div class="rewards-card">
++        <div class="progress-ring-container" role="progressbar" aria-label="Progress toward next free drink" aria-valuemin="0" aria-valuemax="10" aria-valuenow="7">
++          <svg class="progress-ring" viewBox="0 0 200 200" aria-hidden="true">
++            <circle class="progress-ring__track" cx="100" cy="100" r="80"></circle>
++            <circle class="progress-ring__progress" id="rewards-progress-circle" cx="100" cy="100" r="80"></circle>
++          </svg>
++          <div class="progress-ring-center">
++            <span class="progress-ring-count" id="rewards-count">7 / 10</span>
++            <span class="progress-ring-unit">Cups Earned</span>
++            <span class="progress-ring-status" id="rewards-remaining">3 to Free Drink</span>
++          </div>
++        </div>
++
++        <div class="rewards-details">
++          <span class="rewards-badge">Gold Bean Tier</span>
++          <h3 id="rewards-headline">Almost at Your Next Free Handcrafted Drink!</h3>
++          <p id="rewards-description">
++            Earn 1 bean stamp with every handcrafted beverage purchase. Collect 10 stamps and your next coffee, espresso, or cold brew of any size is on the house.
++          </p>
++          <div class="rewards-milestones">
++            <div class="milestone-item">
++              <strong>70% Complete</strong>
++              <span id="rewards-percent-text">7 of 10 drinks purchased</span>
++            </div>
++            <div class="milestone-item">
++              <strong>Next Reward</strong>
++              <span>1 Free Any-Size Drink</span>
++            </div>
++            <div class="milestone-item">
++              <strong>Member Perk</strong>
++              <span>Free Oat Milk Upgrades</span>
++            </div>
++          </div>
++          <div class="rewards-actions">
++            <a href="/rewards" class="btn">Redeem &amp; View Perks</a>
++            <button type="button" class="btn btn-accent" id="add-stamp-btn">Log Drink Purchase (+1)</button>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +415,53 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const totalCups = 10;
++      let currentCups = 7;
++      const circumference = 2 * Math.PI * 80;
++
++      const circle = document.getElementById('rewards-progress-circle');
++      const countEl = document.getElementById('rewards-count');
++      const remainingEl = document.getElementById('rewards-remaining');
++      const percentTextEl = document.getElementById('rewards-percent-text');
++      const headlineEl = document.getElementById('rewards-headline');
++      const progressBar = document.querySelector('.progress-ring-container');
++      const addStampBtn = document.getElementById('add-stamp-btn');
++
++      function updateRing() {
++        const ratio = currentCups / totalCups;
++        const offset = circumference * (1 - ratio);
++        circle.style.strokeDasharray = circumference.toFixed(2);
++        circle.style.strokeDashoffset = offset.toFixed(2);
++        countEl.textContent = currentCups + ' / ' + totalCups;
++        progressBar.setAttribute('aria-valuenow', String(currentCups));
++
++        const remaining = totalCups - currentCups;
++        const pct = Math.round(ratio * 100);
++        if (remaining === 0) {
++          remainingEl.textContent = 'Free Drink Ready!';
++          headlineEl.textContent = 'Congratulations! Your Free Drink Is Ready to Redeem!';
++          addStampBtn.textContent = 'Start New Card';
++        } else {
++          remainingEl.textContent = remaining + ' to Free Drink';
++          headlineEl.textContent = 'Almost at Your Next Free Handcrafted Drink!';
++          addStampBtn.textContent = 'Log Drink Purchase (+1)';
++        }
++        if (percentTextEl && percentTextEl.previousElementSibling) {
++          percentTextEl.previousElementSibling.textContent = pct + '% Complete';
++          percentTextEl.textContent = currentCups + ' of ' + totalCups + ' drinks purchased';
++        }
++      }
++
++      if (addStampBtn) {
++        addStampBtn.addEventListener('click', function () {
++          currentCups = currentCups >= totalCups ? 1 : currentCups + 1;
++          updateRing();
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

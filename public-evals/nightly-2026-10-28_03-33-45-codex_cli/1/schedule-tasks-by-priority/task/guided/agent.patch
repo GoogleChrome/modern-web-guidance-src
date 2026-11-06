@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <link rel="stylesheet" href="operations.css">
++  <script src="operations.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+@@ -194,8 +196,61 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="operations">
++      <div class="operations-heading">
++        <div>
++          <p class="operations-eyebrow">Behind the counter</p>
++          <h2>Operations queue</h2>
++        </div>
++        <span class="queue-badge" id="queue-state">Ready</span>
++      </div>
++      <p class="operations-intro">A smooth service starts with the right priorities. Add a task and watch the queue get to work.</p>
++
++      <div class="operation-controls">
++        <article class="operation-card">
++          <span class="priority-tag urgent">01 · Urgent</span>
++          <h3>Checkout</h3>
++          <p>Keep orders moving. Checkout tasks go to the front of the queue.</p>
++          <button type="button" data-task="checkout">Run checkout <span aria-hidden="true">→</span></button>
++        </article>
++        <article class="operation-card">
++          <span class="priority-tag standard">02 · Standard</span>
++          <h3>Menu updates</h3>
++          <p>Refresh the daily selection once urgent orders are taken care of.</p>
++          <button type="button" data-task="menu">Update menu <span aria-hidden="true">→</span></button>
++        </article>
++        <article class="operation-card">
++          <span class="priority-tag background">03 · Background</span>
++          <h3>Telemetry logging</h3>
++          <p>Process service metrics when higher-priority work is clear.</p>
++          <button type="button" data-task="telemetry">Log telemetry <span aria-hidden="true">→</span></button>
++        </article>
++      </div>
++
++      <div class="batch-bar">
++        <div><h3>Put priorities to the test</h3><p>Queue all three together. Checkout first, telemetry last.</p></div>
++        <button type="button" id="run-batch">Run mixed batch <span aria-hidden="true">↗</span></button>
++      </div>
++
++      <div class="queue-panel">
++        <div class="queue-panel-heading">
++          <h3>Live queue <span id="queue-count">0 pending</span></h3>
++          <span id="completed-count">0 completed</span>
++        </div>
++        <div class="queue-empty" id="queue-empty"><span aria-hidden="true">☕</span><p>All quiet behind the counter.</p><small>Run a task or a mixed batch to get started.</small></div>
++        <ol id="task-queue" class="task-list" aria-label="Tasks in priority order" role="list"></ol>
++        <div class="queue-history">
++          <h4>Completion history</h4>
++          <ol id="task-history" aria-label="Tasks in completion order"></ol>
++          <p id="history-empty">Completed tasks will appear here in execution order.</p>
++        </div>
++      </div>
++      <p class="queue-note" id="queue-note">Work runs in small steps so you can keep interacting. Try adding a checkout while telemetry is running.</p>
++      <p class="queue-announcement" id="queue-announcement" role="status"></p>
++      <noscript><p>Enable JavaScript to use the operations queue simulator.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

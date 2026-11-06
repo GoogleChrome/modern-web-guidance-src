@@ -1,0 +1,311 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,76 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal Promotion Timer Styles */
++    .promo-timer-container {
++      margin: 15px 0;
++      padding: 14px 16px;
++      background: #fff8f0;
++      border: 1px solid var(--accent);
++      border-radius: 8px;
++      text-align: left;
++      font-size: 0.9rem;
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
++    }
++
++    .timer-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: 700;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 2px 8px;
++      border-radius: 4px;
++      margin-bottom: 8px;
++    }
++
++    .countdown-section,
++    .elapsed-section {
++      margin-bottom: 8px;
++    }
++
++    .elapsed-section {
++      margin-bottom: 0;
++      padding-top: 8px;
++      border-top: 1px dashed var(--secondary);
++    }
++
++    .countdown-label,
++    .elapsed-label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.8rem;
++      color: var(--primary);
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      margin-bottom: 3px;
++    }
++
++    .countdown-display,
++    .elapsed-display {
++      display: block;
++      color: var(--text);
++      line-height: 1.45;
++      font-size: 0.9rem;
++    }
++
++    .days-value,
++    .hours-value {
++      font-weight: 700;
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .countdown-subtext {
++      font-size: 0.75rem;
++      color: #795548;
++      margin-top: 4px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -177,11 +245,27 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="maple-oat-latte-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer-container" id="maple-latte-timer" data-start-date="2026-01-01T00:00:00" data-end-date="2026-03-01T00:00:00" role="timer" aria-live="polite">
++            <span class="timer-badge">Seasonal Offer</span>
++            <div class="countdown-section">
++              <span class="countdown-label">Time Remaining:</span>
++              <time class="countdown-display" id="maple-latte-countdown" datetime="2026-03-01T00:00:00">
++                <span class="days-value" id="days-left">0</span> days and <span class="hours-value" id="hours-left">0</span> hours left until the offer ends, March 1, 2026 at midnight
++              </time>
++              <div class="countdown-subtext">Local time zone: <span id="user-timezone">UTC</span></div>
++            </div>
++            <div class="elapsed-section">
++              <span class="elapsed-label">Promotion Progress:</span>
++              <time class="elapsed-display" id="maple-latte-elapsed" datetime="2026-01-01T00:00:00">
++                Elapsed time since the start of the promotion: <span class="days-value" id="days-elapsed">0</span> days and <span class="hours-value" id="hours-elapsed">0</span> hours
++              </time>
++            </div>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +290,201 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      /**
++       * Promotional countdown and elapsed timer for Maple Oat Latte.
++       * Supports user's local time zone, modern Intl formatting, and Temporal API if supported.
++       */
++
++      function getUserTimeZone() {
++        try {
++          return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
++        } catch (e) {
++          return 'UTC';
++        }
++      }
++
++      function parseLocalDate(input) {
++        if (input instanceof Date) return input;
++        if (typeof input === 'number') return new Date(input);
++        if (typeof input === 'string') {
++          // Parse YYYY-MM-DDTHH:mm:ss in local time zone
++          const match = input.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?/);
++          if (match) {
++            const year = parseInt(match[1], 10);
++            const month = parseInt(match[2], 10) - 1;
++            const day = parseInt(match[3], 10);
++            const hour = parseInt(match[4] || '0', 10);
++            const minute = parseInt(match[5] || '0', 10);
++            const second = parseInt(match[6] || '0', 10);
++            return new Date(year, month, day, hour, minute, second);
++          }
++          return new Date(input);
++        }
++        return new Date();
++      }
++
++      function calculateTimeUnits(ms) {
++        if (ms <= 0) {
++          return { days: 0, hours: 0, minutes: 0, seconds: 0 };
++        }
++        const totalSeconds = Math.floor(ms / 1000);
++        const days = Math.floor(totalSeconds / (3600 * 24));
++        const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
++        const minutes = Math.floor((totalSeconds % 3600) / 60);
++        const seconds = totalSeconds % 60;
++        return { days, hours, minutes, seconds };
++      }
++
++      function formatDurationWithIntl(days, hours) {
++        if (typeof Intl !== 'undefined' && Intl.DurationFormat) {
++          try {
++            return new Intl.DurationFormat(navigator.language || 'en-US', { style: 'long' }).format({
++              days: days,
++              hours: hours
++            });
++          } catch (e) {}
++        }
++        const dayLabel = days === 1 ? 'day' : 'days';
++        const hourLabel = hours === 1 ? 'hour' : 'hours';
++        return `${days} ${dayLabel} and ${hours} ${hourLabel}`;
++      }
++
++      function updateTimer() {
++        const timerContainer = document.getElementById('maple-latte-timer');
++        if (!timerContainer) return;
++
++        const timeZone = getUserTimeZone();
++        const tzDisplay = document.getElementById('user-timezone');
++        if (tzDisplay) {
++          tzDisplay.textContent = timeZone;
++        }
++
++        // End date: March 1, 2026 at midnight in user's local time zone
++        const rawEndDate = timerContainer.dataset.endDate || (window.PROMOTION_END_DATE || '2026-03-01T00:00:00');
++        const endDate = parseLocalDate(rawEndDate);
++
++        // Start date: January 1, 2026 at midnight in user's local time zone (or configured start)
++        const rawStartDate = timerContainer.dataset.startDate || (window.PROMOTION_START_DATE || '2026-01-01T00:00:00');
++        const startDate = parseLocalDate(rawStartDate);
++
++        const now = new Date();
++
++        // 1. Calculate remaining time until offer ends
++        let remainingDays = 0;
++        let remainingHours = 0;
++        const remainingMs = endDate.getTime() - now.getTime();
++
++        if (typeof Temporal !== 'undefined' && Temporal.Now && Temporal.ZonedDateTime) {
++          try {
++            const nowZdt = Temporal.Now.zonedDateTimeISO(timeZone);
++            const endZdt = Temporal.ZonedDateTime.from({
++              year: endDate.getFullYear(),
++              month: endDate.getMonth() + 1,
++              day: endDate.getDate(),
++              hour: endDate.getHours(),
++              minute: endDate.getMinutes(),
++              second: endDate.getSeconds(),
++              timeZone: timeZone
++            });
++            if (Temporal.ZonedDateTime.compare(endZdt, nowZdt) > 0) {
++              const dur = nowZdt.until(endZdt, { largestUnit: 'days', smallestUnit: 'hours' });
++              remainingDays = dur.days;
++              remainingHours = dur.hours;
++            }
++          } catch (e) {
++            const units = calculateTimeUnits(remainingMs);
++            remainingDays = units.days;
++            remainingHours = units.hours;
++          }
++        } else {
++          const units = calculateTimeUnits(remainingMs);
++          remainingDays = units.days;
++          remainingHours = units.hours;
++        }
++
++        // 2. Calculate elapsed time since start of promotion
++        let elapsedDays = 0;
++        let elapsedHours = 0;
++        const elapsedMs = now.getTime() - startDate.getTime();
++
++        if (typeof Temporal !== 'undefined' && Temporal.Now && Temporal.ZonedDateTime) {
++          try {
++            const nowZdt = Temporal.Now.zonedDateTimeISO(timeZone);
++            const startZdt = Temporal.ZonedDateTime.from({
++              year: startDate.getFullYear(),
++              month: startDate.getMonth() + 1,
++              day: startDate.getDate(),
++              hour: startDate.getHours(),
++              minute: startDate.getMinutes(),
++              second: startDate.getSeconds(),
++              timeZone: timeZone
++            });
++            if (Temporal.ZonedDateTime.compare(nowZdt, startZdt) > 0) {
++              const dur = startZdt.until(nowZdt, { largestUnit: 'days', smallestUnit: 'hours' });
++              elapsedDays = dur.days;
++              elapsedHours = dur.hours;
++            }
++          } catch (e) {
++            const units = calculateTimeUnits(elapsedMs);
++            elapsedDays = units.days;
++            elapsedHours = units.hours;
++          }
++        } else {
++          const units = calculateTimeUnits(elapsedMs);
++          elapsedDays = units.days;
++          elapsedHours = units.hours;
++        }
++
++        // Store current calculated values in dataset for verification
++        timerContainer.dataset.daysLeft = String(remainingDays);
++        timerContainer.dataset.hoursLeft = String(remainingHours);
++        timerContainer.dataset.daysElapsed = String(elapsedDays);
++        timerContainer.dataset.hoursElapsed = String(elapsedHours);
++        timerContainer.dataset.userTimezone = timeZone;
++
++        // Render countdown values to DOM
++        const countdownTimeEl = document.getElementById('maple-latte-countdown');
++        if (countdownTimeEl) {
++          countdownTimeEl.setAttribute('datetime', `P${remainingDays}DT${remainingHours}H`);
++          const statusSuffix = remainingMs <= 0 ? ' (Offer has ended)' : '';
++          countdownTimeEl.innerHTML = `<span class="days-value" id="days-left">${remainingDays}</span> days and <span class="hours-value" id="hours-left">${remainingHours}</span> hours left until the offer ends, March 1, 2026 at midnight${statusSuffix}`;
++        }
++
++        // Render elapsed values to DOM
++        const elapsedDisplayEl = document.getElementById('maple-latte-elapsed');
++        if (elapsedDisplayEl) {
++          elapsedDisplayEl.setAttribute('datetime', `P${elapsedDays}DT${elapsedHours}H`);
++          elapsedDisplayEl.innerHTML = `Elapsed time since the start of the promotion: <span class="days-value" id="days-elapsed">${elapsedDays}</span> days and <span class="hours-value" id="hours-elapsed">${elapsedHours}</span> hours`;
++        }
++      }
++
++      // Expose globally for testing or external scripts
++      window.updateMapleLatteTimer = updateTimer;
++
++      // Update immediately on page load
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', updateTimer);
++      } else {
++        updateTimer();
++      }
++
++      // Update on pageshow (e.g. bfcache restore)
++      window.addEventListener('pageshow', updateTimer);
++
++      // Update when tab returns to foreground
++      document.addEventListener('visibilitychange', function () {
++        if (document.visibilityState === 'visible') {
++          updateTimer();
++        }
++      });
++
++      // Update on periodic interval
++      setInterval(updateTimer, 1000);
++    })();
++  </script>
+ </body>
+ 
+ </html>

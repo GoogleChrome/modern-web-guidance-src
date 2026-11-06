@@ -1,0 +1,423 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,166 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Gift Card Designer */
++    .gift-designer {
++      margin-top: 60px;
++    }
++
++    .gift-designer > p {
++      text-align: center;
++      margin-top: 5px;
++    }
++
++    .designer-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 3fr) minmax(250px, 2fr);
++      gap: 30px;
++      align-items: center;
++      margin-top: 20px;
++    }
++
++    @media (max-width: 760px) {
++      .designer-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    #gift_canvas {
++      display: block;
++      width: 100%;
++      aspect-ratio: 5 / 3;
++      border-radius: 14px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
++    }
++
++    /* The card is a direct child of the canvas; with layoutsubtree it is laid out
++       but not painted on its own — the canvas draws it via drawElementImage(). */
++    #export_element {
++      --card-bg: #4e342e;
++      width: 100%;
++      height: 100%;
++      aspect-ratio: 5 / 3;
++      padding: 7% 8%;
++      border-radius: 14px;
++      color: #fff;
++      background:
++        radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.22) 0 18%, transparent 19%),
++        radial-gradient(circle at 92% 95%, rgba(255, 255, 255, 0.12) 0 28%, transparent 29%),
++        linear-gradient(135deg, var(--card-bg), color-mix(in srgb, var(--card-bg) 70%, #000));
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      overflow: hidden;
++    }
++
++    #export_element.light-text {
++      color: var(--text);
++    }
++
++    .gift-card-brand {
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 3px;
++      text-transform: uppercase;
++      opacity: 0.85;
++    }
++
++    .gift-card-title {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(1.4rem, 4vw, 2.2rem);
++      line-height: 1.15;
++    }
++
++    .gift-card-message {
++      font-size: clamp(0.95rem, 2.2vw, 1.15rem);
++      font-style: italic;
++      overflow-wrap: anywhere;
++    }
++
++    .gift-card-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-end;
++      font-size: 0.85rem;
++    }
++
++    .gift-card-amount {
++      font-size: 1.5rem;
++      font-weight: bold;
++      color: var(--accent);
++    }
++
++    .designer-controls label,
++    .designer-controls legend {
++      display: block;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .designer-controls input[type="text"],
++    .designer-controls textarea {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      margin-bottom: 18px;
++    }
++
++    .designer-controls textarea {
++      resize: vertical;
++    }
++
++    .designer-controls fieldset {
++      border: none;
++      margin-bottom: 10px;
++    }
++
++    .swatches {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .swatch input {
++      position: absolute;
++      opacity: 0;
++    }
++
++    .swatch span {
++      display: block;
++      width: 34px;
++      height: 34px;
++      border-radius: 50%;
++      background: var(--swatch);
++      border: 3px solid white;
++      box-shadow: 0 0 0 1px var(--secondary);
++      cursor: pointer;
++    }
++
++    .swatch input:checked + span {
++      box-shadow: 0 0 0 3px var(--accent);
++    }
++
++    .swatch input:focus-visible + span {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .designer-controls button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .designer-note {
++      font-size: 0.8rem;
++      margin-top: 10px;
++      opacity: 0.75;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +352,51 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="gift-designer" aria-labelledby="gift-designer-title">
++      <h2 id="gift-designer-title" style="text-align: center;">Design a Gift Card</h2>
++      <p>Personalize a Daily Grind gift card and download it to share.</p>
++      <div class="designer-layout">
++        <canvas id="gift_canvas" layoutsubtree>
++          <div id="export_element" role="img" aria-label="Gift card preview">
++            <div class="gift-card-brand">&#9749; The Daily Grind</div>
++            <div>
++              <div class="gift-card-title">For <span id="card_name">You</span></div>
++              <p class="gift-card-message" id="card_message">Enjoy a cup on me!</p>
++            </div>
++            <div class="gift-card-footer">
++              <span>Redeemable at any location</span>
++              <span class="gift-card-amount">Gift Card</span>
++            </div>
++          </div>
++        </canvas>
++
++        <form class="designer-controls" id="gift_form">
++          <label for="gift_name">Recipient name</label>
++          <input type="text" id="gift_name" maxlength="30" placeholder="You">
++
++          <label for="gift_text">Custom message</label>
++          <textarea id="gift_text" rows="3" maxlength="120" placeholder="Enjoy a cup on me!"></textarea>
++
++          <fieldset>
++            <legend>Background color</legend>
++            <div class="swatches">
++              <label class="swatch" title="Espresso"><input type="radio" aria-label="Espresso" name="bg" value="#4e342e" checked><span style="--swatch: #4e342e"></span></label>
++              <label class="swatch" title="Caramel"><input type="radio" aria-label="Caramel" name="bg" value="#c47a2c"><span style="--swatch: #c47a2c"></span></label>
++              <label class="swatch" title="Matcha"><input type="radio" aria-label="Matcha" name="bg" value="#5b7553"><span style="--swatch: #5b7553"></span></label>
++              <label class="swatch" title="Berry"><input type="radio" aria-label="Berry" name="bg" value="#8e3b5a"><span style="--swatch: #8e3b5a"></span></label>
++              <label class="swatch" title="Midnight"><input type="radio" aria-label="Midnight" name="bg" value="#263248"><span style="--swatch: #263248"></span></label>
++              <label class="swatch" title="Oat Milk"><input type="radio" aria-label="Oat Milk" name="bg" value="#efe3d3" data-light><span style="--swatch: #efe3d3"></span></label>
++            </div>
++          </fieldset>
++
++          <button type="submit" class="btn" id="export_btn">Download Card</button>
++          <p class="designer-note" id="designer_note" hidden></p>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +407,200 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('gift_canvas');
++      const card = document.getElementById('export_element');
++      const form = document.getElementById('gift_form');
++      const nameInput = document.getElementById('gift_name');
++      const textInput = document.getElementById('gift_text');
++      const nameOut = document.getElementById('card_name');
++      const messageOut = document.getElementById('card_message');
++      const note = document.getElementById('designer_note');
++      const ctx = canvas.getContext('2d');
++
++      // HTML-in-Canvas (WICG): <canvas layoutsubtree> + ctx.drawElementImage() + "paint" event.
++      const supportsHtmlInCanvas =
++        typeof CanvasRenderingContext2D !== 'undefined' &&
++        typeof CanvasRenderingContext2D.prototype.drawElementImage === 'function';
++
++      // --- Card content -----------------------------------------------------
++      function updateCard() {
++        nameOut.textContent = nameInput.value.trim() || 'You';
++        messageOut.textContent = textInput.value.trim() || 'Enjoy a cup on me!';
++        const selected = form.querySelector('input[name="bg"]:checked');
++        card.style.setProperty('--card-bg', selected.value);
++        card.classList.toggle('light-text', selected.hasAttribute('data-light'));
++        // DOM changes to canvas children fire "paint" automatically; the fallback must redraw itself.
++        if (!supportsHtmlInCanvas) drawFallback();
++      }
++
++      form.addEventListener('input', updateCard);
++
++      // --- Rendering --------------------------------------------------------
++      if (supportsHtmlInCanvas) {
++        canvas.addEventListener('paint', () => {
++          ctx.reset();
++          const transform = ctx.drawElementImage(card, 0, 0, canvas.width, canvas.height);
++          // Keep the DOM box aligned with its drawn position for hit testing & accessibility.
++          card.style.transform = transform.toString();
++        });
++      } else {
++        // Without support, canvas children are inert fallback content: show the card as
++        // regular DOM for the live preview and keep the canvas offscreen for exporting.
++        canvas.removeAttribute('layoutsubtree');
++        canvas.before(card);
++        canvas.hidden = true;
++        note.hidden = false;
++        note.textContent = 'Your browser does not support HTML-in-Canvas yet, so the download uses a simplified rendering.';
++      }
++
++      // Size the backing store in device pixels so the export is crisp.
++      function resizeCanvas(width, height) {
++        if (canvas.width === width && canvas.height === height) return;
++        canvas.width = width;
++        canvas.height = height;
++        if (supportsHtmlInCanvas) canvas.requestPaint?.();
++      }
++
++      if (supportsHtmlInCanvas) {
++        const observer = new ResizeObserver(([entry]) => {
++          const dpBox = entry.devicePixelContentBoxSize?.[0];
++          if (dpBox) {
++            resizeCanvas(dpBox.inlineSize, dpBox.blockSize);
++          } else {
++            const box = entry.contentBoxSize[0];
++            resizeCanvas(Math.round(box.inlineSize * devicePixelRatio), Math.round(box.blockSize * devicePixelRatio));
++          }
++        });
++        try {
++          observer.observe(canvas, { box: 'device-pixel-content-box' });
++        } catch {
++          observer.observe(canvas);
++        }
++      } else {
++        resizeCanvas(1000, 600);
++      }
++
++      // Resolves after the canvas has painted the current state of its children.
++      function nextPaint() {
++        return new Promise((resolve) => {
++          if (typeof canvas.requestPaint === 'function') {
++            // Registered after the drawing listener, so it runs once the frame is drawn.
++            canvas.addEventListener('paint', () => resolve(), { once: true });
++            canvas.requestPaint();
++          } else {
++            requestAnimationFrame(() => requestAnimationFrame(resolve));
++          }
++        });
++      }
++
++      // --- Fallback 2D rendering -------------------------------------------
++      function wrapLines(text, maxWidth) {
++        const words = text.split(/\s+/);
++        const lines = [];
++        let line = '';
++        for (const word of words) {
++          const test = line ? `${line} ${word}` : word;
++          if (ctx.measureText(test).width > maxWidth && line) {
++            lines.push(line);
++            line = word;
++          } else {
++            line = test;
++          }
++        }
++        if (line) lines.push(line);
++        return lines;
++      }
++
++      function drawFallback() {
++        const { width: w, height: h } = canvas;
++        const styles = getComputedStyle(card);
++        const bg = styles.getPropertyValue('--card-bg').trim();
++        const fg = styles.color;
++        const pad = w * 0.08;
++        const sans = getComputedStyle(document.body).fontFamily;
++
++        ctx.reset();
++        ctx.beginPath();
++        ctx.roundRect(0, 0, w, h, w * 0.025);
++        ctx.clip();
++
++        // Base color, then a darkening sheen and a highlight circle to echo the CSS gradients.
++        ctx.fillStyle = bg;
++        ctx.fillRect(0, 0, w, h);
++        const shade = ctx.createLinearGradient(0, 0, w, h);
++        shade.addColorStop(0, 'rgba(0, 0, 0, 0)');
++        shade.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
++        ctx.fillStyle = shade;
++        ctx.fillRect(0, 0, w, h);
++        ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
++        ctx.beginPath();
++        ctx.arc(w * 0.85, h * 0.15, w * 0.11, 0, Math.PI * 2);
++        ctx.fill();
++
++        ctx.fillStyle = fg;
++        ctx.textBaseline = 'top';
++        ctx.font = `bold ${h * 0.045}px ${sans}`;
++        ctx.letterSpacing = `${h * 0.01}px`;
++        ctx.fillText('\u2615 THE DAILY GRIND', pad, h * 0.08);
++        ctx.letterSpacing = '0px';
++
++        ctx.font = `${h * 0.1}px Georgia, 'Times New Roman', serif`;
++        ctx.fillText(`For ${nameOut.textContent}`, pad, h * 0.3, w - pad * 2);
++
++        ctx.font = `italic ${h * 0.055}px ${sans}`;
++        wrapLines(messageOut.textContent, w - pad * 2).slice(0, 3).forEach((line, i) => {
++          ctx.fillText(line, pad, h * 0.46 + i * h * 0.075);
++        });
++
++        ctx.textBaseline = 'alphabetic';
++        ctx.font = `${h * 0.045}px ${sans}`;
++        ctx.fillText('Redeemable at any location', pad, h - h * 0.09);
++        ctx.font = `bold ${h * 0.08}px ${sans}`;
++        ctx.fillStyle = '#ffab40';
++        ctx.textAlign = 'right';
++        ctx.fillText('Gift Card', w - pad, h - h * 0.09);
++      }
++
++      // --- Export -----------------------------------------------------------
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        const button = document.getElementById('export_btn');
++        button.disabled = true;
++        try {
++          await document.fonts.ready;
++          if (supportsHtmlInCanvas) {
++            await nextPaint();
++          } else {
++            drawFallback();
++          }
++          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
++          if (!blob) throw new Error('Canvas export produced no data');
++
++          const url = URL.createObjectURL(blob);
++          const link = document.createElement('a');
++          const slug = nameOut.textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'card';
++          link.href = url;
++          link.download = `daily-grind-gift-card-${slug}.png`;
++          document.body.append(link);
++          link.click();
++          link.remove();
++          setTimeout(() => URL.revokeObjectURL(url), 0);
++        } catch (err) {
++          console.error(err);
++          note.hidden = false;
++          note.textContent = 'Sorry, the card could not be exported. Please try again.';
++        } finally {
++          button.disabled = false;
++        }
++      });
++
++      updateCard();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

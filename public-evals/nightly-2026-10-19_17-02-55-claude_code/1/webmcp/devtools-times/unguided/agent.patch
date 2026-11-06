@@ -1,0 +1,213 @@
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..adeb78d 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -10,6 +10,12 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  useEffect(() => {
++    const onChange = (e: Event) => setIsBookmarked((e as CustomEvent<string[]>).detail.includes(slug));
++    window.addEventListener('reading-list-changed', onChange);
++    return () => window.removeEventListener('reading-list-changed', onChange);
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+@@ -20,6 +26,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+     });
+     const data = await response.json();
+     setIsBookmarked(data.readingList.includes(slug));
++    window.dispatchEvent(new CustomEvent('reading-list-changed', { detail: data.readingList }));
+   };
+ 
+   return (
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..a8e8f36 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/webmcp";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/scripts/webmcp.ts b/src/scripts/webmcp.ts
+new file mode 100644
+index 0000000..64cea85
+--- /dev/null
++++ b/src/scripts/webmcp.ts
+@@ -0,0 +1,168 @@
++// Exposes client-side functionality as WebMCP tools (https://webmachinelearning.github.io/webmcp/).
++import { navigate } from 'astro:transitions/client';
++
++interface ToolResult {
++  content: { type: 'text'; text: string }[];
++  isError?: boolean;
++}
++
++interface Tool {
++  name: string;
++  description: string;
++  inputSchema: object;
++  annotations?: { readOnlyHint?: boolean };
++  execute: (args: any) => Promise<ToolResult>;
++}
++
++interface ArticleSummary {
++  slug: string;
++  title: string;
++  summary: string;
++  image: string;
++}
++
++const base = import.meta.env.BASE_URL;
++const articleUrl = (slug: string) => `${base}articles/${slug}`;
++
++const ok = (data: unknown): ToolResult => ({
++  content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data) }],
++});
++const fail = (message: string): ToolResult => ({ ...ok(message), isError: true });
++
++let articlesPromise: Promise<ArticleSummary[]> | undefined;
++const loadArticles = () => {
++  articlesPromise ??= fetch(`${base}api/articles.json`)
++    .then(r => r.json())
++    .catch(e => {
++      articlesPromise = undefined;
++      throw e;
++    });
++  return articlesPromise;
++};
++
++const withUrl = (a: ArticleSummary) => ({ slug: a.slug, title: a.title, summary: a.summary, url: articleUrl(a.slug) });
++
++const fetchReadingList = async (): Promise<string[]> => {
++  const r = await fetch(`${base}api/reading-list.json`);
++  return (await r.json()).readingList;
++};
++
++const toggleReadingList = async (slug: string): Promise<string[]> => {
++  const r = await fetch(`${base}api/reading-list.json`, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ slug }),
++  });
++  const { readingList } = await r.json();
++  window.dispatchEvent(new CustomEvent('reading-list-changed', { detail: readingList }));
++  return readingList;
++};
++
++const slugSchema = { type: 'string', description: 'Article slug, as returned by list_articles or search_articles.' };
++
++const tools: Tool[] = [
++  {
++    name: 'list_articles',
++    description: 'List all articles published on The DevTools Times, with slug, title, summary and URL.',
++    inputSchema: { type: 'object', properties: {} },
++    annotations: { readOnlyHint: true },
++    execute: async () => ok((await loadArticles()).map(withUrl)),
++  },
++  {
++    name: 'search_articles',
++    description: 'Search articles by a case-insensitive term matched against title and summary.',
++    inputSchema: {
++      type: 'object',
++      properties: { query: { type: 'string', description: 'Text to search for.' } },
++      required: ['query'],
++    },
++    annotations: { readOnlyHint: true },
++    execute: async ({ query }) => {
++      const q = String(query ?? '').toLowerCase();
++      const matches = (await loadArticles()).filter(
++        a => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q),
++      );
++      return ok(matches.map(withUrl));
++    },
++  },
++  {
++    name: 'read_article',
++    description: 'Get the full text of an article.',
++    inputSchema: { type: 'object', properties: { slug: slugSchema }, required: ['slug'] },
++    annotations: { readOnlyHint: true },
++    execute: async ({ slug }) => {
++      const response = await fetch(articleUrl(slug));
++      if (!response.ok) return fail(`Article "${slug}" not found.`);
++      const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
++      const root = doc.querySelector('article') ?? doc.querySelector('main');
++      const text = root?.textContent?.replace(/\s+/g, ' ').trim();
++      return text ? ok({ slug, title: doc.title, text }) : fail('Could not extract article text.');
++    },
++  },
++  {
++    name: 'open_article',
++    description: 'Navigate the browser to an article page.',
++    inputSchema: { type: 'object', properties: { slug: slugSchema }, required: ['slug'] },
++    execute: async ({ slug }) => {
++      const known = (await loadArticles()).some(a => a.slug === slug);
++      if (!known) return fail(`Article "${slug}" not found.`);
++      navigate(articleUrl(slug));
++      return ok(`Navigated to ${articleUrl(slug)}`);
++    },
++  },
++  {
++    name: 'open_category',
++    description: 'Navigate the browser to a category page (e.g. "sports", "culture").',
++    inputSchema: {
++      type: 'object',
++      properties: { category: { type: 'string', description: 'Category name.' } },
++      required: ['category'],
++    },
++    execute: async ({ category }) => {
++      const url = `${base}category/${encodeURIComponent(String(category).toLowerCase())}`;
++      navigate(url);
++      return ok(`Navigated to ${url}`);
++    },
++  },
++  {
++    name: 'get_reading_list',
++    description: "Get the articles in the user's reading list.",
++    inputSchema: { type: 'object', properties: {} },
++    annotations: { readOnlyHint: true },
++    execute: async () => {
++      const [slugs, articles] = await Promise.all([fetchReadingList(), loadArticles()]);
++      return ok(articles.filter(a => slugs.includes(a.slug)).map(withUrl));
++    },
++  },
++  {
++    name: 'set_reading_list_item',
++    description: "Add an article to, or remove it from, the user's reading list.",
++    inputSchema: {
++      type: 'object',
++      properties: {
++        slug: slugSchema,
++        saved: { type: 'boolean', description: 'true to add to the reading list, false to remove.' },
++      },
++      required: ['slug', 'saved'],
++    },
++    execute: async ({ slug, saved }) => {
++      if (!(await loadArticles()).some(a => a.slug === slug)) return fail(`Article "${slug}" not found.`);
++      let list = await fetchReadingList();
++      // The API only toggles, so only call it when the state needs to change.
++      if (list.includes(slug) !== Boolean(saved)) list = await toggleReadingList(slug);
++      return ok({ slug, saved: list.includes(slug), readingList: list });
++    },
++  },
++];
++
++const modelContext = (navigator as any).modelContext;
++if (modelContext?.registerTool && !(window as any).__webmcpRegistered) {
++  (window as any).__webmcpRegistered = true;
++  for (const tool of tools) {
++    try {
++      modelContext.registerTool(tool);
++    } catch (e) {
++      console.warn(`WebMCP: failed to register ${tool.name}`, e);
++    }
++  }
++}

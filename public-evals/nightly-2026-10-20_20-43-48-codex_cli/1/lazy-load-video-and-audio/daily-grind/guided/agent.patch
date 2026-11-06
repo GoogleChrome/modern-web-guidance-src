@@ -1,0 +1,376 @@
+diff --git a/index.html b/index.html
+index 66c9173..cf8a062 100644
+--- a/index.html
++++ b/index.html
+@@ -74,18 +74,14 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
++      min-height: 60vh;
++      background: var(--primary);
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
+       align-items: center;
+       color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      padding: 60px 5%;
+     }
+ 
+     .hero h1 {
+@@ -93,6 +89,83 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .eyebrow {
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    .hero .eyebrow { color: var(--accent); }
++
++    video {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background: #241a16;
++      border-radius: 8px;
++    }
++
++    figcaption, .media-credit {
++      font-size: 0.85rem;
++      margin-top: 10px;
++    }
++
++    .hero figcaption a { color: var(--secondary); }
++
++    .media-section {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: center;
++      margin-top: 80px;
++      padding-top: 40px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .media-section h2 { margin-bottom: 16px; }
++
++    .media-section a { color: var(--primary); }
++
++    .podcast-player {
++      background: #eee7e2;
++      border-radius: 8px;
++      padding: 28px;
++    }
++
++    .podcast-player h3 { margin-bottom: 16px; }
++
++    audio { display: block; width: 100%; }
++
++    .load-media {
++      font: inherit;
++      cursor: pointer;
++      border: 0;
++    }
++
++    a:focus-visible, button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero, .media-section { grid-template-columns: 1fr; gap: 24px; }
++      .hero { padding: 40px 20px; }
++      .hero h1 { font-size: 2.4rem; }
++      .media-section { margin-top: 60px; }
++      .podcast-player { padding: 20px; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -153,6 +226,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script src="/media.js" defer></script>
+ </head>
+ 
+ <body>
+@@ -169,9 +243,23 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <p class="eyebrow">Good mornings start here</p>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <figure>
++      <!-- The visible hero loads eagerly; playback is always the visitor's choice. -->
++      <video controls playsinline width="1280" height="720" preload="metadata"
++        poster="https://assets.mixkit.co/videos/810/810-thumb-360-4.jpg"
++        aria-label="Latte art: milk poured into a cup of coffee">
++        <source src="https://assets.mixkit.co/videos/810/810-360.mp4" type="video/mp4">
++        <p><a href="https://assets.mixkit.co/videos/810/810-360.mp4">Watch the latte art video</a>.</p>
++      </video>
++      <figcaption>A little craft in every cup. Silent stock footage courtesy of
++        <a href="https://mixkit.co/free-stock-video/latte-art-810/">Mixkit</a>.</figcaption>
++    </figure>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +283,51 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="roasting-title">
++      <div>
++        <p class="eyebrow">From bean to brew</p>
++        <h2 id="roasting-title">Great coffee starts at the roast.</h2>
++        <p>Heat, timing, and a little patience. Take a closer look at coffee roasting,
++          where green beans develop their rich color and aroma.</p>
++      </div>
++      <figure>
++        <!-- Keep URLs inert in HTML: preload="none" alone cannot defer a poster. -->
++        <video id="roasting-video" controls playsinline loading="lazy" width="1280" height="720"
++          preload="none" data-deferred-media data-preload="metadata"
++          data-poster="https://assets.mixkit.co/videos/4676/4676-thumb-360-0.jpg"
++          aria-label="Coffee beans being stirred in a roasting machine">
++          <source data-src="https://assets.mixkit.co/videos/4676/4676-360.mp4" type="video/mp4">
++        </video>
++        <button hidden type="button" class="btn load-media" data-load-media="roasting-video">Load roasting video</button>
++        <figcaption>Coffee beans are stirred in a roaster. Silent stock footage courtesy of
++          <a href="https://mixkit.co/free-stock-video/person-roasting-coffee-beans-4676/">Mixkit</a>.</figcaption>
++        <noscript><p><a href="https://assets.mixkit.co/videos/4676/4676-360.mp4">Watch the roasting video</a>.</p></noscript>
++      </figure>
++    </section>
++
++    <section class="media-section" aria-labelledby="podcast-title">
++      <div>
++        <p class="eyebrow">Coffee &amp; conversation</p>
++        <h2 id="podcast-title">Something to sip along to.</h2>
++        <p>Settle in with a cup and explore the craft of home roasting in this
++          guest episode from Hacker Public Radio.</p>
++      </div>
++      <figure class="podcast-player">
++        <p class="eyebrow">Featured podcast · 18 min</p>
++        <h3 id="episode-title">Home Coffee Roasting, part 1</h3>
++        <audio id="coffee-podcast" controls loading="lazy" preload="none"
++          data-deferred-media data-preload="metadata" aria-labelledby="episode-title">
++          <source data-src="https://hub.hackerpublicradio.org/ccdn.php?filename=/eps/hpr3563/hpr3563.mp3" type="audio/mpeg">
++        </audio>
++        <button hidden type="button" class="btn load-media" data-load-media="coffee-podcast">Load podcast</button>
++        <figcaption>By dnt · Hacker Public Radio #3563 ·
++          <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a></figcaption>
++        <p class="media-credit"><a href="https://hackerpublicradio.org/eps/hpr3563/index.html">Episode notes</a>
++          · <a href="https://hub.hackerpublicradio.org/ccdn.php?filename=/eps/hpr3563/hpr3563.txt">Read the transcript</a></p>
++        <noscript><p><a href="https://hub.hackerpublicradio.org/ccdn.php?filename=/eps/hpr3563/hpr3563.mp3">Listen to the podcast</a>.</p></noscript>
++      </figure>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/media.js b/media.js
+new file mode 100644
+index 0000000..64eb494
+--- /dev/null
++++ b/media.js
+@@ -0,0 +1,46 @@
++(() => {
++  const players = document.querySelectorAll('[data-deferred-media]');
++
++  function activate(media) {
++    if (!media.hasAttribute('data-deferred-media')) return;
++    media.removeAttribute('data-deferred-media');
++
++    if (media.dataset.poster) {
++      media.poster = media.dataset.poster;
++      delete media.dataset.poster;
++    }
++    for (const source of media.querySelectorAll('source[data-src]')) {
++      source.src = source.dataset.src;
++      delete source.dataset.src;
++    }
++    media.preload = media.dataset.preload;
++    delete media.dataset.preload;
++    media.load();
++  }
++
++  // Source and poster URLs stay inert until intersection in every browser,
++  // including those which ignore native media loading="lazy".
++  if ('IntersectionObserver' in window) {
++    const observer = new IntersectionObserver((entries) => {
++      for (const entry of entries) {
++        if (!entry.isIntersecting) continue;
++        activate(entry.target);
++        observer.unobserve(entry.target);
++      }
++    }, { rootMargin: '200px 0px', threshold: 0 });
++
++    for (const media of players) observer.observe(media);
++  } else {
++    // Older browsers can load each player on demand without eagerly fetching
++    // offscreen assets. With scripting disabled, direct links remain available.
++    for (const button of document.querySelectorAll('[data-load-media]')) {
++      button.hidden = false;
++      button.addEventListener('click', () => {
++        const media = document.getElementById(button.dataset.loadMedia);
++        activate(media);
++        button.hidden = true;
++        media.focus();
++      }, { once: true });
++    }
++  }
++})();
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/tests/media.test.js b/tests/media.test.js
+new file mode 100644
+index 0000000..e66b961
+--- /dev/null
++++ b/tests/media.test.js
+@@ -0,0 +1,106 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { runInNewContext } = require('node:vm');
++
++const script = readFileSync(new URL('../media.js', `file://${__filename}`), 'utf8');
++
++function fixture(withObserver = true) {
++  const players = ['video', 'audio'].map((type) => {
++    let deferred = true;
++    const source = { dataset: { src: `${type}.media` } };
++    return {
++      dataset: { preload: 'metadata', ...(type === 'video' ? { poster: 'poster.jpg' } : {}) },
++      source, loads: 0, preload: 'none',
++      hasAttribute: () => deferred,
++      removeAttribute: () => { deferred = false; },
++      querySelectorAll: () => [source],
++      load() { this.loads++; },
++      focus() { this.focused = true; },
++    };
++  });
++  const buttons = players.map((player, index) => ({
++    hidden: true, dataset: { loadMedia: index },
++    addEventListener(event, handler) { this.click = handler; },
++  }));
++  const observed = new Set();
++  let intersect;
++  let options;
++  class IntersectionObserver {
++    constructor(callback, config) { intersect = callback; options = config; }
++    observe(media) { observed.add(media); }
++    unobserve(media) { observed.delete(media); }
++  }
++  const window = withObserver ? { IntersectionObserver } : {};
++  runInNewContext(script, {
++    window, IntersectionObserver,
++    document: {
++      querySelectorAll: (selector) => selector === '[data-deferred-media]' ? players : buttons,
++      getElementById: (id) => players[id],
++    },
++  });
++  return { players, buttons, observed, intersect, options };
++}
++
++test('offscreen media do not attach sources, posters, or preload data', () => {
++  const { players, intersect, observed, options } = fixture();
++  assert.equal(options.rootMargin, '200px 0px');
++  assert.equal(observed.size, 2);
++  intersect(players.map((target) => ({ target, isIntersecting: false })));
++  for (const player of players) {
++    assert.equal(player.source.src, undefined);
++    assert.equal(player.poster, undefined);
++    assert.equal(player.preload, 'none');
++    assert.equal(player.loads, 0);
++  }
++});
++
++test('each approaching player activates independently and only once', () => {
++  const { players, intersect, observed } = fixture();
++  for (const player of players) {
++    intersect([{ target: player, isIntersecting: true }]);
++    assert.equal(player.source.src, player === players[0] ? 'video.media' : 'audio.media');
++    assert.equal(player.preload, 'metadata');
++    assert.equal(player.loads, 1);
++    assert.equal(observed.has(player), false);
++    intersect([{ target: player, isIntersecting: true }]);
++    assert.equal(player.loads, 1);
++    if (player === players[0]) {
++      assert.equal(player.poster, 'poster.jpg');
++      assert.equal(players[1].loads, 0);
++    }
++  }
++});
++
++test('without IntersectionObserver, explicit activation preserves deferred downloads', () => {
++  const { players, buttons } = fixture(false);
++  assert.ok(players.every((player) => player.loads === 0));
++  assert.ok(buttons.every((button) => !button.hidden));
++  buttons[0].click();
++  assert.equal(players[0].loads, 1);
++  assert.equal(players[0].focused, true);
++  assert.equal(buttons[0].hidden, true);
++  assert.equal(players[1].loads, 0);
++});
++
++test('HTML keeps offscreen URLs inert before JavaScript or preload scanning', () => {
++  const html = readFileSync(new URL('../index.html', `file://${__filename}`), 'utf8');
++  const media = [...html.matchAll(/<(video|audio)\b([^>]*)>([\s\S]*?)<\/\1>/g)];
++  assert.equal(media.length, 3);
++  assert.doesNotMatch(media[0][2], /loading="lazy"/);
++  assert.match(media[0][3], /<source src=/);
++  for (const [, tag, attributes, content] of media.slice(1)) {
++    assert.match(attributes, /loading="lazy"/);
++    assert.match(attributes, /preload="none"/);
++    assert.match(attributes, /\bcontrols\b/);
++    assert.doesNotMatch(attributes, /\s(?:poster|src)="/);
++    assert.match(content, /<source data-src=/);
++    assert.doesNotMatch(content, /\ssrc="/);
++    if (tag === 'video') {
++      assert.match(attributes, /width="\d+"/);
++      assert.match(attributes, /height="\d+"/);
++      assert.match(attributes, /data-poster=/);
++    }
++  }
++  assert.doesNotMatch(html, /rel="(?:preload|prefetch)"/);
++});

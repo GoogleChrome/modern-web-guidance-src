@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,81 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Horizontal Carousel */
++    .carousel-section {
++      margin-top: 50px;
++    }
++
++    .carousel-section h2 {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    @keyframes scale-card {
++      0%, 100% {
++        scale: 0.85;
++      }
++      50% {
++        scale: 1.1;
++      }
++    }
++
++    .scroller {
++      display: flex;
++      gap: 24px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      padding: 40px calc(50% - 140px);
++      list-style: none;
++      align-items: stretch;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
++    .scroller .card {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: box-shadow 0.3s ease;
++    }
++
++    .scroller .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .scroller .card .price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin-top: 8px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .scroller {
++        scroll-behavior: smooth;
++      }
++
++      .scroller .card {
++        animation: scale-card linear both;
++        animation-timeline: view(inline);
++        animation-range: cover 0% cover 100%;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +267,68 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section" aria-labelledby="carousel-heading">
++      <h2 id="carousel-heading">Featured Products</h2>
++      <ul class="scroller" tabindex="0" role="region" aria-label="Featured coffee products carousel">
++        <li class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of Ethiopian Yirgacheffe whole bean coffee">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Bright floral notes with hints of bergamot and lemon zest.</p>
++            <p class="price">$18.00</p>
++          </div>
++          <a href="/products/ethiopian-yirgacheffe" class="btn">Add to Cart</a>
++        </li>
++        <li class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Freshly brewed Colombian Supremo espresso cup">
++            <h3>Colombian Supremo</h3>
++            <p>Rich caramel sweetness balanced with a nutty, medium-bodied finish.</p>
++            <p class="price">$16.50</p>
++          </div>
++          <a href="/products/colombian-supremo" class="btn">Add to Cart</a>
++        </li>
++        <li class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&q=80" alt="Latte art in a ceramic mug for Sumatra Mandheling blend">
++            <h3>Sumatra Mandheling</h3>
++            <p>Full-bodied dark roast with earthy undertones and dark chocolate notes.</p>
++            <p class="price">$19.00</p>
++          </div>
++          <a href="/products/sumatra-mandheling" class="btn">Add to Cart</a>
++        </li>
++        <li class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Cup of Guatemala Antigua black coffee on a wooden table">
++            <h3>Guatemala Antigua</h3>
++            <p>Velvety body featuring warm spice, cocoa, and subtle smoky nuances.</p>
++            <p class="price">$17.50</p>
++          </div>
++          <a href="/products/guatemala-antigua" class="btn">Add to Cart</a>
++        </li>
++        <li class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Iced House Blend coffee with milk swirl">
++            <h3>House Espresso Blend</h3>
++            <p>Our signature daily roast crafted for syrupy crema and sweet balance.</p>
++            <p class="price">$15.50</p>
++          </div>
++          <a href="/products/house-espresso" class="btn">Add to Cart</a>
++        </li>
++        <li class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Pour-over decanter brewing Costa Rican Tarrazu coffee">
++            <h3>Costa Rican Tarrazu</h3>
++            <p>Crisp acidity with notes of honeycrisp apple and brown sugar.</p>
++            <p class="price">$18.50</p>
++          </div>
++          <a href="/products/costa-rican-tarrazu" class="btn">Add to Cart</a>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

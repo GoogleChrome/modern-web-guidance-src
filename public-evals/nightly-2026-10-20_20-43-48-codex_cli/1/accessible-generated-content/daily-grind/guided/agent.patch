@@ -1,0 +1,40 @@
+diff --git a/index.html b/index.html
+index 66c9173..d9c9d6d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,22 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Keep labels in HTML. Only add these optional decorations when the
++       browser supports empty alternative text, so they aren't announced. */
++    @supports (content: "→" / "") {
++      .btn::after {
++        content: "→" / "";
++        display: inline-block;
++        margin-inline-start: 0.5em;
++      }
++
++      .footer-links a + a::before {
++        content: "|" / "";
++        display: inline-block;
++        margin-inline-end: 20px;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -199,9 +215,9 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
++      <a href="/about">Our Story</a>
++      <a href="/careers">Join the Team</a>
++      <a href="/contact">Contact Us</a>
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>

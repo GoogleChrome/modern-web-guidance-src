@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+index 66c9173..1bf1eb4 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,8 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Opt into OS-level text scaling (Dynamic Type / Android font size). Root font-size is left to the browser. -->
++  <meta name="text-scale" content="scale">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -25,6 +27,7 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-wrap: break-word;
+     }
+ 
+     /* Navigation */
+@@ -33,8 +36,10 @@
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: 0.75rem 1.5rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -43,22 +48,25 @@
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+-      letter-spacing: 1px;
++      letter-spacing: 0.04em;
++      line-height: 1.2;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem 1.25rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      line-height: 1.4;
++      padding: 0.25em 0;
+       transition: color 0.3s;
+     }
+ 
+@@ -68,13 +76,14 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      padding: 0.35em 0.85em;
++      border-radius: 0.25em;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      /* min-height instead of height so the banner grows when text is scaled up */
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -83,51 +92,89 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
++      gap: 1rem;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 1.25rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      /* Fluid, but always carries a rem component so OS text scale applies; max is 2.5x min */
++      font-size: clamp(1.75rem, 1rem + 2.5vw, 3rem);
++      line-height: 1.15;
++      text-wrap: balance;
++      max-width: 20ch;
++    }
++
++    .hero p {
++      font-size: 1.125rem;
++      max-width: 45ch;
++      text-wrap: pretty;
++    }
++
++    .hero .btn {
++      margin-top: 0.5rem;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      margin: 2.5rem auto;
++      padding: 0 1.25rem;
++    }
++
++    .container h2 {
++      font-size: 1.75rem;
++      line-height: 1.2;
++      text-wrap: balance;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      /* min(100%, 16rem): columns are rem-based so they reflow as text scales,
++         and never exceed the container width on narrow screens */
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
++      gap: 1.25rem;
++      margin-top: 1.25rem;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
++      padding: 1.25rem;
++      border-radius: 0.5rem;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: 1.25rem;
++      line-height: 1.25;
++      margin-bottom: 0.5em;
+       color: var(--primary);
++      text-wrap: balance;
++    }
++
++    .card p {
++      text-wrap: pretty;
++      margin-bottom: 1rem;
++    }
++
++    .card .btn {
++      margin-top: auto;
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 0.625em 1.25em;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
++      border-radius: 0.3em;
++      margin-top: 1rem;
++      line-height: 1.4;
+       transition: background 0.3s;
+     }
+ 

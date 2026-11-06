@@ -1,0 +1,204 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,200 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const TOOL_NAME = 'get_menu_item_details';
++
++      const menuItems = [
++        {
++          name: 'Maple Oat Latte',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          category: 'Seasonal',
++          price: '$5.50',
++          url: '/menu/seasonal'
++        },
++        {
++          name: 'Dark Roast Espresso',
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          category: 'Espresso',
++          price: '$3.50',
++          url: '/menu/espresso'
++        },
++        {
++          name: 'Cold Brew',
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          category: 'Cold Brew',
++          price: '$4.75',
++          url: '/menu/cold-brew'
++        }
++      ];
++
++      function findMenuItemByName(rawName) {
++        const query = String(rawName || '').trim().toLowerCase();
++        if (!query) {
++          return null;
++        }
++
++        // Check static menu catalog first (exact match, then partial match)
++        let match =
++          menuItems.find((item) => item.name.toLowerCase() === query) ||
++          menuItems.find(
++            (item) =>
++              item.name.toLowerCase().includes(query) ||
++              query.includes(item.name.toLowerCase())
++          );
++
++        if (match) {
++          return { ...match };
++        }
++
++        // Fallback to scanning DOM menu cards
++        const cards = document.querySelectorAll('.card');
++        for (const card of cards) {
++          const titleEl = card.querySelector('h3');
++          const descEl = card.querySelector('p');
++          const linkEl = card.querySelector('a');
++          const cardName = titleEl ? titleEl.textContent.trim() : '';
++
++          if (
++            cardName &&
++            (cardName.toLowerCase() === query ||
++              cardName.toLowerCase().includes(query) ||
++              query.includes(cardName.toLowerCase()))
++          ) {
++            return {
++              name: cardName,
++              description: descEl ? descEl.textContent.trim() : '',
++              url: linkEl ? linkEl.getAttribute('href') : ''
++            };
++          }
++        }
++
++        return null;
++      }
++
++      const abortController = new AbortController();
++      let resolvedRegistration = null;
++      let isCleanedUp = false;
++
++      if (
++        typeof navigator !== 'undefined' &&
++        navigator.modelContext &&
++        typeof navigator.modelContext.registerTool === 'function'
++      ) {
++        const registrationResult = navigator.modelContext.registerTool(
++          {
++            name: TOOL_NAME,
++            description:
++              'Look up details for a menu item (such as the Maple Oat Latte, Dark Roast Espresso, or Cold Brew) by name.',
++            inputSchema: {
++              type: 'object',
++              properties: {
++                name: {
++                  type: 'string',
++                  description:
++                    'The name of the menu item to look up (e.g., "Maple Oat Latte", "Dark Roast Espresso", or "Cold Brew").'
++                }
++              },
++              required: ['name']
++            },
++            execute: async (input = {}) => {
++              const itemName =
++                typeof input === 'string'
++                  ? input
++                  : input.name ||
++                    input.itemName ||
++                    input.item_name ||
++                    input.item ||
++                    Object.values(input)[0] ||
++                    '';
++
++              const item = findMenuItemByName(itemName);
++
++              if (!item) {
++                const notFoundResult = {
++                  found: false,
++                  error: `Menu item "${itemName}" not found.`
++                };
++                return {
++                  ...notFoundResult,
++                  content: [
++                    {
++                      type: 'text',
++                      text: JSON.stringify(notFoundResult)
++                    }
++                  ]
++                };
++              }
++
++              const details = {
++                ...item,
++                found: true
++              };
++
++              return {
++                ...details,
++                content: [
++                  {
++                    type: 'text',
++                    text: JSON.stringify(details)
++                  }
++                ]
++              };
++            }
++          },
++          { signal: abortController.signal }
++        );
++
++        if (registrationResult && typeof registrationResult.then === 'function') {
++          registrationResult
++            .then((reg) => {
++              resolvedRegistration = reg;
++            })
++            .catch(() => {});
++        } else {
++          resolvedRegistration = registrationResult;
++        }
++      }
++
++      function cleanupToolRegistration() {
++        if (isCleanedUp) {
++          return;
++        }
++        isCleanedUp = true;
++
++        abortController.abort();
++
++        if (
++          typeof navigator !== 'undefined' &&
++          navigator.modelContext &&
++          typeof navigator.modelContext.unregisterTool === 'function'
++        ) {
++          try {
++            navigator.modelContext.unregisterTool(TOOL_NAME);
++          } catch (err) {
++            // Ignore if already unregistered via AbortSignal
++          }
++        }
++
++        if (resolvedRegistration) {
++          if (typeof resolvedRegistration.unregister === 'function') {
++            resolvedRegistration.unregister();
++          } else if (typeof resolvedRegistration.dispose === 'function') {
++            resolvedRegistration.dispose();
++          } else if (typeof resolvedRegistration === 'function') {
++            resolvedRegistration();
++          }
++        }
++      }
++
++      window.addEventListener('unload', cleanupToolRegistration);
++      window.addEventListener('pagehide', cleanupToolRegistration);
++      window.addEventListener('beforeunload', cleanupToolRegistration);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

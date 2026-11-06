@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,99 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    /*
++     * Background tab detection.
++     *
++     * Works out whether the page was first loaded in a background tab, and
++     * when it went into the background (ms since navigation start,
++     * the same clock as performance.now()).
++     *
++     * Primary method: the 'visibility-state' performance entry type. With
++     * buffered: true the browser replays every visibility change since
++     * navigation start, so the result is correct no matter how late this
++     * script runs.
++     *
++     * Fallback: browsers without 'visibility-state' entries only let us read
++     * document.visibilityState now, when the script runs. That tells us the
++     * current state, not the state at load. If the script is async/deferred
++     * or runs late, the tab may already have changed state, so the result
++     * can be wrong. Fallback results are marked with fallback: true and a
++     * console warning. This script is inline at the top of <head> to keep
++     * that gap small. Don't move it to an async script.
++     */
++    (function () {
++      var supportsVisibilityEntries =
++        typeof PerformanceObserver !== 'undefined' &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.indexOf('visibility-state') !== -1;
++
++      var reported = false;
++
++      function report(isBackground, backgroundTime, fallback) {
++        var info = {
++          isBackground: isBackground,
++          backgroundTime: backgroundTime,
++          fallback: fallback
++        };
++        if (fallback) {
++          console.warn(
++            '[background-detection] FALLBACK ACTIVE: the result comes from reading ' +
++            'document.visibilityState when the script ran and may be wrong ' +
++            '(especially for async scripts).',
++            info
++          );
++        } else {
++          console.log('[background-detection]', info);
++        }
++      }
++
++      if (supportsVisibilityEntries) {
++        // Accurate path: buffered entries cover the time before this script ran.
++        var observer = new PerformanceObserver(function (list) {
++          var entries = list.getEntries();
++          for (var i = 0; i < entries.length; i++) {
++            var entry = entries[i];
++            if (entry.name !== 'hidden') continue;
++            // The first entry, at startTime 0, is the state at navigation
++            // start. A 'hidden' entry there means the page loaded in the
++            // background. A later 'hidden' entry means the user switched
++            // away after a foreground load.
++            report(entry.startTime === 0, entry.startTime, false);
++            reported = true;
++            observer.disconnect();
++            return;
++          }
++          if (!reported) {
++            report(false, null, false);
++            reported = true;
++          }
++        });
++        observer.observe({ type: 'visibility-state', buffered: true });
++        return;
++      }
++
++      // Fallback path: may be wrong (see comment above).
++      // A prerendered page is reported as hidden but isn't a background tab.
++      var hiddenNow = document.visibilityState === 'hidden' && !document.prerendering;
++      if (hiddenNow) {
++        report(true, 0, true);
++        return;
++      }
++      report(false, null, true);
++
++      // Later switches to the background are caught by the event, and
++      // event.timeStamp gives an accurate time for them. isBackground still
++      // comes from the fallback check, so this is still marked as fallback.
++      document.addEventListener('visibilitychange', function onChange(event) {
++        if (document.visibilityState !== 'hidden') return;
++        document.removeEventListener('visibilitychange', onChange, true);
++        report(false, event.timeStamp, true);
++      }, true);
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

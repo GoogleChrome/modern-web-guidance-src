@@ -1,0 +1,411 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,330 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scroll-Driven Parallax Section */
++    .parallax-section {
++      position: relative;
++      overflow: hidden;
++      min-height: 520px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 80px 20px;
++      background-color: #1e120c;
++      color: #ffffff;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      pointer-events: none;
++    }
++
++    /* Layer 1: Deep Background */
++    .parallax-layer-bg {
++      top: -20%;
++      bottom: -20%;
++      height: 140%;
++      width: 100%;
++      z-index: 1;
++    }
++
++    .parallax-bg-img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      filter: brightness(0.7) contrast(1.1);
++    }
++
++    .parallax-bg-overlay {
++      position: absolute;
++      inset: 0;
++      background: radial-gradient(
++        circle at center,
++        rgba(30, 18, 12, 0.72) 0%,
++        rgba(20, 10, 6, 0.92) 100%
++      );
++    }
++
++    /* Layer 2: Midground Ambient Beans */
++    .parallax-layer-mid {
++      top: -25%;
++      bottom: -25%;
++      height: 150%;
++      width: 100%;
++      z-index: 2;
++      opacity: 0.22;
++      mix-blend-mode: overlay;
++    }
++
++    .parallax-mid-img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      filter: blur(1px);
++    }
++
++    /* Layer 3: Foreground Floating Accent Badges */
++    .parallax-layer-fore {
++      z-index: 5;
++      top: -10%;
++      bottom: -10%;
++      height: 120%;
++      width: 100%;
++      max-width: 1100px;
++      margin: 0 auto;
++      justify-content: space-between;
++      padding: 0 40px;
++      box-sizing: border-box;
++    }
++
++    .floating-badge {
++      background: rgba(46, 26, 18, 0.88);
++      backdrop-filter: blur(8px);
++      -webkit-backdrop-filter: blur(8px);
++      border: 1px solid rgba(255, 171, 64, 0.35);
++      border-radius: 12px;
++      padding: 12px 18px;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
++      color: #fff;
++    }
++
++    .floating-badge .badge-icon {
++      font-size: 1.6rem;
++    }
++
++    .floating-badge strong {
++      display: block;
++      font-size: 0.9rem;
++      color: var(--accent);
++    }
++
++    .floating-badge small {
++      display: block;
++      font-size: 0.75rem;
++      color: var(--secondary);
++    }
++
++    .badge-left {
++      align-self: flex-start;
++      margin-top: 50px;
++    }
++
++    .badge-right {
++      align-self: flex-end;
++      margin-bottom: 50px;
++    }
++
++    /* Layer 4: Content Layer */
++    .parallax-layer-content {
++      position: relative;
++      z-index: 10;
++      pointer-events: auto;
++      max-width: 780px;
++      width: 100%;
++    }
++
++    .parallax-card {
++      background: rgba(33, 20, 15, 0.84);
++      backdrop-filter: blur(12px);
++      -webkit-backdrop-filter: blur(12px);
++      border: 1px solid rgba(215, 204, 200, 0.2);
++      border-radius: 16px;
++      padding: 40px 36px;
++      text-align: center;
++      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
++    }
++
++    .section-tag {
++      display: inline-block;
++      background: rgba(255, 171, 64, 0.15);
++      color: var(--accent);
++      padding: 4px 14px;
++      border-radius: 20px;
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      font-weight: 600;
++      margin-bottom: 16px;
++    }
++
++    .parallax-card h2 {
++      font-size: 2.2rem;
++      margin-bottom: 16px;
++      color: #ffffff;
++      letter-spacing: 0.5px;
++    }
++
++    .parallax-description {
++      font-size: 1.05rem;
++      line-height: 1.7;
++      color: var(--secondary);
++      margin-bottom: 28px;
++      max-width: 640px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .parallax-stats {
++      display: flex;
++      justify-content: center;
++      gap: 36px;
++      margin-bottom: 30px;
++      border-top: 1px solid rgba(215, 204, 200, 0.15);
++      border-bottom: 1px solid rgba(215, 204, 200, 0.15);
++      padding: 20px 0;
++    }
++
++    .stat-item {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .stat-number {
++      font-size: 1.75rem;
++      font-weight: bold;
++      color: var(--accent);
++    }
++
++    .stat-label {
++      font-size: 0.8rem;
++      color: var(--secondary);
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .btn-parallax {
++      background: var(--accent);
++      color: #2b1810;
++      font-weight: 600;
++      padding: 12px 28px;
++      border-radius: 6px;
++    }
++
++    .btn-parallax:hover {
++      background: #ffb74d;
++      color: #1a0f0a;
++    }
++
++    /* Scroll-Driven Animations Keyframes */
++    @keyframes parallax-layer-bg {
++      from {
++        transform: translateY(-50px);
++      }
++      to {
++        transform: translateY(50px);
++      }
++    }
++
++    @keyframes parallax-layer-mid {
++      from {
++        transform: translateY(-90px);
++      }
++      to {
++        transform: translateY(90px);
++      }
++    }
++
++    @keyframes parallax-layer-fore {
++      from {
++        transform: translateY(110px);
++      }
++      to {
++        transform: translateY(-110px);
++      }
++    }
++
++    @keyframes parallax-layer-content {
++      from {
++        transform: translateY(35px);
++      }
++      to {
++        transform: translateY(-35px);
++      }
++    }
++
++    /* Feature detection for Scroll-Driven Animations */
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      .parallax-section {
++        view-timeline: --parallax-timeline;
++        view-timeline-axis: block;
++      }
++
++      .parallax-layer {
++        will-change: transform;
++      }
++
++      .parallax-layer-bg {
++        animation: parallax-layer-bg linear both;
++        animation-timeline: --parallax-timeline;
++        animation-range: entry 0% exit 100%;
++      }
++
++      .parallax-layer-mid {
++        animation: parallax-layer-mid linear both;
++        animation-timeline: --parallax-timeline;
++        animation-range: entry 0% exit 100%;
++      }
++
++      .parallax-layer-fore {
++        animation: parallax-layer-fore linear both;
++        animation-timeline: --parallax-timeline;
++        animation-range: entry 0% exit 100%;
++      }
++
++      .parallax-layer-content {
++        animation: parallax-layer-content linear both;
++        animation-timeline: --parallax-timeline;
++        animation-range: entry 0% exit 100%;
++      }
++    }
++
++    /* Accessibility: Respect Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer {
++        animation: none !important;
++        transform: none !important;
++        will-change: auto !important;
++      }
++    }
++
++    /* Responsive adjustments */
++    @media (max-width: 768px) {
++      .parallax-section {
++        min-height: auto;
++        padding: 60px 16px;
++      }
++
++      .parallax-layer-fore {
++        display: none;
++      }
++
++      .parallax-card {
++        padding: 28px 18px;
++      }
++
++      .parallax-card h2 {
++        font-size: 1.7rem;
++      }
++
++      .parallax-stats {
++        gap: 18px;
++      }
++
++      .stat-number {
++        font-size: 1.4rem;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +495,76 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <!-- Parallax Section -->
++  <section class="parallax-section" aria-labelledby="parallax-heading">
++    <!-- Layer 1: Deep Roastery Atmosphere -->
++    <div class="parallax-layer parallax-layer-bg" aria-hidden="true">
++      <img
++        src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=80"
++        alt=""
++        class="parallax-bg-img"
++        loading="lazy"
++      >
++      <div class="parallax-bg-overlay"></div>
++    </div>
++
++    <!-- Layer 2: Midground Roasted Beans Texture -->
++    <div class="parallax-layer parallax-layer-mid" aria-hidden="true">
++      <img
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1400&q=80"
++        alt=""
++        class="parallax-mid-img"
++        loading="lazy"
++      >
++    </div>
++
++    <!-- Layer 3: Foreground Floating Accent Badges -->
++    <div class="parallax-layer parallax-layer-fore" aria-hidden="true">
++      <div class="floating-badge badge-left">
++        <span class="badge-icon" aria-hidden="true">🔥</span>
++        <div class="badge-text">
++          <strong>Micro-Lot Roasting</strong>
++          <small>Precision Drum Roasted</small>
++        </div>
++      </div>
++      <div class="floating-badge badge-right">
++        <span class="badge-icon" aria-hidden="true">🌿</span>
++        <div class="badge-text">
++          <strong>100% Direct Trade</strong>
++          <small>Single-Origin Beans</small>
++        </div>
++      </div>
++    </div>
++
++    <!-- Layer 4: Semantic Content Card -->
++    <div class="parallax-layer parallax-layer-content">
++      <div class="parallax-card">
++        <span class="section-tag">Artisanal Process</span>
++        <h2 id="parallax-heading">The Craft Behind Every Roast</h2>
++        <p class="parallax-description">
++          We honor every harvest by fine-tuning time and temperature curves to unlock the distinct terroir of our beans. Roasted fresh each sunrise in small batches for unmistakable aroma and clarity.
++        </p>
++        <div class="parallax-stats">
++          <div class="stat-item">
++            <span class="stat-number">48h</span>
++            <span class="stat-label">Roast to Cup</span>
++          </div>
++          <div class="stat-item">
++            <span class="stat-number">88+</span>
++            <span class="stat-label">Specialty Score</span>
++          </div>
++          <div class="stat-item">
++            <span class="stat-number">100%</span>
++            <span class="stat-label">Fair Sourced</span>
++          </div>
++        </div>
++        <a href="/menu" class="btn btn-parallax">Explore Our Roasts</a>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

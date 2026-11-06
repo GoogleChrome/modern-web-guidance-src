@@ -1,0 +1,720 @@
+diff --git a/index.html b/index.html
+index 66c9173..9f127e9 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,400 @@
+       margin-top: 20px;
+     }
+ 
++    /* ---------- Layout: menu + order panel ---------- */
++    .shop {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 320px;
++      gap: 28px;
++      align-items: start;
++      margin-top: 20px;
++    }
++
++    @media (max-width: 860px) {
++      .shop { grid-template-columns: 1fr; }
++    }
++
++    .shop .grid {
++      margin-top: 0;
++      /* Cards size independently so one expanding doesn't stretch its neighbours */
++      align-items: start;
++    }
++
++    /* ---------- Cards (each card is its own transition scope) ---------- */
+     .card {
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow: hidden;
++      /* A scoped view transition root: keeps the card's snapshot tree self-contained */
++      contain: layout;
++    }
++
++    .card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 10;
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .card-body {
++      padding: 18px 20px 22px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .price {
++      display: inline-block;
++      font-weight: 700;
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin: 8px 0 4px;
++      font-variant-numeric: tabular-nums;
++      view-transition-name: match-element;
++      view-transition-class: price;
++    }
++
++    .sizes {
++      display: inline-flex;
++      gap: 4px;
++      padding: 3px;
++      margin-top: 6px;
++      background: #f3ece9;
++      border-radius: 999px;
++      border: 0;
++    }
++
++    .sizes legend {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++    }
++
++    .sizes label {
++      position: relative;
++      cursor: pointer;
++    }
++
++    .sizes input {
++      position: absolute;
++      opacity: 0;
++      inset: 0;
++      cursor: pointer;
++    }
++
++    .sizes span {
++      display: block;
++      padding: 4px 12px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    .sizes input:checked + span {
++      background: var(--primary);
++      color: white;
++    }
++
++    .sizes input:focus-visible + span {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .details {
++      text-align: left;
++      font-size: 0.9rem;
++      background: #faf6f4;
++      border-radius: 6px;
++      padding: 12px 14px;
++      margin-top: 14px;
++      view-transition-name: match-element;
++      view-transition-class: details;
++    }
++
++    .details[hidden] { display: none; }
++
++    .details dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 4px 12px;
++    }
++
++    .details dt {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .card-actions {
++      display: flex;
++      gap: 8px;
++      justify-content: center;
++      flex-wrap: wrap;
++      margin-top: 14px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn.ghost {
++      background: transparent;
++      color: var(--primary);
++      box-shadow: inset 0 0 0 1px var(--primary);
++    }
++
++    .btn.ghost:hover {
++      background: #f3ece9;
++    }
++
++    .add-btn {
++      view-transition-name: match-element;
++      view-transition-class: add-btn;
++    }
++
++    .add-btn.added {
++      background: #2e7d32;
++    }
++
++    .add-btn.added:hover {
++      background: #1b5e20;
++    }
++
++    /* ---------- Order panel (its own transition scope) ---------- */
++    .order-panel {
++      position: sticky;
++      top: 84px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 18px 18px 20px;
++      contain: layout;
++    }
++
++    .order-head {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      margin-bottom: 12px;
++    }
++
++    .order-head h2 {
++      font-size: 1.15rem;
++      color: var(--primary);
++    }
++
++    .sort {
++      display: inline-flex;
++      gap: 2px;
++      font-size: 0.75rem;
++    }
++
++    .sort button {
++      border: 0;
++      background: none;
++      padding: 3px 8px;
++      border-radius: 999px;
++      cursor: pointer;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .sort button[aria-pressed="true"] {
++      background: var(--secondary);
++      font-weight: 600;
++    }
++
++    .order-list {
++      list-style: none;
++      display: grid;
++      gap: 8px;
++    }
++
++    .order-item {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      align-items: center;
++      gap: 4px 10px;
++      padding: 10px 12px;
++      background: #faf6f4;
++      border-radius: 6px;
++      view-transition-name: match-element;
++      view-transition-class: order-item;
++    }
++
++    .order-item .name {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .order-item .meta {
++      font-size: 0.78rem;
++      color: #6d4c41;
++    }
++
++    .order-item .line-total {
++      font-weight: 600;
++      font-variant-numeric: tabular-nums;
++      text-align: right;
++    }
++
++    .qty {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      grid-column: 2;
++      grid-row: 2;
++      justify-self: end;
++    }
++
++    .qty button {
++      width: 24px;
++      height: 24px;
++      border-radius: 50%;
++      border: 1px solid var(--primary);
++      background: white;
+       color: var(--primary);
++      cursor: pointer;
++      line-height: 1;
++      font-size: 0.9rem;
++    }
++
++    .qty button:hover {
++      background: var(--secondary);
++    }
++
++    .qty output {
++      min-width: 1.2em;
++      text-align: center;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .order-empty {
++      text-align: center;
++      color: #8d6e63;
++      font-size: 0.9rem;
++      padding: 18px 0;
++      view-transition-name: match-element;
++      view-transition-class: order-empty;
++    }
++
++    .order-empty[hidden] { display: none; }
++
++    .order-total {
++      display: flex;
++      justify-content: space-between;
++      border-top: 1px solid var(--secondary);
++      margin-top: 14px;
++      padding-top: 12px;
++      font-weight: 700;
++      font-variant-numeric: tabular-nums;
++      view-transition-name: match-element;
++      view-transition-class: order-total;
++    }
++
++    .order-panel .btn {
++      display: block;
++      text-align: center;
++      width: 100%;
++    }
++
++    .support-note {
++      font-size: 0.75rem;
++      color: #8d6e63;
++      margin-top: 10px;
++      text-align: center;
++    }
++
++    /* ---------- Scoped view transition animations ----------
++       Unqualified pseudo-element selectors match any originating element,
++       so these rules apply inside every card / panel scope. */
++
++    ::view-transition-group(*) {
++      animation-duration: 320ms;
++      animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
++    }
++
++    /* Price ticks up/down when the size changes */
++    ::view-transition-group(.price) {
++      overflow: clip;
++    }
++
++    :active-view-transition-type(size-up)::view-transition-old(.price) {
++      animation: 220ms ease-in both slide-out-up;
++    }
++
++    :active-view-transition-type(size-up)::view-transition-new(.price) {
++      animation: 260ms 60ms ease-out both slide-in-up;
++    }
++
++    :active-view-transition-type(size-down)::view-transition-old(.price) {
++      animation: 220ms ease-in both slide-out-down;
++    }
++
++    :active-view-transition-type(size-down)::view-transition-new(.price) {
++      animation: 260ms 60ms ease-out both slide-in-down;
++    }
++
++    /* Details panel reveal / collapse */
++    ::view-transition-new(.details):only-child {
++      animation: 300ms 60ms ease-out both reveal;
++    }
++
++    ::view-transition-old(.details):only-child {
++      animation: 180ms ease-in both conceal;
++    }
++
++    /* Order line items enter / leave */
++    ::view-transition-new(.order-item):only-child {
++      animation: 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both item-in;
++    }
++
++    ::view-transition-old(.order-item):only-child {
++      animation: 220ms ease-in both item-out;
++    }
++
++    /* Quantity / line total changes inside a persisting item: quick crossfade */
++    ::view-transition-old(.order-item),
++    ::view-transition-new(.order-item) {
++      height: 100%;
++      animation-duration: 200ms;
++    }
++
++    /* "Added" confirmation on the button */
++    ::view-transition-new(.add-btn) {
++      animation: 280ms ease-out both pop-in;
++    }
++
++    @keyframes slide-out-up   { to   { transform: translateY(-100%); opacity: 0; } }
++    @keyframes slide-in-up    { from { transform: translateY(100%);  opacity: 0; } }
++    @keyframes slide-out-down { to   { transform: translateY(100%);  opacity: 0; } }
++    @keyframes slide-in-down  { from { transform: translateY(-100%); opacity: 0; } }
++    @keyframes reveal  { from { opacity: 0; transform: translateY(-8px) scale(0.98); } }
++    @keyframes conceal { to   { opacity: 0; transform: translateY(-8px) scale(0.98); } }
++    @keyframes item-in  { from { opacity: 0; transform: translateX(24px) scale(0.96); } }
++    @keyframes item-out { to   { opacity: 0; transform: translateX(-24px) scale(0.96); } }
++    @keyframes pop-in {
++      0%   { transform: scale(0.85); opacity: 0; }
++      60%  { transform: scale(1.06); opacity: 1; }
++      100% { transform: scale(1); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
+     }
+ 
+     .btn {
+@@ -175,27 +558,295 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="shop">
++        <div class="grid" id="menu-grid"></div>
++
++        <aside class="order-panel" id="order-panel" aria-labelledby="order-heading">
++          <div class="order-head">
++            <h2 id="order-heading">Your Order</h2>
++            <div class="sort" role="group" aria-label="Sort order items">
++              <button type="button" data-sort="recent" aria-pressed="true">Recent</button>
++              <button type="button" data-sort="price" aria-pressed="false">Price</button>
++            </div>
++          </div>
++          <p class="order-empty" id="order-empty">Your cup is empty. Add a drink to get started.</p>
++          <ul class="order-list" id="order-list"></ul>
++          <div class="order-total" aria-live="polite">
++            <span>Total</span>
++            <span id="order-total">$0.00</span>
++          </div>
++          <a href="/order-online" class="btn">Checkout</a>
++          <p class="support-note" id="support-note" hidden>
++            Your browser doesn't support scoped view transitions yet, so updates apply instantly.
++          </p>
++        </aside>
++      </div>
++    </section>
++  </main>
++
++  <template id="card-template">
++    <article class="card">
++      <img alt="" loading="lazy" width="600" height="375">
++      <div class="card-body">
++        <h3></h3>
++        <p class="desc"></p>
++        <div class="price" aria-live="polite"></div>
++        <div>
++          <fieldset class="sizes">
++            <legend>Size</legend>
++          </fieldset>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="details" hidden>
++          <dl></dl>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card-actions">
++          <button type="button" class="btn ghost details-btn" aria-expanded="false">View Details</button>
++          <button type="button" class="btn add-btn">Add to Order</button>
+         </div>
+       </div>
+-    </section>
+-  </main>
++    </article>
++  </template>
++
++  <template id="order-item-template">
++    <li class="order-item">
++      <div>
++        <div class="name"></div>
++        <div class="meta"></div>
++      </div>
++      <div class="line-total"></div>
++      <div class="qty">
++        <button type="button" data-action="dec"></button>
++        <output></output>
++        <button type="button" data-action="inc" aria-label="Increase quantity">+</button>
++      </div>
++    </li>
++  </template>
++
++  <script>
++    (() => {
++      const MENU = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          desc: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=70',
++          prices: { S: 4.25, M: 4.95, L: 5.65 },
++          details: { Origin: 'Colombia, Huila', Notes: 'Maple, toasted oat, caramel', Caffeine: 'Medium', Milk: 'Oat (swap free)' },
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          desc: 'Bold, smokey, and perfect for a morning boost.',
++          img: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=70',
++          prices: { S: 2.75, M: 3.25, L: 3.85 },
++          details: { Origin: 'Sumatra, Aceh', Notes: 'Dark cocoa, cedar, smoke', Caffeine: 'High', Shots: 'Single / Double / Triple' },
++        },
++        {
++          id: 'cold-brew',
++          name: 'Cold Brew',
++          desc: 'Steeped for 18 hours for maximum smoothness.',
++          img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=70',
++          prices: { S: 3.95, M: 4.55, L: 5.25 },
++          details: { Origin: 'Ethiopia, Guji', Notes: 'Stone fruit, black tea, honey', Caffeine: 'High', Steep: '18 hours, cold' },
++        },
++      ];
++      const SIZES = ['S', 'M', 'L'];
++      const SIZE_NAMES = { S: 'Small', M: 'Medium', L: 'Large' };
++      const money = (n) => `$${n.toFixed(2)}`;
++      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
++
++      const supportsScoped = typeof Element.prototype.startViewTransition === 'function';
++      if (!supportsScoped) document.getElementById('support-note').hidden = false;
++
++      /**
++       * Run `update` inside a view transition scoped to `scope`.
++       * Only the scope's subtree is snapshotted and animated: the rest of the
++       * page stays live, and transitions on other scopes run concurrently.
++       * Starting a new transition on the same scope skips the previous one.
++       * Without support (or with reduced motion), the DOM update is applied directly.
++       */
++      function scopedTransition(scope, update, types = []) {
++        if (!supportsScoped || reduceMotion.matches) {
++          update();
++          return null;
++        }
++        try {
++          return scope.startViewTransition({ update, types });
++        } catch {
++          // Implementations that only accept a callback.
++          return scope.startViewTransition(update);
++        }
++      }
++
++      /* ---------------- Order state + panel ---------------- */
++      const panel = document.getElementById('order-panel');
++      const list = document.getElementById('order-list');
++      const emptyMsg = document.getElementById('order-empty');
++      const totalEl = document.getElementById('order-total');
++      const itemTpl = document.getElementById('order-item-template');
++
++      /** key -> { item, size, qty, addedAt, el } — elements are reused so
++       *  `view-transition-name: match-element` can pair old and new states. */
++      const order = new Map();
++      let sortMode = 'recent';
++      let addCounter = 0;
++
++      function lineKey(item, size) { return `${item.id}:${size}`; }
++
++      function renderOrder() {
++        const lines = [...order.values()];
++        lines.sort(sortMode === 'price'
++          ? (a, b) => b.item.prices[b.size] * b.qty - a.item.prices[a.size] * a.qty
++          : (a, b) => b.addedAt - a.addedAt);
++
++        for (const line of lines) {
++          if (!line.el) line.el = createOrderItem(line);
++          const el = line.el;
++          el.querySelector('.meta').textContent = `${SIZE_NAMES[line.size]} · ${money(line.item.prices[line.size])}`;
++          el.querySelector('.line-total').textContent = money(line.item.prices[line.size] * line.qty);
++          el.querySelector('output').textContent = line.qty;
++          const dec = el.querySelector('[data-action="dec"]');
++          dec.textContent = line.qty === 1 ? '×' : '−';
++          dec.setAttribute('aria-label', line.qty === 1 ? `Remove ${line.item.name}` : 'Decrease quantity');
++        }
++        // Reorder (and drop removed elements) by re-appending in sorted order.
++        list.replaceChildren(...lines.map((l) => l.el));
++
++        emptyMsg.hidden = lines.length > 0;
++        const total = lines.reduce((sum, l) => sum + l.item.prices[l.size] * l.qty, 0);
++        totalEl.textContent = money(total);
++      }
++
++      function createOrderItem(line) {
++        const el = itemTpl.content.firstElementChild.cloneNode(true);
++        el.dataset.key = lineKey(line.item, line.size);
++        el.querySelector('.name').textContent = line.item.name;
++        return el;
++      }
++
++      function addToOrder(item, size) {
++        scopedTransition(panel, () => {
++          const key = lineKey(item, size);
++          const line = order.get(key);
++          if (line) {
++            line.qty += 1;
++            line.addedAt = ++addCounter;
++          } else {
++            order.set(key, { item, size, qty: 1, addedAt: ++addCounter, el: null });
++          }
++          renderOrder();
++        }, ['order-add']);
++      }
++
++      list.addEventListener('click', (e) => {
++        const btn = e.target.closest('button[data-action]');
++        if (!btn) return;
++        const key = btn.closest('.order-item').dataset.key;
++        scopedTransition(panel, () => {
++          const line = order.get(key);
++          if (!line) return;
++          line.qty += btn.dataset.action === 'inc' ? 1 : -1;
++          if (line.qty <= 0) order.delete(key);
++          renderOrder();
++        }, [btn.dataset.action === 'inc' ? 'order-inc' : 'order-dec']);
++      });
++
++      panel.querySelector('.sort').addEventListener('click', (e) => {
++        const btn = e.target.closest('button[data-sort]');
++        if (!btn || btn.dataset.sort === sortMode) return;
++        scopedTransition(panel, () => {
++          sortMode = btn.dataset.sort;
++          panel.querySelectorAll('.sort button').forEach((b) =>
++            b.setAttribute('aria-pressed', String(b === btn)));
++          renderOrder();
++        }, ['order-sort']);
++      });
++
++      /* ---------------- Menu cards ---------------- */
++      const grid = document.getElementById('menu-grid');
++      const cardTpl = document.getElementById('card-template');
++
++      for (const item of MENU) grid.append(createCard(item));
++
++      function createCard(item) {
++        const card = cardTpl.content.firstElementChild.cloneNode(true);
++        let size = 'M';
++        let addedTimer = 0;
++
++        const img = card.querySelector('img');
++        img.src = item.img;
++        img.alt = item.name;
++        card.querySelector('h3').textContent = item.name;
++        card.querySelector('.desc').textContent = item.desc;
++
++        const priceEl = card.querySelector('.price');
++        const showPrice = () => { priceEl.textContent = money(item.prices[size]); };
++        showPrice();
++
++        // Size picker
++        const sizes = card.querySelector('.sizes');
++        sizes.querySelector('legend').textContent = `Size for ${item.name}`;
++        for (const s of SIZES) {
++          const label = document.createElement('label');
++          label.innerHTML = `<input type="radio" name="size-${item.id}" value="${s}"><span>${s}</span>`;
++          const input = label.querySelector('input');
++          input.checked = s === size;
++          input.setAttribute('aria-label', SIZE_NAMES[s]);
++          sizes.append(label);
++        }
++        sizes.addEventListener('change', (e) => {
++          const next = e.target.value;
++          const dir = SIZES.indexOf(next) > SIZES.indexOf(size) ? 'size-up' : 'size-down';
++          scopedTransition(card, () => {
++            size = next;
++            showPrice();
++          }, [dir]);
++        });
++
++        // Details toggle
++        const details = card.querySelector('.details');
++        const dl = details.querySelector('dl');
++        for (const [k, v] of Object.entries(item.details)) {
++          const dt = document.createElement('dt');
++          const dd = document.createElement('dd');
++          dt.textContent = k;
++          dd.textContent = v;
++          dl.append(dt, dd);
++        }
++        details.id = `details-${item.id}`;
++        const detailsBtn = card.querySelector('.details-btn');
++        detailsBtn.setAttribute('aria-controls', details.id);
++        detailsBtn.addEventListener('click', () => {
++          const open = details.hidden;
++          scopedTransition(card, () => {
++            details.hidden = !open;
++            detailsBtn.setAttribute('aria-expanded', String(open));
++            detailsBtn.textContent = open ? 'Hide Details' : 'View Details';
++          }, [open ? 'details-open' : 'details-close']);
++        });
++
++        // Add to order: animates the card AND the order panel at the same time,
++        // as two independent scoped transitions.
++        const addBtn = card.querySelector('.add-btn');
++        const setAdded = (added) => {
++          addBtn.classList.toggle('added', added);
++          addBtn.textContent = added ? 'Added ✓' : 'Add to Order';
++        };
++        addBtn.addEventListener('click', () => {
++          addToOrder(item, size);
++          scopedTransition(card, () => setAdded(true), ['added']);
++          clearTimeout(addedTimer);
++          addedTimer = setTimeout(() => scopedTransition(card, () => setAdded(false), ['added-reset']), 1400);
++        });
++
++        return card;
++      }
++
++      renderOrder();
++    })();
++  </script>
+ 
+   <footer>
+     <div class="footer-links">

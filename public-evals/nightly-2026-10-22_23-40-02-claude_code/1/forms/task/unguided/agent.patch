@@ -1,0 +1,510 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -2,8 +2,9 @@
+ <html lang="en">
+ 
+ <head>
+   <meta charset="UTF-8">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -151,8 +152,215 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Rewards registration */
++    .signup {
++      background: white;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .signup-inner {
++      max-width: 620px;
++      margin: 0 auto;
++    }
++
++    .signup h2,
++    .signup .lead {
++      text-align: center;
++    }
++
++    .signup .lead {
++      margin-bottom: 24px;
++    }
++
++    .progress {
++      display: flex;
++      list-style: none;
++      gap: 8px;
++      margin-bottom: 24px;
++    }
++
++    .progress li {
++      flex: 1;
++      padding: 8px 4px;
++      border-bottom: 4px solid var(--secondary);
++      font-size: 0.85rem;
++      text-align: center;
++      color: #5d4037;
++    }
++
++    .progress li[aria-current="step"] {
++      border-bottom-color: var(--primary);
++      font-weight: bold;
++      color: var(--text);
++    }
++
++    .progress li.done {
++      border-bottom-color: #2e7d32;
++    }
++
++    .signup fieldset {
++      border: 0;
++      min-width: 0;
++    }
++
++    .signup legend {
++      font-size: 1.2rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .field {
++      margin-bottom: 18px;
++    }
++
++    .field label,
++    .field .label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .optional {
++      font-weight: normal;
++      color: #5d4037;
++      font-size: 0.85rem;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-bottom: 4px;
++    }
++
++    .signup input[type="text"],
++    .signup input[type="email"],
++    .signup input[type="password"],
++    .signup input[type="tel"],
++    .signup input[type="date"],
++    .signup select {
++      width: 100%;
++      font: inherit;
++      padding: 10px 12px;
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .signup input[aria-invalid="true"] {
++      border-color: #b71c1c;
++    }
++
++    .signup :focus-visible {
++      outline: 3px solid #1a5fb4;
++      outline-offset: 2px;
++    }
++
++    .error {
++      color: #b71c1c;
++      font-size: 0.9rem;
++      margin-top: 4px;
++    }
++
++    .error:empty {
++      display: none;
++    }
++
++    .password-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++      border: 2px solid var(--primary);
++    }
++
++    .signup button.btn {
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++      border: 2px solid var(--primary);
++    }
++
++    .signup button.btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .check {
++      display: flex;
++      gap: 10px;
++      align-items: flex-start;
++      margin-bottom: 14px;
++    }
++
++    .check input {
++      width: 1.2rem;
++      height: 1.2rem;
++      margin-top: 0.25rem;
++      flex-shrink: 0;
++    }
++
++    .actions {
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++      margin-top: 24px;
++    }
++
++    .actions .spacer {
++      flex: 1;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    .hp {
++      position: absolute;
++      left: -10000px;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++    }
++
++    .form-summary {
++      border: 2px solid #b71c1c;
++      color: #b71c1c;
++      padding: 10px 14px;
++      border-radius: 5px;
++      margin-bottom: 16px;
++    }
++
++    .form-summary:empty {
++      display: none;
++    }
++
++    .success {
++      text-align: center;
++      padding: 20px;
++      border: 2px solid #2e7d32;
++      border-radius: 8px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .signup input,
++      .signup select {
++        transition: border-color 0.2s;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +404,135 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="signup" id="join" aria-labelledby="signup-title">
++    <div class="signup-inner">
++      <h2 id="signup-title">Join Daily Grind Rewards</h2>
++      <p class="lead">Earn a free drink after every 10 purchases, plus a treat on your birthday.</p>
++
++      <form id="signup-form" action="/rewards/register" method="post" novalidate autocomplete="on">
++        <ol class="progress" id="progress" aria-label="Registration progress">
++          <li>1. Account</li>
++          <li>2. About you</li>
++          <li>3. Preferences</li>
++        </ol>
++
++        <div id="form-summary" class="form-summary" role="alert" tabindex="-1"></div>
++        <p class="hint">Fields marked <span aria-hidden="true">*</span><span class="visually-hidden">with an asterisk</span> are required.</p>
++
++        <fieldset data-step>
++          <legend>Create your account</legend>
++
++          <div class="field">
++            <label for="email">Email address <span aria-hidden="true">*</span></label>
++            <input type="email" id="email" name="email" autocomplete="email" inputmode="email"
++              autocapitalize="none" spellcheck="false" maxlength="254" required aria-describedby="email-err">
++            <div class="error" id="email-err"></div>
++          </div>
++
++          <div class="field">
++            <label for="password">Password <span aria-hidden="true">*</span></label>
++            <span class="hint" id="password-hint">At least 10 characters. A passphrase works well; spaces are allowed.</span>
++            <div class="password-row">
++              <input type="password" id="password" name="password" autocomplete="new-password"
++                minlength="10" maxlength="128" required aria-describedby="password-hint password-err">
++              <button type="button" class="btn btn-secondary" id="toggle-password" aria-controls="password"
++                aria-pressed="false">Show</button>
++            </div>
++            <div class="error" id="password-err"></div>
++          </div>
++        </fieldset>
++
++        <fieldset data-step>
++          <legend>Tell us about you</legend>
++
++          <div class="field">
++            <label for="given-name">First name <span aria-hidden="true">*</span></label>
++            <input type="text" id="given-name" name="given_name" autocomplete="given-name" maxlength="80"
++              required aria-describedby="given-name-err">
++            <div class="error" id="given-name-err"></div>
++          </div>
++
++          <div class="field">
++            <label for="family-name">Last name <span aria-hidden="true">*</span></label>
++            <input type="text" id="family-name" name="family_name" autocomplete="family-name" maxlength="80"
++              required aria-describedby="family-name-err">
++            <div class="error" id="family-name-err"></div>
++          </div>
++
++          <div class="field">
++            <label for="postal-code">ZIP / postal code <span aria-hidden="true">*</span></label>
++            <input type="text" id="postal-code" name="postal_code" autocomplete="postal-code"
++              inputmode="text" autocapitalize="characters" maxlength="10" required
++              aria-describedby="postal-code-err">
++            <div class="error" id="postal-code-err"></div>
++          </div>
++
++          <div class="field">
++            <label for="phone">Mobile phone <span class="optional">(optional)</span></label>
++            <span class="hint" id="phone-hint">Only used to look up your rewards at the counter.</span>
++            <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="20"
++              aria-describedby="phone-hint phone-err">
++            <div class="error" id="phone-err"></div>
++          </div>
++
++          <div class="field">
++            <label for="birthday">Birthday <span class="optional">(optional)</span></label>
++            <span class="hint" id="birthday-hint">For your birthday treat. We never show your birth year.</span>
++            <input type="date" id="birthday" name="birthday" autocomplete="bday" aria-describedby="birthday-hint birthday-err">
++            <div class="error" id="birthday-err"></div>
++          </div>
++        </fieldset>
++
++        <fieldset data-step>
++          <legend>Preferences and consent</legend>
++
++          <div class="field">
++            <label for="drink">Favorite drink <span class="optional">(optional)</span></label>
++            <select id="drink" name="favorite_drink" autocomplete="off">
++              <option value="">No preference</option>
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++              <option value="other">Something else</option>
++            </select>
++          </div>
++
++          <div class="check">
++            <input type="checkbox" id="marketing" name="marketing_opt_in" value="yes">
++            <label for="marketing">Send me offers and news by email. You can unsubscribe at any time.</label>
++          </div>
++
++          <div class="check">
++            <input type="checkbox" id="terms" name="terms" value="yes" required aria-describedby="terms-err">
++            <label for="terms">I agree to the <a href="/rewards/terms" target="_blank" rel="noopener noreferrer">rewards terms</a>
++              and have read the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">privacy policy</a>. <span aria-hidden="true">*</span></label>
++          </div>
++          <div class="error" id="terms-err"></div>
++        </fieldset>
++
++        <!-- Honeypot: hidden from people and assistive tech; bots tend to fill it in -->
++        <div class="hp" aria-hidden="true">
++          <label for="website">Leave this field empty</label>
++          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
++        </div>
++
++        <div class="actions">
++          <button type="button" class="btn btn-secondary" id="back" hidden>Back</button>
++          <span class="spacer"></span>
++          <button type="button" class="btn" id="next" hidden>Next</button>
++          <button type="submit" class="btn" id="submit">Create account</button>
++        </div>
++      </form>
++
++      <div id="success" class="success" role="status" tabindex="-1" hidden>
++        <h3>Welcome to Daily Grind Rewards!</h3>
++        <p>Your account has been created. Check your email to confirm your address.</p>
++      </div>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +541,144 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('signup-form');
++      var steps = Array.prototype.slice.call(form.querySelectorAll('[data-step]'));
++      var crumbs = Array.prototype.slice.call(document.querySelectorAll('#progress li'));
++      var back = document.getElementById('back');
++      var next = document.getElementById('next');
++      var submit = document.getElementById('submit');
++      var summary = document.getElementById('form-summary');
++      var current = 0;
++
++      var messages = {
++        email: { valueMissing: 'Enter your email address.', typeMismatch: 'Enter an email address like name@example.com.' },
++        password: { valueMissing: 'Create a password.', tooShort: 'Your password must be at least 10 characters.' },
++        'given-name': { valueMissing: 'Enter your first name.' },
++        'family-name': { valueMissing: 'Enter your last name.' },
++        'postal-code': { valueMissing: 'Enter your ZIP or postal code.', patternMismatch: 'Enter a valid ZIP or postal code.' },
++        phone: { patternMismatch: 'Enter a valid phone number, e.g. 555 123 4567.' },
++        birthday: { rangeOverflow: 'Birthday cannot be in the future.', rangeUnderflow: 'Enter a valid birthday.', badInput: 'Enter a valid date.' },
++        terms: { valueMissing: 'You must agree to the terms to join.' }
++      };
++
++      // Patterns set here so the form still works if JS fails (server validates regardless)
++      document.getElementById('postal-code').pattern = '[A-Za-z0-9][A-Za-z0-9 \\-]{2,9}';
++      document.getElementById('phone').pattern = '[0-9+()\\-. ]{7,20}';
++      var bday = document.getElementById('birthday');
++      bday.max = new Date().toISOString().slice(0, 10);
++      bday.min = '1900-01-01';
++
++      function errorFor(input) { return document.getElementById(input.id + '-err'); }
++
++      function validateField(input) {
++        var err = errorFor(input);
++        if (!err) return true;
++        var v = input.validity, text = '';
++        if (!v.valid) {
++          var map = messages[input.id] || {};
++          for (var key in map) { if (v[key]) { text = map[key]; break; } }
++          text = text || input.validationMessage;
++        }
++        err.textContent = text;
++        if (text) input.setAttribute('aria-invalid', 'true'); else input.removeAttribute('aria-invalid');
++        return !text;
++      }
++
++      function validateStep(i) {
++        var bad = [];
++        steps[i].querySelectorAll('input, select').forEach(function (el) {
++          if (!validateField(el)) bad.push(el);
++        });
++        if (bad.length) {
++          summary.textContent = 'Please fix ' + bad.length + (bad.length === 1 ? ' error' : ' errors') + ' before continuing.';
++          bad[0].focus();
++          return false;
++        }
++        summary.textContent = '';
++        return true;
++      }
++
++      function show(i, moveFocus) {
++        current = i;
++        steps.forEach(function (s, n) { s.hidden = n !== i; });
++        crumbs.forEach(function (c, n) {
++          if (n === i) c.setAttribute('aria-current', 'step'); else c.removeAttribute('aria-current');
++          c.classList.toggle('done', n < i);
++        });
++        back.hidden = i === 0;
++        next.hidden = i === steps.length - 1;
++        submit.hidden = i !== steps.length - 1;
++        if (moveFocus) {
++          var legend = steps[i].querySelector('legend');
++          legend.tabIndex = -1;
++          legend.focus();
++        }
++      }
++
++      form.querySelectorAll('input, select').forEach(function (el) {
++        el.addEventListener('blur', function () { if (el.value || el.getAttribute('aria-invalid')) validateField(el); });
++        el.addEventListener('input', function () { if (el.getAttribute('aria-invalid')) validateField(el); });
++        el.addEventListener('change', function () { if (el.getAttribute('aria-invalid')) validateField(el); });
++      });
++
++      next.addEventListener('click', function () { if (validateStep(current)) show(current + 1, true); });
++      back.addEventListener('click', function () { summary.textContent = ''; show(current - 1, true); });
++
++      // Enter in a text field advances instead of submitting early
++      form.addEventListener('keydown', function (e) {
++        if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && current < steps.length - 1) {
++          e.preventDefault();
++          next.click();
++        }
++      });
++
++      var toggle = document.getElementById('toggle-password');
++      toggle.addEventListener('click', function () {
++        var pw = document.getElementById('password');
++        var showing = pw.type === 'text';
++        pw.type = showing ? 'password' : 'text';
++        toggle.textContent = showing ? 'Show' : 'Hide';
++        toggle.setAttribute('aria-pressed', String(!showing));
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        for (var i = 0; i < steps.length; i++) {
++          if (!validateStep(i)) { show(i, false); validateStep(i); return; }
++        }
++        if (form.website.value) return; // honeypot tripped: silently drop
++
++        submit.disabled = true; // prevent double submit
++        submit.textContent = 'Creating account…';
++
++        var data = new FormData(form);
++        data.delete('website');
++        fetch(form.action, { method: 'POST', body: data, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
++          .then(function (r) {
++            if (!r.ok) throw new Error('status ' + r.status);
++            form.hidden = true;
++            var ok = document.getElementById('success');
++            ok.hidden = false;
++            ok.focus();
++            form.reset();
++          })
++          .catch(function () {
++            summary.textContent = 'Sorry, we couldn’t create your account. Please try again in a moment.';
++            summary.focus();
++          })
++          .then(function () {
++            submit.disabled = false;
++            submit.textContent = 'Create account';
++          });
++      });
++
++      show(0, false);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

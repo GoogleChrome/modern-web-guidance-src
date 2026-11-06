@@ -1,0 +1,150 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,146 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#f6f5f0">
++  <meta name="description" content="Form No. 01. A thoughtfully made lounge chair for the everyday.">
++  <title>FORM — Made for the everyday</title>
++  <link rel="preload" as="image" href="hero-lcp.jpg" fetchpriority="high">
++  <style>
++    :root { color-scheme: light; --paper: #f6f5f0; --ink: #282d26; --muted: #74786e; --line: #dcded4; }
++    * { box-sizing: border-box; }
++    html { scroll-behavior: smooth; }
++    body { margin: 0; background: var(--paper); color: var(--ink); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; }
++    a { color: inherit; text-decoration: none; }
++    button { color: inherit; font: inherit; cursor: pointer; }
++    a:focus-visible, button:focus-visible { outline: 2px solid #6c775d; outline-offset: 6px; }
++    [hidden] { display: none !important; }
++    .wrap { width: min(1440px, calc(100% - 96px)); margin: auto; }
++    header { height: 96px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
++    .wordmark { font-size: 26px; font-weight: 700; letter-spacing: -1.5px; }
++    .wordmark span { color: #838d76; }
++    nav { display: flex; align-items: center; gap: 36px; font-size: 12px; }
++    .menu-button { border: 0; background: none; padding: 10px 0; }
++    .menu-button span { margin-left: 10px; }
++    .menu-promo { padding: 24px 0; border-bottom: 1px solid var(--line); }
++    .menu-promo a { display: flex; align-items: center; gap: 24px; }
++    .menu-promo img { width: 240px; height: 150px; object-fit: cover; background: #e5e6dc; }
++    .eyebrow { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
++    .hero { padding-top: 58px; }
++    .hero-heading { display: flex; justify-content: space-between; align-items: end; gap: 32px; margin-bottom: 34px; }
++    h1 { margin: 18px 0 0; font-size: clamp(42px, 5.6vw, 80px); font-weight: 400; letter-spacing: -4px; line-height: 1.02; }
++    .intro { max-width: 260px; margin: 0 0 4px; color: var(--muted); font-size: 13px; line-height: 1.7; }
++    .hero-image { display: block; width: 100%; height: clamp(360px, 46vw, 660px); object-fit: cover; background: #e4e6db; color: #6f7766; }
++    .hero-caption { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
++    .product-label { display: flex; gap: 24px; align-items: center; }
++    .product-label span { color: var(--muted); }
++    .text-link { display: inline-flex; gap: 32px; align-items: center; }
++    .gallery { padding: 112px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10%; align-items: center; }
++    .gallery-image { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; background: #e9e8e0; color: #74786e; }
++    h2 { font-size: clamp(32px, 3.4vw, 48px); line-height: 1.1; font-weight: 400; letter-spacing: -2px; margin: 22px 0; }
++    .description { max-width: 330px; font-size: 14px; color: var(--muted); line-height: 1.8; }
++    .details { display: flex; gap: 36px; margin: 36px 0; font-size: 11px; }
++    .details span { display: block; margin-top: 8px; color: var(--muted); }
++    .gallery-toggle { padding: 13px 0; border: 0; border-bottom: 1px solid var(--ink); background: transparent; font-size: 12px; display: flex; gap: 40px; }
++    .note { padding: 70px 0 100px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 32px; }
++    .note p { max-width: 570px; font-size: clamp(24px, 3vw, 40px); font-weight: 400; letter-spacing: -1px; line-height: 1.3; margin: 0; }
++    footer { border-top: 1px solid var(--line); padding: 36px 0; display: flex; align-items: center; justify-content: space-between; gap: 24px; font-size: 10px; color: var(--muted); }
++    .footer-logo { width: 84px; height: 28px; object-fit: contain; color: var(--ink); font-size: 20px; font-weight: 700; }
++    footer div { display: flex; gap: 28px; }
++    @media (max-width: 650px) {
++      .wrap { width: calc(100% - 40px); }
++      header { height: 76px; }
++      nav { gap: 20px; }
++      .hero { padding-top: 40px; }
++      .hero-heading { display: block; }
++      h1 { letter-spacing: -2px; }
++      .intro { margin-top: 22px; }
++      .hero-image { height: 420px; }
++      .product-label { gap: 12px; }
++      .text-link { gap: 12px; }
++      .gallery { padding: 70px 0; grid-template-columns: 1fr; gap: 40px; }
++      .note { flex-direction: column; padding: 45px 0 65px; }
++      footer { flex-wrap: wrap; }
++      .menu-promo img { width: 140px; height: 100px; }
++    }
++    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
++  </style>
++</head>
++<body>
++  <div class="wrap">
++    <header>
++      <a class="wordmark" href="#" aria-label="Form home">FORM<span>.</span></a>
++      <nav aria-label="Main navigation">
++        <button class="menu-button" id="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-promo">Collection <span aria-hidden="true">+</span></button>
++        <a href="#philosophy">Our approach</a>
++      </nav>
++    </header>
++    <div class="menu-promo" id="menu-promo" hidden>
++      <a href="#product">
++        <img src="mega-menu-promo.jpg" alt="Explore the Form lounge chair collection" width="480" height="300" loading="lazy" decoding="async" fetchpriority="low">
++        <span>Considered objects.<br><br><span class="eyebrow">Explore the collection ↗</span></span>
++      </a>
++    </div>
++    <main>
++      <section class="hero" aria-labelledby="hero-title">
++        <div class="hero-heading">
++          <div><span class="eyebrow">Less, but considered.</span><h1 id="hero-title">Room for the everyday.</h1></div>
++          <p class="intro">Honest materials. Quiet details.<br>Furniture that feels at home, wherever you are.</p>
++        </div>
++        <img class="hero-image" src="hero-lcp.jpg" alt="Form No. 01 lounge chair in a sunlit living space" width="1440" height="660" loading="eager" decoding="async" fetchpriority="high">
++        <div class="hero-caption">
++          <div class="product-label">The Lounge Chair <span>No. 01 / Natural oak</span></div>
++          <a class="text-link" href="#product">Discover the details <span aria-hidden="true">↗</span></a>
++        </div>
++      </section>
++      <section class="gallery" id="product" aria-labelledby="product-title">
++        <div aria-live="polite">
++          <img class="gallery-image" id="gallery-main" src="gallery-main.jpg" alt="Front view of the Form No. 01 lounge chair" width="640" height="800" loading="lazy" decoding="async">
++          <img class="gallery-image" id="gallery-alt" src="gallery-alt.jpg" alt="Alternate view showing the lounge chair’s oak frame" width="640" height="800" loading="lazy" decoding="async" fetchpriority="low" hidden>
++        </div>
++        <div>
++          <span class="eyebrow">Meet Form No. 01</span>
++          <h2>A little less.<br>A little better.</h2>
++          <p class="description">A gentle curve. A solid oak frame. A place to pause. Our first lounge chair brings together the things you need, with room for everything else.</p>
++          <div class="details"><div>Material<span>Natural oak</span></div><div>Finish<span>Hand-oiled</span></div><div>Made for<span>Every day</span></div></div>
++          <button class="gallery-toggle" id="gallery-toggle" type="button" aria-controls="gallery-alt" aria-expanded="false"><span>View another angle</span><span aria-hidden="true">↗</span></button>
++        </div>
++      </section>
++      <section class="note" id="philosophy" aria-label="Our approach">
++        <span class="eyebrow">Objects with intention</span>
++        <p>We believe the things we live with should bring a little calm. Made thoughtfully. Made to stay.</p>
++      </section>
++    </main>
++    <footer>
++      <img class="footer-logo" src="footer-logo.png" alt="FORM." width="84" height="28" loading="lazy" decoding="async" fetchpriority="low">
++      <span>Thoughtfully made for the everyday.</span>
++      <div><span>© 2026 Form</span><a href="#">Back to top ↑</a></div>
++    </footer>
++  </div>
++  <script>
++    const menuToggle = document.getElementById('menu-toggle');
++    const menuPromo = document.getElementById('menu-promo');
++    menuToggle.addEventListener('click', () => {
++      const expanded = menuToggle.getAttribute('aria-expanded') !== 'true';
++      menuToggle.setAttribute('aria-expanded', String(expanded));
++      menuPromo.hidden = !expanded;
++      menuToggle.querySelector('span').textContent = expanded ? '−' : '+';
++    });
++    document.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape' && !menuPromo.hidden) {
++        menuToggle.click();
++        menuToggle.focus();
++      }
++    });
++    const galleryToggle = document.getElementById('gallery-toggle');
++    galleryToggle.addEventListener('click', () => {
++      const expanded = galleryToggle.getAttribute('aria-expanded') !== 'true';
++      galleryToggle.setAttribute('aria-expanded', String(expanded));
++      document.getElementById('gallery-main').hidden = expanded;
++      document.getElementById('gallery-alt').hidden = !expanded;
++      galleryToggle.querySelector('span').textContent = expanded ? 'View the front' : 'View another angle';
++    });
++  </script>
++</body>
++</html>

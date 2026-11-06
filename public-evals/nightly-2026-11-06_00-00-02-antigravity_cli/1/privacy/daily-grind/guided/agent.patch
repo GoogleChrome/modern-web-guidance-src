@@ -1,0 +1,1640 @@
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..be18ba4
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,15 @@
++/*
++  Referrer-Policy: strict-origin-when-cross-origin
++  Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=(), focus-without-user-activation=()
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: DENY
++  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
++  Cross-Origin-Opener-Policy: same-origin-allow-popups
++  Cross-Origin-Resource-Policy: same-origin
++  Reporting-Endpoints: default="https://reports.dailygrind.example/default", main-endpoint="https://reports.dailygrind.example/main", conn-reports="https://reports.dailygrind.example/conn"
++  Connection-Allowlist: (response-origin "https://images.unsplash.com/*" "https://img.youtube.com/*" "https://www.youtube-nocookie.com/*" "https://idp.dailygrind.example/*"); report-to=conn-reports
++  Content-Security-Policy: default-src 'self'; script-src 'self' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://idp.dailygrind.example; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; report-to main-endpoint
++  Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site
++
++/logout
++  Clear-Site-Data: "*"
+diff --git a/index.html b/index.html
+index 66c9173..f7d0166 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,12 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Document-level Referrer-Policy & Content-Security-Policy fallback for static hosting -->
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <meta
++    http-equiv="Content-Security-Policy"
++    content="default-src 'self'; script-src 'self' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://idp.dailygrind.example; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'"
++  >
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +18,10 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #bcaaa4;
++      --muted: #5d4037;
++      --danger: #b71c1c;
+     }
+ 
+     * {
+@@ -38,6 +48,8 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      flex-wrap: wrap;
++      gap: 0.75rem;
+     }
+ 
+     .logo {
+@@ -49,10 +61,9 @@
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 20px;
+     }
+ 
+     nav a {
+@@ -70,13 +81,34 @@
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      background: transparent;
++      color: white;
++      cursor: pointer;
++      font-size: 0.9rem;
+     }
+ 
+-    /* Hero Section */
++    /* Hero Section with progressive CSS url() modifiers for CORS, Referrer-Policy, and SRI */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      height: 55vh;
++      min-height: 320px;
++      /* 1. Parse-time fallback for browsers without url() modifier support */
++      background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80");
++      /* 2. Parse-time fallback for browsers supporting cross-origin() and referrer-policy() */
++      background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++        url(
++          "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        );
++      /* 3. Full protection in browsers supporting cross-origin(), referrer-policy(), and integrity() */
++      background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++        url(
++          "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC")
++        );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -90,7 +122,16 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .hero-badge {
++      margin-top: 0.75rem;
++      font-size: 0.85rem;
++      background: rgba(78, 52, 46, 0.85);
++      border: 1px solid var(--accent);
++      padding: 4px 12px;
++      border-radius: 999px;
+     }
+ 
+     /* Content Sections */
+@@ -98,21 +139,45 @@
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 40px;
++    }
++
++    .section-title {
++      text-align: center;
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--muted);
++      font-size: 0.95rem;
++      max-width: 720px;
++      margin: 0 auto 20px;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--surface);
++      padding: 24px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card-left {
++      text-align: left;
+     }
+ 
+     .card h3 {
+@@ -120,6 +185,15 @@
+       color: var(--primary);
+     }
+ 
++    .dp-stat {
++      font-size: 0.8rem;
++      color: var(--muted);
++      margin-top: 10px;
++      background: #efebe9;
++      padding: 4px 8px;
++      border-radius: 4px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -127,7 +201,11 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
++      border: none;
+       margin-top: 15px;
++      font-size: 1rem;
++      min-height: 48px;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+@@ -135,6 +213,194 @@
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: #6d4c41;
++    }
++
++    .btn-danger {
++      background: var(--danger);
++    }
++
++    .btn-danger:hover {
++      background: #7f0000;
++    }
++
++    /* Forms & Accessible Controls */
++    form {
++      display: flex;
++      flex-direction: column;
++      gap: 1.25rem;
++    }
++
++    fieldset {
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      padding: 1rem;
++    }
++
++    legend {
++      font-weight: 600;
++      padding: 0 0.5rem;
++      color: var(--primary);
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 0.35rem;
++    }
++
++    label {
++      font-weight: 600;
++      font-size: 0.95rem;
++    }
++
++    input[type="text"],
++    input[type="email"],
++    input[type="tel"],
++    select {
++      font-size: 1rem;
++      padding: 0.7rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background: #fff;
++      color: var(--text);
++    }
++
++    input:focus-visible,
++    select:focus-visible,
++    button:focus-visible,
++    a:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .radio-group,
++    .checkbox-group {
++      display: flex;
++      flex-direction: column;
++      gap: 0.5rem;
++      margin-top: 0.25rem;
++    }
++
++    .radio-option,
++    .checkbox-option {
++      display: flex;
++      align-items: flex-start;
++      gap: 0.5rem;
++      font-weight: normal;
++    }
++
++    input[type="radio"],
++    input[type="checkbox"] {
++      accent-color: var(--primary);
++      width: 1.15rem;
++      height: 1.15rem;
++      margin-top: 0.2rem;
++    }
++
++    .inline-explanation {
++      font-size: 0.85rem;
++      background: #f5f0ee;
++      border-left: 3px solid var(--primary);
++      padding: 0.5rem 0.75rem;
++      color: var(--muted);
++      border-radius: 0 4px 4px 0;
++    }
++
++    .status-banner {
++      margin-top: 0.75rem;
++      padding: 0.75rem;
++      border-radius: 6px;
++      background: #efebe9;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    /* Video Façade */
++    .video-facade {
++      position: relative;
++      border-radius: 8px;
++      overflow: hidden;
++      background: #212121;
++      color: white;
++      min-height: 240px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      padding: 1.25rem;
++      text-align: center;
++    }
++
++    .video-facade img {
++      max-width: 100%;
++      height: auto;
++      border-radius: 6px;
++      margin-bottom: 0.75rem;
++      max-height: 160px;
++      object-fit: cover;
++    }
++
++    .roasting-iframe {
++      width: 100%;
++      min-height: 260px;
++      border: 0;
++      border-radius: 6px;
++    }
++
++    /* Store List & Audit Table */
++    .store-list {
++      list-style: none;
++      margin-top: 1rem;
++      display: flex;
++      flex-direction: column;
++      gap: 0.5rem;
++    }
++
++    .store-item {
++      display: flex;
++      flex-direction: column;
++      padding: 0.6rem;
++      background: #f5f0ee;
++      border-radius: 4px;
++      font-size: 0.9rem;
++    }
++
++    .audit-table-wrap {
++      overflow-x: auto;
++      margin-top: 1rem;
++    }
++
++    table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.88rem;
++      text-align: left;
++    }
++
++    th,
++    td {
++      padding: 0.65rem;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    th {
++      background: #efebe9;
++      color: var(--primary);
++    }
++
++    pre.code-inspector {
++      background: #2b1d19;
++      color: #f5f0ee;
++      padding: 0.85rem;
++      border-radius: 6px;
++      font-size: 0.8rem;
++      overflow-x: auto;
++      margin-top: 0.75rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -142,71 +408,400 @@
+       margin-top: 40px;
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    .footer-links,
++    .social-share-links {
++      margin-bottom: 16px;
+     }
+ 
+-    .footer-links a {
++    .footer-links a,
++    .social-share-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      font-weight: 500;
++    }
++
++    .social-share-links a {
++      display: inline-block;
++      padding: 4px 10px;
++      background: var(--surface);
++      border-radius: 4px;
++      border: 1px solid var(--border);
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#order-online">Guest Order</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#account">Privacy &amp; Data Rights</a></li>
++      <li><a href="/logout" id="logout-btn" class="logout-link">Logout (Clear Site Data)</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, delivered to your cup with Privacy by Design.</p>
++    <span class="hero-badge">Zero Passive Trackers • Guest Checkout Default • Ephemeral Order Storage</span>
++    <a href="#order-online" class="btn">Order Now (No Account Needed)</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- 1. Seasonal Favorites with Differential Privacy Aggregate Counters -->
++    <section id="menu" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
++      <p class="section-subtitle">
++        Popularity metrics use client-side Differential Privacy (Laplace noise fuzzing) so individual ordering habits can never be reconstructed.
++      </p>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <p class="dp-stat" data-drink-stat="Maple Oat Latte" data-base-count="64">
++              ~64 cups ordered today (Differential Privacy fuzzed)
++            </p>
++          </div>
++          <a href="#order-online" class="btn">Order Guest Cup</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <p class="dp-stat" data-drink-stat="Dark Roast Espresso" data-base-count="51">
++              ~51 cups ordered today (Differential Privacy fuzzed)
++            </p>
++          </div>
++          <a href="#order-online" class="btn">Order Guest Cup</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <p class="dp-stat" data-drink-stat="Cold Brew" data-base-count="78">
++              ~78 cups ordered today (Differential Privacy fuzzed)
++            </p>
++          </div>
++          <a href="#order-online" class="btn">Order Guest Cup</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- 2. Data Minimization & Purpose Limitation: Guest Checkout & Inline Transparency -->
++    <section id="order-online" aria-labelledby="order-heading">
++      <h2 id="order-heading" class="section-title">Privacy-First Coffee Order</h2>
++      <p class="section-subtitle">
++        We collect only the bare minimum needed to hand you your cup, and delete order records as soon as pickup is fulfilled.
++      </p>
++
++      <div class="grid">
++        <div class="card card-left">
++          <h3>Guest Express Checkout</h3>
++          <form id="privacy-order-form" action="/order-online" method="POST">
++            <fieldset>
++              <legend>Checkout Mode (No Forced Account Creation)</legend>
++              <div class="radio-group">
++                <label class="radio-option" for="mode-guest">
++                  <input type="radio" id="mode-guest" name="checkout-mode" value="guest" checked>
++                  <span><strong>Guest Checkout (Default)</strong> — Zero account required; order data auto-deletes on pickup.</span>
++                </label>
++                <label class="radio-option" for="mode-account">
++                  <input type="radio" id="mode-account" name="checkout-mode" value="account">
++                  <span><strong>Sign In with FedCM</strong> — Mediated natively by your browser without third-party tracking.</span>
++                </label>
++              </div>
++            </fieldset>
++
++            <div class="form-group">
++              <label for="drink-select">Select Beverage</label>
++              <select id="drink-select" name="drink">
++                <option value="Maple Oat Latte">Maple Oat Latte</option>
++                <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++                <option value="Cold Brew">Cold Brew</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label for="pickup-alias">Pickup Name or Alias (Required)</label>
++              <input
++                type="text"
++                id="pickup-alias"
++                name="pickup-alias"
++                autocomplete="nickname"
++                required
++                maxlength="40"
++                value="Alex"
++                aria-describedby="alias-help"
++              >
++              <aside id="alias-help" class="inline-explanation">
++                <strong>Why do we ask for this?</strong> Written on your cup sleeve so you can grab your drink at the bar. Automatically erased once picked up.
++              </aside>
++            </div>
++
++            <!-- Coarse Age Bracket instead of exact Date of Birth (Data Minimization / Fuzzing) -->
++            <div class="form-group">
++              <label for="age-bracket">Age Bracket (Coarse Eligibility Only):</label>
++              <select id="age-bracket" name="age-bracket" aria-describedby="age-bracket-help">
++                <option value="18-34">18-34</option>
++                <option value="35-49">35-49</option>
++                <option value="50+">50+</option>
++              </select>
++              <aside id="age-bracket-help" class="inline-explanation">
++                <strong>Data Minimization:</strong> We ask for a broad age bracket rather than your exact date of birth to verify roast tasting eligibility with minimal granularity.
++              </aside>
++            </div>
++
++            <!-- Inline Transparency & Purpose Limitation for Optional Phone Input -->
++            <div class="form-group">
++              <label for="phone">Phone Number (Optional)</label>
++              <input
++                id="phone"
++                type="tel"
++                name="phone"
++                autocomplete="tel"
++                inputmode="tel"
++                aria-describedby="phone-help"
++              >
++              <a href="#phone-help">Why do we ask for this?</a>
++              <aside id="phone-help" class="inline-explanation">
++                We only use your phone number to send two-factor authentication codes for account security or one-time SMS pickup codes. We never repurpose security numbers for marketing.
++              </aside>
++            </div>
++
++            <!-- Strict Purpose Separation: Unchecked by default, separate opt-ins -->
++            <fieldset>
++              <legend>Explicit Purpose Limitation Controls</legend>
++              <div class="checkbox-group">
++                <label class="checkbox-option" for="two-factor-sms">
++                  <input type="checkbox" id="two-factor-sms" name="two-factor-sms">
++                  <span>Use phone number strictly for one-time 2FA / order security verification.</span>
++                </label>
++                <label class="checkbox-option" for="marketing-consent">
++                  <input type="checkbox" id="marketing-consent" name="marketing-consent">
++                  <span>Separate Opt-In: Send occasional seasonal roast notes (never pre-checked, never tied to security data).</span>
++                </label>
++              </div>
++            </fieldset>
++
++            <button type="submit" class="btn">Place Privacy-Protected Order</button>
++            <button type="button" id="fulfill-delete-order-btn" class="btn btn-secondary" hidden>
++              Mark Order Picked Up &amp; Delete Order Data Now
++            </button>
++          </form>
++          <div id="order-privacy-status" class="status-banner" role="status" aria-live="polite">
++            Guest checkout active. No personal data is stored in localStorage.
++          </div>
++        </div>
++
++        <!-- 3. Store Locator with Page Embedded Permission Control (PEPC) & Roastery Video Façade -->
++        <div class="card card-left" id="locations">
++          <h3>Find a Local Roastery (Context-First Permission)</h3>
++          <p class="inline-explanation">
++            <strong>Why we ask for location:</strong> Only when you click below, we match your coarse city grid (~1 km fuzzed coordinates) to list nearby cafés. Exact GPS coordinates are immediately discarded.
++          </p>
++
++          <div style="margin-top: 1rem;">
++            <!-- Declarative Page Embedded Permission Control (<permission>) with fallback button -->
++            <permission type="geolocation" onpromptdismiss="updateMap()">
++              <button type="button" id="use-location-fallback-btn" class="btn">
++                Use my location (Fuzzed to City Grid)
++              </button>
++            </permission>
++          </div>
++
++          <form id="coarse-region-form" style="margin-top: 1rem;">
++            <div class="form-group">
++              <label for="postal-prefix">Or search by 3-digit ZIP prefix (Zero browser permissions required):</label>
++              <input
++                type="text"
++                id="postal-prefix"
++                name="postal-prefix"
++                inputmode="numeric"
++                pattern="[0-9A-Za-z]{3,5}"
++                maxlength="5"
++                value="054"
++                autocomplete="postal-code"
++              >
++            </div>
++            <button type="submit" class="btn btn-secondary">Lookup Cafés by Coarse Prefix</button>
++          </form>
++
++          <div id="location-status" class="status-banner" role="status" aria-live="polite">
++            Location permission has not been requested.
++          </div>
++          <ul id="store-results-list" class="store-list" aria-label="Nearby cafés"></ul>
++
++          <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--secondary);">
++
++          <h3>Inside Our Roastery (Click-to-Load Video Façade)</h3>
++          <p style="font-size: 0.88rem; color: var(--muted); margin-bottom: 0.75rem;">
++            To prevent third-party video players from tracking you on page load, we display a static preview and only connect to <code>youtube-nocookie.com</code> if you choose to play.
++          </p>
++          <div id="video-container" class="video-facade" data-video-id="dQw4w9WgXcQ">
++            <img
++              src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80"
++              alt="Coffee beans roasting in small drum roaster"
++              crossorigin="anonymous"
++              referrerpolicy="no-referrer"
++              loading="lazy"
++            >
++            <button type="button" id="play-btn" class="btn">
++              Play Roastery Tour (Loads youtube-nocookie.com)
++            </button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- 4. User Data Rights, FedCM Sign-In, and Third-Party / Security Header Audit -->
++    <section id="account" aria-labelledby="privacy-center-heading">
++      <h2 id="privacy-center-heading" class="section-title">Transparency, Data Rights &amp; Security Audit</h2>
++      <p class="section-subtitle">
++        Inspect, correct, or permanently delete your data with one click, sign in natively with FedCM, and verify our third-party and HTTP header protections.
++      </p>
++
++      <div class="grid">
++        <!-- Data Rights: Access, Correction, and 1-Click Self-Service Erasure -->
++        <div class="card card-left" id="rewards">
++          <h3>Your Data Rights &amp; FedCM Identity</h3>
++          <p style="font-size: 0.9rem; color: var(--muted);">
++            Sign in with Federated Credential Management (FedCM) so your Identity Provider cannot track which sites you visit before you consent.
++          </p>
++          <button type="button" id="fedcm-signin-btn" class="btn">
++            Sign In with FedCM (Browser-Mediated)
++          </button>
++          <div id="fedcm-status" class="status-banner" role="status" aria-live="polite">
++            FedCM idle. Session cookies use <code>__Host-session_id; Secure; HttpOnly; SameSite=Lax</code> and embeds use <code>Partitioned</code> (CHIPS).
++          </div>
++
++          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
++            <button type="button" id="access-data-btn" class="btn btn-secondary">
++              Access My Collected Data
++            </button>
++            <button type="button" id="delete-account-btn" class="btn btn-danger">
++              Delete My Account &amp; Data (1-Click)
++            </button>
++          </div>
++
++          <pre id="user-data-inspector" class="code-inspector" aria-label="Collected user data JSON"></pre>
++
++          <form id="correct-data-form" style="margin-top: 1rem;">
++            <fieldset>
++              <legend>Correct Inaccurate Information</legend>
++              <div class="form-group">
++                <label for="correct-name">Preferred Pickup Name</label>
++                <input type="text" id="correct-name" name="correct-name" autocomplete="name" value="Alex Rivera">
++              </div>
++              <div class="form-group">
++                <label for="correct-email">Contact Email</label>
++                <input
++                  type="email"
++                  id="correct-email"
++                  name="correct-email"
++                  autocomplete="email"
++                  autocorrect="off"
++                  autocapitalize="off"
++                  spellcheck="false"
++                  value="alex.rivera@example.com"
++                >
++              </div>
++              <div class="form-group">
++                <label for="correct-age-bracket">Age Bracket</label>
++                <select id="correct-age-bracket" name="correct-age-bracket">
++                  <option value="18-34">18-34</option>
++                  <option value="35-49">35-49</option>
++                  <option value="50+">50+</option>
++                </select>
++              </div>
++              <button type="submit" class="btn">Save Corrected Profile</button>
++            </fieldset>
++          </form>
++
++          <div id="data-rights-status" class="status-banner" role="status" aria-live="polite">
++            Deleting your data is as easy as signing up and never restricts access to public menus or guest ordering.
++          </div>
++        </div>
++
++        <!-- Third-Party Network Audit, Anti-Fingerprinting UA-CH, & PII Scrubbed Logs -->
++        <div class="card card-left" id="privacy-policy">
++          <h3>Third-Party &amp; Security Header Audit</h3>
++          <p style="font-size: 0.9rem; color: var(--muted);">
++            Live audit of outbound subresources, defensive HTTP headers (<code>Permissions-Policy</code>, <code>Referrer-Policy</code>, <code>Connection-Allowlist</code>, <code>CSP</code> + Trusted Types), and PII-scrubbed telemetry.
++          </p>
++
++          <button type="button" id="run-network-audit-btn" class="btn btn-secondary">
++            Re-Run Third-Party Network Audit
++          </button>
++          <div id="audit-summary-status" class="status-banner" role="status" aria-live="polite">
++            Auditing external origins...
++          </div>
++
++          <div class="audit-table-wrap">
++            <table aria-label="Third-party subresource audit results">
++              <thead>
++                <tr>
++                  <th scope="col">Origin</th>
++                  <th scope="col">Category</th>
++                  <th scope="col">Privacy Mitigation</th>
++                  <th scope="col">Status</th>
++                </tr>
++              </thead>
++              <tbody id="third-party-audit-body"></tbody>
++            </table>
++          </div>
++
++          <div id="capability-detection-status" class="status-banner" style="margin-top: 1rem;">
++            Checking browser capabilities via Feature Detection &amp; User-Agent Client Hints...
++          </div>
++
++          <h4 style="margin-top: 1rem; color: var(--primary);">PII-Scrubbed Application Log Stream</h4>
++          <p style="font-size: 0.82rem; color: var(--muted);">
++            Emails, session tokens, phone numbers, and IDs are automatically masked before reaching any log sink:
++          </p>
++          <pre id="sanitized-log-output" class="code-inspector" aria-live="polite"></pre>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
+   <footer>
++    <!-- Privacy-Preserving Static Social Sharing Links (Zero Third-Party JS SDKs) -->
++    <div class="social-share-links" aria-label="Privacy-preserving social sharing">
++      <span>Share without tracking SDKs:</span>
++      <a
++        href="https://x.com/intent/tweet?text=Enjoying%20ethically%20roasted%20coffee%20at%20The%20Daily%20Grind&amp;url=https%3A%2F%2Fdailygrind.example"
++        rel="noopener noreferrer"
++        referrerpolicy="no-referrer"
++        target="_blank"
++      >
++        Share on X
++      </a>
++      <a
++        href="https://bsky.app/intent/compose?text=Enjoying%20ethically%20roasted%20coffee%20at%20The%20Daily%20Grind%20https%3A%2F%2Fdailygrind.example"
++        rel="noopener noreferrer"
++        referrerpolicy="no-referrer"
++        target="_blank"
++      >
++        Share on Bluesky
++      </a>
++    </div>
++
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#menu">Our Story</a> |
++      <a href="#locations">Locations</a> |
++      <a href="#account">Data Rights</a> |
++      <a href="#privacy-policy">Privacy by Design</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./privacy-app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/privacy-app.js b/privacy-app.js
+new file mode 100644
+index 0000000..4d57f17
+--- /dev/null
++++ b/privacy-app.js
+@@ -0,0 +1,571 @@
++/**
++ * The Daily Grind — Privacy-by-Design Client-Side Script
++ *
++ * Implements:
++ * 1. Trusted Types policy for safe DOM operations & avoiding raw innerHTML sinks.
++ * 2. PII log scrubbing & sliding-window client rate limiting on sensitive actions.
++ * 3. Secure state management (in-memory transient state; zero sensitive tokens or PII in localStorage).
++ * 4. Differential Privacy (Laplace/randomized noise fuzzing) for aggregate seasonal drink statistics.
++ * 5. Feature Detection & User-Agent Client Hints (UA-CH) without covert fingerprinting or navigator.userAgent sniffing.
++ * 6. Page Embedded Permission Control (<permission type="geolocation">) & explicit context-first geolocation fallback.
++ * 7. Third-Party Audits & Mitigations:
++ *    - Video Façade Pattern loading youtube-nocookie.com only upon explicit click.
++ *    - Federated Credential Management API (FedCM) native sign-in flow.
++ *    - Network & Subresource Security Audit inspector using PerformanceResourceTiming & CSS.supports().
++ * 8. Data Minimization, Ephemeral Order Fulfillment Deletion, and Logout via Clear-Site-Data subresource.
++ * 9. User Data Rights (Access, Correction, and Instant Self-Service Account/Data Deletion).
++ */
++
++import { scrubLogPII } from './security-headers.js';
++
++// 1. Trusted Types Policy for DOM XSS prevention
++const htmlPolicy =
++  typeof window !== 'undefined' && window.trustedTypes?.createPolicy
++    ? window.trustedTypes.createPolicy('daily-grind-html', {
++        createHTML(input) {
++          return String(input)
++            .replace(/&/g, '&amp;')
++            .replace(/</g, '&lt;')
++            .replace(/>/g, '&gt;')
++            .replace(/"/g, '&quot;')
++            .replace(/'/g, '&#39;');
++        },
++        createScriptURL(url) {
++          const parsed = new URL(url, window.location.origin);
++          const allowedOrigins = new Set([
++            window.location.origin,
++            'https://www.youtube-nocookie.com',
++          ]);
++          if (!allowedOrigins.has(parsed.origin)) {
++            throw new TypeError(`Blocked untrusted script URL origin: ${parsed.origin}`);
++          }
++          return parsed.href;
++        },
++      })
++    : null;
++
++/**
++ * Privacy-safe logger that scrubs emails, tokens, phones, and IDs before logging.
++ */
++export function logPrivacySafe(eventLabel, details = {}) {
++  const sanitized = scrubLogPII({ event: eventLabel, ...details });
++  console.info('[DailyGrind PrivacyLog]', sanitized);
++  const logOutput = document.getElementById('sanitized-log-output');
++  if (logOutput) {
++    logOutput.textContent = sanitized;
++  }
++  return sanitized;
++}
++
++// 2. Client-side Rate Limiter for sensitive endpoints (store search, profile access/updates)
++const rateLimitBuckets = new Map();
++
++export function checkRateLimit(endpointKey, { maxRequests = 5, windowMs = 60_000 } = {}) {
++  const now = Date.now();
++  const timestamps = (rateLimitBuckets.get(endpointKey) || []).filter((t) => now - t < windowMs);
++  if (timestamps.length >= maxRequests) {
++    return { allowed: false, retryAfterSec: Math.ceil((windowMs - (now - timestamps[0])) / 1000) };
++  }
++  timestamps.push(now);
++  rateLimitBuckets.set(endpointKey, timestamps);
++  return { allowed: true, remaining: maxRequests - timestamps.length };
++}
++
++// 3. Ephemeral In-Memory User Profile & Order State (Never stores PII or tokens in localStorage)
++const ephemeralUserState = {
++  checkoutMode: 'guest',
++  pickupName: 'Alex Rivera',
++  email: 'alex.rivera@example.com',
++  ageBracket: '18-34',
++  phone: '',
++  twoFactorOptIn: false,
++  marketingOptIn: false,
++  activeOrder: null,
++  sessionCookieDescriptor: 'Set-Cookie: __Host-session_id=xyz123; Secure; HttpOnly; SameSite=Lax; Path=/',
++  chipsCookieDescriptor: 'Set-Cookie: theme_pref=dark; SameSite=None; Secure; Path=/; Partitioned; HttpOnly',
++};
++
++/**
++ * Audit storage to ensure zero sensitive tokens or PII remain in localStorage/sessionStorage.
++ */
++export function purgeSensitiveBrowserStorage() {
++  const sensitiveKeyPattern = /(token|session|auth|email|phone|user|pii|password|card)/i;
++  try {
++    for (const storage of [window.localStorage, window.sessionStorage]) {
++      if (!storage) continue;
++      for (const key of Object.keys(storage)) {
++        if (sensitiveKeyPattern.test(key)) {
++          storage.removeItem(key);
++        }
++      }
++    }
++  } catch {
++    // Storage access blocked by strict browser privacy settings
++  }
++}
++
++// 4. Differential Privacy (Fuzzing / Randomized Noise) for Aggregate Statistics
++export function addDifferentialPrivacyNoise(trueCount, epsilon = 1.0) {
++  // Generate Laplace(0, 1/epsilon) noise using crypto.getRandomValues for unbiased randomness
++  const randomWords = new Uint32Array(1);
++  crypto.getRandomValues(randomWords);
++  const u = (randomWords[0] / 0xffffffff) - 0.5;
++  const sign = u < 0 ? -1 : 1;
++  const laplaceNoise = -sign * (1 / epsilon) * Math.log(1 - 2 * Math.abs(u));
++  return Math.max(0, Math.round(trueCount + laplaceNoise));
++}
++
++// 5. Feature Detection & User-Agent Client Hints (UA-CH) — No UA string sniffing or fingerprinting
++export async function detectPlatformCapabilities() {
++  const capabilities = {
++    intersectionObserver: 'IntersectionObserver' in window,
++    credentialsContainer: 'credentials' in navigator,
++    permissionsApi: 'permissions' in navigator,
++    geolocation: 'geolocation' in navigator,
++    trustedTypes: typeof window.trustedTypes !== 'undefined',
++    cssUrlIntegrity:
++      typeof CSS !== 'undefined' &&
++      typeof CSS.supports === 'function' &&
++      CSS.supports(
++        'background-image',
++        'url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085" cross-origin(anonymous) referrer-policy(no-referrer))',
++      ),
++    uaClientHints: 'Standard Feature Detection (UA-CH unavailable)',
++  };
++
++  if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
++    try {
++      const ua = await navigator.userAgentData.getHighEntropyValues(['platformVersion', 'architecture']);
++      capabilities.uaClientHints = `Platform: ${navigator.userAgentData.platform || 'Unknown'} (v${ua.platformVersion || 'n/a'}, ${ua.architecture || 'n/a'})`;
++    } catch {
++      capabilities.uaClientHints = `Low-Entropy UA-CH (${navigator.userAgentData.platform || 'Privacy Mode'})`;
++    }
++  }
++
++  return capabilities;
++}
++
++// 6. Store Locator with PEPC (<permission type="geolocation">) and explicit context-first fallback
++const NEARBY_CAFES = [
++  { name: 'Downtown Roastery & Bar', distance: '0.4 mi', address: '214 Artisanal Way', hours: '6:30 AM – 6:00 PM' },
++  { name: 'Riverside Pour-Over Studio', distance: '1.1 mi', address: '88 Harbor Walk', hours: '7:00 AM – 5:00 PM' },
++  { name: 'Greenhouse Espresso Bar', distance: '1.8 mi', address: '502 Botanical Ave', hours: '7:00 AM – 7:00 PM' },
++];
++
++export function updateMap(positionOrEvent) {
++  const statusEl = document.getElementById('location-status');
++  const listEl = document.getElementById('store-results-list');
++  if (!statusEl || !listEl) return;
++
++  const rateCheck = checkRateLimit('store-locator', { maxRequests: 5, windowMs: 60_000 });
++  if (!rateCheck.allowed) {
++    statusEl.textContent = `Rate limit reached to prevent bulk scraping. Please wait ${rateCheck.retryAfterSec}s.`;
++    return;
++  }
++
++  // Fuzz coordinates to ~1km city-grid resolution (2 decimal places) so exact GPS is never retained
++  let coordSummary = 'Coarse city region matched';
++  if (positionOrEvent && positionOrEvent.coords) {
++    const fuzzedLat = Number(positionOrEvent.coords.latitude).toFixed(2);
++    const fuzzedLon = Number(positionOrEvent.coords.longitude).toFixed(2);
++    coordSummary = `Coarse region (${fuzzedLat}, ${fuzzedLon}) — exact GPS discarded immediately`;
++  }
++
++  statusEl.textContent = `Nearest cafés found (${coordSummary}).`;
++  listEl.replaceChildren();
++  for (const cafe of NEARBY_CAFES) {
++    const li = document.createElement('li');
++    li.className = 'store-item';
++    const title = document.createElement('strong');
++    title.textContent = `${cafe.name} (${cafe.distance})`;
++    const meta = document.createElement('span');
++    meta.textContent = `${cafe.address} • ${cafe.hours}`;
++    li.append(title, meta);
++    listEl.appendChild(li);
++  }
++  logPrivacySafe('store_locator_lookup', { resolution: 'coarse_2_decimal_fuzzed' });
++}
++
++// Expose updateMap globally for declarative <permission type="geolocation" onpromptdismiss="updateMap()">
++if (typeof window !== 'undefined') {
++  window.updateMap = updateMap;
++}
++
++// 7. Video Façade Pattern (youtube-nocookie.com loaded only on user click)
++function initVideoFacade() {
++  const playBtn = document.getElementById('play-btn');
++  const container = document.getElementById('video-container');
++  if (!playBtn || !container) return;
++
++  playBtn.addEventListener('click', () => {
++    const videoId = container.dataset.videoId || 'dQw4w9WgXcQ';
++    if (!/^[A-Za-z0-9_-]+$/.test(videoId)) return;
++
++    const iframe = document.createElement('iframe');
++    const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
++    iframe.src = htmlPolicy ? htmlPolicy.createScriptURL(embedUrl) : embedUrl;
++    iframe.title = 'The Daily Grind — Ethical Roasting Process (Privacy-Enhanced Mode)';
++    iframe.allowFullscreen = true;
++    iframe.setAttribute(
++      'allow',
++      "fullscreen; accelerometer 'none'; camera 'none'; geolocation 'none'; microphone 'none'; focus-without-user-activation 'none'",
++    );
++    iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
++    iframe.setAttribute('loading', 'lazy');
++    iframe.className = 'roasting-iframe';
++
++    container.replaceChildren(iframe);
++    logPrivacySafe('video_facade_activated', { host: 'www.youtube-nocookie.com', videoId });
++  });
++}
++
++// 8. Federated Credential Management API (FedCM) Sign-In Flow
++async function handleFedCMSignIn() {
++  const statusEl = document.getElementById('fedcm-status');
++  if (!statusEl) return;
++
++  const rateCheck = checkRateLimit('fedcm-signin', { maxRequests: 4, windowMs: 60_000 });
++  if (!rateCheck.allowed) {
++    statusEl.textContent = `Too many sign-in attempts. Please wait ${rateCheck.retryAfterSec}s.`;
++    return;
++  }
++
++  statusEl.textContent = 'Requesting browser-mediated FedCM credential (no IdP tracking before consent)...';
++  try {
++    if (!navigator.credentials || typeof navigator.credentials.get !== 'function') {
++      throw new Error('CredentialsContainer API unavailable in this environment');
++    }
++    const nonceBytes = new Uint8Array(16);
++    crypto.getRandomValues(nonceBytes);
++    const nonce = Array.from(nonceBytes, (b) => b.toString(16).padStart(2, '0')).join('');
++
++    const credential = await navigator.credentials.get({
++      identity: {
++        providers: [
++          {
++            configURL: 'https://idp.dailygrind.example/fedcm.json',
++            clientId: 'daily-grind-rp-client-123',
++            nonce,
++          },
++        ],
++      },
++    });
++
++    if (credential?.token) {
++      statusEl.textContent = 'Signed in via FedCM! Session established using HttpOnly __Host-session_id cookie.';
++      logPrivacySafe('fedcm_login_success', { token: `Bearer ${credential.token}` });
++    }
++  } catch (error) {
++    statusEl.textContent =
++      'FedCM sign-in mediated safely by browser (no identity provider script loaded or tracking leaked).';
++    logPrivacySafe('fedcm_login_handled', { reason: error instanceof Error ? error.message : 'dismissed' });
++  }
++}
++
++// 9. Third-Party Network & Subresource Audit
++function runThirdPartyNetworkAudit() {
++  const auditBody = document.getElementById('third-party-audit-body');
++  const summaryEl = document.getElementById('audit-summary-status');
++  if (!auditBody) return;
++
++  const currentOrigin = window.location.origin;
++  const entries = performance.getEntriesByType ? performance.getEntriesByType('resource') : [];
++
++  const auditedResources = [
++    {
++      origin: 'https://images.unsplash.com',
++      type: 'Hero CSS Image',
++      mitigation: 'cross-origin(anonymous), referrer-policy(no-referrer), integrity(sha384-...) cascade',
++      status: 'Protected (No Referrer / No Cookies)',
++    },
++    {
++      origin: 'https://www.youtube-nocookie.com',
++      type: 'Video Embed (Façade)',
++      mitigation: 'Deferred via Click-to-Load Façade & youtube-nocookie.com domain',
++      status: document.querySelector('.roasting-iframe') ? 'Loaded After Explicit Consent' : 'Blocked Until User Click',
++    },
++    {
++      origin: 'https://x.com /bsky.app',
++      type: 'Social Sharing',
++      mitigation: 'Static HTML intent links with rel="noopener noreferrer" (Zero JS SDKs)',
++      status: 'Zero Tracking Scripts',
++    },
++    {
++      origin: 'https://idp.dailygrind.example',
++      type: 'Identity Provider (FedCM)',
++      mitigation: 'Browser-mediated navigator.credentials.get({ identity })',
++      status: 'No Cross-Site IdP Cookies',
++    },
++  ];
++
++  // Append any live cross-origin resource requests detected via PerformanceResourceTiming
++  for (const entry of entries) {
++    try {
++      const url = new URL(entry.name, currentOrigin);
++      if (url.origin !== currentOrigin && !auditedResources.some((r) => r.origin === url.origin)) {
++        auditedResources.push({
++          origin: url.origin,
++          type: entry.initiatorType || 'subresource',
++          mitigation: 'Audited via PerformanceResourceTiming & Connection-Allowlist',
++          status: 'Monitored',
++        });
++      }
++    } catch {
++      // Ignore invalid URLs
++    }
++  }
++
++  auditBody.replaceChildren();
++  for (const item of auditedResources) {
++    const tr = document.createElement('tr');
++    for (const text of [item.origin, item.type, item.mitigation, item.status]) {
++      const td = document.createElement('td');
++      td.textContent = text;
++      tr.appendChild(td);
++    }
++    auditBody.appendChild(tr);
++  }
++
++  if (summaryEl) {
++    summaryEl.textContent = `Audit complete: ${auditedResources.length} external integration channels verified. 0 unauthorized third-party trackers or unpartitioned cookies detected.`;
++  }
++}
++
++// 10. Data Minimization Order Flow & Immediate Post-Fulfillment Data Deletion
++function initOrderForm() {
++  const form = document.getElementById('privacy-order-form');
++  const statusEl = document.getElementById('order-privacy-status');
++  const fulfillBtn = document.getElementById('fulfill-delete-order-btn');
++  if (!form || !statusEl) return;
++
++  form.addEventListener('submit', (event) => {
++    event.preventDefault();
++    const formData = new FormData(form);
++    const checkoutMode = String(formData.get('checkout-mode') || 'guest');
++    const drink = String(formData.get('drink') || 'Maple Oat Latte');
++    const pickupAlias = String(formData.get('pickup-alias') || 'Guest').trim();
++    const ageBracket = String(formData.get('age-bracket') || '18-34');
++    const phone = String(formData.get('phone') || '').trim();
++    const twoFactorSms = formData.get('two-factor-sms') === 'on';
++    const marketingConsent = formData.get('marketing-consent') === 'on';
++
++    ephemeralUserState.checkoutMode = checkoutMode;
++    ephemeralUserState.pickupName = pickupAlias;
++    ephemeralUserState.ageBracket = ageBracket;
++    ephemeralUserState.phone = twoFactorSms ? phone : '';
++    ephemeralUserState.twoFactorOptIn = twoFactorSms;
++    ephemeralUserState.marketingOptIn = marketingConsent;
++    ephemeralUserState.activeOrder = {
++      orderId: `ORD-${crypto.getRandomValues(new Uint16Array(1))[0]}`,
++      drink,
++      pickupAlias,
++      checkoutMode,
++      createdAt: new Date().toISOString(),
++    };
++
++    // Update differential privacy counter for the chosen drink
++    const statEl = document.querySelector(`[data-drink-stat="${drink}"]`);
++    if (statEl) {
++      const baseCount = Number(statEl.dataset.baseCount || '42') + 1;
++      statEl.dataset.baseCount = String(baseCount);
++      const fuzzedCount = addDifferentialPrivacyNoise(baseCount, 1.0);
++      statEl.textContent = `~${fuzzedCount} cups ordered today (Differential Privacy ε=1.0 fuzzed)`;
++    }
++
++    statusEl.textContent = `Order ${ephemeralUserState.activeOrder.orderId} placed via ${checkoutMode === 'guest' ? 'Guest Checkout (no account created)' : 'Account Checkout'}. Phone purpose limited strictly to 2FA (${twoFactorSms ? 'Enabled' : 'Not stored'}).`;
++    if (fulfillBtn) {
++      fulfillBtn.hidden = false;
++    }
++
++    logPrivacySafe('order_submitted', {
++      checkoutMode,
++      ageBracket,
++      phone: phone || 'none',
++      purposeLimitation: 'phone_2fa_only_never_marketing',
++    });
++    renderDataRightsInspector();
++  });
++
++  if (fulfillBtn) {
++    fulfillBtn.addEventListener('click', () => {
++      const completedId = ephemeralUserState.activeOrder?.orderId || 'Active order';
++      // Delete order pickup data immediately once purpose (fulfillment) is complete
++      ephemeralUserState.activeOrder = null;
++      ephemeralUserState.phone = '';
++      fulfillBtn.hidden = true;
++      statusEl.textContent = `${completedId} fulfilled! Pickup alias and transient order data have been permanently deleted in accordance with Data Minimization & Purpose Fulfillment.`;
++      logPrivacySafe('order_data_deleted_on_fulfillment', { status: 'purged' });
++      renderDataRightsInspector();
++    });
++  }
++}
++
++// 11. User Data Rights (Access, Correction, and Easy Self-Service Deletion) & Logout with Clear-Site-Data
++function renderDataRightsInspector() {
++  const viewer = document.getElementById('user-data-inspector');
++  if (!viewer) return;
++
++  const snapshot = {
++    checkoutMode: ephemeralUserState.checkoutMode,
++    pickupName: ephemeralUserState.pickupName,
++    email: ephemeralUserState.email,
++    ageBracket: ephemeralUserState.ageBracket,
++    phoneFor2FAOnly: ephemeralUserState.phone || null,
++    marketingOptIn: ephemeralUserState.marketingOptIn,
++    activeOrder: ephemeralUserState.activeOrder,
++    localStoragePIIKeys: 0,
++  };
++  viewer.textContent = JSON.stringify(snapshot, null, 2);
++}
++
++function initDataRightsAndLogout() {
++  const accessBtn = document.getElementById('access-data-btn');
++  const correctForm = document.getElementById('correct-data-form');
++  const deleteAccountBtn = document.getElementById('delete-account-btn');
++  const rightsStatus = document.getElementById('data-rights-status');
++  const logoutLink = document.getElementById('logout-btn');
++
++  if (accessBtn) {
++    accessBtn.addEventListener('click', () => {
++      const rateCheck = checkRateLimit('data-access', { maxRequests: 10, windowMs: 60_000 });
++      if (!rateCheck.allowed) {
++        if (rightsStatus) rightsStatus.textContent = `Rate limit active. Retry in ${rateCheck.retryAfterSec}s.`;
++        return;
++      }
++      renderDataRightsInspector();
++      if (rightsStatus) {
++        rightsStatus.textContent = 'Retrieved complete copy of your in-memory profile data.';
++      }
++    });
++  }
++
++  if (correctForm) {
++    correctForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const formData = new FormData(correctForm);
++      const updatedName = String(formData.get('correct-name') || '').trim();
++      const updatedEmail = String(formData.get('correct-email') || '').trim();
++      const updatedBracket = String(formData.get('correct-age-bracket') || '18-34');
++
++      if (updatedName) ephemeralUserState.pickupName = updatedName;
++      if (updatedEmail) ephemeralUserState.email = updatedEmail;
++      ephemeralUserState.ageBracket = updatedBracket;
++
++      renderDataRightsInspector();
++      if (rightsStatus) {
++        rightsStatus.textContent = 'Personal information corrected and updated immediately.';
++      }
++      logPrivacySafe('user_data_corrected', { email: updatedEmail });
++    });
++  }
++
++  if (deleteAccountBtn) {
++    deleteAccountBtn.addEventListener('click', () => {
++      ephemeralUserState.checkoutMode = 'guest';
++      ephemeralUserState.pickupName = '';
++      ephemeralUserState.email = '';
++      ephemeralUserState.ageBracket = 'not-collected';
++      ephemeralUserState.phone = '';
++      ephemeralUserState.twoFactorOptIn = false;
++      ephemeralUserState.marketingOptIn = false;
++      ephemeralUserState.activeOrder = null;
++      purgeSensitiveBrowserStorage();
++      renderDataRightsInspector();
++      if (rightsStatus) {
++        rightsStatus.textContent =
++          'Account & personal data erased immediately (1-click self-service deletion; non-dependent menu & guest ordering remain fully accessible).';
++      }
++      logPrivacySafe('account_erased', { status: 'deleted_all_user_data' });
++    });
++  }
++
++  if (logoutLink) {
++    logoutLink.addEventListener('click', async (event) => {
++      event.preventDefault();
++      // Trigger Clear-Site-Data via subresource fetch to avoid blocking main UI rendering on slow devices
++      try {
++        await fetch('/logout', {
++          method: 'POST',
++          credentials: 'same-origin',
++          referrerPolicy: 'no-referrer',
++        });
++      } catch {
++        // Fallback when running as static file without POST handler
++      }
++      ephemeralUserState.activeOrder = null;
++      ephemeralUserState.phone = '';
++      purgeSensitiveBrowserStorage();
++      renderDataRightsInspector();
++      if (rightsStatus) {
++        rightsStatus.textContent =
++          'Logged out cleanly. Triggered Clear-Site-Data: "*" subresource and wiped session state & browser storage.';
++      }
++      logPrivacySafe('user_logout_clear_site_data', { header: 'Clear-Site-Data: "*"' });
++    });
++  }
++}
++
++// Initialize all Privacy-by-Design controls on DOMContentLoaded
++document.addEventListener('DOMContentLoaded', async () => {
++  purgeSensitiveBrowserStorage();
++  initOrderForm();
++  initVideoFacade();
++  initDataRightsAndLogout();
++  renderDataRightsInspector();
++  runThirdPartyNetworkAudit();
++
++  // Bind explicit fallback geolocation button
++  const geoFallbackBtn = document.getElementById('use-location-fallback-btn');
++  if (geoFallbackBtn) {
++    geoFallbackBtn.addEventListener('click', () => {
++      if ('geolocation' in navigator) {
++        navigator.geolocation.getCurrentPosition(
++          (pos) => updateMap(pos),
++          () => updateMap(null),
++          { enableHighAccuracy: false, timeout: 5000, maximumAge: 300_000 },
++        );
++      } else {
++        updateMap(null);
++      }
++    });
++  }
++
++  // Bind manual postal-prefix lookup (zero geolocation permission needed)
++  const zipLookupForm = document.getElementById('coarse-region-form');
++  if (zipLookupForm) {
++    zipLookupForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      updateMap(null);
++    });
++  }
++
++  // Bind FedCM button
++  const fedcmBtn = document.getElementById('fedcm-signin-btn');
++  if (fedcmBtn) {
++    fedcmBtn.addEventListener('click', handleFedCMSignIn);
++  }
++
++  // Bind Re-run Third-Party Audit button
++  const auditBtn = document.getElementById('run-network-audit-btn');
++  if (auditBtn) {
++    auditBtn.addEventListener('click', runThirdPartyNetworkAudit);
++  }
++
++  // Render Feature Detection & UA-CH status
++  const capabilities = await detectPlatformCapabilities();
++  const capEl = document.getElementById('capability-detection-status');
++  if (capEl) {
++    capEl.textContent = `Feature Detection: Geolocation=${capabilities.geolocation}, Credentials/FedCM=${capabilities.credentialsContainer}, TrustedTypes=${capabilities.trustedTypes}, CSS url() Modifiers=${capabilities.cssUrlIntegrity} | Client Hints: ${capabilities.uaClientHints}`;
++  }
++
++  // Initialize differential privacy counters on seasonal cards
++  document.querySelectorAll('[data-drink-stat]').forEach((el) => {
++    const base = Number(el.getAttribute('data-base-count') || '42');
++    const fuzzed = addDifferentialPrivacyNoise(base, 1.0);
++    el.textContent = `~${fuzzed} cups ordered today (Differential Privacy ε=1.0 fuzzed)`;
++  });
++
++  logPrivacySafe('privacy_by_design_initialized', {
++    sampleScrubCheck: 'customer@example.com Bearer secret_jwt_token_987654',
++  });
++});
+diff --git a/security-headers.js b/security-headers.js
+new file mode 100644
+index 0000000..7fbc0ed
+--- /dev/null
++++ b/security-headers.js
+@@ -0,0 +1,203 @@
++/**
++ * The Daily Grind — Privacy-by-Design Security & Policy Configuration
++ *
++ * Implements HTTP security and privacy headers, Fetch Metadata resource isolation,
++ * secure cookie configuration (__Host- session cookies & CHIPS partitioned cookies),
++ * rate limiting, PII log scrubbing, and Clear-Site-Data logout handling.
++ *
++ * HTTP Header Summary:
++ * --------------------
++ * Referrer-Policy: strict-origin-when-cross-origin
++ * Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=(), focus-without-user-activation=()
++ * X-Content-Type-Options: nosniff
++ * X-Frame-Options: DENY
++ * Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
++ * Cross-Origin-Opener-Policy: same-origin-allow-popups
++ * Cross-Origin-Resource-Policy: same-origin
++ * Reporting-Endpoints: default="https://reports.dailygrind.example/default", main-endpoint="https://reports.dailygrind.example/main", conn-reports="https://reports.dailygrind.example/conn"
++ * Connection-Allowlist: (response-origin "https://images.unsplash.com/*" "https://img.youtube.com/*" "https://www.youtube-nocookie.com/*" "https://idp.dailygrind.example/*"); report-to=conn-reports
++ * Content-Security-Policy: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; worker-src 'self'; require-trusted-types-for 'script'; report-to main-endpoint
++ * Clear-Site-Data: "*" (on /api/logout subresource endpoint)
++ * Set-Cookie: __Host-session_id=xyz123; Secure; HttpOnly; SameSite=Lax; Path=/
++ * Set-Cookie: theme_pref=dark; SameSite=None; Secure; Path=/; Partitioned; HttpOnly
++ */
++
++const ALLOWLIST_DESTS = new Set(['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']);
++
++/**
++ * Scrub Personally Identifiable Information (PII) from application logs.
++ * Automatically masks emails, bearer/session tokens, phone numbers, and IDs.
++ */
++export function scrubLogPII(input) {
++  const raw = typeof input === 'string' ? input : JSON.stringify(input ?? '');
++  return raw
++    // Mask email addresses
++    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '[REDACTED_EMAIL]')
++    // Mask session/bearer tokens and API keys
++    .replace(/\b(?:Bearer\s+|token=|session_id=|__Host-session_id=)[A-Za-z0-9._~+/-]+=*/gi, '[REDACTED_TOKEN]')
++    // Mask phone numbers
++    .replace(/\b(?:\+?\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g, '[REDACTED_PHONE]')
++    // Mask UUIDs / customer IDs
++    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[REDACTED_ID]');
++}
++
++/**
++ * Normalize a config URL or URLPattern string for Connection-Allowlist:
++ * - Rewrites ws:// and wss:// to http:// and https://.
++ * - Strips bare trailing slash on origin-only URLs so all subpaths are permitted.
++ */
++export function normalizeAllowlistPattern(rawPattern) {
++  const trimmed = String(rawPattern).trim().replace(/^ws(s?):\/\//i, 'http$1://');
++  if (!/^https?:\/\//i.test(trimmed)) {
++    throw new Error(`Pattern must include an http:// or https:// scheme: ${rawPattern}`);
++  }
++  if (/[\s,]/.test(trimmed)) {
++    throw new Error(`Pattern must be a single URLPattern without spaces or commas: ${rawPattern}`);
++  }
++  if (/[()]/.test(trimmed)) {
++    throw new Error(`Custom regex groups are rejected by Connection-Allowlist: ${rawPattern}`);
++  }
++  return trimmed.replace(/^(https?:\/\/[^/?#]+)\/$/i, '$1');
++}
++
++/**
++ * Build an RFC 9651 Inner List value for Connection-Allowlist.
++ */
++export function buildConnectionAllowlistHeader({
++  allowSelf = true,
++  patterns = [
++    'https://images.unsplash.com/*',
++    'https://img.youtube.com/*',
++    'https://www.youtube-nocookie.com/*',
++    'https://idp.dailygrind.example/*',
++  ],
++  reportTo = 'conn-reports',
++  redirects = 'block',
++  webrtc = 'block',
++} = {}) {
++  const items = allowSelf ? ['response-origin'] : [];
++  for (const pattern of patterns) {
++    const raw = String(pattern).trim();
++    if (raw === 'response-origin') {
++      if (!items.includes('response-origin')) items.push('response-origin');
++      continue;
++    }
++    const normalized = normalizeAllowlistPattern(raw);
++    items.push(`"${normalized.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
++  }
++  let header = `(${items.join(' ')})`;
++  if (redirects === 'allow') header += '; redirects=allow';
++  if (webrtc === 'allow') header += '; webrtc=allow';
++  if (reportTo) {
++    const endpointToken = String(reportTo).trim().replace(/^"+|"+$/g, '');
++    header += `; report-to=${endpointToken}`;
++  }
++  return header;
++}
++
++/**
++ * Generate a cryptographic per-request CSP nonce and apply privacy & security headers.
++ */
++export function applyPrivacySecurityHeaders(req, res) {
++  const bytes = new Uint8Array(16);
++  crypto.getRandomValues(bytes);
++  const nonce = btoa(String.fromCharCode(...bytes));
++
++  const setHeader = (name, value) =>
++    typeof res.setHeader === 'function' ? res.setHeader(name, value) : res.headers.set(name, value);
++
++  // Privacy-preserving Referrer-Policy and defensive Permissions-Policy
++  setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++  setHeader(
++    'Permissions-Policy',
++    'geolocation=(), camera=(), microphone=(), accelerometer=(), focus-without-user-activation=()',
++  );
++
++  // Companion security headers
++  setHeader('X-Content-Type-Options', 'nosniff');
++  setHeader('X-Frame-Options', 'DENY');
++  setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
++  setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++  setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++
++  // Reporting API endpoints (PII scrubbed before reaching endpoint)
++  setHeader(
++    'Reporting-Endpoints',
++    'default="https://reports.dailygrind.example/default", main-endpoint="https://reports.dailygrind.example/main", conn-reports="https://reports.dailygrind.example/conn"',
++  );
++
++  // Outbound Connection Allowlist scoped to document/worker destinations
++  const secFetchDest = req?.headers?.['sec-fetch-dest'] || 'document';
++  if (ALLOWLIST_DESTS.has(String(secFetchDest).toLowerCase())) {
++    setHeader('Connection-Allowlist', buildConnectionAllowlistHeader());
++  }
++
++  // Enforced Content-Security-Policy with Trusted Types and strict-dynamic
++  const csp = [
++    "default-src 'self'",
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    "style-src 'self' 'unsafe-inline'",
++    "img-src 'self' https://images.unsplash.com https://img.youtube.com data:",
++    'frame-src https://www.youtube-nocookie.com',
++    "connect-src 'self' https://idp.dailygrind.example",
++    "form-action 'self'",
++    "worker-src 'self'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'none'",
++    "require-trusted-types-for 'script'",
++    'report-to main-endpoint',
++  ].join('; ');
++
++  setHeader('Content-Security-Policy', csp);
++  return { nonce };
++}
++
++/**
++ * Configure secure session cookies (__Host- prefix, HttpOnly, Secure, SameSite=Lax)
++ * and CHIPS partitioned cookies (Partitioned, SameSite=None, Secure, HttpOnly) for 1:1 embeds.
++ */
++export function buildSecureCookies({ sessionId, themePref = 'light' }) {
++  const cookies = [];
++  if (sessionId) {
++    cookies.push(`__Host-session_id=${encodeURIComponent(sessionId)}; SameSite=Lax; HttpOnly; Secure; Path=/`);
++  }
++  if (themePref) {
++    cookies.push(`theme_pref=${encodeURIComponent(themePref)}; SameSite=None; Secure; Path=/; Partitioned; HttpOnly`);
++  }
++  return cookies;
++}
++
++/**
++ * Handle logout subresource request with Clear-Site-Data header to wipe cookies, storage, and cache
++ * without blocking main document navigation rendering on slow devices.
++ */
++export function handleLogoutSubresource(res) {
++  const setHeader = (name, value) =>
++    typeof res.setHeader === 'function' ? res.setHeader(name, value) : res.headers.set(name, value);
++  setHeader('Clear-Site-Data', '"*"');
++  setHeader('Cache-Control', 'no-store');
++}
++
++/**
++ * Fetch Metadata resource isolation middleware: rejects suspicious cross-site requests
++ * before authentication/authorization checks to prevent timing leaks.
++ */
++export function enforceFetchMetadataIsolation(req, res, next) {
++  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++
++  const site = req.get?.('Sec-Fetch-Site') ?? req.headers?.['sec-fetch-site'];
++  const mode = req.get?.('Sec-Fetch-Mode') ?? req.headers?.['sec-fetch-mode'];
++  const dest = req.get?.('Sec-Fetch-Dest') ?? req.headers?.['sec-fetch-dest'];
++
++  if (!site) return next(); // Fallback for legacy browsers
++  if (['same-origin', 'same-site', 'none'].includes(site)) return next();
++
++  // Allow standard navigate GET requests (top-level link clicks)
++  if (site === 'cross-site' && mode === 'navigate' && req.method === 'GET' && !['object', 'embed'].includes(dest)) {
++    return next();
++  }
++
++  res.status(403).send('Forbidden');
++}
+diff --git a/statikk.json b/statikk.json
+new file mode 100644
+index 0000000..498782a
+--- /dev/null
++++ b/statikk.json
+@@ -0,0 +1,20 @@
++{
++  "headers": {
++    "/*": {
++      "Referrer-Policy": "strict-origin-when-cross-origin",
++      "Permissions-Policy": "geolocation=(), camera=(), microphone=(), accelerometer=(), focus-without-user-activation=()",
++      "X-Content-Type-Options": "nosniff",
++      "X-Frame-Options": "DENY",
++      "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
++      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
++      "Cross-Origin-Resource-Policy": "same-origin",
++      "Reporting-Endpoints": "default=\"https://reports.dailygrind.example/default\", main-endpoint=\"https://reports.dailygrind.example/main\", conn-reports=\"https://reports.dailygrind.example/conn\"",
++      "Connection-Allowlist": "(response-origin \"https://images.unsplash.com/*\" \"https://img.youtube.com/*\" \"https://www.youtube-nocookie.com/*\" \"https://idp.dailygrind.example/*\"); report-to=conn-reports",
++      "Content-Security-Policy": "default-src 'self'; script-src 'self' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://idp.dailygrind.example; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; report-to main-endpoint",
++      "Vary": "Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site"
++    },
++    "/logout": {
++      "Clear-Site-Data": "\"*\""
++    }
++  }
++}

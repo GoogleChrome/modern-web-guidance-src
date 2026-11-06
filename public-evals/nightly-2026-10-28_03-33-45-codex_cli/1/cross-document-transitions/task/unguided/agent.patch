@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,9 +4,57 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="./site.js"></script>
+   <style>
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation-duration: 320ms;
++        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++        mix-blend-mode: normal;
++      }
++
++      html:active-view-transition-type(next) {
++        --page-exit: -12%;
++        --page-enter: 12%;
++      }
++
++      html:active-view-transition-type(previous) {
++        --page-exit: 12%;
++        --page-enter: -12%;
++      }
++
++      html:active-view-transition-type(next)::view-transition-old(root),
++      html:active-view-transition-type(previous)::view-transition-old(root) {
++        animation-name: page-out;
++      }
++
++      html:active-view-transition-type(next)::view-transition-new(root),
++      html:active-view-transition-type(previous)::view-transition-new(root) {
++        animation-name: page-in;
++      }
++
++      @keyframes page-out {
++        to { opacity: 0; transform: translateX(var(--page-exit)); }
++      }
++
++      @keyframes page-in {
++        from { opacity: 0; transform: translateX(var(--page-enter)); }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *, *::before, *::after {
++        transition: none !important;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+@@ -119,8 +167,36 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .pagination {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 20px;
++      margin-top: 24px;
++      background: transparent;
++      color: var(--text);
++      padding: 0;
++      position: static;
++      z-index: auto;
++    }
++
++    .pagination .btn {
++      margin-top: 0;
++    }
++
++    .pagination a[aria-disabled="true"] {
++      opacity: 0.45;
++      cursor: default;
++    }
++
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -193,8 +269,13 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <nav class="pagination" aria-label="Seasonal favorites pages">
++        <a href="?page=1" id="previous" class="btn" rel="prev" aria-disabled="true" tabindex="-1">&larr; Previous</a>
++        <span id="page-status" aria-live="polite">Page 1 of 3</span>
++        <a href="?page=2" id="next" class="btn" rel="next">Next &rarr;</a>
++      </nav>
+     </section>
+   </main>
+ 
+   <footer>

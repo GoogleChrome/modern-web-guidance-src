@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,93 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Vertical scroll container of media cards */
++    .scroller-section {
++      margin-top: 60px;
++    }
++
++    .scroller-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .scroller {
++      position: relative;
++      height: 440px;
++      overflow-y: auto;
++      overflow-x: hidden;
++      /* Never animate programmatic scrolling in this container */
++      scroll-behavior: auto;
++      overscroll-behavior: contain;
++      padding: 16px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.08);
++      scrollbar-gutter: stable;
++    }
++
++    /* Hidden until the initial scroll offset has been applied, so the
++       user never sees the list jump from the first card to the target. */
++    .scroller[data-pending] {
++      visibility: hidden;
++    }
++
++    .media-card {
++      display: flex;
++      gap: 20px;
++      align-items: center;
++      background: var(--light);
++      border-radius: 8px;
++      padding: 16px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card + .media-card {
++      margin-top: 16px;
++    }
++
++    .media-card img {
++      flex: none;
++      width: 240px;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      background: var(--secondary);
++    }
++
++    .media-card h3 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .media-card.target {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    @media (max-width: 600px) {
++      .media-card {
++        flex-direction: column;
++        align-items: stretch;
++      }
++
++      .media-card img {
++        width: 100%;
++        height: auto;
++        aspect-ratio: 3 / 2;
++      }
++    }
+   </style>
++  <noscript>
++    <style>
++      .scroller[data-pending] {
++        visibility: visible;
++      }
++    </style>
++  </noscript>
+ </head>
+ 
+ <body>
+ 
+@@ -194,8 +278,68 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scroller-section">
++      <h2>From the Bar</h2>
++      <div class="scroller" id="media-scroller" data-pending>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=480&h=320&q=80"
++            alt="Latte art, up close" width="240" height="160" decoding="async">
++          <div>
++            <h3>Flat White</h3>
++            <p>Velvety microfoam poured over a double ristretto shot.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=480&h=320&q=80"
++            alt="Freshly roasted coffee beans" width="240" height="160" decoding="async">
++          <div>
++            <h3>Single-Origin Beans</h3>
++            <p>Small-batch roasted every Tuesday and Friday.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=480&h=320&q=80"
++            alt="A cup of pour-over coffee" width="240" height="160" decoding="async">
++          <div>
++            <h3>Pour-Over</h3>
++            <p>Hand-brewed to order for a clean, bright cup.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=480&h=320&q=80"
++            alt="Coffee and pastry on a wooden table" width="240" height="160" decoding="async">
++          <div>
++            <h3>Morning Pairing</h3>
++            <p>Any drip coffee with a fresh butter croissant.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=480&h=320&q=80"
++            alt="Cafe interior with warm lighting" width="240" height="160" decoding="async">
++          <div>
++            <h3>The Corner Table</h3>
++            <p>Reserve our coziest spot for your next catch-up.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        // Runs synchronously while the parser is paused, before the browser
++        // paints the list, so the target is in view on first render with no
++        // scrolling animation or jump. Only the container is scrolled, not the page.
++        (function () {
++          var scroller = document.getElementById('media-scroller');
++          var target = scroller.querySelector('.target');
++          if (target) {
++            var paddingTop = parseFloat(getComputedStyle(scroller).paddingTop) || 0;
++            scroller.scrollTop = target.offsetTop - paddingTop;
++          }
++          scroller.removeAttribute('data-pending');
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

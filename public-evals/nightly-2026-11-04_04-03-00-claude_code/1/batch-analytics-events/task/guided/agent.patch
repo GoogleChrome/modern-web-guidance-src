@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,143 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Analytics: page views + clicks, debounced & batched into a single deferred beacon -->
++  <script type="module">
++    // Analytics collection endpoint.
++    const ANALYTICS_ENDPOINT = '/api/analytics';
++
++    // All events that occur within this window are coalesced into one request.
++    const BATCH_WINDOW = 10 * 1000;
++
++    // Cap per batch so the payload stays well under the ~64KB fetchLater /
++    // keepalive quota.
++    const MAX_QUEUE_SIZE = 100;
++
++    // Minimal fetchLater() polyfill for browsers without native support
++    // (sends on timeout or when the page becomes hidden).
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if (
++            'keepalive' in Request.prototype ||
++            init.method !== 'POST' ||
++            init.headers
++          ) {
++            fetch(url, Object.assign({}, init, { keepalive: true })).catch(() => {});
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    const sessionId = crypto.randomUUID();
++    const eventQueue = [];
++    let fetchLaterResult = null;
++    let fetchLaterController = null;
++
++    function trackEvent(type, data = {}) {
++      // Start a fresh batch once the previous beacon has been sent, or when the
++      // current batch is full (the full batch's pending request is left intact
++      // so it still gets delivered).
++      if (fetchLaterResult?.activated || eventQueue.length >= MAX_QUEUE_SIZE) {
++        fetchLaterController = null;
++        fetchLaterResult = null;
++        eventQueue.length = 0;
++      }
++
++      eventQueue.push({
++        type,
++        ts: Date.now(),
++        path: location.pathname,
++        ...data,
++      });
++
++      // Replace the pending request with one carrying the whole queue.
++      fetchLaterController?.abort();
++      fetchLaterController = new AbortController();
++
++      try {
++        fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: { 'content-type': 'application/json' },
++          body: JSON.stringify({ sessionId, events: eventQueue }),
++          signal: fetchLaterController.signal,
++          activateAfter: BATCH_WINDOW,
++        });
++      } catch {
++        // Quota exceeded or unsupported config: drop this batch rather than
++        // affect the page.
++        fetchLaterController = null;
++        fetchLaterResult = null;
++        eventQueue.length = 0;
++      }
++    }
++
++    // Describe a clicked element without capturing user-entered data.
++    function describeElement(el) {
++      const target = el.closest('a, button, [role="button"], [data-track]') ?? el;
++      return {
++        tag: target.tagName.toLowerCase(),
++        id: target.id || undefined,
++        className: (typeof target.className === 'string' && target.className) || undefined,
++        text: target.textContent.trim().replace(/\s+/g, ' ').slice(0, 80) || undefined,
++        href: target.getAttribute('href') || undefined,
++        label: target.dataset.track || undefined,
++      };
++    }
++
++    // Page views (pageshow also fires on back/forward-cache restores).
++    window.addEventListener('pageshow', (event) => {
++      trackEvent('page_view', {
++        title: document.title,
++        referrer: document.referrer || undefined,
++        restored: event.persisted || undefined,
++      });
++    });
++
++    // Click interactions (capture phase so clicks are seen even if a handler
++    // stops propagation).
++    document.addEventListener(
++      'click',
++      (event) => {
++        if (!(event.target instanceof Element)) return;
++        trackEvent('click', { target: describeElement(event.target) });
++      },
++      { capture: true, passive: true }
++    );
++  </script>
++
+ </body>
+ 
+ </html>

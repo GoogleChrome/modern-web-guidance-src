@@ -1,0 +1,46 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,42 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .grid > .card {
++      --card-index: 0;
++      animation: card-enter 400ms ease-out both;
++      animation-delay: calc(var(--card-index) * 100ms);
++      animation-delay: calc((sibling-index() - 1) * 100ms);
++    }
++
++    /* Keep the stagger in browsers without sibling-index() support. */
++    .grid > .card:nth-child(2) {
++      --card-index: 1;
++    }
++
++    .grid > .card:nth-child(3) {
++      --card-index: 2;
++    }
++
++    @keyframes card-enter {
++      from {
++        opacity: 0;
++        transform: translateY(16px);
++      }
++
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .grid > .card {
++        animation: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;

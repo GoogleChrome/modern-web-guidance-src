@@ -1,0 +1,182 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,42 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    /* Roasting Simulator */
++    #roasting-widget {
++      height: 400px;
++      content-visibility: auto;
++      contain-intrinsic-size: auto 400px;
++      background: var(--primary);
++      color: white;
++      text-align: center;
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 12px;
++    }
++
++    #roast-canvas {
++      width: 100%;
++      max-width: 600px;
++      flex: 1;
++      min-height: 0;
++      background: #2b1b17;
++      border-radius: 8px;
++    }
++
++    #roast-temp-value {
++      color: var(--accent);
++      font-weight: bold;
++      font-variant-numeric: tabular-nums;
++    }
++
++    footer {
++      margin-top: 0;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -196,8 +230,14 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-label="Roasting simulator">
++    <h2>Live Roast Simulator</h2>
++    <canvas id="roast-canvas" width="600" height="260" role="img" aria-label="Animated roasting coffee beans"></canvas>
++    <p>Drum temperature: <span id="roast-temp-value">200</span>&deg;C</p>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +246,120 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var widget = document.getElementById('roasting-widget');
++      var canvas = document.getElementById('roast-canvas');
++      var tempEl = document.getElementById('roast-temp-value');
++      var ctx = canvas.getContext('2d');
++      var W = canvas.width, H = canvas.height;
++
++      var beans = [];
++      for (var i = 0; i < 18; i++) {
++        beans.push({
++          x: Math.random() * W,
++          y: Math.random() * H,
++          r: 12 + Math.random() * 6,
++          vx: (Math.random() - 0.5) * 1.6,
++          vy: (Math.random() - 0.5) * 1.6,
++          a: Math.random() * Math.PI * 2,
++          va: (Math.random() - 0.5) * 0.08
++        });
++      }
++
++      var temp = 200, rising = true;
++      // 0 (green) -> 1 (dark roast), derived from temperature
++      function progress() { return (temp - 200) / 40; }
++
++      function mix(a, b, t) { return Math.round(a + (b - a) * t); }
++
++      function draw() {
++        ctx.clearRect(0, 0, W, H);
++        var p = progress();
++        var color = 'rgb(' + mix(150, 50, p) + ',' + mix(120, 28, p) + ',' + mix(60, 20, p) + ')';
++        beans.forEach(function (b) {
++          b.x += b.vx; b.y += b.vy; b.a += b.va;
++          if (b.x < b.r || b.x > W - b.r) b.vx *= -1;
++          if (b.y < b.r || b.y > H - b.r) b.vy *= -1;
++          ctx.save();
++          ctx.translate(b.x, b.y);
++          ctx.rotate(b.a);
++          ctx.fillStyle = color;
++          ctx.beginPath();
++          ctx.ellipse(0, 0, b.r, b.r * 0.7, 0, 0, Math.PI * 2);
++          ctx.fill();
++          ctx.strokeStyle = 'rgba(0,0,0,0.5)';
++          ctx.lineWidth = 2;
++          ctx.beginPath();
++          ctx.moveTo(-b.r * 0.8, 0);
++          ctx.quadraticCurveTo(0, b.r * 0.3, b.r * 0.8, 0);
++          ctx.stroke();
++          ctx.restore();
++        });
++      }
++
++      function updateTemp() {
++        temp += (rising ? 1 : -1) * (0.5 + Math.random() * 1.5);
++        if (temp >= 240) rising = false;
++        if (temp <= 200) rising = true;
++        tempEl.textContent = temp.toFixed(1);
++      }
++
++      var rafId = null, timerId = null;
++
++      function loop() {
++        draw();
++        rafId = requestAnimationFrame(loop);
++      }
++
++      function start() {
++        if (rafId === null) rafId = requestAnimationFrame(loop);
++        if (timerId === null) timerId = setInterval(updateTemp, 500);
++      }
++
++      function stop() {
++        if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
++        if (timerId !== null) { clearInterval(timerId); timerId = null; }
++      }
++
++      var inView = false, tabVisible = !document.hidden;
++      function sync() {
++        if (inView && tabVisible) start(); else stop();
++      }
++      function setInView(v) { inView = v; sync(); }
++
++      document.addEventListener('visibilitychange', function () {
++        tabVisible = !document.hidden;
++        sync();
++      });
++
++      draw();
++
++      if ('oncontentvisibilityautostatechange' in widget) {
++        // Native: fires when the browser starts/stops skipping the element's rendering
++        widget.addEventListener('contentvisibilityautostatechange', function (e) {
++          setInView(!e.skipped);
++        });
++        // Event only fires on change; seed the initial state
++        var r = widget.getBoundingClientRect();
++        setInView(r.bottom > 0 && r.top < window.innerHeight);
++      } else if ('IntersectionObserver' in window) {
++        new IntersectionObserver(function (entries) {
++          setInView(entries[entries.length - 1].isIntersecting);
++        }).observe(widget);
++      } else {
++        // Legacy fallback: scroll/resize geometry check
++        var check = function () {
++          var r = widget.getBoundingClientRect();
++          setInView(r.bottom > 0 && r.top < (window.innerHeight || document.documentElement.clientHeight));
++        };
++        window.addEventListener('scroll', check, { passive: true });
++        window.addEventListener('resize', check);
++        check();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

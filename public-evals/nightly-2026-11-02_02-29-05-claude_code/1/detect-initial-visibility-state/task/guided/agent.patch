@@ -1,0 +1,79 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,75 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Background-tab detection: was the page initially loaded in a background
++    // tab, and when (ms since navigation start) was it first backgrounded?
++    (() => {
++      const logVisibility = (info) => console.log('[visibility]', info);
++
++      if ('VisibilityStateEntry' in window) {
++        // Accurate path: the browser records visibility changes on the
++        // performance timeline regardless of when this script runs.
++        const entries = performance.getEntriesByType('visibility-state');
++        const firstHidden = entries.find((entry) => entry.name === 'hidden');
++
++        logVisibility({
++          initiallyBackgrounded: entries[0]?.name === 'hidden',
++          backgroundTime: firstHidden ? firstHidden.startTime : null,
++          fallback: false,
++        });
++
++        // Not backgrounded yet: capture the exact time it first happens.
++        if (!firstHidden) {
++          const observer = new PerformanceObserver((list) => {
++            const hidden = list.getEntries().find((entry) => entry.name === 'hidden');
++            if (!hidden) return;
++            observer.disconnect();
++            logVisibility({
++              initiallyBackgrounded: false,
++              backgroundTime: hidden.startTime,
++              fallback: false,
++            });
++          });
++          observer.observe({ type: 'visibility-state' });
++        }
++        return;
++      }
++
++      // FALLBACK ACTIVE — POTENTIALLY UNRELIABLE (Firefox, Safari).
++      // document.visibilityState only reflects the state *when this script
++      // executes*. If the page opened in a background tab and the user
++      // foregrounded it before this script ran (likely for async/deferred
++      // scripts), it reads 'visible' and the initial background load is
++      // missed. A hidden initial state is approximated as time 0, and later
++      // timestamps come from performance.now() in the event handler, not the
++      // browser's actual visibility-change time.
++      const initiallyBackgrounded = document.visibilityState === 'hidden';
++      const fallbackWarning =
++        'Fallback detection (document.visibilityState) is active: results may be inaccurate.';
++
++      console.warn('[visibility]', fallbackWarning);
++      logVisibility({
++        initiallyBackgrounded,
++        backgroundTime: initiallyBackgrounded ? 0 : null,
++        fallback: true,
++      });
++
++      if (!initiallyBackgrounded) {
++        document.addEventListener('visibilitychange', function onChange() {
++          if (document.visibilityState !== 'hidden') return;
++          document.removeEventListener('visibilitychange', onChange);
++          logVisibility({
++            initiallyBackgrounded: false,
++            backgroundTime: performance.now(),
++            fallback: true,
++          });
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

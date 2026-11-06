@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,11 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="gift-card.css">
++  <script src="vendor/html2canvas-1.4.1.min.js" defer></script>
++  <script src="gift-card.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +197,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="gift-designer" aria-labelledby="gift-heading">
++      <div class="gift-heading">
++        <p class="gift-eyebrow">A LITTLE COFFEE. A LOT OF LOVE.</p>
++        <h2 id="gift-heading">Make their day, your way.</h2>
++        <p>Create a coffee gift card with a personal touch. Make it yours, then save it to share.</p>
++      </div>
++      <div class="gift-layout">
++        <form id="gift-controls" class="gift-controls">
++          <label for="gift-name">Who’s the lucky coffee lover?</label>
++          <input id="gift-name" name="recipient" type="text" maxlength="36" placeholder="e.g. Alex" autocomplete="off">
++          <div class="gift-label-row">
++            <label for="gift-message">Your personal message</label>
++            <span id="message-count">0 / 80</span>
++          </div>
++          <textarea id="gift-message" name="message" rows="3" maxlength="80" placeholder="A little pick-me-up, just for you." aria-describedby="message-count"></textarea>
++          <fieldset class="gift-colors">
++            <legend>Pick a background</legend>
++            <div class="gift-swatches">
++              <label class="gift-swatch" style="--swatch: #f3e4cc"><input type="radio" name="background" value="#f3e4cc" aria-label="Vanilla cream" checked><span></span></label>
++              <label class="gift-swatch" style="--swatch: #d9e3d4"><input type="radio" name="background" value="#d9e3d4" aria-label="Sage green"><span></span></label>
++              <label class="gift-swatch" style="--swatch: #ecd0c5"><input type="radio" name="background" value="#ecd0c5" aria-label="Rose latte"><span></span></label>
++              <label class="gift-swatch" style="--swatch: #cedee8"><input type="radio" name="background" value="#cedee8" aria-label="Morning blue"><span></span></label>
++              <label class="gift-swatch" style="--swatch: #4e342e"><input type="radio" name="background" value="#4e342e" aria-label="Espresso brown"><span></span></label>
++              <label class="gift-custom-color" for="gift-color">Custom <input id="gift-color" type="color" value="#f3e4cc" aria-label="Custom background color"></label>
++            </div>
++          </fieldset>
++          <button id="gift-download" class="btn gift-download" type="submit">Download gift card <span aria-hidden="true">↓</span></button>
++          <p class="gift-export-note">PNG image · Ready to send a little joy</p>
++          <p id="gift-status" role="status" aria-live="polite"></p>
++        </form>
++        <div class="gift-preview">
++          <p class="gift-preview-label">YOUR PERSONAL TOUCH, PREVIEWED</p>
++          <div id="gift-card-stage">
++            <article id="export_element" drawable aria-label="Your custom coffee gift card">
++              <div class="gift-card-top">
++                <p class="gift-card-brand">THE DAILY GRIND<span>GOOD COFFEE. GOOD COMPANY.</span></p>
++                <div class="gift-cup" aria-hidden="true"><span></span></div>
++              </div>
++              <div class="gift-card-body">
++                <p class="gift-card-kicker">A CUP OF HAPPINESS</p>
++                <p id="card-message">A little pick-me-up, just for you.</p>
++              </div>
++              <div class="gift-card-bottom"><p>For <span id="card-name">someone special</span></p><span class="gift-card-tag">COFFEE GIFT CARD</span></div>
++            </article>
++            <canvas id="gift-canvas" content="drawable" layoutsubtree hidden aria-label="Your custom coffee gift card preview"></canvas>
++          </div>
++          <p class="gift-preview-note">Made with love. Best enjoyed with coffee.</p>
++        </div>
++      </div>
++      <p class="gift-disclaimer">A personal card design to share; this download has no monetary value.</p>
++      <noscript><p>Please enable JavaScript to personalize and download your card.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

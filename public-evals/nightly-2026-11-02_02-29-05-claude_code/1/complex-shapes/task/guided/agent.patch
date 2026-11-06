@@ -1,0 +1,70 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,10 +85,56 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
+     }
+ 
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative coffee-splash block. Taken out of flow with a fixed size,
++       so the hero layout is identical whether or not the mask or photo loads. */
++    .shaped-element {
++      --splash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M100 22C118 20 126 38 140 36C156 34 170 44 168 62C166 76 182 84 180 102C178 120 162 124 162 140C162 158 144 170 126 164C112 160 104 176 86 174C66 172 62 154 46 150C28 146 20 128 30 112C38 98 22 88 28 70C34 52 54 54 62 40C70 26 84 24 100 22Z'/%3E%3Ccircle cx='186' cy='40' r='7'/%3E%3Ccircle cx='172' cy='22' r='3.5'/%3E%3Ccircle cx='16' cy='158' r='8'/%3E%3Ccircle cx='34' cy='180' r='4'/%3E%3Ccircle cx='178' cy='172' r='5'/%3E%3Ccircle cx='24' cy='34' r='4'/%3E%3C/svg%3E");
++      position: absolute;
++      right: clamp(-40px, -2vw, 0px);
++      bottom: clamp(-40px, -3vw, 0px);
++      width: clamp(140px, 24vw, 320px);
++      aspect-ratio: 1;
++      z-index: 0;
++      pointer-events: none;
++      opacity: 0.9;
++      /* Warm gradient shows if the photo fails to load */
++      background:
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=640&q=70') center / cover no-repeat,
++        linear-gradient(135deg, var(--accent), var(--primary));
++
++      -webkit-mask-image: var(--splash);
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-image: var(--splash);
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++    }
++
++    /* No masking support: fall back to a soft organic blob */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        border-radius: 62% 38% 55% 45% / 48% 60% 40% 52%;
++      }
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        opacity: 0.5;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +214,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,135 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Menu data that the WebMCP tool looks up.
++    const MENU_ITEMS = [
++      {
++        name: "Maple Oat Latte",
++        category: "Seasonal",
++        description: "Creamy oat milk with a hint of Vermont maple syrup.",
++        sizes: { small: 4.75, medium: 5.25, large: 5.75 },
++        currency: "USD",
++        temperature: ["hot", "iced"],
++        caffeineMg: { small: 75, medium: 150, large: 150 },
++        calories: { small: 160, medium: 210, large: 270 },
++        dietary: ["dairy-free", "vegan"],
++        allergens: ["oats"],
++        url: "/menu/seasonal",
++      },
++      {
++        name: "Dark Roast Espresso",
++        category: "Espresso",
++        description: "Bold, smokey, and perfect for a morning boost.",
++        sizes: { single: 2.75, double: 3.5 },
++        currency: "USD",
++        temperature: ["hot"],
++        caffeineMg: { single: 75, double: 150 },
++        calories: { single: 5, double: 10 },
++        dietary: ["dairy-free", "vegan", "gluten-free"],
++        allergens: [],
++        url: "/menu/espresso",
++      },
++      {
++        name: "Cold Brew",
++        category: "Cold Coffee",
++        description: "Steeped for 18 hours for maximum smoothness.",
++        sizes: { small: 3.95, medium: 4.45, large: 4.95 },
++        currency: "USD",
++        temperature: ["iced"],
++        caffeineMg: { small: 155, medium: 205, large: 310 },
++        calories: { small: 5, medium: 5, large: 10 },
++        dietary: ["dairy-free", "vegan", "gluten-free"],
++        allergens: [],
++        url: "/menu/cold-brew",
++      },
++    ];
++
++    // Lowercase, strip punctuation, and collapse whitespace so
++    // "maple-oat latte" and "Maple Oat Latte" match.
++    const normalize = (value) =>
++      value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
++
++    function findMenuItem(itemName) {
++      const query = normalize(itemName);
++      return (
++        MENU_ITEMS.find((item) => normalize(item.name) === query) ??
++        MENU_ITEMS.find((item) => {
++          const name = normalize(item.name);
++          return name.includes(query) || query.includes(name);
++        })
++      );
++    }
++
++    const getMenuItemDetailsTool = {
++      name: "get_menu_item_details",
++      description:
++        "Looks up a drink on The Daily Grind menu by name and returns its details, including description, sizes and prices, caffeine, calories, dietary info, and allergens. Use when the user asks about a specific menu item.",
++      inputSchema: {
++        type: "object",
++        properties: {
++          itemName: {
++            type: "string",
++            description:
++              "Name of the menu item as the user said it, e.g. \"maple oat latte\" or \"cold brew\". Matching ignores case and punctuation.",
++          },
++        },
++        required: ["itemName"],
++      },
++      execute({ itemName } = {}) {
++        // The browser doesn't validate against inputSchema, so check here and
++        // return errors as values so the agent can read them and retry.
++        if (typeof itemName !== "string" || !itemName.trim()) {
++          return {
++            error: "Provide the name of a menu item to look up.",
++            availableItems: MENU_ITEMS.map((item) => item.name),
++          };
++        }
++        const item = findMenuItem(itemName);
++        if (!item) {
++          return {
++            error: `Menu item "${itemName}" not found.`,
++            availableItems: MENU_ITEMS.map((item) => item.name),
++          };
++        }
++        return item;
++      },
++      annotations: { readOnlyHint: true },
++    };
++
++    let registration = null;
++
++    async function registerMenuTools() {
++      if (!("modelContext" in document) || registration) return;
++      const controller = new AbortController();
++      registration = controller;
++      try {
++        await document.modelContext.registerTool(getMenuItemDetailsTool, {
++          signal: controller.signal,
++        });
++      } catch (err) {
++        if (registration === controller) registration = null;
++        console.warn("WebMCP tool registration failed:", err);
++      }
++    }
++
++    function unregisterMenuTools() {
++      // WebMCP has no unregisterTool(); aborting the signal removes the tool.
++      registration?.abort();
++      registration = null;
++    }
++
++    registerMenuTools();
++
++    // Use pagehide instead of unload: unload is deprecated and blocks the
++    // back/forward cache. If the page comes back from bfcache, register again.
++    window.addEventListener("pagehide", unregisterMenuTools);
++    window.addEventListener("pageshow", (event) => {
++      if (event.persisted) registerMenuTools();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

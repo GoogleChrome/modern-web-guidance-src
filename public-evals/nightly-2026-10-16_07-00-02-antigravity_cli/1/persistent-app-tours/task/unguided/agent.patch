@@ -1,0 +1,221 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,70 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Onboarding Tour Step */
++    #tour-step {
++      position: fixed;
++      z-index: 2000;
++      width: 280px;
++      background: #ffffff;
++      color: var(--text);
++      border-radius: 8px;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.08);
++      padding: 16px 18px;
++      text-align: left;
++      line-height: 1.5;
++      font-size: 0.9rem;
++      box-sizing: border-box;
++    }
++
++    .tour-arrow {
++      position: absolute;
++      top: -8px;
++      width: 0;
++      height: 0;
++      border-left: 8px solid transparent;
++      border-right: 8px solid transparent;
++      border-bottom: 8px solid #ffffff;
++      filter: drop-shadow(0 -2px 1px rgba(0, 0, 0, 0.08));
++    }
++
++    .tour-title {
++      margin: 0 0 6px 0;
++      color: var(--primary);
++      font-size: 1rem;
++      font-weight: 700;
++    }
++
++    .tour-message {
++      margin: 0 0 14px 0;
++      color: #5d4037;
++      font-size: 0.875rem;
++      line-height: 1.45;
++    }
++
++    .tour-actions {
++      display: flex;
++      justify-content: flex-end;
++    }
++
++    .tour-close-btn {
++      background: var(--primary);
++      color: #ffffff;
++      border: none;
++      padding: 7px 16px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .tour-close-btn:hover {
++      background: #3e2723;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,9 +223,21 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <a href="/rewards" id="feature">Rewards</a>
++        <div id="tour-step" role="dialog" aria-modal="false" aria-labelledby="tour-step-title">
++          <div class="tour-arrow"></div>
++          <div class="tour-content">
++            <h4 id="tour-step-title" class="tour-title">Earn Rewards</h4>
++            <p class="tour-message">Earn points on every order and redeem them for free coffee, delicious treats, and exclusive perks!</p>
++            <div class="tour-actions">
++              <button type="button" id="tour-close-btn" class="tour-close-btn" aria-label="Close">Close</button>
++            </div>
++          </div>
++        </div>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -206,7 +280,123 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      let isTourActive = true;
++
++      const feature = document.getElementById('feature');
++      const tourStep = document.getElementById('tour-step');
++      const closeBtn = document.getElementById('tour-close-btn');
++
++      function isTourOpen() {
++        if (!isTourActive || !tourStep) return false;
++        if (tourStep.style.display === 'none' || tourStep.hidden) return false;
++        const style = window.getComputedStyle(tourStep);
++        return style.display !== 'none' && style.visibility !== 'hidden';
++      }
++
++      function closeTour() {
++        isTourActive = false;
++        if (tourStep) {
++          tourStep.style.display = 'none';
++        }
++      }
++
++      function updateTourPosition() {
++        if (!isTourOpen() || !feature || !tourStep) return;
++
++        const fRect = feature.getBoundingClientRect();
++        const stepWidth = tourStep.offsetWidth || 280;
++
++        // Position 12px directly below the feature
++        const offset = 12;
++        const top = fRect.bottom + offset;
++        let left = fRect.left + (fRect.width / 2) - (stepWidth / 2);
++
++        // Keep within viewport boundaries horizontally
++        const padding = 12;
++        const maxLeft = window.innerWidth - stepWidth - padding;
++        if (left < padding) {
++          left = padding;
++        } else if (left > maxLeft) {
++          left = maxLeft;
++        }
++
++        tourStep.style.top = top + 'px';
++        tourStep.style.left = left + 'px';
++
++        // Position the arrow so it points directly at feature center
++        const arrow = tourStep.querySelector('.tour-arrow');
++        if (arrow) {
++          const featureCenterX = fRect.left + (fRect.width / 2);
++          const arrowLeft = featureCenterX - left;
++          const clampedArrowLeft = Math.max(16, Math.min(stepWidth - 16, arrowLeft));
++          arrow.style.left = clampedArrowLeft + 'px';
++        }
++      }
++
++      // Close button handler
++      if (closeBtn) {
++        closeBtn.addEventListener('click', function (e) {
++          e.stopPropagation();
++          closeTour();
++        });
++      }
++
++      // Delegation in case buttons are interacted with or re-rendered
++      if (tourStep) {
++        tourStep.addEventListener('click', function (e) {
++          if (e.target.closest('#tour-close-btn') || e.target.closest('button')) {
++            closeTour();
++          }
++        });
++      }
++
++      // Ensure that clicking the rewards link during the tour does not cause the page to navigate away
++      if (feature) {
++        feature.addEventListener('click', function (e) {
++          if (isTourOpen()) {
++            e.preventDefault();
++          }
++        });
++      }
++
++      // Visual tracking: updates on scroll, resize, layout changes, and animation frame
++      window.addEventListener('scroll', updateTourPosition, { passive: true, capture: true });
++      window.addEventListener('resize', updateTourPosition, { passive: true });
++
++      if (typeof ResizeObserver !== 'undefined') {
++        const ro = new ResizeObserver(function () {
++          updateTourPosition();
++        });
++        ro.observe(document.body);
++        if (feature) ro.observe(feature);
++        if (tourStep) ro.observe(tourStep);
++      }
++
++      if (typeof MutationObserver !== 'undefined') {
++        const mo = new MutationObserver(function () {
++          updateTourPosition();
++        });
++        mo.observe(document.body, { attributes: true, childList: true, subtree: true });
++      }
++
++      // Continuous tracking loop via requestAnimationFrame while tour is active
++      function trackingLoop() {
++        if (isTourActive) {
++          updateTourPosition();
++          requestAnimationFrame(trackingLoop);
++        }
++      }
++
++      // Initial positioning
++      updateTourPosition();
++      requestAnimationFrame(trackingLoop);
++      window.addEventListener('DOMContentLoaded', updateTourPosition);
++      window.addEventListener('load', updateTourPosition);
++    })();
++  </script>
+ </body>
+ 
+ </html>

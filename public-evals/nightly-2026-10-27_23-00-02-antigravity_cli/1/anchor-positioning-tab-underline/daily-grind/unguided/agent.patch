@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+index 66c9173..9860608 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,8 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,13 +61,28 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      padding: 4px 0;
++      display: inline-block;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    .nav-indicator {
++      position: absolute;
++      bottom: -4px;
++      left: 0;
++      height: 3px;
++      width: 0;
++      background-color: var(--accent);
++      border-radius: 2px;
++      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
++      pointer-events: none;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,11 +177,12 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li class="active"><a href="/menu" class="nav-link active" aria-current="page">Menu</a></li>
++      <li><a href="/locations" class="nav-link">Locations</a></li>
++      <li><a href="/rewards" class="nav-link">Rewards</a></li>
++      <li><a href="/account" class="nav-link">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <span class="nav-indicator" aria-hidden="true"></span>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +225,63 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const navList = document.querySelector('nav ul');
++      const indicator = document.querySelector('.nav-indicator');
++      const navLinks = Array.from(document.querySelectorAll('nav ul a:not(.logout-link)'));
++
++      function updateIndicator(targetLink) {
++        if (!targetLink || !indicator || !navList) return;
++        const listRect = navList.getBoundingClientRect();
++        const linkRect = targetLink.getBoundingClientRect();
++        const left = linkRect.width ? (linkRect.left - listRect.left) : targetLink.offsetLeft;
++        const width = linkRect.width || targetLink.offsetWidth;
++        indicator.style.left = `${left}px`;
++        indicator.style.width = `${width}px`;
++      }
++
++      function setActiveLink(selectedLink) {
++        navLinks.forEach((link) => {
++          const isSelected = link === selectedLink;
++          link.classList.toggle('active', isSelected);
++          if (link.parentElement) {
++            link.parentElement.classList.toggle('active', isSelected);
++          }
++          if (isSelected) {
++            link.setAttribute('aria-current', 'page');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++        updateIndicator(selectedLink);
++      }
++
++      navLinks.forEach((link) => {
++        const handleSelect = (event) => {
++          event.preventDefault();
++          setActiveLink(link);
++        };
++        link.addEventListener('click', handleSelect);
++        if (link.parentElement) {
++          link.parentElement.addEventListener('click', (event) => {
++            if (event.target === link.parentElement) {
++              handleSelect(event);
++            }
++          });
++        }
++      });
++
++      const initialActive = document.querySelector('nav ul a.active:not(.logout-link)') || navLinks[0];
++      updateIndicator(initialActive);
++
++      window.addEventListener('resize', () => {
++        const currentActive = document.querySelector('nav ul a.active:not(.logout-link)') || navLinks[0];
++        updateIndicator(currentActive);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

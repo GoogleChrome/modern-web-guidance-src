@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,77 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Form */
++    .shipping {
++      max-width: 700px;
++      margin: 60px auto 0;
++    }
++
++    .shipping form {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: grid;
++      grid-template-columns: repeat(6, 1fr);
++      gap: 16px;
++      margin-top: 20px;
++    }
++
++    .field {
++      grid-column: span 6;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .field.half {
++      grid-column: span 3;
++    }
++
++    .field.third {
++      grid-column: span 2;
++    }
++
++    .field label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++      color: var(--primary);
++    }
++
++    .field input,
++    .field select {
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++      background: white;
++    }
++
++    .field input:focus,
++    .field select:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    .shipping .btn {
++      grid-column: span 6;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    @media (max-width: 600px) {
++
++      .field.half,
++      .field.third {
++        grid-column: span 6;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +263,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping" id="shipping">
++      <h2 style="text-align: center;">Shipping Address</h2>
++      <form action="/shipping-address" method="post">
++        <div class="field half">
++          <label for="first-name">First name</label>
++          <input type="text" id="first-name" name="first_name" autocomplete="given-name" required>
++        </div>
++        <div class="field half">
++          <label for="last-name">Last name</label>
++          <input type="text" id="last-name" name="last_name" autocomplete="family-name" required>
++        </div>
++        <div class="field">
++          <label for="address1">Address line 1</label>
++          <input type="text" id="address1" name="address1" autocomplete="address-line1" required>
++        </div>
++        <div class="field">
++          <label for="address2">Address line 2 (optional)</label>
++          <input type="text" id="address2" name="address2" autocomplete="address-line2">
++        </div>
++        <div class="field third">
++          <label for="city">City</label>
++          <input type="text" id="city" name="city" autocomplete="address-level2" required>
++        </div>
++        <div class="field third">
++          <label for="state">State / Province</label>
++          <input type="text" id="state" name="state" autocomplete="address-level1" required>
++        </div>
++        <div class="field third">
++          <label for="zip">ZIP / Postal code</label>
++          <input type="text" id="zip" name="zip" autocomplete="postal-code" required>
++        </div>
++        <div class="field half">
++          <label for="country">Country</label>
++          <select id="country" name="country" autocomplete="country" required>
++            <option value="US" selected>United States</option>
++            <option value="CA">Canada</option>
++            <option value="GB">United Kingdom</option>
++            <option value="AU">Australia</option>
++            <option value="OTHER">Other</option>
++          </select>
++        </div>
++        <div class="field half">
++          <label for="phone">Phone (optional)</label>
++          <input type="tel" id="phone" name="phone" autocomplete="tel">
++        </div>
++        <button type="submit" class="btn">Save Address</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,77 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,45 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .calendar-section {
++      margin-top: 56px;
++      padding-top: 36px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .calendar-intro { text-align: center; }
++    .calendar-intro p { margin: 8px auto 24px; max-width: 620px; }
++    .date-picker { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; }
++    .date-picker label { font-weight: 600; }
++    .date-picker input, .date-picker button {
++      font: inherit;
++      padding: 9px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++    .date-picker button { cursor: pointer; }
++    .date-picker :focus-visible, .calendar-card summary:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++    .calendar-status { text-align: center; margin-top: 12px; min-height: 1.6em; }
++    #calendar-results[hidden] { display: none; }
++    .calendar-card { text-align: left; min-width: 0; border-top: 4px solid var(--secondary); }
++    .calendar-date { font-size: 1.15rem; min-height: 3.7em; margin-bottom: 16px; overflow-wrap: anywhere; }
++    .calendar-card dl { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; }
++    .calendar-card dd { font-weight: 600; }
++    .calendar-card details { margin-top: 20px; border-top: 1px solid var(--secondary); padding-top: 12px; }
++    .calendar-card summary { cursor: pointer; font-weight: 600; }
++    .calendar-months { list-style: none; margin-top: 12px; font-size: 0.9rem; }
++    .calendar-months li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; }
++    .calendar-months li[aria-current] { background: #f3ece8; font-weight: 600; border-radius: 3px; }
++    .calendar-months span:last-child { white-space: nowrap; }
++    .calendar-note { font-size: 0.85rem; margin-top: 18px; text-align: center; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +231,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="calendar-section" aria-labelledby="calendar-heading">
++      <div class="calendar-intro">
++        <h2 id="calendar-heading">World Calendar Converter</h2>
++        <p>One date, different traditions. Explore the Islamic, Hebrew, and Japanese calendars.</p>
++      </div>
++      <div class="date-picker">
++        <label for="calendar-date">Pick a date</label>
++        <input id="calendar-date" type="date" min="0001-01-01" max="9999-12-31" required disabled aria-describedby="calendar-note">
++        <button id="calendar-today" type="button" disabled>Today</button>
++      </div>
++      <p id="calendar-status" class="calendar-status" role="status">Loading calendars…</p>
++      <div id="calendar-results" class="grid" hidden></div>
++      <p id="calendar-note" class="calendar-note">Dates follow calendar days, compared with today in your local time zone. Islamic dates use the calculated civil calendar; observed dates may vary.</p>
++      <noscript><p class="calendar-status">Enable JavaScript to use the calendar converter.</p></noscript>
++    </section>
+   </main>
+ 
++  <script type="module" src="/assets/calendar.js"></script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

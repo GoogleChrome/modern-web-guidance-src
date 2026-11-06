@@ -1,0 +1,322 @@
+diff --git a/index.html b/index.html
+index 66c9173..f548bc1 100644
+--- a/index.html
++++ b/index.html
+@@ -113,11 +113,30 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+-    .card h3 {
++    .card-header {
++      width: 100%;
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 10px;
+       margin-bottom: 10px;
++    }
++
++    .card h3 {
++      margin-bottom: 0;
+       color: var(--primary);
++      text-align: left;
++      flex: 1;
++    }
++
++    .card p {
++      flex: 1;
+     }
+ 
+     .btn {
+@@ -179,17 +198,26 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <div class="card-header">
++            <h3>Maple Oat Latte</h3>
++            <favorite-toggle item="Maple Oat Latte"></favorite-toggle>
++          </div>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <div class="card-header">
++            <h3>Dark Roast Espresso</h3>
++            <favorite-toggle item="Dark Roast Espresso"></favorite-toggle>
++          </div>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <div class="card-header">
++            <h3>Cold Brew</h3>
++            <favorite-toggle item="Cold Brew"></favorite-toggle>
++          </div>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -207,6 +235,255 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class FavoriteToggle extends HTMLElement {
++      static get observedAttributes() {
++        return ['active', 'checked', 'favorited', 'item', 'label'];
++      }
++
++      constructor() {
++        super();
++        this.attachShadow({ mode: 'open' });
++        this._handleClick = this._handleClick.bind(this);
++        this._handleKeyDown = this._handleKeyDown.bind(this);
++      }
++
++      connectedCallback() {
++        if (!this.hasAttribute('role')) {
++          this.setAttribute('role', 'switch');
++        }
++        if (!this.hasAttribute('tabindex')) {
++          this.setAttribute('tabindex', '0');
++        }
++
++        const storageKey = this._storageKey;
++        if (storageKey) {
++          try {
++            const saved = localStorage.getItem(storageKey);
++            if (saved === 'true' && !this.favorited) {
++              this.favorited = true;
++            }
++          } catch (e) {
++            // Ignore storage errors
++          }
++        }
++
++        this._render();
++        this._syncAria();
++        this.addEventListener('click', this._handleClick);
++        this.addEventListener('keydown', this._handleKeyDown);
++      }
++
++      disconnectedCallback() {
++        this.removeEventListener('click', this._handleClick);
++        this.removeEventListener('keydown', this._handleKeyDown);
++      }
++
++      attributeChangedCallback(name, oldValue, newValue) {
++        if (oldValue === newValue) return;
++        this._syncAria();
++        if (this.shadowRoot) {
++          this._updateUI();
++        }
++      }
++
++      get _storageKey() {
++        const item = this.getAttribute('item') || this.getAttribute('label');
++        return item ? `daily-grind:favorite:${item.toLowerCase().replace(/\s+/g, '-')}` : null;
++      }
++
++      get favorited() {
++        return (
++          this.hasAttribute('active') ||
++          this.hasAttribute('checked') ||
++          this.hasAttribute('favorited')
++        );
++      }
++
++      set favorited(value) {
++        const isFav = Boolean(value);
++        if (isFav) {
++          this.setAttribute('active', '');
++          this.setAttribute('checked', '');
++          this.setAttribute('favorited', '');
++        } else {
++          this.removeAttribute('active');
++          this.removeAttribute('checked');
++          this.removeAttribute('favorited');
++        }
++
++        const storageKey = this._storageKey;
++        if (storageKey) {
++          try {
++            localStorage.setItem(storageKey, String(isFav));
++          } catch (e) {
++            // Ignore storage errors
++          }
++        }
++      }
++
++      get checked() {
++        return this.favorited;
++      }
++
++      set checked(value) {
++        this.favorited = value;
++      }
++
++      get active() {
++        return this.favorited;
++      }
++
++      set active(value) {
++        this.favorited = value;
++      }
++
++      toggle() {
++        this.favorited = !this.favorited;
++        const detail = {
++          item: this.getAttribute('item') || this.getAttribute('label') || '',
++          favorited: this.favorited,
++          checked: this.favorited,
++          active: this.favorited,
++        };
++        this.dispatchEvent(
++          new CustomEvent('favorite-change', {
++            detail,
++            bubbles: true,
++            composed: true,
++          })
++        );
++        this.dispatchEvent(
++          new CustomEvent('change', {
++            detail,
++            bubbles: true,
++            composed: true,
++          })
++        );
++      }
++
++      _handleClick(event) {
++        event.preventDefault();
++        this.toggle();
++      }
++
++      _handleKeyDown(event) {
++        if (event.key === ' ' || event.key === 'Enter') {
++          event.preventDefault();
++          this.toggle();
++        }
++      }
++
++      _syncAria() {
++        const isFav = this.favorited;
++        const itemName = this.getAttribute('item') || this.getAttribute('label') || 'drink';
++        const actionLabel = isFav
++          ? `Remove ${itemName} from favorites`
++          : `Mark ${itemName} as a favorite`;
++
++        this.setAttribute('aria-checked', String(isFav));
++        this.setAttribute('aria-pressed', String(isFav));
++        this.setAttribute('aria-label', actionLabel);
++      }
++
++      _updateUI() {
++        const btn = this.shadowRoot.querySelector('button');
++        if (!btn) return;
++        const isFav = this.favorited;
++        const itemName = this.getAttribute('item') || this.getAttribute('label') || 'drink';
++        const actionLabel = isFav
++          ? `Remove ${itemName} from favorites`
++          : `Mark ${itemName} as a favorite`;
++
++        btn.classList.toggle('active', isFav);
++        btn.setAttribute('aria-checked', String(isFav));
++        btn.setAttribute('aria-pressed', String(isFav));
++        btn.setAttribute('aria-label', actionLabel);
++        btn.setAttribute('title', actionLabel);
++
++        const statusText = this.shadowRoot.querySelector('.status-text');
++        if (statusText) {
++          statusText.textContent = isFav ? 'Favorited' : 'Favorite';
++        }
++      }
++
++      _render() {
++        this.shadowRoot.innerHTML = `
++          <style>
++            :host {
++              display: inline-block;
++              cursor: pointer;
++              user-select: none;
++              outline: none;
++            }
++
++            button {
++              all: unset;
++              box-sizing: border-box;
++              display: inline-flex;
++              align-items: center;
++              gap: 6px;
++              padding: 5px 10px;
++              border-radius: 999px;
++              border: 1.5px solid var(--secondary, #d7ccc8);
++              background: var(--light, #fafafa);
++              color: var(--primary, #4e342e);
++              font-family: inherit;
++              font-size: 0.78rem;
++              font-weight: 600;
++              line-height: 1;
++              cursor: pointer;
++              transition: all 0.2s ease;
++            }
++
++            button:hover {
++              border-color: var(--accent, #ffab40);
++              background: #fff8f0;
++              transform: translateY(-1px);
++            }
++
++            :host(:focus-visible) button,
++            button:focus-visible {
++              box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.45);
++              border-color: var(--accent, #ffab40);
++            }
++
++            button.active {
++              background: #fff3e0;
++              border-color: var(--accent, #ffab40);
++              color: var(--primary, #4e342e);
++            }
++
++            .heart-icon {
++              width: 15px;
++              height: 15px;
++              fill: transparent;
++              stroke: currentColor;
++              stroke-width: 2;
++              transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.2s ease, stroke 0.2s ease;
++            }
++
++            button.active .heart-icon {
++              fill: #e53935;
++              stroke: #e53935;
++              transform: scale(1.15);
++            }
++          </style>
++          <button type="button" part="button" tabindex="-1">
++            <svg class="heart-icon" viewBox="0 0 24 24" aria-hidden="true">
++              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
++            </svg>
++            <span class="status-text">Favorite</span>
++          </button>
++        `;
++        this._updateUI();
++      }
++    }
++
++    if (!customElements.get('favorite-toggle')) {
++      customElements.define('favorite-toggle', FavoriteToggle);
++    }
++  </script>
+ </body>
+ 
+ </html>

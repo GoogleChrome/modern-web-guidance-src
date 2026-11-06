@@ -1,0 +1,224 @@
+diff --git a/index.html b/index.html
+index 66c9173..d0f85ec 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,49 @@
+       background: #3e2723;
+     }
+ 
++    /* Language selector */
++    .lang-picker {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++    }
++
++    .lang-picker select {
++      background: var(--primary);
++      color: white;
++      border: 1px solid var(--accent);
++      border-radius: 4px;
++      padding: 4px 8px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .lang-picker select:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    .lang-status {
++      max-width: 1100px;
++      margin: 0 auto;
++      padding: 0 20px;
++      min-height: 1.6em;
++      font-size: 0.85rem;
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .story {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .story p {
++      max-width: 700px;
++      margin: 15px auto 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -159,6 +202,20 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
++    <div class="lang-picker">
++      <label for="lang-select">Language</label>
++      <select id="lang-select" aria-describedby="lang-status">
++        <option value="en">English</option>
++        <option value="es">Español</option>
++        <option value="fr">Français</option>
++        <option value="de">Deutsch</option>
++        <option value="it">Italiano</option>
++        <option value="pt">Português</option>
++        <option value="ja">日本語</option>
++        <option value="ko">한국어</option>
++        <option value="zh">中文</option>
++      </select>
++    </div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -174,27 +231,38 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <p id="lang-status" class="lang-status" role="status" aria-live="polite"></p>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p data-translate>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p data-translate>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p data-translate>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story" id="our-story">
++      <h2 data-translate>Our Story</h2>
++      <p data-translate>The Daily Grind started in 2012 as a single cart outside a train station, run by two friends who believed
++        a great cup of coffee could make any morning better.</p>
++      <p data-translate>Today we roast every batch in small quantities at our neighborhood roastery, working directly with farmers
++        who grow our beans so that every cup is fair to the people who made it possible.</p>
++      <p data-translate>Whether you stop by for a quick espresso or stay for an afternoon, we hope our cafés feel like home.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +275,106 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // On-device translation using the browser's built-in Translator API
++    // (https://developer.chrome.com/docs/ai/translator-api). Text never leaves the device.
++    (() => {
++      const SOURCE_LANG = 'en';
++      const STORAGE_KEY = 'daily-grind-lang';
++      const select = document.getElementById('lang-select');
++      const status = document.getElementById('lang-status');
++      const elements = [...document.querySelectorAll('[data-translate]')];
++      const originals = new Map(elements.map((el) => [el, el.textContent.trim().replace(/\s+/g, ' ')]));
++      const translators = new Map();
++      let requestId = 0;
++
++      function setStatus(message) {
++        status.textContent = message;
++      }
++
++      function showOriginal() {
++        for (const [el, text] of originals) el.textContent = text;
++        document.documentElement.lang = SOURCE_LANG;
++      }
++
++      if (!('Translator' in self)) {
++        select.disabled = true;
++        select.title = 'On-device translation is not supported in this browser';
++        setStatus('On-device translation is not supported in this browser.');
++        return;
++      }
++
++      function getTranslator(lang) {
++        if (!translators.has(lang)) {
++          const pending = Translator.create({
++            sourceLanguage: SOURCE_LANG,
++            targetLanguage: lang,
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                setStatus(`Downloading language pack… ${Math.round(e.loaded * 100)}%`);
++              });
++            },
++          });
++          // Don't cache failures, so the user can retry.
++          pending.catch(() => translators.delete(lang));
++          translators.set(lang, pending);
++        }
++        return translators.get(lang);
++      }
++
++      async function applyLanguage(lang) {
++        const id = ++requestId;
++        localStorage.setItem(STORAGE_KEY, lang);
++
++        if (lang === SOURCE_LANG) {
++          showOriginal();
++          setStatus('');
++          return;
++        }
++
++        const label = select.selectedOptions[0].textContent;
++        select.disabled = true;
++        setStatus(`Translating to ${label}…`);
++        try {
++          // Must be called synchronously within the user gesture so a model download is allowed.
++          const translator = await getTranslator(lang);
++          const results = await Promise.all(
++            [...originals.values()].map((text) => translator.translate(text))
++          );
++          if (id !== requestId) return; // A newer selection superseded this one.
++          elements.forEach((el, i) => { el.textContent = results[i]; });
++          document.documentElement.lang = lang;
++          setStatus(`Translated on your device to ${label}.`);
++        } catch (err) {
++          if (id !== requestId) return;
++          console.error(err);
++          showOriginal();
++          select.value = SOURCE_LANG;
++          localStorage.setItem(STORAGE_KEY, SOURCE_LANG);
++          setStatus(`Sorry, ${label} isn't available for on-device translation right now.`);
++        } finally {
++          if (id === requestId) select.disabled = false;
++        }
++      }
++
++      select.addEventListener('change', () => applyLanguage(select.value));
++
++      // Restore a previous choice, but only if the model is already on the device:
++      // downloads require a user gesture.
++      const saved = localStorage.getItem(STORAGE_KEY);
++      if (saved && saved !== SOURCE_LANG && select.querySelector(`option[value="${saved}"]`)) {
++        Translator.availability({ sourceLanguage: SOURCE_LANG, targetLanguage: saved })
++          .then((availability) => {
++            if (availability === 'available' && requestId === 0) {
++              select.value = saved;
++              applyLanguage(saved);
++            }
++          })
++          .catch(() => {});
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

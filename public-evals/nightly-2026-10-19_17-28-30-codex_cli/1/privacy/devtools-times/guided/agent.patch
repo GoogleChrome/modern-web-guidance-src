@@ -1,0 +1,1246 @@
+diff --git a/README.md b/README.md
+index 4479b53..5b01bf6 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,9 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Privacy and security
++
++The app serves its assets locally and does not load third-party analytics. Reading lists use an opt-in, short-lived server session with export and deletion controls. Account collection is disabled until a reviewed authentication backend is available.
++
++Run `pnpm audit:privacy`, `pnpm build`, `pnpm test:privacy`, and `pnpm audit --prod` for automated checks (no browser required). See [the data inventory, integration audit, and deployment requirements](docs/privacy-review.md). The default session store is ephemeral and supports a single server process; production requires HTTPS.
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..3f9251c 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -5,11 +5,14 @@ import tailwindcss from "@tailwindcss/vite";
+ import node from "@astrojs/node";
+ 
+ 
++const appOrigin = new URL(process.env.APP_ORIGIN || 'https://astro-news-pytrpecapa-uc.a.run.app/');
++
+ // https://astro.build/config
+ export default defineConfig({
+-  site: 'https://astro-news-pytrpecapa-uc.a.run.app/',
++  site: appOrigin.href,
+   base: 'devtools-times/',
+   integrations: [react()],
++  markdown: { syntaxHighlight: 'prism' },
+   vite: {
+     plugins: [tailwindcss()],
+   },
+@@ -27,9 +30,30 @@ export default defineConfig({
+      },
+   },
+ 
++  session: {
++    driver: { entrypoint: new URL('./src/server/session-store.ts', import.meta.url) },
++    ttl: 86400,
++    cookie: {
++      name: process.env.NODE_ENV === 'production' ? '__Host-reading-session' : 'reading-session',
++      secure: process.env.NODE_ENV === 'production',
++      sameSite: 'lax',
++      path: '/',
++      maxAge: 86400,
++    },
++  },
+   security: {
+-    checkOrigin: false,
++    checkOrigin: true,
++    csp: {
++      directives: [
++        "default-src 'self'", "connect-src 'self'", "img-src 'self' data:",
++        "font-src 'self'", "object-src 'none'", "base-uri 'none'",
++        "form-action 'self'", "frame-src 'none'",
++      ],
++    },
+     allowedDomains: [
++      { hostname: appOrigin.hostname, protocol: appOrigin.protocol.slice(0, -1), ...(appOrigin.port ? { port: appOrigin.port } : {}) },
++      { hostname: 'localhost', protocol: 'http' },
++      { hostname: '127.0.0.1', protocol: 'http' },
+       {
+         hostname: 'chrome.dev',
+         protocol: 'https'
+diff --git a/docs/privacy-review.md b/docs/privacy-review.md
+new file mode 100644
+index 0000000..812553f
+--- /dev/null
++++ b/docs/privacy-review.md
+@@ -0,0 +1,59 @@
++# Privacy and integration review
++
++Review date: 2026-10-19. This is a code and automated HTTP review, not an independent security certification. No manual browser verification was performed.
++
++## Data inventory
++
++| Data | Purpose | Storage and retention | User control |
++| --- | --- | --- | --- |
++| Random session identifier | Associate explicitly saved articles with this browser | First-party HttpOnly, SameSite=Lax cookie; Secure and __Host prefix in production; 24-hour maximum age | Delete reading list or remove last item |
++| Up to 100 saved article IDs | Reading list only | Bounded process memory; expiry within 24 hours of the last mutation; cleared on restart; no disk persistence | Export JSON, remove individual entries, delete entire list |
++| Connection metadata | Deliver the requested page/resource | Host/proxy controlled; application adds no request, credential, or reading-list logging | Operator must publish actual hosting log retention |
++
++Anonymous reads do not initialize sessions. Article IDs are validated against published content; input size is bounded at 1 KiB and personal responses cannot be cached publicly. No user accounts, credentials, browsing history, analytics, fingerprint, or device permissions are collected by application code. This does not eliminate hosting access logs.
++
++## Third-party integration inventory
++
++| Integration found | Exposure before review | Disposition |
++| --- | --- | --- |
++| Cloud Functions analytics client | Runs on every page, including credential forms; can access page content | Removed; no replacement tracker |
++| Cloud Functions account APIs | Username and password sent directly to an external demo service | Disabled; forms replaced with an honest availability notice; requires a reviewed backend before restoration |
++| Google Fonts | Visitor IP and request metadata exposed via preconnect/styles/font requests | Removed; local serif fallback |
++| Imgur editorial images | Visitor IP and metadata; article page used credentialed image requests | Replaced with existing bundled editorial photos; credentialed image behavior removed |
++| Cinemai thumbnail | Cross-origin image request | Replaced with existing local photo |
++| Advertising queue | DOM references exposed to a global third-party queue | Removed; static spacing retained |
++| External editorial link | Connects only after user navigation | Kept as an ordinary hyperlink; no-referrer policy |
++| Hosting platform | Connection metadata and any operator access logs | Required; operator must review log access, redaction, retention, backups, and TLS |
++
++Content schema and image utilities reject remote editorial images. CSP restricts resource loading to this origin and blocks frames, objects, cross-origin connections and framing. Astro supplies hashes for framework inline scripts/styles. Ordinary page navigation replaces ClientRouter because Astro's hash-based CSP does not support it. No reporting collector is introduced: raw CSP reports may include private page URLs; add one only with redaction, access controls, and explicit short retention. Trusted Types enforcement is deferred until framework hydration sinks are assessed; no permissive default policy is installed.
++
++## Repeatable checks
++
++Run before each release and whenever a dependency or integration changes:
++
++```sh
++pnpm audit:privacy
++pnpm build
++pnpm test:privacy
++pnpm audit --prod
++```
++
++`audit:privacy` flags external URLs in runtime source, browser storage access, fingerprinting patterns, analytics beacons, and scripts in editorial content. It is a conservative review guard, not a general JavaScript security analyzer. HTTP tests check all article pages for direct external image/script requests and valid CSP script hashes, private headers, no cookies during anonymous reading, input rejection, cross-site access denial, cookie flags, isolation between clients, export, removal, and deletion with old-cookie replay. HTTP checks do not execute JavaScript or observe runtime network behavior.
++
++The production dependency audit on the review date reported zero known vulnerabilities. Audit results change as new advisories are published; re-run rather than relying on this record.
++
++## Adding a service
++
++The maintainer must record its owner, purpose, exact endpoints, fields transmitted (including IP/referrer/cookies), consent model, retention, deletion support, subprocessors, contract/security evidence, and next review date in this inventory. Review at least quarterly and on every service change. Obtain independent security/privacy review before restoring credential collection or introducing sensitive-data processing; retain the report and track findings to closure. This repository does not claim such a review has occurred.
++
++Keep optional services unloaded by default. If an optional embed is approved, use a locally hosted preview and an explicit user action before contacting its provider, with an equally usable decline path. Do not send reading lists or credentials to analytics. Version and integrity-pin necessary immutable external scripts, keep them off sensitive pages, and deliberately amend the resource policy and regression checks after review.
++
++## Deployment requirements
++
++- Set `APP_ORIGIN` to the deployed public origin before building when using a new hostname; only explicitly configured hosts are trusted for origin checks.
++- Serve production through HTTPS. Production session cookies will not work over plain HTTP (local `pnpm dev` uses a development cookie).
++- Start HSTS at 300 seconds for this host. Increase only after verifying HTTPS routing; do not add subdomain or preload commitments without reviewing those hosts.
++- Preserve application security headers at the proxy; apply equivalent resource/permissions/referrer policy to static assets served directly by the CDN. Personalized responses must never enter shared caches.
++- The ephemeral session driver supports one process. For multiple replicas, use a reviewed shared store with real automatic deletion, authenticated TLS, encryption at rest, and access controls; preserve the 24-hour limit. Existing filesystem sessions from a previous deployment are not migrated: purge the old `.astro/sessions` store and any copies/backups under the operator's retention process.
++- Restrict and redact hosting/proxy logs. Do not log bodies, cookies, credentials, full private URLs, or reading lists. Record and publish the host's actual metadata retention before handling production traffic.
++- Recheck actual deployed headers, TLS, storage expiry and access controls after deployment. Automated source/HTTP tests cannot certify the hosting environment or replace independent audits.
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..dfa5a6f 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,5 @@
+-declare global {
+-  interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++declare namespace App {
++  interface SessionData {
++    readingList: string[];
+   }
+ }
+-
+-export {};
+\ No newline at end of file
+diff --git a/package.json b/package.json
+index 2e1f2e8..6ead2e7 100644
+--- a/package.json
++++ b/package.json
+@@ -7,7 +7,9 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "test:privacy": "node --test scripts/privacy.test.mjs",
++    "audit:privacy": "node scripts/audit-privacy.mjs"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.7",
+diff --git a/scripts/audit-privacy.mjs b/scripts/audit-privacy.mjs
+new file mode 100644
+index 0000000..5618d2a
+--- /dev/null
++++ b/scripts/audit-privacy.mjs
+@@ -0,0 +1,19 @@
++import { readdir, readFile } from 'node:fs/promises';
++import assert from 'node:assert/strict';
++
++async function scan(dir) {
++  for (const entry of await readdir(dir, { withFileTypes: true })) {
++    const path = `${dir}/${entry.name}`;
++    if (entry.isDirectory()) { await scan(path); continue; }
++    if (!/\.(astro|tsx?|css|md)$/.test(path)) continue;
++    const source = await readFile(path, 'utf8');
++    // All external URLs in runtime source need review. Static hyperlinks and
++    // SVG namespaces are not automatic resource requests and are exempt.
++    const withoutLinks = source.replace(/<a\b[^>]*>/g, '').replace(/xmlns="http:\/\/www.w3.org\/2000\/svg"/g, '');
++    assert.doesNotMatch(withoutLinks, /(?:https?:)?\/\/[\w.-]+\.[a-z]{2,}/i, `${path}: review external resource`);
++    assert.doesNotMatch(source, /document\.cookie\s*=|localStorage|sessionStorage|navigator\.(?:userAgent|sendBeacon)|window\.adNetwork/, `${path}: review browser data access`);
++    if (path.endsWith('.md')) assert.doesNotMatch(source, /<script\b/i, `${path}: editorial content must not run scripts`);
++  }
++}
++await scan('src');
++console.log('Privacy source audit passed: no unreviewed external resources or browser data collectors.');
+diff --git a/scripts/privacy.test.mjs b/scripts/privacy.test.mjs
+new file mode 100644
+index 0000000..a627157
+--- /dev/null
++++ b/scripts/privacy.test.mjs
+@@ -0,0 +1,129 @@
++import assert from 'node:assert/strict';
++import { before, after, test } from 'node:test';
++import { spawn } from 'node:child_process';
++import { createServer } from 'node:net';
++import { once } from 'node:events';
++import { createHash } from 'node:crypto';
++
++let server, origin, base, output = '';
++before(async () => {
++  const reservation = createServer().listen(0, '127.0.0.1');
++  await once(reservation, 'listening');
++  const port = reservation.address().port;
++  await new Promise(resolve => reservation.close(resolve));
++  origin = `http://127.0.0.1:${port}`;
++  base = `${origin}/devtools-times/`;
++  server = spawn(process.execPath, ['dist/server/entry.mjs'], {
++    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port) },
++    stdio: ['ignore', 'pipe', 'pipe'],
++  });
++  server.stdout.on('data', chunk => { output += chunk; });
++  server.stderr.on('data', chunk => { output += chunk; });
++  for (let i = 0; i < 100; i++) {
++    try { await fetch(base); return; } catch { await new Promise(resolve => setTimeout(resolve, 50)); }
++  }
++  throw new Error(`Server failed to start: ${output}`);
++});
++after(() => server?.kill());
++const api = (options) => fetch(`${base}api/reading-list.json`, options);
++const mutation = (body, headers = {}, method = 'POST') => api({
++  method,
++  headers: { origin, 'content-type': 'application/json', ...headers },
++  body: method === 'DELETE' ? undefined : body,
++});
++
++function headersArePrivate(response) {
++  assert.equal(response.headers.get('cache-control'), 'private, no-store');
++  assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
++  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
++  assert.equal(response.headers.get('x-frame-options'), 'DENY');
++  assert.match(response.headers.get('permissions-policy'), /camera=\(\).*microphone=\(\).*geolocation=\(\)/);
++  assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
++}
++
++test('anonymous browsing and list reads do not create cookies', async () => {
++  for (const path of ['', 'legal/privacy', 'signin', 'signup', 'api/reading-list.json', 'not-a-page']) {
++    const response = await fetch(base + path);
++    assert.equal(response.headers.get('set-cookie'), null, path);
++    headersArePrivate(response);
++  }
++});
++
++test('only valid bounded JSON can update the reading list', async () => {
++  for (const body of ['{', 'null', '{}', '{"slug":12}', '{"slug":"not-an-article"}', '{"slug":"../test"}']) {
++    const response = await mutation(body);
++    assert.equal(response.status, 400, body);
++    assert.equal(response.headers.get('set-cookie'), null);
++  }
++  assert.equal((await mutation('x'.repeat(1100))).status, 413);
++  assert.equal((await mutation('{}', { 'content-type': 'text/plain' })).status, 415);
++});
++
++test('cross-site reads and mutations are rejected before session access', async () => {
++  for (const headers of [{ origin: 'https://attacker.example' }, { origin: 'null' }, { 'sec-fetch-site': 'cross-site' }, { 'sec-fetch-site': 'same-site' }]) {
++    const response = await mutation('{"slug":"silent-architects"}', headers);
++    assert.equal(response.status, 403);
++    assert.equal(response.headers.get('set-cookie'), null);
++    headersArePrivate(response);
++  }
++  assert.equal((await api({ method: 'DELETE' })).status, 403);
++  assert.equal((await api({ headers: { 'sec-fetch-site': 'cross-site' } })).status, 403);
++});
++
++test('saved IDs are isolated, exported, removed, and erased server-side', async () => {
++  const saved = await mutation('{"slug":"silent-architects"}');
++  assert.equal(saved.status, 200);
++  assert.deepEqual(await saved.json(), { readingList: ['silent-architects'] });
++  const setCookie = saved.headers.get('set-cookie');
++  assert.match(setCookie, /__Host-reading-session=/);
++  for (const flag of [/HttpOnly/i, /Secure/i, /SameSite=Lax/i, /Max-Age=86400/i, /Path=\//i]) assert.match(setCookie, flag);
++  const cookie = setCookie.split(';')[0];
++  assert.deepEqual(await (await api()).json(), { readingList: [] });
++  assert.deepEqual(await (await api({ headers: { cookie } })).json(), { readingList: ['silent-architects'] });
++  const removed = await mutation('{"slug":"silent-architects"}', { cookie });
++  assert.deepEqual(await removed.json(), { readingList: [] });
++  assert.match(removed.headers.get('set-cookie'), /Expires=Thu, 01 Jan 1970/i);
++  // Replaying the old cookie must not recover deleted data.
++  assert.deepEqual(await (await api({ headers: { cookie } })).json(), { readingList: [] });
++  const savedAgain = await mutation('{"slug":"coffee-alchemy"}');
++  const cookieAgain = savedAgain.headers.get('set-cookie').split(';')[0];
++  const erased = await mutation('', { cookie: cookieAgain }, 'DELETE');
++  assert.equal(erased.status, 200);
++  assert.deepEqual(await (await api({ headers: { cookie: cookieAgain } })).json(), { readingList: [] });
++});
++
++test('rendered pages use local resources and authorize framework inline scripts with hashes', async () => {
++  const articles = await (await fetch(`${base}api/articles.json`)).json();
++  for (const path of ['', 'legal/privacy', 'signin', 'signup', ...articles.map(a => `articles/${a.slug}`)]) {
++    const response = await fetch(base + path);
++    assert.equal(response.status, 200, path);
++    const html = await response.text();
++    headersArePrivate(response);
++    const csp = response.headers.get('content-security-policy');
++    assert.match(csp, /script-src 'self' 'sha256-/);
++    assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval/);
++    for (const [, attributes, body] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
++      if (/src=|type="application\/(?:ld\+)?json"/.test(attributes)) continue;
++      const hash = createHash('sha256').update(body).digest('base64');
++      assert.ok(csp.includes(`'sha256-${hash}'`), `${path}: inline script missing hash`);
++    }
++    for (const [, url] of html.matchAll(/(?:src|srcset)="([^"]+)"/g)) {
++      assert.ok(!/^(?:https?:)?\/\//.test(url), `${path}: external resource ${url}`);
++    }
++    assert.doesNotMatch(html, /rel="(?:preconnect|dns-prefetch)"|<input[^>]+type="password"/);
++  }
++});
++
++test('ephemeral store actually erases expired data without a read', async (t) => {
++  const { default: createStore } = await import('../src/server/session-store.ts');
++  t.mock.timers.enable({ apis: ['setTimeout'] });
++  const store = createStore();
++  await store.setItem('expires', { readingList: ['silent-architects'] });
++  t.mock.timers.tick(86399 * 1000);
++  assert.notEqual(await store.getItem('expires'), null);
++  t.mock.timers.tick(1000);
++  assert.equal(await store.getItem('expires'), null);
++  await store.setItem('delete', 'private');
++  await store.removeItem('delete');
++  assert.equal(await store.getItem('delete'), null);
++});
+diff --git a/src/components/AdSlotBanner.tsx b/src/components/AdSlotBanner.tsx
+index a8d0f86..ee19b3d 100644
+--- a/src/components/AdSlotBanner.tsx
++++ b/src/components/AdSlotBanner.tsx
+@@ -1,20 +1,3 @@
+-import React, { useEffect, useRef } from 'react';
+-
+ export default function AdSlotBanner() {
+-  const adSlotRef = useRef(null);
+-
+-  useEffect(() => {
+-    if (adSlotRef.current) {
+-      window.adNetwork = window.adNetwork || [];
+-      window.adNetwork.push({
+-        type: 'adSlot',
+-        config: {
+-          adType: 'banner',
+-          slotElement: adSlotRef.current,
+-        },
+-      });
+-    }
+-  }, []);
+-
+-  return <div ref={adSlotRef} className="w-full my-4 transition-height duration-500"></div>;
++  return <div className="w-full my-4" aria-hidden="true" />;
+ }
+diff --git a/src/components/AdSlotFireplace.tsx b/src/components/AdSlotFireplace.tsx
+index fc50012..6011571 100644
+--- a/src/components/AdSlotFireplace.tsx
++++ b/src/components/AdSlotFireplace.tsx
+@@ -1,34 +1,3 @@
+-import React, { useEffect, useRef } from 'react';
+-
+-function AdSlotFireplace() {
+-  const topSlotRef = useRef(null);
+-  const leftSlotRef = useRef(null);
+-  const rightSlotRef = useRef(null);
+-
+-  useEffect(() => {
+-    if (topSlotRef.current && leftSlotRef.current && rightSlotRef.current) {
+-      window.adNetwork = window.adNetwork || [];
+-      window.adNetwork.push({
+-        type: 'adSlot',
+-        config: {
+-          adType: 'fireplace',
+-          slots: {
+-            top: topSlotRef.current,
+-            left: leftSlotRef.current,
+-            right: rightSlotRef.current,
+-          },
+-        },
+-      });
+-    }
+-  }, []);
+-
+-  return (
+-    <>
+-      <div ref={topSlotRef} className="sticky top-0 h-[100px] z-10 col-span-full order-1"></div>
+-      <div ref={leftSlotRef} className="hidden xl:block fixed top-[100px] left-0 w-[200px] bottom-0 order-2"></div>
+-      <div ref={rightSlotRef} className="hidden xl:block fixed top-[100px] right-0 w-[200px] bottom-0 order-4"></div>
+-    </>
+-  );
++export default function AdSlotFireplace() {
++  return <div className="h-[100px]" aria-hidden="true" />;
+ }
+-
+-export default AdSlotFireplace;
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..32f9b1c 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,6 +1,5 @@
+-
+-import React, { useState, useEffect } from 'react';
+-import { BookmarkIcon } from '@heroicons/react/24/outline'
++import { useState, useEffect } from 'react';
++import { BookmarkIcon } from '@heroicons/react/24/outline';
+ 
+ interface Props {
+   slug: string;
+@@ -9,22 +8,40 @@ interface Props {
+ 
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
++  const [error, setError] = useState('');
++  const [pending, setPending] = useState(false);
++
++  useEffect(() => {
++    const sync = (event: Event) => setIsBookmarked((event as CustomEvent<string[]>).detail.includes(slug));
++    window.addEventListener('reading-list-updated', sync);
++    return () => window.removeEventListener('reading-list-updated', sync);
++  }, [slug]);
+ 
+   const handleClick = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    const data = await response.json();
+-    setIsBookmarked(data.readingList.includes(slug));
++    setPending(true);
++    setError('');
++    try {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ slug }),
++      });
++      if (!response.ok) throw new Error();
++      const data = await response.json();
++      window.dispatchEvent(new CustomEvent('reading-list-updated', { detail: data.readingList }));
++    } catch {
++      setError('Could not update bookmark.');
++    } finally {
++      setPending(false);
++    }
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+-    </button>
++    <span>
++      <button onClick={handleClick} disabled={pending} aria-pressed={isBookmarked} aria-label={isBookmarked ? 'Remove saved article' : 'Save article for 24 hours'} className="p-1">
++        <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`} />
++      </button>
++      {error && <span role="alert" className="text-xs text-red-700">{error}</span>}
++    </span>
+   );
+ }
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..36fdf60 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -15,15 +15,17 @@ interface Props {
+ 
+ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const [readingList, setReadingList] = useState<string[]>([]);
++  const [error, setError] = useState('');
+ 
+   const fetchReadingList = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
++    if (!response.ok) throw new Error('Could not load your reading list.');
+     const data = await response.json();
+     setReadingList(data.readingList);
+   };
+ 
+   useEffect(() => {
+-    fetchReadingList();
++    fetchReadingList().catch(() => setError('Could not load your reading list.'));
+ 
+     const handleKeyDown = (event: KeyboardEvent) => {
+       if (event.key === 'Escape') {
+@@ -37,15 +39,21 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     };
+   }, [onClose]);
+ 
+-  const handleRemove = async (slug: string) => {
+-    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    fetchReadingList();
++  const updateList = async (method: 'POST' | 'DELETE', slug?: string) => {
++    setError('');
++    try {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++        method,
++        headers: { 'Content-Type': 'application/json' },
++        body: method === 'POST' ? JSON.stringify({ slug }) : undefined,
++      });
++      if (!response.ok) throw new Error();
++      const data = await response.json();
++      setReadingList(data.readingList);
++      window.dispatchEvent(new CustomEvent('reading-list-updated', { detail: data.readingList }));
++    } catch {
++      setError('Could not update your reading list. Please try again.');
++    }
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+@@ -60,6 +68,12 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+         </button>
+         <div className="p-4">
+           <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++          <p className="text-sm text-gray-600 mb-3">Only saved article IDs are stored, for up to 24 hours after your last change. No account is needed.</p>
++          <div className="flex gap-4 text-sm">
++            <a className="underline" href={`${import.meta.env.BASE_URL}api/reading-list.json`} download="reading-list.json">Export reading list</a>
++            <button className="underline" onClick={() => updateList('DELETE')}>Delete reading list</button>
++          </div>
++          {error && <p role="alert" className="text-red-700 mt-3">{error}</p>}
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+@@ -72,7 +86,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+                   <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                   <p className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
++                <button onClick={() => updateList('POST', article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                     </svg>
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..eb4f27d 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,99 +1,10 @@
+-import React, { useState } from 'react';
+-
+ export default function SignInForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
+-      </form>
+-    </div>
++    <section className="max-w-md mx-auto my-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <h2 className="text-2xl font-bold mb-4">Sign in</h2>
++      <p>Accounts are currently unavailable. You can read articles and save a reading list without an account.</p>
++      <p className="mt-4">We are not collecting usernames or passwords while an authentication service is being reviewed.</p>
++      <a className="block mt-4 underline" href={`${import.meta.env.BASE_URL}legal/privacy`}>How we handle your data</a>
++    </section>
+   );
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..b06598a 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,10 @@
+-import React, { useState } from 'react';
+-
+ export default function SignUpForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
+-    </div>
++    <section className="max-w-md mx-auto my-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <h2 className="text-2xl font-bold mb-4">Sign up</h2>
++      <p>Accounts are currently unavailable. You can read articles and save a reading list without an account.</p>
++      <p className="mt-4">We are not collecting usernames or passwords while an authentication service is being reviewed.</p>
++      <a className="block mt-4 underline" href={`${import.meta.env.BASE_URL}legal/privacy`}>How we handle your data</a>
++    </section>
+   );
+ }
+diff --git a/src/content.config.ts b/src/content.config.ts
+index a5ebbef..704f4ca 100644
+--- a/src/content.config.ts
++++ b/src/content.config.ts
+@@ -9,7 +9,7 @@ const articlesCollection = defineCollection({
+     author: z.string(),
+     date: z.date(),
+     category: z.string(),
+-    image: z.string(),
++    image: z.string().regex(/^\/images\/articles\/[a-zA-Z0-9._-]+$/, 'Use a local editorial image'),
+     image_caption: z.string().optional(),
+     tags: z.array(z.string()).optional(),
+     readingTime: z.number().optional(),
+diff --git a/src/content/articles/coastal-pulse.md b/src/content/articles/coastal-pulse.md
+index af5e892..837bc5b 100644
+--- a/src/content/articles/coastal-pulse.md
++++ b/src/content/articles/coastal-pulse.md
+@@ -1,7 +1,7 @@
+ ---
+ title: "The Coastal Pulse: Life by the Shore"
+ summary: "Living by the seaside offers a sensory experience that shifts with the tides. It’s a lifestyle defined by the intertidal rhythm, where the day’s activities are often dictated by the water's retreat and advance."
+-image: "https://i.imgur.com/h20QPtm.jpeg"
++image: "/images/articles/open-water-swimming.jpg"
+ author: "Nature Weekly"
+ category: "lifestyle"
+ readingTime: 5
+@@ -22,16 +22,3 @@ The air at the coast is rich in negative ions, which are thought to improve oxyg
+ 
+ ### Explore
+ While the salt air can be corrosive to infrastructure, the trade-off is a front-row seat to nature’s most dynamic theater.
+-
+-<script>
+-    // Fetch current tide levels
+-    // This request will encounter a 302 Redirect
+-    fetch('/api/tide-levels')
+-        .then(response => {
+-            console.log(`Tide API status: ${response.status}`);
+-            if (response.redirected) {
+-                console.warn("Tide API was redirected to:", response.url);
+-            }
+-        })
+-        .catch(err => console.error("Error fetching tide levels:", err));
+-</script>
+diff --git a/src/content/articles/coffee-alchemy.md b/src/content/articles/coffee-alchemy.md
+index cc7e252..a6b6e35 100644
+--- a/src/content/articles/coffee-alchemy.md
++++ b/src/content/articles/coffee-alchemy.md
+@@ -1,7 +1,7 @@
+ ---
+ title: "The Global Alchemy of Coffee"
+ summary: "Coffee is more than a morning ritual; it is a complex beverage derived from the roasted seeds of the Coffea plant. Originating in the Ethiopian highlands, coffee has evolved into a global commodity that fuels modern industry and social connection."
+-image: "https://i.imgur.com/eAjAmMr.png"
++image: "/images/articles/newspaper-croissant.jpg"
+ author: "Food & Drink"
+ category: "lifestyle"
+ readingTime: 4
+@@ -19,14 +19,3 @@ The profile of a cup depends heavily on the roast profile and extraction method.
+ **Robusta:** Noted for its higher caffeine content, bitter edge, and thick "crema."
+ 
+ Whether enjoyed as a concentrated espresso or a diluted pour-over, coffee remains a masterpiece of agricultural science and chemistry.
+-
+-<script>
+-    // Attempt to brew some coffee stats
+-    fetch('/api/coffee-brew')
+-        .then(response => {
+-            if (!response.ok) {
+-                console.error(`Brewing failed: ${response.status} ${response.statusText}`);
+-            }
+-        })
+-        .catch(err => console.error("Network error while brewing:", err));
+-</script>
+diff --git a/src/content/articles/life-with-charlie.md b/src/content/articles/life-with-charlie.md
+index 220ddf1..eb93312 100644
+--- a/src/content/articles/life-with-charlie.md
++++ b/src/content/articles/life-with-charlie.md
+@@ -4,7 +4,7 @@ summary: "Charlie the Griffon looks like he woke up on the wrong side of the bed
+ author: "Staff Writer"
+ date: 2025-09-19T23:00:00
+ category: "Pets"
+-image: "https://i.imgur.com/4PBdBeg.png"
++image: "/images/articles/small-stage-improv-theater.jpg"
+ image_caption: "Charlie contemplating his next decree."
+ tags: ["dogs", "pets", "humor", "griffons"]
+ readingTime: 3
+diff --git a/src/content/articles/silent-architects.md b/src/content/articles/silent-architects.md
+index ee5cdd8..6258ec0 100644
+--- a/src/content/articles/silent-architects.md
++++ b/src/content/articles/silent-architects.md
+@@ -1,7 +1,7 @@
+ ---
+ title: "The Silent Architects of Earth"
+ summary: "Plants are the quiet powerhouses of our planet, serving as the literal foundation for almost all life on Earth. Through the remarkable process of photosynthesis, they capture solar energy and convert it into chemical energy, releasing the oxygen we breathe as a vital byproduct."
+-image: "https://i.imgur.com/zk3aI75.png"
++image: "/images/articles/countryside-highway.jpg"
+ author: "Eco Watch"
+ category: "science"
+ readingTime: 5
+@@ -20,25 +20,3 @@ Beyond just being "oxygen factories," plants are sophisticated organisms with co
+ *   **Human Utility:** From the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry.
+ 
+ Whether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world.
+-
+-<script>
+-    // Just blindly setting a "cache" to avoid refetching data, 
+-    // but the developer accidentally set it way too large and on the wrong path scope?
+-    // Actually, let's just make it a large cookie for this specific API path to cause the 431.
+-    
+-    // Split into multiple cookies to avoid browser single-cookie size limits (usually ~4KB)
+-    // but still trigger the total header size check in the API (>4KB).
+-    const largeValue = "A".repeat(2000); 
+-    
+-    document.cookie = `plant_stats_cache_1=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_2=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_3=${largeValue}; path=/api/plant-stats`;
+-
+-    fetch('/api/plant-stats')
+-        .then(res => {
+-            if (res.status === 431) {
+-                console.error("Too much data in headers!");
+-            }
+-        })
+-        .catch(err => console.error(err));
+-</script>
+diff --git a/src/content/articles/super-bowl-lx.md b/src/content/articles/super-bowl-lx.md
+index 06c4419..ede805f 100644
+--- a/src/content/articles/super-bowl-lx.md
++++ b/src/content/articles/super-bowl-lx.md
+@@ -1,7 +1,7 @@
+ ---
+ title: "Super Bowl LX: A Historic Rematch in Santa Clara"
+ summary: "The stage is set for a high-stakes reunion. Following a grueling Conference Championship weekend, the New England Patriots and Seattle Seahawks have officially punched their tickets to Super Bowl LX on February 8, 2026."
+-image: "https://i.imgur.com/Oaxrnho.jpeg"
++image: "/images/articles/baseball-stadium-at-night.jpg"
+ author: "Sports Desk"
+ category: "sports"
+ readingTime: 4
+@@ -14,23 +14,3 @@ The stage is set for a high-stakes reunion. Following a grueling Conference Cham
+ This matchup serves as a dramatic sequel to Super Bowl XLIX. The Patriots secured their spot with a gritty 10-7 defensive masterclass against Denver, proving their "bend-but-don't-break" philosophy still reigns. Meanwhile, the Seahawks advanced after a 31-27 thriller over the Rams, powered by an explosive aerial attack.
+ 
+ Early lines favor Seattle by 2.5 points, but New England’s top-ranked scoring defense remains a formidable hurdle. For Seattle, it’s a shot at long-awaited redemption; for New England, a chance to solidify a new era of dominance. The road to the Lombardi Trophy now leads to Levi’s Stadium.
+-
+-<script>
+-    // Fetch article popularity stats tailored for this user
+-    fetch('/api/article-popularity')
+-        .then(response => {
+-            if (!response.ok) {
+-                // Silently fail, analytics is non-critical
+-                return;
+-            }
+-            return response.json();
+-        })
+-        .then(data => {
+-            if (data && data.trending) {
+-                console.log('Valid trending article');
+-            }
+-        })
+-        .catch(err => {
+-            // connection errors
+-        });
+-</script>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..87223f4 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,7 +4,7 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
++
+ 
+ export interface Props {
+   title: string;
+@@ -21,20 +21,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+-
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..e31c31d 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,30 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
+-export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
+-    }
++export const onRequest = defineMiddleware(async ({ request, url }, next) => {
++  const isApi = url.pathname.includes('/api/');
++  const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
++  const site = request.headers.get('sec-fetch-site');
++  // Require an exact origin for writes, including clients without Fetch Metadata.
++  const rejected = (isMutation && request.headers.get('origin') !== url.origin)
++    || (isApi && site !== null && !['same-origin', 'none'].includes(site));
++  const response = rejected
++    ? Response.json({ error: 'Request not allowed' }, { status: 403 })
++    : await next();
++
++  response.headers.set('Referrer-Policy', 'no-referrer');
++  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=(), browsing-topics=()');
++  response.headers.set('X-Content-Type-Options', 'nosniff');
++  response.headers.set('X-Frame-Options', 'DENY');
++  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
++  // Script/style hashes are supplied by Astro's CSP. This header also protects
++  // error and JSON responses and supplies frame-ancestors (ignored in meta CSP).
++  response.headers.append('Content-Security-Policy', "connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'");
++  // Pages include session-specific bookmark state. Never cache them publicly.
++  response.headers.set('Cache-Control', 'private, no-store');
++  response.headers.append('Vary', 'Sec-Fetch-Site, Sec-Fetch-Mode, Sec-Fetch-Dest');
++  if (url.protocol === 'https:') {
++    response.headers.set('Strict-Transport-Security', 'max-age=300');
+   }
+-  return next();
++  return response;
+ });
+diff --git a/src/pages/api/articles.json.ts b/src/pages/api/articles.json.ts
+index 4cd4be4..cba9854 100644
+--- a/src/pages/api/articles.json.ts
++++ b/src/pages/api/articles.json.ts
+@@ -12,5 +12,5 @@ export const GET: APIRoute = async ({ params, request }) => {
+     }));
+ 
+     // Simulate a network delay to make the INP issue more noticeable
+-    return new Response(JSON.stringify(formattedArticles));
++    return Response.json(formattedArticles);
+ }
+diff --git a/src/pages/api/reading-list.json.ts b/src/pages/api/reading-list.json.ts
+index 3084fe3..1cae5fc 100644
+--- a/src/pages/api/reading-list.json.ts
++++ b/src/pages/api/reading-list.json.ts
+@@ -1,31 +1,54 @@
+-
+ import type { APIRoute } from 'astro';
++import { getEntry } from 'astro:content';
+ 
+ export const POST: APIRoute = async ({ request, session }) => {
+-  const { slug } = await request.json();
+-  if (!slug) {
+-    return new Response(JSON.stringify({ error: 'Slug is required' }), { status: 400 });
++  if (!session) return Response.json({ error: 'Reading list unavailable' }, { status: 503 });
++  if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
++    return Response.json({ error: 'JSON required' }, { status: 415 });
+   }
+-
+-  let readingList = await session?.get('readingList') || [];
+-
++  // Bound streamed bodies too: Content-Length is optional and untrusted.
++  const reader = request.body?.getReader();
++  if (!reader) return Response.json({ error: 'Body required' }, { status: 400 });
++  let size = 0;
++  const chunks: Uint8Array[] = [];
++  while (true) {
++    const { done, value } = await reader.read();
++    if (done) break;
++    size += value.length;
++    if (size > 1024) {
++      await reader.cancel();
++      return Response.json({ error: 'Request too large' }, { status: 413 });
++    }
++    chunks.push(value);
++  }
++  let body;
++  try {
++    body = JSON.parse(await new Blob(chunks).text());
++  } catch {
++    return Response.json({ error: 'Invalid JSON' }, { status: 400 });
++  }
++  const slug = body?.slug;
++  if (typeof slug !== 'string' || !/^[a-z0-9-]{1,120}$/.test(slug) || !(await getEntry('articles', slug))) {
++    return Response.json({ error: 'Unknown article' }, { status: 400 });
++  }
++  let readingList: string[] = await session.get('readingList') ?? [];
+   if (readingList.includes(slug)) {
+-    readingList = readingList.filter((item: string) => item !== slug);
++    readingList = readingList.filter(item => item !== slug);
+   } else {
+-    readingList.push(slug);
++    if (readingList.length >= 100) return Response.json({ error: 'Reading list is full' }, { status: 409 });
++    readingList = [...readingList, slug];
+   }
+-
+-  await session?.set('readingList', readingList);
+-
+-  return new Response(JSON.stringify({ readingList }), {
+-    headers: { 'Content-Type': 'application/json' },
+-  });
++  if (readingList.length) session.set('readingList', readingList);
++  else session.destroy();
++  return Response.json({ readingList });
+ };
+ 
++// This is also the user's data export: only saved article IDs are retained.
+ export const GET: APIRoute = async ({ session }) => {
+-  const readingList = await session?.get('readingList') || [];
++  return Response.json({ readingList: await session?.get('readingList') ?? [] });
++};
+ 
+-  return new Response(JSON.stringify({ readingList }), {
+-    headers: { 'Content-Type': 'application/json' },
+-  });
++export const DELETE: APIRoute = ({ session }) => {
++  session?.destroy();
++  return Response.json({ readingList: [] });
+ };
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..2ce8301 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -32,7 +32,7 @@ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3)
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.slug);
++const isBookmarked = readingList.includes(article.id);
+ ---
+ 
+ <Layout title={article.data.title}>
+@@ -59,26 +59,14 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         <!-- Main Article Image -->
+         <figure class="mb-5">
+-            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+-            {article.data.prompt_comment ? (
+-                <img 
+-                    src={article.data.image}
+-                    alt={article.data.title}
+-                    width="1200"
+-                    height="675"
+-                    class="w-full h-auto"
+-                    crossorigin="use-credentials"
+-                />
+-            ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
+-                    width={1200}
+-                    height={675}
+-                    format="webp"
+-                    class="w-full h-auto"
+-                />
+-            )}
++            <Image
++                src={articleImage}
++                alt={article.data.title}
++                width={1200}
++                height={675}
++                format="webp"
++                class="w-full h-auto"
++            />
+             {article.data.image_caption && (
+                 <figcaption class="text-xs text-gray-500 mt-2 px-2">
+                     {article.data.image_caption}
+@@ -99,7 +87,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
+         </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..7af0845 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -17,7 +17,7 @@ const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new gri
+ const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+ const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+ 
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
++// Featured DevTools story.
+ politicsArticles[2] = {
+     id: 'public-transit-overhaul',
+     data: {
+@@ -26,7 +26,7 @@ politicsArticles[2] = {
+       author: 'Chrome DevTools Team',
+       date: new Date('2025-09-16T00:00:00.000Z'),
+       category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
++      image: '/images/articles/news-reporter.jpg',
+       image_caption: '',
+       readingTime: 3
+     },
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..289c36e 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -2,16 +2,18 @@
+ import LegalLayout from '../../layouts/LegalLayout.astro';
+ ---
+ <LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+-    
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+-    
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <h2>Read without an account</h2>
++    <p>You can browse without registering. The application does not load third-party analytics, advertising scripts, remote fonts, or remote editorial images. It does not fingerprint your device or request camera, microphone, or location access.</p>
++    <h2>Your reading list</h2>
++    <p>When you first save an article, we create a necessary session cookie containing a random identifier. Only the IDs of articles you choose to save are held on the server; we do not record your browsing history. The cookie is inaccessible to JavaScript and is sent securely over HTTPS in production.</p>
++    <p>The reading list expires within 24 hours after your last change and may disappear sooner when the server restarts or reaches its storage limit. Browsing alone does not create a session. Your list is not used for advertising or analytics.</p>
++    <h2>Access and deletion</h2>
++    <p>Open Your Reading List in the navigation to export or delete your saved articles. Removing the final article also deletes the session. Deletion does not affect your ability to read the site. Clearing your browser cookies disconnects your browser from the list; the server copy expires automatically.</p>
++    <h2>Account information</h2>
++    <p>Sign in and sign up are unavailable while an authentication provider is being reviewed. The application does not collect or transmit usernames or passwords.</p>
++    <h2>Connections and infrastructure</h2>
++    <p>Your browser connects to this site's host to request pages and images. The host necessarily receives connection information such as your IP address and request path. Hosting access logs and their retention are controlled by the deployment operator; this application does not add analytics or log reading-list contents, credentials, or request bodies.</p>
++    <p>Links to other websites only connect to those sites when you follow them. Their data practices are governed by their own policies.</p>
++    <h2>Integration reviews</h2>
++    <p>New external services must be reviewed for the data they receive, purpose, retention, deletion support, and security before activation. The codebase includes an integration inventory and automated checks. These technical checks do not constitute independent third-party certification.</p>
+ </LegalLayout>
+diff --git a/src/server/session-store.ts b/src/server/session-store.ts
+new file mode 100644
+index 0000000..158a7fc
+--- /dev/null
++++ b/src/server/session-store.ts
+@@ -0,0 +1,24 @@
++import type { SessionDriver } from 'astro';
++
++// Ephemeral single-process storage: no reading preferences are written to disk.
++// Deploy a shared store with enforced expiry before running multiple replicas.
++export default function createSessionStore(): SessionDriver {
++  const entries = new Map<string, { value: unknown; timer: ReturnType<typeof setTimeout> }>();
++  const remove = (key: string) => {
++    const entry = entries.get(key);
++    if (entry) clearTimeout(entry.timer);
++    entries.delete(key);
++  };
++  return {
++    async getItem(key) { return entries.get(key)?.value ?? null; },
++    async removeItem(key) { remove(key); },
++    async setItem(key, value) {
++      remove(key);
++      // Bound memory use; oldest sessions may expire earlier under heavy load.
++      if (entries.size >= 10000) remove(entries.keys().next().value!);
++      const timer = setTimeout(() => remove(key), 86400 * 1000);
++      timer.unref();
++      entries.set(key, { value, timer });
++    },
++  };
++}
+diff --git a/src/utils/images.ts b/src/utils/images.ts
+index b8fe01e..47aa17c 100644
+--- a/src/utils/images.ts
++++ b/src/utils/images.ts
+@@ -9,11 +9,11 @@ const allImages = import.meta.glob<{ default: ImageMetadata }>(
+ export async function getArticleImage(article: CollectionEntry<'articles'>) {
+     const imagePath = article.data.image;
+     if (!imagePath) {
+-        throw new Error(`Image path is missing for article: ${article.slug}`);
++        throw new Error(`Image path is missing for article: ${article.id}`);
+     }
+ 
+     if (imagePath.startsWith('http')) {
+-        return imagePath;
++        throw new Error('Article images must be hosted locally');
+     }
+ 
+     // Find the matching image module in the glob import

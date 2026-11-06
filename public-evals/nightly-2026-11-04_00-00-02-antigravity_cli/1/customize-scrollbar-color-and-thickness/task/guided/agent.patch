@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,70 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: #ffab40;
++      --scrollbar-track: #4e342e;
++
++      max-height: 280px;
++      overflow-y: auto;
++      background: white;
++      border-radius: 8px;
++      padding: 20px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++        height: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .testimonial {
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      background: var(--light);
++      border-radius: 0 6px 6px 0;
++    }
++
++    .testimonial p {
++      font-style: italic;
++      margin-bottom: 8px;
++    }
++
++    .testimonial cite {
++      display: block;
++      font-style: normal;
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +256,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback Log</h2>
++      <div class="feedback-log" tabindex="0" role="region" aria-labelledby="feedback-heading">
++        <blockquote class="testimonial">
++          <p>"The Maple Oat Latte is the highlight of my morning commute. Perfectly balanced sweetness and rich espresso!"</p>
++          <cite>— Sarah M., Regular since 2023</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"Best cold brew in town! You can really taste the difference from the 18-hour steep—zero bitterness."</p>
++          <cite>— Marcus T., Coffee Enthusiast</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"Cozy atmosphere, friendly baristas, and the Dark Roast Espresso never fails to wake me up before early shifts."</p>
++          <cite>— Elena R., Local Nurse</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"I ordered a bag of whole beans online and they arrived freshly roasted just two days later. Incredible aroma!"</p>
++          <cite>— David K., Home Brewer</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"Love that all the beans are ethically sourced. You get a fantastic cup of coffee you can feel good about."</p>
++          <cite>— Priya N., Downtown Resident</cite>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>"Their seasonal specials always hit the mark, and the rewards program has earned me so many free pastries!"</p>
++          <cite>— Jordan L., Daily Visitor</cite>
++        </blockquote>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

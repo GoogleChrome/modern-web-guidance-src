@@ -1,0 +1,281 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -125,10 +125,13 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      font: inherit;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+@@ -151,8 +154,138 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ------------------------------------------------------------------
++       Toast notifications
++       - Each toast is a `popover="manual"` element, so the browser puts it
++         in the top layer: it paints above everything (sticky nav, modals,
++         transforms...) without any z-index.
++       - Stacking uses CSS anchor positioning: every toast exposes the same
++         anchor-name, and a toast anchors to the *last preceding* toast,
++         sitting just above it. No wrapper container, no JS measurements.
++       ------------------------------------------------------------------ */
++    .toast {
++      --toast-edge: 24px;
++      --toast-gap: 12px;
++      --toast-duration: 320ms;
++
++      /* reset popover UA defaults */
++      inset: auto;
++      margin: 0;
++      border: 0;
++      padding: 0;
++      overflow: visible;
++      width: fit-content;
++      height: fit-content;
++      color: inherit;
++      background: transparent;
++
++      /* bottom-right anchoring */
++      position: fixed;
++      right: var(--toast-edge);
++      anchor-name: --toast;
++      position-anchor: --toast;
++      /* sit --toast-gap above the previous toast; with no previous toast the
++         fallback value places the first one --toast-edge from the viewport */
++      bottom: anchor(top, calc(var(--toast-edge) - var(--toast-gap)));
++      margin-bottom: var(--toast-gap);
++
++      /* visual */
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      min-width: 240px;
++      max-width: min(360px, calc(100vw - 2 * var(--toast-edge)));
++      padding: 14px 14px 14px 16px;
++      border-radius: 10px;
++      border-left: 4px solid var(--accent);
++      background: var(--primary);
++      color: white;
++      font-size: 0.95rem;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++      pointer-events: auto;
++
++      /* exit state + transitions (display/overlay animate discretely so the
++         element stays in the top layer until the exit animation finishes) */
++      opacity: 0;
++      translate: calc(100% + var(--toast-edge)) 0;
++      transition:
++        opacity var(--toast-duration) ease,
++        translate var(--toast-duration) cubic-bezier(0.22, 1, 0.36, 1),
++        bottom var(--toast-duration) ease,
++        display var(--toast-duration) allow-discrete,
++        overlay var(--toast-duration) allow-discrete;
++    }
++
++    .toast:popover-open {
++      opacity: 1;
++      translate: 0 0;
++
++      /* entry start state */
++      @starting-style {
++        opacity: 0;
++        translate: calc(100% + var(--toast-edge)) 0;
++      }
++    }
++
++    .toast::backdrop {
++      /* never intercept clicks on the rest of the page */
++      pointer-events: none;
++      background: transparent;
++    }
++
++    .toast-icon {
++      flex: none;
++      width: 22px;
++      height: 22px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.8rem;
++      font-weight: bold;
++      display: grid;
++      place-items: center;
++    }
++
++    .toast-message {
++      flex: 1;
++      line-height: 1.3;
++    }
++
++    .toast-message::first-letter {
++      text-transform: uppercase;
++    }
++
++    .toast-close {
++      flex: none;
++      appearance: none;
++      border: 0;
++      background: transparent;
++      color: inherit;
++      opacity: 0.7;
++      font-size: 1.1rem;
++      line-height: 1;
++      width: 28px;
++      height: 28px;
++      border-radius: 50%;
++      cursor: pointer;
++      transition: opacity 0.2s, background 0.2s;
++    }
++
++    .toast-close:hover,
++    .toast-close:focus-visible {
++      opacity: 1;
++      background: rgba(255, 255, 255, 0.15);
++      outline: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .toast {
++        --toast-duration: 1ms;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,9 +303,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn toast-trigger" data-href="/order-online">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -180,19 +313,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger" data-href="/menu/seasonal">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger" data-href="/menu/espresso">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger" data-href="/menu/cold-brew">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +339,90 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const TOAST_LIFETIME = 3000;
++
++      function createToast(message) {
++        const toast = document.createElement('div');
++        toast.className = 'toast';
++        toast.setAttribute('popover', 'manual');
++        toast.setAttribute('role', 'status');
++        toast.setAttribute('aria-live', 'polite');
++
++        const icon = document.createElement('span');
++        icon.className = 'toast-icon';
++        icon.setAttribute('aria-hidden', 'true');
++        icon.textContent = '\u2713';
++
++        const text = document.createElement('span');
++        text.className = 'toast-message';
++        text.textContent = message;
++
++        const close = document.createElement('button');
++        close.type = 'button';
++        close.className = 'toast-close';
++        close.setAttribute('aria-label', 'Dismiss notification');
++        close.innerHTML = '&times;';
++
++        toast.append(icon, text, close);
++        return toast;
++      }
++
++      function showToast(message) {
++        const toast = createToast(message);
++        document.body.append(toast);
++
++        let timer = null;
++        let dismissed = false;
++
++        const dismiss = () => {
++          if (dismissed) return;
++          dismissed = true;
++          clearTimeout(timer);
++          if (toast.matches(':popover-open')) {
++            toast.hidePopover(); // CSS handles the exit animation
++          } else {
++            toast.remove();
++          }
++        };
++
++        // Remove from the DOM once the exit animation has finished.
++        toast.addEventListener('toggle', (event) => {
++          if (event.newState !== 'closed') return;
++          const animations = toast.getAnimations();
++          const done = Promise.allSettled(animations.map((a) => a.finished));
++          const fallback = new Promise((resolve) => setTimeout(resolve, 1000));
++          Promise.race([done, fallback]).then(() => toast.remove());
++        });
++
++        close.addEventListener('click', dismiss);
++
++        // Pause the auto-dismiss while the user hovers/focuses the toast.
++        const arm = () => { clearTimeout(timer); timer = setTimeout(dismiss, TOAST_LIFETIME); };
++        toast.addEventListener('mouseenter', () => clearTimeout(timer));
++        toast.addEventListener('mouseleave', arm);
++        toast.addEventListener('focusin', () => clearTimeout(timer));
++        toast.addEventListener('focusout', arm);
++
++        toast.showPopover();
++        arm();
++        return toast;
++      }
++
++      document.addEventListener('click', (event) => {
++        const trigger = event.target.closest('.toast-trigger');
++        if (!trigger) return;
++        event.preventDefault();
++        showToast('added to cart!');
++      });
++
++      // Expose for reuse by other scripts on the site.
++      window.showToast = showToast;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

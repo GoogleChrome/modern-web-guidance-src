@@ -1,0 +1,187 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,144 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      margin: 40px auto;
++    }
++
++    .showcase-heading {
++      text-align: center;
++      margin-bottom: 24px;
++      color: var(--primary);
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++    }
++
++    /* Nested Curve Parent */
++    .nested-curve-parent {
++      background: white;
++      border-radius: 28px;
++      padding: 24px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      /* Level 1 Fallback: clips roughly at padding box */
++      overflow: hidden;
++      overflow: clip;
++      overflow-clip-margin: content-box;
++      display: flex;
++      flex-direction: column;
++    }
++
++    @supports (overflow-clip-margin: content-box) {
++      .nested-curve-parent {
++        /* MANDATORY: overflow: clip is required on non-replaced elements */
++        overflow: clip;
++        /* Automatically curves clipping edge to match inner content-box radius */
++        overflow-clip-margin: content-box;
++      }
++    }
++
++    .nested-curve-parent img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .nested-curve-body {
++      padding: 16px 0;
++    }
++
++    .nested-curve-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .nested-curve-footer {
++      margin-top: auto;
++      background: var(--primary);
++      color: white;
++      padding: 14px;
++      text-align: center;
++      font-weight: 600;
++    }
++
++    /* Safety Zone Parent */
++    .safety-zone-parent {
++      background: white;
++      border-radius: 24px;
++      padding: 24px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      position: relative;
++      /* Level 1 Fallback */
++      overflow: hidden;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    @supports (overflow-clip-margin: 15px) {
++      .safety-zone-parent {
++        overflow: clip;
++        /* Establishes a visible safety zone allowing child element shadows to render safely outside */
++        overflow-clip-margin: 15px;
++      }
++    }
++
++    .safety-zone-parent .promo-tag {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: bold;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      padding: 4px 10px;
++      border-radius: 12px;
++      margin-bottom: 12px;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .safety-zone-parent .overflow-text {
++      white-space: nowrap;
++      color: #6d4c41;
++      font-size: 0.95rem;
++      margin-bottom: 14px;
++    }
++
++    .glowing-btn {
++      display: inline-block;
++      text-align: center;
++      background: linear-gradient(135deg, #ffab40, #ff6d00);
++      color: #2e1c0c;
++      font-weight: bold;
++      padding: 14px 28px;
++      border-radius: 8px;
++      border: none;
++      cursor: pointer;
++      text-decoration: none;
++      font-size: 1rem;
++      box-shadow: 0 8px 25px rgba(255, 171, 64, 0.85);
++      transition: transform 0.2s, box-shadow 0.2s;
++      margin-top: 16px;
++    }
++
++    .glowing-btn:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 10px 30px rgba(255, 171, 64, 1);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +309,38 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="container showcase">
++    <h2 class="showcase-heading">Featured Showcase</h2>
++    <div class="showcase-grid">
++      <!-- Showcase Card: concentric inner border curve clipping -->
++      <div class="nested-curve-parent">
++        <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80" alt="Artisan Pour Over Coffee">
++        <div class="nested-curve-body">
++          <h3>Single-Origin Pour Over</h3>
++          <p>Hand-selected Ethiopian Yirgacheffe notes of bergamot, lemon blossom, and candied stone fruit.</p>
++        </div>
++        <div class="nested-curve-footer">
++          Signature Reserve &bull; Fresh Roasted Daily
++        </div>
++      </div>
++
++      <!-- Promos Block: safety-zone-parent allowing glowing shadow bleed -->
++      <div class="safety-zone-parent">
++        <div>
++          <span class="promo-tag">Special Promo</span>
++          <h3>Coffee Club Pass</h3>
++          <p class="overflow-text">Enjoy unlimited handcrafted espresso beverages, seasonal specials, secret roaster cupping events, and priority morning pickup.</p>
++          <p>Subscribe today and receive an artisanal tasting box along with 25% off all whole-bean selections.</p>
++        </div>
++        <div>
++          <button class="glowing-btn">Claim Your Promo Pass</button>
++        </div>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

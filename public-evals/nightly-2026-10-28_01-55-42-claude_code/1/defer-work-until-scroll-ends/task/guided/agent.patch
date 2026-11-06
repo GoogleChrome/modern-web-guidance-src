@@ -1,0 +1,226 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,85 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Coffee Beans Scroller */
++    .beans-section {
++      margin-top: 60px;
++    }
++
++    .beans-section h2 {
++      text-align: center;
++    }
++
++    .beans-section > p {
++      text-align: center;
++      margin-top: 8px;
++      color: #6d4c41;
++    }
++
++    #scroller {
++      height: 320px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      scroll-snap-type: y proximity;
++      margin-top: 20px;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .origin {
++      scroll-snap-align: start;
++      display: grid;
++      grid-template-columns: 96px 1fr;
++      gap: 16px;
++      align-items: center;
++      padding: 16px;
++      margin-bottom: 12px;
++      border-radius: 8px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++    }
++
++    .origin:last-child {
++      margin-bottom: 0;
++    }
++
++    .origin img {
++      width: 96px;
++      height: 96px;
++      object-fit: cover;
++      border-radius: 6px;
++      display: block;
++    }
++
++    .origin h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .origin .notes {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 6px;
++    }
++
++    #status {
++      margin-top: 12px;
++      padding: 10px 16px;
++      border-radius: 6px;
++      background: var(--secondary);
++      font-size: 0.9rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    #status.is-scrolling {
++      background: var(--accent);
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +271,58 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="beans-section" aria-labelledby="beans-heading">
++      <h2 id="beans-heading">Our Coffee Beans</h2>
++      <p>Scroll through our single-origin selection.</p>
++
++      <div id="scroller" tabindex="0" aria-label="Coffee origins, scrollable list">
++        <article class="origin" data-origin="Ethiopia Yirgacheffe">
++          <img src="https://images.unsplash.com/photo-1559525839-b184a4d698c7?auto=format&fit=crop&w=192&q=70" alt="" width="96" height="96" loading="lazy" decoding="async">
++          <div>
++            <h3>Ethiopia Yirgacheffe</h3>
++            <p>Washed heirloom varietals grown at 1,900 m in the Gedeo zone.</p>
++            <p class="notes">Tasting notes: bergamot, jasmine, lemon curd</p>
++          </div>
++        </article>
++        <article class="origin" data-origin="Colombia Huila">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=192&q=70" alt="" width="96" height="96" loading="lazy" decoding="async">
++          <div>
++            <h3>Colombia Huila</h3>
++            <p>Smallholder lots from the Andean foothills, fully washed and sun-dried.</p>
++            <p class="notes">Tasting notes: red apple, caramel, milk chocolate</p>
++          </div>
++        </article>
++        <article class="origin" data-origin="Brazil Cerrado">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=192&q=70" alt="" width="96" height="96" loading="lazy" decoding="async">
++          <div>
++            <h3>Brazil Cerrado</h3>
++            <p>Natural-process beans from the Minas Gerais plateau, our espresso backbone.</p>
++            <p class="notes">Tasting notes: hazelnut, cocoa, brown sugar</p>
++          </div>
++        </article>
++        <article class="origin" data-origin="Sumatra Mandheling">
++          <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=192&q=70" alt="" width="96" height="96" loading="lazy" decoding="async">
++          <div>
++            <h3>Sumatra Mandheling</h3>
++            <p>Wet-hulled Giling Basah beans from the highlands around Lake Toba.</p>
++            <p class="notes">Tasting notes: cedar, dark chocolate, dried fig</p>
++          </div>
++        </article>
++        <article class="origin" data-origin="Guatemala Antigua">
++          <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=192&q=70" alt="" width="96" height="96" loading="lazy" decoding="async">
++          <div>
++            <h3>Guatemala Antigua</h3>
++            <p>Volcanic-soil bourbon from the valley between Agua, Fuego and Acatenango.</p>
++            <p class="notes">Tasting notes: toffee, orange zest, baking spice</p>
++          </div>
++        </article>
++      </div>
++
++      <div id="status" role="status" aria-live="polite">Scroll to explore our origins.</div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +333,77 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const scroller = document.getElementById('scroller');
++      const status = document.getElementById('status');
++      const origins = Array.from(scroller.querySelectorAll('.origin'));
++
++      // Measures each card once scrolling has rested. Only reads layout here,
++      // never inside the hot scroll handler.
++      const findMostVisibleOrigin = () => {
++        const bounds = scroller.getBoundingClientRect();
++        let best = null;
++        let bestArea = -1;
++        for (const el of origins) {
++          const r = el.getBoundingClientRect();
++          const visible = Math.min(r.bottom, bounds.bottom) - Math.max(r.top, bounds.top);
++          if (visible > bestArea) {
++            bestArea = visible;
++            best = el;
++          }
++        }
++        return best ? best.dataset.origin : null;
++      };
++
++      const announceVisible = () => {
++        const name = findMostVisibleOrigin();
++        status.classList.remove('is-scrolling');
++        status.textContent = name ? `Scroll ended. Visible: ${name}` : 'Scroll ended.';
++      };
++
++      // Hot path: a single boolean check and, at most once per scroll burst,
++      // one text write and one class toggle. No layout reads, no allocations.
++      let scrolling = false;
++      const onScroll = () => {
++        if (scrolling) return;
++        scrolling = true;
++        status.classList.add('is-scrolling');
++        status.textContent = 'Scrolling…';
++      };
++
++      const onScrollEnd = () => {
++        scrolling = false;
++        announceVisible();
++      };
++
++      scroller.addEventListener('scroll', onScroll, { passive: true });
++      scroller.addEventListener('scrollend', onScrollEnd);
++
++      // Fallback for browsers without scrollend: debounce scroll and
++      // dispatch a synthetic scrollend so the same handler runs.
++      if (!('onscrollend' in window)) {
++        let timer;
++        scroller.addEventListener('scroll', () => {
++          clearTimeout(timer);
++          timer = setTimeout(() => scroller.dispatchEvent(new Event('scrollend')), 120);
++        }, { passive: true });
++      }
++
++      // Initial sync: the browser may restore a scroll position without firing events.
++      const init = () => {
++        const name = findMostVisibleOrigin();
++        if (name) status.textContent = `Visible: ${name}`;
++      };
++      if (document.readyState === 'complete') {
++        init();
++      } else {
++        window.addEventListener('load', init, { once: true });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

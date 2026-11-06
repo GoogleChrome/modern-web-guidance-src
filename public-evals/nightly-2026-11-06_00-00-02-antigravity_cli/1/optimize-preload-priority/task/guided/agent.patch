@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,136 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Video Showcase</title>
++
++  <!-- Elevate priority for the video poster image acting as the LCP candidate -->
++  <link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++
++  <!-- Preload critical brand font for header rendering (fonts are high priority by default; always include crossorigin) -->
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++
++  <!-- Preload secondary font with low priority to prevent network contention with LCP and critical assets -->
++  <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++  <!-- Inline critical CSS to optimize the Critical Rendering Path -->
++  <style>
++    @font-face {
++      font-family: 'Brand Font';
++      src: url('brand-font.woff2') format('woff2');
++      font-display: swap;
++    }
++
++    @font-face {
++      font-family: 'Secondary Font';
++      src: url('secondary-font.woff2') format('woff2');
++      font-display: swap;
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    body {
++      margin: 0;
++      min-height: 100vh;
++      display: grid;
++      grid-template-rows: auto 1fr auto;
++      background-color: #0a0a0c;
++      color: #f4f4f6;
++      font-family: 'Secondary Font', system-ui, -apple-system, sans-serif;
++      font-size-adjust: from-font;
++    }
++
++    header, main, footer {
++      width: min(100% - 2rem, 75rem);
++      margin-inline: auto;
++    }
++
++    header {
++      padding-block: 1.5rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    h1 {
++      margin: 0;
++      font-family: 'Brand Font', system-ui, -apple-system, sans-serif;
++      font-size: clamp(1.5rem, 3vw, 2.25rem);
++      letter-spacing: -0.02em;
++      font-size-adjust: from-font;
++    }
++
++    .badge {
++      font-size: 0.875rem;
++      padding: 0.25rem 0.75rem;
++      border-radius: 999px;
++      background: #1c1c22;
++      color: #a1a1aa;
++    }
++
++    main {
++      display: flex;
++      flex-direction: column;
++       justify-content: center;
++      gap: 1rem;
++      padding-block: 1rem 2rem;
++    }
++
++    video {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      border-radius: 0.5rem;
++      background-color: #141418;
++      display: block;
++      object-fit: cover;
++    }
++
++    .video-meta {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.875rem;
++      color: #a1a1aa;
++    }
++
++    footer {
++      padding-block: 1.5rem;
++      border-top: 1px solid #1c1c22;
++      font-size: 0.8125rem;
++      color: #71717a;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1>Lumina Studio</h1>
++    <span class="badge">2026 Reel</span>
++  </header>
++
++  <main>
++    <video
++      controls
++      width="1200"
++      height="675"
++      poster="poster.jpg"
++      preload="none"
++    >
++      <source src="feature.webm" type="video/webm">
++      <source src="feature.mp4" type="video/mp4">
++      <track src="captions.vtt" kind="captions" srclang="en" label="English">
++    </video>
++    <div class="video-meta">
++      <span>Featured Presentation — 4K HDR</span>
++      <span>Duration: 02:14</span>
++    </div>
++  </main>
++
++  <footer>
++    <p>&copy; 2026 Lumina Studio. All rights reserved.</p>
++  </footer>
++</body>
++</html>
